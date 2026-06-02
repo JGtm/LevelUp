@@ -161,7 +161,6 @@ export function TimeseriesPage() {
         {activeTab === 'summary' && (
           <TimeseriesSummaryTab
             data={data}
-            locale={locale}
             t={t}
             fieldMappings={fieldMappings}
             outcomeLabels={outcomeLabels}
@@ -172,7 +171,6 @@ export function TimeseriesPage() {
         {activeTab === 'distributions' && (
           <TimeseriesDistributionsTabView
             distributions_tab={data.distributions_tab}
-            locale={locale}
             t={t}
             fieldMappings={fieldMappings}
             outcomeLabels={outcomeLabels}

@@ -305,3 +305,201 @@ en = "Placement"
 [timeseries.skill_progression.season_break]
 fr = "Saison"
 en = "Season"
+
+# ─── Onglet Summary — titres de charts & labels inline (migration H-D4) ──────
+
+[timeseries.summary.outcome_sequence]
+fr = "Séquence des résultats"
+en = "Outcome sequence"
+
+[timeseries.summary.kd_timeline_title]
+fr = "Évolution Frags / Morts"
+en = "Kills / Deaths timeline"
+
+[timeseries.summary.kd_yaxis]
+fr = "Frags / Morts"
+en = "Kills / Deaths"
+
+[timeseries.summary.kda_distribution_title]
+fr = "Distribution FDA"
+en = "KDA distribution"
+
+[timeseries.summary.density]
+fr = "Densité"
+en = "Density"
+
+[timeseries.summary.mean]
+fr = "Moyenne"
+en = "Mean"
+
+[timeseries.summary.median]
+fr = "Médiane"
+en = "Median"
+
+[timeseries.summary.avg_life_axis]
+fr = "Durée de vie (s)"
+en = "Average life (s)"
+
+[timeseries.summary.trend]
+fr = "Tendance"
+en = "Trend"
+
+[timeseries.summary.top_weapons_title]
+fr = "Outils de destruction"
+en = "Tools of destruction"
+
+[timeseries.summary.solo_perf_session]
+fr = "Performance solo par session"
+en = "Solo performance per session"
+
+[timeseries.summary.solo_perf_week]
+fr = "Performance solo par semaine"
+en = "Solo performance per week"
+
+[timeseries.summary.solo_perf_month]
+fr = "Performance solo par mois"
+en = "Solo performance per month"
+
+[timeseries.summary.perf_label]
+fr = "Performance"
+en = "Performance"
+
+[timeseries.summary.win_rate_label]
+fr = "Win rate"
+en = "Win rate"
+
+[timeseries.summary.winrate_vs_history_title]
+fr = "Taux de victoire — Session vs Historique"
+en = "Win rate — Session vs History"
+
+[timeseries.summary.session_label]
+fr = "Session"
+en = "Session"
+
+[timeseries.summary.history_label]
+fr = "Historique"
+en = "History"
+
+[timeseries.summary.parity_label]
+fr = "Parité"
+en = "Parity"
+
+[timeseries.summary.zero_winrate_label]
+fr = "0 % de victoires"
+en = "0 % win rate"
+
+[timeseries.summary.mapperf_vs_history_title]
+fr = "Performance par carte — Session vs Historique"
+en = "Performance per map — Session vs History"
+
+# ─── Onglet Progression — labels inline (migration H-D4) ─────────────────────
+
+[timeseries.progression.first_event_title]
+fr = "Temps du premier frag / première mort"
+en = "First kill / first death timing"
+
+[timeseries.progression.first_kill]
+fr = "1er frag"
+en = "1st kill"
+
+[timeseries.progression.first_death]
+fr = "1ère mort"
+en = "1st death"
+
+[timeseries.progression.avg]
+fr = "Moy."
+en = "Avg"
+
+[timeseries.progression.time_axis]
+fr = "Temps (m s)"
+en = "Time (m s)"
+
+[timeseries.progression.per_minute_title]
+fr = "Stats par minute"
+en = "Stats per minute"
+
+[timeseries.progression.per_minute_suffix]
+fr = " /min"
+en = " /min"
+
+[timeseries.progression.spree_headshots_title]
+fr = "Folie meurtrière / Tirs à la tête / Frags parfaits"
+en = "Killing spree / Headshots / Perfect kills"
+
+[timeseries.progression.spree_label]
+fr = "Folie meurtrière (max)"
+en = "Killing spree (max)"
+
+[timeseries.progression.perfect_kills]
+fr = "Kills parfaits"
+en = "Perfect kills"
+
+[timeseries.progression.rank_score_title]
+fr = "Rang et score personnel"
+en = "Rank and personal score"
+
+[timeseries.progression.rank]
+fr = "Rang"
+en = "Rank"
+
+[timeseries.progression.rank_perf_title]
+fr = "Rang et performance"
+en = "Rank and performance"
+
+[timeseries.progression.efficiency_title]
+fr = "Rendement & Résistance"
+en = "Output & resistance"
+
+[timeseries.progression.ref_100]
+fr = "Réf. 100%"
+en = "Ref. 100%"
+
+[timeseries.progression.intensity_title]
+fr = "Intensité"
+en = "Intensity"
+
+[timeseries.progression.intensity_z]
+fr = "frags"
+en = "kills"
+
+[timeseries.progression.match_history_title]
+fr = "Historique des matchs"
+en = "Match history"
+
+# ─── Onglet Distributions — labels inline (migration H-D4) ───────────────────
+
+[timeseries.distributions.life_title]
+fr = "Durée de vie moyenne (s)"
+en = "Average life (s)"
+
+[timeseries.distributions.seconds]
+fr = "Secondes"
+en = "Seconds"
+
+[timeseries.distributions.spree_axis]
+fr = "Folie meurtrière"
+en = "Killing spree"
+
+[timeseries.distributions.life_vs_kills]
+fr = "Vie vs Frags"
+en = "Life vs Kills"
+
+[timeseries.distributions.life_axis]
+fr = "Vie (s)"
+en = "Life (s)"
+
+[timeseries.distributions.accuracy_vs_kda]
+fr = "Précision vs FDA"
+en = "Accuracy vs KDA"
+
+[timeseries.distributions.life_vs_deaths]
+fr = "Vie vs Morts"
+en = "Life vs Deaths"
+
+[timeseries.distributions.kills_vs_deaths]
+fr = "Frags vs Morts"
+en = "Kills vs Deaths"
+
+[timeseries.distributions.mmr_title]
+fr = "MMR équipe vs MMR adverse"
+en = "Team MMR vs Enemy MMR"
