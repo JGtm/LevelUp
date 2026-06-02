@@ -1,3 +1,38 @@
+## [2026-06-02] RE film CTF — validation détecteur capture-burst + attribution équipe (3 matchs) — Complété (exploration, non commité)
+
+**Statut** : Complété (travail d'exploration RE sous `tmp_film_explore/`, aucun code applicatif touché).
+
+**Contexte** : validation de la signature capture-burst (agent Signature) sur 3 matchs CTF mixtes
+(dcf44b35 5-4, 64e8adfa 2-3, 53ce4390 1-2 gold anchor) + attribution de l'équipe par capture.
+
+**Décision technique principale** :
+- Détecteur capture-burst PORTABLE = FRAME contenant la table-échelle objectif COMPLÈTE = les 6
+  paliers de score fixes (`a4 00 00 00`, `03 48 00 00 01`, `06 90 00 00 02`, `0d 20 00 00 05`,
+  `1a 40 00 00 0a`, `34 80 00 00 15`) co-occurrents dans une même frame (tiers==6). Ces tokens sont
+  CONSTANTS inter-matchs (pas l'octet d'instance `ac`, lui spécifique au match). Outil :
+  `tmp_film_explore/ctfcap/ctfcap.exe <dir> <manifest> bursts 6`.
+- Le seuil tiers>=4 sur-compte (les paliers partiels apparaissent dans des centaines de frames) ;
+  tiers==6 sépare proprement.
+- Attribution équipe : seul signal FIABLE = th=10 b55 (octet team) coïncident (±5ms) avec le burst,
+  MAIS uniquement si le chunk highlight/footer (type 3) est en cache. Le compteur TYPE_2 0x7B6 ne
+  donne PAS de compteur de captures par équipe fiable en multi-capture (offsets non stables, champs =
+  score cumulé à incréments variables) — sauf coup de chance (0f9550e5 mono-équipe ; 64e8adfa off=164
+  = team1).
+
+**Résultats observés** :
+- Comptes de bursts = totaux DB EXACTEMENT : 53ce4390=3 (1+2), dcf44b35=9 (5+4), 64e8adfa=5 (2+3).
+- Régression : le détecteur généralisé reproduit les 5 captures de 0f9550e5 aux mêmes ms que l'agent précédent.
+- 53ce4390 : th=10 disponible (footer chunk_40 en cache) → captures 341304=T0, 555551=T1, 656554=T1
+  (gold anchor t=656558 b37=1 confirmé). split 1-2 ✓.
+- 64e8adfa : footer absent ; off=164 (TYPE_2) = team1 {529075,710957,837364} (concorde indice mission
+  520/700/820s) → team0 par élimination {159001,472578}. split 2-3 ✓ (per-capture team0 = élimination).
+- dcf44b35 : footer absent + TYPE_2 non aligné aux bursts → 9 captures détectées mais team PAR CAPTURE
+  NON récupérable depuis les chunks en cache (seul le total 9=5+4 est validé).
+
+**Conclusion / prochaine étape** : Pour productioniser : (1) burst tiers==6 = détecteur de captures
+ms-précis universel ; (2) team = th=10 b55 coïncident SI footer en cache, sinon recâbler le cache film
+pour inclure le chunk type-3 (highlight events) — c'est le seul porteur fiable de l'équipe par capture.
+
 ## [2026-06-02] Observabilité du gate de dédup cross-source + vérification finale — Complété (non commité)
 
 **Statut** : Complété, NON commité (branche déplacée vers feat/skill-progression-magnitude-scale +
@@ -53968,3 +54003,34 @@ evwide2,frbig}. Câblage scanner différé v2 (cf. RESEARCH_THEATER_RE.md §M-te
   CLI consolidation, H-D4 i18n, query keys = lots lourds dédiés.
 - Prochaine étape : continuer les découpes entrelacées (fonction-par-fonction) + dédups front
   + query keys, en sous-lots committés.
+
+## [2026-06-02] Lot B (suite) — découpe god-files + dédups frontend + query keys — Complété (sous-lot)
+
+- **Statut** : Complété pour les god-files >700L non-sensibles + dédups/keys frontend.
+- **Dédups frontend** : `outcomeKey` centralisé (variante `'draw'`, 3 consommateurs ;
+  variante `'tie'` laissée car key-set distinct) ; `formatDateShort`/`formatNumber` de
+  `components/charts/_utils.ts` → réexport/délégation vers `lib/formatters` (fallback `'-'`
+  des axes ECharts préservé via `formatNumberFixed(v, d, '-')`).
+- **Query keys** : centralisation ciblée sur les **risques de drift réels** (clé de query
+  dupliquée en littéral d'invalidation). Factories : prestige (`challengeKeys.list` réutilisé
+  par HomePrestigeSection, `prestigeKeys.meAll`), `adminKeys` (auth↔AdminPage),
+  `profileKeys.campaignAll`, helpers `*All` sur le factory central
+  (notificationsAll/coachAll/matchHistoryAll/teammatesAll). **Décision** : clés feature-privées
+  mono-site (changelog, release-notes, combatYieldHistory, feedback-drawer, media
+  match-candidates) **laissées en littéral local** — un seul site de définition, 0 risque de
+  drift. Pas de règle ESLint globale (contredirait le pattern factories-par-feature existant).
+- **Découpe god-files** : extraction de blocs **contigus** par `sed` (bottom-up pour préserver
+  les ranges), nouveau fichier même package, `goimports -w`, build+vet+gofmt+test par package.
+  Piège `goimports` : il **ne devine pas les imports aliasés** (`mediapkg`, `metadata_guard`) ni
+  la bonne version (`yaml.v2` vs `.v3`) — ajout manuel (récupéré via `git show HEAD:<file>`).
+  14 fichiers : media.go 914→409, player_matches_repo 1024→325, squad_service_v2 1006→480,
+  seed 910→350, squad_breakdown 903→412, media_repo_q37 829→233, squad_repo 762→358,
+  queries_match/home_citations/career, config 671→405, lab/provider 760→324,
+  media_service 688→407, explorer_service 670→370.
+- **Résultat** : tous les >700L non-sensibles <500L (sauf `seed_citation_data.go` 565L =
+  littéral de données, exemption data-table documentée). Build/vet `./internal/...` verts.
+- **Différé avec raison** (cf. ledger §6c) : zones sync/scheduler (ART+race), migration
+  (ordre `init()`), DI (server.go/registry_pages), fichiers cohérents 500-700L. Voir
+  [.ai/CODE_REVIEW_REMEDIATION_2026-06-02.md](CODE_REVIEW_REMEDIATION_2026-06-02.md) §6.
+- **Prochaine étape** : décision utilisateur sur (a) splits zones sensibles (supervisés),
+  (b) frontend lourd + H-D4 i18n + CLI, ou (c) poursuite des splits 500-700L cohérents.
