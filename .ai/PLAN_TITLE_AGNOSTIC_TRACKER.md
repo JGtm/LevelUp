@@ -15,8 +15,8 @@
 
 ## Réconciliations vs master (le master date du 2026-05-18, le code a avancé)
 
-1. **ADR renumérotés** : le master cite 0014-0017 mais ces numéros sont **pris** (progression-v2-ascension, player-profile, shared-db-provider-b-swap, rebuild-art). → utiliser **0024 (title-agnostic), 0025 (Huma), 0026 (feature-matrix), 0027 (title-diagnostic)**.
-2. **Phase 2 — `MatchFieldRepository` (FieldKey-map D1/D2) SUPERSÉDÉ** : le code a convergé vers des **repos canonical-typés** (`PlayerMatchesRepository.LoadPlayerMatches → canonical.PlayerMatchRow`, alias « P4.3 »). 5 services le consomment déjà, **aucun service n'importe `platform/duckdb` pour la data** (sauf `home_service` pour le type `PersistSink`, non-data). Le but de découplage est donc majoritairement atteint **sans** le FieldKey-map. → **Recommandation : acter le canonical-typé comme cible, retirer le FieldKey-map du scope.** Phase 2 résiduelle = finir explorer/career + (si retenus) les 7 stubs `Load*`.
+1. **ADR renumérotés** : le master cite 0014-0017 mais ces numéros sont **pris** (et 0020/0021/0024 ont des doublons). → **0025 (title-agnostic, ✅ créé), 0026 (Huma), 0027 (feature-matrix), 0028 (title-diagnostic)**. Cf. [ADR 0025](../docs/adr/0025-title-agnostic-minimal-viable-window.md).
+2. **Phase 2 — `MatchFieldRepository` (FieldKey-map D1/D2) SUPERSÉDÉ ✅ acté (ADR 0025 D-MV2)** : cible = **repos canonical-typés** (`PlayerMatchesRepository.LoadPlayerMatches → canonical.PlayerMatchRow`, alias « P4.3 »). 5 services le consomment déjà, **aucun service n'importe `platform/duckdb` pour la data** (sauf `home_service` pour le type `PersistSink`, non-data). On **ne construit pas** le FieldKey-map. Phase 2 résiduelle = finir explorer/career + isoler le PersistSink de home_service + `Load*` stubs au cas par cas.
 3. **Phase 1 `fields.toml` sémantique ≠ physique** : le master voulait un mapping physique table→colonne pour alimenter le FieldKey-map. Avec (2), cet item devient **caduc** ; `fields.toml` (labels/units/format) suffit.
 
 ## Dashboard
@@ -39,8 +39,8 @@
 
 | Item | Statut | Evidence / next action |
 |---|:-:|---|
-| ADR title-agnostic (master dit 0014, **→ 0024**) | ⬜ | docs/adr/0014 pris ; créer `0024-title-agnostic-services.md` (acte D2/D3/D6/D11) |
-| ADR Huma (**→ 0025**), Feature-Matrix (**→ 0026**), Title-Diagnostic (**→ 0027**) | ⬜ | à créer ; 0025 acte que WEB_API_TYPES y est absorbé |
+| ADR title-agnostic (**0025**) | ✅ | `docs/adr/0025-title-agnostic-minimal-viable-window.md` (acte D-MV1..4 : fenêtre 0→3a, Phase 2 canonical-typé, Huma absorbe WEB_API_TYPES) |
+| ADR Huma (**0026**), Feature-Matrix (**0027**), Title-Diagnostic (**0028**) | ⬜ | à rédiger au démarrage de leurs phases respectives (3b / 1.7b / 1.8) |
 | Branche `refactor/title-agnostic-services` | ⬜ | absente ; à créer depuis `main` quand on démarre l'exécution |
 | Plan référencé dans `CLAUDE.md` § ADR | ⬜ | grep vide |
 | Lints CI (`no_slug_comparison`, `slog-context`, `no-new-chi-handler`) | ⬜ | `tests/lint/` n'existe pas ; `no-new-chi-handler` reste désactivé jusqu'à Phase 3b |
