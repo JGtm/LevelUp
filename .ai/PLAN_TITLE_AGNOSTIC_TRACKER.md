@@ -25,7 +25,7 @@
 |---|---|:-:|:-:|---|
 | 0 | Décisions + setup (ADR/branche/lints/datasets) | 🟡 | 55 | non — reste = items **prématurés** (datasets/parity/chi-lint → leurs phases) + branche (bloquée user) |
 | 1 | FieldKey + `fields.toml` (+ constants.toml) | 🟡 | 80 | non — reste = SQL de-magic, **reclassé Phase 2** |
-| 1.5 | DDL par titre (sortir `migration/steps_*`) | ⬜ | 5 | **oui** (2e titre) |
+| 1.5 | DDL par titre (sortir `migration/steps_*`) | 🟡 | 25 | **oui** (2e titre) — 1.5.0 ordre explicite ✅ |
 | 1.6 | Pool tokens clé `(titleSlug,gamertag)` | ⬜ | 0 | **oui** (2e titre) |
 | 1.7a | `capabilities.toml` + loader + endpoint | 🟡 | 30 | non |
 | 1.7b | Feature-matrix 3 états + cascade | ⬜ | 0 | non |
@@ -59,11 +59,12 @@
 | Test exhaustivité FieldKeys↔TOML | 🟡 | `loader_smoke_test.go` couvre TOML⊇FieldKeys ; sens inverse optionnel |
 | 0 `medal_name_id=<int>` inline (SQL) | 🟡→**Phase 2** | **couplé Phase 2** : le `1512363953` est baké dans des SQL const strings ; le sortir = rendre la couche requêtes title-aware (consommer `constants.toml`). 7 sites documentés pointant vers `constants.toml` |
 
-## Phase 1.5 — DDL par titre · ⬜ (~5%) — **PREMIER GROS MORCEAU, prérequis 2e titre**
+## Phase 1.5 — DDL par titre · 🟡 (~25%) — **PREMIER GROS MORCEAU, prérequis 2e titre**
 
 | Item | Statut | Evidence / next action |
 |---|:-:|---|
-| `internal/games/halo_infinite/ddl/*.sql` | ⬜ | dossier inexistant |
+| **1.5.0 — Ordre d'exécution EXPLICITE (garde-fou)** | ✅ | `migration/order.go` (`canonicalOrder` 142 migrations) + `RunForDB` trie dessus + `order_test.go` (complétude + no-op prouvé, sanity vérifié). Déplacer un fichier ne réordonne plus. Commit `407a41c54` |
+| 1.5.1 — `internal/games/halo_infinite/ddl/*.sql` | ⬜ | dossier inexistant ; **déplacement sûr maintenant que l'ordre est explicite** |
 | `internal/migration/` sans DDL Halo | ⬜ | **53 `steps_*.go` Halo-specific** restants (~72% du dossier) — recoupe le `steps_shared.go` 982L que j'avais déféré |
 | `MigrationRunner` via `TitleDataAdapter.MigrationSteps()` | ⬜ | méthode inexistante ; registre global `init()`/`Register()` (ordre = exécution, cf. `registry.go:38`) |
 | `synthetic_test_title/ddl/` minimal | ⬜ | `synthetic_title_b` = stub sans DDL |
