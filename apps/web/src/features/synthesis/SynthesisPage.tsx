@@ -2,7 +2,7 @@
  * SynthesisPage --- Vue synthese / bilan periodique (Slice 7).
  * Types ref: SynthesisPageResponse, SynthesisKPIs, ComparisonMetricItem, HeatmapCell, TopWeekItem
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
@@ -483,19 +483,6 @@ export function SynthesisPage() {
 
   const { data: previewData } = useFiltersPreview(playerSlug, pendingFilterContext)
   const available = previewData?.available_options
-
-  // DEBUG temporaire — investigation counts Experience à 0. À retirer une fois confirmé.
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    // eslint-disable-next-line no-console
-    console.log('[Synthesis debug]', {
-      pendingFilterContext,
-      previewData_counts: previewData?.counts,
-      experience_types: previewData?.available_options?.experience_types,
-      playlists_count: previewData?.available_options?.playlists?.length,
-      modes_count: previewData?.available_options?.modes?.length,
-    })
-  }, [previewData, pendingFilterContext])
 
   const experienceCounts = useMemo(() => {
     const opts = available?.experience_types ?? []
