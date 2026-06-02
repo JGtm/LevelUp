@@ -23,8 +23,8 @@
 
 | Phase | Objet | Statut | ~% | Bloque la suite ? |
 |---|---|:-:|:-:|---|
-| 0 | Décisions + setup (ADR/branche/lints/datasets) | 🟡 | 15 | non (additif) |
-| 1 | FieldKey + `fields.toml` (+ constants.toml) | 🟡 | 60 | non |
+| 0 | Décisions + setup (ADR/branche/lints/datasets) | 🟡 | 30 | non (additif) |
+| 1 | FieldKey + `fields.toml` (+ constants.toml) | 🟡 | 80 | non — reste = SQL de-magic, **reclassé Phase 2** |
 | 1.5 | DDL par titre (sortir `migration/steps_*`) | ⬜ | 5 | **oui** (2e titre) |
 | 1.6 | Pool tokens clé `(titleSlug,gamertag)` | ⬜ | 0 | **oui** (2e titre) |
 | 1.7a | `capabilities.toml` + loader + endpoint | 🟡 | 30 | non |
@@ -51,12 +51,12 @@
 
 | Item | Statut | Evidence / next action |
 |---|:-:|---|
-| `canonical/fields.go` couvre les colonnes services | 🟡 | 59 FieldKeys ; `match_participants` OK ; **`killer_victim_pairs` (killer/victim_xuid, kill_count) non mappées** |
+| `canonical/fields.go` couvre les colonnes services | ✅* | 59 FieldKeys ; `match_participants` OK. `killer_victim_pairs` (killer/victim_xuid, kill_count) = **données de relation/événement, pas de stat joueur → pas de FieldKey requis** (acté) |
 | `fields.toml` (loader `internal/games/mappings/`) | ✅ | existe + 59 sections + loader complet + `loader_smoke_test` valide la couverture |
-| Mapping **physique** table→colonne (5 tables) | 🟡→**caduc** | `fields.toml` est sémantique ; item caduc si FieldKey-map supersédé (réconciliation 2) |
-| `constants.toml` (medal IDs, mode prefixes) | ⬜ | **absent** ; magic `1512363953` (Perfect) inline dans **7 fichiers** |
-| Test exhaustivité FieldKeys↔TOML | 🟡 | `loader_smoke_test.go` couvre le sens TOML⊇FieldKeys ; manque sens inverse |
-| 0 `medal_name_id=<int>` inline dans `queries_*.go` | ⬜ | `queries_match.go:38,245,306`, `queries_home_citations.go:26`, `queries_squad.go:79,145` + 4 repos |
+| Mapping **physique** table→colonne (5 tables) | ⛔ | **caduc** (ADR 0025 D-MV2 : FieldKey-map abandonné, `fields.toml` sémantique suffit) |
+| `constants.toml` (source title-agnostic) | ✅ | `config/titles/halo_infinite/constants.toml` créé : medal `perfect_kill` + emplacement mode prefixes |
+| Test exhaustivité FieldKeys↔TOML | 🟡 | `loader_smoke_test.go` couvre TOML⊇FieldKeys ; sens inverse optionnel |
+| 0 `medal_name_id=<int>` inline (SQL) | 🟡→**Phase 2** | **couplé Phase 2** : le `1512363953` est baké dans des SQL const strings ; le sortir = rendre la couche requêtes title-aware (consommer `constants.toml`). 7 sites documentés pointant vers `constants.toml` |
 
 ## Phase 1.5 — DDL par titre · ⬜ (~5%) — **PREMIER GROS MORCEAU, prérequis 2e titre**
 
