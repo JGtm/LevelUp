@@ -763,6 +763,71 @@ func TestExplorerService_TargetProfile_DeterministicBannerFallback(t *testing.T)
 	}
 }
 
+// TestExplorerService_TargetProfile_BannerFallback_NoIdentity couvre le fix du
+// point 4 : une cible NON-LOCALE sans identité exploitable (pas d'auth → aucun
+// fetch live possible) reçoit malgré tout une nameplate de repli du pool, au
+// lieu du placeholder "identité indisponible" sans bannière. C'est le cas qui
+// laissait auparavant identityRaw==nil → Identity nil → aucune bannière.
+func TestExplorerService_TargetProfile_BannerFallback_NoIdentity(t *testing.T) {
+	now := time.Now()
+	tid := 0
+	matches := []domain.CommonMatchRaw{
+		{MatchID: "m1", StartTime: now, Player1TeamID: &tid, Player2TeamID: &tid, Player1Outcome: 2},
+	}
+	repo := &mockExplorerRepo{xuid: "opp-xuid", matches: matches}
+	pool := []string{"/b/0.png", "/b/1.png", "/b/2.png"}
+
+	svc := NewExplorerService(repo, "my-xuid").
+		WithTargetProfileProviders(ExplorerTargetProfileDeps{
+			LocalIdentity:   &mockLocalIdentityResolver{identity: nil}, // cible non suivie
+			TitleSlug:       "halo_infinite",
+			LocalBannerPool: func(_ context.Context) []string { return pool },
+		})
+
+	// hasAuth=false → aucun fetch live ; sans le fix, Identity serait nil.
+	resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "Opponent", 1)
+	if err != nil {
+		t.Fatalf("GetCommonMatches: %v", err)
+	}
+	tp := resp.TargetProfile
+	if tp == nil || tp.Identity == nil || tp.Identity.BannerImageURL == nil {
+		t.Fatalf("bannière de repli attendue même sans identité live, got %+v", tp)
+	}
+	want := pickDeterministicBanner("opp-xuid", pool)
+	if *tp.Identity.BannerImageURL != want {
+		t.Errorf("bannière = %q, want %q (déterministe par xuid)", *tp.Identity.BannerImageURL, want)
+	}
+	// Identité bannière-seule : aucune autre donnée (rang/emblem) injectée.
+	if tp.Identity.CareerRank != nil {
+		t.Errorf("career_rank attendu nil (identité bannière-seule), got %+v", tp.Identity.CareerRank)
+	}
+}
+
+// TestExplorerService_TargetProfile_NoBanner_NoPool : sans pool câblé, une cible
+// non-locale sans identité reste sans bannière (placeholder front) — pas de
+// régression vers une identité fantôme.
+func TestExplorerService_TargetProfile_NoBanner_NoPool(t *testing.T) {
+	now := time.Now()
+	tid := 0
+	matches := []domain.CommonMatchRaw{
+		{MatchID: "m1", StartTime: now, Player1TeamID: &tid, Player2TeamID: &tid, Player1Outcome: 2},
+	}
+	repo := &mockExplorerRepo{xuid: "opp-xuid", matches: matches}
+	svc := NewExplorerService(repo, "my-xuid").
+		WithTargetProfileProviders(ExplorerTargetProfileDeps{
+			LocalIdentity: &mockLocalIdentityResolver{identity: nil},
+			TitleSlug:     "halo_infinite",
+		})
+
+	resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "Opponent", 1)
+	if err != nil {
+		t.Fatalf("GetCommonMatches: %v", err)
+	}
+	if tp := resp.TargetProfile; tp == nil || tp.Identity != nil {
+		t.Errorf("sans pool, Identity attendue nil, got %+v", resp.TargetProfile)
+	}
+}
+
 // TestPickDeterministicBanner vérifie le déterminisme et la borne du pool vide.
 func TestPickDeterministicBanner(t *testing.T) {
 	pool := []string{"a", "b", "c", "d"}

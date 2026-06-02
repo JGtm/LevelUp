@@ -51,15 +51,38 @@ func (s *ExplorerService) fetchTargetIdentityRaw(ctx context.Context, targetXUID
 		id, err := s.deps.LiveIdentity.FetchLiveIdentity(ctx, targetXUID)
 		if err != nil {
 			slog.WarnContext(ctx, "explorer_target_identity_live_failed", "xuid", targetXUID, "err", err)
-			return nil
-		}
-		if id != nil {
+			// On ne retourne pas : on tente quand même la bannière de repli ci-dessous.
+		} else if id != nil {
 			s.applyBannerFallbacks(ctx, id, targetXUID)
 			return id
 		}
 	}
+	// Aucune identité exploitable (cible non suivie + pas d'auth / live indisponible
+	// ou en erreur). On synthétise une identité minimale ne portant qu'une nameplate
+	// de repli déterministe du pool local, pour qu'une cible non-locale ne soit
+	// jamais affichée sans bannière. nil si pas de xuid / pool vide → l'appelant
+	// retombe sur le placeholder "identité indisponible".
+	if id := s.fallbackBannerOnlyIdentity(ctx, targetXUID); id != nil {
+		return id
+	}
 	slog.DebugContext(ctx, "explorer_target_identity_unavailable", "gamertag", targetGamertag)
 	return nil
+}
+
+// fallbackBannerOnlyIdentity construit une identité minimale ne portant qu'une
+// bannière du pool local (déterministe par xuid, cf. pickDeterministicBanner).
+// Retourne nil si le pool n'est pas câblé, si le xuid est vide, ou si le pool est
+// vide (aucun joueur suivi avec bannière).
+func (s *ExplorerService) fallbackBannerOnlyIdentity(ctx context.Context, targetXUID string) *domain.HomeSpartanIdentityRow {
+	if s.deps.LocalBannerPool == nil || targetXUID == "" {
+		return nil
+	}
+	b := pickDeterministicBanner(targetXUID, s.deps.LocalBannerPool(ctx))
+	if b == "" {
+		return nil
+	}
+	slog.DebugContext(ctx, "explorer_target_banner_pool_only_fallback", "xuid", targetXUID)
+	return &domain.HomeSpartanIdentityRow{BannerImageURL: &b}
 }
 
 // applyBannerFallbacks applique, dans l'ordre : (1) bannière → backdrop, puis

@@ -1,3 +1,27 @@
+## [2026-06-02] Profil de combat — bannière de repli pour cible non-locale sans identité (point 4) — Complété
+
+**Statut** : Complété (commit 1/6 du plan `.ai/PLAN_COMPARE_COMBATPROFILE_SESSION.md`, branche `feat/skill-progression-magnitude-scale`).
+
+**Contexte** : une cible NON-LOCALE n'affichait aucune bannière sur le profil de combat. La nameplate de
+repli déterministe (`applyBannerFallbacks`) n'était appliquée que si une identité existait déjà ; or sans
+auth (ou si le fetch live échoue), `fetchTargetIdentityRaw` retournait `nil` → `identityRaw=nil` →
+`Identity` nil → front sur le placeholder « identité indisponible », sans bannière.
+
+**Décision technique principale** :
+- Ajout de `fallbackBannerOnlyIdentity(ctx, targetXUID)` : synthétise une `HomeSpartanIdentityRow` minimale
+  ne portant qu'une bannière du pool (`pickDeterministicBanner` par xuid). nil si pool non câblé / xuid vide
+  / pool vide (→ placeholder conservé, pas d'identité fantôme).
+- `fetchTargetIdentityRaw` : le `return nil` final et le chemin d'erreur live tentent désormais ce repli au
+  lieu d'abandonner. Priorité conservée : local > live(avec banner→backdrop) > bannière-seule du pool.
+
+**Résultats observés** : `go test ./internal/service/` OK (4.4s), `go vet` clean. 2 tests ajoutés
+(`BannerFallback_NoIdentity` = pool appliqué sans auth ; `NoBanner_NoPool` = pas de régression vers identité
+fantôme) ; tests existants `DeterministicBannerFallback` / `PickDeterministicBanner` toujours verts.
+
+**Conclusion / prochaine étape** : commit 2/6 — donut center FDA + précision moyenne session (point 5).
+
+---
+
 ## [2026-06-02] RE film Strongholds — owner par zone via objet-zone (position fixe + champ owner) — Complété (exploration, DEAD-END)
 
 **Statut** : Complété (exploration RE sous `tmp_film_explore/`, aucun code applicatif touché). Voir `.ai/RESEARCH_THEATER_RE.md` §R.
