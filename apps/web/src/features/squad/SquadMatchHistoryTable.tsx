@@ -25,7 +25,7 @@ import {
 import type { SquadMatchHistoryRow } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { getOutcomeColor } from '@/lib/outcome-color'
+import { getOutcomeColor, outcomeKey } from '@/lib/outcome-color'
 import { formatDate } from '@/lib/formatters'
 import { getSquadText } from './i18n'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
@@ -44,19 +44,6 @@ const HISTORY_DATE_OPTS: Intl.DateTimeFormatOptions = {
 interface SquadMatchHistoryTableProps {
   rows: SquadMatchHistoryRow[]
   playerSlug: string
-}
-
-function outcomeKey(outcome: number): 'win' | 'loss' | 'draw' | 'dnf' {
-  switch (outcome) {
-    case 2:
-      return 'win'
-    case 3:
-      return 'loss'
-    case 1:
-      return 'draw'
-    default:
-      return 'dnf'
-  }
 }
 
 function fmtNumber(v: number | undefined | null, decimals = 1): string {

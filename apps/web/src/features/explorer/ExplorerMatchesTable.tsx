@@ -33,7 +33,7 @@ import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { mmrDeltaScale, kdScale } from '@/lib/accessibility/scales'
-import { getOutcomeColor } from '@/lib/outcome-color'
+import { getOutcomeColor, outcomeKey } from '@/lib/outcome-color'
 import { formatDate, formatDurationMMSS } from '@/lib/formatters'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
@@ -134,19 +134,6 @@ function renderTwoLineHeader(label: string): ReactNode {
       {label.slice(idx + 1)}
     </span>
   )
-}
-
-function outcomeKey(outcome: number): 'win' | 'loss' | 'draw' | 'dnf' {
-  switch (outcome) {
-    case 2:
-      return 'win'
-    case 3:
-      return 'loss'
-    case 1:
-      return 'draw'
-    default:
-      return 'dnf'
-  }
 }
 
 // Mapping flag DominanceFlag (Go canonical.DominanceFlag) → clé i18n

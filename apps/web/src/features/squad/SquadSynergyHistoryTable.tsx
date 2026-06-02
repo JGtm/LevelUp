@@ -20,7 +20,7 @@ import {
 import type { SquadMatchHistoryRow } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { tokenCssVar } from '@/lib/accessibility'
-import { getOutcomeColor } from '@/lib/outcome-color'
+import { getOutcomeColor, outcomeKey } from '@/lib/outcome-color'
 import { formatDate, formatDurationMinSec } from '@/lib/formatters'
 import { getSquadText } from './i18n'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
@@ -148,7 +148,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
         header: labels.outcome,
         cell: (ctx) => {
           const o = ctx.getValue<number>()
-          const key = o === 2 ? 'win' : o === 3 ? 'loss' : o === 1 ? 'draw' : 'dnf'
+          const key = outcomeKey(o)
           return (
             <span style={{ color: getOutcomeColor(o), fontWeight: 600 }}>
               {labels.outcomeLabel[key]}

@@ -13,10 +13,20 @@ export const OUTCOME_COLORS = {
   dnf:  tokenCssVar('outcome-dnf'),
 } as const
 
-const OUTCOME_KEY: Record<number, 'win' | 'loss' | 'draw' | 'dnf'> = {
+export type OutcomeKey = 'win' | 'loss' | 'draw' | 'dnf'
+
+const OUTCOME_KEY: Record<number, OutcomeKey> = {
   2: 'win',
   1: 'draw',
   3: 'loss',
+}
+
+/**
+ * Mappe un code outcome numérique Halo (2=win, 3=loss, 1=draw, autre/4=dnf) vers sa
+ * clé canonique. Source UNIQUE — ne pas redéfinir localement (revue 2026-06-02).
+ */
+export function outcomeKey(outcome: number): OutcomeKey {
+  return OUTCOME_KEY[outcome] ?? 'dnf'
 }
 
 /** Retourne la CSS var correspondant à un outcome numérique Halo. */
