@@ -12,6 +12,8 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -100,7 +102,7 @@ func (c *HaloAPIClient) doGet(ctx context.Context, rawURL string) ([]byte, error
 			return nil, &HTTPError{StatusCode: resp.StatusCode, URL: rawURL, Err: errors.New("ressource absente")}
 		}
 		if resp.StatusCode != http.StatusOK {
-			lastErr = &HTTPError{StatusCode: resp.StatusCode, URL: rawURL, Err: fmt.Errorf("HTTP %d", resp.StatusCode)}
+			lastErr = &HTTPError{StatusCode: resp.StatusCode, URL: rawURL, Err: fmt.Errorf("HTTP %d", resp.StatusCode), RetryAfter: parseRetryAfter(resp.Header.Get("Retry-After"), time.Now())}
 			slog.WarnContext(ctx, "halo_api: GET HTTP error",
 				"url", rawURL, "status", resp.StatusCode, "attempt", attempt+1)
 			c.backoff(ctx, attempt)
@@ -165,3 +167,36 @@ type SpartanCustomizationData struct {
 // Grunt API (github.com/dend/grunt — EconomyModule.GetPlayerCareerRank).
 // Le parser parseCareerProgressPayload gère déjà cette forme (path alterne
 // RewardTracks[].Result.CurrentProgress).
+
+// maxRetryAfter borne la valeur du header Retry-After pour éviter qu'une valeur
+// API aberrante ne fige le pool indéfiniment.
+const maxRetryAfter = 5 * time.Minute
+
+// parseRetryAfter parse le header Retry-After (RFC 7231) : soit un entier de
+// secondes (delta-seconds), soit une date HTTP. Retourne une durée bornée dans
+// [0, maxRetryAfter]. 0 si absent ou non parsable.
+func parseRetryAfter(h string, now time.Time) time.Duration {
+	if h == "" {
+		return 0
+	}
+	if secs, err := strconv.Atoi(strings.TrimSpace(h)); err == nil {
+		if secs <= 0 {
+			return 0
+		}
+		if d := time.Duration(secs) * time.Second; d <= maxRetryAfter {
+			return d
+		}
+		return maxRetryAfter
+	}
+	if t, err := http.ParseTime(h); err == nil {
+		d := t.Sub(now)
+		if d <= 0 {
+			return 0
+		}
+		if d > maxRetryAfter {
+			return maxRetryAfter
+		}
+		return d
+	}
+	return 0
+}

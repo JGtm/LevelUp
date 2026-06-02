@@ -37,6 +37,7 @@ type poolImpl struct {
 	cooldownMu     sync.Mutex
 	cooldownCancel context.CancelFunc // canceller le refresher loop pour respecter cooldown
 	cooldownCtx    context.Context
+	consecutive429 int // compteur backoff exponentiel 429 (protégé par cooldownMu)
 
 	// Goroutine refresher en arrière-plan.
 	stopOnce sync.Once
@@ -337,9 +338,18 @@ func (p *poolImpl) MarkUnhealthy(gamertag string, reason error) {
 	// Déclencher un refresh asynchrone (le refresherLoop s'en chargera dans son prochain cycle).
 }
 
+// maxBackoffShift borne le décalage exponentiel du cooldown 429 (globalCooldown<<shift).
+// maxCooldown borne la durée totale d'un cooldown (Retry-After ou backoff).
+const (
+	maxBackoffShift = 4
+	maxCooldown     = 5 * time.Minute
+)
+
 // OnHTTPError signale une erreur HTTP (429/503) et déclenche un cooldown global.
 // Non-bloquant : tous les tokens sont marqués malsains et le refresher est suspendu.
-func (p *poolImpl) OnHTTPError(statusCode int) {
+// retryAfter > 0 = durée du header Retry-After (prioritaire) ; sinon backoff
+// exponentiel sur globalCooldown pour les 429 répétés, borné à maxCooldown.
+func (p *poolImpl) OnHTTPError(statusCode int, retryAfter time.Duration) {
 	if statusCode != 429 && statusCode != 503 {
 		// Ignorer les autres codes d'erreur.
 		return
@@ -348,19 +358,53 @@ func (p *poolImpl) OnHTTPError(statusCode int) {
 	p.cooldownMu.Lock()
 	defer p.cooldownMu.Unlock()
 
-	// Déjà en cooldown ?
+	// Durée de cooldown : Retry-After prioritaire, sinon backoff exponentiel.
+	var dur time.Duration
+	honored := false
+	switch {
+	case retryAfter > 0:
+		dur = retryAfter
+		p.consecutive429 = 0
+		honored = true
+	case statusCode == 429:
+		shift := p.consecutive429
+		if shift > maxBackoffShift {
+			shift = maxBackoffShift
+		}
+		dur = p.globalCooldown << shift
+		p.consecutive429++
+	default:
+		dur = p.globalCooldown
+	}
+	if dur > maxCooldown {
+		dur = maxCooldown
+	}
+	newUntil := time.Now().Add(dur)
+
+	// Déjà en cooldown : n'écraser QUE si le nouveau délai est plus tardif (un
+	// Retry-After plus long ne doit pas être ignoré).
 	if p.coolingDown && time.Now().Before(p.cooldownUntil) {
-		slog.DebugContext(context.Background(), "pool: OnHTTPError appelé pendant cooldown",
-			"status", statusCode)
+		if newUntil.After(p.cooldownUntil) {
+			p.cooldownUntil = newUntil
+			cooldownExtendedTotal.Add(1)
+			slog.WarnContext(context.Background(), "pool: cooldown prolongé",
+				"status", statusCode, "cooldown_s", dur.Seconds(), "retry_after_honored", honored)
+		} else {
+			slog.DebugContext(context.Background(), "pool: OnHTTPError appelé pendant cooldown",
+				"status", statusCode)
+		}
+		recordCooldownMetrics(statusCode, honored)
 		return
 	}
 
 	// Déclencher le cooldown global.
 	p.coolingDown = true
-	p.cooldownUntil = time.Now().Add(p.globalCooldown)
+	p.cooldownUntil = newUntil
+	recordCooldownMetrics(statusCode, honored)
+	lastCooldownSeconds.Set(int64(dur.Seconds()))
 
 	slog.WarnContext(context.Background(), "pool: cooldown global déclenché",
-		"status", statusCode, "duration_s", p.globalCooldown.Seconds())
+		"status", statusCode, "cooldown_s", dur.Seconds(), "retry_after_honored", honored)
 
 	// Marquer tous les tokens comme malsains (non-bloquant).
 	for _, slot := range p.slots {
@@ -407,6 +451,7 @@ func (p *poolImpl) refresherLoop(baseCtx context.Context) {
 			}
 			if p.coolingDown {
 				p.coolingDown = false
+				p.consecutive429 = 0 // reset du backoff à la sortie saine du cooldown
 				slog.InfoContext(baseCtx, "pool: cooldown global levé")
 			}
 			p.cooldownMu.Unlock()

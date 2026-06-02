@@ -119,9 +119,11 @@ type Pool interface {
 	MarkUnhealthy(gamertag string, reason error)
 
 	// OnHTTPError signale une erreur HTTP (429/503) et déclenche un cooldown global.
-	// Marque tous les tokens comme malsains et suspend le refresher pour GlobalCooldown.
-	// Non-bloquant : ignores les autres codes d'erreur.
-	OnHTTPError(statusCode int)
+	// Marque tous les tokens comme malsains et suspend le refresher.
+	// retryAfter : durée demandée par le header HTTP Retry-After (0 = absent →
+	// politique par défaut : globalCooldown + backoff exponentiel sur 429 répétés).
+	// Non-bloquant : ignore les autres codes d'erreur.
+	OnHTTPError(statusCode int, retryAfter time.Duration)
 
 	// AddOrUpdateSource (E.v2, 2026-05-24) — hot-add ou refresh d'un slot par
 	// gamertag. Si le gamertag existe déjà dans le pool : re-Resolve et update

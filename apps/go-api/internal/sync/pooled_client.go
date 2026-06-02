@@ -91,8 +91,9 @@ func (pc *PooledHaloClient) notifyPoolOnHTTPError(err error) {
 				msg = "service_unavailable"
 			}
 			slog.WarnContext(context.Background(), "pooled: pool global cooldown triggered",
-				"statusCode", httpErr.StatusCode, "reason", msg, "gamertag", pc.pinnedGamertag)
-			pc.p.OnHTTPError(httpErr.StatusCode)
+				"statusCode", httpErr.StatusCode, "reason", msg, "gamertag", pc.pinnedGamertag,
+				"retry_after_s", httpErr.RetryAfter.Seconds())
+			pc.p.OnHTTPError(httpErr.StatusCode, httpErr.RetryAfter)
 		}
 	}
 }

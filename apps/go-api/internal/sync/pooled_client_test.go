@@ -18,6 +18,7 @@ type mockPool struct {
 	tokens           map[string]*domain.HaloTokens // gamertag → tokens
 	err              error
 	onHTTPErrorCalls []int         // Track statusCode values for OnHTTPError calls
+	lastRetryAfter   time.Duration // dernier retryAfter passé à OnHTTPError
 	slotLimiter      *rate.Limiter // Si non-nil, populé dans Lease.Limiter (Option 2)
 }
 
@@ -74,8 +75,9 @@ func (m *mockPool) MarkUnhealthy(gamertag string, reason error) {
 	// no-op for tests
 }
 
-func (m *mockPool) OnHTTPError(statusCode int) {
+func (m *mockPool) OnHTTPError(statusCode int, retryAfter time.Duration) {
 	m.onHTTPErrorCalls = append(m.onHTTPErrorCalls, statusCode)
+	m.lastRetryAfter = retryAfter
 }
 
 func (m *mockPool) AddOrUpdateSource(_ context.Context, _ pool.CredentialSource) error {
