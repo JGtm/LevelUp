@@ -40,6 +40,11 @@ type mockHaloClient struct {
 	// goroutines errgroup en parallèle (engine.go:798), donc l'incrémentation
 	// scalaire serait une data race détectée par -race.
 	callsGetHistory atomic.Int64
+	// lastHistoryPlayer capture le dernier arg `player` reçu par GetMatchHistory
+	// (anti-régression du format URL xuid(NNN) — incident mai 2026). atomic.Value
+	// évite tout import "sync" (collision avec le nom du package). Vide tant que
+	// GetMatchHistory n'a pas été appelé.
+	lastHistoryPlayer atomic.Value // string
 	// callsGetStats compte le nombre d'appels à GetMatchStats.
 	callsGetStats atomic.Int64
 	// callsGetSkill compte le nombre d'appels à GetMatchSkill.
@@ -72,10 +77,11 @@ type highlightChunkResponse struct {
 // GetMatchHistory retourne la liste de matchs configurée ou une erreur simulée.
 func (m *mockHaloClient) GetMatchHistory(
 	_ context.Context,
-	_, _ string,
+	player, _ string,
 	_, _ int,
 ) ([]MatchHistoryEntry, error) {
 	m.callsGetHistory.Add(1)
+	m.lastHistoryPlayer.Store(player)
 	if m.getHistoryErr != nil {
 		return nil, m.getHistoryErr
 	}
