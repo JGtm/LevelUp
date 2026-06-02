@@ -23,7 +23,7 @@
 
 | Phase | Objet | Statut | ~% | Bloque la suite ? |
 |---|---|:-:|:-:|---|
-| 0 | Décisions + setup (ADR/branche/lints/datasets) | 🟡 | 30 | non (additif) |
+| 0 | Décisions + setup (ADR/branche/lints/datasets) | 🟡 | 55 | non — reste = items **prématurés** (datasets/parity/chi-lint → leurs phases) + branche (bloquée user) |
 | 1 | FieldKey + `fields.toml` (+ constants.toml) | 🟡 | 80 | non — reste = SQL de-magic, **reclassé Phase 2** |
 | 1.5 | DDL par titre (sortir `migration/steps_*`) | ⬜ | 5 | **oui** (2e titre) |
 | 1.6 | Pool tokens clé `(titleSlug,gamertag)` | ⬜ | 0 | **oui** (2e titre) |
@@ -41,11 +41,12 @@
 |---|:-:|---|
 | ADR title-agnostic (**0025**) | ✅ | `docs/adr/0025-title-agnostic-minimal-viable-window.md` (acte D-MV1..4 : fenêtre 0→3a, Phase 2 canonical-typé, Huma absorbe WEB_API_TYPES) |
 | ADR Huma (**0026**), Feature-Matrix (**0027**), Title-Diagnostic (**0028**) | ⬜ | à rédiger au démarrage de leurs phases respectives (3b / 1.7b / 1.8) |
-| Branche `refactor/title-agnostic-services` | ⬜ | absente ; à créer depuis `main` quand on démarre l'exécution |
-| Plan référencé dans `CLAUDE.md` § ADR | ⬜ | grep vide |
-| Lints CI (`no_slug_comparison`, `slog-context`, `no-new-chi-handler`) | ⬜ | `tests/lint/` n'existe pas ; `no-new-chi-handler` reste désactivé jusqu'à Phase 3b |
-| Job CI `synthetic_test_title-parity` (vide OK en P0) | ⬜ | absent de `.github/workflows/ci.yml` (10 jobs) |
-| Datasets `testdata/integration/{halo_full,synthetic,openspartan_primed}` | ⬜ | absent ; `synthetic_title_b` existe (stub), pas `synthetic_test_title` |
+| Branche `refactor/title-agnostic-services` | ⬜ | différée : recherche parallèle user en cours (CLAUDE.md règle 4) ; à créer quand la branche se libère |
+| Plan référencé dans `CLAUDE.md` § ADR | ✅ | ADR 0025 + master + tracker listés (commit `2b9d9aaae`) |
+| Lint `no_slug_comparison` (cœur title-agnostic) | ✅ | `internal/archlint/no_slug_comparison_test.go` (ratchet, 2 hard-gates allowlistés, sanity vérifié — commit `801d7444f`) |
+| Lints `slog-context` / `no-new-chi-handler` | ⬜→**différés** | `no-new-chi-handler` = Phase 3b (tag `phase-3b-start`). `slog-context` = 283 sites existants + besoin d'AST pour être correct (ctx dispo ?) ; baseline fragile, non-spécifique title-agnostic → différé |
+| Job CI `synthetic_test_title-parity` | ⬜→**Phase 1.5/2** | **prématuré** : exige le titre synthétique câblé pour tourner la suite sous `LEVELUP_TITLE=...` (dépend Phase 1.5 DDL + 2) |
+| Datasets `testdata/integration/{halo_full,synthetic,openspartan_primed}` | ⬜→**Phase 2** | **prématuré** : consommés par les tests Phase 2 (snapshots, continuité OpenSpartan) ; créés quand ces tests existent (pas de scaffold vide) |
 
 ## Phase 1 — FieldKey + fields.toml · 🟡 (~60%)
 
