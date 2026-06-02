@@ -44,8 +44,8 @@ func TestHealthReport_Summary_OK(t *testing.T) {
 	if !strings.Contains(out, "TOUT OK") {
 		t.Error("expected TOUT OK")
 	}
-	if !strings.Contains(out, "✅") {
-		t.Error("expected success icon")
+	if !strings.Contains(out, "[OK]") {
+		t.Error("expected success marker [OK]")
 	}
 }
 
@@ -62,8 +62,8 @@ func TestHealthReport_Summary_WithErrors(t *testing.T) {
 	if !strings.Contains(out, "ERREURS DÉTECTÉES") {
 		t.Error("expected error message")
 	}
-	if !strings.Contains(out, "❌") {
-		t.Error("expected error icon")
+	if !strings.Contains(out, "[KO]") {
+		t.Error("expected error marker [KO]")
 	}
 }
 

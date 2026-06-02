@@ -130,9 +130,9 @@ func RunHealthcheck(ctx context.Context, opts HealthcheckOptions) HealthReport {
 func (r HealthReport) Summary() string {
 	var sb strings.Builder
 	for _, c := range r.Checks {
-		status := "✅"
+		status := "[OK]"
 		if !c.OK {
-			status = "❌"
+			status = "[KO]"
 		}
 		fmt.Fprintf(&sb, "%s  %-30s %s\n", status, c.Name, c.Message)
 	}

@@ -101,7 +101,7 @@ func BackupPlayer(ctx context.Context, opts BackupOptions) (BackupResult, error)
 
 	if opts.IncludeMetadata {
 		metaPath := filepath.Join(opts.OutputDir, fmt.Sprintf("backup_metadata_%s.json", ts))
-		if err := writeBackupMetadata(metaPath, opts.Gamertag, result); err != nil {
+		if err := writeBackupMetadata(metaPath, opts.Gamertag, opts.CompressionLevel, result); err != nil {
 			return result, fmt.Errorf("écriture métadonnées: %w", err)
 		}
 	}
@@ -158,12 +158,12 @@ type backupMetadata struct {
 }
 
 // writeBackupMetadata écrit le JSON de métadonnées de backup.
-func writeBackupMetadata(path, gamertag string, result BackupResult) error {
+func writeBackupMetadata(path, gamertag string, level int, result BackupResult) error {
 	meta := backupMetadata{
 		Gamertag:    gamertag,
 		BackupAt:    result.Timestamp,
 		Compression: "zstd",
-		Level:       9,
+		Level:       level,
 		Tables:      result.Tables,
 	}
 	data, err := json.MarshalIndent(meta, "", "  ")

@@ -2,7 +2,6 @@
 package analysis
 
 import (
-	"fmt"
 	"math"
 	"sort"
 	"time"
@@ -828,7 +827,7 @@ func ComputeTemporalHeatmap(rows []legacymatch.SynthesisMatchRow) []domain.Tempo
 		hour := r.StartTime.Hour()
 		agg := cells[dow][hour]
 		agg.count++
-		if r.Outcome == 2 { // legacy domain: outcome=2 is WIN
+		if r.Outcome == domain.OutcomeWin {
 			agg.wins++
 		}
 		cells[dow][hour] = agg
@@ -872,7 +871,7 @@ func ComputeActivityHeatmapFromCommonMatches(rows []domain.CommonMatchRaw) []dom
 		hour := r.StartTime.Hour()
 		agg := cells[dow][hour]
 		agg.count++
-		if r.Player1Outcome == 2 { // OutcomeWin (legacy code)
+		if r.Player1Outcome == domain.OutcomeWin {
 			agg.wins++
 		}
 		cells[dow][hour] = agg
@@ -901,8 +900,4 @@ func deref(p *float64) float64 {
 		return 0
 	}
 	return *p
-}
-
-func fmtPct(v float64) string {
-	return fmt.Sprintf("%.1f%%", v*100)
 }

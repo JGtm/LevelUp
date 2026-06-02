@@ -23,7 +23,7 @@ func TestWriteBackupMetadata_Valid(t *testing.T) {
 		Tables:    map[string]TableBackupInfo{"player_match_enrichment": {Rows: 100, ParquetPath: "player_match_enrichment.parquet"}},
 	}
 
-	err := writeBackupMetadata(path, "TestPlayer", result)
+	err := writeBackupMetadata(path, "TestPlayer", 9, result)
 	if err != nil {
 		t.Fatalf("writeBackupMetadata inattendu: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestWriteBackupMetadata_Valid(t *testing.T) {
 }
 
 func TestWriteBackupMetadata_InvalidPath(t *testing.T) {
-	err := writeBackupMetadata("/nonexistent/dir/meta.json", "Player", BackupResult{})
+	err := writeBackupMetadata("/nonexistent/dir/meta.json", "Player", 9, BackupResult{})
 	if err == nil {
 		t.Error("expected error pour path invalide")
 	}

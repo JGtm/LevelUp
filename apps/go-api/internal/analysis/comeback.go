@@ -221,11 +221,3 @@ func playerLead(s ScoreSnapshot, playerTeamID int) float64 {
 	}
 	return float64(s.Team1Score - s.Team0Score)
 }
-
-// max retourne le plus grand des deux entiers.
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}

@@ -311,20 +311,6 @@ func TestComputeSynthesisBreakdown_Squad(t *testing.T) {
 
 // â”€â”€â”€ fmtPct â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-func TestFmtPct(t *testing.T) {
-	got := fmtPct(0.66666)
-	if got != "66.7%" {
-		t.Errorf("fmtPct(0.66666) = %q, want 66.7%%", got)
-	}
-}
-
-func TestFmtPct_Zero(t *testing.T) {
-	got := fmtPct(0)
-	if got != "0.0%" {
-		t.Errorf("fmtPct(0) = %q", got)
-	}
-}
-
 // â”€â”€â”€ ComputeSynthesisHeatmap â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 func TestComputeSynthesisHeatmap_Empty(t *testing.T) {
