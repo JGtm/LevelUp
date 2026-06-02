@@ -26,7 +26,7 @@
 | 0 | Décisions + setup (ADR/branche/lints/datasets) | 🟡 | 55 | non — reste = items **prématurés** (datasets/parity/chi-lint → leurs phases) + branche (bloquée user) |
 | 1 | FieldKey + `fields.toml` (+ constants.toml) | 🟡 | 80 | non — reste = SQL de-magic, **reclassé Phase 2** |
 | 1.5 | DDL par titre (sortir `migration/steps_*`) | 🟡 | 58 | **oui** (2e titre) — mécanisme B complet + **6 steps migrés** (PvE + 5 Shared additifs/backfill) ; **tier A Shared épuisé**, reste = tier B (cœur + relocation tests) |
-| 1.6 | Pool tokens clé `(titleSlug,gamertag)` | ⬜ | 0 | **oui** (2e titre) |
+| 1.6 | Pool tokens clé `(titleSlug,gamertag)` | ✅ | 100 | **oui** (2e titre) — livré : clé composite + garde anti-cross-title |
 | 1.7a | `capabilities.toml` + loader + endpoint | 🟡 | 30 | non |
 | 1.7b | Feature-matrix 3 états + cascade | ⬜ | 0 | non |
 | 2 | Services title-agnostic (canonical-typé) | 🟡 | 70 | non |
@@ -70,11 +70,11 @@
 | `synthetic_test_title/ddl/` minimal | ⬜ | `synthetic_title_b` = stub sans DDL |
 | `ops/` (backup/restore/diagnose) multi-titre | 🟡 | `backup_service` itère via PathResolver ; `restore.go`/`diagnose.go` prennent un chemin direct |
 
-## Phase 1.6 — Pool tokens multi-titre · ⬜ — **prérequis 2e titre**
+## Phase 1.6 — Pool tokens multi-titre · ✅ — **prérequis 2e titre, livré**
 
 | Item | Statut | Evidence / next action |
 |---|:-:|---|
-| Clé pool `(titleSlug, gamertag)` | ⬜ | `pool.go` : `slotsByGt map[string]int` (gamertag seul) ; `Discovery` a déjà `titleSlug` mais juste pour le path |
+| Clé pool `(titleSlug, gamertag)` | ✅ | `CredentialSource.TitleSlug` (stampé par `discovery.go` depuis `d.titleSlug`) → `poolImpl.titleSlug` (source unique, dérivé des sources) → `slotsByKey map[string]int` clé `gtKey(titleSlug,gamertag)` (NUL-séparé). Signatures publiques `Acquire/HasPlayer/MarkUnhealthy` **inchangées** (le pool compose la clé en interne) → zéro ripple sur les 11 callers. **Garde anti-cross-title** dans `AddOrUpdateSource` (refuse une source d'un autre titre). Tests : `pool_title_key_test.go` (3 cas : title-scoped lookup, cross-title rejeté, same-title OK). `titleSlug` vide (legacy/tests) dégrade vers clé gamertag-only = comportement historique. |
 
 ## Phase 1.7a — capabilities.toml (binaire) · 🟡 (~30%)
 

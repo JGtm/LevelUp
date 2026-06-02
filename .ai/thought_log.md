@@ -54196,3 +54196,28 @@ evwide2,frbig}. Câblage scanner différé v2 (cf. RESEARCH_THEATER_RE.md §M-te
   d'ingénierie assumé malgré le « vas jusqu'au bout » (sortir 982L boot-critiques + tests white-box
   cycle-contraints en rush risquerait un boot/suite cassés, pire qu'un checkpoint honnête).
 - **État** : 6 steps migrés, mécanisme voie B complet et prouvé, garde-fous en place, tout vert.
+
+## [2026-06-02] Phase 1.6 — Pool tokens clé (titleSlug, gamertag) · Complété
+
+- **Tâche** : rendre le pool de tokens auth title-aware (prérequis 2e titre). Avancée linéaire
+  après park de TOUTE la Phase 1.5 à la frontière migration (le tier A sur les autres targets =
+  même type de relocation que le cluster cœur parké, ne ferme pas 1.5 non plus → on passe au jalon
+  fermable suivant). Choix de l'ordre validé avec l'utilisateur (1.6 > grinder 1.5 tier A).
+- **Décision technique** : un pool est **mono-titre** (la `Discovery` scanne les sources d'UN titre,
+  elle connaît déjà son `titleSlug`). Donc :
+  - `CredentialSource.TitleSlug` ajouté, stampé par `discovery.go` (`d.titleSlug`).
+  - `poolImpl.titleSlug` = source unique du titre (dérivé des sources via `poolTitleOf`).
+  - `slotsByGt` → `slotsByKey`, clé = `gtKey(titleSlug, gamertag)` (séparateur NUL, impossible
+    dans un gamertag/slug → zéro collision cross-titre).
+  - **Signatures publiques inchangées** (`Acquire/HasPlayer/MarkUnhealthy` composent la clé en
+    interne avec `p.titleSlug`) → **zéro ripple** sur les 11 callers (sync/scheduler/cmd).
+  - **Vraie valeur = garde anti-cross-title** dans `AddOrUpdateSource` : refuse une source d'un
+    autre titre — un pool halo_infinite ne servira jamais le token d'un titre étranger.
+- **Compat** : `titleSlug` vide (sources legacy/tests sans titre) → clé dégradée gamertag-only =
+  comportement historique strictement inchangé (tests existants passent sans modification).
+- **Résultats** : build vert (pool + sync + scheduler + cmd/server + cmd/levelup), `go vet` clean,
+  3 nouveaux tests (`pool_title_key_test.go` : title-scoped lookup, cross-title rejeté, same-title
+  OK) + suite pool existante verte.
+- **Prochaine étape (linéaire)** : Phase 1.7a — `capabilities.toml` + loader + endpoint (extraire
+  la `CapabilityMap` codée en dur de `halo_infinite/adapter_data.go` vers TOML). Cf.
+  [.ai/PLAN_TITLE_AGNOSTIC_TRACKER.md](PLAN_TITLE_AGNOSTIC_TRACKER.md) §1.7a.
