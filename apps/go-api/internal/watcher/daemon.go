@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -114,7 +115,10 @@ type Daemon struct {
 	// poller (annulable seulement globalement via d.cancel) → fuite + poll fantôme.
 	playerCancels map[string]context.CancelFunc
 
-	running bool
+	// running : lu sans verrou depuis les handlers HTTP (IsRunning) → atomic.
+	running atomic.Bool
+	// cancel et rootCtx sont écrits dans Start et lus dans Stop/initPlayers/AddPlayer.
+	// Tous leurs accès se font sous playersMu (revue 2026-06-02, fix data race).
 	cancel  context.CancelFunc
 	rootCtx context.Context // capturé dans Start, utilisé pour les goroutines des pollers
 
@@ -155,12 +159,23 @@ func (d *Daemon) SyncGate() syncpkg.SyncGate {
 
 // Start démarre le daemon. Non bloquant — lance des goroutines internes.
 func (d *Daemon) Start(ctx context.Context, authHeader string, playerList []domain.PlayerSummary) {
-	ctx, d.cancel = context.WithCancel(ctx)
+	// Garde double-Start : sans elle, un 2e Start écraserait d.cancel et leakerait
+	// la goroutine/ctx du premier (revue 2026-06-02).
+	if d.running.Load() {
+		slog.WarnContext(ctx, "watcher_daemon: Start ignoré (déjà démarré)")
+		return
+	}
+	ctx, cancel := context.WithCancel(ctx)
 	// Sprint B1 commit 17 : event_id sur le daemon (un id pour toute la vie
 	// du watcher).
 	ctx, daemonID := logging.WithEvent(ctx, "watcher.daemon")
+	// cancel/rootCtx écrits sous playersMu (mêmes verrou que leurs lecteurs
+	// initPlayers/AddPlayer). initPlayers re-locke ensuite hors de cette section.
+	d.playersMu.Lock()
+	d.cancel = cancel
 	d.rootCtx = ctx
-	d.running = true
+	d.playersMu.Unlock()
+	d.running.Store(true)
 
 	slog.InfoContext(ctx, "watcher_daemon: démarrage",
 		"players", len(playerList),
@@ -189,8 +204,11 @@ func (d *Daemon) Start(ctx context.Context, authHeader string, playerList []doma
 // retournent (avec un timeout dur de stopWaitTimeout pour ne jamais bloquer
 // le shutdown global).
 func (d *Daemon) Stop() {
-	if d.cancel != nil {
-		d.cancel()
+	d.playersMu.Lock()
+	cancel := d.cancel
+	d.playersMu.Unlock()
+	if cancel != nil {
+		cancel()
 	}
 
 	// Attendre les goroutines internes ET les syncs Coordinator en vol, avec un
@@ -212,13 +230,13 @@ func (d *Daemon) Stop() {
 		)
 	}
 
-	d.running = false
+	d.running.Store(false)
 	slog.Info("watcher_daemon: arrêté")
 }
 
 // IsRunning retourne true si le daemon tourne.
 func (d *Daemon) IsRunning() bool {
-	return d.running
+	return d.running.Load()
 }
 
 // UpdateAuth met à jour le header d'auth du client REST tracker (après
