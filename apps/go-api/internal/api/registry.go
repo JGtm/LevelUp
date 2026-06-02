@@ -47,6 +47,7 @@ import (
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
+	sync_pkg "levelup/go-api/internal/sync"
 )
 
 // haloProvider est l'instance globale du provider Halo (partagée).
@@ -62,22 +63,24 @@ type ServiceRegistry struct {
 	resolve          PlayerResolver
 	resolveByGT      duckdb.TitlePlayerResolver // résolution (titleSlug, gamertag) → PlayerDB pour Squad V2
 	provider         auth.TokenProvider
-	assetResolver    assets.Resolver              // nil si le resolver n'est pas configuré (mode legacy)
-	timezone         string                       // IANA (ex: "Europe/Paris"), propagé aux services médias
-	notifiers        sync.Map                     // xuid → port.SessionNotifier (HomeService par joueur)
-	titleResolver    games.Resolver               // nil → services tournent sans semantic adapter (libellés via fallbacks)
-	hiCapabilities   games.CapabilityMap          // capabilities.toml HI chargées au boot (Phase 1.7a) ; nil → adapter player-scoped retombe sur son fallback
-	homeMatchesCache *service.HomeMatchesCache    // cache TTL process-level matches+sessions
-	careerLiveCache  *service.CareerLiveCache     // cache TTL process-level XP (5 min) + customisation (6 h)
-	remoteStats      *service.CachedStatsProvider // cache TTL process-level stats carrière remote (5 min), partagé Explorer/Compare
-	settingsStore    *settings_platform.Store     // nil → services qui dépendent des settings (TeammatesService friend filter) tournent en mode legacy
-	seasonsCatalog   *service.SeasonsCatalog      // nil → FiltersService.Resolve ne renvoie pas SeasonCounts (dégradation gracieuse)
-	rankCatalog      *mappings.RankCatalog        // nil → CareerService.next_rank_name reste vide
-	rankImageURLs    map[int]*string              // nil → CareerService.rank_image_url et next_rank_image_url restent absents
-	prestigeBundle   *PrestigeBundle              // nil si feature désactivée ; possède 2 *DB (sharedSocial + metadata) à fermer au shutdown
-	advisorBundle    *CoachAdvisorBundle          // nil → coach_advisor désactivé (ADR 0020 Phase 8)
-	authStore        auth.UserTokenStore          // ADR 0023 : source unique tokens auth (nil → fallback legacy DuckDB+env)
-	jobStore         *jobs_platform.Store         // nil → transcoding HLS désactivé (médias servis via remux WebM live)
+	assetResolver    assets.Resolver                      // nil si le resolver n'est pas configuré (mode legacy)
+	timezone         string                               // IANA (ex: "Europe/Paris"), propagé aux services médias
+	notifiers        sync.Map                             // xuid → port.SessionNotifier (HomeService par joueur)
+	titleResolver    games.Resolver                       // nil → services tournent sans semantic adapter (libellés via fallbacks)
+	hiCapabilities   games.CapabilityMap                  // capabilities.toml HI chargées au boot (Phase 1.7a) ; nil → adapter player-scoped retombe sur son fallback
+	homeMatchesCache *service.HomeMatchesCache            // cache TTL process-level matches+sessions
+	careerLiveCache  *service.CareerLiveCache             // cache TTL process-level XP (5 min) + customisation (6 h)
+	remoteStats      *service.CachedStatsProvider         // cache TTL process-level stats carrière remote (5 min), partagé Explorer/Compare
+	recentMatches    *service.CachedRecentMatchesProvider // cache TTL process-level 20 derniers matchs live (20 min), partagé Explorer/Compare (cibles non-locales)
+	settingsStore    *settings_platform.Store             // nil → services qui dépendent des settings (TeammatesService friend filter) tournent en mode legacy
+	seasonsCatalog   *service.SeasonsCatalog              // nil → FiltersService.Resolve ne renvoie pas SeasonCounts (dégradation gracieuse)
+	rankCatalog      *mappings.RankCatalog                // nil → CareerService.next_rank_name reste vide
+	rankImageURLs    map[int]*string                      // nil → CareerService.rank_image_url et next_rank_image_url restent absents
+	prestigeBundle   *PrestigeBundle                      // nil si feature désactivée ; possède 2 *DB (sharedSocial + metadata) à fermer au shutdown
+	advisorBundle    *CoachAdvisorBundle                  // nil → coach_advisor désactivé (ADR 0020 Phase 8)
+	authStore        auth.UserTokenStore                  // ADR 0023 : source unique tokens auth (nil → fallback legacy DuckDB+env)
+	jobStore         *jobs_platform.Store                 // nil → transcoding HLS désactivé (médias servis via remux WebM live)
+	metaHandles      []*duckdb.DB                         // handles RW "annexes" sur metadata.duckdb (seasons/playlists catalog, ouverts hors pool joueur dans NewRouter) fermés au shutdown via Close() — sinon fuite de refCount sur le cache duckdb.openDBs (cf. INCIDENT_2026-05-21)
 }
 
 // WithJobStore attache le JobStore au registry — porte le cycle de vie des jobs
@@ -155,6 +158,36 @@ func (r *ServiceRegistry) Close() {
 		r.prestigeBundle.Close()
 		r.prestigeBundle = nil
 	}
+	// Resolver d'assets : flush la WriteQueue ET ferme l'index store DuckDB,
+	// qui tient un handle RW persistant sur metadata.duckdb. Cf.
+	// DefaultResolver.Close + INCIDENT_2026-05-21 (fuite refCount).
+	if r.assetResolver != nil {
+		_ = r.assetResolver.Close(context.Background())
+		r.assetResolver = nil
+	}
+	// Handles metadata "annexes" (seasons/playlists catalog) ouverts hors pool
+	// joueur dans NewRouter : chaque Close décrémente le refCount partagé du
+	// cache duckdb. Sans ça ils restent orphelins au shutdown (verrou Air).
+	for _, db := range r.metaHandles {
+		if db != nil {
+			_ = db.Close()
+		}
+	}
+	r.metaHandles = nil
+}
+
+// TrackMetadataHandle enregistre un handle RW "annexe" sur metadata.duckdb
+// (ouvert hors pool joueur dans NewRouter, ex. seasons catalog, playlists
+// catalog) pour qu'il soit fermé au shutdown via Close(). Sans ça, son refCount
+// dans le cache duckdb.openDBs ne retombe jamais à 0 → handle Windows tenu
+// jusqu'à exit process → verrou metadata.duckdb au prochain hot-reload Air
+// (cf. docs/INCIDENT_2026-05-21_metadata_duckdb_lock_air_hot_reload.md).
+func (r *ServiceRegistry) TrackMetadataHandle(db *duckdb.DB) *ServiceRegistry {
+	if r == nil || db == nil {
+		return r
+	}
+	r.metaHandles = append(r.metaHandles, db)
+	return r
 }
 
 // NewServiceRegistry crée un ServiceRegistry câblé avec config.ResolvePlayer.
@@ -172,6 +205,7 @@ func NewServiceRegistry(cfg *config.AppConfig, provider auth.TokenProvider) *Ser
 		homeMatchesCache: service.NewHomeMatchesCache(),
 		careerLiveCache:  service.NewCareerLiveCache(service.CareerLiveCacheConfig{}),
 		remoteStats:      service.NewCachedStatsProvider(haloProvider, 0, nil),
+		recentMatches:    service.NewCachedRecentMatchesProvider(sync_pkg.NewRecentMatchesFetcher(0), 0, nil),
 	}
 }
 

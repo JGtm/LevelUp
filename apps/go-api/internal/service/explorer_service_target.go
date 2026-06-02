@@ -9,15 +9,36 @@ import (
 	"log/slog"
 )
 
-func (s *ExplorerService) computeTargetCombatProfile(ctx context.Context, targetXUID string) []domain.ExplorerTargetRecentMatch {
+// computeTargetCombatProfile retourne les N derniers matchs PvP de la cible pour
+// les graphes profil de combat. Local d'abord (lecture DuckDB, gratuite) ; si
+// vide — cas d'une cible NON suivie dont les matchs ne sont pas en base — repli
+// sur le fetch LIVE read-only borné (cache TTL 20 min), si câblé et auth dispo.
+// ctx = calcul local (non borné) ; liveCtx = budget live.
+func (s *ExplorerService) computeTargetCombatProfile(
+	ctx, liveCtx context.Context, targetXUID string, hasAuth bool,
+) []domain.ExplorerTargetRecentMatch {
 	rows, err := s.repo.GetTargetRecentMatches(ctx, targetXUID, explorerCombatProfileLimit)
 	if err != nil {
 		slog.WarnContext(ctx, "explorer_target_combat_profile_failed", "xuid", targetXUID, "err", err)
-		return nil
+		// On tente quand même le repli live ci-dessous.
 	}
-	slog.DebugContext(ctx, "explorer_target_combat_profile",
-		"xuid", targetXUID, "matches", len(rows), "limit", explorerCombatProfileLimit)
-	return rows
+	if len(rows) > 0 {
+		slog.DebugContext(ctx, "explorer_target_combat_profile",
+			"xuid", targetXUID, "matches", len(rows), "source", "local")
+		return rows
+	}
+	// Cible non-locale (aucun match local) : repli live read-only.
+	if s.deps.RecentMatches == nil || !hasAuth || targetXUID == "" {
+		return rows
+	}
+	live, lErr := s.deps.RecentMatches.FetchRecentMatches(liveCtx, targetXUID, explorerCombatProfileLimit)
+	if lErr != nil {
+		slog.WarnContext(liveCtx, "explorer_target_combat_profile_live_failed", "xuid", targetXUID, "err", lErr)
+		return rows
+	}
+	slog.DebugContext(liveCtx, "explorer_target_combat_profile",
+		"xuid", targetXUID, "matches", len(live), "source", "live")
+	return live
 }
 
 // computeMatchesPerSeason agrège les matchs du target par saison (calcul local
