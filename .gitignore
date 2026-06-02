@@ -243,3 +243,8 @@ apps/web/__mockup_*.html
 undefined/
 data/titles/halo_infinite/warehouse/*.wal*
 v2-test-result.json
+
+# Répertoires temporaires de recherche/exploration (non versionnés)
+tmp_film_explore/
+tmp_score_work/
+apps/go-api/cmd/tmpdbq/
