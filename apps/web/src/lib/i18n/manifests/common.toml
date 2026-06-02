@@ -483,6 +483,90 @@ en = "More information"
 fr = "Placement : #"
 en = "Placement: #"
 
+[common.match_card.map_unknown]
+fr = "Map inconnue"
+en = "Unknown map"
+
+[common.match_card.favorite_add]
+fr = "Ajouter aux favoris"
+en = "Add to favorites"
+
+[common.match_card.favorite_remove]
+fr = "Retirer des favoris"
+en = "Remove from favorites"
+
+[common.match_card.squad]
+fr = "Escouade"
+en = "Squad"
+
+[common.match_card.solo]
+fr = "Solo"
+en = "Solo"
+
+[common.match_card.performance]
+fr = "Performance"
+en = "Performance"
+
+[common.match_card.frags]
+fr = "frags"
+en = "kills"
+
+[common.match_card.assists]
+fr = "assist."
+en = "assists"
+
+[common.match_card.deaths]
+fr = "morts"
+en = "deaths"
+
+[common.match_card.headshots]
+fr = "T. tête"
+en = "Headshots"
+
+[common.match_card.kda]
+fr = "FDA"
+en = "KDA"
+
+[common.match_card.perfect_kills]
+fr = "Parfaits"
+en = "Perfect"
+
+[common.match_card.offensive_yield]
+fr = "Rendement"
+en = "Yield"
+
+[common.match_card.defensive_resistance]
+fr = "Résistance"
+en = "Resistance"
+
+[common.match_card.accuracy]
+fr = "Précision"
+en = "Accuracy"
+
+[common.match_card.avg_life]
+fr = "Vie moy."
+en = "Avg. life"
+
+[common.match_card.team]
+fr = "Équipe"
+en = "Team"
+
+[common.match_card.enemies]
+fr = "Adversaires"
+en = "Enemies"
+
+[common.match_card.mastered]
+fr = "Maîtrisé !"
+en = "Mastered!"
+
+[common.match_card.duration_label]
+fr = "Durée :"
+en = "Duration:"
+
+[common.match_card.date_label]
+fr = "Date :"
+en = "Date:"
+
 # ─── Setup wizard (StepDeviceCode, StepInitialSync, StepPlayer) ─────────
 
 [common.setup.device_starting]

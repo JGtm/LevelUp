@@ -11,6 +11,9 @@ import { EngagementCurve, type EngagementPoint } from '@/components/charts/Engag
 import { useEngagementTimeseries } from '@/features/engagement/queries'
 import { truncateMap } from '@/lib/charts/matchLabels'
 import type { EngagementGranularity, FilterContextInput } from '@/lib/api/types'
+import { formatMessage } from '@/lib/i18n/format'
+import { engagementManifest, type EngagementManifestKey } from '@/lib/i18n/generated/engagement'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 export interface EngagementTimeseriesSectionProps {
   playerSlug: string
@@ -24,15 +27,16 @@ export interface EngagementTimeseriesSectionProps {
   subtitle?: string
 }
 
-const GRANULARITY_LABELS: Record<EngagementGranularity, string> = {
-  match: 'Par match',
-  session: 'Groupé par session',
-  week: 'Groupé par semaine',
-  month: 'Groupé par mois',
+const GRANULARITY_KEYS: Record<EngagementGranularity, EngagementManifestKey> = {
+  match: 'engagement.granularity.match',
+  session: 'engagement.granularity.session',
+  week: 'engagement.granularity.week',
+  month: 'engagement.granularity.month',
 }
 
 export function EngagementTimeseriesSection(props: EngagementTimeseriesSectionProps) {
   const { playerSlug, filters, filterHash, limit = 30, title, subtitle } = props
+  const locale = useAppShellStore((s) => s.locale)
   const query = useEngagementTimeseries(playerSlug, filters, filterHash, limit)
 
   const data = query.data
@@ -66,18 +70,21 @@ export function EngagementTimeseriesSection(props: EngagementTimeseriesSectionPr
   const computedSubtitle = (() => {
     if (subtitle !== undefined) return subtitle
     if (!data) return undefined
-    const granLabel = GRANULARITY_LABELS[granularity]
+    const granLabel = formatMessage(engagementManifest, GRANULARITY_KEYS[granularity], locale)
     const truncNote = data.truncated_to_recent
-      ? ` — basé sur les ${data.truncated_to_recent} matchs les plus récents sur ${total}`
+      ? formatMessage(engagementManifest, 'engagement.timeseries.subtitle_truncated', locale, {
+          recent: data.truncated_to_recent,
+          total,
+        })
       : total > 0
-        ? ` — ${total} match${total > 1 ? 's' : ''}`
+        ? formatMessage(engagementManifest, 'engagement.timeseries.subtitle_count', locale, { total })
         : ''
     return `${granLabel}${truncNote}`
   })()
 
   return (
     <EngagementCurve
-      title={title ?? 'Engagement'}
+      title={title ?? formatMessage(engagementManifest, 'engagement.match_view.section_title', locale)}
       subtitle={computedSubtitle}
       points={points}
       granularity="session"
