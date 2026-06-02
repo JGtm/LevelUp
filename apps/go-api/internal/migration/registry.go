@@ -98,17 +98,25 @@ func getApplied(ctx context.Context, db *sql.DB) (map[string]migrationState, err
 	return applied, rows.Err()
 }
 
-// RunForDB applique toutes les migrations en attente pour une DB donnée.
+// RunForDB applique toutes les migrations enregistrées (registre global) pour
+// une DB/target donnée. Conservé pour compat ; délègue à RunSteps. Le chemin
+// title-agnostic (Phase 1.5.1, ADR 0025) appellera RunSteps avec les steps
+// fournis par l'adapter du titre.
 //
-// Le db fourni doit être ouvert en lecture/écriture.
-// Pour target=shared, la DB metadata doit être ATTACHée en amont si des vues
-// y font référence.
+// Le db fourni doit être ouvert en lecture/écriture. Pour target=shared, la DB
+// metadata doit être ATTACHée en amont si des vues y font référence.
 func RunForDB(db *sql.DB, target TargetDB) error {
-	// Sprint B1 commit 19 : event_id par cycle de migrations sur une DB.
-	// Permet de tracer les N migrations qui tournent au boot et identifier
-	// laquelle plante en cas de schema mismatch. Utilise context.Background()
-	// car la signature publique ne prend pas de ctx (callers nombreux, refactor
-	// invasif reporté).
+	return RunSteps(db, target, ForTarget(target))
+}
+
+// RunSteps applique un ensemble EXPLICITE de migrations pour une target —
+// primitive title-agnostic (Phase 1.5.1 B). Les steps peuvent venir du registre
+// global (legacy) et/ou de l'adapter d'un titre ; l'ordre d'exécution est imposé
+// par canonicalOrder (order.go), indépendant de la source/ordre d'enregistrement.
+func RunSteps(db *sql.DB, target TargetDB, steps []Migration) error {
+	// Sprint B1 commit 19 : event_id par cycle de migrations sur une DB, pour
+	// tracer laquelle plante en cas de schema mismatch. context.Background() car
+	// pas de scope HTTP/RPC au boot (callers nombreux).
 	ctx, evID := logging.WithEvent(context.Background(), "migration.run:"+string(target))
 	cycleStart := time.Now()
 	slog.InfoContext(ctx, "migration: cycle démarré", "target", target, "event", evID)
@@ -121,14 +129,13 @@ func RunForDB(db *sql.DB, target TargetDB) error {
 		return fmt.Errorf("migration: get applied: %w", err)
 	}
 
-	migrations := ForTarget(target)
-	// Ordre d'exécution EXPLICITE (Phase 1.5.0) : indépendant de l'ordre des
-	// init()/fichiers. Voir order.go. No-op tant que canonicalOrder reflète
-	// l'ordre d'enregistrement ; devient le garde-fou quand les steps_*.go
-	// seront déplacés par titre.
-	sortByCanonicalOrder(migrations)
+	// Ordre d'exécution EXPLICITE (Phase 1.5.0, voir order.go) : indépendant de
+	// l'ordre des init()/fichiers/source. Copie défensive pour ne pas muter la
+	// slice de l'appelant (ex. steps mémorisés par un adapter).
+	steps = append([]Migration(nil), steps...)
+	sortByCanonicalOrder(steps)
 	appliedCount := 0
-	for _, m := range migrations {
+	for _, m := range steps {
 		state, exists := applied[m.Name]
 
 		if !exists {
@@ -181,7 +188,7 @@ func RunForDB(db *sql.DB, target TargetDB) error {
 	slog.InfoContext(ctx, "migration: cycle terminé",
 		"target", target,
 		"applied", appliedCount,
-		"total", len(migrations),
+		"total", len(steps),
 		"duration_ms", time.Since(cycleStart).Milliseconds(),
 	)
 	return nil
