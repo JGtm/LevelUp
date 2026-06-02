@@ -1,3 +1,38 @@
+## [2026-06-02] Face à face — ligne de comparaison CSR (saison) via provider live réutilisé (point 3) — Complété
+
+**Statut** : Complété (commit 7/7 du plan `.ai/PLAN_COMPARE_COMBATPROFILE_SESSION.md`).
+
+**Contexte** : compléter le Face à face avec le CSR classé. Principe validé par l'utilisateur : RÉUTILISER
+les providers live existants du profil de combat (le CSR vient d'un endpoint skill agrégé, pas des matchs),
+pas de nouvelle méthode de fetch. Choix UI : une ligne de comparaison dans la catégorie Bilan (pas de
+bandeau, pas de médailles → barre-comparaison existante réutilisée à 100%).
+
+**Décision technique principale** :
+- `CompareService.WithCSR(ExplorerTargetCSRProvider, seasonID)` — MÊME provider que l'Explorer
+  (`newExplorerCSRProvider`). `highestCurrentCSR` = max `Current.Value` sur les playlists ranked, fetché
+  live pour A (xuidA) ET B (xuidB résolu).
+- `NormalizedPlayerStats.HighestCSR` + métrique `csr` dans buildMetrics (catégorie bilan). Disponible dès
+  `value>0` (comme career_rank) — un non classé (0) reste N/A.
+- Front : `csr` ajouté à `CATEGORY_KEYS.bilan` + format entier + i18n FR « CSR (saison) » / EN « CSR
+  (season) ». Aucun nouveau composant (CompareBar réutilisé).
+
+**Distinction clé (réponse à la question de l'utilisateur)** : career rank / CSR / médailles = endpoint
+service-record agrégé (1 appel, providers déjà câblés → réutilisés). Les 20 derniers matchs = pas
+d'endpoint agrégé → liste + N×stats (le RecentMatchesFetcher du commit 4, qui réutilise quand même
+ExtractParticipants du sync). « Juste des endpoints différents », mais les matchs n'ont pas de raccourci.
+
+**Résultats observés** : `go build ./internal/api` (CGO) OK, `go test service+domain` OK, `go vet` + gofmt
+clean ; `tsc -b` OK, eslint clean, vitest compare 13/13. Tests : highestCurrentCSR (max/dégradation),
+buildMetrics ligne csr (dispo A/B, vainqueur, non classé N/A).
+
+**Re-scope final** : médailles (écartées par l'utilisateur sur cette UI) + échantillon 20 matchs live pour
+les stats de forme B (extension de projection life/headshots) NON faits — disponibles en option future.
+
+**Conclusion / prochaine étape** : plan terminé (7 commits). Réserve transverse : valider en réel les
+fetchs live (matchs + CSR + identité) avec un compte authentifié sur une cible non-locale.
+
+---
+
 ## [2026-06-02] Face à face — rang carrière live pour un joueur B non-local (point 1) — Complété
 
 **Statut** : Complété (commit 6/6 du plan `.ai/PLAN_COMPARE_COMBATPROFILE_SESSION.md`).

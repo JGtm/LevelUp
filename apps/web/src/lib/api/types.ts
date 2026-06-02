@@ -3269,6 +3269,8 @@ export interface NormalizedPlayerStats {
   perf_ath: number
   lusr_ath: number
   career_rank: number
+  /** Meilleur CSR courant (saison en cours), récupéré en live. 0 si non classé. */
+  highest_csr?: number
   /** Temps de jeu cumulé lifetime (s) depuis le service record Waypoint. */
   time_played_seconds?: number
   // Phase 3 — arme favorite (null pour joueur B remote)

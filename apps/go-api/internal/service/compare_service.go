@@ -23,11 +23,13 @@ import (
 
 // CompareService orchestre la comparaison joueur A vs joueur B.
 type CompareService struct {
-	repo         port.CompareRepository
-	provider     port.PlayerStatsProvider
-	liveIdentity ExplorerTargetIdentityProvider // optionnel : rang carrière live d'un B non-local
-	xuidA        string
-	titleSlug    string
+	repo            port.CompareRepository
+	provider        port.PlayerStatsProvider
+	liveIdentity    ExplorerTargetIdentityProvider // optionnel : rang carrière live d'un B non-local
+	csr             ExplorerTargetCSRProvider      // optionnel : CSR saison courante live (A et B)
+	currentSeasonID string                         // saison CSR courante (pour le fetch CSR)
+	xuidA           string
+	titleSlug       string
 }
 
 // NewCompareService crée un CompareService.
@@ -42,6 +44,34 @@ func NewCompareService(repo port.CompareRepository, provider port.PlayerStatsPro
 func (s *CompareService) WithLiveIdentity(p ExplorerTargetIdentityProvider) *CompareService {
 	s.liveIdentity = p
 	return s
+}
+
+// WithCSR injecte le provider CSR live (même que l'Explorer) + la saison courante,
+// pour comparer le meilleur CSR de A et B. nil → pas de ligne CSR.
+func (s *CompareService) WithCSR(p ExplorerTargetCSRProvider, currentSeasonID string) *CompareService {
+	s.csr = p
+	s.currentSeasonID = currentSeasonID
+	return s
+}
+
+// highestCurrentCSR retourne le plus haut CSR courant du joueur sur les playlists
+// ranked de la saison en cours (live, tout xuid). 0 si non classé / indisponible.
+func (s *CompareService) highestCurrentCSR(ctx context.Context, xuid string) float64 {
+	if s.csr == nil || xuid == "" || s.currentSeasonID == "" {
+		return 0
+	}
+	csrs, err := s.csr.SeasonCSRs(ctx, xuid, s.currentSeasonID)
+	if err != nil {
+		logBestEffortErr(ctx, "CompareService: CSR saison non disponible", err, "xuid", xuid)
+		return 0
+	}
+	var best float64
+	for _, c := range csrs {
+		if c.Current.Value > best {
+			best = c.Current.Value
+		}
+	}
+	return best
 }
 
 // GetPage construit la réponse de comparaison en chargeant les stats en parallèle.
@@ -107,6 +137,7 @@ func (s *CompareService) loadPlayerA(ctx context.Context) (*domain.NormalizedPla
 	if wErr != nil {
 		logBestEffortErr(ctx, "CompareService: arme favorite non disponible", wErr, "xuid", s.xuidA)
 	}
+	statsA.HighestCSR = s.highestCurrentCSR(ctx, s.xuidA)
 	return statsA, ath, nil
 }
 
@@ -130,6 +161,7 @@ func (s *CompareService) loadPlayerB(ctx context.Context, targetGamertag string)
 	if xuidB != "" {
 		if local, err := s.repo.GetLocalStats(ctx, xuidB, s.titleSlug); err == nil && local != nil {
 			s.enrichLocalPlayerB(ctx, local, xuidB)
+			local.HighestCSR = s.highestCurrentCSR(ctx, xuidB)
 			slog.DebugContext(ctx, "CompareService: joueur B résolu localement", "gamertag", targetGamertag, "xuid", xuidB)
 			return local, xuidB, nil
 		}
@@ -143,6 +175,7 @@ func (s *CompareService) loadPlayerB(ctx context.Context, targetGamertag string)
 	if xuidB != "" {
 		s.enrichRemotePlayerBWithCrossSample(ctx, remote, xuidB, targetGamertag)
 		s.fillRemoteCareerRankLive(ctx, remote, xuidB)
+		remote.HighestCSR = s.highestCurrentCSR(ctx, xuidB)
 	}
 	return remote, xuidB, nil
 }
@@ -260,6 +293,7 @@ const (
 	compareMetricLusrATH              = "lusr_ath"
 	compareMetricCareerRank           = "career_rank"
 	compareMetricAccuracy             = "accuracy"
+	compareMetricCSR                  = "csr"
 )
 
 // Métriques calculées uniquement à partir de la DB locale d'un joueur (stats.duckdb
@@ -293,8 +327,9 @@ var athMetrics = map[string]bool{
 //     de matchs croisés avec A — métriques alors calculées sur cet échantillon).
 //   - Autres : toujours disponibles (alimentées par Waypoint ou les agrégats locaux).
 func metricAvailability(key string, value float64, isLocal, isLocalSample bool) bool {
-	if key == compareMetricCareerRank {
-		// Disponible dès qu'un rang est connu : ATH local (A) OU fetch live (B non-local).
+	if key == compareMetricCareerRank || key == compareMetricCSR {
+		// Disponibles dès value>0 : rang/CSR connus côté A (local/live) comme côté B
+		// non-local (fetch live). Le CSR vaut 0 pour un joueur non classé.
 		return value > 0
 	}
 	if athMetrics[key] {
@@ -342,6 +377,7 @@ func buildMetrics(a, b domain.NormalizedPlayerStats) []domain.CompareMetricRow {
 		{compareMetricHeadshotKillsPerGame, "Headshots / partie", a.HeadshotKillsPerGame, b.HeadshotKillsPerGame, false},
 		{"matches", "Parties", float64(a.Matches), float64(b.Matches), false},
 		{compareMetricCareerRank, "Rang Carrière", float64(a.CareerRank), float64(b.CareerRank), false},
+		{compareMetricCSR, "CSR", a.HighestCSR, b.HighestCSR, false},
 		{compareMetricPerfATH, "Perf. record", a.PerfATH, b.PerfATH, false},
 		{compareMetricLusrATH, "LUSR record", a.LusrATH, b.LusrATH, false},
 	}

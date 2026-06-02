@@ -42,6 +42,10 @@ type NormalizedPlayerStats struct {
 	FavoriteWeapon *WeaponHighlight `json:"favorite_weapon,omitempty"`
 
 	CareerRank int `json:"career_rank"`
+	// HighestCSR : meilleur CSR courant (max sur les playlists ranked) de la saison
+	// en cours, récupéré en live (même provider que le profil de combat). 0 si non
+	// classé / indisponible. Comparable A vs B (les deux côtés via le même endpoint).
+	HighestCSR float64 `json:"highest_csr"`
 	// TimePlayedSeconds : temps de jeu cumulé (lifetime) issu du service record
 	// Waypoint (champ TimePlayed ISO-8601). 0 si indisponible.
 	TimePlayedSeconds int64          `json:"time_played_seconds,omitempty"`

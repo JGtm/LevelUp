@@ -239,6 +239,60 @@ func TestFillRemoteCareerRankLive(t *testing.T) {
 	}
 }
 
+// TestCompareService_HighestCurrentCSR : le helper retient le max des CSR courants
+// sur les playlists ranked, et dégrade à 0 sans provider/saison.
+func TestCompareService_HighestCurrentCSR(t *testing.T) {
+	csr := CSRProviderFunc(func(_ context.Context, _, _ string) ([]domain.CareerPlaylistCSR, error) {
+		return []domain.CareerPlaylistCSR{
+			{Current: domain.CareerCSRRank{Value: 1450}},
+			{Current: domain.CareerCSRRank{Value: 1600}},
+			{Current: domain.CareerCSRRank{Value: 1200}},
+		}, nil
+	})
+	svc := (&CompareService{}).WithCSR(csr, "CsrSeason13-1")
+	if got := svc.highestCurrentCSR(context.Background(), "xuid"); got != 1600 {
+		t.Errorf("highestCurrentCSR = %v, want 1600 (max)", got)
+	}
+	if got := (&CompareService{}).WithCSR(csr, "").highestCurrentCSR(context.Background(), "xuid"); got != 0 {
+		t.Errorf("sans saison → 0, got %v", got)
+	}
+	if got := (&CompareService{}).highestCurrentCSR(context.Background(), "xuid"); got != 0 {
+		t.Errorf("sans provider → 0, got %v", got)
+	}
+}
+
+// TestBuildMetrics_CSRRow : la ligne CSR compare A et B dès value>0 ; un joueur non
+// classé (0) reste N/A.
+func TestBuildMetrics_CSRRow(t *testing.T) {
+	a := domain.NormalizedPlayerStats{IsLocal: true, Matches: 100, HighestCSR: 1600, KillsPerGame: 10, DeathsPerGame: 8}
+	b := domain.NormalizedPlayerStats{IsLocal: false, Matches: 50, HighestCSR: 1450, KillsPerGame: 9, DeathsPerGame: 9}
+
+	byKey := func(rows []domain.CompareMetricRow) map[string]domain.CompareMetricRow {
+		m := make(map[string]domain.CompareMetricRow, len(rows))
+		for _, r := range rows {
+			m[r.Metric] = r
+		}
+		return m
+	}
+
+	csr := byKey(buildMetrics(a, b))[compareMetricCSR]
+	if csr.Metric != compareMetricCSR {
+		t.Fatal("ligne csr absente")
+	}
+	if !csr.ValueAAvailable || !csr.ValueBAvailable {
+		t.Error("csr A et B (>0) doivent être disponibles")
+	}
+	if csr.Winner != "a" {
+		t.Errorf("csr winner = %q, want a (1600>1450)", csr.Winner)
+	}
+
+	b0 := b
+	b0.HighestCSR = 0 // non classé
+	if r := byKey(buildMetrics(a, b0))[compareMetricCSR]; r.ValueBAvailable {
+		t.Error("csr B=0 (non classé) doit être N/A")
+	}
+}
+
 // TestBuildMetrics_OCDRAlignedWithCombatYield vérifie que rendement/résistance du
 // Face à face utilisent exactement les formules OC/DR canoniques (parité KPI bar
 // home) et le bon sens de vainqueur (plus haut = mieux).
