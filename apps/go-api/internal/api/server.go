@@ -744,7 +744,8 @@ func NewRouter(
 			// Phase 4 plan engagement : score + courbe par match + profil + timeseries + squad
 			// + admin recompute. Toutes les routes sont gated par CapEngagement
 			// (titre doit declarer la capability — halo_infinite=oui, autres=non
-			// par defaut, degradation gracieuse via 404).
+			// par defaut, degradation gracieuse via 503 capability_unavailable,
+			// cf. middleware.RequireCapability).
 			eng := handlers.NewEngagementHandler(reg.Engagement)
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapEngagement))
