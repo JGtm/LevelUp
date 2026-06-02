@@ -45,6 +45,8 @@ export const queryKeys = {
   // Historique des parties (Slice 3)
   matchHistory: (playerSlug: string, filterHash: string, page: number, soloSessions: string[] = []) =>
     ['match-history', playerSlug, filterHash, page, [...soloSessions].sort().join(',')] as const,
+  /** Préfixe broad — invalide tout le cache match-history d'un joueur. */
+  matchHistoryAll: (playerSlug: string) => ['match-history', playerSlug] as const,
 
   // Explorer (Slice 4)
   explorer: (
@@ -94,6 +96,8 @@ export const queryKeys = {
   // Escouade / Teammates (Slice 6)
   teammates: (playerSlug: string, filterHash: string, selectedGts: string[], sessionLabels: string[] = [], locale = '') =>
     ['teammates', playerSlug, filterHash, [...selectedGts].sort().join(','), [...sessionLabels].sort().join(','), locale] as const,
+  /** Préfixe broad — invalide toutes les queries teammates (ex. après ajout d'ami). */
+  teammatesAll: ['teammates'] as const,
   squadV2: (playerSlug: string, teammates: string[], period: string, experienceTypes: string[], playlists: string[], maps: string[] = [], modes: string[] = []) =>
     ['squad-v2', playerSlug, [...teammates].sort().join(','), period, [...experienceTypes].sort().join(','), [...playlists].sort().join(','), [...maps].sort().join(','), [...modes].sort().join(',')] as const,
 
@@ -148,6 +152,8 @@ export const queryKeys = {
     ['leaderboard', playerSlug, season ?? '', playlist ?? ''] as const,
 
   // Notifications in-app (per-player)
+  /** Préfixe broad — invalide/matche toutes les queries notifications d'un joueur. */
+  notificationsAll: (playerSlug: string) => ['notifications', playerSlug] as const,
   notifications: (playerSlug: string, filter: object) =>
     ['notifications', playerSlug, 'list', filter] as const,
   notificationsUnreadCount: (playerSlug: string) =>
@@ -175,4 +181,6 @@ export const queryKeys = {
   // Coach Advisor proposals (ADR 0020 Phase 10)
   coachProposals: (playerSlug: string, status?: string) =>
     ['coach', playerSlug, 'proposals', status ?? 'all'] as const,
+  /** Préfixe broad — invalide toutes les queries coach d'un joueur. */
+  coachAll: (playerSlug: string) => ['coach', playerSlug] as const,
 } as const

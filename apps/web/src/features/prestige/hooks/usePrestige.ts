@@ -7,6 +7,8 @@ import { prestigeApi, type Tier } from '@/lib/prestige'
 export const prestigeKeys = {
   me: (userId: string, titleSlug?: string) =>
     ['prestige', 'me', userId, titleSlug] as const,
+  /** Préfixe broad — invalide `me(userId, *)` pour tous les titres. */
+  meAll: (userId: string) => ['prestige', 'me', userId] as const,
   templates: (userId: string, titleSlug: string) =>
     ['prestige', 'templates', userId, titleSlug] as const,
 }

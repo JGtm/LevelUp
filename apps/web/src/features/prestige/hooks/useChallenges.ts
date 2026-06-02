@@ -10,6 +10,7 @@ import {
   type CreateChallengeBody,
   type UpdateChallengeBody,
 } from '@/lib/prestige'
+import { prestigeKeys } from './usePrestige'
 
 // ─── Cache keys ───
 
@@ -38,7 +39,7 @@ export function useCreateChallenge(userId: string, titleSlug: string) {
     mutationFn: (body: CreateChallengeBody) => prestigeApi.createChallenge(body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: challengeKeys.list(userId, titleSlug) })
-      qc.invalidateQueries({ queryKey: ['prestige', 'me', userId] })
+      qc.invalidateQueries({ queryKey: prestigeKeys.meAll(userId) })
     },
   })
 }

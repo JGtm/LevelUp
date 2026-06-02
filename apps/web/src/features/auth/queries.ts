@@ -48,9 +48,15 @@ export function useLogout() {
 // Admin : utilisateurs
 // ---------------------------------------------------------------------------
 
+/** Clés admin centralisées — définition ET invalidation (cf. AdminPage). */
+export const adminKeys = {
+  users: ['admin', 'users'] as const,
+  invites: ['admin', 'invites'] as const,
+}
+
 export function useAdminUsers() {
   return useQuery({
-    queryKey: ['admin', 'users'] as const,
+    queryKey: adminKeys.users,
     queryFn: () => api.get<AdminUserSummary[]>('/admin/users'),
   })
 }
@@ -82,7 +88,7 @@ export function useResetPassword() {
 
 export function useAdminInvites() {
   return useQuery({
-    queryKey: ['admin', 'invites'] as const,
+    queryKey: adminKeys.invites,
     queryFn: () => api.get<AdminInviteSummary[]>('/admin/invites'),
   })
 }

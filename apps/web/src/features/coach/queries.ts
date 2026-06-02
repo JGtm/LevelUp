@@ -47,7 +47,7 @@ export function useAcceptCoachProposal(playerSlug: string) {
     mutationFn: (proposalId: string) =>
       api.post<AcceptResponse>(`/players/${playerSlug}/coach/proposals/${proposalId}/accept`),
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: ['coach', playerSlug] })
+      qc.invalidateQueries({ queryKey: queryKeys.coachAll(playerSlug) })
     },
   })
 }
@@ -61,7 +61,7 @@ export function useDismissCoachProposal(playerSlug: string) {
     mutationFn: (proposalId: string) =>
       api.post<DismissResponse>(`/players/${playerSlug}/coach/proposals/${proposalId}/dismiss`),
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: ['coach', playerSlug] })
+      qc.invalidateQueries({ queryKey: queryKeys.coachAll(playerSlug) })
     },
   })
 }
