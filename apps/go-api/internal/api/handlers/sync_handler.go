@@ -519,6 +519,8 @@ func (h *SyncHandler) StartSyncAll(w http.ResponseWriter, r *http.Request) {
 				release, claimed := h.syncGate.TryClaim(p.Gamertag)
 				if !claimed {
 					coalesced++
+					slog.DebugContext(h.serverCtx, "sync_handler: joueur coalescé dans sync/all (déjà en vol via une autre source)",
+						"gamertag", p.Gamertag)
 					return
 				}
 				defer release()

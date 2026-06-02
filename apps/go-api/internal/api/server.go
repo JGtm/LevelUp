@@ -90,7 +90,9 @@ func NewRouter(
 		tokenProvider = auth_platform.NewMSALProvider()
 	}
 	// Sprint 14 : session store + Sprint 15 : attempt store auth
-	isProduction := cfg.SessionSecret != "CHANGE_ME_IN_PRODUCTION" // pragma: allowlist secret
+	// secureCookies pose le flag Secure des cookies de session. Vrai dès que le
+	// secret de session est surchargé (déploiement réel) ou en mode production.
+	isProduction := cfg.SessionSecret != config.DefaultSessionSecret || cfg.IsProduction()
 	sessionStore := session_platform.NewStore(cfg.SessionDir, session_platform.DefaultTTL, cfg.SessionSecret)
 	attemptStore := auth_platform.NewAttemptStore()
 
@@ -109,7 +111,18 @@ func NewRouter(
 
 	// Middlewares transverses (ordre important)
 	r.Use(chimiddleware.Recoverer)
-	r.Use(chimiddleware.RealIP)
+	// Capture l'adresse TCP réelle du peer AVANT tout middleware susceptible de
+	// réécrire RemoteAddr : le garde LoopbackOnly des endpoints /_diag s'appuie
+	// dessus pour ne pas être falsifiable via un en-tête X-Real-IP/X-Forwarded-For.
+	r.Use(middleware.PreserveRemoteAddr)
+	// chi RealIP réécrit RemoteAddr depuis les en-têtes d'IP client : on ne
+	// l'active QUE derrière un reverse proxy de confiance qui assainit ces en-têtes
+	// (LEVELUP_TRUST_PROXY_HEADERS=1). Sinon RemoteAddr reste le peer TCP réel, ce
+	// qui empêche un client externe d'usurper une IP (rate-limit, logs d'audit et
+	// LoopbackOnly non falsifiables). Revue P0 2026-06-02 (faille RealIP/LoopbackOnly).
+	if cfg.TrustProxyHeaders {
+		r.Use(chimiddleware.RealIP)
+	}
 	r.Use(middleware.RequestID)
 	r.Use(middleware.CORS(cfg.CORSOrigins))
 	r.Use(middleware.CSRF(cfg.CORSOrigins))

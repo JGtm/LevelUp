@@ -37,9 +37,10 @@ func (g *fakeHTTPGate) TryClaim(_ string) (func(), bool) {
 	}
 	return func() {}, true
 }
-func (g *fakeHTTPGate) IsInFlight(_ string) bool { return g.refuse }
-func (g *fakeHTTPGate) WaitInFlight()            {}
-func (g *fakeHTTPGate) BeginShutdown()           {}
+func (g *fakeHTTPGate) IsInFlight(_ string) bool               { return g.refuse }
+func (g *fakeHTTPGate) WaitInFlight()                          {}
+func (g *fakeHTTPGate) BeginShutdown()                         {}
+func (g *fakeHTTPGate) GateSnapshot() go_sync.GateSnapshotData { return go_sync.GateSnapshotData{} }
 
 // newGateRouter monte un routeur en DemoMode (1 joueur "demo-player"/"DemoPlayer")
 // avec une session injectée (tokens présents) et le gate fourni.

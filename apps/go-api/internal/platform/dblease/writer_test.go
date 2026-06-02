@@ -177,6 +177,32 @@ func TestAcquireWriter_TimeoutReturnsErrDBLocked(t *testing.T) {
 	}
 }
 
+// TestAcquireWriterCtx_FreeLeaseCancelledCtx : lease LIBRE + ctx déjà annulé →
+// REFUS (ctx.Err() avant TryLock, défense-in-depth 2026-06-02). Sans ce garde-fou,
+// un RunDelta repris après cancelScheduler obtiendrait le writer et écrirait après
+// duckdb.CloseAll (#7659).
+func TestAcquireWriterCtx_FreeLeaseCancelledCtx(t *testing.T) {
+	cleanupAssertNoLeak(t)
+	path := uniquePath(t) // lease libre
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	w, err := AcquireWriterCtx(ctx, nil, path, KindPlayer)
+	if err == nil {
+		if w != nil {
+			w.Release()
+		}
+		t.Fatal("un writer libre ne doit PAS être accordé sur un ctx déjà annulé")
+	}
+	if !errors.Is(err, ErrDBLocked) {
+		t.Errorf("err devrait wrapper ErrDBLocked, got %v", err)
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("err devrait wrapper context.Canceled, got %v", err)
+	}
+}
+
 func TestAcquireWriterCtx_CancelReturnsErrDBLocked(t *testing.T) {
 	cleanupAssertNoLeak(t)
 	path := uniquePath(t)

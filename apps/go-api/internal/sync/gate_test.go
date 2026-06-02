@@ -6,6 +6,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/observability"
 )
 
 // =============================================================================
@@ -163,6 +165,9 @@ func TestNopSyncGate(t *testing.T) {
 		t.Error("NopSyncGate.IsInFlight devrait toujours être false")
 	}
 	gate.WaitInFlight() // ne doit jamais bloquer
+	if snap := gate.GateSnapshot(); snap.InflightGate != 0 || len(snap.Claims) != 0 {
+		t.Errorf("NopSyncGate.GateSnapshot devrait être vide, got %+v", snap)
+	}
 }
 
 // TestSyncGate_TryClaimDoesNotBlockSubmit — INVARIANT D'ASYMÉTRIE (fix behavior-1).
@@ -186,6 +191,75 @@ func TestSyncGate_TryClaimDoesNotBlockSubmit(t *testing.T) {
 	// Symétrie inverse : tant que le watcher est en vol, un TryClaim auto/HTTP cède.
 	if _, ok2 := coord.TryClaim("Madina97294"); ok2 {
 		t.Error("TryClaim devrait céder au sync watcher en cours")
+	}
+}
+
+// TestSyncGate_Metrics — TryClaim incrémente les compteurs expvar (granted,
+// coalesced) et la jauge inflight (revenant à 0 après release). Compteurs globaux
+// (process) → on mesure le DELTA pour être robuste aux autres tests.
+func TestSyncGate_Metrics(t *testing.T) {
+	coord := NewCoordinator(&mockRunner{}, 2)
+	g0 := observability.LoadCounter(metricGateGranted)
+	c0 := observability.LoadCounter(metricGateCoalesced)
+	inflight0 := observability.LoadCounter(metricGateInflight)
+
+	rel, ok := coord.TryClaim("p1")
+	if !ok {
+		t.Fatal("1er TryClaim devrait réussir")
+	}
+	if _, ok2 := coord.TryClaim("p1"); ok2 {
+		t.Fatal("2e TryClaim devrait céder")
+	}
+	if got := observability.LoadCounter(metricGateInflight) - inflight0; got != 1 {
+		t.Errorf("jauge inflight pendant le claim = %d, want 1", got)
+	}
+	rel()
+
+	if got := observability.LoadCounter(metricGateGranted) - g0; got != 1 {
+		t.Errorf("granted delta = %d, want 1", got)
+	}
+	if got := observability.LoadCounter(metricGateCoalesced) - c0; got != 1 {
+		t.Errorf("coalesced delta = %d, want 1", got)
+	}
+	if got := observability.LoadCounter(metricGateInflight) - inflight0; got != 0 {
+		t.Errorf("jauge inflight après release = %d, want 0 (release décrémente)", got)
+	}
+}
+
+// TestSyncGate_GateSnapshot_AgesAndStale — le snapshot remonte les claims (watcher
+// + gate) avec leur âge et un flag stale au-delà du seuil. Claim ancien injecté
+// en white-box pour simuler une fuite sans attendre 45 min.
+func TestSyncGate_GateSnapshot_AgesAndStale(t *testing.T) {
+	coord := NewCoordinator(&mockRunner{}, 2)
+	rel, _ := coord.TryClaim("Fresh")
+	defer rel()
+	coord.inFlightMu.Lock()
+	coord.gateClaims[normGT("Leaked")] = time.Now().Add(-1 * time.Hour) // fuité
+	coord.inFlightMu.Unlock()
+
+	snap := coord.GateSnapshot()
+	if snap.InflightGate != 2 {
+		t.Errorf("InflightGate = %d, want 2", snap.InflightGate)
+	}
+	if snap.StaleCount != 1 {
+		t.Errorf("StaleCount = %d, want 1", snap.StaleCount)
+	}
+	var leaked, fresh *GateClaimInfo
+	for i := range snap.Claims {
+		switch snap.Claims[i].Gamertag {
+		case "leaked":
+			leaked = &snap.Claims[i]
+		case "fresh":
+			fresh = &snap.Claims[i]
+		}
+	}
+	if leaked == nil || !leaked.Stale {
+		t.Errorf("claim 'leaked' attendu stale, got %+v", leaked)
+	} else if leaked.AgeMs < (50 * time.Minute).Milliseconds() {
+		t.Errorf("âge 'leaked' trop petit: %d ms", leaked.AgeMs)
+	}
+	if fresh == nil || fresh.Stale {
+		t.Errorf("claim 'fresh' attendu non-stale, got %+v", fresh)
 	}
 }
 

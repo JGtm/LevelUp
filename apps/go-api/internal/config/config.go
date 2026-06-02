@@ -18,6 +18,16 @@ import (
 // defaultUserTimezone est le timezone IANA utilisé en l'absence de configuration.
 const defaultUserTimezone = "Europe/Paris"
 
+// DefaultSessionSecret est la valeur placeholder du secret de signature des
+// cookies de session. C'est une valeur PUBLIQUE (committée) : un déploiement qui
+// la conserve a une clé HMAC connue de tous. Le garde-fou Validate() refuse de
+// démarrer en production tant que LEVELUP_SESSION_SECRET n'est pas surchargé.
+const DefaultSessionSecret = "CHANGE_ME_IN_PRODUCTION" // pragma: allowlist secret
+
+// minSessionSecretLen est la longueur minimale (en octets) exigée pour le secret
+// de session en production. 32 octets = 256 bits, aligné sur la sortie HMAC-SHA256.
+const minSessionSecretLen = 32
+
 // AppConfig centralise la configuration de l'application.
 type AppConfig struct {
 	RepoRoot        string
@@ -53,6 +63,18 @@ type AppConfig struct {
 	OAuthRedirectURI string
 	// RegistrationMode : "invite" (défaut), "open" ou "closed".
 	RegistrationMode string
+	// Environment : "production" active le garde-fou de démarrage Validate() qui
+	// refuse de booter avec une configuration non sûre (secret par défaut, auth
+	// désactivée, CORS localhost). Lit LEVELUP_ENV. Vide / "development" (défaut) →
+	// pas de fail-fast, mais les avertissements restent émis au boot.
+	Environment string
+	// TrustProxyHeaders : n'active la confiance dans les en-têtes d'IP client
+	// (X-Real-IP / X-Forwarded-For / True-Client-IP, via chi RealIP) QUE si le
+	// serveur tourne derrière un reverse proxy de confiance qui assainit ces
+	// en-têtes. Lit LEVELUP_TRUST_PROXY_HEADERS (1/true/yes). Défaut : false —
+	// RemoteAddr reste l'adresse TCP réelle du peer (rate-limit, audit et le
+	// garde LoopbackOnly des endpoints /_diag ne sont alors pas falsifiables).
+	TrustProxyHeaders bool
 	// CurrentCSRSeasonID est l'identifiant de saison CSR courant (ex: "CsrSeason8").
 	// Lit LEVELUP_CSR_SEASON_ID ou le champ csr_season_id dans app_settings.json.
 	// Vide → le sync CSR est skippé silencieusement.
@@ -247,6 +269,8 @@ func Load() (*AppConfig, error) {
 		AuthMode:          getEnvOrDefault("LEVELUP_AUTH_MODE", "none"),
 		OAuthRedirectURI:  getEnvOrDefault("LEVELUP_OAUTH_REDIRECT_URI", ""),
 		RegistrationMode:  getEnvOrDefault("LEVELUP_REGISTRATION", "invite"),
+		Environment:       getEnvOrDefault("LEVELUP_ENV", ""),
+		TrustProxyHeaders: parseBoolEnv(getEnvOrDefault("LEVELUP_TRUST_PROXY_HEADERS", "")),
 	}
 	appSettingsPath := getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))
 	cfg.UserTimezone = loadUserTimezone(appSettingsPath)
@@ -256,6 +280,74 @@ func Load() (*AppConfig, error) {
 	cfg.MultiTitleAPIEnabled = loadMultiTitleAPIEnabled(appSettingsPath)
 	cfg.PrestigeEnabled = loadPrestigeEnabled(appSettingsPath)
 	return cfg, nil
+}
+
+// IsProduction indique si le serveur tourne en mode production (LEVELUP_ENV=production),
+// ce qui active le garde-fou fail-fast de Validate().
+func (c *AppConfig) IsProduction() bool {
+	return strings.EqualFold(strings.TrimSpace(c.Environment), "production")
+}
+
+// SecurityWarnings retourne la liste des réglages non sûrs pour un déploiement
+// multi-user exposé. Liste vide = configuration sûre. Sert de source unique à la
+// fois au garde-fou fail-fast en production (Validate) et au logging
+// d'avertissement au démarrage en dev.
+func (c *AppConfig) SecurityWarnings() []string {
+	var w []string
+	switch {
+	case c.SessionSecret == DefaultSessionSecret:
+		w = append(w, "LEVELUP_SESSION_SECRET non défini : la clé de signature des cookies est la valeur publique par défaut (cookies forgeables)")
+	case len(c.SessionSecret) < minSessionSecretLen:
+		w = append(w, fmt.Sprintf("LEVELUP_SESSION_SECRET trop court (%d octets, minimum %d)", len(c.SessionSecret), minSessionSecretLen))
+	}
+	if strings.EqualFold(c.AuthMode, "none") {
+		w = append(w, "LEVELUP_AUTH_MODE=none : le contrôle d'accès par joueur (ownership xuid) est entièrement désactivé")
+	}
+	if c.corsAllLocalhost() {
+		w = append(w, "LEVELUP_CORS_ORIGINS non défini : les origines CORS/CSRF autorisées sont limitées à localhost")
+	}
+	return w
+}
+
+// corsAllLocalhost retourne true si aucune origine CORS « réelle » (non-localhost)
+// n'est configurée — typiquement le défaut localhost:5173/5174.
+func (c *AppConfig) corsAllLocalhost() bool {
+	if len(c.CORSOrigins) == 0 {
+		return true
+	}
+	for _, o := range c.CORSOrigins {
+		if !strings.Contains(o, "localhost") && !strings.Contains(o, "127.0.0.1") {
+			return false
+		}
+	}
+	return true
+}
+
+// Validate applique le garde-fou de démarrage. En production (LEVELUP_ENV=production)
+// et hors DemoMode, refuse de démarrer si la configuration est non sûre. Hors
+// production, ne renvoie jamais d'erreur — les avertissements restent consultables
+// via SecurityWarnings() pour un log au boot. À appeler explicitement depuis
+// cmd/server ; Load() ne valide pas (les CLI et tests réutilisent Load avec des
+// défauts de dev).
+func (c *AppConfig) Validate() error {
+	if c.DemoMode || !c.IsProduction() {
+		return nil
+	}
+	if w := c.SecurityWarnings(); len(w) > 0 {
+		return fmt.Errorf("configuration non sûre pour la production (LEVELUP_ENV=production) :\n  - %s", strings.Join(w, "\n  - "))
+	}
+	return nil
+}
+
+// parseBoolEnv interprète une valeur d'environnement comme un booléen permissif
+// (1/true/yes/on, insensible à la casse). Vide ou non reconnu → false.
+func parseBoolEnv(s string) bool {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 // loadMediaCapturesBaseDir lit media_captures_base_dir depuis app_settings.json.

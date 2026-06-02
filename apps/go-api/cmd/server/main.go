@@ -260,6 +260,21 @@ func main() {
 		"addr", cfg.ServerAddr(),
 	)
 
+	// Garde-fou de démarrage (revue P0 2026-06-02) : en production
+	// (LEVELUP_ENV=production), refuser de booter avec une configuration non sûre
+	// — secret de session par défaut (cookies forgeables), AuthMode=none
+	// (ownership multi-user désactivé), ou origines CORS limitées à localhost.
+	// Hors production, on ne bloque pas mais on émet un avertissement visible.
+	if err := cfg.Validate(); err != nil {
+		slog.Error("démarrage refusé : configuration non sûre pour la production", "err", err,
+			"hint", "définir LEVELUP_SESSION_SECRET (>=32 octets), LEVELUP_AUTH_MODE=xbox|password et LEVELUP_CORS_ORIGINS, ou retirer LEVELUP_ENV=production")
+		os.Exit(1)
+	}
+	for _, warning := range cfg.SecurityWarnings() {
+		slog.Warn("configuration non sûre pour un déploiement multi-user exposé", "issue", warning,
+			"prod_guard", "LEVELUP_ENV=production refuserait de démarrer dans cet état")
+	}
+
 	// --- 3. Connexions DuckDB ---
 	pr := title.NewPathResolver(cfg.RepoRoot)
 	titleSlug := title.DefaultSlug
