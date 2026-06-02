@@ -17,10 +17,17 @@ import (
 type poolImpl struct {
 	resolver Resolver
 
+	// titleSlug : titre propriétaire du pool (Phase 1.6). Un pool est mono-titre
+	// (Discovery scanne les sources d'UN titre) ; titleSlug compose la clé des
+	// slots pour interdire toute collision/contamination cross-titre.
+	titleSlug string
+
 	// Slots : chaque slot = 1 token réactivé + rate limiter (HaloAPIClient).
-	slots     []*slot
-	slotsByGt map[string]int // gamertag → slot index (pour PolicyPinnedPlayer)
-	slotMu    sync.RWMutex
+	slots []*slot
+	// slotsByKey : clé composite (titleSlug, gamertag) → slot index (PolicyPinnedPlayer).
+	// Cf. gtKey. La clé inclut le titre pour le multi-titres (Phase 1.6).
+	slotsByKey map[string]int
+	slotMu     sync.RWMutex
 
 	// Round-robin pour PolicyAnyPublic — canal buffered.
 	anyPublicChan chan int // indice slot
@@ -57,6 +64,26 @@ type slot struct {
 	lastRefresh time.Time
 }
 
+// gtKey construit la clé composite (titleSlug, gamertag) du registre de slots
+// (Phase 1.6). Le séparateur NUL ne peut apparaître dans un gamertag Xbox ni
+// dans un slug, ce qui évite toute collision entre deux titres pour un même
+// gamertag. Un titleSlug vide (sources legacy/tests sans titre) dégrade
+// proprement vers une clé gamertag-only — comportement historique inchangé.
+func gtKey(titleSlug, gamertag string) string {
+	return titleSlug + "\x00" + gamertag
+}
+
+// poolTitleOf retourne le premier titleSlug non vide parmi les sources — le
+// titre propriétaire du pool (les sources d'un même scan partagent ce titre).
+func poolTitleOf(sources []CredentialSource) string {
+	for _, s := range sources {
+		if s.TitleSlug != "" {
+			return s.TitleSlug
+		}
+	}
+	return ""
+}
+
 // NewPool crée un Pool à partir d'une liste de CredentialSources découvertes.
 // opts.MaxSize = 0 → utiliser tous les sources. opts.PerTokenRPS = 0 → défaut 1 RPS.
 func NewPool(
@@ -86,9 +113,12 @@ func NewPool(
 		return nil, fmt.Errorf("pool: aucune source de credential pour créer un pool")
 	}
 
+	// Titre propriétaire du pool (Phase 1.6) — compose la clé des slots.
+	poolTitle := poolTitleOf(sources)
+
 	// Créer les slots.
 	slots := make([]*slot, poolSize)
-	slotsByGt := make(map[string]int)
+	slotsByKey := make(map[string]int)
 
 	for i := 0; i < poolSize; i++ {
 		src := sources[i]
@@ -113,7 +143,7 @@ func NewPool(
 			healthy:     true,
 			lastRefresh: time.Now(),
 		}
-		slotsByGt[src.Gamertag] = i
+		slotsByKey[gtKey(poolTitle, src.Gamertag)] = i
 	}
 
 	if poolSize == 0 {
@@ -125,8 +155,9 @@ func NewPool(
 
 	p := &poolImpl{
 		resolver:        resolver,
+		titleSlug:       poolTitle,
 		slots:           slots,
-		slotsByGt:       slotsByGt,
+		slotsByKey:      slotsByKey,
 		anyPublicChan:   make(chan int, poolSize),
 		maxSize:         opts.MaxSize,
 		perTokenRPS:     opts.PerTokenRPS,
@@ -210,7 +241,7 @@ func (p *poolImpl) acquireAnyPublic(ctx context.Context) (*Lease, error) {
 //nolint:unparam // ctx maintenu pour cohérence avec l'interface caller (Acquire(ctx))
 func (p *poolImpl) acquirePinnedPlayer(ctx context.Context, gamertag string) (*Lease, error) {
 	p.slotMu.RLock()
-	slotIdx, ok := p.slotsByGt[gamertag]
+	slotIdx, ok := p.slotsByKey[gtKey(p.titleSlug, gamertag)]
 	p.slotMu.RUnlock()
 
 	if !ok {
@@ -240,7 +271,7 @@ func (p *poolImpl) acquirePinnedPlayer(ctx context.Context, gamertag string) (*L
 func (p *poolImpl) HasPlayer(gamertag string) bool {
 	p.slotMu.RLock()
 	defer p.slotMu.RUnlock()
-	_, ok := p.slotsByGt[gamertag]
+	_, ok := p.slotsByKey[gtKey(p.titleSlug, gamertag)]
 	return ok
 }
 
@@ -260,6 +291,13 @@ func (p *poolImpl) AddOrUpdateSource(ctx context.Context, src CredentialSource) 
 		return fmt.Errorf("pool: AddOrUpdateSource gamertag vide")
 	}
 
+	// Phase 1.6 : un pool est mono-titre. Rejeter toute source d'un autre titre
+	// pour ne jamais servir le token d'un titre étranger via ce pool.
+	if src.TitleSlug != "" && p.titleSlug != "" && src.TitleSlug != p.titleSlug {
+		return fmt.Errorf("pool: AddOrUpdateSource titre %q ≠ titre du pool %q (cross-title interdit)",
+			src.TitleSlug, p.titleSlug)
+	}
+
 	resolved, err := p.resolver.Resolve(ctx, src)
 	if err != nil {
 		return fmt.Errorf("pool: AddOrUpdateSource resolve %s: %w", src.Gamertag, err)
@@ -268,8 +306,14 @@ func (p *poolImpl) AddOrUpdateSource(ctx context.Context, src CredentialSource) 
 	p.slotMu.Lock()
 	defer p.slotMu.Unlock()
 
+	// Pool initialement sans titre (ex. construit vide) : adopter celui de la source.
+	if p.titleSlug == "" && src.TitleSlug != "" {
+		p.titleSlug = src.TitleSlug
+	}
+	key := gtKey(p.titleSlug, src.Gamertag)
+
 	// Update existing slot in-place.
-	if idx, exists := p.slotsByGt[src.Gamertag]; exists {
+	if idx, exists := p.slotsByKey[key]; exists {
 		s := p.slots[idx]
 		s.mu.Lock()
 		s.resolved = resolved
@@ -297,7 +341,7 @@ func (p *poolImpl) AddOrUpdateSource(ctx context.Context, src CredentialSource) 
 	}
 	newIdx := len(p.slots)
 	p.slots = append(p.slots, newSlot)
-	p.slotsByGt[src.Gamertag] = newIdx
+	p.slotsByKey[key] = newIdx
 
 	// Best-effort push dans le canal round-robin (capacité fixe au boot).
 	// Si plein → slot reachable uniquement via PolicyPinnedPlayer.
@@ -316,7 +360,7 @@ func (p *poolImpl) AddOrUpdateSource(ctx context.Context, src CredentialSource) 
 // MarkUnhealthy invalide un token après 401/403 et déclenche un Resolver.Refresh asynchrone.
 func (p *poolImpl) MarkUnhealthy(gamertag string, reason error) {
 	p.slotMu.RLock()
-	slotIdx, ok := p.slotsByGt[gamertag]
+	slotIdx, ok := p.slotsByKey[gtKey(p.titleSlug, gamertag)]
 	p.slotMu.RUnlock()
 
 	if !ok {

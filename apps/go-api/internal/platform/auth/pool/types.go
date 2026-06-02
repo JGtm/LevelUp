@@ -20,6 +20,7 @@ import (
 // Obtenue par scan env + DuckDB, sans aucune validation réseau.
 type CredentialSource struct {
 	Gamertag     string // "Bob", "Alice", etc.
+	TitleSlug    string // "halo_infinite" — titre propriétaire du token (Phase 1.6 : clé pool (titleSlug,gamertag))
 	XUID         string // "1234567890", numérique sans "xuid()"
 	PlayerDBPath string // data/titles/halo_infinite/players/Bob/stats.duckdb (pour logs/debuggage)
 	MSALCache    string // JSON sérialisé du cache MSAL (sync_meta.msal_token_cache), "" si absent

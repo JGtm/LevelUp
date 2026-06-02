@@ -189,6 +189,7 @@ func (d *discoveryImpl) scanPlayer(ctx context.Context, player domain.PlayerSumm
 
 	return &CredentialSource{
 		Gamertag:     player.Gamertag,
+		TitleSlug:    d.titleSlug,
 		XUID:         player.XUID,
 		PlayerDBPath: playerDBPath,
 		MSALCache:    msal,
