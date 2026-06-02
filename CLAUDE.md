@@ -49,6 +49,7 @@ Ne pas sauter cette étape même pour des modifications « mineures ». L'absenc
 - `docs/adr/0016-shared-db-provider-b-swap.md` — SharedDBProvider RO↔RW swap (élimine conflit auto_sync "different configuration")
 - `docs/adr/0019-collect-persist-architecture.md` — refactor Collect→Persist anti-corruption ART DuckDB (INSERT-only sur shared, fix le bug `Failed to delete all rows from index`)
 - `docs/adr/0023-auth-tokens-single-source.md` — MultiUserTokenStore source unique tokens auth (élimine env.local + sync_meta DuckDB comme credential store ; résout bug Madina invalid_grant sous Air hot-reload)
+- `docs/adr/0025-title-agnostic-minimal-viable-window.md` — refactor title-agnostic, fenêtre minimale viable (Phases 0→3a) ; Phase 2 cible **canonical-typée** (FieldKey-map abandonné) ; OpenAPI absorbé dans Phase 3b (Huma). Master : `.ai/PLAN_TITLE_AGNOSTIC_REFACTORING.md` ; suivi traçable : `.ai/PLAN_TITLE_AGNOSTIC_TRACKER.md`
 
 **Règle auth tokens (ADR 0023)** :
 
