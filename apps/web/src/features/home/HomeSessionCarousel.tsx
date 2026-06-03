@@ -213,10 +213,10 @@ export function HomeSessionCarousel({
               dnfs={session.dnfs}
             />
 
-            {/* Décompte des outcomes avec nombre de parties */}
+            {/* Décompte des outcomes avec nombre de matchs */}
             <p className="mt-1.5 flex flex-wrap gap-x-2 text-xs">
               <span className="font-medium text-foreground">
-                {session.match_count} partie{session.match_count > 1 ? 's' : ''}
+                {session.match_count} match{session.match_count > 1 ? 's' : ''}
               </span>
               {session.wins > 0 && (
                 <span style={{ color: tokenCssVar('outcome-win') }}>

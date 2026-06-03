@@ -1,5 +1,5 @@
 /**
- * hsPkChart — Headshot kills / Perfect kills par partie.
+ * hsPkChart — Headshot kills / Perfect kills par match.
  *
  * Produit un ChartSeries<ChartPointStacked>[], consommé par BarGroupedChart.
  * Remplace l'ancien builder Plotly barmode='overlay'.

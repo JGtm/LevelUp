@@ -52,7 +52,7 @@ interface KpiGridProps {
 interface CellProps {
   label: string
   value: string
-  /** Sub-info affichée en dessous (ex: "1.20/min" sous frags par partie). */
+  /** Sub-info affichée en dessous (ex: "1.20/min" sous frags par match). */
   sub?: string
   /** Sub-info affichée à droite de la valeur sur la même ligne, plus petite
    *  et muted. Utile pour combiner deux infos liées dans une seule colonne

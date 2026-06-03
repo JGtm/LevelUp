@@ -289,7 +289,7 @@ const FR_TEXT: SquadText = {
     description: 'Profil de contribution normalisé pour chaque coéquipier sélectionné.',
   },
   charts: {
-    hsPkTitle: 'Tirs à la tête & Frags parfaits par partie',
+    hsPkTitle: 'Tirs à la tête & Frags parfaits par match',
     timelineTitle: 'Évolution des performances en escouade',
     timelinePerfName: 'Perf. moyenne',
     timelineWinRateName: 'Taux de victoire',
@@ -460,7 +460,7 @@ const FR_TEXT: SquadText = {
     matchesSuffix: 'matchs',
   },
   units: {
-    perGame: '/partie',
+    perGame: '/match',
   },
   medals: {
     title: 'Médailles — Résumé de l\'escouade',
