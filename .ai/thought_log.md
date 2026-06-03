@@ -1,3 +1,15 @@
+## [2026-06-03] Runbook go-live : refactor phases deploy (config-only) vs données (stop/start DuckDB) — Complété
+
+**Statut** : Complété.
+
+**Décision technique** : Phase 1 restreinte à la config (.env.local uniquement, sans DBs ni médias). Ajout Phase 5 "Population des données" avec règle DuckDB dure (stop → upload → start, jamais écraser un .duckdb sur un conteneur running). Phase "Réorg dossiers" renommée Phase 6. Insight documenté : l'app Go boote à vide (auto-provisionne metadata, /health → 200 même sans données) → le deploy réussit sans uploader les DBs au préalable.
+
+**Résultats** : `go test ./...` + `go vet` verts. Runbook cohérent avec le comportement réel de l'app.
+
+**Prochaine étape** : exécuter la séquence de cutover (Phase 2 → push main → CI → VPS deploy → Phase 5 upload données).
+
+---
+
 ## [2026-06-03] Préparation go-live Go : garde-fou prod + deploy.sh Go + analyse backlog/médias — En cours
 
 **Statut** : En cours (config patchée sur la branche ; cutover + uploads VPS + déploiement à exécuter par l'utilisateur).

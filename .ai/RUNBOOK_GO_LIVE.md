@@ -30,29 +30,23 @@ deploy.yml job 2 (deploy-demo) → levelup seed-demo → docker compose up -d le
       jamais été écrites que par le path batch Go. NB : ce binaire **n'est pas dans
       l'image Docker** → il se lance en local, d'où le rebuild avant upload.
 
-## Phase 1 — Fichiers à déposer manuellement sur le VPS (`/opt/levelup`)
+## Phase 1 — Config VPS AVANT le deploy (`/opt/levelup`)
 
-Tous préservés par `git clean --exclude=...` dans `deploy.sh` → survivent aux deploys.
+Seule la **config prod** est requise avant le boot — les **données viennent après** (Phase 5,
+via stop/start). `.env.local` est préservé par `git clean --exclude=.env.local`.
 
-- [ ] `.env.local` — bloc **PRODUCTION** (cf. `.env.local.example`) :
+- [ ] `.env.local` — ajouter le bloc **PRODUCTION** (cf. `.env.local.example`) :
       - `LEVELUP_ENV=production`
       - `LEVELUP_AUTH_MODE=xbox`
       - `LEVELUP_SESSION_SECRET=` ← `openssl rand -base64 48`
       - `LEVELUP_CORS_ORIGINS=https://lvelup.info` (+ www / autres origines réelles)
-- [ ] `app_settings.json` — **remplacer** la valeur Windows de `media_captures_base_dir`
-      par **`/app/data/media`** (chemin in-conteneur).
-- [ ] `db_profiles.json` — profils joueurs (avec `xuid`).
-- [ ] Les **DBs DuckDB** selon ton layout (warehouse partagé + player DBs title-scopées
-      + `shared_social.duckdb`), sous `/opt/levelup/data/...`.
-- [ ] Les **fichiers médias** sous `/opt/levelup/data/media/{slug}/{fichier}`
-      (= `/app/data/media/{slug}/...` dans le conteneur, cohérent avec la DB relative).
 
 ## Phase 2 — Cutover (la branche Go devient `main`)
 
 > ⚠️ **Topologie** : le dossier de travail Go est un **worktree lié** au repo Python
 > `C:/Users/Guillaume/Downloads/Scripts/LevelUp` (`.git` = fichier → `LevelUp/.git`). Le
 > store d'objets vit dans le dossier Python. **Ne PAS déplacer/archiver `LevelUp/` avant la
-> Phase 5.** La branche est entièrement pushée sur origin. `.env.local`, `app_settings.json`
+> Phase 6.** La branche est entièrement pushée sur origin. `.env.local`, `app_settings.json`
 > et les DBs/médias sont **locaux uniquement** → backup avant toute manip.
 
 - [ ] Commit + push de tout le travail en cours (dont les patchs go-live de cette session).
@@ -74,16 +68,50 @@ Tous préservés par `git clean --exclude=...` dans `deploy.sh` → survivent au
 healthcheck `GET :8000/health` (**bloquant**) → check demo `:8001` (warn-only).
 Puis job `deploy-demo` : regen données démo anonymisées + restart `levelup-demo`.
 
-## Phase 4 — Vérifications post-deploy
+**L'app boote À VIDE** : sans données, le serveur auto-provisionne `metadata`, crée le
+warehouse dir et démarre en mode `/setup` ; `/health` répond **200** → le deploy réussit même
+sans DBs ([main.go:339-346](../apps/go-api/cmd/server/main.go#L339-L346)). Les données arrivent en Phase 5.
+
+## Phase 4 — Vérifications post-deploy (app à vide)
 
 - [ ] `docker compose ps` : `levelup` healthy.
 - [ ] `docker compose logs --tail=50 levelup` → **PAS** de `configuration non sûre pour
       un déploiement multi-user exposé` (= garde-fou armé) ni de `FATAL ... index`.
-- [ ] `curl https://lvelup.info/health` → 200 (nb matchs + version DuckDB).
-- [ ] Un média s'affiche en galerie (résolution `/app/data/media` OK).
+- [ ] `curl https://lvelup.info/health` → 200 (version DuckDB ; 0 match attendu tant que pas de données).
 - [ ] `demo.lvelup.info` répond.
-- [ ] Une requête mutante depuis le navigateur (login Xbox, favori match) passe
-      (CORS/CSRF OK pour l'origine prod).
+- [ ] Une requête mutante depuis le navigateur (login Xbox) passe (CORS/CSRF OK pour l'origine prod).
+
+## Phase 5 — Population des données (APRÈS deploy confirmé, via stop/start)
+
+> Règle dure : ne jamais déposer/écraser un `.duckdb` dans un conteneur **qui tourne**
+> (DuckDB tient ses handles + locks → corruption / `different configuration`). Toujours
+> **stop → upload → start**. Pré-requis : Phase 0 faite sur les DBs (chemins média relatifs ;
+> ART rebuild local si legacy).
+
+```bash
+docker compose stop levelup        # libère les handles DuckDB
+#   ... upload des fichiers ci-dessous dans /opt/levelup/data/ ...
+docker compose start levelup       # rouvre proprement TES bases
+```
+
+- [ ] `db_profiles.json` — profils joueurs (avec `xuid`).
+- [ ] `app_settings.json` — `media_captures_base_dir` = **`/app/data/media`** (remplace la valeur Windows).
+- [ ] Les **DBs DuckDB** — layout title-scopé, **identique à ton `data/` local**. Copier
+      `data/global/` + `data/titles/halo_infinite/` vers `/opt/levelup/data/` en préservant
+      l'arborescence (exclure `data/demo/`, régénéré par `deploy-demo`) :
+      ```
+      data/
+      ├── global/xbox_aliases.duckdb
+      └── titles/halo_infinite/
+          ├── warehouse/{metadata,shared_matches_v2,shared_pve,shared_social}.duckdb
+          └── players/{Gamertag}/stats.duckdb   (1 par joueur)
+      ```
+- [ ] Les **médias** : copier ta base locale de captures `{Gamertag}/*` vers
+      `/opt/levelup/data/media/{Gamertag}/` (= base `/app/data/media`, cohérent avec les
+      chemins relatifs `{slug}/{fichier}` en DB). Dossiers runtime (`logs`, `cache`,
+      `sessions`, `wal`) créés par le conteneur — ne pas uploader.
+- [ ] Vérifs données (après `start`) : `curl https://lvelup.info/health` → matchs > 0 ;
+      un joueur et un média s'affichent.
 
 ## Rollback
 
@@ -95,7 +123,7 @@ Puis job `deploy-demo` : regen données démo anonymisées + restart `levelup-de
 - **Retour Python** : redéployer l'ancien `main` Python — rollback structurel lourd,
   à éviter.
 
-## Phase 5 — Réorganisation des dossiers (APRÈS deploy confirmé)
+## Phase 6 — Réorganisation des dossiers (APRÈS la population des données)
 
 But : un dossier standalone `LevelUp` = projet Go + data, Python archivé. Le dossier courant
 étant un **worktree** de `LevelUp/.git`, on ne peut ni le renommer en place ni archiver le
