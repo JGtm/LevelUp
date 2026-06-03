@@ -19,8 +19,7 @@ import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
 import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
 import { SynthesisHeatmapChart } from './SynthesisHeatmapChart'
 import { SynthesisBipolaireChart } from './SynthesisBipolaireChart'
-import { CombatYieldBar } from '@/components/ui/combat-yield-bar'
-import { formatOffensiveConversion, formatDefensiveResistance } from '@/lib/formatters'
+import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
 import { Badge } from '@/components/ui/badge'
 import { PeriodePill, SaisonPill, DEFAULT_PERIOD } from '@/components/shell/FilterOmnibar'
 import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
@@ -115,31 +114,14 @@ function CombatProfileInlineRow({ combatProfile }: { combatProfile: CombatProfil
           )}
         </>
       )}
-      <div className="flex flex-col items-center gap-0.5 ml-auto">
-        <span className="text-xs text-muted-foreground">Rendement / Résistance</span>
-        <div className="flex items-center gap-2">
-          {combatProfile.dmg_per_kill != null && (
-            <span className="text-2xs text-muted-foreground tabular-nums">
-              {Math.round(combatProfile.dmg_per_kill)} dégâts/frag
-            </span>
-          )}
-          <span className="text-sm font-semibold tabular-nums" style={{ color: tokenCssVar('divergent-pos') }}>
-            {formatOffensiveConversion(combatProfile.avg_oc)}
-          </span>
-          <CombatYieldBar
-            offensiveConversion={combatProfile.avg_oc}
-            defensiveResistance={combatProfile.avg_dr}
-          />
-          <span className="text-sm font-semibold tabular-nums" style={{ color: tokenCssVar('divergent-neutral') }}>
-            {formatDefensiveResistance(combatProfile.avg_dr)}
-          </span>
-          {combatProfile.dmg_per_death != null && (
-            <span className="text-2xs text-muted-foreground tabular-nums">
-              {Math.round(combatProfile.dmg_per_death)} dégâts/mort
-            </span>
-          )}
-        </div>
-      </div>
+      <CombatYieldDisplay
+        className="ml-auto w-full sm:max-w-[560px]"
+        label="Rendement / Résistance"
+        offensiveConversion={combatProfile.avg_oc}
+        defensiveResistance={combatProfile.avg_dr}
+        dmgPerKill={combatProfile.dmg_per_kill}
+        dmgPerDeath={combatProfile.dmg_per_death}
+      />
     </div>
   )
 }

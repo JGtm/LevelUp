@@ -53,6 +53,11 @@ type SessionCompareEntry struct {
 	// Ref : PLAN_COMBAT_PROFILE_WIRING.md Phase 3.
 	AvgOC *float64 `json:"avg_oc,omitempty"`
 	AvgDR *float64 `json:"avg_dr,omitempty"`
+	// DmgPerKill / DmgPerDeath : dégâts moyens par frag / par mort sur la session
+	// (Σ damage_dealt / Σ kills, Σ damage_taken / Σ deaths). Nil si dénominateur
+	// nul. Affichés à côté du rendement/résistance (parité bande Synthesis).
+	DmgPerKill  *float64 `json:"dmg_per_kill,omitempty"`
+	DmgPerDeath *float64 `json:"dmg_per_death,omitempty"`
 	// AvgResidualBrut : résidu d'engagement moyen (player - attendu) — Phase 4.
 	AvgResidualBrut *float64 `json:"avg_residual_brut,omitempty"`
 	// MatchSeries : données par match pour les charts de progression (K/D, cumul, précision).

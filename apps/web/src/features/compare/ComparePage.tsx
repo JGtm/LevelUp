@@ -40,8 +40,8 @@ function formatMetricValue(
   if (metric === 'win_rate' || metric === 'accuracy') {
     return `${(value * 100).toLocaleString(text.intlLocale, { maximumFractionDigits: 1 })} %`
   }
-  // Rendement (OC) / Résistance (DR) : même présentation que la KPI bar home
-  // (OffDefComposite). OC = valeur×100 ; DR = (valeur−1)×100 (baseline 1.0). Entier.
+  // Rendement (OC) / Résistance (DR) : même convention que CombatYieldDisplay.
+  // OC = valeur×100 ; DR = (valeur−1)×100 (baseline 1.0). Entier.
   if (metric === 'rendement') {
     return `${(value * 100).toLocaleString(text.intlLocale, { maximumFractionDigits: 0 })} %`
   }

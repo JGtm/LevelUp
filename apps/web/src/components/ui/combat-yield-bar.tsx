@@ -6,10 +6,10 @@
  *  - Droite (bleu)  : defensive_resistance  — normalisé DEPUIS 1.0 (baseline)
  *                     sur la plage (p80 - 1.0) = 0.59. DR=1.0 → 0px, DR=1.59 → pleine barre.
  *
- * Largeur max par côté : 120px. Clip à 1.5× la plage de référence.
- * Tick p80 : trait fin à 80px du centre sur chaque côté (= 1/CLIP_FACTOR × 120px).
- * Badge débordement : valeur réelle affichée hors-barre quand clippée ou ∞.
- * Tooltip : dégâts bruts (dmg/kill et dmg/death), jamais le ratio interne.
+ * Largeur adaptative : `widthPx` (total) pilote la largeur ; par défaut 304px.
+ * La géométrie (segments + badges) se recalcule linéairement sur la demi-largeur.
+ * Clip à 1.5× la plage de référence. Badge débordement : valeur réelle affichée
+ * hors-barre quand clippée ou ∞. Tooltip : dégâts bruts (jamais le ratio interne).
  */
 import { useState } from 'react'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -18,10 +18,11 @@ import { tokenCssVar } from '@/lib/accessibility'
 const OC_P80 = 0.83
 const DR_P80 = 1.59
 const DR_BASELINE = 1.0
-const DR_RANGE = DR_P80 - DR_BASELINE  // 0.59 — plage utile au-dessus du baseline
+const DR_RANGE = DR_P80 - DR_BASELINE // 0.59 — plage utile au-dessus du baseline
 const CLIP_FACTOR = 1.5
-const BAR_MAX_PX = 150
-const P80_TICK_PX = Math.round(BAR_MAX_PX / CLIP_FACTOR)  // 80px
+const DEFAULT_PER_SIDE_PX = 150
+/** Largeur structurelle entre les deux demi-barres (séparateur + 2 gaps). */
+const CENTER_GAP_PX = 5
 
 export interface CombatYieldBarProps {
   /** offensive_conversion = 225 × (kills + assists/3) / damage_dealt */
@@ -32,20 +33,22 @@ export interface CombatYieldBarProps {
   damagePerKill?: number | null
   /** Dégâts moyens par mort (pour tooltip) */
   damagePerDeath?: number | null
+  /** Largeur totale en px (défaut 304). La demi-barre = (widthPx − gap) / 2. */
+  widthPx?: number
 }
 
-function ocBarWidth(value: number | null | undefined): number {
+function ocBarWidth(value: number | null | undefined, perSide: number): number {
   if (value == null || value <= 0) return 0
   const clipped = Math.min(value, OC_P80 * CLIP_FACTOR)
-  return Math.round((clipped / OC_P80 / CLIP_FACTOR) * BAR_MAX_PX)
+  return Math.round((clipped / OC_P80 / CLIP_FACTOR) * perSide)
 }
 
-function drBarWidth(value: number | null | undefined): number {
+function drBarWidth(value: number | null | undefined, perSide: number): number {
   if (value == null) return 0
-  if (value < 0) return BAR_MAX_PX  // sentinel ∞ (deaths == 0)
+  if (value < 0) return perSide // sentinel ∞ (deaths == 0)
   if (value <= DR_BASELINE) return 0
   const excess = Math.min(value - DR_BASELINE, DR_RANGE * CLIP_FACTOR)
-  return Math.round((excess / DR_RANGE / CLIP_FACTOR) * BAR_MAX_PX)
+  return Math.round((excess / DR_RANGE / CLIP_FACTOR) * perSide)
 }
 
 interface TooltipProps {
@@ -85,11 +88,16 @@ export function CombatYieldBar({
   defensiveResistance,
   damagePerKill,
   damagePerDeath,
+  widthPx,
 }: CombatYieldBarProps) {
   const [hovered, setHovered] = useState(false)
 
-  const ocWidth = ocBarWidth(offensiveConversion)
-  const drWidth = drBarWidth(defensiveResistance)
+  const perSide = widthPx != null
+    ? Math.max(1, Math.floor((widthPx - CENTER_GAP_PX) / 2))
+    : DEFAULT_PER_SIDE_PX
+
+  const ocWidth = ocBarWidth(offensiveConversion, perSide)
+  const drWidth = drBarWidth(defensiveResistance, perSide)
 
   const hasData =
     (offensiveConversion != null && offensiveConversion > 0) ||
@@ -97,22 +105,13 @@ export function CombatYieldBar({
 
   const ocClipped = offensiveConversion != null && offensiveConversion > OC_P80 * CLIP_FACTOR
   const drIsInfinite = defensiveResistance != null && defensiveResistance < 0
-  const drClipped = !drIsInfinite && drWidth === BAR_MAX_PX
+  const drClipped = !drIsInfinite && drWidth === perSide
   const showDrBadge = drIsInfinite || drClipped
-
-  const tickStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: 0,
-    width: 1,
-    height: '100%',
-    backgroundColor: 'currentColor',
-    opacity: 0.25,
-  }
 
   return (
     <div
       className="relative flex items-center justify-center gap-0.5"
-      style={{ width: BAR_MAX_PX * 2 + 4, height: 10 }}
+      style={{ width: perSide * 2 + CENTER_GAP_PX, height: 10 }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -121,7 +120,7 @@ export function CombatYieldBar({
         <div
           className="absolute text-[9px] font-semibold leading-none"
           style={{
-            right: BAR_MAX_PX + 6,
+            right: perSide + 6,
             color: tokenCssVar('divergent-pos'),
             whiteSpace: 'nowrap',
           }}
@@ -131,9 +130,7 @@ export function CombatYieldBar({
       )}
 
       {/* Barre offensive (gauche, pousse vers la droite) */}
-      <div className="flex justify-end" style={{ width: BAR_MAX_PX, position: 'relative' }}>
-        {/* Tick p80 */}
-        <div style={{ ...tickStyle, right: P80_TICK_PX - 1 }} />
+      <div className="flex justify-end" style={{ width: perSide, position: 'relative' }}>
         {hasData && (
           <div
             className="h-2 rounded-l-full transition-all duration-300"
@@ -146,13 +143,11 @@ export function CombatYieldBar({
         )}
       </div>
 
-      {/* Séparateur central */}
+      {/* Séparateur central (point zéro entre les deux barres divergentes) */}
       <div className="w-px h-3 bg-border flex-shrink-0" />
 
       {/* Barre défensive (droite) */}
-      <div className="flex justify-start" style={{ width: BAR_MAX_PX, position: 'relative' }}>
-        {/* Tick p80 */}
-        <div style={{ ...tickStyle, left: P80_TICK_PX - 1 }} />
+      <div className="flex justify-start" style={{ width: perSide, position: 'relative' }}>
         {hasData && (
           <div
             className="h-2 rounded-r-full transition-all duration-300"
@@ -170,7 +165,7 @@ export function CombatYieldBar({
         <div
           className="absolute text-[9px] font-semibold leading-none"
           style={{
-            left: BAR_MAX_PX + 6,
+            left: perSide + 6,
             color: tokenCssVar('divergent-neutral'),
             whiteSpace: 'nowrap',
           }}

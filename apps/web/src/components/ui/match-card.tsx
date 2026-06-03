@@ -11,7 +11,7 @@ import type { RecentMatchItem } from '@/lib/api/types'
 import { getPerfColor } from '@/lib/perf-color'
 import { getMatchCardOutcomeStyle, getMatchNarrativeBadgeMeta } from './match-card-presentation'
 import { CitationProgressRing } from './citation-progress-ring'
-import { CombatYieldBar } from './combat-yield-bar'
+import { CombatYieldDisplay } from './combat-yield-display'
 import { skillDeltaScale, kdScale, mmrDeltaScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
@@ -114,6 +114,9 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
   const kdaTotal = kills + assists + deaths
 
   const hasDamageBar = m.offensive_conversion != null || m.defensive_resistance != null
+  // Dégâts par frag / par mort dérivés des totaux du match (parité bande Synthesis).
+  const dmgPerKill = m.damage_dealt != null && kills > 0 ? m.damage_dealt / kills : null
+  const dmgPerDeath = m.damage_taken != null && deaths > 0 ? m.damage_taken / deaths : null
 
   const hasAccuracyLine = m.accuracy != null || m.avg_life_secs != null
 
@@ -379,31 +382,15 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                     </div>
                   </div>
                 )}
-              <div data-testid="match-card-damage-bar" className="px-3 pt-2.5 pb-2 space-y-2">
-                <div className="flex justify-center">
-                  <CombatYieldBar
-                    offensiveConversion={m.offensive_conversion}
-                    defensiveResistance={m.defensive_resistance}
-                  />
-                </div>
-                <div className="flex justify-center gap-5">
-                  {m.offensive_conversion != null && (
-                    <div className="flex flex-col items-center gap-0.5">
-                      <span className="text-sm font-bold text-foreground leading-none">
-                        {(m.offensive_conversion * 100).toFixed(0)}%
-                      </span>
-                      <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('divergent-pos') }}>{t('common.match_card.offensive_yield')}</span>
-                    </div>
-                  )}
-                  {m.defensive_resistance != null && (
-                    <div className="flex flex-col items-center gap-0.5">
-                      <span className="text-sm font-bold text-foreground leading-none">
-                        {m.defensive_resistance < 0 ? '∞' : `${((m.defensive_resistance - 1) * 100).toFixed(0)}%`}
-                      </span>
-                      <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('divergent-neutral') }}>{t('common.match_card.defensive_resistance')}</span>
-                    </div>
-                  )}
-                </div>
+              <div data-testid="match-card-damage-bar" className="px-3 pt-2.5 pb-2">
+                <CombatYieldDisplay
+                  className="w-full"
+                  offensiveConversion={m.offensive_conversion}
+                  defensiveResistance={m.defensive_resistance}
+                  dmgPerKill={dmgPerKill}
+                  dmgPerDeath={dmgPerDeath}
+                  align="center"
+                />
               </div>
             </>)}
 

@@ -1,3 +1,26 @@
+## [2026-06-03] Bande Rendement/Résistance unifiée (CombatYieldDisplay) sur toutes les surfaces — Complété
+
+**Statut** : Complété. Backend `go build`/`go vet`/`go test` (analysis, domain, service, handlers) verts ; front `tsc` + lint (0 erreur) + vitest 415/415 (zones home/synthesis/session-detail/session-compare/squad/ui).
+
+**Contexte** : la bande Rendement/Résistance de la Synthesis (barre composite + 2 % + dégâts/frag·mort) était la référence souhaitée par l'utilisateur. Deux composants concurrents coexistaient : `CombatYieldBar` (diverging p80-normalisé, fixe 304px, avec ticks) et `OffDefComposite` (barre proportionnelle OC/DR — sémantiquement douteuse). Objectif : généraliser le format Synthesis partout et supprimer `OffDefComposite`.
+
+**Décisions techniques** :
+- **Ticks p80 retirés** de `CombatYieldBar` (les « mini barres verticales grisâtres » signalées) ; séparateur central conservé (point zéro des barres divergentes). Ajout d'une prop `widthPx` → géométrie linéaire recalculée sur la demi-largeur (responsive).
+- **Nouveau composant partagé `CombatYieldDisplay`** : mesure le bloc parent via `ResizeObserver` sur 3 paliers — ruban horizontal (≥420px) / empilé (barre + valeurs) / valeurs seules (barre masquée si < 100px). Les 4 valeurs chiffrées restent toujours affichées (dégradation propre). Guard `typeof ResizeObserver === 'undefined'` pour jsdom.
+- **Backend (dégâts manquants sur 2 surfaces)** : ajout `DmgPerKill`/`DmgPerDeath` (= Σ dmg_dealt/Σ kills, Σ dmg_taken/Σ deaths, même pattern que Synthesis) à `HeroKPIs` (calcul dans `home_canonical_kpis.go`) et `SessionCompareEntry` (calcul dans `session_compare_service.go`). KpiGrid (solo/squad) avait déjà `combat_profile` ; tuile match dérive les dégâts côté front depuis `damage_dealt`/`damage_taken`.
+- **Branchements** : Synthesis, Home (`HomeHeroKPIGrid`), KpiGrid, `SessionSummaryCard`, tuile match (`match-card`) → tous via `CombatYieldDisplay`. `OffDefComposite` + son test supprimés.
+
+**Résultats** : suppression des ticks effective sur tous les consommateurs de `CombatYieldBar` (session-compare, squad v2 inclus, par héritage). Format Synthesis homogène partout. Note : le choix de plan d'origine « Home hors scope » (PLAN_COMBAT_PROFILE_WIRING §6) a été levé sur demande utilisateur.
+
+**Correctifs itération 2 (même jour)** :
+- **% aux extrémités** : le mode empilé met désormais les 2 % de part et d'autre de la barre (`justify-between`, barre au centre) et les dégâts/frag·mort en dessous aux extrémités. Couvre tuile match, Hero KPI, KpiGrid (solo/squad) et Session (toutes en mode empilé).
+- **Dégâts manquants timeseries/squad/session-briefing** : `ComputeKPIStats` (analysis/kpi_stats.go) construisait `CombatProfile` via `ClassifyCombatProfile` sans poser `DmgPerKill`/`DmgPerDeath` (posés uniquement dans le builder Synthesis). Ajout de l'accumulation Σ dmg + calcul. `ComputeKPIStats` est le point de passage commun (timeseries, squad v1 teammates, squad v2, match-history) → corrige toutes ces surfaces d'un coup.
+- **Barre disparue en Synthesis** : `CombatYieldDisplay` en `ml-auto` (shrink-to-fit) se mesurait lui-même trop petit → jamais en mode horizontal → barre masquée. Fix : largeur explicite `w-full sm:max-w-[560px]` → mesure ~560px → ruban horizontal complet avec barre à pleine taille.
+
+**Prochaine étape** : ajustements visuels fins (seuils de bascule). **Rappel utilisateur** : il faut **rebuild le binaire Go + recharger le bundle front** pour voir les changements (les surfaces « ancienne formule » constatées venaient d'un back/front non reconstruit). Dette i18n mineure : libellés FR hardcodés « dégâts/frag/mort » + label Synthesis (warnings lint, cohérents avec l'existant FR-only).
+
+---
+
 ## [2026-06-03] Mises à jour dépendances breaking (eslint 10, intl-messageformat 11, @types/node 25) — Complété
 
 **Statut** : Complété. 0 erreur ESLint, tsc OK, vitest 1709/1709 inchangé.
