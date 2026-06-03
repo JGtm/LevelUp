@@ -42,6 +42,11 @@ export interface DonutChartProps {
   /** Si true, affiche les pourcentages dans les labels (default true). */
   showPercent?: boolean
   /**
+   * Si false, masque la légende sous le donut (default true). Les étiquettes de
+   * tranche (nom + %) restent affichées via les connecteurs.
+   */
+  showLegend?: boolean
+  /**
    * Mode compact (colonne divisée / drawer) : pourcentages DANS le donut, aucune étiquette
    * externe ni connecteur (les connecteurs débordent et se font clipper en colonne étroite).
    */
@@ -63,14 +68,15 @@ export function DonutChart({
   innerRadius,
   outerRadius,
   showPercent,
+  showLegend,
   compact,
   centerValue,
   centerLabel,
 }: DonutChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointDonut>[]) =>
-      buildDonutOption(s, { sliceColors, innerRadius, outerRadius, showPercent, compact, centerValue, centerLabel }),
-    [sliceColors, innerRadius, outerRadius, showPercent, compact, centerValue, centerLabel],
+      buildDonutOption(s, { sliceColors, innerRadius, outerRadius, showPercent, showLegend, compact, centerValue, centerLabel }),
+    [sliceColors, innerRadius, outerRadius, showPercent, showLegend, compact, centerValue, centerLabel],
   )
 
   return (
@@ -91,6 +97,7 @@ interface BuildOpts {
   innerRadius?: string
   outerRadius?: string
   showPercent?: boolean
+  showLegend?: boolean
   compact?: boolean
   centerValue?: string
   centerLabel?: string
@@ -109,6 +116,7 @@ export function buildDonutOption(
     innerRadius = '50%',
     outerRadius = '75%',
     showPercent = true,
+    showLegend = true,
     compact = false,
     centerValue,
     centerLabel,
@@ -185,10 +193,10 @@ export function buildDonutOption(
       trigger: 'item',
       formatter: '{b} : <b>{c}</b> ({d}%)',
     },
-    // Légende désactivée quand un texte central est affiché : les labels sur les
-    // tranches (pourcentages) suffisent, et désactiver libère le canvas pour que
-    // `graphic top:'center'` tombe exactement au centre du trou.
-    legend: hasCenterText ? { show: false } : { ...getLegendBase(tc), data: legendNames },
+    // Légende désactivée quand un texte central est affiché (les labels de tranche
+    // suffisent et libèrent le canvas pour le `graphic` centré) ou quand
+    // showLegend=false (demande explicite de l'appelant).
+    legend: hasCenterText || !showLegend ? { show: false } : { ...getLegendBase(tc), data: legendNames },
     series: [
       {
         type: 'pie',

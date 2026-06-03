@@ -180,6 +180,10 @@ func averageAccuracy(matches []legacymatch.StatsMatchRow) *float64 {
 	if count == 0 {
 		return nil
 	}
-	v := math.Round(sum/float64(count)*1000) / 1000
+	// StatsMatchRow.Accuracy provient brut de match_participants.accuracy, stockée en
+	// pourcentage 0..100 (cf. player_matches_repo.go / Q23StatsMatchesShared). Le contrat
+	// AvgAccuracy est 0..1 (ADR 0006) — le frontend multiplie par 100 à l'affichage. On
+	// normalise donc ici, sinon double × 100 → précision affichée en milliers.
+	v := math.Round(sum/float64(count)/100.0*1000) / 1000
 	return &v
 }

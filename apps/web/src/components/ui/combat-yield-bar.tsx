@@ -20,7 +20,7 @@ const DR_P80 = 1.59
 const DR_BASELINE = 1.0
 const DR_RANGE = DR_P80 - DR_BASELINE  // 0.59 — plage utile au-dessus du baseline
 const CLIP_FACTOR = 1.5
-const BAR_MAX_PX = 120
+const BAR_MAX_PX = 150
 const P80_TICK_PX = Math.round(BAR_MAX_PX / CLIP_FACTOR)  // 80px
 
 export interface CombatYieldBarProps {
@@ -59,14 +59,14 @@ function Tooltip({ offensiveConversion, defensiveResistance, damagePerKill, dama
   return (
     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-48 rounded-md bg-popover border border-border px-3 py-2 text-xs shadow-lg pointer-events-none">
       <div className="flex justify-between gap-2 mb-1">
-        <span className="font-semibold" style={{ color: tokenCssVar('divergent-pos') }}>Offensif</span>
+        <span className="font-semibold" style={{ color: tokenCssVar('divergent-pos') }}>Rendement</span>
         <span className="text-muted-foreground">{offensiveConversion != null ? `${Math.round(offensiveConversion * 100)}%` : '—'}</span>
       </div>
       {damagePerKill != null && (
         <div className="text-muted-foreground mb-1">{Math.round(damagePerKill)} dmg/kill</div>
       )}
       <div className="flex justify-between gap-2 mb-1">
-        <span className="font-semibold" style={{ color: tokenCssVar('divergent-neutral') }}>Défensif</span>
+        <span className="font-semibold" style={{ color: tokenCssVar('divergent-neutral') }}>Résistance</span>
         <span className="text-muted-foreground">
           {defensiveResistance == null ? '—' : defensiveResistance < 0 ? '∞' : `${Math.round((defensiveResistance - 1) * 100)}%`}
         </span>

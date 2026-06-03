@@ -314,8 +314,11 @@ func TestHomeService_GetHomePage_IncludesSpartanIdentity(t *testing.T) {
 		},
 	}
 	// Injecte un SemanticAdapter avec un catalog minimal (rang 25 = Caporal-chef en FR).
+	// Rang 26 ajouté pour que 25 ne soit pas le dernier rang du catalog (sinon
+	// buildHomeCareerRank le déduirait comme rang max → ProgressPct=100).
 	ranks := mappings.NewRankCatalog("halo_infinite", []mappings.RankEntry{
 		{ID: 25, Title: map[string]string{"en": "Lance Corporal", "fr": "Caporal-chef"}},
+		{ID: 26, Title: map[string]string{"en": "Corporal", "fr": "Caporal"}},
 	})
 	fields, ferr := mappings.LoadFieldsFromBytes("test.toml", []byte(`
 [meta]

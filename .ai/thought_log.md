@@ -1,3 +1,402 @@
+## [2026-06-02] Fix filtre « Auteur » page Médias (« Aucun auteur disponible ») — Complété
+
+**Statut** : Complété (code + tests). Branche `feat/skill-progression-magnitude-scale`, non commité.
+
+**Contexte** : retour user — connecté en JGtm, le dropdown Auteur de la page Médias affiche « Aucun auteur
+disponible » et les médias de Madina n'apparaissent pas, alors que la galerie affiche bien des médias. Hypothèse
+user « rebuild ? » écartée : `media.go` n'est pas modifié sur la branche, le binaire correspond au code.
+
+**Cause racine** : deux sources de données désynchronisées. La galerie (`POST /pages/media`) lit la DB
+`shared_social.media_files` (colonne `player_slug`, cross-joueurs). Le dropdown auteurs
+(`GET /media/authors`, `handlers/media.go:GetMediaAuthors`) **scannait le filesystem** par gamertag
+(`countMediaInDir(resolveCapturesDir(...))`) — non récursif, dépendant du layout disque local. En multi-user les
+captures de Madina existent en DB mais pas sur le disque de JGtm → 0 auteur, et même JGtm pouvait retomber à 0.
+
+**Décision technique** : aligner les auteurs sur la DB (même source que la galerie).
+- Repo `MediaRepo.ListMediaAuthors` (`platform/duckdb/media_repo_filters.go`) : `SELECT player_slug, COUNT(*)
+  FROM media_files WHERE player_slug IS NOT NULL GROUP BY player_slug ORDER BY n DESC, slug ASC` via
+  `socialDB()`. Pas de filtre `status` (la galerie n'en met pas non plus en schéma shared_social). Fallback
+  legacy (SharedSocial nil) → joueur courant seul.
+- Interfaces `port.MediaRepository` + `port.MediaService` (+ noop) étendues.
+- `MediaService.ListMediaAuthors` (`service/media_service.go`) : pose `IsSelf` via `repo.CurrentPlayerSlug()`.
+- Handler `GetMediaAuthors` rebranché sur `h.newSvc(...).ListMediaAuthors` ; gamertag d'affichage enrichi
+  best-effort depuis db_profiles.json (`authorGamertags`), fallback = player_slug. `countMediaInDir` supprimé
+  (code mort) ; `resolveCapturesDir` conservé (toujours utilisé par l'upload).
+
+**Périmètre** : la galerie sans `SectionFilter` n'applique aucune contrainte `player_slug` → lister tous les
+`player_slug` distincts est cohérent avec ce qu'elle peut afficher. Aucune régression d'access-control :
+`RequirePlayerOwnership` garde JGtm sur sa propre route ; seul le contenu partagé (captures coéquipiers) est exposé.
+
+**Résultats** : `go build ./...` OK (CGO ucrt64). `go vet` propre. Tests verts — handler (`Authors_OK`,
+`Authors_ServiceError`), service (`ListMediaAuthors_SetsIsSelf`, `_PropagatesError`), repo integration
+(`TestMediaFilters_ListMediaAuthors` = 3 auteurs Alice(2)/HeroPlayer(2)/Bob(1) triés, `_LegacyNoSharedSocial`).
+Validation visuelle dashboard non encore faite (à confirmer côté user : dropdown liste JGtm + Madina, sélection
+Madina affiche ses captures).
+
+**Prochaine étape** : validation visuelle + commit (en attente autorisation user).
+
+## [2026-06-03] Auto-snap « dernière session » fonctionnel (Stats Solo & Escouade) — Complété
+
+**Statut** : Complété (code + tests). Branche `feat/skill-progression-magnitude-scale`, non commité.
+
+**Contexte** : retour user « les filtres Solo/Escouade ne sont pas retenus / pas d'auto-snap vers la dernière
+session synchro ». Investigation : (1) la **rétention n'est PAS cassée** — le store solo persiste correctement
+(localStorage `levelup-solo-filter-v1` + miroir `?f=`, réhydraté au montage ; aucun reset auto à la navigation).
+Les pertes observées « au refresh Air/rebuild » sont des artefacts dev (localStorage par-origine entre ports).
+(2) L'**auto-snap ne marchait quasiment jamais** : purement événementiel sur la transition `activeSyncJobId`
+string→null, jamais re-déclenchée hors Réglages (bootstrap `refetchOnWindowFocus:false`, seul SyncTab remet le
+job à null). Décision user : « Fixer l'auto-snap », sans toucher à la rétention.
+
+**Décision technique** :
+- Nouveau hook `useFollowLatestSession(playerSlug, store, scope)` (`features/filters/queries.ts`) piloté par
+  l'ÉTAT (`resolvedContext`) : snappe sur la dernière session du scope (`!is_squad` / `is_squad`) tant que
+  `followLatest` est vrai. `followLatest` = `isAutoSnappingToLatest || (aucune période ni session pickée)` →
+  une sélection manuelle (qui repasse `isAutoSnappingToLatest=false` via les setters) n'est JAMAIS re-snappée
+  ⇒ rétention préservée. Garde anti-boucle `alreadyOnLatest` (match label OU session_id), resync de
+  `lastKnownLatestSessionId` sans toucher le hash.
+- `autoSnapToLatestSession(latest: Pick<SessionOption,'session_id'|'label'>, …)` écrit désormais le **LABEL**
+  dans `picked_sessions` (le backend escouade `filterSynthesisByPickedSessions` matche par label uniquement ;
+  le rail aussi ; le solo accepte les deux) et garde `session_id` comme clé de détection. Corrige le snap
+  escouade qui envoyait un id jamais matché.
+- `partialize` persiste `isAutoSnappingToLatest` → reprise du suivi au reload (sinon on figerait sur l'ancienne
+  session).
+- `$playerSlug.tsx` : l'effet de fin de sync ne fait plus que
+  `queryClient.invalidateQueries(['filters-resolve', slug])` (rafraîchit `resolvedContext`, le snap est délégué
+  au hook). Hook solo monté ici, hook squad dans `SquadLayout`.
+
+**Résultats** : `tsc -b` OK ; eslint 0 erreur (warning `unused eslint-disable` introduit puis retiré — deps
+réellement exhaustives car `filterContext` lu via `getState()`) ; vitest ciblé + shell + squad = **386 tests
+verts** (createFilterStore/soloFilterStore MAJ pour la nouvelle signature + `useFollowLatestSession.test.tsx`,
+8 cas). **1 flaky pré-existant corrigé (test-only)** : `soloFilterStore › goToNextPeriod no-op …` échouait au
+passage de minuit (le test utilisait `toISOString()` UTC alors que l'impl `computeNextWindow` utilise
+`isoDate()` local) → `end_date`/`start_date` du test alignés sur `isoDate` ⇒ déterministe (32/32 verts).
+Validation visuelle dashboard non encore faite.
+
+**Hors scope (documenté)** : artefacts rétention dev ; double source de vérité `?f=` vs localStorage (URL gagne
+à la réhydratation) ; stores non-keyés par joueur (mitigé par re-snap au changement de `playerSlug`).
+
+**Prochaine étape** : validation visuelle (reload session épinglée = retenue ; état vierge = snap + badge auto ;
+après sync = snap ; escouade = `picked_sessions` en label, session cochée). Puis commit sur autorisation.
+
+## [2026-06-02] Explorer — cadence en graphes + uniformisation chrome + donut +75% (6 retours UI) — Complété
+
+**Statut** : Complété. Branche `feat/skill-progression-magnitude-scale`.
+
+**Addendum 8 (briefing sorti du bloc + 18 médailles)** : (1) `ExplorerEncounterBriefing` (la KPI bar
+au-dessus des tables ally/enemy) sortie de sa carte englobante → la grille de KPI cards (contenu INCHANGÉ,
+chacune déjà bordée) devient racine, comme les autres rangées KPI. (2) « Top médailles » : `TOP_COUNT` 5→18
+(affiche les 18 meilleures par défaut, l'expander révèle le reste jusqu'au cap 20 backend) ; tests médailles
+mis à jour (makeMedals(20), top 18 + expander). typecheck/eslint/vitest explorer 61/61 OK.
+
+**Addendum 7 (glow rareté sur les médailles)** : « Top médailles » — glow par rareté UNIQUEMENT sur l'image,
+parité tuiles de match home (`match-card.tsx`) / `MedalDigest`. Réutilise `dropShadowForDifficulty(m.difficulty)`
+(`lib/medalDifficulty.ts` : Normal=vert/Heroic=bleu/Legendary=violet/Mythic=rouge) appliqué en `filter` sur le
+`<img>`. La donnée `difficulty` arrive déjà au runtime (domain `MedalDigestItem.Difficulty` json:"difficulty"
+peuplé par `explorer_target_medals.go` depuis `MedalDefs`, comme squad/home). Aucun glow si difficulté absente
+(graceful). typecheck/eslint/vitest medals 4/4 OK.
+Suivi : grille médailles passée à 3 colonnes (`sm:grid-cols-3`) + compactage (police text-sm→text-xs,
+gap/padding réduits, image 36→32px) pour faire tenir 3 par rangée.
+
+**Addendum 6 (bilan V/N/D en bloc séparé, colonne gauche)** : l'OutcomeBar sort du bloc « Répartition des
+frags » → nouveau composant exporté `ExplorerTargetOutcome` (carte chrome avec barre de titre
+« Répartition des résultats » = clé i18n `results_title` + OutcomeBar + légende). Placé EMPILÉ sous le donut
+dans la MÊME colonne gauche (2/3) ; la cadence reste à droite (1/3). Colonne gauche =
+`flex flex-col gap-4` [donut (hauteur naturelle, plus de h-full) + bilan]. Le bloc donut ne contient plus que
+le donut (centré, agrandi w-full max-w-700). Bilan = métrique distincte (résultats) des frags → séparation
+propre. i18n régénéré (194 clés), vitest 61/61.
+
+**Addendum 5 (bloc donut : titre + agrandissement + outcome décollée)** : après extraction des KPI en
+rangée, le bloc ne gardait que le donut (rendu petit) + OutcomeBar collée en bas. (1) Titre de bloc ajouté
+(barre de titre chrome) = « Répartition des frags » (`label_kill_types`). (2) Donut agrandi : la cause du
+"petit donut" était `width=100%` sur un parent dimensionné par le contenu (`justify-center`) → le SVG
+retombait sur sa taille intrinsèque (~300px). Fix : `w-full` sur `DonutColumn` + `max-w` 640→700 → le SVG
+remplit la colonne. (3) OutcomeBar décollée : contenu en `flex-1 flex-col justify-center gap-5` → groupe
+[donut + outcome] centré verticalement, plus collé au bas. vitest 61/61.
+
+**Addendum 4 (KPI en rangée hors bloc)** : idée user — sortir les KPI cards + le rendement/résistance du
+bloc « Sur N matchs joués ensemble » et les mettre en RANGÉE sous le titre (comme la rangée de « Carrière
+complète »). Fait : nouveau composant exporté `ExplorerTargetSampleKpis` (grid `lg:grid-cols-6` = 5 tuiles
+KDA/Précision/Taux tête/Score moyen/Frags parfaits + 1 carte `YieldTile` rendement(OC vert)/résistance(DR
+bleu)), rendu sous le titre dans `ExplorerTargetProfileCard`. Le bloc ne garde plus que le donut (centré,
+agrandi, `flex-1`) + l'OutcomeBar. **Décision** : la barre composite `CombatYieldBar` (et les extras
+dmg/kill, dmg/mort) est retirée du sample stats au profit d'une carte chiffrée OC/DR — `CombatYieldBar`
+reste utilisée sur Synthesis (inchangée). vitest 61/61.
+
+**Addendum 3 (KPI cards style Synthesis + barre yield)** : analyse — la KPI card Synthesis = `AccentCard`
+(carte bordée + barre d'accent 3px en haut, `tokenCssVar(accent)`). Répliqué sur les KPI cards Explorer :
+`KpiTile` (Carrière) et `SmallTile` (sample) ont désormais la barre d'accent 3px (accent sémantique par
+métrique : matches→chart-series-1, KDA→perf-tier-2, win→outcome-win, accuracy→info, etc.). Barre composite
+rendement/résistance (`CombatYieldBar`, partagée avec Synthesis) élargie : `BAR_MAX_PX` 120→150. vitest 68/68.
+
+**Addendum 2 (titre carrière + remplissage bloc sample)** :
+- Titre « Carrière complète » sorti en en-tête de section (`<header><h3>`) dans `ExplorerTargetProfileCard`,
+  comme « Profil de combat » ; `ExplorerTargetCareerStats` ne rend plus que la grille de tuiles (plus de
+  Card/CardHeader) — les tuiles sont déjà bordées.
+- Bloc sample agrandi qui collait son contenu en haut → root `flex h-full flex-col`, zone principale
+  `grid flex-1 items-center lg:grid-cols-[1.5fr_1fr]` (centrée verticalement, étirée) : donut agrandi à
+  gauche, KPI + rendement/résistance empilés à droite (yield déplacé hors de la rangée du donut),
+  OutcomeBar en pied. Donut `max-w` 525→640 + colonne plus large (1.5fr) → SVG ~540px (cercle ~+80% vs
+  l'origine 300px). vitest 61/61.
+
+**Addendum (hauteur de rangée)** : retour user — le bloc « Sur N matchs joués ensemble » (gauche, 2/3) et
+la colonne des 2 graphes cadence (droite, 1/3) doivent avoir la MÊME hauteur (une seule rangée). Fix : bloc
+sample en `h-full` (remplit sa cellule grid étirée) + colonne cadence en `flex h-full flex-col` avec les 2
+`ChartCard` en `fluid` + `flex-1` (ils s'étirent et se partagent la hauteur de la rangée, `height` = minimum).
+La cellule la plus haute (sample, gros donut) définit la rangée ; la cadence s'aligne dessus. vitest 61/61.
+
+**Contexte / décisions** :
+1. **CSR en chiffres romains** : `ExplorerTargetSeasonCSR` — sous-paliers 1..6 → I..VI (map `SUBTIER_ROMAN`,
+   cohérent Go `rankSubRoman` / `skillTierLabel`). Tests MAJ (« Diamant III »).
+2. **Carrière complète** : suppression de l'`OutcomeBar` (« barre composite ») + dérivation
+   wins/losses/draws devenue morte + props inutiles.
+3. **Top médailles** : passage du shadcn `Card` au **chrome ChartCard** (`rounded-lg border bg-card` +
+   barre de titre `border-b … text-sm font-medium`) pour s'aligner sur le reste.
+4. **Cadence → 2 graphes empilés** (par match / par minute) style « Stats par minute » de Squad
+   Contributions : barres divergentes K/D/A (Morts sous l'axe zéro accentué, labels, pas de légende).
+   Builder `buildCadenceBarsOption` **recopié** (pas importé) de `squadPerMinuteChart` (lint-cross-feature).
+   Nouveau composant `ExplorerTargetCadence.tsx` (2 `ChartCard`) ; ancienne grille de valeurs supprimée de
+   `ExplorerTargetSampleStats`. Test du builder ajouté.
+5. **Donut sample +75%** : `max-w-[300px]` → `max-w-[525px]` + colonne donut élargie
+   (`lg:grid-cols-[1.75fr_1fr_1fr]`) — le viewBox normalise, seule la largeur conteneur agrandit le rendu.
+6. **Titre « Sur N matchs joués ensemble » hors bloc** : retiré du `CardHeader`, rendu en en-tête de section
+   (`<header><h3>`) dans `ExplorerTargetProfileCard`, comme « Profil de combat ». Le bloc sample passe aussi
+   en chrome ChartCard (div bordé, p-3).
+
+**Résultats** : `tsc -b` OK (projet entier → le refactor live/local parallèle compile), eslint clean, vitest
+explorer **60/60** + test builder cadence. Pas de nouvelle clé i18n. `cadence_title` (tour précédent) devient
+inutilisée (laissée, inoffensive). Pas de changement Go ce tour.
+
+**Conclusion** : vérif visuelle recommandée (cadence 2 graphes, donut agrandi, alignement chrome).
+
+---
+
+## [2026-06-02] Profil de combat — toggle source LIVE (défaut) / LOCAL — Complété
+
+**Statut** : Complété (commit 10). Branche `feat/skill-progression-magnitude-scale`.
+
+**Contexte** : retour utilisateur — la section profil de combat (Explorer) montrait les matchs LOCAUX
+(commit 5 = local-first : live appelé seulement si local vide). L'utilisateur veut les **20 derniers matchs
+LIVE affichés PAR DÉFAUT**, + un **toggle** sur la ligne de titre (tout à droite) pour basculer en local.
+
+**Décision technique** :
+- Back : `ExplorerTargetProfile.CombatProfile` devient la source **LIVE** (toujours fetchée si auth/provider) ;
+  ajout `CombatProfileLocal` (lecture base). `computeTargetCombatProfile` scindé en
+  `computeTargetCombatProfileLive` + `computeTargetCombatProfileLocal`, les deux servis en parallèle dans
+  `buildTargetProfile` (live borné par liveCtx 8s, local sur gctx). Plus de logique local-first.
+- Front : `ExplorerCombatProfile` reçoit `liveMatches` + `localMatches`, état `source` (défaut `live`, ou
+  `local` si live vide), toggle 2 boutons dans le header (source vide → bouton désactivé), état vide si
+  source sélectionnée sans données. Parent affiche la section si live OU local a des données.
+
+**Résultats observés** : `go test ./internal/service` ok (re-run propre ; un FAIL transitoire du test de
+latence P95 sous charge), `go vet`+gofmt clean, build api CGO OK ; `tsc -b`, eslint, vitest
+ExplorerCombatProfile 4/4 (toggle live→local inclus). Tests Go MAJ : `LiveIsDefault`, `BothSources`,
+`TargetProfile_CombatProfile` (rows repo → CombatProfileLocal).
+
+---
+
+## [2026-06-02] Fix is_max_rank non fiable (rang Héros) — barre verte rang max — Complété
+
+**Statut** : Complété. Branche `feat/skill-progression-magnitude-scale`.
+
+**Contexte** : la barre verte « rang max » (ajoutée au tour précédent) ne se déclenchait pas pour Nilton
+(Héros, rang 272) car `is_max_rank` revenait `false`.
+
+**Diagnostic** : `career_progression.is_max_rank` (colonne stockée, écrite au sync depuis l'API Halo
+`RewardTrack.IsMaxRank`) n'est PAS fiable pour le dernier rang — l'API ne le marque pas toujours. La
+résolution `buildHomeCareerRank` (home_kpis.go) ne faisait que recopier `raw.IsMaxRank`. L'explorer lit
+l'identité via le MÊME chemin que la home (`HomeRepo.LoadSpartanIdentity` → `BuildSpartanIdentity`), donc le
+bug touchait home + explorer + compare.
+
+**Décision technique** : dériver `is_max` du **catalog de rangs** (title-agnostic, pas de magic number 272) :
+un rang PRÉSENT dans le catalog (`ranks.Get(n)`) mais SANS rang suivant (`ranks.Next(n)` absent) est le rang
+max → `IsMaxRank=true` + `ProgressPct=100`. Le garde `Get()` évite un faux positif si le rang n'est pas dans
+le catalog. Fix au point canonique `buildHomeCareerRank` → corrige les 3 pages d'un coup, sans re-sync.
+
+**Pièges** : 2 fixtures de test (analysis/home_test.go, service/home_service_test.go) utilisaient un catalog
+minimal (rang 25 seul) → le joueur au rang 25 devenait « max » par effet de bord. Ajout d'un rang 26 dans ces
+catalogs pour qu'ils restent réalistes (25 = mid-rank, ProgressPct=50 préservé). Test de non-régression ajouté
+(`TestBuildSpartanIdentity_DerivesMaxRankFromCatalog`).
+
+**Résultats** : `go test ./internal/analysis/` OK (+ nouveau test), `TestHomeService_..._SpartanIdentity` OK,
+compilation service OK. NB : `TestExplorerService_TargetProfile_CombatProfile` échoue mais c'est un WIP
+PARALLÈLE de l'utilisateur (refactor `CombatProfile`→`CombatProfileLocal` + toggle live/local) — hors de mon
+scope, non touché.
+
+**Conclusion** : Air a hot-reload le binaire ; un refresh de la page Explorer sur Nilton devrait afficher la
+barre verte pleine. Fix bénéficie aussi à la home et au compare.
+
+---
+
+## [2026-06-02] Explorer/Synthesis — Rendement/Résistance + cadence sortie + grade Spartan (5 retours UI) — Complété
+
+**Statut** : Complété. Branche `feat/skill-progression-magnitude-scale`. Suite de l'encart profil cible.
+
+**Contexte / décisions** :
+1. **Rendement/Résistance** (au lieu de Offensif/Défensif) sur la barre « Rendement combat » (= `CombatYieldBar`).
+   Corrigé aux 3 emplacements : i18n explorer `yield_offensive`→« Rendement »/`yield_defensive`→« Résistance » ;
+   tooltip hardcodé de `CombatYieldBar` ; labels autour de la barre dans `SynthesisPage`. Mapping canonique
+   OC→Rendement, DR→Résistance (cohérent compare/home). Les badges de *style* (« Offensif précis »…) NON touchés
+   (concept playstyle distinct).
+2. **Titres supprimés** dans `ExplorerTargetSampleStats` : « Rendement combat » (`label_combat_yield`) et
+   « Répartition des frags » (`label_kill_types`) — colonnes auto-descriptives.
+3. **Bloc cadence sorti** du bloc « Sur N matchs joués ensemble » : nouveau composant exporté
+   `ExplorerTargetCadence` (Card propre + liste centrée verticalement), rendu à droite en grille 2/3-1/3
+   dans `ExplorerTargetProfileCard`. `CadenceStrips` dé-wrappé (plus de bordure interne). Clé i18n `cadence_title`.
+4. **Grade Spartan comme la Home** (point « analyse avant de suivre ») : VÉRIFIÉ que `HomeSpartanIdentityBanner`
+   met le `rank_title` dans un bloc semi-transparent (`bg-background/40 backdrop-blur-sm`). Répliqué dans
+   `ExplorerTargetIdentityBanner` (sorti de la colonne identité, placé à droite du hero). NB : je n'ai PAS
+   répliqué toute la section progression Home (ligne %/next-rank) — l'explorer reste volontairement compact.
+5. **Rang max (Héros)** : `CompositeProgressBar` passe déjà au token `success` (vert) à value≥100 — réutilisé
+   tel quel (même vert que battlepass complété). Si `careerRank.is_max_rank` → barre pleine verte SANS valeurs
+   aux extrémités ; sinon barre XP + bornes. Détection via `is_max_rank` (pas le string « Héros », robuste i18n).
+
+**Résultats** : i18n régénéré (193 clés explorer), `tsc -b` OK, eslint clean (2 warnings préexistants SynthesisPage
+hors scope), vitest explorer+synthesis+combat-yield-bar 82/82 (14 skip). Test combat-yield-bar mis à jour
+(Rendement/Résistance). Pas de changement Go ce tour.
+
+**À vérifier (runtime)** : que `is_max_rank` est bien peuplé pour une cible (sinon barre verte ne se déclenche
+pas — `BuildSpartanIdentity` partagé avec la Home, donc a priori OK). Vérif visuelle recommandée.
+
+---
+
+## [2026-06-02] Explorer (mode Joueur) — style charts unifié + modes FR fiabilisés (6 retours UI) — Complété
+
+**Statut** : Complété. Branche `feat/skill-progression-magnitude-scale`. Suite directe de l'entrée ci-dessous.
+
+**Contexte** : 6 retours de polish sur l'encart profil cible :
+1. CSR sur 1/3 de largeur, « Matchs par saison » sur 2/3 ;
+2. CSR : liste centrée verticalement + chrome identique à « Matchs par saison » ;
+3. CSR + modes en FR quand locale FR ;
+4. donut « Répartition des modes » : supprimer la légende sous le donut ;
+5. les 5 graphes combat (FDA, Dégâts, Score+placement, Folie+parfaits, Donut modes) doivent
+   avoir le même style « propre » que « Matchs par saison » ;
+6. supprimer la légende sur « Matchs par saison ».
+
+**Décision technique majeure (point 3, modes FR)** : VÉRIFIÉ empiriquement (cmd/tmpdbq sur
+`shared_matches_v2.duckdb`) que `match_registry.pair_name_fr` est **NULL sur les 1726 lignes**.
+Donc `ResolveModeUI(pair_name, pair_name_fr)` ne produisait que de l'EN normalisé. Ajout du re-lookup
+canonique `mode_name_tr` (lang='fr', clé = sous-mode EN normalisé) dans `ExplorerRepo.translateModeUIsFR`,
+appelé en fin de `GetTargetRecentMatches` — même mécanisme que la page Carrière
+(`applyHighlightPoolFRTranslations` / `LoadModeTranslationsFR`). Confirme la mémoire
+[[reference_asset_translations_fr]] : COALESCE/`*_name_fr` seul est insuffisant, `mode_name_tr` requis.
+Le chemin live (cible non-locale) laisse `mode_ui` vide → « Inconnu » (inchangé).
+
+**Décision technique (style, points 4/5/6)** : les wrappers ECharts étendent tous `ChartCard`
+(barre de titre `border-b` intégrée). Les graphes combat avaient un `<h4>` EXTERNE + chart sans titre →
+titre flottant hors carte. Fix : passer `title` DANS chaque chart (ajout prop `title` à `CombatFdaChart`
+/ `CombatScorePlacementChart`) et supprimer les `<h4>`. Légendes : prop `showLegend` ajoutée à
+`DonutChart` (donut combat → `showLegend={false}`, les étiquettes de tranche restent) ; pour
+« Matchs par saison », `buildSeasonMatchesOption` force `legend:{show:false}` (série unique).
+
+**Décision technique (points 1/2, layout CSR)** : grille `lg:grid-cols-3` (CSR auto 1 col, Matchs
+`col-span-2`). `ExplorerTargetSeasonCSR` réécrit avec le chrome exact de ChartCard
+(`rounded-lg border bg-card` + barre titre) ; `flex h-full flex-col` → s'étire à la hauteur de la
+ligne (Matchs définit la hauteur), contenu `flex-1 items-center` → liste centrée verticalement.
+
+**Résultats** : `tsc -b` OK, eslint clean, vitest explorer+charts **146/146** ; `go build` (CGO) duckdb OK.
+Serveur Go en hot-reload (Air) → binaire reconstruit. Limite : impossible de re-vérifier `mode_name_tr`
+en live (metadata.duckdb verrouillé par le serveur) — fiabilité garantie par le précédent Carrière
+(même table, même clé normalisée).
+
+**Conclusion / prochaine étape** : vérification visuelle Explorer joueur recommandée (style charts +
+centrage CSR + modes/CSR FR). Si un mode reste en EN, c'est un `mode_en` absent de `mode_name_tr`
+(donnée à compléter), pas un bug de câblage.
+
+---
+
+## [2026-06-02] Explorer (mode Joueur) — refonte encart profil cible (7 retours UI) — Complété
+
+**Statut** : Complété. Branche `feat/skill-progression-magnitude-scale`.
+
+**Contexte** : 7 retours UI sur l'Explorer recherche-joueur (encart `ExplorerTargetProfileCard`
++ `ExplorerCombatProfile`) :
+1. supprimer le sous-titre « via API Halo » (Carrière complète) ;
+2. Carrière complète : tile « Temps de jeu » à la place de la card standalone + retrait tile « F/D » ;
+3. « Classements CSR (saison) » → « (saison actuelle) », tiers en FR, sans la valeur de rating ;
+4. CSR à gauche de « Matchs par saison » (2 colonnes) + CSR en liste simple (sans sous-blocs bordés) ;
+5. « Médailles favorites » → « Top médailles », déplacé à droite du donut « Répartition des modes » ;
+6. donut « Répartition des modes » : normalisation + noms FR ;
+7. « Sur N matchs joués ensemble » (sample stats) : retrait des tiles « F/D » et « Taux de victoire ».
+
+**Décisions techniques** :
+- **Point 6 (backend, canonique)** : `mode_ui` du donut venait de `COALESCE(pair_name,'')` brut (EN, non
+  normalisé). Q19c sélectionne désormais `pair_name` + `pair_name_fr` ; `scanTargetRecentMatch` résout via
+  **`analysis.ResolveModeUI(pair_name, pair_name_fr)`** (même helper que home/match-view/historique :
+  `COALESCE(pair_name_fr, pair_name) → NormalizeModeLabel`). Frontend inchangé (le donut groupe déjà par
+  `mode_ui`). Chemin live (cible non-locale) laisse `mode_ui` vide → « Inconnu » (comportement préexistant).
+- **Point 3 (tiers FR)** : map EN→FR dérivée de la grille canonique **`CSR_TIER_GRID`** (`skillTiers.ts`),
+  pas de table dupliquée. « le numéro » interprété comme la valeur de rating brute (ex. 1523) → retirée ;
+  tier + sous-palier conservés (« Diamant 3 »).
+- **Point 5 (déplacement médailles)** : `ExplorerTargetMedals` rendu à droite du donut dans
+  `ExplorerCombatProfile` (prop `topMedals` optionnelle). Repli dans `ExplorerTargetProfileCard` **uniquement
+  si pas de profil de combat** (`!hasCombatProfile`) pour ne jamais perdre les médailles.
+
+**Résultats** : `tsc -b` OK, eslint clean, vitest explorer 59/59 + compare 13/13 ; `go build` (CGO) duckdb+service
+OK, `go test service` OK. Tests mis à jour : SeasonCSR (tier FR « Diamant 3 », rating absent), ProfileCard
+(`Diamant 3`), CombatProfile (`topMedals` optionnel).
+
+**Conclusion / prochaine étape** : vérification visuelle à faire (screenshot Explorer joueur). Limite connue :
+donut en « Inconnu » pour les cibles non-locales (live `mode_ui` vide) — à câbler si besoin ultérieur.
+
+---
+
+## [2026-06-02] Face à face — libellés lisibles (rang→titre, CSR→tier) + CSR all-time + bannière non-local — Complété
+
+**Statut** : Complété (2 commits, suite retours utilisateur post-vérif live). Branche `feat/skill-progression-magnitude-scale`.
+
+**Contexte** : retours — « CSR (saison) » → « CSR (saison actuelle) » ; rang carrière en TITRE
+(« Général Platine VI ») pas un numéro ; CSR en « Or III » pas un numéro, partout ; ajouter le meilleur CSR
+ALL-TIME ; bannière non-local cassée (nameplate live 404). Principe imposé : NE PAS réinventer — réutiliser
+les helpers du profil de combat / Explorer.
+
+**Décision technique (commit display)** :
+- `CompareMetricRow.DisplayA/DisplayB` (libellé prêt-à-rendre) ; le front l'affiche si présent, sinon
+  formate la valeur. Barre/winner restent sur les valeurs.
+- Rang : titre via **`analysis.BuildSpartanIdentity`** (même helper que le combat profile) + `RankCatalog`
+  injecté (`WithRanks`). CSR : `fetchCSRSummary` (courant + all-time + labels via **`skillTierLabel`** +
+  romain → « Or III »/« Onyx »). Métrique `csr_alltime`. i18n « CSR (saison actuelle) »/« CSR (record) ».
+
+**Décision technique (commit bannière, point 4)** : `applyBannerFallbacks(preferPool)`. Cible NON-locale
+(live) : nameplate live souvent 404 → préférer la nameplate du pool local (déterministe, assets en cache),
+en gardant emblem/rang. Cible suivie : inchangé.
+
+**Point 1** : le N/A career rank non-local en vérif venait du rate-limit 429 (Xbox auth) → 403 live, pas un
+bug ; commit 6 injecte déjà le même provider que l'Explorer. Ce commit ajoute l'affichage en titre.
+
+**Résultats** : `go build ./internal/api` (CGO) OK, `go test service+domain` OK, vet+gofmt clean ; `tsc -b`,
+eslint, vitest compare 13/13. Tests : `fetchCSRSummary`, `csrRankLabel`, override pool bannière non-local.
+
+---
+
+## [2026-06-02] Page sessions — précision affichée en milliers (× 100 en trop) — Complété
+
+**Statut** : Complété.
+
+**Contexte** : sur la page détail de session, le KPI « Précision » s'affichait en milliers (ex. 5500 %).
+
+**Diagnostic** : `match_participants.accuracy` est stockée en pourcentage 0..100 ; le path canonical de la
+page session (`player_matches_repo` → `StatsMatchRowsFromCanonical`) la propage brute (0..100), donc
+`averageAccuracy` renvoyait ~55. Or le contrat `AvgAccuracy` est 0..1 (ADR 0006) et le front
+(`SessionSummaryCard`) multiplie par 100 → double × 100 → milliers. Le front était correct vis-à-vis du
+contrat ; c'est le Go qui violait son propre contrat 0..1.
+
+**Décision technique principale** : normaliser côté Go pour respecter le contrat 0..1 (pas de changement
+front) :
+- `averageAccuracy` divise la moyenne par 100 → corrige à la fois `AvgAccuracy` (front × 100) et la
+  métrique `accuracy` du Face à face session (`buildCompareMetrics`, qui faisait déjà × 100).
+- Même cause racine corrigée dans `buildSessionParticipationProfile` : le facteur combat `(1 + acc*0.4)`
+  attend acc en 0..1 mais recevait 0..100 (axe Combat saturé en permanence) → `*m.Accuracy / 100.0`.
+- Test `TestBuildCompareEntry_AvgAccuracy` : inputs passés en échelle réelle 0..100 (50/60) pour 0.55.
+
+**Résultats observés** : `go test ./internal/service/` (CGO) OK (4.3s). Précision affichée désormais en %
+correct (ex. 55.0 %).
+
+**Conclusion / prochaine étape** : dette connexe non traitée (hors scope) — incohérence générale d'échelle
+accuracy (canonical/Q23 = 0..100 brut, certains sites × 100 en supposant 0..1, ADR 0006 exige 0..1 côté
+API). Audit global possible si on veut un seul point de normalisation au boundary canonical→legacymatch.
+
+---
+
 ## [2026-06-02] Face à face — ligne de comparaison CSR (saison) via provider live réutilisé (point 3) — Complété
 
 **Statut** : Complété (commit 7/7 du plan `.ai/PLAN_COMPARE_COMBATPROFILE_SESSION.md`).
