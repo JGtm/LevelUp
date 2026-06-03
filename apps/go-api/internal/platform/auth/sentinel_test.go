@@ -57,6 +57,7 @@ var allowedEnvReaders = map[string]string{
 	"internal/platform/auth/pool/discovery_priority_test.go":    "Tests T3b — t.Setenv pour vérifier le fallback env var dans Discovery.",
 	"cmd/server/migration_boot_test.go":                         "Tests T6 — t.Setenv pour vérifier la migration env→store.",
 	"tests/e2e/air_restart_cycle_test.go":                       "Test T8 pivot — t.Setenv pour le scénario régression Madina.",
+	"internal/sync/engine_postsync_csr.go":                      "Fallback legacy sync CSR : lit SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> comme source de dernier recours (après sync_meta + MSALCache). Toléré ADR 0023 §legacy jusqu'à Phase 5.",
 
 	// === Config / Server boot ===
 	"internal/config/config.go":              "Mention dans commentaire sur le chargement de .env.local (legacy, retiré Phase 5).",
