@@ -333,6 +333,10 @@ func NewRouter(
 			slog.Warn("seasons_catalog_meta_db_unavailable",
 				"err", err, "fallback", "static_toml_only")
 		} else {
+			// Handle RW persistant sur metadata.duckdb : le SeasonsCatalog le
+			// garde pour la vie du process. Tracker pour fermeture au shutdown
+			// via reg.Close(), sinon fuite de refCount (cf. INCIDENT_2026-05-21).
+			reg.TrackMetadataHandle(seasonsMetaDB)
 			seasonsRepo := platform_duckdb.NewMetadataRepoFromDB(seasonsMetaDB)
 			// Tables idempotentes : la migration peut ne pas avoir tourné encore.
 			if ensureErr := seasonsRepo.EnsureSeasonTables(context.Background()); ensureErr != nil {
@@ -497,6 +501,10 @@ func NewRouter(
 			); err != nil {
 				slog.Warn("catalog_meta_db_unavailable", "err", err)
 			} else {
+				// Handle RW persistant : le CatalogHandler le garde pour servir
+				// /catalog/*. Tracker pour fermeture au shutdown via reg.Close(),
+				// sinon fuite de refCount metadata (cf. INCIDENT_2026-05-21).
+				reg.TrackMetadataHandle(catalogMetaDB)
 				catalogH := handlers.NewCatalogHandler(platform_duckdb.NewCatalogRepo(catalogMetaDB, nil))
 				r.Get("/titles/{slug}/catalog/playlists", catalogH.PlaylistsHandler)
 				r.Get("/titles/{slug}/catalog/pairs", catalogH.PairsHandler)

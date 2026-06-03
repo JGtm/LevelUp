@@ -697,6 +697,11 @@ func (r *ServiceRegistry) Compare(ctx context.Context, slug string) (port.Compar
 		csrSeasonID = r.cfg.CurrentCSRSeasonID
 	}
 	svc = svc.WithCSR(r.newExplorerCSRProvider(), csrSeasonID)
+	// Catalogue de rangs carrière (même source que le profil de combat) pour
+	// afficher le rang en titre ("Général Platine VI") plutôt qu'en numéro.
+	if sem := r.semanticFor(pdb.TitleSlug); sem != nil {
+		svc = svc.WithRanks(sem.Ranks())
+	}
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
 }

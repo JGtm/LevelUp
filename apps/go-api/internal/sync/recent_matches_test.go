@@ -3,6 +3,8 @@ package sync
 import (
 	"context"
 	"testing"
+
+	"levelup/go-api/internal/analysis"
 )
 
 // recentMatchJSON construit un JSON de match minimal (1 joueur cible) au shape
@@ -10,6 +12,10 @@ import (
 func recentMatchJSON(matchID, playerID string, kills, deaths, assists, score int) map[string]any {
 	return map[string]any{
 		"MatchId": matchID,
+		"MatchInfo": map[string]any{
+			"MapVariant":     map[string]any{"PublicName": "Aquarius"},
+			"UgcGameVariant": map[string]any{"PublicName": "Slayer"},
+		},
 		"Players": []any{
 			map[string]any{
 				"PlayerId":   playerID,
@@ -71,6 +77,15 @@ func TestBuildRecentMatchesFromStats(t *testing.T) {
 	}
 	if r.Rank == nil || *r.Rank != 1 {
 		t.Errorf("rank = %v, want 1", r.Rank)
+	}
+	// Mode normalisé via ResolveModeUI (sinon le donut modes = "Inconnu") + carte.
+	gv := "Slayer"
+	wantMode := ""
+	if m := analysis.ResolveModeUI(&gv, nil); m != nil {
+		wantMode = *m
+	}
+	if r.ModeUI == "" || r.ModeUI != wantMode || r.MapUI != "Aquarius" {
+		t.Errorf("mode/map = %q/%q, want %q/Aquarius", r.ModeUI, r.MapUI, wantMode)
 	}
 }
 

@@ -54,6 +54,8 @@ func (m *mockExplorerRepo) GetMatchStartTimesForXUID(_ context.Context, _ string
 func (m *mockExplorerRepo) GetTargetRecentMatches(_ context.Context, _ string, _ int) ([]domain.ExplorerTargetRecentMatch, error) {
 	return m.recentMatches, m.recentErr
 }
+func (m *mockExplorerRepo) TranslateModeUIsFR(_ context.Context, _ []domain.ExplorerTargetRecentMatch) {
+}
 
 // --- tests ---
 
@@ -593,9 +595,10 @@ func TestExplorerService_TargetProfile_LiveIdentityError(t *testing.T) {
 	}
 }
 
-// TestExplorerService_TargetProfile_CombatProfile vérifie que le profil de
-// combat (N derniers matchs PvP de la cible) est peuplé quand le repo en
-// fournit, et nil (best-effort) quand le repo échoue.
+// TestExplorerService_TargetProfile_CombatProfile vérifie que la source LOCALE du
+// profil de combat (CombatProfileLocal) est peuplée quand le repo en fournit, et
+// nil (best-effort) quand le repo échoue. (Sans provider live + sans auth, la
+// source live CombatProfile reste vide.)
 func TestExplorerService_TargetProfile_CombatProfile(t *testing.T) {
 	now := time.Now()
 	tid := 0
@@ -616,14 +619,18 @@ func TestExplorerService_TargetProfile_CombatProfile(t *testing.T) {
 			t.Fatalf("GetCommonMatches: %v", err)
 		}
 		tp := resp.TargetProfile
-		if tp == nil || len(tp.CombatProfile) != 2 {
-			t.Fatalf("CombatProfile attendu 2 matchs, got %+v", tp)
+		if tp == nil || len(tp.CombatProfileLocal) != 2 {
+			t.Fatalf("CombatProfileLocal attendu 2 matchs, got %+v", tp)
 		}
-		if tp.CombatProfile[0].MatchID != "r1" || tp.CombatProfile[0].PerfectKills != 2 {
-			t.Errorf("CombatProfile[0] = %+v, want r1 perfect=2", tp.CombatProfile[0])
+		if tp.CombatProfileLocal[0].MatchID != "r1" || tp.CombatProfileLocal[0].PerfectKills != 2 {
+			t.Errorf("CombatProfileLocal[0] = %+v, want r1 perfect=2", tp.CombatProfileLocal[0])
 		}
-		if tp.CombatProfile[0].Rank == nil || *tp.CombatProfile[0].Rank != 1 {
-			t.Errorf("CombatProfile[0].Rank = %v, want 1", tp.CombatProfile[0].Rank)
+		if tp.CombatProfileLocal[0].Rank == nil || *tp.CombatProfileLocal[0].Rank != 1 {
+			t.Errorf("CombatProfileLocal[0].Rank = %v, want 1", tp.CombatProfileLocal[0].Rank)
+		}
+		// Sans provider live ni auth, la source live reste vide.
+		if len(tp.CombatProfile) != 0 {
+			t.Errorf("CombatProfile (live) attendu vide sans provider/auth, got %d", len(tp.CombatProfile))
 		}
 	})
 
@@ -634,8 +641,8 @@ func TestExplorerService_TargetProfile_CombatProfile(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetCommonMatches ne doit pas échouer sur erreur combat profile: %v", err)
 		}
-		if resp.TargetProfile == nil || resp.TargetProfile.CombatProfile != nil {
-			t.Errorf("CombatProfile attendu nil sur erreur repo, got %+v", resp.TargetProfile.CombatProfile)
+		if resp.TargetProfile == nil || resp.TargetProfile.CombatProfileLocal != nil {
+			t.Errorf("CombatProfileLocal attendu nil sur erreur repo, got %+v", resp.TargetProfile.CombatProfileLocal)
 		}
 	})
 }
@@ -776,10 +783,9 @@ func (m *mockRecentMatches) FetchRecentMatches(_ context.Context, _ string, _ in
 	return m.rows, m.err
 }
 
-// TestExplorerService_CombatProfile_LiveFallbackWhenLocalEmpty : une cible
-// non-locale (aucun match local) reçoit ses graphes profil de combat depuis le
-// fetch live read-only.
-func TestExplorerService_CombatProfile_LiveFallbackWhenLocalEmpty(t *testing.T) {
+// TestExplorerService_CombatProfile_LiveIsDefault : CombatProfile (affiché par
+// défaut) = le fetch LIVE, même quand le local est vide.
+func TestExplorerService_CombatProfile_LiveIsDefault(t *testing.T) {
 	now := time.Now()
 	tid := 0
 	matches := []domain.CommonMatchRaw{
@@ -798,16 +804,19 @@ func TestExplorerService_CombatProfile_LiveFallbackWhenLocalEmpty(t *testing.T) 
 	}
 	tp := resp.TargetProfile
 	if tp == nil || len(tp.CombatProfile) != 2 {
-		t.Fatalf("CombatProfile attendu 2 (repli live), got %+v", tp)
+		t.Fatalf("CombatProfile (live, défaut) attendu 2, got %+v", tp)
+	}
+	if len(tp.CombatProfileLocal) != 0 {
+		t.Errorf("CombatProfileLocal attendu vide (aucun match local), got %d", len(tp.CombatProfileLocal))
 	}
 	if live.calls != 1 {
-		t.Errorf("RecentMatches doit être appelé 1× (local vide), got %d", live.calls)
+		t.Errorf("RecentMatches (live) doit être appelé 1×, got %d", live.calls)
 	}
 }
 
-// TestExplorerService_CombatProfile_LocalPreferred : si le local fournit des
-// matchs (joueur suivi), le live n'est PAS appelé (économie d'appels Halo).
-func TestExplorerService_CombatProfile_LocalPreferred(t *testing.T) {
+// TestExplorerService_CombatProfile_BothSources : live ET local sont servis en
+// parallèle — CombatProfile = live (défaut), CombatProfileLocal = base locale.
+func TestExplorerService_CombatProfile_BothSources(t *testing.T) {
 	now := time.Now()
 	tid := 0
 	matches := []domain.CommonMatchRaw{
@@ -824,11 +833,14 @@ func TestExplorerService_CombatProfile_LocalPreferred(t *testing.T) {
 		t.Fatalf("GetCommonMatches: %v", err)
 	}
 	tp := resp.TargetProfile
-	if tp == nil || len(tp.CombatProfile) != 1 || tp.CombatProfile[0].MatchID != "loc1" {
-		t.Fatalf("CombatProfile doit venir du local, got %+v", tp)
+	if tp == nil || len(tp.CombatProfile) != 1 || tp.CombatProfile[0].MatchID != "r1" {
+		t.Fatalf("CombatProfile (défaut) doit venir du LIVE (r1), got %+v", tp)
 	}
-	if live.calls != 0 {
-		t.Errorf("live ne doit PAS être appelé quand le local fournit des rows, got %d", live.calls)
+	if len(tp.CombatProfileLocal) != 1 || tp.CombatProfileLocal[0].MatchID != "loc1" {
+		t.Fatalf("CombatProfileLocal doit venir de la base (loc1), got %+v", tp.CombatProfileLocal)
+	}
+	if live.calls != 1 {
+		t.Errorf("live doit être appelé 1× (source par défaut), got %d", live.calls)
 	}
 }
 
@@ -894,6 +906,47 @@ func TestExplorerService_TargetProfile_NoBanner_NoPool(t *testing.T) {
 	}
 	if tp := resp.TargetProfile; tp == nil || tp.Identity != nil {
 		t.Errorf("sans pool, Identity attendue nil, got %+v", resp.TargetProfile)
+	}
+}
+
+// TestExplorerService_TargetProfile_BannerPoolOverridesLiveNameplate : pour une
+// cible NON-locale, la nameplate live (souvent un asset 404) est REMPLACÉE par une
+// nameplate du pool local (preferPool), tout en conservant le rang carrière live.
+func TestExplorerService_TargetProfile_BannerPoolOverridesLiveNameplate(t *testing.T) {
+	now := time.Now()
+	tid := 0
+	matches := []domain.CommonMatchRaw{
+		{MatchID: "m1", StartTime: now, Player1TeamID: &tid, Player2TeamID: &tid, Player1Outcome: 2},
+	}
+	repo := &mockExplorerRepo{xuid: "opp-xuid", matches: matches}
+	brokenNameplate := "/api/v1/assets/spartan/banner/halo_infinite/broken-nameplate.png"
+	sid := "ZZZ"
+	live := &mockLiveIdentity{identity: &domain.HomeSpartanIdentityRow{
+		RankNumber: 5, SpartanID: &sid, BannerImageURL: &brokenNameplate,
+	}}
+	pool := []string{"/b/0.png", "/b/1.png", "/b/2.png"}
+	svc := NewExplorerService(repo, "my-xuid").
+		WithTargetProfileProviders(ExplorerTargetProfileDeps{
+			LocalIdentity:   &mockLocalIdentityResolver{identity: nil}, // non suivi
+			LiveIdentity:    live,
+			TitleSlug:       "halo_infinite",
+			LocalBannerPool: func(_ context.Context) []string { return pool },
+		})
+
+	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Opponent", 1)
+	if err != nil {
+		t.Fatalf("GetCommonMatches: %v", err)
+	}
+	tp := resp.TargetProfile
+	want := pickDeterministicBanner("opp-xuid", pool)
+	if tp == nil || tp.Identity == nil || tp.Identity.BannerImageURL == nil {
+		t.Fatalf("bannière attendue (pool), got %+v", tp)
+	}
+	if *tp.Identity.BannerImageURL != want {
+		t.Errorf("bannière = %q, want %q (pool, pas la nameplate live cassée)", *tp.Identity.BannerImageURL, want)
+	}
+	if tp.Identity.CareerRank == nil {
+		t.Error("le rang carrière live doit être conservé malgré l'override de bannière")
 	}
 }
 

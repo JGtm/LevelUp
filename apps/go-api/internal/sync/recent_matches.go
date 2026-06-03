@@ -18,6 +18,7 @@ import (
 	"sort"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
@@ -96,9 +97,10 @@ func (f *RecentMatchesFetcher) FetchRecentMatches(
 // buildRecentMatchesFromStats projette la cible `xuid` de chaque match (via
 // ExtractParticipants) vers ExplorerTargetRecentMatch. Pure (testable sans HTTP).
 // Tri chronologique ascendant par StartTime de l'historique. Les matchs sans
-// stats ou sans la cible sont ignorés. perfect_kills / map_ui / mode_ui restent
-// vides : non requis par les graphes profil de combat (PerfectKills vient des
-// médailles dans le chemin local, hors scope live).
+// stats ou sans la cible sont ignorés. mode_ui = sous-mode EN normalisé (via
+// resolveLiveModeUI/ResolveModeUI ; FR appliqué ensuite par l'ExplorerService) ;
+// map_ui = nom de carte brut. perfect_kills reste 0 (vient des médailles dans le
+// chemin local, hors scope live).
 func buildRecentMatchesFromStats(
 	history []MatchHistoryEntry, statsByID map[string]map[string]any, xuid string,
 ) []domain.ExplorerTargetRecentMatch {
@@ -112,9 +114,17 @@ func buildRecentMatchesFromStats(
 		if part == nil {
 			continue
 		}
+		// Mode/carte depuis MatchInfo (même source que ExtractRegistry) — sinon le
+		// donut "Répartition des modes" regrouperait tout sous "Inconnu". Le mode est
+		// normalisé en sous-mode EN via analysis.ResolveModeUI (MÊME résolution que le
+		// chemin local) ; la traduction FR (mode_name_tr) est appliquée ensuite par
+		// l'ExplorerService via le repo (metadata). matchInfo nil → "" (nil-safe).
+		matchInfo, _ := raw["MatchInfo"].(map[string]any)
 		rows = append(rows, domain.ExplorerTargetRecentMatch{
 			MatchID:         h.MatchID,
 			StartTime:       parseRecentStartTime(h.StartTime),
+			MapUI:           extractPublicName(matchInfo, "MapVariant"),
+			ModeUI:          resolveLiveModeUI(matchInfo),
 			Outcome:         recentDerefInt(part.Outcome),
 			Rank:            part.Rank,
 			Kills:           recentDerefInt(part.Kills),
@@ -129,6 +139,21 @@ func buildRecentMatchesFromStats(
 	}
 	sort.SliceStable(rows, func(i, j int) bool { return rows[i].StartTime.Before(rows[j].StartTime) })
 	return rows
+}
+
+// resolveLiveModeUI extrait le sous-mode EN normalisé d'un match live depuis son
+// MatchInfo, via analysis.ResolveModeUI (pair d'abord, repli game variant) — même
+// normalisation que le chemin local. "" si rien d'exploitable.
+func resolveLiveModeUI(matchInfo map[string]any) string {
+	pair := extractPublicName(matchInfo, "PlaylistMapModePair")
+	if m := analysis.ResolveModeUI(&pair, nil); m != nil && *m != "" {
+		return *m
+	}
+	gv := extractPublicName(matchInfo, "UgcGameVariant")
+	if m := analysis.ResolveModeUI(&gv, nil); m != nil {
+		return *m
+	}
+	return ""
 }
 
 // findParticipantByXUID retourne la ligne participant du xuid cible, ou nil.

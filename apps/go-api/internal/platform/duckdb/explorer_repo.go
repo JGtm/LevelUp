@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 )
 
@@ -265,7 +266,69 @@ func (r *ExplorerRepo) GetTargetRecentMatches(
 		}
 		out = append(out, m)
 	}
-	return out, rows.Err()
+	if rerr := rows.Err(); rerr != nil {
+		return nil, rerr
+	}
+	// pair_name_fr est NULL en base → ResolveModeUI ne produit que de l'EN. On
+	// applique la traduction FR canonique (metadata.mode_name_tr), même source
+	// que l'historique de matchs / la home, pour le donut "Répartition des modes".
+	r.translateModeUIsFR(ctx, out)
+	return out, nil
+}
+
+// TranslateModeUIsFR expose translateModeUIsFR (port.ExplorerRepository) pour que
+// l'ExplorerService homogénéise la source LIVE du profil de combat avec la locale.
+func (r *ExplorerRepo) TranslateModeUIsFR(ctx context.Context, rows []domain.ExplorerTargetRecentMatch) {
+	r.translateModeUIsFR(ctx, rows)
+}
+
+// translateModeUIsFR remplace en place les libellés de mode EN normalisés
+// (ex. "CTF") par leur traduction FR depuis metadata.mode_name_tr (lang='fr').
+// Best-effort : silencieux si Metadata absent / table absente / erreur — l'EN
+// est alors conservé. Clé = sous-mode EN normalisé (même convention que career).
+func (r *ExplorerRepo) translateModeUIsFR(ctx context.Context, rows []domain.ExplorerTargetRecentMatch) {
+	if len(rows) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return
+	}
+	modeSet := make(map[string]struct{})
+	for i := range rows {
+		if rows[i].ModeUI != "" {
+			modeSet[rows[i].ModeUI] = struct{}{}
+		}
+	}
+	if len(modeSet) == 0 {
+		return
+	}
+	modes := make([]string, 0, len(modeSet))
+	for m := range modeSet {
+		modes = append(modes, m)
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(modes)), ",")
+	q := fmt.Sprintf(`SELECT mode_en, name FROM mode_name_tr WHERE lang = 'fr' AND mode_en IN (%s)`, placeholders)
+	args := make([]any, len(modes))
+	for i, m := range modes {
+		args[i] = m
+	}
+	qrows, err := r.pdb.Metadata.Query(ctx, q, args...)
+	if err != nil {
+		return
+	}
+	defer qrows.Close()
+	fr := make(map[string]string, len(modes))
+	for qrows.Next() {
+		var en, name string
+		if scanErr := qrows.Scan(&en, &name); scanErr != nil {
+			continue
+		}
+		if strings.TrimSpace(name) != "" {
+			fr[en] = name
+		}
+	}
+	for i := range rows {
+		if t, ok := fr[rows[i].ModeUI]; ok {
+			rows[i].ModeUI = t
+		}
+	}
 }
 
 // scanTargetRecentMatch projette une ligne de Q19cTargetRecentMatches vers le
@@ -275,14 +338,21 @@ func scanTargetRecentMatch(rows *sql.Rows) (domain.ExplorerTargetRecentMatch, er
 	var m domain.ExplorerTargetRecentMatch
 	var rank sql.NullInt64
 	var damageDealt, damageTaken float64
+	var pairName, pairNameFR *string
 	if err := rows.Scan(
-		&m.MatchID, &m.StartTime, &m.MapUI, &m.ModeUI,
+		&m.MatchID, &m.StartTime, &m.MapUI, &pairName, &pairNameFR,
 		&m.Outcome, &rank,
 		&m.Kills, &m.Deaths, &m.Assists, &m.KDA,
 		&m.Score, &damageDealt, &damageTaken,
 		&m.MaxKillingSpree, &m.PerfectKills,
 	); err != nil {
 		return m, err
+	}
+	// Libellé de mode normalisé + localisé (FR-preferring) — helper canonique
+	// partagé avec home / match-view / historique (ResolveModeUI =
+	// COALESCE(pair_name_fr, pair_name) → NormalizeModeLabel).
+	if mode := analysis.ResolveModeUI(pairName, pairNameFR); mode != nil {
+		m.ModeUI = *mode
 	}
 	if rank.Valid {
 		v := int(rank.Int64)
