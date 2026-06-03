@@ -226,6 +226,10 @@ type SkillRankRaw struct {
 	// Nil quand absent (LUSR ou rang non encore résolu côté sync).
 	Tier    *string
 	SubTier *int
+	// ExpectedWinProb : proba de victoire pré-match de l'équipe du joueur
+	// (LUSR v2, ∈ [0,1]). Lue depuis match_skill_rank_latest.expected_win_prob.
+	// Nil pour les matchs pré-v2 / sans donnée (Stratégie C : posée sur les rows LUSR).
+	ExpectedWinProb *float64
 }
 
 // EncounterRaw : données brutes de Q23 (participants du match + historique commun).

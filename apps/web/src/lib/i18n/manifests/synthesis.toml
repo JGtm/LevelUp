@@ -164,6 +164,10 @@ en = "No remarkable match"
 fr = "Répartition des frags"
 en = "Kill type distribution"
 
+[synthesis.charts.kill_type_other]
+fr = "Autres"
+en = "Other"
+
 [synthesis.charts.weapon_kills_title]
 fr = "Frags par arme"
 en = "Kills by weapon"

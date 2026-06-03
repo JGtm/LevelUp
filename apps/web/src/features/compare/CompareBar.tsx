@@ -49,9 +49,9 @@ export function CompareBar({
       <p className="text-center text-xs text-muted-foreground leading-tight">{label}</p>
       <div className="flex items-center gap-2">
 
-        <div className="w-20 shrink-0 flex flex-col items-end">
+        <div className="w-24 shrink-0 flex flex-col items-end">
           <span
-            className={availableA ? valueClass : naClass}
+            className={`w-full text-right break-words ${availableA ? valueClass : naClass}`}
             style={availableA && w === 'a' ? { color: colorA, fontWeight: 600 } : undefined}
           >
             {valueA}
@@ -60,9 +60,9 @@ export function CompareBar({
 
         <div className="flex-1 h-3 rounded-sm" style={barStyle} data-testid="compare-bar-track" />
 
-        <div className="w-20 shrink-0 flex flex-col items-start">
+        <div className="w-24 shrink-0 flex flex-col items-start">
           <span
-            className={availableB ? valueClass : naClass}
+            className={`w-full text-left break-words ${availableB ? valueClass : naClass}`}
             style={availableB && w === 'b' ? { color: colorB, fontWeight: 600 } : undefined}
           >
             {valueB}

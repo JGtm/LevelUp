@@ -16,9 +16,6 @@ export interface CompareText {
   ariaWinner: (name: string) => string
   ariaEqual: string
   sampleSize: (n: number) => string
-  favoriteWeapon: string
-  killsWith: (n: number) => string
-  noWeaponData: string
   notAvailable: string
   ariaNotAvailable: string
   catCombat: string
@@ -43,9 +40,6 @@ const FR_TEXT: CompareText = {
   ariaWinner: (name) => `${name} domine cette métrique`,
   ariaEqual: 'Égalité',
   sampleSize: (n) => `(sur ${n} matchs)`,
-  favoriteWeapon: 'Arme favorite',
-  killsWith: (n) => `${n} frag${n > 1 ? 's' : ''}`,
-  noWeaponData: '—',
   notAvailable: 'N/A',
   ariaNotAvailable: 'Donnée non disponible',
   catCombat: 'Combat',
@@ -91,9 +85,6 @@ const EN_TEXT: CompareText = {
   ariaWinner: (name) => `${name} leads`,
   ariaEqual: 'Tied',
   sampleSize: (n) => `(${n} matches)`,
-  favoriteWeapon: 'Favorite weapon',
-  killsWith: (n) => `${n} kill${n > 1 ? 's' : ''}`,
-  noWeaponData: '—',
   notAvailable: 'N/A',
   ariaNotAvailable: 'Data not available',
   catCombat: 'Combat',

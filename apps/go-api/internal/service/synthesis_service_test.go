@@ -518,6 +518,33 @@ func TestComputeSynthesisBestRefs_HeadshotsAndPersonalScore(t *testing.T) {
 	}
 }
 
+func TestComputeSynthesisBestRefs_ExcludesDNFAndPvE(t *testing.T) {
+	// Les « Meilleures stats » excluent les matchs non terminés (DNF) et le
+	// PvE/Firefight : le record doit pointer sur le meilleur match PvP TERMINÉ,
+	// même si un DNF ou un Firefight a une valeur brute plus élevée.
+	dnf := makeCanonicalBestRow("m-dnf", 40, 1, 5000, 20, 10, 3000, 0.9)
+	dnf.Summary.Outcome = canonical.OutcomeDNF
+	dnf.Self.Outcome = canonical.OutcomeDNF
+
+	pve := makeCanonicalBestRow("m-pve", 60, 1, 8000, 30, 15, 4000, 0.95)
+	isPvE := true
+	pve.Summary.IsPvE = &isPvE
+
+	clean := makeCanonicalBestRow("m-clean", 25, 5, 1200, 4, 3.0, 1500, 0.50)
+
+	refs := computeSynthesisBestRefs([]canonical.PlayerMatchRow{dnf, pve, clean})
+
+	if refs.kills == nil || refs.kills.MatchID != "m-clean" || refs.kills.Value != 25 {
+		t.Errorf("kills: want m-clean/25 (DNF+PvE exclus), got %+v", refs.kills)
+	}
+	if refs.damage == nil || refs.damage.MatchID != "m-clean" {
+		t.Errorf("damage: want m-clean (DNF+PvE exclus), got %+v", refs.damage)
+	}
+	if refs.killingSpree == nil || refs.killingSpree.MatchID != "m-clean" {
+		t.Errorf("killing_spree: want m-clean (DNF+PvE exclus), got %+v", refs.killingSpree)
+	}
+}
+
 func TestComputeSynthesisBestRefs_AllZeroSkipsRef(t *testing.T) {
 	// Si toutes les valeurs sont 0 (joueur n'a jamais tué/infligé de dégâts),
 	// la carte FE ne doit pas s'afficher -> ref nil.

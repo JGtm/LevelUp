@@ -1,6 +1,16 @@
 // Package duckdb — queries_squad.go : requêtes page Escouade et Synthèse.
 package duckdb
 
+// QSquadExpectedWinProbTpl : proba de victoire pré-match (LUSR v2) par match_id,
+// depuis player.match_skill_rank. MAX(expected_win_prob) car la valeur n'est
+// posée que sur les rows LUSR (append-only, N versions/match) — robuste à la
+// présence d'une row CSR (NULL) pour le même match. %s = Placeholders(len(ids)).
+const QSquadExpectedWinProbTpl = `
+SELECT match_id, MAX(expected_win_prob) AS expected_win_prob
+FROM match_skill_rank
+WHERE match_id IN (%s) AND expected_win_prob IS NOT NULL
+GROUP BY match_id`
+
 // Q29TopTeammatesSharedTpl : (ADR 0016) — partie shared du split
 // LoadTopTeammates. Découpé en :
 //

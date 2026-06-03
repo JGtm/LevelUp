@@ -206,11 +206,6 @@ func (s *CompareService) loadPlayerA(ctx context.Context) (*domain.NormalizedPla
 	if athErr != nil {
 		logBestEffortErr(ctx, "CompareService: ATH non disponible", athErr, "xuid", s.xuidA)
 	}
-	var wErr error
-	statsA.FavoriteWeapon, wErr = s.repo.GetFavoriteWeapon(ctx, s.xuidA)
-	if wErr != nil {
-		logBestEffortErr(ctx, "CompareService: arme favorite non disponible", wErr, "xuid", s.xuidA)
-	}
 	applyCSRSummary(statsA, s.fetchCSRSummary(ctx, s.xuidA))
 	return statsA, ath, nil
 }
@@ -242,7 +237,10 @@ func (s *CompareService) loadPlayerB(ctx context.Context, targetGamertag string)
 	xuidB, _ := s.repo.ResolveXUID(ctx, targetGamertag)
 	if xuidB != "" {
 		if local, err := s.repo.GetLocalStats(ctx, xuidB, s.titleSlug); err == nil && local != nil {
-			s.enrichLocalPlayerB(ctx, local, xuidB)
+			s.enrichLocalPlayerB(ctx, local)
+			// Fallback rang carrière live (même source que l'Explorer) si l'ATH local
+			// ne le fournit pas — idempotent : skip si déjà > 0.
+			s.fillCareerRankLive(ctx, local, xuidB)
 			local.CareerRankLabel = s.careerRankTitle(ctx, local.CareerRank)
 			applyCSRSummary(local, s.fetchCSRSummary(ctx, xuidB))
 			slog.DebugContext(ctx, "CompareService: joueur B résolu localement", "gamertag", targetGamertag, "xuid", xuidB)
@@ -257,19 +255,20 @@ func (s *CompareService) loadPlayerB(ctx context.Context, targetGamertag string)
 	}
 	if xuidB != "" {
 		s.enrichRemotePlayerBWithCrossSample(ctx, remote, xuidB, targetGamertag)
-		s.fillRemoteCareerRankLive(ctx, remote, xuidB)
+		s.fillCareerRankLive(ctx, remote, xuidB)
 		remote.CareerRankLabel = s.careerRankTitle(ctx, remote.CareerRank)
 		applyCSRSummary(remote, s.fetchCSRSummary(ctx, xuidB))
 	}
 	return remote, xuidB, nil
 }
 
-// fillRemoteCareerRankLive complète le rang carrière d'un joueur B non-local via
-// le fetch live identity (même source que le profil de combat Explorer) — le
-// service record Waypoint ne fournit pas le rang carrière. xuidB doit être résolu.
+// fillCareerRankLive complète le rang carrière d'un joueur B via le fetch live
+// identity (même source que le profil de combat Explorer) quand il manque — utile
+// pour un B non-local (le service record Waypoint ne fournit pas le rang) comme
+// pour un B local dont l'ATH ne porte pas encore le rang. xuidB doit être résolu.
 // Best-effort : skip si pas de provider, pas de xuid, ou rang déjà présent.
-func (s *CompareService) fillRemoteCareerRankLive(ctx context.Context, remote *domain.NormalizedPlayerStats, xuidB string) {
-	if s.liveIdentity == nil || xuidB == "" || remote.CareerRank > 0 {
+func (s *CompareService) fillCareerRankLive(ctx context.Context, stats *domain.NormalizedPlayerStats, xuidB string) {
+	if s.liveIdentity == nil || xuidB == "" || stats.CareerRank > 0 {
 		return
 	}
 	id, err := s.liveIdentity.FetchLiveIdentity(ctx, xuidB)
@@ -278,15 +277,15 @@ func (s *CompareService) fillRemoteCareerRankLive(ctx context.Context, remote *d
 		return
 	}
 	if id != nil && id.RankNumber > 0 {
-		remote.CareerRank = id.RankNumber
+		stats.CareerRank = id.RankNumber
 		slog.DebugContext(ctx, "CompareService: rang carrière live joueur B", "xuid", xuidB, "rank", id.RankNumber)
 	}
 }
 
-// enrichLocalPlayerB enrichit un joueur B local avec FavoriteWeapon + ATH propre.
-func (s *CompareService) enrichLocalPlayerB(ctx context.Context, local *domain.NormalizedPlayerStats, xuidB string) {
+// enrichLocalPlayerB enrichit un joueur B local avec son ATH propre (rang carrière,
+// records perf/LUSR).
+func (s *CompareService) enrichLocalPlayerB(ctx context.Context, local *domain.NormalizedPlayerStats) {
 	local.IsLocal = true
-	local.FavoriteWeapon, _ = s.repo.GetFavoriteWeapon(ctx, xuidB)
 
 	athB, athErr := s.repo.GetPlayerATHFor(ctx, local.Gamertag, s.titleSlug)
 	if athErr != nil {

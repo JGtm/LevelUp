@@ -241,6 +241,7 @@ func buildSquadMatchHistory(matches []domain.SquadMatchRow, mapWR map[string][2]
 			GameplayDurationSeconds: m.GameplayDurationSeconds,
 			WinRateHist:             winRate,
 			WinRateHistTotal:        winRateTotal,
+			ExpectedWinProb:         m.ExpectedWinProb,
 			SessionLabel:            m.SessionLabel,
 		})
 	}

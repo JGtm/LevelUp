@@ -176,6 +176,21 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
         },
       },
       {
+        accessorKey: 'expected_win_prob',
+        header: labels.winProb,
+        cell: (ctx) => {
+          const v = ctx.getValue<number | null | undefined>()
+          if (v == null) return <span className="text-muted-foreground">—</span>
+          const pct = Math.round(v * 100)
+          const color = pct >= 50 ? tokenCssVar('outcome-win') : tokenCssVar('outcome-loss')
+          return (
+            <span className="font-mono tabular-nums" style={{ color }}>
+              {pct}%
+            </span>
+          )
+        },
+      },
+      {
         accessorKey: 'score_label',
         header: labels.score,
         cell: (ctx) => (

@@ -304,7 +304,10 @@ type SquadMatchHistoryRow struct {
 	// de référence à comparer avec le résultat du match courant.
 	WinRateHist      *float64 `json:"win_rate_hist,omitempty"`
 	WinRateHistTotal *int     `json:"win_rate_hist_total,omitempty"`
-	SessionLabel     *string  `json:"session_label,omitempty"`
+	// ExpectedWinProb : proba de victoire pré-match de l'équipe ∈ [0,1] (LUSR v2).
+	// Alimente la colonne « Prob. vic. ». Nil si pré-v2 / non disponible.
+	ExpectedWinProb *float64 `json:"expected_win_prob,omitempty"`
+	SessionLabel    *string  `json:"session_label,omitempty"`
 }
 
 // TeammateRow est une ligne de résultat (stats avec vs sans un coéquipier).

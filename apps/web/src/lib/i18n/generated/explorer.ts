@@ -194,8 +194,8 @@ export const explorerManifest = {
   "explorer.target_profile.top_weapons_title": { fr: "Top armes", en: "Top weapons" },
   "explorer.target_profile.value_unavailable": { fr: "—", en: "—" },
   "explorer.target_profile.yield_defensive": { fr: "Résistance", en: "Resistance" },
-  "explorer.target_profile.yield_dmg_per_death": { fr: "{n} dmg/mort", en: "{n} dmg/death" },
-  "explorer.target_profile.yield_dmg_per_kill": { fr: "{n} dmg/frag", en: "{n} dmg/kill" },
+  "explorer.target_profile.yield_dmg_per_death": { fr: "{n} dégâts/mort", en: "{n} dmg/death" },
+  "explorer.target_profile.yield_dmg_per_kill": { fr: "{n} dégâts/frag", en: "{n} dmg/kill" },
   "explorer.target_profile.yield_offensive": { fr: "Rendement", en: "Yield" },
 } as const
 

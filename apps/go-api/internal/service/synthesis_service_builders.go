@@ -193,6 +193,9 @@ func buildCombatProfileFromCanonical(rows []canonical.PlayerMatchRow) *domain.Co
 	var ocCount, drCount int
 	var residualSum float64
 	var residualCount int
+	// Agrégats bruts pour dmg/frag & dmg/mort (Σ dégâts / Σ kills|morts).
+	var totalDmgDealt, totalDmgTaken float64
+	var totalKills, totalDeaths int
 	for _, r := range rows {
 		if r.Self.DamageDealt != nil && r.Self.DamageTaken != nil {
 			k, a, d := 0, 0, 0
@@ -214,6 +217,10 @@ func buildCombatProfileFromCanonical(rows []canonical.PlayerMatchRow) *domain.Co
 				drSum += cy.DefensiveResistance
 				drCount++
 			}
+			totalDmgDealt += float64(*r.Self.DamageDealt)
+			totalDmgTaken += float64(*r.Self.DamageTaken)
+			totalKills += k
+			totalDeaths += d
 		}
 		if r.Enrichment.EngagementScoreBrut != nil {
 			residualSum += *r.Enrichment.EngagementScoreBrut
@@ -234,6 +241,14 @@ func buildCombatProfileFromCanonical(rows []canonical.PlayerMatchRow) *domain.Co
 		avgResidualBrut = &v
 	}
 	block := analysis.ClassifyCombatProfile(avgOC, avgDR, avgResidualBrut, len(rows))
+	if totalKills > 0 {
+		v := totalDmgDealt / float64(totalKills)
+		block.DmgPerKill = &v
+	}
+	if totalDeaths > 0 {
+		v := totalDmgTaken / float64(totalDeaths)
+		block.DmgPerDeath = &v
+	}
 	return &block
 }
 

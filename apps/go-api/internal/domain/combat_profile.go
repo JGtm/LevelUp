@@ -37,6 +37,13 @@ type CombatProfileBlock struct {
 	// (Phase 4 non encore livrée — canonical.PlayerMatchEnrichment ne l'expose pas).
 	AvgResidualBrut *float64 `json:"avg_residual_brut,omitempty"`
 
+	// DmgPerKill / DmgPerDeath : dégâts moyens par frag / par mort, agrégés
+	// (Σ damage_dealt / Σ kills, Σ damage_taken / Σ deaths) sur la fenêtre. Nil
+	// si dénominateur nul. Affichés à côté du rendement/résistance (parité KPI
+	// card Explorer YieldTile).
+	DmgPerKill  *float64 `json:"dmg_per_kill,omitempty"`
+	DmgPerDeath *float64 `json:"dmg_per_death,omitempty"`
+
 	// Descripteurs textuels — nil si MatchCount < minMatchesForCombatStyle (15).
 	StyleOffensive *CombatStyle `json:"style_offensive,omitempty"`
 	StyleDefensive *CombatStyle `json:"style_defensive,omitempty"`

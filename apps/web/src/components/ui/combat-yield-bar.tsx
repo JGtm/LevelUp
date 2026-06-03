@@ -63,7 +63,7 @@ function Tooltip({ offensiveConversion, defensiveResistance, damagePerKill, dama
         <span className="text-muted-foreground">{offensiveConversion != null ? `${Math.round(offensiveConversion * 100)}%` : '—'}</span>
       </div>
       {damagePerKill != null && (
-        <div className="text-muted-foreground mb-1">{Math.round(damagePerKill)} dmg/kill</div>
+        <div className="text-muted-foreground mb-1">{Math.round(damagePerKill)} dégâts/frag</div>
       )}
       <div className="flex justify-between gap-2 mb-1">
         <span className="font-semibold" style={{ color: tokenCssVar('divergent-neutral') }}>Résistance</span>
@@ -72,7 +72,7 @@ function Tooltip({ offensiveConversion, defensiveResistance, damagePerKill, dama
         </span>
       </div>
       {damagePerDeath != null && (
-        <div className="text-muted-foreground">{Math.round(damagePerDeath)} dmg/mort</div>
+        <div className="text-muted-foreground">{Math.round(damagePerDeath)} dégâts/mort</div>
       )}
       {/* triangle pointer */}
       <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-popover" />

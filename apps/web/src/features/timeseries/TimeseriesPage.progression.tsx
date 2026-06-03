@@ -5,7 +5,11 @@
  * Contenu : first event, per minute, performance, spree/headshots, rank score,
  * skill rank perf, efficiency, engagement section, intensity heatmap + table.
  */
+import { useMemo } from 'react'
+import { type ColumnDef } from '@tanstack/react-table'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
+import { tokenCssVar } from '@/lib/accessibility'
+import { formatWinProb } from '@/lib/winProbCategory'
 import { TimeseriesFirstEventDistribution } from './TimeseriesFirstEventDistribution'
 import {
   TimeseriesPerformanceTrend,
@@ -47,6 +51,27 @@ export function TimeseriesProgressionTab({
   filterContextHash,
   explorerMatchRows,
 }: TimeseriesProgressionTabProps) {
+  // Colonne « Prob. vic. » (expected_win_prob, LUSR v2) injectée après « Résultat »
+  // dans le tableau historique — spécifique à cette vue (pas sur la page Explorer).
+  const winProbColumns = useMemo<ColumnDef<ExplorerMatchRow>[]>(
+    () => [
+      {
+        id: 'expected_win_prob',
+        header: t('timeseries.progression.col_win_prob'),
+        cell: (ctx) => {
+          const v = ctx.row.original.expected_win_prob
+          if (v == null) return <span className="text-muted-foreground">-</span>
+          const color = v >= 0.5 ? tokenCssVar('outcome-win') : tokenCssVar('outcome-loss')
+          return (
+            <span className="font-mono tabular-nums" style={{ color }}>
+              {formatWinProb(v)}
+            </span>
+          )
+        },
+      },
+    ],
+    [t],
+  )
   return (
     <div className="space-y-8">
       {/* timeseries.11 — Premier événement (gauche) | timeseries.14 — Par minute (droite) */}
@@ -174,19 +199,18 @@ export function TimeseriesProgressionTab({
         </ChartFrame>
       )}
 
-      {/* Historique des matchs — tableau Explorer en bas de Progression.
-          Reflète le scope solo du filtre global (mêmes matchs que les
-          charts ci-dessus). */}
+      {/* Historique des matchs — tableau Explorer standalone (sans bloc ni titre)
+          en bas de Progression. Reflète le scope solo du filtre global (mêmes
+          matchs que les charts ci-dessus). Colonne « Prob. vic. » injectée après
+          « Résultat ». */}
       {explorerMatchRows && explorerMatchRows.length > 0 && (
-        <ChartFrame
-          title={t('timeseries.progression.match_history_title')}
-        >
-          <ExplorerMatchesTable
-            rows={explorerMatchRows}
-            playerSlug={playerSlug}
-            alwaysShowPagination
-          />
-        </ChartFrame>
+        <ExplorerMatchesTable
+          rows={explorerMatchRows}
+          playerSlug={playerSlug}
+          alwaysShowPagination
+          extraColumns={winProbColumns}
+          extraColumnsAfterId="outcome_code"
+        />
       )}
 
     </div>
