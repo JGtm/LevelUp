@@ -78,4 +78,41 @@ describe('ExplorerTargetIdentityBanner', () => {
     expect(screen.queryByTestId('explorer-target-adornment-image')).toBeNull()
     expect(screen.queryByTestId('explorer-target-emblem')).toBeNull()
   })
+
+  // Régression du fix Héros : la barre rang/XP ne doit JAMAIS disparaître quand
+  // career_rank existe (cf. parité Home). Cas max rang inclus.
+  it('affiche la barre de progression carrière dès que career_rank existe (rang normal)', () => {
+    render(IDENTITY_FULL) // is_max_rank: false
+    expect(screen.getByTestId('explorer-target-rank-progress-fill')).toBeInTheDocument()
+    expect(screen.getByText(/Progression vers/)).toBeInTheDocument()
+  })
+
+  it('au rang max (Héros) : XP de carrière totale à gauche + un SEUL "Rang max"', () => {
+    render({
+      ...IDENTITY_FULL,
+      career_rank: {
+        ...IDENTITY_FULL.career_rank!,
+        is_max_rank: true,
+        progress_pct: 100,
+        current_xp: 0,
+        total_xp: 9319350,
+      },
+    })
+    expect(screen.getByTestId('explorer-target-rank-progress-fill')).toBeInTheDocument()
+    // Un seul "Rang max" (au bout de la barre composite), pas trois (cf. retour user).
+    expect(screen.getAllByText('Rang max')).toHaveLength(1)
+    // L'XP de carrière totale (« le grand nombre ») est affichée, pas « 0 XP ».
+    expect(screen.getByText(/XP/)).toBeInTheDocument()
+    expect(screen.queryByText('0 XP')).not.toBeInTheDocument()
+  })
+
+  it('localise les libellés des skill peaks (FR : Meilleur CSR / Meilleur LUSR)', () => {
+    render({
+      ...IDENTITY_FULL,
+      highest_csr: { rating_value: 1500, tier_label: 'Onyx', measurement_matches_remaining: 0 },
+      highest_lusr: { rating_value: 1600, tier_label: 'Diamant III', measurement_matches_remaining: 0 },
+    })
+    expect(screen.getByText('Meilleur CSR')).toBeInTheDocument()
+    expect(screen.getByText('Meilleur LUSR')).toBeInTheDocument()
+  })
 })

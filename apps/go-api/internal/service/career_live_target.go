@@ -16,13 +16,14 @@
 //	cache mémoire — jamais persistPartial — donc aucun risque de polluer la
 //	career_progression du user connecté avec les données d'un autre joueur.
 //
-// Dégradation : pour un joueur tiers, /careerranks et /customization/appearance
-// sont player-gated (403). La progression (career rank) est donc absente, mais
-// la customisation retombe sur la vue publique côté HaloAPIClient
-// (GetSpartanCustomization → /customization?view=public) qui expose
-// emblem/backdrop/service-tag pour n'importe quel xuid. On rend alors l'identité
-// visuelle sans le rang carrière. Si aucune donnée live n'est disponible, on
-// retombe sur la DB locale (cible suivie). Retourne nil si rien n'est résolu.
+// Joueur tiers (corrigé 2026-06-03) : CONTRAIREMENT à l'hypothèse antérieure,
+// /careerranks N'EST PAS player-gated. Vérifié empiriquement (token du user auth →
+// HTTP 200 + rang carrière d'un xuid TIERS, ResultCode=Success ; l'endpoint est un
+// batch players=xuid(...)). Le career rank live est donc DISPONIBLE pour une cible
+// arbitraire (fetchProgressCached le récupère bien ici). Seul
+// /customization/appearance est réellement 403-gated → fallback vue publique
+// /customization?view=public (emblem/backdrop/service-tag). Si aucune donnée live
+// n'est disponible, on retombe sur la DB locale. Retourne nil si rien n'est résolu.
 package service
 
 import (

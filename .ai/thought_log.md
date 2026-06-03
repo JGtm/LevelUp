@@ -1,3 +1,184 @@
+## [2026-06-03] Explorer cible — 4 retours : CSR non classé + donut frags + modes « Inconnu » + matchs/saison — Complété (3 fix) / Expliqué (1)
+
+**Statut** : Complété. Branche `feat/skill-progression-magnitude-scale`. go build ./... OK, vitest explorer 64/64.
+
+1. **CSR « Classements (saison actuelle) »** (frontend, live) : tier vide affichait « — ». Désormais « Non classé » + badge `unranked_0.png`, et l'image déplacée TOUT À DROITE (après le label). `ExplorerTargetSeasonCSR.tsx`. La liste ne contenant que des playlists AVEC données, tier vide = non classé (pas « irrécupérable » → pas de « N/A » à déclencher). Suivi : padding horizontal du bloc augmenté `px-3` → `px-4` (barre titre + contenu).
+
+2. **Donut « Répartition des frags »** (frontend, live) : `other = kills − (headshot+melee+power+grenade)` → le donut sommait à `kills − headshot` (incomplet). Les headshots sont ORTHOGONAUX au type d'arme (un frag arme normale/lourde peut être headshot) → ne pas les soustraire. Fix : `other = kills − (melee+power+grenade)` → melee+power+grenade+other = total frags. `ExplorerTargetSampleStats.tsx`.
+
+3. **Donut « Répartition des modes » = « Inconnu » à 100%** (backend, REBUILD requis) : cause racine confirmée par dump live (throwaway) — le MatchInfo BRUT de l'API n'a QUE `{AssetId, AssetKind, VersionId}`, AUCUN `PublicName`. Donc `resolveLiveModeUI` (recent_matches.go) → "" → « Inconnu ». Fix : porter l'AssetId du pair (`ExplorerTargetRecentMatch.ModePairAssetID`, transient `json:"-"`) ; `translateModeUIsFR` (explorer_repo.go) résout d'abord le mode depuis `shared.match_registry` (pair_id → pair_name → ResolveModeUI) AVANT la trad FR. Les joueurs suivis ont déjà vu les pairs matchmaking communs → la plupart résolvent ; un pair jamais vu reste « Inconnu » (dégradation acceptable). Signature port inchangée (zéro churn interface).
+
+4. **« Matchs par saison » sous-compte (Nilton ~1500 vs ~7000 réels)** : PAS un bug / PAS une limite d'API. `GetMatchStartTimesForXUID` n'a aucune LIMIT — il renvoie TOUT `shared.match_participants` pour ce xuid. Mais LevelUp ne stocke QUE les matchs joués AVEC un joueur suivi (matchs communs). Les ~5500 matchs de Nilton sans joueur suivi ne sont pas en base. Le graphe reflète donc les matchs que LevelUp CONNAÎT (communs), pas l'historique complet du tiers. À expliquer (option : clarifier le libellé/sous-titre).
+
+---
+
+## [2026-06-03] Explorer vue locale — bandeau identité : régression barre Héros + labels EN + palier CSR + non-local — Stream A complété, B/C planifiés
+
+**Statut** : Stream A (frontend) Complété + vérifié. Streams B (backend) et C (feature) planifiés. Branche `feat/skill-progression-magnitude-scale`.
+
+**Contexte** : `ExplorerTargetIdentityBanner` est un FORK DÉGRADÉ de `HomeSpartanIdentityBanner`. 4 symptômes signalés sur la vue locale : (1) « Highest CSR/LUSR » en EN, (2) palier CSR EN, (3) pas de sous-palier CSR, (4) barre rang/XP disparue.
+
+**Cause racine #4 (régression)** : commit `01e29bb51` (mon fix Héros) a ajouté dans le bandeau Explorer la branche `is_max_rank ? <CompositeProgressBar value={100}>` (barre verte NUE, sans XP ni libellés). Or `is_max_rank` est dérivé via `ranks.Next(id)=byID[id+1]` ([home_kpis.go:284](apps/go-api/internal/analysis/home_kpis.go), [ranks.go:73](apps/go-api/internal/games/mappings/ranks.go)) → vrai pour le dernier rang. Le joueur local est au rang max → branche prise → XP/libellés effacés. Le Home, lui, affiche TOUJOURS current_xp + barre (progress_pct) + « Rang max » dès que careerRank existe. Migrations déjà tracées → `git diff HEAD` vide (fix committé en session antérieure).
+
+**Stream A — FAIT (frontend, vérifié)** : `ExplorerTargetIdentityBanner.tsx` calqué sur le Home —
+- barre rang/XP visible dès que `careerRank` existe ; current_xp + `CompositeProgressBar value={progress_pct}` + (is_max ? « Rang max » : cible). Plus de branche masquante. Au rang max : barre pleine verte (progress_pct=100) + « Rang max », current_xp conservé (choix user « comme le Home »).
+- Labels « Highest CSR/LUSR » → i18n via `getSpartanIdentityText` (clés `home.spartan.highest_csr/lusr` = « Meilleur CSR/LUSR »).
+- `fillTestId` ajouté + 3 tests (barre visible rang normal, cas Héros non masqué, labels FR). `tsc`/eslint OK, vitest banner 6/6.
+- Suivi (retour user runtime) : non-local CONFIRMÉ OK (rang précédent/suivant visibles). Au rang max, « Rang max » s'affichait 3× (haut-gauche + haut-droite + bout de barre) → ligne du haut MASQUÉE au rang max, un SEUL « Rang max » conservé (bout de barre composite). Test mis à jour (`toHaveLength(1)`). NB : le banner Home (`HomeSpartanIdentityBanner`) porte le même triple « Rang max » au rang max — non aligné pour l'instant (proposé au user, parité [[reference-explorer-banner-forks-home]]).
+- Suivi 2 (retour user runtime) : sur cible Explorer SUIVIE (ex. Chocoboflor) la barre affichait « 0 % / 0 XP » à droite — `xp_for_next` non stocké dans la player DB (`career_progression`=0) et NON enrichi par le chemin local (le chemin live/Home, lui, passe par `CareerLiveRepo.EnrichFromMetadata` qui lit `career_ranks.xp_required`). Fix TOUS-CHEMINS au point d'affichage : `RankEntry.XPRequired` ajouté ([ranks.go](apps/go-api/internal/games/mappings/ranks.go)) + `LoadRankCatalog` lit `career_ranks.xp_required` en best-effort ([halo_ranks_loader.go](apps/go-api/internal/platform/duckdb/halo_ranks_loader.go)) + `buildHomeCareerRank` fallback sur le catalog quand `raw.XPForNextRank<=0` (≠ rang max). Home INCHANGÉ (valeur live déjà correcte → fallback inactif). `go build`/`go vet`/tests (analysis+mappings+duckdb LoadRankCatalog) OK. **NÉCESSITE un rebuild + restart serveur** (catalog rechargé au boot).
+- Suivi 3+4 (retour user runtime) : au rang max (Héros), la gauche affichait « 0 XP ». TESTÉ EN LIVE (throwaway, profile GET `/users/gt(Nilton410)`→xuid puis careerranks) : l'API renvoie `CurrentProgress{Rank:272, PartialProgress:0}` → `current_xp` est RÉELLEMENT 0 au rang max (pas un artefact de rebuild ; le live fetch est inchangé par mes edits backend). Le user veut « le grand nombre qui fait rêver » = l'XP de carrière TOTALE.
+  Implémenté (tous chemins) : `RankCatalog.CumulativeXPRequired(uptoRank)` (Σ XPRequired des rangs) + `HomeCareerRankSummary.TotalXP` (+ `total_xp` types.ts) ; `buildHomeCareerRank` calcule `TotalXP = current_xp + CumulativeXPRequired(rank-1)`. Banner : au rang max, gauche = `total_xp` (« 9 319 350 XP » pour Nilton) au lieu de current_xp=0. Non-max inchangé. Tests : backend TotalXP cumulatif (350=100+200+50), frontend banner (total affiché, pas « 0 XP »). `go build ./...` OK, vitest banner 6/6.
+  ATTENTION exactitude : `total_xp` dépend de `career_ranks.xp_required` COMPLET (272 rangs) dans le catalog. Si des seuils manquent → total sous-estimé. Sanity check au restart : Nilton ≈ 9 319 350 (réf SpartanRecord). **NÉCESSITE rebuild + restart** (catalog + DTO backend).
+
+**Stream B — FAIT (code, vérif visuelle au restart)** : palier CSR all-time EN sans sous-palier. `loadCSRAlltimePeak` ([home_repo_skill_peak.go](apps/go-api/internal/platform/duckdb/home_repo_skill_peak.go)) mettait `alltime_tier` BRUT (EN) dans tier_label, ignorait `alltime_sub_tier`. Fix : nouveau helper `analysis.BuildCSRTierLabelFromEN(tierEN, subTier, frPreferred)` ([home_canonical_skill.go](apps/go-api/internal/analysis/home_canonical_skill.go)) — map EN→FR (Bronze/Argent/Or/Platine/Diamant/Onyx, casse normalisée) + réutilise `BuildSkillTierLabel` (sous-palier romain, Onyx sans sous-palier) ; appelé dans `loadCSRAlltimePeak` (frPreferred=true, FR-first comme `sync.formatCSRTierLabel`). Partagé Home + Explorer → « Diamant III » au lieu de « Diamond ». Import duckdb→analysis sûr (pas de cycle, vérifié). `go build`/`go vet`/test analysis OK. À CONFIRMER au restart : `alltime_sub_tier` peuplé en base (sinon dégrade en « Diamant » sans sous-palier) + rendu + non-régression Home.
+
+**Stream C — INVESTIGUÉ (career rank non-local) : RIEN À PORTER depuis Grunt.** Analyse des sources LOCALES `grunt/` (= OpenSpartan Grunt, github.com/dend/grunt, un WRAPPER client .NET/Node de l'API Halo, PAS le backend de grunt.api.dotapi.gg) + vérif croisée LevelUp :
+- LevelUp fait DÉJÀ l'appel IDENTIQUE à Grunt : `GetCareerProgress` ([halo_client_career.go:21](apps/go-api/internal/sync/halo_client_career.go)) = `economy.svc.halowaypoint.com/hi/careerranks/careerRank1?players=xuid(X)`, mêmes headers (`x-343-authorization-spartan` + `343-clearance`), même chaîne OAuth→XBL→XSTS(`prod.xsts.halowaypoint.com`)→Spartan(`urn:343:s3:services`)→clearance. Grunt n'a AUCUN compte de service / client_credentials / relying party alternatif (recherche exhaustive). Son seul cas testé = "moi" (xuid du joueur authentifié).
+- Le 403 cross-joueur est le **gating d'ownership de l'API 343 elle-même**, que Grunt ne franchit pas. SpartanRecord marche via le **service hébergé** HaloDotAPI (infra privilégiée, ABSENTE du source local) — non reproductible.
+- LevelUp documente + gère déjà ça ([career_live_target.go:19-25](apps/go-api/internal/service/career_live_target.go)) : tiers → dégradation identité visuelle via vue PUBLIQUE `/customization?view=public` (200 pour tout xuid), sans rang carrière. Les seuils GameCMS (`careerRank1.json`) sont déjà ingérés (`cmd/refresh-career-ranks`), non gated.
+- **TESTÉ EMPIRIQUEMENT 2026-06-03 (throwaway, token Madina) — LE 403 N'EXISTE PAS** : 3 appels live à `economy…/hi/careerranks/careerRank1` :
+  - A. `players=xuid(Madina)` → 200 Success (Rank 201).
+  - B. `players=xuid(JGtm)` SEUL (= ce que fait LevelUp) → **200 Success, Rank 185** (rang d'un TIERS avec le token de Madina !).
+  - C. `players=xuid(Madina),xuid(JGtm)` → 200, les DEUX en Success.
+  → Le career rank d'un joueur ARBITRAIRE est lisible via l'API officielle. Le « 403 tiers » documenté était FAUX (confondu avec /customization/appearance qui, lui, est gated). Conséquence : `FetchLiveIdentity`→`fetchProgressCached`→`GetCareerProgress` récupère DÉJÀ le rang d'un tiers ; avec le fix Stream A (barre visible dès que careerRank existe), le non-local devrait s'afficher. Commentaire erroné corrigé dans [career_live_target.go](apps/go-api/internal/service/career_live_target.go). RESTE À CONFIRMER en runtime : les tokens Halo sont-ils dans le ctx de la requête Explorer (`ctxkeys.HaloTokens(ctx)` non-nil) ? Si oui → non-local OK ; sinon petit wiring. Skill peaks (CSR/LUSR) non-local : encore `includePeaks=false` (séparé).
+
+**Statut** : Complété (vue corrigée sur les 4 DBs + code + display). Branche `feat/skill-progression-magnitude-scale`.
+
+**Symptôme user** : la colonne « Note » des tableaux de résultats affiche tantôt `LUSR`, tantôt `LUSR_V2`.
+
+**Rappel modèle** : v2 canonical par défaut au boot (`DefaultLUSRModeIfUnset`), v1 skippé. Sous Stratégie C
+(ADR 0024, `writeCanonicalLUSRRow`), chaque match v2 écrit DEUX rows identiques dans le même batch —
+`rating_type='LUSR'` (slot UI, **valeur v2**) + `rating_type='LUSR_V2'` (audit). Donc `LUSR` ≠ v1.
+
+**VRAIE cause racine (diag + trace, hypothèse "orphelins/Anomalie A" DÉMENTIE — Anomalie A = 0 partout)** :
+- La vue `match_skill_rank_latest` n'appliquait PAS la priorité `CSR>LUSR>LUSR_V2`. Trois migrations recréent
+  cette vue ; l'ordre d'exécution est `canonicalOrder` (order.go), pas l'ordre des fichiers. Or à l'index 90
+  `player_msr_view_lusr_over_v2_v1` (CASE 3-voies CORRECT) tourne AVANT l'index 91
+  `player_msr_view_priority_csr_v1` (CASE 2-voies `CSR vs ELSE` → LUSR & LUSR_V2 départagés par `id DESC` →
+  **LUSR_V2, id plus grand dans le batch, GAGNE**). `priority_csr` écrasait donc le fix.
+- Les migrations sont tracées dans `schema_migrations` et n'exécutent `ApplySchema` qu'UNE fois (registry.go) →
+  les deux étant déjà appliquées, AUCUNE ne re-tourne au boot. Corriger le code seul ne répare pas les DBs.
+- La colonne affichait en plus `rating_type` BRUT (`{v ?? '-'}`), sans normalisation.
+- Diag avant fix : `latest` montrait LUSR_V2 = Madina 730 / JGtm 624 / XxDaemon 22 (Choco 0 — ses rows LUSR_V2
+  ont `written_at` NULL, donc l'ancien `written_at DESC` faisait gagner LUSR par chance).
+
+**Fix VUE (cause racine)** :
+- Code : `steps_player_msr_view_priority_csr.go` (la DERNIÈRE migration vue) → CASE 3-voies
+  `CSR WHEN 0, LUSR WHEN 1, ELSE 2`. Garantit les NOUVELLES DBs correctes (les 2 migrations vue produisent
+  désormais le même CASE → plus de clobber possible). `go vet` + `go test ./internal/migration/` OK.
+- DBs existantes (serveur arrêté) : `CREATE OR REPLACE VIEW` direct sur les 4 player DBs (outil throwaway
+  supprimé après usage). Après fix, `latest` : Madina LUSR 1120 / LUSR_V2 **0**, JGtm 895/0, XxDaemon 32/0,
+  Choco 468/0. Fuite éliminée.
+
+**Fix DISPLAY (défense en profondeur, garde le principe "métrique connue, pas la stat brute")** :
+- Helper `displayRatingLabel(raw)` (`apps/web/src/lib/formatters/rating.ts`) : famille LUSR → `'LUSR'` ; `CSR`
+  conservé ; null→null. Exporté + testé. Appliqué à `ExplorerMatchesTable` col « Note » (couvre la table
+  session-detail via `toExplorerRow`), `SessionSummaryCard` (« Δ … »), `SessionCompareSkillHeader`.
+
+**Backfill canonical : NON exécuté (dry-run décisif)** :
+- L'« Anomalie B » (matchs LUSR sans audit LUSR_V2 : Madina 390, Choco 131, JGtm 271, XxDaemon 10) = les matchs
+  que v2 NE PEUT PAS scorer. Dry-run Madina : `processed=730`, `skipped_imbalance=364` + `skipped_non_two_team=24`
+  ≈ 390. TrueSkill2 exige 2 équipes équilibrées → matchs déséquilibrés/FFA inscorables, restent en valeur legacy
+  (affichée `LUSR`, pas de fuite). `--commit` ne ferait que recalculer les 730 déjà-v2 (risque de décaler des
+  ratings validés + gonfler la table append-only) sans corriger les 390 → écarté.
+- Effet de bord dry-run : `player_skill_state_v2` tronqué puis reconstruit (shadow-only, déterministe, équivalent
+  à l'état live) — aucune écriture `match_skill_rank` (rows brutes inchangées).
+
+**Résultats** : `tsc -b` OK, eslint clean, vitest 151/151 ; `go vet`/`go test ./internal/migration/` OK ;
+diag final : Anomalie A = 0, LUSR_V2 absent de `latest` pour les 4 joueurs.
+
+---
+
+## [2026-06-03] Explorer — YieldTile dmg/frag-mort + briefing KPI accent par sentiment — Complété
+
+**Statut** : Complété. Branche `feat/skill-progression-magnitude-scale`.
+
+**(1) YieldTile (Rendement/Résistance)** : ré-ajout dmg/frag (gauche) + dmg/mort (droite) en pied, petit
+(text-3xs) + gris (muted), aux extrémités (justify-between). Calcul `damage_dealt/kills` & `damage_taken/deaths`
+dans `ExplorerTargetSampleKpis`, clés i18n `yield_dmg_per_kill/death` réutilisées.
+
+**(2) Briefing KPI cards (au-dessus des tables)** : barre d'accent 3px (parité autres KPI cards), couleur
+DÉTERMINÉE PAR LE CONTENU : vert (positif) / rouge (négatif) / bleu = `outcome-draw` (#3B82F6, ok/égal/neutre).
+Helpers `wrAccent` (WR vs 0.5) et `cmpAccent` (a vs b). Mapping : Rencontres/Vu → bleu (neutre) ;
+WR allié/ennemi → wrAccent ; F/D croisé & Ratio → cmpAccent(frags, morts). `KpiCard` accepte `accent?`.
+
+**Résultats** : `tsc -b` OK, eslint clean, vitest explorer 61/61.
+
+### Suivi — affinages disposition (même tour)
+
+- **WR allié / WR ennemi (briefing)** : « X matchs » passe inline à DROITE du % (au lieu de sous-ligne
+  `detail`), même format/taille (text-xs muted, font-normal). `value` devient un `inline-flex items-baseline`.
+- **YieldTile (Rendement/Résistance)** : tout sur UNE ligne — dmg/frag (gauche) · valeurs OC/DR (centre) ·
+  dmg/mort (droite), via `flex items-baseline justify-between`.
+- **Rangée KPI Profil de combat** : `lg:grid-cols-6` → gabarit explicite `lg:grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1.3fr]`
+  (card « FDA » = KDA réduite à 0.7fr, Rendement/Résistance élargie à 1.3fr, cf. demande user).
+- **Piège évité** : un commentaire `{/* */}` JSX placé avant le `<div>` racine d'un `return` = 2 nœuds racine
+  → « Parsing error ')' expected ». Commentaire repassé en `//` au-dessus du `return`.
+
+---
+
+## [2026-06-03] Explorer — donut couleurs CB-friendly + cadence s'adapte à la colonne gauche — Complété
+
+**Statut** : Complété. Branche `feat/skill-progression-magnitude-scale`.
+
+**(1) Donut couleurs** : diagnostic — la palette PAR DÉFAUT définit `chart-series-1..5` comme un dégradé
+bleu/indigo SÉQUENTIEL (illisible en catégoriel, pas color-blind friendly) ; les indices distincts sont
+1/6/7/8. La palette Okabe-Ito (CB) a bien 8 couleurs distinctes. Fix : tranches du donut sur indices
+DISTINCTS `chart-series-1/6/7/8` (au lieu de 2-5). Via `tokenCssVar` (CSS var) → suit la palette active,
+donc devient pleinement CB en palette Okabe-Ito. (Donut SVG reste palette-aware par CSS var, pas de rebuild.)
+
+**(2) Cadence s'adapte à la gauche** : diagnostic — en mode `fluid`, ChartCard impose `minHeight = height+24`
+par graphe ; avec `height=176`, la colonne cadence avait un MIN ~488px > colonne gauche (~400px) → c'était la
+CADENCE qui imposait la hauteur de rangée (gauche étirée avec un vide). Fix : `CHART_HEIGHT` 176→110 (min
+cadence ~350 < gauche) → la GAUCHE (donut + bilan) définit la hauteur, les 2 graphes cadence s'y adaptent via
+fluid+flex-1.
+
+**Résultats** : `tsc -b` OK, eslint clean, vitest explorer 61/61. Vérif visuelle conseillée.
+
+**Statut** : Complété. Branche `feat/skill-progression-magnitude-scale`.
+
+**(1) Donut « Répartition des frags »** : tranche « Tirs à la tête » retirée (redondante avec le KPI « Taux
+de tête »). `tracked` conserve `headshot_kills` → les headshots sont exclus du total ET de « Autres » (pas
+fondus dedans) ; le donut montre désormais melee/power/grenade/autres (non-headshot). Clé i18n
+`kill_type_headshot` laissée (inutilisée, inoffensive).
+
+**(2) Tables de résultats (`ExplorerMatchesTable`)** : suppression de l'expander (qui basculait la taille de
+page 10↔20, label « Voir tout » trompeur) — il coexistait avec la pagination prev/next → confusion (retour
+user). Désormais pagination simple : taille de page fixe = `defaultPageSize` (10 en mode Joueur, sinon 20),
+navigation par page. État `expanded`/`compactMode`/`useEffect` retirés. Tests réécrits (pagination au lieu
+d'expander) ; clés i18n `matches_table.show_all/show_less` laissées (inutilisées).
+
+**Résultats** : `tsc -b` OK, eslint clean, vitest explorer 61/61.
+
+---
+
+## [2026-06-03] Explorer — top 3 armes dans « Répartition des frags » (à droite du donut) — Complété
+
+**Statut** : Complété. Branche `feat/skill-progression-magnitude-scale`.
+
+**Contexte** : retour user — afficher un top 3 des armes utilisées par la cible dans le bloc « Répartition
+des frags », à droite du donut, joli composant, NOM uniquement (pas d'icône).
+
+**Décision technique (backend)** : top armes calculé sur les MATCHS COMMUNS (cohérent avec le bloc sample).
+Source : `shared.v_weapon_kills` (1 ligne = 1 kill event → `COUNT(*)` par `effective_weapon_id`, pas SUM —
+vérifié : pas de colonne `kills` dans la vue), même approche que `CompareRepo.GetFavoriteWeapon`. Nouveau
+`ExplorerRepo.GetTopWeaponsForMatches(xuid, matchIDs, limit)` + `resolveWeaponLabels` (batch IN sur
+`metadata.weapon_labels`, IDs UBIGINT en littéraux décimaux). Exposé via port `ExplorerRepository` (+ noop +
+mock). Peuplé dans `computeTargetSampleStats` → `ExplorerTargetSampleStats.TopWeapons []WeaponHighlight`
+(réutilise le type compare). Best-effort (jamais fatal). Armes 0/1/2 exclues.
+
+**Décision technique (front)** : type `ExplorerWeaponKill` + champ `top_weapons`. Composant `WeaponsTop`
+(rang + nom tronqué + kills + barre de proportion via `tokenCssVar('chart-series-1')`), rendu à droite du
+donut en grille `sm:grid-cols-[2fr_1fr]` (donut 2/3, armes 1/3 ; si pas d'armes → donut centré seul). i18n
+`top_weapons_title` (Top armes / Top weapons). Pas d'icône (demande user).
+
+**Résultats** : `go build ./...` (CGO) OK, `go test service -run Explorer` OK ; i18n régénéré (195 clés),
+`tsc -b` OK, eslint clean, vitest explorer 61/61. Donnée vérifiée empiriquement (tmpdbq : top weapon =
+19626 kills). Limite : pas de test DB dédié pour `GetTopWeaponsForMatches` (best-effort, miroir du compare ;
+SQL validé manuellement). Le donut rétrécit (2/3 du bloc) pour loger les armes — ratio ajustable.
+
+---
+
 ## [2026-06-02] Fix filtre « Auteur » page Médias (« Aucun auteur disponible ») — Complété
 
 **Statut** : Complété (code + tests). Branche `feat/skill-progression-magnitude-scale`, non commité.

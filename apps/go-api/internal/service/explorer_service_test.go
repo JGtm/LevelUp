@@ -31,6 +31,8 @@ type mockExplorerRepo struct {
 	startTimesErr   error
 	recentMatches   []domain.ExplorerTargetRecentMatch
 	recentErr       error
+	topWeapons      []domain.WeaponHighlight
+	topWeaponsErr   error
 }
 
 func (m *mockExplorerRepo) ResolveXUIDByGamertag(_ context.Context, _ string) (string, error) {
@@ -55,6 +57,9 @@ func (m *mockExplorerRepo) GetTargetRecentMatches(_ context.Context, _ string, _
 	return m.recentMatches, m.recentErr
 }
 func (m *mockExplorerRepo) TranslateModeUIsFR(_ context.Context, _ []domain.ExplorerTargetRecentMatch) {
+}
+func (m *mockExplorerRepo) GetTopWeaponsForMatches(_ context.Context, _ string, _ []string, _ int) ([]domain.WeaponHighlight, error) {
+	return m.topWeapons, m.topWeaponsErr
 }
 
 // --- tests ---

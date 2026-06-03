@@ -396,6 +396,53 @@ func TestBuildSpartanIdentity_DerivesMaxRankFromCatalog(t *testing.T) {
 	}
 }
 
+// TestBuildSpartanIdentity_XPForNextFallbackFromCatalog : quand la source ne
+// fournit pas xp_for_next (=0, cas cible Explorer suivie où career_progression
+// renvoie 0), buildHomeCareerRank lit le seuil du catalog (RankEntry.XPRequired)
+// pour que la barre ne reste pas bloquée à 0 % / "0 XP".
+func TestBuildSpartanIdentity_XPForNextFallbackFromCatalog(t *testing.T) {
+	raw := &domain.HomeSpartanIdentityRow{
+		RankNumber:    25,
+		CurrentXP:     8210,
+		XPForNextRank: 0, // source locale sans seuil
+	}
+	ranks := mappings.NewRankCatalog("halo_infinite", []mappings.RankEntry{
+		{ID: 25, Title: map[string]string{"fr": "Caporal"}, XPRequired: 16420},
+		{ID: 26, Title: map[string]string{"fr": "Sergent"}}, // 25 n'est pas le dernier
+	})
+	id := analysis.BuildSpartanIdentity(raw, "fr", ranks)
+	if id == nil || id.CareerRank == nil {
+		t.Fatal("CareerRank: want non-nil")
+	}
+	if id.CareerRank.XPForNextRank != 16420 {
+		t.Errorf("XPForNextRank: want 16420 (fallback catalog), got %d", id.CareerRank.XPForNextRank)
+	}
+	if id.CareerRank.ProgressPct != 50.0 {
+		t.Errorf("ProgressPct: want 50 (8210/16420), got %.2f", id.CareerRank.ProgressPct)
+	}
+}
+
+// TestBuildSpartanIdentity_TotalXPCumulative : l'XP de carrière cumulée =
+// Σ XPRequired des rangs précédents + current_xp. Au rang max (current_xp=0)
+// c'est ce total qu'on affiche (le « grand nombre »).
+func TestBuildSpartanIdentity_TotalXPCumulative(t *testing.T) {
+	raw := &domain.HomeSpartanIdentityRow{RankNumber: 3, CurrentXP: 50}
+	ranks := mappings.NewRankCatalog("halo_infinite", []mappings.RankEntry{
+		{ID: 1, Title: map[string]string{"fr": "R1"}, XPRequired: 100},
+		{ID: 2, Title: map[string]string{"fr": "R2"}, XPRequired: 200},
+		{ID: 3, Title: map[string]string{"fr": "R3"}, XPRequired: 300},
+		{ID: 4, Title: map[string]string{"fr": "R4"}}, // rang 3 n'est pas le dernier
+	})
+	id := analysis.BuildSpartanIdentity(raw, "fr", ranks)
+	if id == nil || id.CareerRank == nil {
+		t.Fatal("CareerRank: want non-nil")
+	}
+	// cumulatif(rangs 1..2) = 100+200 = 300, + current_xp 50 = 350.
+	if id.CareerRank.TotalXP != 350 {
+		t.Errorf("TotalXP: want 350 (100+200+50), got %d", id.CareerRank.TotalXP)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // BuildRecentMedia
 // ---------------------------------------------------------------------------

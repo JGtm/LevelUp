@@ -297,6 +297,25 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string, rank
 		}
 	}
 
+	// Fallback xp_for_next : la source (DB locale) ne stocke pas toujours le seuil —
+	// cas cible Explorer suivie, où career_progression renvoie 0 → barre à 0 %. On
+	// lit alors le seuil du catalog (career_ranks.xp_required du rang courant), MÊME
+	// valeur que CareerLiveRepo.EnrichFromMetadata utilisé par le chemin live/Home.
+	xpForNext := raw.XPForNextRank
+	if xpForNext <= 0 && !isMax && ranks != nil {
+		if e, ok := ranks.Get(raw.RankNumber); ok && e.XPRequired > 0 {
+			xpForNext = e.XPRequired
+		}
+	}
+
+	// XP de carrière CUMULÉE : Σ seuils des rangs précédents + progression intra-rang.
+	// Au rang max (Héros), la progression intra-rang vaut 0 → c'est ce total (« le
+	// grand nombre ») qu'on affiche à la place. 0 si le catalog n'a pas les seuils.
+	totalXP := raw.CurrentXP
+	if ranks != nil && raw.RankNumber > 1 {
+		totalXP += ranks.CumulativeXPRequired(raw.RankNumber - 1)
+	}
+
 	return &domain.HomeCareerRankSummary{
 		RankNumber:        raw.RankNumber,
 		RankTitle:         title,
@@ -304,8 +323,9 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string, rank
 		RankImageURL:      copyOptionalString(raw.RankImageURL),
 		AdornmentImageURL: copyOptionalString(raw.AdornmentImageURL),
 		CurrentXP:         raw.CurrentXP,
-		XPForNextRank:     raw.XPForNextRank,
-		ProgressPct:       computeHomeCareerProgressPct(raw.CurrentXP, raw.XPForNextRank, isMax),
+		XPForNextRank:     xpForNext,
+		TotalXP:           totalXP,
+		ProgressPct:       computeHomeCareerProgressPct(raw.CurrentXP, xpForNext, isMax),
 		IsMaxRank:         isMax,
 	}
 }

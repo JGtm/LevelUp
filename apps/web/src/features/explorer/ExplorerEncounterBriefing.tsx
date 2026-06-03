@@ -18,8 +18,25 @@
 import type { ExplorerEncounterStats } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
-import { tokenCssVar } from '@/lib/accessibility'
+import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { Tooltip } from '@/components/ui/tooltip'
+
+// ─── Accent KPI selon le sentiment du contenu (barre colorée en haut) ────────
+// Vert (positif) / rouge (négatif) / bleu = outcome-draw (ok, égal ou neutre).
+
+/** cmpAccent : compare a vs b (frags vs morts, etc.). > = vert, < = rouge, = / nil = bleu. */
+function cmpAccent(a: number | null | undefined, b: number | null | undefined): SemanticToken {
+  if (a == null || b == null || a === b) return 'outcome-draw'
+  return a > b ? 'outcome-win' : 'outcome-loss'
+}
+
+/** wrAccent : taux de victoire vs seuil 0.5. > = vert, < = rouge, = / nil = bleu. */
+function wrAccent(wr: number | null | undefined): SemanticToken {
+  if (wr == null) return 'outcome-draw'
+  if (wr > 0.5) return 'outcome-win'
+  if (wr < 0.5) return 'outcome-loss'
+  return 'outcome-draw'
+}
 
 interface Props {
   stats: ExplorerEncounterStats
@@ -190,18 +207,23 @@ interface KpiCardProps {
   label: React.ReactNode
   value: React.ReactNode
   detail?: React.ReactNode
+  /** Barre d'accent (3px) en haut, couleur déterminée par le contenu. */
+  accent?: SemanticToken
 }
 
-function KpiCard({ label, value, detail }: KpiCardProps) {
+function KpiCard({ label, value, detail, accent }: KpiCardProps) {
   return (
-    <div className="rounded-md border border-border bg-card p-3">
-      <p className="text-3xs font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1 text-xl font-bold tabular-nums leading-tight text-foreground">
-        {value}
-      </p>
-      {detail && <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>}
+    <div className="overflow-hidden rounded-md border border-border bg-card">
+      {accent && <div className="h-[3px]" style={{ backgroundColor: tokenCssVar(accent) }} />}
+      <div className="p-3">
+        <p className="text-3xs font-medium uppercase tracking-wide text-muted-foreground">
+          {label}
+        </p>
+        <p className="mt-1 text-xl font-bold tabular-nums leading-tight text-foreground">
+          {value}
+        </p>
+        {detail && <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>}
+      </div>
     </div>
   )
 }
@@ -232,34 +254,41 @@ export function ExplorerEncounterBriefing({ stats, locale }: Props) {
                 ? <AllyEnemySplitBar allyCount={ally} enemyCount={enemy} locale={manifestLocale} />
                 : stats.count_together
             }
+            accent="outcome-draw"
           />
           {/* WR allié */}
           <KpiCard
             label={t('explorer.encounter.wr_ally')}
             value={
-              <span className={percentClass(stats.winrate_as_ally)}>
-                {formatPercent(stats.winrate_as_ally)}
+              <span className="inline-flex items-baseline gap-1.5">
+                <span className={percentClass(stats.winrate_as_ally)}>
+                  {formatPercent(stats.winrate_as_ally)}
+                </span>
+                {ally != null && (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {ally} {manifestLocale === 'en' ? 'matches' : 'matchs'}
+                  </span>
+                )}
               </span>
             }
-            detail={
-              ally != null
-                ? `${ally} ${manifestLocale === 'en' ? 'matches' : 'matchs'}`
-                : undefined
-            }
+            accent={wrAccent(stats.winrate_as_ally)}
           />
           {/* WR ennemi */}
           <KpiCard
             label={t('explorer.encounter.wr_enemy')}
             value={
-              <span className={percentClass(stats.winrate_vs_enemy)}>
-                {formatPercent(stats.winrate_vs_enemy)}
+              <span className="inline-flex items-baseline gap-1.5">
+                <span className={percentClass(stats.winrate_vs_enemy)}>
+                  {formatPercent(stats.winrate_vs_enemy)}
+                </span>
+                {enemy != null && (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {enemy} {manifestLocale === 'en' ? 'matches' : 'matchs'}
+                  </span>
+                )}
               </span>
             }
-            detail={
-              enemy != null
-                ? `${enemy} ${manifestLocale === 'en' ? 'matches' : 'matchs'}`
-                : undefined
-            }
+            accent={wrAccent(stats.winrate_vs_enemy)}
           />
           {/* F/D croisé */}
           <KpiCard
@@ -269,6 +298,7 @@ export function ExplorerEncounterBriefing({ stats, locale }: Props) {
                 ? <KDSplitBar kills={stats.kills_dealt} deaths={stats.deaths_suffered} locale={manifestLocale} />
                 : <span className="font-mono">{formatKDCross(stats.kills_dealt, stats.deaths_suffered)}</span>
             }
+            accent={cmpAccent(stats.kills_dealt, stats.deaths_suffered)}
           />
           {/* Ratio */}
           <KpiCard
@@ -284,6 +314,7 @@ export function ExplorerEncounterBriefing({ stats, locale }: Props) {
                 {formatKDRatio(stats.kills_dealt, stats.deaths_suffered)}
               </span>
             }
+            accent={cmpAccent(stats.kills_dealt, stats.deaths_suffered)}
           />
           {/* Vu pour la dernière fois */}
           <KpiCard
@@ -293,6 +324,7 @@ export function ExplorerEncounterBriefing({ stats, locale }: Props) {
                 {stats.last_seen_at ? formatRelative(stats.last_seen_at) : '—'}
               </span>
             }
+            accent="outcome-draw"
           />
         </div>
   )

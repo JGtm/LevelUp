@@ -286,6 +286,11 @@ type ExplorerRepository interface {
 	// Sert à homogénéiser la source LIVE du profil de combat (fetchée hors DB) avec
 	// la source locale. Best-effort : no-op si metadata absent.
 	TranslateModeUIsFR(ctx context.Context, rows []domain.ExplorerTargetRecentMatch)
+
+	// GetTopWeaponsForMatches retourne le top `limit` armes (par kills) du joueur
+	// sur les matchs donnés (shared.v_weapon_kills, COUNT(*) par effective_weapon_id)
+	// + labels metadata.weapon_labels. Retourne nil si entrée vide — best-effort.
+	GetTopWeaponsForMatches(ctx context.Context, xuid string, matchIDs []string, limit int) ([]domain.WeaponHighlight, error)
 }
 
 // GamertagRepository fournit la recherche de gamertags.
@@ -469,6 +474,9 @@ func (n *noopExplorerRepo) GetTargetRecentMatches(_ context.Context, _ string, _
 	return nil, nil
 }
 func (n *noopExplorerRepo) TranslateModeUIsFR(_ context.Context, _ []domain.ExplorerTargetRecentMatch) {
+}
+func (n *noopExplorerRepo) GetTopWeaponsForMatches(_ context.Context, _ string, _ []string, _ int) ([]domain.WeaponHighlight, error) {
+	return nil, nil
 }
 
 // SessionsRepository fournit les données brutes pour le calcul des sessions.

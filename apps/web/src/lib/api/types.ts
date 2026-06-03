@@ -1330,6 +1330,16 @@ export interface ExplorerTargetSampleStats {
   avg_personal_score?: number | null
   // Frags parfaits (médaille Perfect) cumulés sur le sample.
   perfect_kills: number
+  // Top armes (par kills) sur les matchs communs (nom + kills, sans icône).
+  top_weapons?: ExplorerWeaponKill[]
+}
+
+/** Une arme du top armes (cible Explorer) : label localisé + kills. */
+export interface ExplorerWeaponKill {
+  weapon_id: number
+  label_fr: string
+  label_en: string
+  kills: number
 }
 
 export interface ExplorerMatchesQueryResponse {
@@ -1521,6 +1531,8 @@ export interface HomeCareerRankSummary {
   adornment_image_url?: string | null
   current_xp: number
   xp_for_next_rank: number
+  /** XP de carrière cumulée — affichée au rang max (où current_xp vaut 0). */
+  total_xp?: number
   progress_pct: number
   is_max_rank: boolean
 }

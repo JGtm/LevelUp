@@ -15,6 +15,7 @@
  */
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { HomeSkillPeakCard, resolveSkillPeakState } from '@/features/home/HomeSkillPeakCard'
+import { getSpartanIdentityText } from '@/features/home/spartanIdentity.i18n'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { HomeSpartanIdentity } from '@/lib/api/types'
 
@@ -36,6 +37,9 @@ export function ExplorerTargetIdentityBanner({
 }: ExplorerTargetIdentityBannerProps) {
   const locale = useAppShellStore((s) => s.locale)
   const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
+  // Labels localisés réutilisés du Home (source unique : home.spartan.*) :
+  // « Meilleur CSR/LUSR », « Rang max », « Progression vers … ».
+  const { labels } = getSpartanIdentityText(locale)
 
   const monogram = gamertag.trim().slice(0, 1).toUpperCase() || 'S'
   const bannerUrl = identity?.banner_image_url ?? null
@@ -165,22 +169,47 @@ export function ExplorerTargetIdentityBanner({
           )}
         </div>
 
-        {/* Barre de progression rang carrière. Rang max (Héros) : barre composite
-            pleine en vert (parité battlepass complété, success token ≥100%), SANS
-            valeurs aux extrémités. Sinon : progression XP + bornes courant/cible. */}
-        {careerRank?.is_max_rank ? (
+        {/* Progression rang carrière — calquée sur le Home (HomeSpartanIdentityBanner) :
+            visible dès que careerRank existe ; current_xp + barre (progress_pct, calculé
+            backend) + borne cible. Au rang max (Héros), « Rang max » remplace la cible et
+            progress_pct=100 → barre verte pleine (success token). Plus de branche qui
+            masque tout (régression du fix Héros précédent). */}
+        {careerRank && (
           <div className="relative px-5 pb-4">
-            <CompositeProgressBar value={100} />
-          </div>
-        ) : careerRank?.current_xp != null && careerRank?.xp_for_next_rank != null && careerRank.xp_for_next_rank > 0 ? (
-          <div className="relative px-5 pb-4">
-            <CompositeProgressBar value={(careerRank.current_xp / careerRank.xp_for_next_rank) * 100} />
-            <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-              <span>{formatXP(careerRank.current_xp)}</span>
-              <span>{formatXP(careerRank.xp_for_next_rank)}</span>
+            <div className="space-y-2">
+              {/* Ligne du haut (progression vers le rang suivant + %) : masquée au
+                  rang max — pas de "suivant", et on ne garde qu'UN "Rang max", celui
+                  en bout de barre composite (cf. retour user). */}
+              {!careerRank.is_max_rank && (
+                <div className="flex items-center justify-between gap-3 text-2xs text-muted-foreground sm:text-xs">
+                  <span>{labels.progressTowardsRank(careerRank.next_rank_title ?? '')}</span>
+                  <span>
+                    {`${careerRank.progress_pct.toLocaleString(numberLocale, { maximumFractionDigits: 0 })} %`}
+                  </span>
+                </div>
+              )}
+              <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+                {/* Gauche : progression XP dans le rang courant. Au rang max, cette
+                    progression intra-rang vaut 0 → on affiche à la place l'XP de
+                    carrière CUMULÉE (total_xp, « le grand nombre qui fait rêver »). */}
+                <span className="shrink-0 whitespace-nowrap text-3xs font-medium text-foreground/85 sm:text-xs">
+                  {careerRank.is_max_rank
+                    ? `${formatXP(careerRank.total_xp ?? 0)} XP`
+                    : `${formatXP(careerRank.current_xp)} XP`}
+                </span>
+                <div className="min-w-0">
+                  <CompositeProgressBar
+                    value={careerRank.progress_pct}
+                    fillTestId="explorer-target-rank-progress-fill"
+                  />
+                </div>
+                <span className="shrink-0 whitespace-nowrap text-3xs font-medium text-foreground/85 sm:text-xs">
+                  {careerRank.is_max_rank ? labels.maxRank : `${formatXP(careerRank.xp_for_next_rank)} XP`}
+                </span>
+              </div>
             </div>
           </div>
-        ) : null}
+        )}
       </div>
 
       {/* Panneau skill peaks à droite (optionnel) */}
@@ -188,7 +217,7 @@ export function ExplorerTargetIdentityBanner({
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 lg:grid-rows-2">
           {csrState && (
             <HomeSkillPeakCard
-              label="Highest CSR"
+              label={labels.highestCsr}
               peak={highestCSR}
               numberLocale={numberLocale}
               testIdPrefix="explorer-target-csr"
@@ -198,7 +227,7 @@ export function ExplorerTargetIdentityBanner({
           )}
           {lusrState && (
             <HomeSkillPeakCard
-              label="Highest LUSR"
+              label={labels.highestLusr}
               peak={highestLUSR}
               numberLocale={numberLocale}
               testIdPrefix="explorer-target-lusr"

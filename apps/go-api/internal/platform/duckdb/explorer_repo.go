@@ -7,6 +7,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -287,7 +289,14 @@ func (r *ExplorerRepo) TranslateModeUIsFR(ctx context.Context, rows []domain.Exp
 // Best-effort : silencieux si Metadata absent / table absente / erreur — l'EN
 // est alors conservé. Clé = sous-mode EN normalisé (même convention que career).
 func (r *ExplorerRepo) translateModeUIsFR(ctx context.Context, rows []domain.ExplorerTargetRecentMatch) {
-	if len(rows) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+	if len(rows) == 0 || r.pdb == nil {
+		return
+	}
+	// Source LIVE : ModeUI est souvent vide (le MatchInfo brut de l'API n'expose pas
+	// de PublicName, seulement des AssetId). On résout d'abord le mode depuis l'AssetId
+	// du pair via shared.match_registry, AVANT la traduction FR ci-dessous.
+	r.resolveModeUIsFromPairID(ctx, rows)
+	if r.pdb.Metadata == nil {
 		return
 	}
 	modeSet := make(map[string]struct{})
@@ -327,6 +336,73 @@ func (r *ExplorerRepo) translateModeUIsFR(ctx context.Context, rows []domain.Exp
 	for i := range rows {
 		if t, ok := fr[rows[i].ModeUI]; ok {
 			rows[i].ModeUI = t
+		}
+	}
+}
+
+// resolveModeUIsFromPairID remplit ModeUI (EN normalisé) des rows LIVE qui n'ont
+// pas de mode — le MatchInfo brut n'expose pas de PublicName — depuis l'AssetId du
+// PlaylistMapModePair via shared.match_registry (pair_id → pair_name). Les joueurs
+// suivis ont déjà vu les pairs matchmaking communs → la plupart résolvent (sinon le
+// match reste "Inconnu", dégradation acceptable). Best-effort : silencieux sur erreur.
+func (r *ExplorerRepo) resolveModeUIsFromPairID(ctx context.Context, rows []domain.ExplorerTargetRecentMatch) {
+	ids := make(map[string]struct{})
+	for i := range rows {
+		if rows[i].ModeUI == "" && rows[i].ModePairAssetID != "" {
+			ids[rows[i].ModePairAssetID] = struct{}{}
+		}
+	}
+	if len(ids) == 0 {
+		return
+	}
+	idList := make([]string, 0, len(ids))
+	for id := range ids {
+		idList = append(idList, id)
+	}
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return
+	}
+	defer release()
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(idList)), ",")
+	q := fmt.Sprintf(`SELECT pair_id, MIN(pair_name), MIN(pair_name_fr)
+		FROM match_registry WHERE pair_id IN (%s) AND pair_name IS NOT NULL
+		GROUP BY pair_id`, placeholders)
+	args := make([]any, len(idList))
+	for i, id := range idList {
+		args[i] = id
+	}
+	qrows, err := db.QueryContext(ctx, q, args...)
+	if err != nil {
+		return
+	}
+	defer qrows.Close()
+	type pairNames struct{ name, nameFR sql.NullString }
+	byID := make(map[string]pairNames, len(idList))
+	for qrows.Next() {
+		var id string
+		var p pairNames
+		if scanErr := qrows.Scan(&id, &p.name, &p.nameFR); scanErr == nil {
+			byID[id] = p
+		}
+	}
+	for i := range rows {
+		if rows[i].ModeUI != "" || rows[i].ModePairAssetID == "" {
+			continue
+		}
+		p, ok := byID[rows[i].ModePairAssetID]
+		if !ok {
+			continue
+		}
+		var namePtr, frPtr *string
+		if p.name.Valid {
+			namePtr = &p.name.String
+		}
+		if p.nameFR.Valid {
+			frPtr = &p.nameFR.String
+		}
+		if mode := analysis.ResolveModeUI(namePtr, frPtr); mode != nil {
+			rows[i].ModeUI = *mode
 		}
 	}
 }
@@ -386,4 +462,115 @@ func (r *ExplorerRepo) ResolveXUIDByGamertag(ctx context.Context, gamertag strin
 		return "", fmt.Errorf("ExplorerRepo.ResolveXUIDByGamertag(%q): %w", gamertag, err)
 	}
 	return xuid, nil
+}
+
+// GetTopWeaponsForMatches retourne le top `limit` armes (par kills) du joueur sur
+// les matchs donnés : COUNT(*) par effective_weapon_id dans shared.v_weapon_kills
+// (1 ligne = 1 kill event, cf. GetFavoriteWeapon du compare). Labels résolus
+// depuis metadata.weapon_labels. Best-effort : nil si entrée vide / erreur
+// (feature secondaire, jamais fatale). Armes 0/1/2 exclues (melee/grenade génériques).
+func (r *ExplorerRepo) GetTopWeaponsForMatches(
+	ctx context.Context, xuid string, matchIDs []string, limit int,
+) ([]domain.WeaponHighlight, error) {
+	if strings.TrimSpace(xuid) == "" || len(matchIDs) == 0 || limit <= 0 {
+		return nil, nil
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(matchIDs)), ",")
+	q := fmt.Sprintf(`
+		SELECT effective_weapon_id, COUNT(*) AS kills
+		FROM v_weapon_kills
+		WHERE xuid = ? AND match_id IN (%s) AND effective_weapon_id NOT IN (0, 1, 2)
+		GROUP BY effective_weapon_id
+		ORDER BY kills DESC
+		LIMIT %d`, placeholders, limit) //nolint:gosec — limit/placeholders maîtrisés
+
+	args := make([]any, 0, 1+len(matchIDs))
+	args = append(args, xuid)
+	for _, mid := range matchIDs {
+		args = append(args, mid)
+	}
+
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		slog.DebugContext(ctx, "ExplorerRepo.GetTopWeaponsForMatches: shared reader (best-effort)", "err", err)
+		return nil, nil //nolint:nilerr
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, q, args...)
+	if err != nil {
+		slog.DebugContext(ctx, "ExplorerRepo.GetTopWeaponsForMatches: query (best-effort)", "err", err)
+		return nil, nil //nolint:nilerr
+	}
+	defer rows.Close()
+
+	var out []domain.WeaponHighlight
+	for rows.Next() {
+		var wid UBigint
+		var kills int
+		if scanErr := rows.Scan(&wid, &kills); scanErr != nil {
+			return nil, fmt.Errorf("ExplorerRepo.GetTopWeaponsForMatches: scan: %w", scanErr)
+		}
+		idStr := strconv.FormatUint(uint64(wid), 10) //nolint:gosec
+		out = append(out, domain.WeaponHighlight{
+			WeaponID: wid.Int64(),
+			Kills:    kills,
+			LabelFR:  idStr,
+			LabelEN:  idStr,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	r.resolveWeaponLabels(ctx, out)
+	return out, nil
+}
+
+// resolveWeaponLabels remplit LabelFR/LabelEN en place depuis metadata.weapon_labels.
+// Best-effort : laisse l'ID décimal si metadata absent / arme inconnue. IDs injectés
+// en littéraux décimaux (cast UBIGINT non bindable proprement, cf. compare_repo).
+func (r *ExplorerRepo) resolveWeaponLabels(ctx context.Context, weapons []domain.WeaponHighlight) {
+	if len(weapons) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return
+	}
+	ids := make([]string, 0, len(weapons))
+	for _, w := range weapons {
+		ids = append(ids, strconv.FormatUint(uint64(w.WeaponID), 10)) //nolint:gosec
+	}
+	q := fmt.Sprintf( //nolint:gosec — IDs numériques contrôlés
+		`SELECT weapon_id, name_fr, name_en FROM weapon_labels WHERE weapon_id IN (%s)`,
+		strings.Join(ids, ","),
+	)
+	rows, err := r.pdb.Metadata.Query(ctx, q)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	type lbl struct{ fr, en string }
+	byID := make(map[string]lbl, len(weapons))
+	for rows.Next() {
+		var wid UBigint
+		var nameFR, nameEN sql.NullString
+		if scanErr := rows.Scan(&wid, &nameFR, &nameEN); scanErr != nil {
+			continue
+		}
+		byID[strconv.FormatUint(uint64(wid), 10)] = lbl{fr: nameFR.String, en: nameEN.String} //nolint:gosec
+	}
+	for i := range weapons {
+		idStr := strconv.FormatUint(uint64(weapons[i].WeaponID), 10) //nolint:gosec
+		l, ok := byID[idStr]
+		if !ok {
+			continue
+		}
+		if l.fr != "" {
+			weapons[i].LabelFR = l.fr
+		} else if l.en != "" {
+			weapons[i].LabelFR = l.en
+		}
+		if l.en != "" {
+			weapons[i].LabelEN = l.en
+		} else if l.fr != "" {
+			weapons[i].LabelEN = l.fr
+		}
+	}
 }

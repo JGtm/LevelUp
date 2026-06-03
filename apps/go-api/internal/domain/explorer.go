@@ -161,6 +161,11 @@ type ExplorerTargetRecentMatch struct {
 	DamageTaken     int     `json:"damage_taken"`
 	MaxKillingSpree int     `json:"max_killing_spree"`
 	PerfectKills    int     `json:"perfect_kills"`
+	// ModePairAssetID : AssetId du PlaylistMapModePair (source LIVE). Transient
+	// (non sérialisé) — le MatchInfo live n'a pas de PublicName, donc on résout le
+	// mode depuis cet AssetId via shared.match_registry (pair_id → pair_name) côté
+	// repo (translateModeUIsFR). Vide pour la source locale (mode déjà résolu).
+	ModePairAssetID string `json:"-"`
 }
 
 // SeasonMatchCount : nombre de matchs matchmade joués sur une saison donnée par
@@ -236,6 +241,10 @@ type ExplorerTargetSampleStats struct {
 	// PerfectKills : total de "frags parfaits" sur le sample (médaille Perfect,
 	// medal_name_id=1512363953 dans shared.medals_earned).
 	PerfectKills int `json:"perfect_kills"`
+
+	// TopWeapons : top armes (par kills) de la cible sur les matchs communs
+	// (shared.v_weapon_kills + labels metadata.weapon_labels). Vide si indispo.
+	TopWeapons []WeaponHighlight `json:"top_weapons,omitempty"`
 }
 
 // ParticipantStatsAggregate : agrégat brut renvoyé par le repo DuckDB pour le

@@ -9,6 +9,7 @@
  */
 import { useAppShellStore } from '@/stores/appShellStore'
 import { CSR_TIER_GRID } from '@/lib/skillTiers'
+import { unrankedBadgeURL } from '@/lib/staticAssets'
 import type { CareerPlaylistCSR } from '@/lib/api/types'
 
 interface ExplorerTargetSeasonCSRProps {
@@ -45,33 +46,43 @@ export function ExplorerTargetSeasonCSR({ csrs, title }: ExplorerTargetSeasonCSR
       className="flex h-full flex-col rounded-lg border border-border bg-card"
       data-testid="explorer-target-season-csr"
     >
-      <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">
+      <div className="flex-none border-b border-border px-4 py-2 text-sm font-medium">
         {title}
       </div>
-      <div className="flex flex-1 items-center p-3">
+      <div className="flex flex-1 items-center px-4 py-3">
         <ul className="flex w-full flex-col divide-y divide-border/40">
-          {csrs.map((c) => (
-            <li key={c.playlist_id} className="flex items-center gap-2 py-1.5">
-              {c.current.badge_image_url ? (
+          {csrs.map((c) => {
+            // tier vide = NON CLASSÉ cette saison (état valide, pas une erreur) :
+            // libellé « Non classé » + badge unranked_0.png. La liste ne contient que
+            // des playlists avec données → pas de cas « irrécupérable » ici.
+            const unranked = c.current.tier.trim() === ''
+            const label = unranked
+              ? locale === 'en'
+                ? 'Unranked'
+                : 'Non classé'
+              : tierLabel(c.current.tier, c.current.sub_tier, locale)
+            // Badge tout à DROITE (après le label). Unranked → unranked_0.png ;
+            // classé → badge de rang (fallback unranked_0 si l'image manque).
+            const badgeURL = unranked ? unrankedBadgeURL() : c.current.badge_image_url || unrankedBadgeURL()
+            return (
+              <li key={c.playlist_id} className="flex items-center gap-2 py-1.5">
+                <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                  {c.playlist_name || c.playlist_id}
+                </span>
+                <span className="flex-shrink-0 text-sm font-medium text-muted-foreground">
+                  {label}
+                </span>
                 <img
-                  src={c.current.badge_image_url}
+                  src={badgeURL}
                   alt=""
                   aria-hidden="true"
                   className="h-6 w-6 flex-shrink-0 object-contain"
                   loading="lazy"
                   decoding="async"
                 />
-              ) : (
-                <span className="h-6 w-6 flex-shrink-0" aria-hidden="true" />
-              )}
-              <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                {c.playlist_name || c.playlist_id}
-              </span>
-              <span className="flex-shrink-0 text-sm font-medium text-muted-foreground">
-                {tierLabel(c.current.tier, c.current.sub_tier, locale)}
-              </span>
-            </li>
-          ))}
+              </li>
+            )
+          })}
         </ul>
       </div>
     </div>

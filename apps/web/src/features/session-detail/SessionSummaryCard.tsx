@@ -14,7 +14,7 @@
 import { OffDefComposite } from '@/components/ui/off-def-composite'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
-import { formatDurationMMSS } from '@/lib/formatters'
+import { formatDurationMMSS, displayRatingLabel } from '@/lib/formatters'
 import type { SessionCompareEntry } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
@@ -93,7 +93,7 @@ export function SessionSummaryCard({ entry, compact = false }: Props) {
       </div>
       {entry.skill_rating_delta != null && entry.skill_rating_type ? (
         <KpiStat
-          label={`Δ ${entry.skill_rating_type.toUpperCase()}`}
+          label={`Δ ${displayRatingLabel(entry.skill_rating_type) ?? ''}`}
           value={formatRankDelta(entry.skill_rating_delta, entry.skill_rating_type)}
           token={rankDeltaToken(entry.skill_rating_delta)}
         />
