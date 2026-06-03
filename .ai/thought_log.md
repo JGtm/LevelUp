@@ -1,3 +1,27 @@
+## [2026-06-03] Mises à jour dépendances breaking (eslint 10, intl-messageformat 11, @types/node 25) — Complété
+
+**Statut** : Complété. 0 erreur ESLint, tsc OK, vitest 1709/1709 inchangé.
+
+**Décision technique** : upgrade eslint 9→10 + @eslint/js 9→10 + intl-messageformat 10→11 + @types/node 24→25. Deux corrections nécessaires : (1) `react-hooks/use-memo` (nouvelle règle v7.1.1 en `error` dans recommended) → downgradée en `warn` dans eslint.config.js, cohérent avec le pattern existant pour les nouvelles règles react-hooks ; (2) `no-useless-assignment` (nouvelle règle eslint:recommended v10) → fix réel `let raw: string | null = null` → `let raw: string | null` dans navContext.ts.
+
+**Résultats** : `tsc` OK, lint 0 erreur / 76 warnings (dont 5 `use-memo` downgradés + préexistants), vitest 1709/1709 stable.
+
+**Prochaine étape** : echarts 5→6 bloqué par echarts-for-react (aucune v4 disponible).
+
+---
+
+## [2026-06-03] Mises à jour dépendances sûres — Complété
+
+**Statut** : Complété. `go test ./...` + `go vet ./...` + `tsc` verts. 1 test préexistant corrigé (combat-yield-bar : texte `dmg/kill` → `dégâts/frag`).
+
+**Décision technique** : mises à jour ciblées des dépendances directes sûres (patches + mineurs) — Go (duckdb-go, chi, crypto, jwt, msal, oapi-codegen, go-toml) + npm (react, vite, vitest, tanstack, tailwind, zustand, etc.). Breaking changes (echarts 6, eslint 10, intl-messageformat 11) reportés après étude d'impact.
+
+**Résultats** : `go build` ok, `go test` 100% verts, `tsc` ok, vitest 1708/1709 → 1709/1709. Lint front : warnings préexistants + 5 nouveaux warnings de `eslint-plugin-react-hooks` v7.1.1 (nouvelles règles `refs`/`set-state-in-effect`).
+
+**Prochaine étape** : évaluer migration echarts 5→6 (3-4j) + eslint 9→10 (1-2j) + intl-messageformat 11 (0.5j). Voir étude détaillée dans thought_log.
+
+---
+
 ## [2026-06-03] i18n FR : « dmg » → « dégâts » (rendement/résistance) — Complété
 
 **Statut** : Complété. `tsc` + lint (0 erreur) + vitest explorer/synthesis verts. Frontend only.

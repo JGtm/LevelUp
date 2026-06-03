@@ -221,7 +221,7 @@ export function persistNavContext(matchId: string, ctx: MatchNavContext): void {
  */
 export function readNavContext(matchId: string): MatchNavContext | null {
   if (!matchId) return null
-  let raw: string | null = null
+  let raw: string | null
   try {
     raw = sessionStorage.getItem(STORAGE_PREFIX + matchId)
   } catch {
