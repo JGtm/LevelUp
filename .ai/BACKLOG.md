@@ -1,6 +1,6 @@
 — Tâches et TODO centralisés
 
-> Mis à jour le 2026-05-29. Fusion de : `backlog`, `BACKLOG.md`, `BACKLOG_COACH_PRESTIGE.md`.
+> Mis à jour le 2026-06-03 (nettoyage go-live : sections Main Merge / ADR 0013 / gap [F] caduques retirées — cf. [.ai/RUNBOOK_GO_LIVE.md](.ai/RUNBOOK_GO_LIVE.md)). Fusion de : `backlog`, `BACKLOG.md`, `BACKLOG_COACH_PRESTIGE.md`.
 
 ---
 
@@ -28,50 +28,21 @@
 
 ---
 
-### [POST-V7] Main Merge (blocking)
+### [POST-V7] Go-live / cutover Python → Go
 
-- [ ] Créer PR: `fix/theme-consistency-tokens` → `main`
-- [ ] Attendre approval + CI validation
-- [ ] Merger PR vers main
+> Nettoyé le 2026-06-03 : les sections « Main Merge (theme-consistency) » et « Main Merge
+> (Phase 4 Collect→Persist) » étaient **caduques** — Phase 4 + leased-writer sont déjà
+> intégrés sur la branche de migration et les defaults `LEVELUP_PERSIST_BATCH` / async sont
+> flippés ON. Le go-live n'est pas une série de PR vers main mais un **cutover : la branche
+> Go devient main**.
 
----
+**Procédure complète** : [.ai/RUNBOOK_GO_LIVE.md](.ai/RUNBOOK_GO_LIVE.md) — 4 vars prod
+(`LEVELUP_ENV=production` + AUTH_MODE + SESSION_SECRET + CORS `https://lvelup.info`),
+`force_rebuild_art --all true` local si DBs legacy, uploads VPS, config médias `/app/data/media`.
 
-### [POST-V7] Main Merge (Phase 4 Collect→Persist) — ajouté 2026-05-24
-
-**Branche source** : `refactor/collect-persist` (7 commits Phase 4 + 4 commits cycles précédents)
-
-**Commits inclus** (du plus ancien au plus récent) :
-- `03322560` fix(auth) : E.v1 legacy store fix
-- `0e4b368f` feat(persist,p4.2) : PostSyncLUSRPersister
-- `14dfd135` feat(persist,sync,p4.4) : batch INSERT-only post-sync (5 sites)
-- `4ef122b7` feat(migration,p4.5) : RebuildMatchSkillRankART + smoke validé
-- `f243b235` chore(p4.6,cleanup) : supprime singleflight/CHECKPOINT/auto-heal
-- `82d0aa1a` feat(p4.7,closure) : BatchQueue wiring + janitor + flip defaults
-- `463418af` chore(p4.8,cleanup) : revert acad4603 UPDATE-then-INSERT
-- `08582b89` chore(p4.7,hygiene) : PathResolver pour data/wal + data/sync_cache
-- `d3825c2f` chore(p4.9,tests) : flip async ON + fix 9 pre-existing test failures
-- `4508df92` feat(auth,p-Ev2) : Pool.AddOrUpdateSource + periodic re-scan
-- `157d80a8` feat(auth,p-2.5b) : RefreshLoop.WithMultiUserMirror
-
-**Pré-requis merge** :
-- [ ] CI green sur `refactor/collect-persist` (go test ./... full suite)
-- [ ] Squad review du runbook `.ai/RUNBOOK_PHASE4_DEPLOY.md` (procédure deploy)
-- [ ] User a-t-il déjà migré sa DB locale ? Si non : suivre runbook AVANT merge
-
-**Procédure** :
-- [ ] Créer PR: `refactor/collect-persist` → `main`
-- [ ] Body PR : référencer ADR 0019, `.ai/RUNBOOK_PHASE4_DEPLOY.md`, et thought_log entries Phase 4.4→4.9
-- [ ] Attendre approval + CI validation
-- [ ] Merger PR vers main (squash NON recommandé — chaque commit Phase 4.x est une étape logique distincte avec entrée thought_log)
-
-**Post-merge** :
-- [ ] Tag release : `v8.0.0-phase4` (breaking si user a une DB legacy non rebuilt)
-- [ ] CHANGELOG.md : section Phase 4 (incident ART résolu, runbook deploy, breaking)
-- [ ] Annoncer dans channel ops : pré-requis `force_rebuild_art --all true` AVANT 1er boot sur prod
-
-**Items reportés (post merge OK)** :
+**Restant optionnel (non bloquant)** :
 - [ ] Documenter le default async ON dans le README utilisateur
-- [ ] Si CI metrics observent latence WAL : tuning du janitor (24h → 12h ?)
+- [ ] Tuning du janitor (24h → 12h ?) si la latence WAL le justifie en prod
 
 ---
 
@@ -95,15 +66,6 @@
 - [ ] Setup monitoring: `dblease_acquire_total{kind=player|shared_matches,status=success|timeout}`
 - [ ] Setup alerting si timeouts excessifs
 - [ ] Documenter les seuils d'alerte
-
----
-
-### [POST-V7] Optional Documentation
-
-- [ ] Créer `docs/adr/0013-leased-writer-enforcement.md`
-  - Contexte: P1 Prestige during sync
-  - Décision: DLeasedWriter type + dblease package
-  - Conséquences: Unified observability, deadlock resolution
 
 ---
 
@@ -207,7 +169,7 @@ Commentaire explicite : "Migration du watcher : différée à PR 2.5b".
 
 **Noté le** : 2026-05-24 | **Priorité** : 🟡 Moyenne — non-bloquants pour Phase 3 (rollback via feature flag + code legacy intact)
 
-**Contexte** : Audit safety/guards du chemin `submitMatchAsBatch` (cf. ADR 0019, RUNBOOK_PHASE3, thought_log 2026-05-23). 19 garde-fous actifs livrés ; 6 gaps identifiés et reportés ici. Le gap C (timeout par Persist call) a été fixé immédiatement car simple et utile en prod (commit 2026-05-24).
+**Contexte** : Audit safety/guards du chemin `submitMatchAsBatch` (cf. ADR 0019, RUNBOOK_PHASE3, thought_log 2026-05-23). 19 garde-fous actifs livrés ; 6 gaps identifiés et reportés ici. Le gap C (timeout par Persist call) a été fixé immédiatement car simple et utile en prod (commit 2026-05-24). Le gap F (RecoverPending au boot) a été résolu le 2026-06-03 (câblé dans `cmd/server/main.go`, async ON par défaut) — retiré de la liste.
 
 **Gaps à traiter quand pertinent** :
 
@@ -235,14 +197,7 @@ Commentaire explicite : "Migration du watcher : différée à PR 2.5b".
    - **Fix** : `GET /health/persist` → 200 OK + JSON `{wal_pending: 0, last_persist_ok_at: "...", recent_errors: 0}`. 503 si pending > seuil ou erreurs récentes > seuil.
    - **Effort** : ~45min.
 
-5. **[F] RecoverPending wiré au boot serveur** (`cmd/server`)
-   - **Problème** : Le mode async (queue + worker) a un mécanisme `RecoverPending` testé en E2E mais pas appelé au boot du serveur prod.
-   - **Impact** : Si crash mid-cycle en mode async, les batches en WAL ne sont pas rejoués au boot suivant.
-   - **Mitigation actuelle** : Mode async non-activé par défaut (Phase 3 active uniquement le mode sync sans WAL).
-   - **Fix** : Dans `cmd/server/main.go`, au boot : `queue := persist.NewBatchQueue(...)` ; `_ = queue.RecoverPending()` ; `worker.Run(ctx)` (goroutine).
-   - **Effort** : ~1h. **Dépendance** : Faire AVANT d'activer le mode async en prod.
-
-6. **[G] Test E2E avec FATAL DuckDB injecté** (`internal/persist`)
+5. **[G] Test E2E avec FATAL DuckDB injecté** (`internal/persist`)
    - **Problème** : Les tests TDD unitaires couvrent les cas isolés (atomicity, idempotence, parse error). Pas de test qui simule un FATAL DuckDB mid-batch et vérifie la recovery propre.
    - **Impact** : Confiance moindre sur le path de recovery en cas de crash réel.
    - **Fix** : Mock `txBeginner` qui retourne une erreur FATAL après N rows insérées. Vérifier que la TX rollback, le WAL reste, et RecoverPending peut rejouer.
