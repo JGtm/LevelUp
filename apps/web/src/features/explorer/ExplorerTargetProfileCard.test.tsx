@@ -145,10 +145,10 @@ describe('ExplorerTargetProfileCard', () => {
     // Top médailles : section + médaille
     expect(screen.getByTestId('explorer-target-medals')).toBeInTheDocument()
     expect(screen.getByText('Double frag')).toBeInTheDocument()
-    // CSR saison : section + playlist + tier
+    // CSR saison : section + playlist + tier (traduit FR, locale défaut = fr)
     expect(screen.getByTestId('explorer-target-season-csr')).toBeInTheDocument()
     expect(screen.getByText('Ranked Arena')).toBeInTheDocument()
-    expect(screen.getByText('Diamond 3')).toBeInTheDocument()
+    expect(screen.getByText('Diamant III')).toBeInTheDocument()
   })
 
   it('ne rend jamais de bannière privacy (supprimée de l\'Explorer)', () => {

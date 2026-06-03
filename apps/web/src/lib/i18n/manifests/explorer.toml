@@ -560,6 +560,10 @@ en = "via Halo API"
 fr = "Sur {count, plural, one {# match joué ensemble} other {# matchs joués ensemble}}"
 en = "Over {count, plural, one {# shared match} other {# shared matches}}"
 
+[explorer.target_profile.results_title]
+fr = "Répartition des résultats"
+en = "Results breakdown"
+
 [explorer.target_profile.section_sample_empty]
 fr = "Aucun match en commun pour calculer les stats détaillées."
 en = "No shared match to compute detailed stats."
@@ -577,7 +581,7 @@ fr = "Emblème et rang carrière indisponibles pour ce joueur — ses stats sont
 en = "Emblem and career rank unavailable for this player — their stats are shown below."
 
 [explorer.target_profile.top_medals_title]
-fr = "Médailles favorites"
+fr = "Top médailles"
 en = "Top medals"
 
 [explorer.target_profile.medals_show_more]
@@ -593,8 +597,8 @@ fr = "Temps de jeu"
 en = "Time played"
 
 [explorer.target_profile.season_csr_title]
-fr = "Classements CSR (saison)"
-en = "CSR rankings (season)"
+fr = "Classements CSR (saison actuelle)"
+en = "CSR rankings (current season)"
 
 [explorer.target_profile.matches_per_season_title]
 fr = "Matchs par saison"
@@ -668,6 +672,10 @@ en = "Perfect kills"
 fr = "Score moyen"
 en = "Avg score"
 
+[explorer.target_profile.cadence_title]
+fr = "Cadence"
+en = "Pace"
+
 [explorer.target_profile.cadence_per_match]
 fr = "Par match"
 en = "Per match"
@@ -689,12 +697,12 @@ fr = "Assists"
 en = "Assists"
 
 [explorer.target_profile.yield_offensive]
-fr = "Offensif"
-en = "Offensive"
+fr = "Rendement"
+en = "Yield"
 
 [explorer.target_profile.yield_defensive]
-fr = "Défensif"
-en = "Defensive"
+fr = "Résistance"
+en = "Resistance"
 
 [explorer.target_profile.yield_dmg_per_kill]
 fr = "{n} dmg/frag"

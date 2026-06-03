@@ -7,8 +7,6 @@
  * Calcul local depuis common_matches (DuckDB), indépendant des tokens Halo.
  * Affichée seulement quand `sampleStats != null && sample_size > 0`.
  */
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { CombatYieldBar } from '@/components/ui/combat-yield-bar'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
@@ -59,23 +57,41 @@ export function ExplorerTargetSampleStats({ sampleStats }: ExplorerTargetSampleS
     { label: t('explorer.target_profile.kill_type_other'), count: other, token: 'chart-series-5' as SemanticToken },
   ].filter((s) => s.count > 0)
 
+  // Bloc « Répartition des frags » : titre en barre (chrome ChartCard) + donut
+  // agrandi centré. Hauteur naturelle : le bloc cohabite avec le bilan V/N/D dans
+  // la même colonne (cf. ExplorerTargetProfileCard). Titre de section + rangée KPI
+  // rendus hors bloc.
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">
-          {t('explorer.target_profile.section_sample_title', { count: sampleStats.sample_size })}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <div className="grid gap-4 lg:grid-cols-3">
-          <DonutColumn slices={donutSlices} locale={locale} t={t} />
-          <YieldColumn sampleStats={sampleStats} t={t} />
-          <KpiTiles sampleStats={sampleStats} locale={locale} t={t} />
-        </div>
-        <CadenceStrips sampleStats={sampleStats} locale={locale} t={t} />
+    <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
+      <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">
+        {t('explorer.target_profile.label_kill_types')}
+      </div>
+      <div className="flex items-center justify-center p-3">
+        <DonutColumn slices={donutSlices} locale={locale} t={t} />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * ExplorerTargetOutcome — bilan V/N/D des matchs communs, rendu dans une section
+ * séparée pleine largeur sous le donut + cadence (OutcomeBar + légende). nil si
+ * aucun résultat exploitable.
+ */
+export function ExplorerTargetOutcome({ sampleStats }: ExplorerTargetSampleStatsProps) {
+  const appLocale = useAppShellStore((s) => s.locale)
+  const locale = appLocale === 'en' ? 'en-US' : 'fr-FR'
+  const t: TFn = (key, values) => formatMessage(explorerManifest, key, appLocale, values)
+  if (sampleStats.wins + sampleStats.draws + sampleStats.losses === 0) return null
+  return (
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <div className="border-b border-border px-3 py-2 text-sm font-medium">
+        {t('explorer.target_profile.results_title')}
+      </div>
+      <div className="p-3">
         <OutcomeLegend sampleStats={sampleStats} locale={locale} t={t} />
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
@@ -83,10 +99,7 @@ export function ExplorerTargetSampleStats({ sampleStats }: ExplorerTargetSampleS
 
 function DonutColumn({ slices, locale, t }: { slices: DonutSlice[]; locale: string; t: TFn }) {
   return (
-    <div className="flex flex-col items-center gap-2">
-      <span className="text-2xs uppercase tracking-label-xl text-muted-foreground">
-        {t('explorer.target_profile.label_kill_types')}
-      </span>
+    <div className="flex w-full flex-col items-center gap-2">
       {slices.length > 0 ? (
         <KillTypesDonut slices={slices} locale={locale} />
       ) : (
@@ -159,7 +172,7 @@ function KillTypesDonut({ slices, locale }: { slices: DonutSlice[]; locale: stri
   const leaders = computeLeaders(slices, total, circ)
 
   return (
-    <svg width="100%" viewBox={`0 0 ${DONUT.w} ${DONUT.h}`} className="max-w-[300px]">
+    <svg width="100%" viewBox={`0 0 ${DONUT.w} ${DONUT.h}`} className="max-w-[700px]">
       <circle cx={DONUT.cx} cy={DONUT.cy} r={innerR} fill="none" stroke={tokenCssVar('perf-tier-5')} strokeWidth={DONUT.stroke} opacity="0.15" />
       {leaders.map((l, i) => (
         <circle
@@ -192,105 +205,56 @@ function KillTypesDonut({ slices, locale }: { slices: DonutSlice[]; locale: stri
   )
 }
 
-// ─── Colonne 2 : rendement combat chiffré ───────────────────────────────────
+// ─── Rangée KPI (hors bloc, sous le titre) ───────────────────────────────────
 
-function YieldColumn({ sampleStats, t }: { sampleStats: ExplorerTargetSampleStats; t: TFn }) {
+/**
+ * ExplorerTargetSampleKpis — rangée de KPI cards rendue HORS du bloc, juste sous
+ * le titre « Sur N matchs joués ensemble » (parité avec la rangée de tuiles de
+ * « Carrière complète »). La dernière carte porte le rendement/résistance (OC/DR)
+ * à la place de l'ancienne barre composite.
+ */
+export function ExplorerTargetSampleKpis({ sampleStats }: ExplorerTargetSampleStatsProps) {
+  const appLocale = useAppShellStore((s) => s.locale)
+  const locale = appLocale === 'en' ? 'en-US' : 'fr-FR'
+  const t: TFn = (key, values) => formatMessage(explorerManifest, key, appLocale, values)
+  const dash = t('explorer.target_profile.value_unavailable')
+  const pct = (v: number | null | undefined) => (v != null ? fmtPctRatio(v, locale) : dash)
+  const num = (v: number | null | undefined) => (v != null ? fmtNumber(v, locale) : dash)
+
   const oc = sampleStats.offensive_conversion ?? null
   const dr = sampleStats.defensive_resistance ?? null
-  const dash = t('explorer.target_profile.value_unavailable')
-  const damagePerKill = sampleStats.kills > 0 ? sampleStats.damage_dealt / sampleStats.kills : null
-  const damagePerDeath = sampleStats.deaths > 0 ? sampleStats.damage_taken / sampleStats.deaths : null
-
   const ocLabel = oc != null ? `${Math.round(oc * 100)}%` : dash
   const drLabel = dr == null ? dash : dr < 0 ? '∞' : `${dr >= 1 ? '+' : ''}${Math.round((dr - 1) * 100)}%`
 
   return (
-    <div className="flex flex-col items-center gap-2">
-      <span className="text-2xs uppercase tracking-label-xl text-muted-foreground">
-        {t('explorer.target_profile.label_combat_yield')}
-      </span>
-      <CombatYieldBar
-        offensiveConversion={oc}
-        defensiveResistance={dr}
-        damagePerKill={damagePerKill}
-        damagePerDeath={damagePerDeath}
-      />
-      <div className="flex items-center justify-center gap-4 text-xs font-semibold">
-        <span style={{ color: tokenCssVar('divergent-pos') }}>{t('explorer.target_profile.yield_offensive')} {ocLabel}</span>
-        <span style={{ color: tokenCssVar('divergent-neutral') }}>{t('explorer.target_profile.yield_defensive')} {drLabel}</span>
-      </div>
-      {(damagePerKill != null || damagePerDeath != null) && (
-        <div className="flex items-center justify-center gap-3 text-2xs text-muted-foreground">
-          {damagePerKill != null && <span>{t('explorer.target_profile.yield_dmg_per_kill', { n: Math.round(damagePerKill) })}</span>}
-          {damagePerDeath != null && <span>{t('explorer.target_profile.yield_dmg_per_death', { n: Math.round(damagePerDeath) })}</span>}
-        </div>
-      )}
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <SmallTile label={t('explorer.target_profile.label_kda')} value={num(sampleStats.kda)} accent="perf-tier-2" />
+      <SmallTile label={t('explorer.target_profile.label_accuracy')} value={pct(sampleStats.accuracy)} accent="info" />
+      <SmallTile label={t('explorer.target_profile.label_headshot_rate')} value={pct(sampleStats.headshot_rate)} accent="chart-series-1" />
+      <SmallTile label={t('explorer.target_profile.label_avg_score')} value={sampleStats.avg_personal_score != null ? fmtInt(sampleStats.avg_personal_score, locale) : dash} accent="chart-series-4" />
+      <SmallTile label={t('explorer.target_profile.label_perfect_kills')} value={fmtInt(sampleStats.perfect_kills ?? 0, locale)} accent="outcome-win" />
+      <YieldTile ocLabel={ocLabel} drLabel={drLabel} t={t} />
     </div>
   )
 }
 
-// ─── Colonne 3 : tuiles KPI ─────────────────────────────────────────────────
-
-function KpiTiles({ sampleStats, locale, t }: { sampleStats: ExplorerTargetSampleStats; locale: string; t: TFn }) {
-  const dash = t('explorer.target_profile.value_unavailable')
-  const pct = (v: number | null | undefined) => (v != null ? fmtPctRatio(v, locale) : dash)
-  const num = (v: number | null | undefined) => (v != null ? fmtNumber(v, locale) : dash)
-  const tiles: SmallTileProps[] = [
-    { label: t('explorer.target_profile.label_kda'), value: num(sampleStats.kda) },
-    { label: t('explorer.target_profile.label_kdr'), value: num(sampleStats.kdr) },
-    { label: t('explorer.target_profile.label_accuracy'), value: pct(sampleStats.accuracy) },
-    { label: t('explorer.target_profile.label_headshot_rate'), value: pct(sampleStats.headshot_rate) },
-    { label: t('explorer.target_profile.label_win_rate'), value: pct(sampleStats.win_rate) },
-    { label: t('explorer.target_profile.label_avg_score'), value: sampleStats.avg_personal_score != null ? fmtInt(sampleStats.avg_personal_score, locale) : dash },
-    { label: t('explorer.target_profile.label_perfect_kills'), value: fmtInt(sampleStats.perfect_kills ?? 0, locale) },
-  ]
+/** YieldTile — carte rendement (OC, vert) / résistance (DR, bleu) au format KPI card. */
+function YieldTile({ ocLabel, drLabel, t }: { ocLabel: string; drLabel: string; t: TFn }) {
   return (
-    <div className="grid grid-cols-2 gap-2">
-      {tiles.map((tile) => (
-        <SmallTile key={tile.label} label={tile.label} value={tile.value} />
-      ))}
-    </div>
-  )
-}
-
-// ─── Bandes cadence : par match / par minute ────────────────────────────────
-
-function CadenceStrips({ sampleStats, locale, t }: { sampleStats: ExplorerTargetSampleStats; locale: string; t: TFn }) {
-  const dash = t('explorer.target_profile.value_unavailable')
-  const n = sampleStats.sample_size
-  const perMatch = (total: number) => (n > 0 ? fmtNumber(total / n, locale, 1) : dash)
-  const perMin = (v: number | null | undefined) => (v != null ? fmtNumber(v, locale, 2) : dash)
-
-  return (
-    <div className="rounded-md border border-border bg-card px-3 py-2">
-      <div className="grid grid-cols-[auto_repeat(3,1fr)] items-center gap-x-3 gap-y-1">
-        <span />
-        <CadenceHead label={t('explorer.target_profile.cadence_frags')} />
-        <CadenceHead label={t('explorer.target_profile.cadence_deaths')} />
-        <CadenceHead label={t('explorer.target_profile.cadence_assists')} />
-        <CadenceRowLabel label={t('explorer.target_profile.cadence_per_match')} />
-        <CadenceValue value={perMatch(sampleStats.kills)} />
-        <CadenceValue value={perMatch(sampleStats.deaths)} />
-        <CadenceValue value={perMatch(sampleStats.assists)} />
-        <CadenceRowLabel label={t('explorer.target_profile.cadence_per_minute')} />
-        <CadenceValue value={perMin(sampleStats.kills_per_min)} />
-        <CadenceValue value={perMin(sampleStats.deaths_per_min)} />
-        <CadenceValue value={perMin(sampleStats.assists_per_min)} />
+    <div className="overflow-hidden rounded-md border border-border bg-card">
+      <div className="h-[3px]" style={{ backgroundColor: tokenCssVar('divergent-pos') }} />
+      <div className="flex flex-col gap-1 px-2 py-1.5">
+        <span className="text-2xs uppercase tracking-label-xl text-muted-foreground">
+          {t('explorer.target_profile.yield_offensive')} / {t('explorer.target_profile.yield_defensive')}
+        </span>
+        <span className="text-sm font-semibold">
+          <span style={{ color: tokenCssVar('divergent-pos') }}>{ocLabel}</span>
+          <span className="text-muted-foreground"> / </span>
+          <span style={{ color: tokenCssVar('divergent-neutral') }}>{drLabel}</span>
+        </span>
       </div>
     </div>
   )
-}
-
-function CadenceHead({ label }: { label: string }) {
-  return <span className="text-center text-2xs uppercase tracking-label-xl text-muted-foreground">{label}</span>
-}
-
-function CadenceRowLabel({ label }: { label: string }) {
-  return <span className="text-2xs uppercase tracking-label-xl text-muted-foreground">{label}</span>
-}
-
-function CadenceValue({ value }: { value: string }) {
-  return <span className="text-center text-sm font-semibold text-foreground tabular-nums">{value}</span>
 }
 
 // ─── OutcomeBar légendée (V / N / D + taux) ──────────────────────────────────
@@ -327,13 +291,18 @@ function OutcomeLegendItem({ token, label, value }: { token: SemanticToken; labe
 interface SmallTileProps {
   label: string
   value: string
+  /** Couleur de la barre d'accent (3px) en haut — parité Synthesis AccentCard. */
+  accent: SemanticToken
 }
 
-function SmallTile({ label, value }: SmallTileProps) {
+function SmallTile({ label, value, accent }: SmallTileProps) {
   return (
-    <div className="flex flex-col gap-1 rounded-md border border-border bg-card px-2 py-1.5">
-      <span className="text-2xs uppercase tracking-label-xl text-muted-foreground">{label}</span>
-      <span className="text-sm font-semibold text-foreground">{value}</span>
+    <div className="overflow-hidden rounded-md border border-border bg-card">
+      <div className="h-[3px]" style={{ backgroundColor: tokenCssVar(accent) }} />
+      <div className="flex flex-col gap-1 px-2 py-1.5">
+        <span className="text-2xs uppercase tracking-label-xl text-muted-foreground">{label}</span>
+        <span className="text-sm font-semibold text-foreground">{value}</span>
+      </div>
     </div>
   )
 }
