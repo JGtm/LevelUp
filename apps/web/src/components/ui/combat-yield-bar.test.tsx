@@ -56,8 +56,8 @@ describe('CombatYieldBar', () => {
     fireEvent.mouseEnter(wrapper)
     expect(screen.getByText(/Rendement/i)).toBeTruthy()
     expect(screen.getByText(/Résistance/i)).toBeTruthy()
-    expect(screen.getByText(/dmg\/kill/i)).toBeTruthy()
-    expect(screen.getByText(/dmg\/mort/i)).toBeTruthy()
+    expect(screen.getByText(/dégâts\/frag/i)).toBeTruthy()
+    expect(screen.getByText(/dégâts\/mort/i)).toBeTruthy()
   })
 
   it('hides tooltip on mouse leave', () => {

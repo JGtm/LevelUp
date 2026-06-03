@@ -52,6 +52,10 @@ export default defineConfig([
       'react-hooks/preserve-manual-memoization': 'warn',
       'react-hooks/refs': 'warn',
       'react-hooks/set-state-in-effect': 'warn',
+      // use-memo : JSON.stringify dans les deps est un pattern intentionnel
+      // pour deep-compare les options ECharts (objets complexes non-stables).
+      // A migrer vers useMemo(stabilize) + ref comparaison lors d'un sprint dédié.
+      'react-hooks/use-memo': 'warn',
     },
   },
   {
