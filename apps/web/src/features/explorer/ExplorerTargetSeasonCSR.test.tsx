@@ -23,18 +23,20 @@ function csr(over: Partial<CareerPlaylistCSR> & { playlist_id: string }): Career
 }
 
 describe('ExplorerTargetSeasonCSR', () => {
-  it('rend nom de playlist + tier + rating', () => {
+  it('rend nom de playlist + tier (FR), sans la valeur de rating', () => {
     const csrs = [
       csr({ playlist_id: 'p1', playlist_name: 'Ranked Arena', current: { value: 1523, tier: 'Diamond', sub_tier: 3, measurement_matches_remaining: 0, placement_total: 0 } }),
       csr({ playlist_id: 'p2', playlist_name: 'Ranked Slayer', current: { value: 1810, tier: 'Onyx', sub_tier: 0, measurement_matches_remaining: 0, placement_total: 0 } }),
     ]
     renderWithProviders(<ExplorerTargetSeasonCSR csrs={csrs} title="CSR" />)
     expect(screen.getByText('Ranked Arena')).toBeInTheDocument()
-    expect(screen.getByText('Diamond 3')).toBeInTheDocument()
-    expect(screen.getByText('1523')).toBeInTheDocument()
-    // Onyx sans sub-tier
+    // Tier traduit en FR (locale par défaut = fr) + sous-palier en romain.
+    expect(screen.getByText('Diamant III')).toBeInTheDocument()
+    // Onyx sans sub-tier (inchangé en FR)
     expect(screen.getByText('Onyx')).toBeInTheDocument()
-    expect(screen.getByText('1810')).toBeInTheDocument()
+    // La valeur de rating brute n'est plus affichée.
+    expect(screen.queryByText('1523')).not.toBeInTheDocument()
+    expect(screen.queryByText('1810')).not.toBeInTheDocument()
   })
 
   it('ne rend rien si liste vide', () => {

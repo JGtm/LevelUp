@@ -158,11 +158,14 @@ export function ExplorerPlayerMode({
           {/* Profil de combat — 5 graphes sur les derniers matchs PvP de la
               cible (FDA, dégâts, score+placement, folie/parfaits, donut modes).
               Masqué si la cible n'a aucun match PvP. */}
-          {playerQuery.data.target_profile?.combat_profile?.length ? (
+          {(playerQuery.data.target_profile?.combat_profile?.length ||
+            playerQuery.data.target_profile?.combat_profile_local?.length) ? (
             <ExplorerCombatProfile
-              matches={playerQuery.data.target_profile.combat_profile}
+              liveMatches={playerQuery.data.target_profile.combat_profile ?? []}
+              localMatches={playerQuery.data.target_profile.combat_profile_local ?? []}
               locale={locale}
               t={t}
+              topMedals={playerQuery.data.target_profile.top_medals ?? []}
             />
           ) : null}
 

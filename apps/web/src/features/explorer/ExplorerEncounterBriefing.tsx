@@ -220,11 +220,10 @@ export function ExplorerEncounterBriefing({ stats, locale }: Props) {
   const ratioColor = kdRatioColor(stats.kills_dealt, stats.deaths_suffered)
 
   return (
-    // Wrapper carte rounded — sans barre titre (cf. demande user 2026-05-08).
-    <div className="rounded-lg border border-border bg-card overflow-hidden">
-      <div className="p-3">
-        {/* Grille KPI — 6 colonnes (Rencontres, WR allié, WR ennemi, F/D croisé, Ratio, Vu) */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+    // Sortie du bloc (cf. demande user) : pas de carte englobante — la rangée de
+    // KPI cards (chacune bordée) flotte directement, comme les autres rangées KPI.
+    // Contenu des cards inchangé.
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {/* Rencontres */}
           <KpiCard
             label={t('explorer.encounter.encounters')}
@@ -296,7 +295,5 @@ export function ExplorerEncounterBriefing({ stats, locale }: Props) {
             }
           />
         </div>
-      </div>
-    </div>
   )
 }

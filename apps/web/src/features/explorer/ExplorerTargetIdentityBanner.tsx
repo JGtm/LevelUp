@@ -153,16 +153,26 @@ export function ExplorerTargetIdentityBanner({
                 {spartanID}
               </p>
             )}
-            {careerRank?.rank_title && (
+          </div>
+
+          {/* Grade carrière dans un bloc semi-transparent (parité Home). */}
+          {careerRank?.rank_title && (
+            <div className="relative z-[2] shrink-0 self-start rounded-xl bg-background/40 px-3 py-2 text-right backdrop-blur-sm">
               <p className="text-sm font-semibold text-foreground sm:text-base">
                 {careerRank.rank_title}
               </p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
-        {/* Barre XP rang carrière */}
-        {careerRank?.current_xp != null && careerRank?.xp_for_next_rank != null && careerRank.xp_for_next_rank > 0 && (
+        {/* Barre de progression rang carrière. Rang max (Héros) : barre composite
+            pleine en vert (parité battlepass complété, success token ≥100%), SANS
+            valeurs aux extrémités. Sinon : progression XP + bornes courant/cible. */}
+        {careerRank?.is_max_rank ? (
+          <div className="relative px-5 pb-4">
+            <CompositeProgressBar value={100} />
+          </div>
+        ) : careerRank?.current_xp != null && careerRank?.xp_for_next_rank != null && careerRank.xp_for_next_rank > 0 ? (
           <div className="relative px-5 pb-4">
             <CompositeProgressBar value={(careerRank.current_xp / careerRank.xp_for_next_rank) * 100} />
             <div className="mt-1 flex justify-between text-xs text-muted-foreground">
@@ -170,7 +180,7 @@ export function ExplorerTargetIdentityBanner({
               <span>{formatXP(careerRank.xp_for_next_rank)}</span>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Panneau skill peaks à droite (optionnel) */}

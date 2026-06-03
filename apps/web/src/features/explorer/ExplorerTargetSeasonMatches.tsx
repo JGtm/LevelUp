@@ -101,7 +101,10 @@ export function buildSeasonMatchesOption(
   const mut = option as EChartsCoreOption & {
     series?: Array<Record<string, unknown>>
     grid?: Record<string, unknown>
+    legend?: Record<string, unknown>
   }
+  // Série unique (total par saison) → la légende est redondante : on la masque.
+  mut.legend = { show: false }
   if (mut.series && mut.series.length > 0 && markData.length > 0) {
     mut.series[0].markPoint = { silent: true, data: markData, label: { show: false } }
     if (mut.grid) mut.grid.top = 44 // dégage la place pour les badges au-dessus

@@ -1,10 +1,14 @@
 /**
  * ExplorerTargetSeasonCSR — classements CSR par playlist ranked (saison courante)
- * du joueur cible. Liste compacte : nom de playlist + tier/sub-tier + rating.
- * Données live (endpoint skill) ; n'affiche que les playlists ranked engagées
- * cette saison.
+ * du joueur cible. Chrome identique aux ChartCard (cf. « Matchs par saison ») :
+ * carte bordée + barre de titre + contenu. La liste est centrée verticalement
+ * dans le bloc (qui s'étire à la hauteur de « Matchs par saison »).
+ *
+ * Tiers traduits en FR (locale FR) ; la valeur de rating brute n'est pas affichée
+ * (demande user). Liste simple, sans sous-blocs bordés.
  */
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { CSR_TIER_GRID } from '@/lib/skillTiers'
 import type { CareerPlaylistCSR } from '@/lib/api/types'
 
 interface ExplorerTargetSeasonCSRProps {
@@ -12,30 +16,42 @@ interface ExplorerTargetSeasonCSRProps {
   title: string
 }
 
-/** tierLabel formate "Tier Sub" (ex: "Onyx", "Diamond 3") ou "—" si non classé. */
-function tierLabel(tier: string, subTier: number): string {
-  const t = tier.trim()
-  if (t === '') return '—'
+// Traduction EN→FR des noms de tier CSR (Bronze/Silver/Gold/Platinum/Diamond/Onyx),
+// dérivée de la grille canonique CSR_TIER_GRID (source unique des libellés de rang).
+const CSR_TIER_FR: Record<string, string> = Object.fromEntries(
+  CSR_TIER_GRID.tiers.map((t) => [t.en.toLowerCase(), t.fr]),
+)
+
+// Sous-paliers en chiffres romains (I..VI), comme partout ailleurs (cf. Go
+// rankSubRoman / skillTierLabel). Index 0 = pas de sous-palier.
+const SUBTIER_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'] as const
+
+/** tierLabel formate "Tier Sub" (ex: "Onyx", "Diamant III") ou "—" si non classé. */
+function tierLabel(tier: string, subTier: number, locale: string): string {
+  const raw = tier.trim()
+  if (raw === '') return '—'
+  const name = locale === 'en' ? raw : CSR_TIER_FR[raw.toLowerCase()] ?? raw
   // sub_tier est 1-based (1..6) ; 0 = pas de sous-tier (Onyx, ou non classé).
-  if (t.toLowerCase() === 'onyx') return t
-  return subTier > 0 ? `${t} ${subTier}` : t
+  if (raw.toLowerCase() === 'onyx') return name
+  return subTier >= 1 && subTier <= 6 ? `${name} ${SUBTIER_ROMAN[subTier]}` : name
 }
 
 export function ExplorerTargetSeasonCSR({ csrs, title }: ExplorerTargetSeasonCSRProps) {
+  const locale = useAppShellStore((s) => s.locale)
   if (csrs.length === 0) return null
 
   return (
-    <Card data-testid="explorer-target-season-csr">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <ul className="flex flex-col gap-1.5">
+    <div
+      className="flex h-full flex-col rounded-lg border border-border bg-card"
+      data-testid="explorer-target-season-csr"
+    >
+      <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">
+        {title}
+      </div>
+      <div className="flex flex-1 items-center p-3">
+        <ul className="flex w-full flex-col divide-y divide-border/40">
           {csrs.map((c) => (
-            <li
-              key={c.playlist_id}
-              className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/20 px-3 py-1.5"
-            >
+            <li key={c.playlist_id} className="flex items-center gap-2 py-1.5">
               {c.current.badge_image_url ? (
                 <img
                   src={c.current.badge_image_url}
@@ -52,17 +68,12 @@ export function ExplorerTargetSeasonCSR({ csrs, title }: ExplorerTargetSeasonCSR
                 {c.playlist_name || c.playlist_id}
               </span>
               <span className="flex-shrink-0 text-sm font-medium text-muted-foreground">
-                {tierLabel(c.current.tier, c.current.sub_tier)}
+                {tierLabel(c.current.tier, c.current.sub_tier, locale)}
               </span>
-              {c.current.value > 0 && (
-                <span className="flex-shrink-0 text-sm font-bold tabular-nums text-foreground">
-                  {Math.round(c.current.value)}
-                </span>
-              )}
             </li>
           ))}
         </ul>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
