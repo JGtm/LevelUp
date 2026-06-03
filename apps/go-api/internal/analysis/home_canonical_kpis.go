@@ -21,6 +21,8 @@ func ComputeKPIsFromCanonical(rows []canonical.PlayerMatchRow, totalMatches int,
 	var totalPlaytime int
 	var offSum, offCount float64
 	var defSum, defCount float64
+	var totalDmgDealt, totalDmgTaken float64
+	var totalKills, totalDeaths int
 	playlistCounts := make(map[string]int)
 	playlistNames := make(map[string]string)
 
@@ -63,6 +65,10 @@ func ComputeKPIsFromCanonical(rows []canonical.PlayerMatchRow, totalMatches int,
 				defSum += cy.DefensiveResistance
 				defCount++
 			}
+			totalDmgDealt += float64(*r.Self.DamageDealt)
+			totalDmgTaken += float64(*r.Self.DamageTaken)
+			totalKills += k
+			totalDeaths += d
 		}
 		if r.Summary.Playlist != nil {
 			id := r.Summary.Playlist.ID
@@ -106,6 +112,14 @@ func ComputeKPIsFromCanonical(rows []canonical.PlayerMatchRow, totalMatches int,
 	if defCount > 0 {
 		v := round2(defSum / defCount)
 		kpis.AvgDefensiveResistance = &v
+	}
+	if totalKills > 0 {
+		v := totalDmgDealt / float64(totalKills)
+		kpis.DmgPerKill = &v
+	}
+	if totalDeaths > 0 {
+		v := totalDmgTaken / float64(totalDeaths)
+		kpis.DmgPerDeath = &v
 	}
 	if bestID, bestCount := dominantKey(playlistCounts); bestID != "" {
 		kpis.FavoritePlaylistName = playlistNames[bestID]

@@ -10,7 +10,7 @@ import { kdScale, accuracyScale } from '@/lib/accessibility/scales'
 import type { getKPIText } from './kpi.i18n'
 import { HomeKPICard } from './HomeKPICard'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
-import { OffDefComposite } from '@/components/ui/off-def-composite'
+import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
 
 interface HomeHeroKPIGridProps {
   kpis: HeroKPIs
@@ -110,9 +110,12 @@ export function HomeHeroKPIGrid({
       {/* 7 — Rendement / Résistance (barre composite) */}
       <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
         <p className="text-xs text-muted-foreground mb-1.5">{kpiText.labels.offDef}</p>
-        <OffDefComposite
+        <CombatYieldDisplay
+          className="w-full"
           offensiveConversion={kpis.avg_offensive_conversion}
           defensiveResistance={kpis.avg_defensive_resistance}
+          dmgPerKill={kpis.dmg_per_kill}
+          dmgPerDeath={kpis.dmg_per_death}
           align="center"
         />
       </div>

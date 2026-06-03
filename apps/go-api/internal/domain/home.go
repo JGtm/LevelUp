@@ -78,6 +78,11 @@ type HeroKPIs struct {
 	FavoritePlaylistCount  int      `json:"favorite_playlist_count,omitempty"`
 	AvgOffensiveConversion *float64 `json:"avg_offensive_conversion,omitempty"`
 	AvgDefensiveResistance *float64 `json:"avg_defensive_resistance,omitempty"`
+	// DmgPerKill / DmgPerDeath : dégâts moyens par frag / par mort, agrégés
+	// (Σ damage_dealt / Σ kills, Σ damage_taken / Σ deaths). Nil si dénominateur
+	// nul. Affichés à côté du rendement/résistance (parité bande Synthesis).
+	DmgPerKill  *float64 `json:"dmg_per_kill,omitempty"`
+	DmgPerDeath *float64 `json:"dmg_per_death,omitempty"`
 }
 
 // HeroTrend représente la variation des métriques clés sur une fenêtre glissante.

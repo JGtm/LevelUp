@@ -1369,6 +1369,9 @@ export interface HeroKPIs {
   favorite_playlist_count: number
   avg_offensive_conversion: number | null
   avg_defensive_resistance: number | null
+  /** Dégâts moyens par frag / par mort (Σ dmg / Σ kills|deaths). Nil si dénominateur nul. */
+  dmg_per_kill?: number | null
+  dmg_per_death?: number | null
 }
 
 export interface HeroTrend {
@@ -3133,6 +3136,9 @@ export interface SessionCompareEntry {
   // PLAN_COMBAT_PROFILE_WIRING Phase 3
   avg_oc?: number | null
   avg_dr?: number | null
+  /** Dégâts moyens par frag / par mort sur la session. Nil si dénominateur nul. */
+  dmg_per_kill?: number | null
+  dmg_per_death?: number | null
   // PLAN_COMBAT_PROFILE_WIRING Phase 4
   avg_residual_brut?: number | null
   /** Série de points par match pour les charts de progression. */

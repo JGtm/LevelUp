@@ -9,9 +9,10 @@
  *
  * Cards conditionnelles :
  *  - Rendement/Résistance (avg_offensive_conversion / avg_defensive_resistance) :
- *    fusionnées en UNE card composite (barre + 2 valeurs colorées) sur 2 colonnes,
- *    alignée sur le format de la home (cf. OffDefComposite). Si une seule des deux
- *    métriques est présente, fallback sur une KpiCell classique (span-1).
+ *    fusionnées en UNE card composite (barre + valeurs + dégâts/frag·mort) sur 2
+ *    colonnes, via le composant partagé CombatYieldDisplay (même format que la
+ *    Synthesis et la home). Si une seule des deux métriques est présente, fallback
+ *    sur une KpiCell classique (span-1).
  *  - Delta rang : couleur ABSOLUE par SIGNE (divergent-pos/neg/neutral). Kind
  *    détermine le label (Delta CSR / Delta LUSR) et la précision (CSR=int,
  *    LUSR=2 décimales). Pas de glyphe trend (la couleur + le signe explicite
@@ -33,7 +34,7 @@ import { formatDurationDhm, formatMinSec, formatMmss } from './format'
 import type { BriefingTexts } from './i18n'
 import { computeTrend, trendSymbol, type TrendState } from './trends'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
-import { OffDefComposite } from '@/components/ui/off-def-composite'
+import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
 
 interface KpiGridProps {
   kpis: KPIStats
@@ -220,9 +221,12 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint, omitSummaryCard
               {texts.grid.offDef}
             </p>
             <div className="mt-1">
-              <OffDefComposite
+              <CombatYieldDisplay
+                className="w-full"
                 offensiveConversion={kpis.avg_offensive_conversion}
                 defensiveResistance={kpis.avg_defensive_resistance}
+                dmgPerKill={kpis.combat_profile?.dmg_per_kill}
+                dmgPerDeath={kpis.combat_profile?.dmg_per_death}
                 align="start"
               />
             </div>

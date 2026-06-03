@@ -222,6 +222,7 @@ func buildCompareEntryWithObjectives(
 	var minTime, maxTime time.Time
 	var ocSum, drSum float64
 	var ocCount, drCount int
+	var totalDmgDealt, totalDmgTaken float64
 	var residualSum float64
 	var residualCount int
 	var lifeSum float64
@@ -247,6 +248,12 @@ func buildCompareEntryWithObjectives(
 		}
 		totalKills += m.Kills
 		totalDeaths += m.Deaths
+		if m.DamageDealt != nil {
+			totalDmgDealt += *m.DamageDealt
+		}
+		if m.DamageTaken != nil {
+			totalDmgTaken += *m.DamageTaken
+		}
 		if m.OffensiveConversion != nil {
 			ocSum += *m.OffensiveConversion
 			ocCount++
@@ -284,6 +291,15 @@ func buildCompareEntryWithObjectives(
 	if residualCount > 0 {
 		v := math.Round(residualSum/float64(residualCount)*100) / 100
 		avgResidualBrut = &v
+	}
+	var dmgPerKill, dmgPerDeath *float64
+	if totalKills > 0 {
+		v := totalDmgDealt / float64(totalKills)
+		dmgPerKill = &v
+	}
+	if totalDeaths > 0 {
+		v := totalDmgTaken / float64(totalDeaths)
+		dmgPerDeath = &v
 	}
 	var avgLife *float64
 	if lifeCount > 0 {
@@ -359,6 +375,8 @@ func buildCompareEntryWithObjectives(
 		DominantCategory:   dominantCat,
 		AvgOC:              avgOC,
 		AvgDR:              avgDR,
+		DmgPerKill:         dmgPerKill,
+		DmgPerDeath:        dmgPerDeath,
 		AvgResidualBrut:    avgResidualBrut,
 		MatchSeries:        buildCompareMatchSeries(matches),
 		LastSkillRating:    lastRating,

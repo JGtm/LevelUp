@@ -11,7 +11,7 @@
  * et avec le tableau (KDR) ont été retirés. À la place : Rendement/Résistance (OC/DR,
  * même composite que la home) et Durée de vie moyenne (même rendu que "Mes stats").
  */
-import { OffDefComposite } from '@/components/ui/off-def-composite'
+import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { formatDurationMMSS, displayRatingLabel } from '@/lib/formatters'
@@ -77,15 +77,21 @@ export function SessionSummaryCard({ entry, compact = false }: Props) {
         value={formatNumber(entry.performance_score, 1)}
         token={perfTierToken(entry.performance_score)}
       />
-      {/* Rendement / Résistance : tile plus large (barre composite). min-w réduit à 9.5rem
-          (l'OffDefComposite n'a besoin que de ~72px) → la bande tient en colonne divisée. */}
+      {/* Rendement / Résistance : tile plus large (barre composite responsive). */}
       <div className="flex-[2] min-w-[9.5rem] rounded border border-border bg-card px-3 py-2">
         <p className="text-3xs font-medium uppercase tracking-wide text-muted-foreground">
           {t(compact ? 'session.detail.stat_off_def_short' : 'session.detail.stat_off_def')}
         </p>
         <div className="mt-1.5">
           {hasOffDef ? (
-            <OffDefComposite offensiveConversion={entry.avg_oc} defensiveResistance={entry.avg_dr} align="start" />
+            <CombatYieldDisplay
+              className="w-full"
+              offensiveConversion={entry.avg_oc}
+              defensiveResistance={entry.avg_dr}
+              dmgPerKill={entry.dmg_per_kill}
+              dmgPerDeath={entry.dmg_per_death}
+              align="start"
+            />
           ) : (
             <p className="text-lg font-bold text-muted-foreground">—</p>
           )}
