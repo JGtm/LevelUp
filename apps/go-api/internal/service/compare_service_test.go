@@ -239,34 +239,61 @@ func TestFillRemoteCareerRankLive(t *testing.T) {
 	}
 }
 
-// TestCompareService_HighestCurrentCSR : le helper retient le max des CSR courants
-// sur les playlists ranked, et dégrade à 0 sans provider/saison.
-func TestCompareService_HighestCurrentCSR(t *testing.T) {
+// TestCompareService_FetchCSRSummary : le helper retient le max des CSR courants
+// ET all-time (avec libellés tier), et dégrade à vide sans provider/saison.
+func TestCompareService_FetchCSRSummary(t *testing.T) {
 	csr := CSRProviderFunc(func(_ context.Context, _, _ string) ([]domain.CareerPlaylistCSR, error) {
 		return []domain.CareerPlaylistCSR{
-			{Current: domain.CareerCSRRank{Value: 1450}},
-			{Current: domain.CareerCSRRank{Value: 1600}},
-			{Current: domain.CareerCSRRank{Value: 1200}},
+			{Current: domain.CareerCSRRank{Value: 1450, Tier: "Diamond", SubTier: 2}, AllTime: domain.CareerCSRRank{Value: 1550, Tier: "Onyx"}},
+			{Current: domain.CareerCSRRank{Value: 1600, Tier: "Onyx"}, AllTime: domain.CareerCSRRank{Value: 1700, Tier: "Onyx"}},
+			{Current: domain.CareerCSRRank{Value: 1200, Tier: "Platinum", SubTier: 6}, AllTime: domain.CareerCSRRank{Value: 1300, Tier: "Diamond", SubTier: 1}},
 		}, nil
 	})
 	svc := (&CompareService{}).WithCSR(csr, "CsrSeason13-1")
-	if got := svc.highestCurrentCSR(context.Background(), "xuid"); got != 1600 {
-		t.Errorf("highestCurrentCSR = %v, want 1600 (max)", got)
+	sum := svc.fetchCSRSummary(context.Background(), "xuid")
+	if sum.currentValue != 1600 || sum.currentLabel != "Onyx" {
+		t.Errorf("current = (%v, %q), want (1600, Onyx)", sum.currentValue, sum.currentLabel)
 	}
-	if got := (&CompareService{}).WithCSR(csr, "").highestCurrentCSR(context.Background(), "xuid"); got != 0 {
-		t.Errorf("sans saison → 0, got %v", got)
+	if sum.allTimeValue != 1700 || sum.allTimeLabel != "Onyx" {
+		t.Errorf("all-time = (%v, %q), want (1700, Onyx)", sum.allTimeValue, sum.allTimeLabel)
 	}
-	if got := (&CompareService{}).highestCurrentCSR(context.Background(), "xuid"); got != 0 {
-		t.Errorf("sans provider → 0, got %v", got)
+	// Récupéré mais AUCUN classement (slice vide) → "Non classé" (≠ non récupéré).
+	empty := CSRProviderFunc(func(_ context.Context, _, _ string) ([]domain.CareerPlaylistCSR, error) {
+		return nil, nil
+	})
+	if got := (&CompareService{}).WithCSR(empty, "S13").fetchCSRSummary(context.Background(), "xuid"); got.currentLabel != csrUnrankedLabel || got.currentValue != 0 {
+		t.Errorf("récupéré sans classement → 'Non classé', got (%v, %q)", got.currentValue, got.currentLabel)
+	}
+	// Non récupéré (pas de saison / pas de provider) → label VIDE (= N/A côté front).
+	if got := (&CompareService{}).WithCSR(csr, "").fetchCSRSummary(context.Background(), "xuid"); got.currentLabel != "" {
+		t.Errorf("sans saison → non récupéré (label vide), got %+v", got)
+	}
+	if got := (&CompareService{}).fetchCSRSummary(context.Background(), "xuid"); got.currentLabel != "" {
+		t.Errorf("sans provider → non récupéré (label vide), got %+v", got)
 	}
 }
 
-// TestBuildMetrics_CSRRow : la ligne CSR compare A et B dès value>0 ; un joueur non
-// classé (0) reste N/A.
-func TestBuildMetrics_CSRRow(t *testing.T) {
-	a := domain.NormalizedPlayerStats{IsLocal: true, Matches: 100, HighestCSR: 1600, KillsPerGame: 10, DeathsPerGame: 8}
-	b := domain.NormalizedPlayerStats{IsLocal: false, Matches: 50, HighestCSR: 1450, KillsPerGame: 9, DeathsPerGame: 9}
+// TestCSRRankLabel : libellé FR tier + sous-palier romain ; Onyx sans sous-palier.
+func TestCSRRankLabel(t *testing.T) {
+	cases := []struct {
+		rank domain.CareerCSRRank
+		want string
+	}{
+		{domain.CareerCSRRank{Tier: "Gold", SubTier: 3}, "Or III"},
+		{domain.CareerCSRRank{Tier: "Platinum", SubTier: 4}, "Platine IV"},
+		{domain.CareerCSRRank{Tier: "Onyx", SubTier: 0}, "Onyx"},
+		{domain.CareerCSRRank{Tier: ""}, ""},
+	}
+	for _, c := range cases {
+		if got := csrRankLabel(c.rank); got != c.want {
+			t.Errorf("csrRankLabel(%+v) = %q, want %q", c.rank, got, c.want)
+		}
+	}
+}
 
+// TestBuildMetrics_CSRRow : tri-état CSR porté par le libellé — classé (tier),
+// "Non classé" (récupéré, value 0) et N/A (label vide = non récupéré).
+func TestBuildMetrics_CSRRow(t *testing.T) {
 	byKey := func(rows []domain.CompareMetricRow) map[string]domain.CompareMetricRow {
 		m := make(map[string]domain.CompareMetricRow, len(rows))
 		for _, r := range rows {
@@ -275,21 +302,34 @@ func TestBuildMetrics_CSRRow(t *testing.T) {
 		return m
 	}
 
+	// A et B classés → ligne visible, display = tier, vainqueur par valeur.
+	a := domain.NormalizedPlayerStats{IsLocal: true, Matches: 100, HighestCSR: 1600, HighestCSRLabel: "Onyx", KillsPerGame: 10, DeathsPerGame: 8}
+	b := domain.NormalizedPlayerStats{IsLocal: false, Matches: 50, HighestCSR: 1450, HighestCSRLabel: "Diamant II", KillsPerGame: 9, DeathsPerGame: 9}
 	csr := byKey(buildMetrics(a, b))[compareMetricCSR]
 	if csr.Metric != compareMetricCSR {
-		t.Fatal("ligne csr absente")
+		t.Fatal("ligne csr absente alors que A et B sont classés")
 	}
 	if !csr.ValueAAvailable || !csr.ValueBAvailable {
-		t.Error("csr A et B (>0) doivent être disponibles")
+		t.Error("csr A et B (classés) doivent être disponibles")
+	}
+	if csr.DisplayA != "Onyx" || csr.DisplayB != "Diamant II" {
+		t.Errorf("display csr = (%q,%q), want (Onyx, Diamant II)", csr.DisplayA, csr.DisplayB)
 	}
 	if csr.Winner != "a" {
 		t.Errorf("csr winner = %q, want a (1600>1450)", csr.Winner)
 	}
 
-	b0 := b
-	b0.HighestCSR = 0 // non classé
-	if r := byKey(buildMetrics(a, b0))[compareMetricCSR]; r.ValueBAvailable {
-		t.Error("csr B=0 (non classé) doit être N/A")
+	// B "Non classé" (récupéré, value 0, label set) → disponible et affiché (pas N/A).
+	bUnranked := domain.NormalizedPlayerStats{IsLocal: false, Matches: 50, HighestCSR: 0, HighestCSRLabel: csrUnrankedLabel}
+	r := byKey(buildMetrics(a, bUnranked))[compareMetricCSR]
+	if !r.ValueBAvailable || r.DisplayB != csrUnrankedLabel {
+		t.Errorf("csr B 'Non classé' doit être disponible et affiché, got avail=%v disp=%q", r.ValueBAvailable, r.DisplayB)
+	}
+
+	// B non récupéré (label vide) → N/A (indisponible).
+	bNA := domain.NormalizedPlayerStats{IsLocal: false, Matches: 50, HighestCSR: 0, HighestCSRLabel: ""}
+	if rr := byKey(buildMetrics(a, bNA))[compareMetricCSR]; rr.ValueBAvailable {
+		t.Error("csr B sans libellé (non récupéré) doit être N/A")
 	}
 }
 

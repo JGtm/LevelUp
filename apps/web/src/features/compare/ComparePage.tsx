@@ -23,7 +23,7 @@ import { useCompare } from './queries'
 const CATEGORY_KEYS = {
   combat: ['win_rate', 'kda', 'kdr', 'kills_per_game', 'deaths_per_game', 'assists_per_game', 'damage_per_game', 'rendement'],
   precision: ['accuracy', 'headshot_kills_per_game', 'perfect_kills_per_game', 'max_killing_spree', 'avg_life_secs', 'resistance', 'damage_taken_per_game'],
-  bilan: ['matches', 'career_rank', 'csr', 'perf_ath', 'lusr_ath'],
+  bilan: ['matches', 'career_rank', 'csr', 'csr_alltime', 'perf_ath', 'lusr_ath'],
 } as const
 
 function formatMetricValue(
@@ -31,8 +31,11 @@ function formatMetricValue(
   value: number | string,
   text: CompareText,
   available: boolean = true,
+  display?: string | null,
 ) {
   if (!available) return text.notAvailable
+  // Libellé prêt-à-afficher fourni par le back (rang carrière → titre, CSR → tier).
+  if (display) return display
   if (typeof value !== 'number') return String(value)
   if (metric === 'win_rate' || metric === 'accuracy') {
     return `${(value * 100).toLocaleString(text.intlLocale, { maximumFractionDigits: 1 })} %`
@@ -87,8 +90,8 @@ function CategoryColumn({ title, rows, text, gamertagA, gamertagB }: CategoryCol
           const availableA = row.value_a_available !== false
           const availableB = row.value_b_available !== false
           const bothAvailable = availableA && availableB
-          const valA = formatMetricValue(row.metric, row.value_a, text, availableA)
-          const valB = formatMetricValue(row.metric, row.value_b, text, availableB)
+          const valA = formatMetricValue(row.metric, row.value_a, text, availableA, row.display_a)
+          const valB = formatMetricValue(row.metric, row.value_b, text, availableB, row.display_b)
           const ariaLabel = !bothAvailable
             ? text.ariaNotAvailable
             : row.winner === 'tie' || row.winner == null
@@ -156,9 +159,9 @@ function CategoryMirrorSection({ title, keys, metricsLeft, metricsRight, text }:
           const availableA = left.value_a_available !== false || right.value_a_available !== false
           const availableB = left.value_b_available !== false
           const availableC = right.value_b_available !== false
-          const valA = formatMetricValue(left.metric, left.value_a, text, availableA)
-          const valB = formatMetricValue(left.metric, left.value_b, text, availableB)
-          const valC = formatMetricValue(right.metric, right.value_b, text, availableC)
+          const valA = formatMetricValue(left.metric, left.value_a, text, availableA, left.display_a)
+          const valB = formatMetricValue(left.metric, left.value_b, text, availableB, left.display_b)
+          const valC = formatMetricValue(right.metric, right.value_b, text, availableC, right.display_b)
           const sampleNoteB =
             typeof left.sample_size_b === 'number' && left.sample_size_b > 0 && left.sample_size_b < 10
               ? text.sampleSize(left.sample_size_b)
@@ -233,10 +236,10 @@ function PlayerHeader({ data, text, locale }: { data: CompareResponse; text: Com
   const colorA = tokenCssVar('compare-a' as SemanticToken)
   const colorB = tokenCssVar('compare-b' as SemanticToken)
   return (
-    <div className="flex items-center justify-between pb-3 border-b border-border/50">
-      <span className="text-base font-bold" style={{ color: colorA }}>{data.player_a.gamertag}</span>
-      <span className="text-xs text-muted-foreground font-medium px-4">{text.vs}</span>
-      <span className="inline-flex items-center text-base font-bold" style={{ color: colorB }}>
+    <div className="flex items-center pb-3 border-b border-border/50">
+      <span className="flex-1 text-right text-base font-bold" style={{ color: colorA }}>{data.player_a.gamertag}</span>
+      <span className="shrink-0 text-xs text-muted-foreground font-medium px-4">{text.vs}</span>
+      <span className="flex-1 inline-flex items-center text-base font-bold" style={{ color: colorB }}>
         {data.player_b.gamertag}
         <EncounterBadgesInline badges={data.encounter_badges} locale={locale} />
       </span>
