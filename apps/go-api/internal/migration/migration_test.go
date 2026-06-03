@@ -399,8 +399,17 @@ func TestRunForDB_SharedPvE_TableExists(t *testing.T) {
 	db := openMemDB(t)
 
 	pveMigs := ForTarget(TargetSharedPvE)
-	if len(pveMigs) == 0 {
-		t.Skip("aucune migration shared_pve enregistrée")
+	hasCreateMig := false
+	for _, m := range pveMigs {
+		if m.Name == "add_pve_schema" {
+			hasCreateMig = true
+			break
+		}
+	}
+	if !hasCreateMig {
+		// add_pve_schema est title-owned (halo_infinite/migrations/steps.go) —
+		// nécessite SetTitleStepsProvider, non disponible dans ce package (cycle).
+		t.Skip("migration add_pve_schema non disponible — title steps provider requis")
 	}
 
 	if err := RunForDB(db, TargetSharedPvE); err != nil {

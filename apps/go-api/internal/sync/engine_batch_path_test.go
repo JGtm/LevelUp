@@ -71,6 +71,11 @@ func openBatchPathTestDB(t *testing.T, target migration.TargetDB) *sql.DB {
 			"delayed_damage BOOLEAN DEFAULT FALSE"} {
 			_, _ = db.Exec("ALTER TABLE weapon_kills ADD COLUMN IF NOT EXISTS " + col)
 		}
+		// Patch match_participants : first_joined_time / last_leave_time ajoutés
+		// par shared_add_participation_timestamps (title-owned, hors registre global).
+		for _, col := range []string{"first_joined_time TIMESTAMPTZ", "last_leave_time TIMESTAMPTZ"} {
+			_, _ = db.Exec("ALTER TABLE match_participants ADD COLUMN IF NOT EXISTS " + col)
+		}
 	}
 	return db
 }

@@ -4,7 +4,10 @@ package migration
 // Verrouille canonicalOrder (order.go) : complétude, pas de stale/doublon, et
 // surtout PREUVE que rendre l'ordre explicite NE CHANGE PAS l'ordre actuel.
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // TestCanonicalOrderCompleteness : toute migration enregistrée est dans
 // canonicalOrder, et canonicalOrder ne contient ni doublon ni entrée morte.
@@ -12,6 +15,12 @@ import "testing"
 func TestCanonicalOrderCompleteness(t *testing.T) {
 	registered := make(map[string]bool)
 	for _, m := range All() {
+		// Les migrations "test_*" sont enregistrées dynamiquement par les tests
+		// d'intégration (helpers_extra_test.go) — elles ne font pas partie du
+		// registre de production et ne doivent pas figurer dans canonicalOrder.
+		if strings.HasPrefix(m.Name, "test_") {
+			continue
+		}
 		registered[m.Name] = true
 		if _, ok := canonicalIndex[m.Name]; !ok {
 			t.Errorf("migration %q absente de canonicalOrder (order.go) — l'ajouter à la bonne position", m.Name)
