@@ -13,9 +13,10 @@
 - Runbook consolidé : `.ai/RUNBOOK_GO_LIVE.md`.
 - Correctif URL prod (confirmé user) : **`lvelup.info`** (pas `levelup.fr`, qui était une déduction erronée depuis les labels `deploy.yml`) dans `.env.local.example` + runbook.
 - Nettoyage BACKLOG (2026-06-03) : retrait des sections « Main Merge » (theme-consistency + Phase 4 Collect→Persist, déjà intégrées) et « Optional Documentation / créer ADR 0013 » (fichier `docs/adr/0013-*` déjà existant), + gap [F] RecoverPending (résolu, câblé `cmd/server/main.go`). Remplacées par un pointeur vers le runbook.
-- Vérification finale : `deploy.sh` shellcheck 0 warning + `bash -n` OK ; ADR 0013 confirmé présent ; aucune `levelup.fr` résiduelle hors label cosmétique `deploy.yml:44`. Aucun code Go/TS modifié (deliverables = script bash + config commentée + docs) → suite go/front non requise par ces changements, c'est la gate Phase 0 de l'utilisateur.
+- Vérification finale : `deploy.sh` shellcheck 0 warning + `bash -n` OK ; ADR 0013 confirmé présent. Labels cosmétiques `deploy.yml` corrigés (`levelup.fr` → `lvelup.info`, l.44 + l.62). Aucun code Go/TS modifié (deliverables = script bash + config + docs) → suite go/front non requise, c'est la gate Phase 0.
+- Topologie git découverte : le dossier de travail est un **worktree lié** au repo Python `LevelUp/` (`.git` = fichier → `LevelUp/.git`), PAS indépendant → ⛔ ne pas archiver `LevelUp/` avant de détacher. Cutover documenté (runbook Phase 2) = merge `-s ours` SUR la branche Go (Go = « ours ») + `git branch -f main HEAD` + push. Réorg dossiers (runbook Phase 5) = clone standalone + déplacement data, pas de chirurgie git.
 
-**Prochaine étape** : Phase 0 (CI verte + check chemins média relatifs + rebuild ART local si legacy), dépose fichiers VPS, cutover Go→main, vérifs post-deploy. À confirmer : corriger les labels cosmétiques `deploy.yml` (`levelup.fr` → `lvelup.info`). Reco optionnelle post-go-live : build image en CI + pull GHCR (éviter le build-on-VPS).
+**Prochaine étape** : Phase 0 (CI verte + check chemins média relatifs + rebuild ART local si legacy), dépose fichiers VPS, **cutover `-s ours` + `push origin main`** (= déclencheur deploy), vérifs post-deploy, puis Phase 5 réorg dossiers. Reco optionnelle : build image en CI + pull GHCR.
 
 ---
 

@@ -41,7 +41,7 @@ jobs:
 
   # ── Job 1 : Déploiement VPS ────────────────────────────────────────────────
   deploy:
-    name: Deploy levelup.fr
+    name: Deploy lvelup.info
     runs-on: ubuntu-latest
     needs: pre-check
 
@@ -59,7 +59,7 @@ jobs:
 
   # ── Job 2 : Regen données démo ────────────────────────────────────────────
   deploy-demo:
-    name: Regen demo.levelup.info
+    name: Regen demo.lvelup.info
     runs-on: ubuntu-latest
     needs: deploy
 
