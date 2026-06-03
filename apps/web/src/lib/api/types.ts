@@ -1243,10 +1243,12 @@ export interface ExplorerTargetProfile {
   matches_per_season?: SeasonMatchCount[] | null
   /** Avertissement privacy — conservé pour compat, toujours null (privacy non fetchée). */
   privacy_warning?: MatchPrivacyWarning | null
-  /** Les N derniers matchs PvP du joueur cible lui-même (Firefight exclu), pour
-   *  les graphes "profil de combat". Vide/absent si aucun match PvP → section masquée.
-   *  Miroir Go domain.ExplorerTargetRecentMatch. Cf. PLAN_explorer_combat_profile_charts.md. */
+  /** ~20 derniers matchs PvP de la cible fetchés en LIVE (API Halo) — source
+   *  AFFICHÉE PAR DÉFAUT pour les graphes "profil de combat". Vide si pas d'auth/live. */
   combat_profile?: ExplorerTargetRecentMatch[] | null
+  /** Derniers matchs PvP de la cible présents en base locale (surtout matchs communs).
+   *  Alimente le toggle "local" de la section profil de combat. */
+  combat_profile_local?: ExplorerTargetRecentMatch[] | null
   /** true si le user connecté a des tokens OAuth Halo. Sert à rendre le hint
    *  "Connexion Halo requise" sur les sections en mode dégradé. */
   auth_available: boolean
@@ -3269,8 +3271,16 @@ export interface NormalizedPlayerStats {
   perf_ath: number
   lusr_ath: number
   career_rank: number
+  /** Titre localisé du rang carrière ("Général Platine VI"). Vide si rang inconnu. */
+  career_rank_label?: string
   /** Meilleur CSR courant (saison en cours), récupéré en live. 0 si non classé. */
   highest_csr?: number
+  /** Libellé tier du meilleur CSR courant ("Platine IV"). */
+  highest_csr_label?: string
+  /** Meilleur CSR de tous les temps. 0 si aucun. */
+  highest_csr_all_time?: number
+  /** Libellé tier du meilleur CSR all-time ("Onyx"). */
+  highest_csr_all_time_label?: string
   /** Temps de jeu cumulé lifetime (s) depuis le service record Waypoint. */
   time_played_seconds?: number
   // Phase 3 — arme favorite (null pour joueur B remote)
@@ -3292,6 +3302,9 @@ export interface CompareMetricRow {
   /** true = valeur basse meilleure (deaths_per_game, rendement, damage_taken_per_game). Sert au calcul du top des 3 en mode miroir. */
   less_is_better?: boolean
   sample_size_b?: number
+  /** Libellé d'affichage prêt-à-rendre (rang carrière → "Général Platine VI", CSR → "Or III"). Sinon formate value_a/value_b. */
+  display_a?: string | null
+  display_b?: string | null
 }
 
 export interface CompareRequest {

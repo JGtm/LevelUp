@@ -54,8 +54,8 @@ describe('CombatYieldBar', () => {
     )
     const wrapper = container.firstChild as HTMLElement
     fireEvent.mouseEnter(wrapper)
-    expect(screen.getByText(/Offensif/i)).toBeTruthy()
-    expect(screen.getByText(/Défensif/i)).toBeTruthy()
+    expect(screen.getByText(/Rendement/i)).toBeTruthy()
+    expect(screen.getByText(/Résistance/i)).toBeTruthy()
     expect(screen.getByText(/dmg\/kill/i)).toBeTruthy()
     expect(screen.getByText(/dmg\/mort/i)).toBeTruthy()
   })

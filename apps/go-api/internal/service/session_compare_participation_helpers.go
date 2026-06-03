@@ -97,7 +97,7 @@ func buildSessionParticipationProfile(
 		}
 		acc := 0.0
 		if m.Accuracy != nil {
-			acc = *m.Accuracy // 0..1 (ADR 0006)
+			acc = *m.Accuracy / 100.0 // m.Accuracy stockée 0..100 → facteur 0..1 attendu par (1 + acc*0.4)
 		}
 		rawByAxis[narrative.AxisCombat] += (float64(m.Kills) + 0.5*float64(hs) + 0.5*float64(pk)) * (1.0 + acc*0.4)
 		rawByAxis[narrative.AxisSupport] += float64(m.Assists) * 50.0

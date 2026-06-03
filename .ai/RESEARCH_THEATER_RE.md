@@ -575,23 +575,165 @@ sans doublon) : en 2 équipes le tueur est forcément l'équipe adverse → `sco
 3. `scorefind exact <dir> <séquence>` : recherche colonne-par-colonne (byte u8/u16 + bit 6-12 BE/LE) de
    l'offset dont la colonne sur les N keyframes matche la séquence.
 
-**Résultat (Slayer 000d5950)** :
-- TYPE_2 payload **byte 832** = `team0_score × 4` → `score_team0 = payload[832] >> 2` — **26/26 exact**.
-- TYPE_2 payload **byte 842** = `team1_score` (×1) — **25/26** (un seul ±1 = jitter de frontière sur un
-  kill à t≈40000 compté juste avant/après le bord du chunk).
-- `SUM` ne matche aucun offset → le score est stocké en **deux compteurs par équipe**, pas en somme.
+**Résultat (Slayer 000d5950, offsets PROPRES)** :
+- TYPE_2 payload **byte 813** = `team0_score × 4` → `score_team0 = payload[813] >> 2` — **26/26 exact**.
+- TYPE_2 payload **byte 823** = `team1_score` (×1) — **25/26** (un ±1 de jitter de frontière).
+- `SUM` ne matche aucun offset → deux compteurs par équipe, pas une somme.
+- ATTENTION bug d'outillage : `filmx extract` écrivait sa bannière `[raw] N bytes` sur **stdout**
+  → +~19 octets parasites de longueur variable par chunk. Le premier relevé "byte 832/842" était gonflé
+  par la bannière. Corrigé (bannière → stderr, `main.go` patché, `filmx.exe` rebuildé) ; payload propre
+  commence par `a0 00 00 00 00 00 00 0b`. Toujours extraire `1>out 2>NUL`.
+
+**Généralisation (workflow 4 agents, vérifié 2026-06-02)** :
+- **CONFIRMÉ sur 3 matchs Slayer** : le score vit dans l'en-tête game-state fixe de TYPE_2 (~bytes 810-850),
+  MAIS **l'offset ET le scaling glissent par match** (structure bit-packée précédée d'un petit préfixe
+  variable ; le bloc score coulisse de quelques bits). 000d5950 = 813(×4)/823(×1) ; c7d40d45 = 846(×1)/836(×1) ;
+  d7e0d591 = bit6782(×1)/byte837 u16BE(×32). Tous 26/26 ou 30/30 exact. **Règle : scanner une fenêtre
+  (~bytes 810-850, widths bit 6-12 BE, scalings ×1/×2/×4/×32) par match**, ne pas hardcoder un offset.
+- **Strongholds 7344d24f : SOLVED** (grâce au lead utilisateur « 2 zones tenues = +1/s, contesté = 0 »). Le score
+  allié (team0=JGtm, WIN) est à TYPE_2 **byte 842** = un **varint à continuation** après le marqueur fixe `7b 60`
+  (byte 839) : `vg = byte842 si (byte842 & 0x40)==0, sinon ((byte842 & 0x3f)<<8)|byte843` ; **score = vg × 4.099**
+  (quanta ~4 pts). Reconstruit à ±1 des 4 ancres (53.3/119.9/123.0/168.1 vs 54/120/124/167) ; le palier 295-359s
+  retombe EXACTEMENT (vg figé à 30 sur 4 keyframes consécutifs). Pourquoi les 8 recherches précédentes échouaient :
+  c'est un **varint dont l'offset dérive** (~1 byte au chunk 21), pas un champ fixe → un scan d'offset fixe ne peut
+  pas l'attraper ; il fallait l'insight mécanique (intégrale d'un taux qui *stalle*) pour savoir quelle forme chercher.
+  Taux 3-zones k non résolvable à 20s (aucune fenêtre 20s entièrement à 3 zones). Le score continu EST donc bien
+  dans TYPE_2 — le mur §M-bis était un artefact de la méthode (scan fixe vs varint dérivant).
+- **CTF : Neutral Flag (à 5) CRACKÉ ; Arena (à 3) non matérialisé** (workflow 5 matchs). **Ancre invariante = le
+  token 12-bit `0x7B6`** (MSB-first, content-scan bytes [840,905)) — les « marqueurs » 7b60 / 07b6 / 3db0 vus par
+  match sont le MÊME token à des phases de bit différentes (record bit-packé démarrant à un sous-octet variable).
+  Captures = **deux compteurs par équipe, petits, +1/capture (3 bits, sans scaling)** dans anchor_bit+[60..175],
+  mais leur distance à l'ancre **dérive par match** (région clock/points variable entre) → décodage = **SCAN** :
+  chercher les ≤2 colonnes monotones (pas de pas >+1, mutuellement exclusives). Vérifié : Neutral 0f9550e5 (5-0),
+  80a07955 (0-5), dcf44b35 (5-4). **Arena à 3 (64e8adfa, 53ce4390) : NON cracké** — la capture discrète n'est PAS
+  matérialisée comme champ stable dans le snapshot 20s (stockée en accumulateurs de flag-carry) ; 64e8 ne contient
+  même pas le token 0x7B6. Résolution à 3 : per-frame, events CAPTURE explicites, ou le **stat per-joueur nommé
+  `FlagCaptures`** (cf. §O).
+
+**Pattern général confirmé** : le score vit dans le bloc game-state TYPE_2 (~bytes 810-895) mais souvent comme
+**varint / champ bit-packé à offset dérivant** (Strongholds byte 842 varint ; CTF layout multi-era ; Slayer scaling
+×1/×2/×4 par match). D'où la règle : **lecture varint ancrée sur un marqueur local par match**, pas un offset hardcodé.
+
+**CTF — TIMELINE DES CAPTURES : RÉSOLU (workflow 2026-06-02)**. Une capture de drapeau déclenche un **burst FRAME**
+qui re-transmet la **table objectif COMPLÈTE = 6 records de l'échelle de score** co-occurrents dans une frame :
+préfixes `a4 00 00 00`, `03 48 00 00 01`, `06 90 00 00 02`, `0d 20 00 00 05`, `1a 40 00 00 0a`, `34 80 00 00 15`
+(la valeur gauche double ; préfixes **constants inter-match**, seul l'octet d'instance final varie). **Détecteur =
+frame avec `tiers==6`** (≥3× baseline ; `tiers≥4` sur-compte). Distinct des bursts de mort (`38 68 e4`) / respawn
+(`2d 20 71 22`). **COUNT + TIMING = rock-solid** : 0 manque / 0 faux positif sur 4 matchs (counts = DB exactement :
+0f9550e5=5, 53ce4390=3, dcf44b35=9, 64e8adfa=5), ms-précis. Ancre or validée : 53ce4390 capture TheRaeSide à
+t=656554 (burst 1081o) = th=10 t=656558 team1. **ÉQUIPE par capture** : fiable via l'**event th=10 `b55`(team)
+coïncident ±5ms** — MAIS seulement si le **chunk type-3 footer (events) est en cache** (53ce4390 footer chunk_40 →
+3/3 avec équipe ; dcf44b35/64e8adfa footer non-caché → timing OK mais équipe partielle/inconnue). Le compteur 0x7B6
+n'est PAS fiable pour l'équipe par-capture (multi-era). **Prod : (1) `tiers==6` = détecteur universel de capture ;
+(2) pour l'équipe, recâbler le cache film pour RETENIR le chunk type-3 footer** (le scanner ne télécharge que les
+chunks type-2 → footer absent → c'est pourquoi l'équipe manque). Outils : tmp_film_explore/{ctfsig,ctfcap,t2score}.
+
+**Modes objectif — statut score + events (workflow 2026-06-02)** :
+- **KOTH : score SOLVED** (2 variantes, ancre 0x7B6 @byte839). (A) points (606d9844 105-8) : `t2[anchor+14]`=total,
+  `t2[anchor+13]>>4`=team1, team0=total−team1. (B) Ranked captures (0a247154 4-2) : `t2[anchor+12]`=meter team0,
+  `t2[anchor+16]`=meter team1, **score = meter/5** (5 ticks = 1 capture). Validés DB exactement (105-8, 4-2).
+- **Strongholds : score SOLVED** (byte842 varint×4.099) ; **moments de capture = PARTIEL**. PAS de burst discret
+  (accrual continu) ; reconstruits via l'**inflexion de la pente du score** (dérivée du nb de zones tenues) à **~20s**,
+  équipe **inférée** du signe de la pente. Zone-ID non récupérable (b36 = slot joueur, pas zone). Structure de contrôle
+  + palier = solides ; captures discrètes ms-précises = non.
+- **Oddball : carry-timeline SOLVED, score ≈ ±1-3% (gagnant), exact RÉSISTE** (footer re-fetché, vérifié 2026-06-02).
+  Footer caché → events th=10 = **heartbeats de possession du crâne (~5s)** : slot + équipe + horloge ms + xuid, PAS
+  d'octet score. Carry timeline (qui porte, quand) reconstruite ; score = **intégrale du temps de possession** (rate
+  ~1 pt/s) → **gagnant à ±1-3%** (24db 202 vs 200 ; d97 202 vs 196) ; le perdant sur-prédit (+12-22% : carries contestées
+  finissant en mort + lead 5s). Flux **LOSSY** (ticks droppés en carry contesté) → pas exact. Le ladder TYPE_2 (off+88
+  après 0x7B6) = accumulateur **GLOBAL** (croît indépendamment de l'équipe) → le score per-team n'est PAS un champ propre.
+  Équipe via `xuid→team_id` DB (le champ team d'evdump est faux sur 24db). Exact final = DB.
+- **DISTINCTION CLÉ (continu vs discret)** : seul **CTF** a un burst de capture DISCRET (capture = +1 → re-transmit de
+  la table 6-tiers). Strongholds/KOTH/Oddball **accrèdent en CONTINU** → pas de burst par-capture ; les « moments » =
+  inflexions de pente (~20s). Plus fin = décoder l'octet controlling-team par-FRAME (deeper RE, non fait).
+- **BLOQUEUR UNIVERSEL + fix** : le chunk **type-3 footer (events th=10 + team b55 propre) n'est PAS caché** (scanner
+  = type-2 only) ; re-fetchable du CDN blob_prefix (no auth, http 200). Un seul recâblage → events + team par-event
+  fiables sur TOUS les modes objectif.
+
+- **Kill-feed/arme dans TYPE_2 : NON définitif** — scan bit-level exhaustif des 26 keyframes vs séquences de
+  kills récents = best 15/24 (bruit). Le kill feed à l'écran est de l'**UI client éphémère** reconstruite depuis
+  le flux d'events, PAS persistée dans le snapshot. Les weapon-ids (suffixe `0x42c9679f`) ne vivent QUE dans la
+  région entités de TYPE_2 (~bytes 24400-71000) + les fire events des paquets FRAME. **Arme-du-kill = corréler
+  chaque kill (evdump 50: t, killer) avec son fire event le plus proche (`filmx fire` → pi+slot+weapon)** —
+  décodeur viable, déjà présent dans les chunks TYPE_2.
 
 **Pourquoi TYPE_2 et pas REPLICATION_DATA_START** : TYPE_2 est le snapshot d'état-de-jeu par chunk. Le score
 vit dans un **bloc game-state à taille fixe dans les ~1500 premiers octets**, byte-aligné. Le bloc score
 s'arrête vers byte ~907 puis zero-padding ; le reste de TYPE_2 (taille variable, 138-147 Ko) = état entités.
 La taille de TYPE_2 oscille (pas un log append-only) → c'est bien un snapshot, pas un journal d'events.
 
-**Offset mode-dépendant** : 832/842 est l'offset *Slayer*. Les modes objectif (Strongholds/CTF) placent
-le score à un autre offset (en-tête de mode différent) — `scorefind mono <dir> <min> <max> [ancres]` cherche
-les compteurs monotones atteignant une plage finale + matchant des ancres. Généralisation aux modes objectif
-+ chasse au **kill-feed/arme dans TYPE_2** (le kill feed à l'écran montre l'arme = état HUD, donc plausiblement
-dans TYPE_2 près du score) : workflow 4 agents en cours (Strongholds 7344d24f, 2 Slayer de confirmation,
-CTF 53ce4390, kill-feed 000d5950). **Câblage scanner différé v2.**
+**Outils** : `tmp_film_explore/scorefind/` (modes `exact` et `mono`+ancres, glob `kf*.bin`). **Câblage scanner différé v2.**
+
+### N. Positions joueurs + immobilité + spawn — DÉCODÉ (vérifié 2026-06-02, Slayer 000d5950)
+
+**Carte entité→joueur : SOLVED** (le mur de la session). Via les events highlight (chunk-27), le couple
+`(team, b36-slot)` identifie les 8 joueurs sans conflit sur 205 events kill+death :
+team0 b36={0:…0416, 1:…0022, 2:…0284321, 3:…4760703} ; team1 b36={0:…2097883, 1:…5845110, 2:…4178793711, 3:…7245250}.
+Cross-confirmé : la corrélation gaps-de-tir↔morts a indépendamment épinglé **fire-pi=2 = xuid …0022** (p=0.006).
+
+**Immobilité CONFIRMÉE (modèle absence rejeté) — 3 preuves indépendantes** :
+1. Le snapshot ne rétrécit PAS quand des joueurs meurent (le nb d'entités *monte* avec deadCount, r=+0.59 ;
+   absence prédirait −1). Les morts génèrent des entités transitoires (armes lâchées, ragdolls, effets).
+2. Les **records joueurs** (cf. ci-dessous) sont à **~8 constants** par keyframe (mean 8.24, mode 8), découplés de
+   aliveCount (4-8) → les morts gardent leur record (figés à leur position de mort).
+3. **Figé-puis-téléport OBSERVÉ directement** (joueur …0022, mort t=62936) : burst de frame de MORT @62932.9ms
+   (1050B = 4.3× la baseline, +4 blocs full-state re-transmis, à ±3ms de la mort) → **intervalle figé** 63-72s
+   (aucun burst, aucun tir) → burst de RESPAWN @72058.2ms (1289B, à ±2ms de l'event t=72060). Délai respawn
+   event = 7606ms (∈ 8-9s prédit). Triple-bracket (frame-burst + event + gap de tir).
+
+**Records de position joueurs — TROUVÉS** (région dynamique TYPE_2, AVANT le manifeste d'objets statiques dont le
+landmark byte-identique est (−6.60,5.42,−2.14)). Chaque record est délimité par un **« comb » P24** (motif binaire
+1⁸0¹⁶ ×4), un comb par joueur, espacés ~310-345 bits. Position = **triplet float32-LE (x,y,z) à (combStartBit − 177
+− 96)** dans les records full-state ; les records delta omettent la position absolue (compression delta). Validation
+forte : kf02 (début de match) = 8 records en **deux clusters 4+4** = signature spawn 2 équipes de 4 :
+team A ~(43.7,9,0.5) (high-ground), team B ~(−4,16,−1.2). Positions bornées (x:−2..35, y:−24..25, z:−2.8..1.7).
+NB : le suffixe arme `42 c9 67 9f` (BE) + marqueur `13 71` + tag `03 44 0c` = famille d'objets **statiques**
+(weapon-spawns), PAS les joueurs (payload identique sur les 26 keyframes) — ne pas confondre.
+
+**Per-frame positions DÉCODÉES + figé-puis-téléport PROUVÉ avec coordonnées (phase-4, ancré sur l'image FilmShell)** :
+- Décodeur : **float32 BIG-ENDIAN à offsets BIT/nibble** (HNIB=4) dans la région type-0 FRAME concaténée. En-tête de
+  frame = ancre 32-bit `0xA07B4200` + octet TICK (+0x08/frame, ~16-17ms/frame). Delta-compressé (seuls les joueurs
+  qui changent sont ré-émis) ; chaque coord précédée de bits-flag `1` (no-change). Cross-validé : un track atteint
+  exactement 17.13 = la valeur exemple de l'écran FilmShell → repère/échelle confirmés.
+- **Figé-puis-téléport (joueur …0022) PROUVÉ** : triplet position du corps = **(−4.77, −9.00, 4.06)** — isolé du
+  décor statique car 0/26 frames AVANT la mort, apparaît au burst de mort f177@62946ms puis **figé bit-identique
+  f177-201** puis SILENCE → **téléport au respawn = (35.07, 17.10, 50.00)** (émerge au burst respawn f723@72058ms),
+  saut **~66 unités 3D**, fenêtre **~9.1s** (mort 62936 / respawn 70542 + settle). Exactement le modèle utilisateur.
+- **Header ECS parsé** (chunk_00) : 42 archétypes, 264 composants nommés (slots 260o = [256o nom ASCII][u32]). Position
+  joueur = archétype avatar/biped #35 (high-frequency, dynamic-precision) pos0=`object-position-dynamic-precision-component`.
+  Globals #0 : pos0 team-mapping / pos1 shared-team-lives / pos2 current-state. Tiers `low-frequency`/`high-frequency`.
+  Les ids FMT/SUB/BASE de FilmShell ne sont PAS sérialisés dans le header (enum moteur compile-time).
+
+**Reste bloqué** : **tracks denses TOUS-joueurs attribués** — la compression delta fait que l'index P n'est pas à un
+offset fixe (seuls les changeants ré-émis) + la continuité casse au gap de mort (corps silencieux). On isole un joueur
+*spécifique* via une ancre temporelle d'event (sa mort), pas les 8 génériquement. Débloquer = RE complet du champ P
+delta + l'enum de composants moteur (hors header).
+
+Outils (stdlib, tmp_film_explore/) : delimscan, extractfinal, posfixed, firemap, framedump, framergn, immob,
+exacttrk, postrk2, emerge (per-frame), hdrschema (registre ECS). **Câblage scanner différé v2.**
+
+### O. Films = Lua/HavokScript embarqué — schéma de stats NOMMÉES (dend/acurtis, partagé utilisateur 2026-06-02)
+
+Les films embarquent du **bytecode HavokScript** (magic `0x1b4c7561` = `\x1bLua`) + des chemins `.lua` (UTF-8) des
+scripts de game-mode (CaptureTheFlag, Helpers/MPSpawnEvents, ParcelLibrary, globals/global_stats…). dend : « ce qu'on
+voit n'est pas forcément du mouvement 'clair' mais des **instructions moteur** » → prudence : une partie du flux
+bit-packé peut être du script, pas de l'état pur (mais les positions float32 FilmShell sont du vrai état — mouvement
+lisse). **Implication majeure** : les stats/score sont des **stats NOMMÉES** de premier ordre dans le moteur. Noms
+extraits du bytecode (= schéma de référence) :
+- Objectif/CTF : `FlagCaptures`, `FlagCaptureAssists`, `FlagCarriersKilled`, `FlagReturns`, `FlagSecures`,
+  `KillsAsFlagCarrier`, `KillsAsFlagReturner`, `ObjectivesCompleted` ; objets `Blue/Red/Neutral Flag Stand`.
+- Combat : `SpartanKills`, `SpartanDeaths`, `SpartanAssists`, `PersonalScore`, `PowerWeaponKills`, `GrenadeKills`,
+  `BestKillingSpree`, `AverageLifeDuration`, `DamageTaken`, `AccuracyPercentage`.
+- PvE : `HunterKills`, `JackalKills`, `SkimmerKills`, `MarineKills`, `SentinelKills`.
+- Scripts clés : `parcel_center_score_board_ui.lua` (scoreboard), `HandlePlayerSpawnOnClient` /
+  `DeathCamHandleTeleport_Client` / `MPSpawnEventsStartup` (spawn/respawn = **events scriptés** → corrobore notre
+  modèle immobilité+téléport), `ToggleMainObjectiveScoreboardClient`, `SendHUDEvent`.
+
+**Piste robuste** : la capture CTF = le stat nommé `FlagCaptures` (per joueur). Si le film matérialise un bloc de
+stats per-joueur (clé = stat-id mappé par la table de noms du header ECS), c'est la source ROBUSTE des captures ET de
+tout (kills, assists, PersonalScore, kills PvE) — meilleure que reconstruire depuis le game-state. À chasser après le
+parse du header (en cours, phase-4). Ce n'est PAS un décodeur clé-en-main (dend lui-même évite le bytecode HavokScript)
+mais un schéma de noms + un pointeur vers où vit le score.
 
 ### Synthèse « fiabiliser l'arme du kill » (combinaison des veines)
 
@@ -599,3 +741,115 @@ CTF 53ce4390, kill-feed 000d5950). **Câblage scanner différé v2.**
 - **Kills grenade** : marqueur `0x4c0c00` → type de grenade (§C, validé).
 - **Kills melee** : event melee `0xd340` → weapon id + animation type (§K).
 - Le kill-feed (killer→victime) reste la jointure temporelle `time_ms` (§E), l'arme s'y greffe par les 3 points ci-dessus, PAS par une donnée stockée dans le type-3.
+
+### P. Théorie B — crosscheck géométrique aim·LOS + bit hit-location : DEAD-END (3 verrous, vérifié 2026-06-02)
+
+Test de l'hypothèse « au kill, le vecteur de visée du tueur pointe la position de la victime ; + un bit
+head/body/miss dans le fire event → confirme le tir/tueur et désambiguïse les fire events concurrents ».
+Ground-truth : v2-HIGH `weapon_kills` (000d5950, killer xuid + weapon_id + time_ms) ⨯ deaths th=20 (victime).
+Outils créés (stdlib, tmp_film_explore/) : `firetime` (date chaque fire event par le FRAME le contenant + dump
+aim40 + tail40), `exactbit`/`findvals`/`burstpos`/`regiondump`/`recwalk` (décodage de records per-frame).
+
+**Verrou 1 — le vecteur de visée du fire event est 2-DDL seulement (z toujours = 0) → LOS 3D impossible.**
+Le décodage cubemap (§J) ne résout qu'UNE coordonnée dans la face ; l'axe orthogonal est **forcé à 0**
+(acurtis : « secondary coordinate non décodée, erreur ~45° aux coutures »). VÉRIFIÉ exhaustivement : **100 %**
+des aim décodés sur 000d5950 ET 0014603f ont `z=0.000`, et le vecteur claque sur l'axe dominant de la face
+(une coord ±0.99, l'autre petite, la 3e = 0). Pire, en plein duel (trade-kill t=188296, pi=7 vs pi=5 qui se
+tirent dessus) les DEUX décodent `(0.18,-0.98,0)` — quasi identiques. Un test d'angle LOS exige ~quelques degrés
+de précision pour départager des fire events ; un vecteur avec un axe annulé et un biais massif vers la face 4
+(chunk_04 : 19/22 à y<-0.7 ; chunk_10 : 22/22) ne peut pas le faire. **Le champ aim40 a une entropie directionnelle
+trop faible pour un LOS.**
+
+**Verrou 2 — la position du TUEUR (origine du rayon LOS) n'est pas récupérable.** Le décodeur phase-4 (§N)
+n'isole une position que via une **ancre d'event** (la mort du joueur, qui déclenche un burst full-state).
+La victime, oui : confirmé, mort de …0022 t=62936 → emerge frame 176 donne (-9.000, 4.060, -4.771) exact
+(uint32 0xc1100086/0x4081ebef/0xc098a910), persistant 5-6 frames. Mais le TUEUR ne meurt pas → aucune ancre.
+Et le format per-frame est un **flux delta réseau** : les 3 coords d'un même joueur ne sont PAS contiguës
+(frame 177 victime : x@relBit 1645, y@2195 [+550 bits], z@2370 [+175 bits] — interleavées avec d'autres entités),
+et les offsets glissent par frame (delta-compression). Le clustering « triplet le plus serré » (`burstpos`)
+produit des faux triplets (les floats plausibles sont communs). Sur le trade-kill (2 morts simultanées, frame 496
+burst 1824B = 9×) emerge sort 7 coords mais aucune ne re-localise en triplet stable en frame 497 → impossible
+d'attribuer proprement les 2 triplets aux 2 victimes, encore moins de récupérer un tueur vivant.
+
+**Verrou 3 — pas de ground-truth pour un bit headshot.** Halo Infinite **n'a PAS de médaille Headshot**
+(vérifié metadata medal_definitions : seules Snipe/No Scope/Counter-snipe/Nade Shot/Perfect/Perfection existent,
+toutes arme- ou style-spécifiques, pas « headshot générique »). Donc même si un bit head/body existait dans le
+fire event, on ne pourrait pas l'étalonner. Les bits post-arme (`tail40`) varient par tir mais sans label de
+vérité ; le « bf/hit/confirm » que j'avais d'abord lu en bits[0:32] était en fait **les bits de l'aim** (§J lit
+35 bits juste après l'arme) → mon premier étiquetage était faux, re-corrigé.
+
+**Démenti d'un piège** : la prémisse « KEY ENABLER » (pos2=forward-and-up siège à quelques champs APRÈS la position
+dans le MÊME record avatar → étendre le walk pour lire aim+vitalité) **ne tient pas** contre le bitstream réel :
+le per-frame n'est pas un dump de struct ECS plat mais de la réplication réseau delta-compressée bit-packée ;
+« lire les champs suivants » donne du garbage (exposants énormes) car ce ne sont pas des champs alignés 32 bits
+consécutifs (recwalk frame 177 : field+1..+28 = NaN/1e30). L'ordre de déclaration des composants dans l'archétype
+#35 est réel (header ECS) mais ne se traduit PAS en adjacence binaire dans le delta per-frame.
+
+**VERDICT : dead-end pour le crosscheck géométrique aim·LOS et pour le bit hit-location.** Les 3 jambes du test
+sont chacune cassées indépendamment. Ce qui RESTE utile et confirmé : (a) la **position de la VICTIME au kill**
+est décodable via son burst de mort (utile pour heatmaps de morts, contexte spatial du kill — pas pour l'arme) ;
+(b) l'arme du kill reste la corrélation fire-event temporelle existante (§G/§E) + médaille weapon-specific
+horodatée (§H) + melee/grenade (§C/§K). L'aim40 peut servir un replay 2D grossier (orientation approximative),
+pas une preuve géométrique de l'auteur du kill. Débloquer Théorie B exigerait : un décodage cubemap COMPLET
+(2e coordonnée de face, hors travaux acurtis) ET la RE complète du champ position delta per-frame pour TOUS les
+joueurs vivants (hors header ECS) — soit la « Rosetta Stone » des schémas .module, non disponible offline.
+
+### Q. Théories C (projectile) + A (vitality) : DEAD-END / BLOQUÉ ; conclusion arme-de-kill (vérifié 2026-06-02)
+
+**Théorie C — tracking de projectile : DEAD-END.** Les projectiles tirés (roquette 71ab0a2c, aiguille b533957e,
+skewer 0d20c469, cindershot 230447b1, heatwave 2ac9c2ff, ravager c30d87c7) **ne sont PAS des entités per-frame
+trackées** portant weapon-id + propriétaire. Sur 2 matchs à fort usage projectile (000d5950 36 kills proj ; 1eee300e
+77), chaque occurrence d'un weapon-id projectile dans le FRAME = un **fire event** (déjà dans weapon_kills) ou un
+snapshot 1-frame d'arme tenue — JAMAIS un vol multi-frame launcher→victime (M41 0/1199 frames en chunk_02 malgré des
+kills roquette). Les grenades = marqueurs de jet **épars 1-frame** (object-id, pas weapon-id), pas un arc tracké. Aucun
+burst spawn/despawn au moment du kill. Cause : les weapon-ids ne vivent QUE dans (a) le snapshot REPLICATION_DATA_START
++ (b) les fire events des paquets FRAME.
+
+**Théorie A — vitality-drop = instant exact : BLOQUÉ + sans gain.** L'agent a planté (pas de sortie structurée). Mais
+même mur que §P : le per-frame est delta-packé (pas un struct plat) → la vie n'est lisible qu'au burst full-state ;
+or le burst de mort = déjà l'instant que le highlight event marque → **aucun gain de timing** par rapport à ce qu'on a.
+
+**CONCLUSION GLOBALE arme-de-kill** : les 3 angles « outside the box » (aim·LOS, projectile, vitality) sont tous
+structurellement morts. **Il N'EXISTE PAS de signal d'arme-de-kill au-delà de la corrélation fire-event** (+ marqueurs
+grenade/melee + horodatage µs). Le plan v3 (`.ai/PLAN_WEAPON_ATTRIBUTION_V3.md`) **EST le plafond** : plancher ~82%
+(P1 grenade/melee + P3 canon, vérifiés) ; ~90% UNIQUEMENT si P2 (timing µs des fire-events) récupère les soft —
+aucun levier additionnel n'existe. Recherche d'angles créatifs : **close.**
+
+### R. Strongholds — OWNER par zone via objet-zone (position fixe + champ owner) : DEAD-END (vérifié 2026-06-02)
+
+Hypothèse (dernière avenue accessible) : une zone Strongholds est un OBJET à position FIXE (les zones ne bougent
+pas) portant un champ OWNER (neutre/team0/team1) qui CHANGE aux captures. Signature recherchée : record ~3× (3 zones)
+à **position constante inter-chunks** + **petit champ owner variable**, validable contre la timeline GT (la contrainte
+décisive = Zone B : team0 c6-15 → team1 c16-24 → team0 c25-31, soit `IIIII00000000001111111110000000`).
+
+**Méthode** (outils throwaway `tmp_film_explore/{zonepos,zonebit,zonefld,zoneanch,zoneanch2,gtscan,gtscan2,gtclean,
+zonerec,floatarr,tripcount}`, TYPE_2 propre via `filmx extract 2`, 31 chunks) :
+1. **Triplets float32 à position constante inter-chunks** : le scan byte-aligné ne trouve RIEN (positions non
+   byte-alignées) ; le scan **bit-level LE** trouve **un petit ensemble de ~5-9 objets statiques** présents dans les
+   31/31 chunks. Position-like (carte) : `(2.330,-13.756,-3.002)`, `(2.877,39.164,-4.605)`, `(-48.021,-2.865,-3.002)`,
+   `(2.268,-48.021,-2.865)`. Le reste = constantes structurelles (`(32.5,32.5,32.5)`, triplets z=50.502 = skybox/bbox).
+   Chaque triplet est un **record d'objet discret** (triplet + 4e composante ~0 + zéros — pas un tableau de géométrie
+   continue). Donc ce sont de **vraies positions d'objets statiques** (candidats zones plausibles).
+2. **Champ owner co-localisé ?** NON. Pour CHACUN des 4 candidats, les octets/bits AUTOUR du triplet sont
+   **bit-identiques sur les 31 chunks** (ex. `200940200d40201140201540a2165cc1801940c0a21cd983201940e0` constant) —
+   c'est le **manifeste d'objets statiques** (= famille weapon-spawn déjà connue §N, payload figé par keyframe).
+   Scan ancré (relocalise le triplet par chunk, gère la dérive d'offset) sur fenêtre **±4000 bits (±500 o)**, widths
+   1-3, tolérance 2 chunks de bruit : **0 hit** correspondant au retour Zone-B (A en c6-15 & c25-31, B≠A en c16-24).
+3. **Champ owner en composant parallèle (clé = object-id) ?** Inutile : l'object-id du manifeste statique est lui-même
+   constant inter-chunks → le rechercher ne renvoie que le même bloc figé, aucun compagnon mutable.
+4. **Owner = champ plain dans l'en-tête game-state TYPE_2 à offset fixe ?** NON. L'en-tête game-state EST à offset
+   byte FIXE (marqueur score `7b 60` @byte839 vérifié sur 31/31, score allié reconstruit 0→205 monotone, cohérent §M-ter).
+   Scan `gtclean` (retour propre Zone-B, ≤1 bruit) sur **toute la région fixe [835,2500]** : **0 hit**. En relâchant à
+   ≤3 bruit/[835,3000], le « meilleur » candidat (byte 1449.6, w=1, col `0000000000000001101110110000000`) place bien
+   sa bande à 1 sur c16-24 MAIS : (a) byte 1449 est **dans la soupe de compteurs qui DÉRIVE** (les octets glissent de
+   colonne entre chunks — dump 1405-1460 le montre), (b) bruit c18=0/c22=0, (c) ne « revient » pas proprement. = **faux
+   positif de la même classe que le bit-compteur monotone déjà démenti** (cf. PROVEN NEGATIVES). Au-delà du bloc score
+   (~byte 907), la structure devient variable/dérivante → un scan d'offset fixe n'a plus de sens.
+
+**VERDICT** : l'owner par-zone N'EST PAS un champ accessible — ni co-localisé à une position d'objet constante
+(records statiques figés, 0 champ mutable à ±500 o), ni un champ plain 3-phases dans l'en-tête game-state à offset
+fixe. Il est derrière le **schéma de record d'entité bit-packé / le composant controlling-team par-FRAME** (réplication
+delta, offsets dérivants), qui exige le **schéma off-film** (.module / runtime-tagviewer) — le même mur que §M-bis/§N/§P.
+Le score continu reste reconstructible (byte842 varint×4.099, §M-ter) mais **l'attribution zone→équipe à T n'est pas
+récupérable offline → `objective_id` reste NULL**. Toutes les avenues in-film pour « qui tient quelle base à T » sont
+**épuisées**.

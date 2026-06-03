@@ -115,17 +115,19 @@ func TestBuildCompareEntry_WithMatches(t *testing.T) {
 
 func TestBuildCompareEntry_AvgAccuracy(t *testing.T) {
 	acc := func(v float64) *float64 { return &v }
+	// Accuracy stockée en pourcentage 0..100 (cf. averageAccuracy) ; le contrat AvgAccuracy
+	// est 0..1 (ADR 0006) → la moyenne est normalisée /100.
 	m1 := makeMatch("S1", 15, 5, nil)
-	m1.Accuracy = acc(0.50)
+	m1.Accuracy = acc(50.0)
 	m2 := makeMatch("S1", 10, 8, nil)
-	m2.Accuracy = acc(0.60)
+	m2.Accuracy = acc(60.0)
 	m3 := makeMatch("S1", 20, 3, nil) // pas de précision → ignoré dans la moyenne
 
 	entry := buildCompareEntry([]legacymatch.StatsMatchRow{m1, m2, m3}, "S1")
 	if entry == nil || entry.AvgAccuracy == nil {
 		t.Fatalf("AvgAccuracy attendu non-nil, got %+v", entry)
 	}
-	if *entry.AvgAccuracy != 0.55 { // (0.50 + 0.60) / 2, arrondi 3 décimales
+	if *entry.AvgAccuracy != 0.55 { // (50 + 60) / 2 / 100, arrondi 3 décimales
 		t.Errorf("AvgAccuracy = %v, want 0.55 (moyenne des matchs avec précision)", *entry.AvgAccuracy)
 	}
 
