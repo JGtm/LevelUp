@@ -7,7 +7,7 @@
  * permet aussi de vérifier le group-by des modes (G5 donut).
  */
 import { describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
 import type { ExplorerTargetRecentMatch } from '@/lib/api/types'
@@ -46,7 +46,7 @@ function match(over: Partial<ExplorerTargetRecentMatch> & { match_id: string }):
 
 describe('ExplorerCombatProfile', () => {
   it('ne rend rien si aucun match', () => {
-    renderWithProviders(<ExplorerCombatProfile matches={[]} locale="fr" t={t} />)
+    renderWithProviders(<ExplorerCombatProfile liveMatches={[]} localMatches={[]} locale="fr" t={t} />)
     expect(screen.queryByTestId('explorer-combat-profile')).toBeNull()
   })
 
@@ -56,7 +56,7 @@ describe('ExplorerCombatProfile', () => {
       match({ match_id: 'm2', start_time: '2026-05-02T10:00:00Z', mode_ui: 'CTF', rank: null }),
       match({ match_id: 'm3', start_time: '2026-05-03T10:00:00Z', mode_ui: 'Slayer', rank: 2 }),
     ]
-    renderWithProviders(<ExplorerCombatProfile matches={matches} locale="fr" t={t} />)
+    renderWithProviders(<ExplorerCombatProfile liveMatches={matches} localMatches={[]} locale="fr" t={t} />)
 
     expect(screen.getByTestId('explorer-combat-profile')).toBeTruthy()
     // 5 ChartCard (G1..G5) rendus de façon synchrone (wrapper).
@@ -72,7 +72,7 @@ describe('ExplorerCombatProfile', () => {
       match({ match_id: 'm2', mode_ui: 'Slayer' }),
       match({ match_id: 'm3', mode_ui: 'CTF' }),
     ]
-    renderWithProviders(<ExplorerCombatProfile matches={matches} locale="fr" t={t} />)
+    renderWithProviders(<ExplorerCombatProfile liveMatches={matches} localMatches={[]} locale="fr" t={t} />)
 
     const stubs = await screen.findAllByTestId('echarts-stub')
     // Le donut sérialise une série pie dont les data portent les noms de modes.
@@ -80,5 +80,25 @@ describe('ExplorerCombatProfile', () => {
     expect(donut).toBeTruthy()
     expect(donut?.textContent).toContain('Slayer')
     expect(donut?.textContent).toContain('CTF')
+  })
+
+  it('affiche le LIVE par défaut et bascule sur le LOCAL via le toggle', async () => {
+    const live = [match({ match_id: 'L1', mode_ui: 'Slayer' })]
+    const local = [match({ match_id: 'C1', mode_ui: 'Behemoth' })]
+    renderWithProviders(
+      <ExplorerCombatProfile liveMatches={live} localMatches={local} locale="fr" t={t} />,
+    )
+
+    // Défaut = live → le donut modes contient le mode live ("Slayer"), pas le local.
+    let stubs = await screen.findAllByTestId('echarts-stub')
+    let donut = stubs.find((el) => el.textContent?.includes('"type":"pie"'))
+    expect(donut?.textContent).toContain('Slayer')
+    expect(donut?.textContent).not.toContain('Behemoth')
+
+    // Bascule sur local → le donut reflète le mode local ("Behemoth").
+    fireEvent.click(screen.getByTestId('combat-source-local'))
+    stubs = await screen.findAllByTestId('echarts-stub')
+    donut = stubs.find((el) => el.textContent?.includes('"type":"pie"'))
+    expect(donut?.textContent).toContain('Behemoth')
   })
 })

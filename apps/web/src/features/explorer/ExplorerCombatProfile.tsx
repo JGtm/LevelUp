@@ -8,7 +8,7 @@
  *
  * Couleurs uniquement via tokens. Cf. PLAN_explorer_combat_profile_charts.md.
  */
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
 import { BarStackedChart } from '@/components/charts/BarStackedChart'
 import { BarGroupedChart } from '@/components/charts/BarGroupedChart'
@@ -19,19 +19,38 @@ import type { ChartPointDonut } from '@/components/charts/DonutChart'
 import type { SemanticToken } from '@/lib/accessibility'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
-import type { ExplorerTargetRecentMatch } from '@/lib/api/types'
+import type { ExplorerTargetRecentMatch, MedalDigestItem } from '@/lib/api/types'
 import { CombatFdaChart } from './CombatFdaChart'
 import { CombatScorePlacementChart } from './CombatScorePlacementChart'
+import { ExplorerTargetMedals } from './ExplorerTargetMedals'
 
 export interface ExplorerCombatProfileProps {
-  matches: ExplorerTargetRecentMatch[]
+  /** ~20 derniers matchs fetchés en LIVE (source affichée par défaut). */
+  liveMatches: ExplorerTargetRecentMatch[]
+  /** Matchs de la cible en base locale (surtout matchs communs) — toggle "local". */
+  localMatches: ExplorerTargetRecentMatch[]
   locale: string
   t: (key: ExplorerManifestKey) => string
+  /** Top médailles lifetime de la cible — rendu à droite du donut modes. */
+  topMedals?: MedalDigestItem[]
 }
 
 const CHART_HEIGHT = 300
 
-export function ExplorerCombatProfile({ matches, locale, t }: ExplorerCombatProfileProps) {
+// Libellés du toggle de source (inline FR/EN — pas de clé manifest dédiée).
+const SOURCE_LABELS: Record<'fr' | 'en', { live: string; local: string; empty: string }> = {
+  fr: { live: 'En direct', local: 'Local', empty: 'Aucune donnée pour cette source.' },
+  en: { live: 'Live', local: 'Local', empty: 'No data for this source.' },
+}
+
+export function ExplorerCombatProfile({ liveMatches, localMatches, locale, t, topMedals = [] }: ExplorerCombatProfileProps) {
+  const hasLive = liveMatches.length > 0
+  const hasLocal = localMatches.length > 0
+  // Défaut : LIVE (les 20 derniers via l'API) ; bascule sur le local au besoin. Si
+  // le live est vide (pas d'auth), on démarre sur le local pour montrer quelque chose.
+  const [source, setSource] = useState<'live' | 'local'>(hasLive ? 'live' : 'local')
+  const matches = source === 'live' ? liveMatches : localMatches
+
   const { data: fieldMappings } = useFieldMappings()
   const fld = (key: string, fallback: string) =>
     fieldMappings?.fields[key]?.label ?? fallback
@@ -105,8 +124,9 @@ export function ExplorerCombatProfile({ matches, locale, t }: ExplorerCombatProf
     ]
   }, [matches, t])
 
-  if (!matches?.length) return null
+  if (!hasLive && !hasLocal) return null
 
+  const lbl = SOURCE_LABELS[locale === 'en' ? 'en' : 'fr']
   const damageColors: Record<string, SemanticToken> = {
     [damageDealtLabel]: 'divergent-pos',
     [damageTakenLabel]: 'divergent-neg',
@@ -118,86 +138,111 @@ export function ExplorerCombatProfile({ matches, locale, t }: ExplorerCombatProf
 
   return (
     <section className="space-y-3" data-testid="explorer-combat-profile">
-      <header>
-        <h3 className="text-base font-semibold text-foreground">
-          {t('explorer.combat.title')}
-        </h3>
-        <p className="text-sm text-muted-foreground">{t('explorer.combat.subtitle')}</p>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-base font-semibold text-foreground">
+            {t('explorer.combat.title')}
+          </h3>
+          <p className="text-sm text-muted-foreground">{t('explorer.combat.subtitle')}</p>
+        </div>
+        {/* Toggle source : live (défaut) / local. Désactive une source sans données. */}
+        <div
+          role="group"
+          aria-label="Source"
+          className="inline-flex shrink-0 rounded-md border border-border bg-muted p-0.5 text-xs"
+        >
+          <button
+            type="button"
+            onClick={() => setSource('live')}
+            disabled={!hasLive}
+            data-testid="combat-source-live"
+            className={`rounded px-2 py-1 transition-colors disabled:opacity-40 ${
+              source === 'live' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-muted-foreground'
+            }`}
+          >
+            {lbl.live}
+          </button>
+          <button
+            type="button"
+            onClick={() => setSource('local')}
+            disabled={!hasLocal}
+            data-testid="combat-source-local"
+            className={`rounded px-2 py-1 transition-colors disabled:opacity-40 ${
+              source === 'local' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-muted-foreground'
+            }`}
+          >
+            {lbl.local}
+          </button>
+        </div>
       </header>
 
+      {matches.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
+          {lbl.empty}
+        </p>
+      ) : (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {/* G1 — FDA + Frags/Morts/Assists */}
-        <div>
-          <h4 className="mb-1 text-sm font-medium text-foreground/80">
-            {t('explorer.combat.fda_title')}
-          </h4>
-          <CombatFdaChart
-            matches={chrono}
-            height={CHART_HEIGHT}
-            labels={{
-              kills: killsLabel,
-              deaths: deathsLabel,
-              assists: assistsLabel,
-              fda: t('explorer.combat.axis_fda'),
-              yAxisLeft: t('explorer.combat.axis_count'),
-              yAxisRight: t('explorer.combat.axis_fda'),
-            }}
-          />
-        </div>
+        {/* G1 — FDA + Frags/Morts/Assists (titre dans la barre ChartCard) */}
+        <CombatFdaChart
+          title={t('explorer.combat.fda_title')}
+          matches={chrono}
+          height={CHART_HEIGHT}
+          labels={{
+            kills: killsLabel,
+            deaths: deathsLabel,
+            assists: assistsLabel,
+            fda: t('explorer.combat.axis_fda'),
+            yAxisLeft: t('explorer.combat.axis_count'),
+            yAxisRight: t('explorer.combat.axis_fda'),
+          }}
+        />
 
         {/* G2 — Dégâts infligés + subis (empilés) */}
-        <div>
-          <h4 className="mb-1 text-sm font-medium text-foreground/80">
-            {t('explorer.combat.damage_title')}
-          </h4>
-          <BarStackedChart
-            series={damageSeries}
-            orientation="horizontal"
-            tooltipHideZero
-            height={CHART_HEIGHT}
-            componentColors={damageColors}
-            componentOrder={[damageDealtLabel, damageTakenLabel]}
-          />
-        </div>
+        <BarStackedChart
+          title={t('explorer.combat.damage_title')}
+          series={damageSeries}
+          orientation="horizontal"
+          tooltipHideZero
+          height={CHART_HEIGHT}
+          componentColors={damageColors}
+          componentOrder={[damageDealtLabel, damageTakenLabel]}
+        />
 
         {/* G3 — Score + placement (axe inversé) */}
-        <div>
-          <h4 className="mb-1 text-sm font-medium text-foreground/80">
-            {t('explorer.combat.score_title')}
-          </h4>
-          <CombatScorePlacementChart
-            matches={chrono}
-            height={CHART_HEIGHT}
-            labels={{
-              score: scoreLabel,
-              placement: t('explorer.combat.axis_placement'),
-              yAxisLeft: t('explorer.combat.axis_score'),
-              yAxisRight: t('explorer.combat.axis_placement'),
-            }}
-          />
-        </div>
+        <CombatScorePlacementChart
+          title={t('explorer.combat.score_title')}
+          matches={chrono}
+          height={CHART_HEIGHT}
+          labels={{
+            score: scoreLabel,
+            placement: t('explorer.combat.axis_placement'),
+            yAxisLeft: t('explorer.combat.axis_score'),
+            yAxisRight: t('explorer.combat.axis_placement'),
+          }}
+        />
 
         {/* G4 — Folie meurtrière max + frags parfaits */}
-        <div>
-          <h4 className="mb-1 text-sm font-medium text-foreground/80">
-            {t('explorer.combat.spree_title')}
-          </h4>
-          <BarGroupedChart
-            series={spreeSeries}
-            height={CHART_HEIGHT}
-            componentColors={spreeColors}
-            componentOrder={[spreeLabel, perfectLabel]}
-          />
-        </div>
+        <BarGroupedChart
+          title={t('explorer.combat.spree_title')}
+          series={spreeSeries}
+          height={CHART_HEIGHT}
+          componentColors={spreeColors}
+          componentOrder={[spreeLabel, perfectLabel]}
+        />
 
-        {/* G5 — Donut répartition des modes (demi-largeur, centré) */}
-        <div className="sm:col-span-2 sm:mx-auto sm:w-1/2">
-          <h4 className="mb-1 text-sm font-medium text-foreground/80">
-            {t('explorer.combat.modes_title')}
-          </h4>
-          <DonutChart series={modeSeries} showPercent height={CHART_HEIGHT} />
+        {/* G5 — Donut répartition des modes (gauche, sans légende) + Top médailles (droite) */}
+        <div className="grid grid-cols-1 gap-4 sm:col-span-2 sm:grid-cols-2">
+          <DonutChart
+            title={t('explorer.combat.modes_title')}
+            series={modeSeries}
+            showPercent
+            showLegend={false}
+            height={CHART_HEIGHT}
+          />
+          {topMedals.length > 0 && <ExplorerTargetMedals medals={topMedals} />}
         </div>
       </div>
+      )}
     </section>
   )
 }

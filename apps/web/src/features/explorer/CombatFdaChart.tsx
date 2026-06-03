@@ -17,9 +17,11 @@ export interface CombatFdaChartProps {
   matches: ExplorerTargetRecentMatch[]
   labels: CombatFdaLabels
   height?: number
+  /** Titre rendu dans la barre de titre ChartCard (style unifié). */
+  title?: string
 }
 
-export function CombatFdaChart({ matches, labels, height = 300 }: CombatFdaChartProps) {
+export function CombatFdaChart({ matches, labels, height = 300, title }: CombatFdaChartProps) {
   const series = useMemo<ChartSeries<CombatFdaPoint>[]>(() => {
     if (matches.length === 0) return []
     return [
@@ -43,5 +45,5 @@ export function CombatFdaChart({ matches, labels, height = 300 }: CombatFdaChart
     [labels],
   )
 
-  return <ChartCard series={series} buildOption={buildOption} height={height} />
+  return <ChartCard title={title} series={series} buildOption={buildOption} height={height} />
 }
