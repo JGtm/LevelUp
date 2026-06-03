@@ -85,7 +85,9 @@ func (h *MediaHandler) WithSettingsStore(store *settings.Store) *MediaHandler {
 }
 
 // WithAuthorsContext câble la résolution slug → (titleSlug, gamertag) et la liste
-// des profils du titre. Sans ces deux callbacks, GetMediaAuthors retourne 501.
+// des profils du titre. Optionnel : sert uniquement à enrichir le gamertag d'affichage
+// dans GetMediaAuthors ; sans ces callbacks, l'endpoint retombe sur le player_slug
+// comme libellé (la liste d'auteurs elle-même vient de la DB via le service).
 func (h *MediaHandler) WithAuthorsContext(playerCtx MediaPlayerContextFactory, loadProfiles MediaProfilesProvider) *MediaHandler {
 	h.newPlayerCtx = playerCtx
 	h.loadProfiles = loadProfiles
@@ -364,46 +366,66 @@ func (h *MediaHandler) PostMediaAssociate(w http.ResponseWriter, r *http.Request
 	BumpMediaFeedVersion()
 }
 
-// GetMediaAuthors retourne la liste des profils db_profiles.json ayant au moins
-// un fichier média dans leur dossier captures (croisement avec le filesystem).
+// GetMediaAuthors retourne la liste des auteurs sélectionnables dans le filtre
+// Auteurs : les player_slug distincts présents dans shared_social.media_files
+// (même source que la galerie), enrichis du gamertag d'affichage via db_profiles.json.
+//
+// Historique : cet endpoint scannait le filesystem (countMediaInDir) par gamertag,
+// ce qui renvoyait une liste vide dès que les captures d'un auteur n'étaient pas
+// présentes sur le disque local (multi-user) ou rangées en sous-dossiers — d'où le
+// bug "Aucun auteur disponible" alors que la galerie affichait bien des médias. La
+// source est désormais la DB, strictement cohérente avec ce que la galerie peut afficher.
 // GET /api/v1/players/{player_slug}/media/authors
 func (h *MediaHandler) GetMediaAuthors(w http.ResponseWriter, r *http.Request) {
-	if h.newPlayerCtx == nil || h.loadProfiles == nil {
-		writeError(r.Context(), w, http.StatusNotImplemented, "authors_not_configured", "authors context non configuré")
-		return
-	}
-
 	slug := chi.URLParam(r, "player_slug")
-	titleSlug, currentGamertag, err := h.newPlayerCtx(r.Context(), slug)
+
+	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
-
-	profiles, err := h.loadProfiles(r.Context(), titleSlug)
+	authors, err := svc.ListMediaAuthors(r.Context())
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "profiles_load_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "authors_query_error", err.Error())
 		return
 	}
 
-	authors := make([]domain.MediaAuthor, 0, len(profiles))
-	for _, p := range profiles {
-		dir := h.resolveCapturesDir(titleSlug, p.Gamertag)
-		count := countMediaInDir(dir)
-		if count == 0 {
-			continue
+	// Enrichissement du gamertag d'affichage (best-effort) depuis db_profiles.json.
+	// Sans contexte profils câblé (WithAuthorsContext), on retombe sur le player_slug.
+	gamertagBySlug := h.authorGamertags(r.Context(), slug)
+	for i := range authors {
+		if gt := gamertagBySlug[strings.ToLower(authors[i].PlayerSlug)]; gt != "" {
+			authors[i].Gamertag = gt
+		} else {
+			authors[i].Gamertag = authors[i].PlayerSlug
 		}
-		authors = append(authors, domain.MediaAuthor{
-			PlayerSlug: p.PlayerSlug,
-			Gamertag:   p.Gamertag,
-			IsSelf:     strings.EqualFold(p.Gamertag, currentGamertag),
-			MediaCount: count,
-		})
 	}
 
 	writeJSON(w, http.StatusOK, domain.MediaAuthorsResponse{Authors: authors})
 }
 
-// countMediaInDir compte les fichiers média (extensions allowedMediaExts) dans un
-// dossier — best-effort, retourne 0 sur erreur ou dossier inexistant. Ne descend
-// pas en récursif (le sous-dossier `thumbs/` est ignoré naturellement comme dossier).
+// authorGamertags retourne un index lower(slug|gamertag) → gamertag construit depuis
+// db_profiles.json, pour afficher un libellé propre dans le filtre Auteurs. Best-effort :
+// retourne une map vide si le contexte profils n'est pas câblé (WithAuthorsContext).
+func (h *MediaHandler) authorGamertags(ctx context.Context, slug string) map[string]string {
+	out := map[string]string{}
+	if h.newPlayerCtx == nil || h.loadProfiles == nil {
+		return out
+	}
+	titleSlug, _, err := h.newPlayerCtx(ctx, slug)
+	if err != nil {
+		return out
+	}
+	profiles, err := h.loadProfiles(ctx, titleSlug)
+	if err != nil {
+		return out
+	}
+	for _, p := range profiles {
+		if p.Gamertag == "" {
+			continue
+		}
+		out[strings.ToLower(p.PlayerSlug)] = p.Gamertag
+		out[strings.ToLower(p.Gamertag)] = p.Gamertag
+	}
+	return out
+}

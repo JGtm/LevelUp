@@ -56,6 +56,61 @@ func (r *MediaRepo) LoadMediaFilterOptions(ctx context.Context, filters domain.M
 	return domain.MediaFilterOptions{Playlists: playlists, Maps: maps, Modes: modes}, nil
 }
 
+// ListMediaAuthors retourne les player_slug distincts ayant au moins un média,
+// avec leur compte. Source UNIQUE = shared_social.media_files — exactement la
+// table que lit la galerie (cf. loadMediaCandidates) — pour garantir que la liste
+// d'auteurs proposée au filtre soit cohérente avec ce que la galerie peut afficher.
+//
+// Remplace l'ancien scan filesystem (countMediaInDir) du handler GetMediaAuthors,
+// qui ratait les auteurs dont les fichiers n'étaient pas présents sur le disque
+// local (multi-user) ou rangés en sous-dossiers.
+//
+// Gamertag et is_self ne sont PAS résolus ici : le caller (service/handler) les
+// enrichit depuis db_profiles.json et le slug courant. On retourne PlayerSlug +
+// MediaCount uniquement.
+//
+// Schéma legacy (SharedSocial nil, pas de colonne player_slug) : on ne peut pas
+// distinguer les auteurs → on retourne uniquement le joueur courant, équivalent
+// au comportement antérieur pour les DB non migrées.
+func (r *MediaRepo) ListMediaAuthors(ctx context.Context) ([]domain.MediaAuthor, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if r.pdb.SharedSocial == nil {
+		slug := r.CurrentPlayerSlug()
+		if slug == "" {
+			return []domain.MediaAuthor{}, nil
+		}
+		return []domain.MediaAuthor{{PlayerSlug: slug, MediaCount: 0}}, nil
+	}
+
+	// Pas de filtre status : la galerie en schéma shared_social ne filtre pas non
+	// plus (cf. mediaQueryConfig.baseWhereClause, branche default) — la plupart des
+	// lignes ont status NULL. On reste cohérent avec ce que la galerie affiche.
+	rows, err := r.socialDB().QueryRecovered(ctx, `
+		SELECT player_slug, COUNT(*) AS n
+		FROM media_files
+		WHERE player_slug IS NOT NULL AND player_slug <> ''
+		GROUP BY player_slug
+		ORDER BY n DESC, player_slug ASC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("ListMediaAuthors: %w", err)
+	}
+	defer rows.Close()
+
+	authors := make([]domain.MediaAuthor, 0, 8)
+	for rows.Next() {
+		var slug string
+		var n int
+		if err := rows.Scan(&slug, &n); err != nil {
+			return nil, fmt.Errorf("ListMediaAuthors: scan: %w", err)
+		}
+		authors = append(authors, domain.MediaAuthor{PlayerSlug: slug, MediaCount: n})
+	}
+	return authors, rows.Err()
+}
+
 // translatePlaylistFilterOptions enrichit les libellÃ©s de playlists en FR via
 // asset_translations (asset_type='playlist') + dÃ©dup par playlist_id. Value =
 // playlist_id (stable) ; sinon fallback label brut.

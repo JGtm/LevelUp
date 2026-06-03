@@ -14,23 +14,6 @@ import (
 	"levelup/go-api/internal/platform/settings"
 )
 
-func countMediaInDir(dir string) int {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return 0
-	}
-	n := 0
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		if allowedMediaExts[strings.ToLower(filepath.Ext(e.Name()))] {
-			n++
-		}
-	}
-	return n
-}
-
 // resolveCapturesDir construit le chemin captures pour un joueur en s'appuyant
 // sur l'helper canonique PathResolver.ResolveCapturesDir.
 // Si media_captures_base_dir est défini dans les settings, utilise {baseDir}/{gamertag}.
