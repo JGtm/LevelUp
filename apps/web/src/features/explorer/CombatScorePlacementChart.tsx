@@ -18,12 +18,15 @@ export interface CombatScorePlacementChartProps {
   matches: ExplorerTargetRecentMatch[]
   labels: CombatScoreLabels
   height?: number
+  /** Titre rendu dans la barre de titre ChartCard (style unifié). */
+  title?: string
 }
 
 export function CombatScorePlacementChart({
   matches,
   labels,
   height = 300,
+  title,
 }: CombatScorePlacementChartProps) {
   const series = useMemo<ChartSeries<CombatScorePoint>[]>(() => {
     if (matches.length === 0) return []
@@ -45,5 +48,5 @@ export function CombatScorePlacementChart({
     [labels],
   )
 
-  return <ChartCard series={series} buildOption={buildOption} height={height} />
+  return <ChartCard title={title} series={series} buildOption={buildOption} height={height} />
 }
