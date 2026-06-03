@@ -58,6 +58,70 @@ export function useFiltersResolve(playerSlug: string, filterStore: FilterStore =
 }
 
 /**
+ * useFollowLatestSession — atterrit sur la dernière session tant que l'utilisateur
+ * n'a rien épinglé manuellement ("follow-latest"). Piloté par l'ÉTAT
+ * (`resolvedContext`), pas par un événement de sync : couvre donc le montage/reload,
+ * le refetch post-sync ET la navigation — là où l'ancien trigger (transition
+ * activeSyncJobId dans PlayerLayout) ne se déclenchait quasiment jamais.
+ *
+ * Intention "follow-latest" dérivée (pas de flag dédié) :
+ *   - vraie si isAutoSnappingToLatest (on suit déjà la dernière), OU
+ *   - vraie en état vierge (aucune période ni session pickée).
+ * Dès qu'une session/période est épinglée manuellement, les setters du store
+ * repassent isAutoSnappingToLatest=false → followLatest devient faux → la sélection
+ * manuelle est préservée (jamais re-snappée).
+ *
+ * scope='solo' suit la dernière session solo (`!is_squad`), 'squad' la dernière
+ * squad. À monter une fois par store : PlayerLayout (solo), SquadLayout (squad).
+ */
+export function useFollowLatestSession(
+  playerSlug: string,
+  filterStore: FilterStore,
+  scope: 'solo' | 'squad',
+) {
+  const resolvedContext = filterStore((s) => s.resolvedContext)
+  const isAutoSnapping = filterStore((s) => s.isAutoSnappingToLatest)
+
+  useEffect(() => {
+    if (!resolvedContext) return
+    const all = resolvedContext.session_options?.all_sessions ?? []
+    const latest = all.find((s) => (scope === 'squad' ? s.is_squad : !s.is_squad))
+    if (!latest) return
+
+    const {
+      filterContext,
+      lastKnownLatestSessionId,
+      setLastKnownLatestSessionId,
+      autoSnapToLatestSession,
+    } = filterStore.getState()
+
+    const picked = filterContext.sessions?.picked_sessions ?? []
+    const hasPeriod = !!(filterContext.period?.start_date || filterContext.period?.end_date)
+    const followLatest = isAutoSnapping || (!hasPeriod && picked.length === 0)
+    if (!followLatest) return // sélection manuelle épinglée → on la préserve
+
+    // Déjà sur la dernière (label OU session_id legacy hérité) → pas de re-snap.
+    // Garde anti-boucle : sans ça, snap → hash change → refetch → resolvedContext
+    // change → effet re-déclenché → snap…
+    const alreadyOnLatest =
+      picked.length === 1 && (picked[0] === latest.label || picked[0] === latest.session_id)
+    if (alreadyOnLatest) {
+      // Resync de la clé de détection sans toucher au filterContextHash (pas de refetch).
+      if (latest.session_id !== lastKnownLatestSessionId) {
+        setLastKnownLatestSessionId(latest.session_id)
+      }
+      return
+    }
+
+    autoSnapToLatestSession(latest, true)
+    // filterContext/lastKnownLatestSessionId sont lus via getState() (hors closure)
+    // pour ne PAS re-déclencher l'effet à chaque frappe de filtre ; les vrais
+    // déclencheurs sont resolvedContext, isAutoSnapping et playerSlug (changement
+    // de joueur). Le tableau de deps reste donc exhaustif côté react-hooks.
+  }, [resolvedContext, isAutoSnapping, playerSlug, scope, filterStore])
+}
+
+/**
  * Résout un FilterContextInput arbitraire (état pending) sans écrire dans le store.
  * Utilisé pour le feedback immédiat sur les incompatibilités de filtres dans le
  * dropdown, avant que l'utilisateur clique sur Analyser.

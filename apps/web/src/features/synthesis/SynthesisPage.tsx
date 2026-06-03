@@ -115,12 +115,12 @@ function CombatProfileInlineRow({ combatProfile }: { combatProfile: CombatProfil
         </>
       )}
       <div className="flex items-center gap-2 ml-auto">
-        <span className="text-xs text-muted-foreground">Offensif</span>
+        <span className="text-xs text-muted-foreground">Rendement</span>
         <CombatYieldBar
           offensiveConversion={combatProfile.avg_oc}
           defensiveResistance={combatProfile.avg_dr}
         />
-        <span className="text-xs text-muted-foreground">Défensif</span>
+        <span className="text-xs text-muted-foreground">Résistance</span>
       </div>
     </div>
   )

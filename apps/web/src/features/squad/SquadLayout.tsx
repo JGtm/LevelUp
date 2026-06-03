@@ -23,7 +23,7 @@ import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useTeammates } from './queries'
 import { useSettings } from '@/features/settings/queries'
-import { useFiltersPreview, useFiltersResolve } from '@/features/filters/queries'
+import { useFiltersPreview, useFiltersResolve, useFollowLatestSession } from '@/features/filters/queries'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
 import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
@@ -86,6 +86,10 @@ export function SquadLayout() {
   // Résout le filterContext squad côté backend → alimente `resolvedContext`
   // (session_options, available_options, period_presets) pour les pills et le rail.
   useFiltersResolve(playerSlug, useSquadFilterStore)
+  // Atterrissage sur la dernière session squad tant que rien n'est épinglé.
+  // Le snap pose le LABEL dans picked_sessions ; l'effet de sync local→global plus
+  // bas le propage vers pickedSquadSessionLabels (la session se coche dans le multi-select).
+  useFollowLatestSession(playerSlug, useSquadFilterStore, 'squad')
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
   const tCommon = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)

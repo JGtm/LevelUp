@@ -30,6 +30,7 @@ import type {
   FilterContextInput,
   FilterContextResolved,
   PeriodInput,
+  SessionOption,
   SessionsInput,
 } from '@/lib/api/types'
 import { DEFAULT_GAP_MINUTES } from '@/stores/filterDefaults'
@@ -91,9 +92,15 @@ export interface FilterStoreState {
   // --- Auto-snap on new data ---
   setLastKnownLatestSessionId: (id: string | null) => void
   setIsAutoSnappingToLatest: (snapping: boolean) => void
-  /** Bascule le filtre sur la session passée en paramètre (filter_mode='sessions',
-   *  sessions.picked_sessions=[id]). Si triggeredBySync=true, marque le snap auto. */
-  autoSnapToLatestSession: (latestSessionId: string, triggeredBySync: boolean) => void
+  /** Bascule le filtre sur la session passée (filter_mode='sessions'). On écrit le
+   *  LABEL dans picked_sessions (compatible solo ET escouade : le backend escouade
+   *  ne matche que par label) et on mémorise latest.session_id comme clé de
+   *  détection stable (le label porte un suffixe « (N) » volatil). triggeredBySync
+   *  =true marque le snap auto. */
+  autoSnapToLatestSession: (
+    latest: Pick<SessionOption, 'session_id' | 'label'>,
+    triggeredBySync: boolean,
+  ) => void
 
   // --- Rail de navigation période/session (no-op si pas applicable) ---
   goToPrevSession: () => void
@@ -244,14 +251,17 @@ export function createFilterStore(options: CreateFilterStoreOptions): FilterStor
 
         setIsAutoSnappingToLatest: (snapping) => set({ isAutoSnappingToLatest: snapping }),
 
-        autoSnapToLatestSession: (latestSessionId, triggeredBySync) => {
+        autoSnapToLatestSession: (latest, triggeredBySync) => {
           const current = get().filterContext
           const next: FilterContextInput = {
             ...current,
             filter_mode: 'sessions',
             sessions: {
               ...(current.sessions ?? DEFAULT_SESSIONS),
-              picked_sessions: [latestSessionId],
+              // LABEL, pas session_id : filterSynthesisByPickedSessions (escouade)
+              // matche uniquement par SessionLabel ; applySessionFilter (solo)
+              // accepte les deux. Le rail goToPrev/NextSession écrit aussi le label.
+              picked_sessions: [latest.label],
             },
             period: DEFAULT_PERIOD,
           }
@@ -259,11 +269,12 @@ export function createFilterStore(options: CreateFilterStoreOptions): FilterStor
           set({
             filterContext: next,
             filterContextHash: computeHash(next),
-            lastKnownLatestSessionId: latestSessionId,
+            // session_id stable comme clé de détection « nouvelle session arrivée ».
+            lastKnownLatestSessionId: latest.session_id,
             isAutoSnappingToLatest: triggeredBySync,
           })
           log.debug(
-            `auto_snap:fired store=${name} session=${latestSessionId} trigger=${triggeredBySync ? 'sync' : 'manual'}`,
+            `auto_snap:fired store=${name} session=${latest.session_id} label=${latest.label} trigger=${triggeredBySync ? 'sync' : 'manual'}`,
           )
         },
 
@@ -348,6 +359,10 @@ export function createFilterStore(options: CreateFilterStoreOptions): FilterStor
           filterContext: state.filterContext,
           filterContextHash: state.filterContextHash,
           lastKnownLatestSessionId: state.lastKnownLatestSessionId,
+          // Persisté pour reprendre le suivi « dernière session » au reload :
+          // sans ça, isAutoSnappingToLatest repasse à false et useFollowLatestSession
+          // figerait sur l'ancienne session au lieu de re-snapper sur la plus récente.
+          isAutoSnappingToLatest: state.isAutoSnappingToLatest,
         }),
         onRehydrateStorage: () => (state) => {
           if (!state) return
