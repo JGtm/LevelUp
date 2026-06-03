@@ -39,6 +39,8 @@ import (
 	"time"
 
 	duckdb "github.com/duckdb/duckdb-go/v2"
+
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -247,6 +249,78 @@ func TestAssociateMediaWithMatches_RestartCycle(t *testing.T) {
 	}
 	if count != 1 {
 		t.Errorf("associations perdues après reopen : count=%d, want 1", count)
+	}
+}
+
+// TestAssociateMediaWithMatches_SharedMatchesHeldRW est le guard anti-régression
+// de l'incident 2026-06-03 (médias uploadés sans association). loadMatchTimeWindows
+// doit RÉUTILISER le handle process-wide quand shared_matches est déjà tenu en
+// RW dans le même process (cas prod : le pool ouvre shared_matches au boot), au
+// lieu de forcer un nouvel open `?access_mode=read_only` — lequel échoue avec
+// "Can't open ... with a different configuration" / "file is being used".
+//
+// Mécanisme garanti par OpenReadForQuery (LookupCachedDB → handle caché).
+// Si quelqu'un re-régresse loadMatchTimeWindows vers un sql.Open RO non
+// cache-aware, ce test échoue : l'open RO entrera en conflit avec le handle RW
+// ci-dessous tenu ouvert pour toute la durée du test.
+func TestAssociateMediaWithMatches_SharedMatchesHeldRW(t *testing.T) {
+	dir := t.TempDir()
+	socialPath := filepath.Join(dir, "shared_social.duckdb")
+	matchesPath := filepath.Join(dir, "shared_matches_held_rw.duckdb")
+	ctx := context.Background()
+
+	// Setup shared_matches avec un match dans une fenêtre connue, puis le tenir
+	// OUVERT EN RW via le pool process-wide (clé "rw:"+matchesPath) pour toute la
+	// durée du test — exactement comme le pool serveur en prod.
+	matchHandle, err := duckdbpkg.OpenReadWrite(matchesPath)
+	if err != nil {
+		t.Fatalf("OpenReadWrite(matches): %v", err)
+	}
+	defer matchHandle.Close()
+	matchDB := matchHandle.SQLDb()
+	if _, err := matchDB.ExecContext(ctx, `CREATE TABLE match_registry (
+		match_id VARCHAR PRIMARY KEY,
+		start_time TIMESTAMP, end_time TIMESTAMP,
+		start_time_utc TIMESTAMPTZ, end_time_utc TIMESTAMPTZ
+	)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := matchDB.ExecContext(ctx,
+		`INSERT INTO match_registry VALUES (?, ?, ?, ?, ?)`,
+		"m-held-rw",
+		time.Date(2026, 5, 11, 21, 0, 0, 0, time.UTC),
+		time.Date(2026, 5, 11, 21, 15, 0, 0, time.UTC),
+		time.Date(2026, 5, 11, 21, 0, 0, 0, time.UTC),
+		time.Date(2026, 5, 11, 21, 15, 0, 0, time.UTC),
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	// shared_social : un média dans la fenêtre (21:10 UTC).
+	socialDB, err := sql.Open("duckdb", socialPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer socialDB.Close()
+	if err := ensureMediaTables(ctx, socialDB); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := socialDB.ExecContext(ctx,
+		`INSERT INTO media_files (player_slug, file_path, file_name, file_hash, kind, capture_start_utc)
+		 VALUES ('spartan', '/cap/held.mp4', 'held.mp4', 'hash-held', 'video', ?)`,
+		time.Date(2026, 5, 11, 21, 10, 0, 0, time.UTC),
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	// L'association DOIT réussir bien que shared_matches soit tenu RW in-process.
+	n, err := AssociateMediaWithMatches(ctx, socialDB, matchesPath, 2, "")
+	if err != nil {
+		t.Fatalf("AssociateMediaWithMatches a échoué alors que shared_matches est tenu RW "+
+			"(régression handle reuse / incident 2026-06-03) : %v", err)
+	}
+	if n != 1 {
+		t.Errorf("associations = %d, want 1", n)
 	}
 }
 

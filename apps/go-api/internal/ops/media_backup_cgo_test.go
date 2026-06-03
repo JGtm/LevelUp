@@ -29,7 +29,7 @@ func TestFileHash_Valid(t *testing.T) {
 	if err := os.WriteFile(p, []byte("hello levelup"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	h, err := fileHash(p)
+	h, err := HashFile(p)
 	if err != nil {
 		t.Fatalf("fileHash inattendu: %v", err)
 	}
@@ -37,14 +37,14 @@ func TestFileHash_Valid(t *testing.T) {
 		t.Errorf("hash length = %d, want 16", len(h))
 	}
 	// Idempotent
-	h2, _ := fileHash(p)
+	h2, _ := HashFile(p)
 	if h != h2 {
 		t.Error("fileHash n'est pas idempotent")
 	}
 }
 
 func TestFileHash_Absent(t *testing.T) {
-	_, err := fileHash("/nonexistent/file.bin")
+	_, err := HashFile("/nonexistent/file.bin")
 	if err == nil {
 		t.Error("expected error pour fichier absent")
 	}

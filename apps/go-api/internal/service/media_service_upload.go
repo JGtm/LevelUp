@@ -25,6 +25,18 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 
 	var savedVideos []string // chemins abs des vidéos sauvées (candidats transcoding HLS)
 	for _, f := range req.Files {
+		// Dédup à la source : si un fichier du même nom ET du même contenu existe
+		// déjà sur disque, c'est un ré-upload du même média. On skippe l'écriture
+		// pour ne pas créer une copie disque redondante — l'indexation l'ignorerait
+		// ensuite par hash, en laissant un fichier orphelin.
+		sameName := filepath.Join(req.CapturesDir, filepath.Base(f.OriginalName))
+		if existingHash, err := ops.HashFile(sameName); err == nil && ops.HashBytes(f.Data) == existingHash {
+			result.Skipped++
+			slog.DebugContext(ctx, "upload: doublon ignoré (même nom + même contenu)",
+				"file", f.OriginalName)
+			continue
+		}
+
 		dest := safeDestPath(req.CapturesDir, f.OriginalName)
 		if err := os.WriteFile(dest, f.Data, 0o644); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", f.OriginalName, err))
@@ -40,9 +52,19 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 		}
 	}
 
-	if result.Saved == 0 {
+	if result.Saved == 0 && result.Skipped == 0 {
 		slog.WarnContext(ctx, "upload: aucun fichier sauvegardé", "attempted", len(req.Files))
 		return result, nil
+	}
+	if result.Saved == 0 {
+		// Tous les fichiers étaient déjà présents (ré-upload du même média). On NE
+		// court-circuite PAS l'indexation : re-uploader est le geste naturel pour
+		// "réparer" un média, et IndexMedia relance l'association (idempotente).
+		// Indispensable depuis la dédup à la source — sinon un ré-upload ne pourrait
+		// plus jamais rattraper une association précédemment échouée (incident
+		// 2026-06-03 : médias non-associés suite à un conflit de lock).
+		slog.InfoContext(ctx, "upload: aucun nouveau fichier, ré-indexation pour (re)association",
+			"attempted", len(req.Files), "skipped", result.Skipped)
 	}
 
 	tol := req.Tolerance
@@ -90,6 +112,7 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 
 	slog.InfoContext(ctx, "upload: terminé",
 		"saved", result.Saved,
+		"skipped", result.Skipped,
 		"new_indexed", result.NewIndexed,
 		"associated", result.Associated,
 		"thumbnails", result.Thumbnails,

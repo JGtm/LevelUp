@@ -163,7 +163,10 @@ func walkMediaDir(dir string) ([]string, error) {
 	return files, err
 }
 
-func fileHash(path string) (string, error) {
+// HashFile calcule le hash de contenu d'un fichier sur disque (sha256 tronqué à
+// 16 hex, lu en streaming). Doit produire la même valeur que HashBytes pour un
+// contenu identique — c'est la clé de dédup utilisée par l'indexation.
+func HashFile(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return "", err
@@ -174,6 +177,14 @@ func fileHash(path string) (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("%x", h.Sum(nil))[:16], nil
+}
+
+// HashBytes calcule le même hash de contenu que HashFile, mais depuis un buffer
+// en mémoire (cas upload : les octets sont déjà chargés). Permet de détecter un
+// ré-upload avant l'écriture disque.
+func HashBytes(data []byte) string {
+	sum := sha256.Sum256(data)
+	return fmt.Sprintf("%x", sum[:])[:16]
 }
 
 // insertMediaFile insère ou met à jour une ligne media_files.

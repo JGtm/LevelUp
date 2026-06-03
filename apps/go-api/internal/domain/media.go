@@ -228,11 +228,12 @@ type ReassociateResult struct {
 
 // UploadResult résume le résultat d'un upload multi-fichiers.
 type UploadResult struct {
-	Saved      int      `json:"saved"`            // fichiers écrits sur disque
-	NewIndexed int      `json:"new_indexed"`      // nouvelles entrées media_files
-	Associated int      `json:"associated"`       // associations matchs créées
-	Thumbnails int      `json:"thumbnails"`       // miniatures générées
-	Errors     []string `json:"errors,omitempty"` // erreurs non-bloquantes
+	Saved      int      `json:"saved"`             // fichiers écrits sur disque
+	Skipped    int      `json:"skipped,omitempty"` // ré-uploads ignorés (même nom + même contenu)
+	NewIndexed int      `json:"new_indexed"`       // nouvelles entrées media_files
+	Associated int      `json:"associated"`        // associations matchs créées
+	Thumbnails int      `json:"thumbnails"`        // miniatures générées
+	Errors     []string `json:"errors,omitempty"`  // erreurs non-bloquantes
 }
 
 // MediaMatchCandidate représente un match potentiel pour une réassociation manuelle.

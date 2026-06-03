@@ -90,11 +90,11 @@ func TestFileHash_Deterministic(t *testing.T) {
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	h1, err := fileHash(path)
+	h1, err := HashFile(path)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	h2, err := fileHash(path)
+	h2, err := HashFile(path)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -113,15 +113,15 @@ func TestFileHash_DifferentFiles(t *testing.T) {
 	os.WriteFile(p1, []byte("content A"), 0o644) //nolint:errcheck
 	os.WriteFile(p2, []byte("content B"), 0o644) //nolint:errcheck
 
-	h1, _ := fileHash(p1)
-	h2, _ := fileHash(p2)
+	h1, _ := HashFile(p1)
+	h2, _ := HashFile(p2)
 	if h1 == h2 {
 		t.Error("different files should produce different hashes")
 	}
 }
 
 func TestFileHash_MissingFile(t *testing.T) {
-	_, err := fileHash("/nonexistent/file.mp4")
+	_, err := HashFile("/nonexistent/file.mp4")
 	if err == nil {
 		t.Error("expected error for missing file")
 	}

@@ -321,6 +321,90 @@ func TestMediaService_UploadMedia_SavesToDisk(t *testing.T) {
 	}
 }
 
+func TestMediaService_UploadMedia_DuplicateContent_Skipped(t *testing.T) {
+	dir := t.TempDir()
+	svc := NewMediaService(&mockMediaRepo{}, "")
+	buildReq := func() domain.UploadRequest {
+		return domain.UploadRequest{
+			Files:       []domain.UploadedFile{{OriginalName: "clip.mp4", Data: []byte("same video bytes")}},
+			CapturesDir: dir,
+			DBPath:      filepath.Join(dir, "stats.duckdb"),
+		}
+	}
+
+	// 1er upload : écrit le fichier.
+	first, err := svc.UploadMedia(context.Background(), buildReq())
+	if err != nil {
+		t.Fatalf("first upload: %v", err)
+	}
+	if first.Saved != 1 || first.Skipped != 0 {
+		t.Fatalf("first upload: Saved=%d Skipped=%d, want 1/0", first.Saved, first.Skipped)
+	}
+
+	// 2e upload (même nom + même contenu) : doit être skippé, pas de copie disque.
+	second, err := svc.UploadMedia(context.Background(), buildReq())
+	if err != nil {
+		t.Fatalf("second upload: %v", err)
+	}
+	if second.Saved != 0 || second.Skipped != 1 {
+		t.Errorf("second upload: Saved=%d Skipped=%d, want 0/1", second.Saved, second.Skipped)
+	}
+
+	// Un seul .mp4 sur disque (pas de doublon suffixé timestamp).
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mp4 := 0
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".mp4") {
+			mp4++
+		}
+	}
+	if mp4 != 1 {
+		t.Errorf("expected exactly 1 .mp4 on disk, got %d", mp4)
+	}
+}
+
+func TestMediaService_UploadMedia_SameNameDifferentContent_Kept(t *testing.T) {
+	dir := t.TempDir()
+	svc := NewMediaService(&mockMediaRepo{}, "")
+	mk := func(data string) domain.UploadRequest {
+		return domain.UploadRequest{
+			Files:       []domain.UploadedFile{{OriginalName: "clip.mp4", Data: []byte(data)}},
+			CapturesDir: dir,
+			DBPath:      filepath.Join(dir, "stats.duckdb"),
+		}
+	}
+
+	if _, err := svc.UploadMedia(context.Background(), mk("first clip")); err != nil {
+		t.Fatalf("first upload: %v", err)
+	}
+	// Même nom mais contenu différent : c'est un vrai média distinct → conservé
+	// (suffixe timestamp), surtout pas skippé.
+	second, err := svc.UploadMedia(context.Background(), mk("totally different clip"))
+	if err != nil {
+		t.Fatalf("second upload: %v", err)
+	}
+	if second.Saved != 1 || second.Skipped != 0 {
+		t.Errorf("second upload: Saved=%d Skipped=%d, want 1/0", second.Saved, second.Skipped)
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mp4 := 0
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".mp4") {
+			mp4++
+		}
+	}
+	if mp4 != 2 {
+		t.Errorf("expected 2 distinct .mp4 on disk, got %d", mp4)
+	}
+}
+
 func TestMediaService_UploadMedia_CreatesCapturesDir(t *testing.T) {
 	base := t.TempDir()
 	captures := filepath.Join(base, "new", "captures")
