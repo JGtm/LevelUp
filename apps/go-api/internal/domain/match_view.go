@@ -151,6 +151,9 @@ type MatchExpectedStats struct {
 	ExpectedKills   *float64 `json:"expected_kills,omitempty"`
 	ExpectedDeaths  *float64 `json:"expected_deaths,omitempty"`
 	ExpectedAssists *float64 `json:"expected_assists,omitempty"`
+	// ExpectedWinProb : proba de victoire pré-match de l'équipe du joueur (LUSR v2,
+	// ∈ [0,1]). Alimente la card « Résultat attendu ». Nil si pré-v2 / non disponible.
+	ExpectedWinProb *float64 `json:"expected_win_prob,omitempty"`
 	// Moyennes historiques sur le mode (HistAvg)
 	HasHistAvg           bool     `json:"has_hist_avg"`
 	HistAvgKills         *float64 `json:"hist_avg_kills,omitempty"`

@@ -99,6 +99,7 @@ export interface SquadText {
     outcome: string
     score: string
     winRateHist: string
+    winProb: string
     kda: string
     accuracy: string
     perf: string
@@ -319,6 +320,7 @@ const FR_TEXT: SquadText = {
     outcome: 'Résultat',
     score: 'Score',
     winRateHist: 'Taux hist.',
+    winProb: 'Prob. vic.',
     kda: 'K/D/A',
     accuracy: 'Précision',
     perf: 'Perf.',
@@ -576,6 +578,7 @@ const EN_TEXT: SquadText = {
     outcome: 'Result',
     score: 'Score',
     winRateHist: 'Hist. win%',
+    winProb: 'Win prob.',
     kda: 'K/D/A',
     accuracy: 'Accuracy',
     perf: 'Perf.',

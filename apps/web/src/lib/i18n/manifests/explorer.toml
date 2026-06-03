@@ -709,11 +709,11 @@ fr = "Résistance"
 en = "Resistance"
 
 [explorer.target_profile.yield_dmg_per_kill]
-fr = "{n} dmg/frag"
+fr = "{n} dégâts/frag"
 en = "{n} dmg/kill"
 
 [explorer.target_profile.yield_dmg_per_death]
-fr = "{n} dmg/mort"
+fr = "{n} dégâts/mort"
 en = "{n} dmg/death"
 
 [explorer.target_profile.outcome_wins]

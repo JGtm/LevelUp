@@ -8,6 +8,7 @@
  * Affichée seulement quand `sampleStats != null && sample_size > 0`.
  */
 import { OutcomeBar } from '@/components/ui/outcome-bar'
+import { KillTypesDonut, type DonutSlice } from '@/components/charts/KillTypesDonut'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -20,12 +21,6 @@ interface ExplorerTargetSampleStatsProps {
 }
 
 type TFn = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
-
-interface DonutSlice {
-  label: string
-  count: number
-  token: SemanticToken
-}
 
 function fmtPctRatio(value: number, locale: string): string {
   return `${(value * 100).toLocaleString(locale, { maximumFractionDigits: 1 })}%`
@@ -157,102 +152,6 @@ function DonutColumn({ slices, locale, t }: { slices: DonutSlice[]; locale: stri
         <span className="text-xs text-muted-foreground">{t('explorer.target_profile.value_unavailable')}</span>
       )}
     </div>
-  )
-}
-
-// Géométrie du donut. Repère angulaire : 0 = midi, sens horaire.
-const DONUT = { w: 300, h: 152, cx: 150, cy: 74, rOuter: 46, stroke: 16, yTop: 16, yBot: 132 }
-
-interface Leader {
-  slice: DonutSlice
-  startFrac: number
-  dashLen: number
-  edgeX: number
-  edgeY: number
-  elbowX: number
-  elbowY: number
-  kneeX: number
-  textX: number
-  labelY: number
-  anchor: 'start' | 'end'
-}
-
-/** computeLeaders calcule arcs + lignes de rappel (labels répartis par côté). */
-function computeLeaders(slices: DonutSlice[], total: number, circ: number): Leader[] {
-  let acc = 0
-  const raw = slices.map((slice) => {
-    const startFrac = acc
-    const frac = slice.count / total
-    acc += frac
-    const midTheta = (startFrac + frac / 2) * 2 * Math.PI
-    const sinT = Math.sin(midTheta)
-    const cosT = Math.cos(midTheta)
-    const right = sinT >= 0
-    return {
-      slice, startFrac, dashLen: frac * circ, right, sinT, cosT,
-      edgeX: DONUT.cx + DONUT.rOuter * sinT,
-      edgeY: DONUT.cy - DONUT.rOuter * cosT,
-      elbowX: DONUT.cx + (DONUT.rOuter + 9) * sinT,
-      elbowY: DONUT.cy - (DONUT.rOuter + 9) * cosT,
-    }
-  })
-  const out: Leader[] = []
-  for (const right of [true, false]) {
-    const side = raw.filter((r) => r.right === right).sort((a, b) => a.elbowY - b.elbowY)
-    side.forEach((r, k) => {
-      const labelY = side.length === 1
-        ? Math.min(Math.max(r.elbowY, DONUT.yTop), DONUT.yBot)
-        : DONUT.yTop + (k * (DONUT.yBot - DONUT.yTop)) / (side.length - 1)
-      const textX = right ? DONUT.w - 92 : 92
-      out.push({
-        slice: r.slice, startFrac: r.startFrac, dashLen: r.dashLen,
-        edgeX: r.edgeX, edgeY: r.edgeY, elbowX: r.elbowX, elbowY: r.elbowY,
-        kneeX: right ? textX - 6 : textX + 6, textX, labelY,
-        anchor: right ? 'start' : 'end',
-      })
-    })
-  }
-  return out
-}
-
-function KillTypesDonut({ slices, locale }: { slices: DonutSlice[]; locale: string }) {
-  const total = slices.reduce((acc, s) => acc + s.count, 0)
-  if (total === 0) return null
-  const innerR = DONUT.rOuter - DONUT.stroke / 2
-  const circ = 2 * Math.PI * innerR
-  const leaders = computeLeaders(slices, total, circ)
-
-  return (
-    <svg width="100%" viewBox={`0 0 ${DONUT.w} ${DONUT.h}`} className="max-w-[700px]">
-      <circle cx={DONUT.cx} cy={DONUT.cy} r={innerR} fill="none" stroke={tokenCssVar('perf-tier-5')} strokeWidth={DONUT.stroke} opacity="0.15" />
-      {leaders.map((l, i) => (
-        <circle
-          key={`arc-${i}`}
-          cx={DONUT.cx} cy={DONUT.cy} r={innerR} fill="none"
-          stroke={tokenCssVar(l.slice.token)} strokeWidth={DONUT.stroke}
-          strokeDasharray={`${l.dashLen} ${circ - l.dashLen}`}
-          strokeDashoffset={-l.startFrac * circ}
-          transform={`rotate(-90 ${DONUT.cx} ${DONUT.cy})`}
-        />
-      ))}
-      <text x={DONUT.cx} y={DONUT.cy} textAnchor="middle" dominantBaseline="central" className="fill-foreground text-base font-semibold">
-        {fmtInt(total, locale)}
-      </text>
-      {leaders.map((l, i) => (
-        <g key={`lead-${i}`}>
-          <polyline
-            points={`${l.edgeX},${l.edgeY} ${l.elbowX},${l.elbowY} ${l.kneeX},${l.labelY}`}
-            fill="none" stroke={tokenCssVar(l.slice.token)} strokeWidth="1" opacity="0.55"
-          />
-          <text x={l.textX} y={l.labelY - 1} textAnchor={l.anchor} className="fill-foreground" opacity="0.8" style={{ fontSize: '8px' }}>
-            {l.slice.label}
-          </text>
-          <text x={l.textX} y={l.labelY + 9} textAnchor={l.anchor} style={{ fill: tokenCssVar(l.slice.token), fontSize: '9px', fontWeight: 600 }}>
-            {`${fmtInt(l.slice.count, locale)} · ${fmtPctRatio(l.slice.count / total, locale)}`}
-          </text>
-        </g>
-      ))}
-    </svg>
   )
 }
 

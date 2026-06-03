@@ -466,7 +466,7 @@ func (r *ExplorerRepo) ResolveXUIDByGamertag(ctx context.Context, gamertag strin
 
 // GetTopWeaponsForMatches retourne le top `limit` armes (par kills) du joueur sur
 // les matchs donnés : COUNT(*) par effective_weapon_id dans shared.v_weapon_kills
-// (1 ligne = 1 kill event, cf. GetFavoriteWeapon du compare). Labels résolus
+// (1 ligne = 1 kill event). Labels résolus
 // depuis metadata.weapon_labels. Best-effort : nil si entrée vide / erreur
 // (feature secondaire, jamais fatale). Armes 0/1/2 exclues (melee/grenade génériques).
 func (r *ExplorerRepo) GetTopWeaponsForMatches(

@@ -15,6 +15,8 @@ import {
   formatDurationMMSS,
   formatDurationHMS,
   displayRatingLabel,
+  formatOffensiveConversion,
+  formatDefensiveResistance,
 } from './index'
 
 describe('formatDate', () => {
@@ -152,5 +154,38 @@ describe('displayRatingLabel', () => {
     expect(displayRatingLabel(null)).toBeNull()
     expect(displayRatingLabel(undefined)).toBeNull()
     expect(displayRatingLabel('')).toBeNull()
+  })
+})
+
+describe('formatOffensiveConversion', () => {
+  it('formate OC en pourcentage entier (valeur × 100)', () => {
+    expect(formatOffensiveConversion(0.42)).toBe('42%')
+    expect(formatOffensiveConversion(0.835)).toBe('84%')
+    expect(formatOffensiveConversion(0)).toBe('0%')
+  })
+
+  it('fallback sur null/undefined/NaN', () => {
+    expect(formatOffensiveConversion(null)).toBe('—')
+    expect(formatOffensiveConversion(undefined)).toBe('—')
+    expect(formatOffensiveConversion(NaN)).toBe('—')
+    expect(formatOffensiveConversion(null, 'N/A')).toBe('N/A')
+  })
+})
+
+describe('formatDefensiveResistance', () => {
+  it('formate DR en écart au baseline 1.0 ((valeur − 1) × 100)', () => {
+    expect(formatDefensiveResistance(1.18)).toBe('+18%')
+    expect(formatDefensiveResistance(1)).toBe('+0%')
+    expect(formatDefensiveResistance(0.8)).toBe('-20%')
+  })
+
+  it('affiche ∞ pour la sentinelle (valeur < 0, aucune mort)', () => {
+    expect(formatDefensiveResistance(-1)).toBe('∞')
+  })
+
+  it('fallback sur null/undefined/NaN', () => {
+    expect(formatDefensiveResistance(null)).toBe('—')
+    expect(formatDefensiveResistance(undefined)).toBe('—')
+    expect(formatDefensiveResistance(NaN)).toBe('—')
   })
 })

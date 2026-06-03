@@ -121,6 +121,15 @@ type synthesisBestRefs struct {
 func computeSynthesisBestRefs(rows []canonical.PlayerMatchRow) synthesisBestRefs {
 	var trK, trKDA, trPerf, trAcc, trDmg, trSpree, trHS, trPS bestTracker
 	for _, r := range rows {
+		// « Meilleures stats » = records PvP exploitables : on exclut les matchs
+		// non terminés (DNF / abandon, stats tronquées) et le PvE/Firefight (barème
+		// d'IA non comparable au PvP). Les totaux de l'overview, eux, comptent tout.
+		if r.Self.Outcome == canonical.OutcomeDNF {
+			continue
+		}
+		if r.Summary.IsPvE != nil && *r.Summary.IsPvE {
+			continue
+		}
 		id := r.Summary.MatchID
 		if r.Self.Kills != nil {
 			trK.update(id, float64(*r.Self.Kills))

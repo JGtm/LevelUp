@@ -192,13 +192,21 @@ func (r *MatchHistoryRepo) mergeHistorySkillRanks(ctx context.Context, rows []do
 		tierFR    *string
 		rating    *string
 		tierLabel *string
+		winProb   *float64
 	}
 	ranks := make(map[string]skill, len(matchIDs))
 	for dbRows.Next() {
 		var mid string
 		var s skill
-		if err := dbRows.Scan(&mid, &s.tier, &s.tierFR, &s.rating, &s.tierLabel); err != nil {
+		if err := dbRows.Scan(&mid, &s.tier, &s.tierFR, &s.rating, &s.tierLabel, &s.winProb); err != nil {
 			return fmt.Errorf("skill_rank scan: %w", err)
+		}
+		// match_skill_rank est append-only (N versions par match_id, CSR + LUSR).
+		// La dernière version scannée gagne pour le tier ; mais expected_win_prob
+		// n'est posé que sur les rows LUSR — on préserve toute valeur non-nil pour
+		// ne pas l'effacer si une row CSR (winProb nil) est scannée après.
+		if prev, ok := ranks[mid]; ok && s.winProb == nil {
+			s.winProb = prev.winProb
 		}
 		ranks[mid] = s
 	}
@@ -215,6 +223,7 @@ func (r *MatchHistoryRepo) mergeHistorySkillRanks(ctx context.Context, rows []do
 		rows[i].SkillTierFR = s.tierFR
 		rows[i].SkillRatingType = s.rating
 		rows[i].SkillTierLabel = s.tierLabel
+		rows[i].SkillExpectedWinProb = s.winProb
 	}
 	return nil
 }

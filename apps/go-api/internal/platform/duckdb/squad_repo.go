@@ -3,7 +3,9 @@ package duckdb
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -180,6 +182,9 @@ func (r *SquadRepo) LoadSquadMatches(ctx context.Context, playerXUID, teammateXU
 	if err != nil {
 		return nil, fmt.Errorf("LoadSquadMatches: %w", err)
 	}
+	// Proba de victoire pré-match (player.match_skill_rank) — best-effort : si la
+	// lecture échoue, on dégrade en nil (colonne « Prob. vic. » vide).
+	winProbs := r.loadExpectedWinProbs(ctx, matchIDs)
 	for i := range results {
 		if e, ok := enrichments[results[i].MatchID]; ok {
 			if e.SessionID.Valid {
@@ -199,8 +204,42 @@ func (r *SquadRepo) LoadSquadMatches(ctx context.Context, playerXUID, teammateXU
 			}
 			results[i].IsWithFriends = e.IsWithFriends
 		}
+		if wp, ok := winProbs[results[i].MatchID]; ok {
+			v := wp
+			results[i].ExpectedWinProb = &v
+		}
 	}
 	return results, nil
+}
+
+// loadExpectedWinProbs charge la proba de victoire pré-match par match_id depuis
+// player.match_skill_rank (LUSR v2). MAX(expected_win_prob) car la valeur n'est
+// posée que sur les rows LUSR (append-only N versions/match). Best-effort :
+// retourne une map vide en cas d'erreur (dégradation gracieuse).
+func (r *SquadRepo) loadExpectedWinProbs(ctx context.Context, matchIDs []string) map[string]float64 {
+	out := make(map[string]float64, len(matchIDs))
+	if len(matchIDs) == 0 {
+		return out
+	}
+	query := fmt.Sprintf(QSquadExpectedWinProbTpl, Placeholders(len(matchIDs)))
+	rows, err := r.pdb.Player.QueryRecovered(ctx, query, ToAnySlice(matchIDs)...)
+	if err != nil {
+		slog.WarnContext(ctx, "LoadSquadMatches: expected_win_prob indisponible (best-effort)", "err", err)
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var mid string
+		var wp sql.NullFloat64
+		if err := rows.Scan(&mid, &wp); err != nil {
+			slog.WarnContext(ctx, "LoadSquadMatches: scan expected_win_prob", "err", err)
+			return out
+		}
+		if wp.Valid {
+			out[mid] = wp.Float64
+		}
+	}
+	return out
 }
 
 // loadSquadMatchesShared exécute l'étape 1 du split LoadSquadMatches.

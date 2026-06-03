@@ -270,7 +270,63 @@ export function MatchVsStatCard({
 }
 
 // ---------------------------------------------------------------------------
-// C7 — MatchSummaryCardsSection (grille 4 cartes onglet Résumé)
+// C8 — MatchWinProbCard (résultat attendu : proba de victoire pré-match)
+// ---------------------------------------------------------------------------
+
+interface MatchWinProbCardProps {
+  /** Proba de victoire pré-match de l'équipe du joueur (LUSR v2, 0..1). */
+  winProb: number | null
+}
+
+export function MatchWinProbCard({ winProb }: MatchWinProbCardProps) {
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: MatchViewManifestKey) => formatMessage(matchViewManifest, key, locale)
+  const hasData = winProb != null && Number.isFinite(winProb)
+  const pct = hasData ? Math.round(winProb * 100) : null
+
+  const qualitativeKey: MatchViewManifestKey =
+    pct == null
+      ? 'match_view.cards.no_win_prob_data'
+      : pct >= 55
+        ? 'match_view.cards.win_prob_favorite'
+        : pct <= 45
+          ? 'match_view.cards.win_prob_underdog'
+          : 'match_view.cards.win_prob_balanced'
+
+  const valueColor =
+    pct == null || (pct > 45 && pct < 55)
+      ? undefined
+      : pct >= 55
+        ? tokenCssVar('divergent-pos')
+        : tokenCssVar('divergent-neg')
+
+  return (
+    <div
+      className={`rounded-lg border px-4 py-3 ${
+        hasData ? 'border-border bg-card' : 'border-border/40 bg-card/50 opacity-50'
+      }`}
+    >
+      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+        {t('match_view.cards.expected_result')}
+      </p>
+      <div className="flex items-baseline gap-2">
+        <span
+          className="text-2xl font-bold text-foreground leading-none"
+          style={valueColor ? { color: valueColor } : undefined}
+        >
+          {pct != null ? `${pct} %` : '—'}
+        </span>
+        {pct != null && (
+          <span className="text-2xs text-muted-foreground">{t('match_view.cards.win_prob_label')}</span>
+        )}
+      </div>
+      <p className="text-2xs text-muted-foreground mt-0.5">{t(qualitativeKey)}</p>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// C7 — MatchSummaryCardsSection (grille cartes onglet Résumé)
 // ---------------------------------------------------------------------------
 
 interface MatchSummaryCardsSectionProps {
@@ -279,7 +335,7 @@ interface MatchSummaryCardsSectionProps {
 }
 
 export function MatchSummaryCardsSection({ kpis, expectedStats }: MatchSummaryCardsSectionProps) {
-  const { expected_kills, expected_deaths, expected_assists } = expectedStats
+  const { expected_kills, expected_deaths, expected_assists, expected_win_prob } = expectedStats
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: MatchViewManifestKey) => formatMessage(matchViewManifest, key, locale)
 
@@ -293,7 +349,7 @@ export function MatchSummaryCardsSection({ kpis, expectedStats }: MatchSummaryCa
     kpis.assists != null && expected_assists != null ? kpis.assists - expected_assists : null
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       <MatchVsStatCard
         label={t('match_view.cards.mmr_team_vs_enemy')}
         primary={kpis.team_mmr ?? null}
@@ -334,6 +390,7 @@ export function MatchSummaryCardsSection({ kpis, expectedStats }: MatchSummaryCa
         lowerIsBetter={false}
         precision={0}
       />
+      <MatchWinProbCard winProb={expected_win_prob ?? null} />
       <MatchVsStatCard
         label={t('match_view.cards.avg_life')}
         primary={kpis.average_life ?? null}

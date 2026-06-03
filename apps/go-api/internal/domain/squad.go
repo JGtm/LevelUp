@@ -69,6 +69,9 @@ type SquadMatchRow struct {
 	EnemyTeamScore *int
 	MapID          string
 	PlaylistID     string
+	// ExpectedWinProb : proba de victoire pré-match ∈ [0,1] (LUSR v2), chargée
+	// depuis player.match_skill_rank. Nil si pré-v2 / non disponible.
+	ExpectedWinProb *float64
 }
 
 // TeammateMatchRow est une ligne brute chargée depuis Q31 (stats d'un coéquipier).

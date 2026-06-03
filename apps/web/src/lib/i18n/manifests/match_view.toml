@@ -318,6 +318,30 @@ en = "Assists vs expected"
 fr = "Vie moy."
 en = "Avg. life"
 
+[match_view.cards.expected_result]
+fr = "Résultat attendu"
+en = "Expected result"
+
+[match_view.cards.win_prob_favorite]
+fr = "Victoire probable"
+en = "Win likely"
+
+[match_view.cards.win_prob_balanced]
+fr = "Issue serrée"
+en = "Toss-up"
+
+[match_view.cards.win_prob_underdog]
+fr = "Défaite probable"
+en = "Loss likely"
+
+[match_view.cards.win_prob_label]
+fr = "victoire"
+en = "win"
+
+[match_view.cards.no_win_prob_data]
+fr = "pas d'estimation"
+en = "no estimate"
+
 [match_view.cards.label_ally]
 fr = "allié"
 en = "ally"

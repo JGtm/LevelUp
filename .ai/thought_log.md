@@ -1,3 +1,103 @@
+## [2026-06-03] i18n FR : « dmg » → « dégâts » (rendement/résistance) — Complété
+
+**Statut** : Complété. `tsc` + lint (0 erreur) + vitest explorer/synthesis verts. Frontend only.
+
+« dmg » n'est pas français. Remplacé en FR uniquement (EN garde « dmg/kill »/« dmg/death », shorthand gaming EN admis) :
+- Explorer : `explorer.toml` `yield_dmg_per_kill/death` FR → « {n} dégâts/frag » / « {n} dégâts/mort » (manifest régénéré).
+- Synthesis : libellés hardcodés `CombatProfileInlineRow` (`SynthesisPage.tsx`) → « dégâts/frag » / « dégâts/mort ».
+- `combat-yield-bar.tsx` tooltip → idem (+ corrige l'incohérence « dmg/kill » EN dans un tooltip FR).
+
+---
+
+## [2026-06-03] Synthesis « Meilleures stats » exclut DNF+PvE + label axe Intensité Timeseries (#N map) + investigation expected_win_prob pré-v2 — Complété
+
+**Statut** : Complété (2 fix backend + 1 réponse). Branche `feature/skill-progression-magnitude-scale`. `go build` + `go vet` OK, tests service verts (+ nouveau `TestComputeSynthesisBestRefs_ExcludesDNFAndPvE`). Aucun changement frontend.
+
+1. **Synthesis « Meilleures stats » — exclusion DNF + PvE/Firefight** : `computeSynthesisBestRefs` (`synthesis_service_canonical.go`) skippe désormais `r.Self.Outcome == canonical.OutcomeDNF` et `r.Summary.IsPvE` au début de la boucle → les records (kills/KDA/perf/acc/dmg/spree/HS/score) ne retiennent que les matchs PvP TERMINÉS. Les totaux de l'overview (qui comptent légitimement DNF) restent inchangés. Test ajouté.
+
+2. **Axe Y du heatmap « Intensité » (Timeseries Progression)** : `buildIntensityRows` (`timeseries_service_events.go`) produisait `label = "map — date"`. Remplacé par `"#N nom_de_map"` (N = position 1-based dans `matches`, ordre DESC = #1 plus récent, identique à `buildMatchCategories` des autres charts). Date retirée. Frontend inchangé (rend `row.label`).
+
+3. **Réponse « pourquoi pas d'expected_win pré-LUSR-v2 ? »** : `expected_win_prob` n'est écrit dans `match_skill_rank` (la table lue par l'UI) QUE par le chemin CANONICAL (`writeCanonicalLUSRRow`, gate `c.canonical && ownerNew != nil` → env `LEVELUP_LUSR_CANONICAL=LUSR_V2`). Les backfills/replays lancés jusqu'ici (`cmd/lusr_v2_replay`, ou dry-run) tournent en SHADOW-ONLY (`playerDB=nil`) : ils peuplent `player_skill_state_v2` mais N'écrivent PAS `match_skill_rank` (documenté dans `.ai/V7/LUSR v2/LUSR_V2_HANDOFF.md`). Le seul outil qui persiste la proba sur tout l'historique est `cmd/lusr_v2_canonical_backfill --commit` (pose l'env canonical + reset `player_skill_state_v2` + reprocess complet). De plus, certains matchs n'auront JAMAIS de proba même après backfill : PvE/Firefight, FFA / non-2-équipes, rosters incomplets, déséquilibre > 1 joueur (skip `buildTwoTeamRosters` / `skippedNonTwoTeam` / `skippedImbalance`) — la proba pré-match exige 2 rosters comparables. **Remède proposé au user (non exécuté — backfill DB lourd, à sa main)** : `go run -tags cgo ./cmd/lusr_v2_canonical_backfill --commit` depuis apps/go-api.
+
+**Prochaine étape** : rebuild + restart serveur Go (fix #1/#2) ; décision user sur le lancement du backfill canonical (#3).
+
+**MAJ exécution (2026-06-03, autorisé par le user)** : kill `air`+`server.exe`, `go build ./...` OK, backfill canonical lancé `--commit` pour tous les joueurs. Piège watermark découvert : le run combiné (truncate `player_skill_state_v2` UNE fois puis boucle joueurs) fait que les coéquipiers de Madina (traitée 1re) sont « already_seen » → écriture canonique partielle (Chocoboflor 6, JGtm 205, XxDaemon 0). L'écriture `expected_win_prob` ne se fait que pour le OWNER. Remède appliqué : **re-run par joueur** (chaque invocation re-truncate l'état → reprocess complet en owner) → couverture pleine : Madina 730, Chocoboflor 337, JGtm 623, XxDaemon 22. Skips restants = `skipped_imbalance` (>1 joueur d'écart) + `skipped_non_two_team` (PvE/FFA/rosters incomplets) = matchs jamais éligibles. `tmp/server.exe` rebuildé. Restart serveur Go laissé au user (env/config de lancement maîtrisée côté Makefile, non devinée). À retenir : `cmd/lusr_v2_canonical_backfill` doit être lancé PAR JOUEUR pour une couverture complète (le mode multi-joueurs sous-couvre les coéquipiers).
+
+---
+
+## [2026-06-03] Colonne « Prob. vic. » (Timeseries + Synergies) + table Timeseries standalone + relayout combat profile Synthesis — Complété
+
+**Statut** : Complété. Branche `feature/skill-progression-magnitude-scale`. `go build` + `go vet ./internal/...` OK, tests service + intégration duckdb (MatchHistory/SkillRank/Squad) verts ; `tsc` OK, eslint 0 erreur (59 warnings, +1 = légende hardcodée cohérente avec le composant), vitest 410 verts.
+
+Trois retours UI :
+
+1. **Synthesis — profil de combat relayout** : légende « Rendement / Résistance » centrée AU-DESSUS de la barre composite (au lieu des labels aux extrémités), et pourcentages OC/DR déplacés CÔTÉ BARRE (inner), les dmg/frag·dmg/mort passent à l'extérieur. Ordre : `dmg/frag · OC% · [barre] · DR% · dmg/mort`. `CombatProfileInlineRow` (`SynthesisPage.tsx`), flex-col.
+
+2. **Timeseries onglet Progression — table « Historique des matchs » sortie de son bloc** : suppression du wrapper `<ChartFrame>` (plus de carte ni titre) → `<ExplorerMatchesTable>` standalone. Ajout colonne « Prob. vic. » après « Résultat » via le mécanisme `extraColumns` + `extraColumnsAfterId="outcome_code"` (injection locale, PAS sur la page Explorer). Cellule : `formatWinProb` (lib/winProbCategory) + couleur outcome-win/loss au seuil 50%. Clé i18n `timeseries.progression.col_win_prob`.
+
+3. **Synergies — colonne « Prob. vic. » après « Taux hist. »** dans `SquadSynergyHistoryTable` (même format % + couleur que win_rate_hist). Label i18n `winProb` (squad/i18n.ts FR+EN).
+
+**Backend — exposition `expected_win_prob` sur 2 chemins** (la valeur vit dans `match_skill_rank`, LUSR v2, posée sur les rows LUSR) :
+- **Chemin match-history (Timeseries/Explorer)** : `MatchHistoryRawRow.SkillExpectedWinProb` + colonne `expected_win_prob` dans `Q5PlayerSkillRankHistoryTpl` ; scan dans `mergeHistorySkillRanks` avec **préservation de la valeur non-nil** entre versions append-only (une row CSR nil ne doit pas écraser la valeur d'une row LUSR) ; mappé `MatchHistoryRow.ExpectedWinProb` (enrichRow) puis `ExplorerMatchesRow.ExpectedWinProb` (BuildExplorerRowFromMatchHistory). Sérialisé en JSON `expected_win_prob` → frontend `ExplorerMatchRow.expected_win_prob` (champ déjà présent).
+- **Chemin squad (Synergies)** : `SquadMatchRow.ExpectedWinProb` + nouvelle lecture `loadExpectedWinProbs` (query `QSquadExpectedWinProbTpl` = `MAX(expected_win_prob) GROUP BY match_id` sur `player.match_skill_rank`, best-effort) mergée dans `LoadSquadMatches` (à côté du merge enrichments existant) ; mappé `SquadMatchHistoryRow.ExpectedWinProb` (buildSquadMatchHistory). Frontend type `SquadMatchHistoryRow.expected_win_prob`.
+
+NB : `_latest` priorise CSR>LUSR donc on lit la table brute `match_skill_rank` (MAX / préservation non-nil) pour récupérer la proba même sur les matchs ranked (sinon NULL côté row CSR).
+
+**Prochaine étape** : rebuild + restart serveur Go (nouvelles colonnes JSON), vérif visuelle : colonne « Prob. vic. » sur Timeseries (table standalone) + Synergies, et relayout du profil de combat Synthesis.
+
+---
+
+## [2026-06-03] Synthesis : dmg/frag + dmg/mort sur le profil de combat + donut frags partagé (color-blind) — Complété
+
+**Statut** : Complété. Branche `feature/skill-progression-magnitude-scale`. `go build ./...` + `go vet` OK, tests service (Synthesis/CombatProfile) verts ; `tsc` + eslint (0 erreur, 58 warnings pré-existants) + vitest explorer/synthesis/charts 167 verts.
+
+Deux retours UI (suite des valeurs OC/DR ajoutées la veille) :
+
+1. **Profil de combat Synthesis — ajout dmg/frag + dmg/mort** (parité KPI card Explorer `YieldTile`). Agrégats `Σ damage_dealt / Σ kills` et `Σ damage_taken / Σ deaths` calculés dans `buildCombatProfileFromCanonical` (`synthesis_service_builders.go`) et exposés via `CombatProfileBlock.DmgPerKill` / `DmgPerDeath` (`domain/combat_profile.go`, pointeurs `omitempty` → nil pour les autres consommateurs Squad/SessionCompare). Type front `dmg_per_kill` / `dmg_per_death` (types.ts) ; affichés en petit muted (« XX dmg/frag », « YY dmg/mort ») de part et d'autre de la `CombatYieldBar` dans `CombatProfileInlineRow` (`SynthesisPage.tsx`).
+
+2. **Donut « Répartition des frags » Synthesis — remplacé par le donut partagé color-blind de l'Explorer**. L'ancien `SynthesisKillTypesDonut` était un donut ECharts avec tokens `chart-series-1..4` (2-5 = dégradé bleu/indigo séquentiel, NON color-blind friendly) et partitionnait headshots/grenade/mêlée/lourde (les headshots sont orthogonaux au type d'arme → ne somment pas au total).
+   - Extraction du donut SVG de l'Explorer (`KillTypesDonut` + `computeLeaders` + géométrie + `DonutSlice`) dans un composant partagé `components/charts/KillTypesDonut.tsx`. `ExplorerTargetSampleStats.tsx` refactorisé pour l'importer (suppression des copies locales).
+   - `SynthesisKillTypesDonut` réécrit : partition par TYPE D'ARME mutuellement exclusif (mêlée / arme lourde / grenade / autres = `total_kills − (mêlée+lourde+grenade)`), tokens DISTINCTS `chart-series-1/6/7/8` (distincts dans Okabe-Ito), labels via fieldMappings + clé i18n `synthesis.charts.kill_type_other` (« Autres »/« Other », manifest régénéré). Câblage `totalKills={overview.total_kills}` au call site (toutes les données locales dispo). Headshots retirés du donut (restent un KPI à part).
+
+**Prochaine étape** : vérif visuelle au runtime (rebuild + restart serveur Go pour `dmg_per_kill`/`dmg_per_death`) — dmg/frag + dmg/mort sur le profil de combat, et donut frags color-blind identique à l'Explorer.
+
+---
+
+## [2026-06-03] Synthesis valeurs OC/DR + Match View card « Résultat attendu » (proba de victoire) — Complété
+
+**Statut** : Complété. Branche `feature/skill-progression-magnitude-scale`. `go build ./...` + `go vet` OK, tests service + duckdb (intégration GetMatchSkillRank) verts ; `tsc` + eslint (0 erreur) + vitest match-view/synthesis/formatters 184 verts (dont 7 nouveaux combatYield).
+
+Deux retours UI :
+
+1. **Synthesis — valeurs OC/DR à côté des barres composites** : `CombatProfileInlineRow` (`SynthesisPage.tsx`) gardait les barres `CombatYieldBar` mais sans chiffres. Ajout des valeurs formatées comme la KPI card Explorer (`ExplorerTargetSampleStats.YieldTile`) : OC = `Math.round(oc×100)%`, DR = `(dr−1)×100` avec préfixe `+` / `∞` si <0. Couleurs `divergent-pos` (OC) / `divergent-neutral` (DR). Pour éviter une 4ᵉ copie inline de cette logique (déjà dans CombatYieldBar, OffDefComposite, YieldTile), création d'un helper partagé `lib/formatters/combatYield.ts` (`formatOffensiveConversion` / `formatDefensiveResistance`) exporté via le barrel + testé (table-driven).
+
+2. **Match View, onglet Général — card « Résultat attendu »** après « Assistances vs attendues » : affiche la proba de victoire pré-match de l'équipe du joueur (LUSR v2, ∈ [0,1]).
+   - Backend : `expected_win_prob` existait dans `match_skill_rank` mais n'était pas exposé par la Match View. Source réutilisée = `match_skill_rank_latest.expected_win_prob` (même lecture que le player-matches scan). Champ `ExpectedWinProb` ajouté à `SkillRankRaw` (domain) + colonne dans Q22a (`queries_match_detail.go`) + scan (`match_view_repo_neighbors_skill.go`) ; champ `ExpectedWinProb` ajouté à `MatchExpectedStats` (domain `match_view.go`) ; câblage dans `buildMatchViewFromData` (`match_view_data_loaders.go`) — `summary.ExpectedStats.ExpectedWinProb = d.skillRank.ExpectedWinProb` (zéro churn de signature). NB : la vue `_latest` priorise CSR>LUSR ; sur un match ranked la row CSR peut ne pas porter la proba (NULL) → card en dégradation « pas d'estimation », comme le reste de l'app.
+   - Frontend : champ `expected_win_prob` dans `MatchExpectedStats` (types.ts) ; nouveau composant `MatchWinProbCard` (`MatchStatCards.tsx`) — grand `%` + libellé qualitatif (favori >55 / serré / outsider <45, couleur divergent-pos|neg|neutre) ; grisé si pas de donnée (pattern `StatExpectedCard`). Inséré après la card assists ; grille passée de `sm:grid-cols-5` à `sm:grid-cols-3 lg:grid-cols-6` (6 cards). 6 clés i18n ajoutées au manifest `match_view.toml` (FR+EN) + régénération `generated/match_view.ts`.
+
+**Prochaine étape** : vérif visuelle au runtime (rebuild + restart serveur Go pour la nouvelle colonne exposée) — valeurs OC/DR sur Synthesis, card « Résultat attendu » sur un match LUSR v2.
+
+---
+
+## [2026-06-03] Face à Face — retrait « Arme favorite » + rang carrière joueur B (local) + alignement libellé CompareBar — Complété
+
+**Statut** : Complété. Branche `feature/skill-progression-magnitude-scale`. `go build ./...` + `go vet` OK, tests service/duckdb (Compare) verts ; `tsc` + eslint (0 erreur) + vitest compare 13/13.
+
+3 retours sur la page Face à Face (`apps/web/src/features/compare/`, ≠ session-compare) :
+
+1. **Retrait « Arme favorite »** (« retores » = « retires »/supprimer, confirmé). Suppression complète du chemin compare + nettoyage code mort :
+   - Front : bloc panneau dans `ComparePage.tsx` ; clés `favoriteWeapon`/`killsWith`/`noWeaponData` (`compare/i18n.ts`, interface + FR + EN) ; champ `favorite_weapon` + interface `WeaponHighlight` (`lib/api/types.ts` — front-only, Explorer utilise `ExplorerWeaponKill`).
+   - Back : champ `FavoriteWeapon` (`domain/compare.go`) ; appels `GetFavoriteWeapon` dans `loadPlayerA`/`enrichLocalPlayerB` (`compare_service.go`, param `xuidB` devenu inutile retiré) ; méthode interface `CompareRepository.GetFavoriteWeapon` + impl noop (`port/repository_data.go`) ; méthode `CompareRepo.GetFavoriteWeapon` + helper privé `lookupWeaponLabelCompare` (devenu orphelin) + import `strconv` (`platform/duckdb/compare_repo.go`) ; mock + 2 tests `TestCompareRepo_GetFavoriteWeapon[_NoData]`.
+   - **Gardé** : `domain.WeaponHighlight` (struct Go partagé avec Explorer `explorer.go` TopWeapons) ; le favorite weapon du Home (`HeroKPIs.FavoriteWeaponName`, indépendant).
+
+2. **Rang carrière joueur B = N/A** alors que l'Explorer le récupère. Cause : le fallback live (`FetchLiveIdentity`, même provider que l'Explorer) n'était appelé que dans la branche B **non-local** (`compare_service.go`). Un B **local** tirait son rang du seul `GetPlayerATHFor` → 0 si ATH sans rang → « N/A » (cas du screenshot : CSR « Platine IV » live OK, rang absent). Fix : `fillRemoteCareerRankLive` renommé `fillCareerRankLive` (idempotent, skip si >0) et appelé aussi dans la branche locale avant `careerRankTitle`. Wiring `WithLiveIdentity`/`WithRanks` déjà en place (`registry_pages.go`). Test renommé `TestFillCareerRankLive`. NB : si un B non-local reste N/A, c'est un échec runtime (auth/données), pas le câblage.
+
+3. **Libellé « Soldat II Diamant » trop éloigné de la barre** : `CompareBar` mettait la valeur dans une colonne `w-20` (80 px) fixe `items-end` sur un `<span>` sans contrainte → un libellé long débordait à gauche (les courts « Non classé »/« Platine IV » tenaient). Fix : colonnes `w-20` → `w-24` + spans `w-full text-right/left break-words` → le long s'enroule dans la colonne, bord aligné comme les courts. Logique gradient/winner inchangée ; classe `italic` du N/A conservée (tests verts).
+
+**Prochaine étape** : vérif visuelle au runtime (Face à Face avec adversaire local) — section arme favorite absente, rang carrière B affiché, libellés alignés.
+
+---
+
 ## [2026-06-03] Explorer cible — 4 retours : CSR non classé + donut frags + modes « Inconnu » + matchs/saison — Complété (3 fix) / Expliqué (1)
 
 **Statut** : Complété. Branche `feat/skill-progression-magnitude-scale`. go build ./... OK, vitest explorer 64/64.

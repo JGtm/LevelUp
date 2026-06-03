@@ -38,9 +38,6 @@ type NormalizedPlayerStats struct {
 	PerfATH float64 `json:"perf_ath"`
 	LusrATH float64 `json:"lusr_ath"`
 
-	// Phase 3 — arme favorite (nil pour joueur B remote).
-	FavoriteWeapon *WeaponHighlight `json:"favorite_weapon,omitempty"`
-
 	CareerRank int `json:"career_rank"`
 	// CareerRankLabel : titre localisé du rang carrière ("Général Platine VI"),
 	// résolu via le RankCatalog (même helper que le profil de combat). Vide si rang
@@ -88,7 +85,8 @@ type RemoteServiceRecord struct {
 	PlaylistAssetIDs []string `json:"playlist_asset_ids,omitempty"`
 }
 
-// WeaponHighlight représente l'arme favorite d'un joueur (la plus utilisée).
+// WeaponHighlight représente une arme mise en avant (top arme par kills),
+// utilisée notamment par le profil Explorer (top_weapons).
 type WeaponHighlight struct {
 	WeaponID int64  `json:"weapon_id"`
 	LabelFR  string `json:"label_fr"`

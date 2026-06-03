@@ -77,20 +77,22 @@ func buildIntensityRows(
 		return nil
 	}
 
-	// Index match_rows pour récupérer label (map_name + date).
+	// Index match_rows pour récupérer le label « #N nom de map » — même convention
+	// que les autres graphes Progression (buildMatchCategories : numéro de match +
+	// carte). N = position dans `matches` (DESC, #1 = plus récent), aligné sur la
+	// numérotation des autres charts. La date est retirée (portée par l'axe X ailleurs).
 	type matchMeta struct {
 		label    string
 		startUTC time.Time
 	}
 	metaByID := make(map[string]matchMeta, len(matches))
-	for _, m := range matches {
+	for i, m := range matches {
 		mapName := m.MapNameFR
 		if mapName == "" {
 			mapName = m.MapName
 		}
-		date := m.StartTime.Format("02/01")
 		metaByID[m.MatchID] = matchMeta{
-			label:    fmt.Sprintf("%s — %s", mapName, date),
+			label:    fmt.Sprintf("#%d %s", i+1, mapName),
 			startUTC: m.StartTime,
 		}
 	}

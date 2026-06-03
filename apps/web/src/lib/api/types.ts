@@ -2010,6 +2010,8 @@ export interface SquadMatchHistoryRow {
   win_rate_hist?: number
   /** Nombre total de matchs du joueur sur cette carte (dénominateur). */
   win_rate_hist_total?: number
+  /** Proba de victoire pré-match de l'équipe (LUSR v2, 0..1). Colonne « Prob. vic. ». */
+  expected_win_prob?: number | null
   session_label?: string | null
 }
 
@@ -2146,6 +2148,9 @@ export interface CombatProfileBlock {
   avg_dr: number
   match_count: number
   avg_residual_brut?: number | null
+  /** Dégâts moyens par frag / par mort (agrégés). Nil si dénominateur nul. */
+  dmg_per_kill?: number | null
+  dmg_per_death?: number | null
   style_offensive?: CombatStyleOffensive | null
   style_defensive?: CombatStyleDefensive | null
   style_activity?: CombatStyleActivity | null
@@ -2502,6 +2507,8 @@ export interface MatchExpectedStats {
   expected_kills: number | null
   expected_deaths: number | null
   expected_assists: number | null
+  /** Proba de victoire pré-match de l'équipe du joueur (LUSR v2, 0..1). Absente pré-v2. */
+  expected_win_prob?: number | null
   /** V7 — moyennes historiques sur le mode */
   has_hist_avg?: boolean
   hist_avg_kills?: number | null
@@ -3253,13 +3260,6 @@ export interface SessionPageResponse {
 
 // ─── Sprint 54-C : Compare joueur vs joueur ───────────────────────────────────
 
-export interface WeaponHighlight {
-  weapon_id: number
-  label_fr: string
-  label_en: string
-  kills: number
-}
-
 export interface NormalizedPlayerStats {
   xuid: string
   gamertag: string
@@ -3295,8 +3295,6 @@ export interface NormalizedPlayerStats {
   highest_csr_all_time_label?: string
   /** Temps de jeu cumulé lifetime (s) depuis le service record Waypoint. */
   time_played_seconds?: number
-  // Phase 3 — arme favorite (null pour joueur B remote)
-  favorite_weapon?: WeaponHighlight | null
   extended?: Record<string, unknown>
 }
 

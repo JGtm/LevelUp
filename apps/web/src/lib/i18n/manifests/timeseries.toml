@@ -466,6 +466,10 @@ en = "kills"
 fr = "Historique des matchs"
 en = "Match history"
 
+[timeseries.progression.col_win_prob]
+fr = "Prob. vic."
+en = "Win prob."
+
 # ─── Onglet Distributions — labels inline (migration H-D4) ───────────────────
 
 [timeseries.distributions.life_title]

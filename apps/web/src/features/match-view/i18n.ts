@@ -249,7 +249,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatBullyTitle: 'Souffre-douleur',
     combatNoNemesis: '—',
     combatKilledMeFmt: (n) => `T'a martyrisé ${n} fois`,
-    combatIKilledFmt: (n) => `Tu l'as victimisé ${n} fois`,
+    combatIKilledFmt: (n) => `Victimisé ${n} fois`,
     combatNoData: 'Pas de données disponibles',
     fragDiffNoData: 'Aucun événement de combat enregistré pour ce match.',
     antagonistNoData: 'Aucune donnée de duels disponible pour ce match.',

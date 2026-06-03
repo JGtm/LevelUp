@@ -457,43 +457,6 @@ export function ComparePage() {
               />
             </div>
           )}
-
-          {/* Arme favorite */}
-          {(leftData.player_a.favorite_weapon ?? leftData.player_b.favorite_weapon) && (
-            <div className="rounded-md border border-border/50 bg-muted/30 px-4 py-3 space-y-2">
-              <p className="text-3xs text-center text-muted-foreground">{text.favoriteWeapon}</p>
-              <div className="flex items-start justify-between gap-4 text-sm">
-                <div className="flex-1 text-left">
-                  {leftData.player_a.favorite_weapon ? (
-                    <>
-                      <span className="font-medium" style={{ color: tokenCssVar('compare-a' as SemanticToken) }}>
-                        {locale === 'fr' ? leftData.player_a.favorite_weapon.label_fr : leftData.player_a.favorite_weapon.label_en}
-                      </span>
-                      <span className="text-muted-foreground text-xs ml-1">
-                        · {text.killsWith(leftData.player_a.favorite_weapon.kills)}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground">{text.noWeaponData}</span>
-                  )}
-                </div>
-                <div className="flex-1 text-right">
-                  {leftData.player_b.favorite_weapon ? (
-                    <>
-                      <span className="text-muted-foreground text-xs mr-1">
-                        {text.killsWith(leftData.player_b.favorite_weapon.kills)} ·
-                      </span>
-                      <span className="font-medium" style={{ color: tokenCssVar('compare-b' as SemanticToken) }}>
-                        {locale === 'fr' ? leftData.player_b.favorite_weapon.label_fr : leftData.player_b.favorite_weapon.label_en}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground">{text.noWeaponData}</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>

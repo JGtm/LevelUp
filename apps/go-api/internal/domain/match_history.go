@@ -42,6 +42,9 @@ type MatchHistoryRawRow struct {
 	SkillTierFR        *string // e.g. "Diamant" (affichage FR)
 	SkillRatingType    *string // "LUSR" | "CSR"
 	SkillTierLabel     *string // e.g. "Diamant IV" (label formaté DB)
+	// SkillExpectedWinProb : proba de victoire pré-match ∈ [0,1] (LUSR v2), lue
+	// depuis match_skill_rank.expected_win_prob. Nil si pré-v2 / non disponible.
+	SkillExpectedWinProb *float64
 	// PlacementDone/PlacementTotal : progression dans la phase de placement.
 	// CSR : parsé depuis SkillTierLabel "Placement (N restants)" + threshold via csr_placement_thresholds.
 	// LUSR : 10 plus anciens matchs sans LUSR par chaîne (arena_slayer/arena_objectif/btb/chaos).
@@ -95,6 +98,9 @@ type MatchHistoryRow struct {
 	Assists                  int       `json:"assists,omitempty"`
 	SkillTierLabel           *string   `json:"skill_tier_label,omitempty"`  // "Diamant IV" ou nil
 	SkillRatingType          *string   `json:"skill_rating_type,omitempty"` // "CSR" | "LUSR" | nil
+	// ExpectedWinProb : proba de victoire pré-match de l'équipe ∈ [0,1] (LUSR v2).
+	// Alimente la colonne « Prob. vic. ». Nil si pré-v2 / non disponible.
+	ExpectedWinProb *float64 `json:"expected_win_prob,omitempty"`
 	// PlacementDone/PlacementTotal : phase de placement (X/Y).
 	// CSR : remaining parsé de "Placement (N restants)" + threshold csr_placement_thresholds.
 	// LUSR : rang chronologique parmi les 10 plus anciens matchs sans LUSR de la chaîne.

@@ -8,7 +8,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"strconv"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -174,79 +173,6 @@ func (r *CompareRepo) GetPlayerATHFor(ctx context.Context, gamertag, titleSlug s
 		PerfATH:    perfATH,
 		LusrATH:    lusrATH,
 	}, nil
-}
-
-// GetFavoriteWeapon retourne l'arme avec le plus de kills depuis shared.v_weapon_kills.
-// Lecture depuis pdb.Player (shared attaché) + labels depuis pdb.Metadata.
-// Retourne nil si aucune donnée disponible — best-effort, jamais d'erreur fatale.
-func (r *CompareRepo) GetFavoriteWeapon(ctx context.Context, xuid string) (*domain.WeaponHighlight, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	// shared-only via SharedReader.
-	const q = `
-		SELECT wk.effective_weapon_id AS weapon_id, COUNT(*) AS kills
-		FROM v_weapon_kills wk
-		WHERE wk.xuid = ?
-		  AND wk.effective_weapon_id NOT IN (0, 1, 2)
-		GROUP BY wk.effective_weapon_id
-		ORDER BY kills DESC
-		LIMIT 1`
-
-	db, release, err := r.pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		slog.DebugContext(ctx, "CompareRepo.GetFavoriteWeapon: shared reader indisponible (best-effort)", "xuid", xuid, "err", err)
-		return nil, nil //nolint:nilerr
-	}
-	defer release()
-
-	var wid UBigint
-	var kills int
-	err = db.QueryRowContext(ctx, q, xuid).Scan(&wid, &kills)
-	if err != nil {
-		// Inclut ErrNoRows et erreur de table manquante — best-effort.
-		if err != sql.ErrNoRows {
-			slog.DebugContext(ctx, "CompareRepo.GetFavoriteWeapon: aucune donnée arme (best-effort)", "xuid", xuid, "err", err)
-		}
-		return nil, nil //nolint:nilerr
-	}
-
-	idStr := strconv.FormatUint(uint64(wid), 10) //nolint:gosec
-	wh := &domain.WeaponHighlight{
-		WeaponID: wid.Int64(),
-		Kills:    kills,
-		LabelFR:  idStr,
-		LabelEN:  idStr,
-	}
-
-	if r.pdb.Metadata != nil {
-		wh.LabelFR, wh.LabelEN = r.lookupWeaponLabelCompare(ctx, wid.Int64())
-	}
-	return wh, nil
-}
-
-// lookupWeaponLabelCompare résout les labels EN/FR depuis metadata.weapon_labels.
-// Injecte l'ID comme literal décimal pour éviter les problèmes de cast UBIGINT.
-func (r *CompareRepo) lookupWeaponLabelCompare(ctx context.Context, weaponID int64) (labelFR, labelEN string) {
-	idStr := strconv.FormatUint(uint64(weaponID), 10) //nolint:gosec
-	labelFR = idStr
-	labelEN = idStr
-
-	q := fmt.Sprintf( //nolint:gosec
-		`SELECT name_fr, name_en FROM weapon_labels WHERE weapon_id = %s LIMIT 1`, idStr)
-	var nameFR, nameEN sql.NullString
-	if err := r.pdb.Metadata.QueryRow(ctx, q).Scan(&nameFR, &nameEN); err != nil {
-		return
-	}
-	if nameFR.Valid && nameFR.String != "" {
-		labelFR = nameFR.String
-	} else if nameEN.Valid && nameEN.String != "" {
-		labelFR = nameEN.String
-	}
-	if nameEN.Valid && nameEN.String != "" {
-		labelEN = nameEN.String
-	}
-	return
 }
 
 // GetEncounterStats retourne les stats de rencontres historiques entre xuidA et xuidB.

@@ -351,6 +351,9 @@ type ExplorerMatchesRow struct {
 	// RatingType : "CSR" (classé officiel Microsoft) ou "LUSR" (interne LevelUp).
 	// Nil pour les matchs sans skill rank (PvE, Custom). Source : match_skill_rank.rating_type.
 	RatingType *string `json:"rating_type,omitempty"`
+	// ExpectedWinProb : proba de victoire pré-match de l'équipe ∈ [0,1] (LUSR v2).
+	// Alimente la colonne « Prob. vic. ». Nil si pré-v2 / non disponible.
+	ExpectedWinProb *float64 `json:"expected_win_prob,omitempty"`
 	// PlacementDone/PlacementTotal : progression placement (X/Y).
 	// Si présents, l'UI affiche "X/Y" dans la colonne Rang à la place du SkillTierLabel.
 	// CSR : remaining parsé depuis "Placement (N restants)" + threshold csr_placement_thresholds.

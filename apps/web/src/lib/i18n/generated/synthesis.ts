@@ -2,6 +2,7 @@
 // Source : apps/web/src/lib/i18n/manifests/synthesis.toml
 
 export const synthesisManifest = {
+  "synthesis.charts.kill_type_other": { fr: "Autres", en: "Other" },
   "synthesis.charts.kill_types_title": { fr: "Répartition des frags", en: "Kill type distribution" },
   "synthesis.charts.top_vs_total_per_week": { fr: "Matchs Top vs Total par semaine", en: "Top vs Total matches per week" },
   "synthesis.charts.weapon_kills_title": { fr: "Frags par arme", en: "Kills by weapon" },

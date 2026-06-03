@@ -212,28 +212,28 @@ func TestBuildMetrics_CareerRankLiveRemoteB(t *testing.T) {
 	}
 }
 
-// TestFillRemoteCareerRankLive couvre le helper qui complète le rang carrière d'un
-// B non-local via le fetch live identity.
-func TestFillRemoteCareerRankLive(t *testing.T) {
+// TestFillCareerRankLive couvre le helper qui complète le rang carrière d'un
+// joueur B (local ou non-local) via le fetch live identity.
+func TestFillCareerRankLive(t *testing.T) {
 	svc := (&CompareService{}).WithLiveIdentity(&mockLiveIdentity{identity: &domain.HomeSpartanIdentityRow{RankNumber: 152}})
 	remote := &domain.NormalizedPlayerStats{}
-	svc.fillRemoteCareerRankLive(context.Background(), remote, "xuid-b")
+	svc.fillCareerRankLive(context.Background(), remote, "xuid-b")
 	if remote.CareerRank != 152 {
 		t.Errorf("CareerRank = %d, want 152 (live)", remote.CareerRank)
 	}
 
-	// Rang déjà présent (ex. local) → non écrasé, pas de fetch.
+	// Rang déjà présent (ex. ATH local) → non écrasé, pas de fetch.
 	id := &mockLiveIdentity{identity: &domain.HomeSpartanIdentityRow{RankNumber: 1}}
 	svc2 := (&CompareService{}).WithLiveIdentity(id)
 	remote2 := &domain.NormalizedPlayerStats{CareerRank: 99}
-	svc2.fillRemoteCareerRankLive(context.Background(), remote2, "xuid-b")
+	svc2.fillCareerRankLive(context.Background(), remote2, "xuid-b")
 	if remote2.CareerRank != 99 || id.called {
 		t.Errorf("rang existant ne doit pas être écrasé/refetché (rank=%d, called=%v)", remote2.CareerRank, id.called)
 	}
 
 	// Pas de provider → no-op.
 	r3 := &domain.NormalizedPlayerStats{}
-	(&CompareService{}).fillRemoteCareerRankLive(context.Background(), r3, "x")
+	(&CompareService{}).fillCareerRankLive(context.Background(), r3, "x")
 	if r3.CareerRank != 0 {
 		t.Errorf("sans provider, rien ne doit être écrit, got %d", r3.CareerRank)
 	}
@@ -512,10 +512,6 @@ func (m *mockCompareRepoAB) GetPlayerATH(_ context.Context) (*domain.PlayerATH, 
 
 func (m *mockCompareRepoAB) GetPlayerATHFor(_ context.Context, _, _ string) (*domain.PlayerATH, error) {
 	return &domain.PlayerATH{}, nil
-}
-
-func (m *mockCompareRepoAB) GetFavoriteWeapon(_ context.Context, _ string) (*domain.WeaponHighlight, error) {
-	return nil, nil
 }
 
 func (m *mockCompareRepoAB) GetEncounterStats(_ context.Context, _, _ string) (*domain.CompareEncounterStats, error) {

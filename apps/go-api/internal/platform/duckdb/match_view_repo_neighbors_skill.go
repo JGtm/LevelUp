@@ -118,6 +118,7 @@ func (r *MatchViewRepo) GetMatchSkillRank(ctx context.Context, matchID string) (
 		&row.PlaylistGroup,
 		&row.Tier,
 		&row.SubTier,
+		&row.ExpectedWinProb,
 	)
 	if err != nil {
 		// Absent pour les matchs non-ranked ou sans donnée skill → nil sans erreur

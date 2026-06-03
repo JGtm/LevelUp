@@ -64,6 +64,7 @@ export const timeseriesManifest = {
   "timeseries.intensity.score_per_min_series_label": { fr: "Score/min", en: "Score/min" },
   "timeseries.intensity.score_per_min_title": { fr: "Score par minute", en: "Score per minute" },
   "timeseries.progression.avg": { fr: "Moy.", en: "Avg" },
+  "timeseries.progression.col_win_prob": { fr: "Prob. vic.", en: "Win prob." },
   "timeseries.progression.efficiency_title": { fr: "Rendement & Résistance", en: "Output & resistance" },
   "timeseries.progression.first_death": { fr: "1ère mort", en: "1st death" },
   "timeseries.progression.first_event_title": { fr: "Temps du premier frag / première mort", en: "First kill / first death timing" },

@@ -20,6 +20,7 @@ import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
 import { SynthesisHeatmapChart } from './SynthesisHeatmapChart'
 import { SynthesisBipolaireChart } from './SynthesisBipolaireChart'
 import { CombatYieldBar } from '@/components/ui/combat-yield-bar'
+import { formatOffensiveConversion, formatDefensiveResistance } from '@/lib/formatters'
 import { Badge } from '@/components/ui/badge'
 import { PeriodePill, SaisonPill, DEFAULT_PERIOD } from '@/components/shell/FilterOmnibar'
 import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
@@ -114,13 +115,30 @@ function CombatProfileInlineRow({ combatProfile }: { combatProfile: CombatProfil
           )}
         </>
       )}
-      <div className="flex items-center gap-2 ml-auto">
-        <span className="text-xs text-muted-foreground">Rendement</span>
-        <CombatYieldBar
-          offensiveConversion={combatProfile.avg_oc}
-          defensiveResistance={combatProfile.avg_dr}
-        />
-        <span className="text-xs text-muted-foreground">Résistance</span>
+      <div className="flex flex-col items-center gap-0.5 ml-auto">
+        <span className="text-xs text-muted-foreground">Rendement / Résistance</span>
+        <div className="flex items-center gap-2">
+          {combatProfile.dmg_per_kill != null && (
+            <span className="text-2xs text-muted-foreground tabular-nums">
+              {Math.round(combatProfile.dmg_per_kill)} dégâts/frag
+            </span>
+          )}
+          <span className="text-sm font-semibold tabular-nums" style={{ color: tokenCssVar('divergent-pos') }}>
+            {formatOffensiveConversion(combatProfile.avg_oc)}
+          </span>
+          <CombatYieldBar
+            offensiveConversion={combatProfile.avg_oc}
+            defensiveResistance={combatProfile.avg_dr}
+          />
+          <span className="text-sm font-semibold tabular-nums" style={{ color: tokenCssVar('divergent-neutral') }}>
+            {formatDefensiveResistance(combatProfile.avg_dr)}
+          </span>
+          {combatProfile.dmg_per_death != null && (
+            <span className="text-2xs text-muted-foreground tabular-nums">
+              {Math.round(combatProfile.dmg_per_death)} dégâts/mort
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -290,7 +308,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, com
               <div className="flex gap-4 items-stretch">
 
                 <div className="flex-1 min-w-0">
-                  <SynthesisKillTypesDonut stats={detailedStats} height={260} />
+                  <SynthesisKillTypesDonut stats={detailedStats} totalKills={overview.total_kills} />
                 </div>
                 <div className="flex flex-col gap-3 w-[22rem] shrink-0">
 
