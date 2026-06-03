@@ -42,10 +42,20 @@ type NormalizedPlayerStats struct {
 	FavoriteWeapon *WeaponHighlight `json:"favorite_weapon,omitempty"`
 
 	CareerRank int `json:"career_rank"`
+	// CareerRankLabel : titre localisé du rang carrière ("Général Platine VI"),
+	// résolu via le RankCatalog (même helper que le profil de combat). Vide si rang
+	// inconnu (non-local sans rang récupéré).
+	CareerRankLabel string `json:"career_rank_label,omitempty"`
 	// HighestCSR : meilleur CSR courant (max sur les playlists ranked) de la saison
 	// en cours, récupéré en live (même provider que le profil de combat). 0 si non
 	// classé / indisponible. Comparable A vs B (les deux côtés via le même endpoint).
 	HighestCSR float64 `json:"highest_csr"`
+	// HighestCSRLabel : libellé tier du meilleur CSR courant ("Platine IV"). Vide si non classé.
+	HighestCSRLabel string `json:"highest_csr_label,omitempty"`
+	// HighestCSRAllTime : meilleur CSR de tous les temps (max all_time sur les playlists). 0 si aucun.
+	HighestCSRAllTime float64 `json:"highest_csr_all_time"`
+	// HighestCSRAllTimeLabel : libellé tier du meilleur CSR all-time ("Onyx", "Diamant II"). Vide si aucun.
+	HighestCSRAllTimeLabel string `json:"highest_csr_all_time_label,omitempty"`
 	// TimePlayedSeconds : temps de jeu cumulé (lifetime) issu du service record
 	// Waypoint (champ TimePlayed ISO-8601). 0 si indisponible.
 	TimePlayedSeconds int64          `json:"time_played_seconds,omitempty"`
@@ -124,6 +134,11 @@ type CompareMetricRow struct {
 	Winner          string  `json:"winner"`                  // "a" | "b" | "tie"
 	LessIsBetter    bool    `json:"less_is_better"`          // true = valeur basse meilleure (deaths_per_game, rendement, damage_taken_per_game)
 	SampleSizeB     int     `json:"sample_size_b,omitempty"` // nb matchs B si joueur local croisé
+	// DisplayA/DisplayB : libellé d'affichage prêt-à-rendre quand la valeur brute
+	// n'est pas parlante (rang carrière → titre "Général Platine VI", CSR → "Or III").
+	// Vide → le front formate ValueA/ValueB. La barre/winner restent sur les valeurs.
+	DisplayA string `json:"display_a,omitempty"`
+	DisplayB string `json:"display_b,omitempty"`
 }
 
 // CrossMatchSample regroupe les métriques locale-only calculées pour un joueur
