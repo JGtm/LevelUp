@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useSoloFilterStore as useGlobalFilterStore } from '@/stores/soloFilterStore'
 import { DEFAULT_GAP_MINUTES, DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
+import { isoDate } from '@/components/shell/_filter_pills/_hooks'
 import type { FilterContextResolved } from '@/lib/api/types'
 
 describe('GlobalFilterStore', () => {
@@ -151,22 +152,22 @@ describe('GlobalFilterStore', () => {
     expect(ctx.sessions!.picked_sessions).toEqual([])
   })
 
-  it('autoSnapToLatestSession bascule sur la session passée', () => {
-    useGlobalFilterStore.getState().autoSnapToLatestSession('latest-sess-id', true)
+  it('autoSnapToLatestSession bascule sur la session passée (écrit le label, mémorise l’id)', () => {
+    useGlobalFilterStore.getState().autoSnapToLatestSession({ session_id: 'latest-sess-id', label: '06/04 (5)' }, true)
     const state = useGlobalFilterStore.getState()
     expect(state.filterContext.filter_mode).toBe('sessions')
-    expect(state.filterContext.sessions!.picked_sessions).toEqual(['latest-sess-id'])
+    expect(state.filterContext.sessions!.picked_sessions).toEqual(['06/04 (5)'])
     expect(state.lastKnownLatestSessionId).toBe('latest-sess-id')
     expect(state.isAutoSnappingToLatest).toBe(true)
   })
 
   it('autoSnapToLatestSession avec triggeredBySync=false ne marque pas auto-snap', () => {
-    useGlobalFilterStore.getState().autoSnapToLatestSession('sess-id', false)
+    useGlobalFilterStore.getState().autoSnapToLatestSession({ session_id: 'sess-id', label: 'L' }, false)
     expect(useGlobalFilterStore.getState().isAutoSnappingToLatest).toBe(false)
   })
 
   it('setSessions manuel reset isAutoSnappingToLatest', () => {
-    useGlobalFilterStore.getState().autoSnapToLatestSession('sess-id', true)
+    useGlobalFilterStore.getState().autoSnapToLatestSession({ session_id: 'sess-id', label: 'L' }, true)
     expect(useGlobalFilterStore.getState().isAutoSnappingToLatest).toBe(true)
     useGlobalFilterStore.getState().setSessions({
       picked_sessions: ['other-sess'],
@@ -218,11 +219,11 @@ describe('GlobalFilterStore', () => {
     expect(parsed.state.resolvedContext).toBeUndefined()
   })
 
-  it('ne persiste pas isAutoSnappingToLatest (éphémère)', () => {
-    useGlobalFilterStore.getState().autoSnapToLatestSession('sess-id', true)
+  it('persiste isAutoSnappingToLatest (pour reprendre le suivi au reload)', () => {
+    useGlobalFilterStore.getState().autoSnapToLatestSession({ session_id: 'sess-id', label: 'L' }, true)
     const stored = localStorage.getItem('levelup-solo-filter-v1')
     const parsed = JSON.parse(stored!)
-    expect(parsed.state.isAutoSnappingToLatest).toBeUndefined()
+    expect(parsed.state.isAutoSnappingToLatest).toBe(true)
   })
 
   // -------------------------------------------------------------------------
@@ -336,9 +337,12 @@ describe('GlobalFilterStore', () => {
   it('goToNextPeriod no-op si la fenêtre est déjà collée à aujourd\'hui', () => {
     const store = useGlobalFilterStore.getState()
     store.setResolvedContext(makeResolved([]))
+    // Dates LOCALES (isoDate), comme l'impl computeNextWindow. Avec toISOString()
+    // (UTC), end_date diverge de la date locale au passage de minuit en UTC+2 →
+    // end < todayUTC → la fenêtre se décale et le no-op devient flaky ~00h–02h.
     const today = new Date()
-    const todayISO = today.toISOString().slice(0, 10)
-    const startISO = new Date(today.getTime() - 7 * 86_400_000).toISOString().slice(0, 10)
+    const todayISO = isoDate(today)
+    const startISO = isoDate(new Date(today.getTime() - 7 * 86_400_000))
     store.setPeriod({ start_date: startISO, end_date: todayISO })
     const beforeHash = useGlobalFilterStore.getState().filterContextHash
     useGlobalFilterStore.getState().goToNextPeriod()

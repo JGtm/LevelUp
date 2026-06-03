@@ -319,6 +319,12 @@ func TestBuildSpartanIdentity_UsesRequestedLanguage(t *testing.T) {
 			ID:    25,
 			Title: map[string]string{"en": "Lance Corporal", "fr": "Caporal-chef"},
 		},
+		// Rang 26 présent → 25 n'est PAS le dernier rang du catalog (sinon
+		// buildHomeCareerRank le déduirait comme max → ProgressPct=100).
+		{
+			ID:    26,
+			Title: map[string]string{"en": "Corporal", "fr": "Caporal"},
+		},
 	})
 
 	identityFR := analysis.BuildSpartanIdentity(raw, "fr", ranks)
@@ -356,6 +362,37 @@ func TestBuildSpartanIdentity_UsesRequestedLanguage(t *testing.T) {
 	}
 	if identityEN.CareerRank.RankTitle != "Lance Corporal" {
 		t.Fatalf("EN RankTitle: want Lance Corporal, got %q", identityEN.CareerRank.RankTitle)
+	}
+}
+
+// TestBuildSpartanIdentity_DerivesMaxRankFromCatalog : l'API Halo ne marque pas
+// toujours le dernier rang (Héros) comme max ; buildHomeCareerRank le déduit du
+// catalog (rang présent sans rang suivant) → IsMaxRank=true + ProgressPct=100,
+// même quand raw.IsMaxRank est false.
+func TestBuildSpartanIdentity_DerivesMaxRankFromCatalog(t *testing.T) {
+	raw := &domain.HomeSpartanIdentityRow{
+		RankNumber:    272,
+		CurrentXP:     5000,
+		XPForNextRank: 10000,
+		IsMaxRank:     false, // l'API n'a pas marqué le rang comme max
+	}
+	ranks := mappings.NewRankCatalog("halo_infinite", []mappings.RankEntry{
+		{ID: 271, Title: map[string]string{"en": "Hero", "fr": "Héros"}},
+		{ID: 272, Title: map[string]string{"en": "Hero", "fr": "Héros"}}, // dernier → pas de 273
+	})
+
+	id := analysis.BuildSpartanIdentity(raw, "fr", ranks)
+	if id == nil || id.CareerRank == nil {
+		t.Fatal("CareerRank: want non-nil")
+	}
+	if !id.CareerRank.IsMaxRank {
+		t.Error("IsMaxRank: want true (rang 272 = dernier rang du catalog)")
+	}
+	if id.CareerRank.ProgressPct != 100 {
+		t.Errorf("ProgressPct: want 100 (rang max), got %.2f", id.CareerRank.ProgressPct)
+	}
+	if id.CareerRank.NextRankTitle != "" {
+		t.Errorf("NextRankTitle: want empty (rang max), got %q", id.CareerRank.NextRankTitle)
 	}
 }
 

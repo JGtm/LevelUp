@@ -275,8 +275,22 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string, rank
 		}
 	}
 
+	// is_max_rank fiable : l'API Halo (RewardTrack.IsMaxRank) ne marque pas
+	// toujours le dernier rang (Héros) comme max. On le dérive du catalog —
+	// title-agnostic, sans magic number : un rang PRÉSENT dans le catalog mais
+	// SANS rang suivant (id+1 absent) est le rang max. Le garde Get() évite un
+	// faux positif si le rang du joueur n'est pas dans le catalog.
+	isMax := raw.IsMaxRank
+	if !isMax && ranks != nil {
+		if _, has := ranks.Get(raw.RankNumber); has {
+			if _, hasNext := ranks.Next(raw.RankNumber); !hasNext {
+				isMax = true
+			}
+		}
+	}
+
 	var nextTitle string
-	if !raw.IsMaxRank && ranks != nil {
+	if !isMax && ranks != nil {
 		if next, ok := ranks.Next(raw.RankNumber); ok {
 			label, _ := next.FullLabel(loc)
 			nextTitle = rankSubRoman(strings.TrimSpace(label))
@@ -291,8 +305,8 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string, rank
 		AdornmentImageURL: copyOptionalString(raw.AdornmentImageURL),
 		CurrentXP:         raw.CurrentXP,
 		XPForNextRank:     raw.XPForNextRank,
-		ProgressPct:       computeHomeCareerProgressPct(raw.CurrentXP, raw.XPForNextRank, raw.IsMaxRank),
-		IsMaxRank:         raw.IsMaxRank,
+		ProgressPct:       computeHomeCareerProgressPct(raw.CurrentXP, raw.XPForNextRank, isMax),
+		IsMaxRank:         isMax,
 	}
 }
 

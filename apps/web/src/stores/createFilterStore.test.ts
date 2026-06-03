@@ -78,14 +78,16 @@ describe('createFilterStore', () => {
     expect(stateB.lastKnownLatestSessionId).toBe('session-from-B')
   })
 
-  it('autoSnapToLatestSession ne mute qu’un seul store', () => {
+  it('autoSnapToLatestSession ne mute qu’un seul store (écrit le label, mémorise l’id)', () => {
     const storeA = createFilterStore({ name: nextName() })
     const storeB = createFilterStore({ name: nextName() })
 
-    storeA.getState().autoSnapToLatestSession('latest-A-id', true)
+    storeA.getState().autoSnapToLatestSession({ session_id: 'latest-A-id', label: 'L-A (5)' }, true)
 
     expect(storeA.getState().filterContext.filter_mode).toBe('sessions')
-    expect(storeA.getState().filterContext.sessions?.picked_sessions).toEqual(['latest-A-id'])
+    // picked_sessions porte le LABEL (pas le session_id) — cf. backend escouade.
+    expect(storeA.getState().filterContext.sessions?.picked_sessions).toEqual(['L-A (5)'])
+    // lastKnownLatestSessionId reste le session_id (clé de détection stable).
     expect(storeA.getState().lastKnownLatestSessionId).toBe('latest-A-id')
     expect(storeA.getState().isAutoSnappingToLatest).toBe(true)
 
