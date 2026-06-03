@@ -94,6 +94,10 @@ type AppConfig struct {
 	// Source : prestige_enabled dans app_settings.json. Env var PRESTIGE_ENABLED en override.
 	// Défaut : true.
 	PrestigeEnabled bool
+	// WebDistDir : répertoire du build React (Vite) servi en SPA par le routeur.
+	// Lit LEVELUP_WEB_DIST (posé par le Dockerfile/compose → /app/apps/web/dist).
+	// Vide en dev (Vite sert le front sur :5173) → la SPA n'est pas montée.
+	WebDistDir string
 }
 
 // BackupConfig centralise la configuration du backup périodique.
@@ -150,6 +154,7 @@ func Load() (*AppConfig, error) {
 		RegistrationMode:  getEnvOrDefault("LEVELUP_REGISTRATION", "invite"),
 		Environment:       getEnvOrDefault("LEVELUP_ENV", ""),
 		TrustProxyHeaders: parseBoolEnv(getEnvOrDefault("LEVELUP_TRUST_PROXY_HEADERS", "")),
+		WebDistDir:        getEnvOrDefault("LEVELUP_WEB_DIST", ""),
 	}
 	appSettingsPath := getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))
 	cfg.UserTimezone = loadUserTimezone(appSettingsPath)
