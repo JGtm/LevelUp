@@ -63,6 +63,14 @@ func openSharedTestDB(t *testing.T) *sql.DB {
 			t.Fatalf("patch weapon_kills add %s: %v", col, err)
 		}
 	}
+	// Patch match_participants : first_joined_time / last_leave_time sont
+	// ajoutés par shared_add_participation_timestamps (title-owned, halo_infinite/migrations/steps.go).
+	// Le title steps provider n'est pas disponible ici → patch manuel.
+	for _, col := range []string{"first_joined_time TIMESTAMPTZ", "last_leave_time TIMESTAMPTZ"} {
+		if _, err := db.Exec("ALTER TABLE match_participants ADD COLUMN IF NOT EXISTS " + col); err != nil {
+			t.Fatalf("patch match_participants add %s: %v", col, err)
+		}
+	}
 	return db
 }
 
