@@ -15,6 +15,10 @@ type RankEntry struct {
 	Title    map[string]string
 	Subtitle map[string]string
 	Tier     map[string]string
+	// XPRequired : XP nécessaire pour COMPLÉTER ce rang (career_ranks.xp_required,
+	// = xp_for_next_rank côté affichage). 0 si inconnu. Sert de fallback quand la
+	// source (DB locale) ne stocke pas la valeur (cf. buildHomeCareerRank).
+	XPRequired int
 }
 
 // FullLabel concatène title + subtitle + tier dans la locale demandée, avec
@@ -73,6 +77,20 @@ func (c *RankCatalog) Get(id int) (RankEntry, bool) {
 func (c *RankCatalog) Next(id int) (RankEntry, bool) {
 	e, ok := c.byID[id+1]
 	return e, ok
+}
+
+// CumulativeXPRequired somme XPRequired des rangs 1..uptoRankInclusive — soit l'XP
+// totale pour ATTEINDRE le rang (uptoRankInclusive+1). Utilisé pour l'XP de carrière
+// cumulée au rang max (où la progression intra-rang est nulle). 0 si le catalog n'a
+// pas les seuils (XPRequired non chargé).
+func (c *RankCatalog) CumulativeXPRequired(uptoRankInclusive int) int {
+	total := 0
+	for id := 1; id <= uptoRankInclusive; id++ {
+		if e, ok := c.byID[id]; ok {
+			total += e.XPRequired
+		}
+	}
+	return total
 }
 
 // FullLabel résout le libellé complet d'un rang dans la locale demandée.

@@ -109,7 +109,7 @@ describe('SessionBriefing — mode solo', () => {
     // Pas de trend hint en solo (kpisByXuid absent → pas de comparaison équipe)
     expect(screen.queryByText(/vs moyenne d'équipe/)).not.toBeInTheDocument()
     // KPI évaluatifs affichés (KpiGrid)
-    expect(screen.getByText('Frags par partie')).toBeInTheDocument()
+    expect(screen.getByText('Frags par match')).toBeInTheDocument()
     expect(screen.getByText('8.70')).toBeInTheDocument()
   })
 })

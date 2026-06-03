@@ -13,7 +13,7 @@ import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
-import type { ExplorerTargetSampleStats } from '@/lib/api/types'
+import type { ExplorerTargetSampleStats, ExplorerWeaponKill } from '@/lib/api/types'
 
 interface ExplorerTargetSampleStatsProps {
   sampleStats: ExplorerTargetSampleStats
@@ -44,31 +44,82 @@ export function ExplorerTargetSampleStats({ sampleStats }: ExplorerTargetSampleS
   const locale = appLocale === 'en' ? 'en-US' : 'fr-FR'
   const t: TFn = (key, values) => formatMessage(explorerManifest, key, appLocale, values)
 
-  // Slices du donut (5 catégories). "Other" = kills - somme des catégories
-  // détaillées, avec garde-fou si la somme dépasse les kills (overlap).
-  const tracked = sampleStats.headshot_kills + sampleStats.melee_kills +
-    sampleStats.power_weapon_kills + sampleStats.grenade_kills
-  const other = Math.max(0, sampleStats.kills - tracked)
+  // Partition des frags par TYPE D'ARME (mutuellement exclusifs) : melee / arme
+  // lourde / grenade / autres → la somme = total des frags. "Autres" = frags à
+  // l'arme normale = kills - (melee + lourde + grenade).
+  //
+  // IMPORTANT : on ne soustrait PAS les headshots. Un headshot est ORTHOGONAL au
+  // type d'arme (un frag à l'arme normale ou lourde peut être un headshot) ; le
+  // compter ici ferait que le donut ne somme plus au total des frags. Les
+  // "Tirs à la tête" restent exposés en KPI ("Taux de tête"), hors donut.
+  const weaponTyped = sampleStats.melee_kills + sampleStats.power_weapon_kills + sampleStats.grenade_kills
+  const other = Math.max(0, sampleStats.kills - weaponTyped)
+  //
+  // Couleurs : indices chart-series DISTINCTS (1/6/7/8) et NON 2-5 — dans la
+  // palette par défaut 1..5 est un dégradé bleu/indigo séquentiel (illisible en
+  // catégoriel, pas color-blind friendly). 1/6/7/8 sont distincts dans toutes les
+  // palettes (Okabe-Ito CB incluse). Via tokenCssVar → suit la palette active.
   const donutSlices: DonutSlice[] = [
-    { label: t('explorer.target_profile.kill_type_headshot'), count: sampleStats.headshot_kills, token: 'chart-series-1' as SemanticToken },
-    { label: t('explorer.target_profile.kill_type_melee'), count: sampleStats.melee_kills, token: 'chart-series-2' as SemanticToken },
-    { label: t('explorer.target_profile.kill_type_power_weapon'), count: sampleStats.power_weapon_kills, token: 'chart-series-3' as SemanticToken },
-    { label: t('explorer.target_profile.kill_type_grenade'), count: sampleStats.grenade_kills, token: 'chart-series-4' as SemanticToken },
-    { label: t('explorer.target_profile.kill_type_other'), count: other, token: 'chart-series-5' as SemanticToken },
+    { label: t('explorer.target_profile.kill_type_melee'), count: sampleStats.melee_kills, token: 'chart-series-1' as SemanticToken },
+    { label: t('explorer.target_profile.kill_type_power_weapon'), count: sampleStats.power_weapon_kills, token: 'chart-series-6' as SemanticToken },
+    { label: t('explorer.target_profile.kill_type_grenade'), count: sampleStats.grenade_kills, token: 'chart-series-7' as SemanticToken },
+    { label: t('explorer.target_profile.kill_type_other'), count: other, token: 'chart-series-8' as SemanticToken },
   ].filter((s) => s.count > 0)
 
   // Bloc « Répartition des frags » : titre en barre (chrome ChartCard) + donut
   // agrandi centré. Hauteur naturelle : le bloc cohabite avec le bilan V/N/D dans
   // la même colonne (cf. ExplorerTargetProfileCard). Titre de section + rangée KPI
   // rendus hors bloc.
+  const topWeapons = sampleStats.top_weapons ?? []
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
       <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">
         {t('explorer.target_profile.label_kill_types')}
       </div>
-      <div className="flex items-center justify-center p-3">
+      {/* Donut (gauche) + top 3 armes (droite) si dispo, sinon donut centré seul. */}
+      <div className={`grid items-center gap-3 p-3 ${topWeapons.length > 0 ? 'sm:grid-cols-[2fr_1fr]' : ''}`}>
         <DonutColumn slices={donutSlices} locale={locale} t={t} />
+        {topWeapons.length > 0 && <WeaponsTop weapons={topWeapons} locale={appLocale} t={t} />}
       </div>
+    </div>
+  )
+}
+
+// ─── Top armes (à droite du donut) ───────────────────────────────────────────
+
+function WeaponsTop({ weapons, locale, t }: { weapons: ExplorerWeaponKill[]; locale: 'fr' | 'en'; t: TFn }) {
+  const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
+  const maxKills = Math.max(1, ...weapons.map((w) => w.kills))
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-2xs uppercase tracking-label-xl text-muted-foreground">
+        {t('explorer.target_profile.top_weapons_title')}
+      </span>
+      <ol className="flex flex-col gap-2">
+        {weapons.map((w, i) => {
+          const name = locale === 'en' ? w.label_en || w.label_fr : w.label_fr || w.label_en
+          const pct = Math.round((w.kills / maxKills) * 100)
+          return (
+            <li key={w.weapon_id} className="flex flex-col gap-1">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="flex min-w-0 items-baseline gap-1.5">
+                  <span className="text-2xs font-bold tabular-nums text-muted-foreground">{i + 1}</span>
+                  <span className="truncate text-xs font-medium text-foreground">{name}</span>
+                </span>
+                <span className="flex-shrink-0 text-xs font-semibold tabular-nums text-foreground">
+                  {w.kills.toLocaleString(numberLocale)}
+                </span>
+              </div>
+              <div className="h-1 w-full overflow-hidden rounded-full bg-muted-foreground/15">
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${pct}%`, backgroundColor: tokenCssVar('chart-series-1') }}
+                />
+              </div>
+            </li>
+          )
+        })}
+      </ol>
     </div>
   )
 }
@@ -225,21 +276,39 @@ export function ExplorerTargetSampleKpis({ sampleStats }: ExplorerTargetSampleSt
   const dr = sampleStats.defensive_resistance ?? null
   const ocLabel = oc != null ? `${Math.round(oc * 100)}%` : dash
   const drLabel = dr == null ? dash : dr < 0 ? '∞' : `${dr >= 1 ? '+' : ''}${Math.round((dr - 1) * 100)}%`
+  const dmgPerKill = sampleStats.kills > 0 ? Math.round(sampleStats.damage_dealt / sampleStats.kills) : null
+  const dmgPerDeath = sampleStats.deaths > 0 ? Math.round(sampleStats.damage_taken / sampleStats.deaths) : null
 
+  // lg : KDA (1re piste) réduite à 0.7fr, Rendement/Résistance (dernière) élargie à 1.3fr.
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-[0.7fr_1fr_1fr_1fr_1fr_1.3fr]">
       <SmallTile label={t('explorer.target_profile.label_kda')} value={num(sampleStats.kda)} accent="perf-tier-2" />
       <SmallTile label={t('explorer.target_profile.label_accuracy')} value={pct(sampleStats.accuracy)} accent="info" />
       <SmallTile label={t('explorer.target_profile.label_headshot_rate')} value={pct(sampleStats.headshot_rate)} accent="chart-series-1" />
       <SmallTile label={t('explorer.target_profile.label_avg_score')} value={sampleStats.avg_personal_score != null ? fmtInt(sampleStats.avg_personal_score, locale) : dash} accent="chart-series-4" />
       <SmallTile label={t('explorer.target_profile.label_perfect_kills')} value={fmtInt(sampleStats.perfect_kills ?? 0, locale)} accent="outcome-win" />
-      <YieldTile ocLabel={ocLabel} drLabel={drLabel} t={t} />
+      <YieldTile ocLabel={ocLabel} drLabel={drLabel} dmgPerKill={dmgPerKill} dmgPerDeath={dmgPerDeath} t={t} />
     </div>
   )
 }
 
-/** YieldTile — carte rendement (OC, vert) / résistance (DR, bleu) au format KPI card. */
-function YieldTile({ ocLabel, drLabel, t }: { ocLabel: string; drLabel: string; t: TFn }) {
+/**
+ * YieldTile — carte rendement (OC, vert) / résistance (DR, bleu) au format KPI card.
+ * dmg/frag (gauche) et dmg/mort (droite) en pied, petit + gris (aux extrémités).
+ */
+function YieldTile({
+  ocLabel,
+  drLabel,
+  dmgPerKill,
+  dmgPerDeath,
+  t,
+}: {
+  ocLabel: string
+  drLabel: string
+  dmgPerKill: number | null
+  dmgPerDeath: number | null
+  t: TFn
+}) {
   return (
     <div className="overflow-hidden rounded-md border border-border bg-card">
       <div className="h-[3px]" style={{ backgroundColor: tokenCssVar('divergent-pos') }} />
@@ -247,11 +316,20 @@ function YieldTile({ ocLabel, drLabel, t }: { ocLabel: string; drLabel: string; 
         <span className="text-2xs uppercase tracking-label-xl text-muted-foreground">
           {t('explorer.target_profile.yield_offensive')} / {t('explorer.target_profile.yield_defensive')}
         </span>
-        <span className="text-sm font-semibold">
-          <span style={{ color: tokenCssVar('divergent-pos') }}>{ocLabel}</span>
-          <span className="text-muted-foreground"> / </span>
-          <span style={{ color: tokenCssVar('divergent-neutral') }}>{drLabel}</span>
-        </span>
+        {/* Une seule ligne : dmg/frag (gauche) · valeurs OC/DR (centre) · dmg/mort (droite). */}
+        <div className="flex items-baseline justify-between gap-1">
+          <span className="text-3xs text-muted-foreground">
+            {dmgPerKill != null ? t('explorer.target_profile.yield_dmg_per_kill', { n: dmgPerKill }) : ''}
+          </span>
+          <span className="text-sm font-semibold">
+            <span style={{ color: tokenCssVar('divergent-pos') }}>{ocLabel}</span>
+            <span className="text-muted-foreground"> / </span>
+            <span style={{ color: tokenCssVar('divergent-neutral') }}>{drLabel}</span>
+          </span>
+          <span className="text-3xs text-muted-foreground">
+            {dmgPerDeath != null ? t('explorer.target_profile.yield_dmg_per_death', { n: dmgPerDeath }) : ''}
+          </span>
+        </div>
       </div>
     </div>
   )

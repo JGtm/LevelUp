@@ -225,7 +225,16 @@ func (s *ExplorerService) computeTargetSampleStats(ctx context.Context, targetXU
 		slog.WarnContext(ctx, "explorer_target_medals_failed", "xuid", targetXUID, "err", mErr)
 		// medals est nil → BuildSampleStats l'ignorera, ce n'est pas bloquant.
 	}
-	return analysis.BuildSampleStats(agg, medals, len(matchIDs))
+	sample := analysis.BuildSampleStats(agg, medals, len(matchIDs))
+	if sample != nil {
+		// Top 3 armes (par kills) sur les matchs communs — best-effort.
+		weapons, wErr := s.repo.GetTopWeaponsForMatches(ctx, targetXUID, matchIDs, 3)
+		if wErr != nil {
+			slog.WarnContext(ctx, "explorer_target_top_weapons_failed", "xuid", targetXUID, "err", wErr)
+		}
+		sample.TopWeapons = weapons
+	}
+	return sample
 }
 
 // extractCommonMatchIDs extrait la liste des match_id d'un slice de common matches.

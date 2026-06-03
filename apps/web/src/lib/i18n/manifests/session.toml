@@ -236,7 +236,7 @@ fr = "moy."
 en = "avg."
 
 [session.detail.chart_fda_per_game_title]
-fr = "Frags / Morts / Assists par partie"
+fr = "Frags / Morts / Assists par match"
 en = "Kills / Deaths / Assists per game"
 
 [session.detail.chart_fda_per_minute_title]
@@ -244,7 +244,7 @@ fr = "Stats par minute — Frags / Morts / Assists"
 en = "Per-minute stats — Kills / Deaths / Assists"
 
 [session.detail.chart_fda_radar_series]
-fr = "Moyenne / partie"
+fr = "Moyenne / match"
 en = "Avg / game"
 
 [session.detail.chart_engagement_title]

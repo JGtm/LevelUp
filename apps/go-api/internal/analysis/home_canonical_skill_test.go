@@ -151,6 +151,45 @@ func TestBuildCanonicalSkillBadge_SubTier6Allowed(t *testing.T) {
 	}
 }
 
+// ─── BuildCSRTierLabelFromEN ───────────────────────────────────────────────
+
+func TestBuildCSRTierLabelFromEN(t *testing.T) {
+	t.Parallel()
+	sub3 := 3
+	cases := []struct {
+		name        string
+		tierEN      string
+		subTier     *int
+		frPreferred bool
+		want        string // "" → attend nil
+	}{
+		{"diamond FR + sous-palier", "Diamond", &sub3, true, "Diamant III"},
+		{"casse normalisée (lowercase)", "diamond", &sub3, true, "Diamant III"},
+		{"casse normalisée (UPPER)", "DIAMOND", &sub3, true, "Diamant III"},
+		{"onyx sans sous-palier", "Onyx", &sub3, true, "Onyx"},
+		{"EN quand frPreferred=false", "Diamond", &sub3, false, "Diamond III"},
+		{"tier inconnu → laissé EN", "Mythic", &sub3, true, "Mythic III"},
+		{"vide → nil", "", &sub3, true, ""},
+		{"whitespace → nil", "   ", &sub3, true, ""},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			got := BuildCSRTierLabelFromEN(c.tierEN, c.subTier, c.frPreferred)
+			if c.want == "" {
+				if got != nil {
+					t.Errorf("%s: got %q, want nil", c.name, derefStr(got))
+				}
+				return
+			}
+			if got == nil || *got != c.want {
+				t.Errorf("%s: got %q, want %q", c.name, derefStr(got), c.want)
+			}
+		})
+	}
+}
+
 // ─── InferHomeSkillHistoryFromCanonical : edge cases ──────────────────────
 
 func TestInferHomeSkillHistoryFromCanonical_EmptyRows(t *testing.T) {

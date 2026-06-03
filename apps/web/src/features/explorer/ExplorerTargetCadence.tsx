@@ -23,7 +23,11 @@ interface Props {
 // une série sentinelle non vide pour forcer le rendu data.
 const SENTINEL: ChartSeries[] = [{ key: 'cadence', datapoints: [{}] }]
 
-const CHART_HEIGHT = 176
+// Hauteur MINIMALE par graphe (mode fluid → grandit pour remplir). Volontairement
+// basse pour que ce soit la colonne GAUCHE (donut + bilan) qui définisse la hauteur
+// de la rangée : les 2 graphes cadence s'y adaptent ensuite via fluid+flex-1. Une
+// valeur haute ferait l'inverse (la cadence imposerait la hauteur).
+const CHART_HEIGHT = 110
 
 export function ExplorerTargetCadence({ sampleStats }: Props) {
   const appLocale = useAppShellStore((s) => s.locale)

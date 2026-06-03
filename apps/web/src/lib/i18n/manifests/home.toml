@@ -112,7 +112,7 @@ fr = "FDA"
 en = "K/D/A"
 
 [home.sessions.match_count]
-fr = "{n, plural, one {# partie} other {# parties}}"
+fr = "{n, plural, one {# match} other {# matchs}}"
 en = "{n, plural, one {# match} other {# matches}}"
 
 [home.sessions.wins_count]
@@ -242,7 +242,7 @@ fr = "min"
 en = "min"
 
 [home.kpi.matches_word]
-fr = "parties"
+fr = "matchs"
 en = "matches"
 
 [home.kpi.kills_word]

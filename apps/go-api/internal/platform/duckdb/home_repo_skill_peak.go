@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite"
@@ -316,8 +317,19 @@ func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeak
 		tierStr := optionalNullStringValue(tier)
 		subTierInt := optionalNullInt16Value(subTier)
 		peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(tierStr, "", subTierInt, homeStaticTitleSlug, 0, threshold)
+		// Palier all-time CSR : libellé FR + sous-palier romain ("Diamant III"),
+		// au lieu du tier brut anglais sans sous-palier. FR-first comme tous les
+		// libellés CSR (sync.formatCSRTierLabel). Partagé Home + Explorer.
 		if tierStr != "" {
-			peak.TierLabel = stringPtr(tierStr)
+			var subPtr *int
+			if st := int(subTierInt); st >= 1 && st <= 6 {
+				subPtr = &st
+			}
+			if lbl := analysis.BuildCSRTierLabelFromEN(tierStr, subPtr, true); lbl != nil {
+				peak.TierLabel = lbl
+			} else {
+				peak.TierLabel = stringPtr(tierStr)
+			}
 		}
 		zero := 0
 		peak.MeasurementMatchesRemaining = &zero

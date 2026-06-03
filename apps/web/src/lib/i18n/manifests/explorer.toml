@@ -584,6 +584,10 @@ en = "Emblem and career rank unavailable for this player — their stats are sho
 fr = "Top médailles"
 en = "Top medals"
 
+[explorer.target_profile.top_weapons_title]
+fr = "Top armes"
+en = "Top weapons"
+
 [explorer.target_profile.medals_show_more]
 fr = "Voir plus ({count})"
 en = "Show more ({count})"
@@ -625,7 +629,7 @@ fr = "Précision"
 en = "Accuracy"
 
 [explorer.target_profile.label_dmg_per_game]
-fr = "Dégâts/partie"
+fr = "Dégâts/match"
 en = "Damage/game"
 
 [explorer.target_profile.label_headshot_rate]

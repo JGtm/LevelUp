@@ -104,8 +104,12 @@ type HomeCareerRankSummary struct {
 	AdornmentImageURL *string `json:"adornment_image_url,omitempty"`
 	CurrentXP         int     `json:"current_xp"`
 	XPForNextRank     int     `json:"xp_for_next_rank"`
-	ProgressPct       float64 `json:"progress_pct"`
-	IsMaxRank         bool    `json:"is_max_rank"`
+	// TotalXP : XP de carrière cumulée (Σ seuils des rangs précédents + current_xp).
+	// Affichée au rang max (Héros), où current_xp/xp_for_next valent 0. 0 si le
+	// catalog n'a pas les seuils (career_ranks.xp_required).
+	TotalXP     int     `json:"total_xp"`
+	ProgressPct float64 `json:"progress_pct"`
+	IsMaxRank   bool    `json:"is_max_rank"`
 }
 
 // HomeSkillPeakSummary représente un pic historique CSR ou LUSR affiché sur la home.

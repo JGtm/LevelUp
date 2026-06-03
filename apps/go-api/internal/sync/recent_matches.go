@@ -121,10 +121,14 @@ func buildRecentMatchesFromStats(
 		// l'ExplorerService via le repo (metadata). matchInfo nil → "" (nil-safe).
 		matchInfo, _ := raw["MatchInfo"].(map[string]any)
 		rows = append(rows, domain.ExplorerTargetRecentMatch{
-			MatchID:         h.MatchID,
-			StartTime:       parseRecentStartTime(h.StartTime),
-			MapUI:           extractPublicName(matchInfo, "MapVariant"),
-			ModeUI:          resolveLiveModeUI(matchInfo),
+			MatchID:   h.MatchID,
+			StartTime: parseRecentStartTime(h.StartTime),
+			MapUI:     extractPublicName(matchInfo, "MapVariant"),
+			ModeUI:    resolveLiveModeUI(matchInfo),
+			// AssetId du pair : le MatchInfo live n'a pas de PublicName → ModeUI reste
+			// souvent vide ici ; le repo le résout via shared.match_registry
+			// (pair_id → pair_name) dans translateModeUIsFR.
+			ModePairAssetID: extractAssetID(matchInfo, "PlaylistMapModePair"),
 			Outcome:         recentDerefInt(part.Outcome),
 			Rank:            part.Rank,
 			Kills:           recentDerefInt(part.Kills),

@@ -14,6 +14,7 @@ import {
   formatKDA,
   formatDurationMMSS,
   formatDurationHMS,
+  displayRatingLabel,
 } from './index'
 
 describe('formatDate', () => {
@@ -131,5 +132,25 @@ describe('formatDurationHMS', () => {
   it('fallback sur invalide', () => {
     expect(formatDurationHMS(undefined)).toBe('-')
     expect(formatDurationHMS(0)).toBe('-')
+  })
+})
+
+describe('displayRatingLabel', () => {
+  it('collapse toute la famille LUSR vers "LUSR" (v2 transparente)', () => {
+    expect(displayRatingLabel('LUSR')).toBe('LUSR')
+    expect(displayRatingLabel('LUSR_V2')).toBe('LUSR')
+    expect(displayRatingLabel('lusr_v2')).toBe('LUSR')
+    expect(displayRatingLabel('lusr')).toBe('LUSR')
+  })
+
+  it('conserve CSR (classé) tel quel', () => {
+    expect(displayRatingLabel('CSR')).toBe('CSR')
+    expect(displayRatingLabel('csr')).toBe('CSR')
+  })
+
+  it('renvoie null sur null/undefined/empty', () => {
+    expect(displayRatingLabel(null)).toBeNull()
+    expect(displayRatingLabel(undefined)).toBeNull()
+    expect(displayRatingLabel('')).toBeNull()
   })
 })

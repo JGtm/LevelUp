@@ -1,14 +1,9 @@
 /**
- * Tests ExplorerMatchesTable — couverture de la prop defaultPageSize + expander.
+ * Tests ExplorerMatchesTable — pagination par defaultPageSize (mode Joueur).
  *
- * Mode compact (defaultPageSize=10) :
- *  - 10 lignes affichées par défaut sur un sample de 15 rows
- *  - Bouton "Voir tout (20 par page)" présent
- *  - Click → 15 lignes (PAGE_SIZE=20 contient tout)
- *  - Label switch vers "Réduire (10 lignes)"
- *
- * Mode legacy (defaultPageSize undefined) :
- *  - PAGE_SIZE=20 dès le départ, pas de bouton expander
+ * Mode compact (defaultPageSize=10) : 10 lignes/page + navigation par page,
+ * SANS expander (retiré — redondant avec la pagination, cf. retour user).
+ * Mode legacy (defaultPageSize undefined) : PAGE_SIZE=20 par page.
  */
 import { describe, expect, it } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
@@ -42,8 +37,8 @@ function makeRows(n: number): ExplorerMatchRow[] {
   return Array.from({ length: n }, (_, i) => makeRow(i + 1))
 }
 
-describe('ExplorerMatchesTable — defaultPageSize + expander', () => {
-  it('compact mode (defaultPageSize=10) affiche 10 lignes + bouton "Voir tout"', () => {
+describe('ExplorerMatchesTable — pagination (defaultPageSize)', () => {
+  it('compact mode (defaultPageSize=10) affiche 10 lignes/page, sans expander', () => {
     const rows = makeRows(15)
     renderWithProviders(
       <ExplorerMatchesTable
@@ -53,16 +48,15 @@ describe('ExplorerMatchesTable — defaultPageSize + expander', () => {
         alwaysShowPagination
       />,
     )
-    // 10 rows visibles dans le tbody.
+    // 10 rows visibles dans le tbody (page 1).
     const tbody = screen.getByTestId('explorer-matches-table').querySelector('tbody')
     expect(tbody?.querySelectorAll('tr').length).toBe(10)
-    // Bouton "Voir tout" présent.
-    const expander = screen.getByTestId('explorer-matches-table-expander')
-    expect(expander).toBeInTheDocument()
-    expect(expander).toHaveTextContent(/Voir tout/i)
+    // Expander retiré ; pagination présente (2 pages pour 15 lignes).
+    expect(screen.queryByTestId('explorer-matches-table-expander')).not.toBeInTheDocument()
+    expect(screen.getByText(/Page 1 \/ 2/)).toBeInTheDocument()
   })
 
-  it('click sur l\'expander passe à 15 lignes et label devient "Réduire"', () => {
+  it('pagination : "Suivant" affiche les lignes restantes (page 2)', () => {
     const rows = makeRows(15)
     renderWithProviders(
       <ExplorerMatchesTable
@@ -72,13 +66,10 @@ describe('ExplorerMatchesTable — defaultPageSize + expander', () => {
         alwaysShowPagination
       />,
     )
-    const expander = screen.getByTestId('explorer-matches-table-expander')
-    fireEvent.click(expander)
-
+    fireEvent.click(screen.getByText('Suivant'))
     const tbody = screen.getByTestId('explorer-matches-table').querySelector('tbody')
-    // 15 < PAGE_SIZE=20 → tout est visible.
-    expect(tbody?.querySelectorAll('tr').length).toBe(15)
-    expect(expander).toHaveTextContent(/Réduire/i)
+    // Page 2 = 5 lignes restantes (15 - 10).
+    expect(tbody?.querySelectorAll('tr').length).toBe(5)
   })
 
   it('legacy mode (defaultPageSize undefined) affiche 15 lignes sans expander', () => {

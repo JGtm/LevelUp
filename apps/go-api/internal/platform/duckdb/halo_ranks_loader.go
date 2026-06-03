@@ -107,6 +107,24 @@ func LoadRankCatalog(ctx context.Context, metaDB *DB) (*mappings.RankCatalog, er
 		return nil, fmt.Errorf("iter career_rank_translations: %w", err)
 	}
 
+	// Enrichit chaque rang avec son seuil XP (career_ranks.xp_required, table
+	// distincte des traductions). Best-effort : table/colonne absente (tests,
+	// schéma partiel) → libellés conservés sans XP (le fallback de progression
+	// dans buildHomeCareerRank reste simplement inactif, pas d'échec).
+	if xpRows, xerr := metaDB.Query(ctx, `SELECT rank_id, xp_required FROM career_ranks`); xerr == nil {
+		for xpRows.Next() {
+			var id int
+			var xp sql.NullInt64
+			if scanErr := xpRows.Scan(&id, &xp); scanErr != nil {
+				break
+			}
+			if a, ok := byID[id]; ok && xp.Valid {
+				a.entry.XPRequired = int(xp.Int64)
+			}
+		}
+		xpRows.Close()
+	}
+
 	entries := make([]mappings.RankEntry, 0, len(byID))
 	for _, a := range byID {
 		entries = append(entries, a.entry)

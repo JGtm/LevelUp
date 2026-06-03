@@ -3,6 +3,7 @@
  * Chart 01 du mock session_compare.
  */
 import type { SessionCompareEntry } from '@/lib/api/types'
+import { displayRatingLabel } from '@/lib/formatters'
 
 export interface SessionCompareSkillHeaderProps {
   sessionA: SessionCompareEntry | null
@@ -28,7 +29,7 @@ function SkillRatingCell({
   }
 
   const rating = Math.round(entry.last_skill_rating)
-  const type = entry.skill_rating_type?.toUpperCase() ?? ''
+  const type = displayRatingLabel(entry.skill_rating_type) ?? ''
   const delta = entry.skill_rating_delta
 
   return (

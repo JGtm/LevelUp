@@ -70,6 +70,36 @@ func BuildSkillTierLabel(tierCode, tierCodeFR *string, subTier *int, frPreferred
 	return label
 }
 
+// csrTierENtoFR : tier CSR anglais (player_csr_snapshots.alltime_tier / API Halo)
+// → libellé FR. Dupliqué volontairement de sync.tierENtoFR (le package analysis
+// ne dépend pas de sync) ; 6 paliers stables. Tier inconnu → laissé en EN.
+var csrTierENtoFR = map[string]string{
+	"Bronze":   "Bronze",
+	"Silver":   "Argent",
+	"Gold":     "Or",
+	"Platinum": "Platine",
+	"Diamond":  "Diamant",
+	"Onyx":     "Onyx",
+}
+
+// BuildCSRTierLabelFromEN construit le libellé CSR localisé ("Diamant III") depuis
+// le tier ANGLAIS brut (ex. player_csr_snapshots.alltime_tier) + son sous-palier.
+// frPreferred → nom FR (CSR FR-first, comme sync.formatCSRTierLabel) ; sinon EN.
+// Onyx n'a pas de sous-palier. nil si tier vide. La casse d'entrée est normalisée
+// (diamond / DIAMOND / Diamond → "Diamant").
+func BuildCSRTierLabelFromEN(tierEN string, subTier *int, frPreferred bool) *string {
+	t := strings.TrimSpace(tierEN)
+	if t == "" {
+		return nil
+	}
+	key := strings.ToUpper(t[:1]) + strings.ToLower(t[1:])
+	var frPtr *string
+	if fr := csrTierENtoFR[key]; fr != "" {
+		frPtr = &fr
+	}
+	return BuildSkillTierLabel(&t, frPtr, subTier, frPreferred)
+}
+
 func buildCanonicalSkillBadge(tierDisplay, tierCodeEN string, subTier *int) (*string, *string) {
 	tierEN := strings.ToLower(strings.TrimSpace(tierCodeEN))
 	if tierEN == "" {

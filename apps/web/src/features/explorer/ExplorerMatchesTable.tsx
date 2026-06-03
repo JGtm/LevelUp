@@ -19,7 +19,7 @@
  *            Dominance | K | D | A | FDA | Score | Durée |
  *            Perf (color) | ΔPerf | Rang | MMR équipe | MMR adv. | ΔMMR
  */
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
   type ColumnDef,
   flexRender,
@@ -34,7 +34,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { mmrDeltaScale, kdScale } from '@/lib/accessibility/scales'
 import { getOutcomeColor, outcomeKey } from '@/lib/outcome-color'
-import { formatDate, formatDurationMMSS } from '@/lib/formatters'
+import { formatDate, formatDurationMMSS, displayRatingLabel } from '@/lib/formatters'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
 import type { ContextDescriptor, MatchFilterSpec } from '@/lib/match-nav/navContext'
@@ -454,7 +454,9 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         accessorKey: 'rating_type',
         header: t('explorer.matches.col_rating'),
         cell: (ctx) => {
-          const v = ctx.getValue<string | null | undefined>()
+          // Normalisé : la famille LUSR (dont la row d'audit 'LUSR_V2') s'affiche
+          // 'LUSR' — la v2 est transparente pour l'utilisateur (cf. displayRatingLabel).
+          const v = displayRatingLabel(ctx.getValue<string | null | undefined>())
           return <span className="font-mono">{v ?? '-'}</span>
         },
       },
@@ -510,20 +512,13 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
     return [...baseColumns.slice(0, idx + 1), ...extraColumns, ...baseColumns.slice(idx + 1)]
   }, [baseColumns, extraColumns, extraColumnsAfterId])
 
-  // defaultPageSize=10 (mode Joueur Explorer) → l'utilisateur démarre à 10
-  // lignes avec un bouton "Voir tout" qui passe au mode 20 (PAGE_SIZE plein).
-  // Sans defaultPageSize → comportement legacy (PAGE_SIZE=20 d'emblée).
-  const compactMode = defaultPageSize != null && defaultPageSize < PAGE_SIZE
-  const [expanded, setExpanded] = useState(false)
-  const initialPageSize = compactMode && !expanded ? (defaultPageSize as number) : PAGE_SIZE
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: initialPageSize })
-
-  // Sync pageSize quand l'utilisateur toggle expanded (mode compact uniquement).
-  // Effect séparé pour éviter setState durant le render.
-  useEffect(() => {
-    const target = compactMode && !expanded ? (defaultPageSize as number) : PAGE_SIZE
-    setPagination((p) => (p.pageSize === target ? p : { pageIndex: 0, pageSize: target }))
-  }, [compactMode, expanded, defaultPageSize])
+  // Pagination simple : taille de page fixe (defaultPageSize en mode Joueur,
+  // sinon PAGE_SIZE=20). La navigation par page suffit pour parcourir tous les
+  // matchs — pas d'expander redondant (cf. retour user : 2 contrôles = confusion).
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: defaultPageSize ?? PAGE_SIZE,
+  })
 
   const table = useReactTable<ExplorerMatchRow>({
     data: rows,
@@ -639,23 +634,6 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         </div>
       )}
 
-      {/* Bouton expander : mode compact uniquement (defaultPageSize < PAGE_SIZE)
-          et tableau a plus de lignes que la page compacte. Permet de basculer
-          de 10 lignes vers 20 sans changer de page. */}
-      {compactMode && rows.length > (defaultPageSize as number) && (
-        <div className="flex justify-center">
-          <button
-            type="button"
-            data-testid="explorer-matches-table-expander"
-            className="rounded-md border border-input bg-background px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
-            onClick={() => setExpanded((v) => !v)}
-          >
-            {expanded
-              ? t('explorer.matches_table.show_less')
-              : t('explorer.matches_table.show_all')}
-          </button>
-        </div>
-      )}
     </div>
   )
 }

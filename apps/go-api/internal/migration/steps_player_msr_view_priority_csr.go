@@ -13,9 +13,22 @@
 // seul : si elle saute, la vue doit favoriser CSR (irrécupérable côté API)
 // sur LUSR (recalculable depuis les stats locales).
 //
-// **Nouveau ORDER BY** : `CASE rating_type WHEN 'CSR' THEN 0 ELSE 1 END`
-// → CSR est toujours préféré quand un match a les deux. Ensuite par
-// written_at DESC (dernière version), puis id DESC (tie-break).
+// **ORDER BY** : `CASE rating_type WHEN 'CSR' THEN 0 WHEN 'LUSR' THEN 1 ELSE 2 END`
+// → CSR > LUSR > LUSR_V2. CSR préféré quand un match a les deux, puis LUSR
+// (slot UI) devant LUSR_V2 (row d'audit Stratégie C). Ensuite written_at DESC
+// (dernière version), puis id DESC (tie-break).
+//
+// **Correctif 2026-06-03 (priorité 3-voies)** : le CASE original ne distinguait
+// que CSR vs reste (`WHEN 'CSR' THEN 0 ELSE 1`), donc LUSR et LUSR_V2 étaient
+// départagés par `id DESC` — et LUSR_V2 (inséré juste après LUSR dans le même
+// batch, id plus grand) GAGNAIT. La vue représentait alors un match v2 par sa
+// row d'audit LUSR_V2 (fuite du label "LUSR_V2" côté UI + valeur potentiellement
+// périmée). La migration soeur `player_msr_view_lusr_over_v2_v1` portait déjà le
+// bon CASE 3-voies mais s'exécute AVANT celle-ci dans canonicalOrder (index 90 vs
+// 91) → elle était écrasée. Comme les deux sont déjà tracées dans
+// schema_migrations (donc non ré-exécutées), les DBs existantes ont été corrigées
+// hors-bande (CREATE OR REPLACE VIEW direct). Ici on aligne la DERNIÈRE migration
+// vue sur le bon CASE pour que les NOUVELLES DBs soient correctes par construction.
 //
 // **Idempotente** : `CREATE OR REPLACE VIEW` est intrinsèquement
 // idempotente. La migration peut être ré-exécutée sans effet de bord.
@@ -53,15 +66,15 @@ func applyMSRViewPriorityCSR(db *sql.DB) error {
 		return nil
 	}
 
-	// CREATE OR REPLACE remplace l'éventuelle ancienne vue créée par
-	// la migration v1. Le nouveau ORDER BY met CSR avant LUSR.
+	// CREATE OR REPLACE remplace l'éventuelle ancienne vue. Priorité 3-voies :
+	// CSR (0) > LUSR (1, slot UI) > LUSR_V2 (2, audit). Cf. correctif 2026-06-03 supra.
 	const stmt = `
 		CREATE OR REPLACE VIEW match_skill_rank_latest AS
 			SELECT * FROM match_skill_rank
 			QUALIFY ROW_NUMBER() OVER (
 				PARTITION BY match_id
 				ORDER BY
-					CASE rating_type WHEN 'CSR' THEN 0 ELSE 1 END,
+					CASE rating_type WHEN 'CSR' THEN 0 WHEN 'LUSR' THEN 1 ELSE 2 END,
 					written_at DESC,
 					id DESC
 			) = 1
