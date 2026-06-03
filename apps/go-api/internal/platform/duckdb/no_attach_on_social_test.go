@@ -310,6 +310,12 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/port/repository_data.go":                                   "interfaces port DBExecutor/Provider",
 	"pkg/duckdbbackup/target.go":                                         "backup targets enum",
 	"pkg/duckdbbackup/exporter.go":                                       "backup exporter",
+	// Ajoutés 2026-06-03
+	"internal/api/handlers/media.go":                    "commentaire doc : liste auteurs depuis shared_social.media_files",
+	"internal/api/post_sync_deltas_records.go":          "post-sync records (path Persister shared_social)",
+	"internal/migration/order.go":                       "ordre de migration (cible TargetSharedSocial dans la liste)",
+	"internal/persist/shared_social_persister_batch.go": "batch SocialPersister (accès shared_social via persister canonique)",
+	"internal/platform/duckdb/queries_match_detail.go":  "Q24 matchs media shared_social (commentaire)",
 }
 
 // listForbiddenSharedSocialMentions retourne la liste des fichiers Go non-test

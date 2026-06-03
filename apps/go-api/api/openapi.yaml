@@ -1717,6 +1717,34 @@ paths:
         "200": { description: "Binary image" }
 
   # Multi-title
+  /titles/{title_slug}/capabilities:
+    get:
+      tags: [bootstrap]
+      operationId: getTitleCapabilities
+      parameters:
+        - name: title_slug
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Capabilities produit déclarées pour un titre (phase 1.7a)"
+      responses:
+        "200": { description: "Capabilities du titre" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /titles/{title_slug}/feature-matrix:
+    get:
+      tags: [bootstrap]
+      operationId: getTitleFeatureMatrix
+      parameters:
+        - name: title_slug
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Matrice de features (cascade capabilities → 3 états, phase 1.7b)"
+      responses:
+        "200": { description: "Feature matrix du titre" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /titles/{title_slug}/field-mappings:
     get:
       tags: [bootstrap]
