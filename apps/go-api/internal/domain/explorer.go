@@ -119,12 +119,15 @@ type ExplorerTargetProfile struct {
 	// MatchesPerSeason : nombre de matchs matchmade par saison (service record
 	// par saison). Vide si non calculé/indisponible.
 	MatchesPerSeason []SeasonMatchCount `json:"matches_per_season,omitempty"`
-	// CombatProfile : les N derniers matchs PvP du joueur cible lui-même (ses
-	// propres parties, pas les matchs en commun), pour les graphes "profil de
-	// combat" de l'Explorer. Calculé localement depuis shared.match_participants
-	// (aucune ingestion). Vide si cible sans matchs PvP. Cf.
-	// PLAN_explorer_combat_profile_charts.md.
+	// CombatProfile : les ~20 derniers matchs PvP du joueur cible, fetchés en LIVE
+	// via l'API Halo (RecentMatchesProvider, cache 20 min, aucune ingestion) — c'est
+	// la source affichée PAR DÉFAUT pour les graphes "profil de combat". Vide si pas
+	// d'auth / pas de données live. Cf. PLAN_explorer_combat_profile_charts.md.
 	CombatProfile []ExplorerTargetRecentMatch `json:"combat_profile,omitempty"`
+	// CombatProfileLocal : les N derniers matchs PvP de la cible présents en base
+	// locale (shared.match_participants — essentiellement les matchs en commun).
+	// Alimente le TOGGLE "local" de la section profil de combat. Vide si aucun.
+	CombatProfileLocal []ExplorerTargetRecentMatch `json:"combat_profile_local,omitempty"`
 	// PrivacyWarning : conservé (toujours nil — la privacy n'est plus fetchée
 	// pour l'Explorer ; champ gardé pour compat de schéma).
 	PrivacyWarning *MatchPrivacyWarning `json:"privacy_warning,omitempty"`

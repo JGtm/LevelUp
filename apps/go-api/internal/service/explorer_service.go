@@ -307,13 +307,14 @@ func (s *ExplorerService) buildTargetProfile(
 	hasAuth := tokens != nil && tokens.SpartanToken != ""
 
 	var (
-		identityRaw   *domain.HomeSpartanIdentityRow
-		careerStats   *domain.NormalizedPlayerStats
-		topMedals     []domain.MedalDigestItem
-		seasonCSRs    []domain.CareerPlaylistCSR
-		matchsPerSea  []domain.SeasonMatchCount
-		sampleStats   *domain.ExplorerTargetSampleStats
-		combatProfile []domain.ExplorerTargetRecentMatch
+		identityRaw        *domain.HomeSpartanIdentityRow
+		careerStats        *domain.NormalizedPlayerStats
+		topMedals          []domain.MedalDigestItem
+		seasonCSRs         []domain.CareerPlaylistCSR
+		matchsPerSea       []domain.SeasonMatchCount
+		sampleStats        *domain.ExplorerTargetSampleStats
+		combatProfileLive  []domain.ExplorerTargetRecentMatch
+		combatProfileLocal []domain.ExplorerTargetRecentMatch
 	)
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -337,11 +338,15 @@ func (s *ExplorerService) buildTargetProfile(
 	})
 	g.Go(func() error { seasonCSRs = s.fetchTargetCSR(liveCtx, targetXUID, hasAuth); return nil })
 	g.Go(func() error { sampleStats = s.computeTargetSampleStats(gctx, targetXUID, rawMatches); return nil })
-	// Profil de combat : N derniers matchs PvP de la cible. Local DuckDB d'abord
-	// (gctx, non borné) ; repli live read-only borné par liveCtx pour une cible
-	// non-locale sans matchs en base.
+	// Profil de combat : deux sources servies en parallèle pour alimenter le toggle.
+	// LIVE (défaut) = ~20 derniers matchs via l'API (liveCtx borné) ; LOCAL = matchs
+	// de la cible en base (gctx, non borné, gratuit).
 	g.Go(func() error {
-		combatProfile = s.computeTargetCombatProfile(gctx, liveCtx, targetXUID, hasAuth)
+		combatProfileLive = s.computeTargetCombatProfileLive(liveCtx, targetXUID, hasAuth)
+		return nil
+	})
+	g.Go(func() error {
+		combatProfileLocal = s.computeTargetCombatProfileLocal(gctx, targetXUID)
 		return nil
 	})
 
@@ -359,14 +364,15 @@ func (s *ExplorerService) buildTargetProfile(
 	identity := analysis.BuildSpartanIdentity(identityRaw, ctxkeys.Locale(ctx), s.deps.Ranks)
 
 	return &domain.ExplorerTargetProfile{
-		Identity:         identity,
-		CareerStats:      careerStats,
-		TopMedals:        topMedals,
-		SeasonCSRs:       seasonCSRs,
-		MatchesPerSeason: matchsPerSea,
-		SampleStats:      sampleStats,
-		CombatProfile:    combatProfile,
-		AuthAvailable:    hasAuth,
+		Identity:           identity,
+		CareerStats:        careerStats,
+		TopMedals:          topMedals,
+		SeasonCSRs:         seasonCSRs,
+		MatchesPerSeason:   matchsPerSea,
+		SampleStats:        sampleStats,
+		CombatProfile:      combatProfileLive,
+		CombatProfileLocal: combatProfileLocal,
+		AuthAvailable:      hasAuth,
 	}
 }
 

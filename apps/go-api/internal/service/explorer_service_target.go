@@ -9,35 +9,35 @@ import (
 	"log/slog"
 )
 
-// computeTargetCombatProfile retourne les N derniers matchs PvP de la cible pour
-// les graphes profil de combat. Local d'abord (lecture DuckDB, gratuite) ; si
-// vide — cas d'une cible NON suivie dont les matchs ne sont pas en base — repli
-// sur le fetch LIVE read-only borné (cache TTL 20 min), si câblé et auth dispo.
-// ctx = calcul local (non borné) ; liveCtx = budget live.
-func (s *ExplorerService) computeTargetCombatProfile(
-	ctx, liveCtx context.Context, targetXUID string, hasAuth bool,
-) []domain.ExplorerTargetRecentMatch {
+// computeTargetCombatProfileLocal retourne les N derniers matchs PvP de la cible
+// présents en base locale (shared.match_participants — surtout les matchs communs).
+// Alimente le toggle "local" de la section. nil si erreur / aucun match.
+func (s *ExplorerService) computeTargetCombatProfileLocal(ctx context.Context, targetXUID string) []domain.ExplorerTargetRecentMatch {
 	rows, err := s.repo.GetTargetRecentMatches(ctx, targetXUID, explorerCombatProfileLimit)
 	if err != nil {
-		slog.WarnContext(ctx, "explorer_target_combat_profile_failed", "xuid", targetXUID, "err", err)
-		// On tente quand même le repli live ci-dessous.
+		slog.WarnContext(ctx, "explorer_target_combat_profile_local_failed", "xuid", targetXUID, "err", err)
+		return nil
 	}
-	if len(rows) > 0 {
-		slog.DebugContext(ctx, "explorer_target_combat_profile",
-			"xuid", targetXUID, "matches", len(rows), "source", "local")
-		return rows
-	}
-	// Cible non-locale (aucun match local) : repli live read-only.
+	slog.DebugContext(ctx, "explorer_target_combat_profile", "xuid", targetXUID, "matches", len(rows), "source", "local")
+	return rows
+}
+
+// computeTargetCombatProfileLive fetche en LIVE les ~20 derniers matchs PvP de la
+// cible (RecentMatchesProvider, borné par liveCtx, cache 20 min). C'est la source
+// AFFICHÉE PAR DÉFAUT. nil si pas de provider / pas d'auth / pas de xuid / erreur.
+func (s *ExplorerService) computeTargetCombatProfileLive(liveCtx context.Context, targetXUID string, hasAuth bool) []domain.ExplorerTargetRecentMatch {
 	if s.deps.RecentMatches == nil || !hasAuth || targetXUID == "" {
-		return rows
+		return nil
 	}
-	live, lErr := s.deps.RecentMatches.FetchRecentMatches(liveCtx, targetXUID, explorerCombatProfileLimit)
-	if lErr != nil {
-		slog.WarnContext(liveCtx, "explorer_target_combat_profile_live_failed", "xuid", targetXUID, "err", lErr)
-		return rows
+	live, err := s.deps.RecentMatches.FetchRecentMatches(liveCtx, targetXUID, explorerCombatProfileLimit)
+	if err != nil {
+		slog.WarnContext(liveCtx, "explorer_target_combat_profile_live_failed", "xuid", targetXUID, "err", err)
+		return nil
 	}
-	slog.DebugContext(liveCtx, "explorer_target_combat_profile",
-		"xuid", targetXUID, "matches", len(live), "source", "live")
+	// Traduit les sous-modes EN normalisés en FR (mode_name_tr) — MÊME résolution
+	// que la source locale, pour un donut "Répartition des modes" homogène.
+	s.repo.TranslateModeUIsFR(liveCtx, live)
+	slog.DebugContext(liveCtx, "explorer_target_combat_profile", "xuid", targetXUID, "matches", len(live), "source", "live")
 	return live
 }
 
@@ -64,7 +64,8 @@ func (s *ExplorerService) computeMatchesPerSeason(ctx context.Context, targetXUI
 func (s *ExplorerService) fetchTargetIdentityRaw(ctx context.Context, targetXUID, targetGamertag string, hasAuth bool) *domain.HomeSpartanIdentityRow {
 	if s.deps.LocalIdentity != nil {
 		if id := s.deps.LocalIdentity.LocalSpartanIdentity(ctx, targetGamertag); id != nil {
-			s.applyBannerFallbacks(ctx, id, targetXUID)
+			// Joueur suivi : on garde sa vraie bannière (preferPool=false).
+			s.applyBannerFallbacks(ctx, id, targetXUID, false)
 			return id
 		}
 	}
@@ -74,7 +75,8 @@ func (s *ExplorerService) fetchTargetIdentityRaw(ctx context.Context, targetXUID
 			slog.WarnContext(ctx, "explorer_target_identity_live_failed", "xuid", targetXUID, "err", err)
 			// On ne retourne pas : on tente quand même la bannière de repli ci-dessous.
 		} else if id != nil {
-			s.applyBannerFallbacks(ctx, id, targetXUID)
+			// Cible non-locale : nameplate live souvent 404 → préférer le pool (preferPool=true).
+			s.applyBannerFallbacks(ctx, id, targetXUID, true)
 			return id
 		}
 	}
@@ -106,14 +108,26 @@ func (s *ExplorerService) fallbackBannerOnlyIdentity(ctx context.Context, target
 	return &domain.HomeSpartanIdentityRow{BannerImageURL: &b}
 }
 
-// applyBannerFallbacks applique, dans l'ordre : (1) bannière → backdrop, puis
-// (2) si la bannière est toujours vide, une nameplate de repli DÉTERMINISTE par
-// xuid piochée dans le pool local (bannières des joueurs suivis). Le pool est
-// résolu paresseusement (LocalBannerPool n'est appelé que dans ce cas rare).
-// Mutation en place, best-effort.
-func (s *ExplorerService) applyBannerFallbacks(ctx context.Context, id *domain.HomeSpartanIdentityRow, targetXUID string) {
+// applyBannerFallbacks résout la bannière de la cible. preferPool=true (cible
+// NON-locale, identité live) : la nameplate live pointe quasi-systématiquement
+// vers un asset Waypoint non résolvable par notre CDN (404) → on PRÉFÈRE d'emblée
+// une nameplate du pool local (déterministe par xuid, issue des joueurs suivis,
+// assets en cache), tout en gardant emblem/rang live. preferPool=false (cible
+// suivie, identité locale) : on garde sa vraie bannière, fallback backdrop, puis
+// pool seulement si rien. Mutation en place, best-effort.
+func (s *ExplorerService) applyBannerFallbacks(ctx context.Context, id *domain.HomeSpartanIdentityRow, targetXUID string, preferPool bool) {
+	if id == nil {
+		return
+	}
+	if preferPool && s.deps.LocalBannerPool != nil && targetXUID != "" {
+		if b := pickDeterministicBanner(targetXUID, s.deps.LocalBannerPool(ctx)); b != "" {
+			id.BannerImageURL = &b
+			slog.DebugContext(ctx, "explorer_target_banner_pool_preferred", "xuid", targetXUID)
+			return
+		}
+	}
 	applyBannerFallback(id)
-	if id == nil || hasBanner(id) || s.deps.LocalBannerPool == nil || targetXUID == "" {
+	if hasBanner(id) || s.deps.LocalBannerPool == nil || targetXUID == "" {
 		return
 	}
 	if b := pickDeterministicBanner(targetXUID, s.deps.LocalBannerPool(ctx)); b != "" {

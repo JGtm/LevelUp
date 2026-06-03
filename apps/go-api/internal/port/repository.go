@@ -280,6 +280,12 @@ type ExplorerRepository interface {
 	// de combat" de l'Explorer. Lecture shared.match_participants + match_registry
 	// + medals_earned (perfect kills). Retourne nil si xuid vide ou limit <= 0.
 	GetTargetRecentMatches(ctx context.Context, xuid string, limit int) ([]domain.ExplorerTargetRecentMatch, error)
+
+	// TranslateModeUIsFR traduit EN PLACE les ModeUI (sous-modes EN normalisés) en
+	// FR via metadata.mode_name_tr — même résolution que GetTargetRecentMatches.
+	// Sert à homogénéiser la source LIVE du profil de combat (fetchée hors DB) avec
+	// la source locale. Best-effort : no-op si metadata absent.
+	TranslateModeUIsFR(ctx context.Context, rows []domain.ExplorerTargetRecentMatch)
 }
 
 // GamertagRepository fournit la recherche de gamertags.
@@ -461,6 +467,8 @@ func (n *noopExplorerRepo) GetMatchStartTimesForXUID(_ context.Context, _ string
 }
 func (n *noopExplorerRepo) GetTargetRecentMatches(_ context.Context, _ string, _ int) ([]domain.ExplorerTargetRecentMatch, error) {
 	return nil, nil
+}
+func (n *noopExplorerRepo) TranslateModeUIsFR(_ context.Context, _ []domain.ExplorerTargetRecentMatch) {
 }
 
 // SessionsRepository fournit les données brutes pour le calcul des sessions.

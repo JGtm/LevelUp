@@ -152,6 +152,17 @@ func (r *DefaultResolver) Close(ctx context.Context) error {
 	if r.queue != nil {
 		r.queue.Shutdown(ctx)
 	}
+	// L'index store DuckDB tient un handle RW persistant sur metadata.duckdb
+	// (clé cache "rw:", ouverte en lazy au premier accès). Sans ce Close, son
+	// refCount dans le cache duckdb.openDBs ne retombe pas à 0 au shutdown →
+	// handle Windows tenu jusqu'à exit process → verrou metadata.duckdb au
+	// prochain hot-reload Air (cf. INCIDENT_2026-05-21_metadata_duckdb_lock
+	// _air_hot_reload.md). Flush de la queue AVANT (elle écrit via l'index).
+	// L'interface IndexStore n'expose pas Close() (seul le backend DuckDB en a
+	// besoin) → type-assertion best-effort.
+	if c, ok := r.index.(interface{ Close() }); ok {
+		c.Close()
+	}
 	return nil
 }
 

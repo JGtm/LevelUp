@@ -135,6 +135,10 @@ type MediaRepository interface {
 	// LoadMediaFilterOptions retourne les valeurs distinctes exposées dans les listes déroulantes.
 	LoadMediaFilterOptions(ctx context.Context, filters domain.MediaFilters) (domain.MediaFilterOptions, error)
 
+	// ListMediaAuthors retourne les player_slug distincts ayant des médias (+ leur
+	// compte), depuis shared_social.media_files. Gamertag/is_self résolus par le caller.
+	ListMediaAuthors(ctx context.Context) ([]domain.MediaAuthor, error)
+
 	// SetMediaLike persiste l'état liked d'un média. Retourne false si le média est introuvable.
 	SetMediaLike(ctx context.Context, filePath string, liked bool) (bool, error)
 
@@ -253,6 +257,9 @@ func (n *noopMediaRepo) CountMediaFiles(_ context.Context, _ domain.MediaFilters
 }
 func (n *noopMediaRepo) LoadMediaFilterOptions(_ context.Context, _ domain.MediaFilters) (domain.MediaFilterOptions, error) {
 	return domain.MediaFilterOptions{}, nil
+}
+func (n *noopMediaRepo) ListMediaAuthors(_ context.Context) ([]domain.MediaAuthor, error) {
+	return nil, nil
 }
 
 // ─── Asset Drawer ────────────────────────────────────────────────────────────

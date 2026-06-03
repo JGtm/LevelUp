@@ -118,6 +118,9 @@ type MediaService interface {
 	ReassociateMedia(ctx context.Context, req domain.ReassociateRequest) (*domain.ReassociateResult, error)
 	GetMatchCandidates(ctx context.Context, filePath string, windowMinutes int) (*domain.MediaMatchCandidatesResponse, error)
 	AssociateMediaToMatch(ctx context.Context, req domain.MediaAssociateRequest) (*domain.MediaAssociateResponse, error)
+	// ListMediaAuthors retourne les auteurs sélectionnables dans le filtre Auteurs
+	// (player_slug + compte + is_self), depuis la DB — gamertag enrichi par le handler.
+	ListMediaAuthors(ctx context.Context) ([]domain.MediaAuthor, error)
 }
 
 // SocialService gère les interactions sociales (favoris de matchs).
