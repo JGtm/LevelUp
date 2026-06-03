@@ -9770,14 +9770,6 @@
 {"Time":"2026-05-30T18:56:14.432285+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeSynthesisBreakdown_Squad","Output":"=== RUN   TestComputeSynthesisBreakdown_Squad\n"}
 {"Time":"2026-05-30T18:56:14.432285+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeSynthesisBreakdown_Squad","Output":"--- PASS: TestComputeSynthesisBreakdown_Squad (0.00s)\n"}
 {"Time":"2026-05-30T18:56:14.432285+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestComputeSynthesisBreakdown_Squad","Elapsed":0}
-{"Time":"2026-05-30T18:56:14.432285+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestFmtPct"}
-{"Time":"2026-05-30T18:56:14.432285+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestFmtPct","Output":"=== RUN   TestFmtPct\n"}
-{"Time":"2026-05-30T18:56:14.432285+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestFmtPct","Output":"--- PASS: TestFmtPct (0.00s)\n"}
-{"Time":"2026-05-30T18:56:14.432285+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestFmtPct","Elapsed":0}
-{"Time":"2026-05-30T18:56:14.432285+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestFmtPct_Zero"}
-{"Time":"2026-05-30T18:56:14.432285+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestFmtPct_Zero","Output":"=== RUN   TestFmtPct_Zero\n"}
-{"Time":"2026-05-30T18:56:14.432285+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestFmtPct_Zero","Output":"--- PASS: TestFmtPct_Zero (0.00s)\n"}
-{"Time":"2026-05-30T18:56:14.432285+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestFmtPct_Zero","Elapsed":0}
 {"Time":"2026-05-30T18:56:14.432285+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestComputeSynthesisHeatmap_Empty"}
 {"Time":"2026-05-30T18:56:14.432285+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeSynthesisHeatmap_Empty","Output":"=== RUN   TestComputeSynthesisHeatmap_Empty\n"}
 {"Time":"2026-05-30T18:56:14.432285+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestComputeSynthesisHeatmap_Empty","Output":"--- PASS: TestComputeSynthesisHeatmap_Empty (0.00s)\n"}
