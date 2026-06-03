@@ -1,3 +1,21 @@
+## [2026-06-03] Go-live exécuté : cutover -s ours + 3 fixes prod live (bind 0.0.0.0, nginx, SPA) — En cours
+
+**Statut** : En cours. Cutover fait, API publique live (`lvelup.info/health` → 200). Fix SPA + bind committé + poussé sur main → redéploiement en cours. Reste : valider `lvelup.info/` (UI React) + `demo.lvelup.info` après rebuild.
+
+**Contexte** : exécution du go-live (cf. `.ai/RUNBOOK_GO_LIVE.md`). Cutover = `git merge -s ours origin/main` + `git push origin HEAD:main` → `main` = contenu Go (commit `19b3c1bf6`, 2 parents Go+Python, pas de force-push). Déploiement diagnostiqué/réparé en live via `ssh lvelup` (connecté **root**).
+
+**4 incidents prod trouvés & corrigés** :
+1. **`scripts/deploy.sh` absent du VPS** (l'ancien `main` Python ne l'avait pas — ses scripts étaient des `.py`) → `bash deploy.sh` = exit 127. Fix amorçage one-time : `git checkout origin/main -- scripts/deploy.sh` puis `bash scripts/deploy.sh`. (Idem `force_rebuild_art` : hors image, à lancer en local.)
+2. **Serveur binde `127.0.0.1`** dans le conteneur (`APIHost` défaut, `config.go:140`) → healthcheck *interne* OK (« healthy ») mais port publié + nginx injoignables (502). Fix immédiat : `LEVELUP_API_HOST=0.0.0.0` dans `.env.local` VPS + recreate. **Fix permanent** : `ENV LEVELUP_API_HOST=0.0.0.0` dans le Dockerfile (couvre aussi le service demo, sans `env_file`).
+3. **nginx → anciens ports Streamlit** : `lvelup.info`→8501, `demo`→8502. Fix host : sed → **8000 / 8001** dans `/etc/nginx/sites-available/{levelup,demo-levelup}` + reload (backups `/tmp/*.nginx.bak`). Durable (hors Docker).
+4. **SPA React non servie** : `LEVELUP_WEB_DIST` posé par Dockerfile/compose mais **lu par zéro code Go** → serveur API-only → `/` = 404. **Fix code** : handler catch-all chi `/*` dans `server.go` (sert le dist + fallback `index.html`, monté après l'API/static/health → la specificity chi ne masque rien) + champ `WebDistDir` dans `config.go` (lit `LEVELUP_WEB_DIST`). `go build`/`vet`/`test` (config, api, handlers) verts.
+
+**Décision technique** : SPA servie par le **binaire Go** (le dist est déjà copié dans le conteneur), pas par nginx ; `no-cache` sur `index.html` pour ne pas masquer un nouveau build.
+
+**Prochaine étape** : attendre le rebuild (cache Docker → rapide) → valider `lvelup.info/` sert l'UI + `demo.lvelup.info`. Puis Phase 5 (données via stop/start) + binaire restic dans l'image (reporté). À investiguer : dossier `apps/go-api/apps/` (non tracké).
+
+---
+
 ## [2026-06-03] CI validation pré-prod : fixes intégration tests + triggers chore/* — Complété
 
 **Statut** : Complété. CI entièrement vert (9/9 jobs).

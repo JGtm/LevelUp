@@ -79,9 +79,12 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 EXPOSE 8000
 
 # Variables d'environnement par défaut (runtime Go)
+# LEVELUP_API_HOST=0.0.0.0 : indispensable en conteneur — sans ça le serveur bind
+# 127.0.0.1 (défaut dev) et le port publié + le reverse proxy ne l'atteignent pas.
 ENV LEVELUP_ROOT=/app \
     LEVELUP_DATA=/app/data \
     LEVELUP_WEB_DIST=/app/apps/web/dist \
+    LEVELUP_API_HOST=0.0.0.0 \
     LEVELUP_LOG_JSON=true
 
 # Healthcheck Go (endpoint natif)

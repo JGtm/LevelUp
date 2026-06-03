@@ -1007,5 +1007,31 @@ func NewRouter(
 		})
 	})
 
+	// SPA React : sert le build Vite (LEVELUP_WEB_DIST, cf. Dockerfile/compose) en
+	// catch-all `/*`. chi route d'abord les patterns plus spécifiques (/api/v1/*,
+	// /static/*, /health*, /debug/vars…), donc ce handler ne reçoit que les requêtes
+	// front : un fichier du dist → servi tel quel ; sinon (route client-side React
+	// Router, ou dossier) → index.html. Inactif si WebDistDir vide ou index.html
+	// absent (dev : Vite sert le front sur :5173).
+	if dist := cfg.WebDistDir; dist != "" {
+		indexPath := filepath.Join(dist, "index.html")
+		if _, statErr := os.Stat(indexPath); statErr == nil {
+			fileServer := http.FileServer(http.Dir(dist))
+			r.Get("/*", func(w http.ResponseWriter, req *http.Request) {
+				if fi, err := os.Stat(filepath.Join(dist, filepath.Clean(req.URL.Path))); err == nil && !fi.IsDir() {
+					fileServer.ServeHTTP(w, req)
+					return
+				}
+				// Route client-side / dossier / fichier absent → index.html. no-cache
+				// pour que l'index ne masque pas un nouveau build après redéploiement.
+				w.Header().Set("Cache-Control", "no-cache")
+				http.ServeFile(w, req, indexPath)
+			})
+			slog.InfoContext(serverCtx, "SPA: front React servi depuis le dist", "dir", dist)
+		} else {
+			slog.WarnContext(serverCtx, "LEVELUP_WEB_DIST défini mais index.html introuvable — SPA non montée", "dir", dist)
+		}
+	}
+
 	return r, reg
 }
