@@ -248,3 +248,11 @@ v2-test-result.json
 tmp_film_explore/
 tmp_score_work/
 apps/go-api/cmd/tmpdbq/
+apps/go-api/cmd/tmp_*/
+
+# Screenshots de vérification (.ai)
+.ai/verify_*.jpeg
+.ai/verify_*.png
+
+# Cache images rank carrière (générées à la demande)
+data/cache/career-rank-image/
