@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -164,6 +165,22 @@ func (s *MediaService) GetMediaPage(
 		TotalUnassigned:  totalUnassigned,
 		AvailableFilters: availableFilters,
 	}, nil
+}
+
+// ListMediaAuthors retourne les auteurs sélectionnables dans le filtre Auteurs,
+// depuis shared_social.media_files (même source que la galerie). Marque is_self
+// pour le joueur courant. Le gamertag d'affichage est laissé vide ici : le handler
+// l'enrichit depuis db_profiles.json.
+func (s *MediaService) ListMediaAuthors(ctx context.Context) ([]domain.MediaAuthor, error) {
+	authors, err := s.repo.ListMediaAuthors(ctx)
+	if err != nil {
+		return nil, err
+	}
+	currentSlug := s.repo.CurrentPlayerSlug()
+	for i := range authors {
+		authors[i].IsSelf = strings.EqualFold(authors[i].PlayerSlug, currentSlug)
+	}
+	return authors, nil
 }
 
 // GetMatchCandidates retourne les matchs candidats pour réassocier manuellement

@@ -33,6 +33,8 @@ type mockMediaService struct {
 	uploadErr      error
 	reassociate    *domain.ReassociateResult
 	reassociateErr error
+	authors        []domain.MediaAuthor
+	authorsErr     error
 }
 
 func (m *mockMediaService) GetMediaPage(_ context.Context, _ domain.MediaPageRequest) (*domain.MediaPageResponse, error) {
@@ -77,12 +79,17 @@ func (m *mockMediaService) AssociateMediaToMatch(_ context.Context, req domain.M
 	return &domain.MediaAssociateResponse{FilePath: req.FilePath, MatchID: req.MatchID}, nil
 }
 
+func (m *mockMediaService) ListMediaAuthors(_ context.Context) ([]domain.MediaAuthor, error) {
+	return m.authors, m.authorsErr
+}
+
 func newMediaRouter(factory handlers.ServiceFactory[port.MediaService]) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewMediaHandler(factory, nil, "")
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		r.Post("/pages/media", h.GetMediaLibrary)
 		r.Patch("/media/likes", h.PatchMediaLike)
+		r.Get("/media/authors", h.GetMediaAuthors)
 	})
 	return r
 }
@@ -126,6 +133,68 @@ func TestMediaHandler_ServiceError(t *testing.T) {
 	}
 	r := newMediaRouter(factory)
 	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/media", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", w.Code)
+	}
+}
+
+// TestMediaHandler_Authors_OK couvre le fix du bug "Aucun auteur disponible" :
+// l'endpoint retourne les auteurs fournis par le service (source DB), incl. un
+// auteur tiers (Madina) avec is_self=false. Sans WithAuthorsContext câblé, le
+// gamertag d'affichage retombe sur le player_slug.
+func TestMediaHandler_Authors_OK(t *testing.T) {
+	mock := &mockMediaService{authors: []domain.MediaAuthor{
+		{PlayerSlug: "Madina", IsSelf: false, MediaCount: 3},
+		{PlayerSlug: testPlayerSlug, IsSelf: true, MediaCount: 5},
+	}}
+	factory := func(_ context.Context, slug string) (port.MediaService, error) {
+		if slug != testPlayerSlug {
+			return nil, errors.New("player_not_found")
+		}
+		return mock, nil
+	}
+	r := newMediaRouter(factory)
+	req := httptest.NewRequest(http.MethodGet, "/players/test-player/media/authors", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp domain.MediaAuthorsResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(resp.Authors) != 2 {
+		t.Fatalf("got %d authors, want 2", len(resp.Authors))
+	}
+	var madina *domain.MediaAuthor
+	for i := range resp.Authors {
+		if resp.Authors[i].PlayerSlug == "Madina" {
+			madina = &resp.Authors[i]
+		}
+	}
+	if madina == nil {
+		t.Fatal("Madina absent de la liste d'auteurs (bug 'Aucun auteur disponible')")
+	}
+	if madina.IsSelf {
+		t.Error("Madina ne devrait pas être is_self")
+	}
+	if madina.Gamertag != "Madina" {
+		t.Errorf("gamertag fallback = %q, want Madina (= player_slug sans WithAuthorsContext)", madina.Gamertag)
+	}
+}
+
+func TestMediaHandler_Authors_ServiceError(t *testing.T) {
+	mock := &mockMediaService{authorsErr: errors.New("db_error")}
+	factory := func(_ context.Context, _ string) (port.MediaService, error) {
+		return mock, nil
+	}
+	r := newMediaRouter(factory)
+	req := httptest.NewRequest(http.MethodGet, "/players/test-player/media/authors", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

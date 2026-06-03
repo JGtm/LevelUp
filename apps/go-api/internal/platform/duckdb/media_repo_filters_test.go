@@ -433,6 +433,61 @@ func TestMediaFilters_OwnerGamertag_PopulatedFromPlayerSlug(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ListMediaAuthors : liste d'auteurs depuis la DB (filtre Auteurs)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// TestMediaFilters_ListMediaAuthors vérifie que ListMediaAuthors retourne les
+// player_slug distincts présents dans media_files avec leur compte, triés
+// count desc puis slug asc. Couvre le fix du bug "Aucun auteur disponible" :
+// la liste vient de la DB (cross-joueurs), pas d'un scan filesystem local.
+func TestMediaFilters_ListMediaAuthors(t *testing.T) {
+	pdb := newTestPlayerDBForMediaScenario(t)
+	repo := NewMediaRepo(pdb)
+	authors, err := repo.ListMediaAuthors(context.Background())
+	if err != nil {
+		t.Fatalf("ListMediaAuthors: %v", err)
+	}
+	// 3 owners distincts : Alice(2), Bob(1), HeroPlayer(2).
+	if len(authors) != 3 {
+		t.Fatalf("got %d authors %v, want 3", len(authors), authors)
+	}
+	counts := map[string]int{}
+	for _, a := range authors {
+		counts[a.PlayerSlug] = a.MediaCount
+	}
+	want := map[string]int{"Alice": 2, "Bob": 1, mediaTestPlayerSlug: 2}
+	for slug, n := range want {
+		if counts[slug] != n {
+			t.Errorf("author %s: count=%d, want %d (full=%v)", slug, counts[slug], n, authors)
+		}
+	}
+	// Tri count desc, slug asc : Alice(2), HeroPlayer(2), Bob(1).
+	gotOrder := []string{authors[0].PlayerSlug, authors[1].PlayerSlug, authors[2].PlayerSlug}
+	wantOrder := []string{"Alice", mediaTestPlayerSlug, "Bob"}
+	for i := range wantOrder {
+		if gotOrder[i] != wantOrder[i] {
+			t.Errorf("ordre[%d] = %q, want %q (full=%v)", i, gotOrder[i], wantOrder[i], gotOrder)
+		}
+	}
+}
+
+// TestMediaFilters_ListMediaAuthors_LegacyNoSharedSocial vérifie le fallback
+// schéma legacy (SharedSocial nil, media_files sans player_slug exploitable) :
+// on ne peut pas distinguer les auteurs → on retourne uniquement le joueur courant.
+func TestMediaFilters_ListMediaAuthors_LegacyNoSharedSocial(t *testing.T) {
+	pdb := newTestPlayerDBForMediaScenario(t)
+	pdb.SharedSocial = nil // simule une player DB legacy sans shared_social
+	repo := NewMediaRepo(pdb)
+	authors, err := repo.ListMediaAuthors(context.Background())
+	if err != nil {
+		t.Fatalf("ListMediaAuthors legacy: %v", err)
+	}
+	if len(authors) != 1 || authors[0].PlayerSlug != mediaTestPlayerSlug {
+		t.Fatalf("legacy: got %v, want [%s]", authors, mediaTestPlayerSlug)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Combos
 // ─────────────────────────────────────────────────────────────────────────────
 

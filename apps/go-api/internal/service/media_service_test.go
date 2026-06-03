@@ -43,6 +43,8 @@ type mockMediaRepo struct {
 	likersErr         error
 	capturedFilter    domain.MediaFilters
 	currentPlayerSlug string
+	authors           []domain.MediaAuthor
+	authorsErr        error
 }
 
 func (m *mockMediaRepo) LoadMediaFiles(_ context.Context, f domain.MediaFilters, _, _ int) ([]domain.MediaFileRow, error) {
@@ -80,7 +82,46 @@ func (m *mockMediaRepo) SetMediaMatchAssociation(_ context.Context, _, _ string)
 	return nil, nil, nil
 }
 
+func (m *mockMediaRepo) ListMediaAuthors(_ context.Context) ([]domain.MediaAuthor, error) {
+	return m.authors, m.authorsErr
+}
+
 // --- tests ---
+
+// TestMediaService_ListMediaAuthors_SetsIsSelf vérifie que le service marque
+// is_self pour le joueur courant (résolu via repo.CurrentPlayerSlug) et propage
+// la liste/le compte tels quels.
+func TestMediaService_ListMediaAuthors_SetsIsSelf(t *testing.T) {
+	repo := &mockMediaRepo{
+		currentPlayerSlug: "HeroPlayer",
+		authors: []domain.MediaAuthor{
+			{PlayerSlug: "Alice", MediaCount: 2},
+			{PlayerSlug: "HeroPlayer", MediaCount: 5},
+		},
+	}
+	svc := NewMediaService(repo, "")
+	got, err := svc.ListMediaAuthors(context.Background())
+	if err != nil {
+		t.Fatalf("ListMediaAuthors: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("got %d authors, want 2", len(got))
+	}
+	for _, a := range got {
+		wantSelf := a.PlayerSlug == "HeroPlayer"
+		if a.IsSelf != wantSelf {
+			t.Errorf("%s: IsSelf=%v, want %v", a.PlayerSlug, a.IsSelf, wantSelf)
+		}
+	}
+}
+
+func TestMediaService_ListMediaAuthors_PropagatesError(t *testing.T) {
+	repo := &mockMediaRepo{authorsErr: errors.New("db_error")}
+	svc := NewMediaService(repo, "")
+	if _, err := svc.ListMediaAuthors(context.Background()); err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
 
 func TestMediaService_GetMediaPage_OK(t *testing.T) {
 	now := time.Now()
