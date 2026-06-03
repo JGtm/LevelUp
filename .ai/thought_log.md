@@ -1,3 +1,20 @@
+## [2026-06-03] CI validation pré-prod : fixes intégration tests + triggers chore/* — Complété
+
+**Statut** : Complété. CI entièrement vert (9/9 jobs).
+
+**Décisions techniques** :
+- Ajout `chore/*` aux triggers CI push (ci.yml) pour permettre la validation sur les branches de maintenance.
+- Baseline `tests_pre_migration.jsonl` : retrait de `TestFmtPct`/`TestFmtPct_Zero` (dead code supprimé dans `29a9bfbd5`).
+- `TestCanonicalOrderCompleteness` (order_test.go) : filtre les migrations `test_*` dynamiquement enregistrées par `helpers_extra_test.go` — elles ne font pas partie du registre de production.
+- `TestRunForDB_SharedPvE_TableExists` : skip gracieux si `add_pve_schema` absent (title-owned, dépendance cyclique `migration → halo_infinite` impossible).
+- `openSharedTestDB` + `openBatchPathTestDB` : patch `match_participants` colonnes `first_joined_time`/`last_leave_time` manquantes (ajoutées par `shared_add_participation_timestamps`, migration title-owned absente du registre global dans les tests).
+
+**Résultats** : Deploy Pre-Check 4/4 + CI 9/9 verts. Go CVE (8 vulns stdlib go1.26.1→1.26.4) : warnings non bloquants, upgrade toolchain à planifier.
+
+**Prochaine étape** : cutover (Phase 2 runbook) puis déploiement prod.
+
+---
+
 ## [2026-06-03] Runbook go-live : refactor phases deploy (config-only) vs données (stop/start DuckDB) — Complété
 
 **Statut** : Complété.
