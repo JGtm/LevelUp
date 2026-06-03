@@ -29,7 +29,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"time"
 
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
@@ -61,27 +60,25 @@ type mediaMatchAssoc struct {
 // loadMatchTimeWindows lit les fenêtres temporelles des matchs depuis
 // shared_matches_v2.duckdb sans ATTACH cross-DB.
 //
-// Préfère réutiliser le handle du pool process-wide (LookupCachedDB) pour
-// éviter l'erreur DuckDB "different configuration" si shared_matches est déjà
-// ouvert en RW par le pool. Fallback : ouverture autonome en RO.
+// Acquiert le handle via OpenReadForQuery : réutilise le handle process-wide
+// (RW ou RO) s'il existe, et ne re-ouvre en RO que si AUCUN handle n'est en
+// cache. C'est crucial — l'ancien fallback `sql.Open(... access_mode=read_only)`
+// forçait une ouverture RO d'un fichier potentiellement tenu en RW dans le même
+// process (sync / reindex concurrent), ce qui échoue avec "file is being used
+// by another process" / "different configuration". Conséquence observée
+// (2026-06-03) : l'association d'un upload concurrent d'un reindex échouait
+// silencieusement → médias sans match. Même classe d'incident que l'OpenReadOnly
+// forcé corrigé par OpenReadForQuery (ADR-0016 / discovery sync V2 2026-06-01).
 //
 // Filtre WHERE start_time_utc/end_time_utc IS NOT NULL pour garantir des
 // timestamps valides. Le fallback `start_time AT TIME ZONE 'UTC'` couvre les
 // rares matchs pré-migration add_start_time_utc_to_match_registry.
 func loadMatchTimeWindows(ctx context.Context, sharedMatchesPath string) ([]matchTimeWindow, error) {
-	var db *sql.DB
-	if cached, ok := platform_duckdb.LookupCachedDB(sharedMatchesPath); ok {
-		db = cached.SQLDb()
-		slog.Debug("loadMatchTimeWindows: handle pool réutilisé", "path", sharedMatchesPath)
-	} else {
-		var openErr error
-		db, openErr = sql.Open("duckdb", sharedMatchesPath+"?access_mode=read_only")
-		if openErr != nil {
-			return nil, fmt.Errorf("ouverture shared_matches RO: %w", openErr)
-		}
-		defer db.Close()
-		slog.Debug("loadMatchTimeWindows: handle pool absent, fallback sql.Open RO", "path", sharedMatchesPath)
+	db, release, err := platform_duckdb.OpenReadForQuery(sharedMatchesPath)
+	if err != nil {
+		return nil, fmt.Errorf("ouverture shared_matches pour lecture: %w", err)
 	}
+	defer release()
 
 	rows, err := db.QueryContext(ctx, `
 		SELECT

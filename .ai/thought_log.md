@@ -1,3 +1,70 @@
+## [2026-06-03] Préparation go-live Go : garde-fou prod + deploy.sh Go + analyse backlog/médias — En cours
+
+**Statut** : En cours (config patchée sur la branche ; cutover + uploads VPS + déploiement à exécuter par l'utilisateur).
+
+**Contexte** : question initiale sur le WARN `configuration non sûre pour un déploiement multi-user exposé` (prod_guard CORS, `config.go:185` + `cmd/server/main.go:280`). Élargie à la préparation du déploiement Go du jour. Constat structurant : `main` = encore Python v6.5.0 ; toute la stack Go vit sur la branche courante (~2377 commits devant main). La chaîne `deploy.yml` (push main → `deploy.sh`) ciblait Python, et `scripts/deploy.sh` était Streamlit-only (attente port 8501 + `python healthcheck_db.py`) → `set -e` + timeout 60s = deploy en échec pour le Go.
+
+**Décisions / livrables** :
+- `.env.local.example` : bloc PRODUCTION copiable (LEVELUP_ENV/AUTH_MODE/SESSION_SECRET/CORS_ORIGINS) + hint `openssl rand`.
+- `scripts/deploy.sh` réécrit pour le Go : conserve git/build/stubs/compose, remplace la queue Streamlit par healthcheck `GET :8000/health` (bloquant) + demo `:8001` (warn-only), + rappel non bloquant du garde-fou prod. `bash -n` vert.
+- Cutover tranché avec l'utilisateur : **la branche Go devient main** (deploy.yml standard, `git reset origin/main` reste correct).
+- Médias VPS (choix user : sous `data/`) : `media_captures_base_dir = /app/data/media` (sous le volume `./data` monté) ; DB relative `{slug}/{file}` → `ToAbs` résout. NE PAS copier la valeur Windows ; uploader les binaires sous `data/media/{slug}/`. Aucun changement docker-compose.
+- BACKLOG : la plupart des « manips prod » sont **caduques** (Phase 4 / leased-writer déjà intégrés sur la branche, defaults `LEVELUP_PERSIST_BATCH`/async flippés ON, gap [F] RecoverPending résolu `main.go:615`). Restent vivants : `force_rebuild_art` si DBs legacy (local, binaire hors image Docker), 4 vars prod, CI verte avant cutover.
+- Runbook consolidé : `.ai/RUNBOOK_GO_LIVE.md`.
+- Correctif URL prod (confirmé user) : **`lvelup.info`** (pas `levelup.fr`, qui était une déduction erronée depuis les labels `deploy.yml`) dans `.env.local.example` + runbook.
+- Nettoyage BACKLOG (2026-06-03) : retrait des sections « Main Merge » (theme-consistency + Phase 4 Collect→Persist, déjà intégrées) et « Optional Documentation / créer ADR 0013 » (fichier `docs/adr/0013-*` déjà existant), + gap [F] RecoverPending (résolu, câblé `cmd/server/main.go`). Remplacées par un pointeur vers le runbook.
+- Vérification finale : `deploy.sh` shellcheck 0 warning + `bash -n` OK ; ADR 0013 confirmé présent ; aucune `levelup.fr` résiduelle hors label cosmétique `deploy.yml:44`. Aucun code Go/TS modifié (deliverables = script bash + config commentée + docs) → suite go/front non requise par ces changements, c'est la gate Phase 0 de l'utilisateur.
+
+**Prochaine étape** : Phase 0 (CI verte + check chemins média relatifs + rebuild ART local si legacy), dépose fichiers VPS, cutover Go→main, vérifs post-deploy. À confirmer : corriger les labels cosmétiques `deploy.yml` (`levelup.fr` → `lvelup.info`). Reco optionnelle post-go-live : build image en CI + pull GHCR (éviter le build-on-VPS).
+
+---
+
+## [2026-06-03] Bug médias non-associés à l'upload — réparation + root cause + fix — Complété
+
+**Statut** : Complété. `go test` (ops, service, api/handlers, domain) + `go vet ./internal/...` verts. 3 médias réparés en prod.
+
+**Symptôme** : 3 médias "Replay 2026-05-11" de Madina97294 (ids 217-219) sans association de match après un (ré)index, alors que d'autres médias in-window l'étaient.
+
+**Diagnostic (preuve par données, serveur arrêté)** :
+- `capture_start_utc` valides, tombant DANS une fenêtre de match synchronisé le 25 mai (matchs 349141cb/48aa9494). Rejeu de `computeAssociations` → les 3 seraient associés. Donc **bug, pas coïncidence**.
+- Les 127 médias ont `indexed_at`=17:45:51 → ré-index complet (table vidée puis repeuplée), pas un simple upload de 3. Les 3 sont les ids les plus hauts (insérés en dernier). Scénario : ré-index/scan concurrent de l'upload, dispute sur `shared_matches_v2`.
+
+**Root cause (2 défauts cumulés)** :
+1. `loadMatchTimeWindows` (media_associate.go) acquérait `shared_matches_v2` via `LookupCachedDB` + **fallback `sql.Open(...access_mode=read_only)` non-cache-aware**. Quand la DB est tenue en RW in-process (sync/reindex concurrent) ET que le cache de handle manque, l'open RO échoue ("file is being used" / "different configuration") — reproduit empiriquement. Même classe que l'incident OpenReadForQuery (ADR-0016 / discovery sync V2 2026-06-01). Le pool ouvre `shared_matches` en RO au boot (pool.go:226) → en steady-state le cache touche, mais une fenêtre de race (pas-encore-caché / chemin divergent) suffit.
+2. **Échec silencieux** : l'erreur d'association était empilée dans `result.Errors` sans log ERROR ni relance → médias sans match, aucun signal.
+
+**Fixes livrés** :
+- `loadMatchTimeWindows` → `platform_duckdb.OpenReadForQuery(path)` (réutilise le handle RW/RO caché ; cache le handle RO au lieu de ré-ouvrir en brut à chaque miss).
+- `IndexMedia` : `slog.ErrorContext` explicite sur échec d'association (plus de silence).
+- `UploadMedia` (interaction avec la dédup à la source — cf. entrée suivante) : un ré-upload tout-skippé (`Saved==0 && Skipped>0`) **ne court-circuite plus** l'indexation → `IndexMedia`+association se rejouent → re-uploader redevient un geste de réparation. Early-return réservé au cas vraiment vide (`Saved==0 && Skipped==0`).
+- Guard anti-régression `TestAssociateMediaWithMatches_SharedMatchesHeldRW` : association OK alors que `shared_matches` est tenu RW in-process via le pool (échouerait si on re-régressait vers un open RO forcé).
+
+**Réparation prod** : one-shot jetable appelant `ops.AssociateMediaWithMatches` (serveur arrêté) → 3 associations créées (20 candidats → 3, 17 restent légitimement hors fenêtre). Outil supprimé après usage (pas d'endpoint /media/reassociate — retiré en revue 2026-04-29).
+
+**Limite assumée** : trigger exact non reconstituable post-mortem (logs `logs/` rotatés, general.log s'arrête au 2 juin). Le bug + la classe de cause sont certains ; l'instant précis de la race ne l'est pas.
+
+**Prochaine étape** : envisager un endpoint/CLI de ré-association exposé (seul recours actuel = re-upload, désormais réparateur). Surveiller les logs ERROR "association média↔match échouée" en prod.
+
+---
+
+## [2026-06-03] Dédup upload média à la source (anti-doublon disque) — Complété
+
+**Statut** : Complété. `go build` + `go vet` (ops, service, domain, handlers) verts ; `go test ./internal/service` + `./internal/ops` OK (nouveaux tests dédup + suite hash/index existante).
+
+**Contexte** : question utilisateur sur le comportement au ré-upload d'un média déjà importé. Diagnostic : l'indexation déduplique déjà par hash de contenu (`loadKnownHashes` → skip), donc **aucun doublon DB** n'est jamais créé. Le seul doublon introduit était un **fichier disque redondant** : `safeDestPath` suffixe un timestamp dès qu'un nom existe, sans regarder le contenu → l'écriture précède l'indexation, qui ignore ensuite le fichier par hash en laissant un orphelin. Objectif user : éviter l'introduction de doublons (pas de nettoyage rétroactif voulu).
+
+**Décision technique** :
+- Dédup **à la source**, dans la boucle d'écriture de `UploadMedia` (`media_service_upload.go`) : si un fichier de **même nom + même hash de contenu** existe déjà sur disque → skip l'écriture (`result.Skipped++`, `continue`). Couvre le cas réel dominant (le navigateur renvoie le nom original au ré-upload).
+- Contenu **différent** au même nom → comportement inchangé (suffixe timestamp) : c'est un média distinct, surtout pas à fusionner.
+- Réutilise la même notion de hash que l'indexation : `fileHash` privé renommé/exporté en `ops.HashFile` (streaming disque) + nouveau `ops.HashBytes` (buffer mémoire, octets upload déjà chargés). Les deux produisent le même sha256 tronqué 16 hex.
+- Champ `UploadResult.Skipped` (`json:"skipped,omitempty"`, non-breaking) remonté au front via le handler existant ; log final + early-return ajustés (tous skippés = `Info`, plus `Warn`).
+
+**Limite connue** : le cas marginal « même contenu ré-uploadé sous un nom différent » n'est pas couvert (safeDestPath ne se déclenche pas), il crée un orphelin disque que l'indexation ignore — non visible en galerie, jugé hors scope par l'utilisateur. Couverture totale possible via pré-check hash-vs-DB si besoin un jour.
+
+**Prochaine étape** : aucune. Front peut afficher `skipped` dans le toast d'upload si souhaité (optionnel).
+
+---
+
 ## [2026-06-03] Bande Rendement/Résistance unifiée (CombatYieldDisplay) sur toutes les surfaces — Complété
 
 **Statut** : Complété. Backend `go build`/`go vet`/`go test` (analysis, domain, service, handlers) verts ; front `tsc` + lint (0 erreur) + vitest 415/415 (zones home/synthesis/session-detail/session-compare/squad/ui).

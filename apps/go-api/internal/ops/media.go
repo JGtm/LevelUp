@@ -214,7 +214,7 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 	}
 
 	for _, path := range mediaFiles {
-		hash, err := fileHash(path)
+		hash, err := HashFile(path)
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: hash: %v", path, err))
 			continue
@@ -239,7 +239,12 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 	// Association avec les matchs
 	assoc, err := AssociateMediaWithMatches(ctx, db, opts.SharedMatchesDBPath, opts.BufferMin, opts.Timezone)
 	if err != nil {
+		// Échec NON-fatal mais explicitement loggué en ERROR : un échec silencieux
+		// laissait des médias sans match sans aucun signal (incident 2026-06-03 —
+		// upload concurrent d'un reindex, conflit de lock sur shared_matches).
 		result.Errors = append(result.Errors, fmt.Sprintf("association: %v", err))
+		slog.ErrorContext(ctx, "IndexMedia: association média↔match échouée (médias non-associés)",
+			"player", opts.Gamertag, "shared_matches", opts.SharedMatchesDBPath, "err", err)
 	} else {
 		result.Associated = assoc
 	}
