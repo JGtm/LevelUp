@@ -955,7 +955,7 @@ export interface PaginatedResponse<T> {
 }
 
 // ---------------------------------------------------------------------------
-// Historique des parties (Slice 3)
+// Historique des matchs (Slice 3)
 // ---------------------------------------------------------------------------
 
 export interface MatchHistoryRow {

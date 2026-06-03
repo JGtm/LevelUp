@@ -16,7 +16,7 @@
 import type { TeammateKPIs } from '@/lib/api/types'
 
 /**
- * Format d'affichage d'une métrique. Détermine le suffixe (%, /partie, ratio)
+ * Format d'affichage d'une métrique. Détermine le suffixe (%, /match, ratio)
  * et la précision de rendu.
  */
 export type MetricFormat = 'integer' | 'percent' | 'ratio' | 'per_game'
@@ -37,7 +37,7 @@ export interface SquadMetric {
 
 // ─── KPI cards (en-tête de page) ──────────────────────────────────────────────
 //
-// 4 métriques par défaut sur HI : matchs, win rate, K/D, kills/partie.
+// 4 métriques par défaut sur HI : matchs, win rate, K/D, kills/match.
 // Sur synthetic_title_b (fields.toml minimaliste), seules les keys présentes
 // produisent une card — le rendu skip les autres sans crash.
 

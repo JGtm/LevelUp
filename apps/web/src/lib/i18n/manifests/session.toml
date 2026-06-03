@@ -589,7 +589,7 @@ fr = "Carte"
 en = "Map"
 
 [session.compare.map_col_a_matches]
-fr = "A — Parties"
+fr = "A — Matchs"
 en = "A — Matches"
 
 [session.compare.map_col_a_wl]
@@ -597,7 +597,7 @@ fr = "A — V/D"
 en = "A — W/L"
 
 [session.compare.map_col_b_matches]
-fr = "B — Parties"
+fr = "B — Matchs"
 en = "B — Matches"
 
 [session.compare.map_col_b_wl]
@@ -609,7 +609,7 @@ fr = "Mode"
 en = "Mode"
 
 [session.compare.mode_col_a_matches]
-fr = "A — Parties"
+fr = "A — Matchs"
 en = "A — Matches"
 
 [session.compare.mode_col_a_wins]
@@ -617,7 +617,7 @@ fr = "A — Victoires"
 en = "A — Wins"
 
 [session.compare.mode_col_b_matches]
-fr = "B — Parties"
+fr = "B — Matchs"
 en = "B — Matches"
 
 [session.compare.mode_col_b_wins]
@@ -861,7 +861,7 @@ fr = "Session indisponible"
 en = "Session unavailable"
 
 [session.detail.unavailable_not_found]
-fr = "Cette session n'existe pas ou ne fait pas partie de tes parties."
+fr = "Cette session n'existe pas ou ne fait pas partie de tes matchs."
 en = "This session doesn't exist or isn't part of your matches."
 
 [session.detail.action_home]

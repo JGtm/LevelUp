@@ -1,6 +1,6 @@
 /**
- * SessionFdaRadar — radar 3 axes Frags / Morts / Assists (MOYENNES par partie).
- * Remplace les barres FDA par-partie (choix utilisateur). Paliers de référence
+ * SessionFdaRadar — radar 3 axes Frags / Morts / Assists (MOYENNES par match).
+ * Remplace les barres FDA par-match (choix utilisateur). Paliers de référence
  * fixes par axe ; valeur brute affichée au survol via SessionStatsRadar.
  */
 import { useMemo } from 'react'

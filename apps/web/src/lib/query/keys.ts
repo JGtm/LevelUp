@@ -42,7 +42,7 @@ export const queryKeys = {
   // Achievements Xbox (bilingues EN/FR, statiques après backfill)
   achievements: (playerSlug: string) => ['achievements', playerSlug] as const,
 
-  // Historique des parties (Slice 3)
+  // Historique des matchs (Slice 3)
   matchHistory: (playerSlug: string, filterHash: string, page: number, soloSessions: string[] = []) =>
     ['match-history', playerSlug, filterHash, page, [...soloSessions].sort().join(',')] as const,
   /** Préfixe broad — invalide tout le cache match-history d'un joueur. */
