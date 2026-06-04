@@ -542,11 +542,17 @@ func (s *Service) loadLUSRSnapshot(ctx context.Context) (LUSRState, error) {
 		deviation   sql.NullFloat64
 		lastMatchAt sql.NullTime
 	)
+	// Lecture via la vue _latest (1 row/match, dédup append-only) ordonnée par
+	// written_at : match_skill_rank.start_time est 100% NULL sur les rows LUSR
+	// (aucun writer ne le renseigne — seul CSR l'a), donc ORDER BY start_time
+	// renvoyait une row arbitraire. written_at (NOT NULL) donne le rating le plus
+	// récemment écrit = LUSR courant. lastMatchAt = COALESCE(start_time, written_at).
+	// Cf. mémoire reference_lusr_v2_readers_latest_view.
 	err := s.db.QueryRow(ctx, `
-		SELECT rating_value, rating_deviation, start_time
-		FROM match_skill_rank
+		SELECT rating_value, rating_deviation, COALESCE(start_time, written_at)
+		FROM match_skill_rank_latest
 		WHERE rating_type = 'LUSR' AND rating_value IS NOT NULL
-		ORDER BY start_time DESC NULLS LAST
+		ORDER BY written_at DESC
 		LIMIT 1
 	`).Scan(&rating, &deviation, &lastMatchAt)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -564,7 +570,7 @@ func (s *Service) loadLUSRSnapshot(ctx context.Context) (LUSRState, error) {
 	}
 
 	if err := s.db.QueryRow(ctx, `
-		SELECT COUNT(*) FROM match_skill_rank
+		SELECT COUNT(*) FROM match_skill_rank_latest
 		WHERE rating_type = 'LUSR' AND rating_value IS NOT NULL
 	`).Scan(&lusr.MatchesCount); err != nil {
 		return lusr, fmt.Errorf("query count: %w", err)
@@ -576,12 +582,17 @@ func (s *Service) loadLUSRSnapshot(ctx context.Context) (LUSRState, error) {
 func (s *Service) loadMuSeries(ctx context.Context, since, until time.Time) ([]float64, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
+	// Vue _latest + COALESCE(start_time, written_at) : les rows LUSR ont
+	// start_time NULL (cf. loadLUSRSnapshot) ; sans COALESCE le filtre temporel
+	// excluait TOUT → série μ vide (« pas de tendance »). written_at sert de
+	// proxy temporel pour l'historique ; start_time (renseigné côté écriture
+	// désormais) est préféré quand présent.
 	rows, err := s.db.Query(ctx, `
 		SELECT rating_value
-		FROM match_skill_rank
+		FROM match_skill_rank_latest
 		WHERE rating_type = 'LUSR' AND rating_value IS NOT NULL
-		  AND start_time >= ? AND start_time <= ?
-		ORDER BY start_time ASC
+		  AND COALESCE(start_time, written_at) >= ? AND COALESCE(start_time, written_at) <= ?
+		ORDER BY COALESCE(start_time, written_at) ASC
 	`, since, until)
 	if err != nil {
 		return nil, err
