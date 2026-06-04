@@ -1,3 +1,61 @@
+## [2026-06-04] Diagnostic pipeline enrichissement incomplet (FDA/LUSR/perfs/frags par arme/MMR équipe) — En cours
+
+**Statut** : En cours. Diagnostic complet (logs + code + base, serveur arrêté), 13 agents workflow + vérifications DuckDB directes (outil `cmd/diag_q`). Fixes non encore appliqués (décisions produit en attente).
+
+**Méthode** : workflow multi-agents (6 angles × vérif adversariale + synthèse) sur code+logs, croisé avec lectures DuckDB directes (serveur down → `OpenReadForQuery` impossible côté agents, fait à la main). L'outil `apps/go-api/cmd/diag_q` (runner SQL read_only générique, build CGO ucrt64) a permis de trancher les hypothèses code.
+
+**Causes racines confirmées (données à l'appui)** :
+- **RC-2 — Chocoboflor player DB legacy SANS PK** : `duckdb_constraints()` = 0 contrainte sur `player_match_enrichment`, `match_citations` ET `match_skill_rank` (les 3 autres joueurs ont les PK). → `INSERT OR IGNORE`/`ON CONFLICT` échouent au Prepare (Binder Error) → `ensurePlayerEnrichmentRows` no-op (gap orphelins 487 shared vs 484 enrichment), citations written:0, 14 perfs NULL. Scope = Chocoboflor uniquement (XxDaemon a ses PK ; ses 10 perfs NULL = chaînes sous le seuil 10, normal). Fix : migration corrective boot-time `repair_*_primary_key` calquée sur `repair_engagement_coefficients_primary_key`.
+- **RC-3 — Madina « pas de LUSR » = bug lecture** : données présentes (5552 LUSR + 4368 LUSR_V2, pic Platine VI) mais `match_skill_rank.start_time` est **100% NULL** sur toutes les rows LUSR/LUSR_V2 (written_at OK). `profile/service.go:545-585` `loadLUSRSnapshot` (ORDER BY start_time DESC NULLS LAST) et `loadMuSeries` (filtre start_time) → row arbitraire / série vide. Fix : ORDER BY written_at + JOIN registry (pattern Q8).
+- **RC-5 — highlight_events arrêté le 2026-05-30** (NOUVEAU, non vu par les agents car base lockée) : `highlight_events`, `weapon_kills`, `killer_victim_pairs` s'arrêtent tous au 30/05. Les 11 matchs du 03/06 sont insérés (participants OK) mais `events_loaded=false`. Le film EST dispo (weapon step `no_film:0`) → `getKillsForPlayer` lit highlight_events vide → 0 frag. Heal events décommissionné le 01/06 (engine_postsync.go:179) → aucun rattrapage. C'est la vraie cause de « frags par arme vide » sur les récents (pas seulement le gate inserted>0 / l'auth). Fix : backfill events récents + ré-activer un heal events borné.
+- **RC-1 — 401 auth sans recovery** : `MarkUnhealthy`/refresh pool jamais câblés hors tests ; `notifyPoolOnHTTPError` ignore 401/403 ; `doGet` ne retry pas sur 401. Sync 18:19 → matches_inserted:0. Dernier insert réel = 03/06 ~21:30. Fix : retry borné + MarkUnhealthy sur 401/403.
+- **RC-4 — pas de LUSR cross-joueur en shared** : `shared.match_csrs` = CSR-only (0 LUSR) ; en-tête scoreboard affiche « LUSR » à tort. Section « Rang & MMR équipe » vide pour les non-owned. Fix A (en-tête honnête) ou B (globaliser LUSR — question produit + vie privée).
+- **FDA « faux »** : aucune corruption (chemin K/D/A aligné de bout en bout) ; valeurs source plausibles. Ressenti = fraîcheur (RC-1) + matchs orphelins/récents sans enrichissement.
+- Bonus data : 42 `weapon_labels` pour 174 weapon_ids distincts → étiquetage partiel (`seed-weapon-labels`).
+
+**Recadrage utilisateur (2026-06-04)** : pas de heal ni de backfill manuel comme fix durable → cible = **sync convergent autonome** (cf [[project-convergent-sync-direction]]). Et : les films Halo sont dispo en ~1 min (pas « quelques minutes ») → le gap events n'est PAS du film-lag, c'est un défaut pipeline.
+
+**Root cause RC-5 précisé (audit)** : le watcher live (`Trigger.RunSync` → `RunDelta`) était construit avec un `SyncOptions{}` littéral OMETTANT `WithHighlightEvents` (zéro-value=false, `cmd/server/main.go:1475`) → `GetHighlightEventsChunk` jamais appelé sur le chemin live → `highlight_events` jamais écrit. Le scheduler (`DefaultSyncOptions`, true) ne rattrape pas (son delta s'arrête sur match « connu » déjà inséré par le watcher). Le heal events masquait ce trou jusqu'au décommissionnement du 01/06.
+
+**Blueprint convergent vérifié** : workflow `wf_c5ea8f51-004` (3 designs concurrents + 3 revues adversariales). Base = « Convergence Réactivée » : remplacer le gate `len(insertedIDs)>0` (engine_postsync.go:202) par `insertedIDs ∪ selectConvergenceWork` (réutilise `findMatchesInSharedAll`, déjà bitmask-aware). Pièges ÉCARTÉS par la revue : (1) ne PAS réparer la PK `match_skill_rank` à la main (`RebuildMatchSkillRankART` pose `PK(match_id)` = ancien schéma → rouvre ART) ; (2) `MarkUnhealthy(pinnedGamertag)` = no-op (vide pour PolicyAnyPublic) → threader `lease.Gamertag` ; (3) ne jamais router la convergence via `ReplayHighlightEventsForMatches` (clearEventsLoaded → doublons).
+
+**Avancement** : branche `fix/enrichment-convergence` créée. **Fix #1 livré (compile, `go build ./cmd/server` OK)** : `WithHighlightEvents: true` ajouté au watcher Trigger (main.go:1475) → 1er passage events complet. **Wiring gap CONFIRMÉ** : `RunForDB(TargetPlayer)` n'est JAMAIS appelé au boot serveur (seuls metadata/shared/pve/social le sont, main.go:1173-1215 ; `RunPlayerMigrations`:1226 a zéro call-site) → même `repair_engagement_coefficients_primary_key` ne s'applique pas en prod. Câbler `RunPlayerMigrations` au boot par profil = prérequis RC-2.
+
+**Décision user (2026-06-04)** : globalisation LUSR validée (RC-4 complet, pas d'enjeu vie privée — données dérisoires). Implémentation séquentielle en autonomie.
+
+**Phase 1 LIVRÉE (compile + vet + tests verts)** sur `fix/enrichment-convergence` :
+- 1a : `RunPlayerMigrations` câblé au boot par profil (cmd/server/main.go, après runMigrations, gardé `!cfg.DemoMode`, skip IsDemo). C'était le prérequis manquant (TargetPlayer jamais exécuté au boot).
+- 1b/1c : `internal/migration/steps_player_repair_pk.go` — `repair_player_match_enrichment_primary_key` (réutilise `RebuildPlayerMatchEnrichmentART`, gardé `!hasPrimaryKey`) + `repair_match_citations_primary_key` (CTAS dynamique préservant colonnes + dédup `(match_id, citation_name_norm)` + écarte clés NULL + ADD PK). Ajoutés à `canonicalOrder` (order.go, fin section player). `match_skill_rank` PAS touchée (append-only, laissé au step idempotent).
+- 1d : `steps_player_repair_pk_test.go` (tag integration) — legacy sans PK → PK posée, colonnes/données préservées, dédup garde la + récente, clés NULL écartées, INSERT OR IGNORE/ON CONFLICT débloqués, idempotent. `TestCanonicalOrderCompleteness` vert.
+- 1e : RC-1 — `pooled_client.go` `notifyPoolOnError(lease, err)` : 401/403 → `MarkUnhealthy(lease.Gamertag)` (le BON slot, pas pinnedGamertag vide) + retry borné 1× via `doPublic` (round-robin token frais) ; 429/503 → cooldown global inchangé. Test 401/403 → MarkUnhealthy slot, pas de cooldown global.
+- 1f : `go build`/`go vet` verts (sync, cmd/server, migration) ; tests migration + sync (pooled/trigger) verts.
+
+**Phase 2 LIVRÉE (build/gofmt/vet verts, suite ./internal/sync verte, garde no_art_patterns verte)** :
+- `internal/sync/convergence.go` : `selectMatchesMissingEvents` / `selectMatchesMissingWeapons` (réutilisent `FindMatchesMissingData` + `SyncScope{Events|Weapons, MaxMatches:50}`, déjà bitmask-aware), `hasConvergenceBacklog`, `convergeEvents` (boucle `ProcessHighlightEvents`, globalDB=nil best-effort, JAMAIS Replay→clear).
+- `engine_postsync.go` : étape 1.54 convergence events AVANT 1.55 weapons ; gate `len(insertedIDs)>0` délié → `insertedIDs ∪ selectMatchesMissingWeapons` (sélection weapons APRÈS events). `runConditionalPostSync` déclenche le pipeline même sans insert si `hasConvergenceBacklog`. Idempotent + borné (horizon 50) + terminal no-film 30j → converge vers 0. → les 11 matchs bloqués du 03/06 se résorbent en 1-2 cycles, sans backfill manuel.
+
+**Phase 3b LIVRÉE (build/vet/tests profile verts)** : `progression/profile/service.go` `loadLUSRSnapshot` + count + `loadMuSeries` lisent `match_skill_rank_latest` et trient/fenêtrent par `COALESCE(start_time, written_at)` (start_time 100% NULL sur LUSR → ORDER BY arbitraire + série vide). Corrige « Madina pas de LUSR » pour la donnée EXISTANTE sans backfill.
+
+**Build module complet vert** (`go build ./...`). 4/5 symptômes + 2 infra adressés et vérifiés : Flo perfs (PK), reprise ingestion/FDA (RC-1), frags par arme (watcher + convergence), Madina LUSR (reader). 
+
+**RC-4 — RÉSOLU SANS CODE (correction user : CSR/LUSR exclusifs par match)** : le scoreboard équipe lit déjà le rang de chaque coéquipier SUIVI depuis SA player DB (`match_view_builders_team.go:127-163` → `friendsExtras.SkillRank` → `GetMatchSkillRank` → `Q22aMatchSkillRankPlayer` qui lit bien `match_skill_rank_latest`, vérifié). Le shared `match_csrs` n'est qu'un fallback non-suivi. Mai marchait car le LUSR de chaque joueur y était calculé. Le « manque LUSR » récent = conséquence de l'enrichment cassé (matchs orphelins sans row → sans LUSR calculé) → réparé par Phases 1-2 (PK → ensure crée la row → needsScoreRefresh → shadow LUSR traite l'orphelin → LUSR en player DB → scoreboard le ressort). Ma proposition de table dédiée était une SUR-INGÉNIERIE. Aucune table shared, aucun changement front.
+
+**Phase 3c LIVRÉE** : jauge `expvar` passive `convergence_{events,weapons}_pending_total` + `_processed_total` (engine_postsync.go) — quantifie que la convergence est exceptionnelle (plafonne en stationnaire). Passive : aucune consultation requise, les logs INFO `post-sync: convergence …` sont le signal (silence = roue de secours au coffre).
+
+**Tests convergence LIVRÉS** (`convergence_test.go`, tag integration, verts) : sélection ledger-driven (complet jamais resélectionné), backlog vide quand tout complet → preuve « converge vers zéro, pas de heal à fenêtre floue ».
+
+**Phase 3a (start_time write) : DIFFÉRÉE** (hygiène) — 3b couvre l'affichage via `COALESCE(start_time, written_at)` ; threader start_time depuis le shadow runner = plumbing non bloquant.
+
+**VÉRIFICATION FINALE VERTE** : `go build ./...` + `go vet ./...` + `go test ./...` (81 pkg ok, 0 FAIL) + tests integration (migration PK, convergence, pooled 401) + gofmt. Aucune modif front.
+
+**Bilan** : 5/5 symptômes + 2 infra adressés (Flo perfs=PK ; ingestion/FDA=RC-1 ; frags par arme=watcher events + convergence ; Madina LUSR=reader _latest+COALESCE ; LUSR équipe=conséquence enrichment, fixé par Phases 1-2). Mécanisme de sync convergent ART-safe (no_art_patterns vert), idempotent, borné, terminal 30j — la convergence est un filet exceptionnel, pas une béquille récurrente.
+
+**Attente film au 1er passage LIVRÉE** (`engine_highlight_events.go` `fetchHighlightChunkResilient` + `engine_fetch.go` + test) : un match FRAIS dont le film n'est pas prêt au fetch attend (retry borné) que le film se publie → s'affiche COMPLET (frags par arme inclus) du 1er coup, plutôt qu'à moitié puis rattrapé par la convergence. **Délai par défaut 30s × 3** (valeur de départ, réglable prod via `LEVELUP_FRESH_FILM_RETRY` CSV secondes / `0`=off, sans redéploiement). Choix produit : complétude > latence (~30-90s d'attente sur un match frais). Doc de handoff : `.ai/HANDOFF_ENRICHMENT_CONVERGENCE.md` (état + quoi observer en prod + comment affiner).
+
+**Statut** : Complété (en attente accord commit). Différé/abandonné : Phase 3a (start_time write — colonne dénormalisée redondante, le reader gère via COALESCE) ; self-alert convergence (option `/health` si besoin). À observer en prod : taux de complétude au 1er passage (affiner le 30s), compteurs `convergence_*_pending` (doivent plafonner).
+
+---
+
 ## [2026-06-03] Go-live exécuté : cutover -s ours + 3 fixes prod live (bind 0.0.0.0, nginx, SPA) — En cours
 
 **Statut** : En cours. Cutover fait, API publique live (`lvelup.info/health` → 200). Fix SPA + bind committé + poussé sur main → redéploiement en cours. Reste : valider `lvelup.info/` (UI React) + `demo.lvelup.info` après rebuild.
