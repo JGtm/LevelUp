@@ -22,6 +22,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"levelup/go-api/internal/domain"
 )
@@ -132,7 +133,15 @@ func (e *SyncEngine) fetchMatchData(
 	// l'insertion se fera côté playerDB dans insertFetchedMatch.
 	fm.PSA = ExtractPersonalScoreAwards(matchJSON, matchID, e.xuid)
 	if opts.WithHighlightEvents {
-		data, filmMajorVer, found, err := client.GetHighlightEventsChunk(ctx, matchID)
+		// Attente bornée du film pour un match FRAIS (cf. fetchHighlightChunkResilient) :
+		// garantit que les events (→ killer_victim → frags par arme) sont récupérés
+		// dans le sync qui découvre le match, plutôt qu'un affichage à moitié rattrapé
+		// par la convergence un cycle plus tard. startTime via la registry déjà extraite.
+		var startTime time.Time
+		if fm.Registry != nil {
+			startTime = fm.Registry.StartTime
+		}
+		data, filmMajorVer, found, err := fetchHighlightChunkResilient(ctx, client, matchID, startTime)
 		fm.HasHighlights = found
 		fm.FilmMajorVer = filmMajorVer
 		if err != nil {
