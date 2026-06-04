@@ -20,6 +20,7 @@ type mockPool struct {
 	onHTTPErrorCalls []int         // Track statusCode values for OnHTTPError calls
 	lastRetryAfter   time.Duration // dernier retryAfter passé à OnHTTPError
 	slotLimiter      *rate.Limiter // Si non-nil, populé dans Lease.Limiter (Option 2)
+	markUnhealthy    []string      // gamertags passés à MarkUnhealthy (RC-1 401/403)
 }
 
 func (m *mockPool) Acquire(ctx context.Context, policy pool.AcquirePolicy, pinnedGamertag string) (*pool.Lease, error) {
@@ -72,7 +73,7 @@ func (m *mockPool) HasPlayer(gamertag string) bool {
 }
 
 func (m *mockPool) MarkUnhealthy(gamertag string, reason error) {
-	// no-op for tests
+	m.markUnhealthy = append(m.markUnhealthy, gamertag)
 }
 
 func (m *mockPool) OnHTTPError(statusCode int, retryAfter time.Duration) {
@@ -253,7 +254,7 @@ func TestPooledHaloClientNotifyHTTPError_429(t *testing.T) {
 		URL:        "https://example.com/api",
 		Err:        errors.New("rate limited"),
 	}
-	client.notifyPoolOnHTTPError(err)
+	client.notifyPoolOnError(nil, err)
 
 	// Vérifier que pool.OnHTTPError a été appelée avec 429.
 	if len(mp.onHTTPErrorCalls) != 1 {
@@ -280,7 +281,7 @@ func TestPooledHaloClientNotifyHTTPError_503(t *testing.T) {
 		URL:        "https://example.com/api",
 		Err:        errors.New("service unavailable"),
 	}
-	client.notifyPoolOnHTTPError(err)
+	client.notifyPoolOnError(nil, err)
 
 	// Vérifier que pool.OnHTTPError a été appelée avec 503.
 	if len(mp.onHTTPErrorCalls) != 1 {
@@ -307,7 +308,7 @@ func TestPooledHaloClientNotifyHTTPError_OtherStatus(t *testing.T) {
 		URL:        "https://example.com/api",
 		Err:        errors.New("internal server error"),
 	}
-	client.notifyPoolOnHTTPError(err)
+	client.notifyPoolOnError(nil, err)
 
 	// Vérifier que pool.OnHTTPError n'a PAS été appelée.
 	if len(mp.onHTTPErrorCalls) != 0 {
@@ -424,10 +425,37 @@ func TestPooledHaloClientNotifyHTTPError_NilError(t *testing.T) {
 	client := NewPooledHaloClient(mp, "", "", 0)
 
 	// Passer nil comme erreur.
-	client.notifyPoolOnHTTPError(nil)
+	client.notifyPoolOnError(nil, nil)
 
 	// Vérifier que pool.OnHTTPError n'a pas été appelée.
 	if len(mp.onHTTPErrorCalls) != 0 {
 		t.Errorf("expected 0 OnHTTPError calls for nil error, got %d", len(mp.onHTTPErrorCalls))
+	}
+}
+
+// TestPooledHaloClientNotifyError_401_MarksUnhealthy : RC-1 — un 401/403 marque
+// unhealthy le slot du LEASE (et non pinnedGamertag, vide en round-robin), sans
+// déclencher de cooldown global (réservé 429/503).
+func TestPooledHaloClientNotifyError_401_MarksUnhealthy(t *testing.T) {
+	for _, code := range []int{401, 403} {
+		mp := &mockPool{
+			tokens:           map[string]*domain.HaloTokens{"slotA": testTokens("slotA")},
+			onHTTPErrorCalls: []int{},
+		}
+		client := NewPooledHaloClient(mp, "", "", 0)
+		lease := &pool.Lease{Gamertag: "slotA", Tokens: testTokens("slotA"), Release: func() {}}
+		err := &HTTPError{StatusCode: code, URL: "https://example.com/api", Err: errors.New("auth refused")}
+
+		client.notifyPoolOnError(lease, err)
+
+		if len(mp.markUnhealthy) != 1 || mp.markUnhealthy[0] != "slotA" {
+			t.Errorf("code %d : MarkUnhealthy attendu sur 'slotA', got %v", code, mp.markUnhealthy)
+		}
+		if len(mp.onHTTPErrorCalls) != 0 {
+			t.Errorf("code %d : aucun cooldown global attendu sur 401/403, got %v", code, mp.onHTTPErrorCalls)
+		}
+		if !isAuthError(err) {
+			t.Errorf("isAuthError(%d) devrait être true", code)
+		}
 	}
 }
