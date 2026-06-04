@@ -78,24 +78,76 @@ func (pc *PooledHaloClient) newAPIClient(lease *pool.Lease) *HaloAPIClient {
 	return c
 }
 
-// notifyPoolOnHTTPError inspecte l'erreur et signale OnHTTPError au pool si 429/503.
-func (pc *PooledHaloClient) notifyPoolOnHTTPError(err error) {
+// isAuthError indique si err est un refus d'authentification Halo (401/403).
+func isAuthError(err error) bool {
+	var httpErr *HTTPError
+	if errors.As(err, &httpErr) {
+		return httpErr.StatusCode == 401 || httpErr.StatusCode == 403
+	}
+	return false
+}
+
+// notifyPoolOnError signale au pool les erreurs HTTP qui nécessitent une action :
+//   - 429/503 → cooldown GLOBAL (OnHTTPError) — tout le pool est en pause.
+//   - 401/403 → le SLOT fautif (lease.Gamertag) est marqué unhealthy
+//     (MarkUnhealthy déclenche un Resolver.Refresh async) et le pool le skip.
+//
+// RC-1 (2026-06-04) : avant, seuls 429/503 étaient gérés et le 401/403 était
+// ignoré — un token expiré/révoqué était re-servi en boucle (sync 18:19 →
+// matches_inserted:0). On marque le bon slot via lease.Gamertag, JAMAIS le
+// pinnedGamertag (vide pour les appels PolicyAnyPublic round-robin).
+func (pc *PooledHaloClient) notifyPoolOnError(lease *pool.Lease, err error) {
 	if err == nil {
 		return
 	}
 	var httpErr *HTTPError
-	if errors.As(err, &httpErr) {
-		if httpErr.StatusCode == 429 || httpErr.StatusCode == 503 {
-			msg := "rate_limit_exceeded"
-			if httpErr.StatusCode == 503 {
-				msg = "service_unavailable"
-			}
-			slog.WarnContext(context.Background(), "pooled: pool global cooldown triggered",
-				"statusCode", httpErr.StatusCode, "reason", msg, "gamertag", pc.pinnedGamertag,
-				"retry_after_s", httpErr.RetryAfter.Seconds())
-			pc.p.OnHTTPError(httpErr.StatusCode, httpErr.RetryAfter)
+	if !errors.As(err, &httpErr) {
+		return
+	}
+	switch httpErr.StatusCode {
+	case 429, 503:
+		msg := "rate_limit_exceeded"
+		if httpErr.StatusCode == 503 {
+			msg = "service_unavailable"
+		}
+		slog.WarnContext(context.Background(), "pooled: pool global cooldown triggered",
+			"statusCode", httpErr.StatusCode, "reason", msg,
+			"retry_after_s", httpErr.RetryAfter.Seconds())
+		pc.p.OnHTTPError(httpErr.StatusCode, httpErr.RetryAfter)
+	case 401, 403:
+		gt := ""
+		if lease != nil {
+			gt = lease.Gamertag
+		}
+		slog.WarnContext(context.Background(), "pooled: token refusé (auth) — slot marqué unhealthy + refresh",
+			"statusCode", httpErr.StatusCode, "gamertag", gt)
+		if gt != "" {
+			pc.p.MarkUnhealthy(gt, err)
 		}
 	}
+}
+
+// doPublic exécute un appel sur un endpoint public (PolicyAnyPublic) avec
+// recovery auth : sur 401/403, le slot fautif est marqué unhealthy
+// (notifyPoolOnError) puis l'appel est retenté UNE seule fois avec un autre
+// token (round-robin du pool). Borné à 2 tentatives — au-delà, on remonte la
+// dernière erreur (token réellement révoqué, ou pool entièrement malsain).
+func (pc *PooledHaloClient) doPublic(ctx context.Context, call func(c *HaloAPIClient) error) error {
+	var lastErr error
+	for attempt := 0; attempt < 2; attempt++ {
+		lease, err := pc.p.Acquire(ctx, pool.PolicyAnyPublic, "")
+		if err != nil {
+			return fmt.Errorf("pooled: Acquire failed: %w", err)
+		}
+		callErr := call(pc.newAPIClient(lease))
+		pc.notifyPoolOnError(lease, callErr)
+		lease.Release()
+		if callErr == nil || !isAuthError(callErr) {
+			return callErr
+		}
+		lastErr = callErr
+	}
+	return lastErr
 }
 
 // GetMatchHistory implémente HaloClient.GetMatchHistory() avec PolicyAnyPublic.
@@ -104,29 +156,23 @@ func (pc *PooledHaloClient) GetMatchHistory(
 	gamertag, matchType string,
 	start, count int,
 ) ([]MatchHistoryEntry, error) {
-	lease, err := pc.p.Acquire(ctx, pool.PolicyAnyPublic, "")
-	if err != nil {
-		return nil, fmt.Errorf("pooled: Acquire failed: %w", err)
-	}
-	defer lease.Release()
-
-	client := pc.newAPIClient(lease)
-	result, err := client.GetMatchHistory(ctx, gamertag, matchType, start, count)
-	pc.notifyPoolOnHTTPError(err)
+	var result []MatchHistoryEntry
+	err := pc.doPublic(ctx, func(c *HaloAPIClient) error {
+		var e error
+		result, e = c.GetMatchHistory(ctx, gamertag, matchType, start, count)
+		return e
+	})
 	return result, err
 }
 
 // GetMatchStats implémente HaloClient.GetMatchStats() avec PolicyAnyPublic.
 func (pc *PooledHaloClient) GetMatchStats(ctx context.Context, matchID string) (map[string]any, error) {
-	lease, err := pc.p.Acquire(ctx, pool.PolicyAnyPublic, "")
-	if err != nil {
-		return nil, fmt.Errorf("pooled: Acquire failed: %w", err)
-	}
-	defer lease.Release()
-
-	client := pc.newAPIClient(lease)
-	result, err := client.GetMatchStats(ctx, matchID)
-	pc.notifyPoolOnHTTPError(err)
+	var result map[string]any
+	err := pc.doPublic(ctx, func(c *HaloAPIClient) error {
+		var e error
+		result, e = c.GetMatchStats(ctx, matchID)
+		return e
+	})
 	return result, err
 }
 
@@ -136,43 +182,37 @@ func (pc *PooledHaloClient) GetMatchSkill(
 	matchID string,
 	xuids []string,
 ) (map[string]*MatchSkillData, error) {
-	lease, err := pc.p.Acquire(ctx, pool.PolicyAnyPublic, "")
-	if err != nil {
-		return nil, fmt.Errorf("pooled: Acquire failed: %w", err)
-	}
-	defer lease.Release()
-
-	client := pc.newAPIClient(lease)
-	result, err := client.GetMatchSkill(ctx, matchID, xuids)
-	pc.notifyPoolOnHTTPError(err)
+	var result map[string]*MatchSkillData
+	err := pc.doPublic(ctx, func(c *HaloAPIClient) error {
+		var e error
+		result, e = c.GetMatchSkill(ctx, matchID, xuids)
+		return e
+	})
 	return result, err
 }
 
 // GetMatchFilm implémente HaloClient.GetMatchFilm() avec PolicyAnyPublic.
 func (pc *PooledHaloClient) GetMatchFilm(ctx context.Context, matchID string) (map[int]filmChunkData, bool, error) {
-	lease, err := pc.p.Acquire(ctx, pool.PolicyAnyPublic, "")
-	if err != nil {
-		return nil, false, fmt.Errorf("pooled: Acquire failed: %w", err)
-	}
-	defer lease.Release()
-
-	client := pc.newAPIClient(lease)
-	result, ok, err := client.GetMatchFilm(ctx, matchID)
-	pc.notifyPoolOnHTTPError(err)
+	var result map[int]filmChunkData
+	var ok bool
+	err := pc.doPublic(ctx, func(c *HaloAPIClient) error {
+		var e error
+		result, ok, e = c.GetMatchFilm(ctx, matchID)
+		return e
+	})
 	return result, ok, err
 }
 
 // GetHighlightEventsChunk implémente HaloClient.GetHighlightEventsChunk() avec PolicyAnyPublic.
 func (pc *PooledHaloClient) GetHighlightEventsChunk(ctx context.Context, matchID string) ([]byte, int, bool, error) {
-	lease, err := pc.p.Acquire(ctx, pool.PolicyAnyPublic, "")
-	if err != nil {
-		return nil, 0, false, fmt.Errorf("pooled: Acquire failed: %w", err)
-	}
-	defer lease.Release()
-
-	client := pc.newAPIClient(lease)
-	result, ver, ok, err := client.GetHighlightEventsChunk(ctx, matchID)
-	pc.notifyPoolOnHTTPError(err)
+	var result []byte
+	var ver int
+	var ok bool
+	err := pc.doPublic(ctx, func(c *HaloAPIClient) error {
+		var e error
+		result, ver, ok, e = c.GetHighlightEventsChunk(ctx, matchID)
+		return e
+	})
 	return result, ver, ok, err
 }
 
@@ -213,7 +253,7 @@ func (pc *PooledHaloClient) GetPlayerCSRs(ctx context.Context, xuid, seasonID st
 
 	client := pc.newAPIClient(lease)
 	result, err := client.GetPlayerCSRs(ctx, xuid, seasonID)
-	pc.notifyPoolOnHTTPError(err)
+	pc.notifyPoolOnError(lease, err)
 	return result, err
 }
 
@@ -229,7 +269,7 @@ func (pc *PooledHaloClient) GetPlaylistCsr(ctx context.Context, playlistID, xuid
 
 	client := pc.newAPIClient(lease)
 	result, err := client.GetPlaylistCsr(ctx, playlistID, xuid, seasonID)
-	pc.notifyPoolOnHTTPError(err)
+	pc.notifyPoolOnError(lease, err)
 	return result, err
 }
 

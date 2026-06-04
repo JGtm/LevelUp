@@ -97,6 +97,8 @@ var canonicalOrder = []string{
 	"create_improvement_campaign_schema",                      // player
 	"create_progression_player_schema",                        // player
 	"rebuild_career_progression_defeat_art_corruption",        // player
+	"repair_player_match_enrichment_primary_key",              // player
+	"repair_match_citations_primary_key",                      // player
 	"create_base_shared_schema",                               // shared
 	"add_film_match_start",                                    // shared
 	"add_highlight_events_autoincrement",                      // shared

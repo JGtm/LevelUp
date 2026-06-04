@@ -356,6 +356,33 @@ func main() {
 		slog.Debug("migrations appliquées")
 	}
 
+	// --- 3b. Migrations player DB (TargetPlayer) ---
+	// RW-EXCLUSIF, AVANT que le provider/scheduler/watcher n'ouvrent les player
+	// DBs. Sans cet appel, les player DBs ne recevaient QUE EnsurePlayerSchema
+	// (CREATE TABLE IF NOT EXISTS) — no-op sur une table legacy préexistante →
+	// la PRIMARY KEY n'était jamais ajoutée et les writes ON CONFLICT /
+	// INSERT OR IGNORE échouaient en Binder Error (citations, enrichment rows).
+	// `RunForDB(TargetPlayer)` n'était jusqu'ici câblé qu'en CLI ; on le câble
+	// au boot par profil. Idempotent (migrations tracées dans schema_migrations).
+	// Non-fatal : une player DB verrouillée/absente ne doit pas bloquer le boot.
+	// Cf. repair_*_primary_key + .ai/thought_log 2026-06-04.
+	if !cfg.DemoMode {
+		if players, perr := cfg.LoadPlayers(); perr != nil {
+			slog.Warn("migrations player: chargement profils échoué (non-fatal)", "err", perr)
+		} else {
+			for _, p := range players {
+				if p.Gamertag == "" || p.IsDemo {
+					continue
+				}
+				if err := RunPlayerMigrations(pr.PlayerDBPath(titleSlug, p.Gamertag)); err != nil {
+					slog.Warn("migrations player échouées (non-fatal)",
+						"gamertag", p.Gamertag, "err", err)
+				}
+			}
+			slog.Debug("migrations player appliquées")
+		}
+	}
+
 	// Architecture B-swap (sprint sharedprovider, ADR 0016) — ACTIVÉ PAR DÉFAUT
 	// au commit 9.
 	//
@@ -1473,11 +1500,20 @@ func startWatcherDaemon(
 	// "different configuration" sur shared_matches_v2.duckdb (incident
 	// 2026-05-26 23:05+).
 	syncTrigger := syncpkg.NewTrigger(cfg.RepoRoot, &staticTokenProvider{tokens: *tokens}, domain.SyncOptions{
-		MatchType:         "matchmaking",
-		MaxMatches:        25,
-		WithParticipants:  true,
-		WithMedals:        true,
-		RequestsPerSecond: 5,
+		MatchType:        "matchmaking",
+		MaxMatches:       25,
+		WithParticipants: true,
+		WithMedals:       true,
+		// Le chemin live (watcher) DOIT récupérer les highlight events au 1er
+		// passage : ils alimentent highlight_events → killer_victim_pairs →
+		// weapon_kills (frags par arme). Sans ce flag (zéro-value false), le
+		// watcher insérait registry+participants SANS events ; le scheduler
+		// (DefaultSyncOptions, true) ne pouvait pas rattraper car son delta
+		// s'arrête sur le match déjà "connu". Le heal events qui masquait ce
+		// trou a été décommissionné le 2026-06-01 → events_loaded=false figé
+		// sur tous les matchs depuis. Cf. .ai/thought_log 2026-06-04.
+		WithHighlightEvents: true,
+		RequestsPerSecond:   5,
 	}).WithEngineFactory(autoScheduler.BuildEngine)
 
 	// MatchFetcher pour le polling Halo API (/hi/players/xuid(N)/matches) du
