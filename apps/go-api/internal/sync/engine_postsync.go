@@ -27,6 +27,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
@@ -69,8 +70,12 @@ func (e *SyncEngine) runConditionalPostSync(
 	// manquants (engagement/perf NULL) pour relancer le recalcul post-sync —
 	// pur calcul dérivé, aucune écriture API/shared concurrente.
 	needsScoreRefresh, _ := hasMatchesNeedingScoreRefresh(ctx, playerDB, sharedDB, e.xuid)
-	if needsScoreRefresh {
-		slog.InfoContext(ctx, "sync: aucun match inséré — scores manquants → lancement post-sync complet",
+	// Convergence : même sans nouveau match, le sync n'a pas "fini" tant qu'il
+	// reste des matchs events/weapons incomplets (ex. matchs joués en escouade
+	// insérés par le watcher d'un teammate). On lance le pipeline complet qui
+	// les convergera (étapes 1.54/1.55). Idempotent + borné.
+	if needsScoreRefresh || hasConvergenceBacklog(ctx, playerDB, sharedDB, e.xuid) {
+		slog.InfoContext(ctx, "sync: aucun match inséré — backlog scores/convergence → post-sync complet",
 			"gamertag", e.gamertag, "needs_score_refresh", needsScoreRefresh)
 		return e.runPostSyncPipeline(ctx, playerDB, sharedDB, client, nil)
 	}
@@ -195,12 +200,36 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// runPostSyncPipeline (cf. revue D7-3).
 	e.runScoringSteps(ctx, playerDB, sharedDB, &r)
 
-	// 1.55 Weapon kills — pipeline film pour les matchs nouvellement insérés.
-	// Best-effort : films absents (404/410) sont normaux pour les vieux matchs
-	// et n'échouent pas le sync. Limité aux nouveaux matchs (insertedIDs) pour
-	// éviter de re-traiter l'historique à chaque sync.
-	if len(insertedIDs) > 0 {
-		done, noFilm, werr := processWeaponKillsInline(ctx, sharedDB, client, e.xuid, insertedIDs)
+	// 1.54 Convergence events — re-fetch des highlight_events des matchs
+	// events_loaded=false (matchs insérés par le watcher d'un teammate, ou film
+	// pas encore propagé au 1er passage). Le sync primaire ne charge que les
+	// matchs NOUVEAUX ; ce backlog ne se résorbait jamais depuis la
+	// décommission du heal (2026-06-01). Idempotent (un match events_loaded=true
+	// n'est pas resélectionné) + terminal no-film 30j. DOIT précéder weapon kills
+	// (qui dérivent de highlight_events). Cf. convergence.go.
+	eventsWork := selectMatchesMissingEvents(ctx, playerDB, sharedDB, e.xuid)
+	// Jauge "roue de secours" : en régime stationnaire ces compteurs doivent
+	// PLAFONNER (convergence = filet exceptionnel). S'ils croissent en continu,
+	// c'est que le 1er passage laisse des trous récurrents → durcir l'ingestion.
+	// Lisibles sur /debug/vars (expvar "levelup").
+	observability.AddInt("convergence_events_pending_total", int64(len(eventsWork)))
+	if len(eventsWork) > 0 {
+		n := convergeEvents(ctx, sharedDB, client, eventsWork)
+		observability.AddInt("convergence_events_processed_total", int64(n))
+		slog.InfoContext(ctx, "post-sync: convergence events",
+			"gamertag", e.gamertag, "selected", len(eventsWork), "processed", n)
+	}
+
+	// 1.55 Weapon kills — pipeline film. Convergent : nouveaux matchs (insertedIDs)
+	// ∪ backlog incomplet (bits weapon non posés), bornés. La sélection weapons se
+	// fait APRÈS la convergence events pour que highlight_events soit peuplé.
+	// Best-effort : films absents (404/410) normaux pour les vieux matchs. Garde
+	// bit-honnête préservée (MBitWeaponKills posé seulement si ≥1 ligne insérée).
+	weaponBacklog := selectMatchesMissingWeapons(ctx, playerDB, sharedDB, e.xuid)
+	observability.AddInt("convergence_weapons_pending_total", int64(len(weaponBacklog)))
+	weaponWork := mergeUniqMatchIDs(insertedIDs, weaponBacklog)
+	if len(weaponWork) > 0 {
+		done, noFilm, werr := processWeaponKillsInline(ctx, sharedDB, client, e.xuid, weaponWork)
 		if werr != nil {
 			slog.WarnContext(ctx, "post-sync: weapon kills échoué", "gamertag", e.gamertag, "err", werr)
 			trackFatalErr(&r, "weapon kills", werr)

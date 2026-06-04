@@ -23,6 +23,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -76,6 +77,84 @@ func isNoFilmDefinitive(ctx context.Context, db *sql.DB, matchID string) bool {
 		return true // âge inconnu → comportement legacy (définitif)
 	}
 	return time.Since(startTime.Time) > filmRetryWindow()
+}
+
+// highlightChunkFetcher : sous-ensemble de HaloClient nécessaire au fetch du
+// chunk highlight events. Interface étroite → testable sans implémenter tout
+// HaloClient.
+type highlightChunkFetcher interface {
+	GetHighlightEventsChunk(ctx context.Context, matchID string) ([]byte, int, bool, error)
+}
+
+// freshFilmWaitWindow : un match plus récent que ce seuil est "frais" — son film
+// highlight peut ne pas être encore publié au 1er fetch (propagation Halo ~1 min).
+// fetchHighlightChunkResilient attend alors (retry borné) pour que le match
+// s'enrichisse COMPLÈTEMENT dans le sync qui le découvre, plutôt que de
+// s'afficher à moitié puis d'être rattrapé par la convergence un cycle plus tard
+// (choix produit : complétude > latence). Au-delà (vieux match / backfill),
+// aucune attente — le film est soit présent soit définitivement absent.
+const freshFilmWaitWindow = 10 * time.Minute
+
+// freshFilmRetryDelays retourne les intervalles de retry du fetch film d'un
+// match frais. Variable (pas const) pour override en test.
+//
+// Réglable en PROD sans redéploiement via LEVELUP_FRESH_FILM_RETRY :
+//   - "0"           → désactive l'attente (retombe sur la convergence)
+//   - "30,30,30"    → CSV de secondes (intervalles entre tentatives)
+//   - absent / vide → défaut ci-dessous
+//
+// Défaut : 30s × 3 (re-essais à +30s/+60s/+90s après le 1er fetch raté). Le
+// watcher détecte un match en ~10s mais le film Halo se publie en ~1 min : 30s
+// est une VALEUR DE DÉPART pour laisser le film arriver, à affiner en prod selon
+// le taux de complétude au 1er passage. Cf. .ai/HANDOFF_ENRICHMENT_CONVERGENCE.md.
+var freshFilmRetryDelays = func() []time.Duration {
+	v := os.Getenv("LEVELUP_FRESH_FILM_RETRY")
+	if v == "0" {
+		return nil
+	}
+	if v != "" {
+		var out []time.Duration
+		for _, p := range strings.Split(v, ",") {
+			if n, err := strconv.Atoi(strings.TrimSpace(p)); err == nil && n > 0 {
+				out = append(out, time.Duration(n)*time.Second)
+			}
+		}
+		if len(out) > 0 {
+			return out
+		}
+	}
+	return []time.Duration{30 * time.Second, 30 * time.Second, 30 * time.Second}
+}
+
+// fetchHighlightChunkResilient récupère le chunk highlight events ; pour un match
+// FRAIS dont le film n'est pas encore prêt (found=false SANS erreur), il
+// re-essaie à court intervalle jusqu'à publication du film. Garantit qu'un match
+// récent est enrichi du premier coup (events → killer_victim → frags par arme)
+// au lieu d'être affiché à moitié. Respecte l'annulation du ctx ; ne re-essaie
+// QUE pour les matchs récents (pas d'attente sur un backfill ou un film absent).
+func fetchHighlightChunkResilient(
+	ctx context.Context, client highlightChunkFetcher, matchID string, startTime time.Time,
+) ([]byte, int, bool, error) {
+	data, ver, found, err := client.GetHighlightEventsChunk(ctx, matchID)
+	if err != nil || found || startTime.IsZero() || time.Since(startTime) > freshFilmWaitWindow {
+		return data, ver, found, err
+	}
+	for i, d := range freshFilmRetryDelays() {
+		select {
+		case <-ctx.Done():
+			return data, ver, found, ctx.Err()
+		case <-time.After(d):
+		}
+		data, ver, found, err = client.GetHighlightEventsChunk(ctx, matchID)
+		if err != nil || found {
+			if found {
+				slog.DebugContext(ctx, "highlight chunk prêt après attente film",
+					"match_id", matchID, "retry", i+1)
+			}
+			return data, ver, found, err
+		}
+	}
+	return data, ver, found, err
 }
 
 // insertHighlightEventsFromData parse et insère les highlight events à partir de données déjà fetchées.
