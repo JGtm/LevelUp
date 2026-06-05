@@ -35,7 +35,7 @@ function row(idx: number, overrides: Partial<SquadMatchHistoryRow> = {}): SquadM
     kills: 18,
     deaths: 7,
     assists: 4,
-    accuracy: 0.45,
+    accuracy: 45.0, // pourcentage 0..100 (match_participants), affiché tel quel
     performance_score: 72.3,
     team_mmr_avg: 1530,
     session_label: 'Session 04-30',

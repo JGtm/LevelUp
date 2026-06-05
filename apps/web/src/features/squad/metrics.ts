@@ -74,10 +74,10 @@ export const SQUAD_RADAR_METRICS: readonly SquadMetric[] = [
   { key: 'kdr', extract: (k) => norm(k.kd_ratio, 3), format: 'ratio' },
   { key: 'kills', extract: (k) => norm(k.kills_per_game, 20), format: 'per_game' },
   { key: 'assists', extract: (k) => norm(k.assists_per_game, 10), format: 'per_game' },
-  // norm(accuracy, 1) renvoie déjà un % 0-100 (norm fait *100 en interne).
-  // L'ancien code SquadContributionsPage faisait `norm(...) * 100` qui
-  // produisait 4500 pour accuracy=0.45 — bug visible une fois passé en test.
-  { key: 'accuracy', extract: (k) => norm(k.accuracy, 1), format: 'percent' },
+  // accuracy est déjà en pourcentage 0..100 (TeammateKPIs, source match_participants).
+  // norm(accuracy, 100) la ramène sur l'échelle radar 0..100 sans la gonfler (le
+  // plafond 1 d'avant — quand l'accuracy était 0..1 — la saturait à 100 %).
+  { key: 'accuracy', extract: (k) => norm(k.accuracy, 100), format: 'percent' },
 ] as const
 
 // ─── Overlay HS / PK ──────────────────────────────────────────────────────────

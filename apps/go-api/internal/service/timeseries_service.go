@@ -26,6 +26,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sort"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -141,6 +142,14 @@ func (s *TimeseriesService) GetPage(
 	allMatches := analysis.StatsMatchRowsFromCanonical(canonicalRows)
 
 	matches := filterStatsMatchRows(allMatches, req.Filters)
+	// Tri chronologique ASC (plus ancien -> plus récent). LoadPlayerMatches
+	// renvoie DESC ; on inverse une fois ici pour que TOUS les builders et
+	// charts aval (cumul, rolling, outcomes-over-time, MatchRows, séries
+	// progression) soient cohérents oldest-first. Corrige aussi le cumul qui
+	// était calculé à l'envers (accumulation depuis le match récent).
+	sort.SliceStable(matches, func(i, j int) bool {
+		return matches[i].StartTime.Before(matches[j].StartTime)
+	})
 	slog.DebugContext(ctx, "timeseries: matches charges",
 		"total", len(allMatches),
 		"apres_filtres", len(matches),

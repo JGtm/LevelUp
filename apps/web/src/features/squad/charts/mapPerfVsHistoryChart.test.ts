@@ -77,11 +77,12 @@ describe('buildMapPerfVsHistoryOption', () => {
     expect(yAxis.data).toEqual(['A', 'C'])
   })
 
-  it('tri par perf session asc (worst-first)', () => {
-    const rows = [row('high', 80, 60), row('low', 30, 60), row('mid', 55, 60)]
+  it('tri par nombre de matchs desc (les plus jouées en premier)', () => {
+    // perf identique, matchCount distinct → l'ordre suit matchCount DESC.
+    const rows = [row('few', 60, 60, 2), row('many', 60, 60, 20), row('mid', 60, 60, 8)]
     const opt = buildMapPerfVsHistoryOption(makeSeries(rows), OPTS)
     const yAxis = opt.yAxis as { data: string[] }
-    expect(yAxis.data).toEqual(['LOW', 'MID', 'HIGH'])
+    expect(yAxis.data).toEqual(['MANY', 'MID', 'FEW'])
   })
 
   it('cap à 20 cartes max', () => {
@@ -129,7 +130,7 @@ describe('buildMapPerfVsHistoryOption', () => {
     expect(findByName(opt, 'Historique').data[0].value).toBe(72.0)
   })
 
-  it('yAxis inverse activé (worst en haut)', () => {
+  it('yAxis inverse activé (1ère carte du tri en haut)', () => {
     const opt = buildMapPerfVsHistoryOption(makeSeries([row('x', 50, 60)]), OPTS)
     const yAxis = opt.yAxis as { inverse: boolean }
     expect(yAxis.inverse).toBe(true)

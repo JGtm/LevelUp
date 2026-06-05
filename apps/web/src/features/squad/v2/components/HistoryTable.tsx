@@ -53,29 +53,25 @@ function outcomeColorVar(o: Outcome): string {
 }
 
 export function HistoryTable({ rows, squadOrder, locale, labels, playerSlug }: HistoryTableProps) {
-  // playerSlug peut être undefined ici (Squad v2). useNavigateToMatch tolère
-  // une chaîne vide — la navigation est juste no-op si on n'a pas le slug.
   const navigateToMatch = useNavigateToMatch(playerSlug ?? '')
-
-  // Coéquipiers = squadOrder moins le joueur principal. Le premier non-main
-  // alimente le descriptor `with_player` (label compact "avec X"). Si plusieurs
-  // coéquipiers, on retient le premier — le label reste lisible côté nav bar.
   const focusTeammate = playerSlug ? squadOrder.find((gt) => gt !== playerSlug) : undefined
+
+  // Tri oldest-first : le backend envoie DESC (newest first), on inverse pour
+  // afficher la progression chronologique (plus ancien en haut).
+  const sortedRows = [...rows].reverse()
 
   function goToMatch(matchId: string) {
     if (!playerSlug) return
     navigateToMatch(matchId, {
       source: 'session',
-      matchIds: rows.map((r) => r.match_id),
+      matchIds: sortedRows.map((r) => r.match_id),
       contextDescriptor: focusTeammate
         ? { kind: 'with_player', gamertag: focusTeammate }
         : undefined,
     })
   }
+  if (rows.length === 0) return null
 
-  if (rows.length === 0) {
-    return null
-  }
   return (
     <div className="overflow-x-auto" data-testid="history-table">
       <table className="w-full text-sm">
@@ -94,7 +90,7 @@ export function HistoryTable({ rows, squadOrder, locale, labels, playerSlug }: H
           </tr>
         </thead>
         <tbody className="divide-y">
-          {rows.map((row) => (
+          {sortedRows.map((row) => (
             <tr
               key={row.match_id}
               className={playerSlug ? 'cursor-pointer hover:bg-primary/10 transition-colors' : ''}

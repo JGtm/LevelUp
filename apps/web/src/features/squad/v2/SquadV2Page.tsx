@@ -124,7 +124,7 @@ export function SquadV2Page({ playerSlug, teammates, period, experienceTypes, pl
             {t('squad.v2.section_outcome_sequence')}
           </p>
           <OutcomeSequenceTape
-            matches={data.shared_matches.map<OutcomePoint>((m) => ({
+            matches={[...data.shared_matches].reverse().map<OutcomePoint>((m) => ({
               outcome: m.outcome,
               matchId: m.match_id,
               map: m.map?.default_label,
