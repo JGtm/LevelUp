@@ -39,6 +39,14 @@ RUN CGO_ENABLED=1 GOOS=linux go build \
     -o /build/levelup-server \
     ./cmd/server/
 
+# CLI levelup (seed, seed-demo, backfill…) — requis par le job deploy-demo de
+# la CI (docker compose run levelup `levelup` seed-demo). Sans ce binaire, la
+# regen démo échoue avec "executable file not found in $PATH".
+RUN CGO_ENABLED=1 GOOS=linux go build \
+    -ldflags "-extldflags '-static'" \
+    -o /build/levelup \
+    ./cmd/levelup/
+
 # ============================================================================
 # Stage 3 — Runtime minimal (Debian slim)
 # ============================================================================
@@ -54,6 +62,8 @@ WORKDIR /app
 
 # Binaire Go + assets web
 COPY --from=go-builder /build/levelup-server /app/levelup-server
+# CLI levelup dans le PATH (seed/seed-demo/backfill via `levelup <cmd>`).
+COPY --from=go-builder /build/levelup        /usr/local/bin/levelup
 COPY --from=web-builder /build/web/dist       /app/apps/web/dist
 
 # Scripts d'exploitation (backfill, seed, etc.)
