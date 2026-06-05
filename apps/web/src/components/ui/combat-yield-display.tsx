@@ -1,21 +1,21 @@
 /**
  * CombatYieldDisplay — bande Rendement / Résistance partagée.
  *
- * Affiche les dégâts moyens par frag et par mort exprimés en « vies » (225 HP = 1 vie).
- * Référence Halo Infinite : 225 HP = 1 vie complète.
- *   - Rendement  : dmgPerKill / 225 — plus on s'approche de 1.0, plus on est efficace
- *   - Résistance : dmgPerDeath / 225 — plus c'est élevé, plus on survit longtemps
- *
+ * Reprend le format de la Synthesis : `dégâts/frag · rendement% · barre · résistance% · dégâts/mort`.
  * S'adapte à la largeur du bloc parent (ResizeObserver) sur 3 paliers :
- *   - large  (≥ HORIZONTAL_MIN)     → ruban horizontal complet
- *   - moyen  (≥ assez pour MIN_BAR) → empilé : barre + valeurs aux extrémités
- *   - étroit (barre < MIN_BAR_PX)   → barre masquée, valeurs seules
+ *   - large  (≥ HORIZONTAL_MIN)         → ruban horizontal complet
+ *   - moyen  (≥ assez pour MIN_BAR)     → empilé : barre au-dessus, valeurs en dessous
+ *   - étroit (barre < MIN_BAR_PX)       → barre masquée, valeurs seules
+ *
+ * Les valeurs chiffrées (2 %, dégâts/frag, dégâts/mort) restent TOUJOURS affichées :
+ * seul le visuel de la barre disparaît quand l'espace est insuffisant.
  *
  * Source unique réutilisée par Home, KpiGrid (solo/squad), SessionSummaryCard,
  * tuile match et Synthesis. Couleurs via tokens (divergent-pos / divergent-neutral).
  */
 import { useEffect, useRef, useState } from 'react'
 import { tokenCssVar } from '@/lib/accessibility'
+import { formatOffensiveConversion, formatDefensiveResistance } from '@/lib/formatters'
 import { CombatYieldBar } from './combat-yield-bar'
 
 /** Au-dessus de cette largeur totale, on rend le ruban horizontal. */
@@ -77,8 +77,6 @@ export function CombatYieldDisplay({
   }, [])
 
   const hasData =
-    (dmgPerKill != null && dmgPerKill > 0) ||
-    (dmgPerDeath != null && dmgPerDeath > 0) ||
     (offensiveConversion != null && offensiveConversion > 0) ||
     (defensiveResistance != null && defensiveResistance > 0)
 
@@ -99,14 +97,20 @@ export function CombatYieldDisplay({
     )
   }
 
-  const ocVies = dmgPerKill != null && (
+  const dmgFrag = dmgPerKill != null && (
+    <span className="text-2xs text-muted-foreground tabular-nums">{Math.round(dmgPerKill)} dégâts/frag</span>
+  )
+  const dmgMort = dmgPerDeath != null && (
+    <span className="text-2xs text-muted-foreground tabular-nums">{Math.round(dmgPerDeath)} dégâts/mort</span>
+  )
+  const ocPct = (
     <span className="text-sm font-semibold tabular-nums" style={{ color: ocColor() }}>
-      {Math.round(dmgPerKill)} dégâts/frag
+      {formatOffensiveConversion(offensiveConversion)}
     </span>
   )
-  const drVies = dmgPerDeath != null && (
+  const drPct = (
     <span className="text-sm font-semibold tabular-nums" style={{ color: drColor() }}>
-      {Math.round(dmgPerDeath)} dégâts/mort
+      {formatDefensiveResistance(defensiveResistance)}
     </span>
   )
   const bar = showBar && (
@@ -119,29 +123,38 @@ export function CombatYieldDisplay({
     />
   )
 
-  // Ruban horizontal (parent large) : vie/frag · barre · vie/mort
+  // Ruban horizontal (parent large) : dégâts/frag · % · barre · % · dégâts/mort.
   if (horizontal) {
     return (
       <div ref={ref} className={`flex flex-col ${alignClass} gap-0.5 ${className ?? ''}`}>
         {label && <span className="text-xs text-muted-foreground">{label}</span>}
         <div className="flex items-center gap-2">
-          {ocVies}
+          {dmgFrag}
+          {ocPct}
           {bar}
-          {drVies}
+          {drPct}
+          {dmgMort}
         </div>
       </div>
     )
   }
 
-  // Empilé (parent moyen/étroit) : vie/frag · barre · vie/mort sur une ligne
+  // Empilé (parent moyen/étroit) : ligne barre avec les 2 % aux extrémités
+  // (barre au centre), puis les dégâts/frag·mort en dessous aux extrémités.
   return (
     <div ref={ref} className={`flex flex-col ${alignClass} gap-1 ${className ?? ''}`}>
       {label && <span className="text-xs text-muted-foreground">{label}</span>}
       <div className="flex w-full items-center justify-between gap-2">
-        {ocVies}
+        {ocPct}
         {bar}
-        {drVies}
+        {drPct}
       </div>
+      {(dmgFrag || dmgMort) && (
+        <div className="flex w-full items-center justify-between gap-3">
+          {dmgFrag ?? <span />}
+          {dmgMort ?? <span />}
+        </div>
+      )}
     </div>
   )
 }
