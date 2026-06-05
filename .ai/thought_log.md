@@ -1,3 +1,23 @@
+## [2026-06-05] Backlog #18 (génération code invitation) + #20 (bouton déconnexion) — Complété
+
+**Statut** : Complété (front), typecheck + lint OK.
+
+**#18 — bouton "Générer un code" inactif** : `handleGenerate` (AdminPage) appelait `mutate` sans `onError` → tout échec (403 non-admin, réseau) était silencieux ⇒ "le bouton ne fait rien". Fix : `toast.success(code)` / `toast.error(message)` via sonner (déjà câblé dans AppShell). Le code généré est désormais confirmé visuellement, l'échec affiché.
+
+**#20 — pas de bouton déconnexion** : `useLogout` existait (POST /auth/logout) mais n'était câblé nulle part. Fix : nouveau `LogoutButton` (shell) placé en fin de NavL1, visible si `currentUsername` non nul, → logout puis `window.location.assign('/')` (ré-évaluation auth serveur). i18n FR/EN ajouté (common.toml + régénéré via build_i18n_manifests.mjs).
+
+---
+
+## [2026-06-05] Backlog #13 (bouton réassocier média) + #4 (impact coéquipiers) — Complété
+
+**Statut** : #13 fixé et testé. #4 = code correct, dépend des events (déjà rétablis).
+
+**#13 — bouton réassocier disparu (régression `8edd5c784`)** : ce commit corrigeait le *owner pill* (referencePlayer = currentPlayerGamertag ?? playerSlug) et a appliqué la même logique au bouton réassocier de `CoverFlowModal`. Effet de bord : dans MatchMediaTab/RecentMediaRail (qui ne passent PAS currentPlayerGamertag), `refPlayer` devient le **slug** comparé au **gamertag** de l'owner → bouton masqué quand slug ≠ gamertag. Fix : restaurer la condition permissive pour le bouton (`!currentPlayerGamertag || !owner || owner==currentPlayer`), sans fallback playerSlug. Tests media 77/77.
+
+**#4 — impact coéquipiers (kamikaze, boulet manquants)** : analyse du code (`buildSquadImpactMatrix` → `loadImpactEventsByMatch` → `ComputeMatchImpactFull`) = **correct**. Les 10 badges se calculent dès que les events (kill+death, produits par le parser) sont présents. Les badges manquants (kamikaze, last_casualty=boulet, first_blood…) sont tous **event-based** → leur absence = events manquants (RC-5, arrêtés 30/05), désormais rétablis par le sync convergent. À confirmer visuellement page Escouade (nécessite ≥1 coéquipier sélectionné + matchs avec events).
+
+---
+
 ## [2026-06-05] FDA/Accuracy : lire l'API au lieu de calculer (régression sprint19) — Fix sync + cmd backfill prêts
 
 **Statut** : Code prêt et testé. Backfill + déploiement en attente de validation utilisateur.
@@ -55574,3 +55594,12 @@ evwide2,frbig}. Câblage scanner différé v2 (cf. RESEARCH_THEATER_RE.md §M-te
 - **Incident induit** : merge fast-forward fix/enrichment-convergence -> main (8 commits, "all clear" user) a déclenché le deploy GH Actions. (a) Job 2 "regen demo" a `rm -rf data/demo/warehouse` + configs AVANT d'échouer (binaire `levelup` CLI absent de l'image — Dockerfile ne buildait que `cmd/server`) -> donnees demo effacees. (b) Pendant le SIGTERM prod du rebuild, un `backfill_kda_accuracy --gamertag JGtm` lancé manuellement (17:39:10) a saisi le lock DuckDB RW sur shared_matches_v2 -> prod crash-loop ("Conflicting lock held in PID 0"). Le backfill a fini seul ~4 min après -> `docker compose up -d levelup` -> prod 200.
 - **Bugs latents documentés** : (1) job regen-demo destructif (rm avant seed) ; (2) deploy SIGTERM prod => crash-loop si un backfill tient le lock ; (3) mismatch title-agnostic : seed-demo écrit `data/demo/warehouse|players/DEMO` mais l'app lit `data/titles/halo_infinite/warehouse` et le compose monte l'ancien chemin — la demo ne lira jamais les données seedées sans aligner seed-demo + mounts compose + job regen.
 - **Livré** : Dockerfile build+COPY du CLI `levelup` (corrige la cause du wipe demo, edit user). À venir : décision layout demo title-agnostic avant regen.
+
+### [2026-06-05] Demo restaurée + identité Spartan empruntée (suite incident)
+
+- **Statut** : Complété (demo.lvelup.info opérationnelle, vérifiée Chrome).
+- **Layout demo** : fausse piste title-agnostic abandonnée. seed-demo écrit en v2.1 (data/demo) ; le fix réel = monter `./data/demo:/app/data/demo` (RW, car metadata ouverte OpenReadWriteShared au boot) + `LEVELUP_DEMO_FIXTURES_DIR=/app/data/demo`. resolveDemoPlayer lit `{dir}/players/DEMO/stats.duckdb` + `{dir}/warehouse/*`.
+- **Schéma seed-demo** : home crashait 500 (match_csrs.written_at / player_csr_snapshots_latest absents). Fix : extraire les tables append-only SANS id/written_at (EXCLUDE) + ajouter match_csrs/player_csr_snapshots + `RunForDB(TargetShared/TargetPlayer)` sur les DB seedées → vues _latest recréées (auto-tracking vs DDL dupliqué). Vérifié : CSR 667 / LUSR 1567 affichés.
+- **Identité Spartan** : DemoPlayer (xuid 0000, jamais sync) n'a pas de customization. seed-demo emprunte l'identité d'un vrai joueur (Chocoboflor : rang 146 Corporal Platinum I, emblem+banner gamecms réels) via INSERT BY NAME + REPLACE(xuid, recorded_at). Lecture bloquée car careerLive filtre `WHERE xuid=ctxkeys.HaloXUID(ctx)` et la démo (sans session) avait HaloXUID="" → fix : `HomeCtxWithAuth` pose `HaloXUID=pdb.XUID` si contexte vide.
+- **PIÈGE MAJEUR** : `levelup` et `levelup-demo` sont 2 images Docker distinctes. `docker compose build levelup` ne rebuild PAS le conteneur démo → les fix de CODE démo restaient invisibles. Toujours `docker compose build levelup-demo` + `up -d --force-recreate levelup-demo` pour un fix lu/exécuté côté démo. Cf. [[project_deploy_hazards_demo_regen_lock]].
+- **Fragilité** : serveur tourne sur checkout de branche ; `deploy.sh` reset --hard origin/main écraserait tout. Durable seulement après merge sur main.
