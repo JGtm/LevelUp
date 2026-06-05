@@ -47,6 +47,14 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 		WithCareerLive(r.newCareerLiveService(pdb, homeRepo))
 	r.notifiers.Store(pdb.XUID, port.SessionNotifier(svc))
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
+	// Démo / non-authentifié : enrichWithHaloTokens ne pose pas de HaloXUID sans
+	// session/tokens. Sans ça, les lectures xuid-filtrées (identité Spartan via
+	// careerLive) ciblent xuid="" et ne trouvent jamais la row → bannière/emblème
+	// absents. On garantit que le xuid du joueur de la page est dans le contexte.
+	// Le contrôle d'accès (403 slug étranger) est appliqué en amont, indépendamment.
+	if ctxkeys.HaloXUID(enriched) == "" {
+		enriched = ctxkeys.WithHaloXUID(enriched, pdb.XUID)
+	}
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
 }
 
