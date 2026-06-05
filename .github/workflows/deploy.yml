@@ -74,19 +74,16 @@ jobs:
             set -euo pipefail
             cd /opt/levelup
 
-            # Regen données démo
-            # Note : on supprime uniquement les données, PAS les fichiers de config stub.
-            # Les stubs (créés par scripts/deploy.sh) évitent que Docker crée des répertoires
-            # fantômes si le regen échoue en cours de route.
-            rm -rf data/demo/warehouse data/demo/players/DEMO/stats.duckdb
-            # Supprimer les JSON — fichier ou répertoire fantôme (docker crée un dossier
-            # si le fichier n'existe pas au moment du bind-mount)
+            # Regen données démo — NON DESTRUCTIF (incident 2026-06-05).
+            # On NE supprime PAS data/demo/warehouse|players AVANT le seed : seed-demo
+            # est idempotent (os.Remove par fichier puis recrée). Supprimer d'abord =
+            # si le seed échoue (ex: binaire levelup absent), la démo reste vidée.
+            # On nettoie uniquement les répertoires fantômes que Docker crée à la place
+            # d'un JSON absent au bind-mount ; les fichiers valides sont écrasés par seed-demo.
             for f in data/demo/db_profiles.json data/demo/app_settings.json; do
               if [[ -d "$f" ]]; then
                 rm -rf "$f"
-                echo "[regen] 🧹 Répertoire fantôme supprimé: $f"
-              elif [[ -f "$f" ]]; then
-                rm -f "$f"
+                echo "[regen] Répertoire fantôme supprimé: $f"
               fi
             done
 

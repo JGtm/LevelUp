@@ -52,8 +52,15 @@ services:
       - LEVELUP_DATA=/app/data
       - LEVELUP_WEB_DIST=/app/apps/web/dist
       - LEVELUP_DEMO_MODE=true
+      # Fixtures démo lues par resolveDemoPlayer : {dir}/players/DEMO/stats.duckdb
+      # + {dir}/warehouse/*.duckdb, et le chemin flat {dir}/shared_matches_v2.duckdb
+      # (via symlinks). Généré par `levelup seed-demo --out data/demo`.
+      - LEVELUP_DEMO_FIXTURES_DIR=/app/data/demo
     volumes:
-      # Données de démo en lecture seule (générées par scripts/prepare_demo_data.py)
+      # Données de démo en lecture seule (générées par `levelup seed-demo --out data/demo`).
+      # Le montage /app/data/demo expose les fixtures à resolveDemoPlayer ; les montages
+      # warehouse/players servent aussi de cible aux symlinks flat de data/demo/.
+      - ./data/demo:/app/data/demo:ro
       - ./data/demo/warehouse:/app/data/warehouse:ro
       - ./data/demo/players:/app/data/players:ro
       - ./data/demo/db_profiles.json:/app/db_profiles.json:ro
