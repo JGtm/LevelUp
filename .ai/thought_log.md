@@ -55545,3 +55545,18 @@ evwide2,frbig}. Câblage scanner différé v2 (cf. RESEARCH_THEATER_RE.md §M-te
 - **Prochaine étape (linéaire)** : la fenêtre minimale 0→3a — reste **Phase 2** (services
   canonical, ~70%) puis **Phase 3a** (cleanup DTO, ~50%). 1.7a+1.7b closent le bloc capabilities/
   feature-matrix. Cf. [.ai/PLAN_TITLE_AGNOSTIC_TRACKER.md](PLAN_TITLE_AGNOSTIC_TRACKER.md).
+
+---
+
+### [2026-06-05] Angle B — cross-link fire-events <-> keyframes (record -> pi via arme+temps)
+
+- **Statut** : Complété (exploration RE, probe-only, aucun code prod touché).
+- **Objectif** : mapper record(keyframe type-2) -> pi(fire-event) -> xuid par accord arme+temps, valider sur ground truth (R0=whiteknight, R1=Javier, R7=VitaminA), puis lire l'arme de JGtm a la keyframe ~355s (Frag Parfait BR75).
+- **Décision technique principale** : timeline de tirs pi-resolue (ScanFireEventsV3 FirePi4High+relax3) + extraction records keyframe (clustering littéraux high-32) + matrice de vote record_positionnel x pi.
+- **Bugs/pieges trouvés** :
+  1. `weaponv3.ResolveBest` "premier chunk gagnant" est POISONNÉ par chunk_00 (et chunk_27) : ces chunks contiennent les 8 xuids UNE fois, tous avec 5-bits-avant = 0 -> pi=0 pour tout le monde. Résoudre sur les chunks GAMEPLAY (01..26) donne le mapping STABLE et correct : pi0=…760703, pi1=…245250, **pi2=JGtm(…110022)**, pi3=…284321, pi4=…845110, pi5=…793711, pi6=…097883, pi7=…120416 (identique sur 26 chunks).
+  2. Les ancres de record keyframe NE SONT PAS positionnellement stables : R0_anchor dérive 195323 (c02) -> 209615 (c20), 1re arme change chaque chunk, nb records 8->25. Le "record i = même joueur partout" est FAUX au-delà de c02/c03. -> matrice d'accord plate/bruitée (max 7 votes, ground truth R0/R1/R7 non validés).
+  3. Les xuids NE SONT PAS dans le payload type-2 (0 occurrence vérifié c02/03/19/20) -> aucun anchor xuid pour pinner un record a un joueur. Confirme la note mémoire.
+- **Résultats clés (FIABLES, via fires pi-resolues)** : JGtm (pi=2) a bien tiré du BR75, mais a 308-310s (dernier BR75 a 310.2s), PAS a 355s. Dans la fenêtre 340-370s JGtm ne tire RIEN (silence 310s->427s) — cohérent avec "Frag Parfait = kill non capté par les fires". Armes JGtm captées : MA40:58, BR75:15, Disruptor:7, CQS48:5, M41:5, GravityHammer:3…
+- **Conclusion** : la méthode Angle B (cross-link positionnel) ÉCHOUE a produire un mapping record->pi fiable (records anonymes + instables positionnellement, pas d'anchor xuid in-keyframe). Le sous-produit utile : la timeline fire pi-resolue confirme JGtm=BR75 user (dernier tir BR75 @310s) mais ne peut prouver "BR75 @355s" car le kill n'est pas dans les fires. Pour conclure le Frag Parfait il faudrait un anchor record<->pi INDÉPENDANT (l'index positionnel ne suffit pas).
+- **Prochaine étape** : si poursuite — chercher dans le payload type-2 un player-index COURT a coté de chaque record (le brief mentionne "un player-index court non localisé") et tester sa corrélation au pi des fires ; ou exploiter c02/c03 (ordre records STABLE = ordre pi ?) pour calibrer un offset record->pi figé.
