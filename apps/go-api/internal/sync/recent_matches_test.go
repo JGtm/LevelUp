@@ -24,9 +24,11 @@ func recentMatchJSON(matchID, playerID string, kills, deaths, assists, score int
 				"Rank":       float64(1),
 				"PlayerTeamStats": []any{
 					map[string]any{"Stats": map[string]any{"CoreStats": map[string]any{
-						"Kills":         float64(kills),
-						"Deaths":        float64(deaths),
-						"Assists":       float64(assists),
+						"Kills":   float64(kills),
+						"Deaths":  float64(deaths),
+						"Assists": float64(assists),
+						// KDA natif Halo (Kills + Assists/3 − Deaths), lu tel quel.
+						"KDA":           float64(kills) + float64(assists)/3.0 - float64(deaths),
 						"PersonalScore": float64(score),
 						"DamageDealt":   float64(3500),
 						"DamageTaken":   float64(2800),
@@ -63,8 +65,8 @@ func TestBuildRecentMatchesFromStats(t *testing.T) {
 	if r.Kills != 15 || r.Deaths != 8 || r.Assists != 5 {
 		t.Errorf("kills/deaths/assists = %d/%d/%d, want 15/8/5", r.Kills, r.Deaths, r.Assists)
 	}
-	if want := (15.0 + 5.0) / 8.0; r.KDA != want { // ExtractParticipants: (k+a)/d
-		t.Errorf("KDA = %v, want %v", r.KDA, want)
+	if want := 15.0 + 5.0/3.0 - 8.0; r.KDA < want-1e-9 || r.KDA > want+1e-9 { // KDA natif Halo lu de l'API
+		t.Errorf("KDA = %v, want ~%v", r.KDA, want)
 	}
 	if r.Score != 2500 {
 		t.Errorf("score = %d, want 2500", r.Score)

@@ -54,6 +54,8 @@ func minimalMatchJSON() map[string]any {
 								"Kills":         float64(15),
 								"Deaths":        float64(8),
 								"Assists":       float64(5),
+								"KDA":           float64(8.67), // API natif (15 + 5/3 − 8)
+								"Accuracy":      float64(40.0), // API natif (80/200)
 								"PersonalScore": float64(2500),
 								"ShotsFired":    float64(200),
 								"ShotsHit":      float64(80),
@@ -78,9 +80,10 @@ func minimalMatchJSON() map[string]any {
 					map[string]any{
 						"Stats": map[string]any{
 							"CoreStats": map[string]any{
-								"Kills":         float64(8),
-								"Deaths":        float64(15),
-								"Assists":       float64(3),
+								"Kills":   float64(8),
+								"Deaths":  float64(15),
+								"Assists": float64(3),
+								"KDA":     float64(-6.0), "Accuracy": float64(33.33),
 								"PersonalScore": float64(1800),
 								"ShotsFired":    float64(180),
 								"ShotsHit":      float64(60),
@@ -304,11 +307,12 @@ func TestExtractParticipants_Valid(t *testing.T) {
 	if p1.Deaths == nil || *p1.Deaths != 8 {
 		t.Errorf("player1 Deaths = %v", p1.Deaths)
 	}
-	if p1.KDA == nil || *p1.KDA < 2.4 || *p1.KDA > 2.6 {
-		t.Errorf("player1 KDA = %v, expected ~2.5", p1.KDA)
+	// KDA + Accuracy lus tels quels depuis l'API (CoreStats), plus aucun calcul.
+	if p1.KDA == nil || *p1.KDA < 8.6 || *p1.KDA > 8.7 {
+		t.Errorf("player1 KDA = %v, expected ~8.67 (API natif)", p1.KDA)
 	}
 	if p1.Accuracy == nil || *p1.Accuracy != 40.0 {
-		t.Errorf("player1 Accuracy = %v, expected 40.0", p1.Accuracy)
+		t.Errorf("player1 Accuracy = %v, expected 40.0 (API natif)", p1.Accuracy)
 	}
 	if p1.TeamID == nil || *p1.TeamID != 0 {
 		t.Errorf("player1 TeamID = %v", p1.TeamID)
