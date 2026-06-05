@@ -31,6 +31,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -57,6 +58,11 @@ type SeedDemoOptions struct {
 	ServiceTag   string // ex: "SPTA" — profile_service_tag dans app_settings
 	IncludeMedia bool   // true par défaut côté CLI
 	MaxMedia     int    // 5 par défaut
+
+	// SourcePlayersDir : racine des player DBs (data/titles/{slug}/players) où
+	// chercher une identité Spartan à emprunter pour la démo (emblem/banner/
+	// backdrop/adornment). Vide → emprunt d'identité désactivé.
+	SourcePlayersDir string
 }
 
 // SeedDemoResult résume l'exécution.
@@ -229,6 +235,16 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 		return res, fmt.Errorf("seed-demo: migrate player: %w", err)
 	}
 	slog.InfoContext(ctx, "seed-demo: migrations canoniques appliquées (shared+player, vues _latest)")
+
+	// 4c. Identité Spartan empruntée : le joueur démo (xuid anonyme, pas de sync)
+	// n'a pas de customization propre. On copie une identité figée (rang, XP,
+	// emblem, banner, backdrop, adornment) depuis un vrai joueur configuré pour un
+	// rendu réaliste. Best-effort : no-op si aucune identité disponible.
+	if opts.SourcePlayersDir != "" {
+		if err := borrowDemoIdentity(ctx, outPlayer, opts.SourcePlayersDir, opts.DemoXUID); err != nil {
+			slog.WarnContext(ctx, "seed-demo: emprunt identité Spartan échoué (non bloquant)", "err", err)
+		}
+	}
 
 	// 5. Médias (optionnel)
 	if opts.IncludeMedia {
@@ -633,6 +649,90 @@ func writeDemoConfigs(outDir, demoXUID, gamertag, serviceTag string, mediaEnable
 		return fmt.Errorf("app_settings.json: %w", err)
 	}
 	return nil
+}
+
+// borrowDemoIdentity copie une identité Spartan complète (rang, XP, emblem,
+// banner, backdrop, adornment, spartan_id) d'un vrai joueur dans la
+// career_progression démo, avec un recorded_at frais pour qu'elle soit la plus
+// récente (ARG_MAX côté Q26c). Le joueur démo est anonyme et jamais sync'd, donc
+// n'a aucune customization propre ; on emprunte une identité figée pour un rendu
+// réaliste. Best-effort : no-op si aucun joueur n'a d'identité peuplée.
+func borrowDemoIdentity(ctx context.Context, demoPlayerDB, playersDir, demoXUID string) error {
+	srcDB := findPlayerWithIdentity(ctx, playersDir)
+	if srcDB == "" {
+		slog.WarnContext(ctx, "seed-demo: aucune identité Spartan à emprunter (aucun joueur avec emblem+banner)")
+		return nil
+	}
+
+	db, err := sql.Open("duckdb", demoPlayerDB)
+	if err != nil {
+		return fmt.Errorf("open demo player DB: %w", err)
+	}
+	defer db.Close()
+
+	if _, err := db.ExecContext(ctx, fmt.Sprintf("ATTACH '%s' AS idsrc (READ_ONLY)", srcDB)); err != nil {
+		return fmt.Errorf("attach identity source: %w", err)
+	}
+	defer func() { _, _ = db.ExecContext(ctx, "DETACH idsrc") }()
+
+	// INSERT BY NAME : robuste à l'ordre/sous-ensemble de colonnes. REPLACE
+	// anonymise le xuid et rend la row la plus récente (recorded_at = now).
+	stmt := fmt.Sprintf(`
+		INSERT INTO career_progression BY NAME
+		SELECT * REPLACE ('%s' AS xuid, CURRENT_TIMESTAMP AS recorded_at)
+		FROM idsrc.career_progression
+		WHERE NULLIF(TRIM(emblem_image_url), '') IS NOT NULL
+		  AND NULLIF(TRIM(banner_image_url), '') IS NOT NULL
+		ORDER BY recorded_at DESC
+		LIMIT 1`, demoXUID)
+	if _, err := db.ExecContext(ctx, stmt); err != nil {
+		return fmt.Errorf("insert borrowed identity: %w", err)
+	}
+	slog.InfoContext(ctx, "seed-demo: identité Spartan empruntée", "source_db", srcDB)
+	return nil
+}
+
+// findPlayerWithIdentity retourne le chemin du premier player DB (ordre trié,
+// hors DEMO) dont career_progression a une row avec emblem + banner non vides.
+// Retourne "" si aucun. Tolérant : DB verrouillée / table absente → skip.
+func findPlayerWithIdentity(ctx context.Context, playersDir string) string {
+	entries, err := os.ReadDir(playersDir)
+	if err != nil {
+		return ""
+	}
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		if e.IsDir() && e.Name() != DefaultDemoGamertag {
+			names = append(names, e.Name())
+		}
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		dbPath := filepath.Join(playersDir, name, "stats.duckdb")
+		if _, statErr := os.Stat(dbPath); statErr != nil {
+			continue
+		}
+		if playerHasIdentity(ctx, dbPath) {
+			return dbPath
+		}
+	}
+	return ""
+}
+
+// playerHasIdentity teste (READ_ONLY) si la career_progression d'un player DB
+// contient au moins une row avec emblem + banner non vides.
+func playerHasIdentity(ctx context.Context, dbPath string) bool {
+	db, err := sql.Open("duckdb", dbPath+"?access_mode=READ_ONLY")
+	if err != nil {
+		return false
+	}
+	defer db.Close()
+	var n int
+	err = db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM career_progression
+		WHERE NULLIF(TRIM(emblem_image_url), '') IS NOT NULL
+		  AND NULLIF(TRIM(banner_image_url), '') IS NOT NULL`).Scan(&n)
+	return err == nil && n > 0
 }
 
 func writeJSONFile(path string, v any) error {
