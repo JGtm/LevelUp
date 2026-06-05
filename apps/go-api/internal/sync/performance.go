@@ -86,11 +86,11 @@ func extractMatchMetrics(row *historyRow) *matchMetrics {
 	deaths := row.Deaths
 	assists := row.Assists
 
-	// KDA canonique (ADR 0006) — fallback si row.KDA absent (valeur 0).
-	kda := row.KDA
-	if kda == 0 {
-		kda = analysis.KDA(int(kills), int(assists), int(deaths))
-	}
+	// KDA canonique (ADR 0006) = (kills+assists)/max(1,deaths) — métrique
+	// INTERNE du perf score, toujours recalculée ici. On ne lit plus row.KDA
+	// car il porte désormais le KDA natif Halo (Kills+Assists/3−Deaths,
+	// possiblement négatif) destiné à l'affichage du FDA, pas au scoring.
+	kda := analysis.KDA(int(kills), int(assists), int(deaths))
 
 	m := &matchMetrics{
 		KPM:       kills / minutes,

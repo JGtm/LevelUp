@@ -333,21 +333,15 @@ func ExtractParticipants(matchJSON map[string]any) []ParticipantRow {
 			row.MeleeKills = intPtrFrom(core, "MeleeKills")
 			row.PowerWeaponKills = intPtrFrom(core, "PowerWeaponKills")
 
-			// KDA dérivé
-			if row.Kills != nil && row.Deaths != nil && row.Assists != nil {
-				k, d, a := float64(*row.Kills), float64(*row.Deaths), float64(*row.Assists)
-				if d == 0 {
-					d = 1
-				}
-				kda := (k + a) / d
-				row.KDA = &kda
-			}
-
-			// Accuracy dérivée
-			if row.ShotsFired != nil && *row.ShotsFired > 0 && row.ShotsHit != nil {
-				acc := float64(*row.ShotsHit) / float64(*row.ShotsFired) * 100.0
-				row.Accuracy = &acc
-			}
+			// KDA + Accuracy : valeurs natives du jeu, lues telles quelles depuis
+			// l'API (CoreStats). Halo expose le KDA officiel (Kills + Assists/3 −
+			// Deaths, peut être négatif) et l'Accuracy (pourcentage 0..100). On ne
+			// recalcule PAS : soit la donnée vient de l'API, soit elle est absente
+			// (nil → "-" côté UI). Le ratio (kills+assists)/deaths reste une
+			// métrique INTERNE du performance_score (analysis.KDA), distincte du
+			// FDA affiché — cf. performance.go.
+			row.KDA = floatPtrFrom(core, "KDA")
+			row.Accuracy = floatPtrFrom(core, "Accuracy")
 		}
 
 		// Gamertag
