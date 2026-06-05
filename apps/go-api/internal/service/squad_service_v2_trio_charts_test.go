@@ -80,7 +80,7 @@ func TestBuildKDAChart_SkipsNilValues(t *testing.T) {
 func TestBuildAccuracyChart(t *testing.T) {
 	t.Parallel()
 	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
-	acc := 0.42
+	acc := 42.0 // accuracy en pourcentage 0..100 (passe-through, pas de conversion)
 	rows := map[string][]canonical.PlayerMatchRow{
 		"main": {mkPMRowTrio("main", t0, nil, nil, &acc, nil, nil)},
 	}
@@ -88,8 +88,8 @@ func TestBuildAccuracyChart(t *testing.T) {
 	if len(out) != 1 {
 		t.Fatalf("want 1 trace, got %d", len(out))
 	}
-	if out[0].Datapoints[0].Y != 0.42 {
-		t.Errorf("accuracy want 0.42, got %f", out[0].Datapoints[0].Y)
+	if out[0].Datapoints[0].Y != 42.0 {
+		t.Errorf("accuracy want 42.0, got %f", out[0].Datapoints[0].Y)
 	}
 	if out[0].Key != "squad.contrib.accuracy.main" {
 		t.Errorf("Key want squad.contrib.accuracy.main, got %s", out[0].Key)

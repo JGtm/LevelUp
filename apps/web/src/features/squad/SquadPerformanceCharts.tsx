@@ -135,7 +135,8 @@ export function SquadPerformanceCharts({
         metric: 'accuracy',
         decimals: 1,
         unitSuffix: ' %',
-        scale: 100,
+        // accuracy déjà en 0..100 (match_participants) — pas de scale.
+        scale: 1,
         chartType: 'bar',
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps

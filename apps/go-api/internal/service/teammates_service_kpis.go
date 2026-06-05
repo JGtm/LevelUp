@@ -167,7 +167,10 @@ func computeKPIsFromSquadMatches(matches []domain.SquadMatchRow) domain.Teammate
 	pkpg := float64(totalPK) / float64(n)
 	var acc *float64
 	if accCount > 0 {
-		v := round2(accSum / float64(accCount) * 100)
+		// m.Accuracy est déjà en pourcentage 0..100 (match_participants.accuracy,
+		// cf. sync/transforms.go). Le ×100 historique (quand l'accuracy était 0..1)
+		// produisait du 0..10000 → radar plafonné. La moyenne reste en 0..100.
+		v := round2(accSum / float64(accCount))
 		acc = &v
 	}
 	return domain.TeammateKPIs{

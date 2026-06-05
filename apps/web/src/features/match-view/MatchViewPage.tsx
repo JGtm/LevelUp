@@ -376,6 +376,7 @@ export function MatchViewPage() {
               playerSlug={playerSlug}
               matchId={matchId}
               granularity="intra"
+              emptyBehavior="placeholder"
             />
 
             <MatchScoreboard

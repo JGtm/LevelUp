@@ -58,7 +58,9 @@ export function SquadMatchHistoryTable({ rows, playerSlug }: SquadMatchHistoryTa
   const { data: mappings } = useFieldMappings()
   const navigateToMatch = useNavigateToMatch(playerSlug)
   const filterContext = useSquadFilterStore((s) => s.filterContext)
-  const allMatchIds = useMemo(() => rows.map((r) => r.match_id), [rows])
+  // Backend envoie DESC (newest first) — on inverse pour oldest-first (chronologique).
+  const sortedRows = useMemo(() => [...rows].reverse(), [rows])
+  const allMatchIds = useMemo(() => sortedRows.map((r) => r.match_id), [sortedRows])
   const goToSquadMatch = (matchId: string) => {
     const filterSpec = filterContextToMatchFilterSpec(filterContext)
     navigateToMatch(matchId, {
@@ -120,8 +122,9 @@ export function SquadMatchHistoryTable({ rows, playerSlug }: SquadMatchHistoryTa
         accessorKey: 'accuracy',
         header: labels.accuracy,
         cell: (ctx) => {
+          // accuracy est déjà en pourcentage 0..100 (match_participants) — pas de ×100.
           const v = ctx.getValue<number | undefined>()
-          return v === undefined || v === null ? '-' : `${(v * 100).toFixed(1)}%`
+          return v === undefined || v === null ? '-' : `${v.toFixed(1)}%`
         },
       },
       {
@@ -149,7 +152,7 @@ export function SquadMatchHistoryTable({ rows, playerSlug }: SquadMatchHistoryTa
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE })
 
   const table = useReactTable<SquadMatchHistoryRow>({
-    data: rows,
+    data: sortedRows,
     columns,
     state: { pagination },
     onPaginationChange: setPagination,

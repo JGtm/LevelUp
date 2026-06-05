@@ -62,7 +62,9 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
   const intlLocale = t.intlLocale
   const labels = t.history
   const navigateToMatch = useNavigateToMatch(playerSlug)
-  const allMatchIds = useMemo(() => rows.map((r) => r.match_id), [rows])
+  // Backend envoie DESC (newest first) — on inverse pour oldest-first (chronologique).
+  const sortedRows = useMemo(() => [...rows].reverse(), [rows])
+  const allMatchIds = useMemo(() => sortedRows.map((r) => r.match_id), [sortedRows])
   // useCallback obligatoire : goToSynergyMatch est référencé dans le cell renderer
   // du useMemo `columns` ci-dessous. Sans ça, le closure figé au 1er render garde
   // les `allMatchIds` initiaux (pré-filtre) → nav contextuelle hors scope.
@@ -241,7 +243,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE })
 
   const table = useReactTable<SquadMatchHistoryRow>({
-    data: rows,
+    data: sortedRows,
     columns,
     state: { pagination },
     onPaginationChange: setPagination,

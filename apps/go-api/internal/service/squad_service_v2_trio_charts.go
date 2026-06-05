@@ -92,7 +92,8 @@ func BuildKDAChart(rowsByPlayer map[string][]canonical.PlayerMatchRow) []domain.
 	)
 }
 
-// BuildAccuracyChart : 1 trace par joueur, Y = accuracy [0..1] par match.
+// BuildAccuracyChart : 1 trace par joueur, Y = accuracy [0..100] par match
+// (match_participants.accuracy est déjà en pourcentage, cf. sync/transforms.go).
 func BuildAccuracyChart(rowsByPlayer map[string][]canonical.PlayerMatchRow) []domain.ChartSeries[domain.ChartPoint2D] {
 	return buildTrioTimeseries(
 		rowsByPlayer,

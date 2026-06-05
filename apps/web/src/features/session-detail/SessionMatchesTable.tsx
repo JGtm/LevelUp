@@ -103,7 +103,15 @@ export function toExplorerRow(m: SessionDetailMatchRow, withFriends: boolean): E
 
 export function SessionMatchesTable({ matches, playerSlug, variant = 'full', withFriends = false }: Props) {
   const t = useSessionT()
-  const rows = useMemo(() => matches.map((m) => toExplorerRow(m, withFriends)), [matches, withFriends])
+  // Tri chronologique ASC (oldest first) — cohérent avec les charts de session
+  // au-dessus. start_time ISO UTC → comparaison lexicale = ordre chrono.
+  const rows = useMemo(
+    () =>
+      [...matches]
+        .sort((a, b) => a.start_time.localeCompare(b.start_time))
+        .map((m) => toExplorerRow(m, withFriends)),
+    [matches, withFriends],
+  )
 
   // Colonne « Δ rang » (gain/perte de rating du match) INJECTÉE après la colonne
   // Rang — spécifique à la vue session, jamais exposée sur la page Explorer.

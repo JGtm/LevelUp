@@ -64,7 +64,8 @@ function joinAndSort(rows: MapBreakdownRow[]): JoinedRow[] {
       matchCount: r.match_count,
     })
   }
-  joined.sort((a, b) => a.perfSession - b.perfSession)
+  // Tri par nombre de matchs DESC (les cartes les plus jouées en haut).
+  joined.sort((a, b) => b.matchCount - a.matchCount)
   return joined.slice(0, MAX_MAPS)
 }
 

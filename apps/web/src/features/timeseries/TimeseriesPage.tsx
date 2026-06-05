@@ -93,7 +93,9 @@ export function TimeseriesPage() {
       filters: soloFilterContext,
       pagination: { page: 1, page_size: 10000 },
       sort_field: 'start_time',
-      sort_dir: 'desc',
+      // ASC pour matcher l'ordre chronologique des charts de progression
+      // au-dessus (oldest -> newest). La page Explorer générique reste DESC.
+      sort_dir: 'asc',
     },
     filterContextHash,
     activeTab === 'progression',
