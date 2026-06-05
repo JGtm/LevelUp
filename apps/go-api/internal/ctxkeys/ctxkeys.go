@@ -53,6 +53,14 @@ func WithHaloAuth(ctx context.Context, tokens *domain.HaloTokens, xuid string) c
 	return context.WithValue(ctx, haloXUIDKey, xuid)
 }
 
+// WithHaloXUID place uniquement le XUID dans le contexte (sans toucher aux
+// tokens). Utilisé pour les requêtes non-authentifiées (démo) où aucune session
+// ne porte de tokens mais où les lectures xuid-filtrées (identité Spartan) doivent
+// cibler le joueur de la page.
+func WithHaloXUID(ctx context.Context, xuid string) context.Context {
+	return context.WithValue(ctx, haloXUIDKey, xuid)
+}
+
 // HaloTokens extrait les tokens Halo depuis le contexte. Retourne nil si absent.
 func HaloTokens(ctx context.Context) *domain.HaloTokens {
 	v, _ := ctx.Value(haloTokensKey).(*domain.HaloTokens)
