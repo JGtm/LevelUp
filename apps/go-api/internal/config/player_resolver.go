@@ -31,24 +31,43 @@ func ResolvePlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug string) 
 
 // resolveDemoPlayer ouvre le joueur de démo depuis DemoFixturesDir.
 //
-// En cas de fixture absente (path inexistant), retourne une erreur explicite
-// pointant vers la cause racine et l'action corrective — au lieu d'un message
-// IO Error opaque côté client (cf. revue 2026-04-29 — process API démarré en
-// LEVELUP_DEMO_MODE=true sans fixture installée).
+// Supporte deux arborescences :
+//   - Structure seed-demo (LEVELUP_DEMO_FIXTURES_DIR=data/demo) :
+//     data/demo/players/DEMO/stats.duckdb
+//     data/demo/warehouse/shared_matches_v2.duckdb
+//     data/demo/warehouse/metadata.duckdb
+//   - Structure plate legacy (tests/fixtures/ref_player/) :
+//     stats.duckdb / shared_matches_v2.duckdb / metadata.duckdb à la racine
+//
+// En cas de fixture absente, retourne une erreur explicite avec la commande
+// pour regénérer (go run ./cmd/levelup seed-demo).
 func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, titleSlug string) (*duckdb.PlayerDB, error) {
 	dir := cfg.DemoFixturesDir
-	statsPath := filepath.Join(dir, "stats.duckdb")
+
+	// Résolution du chemin stats.duckdb : structure seed-demo d'abord, plate ensuite.
+	statsPath := filepath.Join(dir, "players", "DEMO", "stats.duckdb")
+	sharedPath := filepath.Join(dir, "warehouse", "shared_matches_v2.duckdb")
+	metaPath := filepath.Join(dir, "warehouse", "metadata.duckdb")
+
+	if _, err := os.Stat(statsPath); os.IsNotExist(err) {
+		// Fallback : structure plate (fixtures commitées dans tests/)
+		statsPath = filepath.Join(dir, "stats.duckdb")
+		sharedPath = filepath.Join(dir, "shared_matches_v2.duckdb")
+		metaPath = filepath.Join(dir, "metadata.duckdb")
+	}
+
 	if _, err := os.Stat(statsPath); os.IsNotExist(err) {
 		return nil, fmt.Errorf(
 			"resolveDemoPlayer: fixture démo manquante (%s). "+
-				"Désactiver LEVELUP_DEMO_MODE ou installer la fixture dans LEVELUP_DEMO_FIXTURES_DIR (défaut : tests/fixtures/ref_player/)",
+				"Générer avec : go run ./cmd/levelup seed-demo --gamertag JGtm (sortie dans data/demo). "+
+				"Puis définir LEVELUP_DEMO_FIXTURES_DIR=data/demo.",
 			statsPath,
 		)
 	}
+
 	xuidBytes, err := readXUIDFile(filepath.Join(dir, "xuid.txt"))
 	if err != nil {
-		// Fallback : XUID hardcodé pour la fixture Chocoboflor
-		xuidBytes = "2535469190789936"
+		xuidBytes = "2535469190789936" // fallback XUID Chocoboflor
 	}
 	pr := title.NewPathResolver(cfg.RepoRoot)
 	pcfg := duckdb.PlayerPoolConfig{
@@ -56,12 +75,12 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, titleSlug string) (*
 		XUID:                    xuidBytes,
 		TitleSlug:               titleSlug,
 		PlayerDBPath:            statsPath,
-		SharedDBPath:            filepath.Join(dir, "shared_matches_v2.duckdb"),
-		MetaDBPath:              filepath.Join(dir, "metadata.duckdb"),
+		SharedDBPath:            sharedPath,
+		MetaDBPath:              metaPath,
 		SharedSocialDBPath:      pr.SharedSocialDBPath(titleSlug),
 		GlobalXuidAliasesDBPath: pr.GlobalXuidAliasesDBPath(),
 		UserTimezone:            cfg.UserTimezone,
-		SharedReader:            cfg.SharedProvider, // Provider satisfait SharedReader ; mode B-swap si non-nil
+		SharedReader:            cfg.SharedProvider,
 	}
 	return duckdb.GetOrOpen(ctx, pcfg)
 }
