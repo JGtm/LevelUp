@@ -59,6 +59,11 @@ COPY --from=web-builder /build/web/dist       /app/apps/web/dist
 # Scripts d'exploitation (backfill, seed, etc.)
 COPY scripts /app/scripts
 
+# Assets statiques UI servis sous /static/ par le serveur Go (maps, ranks,
+# medals, commendations, prestige). ~23 MB. Sans ce COPY, /app/static n'existe
+# pas dans le conteneur → 404 sur tout /static/* (prod + demo).
+COPY static /app/static
+
 # Stubs de config — écrasés au runtime par les volumes bind-mount
 RUN echo '{"version":"2.1","warehouse_path":"data/warehouse","profiles":{}}' > /app/db_profiles.json \
     && echo '{}' > /app/app_settings.json
