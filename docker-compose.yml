@@ -57,12 +57,12 @@ services:
       # (via symlinks). Généré par `levelup seed-demo --out data/demo`.
       - LEVELUP_DEMO_FIXTURES_DIR=/app/data/demo
     volumes:
-      # Données de démo en lecture seule (générées par `levelup seed-demo --out data/demo`).
-      # Le montage /app/data/demo expose les fixtures à resolveDemoPlayer ; les montages
-      # warehouse/players servent aussi de cible aux symlinks flat de data/demo/.
-      - ./data/demo:/app/data/demo:ro
-      - ./data/demo/warehouse:/app/data/warehouse:ro
-      - ./data/demo/players:/app/data/players:ro
+      # Fixtures démo (générées par `levelup seed-demo --out data/demo`). resolveDemoPlayer
+      # + le provider lisent les chemins NESTED /app/data/demo/{warehouse,players/DEMO}/*.
+      # Monté en RW (pas :ro) car le serveur ouvre metadata.duckdb en OpenReadWriteShared
+      # au boot (réconciliation idempotente des seeds) — un mount :ro fait échouer le boot
+      # ("Read-only file system"). Données régénérables, DEMO_MODE désactive la sync.
+      - ./data/demo:/app/data/demo
       - ./data/demo/db_profiles.json:/app/db_profiles.json:ro
       - ./data/demo/app_settings.json:/app/app_settings.json:ro
     restart: unless-stopped
