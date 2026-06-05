@@ -221,8 +221,9 @@ func runSeedDemo(cfg *config.AppConfig, args []string) error {
 	}
 
 	pr := title.NewPathResolver(cfg.RepoRoot)
+	sourcePlayerDB := filepath.Join(cfg.RepoRoot, srcPlayerRel)
 	opts := ops.SeedDemoOptions{
-		SourcePlayerDB: filepath.Join(cfg.RepoRoot, srcPlayerRel),
+		SourcePlayerDB: sourcePlayerDB,
 		SourceSharedDB: pr.SharedDBPath(title.DefaultSlug),
 		SourceMetaDB:   pr.MetadataDBPath(title.DefaultSlug),
 		SourceXUID:     sourceXUID,
@@ -232,6 +233,8 @@ func runSeedDemo(cfg *config.AppConfig, args []string) error {
 		ServiceTag:     *serviceTag,
 		IncludeMedia:   !*noMedia,
 		MaxMedia:       *maxMedia,
+		// Racine des player DBs (…/players) pour emprunter une identité Spartan.
+		SourcePlayersDir: filepath.Dir(filepath.Dir(sourcePlayerDB)),
 	}
 
 	ctx := context.Background()
