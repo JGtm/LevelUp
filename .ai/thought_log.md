@@ -12,10 +12,12 @@
 - Tests fixtures recalés sur la convention API (transforms_extract, recent_matches).
 - `cmd/backfill_kda_accuracy` : re-fetch GetMatchStats + UPDATE ciblé kda/accuracy (auth store-first ADR 0023, réutilise ExtractParticipants). Compile.
 
-**À FAIRE (validation user requise)** :
-1. Commit + déploiement (rebuild image pour que le sync futur lise l'API).
-2. Backfill prod : `go run ./cmd/backfill_kda_accuracy --gamertag JGtm` (serveur arrêté).
-3. **Front** : le KDA devient la vraie valeur Halo (négatif possible). Vérifier scales couleur (kdScale) + axes charts FDA — formatKDA gère déjà le négatif.
+**LIVRÉ** :
+1. Commits poussés sur main (via fix/enrichment-convergence) ; `Deploy lvelup.info` GHA = succès → fix sync actif en prod.
+2. **Backfill prod COMPLÉTÉ** (2026-06-05, VPS, serveur arrêté ~downtime) : `cmd/backfill_kda_accuracy --rps 6` → **1742 matchs fetchés, 26288 rows mises à jour** (KDA+Accuracy API), **0 participant sans valeur API**. Prod redémarrée, health 200.
+3. **Front** : kdScale gère déjà les négatifs (seuils [1.0, 0.0] → tier-5 rouge), formatKDA OK. Rien à toucher.
+
+**Reste** : fix déploiement démo — job GHA `deploy-demo` échoue depuis le 3 juin (`docker compose run levelup levelup seed-demo` → binaire CLI `levelup` absent de l'image). Fix prêt dans `Dockerfile` (build + COPY du CLI `levelup` dans /usr/local/bin). À committer/déployer.
 
 ---
 
@@ -55560,3 +55562,15 @@ evwide2,frbig}. Câblage scanner différé v2 (cf. RESEARCH_THEATER_RE.md §M-te
 - **Résultats clés (FIABLES, via fires pi-resolues)** : JGtm (pi=2) a bien tiré du BR75, mais a 308-310s (dernier BR75 a 310.2s), PAS a 355s. Dans la fenêtre 340-370s JGtm ne tire RIEN (silence 310s->427s) — cohérent avec "Frag Parfait = kill non capté par les fires". Armes JGtm captées : MA40:58, BR75:15, Disruptor:7, CQS48:5, M41:5, GravityHammer:3…
 - **Conclusion** : la méthode Angle B (cross-link positionnel) ÉCHOUE a produire un mapping record->pi fiable (records anonymes + instables positionnellement, pas d'anchor xuid in-keyframe). Le sous-produit utile : la timeline fire pi-resolue confirme JGtm=BR75 user (dernier tir BR75 @310s) mais ne peut prouver "BR75 @355s" car le kill n'est pas dans les fires. Pour conclure le Frag Parfait il faudrait un anchor record<->pi INDÉPENDANT (l'index positionnel ne suffit pas).
 - **Prochaine étape** : si poursuite — chercher dans le payload type-2 un player-index COURT a coté de chaque record (le brief mentionne "un player-index court non localisé") et tester sa corrélation au pi des fires ; ou exploiter c02/c03 (ordre records STABLE = ordre pi ?) pour calibrer un offset record->pi figé.
+
+---
+
+### [2026-06-05] Incident demo.lvelup.info cassée + prod down transitoire (deploy nginx/static)
+
+- **Statut** : Prod restaurée (Complété) ; demo restauration différée (décision layout title-agnostic en attente).
+- **Déclencheur** : demo.lvelup.info renvoyait "Failed to fetch dynamically imported module" (page blanche). Diag Chrome DevTools : nginx renvoyait des 503 sur une rafale de chunks JS lazy.
+- **Cause #1 (503 demo)** : `packaging/nginx/demo.conf` avait un seul `location /` avec `limit_req zone=demo_limit burst=20` qui throttlait AUSSI `/assets/` (et `/static/`). Le navigateur tire ~50 imports d'un coup -> débordement burst -> 503 -> import ES non réessayé -> page cassée. Prod (levelup.conf) a un `location /assets/` SANS limit_req, d'où "même code, conf différente". Fix : blocs `location /assets/` + `/static/` hors rate-limit, appliqués LIVE (nginx -t + reload). Port upstream live = 8001 (le repo disait 8502, périmé) — repo aligné.
+- **Cause #2 (404 /static/* prod+demo)** : le serveur Go sert `/static/*` via FileServer(`{RepoRoot}/static`) mais `/app/static` n'existait pas dans l'image. Double cause : `.dockerignore` strippait `*.png/*.jpg/*.webp` (donc tout `static/`) + pas de `COPY static` au Dockerfile. Fix : négations `!static`/`!static/**` + `COPY static /app/static` (commit f106f0b03, déployé). Confirmé live prod : static 200.
+- **Incident induit** : merge fast-forward fix/enrichment-convergence -> main (8 commits, "all clear" user) a déclenché le deploy GH Actions. (a) Job 2 "regen demo" a `rm -rf data/demo/warehouse` + configs AVANT d'échouer (binaire `levelup` CLI absent de l'image — Dockerfile ne buildait que `cmd/server`) -> donnees demo effacees. (b) Pendant le SIGTERM prod du rebuild, un `backfill_kda_accuracy --gamertag JGtm` lancé manuellement (17:39:10) a saisi le lock DuckDB RW sur shared_matches_v2 -> prod crash-loop ("Conflicting lock held in PID 0"). Le backfill a fini seul ~4 min après -> `docker compose up -d levelup` -> prod 200.
+- **Bugs latents documentés** : (1) job regen-demo destructif (rm avant seed) ; (2) deploy SIGTERM prod => crash-loop si un backfill tient le lock ; (3) mismatch title-agnostic : seed-demo écrit `data/demo/warehouse|players/DEMO` mais l'app lit `data/titles/halo_infinite/warehouse` et le compose monte l'ancien chemin — la demo ne lira jamais les données seedées sans aligner seed-demo + mounts compose + job regen.
+- **Livré** : Dockerfile build+COPY du CLI `levelup` (corrige la cause du wipe demo, edit user). À venir : décision layout demo title-agnostic avant regen.
