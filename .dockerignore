@@ -46,6 +46,13 @@ backups/
 *.mp4
 *.mkv
 
+# === Assets statiques UI (re-inclus malgré les globs media ci-dessus) ===
+# Servis sous /static/ par le serveur Go (maps, ranks, medals, commendations,
+# prestige). Sans ces négations, les *.png/*.jpg de static/ sont strippés du
+# build context → 404 sur tout /static/* (cf. server.go FileServer + Dockerfile).
+!static
+!static/**
+
 # === Bases legacy (inutiles dans l'image DuckDB v4) ===
 *.db
 *.sqlite
