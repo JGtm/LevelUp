@@ -52,32 +52,26 @@ function drBarWidth(value: number | null | undefined, perSide: number): number {
 }
 
 interface TooltipProps {
-  offensiveConversion: number | null | undefined
-  defensiveResistance: number | null | undefined
   damagePerKill: number | null | undefined
   damagePerDeath: number | null | undefined
 }
 
-function Tooltip({ offensiveConversion, defensiveResistance, damagePerKill, damagePerDeath }: TooltipProps) {
+function Tooltip({ damagePerKill, damagePerDeath }: TooltipProps) {
   return (
-    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-48 rounded-md bg-popover border border-border px-3 py-2 text-xs shadow-lg pointer-events-none">
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-52 rounded-md bg-popover border border-border px-3 py-2 text-xs shadow-lg pointer-events-none">
       <div className="flex justify-between gap-2 mb-1">
         <span className="font-semibold" style={{ color: tokenCssVar('divergent-pos') }}>Rendement</span>
-        <span className="text-muted-foreground">{offensiveConversion != null ? `${Math.round(offensiveConversion * 100)}%` : '—'}</span>
+        <span className="text-muted-foreground">
+          {damagePerKill != null ? `${Math.round(damagePerKill)} dégâts/frag` : '—'}
+        </span>
       </div>
-      {damagePerKill != null && (
-        <div className="text-muted-foreground mb-1">{Math.round(damagePerKill)} dégâts/frag</div>
-      )}
       <div className="flex justify-between gap-2 mb-1">
         <span className="font-semibold" style={{ color: tokenCssVar('divergent-neutral') }}>Résistance</span>
         <span className="text-muted-foreground">
-          {defensiveResistance == null ? '—' : defensiveResistance < 0 ? '∞' : `${Math.round((defensiveResistance - 1) * 100)}%`}
+          {damagePerDeath != null ? `${Math.round(damagePerDeath)} dégâts/mort` : '—'}
         </span>
       </div>
-      {damagePerDeath != null && (
-        <div className="text-muted-foreground">{Math.round(damagePerDeath)} dégâts/mort</div>
-      )}
-      {/* triangle pointer */}
+      <div className="text-[10px] text-muted-foreground/60 mt-1">réf. 225 = 1 vie</div>
       <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-popover" />
     </div>
   )
@@ -116,7 +110,7 @@ export function CombatYieldBar({
       onMouseLeave={() => setHovered(false)}
     >
       {/* Badge débordement OC — affiché à gauche hors-barre */}
-      {hasData && ocClipped && (
+      {hasData && ocClipped && damagePerKill != null && (
         <div
           className="absolute text-[9px] font-semibold leading-none"
           style={{
@@ -125,7 +119,7 @@ export function CombatYieldBar({
             whiteSpace: 'nowrap',
           }}
         >
-          {Math.round(offensiveConversion! * 100)}%
+          {Math.round(damagePerKill)}
         </div>
       )}
 
@@ -136,7 +130,11 @@ export function CombatYieldBar({
             className="h-2 rounded-l-full transition-all duration-300"
             style={{
               width: ocWidth,
-              backgroundColor: ocWidth > 0 ? tokenCssVar('divergent-pos') : 'transparent',
+              // Gradient : extrémité gauche (loin du centre = bonne efficacité) → solide ;
+              // extrémité droite (près du centre = baseline) → transparent.
+              background: ocWidth > 0
+                ? `linear-gradient(to right, ${tokenCssVar('divergent-pos')}, color-mix(in srgb, ${tokenCssVar('divergent-pos')} 10%, transparent))`
+                : 'transparent',
               opacity: ocWidth > 0 ? 1 : 0,
             }}
           />
@@ -153,7 +151,11 @@ export function CombatYieldBar({
             className="h-2 rounded-r-full transition-all duration-300"
             style={{
               width: drWidth,
-              backgroundColor: drWidth > 0 ? tokenCssVar('divergent-neutral') : 'transparent',
+              // Gradient : extrémité droite (loin du centre = bonne résistance) → solide ;
+              // extrémité gauche (près du centre = baseline) → transparent.
+              background: drWidth > 0
+                ? `linear-gradient(to left, ${tokenCssVar('divergent-neutral')}, color-mix(in srgb, ${tokenCssVar('divergent-neutral')} 10%, transparent))`
+                : 'transparent',
               opacity: drWidth > 0 ? 1 : 0,
             }}
           />
@@ -170,14 +172,12 @@ export function CombatYieldBar({
             whiteSpace: 'nowrap',
           }}
         >
-          {drIsInfinite ? '∞' : `${Math.round((defensiveResistance! - 1) * 100)}%`}
+          {drIsInfinite ? '∞' : damagePerDeath != null ? String(Math.round(damagePerDeath)) : ''}
         </div>
       )}
 
       {hovered && hasData && (
         <Tooltip
-          offensiveConversion={offensiveConversion}
-          defensiveResistance={defensiveResistance}
           damagePerKill={damagePerKill}
           damagePerDeath={damagePerDeath}
         />

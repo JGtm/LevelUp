@@ -96,11 +96,15 @@ func markXPTotalFixDone(db *sql.DB) error {
 	if err := addColumnIfMissing(db, "sync_meta", "updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"); err != nil {
 		return fmt.Errorf("fix_xp_default: ensure updated_at: %w", err)
 	}
-	_, err = db.ExecContext(bootCtx(), `
-		INSERT INTO sync_meta (key, value, updated_at)
-		VALUES (?, 'true', NOW())
-		ON CONFLICT (key) DO UPDATE SET value = 'true', updated_at = NOW()
-	`, careerXPTotalFixMetaKey)
+	// SELECT-then-INSERT-or-UPDATE : résilient aux player DBs sans PK sur sync_meta
+	// (DBs seed-demo ou legacy créées avant la migration add_sync_meta_pk).
+	var exists bool
+	_ = db.QueryRowContext(bootCtx(), `SELECT EXISTS(SELECT 1 FROM sync_meta WHERE key = ?)`, careerXPTotalFixMetaKey).Scan(&exists)
+	if exists {
+		_, err = db.ExecContext(bootCtx(), `UPDATE sync_meta SET value = 'true', updated_at = NOW() WHERE key = ?`, careerXPTotalFixMetaKey)
+	} else {
+		_, err = db.ExecContext(bootCtx(), `INSERT INTO sync_meta (key, value, updated_at) VALUES (?, 'true', NOW())`, careerXPTotalFixMetaKey)
+	}
 	if err != nil {
 		return fmt.Errorf("fix_xp_default: mark done: %w", err)
 	}

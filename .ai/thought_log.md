@@ -1,3 +1,165 @@
+## [2026-06-05] FDA/Accuracy : lire l'API au lieu de calculer (régression sprint19) — Fix sync + cmd backfill prêts
+
+**Statut** : Code prêt et testé. Backfill + déploiement en attente de validation utilisateur.
+
+**Régression identifiée** : depuis `a5ecff46b` (sprint19, **2026-04-15**, port Go initial du sync), `transforms.go` CALCULAIT le KDA `(k+a)/d` et l'accuracy `shots_hit/shots_fired*100` au lieu de lire les champs natifs de l'API. Donc TOUTE la base a un KDA faux (mauvaise formule).
+
+**Preuve** (fixture API réelle `testdata/jgtm_full_match`) : API `KDA` = `Kills + Assists/3 − Deaths` (formule Halo officielle). Ex K19 D12 A4 → API=8.33 vs notre calcul=1.917. Le KDA API peut être **négatif** (K8 D14 A0 → −6.0). L'accuracy API ≈ notre calcul (écart d'arrondi) mais doit aussi venir de l'API. Validé vs l'utilisateur : Chocoboflor 3 juin = 4 à 4.7 (d028a503 K8D5A3→4.0, 0ba4aa2b K7D5A8→4.67 via formule Halo).
+
+**Fixes livrés (testés, go test sync OK)** :
+- `transforms.go` : `row.KDA = floatPtrFrom(core, "KDA")`, `row.Accuracy = floatPtrFrom(core, "Accuracy")` — soit API, soit nil. Plus aucun calcul.
+- `performance.go` : le perf score recalcule explicitement `analysis.KDA` (k+a)/d en INTERNE (découplé du KDA stocké, qui est maintenant la valeur Halo d'affichage).
+- Tests fixtures recalés sur la convention API (transforms_extract, recent_matches).
+- `cmd/backfill_kda_accuracy` : re-fetch GetMatchStats + UPDATE ciblé kda/accuracy (auth store-first ADR 0023, réutilise ExtractParticipants). Compile.
+
+**À FAIRE (validation user requise)** :
+1. Commit + déploiement (rebuild image pour que le sync futur lise l'API).
+2. Backfill prod : `go run ./cmd/backfill_kda_accuracy --gamertag JGtm` (serveur arrêté).
+3. **Front** : le KDA devient la vraie valeur Halo (négatif possible). Vérifier scales couleur (kdScale) + axes charts FDA — formatKDA gère déjà le négatif.
+
+---
+
+## [2026-06-05] Bug précision en millier (accuracy 0..100 ×100) — Complété
+
+**Statut** : Complété.
+
+**Cause racine** : `match_participants.accuracy` est stockée en pourcentage **0..100** (sync/transforms.go:348 `shots_hit/shots_fired*100`). Historiquement l'accuracy squad était 0..1 ; le sync est passé à 0..100, Timeseries/Home se sont adaptés (commentaires "ne pas re-multiplier") mais le **squad est resté sur la convention 0..1** → ×100 partout → millier.
+
+**Vérité terrain** (lecture directe match_participants, serveur arrêté 30s) : Chocoboflor accuracy = 47.3, 54.7, 49.2… = 0..100 confirmé.
+
+**Fixes (aligner squad sur 0..100)** :
+- Backend `teammates_service_kpis.go:170` : retire `* 100` (produisait 0..10000 → radar plafonné).
+- Frontend `SquadMatchHistoryTable` : retire `(v*100)`.
+- Frontend `SquadPerformanceCharts` : `scale: 100` → `1`.
+- Frontend `metrics.ts` (radar) : `norm(accuracy, 1)` → `norm(accuracy, 100)`.
+- Commentaire `BuildAccuracyChart` + 2 tests (trio_charts, SquadMatchHistoryTable) recalés sur 0..100.
+
+**Résultats** : go vet OK, suite service Go OK, 233/233 tests squad front.
+
+**FDA — investigation, PAS de fix (blocage info)** : vérité terrain — les KDA de Chocoboflor EXISTENT (2.1, 2.125, 3.0… sur les 10 derniers, jamais 10). `LoadFor` résout bien par gamertag (corrigé antérieurement). Aucun fallback KDA backend (lit `Self.KDA` brut) ni frontend (`p.kda ?? null`). Le "FDA de 10" ne correspond à aucun match récent → contradiction. Hypothèse : soit le match à FDA 10 n'est pas un match COMMUN avec le main (vue escouade = intersection), soit confusion de formule (Halo `(K+A)/D` vs autre). Question posée à l'utilisateur.
+
+---
+
+## [2026-06-05] Tri chronologique charts/tables session + escouade — Complété
+
+**Statut** : Complété.
+
+**Demande** : tous les graphes et tableaux des pages session solo + escouade triés du plus ancien au plus récent (oldest first). Audit exhaustif (lecture de chaque chart, pas survol).
+
+**Constats audit** :
+- Session-detail : tous les charts trient déjà ASC côté front (`.sort start_time`). OK.
+- Squad : `SquadSessionTimelineChart` (backend firstSeen ASC), `SquadPerformanceCharts` + `squadEfficiencyChart` (match_order ASC backend) déjà OK.
+- **Inversés trouvés** : `HistoryTable` (squad v2), `SquadMatchHistoryTable`, `SquadSynergyHistoryTable` (toutes reçoivent DESC backend sans re-tri), `SessionMatchesTable` (ordre brut), tous les charts **Timeseries** (source `match_rows` DESC) + table Explorer en bas de Progression.
+
+**Fixes** :
+- 3 tables squad : `[...rows].reverse()` (backend DESC → oldest-first).
+- `SessionMatchesTable` : tri `start_time.localeCompare` ASC dans le useMemo.
+- **Backend `timeseries_service.go`** : tri `matches` ASC une fois dans `GetPage` (après filtrage) → tous les builders + charts héritent. **Corrige aussi un bug latent** : `buildCumulTab` accumulait depuis le match le plus récent (cumul à l'envers).
+- `TimeseriesPage.tsx` table Explorer : `sort_dir` desc→asc (commentaire dit "matcher les charts").
+- `OutcomeSequenceTape` (squad v2) : déjà `.reverse()` au tour précédent.
+- `mapPerfVsHistoryChart` : tri perfSession→matchCount DESC + test mis à jour.
+
+**Résultats** : typecheck OK, go build+vet OK, tests Go service OK, 98/98 tests front (squad/session/timeseries) verts.
+
+**Reporté (backlog)** : page session afficher solo+squad (changement de scope), placeholders pour les ~6 composants en `return null`. Cf. [[project-backlog-deferred-tasks]].
+
+---
+
+## [2026-06-05] RE Front C — traversée entity ECS du keyframe (chaînage composants) — Complété (investigation)
+
+**Statut** : Complété (sonde Go + Ghidra, aucun changement au décodeur).
+
+**Question** : peut-on TRAVERSER (record-par-record) un entity du keyframe type-2 en chaînant ses composants, avec le seul deser générique 'obje' (FUN_14080c1f8) + grammaire transform/quat ?
+
+**Constats** :
+- Structure new-entity (FUN_1408f1aa4) reconstruite et VALIDÉE empiriquement sur l'oracle 000d5950 : `R(6) typeIndex` → default-state (vtable+0x60/+0x88) → gate `R(1)` → mask `FUN_1406d7610` → itérateur `FUN_14076cb60` qui dispatche CHAQUE composant présent vers `descriptor[i].vtable+0x28`.
+- 1er entity du keyframe (tous chunks) : `typeIndex=40`, default-state = 76 bits (largeur unique qui tombe pile sur l'ancre), gate, puis mask **raw64** `0xfff9800000000600` (popcount **17** composants présents, indices {9,10,47,48,51..63}). Le mask se termine **exactement** au bit 148 = start du record obje (variant 0x67abd42a). Décode UNIQUE (1 seul HIT au sweep).
+- L'obje @bit148 = composant index **9** (1er présent), décodé bit-exact par DecodeEntityRecordQ (120 bits, 148→268). C'est UN composant (FUN_14080c1f8 fait `memset(struct,0,0x328)` = état d'UN composant objet de 0x328o), PAS l'entity entier.
+- **DESYNC structurel au composant index 10 (@bit 268)** : il n'est PAS un obje, donc le deser générique échoue (`next=0x0004c000`, implausible). Confirmé identique sur chunks 02/03/05/10.
+- Cross-check FRAME delta (FUN_1406cd128, validé 1199/1199) : même mask FUN_1406d7610 mais en mode **sparse** (R3 count + N×R6 index), id incrémentant frame-par-frame.
+
+**Verrou** : chaque composant présent a SON deser (`vtable+0x28`), keyé par le descripteur de l'archetype. L'ordre/identité des descripteurs vit dans la mémoire runtime de l'archetype (`*(*(world+0x18)+8+typeIndex*8)`), **absente du film**. Sans la liste de descripteurs de typeIndex=40, impossible de savoir que index-10 est (p.ex.) un transform/health/stat → impossible de chaîner au-delà du 1er obje.
+
+**Traversée débloquée** : PARTIEL. En-tête entity → mask → 1er composant (obje) = OK et bit-exact. Au-delà = bloqué faute des desers des 16 autres composants.
+
+**Prochaine étape** : extraire le mapping archetype→descripteurs depuis le manifest ECS (chunk_00 registre 264 composants donne kind+nom global, mais pas la liste PAR archetype ni le `+0x4850` slot-id map). Soit (a) RE de la construction d'archetype au load-time, soit (b) deviner les ~5 desers les plus fréquents (transform/stat/health) et les balayer empiriquement contre l'index-10. Outil : `cmd/tmp_keyframe_traverse`.
+
+---
+
+## [2026-06-05] Backlog P1 — premier passage — Complété
+
+**Statut** : Complété (frontend).
+
+**Réalisé** :
+- Engagement chart `MatchViewPage` : `emptyBehavior='placeholder'` (graphe visible même sans données)
+- Séquence des matchs Escouade (`OutcomeSequenceTape`) : inversée → `.reverse()` oldest→newest
+- "Performance par carte" : tri `matchCount DESC` (cartes les plus jouées en haut)
+- Typecheck propre
+
+**Non résolu** : RC-5 frags/arme (events présents → bug UI à clarifier), Sessions solo (design par page / Escouade), Performance joueur×carte ordre (à clarifier).
+
+---
+
+## [2026-06-05] RE Front B — arme-source figée au tir dans le film ? — Complété (investigation)
+
+**Statut** : Complété (analyse Ghidra + sondes film, aucun changement de code).
+
+**Question** : pour les armes à projectile, l'arme-du-kill (gelée AU TIR) est-elle réplicable depuis le film, via (a) une entité projectile portant un back-ref vers son arme-source, ou (b) une damage-instance / death-cause répliquée portant le weapon-id sur la victime ?
+
+**Décision/constats** :
+- Damage handler `FUN_140b478d8` : `param_7` = arme, résolue comme **entité ECS** de classe-masque `0x1003` via `FUN_140477618(&param_7,0x1003)`. Armes ET projectiles sont des entités 0x1003.
+- Attribution kill sur la victime `FUN_142b73aec` : écrit UNIQUEMENT l'**index tueur** (`victim+0x2f4`), l'équipe (`+0x284`), la position de mort (`+0x2e8`) sur le record répliqué. **AUCUN weapon-id écrit sur la victime.** L'arme n'est même pas passée à cette fonction.
+- L'arme (`param_7`) n'est consommée que par : (1) le DamageReport LOCAL `FUN_140b48460` (struct-copy 0xC0o → concurrent_vector client), (2) les callbacks médailles/kill-feed LOCAUX `FUN_140b48558` (`__OnNinjaMedal`/`__OnBankShotMedal`/...), (3) `FUN_142c1e5a0` qui écrit le local-id de l'arme dans un bloc de slot joueur LOCAL (`+0x380c`). Tout est reconstruit côté client, hors flux répliqué.
+- Empirique film (oracle 000d5950) : la **kill-FRAME** (burst type-0 de 1052o à Δ=0ms du kill) ne contient **AUCUN** weapon-id catalogué suffixé 0x42c9679f. Sidekick (arme attendue du Frag Parfait) = **0 occurrence dans tout chunk_08**. Le weapon-id 64-bit complet n'apparaît QUE dans le **keyframe type-2** (snapshot, 13 armes = armes TENUES vivantes à l'instant du snapshot, dont Sidekick).
+
+**Conclusion** : l'arme-source FIGÉE au tir n'est **PAS** un champ répliqué. Le film réplique l'arme TENUE (held, commutable) via l'entité arme dans les keyframes, plus l'index tueur + position sur la victime au kill — mais pas la cause-de-mort armée. Verdict Front B = **non-absent** (pas d'arme-source gelée dans le film). Reconstruction projectile→arme côté serveur infaisable sans la damage-instance (locale).
+
+**Prochaine étape** : se rabattre sur le label famille de slot / held@tir approximé ; clore la piste « arme-source figée répliquée ».
+
+---
+
+## [2026-06-05] Démo réparée (lvelup.info) — Complété
+
+**Statut** : Complété. Démo répond 200 avec hero/highlights/recent_matches.
+
+**Décision** : 4 problèmes en cascade résolus en live sur le serveur :
+1. `DemoFixturesDir` (`tests/fixtures/ref_player`) → fichiers inexistants dans le conteneur. Fix : nouveau mount `data/demo:/app/data/demo` + env `LEVELUP_DEMO_FIXTURES_DIR=/app/data/demo`. Symlinks absolus (vers chemins conteneur) créés sur le host.
+2. `match_registry` manquait des colonnes (`start_time_utc`, `playlist_name_fr`, etc.) — seed-demo copié depuis source avant migration → ajout manuel via script Go.
+3. `match_csrs` manquait `written_at`/`id` (append-only) — ajout manuel.
+4. `sync_meta` sans PK → ON CONFLICT échoue dans migration → fix migration `markXPTotalFixDone` (SELECT-then-UPDATE-or-INSERT).
+
+**Résultats** : `GET /api/v1/players/demo-player/pages/home` → 200, clés `hero/highlights/recent_matches/favorite_matches/recent_media`.
+
+**Prochaine étape** : Valider visuellement via l'URL démo. Puis enchaîner P1 (sessions solo, frags par arme, etc.)
+
+---
+
+## [2026-06-05] Demo fixture + CombatYield gradient — Complété
+
+**Statut** : Complété (code). Action utilisateur requise pour la démo.
+
+**Décision demo** : `resolveDemoPlayer` attendait une arborescence plate (`stats.duckdb` à la racine) mais `seed-demo` génère une arborescence structurée (`players/DEMO/stats.duckdb`, `warehouse/*.duckdb`). Fix : résolution avec fallback (structure seed-demo en priorité, plate en secondaire). Default `DemoFixturesDir` changé de `tests/fixtures/ref_player` → `data/demo`.
+
+**Action utilisateur requise** : `go run ./apps/go-api/cmd/levelup seed-demo --gamertag JGtm` pour peupler `data/demo/`.
+
+**Décision gradient** : `linear-gradient` avec `color-mix` (solide à l'extrémité efficace, transparent au centre baseline). Direction inversée entre OC (gauche) et DR (droite).
+
+**Prochaine étape** : SSO Xbox (vérifier `LEVELUP_OAUTH_REDIRECT_URI` sur le serveur) + bugs P1
+
+---
+
+## [2026-06-05] CombatYield — vies au lieu de pourcentages — Complété
+
+**Statut** : Complété.
+
+**Décision technique** : Remplacer `offensiveConversion%` / `defensiveResistance%` par `dmgPerKill/225 vie/frag` et `dmgPerDeath/225 vie/mort` dans `CombatYieldDisplay` et le tooltip de `CombatYieldBar`. 225 HP = 1 vie Halo Infinite. La barre visuelle conserve sa normalisation OC/DR interne (inchangée).
+
+**Résultats** : typecheck propre, 7/7 tests `combat-yield-bar` verts. Import inutile `formatOffensiveConversion/formatDefensiveResistance` retiré du display.
+
+**Prochaine étape** : SISU Xbox (config Azure), puis bugs P1 (sessions solo, frags par arme, etc.)
+
+---
+
 ## [2026-06-04] Diagnostic pipeline enrichissement incomplet (FDA/LUSR/perfs/frags par arme/MMR équipe) — En cours
 
 **Statut** : En cours. Diagnostic complet (logs + code + base, serveur arrêté), 13 agents workflow + vérifications DuckDB directes (outil `cmd/diag_q`). Fixes non encore appliqués (décisions produit en attente).

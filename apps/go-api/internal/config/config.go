@@ -140,7 +140,7 @@ func Load() (*AppConfig, error) {
 		AppSettingsPath:   getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json")),
 		SessionDir:        getEnvOrDefault("LEVELUP_SESSION_DIR", filepath.Join(repoRoot, "data", "sessions")),
 		DemoMode:          demoMode,
-		DemoFixturesDir:   getEnvOrDefault("LEVELUP_DEMO_FIXTURES_DIR", filepath.Join(repoRoot, "tests", "fixtures", "ref_player")),
+		DemoFixturesDir:   getEnvOrDefault("LEVELUP_DEMO_FIXTURES_DIR", filepath.Join(repoRoot, "data", "demo")),
 		APIHost:           getEnvOrDefault("LEVELUP_API_HOST", "127.0.0.1"),
 		APIPort:           getEnvInt("LEVELUP_API_PORT", 8000),
 		SessionSecret:     getEnvOrDefault("LEVELUP_SESSION_SECRET", "CHANGE_ME_IN_PRODUCTION"),
