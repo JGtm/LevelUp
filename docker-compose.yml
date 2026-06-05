@@ -52,6 +52,10 @@ services:
       - LEVELUP_DATA=/app/data
       - LEVELUP_WEB_DIST=/app/apps/web/dist
       - LEVELUP_DEMO_MODE=true
+      # Origines CORS/CSRF autorisées : sans ça, défaut localhost → tous les POST
+      # (timeseries, teammates, squad, media, filters/resolve) sont rejetés en 403
+      # csrf_rejected pour l'origine https://demo.lvelup.info et les pages ne rendent pas.
+      - LEVELUP_CORS_ORIGINS=https://demo.lvelup.info
       # Fixtures démo lues par resolveDemoPlayer : {dir}/players/DEMO/stats.duckdb
       # + {dir}/warehouse/*.duckdb, et le chemin flat {dir}/shared_matches_v2.duckdb
       # (via symlinks). Généré par `levelup seed-demo --out data/demo`.
