@@ -138,6 +138,7 @@ var playerTablesWhere = []extractTable{
 	{name: "sync_meta", where: "key NOT IN ('msal_token_cache')"},
 	{name: "match_skill_rank", where: matchIDInClause, appendOnly: true},
 	{name: "player_csr_snapshots", where: "1=1", appendOnly: true},
+	{name: "battlepass_snapshots", where: "1=1"},
 }
 
 // extractSelectExpr retourne l'expression SELECT pour une table extraite.
@@ -553,7 +554,7 @@ func extractPlayerTables(
 	// (player DB mono-joueur, xuid implicite via path /data/players/{gamertag}/).
 	// Seule career_progression a une colonne xuid à anonymiser (cf. steps_player.go:36-51).
 	if err := anonymizeXUIDInTables(ctx, dst, sourceXUID, demoXUID,
-		[]string{"career_progression"}); err != nil {
+		[]string{"career_progression", "battlepass_snapshots"}); err != nil {
 		// Non bloquant
 		slog.WarnContext(ctx, "seed-demo: anonymize player partielle", "err", err)
 	}
