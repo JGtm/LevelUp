@@ -69,6 +69,14 @@ services:
       - ./data/demo:/app/data/demo
       - ./data/demo/db_profiles.json:/app/db_profiles.json:ro
       - ./data/demo/app_settings.json:/app/app_settings.json:ro
+      # Assets visuels cachés (battlepass, rangs carrière, badges défis) servis via
+      # /api/v1/assets/*. Génériques Halo (pas de données joueur) → on partage le
+      # cache prod en lecture seule, sinon le resolver tombe sur le CDN gamecms et
+      # renvoie 502 en démo (pas d'auth). Cf. LocalFSStore(cfg.CacheRootDir).
+      - ./data/cache/bp-background:/app/data/cache/bp-background:ro
+      - ./data/cache/bp-track-image:/app/data/cache/bp-track-image:ro
+      - ./data/cache/career-rank-image:/app/data/cache/career-rank-image:ro
+      - ./data/cache/challenge-badge:/app/data/cache/challenge-badge:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "/app/levelup-server", "-health-check"]
