@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/migration"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -91,36 +92,72 @@ const (
 	tableMatchParticipants = "match_participants"
 )
 
+// extractTable décrit une table à extraire d'une DB source vers la DB démo.
+//
+// appendOnly : la table source est en schéma append-only (colonnes techniques
+// id + written_at + vue <table>_latest). On l'extrait SANS id/written_at (forme
+// "pré-migration") pour que RunForDB la reconstruise append-only et (re)crée la
+// vue _latest à jour — sinon la migration skip (check `id` déjà présent) et la
+// vue n'est jamais créée dans la DB démo (cf. incident 2026-06-05 : home 500
+// sur match_csrs.written_at / player_csr_snapshots_latest).
+type extractTable struct {
+	name       string
+	where      string
+	appendOnly bool
+}
+
 // Tables shared à extraire avec leur clause WHERE (les ? sont les match_ids
 // formatés en littéraux SQL via formatIDsLiteral — DuckDB ne supporte pas
 // les placeholders dans CREATE TABLE AS SELECT).
 //
 // xuid_aliases : SELECT * WHERE xuid IN (xuids des match_participants).
-var sharedTablesWhere = []struct {
-	name  string
-	where string
-}{
-	{tableMatchRegistry, matchIDInClause},
-	{tableMatchParticipants, matchIDInClause},
-	{"medals_earned", matchIDInClause},
-	{"highlight_events", matchIDInClause},
-	{"weapon_kills", matchIDInClause},
-	{"killer_victim_pairs", matchIDInClause},
-	{"xuid_aliases", "xuid IN (SELECT DISTINCT xuid FROM match_participants WHERE match_id IN (%s))"},
+var sharedTablesWhere = []extractTable{
+	{name: tableMatchRegistry, where: matchIDInClause},
+	{name: tableMatchParticipants, where: matchIDInClause},
+	{name: "medals_earned", where: matchIDInClause},
+	{name: "highlight_events", where: matchIDInClause},
+	{name: "weapon_kills", where: matchIDInClause},
+	{name: "killer_victim_pairs", where: matchIDInClause},
+	{name: "xuid_aliases", where: "xuid IN (SELECT DISTINCT xuid FROM match_participants WHERE match_id IN (%s))"},
+	{name: "match_csrs", where: matchIDInClause, appendOnly: true},
 }
 
-// Tables player à extraire. sessions/career_progression copiés intégralement
-// (pas filtrés par match_id car données globales joueur).
-var playerTablesWhere = []struct {
-	name  string
-	where string
-}{
-	{playerEnrichmentTable, matchIDInClause},
-	{"match_citations", matchIDInClause},
-	{"sessions", "1=1"},
-	{"career_progression", "1=1"},
-	{"sync_meta", "key NOT IN ('msal_token_cache')"},
-	{"match_skill_rank", matchIDInClause},
+// Tables player à extraire. sessions/career_progression/player_csr_snapshots
+// copiés intégralement (pas filtrés par match_id car données globales joueur).
+var playerTablesWhere = []extractTable{
+	{name: playerEnrichmentTable, where: matchIDInClause},
+	{name: "match_citations", where: matchIDInClause},
+	{name: "sessions", where: "1=1"},
+	{name: "career_progression", where: "1=1"},
+	{name: "sync_meta", where: "key NOT IN ('msal_token_cache')"},
+	{name: "match_skill_rank", where: matchIDInClause, appendOnly: true},
+	{name: "player_csr_snapshots", where: "1=1", appendOnly: true},
+}
+
+// extractSelectExpr retourne l'expression SELECT pour une table extraite.
+// Les tables append-only sont extraites sans leurs colonnes techniques id /
+// written_at afin que les migrations canoniques (RunForDB) les reconstruisent.
+func extractSelectExpr(appendOnly bool) string {
+	if appendOnly {
+		return "* EXCLUDE (id, written_at)"
+	}
+	return "*"
+}
+
+// applyMigrationsOnPath ouvre la DB DuckDB à dbPath et applique les migrations
+// canoniques du target. Utilisé après l'extraction démo pour reconstruire les
+// tables append-only et créer les vues _latest (match_csrs_latest,
+// match_skill_rank_latest, player_csr_snapshots_latest, …) à jour.
+func applyMigrationsOnPath(dbPath string, target migration.TargetDB) error {
+	db, err := sql.Open("duckdb", dbPath)
+	if err != nil {
+		return fmt.Errorf("open %s for migrations: %w", dbPath, err)
+	}
+	defer db.Close()
+	if err := migration.RunForDB(db, target); err != nil {
+		return fmt.Errorf("migrations %s (%s): %w", target, dbPath, err)
+	}
+	return nil
 }
 
 // SeedDemo exécute le pipeline complet.
@@ -179,6 +216,19 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	}
 	res.PlayerRows = playerRows
 	slog.InfoContext(ctx, "seed-demo: player extraite", "out", outPlayer, "rows", playerRows)
+
+	// 4b. Migrations canoniques sur les DB démo : reconstruit les tables
+	// append-only extraites sans id/written_at (match_csrs, match_skill_rank,
+	// player_csr_snapshots) et crée les vues _latest à jour. Sans ça les pages
+	// (home) crashent sur written_at manquant / vue _latest absente (incident
+	// 2026-06-05). Idempotent (RunForDB skip les migrations déjà appliquées).
+	if err := applyMigrationsOnPath(outShared, migration.TargetShared); err != nil {
+		return res, fmt.Errorf("seed-demo: migrate shared: %w", err)
+	}
+	if err := applyMigrationsOnPath(outPlayer, migration.TargetPlayer); err != nil {
+		return res, fmt.Errorf("seed-demo: migrate player: %w", err)
+	}
+	slog.InfoContext(ctx, "seed-demo: migrations canoniques appliquées (shared+player, vues _latest)")
 
 	// 5. Médias (optionnel)
 	if opts.IncludeMedia {
@@ -408,7 +458,8 @@ func extractSharedTables(
 	counts := make(map[string]int, len(sharedTablesWhere))
 	for _, t := range sharedTablesWhere {
 		where := fmt.Sprintf(t.where, idsLit)
-		stmt := fmt.Sprintf(`CREATE TABLE %s AS SELECT * FROM src.%s WHERE %s`, t.name, t.name, where)
+		stmt := fmt.Sprintf(`CREATE TABLE %s AS SELECT %s FROM src.%s WHERE %s`,
+			t.name, extractSelectExpr(t.appendOnly), t.name, where)
 		if _, err := dst.ExecContext(ctx, stmt); err != nil {
 			return counts, fmt.Errorf("extract %s: %w", t.name, err)
 		}
@@ -464,7 +515,8 @@ func extractPlayerTables(
 		if strings.Contains(where, "%s") {
 			where = fmt.Sprintf(where, idsLit)
 		}
-		stmt := fmt.Sprintf(`CREATE TABLE %s AS SELECT * FROM src.%s WHERE %s`, t.name, t.name, where)
+		stmt := fmt.Sprintf(`CREATE TABLE %s AS SELECT %s FROM src.%s WHERE %s`,
+			t.name, extractSelectExpr(t.appendOnly), t.name, where)
 		if _, err := dst.ExecContext(ctx, stmt); err != nil {
 			// Tolérant : certaines tables peuvent ne pas exister (ex : match_skill_rank
 			// sur DB legacy). Log et continue.
