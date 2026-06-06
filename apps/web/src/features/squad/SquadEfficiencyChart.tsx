@@ -48,23 +48,23 @@ export function SquadEfficiencyChart({
   const activePlayer = players.includes(selectedPlayer) ? selectedPlayer : (players[0] ?? '')
 
   const pts = useMemo(() => rowsByPlayer[activePlayer] ?? [], [rowsByPlayer, activePlayer])
-  const color = colorByPlayer[activePlayer] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
 
   const series = useMemo<ChartSeries<SquadPerformanceSeriesPoint>[]>(
     () => (pts.length > 0 ? [{ key: activePlayer, datapoints: pts }] : []),
     [pts, activePlayer],
   )
 
+  // Les lignes sont colorées par dégradé (efficacité), pas par la couleur du
+  // joueur : l'identité du joueur reste portée par le bouton actif + le titre.
   const buildOption = useCallback(
     () =>
       buildSquadEfficiencyTrackOption(pts, {
-        color,
         rendementLabel: labels.rendementLabel,
         resistanceLabel: labels.resistanceLabel,
         refLabel: labels.refLabel,
         showXAxis: true,
       }),
-    [pts, color, labels],
+    [pts, labels],
   )
 
   if (players.length === 0) return null

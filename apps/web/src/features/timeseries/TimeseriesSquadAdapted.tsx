@@ -27,6 +27,14 @@ import type {
   SoloSessionPerfPoint,
 } from '@/lib/api/types'
 import { buildSquadIntensityHeatmapOption } from '@/features/squad/charts/squadIntensityHeatmapChart'
+import {
+  ONE_LIFE_DAMAGE,
+  damageAxisBounds,
+  damagePerDeath,
+  damagePerKill,
+  defensiveDamageGradient,
+  offensiveDamageGradient,
+} from '@/lib/charts/oneLifeDamageGradient'
 import { buildMatchCategories } from './matchLabels'
 
 const ReactECharts = lazy(() =>
@@ -174,11 +182,13 @@ export function TimeseriesSessionPerformance({
 
 // ─── Rendement & Résistance par match ────────────────────────────────────────
 //
-// Calcul côté front sur match_rows :
-//   rendement_offensif = 225 × (kills + assists / 3) / damage_dealt
-//   resistance_def     = damage_taken / (225 × deaths)
+// Dégâts BRUTS côté front sur match_rows, repère 225 = 1 vie de Spartan :
+//   dégâts/frag = damage_dealt / kills
+//   dégâts/mort = damage_taken / deaths
 //
-// 2 lignes (rendement plein, résistance dashed) + ligne ref à 1.0.
+// 2 lignes (frag plein, mort dashed) + ligne repère à 225, colorées par dégradé
+// (frag : proche de 225 = bon ; mort : au-dessus de 225 = bon). Cf. helper
+// oneLifeDamageGradient.
 
 export interface TimeseriesEfficiencyProps {
   rows: TimeseriesMatchRow[]
@@ -186,19 +196,6 @@ export interface TimeseriesEfficiencyProps {
   rendementLabel: string
   resistanceLabel: string
   refLabel: string
-}
-
-const HALO_BASE_HP = 225 // Spartan baseline HP — formule efficacité combat
-
-function computeOC(r: TimeseriesMatchRow): number | null {
-  if (r.damage_dealt == null || r.damage_dealt <= 0) return null
-  const num = HALO_BASE_HP * (r.kills + r.assists / 3)
-  return Math.round((num / r.damage_dealt) * 100) / 100
-}
-
-function computeDR(r: TimeseriesMatchRow): number | null {
-  if (r.damage_taken == null || r.deaths <= 0) return null
-  return Math.round((r.damage_taken / (HALO_BASE_HP * r.deaths)) * 100) / 100
 }
 
 // ─── Intensity heatmap (frags par phase de match) ────────────────────────────
@@ -239,15 +236,13 @@ export function TimeseriesEfficiency({
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
-    const colOC = resolveToken('chart-series-1')
-    const colDR = resolveToken('chart-series-5')
     const colRef = resolveToken('divergent-neutral')
 
     const categories = buildMatchCategories(rows)
-    const oc = rows.map((r) => computeOC(r))
-    const dr = rows.map((r) => computeDR(r))
+    const dmgKill = rows.map((r) => damagePerKill(r.damage_dealt, r.kills))
+    const dmgDeath = rows.map((r) => damagePerDeath(r.damage_taken, r.deaths))
+    const bounds = damageAxisBounds([...dmgKill, ...dmgDeath])
 
-    const pctFormatter = (v: number) => `${(v * 100).toFixed(0)}%`
     return {
       backgroundColor: CHART_BG,
       grid: { top: 16, right: 16, bottom: 64, left: 52, containLabel: true },
@@ -257,7 +252,7 @@ export function TimeseriesEfficiency({
         formatter: (params: Array<{ seriesName: string; value: number | null; marker: string }>) =>
           params
             .filter((p) => p.value != null)
-            .map((p) => `${p.marker}${p.seriesName}: <b>${pctFormatter(p.value as number)}</b>`)
+            .map((p) => `${p.marker}${p.seriesName}: <b>${Math.round(p.value as number)}</b>`)
             .join('<br/>'),
       },
       legend: { ...getLegendBase(tc), bottom: 0 },
@@ -270,17 +265,19 @@ export function TimeseriesEfficiency({
       yAxis: {
         ...getAxisBase(tc),
         type: 'value',
-        axisLabel: { ...getAxisBase(tc).axisLabel, formatter: pctFormatter },
+        min: bounds.min,
+        max: bounds.max,
+        axisLabel: { ...getAxisBase(tc).axisLabel, formatter: (v: number) => `${Math.round(v)}` },
       },
       series: [
         {
           type: 'line',
           name: rendementLabel,
-          data: oc,
+          data: dmgKill,
           showSymbol: false,
           smooth: false,
           connectNulls: true,
-          lineStyle: { color: colOC, width: 2 },
+          lineStyle: { color: offensiveDamageGradient(dmgKill), width: 2 },
           markLine: {
             silent: true,
             symbol: 'none',
@@ -291,17 +288,17 @@ export function TimeseriesEfficiency({
               fontSize: 10,
               position: 'insideEndTop',
             },
-            data: [{ yAxis: 1 }],
+            data: [{ yAxis: ONE_LIFE_DAMAGE }],
           },
         },
         {
           type: 'line',
           name: resistanceLabel,
-          data: dr,
+          data: dmgDeath,
           showSymbol: false,
           smooth: false,
           connectNulls: true,
-          lineStyle: { color: colDR, width: 2, type: 'dashed' },
+          lineStyle: { color: defensiveDamageGradient(dmgDeath), width: 2, type: 'dashed' },
         },
       ],
     }

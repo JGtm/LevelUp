@@ -263,12 +263,18 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 				v := *r.Self.PerfectKills
 				pt.PerfectKills = &v
 			}
-			if r.Self.DamageDealt != nil && *r.Self.DamageDealt > 0 {
-				v := round2(synergyOffensiveConversion(pt.Kills, pt.Assists, float64(*r.Self.DamageDealt)))
-				pt.RendementOffensif = &v
+			if r.Self.DamageDealt != nil {
+				dd := *r.Self.DamageDealt
+				pt.DamageDealt = &dd // brut, pour le chart dégâts/frag
+				if dd > 0 {
+					v := round2(synergyOffensiveConversion(pt.Kills, pt.Assists, float64(dd)))
+					pt.RendementOffensif = &v
+				}
 			}
 			if r.Self.DamageTaken != nil {
-				v := round2(synergyDefensiveResistance(float64(*r.Self.DamageTaken), pt.Deaths))
+				dt := *r.Self.DamageTaken
+				pt.DamageTaken = &dt // brut, pour le chart dégâts/mort
+				v := round2(synergyDefensiveResistance(float64(dt), pt.Deaths))
 				pt.ResistanceDefensive = &v
 			}
 			if r.Enrichment.TeamMMR != nil {

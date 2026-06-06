@@ -170,9 +170,9 @@ export function TimeseriesProgressionTab({
       >
         <TimeseriesEfficiency
           rows={data.match_rows ?? []}
-          rendementLabel={fieldMappings?.fields['offensive_conversion']?.label ?? 'Rendement'}
-          resistanceLabel={fieldMappings?.fields['defensive_resistance']?.label ?? 'Résistance'}
-          refLabel={t('timeseries.progression.ref_100')}
+          rendementLabel={t('timeseries.progression.dmg_per_kill')}
+          resistanceLabel={t('timeseries.progression.dmg_per_death')}
+          refLabel={t('timeseries.progression.ref_one_life')}
         />
       </ChartFrame>
 

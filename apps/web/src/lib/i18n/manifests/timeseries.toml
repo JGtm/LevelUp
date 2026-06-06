@@ -454,6 +454,18 @@ en = "Output & resistance"
 fr = "Réf. 100%"
 en = "Ref. 100%"
 
+[timeseries.progression.dmg_per_kill]
+fr = "Dégâts / frag"
+en = "Damage / kill"
+
+[timeseries.progression.dmg_per_death]
+fr = "Dégâts / mort"
+en = "Damage / death"
+
+[timeseries.progression.ref_one_life]
+fr = "1 vie (225)"
+en = "1 life (225)"
+
 [timeseries.progression.intensity_title]
 fr = "Intensité"
 en = "Intensity"

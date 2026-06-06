@@ -1877,6 +1877,8 @@ export interface SquadPerformanceSeriesPoint {
   max_killing_spree?: number
   headshot_kills?: number
   perfect_kills?: number
+  damage_dealt?: number
+  damage_taken?: number
   rendement_offensif?: number
   resistance_defensive?: number
   team_mmr?: number
