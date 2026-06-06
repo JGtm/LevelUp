@@ -41,8 +41,8 @@ func TestResolveDemoPlayer_FixtureMissing_ReturnsExplicitError(t *testing.T) {
 	if !strings.Contains(msg, "fixture démo manquante") {
 		t.Errorf("error message should mention missing fixture, got: %s", msg)
 	}
-	if !strings.Contains(msg, "LEVELUP_DEMO_MODE") {
-		t.Errorf("error message should mention LEVELUP_DEMO_MODE corrective, got: %s", msg)
+	if !strings.Contains(msg, "seed-demo") {
+		t.Errorf("error message should mention the seed-demo corrective, got: %s", msg)
 	}
 	if !strings.Contains(msg, "LEVELUP_DEMO_FIXTURES_DIR") {
 		t.Errorf("error message should mention LEVELUP_DEMO_FIXTURES_DIR corrective, got: %s", msg)

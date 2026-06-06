@@ -6,6 +6,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"os"
+	"path/filepath"
 )
 
 type dbProfilesFile struct {
@@ -37,14 +38,31 @@ func (c *AppConfig) LoadPlayers(titleFilter ...string) ([]domain.PlayerSummary, 
 		if len(titleFilter) > 0 && titleFilter[0] != "" {
 			titleSlug = titleFilter[0]
 		}
-		return []domain.PlayerSummary{{
-			PlayerSlug:     "demo-player",
-			Gamertag:       "DemoPlayer",
-			XUID:           "0",
-			WaypointPlayer: "DemoPlayer",
-			IsDemo:         true,
-			TitleSlug:      titleSlug,
-		}}, nil
+		// Stack démo : DemoPlayer + les 2 coéquipiers (DemoPlayer2/3) dont la
+		// player DB a été seedée. Permet à la page Escouade de résoudre un
+		// coéquipier vers SA player DB (perf/LUSR) via resolveByGT.
+		var out []domain.PlayerSummary
+		for _, d := range DemoRoster {
+			if _, err := os.Stat(filepath.Join(c.DemoFixturesDir, "players", d.Dir, "stats.duckdb")); err != nil {
+				continue // coéquipier non seedé
+			}
+			out = append(out, domain.PlayerSummary{
+				PlayerSlug:     d.Slug,
+				Gamertag:       d.Gamertag,
+				XUID:           d.XUID,
+				WaypointPlayer: d.Gamertag,
+				IsDemo:         true,
+				TitleSlug:      titleSlug,
+			})
+		}
+		if len(out) == 0 {
+			// Fallback (fixtures plates legacy) : au moins le main.
+			out = append(out, domain.PlayerSummary{
+				PlayerSlug: "demo-player", Gamertag: "DemoPlayer", XUID: DemoRoster[0].XUID,
+				WaypointPlayer: "DemoPlayer", IsDemo: true, TitleSlug: titleSlug,
+			})
+		}
+		return out, nil
 	}
 
 	data, err := os.ReadFile(c.DBProfilesPath)
