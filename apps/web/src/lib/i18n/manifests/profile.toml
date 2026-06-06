@@ -223,7 +223,7 @@ fr = "Performance"
 en = "Performance"
 
 [profile.performance.empty]
-fr = "Pas encore assez de matchs ratés pour estimer ton tier."
+fr = "Pas encore assez de matchs évalués pour estimer ton palier."
 en = "Not enough rated matches yet to estimate your tier."
 
 [profile.performance.mu_sigma]
