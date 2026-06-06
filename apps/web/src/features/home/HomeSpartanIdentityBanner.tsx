@@ -56,19 +56,15 @@ export function HomeSpartanIdentityBanner({
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,19.5rem)] lg:items-stretch">
-      <div className="overflow-hidden rounded-2xl border border-border bg-muted/60 shadow-sm">
+      <div
+        data-testid="home-spartan-banner-surface"
+        className="overflow-hidden rounded-2xl border border-border bg-muted/60 bg-cover bg-center shadow-sm"
+        style={activeBannerUrl ? { backgroundImage: `url('${activeBannerUrl}')` } : undefined}
+      >
         <div
           data-testid="home-spartan-identity-banner"
-          className="relative overflow-hidden bg-card"
+          className="relative overflow-hidden"
         >
-          {activeBannerUrl && (
-            <div
-              data-testid="home-spartan-banner-surface"
-              aria-hidden="true"
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url('${activeBannerUrl}')` }}
-            />
-          )}
           {activeBannerUrl && (
             <div
               className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/30 via-background/10 to-background/40"
@@ -149,7 +145,7 @@ export function HomeSpartanIdentityBanner({
         </div>
 
         {careerRank && (
-          <div className="border-t border-border/70 bg-background/80 px-5 py-4 sm:px-6">
+          <div className="border-t border-border/70 bg-card px-5 py-4 sm:px-6">
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
                 <span>

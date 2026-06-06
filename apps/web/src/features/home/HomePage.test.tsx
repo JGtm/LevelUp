@@ -179,7 +179,7 @@ describe('HomePage', () => {
     })
 
     expect(screen.getByTestId('home-spartan-banner-shell')).toBeInTheDocument()
-    expect(screen.queryByTestId('home-spartan-banner-surface')).not.toBeInTheDocument()
+    expect(screen.getByTestId('home-spartan-banner-surface')).toBeInTheDocument()
     expect(screen.queryByText('Spartan ID')).not.toBeInTheDocument()
   })
 
