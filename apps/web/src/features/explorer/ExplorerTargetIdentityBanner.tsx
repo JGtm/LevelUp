@@ -84,15 +84,11 @@ export function ExplorerTargetIdentityBanner({
     <div
       className={`grid gap-3 ${hasSkillPeaks ? 'lg:grid-cols-[minmax(0,1fr)_minmax(16rem,18rem)]' : ''} lg:items-stretch`}
     >
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        {bannerUrl && (
-          <div
-            data-testid="explorer-target-banner-image"
-            aria-hidden="true"
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url('${bannerUrl}')` }}
-          />
-        )}
+      <div
+        data-testid="explorer-target-banner-image"
+        className="relative overflow-hidden rounded-2xl border border-border bg-card bg-cover bg-center shadow-sm"
+        style={bannerUrl ? { backgroundImage: `url('${bannerUrl}')` } : undefined}
+      >
         {bannerUrl && (
           <div
             className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/30 via-background/10 to-background/50"
@@ -172,7 +168,7 @@ export function ExplorerTargetIdentityBanner({
             progress_pct=100 → barre verte pleine (success token). Plus de branche qui
             masque tout (régression du fix Héros précédent). */}
         {careerRank && (
-          <div className="relative px-5 pb-4">
+          <div className="relative bg-card px-5 pb-4">
             <div className="space-y-2">
               {/* Ligne du haut (progression vers le rang suivant + %) : masquée au
                   rang max — pas de "suivant", et on ne garde qu'UN "Rang max", celui
