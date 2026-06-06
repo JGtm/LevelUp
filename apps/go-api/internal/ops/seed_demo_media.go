@@ -315,13 +315,15 @@ func collectMediaCandidates(
 	seen := make(map[string]bool)
 	var result []mediaCandidate
 
-	// Direct : médias liés à un match démo.
+	// Direct : médias liés à un match démo. Filtre format Xbox (fichiers
+	// "Halo Infinite…") + priorité aux plus anciennes captures (ère Xbox).
 	directStmt := fmt.Sprintf(`
 		SELECT DISTINCT mf.file_path, mma.match_id, mma.match_start_time, COALESCE(mma.map_name, '')
 		FROM media_files mf
 		JOIN media_match_associations mma ON mma.media_path = mf.file_path
 		WHERE mf.status = 'active' AND mma.match_id IN (%s)
-		ORDER BY mf.mtime DESC LIMIT %d`, idsLit, maxMedia)
+		  AND mf.file_name LIKE 'Halo Infinite%%'
+		ORDER BY mf.capture_start_utc ASC NULLS LAST, mf.mtime ASC LIMIT %d`, idsLit, maxMedia)
 	rows, err := src.QueryContext(ctx, directStmt)
 	if err != nil {
 		return nil, fmt.Errorf("direct query: %w", err)
@@ -346,14 +348,17 @@ func collectMediaCandidates(
 		return result[:maxMedia], nil
 	}
 
-	// Fallback fuzzy : médias d'autres matchs réassignés par map_name.
+	// Fallback fuzzy : médias d'autres matchs réassignés par map_name. C'est ici
+	// que les vieilles captures Xbox ("Halo Infinite…", antérieures au corpus) sont
+	// rattachées aux matchs démo qui partagent la même carte. Plus anciennes d'abord.
 	fuzzyStmt := fmt.Sprintf(`
 		SELECT DISTINCT mf.file_path, COALESCE(mma.map_name, '')
 		FROM media_files mf
 		JOIN media_match_associations mma ON mma.media_path = mf.file_path
 		WHERE mf.status = 'active' AND mma.match_id NOT IN (%s)
 		  AND mma.map_name IS NOT NULL
-		ORDER BY mf.mtime DESC LIMIT 200`, idsLit)
+		  AND mf.file_name LIKE 'Halo Infinite%%'
+		ORDER BY mf.capture_start_utc ASC NULLS LAST, mf.mtime ASC LIMIT 200`, idsLit)
 	fuzzyRows, err := src.QueryContext(ctx, fuzzyStmt)
 	if err != nil {
 		return result, fmt.Errorf("fuzzy query: %w", err)

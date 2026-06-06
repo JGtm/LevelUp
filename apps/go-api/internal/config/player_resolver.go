@@ -103,13 +103,17 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug stri
 
 	pr := title.NewPathResolver(cfg.RepoRoot)
 	pcfg := duckdb.PlayerPoolConfig{
-		Gamertag:                gamertag,
-		XUID:                    xuidBytes,
-		TitleSlug:               titleSlug,
-		PlayerDBPath:            statsPath,
-		SharedDBPath:            sharedPath,
-		MetaDBPath:              metaPath,
-		SharedSocialDBPath:      pr.SharedSocialDBPath(titleSlug),
+		Gamertag:     gamertag,
+		XUID:         xuidBytes,
+		TitleSlug:    titleSlug,
+		PlayerDBPath: statsPath,
+		SharedDBPath: sharedPath,
+		MetaDBPath:   metaPath,
+		// SharedSocial vide en démo : pas de shared_social fixture (le chemin prod
+		// pointait sur une DB fraîche au schéma périmé → 500 sur la page Média car
+		// media_files.capture_start_utc manquait). Nil → le media repo retombe sur
+		// la Player DB, où seed-demo écrit déjà les médias (schéma complet).
+		SharedSocialDBPath:      "",
 		GlobalXuidAliasesDBPath: pr.GlobalXuidAliasesDBPath(),
 		UserTimezone:            cfg.UserTimezone,
 		SharedReader:            cfg.SharedProvider,
