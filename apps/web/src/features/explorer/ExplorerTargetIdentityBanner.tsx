@@ -86,14 +86,11 @@ export function ExplorerTargetIdentityBanner({
     >
       <div className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         {bannerUrl && (
-          <img
+          <div
             data-testid="explorer-target-banner-image"
-            src={bannerUrl}
-            alt=""
             aria-hidden="true"
-            className="absolute inset-0 h-full w-full object-cover"
-            loading="lazy"
-            decoding="async"
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url('${bannerUrl}')` }}
           />
         )}
         {bannerUrl && (

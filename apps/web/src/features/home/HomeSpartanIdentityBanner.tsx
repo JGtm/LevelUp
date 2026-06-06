@@ -62,14 +62,11 @@ export function HomeSpartanIdentityBanner({
           className="relative overflow-hidden bg-card"
         >
           {activeBannerUrl && (
-            <img
+            <div
               data-testid="home-spartan-banner-surface"
-              src={activeBannerUrl}
-              alt=""
               aria-hidden="true"
-              className="absolute inset-0 h-full w-full object-cover"
-              loading="lazy"
-              decoding="async"
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url('${activeBannerUrl}')` }}
             />
           )}
           {activeBannerUrl && (
