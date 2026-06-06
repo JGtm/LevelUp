@@ -102,18 +102,22 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug stri
 	}
 
 	pr := title.NewPathResolver(cfg.RepoRoot)
+	// SharedSocial démo : seed-demo produit data/demo/warehouse/shared_social.duckdb
+	// au schéma canonique (migrations TargetSharedSocial). Le pipeline média EXIGE un
+	// SharedSocial non-nil (sinon 0 média, pas de fallback Player DB — cf.
+	// media_repo_q37_pipeline.go). Vide si la fixture est absente (démo legacy).
+	sharedSocialPath := filepath.Join(dir, "warehouse", "shared_social.duckdb")
+	if _, err := os.Stat(sharedSocialPath); os.IsNotExist(err) {
+		sharedSocialPath = ""
+	}
 	pcfg := duckdb.PlayerPoolConfig{
-		Gamertag:     gamertag,
-		XUID:         xuidBytes,
-		TitleSlug:    titleSlug,
-		PlayerDBPath: statsPath,
-		SharedDBPath: sharedPath,
-		MetaDBPath:   metaPath,
-		// SharedSocial vide en démo : pas de shared_social fixture (le chemin prod
-		// pointait sur une DB fraîche au schéma périmé → 500 sur la page Média car
-		// media_files.capture_start_utc manquait). Nil → le media repo retombe sur
-		// la Player DB, où seed-demo écrit déjà les médias (schéma complet).
-		SharedSocialDBPath:      "",
+		Gamertag:                gamertag,
+		XUID:                    xuidBytes,
+		TitleSlug:               titleSlug,
+		PlayerDBPath:            statsPath,
+		SharedDBPath:            sharedPath,
+		MetaDBPath:              metaPath,
+		SharedSocialDBPath:      sharedSocialPath,
 		GlobalXuidAliasesDBPath: pr.GlobalXuidAliasesDBPath(),
 		UserTimezone:            cfg.UserTimezone,
 		SharedReader:            cfg.SharedProvider,

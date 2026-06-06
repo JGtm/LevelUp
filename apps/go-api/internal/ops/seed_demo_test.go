@@ -405,32 +405,6 @@ func TestParseRegistryTime(t *testing.T) {
 	}
 }
 
-func TestDerefStr(t *testing.T) {
-	if derefStr(nil) != nil {
-		t.Error("nil should return nil")
-	}
-	v := "hello"
-	got := derefStr(&v)
-	if s, ok := got.(string); !ok || s != "hello" {
-		t.Errorf("got %v, want 'hello'", got)
-	}
-}
-
-func TestBuildDemoMediaRoot(t *testing.T) {
-	// Sans LEVELUP_ROOT → fallback sur outMediaDir.
-	t.Setenv("LEVELUP_ROOT", "")
-	got := buildDemoMediaRoot("/tmp/demo/media")
-	if got != "/tmp/demo/media" {
-		t.Errorf("without LEVELUP_ROOT: got %q", got)
-	}
-	// Avec LEVELUP_ROOT → chemin canonique.
-	t.Setenv("LEVELUP_ROOT", "/app")
-	got = buildDemoMediaRoot("/tmp/demo/media")
-	if !strings.HasSuffix(got, "data/players/"+DefaultDemoGamertag+"/media") {
-		t.Errorf("with LEVELUP_ROOT: got %q, want suffix data/players/DEMO/media", got)
-	}
-}
-
 // ── media registry roundtrip ────────────────────────────────────────────────
 
 func TestMediaRegistry_SaveAndLoad(t *testing.T) {

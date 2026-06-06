@@ -102,6 +102,23 @@ func init() {
 		},
 	})
 
+	// capture_start_utc + indexed_at : colonnes lues par le pipeline media (Q37,
+	// mode shared_social : SELECT mf.capture_start_utc + mf.indexed_at). Créées
+	// historiquement par l'ancien ops.IndexMedia (DDL legacy) mais ABSENTES du
+	// schéma migré → une shared_social fraîchement migrée (nouvelle install, ou
+	// fixture démo) plante en Binder Error sur la page Média. ADD IF NOT EXISTS.
+	Register(Migration{
+		Name:        "add_capture_start_indexed_at_to_media_files",
+		TargetDB:    TargetSharedSocial,
+		Description: "Ajoute capture_start_utc + indexed_at à media_files (lues par le pipeline media en mode shared_social ; absentes du schéma migré → 500 sur install fraîche)",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				ALTER TABLE media_files ADD COLUMN IF NOT EXISTS capture_start_utc TIMESTAMPTZ;
+				ALTER TABLE media_files ADD COLUMN IF NOT EXISTS indexed_at TIMESTAMPTZ;
+			`)
+		},
+	})
+
 	// Sprint 2026-04 : flag is_manual pour distinguer associations auto vs réassociées
 	// manuellement par l'utilisateur. Permet de préserver les corrections lors d'un
 	// reassociate global (DELETE WHERE NOT is_manual).
