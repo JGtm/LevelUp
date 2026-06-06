@@ -83,9 +83,18 @@ func (h *SettingsHandler) WithBackupScheduler(s *duckdbbackup.Scheduler) *Settin
 // GET /settings
 func (h *SettingsHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 	if h.cfg.DemoMode {
-		// Mode démo : retourner les valeurs par défaut sans lecture disque
-		defaults := settings_platform.ToResponse(settings_platform.Defaults())
-		writeJSON(w, http.StatusOK, defaults)
+		// Mode démo : renvoyer les settings RÉELS de la démo (app_settings.json
+		// avec lang=fr) et non Defaults() — qui renverrait lang="en" et ferait
+		// afficher la démo en anglais. Fallback Defaults+fr si lecture échoue.
+		if h.settingsStore != nil {
+			if cfg, err := h.settingsStore.Load(); err == nil {
+				writeJSON(w, http.StatusOK, settings_platform.ToResponse(cfg))
+				return
+			}
+		}
+		d := settings_platform.Defaults()
+		d.Lang = "fr"
+		writeJSON(w, http.StatusOK, settings_platform.ToResponse(d))
 		return
 	}
 
