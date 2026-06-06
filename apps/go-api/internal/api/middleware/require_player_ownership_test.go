@@ -72,7 +72,8 @@ var (
 )
 
 func runOwnership(demoMode bool, authMode, slug string, sess *domain.SessionData) *httptest.ResponseRecorder {
-	mw := RequirePlayerOwnership(demoMode, authMode, ownershipProfiles, ownershipUsers)
+	// resolveFamily nil → comportement strict d'origine (propriétaire only).
+	mw := RequirePlayerOwnership(demoMode, authMode, ownershipProfiles, ownershipUsers, nil)
 	rr := httptest.NewRecorder()
 	mw(okHandler).ServeHTTP(rr, ownershipRequest(slug, sess))
 	return rr
@@ -128,6 +129,34 @@ func TestRequirePlayerOwnership_Admin_200(t *testing.T) {
 	}
 }
 
+func TestRequirePlayerOwnership_FamilyMember_200(t *testing.T) {
+	// #21 Phase A : alice (222) et bob (999) sont dans la même famille → alice
+	// accède au slug bob (qui serait 403 en mode strict, cf. ForeignSlug_403).
+	family := func(context.Context) map[string]bool {
+		return map[string]bool{"222": true, "999": true}
+	}
+	mw := RequirePlayerOwnership(false, "password", ownershipProfiles, ownershipUsers, family)
+	rr := httptest.NewRecorder()
+	mw(okHandler).ServeHTTP(rr, ownershipRequest("bob", userSession("alice")))
+	if rr.Code != http.StatusOK {
+		t.Errorf("membre famille: status = %d, want 200", rr.Code)
+	}
+}
+
+func TestRequirePlayerOwnership_FamilyStranger_403(t *testing.T) {
+	// La famille ne couvre que bob (999) ; alice (222) n'en fait pas partie →
+	// même avec un resolver famille actif, alice reste bloquée sur bob.
+	family := func(context.Context) map[string]bool {
+		return map[string]bool{"999": true}
+	}
+	mw := RequirePlayerOwnership(false, "password", ownershipProfiles, ownershipUsers, family)
+	rr := httptest.NewRecorder()
+	mw(okHandler).ServeHTTP(rr, ownershipRequest("bob", userSession("alice")))
+	if rr.Code != http.StatusForbidden {
+		t.Errorf("famille partielle (user hors groupe): status = %d, want 403", rr.Code)
+	}
+}
+
 func TestRequirePlayerOwnership_UnlinkedUser_403(t *testing.T) {
 	// Utilisateur connu de session mais absent du user store (non lié) → ne possède rien → 403.
 	if rr := runOwnership(false, "password", "alice", userSession("charlie")); rr.Code != http.StatusForbidden {
@@ -141,7 +170,7 @@ func TestRequirePlayerOwnership_UnlinkedUser_403(t *testing.T) {
 func TestRequirePlayerOwnership_RealChiRouter(t *testing.T) {
 	r := chi.NewRouter()
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Use(RequirePlayerOwnership(false, "password", ownershipProfiles, ownershipUsers))
+		r.Use(RequirePlayerOwnership(false, "password", ownershipProfiles, ownershipUsers, nil))
 		r.Get("/home", okHandler)
 	})
 

@@ -115,6 +115,7 @@ export const sessionManifest = {
   "session.compare.summary_empty_description": { fr: "Aucune métrique résumée n'a été calculée pour les sessions sélectionnées.", en: "No summary metric computed for the selected sessions." },
   "session.compare.summary_empty_title": { fr: "Résumé indisponible", en: "Summary unavailable" },
   "session.compare.summary_title": { fr: "Résumé des écarts", en: "Gap summary" },
+  "session.detail.action_back": { fr: "Précédent", en: "Back" },
   "session.detail.action_home": { fr: "Accueil", en: "Home" },
   "session.detail.action_matches": { fr: "Mes matchs", en: "My matches" },
   "session.detail.category_arena": { fr: "Arène", en: "Arena" },

@@ -60,7 +60,7 @@ func slugsOf(players []domain.PlayerSummary) []string {
 func TestFilterOwnedPlayers_UserSeesOnlyOwn(t *testing.T) {
 	svc := newOwnershipBootstrap("password")
 	sess := &domain.SessionData{Username: strPtr("alice")}
-	got := slugsOf(svc.filterOwnedPlayers(sess, ownershipPlayers()))
+	got := slugsOf(svc.filterOwnedPlayers(sess, ownershipPlayers(), nil))
 	if len(got) != 1 || got[0] != "alice" {
 		t.Fatalf("attendu [alice], obtenu %v", got)
 	}
@@ -69,7 +69,7 @@ func TestFilterOwnedPlayers_UserSeesOnlyOwn(t *testing.T) {
 func TestFilterOwnedPlayers_AdminSeesAll(t *testing.T) {
 	svc := newOwnershipBootstrap("password")
 	sess := &domain.SessionData{Username: strPtr("boss")}
-	if got := svc.filterOwnedPlayers(sess, ownershipPlayers()); len(got) != 2 {
+	if got := svc.filterOwnedPlayers(sess, ownershipPlayers(), nil); len(got) != 2 {
 		t.Fatalf("admin attendu 2 joueurs, obtenu %v", slugsOf(got))
 	}
 }
@@ -77,7 +77,7 @@ func TestFilterOwnedPlayers_AdminSeesAll(t *testing.T) {
 func TestFilterOwnedPlayers_NotEnforcedReturnsAll(t *testing.T) {
 	svc := newOwnershipBootstrap("none") // auth non activée → pas de filtrage
 	sess := &domain.SessionData{Username: strPtr("alice")}
-	if got := svc.filterOwnedPlayers(sess, ownershipPlayers()); len(got) != 2 {
+	if got := svc.filterOwnedPlayers(sess, ownershipPlayers(), nil); len(got) != 2 {
 		t.Fatalf("mode none attendu 2 joueurs, obtenu %v", slugsOf(got))
 	}
 }
@@ -85,8 +85,20 @@ func TestFilterOwnedPlayers_NotEnforcedReturnsAll(t *testing.T) {
 func TestFilterOwnedPlayers_UnlinkedUserSeesNothing(t *testing.T) {
 	svc := newOwnershipBootstrap("password")
 	sess := &domain.SessionData{Username: strPtr("charlie")} // absent du store
-	if got := svc.filterOwnedPlayers(sess, ownershipPlayers()); len(got) != 0 {
+	if got := svc.filterOwnedPlayers(sess, ownershipPlayers(), nil); len(got) != 0 {
 		t.Fatalf("utilisateur non lié attendu 0 joueur, obtenu %v", slugsOf(got))
+	}
+}
+
+func TestFilterOwnedPlayers_FamilyMemberSeesFamily(t *testing.T) {
+	// #21 Phase A : alice (222) et bob (999) dans la même famille → le sélecteur
+	// L1 d'alice liste les deux profils (en mode strict elle ne verrait qu'alice).
+	svc := newOwnershipBootstrap("password")
+	sess := &domain.SessionData{Username: strPtr("alice")}
+	family := map[string]bool{"222": true, "999": true}
+	got := slugsOf(svc.filterOwnedPlayers(sess, ownershipPlayers(), family))
+	if len(got) != 2 {
+		t.Fatalf("membre famille attendu 2 joueurs, obtenu %v", got)
 	}
 }
 

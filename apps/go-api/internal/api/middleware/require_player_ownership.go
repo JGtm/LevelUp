@@ -24,14 +24,23 @@ import (
 // courant (lu depuis le contexte). found=false si le slug est inconnu.
 type PlayerXUIDResolver func(ctx context.Context, slug string) (xuid string, found bool)
 
+// FamilyXUIDResolver retourne l'ensemble des xuids du groupe famille/amis pour
+// le titre courant (FriendGamertags résolus). Peut retourner nil (pas d'amis
+// configurés) → CanAccessPlayer retombe sur le comportement strict.
+type FamilyXUIDResolver func(ctx context.Context) map[string]bool
+
 // RequirePlayerOwnership retourne un middleware qui bloque l'accès aux joueurs
 // non possédés par l'utilisateur courant. Transparent quand l'enforcement est
 // désactivé (mode demo / auth non activée).
 //
 //   - session absente (contexte non-HTTP, jamais le cas derrière RequireAuth) → laisse passer ;
 //   - slug inconnu → laisse passer (le handler répondra 404 player_not_found) ;
-//   - profil non possédé → 403 player_forbidden.
-func RequirePlayerOwnership(demoMode bool, authMode string, resolveXUID PlayerXUIDResolver, users authz.UserLookup) func(http.Handler) http.Handler {
+//   - profil possédé OU membre de la même famille → laisse passer ;
+//   - sinon → 403 player_forbidden.
+//
+// resolveFamily peut être nil (aucun assouplissement famille — comportement
+// strict d'origine).
+func RequirePlayerOwnership(demoMode bool, authMode string, resolveXUID PlayerXUIDResolver, users authz.UserLookup, resolveFamily FamilyXUIDResolver) func(http.Handler) http.Handler {
 	enforced := authz.Enforced(demoMode, authMode)
 	return func(next http.Handler) http.Handler {
 		if !enforced || resolveXUID == nil || users == nil {
@@ -49,7 +58,11 @@ func RequirePlayerOwnership(demoMode bool, authMode string, resolveXUID PlayerXU
 				next.ServeHTTP(w, r)
 				return
 			}
-			if authz.CanAccessPlayer(true, authz.CurrentUser(sess, users), profileXUID) {
+			var familyXUIDs map[string]bool
+			if resolveFamily != nil {
+				familyXUIDs = resolveFamily(r.Context())
+			}
+			if authz.CanAccessPlayer(true, authz.CurrentUser(sess, users), profileXUID, familyXUIDs) {
 				next.ServeHTTP(w, r)
 				return
 			}

@@ -97,8 +97,9 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 	setupState := s.resolveSetupState(ctx, sess, players)
 
 	// Couche A (ADR 0024) : available_players et le joueur courant sont restreints
-	// aux profils possédés par l'utilisateur (le menu L1 ne liste que ses joueurs).
-	ownedPlayers := s.filterOwnedPlayers(sess, players)
+	// aux profils accessibles par l'utilisateur (les siens + la famille, #21).
+	familyXUIDs := authz.ResolveFamilyXUIDs(friendGamertagsFromSettings(appSettings), players)
+	ownedPlayers := s.filterOwnedPlayers(sess, players, familyXUIDs)
 	if len(ownedPlayers) != len(players) {
 		slog.DebugContext(ctx, "bootstrap: available_players filtré par ownership",
 			"owned", len(ownedPlayers), "total", len(players), "username", resolveUsername(sess))
@@ -174,19 +175,36 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 	}, nil
 }
 
-// filterOwnedPlayers restreint la liste aux profils possédés par l'utilisateur
+// filterOwnedPlayers restreint la liste aux profils accessibles par l'utilisateur
 // courant (ADR 0024). Retourne la liste intacte si l'enforcement est désactivé
 // (mode demo / auth non activée) ou si le user store n'est pas câblé. Un admin
-// voit tout ; un utilisateur standard uniquement les profils de son xuid.
-func (s *BootstrapService) filterOwnedPlayers(sess *domain.SessionData, players []domain.PlayerSummary) []domain.PlayerSummary {
+// voit tout ; un utilisateur standard voit son xuid + les profils de la famille
+// (familyXUIDs, #21 Phase A) pour que le sélecteur L1 liste bien la famille.
+func (s *BootstrapService) filterOwnedPlayers(sess *domain.SessionData, players []domain.PlayerSummary, familyXUIDs map[string]bool) []domain.PlayerSummary {
 	if !authz.Enforced(s.cfg.DemoMode, s.cfg.AuthMode) || s.userLookup == nil {
 		return players
 	}
 	user := authz.CurrentUser(sess, s.userLookup)
 	out := make([]domain.PlayerSummary, 0, len(players))
 	for _, p := range players {
-		if authz.CanAccessPlayer(true, user, p.XUID) {
+		if authz.CanAccessPlayer(true, user, p.XUID, familyXUIDs) {
 			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// friendGamertagsFromSettings extrait friend_gamertags de la map app_settings
+// (LoadAppSettings retourne une map non typée → JSON décode en []interface{}).
+func friendGamertagsFromSettings(appSettings map[string]interface{}) []string {
+	raw, ok := appSettings["friend_gamertags"].([]interface{})
+	if !ok {
+		return nil
+	}
+	out := make([]string, 0, len(raw))
+	for _, v := range raw {
+		if gt, ok := v.(string); ok && gt != "" {
+			out = append(out, gt)
 		}
 	}
 	return out

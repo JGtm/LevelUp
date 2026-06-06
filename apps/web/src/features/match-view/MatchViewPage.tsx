@@ -1,5 +1,5 @@
 /** MatchViewPage — détail d'un match (2 onglets : Général, Détails). */
-import { useParams, useSearch, useNavigate } from '@tanstack/react-router'
+import { useParams, useSearch, useNavigate, useRouter } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useSettings } from '@/features/settings/queries'
@@ -88,6 +88,7 @@ export function MatchViewPage() {
   })
   const activeTab: TabId = tab ?? 'summary'
   const navigate = useNavigate({ from: '/players/$playerSlug/matches/$matchId' })
+  const router = useRouter()
   const setActiveTab = (next: TabId) => {
     navigate({ search: (prev) => ({ ...prev, tab: next }), replace: true }).catch(() => {})
   }
@@ -106,6 +107,10 @@ export function MatchViewPage() {
   const goMatches = () => {
     navigate({ to: '/players/$playerSlug/explorer', params: { playerSlug } }).catch(() => {})
   }
+  const goBack = () => {
+    if (router.history.length > 1) router.history.back()
+    else goMatches()
+  }
 
   if (isError || !data) {
     // ADR 0024 Couche B : match existant mais joueur non-participant (404
@@ -123,6 +128,7 @@ export function MatchViewPage() {
           }
           actions={[
             { label: isEN ? 'Home' : 'Accueil', onClick: goHome, variant: 'default' },
+            { label: isEN ? 'Back' : 'Précédent', onClick: goBack },
             { label: isEN ? 'My matches' : 'Mes matchs', onClick: goMatches },
           ]}
         />
