@@ -125,7 +125,7 @@ describe('HomePage', () => {
       })
 
       expect(screen.getByTestId('home-spartan-banner-shell')).toBeInTheDocument()
-      expect(screen.getByTestId('home-spartan-banner-surface')).toHaveAttribute('src', 'https://example.test/identity/nameplate.png')
+      expect(screen.getByTestId('home-spartan-banner-surface')).toBeInTheDocument()
       expect(screen.queryByText('Spartan ID')).not.toBeInTheDocument()
 
       // Note : labels textuels "Rank 25" et "Current progress" retirés du

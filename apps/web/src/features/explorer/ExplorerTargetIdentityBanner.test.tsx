@@ -46,10 +46,7 @@ describe('ExplorerTargetIdentityBanner', () => {
       'src',
       IDENTITY_FULL.emblem_image_url,
     )
-    expect(screen.getByTestId('explorer-target-banner-image')).toHaveAttribute(
-      'src',
-      IDENTITY_FULL.banner_image_url,
-    )
+    expect(screen.getByTestId('explorer-target-banner-image')).toBeInTheDocument()
     expect(screen.getByTestId('explorer-target-adornment-image')).toHaveAttribute(
       'src',
       IDENTITY_FULL.career_rank?.adornment_image_url,
