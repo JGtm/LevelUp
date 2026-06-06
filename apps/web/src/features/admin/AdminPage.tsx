@@ -4,6 +4,7 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -174,7 +175,15 @@ function InvitesSection() {
 
   function handleGenerate() {
     generateInvite.mutate(7, {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.invites }),
+      onSuccess: (data) => {
+        queryClient.invalidateQueries({ queryKey: adminKeys.invites })
+        toast.success(`${t('common.admin.invite_generated')} ${data.code}`)
+      },
+      onError: (err) => {
+        // Sans ce feedback, un échec (403 non-admin, réseau…) donnait
+        // l'impression que le bouton « ne fait rien ».
+        toast.error(err instanceof Error ? err.message : t('common.admin.invite_generate_failed'))
+      },
     })
   }
 

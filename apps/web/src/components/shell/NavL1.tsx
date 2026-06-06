@@ -13,6 +13,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { ThemeToggle } from './ThemeToggle'
 import { buildPlayerDestination, isCommunityPath } from './shellNavigation'
 import { HelpSplitButton } from './HelpSplitButton'
+import { LogoutButton } from './LogoutButton'
 import { useSettings } from '@/features/settings/queries'
 import { NotificationsBell } from '@/features/notifications/NotificationsBell'
 import { formatMessage } from '@/lib/i18n/format'
@@ -470,6 +471,9 @@ export function NavL1() {
           ...(isAdmin ? [{ key: 'users', label: 'Utilisateurs', tab: 'users' }] : []),
         ]}
       />
+
+      {/* ── Déconnexion (visible si session ouverte) ─────────────────────── */}
+      <LogoutButton />
     </nav>
   )
 }

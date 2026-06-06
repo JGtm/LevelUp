@@ -3,6 +3,8 @@
 
 export const commonManifest = {
   "common.admin.invitation_codes_section": { fr: "Codes d'invitation", en: "Invitation codes" },
+  "common.admin.invite_generate_failed": { fr: "Échec de la génération du code.", en: "Failed to generate code." },
+  "common.admin.invite_generated": { fr: "Code généré :", en: "Code generated:" },
   "common.admin.new_password_for": { fr: "Nouveau MDP pour", en: "New password for" },
   "common.admin.no_invitation_codes": { fr: "Aucun code d'invitation.", en: "No invitation codes." },
   "common.admin.no_users": { fr: "Aucun utilisateur.", en: "No users." },
@@ -229,6 +231,8 @@ export const commonManifest = {
   "common.shell.header_subtitle": { fr: "Un shell plus compact, sans sidebar, pour lire vite et plonger plus loin quand c'est utile.", en: "A more compact shell, sidebarless, for fast reading and deeper dives when needed." },
   "common.shell.hint_section_kept": { fr: "Le shell garde la section courante quand c'est possible, sinon il revient sur l'accueil du joueur.", en: "The shell keeps the current section when possible, otherwise it falls back to the player home." },
   "common.shell.logo_aria": { fr: "LevelUp — retour à l'accueil", en: "LevelUp — back to home" },
+  "common.shell.logout": { fr: "Se déconnecter", en: "Log out" },
+  "common.shell.logout_failed": { fr: "Échec de la déconnexion.", en: "Logout failed." },
   "common.shell.nav_analytics_aria": { fr: "Navigation analytique", en: "Analytics navigation" },
   "common.shell.nav_career_aria": { fr: "Navigation carrière", en: "Career navigation" },
   "common.shell.nav_community_aria": { fr: "Navigation communauté", en: "Community navigation" },
