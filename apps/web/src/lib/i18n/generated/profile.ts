@@ -81,7 +81,7 @@ export const profileManifest = {
   "profile.performance.aria_top20": { fr: "Top 20% personnel", en: "Personal top 20%" },
   "profile.performance.component_current_target": { fr: "{current}% / cible {target}%", en: "{current}% / target {target}%" },
   "profile.performance.components_unavailable": { fr: "Détail des 8 composantes : données non disponibles pour cette fenêtre.", en: "8-component breakdown: data unavailable for this window." },
-  "profile.performance.empty": { fr: "Pas encore assez de matchs ratés pour estimer ton tier.", en: "Not enough rated matches yet to estimate your tier." },
+  "profile.performance.empty": { fr: "Pas encore assez de matchs évalués pour estimer ton palier.", en: "Not enough rated matches yet to estimate your tier." },
   "profile.performance.gap_to_next": { fr: "+{gap} pts à gagner", en: "+{gap} pts to gain" },
   "profile.performance.mu_sigma": { fr: "μ {mu} · σ {sigma}", en: "μ {mu} · σ {sigma}" },
   "profile.performance.next_tier": { fr: "Prochain palier :", en: "Next tier:" },
