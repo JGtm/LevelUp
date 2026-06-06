@@ -47,6 +47,9 @@ interface AppShellState {
   firstLaunch: boolean
   /** PR 4 — Auth Code Flow OAuth dispo (true si cfg.OAuthRedirectURI configuré). */
   oauthCodeFlowEnabled: boolean
+  /** Instance démo : settings figés (read-only sauf langue/accessibilité), switch
+   * de langue client-side (le PATCH /settings est refusé en démo). */
+  demoMode: boolean
 
   // Actions
   hydrateFromBootstrap: (data: BootstrapResponse) => void
@@ -96,6 +99,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
   currentUsername: null,
   firstLaunch: false,
   oauthCodeFlowEnabled: false,
+  demoMode: false,
 
   hydrateFromBootstrap: (data: BootstrapResponse) => {
     const titleSlug = data.current_title_slug ?? 'halo_infinite'
@@ -123,6 +127,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
       currentUsername: data.current_username ?? null,
       firstLaunch: data.first_launch ?? false,
       oauthCodeFlowEnabled: data.oauth_code_flow_enabled ?? false,
+      demoMode: data.demo_mode ?? false,
     })
   },
 

@@ -166,6 +166,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		Capabilities:         capabilities,
 		SettingsExcerpt:      settingsExcerpt,
 		Privacy:              privacy,
+		DemoMode:             s.cfg.DemoMode,
 		AuthMode:             s.cfg.AuthMode,
 		RegistrationMode:     s.cfg.RegistrationMode,
 		IsAdmin:              sess != nil && sess.Role != nil && *sess.Role == "admin",
