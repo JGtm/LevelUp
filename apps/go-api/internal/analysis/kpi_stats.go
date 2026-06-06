@@ -39,8 +39,6 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 	var accuracySamples int
 	var perfSum float64
 	var perfCount int
-	var offSum, offCount float64
-	var defSum, defCount float64
 	var totalDmgDealt, totalDmgTaken float64
 	var residualSum float64
 	var residualCount int
@@ -79,27 +77,6 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 			perfCount++
 		}
 		if r.Self.DamageDealt != nil && r.Self.DamageTaken != nil {
-			k := 0
-			if r.Self.Kills != nil {
-				k = *r.Self.Kills
-			}
-			a := 0
-			if r.Self.Assists != nil {
-				a = *r.Self.Assists
-			}
-			d := 0
-			if r.Self.Deaths != nil {
-				d = *r.Self.Deaths
-			}
-			cy := ComputeCombatYield(k, a, float64(*r.Self.DamageDealt), float64(*r.Self.DamageTaken), d)
-			if cy.OffensiveConversion > 0 {
-				offSum += cy.OffensiveConversion
-				offCount++
-			}
-			if cy.DefensiveResistance > 0 {
-				defSum += cy.DefensiveResistance
-				defCount++
-			}
 			totalDmgDealt += float64(*r.Self.DamageDealt)
 			totalDmgTaken += float64(*r.Self.DamageTaken)
 		}
@@ -158,14 +135,18 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 		fallback := math.Round(math.Min(math.Max(50+10*(kd-1), 0), 100)*10) / 10
 		stats.PerformanceScore = &fallback
 	}
+	// Rendement / résistance : AGRÉGAT volume-pondéré sur les totaux (pas une moyenne
+	// des ratios par match). OC garde les assists (frag-équivalent). Calculé sur les
+	// MÊMES totaux que DmgPerKill ci-dessous → % = 225 / DmgPerKill exactement.
 	avgOC := 0.0
 	avgDR := 0.0
-	if offCount > 0 {
-		avgOC = math.Round(offSum/offCount*100) / 100
+	cy := ComputeCombatYieldFloat(float64(totalKills), float64(totalAssists), totalDmgDealt, totalDmgTaken, float64(totalDeaths))
+	if cy.OffensiveConversion > 0 {
+		avgOC = math.Round(cy.OffensiveConversion*100) / 100
 		stats.AvgOffensiveConversion = &avgOC
 	}
-	if defCount > 0 {
-		avgDR = math.Round(defSum/defCount*100) / 100
+	if cy.DefensiveResistance > 0 {
+		avgDR = math.Round(cy.DefensiveResistance*100) / 100
 		stats.AvgDefensiveResistance = &avgDR
 	}
 	if avgOC > 0 || avgDR > 0 {
@@ -175,8 +156,8 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 			avgResidualBrut = &v
 		}
 		block := ClassifyCombatProfile(avgOC, avgDR, avgResidualBrut, stats.MatchesCount)
-		if totalKills > 0 {
-			v := totalDmgDealt / float64(totalKills)
+		// Dégâts par frag-équivalent (frags + assists/3) : aligné sur OC. DmgPerDeath brut.
+		if v := DamagePerFragEquivalent(totalDmgDealt, float64(totalKills), float64(totalAssists)); v > 0 {
 			block.DmgPerKill = &v
 		}
 		if totalDeaths > 0 {

@@ -189,60 +189,43 @@ func buildCombatProfileFromCanonical(rows []canonical.PlayerMatchRow) *domain.Co
 	if len(rows) == 0 {
 		return nil
 	}
-	var ocSum, drSum float64
-	var ocCount, drCount int
 	var residualSum float64
 	var residualCount int
-	// Agrégats bruts pour dmg/frag & dmg/mort (Σ dégâts / Σ kills|morts).
+	// Agrégats volume-pondérés (Σ sur tous les matchs) : base commune au rendement
+	// (OC = 225·(Σkills+Σassists/3)/Σdégâts) et au dégâts/frag affiché. Pas de
+	// moyenne des ratios par match (décrochait du chiffre affiché).
 	var totalDmgDealt, totalDmgTaken float64
-	var totalKills, totalDeaths int
+	var totalKills, totalAssists, totalDeaths int
 	for _, r := range rows {
 		if r.Self.DamageDealt != nil && r.Self.DamageTaken != nil {
-			k, a, d := 0, 0, 0
-			if r.Self.Kills != nil {
-				k = *r.Self.Kills
-			}
-			if r.Self.Assists != nil {
-				a = *r.Self.Assists
-			}
-			if r.Self.Deaths != nil {
-				d = *r.Self.Deaths
-			}
-			cy := analysis.ComputeCombatYield(k, a, float64(*r.Self.DamageDealt), float64(*r.Self.DamageTaken), d)
-			if cy.OffensiveConversion > 0 {
-				ocSum += cy.OffensiveConversion
-				ocCount++
-			}
-			if cy.DefensiveResistance > 0 {
-				drSum += cy.DefensiveResistance
-				drCount++
-			}
 			totalDmgDealt += float64(*r.Self.DamageDealt)
 			totalDmgTaken += float64(*r.Self.DamageTaken)
-			totalKills += k
-			totalDeaths += d
+			if r.Self.Kills != nil {
+				totalKills += *r.Self.Kills
+			}
+			if r.Self.Assists != nil {
+				totalAssists += *r.Self.Assists
+			}
+			if r.Self.Deaths != nil {
+				totalDeaths += *r.Self.Deaths
+			}
 		}
 		if r.Enrichment.EngagementScoreBrut != nil {
 			residualSum += *r.Enrichment.EngagementScoreBrut
 			residualCount++
 		}
 	}
-	avgOC := 0.0
-	if ocCount > 0 {
-		avgOC = ocSum / float64(ocCount)
-	}
-	avgDR := 0.0
-	if drCount > 0 {
-		avgDR = drSum / float64(drCount)
-	}
+	cy := analysis.ComputeCombatYieldFloat(float64(totalKills), float64(totalAssists), totalDmgDealt, totalDmgTaken, float64(totalDeaths))
+	avgOC := cy.OffensiveConversion
+	avgDR := cy.DefensiveResistance
 	var avgResidualBrut *float64
 	if residualCount > 0 {
 		v := residualSum / float64(residualCount)
 		avgResidualBrut = &v
 	}
 	block := analysis.ClassifyCombatProfile(avgOC, avgDR, avgResidualBrut, len(rows))
-	if totalKills > 0 {
-		v := totalDmgDealt / float64(totalKills)
+	// Dégâts par frag-équivalent (frags + assists/3) : aligné sur OC. DmgPerDeath brut.
+	if v := analysis.DamagePerFragEquivalent(totalDmgDealt, float64(totalKills), float64(totalAssists)); v > 0 {
 		block.DmgPerKill = &v
 	}
 	if totalDeaths > 0 {

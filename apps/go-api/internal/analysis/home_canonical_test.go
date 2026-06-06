@@ -8,6 +8,7 @@
 package analysis
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -82,6 +83,50 @@ func maxInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// TestComputeKPIsFromCanonical_RendementAlignedAndDistinct reproduit le bug rapporté :
+// deux joueurs au rendement clairement différent affichaient le MÊME pourcentage.
+// Après fix (agrégat volume-pondéré + dégâts/frag-équivalent), leurs % diffèrent et
+// chaque % = 225 / (dégâts par frag-équivalent affiché).
+func TestComputeKPIsFromCanonical_RendementAlignedAndDistinct(t *testing.T) {
+	t.Parallel()
+	// Joueur A : moins efficace (plus de dégâts par frag-équivalent).
+	playerA := []canonical.PlayerMatchRow{
+		mkRowWithDamage(20, 6, 8, 8000, 4000),
+		mkRowWithDamage(10, 4, 6, 4000, 3000),
+	}
+	// Joueur B : plus efficace (moins de dégâts par frag-équivalent).
+	playerB := []canonical.PlayerMatchRow{
+		mkRowWithDamage(25, 8, 7, 6000, 3500),
+		mkRowWithDamage(12, 4, 5, 3000, 2500),
+	}
+	kpiA := ComputeKPIsFromCanonical(playerA, len(playerA), "fr")
+	kpiB := ComputeKPIsFromCanonical(playerB, len(playerB), "fr")
+
+	for name, k := range map[string]domain.HeroKPIs{"A": kpiA, "B": kpiB} {
+		if k.AvgOffensiveConversion == nil || k.DmgPerKill == nil {
+			t.Fatalf("joueur %s : AvgOC/DmgPerKill nil", name)
+		}
+		// Invariant d'alignement : % = 225 / dégâts par frag-équivalent (AvgOC est
+		// arrondi 2 décimales à l'affichage → tolérance = un cran d'arrondi).
+		if math.Abs(*k.AvgOffensiveConversion-225.0/(*k.DmgPerKill)) > 0.01 {
+			t.Errorf("joueur %s : AvgOC (%v) != 225/DmgPerKill (%v)",
+				name, *k.AvgOffensiveConversion, 225.0/(*k.DmgPerKill))
+		}
+	}
+	// Le cœur du bug : les deux joueurs ne doivent PLUS avoir le même rendement,
+	// et le plus efficace (B, dégâts/frag plus bas) doit avoir le % le plus haut.
+	if *kpiA.AvgOffensiveConversion == *kpiB.AvgOffensiveConversion {
+		t.Fatalf("régression : rendement identique (%v) pour deux joueurs distincts", *kpiA.AvgOffensiveConversion)
+	}
+	if *kpiB.DmgPerKill >= *kpiA.DmgPerKill {
+		t.Fatalf("fixture invalide : B (%v) devrait avoir moins de dégâts/frag que A (%v)", *kpiB.DmgPerKill, *kpiA.DmgPerKill)
+	}
+	if *kpiB.AvgOffensiveConversion <= *kpiA.AvgOffensiveConversion {
+		t.Errorf("le joueur plus efficace (B) devrait avoir le rendement le plus haut : A=%v B=%v",
+			*kpiA.AvgOffensiveConversion, *kpiB.AvgOffensiveConversion)
+	}
 }
 
 // TestHomeMatchRowFromCanonical_RoundtripFields garantit que les champs clÃ©s

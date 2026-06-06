@@ -387,6 +387,39 @@ func TestComputeKPIStats_CombatProfile_SetWhenDamagePresent(t *testing.T) {
 	}
 }
 
+// TestComputeKPIStats_OC_IsAggregate_NotMeanOfRatios : régression du bug "Rendement
+// identique". L'OC doit être l'agrégat volume-pondéré, PAS la moyenne des ratios par
+// match (qui sur-pondère un petit match très efficace) — et = 225 / DmgPerKill.
+func TestComputeKPIStats_OC_IsAggregate_NotMeanOfRatios(t *testing.T) {
+	t.Parallel()
+	rows := []canonical.PlayerMatchRow{
+		mkRowWithDamage(30, 0, 5, 4000, 2000), // gros volume
+		mkRowWithDamage(1, 0, 1, 50, 1000),    // petit pic d'efficacité (OC/match = 4.5)
+	}
+	got := ComputeKPIStats(rows)
+	// Agrégat : 225 × Σ(frags+assists/3) / Σdégâts = 225 × 31 / 4050 ≈ 1.72.
+	// Moyenne des ratios donnerait (1.6875 + 4.5)/2 ≈ 3.09 → bug.
+	if got.AvgOffensiveConversion == nil {
+		t.Fatal("AvgOffensiveConversion nil")
+	}
+	if math.Abs(*got.AvgOffensiveConversion-1.72) > 0.01 {
+		t.Errorf("AvgOC = %v, want ≈1.72 (agrégat). Si ≈3.09 → régression mean-of-ratios", *got.AvgOffensiveConversion)
+	}
+	// Invariant : dégâts par frag-équivalent = Σdégâts/(Σfrags+Σassists/3), et
+	// AvgOC = 225 / DmgPerKill.
+	if got.CombatProfile == nil || got.CombatProfile.DmgPerKill == nil {
+		t.Fatal("CombatProfile.DmgPerKill nil")
+	}
+	wantDPK := 4050.0 / 31.0
+	if math.Abs(*got.CombatProfile.DmgPerKill-wantDPK) > 1e-6 {
+		t.Errorf("DmgPerKill = %v, want %v (frag-équivalent)", *got.CombatProfile.DmgPerKill, wantDPK)
+	}
+	if math.Abs(*got.AvgOffensiveConversion-225.0/(*got.CombatProfile.DmgPerKill)) > 0.01 {
+		t.Errorf("invariant rompu : AvgOC (%v) != 225/DmgPerKill (%v)",
+			*got.AvgOffensiveConversion, 225.0/(*got.CombatProfile.DmgPerKill))
+	}
+}
+
 func TestComputeKPIStats_CombatProfile_NilWhenNoDamageData(t *testing.T) {
 	t.Parallel()
 	// Rows sans DamageDealt/DamageTaken → CombatProfile nil.

@@ -1,3 +1,37 @@
+## [2026-06-06] Fix "Rendement / Résist." — agrégat volume-pondéré + dégâts/frag-équivalent — Complété
+
+**Statut** : Complété. Go build+vet+test (analysis, service) OK ; front typecheck+lint(0 err)+vitest (49 tests) OK.
+
+**Contexte** : sur la card Hero KPI "Rendement / Résist." du Home, deux joueurs au rendement clairement différent (Xxdaemongamerxx 382 dégâts/frag, Madina97294 305) affichaient le **même 82 %**. Cause : le `%` (`avg_offensive_conversion`) était une **moyenne arithmétique des ratios par match** (chaque match pèse pareil → sur-pondère les petits matchs très efficaces, décroche du volume), alors que `dmg_per_kill` était un **agrégat volume-pondéré** (Σdégâts/Σfrags). Second décalage : l'OC officiel crédite les assists (`225·(frags+assists/3)/dégâts`) mais le dégâts/frag affiché les ignorait.
+
+**Décision technique** (validée user, garder les assists) :
+1. **Agrégat volume-pondéré** partout : OC/DR via `ComputeCombatYieldFloat(Σtotaux)` au lieu de la moyenne des ratios.
+2. **Dégâts par frag-équivalent** : dénominateur = `frags + assists/3` → `% = 225 / dmgPerKill` exactement (100 % ⟺ 225), assists crédités des deux côtés. DmgPerDeath reste brut (pas d'assists en défense, déjà symétrique).
+3. Helpers centralisés anti magic-number : `analysis.FragEquivalents` / `DamagePerFragEquivalent` (+ const `assistFragWeight=3`) côté Go ; `effectiveDmgPerFrag` côté front. **Pas** de recalibration barre/seuils de style (définition OC inchangée).
+
+**Portée** : 4 calculateurs mean-of-ratios corrigés (`home_canonical_kpis`, `kpi_stats`, `synthesis_service_builders`, `session_compare_service`) + tuiles de match (`match-card.tsx`). `compare_service` et `squad_breakdown_canonical` étaient déjà en agrégat-avec-assists (cohérents).
+
+**Résultats observés** : tests de régression ajoutés — scénario 2 joueurs (home) prouve % distincts + ordonnés (plus efficace = % plus haut) + invariant `% = 225/DmgPerKill` ; test kpi_stats avec dataset hétérogène distingue agrégat (1.72) de mean-of-ratios (3.09). Tout vert.
+
+**Prochaine étape** : vérif end-to-end app (Home des 3 cibles) reste à faire ; commit sur autorisation (ne stager que les fichiers rendement, laisser intact le WIP seed_demo de la branche).
+
+## [2026-06-06] Démo — corpus élargi (solo récents + 3 sessions squad) + fix gamertag main "DemoPlayer" — Complété
+
+**Statut** : Complété. Go build+vet+test ops OK (CGO ucrt64). Reseed VPS + vérif Chrome restants.
+
+**Contexte** : après le reseed multi-joueur (corpus = 3 dernières sessions escouade, 29 matchs), l'utilisateur a relevé que les **matchs solo** précédemment affichés pour DemoPlayer avaient disparu — `seed-demo` régénère tout `data/demo` à chaque run, et le passage en squad-only avait rétréci le corpus. Source JGtm jamais modifiée (lecture seule) ; c'est le sous-ensemble servi qui avait changé. Choix utilisateur : **solo récents + 3 sessions squad**.
+
+**Décision technique** :
+1. **Corpus = union** `selectRecentMatchIDs(shared, MaxMatches)` (solo+squad récents, pour l'historique/home) `unionMatchIDs` `selectSquadSessionCorpus(player, 3)` (pour la page Escouade). Dédupliqué, ordre récents-d'abord. Remplace l'ancien fallback exclusif.
+2. **Roster découplé** : `buildDemoRoster(rankMatchIDs, allMatchIDs, …)` — DemoPlayer2/3 classés sur le corpus **escouade** (rankMatchIDs) pour rester les vrais partenaires, pas des adversaires fréquents des matchs solo ; anonymisation universelle appliquée à TOUS les participants du corpus **complet** (allMatchIDs) → aucune fuite de gamertag réel. Helper `queryParticipantsByFreq` factorisé.
+3. **Fix cosmétique** : gamertag du main = `DefaultDemoMainGamertag = "DemoPlayer"` (était `DefaultDemoGamertag = "DEMO"`, le nom de dossier). Le dir reste "DEMO" via `demoDirForIndex(0)`. Aligné sur `config.DemoRoster[0].Gamertag`. Corrige le "DEMO vs …" du Face-à-face.
+
+**Résultats observés** : build/vet/test ops OK. Reste à reseeder le VPS (prod stoppée ~1s) avec le nouveau code embarqué dans l'image levelup, puis vérifier home (historique solo), Escouade (DemoPlayer2/3), Face-à-face ("DemoPlayer vs …").
+
+**Prochaine étape** : commit (sur autorisation) → merge main → deploy → reseed VPS → vérif Chrome.
+
+---
+
 ## [2026-06-06] Weapon-attribution v3 — mécanisme de SWAP d'arme identifié (WST gate=1) — Complété (investigation RE)
 
 **Statut** : Complété (investigation, pas de modif du décodeur). Sonde `apps/go-api/cmd/rdata_weapon_scan/` (build + vet OK).
