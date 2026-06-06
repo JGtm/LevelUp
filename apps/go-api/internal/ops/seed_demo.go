@@ -63,6 +63,13 @@ type SeedDemoOptions struct {
 	// chercher une identité Spartan à emprunter pour la démo (emblem/banner/
 	// backdrop/adornment). Vide → emprunt d'identité désactivé.
 	SourcePlayersDir string
+
+	// ProfilesPath + RepoRoot : pour seeder les player DB des coéquipiers
+	// principaux (DemoPlayer2/3). ProfilesPath = db_profiles.json source (résout
+	// xuid→db_path) ; RepoRoot = racine pour rendre ces chemins absolus. Vides →
+	// démo mono-joueur (pas de player DB coéquipier).
+	ProfilesPath string
+	RepoRoot     string
 }
 
 // SeedDemoResult résume l'exécution.
@@ -236,55 +243,72 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	}
 	slog.InfoContext(ctx, "seed-demo: anonymisation universelle appliquée", "mapped", len(roster))
 
-	// 4. Extraction player
-	outPlayer := filepath.Join(opts.OutDir, "players", opts.DemoGamertag, "stats.duckdb")
-	playerRows, err := extractPlayerTables(ctx, opts.SourcePlayerDB, outPlayer, matchIDs,
-		opts.SourceXUID, opts.DemoXUID)
-	if err != nil {
-		return res, fmt.Errorf("seed-demo: extract player: %w", err)
-	}
-	res.PlayerRows = playerRows
-	slog.InfoContext(ctx, "seed-demo: player extraite", "out", outPlayer, "rows", playerRows)
-
-	// 4b. Migrations canoniques sur les DB démo : reconstruit les tables
-	// append-only extraites sans id/written_at (match_csrs, match_skill_rank,
-	// player_csr_snapshots) et crée les vues _latest à jour. Sans ça les pages
-	// (home) crashent sur written_at manquant / vue _latest absente (incident
-	// 2026-06-05). Idempotent (RunForDB skip les migrations déjà appliquées).
+	// 4. Migration shared (une fois) : reconstruit les tables append-only +
+	// vues _latest. Idempotent.
 	if err := applyMigrationsOnPath(outShared, migration.TargetShared); err != nil {
 		return res, fmt.Errorf("seed-demo: migrate shared: %w", err)
 	}
-	if err := applyMigrationsOnPath(outPlayer, migration.TargetPlayer); err != nil {
-		return res, fmt.Errorf("seed-demo: migrate player: %w", err)
-	}
-	slog.InfoContext(ctx, "seed-demo: migrations canoniques appliquées (shared+player, vues _latest)")
 
-	// 4c. Identité Spartan empruntée : le joueur démo (xuid anonyme, pas de sync)
-	// n'a pas de customization propre. On copie une identité figée (rang, XP,
-	// emblem, banner, backdrop, adornment) depuis un vrai joueur configuré pour un
-	// rendu réaliste. Best-effort : no-op si aucune identité disponible.
-	if opts.SourcePlayersDir != "" {
-		if err := borrowDemoIdentity(ctx, outPlayer, opts.SourcePlayersDir, opts.DemoXUID); err != nil {
-			slog.WarnContext(ctx, "seed-demo: emprunt identité Spartan échoué (non bloquant)", "err", err)
+	// 5. Seed des player DB du roster : DemoPlayer (source) + DemoPlayer2/3
+	// (coéquipiers principaux), chacune filtrée sur le corpus + anonymisée vers son
+	// xuid démo. Les coéquipiers donnent leurs vraies stats (perf, LUSR) à la page
+	// Escouade. Les player DB coéquipiers sont résolues depuis db_profiles par xuid.
+	mains := rosterMains(roster)
+	var seeded []seededDemoPlayer
+	mainOutPlayer := filepath.Join(opts.OutDir, "players", DefaultDemoGamertag, "stats.duckdb")
+	for i, m := range mains {
+		srcPlayerDB := opts.SourcePlayerDB
+		if i > 0 {
+			rel, found, rerr := resolvePlayerDBByXUID(opts.ProfilesPath, m.SourceXUID)
+			if rerr != nil || !found {
+				slog.WarnContext(ctx, "seed-demo: player DB coéquipier introuvable, skip",
+					"xuid", m.SourceXUID, "gamertag", m.DemoGamertag, "err", rerr)
+				continue
+			}
+			srcPlayerDB = filepath.Join(opts.RepoRoot, rel)
 		}
+		demoDir := demoDirForIndex(i)
+		outP := filepath.Join(opts.OutDir, "players", demoDir, "stats.duckdb")
+		rows, perr := extractPlayerTables(ctx, srcPlayerDB, outP, matchIDs, m.SourceXUID, m.DemoXUID)
+		if perr != nil {
+			if i == 0 {
+				return res, fmt.Errorf("seed-demo: extract player principal: %w", perr)
+			}
+			slog.WarnContext(ctx, "seed-demo: extract player coéquipier échoué, skip",
+				"gamertag", m.DemoGamertag, "err", perr)
+			continue
+		}
+		if err := applyMigrationsOnPath(outP, migration.TargetPlayer); err != nil {
+			return res, fmt.Errorf("seed-demo: migrate player %s: %w", demoDir, err)
+		}
+		// Identité Spartan : empruntée pour le DemoPlayer principal (le joueur
+		// source n'a pas de customization propre) ; les coéquipiers ont déjà la
+		// leur (career_progression réelle copiée).
+		if i == 0 {
+			res.PlayerRows = rows
+			if opts.SourcePlayersDir != "" {
+				if err := borrowDemoIdentity(ctx, outP, opts.SourcePlayersDir, m.DemoXUID); err != nil {
+					slog.WarnContext(ctx, "seed-demo: emprunt identité échoué (non bloquant)", "err", err)
+				}
+			}
+		}
+		seeded = append(seeded, seededDemoPlayer{Dir: demoDir, XUID: m.DemoXUID, Gamertag: m.DemoGamertag})
+		slog.InfoContext(ctx, "seed-demo: player seedée", "dir", demoDir, "gamertag", m.DemoGamertag, "rows", rows)
 	}
 
-	// 5. Médias (optionnel)
+	// 6. Médias (DemoPlayer principal uniquement).
 	if opts.IncludeMedia {
-		mediaDir := filepath.Join(opts.OutDir, "players", opts.DemoGamertag, "media")
+		mediaDir := filepath.Join(opts.OutDir, "players", DefaultDemoGamertag, "media")
 		mediaCount, mediaErr := extractDemoMedia(ctx, opts.SourcePlayerDB, opts.SourceSharedDB,
-			outPlayer, mediaDir, matchIDs, opts.DemoXUID, opts.MaxMedia)
+			mainOutPlayer, mediaDir, matchIDs, opts.DemoXUID, opts.MaxMedia)
 		if mediaErr != nil {
-			// Non bloquant : la démo fonctionne sans média.
-			slog.WarnContext(ctx, "seed-demo: extraction média partielle",
-				"err", mediaErr, "copied", mediaCount)
+			slog.WarnContext(ctx, "seed-demo: extraction média partielle", "err", mediaErr, "copied", mediaCount)
 		}
 		res.MediaCopied = mediaCount
 	}
 
-	// 6. Configs
-	if err := writeDemoConfigs(opts.OutDir, opts.DemoXUID, opts.SourceLabel,
-		opts.ServiceTag, res.MediaCopied > 0); err != nil {
+	// 7. Configs (db_profiles avec les 3 profils démo + app_settings).
+	if err := writeDemoConfigsMulti(opts.OutDir, seeded, opts.ServiceTag, res.MediaCopied > 0); err != nil {
 		return res, fmt.Errorf("seed-demo: write configs: %w", err)
 	}
 	res.ConfigsWritten = true
@@ -670,6 +694,60 @@ func writeDemoConfigs(outDir, demoXUID, gamertag, serviceTag string, mediaEnable
 		"enable_duckdb_analytics":             true,
 	}
 	if err := writeJSONFile(filepath.Join(outDir, "app_settings.json"), settings); err != nil {
+		return fmt.Errorf("app_settings.json: %w", err)
+	}
+	return nil
+}
+
+// demoAppSettings retourne le map app_settings.json démo (langue FR, sync OFF…).
+func demoAppSettings(serviceTag string, mediaEnabled bool) map[string]any {
+	return map[string]any{
+		"lang":                                "fr",
+		"media_enabled":                       mediaEnabled,
+		"spnkr_refresh_on_start":              false,
+		"spnkr_refresh_on_manual_refresh":     false,
+		"spnkr_refresh_max_matches":           0,
+		"spnkr_refresh_with_highlight_events": false,
+		"spnkr_refresh_with_backfill":         false,
+		"spnkr_refresh_backfill_medals":       false,
+		"spnkr_refresh_backfill_events":       false,
+		"spnkr_refresh_backfill_skill":        false,
+		"discord_notifications_enabled":       false,
+		"doppler_enabled":                     false,
+		"tailscale_funnel_enabled":            false,
+		"profile_assets_download_enabled":     false,
+		"profile_api_enabled":                 false,
+		"profile_service_tag":                 serviceTag,
+		"repository_mode":                     "duckdb",
+		"enable_duckdb_analytics":             true,
+	}
+}
+
+// writeDemoConfigsMulti écrit db_profiles.json (1 profil par player DB démo
+// seedée, clé = gamertag démo) + app_settings.json dans outDir. waypoint_player
+// = gamertag démo (jamais le gamertag source réel — évite le "JGtm" affiché).
+func writeDemoConfigsMulti(outDir string, seeded []seededDemoPlayer, serviceTag string, mediaEnabled bool) error {
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		return fmt.Errorf("mkdir: %w", err)
+	}
+	profilesMap := make(map[string]any, len(seeded))
+	for _, s := range seeded {
+		profilesMap[s.Gamertag] = map[string]any{
+			"db_path":         "data/players/" + s.Dir + "/stats.duckdb",
+			"xuid":            s.XUID,
+			"waypoint_player": s.Gamertag,
+		}
+	}
+	profiles := map[string]any{
+		"version":        "2.1",
+		"warehouse_path": "data/warehouse",
+		"metadata_db":    "data/warehouse/metadata.duckdb",
+		"profiles":       profilesMap,
+	}
+	if err := writeJSONFile(filepath.Join(outDir, "db_profiles.json"), profiles); err != nil {
+		return fmt.Errorf("db_profiles.json: %w", err)
+	}
+	if err := writeJSONFile(filepath.Join(outDir, "app_settings.json"), demoAppSettings(serviceTag, mediaEnabled)); err != nil {
 		return fmt.Errorf("app_settings.json: %w", err)
 	}
 	return nil
