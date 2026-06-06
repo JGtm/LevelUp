@@ -86,6 +86,46 @@ func selectSquadSessionCorpus(ctx context.Context, sourcePlayerDBPath string, nS
 	return out, rows.Err()
 }
 
+// DefaultRankedMatches : nombre de matchs CLASSÉS récents ajoutés au corpus (pour
+// que les playlists classées + CSR apparaissent dans recent_playlist_ranks home).
+const DefaultRankedMatches = 15
+
+// selectRecentRankedMatchIDs retourne les N matchs CLASSÉS récents du joueur source
+// (lus depuis shared). "classé" dérivé comme Q26gPlaylistPhaseBShared : colonne
+// is_ranked OU 'ranked' dans playlist_name/pair_name. Sans ces matchs, le corpus
+// (Partie rapide only) ne fait apparaître aucune playlist classée côté home.
+func selectRecentRankedMatchIDs(ctx context.Context, sharedDBPath, xuid string, limit int) ([]string, error) {
+	db, err := sql.Open("duckdb", sharedDBPath+"?access_mode=READ_ONLY")
+	if err != nil {
+		return nil, fmt.Errorf("open shared: %w", err)
+	}
+	defer db.Close()
+
+	rows, err := db.QueryContext(ctx, `
+		SELECT mr.match_id
+		FROM match_registry mr
+		JOIN match_participants mp ON mp.match_id = mr.match_id
+		WHERE mp.xuid = ?
+		  AND (COALESCE(mr.is_ranked, FALSE)
+		       OR STRPOS(LOWER(COALESCE(mr.playlist_name, '')), 'ranked') > 0
+		       OR STRPOS(LOWER(COALESCE(mr.pair_name, '')), 'ranked') > 0)
+		ORDER BY mr.start_time DESC
+		LIMIT ?`, xuid, limit)
+	if err != nil {
+		return nil, fmt.Errorf("query ranked: %w", err)
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
 // buildDemoRoster construit le mapping xuid→identité démo. Deux ensembles de
 // match_ids sont fournis :
 //   - rankMatchIDs : corpus servant à CLASSER les coéquipiers principaux (les 3
