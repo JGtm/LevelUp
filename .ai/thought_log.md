@@ -1,3 +1,28 @@
+## [2026-06-06] Weapon-attribution v3 — mécanisme de SWAP d'arme identifié (WST gate=1) — Complété (investigation RE)
+
+**Statut** : Complété (investigation, pas de modif du décodeur). Sonde `apps/go-api/cmd/rdata_weapon_scan/` (build + vet OK).
+
+**Mission** : trouver comment un swap d'arme est encodé dans le flux ECS type-0 d'un film (000d5950).
+
+**Cartographie ECS (registre chunk_00, 118 archétypes ; World = 24 typeIndex)** :
+- `ti=5` = archétype loadout joueur (`player-waypoint-component` …) — porte `player-engine-loadout-index-component` (i9) + `player-engine-loadout-component` (i11). 32 slots [52..83].
+- `ti=35` = BIPED joueur (slots 512-519) — porte `weapon-state-type-info` (WST) ×4 à i43..i46 = arme tenue.
+- `ti=42` = entité ARME/ITEM au sol (slots 1346-1349) : `item-at-rest`, `item-ignore-player`, `weapon-ammo` + obje (variant-name).
+- ti=38 objet générique (54 slots), ti=41 projectile, ti=43 device.
+
+**Mécanisme de swap (TRANCHÉ)** : ce n'est PAS un NEW d'entité-arme ni un index dans player-engine-loadout-index. Le swap = un composant **WST du biped retransmis avec gate interne=1** portant `[gate=1][handle R(32)=high32 famille][variant R(32)=low32 suffixe]` = l'id64 d'arme catalogué. Preuves :
+- décompile FUN_1407f06bc (WST) : gate=FUN_14080d69c ; si 1 → handle FUN_14080d6f0 (R32) + variant FUN_14080dec4 (R32). 2×R(32) contigus = l'id64.
+- Empirique : 247 littéraux d'armes complets (high32|low32 catalogués) sur chunks 3/4/5/10/15/20/25, **100% avec bit[-1]=1** (= gate WST). 0% obje (l'obje ne donnerait qu'un variant 32-bit, pas l'id64 contigu).
+- Sporadiques (0.01–0.04 littéral/paquet) = events de changement ; les GROS paquets type-0 (re-sync générale) en ont 0.
+- Paquets multi-armes (#200/#695/#748/#880 chunk_03) : 2 armes espacées de ~196-204 bits = MÊME espacement que les paires primaire/secondaire du keyframe → record biped full-state retransmis (re-sync loadout complet d'un joueur, ex. respawn).
+- Suivi temporel (slot-proxy idLow=11, slot 1318) : Cindershot→M41→Skewer→M41→S7 = arme qui change dans le temps.
+
+**Verrou restant (attribution joueur)** : le scan brut détecte l'arme + le gate mais pas le slot 512-519 porteur, car la traversée delta du biped n'est pas bit-exacte (i63 `biped-action-component` non porté + desers amont approximatifs). L'attribution par remontée de header en amont est du bruit (81% mais sans pic de distance structurel). Pour câbler le suivi d'arme par joueur, il faut finir la traversée delta biped bit-exacte (porter i63) afin d'atteindre le WST à son offset exact dans le record → on lit alors gate+handle+variant in-situ et on attribue au slot du record header.
+
+**Prochaine étape** : porter le deser i63 (biped-action-component) pour rendre la traversée delta biped bit-exacte ; ensuite le suivi d'arme = loadout keyframe (8 connus) + application des WST gate=1 par slot au fil des paquets type-0.
+
+---
+
 ## [2026-06-06] Backlog #5 (charts Rendement & Résistance en dégâts bruts) — Complété
 
 **Statut** : Complété. Go build+test OK ; front typecheck+lint+279 tests vitest OK.
@@ -21387,3 +21412,17 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 - Tests les plus impactés (durée non-cached) : `internal/sync` 192.7s, `internal/api` 8.8s, `internal/api/handlers` cached
 
 **Conclusion** : la branche `feat/career-decouple-from-match-sync` est désormais à 100% verte côté Go. Reste à valider en runtime live les 3 modes de synchro (planifiée / manuelle / watcher) côté utilisateur.
+
+---
+
+### [2026-06-06] Démo : corpus escouade 3-stack, anonymisation universelle, multi-joueur, médias, langue
+
+- **Statut** : Code complet (validé local : go build + go test + tsc + eslint), pushé sur fix/enrichment-convergence. NON déployé (un seul deploy propre à la fin, à la demande user).
+- **Procédure** (cadrée avec user) : code validé EN LOCAL + pushé + déployé proprement (merge main → pipeline). Reseed des BDD démo = manip serveur acceptée. Plus de `docker compose build` manuel sur VPS.
+- **Corpus** : seed-demo passe de 50 matchs récents → **3 dernières sessions en escouade** (~29 matchs) du joueur source (JGtm + Chocoboflor + Madina = vrai stack à 3). `selectSquadSessionCorpus` (sessions.start_time + is_with_friends).
+- **Anonymisation universelle** (`seed_demo_corpus.go`) : remappe TOUS les xuid+gamertag du shared via un roster (`_xuid_map` + UPDATE FROM) — source→DemoPlayer/0000, top-2 coéquipiers→DemoPlayer2/3 (0001/0002), autres→Player N. Couvre match_participants, xuid_aliases, medals_earned, weapon_kills, highlight_events, killer_victim_pairs (killer+victim). Corrige : médailles/arme/frags vides (tables gardaient le xuid source réel), Face-à-face "JGtm" (alias 0000→DemoPlayer), fuite des vrais gamertags coéquipiers.
+- **Seed multi-joueur** : 3 player DB (DEMO/DEMO2/DEMO3) filtrées sur le corpus + anonymisées vers leur xuid démo + db_profiles 3 profils. Coéquipiers résolus par xuid (resolvePlayerDBByXUID).
+- **Câblage squad** (perf/LUSR coéquipiers) : la page lit la perf depuis la player DB de CHAQUE joueur via `squadLoader.LoadFor → resolveByGT → LoadPlayers → ResolvePlayer`. En démo, LoadPlayers renvoyait 1 seul DemoPlayer hardcodé + resolveDemoPlayer figé sur DEMO → tous les coéquipiers tombaient sur la DB du main. Fix : `DemoRoster` constant (config) + LoadPlayers (démo) renvoie les 3 + resolveDemoPlayer(slug) ouvre DEMO/DEMO2/DEMO3.
+- **Médias** : page 500 car le media repo lit `shared_social.media_files` (demo = DB fraîche schéma périmé, capture_start_utc absent). Fix : `resolveDemoPlayer SharedSocialDBPath=""` → nil → fallback Player DB (où seed-demo écrit les médias, schéma complet). + filtre format Xbox (`file_name LIKE 'Halo Infinite%'`) + tri plus anciennes + assoc. fuzzy par carte.
+- **Langue** : (1) démo en anglais car GET /settings renvoyait Defaults() (lang=en) → fix backend (settings réels, lang=fr) ; (2) changement de langue KO car le sélecteur PATCH /settings (422 en démo) → fix frontend : `demo_mode` au bootstrap + useUpdateSettings bascule la langue client-side (setLocale, sans PATCH) + bandeau "settings figés". Langue non persistée au reload (store re-hydrate, pas de localStorage) — session-scoped.
+- **Reste** : déploiement (merge main + reseed VPS prod-stoppée ~1s, le job regen-demo a le bug de lock). Vérif end-to-end après deploy (pas d'itération isolée VPS sur ce lot). Persistance langue reload (localStorage) = option différée.
