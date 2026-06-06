@@ -203,14 +203,20 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	if sErr != nil {
 		slog.WarnContext(ctx, "seed-demo: corpus squad indisponible", "err", sErr)
 	}
-	matchIDs := unionMatchIDs(recentMatches, squadMatches)
+	// Matchs classés récents : font apparaître les playlists classées (+ CSR) dans
+	// recent_playlist_ranks (le corpus solo+squad est 100% Partie rapide non classé).
+	rankedMatches, rkErr := selectRecentRankedMatchIDs(ctx, opts.SourceSharedDB, opts.SourceXUID, DefaultRankedMatches)
+	if rkErr != nil {
+		slog.WarnContext(ctx, "seed-demo: matchs classés indisponibles", "err", rkErr)
+	}
+	matchIDs := unionMatchIDs(recentMatches, squadMatches, rankedMatches)
 	if len(matchIDs) == 0 {
 		return res, fmt.Errorf("seed-demo: aucun match trouvé pour xuid=%s dans %s",
 			opts.SourceXUID, opts.SourceSharedDB)
 	}
 	res.MatchIDs = matchIDs
 	slog.InfoContext(ctx, "seed-demo: corpus sélectionné",
-		"total", len(matchIDs), "recent", len(recentMatches), "squad", len(squadMatches))
+		"total", len(matchIDs), "recent", len(recentMatches), "squad", len(squadMatches), "ranked", len(rankedMatches))
 
 	// 1b. Roster démo : source + coéquipiers principaux (classés sur le corpus
 	// escouade) + autres participants, mappés vers des identités démo stables.
