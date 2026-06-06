@@ -66,6 +66,8 @@ export interface BootstrapResponse {
   first_launch: boolean
   /** PR 4 — True si l'Authorization Code Flow OAuth est dispo (vraie UX redirect). */
   oauth_code_flow_enabled?: boolean
+  /** Instance démo publique : settings figés, switch de langue client-side. */
+  demo_mode?: boolean
 }
 
 export type PlayersListResponse = components['schemas']['PlayersListResponse']

@@ -86,6 +86,10 @@ type BootstrapResponse struct {
 	// PR 4 — Authorization Code Flow disponible (true si cfg.OAuthRedirectURI configuré).
 	// Le frontend affiche un bouton "SSO redirect" en plus du Device Code si true.
 	OAuthCodeFlowEnabled bool `json:"oauth_code_flow_enabled"`
+	// DemoMode : instance démo publique. Le frontend l'utilise pour figer les
+	// settings (read-only, sauf langue/accessibilité) et basculer le changement de
+	// langue en client-side (le PATCH /settings est refusé en démo).
+	DemoMode bool `json:"demo_mode"`
 }
 
 // PlayersListResponse est la réponse de GET /api/v1/players.

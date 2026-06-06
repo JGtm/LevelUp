@@ -29,9 +29,21 @@ export function useUpdateSettings() {
   const qc = useQueryClient()
   const setLocale = useAppShellStore((s) => s.setLocale)
   const currentLocale = useAppShellStore((s) => s.locale)
+  const demoMode = useAppShellStore((s) => s.demoMode)
   return useMutation({
-    mutationFn: (req: UpdateSettingsRequest) =>
-      api.patch<SettingsResponse>('/settings', req),
+    mutationFn: async (req: UpdateSettingsRequest) => {
+      // En démo, le PATCH /settings est refusé (422 — settings figés et partagés
+      // entre visiteurs). Le seul réglage modifiable est la langue : on l'applique
+      // client-side (onSuccess ci-dessous), sans toucher au serveur. Les autres
+      // champs sont ignorés (no-op) — l'UI les grise de toute façon.
+      if (demoMode) {
+        const current =
+          qc.getQueryData<SettingsResponse>(queryKeys.settings) ?? ({} as SettingsResponse)
+        const lang = (req as Partial<SettingsResponse>).lang
+        return typeof lang === 'string' ? { ...current, lang } : current
+      }
+      return api.patch<SettingsResponse>('/settings', req)
+    },
     onSuccess: (data, variables) => {
       qc.setQueryData(queryKeys.settings, data)
 
