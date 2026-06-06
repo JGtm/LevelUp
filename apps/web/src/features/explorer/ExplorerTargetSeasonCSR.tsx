@@ -15,6 +15,9 @@ import type { CareerPlaylistCSR } from '@/lib/api/types'
 interface ExplorerTargetSeasonCSRProps {
   csrs: CareerPlaylistCSR[]
   title: string
+  /** Message du placeholder quand aucune donnée CSR — la carte titrée reste rendue
+   *  (jamais masquée en silence : visibilité des manques de données). */
+  emptyMessage: string
 }
 
 // Traduction EN→FR des noms de tier CSR (Bronze/Silver/Gold/Platinum/Diamond/Onyx),
@@ -37,9 +40,28 @@ function tierLabel(tier: string, subTier: number, locale: string): string {
   return subTier >= 1 && subTier <= 6 ? `${name} ${SUBTIER_ROMAN[subTier]}` : name
 }
 
-export function ExplorerTargetSeasonCSR({ csrs, title }: ExplorerTargetSeasonCSRProps) {
+export function ExplorerTargetSeasonCSR({ csrs, title, emptyMessage }: ExplorerTargetSeasonCSRProps) {
   const locale = useAppShellStore((s) => s.locale)
-  if (csrs.length === 0) return null
+  // Liste vide : on rend quand même la carte titrée + un message centré (même chrome
+  // que ChartCard.empty) au lieu de masquer le bloc, pour repérer les manques.
+  if (csrs.length === 0) {
+    return (
+      <div
+        className="flex h-full flex-col rounded-lg border border-border bg-card"
+        data-testid="explorer-target-season-csr"
+      >
+        <div className="flex-none border-b border-border px-4 py-2 text-sm font-medium">
+          {title}
+        </div>
+        <div
+          className="flex flex-1 items-center justify-center px-4 py-3 text-sm text-muted-foreground"
+          data-testid="explorer-target-season-csr-empty"
+        >
+          {emptyMessage}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div

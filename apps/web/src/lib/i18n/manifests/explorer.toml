@@ -604,9 +604,17 @@ en = "Time played"
 fr = "Classements CSR (saison actuelle)"
 en = "CSR rankings (current season)"
 
+[explorer.target_profile.season_csr_empty]
+fr = "Aucun classement CSR à afficher"
+en = "No CSR rankings to display"
+
 [explorer.target_profile.matches_per_season_title]
 fr = "Matchs par saison"
 en = "Matches per season"
+
+[explorer.target_profile.matches_per_season_empty]
+fr = "Aucun match par saison à afficher"
+en = "No matches per season to display"
 
 [explorer.target_profile.label_matches]
 fr = "Parties"

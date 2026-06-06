@@ -69,25 +69,22 @@ export function ExplorerTargetProfileCard({ profile, gamertag }: ExplorerTargetP
         </section>
       )}
 
-      {/* Classements CSR (1/3, gauche) + Matchs par saison (2/3, droite). */}
-      {(seasonCSRs.length > 0 || matchesPerSeason.length > 0) && (
-        <div className="grid gap-4 lg:grid-cols-3">
-          {seasonCSRs.length > 0 && (
-            <ExplorerTargetSeasonCSR
-              csrs={seasonCSRs}
-              title={t('explorer.target_profile.season_csr_title')}
-            />
-          )}
-          {matchesPerSeason.length > 0 && (
-            <div className="lg:col-span-2">
-              <ExplorerTargetSeasonMatches
-                seasons={matchesPerSeason}
-                title={t('explorer.target_profile.matches_per_season_title')}
-              />
-            </div>
-          )}
+      {/* Section saisons TOUJOURS rendue (placeholders titrés si vide) pour rendre
+          visibles les manques de données : Classements CSR (1/3, gauche) + Matchs
+          par saison (2/3, droite). Chaque sous-bloc gère son propre état vide. */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <ExplorerTargetSeasonCSR
+          csrs={seasonCSRs}
+          title={t('explorer.target_profile.season_csr_title')}
+          emptyMessage={t('explorer.target_profile.season_csr_empty')}
+        />
+        <div className="lg:col-span-2">
+          <ExplorerTargetSeasonMatches
+            seasons={matchesPerSeason}
+            title={t('explorer.target_profile.matches_per_season_title')}
+          />
         </div>
-      )}
+      </div>
 
       {/* Top médailles : repli ici uniquement si pas de profil de combat (sinon
           rendu à côté du donut Répartition des modes, cf. ExplorerCombatProfile). */}

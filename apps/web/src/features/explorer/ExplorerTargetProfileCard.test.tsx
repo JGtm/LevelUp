@@ -107,6 +107,10 @@ describe('ExplorerTargetProfileCard', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     // No-auth hint : absent
     expect(screen.queryByTestId('explorer-target-no-auth-hint')).not.toBeInTheDocument()
+    // Section saisons TOUJOURS rendue avec placeholders titrés (visibilité des
+    // manques), même sans season_csrs ni matches_per_season fournis.
+    expect(screen.getByTestId('explorer-target-season-csr-empty')).toBeInTheDocument()
+    expect(screen.getByTestId('explorer-target-season-matches')).toBeInTheDocument()
   })
 
   it('rend les sections enrichies (time-played, top médailles, CSR saison)', () => {
@@ -149,6 +153,10 @@ describe('ExplorerTargetProfileCard', () => {
     expect(screen.getByTestId('explorer-target-season-csr')).toBeInTheDocument()
     expect(screen.getByText('Ranked Arena')).toBeInTheDocument()
     expect(screen.getByText('Diamant III')).toBeInTheDocument()
+    // Matchs par saison : colonne droite TOUJOURS rendue même sans matches_per_season
+    // (placeholder titré) — jamais d'espace blanc silencieux à droite du bloc CSR.
+    expect(screen.getByTestId('explorer-target-season-matches')).toBeInTheDocument()
+    expect(screen.getByText('Aucun match par saison à afficher')).toBeInTheDocument()
   })
 
   it('ne rend jamais de bannière privacy (supprimée de l\'Explorer)', () => {

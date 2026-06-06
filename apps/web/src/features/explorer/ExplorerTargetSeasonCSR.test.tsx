@@ -28,7 +28,7 @@ describe('ExplorerTargetSeasonCSR', () => {
       csr({ playlist_id: 'p1', playlist_name: 'Ranked Arena', current: { value: 1523, tier: 'Diamond', sub_tier: 3, measurement_matches_remaining: 0, placement_total: 0 } }),
       csr({ playlist_id: 'p2', playlist_name: 'Ranked Slayer', current: { value: 1810, tier: 'Onyx', sub_tier: 0, measurement_matches_remaining: 0, placement_total: 0 } }),
     ]
-    renderWithProviders(<ExplorerTargetSeasonCSR csrs={csrs} title="CSR" />)
+    renderWithProviders(<ExplorerTargetSeasonCSR csrs={csrs} title="CSR" emptyMessage="Aucun classement" />)
     expect(screen.getByText('Ranked Arena')).toBeInTheDocument()
     // Tier traduit en FR (locale par défaut = fr) + sous-palier en romain.
     expect(screen.getByText('Diamant III')).toBeInTheDocument()
@@ -39,8 +39,14 @@ describe('ExplorerTargetSeasonCSR', () => {
     expect(screen.queryByText('1810')).not.toBeInTheDocument()
   })
 
-  it('ne rend rien si liste vide', () => {
-    const { container } = renderWithProviders(<ExplorerTargetSeasonCSR csrs={[]} title="CSR" />)
-    expect(container.querySelector('[data-testid="explorer-target-season-csr"]')).toBeNull()
+  it('rend un placeholder titré (jamais masqué) si liste vide', () => {
+    renderWithProviders(
+      <ExplorerTargetSeasonCSR csrs={[]} title="CSR" emptyMessage="Aucun classement CSR à afficher" />,
+    )
+    // Carte titrée + message centré rendus (visibilité des manques), plus de null.
+    expect(screen.getByTestId('explorer-target-season-csr')).toBeInTheDocument()
+    expect(screen.getByText('CSR')).toBeInTheDocument()
+    expect(screen.getByTestId('explorer-target-season-csr-empty')).toBeInTheDocument()
+    expect(screen.getByText('Aucun classement CSR à afficher')).toBeInTheDocument()
   })
 })
