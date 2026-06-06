@@ -30,6 +30,28 @@
 
 **Prochaine étape** : vérif end-to-end app (Home des 3 cibles) reste à faire ; commit sur autorisation (ne stager que les fichiers rendement, laisser intact le WIP seed_demo de la branche).
 
+## [2026-06-06] Démo médias 0 item — shared_social canonique + migration incomplète (bug prod latent) — Complété (code)
+
+**Statut** : Complété (code). Build+vet+test ops/migration/config OK. Deploy + reseed + vérif restants.
+
+**Symptôme** : page Média démo = 0 item (même la page, pas que la home), malgré 5 fichiers seedés.
+
+**Cause (2 niveaux)** :
+1. Le pipeline de lecture média (`media_repo_q37_pipeline.go:76`) retourne **vide si `SharedSocial == nil`** — PAS de fallback Player DB (le commentaire historique était faux). La démo avait `SharedSocialDBPath=""` (ancien « fix 500 ») → 0 média.
+2. Dès qu'on fournit un SharedSocial, le lecteur **assume le schéma canonique** (`id`/`media_file_id`/`player_slug`/`indexed_at`/`capture_start_utc`). Le seed démo écrivait le **schéma legacy bespoke** (`file_path`/`media_path`). Et la **migration canonique `TargetSharedSocial` est incomplète** : `capture_start_utc` + `indexed_at` (lues par le pipeline) ne sont jamais ajoutées → une install fraîche (ou fixture démo) plante en Binder Error. La prod ne marche que parce que la table a été créée par l'ancien `ops.IndexMedia`.
+
+**Décision (validée user : aligner la démo sur l'archi prod + corriger la migration = gain prod)** :
+1. **Migration** `add_capture_start_indexed_at_to_media_files` (TargetSharedSocial, ADD IF NOT EXISTS) → **bénéfice prod** (install fraîche ne casse plus).
+2. **seed-demo média** : écrit dans `data/demo/warehouse/shared_social.duckdb` au schéma **canonique via les migrations** (`applyMigrationsOnPath(TargetSharedSocial)`, comme déjà fait pour shared/player) — DDL bespoke supprimé. Helper `insertDemoMediaRow` (id=file_hash, player_slug, media_file_id). `file_path` relatif (= filename).
+3. **config** : `SharedSocialDBPath` → shared_social démo (si présent).
+4. **serving** : `media_captures_base_dir` démo = `/app/data/demo/players/DEMO/media` ; `file_path` relatif servi via cette base par `ServeMediaFile`.
+
+**Nettoyage** : DDL constants bespoke, `buildDemoMediaRoot`, `derefStr` (+ leurs tests) supprimés.
+
+**Prochaine étape** : commit → deploy → reseed démo → vérif page Média (liste + thumbnails).
+
+---
+
 ## [2026-06-06] Rang carrière en EN (prod+démo) — seed career_rank_translations one-shot — Complété (code)
 
 **Statut** : Complété (code). Build+vet+test ops/migration OK. Seed VPS one-shot + reseed démo restants.

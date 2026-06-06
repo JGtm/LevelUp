@@ -20,7 +20,10 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
+
+	"levelup/go-api/internal/migration"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -35,60 +38,26 @@ type mediaRegistryEntry struct {
 	MapName        *string `json:"map_name,omitempty"`
 }
 
-// DDL minimal pour media_files + media_match_associations. Synchronisé avec
-// src/data/media_indexer.py de l'ancien projet (cf. seed_demo_media_ddl.sql
-// inline ici pour autonomie).
-const mediaFilesDDL = `
-CREATE TABLE IF NOT EXISTS media_files (
-    file_path VARCHAR PRIMARY KEY,
-    file_hash VARCHAR NOT NULL,
-    file_name VARCHAR NOT NULL,
-    file_size BIGINT NOT NULL,
-    file_ext VARCHAR NOT NULL,
-    kind VARCHAR NOT NULL,
-    mtime DOUBLE NOT NULL,
-    mtime_paris_epoch DOUBLE,
-    thumbnail_path VARCHAR,
-    thumbnail_generated_at TIMESTAMP,
-    first_seen_at TIMESTAMP,
-    last_scan_at TIMESTAMP,
-    scan_version INTEGER,
-    capture_start_utc TIMESTAMP,
-    capture_end_utc TIMESTAMP,
-    duration_seconds DOUBLE,
-    title VARCHAR,
-    status VARCHAR NOT NULL DEFAULT 'active'
-)`
-
-const mediaAssocDDL = `
-CREATE TABLE IF NOT EXISTS media_match_associations (
-    media_path VARCHAR NOT NULL,
-    match_id VARCHAR NOT NULL,
-    xuid VARCHAR NOT NULL,
-    match_start_time TIMESTAMP NOT NULL,
-    association_confidence DOUBLE DEFAULT 1.0,
-    associated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    map_id VARCHAR,
-    map_name VARCHAR,
-    PRIMARY KEY (media_path, match_id, xuid)
-)`
-
 // extractDemoMedia est le point d'entrée du sous-pipeline média.
-// Retourne le nombre de fichiers réellement importés/réimportés dans outPlayerDB.
+// Écrit dans outSocialDB (shared_social.duckdb démo) au schéma CANONIQUE (via les
+// migrations TargetSharedSocial), pas un DDL bespoke : c'est le seul schéma que le
+// pipeline de lecture (Q37, mode shared_social : id/media_file_id/player_slug) sait
+// lire. playerSlug = identité du DemoPlayer (filtre "mine" côté media repo).
+// Retourne le nombre de fichiers réellement importés/réimportés.
 //
-//nolint:gocyclo // pipeline complet média : DDL + branch reimport/extract + copy + insert.
+//nolint:gocyclo // pipeline complet média : migrations + branch reimport/extract + copy + insert.
 func extractDemoMedia(
 	ctx context.Context,
-	srcPlayerDB, srcSharedDB, outPlayerDB, outMediaDir string,
+	srcPlayerDB, srcSharedDB, outSocialDB, outMediaDir string,
 	matchIDs []string,
-	demoXUID string,
+	playerSlug string,
 	maxMedia int,
 ) (int, error) {
 	if err := os.MkdirAll(outMediaDir, 0o755); err != nil {
 		return 0, fmt.Errorf("mkdir media: %w", err)
 	}
-	if err := ensureMediaTablesInPlayerDB(ctx, outPlayerDB); err != nil {
-		return 0, fmt.Errorf("ensure media tables: %w", err)
+	if err := applyMigrationsOnPath(outSocialDB, migration.TargetSharedSocial); err != nil {
+		return 0, fmt.Errorf("migrations shared_social démo: %w", err)
 	}
 
 	// Branch 1 : registry présent → réimport sans copie de fichiers.
@@ -96,7 +65,7 @@ func extractDemoMedia(
 	if entries, err := loadMediaRegistry(registryPath); err == nil && len(entries) > 0 {
 		slog.InfoContext(ctx, "seed-demo media: registry trouvé, réimport sans copie",
 			"entries", len(entries))
-		return reimportExistingMedia(ctx, outPlayerDB, outMediaDir, demoXUID, entries)
+		return reimportExistingMedia(ctx, outSocialDB, outMediaDir, playerSlug, entries)
 	}
 
 	// Branch 2 : extraction depuis source + copie fichiers.
@@ -126,13 +95,13 @@ func extractDemoMedia(
 		return 0, nil
 	}
 
-	dst, err := sql.Open("duckdb", outPlayerDB)
+	dst, err := sql.Open("duckdb", outSocialDB)
 	if err != nil {
-		return 0, fmt.Errorf("open out player: %w", err)
+		return 0, fmt.Errorf("open out shared_social: %w", err)
 	}
 	defer dst.Close()
 
-	imported, registry, err := copyAndInsertMedia(ctx, srcSrc, dst, candidates, outMediaDir, demoXUID)
+	imported, registry, err := copyAndInsertMedia(ctx, srcSrc, dst, candidates, outMediaDir, playerSlug)
 	if err != nil {
 		return imported, fmt.Errorf("copy+insert: %w", err)
 	}
@@ -143,22 +112,6 @@ func extractDemoMedia(
 		}
 	}
 	return imported, nil
-}
-
-// ensureMediaTablesInPlayerDB ouvre la player DB et crée les 2 tables si absentes.
-func ensureMediaTablesInPlayerDB(ctx context.Context, playerDBPath string) error {
-	db, err := sql.Open("duckdb", playerDBPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-	if _, err := db.ExecContext(ctx, mediaFilesDDL); err != nil {
-		return fmt.Errorf("media_files DDL: %w", err)
-	}
-	if _, err := db.ExecContext(ctx, mediaAssocDDL); err != nil {
-		return fmt.Errorf("media_match_associations DDL: %w", err)
-	}
-	return nil
 }
 
 // mediaTablesExist vérifie la présence des 2 tables dans la DB source.
@@ -198,16 +151,14 @@ func saveMediaRegistry(path string, entries []mediaRegistryEntry) error {
 // upload initial).
 func reimportExistingMedia(
 	ctx context.Context,
-	playerDBPath, outMediaDir, demoXUID string,
+	socialDBPath, outMediaDir, playerSlug string,
 	entries []mediaRegistryEntry,
 ) (int, error) {
-	db, err := sql.Open("duckdb", playerDBPath)
+	db, err := sql.Open("duckdb", socialDBPath)
 	if err != nil {
 		return 0, fmt.Errorf("open: %w", err)
 	}
 	defer db.Close()
-
-	demoMediaRoot := buildDemoMediaRoot(outMediaDir)
 
 	imported := 0
 	for _, e := range entries {
@@ -217,29 +168,26 @@ func reimportExistingMedia(
 			slog.WarnContext(ctx, "seed-demo media: fichier absent disque", "file", e.Filename)
 			continue
 		}
-		newPath := demoMediaRoot + "/" + e.Filename
 		ext := filepath.Ext(e.Filename)
-		kind := classifyMediaKind(ext)
-		mtimeUnix := float64(stat.ModTime().Unix())
-
-		// INSERT idempotent (ON CONFLICT DO NOTHING).
-		if _, err := db.ExecContext(ctx, `
-			INSERT INTO media_files (file_path, file_hash, file_name, file_size, file_ext, kind, mtime, status)
-			VALUES (?, ?, ?, ?, ?, ?, ?, 'active')
-			ON CONFLICT (file_path) DO NOTHING`,
-			newPath, e.FileHash, e.Filename, stat.Size(), ext, kind, mtimeUnix); err != nil {
-			slog.WarnContext(ctx, "seed-demo media: insert file failed", "file", e.Filename, "err", err)
-			continue
+		row := demoMediaRow{
+			ID:         mediaID(e.FileHash, e.Filename),
+			PlayerSlug: playerSlug,
+			// file_path RELATIF (= filename) : mediaStoredPathToURL le sert tel quel
+			// (/media/files/{filename}) et ServeMediaFile le résout contre
+			// MediaCapturesBaseDir (réglé sur le dossier média démo, cf. demoAppSettings).
+			FilePath:     e.Filename,
+			FileName:     e.Filename,
+			FileHash:     e.FileHash,
+			FileSize:     stat.Size(),
+			Kind:         classifyMediaKind(ext),
+			FileStem:     strings.TrimSuffix(e.Filename, ext),
+			FileExt:      ext,
+			MTime:        stat.ModTime().UTC(),
+			CaptureStart: nullTimeFromRegistry(e.MatchStartTime),
+			MatchID:      e.MatchID,
 		}
-
-		startTime := parseRegistryTime(e.MatchStartTime)
-		if _, err := db.ExecContext(ctx, `
-			INSERT INTO media_match_associations
-				(media_path, match_id, xuid, match_start_time, map_name)
-			VALUES (?, ?, ?, ?, ?)
-			ON CONFLICT (media_path, match_id, xuid) DO NOTHING`,
-			newPath, e.MatchID, demoXUID, startTime, derefStr(e.MapName)); err != nil {
-			slog.WarnContext(ctx, "seed-demo media: insert assoc failed", "file", e.Filename, "err", err)
+		if err := insertDemoMediaRow(ctx, db, row); err != nil {
+			slog.WarnContext(ctx, "seed-demo media: insert failed", "file", e.Filename, "err", err)
 			continue
 		}
 		imported++
@@ -247,14 +195,56 @@ func reimportExistingMedia(
 	return imported, nil
 }
 
-// buildDemoMediaRoot retourne le chemin absolu media root tel qu'il sera lu
-// par le serveur Go (LEVELUP_ROOT/data/players/DEMO/media). Fallback sur le
-// chemin local outMediaDir si LEVELUP_ROOT non défini (tests).
-func buildDemoMediaRoot(outMediaDir string) string {
-	if root := os.Getenv("LEVELUP_ROOT"); root != "" {
-		return filepath.ToSlash(filepath.Join(root, "data", "players", DefaultDemoGamertag, "media"))
+// demoMediaRow porte les champs d'une ligne média démo (schéma canonique shared_social).
+type demoMediaRow struct {
+	ID, PlayerSlug, FilePath, FileName, FileHash, Kind, FileStem, FileExt string
+	FileSize                                                              int64
+	MTime                                                                 time.Time
+	CaptureStart, CaptureEnd                                              sql.NullTime
+	MatchID                                                               string
+}
+
+// insertDemoMediaRow insère un média au schéma CANONIQUE shared_social (id +
+// player_slug + media_file_id) + son association. Idempotent (ON CONFLICT DO NOTHING).
+func insertDemoMediaRow(ctx context.Context, db *sql.DB, m demoMediaRow) error {
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO media_files
+			(id, player_slug, file_path, file_name, kind, file_hash, file_size,
+			 file_stem, file_ext, thumbnail_path, capture_start_utc, capture_end_utc,
+			 mtime, indexed_at, liked, status, created_at, updated_at)
+		VALUES (?,?,?,?,?,?,?,?,?,NULL,?,?,?,CURRENT_TIMESTAMP,FALSE,'active',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+		ON CONFLICT (id) DO NOTHING`,
+		m.ID, m.PlayerSlug, m.FilePath, m.FileName, m.Kind, m.FileHash, m.FileSize,
+		m.FileStem, m.FileExt, m.CaptureStart, m.CaptureEnd, m.MTime); err != nil {
+		return fmt.Errorf("insert media_files: %w", err)
 	}
-	return filepath.ToSlash(outMediaDir)
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds, created_at, is_manual)
+		VALUES (?, ?, 0, CURRENT_TIMESTAMP, FALSE)
+		ON CONFLICT (media_file_id, match_id) DO NOTHING`,
+		m.ID, m.MatchID); err != nil {
+		return fmt.Errorf("insert media_match_associations: %w", err)
+	}
+	return nil
+}
+
+// mediaID dérive l'id (PK media_files) : file_hash si présent, sinon le nom de
+// fichier (les médias démo ont des noms distincts).
+func mediaID(fileHash, fileName string) string {
+	if h := strings.TrimSpace(fileHash); h != "" {
+		return h
+	}
+	return fileName
+}
+
+// nullTimeFromRegistry convertit le match_start_time du registry (RFC3339) en
+// sql.NullTime — sert de capture_start_utc proxy au reimport (pas de capture réelle).
+func nullTimeFromRegistry(s *string) sql.NullTime {
+	t := parseRegistryTime(s)
+	if t.IsZero() {
+		return sql.NullTime{}
+	}
+	return sql.NullTime{Time: t, Valid: true}
 }
 
 // mediaCandidate identifie un fichier média à copier + son match associé.
@@ -402,23 +392,22 @@ func copyAndInsertMedia(
 	ctx context.Context,
 	src, dst *sql.DB,
 	candidates []mediaCandidate,
-	outMediaDir, demoXUID string,
+	outMediaDir, playerSlug string,
 ) (int, []mediaRegistryEntry, error) {
-	demoMediaRoot := buildDemoMediaRoot(outMediaDir)
 	registry := make([]mediaRegistryEntry, 0, len(candidates))
 	imported := 0
 
 	for _, c := range candidates {
 		filename := filepath.Base(c.SrcFilePath)
-		newPath := demoMediaRoot + "/" + filename
 		dstPath := filepath.Join(outMediaDir, filename)
 
-		// Récupérer les colonnes complètes depuis source.
-		row := src.QueryRowContext(ctx, `SELECT file_hash, file_size, file_ext, kind, mtime FROM media_files WHERE file_path = ?`, c.SrcFilePath)
+		// Récupérer les colonnes complètes depuis source (schéma legacy player DB).
+		row := src.QueryRowContext(ctx, `SELECT file_hash, file_size, file_ext, kind, mtime, capture_start_utc, capture_end_utc FROM media_files WHERE file_path = ?`, c.SrcFilePath)
 		var fileHash, fileExt, kind string
 		var fileSize int64
 		var mtime float64
-		if err := row.Scan(&fileHash, &fileSize, &fileExt, &kind, &mtime); err != nil {
+		var captureStart, captureEnd sql.NullTime
+		if err := row.Scan(&fileHash, &fileSize, &fileExt, &kind, &mtime, &captureStart, &captureEnd); err != nil {
 			slog.WarnContext(ctx, "seed-demo media: source row introuvable", "file", filename, "err", err)
 			continue
 		}
@@ -429,28 +418,26 @@ func copyAndInsertMedia(
 			continue
 		}
 
-		// INSERT media_files.
-		if _, err := dst.ExecContext(ctx, `
-			INSERT INTO media_files (file_path, file_hash, file_name, file_size, file_ext, kind, mtime, status)
-			VALUES (?, ?, ?, ?, ?, ?, ?, 'active')
-			ON CONFLICT (file_path) DO NOTHING`,
-			newPath, fileHash, filename, fileSize, fileExt, kind, mtime); err != nil {
-			slog.WarnContext(ctx, "seed-demo media: insert file failed", "file", filename, "err", err)
-			continue
+		if !captureStart.Valid && !c.TargetStartTime.IsZero() {
+			captureStart = sql.NullTime{Time: c.TargetStartTime, Valid: true}
 		}
-
-		// INSERT media_match_associations.
-		var mapNameVal any
-		if c.MapName != "" {
-			mapNameVal = c.MapName
+		mediaRow := demoMediaRow{
+			ID:           mediaID(fileHash, filename),
+			PlayerSlug:   playerSlug,
+			FilePath:     filename, // relatif (cf. reimport) → servi via MediaCapturesBaseDir démo
+			FileName:     filename,
+			FileHash:     fileHash,
+			FileSize:     fileSize,
+			Kind:         kind,
+			FileStem:     strings.TrimSuffix(filename, fileExt),
+			FileExt:      fileExt,
+			MTime:        time.Unix(int64(mtime), 0).UTC(),
+			CaptureStart: captureStart,
+			CaptureEnd:   captureEnd,
+			MatchID:      c.TargetMatchID,
 		}
-		if _, err := dst.ExecContext(ctx, `
-			INSERT INTO media_match_associations
-				(media_path, match_id, xuid, match_start_time, map_name)
-			VALUES (?, ?, ?, ?, ?)
-			ON CONFLICT (media_path, match_id, xuid) DO NOTHING`,
-			newPath, c.TargetMatchID, demoXUID, c.TargetStartTime, mapNameVal); err != nil {
-			slog.WarnContext(ctx, "seed-demo media: insert assoc failed", "file", filename, "err", err)
+		if err := insertDemoMediaRow(ctx, dst, mediaRow); err != nil {
+			slog.WarnContext(ctx, "seed-demo media: insert failed", "file", filename, "err", err)
 			continue
 		}
 
@@ -518,11 +505,4 @@ func parseRegistryTime(s *string) time.Time {
 		return time.Time{}
 	}
 	return t
-}
-
-func derefStr(s *string) any {
-	if s == nil {
-		return nil
-	}
-	return *s
 }

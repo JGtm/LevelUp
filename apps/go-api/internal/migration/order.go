@@ -149,6 +149,7 @@ var canonicalOrder = []string{
 	"add_player_slug_to_media_files",                          // shared_social
 	"add_file_name_to_media_files",                            // shared_social
 	"add_missing_columns_to_media_files",                      // shared_social
+	"add_capture_start_indexed_at_to_media_files",             // shared_social
 	"add_is_manual_to_media_match_associations",               // shared_social
 	"add_file_stem_ext_to_media_files",                        // shared_social
 	"align_media_files_legacy_schema",                         // shared_social
