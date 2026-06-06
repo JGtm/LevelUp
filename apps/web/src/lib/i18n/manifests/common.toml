@@ -105,6 +105,14 @@ en = "Sync up to date"
 fr = "Navigation principale"
 en = "Main navigation"
 
+[common.shell.logout]
+fr = "Se déconnecter"
+en = "Log out"
+
+[common.shell.logout_failed]
+fr = "Échec de la déconnexion."
+en = "Logout failed."
+
 [common.shell.logo_aria]
 fr = "LevelUp — retour à l'accueil"
 en = "LevelUp — back to home"
@@ -312,6 +320,14 @@ en = "Invitation codes"
 [common.admin.no_invitation_codes]
 fr = "Aucun code d'invitation."
 en = "No invitation codes."
+
+[common.admin.invite_generated]
+fr = "Code généré :"
+en = "Code generated:"
+
+[common.admin.invite_generate_failed]
+fr = "Échec de la génération du code."
+en = "Failed to generate code."
 
 [common.setup.config_loading]
 fr = "Vérification de la configuration…"
