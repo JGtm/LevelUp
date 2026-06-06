@@ -191,26 +191,30 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 		"include_media", opts.IncludeMedia,
 	)
 
-	// 1. Sélectionner les match_ids : 3 sessions en escouade les plus récentes
-	// (corpus 3-stack pour la page Escouade). Fallback : matchs récents classiques.
-	matchIDs, err := selectSquadSessionCorpus(ctx, opts.SourcePlayerDB, DefaultSquadSessions)
-	if err != nil || len(matchIDs) == 0 {
-		slog.WarnContext(ctx, "seed-demo: corpus squad indisponible → fallback matchs récents", "err", err)
-		matchIDs, err = selectRecentMatchIDs(ctx, opts.SourceSharedDB, opts.SourceXUID, opts.MaxMatches)
-		if err != nil {
-			return res, fmt.Errorf("seed-demo: select matches: %w", err)
-		}
+	// 1. Corpus = matchs récents (solo inclus, pour l'historique/home du DemoPlayer)
+	// UNION les 3 dernières sessions en escouade (pour la page Escouade). Dédupliqué.
+	// L'union garantit que le DemoPlayer garde un historique solo riche tout en
+	// disposant d'un vrai corpus 3-stack pour les coéquipiers.
+	recentMatches, rErr := selectRecentMatchIDs(ctx, opts.SourceSharedDB, opts.SourceXUID, opts.MaxMatches)
+	if rErr != nil {
+		slog.WarnContext(ctx, "seed-demo: matchs récents indisponibles", "err", rErr)
 	}
+	squadMatches, sErr := selectSquadSessionCorpus(ctx, opts.SourcePlayerDB, DefaultSquadSessions)
+	if sErr != nil {
+		slog.WarnContext(ctx, "seed-demo: corpus squad indisponible", "err", sErr)
+	}
+	matchIDs := unionMatchIDs(recentMatches, squadMatches)
 	if len(matchIDs) == 0 {
 		return res, fmt.Errorf("seed-demo: aucun match trouvé pour xuid=%s dans %s",
 			opts.SourceXUID, opts.SourceSharedDB)
 	}
 	res.MatchIDs = matchIDs
-	slog.InfoContext(ctx, "seed-demo: matchs sélectionnés", "count", len(matchIDs))
+	slog.InfoContext(ctx, "seed-demo: corpus sélectionné",
+		"total", len(matchIDs), "recent", len(recentMatches), "squad", len(squadMatches))
 
-	// 1b. Roster démo : source + coéquipiers principaux + autres participants,
-	// mappés vers des identités démo stables (xuid + gamertag anonymisés).
-	roster, err := buildDemoRoster(ctx, opts.SourceSharedDB, matchIDs, opts.SourceXUID, 2)
+	// 1b. Roster démo : source + coéquipiers principaux (classés sur le corpus
+	// escouade) + autres participants, mappés vers des identités démo stables.
+	roster, err := buildDemoRoster(ctx, opts.SourceSharedDB, squadMatches, matchIDs, opts.SourceXUID, 2)
 	if err != nil {
 		return res, fmt.Errorf("seed-demo: build roster: %w", err)
 	}

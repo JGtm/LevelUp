@@ -1,3 +1,18 @@
+## [2026-06-06] Kill-feed dead-state — port bit-exact FUN_140c1dd44 + capture des champs + sonde 93 morts — En cours (blocage décodeur amont)
+
+**Statut** : En cours. Go build+vet+test filmdec OK (CGO). Mécanisme RE confirmé et porté ; capture empirique faite ; **conclusion : champs non fiables faute de bit-exactness du spine delta biped i0..i10**.
+
+**Contexte** : mission weapon-attribution-v3, décoder le MÉCANISME du kill feed (PAS de held-weapon). RE établie : l'arme/source-de-dégât est lue dans le composant object-dead-state de la VICTIME ; forme lourde biped (typeIndex 0x23) = `FUN_140c1dd44`. Champs candidats : enums `+0x04`/`+0x08` (R5, table de tags = type-de-dégât/méthode), référence `+0x10` (global-id R32 résolu par GetLocalHandleFromGlobalId table DAT_144b404f0 = même mécanisme que l'arme du WeaponState).
+
+**Décision technique** :
+1. **Grammaire bit-exacte** de `FUN_140c1dd44` reconstituée par décompilation Ghidra de la fonction + 12 sous-lecteurs (FUN_1407f2058=R1+optR5, FUN_14080d6f0=R32, FUN_140c1e31c=R3-1, FUN_1406d1024=R1+optR6, FUN_1407f1f24=R4-1, FUN_1407f1e4c=R1+optR10, FUN_140c1e3f0=R8, FUN_1424cd17c/150=enum5, etc.). Correction d'un BUG du port existant sur le bloc `+0x10` (la branche était inversée : c'est `presentA=R1` ; si 1 → `presentGID=R1`+optR32 puis `+0x14=R3`,`+0x18=R1+optR6` ; si 0 → +0x10/+0x18=-1 et +0x14 NON lu).
+2. **Capture** : nouvelle struct `filmdec.DeadState` (Mort, EnumA/B, Val0c/0e, HasRef, GIDPresent, GlobalID, Val14/18) remontée via `EntityTrace.Dead` ; `consumeByName` passe à 3 retours.
+3. **Sonde** `cmd/tmp_deathfield` : rejoue les FRAME deltas biped (World capturé, combo idLowBits=11), capture les dead-states sur records CLEAN, croise par temps avec les 93 morts (chunk_27) + medals_earned.
+
+**Résultats observés (chiffrés, match 000d5950)** : sur 25543 deltas biped, 1596 dead-states présents sur record clean dont 632 Mort==true — concentrés slots 519 (580) et 515 (51). Test de fiabilité décisif : slot 519 produit **68 débuts-de-mort distincts** alors que la victime la plus tuée du match en a **14** (killer_victim_pairs) → le bit Mort lit un flux DÉSALIGNÉ. GlobalID +0x10 : 100 valeurs distinctes / 101 présentes (ratio 0.99 = bruit ; 0 match catalogue armes). EnumA/B : 33 valeurs (plage R5 saturée), ratio bas trompeur. Croisement temps : 18/93 « appariés » à ±200ms mais victimes incohérentes (coïncidences).
+
+**Conclusion / prochaine étape** : le dead-state est à i11, précédé de i0..i10 toujours présents (preMask popcount 4-6, jamais 0). Le port de `FUN_140c1dd44` est correct, MAIS la lecture est inexploitable car le spine delta biped n'est pas bit-exact en amont (largeurs runtime de i0 object-position-precision et i10 object-parent-state absentes du .exe statique — limite déjà documentée dans traverse.go). Trou décodeur à combler = ces largeurs runtime (source : header replication du film / Cheat Engine), PAS la grammaire du dead-state. Aucune régression (filmdec tests OK). Ne pas committer (consigne).
+
 ## [2026-06-06] Fix "Rendement / Résist." — agrégat volume-pondéré + dégâts/frag-équivalent — Complété
 
 **Statut** : Complété. Go build+vet+test (analysis, service) OK ; front typecheck+lint(0 err)+vitest (49 tests) OK.

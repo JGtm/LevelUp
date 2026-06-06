@@ -19,6 +19,11 @@ import (
 // DefaultSquadSessions : nombre de sessions en escouade retenues pour le corpus.
 const DefaultSquadSessions = 3
 
+// DefaultDemoMainGamertag : gamertag affiché du joueur démo principal. Distinct du
+// répertoire de sa player DB (DefaultDemoGamertag = "DEMO", cf. demoDirForIndex).
+// Doit rester aligné sur config.DemoRoster[0].Gamertag.
+const DefaultDemoMainGamertag = "DemoPlayer"
+
 // demoRosterEntry décrit le mapping d'un xuid réel vers son identité démo.
 type demoRosterEntry struct {
 	SourceXUID   string // xuid réel (ou bot/synthétique laissé tel quel)
@@ -76,30 +81,91 @@ func selectSquadSessionCorpus(ctx context.Context, sourcePlayerDBPath string, nS
 	return out, rows.Err()
 }
 
-// buildDemoRoster construit le mapping xuid→identité démo pour un corpus, en
-// lisant les participants du shared SOURCE. Ordre :
+// buildDemoRoster construit le mapping xuid→identité démo. Deux ensembles de
+// match_ids sont fournis :
+//   - rankMatchIDs : corpus servant à CLASSER les coéquipiers principaux (les 3
+//     sessions en escouade) — garantit que DemoPlayer2/3 sont les vrais partenaires
+//     d'escouade, pas des adversaires fréquents des matchs solo ajoutés au corpus.
+//   - allMatchIDs : corpus COMPLET (escouade + solo récents) dont TOUS les
+//     participants réels doivent être anonymisés (aucune vraie identité ne fuite).
+//
+// Ordre :
 //   - source → 0000…0000 / "DemoPlayer"
-//   - les maxTeammates coéquipiers les plus fréquents (réels, non-bots) →
+//   - les maxTeammates coéquipiers les plus fréquents du corpus escouade →
 //     0000…0001 / "DemoPlayer2", 0000…0002 / "DemoPlayer3", …
-//   - tous les autres participants réels → "Player N" (anonymes)
+//   - tous les autres participants réels du corpus complet → "Player N" (anonymes)
 //
 // Les bots / xuids synthétiques (non 15-16 chiffres) sont exclus du mapping
 // (laissés tels quels, pas de vie privée en jeu).
 func buildDemoRoster(
 	ctx context.Context,
 	srcSharedDBPath string,
-	matchIDs []string,
+	rankMatchIDs, allMatchIDs []string,
 	sourceXUID string,
 	maxTeammates int,
 ) ([]demoRosterEntry, error) {
+	if len(rankMatchIDs) == 0 {
+		rankMatchIDs = allMatchIDs // pas de corpus escouade → classer sur tout
+	}
 	db, err := sql.Open("duckdb", srcSharedDBPath+"?access_mode=READ_ONLY")
 	if err != nil {
 		return nil, fmt.Errorf("open source shared DB: %w", err)
 	}
 	defer db.Close()
 
-	idsLit := formatIDsLiteral(matchIDs)
-	// Participants réels (xuid 15-16 chiffres) hors source, classés par fréquence.
+	// Coéquipiers principaux : top-N du corpus escouade.
+	ranked, err := queryParticipantsByFreq(ctx, db, rankMatchIDs, sourceXUID)
+	if err != nil {
+		return nil, err
+	}
+	priorities := ranked
+	if len(priorities) > maxTeammates {
+		priorities = priorities[:maxTeammates]
+	}
+	priorityRank := make(map[string]int, len(priorities))
+	for i, x := range priorities {
+		priorityRank[x] = i + 1 // 1 → DemoPlayer2, 2 → DemoPlayer3
+	}
+
+	// Tous les participants réels du corpus complet (à anonymiser).
+	all, err := queryParticipantsByFreq(ctx, db, allMatchIDs, sourceXUID)
+	if err != nil {
+		return nil, err
+	}
+
+	roster := []demoRosterEntry{
+		{SourceXUID: sourceXUID, DemoXUID: demoXUIDForIndex(0), DemoGamertag: DefaultDemoMainGamertag, IsRosterMain: true},
+	}
+	for _, x := range priorities {
+		rank := priorityRank[x]
+		roster = append(roster, demoRosterEntry{
+			SourceXUID:   x,
+			DemoXUID:     demoXUIDForIndex(rank),
+			DemoGamertag: fmt.Sprintf("DemoPlayer%d", rank+1), // DemoPlayer2, DemoPlayer3
+			IsRosterMain: true,
+		})
+	}
+	idx := len(priorities) + 1
+	for _, x := range all {
+		if _, isPriority := priorityRank[x]; isPriority {
+			continue
+		}
+		roster = append(roster, demoRosterEntry{
+			SourceXUID:   x,
+			DemoXUID:     demoXUIDForIndex(idx),
+			DemoGamertag: fmt.Sprintf("Player %d", idx+1),
+		})
+		idx++
+	}
+	return roster, nil
+}
+
+// queryParticipantsByFreq retourne les xuid réels (15-16 chiffres, hors source)
+// présents dans matchIDs, classés par nombre de matchs décroissant (ordre stable).
+func queryParticipantsByFreq(ctx context.Context, db *sql.DB, matchIDs []string, sourceXUID string) ([]string, error) {
+	if len(matchIDs) == 0 {
+		return nil, nil
+	}
 	q := fmt.Sprintf(`
 		SELECT mp.xuid, COUNT(DISTINCT mp.match_id) AS n
 		FROM match_participants mp
@@ -107,34 +173,39 @@ func buildDemoRoster(
 		  AND mp.xuid <> '%s'
 		  AND regexp_matches(mp.xuid, '^[0-9]{15,16}$')
 		GROUP BY mp.xuid
-		ORDER BY n DESC, mp.xuid`, idsLit, sourceXUID)
+		ORDER BY n DESC, mp.xuid`, formatIDsLiteral(matchIDs), sourceXUID)
 	rows, err := db.QueryContext(ctx, q)
 	if err != nil {
 		return nil, fmt.Errorf("query participants: %w", err)
 	}
 	defer rows.Close()
-
-	roster := []demoRosterEntry{
-		{SourceXUID: sourceXUID, DemoXUID: demoXUIDForIndex(0), DemoGamertag: DefaultDemoGamertag, IsRosterMain: true},
-	}
-	idx := 1
+	var out []string
 	for rows.Next() {
 		var xuid string
 		var n int
 		if err := rows.Scan(&xuid, &n); err != nil {
 			return nil, err
 		}
-		e := demoRosterEntry{SourceXUID: xuid, DemoXUID: demoXUIDForIndex(idx)}
-		if idx <= maxTeammates {
-			e.DemoGamertag = fmt.Sprintf("DemoPlayer%d", idx+1) // DemoPlayer2, DemoPlayer3
-			e.IsRosterMain = true
-		} else {
-			e.DemoGamertag = fmt.Sprintf("Player %d", idx+1)
-		}
-		roster = append(roster, e)
-		idx++
+		out = append(out, xuid)
 	}
-	return roster, rows.Err()
+	return out, rows.Err()
+}
+
+// unionMatchIDs fusionne plusieurs listes de match_ids en préservant l'ordre de
+// première apparition (dédupliqué). La 1re liste passée est prioritaire pour l'ordre.
+func unionMatchIDs(lists ...[]string) []string {
+	seen := make(map[string]struct{})
+	var out []string
+	for _, l := range lists {
+		for _, id := range l {
+			if _, ok := seen[id]; ok {
+				continue
+			}
+			seen[id] = struct{}{}
+			out = append(out, id)
+		}
+	}
+	return out
 }
 
 // demoXUIDForIndex retourne le xuid démo (16 chiffres) pour un index : 0 →
