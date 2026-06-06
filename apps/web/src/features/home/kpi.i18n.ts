@@ -19,6 +19,10 @@ interface KPITextDict {
     favoritePlaylist: string
     offDef: string
     favoriteWeapon: string
+    matches: string
+    kda: string
+    winRate: string
+    accuracy: string
   }
   units: {
     year: string
@@ -47,6 +51,10 @@ export function getKPIText(locale?: string | null): KPITextDict {
       favoritePlaylist: t(loc, 'home.kpi.favorite_playlist'),
       offDef: t(loc, 'home.kpi.off_def'),
       favoriteWeapon: t(loc, 'home.kpi.favorite_weapon'),
+      matches: t(loc, 'home.kpi.matches_label'),
+      kda: t(loc, 'home.kpi.kda_label'),
+      winRate: t(loc, 'home.kpi.win_rate_label'),
+      accuracy: t(loc, 'home.kpi.accuracy_label'),
     },
     units: {
       year: t(loc, 'home.kpi.unit_year'),

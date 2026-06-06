@@ -221,6 +221,22 @@ en = "Off. / Def."
 fr = "Arme favorite"
 en = "Fav. weapon"
 
+[home.kpi.matches_label]
+fr = "Parties"
+en = "Matches"
+
+[home.kpi.kda_label]
+fr = "KDA"
+en = "KDA"
+
+[home.kpi.win_rate_label]
+fr = "Taux de victoire"
+en = "Win rate"
+
+[home.kpi.accuracy_label]
+fr = "Précision"
+en = "Accuracy"
+
 [home.kpi.unit_year]
 fr = "a"
 en = "y"
