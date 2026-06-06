@@ -63,10 +63,14 @@ describe('ExplorerTargetSeasonMatches', () => {
     expect(screen.getByText('Matchs par saison')).toBeInTheDocument()
   })
 
-  it('ne rend rien si liste vide', () => {
-    const { container } = renderWithProviders(
+  it('rend un placeholder titré (jamais masqué) si liste vide', () => {
+    renderWithProviders(
       <ExplorerTargetSeasonMatches seasons={[]} title="Matchs par saison" />,
     )
-    expect(container.querySelector('[data-testid="explorer-target-season-matches"]')).toBeNull()
+    // Jamais d'espace blanc silencieux : conteneur + barre de titre restent rendus,
+    // et ChartCard affiche son état « empty » (testid stable, indépendant de la locale).
+    expect(screen.getByTestId('explorer-target-season-matches')).toBeInTheDocument()
+    expect(screen.getByText('Matchs par saison')).toBeInTheDocument()
+    expect(screen.getByTestId('chart-card-empty')).toBeInTheDocument()
   })
 })

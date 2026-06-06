@@ -42,13 +42,18 @@ export function ExplorerTargetSeasonMatches({ seasons, title }: ExplorerTargetSe
     [seasons, locale],
   )
 
-  if (seasons.length === 0) return null
+  // Pas de `return null` sur saisons vides : on laisse ChartCard afficher son état
+  // « empty » (barre de titre + message centré) pour ne JAMAIS masquer le graphe en
+  // silence — un espace blanc laisse croire à un bug. series=[] déclenche l'état
+  // empty de ChartCard, qui n'appelle alors pas buildOption (pas de rendu ECharts).
+  const series = seasons.length > 0 ? toSeasonSeries(seasons, matchesLabel) : []
 
   return (
     <div data-testid="explorer-target-season-matches">
       <ChartCard
         title={title}
-        series={toSeasonSeries(seasons, matchesLabel)}
+        series={series}
+        emptyMessage={t('explorer.target_profile.matches_per_season_empty')}
         height={220}
         buildOption={buildOption}
       />

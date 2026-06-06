@@ -328,29 +328,47 @@ func NewRouter(
 	// reste ouvert pour la durée du process (OpenReadWriteShared = pool
 	// reference-counted, le close de cmd/server décrémente).
 	if seasonsAssets, ok := fieldMappingsRegistry.GetAssets(titlePkg.DefaultSlug); ok {
+		// La DB metadata est OPTIONNELLE : si elle est indisponible (verrou RW pris
+		// par un autre process) ou si EnsureSeasonTables échoue, on câble quand même
+		// le catalogue en TOML-seul (repo=nil → Load court-circuite DB + provider).
+		// Sinon les saisons du TOML sont perdues et le breakdown « matchs par saison »
+		// (Explorer) disparaît silencieusement.
+		//
+		// NB : seasonsRepo est typé en interface (port.MetadataRepository), PAS en
+		// *MetadataRepo concret — un pointeur concret nil emballé dans une interface
+		// n'est pas == nil, ce qui ferait échouer le court-circuit repo==nil du
+		// catalogue (piège classique Go).
+		var seasonsRepo port.MetadataRepository // nil ⇒ catalogue TOML-seul
 		seasonsMetaPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug)
 		if seasonsMetaDB, err := platform_duckdb.OpenReadWriteShared(seasonsMetaPath); err != nil {
 			slog.Warn("seasons_catalog_meta_db_unavailable",
 				"err", err, "fallback", "static_toml_only")
 		} else {
-			// Handle RW persistant sur metadata.duckdb : le SeasonsCatalog le
-			// garde pour la vie du process. Tracker pour fermeture au shutdown
-			// via reg.Close(), sinon fuite de refCount (cf. INCIDENT_2026-05-21).
-			reg.TrackMetadataHandle(seasonsMetaDB)
-			seasonsRepo := platform_duckdb.NewMetadataRepoFromDB(seasonsMetaDB)
+			candidateRepo := platform_duckdb.NewMetadataRepoFromDB(seasonsMetaDB)
 			// Tables idempotentes : la migration peut ne pas avoir tourné encore.
-			if ensureErr := seasonsRepo.EnsureSeasonTables(context.Background()); ensureErr != nil {
+			if ensureErr := candidateRepo.EnsureSeasonTables(context.Background()); ensureErr != nil {
+				// Handle ouvert mais inexploitable : le fermer pour ne pas fuiter le
+				// refCount du pool (cf. INCIDENT_2026-05-21). Repli en TOML-seul.
+				_ = seasonsMetaDB.Close()
 				slog.Warn("seasons_catalog_ensure_tables_failed",
 					"err", ensureErr, "fallback", "static_toml_only")
 			} else {
-				catalog := service.NewSeasonsCatalog(seasonsAssets, seasonsRepo, halo.DefaultHaloProvider, slog.Default())
-				reg.WithSeasonsCatalog(catalog)
-				slog.Info("seasons_catalog_ready",
-					"title_slug", titlePkg.DefaultSlug,
-					"toml_count", len(seasonsAssets.AllOfKind("season")),
-				)
+				// Handle RW persistant sur metadata.duckdb : le SeasonsCatalog le
+				// garde pour la vie du process. Tracker pour fermeture au shutdown
+				// via reg.Close(), sinon fuite de refCount (cf. INCIDENT_2026-05-21).
+				reg.TrackMetadataHandle(seasonsMetaDB)
+				seasonsRepo = candidateRepo
 			}
 		}
+		// Toujours câbler le catalogue : repo nil ⇒ TOML-seul. db_wired distingue le
+		// mode complet (DB fraîche + lazy fetch) du mode dégradé (TOML-seul) en prod.
+		catalog := service.NewSeasonsCatalog(seasonsAssets, seasonsRepo, halo.DefaultHaloProvider, slog.Default())
+		reg.WithSeasonsCatalog(catalog)
+		slog.Info("seasons_catalog_ready",
+			"title_slug", titlePkg.DefaultSlug,
+			"toml_count", len(seasonsAssets.AllOfKind("season")),
+			"db_wired", seasonsRepo != nil,
+		)
 	}
 
 	// AssetMetadataHandler — listing maps & armes pour l'Asset Drawer.
