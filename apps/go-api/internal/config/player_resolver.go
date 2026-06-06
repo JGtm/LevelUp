@@ -24,9 +24,37 @@ func ResolvePlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug string) 
 		titleSlug = title.DefaultSlug
 	}
 	if cfg.DemoMode {
-		return resolveDemoPlayer(ctx, cfg, titleSlug)
+		return resolveDemoPlayer(ctx, cfg, slug, titleSlug)
 	}
 	return resolveRealPlayer(ctx, cfg, slug, titleSlug)
+}
+
+// demoPlayerDef décrit un joueur démo du stack (DemoPlayer + 2 coéquipiers).
+type demoPlayerDef struct {
+	Slug     string
+	Gamertag string
+	XUID     string
+	Dir      string // sous-répertoire fixtures : DEMO, DEMO2, DEMO3
+}
+
+// DemoRoster : les 3 joueurs démo fixes. Cohérent avec seed-demo
+// (demoXUIDForIndex / demoDirForIndex / DemoPlayer{,2,3}). Le main "demo-player"
+// est l'index 0 ; les 2 coéquipiers principaux sont 2 et 3.
+var DemoRoster = []demoPlayerDef{
+	{Slug: "demo-player", Gamertag: "DemoPlayer", XUID: "0000000000000000", Dir: "DEMO"},
+	{Slug: "demo-player-2", Gamertag: "DemoPlayer2", XUID: "0000000000000001", Dir: "DEMO2"},
+	{Slug: "demo-player-3", Gamertag: "DemoPlayer3", XUID: "0000000000000002", Dir: "DEMO3"},
+}
+
+// demoDefForSlug retourne la def démo pour un slug OU un gamertag (résolution
+// squad par gamertag), insensible à la casse. Fallback : le main (index 0).
+func demoDefForSlug(slug string) demoPlayerDef {
+	for _, d := range DemoRoster {
+		if strings.EqualFold(d.Slug, slug) || strings.EqualFold(d.Gamertag, slug) {
+			return d
+		}
+	}
+	return DemoRoster[0]
 }
 
 // resolveDemoPlayer ouvre le joueur de démo depuis DemoFixturesDir.
@@ -41,19 +69,27 @@ func ResolvePlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug string) 
 //
 // En cas de fixture absente, retourne une erreur explicite avec la commande
 // pour regénérer (go run ./cmd/levelup seed-demo).
-func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, titleSlug string) (*duckdb.PlayerDB, error) {
+func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug string) (*duckdb.PlayerDB, error) {
 	dir := cfg.DemoFixturesDir
+	def := demoDefForSlug(slug) // DemoPlayer (main) ou un coéquipier DemoPlayer2/3
 
-	// Résolution du chemin stats.duckdb : structure seed-demo d'abord, plate ensuite.
-	statsPath := filepath.Join(dir, "players", "DEMO", "stats.duckdb")
+	// Résolution du chemin stats.duckdb : structure seed-demo (par joueur du
+	// roster) d'abord, plate (fixtures legacy, main only) ensuite.
+	statsPath := filepath.Join(dir, "players", def.Dir, "stats.duckdb")
 	sharedPath := filepath.Join(dir, "warehouse", "shared_matches_v2.duckdb")
 	metaPath := filepath.Join(dir, "warehouse", "metadata.duckdb")
+	xuidBytes := def.XUID
+	gamertag := def.Gamertag
 
 	if _, err := os.Stat(statsPath); os.IsNotExist(err) {
-		// Fallback : structure plate (fixtures commitées dans tests/)
+		// Fallback : structure plate (fixtures commitées dans tests/) — main only.
 		statsPath = filepath.Join(dir, "stats.duckdb")
 		sharedPath = filepath.Join(dir, "shared_matches_v2.duckdb")
 		metaPath = filepath.Join(dir, "metadata.duckdb")
+		gamertag = "DemoPlayer"
+		if xb, e := readXUIDFile(filepath.Join(dir, "xuid.txt")); e == nil {
+			xuidBytes = xb
+		}
 	}
 
 	if _, err := os.Stat(statsPath); os.IsNotExist(err) {
@@ -65,13 +101,9 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, titleSlug string) (*
 		)
 	}
 
-	xuidBytes, err := readXUIDFile(filepath.Join(dir, "xuid.txt"))
-	if err != nil {
-		xuidBytes = "2535469190789936" // fallback XUID Chocoboflor
-	}
 	pr := title.NewPathResolver(cfg.RepoRoot)
 	pcfg := duckdb.PlayerPoolConfig{
-		Gamertag:                "DemoPlayer",
+		Gamertag:                gamertag,
 		XUID:                    xuidBytes,
 		TitleSlug:               titleSlug,
 		PlayerDBPath:            statsPath,
