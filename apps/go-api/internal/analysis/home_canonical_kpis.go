@@ -19,10 +19,9 @@ func ComputeKPIsFromCanonical(rows []canonical.PlayerMatchRow, totalMatches int,
 	var kdaSum, kdaCount float64
 	var accSum, accCount float64
 	var totalPlaytime int
-	var offSum, offCount float64
-	var defSum, defCount float64
+	var hasCombatYield bool
 	var totalDmgDealt, totalDmgTaken float64
-	var totalKills, totalDeaths int
+	var totalKills, totalAssists, totalDeaths int
 	playlistCounts := make(map[string]int)
 	playlistNames := make(map[string]string)
 
@@ -53,22 +52,12 @@ func ComputeKPIsFromCanonical(rows []canonical.PlayerMatchRow, totalMatches int,
 			totalPlaytime += *r.Self.TimePlayed
 		}
 		if r.Self.DamageDealt != nil && r.Self.DamageTaken != nil {
-			k := derefIntZero(r.Self.Kills)
-			a := derefIntZero(r.Self.Assists)
-			d := derefIntZero(r.Self.Deaths)
-			cy := ComputeCombatYield(k, a, float64(*r.Self.DamageDealt), float64(*r.Self.DamageTaken), d)
-			if cy.OffensiveConversion > 0 {
-				offSum += cy.OffensiveConversion
-				offCount++
-			}
-			if cy.DefensiveResistance > 0 {
-				defSum += cy.DefensiveResistance
-				defCount++
-			}
+			hasCombatYield = true
 			totalDmgDealt += float64(*r.Self.DamageDealt)
 			totalDmgTaken += float64(*r.Self.DamageTaken)
-			totalKills += k
-			totalDeaths += d
+			totalKills += derefIntZero(r.Self.Kills)
+			totalAssists += derefIntZero(r.Self.Assists)
+			totalDeaths += derefIntZero(r.Self.Deaths)
 		}
 		if r.Summary.Playlist != nil {
 			id := r.Summary.Playlist.ID
@@ -105,16 +94,23 @@ func ComputeKPIsFromCanonical(rows []canonical.PlayerMatchRow, totalMatches int,
 		v := round1(accSum / accCount)
 		kpis.AvgAccuracy = &v
 	}
-	if offCount > 0 {
-		v := round2(offSum / offCount)
-		kpis.AvgOffensiveConversion = &v
+	// Rendement / résistance : AGRÉGAT volume-pondéré (Σ sur tous les matchs), pas une
+	// moyenne des ratios par match (qui sur-pondérait les matchs à faible volume et
+	// décrochait du dégâts/frag affiché). OC garde le crédit assists (frag-équivalent).
+	if hasCombatYield {
+		cy := ComputeCombatYieldFloat(float64(totalKills), float64(totalAssists), totalDmgDealt, totalDmgTaken, float64(totalDeaths))
+		if cy.OffensiveConversion > 0 {
+			v := round2(cy.OffensiveConversion)
+			kpis.AvgOffensiveConversion = &v
+		}
+		if cy.DefensiveResistance > 0 {
+			v := round2(cy.DefensiveResistance)
+			kpis.AvgDefensiveResistance = &v
+		}
 	}
-	if defCount > 0 {
-		v := round2(defSum / defCount)
-		kpis.AvgDefensiveResistance = &v
-	}
-	if totalKills > 0 {
-		v := totalDmgDealt / float64(totalKills)
+	// Dégâts par frag-équivalent : dénominateur = frags + assists/3, aligné sur OC
+	// (% = 225 / DmgPerKill). DmgPerDeath reste brut (pas d'assists en défense).
+	if v := DamagePerFragEquivalent(totalDmgDealt, float64(totalKills), float64(totalAssists)); v > 0 {
 		kpis.DmgPerKill = &v
 	}
 	if totalDeaths > 0 {

@@ -218,10 +218,8 @@ func buildCompareEntryWithObjectives(
 		return nil
 	}
 	wins, losses := 0, 0
-	totalKills, totalDeaths := 0, 0
+	totalKills, totalAssists, totalDeaths := 0, 0, 0
 	var minTime, maxTime time.Time
-	var ocSum, drSum float64
-	var ocCount, drCount int
 	var totalDmgDealt, totalDmgTaken float64
 	var residualSum float64
 	var residualCount int
@@ -247,20 +245,13 @@ func buildCompareEntryWithObjectives(
 			}
 		}
 		totalKills += m.Kills
+		totalAssists += m.Assists
 		totalDeaths += m.Deaths
 		if m.DamageDealt != nil {
 			totalDmgDealt += *m.DamageDealt
 		}
 		if m.DamageTaken != nil {
 			totalDmgTaken += *m.DamageTaken
-		}
-		if m.OffensiveConversion != nil {
-			ocSum += *m.OffensiveConversion
-			ocCount++
-		}
-		if m.DefensiveResistance != nil {
-			drSum += *m.DefensiveResistance
-			drCount++
 		}
 		if m.EngagementScoreBrut != nil {
 			residualSum += *m.EngagementScoreBrut
@@ -278,13 +269,17 @@ func buildCompareEntryWithObjectives(
 		kda = &v
 	}
 
+	// Rendement / résistance : AGRÉGAT volume-pondéré sur les totaux de la session
+	// (pas une moyenne des OC par match). OC garde les assists (frag-équivalent),
+	// calculé sur les mêmes totaux que dmgPerKill → % = 225 / dmgPerKill.
 	var avgOC, avgDR *float64
-	if ocCount > 0 {
-		v := math.Round(ocSum/float64(ocCount)*100) / 100
+	cy := analysis.ComputeCombatYieldFloat(float64(totalKills), float64(totalAssists), totalDmgDealt, totalDmgTaken, float64(totalDeaths))
+	if cy.OffensiveConversion > 0 {
+		v := math.Round(cy.OffensiveConversion*100) / 100
 		avgOC = &v
 	}
-	if drCount > 0 {
-		v := math.Round(drSum/float64(drCount)*100) / 100
+	if cy.DefensiveResistance > 0 {
+		v := math.Round(cy.DefensiveResistance*100) / 100
 		avgDR = &v
 	}
 	var avgResidualBrut *float64
@@ -292,9 +287,9 @@ func buildCompareEntryWithObjectives(
 		v := math.Round(residualSum/float64(residualCount)*100) / 100
 		avgResidualBrut = &v
 	}
+	// Dégâts par frag-équivalent (frags + assists/3) aligné sur OC ; dmgPerDeath brut.
 	var dmgPerKill, dmgPerDeath *float64
-	if totalKills > 0 {
-		v := totalDmgDealt / float64(totalKills)
+	if v := analysis.DamagePerFragEquivalent(totalDmgDealt, float64(totalKills), float64(totalAssists)); v > 0 {
 		dmgPerKill = &v
 	}
 	if totalDeaths > 0 {

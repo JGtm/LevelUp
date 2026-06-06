@@ -17,6 +17,7 @@ import {
   displayRatingLabel,
   formatOffensiveConversion,
   formatDefensiveResistance,
+  effectiveDmgPerFrag,
 } from './index'
 
 describe('formatDate', () => {
@@ -187,5 +188,24 @@ describe('formatDefensiveResistance', () => {
     expect(formatDefensiveResistance(null)).toBe('—')
     expect(formatDefensiveResistance(undefined)).toBe('—')
     expect(formatDefensiveResistance(NaN)).toBe('—')
+  })
+})
+
+describe('effectiveDmgPerFrag', () => {
+  it('compte les assists au dénominateur (frags + assists/3)', () => {
+    // 2000 dégâts / (10 + 6/3) = 2000/12 ≈ 166.67
+    expect(effectiveDmgPerFrag(2000, 10, 6)).toBeCloseTo(2000 / 12, 6)
+  })
+
+  it("est l'inverse exact du rendement : OC = 225 / effectiveDmgPerFrag", () => {
+    const dpfe = effectiveDmgPerFrag(2000, 10, 6) as number
+    // OC officiel = 225 × (10 + 6/3) / 2000 = 1.35
+    expect(225 / dpfe).toBeCloseTo((225 * 12) / 2000, 6)
+  })
+
+  it('renvoie null si dégâts absents ou dénominateur ≤ 0', () => {
+    expect(effectiveDmgPerFrag(null, 10, 6)).toBeNull()
+    expect(effectiveDmgPerFrag(undefined, 10, 6)).toBeNull()
+    expect(effectiveDmgPerFrag(2000, 0, 0)).toBeNull()
   })
 })

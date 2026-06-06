@@ -16,6 +16,7 @@ import { skillDeltaScale, kdScale, mmrDeltaScale } from '@/lib/accessibility/sca
 import { tokenCssVar } from '@/lib/accessibility'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
 import { formatMessage } from '@/lib/i18n/format'
+import { effectiveDmgPerFrag } from '@/lib/formatters'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export interface MatchCardProps {
@@ -114,8 +115,9 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
   const kdaTotal = kills + assists + deaths
 
   const hasDamageBar = m.offensive_conversion != null || m.defensive_resistance != null
-  // Dégâts par frag / par mort dérivés des totaux du match (parité bande Synthesis).
-  const dmgPerKill = m.damage_dealt != null && kills > 0 ? m.damage_dealt / kills : null
+  // Dégâts par frag-équivalent (frags + assists/3) : aligné sur offensive_conversion
+  // (% = 225 / dmgPerKill). Dégâts/mort restent bruts (pas d'assists en défense).
+  const dmgPerKill = effectiveDmgPerFrag(m.damage_dealt, kills, assists)
   const dmgPerDeath = m.damage_taken != null && deaths > 0 ? m.damage_taken / deaths : null
 
   const hasAccuracyLine = m.accuracy != null || m.avg_life_secs != null

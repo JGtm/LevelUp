@@ -29,7 +29,7 @@ export interface CombatYieldBarProps {
   offensiveConversion?: number | null
   /** defensive_resistance = damage_taken / (225 × deaths) */
   defensiveResistance?: number | null
-  /** Dégâts moyens par kill (pour tooltip) */
+  /** Dégâts moyens par frag-équivalent (kills + assists/3) — pour tooltip */
   damagePerKill?: number | null
   /** Dégâts moyens par mort (pour tooltip) */
   damagePerDeath?: number | null

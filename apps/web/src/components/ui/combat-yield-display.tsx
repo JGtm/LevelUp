@@ -34,9 +34,10 @@ export interface CombatYieldDisplayProps {
   offensiveConversion?: number | null
   /** defensive_resistance brut, baseline 1.0 (ex 1.18). */
   defensiveResistance?: number | null
-  /** Dégâts moyens par frag (Σ damage_dealt / Σ kills). */
+  /** Dégâts moyens par frag-équivalent : Σ damage_dealt / (Σ kills + Σ assists/3).
+   *  Inverse exact du rendement : offensiveConversion = 225 / dmgPerKill. */
   dmgPerKill?: number | null
-  /** Dégâts moyens par mort (Σ damage_taken / Σ deaths). */
+  /** Dégâts moyens par mort (Σ damage_taken / Σ deaths, sans assists). */
   dmgPerDeath?: number | null
   /** Label optionnel affiché au-dessus (ex "Rendement / Résistance"). */
   label?: string

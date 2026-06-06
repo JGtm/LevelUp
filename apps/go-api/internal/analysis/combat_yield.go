@@ -23,6 +23,28 @@ const (
 	CombatYieldClipFactor  = 1.5 // clippage à 1.5× p80
 )
 
+// assistFragWeight : convention officielle Halo Infinite — 1 assist = 1/3 de frag.
+// Coefficient unique partagé par OffensiveConversion (numérateur) et le dégâts par
+// frag-équivalent (dénominateur), pour que % et chiffre affiché restent l'inverse exact.
+const assistFragWeight = 3.0
+
+// FragEquivalents = frags + assists/3. Dénominateur commun au rendement offensif
+// (OffensiveConversion) et au dégâts par frag-équivalent affiché.
+func FragEquivalents(kills, assists float64) float64 {
+	return kills + assists/assistFragWeight
+}
+
+// DamagePerFragEquivalent = dégâts / (frags + assists/3). C'est l'inverse exact du
+// rendement offensif normalisé : OffensiveConversion = 225 / DamagePerFragEquivalent.
+// Retourne 0 si le dénominateur est nul ou négatif.
+func DamagePerFragEquivalent(damageDealt, kills, assists float64) float64 {
+	fe := FragEquivalents(kills, assists)
+	if fe <= 0 {
+		return 0
+	}
+	return damageDealt / fe
+}
+
 // ComputeCombatYield calcule le rendement combat depuis les stats brutes d'un match.
 //
 // Cas limites : retourne 0 si les dénominateurs sont nuls ou négatifs.
@@ -37,7 +59,7 @@ func ComputeCombatYield(kills, assists int, damageDlt, damageTkn float64, deaths
 func ComputeCombatYieldFloat(kills, assists, damageDlt, damageTkn, deaths float64) CombatYield {
 	var cy CombatYield
 	if damageDlt > 0 {
-		cy.OffensiveConversion = 225.0 * (kills + assists/3.0) / damageDlt
+		cy.OffensiveConversion = 225.0 * FragEquivalents(kills, assists) / damageDlt
 		cy.OffensiveFinishing = 225.0 * kills / damageDlt
 	}
 	if damageTkn > 0 && deaths > 0 {

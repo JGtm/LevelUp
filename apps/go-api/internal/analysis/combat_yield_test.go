@@ -80,6 +80,33 @@ func TestComputeCombatYield_assistCoefficient(t *testing.T) {
 	}
 }
 
+func TestFragEquivalents_assistThird(t *testing.T) {
+	// 10 frags + 6 assists → 10 + 6/3 = 12 frag-équivalents.
+	if got := FragEquivalents(10, 6); math.Abs(got-12) > 1e-9 {
+		t.Errorf("FragEquivalents(10,6) = %f, want 12", got)
+	}
+}
+
+func TestDamagePerFragEquivalent_isInverseOfOC(t *testing.T) {
+	// dégâts/frag-équivalent = 2000 / (10 + 6/3) = 2000/12 ≈ 166.67
+	dpfe := DamagePerFragEquivalent(2000, 10, 6)
+	want := 2000.0 / 12.0
+	if math.Abs(dpfe-want) > 1e-9 {
+		t.Errorf("DamagePerFragEquivalent = %f, want %f", dpfe, want)
+	}
+	// Invariant clé : OffensiveConversion == 225 / DamagePerFragEquivalent.
+	cy := ComputeCombatYield(10, 6, 2000, 1800, 4)
+	if math.Abs(cy.OffensiveConversion-225.0/dpfe) > 1e-9 {
+		t.Errorf("OC (%f) != 225/dmgPerFragEq (%f)", cy.OffensiveConversion, 225.0/dpfe)
+	}
+}
+
+func TestDamagePerFragEquivalent_zeroDenominator(t *testing.T) {
+	if got := DamagePerFragEquivalent(2000, 0, 0); got != 0 {
+		t.Errorf("DamagePerFragEquivalent with 0 frags/assists should be 0, got %f", got)
+	}
+}
+
 func TestNormalizeForBar_belowP80(t *testing.T) {
 	n := NormalizeForBar(0.5, OffensiveConversionP80)
 	want := 0.5 / OffensiveConversionP80
