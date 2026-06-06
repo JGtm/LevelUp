@@ -184,10 +184,15 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 		"include_media", opts.IncludeMedia,
 	)
 
-	// 1. Sélectionner les match_ids
-	matchIDs, err := selectRecentMatchIDs(ctx, opts.SourceSharedDB, opts.SourceXUID, opts.MaxMatches)
-	if err != nil {
-		return res, fmt.Errorf("seed-demo: select matches: %w", err)
+	// 1. Sélectionner les match_ids : 3 sessions en escouade les plus récentes
+	// (corpus 3-stack pour la page Escouade). Fallback : matchs récents classiques.
+	matchIDs, err := selectSquadSessionCorpus(ctx, opts.SourcePlayerDB, DefaultSquadSessions)
+	if err != nil || len(matchIDs) == 0 {
+		slog.WarnContext(ctx, "seed-demo: corpus squad indisponible → fallback matchs récents", "err", err)
+		matchIDs, err = selectRecentMatchIDs(ctx, opts.SourceSharedDB, opts.SourceXUID, opts.MaxMatches)
+		if err != nil {
+			return res, fmt.Errorf("seed-demo: select matches: %w", err)
+		}
 	}
 	if len(matchIDs) == 0 {
 		return res, fmt.Errorf("seed-demo: aucun match trouvé pour xuid=%s dans %s",
@@ -195,6 +200,14 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	}
 	res.MatchIDs = matchIDs
 	slog.InfoContext(ctx, "seed-demo: matchs sélectionnés", "count", len(matchIDs))
+
+	// 1b. Roster démo : source + coéquipiers principaux + autres participants,
+	// mappés vers des identités démo stables (xuid + gamertag anonymisés).
+	roster, err := buildDemoRoster(ctx, opts.SourceSharedDB, matchIDs, opts.SourceXUID, 2)
+	if err != nil {
+		return res, fmt.Errorf("seed-demo: build roster: %w", err)
+	}
+	slog.InfoContext(ctx, "seed-demo: roster démo construit", "participants", len(roster))
 
 	// 2. Copie metadata.duckdb
 	outMeta := filepath.Join(opts.OutDir, "warehouse", "metadata.duckdb")
@@ -213,6 +226,15 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	}
 	res.SharedRows = sharedRows
 	slog.InfoContext(ctx, "seed-demo: shared extraite", "out", outShared, "rows", sharedRows)
+
+	// 3b. Anonymisation universelle : remappe TOUS les xuid + gamertag du shared
+	// (source → DemoPlayer, coéquipiers → DemoPlayer2/3, autres → Player N) pour
+	// que les médailles/arme/frags du DemoPlayer s'affichent ET qu'aucun vrai
+	// gamertag ne fuite (page Escouade, kill-feed, Face-à-face).
+	if err := anonymizeSharedUniversal(ctx, outShared, roster); err != nil {
+		return res, fmt.Errorf("seed-demo: anonymisation universelle: %w", err)
+	}
+	slog.InfoContext(ctx, "seed-demo: anonymisation universelle appliquée", "mapped", len(roster))
 
 	// 4. Extraction player
 	outPlayer := filepath.Join(opts.OutDir, "players", opts.DemoGamertag, "stats.duckdb")
@@ -487,11 +509,12 @@ func extractSharedTables(
 		counts[t.name] = n
 	}
 
-	// Anonymisation : sourceXUID → demoXUID.
-	if err := anonymizeXUIDInTables(ctx, dst, sourceXUID, demoXUID,
-		[]string{"match_participants", "xuid_aliases"}); err != nil {
-		return counts, fmt.Errorf("anonymize: %w", err)
-	}
+	// NB : l'anonymisation des xuid/gamertag (source + coéquipiers + autres) est
+	// faite par applyUniversalAnonymization() côté SeedDemo, après extraction, via
+	// le roster démo — pas ici. (sourceXUID/demoXUID restent dans la signature pour
+	// compat appelants/tests, mais ne sont plus utilisés ici.)
+	_ = sourceXUID
+	_ = demoXUID
 
 	// Recréer les vues V6 (v_gamertag_lookup, v_match_full, v_weapon_kills).
 	if err := recreateSharedViews(ctx, dst); err != nil {
