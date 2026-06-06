@@ -451,11 +451,15 @@ export function CoverFlowModal({
                 </a>
               )
             )}
-            {onReassociate && (() => {
-              const effOwner = currentItem.owner_gamertag ?? playerSlug ?? null
-              const refPlayer = currentPlayerGamertag ?? playerSlug ?? null
-              return !effOwner || !refPlayer || effOwner.toLowerCase() === refPlayer.toLowerCase()
-            })() && (
+            {/* Bouton réassocier : visible sauf si on PROUVE que le média est à un
+                autre joueur (owner_gamertag connu ET différent du gamertag de
+                référence). On ne se rabat PAS sur playerSlug ici (slug ≠ gamertag
+                ⇒ masquait le bouton à tort dans MatchMediaTab/RecentMediaRail qui
+                ne passent pas currentPlayerGamertag — cf. régression 8edd5c784). */}
+            {onReassociate &&
+              (!currentPlayerGamertag ||
+                !currentItem.owner_gamertag ||
+                currentItem.owner_gamertag.toLowerCase() === currentPlayerGamertag.toLowerCase()) && (
               <button
                 type="button"
                 onClick={(e) => {
