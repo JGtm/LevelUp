@@ -34,12 +34,12 @@ describe('HomePage', () => {
   })
 
   it('affiche la section Performance globale après chargement', async () => {
-    // P6.2 (revue 2026-04-29) : "Taux de victoire" vient maintenant de
-    // fields.toml (clé canonique `win_rate`) ; en test sans TOML chargé,
-    // labelOf retourne la key directement.
+    // "Taux de victoire" : le backend field-mappings (TOML) prime, mais quand il
+    // est absent (flag MULTI_TITLE_API_ENABLED off / fields vides en test),
+    // labelOf retombe sur les libellés locaux kpi.i18n.ts (pas la clé brute).
     renderWithProviders(<HomePage />)
     await waitFor(() => {
-      expect(screen.getByText('win_rate')).toBeInTheDocument()
+      expect(screen.getByText('Taux de victoire')).toBeInTheDocument()
     })
   })
 
@@ -473,16 +473,15 @@ describe('HomePage', () => {
     expect(screen.getByTestId('home-challenges-completed')).toHaveTextContent('5 / 5 complétés')
   })
 
-  it('affiche les KPIs globaux (clés canoniques fallback quand TOML absent)', async () => {
-    // P6.2 (revue 2026-04-29) : labelOf(key) retourne la key canonique en
-    // fallback quand le TOML mappings n'est pas chargé (cas de test sans
-    // useFieldMappings en succès). Les libellés FR ("Parties", "Taux de
-    // victoire") viennent maintenant exclusivement de fields.toml.
+  it('affiche les KPIs globaux (libellés locaux fallback quand TOML absent)', async () => {
+    // labelOf privilégie le backend field-mappings (TOML) ; quand il est absent
+    // (fields vides en test, ou flag MULTI_TITLE_API_ENABLED off en prod), il
+    // retombe sur les libellés locaux kpi.i18n.ts — JAMAIS la clé brute.
     renderWithProviders(<HomePage />)
     await waitFor(() => {
-      expect(screen.getByText('total_matches_played')).toBeInTheDocument()
-      expect(screen.getByText('win_rate')).toBeInTheDocument()
-      expect(screen.getByText('kda')).toBeInTheDocument()
+      expect(screen.getByText('Parties')).toBeInTheDocument()
+      expect(screen.getByText('Taux de victoire')).toBeInTheDocument()
+      expect(screen.getByText('KDA')).toBeInTheDocument()
     })
   })
 

@@ -30,6 +30,18 @@
 
 **Prochaine étape** : vérif end-to-end app (Home des 3 cibles) reste à faire ; commit sur autorisation (ne stager que les fichiers rendement, laisser intact le WIP seed_demo de la branche).
 
+## [2026-06-06] Démo emblème/bannière 502 + labels KPI home clé-brute (prod+démo) — Complété
+
+**Statut** : Complété. Front typecheck + lint (0 err) + 15 tests HomePage OK. Deploy + vérif Chrome restants.
+
+**Point 1 — emblème/bannière Spartan vides en démo.** L'identité empruntée (career_progression de Chocoboflor) est bien seedée (emblem/banner/backdrop_image_url présents), mais le proxy `/api/v1/assets/spartan/...` renvoyait **502** : le conteneur `levelup-demo` ne montait que `bp-background/bp-track-image/career-rank-image/challenge-badge` en RO — pas `spartan-emblem/spartan-banner/spartan-backdrop`. Cache miss local → fallback CDN gamecms → pas d'auth → `ErrUpstreamUnavailable` (502). Fix : 3 mounts RO ajoutés dans `docker-compose.yml` (les fichiers existent dans le cache prod, ex. olympus_fireteamshark_emblem.png 82913o). Visible aussi page Escouade + narratif médailles (petit emblème).
+
+**Point 2 — labels KPI home bruts (total_matches_played, kda, win_rate, accuracy).** PAS demo-only : l'endpoint `/titles/{slug}/field-mappings` est derrière le flag `MULTI_TITLE_API_ENABLED` (off en prod ET démo) → `useFieldMappings` 404 → `fieldMappings` null → `labelOf = fieldMappings?.fields[key]?.label ?? key` retombait sur la **clé canonique brute** au lieu des libellés locaux comme le commentaire le prévoyait. Fix : 4 labels ajoutés à `home.toml` (`matches_label/kda_label/win_rate_label/accuracy_label`, régénéré `home.ts`), exposés dans `kpi.i18n.ts`, et `labelOf` retombe sur une map locale (`?? localKpiLabels[key] ?? key`). Garde l'override backend title-aware quand le flag s'active. Corrige prod + démo. 2 tests HomePage mis à jour (assertaient l'ancienne clé brute).
+
+**Prochaine étape** : commit → merge main → deploy (rebuild image web + recreate demo pour les mounts) → vérif Chrome.
+
+---
+
 ## [2026-06-06] Démo — corpus élargi (solo récents + 3 sessions squad) + fix gamertag main "DemoPlayer" — Complété
 
 **Statut** : Complété. Go build+vet+test ops OK (CGO ucrt64). Reseed VPS + vérif Chrome restants.

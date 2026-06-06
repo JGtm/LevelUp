@@ -145,9 +145,17 @@ export function HomePage() {
   const kpiText = getKPIText(locale)
   // Phase D multi-titres : résout les libellés métier via le backend TOML.
   // Fallback gracieux sur les libellés locaux de kpi.i18n.ts si l'endpoint
-  // est absent (flag MULTI_TITLE_API_ENABLED off ou 404).
+  // est absent (flag MULTI_TITLE_API_ENABLED off ou 404) — sinon les tuiles
+  // affichent la clé canonique brute (total_matches_played, kda, win_rate,
+  // accuracy) au lieu du libellé traduit.
+  const localKpiLabels: Record<string, string> = {
+    total_matches_played: kpiText.labels.matches,
+    kda: kpiText.labels.kda,
+    win_rate: kpiText.labels.winRate,
+    accuracy: kpiText.labels.accuracy,
+  }
   const labelOf = (key: string): string =>
-    fieldMappings?.fields[key]?.label ?? key
+    fieldMappings?.fields[key]?.label ?? localKpiLabels[key] ?? key
   const hasPrivacyWarning = !!data.privacy_warning?.level && data.privacy_warning.level !== 'none'
 
   return (

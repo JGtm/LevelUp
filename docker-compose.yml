@@ -77,6 +77,12 @@ services:
       - ./data/cache/bp-track-image:/app/data/cache/bp-track-image:ro
       - ./data/cache/career-rank-image:/app/data/cache/career-rank-image:ro
       - ./data/cache/challenge-badge:/app/data/cache/challenge-badge:ro
+      # Identité Spartan empruntée par seed-demo (emblem/banner/backdrop d'un joueur
+      # configuré). Sans ces mounts, le resolver tombe sur le CDN gamecms → 502 en
+      # démo (pas d'auth) → emblème/bannière vides (home, escouade, narratif médailles).
+      - ./data/cache/spartan-emblem:/app/data/cache/spartan-emblem:ro
+      - ./data/cache/spartan-banner:/app/data/cache/spartan-banner:ro
+      - ./data/cache/spartan-backdrop:/app/data/cache/spartan-backdrop:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "/app/levelup-server", "-health-check"]
