@@ -69,6 +69,13 @@ COPY --from=web-builder /build/web/dist       /app/apps/web/dist
 # Scripts d'exploitation (backfill, seed, etc.)
 COPY scripts /app/scripts
 
+# Config title-aware (mappings/fields.toml, assets, outcomes, capabilities).
+# Lue au boot par fieldMappingsRegistry.LoadFromConfigDir + RankCatalog. Sans ce
+# COPY, config/titles/ n'existe pas dans le conteneur → field_mappings_load_warning,
+# semantic adapter + RankCatalog jamais chargés → rangs carrière en EN (prod+demo)
+# et libellés métier non title-aware. ~117 KB.
+COPY config /app/config
+
 # Assets statiques UI servis sous /static/ par le serveur Go (maps, ranks,
 # medals, commendations, prestige). ~23 MB. Sans ce COPY, /app/static n'existe
 # pas dans le conteneur → 404 sur tout /static/* (prod + demo).
