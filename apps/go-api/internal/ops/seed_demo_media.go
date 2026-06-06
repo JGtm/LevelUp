@@ -56,6 +56,13 @@ func extractDemoMedia(
 	if err := os.MkdirAll(outMediaDir, 0o755); err != nil {
 		return 0, fmt.Errorf("mkdir media: %w", err)
 	}
+	// Recréer le shared_social fresh à chaque reseed (comme shared/player DBs) :
+	// sinon les rows d'un reseed précédent persistent (ex. player_slug périmé) et
+	// l'INSERT ON CONFLICT DO NOTHING les conserve → seed silencieusement obsolète.
+	// Sous Linux, unlink d'un fichier tenu ouvert par le conteneur démo est sûr
+	// (l'ancien inode survit jusqu'au force-recreate ; le seed écrit un inode neuf).
+	_ = os.Remove(outSocialDB)
+	_ = os.Remove(outSocialDB + ".wal")
 	if err := applyMigrationsOnPath(outSocialDB, migration.TargetSharedSocial); err != nil {
 		return 0, fmt.Errorf("migrations shared_social démo: %w", err)
 	}
