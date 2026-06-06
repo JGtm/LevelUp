@@ -301,13 +301,13 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 
 	// 6. Médias (DemoPlayer principal uniquement). Écrits dans le shared_social.duckdb
 	// démo au schéma canonique (le pipeline de lecture média exige un SharedSocial
-	// non-nil + schéma id/media_file_id/player_slug). player_slug = gamertag du main
-	// (filtre "mine" côté media repo, qui compare à r.pdb.Gamertag).
+	// non-nil + schéma id/media_file_id/player_slug). player_slug = SLUG de route du
+	// main : la page Média filtre par auteur = slug courant (pas le gamertag).
 	if opts.IncludeMedia {
 		mediaDir := filepath.Join(opts.OutDir, "players", DefaultDemoGamertag, "media")
 		outSocial := filepath.Join(opts.OutDir, "warehouse", "shared_social.duckdb")
 		mediaCount, mediaErr := extractDemoMedia(ctx, opts.SourcePlayerDB, opts.SourceSharedDB,
-			outSocial, mediaDir, matchIDs, DefaultDemoMainGamertag, opts.MaxMedia)
+			outSocial, mediaDir, matchIDs, DefaultDemoMainSlug, opts.MaxMedia)
 		if mediaErr != nil {
 			slog.WarnContext(ctx, "seed-demo: extraction média partielle", "err", mediaErr, "copied", mediaCount)
 		}

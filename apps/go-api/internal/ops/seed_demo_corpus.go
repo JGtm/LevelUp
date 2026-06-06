@@ -24,6 +24,11 @@ const DefaultSquadSessions = 3
 // Doit rester aligné sur config.DemoRoster[0].Gamertag.
 const DefaultDemoMainGamertag = "DemoPlayer"
 
+// DefaultDemoMainSlug : slug de route du joueur démo principal (player_slug). Utilisé
+// pour media_files.player_slug — la page Média filtre par auteur = slug courant
+// (route param), pas le gamertag. Doit rester aligné sur config.DemoRoster[0].Slug.
+const DefaultDemoMainSlug = "demo-player"
+
 // demoRosterEntry décrit le mapping d'un xuid réel vers son identité démo.
 type demoRosterEntry struct {
 	SourceXUID   string // xuid réel (ou bot/synthétique laissé tel quel)
