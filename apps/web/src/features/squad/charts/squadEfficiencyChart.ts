@@ -1,13 +1,15 @@
 /**
- * squadEfficiencyChart — teammates : rendement & résistance par match.
+ * squadEfficiencyChart — teammates : Rendement & Résistance par match, en dégâts
+ * BRUTS (repère 225 = 1 vie de Spartan, bouclier + santé).
  *
- * Chaque track (1 par joueur) affiche 2 lignes brutes :
- *   - trait plein     : rendement offensif  = 225 × (kills + ass/3) / dégâts infligés
- *   - trait pointillé : résistance défensive = dégâts subis / (225 × morts)
+ * Chaque track (1 par joueur, sélectionné via boutons) affiche 2 lignes :
+ *   - trait plein     : dégâts / frag = dégâts infligés / frags
+ *   - trait pointillé : dégâts / mort = dégâts subis / morts
  *
- * La ligne de référence à y=1.0 correspond au seuil physique :
- *   - rendement = 1.0 → 0 tir gaspillé (225 dégâts exacts par kill effectif)
- *   - résistance = 1.0 → chaque mort a coûté exactement 225 dégâts à l'ennemi
+ * Ligne repère à y=225 (= 1 vie). Les lignes sont colorées par DÉGRADÉ (cf.
+ * oneLifeDamageGradient), pas par la couleur du joueur :
+ *   - dégâts/frag : au plus proche de 225, au plus efficace (vert) ;
+ *   - dégâts/mort : encaisser plus de 225/mort = bonne résistance (vert).
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import {
@@ -16,18 +18,22 @@ import {
   getEChartsThemeColors,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import {
+  ONE_LIFE_DAMAGE,
+  damageAxisBounds,
+  damagePerDeath,
+  damagePerKill,
+  defensiveDamageGradient,
+  offensiveDamageGradient,
+} from '@/lib/charts/oneLifeDamageGradient'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { truncateMap } from '@/lib/charts/matchLabels'
 
 export interface EfficiencyTrackOpts {
-  /** Couleur hex résolue depuis semantic tokens via getSquadPlayerColors. */
-  color: string
   rendementLabel: string
   resistanceLabel: string
   refLabel: string
   showXAxis: boolean
-  /** Valeur max Y partagée entre tous les joueurs (échelle uniforme au switch). */
-  yMax?: number
 }
 
 export function buildSquadEfficiencyTrackOption(
@@ -37,31 +43,25 @@ export function buildSquadEfficiencyTrackOption(
   if (pts.length === 0) return { backgroundColor: CHART_BG }
 
   const n = pts.reduce((max, p) => Math.max(max, p.match_order), 0) + 1
-  const rendData = new Array<number | null>(n).fill(null)
-  const resistData = new Array<number | null>(n).fill(null)
+  const dmgKill = new Array<number | null>(n).fill(null)
+  const dmgDeath = new Array<number | null>(n).fill(null)
   const mapByOrder = new Array<string | undefined>(n).fill(undefined)
 
   for (const p of pts) {
     const idx = p.match_order
-    if (p.rendement_offensif !== undefined) {
-      rendData[idx] = Number(p.rendement_offensif.toFixed(2))
-    }
-    if (p.resistance_defensive !== undefined) {
-      resistData[idx] = Number(p.resistance_defensive.toFixed(2))
-    }
+    dmgKill[idx] = damagePerKill(p.damage_dealt, p.kills)
+    dmgDeath[idx] = damagePerDeath(p.damage_taken, p.deaths)
     if (p.map_name) {
       mapByOrder[idx] = p.map_name
     }
   }
 
-  // Étiquettes X au format `#N\nMap` (aligné sur les autres charts par match
-  // — cf. features/timeseries/matchLabels.ts). Fallback `#N` si pas de map.
+  // Étiquettes X au format `#N\nMap` (aligné sur les autres charts par match).
   const xLabels = Array.from({ length: n }, (_, i) => {
     const m = mapByOrder[i]
     return m ? `#${i + 1}\n${truncateMap(m)}` : `#${i + 1}`
   })
-  // color-allow: hex résolu depuis semantic tokens via getSquadPlayerColors
-  const color = opts.color
+  const bounds = damageAxisBounds([...dmgKill, ...dmgDeath])
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
 
@@ -84,18 +84,7 @@ export function buildSquadEfficiencyTrackOption(
         const label = xLabels[items[0].dataIndex] ?? `#${items[0].dataIndex + 1}`
         const lines = items
           .filter((it) => it.value !== null)
-          .map((it) => {
-            const val = it.value as number
-            let formatted: string
-            if (it.seriesName === opts.rendementLabel) {
-              formatted = `${Math.round(val * 100)}%`
-            } else if (it.seriesName === opts.resistanceLabel) {
-              formatted = `${Math.round((val - 1) * 100)}%`
-            } else {
-              formatted = val.toFixed(2)
-            }
-            return `${it.marker} ${it.seriesName}: <b>${formatted}</b>`
-          })
+          .map((it) => `${it.marker} ${it.seriesName}: <b>${Math.round(it.value as number)}</b>`)
         return `<div style="font-size:11px">${label}<br/>${lines.join('<br/>')}</div>`
       },
     },
@@ -112,28 +101,26 @@ export function buildSquadEfficiencyTrackOption(
     yAxis: {
       ...axis,
       type: 'value',
-      min: 0,
-      max: opts.yMax,
+      min: bounds.min,
+      max: bounds.max,
       axisLabel: {
         ...axis.axisLabel,
-        formatter: (v: number) => `${Math.round(v * 100)}%`,
+        formatter: (v: number) => `${Math.round(v)}`,
       },
     },
     series: [
       {
         name: opts.rendementLabel,
         type: 'line',
-        data: rendData,
-        lineStyle: { color, width: 2 },
-        itemStyle: { color },
-        symbol: 'circle',
-        symbolSize: 4,
+        data: dmgKill,
+        lineStyle: { color: offensiveDamageGradient(dmgKill), width: 2 },
+        symbol: 'none',
         connectNulls: true,
         markLine: {
           silent: true,
           symbol: 'none',
           lineStyle: { color: tc.axisLabel, type: 'dashed', width: 1 },
-          data: [{ yAxis: 1.0 }],
+          data: [{ yAxis: ONE_LIFE_DAMAGE }],
           label: {
             formatter: opts.refLabel,
             position: 'end',
@@ -145,9 +132,8 @@ export function buildSquadEfficiencyTrackOption(
       {
         name: opts.resistanceLabel,
         type: 'line',
-        data: resistData,
-        lineStyle: { color, width: 2, type: 'dashed', opacity: 0.55 },
-        itemStyle: { color, opacity: 0.55 },
+        data: dmgDeath,
+        lineStyle: { color: defensiveDamageGradient(dmgDeath), width: 2, type: 'dashed' },
         symbol: 'none',
         connectNulls: true,
       },

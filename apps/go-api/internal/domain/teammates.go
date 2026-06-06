@@ -139,6 +139,8 @@ type SquadPerformanceSeriesPoint struct {
 	MaxKillingSpree           *int     `json:"max_killing_spree,omitempty"`
 	HeadshotKills             *int     `json:"headshot_kills,omitempty"`
 	PerfectKills              *int     `json:"perfect_kills,omitempty"`
+	DamageDealt               *int     `json:"damage_dealt,omitempty"` // dégâts bruts infligés (chart dégâts/frag)
+	DamageTaken               *int     `json:"damage_taken,omitempty"` // dégâts bruts subis (chart dégâts/mort)
 	RendementOffensif         *float64 `json:"rendement_offensif,omitempty"`
 	ResistanceDefensive       *float64 `json:"resistance_defensive,omitempty"`
 	TeamMMR                   *float64 `json:"team_mmr,omitempty"`                    // MMR équipe ce match (issu de match_skill_rank)

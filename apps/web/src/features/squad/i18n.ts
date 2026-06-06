@@ -426,10 +426,10 @@ const FR_TEXT: SquadText = {
   },
   efficiencySeries: {
     title: 'Rendement & Résistance',
-    description: 'Rendement offensif (trait plein) = 225 × (frags + ass/3) / dégâts infligés. Résistance défensive (pointillé) = dégâts subis / (225 × morts). Seuil 1,0 = efficacité parfaite sur la base de 225 PV.',
-    rendementLabel: 'Rendement offensif',
-    resistanceLabel: 'Résistance défensive',
-    refLabel: '1,0 (seuil physique)',
+    description: 'Dégâts / frag (trait plein) = dégâts infligés / frags. Dégâts / mort (pointillé) = dégâts subis / morts. Repère 225 = 1 vie de Spartan : pour les frags, au plus proche de 225, au plus efficace ; pour les morts, au-dessus de 225 = bonne résistance.',
+    rendementLabel: 'Dégâts / frag',
+    resistanceLabel: 'Dégâts / mort',
+    refLabel: '1 vie (225)',
     noData: 'Aucune donnée d\'efficacité disponible.',
   },
   performanceCharts: {
@@ -684,10 +684,10 @@ const EN_TEXT: SquadText = {
   },
   efficiencySeries: {
     title: 'Offensive & Defensive Efficiency',
-    description: 'Offensive conversion (solid) = 225 × (kills + ass/3) / damage dealt. Defensive resistance (dashed) = damage taken / (225 × deaths). Threshold 1.0 = perfect efficiency based on 225 HP.',
-    rendementLabel: 'Offensive conversion',
-    resistanceLabel: 'Defensive resistance',
-    refLabel: '1.0 (physical baseline)',
+    description: 'Damage / kill (solid) = damage dealt / kills. Damage / death (dashed) = damage taken / deaths. Reference 225 = one Spartan life: for kills, closer to 225 is more efficient; for deaths, above 225 means good resistance.',
+    rendementLabel: 'Damage / kill',
+    resistanceLabel: 'Damage / death',
+    refLabel: '1 life (225)',
     noData: 'No efficiency data available.',
   },
   performanceCharts: {
