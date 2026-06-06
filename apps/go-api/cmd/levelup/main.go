@@ -9,7 +9,7 @@
 //	levelup check-env
 //	levelup archive        --gamertag X --xuid U --cutoff YYYY-MM-DD [--delete-after] [--dry-run]
 //	levelup index-media    --gamertag X [--force-rescan] [--tolerance-min N]
-//	levelup seed           career-ranks | citation-mappings | medals
+//	levelup seed           career-ranks | citation-mappings | medals | rank-translations
 //	levelup notify-version --version v1.2.3
 //	levelup notify-sync    --gamertag X --op sync_delta --duration 120s [--matches N]
 //	levelup compare-db     --go-db PATH --python-db PATH [--json]

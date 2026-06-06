@@ -16,6 +16,8 @@ import (
 	"fmt"
 	"os"
 
+	"levelup/go-api/internal/migration"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -39,6 +41,7 @@ const (
 	componentCareerRanks      = "career_ranks"
 	componentCitationMappings = "citation_mappings"
 	componentMedalDefinitions = "medal_definitions"
+	componentRankTranslations = "career_rank_translations"
 )
 
 // Mapping types pour citation_mappings.mapping_type.
@@ -166,6 +169,42 @@ func SeedCareerRanks(ctx context.Context, opts SeedOptions) (SeedResult, error) 
 		Inserted:  inserted,
 		Skipped:   skipped,
 		Message:   fmt.Sprintf("%d insérés, %d déjà présents", inserted, skipped),
+	}, nil
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// career_rank_translations
+// ─────────────────────────────────────────────────────────────────────────────
+
+// SeedRankTranslations peuple career_rank_translations (272 rangs × FR/EN) depuis
+// le builder offline partagé (migration.BuildHaloCareerRankTranslations). Données
+// de référence statiques : sans elles, le rang carrière s'affiche en EN faute de
+// fetch GameCMS (career_rank_translations vide → fallback RankName EN côté home).
+// Idempotent : INSERT OR REPLACE sur la PK (rank_id, lang). La table est créée par
+// la migration add_career_rank_translations (appliquée avant le seed via runSeed).
+func SeedRankTranslations(ctx context.Context, opts SeedOptions) (SeedResult, error) {
+	db, err := sql.Open("duckdb", opts.MetaDBPath)
+	if err != nil {
+		return SeedResult{Component: componentRankTranslations}, fmt.Errorf("ouverture metadata: %w", err)
+	}
+	defer db.Close()
+
+	rows := migration.BuildHaloCareerRankTranslations()
+	inserted := 0
+	for _, t := range rows {
+		if _, err := db.ExecContext(ctx, `INSERT OR REPLACE INTO career_rank_translations
+			(rank_id, lang, title, subtitle, tier, fetched_at)
+			VALUES (?,?,?,'',?,CURRENT_TIMESTAMP)`,
+			t.RankID, t.Lang, t.Title, t.Tier); err != nil {
+			return SeedResult{Component: componentRankTranslations},
+				fmt.Errorf("upsert rank %d lang %s: %w", t.RankID, t.Lang, err)
+		}
+		inserted++
+	}
+	return SeedResult{
+		Component: componentRankTranslations,
+		Inserted:  inserted,
+		Message:   fmt.Sprintf("%d lignes upsertées (272 rangs × FR/EN)", inserted),
 	}, nil
 }
 

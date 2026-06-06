@@ -30,6 +30,22 @@
 
 **Prochaine étape** : vérif end-to-end app (Home des 3 cibles) reste à faire ; commit sur autorisation (ne stager que les fichiers rendement, laisser intact le WIP seed_demo de la branche).
 
+## [2026-06-06] Rang carrière en EN (prod+démo) — seed career_rank_translations one-shot — Complété (code)
+
+**Statut** : Complété (code). Build+vet+test ops/migration OK. Seed VPS one-shot + reseed démo restants.
+
+**Symptôme** : le titre de rang carrière (bandeau Spartan ID) s'affiche en EN ("Corporal Platinum I") alors que la locale est FR. En **local** il est en FR → indice décisif.
+
+**Cause** : la localisation du rang vient du backend (`career_live_repo`/`home_kpis.buildHomeCareerRank` → `RankCatalog.FullLabel(loc)`), alimenté par la table `career_rank_translations` (metadata.duckdb, chargée par `LoadRankCatalog`). Cette table n'est peuplée que par un CLI **manuel** offline (`cmd/seed-rank-translations`, libellés FR/EN codés en dur, pas d'API). Jamais lancé en prod → table vide → fallback `RankName` EN. En local le dev l'avait lancé → FR. La démo copie la metadata prod (vide) → EN.
+
+**Décision** (validée user : donnée de référence statique, pas un mécanisme de survie démo) : promouvoir le seed offline en **target de première classe** `levelup seed rank-translations` (in-image, runnable sur le VPS). Builder partagé `migration.BuildHaloCareerRankTranslations()` (source unique des 272 rangs FR/EN) consommé par `ops.SeedRankTranslations` ET l'ancien CLI (refactoré, DRY — plus de tableaux dupliqués). À lancer one-shot en prod ; la démo récupère via copie metadata.
+
+**Bénéfice prod** : corrige aussi le rang EN en prod (table vide).
+
+**Prochaine étape** : commit → deploy → `levelup seed rank-translations` sur le VPS (prod stoppée) → reseed démo → vérif FR.
+
+---
+
 ## [2026-06-06] Démo emblème/bannière 502 + labels KPI home clé-brute (prod+démo) — Complété
 
 **Statut** : Complété. Front typecheck + lint (0 err) + 15 tests HomePage OK. Deploy + vérif Chrome restants.

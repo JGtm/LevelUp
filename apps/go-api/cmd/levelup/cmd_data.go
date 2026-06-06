@@ -262,7 +262,7 @@ func runSeedDemo(cfg *config.AppConfig, args []string) error {
 
 func runSeed(cfg *config.AppConfig, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("composant requis: career-ranks | citation-mappings | medals")
+		return fmt.Errorf("composant requis: career-ranks | citation-mappings | medals | rank-translations")
 	}
 	// seed utilise toujours metadata.duckdb du titre par défaut
 	pr := title.NewPathResolver(cfg.RepoRoot)
@@ -285,8 +285,10 @@ func runSeed(cfg *config.AppConfig, args []string) error {
 		result, err = ops.SeedCitationMappings(ctx, opts)
 	case "medals":
 		result, err = ops.SeedMedalDefinitions(ctx, opts)
+	case "rank-translations":
+		result, err = ops.SeedRankTranslations(ctx, opts)
 	default:
-		return fmt.Errorf("composant inconnu: %q (career-ranks | citation-mappings | medals)", args[0])
+		return fmt.Errorf("composant inconnu: %q (career-ranks | citation-mappings | medals | rank-translations)", args[0])
 	}
 	if err != nil {
 		return err

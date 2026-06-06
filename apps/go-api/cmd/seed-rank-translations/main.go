@@ -1,10 +1,12 @@
 //go:build cgo
 
 // cmd/seed-rank-translations — Peuple career_rank_translations offline à partir
-// des libellés codés en dur (correspondant au CSV Halo_Ranks_FR).
+// des libellés codés en dur (migration.BuildHaloCareerRankTranslations, source
+// unique partagée avec `levelup seed rank-translations`).
 //
-// Utile quand refresh-career-ranks n'est pas jouable (tokens invalides, API
-// GameCMS down) et que la table est vide.
+// Préférer `levelup seed rank-translations` (CLI in-image). Ce binaire reste un
+// fallback direct quand refresh-career-ranks n'est pas jouable (tokens invalides,
+// API GameCMS down) et que la table est vide.
 //
 // Usage :
 //
@@ -23,73 +25,9 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
 )
-
-// Grades militaires — 15 paliers par tranche de rang (tiers × grades × 3 niveaux)
-var gradesFR = [15]string{
-	"Cadet", "Soldat", "Caporal suppléant", "Caporal",
-	"Sergent", "Sergent-chef", "Sergent d'artillerie", "Adjudant",
-	"Lieutenant", "Capitaine", "Lieutenant-major", "Lieutenant-colonel",
-	"Colonel", "Général de brigade", "Général",
-}
-var gradesEN = [15]string{
-	"Cadet", "Private", "Lance Corporal", "Corporal",
-	"Sergeant", "Staff Sergeant", "Gunnery Sergeant", "Master Sergeant",
-	"Lieutenant", "Captain", "Major", "Lieutenant Colonel",
-	"Colonel", "Brigadier General", "General",
-}
-
-// 6 tranches de rang (Bronze→Onyx), chacune = 15 grades × 3 niveaux = 45 rangs
-var tiersFR = [6]string{"Bronze", "Argent", "Or", "Platine", "Diamant", "Onyx"}
-var tiersEN = [6]string{"Bronze", "Silver", "Gold", "Platinum", "Diamond", "Onyx"}
-
-type rankRow struct {
-	id      int
-	titleFR string
-	titleEN string
-	tierFR  string
-	tierEN  string
-}
-
-// buildRanks génère les 272 rangs (0 + 270 normaux + Hero).
-//
-// Algorithme (rangs 1–270) :
-//
-//	tierIdx   = (i-1) / 45          → 0=Bronze … 5=Onyx
-//	posInTier = (i-1) % 45
-//	gradeIdx  = posInTier / 3       → 0=Cadet … 14=Général
-//	level     = posInTier%3 + 1     → 1, 2 ou 3
-func buildRanks() []rankRow {
-	rows := make([]rankRow, 0, 272)
-
-	// Rang 0 — Recrue
-	rows = append(rows, rankRow{0, "Recrue", "Recruit", "Bronze", "Bronze"})
-
-	// Rangs 1–270
-	for i := 1; i <= 270; i++ {
-		tierIdx := (i - 1) / 45
-		posInTier := (i - 1) % 45
-		gradeIdx := posInTier / 3
-		level := posInTier%3 + 1
-
-		titleFR := fmt.Sprintf("%s %d", gradesFR[gradeIdx], level)
-		titleEN := fmt.Sprintf("%s %d", gradesEN[gradeIdx], level)
-
-		rows = append(rows, rankRow{
-			id:      i,
-			titleFR: titleFR,
-			titleEN: titleEN,
-			tierFR:  tiersFR[tierIdx],
-			tierEN:  tiersEN[tierIdx],
-		})
-	}
-
-	// Rang 271 — Héros
-	rows = append(rows, rankRow{271, "Héros", "Hero", "Onyx", "Onyx"})
-
-	return rows
-}
 
 func main() {
 	fs := flag.NewFlagSet("seed-rank-translations", flag.ExitOnError)
@@ -106,14 +44,13 @@ func main() {
 }
 
 func run(titleID string, dryRun bool) error {
-	ranks := buildRanks()
+	rows := migration.BuildHaloCareerRankTranslations()
 
 	if dryRun {
-		for _, r := range ranks {
-			fmt.Printf("rank %3d | FR: %-30s [%s] | EN: %-30s [%s]\n",
-				r.id, r.titleFR, r.tierFR, r.titleEN, r.tierEN)
+		for _, r := range rows {
+			fmt.Printf("rank %3d | %s | %-30s [%s]\n", r.RankID, r.Lang, r.Title, r.Tier)
 		}
-		fmt.Printf("\n%d rangs (dry-run — rien écrit)\n", len(ranks))
+		fmt.Printf("\n%d lignes (dry-run — rien écrit)\n", len(rows))
 		return nil
 	}
 
@@ -156,30 +93,18 @@ func run(titleID string, dryRun bool) error {
 	_ = db.QueryRow(ctx, "SELECT COUNT(*) FROM career_rank_translations").Scan(&before)
 	fmt.Printf("Avant : %d lignes dans career_rank_translations\n", before)
 
-	inserted := 0
-	for _, r := range ranks {
-		for _, lang := range []struct {
-			code  string
-			title string
-			tier  string
-		}{
-			{"fr", r.titleFR, r.tierFR},
-			{"en", r.titleEN, r.tierEN},
-		} {
-			if _, err := db.Exec(ctx, `
-				INSERT OR REPLACE INTO career_rank_translations
-					(rank_id, lang, title, subtitle, tier, fetched_at)
-				VALUES (?, ?, ?, '', ?, CURRENT_TIMESTAMP)
-			`, r.id, lang.code, lang.title, lang.tier); err != nil {
-				return fmt.Errorf("upsert rank %d lang %s: %w", r.id, lang.code, err)
-			}
-			inserted++
+	for _, r := range rows {
+		if _, err := db.Exec(ctx, `
+			INSERT OR REPLACE INTO career_rank_translations
+				(rank_id, lang, title, subtitle, tier, fetched_at)
+			VALUES (?, ?, ?, '', ?, CURRENT_TIMESTAMP)
+		`, r.RankID, r.Lang, r.Title, r.Tier); err != nil {
+			return fmt.Errorf("upsert rank %d lang %s: %w", r.RankID, r.Lang, err)
 		}
 	}
 
 	var after int
 	_ = db.QueryRow(ctx, "SELECT COUNT(*) FROM career_rank_translations").Scan(&after)
-	fmt.Printf("Apres  : %d lignes — %d upsertées (%d rangs × 2 langues)\n",
-		after, inserted, len(ranks))
+	fmt.Printf("Apres  : %d lignes — %d upsertées\n", after, len(rows))
 	return nil
 }
