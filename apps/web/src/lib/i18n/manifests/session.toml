@@ -871,3 +871,7 @@ en = "Home"
 [session.detail.action_matches]
 fr = "Mes matchs"
 en = "My matches"
+
+[session.detail.action_back]
+fr = "Précédent"
+en = "Back"

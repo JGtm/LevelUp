@@ -17,7 +17,7 @@
  * droite) pour un effet papillon symétrique.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
+import { useNavigate, useParams, useSearch, useRouter } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
 import { Tooltip } from '@/components/ui/tooltip'
@@ -51,6 +51,7 @@ export function SessionDetailPage() {
   const locale = useAppShellStore((s) => s.locale)
 
   const navigate = useNavigate()
+  const router = useRouter()
   const { data, isLoading, isError, error, isFetching, refetch } = useSessionDetailPage(
     playerSlug,
     {
@@ -122,6 +123,16 @@ export function SessionDetailPage() {
               variant: 'default',
               onClick: () => {
                 navigate({ to: '/players/$playerSlug/home', params: { playerSlug } }).catch(() => {})
+              },
+            },
+            {
+              label: t('session.detail.action_back'),
+              onClick: () => {
+                if (router.history.length > 1) router.history.back()
+                else
+                  navigate({ to: '/players/$playerSlug/explorer', params: { playerSlug } }).catch(
+                    () => {},
+                  )
               },
             },
             {

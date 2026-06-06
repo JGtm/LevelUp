@@ -21,6 +21,7 @@ import (
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/assets/static"
+	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
@@ -63,6 +64,25 @@ func playerOwnershipXUIDResolver(cfg *config.AppConfig) middleware.PlayerXUIDRes
 			}
 		}
 		return "", false
+	}
+}
+
+// familyXUIDResolver résout le groupe famille (FriendGamertags des settings) en
+// ensemble de xuids pour le titre courant. Alimente RequirePlayerOwnership pour
+// autoriser le switch de BDD entre membres de la famille/amis (#21 Phase A).
+// Retourne nil (→ accès strict d'origine) si settings ou profils indisponibles,
+// ou si aucun ami n'est configuré.
+func familyXUIDResolver(cfg *config.AppConfig, settingsStore *settings_platform.Store) middleware.FamilyXUIDResolver {
+	return func(ctx context.Context) map[string]bool {
+		appSettings, err := settingsStore.Load()
+		if err != nil || appSettings == nil {
+			return nil
+		}
+		players, err := cfg.LoadPlayers(ctxkeys.TitleSlug(ctx))
+		if err != nil {
+			return nil
+		}
+		return authz.ResolveFamilyXUIDs(appSettings.FriendGamertags, players)
 	}
 }
 
@@ -757,7 +777,7 @@ func NewRouter(
 			// 403 player_forbidden si l'utilisateur courant ne possède pas le slug.
 			// Transparent en mode demo / auth non activée. Toute route player-scoped
 			// DOIT rester montée sous ce groupe pour être protégée.
-			r.Use(middleware.RequirePlayerOwnership(cfg.DemoMode, cfg.AuthMode, playerOwnershipXUIDResolver(cfg), users))
+			r.Use(middleware.RequirePlayerOwnership(cfg.DemoMode, cfg.AuthMode, playerOwnershipXUIDResolver(cfg), users, familyXUIDResolver(cfg, settingsStore)))
 
 			filters := handlers.NewFiltersHandler(reg.Filters)
 			r.Post("/filters/resolve", filters.Resolve)
