@@ -11,7 +11,9 @@ package ops
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"os"
 )
 
 // DefaultSquadSessions : nombre de sessions en escouade retenues pour le corpus.
@@ -23,6 +25,14 @@ type demoRosterEntry struct {
 	DemoXUID     string // xuid anonyme démo (0000…000N)
 	DemoGamertag string // "DemoPlayer", "DemoPlayer2", "Player 3", …
 	IsRosterMain bool   // true pour le source + les 2 coéquipiers principaux
+}
+
+// seededDemoPlayer décrit une player DB démo effectivement seedée (pour écrire
+// db_profiles.json multi-profils).
+type seededDemoPlayer struct {
+	Dir      string // sous-répertoire : DEMO, DEMO2, DEMO3
+	XUID     string // xuid démo : 0000…, 0001, 0002
+	Gamertag string // DemoPlayer, DemoPlayer2, DemoPlayer3
 }
 
 // selectSquadSessionCorpus retourne les match_ids des nSessions sessions en
@@ -195,4 +205,59 @@ func anonymizeSharedUniversal(ctx context.Context, dbPath string, roster []demoR
 	}
 	defer db.Close()
 	return applyUniversalAnonymization(ctx, db, roster)
+}
+
+// rosterMains retourne les entrées principales (source + 2 coéquipiers les plus
+// fréquents) — celles qui auront leur propre player DB démo seedée.
+func rosterMains(roster []demoRosterEntry) []demoRosterEntry {
+	var out []demoRosterEntry
+	for _, e := range roster {
+		if e.IsRosterMain {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// demoDirForIndex retourne le sous-répertoire player démo : 0 → "DEMO",
+// 1 → "DEMO2", 2 → "DEMO3".
+func demoDirForIndex(i int) string {
+	if i == 0 {
+		return DefaultDemoGamertag
+	}
+	return fmt.Sprintf("%s%d", DefaultDemoGamertag, i+1)
+}
+
+// resolvePlayerDBByXUID lit db_profiles.json (v3.0 nested par titre, ou v2.1 plat)
+// et retourne le chemin DB relatif du joueur ayant ce xuid. found=false si absent.
+func resolvePlayerDBByXUID(profilesPath, xuid string) (dbRelPath string, found bool, err error) {
+	data, rerr := os.ReadFile(profilesPath)
+	if rerr != nil {
+		return "", false, fmt.Errorf("read profiles: %w", rerr)
+	}
+	// v3.0 : profiles.{titleSlug}.{gamertag}.{xuid, db_path}
+	var v3 struct {
+		Profiles map[string]map[string]profileEntry `json:"profiles"`
+	}
+	if json.Unmarshal(data, &v3) == nil {
+		for _, byGamertag := range v3.Profiles {
+			for _, p := range byGamertag {
+				if p.XUID == xuid && p.DBPath != "" {
+					return p.DBPath, true, nil
+				}
+			}
+		}
+	}
+	// v2.1 : profiles.{gamertag}.{xuid, db_path}
+	var v2 struct {
+		Profiles map[string]profileEntry `json:"profiles"`
+	}
+	if json.Unmarshal(data, &v2) == nil {
+		for _, p := range v2.Profiles {
+			if p.XUID == xuid && p.DBPath != "" {
+				return p.DBPath, true, nil
+			}
+		}
+	}
+	return "", false, nil
 }

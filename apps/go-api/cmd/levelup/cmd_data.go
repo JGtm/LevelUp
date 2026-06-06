@@ -235,6 +235,10 @@ func runSeedDemo(cfg *config.AppConfig, args []string) error {
 		MaxMedia:       *maxMedia,
 		// Racine des player DBs (…/players) pour emprunter une identité Spartan.
 		SourcePlayersDir: filepath.Dir(filepath.Dir(sourcePlayerDB)),
+		// db_profiles + repo root : pour seeder les player DB des coéquipiers
+		// principaux (DemoPlayer2/3) résolus par xuid.
+		ProfilesPath: profilesPath,
+		RepoRoot:     cfg.RepoRoot,
 	}
 
 	ctx := context.Background()
