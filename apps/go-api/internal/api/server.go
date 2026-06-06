@@ -181,6 +181,13 @@ func NewRouter(
 		// d'un cran), ce qui retient le HANDLE Windows et provoque le verrou
 		// "metadata verrouillée" au prochain hot-reload Air.
 		hiMetaPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug)
+		// En démo, la metadata title (data/titles/...) est une coquille vide créée au
+		// boot ; les référentiels (career_rank_translations, rank images) vivent dans
+		// la metadata des fixtures démo (data/demo/warehouse/metadata.duckdb, copiée de
+		// la prod par seed-demo). Charger le RankCatalog de là, sinon rangs en EN.
+		if cfg.DemoMode && cfg.DemoFixturesDir != "" {
+			hiMetaPath = filepath.Join(cfg.DemoFixturesDir, "warehouse", "metadata.duckdb")
+		}
 		if metaDB, err := platform_duckdb.OpenReadWriteShared(hiMetaPath); err == nil {
 			if catalog, err := platform_duckdb.LoadRankCatalog(context.Background(), metaDB); err == nil {
 				hiRanks = catalog

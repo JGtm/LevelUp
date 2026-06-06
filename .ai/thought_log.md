@@ -42,7 +42,11 @@
 
 **Bénéfice prod** : corrige aussi le rang EN en prod (table vide).
 
-**Prochaine étape** : commit → deploy → `levelup seed rank-translations` sur le VPS (prod stoppée) → reseed démo → vérif FR.
+**Découverte au déploiement (2 bugs infra bloquants, prod + démo)** : après seed + reseed, le rang restait EN. Cause :
+1. **`config/` absent de l'image Docker** (CWD=/app, `config/titles/halo_infinite/mappings/fields.toml` introuvable → `field_mappings_load_warning`). Le bloc semantic adapter + `RankCatalog` (server.go:176, sous `fieldMappingsRegistry.Get`) est **entièrement sauté** en prod ET démo → catalog jamais construit → fallback EN. Le local marche car il a `config/`. Fix : `COPY config /app/config` dans le Dockerfile (~117 Ko). **Bug prod** (affecte field-mappings, assets, outcomes, rangs).
+2. **Catalog chargé depuis la mauvaise metadata en démo** : `LoadRankCatalog` lit `data/titles/.../metadata.duckdb` (coquille vide 12 Ko créée au boot), pas la metadata des fixtures démo (46 Mo, avec translations). Fix : en `DemoMode`, `hiMetaPath = {DemoFixturesDir}/warehouse/metadata.duckdb` (server.go).
+
+**Prochaine étape** : commit infra → redeploy (rebuild image avec config/) → re-vérif rang FR prod + démo.
 
 ---
 
