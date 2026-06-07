@@ -31,6 +31,13 @@ interface KPITextDict {
     hour: string
     minute: string
   }
+  /** Libellés d'issue (tooltip de la barre composite du KPI taux de victoire). */
+  outcomes: {
+    wins: string
+    draws: string
+    losses: string
+    dnfs: string
+  }
   matches: (count: number) => string
   kills: (count: number) => string
 }
@@ -62,6 +69,12 @@ export function getKPIText(locale?: string | null): KPITextDict {
       day: t(loc, 'home.kpi.unit_day'),
       hour: t(loc, 'home.kpi.unit_hour'),
       minute: t(loc, 'home.kpi.unit_minute'),
+    },
+    outcomes: {
+      wins: t(loc, 'home.kpi.outcome_wins'),
+      draws: t(loc, 'home.kpi.outcome_draws'),
+      losses: t(loc, 'home.kpi.outcome_losses'),
+      dnfs: t(loc, 'home.kpi.outcome_dnfs'),
     },
     matches: () => t(loc, 'home.kpi.matches_word'),
     kills: () => t(loc, 'home.kpi.kills_word'),

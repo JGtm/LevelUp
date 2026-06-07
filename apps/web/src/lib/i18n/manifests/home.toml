@@ -206,8 +206,8 @@ en = "Mark your best matches with the star icon to find them here."
 # ─── KPI hero card (anciennement kpi.i18n.ts) ─────────────────────────────
 
 [home.kpi.total_time]
-fr = "Durée totale"
-en = "Total time"
+fr = "Temps"
+en = "Time"
 
 [home.kpi.favorite_playlist]
 fr = "Playlist favorite"
@@ -222,7 +222,7 @@ fr = "Arme favorite"
 en = "Fav. weapon"
 
 [home.kpi.matches_label]
-fr = "Parties"
+fr = "Matchs"
 en = "Matches"
 
 [home.kpi.kda_label]
@@ -232,6 +232,23 @@ en = "KDA"
 [home.kpi.win_rate_label]
 fr = "Taux de victoire"
 en = "Win rate"
+
+# Libellés d'issue pour le tooltip de la barre composite (KPI taux de victoire).
+[home.kpi.outcome_wins]
+fr = "Victoires"
+en = "Wins"
+
+[home.kpi.outcome_draws]
+fr = "Nuls"
+en = "Draws"
+
+[home.kpi.outcome_losses]
+fr = "Défaites"
+en = "Losses"
+
+[home.kpi.outcome_dnfs]
+fr = "Abandons"
+en = "DNFs"
 
 [home.kpi.accuracy_label]
 fr = "Précision"

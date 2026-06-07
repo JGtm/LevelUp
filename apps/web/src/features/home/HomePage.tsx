@@ -145,10 +145,10 @@ export function HomePage() {
   // Phase D multi-titres : résout les libellés métier via le backend TOML.
   // Fallback gracieux sur les libellés locaux de kpi.i18n.ts si l'endpoint
   // est absent (flag MULTI_TITLE_API_ENABLED off ou 404) — sinon les tuiles
-  // affichent la clé canonique brute (total_matches_played, kda, win_rate,
-  // accuracy) au lieu du libellé traduit.
+  // affichent la clé canonique brute (kda, win_rate, accuracy) au lieu du
+  // libellé traduit. La tuile « Matchs » utilise directement kpiText (libellé
+  // fixe court, indépendant du field-mapping backend « Parties jouées »).
   const localKpiLabels: Record<string, string> = {
-    total_matches_played: kpiText.labels.matches,
     kda: kpiText.labels.kda,
     win_rate: kpiText.labels.winRate,
     accuracy: kpiText.labels.accuracy,
@@ -199,10 +199,11 @@ export function HomePage() {
             errorHint={seasonPassError instanceof Error ? seasonPassError.message : null}
           />
 
-          <Card data-testid="home-challenges-card" className="flex min-h-[14rem] flex-col">
-            <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+          <section className="flex flex-col gap-3">
+            {/* Titre de section (type 1) + (i) freshness, SORTI de la carte (cf. demande user). */}
+            <header className="flex flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-1.5">
-                <CardTitle className="text-base">{t('home.challenges.title')}</CardTitle>
+                <h3 className="text-base font-semibold text-foreground">{t('home.challenges.title')}</h3>
                 <DataFreshnessIndicator
                   snapshotAt={challenges?.snapshot_at}
                   buildLabel={(date) => t('home.freshness.last_sync', { date })}
@@ -215,52 +216,54 @@ export function HomePage() {
                   {locale === 'en' ? 'completed' : 'complétés'}
                 </p>
               )}
-            </CardHeader>
-            <CardContent className="flex flex-1 flex-col">
-              {isSeasonPassLoading && !seasonPass ? (
-                <div className="flex flex-1 items-center justify-center">
-                  <p className="text-sm text-muted-foreground">{t('home.challenges.loading')}</p>
-                </div>
-              ) : challenges?.available ? (
-                <div className="space-y-3">
-                  {Array.isArray(challenges.items) && challenges.items.length > 0 ? (
-                    <HomeChallengesList items={challenges.items} />
-                  ) : (
-                    <div className="flex min-h-[8.5rem] items-center justify-center">
-                      <EmptyStateNotice
-                        title={t('home.challenges.empty_title')}
-                        description={t('home.challenges.empty_description')}
-                        className="w-full max-w-sm"
-                      />
-                    </div>
-                  )}
-                  {challenges.xp_available != null && challenges.xp_available > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      {t('home.challenges.xp_available', {
-                        xp: challenges.xp_available.toLocaleString(numberLocale),
-                      })}
-                    </p>
-                  )}
-                </div>
-              ) : seasonPassError ? (
-                <div className="flex flex-1 items-center justify-center">
-                  <EmptyStateNotice
-                    title={t('home.challenges.unavailable_title')}
-                    description={t('home.challenges.unavailable_error')}
-                    className="w-full max-w-sm"
-                  />
-                </div>
-              ) : (
-                <div className="flex flex-1 items-center justify-center">
-                  <EmptyStateNotice
-                    title={t('home.challenges.unavailable_title')}
-                    description={t('home.challenges.unavailable_no_data')}
-                    className="w-full max-w-sm"
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            </header>
+            <Card data-testid="home-challenges-card" className="flex min-h-[14rem] flex-1 flex-col">
+              <CardContent className="flex flex-1 flex-col pt-6">
+                {isSeasonPassLoading && !seasonPass ? (
+                  <div className="flex flex-1 items-center justify-center">
+                    <p className="text-sm text-muted-foreground">{t('home.challenges.loading')}</p>
+                  </div>
+                ) : challenges?.available ? (
+                  <div className="space-y-3">
+                    {Array.isArray(challenges.items) && challenges.items.length > 0 ? (
+                      <HomeChallengesList items={challenges.items} />
+                    ) : (
+                      <div className="flex min-h-[8.5rem] items-center justify-center">
+                        <EmptyStateNotice
+                          title={t('home.challenges.empty_title')}
+                          description={t('home.challenges.empty_description')}
+                          className="w-full max-w-sm"
+                        />
+                      </div>
+                    )}
+                    {challenges.xp_available != null && challenges.xp_available > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {t('home.challenges.xp_available', {
+                          xp: challenges.xp_available.toLocaleString(numberLocale),
+                        })}
+                      </p>
+                    )}
+                  </div>
+                ) : seasonPassError ? (
+                  <div className="flex flex-1 items-center justify-center">
+                    <EmptyStateNotice
+                      title={t('home.challenges.unavailable_title')}
+                      description={t('home.challenges.unavailable_error')}
+                      className="w-full max-w-sm"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-1 items-center justify-center">
+                    <EmptyStateNotice
+                      title={t('home.challenges.unavailable_title')}
+                      description={t('home.challenges.unavailable_no_data')}
+                      className="w-full max-w-sm"
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </section>
         </div>
 
         {/* Playlists récentes + Rang | Sessions récentes */}

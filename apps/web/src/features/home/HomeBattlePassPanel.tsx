@@ -1,8 +1,8 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { buildCompositeProgressEdgeLabels, clampCompositeProgress } from '@/components/ui/composite-progress-bar'
 import { DataFreshnessIndicator } from '@/components/ui/data-freshness-indicator'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
@@ -12,6 +12,8 @@ import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { BattlePassRewardLightbox, type RewardLightboxData } from '@/features/palmares/BattlePassRewardLightbox'
 import { BattlePassRewardCarousel, buildTierGroups, type RewardCard } from '@/features/palmares/BattlePassRewardCarousel'
+import { PassContentSummary } from '@/features/palmares/PassContentSummary'
+import { getPalmaresText, normalizePalmaresLocale } from '@/features/palmares/i18n'
 
 function pickFeaturedPass(passes: SeasonPassTrackSummary[]) {
   return passes.find((pass) => pass.is_active)
@@ -32,6 +34,8 @@ export function HomeBattlePassPanel({
   const locale = useAppShellStore((state) => state.locale)
   const intlLocale = locale === 'en' ? 'en-GB' : 'fr-FR'
   const t = (key: HomeManifestKey) => formatMessage(homeManifest, key, locale)
+  // Labels du contenu de pass (paliers, cR, raretés…) — réutilise l'i18n palmares.
+  const passContentLabels = getPalmaresText(normalizePalmaresLocale(locale)).seasonPass.content
   const buildFreshnessLabel = useCallback(
     (date: string) =>
       formatMessage(homeManifest, 'home.freshness.last_sync', locale, { date }),
@@ -70,47 +74,54 @@ export function HomeBattlePassPanel({
     setSelectedIndex(idx >= 0 ? idx : null)
   }, [allCards])
 
+  // Titre de section (type 1 du catalogue UI) + (i) freshness, SORTI au-dessus
+  // de la carte (cf. demande user). Partagé par tous les états du panneau.
+  const withSection = (card: ReactNode) => (
+    <section className="flex flex-col gap-3">
+      <header className="flex items-center gap-1.5">
+        <h3 className="text-base font-semibold text-foreground">{t('home.battle_pass.title')}</h3>
+        <DataFreshnessIndicator
+          snapshotAt={featuredPass?.snapshot_at}
+          buildLabel={buildFreshnessLabel}
+          locale={intlLocale}
+        />
+      </header>
+      {card}
+    </section>
+  )
+
   if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t('home.battle_pass.title')}</CardTitle>
-        </CardHeader>
-        <CardContent>
+    return withSection(
+      <Card className="min-h-[14rem] flex-1">
+        <CardContent className="pt-6">
           <p className="text-sm text-muted-foreground">{t('home.battle_pass.loading')}</p>
         </CardContent>
-      </Card>
+      </Card>,
     )
   }
 
   if (!data?.available) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t('home.battle_pass.title')}</CardTitle>
-        </CardHeader>
-        <CardContent>
+    return withSection(
+      <Card className="min-h-[14rem] flex-1">
+        <CardContent className="pt-6">
           <p className="text-sm text-muted-foreground">
             {t('home.battle_pass.unavailable_prefix')} ({errorHint ?? data?.error_hint ?? t('home.battle_pass.default_hint')})
           </p>
         </CardContent>
-      </Card>
+      </Card>,
     )
   }
 
   if (!featuredPass) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t('home.battle_pass.title')}</CardTitle>
-        </CardHeader>
-        <CardContent>
+    return withSection(
+      <Card className="min-h-[14rem] flex-1">
+        <CardContent className="pt-6">
           <EmptyStateNotice
             title={t('home.battle_pass.no_pass_title')}
             description={t('home.battle_pass.no_pass_description')}
           />
         </CardContent>
-      </Card>
+      </Card>,
     )
   }
 
@@ -123,36 +134,23 @@ export function HomeBattlePassPanel({
   })
   const hasTiers = (featuredPass.tiers?.length ?? 0) > 0
 
-  return (
-    <Card className="relative flex min-h-[14rem] flex-col overflow-hidden border-border/70 bg-card/95 shadow-sm">
-      <div className="absolute inset-0 bg-gradient-to-br from-background via-background/96 to-background/85" aria-hidden="true" />
-
-      <CardHeader className="relative space-y-4 pb-3">
+  return withSection(
+    <Card className="relative flex min-h-[14rem] flex-1 flex-col overflow-hidden border-border bg-card shadow-sm">
+      <CardHeader className="relative pb-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-1.5">
-              <CardTitle className="text-base">{t('home.battle_pass.title')}</CardTitle>
-              <DataFreshnessIndicator
-                snapshotAt={featuredPass.snapshot_at}
-                buildLabel={buildFreshnessLabel}
-                locale={intlLocale}
-              />
-            </div>
-            <h3 className="mt-3 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-              {featuredPass.name}
-            </h3>
-          </div>
+          <h3 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+            {featuredPass.name}
+          </h3>
 
           <div className="flex flex-wrap gap-2">
             {featuredPass.is_owned && <Badge variant="outline">{t('home.battle_pass.badge_owned')}</Badge>}
             {featuredPass.is_active && <Badge variant="default">{t('home.battle_pass.badge_active')}</Badge>}
           </div>
         </div>
-
       </CardHeader>
 
       <CardContent className="relative space-y-6">
-        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_24px_72px_-44px_rgba(15,23,42,0.92)]">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-card shadow-[0_24px_72px_-44px_rgba(15,23,42,0.92)]">
           {(featuredPass.background_image_url ?? featuredPass.image_url) ? (
             <img
               src={featuredPass.background_image_url ?? featuredPass.image_url!}
@@ -167,6 +165,21 @@ export function HomeBattlePassPanel({
                 <p className="mt-3 text-2xl font-semibold sm:text-3xl">{featuredPass.name}</p>
               </div>
             </div>
+          )}
+          {featuredPass.content && (
+            <>
+              {/* color-allow: gradient sombre fixe pour la lisibilité de l'overlay « restant » sur l'image (parité page dédiée). */}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" aria-hidden="true" />
+              <div className="absolute inset-x-0 bottom-0 p-3">
+                <PassContentSummary
+                  content={featuredPass.content}
+                  remaining={featuredPass.remaining_content ?? null}
+                  labels={passContentLabels}
+                  locale={intlLocale}
+                  compact
+                />
+              </div>
+            </>
           )}
         </div>
 
@@ -214,6 +227,6 @@ export function HomeBattlePassPanel({
           onClose={() => setSelectedIndex(null)}
         />
       )}
-    </Card>
+    </Card>,
   )
 }

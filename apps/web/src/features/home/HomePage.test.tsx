@@ -479,7 +479,7 @@ describe('HomePage', () => {
     // retombe sur les libellés locaux kpi.i18n.ts — JAMAIS la clé brute.
     renderWithProviders(<HomePage />)
     await waitFor(() => {
-      expect(screen.getByText('Parties')).toBeInTheDocument()
+      expect(screen.getByText('Matchs')).toBeInTheDocument()
       expect(screen.getByText('Taux de victoire')).toBeInTheDocument()
       expect(screen.getByText('KDA')).toBeInTheDocument()
     })

@@ -35,41 +35,52 @@ type SeasonPassContent = NonNullable<SeasonPassTrackSummary['content']>
 
 function OverlayContentRows({
   content,
+  remaining,
   labels,
   locale,
   palmaresLocale,
 }: {
   content: SeasonPassContent
+  /** Contenu restant (paliers non atteints). Fourni ⇒ affichage « restant/total » (XX/YY). */
+  remaining?: SeasonPassContent | null
   labels: ContentLabels
   locale: string
   palmaresLocale: 'fr' | 'en'
 }) {
   type Chip = { key: string; value: string; label: string }
+  const showRemaining = remaining !== undefined
+  const rem = remaining ?? null
+  const val = (total: number, r: number) =>
+    showRemaining ? `${r.toLocaleString(locale)}/${total.toLocaleString(locale)}` : total.toLocaleString(locale)
+  const armorOf = (c: SeasonPassContent | null) => {
+    let armor = 0
+    if (c?.type_breakdown) for (const [type, count] of Object.entries(c.type_breakdown)) if (isArmorItemType(type)) armor += count
+    return armor
+  }
 
   const row1: Chip[] = []
-  if (content.total_tiers > 0) row1.push({ key: 'tiers', value: String(content.total_tiers), label: labels.tiersLabel })
-  if (content.credits) row1.push({ key: 'cr', value: content.credits.toLocaleString(locale), label: labels.creditsLabel })
-  if (content.spartan_points) row1.push({ key: 'sp', value: content.spartan_points.toLocaleString(locale), label: labels.spartanPointsLabel })
-  if (content.xp_boosts) row1.push({ key: 'xp', value: String(content.xp_boosts), label: labels.xpBoostsLabel })
-  if (content.challenge_swaps) row1.push({ key: 'swap', value: String(content.challenge_swaps), label: labels.challengeSwapsLabel })
+  if (content.total_tiers > 0) row1.push({ key: 'tiers', value: val(content.total_tiers, rem?.total_tiers ?? 0), label: labels.tiersLabel })
+  if (content.credits) row1.push({ key: 'cr', value: val(content.credits, rem?.credits ?? 0), label: labels.creditsLabel })
+  if (content.spartan_points) row1.push({ key: 'sp', value: val(content.spartan_points, rem?.spartan_points ?? 0), label: labels.spartanPointsLabel })
+  if (content.xp_boosts) row1.push({ key: 'xp', value: val(content.xp_boosts, rem?.xp_boosts ?? 0), label: labels.xpBoostsLabel })
+  if (content.challenge_swaps) row1.push({ key: 'swap', value: val(content.challenge_swaps, rem?.challenge_swaps ?? 0), label: labels.challengeSwapsLabel })
 
   const row2: Chip[] = []
   if (content.cosmetics_total) {
     if (content.type_breakdown && Object.keys(content.type_breakdown).length > 0) {
-      let armor = 0
-      for (const [type, count] of Object.entries(content.type_breakdown)) {
-        if (isArmorItemType(type)) armor += count
-      }
-      const cosmetic = Math.max(0, content.cosmetics_total - armor)
-      if (armor > 0) row2.push({ key: 'armor', value: String(armor), label: labels.armorLabel })
-      if (cosmetic > 0) row2.push({ key: 'cosmetic', value: String(cosmetic), label: labels.cosmeticsSplitLabel })
+      const armorT = armorOf(content)
+      const cosmeticT = Math.max(0, content.cosmetics_total - armorT)
+      const armorR = armorOf(rem)
+      const cosmeticR = Math.max(0, (rem?.cosmetics_total ?? 0) - armorR)
+      if (armorT > 0) row2.push({ key: 'armor', value: val(armorT, armorR), label: labels.armorLabel })
+      if (cosmeticT > 0) row2.push({ key: 'cosmetic', value: val(cosmeticT, cosmeticR), label: labels.cosmeticsSplitLabel })
     } else {
-      row2.push({ key: 'cosmetics', value: String(content.cosmetics_total), label: labels.cosmeticsLabel })
+      row2.push({ key: 'cosmetics', value: val(content.cosmetics_total, rem?.cosmetics_total ?? 0), label: labels.cosmeticsLabel })
     }
   }
 
   const rarities = RARITY_ORDER
-    .map((tier) => ({ tier, count: content.rarity_breakdown?.[tier] ?? 0 }))
+    .map((tier) => ({ tier, count: content.rarity_breakdown?.[tier] ?? 0, r: rem?.rarity_breakdown?.[tier] ?? 0 }))
     .filter((e) => e.count > 0)
 
   if (row1.length === 0 && row2.length === 0 && rarities.length === 0) return null
@@ -88,16 +99,17 @@ function OverlayContentRows({
 
   return (
     <div className="mt-2 space-y-0.5">
-      {chipRow(row1)}
+      {/* Items (cosmétiques) au-dessus des devises (paliers/cR/XP), cf. demande user. */}
       {chipRow(row2)}
+      {chipRow(row1)}
       {rarities.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-2.5 text-xs">
-          {rarities.map(({ tier, count }) => (
+          {rarities.map(({ tier, count, r }) => (
             <span key={tier} className="flex items-center gap-1">
               <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${rarityStyle(tier)?.segment ?? 'bg-muted-foreground/60'}`} />
               <span className="text-muted-foreground">{rarityLabel(tier, palmaresLocale)}</span>
               {' '}
-              <span className="font-semibold text-foreground tabular-nums">{count}</span>
+              <span className="font-semibold text-foreground tabular-nums">{val(count, r)}</span>
             </span>
           ))}
         </div>
@@ -175,7 +187,13 @@ function SeasonPassCard({ pass, intlLocale, statusLabel, labels, contentLabels, 
         </div>
 
         {pass.content && (
-          <PassContentSummary content={pass.content} labels={contentLabels} locale={intlLocale} compact />
+          <PassContentSummary
+            content={pass.content}
+            remaining={pass.remaining_content ?? null}
+            labels={contentLabels}
+            locale={intlLocale}
+            compact
+          />
         )}
 
         <div className="mt-auto space-y-3">
@@ -297,6 +315,7 @@ function PassShowcase({
             {pass.content && (
               <OverlayContentRows
                 content={pass.content}
+                remaining={pass.remaining_content ?? null}
                 labels={text.seasonPass.content}
                 locale={text.intlLocale}
                 palmaresLocale={locale}
