@@ -1,3 +1,15 @@
+## [2026-06-07] LUSR v2 — nettoyage orphans bad-backfill sur matchs récents (2026 + fin 2025) — Complété (opération DB, aucun code)
+
+**Statut** : Complété. Opération de maintenance DB, serveur arrêté puis relancé (HTTP 200).
+
+**Contexte** : après le fix imbalance (ci-dessous), 20 matchs distincts à fort renouvellement de roster (raw 7-16 vs concurrent 4/12) échouent encore l'EP → restent non notés par le backfill. Mais des runs de backfill antérieurs (dont le mauvais run damping/fallback) leur avaient laissé des lignes `match_skill_rank` à valeurs PÉRIMÉES (ex. Madina `cf040013` affiché "Diamant II", JGtm `6bfa4e90` "Bronze VI"). Le user : ça gêne sur les matchs 2026 + fin 2025, à nettoyer.
+
+**Décision** : ces matchs ne sont PAS ratables proprement par v2 (EP ne converge pas) → aucune valeur de référence n'existe → l'état honnête est "none" (non noté), cohérent avec le traitement des matchs déséquilibrés réels. Supprimé TOUTES les lignes `match_skill_rank` (LUSR + LUSR_V2, tous runs) pour 9 match_id récents (2026 : 034200db, 4013dc34, 6bfa4e90, 83fe35b3, 846044ba, 981a95c0 ; fin 2025 : 10ed320d, 3efe4592, cf040013) sur les 3 player DBs concernées. Outil throwaway `cmd/tmp_orphan_clean` créé puis SUPPRIMÉ (pas de dead code). Backup complet (SELECT *) pris avant suppression. Les matchs plus anciens (≤ avril 2025) laissés tels quels (option A, faible visibilité).
+
+**Résultats** : 65 lignes supprimées (Madina 18, JGtm 29, Choco 18). Vue _latest → 0 ligne sur les 9 = "none" pour les 3 joueurs. Non-régression vérifiée : JGtm 3 juin toujours 11/11. Serveur relancé.
+
+**Prochaine étape** : si damping EP ajouté un jour, un backfill supplantera proprement ces "none". Sujet LUSR fermé. Suite : track XUID→gamertag (résolution échouée sur matchs récents + match e6e4ba0b `match_not_found`).
+
 ## [2026-06-07] LUSR v2 — root cause #2 : le skip "imbalance" comptait len() brut (remplaçants = joueurs concurrents fictifs) — Complété (calcul INCHANGÉ)
 
 **Statut** : Complété + commité en base (backfill --commit). go vet + suite `internal/sync` verts. Code non commité git (attente autorisation).
