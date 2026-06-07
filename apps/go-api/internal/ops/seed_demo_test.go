@@ -10,7 +10,6 @@
 package ops
 
 import (
-	"database/sql"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -368,28 +367,6 @@ func TestParseHaloCaptureTime(t *testing.T) {
 	}
 	if bad := parseHaloCaptureTime("Halo Infinite pasunedate"); bad.Valid {
 		t.Error("nom invalide → devrait être invalide")
-	}
-}
-
-func TestClosestMatchMap(t *testing.T) {
-	base := time.Date(2026, 2, 18, 17, 0, 0, 0, time.UTC)
-	matches := []srcMatch{
-		{MapName: "Aquarius", StartTime: base},                        // 17:00
-		{MapName: "Live Fire", StartTime: base.Add(40 * time.Minute)}, // 17:40
-	}
-	// Capture 17:35 → match le plus proche = Live Fire (17:40, Δ5min) dans la fenêtre.
-	cap := sql.NullTime{Time: base.Add(35 * time.Minute), Valid: true}
-	if got := closestMatchMap(matches, cap); got != "Live Fire" {
-		t.Errorf("got %q, want Live Fire", got)
-	}
-	// Capture 2h plus tard → hors fenêtre ±30min → "".
-	far := sql.NullTime{Time: base.Add(2 * time.Hour), Valid: true}
-	if got := closestMatchMap(matches, far); got != "" {
-		t.Errorf("hors fenêtre: got %q, want \"\"", got)
-	}
-	// Capture invalide → "".
-	if got := closestMatchMap(matches, sql.NullTime{}); got != "" {
-		t.Errorf("capture invalide: got %q, want \"\"", got)
 	}
 }
 

@@ -313,8 +313,11 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 		mediaDir := filepath.Join(opts.OutDir, "players", DefaultDemoGamertag, "media")
 		outSocial := filepath.Join(opts.OutDir, "warehouse", "shared_social.duckdb")
 		srcMediaDir := filepath.Join(opts.RepoRoot, "data", "media", opts.SourceLabel)
-		mediaCount, mediaErr := extractDemoMedia(ctx, srcMediaDir, opts.SourceSharedDB,
-			outSocial, mediaDir, matchIDs, opts.SourceXUID, DefaultDemoMainSlug, opts.MaxMedia)
+		// shared_social SOURCE (prod) : même dossier warehouse que shared_matches_v2.
+		// Porte les associations média→match RÉELLES (vraie carte de chaque vidéo).
+		srcSocialDB := filepath.Join(filepath.Dir(opts.SourceSharedDB), "shared_social.duckdb")
+		mediaCount, mediaErr := extractDemoMedia(ctx, srcMediaDir, opts.SourceSharedDB, srcSocialDB,
+			outSocial, mediaDir, matchIDs, DefaultDemoMainSlug, opts.MaxMedia)
 		if mediaErr != nil {
 			slog.WarnContext(ctx, "seed-demo: extraction média partielle", "err", mediaErr, "copied", mediaCount)
 		}
