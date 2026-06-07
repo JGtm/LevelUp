@@ -314,7 +314,7 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 		outSocial := filepath.Join(opts.OutDir, "warehouse", "shared_social.duckdb")
 		srcMediaDir := filepath.Join(opts.RepoRoot, "data", "media", opts.SourceLabel)
 		mediaCount, mediaErr := extractDemoMedia(ctx, srcMediaDir, opts.SourceSharedDB,
-			outSocial, mediaDir, matchIDs, DefaultDemoMainSlug, opts.MaxMedia)
+			outSocial, mediaDir, matchIDs, opts.SourceXUID, DefaultDemoMainSlug, opts.MaxMedia)
 		if mediaErr != nil {
 			slog.WarnContext(ctx, "seed-demo: extraction média partielle", "err", mediaErr, "copied", mediaCount)
 		}

@@ -10,6 +10,7 @@
 package ops
 
 import (
+	"database/sql"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -370,22 +371,25 @@ func TestParseHaloCaptureTime(t *testing.T) {
 	}
 }
 
-func TestPickCorpusMatch(t *testing.T) {
-	corpus := []mediaCandidate{
-		{TargetMatchID: "m1", MapName: "Aquarius"},
-		{TargetMatchID: "m2", MapName: "Live Fire"},
+func TestClosestMatchMap(t *testing.T) {
+	base := time.Date(2026, 2, 18, 17, 0, 0, 0, time.UTC)
+	matches := []srcMatch{
+		{MapName: "Aquarius", StartTime: base},                        // 17:00
+		{MapName: "Live Fire", StartTime: base.Add(40 * time.Minute)}, // 17:40
 	}
-	// Même map → priorité.
-	if m, ok := pickCorpusMatch(corpus, "Live Fire", 0); !ok || m.TargetMatchID != "m2" {
-		t.Errorf("même map: got %+v ok=%v, want m2", m, ok)
+	// Capture 17:35 → match le plus proche = Live Fire (17:40, Δ5min) dans la fenêtre.
+	cap := sql.NullTime{Time: base.Add(35 * time.Minute), Valid: true}
+	if got := closestMatchMap(matches, cap); got != "Live Fire" {
+		t.Errorf("got %q, want Live Fire", got)
 	}
-	// Map absente → round-robin sur i.
-	if m, ok := pickCorpusMatch(corpus, "Inconnue", 1); !ok || m.TargetMatchID != "m2" {
-		t.Errorf("round-robin i=1: got %+v, want m2", m)
+	// Capture 2h plus tard → hors fenêtre ±30min → "".
+	far := sql.NullTime{Time: base.Add(2 * time.Hour), Valid: true}
+	if got := closestMatchMap(matches, far); got != "" {
+		t.Errorf("hors fenêtre: got %q, want \"\"", got)
 	}
-	// Corpus vide → ok=false.
-	if _, ok := pickCorpusMatch(nil, "x", 0); ok {
-		t.Error("corpus vide → ok devrait être false")
+	// Capture invalide → "".
+	if got := closestMatchMap(matches, sql.NullTime{}); got != "" {
+		t.Errorf("capture invalide: got %q, want \"\"", got)
 	}
 }
 

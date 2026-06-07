@@ -40,12 +40,15 @@ type hlsMedia struct {
 }
 
 // extractDemoMedia copie les vidéos HLS "Halo Infinite" du joueur source vers la
-// démo et insère les media_files (schéma canonique shared_social) attribués au corpus.
+// démo et insère les media_files (schéma canonique shared_social). Sélection FIDÈLE :
+// la VRAIE carte de chaque vidéo (match que le joueur source jouait à l'horodatage de
+// la capture) doit exister dans le pool de matchs du DemoPlayer (corpus) ; la vidéo est
+// alors attribuée à un match du corpus de LA MÊME carte → démo crédible.
 func extractDemoMedia(
 	ctx context.Context,
 	srcMediaDir, srcSharedDB, outSocialDB, outMediaDir string,
 	matchIDs []string,
-	playerSlug string,
+	srcXUID, playerSlug string,
 	maxMedia int,
 ) (int, error) {
 	if err := os.MkdirAll(outMediaDir, 0o755); err != nil {
@@ -59,14 +62,18 @@ func extractDemoMedia(
 		return 0, fmt.Errorf("migrations shared_social démo: %w", err)
 	}
 
-	// Matchs du corpus courant (par map) pour l'attribution grossière des médias.
-	mapIndex, err := buildDemoMapIndex(ctx, srcSharedDB, matchIDs)
+	// Corpus (matchs du DemoPlayer) par carte + tous les matchs source (pour retrouver
+	// la vraie carte d'une vidéo via l'horodatage de capture).
+	corpusByMap, err := buildDemoMapIndex(ctx, srcSharedDB, matchIDs)
 	if err != nil {
 		return 0, fmt.Errorf("build map index: %w", err)
 	}
-	corpus := flattenCorpusMatches(mapIndex)
+	srcMatches, err := loadSourcePlayerMatches(ctx, srcSharedDB, srcXUID)
+	if err != nil {
+		return 0, fmt.Errorf("load source matches: %w", err)
+	}
 
-	vids := scanHaloInfiniteHLS(srcMediaDir, maxMedia)
+	vids := scanHaloInfiniteHLS(srcMediaDir, 0) // toutes : on filtre ensuite par carte du pool
 	if len(vids) == 0 {
 		slog.InfoContext(ctx, "seed-demo media: aucune vidéo Halo Infinite trouvée", "src", srcMediaDir)
 		return 0, nil
@@ -79,7 +86,19 @@ func extractDemoMedia(
 	defer db.Close()
 
 	imported := 0
-	for i, v := range vids {
+	mapCounter := make(map[string]int) // round-robin par carte (répartit sur les matchs)
+	for _, v := range vids {
+		if imported >= maxMedia {
+			break
+		}
+		realMap := closestMatchMap(srcMatches, v.CaptureStart) // carte réelle de la vidéo
+		corpusMatches, ok := corpusByMap[realMap]
+		if !ok || len(corpusMatches) == 0 {
+			continue // carte absente du pool DemoPlayer → on n'invente pas une fausse carte
+		}
+		match := corpusMatches[mapCounter[realMap]%len(corpusMatches)]
+		mapCounter[realMap]++
+
 		if err := copyDir(v.HLSDir, filepath.Join(outMediaDir, v.Name)); err != nil {
 			slog.WarnContext(ctx, "seed-demo media: copie HLS échouée", "name", v.Name, "err", err)
 			continue
@@ -91,19 +110,15 @@ func extractDemoMedia(
 				thumbnail = tn
 			}
 		}
-		match, _ := pickCorpusMatch(corpus, "", i)
-		// capture_start ALIGNÉ sur le match du corpus attribué (pas la date réelle du
-		// fichier) : sinon la fenêtre de candidats de réassociation (matchs proches de
-		// la capture) est vide en démo (captures déc.-fév. vs corpus récent). Aligné →
-		// la réassociation propose les matchs voisins du corpus. Fallback date fichier.
-		captureStart := v.CaptureStart
-		if !match.TargetStartTime.IsZero() {
-			captureStart = sql.NullTime{Time: match.TargetStartTime, Valid: true}
+		// capture_start aligné sur le match du corpus (réassociation : candidats voisins).
+		captureStart := sql.NullTime{Time: match.TargetStartTime, Valid: !match.TargetStartTime.IsZero()}
+		if !captureStart.Valid {
+			captureStart = v.CaptureStart
 		}
 		row := demoMediaRow{
 			ID:            v.Name,
 			PlayerSlug:    playerSlug,
-			FilePath:      v.Name + "/master.m3u8", // HLS : URL /media/files/{name}/master.m3u8
+			FilePath:      v.Name + "/master.m3u8",
 			FileName:      v.Name,
 			Kind:          mediaKindVideo,
 			FileStem:      v.Name,
@@ -119,9 +134,71 @@ func extractDemoMedia(
 		}
 		imported++
 		slog.InfoContext(ctx, "seed-demo media: copiée",
-			"name", v.Name, "match", match.TargetMatchID, "map", match.MapName)
+			"name", v.Name, "map", match.MapName, "match", match.TargetMatchID)
+	}
+	if imported == 0 {
+		slog.WarnContext(ctx, "seed-demo media: aucune vidéo dont la carte réelle est dans le pool DemoPlayer")
 	}
 	return imported, nil
+}
+
+// srcMatch : un match du joueur source (pour retrouver la carte jouée à un instant T).
+type srcMatch struct {
+	MapName   string
+	StartTime time.Time
+}
+
+// loadSourcePlayerMatches charge tous les matchs du joueur source (xuid) avec leur
+// carte + horodatage — sert à retrouver la vraie carte d'une vidéo par proximité
+// temporelle avec sa capture.
+func loadSourcePlayerMatches(ctx context.Context, sharedDBPath, xuid string) ([]srcMatch, error) {
+	db, err := sql.Open("duckdb", sharedDBPath+"?access_mode=READ_ONLY")
+	if err != nil {
+		return nil, fmt.Errorf("open shared: %w", err)
+	}
+	defer db.Close()
+
+	rows, err := db.QueryContext(ctx, `
+		SELECT r.map_name, COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')
+		FROM match_registry r
+		JOIN match_participants mp ON mp.match_id = r.match_id
+		WHERE mp.xuid = ? AND r.map_name IS NOT NULL`, xuid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []srcMatch
+	for rows.Next() {
+		var m srcMatch
+		if err := rows.Scan(&m.MapName, &m.StartTime); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+// closestMatchMap retourne la carte du match source le plus proche temporellement de
+// la capture (fenêtre ±30 min : la vidéo a été enregistrée pendant ce match). "" si
+// aucun match dans la fenêtre.
+func closestMatchMap(matches []srcMatch, capture sql.NullTime) string {
+	if !capture.Valid {
+		return ""
+	}
+	const window = 30 * time.Minute
+	best := ""
+	bestDelta := window + time.Minute
+	for _, m := range matches {
+		d := capture.Time.Sub(m.StartTime)
+		if d < 0 {
+			d = -d
+		}
+		if d <= window && d < bestDelta {
+			bestDelta = d
+			best = m.MapName
+		}
+	}
+	return best
 }
 
 // scanHaloInfiniteHLS liste les flux HLS "Halo Infinite …" du joueur source (plus
@@ -277,31 +354,6 @@ func buildDemoMapIndex(ctx context.Context, sharedDBPath string, matchIDs []stri
 		})
 	}
 	return index, rows.Err()
-}
-
-// flattenCorpusMatches aplatit l'index map→[matchs] en une liste plate.
-func flattenCorpusMatches(mapIndex map[string][]mediaCandidate) []mediaCandidate {
-	out := make([]mediaCandidate, 0, len(mapIndex))
-	for _, ms := range mapIndex {
-		out = append(out, ms...)
-	}
-	return out
-}
-
-// pickCorpusMatch choisit un match du corpus pour un média : même map si possible,
-// sinon round-robin sur i (répartit les médias). ok=false si corpus vide.
-func pickCorpusMatch(corpus []mediaCandidate, mapName string, i int) (mediaCandidate, bool) {
-	if len(corpus) == 0 {
-		return mediaCandidate{}, false
-	}
-	if mapName != "" {
-		for _, m := range corpus {
-			if strings.EqualFold(m.MapName, mapName) {
-				return m, true
-			}
-		}
-	}
-	return corpus[i%len(corpus)], true
 }
 
 // demoMediaRow porte les champs d'une ligne média démo (schéma canonique shared_social).
