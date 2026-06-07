@@ -1,0 +1,44 @@
+{
+  "available": true,
+  "total": 4,
+  "completed": 1,
+  "xp_available": 1200,
+  "items": [
+    {
+      "challenge_path": "demo/challenge/eliminations",
+      "title": "Tueur en série",
+      "description": "Éliminez 25 adversaires en Partie rapide",
+      "progress_current": 18,
+      "progress_target": 25,
+      "progress_percent": 72.0,
+      "xp_reward": 500
+    },
+    {
+      "challenge_path": "demo/challenge/objectives",
+      "title": "Maître des objectifs",
+      "description": "Capturez 10 zones ou drapeaux",
+      "progress_current": 7,
+      "progress_target": 10,
+      "progress_percent": 70.0,
+      "xp_reward": 400
+    },
+    {
+      "challenge_path": "demo/challenge/headshots",
+      "title": "Précision mortelle",
+      "description": "Réalisez 50 tirs à la tête",
+      "progress_current": 32,
+      "progress_target": 50,
+      "progress_percent": 64.0,
+      "xp_reward": 300
+    },
+    {
+      "challenge_path": "demo/challenge/assists",
+      "title": "Esprit d'équipe",
+      "description": "Obtenez 15 assistances en escouade",
+      "progress_current": 15,
+      "progress_target": 15,
+      "progress_percent": 100.0,
+      "xp_reward": 250
+    }
+  ]
+}

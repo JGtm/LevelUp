@@ -83,6 +83,11 @@ func (s *HomeService) RefreshTrack(ctx context.Context, trackPath string) {
 // Appel live systÃ©matique pour garantir des donnÃ©es fraÃ®ches au rechargement de page.
 // Si le live Ã©choue (tokens absents, API indisponible), le cache DB est retournÃ©.
 func (s *HomeService) GetChallenges(ctx context.Context) domain.ChallengesResponse {
+	// Démo : pas d'API Halo live + cache challenge_snapshots TTL 24h → on sert une
+	// fixture embarquée (cf. home_service_demo.go) plutôt que "Défis indisponibles".
+	if s.demoMode {
+		return demoChallenges(ctx)
+	}
 	resp, raw := s.provider.GetChallengesWithRaw(ctx)
 	if resp.Available {
 		slog.DebugContext(ctx, "home: Challenges obtenus depuis API live")

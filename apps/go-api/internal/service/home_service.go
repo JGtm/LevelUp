@@ -54,6 +54,10 @@ type HomeService struct {
 	// Si nil, le service retombe sur l'ancien chemin (repo.LoadSpartanIdentity)
 	// — utilisé par les tests et les bootstraps minimaux sans auth.
 	careerLive *CareerLiveService
+	// demoMode : en démo, certaines sections sans source réelle (défis : pas d'API
+	// live + cache TTL 24h) sont servies depuis des fixtures embarquées au lieu de
+	// renvoyer vide. Cf. home_service_demo.go.
+	demoMode bool
 }
 
 // NewHomeService crÃ©e un HomeService avec le repository et le provider Halo.
@@ -62,6 +66,13 @@ func NewHomeService(repo port.HomeRepository) *HomeService {
 		repo:     repo,
 		provider: halo.DefaultHaloProvider,
 	}
+}
+
+// WithDemoMode active les fixtures de contenu démo (défis…) servies au niveau
+// lecture quand aucune source réelle n'existe en démo. Retourne le service (chaînage).
+func (s *HomeService) WithDemoMode(demo bool) *HomeService {
+	s.demoMode = demo
+	return s
 }
 
 // WithHaloProvider remplace le provider Halo utilisÃ© par le service.
