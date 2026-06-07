@@ -41,18 +41,26 @@ type hlsMedia struct {
 
 // extractDemoMedia copie les vidéos HLS "Halo Infinite" du joueur source vers la
 // démo et insère les media_files (schéma canonique shared_social). Sélection FIDÈLE :
-// la VRAIE carte de chaque vidéo (match que le joueur source jouait à l'horodatage de
-// la capture) doit exister dans le pool de matchs du DemoPlayer (corpus) ; la vidéo est
-// alors attribuée à un match du corpus de LA MÊME carte → démo crédible.
+// la VRAIE carte de chaque vidéo est lue depuis l'ASSOCIATION PROD (le match auquel la
+// vidéo est associée dans le shared_social source → sa carte via shared_matches_v2).
+// Cette carte doit exister dans le pool de matchs du DemoPlayer (corpus) ; la vidéo est
+// alors attribuée à un match du corpus de LA MÊME carte → en lisant la vidéo, la carte
+// affichée correspond à l'étiquette. (L'ancienne heuristique temporelle ±30min se
+// trompait quasi systématiquement.)
 func extractDemoMedia(
 	ctx context.Context,
-	srcMediaDir, srcSharedDB, outSocialDB, outMediaDir string,
+	srcMediaDir, srcSharedDB, srcSocialDB, outSocialDB, outMediaDir string,
 	matchIDs []string,
-	srcXUID, playerSlug string,
+	playerSlug string,
 	maxMedia int,
 ) (int, error) {
 	if err := os.MkdirAll(outMediaDir, 0o755); err != nil {
 		return 0, fmt.Errorf("mkdir media: %w", err)
+	}
+	// Pas de shared_social source (titre sans média indexé) → rien à copier.
+	if !fileExists(srcSocialDB) {
+		slog.InfoContext(ctx, "seed-demo media: shared_social source absent — pas de média", "src", srcSocialDB)
+		return 0, nil
 	}
 	// Recréer le shared_social fresh à chaque reseed (cf. shared/player DBs). Sous
 	// Linux, unlink d'un fichier tenu par le conteneur démo est sûr (inode survit).
@@ -62,15 +70,14 @@ func extractDemoMedia(
 		return 0, fmt.Errorf("migrations shared_social démo: %w", err)
 	}
 
-	// Corpus (matchs du DemoPlayer) par carte + tous les matchs source (pour retrouver
-	// la vraie carte d'une vidéo via l'horodatage de capture).
+	// Corpus (matchs du DemoPlayer) par carte + VRAIE carte de chaque vidéo (asso prod).
 	corpusByMap, err := buildDemoMapIndex(ctx, srcSharedDB, matchIDs)
 	if err != nil {
 		return 0, fmt.Errorf("build map index: %w", err)
 	}
-	srcMatches, err := loadSourcePlayerMatches(ctx, srcSharedDB, srcXUID)
+	videoRealMaps, err := loadVideoRealMaps(ctx, srcSocialDB, srcSharedDB)
 	if err != nil {
-		return 0, fmt.Errorf("load source matches: %w", err)
+		return 0, fmt.Errorf("load video real maps: %w", err)
 	}
 
 	vids := scanHaloInfiniteHLS(srcMediaDir, 0) // toutes : on filtre ensuite par carte du pool
@@ -91,7 +98,10 @@ func extractDemoMedia(
 		if imported >= maxMedia {
 			break
 		}
-		realMap := closestMatchMap(srcMatches, v.CaptureStart) // carte réelle de la vidéo
+		realMap := videoRealMaps[v.Name] // vraie carte de la vidéo (association prod)
+		if realMap == "" {
+			continue // pas d'association prod → vraie carte inconnue → on n'attribue pas
+		}
 		corpusMatches, ok := corpusByMap[realMap]
 		if !ok || len(corpusMatches) == 0 {
 			continue // carte absente du pool DemoPlayer → on n'invente pas une fausse carte
@@ -142,63 +152,39 @@ func extractDemoMedia(
 	return imported, nil
 }
 
-// srcMatch : un match du joueur source (pour retrouver la carte jouée à un instant T).
-type srcMatch struct {
-	MapName   string
-	StartTime time.Time
-}
-
-// loadSourcePlayerMatches charge tous les matchs du joueur source (xuid) avec leur
-// carte + horodatage — sert à retrouver la vraie carte d'une vidéo par proximité
-// temporelle avec sa capture.
-func loadSourcePlayerMatches(ctx context.Context, sharedDBPath, xuid string) ([]srcMatch, error) {
-	db, err := sql.Open("duckdb", sharedDBPath+"?access_mode=READ_ONLY")
+// loadVideoRealMaps lit, dans le shared_social SOURCE (prod), la VRAIE carte de chaque
+// vidéo "Halo Infinite" via son ASSOCIATION prod (media_match_associations → match),
+// résolue en carte par shared_matches_v2 (ATTACH). C'est la source de vérité (l'asso
+// prod, pas une heuristique temporelle). Clé = file_stem (= nom du dossier HLS sans
+// extension : "Halo Infinite 2026-02-18 17-37-18").
+func loadVideoRealMaps(ctx context.Context, srcSocialDB, srcSharedDB string) (map[string]string, error) {
+	db, err := sql.Open("duckdb", srcSocialDB+"?access_mode=READ_ONLY")
 	if err != nil {
-		return nil, fmt.Errorf("open shared: %w", err)
+		return nil, fmt.Errorf("open shared_social source: %w", err)
 	}
 	defer db.Close()
-
+	if _, err := db.ExecContext(ctx, fmt.Sprintf("ATTACH '%s' AS sm (READ_ONLY)", srcSharedDB)); err != nil {
+		return nil, fmt.Errorf("attach shared source: %w", err)
+	}
 	rows, err := db.QueryContext(ctx, `
-		SELECT r.map_name, COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')
-		FROM match_registry r
-		JOIN match_participants mp ON mp.match_id = r.match_id
-		WHERE mp.xuid = ? AND r.map_name IS NOT NULL`, xuid)
+		SELECT mf.file_stem, r.map_name
+		FROM media_files mf
+		JOIN media_match_associations mma ON mma.media_file_id = mf.id
+		JOIN sm.match_registry r ON r.match_id = mma.match_id
+		WHERE mf.file_name LIKE 'Halo Infinite%' AND r.map_name IS NOT NULL`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []srcMatch
+	out := make(map[string]string)
 	for rows.Next() {
-		var m srcMatch
-		if err := rows.Scan(&m.MapName, &m.StartTime); err != nil {
+		var stem, mapName string
+		if err := rows.Scan(&stem, &mapName); err != nil {
 			return nil, err
 		}
-		out = append(out, m)
+		out[stem] = mapName
 	}
 	return out, rows.Err()
-}
-
-// closestMatchMap retourne la carte du match source le plus proche temporellement de
-// la capture (fenêtre ±30 min : la vidéo a été enregistrée pendant ce match). "" si
-// aucun match dans la fenêtre.
-func closestMatchMap(matches []srcMatch, capture sql.NullTime) string {
-	if !capture.Valid {
-		return ""
-	}
-	const window = 30 * time.Minute
-	best := ""
-	bestDelta := window + time.Minute
-	for _, m := range matches {
-		d := capture.Time.Sub(m.StartTime)
-		if d < 0 {
-			d = -d
-		}
-		if d <= window && d < bestDelta {
-			bestDelta = d
-			best = m.MapName
-		}
-	}
-	return best
 }
 
 // scanHaloInfiniteHLS liste les flux HLS "Halo Infinite …" du joueur source (plus

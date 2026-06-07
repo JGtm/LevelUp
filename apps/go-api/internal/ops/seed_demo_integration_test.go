@@ -428,3 +428,46 @@ func contains(haystack, needle string) bool {
 
 // Sanity ensure time.Time import usage (utilisé par seedSourceDBs ailleurs).
 var _ = time.Now
+
+// TestLoadVideoRealMaps valide la résolution VRAIE carte d'une vidéo via l'association
+// prod (media_match_associations → match → map du shared_matches_v2 ATTACHé). C'est le
+// cœur du fix maps média (remplace l'ancienne heuristique temporelle qui se trompait).
+func TestLoadVideoRealMaps(t *testing.T) {
+	dir := t.TempDir()
+	smPath := filepath.Join(dir, "sm.duckdb")
+	ssPath := filepath.Join(dir, "ss.duckdb")
+	ctx := context.Background()
+
+	sm, err := sql.Open("duckdb", smPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, sm, `CREATE TABLE match_registry (match_id VARCHAR, map_name VARCHAR)`)
+	mustExec(t, sm, `INSERT INTO match_registry VALUES ('m1','Illusion'), ('m2','Bazaar')`)
+	sm.Close()
+
+	ss, err := sql.Open("duckdb", ssPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, ss, `CREATE TABLE media_files (id VARCHAR, file_name VARCHAR, file_stem VARCHAR)`)
+	mustExec(t, ss, `CREATE TABLE media_match_associations (media_file_id VARCHAR, match_id VARCHAR)`)
+	mustExec(t, ss, `INSERT INTO media_files VALUES
+		('a','Halo Infinite 2026-02-18 17-37-18.mkv','Halo Infinite 2026-02-18 17-37-18'),
+		('b','Replay clip.mp4','Replay clip')`)
+	mustExec(t, ss, `INSERT INTO media_match_associations VALUES ('a','m1'), ('b','m2')`)
+	ss.Close()
+
+	got, err := loadVideoRealMaps(ctx, ssPath, smPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// La vidéo Halo Infinite associée à m1 → vraie carte Illusion.
+	if got["Halo Infinite 2026-02-18 17-37-18"] != "Illusion" {
+		t.Errorf("vraie carte = %q, want Illusion", got["Halo Infinite 2026-02-18 17-37-18"])
+	}
+	// Média non "Halo Infinite" exclu (filtre file_name LIKE 'Halo Infinite%').
+	if _, ok := got["Replay clip"]; ok {
+		t.Error("média non Halo Infinite ne devrait pas être inclus")
+	}
+}
