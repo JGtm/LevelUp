@@ -1702,6 +1702,10 @@ export interface SeasonPassTrackSummary {
   background_image_url?: string | null
   tiers?: SeasonPassTierSummary[]
   content?: SeasonPassContentSummary | null
+  /** Même agrégat que `content` mais limité aux paliers PAS ENCORE atteints
+   *  (rang > current_rank). null/absent au rang max. Pour l'overlay « restant »
+   *  (XX/YY) accueil + page pass saisonnier. */
+  remaining_content?: SeasonPassContentSummary | null
   /** RFC3339 — date du dernier `battlepass_snapshots` connu pour ce track. */
   snapshot_at?: string | null
 }

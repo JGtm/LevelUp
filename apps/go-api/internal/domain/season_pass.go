@@ -76,7 +76,11 @@ type SeasonPassTrackSummary struct {
 	BackgroundImageURL        *string                   `json:"background_image_url,omitempty"`
 	Tiers                     []SeasonPassTierSummary   `json:"tiers,omitempty"`
 	Content                   *SeasonPassContentSummary `json:"content,omitempty"`
-	SnapshotAt                *string                   `json:"snapshot_at,omitempty"`
+	// RemainingContent : même agrégat que Content mais limité aux paliers PAS
+	// ENCORE atteints (rang > CurrentRank). nil au rang max. Pour l'overlay
+	// « restant à débloquer » (XX/YY) accueil + page pass saisonnier.
+	RemainingContent *SeasonPassContentSummary `json:"remaining_content,omitempty"`
+	SnapshotAt       *string                   `json:"snapshot_at,omitempty"`
 }
 
 // SeasonPassPageResponse est la réponse de l'endpoint /pages/palmares/season-pass.

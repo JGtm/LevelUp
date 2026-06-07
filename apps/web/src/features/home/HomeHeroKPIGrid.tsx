@@ -1,6 +1,6 @@
 /**
- * HomeHeroKPIGrid — grille des 8 tuiles KPI du hero (Parties, KDA, Win Rate,
- * Durée totale, Playlist favorite, Off/Def, Précision, Arme favorite).
+ * HomeHeroKPIGrid — grille des 8 tuiles KPI du hero (Matchs, KDA, Win Rate,
+ * Temps, Playlist favorite, Off/Def, Précision, Arme favorite).
  *
  * P8.4 finition (revue 2026-04-29) : extrait de HomePage.tsx (~145L).
  *
@@ -20,6 +20,7 @@ import type { getKPIText } from './kpi.i18n'
 import { KpiCard } from '@/components/cards/KpiCard'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
 import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
+import { Tooltip } from '@/components/ui/tooltip'
 
 interface HomeHeroKPIGridProps {
   kpis: HeroKPIs
@@ -28,8 +29,11 @@ interface HomeHeroKPIGridProps {
   kpiText: ReturnType<typeof getKPIText>
 }
 
-/** Classe label harmonisée (type 2 du catalogue : uppercase, 2xs, tracking). */
-const KPI_LABEL_CLS = 'text-2xs uppercase tracking-label-xl text-muted-foreground'
+/** Classe label harmonisée (type 2 du catalogue : uppercase, 2xs, tracking).
+ *  `min-h-[1lh]` réserve UNE ligne pour le titre dans chaque carte → les valeurs
+ *  s'alignent (au desktop, rangée unique à largeurs proportionnelles, chaque label
+ *  tient sur 1 ligne depuis le raccourcissement « Matchs » / « Temps »). */
+const KPI_LABEL_CLS = 'min-h-[1lh] text-2xs uppercase tracking-label-xl text-muted-foreground'
 /** Conteneur interne d'une tuile : titre aligné en haut (cf. demande user :
  *  tous les titres alignés), contenu qui descend ; remplit la carte en hauteur. */
 const KPI_CONTENT_CLS = 'flex flex-1 flex-col items-center justify-start py-3 text-center'
@@ -80,7 +84,6 @@ export function HomeHeroKPIGrid({
   const losses = kpis.losses
   const draws = kpis.draws ?? 0
   const dnfs = kpis.dnfs ?? 0
-  const neutral = draws + dnfs
   const playtime = formatPlaytime(kpis.total_playtime_secs ?? 0, kpiText)
   const acc = kpis.avg_accuracy
   const accAccent: SemanticToken = acc != null ? accuracyScale(acc) : 'perf-tier-3'
@@ -90,17 +93,39 @@ export function HomeHeroKPIGrid({
   const winRateAccent: SemanticToken =
     winRate > 0.55 ? 'outcome-win' : winRate < 0.45 ? 'outcome-loss' : 'outcome-draw'
 
+  // Détail des issues : victoires (gauche) / défaites (droite) aux extrémités de
+  // la barre ; le reste (nuls, abandons) dans un tooltip au survol (cf. demande user).
+  const outcomeRows: { token: SemanticToken; label: string; value: number }[] = [
+    { token: 'outcome-win', label: kpiText.outcomes.wins, value: wins },
+    { token: 'outcome-draw', label: kpiText.outcomes.draws, value: draws },
+    { token: 'outcome-dnf', label: kpiText.outcomes.dnfs, value: dnfs },
+    { token: 'outcome-loss', label: kpiText.outcomes.losses, value: losses },
+  ]
+  const winOutcomeTooltip = (
+    <div className="space-y-1 text-left">
+      {outcomeRows
+        .filter((o) => o.value > 0)
+        .map((o) => (
+          <div key={o.label} className="flex items-center gap-2">
+            <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: tokenCssVar(o.token) }} />
+            <span className="flex-1 whitespace-nowrap">{o.label}</span>
+            <span className="font-semibold tabular-nums">{o.value}</span>
+          </div>
+        ))}
+    </div>
+  )
+
   return (
     <div className="kpi-stats-grid items-stretch">
-      {/* 1 — Parties (accent fixe : métrique descriptive) */}
+      {/* 1 — Matchs (accent fixe : métrique descriptive) */}
       <KpiCard accent="chart-series-1" className="flex h-full flex-col">
         <div className={`${KPI_CONTENT_CLS} px-2`}>
-          <p className={KPI_LABEL_CLS}>{labelOf('total_matches_played')}</p>
+          <p className={KPI_LABEL_CLS}>{kpiText.labels.matches}</p>
           <p className={KPI_VALUE_CLS}>{kpis.total_matches.toLocaleString(numberLocale)}</p>
         </div>
       </KpiCard>
 
-      {/* 2 — Durée totale (accent fixe ; déplacée en 2e position, cf. demande user) */}
+      {/* 2 — Temps (accent fixe ; déplacé en 2e position, cf. demande user) */}
       <KpiCard accent="chart-series-2" className="flex h-full flex-col">
         <div className={`${KPI_CONTENT_CLS} px-4`}>
           <p className={KPI_LABEL_CLS}>{kpiText.labels.totalTime}</p>
@@ -121,13 +146,17 @@ export function HomeHeroKPIGrid({
         <div className={`${KPI_CONTENT_CLS} px-4`}>
           <p className={KPI_LABEL_CLS}>{labelOf('win_rate')}</p>
           <p className={KPI_VALUE_CLS}>{`${(winRate * 100).toFixed(0)}%`}</p>
-          <div className="mt-2 w-full">
-            <OutcomeBar wins={wins} draws={draws} losses={losses} dnfs={dnfs} />
-          </div>
-          <div className="mt-1.5 flex justify-center gap-3 text-xs font-semibold tabular-nums">
-            <span style={{ color: tokenCssVar('outcome-win') }}>{wins}</span>
-            {neutral > 0 && <span style={{ color: tokenCssVar('outcome-draw') }}>{neutral}</span>}
-            <span style={{ color: tokenCssVar('outcome-loss') }}>{losses}</span>
+          {/* Victoires (gauche) ─ barre (détail nuls/abandons en tooltip) ─ défaites (droite). */}
+          <div className="mt-2 flex w-full items-center gap-2">
+            <span className="shrink-0 text-xs font-semibold tabular-nums" style={{ color: tokenCssVar('outcome-win') }}>
+              {wins}
+            </span>
+            <Tooltip className="min-w-0 flex-1" content={winOutcomeTooltip}>
+              <OutcomeBar wins={wins} draws={draws} losses={losses} dnfs={dnfs} />
+            </Tooltip>
+            <span className="shrink-0 text-xs font-semibold tabular-nums" style={{ color: tokenCssVar('outcome-loss') }}>
+              {losses}
+            </span>
           </div>
         </div>
       </KpiCard>

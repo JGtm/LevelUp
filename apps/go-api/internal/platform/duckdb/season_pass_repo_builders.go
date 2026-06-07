@@ -51,7 +51,8 @@ func buildTrackSummary(
 		ActiveTierRank:            activeTierRank,
 		ActiveTierProgressPercent: activeTierProgressPercent,
 		Tiers:                     tiers,
-		Content:                   computeContentSummary(payload, itemMap),
+		Content:                   computeContentSummary(payload, itemMap, 0),
+		RemainingContent:          computeContentSummary(payload, itemMap, state.Rank),
 	}
 	if xpPerRank != nil {
 		v := *xpPerRank
@@ -71,23 +72,34 @@ func buildTrackSummary(
 }
 
 // computeContentSummary agrège le contenu d'un track (currencies + cosmétiques + raretés).
-// Itère tous les paliers (free + paid) pour un inventaire complet indépendant de l'ownership.
+// N'agrège que les paliers dont le rang est STRICTEMENT supérieur à minRank :
+//   - minRank = 0           → tout le pass (inventaire complet, indépendant de l'ownership).
+//   - minRank = rang courant → uniquement le RESTANT (paliers pas encore atteints).
+//
+// Retourne nil si aucun palier ne reste (ex. RemainingContent au rang max).
 func computeContentSummary(
 	payload *seasonPassTrackPayload,
 	itemMap map[string]seasonPassItemMeta,
+	minRank int,
 ) *domain.SeasonPassContentSummary {
 	if payload == nil || len(payload.Ranks) == 0 {
 		return nil
 	}
 	s := &domain.SeasonPassContentSummary{
-		TotalTiers:      len(payload.Ranks),
 		RarityBreakdown: map[string]int{},
 		TypeBreakdown:   map[string]int{},
 	}
 	seen := map[string]struct{}{}
 	for _, rank := range payload.Ranks {
+		if rank.Rank <= minRank {
+			continue
+		}
+		s.TotalTiers++
 		aggregateRewardBucket(rank.FreeRewards, itemMap, s, seen)
 		aggregateRewardBucket(rank.PaidRewards, itemMap, s, seen)
+	}
+	if s.TotalTiers == 0 {
+		return nil
 	}
 	if len(s.RarityBreakdown) == 0 {
 		s.RarityBreakdown = nil
