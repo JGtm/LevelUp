@@ -1,3 +1,19 @@
+## [2026-06-07] Finalisation i18n module Prestige : CreateChallengeForm + MomentCard, FR sans franglais — Complété (front-only)
+
+**Statut** : Complété. typecheck OK + `eslint src/features/prestige` exit 0 (zéro warning `no-hardcoded-strings` sur tout le module) + vitest home 28. Non commité (attente autorisation user).
+
+**Demande** : finaliser l'i18n du module Prestige (suite de la rév 19 qui avait converti ObjectiveRow + ArcSummary). Puis correction user : **pas de franglais** dans la version FR.
+
+**Décisions** :
+1. **`getPrestigeText` étendu** (`features/prestige/i18n.ts`) : ~30 clés ajoutées pour `CreateChallengeForm` (modes, métriques, fenêtres, cadences, hints, libellés de champs, dont l'interpolée `formAcceptHeroic` avec `{target}`) + 4 clés `MomentCard` (Atteint/Référence/Évolution/matchs).
+2. **CreateChallengeForm converti** : chaque sous-composant (FreeForm/HybridForm/AutoForm/SubmitRow) lit `useAppShellStore(s=>s.locale)` → `t`. Variable de map des templates renommée `t`→`tpl` pour éviter la collision avec le dict `t`. Acronymes universels (KDA, K/D) laissés inline.
+3. **MomentCard converti** : Atteint/Référence/Évolution/matchs via dict + date localisée (`locale === 'en' ? 'en-US' : 'fr-FR'`). La string « Phase 5 minimale » annoncée en rév 19 n'existe PAS dans MomentCard (juste des commentaires ailleurs) — corrigé.
+4. **Correction franglais (feedback user)** : la version FR ne doit pas mélanger anglais/français. Traduits : baseline→**Référence**, delta→**Évolution**, deadline→**Échéance**, label→**Libellé**, preset→**Préréglage**, heroic→**Héroïque**, headshots→**Tirs à la tête**, template→**modèle**. La version EN reste anglaise propre.
+
+**Résultats** : module Prestige 100 % i18n (FR/EN), aucun warning lint, FR sans franglais. Pas de tests dans le module (UI-only).
+
+**Prochaine étape** : commit sur autorisation user. Bascule EN runtime testable via le sélecteur de langue.
+
 ## [2026-06-07] Demo : vraie carte média (asso prod) + tier FR + arc Étape 1/4 + streaks — Complété
 
 **Statut** : Complété (validé local). go build ./... + vet + go test ./internal/ops/ OK ; TestLoadVideoRealMaps (intégration) PASS ; tsc + eslint OK. Commits 5341dc26f (média) + ab0e60c3f (tier/arc/streaks). Non déployé.
