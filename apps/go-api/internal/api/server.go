@@ -927,7 +927,8 @@ func NewRouter(
 			progressionResolve := func(ctx context.Context, slug string) (*platform_duckdb.PlayerDB, error) {
 				return reg.resolve(ctx, slug)
 			}
-			progressionH := handlers.NewProgressionHandler(progressionResolve, defaultProgressionTitleSlug())
+			progressionH := handlers.NewProgressionHandler(progressionResolve, defaultProgressionTitleSlug()).
+				WithDemoMode(cfg.DemoMode)
 			progressionH.Mount(r)
 
 			// Coach Advisor — proposals coach proactives (ADR 0020 Phase 9).

@@ -5,8 +5,9 @@
  * Cohérent visuellement avec les tuiles de matchs existantes.
  */
 import type { Challenge } from '@/lib/prestige'
-import { TIER_COLORS, TIER_LABELS_FR } from '@/lib/prestige'
+import { TIER_COLORS, TIER_LABELS_FR, TIER_LABELS_EN } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 interface ChallengeCardProps {
   challenge: Challenge
@@ -16,12 +17,15 @@ interface ChallengeCardProps {
 }
 
 export function ChallengeCard({ challenge, currentValue, onClick }: ChallengeCardProps) {
+  const locale = useAppShellStore((s) => s.locale)
   const tier = challenge.tier ?? 'normal'
   const tierColor = TIER_COLORS[tier]
   // Phase 4.1 plan finition multi-titres : libellé du tier via le TOML backend.
-  // Fallback sur TIER_LABELS_FR si MULTI_TITLE_API_ENABLED=false.
+  // Fallback localisé si le manifest n'a pas le libellé (cas courant hors test) :
+  // FR = "Héroïque", EN = "Heroic". Sans le fallback localisé, "Heroic" en français.
   const tierLabelFromTOML = useAssetLabel('challenge_tier', tier)
-  const tierLabel = tierLabelFromTOML !== tier ? tierLabelFromTOML : TIER_LABELS_FR[tier]
+  const tierLabelFallback = locale === 'en' ? TIER_LABELS_EN[tier] : TIER_LABELS_FR[tier]
+  const tierLabel = tierLabelFromTOML !== tier ? tierLabelFromTOML : tierLabelFallback
   // Valeur courante : prop explicite (éval) sinon current_value de la réponse
   // backend (aligné sur ObjectiveRow). Sans ça la barre reste à 0 quand le parent
   // ne passe pas la prop (ex: liste d'objectifs Ascension).

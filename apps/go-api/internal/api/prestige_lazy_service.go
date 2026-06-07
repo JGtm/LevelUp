@@ -246,12 +246,13 @@ func demoArcs(userID, titleSlug string) []prestige.Arc {
 	}}
 }
 
-// demoActiveChallenges : objectifs Prestige démo (rattachés à l'arc) — la section
-// Prestige du Home affiche ces objectifs en cours. CurrentValue < Target (en cours).
+// demoActiveChallenges : objectifs Prestige démo (rattachés à l'arc). 3 en cours
+// (CurrentValue < Target) + 1 complété, pour que l'arc affiche une progression
+// (Étape 1/4) sur le Home et la page Ascension. Read-time → survit reseed.
 func demoActiveChallenges(userID, titleSlug string) []prestige.Challenge {
 	now := time.Now().UTC()
 	exp := now.Add(5 * 24 * time.Hour)
-	mk := func(id, label, metric string, pos int, target, current float64) prestige.Challenge {
+	mk := func(id, label, metric string, pos int, target, current float64, status prestige.ChallengeStatus) prestige.Challenge {
 		return prestige.Challenge{
 			ID: id, UserID: userID, TitleSlug: titleSlug,
 			ArcID: demoArcID, Position: pos,
@@ -259,14 +260,16 @@ func demoActiveChallenges(userID, titleSlug string) []prestige.Challenge {
 			WindowType: prestige.WindowLastNMatches, WindowValue: "10",
 			Cadence: prestige.CadenceWeekly, EvalType: prestige.EvalCumulative,
 			Mode: prestige.ModeLibre, Tier: prestige.TierHeroic, DataTier: prestige.DataFull,
-			Label: label, Status: prestige.StatusActive,
+			Label: label, Status: status,
 			ExpiresAt: &exp, CreatedAt: now.Add(-3 * 24 * time.Hour),
 		}
 	}
 	return []prestige.Challenge{
-		mk("demo-ch-kills", "Tueur d'élite — 100 éliminations", "kills", 1, 100, 67),
-		mk("demo-ch-headshots", "Précision létale — 40 tirs à la tête", "headshot_kills", 2, 40, 28),
-		mk("demo-ch-wins", "Série victorieuse — 8 victoires", "wins", 3, 8, 5),
+		// 1re étape complétée → l'arc démo affiche une progression réelle (Étape 1/4).
+		mk("demo-ch-warmup", "Mise en jambe — 10 parties jouées", "matches_played", 0, 10, 10, prestige.StatusCompleted),
+		mk("demo-ch-kills", "Tueur d'élite — 100 éliminations", "kills", 1, 100, 67, prestige.StatusActive),
+		mk("demo-ch-headshots", "Précision létale — 40 tirs à la tête", "headshot_kills", 2, 40, 28, prestige.StatusActive),
+		mk("demo-ch-wins", "Série victorieuse — 8 victoires", "wins", 3, 8, 5, prestige.StatusActive),
 	}
 }
 
