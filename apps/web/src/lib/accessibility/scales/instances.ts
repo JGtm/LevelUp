@@ -34,6 +34,18 @@ export const kdScale = makeOrdinalScale({
   thresholds: [1.0, 0.0], // décision §9.7
 })
 
+/** Assists par match — heuristique support : ≥3 (bon) / [1,3[ (moyen) / <1 (faible). */
+export const assistsScale = makeOrdinalScale({
+  tiers: ['perf-tier-1', 'perf-tier-3', 'perf-tier-5'],
+  thresholds: [3, 1],
+})
+
+/** Durée de vie moyenne (secondes) — heuristique survie : ≥45s (bon) / [25,45[ (moyen) / <25 (faible). */
+export const lifespanScale = makeOrdinalScale({
+  tiers: ['perf-tier-1', 'perf-tier-3', 'perf-tier-5'],
+  thresholds: [45, 25],
+})
+
 /** Progression gauge / barres de progression (0–100 %). Seuils : 75 / 50 / 25. */
 export const progressScale = makeOrdinalScale({
   tiers: ['perf-tier-1', 'perf-tier-2', 'perf-tier-4', 'perf-tier-5'],

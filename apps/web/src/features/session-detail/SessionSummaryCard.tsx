@@ -12,9 +12,12 @@
  * même composite que la home) et Durée de vie moyenne (même rendu que "Mes stats").
  */
 import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
+import { KpiCard } from '@/components/cards/KpiCard'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import { accuracyScale, kdScale, lifespanScale } from '@/lib/accessibility/scales'
 import { formatDurationMMSS, displayRatingLabel } from '@/lib/formatters'
+import { combatYieldToken } from '@/lib/formatters/combatYield'
 import type { SessionCompareEntry } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
@@ -66,55 +69,83 @@ export function SessionSummaryCard({ entry, compact = false }: Props) {
       <KpiStat
         label={labelOf('accuracy')}
         value={entry.avg_accuracy != null ? formatPercent(entry.avg_accuracy * 100) : '—'}
+        accent={entry.avg_accuracy != null ? accuracyScale(entry.avg_accuracy * 100) : undefined}
       />
-      <KpiStat label={t('session.detail.stat_kills_per_match')} value={formatNumber(entry.kills_per_match, 1)} />
+      <KpiStat
+        label={t('session.detail.stat_kills_per_match')}
+        value={formatNumber(entry.kills_per_match, 1)}
+        accent={kdScale(entry.kdr)}
+      />
       <KpiStat
         label={t('session.detail.stat_avg_life')}
         value={entry.avg_life_seconds != null ? formatDurationMMSS(entry.avg_life_seconds) : '—'}
+        accent={entry.avg_life_seconds != null ? lifespanScale(entry.avg_life_seconds) : undefined}
       />
       <KpiStat
         label={t('session.detail.stat_perf_score')}
         value={formatNumber(entry.performance_score, 1)}
         token={perfTierToken(entry.performance_score)}
+        accent={perfTierToken(entry.performance_score)}
       />
-      {/* Rendement / Résistance : tile plus large (barre composite responsive). */}
-      <div className="flex-[2] min-w-[9.5rem] rounded border border-border bg-card px-3 py-2">
-        <p className="text-3xs font-medium uppercase tracking-wide text-muted-foreground">
-          {t(compact ? 'session.detail.stat_off_def_short' : 'session.detail.stat_off_def')}
-        </p>
-        <div className="mt-1.5">
-          {hasOffDef ? (
-            <CombatYieldDisplay
-              className="w-full"
-              offensiveConversion={entry.avg_oc}
-              defensiveResistance={entry.avg_dr}
-              dmgPerKill={entry.dmg_per_kill}
-              dmgPerDeath={entry.dmg_per_death}
-              align="start"
-            />
-          ) : (
-            <p className="text-lg font-bold text-muted-foreground">—</p>
-          )}
+      {/* Rendement / Résistance : tile plus large (barre composite responsive).
+          Accent = qualité combinée vs référence (rendement ≥ 100% & résistance
+          ≥ +0% → vert ; les deux en-dessous → rouge ; mixte → neutre). */}
+      <KpiCard
+        accent={combatYieldToken(entry.avg_oc, entry.avg_dr)}
+        className="flex-[2] min-w-[9.5rem]"
+      >
+        <div className="px-3 py-2">
+          <p className="text-3xs font-medium uppercase tracking-wide text-muted-foreground">
+            {t(compact ? 'session.detail.stat_off_def_short' : 'session.detail.stat_off_def')}
+          </p>
+          <div className="mt-1.5">
+            {hasOffDef ? (
+              <CombatYieldDisplay
+                className="w-full"
+                offensiveConversion={entry.avg_oc}
+                defensiveResistance={entry.avg_dr}
+                dmgPerKill={entry.dmg_per_kill}
+                dmgPerDeath={entry.dmg_per_death}
+                align="start"
+              />
+            ) : (
+              <p className="text-lg font-bold text-muted-foreground">—</p>
+            )}
+          </div>
         </div>
-      </div>
+      </KpiCard>
       {entry.skill_rating_delta != null && entry.skill_rating_type ? (
         <KpiStat
           label={`Δ ${displayRatingLabel(entry.skill_rating_type) ?? ''}`}
           value={formatRankDelta(entry.skill_rating_delta, entry.skill_rating_type)}
           token={rankDeltaToken(entry.skill_rating_delta)}
+          accent={rankDeltaToken(entry.skill_rating_delta)}
         />
       ) : null}
     </div>
   )
 }
 
-function KpiStat({ label, value, token }: { label: string; value: string; token?: SemanticToken }) {
+function KpiStat({
+  label,
+  value,
+  token,
+  accent,
+}: {
+  label: string
+  value: string
+  token?: SemanticToken
+  /** Barre d'accent du catalogue (qualité de la métrique). */
+  accent?: SemanticToken
+}) {
   return (
-    <div className="flex-1 min-w-[5rem] rounded border border-border bg-card px-3 py-2">
-      <p className="text-3xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-lg font-bold text-foreground" style={token ? { color: tokenCssVar(token) } : undefined}>
-        {value}
-      </p>
-    </div>
+    <KpiCard accent={accent} className="flex-1 min-w-[5rem]">
+      <div className="px-3 py-2">
+        <p className="text-3xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="mt-0.5 text-lg font-bold text-foreground" style={token ? { color: tokenCssVar(token) } : undefined}>
+          {value}
+        </p>
+      </div>
+    </KpiCard>
   )
 }

@@ -5,6 +5,8 @@ export {
   perfScale,
   accuracyScale,
   kdScale,
+  assistsScale,
+  lifespanScale,
   progressScale,
   mmrDeltaScale,
   skillDeltaScale,

@@ -10,6 +10,8 @@
  * Renvoie un fallback (par défaut "—") pour null / undefined.
  */
 
+import type { SemanticToken } from '@/lib/accessibility'
+
 const DASH = '—'
 
 /** Poids d'un assist en frag-équivalent (convention Halo : 1 assist = 1/3 de frag). */
@@ -47,4 +49,28 @@ export function formatDefensiveResistance(dr: number | null | undefined, fallbac
   if (dr < 0) return '∞'
   const pct = Math.round((dr - 1) * 100)
   return `${dr >= 1 ? '+' : ''}${pct}%`
+}
+
+/**
+ * Accent de QUALITÉ du combat yield, pour la barre des KPI cards.
+ * Référence = baseline affichée : rendement ≥ 100 % (oc ≥ 1.0) et résistance
+ * ≥ +0 % (dr ≥ 1.0). « Plus le % est haut, mieux c'est. »
+ *   - vert   : toutes les métriques présentes sont ≥ référence
+ *   - rouge  : toutes en-dessous
+ *   - neutre : mixte
+ *   - undefined : aucune donnée
+ */
+export function combatYieldToken(
+  oc: number | null | undefined,
+  dr: number | null | undefined,
+): SemanticToken | undefined {
+  const states = [
+    oc != null && Number.isFinite(oc) ? oc >= 1.0 : null,
+    // dr < 0 = sentinelle ∞ (0 mort) → excellent.
+    dr != null && Number.isFinite(dr) ? dr < 0 || dr >= 1.0 : null,
+  ].filter((v): v is boolean => v !== null)
+  if (states.length === 0) return undefined
+  if (states.every((v) => v)) return 'divergent-pos'
+  if (states.every((v) => !v)) return 'divergent-neg'
+  return 'divergent-neutral'
 }

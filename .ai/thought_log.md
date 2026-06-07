@@ -1,3 +1,41 @@
+## [2026-06-07] Suite KPI : accent carte Rendement/Résist. + page Sessions (composant SÉPARÉ oublié) — Complété (front-only)
+
+**Statut** : Complété (validé local). typecheck OK + eslint exit 0 + vitest session-detail/SessionBriefing/formatters 112. Non commité.
+
+**Retours** :
+1. **Carte composite « Rendement / Résist. » sans accent** : nouveau helper `combatYieldToken(oc, dr)` dans `lib/formatters/combatYield.ts` — réf = baseline affichée (rendement ≥ 100% = oc≥1.0, résistance ≥ +0% = dr≥1.0, « plus haut mieux ») → vert si les 2 ≥ réf, rouge si les 2 <, neutre mixte ; dr<0 (∞, 0 mort) = excellent. Câblé sur la carte composite dans `KpiGrid` ET `SessionSummaryCard`.
+2. **Page Sessions oubliée** : la page Sessions (`session-detail/SessionSummaryCard`) a ses PROPRES cartes (`KpiStat` plates), PAS le `KpiGrid` partagé → mes accents ne l'avaient pas touchée. Converti `KpiStat` → `KpiCard` (catalogue) + accent sur les 6 cartes : Précision `accuracyScale`, Frags `kdScale(entry.kdr)`, Vie `lifespanScale`, Perf `perfTierToken`, Rendement/Résist `combatYieldToken`, Δ rang `rankDeltaToken`. LEÇON : « le même composant » peut être 2 implémentations distinctes — vérifier chaque page.
+
+**Prochaine étape** : commit sur autorisation.
+
+## [2026-06-07] Retours UI session KPI : accent sur TOUTES les cartes + titres + ordre Intensité + légendes — Complété (front-only)
+
+**Statut** : Complété (validé local). typecheck OK + `eslint` exit 0 (mes fichiers ; 1 warning préexistant restauré dans EngagementTimeseriesSection) + vitest 430 (scales/SessionBriefing/timeseries/engagement/match-view/charts/squad). Non commité.
+
+**ERREUR à retenir (mauvais composants ciblés au 1er essai)** : « Intensité » = `TimeseriesIntensityHeatmap` (PAS `EngagementTimeseriesSection` = « Engagement ») ; « Dégâts/frag/mort » = `TimeseriesEfficiency` (PAS `TimeseriesCombatYield`). Les deux sont définis dans `TimeseriesSquadAdapted.tsx` et instanciés dans `TimeseriesPage.progression.tsx` (l.171 efficiency, l.182 engagement, l.194 intensity). Toujours remonter du **point d'instanciation** (titre i18n exact) avant d'éditer.
+
+**Retours traités** :
+1. **Accent sur TOUTES les cartes KPI** (`KpiGrid`) — le user le voulait explicitement. D'abord j'avais (a) mis une barre neutre fixe (trompeur : 30% précision en bleu « ok ») puis (b) retiré les accents (erreur : il en voulait). Solution finale : prop `absoluteAccent` sur `KpiCell`, ordre signe-delta → tendance-équipe (squad) → **échelle métier absolue** (solo). Échelles : Précision `accuracyScale`, Frags/Morts `kdScale(K/D)`, Assists `assistsScale` (NOUVELLE, seuils 3/1), Vie `lifespanScale` (NOUVELLE, 45/25s). Les 2 nouvelles échelles ajoutées dans `scales/instances.ts` (source de vérité) + ré-exportées dans `scales/index.ts`. K/D pour Frags/Morts car les comptes bruts sont mode-dépendants, le ratio beaucoup moins.
+2. **Titres KPI FR raccourcis** (i18n partagé) : Assists par match / Précision moy. / Durée de vie moy.
+3. **Ordre « Intensité »** : `TimeseriesIntensityHeatmap` reçoit les matchs en DESC → `[...rows].reverse()` pour heatmap ancien→récent.
+4. **Légende « Dégâts/frag/mort »** (`TimeseriesEfficiency`) + **« Engagement »** (`EngagementCurve`) : `itemWidth` 12→30 en gardant l'icône ligne par défaut (révèle le pointillé vs plein — Dégâts/mort & Attendu sont en dashed). `EngagementCurve` : légende remontée de `top:0` → bas (`getLegendBase` bottom:0) + grid bottom 38→56.
+
+**Prochaine étape** : commit sur autorisation.
+
+## [2026-06-07] SessionBriefing KPI → KpiCard dynamique + butterfly premier frag/mort (timeseries) — Complété (front-only)
+
+**Statut** : Complété (validé local). typecheck OK + `eslint` exit 0 (mes fichiers) + vitest SessionBriefing/timeseries/squad 284. Non commité (attente autorisation user).
+
+**Demandes** : (1) « Mes stats sur cette session » → KpiCard dynamique du catalogue (présent sur timeseries + sessions + escouade) ; (2) graphe « Temps du premier frag / première mort » → morts sous l'axe X (idem page escouade).
+
+**Décisions** :
+1. **KpiGrid (composant partagé `_shared/SessionBriefing`)** : `KpiCell` + carte composite Rendement/Résistance passées de `<div rounded border bg-card>` à `<KpiCard>` (catalogue, accent 3px). Accent **dynamique** : couleur absolue du delta de rang si fourni, sinon la tendance ▲/▼ vs moyenne d'équipe (mode squad), sinon **pas de barre** (mode solo timeseries/sessions — aucune référence de comparaison). Couvre d'un coup timeseries, sessions (`SessionSummaryCard`), escouade (`SquadV2Page`) + explorer (tous montent `SessionBriefing`).
+2. **Premier frag/mort** : la version **escouade** (`squadFirstEventsChart`) était DÉJÀ un butterfly correct (morts négativées + axe abs). Seule la **timeseries** (`TimeseriesFirstEventDistribution`) avait kills+deaths tous au-dessus de l'axe. Alignée sur le pattern squad : morts `-b.first_deaths` (sous l'axe) + `barGap: -100%` (superposé, diverge verticalement) + axe Y et tooltip en valeur absolue + markLine morts en `insideEndBottom`.
+
+**Résultats** : KPI session au format catalogue (accent dynamique en squad, propre en solo) ; graphe premier frag/mort en butterfly cohérent sur timeseries ET escouade. typecheck 0, lint exit 0, vitest 284.
+
+**Prochaine étape** : commit sur autorisation.
+
 ## [2026-06-07] Match View onglet Détails — reorg en 4 sections titrées + alignements fond bg-card — Complété (front-only)
 
 **Statut** : Complété (validé local). typecheck OK + `eslint` exit 0 (mes fichiers) + vitest match-view 110. Non commité (attente autorisation user).

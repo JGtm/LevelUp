@@ -144,7 +144,7 @@ function buildEngagementOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { left: 50, right: 24, top: 18, bottom: 38 },
+    grid: { left: 50, right: 24, top: 18, bottom: 56 },
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',
@@ -168,7 +168,10 @@ function buildEngagementOption(
         return [head, ...lines].join('<br/>')
       },
     },
-    legend: { ...getLegendBase(tc), top: 0, bottom: 'auto' },
+    // Légende en BAS (comme tous les autres graphes) + pastille élargie
+    // (itemWidth 30) pour distinguer trait plein (Joueur/Équipe) vs pointillé
+    // (Attendu). getLegendBase fournit déjà bottom: 0.
+    legend: { ...getLegendBase(tc), itemWidth: 30 },
     xAxis: {
       ...axis,
       type: 'category',
