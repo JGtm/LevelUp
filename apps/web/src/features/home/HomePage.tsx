@@ -2,9 +2,8 @@
  * HomePage — Accueil Mission Control (Slice 5).
  *
  * P8.4 (revue 2026-04-29) : sub-components extraits dans des fichiers dédiés
- * (HomeKPICard, HomeOutcomeBar, HomeHighlightTile, HomeSessionCarousel,
- * HomeSkillPeakCard, HomeSpartanIdentityBanner, HomeHeroKPIGrid) — réduit
- * ce fichier de ~720L.
+ * (HomeOutcomeBar, HomeHighlightTile, HomeSessionCarousel, HomeSkillPeakCard,
+ * HomeSpartanIdentityBanner, HomeHeroKPIGrid) — réduit ce fichier de ~720L.
  */
 import { useState } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'

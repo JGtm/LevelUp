@@ -5,7 +5,7 @@
  * dispersées :
  *   - features/lab/_labShared.tsx::MetricCard (uppercase tracking + 2xl value + hint)
  *   - features/synthesis/SynthesisPage.tsx::StatCell (border simple + xl value)
- *   - features/home/HomeKPICard.tsx::HomeKPICard (bg-muted centré + primary)
+ *   - features/home/HomeKPICard (retiré 2026-06-06 — home migré sur components/cards/KpiCard)
  *
  * 3 variants couvrent ces cas tout en partageant l'API. Le composant vit
  * dans `components/cards/` (pas dans `features/*`) pour respecter la
