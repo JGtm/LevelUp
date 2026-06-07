@@ -1,3 +1,66 @@
+## [2026-06-07] Demo durabilite : reseed auto + barres objectifs prestige — Complété
+
+**Statut** : Complété. Deploy reussi (run 27092269295). Prod + demo 200.
+
+**Demandes** : (1) Rendre le reseed demo automatique a chaque deploy. (2) Seeder les donnees prestige pour que les barres d'objectifs affichent une vraie progression.
+
+**Decisions techniques** :
+1. **deploy.yml job Regen** : retire l'etape `levelup seed` qui verrouillait la metadata prod (cause historique de l'echec du job) ; stoppe la prod le temps du seed-demo (~4s) + restart prod TOUJOURS garanti (meme si seed echoue) ; garde anti-backfill avec motif `[b]ackfill` (evite le self-match de pgrep — faux positif precedent causait un skip permanent) ; force-recreate levelup-demo.
+2. **ChallengeCard.tsx** : `effectiveValue = currentValue ?? challenge.current_value ?? 0` — les barres lisent `challenge.current_value` de la fixture demo (67/28/5) au lieu de toujours 0.
+
+**Resultats** : reseed s'execute a chaque deploy (68 matchs, 12 medias HLS, 4s) ; barres prestige : 67% / 70% / 63% (verifie visuellement page Ascension demo).
+
+**Prochaine etape** : aucune. Taches demo terminées.
+
+## [2026-06-07] Feature « restant à débloquer » — Battle Pass (revision 7) — Complété
+
+**Statut** : Complété. Go build OK + tests platform/duckdb OK + typecheck OK + lint exit 0 + vitest 31/31.
+
+**Demande** : afficher le contenu restant (paliers non encore atteints) du pass de combat sous forme XX/YY sur : (1) l'overlay accueil (HomeBattlePassPanel), (2) les tuiles + showcase de la page « Pass saisonnier ».
+
+**Décision technique** :
+1. **Backend** (`season_pass_repo_builders.go`) : `computeContentSummary` paramétrisé avec `minRank int` — filtre `rank.Rank <= minRank` + compteur `TotalTiers`. Appel doublé : `Content: computeContentSummary(…, 0)` (total) + `RemainingContent: computeContentSummary(…, state.Rank)` (non atteint).
+2. **Domaine Go** (`domain/season_pass.go`) : champ `RemainingContent *SeasonPassContentSummary` ajouté à `SeasonPassTrackSummary`.
+3. **Types TS** (`lib/api/types.ts`) : `remaining_content?: SeasonPassContentSummary | null` ajouté.
+4. **`PassContentSummary.tsx`** : prop `remaining?` + `ValueFormatter` `(total, r) => "${r}/${total}"` en mode restant. Builders `buildCurrencyChips`/`buildItemChips`/`RarityChips` threadent `remaining`.
+5. **`SeasonPassPage.tsx`** : `OverlayContentRows` + tuile `SeasonPassCard` → `remaining={pass.remaining_content ?? null}`.
+6. **`HomeBattlePassPanel.tsx`** : imports `PassContentSummary`/`getPalmaresText`/`normalizePalmaresLocale` + overlay `{featuredPass.content && (<> gradient + PassContentSummary compact avec remaining </>)}` inséré dans le div image `relative`.
+
+**Résultats observés** : build/tests/lint/typecheck verts. Overlay uniquement si `content` présent (nil-safe). Restart serveur Air requis (champ Go ajouté).
+
+**Prochaine étape** : restart serveur + vérif visuelle user. Commit sur autorisation.
+
+## [2026-06-07] Harmonisation UI (révision 6) — Battle Pass fond aligné + titres Pass/Défis sortis en titre de section — Complété (front-only)
+
+**Statut** : Complété (front-only, live HMR). typecheck OK + lint exit 0 + vitest (HomePage/ranking 23, large home+explorer 92).
+
+**Contexte** : retours user. (a) bloc « Pass de combat » doit avoir le même fond que « Défis actifs ». (b) sortir les titres de ces 2 sections au format titre de section (type 1 du catalogue), en CONSERVANT le (i) (= `DataFreshnessIndicator`).
+
+**Décision technique** :
+1. **Fond Battle Pass = Défis** : Défis = `<Card>` défaut (`bg-card` plein, `border-border`). Battle Pass avait `bg-card/95` + `border-border/70` + un dégradé `absolute inset-0 bg-gradient-to-br from-background…` (la vraie différence visuelle). Retrait du dégradé + `bg-card/95→bg-card` + `border-border/70→border-border`.
+2. **Titres sortis (type 1)** : `<section className="flex flex-col gap-3"><header>{h3 text-base font-semibold + DataFreshnessIndicator}</header><Card>…</Card></section>`.
+   - Battle Pass (HomeBattlePassPanel) : helper `withSection(card)` partagé par les 4 états (loading/indispo/no-pass/principal) ; titre `CardTitle` retiré de chaque état, nom du pass conservé dans le header de la carte. Import `CardTitle` supprimé (devenu mort), `ReactNode` ajouté.
+   - Défis (HomePage) : `CardHeader` titre → `<header>` au-dessus de la carte ; le « X/Y complétés » (testid intact) déplacé dans le header de section ; `CardContent` += `pt-6` (plus de CardHeader). Carte += `flex-1`.
+
+**Résultats observés** : tests verts (testids `home-challenges-card` min-h-[14rem], `home-challenges-completed`, battle-pass progress, textes « Défis actifs »/« Operation Alpha » intacts). Front-only → pas de restart serveur.
+
+**Point ouvert** : vérif visuelle user (alignement des 2 blocs, hauteurs via `flex-1`). Commit sur autorisation.
+
+## [2026-06-07] Harmonisation UI (révision 5) — Hero KPI : titres 2 lignes réservées + Matchs + extrémités OutcomeBar — Complété (front-only)
+
+**Statut** : Complété (front-only, live via HMR). typecheck OK + lint exit 0 + vitest 102/102.
+
+**Contexte** : retours user sur la rangée Hero KPI. (a) aligner les valeurs en « réservant » 2 lignes pour le titre de chaque carte. (b) 1ère carte = « Matchs » et non « Parties ». (c) barre composite d'issue : victoires/défaites aux extrémités, le reste (nuls/abandons) en tooltip.
+
+**Décision technique** :
+1. **Titres 2 lignes réservées** : `KPI_LABEL_CLS` += `min-h-[2lh]` (réserve 2 line-heights) → les valeurs s'alignent quel que soit le nombre de lignes du titre.
+2. **Matchs** : `home.kpi.matches_label` fr « Parties » → « Matchs » (cohérent avec le field-mapping squad). + test HomePage + commentaires.
+3. **Extrémités OutcomeBar** : carte taux de victoire = `victoires (gauche) ─ OutcomeBar (Tooltip) ─ défaites (droite)` ; tooltip détaille toutes les issues (pastille couleur + libellé + valeur), nuls/abandons inclus. 4 clés i18n `home.kpi.outcome_*` (FR+EN) + dict `kpiText.outcomes`. Retrait de la rangée V/N/D inline (et du const `neutral`).
+
+**Résultats observés** : 102 tests front verts (label « Matchs », pas de régression). Rien de backend → aucun restart serveur requis pour cette passe.
+
+**Point ouvert** : `min-h-[2lh]` suppose support du `lh` CSS (Chrome 109+/FF 120+/Safari 16.4+, OK app moderne). Commit sur autorisation.
+
 ## [2026-06-07] Démo médias = vraies vidéos HLS "Halo Infinite" (réécriture seed média) — Complété (code)
 
 **Statut** : Complété (code). Build+vet+test ops OK. Deploy + reseed + vérif lecture restants.
