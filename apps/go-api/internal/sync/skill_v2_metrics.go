@@ -23,14 +23,27 @@ import (
 // dualRowInconsistencies : matchs détectés par RunDualRowSentinel avec un seul
 // des deux rating_types présents dans match_skill_rank_latest.
 // sentinelScansTotal : nombre d'exécutions de RunDualRowSentinel.
-// predictionsTotal : probabilités de victoire pré-match calculées (Sprint 1.A),
-// 1 par match traité par le shadow runner.
+// predictionsTotal : probabilités de victoire pré-match calculées (Sprint 1.A).
+// Compte les TENTATIVES de compute : peut dépasser 1/match sur le chemin
+// write-held/retry (cf. canonicalWriteHeldWatermark), où un match est recompute
+// à chaque cycle tant que son écriture canonical échoue.
 var (
 	canonicalWritesTotal   = expvar.NewInt("levelup.lusr_v2.canonical_writes_total")
 	canonicalWriteErrors   = expvar.NewInt("levelup.lusr_v2.canonical_write_errors_total")
 	dualRowInconsistencies = expvar.NewInt("levelup.lusr_v2.dual_row_inconsistencies_total")
 	sentinelScansTotal     = expvar.NewInt("levelup.lusr_v2.sentinel_scans_total")
 	predictionsTotal       = expvar.NewInt("levelup.lusr_v2.predictions_total")
+	// canonicalWriteHeldWatermark : écritures canonical échouées dont le watermark
+	// (player_skill_state_v2, shared) a été VOLONTAIREMENT tenu → le match repassera
+	// au prochain cycle (fix désync 2026-06-07, cf. .ai/thought_log.md). Croissance
+	// soutenue = player DB durablement en échec → investiguer (sinon poison-pill du
+	// groupe : le watermark ne peut plus avancer tant que ce match n'est pas écrit).
+	canonicalWriteHeldWatermark = expvar.NewInt("levelup.lusr_v2.canonical_write_held_watermark_total")
+	// canonicalOwnerMissing : matchs où le owner est absent des rosters 2-équipes
+	// alors qu'il est participant (mismatch team_id) → aucune ligne LUSR écrite.
+	// Doit rester 0 ; >0 = anomalie data (avant le fix 2026-06-07 ce cas avançait
+	// le watermark en SILENCE → gap permanent invisible).
+	canonicalOwnerMissing = expvar.NewInt("levelup.lusr_v2.canonical_owner_missing_total")
 )
 
 // SentinelReport est le résultat d'un scan dual-row.

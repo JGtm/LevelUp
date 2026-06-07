@@ -121,7 +121,7 @@ func writeCanonicalLUSRRow(ctx context.Context, playerDB *sql.DB, matchID string
 	// Cf. skill_v2/display_smoothing.go + étude .ai/thought_log.md [2026-05-31].
 	tgtTier, tgtSub := skillv2.InferTier(state.Mu, boundaries)
 	targetOrd := skillv2.TierOrdinal(boundaries, tgtTier.Name, tgtSub)
-	prevOrd := loadPreviousDisplayedOrdinal(ctx, playerDB, state.PlaylistGroup, boundaries)
+	prevOrd := loadPreviousDisplayedOrdinal(ctx, playerDB, state.PlaylistGroup, matchID, boundaries)
 	dispOrd := skillv2.SmoothDisplayedOrdinal(prevOrd, targetOrd, state.Experience)
 	tier, sub := skillv2.TierSubFromOrdinal(boundaries, dispOrd)
 
@@ -142,7 +142,7 @@ func writeCanonicalLUSRRow(ctx context.Context, playerDB *sql.DB, matchID string
 	// match"). nil au premier match. Calculé AVANT l'insertion (la row courante
 	// n'existe pas encore → la query renvoie bien le match précédent).
 	var ratingDelta *float64
-	if prev := loadPreviousLUSRRating(ctx, playerDB, state.PlaylistGroup); prev != nil {
+	if prev := loadPreviousLUSRRating(ctx, playerDB, state.PlaylistGroup, matchID); prev != nil {
 		d := rating - *prev
 		ratingDelta = &d
 	}
@@ -173,20 +173,25 @@ func writeCanonicalLUSRRow(ctx context.Context, playerDB *sql.DB, matchID string
 }
 
 // loadPreviousLUSRRating retourne le rating_value LUSR le plus récemment écrit
-// pour ce groupe — la "version courante" AVANT l'insertion du match en cours
-// (qui n'a pas encore été persisté quand cette fonction est appelée). Comme le
-// shadow runner traite les matchs en ordre chronologique, c'est le rating du
-// match précédent. nil si aucun (premier match du groupe).
+// pour ce groupe — la "version courante" AVANT l'insertion du match en cours.
+// Comme le shadow runner traite les matchs en ordre chronologique, c'est le
+// rating du match précédent. nil si aucun (premier match du groupe).
+//
+// currentMatchID est EXCLU de la recherche : normalement le match courant n'a pas
+// encore de ligne, mais s'il est RE-traité (retry après write-OK/persist-KO, table
+// append-only), sa propre ligne existerait déjà → l'inclure donnerait delta=0 (R-R).
+// L'exclure garantit un delta correct = rating - rating du vrai match précédent.
 //
 // Best-effort : toute erreur (table non migrée, etc.) → nil + warn (le delta
 // reste simplement absent, pas de blocage de l'écriture).
-func loadPreviousLUSRRating(ctx context.Context, playerDB *sql.DB, playlistGroup string) *float64 {
+func loadPreviousLUSRRating(ctx context.Context, playerDB *sql.DB, playlistGroup, currentMatchID string) *float64 {
 	var v sql.NullFloat64
 	err := playerDB.QueryRowContext(ctx, `
 		SELECT rating_value FROM match_skill_rank
 		WHERE rating_type = 'LUSR' AND playlist_group = ? AND rating_value IS NOT NULL
+		  AND match_id != ?
 		ORDER BY written_at DESC, id DESC
-		LIMIT 1`, playlistGroup).Scan(&v)
+		LIMIT 1`, playlistGroup, currentMatchID).Scan(&v)
 	if err == sql.ErrNoRows {
 		return nil
 	}
@@ -206,7 +211,10 @@ func loadPreviousLUSRRating(ctx context.Context, playerDB *sql.DB, playlistGroup
 // descente. Retourne -1 si aucun précédent ou en cas d'erreur (→ pas de lissage,
 // on affiche la cible). Lit le tier/sub_tier lissés du match précédent, donc
 // l'hystérésis se chaîne correctement de match en match.
-func loadPreviousDisplayedOrdinal(ctx context.Context, playerDB *sql.DB, playlistGroup string, boundaries []skillv2.TierBoundary) int {
+//
+// currentMatchID est EXCLU : sinon, au re-traitement d'un match (retry sur table
+// append-only), l'hystérésis se chaînerait sur la propre ligne du match courant.
+func loadPreviousDisplayedOrdinal(ctx context.Context, playerDB *sql.DB, playlistGroup, currentMatchID string, boundaries []skillv2.TierBoundary) int {
 	if playerDB == nil {
 		return -1
 	}
@@ -215,8 +223,9 @@ func loadPreviousDisplayedOrdinal(ctx context.Context, playerDB *sql.DB, playlis
 	err := playerDB.QueryRowContext(ctx, `
 		SELECT tier, sub_tier FROM match_skill_rank
 		WHERE rating_type = 'LUSR' AND playlist_group = ? AND tier IS NOT NULL
+		  AND match_id != ?
 		ORDER BY written_at DESC, id DESC
-		LIMIT 1`, playlistGroup).Scan(&tierName, &subTier)
+		LIMIT 1`, playlistGroup, currentMatchID).Scan(&tierName, &subTier)
 	if err == sql.ErrNoRows || !tierName.Valid {
 		return -1
 	}
