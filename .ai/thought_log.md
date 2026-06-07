@@ -1,3 +1,231 @@
+## [2026-06-07] ArcSummary (desc + seuils agrandis) + i18n module Prestige (composants home) (révision 19) — Complété partiel (front-only)
+
+**Statut** : Complété pour les composants home-visibles. typecheck OK + lint exit 0 + vitest home/prestige 28. CreateChallengeForm = reste à faire (proposé au user).
+
+**Demandes** : (1) ArcSummary : description au-dessus de la barre (comme l'objectif) ; (2) agrandir les seuils aux extrémités ; (3) rendre le module Prestige i18n-compatible.
+
+**Décisions** :
+1. **ArcSummary** : structure flanking IDENTIQUE au StreakCard — grand seuil gauche | colonne centrale [description JUSTE au-dessus de la barre, position du « nom de série »] | grand seuil droit. Seuils agrandis `text-2xl font-bold`. (Correction : 1re version mettait la description en ligne pleine largeur au-dessus, pas ce que le user voulait.)
+2. **i18n Prestige** : nouveau dict local `features/prestige/i18n.ts` (`getPrestigeText(locale)` FR/EN, pattern identique à ascension/i18n.ts). Composants home-visibles convertis : `ObjectiveRow` (« Escouade » + tooltip PP) et `ArcSummary` (« Accompli »/« Preset » + tooltip PP). Chaque composant lit `useAppShellStore(s=>s.locale)` → `getPrestigeText`. Ces 2 composants ne déclenchent plus `no-hardcoded-strings`.
+3. **Reste** : `CreateChallengeForm` (~30 strings : labels métriques, fenêtres, cadences, hints, dont 1 interpolée « Accepter (Heroic : N) ») + `MomentCard` (1 title placeholder « Phase 5 minimale »). Form de création (autre page) — proposé en suite dédiée au user.
+
+**Prochaine étape** : étendre `getPrestigeText` + convertir CreateChallengeForm si user valide. Commit sur autorisation.
+
+## [2026-06-07] Fix désync watermark LUSR v2 ↔ ligne match_skill_rank (JGtm 03/06 sans LUSR) — Complété (fix + revue + tests verts), backfill récup en cours
+
+**Statut** : Code livré sur `fix/enrichment-convergence` (vet OK, `go test ./internal/sync/` 22 s vert, CLI buildent), revu en adversarial multi-agent (22 findings, 21 confirmés ; 2 MAJOR corrigés). Reste : backfill de récupération (serveur arrêté) + commit (sur autorisation).
+
+**Problème** : matchs récents (session JGtm 03/06, sauf le dernier) affichés mais `rating_type:"none"` — aucune ligne `match_skill_rank`. Diagnostic (API + `logs/sync.log`, serveur en marche) : le LUSR v2 (mode CANONICAL) tourne à chaque post-sync, mais son runner shadow est INCRÉMENTAL avec un watermark = `player_skill_state_v2.last_match_at` (base SHARED). Le watermark avançait via `persistTeamSkillV2` AVANT/indépendamment de l'écriture de la ligne canonique `match_skill_rank` (base PLAYER DB, `writeCanonicalLUSRRow`, best-effort APRÈS). Le 03/06 la player DB de JGtm était instable (`database is closed`) → l'écriture échouait mais le watermark avançait → match « déjà vu » à jamais SANS ligne LUSR (gap permanent). Le dernier match du 03/06 (traité après récupération de la DB) a son LUSR ; les premiers non.
+
+**Décision technique (Option A — gate, choisie par l'user vs détecteur de convergence)** :
+1. Split `applyMatchToSkillV2` → `computeMatchToSkillV2` (PUR, aucune écriture, retourne `shadowMatchComputed`) + `persistComputedMatchSkillV2` (persiste l'état = avance le watermark). `processOneShadowMatch` : compute → `canonicalGate` (écrit la ligne AVANT le watermark) → persist. Si l'écriture échoue : pas de persist → watermark tenu → retry au prochain cycle. Mode shadow-only (non canonical) inchangé (équivalence numérique EP vérifiée par la revue).
+2. **Anti-gap multi-matchs (corrige un trou résiduel trouvé par la revue)** : `heldGroups` — si un match ANCIEN d'un groupe échoue son écriture, les matchs PLUS RÉCENTS du même groupe sont sautés ce run (sinon leur persist avancerait le watermark de groupe par-dessus le match non écrit = même gap permanent).
+3. **Delta correct au retry (corrige le 2e MAJOR)** : `loadPreviousLUSRRating` / `loadPreviousDisplayedOrdinal` EXCLUENT le match courant (`AND match_id != ?`) — sinon, au re-traitement (write-OK/persist-KO, table append-only), la propre ligne du match serait lue → `rating_delta = R−R = 0`. La ligne dupliquée résiduelle est inoffensive (vue `_latest` = dernière, delta désormais correct).
+4. **Observabilité (point 3 user)** : compteurs expvar `canonical_write_held_watermark_total` + `canonical_owner_missing_total` ; log WARN « watermark tenu, retry » + buckets `skipped_write_failed` / `skipped_group_held` dans le log de fin de run ; cas `ownerNew==nil` (mismatch team_id) rendu VISIBLE (ERROR, avant : silencieux).
+
+**Résultats** : 3 nouveaux tests verts — `WriteFailHoldsWatermark` (player DB fermée = scénario 03/06 → 0 traité, watermark tenu → retry OK), `HeldGroupSkipsLaterMatches` (m_old échoue → m_new sauté, `held=1` ; retry → 2 traités, aucun gap/doublon), `LoadPreviousLUSRRating_ExcludesCurrentMatch`. Fichiers : `internal/sync/skill_v2_shadow.go`, `skill_v2_canonical.go`, `skill_v2_metrics.go`, `skill_v2_shadow_test.go`.
+
+**Findings différés (revue, non bloquants)** : atomicité multi-joueurs de l'état v2 (persist non transactionnel ; pré-existant, converge par rotation owner) ; sentinelle dual-row aveugle aux matchs 0-ligne (ajouter un scan « MissingBoth ») ; pas d'alerte/retry borné sur les compteurs (posture expvar ADR 0009) ; taille fichier/fonction (internal/sync exempt funlen). À traiter en passe dédiée si besoin.
+
+**Prochaine étape** : `cmd/lusr_v2_canonical_backfill --commit` (serveur arrêté) pour recalculer le LUSR manquant (reset `player_skill_state_v2` + reprocess) ; puis commit sélectif des fichiers LUSR (le reste de la branche = travail Home non commité, à ne pas mélanger).
+
+
+
+**Statut** : Complété côté streaks (front-only, typecheck/lint/vitest 81 OK). PP objectifs/arcs = diagnostic + reco posée (pas implémenté).
+
+**Demandes** : (1) confusion « 5 matchs par semaine » vs cible « 4 » ; (2) atteindre la cible donne-t-il une récompense ? l'indiquer ; (3) objectifs/arcs Prestige ne montrent pas les PP gagnés (+ user incertain qu'ils en donnent).
+
+**Décisions (streaks, `StreakCard` + i18n)** :
+1. **Unité par type** : helper `streakUnit(t, type, n)` → `streakUnitWeek` (semaine/s) pour `weekly_*`, `streakUnitDay` (jour/s) pour `daily_*`. Corrige l'imprécision « jours » (la longueur compte des semaines pour les séries hebdo). Compact : unité affichée sur le seuil cible (« 4 semaines ») → lève la confusion vs « 5 matchs ». Mode complet + `streakNextMilestone` (FR/EN) passés à `{unit}`.
+2. **Récompense PP indiquée** : le label multiplicateur du compact devient « PP ×1.1 » (au lieu de « ×1.1 »), + tooltip `streakPPMultiplier`. Clarifie que le palier donne un multiplicateur de PP.
+3. **Multiplicateur en pill + layout flanking (plusieurs itérations user)** : multiplicateur en **pill** `rounded-full bg-info/10 text-info` (style des points PP). Plusieurs erreurs d'interprétation (retrait chiffres, pill sous la cible) → revertées. **Layout final** (mockup user) : rangée flanking `flex items-center` : grand chiffre courant à GAUCHE | colonne centrale [nom + pill multiplicateur AU-DESSUS de la barre] | grand seuil cible + unité à DROITE. Les grands chiffres encadrent la colonne barre. **Badge statut RETIRÉ** (décision finale user : la barre suffit — `CompositeProgressBar` passe au vert `success` à ≥100%, bleu `info` sinon ; pour la série, 100% = multiplicateur max atteint, la barre est band-based et reset à chaque palier). `statusLabel`/`streakStatusBadgeClass` restent utilisés en mode complet (page Ascension).
+4. **Seuils aux extrémités, UNE ligne** (demande user) : `ObjectiveRow` « courant/cible » + « % » → **courant | barre | cible** ; `ArcSummary` (cible réelle = tuile « Arc en cours ») « Étape X/Y » + « % » sur 2 lignes → **X | barre | Y** sur UNE ligne (grid `[auto_1fr_auto]`). % porté par la barre. Barres = `tierColor`/`bg-primary`. Tooltips `title` PP hardcodés = warnings `no-hardcoded-strings` tolérés (module prestige FR-only, ~15 warnings existants, lint exit 0).
+
+**Diagnostic PP objectifs/arcs** :
+- **Objectifs DONNENT des PP** (confirmé) : `prestige/service_evaluate.go:110` `creditCompletion` → `PPForCompletion(Tuning, Tier, isSquad, DataTier)`. Déterministe : Normal=50, Héroïque=75, Légendaire=125, Mythique=200 PP ; ×1,2 escouade ; ÷2 données estimées ; 0 si tracking.
+- **Non exposé au front** : DTO `Challenge` (lib/prestige.ts) sans champ PP. Pour l'afficher → ajout backend `pp_reward int` (calc `PPForCompletion`) dans `ListActiveChallenges` + badge front sur `ObjectiveRow`.
+- **Arcs** : pas de PP propre (Arc DTO sans champ ; PP vient des challenges de l'arc). « PP de l'arc » = somme des objectifs liés.
+
+**Suivi (PP exposés — user a validé)** : implémenté.
+- Backend : `+PPReward int json:"pp_reward,omitempty"` sur `prestige.Challenge` (types.go) ; `ListActiveChallenges` (service.go) calcule `PPForCompletion(Tuning, Tier, false, DataTier)` par défi (même calcul/isSquad que creditCompletion). Go build ./... + vet + tests prestige OK.
+- Front : `pp_reward?` sur le type TS Challenge (lib/prestige.ts) ; badge « +N PP » (pill `bg-primary/10 text-primary` + tooltip) sur `ObjectiveRow` ; `totalPP` (somme des `pp_reward` des objectifs actifs de l'arc) câblé via `arcSteps` dans HomePrestigeSection → badge « N PP » sur `ArcSummary`.
+- **Logique confirmée** (réponse user) : objectifs Prestige = points PP de base (50/75/125/200 par tier) ; séries Ascension = multiplicateur PP (`streaks.PPMultiplier` « appliqué aux défis complétés ») → le multiplicateur amplifie les points gagnés. Mécanique synergique.
+- Restart serveur requis (champ Go ajouté). Verts (vitest 81 + Go prestige).
+
+## [2026-06-07] StreakCard compact : barre vers prochain palier + fond opaque, retrait bouclier/record (révision 17) — Complété (front-only)
+
+**Statut** : Complété (front-only). typecheck OK + lint 0 + vitest home+ascension 81.
+
+**Demandes** : sur le widget home streaks (mode compact) — (1) retirer bouclier + record perso ; (2) ajouter une barre de progression (logique compteur) ; (3) style/couleur « faire mieux », fond opaque ; (4) question « c'est quoi le prochain palier ? ».
+
+**Réponse Q4** : « prochain palier » = prochain seuil de longueur qui augmente le multiplicateur PP. Seuils `STREAK_PP_TIERS` : 4→×1.1, 8→×1.25, 15→×1.5, 30→×1.75 (max).
+
+**Décisions techniques** (mode `compact` de `StreakCard` uniquement ; mode complet page Ascension inchangé) :
+1. Retrait des lignes record perso + boucliers.
+2. **Barre de progression** vers le prochain palier : nouveau helper `streakTierProgressPct(length)` dans format.ts = progression dans la bande [dernier palier atteint → prochain] (band-based, comme le sous-palier skill peak), 100 si max. `CompositeProgressBar` + label cible `{seuil} (×{mult})` à l'extrémité droite. Au max → « Multiplicateur PP maximum atteint ».
+3. **Fond opaque** : `bg-card/70 rounded-md p-2.5` → `bg-card rounded-lg p-3` ; gap 1.5→2.
+4. Accent multiplicateur conservé en `text-info` (bleu).
+
+**Résultats observés** : verts ; page Ascension non régressée (mode complet intact). Front-only → pas de restart.
+
+**Suivi (terminologie)** : « palier » = jargon ; ce qui parle au joueur = le **multiplicateur** (la récompense). Recentrage : (a) label cible de la barre compact = le multiplicateur visé (`×1.5`, accent `text-info`) au lieu de `seuil (×mult)` ; (b) i18n `streakNextMilestone` FR/EN « Prochain palier : {n} jours (×{mul}) » → « Prochain multiplicateur : ×{mul} (à {n} jours) » / « Next multiplier: ×{mul} (at {n} days) » (impacte la page Ascension). Verts.
+
+**Suivi (compaction layout)** : fusion ligne nombre + barre en UNE ligne (`flex items-baseline`) : grand `current_length` (text-2xl blanc) → `CompositeProgressBar` (`self-center`, flex-1) → grand seuil cible `nextTier.length` (même police text-2xl) + multiplicateur gagné `×mult` (text-3xs info) juste après. Unité « jour » retirée du compact (fausse pour les séries hebdo de toute façon). Au max → multiplicateur courant à droite. Multiplicateur courant (×1) retiré du compact (placement décidé : multiplicateur du palier cible). `streakStatusBadgeClass` rendu local (non exporté) → supprime le warning react-refresh introduit. Verts (81).
+
+## [2026-06-07] Widget home Ascension enrichi — StreakCard partagé (full + compact) (révision 16) — Complété (front-only)
+
+**Statut** : Complété (front-only). typecheck OK + lint 0 + vitest home+ascension 81.
+
+**Demande** : le widget streaks du home est trop austère (3 champs : type|longueur|multiplicateur) → le rapprocher du `StreakCard` de la page Ascension.
+
+**Décision technique** : pour éviter un fork dégradé home/page (cf. incidents bannière), **extraction d'un `StreakCard` partagé** (`features/ascension/StreakCard.tsx`) avec prop `compact` :
+- Mode complet : rendu verbatim de l'ancien `StreakCard` (déplacé depuis `StreakDashboard`) — page Ascension inchangée.
+- Mode compact (home) : mini-carte bordée `bg-card/70` — type + badge statut (En cours/Préservée/Cassée, `streakStatusBadgeClass` partagé) ; longueur courante (text-2xl) + unité + multiplicateur PP en accent `text-info` ; prochain palier (`streakNextMilestone`) ou « max atteint » ; record perso ; boucliers dispo (si >0). Dates masquées en compact.
+- Helper `streakStatusBadgeClass` + `unitWord` exportés/partagés (pas de duplication des classes color-allow emerald/amber).
+- `StreakDashboard` réécrit pour consommer `StreakCard` (imports format/nextPPTier retirés, devenus internes au composant). `HomeAscensionWidget` : `StreakRow` local supprimé, branché sur `StreakCard compact` ; skeleton h-5→h-20.
+
+**Résultats observés** : verts ; tests ascension (81) OK → page Ascension non régressée. Front-only → pas de restart.
+
+**Note** : boucliers = protections mensuelles qui préservent une série si on rate un jour/semaine (évite la casse) ; à expliquer au user.
+
+## [2026-06-07] Pill « Actif » BP en bleu (info) + « Mes objectifs » sorti du bloc Prestige (révision 15) — Complété (front-only)
+
+**Statut** : Complété (front-only). typecheck OK + lint 0 + vitest home 28. + réponse design streaks (pas de code).
+
+**Demandes + décisions** :
+1. **Pill « Actif » battle pass en bleu** = même bleu que la barre de progression (token `info`, oklch 0.62 0.12 220). Ajout d'un variant `info: 'bg-info/20 text-info'` au composant `Badge` (pattern identique à `success`/`destructive`, basé token sémantique → compatible palettes accessibilité, cf. skill color-tokens). `<Badge variant="default">` → `variant="info"` sur la pill Actif (`HomeBattlePassPanel`). `--color-info` déjà défini dans globals.css.
+2. **« Mes objectifs » sorti du bloc** (`HomePrestigeSection`) : le titre + le filtre actif/terminés sortent de la boîte bordée ; la boîte (`rounded-lg border bg-card p-3`) n'enveloppe plus que la liste d'objectifs. Symétrique avec « Arc en cours » (titre au-dessus du contenu). Wrapper colonne `space-y-2`.
+3. **Question streaks Ascension** (réponse, pas de code) : forme canonique = `StreakDashboard`/`StreakCard` (page Ascension) — 1 carte/streak avec type + badge statut (En cours/Préservée/Cassée) + grande longueur courante + record + multiplicateur PP + prochain palier + boucliers + dates. 4 types (`daily_play`/`daily_perf`/`weekly_play`/`weekly_kda_threshold`). Le widget home (`HomeAscensionWidget`) est une réduction compacte volontaire : liste type | longueur | multiplicateur. Proposé d'enrichir le home si voulu.
+
+**Résultats observés** : verts. Front-only → pas de restart. Commit sur autorisation.
+
+## [2026-06-07] Battle pass : raretés en tête + bascule compteurs restant→acquis (révision 14) — Complété (front-only)
+
+**Statut** : Complété (front-only, typecheck OK + lint 0 + vitest palmares 3 + home 28). Choix user = ACQUIS/total appliqué.
+
+**Demande** : (1) afficher les raretés EN PREMIER, puis la ligne combinée cosmétiques/paliers/cR/Boosts/Relances. (2) compteurs paraissent incohérents (palier 37 → « 64 », « >50% de complétion » alors qu'au niveau 37/100).
+
+**Décisions techniques** :
+1. **Reorder** : raretés déplacées en tête dans `PassContentSummary` (compact + complet) et `OverlayContentRows` (showcase SeasonPassPage). Ordre final : raretés → cosmétiques → devises.
+2. **Diagnostic compteurs** : PAS un bug. Le format est `restant/total` (rév.7, demande « non acquis/restant »). À palier 37 (≈36 obtenus), tout est à ~64% restant : paliers 64/100, cosmétiques 75/116 (65%), cR 600/1000 (60%), boosts 12/19, relances 28/43 — tous cohérents entre eux (~60-65% restant = ~36% obtenu ✓). Le « 64 » inclut le palier 37 en cours (pas encore obtenu → compté en restant), d'où l'écart perçu vs 63. **Cause de la confusion** : « 64/100 » se lit spontanément comme « 64% fait » (acquis), alors qu'on affiche le restant. Confirmé par « >50% de complétion » = user lit le 1er nombre comme l'acquis.
+3. **Bascule restant→acquis** (choix user) : les 2 formateurs (`fmt` dans PassContentSummary, `val` dans OverlayContentRows) affichent désormais `Math.max(0, total − r)/total` au lieu de `r/total` (r = restant). Donc « 41/116 cosmétiques », « 36/100 paliers » au palier 37 — colle à la complétion. Au rang max (`remaining` null ⇒ r=0) → acquis = total (tout débloqué). Données déjà présentes côté front (content + remaining_content) → aucun backend. Variables (`remaining`/`rem`/`showRemaining`) gardent leur sémantique « données restantes » (input) ; seul l'affichage calcule l'acquis. Docstrings mises à jour.
+
+**Résultats observés** : tous verts ; aucun test ne dépendait du format. Front-only → pas de restart. Commit sur autorisation.
+
+## [2026-06-07] Faits marquants sans carte englobante + Sessions/Playlists hauteur égale (révision 13) — Complété (front-only)
+
+**Statut** : Complété (front-only, HMR). typecheck OK + lint 0 + vitest home 28/28.
+
+**Demandes + décisions** :
+1. **Faits marquants — KPI sortis de leur bloc** (`HomePage`) : chaque tuile étant déjà une `KpiCard` autonome (rév.12), la `<Card>`/`<CardContent>` englobante était une carte-dans-carte redondante → retirée. La grille de KpiCards (ou l'EmptyState) est rendue directement sous le header de section.
+2. **Sessions/Playlists même hauteur adaptative** : grille `xl:grid-cols-[0.65fr_1.35fr]`, align-items stretch par défaut. Retiré `self-start` de la section Playlists (`HomeRecentPlaylistsCard`) pour qu'elle s'étire ; cartes des 2 blocs passées en `flex flex-1 flex-col` (Sessions inline + carte Playlists) → elles remplissent la hauteur de la rangée (le plus haut impose, l'autre s'adapte).
+
+**Résultats observés** : tous verts. Front-only → pas de restart. Commit sur autorisation.
+
+## [2026-06-07] 4 retouches home : vitesse carousel sessions + nom playlist en colonne + bouton Gérer + Faits marquants en KpiCard (révision 12) — Complété (front-only)
+
+**Statut** : Complété (front-only, HMR). typecheck OK + lint 0 + vitest home 28/28.
+
+**Demandes + décisions** :
+1. **Sessions — défilement trop lent** (`HomeSessionCarousel`) : durées d'animation réduites — exit `0.1s→0.06s`, délai swap `110→70ms`, entry `0.15s/0.12s→0.1s/0.08s`, déverrouillage `160→100ms`. ~270ms → ~170ms par transition (clics successifs plus réactifs, le garde `isAnimating` libère plus vite).
+2. **Playlists — nom au-dessus du palier, même colonne** (`HomeRecentPlaylistsCard`) : le nom (`text-2xs uppercase muted`) passe du header pleine-largeur À l'intérieur de la colonne label/valeur, en 1re ligne (nom / palier / valeur). Colonne `shrink-0`→`min-w-0` (truncate du nom, la barre garde `flex-1`).
+3. **Bouton « Gérer »** (`HomePrestigeSection`) : `text-xs muted` → pill voyante `bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary` (hover `bg-primary/20`).
+4. **Faits marquants en KpiCard dynamique** (`HomeHighlightTile`) : les 2 variantes (SerieTile rotatif + tuile simple) passent de `<div rounded-md border p-3>` à `<KpiCard accent={...} className={span}><div p-3>…</div></KpiCard>`. Accent = type 4 du catalogue, **dynamique** suivant le sentiment de la valeur (SerieTile : suit `s.value_color` par slide). Refactor `HIGHLIGHT_COLOR_MAP`→`HIGHLIGHT_TOKEN_MAP` (token unique) + helpers `highlightToken`/`highlightColorStyle`/`highlightAccent` (DRY, plus de duplication de mapping). **Contenu inchangé** (titre/valeur colorée/label/detail/dots).
+
+**Résultats observés** : tous verts. Aucun test ne touchait ces éléments. Front-only → pas de restart.
+
+**Point ouvert** : vérif visuelle user (vitesse carousel ; largeur colonne playlists avec nom + barre). Commit sur autorisation.
+
+## [2026-06-07] Titres de section sortis sur 6 blocs home (2 traitements distincts) (révision 11) — Complété (front-only)
+
+**Statut** : Complété (front-only, HMR). typecheck OK + lint 0 + vitest home 28/28.
+
+**Demande** : sortir les titres de 6 blocs home, en 2 groupes :
+- **A (titre sorti, carte conservée)** : Prestige, Ascension, Faits marquants (avec (i)).
+- **B (titre ET contenu sortis, plus de carte)** : Résultats dernière session, Matchs récents (toggles à droite), Médias récents (toggles à droite).
+
+**Interprétation** : phrasé différent (« le titre » vs « le titre et le contenu ») → groupe B = dissolution de la `<Card>` (titre = header de section type-1, contenu nu en dessous), groupe A = pattern habituel (header type-1 au-dessus, contenu dans la carte).
+
+**Décisions techniques** :
+1. **Group A** — `<section flex flex-col gap-3>` + `<header>` h3 sorti, `CardHeader/CardTitle` retirés, `CardContent` += `pt-6`.
+   - Faits marquants (HomePage) : (i) = `InfoTooltip` conservé dans le header.
+   - Prestige (`HomePrestigeSection`) : titre + lien « Gérer → » sortis dans le header (`justify-between`) ; carte garde son bg décoratif + `flex-1` (remplit la rangée de grille 2fr/1fr) ; section `h-full`.
+   - Ascension (`HomeAscensionWidget`) : FlameIcon + titre sortis ; carte garde bg + `flex-1` ; section `h-full`.
+2. **Group B** — `<section flex flex-col gap-3>` + `<header>` (h3, + toggles à droite via `justify-between`) + contenu nu (plus de `<Card>`/`<CardContent>`).
+   - Résultats dernière session (HomePage) : header h3 + `OutcomeSequenceTape` nu.
+   - Matchs récents (HomePage) : header h3 + toggles recent/favorites à droite + carousel nu.
+   - Médias récents (`RecentMediaRail`) : header h3 + toggles recent/liked à droite + carousel nu ; modals lightbox/picker conservés en tête de section.
+3. **Imports nettoyés** : `CardHeader`/`CardTitle` retirés de HomePage, HomePrestigeSection, HomeAscensionWidget ; import Card entier retiré de RecentMediaRail (plus aucun usage).
+
+**Résultats observés** : tous verts. Aucun test ne référençait ces titres/toggles (données vides dans les mocks). Front-only → pas de restart.
+
+**Points ouverts** : vérif visuelle user — (a) groupe B : contenu nu aligné sur le px-6 de la page (plus de padding de carte) ; (b) Prestige/Ascension : alignement des hauteurs dans la grille via `flex-1`. Commit sur autorisation.
+
+## [2026-06-07] Playlists récentes : affichage skill-peak (swap label/valeur + barre ordinale + sous-palier suivant) (révision 10) — Complété
+
+**Statut** : Complété (backend + front). Go build ./... OK + vet OK + tests duckdb OK (2 nouveaux) ; typecheck OK + lint 0 + vitest home 28/28. Restart serveur requis (champs Go ajoutés).
+
+**Demande** : appliquer aux items de « Playlists récentes » le même affichage que le bloc « Meilleur CSR » (HomeSkillPeakCard) — garder le bloc, intervertir nombre↔label, ajouter une barre de progression avec le sous-palier suivant à l'extrémité droite. (User : analyser l'exemple avant de coder.)
+
+**Analyse de l'exemple (HomeSkillPeakCard)** : 3 mécaniques — (1) swap : palier en avant (gros), valeur chiffrée en secondaire discret ; (2) barre ORDINALE `analysis.SkillTierBand` (n/6, indépendante de l'échelle CSR vs LUSR) ; (3) sous-palier suivant à droite `analysis.NextSubTierLabel` (Or VI→Platine I, Diamant VI→Onyx, Onyx→nil). Convertisseur de réf : `analysis.buildHomeSkillPeak` (home_kpis.go:252-258), gated sur matured (`measurement_remaining==0`).
+
+**Constat clé** : `HomePlaylistRank` ne portait PAS `tier_progress_pct`/`next_tier_label` (seul `HomeSkillPeakSummary` les avait). MAIS le builder `buildPlaylistRankItem` (branche `hasMSR` = matured) a déjà les inputs (`msr.tier` EN + `msr.subTier`). → réutilisation directe des MÊMES fonctions analysis.
+
+**Décisions techniques** :
+1. **Domaine Go** (`domain/home.go`) : +`TierProgressPct *float64` +`NextTierLabel *string` sur `HomePlaylistRank` (omitempty).
+2. **Repo** (`home_repo_playlist_ranks.go`) : import `analysis` ; dans `buildPlaylistRankItem` branche `hasMSR`, `analysis.SkillTierBand(msr.tier, msr.subTier)` → TierProgressPct + `analysis.NextSubTierLabel(..., frPreferred)` → NextTierLabel. Param `frPreferred` ajouté (dérivé de la locale dans `LoadRecentPlaylistRanks`, même convention `!en*` que `resolvePlaylistNameForLocale`). Placement → pas de bande (nil).
+3. **Tests Go** : 9 call-sites existants mis à jour (+`frPreferred`), +2 tests (`MaturedRankComputesTierBand` : Gold IV → ~66.67 % + « Or V » ; `PlacementHasNoTierBand`).
+4. **Type TS** (`types.ts`) : +`tier_progress_pct?` +`next_tier_label?` sur `HomePlaylistRank`.
+5. **Front** (`HomeRecentPlaylistsCard`) : disposition inline fidèle au skill peak (choix user). Nom de playlist en sous-titre discret (text-2xs uppercase) ; rangée badge + (palier `text-sm font-semibold` en avant / valeur `text-2xs muted` dessous = swap) + `CompositeProgressBar` (flex-1) + `next_tier_label` à l'extrémité droite (matured uniquement). Placement/neutre inchangés (pas de barre).
+
+**Résultats observés** : tous verts. Marche pour CSR ET LUSR (bande ordinale). Onyx → barre pleine sans suivant.
+
+**Points ouverts** : (a) restart serveur requis (champs Go). (b) Demo (`seed_demo.go`) construit `HomePlaylistRank` à la main → pas de barre en démo (dégradation OK) ; parité démo = follow-up si voulu. (c) Vérif visuelle user (largeur colonne étroite). Commit sur autorisation.
+
+## [2026-06-07] Titres sections Playlists/Sessions en type-1 + Solo/Escouade en type-6 + fix gap win-rate (révision 9) — Complété (front-only)
+
+**Statut** : Complété (front-only, HMR). typecheck OK + lint 0 + vitest home 28/28.
+
+**Demandes** : (1) sortir les titres « Playlists récentes » et « Sessions récentes » au format Titre de section (type 1), comme Pass/Défis ; (2) « Solo »/« Escouade » dans Sessions = Sous-titre de section (type 6) ; (3) correction : le `leading-none` posé sur le KPI « Taux de victoire » avait aussi resserré l'écart titre→XX% (haut), alors que seul le dessous était visé.
+
+**Décisions techniques** :
+1. **Type-1 Playlists** (`HomeRecentPlaylistsCard`) : `<section flex flex-col gap-3 self-start>` + `<header>` h3 sorti, `CardHeader/CardTitle` retirés (import nettoyé), `CardContent` += `pt-6`. `self-start` migré Card→section (item de grille).
+2. **Type-1 Sessions** (`HomePage`) : idem, `<section>` + header h3 au-dessus de la `<Card>`, `CardContent` `pb-0`→`pt-6 pb-0`. Import Card inchangé (`CardHeader/CardTitle` encore utilisés par 4 autres cartes de la page).
+3. **Type-6 Solo/Escouade** (`HomeSessionCarousel`) : le `variantLabel` passait en `<span absolute left-0 text-xs>` ; remplacé par le bloc type-6 du catalogue (`<p text-3xs font-semibold uppercase tracking-label-md text-foreground/90>` + filet `<div h-px w-full rounded-full bg-border>`) au-dessus du chevron. (Réf : HomeChallengesList:171-174.)
+   - **Suivi (compaction)** : empilé, ça poussait tout vers le bas. Re-compacté à la demande user — titre type-6 remis SUR la ligne du chevron haut (`<span absolute left-0>` + chevron centré, comme l'ancien layout) + filet juste en dessous, wrapper `mb-1 space-y-1`. Résultat : titre + barre au niveau de la flèche de navigation haute, ~26px gagnés par carousel.
+4. **Fix gap win-rate** (`HomeHeroKPIGrid`) : `leading-none` était symétrique (resserrait haut ET bas). Retiré → réaligne la valeur avec les autres cartes + restaure l'écart titre→XX%. Dessous gardé resserré via marge `mt-1`→`mt-0` (le line-height par défaut fournit ~4px sous le nombre, = l'écart accepté). Lever asymétrique = marge, pas line-height.
+
+**Résultats observés** : tests verts. Aucun test ne référençait ces titres/labels. Front-only → pas de restart.
+
+**Prochaine étape** : vérif visuelle user. Commit sur autorisation (le restant BP rév.7 + ces retouches non commités).
+
+## [2026-06-07] Retouches UI hero KPI + ordre BP + diagnostic staleness BP/défis (révision 8) — UI complété, bug diagnostiqué
+
+**Statut** : UI complété (front-only, typecheck OK + lint 0 + vitest 31/31). Bug BP/défis : root-cause identifiée (auth 403 par joueur), pas de fix code (action auth = côté user).
+
+**Demandes** : (1) hero KPI : « Parties jouées »→« Matchs », « Durée totale »→« Temps », retirer la réserve 2-lignes ; (2) BP : ligne cosmétiques au-dessus des devises ; (3) bug : barres XP/progression BP « pas mises à jour » (défis peut-être aussi).
+
+**Décisions techniques (UI)** :
+1. **Matchs** : `HomeHeroKPIGrid` card 1 passait par `labelOf('total_matches_played')` → field-mapping backend « Parties jouées » (prioritaire sur le fallback local). Bascule sur `kpiText.labels.matches` (= `home.kpi.matches_label` = « Matchs »), court-circuite le field-mapping. Entrée `total_matches_played` retirée de `localKpiLabels` (devenue morte) dans HomePage.tsx.
+2. **Temps** : `home.kpi.total_time` « Durée totale »→« Temps » (manifest + regen).
+3. **Réserve 1 ligne** : `min-h-[2lh]`→`min-h-[1lh]` (desktop = rangée unique largeurs proportionnelles, chaque label 1 ligne depuis raccourcissement).
+4. **Ordre BP** : items (cosmétiques) avant devises dans `OverlayContentRows` (SeasonPassPage, row2 avant row1) + `PassContentSummary` (compact `[...itemChips, ...currencyChips]` + full ChipRow items avant currency).
+
+**Diagnostic bug BP/défis (root cause)** :
+- Flux : `GetBattlePass`/`GetChallenges` → fetch live Halo → si OK persiste snapshot frais + retourne ; **si échec → fallback cache DB (TTL 24h)**. Lecture (`loadTrackSnapshots`) prend le snapshot le plus récent (`ROW_NUMBER ORDER BY snapshot_at DESC`). Parse/calcul/dédup (`state_hash` inclut `partial_progress`) tous **corrects**.
+- `logs/general.log` (actif, root `./logs/` — PAS `apps/go-api/logs/` périmé au 02-06) : `battle_pass fetch failed ... economy.svc.../rewardtracks/operations: HTTP 403` + `challenges fetch failed ... halostats.svc.../decks: HTTP 403 (tokens invalides/expirés)`.
+- **Par joueur, 2 classes d'échec distinctes** :
+  - XxDaemonGamerxX (xuid …833178266) : **HTTP 403 « tokens invalides/expirés »**, 75+ depuis 06-06, **immédiat sans retry** → vrai problème token (attendu : jamais eu de tokens valides selon user).
+  - JGtm (…823110022) : **PAS 403** — `context canceled` après `3 tentatives échouées` (réseau/transport, ex. restart serveur ou déconnexion client en vol), 2 occurrences isolées (20-05, 03-06 22:54), rien depuis. Auth saine : XSTS minté régulièrement, RT re-migré au boot 14:26. **Pas de re-auth nécessaire.**
+  - Madina (…858283686) + Chocoboflor (…789936) = 0 échec.
+- **Tell discriminant** : `HTTP 403` immédiat = auth (le doGet ne retry pas un 403) ; `N tentatives échouées — Get "..."` = réseau transitoire (retry exhausted). Un bug URL/wrapper toucherait tous identiquement → confirme auth/réseau par joueur, pas une régression code ni un bug d'affichage (mémoire `feedback_check_api_wrapper_before_blaming_auth` : URL `xuid(NNN)` correcte).
+- Conséquence : BP **et** défis figés sur le dernier snapshot réussi (cache 24h dépassé → données périmées affichées). « Perte silencieuse » au sens directive `project_convergent_sync_direction`.
+- Note : mapping `provider.go:514` conflate 401 ET 403 sous « tokens invalides/expirés » ; le vrai statut est **403** (Forbidden). Migration boot 14:27 a migré 0 token (store inchangé) → condition persiste au prochain chargement.
+
+**Remède** (action user, ADR 0023) : re-capturer les tokens des joueurs touchés (`token-capture`/`token-import` ou ré-onboarding SSO Xbox) + `InvalidateCachedPlayerTokens(xuid)`. Aucune modif code requise pour le fix immédiat.
+
+**Prochaine étape** : confirmer avec user quel(s) joueur(s) re-authentifier ; option code : rendre la staleness visible (badge âge snapshot quand fallback cache). Commit UI sur autorisation. Restart serveur déjà nécessaire (révision 7 — champ Go RemainingContent).
+
 ## [2026-06-07] Demo durabilite : reseed auto + barres objectifs prestige — Complété
 
 **Statut** : Complété. Deploy reussi (run 27092269295). Prod + demo 200.

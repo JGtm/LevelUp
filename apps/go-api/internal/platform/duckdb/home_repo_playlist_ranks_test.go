@@ -55,7 +55,7 @@ func TestBuildPlaylistRankItem_PlacementFromSnapshot(t *testing.T) {
 	}
 	snap := map[string]int{"pl-ranked": 4}
 
-	item := buildPlaylistRankItem(p, msr, snap, 10)
+	item := buildPlaylistRankItem(p, msr, snap, 10, true)
 
 	if item.RatingValue != nil {
 		t.Errorf("RatingValue: want nil (placement), got %v", *item.RatingValue)
@@ -88,7 +88,7 @@ func TestBuildPlaylistRankItem_PlacementFromMSROnly(t *testing.T) {
 	}
 	snap := map[string]int{} // pas de snapshot
 
-	item := buildPlaylistRankItem(p, msr, snap, 10)
+	item := buildPlaylistRankItem(p, msr, snap, 10, true)
 
 	if item.MeasurementMatchesRemaining == nil || *item.MeasurementMatchesRemaining != 7 {
 		t.Errorf("MeasurementMatchesRemaining: want 7, got %v", item.MeasurementMatchesRemaining)
@@ -111,7 +111,7 @@ func TestBuildPlaylistRankItem_StableRank(t *testing.T) {
 	}
 	snap := map[string]int{"pl-ranked": 0} // matured
 
-	item := buildPlaylistRankItem(p, msr, snap, 10)
+	item := buildPlaylistRankItem(p, msr, snap, 10, true)
 
 	if item.RatingValue == nil || *item.RatingValue != 1450 {
 		t.Errorf("RatingValue: want 1450, got %v", item.RatingValue)
@@ -127,6 +127,52 @@ func TestBuildPlaylistRankItem_StableRank(t *testing.T) {
 	}
 }
 
+func TestBuildPlaylistRankItem_MaturedRankComputesTierBand(t *testing.T) {
+	t.Parallel()
+	// Rang matured non-Onyx : la bande ORDINALE (sub_tier/6) + le sous-palier
+	// suivant doivent être renseignés (même calcul que le skill peak). Gold IV
+	// → 4/6 ≈ 66.67 %, suivant = "Or V" (frPreferred=true).
+	p := playlistPhaseBRow{
+		playlistID:   "pl-ranked",
+		playlistName: "Ranked Arena",
+		isRanked:     true,
+		lastMatchID:  "m1",
+	}
+	msr := map[string]playlistMSRRow{
+		"m1": {ratingValue: 1450, tier: "Gold", tierLabel: "Or IV", subTier: 4},
+	}
+	item := buildPlaylistRankItem(p, msr, map[string]int{"pl-ranked": 0}, 10, true)
+
+	if item.TierProgressPct == nil {
+		t.Fatalf("TierProgressPct: want non-nil (matured Gold IV), got nil")
+	}
+	if got := *item.TierProgressPct; got < 66.0 || got > 67.0 {
+		t.Errorf("TierProgressPct: want ~66.67 (4/6), got %v", got)
+	}
+	if item.NextTierLabel == nil || *item.NextTierLabel != "Or V" {
+		t.Errorf("NextTierLabel: want \"Or V\", got %v", item.NextTierLabel)
+	}
+}
+
+func TestBuildPlaylistRankItem_PlacementHasNoTierBand(t *testing.T) {
+	t.Parallel()
+	// Placement : pas de bande ni de sous-palier suivant (parité skill peak).
+	p := playlistPhaseBRow{
+		playlistID: "pl-ranked", playlistName: "Ranked Arena", isRanked: true, lastMatchID: "m1",
+	}
+	msr := map[string]playlistMSRRow{
+		"m1": {ratingValue: 0, tier: "Placement", tierLabel: "Placement (4 restants)"},
+	}
+	item := buildPlaylistRankItem(p, msr, map[string]int{"pl-ranked": 4}, 10, true)
+
+	if item.TierProgressPct != nil {
+		t.Errorf("TierProgressPct: want nil (placement), got %v", *item.TierProgressPct)
+	}
+	if item.NextTierLabel != nil {
+		t.Errorf("NextTierLabel: want nil (placement), got %v", *item.NextTierLabel)
+	}
+}
+
 func TestBuildPlaylistRankItem_PlacementFromSnapshotNoMSR(t *testing.T) {
 	t.Parallel()
 	// Joueur en placement, pas encore de match avec MSR enregistré.
@@ -139,7 +185,7 @@ func TestBuildPlaylistRankItem_PlacementFromSnapshotNoMSR(t *testing.T) {
 	msr := map[string]playlistMSRRow{} // pas de MSR
 	snap := map[string]int{"pl-ranked": 9}
 
-	item := buildPlaylistRankItem(p, msr, snap, 10)
+	item := buildPlaylistRankItem(p, msr, snap, 10, true)
 
 	if item.MeasurementMatchesRemaining == nil || *item.MeasurementMatchesRemaining != 9 {
 		t.Errorf("MeasurementMatchesRemaining: want 9, got %v", item.MeasurementMatchesRemaining)
@@ -163,7 +209,7 @@ func TestBuildPlaylistRankItem_RankedNoMSRNoSnapshot(t *testing.T) {
 		isRanked:     true,
 		lastMatchID:  "m1",
 	}
-	item := buildPlaylistRankItem(p, map[string]playlistMSRRow{}, map[string]int{}, 10)
+	item := buildPlaylistRankItem(p, map[string]playlistMSRRow{}, map[string]int{}, 10, true)
 
 	if item.MeasurementMatchesRemaining == nil || *item.MeasurementMatchesRemaining != 10 {
 		t.Errorf("MeasurementMatchesRemaining: want 10 (placement à 0 match), got %v", item.MeasurementMatchesRemaining)
@@ -194,7 +240,7 @@ func TestBuildPlaylistRankItem_Threshold5_PlacementFromSnapshot(t *testing.T) {
 	}
 	snap := map[string]int{"pl-ranked": 2}
 
-	item := buildPlaylistRankItem(p, msr, snap, 5)
+	item := buildPlaylistRankItem(p, msr, snap, 5, true)
 
 	if item.MeasurementMatchesRemaining == nil || *item.MeasurementMatchesRemaining != 2 {
 		t.Errorf("MeasurementMatchesRemaining: want 2, got %v", item.MeasurementMatchesRemaining)
@@ -215,7 +261,7 @@ func TestBuildPlaylistRankItem_Threshold5_NoMatchYet(t *testing.T) {
 		playlistID: "pl-ranked", playlistName: "Assassin classé", isRanked: true, lastMatchID: "m1",
 		lastSeasonID: "CsrSeason13-1",
 	}
-	item := buildPlaylistRankItem(p, map[string]playlistMSRRow{}, map[string]int{}, 5)
+	item := buildPlaylistRankItem(p, map[string]playlistMSRRow{}, map[string]int{}, 5, true)
 
 	if item.MeasurementMatchesRemaining == nil || *item.MeasurementMatchesRemaining != 5 {
 		t.Errorf("MeasurementMatchesRemaining: want 5, got %v", item.MeasurementMatchesRemaining)
@@ -238,7 +284,7 @@ func TestBuildPlaylistRankItem_Threshold5_MaturedRankExposesPlacementTotal(t *te
 	msr := map[string]playlistMSRRow{
 		"m1": {ratingValue: 1450, tier: "Onyx", tierLabel: "Onyx 1450"},
 	}
-	item := buildPlaylistRankItem(p, msr, map[string]int{"pl-ranked": 0}, 5)
+	item := buildPlaylistRankItem(p, msr, map[string]int{"pl-ranked": 0}, 5, true)
 
 	if item.PlacementTotal == nil || *item.PlacementTotal != 5 {
 		t.Errorf("PlacementTotal: want 5 (matured ranked), got %v", item.PlacementTotal)
@@ -257,7 +303,7 @@ func TestBuildPlaylistRankItem_NonRankedNoMSR(t *testing.T) {
 		isRanked:     false,
 		lastMatchID:  "m1",
 	}
-	item := buildPlaylistRankItem(p, map[string]playlistMSRRow{}, map[string]int{}, 10)
+	item := buildPlaylistRankItem(p, map[string]playlistMSRRow{}, map[string]int{}, 10, true)
 
 	if item.MeasurementMatchesRemaining != nil {
 		t.Errorf("MeasurementMatchesRemaining: want nil, got %v", *item.MeasurementMatchesRemaining)

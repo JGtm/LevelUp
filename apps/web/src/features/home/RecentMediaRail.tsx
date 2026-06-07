@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Carousel, CarouselItem } from '@/components/ui/carousel'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
@@ -37,7 +36,7 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
   const likedTotal = likedQuery.data?.items.pagination.total
 
   return (
-    <Card>
+    <section className="flex flex-col gap-3">
       {lightboxIndex !== null && (
         <MediaLightbox
           items={items}
@@ -61,12 +60,11 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
         />
       )}
 
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">
-            {mediaTab === 'recent' ? t('home.media.title_recent') : t('home.media.title_liked')}
-          </CardTitle>
-          <div className="flex items-center gap-1 border-b border-transparent">
+      <header className="flex items-center justify-between gap-3">
+        <h3 className="text-base font-semibold text-foreground">
+          {mediaTab === 'recent' ? t('home.media.title_recent') : t('home.media.title_liked')}
+        </h3>
+        <div className="flex items-center gap-1 border-b border-transparent">
             <Button
               variant="ghost"
               size="sm"
@@ -92,10 +90,8 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
               {t('home.media.tab_liked')}{likedTotal !== undefined && <span className="ml-1.5 opacity-70">({likedTotal})</span>}
             </Button>
           </div>
-        </div>
-      </CardHeader>
+      </header>
 
-      <CardContent>
         {isLoading ? (
           <div className="flex min-h-32 items-center justify-center">
             <Spinner size="md" label={t('home.media.loading')} />
@@ -137,7 +133,6 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
             description={t('home.media.empty_recent_description')}
           />
         )}
-      </CardContent>
-    </Card>
+    </section>
   )
 }

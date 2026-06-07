@@ -7,7 +7,7 @@
  */
 import { useState } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { DataFreshnessIndicator } from '@/components/ui/data-freshness-indicator'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
@@ -273,11 +273,13 @@ export function HomePage() {
           />
 
           {/* Sessions récentes */}
-          <Card>
-            <CardHeader className="space-y-0 pb-3">
-              <CardTitle className="text-base">{t('home.sessions.title')}</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-0">
+          <section className="flex flex-col gap-3">
+            {/* Titre de section (type 1 du catalogue), SORTI de la carte (cf. demande user). */}
+            <header className="flex items-center gap-1.5">
+              <h3 className="text-base font-semibold text-foreground">{t('home.sessions.title')}</h3>
+            </header>
+            <Card className="flex flex-1 flex-col">
+            <CardContent className="pt-6 pb-0">
               {soloSessions.length > 0 || squadSessions.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {soloSessions.length > 0 && (
@@ -309,6 +311,7 @@ export function HomePage() {
               )}
             </CardContent>
           </Card>
+          </section>
         </div>
 
         {/* Section Prestige (2/3) + Ascension (1/3) — masquées si show_progression=false */}
@@ -319,16 +322,14 @@ export function HomePage() {
           </div>
         )}
 
-        {/* Highlights */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-1.5 text-base">
-              {getHighlightText(locale).section.title}
-              <InfoTooltip content={<p>{getHighlightText(locale).section.tooltipIntro}</p>} />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {highlights.length > 0 ? (
+        {/* Faits marquants — KPI sortis de leur bloc : chaque tuile est une KpiCard
+            autonome, plus de carte englobante (cf. demande user). */}
+        <section className="flex flex-col gap-3">
+          <header className="flex items-center gap-1.5">
+            <h3 className="text-base font-semibold text-foreground">{getHighlightText(locale).section.title}</h3>
+            <InfoTooltip content={<p>{getHighlightText(locale).section.tooltipIntro}</p>} />
+          </header>
+          {highlights.length > 0 ? (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:[grid-template-columns:repeat(20,minmax(0,1fr))]">
                 {highlights.map((h, i) => (
                   <HomeHighlightTile key={i} h={h} locale={locale} />
@@ -340,19 +341,17 @@ export function HomePage() {
                 description={t('home.highlights.empty_description')}
               />
             )}
-          </CardContent>
-        </Card>
+        </section>
 
-        {/* Séquence des outcomes — bande compacte avant les tuiles. */}
+        {/* Résultats de la dernière session — titre + contenu sortis de la carte (cf. demande user). */}
         {lastSessionMatches.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-1.5 text-base">
+          <section className="flex flex-col gap-3">
+            <header className="flex items-center gap-1.5">
+              <h3 className="text-base font-semibold text-foreground">
                 {locale === 'en' ? 'Last session results' : 'Résultats de la dernière session'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <OutcomeSequenceTape
+              </h3>
+            </header>
+            <OutcomeSequenceTape
                 matches={[...lastSessionMatches].reverse().map((m) => {
                   const outcome: 'win' | 'loss' | 'tie' | 'dnf' =
                     m.outcome_tone === 'win'
@@ -371,18 +370,17 @@ export function HomePage() {
                   dnf: fieldMappings?.outcomes?.['dnf']?.label ?? 'dnf',
                 }}
               />
-            </CardContent>
-          </Card>
+          </section>
         )}
 
-        {/* Matchs récents / Favoris — 4 tuiles MatchCard */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">
-                {matchTab === 'recent' ? t('home.matches.recent_title') : t('home.matches.favorites_title')}
-              </CardTitle>
-              <div className="flex items-center gap-1 border-b border-transparent">
+        {/* Matchs récents / Favoris — titre + contenu sortis de la carte ; toggles
+            conservés à droite dans le header de section (cf. demande user). */}
+        <section className="flex flex-col gap-3">
+          <header className="flex items-center justify-between gap-3">
+            <h3 className="text-base font-semibold text-foreground">
+              {matchTab === 'recent' ? t('home.matches.recent_title') : t('home.matches.favorites_title')}
+            </h3>
+            <div className="flex items-center gap-1 border-b border-transparent">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -413,10 +411,8 @@ export function HomePage() {
                   )}
                 </Button>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {matchTab === 'recent' ? (
+          </header>
+          {matchTab === 'recent' ? (
               recentMatches.length > 0 ? (
                 <Carousel>
                   {recentMatches.map((m) => (
@@ -465,8 +461,7 @@ export function HomePage() {
                 />
               )
             )}
-          </CardContent>
-        </Card>
+        </section>
 
         <RecentMediaRail playerSlug={playerSlug} />
       </div>

@@ -146,8 +146,10 @@ export function HomeHeroKPIGrid({
         <div className={`${KPI_CONTENT_CLS} px-4`}>
           <p className={KPI_LABEL_CLS}>{labelOf('win_rate')}</p>
           <p className={KPI_VALUE_CLS}>{`${(winRate * 100).toFixed(0)}%`}</p>
-          {/* Victoires (gauche) ─ barre (détail nuls/abandons en tooltip) ─ défaites (droite). */}
-          <div className="mt-2 flex w-full items-center gap-2">
+          {/* Victoires (gauche) ─ barre (détail nuls/abandons en tooltip) ─ défaites (droite).
+              mt-0 : écart resserré SOUS le XX% uniquement ; le line-height par défaut de la
+              valeur préserve l'écart titre→XX% au-dessus (cf. demande user). */}
+          <div className="mt-0 flex w-full items-center gap-2">
             <span className="shrink-0 text-xs font-semibold tabular-nums" style={{ color: tokenCssVar('outcome-win') }}>
               {wins}
             </span>

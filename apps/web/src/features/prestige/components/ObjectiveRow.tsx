@@ -7,9 +7,11 @@
  * du tier pour souligner la difficulté.
  */
 import { useState } from 'react'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { Cadence, Challenge, Tier } from '@/lib/prestige'
 import { TIER_COLORS, TIER_LABELS_FR } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
+import { getPrestigeText } from '../i18n'
 
 interface ObjectiveRowProps {
   challenge: Challenge
@@ -63,6 +65,8 @@ function ObjectiveBadge({ cadence, tier, alt }: { cadence: Cadence; tier: Tier; 
 }
 
 export function ObjectiveRow({ challenge, currentValue, onClick }: ObjectiveRowProps) {
+  const locale = useAppShellStore((s) => s.locale)
+  const t = getPrestigeText(locale)
   const cv = currentValue ?? challenge.current_value ?? 0
   const tier: Tier = challenge.tier ?? 'normal'
   const cadence: Cadence = challenge.cadence
@@ -103,12 +107,21 @@ export function ObjectiveRow({ challenge, currentValue, onClick }: ObjectiveRowP
             {title}
           </p>
           <div className="flex shrink-0 items-center gap-1.5">
+            {challenge.pp_reward ? (
+              <span
+                data-testid="objective-row-pp"
+                className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold tabular-nums text-primary"
+                title={t.objectivePPTooltip}
+              >
+                +{challenge.pp_reward} PP
+              </span>
+            ) : null}
             {challenge.is_squad && (
               <span
                 data-testid="objective-row-squad-badge"
                 className="rounded border border-muted-foreground/30 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-muted-foreground"
               >
-                Escouade
+                {t.objectiveSquadBadge}
               </span>
             )}
             <span
@@ -120,9 +133,11 @@ export function ObjectiveRow({ challenge, currentValue, onClick }: ObjectiveRowP
           </div>
         </div>
 
+        {/* Seuils aux EXTRÉMITÉS de la barre (cf. demande user) : valeur courante à
+            gauche, cible à droite ; le % est porté par la barre elle-même. */}
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 text-2xs text-muted-foreground">
           <span className="shrink-0 whitespace-nowrap tabular-nums">
-            {cv.toFixed(2)}/{target.toFixed(2)}
+            {cv.toFixed(2)}
           </span>
           <div className="min-w-0 overflow-hidden rounded-full bg-muted-foreground/25">
             <div className="h-1.5 w-full">
@@ -137,7 +152,7 @@ export function ObjectiveRow({ challenge, currentValue, onClick }: ObjectiveRowP
             </div>
           </div>
           <span className="shrink-0 whitespace-nowrap text-right tabular-nums">
-            {progressPercent}%
+            {target.toFixed(2)}
           </span>
         </div>
       </div>

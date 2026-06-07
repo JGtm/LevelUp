@@ -1580,6 +1580,13 @@ export interface HomePlaylistRank {
   measurement_matches_remaining?: number | null
   /** Seuil placement de la saison du match (5 ou 10). nil → fallback front à 10. */
   placement_total?: number | null
+  /** Remplissage ORDINAL de la barre (0..100) via le sous-palier (n/6), indépendant
+   *  de l'échelle CSR/LUSR. Calculé par analysis.SkillTierBand (même bande que le
+   *  skill peak). null hors phase matured (placement / sans rang) → pas de barre. */
+  tier_progress_pct?: number | null
+  /** Libellé localisé du SOUS-PALIER suivant (extrémité droite de la barre, ex.
+   *  "Or V", "Platine I"). null pour Onyx (sommet). */
+  next_tier_label?: string | null
 }
 
 export interface HomeSpartanIdentity {

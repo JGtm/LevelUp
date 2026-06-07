@@ -58,6 +58,13 @@ export const TIER_COLORS: Record<Tier, string> = {
 
 export const TIER_LABELS_FR: Record<Tier, string> = {
   normal: 'Normal',
+  heroic: 'Héroïque',
+  legendary: 'Légendaire',
+  mythic: 'Mythique',
+}
+
+export const TIER_LABELS_EN: Record<Tier, string> = {
+  normal: 'Normal',
   heroic: 'Heroic',
   legendary: 'Legendary',
   mythic: 'Mythic',
@@ -86,6 +93,8 @@ export interface Challenge {
   status: ChallengeStatus
   /** Valeur courante mesurée (calculée par l'évaluateur dans ListActiveChallenges). 0 si non renseignée. */
   current_value?: number
+  /** PP crédités à la complétion (PPForCompletion par tier/data_tier). 0/absent si data_tier=tracking. */
+  pp_reward?: number
   expires_at?: string
   created_at: string
   committed_at?: string

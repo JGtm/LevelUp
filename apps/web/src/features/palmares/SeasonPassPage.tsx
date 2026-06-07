@@ -50,8 +50,10 @@ function OverlayContentRows({
   type Chip = { key: string; value: string; label: string }
   const showRemaining = remaining !== undefined
   const rem = remaining ?? null
+  // Mode XX/YY : affiche l'ACQUIS (= total − restant) sur le total (cf. demande user :
+  // « X obtenus sur Y », colle à la complétion). r = valeur des paliers NON atteints.
   const val = (total: number, r: number) =>
-    showRemaining ? `${r.toLocaleString(locale)}/${total.toLocaleString(locale)}` : total.toLocaleString(locale)
+    showRemaining ? `${Math.max(0, total - r).toLocaleString(locale)}/${total.toLocaleString(locale)}` : total.toLocaleString(locale)
   const armorOf = (c: SeasonPassContent | null) => {
     let armor = 0
     if (c?.type_breakdown) for (const [type, count] of Object.entries(c.type_breakdown)) if (isArmorItemType(type)) armor += count
@@ -99,9 +101,7 @@ function OverlayContentRows({
 
   return (
     <div className="mt-2 space-y-0.5">
-      {/* Items (cosmétiques) au-dessus des devises (paliers/cR/XP), cf. demande user. */}
-      {chipRow(row2)}
-      {chipRow(row1)}
+      {/* Raretés EN PREMIER, puis items (cosmétiques), puis devises (cf. demande user). */}
       {rarities.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-2.5 text-xs">
           {rarities.map(({ tier, count, r }) => (
@@ -114,6 +114,8 @@ function OverlayContentRows({
           ))}
         </div>
       )}
+      {chipRow(row2)}
+      {chipRow(row1)}
     </div>
   )
 }
