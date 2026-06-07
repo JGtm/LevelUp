@@ -44,7 +44,8 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 		WithDataAdapter(r.dataAdapterForPDB(pdb)).
 		WithMatchesCache(r.homeMatchesCache, pdb.XUID).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
-		WithCareerLive(r.newCareerLiveService(pdb, homeRepo))
+		WithCareerLive(r.newCareerLiveService(pdb, homeRepo)).
+		WithDemoMode(r.cfg.DemoMode)
 	r.notifiers.Store(pdb.XUID, port.SessionNotifier(svc))
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	// Démo / non-authentifié : enrichWithHaloTokens ne pose pas de HaloXUID sans
@@ -77,7 +78,8 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 		WithDataAdapter(r.dataAdapterForPDB(pdb)).
 		WithMatchesCache(r.homeMatchesCache, pdb.XUID).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
-		WithCareerLive(r.newCareerLiveService(pdb, homeRepo))
+		WithCareerLive(r.newCareerLiveService(pdb, homeRepo)).
+		WithDemoMode(r.cfg.DemoMode)
 	r.notifiers.Store(pdb.XUID, port.SessionNotifier(homeSvc))
 	spRepo := duckdb.NewSeasonPassRepo(pdb)
 	svc := service.NewSeasonPassService(spRepo, homeSvc, pdb.XUID, pdb.TitleSlug)
