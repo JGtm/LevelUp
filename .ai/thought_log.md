@@ -129,6 +129,20 @@
 
 **Prochaine étape** : vérif end-to-end app (Home des 3 cibles) reste à faire ; commit sur autorisation (ne stager que les fichiers rendement, laisser intact le WIP seed_demo de la branche).
 
+## [2026-06-07] Démo #4 défis + #5 prestige — fixtures read-time guardées DemoMode — Complété (code)
+
+**Statut** : Complété (code). Build+vet+test (service, api) OK. Deploy + reseed + vérif Chrome restants.
+
+**Approche commune (pivot validé)** : pas de seed-time (le cache défis a un TTL 24h → fixture seedée expire ; prestige = activité PP calculée, absente en démo). On injecte des **fixtures embarquées au niveau LECTURE**, guardées `DemoMode` → bypass live/cache/calcul, survit reseed + déploiement, pas d'ageing.
+
+**#4 Défis** : `HomeService.WithDemoMode` ; `GetChallenges` retourne `demoChallenges()` (fixture `go:embed demo_fixtures/challenges.json`, 4 défis FR avec items renderables) quand DemoMode. Câblé sur les 3 sites registry via `r.cfg.DemoMode`. Vérifié API : season-pass preview démo expose `challenges.total=4`.
+
+**#5 Prestige (rang)** : `app_settings` démo `prestige_enabled=true` (sinon `/prestige/me` 404 → section masquée) ; `LazyPrestigeService(demoMode)` → `GetUserPrestige` retourne `demoUserPrestige()` (rang "Vétéran", PP 2100, ratio 0.4) sans toucher au bundle/player DB. Surface le **rang Prestige** (HomePrestigeSection via `useMyPrestige`).
+
+**Limite #5** : l'"objectif + arc" du Home Prestige vient d'un **système séparé** (défis prestige `ListActiveChallenges` + `/arcs` / `ArcSummary`) — pas couvert par la fixture UserPrestige. Le rang s'affiche ; arc/objectif resteront vides en démo (follow-up : fixtures arcs/challenges prestige read-time si souhaité).
+
+---
+
 ## [2026-06-06] Démo #3 playlists classées (corpus) + constat bloquant #4/#5 — Complété (#3) / Pivot (#4-#5)
 
 **#3 — Complété + déployé + vérifié.** Corpus solo+squad = 100% Partie rapide → `recent_playlist_ranks` sans playlist classée. Ajout `selectRecentRankedMatchIDs` (top 15, `is_ranked` OU 'ranked' dans playlist/pair name) union dans le corpus. Vérifié home : **Partie rapide + Assassin classé + Arène classée** (CSR, badges). Nuance : playlists classées en **état placement** (matchs classés seedés en placement, pas un palier CSR résolu) — affinage possible.

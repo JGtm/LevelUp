@@ -996,7 +996,7 @@ func NewRouter(
 			// Module Prestige — routes derrière feature flag PRESTIGE_ENABLED.
 			// Le bundle a été initialisé au boot ; si nil ou flag off, routes non montées.
 			if prestigeBundle != nil && cfg.PrestigeEnabled {
-				lazy := NewLazyPrestigeService(prestigeBundle, nil)
+				lazy := NewLazyPrestigeService(prestigeBundle, nil, cfg.DemoMode)
 				ph := handlers.NewPrestigeHandler(lazy)
 				// Défis
 				r.Post("/challenges", ph.CreateChallenge)

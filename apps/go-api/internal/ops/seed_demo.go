@@ -739,6 +739,10 @@ func demoAppSettings(serviceTag string, mediaEnabled bool) map[string]any {
 		"profile_service_tag":                 serviceTag,
 		"repository_mode":                     "duckdb",
 		"enable_duckdb_analytics":             true,
+		// Active les routes Prestige en démo : sans ça /prestige/me 404 et la section
+		// Prestige du Home ne rend pas. Le rang Prestige est servi via fixture read-time
+		// (LazyPrestigeService DemoMode) car le DemoPlayer n'a pas d'activité PP réelle.
+		"prestige_enabled": true,
 	}
 }
 
