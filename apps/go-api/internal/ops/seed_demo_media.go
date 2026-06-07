@@ -1,25 +1,24 @@
-// Package ops — seed_demo_media.go : extraction des médias pour la démo.
+// Package ops — seed_demo_media.go : copie des vraies vidéos (flux HLS) pour la démo.
 //
-// Portage de scripts/prepare_demo_data.py:_extract_media + _reimport_existing_media
-// (supprimés au commit c03707aa lors du nettoyage Python legacy).
+// Les médias du joueur source sont des flux HLS, comme en prod :
+//   - {srcMediaDir}/hls/{name}/  : master.m3u8 + init_*.mp4 + seg_*.m4s + stream_*.m3u8
+//   - {srcMediaDir}/thumbs/{name}.webp : vignette
 //
-// Stratégie :
-//  1. Si media_registry.json existe déjà dans outMediaDir (regen VPS après upload
-//     initial) → réimporte les entrées dans la nouvelle DB sans recopier les fichiers.
-//  2. Sinon : sélectionne max N médias liés aux matchs démo (direct), fallback
-//     fuzzy par carte si insuffisant. Copie fichiers + insère rows media_files +
-//     media_match_associations + écrit media_registry.json pour les regens futurs.
+// On copie les N captures "Halo Infinite …" les plus récentes dans la démo, on insère
+// les media_files (schéma canonique shared_social : kind=video, file_path→master.m3u8,
+// thumbnail_path→.webp) et on les attribue grossièrement aux matchs du corpus (même
+// carte si possible) → page Média fonctionnelle avec lecture vidéo, comme en prod.
 package ops
 
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -28,27 +27,23 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
-// mediaRegistryEntry est sérialisé dans media_registry.json. Permet aux regens
-// VPS de re-lier les fichiers déjà présents sur disque sans recopie.
-type mediaRegistryEntry struct {
-	Filename       string  `json:"filename"`
-	FileHash       string  `json:"file_hash"`
-	MatchID        string  `json:"match_id"`
-	MatchStartTime *string `json:"match_start_time,omitempty"`
-	MapName        *string `json:"map_name,omitempty"`
+// haloInfinitePrefix : préfixe des captures Xbox Halo Infinite à utiliser (le user
+// veut explicitement ces médias, pas les autres formats).
+const haloInfinitePrefix = "Halo Infinite"
+
+// hlsMedia décrit une capture HLS source à copier dans la démo.
+type hlsMedia struct {
+	Name         string // "Halo Infinite 2025-12-18 21-48-59"
+	HLSDir       string // {srcMediaDir}/hls/{Name}
+	ThumbPath    string // {srcMediaDir}/thumbs/{Name}.webp ("" si absente)
+	CaptureStart sql.NullTime
 }
 
-// extractDemoMedia est le point d'entrée du sous-pipeline média.
-// Écrit dans outSocialDB (shared_social.duckdb démo) au schéma CANONIQUE (via les
-// migrations TargetSharedSocial), pas un DDL bespoke : c'est le seul schéma que le
-// pipeline de lecture (Q37, mode shared_social : id/media_file_id/player_slug) sait
-// lire. playerSlug = identité du DemoPlayer (filtre "mine" côté media repo).
-// Retourne le nombre de fichiers réellement importés/réimportés.
-//
-//nolint:gocyclo // pipeline complet média : migrations + branch reimport/extract + copy + insert.
+// extractDemoMedia copie les vidéos HLS "Halo Infinite" du joueur source vers la
+// démo et insère les media_files (schéma canonique shared_social) attribués au corpus.
 func extractDemoMedia(
 	ctx context.Context,
-	srcPlayerDB, srcSharedDB, outSocialDB, outMediaDir string,
+	srcMediaDir, srcSharedDB, outSocialDB, outMediaDir string,
 	matchIDs []string,
 	playerSlug string,
 	maxMedia int,
@@ -56,215 +51,196 @@ func extractDemoMedia(
 	if err := os.MkdirAll(outMediaDir, 0o755); err != nil {
 		return 0, fmt.Errorf("mkdir media: %w", err)
 	}
-	// Recréer le shared_social fresh à chaque reseed (comme shared/player DBs) :
-	// sinon les rows d'un reseed précédent persistent (ex. player_slug périmé) et
-	// l'INSERT ON CONFLICT DO NOTHING les conserve → seed silencieusement obsolète.
-	// Sous Linux, unlink d'un fichier tenu ouvert par le conteneur démo est sûr
-	// (l'ancien inode survit jusqu'au force-recreate ; le seed écrit un inode neuf).
+	// Recréer le shared_social fresh à chaque reseed (cf. shared/player DBs). Sous
+	// Linux, unlink d'un fichier tenu par le conteneur démo est sûr (inode survit).
 	_ = os.Remove(outSocialDB)
 	_ = os.Remove(outSocialDB + ".wal")
 	if err := applyMigrationsOnPath(outSocialDB, migration.TargetSharedSocial); err != nil {
 		return 0, fmt.Errorf("migrations shared_social démo: %w", err)
 	}
 
-	// Branch 1 : registry présent → réimport sans copie de fichiers.
-	registryPath := filepath.Join(outMediaDir, "media_registry.json")
-	if entries, err := loadMediaRegistry(registryPath); err == nil && len(entries) > 0 {
-		slog.InfoContext(ctx, "seed-demo media: registry trouvé, réimport sans copie",
-			"entries", len(entries))
-		return reimportExistingMedia(ctx, outSocialDB, outMediaDir, playerSlug, entries)
-	}
-
-	// Branch 2 : extraction depuis source + copie fichiers.
-	srcSrc, err := sql.Open("duckdb", srcPlayerDB+"?access_mode=READ_ONLY")
-	if err != nil {
-		return 0, fmt.Errorf("open src player: %w", err)
-	}
-	defer srcSrc.Close()
-
-	// Skip silencieux si tables média absentes.
-	if !mediaTablesExist(ctx, srcSrc) {
-		slog.InfoContext(ctx, "seed-demo media: tables source absentes, skip")
-		return 0, nil
-	}
-
+	// Matchs du corpus courant (par map) pour l'attribution grossière des médias.
 	mapIndex, err := buildDemoMapIndex(ctx, srcSharedDB, matchIDs)
 	if err != nil {
 		return 0, fmt.Errorf("build map index: %w", err)
 	}
+	corpus := flattenCorpusMatches(mapIndex)
 
-	candidates, err := collectMediaCandidates(ctx, srcSrc, matchIDs, mapIndex, maxMedia)
-	if err != nil {
-		return 0, fmt.Errorf("collect candidates: %w", err)
-	}
-	if len(candidates) == 0 {
-		slog.InfoContext(ctx, "seed-demo media: aucun candidat sur disque, skip")
+	vids := scanHaloInfiniteHLS(srcMediaDir, maxMedia)
+	if len(vids) == 0 {
+		slog.InfoContext(ctx, "seed-demo media: aucune vidéo Halo Infinite trouvée", "src", srcMediaDir)
 		return 0, nil
 	}
 
-	dst, err := sql.Open("duckdb", outSocialDB)
+	db, err := sql.Open("duckdb", outSocialDB)
 	if err != nil {
 		return 0, fmt.Errorf("open out shared_social: %w", err)
-	}
-	defer dst.Close()
-
-	imported, registry, err := copyAndInsertMedia(ctx, srcSrc, dst, candidates, outMediaDir, playerSlug)
-	if err != nil {
-		return imported, fmt.Errorf("copy+insert: %w", err)
-	}
-
-	if len(registry) > 0 {
-		if err := saveMediaRegistry(registryPath, registry); err != nil {
-			slog.WarnContext(ctx, "seed-demo media: registry save failed", "err", err)
-		}
-	}
-	return imported, nil
-}
-
-// mediaTablesExist vérifie la présence des 2 tables dans la DB source.
-func mediaTablesExist(ctx context.Context, db *sql.DB) bool {
-	var n int
-	_ = db.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM information_schema.tables
-		WHERE table_schema = 'main'
-		  AND table_name IN ('media_files', 'media_match_associations')`).Scan(&n)
-	return n == 2
-}
-
-// loadMediaRegistry lit media_registry.json. Retourne err si fichier absent.
-func loadMediaRegistry(path string) ([]mediaRegistryEntry, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	var entries []mediaRegistryEntry
-	if err := json.Unmarshal(data, &entries); err != nil {
-		return nil, err
-	}
-	return entries, nil
-}
-
-// saveMediaRegistry sérialise les entries dans media_registry.json.
-func saveMediaRegistry(path string, entries []mediaRegistryEntry) error {
-	data, err := json.MarshalIndent(entries, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, data, 0o644)
-}
-
-// reimportExistingMedia ré-insère les rows media_files + media_match_associations
-// pour les fichiers déjà présents dans outMediaDir (use case : regen VPS après
-// upload initial).
-func reimportExistingMedia(
-	ctx context.Context,
-	socialDBPath, outMediaDir, playerSlug string,
-	entries []mediaRegistryEntry,
-) (int, error) {
-	db, err := sql.Open("duckdb", socialDBPath)
-	if err != nil {
-		return 0, fmt.Errorf("open: %w", err)
 	}
 	defer db.Close()
 
 	imported := 0
-	for _, e := range entries {
-		filePath := filepath.Join(outMediaDir, e.Filename)
-		stat, err := os.Stat(filePath)
-		if err != nil {
-			slog.WarnContext(ctx, "seed-demo media: fichier absent disque", "file", e.Filename)
+	for i, v := range vids {
+		if err := copyDir(v.HLSDir, filepath.Join(outMediaDir, v.Name)); err != nil {
+			slog.WarnContext(ctx, "seed-demo media: copie HLS échouée", "name", v.Name, "err", err)
 			continue
 		}
-		ext := filepath.Ext(e.Filename)
+		thumbnail := ""
+		if v.ThumbPath != "" {
+			tn := v.Name + ".webp"
+			if err := copyFile(v.ThumbPath, filepath.Join(outMediaDir, tn)); err == nil {
+				thumbnail = tn
+			}
+		}
+		match, _ := pickCorpusMatch(corpus, "", i)
+		captureStart := v.CaptureStart
+		if !captureStart.Valid && !match.TargetStartTime.IsZero() {
+			captureStart = sql.NullTime{Time: match.TargetStartTime, Valid: true}
+		}
 		row := demoMediaRow{
-			ID:         mediaID(e.FileHash, e.Filename),
-			PlayerSlug: playerSlug,
-			// file_path RELATIF (= filename) : mediaStoredPathToURL le sert tel quel
-			// (/media/files/{filename}) et ServeMediaFile le résout contre
-			// MediaCapturesBaseDir (réglé sur le dossier média démo, cf. demoAppSettings).
-			FilePath:     e.Filename,
-			FileName:     e.Filename,
-			FileHash:     e.FileHash,
-			FileSize:     stat.Size(),
-			Kind:         classifyMediaKind(ext),
-			FileStem:     strings.TrimSuffix(e.Filename, ext),
-			FileExt:      ext,
-			MTime:        stat.ModTime().UTC(),
-			CaptureStart: nullTimeFromRegistry(e.MatchStartTime),
-			MatchID:      e.MatchID,
+			ID:            v.Name,
+			PlayerSlug:    playerSlug,
+			FilePath:      v.Name + "/master.m3u8", // HLS : URL /media/files/{name}/master.m3u8
+			FileName:      v.Name,
+			Kind:          mediaKindVideo,
+			FileStem:      v.Name,
+			FileExt:       ".m3u8",
+			ThumbnailPath: thumbnail,
+			MTime:         captureOrNow(captureStart),
+			CaptureStart:  captureStart,
+			MatchID:       match.TargetMatchID,
 		}
 		if err := insertDemoMediaRow(ctx, db, row); err != nil {
-			slog.WarnContext(ctx, "seed-demo media: insert failed", "file", e.Filename, "err", err)
+			slog.WarnContext(ctx, "seed-demo media: insert échouée", "name", v.Name, "err", err)
 			continue
 		}
 		imported++
+		slog.InfoContext(ctx, "seed-demo media: copiée",
+			"name", v.Name, "match", match.TargetMatchID, "map", match.MapName)
 	}
 	return imported, nil
 }
 
-// demoMediaRow porte les champs d'une ligne média démo (schéma canonique shared_social).
-type demoMediaRow struct {
-	ID, PlayerSlug, FilePath, FileName, FileHash, Kind, FileStem, FileExt string
-	FileSize                                                              int64
-	MTime                                                                 time.Time
-	CaptureStart, CaptureEnd                                              sql.NullTime
-	MatchID                                                               string
+// scanHaloInfiniteHLS liste les flux HLS "Halo Infinite …" du joueur source (plus
+// récents d'abord, nom = horodatage triable), avec leur vignette. Limité à maxMedia.
+func scanHaloInfiniteHLS(srcMediaDir string, maxMedia int) []hlsMedia {
+	hlsRoot := filepath.Join(srcMediaDir, "hls")
+	thumbsRoot := filepath.Join(srcMediaDir, "thumbs")
+	entries, err := os.ReadDir(hlsRoot)
+	if err != nil {
+		return nil
+	}
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		if !e.IsDir() || !strings.HasPrefix(e.Name(), haloInfinitePrefix) {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(hlsRoot, e.Name(), "master.m3u8")); err != nil {
+			continue // flux incomplet
+		}
+		names = append(names, e.Name())
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(names))) // plus récents d'abord
+	if maxMedia > 0 && len(names) > maxMedia {
+		names = names[:maxMedia]
+	}
+	out := make([]hlsMedia, 0, len(names))
+	for _, n := range names {
+		m := hlsMedia{Name: n, HLSDir: filepath.Join(hlsRoot, n), CaptureStart: parseHaloCaptureTime(n)}
+		if tp := filepath.Join(thumbsRoot, n+".webp"); fileExists(tp) {
+			m.ThumbPath = tp
+		}
+		out = append(out, m)
+	}
+	return out
 }
 
-// insertDemoMediaRow insère un média au schéma CANONIQUE shared_social (id +
-// player_slug + media_file_id) + son association. Idempotent (ON CONFLICT DO NOTHING).
-func insertDemoMediaRow(ctx context.Context, db *sql.DB, m demoMediaRow) error {
-	if _, err := db.ExecContext(ctx, `
-		INSERT INTO media_files
-			(id, player_slug, file_path, file_name, kind, file_hash, file_size,
-			 file_stem, file_ext, thumbnail_path, capture_start_utc, capture_end_utc,
-			 mtime, indexed_at, liked, status, created_at, updated_at)
-		VALUES (?,?,?,?,?,?,?,?,?,NULL,?,?,?,CURRENT_TIMESTAMP,FALSE,'active',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
-		ON CONFLICT (id) DO NOTHING`,
-		m.ID, m.PlayerSlug, m.FilePath, m.FileName, m.Kind, m.FileHash, m.FileSize,
-		m.FileStem, m.FileExt, m.CaptureStart, m.CaptureEnd, m.MTime); err != nil {
-		return fmt.Errorf("insert media_files: %w", err)
+// parseHaloCaptureTime extrait l'horodatage du nom "Halo Infinite 2025-12-18 21-48-59".
+func parseHaloCaptureTime(name string) sql.NullTime {
+	s := strings.TrimSpace(strings.TrimPrefix(name, haloInfinitePrefix))
+	t, err := time.Parse("2006-01-02 15-04-05", s)
+	if err != nil {
+		return sql.NullTime{}
 	}
-	if _, err := db.ExecContext(ctx, `
-		INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds, created_at, is_manual)
-		VALUES (?, ?, 0, CURRENT_TIMESTAMP, FALSE)
-		ON CONFLICT (media_file_id, match_id) DO NOTHING`,
-		m.ID, m.MatchID); err != nil {
-		return fmt.Errorf("insert media_match_associations: %w", err)
+	return sql.NullTime{Time: t.UTC(), Valid: true}
+}
+
+func captureOrNow(t sql.NullTime) time.Time {
+	if t.Valid {
+		return t.Time
+	}
+	return time.Now().UTC()
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+// copyDir copie les fichiers de src → dst (dossier HLS plat : master.m3u8 +
+// init_*.mp4 + seg_*.m4s + stream_*.m3u8 ; pas de sous-dossiers). Le master.m3u8
+// est réécrit pour ne garder qu'UNE piste audio (la 1ère = jeu ; les suivantes,
+// ex. voicechat, sont retirées → pas de sélecteur côté lecteur).
+func copyDir(src, dst string) error {
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dst, 0o755); err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		srcPath := filepath.Join(src, e.Name())
+		dstPath := filepath.Join(dst, e.Name())
+		if e.Name() == "master.m3u8" {
+			if err := copyMasterKeepFirstAudio(srcPath, dstPath); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := copyFile(srcPath, dstPath); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-// mediaID dérive l'id (PK media_files) : file_hash si présent, sinon le nom de
-// fichier (les médias démo ont des noms distincts).
-func mediaID(fileHash, fileName string) string {
-	if h := strings.TrimSpace(fileHash); h != "" {
-		return h
+// copyMasterKeepFirstAudio copie un master.m3u8 en ne conservant que la 1ère
+// déclaration de piste audio (#EXT-X-MEDIA:TYPE=AUDIO) — retire le voicechat.
+func copyMasterKeepFirstAudio(src, dst string) error {
+	content, err := os.ReadFile(src)
+	if err != nil {
+		return err
 	}
-	return fileName
+	lines := strings.Split(string(content), "\n")
+	out := make([]string, 0, len(lines))
+	audioSeen := false
+	for _, l := range lines {
+		t := strings.TrimSpace(l)
+		if strings.HasPrefix(t, "#EXT-X-MEDIA:") && strings.Contains(t, "TYPE=AUDIO") {
+			if audioSeen {
+				continue // piste audio supplémentaire (voicechat) → retirée
+			}
+			audioSeen = true
+		}
+		out = append(out, l)
+	}
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(dst, []byte(strings.Join(out, "\n")), 0o644)
 }
 
-// nullTimeFromRegistry convertit le match_start_time du registry (RFC3339) en
-// sql.NullTime — sert de capture_start_utc proxy au reimport (pas de capture réelle).
-func nullTimeFromRegistry(s *string) sql.NullTime {
-	t := parseRegistryTime(s)
-	if t.IsZero() {
-		return sql.NullTime{}
-	}
-	return sql.NullTime{Time: t, Valid: true}
-}
-
-// mediaCandidate identifie un fichier média à copier + son match associé.
+// mediaCandidate identifie un match du corpus (pour l'attribution des médias).
 type mediaCandidate struct {
-	SrcFilePath     string
 	TargetMatchID   string
 	TargetStartTime time.Time
 	MapName         string
-	IsFuzzy         bool // true si réassigné via map_name (pas direct)
 }
 
-// buildDemoMapIndex retourne {map_name → [(match_id, start_time), ...]} pour
-// les matchs démo (utilisé pour le fallback fuzzy par carte).
+// buildDemoMapIndex retourne {map_name → [matchs du corpus]} pour l'attribution.
 func buildDemoMapIndex(ctx context.Context, sharedDBPath string, matchIDs []string) (map[string][]mediaCandidate, error) {
 	db, err := sql.Open("duckdb", sharedDBPath+"?access_mode=READ_ONLY")
 	if err != nil {
@@ -299,180 +275,68 @@ func buildDemoMapIndex(ctx context.Context, sharedDBPath string, matchIDs []stri
 	return index, rows.Err()
 }
 
-// collectMediaCandidates sélectionne jusqu'à maxMedia fichiers : priorité directe
-// (médias associés à un match démo), fallback fuzzy par map_name.
-func collectMediaCandidates(
-	ctx context.Context,
-	src *sql.DB,
-	matchIDs []string,
-	mapIndex map[string][]mediaCandidate,
-	maxMedia int,
-) ([]mediaCandidate, error) {
-	idsLit := formatIDsLiteral(matchIDs)
-	seen := make(map[string]bool)
-	var result []mediaCandidate
-
-	// Direct : médias liés à un match démo. Filtre format Xbox (fichiers
-	// "Halo Infinite…") + priorité aux plus anciennes captures (ère Xbox).
-	directStmt := fmt.Sprintf(`
-		SELECT DISTINCT mf.file_path, mma.match_id, mma.match_start_time, COALESCE(mma.map_name, '')
-		FROM media_files mf
-		JOIN media_match_associations mma ON mma.media_path = mf.file_path
-		WHERE mf.status = 'active' AND mma.match_id IN (%s)
-		  AND mf.file_name LIKE 'Halo Infinite%%'
-		ORDER BY mf.capture_start_utc ASC NULLS LAST, mf.mtime ASC LIMIT %d`, idsLit, maxMedia)
-	rows, err := src.QueryContext(ctx, directStmt)
-	if err != nil {
-		return nil, fmt.Errorf("direct query: %w", err)
+// flattenCorpusMatches aplatit l'index map→[matchs] en une liste plate.
+func flattenCorpusMatches(mapIndex map[string][]mediaCandidate) []mediaCandidate {
+	out := make([]mediaCandidate, 0, len(mapIndex))
+	for _, ms := range mapIndex {
+		out = append(out, ms...)
 	}
-	for rows.Next() {
-		var fp, mid, mname string
-		var startTime time.Time
-		if err := rows.Scan(&fp, &mid, &startTime, &mname); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		if _, err := os.Stat(fp); err != nil {
-			continue // fichier absent du disque
-		}
-		result = append(result, mediaCandidate{
-			SrcFilePath: fp, TargetMatchID: mid, TargetStartTime: startTime, MapName: mname,
-		})
-		seen[fp] = true
-	}
-	rows.Close()
-	if len(result) >= maxMedia {
-		return result[:maxMedia], nil
-	}
-
-	// Fallback fuzzy : médias d'autres matchs réassignés par map_name. C'est ici
-	// que les vieilles captures Xbox ("Halo Infinite…", antérieures au corpus) sont
-	// rattachées aux matchs démo qui partagent la même carte. Plus anciennes d'abord.
-	fuzzyStmt := fmt.Sprintf(`
-		SELECT DISTINCT mf.file_path, COALESCE(mma.map_name, '')
-		FROM media_files mf
-		JOIN media_match_associations mma ON mma.media_path = mf.file_path
-		WHERE mf.status = 'active' AND mma.match_id NOT IN (%s)
-		  AND mma.map_name IS NOT NULL
-		  AND mf.file_name LIKE 'Halo Infinite%%'
-		ORDER BY mf.capture_start_utc ASC NULLS LAST, mf.mtime ASC LIMIT 200`, idsLit)
-	fuzzyRows, err := src.QueryContext(ctx, fuzzyStmt)
-	if err != nil {
-		return result, fmt.Errorf("fuzzy query: %w", err)
-	}
-	defer fuzzyRows.Close()
-	for fuzzyRows.Next() {
-		if len(result) >= maxMedia {
-			break
-		}
-		var fp, mname string
-		if err := fuzzyRows.Scan(&fp, &mname); err != nil {
-			return result, err
-		}
-		if seen[fp] {
-			continue
-		}
-		if _, err := os.Stat(fp); err != nil {
-			continue
-		}
-		demoMatches, ok := mapIndex[mname]
-		if !ok || len(demoMatches) == 0 {
-			continue
-		}
-		target := demoMatches[0]
-		result = append(result, mediaCandidate{
-			SrcFilePath: fp, TargetMatchID: target.TargetMatchID,
-			TargetStartTime: target.TargetStartTime, MapName: mname, IsFuzzy: true,
-		})
-		seen[fp] = true
-	}
-	return result, fuzzyRows.Err()
+	return out
 }
 
-// copyAndInsertMedia copie les fichiers vers outMediaDir et insère les rows
-// media_files + media_match_associations dans dst. Retourne (imported, registry).
-//
-// aujourd'hui best-effort par-fichier (warnings loggés, pas d'erreur globale).
-//
-//nolint:unparam // err maintenu pour signature cohérente avec extract* siblings ;
-func copyAndInsertMedia(
-	ctx context.Context,
-	src, dst *sql.DB,
-	candidates []mediaCandidate,
-	outMediaDir, playerSlug string,
-) (int, []mediaRegistryEntry, error) {
-	registry := make([]mediaRegistryEntry, 0, len(candidates))
-	imported := 0
-
-	for _, c := range candidates {
-		filename := filepath.Base(c.SrcFilePath)
-		dstPath := filepath.Join(outMediaDir, filename)
-
-		// Récupérer les colonnes complètes depuis source (schéma legacy player DB).
-		row := src.QueryRowContext(ctx, `SELECT file_hash, file_size, file_ext, kind, mtime, capture_start_utc, capture_end_utc FROM media_files WHERE file_path = ?`, c.SrcFilePath)
-		var fileHash, fileExt, kind string
-		var fileSize int64
-		var mtime float64
-		var captureStart, captureEnd sql.NullTime
-		if err := row.Scan(&fileHash, &fileSize, &fileExt, &kind, &mtime, &captureStart, &captureEnd); err != nil {
-			slog.WarnContext(ctx, "seed-demo media: source row introuvable", "file", filename, "err", err)
-			continue
-		}
-
-		// Copie fichier physique.
-		if err := copyFile(c.SrcFilePath, dstPath); err != nil {
-			slog.WarnContext(ctx, "seed-demo media: copy failed", "file", filename, "err", err)
-			continue
-		}
-
-		if !captureStart.Valid && !c.TargetStartTime.IsZero() {
-			captureStart = sql.NullTime{Time: c.TargetStartTime, Valid: true}
-		}
-		mediaRow := demoMediaRow{
-			ID:           mediaID(fileHash, filename),
-			PlayerSlug:   playerSlug,
-			FilePath:     filename, // relatif (cf. reimport) → servi via MediaCapturesBaseDir démo
-			FileName:     filename,
-			FileHash:     fileHash,
-			FileSize:     fileSize,
-			Kind:         kind,
-			FileStem:     strings.TrimSuffix(filename, fileExt),
-			FileExt:      fileExt,
-			MTime:        time.Unix(int64(mtime), 0).UTC(),
-			CaptureStart: captureStart,
-			CaptureEnd:   captureEnd,
-			MatchID:      c.TargetMatchID,
-		}
-		if err := insertDemoMediaRow(ctx, dst, mediaRow); err != nil {
-			slog.WarnContext(ctx, "seed-demo media: insert failed", "file", filename, "err", err)
-			continue
-		}
-
-		entry := mediaRegistryEntry{
-			Filename: filename, FileHash: fileHash, MatchID: c.TargetMatchID,
-		}
-		if !c.TargetStartTime.IsZero() {
-			s := c.TargetStartTime.Format(time.RFC3339)
-			entry.MatchStartTime = &s
-		}
-		if c.MapName != "" {
-			mn := c.MapName
-			entry.MapName = &mn
-		}
-		registry = append(registry, entry)
-		imported++
-
-		fuzzyLabel := "direct"
-		if c.IsFuzzy {
-			fuzzyLabel = "fuzzy"
-		}
-		slog.InfoContext(ctx, "seed-demo media: imported",
-			"file", filename, "type", fuzzyLabel, "map", c.MapName)
+// pickCorpusMatch choisit un match du corpus pour un média : même map si possible,
+// sinon round-robin sur i (répartit les médias). ok=false si corpus vide.
+func pickCorpusMatch(corpus []mediaCandidate, mapName string, i int) (mediaCandidate, bool) {
+	if len(corpus) == 0 {
+		return mediaCandidate{}, false
 	}
-	return imported, registry, nil
+	if mapName != "" {
+		for _, m := range corpus {
+			if strings.EqualFold(m.MapName, mapName) {
+				return m, true
+			}
+		}
+	}
+	return corpus[i%len(corpus)], true
 }
 
-// copyFile copie src→dst en streaming (équivalent shutil.copy2 sans préservation mtime).
+// demoMediaRow porte les champs d'une ligne média démo (schéma canonique shared_social).
+type demoMediaRow struct {
+	ID, PlayerSlug, FilePath, FileName, Kind, FileStem, FileExt, ThumbnailPath string
+	MTime                                                                      time.Time
+	CaptureStart, CaptureEnd                                                   sql.NullTime
+	MatchID                                                                    string
+}
+
+// insertDemoMediaRow insère un média au schéma CANONIQUE shared_social (id +
+// player_slug + media_file_id) + son association. Idempotent (ON CONFLICT DO NOTHING).
+func insertDemoMediaRow(ctx context.Context, db *sql.DB, m demoMediaRow) error {
+	var thumb any
+	if m.ThumbnailPath != "" {
+		thumb = m.ThumbnailPath
+	}
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO media_files
+			(id, player_slug, file_path, file_name, kind, file_hash, file_size,
+			 file_stem, file_ext, thumbnail_path, capture_start_utc, capture_end_utc,
+			 mtime, indexed_at, liked, status, created_at, updated_at)
+		VALUES (?,?,?,?,?,'',0,?,?,?,?,?,?,CURRENT_TIMESTAMP,FALSE,'active',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+		ON CONFLICT (id) DO NOTHING`,
+		m.ID, m.PlayerSlug, m.FilePath, m.FileName, m.Kind,
+		m.FileStem, m.FileExt, thumb, m.CaptureStart, m.CaptureEnd, m.MTime); err != nil {
+		return fmt.Errorf("insert media_files: %w", err)
+	}
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds, created_at, is_manual)
+		VALUES (?, ?, 0, CURRENT_TIMESTAMP, FALSE)
+		ON CONFLICT (media_file_id, match_id) DO NOTHING`,
+		m.ID, m.MatchID); err != nil {
+		return fmt.Errorf("insert media_match_associations: %w", err)
+	}
+	return nil
+}
+
+// copyFile copie src→dst en streaming.
 func copyFile(src, dst string) error {
 	in, err := os.Open(src)
 	if err != nil {
@@ -489,27 +353,4 @@ func copyFile(src, dst string) error {
 	defer out.Close()
 	_, err = io.Copy(out, in)
 	return err
-}
-
-// classifyMediaKind retourne mediaKindVideo pour .mp4/.mov/etc., sinon mediaKindImage.
-// Réutilise les constantes définies dans media.go.
-func classifyMediaKind(ext string) string {
-	switch ext {
-	case extMP4, extMOV, extAVI, extMKV, extWEBM:
-		return mediaKindVideo
-	default:
-		return mediaKindImage
-	}
-}
-
-// parseRegistryTime parse une chaîne RFC3339 → time.Time (zero si nil/invalide).
-func parseRegistryTime(s *string) time.Time {
-	if s == nil || *s == "" {
-		return time.Time{}
-	}
-	t, err := time.Parse(time.RFC3339, *s)
-	if err != nil {
-		return time.Time{}
-	}
-	return t
 }

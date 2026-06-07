@@ -355,92 +355,68 @@ func readJSON(t *testing.T, path string) map[string]any {
 	return m
 }
 
-// ── classifyMediaKind / parseRegistryTime / derefStr / buildDemoMediaRoot ────
+// ── médias HLS Halo Infinite (scan + parse + attribution) ────────────────────
 
-func TestClassifyMediaKind(t *testing.T) {
-	cases := []struct {
-		in   string
-		want string
-	}{
-		{".mp4", "video"},
-		{".mov", "video"},
-		{".avi", "video"},
-		{".webm", "video"},
-		{".mkv", "video"},
-		{".png", "image"},
-		{".jpg", "image"},
-		{".gif", "image"},
-		{"", "image"},
+func TestParseHaloCaptureTime(t *testing.T) {
+	got := parseHaloCaptureTime("Halo Infinite 2025-12-18 21-48-59")
+	if !got.Valid {
+		t.Fatal("nom valide → devrait parser")
 	}
-	for _, tc := range cases {
-		if got := classifyMediaKind(tc.in); got != tc.want {
-			t.Errorf("classifyMediaKind(%q) = %q, want %q", tc.in, got, tc.want)
+	if got.Time.Year() != 2025 || got.Time.Month() != time.December || got.Time.Day() != 18 {
+		t.Errorf("parsed = %v, want 2025-12-18", got.Time)
+	}
+	if bad := parseHaloCaptureTime("Halo Infinite pasunedate"); bad.Valid {
+		t.Error("nom invalide → devrait être invalide")
+	}
+}
+
+func TestPickCorpusMatch(t *testing.T) {
+	corpus := []mediaCandidate{
+		{TargetMatchID: "m1", MapName: "Aquarius"},
+		{TargetMatchID: "m2", MapName: "Live Fire"},
+	}
+	// Même map → priorité.
+	if m, ok := pickCorpusMatch(corpus, "Live Fire", 0); !ok || m.TargetMatchID != "m2" {
+		t.Errorf("même map: got %+v ok=%v, want m2", m, ok)
+	}
+	// Map absente → round-robin sur i.
+	if m, ok := pickCorpusMatch(corpus, "Inconnue", 1); !ok || m.TargetMatchID != "m2" {
+		t.Errorf("round-robin i=1: got %+v, want m2", m)
+	}
+	// Corpus vide → ok=false.
+	if _, ok := pickCorpusMatch(nil, "x", 0); ok {
+		t.Error("corpus vide → ok devrait être false")
+	}
+}
+
+func TestScanHaloInfiniteHLS(t *testing.T) {
+	dir := t.TempDir()
+	hlsRoot := filepath.Join(dir, "hls")
+	thumbsRoot := filepath.Join(dir, "thumbs")
+	// 2 captures Halo Infinite (avec master.m3u8) + 1 sans m3u8 + 1 autre préfixe.
+	for _, n := range []string{"Halo Infinite 2025-12-18 21-48-59", "Halo Infinite 2026-02-09 22-40-56"} {
+		d := filepath.Join(hlsRoot, n)
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(d, "master.m3u8"), []byte("#EXTM3U"), 0o644); err != nil {
+			t.Fatal(err)
 		}
 	}
-}
+	_ = os.MkdirAll(filepath.Join(hlsRoot, "Halo Infinite incomplet"), 0o755) // pas de master.m3u8
+	_ = os.MkdirAll(filepath.Join(hlsRoot, "Replay 2026-01-01 00-00-00"), 0o755)
+	_ = os.MkdirAll(thumbsRoot, 0o755)
+	_ = os.WriteFile(filepath.Join(thumbsRoot, "Halo Infinite 2026-02-09 22-40-56.webp"), []byte("x"), 0o644)
 
-func TestParseRegistryTime(t *testing.T) {
-	// nil → zero
-	if !parseRegistryTime(nil).IsZero() {
-		t.Error("nil should return zero time")
-	}
-	// empty → zero
-	empty := ""
-	if !parseRegistryTime(&empty).IsZero() {
-		t.Error("empty should return zero time")
-	}
-	// invalid → zero
-	bad := "not-a-date"
-	if !parseRegistryTime(&bad).IsZero() {
-		t.Error("invalid should return zero time")
-	}
-	// valid RFC3339
-	v := "2026-05-22T10:30:00Z"
-	got := parseRegistryTime(&v)
-	if got.IsZero() {
-		t.Errorf("valid RFC3339 returned zero: %v", got)
-	}
-	if got.Year() != 2026 || got.Month() != time.May || got.Day() != 22 {
-		t.Errorf("parsed time = %v, want 2026-05-22", got)
-	}
-}
-
-// ── media registry roundtrip ────────────────────────────────────────────────
-
-func TestMediaRegistry_SaveAndLoad(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "media_registry.json")
-
-	mapName := "Aquarius"
-	startTime := "2026-05-22T10:30:00Z"
-	entries := []mediaRegistryEntry{
-		{Filename: "clip1.mp4", FileHash: "abc123", MatchID: "m1", MatchStartTime: &startTime, MapName: &mapName},
-		{Filename: "screenshot.png", FileHash: "def456", MatchID: "m2"},
-	}
-	if err := saveMediaRegistry(path, entries); err != nil {
-		t.Fatalf("save: %v", err)
-	}
-	got, err := loadMediaRegistry(path)
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
+	got := scanHaloInfiniteHLS(dir, 10)
 	if len(got) != 2 {
-		t.Fatalf("got %d entries, want 2", len(got))
+		t.Fatalf("got %d médias, want 2 (Halo Infinite avec master.m3u8)", len(got))
 	}
-	if got[0].Filename != "clip1.mp4" || got[0].FileHash != "abc123" {
-		t.Errorf("entry[0] = %+v", got[0])
+	// Plus récents d'abord.
+	if got[0].Name != "Halo Infinite 2026-02-09 22-40-56" {
+		t.Errorf("ordre: got[0] = %q, want le plus récent", got[0].Name)
 	}
-	if got[0].MatchStartTime == nil || *got[0].MatchStartTime != startTime {
-		t.Errorf("entry[0].MatchStartTime = %v", got[0].MatchStartTime)
-	}
-	if got[1].MapName != nil {
-		t.Errorf("entry[1].MapName should be nil, got %v", got[1].MapName)
-	}
-}
-
-func TestLoadMediaRegistry_FileMissing(t *testing.T) {
-	_, err := loadMediaRegistry("/nonexistent/registry.json")
-	if err == nil {
-		t.Fatal("expected error")
+	if got[0].ThumbPath == "" {
+		t.Error("vignette attendue pour la capture 2026-02-09")
 	}
 }
