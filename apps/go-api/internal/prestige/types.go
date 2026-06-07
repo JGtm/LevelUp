@@ -38,6 +38,12 @@ type Challenge struct {
 	// (ListActiveChallenges enrichi). Pas persistée — recalculée à la demande.
 	CurrentValue float64 `json:"current_value,omitempty"`
 
+	// PPReward = PP crédités à la complétion (PPForCompletion par Tier/DataTier ;
+	// isSquad=false, comme creditCompletion). Enrichi par ListActiveChallenges,
+	// non persisté. 0 (omis du JSON) pour DataTier=tracking. Permet au front
+	// d'afficher la récompense PP de chaque objectif.
+	PPReward int `json:"pp_reward,omitempty"`
+
 	// ExpiresAt est le timestamp d'expiration calculé à la création selon le tier et le mode.
 	// Nil pour le mode libre (pas de timer). Consulté par l'évaluateur pour toute WindowType.
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`

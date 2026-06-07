@@ -144,7 +144,7 @@ export function HomeBattlePassPanel({
 
           <div className="flex flex-wrap gap-2">
             {featuredPass.is_owned && <Badge variant="outline">{t('home.battle_pass.badge_owned')}</Badge>}
-            {featuredPass.is_active && <Badge variant="default">{t('home.battle_pass.badge_active')}</Badge>}
+            {featuredPass.is_active && <Badge variant="info">{t('home.battle_pass.badge_active')}</Badge>}
           </div>
         </div>
       </CardHeader>

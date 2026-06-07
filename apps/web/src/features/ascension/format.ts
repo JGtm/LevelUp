@@ -59,6 +59,23 @@ export function nextPPTier(length: number): { length: number; multiplier: number
   return null
 }
 
+/**
+ * Progression (0..100) dans la bande de paliers PP courante : du dernier palier
+ * atteint (ou 0) vers le prochain. 100 si déjà au multiplicateur max (30+).
+ */
+export function streakTierProgressPct(length: number): number {
+  const next = nextPPTier(length)
+  if (!next) return 100
+  let prev = 0
+  for (const t of STREAK_PP_TIERS) {
+    if (t.length <= length) prev = t.length
+    else break
+  }
+  const span = next.length - prev
+  if (span <= 0) return 100
+  return Math.max(0, Math.min(100, ((length - prev) / span) * 100))
+}
+
 /** Format multiplier en string court (×1.25, ×1.75). */
 export function formatMultiplier(value: number): string {
   return `×${value.toFixed(2).replace(/\.00$/, '').replace(/0$/, '')}`

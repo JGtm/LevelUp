@@ -120,7 +120,7 @@ export function HomeSessionCarousel({
     setIsAnimating(true)
 
     const exitY = dir === 'up' ? '-10px' : '10px'
-    el.style.transition = 'transform 0.1s ease-in, opacity 0.1s ease-in'
+    el.style.transition = 'transform 0.06s ease-in, opacity 0.06s ease-in'
     el.style.transform = `translateY(${exitY})`
     el.style.opacity = '0'
 
@@ -134,15 +134,15 @@ export function HomeSessionCarousel({
 
       const rafId = requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          el.style.transition = 'transform 0.15s ease-out, opacity 0.12s ease-out'
+          el.style.transition = 'transform 0.1s ease-out, opacity 0.08s ease-out'
           el.style.transform = 'translateY(0)'
           el.style.opacity = '1'
-          const t2 = setTimeout(() => setIsAnimating(false), 160)
+          const t2 = setTimeout(() => setIsAnimating(false), 100)
           cleanupRef.current = () => clearTimeout(t2)
         })
       })
       cleanupRef.current = () => cancelAnimationFrame(rafId)
-    }, 110)
+    }, 70)
 
     cleanupRef.current = () => clearTimeout(t1)
   }
@@ -156,9 +156,13 @@ export function HomeSessionCarousel({
 
   return (
     <div className="flex flex-col">
-      {/* Ligne supérieure : label variant (absolu à gauche) + chevron haut centré */}
-      <div className="relative mb-1 flex w-full items-center justify-center">
-        <span className="absolute left-0 text-xs font-semibold text-muted-foreground">{variantLabel}</span>
+      {/* En-tête compact (type 6) : sous-titre Solo/Escouade SUR la même ligne que
+          le chevron haut (navigation session plus récente), filet juste en dessous. */}
+      <div className="mb-1 space-y-1">
+        <div className="relative flex w-full items-center justify-center">
+          <span className="absolute left-0 text-3xs font-semibold uppercase tracking-label-md text-foreground/90">
+            {variantLabel}
+          </span>
         <button
           type="button"
           disabled={displayIdx === 0 || isAnimating}
@@ -168,6 +172,8 @@ export function HomeSessionCarousel({
         >
           <ChevronUpIcon />
         </button>
+        </div>
+        <div className="h-px w-full rounded-full bg-border" />
       </div>
 
       {/* Contenu animé */}

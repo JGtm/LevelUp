@@ -6,7 +6,8 @@
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import type { HighlightItem, HighlightSlide, HighlightValueColor } from '@/lib/api/types'
-import { tokenCssVar } from '@/lib/accessibility'
+import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import { KpiCard } from '@/components/cards/KpiCard'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { resolveTitle, resolveLabel, resolveDetail, resolveColSpan, resolveUnit } from './highlights.i18n'
 
@@ -19,22 +20,33 @@ const HIGHLIGHT_SPAN_CLASS: Record<number, string> = {
   5: 'lg:[grid-column:span_5/span_5]',
 }
 
-const HIGHLIGHT_COLOR_MAP: Record<string, string> = {
-  positive: tokenCssVar('divergent-pos'),
-  warning: tokenCssVar('perf-tier-2'),
-  negative: tokenCssVar('divergent-neg'),
-  neutral: tokenCssVar('perf-tier-3'),
-  'perf-excellent': tokenCssVar('perf-tier-1'),
-  'perf-good': tokenCssVar('perf-tier-2'),
-  'perf-ok': tokenCssVar('perf-tier-3'),
-  'perf-low': tokenCssVar('perf-tier-4'),
-  'perf-bad': tokenCssVar('perf-tier-5'),
+// Mapping unique sentiment → token sémantique. Sert à la FOIS la couleur de la
+// valeur (inline style) ET l'accent dynamique de la KpiCard (barre 3px en haut).
+const HIGHLIGHT_TOKEN_MAP: Record<string, SemanticToken> = {
+  positive: 'divergent-pos',
+  warning: 'perf-tier-2',
+  negative: 'divergent-neg',
+  neutral: 'perf-tier-3',
+  'perf-excellent': 'perf-tier-1',
+  'perf-good': 'perf-tier-2',
+  'perf-ok': 'perf-tier-3',
+  'perf-low': 'perf-tier-4',
+  'perf-bad': 'perf-tier-5',
+}
+
+function highlightToken(color?: HighlightValueColor): SemanticToken | undefined {
+  return color ? HIGHLIGHT_TOKEN_MAP[color] : undefined
 }
 
 function highlightColorStyle(color?: HighlightValueColor): CSSProperties | undefined {
-  if (!color) return undefined
-  const cssVar = HIGHLIGHT_COLOR_MAP[color]
-  return cssVar ? { color: cssVar } : undefined
+  const token = highlightToken(color)
+  return token ? { color: tokenCssVar(token) } : undefined
+}
+
+// Accent dynamique de la tuile (type 4 du catalogue) : suit le sentiment de la
+// valeur ; neutre (perf-tier-3) à défaut.
+function highlightAccent(color?: HighlightValueColor): SemanticToken {
+  return highlightToken(color) ?? 'perf-tier-3'
 }
 
 interface SerieTileProps {
@@ -65,7 +77,8 @@ function SerieTile({ title, slides, locale, className }: SerieTileProps) {
     ? resolveDetail(locale, s.detail_key, s.detail_params)
     : (s.detail ?? '')
   return (
-    <div className={`rounded-md border border-border p-3 ${className ?? ''}`}>
+    <KpiCard accent={highlightAccent(s.value_color)} className={className}>
+      <div className="p-3">
       <p className="text-xs font-medium text-muted-foreground leading-tight">{title}</p>
       <div
         className={`transition-opacity duration-200 ${fading ? 'opacity-0' : 'opacity-100'}`}
@@ -84,7 +97,8 @@ function SerieTile({ title, slides, locale, className }: SerieTileProps) {
           ))}
         </div>
       ) : null}
-    </div>
+      </div>
+    </KpiCard>
   )
 }
 
@@ -104,13 +118,15 @@ export function HomeHighlightTile({ h, locale }: HomeHighlightTileProps) {
     : (h.detail ?? '')
   const unit = resolveUnit(locale, h.title_key)
   return (
-    <div className={`rounded-md border border-border p-3 ${spanClass}`}>
-      <p className="text-xs font-medium text-muted-foreground">{title}</p>
-      <p className="text-base font-bold" style={highlightColorStyle(h.value_color)}>
-        {h.value}
-        {unit ? <span className="ml-1 text-xs font-medium text-muted-foreground">{unit}</span> : null}
-      </p>
-      {detail ? <p className="text-xs text-muted-foreground">{detail}</p> : null}
-    </div>
+    <KpiCard accent={highlightAccent(h.value_color)} className={spanClass}>
+      <div className="p-3">
+        <p className="text-xs font-medium text-muted-foreground">{title}</p>
+        <p className="text-base font-bold" style={highlightColorStyle(h.value_color)}>
+          {h.value}
+          {unit ? <span className="ml-1 text-xs font-medium text-muted-foreground">{unit}</span> : null}
+        </p>
+        {detail ? <p className="text-xs text-muted-foreground">{detail}</p> : null}
+      </div>
+    </KpiCard>
   )
 }

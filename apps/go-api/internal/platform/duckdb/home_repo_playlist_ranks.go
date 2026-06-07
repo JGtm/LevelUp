@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 )
 
@@ -74,6 +75,9 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 	msrByMatch := r.loadPlaylistPhaseAMSR(ctx, matchIDs)
 	snapshotByPlaylist := r.loadPlaylistPhaseASnapshot(ctx, plIDs)
 
+	// Locale → préférence FR pour le libellé du sous-palier suivant (même
+	// convention que resolvePlaylistNameForLocale : tout sauf "en*" = FR).
+	frPreferred := !strings.HasPrefix(strings.ToLower(strings.TrimSpace(locale)), "en")
 	raws := make([]playlistRawItem, 0, len(phaseB))
 	for _, p := range phaseB {
 		// Phase 6 : threshold lookup par saison du dernier match. Fallback à
@@ -83,7 +87,7 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 		raws = append(raws, playlistRawItem{
 			playlistID:   p.playlistID,
 			playlistName: p.playlistName,
-			item:         buildPlaylistRankItem(p, msrByMatch, snapshotByPlaylist, threshold),
+			item:         buildPlaylistRankItem(p, msrByMatch, snapshotByPlaylist, threshold, frPreferred),
 		})
 	}
 
@@ -314,6 +318,7 @@ func buildPlaylistRankItem(
 	msrByMatch map[string]playlistMSRRow,
 	snapshotByPlaylist map[string]int,
 	threshold int,
+	frPreferred bool,
 ) domain.HomePlaylistRank {
 	if threshold <= 0 {
 		threshold = CSRPlacementThresholdDefault
@@ -368,6 +373,14 @@ func buildPlaylistRankItem(
 			item.TierLabel = stringPtr(msr.tierLabel)
 		}
 		item.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(msr.tier, msr.tierLabel, msr.subTier, homeStaticTitleSlug, 0, threshold)
+		// Bande de progression ORDINALE (extrémité droite du palier) + sous-palier
+		// suivant — même calcul que le skill peak (analysis.SkillTierBand /
+		// NextSubTierLabel), indépendant de l'échelle CSR vs LUSR ; Onyx → barre
+		// pleine sans suivant ; sub_tier hors 1..6 → pas de barre.
+		if pct, ok := analysis.SkillTierBand(msr.tier, msr.subTier); ok {
+			item.TierProgressPct = &pct
+			item.NextTierLabel = analysis.NextSubTierLabel(msr.tier, msr.subTier, frPreferred)
+		}
 		// Rang matured : on expose quand même le placement_total pour info front.
 		if p.isRanked {
 			totalCopy := threshold

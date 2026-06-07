@@ -468,6 +468,9 @@ func (s *service) ListActiveChallenges(ctx context.Context, userID, titleSlug st
 	now := s.deps.Now()
 	for i, c := range list {
 		list[i].CurrentValue = s.computeCurrentValue(ctx, c, now)
+		// Récompense PP affichée = ce qui serait crédité à la complétion (même
+		// calcul que creditCompletion, isSquad=false pour les défis perso).
+		list[i].PPReward = PPForCompletion(s.deps.Tuning, c.Tier, false, c.DataTier)
 	}
 	return list, nil
 }

@@ -10,9 +10,10 @@
  * En mode complet (showcase actif), les tags de catégories d'items sont ajoutés
  * en bas pour la granularité fine.
  *
- * Mode « restant » : si `remaining` est fourni (contenu des paliers PAS encore
- * atteints), chaque valeur s'affiche en « restant/total » (XX/YY). Sinon, totaux
- * seuls. `remaining` null ⇒ restant = 0 (ex. rang max).
+ * Mode « acquis » : si `remaining` est fourni (contenu des paliers PAS encore
+ * atteints), chaque valeur s'affiche en « acquis/total » (XX/YY), où acquis =
+ * total − restant (reflète la complétion, cf. demande user). Sinon, totaux seuls.
+ * `remaining` null ⇒ restant = 0 ⇒ acquis = total (ex. rang max, tout débloqué).
  */
 import type { SeasonPassContentSummary } from '@/lib/api/types'
 
@@ -202,8 +203,10 @@ export function PassContentSummary({
 }) {
   const showRemaining = remaining !== undefined
   const rem = remaining ?? null
+  // Mode XX/YY : affiche l'ACQUIS (= total − restant) sur le total (cf. demande user :
+  // « X obtenus sur Y », colle à la complétion). r = valeur des paliers NON atteints.
   const fmt: ValueFormatter = (total, r) =>
-    showRemaining ? `${r.toLocaleString(locale)}/${total.toLocaleString(locale)}` : total.toLocaleString(locale)
+    showRemaining ? `${Math.max(0, total - r).toLocaleString(locale)}/${total.toLocaleString(locale)}` : total.toLocaleString(locale)
 
   const currencyChips = buildCurrencyChips(content, rem, fmt, labels)
   const itemChips = buildItemChips(content, rem, fmt, labels)
@@ -218,18 +221,19 @@ export function PassContentSummary({
     if (allChips.length === 0 && !hasRarity) return null
     return (
       <div className="space-y-2">
-        {allChips.length > 0 && <ChipRow chips={allChips} compact />}
+        {/* Raretés EN PREMIER, puis la ligne combinée cosmétiques/devises (cf. demande user). */}
         {hasRarity && <RarityChips breakdown={content.rarity_breakdown!} remaining={rem?.rarity_breakdown} fmt={fmt} />}
+        {allChips.length > 0 && <ChipRow chips={allChips} compact />}
       </div>
     )
   }
 
   return (
     <div className="space-y-3">
-      {/* Items (cosmétiques) avant les devises (paliers/cR/XP), cf. demande user. */}
+      {/* Raretés EN PREMIER, puis items (cosmétiques), puis devises (cf. demande user). */}
+      {hasRarity && <RarityChips breakdown={content.rarity_breakdown!} remaining={rem?.rarity_breakdown} fmt={fmt} />}
       <ChipRow chips={itemChips} />
       <ChipRow chips={currencyChips} />
-      {hasRarity && <RarityChips breakdown={content.rarity_breakdown!} remaining={rem?.rarity_breakdown} fmt={fmt} />}
       {hasTypes && <TypeTags breakdown={content.type_breakdown!} locale={locale} title={labels.typeTitle} />}
     </div>
   )

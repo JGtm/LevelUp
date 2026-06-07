@@ -15,7 +15,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { ArcSummary } from '@/features/prestige/components/ArcSummary'
@@ -118,6 +118,23 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
   // donc `?.` sur `data` ne suffit pas — il faut aussi `?.` sur `arcs`.
   const activeArc = arcsQ.data?.arcs?.find((a) => a.completed_at == null) ?? null
 
+  // Étapes de l'arc actif (même calcul que la page Ascension) : total = challenges
+  // liés, completed = ceux terminés. Sans ça, l'arc s'affichait sans barre de
+  // progression (ArcSummary masque la barre quand totalSteps === 0).
+  const arcSteps = useMemo(() => {
+    if (!activeArc) return { completed: 0, total: 0, totalPP: 0 }
+    let completed = 0
+    let total = 0
+    let totalPP = 0
+    for (const c of challenges) {
+      if (c.arc_id !== activeArc.id) continue
+      total += 1
+      totalPP += c.pp_reward ?? 0
+      if (c.status === 'completed') completed += 1
+    }
+    return { completed, total, totalPP }
+  }, [challenges, activeArc])
+
   // Toutes les sources en erreur → feature désactivée → on ne rend rien.
   if (prestige.isError && arcsQ.isError && challengesQ.isError) return null
   if (prestige.isLoading) return null
@@ -129,7 +146,19 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
   const progressPct = lvl ? Math.round(lvl.progress_ratio * 100) : 0
 
   return (
-    <Card data-testid="home-prestige-section" className="relative overflow-hidden isolate">
+    <section className="flex h-full flex-col gap-3">
+      {/* Titre de section (type 1) sorti de la carte (cf. demande user) ; lien Gérer à droite. */}
+      <header className="flex flex-row items-center justify-between gap-3">
+        <h3 className="text-base font-semibold text-foreground">{t('home.prestige.title')}</h3>
+        <Link
+          to="/players/$playerSlug/ascension"
+          params={{ playerSlug }}
+          className="inline-flex shrink-0 items-center gap-1 rounded-md bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/20"
+        >
+          {t('home.prestige.manage')} →
+        </Link>
+      </header>
+      <Card data-testid="home-prestige-section" className="relative flex-1 overflow-hidden isolate">
       {/* Background décoratif Prestige (pattern hexagonal cyber). */}
       <div
         aria-hidden
@@ -142,18 +171,7 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
         className="pointer-events-none absolute inset-0 -z-10 bg-card/70"
       />
 
-      <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
-        <CardTitle className="text-base">{t('home.prestige.title')}</CardTitle>
-        <Link
-          to="/players/$playerSlug/ascension"
-          params={{ playerSlug }}
-          className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-        >
-          {t('home.prestige.manage')} →
-        </Link>
-      </CardHeader>
-
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-5 pt-6">
         {/* ─── Barre composite niveau / PP (fond opaque) ─── */}
         {pp && (
           <div className="space-y-2 rounded-lg border border-border bg-card p-3">
@@ -182,8 +200,9 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
 
         {/* ─── Grille Objectifs (gauche, fond opaque) | Arc (droite, semi-transparent) ─── */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.55fr)_minmax(0,0.45fr)]">
-          {/* Mes objectifs — fond opaque */}
-          <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+          {/* Mes objectifs — titre + filtre SORTIS du bloc (cf. demande user) ;
+              la boîte bordée n'enveloppe plus que la liste. */}
+          <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-3xs font-semibold uppercase tracking-label-md text-foreground/90">
                 {t('home.prestige.objectives_section')}
@@ -216,6 +235,7 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
               </div>
             </div>
 
+            <div className="rounded-lg border border-border bg-card p-3">
             {challengesQ.isLoading ? (
               <div className="space-y-2">
                 {[0, 1].map((i) => (
@@ -264,6 +284,7 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
                 )}
               </div>
             )}
+            </div>
           </div>
 
           {/* Arc en cours — fond semi-transparent (laisse voir le pattern) */}
@@ -274,7 +295,7 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
             {arcsQ.isLoading ? (
               <div className="h-24 w-full animate-pulse rounded-lg bg-muted" />
             ) : activeArc ? (
-              <ArcSummary arc={activeArc} />
+              <ArcSummary arc={activeArc} completedSteps={arcSteps.completed} totalSteps={arcSteps.total} totalPP={arcSteps.totalPP} />
             ) : (
               <EmptyStateNotice
                 title={t('home.prestige.arc_empty_title')}
@@ -284,6 +305,7 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
           </div>
         </div>
       </CardContent>
-    </Card>
+      </Card>
+    </section>
   )
 }

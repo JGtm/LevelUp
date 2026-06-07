@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
+import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import type { HomePlaylistRank } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
@@ -65,12 +66,13 @@ export function HomeRecentPlaylistsCard({
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   return (
-    <Card data-testid="home-recent-playlists-card" className="flex self-start flex-col">
-      <CardHeader className="space-y-0 pb-3">
-        <CardTitle className="text-base">{t('common.home.recent_playlists')}</CardTitle>
-      </CardHeader>
-
-      <CardContent>
+    <section className="flex flex-col gap-3">
+      {/* Titre de section (type 1 du catalogue), SORTI de la carte (cf. demande user). */}
+      <header className="flex items-center gap-1.5">
+        <h3 className="text-base font-semibold text-foreground">{t('common.home.recent_playlists')}</h3>
+      </header>
+      <Card data-testid="home-recent-playlists-card" className="flex flex-1 flex-col">
+      <CardContent className="pt-6">
         {items.length > 0 ? (
           <ul className="space-y-4" data-testid="home-recent-playlists-list">
             {items.map((item) => {
@@ -92,67 +94,100 @@ export function HomeRecentPlaylistsCard({
                 item.badge_image_url ?? (isPlacement ? unrankedBadgeURL() : null)
               const showRatingValue = !isPlacement && item.rating_value != null
               const showTierLabel = !isPlacement && item.tier_label
+              // Bande ORDINALE (matured uniquement) + valeur formatée — calqué skill peak.
+              const tierProgress =
+                !isPlacement && item.tier_progress_pct != null ? item.tier_progress_pct : null
+              const ratingValueStr =
+                item.rating_value != null
+                  ? item.rating_type === 'LUSR'
+                    ? `${Math.round(item.rating_value)} pts`
+                    : `${Math.round(item.rating_value)} CSR`
+                  : null
 
               return (
                 <li
                   key={item.playlist_name}
-                  className="flex items-center gap-3"
                   data-testid="home-recent-playlist-item"
                 >
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center">
-                    {badgeImageURL ? (
-                      <RankBadge
-                        imageUrl={badgeImageURL}
-                        label={isPlacement ? (placementCompleted === 0 ? 'Non classé' : 'En placement') : (item.tier_label ?? 'Rang')}
-                        testId={isPlacement ? 'home-rank-unranked-image' : undefined}
-                        opacity={isPlacement ? 'dim' : 'full'}
-                      />
-                    ) : (
-                      <NeutralRankPlaceholder />
-                    )}
-                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center">
+                      {badgeImageURL ? (
+                        <RankBadge
+                          imageUrl={badgeImageURL}
+                          label={isPlacement ? (placementCompleted === 0 ? 'Non classé' : 'En placement') : (item.tier_label ?? 'Rang')}
+                          testId={isPlacement ? 'home-rank-unranked-image' : undefined}
+                          opacity={isPlacement ? 'dim' : 'full'}
+                        />
+                      ) : (
+                        <NeutralRankPlaceholder />
+                      )}
+                    </div>
 
-                  <div className="min-w-0 flex-1">
-                    <p
-                      data-testid="home-recent-playlist-name"
-                      className="truncate text-sm font-medium text-foreground"
-                    >
-                      {item.playlist_name || 'Playlist inconnue'}
-                    </p>
+                    {/* Colonne : nom de playlist AU-DESSUS du palier (swap), valeur en
+                        secondaire dessous — même colonne (cf. demande user). */}
+                    <div className="min-w-0">
+                      <p
+                        data-testid="home-recent-playlist-name"
+                        className="truncate text-2xs font-medium uppercase tracking-label-md text-muted-foreground"
+                      >
+                        {item.playlist_name || 'Playlist inconnue'}
+                      </p>
+                      {showTierLabel ? (
+                        <p
+                          data-testid="home-rank-tier-label"
+                          className="truncate text-sm font-semibold text-foreground"
+                        >
+                          {item.tier_label}
+                        </p>
+                      ) : isPlacement ? (
+                        <p
+                          data-testid="home-rank-unranked-label"
+                          className="text-sm font-semibold text-foreground"
+                        >
+                          {placementCompleted === 0
+                            ? 'Non classé'
+                            : placementCompleted != null
+                              ? `En placement (${placementCompleted}/${placementTotal})`
+                              : 'En placement'}
+                        </p>
+                      ) : item.rating_value == null ? (
+                        <p
+                          data-testid="home-rank-neutral-label"
+                          className="text-sm text-muted-foreground"
+                        >
+                          {t('common.home.unranked')}
+                        </p>
+                      ) : null}
 
-                    {showRatingValue && (
-                      <p className="text-xs font-semibold tabular-nums text-foreground">
-                        {item.rating_type === 'LUSR'
-                          ? `${Math.round(item.rating_value!)} pts`
-                          : `${Math.round(item.rating_value!)} CSR`}
-                      </p>
-                    )}
+                      {showRatingValue && ratingValueStr && (
+                        <p
+                          data-testid="home-recent-playlist-value"
+                          className="text-2xs font-medium tabular-nums text-muted-foreground"
+                        >
+                          {ratingValueStr}
+                        </p>
+                      )}
+                    </div>
 
-                    {showTierLabel ? (
-                      <p
-                        data-testid="home-rank-tier-label"
-                        className="truncate text-xs text-muted-foreground"
-                      >
-                        {item.tier_label}
-                      </p>
-                    ) : isPlacement ? (
-                      <p
-                        data-testid="home-rank-unranked-label"
-                        className="text-xs text-muted-foreground"
-                      >
-                        {placementCompleted === 0
-                          ? 'Non classé'
-                          : placementCompleted != null
-                            ? `En placement (${placementCompleted}/${placementTotal})`
-                            : 'En placement'}
-                      </p>
-                    ) : item.rating_value == null && (
-                      <p
-                        data-testid="home-rank-neutral-label"
-                        className="text-xs text-muted-foreground"
-                      >
-                        {t('common.home.unranked')}
-                      </p>
+                    {/* Barre ORDINALE + sous-palier suivant à l'extrémité droite
+                        (matured uniquement) — même rendu que le skill peak. */}
+                    {tierProgress != null && (
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <div className="min-w-0 flex-1">
+                          <CompositeProgressBar
+                            value={tierProgress}
+                            fillTestId="home-recent-playlist-tier-progress-fill"
+                          />
+                        </div>
+                        {item.next_tier_label && (
+                          <span
+                            data-testid="home-recent-playlist-next-tier"
+                            className="shrink-0 truncate text-2xs font-medium text-muted-foreground"
+                          >
+                            {item.next_tier_label}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
                 </li>
@@ -165,6 +200,7 @@ export function HomeRecentPlaylistsCard({
           </p>
         )}
       </CardContent>
-    </Card>
+      </Card>
+    </section>
   )
 }

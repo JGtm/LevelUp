@@ -30,13 +30,15 @@ export interface AscensionText {
   streakBadgeAriaLabel: string // "{count} jours d'affilée"
   streakBadgeAriaEmpty: string // "Aucune streak active"
   streakCurrentLength: string // "{n} jour(s)"
+  streakUnitDay: string // unité période daily_* (jour/jours)
+  streakUnitWeek: string // unité période weekly_* (semaine/semaines)
   streakBestLength: string // "Record perso : {n}"
   streakStarted: string // "Commencée le {date}"
   streakBrokenAt: string // "Cassée le {date}"
   streakShieldsAvailable: string // "{n} bouclier(s) disponible(s) ce mois"
   streakShieldsUsed: string // "{n} bouclier(s) utilisé(s)"
   streakPPMultiplier: string // "Multiplicateur PP : ×{value}"
-  streakNextMilestone: string // "Prochain palier : {n} jours (×{mul})"
+  streakNextMilestone: string // "Prochain multiplicateur : ×{mul} (à {n} jours)"
   streakTypeName: Record<StreakType, string>
   streakAtMaxMultiplier: string
 
@@ -164,6 +166,8 @@ const FR: AscensionText = {
   streakBadgeAriaLabel: 'Streak de {count} jours',
   streakBadgeAriaEmpty: 'Aucune streak active',
   streakCurrentLength: '{n} jour{plural}',
+  streakUnitDay: 'jour{plural}',
+  streakUnitWeek: 'semaine{plural}',
   streakBestLength: 'Record perso : {n} jour{plural}',
   streakStarted: 'Commencée le {date}',
   streakBrokenAt: 'Cassée le {date}',
@@ -171,7 +175,7 @@ const FR: AscensionText = {
     '{n} bouclier{plural} disponible{plural} ce mois',
   streakShieldsUsed: '{n} bouclier{plural} utilisé{plural} ce mois',
   streakPPMultiplier: 'Multiplicateur PP : ×{value}',
-  streakNextMilestone: 'Prochain palier : {n} jours (×{mul})',
+  streakNextMilestone: 'Prochain multiplicateur : ×{mul} (à {n} {unit})',
   streakAtMaxMultiplier: 'Multiplicateur PP maximum atteint (×1.75)',
   streakTypeName: {
     daily_play: 'Match par jour',
@@ -326,6 +330,8 @@ const EN: AscensionText = {
   streakBadgeAriaLabel: '{count}-day streak',
   streakBadgeAriaEmpty: 'No active streak',
   streakCurrentLength: '{n} day{plural}',
+  streakUnitDay: 'day{plural}',
+  streakUnitWeek: 'week{plural}',
   streakBestLength: 'Personal best: {n} day{plural}',
   streakStarted: 'Started on {date}',
   streakBrokenAt: 'Broken on {date}',
@@ -333,7 +339,7 @@ const EN: AscensionText = {
     '{n} shield{plural} available this month',
   streakShieldsUsed: '{n} shield{plural} used this month',
   streakPPMultiplier: 'PP multiplier: ×{value}',
-  streakNextMilestone: 'Next milestone: {n} days (×{mul})',
+  streakNextMilestone: 'Next multiplier: ×{mul} (at {n} {unit})',
   streakAtMaxMultiplier: 'Maximum PP multiplier reached (×1.75)',
   streakTypeName: {
     daily_play: 'Daily match',

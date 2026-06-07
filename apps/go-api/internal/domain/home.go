@@ -167,6 +167,14 @@ type HomePlaylistRank struct {
 	// PlacementTotal = seuil placement de la saison du match (5 ou 10).
 	// nil → fallback front à 10 (back-compat).
 	PlacementTotal *int `json:"placement_total,omitempty"`
+	// TierProgressPct : remplissage ORDINAL de la barre (0..100) via le sous-palier
+	// (n/6), indépendant de l'échelle CSR/LUSR. Calculé par analysis.SkillTierBand
+	// (même bande que le skill peak). nil hors phase matured (placement / sans rang)
+	// → pas de barre côté front.
+	TierProgressPct *float64 `json:"tier_progress_pct,omitempty"`
+	// NextTierLabel : libellé localisé du SOUS-PALIER suivant (extrémité droite de
+	// la barre, ex. "Or V", "Platine I"). nil pour Onyx (sommet).
+	NextTierLabel *string `json:"next_tier_label,omitempty"`
 }
 
 // HomeSpartanIdentity représente le bloc identitaire compact de la home.
