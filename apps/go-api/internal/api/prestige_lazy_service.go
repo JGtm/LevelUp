@@ -181,6 +181,9 @@ func (l *LazyPrestigeService) GetChallenge(ctx context.Context, id string) (pres
 }
 
 func (l *LazyPrestigeService) ListActiveChallenges(ctx context.Context, userID, titleSlug string) ([]prestige.Challenge, error) {
+	if l.demoMode {
+		return demoActiveChallenges(userID, titleSlug), nil
+	}
 	svc, err := l.resolveByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -227,6 +230,46 @@ func demoUserPrestige(userID, titleSlug string) prestige.UserPrestige {
 	}
 }
 
+const demoArcID = "demo-arc-ascension"
+
+// demoArcs : un arc Prestige démo (la section Prestige du Home affiche l'arc actif).
+func demoArcs(userID, titleSlug string) []prestige.Arc {
+	return []prestige.Arc{{
+		ID:          demoArcID,
+		UserID:      userID,
+		TitleSlug:   titleSlug,
+		Title:       "Ascension du Spartan",
+		Description: "Enchaîne les objectifs pour gravir les paliers de prestige.",
+		IsPreset:    true,
+		PresetID:    "ascension",
+		CreatedAt:   time.Now().UTC().Add(-14 * 24 * time.Hour),
+	}}
+}
+
+// demoActiveChallenges : objectifs Prestige démo (rattachés à l'arc) — la section
+// Prestige du Home affiche ces objectifs en cours. CurrentValue < Target (en cours).
+func demoActiveChallenges(userID, titleSlug string) []prestige.Challenge {
+	now := time.Now().UTC()
+	exp := now.Add(5 * 24 * time.Hour)
+	mk := func(id, label, metric string, pos int, target, current float64) prestige.Challenge {
+		return prestige.Challenge{
+			ID: id, UserID: userID, TitleSlug: titleSlug,
+			ArcID: demoArcID, Position: pos,
+			Metric: metric, Target: target, CurrentValue: current,
+			WindowType: prestige.WindowLastNMatches, WindowValue: "10",
+			Cadence: prestige.CadenceWeekly, EvalType: prestige.EvalCumulative,
+			Mode: prestige.ModeLibre, Tier: prestige.TierHeroic, DataTier: prestige.DataFull,
+			Label: label, Status: prestige.StatusActive,
+			ExpiresAt: &exp, CreatedAt: now.Add(-3 * 24 * time.Hour),
+		}
+	}
+	return []prestige.Challenge{
+		mk("demo-ch-kills", "Tueur d'élite — 100 éliminations", "kills", 1, 100, 67),
+		mk("demo-ch-headshots", "Précision létale — 40 tirs à la tête", "headshot_kills", 2, 40, 28),
+		mk("demo-ch-wins", "Série victorieuse — 8 victoires", "wins", 3, 8, 5),
+	}
+}
+
 func (l *LazyPrestigeService) SuggestTemplates(ctx context.Context, userID, titleSlug string, count int) ([]prestige.Template, error) {
 	svc, err := l.resolveByUserID(ctx, userID)
 	if err != nil {
@@ -257,6 +300,9 @@ func (l *LazyPrestigeService) CreateArc(ctx context.Context, req prestige.Create
 }
 
 func (l *LazyPrestigeService) ListArcs(ctx context.Context, userID, titleSlug string) ([]prestige.Arc, error) {
+	if l.demoMode {
+		return demoArcs(userID, titleSlug), nil
+	}
 	svc, err := l.resolveByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
