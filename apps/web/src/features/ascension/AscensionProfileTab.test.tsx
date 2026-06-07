@@ -99,6 +99,9 @@ vi.mock('@/features/prestige/components/ArcSummary', () => ({
 vi.mock('@/features/prestige/components/CreateChallengeForm', () => ({
   CreateChallengeForm: () => null,
 }))
+vi.mock('@/features/prestige/components/CreateArcForm', () => ({
+  CreateArcForm: () => null,
+}))
 
 // ── UI ────────────────────────────────────────────────────────────────────
 
@@ -175,8 +178,13 @@ describe('AscensionProfileTab — composition', () => {
   it('shows the empty-state message for empty arcs (Prestige layer)', () => {
     render(<AscensionProfileTab />)
     expect(
-      screen.getByText(/Aucun arc en cours. Choisis un arc preset/i),
+      screen.getByText(/Aucun arc en cours. Crée ton premier arc/i),
     ).toBeInTheDocument()
+  })
+
+  it('shows the "+ Nouvel arc" create button in the empty arcs state', () => {
+    render(<AscensionProfileTab />)
+    expect(screen.getByText(/\+ Nouvel arc/i)).toBeInTheDocument()
   })
 
   it('shows the empty-state message for empty challenges (Prestige layer)', () => {

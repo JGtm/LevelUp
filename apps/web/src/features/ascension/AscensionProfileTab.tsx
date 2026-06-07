@@ -25,6 +25,7 @@ import { StartCampaignModal } from './campaign/StartCampaignModal'
 import { CreateChallengeForm } from '@/features/prestige/components/CreateChallengeForm'
 import { ChallengeCard } from '@/features/prestige/components/ChallengeCard'
 import { ArcSummary } from '@/features/prestige/components/ArcSummary'
+import { CreateArcForm } from '@/features/prestige/components/CreateArcForm'
 import { Tooltip } from '@/components/ui/tooltip'
 import { useChallenges, useArcs, useAbandonChallenge } from '@/features/prestige/hooks'
 import type { Challenge, Arc } from '@/lib/prestige'
@@ -294,6 +295,7 @@ function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
   const { data: challengesData } = useChallenges(playerSlug, TITLE_SLUG)
   const arcs: Arc[] = arcsData?.arcs ?? []
   const challenges: Challenge[] = challengesData?.challenges ?? []
+  const [showArcForm, setShowArcForm] = useState(false)
 
   const stepsByArc = new Map<string, { completed: number; total: number }>()
   for (const c of challenges) {
@@ -304,25 +306,56 @@ function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
     stepsByArc.set(c.arc_id, cur)
   }
 
+  const newArcLabel = locale === 'en' ? '+ New arc' : '+ Nouvel arc'
+
   return (
     <SectionShell title={locale === 'en' ? 'My active arcs' : 'Mes arcs en cours'}>
-      {arcs.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          {locale === 'en'
-            ? 'No arc in progress. Choose a preset arc or create your own.'
-            : 'Aucun arc en cours. Choisis un arc preset ou crée le tien.'}
+      {showArcForm ? (
+        <div className="rounded-lg border border-border bg-background p-4">
+          <CreateArcForm
+            userId={playerSlug}
+            titleSlug={TITLE_SLUG}
+            onSuccess={() => setShowArcForm(false)}
+            onCancel={() => setShowArcForm(false)}
+          />
+        </div>
+      ) : arcs.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border p-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            {locale === 'en'
+              ? 'No arc in progress. Create your first arc to group your objectives.'
+              : 'Aucun arc en cours. Crée ton premier arc pour regrouper tes objectifs.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowArcForm(true)}
+            className="mt-3 rounded-md border border-border px-3 py-1 text-xs hover:bg-accent"
+          >
+            {newArcLabel}
+          </button>
         </div>
       ) : (
-        <ul className="space-y-2">
-          {arcs.map((a) => {
-            const steps = stepsByArc.get(a.id) ?? { completed: 0, total: 0 }
-            return (
-              <li key={a.id}>
-                <ArcSummary arc={a} completedSteps={steps.completed} totalSteps={steps.total} />
-              </li>
-            )
-          })}
-        </ul>
+        <>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setShowArcForm(true)}
+              className="rounded-md border border-border px-3 py-1 text-xs hover:bg-accent"
+            >
+              {newArcLabel}
+            </button>
+          </div>
+          <ul className="space-y-2">
+            {arcs.map((a) => {
+              const steps = stepsByArc.get(a.id) ?? { completed: 0, total: 0 }
+              return (
+                <li key={a.id}>
+                  <ArcSummary arc={a} completedSteps={steps.completed} totalSteps={steps.total} />
+                </li>
+              )
+            })}
+          </ul>
+        </>
       )}
     </SectionShell>
   )
