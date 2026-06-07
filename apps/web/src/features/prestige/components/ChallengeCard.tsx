@@ -15,15 +15,19 @@ interface ChallengeCardProps {
   onClick?: () => void
 }
 
-export function ChallengeCard({ challenge, currentValue = 0, onClick }: ChallengeCardProps) {
+export function ChallengeCard({ challenge, currentValue, onClick }: ChallengeCardProps) {
   const tier = challenge.tier ?? 'normal'
   const tierColor = TIER_COLORS[tier]
   // Phase 4.1 plan finition multi-titres : libellé du tier via le TOML backend.
   // Fallback sur TIER_LABELS_FR si MULTI_TITLE_API_ENABLED=false.
   const tierLabelFromTOML = useAssetLabel('challenge_tier', tier)
   const tierLabel = tierLabelFromTOML !== tier ? tierLabelFromTOML : TIER_LABELS_FR[tier]
+  // Valeur courante : prop explicite (éval) sinon current_value de la réponse
+  // backend (aligné sur ObjectiveRow). Sans ça la barre reste à 0 quand le parent
+  // ne passe pas la prop (ex: liste d'objectifs Ascension).
+  const effectiveValue = currentValue ?? challenge.current_value ?? 0
   const progress = challenge.target > 0
-    ? Math.min(100, Math.round((currentValue / challenge.target) * 100))
+    ? Math.min(100, Math.round((effectiveValue / challenge.target) * 100))
     : 0
   const isComplete = challenge.status === 'completed'
   const label = challenge.label || challenge.metric
@@ -54,7 +58,7 @@ export function ChallengeCard({ challenge, currentValue = 0, onClick }: Challeng
       <div className="mt-auto space-y-1">
         <div className="flex items-baseline justify-between text-xs text-muted-foreground">
           <span>
-            {currentValue.toFixed(2)} / {challenge.target.toFixed(2)}
+            {effectiveValue.toFixed(2)} / {challenge.target.toFixed(2)}
           </span>
           <span>{progress}%</span>
         </div>

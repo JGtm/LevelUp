@@ -90,33 +90,40 @@ jobs:
             # Permissions fixées automatiquement par docker-entrypoint.sh (gosu pattern)
             mkdir -p data/demo
 
-            # Étape 1 : peupler les référentiels (career_ranks, citations, medals)
-            # dans data/demo/warehouse/metadata.duckdb. Idempotent.
-            docker compose run --rm levelup \
-              levelup seed career-ranks citation-mappings medals
+            # Guard anti-crash-loop : si un backfill hôte tourne, il peut saisir le
+            # lock DuckDB quand on stoppe la prod → la prod ne rouvrirait plus
+            # (cf. mémoire deploy_hazards). On SKIP le regen sans faire échouer le
+            # déploiement ; la démo garde ses données (qui persistent sur disque).
+            if pgrep -f 'backfill' >/dev/null 2>&1; then
+              echo "[regen] ⚠️ Backfill hôte détecté — regen démo SKIP (prod préservée, démo inchangée)"
+              exit 0
+            fi
 
-            # Étape 2 : extraire les matchs/player du joueur source (JGtm) en
-            # anonymisant son xuid → 0000000000000000. Réécrit shared/player/
-            # configs + médias. Cf. internal/ops/seed_demo.go (portage de
-            # l'ancien scripts/prepare_demo_data.py supprimé en c03707aa).
+            # seed-demo lit les DB source du joueur JGtm que la PROD tient verrouillées
+            # (lock DuckDB mono-writer) → on stoppe la prod le temps du seed (~5-10 s),
+            # puis on la REDÉMARRE TOUJOURS (même si le seed échoue, sinon prod down).
+            # Pas de `levelup seed` ici : seed-demo COPIE la metadata prod (référentiels
+            # + rank_translations déjà présents) ; l'ancien `levelup seed` verrouillait
+            # la metadata prod = cause de l'échec historique de ce job.
+            echo "[regen] Stop prod (libère les locks des DB source)..."
+            docker compose stop levelup
             docker compose run --rm levelup \
-              levelup seed-demo --gamertag JGtm --max-matches 50 --service-tag SPTA --out data/demo
+              levelup seed-demo --gamertag JGtm --service-tag SPTA --out data/demo --max-media 12 \
+              || echo "[regen] ⚠️ seed-demo a échoué — démo inchangée (prod va être redémarrée)"
+            echo "[regen] Restart prod..."
+            docker compose up -d levelup
 
-            # [Guard] Vérification post-regen — les fichiers doivent exister et être des fichiers
-            echo "[regen] Vérification fichiers post-regen..."
+            # [Guard] Vérification post-regen — les configs doivent être des fichiers.
             ok=true
             for f in data/demo/db_profiles.json data/demo/app_settings.json; do
-              fp="/opt/levelup/$f"
-              if [[ -d "$fp" ]]; then
-                echo "[regen] ❌ ERREUR : $f est un répertoire (regen a échoué + Docker a créé un fantôme)"
-                ok=false
+              if [[ -d "/opt/levelup/$f" ]]; then
+                echo "[regen] ❌ $f est un répertoire (regen incomplet)"; ok=false
               else
                 echo "[regen] ✅ $f OK"
               fi
             done
-            $ok || { echo "[regen] ❌ Abandon — levelup-demo ne sera pas redémarré"; exit 1; }
+            $ok || { echo "[regen] ❌ Démo non recréée (configs invalides) — prod déjà redémarrée"; exit 1; }
 
-            # Redémarrer levelup-demo avec les nouvelles données
-            docker compose stop levelup-demo
-            docker compose up -d levelup-demo
-            echo "[regen] ✅ levelup-demo redémarré"
+            # Recréer le conteneur démo (nouvelle data + image + mounts à jour).
+            docker compose up -d --force-recreate levelup-demo
+            echo "[regen] ✅ levelup-demo recréé avec les données fraîches"
