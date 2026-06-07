@@ -3,12 +3,21 @@
  * Durée totale, Playlist favorite, Off/Def, Précision, Arme favorite).
  *
  * P8.4 finition (revue 2026-04-29) : extrait de HomePage.tsx (~145L).
+ *
+ * Harmonisation UI (2026-06-06) : chaque tuile porte la coquille « KPI card »
+ * du catalogue via la primitive `KpiCard` — bg-card + barre d'accent 3px en haut
+ * + label uppercase. L'accent suit la frontière type 2 / type 4 : métriques à
+ * sentiment (KDA, taux de victoire, précision) → accent DYNAMIQUE (perf-tier /
+ * outcome) ; métriques descriptives → accent fixe. Les valeurs sont neutres
+ * (`text-foreground`) : la barre d'accent porte seule la couleur (parité Explorer).
+ * Contenu composite (OutcomeBar, CombatYieldDisplay, sous-comptes) et grille
+ * proportionnelle (`kpi-stats-grid`) inchangés.
  */
 import type { HeroKPIs } from '@/lib/api/types'
-import { tokenCssVar } from '@/lib/accessibility'
+import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { kdScale, accuracyScale } from '@/lib/accessibility/scales'
 import type { getKPIText } from './kpi.i18n'
-import { HomeKPICard } from './HomeKPICard'
+import { KpiCard } from '@/components/cards/KpiCard'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
 import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
 
@@ -18,6 +27,14 @@ interface HomeHeroKPIGridProps {
   numberLocale: string
   kpiText: ReturnType<typeof getKPIText>
 }
+
+/** Classe label harmonisée (type 2 du catalogue : uppercase, 2xs, tracking). */
+const KPI_LABEL_CLS = 'text-2xs uppercase tracking-label-xl text-muted-foreground'
+/** Conteneur interne d'une tuile : titre aligné en haut (cf. demande user :
+ *  tous les titres alignés), contenu qui descend ; remplit la carte en hauteur. */
+const KPI_CONTENT_CLS = 'flex flex-1 flex-col items-center justify-start py-3 text-center'
+/** Valeur neutre : la couleur de sentiment est portée par la barre d'accent. */
+const KPI_VALUE_CLS = 'text-xl font-bold text-foreground'
 
 function formatPlaytime(secs: number, kpiText: ReturnType<typeof getKPIText>): string {
   if (secs <= 0) return '—'
@@ -56,7 +73,9 @@ export function HomeHeroKPIGrid({
   kpiText,
 }: HomeHeroKPIGridProps) {
   const kda = kpis.avg_kda
-  const kdaStyle = kda != null ? { color: tokenCssVar(kdScale(kda)) } : undefined
+  // Accents dynamiques (sentiment) : KDA/précision via les échelles perf-tier,
+  // taux de victoire au seuil 50 %. Fallback neutre (perf-tier-3) si donnée absente.
+  const kdaAccent: SemanticToken = kda != null ? kdScale(kda) : 'perf-tier-3'
   const wins = kpis.wins
   const losses = kpis.losses
   const draws = kpis.draws ?? 0
@@ -64,86 +83,110 @@ export function HomeHeroKPIGrid({
   const neutral = draws + dnfs
   const playtime = formatPlaytime(kpis.total_playtime_secs ?? 0, kpiText)
   const acc = kpis.avg_accuracy
-  const accStyle = acc != null ? { color: tokenCssVar(accuracyScale(acc)) } : undefined
+  const accAccent: SemanticToken = acc != null ? accuracyScale(acc) : 'perf-tier-3'
+  const winRate = kpis.win_rate
+  // Couleur « pas trop grave » : le système vise 50 %, donc une bande neutre
+  // [45,55] % reste en outcome-draw (ni bien ni mal). Au-delà seulement → vert/rouge.
+  const winRateAccent: SemanticToken =
+    winRate > 0.55 ? 'outcome-win' : winRate < 0.45 ? 'outcome-loss' : 'outcome-draw'
 
   return (
     <div className="kpi-stats-grid items-stretch">
-      {/* 1 — Parties */}
-      <HomeKPICard label={labelOf('total_matches_played')} value={kpis.total_matches.toLocaleString(numberLocale)} compact />
-
-      {/* 2 — KDA/FDA coloré comme les tuiles match */}
-      <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-2 py-3 text-center">
-        <p className="text-xs text-muted-foreground">{labelOf('kda')}</p>
-        <p className="text-xl font-bold text-muted-foreground" style={kdaStyle}>{kda != null ? kda.toFixed(2) : '—'}</p>
-      </div>
-
-      {/* 3 — Taux de victoire + barre composite outcomes */}
-      <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
-        <p className="text-xs text-muted-foreground">{labelOf('win_rate')}</p>
-        <p className="text-xl font-bold text-primary">{`${(kpis.win_rate * 100).toFixed(0)}%`}</p>
-        <div className="mt-2 w-full">
-          <OutcomeBar wins={wins} draws={draws} losses={losses} dnfs={dnfs} />
+      {/* 1 — Parties (accent fixe : métrique descriptive) */}
+      <KpiCard accent="chart-series-1" className="flex h-full flex-col">
+        <div className={`${KPI_CONTENT_CLS} px-2`}>
+          <p className={KPI_LABEL_CLS}>{labelOf('total_matches_played')}</p>
+          <p className={KPI_VALUE_CLS}>{kpis.total_matches.toLocaleString(numberLocale)}</p>
         </div>
-        <div className="mt-1.5 flex justify-center gap-3 text-xs font-semibold tabular-nums">
-          <span style={{ color: tokenCssVar('outcome-win') }}>{wins}</span>
-          {neutral > 0 && <span style={{ color: tokenCssVar('outcome-draw') }}>{neutral}</span>}
-          <span style={{ color: tokenCssVar('outcome-loss') }}>{losses}</span>
+      </KpiCard>
+
+      {/* 2 — Durée totale (accent fixe ; déplacée en 2e position, cf. demande user) */}
+      <KpiCard accent="chart-series-2" className="flex h-full flex-col">
+        <div className={`${KPI_CONTENT_CLS} px-4`}>
+          <p className={KPI_LABEL_CLS}>{kpiText.labels.totalTime}</p>
+          <p className={KPI_VALUE_CLS}>{playtime}</p>
         </div>
-      </div>
+      </KpiCard>
 
-      {/* 4 — Durée totale */}
-      <HomeKPICard label={kpiText.labels.totalTime} value={playtime} />
+      {/* 3 — KDA/FDA (accent dynamique : échelle perf kdScale) */}
+      <KpiCard accent={kdaAccent} className="flex h-full flex-col">
+        <div className={`${KPI_CONTENT_CLS} px-2`}>
+          <p className={KPI_LABEL_CLS}>{labelOf('kda')}</p>
+          <p className={KPI_VALUE_CLS}>{kda != null ? kda.toFixed(2) : '—'}</p>
+        </div>
+      </KpiCard>
 
-      {/* 5 — Playlist favorite */}
-      <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
-        <p className="text-xs text-muted-foreground">{kpiText.labels.favoritePlaylist}</p>
-        <p className="w-full truncate text-sm font-bold text-primary leading-tight mt-1">
-          {kpis.favorite_playlist_name || '—'}
-        </p>
-        {kpis.favorite_playlist_count > 0 && (
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {kpis.favorite_playlist_count.toLocaleString(numberLocale)} {kpiText.matches(kpis.favorite_playlist_count)}
+      {/* 4 — Taux de victoire (accent dynamique : bande neutre autour de 50 %) + barre composite */}
+      <KpiCard accent={winRateAccent} className="flex h-full flex-col">
+        <div className={`${KPI_CONTENT_CLS} px-4`}>
+          <p className={KPI_LABEL_CLS}>{labelOf('win_rate')}</p>
+          <p className={KPI_VALUE_CLS}>{`${(winRate * 100).toFixed(0)}%`}</p>
+          <div className="mt-2 w-full">
+            <OutcomeBar wins={wins} draws={draws} losses={losses} dnfs={dnfs} />
+          </div>
+          <div className="mt-1.5 flex justify-center gap-3 text-xs font-semibold tabular-nums">
+            <span style={{ color: tokenCssVar('outcome-win') }}>{wins}</span>
+            {neutral > 0 && <span style={{ color: tokenCssVar('outcome-draw') }}>{neutral}</span>}
+            <span style={{ color: tokenCssVar('outcome-loss') }}>{losses}</span>
+          </div>
+        </div>
+      </KpiCard>
+
+      {/* 5 — Playlist favorite (accent fixe) */}
+      <KpiCard accent="chart-series-3" className="flex h-full flex-col">
+        <div className={`${KPI_CONTENT_CLS} px-4`}>
+          <p className={KPI_LABEL_CLS}>{kpiText.labels.favoritePlaylist}</p>
+          <p className="w-full truncate text-sm font-bold text-foreground leading-tight mt-1">
+            {kpis.favorite_playlist_name || '—'}
           </p>
-        )}
-      </div>
+          {kpis.favorite_playlist_count > 0 && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {kpis.favorite_playlist_count.toLocaleString(numberLocale)} {kpiText.matches(kpis.favorite_playlist_count)}
+            </p>
+          )}
+        </div>
+      </KpiCard>
 
-      {/* 7 — Rendement / Résistance (barre composite) */}
-      <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
-        <p className="text-xs text-muted-foreground mb-1.5">{kpiText.labels.offDef}</p>
-        <CombatYieldDisplay
-          className="w-full"
-          offensiveConversion={kpis.avg_offensive_conversion}
-          defensiveResistance={kpis.avg_defensive_resistance}
-          dmgPerKill={kpis.dmg_per_kill}
-          dmgPerDeath={kpis.dmg_per_death}
-          align="center"
-        />
-      </div>
+      {/* 7 — Rendement / Résistance (accent fixe : la barre composite porte son signal) */}
+      <KpiCard accent="chart-series-4" className="flex h-full flex-col">
+        <div className={`${KPI_CONTENT_CLS} px-4`}>
+          <p className={`${KPI_LABEL_CLS} mb-1.5`}>{kpiText.labels.offDef}</p>
+          <CombatYieldDisplay
+            className="w-full"
+            offensiveConversion={kpis.avg_offensive_conversion}
+            defensiveResistance={kpis.avg_defensive_resistance}
+            dmgPerKill={kpis.dmg_per_kill}
+            dmgPerDeath={kpis.dmg_per_death}
+            align="center"
+          />
+        </div>
+      </KpiCard>
 
-      {/* 8 — Précision avec code couleur */}
-      <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-2 py-3 text-center">
-        <p className="text-xs text-muted-foreground">{labelOf('accuracy')}</p>
-        <p className="text-xl font-bold text-primary" style={accStyle}>{acc != null ? `${acc.toFixed(0)}%` : '—'}</p>
-      </div>
+      {/* 8 — Précision (accent dynamique : échelle accuracyScale) */}
+      <KpiCard accent={accAccent} className="flex h-full flex-col">
+        <div className={`${KPI_CONTENT_CLS} px-2`}>
+          <p className={KPI_LABEL_CLS}>{labelOf('accuracy')}</p>
+          <p className={KPI_VALUE_CLS}>{acc != null ? `${acc.toFixed(0)}%` : '—'}</p>
+        </div>
+      </KpiCard>
 
-      {/* 9 — Arme favorite */}
-      <div
-        data-testid="home-favorite-weapon"
-        className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center"
-      >
-        <p className="text-xs text-muted-foreground">{kpiText.labels.favoriteWeapon}</p>
-        <p
-          data-testid="home-favorite-weapon-name"
-          className="w-full truncate text-sm font-bold text-primary leading-tight mt-1"
-        >
-          {kpis.favorite_weapon_name || '—'}
-        </p>
-        {kpis.favorite_weapon_kills > 0 && (
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {kpis.favorite_weapon_kills.toLocaleString(numberLocale)} {kpiText.kills(kpis.favorite_weapon_kills)}
+      {/* 9 — Arme favorite (accent fixe) */}
+      <KpiCard accent="chart-series-5" className="flex h-full flex-col" testId="home-favorite-weapon">
+        <div className={`${KPI_CONTENT_CLS} px-4`}>
+          <p className={KPI_LABEL_CLS}>{kpiText.labels.favoriteWeapon}</p>
+          <p
+            data-testid="home-favorite-weapon-name"
+            className="w-full truncate text-sm font-bold text-foreground leading-tight mt-1"
+          >
+            {kpis.favorite_weapon_name || '—'}
           </p>
-        )}
-      </div>
+          {kpis.favorite_weapon_kills > 0 && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {kpis.favorite_weapon_kills.toLocaleString(numberLocale)} {kpiText.kills(kpis.favorite_weapon_kills)}
+            </p>
+          )}
+        </div>
+      </KpiCard>
     </div>
   )
 }

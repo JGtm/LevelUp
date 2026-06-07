@@ -302,8 +302,8 @@
 }
 @media (min-width: 1024px) {
   .kpi-stats-grid {
-    /* Parties · FDA · Taux victoire · Durée · Playlist · Rend/Résist · Précision · Arme */
-    grid-template-columns: 3fr 3fr 10fr 4fr 7fr 11fr 2fr 8fr;
+    /* Parties · Durée · FDA · Taux victoire · Playlist · Rend/Résist · Précision · Arme */
+    grid-template-columns: 3fr 4fr 3fr 9fr 7fr 10.5fr 3.5fr 8fr;
   }
 }
 
