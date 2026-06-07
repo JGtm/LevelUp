@@ -138,6 +138,32 @@ func TestIsTeamImbalanceTooHigh(t *testing.T) {
 	}
 }
 
+func TestConcurrentTeamSize(t *testing.T) {
+	// present_at_beginning = TRUE → occupait un slot au coup d'envoi (compté).
+	// FALSE → remplaçant (occupe un slot libéré, jamais un slot en plus).
+	start := func(present bool) rosterMember {
+		return rosterMember{presentAtStart: sql.NullBool{Bool: present, Valid: true}}
+	}
+	cases := []struct {
+		name string
+		team []rosterMember
+		want int
+	}{
+		{"4v4 tous présents au coup d'envoi", []rosterMember{start(true), start(true), start(true), start(true)}, 4},
+		{"4 partants + 2 remplaçants → 4 concurrents (cas du bug)", []rosterMember{start(true), start(true), start(true), start(true), start(false), start(false)}, 4},
+		{"4 partants + 4 remplaçants (8 lignes) → 4 concurrents (match 0ba4aa2b)", []rosterMember{start(true), start(true), start(true), start(true), start(false), start(false), start(false), start(false)}, 4},
+		{"present_at_beginning non renseigné → fallback len(team)", []rosterMember{{}, {}, {}, {}}, 4},
+		{"équipe vide", nil, 0},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := concurrentTeamSize(c.team); got != c.want {
+				t.Errorf("concurrentTeamSize(%s) = %d, want %d", c.name, got, c.want)
+			}
+		})
+	}
+}
+
 func TestOutcomeToTeamResult(t *testing.T) {
 	cases := []struct {
 		name    string

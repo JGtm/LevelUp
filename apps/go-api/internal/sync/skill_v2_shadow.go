@@ -254,9 +254,14 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 		s.skippedNonTwoTeam++
 		return
 	}
-	// Phase 3d : skip les matchs très déséquilibrés (ratio teams > 2:1). EP
-	// avec count observations converge mal au-delà.
-	if isTeamImbalanceTooHigh(len(teamA), len(teamB)) {
+	// Skip les matchs réellement déséquilibrés en effectif CONCURRENT. On compte
+	// les présents au coup d'envoi (present_at_beginning), pas len(team) : dans
+	// Halo l'effectif par camp est constant à tout instant T, un quitter est
+	// REMPLACÉ jamais ajouté. len() sur-compterait quitter + remplaçant comme 2
+	// joueurs simultanés fictifs → ~32% des matchs (4v4 avec subs) étaient sautés
+	// à tort (cf. concurrentTeamSize). Les remplaçants restent gérés par wᵢ
+	// (temps-joué) dans l'EP ; une vraie asymétrie concurrente (rare) reste skip.
+	if isTeamImbalanceTooHigh(concurrentTeamSize(teamA), concurrentTeamSize(teamB)) {
 		s.skippedImbalance++
 		return
 	}
@@ -392,6 +397,39 @@ func isTeamImbalanceTooHigh(nA, nB int) bool {
 		diff = -diff
 	}
 	return diff > 1
+}
+
+// concurrentTeamSize retourne l'effectif RÉELLEMENT présent en même temps dans
+// une équipe — pas le nombre total de xuid distincts ayant occupé un slot au
+// cours du match.
+//
+// Dans Halo le nombre de joueurs par camp est constant à tout instant T : un
+// quitter est REMPLACÉ, jamais ajouté. match_participants liste TOUS les humains
+// ayant tenu un slot (quitter + remplaçant = 2 lignes pour 1 seul slot), donc
+// len(team) sur-compte les remplacements comme des joueurs concurrents fictifs.
+// present_at_beginning = TRUE identifie les occupants du coup d'envoi = le nombre
+// de slots = la taille concurrente. Les remplaçants (present_at_beginning = FALSE)
+// occupent un slot libéré ; leur poids dans l'EP est porté par wᵢ (temps-joué).
+//
+// Fallback : si AUCUN membre n'a present_at_beginning renseigné (match non
+// backfillé), on retombe sur len(team) — comportement historique conservé. Le
+// backfill participation_info étant atomique par match, on n'a jamais un mélange
+// partiel renseigné/NULL au sein d'un même match.
+func concurrentTeamSize(team []rosterMember) int {
+	n := 0
+	hasSignal := false
+	for _, m := range team {
+		if m.presentAtStart.Valid {
+			hasSignal = true
+			if m.presentAtStart.Bool {
+				n++
+			}
+		}
+	}
+	if !hasSignal {
+		return len(team)
+	}
+	return n
 }
 
 // loadShadowMatches : matchs LUSR-éligibles du joueur, ordre chrono. Mêmes

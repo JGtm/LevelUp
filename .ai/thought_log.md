@@ -1,3 +1,17 @@
+## [2026-06-07] LUSR v2 — root cause #2 : le skip "imbalance" comptait len() brut (remplaçants = joueurs concurrents fictifs) — Complété (calcul INCHANGÉ)
+
+**Statut** : Complété + commité en base (backfill --commit). go vet + suite `internal/sync` verts. Code non commité git (attente autorisation).
+
+**Contexte** : suite du fix désync watermark/canonical (846fa6414). Le user (domaine Halo) : « dans ce jeu il n'est pas possible d'avoir de joueur en plus ou en moins à un instant T ; le roster total peut être plus grand mais ce ne sont que des remplacements, jamais des additions ». Donc le check d'imbalance est faux ou mal implémenté.
+
+**Root cause prouvée** : [skill_v2_shadow.go:259](../apps/go-api/internal/sync/skill_v2_shadow.go#L259) appelait `isTeamImbalanceTooHigh(len(teamA), len(teamB))`. `len()` = nb de xuid DISTINCTS ayant occupé un slot au cours du match → un quitter ET son remplaçant comptent comme 2 joueurs simultanés alors qu'ils partagent 1 slot. Mesure read-only sur shared : **538/1692 matchs (32%) sautés pour "imbalance", dont 532 (98,9%) équilibrés N-vs-N au coup d'envoi** (`present_at_beginning`). Par joueur : ~30-33% des matchs jetés silencieusement, 99% de faux déséquilibres. JGtm 3 juin : 5/11 matchs skippés, tous 4v4 du début à la fin (raw 6/6/6/8/7 vs 4). Le skip n'avance pas le watermark mais un match balancé plus récent passe par-dessus → trou **permanent**.
+
+**Décision technique (EP INCHANGÉ — exigence user « on touche pas aux calculs »)** : nouveau helper pur `concurrentTeamSize(team)` qui compte `present_at_beginning=TRUE` (= nb de slots = effectif concurrent), fallback `len(team)` si non backfillé (backfill participation atomique par match). Call site change `len()` → `concurrentTeamSize()`. Aucune modif de l'EP, des facteurs, du sum/count. Les remplaçants restent gérés par le poids temps-joué wᵢ existant. Propriété de sécurité confirmée : un roster que l'EP ne sait pas résoudre renvoie `compute échoué` → skip + WARN nominatif, jamais de note corrompue.
+
+**Résultats** : dry-run puis --commit (serveur arrêté). +632 matchs récupérés (2398 vs ~1766). 20 matchs distincts (~0,8%, gros turnover roster 7-15) échouent encore l'EP → skip safe + log (échouaient déjà avant, en silence ; désormais tracés). **Aucun effondrement** : μ Madina 26-26.7 (σ 0.67) >> JGtm/Choco ~24 >> XxDaemon ~20, conforme aux cibles. Vérif vue _latest : **JGtm 11/11 le 3 juin**, **Madina Diamant III (1933)** (≥ baseline Diamant II 1866). Tests : `TestConcurrentTeamSize` (incl. cas 8 lignes → 4 concurrents = match 0ba4aa2b) + suite `internal/sync` complète OK.
+
+**Prochaine étape** : commit git sur autorisation. Reste : orphans bad-backfill résiduels uniquement sur les ≤20 matchs encore en échec (les matchs ré-admis sont auto-supplantés par latest-wins). Piste future hors scope : damping EP pour absorber les ~20 (commentaire déjà présent dans le code).
+
 ## [2026-06-07] Suite KPI : accent carte Rendement/Résist. + page Sessions (composant SÉPARÉ oublié) — Complété (front-only)
 
 **Statut** : Complété (validé local). typecheck OK + eslint exit 0 + vitest session-detail/SessionBriefing/formatters 112. Non commité.
