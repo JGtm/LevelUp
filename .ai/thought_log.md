@@ -1,3 +1,22 @@
+## [2026-06-07] Match View onglet Détails — reorg en 4 sections titrées + alignements fond bg-card — Complété (front-only)
+
+**Statut** : Complété (validé local). typecheck OK + `eslint` exit 0 (mes fichiers) + vitest match-view 110. Non commité (attente autorisation user).
+
+**Demandes** : (1) structurer l'onglet Détails (dense) en 3-4 sections titrées ; (2) remonter Engagement avant Frags différentiel cumulé ; (3) descendre Frags différentiel cumulé après Antagonistes ; (4) sortir les tables de leur bloc ; (5) aligner le fond des cases « Faits marquants » (badges) ET némésis/souffre-douleur sur le gris foncé `bg-card` (étaient noires).
+
+**Décisions** :
+1. **4 sections** via helper local `DetailSection` (titre type-1 `text-base font-semibold text-foreground`, même format que l'harmonisation Home) :
+   - §1 « Déroulé du match » : Faits marquants | Frags cumulés · Dominance | Cadence · **Engagement** (remonté).
+   - §2 « Duels & confrontations » : Némésis + Souffre-douleur | Antagonistes · **Frags différentiel cumulé** (descendu, après Antagonistes).
+   - §3 « Tableau des scores » : `MatchScoreboard` (était déjà sans Card → reçoit juste le titre de section).
+   - §4 « Historique des rencontres » : `MatchEncountersTable` avec `hideCardWrapper` (prop déjà existant) → table sortie de son bloc, titre porté par la section.
+2. **i18n** : 3 clés ajoutées au manifest match-view (`sectionFlow`, `sectionDuels`, `sectionEncounters`) FR/EN ; §3 réutilise `scoreboardTitle`.
+3. **Fond bg-card** : (a) `MatchImpactBadgesBar` cards avaient `rounded-lg border` sans classe de fond → transparent → noir de page ; ajout `bg-card`. (b) `MatchNemesisCards` avait un dégradé sombre **hardcodé** (`rgb(15 18 24)…`, aussi une violation color-token) → remplacé par `bg-card` (liseré de valence + accent inset conservés).
+
+**Résultats** : onglet Détails en 4 sections lisibles, reorg conforme, 2 fonds alignés sur `bg-card`. typecheck 0, lint exit 0, vitest 110.
+
+**Prochaine étape** : commit sur autorisation (avec le lot KPI accent dynamique + le fix badges bg-card des tours précédents).
+
 ## [2026-06-07] Match View — barre KPI onglet Général au format KpiCard à accent dynamique — Complété (front-only)
 
 **Statut** : Complété (validé local). typecheck OK + `eslint match-view` exit 0 (3 warnings préexistants only, hors MatchStatCards) + vitest match-view 110. Non commité (attente autorisation user).

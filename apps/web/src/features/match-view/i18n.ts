@@ -107,6 +107,10 @@ export interface MatchViewText {
   combatNoData: string
   fragDiffNoData: string
   antagonistNoData: string
+  // Sections de l'onglet Détails (titres type-1 du catalogue d'harmonisation)
+  sectionFlow: string
+  sectionDuels: string
+  sectionEncounters: string
   // Scoreboard team header (Eagle / Cobra avec couleur team-ally/enemy)
   scoreboardTitle: string
   scoreboardNoData: string
@@ -253,6 +257,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatNoData: 'Pas de données disponibles',
     fragDiffNoData: 'Aucun événement de combat enregistré pour ce match.',
     antagonistNoData: 'Aucune donnée de duels disponible pour ce match.',
+    sectionFlow: 'Déroulé du match',
+    sectionDuels: 'Duels & confrontations',
+    sectionEncounters: 'Historique des rencontres',
     scoreboardTitle: 'Tableau des scores',
     scoreboardNoData: 'Aucune donnée de tableau des scores disponible pour ce match.',
     teamLabelFmt: (name) => `Équipe ${name}`,
@@ -392,6 +399,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatNoData: 'No data available',
     fragDiffNoData: 'No combat events recorded for this match.',
     antagonistNoData: 'No duel data available for this match.',
+    sectionFlow: 'Match flow',
+    sectionDuels: 'Duels & head-to-head',
+    sectionEncounters: 'Encounter history',
     scoreboardTitle: 'Scoreboard',
     scoreboardNoData: 'No scoreboard data available for this match.',
     teamLabelFmt: (name) => `Team ${name}`,

@@ -8,8 +8,9 @@
  *   - stat-based : Bourreau, Héros silencieux, Faux-frère
  *
  * Valence visuelle (option C) :
- *   - Toujours  : strip gauche 3px à 30 % + fond teinté 4 %
- *   - is_me     : strip 4px à 100 % + fond 10 % + titre coloré
+ *   - Toujours  : strip gauche 3px à 30 % sur fond `bg-card` (aligné sur les
+ *     autres blocs de la page — pas de fond teinté)
+ *   - is_me     : strip 4px à 100 % + titre coloré
  *
  * Pictos : Fluent Emoji Flat (cf. components/feedback/BadgeIcon).
  * Aligne le rendu sur la branche main (badges + horodatage). La résolution
@@ -133,7 +134,7 @@ export function MatchImpactBadgesBar({ badges, scoreboard }: Props) {
             className="w-full flex-1"
           >
             <div
-              className={`flex h-full w-full flex-col justify-center gap-1.5 rounded-lg border px-3 py-2 ${
+              className={`flex h-full w-full flex-col justify-center gap-1.5 rounded-lg border bg-card px-3 py-2 ${
                 isMe ? 'border-primary/60' : 'border-border'
               }`}
               style={cardStyle}
