@@ -305,14 +305,15 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 		slog.InfoContext(ctx, "seed-demo: player seedée", "dir", demoDir, "gamertag", m.DemoGamertag, "rows", rows)
 	}
 
-	// 6. Médias (DemoPlayer principal uniquement). Écrits dans le shared_social.duckdb
-	// démo au schéma canonique (le pipeline de lecture média exige un SharedSocial
-	// non-nil + schéma id/media_file_id/player_slug). player_slug = SLUG de route du
-	// main : la page Média filtre par auteur = slug courant (pas le gamertag).
+	// 6. Médias (DemoPlayer principal). Copie les vraies vidéos HLS "Halo Infinite" du
+	// joueur source (data/media/{gamertag}/{hls,thumbs}) vers la démo + media_files au
+	// schéma canonique shared_social. player_slug = SLUG de route du main (la page Média
+	// filtre par auteur = slug courant). Attribution grossière aux matchs du corpus.
 	if opts.IncludeMedia {
 		mediaDir := filepath.Join(opts.OutDir, "players", DefaultDemoGamertag, "media")
 		outSocial := filepath.Join(opts.OutDir, "warehouse", "shared_social.duckdb")
-		mediaCount, mediaErr := extractDemoMedia(ctx, opts.SourcePlayerDB, opts.SourceSharedDB,
+		srcMediaDir := filepath.Join(opts.RepoRoot, "data", "media", opts.SourceLabel)
+		mediaCount, mediaErr := extractDemoMedia(ctx, srcMediaDir, opts.SourceSharedDB,
 			outSocial, mediaDir, matchIDs, DefaultDemoMainSlug, opts.MaxMedia)
 		if mediaErr != nil {
 			slog.WarnContext(ctx, "seed-demo: extraction média partielle", "err", mediaErr, "copied", mediaCount)

@@ -1,3 +1,20 @@
+## [2026-06-07] Démo médias = vraies vidéos HLS "Halo Infinite" (réécriture seed média) — Complété (code)
+
+**Statut** : Complété (code). Build+vet+test ops OK. Deploy + reseed + vérif lecture restants.
+
+**Contexte** : la démo servait de vieux fichiers "Replay*.mkv" (registry périmé) au lieu des captures "Halo Infinite" voulues. Découverte : les médias prod du joueur source sont des **flux HLS** (`data/media/{gt}/hls/{name}/master.m3u8 + init_*.mp4 + seg_*.m4s`) + vignettes `thumbs/{name}.webp` — **pas de fichiers .mp4/.mkv uniques**. L'ancien seed (copyFile + registry + lecture player DB) ne pouvait pas les gérer.
+
+**Décision (validée user : vraies vidéos comme en prod)** : réécriture de `seed_demo_media.go` :
+- `scanHaloInfiniteHLS(srcMediaDir)` : liste les flux `hls/Halo Infinite …` (avec master.m3u8), plus récents d'abord, + leur vignette. Source = `data/media/{SourceLabel}` (les fichiers existent sur le VPS).
+- `copyDir` : copie le dossier HLS complet (segments) ; **`master.m3u8` réécrit pour ne garder qu'1 piste audio** (`#EXT-X-MEDIA:TYPE=AUDIO` 1ère = jeu ; suivantes/voicechat retirées → pas de sélecteur) — répond à "conserver qu'une seule piste, celle du jeu".
+- `media_files` canoniques : `kind=video`, `file_path={name}/master.m3u8`, `thumbnail_path={name}.webp`, attribués grossièrement aux matchs du corpus (même carte si possible, sinon round-robin → carte réelle, plus de "Carte inconnue").
+- Serving : `ServeMediaFile` résout déjà `.m3u8`/`.m4s`/`.webp` via `MediaCapturesBaseDir` démo.
+- Suppression de l'ancien chemin DB/registry (collectMediaCandidates, copyAndInsertMedia, reimportExistingMedia, registry, parseRegistryTime…). Tests adaptés (scan + parse capture-time + pickCorpusMatch).
+
+**Reste** : réassociation média en mode démo (data du DemoPlayer accessibles) ; vérif lecture HLS + audio unique sur Chrome.
+
+---
+
 ## [2026-06-07] Harmonisation UI (révision 4) — barre = sous-palier suivant + remplissage n/6 + barre centrée — Complété (code)
 
 **Statut** : Complété (code). Go `build ./...` OK + analysis tests OK ; front typecheck/lint OK + vitest verts. ⚠️ Restart serveur toujours requis (backend).
