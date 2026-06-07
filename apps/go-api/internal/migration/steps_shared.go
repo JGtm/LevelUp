@@ -886,6 +886,25 @@ func applyResolutionViews(db *sql.DB) error {
 	//
 	// DDL généré par analysis.GamertagLookupViewSQL — SOURCE UNIQUE partagée avec
 	// le boot (sync.EnsureSharedSchema) pour éliminer toute divergence.
+	//
+	// v_gamertag_lookup référence désormais killer_victim_pairs (gamertag résolu
+	// depuis les films). DuckDB bind les vues à la création → la table DOIT
+	// exister avant. On la garantit ici (CREATE IF NOT EXISTS idempotent) car ce
+	// helper est aussi appelé par RebuildMatchParticipantsART, qui recrée la vue
+	// sur une DB où la table peut être absente.
+	if _, err := db.ExecContext(bootCtx(), `CREATE TABLE IF NOT EXISTS killer_victim_pairs (
+		match_id        VARCHAR NOT NULL,
+		killer_xuid     VARCHAR NOT NULL,
+		killer_gamertag VARCHAR,
+		victim_xuid     VARCHAR NOT NULL,
+		victim_gamertag VARCHAR,
+		kill_count      INTEGER DEFAULT 1,
+		time_ms         INTEGER,
+		is_validated    BOOLEAN DEFAULT FALSE,
+		created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	)`); err != nil {
+		return fmt.Errorf("ensure killer_victim_pairs (dep v_gamertag_lookup): %w", err)
+	}
 	if _, err := db.ExecContext(bootCtx(), analysis.GamertagLookupViewSQL()); err != nil {
 		return fmt.Errorf("create v_gamertag_lookup: %w", err)
 	}

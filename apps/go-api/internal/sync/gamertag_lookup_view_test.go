@@ -50,6 +50,13 @@ func TestGamertagLookupView_NeverLeaksRawXuid(t *testing.T) {
 			xuid VARCHAR,
 			gamertag VARCHAR
 		);
+		CREATE TABLE killer_victim_pairs (
+			match_id VARCHAR,
+			killer_xuid VARCHAR,
+			killer_gamertag VARCHAR,
+			victim_xuid VARCHAR,
+			victim_gamertag VARCHAR
+		);
 	`); err != nil {
 		t.Fatalf("create tables: %v", err)
 	}
@@ -69,7 +76,13 @@ func TestGamertagLookupView_NeverLeaksRawXuid(t *testing.T) {
 			('m1', '2533274800000002', ''),
 			('m1', '2533274800000003', NULL),
 			('m1', '2533274800000004', 'FromParticipant'),
+			('m1', '2533274800000005', ''),
+			('m1', '2533274800000006', ''),
 			('m1', 'bid(3.0)',         NULL);
+		-- Adversaires sans alias ni gamertag participant, mais résolus depuis les
+		-- films (kill-feed) : ...005 comme tueur, ...006 comme victime (priorité 4).
+		INSERT INTO killer_victim_pairs (match_id, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag) VALUES
+			('m1', '2533274800000005', 'FromKillFeed', '2533274800000006', 'VictimName');
 	`); err != nil {
 		t.Fatalf("seed rows: %v", err)
 	}
@@ -87,6 +100,8 @@ func TestGamertagLookupView_NeverLeaksRawXuid(t *testing.T) {
 		{"participant vide → masqué", "2533274800000002", "Joueur 0002"},
 		{"participant NULL → masqué", "2533274800000003", "Joueur 0003"},
 		{"alias vide, participant renseigné", "2533274800000004", "FromParticipant"},
+		{"résolu via killer_victim_pairs (tueur)", "2533274800000005", "FromKillFeed"},
+		{"résolu via killer_victim_pairs (victime)", "2533274800000006", "VictimName"},
 		{"bot connu", "bid(3.0)", "343 Ellis"},
 	}
 

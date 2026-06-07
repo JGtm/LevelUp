@@ -149,13 +149,18 @@ func MaskedXuidLabelSQL(xuidExpr string) string {
 //  1. xuid bot Halo connu → nom officiel (ex: "343 Meowlnir") via BotSQLCase.
 //  2. sinon xuid_aliases.gamertag si non vide.
 //  3. sinon match_participants.gamertag (MAX si plusieurs) si non vide.
-//  4. sinon libellé masqué "Joueur ####" via MaskedXuidLabelSQL.
+//  4. sinon killer_victim_pairs.{killer,victim}_gamertag — gamertag résolu
+//     depuis les films (kill-feed). Source VIVANTE pour les adversaires :
+//     xuid_aliases a cessé d'être alimenté par les events en avril 2026, mais
+//     killer_victim_pairs porte toujours le gamertag (même DB shared, donc
+//     aucun ATTACH). Couvre les joueurs croisés en match mais absents d'alias.
+//  5. sinon libellé masqué "Joueur ####" via MaskedXuidLabelSQL.
 //
 // Colonnes exposées : (xuid, gamertag). On ne projette PAS xa.last_seen : aucun
 // caller ne le consomme et toutes les tables xuid_aliases ne le possèdent pas
 // (ex. seed démo) → garder la vue agnostique de cette colonne optionnelle.
 func GamertagLookupViewSQL() string {
-	xuidExpr := "COALESCE(xa.xuid, mp.xuid)"
+	xuidExpr := "COALESCE(xa.xuid, mp.xuid, kv.xuid)"
 	return fmt.Sprintf(`CREATE OR REPLACE VIEW v_gamertag_lookup AS
 SELECT
 	%s AS xuid,
@@ -163,6 +168,7 @@ SELECT
 		WHEN %s LIKE 'bid(%%' THEN %s
 		WHEN xa.gamertag IS NOT NULL AND xa.gamertag != '' THEN xa.gamertag
 		WHEN mp.gamertag IS NOT NULL AND mp.gamertag != '' THEN mp.gamertag
+		WHEN kv.gamertag IS NOT NULL AND kv.gamertag != '' THEN kv.gamertag
 		ELSE %s
 	END AS gamertag
 FROM xuid_aliases xa
@@ -170,7 +176,20 @@ FULL OUTER JOIN (
 	SELECT xuid, MAX(gamertag) AS gamertag
 	FROM match_participants
 	GROUP BY xuid
-) mp ON xa.xuid = mp.xuid`,
+) mp ON xa.xuid = mp.xuid
+FULL OUTER JOIN (
+	SELECT xuid, MAX(gamertag) AS gamertag
+	FROM (
+		SELECT killer_xuid AS xuid, killer_gamertag AS gamertag
+		FROM killer_victim_pairs
+		WHERE killer_gamertag IS NOT NULL AND killer_gamertag != ''
+		UNION ALL
+		SELECT victim_xuid AS xuid, victim_gamertag AS gamertag
+		FROM killer_victim_pairs
+		WHERE victim_gamertag IS NOT NULL AND victim_gamertag != ''
+	)
+	GROUP BY xuid
+) kv ON COALESCE(xa.xuid, mp.xuid) = kv.xuid`,
 		xuidExpr,
 		xuidExpr,
 		BotSQLCase(xuidExpr),
