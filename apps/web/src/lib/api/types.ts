@@ -1561,6 +1561,12 @@ export interface HomeSkillPeakSummary {
    *  Phase 6 du plan pipeline CSR. nil → fallback front à 10 (back-compat
    *  payloads pré-Phase 6). */
   placement_total?: number | null
+  /** Remplissage ORDINAL de la barre (0..100), via le sous-palier (n/6),
+   *  indépendant de l'échelle CSR/LUSR. null hors phase matured → pas de barre. */
+  tier_progress_pct?: number | null
+  /** Libellé localisé du SOUS-PALIER suivant (extrémité droite de la barre, ex.
+   *  "Or IV", "Platine I", "Onyx"). null pour Onyx (sommet). */
+  next_tier_label?: string | null
 }
 
 export interface HomePlaylistRank {
