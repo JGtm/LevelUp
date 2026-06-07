@@ -218,7 +218,10 @@ export function TimeseriesIntensityHeatmap({
 
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (rows.length === 0) return null
-    return buildSquadIntensityHeatmapOption(rows as SquadIntensityMatchRow[], { zLabel })
+    // Les matchs arrivent en DESC (récent → ancien) ; on inverse pour lire la
+    // heatmap du plus ancien (haut) au plus récent (bas), comme les autres graphes.
+    const ordered = [...rows].reverse()
+    return buildSquadIntensityHeatmapOption(ordered as SquadIntensityMatchRow[], { zLabel })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, zLabel, themeVersion])
   return <ChartRender option={option} height={height} />
@@ -255,7 +258,10 @@ export function TimeseriesEfficiency({
             .map((p) => `${p.marker}${p.seriesName}: <b>${Math.round(p.value as number)}</b>`)
             .join('<br/>'),
       },
-      legend: { ...getLegendBase(tc), bottom: 0 },
+      // Pastille de légende élargie (itemWidth 30 vs 12) : à 12px le pointillé
+      // de « Dégâts / mort » est invisible ; à 30px on distingue trait plein
+      // (Dégâts/frag) vs pointillé (Dégâts/mort).
+      legend: { ...getLegendBase(tc), bottom: 0, itemWidth: 30 },
       xAxis: {
         ...getAxisBase(tc),
         type: 'category',

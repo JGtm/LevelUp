@@ -57,7 +57,9 @@ export function TimeseriesFirstEventDistribution({
     }
     const categories = data.buckets.map((b) => fmtMinSec(b.lower_seconds))
     const kills = data.buckets.map((b) => b.first_kills)
-    const deaths = data.buckets.map((b) => b.first_deaths)
+    // Morts négativées → barres SOUS l'axe X (graphe divergent, même rendu que
+    // le butterfly de la page escouade). Tooltip + axe réaffichent en abs.
+    const deaths = data.buckets.map((b) => -b.first_deaths)
 
     // Position markLine sur l'axe catégorie : index du bucket contenant la
     // moyenne (avec interpolation interne).
@@ -78,7 +80,12 @@ export function TimeseriesFirstEventDistribution({
     const meanKillIdx = meanIdx(meanKill)
     const meanDeathIdx = meanIdx(meanDeath)
 
-    const buildMarkLine = (xAxisIdx: number, mean: number, color: string) => ({
+    const buildMarkLine = (
+      xAxisIdx: number,
+      mean: number,
+      color: string,
+      labelPosition: 'insideEndTop' | 'insideEndBottom' = 'insideEndTop',
+    ) => ({
       silent: true,
       symbol: 'none' as const,
       lineStyle: { color, width: 1.5, type: 'dashed' as const },
@@ -90,7 +97,7 @@ export function TimeseriesFirstEventDistribution({
         backgroundColor: tc.tooltipBg,
         padding: [2, 4],
         borderRadius: 2,
-        position: 'insideEndTop' as const,
+        position: labelPosition,
       },
       data: [{ xAxis: xAxisIdx }],
     })
@@ -102,6 +109,8 @@ export function TimeseriesFirstEventDistribution({
         ...getTooltipBase(tc),
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
+        // Morts stockées en négatif → réaffichées en valeur absolue.
+        valueFormatter: (v: number | string) => `${Math.abs(Number(v))}`,
       },
       legend: {
         ...getLegendBase(tc),
@@ -121,27 +130,34 @@ export function TimeseriesFirstEventDistribution({
           interval: Math.max(0, Math.floor(categories.length / 10) - 1),
         },
       },
-      yAxis: { ...getAxisBase(tc), type: 'value' },
+      yAxis: {
+        ...getAxisBase(tc),
+        type: 'value',
+        // Axe symétrique : la moitié basse (morts) affiche des comptes positifs.
+        axisLabel: { ...getAxisBase(tc).axisLabel, formatter: (v: number) => `${Math.abs(v)}` },
+      },
       series: [
         {
           type: 'bar',
           name: killsLabel,
           data: kills,
           itemStyle: { color: colKills, opacity: 0.85 },
-          barGap: '10%',
           markLine:
             meanKillIdx != null && meanKill != null
-              ? buildMarkLine(meanKillIdx, meanKill, colKills)
+              ? buildMarkLine(meanKillIdx, meanKill, colKills, 'insideEndTop')
               : undefined,
         },
         {
           type: 'bar',
           name: deathsLabel,
           data: deaths,
+          // Superposé sur la série kills (même x) → diverge verticalement :
+          // frags au-dessus de l'axe, morts en dessous.
+          barGap: '-100%',
           itemStyle: { color: colDeaths, opacity: 0.85 },
           markLine:
             meanDeathIdx != null && meanDeath != null
-              ? buildMarkLine(meanDeathIdx, meanDeath, colDeaths)
+              ? buildMarkLine(meanDeathIdx, meanDeath, colDeaths, 'insideEndBottom')
               : undefined,
         },
       ],

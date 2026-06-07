@@ -34,7 +34,10 @@ import { formatDurationDhm, formatMinSec, formatMmss } from './format'
 import type { BriefingTexts } from './i18n'
 import { computeTrend, trendSymbol, type TrendState } from './trends'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import { accuracyScale, assistsScale, kdScale, lifespanScale } from '@/lib/accessibility/scales'
 import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
+import { combatYieldToken } from '@/lib/formatters/combatYield'
+import { KpiCard } from '@/components/cards/KpiCard'
 
 interface KpiGridProps {
   kpis: KPIStats
@@ -62,10 +65,14 @@ interface CellProps {
   trend?: TrendState
   /** Couleur absolue de la valeur. Si fourni, override la couleur trend. */
   valueColorToken?: SemanticToken
+  /** Accent de QUALITÉ ABSOLUE (échelle métier, ex. accuracyScale) appliqué en
+   *  solo quand il n'y a pas de tendance vs équipe — évalue la valeur dans
+   *  l'absolu (30% précision → rouge, ≥55% → vert). */
+  absoluteAccent?: SemanticToken
 }
 
-function KpiCell({ label, value, sub, inlineSub, trend = 'none', valueColorToken }: CellProps) {
-  const trendToken =
+function KpiCell({ label, value, sub, inlineSub, trend = 'none', valueColorToken, absoluteAccent }: CellProps) {
+  const trendToken: SemanticToken | null =
     trend === 'above'
       ? 'divergent-pos'
       : trend === 'below'
@@ -74,29 +81,37 @@ function KpiCell({ label, value, sub, inlineSub, trend = 'none', valueColorToken
           ? 'divergent-neutral'
           : null
 
+  // Accent dynamique (type 4 du catalogue) : couleur absolue du delta de rang si
+  // fournie, sinon la tendance vs moyenne d'équipe (mode squad), sinon l'accent
+  // de QUALITÉ ABSOLUE de la métrique si défini (ex. accuracyScale : 30% → rouge,
+  // ≥55% → vert). Pas de barre uniquement si aucune de ces références n'existe.
+  const accent: SemanticToken | undefined = valueColorToken ?? trendToken ?? absoluteAccent
+
   const valueStyle: CSSProperties | undefined = valueColorToken
     ? { color: tokenCssVar(valueColorToken) }
     : undefined
 
   return (
-    <div className="rounded border border-border bg-card px-3 py-2">
-      <p className="text-3xs uppercase tracking-wide text-muted-foreground">{label}</p>
-      <div className="mt-0.5 flex items-baseline">
-        <span className="text-lg font-bold" style={valueStyle}>{value}</span>
-        {inlineSub && (
-          <span className="ml-1.5 text-3xs text-muted-foreground">{inlineSub}</span>
-        )}
-        {!valueColorToken && trendToken && (
-          <span
-            className="ml-1 text-xs font-bold"
-            style={{ color: tokenCssVar(trendToken) }}
-          >
-            {trendSymbol(trend)}
-          </span>
-        )}
+    <KpiCard accent={accent} className="h-full">
+      <div className="px-3 py-2">
+        <p className="text-3xs uppercase tracking-wide text-muted-foreground">{label}</p>
+        <div className="mt-0.5 flex items-baseline">
+          <span className="text-lg font-bold" style={valueStyle}>{value}</span>
+          {inlineSub && (
+            <span className="ml-1.5 text-3xs text-muted-foreground">{inlineSub}</span>
+          )}
+          {!valueColorToken && trendToken && (
+            <span
+              className="ml-1 text-xs font-bold"
+              style={{ color: tokenCssVar(trendToken) }}
+            >
+              {trendSymbol(trend)}
+            </span>
+          )}
+        </div>
+        {sub && <p className="mt-0.5 text-2xs text-muted-foreground">{sub}</p>}
       </div>
-      {sub && <p className="mt-0.5 text-2xs text-muted-foreground">{sub}</p>}
-    </div>
+    </KpiCard>
   )
 }
 
@@ -135,6 +150,11 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint, omitSummaryCard
   const trendLife = teamAvgKpis
     ? computeTrend(kpis.avg_life_seconds, teamAvgKpis.avg_life_seconds)
     : 'none'
+
+  // K/D dérivé → accent de qualité absolue des cartes Frags / Morts en solo
+  // (≥1 bon, <1 moyen). Les rates par match sont mode-dépendants ; le ratio l'est
+  // beaucoup moins, d'où le choix de kdScale plutôt qu'un seuil sur le compte brut.
+  const kd = kpis.deaths_per_game > 0 ? kpis.kills_per_game / kpis.deaths_per_game : kpis.kills_per_game
 
   // Cards conditionnelles : rank_delta et rendement/résistance si données dispo.
   const hasDelta = kpis.rank_delta != null
@@ -189,48 +209,55 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint, omitSummaryCard
           value={kpis.kills_per_game.toFixed(2)}
           sub={`${kpis.kills_per_minute.toFixed(2)}${texts.grid.perMin}`}
           trend={trendKills}
+          absoluteAccent={kdScale(kd)}
         />
         <KpiCell
           label={texts.grid.deathsPerMatch}
           value={kpis.deaths_per_game.toFixed(2)}
           sub={`${kpis.deaths_per_minute.toFixed(2)}${texts.grid.perMin}`}
           trend={trendDeaths}
+          absoluteAccent={kdScale(kd)}
         />
         <KpiCell
           label={texts.grid.assistsPerMatch}
           value={kpis.assists_per_game.toFixed(2)}
           sub={`${kpis.assists_per_minute.toFixed(2)}${texts.grid.perMin}`}
           trend={trendAssists}
+          absoluteAccent={assistsScale(kpis.assists_per_game)}
         />
         <KpiCell
           label={texts.grid.accuracy}
           value={`${kpis.avg_accuracy.toFixed(2)}%`}
           trend={trendAcc}
+          absoluteAccent={accuracyScale(kpis.avg_accuracy)}
         />
         <KpiCell
           label={texts.grid.lifespan}
           value={formatMmss(kpis.avg_life_seconds)}
           trend={trendLife}
+          absoluteAccent={lifespanScale(kpis.avg_life_seconds)}
         />
         {hasComposite && (
-          <div
-            className="rounded border border-border bg-card px-3 py-2"
-            style={{ gridColumn: 'span 2' }}
+          <KpiCard
+            accent={combatYieldToken(kpis.avg_offensive_conversion, kpis.avg_defensive_resistance)}
+            className="col-span-2 h-full"
           >
-            <p className="text-3xs uppercase tracking-wide text-muted-foreground">
-              {texts.grid.offDef}
-            </p>
-            <div className="mt-1">
-              <CombatYieldDisplay
-                className="w-full"
-                offensiveConversion={kpis.avg_offensive_conversion}
-                defensiveResistance={kpis.avg_defensive_resistance}
-                dmgPerKill={kpis.combat_profile?.dmg_per_kill}
-                dmgPerDeath={kpis.combat_profile?.dmg_per_death}
-                align="start"
-              />
+            <div className="px-3 py-2">
+              <p className="text-3xs uppercase tracking-wide text-muted-foreground">
+                {texts.grid.offDef}
+              </p>
+              <div className="mt-1">
+                <CombatYieldDisplay
+                  className="w-full"
+                  offensiveConversion={kpis.avg_offensive_conversion}
+                  defensiveResistance={kpis.avg_defensive_resistance}
+                  dmgPerKill={kpis.combat_profile?.dmg_per_kill}
+                  dmgPerDeath={kpis.combat_profile?.dmg_per_death}
+                  align="start"
+                />
+              </div>
             </div>
-          </div>
+          </KpiCard>
         )}
         {hasSingleYield && hasOC && (
           <KpiCell
