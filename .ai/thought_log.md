@@ -1,3 +1,102 @@
+## [2026-06-07] Harmonisation UI (révision 4) — barre = sous-palier suivant + remplissage n/6 + barre centrée — Complété (code)
+
+**Statut** : Complété (code). Go `build ./...` OK + analysis tests OK ; front typecheck/lint OK + vitest verts. ⚠️ Restart serveur toujours requis (backend).
+
+**Contexte** : retours user sur capture réelle. (a) la barre montrait le palier SUIVANT (Platine) alors qu'il faut le SOUS-PALIER suivant (Or I → Or II). (b) remplissage ordinal arbitraire / barre CSR vide (Or I → 0 %). (c) barre à centrer verticalement dans la carte.
+
+**Découverte (échelle LUSR)** : `analysis/skill_v2/tier.go` — les sous-paliers LUSR sont définis sur l'échelle **μ interne (TrueSkill)** (Or = μ[22,25[, sous-paliers par bandes de μ), PAS sur la valeur affichée (ex. 1733). Le peak home n'a que la valeur affichée → un remplissage « DANS le sous-palier » n'est PAS dérivable pour le LUSR. Donc barre à granularité sous-palier (honnête), pas de fausse précision intra-sous-palier.
+
+**Décision technique** :
+1. **Remplissage** : `SkillTierBand` → `sous_palier/6` (I ≈ 17 %, VI = 100 %, Onyx = 100 %) — non vide pour le sous-palier I (corrige la barre CSR vide).
+2. **Extrémité droite = SOUS-PALIER suivant** : `NextTierLabel` remplacé par `NextSubTierLabel(tierEN, subTier, fr)` — Or I→Or II, Or VI→Platine I (premier sous-palier du palier suivant), Diamant VI→Onyx, Onyx→nil. + helper `nextTierEN`.
+3. **Barre centrée verticalement** (HomeSkillPeakCard) : rangée `flex items-center` = `[badge] [label+rating (gauche, shrink-0)] [barre flex-1 + sous-palier suivant (droite)]`. La barre est au centre vertical de la carte (items-center contre le badge).
+4. **Label > chiffre** (front-only, HMR) : à l'extrémité gauche, le LABEL de palier (« Or III ») passe en avant (text-xl) et le rating chiffré en secondaire (text-xs muted) — le user connaît mieux les labels que les chiffres. testids `-value`/`-tier` inchangés (tests verts). NB : warning `react-refresh/only-export-components` sur ce fichier = PRÉ-EXISTANT (`resolveSkillPeakState` co-localisé, présent dans HEAD), exit lint 0.
+
+**Résultats observés** : tests Go `SkillTierBand` (n/6) + `NextSubTierLabel` (Or I→Or II, Or VI→Platine I, Diamant VI→Onyx, Onyx→nil). Test front barre 50 % + extrémités (730 gauche, « Or IV » droite). 29 tests ciblés verts.
+
+**Point ouvert** : restart serveur côté user. Remplissage reste à granularité sous-palier (limite data LUSR assumée et expliquée). Commit sur autorisation.
+
+## [2026-06-07] Harmonisation UI (révision 3) — titre CSR/LUSR sorti en titre de section + extrémités de barre + note serveur — Complété (code)
+
+**Statut** : Complété (code). Go `build ./...` OK + analysis tests OK ; front typecheck/lint OK + vitest 102/102. ⚠️ Fix barre LUSR = BACKEND → nécessite **restart serveur** (Air rebuild depuis les sources) ; l'ancien `tmp/server.exe` ne l'a pas → c'est pourquoi le user voyait « toujours pas de barre LUSR ».
+
+**Contexte** : retours user. (a) titre des cartes pics insatisfaisant → « comme un titre de section, sorti des cases ». (b) « toujours pas de barre LUSR » + « ni valeurs aux extrémités ».
+
+**Décision technique** :
+1. **Titre sorti** : `HomeSkillPeakCard` rend le label en `<h3 text-sm font-semibold>` AU-DESSUS de la KpiCard (carte dé-titrée : badge + rating + barre + palier). Zéro changement appelant (Home + Explorer héritent). `getByText` des tests intacts (même texte, déplacé `<p>`→`<h3>`).
+2. **Extrémités barre** : rating (gauche) ─ barre ─ palier suivant (droite). Ré-ajout `NextTierLabel(tierEN, frPreferred)` ORDINAL (ordre des paliers, scale-independent : Diamant→Onyx, Or→Platine ; nil pour Onyx) + champ `next_tier_label` sur HomeSkillPeakSummary + locale ré-injectée dans `buildHomeSkillPeak`. Front : `flex` rating + `CompositeProgressBar` (flex-1) + span palier suivant.
+3. **Serveur** : tué (autorisation user) pour lire les DB joueur ; relance requise côté user pour voir le fix backend. Front (titre/grille) live via HMR.
+
+**Résultats observés** : tests Go `SkillTierBand` (ordinal) + `NextTierLabel` (Diamant→Onyx, Or→Platine FR/EN, Onyx→nil). Test front barre 40 % + extrémités (rating 730 gauche, « Platine » droite). 102 tests front verts.
+
+**Point ouvert** : restart serveur requis côté user pour valider le rendu LUSR. Style des titres (section) à confirmer visuellement. Commit sur autorisation.
+
+## [2026-06-06] Harmonisation UI (révision 2) — bande sous-palier ORDINALE (fix LUSR ≠ échelle CSR) + ajustements grille — Complété (titre CSR/LUSR en attente)
+
+**Statut** : Complété (code). Go build/test analysis OK ; front typecheck 0 err + lint 0 err + vitest 102/102. Serveur local + Air stoppés (autorisation user) pour lire les DB joueur ; user relancera. Reste : style des titres « Meilleur CSR/LUSR » (en attente d'arbitrage user).
+
+**Contexte** : retours user. (1) Rendement/Résist −5 % de largeur → Précision. (2) « LUSR n'a pas de barre ». (3) titres CSR/LUSR insatisfaisants (conseil demandé). (4) tuiles Hero : ne pas centrer verticalement, aligner tous les titres.
+
+**Découverte clé (diagnostic LUSR sur données réelles)** : DB joueur lues directement (serveur tué). XxDaemonGamerxX LUSR pic = **1502.9 → tier « Or IV » (Gold IV)** ; Madina97294 LUSR = **2000 → Onyx**, CSR alltime = 1400 Diamant IV. Donc **le LUSR n'est PAS sur l'échelle de valeur du CSR** (1502.9 = Or IV côté LUSR, alors que 1500 = Onyx côté CSR). Le calcul « rév. 1 » dérivé de la valeur brute + bornes CSR classait à tort le LUSR 1502.9 en Onyx → pas de barre. C'était ça le bug « LUSR sans barre ».
+
+**Décision technique** :
+1. **Bande ORDINALE** : `SkillTierBand(tierEN, subTier)` → progression via le sous-palier stocké (I..VI), `(n-1)/5` (I=0 %, VI=100 %), Onyx → 100 % (sommet). INDÉPENDANTE de l'échelle de valeur → correcte pour CSR ET LUSR (chaque système renseigne tier+sub_tier sur sa propre échelle). Remplace l'approche valeur-brute de la rév. 1. `Tier`/`SubTier` ré-ajoutés à HomeSkillPeakRow + repeuplés (loadCSRAlltimePeak + assemblePeak). Front inchangé (lit `tier_progress_pct`).
+2. **Grille Hero** : Rendement/Résist 11→10.5fr, Précision 3→3.5fr (lg template, somme 48 inchangée).
+3. **Titres alignés** : conteneur tuile Hero `justify-center` → `justify-start` (titres en haut, contenu qui descend) — au lieu du centrage vertical.
+
+**Résultats observés** : test Go SkillTierBand réécrit (Gold IV→60 %, VI→100 %, Onyx→100 %, sub 0/hors-borne→pas de bande). 102 tests front verts. Onyx (Madina LUSR) → barre pleine = cohérence visuelle ; Gold IV (XxDaemon LUSR) → 60 % (corrige le « pas de barre »).
+
+**Point ouvert** : style des titres « Meilleur CSR/LUSR » (proposition en cours, 3 pistes). `TestNoUnauthorizedSharedSocialMention` pré-existant toujours hors périmètre. Commit sur autorisation.
+
+## [2026-06-06] Harmonisation UI (révision) — bande sous-palier dérivée du rating + couleur WR neutre + réordonnancement Hero — Complété
+
+**Statut** : Complété. Go build/vet/test analysis OK (CGO) ; front typecheck 0 err + lint 0 err + vitest 102/102. (Échec Go pré-existant `TestNoUnauthorizedSharedSocialMention` toujours présent, hors périmètre.)
+
+**Contexte** : retours user sur l'itération précédente. (1) barre « à 100 % dans les deux cas » = bug ; (2) caption « +N pts » à supprimer (pas de sens) ; (3) barre à placer à droite du score ; (4) couleur dynamique trop sévère (49 % WR peint en rouge alors que le système vise 50 %) ; (5) Durée totale en 2e, Taux de victoire −10 % de largeur au profit de Précision.
+
+**Décision technique** :
+1. **Bug barre 100 %** : cause = calcul via le `subTier` STOCKÉ (alltime_sub_tier / match_skill_rank.sub_tier), périmé vis-à-vis du rating → débordement → clamp 100. Fix : `SkillTierBand(rating)` simplifié, dérive la position du SEUL rating (`(rating mod 50)/50`, sous-paliers alignés sur multiples de 50). Par construction progressPct ∈ [0,100[ — jamais 100. Onyx (≥1500) → ok=false. Suppression de csrTierFloors/csrTierOrder/csrNextTier + des champs `Tier`/`SubTier` (HomeSkillPeakRow) + population repo (devenus inutiles).
+2. **Simplification API** : retrait de `points_to_next_tier` + `next_tier_label` → il ne reste que `tier_progress_pct` sur HomeSkillPeakSummary. Retrait i18n `home.spartan.points_to_next` + dict `pointsToNext` + prop `pointsToNextLabel` (4 callers Home+Explorer).
+3. **Layout carte** (HomeSkillPeakCard) : rating + barre À SA DROITE (flex-1), ligne palier dessous ; plus de caption ni d'extrémités. Bande seulement matured non-Onyx ; placement/Onyx/absent → rating + ligne palier classique (inchangés).
+4. **Couleur WR neutre** : bande [45,55] % → outcome-draw (« pas trop grave ») ; vert/rouge seulement au-delà. KDA/précision gardent leurs échelles perf existantes (déjà graduées).
+5. **Grille Hero** : Durée totale déplacée en position 2 (DOM + template lg) ; largeurs lg `3 4 3 9 7 11 3 8` fr (WinRate 10→9, Précision 2→3, somme inchangée 48).
+
+**Résultats observés** : test Go SkillTierBand réécrit (dérivé rating : 730→60 %, 1499→98 %, 1500/0/négatif → ok=false). Test front barre (60 %, rating+palier conservés). 102 tests front verts ; états placement/Onyx intacts.
+
+**Point ouvert** : barre = position du peak dans son sous-palier (50 pts). Valeur figée par joueur (peak historique) — informatif mais pas « vivant ». Le palier suivant n'est plus nommé (barre nue à droite du score). Commit sur autorisation.
+
+## [2026-06-06] Harmonisation UI (suite) — accents dynamiques Hero + bande sous-palier CSR/LUSR — Complété
+
+**Statut** : Complété. Go vet OK + build CGO OK ; tests analysis (SkillTierBand) OK ; suite Go `./...` = 1 seul échec PRÉ-EXISTANT (`TestNoUnauthorizedSharedSocialMention`, dette branche shared_social, hors périmètre). Front typecheck 0 err + lint 0 err + vitest 102/102.
+
+**Contexte** : suite de l'harmonisation (cf. entrée suivante). Deux demandes user : (1) passer FDA/précision/taux de victoire en accent DYNAMIQUE ; (2) régler les blocs « Meilleur CSR/LUSR » jugés « grands blocs vides » (style entre-deux KPI/bloc). Décidé : Option C du catalogue (mini-bloc enrichi d'une bande de progression sous-palier), 2 blocs distincts, titre = label de KPI card.
+
+**Décision technique** :
+1. **Accents dynamiques (frontière type 2/4)** : FDA→`kdScale`, précision→`accuracyScale` (perf-tiers), taux de victoire→`outcome-win/loss/draw` (seuil 50 %). Valeurs Hero neutralisées en `text-foreground` (la barre porte le sentiment → parité Explorer). Métriques descriptives (Parties, Durée, Playlist, Off/Def, Arme) gardent un accent fixe.
+2. **Bande sous-palier** : helper pur `analysis.SkillTierBand(tierEN, subTier, rating, frPreferred)` → (progressPct 0..100, pointsToNext 0..50, nextLabel, ok). Bornes = constantes CSR du jeu (Bronze0/Silver300/Gold600/Platine900/Diamant1200, sous-paliers de 50 ; Onyx ouvert → ok=false). clamp robuste si binning LUSR diffère ; LUSR partage l'échelle CSR (mêmes noms de paliers).
+3. **3 champs** sur `HomeSkillPeakSummary` (`tier_progress_pct`, `points_to_next_tier`, `next_tier_label`) calculés dans `buildHomeSkillPeak` (matured + tier exploitable, locale threadée). `Tier`/`SubTier` bruts ajoutés à `HomeSkillPeakRow` + peuplés dans `loadCSRAlltimePeak` + `assemblePeak`. openapi N/A (endpoint home non spécifié). `types.ts` mis à jour à la main.
+4. **HomeSkillPeakCard** recoquillé en primitive `KpiCard` (bg-card, rounded-lg, plus de shadow/backdrop-blur) + label KPI (text-2xs uppercase) + bande `[palier courant ─CompositeProgressBar─ palier suivant]` + caption « +N pts » (i18n `home.spartan.points_to_next`, FR+EN). Bande affichée uniquement matured non-Onyx ; sinon ligne palier classique (placement/Onyx/absent inchangés). Câblé Home + Explorer (prop `pointsToNextLabel`).
+
+**Résultats observés** : test Go `SkillTierBand` (13 cas : milieu palier, sortie VI→Onyx, Onyx/inconnu/subTier-hors-borne → ok=false, clamps haut/bas). Test front bande (barre 60 %, palier suivant « Or IV », « +20 pts », rating 730 conservé). Tous les tests d'états placement/Onyx existants intacts (pas de `tier_progress_pct` → pas de bande → ligne palier). Aucune régression (102 tests front).
+
+**Point ouvert** : 1 échec Go pré-existant `TestNoUnauthorizedSharedSocialMention` (player_resolver.go / seed_demo.go / seed_demo_media.go référencent `shared_social` hors whitelist — dette du travail « shared_social canonique » déjà commité sur la branche, étranger à cette tâche). À traiter séparément (whitelister ces 3 fichiers ou router via persister). Commit sur autorisation.
+
+## [2026-06-06] Harmonisation UI — style « KPI card » (type 2 catalogue) sur les 8 tuiles Hero du Home — Complété
+
+**Statut** : Complété. Front typecheck (0 err) + lint (0 err, 76 warnings préexistants hors fichiers touchés) + vitest 25/25 (KpiCard 3, StatCard 7, HomePage 15).
+
+**Contexte** : démarrage d'un chantier d'harmonisation UI piloté par l'utilisateur via un catalogue de 5 types canoniques (page modèle = Explorer recherche joueur ; cf. mémoire `reference-ui-canonical-types-catalog`). Première application : poser le **style du type 2** (« KPI card » accent fixe) sur la rangée Hero KPI du Home, jusque-là incohérente en interne (2 tuiles via `StatCard variant="kpi"`, 6 via `<div>` inline copiés-collés, toutes en `bg-muted` centré sans barre d'accent).
+
+**Décision technique** :
+1. **Primitive unifiée** `components/cards/KpiCard.tsx` = concrétisation de la fusion type 2 + type 4 décidée au catalogue : chrome `overflow-hidden rounded-lg border border-border bg-card` + barre d'accent 3px en haut (prop `accent?: SemanticToken` — fixe par métrique OU calculée selon contenu) + slot `children` libre. `overflow-hidden` clippe la barre aux coins arrondis. Pas de props structurées label/value spéculatives (YAGNI) — ajout au moment de migrer Explorer.
+2. **8 tuiles Hero** recâblées sur `<KpiCard accent=… className="flex h-full flex-col">` + conteneur interne `flex flex-1 … items-center justify-center` (remplit la cellule grid en hauteur). Accent fixe par métrique calqué sur la rangée carrière Explorer : Parties=chart-series-1, KDA=perf-tier-2, WinRate=outcome-win, Durée=chart-series-2, Playlist=chart-series-3, Off/Def=chart-series-4, Précision=info, Arme=chart-series-5. Labels harmonisés en `text-2xs uppercase tracking-label-xl` (CSS-only → `getByText` des tests intacts).
+3. **Préservé tel quel** (demande explicite « le style, pas le contenu ») : valeurs colorées (text-primary, kdScale/accuracyScale), contenu composite (OutcomeBar, CombatYieldDisplay, sous-comptes playlist/arme), grille proportionnelle `kpi-stats-grid`, tous les `data-testid` (`home-favorite-weapon` déplacé sur la prop `testId` de KpiCard).
+4. **Dead code** : `HomeKPICard` (wrapper de `StatCard variant="kpi"`) devenu orphelin → supprimé + références en commentaire corrigées (HomePage.tsx, StatCard.tsx).
+
+**Résultats observés** : tuiles Hero passent en `bg-card` + barre d'accent colorée + label uppercase, alignées visuellement sur la rangée « Carrière complète » d'Explorer. Test minimal ajouté pour la primitive (chrome, barre présente/absente). Vérif visuelle navigateur (HMR) laissée à l'utilisateur.
+
+**Point ouvert / prochaine étape** : valeurs Hero gardées colorées (text-primary) vs Explorer qui les met en `text-foreground` (la barre d'accent porte alors seule la couleur) — à neutraliser si l'utilisateur préfère la parité stricte. `StatCard variant="kpi"` désormais sans consommateur applicatif (seul son test le couvre) : candidat à un nettoyage ultérieur, hors scope ici. Migration des 2 implémentations Explorer (`KpiTile`, `KpiCard` local) sur la primitive partagée = étape suivante de l'harmonisation. Commit sur autorisation (consigne).
+
 ## [2026-06-06] Kill-feed dead-state — port bit-exact FUN_140c1dd44 + capture des champs + sonde 93 morts — En cours (blocage décodeur amont)
 
 **Statut** : En cours. Go build+vet+test filmdec OK (CGO). Mécanisme RE confirmé et porté ; capture empirique faite ; **conclusion : champs non fiables faute de bit-exactness du spine delta biped i0..i10**.
@@ -29,6 +128,14 @@
 **Résultats observés** : tests de régression ajoutés — scénario 2 joueurs (home) prouve % distincts + ordonnés (plus efficace = % plus haut) + invariant `% = 225/DmgPerKill` ; test kpi_stats avec dataset hétérogène distingue agrégat (1.72) de mean-of-ratios (3.09). Tout vert.
 
 **Prochaine étape** : vérif end-to-end app (Home des 3 cibles) reste à faire ; commit sur autorisation (ne stager que les fichiers rendement, laisser intact le WIP seed_demo de la branche).
+
+## [2026-06-06] Démo #3 playlists classées (corpus) + constat bloquant #4/#5 — Complété (#3) / Pivot (#4-#5)
+
+**#3 — Complété + déployé + vérifié.** Corpus solo+squad = 100% Partie rapide → `recent_playlist_ranks` sans playlist classée. Ajout `selectRecentRankedMatchIDs` (top 15, `is_ranked` OU 'ranked' dans playlist/pair name) union dans le corpus. Vérifié home : **Partie rapide + Assassin classé + Arène classée** (CSR, badges). Nuance : playlists classées en **état placement** (matchs classés seedés en placement, pas un palier CSR résolu) — affinage possible.
+
+**#4 (défis) / #5 (prestige) — PIVOT nécessaire.** Le plan seed-time (`applyDemoEnrichment` peuplant une table) ne tient pas pour les défis : `GetChallenges` fallback cache `challenge_snapshots` **TTL 24h** → une fixture seedée expire en 24h + le cache ne peuple pas les `Items`. Bonne approche = **fixture au niveau LECTURE**, guardée `DemoMode` (bypass TTL/live), pas au seed. Prestige = multi-tables, même logique read-time DemoMode probable. À valider avec l'utilisateur avant implémentation.
+
+---
 
 ## [2026-06-06] Démo médias 0 item — shared_social canonique + migration incomplète (bug prod latent) — Complété (code)
 
