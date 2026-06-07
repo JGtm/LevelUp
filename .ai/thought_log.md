@@ -1,3 +1,19 @@
+## [2026-06-07] Demo : vraie carte média (asso prod) + tier FR + arc Étape 1/4 + streaks — Complété
+
+**Statut** : Complété (validé local). go build ./... + vet + go test ./internal/ops/ OK ; TestLoadVideoRealMaps (intégration) PASS ; tsc + eslint OK. Commits 5341dc26f (média) + ab0e60c3f (tier/arc/streaks). Non déployé.
+
+**Demandes** : (1) vidéos démo avec mauvaise carte étiquetée. (2) tier "Heroic" au lieu de "Héroïque" en FR. (3) arc à 0% / pas "en cours". (4) aucune streak (bloc Ascension).
+
+**Décisions techniques** :
+1. **Maps média (root cause)** : `closestMatchMap` devinait la carte par proximité temporelle (timestamp ±30min du nom de fichier) → faux quasi systématiquement (prouvé : vidéo réellement sur Illusion étiquetée Forbidden, etc.). Remplacé par `loadVideoRealMaps` qui lit la VRAIE carte depuis l'association PROD (`shared_social` source : media_files → media_match_associations → match → map_name via `shared_matches_v2` ATTACHé). Vidéo attribuée à un match démo de LA MÊME carte. Vérifié sur prod : 60/77 vidéos associées, 46 avec vraie carte dans le pool démo. Code mort retiré (srcMatch, loadSourcePlayerMatches, closestMatchMap).
+2. **Tier i18n (prod-impactant)** : `TIER_LABELS_FR` contenait des valeurs anglaises → traduit (Héroïque/Légendaire/Mythique) + ajout `TIER_LABELS_EN` + sélection par locale dans ChallengeCard (le fallback est le chemin d'affichage réel).
+3. **Arc** : fixture `demoActiveChallenges` + 1 challenge complété → Étape 1/4 ; `HomePrestigeSection` passe les steps à ArcSummary (barre affichée). (Ces 2 fichiers partagés ont été commités par l'agent parallèle dans b0563e9de.)
+4. **Streaks** : `ProgressionHandler.WithDemoMode` + `demoStreaks()` read-time (la player DB démo n'a pas de table streaks calculée sans sync).
+
+**Prod impactée ?** : #2 OUI (label tier FR + barre arc Home étaient des bugs prod). #1/#3-data/#4 = démo-only.
+
+**Prochaine étape** : déploiement (push main → reseed → maps correctes) sur autorisation.
+
 ## [2026-06-07] ArcSummary (desc + seuils agrandis) + i18n module Prestige (composants home) (révision 19) — Complété partiel (front-only)
 
 **Statut** : Complété pour les composants home-visibles. typecheck OK + lint exit 0 + vitest home/prestige 28. CreateChallengeForm = reste à faire (proposé au user).
