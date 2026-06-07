@@ -92,8 +92,12 @@ func extractDemoMedia(
 			}
 		}
 		match, _ := pickCorpusMatch(corpus, "", i)
+		// capture_start ALIGNÉ sur le match du corpus attribué (pas la date réelle du
+		// fichier) : sinon la fenêtre de candidats de réassociation (matchs proches de
+		// la capture) est vide en démo (captures déc.-fév. vs corpus récent). Aligné →
+		// la réassociation propose les matchs voisins du corpus. Fallback date fichier.
 		captureStart := v.CaptureStart
-		if !captureStart.Valid && !match.TargetStartTime.IsZero() {
+		if !match.TargetStartTime.IsZero() {
 			captureStart = sql.NullTime{Time: match.TargetStartTime, Valid: true}
 		}
 		row := demoMediaRow{
