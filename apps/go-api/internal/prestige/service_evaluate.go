@@ -126,4 +126,62 @@ func (s *service) creditCompletion(ctx context.Context, c Challenge, now time.Ti
 		}
 	}
 	s.emitter.EmitTransition(ctx, updated, TelemetryCompleted)
+
+	// Si ce défi était la dernière étape d'un arc, clôturer l'arc et créditer
+	// son bonus de complétion (distinct des PP du défi déjà crédités ci-dessus).
+	if c.ArcID != "" {
+		s.maybeCompleteArc(ctx, c.ArcID, c.UserID, c.TitleSlug, now, out)
+	}
+}
+
+// maybeCompleteArc clôture un arc et crédite son bonus si toutes ses étapes
+// sont terminées. No-op si l'arc est déjà clôturé ou s'il reste des objectifs
+// non complétés. Best-effort : toute erreur de persistance est loggée sans
+// faire échouer l'évaluation du défi déclencheur.
+func (s *service) maybeCompleteArc(ctx context.Context, arcID, userID, titleSlug string, now time.Time, out *EvaluationOutcome) {
+	arc, err := s.deps.Arcs.Get(ctx, arcID)
+	if err != nil {
+		slog.WarnContext(ctx, "prestige: arc fetch for completion failed", "arc_id", arcID, "err", err)
+		return
+	}
+	if arc.CompletedAt != nil {
+		return // déjà clôturé → bonus déjà crédité, idempotent
+	}
+	objectives, err := s.deps.Challenges.List(ctx, ChallengeFilter{
+		UserID: userID, TitleSlug: titleSlug, ArcID: &arcID,
+	})
+	if err != nil || len(objectives) == 0 {
+		return
+	}
+	objectivesPP := 0
+	for _, o := range objectives {
+		if o.Status != StatusCompleted {
+			return // au moins une étape reste à faire
+		}
+		objectivesPP += PPForCompletion(s.deps.Tuning, o.Tier, false, o.DataTier)
+	}
+
+	if err := s.deps.Arcs.MarkCompleted(ctx, arcID, now); err != nil {
+		slog.WarnContext(ctx, "prestige: mark arc completed failed", "arc_id", arcID, "err", err)
+		return
+	}
+	bonus := PPForArcCompletion(s.deps.Tuning, objectivesPP)
+	out.ArcCompletedID = arcID
+	out.ArcPPCredited = bonus
+	if bonus > 0 {
+		ev := PrestigeEvent{
+			ID:         newID("pe"),
+			UserID:     userID,
+			TitleSlug:  titleSlug,
+			SourceType: SourceArc,
+			SourceID:   arcID,
+			PPAmount:   bonus,
+			CreatedAt:  now,
+		}
+		if err := s.deps.Prestige.EmitEvent(ctx, ev); err != nil {
+			slog.WarnContext(ctx, "prestige: emit arc event failed", "arc_id", arcID, "err", err)
+		}
+	}
+	slog.InfoContext(ctx, "prestige: arc completed",
+		"arc_id", arcID, "user_id", userID, "objectives_pp", objectivesPP, "bonus_pp", bonus)
 }

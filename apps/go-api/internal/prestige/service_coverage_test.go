@@ -55,7 +55,22 @@ func (r *stubChallengeRepo) Get(_ context.Context, id string) (Challenge, error)
 	}
 	return c, nil
 }
-func (r *stubChallengeRepo) List(_ context.Context, _ ChallengeFilter) ([]Challenge, error) {
+func (r *stubChallengeRepo) List(_ context.Context, f ChallengeFilter) ([]Challenge, error) {
+	// Filtre par arc : lit depuis `stored` pour refléter les UpdateStatus
+	// (utilisé par enrichArcReward / maybeCompleteArc). Le chemin sans ArcID
+	// conserve le comportement historique (retourne listResult tel quel).
+	if f.ArcID != nil {
+		if r.listErr != nil {
+			return nil, r.listErr
+		}
+		var out []Challenge
+		for _, c := range r.stored {
+			if c.ArcID == *f.ArcID {
+				out = append(out, c)
+			}
+		}
+		return out, nil
+	}
 	return r.listResult, r.listErr
 }
 func (r *stubChallengeRepo) UpdateStatus(_ context.Context, id string, s ChallengeStatus, _ time.Time) error {

@@ -38,15 +38,23 @@ func (s *service) CreateArc(ctx context.Context, req CreateArcRequest) (Arc, err
 	return a, nil
 }
 
-// ListArcs liste les arcs d'un joueur sur un titre donné (preset + libres).
+// ListArcs liste les arcs d'un joueur sur un titre donné (preset + libres),
+// enrichis avec la récompense PP (objectifs cumulés + bonus de complétion).
 func (s *service) ListArcs(ctx context.Context, userID, titleSlug string) ([]Arc, error) {
 	if userID == "" || titleSlug == "" {
 		return nil, fmt.Errorf("%w: user_id/title_slug requis", ErrInvalidInput)
 	}
-	return s.deps.Arcs.ListByUser(ctx, userID, titleSlug)
+	arcs, err := s.deps.Arcs.ListByUser(ctx, userID, titleSlug)
+	if err != nil {
+		return nil, err
+	}
+	for i := range arcs {
+		arcs[i] = s.enrichArcReward(ctx, arcs[i])
+	}
+	return arcs, nil
 }
 
-// GetArc retourne un arc par ID.
+// GetArc retourne un arc par ID, enrichi avec sa récompense PP.
 func (s *service) GetArc(ctx context.Context, id string) (Arc, error) {
 	a, err := s.deps.Arcs.Get(ctx, id)
 	if err != nil {
@@ -55,7 +63,27 @@ func (s *service) GetArc(ctx context.Context, id string) (Arc, error) {
 		}
 		return Arc{}, fmt.Errorf("get arc: %w", err)
 	}
-	return a, nil
+	return s.enrichArcReward(ctx, a), nil
+}
+
+// enrichArcReward calcule ObjectivesPP (somme des PP des objectifs) et
+// CompletionBonusPP (bonus de complétion) pour l'affichage. Best-effort :
+// si la liste des objectifs échoue, l'arc est retourné non enrichi.
+func (s *service) enrichArcReward(ctx context.Context, a Arc) Arc {
+	objectives, err := s.deps.Challenges.List(ctx, ChallengeFilter{
+		UserID: a.UserID, TitleSlug: a.TitleSlug, ArcID: &a.ID,
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "prestige: enrich arc reward failed", "arc_id", a.ID, "err", err)
+		return a
+	}
+	objectivesPP := 0
+	for _, o := range objectives {
+		objectivesPP += PPForCompletion(s.deps.Tuning, o.Tier, false, o.DataTier)
+	}
+	a.ObjectivesPP = objectivesPP
+	a.CompletionBonusPP = PPForArcCompletion(s.deps.Tuning, objectivesPP)
+	return a
 }
 
 // ---------- Squad challenges ----------

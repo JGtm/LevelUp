@@ -34,10 +34,18 @@ func PPForCompletion(t Tuning, tier Tier, isSquad bool, dataTier DataTier) int {
 
 // PPForArcCompletion retourne le bonus PP attribué à la complétion d'un arc.
 //
-// Pas de multiplicateur data_tier sur le bonus arc (l'arc requiert déjà
-// que les défis successifs aient été validés, donc data_tier est implicite).
-func PPForArcCompletion(t Tuning) int {
-	return t.PPAmounts.ArcCompletionBonus
+// Le bonus est une fraction (ArcCompletionBonusRatio) des PP cumulés des
+// objectifs de l'arc — ainsi un arc rapporte toujours plus que son meilleur
+// défi unitaire, et le bonus croît avec le nombre ET la difficulté des étapes.
+//
+// objectivesPP = somme des PPForCompletion de chaque objectif de l'arc.
+// Pas de multiplicateur data_tier supplémentaire : il est déjà appliqué dans
+// le PP de chaque objectif, donc implicitement répercuté sur la somme.
+func PPForArcCompletion(t Tuning, objectivesPP int) int {
+	if objectivesPP <= 0 {
+		return 0
+	}
+	return int(math.Round(float64(objectivesPP) * t.PPAmounts.ArcCompletionBonusRatio))
 }
 
 // PPForMatch retourne les PP gagnés pour un match joué (avec bonus victoire).

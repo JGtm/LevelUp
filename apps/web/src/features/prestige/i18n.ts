@@ -18,6 +18,9 @@ export interface PrestigeText {
   arcCompleted: string
   arcPreset: string
   arcTotalPPTooltip: string
+  /** Petit tag accolé au bonus de complétion d'arc (ex: "+150 PP bonus"). */
+  arcBonusBadge: string
+  arcBonusPPTooltip: string
   // ── Formulaire de création (CreateChallengeForm) ──
   formNewChallenge: string
   formCancel: string
@@ -74,6 +77,9 @@ const FR: PrestigeText = {
   arcCompleted: 'Accompli',
   arcPreset: 'Préréglage',
   arcTotalPPTooltip: "Points de Prestige cumulés des objectifs de l'arc",
+  arcBonusBadge: 'bonus',
+  arcBonusPPTooltip:
+    "Bonus de complétion de l'arc, crédité une fois toutes les étapes terminées — en plus des PP de chaque objectif.",
   formNewChallenge: 'Nouveau défi',
   formCancel: 'Annuler',
   formModeHybrid: 'Hybride',
@@ -126,6 +132,9 @@ const EN: PrestigeText = {
   arcCompleted: 'Completed',
   arcPreset: 'Preset',
   arcTotalPPTooltip: "Total Prestige Points from the arc's objectives",
+  arcBonusBadge: 'bonus',
+  arcBonusPPTooltip:
+    "Arc completion bonus, credited once all steps are done — on top of each objective's PP.",
   formNewChallenge: 'New challenge',
   formCancel: 'Cancel',
   formModeHybrid: 'Hybrid',

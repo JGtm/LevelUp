@@ -117,6 +117,10 @@ export interface Arc {
   preset_id?: string
   created_at: string
   completed_at?: string
+  /** Somme des PP des objectifs de l'arc (enrichi en lecture par le backend). */
+  objectives_pp?: number
+  /** Bonus PP crédité à la complétion de l'arc — distinct des PP des objectifs. */
+  completion_bonus_pp?: number
 }
 
 export interface MomentCard {

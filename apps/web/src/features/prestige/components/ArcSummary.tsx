@@ -31,6 +31,10 @@ export function ArcSummary({
   const t = getPrestigeText(locale)
   const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0
   const isComplete = arc.completed_at != null
+  // PP cumulés des objectifs (source autoritative = backend ; fallback sur la
+  // somme calculée côté appelant) + bonus de complétion d'arc, distinct.
+  const objectivesPP = arc.objectives_pp ?? totalPP
+  const bonusPP = arc.completion_bonus_pp ?? 0
 
   const Wrapper = onClick ? 'button' : 'div'
 
@@ -45,12 +49,23 @@ export function ArcSummary({
       <header className="flex items-start justify-between gap-3">
         <h3 className="min-w-0 flex-1 font-semibold">{arc.title}</h3>
         <div className="flex shrink-0 items-center gap-1.5">
-          {totalPP > 0 && (
+          {objectivesPP > 0 && (
             <span
               className="rounded-full bg-primary/10 px-2 py-0.5 text-2xs font-semibold tabular-nums text-primary"
               title={t.arcTotalPPTooltip}
             >
-              {totalPP} PP
+              {objectivesPP} PP
+            </span>
+          )}
+          {bonusPP > 0 && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-primary/20 px-2 py-0.5 text-2xs font-semibold tabular-nums text-primary"
+              title={t.arcBonusPPTooltip}
+            >
+              +{bonusPP} PP
+              <span className="text-3xs font-medium uppercase tracking-wide opacity-80">
+                {t.arcBonusBadge}
+              </span>
             </span>
           )}
           {isComplete && (
