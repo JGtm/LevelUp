@@ -75,6 +75,20 @@ type shadowParticipant struct {
 // Limites Phase 1 : ne traite que les matchs avec exactement 2 teams humaines
 // distinctes. Matchs FFA, 3+ teams, ou outcomes incohérents sont skippés.
 func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (int, error) {
+	return runLUSRV2Shadow(ctx, playerDB, sharedDB, xuid, false)
+}
+
+// RunLUSRV2ShadowOwnerOnly : variante RECOVERY (backfill). Persiste UNIQUEMENT
+// l'état v2 du joueur traité (pas celui de ses coéquipiers/adversaires). Combinée
+// à un reset par-joueur (DELETE player_skill_state_v2 WHERE xuid=?), elle donne à
+// CHAQUE joueur une couverture canonique complète sans écraser l'état des autres
+// — corrige le couplage cross-joueur du backfill séquentiel (cf. .ai/thought_log
+// 2026-06-07). Le live conserve RunLUSRV2Shadow (persist des 2 équipes, inchangé).
+func RunLUSRV2ShadowOwnerOnly(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (int, error) {
+	return runLUSRV2Shadow(ctx, playerDB, sharedDB, xuid, true)
+}
+
+func runLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string, ownerOnlyPersist bool) (int, error) {
 	if !IsLUSRV2Enabled() {
 		return 0, nil
 	}
@@ -119,24 +133,29 @@ func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 	}
 
 	ctxRun := shadowRunContext{
-		repo:           repo,
-		squadRepo:      squadRepo,
-		playerDB:       playerDB,
-		sharedDB:       sharedDB,
-		priors:         priors,
-		tierBoundaries: tierBoundaries,
-		xuid:           xuid,
-		canonical:      canonical,
-		priorsCache:    make(map[string]skillv2.Priors),
-		countHypCache:  make(map[string]map[skillv2.CountType]skillv2.CountHyperparams),
+		repo:             repo,
+		squadRepo:        squadRepo,
+		playerDB:         playerDB,
+		sharedDB:         sharedDB,
+		priors:           priors,
+		tierBoundaries:   tierBoundaries,
+		xuid:             xuid,
+		canonical:        canonical,
+		ownerOnlyPersist: ownerOnlyPersist,
+		priorsCache:      make(map[string]skillv2.Priors),
+		countHypCache:    make(map[string]map[skillv2.CountType]skillv2.CountHyperparams),
 	}
 	var s shadowRunStats
+	// heldGroups : groupes dont un match a échoué son écriture canonical ce run.
+	// Les matchs plus RÉCENTS de ces groupes sont sautés pour ne pas avancer le
+	// watermark de groupe par-dessus un match non écrit (anti-gap, fix 2026-06-07).
+	heldGroups := make(map[string]bool)
 	withGameplayDur := 0 // matchs ayant une durée gameplay → pondération temps-joué alimentée
 	for _, m := range matches {
 		if m.gameplayDurMs > 0 {
 			withGameplayDur++
 		}
-		processOneShadowMatch(ctx, ctxRun, m, &s)
+		processOneShadowMatch(ctx, ctxRun, m, &s, heldGroups)
 	}
 	slog.InfoContext(ctx, "LUSR v2 shadow terminé",
 		"xuid", xuid, "processed", s.processed,
@@ -144,6 +163,8 @@ func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 		"skipped_already_seen", s.skippedAlready,
 		"skipped_non_two_team", s.skippedNonTwoTeam,
 		"skipped_imbalance", s.skippedImbalance,
+		"skipped_write_failed", s.skippedWriteFailed,
+		"skipped_group_held", s.skippedGroupHeld,
 		"total_candidates", len(matches),
 		// Observabilité TS2 : nb de matchs où wᵢ=time_played/durée_gameplay est
 		// alimenté (durée gameplay connue). 0 → pondération inactive (fallback wᵢ=1).
@@ -168,8 +189,11 @@ type shadowRunContext struct {
 	tierBoundaries []skillv2.TierBoundary
 	xuid           string
 	canonical      bool
-	priorsCache    map[string]skillv2.Priors
-	countHypCache  map[string]map[skillv2.CountType]skillv2.CountHyperparams
+	// ownerOnlyPersist : recovery backfill — ne persiste que l'état du joueur
+	// traité (pas les coéquipiers). Voir RunLUSRV2ShadowOwnerOnly.
+	ownerOnlyPersist bool
+	priorsCache      map[string]skillv2.Priors
+	countHypCache    map[string]map[skillv2.CountType]skillv2.CountHyperparams
 }
 
 // shadowRunStats compte les buckets de skip pour le log de fin de run.
@@ -179,16 +203,34 @@ type shadowRunStats struct {
 	skippedAlready    int
 	skippedNonTwoTeam int
 	skippedImbalance  int
+	// skippedWriteFailed : matchs dont l'écriture canonical a échoué → watermark
+	// VOLONTAIREMENT tenu (état v2 non persisté) pour retry au prochain cycle
+	// (fix désync 2026-06-07). Distinct de skippedImbalance (skip pré-compute).
+	skippedWriteFailed int
+	// skippedGroupHeld : matchs sautés car un match plus ANCIEN du même groupe a
+	// échoué son écriture canonical ce run (préserve l'avance EN ORDRE du watermark
+	// de groupe → empêche le gap LUSR permanent multi-matchs, fix 2026-06-07).
+	skippedGroupHeld int
 }
 
 // processOneShadowMatch applique le pipeline shadow à UN match :
 // résolution chain → watermark → rosters → EP update → écriture canonical.
 // Tout skip est compté dans `s` ; les erreurs non-bloquantes sont loggées
 // mais n'arrêtent pas la boucle parente.
-func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatch, s *shadowRunStats) {
+func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatch, s *shadowRunStats, heldGroups map[string]bool) {
 	group := GetLUSRChain(m.pairName)
 	if group == "" {
 		s.skippedChain++
+		return
+	}
+	// Anti-gap multi-matchs (fix 2026-06-07) : si un match PLUS ANCIEN du même
+	// groupe a échoué son écriture canonical ce run, on saute les matchs plus
+	// récents du groupe. Sinon leur persist avancerait le watermark de groupe
+	// PAR-DESSUS le match non écrit → celui-ci deviendrait skippedAlready à jamais
+	// = gap LUSR permanent. Les matchs étant traités en ordre chrono ASC, tenir le
+	// groupe garantit que le watermark n'avance jamais au-delà d'un match non écrit.
+	if heldGroups[group] {
+		s.skippedGroupHeld++
 		return
 	}
 	// Watermark : un match dont start_time ≤ last_match_at du groupe a déjà
@@ -230,25 +272,72 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 	if hasAnyQuitter(teamA, teamB) {
 		qt = loadQuitTimeline(ctx, c.sharedDB, m.matchID, m.startTime, teamA, teamB)
 	}
-	ownerNew, expectedWinProb, err := applyMatchToSkillV2(ctx, c.repo, c.squadRepo, groupPriors, groupCountHyp, qt, m.matchID, group,
+	// Étape 1 — COMPUTE (pur, aucune écriture). Sépare le calcul EP de la
+	// persistance pour pouvoir GATER l'avance du watermark sur le succès de
+	// l'écriture canonical (cf. canonicalGate puis étape 3).
+	computed, err := computeMatchToSkillV2(ctx, c.repo, c.squadRepo, groupPriors, groupCountHyp, qt, m.matchID, group,
 		m.startTime, teamA, teamB, outcomeA, c.xuid, m.gameplayDurMs)
 	if err != nil {
-		slog.WarnContext(ctx, "LUSR v2 shadow: apply échoué",
+		slog.WarnContext(ctx, "LUSR v2 shadow: compute échoué",
 			"match_id", m.matchID, "group", group, "err", err,
 			"team_a_size", len(teamA), "team_b_size", len(teamB))
 		return
 	}
-	s.processed++
 
-	// Stratégie C : si v2 est canonical, écrit aussi dans match_skill_rank
-	// (rating_type='LUSR' slot historique). Best-effort — un échec d'écriture
-	// ne re-process pas le match (watermark a déjà avancé via persistTeamSkillV2).
-	if c.canonical && ownerNew != nil {
-		if err := writeCanonicalLUSRRow(ctx, c.playerDB, m.matchID, *ownerNew, expectedWinProb, c.tierBoundaries); err != nil {
-			slog.WarnContext(ctx, "LUSR v2 canonical: write match_skill_rank échoué",
-				"match_id", m.matchID, "group", group, "err", err)
-		}
+	// Étape 2 — WRITE CANONICAL (player DB) AVANT d'avancer le watermark.
+	// Le gate tient le watermark (et le groupe) si l'écriture échoue.
+	if !canonicalGate(ctx, c, m, group, computed, s, heldGroups) {
+		return
 	}
+
+	// Étape 3 — PERSIST état v2 (avance le watermark). Atteint uniquement si
+	// l'écriture canonical a réussi (ou en mode shadow-only non canonical).
+	if err := persistComputedMatchSkillV2(ctx, c.repo, computed, m.matchID, group, m.startTime, c.xuid, c.ownerOnlyPersist); err != nil {
+		slog.WarnContext(ctx, "LUSR v2 shadow: persist état échoué — watermark non avancé",
+			"match_id", m.matchID, "group", group, "err", err)
+		return
+	}
+	s.processed++
+}
+
+// canonicalGate exécute l'étape 2 (écriture de la ligne match_skill_rank) en mode
+// canonical, AVANT l'avance du watermark. Retourne true si l'on peut persister
+// l'état (étape 3), false s'il faut arrêter ce match.
+//
+// Fix désync 2026-06-07 : le watermark (player_skill_state_v2, SHARED) et la ligne
+// match_skill_rank (PLAYER DB) sont 2 écritures sur 2 bases. Avant ce fix, le
+// watermark avançait d'abord puis l'écriture canonical était best-effort APRÈS —
+// un échec (player DB momentanément fermée, etc.) laissait le match "déjà vu" SANS
+// ligne LUSR, à jamais (incident JGtm 03/06). On écrit donc d'abord ; sur échec on
+// NE persiste PAS (le caller return) ET on marque le groupe "tenu" (heldGroups)
+// pour que les matchs plus récents du groupe ne sautent pas par-dessus celui-ci.
+//
+// En mode shadow-only (non canonical), no-op : retourne true (persist direct).
+func canonicalGate(ctx context.Context, c shadowRunContext, m shadowMatch, group string,
+	computed shadowMatchComputed, s *shadowRunStats, heldGroups map[string]bool) bool {
+	if !c.canonical {
+		return true
+	}
+	if computed.ownerNew == nil {
+		// Cas dégénéré : owner participant mais absent des rosters 2-équipes
+		// (mismatch team_id). Aucune ligne LUSR n'est attendue pour lui → on NE
+		// tient PAS le groupe (un match plus récent pourra avancer par-dessus, ce
+		// cas se résout de lui-même). Anomalie data rendue VISIBLE (avant :
+		// silencieuse + watermark avancé → gap permanent invisible).
+		canonicalOwnerMissing.Add(1)
+		slog.ErrorContext(ctx, "LUSR v2 canonical: owner absent des rosters — aucune ligne LUSR écrite (désync data)",
+			"match_id", m.matchID, "group", group, "xuid", c.xuid)
+		return false
+	}
+	if err := writeCanonicalLUSRRow(ctx, c.playerDB, m.matchID, *computed.ownerNew, computed.expectedWinProb, c.tierBoundaries); err != nil {
+		canonicalWriteHeldWatermark.Add(1)
+		s.skippedWriteFailed++
+		heldGroups[group] = true
+		slog.WarnContext(ctx, "LUSR v2 canonical: write match_skill_rank échoué — watermark tenu (groupe), retry au prochain cycle",
+			"match_id", m.matchID, "group", group, "xuid", c.xuid, "err", err)
+		return false
+	}
+	return true
 }
 
 // resolveGroupParams retourne les Priors et CountHyperparams effectifs pour un
@@ -458,21 +547,30 @@ func outcomeToTeamResult(o int) (skillv2.TeamResult, bool) {
 	}
 }
 
-// applyMatchToSkillV2 applique un match à l'état de tous ses participants.
+// shadowMatchComputed porte le résultat du calcul EP d'un match AVANT toute
+// persistance. Sépare le COMPUTE (pur, idempotent, aucune écriture) de la
+// PERSIST, pour que processOneShadowMatch puisse gater l'avance du watermark
+// (player_skill_state_v2) sur le succès de l'écriture canonical
+// (match_skill_rank). Fix désync 2026-06-07 (cf. .ai/thought_log.md).
+type shadowMatchComputed struct {
+	teamAStates     []domain.SkillV2State
+	teamBStates     []domain.SkillV2State
+	newA            []skillv2.Gaussian
+	newB            []skillv2.Gaussian
+	ownerNew        *domain.SkillV2State // posterior du owner (nil = owner absent des rosters)
+	ownerPrior      *domain.SkillV2State // prior du owner (pour le cross-mode leak)
+	expectedWinProb *float64
+}
+
+// computeMatchToSkillV2 calcule l'EP update d'un match SANS rien persister.
 // Logique équivalente à service.SkillV2Service.UpdateAfterMatch ; dupliquée
 // ici parce que internal/sync ne peut pas importer internal/service (cycle).
 //
-// La couche service.SkillV2Service est conservée pour les callers externes
-// (cmd Phase 1d notamment, tests, futurs handlers HTTP). Quand le code-flow
-// se stabilisera (Phase 2/3), on pourra déplacer service.SkillV2Service vers
-// un package "shared" et supprimer ce double — ou inversement faire passer
-// le call par un callback registered au boot.
-// applyMatchToSkillV2 applique le match et persiste l'état v2. Retourne le
-// nouvel état du `ownerXUID` (côté A ou B, peu importe) — utilisé par le caller
-// pour écrire dans le slot canonical (match_skill_rank rating_type='LUSR')
-// quand Stratégie C est active. Retourne nil pour ownerNew si le owner n'est
-// pas dans la match (cas dégénéré).
-func applyMatchToSkillV2(
+// Pur : ne lit que les états pré-match (loadStatesOrSeed) et retourne les
+// posteriors en mémoire. La persistance (qui avance le watermark) est faite
+// séparément par persistComputedMatchSkillV2, APRÈS l'écriture canonical, pour
+// éviter la désync watermark/ligne LUSR (cf. processOneShadowMatch).
+func computeMatchToSkillV2(
 	ctx context.Context,
 	repo port.SkillV2Repository,
 	squadRepo port.SquadOffsetRepository,
@@ -485,17 +583,17 @@ func applyMatchToSkillV2(
 	outcomeA skillv2.TeamResult,
 	ownerXUID string,
 	gameplayDurMs int64,
-) (ownerNew *domain.SkillV2State, expectedWinProb *float64, err error) {
+) (shadowMatchComputed, error) {
 	teamAXUIDs := extractXUIDs(teamA)
 	teamBXUIDs := extractXUIDs(teamB)
 
 	teamAStates, err := loadStatesOrSeed(ctx, repo, teamAXUIDs, playlistGroup, priors)
 	if err != nil {
-		return nil, nil, fmt.Errorf("loadStates teamA: %w", err)
+		return shadowMatchComputed{}, fmt.Errorf("loadStates teamA: %w", err)
 	}
 	teamBStates, err := loadStatesOrSeed(ctx, repo, teamBXUIDs, playlistGroup, priors)
 	if err != nil {
-		return nil, nil, fmt.Errorf("loadStates teamB: %w", err)
+		return shadowMatchComputed{}, fmt.Errorf("loadStates teamB: %w", err)
 	}
 	// Sprint 1.C : gaussiennes EFFECTIVES (μ + offset squad). squadRepo nil (flag
 	// off) → offsets nuls → effA/effB == gaussiennes individuelles (no-op exact).
@@ -506,12 +604,11 @@ func applyMatchToSkillV2(
 
 	// Sprint 1.A : proba de victoire pré-match de l'équipe du owner (teamA, par
 	// construction de buildTwoTeamRosters). Sur les gaussiennes EFFECTIVES — la
-	// synergie squad rend une victoire réellement plus probable. Calculée AVANT
-	// l'update sur les états pré-match en mémoire (un re-query lirait le
-	// posterior post-persist, donc faux).
+	// synergie squad rend une victoire réellement plus probable. Calculée sur les
+	// états pré-match en mémoire.
 	probOwner, _, _ := skillv2.PredictTwoTeamWinProb(effA, effB, priors)
 	predictionsTotal.Add(1)
-	expectedWinProb = &probOwner
+	expectedWinProb := &probOwner
 
 	// gameplayDurMs (origin Timeline T0) alimente le poids TS2 wᵢ via buildCountInputs.
 	counts := buildCountInputs(ctx, teamA, teamB, outcomeA, qt, gameplayDurMs)
@@ -524,33 +621,65 @@ func applyMatchToSkillV2(
 		ResultA: outcomeA,
 	}, counts, priors)
 	if err != nil {
-		return nil, nil, fmt.Errorf("UpdateTwoTeamWithCountsEP: %w", err)
+		return shadowMatchComputed{}, fmt.Errorf("UpdateTwoTeamWithCountsEP: %w", err)
 	}
 	// Retire l'offset (constant) du posterior : seul le delta de l'EP s'applique
 	// au μ INDIVIDUEL persisté. No-op quand offsets nuls.
 	newA := stripOffsetsFromGaussians(newEffA, offsetsA)
 	newB := stripOffsetsFromGaussians(newEffB, offsetsB)
-	if err := persistTeamSkillV2(ctx, repo, teamAStates, newA, matchID, startTime); err != nil {
-		return nil, nil, fmt.Errorf("persistTeam A: %w", err)
+
+	return shadowMatchComputed{
+		teamAStates:     teamAStates,
+		teamBStates:     teamBStates,
+		newA:            newA,
+		newB:            newB,
+		ownerNew:        findOwnerPosterior(ownerXUID, teamAStates, newA, teamBStates, newB, matchID, playlistGroup, startTime),
+		ownerPrior:      findOwnerPrior(ownerXUID, teamAStates, teamBStates),
+		expectedWinProb: expectedWinProb,
+	}, nil
+}
+
+// persistComputedMatchSkillV2 persiste les états posterior des 2 équipes
+// (ce qui AVANCE le watermark via last_match_at) puis applique le cross-mode
+// leak du owner. À n'appeler qu'APRÈS une écriture canonical réussie (ou en
+// mode shadow-only) — c'est l'invariant du gate anti-désync 2026-06-07.
+func persistComputedMatchSkillV2(
+	ctx context.Context,
+	repo port.SkillV2Repository,
+	c shadowMatchComputed,
+	matchID, playlistGroup string,
+	startTime time.Time,
+	ownerXUID string,
+	ownerOnly bool,
+) error {
+	if ownerOnly {
+		// Recovery (backfill) : persiste UNIQUEMENT l'état du joueur traité, pas
+		// celui des coéquipiers/adversaires → aucun écrasement croisé. ownerNew
+		// porte déjà LastMatchID/LastMatchAt (cf. findOwnerPosterior).
+		if c.ownerNew != nil {
+			if err := repo.UpsertState(ctx, *c.ownerNew); err != nil {
+				return fmt.Errorf("persist owner-only: %w", err)
+			}
+		}
+	} else {
+		if err := persistTeamSkillV2(ctx, repo, c.teamAStates, c.newA, matchID, startTime); err != nil {
+			return fmt.Errorf("persistTeam A: %w", err)
+		}
+		if err := persistTeamSkillV2(ctx, repo, c.teamBStates, c.newB, matchID, startTime); err != nil {
+			return fmt.Errorf("persistTeam B: %w", err)
+		}
 	}
-	if err := persistTeamSkillV2(ctx, repo, teamBStates, newB, matchID, startTime); err != nil {
-		return nil, nil, fmt.Errorf("persistTeam B: %w", err)
-	}
-	ownerNew = findOwnerPosterior(ownerXUID, teamAStates, newA, teamBStates, newB, matchID, playlistGroup, startTime)
 
 	// Phase 4 (mode correlation) : si activée, propage le delta du owner dans
 	// son mode primaire vers tous ses autres modes joués. w_d capé à 0.4 par
 	// la fonction skill_v2.ApplyCrossModeLeak.
-	if IsLUSRV2ModeCouplingEnabled() && ownerNew != nil {
-		ownerOld := findOwnerPrior(ownerXUID, teamAStates, teamBStates)
-		if ownerOld != nil {
-			if err := propagateCrossModeLeak(ctx, repo, *ownerOld, *ownerNew); err != nil {
-				slog.WarnContext(ctx, "Phase 4: cross-mode leak échoué",
-					"xuid", ownerXUID, "primary_group", playlistGroup, "err", err)
-			}
+	if IsLUSRV2ModeCouplingEnabled() && c.ownerNew != nil && c.ownerPrior != nil {
+		if err := propagateCrossModeLeak(ctx, repo, *c.ownerPrior, *c.ownerNew); err != nil {
+			slog.WarnContext(ctx, "Phase 4: cross-mode leak échoué",
+				"xuid", ownerXUID, "primary_group", playlistGroup, "err", err)
 		}
 	}
-	return ownerNew, expectedWinProb, nil
+	return nil
 }
 
 // findOwnerPosterior cherche le owner dans les rosters et reconstruit son

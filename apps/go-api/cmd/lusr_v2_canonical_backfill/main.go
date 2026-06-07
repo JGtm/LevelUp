@@ -18,8 +18,10 @@
 //	go run -tags cgo ./cmd/lusr_v2_canonical_backfill --commit        # écrit match_skill_rank
 //	go run -tags cgo ./cmd/lusr_v2_canonical_backfill --commit JGtm   # un joueur précis
 //
-// Le reset de player_skill_state_v2 est implicite (nécessaire pour que TOUS les
-// matchs soient reprocessés et écrits, le shadow étant incrémental par watermark).
+// Reset PAR JOUEUR (DELETE WHERE xuid=?) + persist OWNER-ONLY : chaque joueur
+// reprocesse tous ses matchs et écrit ses lignes SANS écraser l'état v2 des
+// autres → couverture complète pour TOUS (corrige le couplage cross-joueur du
+// backfill séquentiel, cf. .ai/thought_log 2026-06-07).
 package main
 
 import (
@@ -71,14 +73,6 @@ func main() {
 	shared := openDB(sharedDBPath(*dataRoot))
 	defer shared.Close()
 
-	// Reset implicite : truncate player_skill_state_v2 pour reprocesser tout
-	// l'historique (le shadow est incrémental par watermark).
-	if _, err := shared.ExecContext(context.Background(), `DELETE FROM player_skill_state_v2`); err != nil {
-		slog.Error("reset player_skill_state_v2", "err", err)
-		os.Exit(1)
-	}
-	slog.Info("player_skill_state_v2 truncated (reprocess complet)")
-
 	ctx := context.Background()
 	mode := "DRY-RUN (shadow-only, aucune écriture match_skill_rank)"
 	if *commit {
@@ -94,17 +88,26 @@ func main() {
 			continue
 		}
 
+		// Reset PAR JOUEUR : on efface uniquement l'état v2 de CE joueur pour qu'il
+		// reprocesse tous ses matchs, SANS toucher à l'état des autres (owner-only).
+		// Évite le couplage cross-joueur du backfill séquentiel (un squad-mate traité
+		// avant n'avance plus le watermark de celui-ci → plus de matchs sautés).
+		if _, err := shared.ExecContext(ctx, `DELETE FROM player_skill_state_v2 WHERE xuid = ?`, xuid); err != nil {
+			slog.Error("reset player_skill_state_v2 (par joueur)", "gamertag", gt, "err", err)
+			continue
+		}
+
 		var playerDB *sql.DB
 		if *commit {
 			playerDB = openDB(playerDBPath(*dataRoot, gt))
 		}
 
-		processed, err := lusync.RunLUSRV2Shadow(ctx, playerDB, shared, xuid)
+		processed, err := lusync.RunLUSRV2ShadowOwnerOnly(ctx, playerDB, shared, xuid)
 		if playerDB != nil {
 			playerDB.Close()
 		}
 		if err != nil {
-			slog.Warn("RunLUSRV2Shadow", "gamertag", gt, "err", err)
+			slog.Warn("RunLUSRV2ShadowOwnerOnly", "gamertag", gt, "err", err)
 			continue
 		}
 		total += processed

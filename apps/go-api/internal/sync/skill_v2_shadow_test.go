@@ -1229,3 +1229,233 @@ func TestRunLUSRV2Shadow_QuitContext_LeadingAtQuit(t *testing.T) {
 		t.Errorf("écart de pénalité attendu ≈ 0.5 (cap unrelated 1.5 − related 1.0), got %v", diff)
 	}
 }
+
+// TestRunLUSRV2Shadow_Canonical_WriteFailHoldsWatermark (fix désync 2026-06-07)
+// prouve le gate anti-désync : si l'écriture canonical (player DB) échoue, le
+// watermark v2 (player_skill_state_v2, shared) n'avance PAS → le match est
+// ré-essayé au cycle suivant et finit par recevoir sa ligne LUSR. Reproduit le
+// scénario "database is closed" du 03/06 (player DB momentanément fermée) qui
+// avait créé un trou LUSR permanent.
+func TestRunLUSRV2Shadow_Canonical_WriteFailHoldsWatermark(t *testing.T) {
+	origEnabled := os.Getenv(lusrV2EnvFlag)
+	origCanonical := os.Getenv(lusrCanonicalEnvFlag)
+	t.Cleanup(func() {
+		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
+		_ = os.Setenv(lusrCanonicalEnvFlag, origCanonical)
+	})
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+	_ = os.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
+
+	sharedDB := openShadowTestDB(t)
+	seedCanonical2v2(t, sharedDB, "m_gate", time.Date(2025, 8, 1, 14, 0, 0, 0, time.UTC))
+
+	ctx := context.Background()
+	repo := duckdb.NewSkillV2Repo(sharedDB)
+
+	// 1) Player DB FERMÉE → writeCanonicalLUSRRow échoue ("database is closed").
+	brokenPlayerDB, err := sql.Open("duckdb", "")
+	if err != nil {
+		t.Fatalf("open broken playerDB: %v", err)
+	}
+	_ = brokenPlayerDB.Close() // fermeture volontaire = reproduit l'incident 03/06
+
+	processed, err := RunLUSRV2Shadow(ctx, brokenPlayerDB, sharedDB, "owner")
+	if err != nil {
+		t.Fatalf("RunLUSRV2Shadow (broken): %v", err)
+	}
+	if processed != 0 {
+		t.Errorf("écriture échouée → processed doit être 0 (gate), got %d", processed)
+	}
+	// Watermark NON avancé : aucun état v2 pour owner (le gate a tenu le watermark).
+	if st, _ := repo.LoadState(ctx, "owner", "arena_slayer"); st != nil {
+		t.Errorf("watermark ne doit PAS avancer après échec d'écriture, state=%+v", st)
+	}
+
+	// 2) Retry avec une player DB saine → le match tenu passe ET écrit la ligne LUSR.
+	goodPlayerDB := openCanonicalPlayerTestDB(t)
+	processed2, err := RunLUSRV2Shadow(ctx, goodPlayerDB, sharedDB, "owner")
+	if err != nil {
+		t.Fatalf("RunLUSRV2Shadow (retry): %v", err)
+	}
+	if processed2 != 1 {
+		t.Errorf("retry doit traiter le match tenu, processed=%d want 1", processed2)
+	}
+	var countLUSR int
+	if err := goodPlayerDB.QueryRow(`SELECT COUNT(*) FROM match_skill_rank
+		WHERE match_id = ? AND rating_type = 'LUSR'`, "m_gate").Scan(&countLUSR); err != nil {
+		t.Fatalf("count LUSR: %v", err)
+	}
+	if countLUSR != 1 {
+		t.Errorf("après retry, ligne LUSR attendue = 1, got %d", countLUSR)
+	}
+	// Watermark avancé maintenant que l'écriture a réussi.
+	if st, _ := repo.LoadState(ctx, "owner", "arena_slayer"); st == nil {
+		t.Error("watermark doit avoir avancé après le retry réussi")
+	}
+}
+
+// TestRunLUSRV2Shadow_Canonical_HeldGroupSkipsLaterMatches (fix anti-gap multi-matchs
+// 2026-06-07) prouve que si un match ANCIEN d'un groupe échoue son écriture
+// canonical, les matchs PLUS RÉCENTS du même groupe sont SAUTÉS ce run — sinon
+// leur persist avancerait le watermark de groupe par-dessus le match non écrit,
+// le rendant skippedAlready à jamais (gap LUSR permanent, la classe de bug d'origine).
+func TestRunLUSRV2Shadow_Canonical_HeldGroupSkipsLaterMatches(t *testing.T) {
+	origEnabled := os.Getenv(lusrV2EnvFlag)
+	origCanonical := os.Getenv(lusrCanonicalEnvFlag)
+	t.Cleanup(func() {
+		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
+		_ = os.Setenv(lusrCanonicalEnvFlag, origCanonical)
+	})
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+	_ = os.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
+
+	sharedDB := openShadowTestDB(t)
+	// 2 matchs du MÊME groupe (pair_name 'Slayer' → arena_slayer), m_old < m_new.
+	seedCanonical2v2(t, sharedDB, "m_old", time.Date(2025, 9, 1, 12, 0, 0, 0, time.UTC))
+	seedCanonical2v2(t, sharedDB, "m_new", time.Date(2025, 9, 1, 13, 0, 0, 0, time.UTC))
+
+	ctx := context.Background()
+	repo := duckdb.NewSkillV2Repo(sharedDB)
+
+	// 1) Player DB fermée → toute écriture canonical échoue.
+	canonicalWriteHeldWatermark.Set(0)
+	brokenPlayerDB, err := sql.Open("duckdb", "")
+	if err != nil {
+		t.Fatalf("open broken playerDB: %v", err)
+	}
+	_ = brokenPlayerDB.Close()
+
+	processed, err := RunLUSRV2Shadow(ctx, brokenPlayerDB, sharedDB, "owner")
+	if err != nil {
+		t.Fatalf("RunLUSRV2Shadow (broken): %v", err)
+	}
+	if processed != 0 {
+		t.Errorf("processed = %d, want 0 (groupe tenu)", processed)
+	}
+	// CŒUR DU FIX : m_old échoue → groupe tenu → m_new SAUTÉ avant toute tentative
+	// d'écriture. Donc UNE seule tentative (m_old). Sans heldGroups, m_new tenterait
+	// aussi (compteur=2) et son persist aurait avancé le watermark par-dessus m_old.
+	if got := canonicalWriteHeldWatermark.Value(); got != 1 {
+		t.Errorf("canonicalWriteHeldWatermark = %d, want 1 (m_new doit être sauté, pas tenté)", got)
+	}
+	if st, lerr := repo.LoadState(ctx, "owner", "arena_slayer"); lerr != nil {
+		t.Fatalf("LoadState: %v", lerr)
+	} else if st != nil {
+		t.Errorf("watermark ne doit pas avoir avancé, state=%+v", st)
+	}
+
+	// 2) Retry avec player DB saine → les DEUX matchs sont traités, EN ORDRE, aucun gap.
+	goodPlayerDB := openCanonicalPlayerTestDB(t)
+	processed2, err := RunLUSRV2Shadow(ctx, goodPlayerDB, sharedDB, "owner")
+	if err != nil {
+		t.Fatalf("RunLUSRV2Shadow (retry): %v", err)
+	}
+	if processed2 != 2 {
+		t.Errorf("retry processed = %d, want 2 (m_old puis m_new)", processed2)
+	}
+	for _, mid := range []string{"m_old", "m_new"} {
+		var n int
+		if err := goodPlayerDB.QueryRow(`SELECT COUNT(*) FROM match_skill_rank
+			WHERE match_id = ? AND rating_type = 'LUSR'`, mid).Scan(&n); err != nil {
+			t.Fatalf("count %s: %v", mid, err)
+		}
+		if n != 1 {
+			t.Errorf("%s : ligne LUSR = %d, want 1 (aucun gap, aucun doublon)", mid, n)
+		}
+	}
+}
+
+// TestLoadPreviousLUSRRating_ExcludesCurrentMatch (fix delta 2026-06-07) : la
+// lecture du rating "précédent" EXCLUT le match courant. Sans ça, au re-traitement
+// d'un match (retry write-OK/persist-KO sur table append-only), sa propre ligne
+// serait lue comme "précédente" → rating_delta = R - R = 0 (corruption silencieuse).
+func TestLoadPreviousLUSRRating_ExcludesCurrentMatch(t *testing.T) {
+	playerDB := openCanonicalPlayerTestDB(t)
+	ctx := context.Background()
+	if _, err := playerDB.Exec(`INSERT INTO match_skill_rank
+		(match_id, rating_type, rating_value, playlist_group, written_at) VALUES
+		('m1', 'LUSR', 1500, 'arena_slayer', TIMESTAMP '2025-01-01 12:00:00'),
+		('m2', 'LUSR', 1600, 'arena_slayer', TIMESTAMP '2025-01-01 13:00:00')`); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+	// Exclure m2 → on obtient le match PRÉCÉDENT (m1=1500), pas m2 lui-même.
+	if prev := loadPreviousLUSRRating(ctx, playerDB, "arena_slayer", "m2"); prev == nil || *prev != 1500 {
+		t.Errorf("loadPreviousLUSRRating(exclude m2) = %v, want 1500 (m1)", prev)
+	}
+	// Doublon de m2 (simulate retry append) : m2 doit toujours être exclu → m1.
+	if _, err := playerDB.Exec(`INSERT INTO match_skill_rank
+		(match_id, rating_type, rating_value, playlist_group, written_at)
+		VALUES ('m2', 'LUSR', 1600, 'arena_slayer', TIMESTAMP '2025-01-01 14:00:00')`); err != nil {
+		t.Fatalf("insert dup: %v", err)
+	}
+	if prev := loadPreviousLUSRRating(ctx, playerDB, "arena_slayer", "m2"); prev == nil || *prev != 1500 {
+		t.Errorf("avec doublon m2, loadPreviousLUSRRating(exclude m2) = %v, want 1500 (m1)", prev)
+	}
+	// Exclure m1 → reste m2 (le plus récent) = 1600.
+	if prev := loadPreviousLUSRRating(ctx, playerDB, "arena_slayer", "m1"); prev == nil || *prev != 1600 {
+		t.Errorf("loadPreviousLUSRRating(exclude m1) = %v, want 1600 (m2)", prev)
+	}
+}
+
+// TestRunLUSRV2ShadowOwnerOnly_DoesNotOverwriteTeammateState (recovery 2026-06-07)
+// prouve que le mode owner-only persiste UNIQUEMENT l'état du joueur traité : un
+// coéquipier tracké conserve son état v2 (zéro écrasement croisé), tandis que le
+// joueur owner obtient bien sa ligne canonique + son état. C'est ce qui permet au
+// backfill par-joueur de donner une couverture complète à TOUS sans contamination.
+func TestRunLUSRV2ShadowOwnerOnly_DoesNotOverwriteTeammateState(t *testing.T) {
+	origEnabled := os.Getenv(lusrV2EnvFlag)
+	origCanonical := os.Getenv(lusrCanonicalEnvFlag)
+	t.Cleanup(func() {
+		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
+		_ = os.Setenv(lusrCanonicalEnvFlag, origCanonical)
+	})
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+	_ = os.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
+
+	sharedDB := openShadowTestDB(t)
+	playerDB := openCanonicalPlayerTestDB(t)
+	ctx := context.Background()
+	repo := duckdb.NewSkillV2Repo(sharedDB)
+
+	// Pré-seed l'état d'un coéquipier tracké — il NE doit PAS être écrasé.
+	pretime := time.Date(2025, 1, 1, 8, 0, 0, 0, time.UTC)
+	if err := repo.UpsertState(ctx, domain.SkillV2State{
+		XUID: "teammate", PlaylistGroup: "arena_slayer",
+		Mu: 30.0, Sigma: 3.0, Experience: 42, LastMatchAt: &pretime,
+	}); err != nil {
+		t.Fatalf("seed teammate: %v", err)
+	}
+
+	// Match owner+teammate vs opp1+opp2 (pair_name 'Slayer' → arena_slayer).
+	seedCanonical2v2(t, sharedDB, "m_oo", time.Date(2025, 9, 2, 12, 0, 0, 0, time.UTC))
+
+	processed, err := RunLUSRV2ShadowOwnerOnly(ctx, playerDB, sharedDB, "owner")
+	if err != nil {
+		t.Fatalf("RunLUSRV2ShadowOwnerOnly: %v", err)
+	}
+	if processed != 1 {
+		t.Errorf("processed = %d, want 1", processed)
+	}
+
+	// Owner : ligne canonique écrite + état créé.
+	var n int
+	if err := playerDB.QueryRow(`SELECT COUNT(*) FROM match_skill_rank
+		WHERE match_id = 'm_oo' AND rating_type = 'LUSR'`).Scan(&n); err != nil {
+		t.Fatalf("count owner LUSR: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("owner LUSR row = %d, want 1", n)
+	}
+	if st, _ := repo.LoadState(ctx, "owner", "arena_slayer"); st == nil {
+		t.Error("état owner manquant après run owner-only")
+	}
+
+	// Coéquipier : état STRICTEMENT INCHANGÉ (mu=30, exp=42) — pas écrasé.
+	tst, terr := repo.LoadState(ctx, "teammate", "arena_slayer")
+	if terr != nil || tst == nil {
+		t.Fatalf("état teammate disparu: %v", terr)
+	}
+	if tst.Mu != 30.0 || tst.Experience != 42 {
+		t.Errorf("état teammate écrasé par le run owner-only: mu=%v exp=%d (want 30.0 / 42)", tst.Mu, tst.Experience)
+	}
+}
