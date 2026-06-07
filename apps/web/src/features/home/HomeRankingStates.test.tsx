@@ -216,6 +216,38 @@ describe('Home ranking states', () => {
     expect(screen.getByTestId('home-highest-csr-tier')).toHaveTextContent('Onyx')
   })
 
+  it('affiche la barre (sous-palier) + extrémités (rating gauche, sous-palier suivant droite) en CSR matured', async () => {
+    const response = buildHomeResponse()
+    response.spartan_identity = {
+      ...response.spartan_identity!,
+      highest_csr: {
+        rating_value: 730,
+        tier_label: 'Or III',
+        badge_image_url: '/static/ranks/halo_infinite/120px-HINF-CSR_Gold3.png',
+        measurement_matches_remaining: 0,
+        tier_progress_pct: 50, // Or III → 3/6 = 50 %
+        next_tier_label: 'Or IV', // sous-palier suivant (pas le palier suivant)
+      },
+    }
+    response.has_ranked_history = true
+
+    server.use(
+      http.get('/api/v1/players/:playerSlug/pages/home', () => HttpResponse.json(response)),
+    )
+
+    renderWithProviders(<HomePage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('home-highest-csr-tier-progress-fill')).toBeInTheDocument()
+    })
+
+    // Barre à 50 % ; extrémités = rating (gauche) + sous-palier suivant (droite) ; palier courant à gauche.
+    expect(screen.getByTestId('home-highest-csr-tier-progress-fill')).toHaveStyle({ width: '50%' })
+    expect(screen.getByTestId('home-highest-csr-value').textContent?.replace(/\s/g, '')).toBe('730')
+    expect(screen.getByTestId('home-highest-csr-next-tier')).toHaveTextContent('Or IV')
+    expect(screen.getByTestId('home-highest-csr-tier')).toHaveTextContent('Or III')
+  })
+
   it('affiche un état indisponible si la privacy rend l’historique incomplet', async () => {
     const response = buildHomeResponse()
     response.privacy_warning = {

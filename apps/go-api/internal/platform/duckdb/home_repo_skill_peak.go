@@ -257,6 +257,9 @@ func (r *HomeRepo) assemblePeak(playerRows []peakRow, registryByMatch map[string
 		return peak
 	}
 	peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(chosen.row.tier, chosen.row.tierLabel, chosen.row.subTier, homeStaticTitleSlug, 0, threshold)
+	// Tier+subTier bruts conservés pour la bande ordinale (analysis.SkillTierBand).
+	peak.Tier = chosen.row.tier
+	peak.SubTier = chosen.row.subTier
 	if strings.TrimSpace(chosen.row.tierLabel) != "" {
 		peak.TierLabel = stringPtr(chosen.row.tierLabel)
 	}
@@ -316,6 +319,9 @@ func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeak
 		peak := &domain.HomeSkillPeakRow{RatingValue: value.Float64}
 		tierStr := optionalNullStringValue(tier)
 		subTierInt := optionalNullInt16Value(subTier)
+		// Tier+subTier bruts conservés pour la bande ordinale (analysis.SkillTierBand).
+		peak.Tier = tierStr
+		peak.SubTier = subTierInt
 		peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(tierStr, "", subTierInt, homeStaticTitleSlug, 0, threshold)
 		// Palier all-time CSR : libellé FR + sous-palier romain ("Diamant III"),
 		// au lieu du tier brut anglais sans sous-palier. FR-first comme tous les

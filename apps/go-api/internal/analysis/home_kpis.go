@@ -199,10 +199,10 @@ func BuildSpartanIdentity(raw *domain.HomeSpartanIdentityRow, locale string, ran
 	if raw.BackdropImageURL != nil {
 		identity.BackdropImageURL = copyOptionalString(raw.BackdropImageURL)
 	}
-	if peak := buildHomeSkillPeak(raw.HighestCSR); peak != nil {
+	if peak := buildHomeSkillPeak(raw.HighestCSR, locale); peak != nil {
 		identity.HighestCSR = peak
 	}
-	if peak := buildHomeSkillPeak(raw.HighestLUSR); peak != nil {
+	if peak := buildHomeSkillPeak(raw.HighestLUSR, locale); peak != nil {
 		identity.HighestLUSR = peak
 	}
 	if rank := buildHomeCareerRank(raw, locale, ranks); rank != nil {
@@ -226,7 +226,7 @@ func BuildSpartanIdentity(raw *domain.HomeSpartanIdentityRow, locale string, ran
 // (BadgeImageURL = unranked_N.png en placement, ou rating + tier en matured).
 // Le front utilise MeasurementMatchesRemaining pour différencier les états
 // sans deviner.
-func buildHomeSkillPeak(raw *domain.HomeSkillPeakRow) *domain.HomeSkillPeakSummary {
+func buildHomeSkillPeak(raw *domain.HomeSkillPeakRow, locale string) *domain.HomeSkillPeakSummary {
 	if raw == nil {
 		return nil
 	}
@@ -245,6 +245,17 @@ func buildHomeSkillPeak(raw *domain.HomeSkillPeakRow) *domain.HomeSkillPeakSumma
 	if raw.PlacementTotal != nil {
 		total := *raw.PlacementTotal
 		summary.PlacementTotal = &total
+	}
+	// Bande de progression (à droite du rating) : uniquement en phase matured
+	// (placement terminé). Progression ORDINALE via le sous-palier (indépendante
+	// de l'échelle CSR vs LUSR). Onyx → barre pleine ; sans rang → pas de bande.
+	isMatured := raw.MeasurementMatchesRemaining != nil && *raw.MeasurementMatchesRemaining == 0
+	if isMatured {
+		if pct, ok := SkillTierBand(raw.Tier, raw.SubTier); ok {
+			summary.TierProgressPct = &pct
+			// Extrémité droite de la barre : sous-palier suivant (nil pour Onyx).
+			summary.NextTierLabel = NextSubTierLabel(raw.Tier, raw.SubTier, normalizeHomeLocale(locale) != "en")
+		}
 	}
 	return summary
 }

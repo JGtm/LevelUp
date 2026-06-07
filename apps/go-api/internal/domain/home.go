@@ -36,6 +36,11 @@ type HomeSkillPeakRow struct {
 	MeasurementMatchesRemaining *int
 	// PlacementTotal = seuil placement (5 ou 10). Propagé vers HomeSkillPeakSummary.PlacementTotal.
 	PlacementTotal *int
+	// Tier (EN, ex. "Gold"/"Diamond"/"Onyx") + SubTier (1..6, 0 pour Onyx) bruts du
+	// peak, pour la bande de progression ORDINALE (analysis.SkillTierBand). Le
+	// sous-palier est renseigné par chaque système (CSR/LUSR) sur sa propre échelle.
+	Tier    string
+	SubTier int
 }
 
 // HomeSpartanIdentityRow est la projection brute de l'identité record pour la home.
@@ -138,6 +143,13 @@ type HomeSkillPeakSummary struct {
 	// d'afficher "En placement (X/N)" avec le bon dénominateur.
 	// nil → fallback front à 10 (back-compat clients anciens).
 	PlacementTotal *int `json:"placement_total,omitempty"`
+	// Progression ORDINALE dans le palier courant (0..100), pour la barre à droite
+	// du rating. Calculée par analysis.SkillTierBand (via le sous-palier I..VI,
+	// indépendante de l'échelle CSR/LUSR). nil hors phase matured.
+	TierProgressPct *float64 `json:"tier_progress_pct,omitempty"`
+	// Libellé localisé du palier suivant (extrémité droite de la barre, ex.
+	// "Onyx", "Platine"). nil pour Onyx (sommet, pas de palier suivant).
+	NextTierLabel *string `json:"next_tier_label,omitempty"`
 }
 
 // HomePlaylistRank associe une playlist récente à son dernier rang compétitif connu.

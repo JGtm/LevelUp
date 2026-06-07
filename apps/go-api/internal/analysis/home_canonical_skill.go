@@ -136,3 +136,69 @@ func buildCanonicalSkillBadge(tierDisplay, tierCodeEN string, subTier *int) (*st
 
 	return &label, &urlStr
 }
+
+// csrSubTiersPerTier : chaque palier non-Onyx (Bronze..Diamant) compte 6
+// sous-paliers (I..VI).
+const csrSubTiersPerTier = 6
+
+// SkillTierBand calcule le remplissage de la barre, de façon ORDINALE via le
+// sous-palier stocké (I..VI) — INDÉPENDANTE de l'échelle de valeur. Nécessaire
+// car CSR et LUSR n'utilisent pas la même échelle (LUSR « Or IV » ≈ 1500, là où
+// 1500 = Onyx côté CSR), ET parce que le LUSR définit ses sous-paliers sur l'échelle
+// μ interne (TrueSkill), absente de la valeur affichée → un remplissage « dans le
+// sous-palier » n'est pas dérivable. On reste donc à la granularité sous-palier :
+//
+//   - Onyx (sommet) → barre pleine (100 %).
+//   - sous-palier 1..6 → n/6 : I ≈ 17 % … VI = 100 % (sommet du palier).
+//   - ok=false sinon (placement / sans rang) → pas de barre.
+func SkillTierBand(tierEN string, subTier int) (progressPct float64, ok bool) {
+	if strings.EqualFold(strings.TrimSpace(tierEN), "Onyx") {
+		return 100, true
+	}
+	if subTier < 1 || subTier > csrSubTiersPerTier {
+		return 0, false
+	}
+	return float64(subTier) / float64(csrSubTiersPerTier) * 100, true
+}
+
+// csrTierOrderEN : ordre des paliers Halo, pour déterminer le palier suivant
+// quand on sort d'un sous-palier VI. Ordinal → indépendant de l'échelle CSR/LUSR.
+var csrTierOrderEN = []string{"Bronze", "Silver", "Gold", "Platinum", "Diamond", "Onyx"}
+
+// NextSubTierLabel : libellé localisé du SOUS-PALIER suivant (extrémité droite de
+// la barre). Intelligent en sortie de palier :
+//   - Or I → "Or II" … Or V → "Or VI"
+//   - Or VI → "Platine I" (premier sous-palier du palier suivant)
+//   - Diamant VI → "Onyx" (sommet)
+//   - Onyx → nil (déjà au sommet, pas de suivant).
+func NextSubTierLabel(tierEN string, subTier int, frPreferred bool) *string {
+	if strings.EqualFold(strings.TrimSpace(tierEN), "Onyx") {
+		return nil
+	}
+	if subTier >= 1 && subTier < csrSubTiersPerTier {
+		next := subTier + 1
+		return BuildCSRTierLabelFromEN(tierEN, &next, frPreferred)
+	}
+	if subTier == csrSubTiersPerTier {
+		if nt := nextTierEN(tierEN); nt != "" {
+			one := 1
+			return BuildCSRTierLabelFromEN(nt, &one, frPreferred) // Onyx → "Onyx" (sous-palier ignoré)
+		}
+	}
+	return nil
+}
+
+// nextTierEN : palier EN au-dessus de tierEN, ou "" si dernier / inconnu.
+func nextTierEN(tierEN string) string {
+	t := strings.TrimSpace(tierEN)
+	if t == "" {
+		return ""
+	}
+	key := strings.ToUpper(t[:1]) + strings.ToLower(t[1:])
+	for i, name := range csrTierOrderEN {
+		if name == key && i+1 < len(csrTierOrderEN) {
+			return csrTierOrderEN[i+1]
+		}
+	}
+	return ""
+}

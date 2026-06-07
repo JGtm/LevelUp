@@ -4,6 +4,7 @@
 package analysis
 
 import (
+	"math"
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
@@ -290,5 +291,82 @@ func TestInferHomeSkillHistoryFromCanonical_NilPvEDoesNotExclude(t *testing.T) {
 	r, _ := InferHomeSkillHistoryFromCanonical(rows)
 	if !r {
 		t.Errorf("nil IsPvE shouldn't exclude row")
+	}
+}
+
+// ─── SkillTierBand ─────────────────────────────────────────────────────────
+
+func TestSkillTierBand(t *testing.T) {
+	t.Parallel()
+	// Remplissage ORDINAL via le sous-palier (n/6), indépendant de l'échelle de
+	// valeur (CSR ≠ LUSR ; sous-paliers LUSR sur l'échelle μ interne). Onyx = plein.
+	cases := []struct {
+		name         string
+		tierEN       string
+		subTier      int
+		wantOK       bool
+		wantProgress float64
+	}{
+		{"Gold IV → 4/6", "Gold", 4, true, 66.6667},
+		{"Diamant IV → 4/6 (échelle indifférente)", "Diamond", 4, true, 66.6667},
+		{"entrée de palier (I) → 1/6", "Bronze", 1, true, 16.6667},
+		{"sommet de palier (VI) → 100%", "Gold", 6, true, 100},
+		{"Onyx → barre pleine (sommet)", "Onyx", 0, true, 100},
+		{"Onyx insensible au sous-palier", "onyx", 3, true, 100},
+		{"sans rang (sub_tier 0) → pas de bande", "Diamond", 0, false, 0},
+		{"placement (tier vide) → pas de bande", "", 0, false, 0},
+		{"sous-palier hors borne → pas de bande", "Gold", 7, false, 0},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			pct, ok := SkillTierBand(c.tierEN, c.subTier)
+			if ok != c.wantOK {
+				t.Fatalf("ok = %v, want %v", ok, c.wantOK)
+			}
+			if !c.wantOK {
+				return
+			}
+			if math.Abs(pct-c.wantProgress) > 0.01 {
+				t.Errorf("progressPct = %v, want %v", pct, c.wantProgress)
+			}
+		})
+	}
+}
+
+func TestNextSubTierLabel(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name        string
+		tierEN      string
+		subTier     int
+		frPreferred bool
+		want        string // "" → attend nil
+	}{
+		{"Or I → Or II (FR)", "Gold", 1, true, "Or II"},
+		{"Or V → Or VI", "Gold", 5, true, "Or VI"},
+		{"Or VI → Platine I (palier suivant)", "Gold", 6, true, "Platine I"},
+		{"Diamant VI → Onyx (sommet)", "Diamond", 6, true, "Onyx"},
+		{"Gold I → Gold II (EN)", "Gold", 1, false, "Gold II"},
+		{"casse normalisée", "diamond", 6, true, "Onyx"},
+		{"Onyx → nil (déjà au sommet)", "Onyx", 0, true, ""},
+		{"sous-palier 0 (placement) → nil", "Gold", 0, true, ""},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			got := NextSubTierLabel(c.tierEN, c.subTier, c.frPreferred)
+			if c.want == "" {
+				if got != nil {
+					t.Errorf("got %q, want nil", derefStr(got))
+				}
+				return
+			}
+			if got == nil || *got != c.want {
+				t.Errorf("got %q, want %q", derefStr(got), c.want)
+			}
+		})
 	}
 }
