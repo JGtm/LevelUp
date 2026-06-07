@@ -53,6 +53,13 @@ export interface PrestigeText {
   formAcceptHeroic: string
   formCreating: string
   formCreate: string
+  // ── Formulaire de création d'arc (CreateArcForm) ──
+  arcFormNew: string
+  arcFormTitle: string
+  arcFormTitlePlaceholder: string
+  arcFormDescription: string
+  arcFormDescriptionPlaceholder: string
+  arcFormCreate: string
   // ── MomentCard ──
   momentAchieved: string
   momentBaseline: string
@@ -100,6 +107,12 @@ const FR: PrestigeText = {
   formAcceptHeroic: 'Accepter (Héroïque : {target})',
   formCreating: 'Création…',
   formCreate: 'Créer le défi',
+  arcFormNew: 'Nouvel arc',
+  arcFormTitle: 'Titre',
+  arcFormTitlePlaceholder: 'Ex. Ascension du Spartan',
+  arcFormDescription: 'Description (optionnelle)',
+  arcFormDescriptionPlaceholder: 'Ex. Enchaîne les objectifs pour gravir les paliers.',
+  arcFormCreate: "Créer l'arc",
   momentAchieved: 'Atteint',
   momentBaseline: 'Référence',
   momentDelta: 'Évolution',
@@ -146,6 +159,12 @@ const EN: PrestigeText = {
   formAcceptHeroic: 'Accept (Heroic: {target})',
   formCreating: 'Creating…',
   formCreate: 'Create challenge',
+  arcFormNew: 'New arc',
+  arcFormTitle: 'Title',
+  arcFormTitlePlaceholder: 'e.g. Spartan Ascension',
+  arcFormDescription: 'Description (optional)',
+  arcFormDescriptionPlaceholder: 'e.g. Chain objectives to climb the tiers.',
+  arcFormCreate: 'Create arc',
   momentAchieved: 'Achieved',
   momentBaseline: 'Baseline',
   momentDelta: 'Delta',

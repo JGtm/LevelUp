@@ -1,3 +1,18 @@
+## [2026-06-07] Création d'arc libre (UI manquante) + plan arcs presets/suppression/onglets — Fix complété (front-only)
+
+**Statut** : Fix création d'arc libre LIVRÉ (validé local). typecheck OK + `eslint prestige+ascension` exit 0 (2 warnings préexistants only, hors mes fichiers) + vitest AscensionProfileTab 14. Plan détaillé écrit. Non commité (attente autorisation user).
+
+**Diagnostic (demande user)** : aucun chemin UI pour créer un arc. Backend prêt (`POST /arcs` → `service.CreateArc`, testé) + hook `useCreateArc` existant **mais consommé par aucun composant** (mort). Pire : l'empty-state de `MyArcsSection` promettait « Choisis un arc preset ou crée le tien » → les 2 actions sans aucune UI (preset : même pas de méthode API front).
+
+**Fix livré (petit, validé par user)** :
+- Nouveau `features/prestige/components/CreateArcForm.tsx` : 2 champs (titre requis + description optionnelle, = `CreateArcBody`), branché sur `useCreateArc`, i18n via `getPrestigeText` (+ 6 clés `arcForm*` FR/EN, FR sans franglais).
+- `MyArcsSection` (AscensionProfileTab) : état `showArcForm` + bouton « + Nouvel arc » (empty-state ET liste non-vide) → calque exact du pattern objectifs (`showForm`/CreateChallengeForm). Empty-state recadré sur « crée le tien » (promesse preset RETIRÉE tant que le picker n'existe pas).
+- Test : mock `CreateArcForm`→null + assertion empty-state mise à jour + nouveau test bouton « + Nouvel arc ».
+
+**Plan pour le reste** (doc dédié `.ai/PLAN_ASCENSION_ARCS_PRESETS_ET_ONGLETS.md`) : Lot A suppression/annulation d'arc (avec/sans objectifs — `ArcRepo.Delete` + `ChallengeRepo.DetachFromArc` + `service.DeleteArc(cascade)` ; cascade=abandon recommandé) ; Lot B picker de presets (routes HTTP `GET /arcs/presets` + `POST /arcs/presets/{id}/adopt`, réutilise `arc_composer`) ; Lot C split en 2 onglets (« Profil & objectifs » Prestige vs nouvel onglet « Coaching », + entrée `tabs[]` dans `NavL1.tsx`). Ordre : C → A → B. Branche suggérée `feat/prestige-arc-management`.
+
+**Prochaine étape** : commit du fix sur autorisation. Implémentation des lots A/B/C après validation du plan par user.
+
 ## [2026-06-07] Finalisation i18n module Prestige : CreateChallengeForm + MomentCard, FR sans franglais — Complété (front-only)
 
 **Statut** : Complété. typecheck OK + `eslint src/features/prestige` exit 0 (zéro warning `no-hardcoded-strings` sur tout le module) + vitest home 28. Non commité (attente autorisation user).
@@ -43,7 +58,7 @@
 
 **Prochaine étape** : étendre `getPrestigeText` + convertir CreateChallengeForm si user valide. Commit sur autorisation.
 
-## [2026-06-07] Fix désync watermark LUSR v2 ↔ ligne match_skill_rank (JGtm 03/06 sans LUSR) — Complété (fix + revue + tests verts), backfill récup en cours
+## [2026-06-07] Fix désync watermark LUSR v2 ↔ ligne match_skill_rank (JGtm 03/06 sans LUSR) — Complété (fix + revue + tests verts + recovery faite)
 
 **Statut** : Code livré sur `fix/enrichment-convergence` (vet OK, `go test ./internal/sync/` 22 s vert, CLI buildent), revu en adversarial multi-agent (22 findings, 21 confirmés ; 2 MAJOR corrigés). Reste : backfill de récupération (serveur arrêté) + commit (sur autorisation).
 
@@ -59,7 +74,11 @@
 
 **Findings différés (revue, non bloquants)** : atomicité multi-joueurs de l'état v2 (persist non transactionnel ; pré-existant, converge par rotation owner) ; sentinelle dual-row aveugle aux matchs 0-ligne (ajouter un scan « MissingBoth ») ; pas d'alerte/retry borné sur les compteurs (posture expvar ADR 0009) ; taille fichier/fonction (internal/sync exempt funlen). À traiter en passe dédiée si besoin.
 
-**Prochaine étape** : `cmd/lusr_v2_canonical_backfill --commit` (serveur arrêté) pour recalculer le LUSR manquant (reset `player_skill_state_v2` + reprocess) ; puis commit sélectif des fichiers LUSR (le reste de la branche = travail Home non commité, à ne pas mélanger).
+**Recovery (faite)** : le 1er backfill (reset global + persist des 2 équipes) n'a recouvré QUE le 1er joueur traité (Madina) — couplage cross-joueur : `persistTeamSkillV2` avance le watermark de TOUS les participants, donc en séquentiel les squad-mates suivants (JGtm/Choco) sautent leurs matchs partagés. Correctif : mode **owner-only persist** (`RunLUSRV2ShadowOwnerOnly` : ne persiste que l'état du joueur traité) + reset **par-joueur** (`DELETE player_skill_state_v2 WHERE xuid=?`) dans le backfill. Re-run : couverture complète des 4 (`skipped_already_seen=0` partout, 1730 matchs). Test `TestRunLUSRV2ShadowOwnerOnly_DoesNotOverwriteTeammateState`. Vérif API : JGtm 3 juin passé de 0 → LUSR (Or IV) sur les matchs éligibles ; les `none` restants = matchs avec quitter/équipes déséquilibrées (`skipped_imbalance`, garde Phase 3d, by-design pour tous). Live INCHANGÉ (`RunLUSRV2Shadow` = persist 2 équipes).
+
+**Différé** : politique imbalance-skip (matchs à quitters non notés) = décision produit séparée ; compaction des doublons append-only après backfills répétés ; replay chronologique global (fix racine du couplage cross-joueur vs owner-only = recovery pragmatique).
+
+**Prochaine étape** : commit sélectif des fichiers LUSR (le reste de la branche = travail Home non commité, à ne pas mélanger) — sur autorisation.
 
 
 
