@@ -1,3 +1,22 @@
+## [2026-06-07] Résolution XUID→gamertag : v_gamertag_lookup cascade sur killer_victim_pairs — Complété
+
+**Statut** : Complété. Fix vérifié sur données réelles. go vet OK (analysis/sync/migration), tests verts (vue + boot + ART rebuild + migration). Code non commité (attente autorisation).
+
+**Symptôme** : adversaires affichés "Joueur ####" sur les matchs récents. Régression nette : taux de masquage 0% (déc-fév) → 5,5% (mai) → 44,7% (juin).
+
+**Diagnostic précis (où vit la donnée)** :
+- PRODUITE : le gamertag est décodé des films (`decodeEventBytes`/`ParseHighlightEvents` → `ev.Gamertag`). FONCTIONNE pour les films récents — preuve : `killer_victim_pairs.{killer,victim}_gamertag` (même `ev.Gamertag`) est rempli à 100% tous mois (juin 1021/1021).
+- ÉCRITE : le gamertag atterrit dans `killer_victim_pairs` (table shared) — ex. xuid 2533274856043389 = "trippysponge". MAIS l'écriture vers `xuid_aliases` s'est arrêtée (shared source highlight_events figée 07/04 ; global xbox_aliases figé 29/04). [JSON abandonné pour raisons techniques — la colonne raw_json n'est plus une source.]
+- LUE : `v_gamertag_lookup` (chokepoint unique) = `xuid_aliases ∪ match_participants.gamertag`. Ne lisait PAS `killer_victim_pairs` → nom présent en base mais invisible au lookup → masqué.
+
+**Décision (fix de la vue, pas d'ATTACH)** : `killer_victim_pairs` est dans la MÊME DB shared que la vue → ajout d'un cascade dans `GamertagLookupViewSQL` (identity.go) : bot → xuid_aliases → match_participants → **killer_victim_pairs (killer ∪ victim)** → masqué. Zéro ATTACH, zéro nouvelle table.
+
+**Robustesse (DuckDB bind les vues à la création → la table doit préexister)** : `killer_victim_pairs` (créée seulement par migration jusqu'ici) ajoutée à `sharedSchemaSQL` (boot) ET garantie via `CREATE TABLE IF NOT EXISTS` dans `applyResolutionViews` (chemin migration + RebuildMatchParticipantsART). Sinon le boot fresh / le rebuild ART crashaient (constaté et corrigé).
+
+**Résultats** : sur données réelles, masqués récents 78 → 5 (les 5 restants n'ont aucun kill/death enregistré). trippysponge & co résolus. Test `TestGamertagLookupView_NeverLeaksRawXuid` étendu (cas cascade killer + victime). Piège rencontré : un `;` dans un commentaire SQL cassait `splitSQL` (corrigé).
+
+**Prochaine étape** : commit sur autorisation. Note : la cause amont (pourquoi xuid_aliases ne reçoit plus les events) reste ouverte mais contournée — la vue lit désormais la source vivante (killer_victim_pairs).
+
 ## [2026-06-07] LUSR v2 — nettoyage orphans bad-backfill sur matchs récents (2026 + fin 2025) — Complété (opération DB, aucun code)
 
 **Statut** : Complété. Opération de maintenance DB, serveur arrêté puis relancé (HTTP 200).

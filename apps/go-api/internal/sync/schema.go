@@ -274,6 +274,23 @@ CREATE INDEX IF NOT EXISTS idx_match_csrs_match   ON match_csrs(match_id);
 CREATE OR REPLACE VIEW match_csrs_latest AS
     SELECT * FROM match_csrs
     QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, xuid ORDER BY written_at DESC, id DESC) = 1;
+
+-- killer_victim_pairs : historiquement créée par les migrations uniquement.
+-- Remontée dans le schéma de base car v_gamertag_lookup (posée juste après par
+-- EnsureSharedSchema) la référence désormais comme source de gamertag — et
+-- DuckDB bind les vues à la création : la table DOIT exister avant. Schéma
+-- aligné sur la migration (steps_shared.go), CREATE IF NOT EXISTS idempotent.
+CREATE TABLE IF NOT EXISTS killer_victim_pairs (
+    match_id        VARCHAR NOT NULL,
+    killer_xuid     VARCHAR NOT NULL,
+    killer_gamertag VARCHAR,
+    victim_xuid     VARCHAR NOT NULL,
+    victim_gamertag VARCHAR,
+    kill_count      INTEGER DEFAULT 1,
+    time_ms         INTEGER,
+    is_validated    BOOLEAN DEFAULT FALSE,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 `
 
 // EnsurePlayerSchema crée les tables player si elles n'existent pas.
