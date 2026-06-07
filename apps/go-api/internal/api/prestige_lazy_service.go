@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"levelup/go-api/internal/platform/dblease"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
@@ -46,6 +47,9 @@ func PlayerSlugFromContext(ctx context.Context) string {
 type LazyPrestigeService struct {
 	bundle    *PrestigeBundle
 	extractFn func(ctx context.Context) string
+	// demoMode : en démo le DemoPlayer n'a aucune activité PP réelle → GetUserPrestige
+	// sert une fixture (rang Prestige) au lieu d'un prestige vide. Cf. demoUserPrestige.
+	demoMode bool
 }
 
 // NewLazyPrestigeService construit un wrapper.
@@ -53,11 +57,11 @@ type LazyPrestigeService struct {
 // extractFn est typiquement une closure qui lit le request en cours via
 // un middleware (chi context value). Si elle retourne "", les méthodes
 // retournent ErrPlayerNotResolved.
-func NewLazyPrestigeService(bundle *PrestigeBundle, extractFn func(ctx context.Context) string) *LazyPrestigeService {
+func NewLazyPrestigeService(bundle *PrestigeBundle, extractFn func(ctx context.Context) string, demoMode bool) *LazyPrestigeService {
 	if extractFn == nil {
 		extractFn = PlayerSlugFromContext
 	}
-	return &LazyPrestigeService{bundle: bundle, extractFn: extractFn}
+	return &LazyPrestigeService{bundle: bundle, extractFn: extractFn, demoMode: demoMode}
 }
 
 // ErrPlayerNotResolved est retournée quand le player_slug ne peut pas être
@@ -193,11 +197,34 @@ func (l *LazyPrestigeService) EvaluateForUser(ctx context.Context, userID, title
 }
 
 func (l *LazyPrestigeService) GetUserPrestige(ctx context.Context, userID, titleSlug string) (prestige.UserPrestige, error) {
+	if l.demoMode {
+		return demoUserPrestige(userID, titleSlug), nil
+	}
 	svc, err := l.resolveByUserID(ctx, userID)
 	if err != nil {
 		return prestige.UserPrestige{}, err
 	}
 	return svc.GetUserPrestige(ctx, userID, titleSlug)
+}
+
+// demoUserPrestige : rang Prestige fixé pour la démo (le DemoPlayer n'a pas
+// d'activité PP réelle). Niveau "Vétéran" (cf. tuning.go Names), progression
+// plausible. Read-time → survit reseed + déploiement.
+func demoUserPrestige(userID, titleSlug string) prestige.UserPrestige {
+	return prestige.UserPrestige{
+		UserID:       userID,
+		TitleSlug:    titleSlug,
+		TotalPP:      2100,
+		CurrentLevel: 2,
+		UpdatedAt:    time.Now().UTC(),
+		Level: &prestige.Level{
+			Index:           2,
+			Name:            "Vétéran",
+			ThresholdPP:     1500,
+			NextThresholdPP: 3000,
+			ProgressRatio:   0.4,
+		},
+	}
 }
 
 func (l *LazyPrestigeService) SuggestTemplates(ctx context.Context, userID, titleSlug string, count int) ([]prestige.Template, error) {
