@@ -56,17 +56,21 @@ type PopulationCaps struct {
 }
 
 type PPAmountsTuning struct {
-	Normal             int     `toml:"normal"`
-	Heroic             int     `toml:"heroic"`
-	Legendary          int     `toml:"legendary"`
-	Mythic             int     `toml:"mythic"`
-	SquadMultiplier    float64 `toml:"squad_multiplier"`
-	ArcCompletionBonus int     `toml:"arc_completion_bonus"`
-	Streak3Sessions    int     `toml:"streak_3_sessions"`
-	MatchPlayed        int     `toml:"match_played"`
-	MatchWon           int     `toml:"match_won"`
-	MedalMin           int     `toml:"medal_min"`
-	MedalMax           int     `toml:"medal_max"`
+	Normal          int     `toml:"normal"`
+	Heroic          int     `toml:"heroic"`
+	Legendary       int     `toml:"legendary"`
+	Mythic          int     `toml:"mythic"`
+	SquadMultiplier float64 `toml:"squad_multiplier"`
+	// ArcCompletionBonusRatio est la fraction des PP cumulés des objectifs de
+	// l'arc reversée en bonus à sa complétion (ex: 0.5 = +50 %). Remplace
+	// l'ancien `arc_completion_bonus` (flat, = 1 objectif Mythic) qui rendait
+	// un arc entier équivalent à un seul défi. 0 désactive le bonus.
+	ArcCompletionBonusRatio float64 `toml:"arc_completion_bonus_ratio"`
+	Streak3Sessions         int     `toml:"streak_3_sessions"`
+	MatchPlayed             int     `toml:"match_played"`
+	MatchWon                int     `toml:"match_won"`
+	MedalMin                int     `toml:"medal_min"`
+	MedalMax                int     `toml:"medal_max"`
 }
 
 type DataTierMultiplier struct {
@@ -161,13 +165,13 @@ func DefaultTuning() Tuning {
 		},
 		PPAmounts: PPAmountsTuning{
 			Normal: 50, Heroic: 75, Legendary: 125, Mythic: 200,
-			SquadMultiplier:    1.20,
-			ArcCompletionBonus: 200,
-			Streak3Sessions:    30,
-			MatchPlayed:        10,
-			MatchWon:           15,
-			MedalMin:           5,
-			MedalMax:           20,
+			SquadMultiplier:         1.20,
+			ArcCompletionBonusRatio: 0.5,
+			Streak3Sessions:         30,
+			MatchPlayed:             10,
+			MatchWon:                15,
+			MedalMin:                5,
+			MedalMax:                20,
 		},
 		DataTierMul: DataTierMultiplier{
 			Full: 1.0, Estimated: 0.5, Tracking: 0.0,
@@ -266,6 +270,9 @@ func (t Tuning) validatePPAndLevels() error {
 		t.PPAmounts.Heroic >= t.PPAmounts.Legendary ||
 		t.PPAmounts.Legendary >= t.PPAmounts.Mythic {
 		return fmt.Errorf("pp_amounts non monotones")
+	}
+	if t.PPAmounts.ArcCompletionBonusRatio < 0 {
+		return fmt.Errorf("pp_amounts.arc_completion_bonus_ratio doit être >= 0")
 	}
 	if len(t.Levels.Thresholds) != len(t.Levels.Names) {
 		return fmt.Errorf("levels.thresholds et levels.names de tailles différentes")

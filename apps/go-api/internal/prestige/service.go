@@ -143,6 +143,14 @@ type EvaluationOutcome struct {
 	NewValue    float64
 	PPCredited  int
 	Reason      EvalReason
+
+	// ArcCompletedID est l'ID de l'arc clôturé par cette transition — renseigné
+	// uniquement quand la complétion de ce défi termine la dernière étape de son
+	// arc. Vide sinon (défi standalone, ou arc encore en cours).
+	ArcCompletedID string
+	// ArcPPCredited est le bonus PP crédité pour la complétion de l'arc
+	// (cf. PPForArcCompletion). 0 si aucun arc n'a été clôturé.
+	ArcPPCredited int
 }
 
 // ---------- Implémentation ----------

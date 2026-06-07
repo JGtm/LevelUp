@@ -74,6 +74,17 @@ type Arc struct {
 	PresetID    string     `json:"preset_id,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
+
+	// ObjectivesPP est la somme des PP des objectifs de l'arc (chacun via
+	// PPForCompletion). Enrichi en lecture par ListArcs/GetArc, non persisté.
+	// Permet au front d'afficher la récompense cumulée des étapes.
+	ObjectivesPP int `json:"objectives_pp,omitempty"`
+
+	// CompletionBonusPP est le bonus PP crédité à la complétion de l'arc
+	// (PPForArcCompletion sur ObjectivesPP) — distinct des PP des objectifs,
+	// versé une fois toutes les étapes terminées. Enrichi en lecture, non
+	// persisté.
+	CompletionBonusPP int `json:"completion_bonus_pp,omitempty"`
 }
 
 // ---------- MomentCard ----------

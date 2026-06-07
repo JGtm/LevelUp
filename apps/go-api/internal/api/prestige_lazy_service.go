@@ -233,16 +233,27 @@ func demoUserPrestige(userID, titleSlug string) prestige.UserPrestige {
 const demoArcID = "demo-arc-ascension"
 
 // demoArcs : un arc Prestige démo (la section Prestige du Home affiche l'arc actif).
+//
+// ObjectivesPP / CompletionBonusPP sont calculés depuis les objectifs démo (mêmes
+// règles que l'enrichissement read-time réel) pour que la démo illustre la
+// distinction "PP cumulés des objectifs" vs "bonus de complétion d'arc".
 func demoArcs(userID, titleSlug string) []prestige.Arc {
+	tuning := prestige.DefaultTuning()
+	objectivesPP := 0
+	for _, c := range demoActiveChallenges(userID, titleSlug) {
+		objectivesPP += c.PPReward
+	}
 	return []prestige.Arc{{
-		ID:          demoArcID,
-		UserID:      userID,
-		TitleSlug:   titleSlug,
-		Title:       "Ascension du Spartan",
-		Description: "Enchaîne les objectifs pour gravir les paliers de prestige.",
-		IsPreset:    true,
-		PresetID:    "ascension",
-		CreatedAt:   time.Now().UTC().Add(-14 * 24 * time.Hour),
+		ID:                demoArcID,
+		UserID:            userID,
+		TitleSlug:         titleSlug,
+		Title:             "Ascension du Spartan",
+		Description:       "Enchaîne les objectifs pour gravir les paliers de prestige.",
+		IsPreset:          true,
+		PresetID:          "ascension",
+		CreatedAt:         time.Now().UTC().Add(-14 * 24 * time.Hour),
+		ObjectivesPP:      objectivesPP,
+		CompletionBonusPP: prestige.PPForArcCompletion(tuning, objectivesPP),
 	}}
 }
 
@@ -252,6 +263,9 @@ func demoArcs(userID, titleSlug string) []prestige.Arc {
 func demoActiveChallenges(userID, titleSlug string) []prestige.Challenge {
 	now := time.Now().UTC()
 	exp := now.Add(5 * 24 * time.Hour)
+	// PP affiché par objectif démo : tous Héroïque + données complètes (même
+	// calcul que l'enrichissement réel ListActiveChallenges → PPForCompletion).
+	ppReward := prestige.PPForCompletion(prestige.DefaultTuning(), prestige.TierHeroic, false, prestige.DataFull)
 	mk := func(id, label, metric string, pos int, target, current float64, status prestige.ChallengeStatus) prestige.Challenge {
 		return prestige.Challenge{
 			ID: id, UserID: userID, TitleSlug: titleSlug,
@@ -260,7 +274,7 @@ func demoActiveChallenges(userID, titleSlug string) []prestige.Challenge {
 			WindowType: prestige.WindowLastNMatches, WindowValue: "10",
 			Cadence: prestige.CadenceWeekly, EvalType: prestige.EvalCumulative,
 			Mode: prestige.ModeLibre, Tier: prestige.TierHeroic, DataTier: prestige.DataFull,
-			Label: label, Status: status,
+			Label: label, Status: status, PPReward: ppReward,
 			ExpiresAt: &exp, CreatedAt: now.Add(-3 * 24 * time.Hour),
 		}
 	}

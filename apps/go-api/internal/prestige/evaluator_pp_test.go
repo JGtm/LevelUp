@@ -198,9 +198,21 @@ func TestPPForCompletion_TierMatrix(t *testing.T) {
 }
 
 func TestPPForArcCompletion(t *testing.T) {
-	tuning := DefaultTuning()
-	if got := PPForArcCompletion(tuning); got != 200 {
-		t.Errorf("got %d want 200", got)
+	tuning := DefaultTuning() // ArcCompletionBonusRatio = 0.5
+	cases := []struct {
+		objectivesPP int
+		want         int
+	}{
+		{0, 0},     // pas d'objectif créditant → pas de bonus
+		{-10, 0},   // garde-fou
+		{300, 150}, // 3 défis Héroïques (3×75) → +50 % = 150
+		{75, 38},   // 1 seul défi Héroïque → 37.5 arrondi à 38
+		{550, 275}, // arc mixte (75+125+150 + ...) → +50 %
+	}
+	for _, tc := range cases {
+		if got := PPForArcCompletion(tuning, tc.objectivesPP); got != tc.want {
+			t.Errorf("objectivesPP=%d: got %d want %d", tc.objectivesPP, got, tc.want)
+		}
 	}
 }
 

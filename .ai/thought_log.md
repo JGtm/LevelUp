@@ -1,3 +1,19 @@
+## [2026-06-07] Match View — barre KPI onglet Général au format KpiCard à accent dynamique — Complété (front-only)
+
+**Statut** : Complété (validé local). typecheck OK + `eslint match-view` exit 0 (3 warnings préexistants only, hors MatchStatCards) + vitest match-view 110. Non commité (attente autorisation user).
+
+**Demande** : passer la barre de KPI de l'onglet « Général » (id `summary`) de la Match View au format « KPI accent dynamique » du catalogue (`components/cards/KpiCard`, type 4). Taille/contenu volontairement plus grands/complexes à conserver.
+
+**Décisions** :
+1. **Périmètre** : la barre = `MatchSummaryCardsSection` (MatchViewPage l.289) → 6 cartes : `MatchVsStatCard` ×5 (MMR, frags, morts, assists, vie moy.) + `MatchWinProbCard` ×1. Ces 2 composants ne servent QUE là (vérifié) → conversion sans impact sur l'onglet Détails.
+2. **Wrapping** : chaque carte enveloppée dans `<KpiCard accent={...}>` + contenu interne inchangé dans un `<div className="px-4 py-3">` (taille/layout « X vs Y + delta » préservés, pas de compaction). La grille `lg:grid-cols-6` étire déjà les cartes à hauteur égale (align stretch) ; `h-full` ajouté pour expliciter.
+3. **Accent dynamique (type 4)** : barre 3px = `divergent-pos` si delta favorable, `divergent-neg` si défavorable, absente si neutre. `MatchWinProbCard` : pos si favori (≥55%), neg si outsider (≤45%), absente si équilibré ; graying « sans donnée » conservé via `opacity-50` sur la KpiCard.
+4. **Carte « vie moy. » (retour user)** : pas de delta/comparaison → pas de signal vert/rouge possible. Ajout d'un prop `fixedAccent?: SemanticToken` (accent FIXE type 2 du catalogue, utilisé quand `isFavorable===null`) ; la carte vie moy. reçoit `divergent-neutral` → barre neutre, cohérence visuelle avec les 5 autres sans faux signal.
+
+**Résultats** : 6 cartes au format KpiCard, accent dynamique honnête (neutre quand pas de comparaison). typecheck 0, lint exit 0, vitest match-view 110.
+
+**Prochaine étape** : commit sur autorisation.
+
 ## [2026-06-07] Création d'arc libre (UI manquante) + plan arcs presets/suppression/onglets — Fix complété (front-only)
 
 **Statut** : Fix création d'arc libre LIVRÉ (validé local). typecheck OK + `eslint prestige+ascension` exit 0 (2 warnings préexistants only, hors mes fichiers) + vitest AscensionProfileTab 14. Plan détaillé écrit. Non commité (attente autorisation user).
@@ -22009,3 +22025,17 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 - **Médias** : page 500 car le media repo lit `shared_social.media_files` (demo = DB fraîche schéma périmé, capture_start_utc absent). Fix : `resolveDemoPlayer SharedSocialDBPath=""` → nil → fallback Player DB (où seed-demo écrit les médias, schéma complet). + filtre format Xbox (`file_name LIKE 'Halo Infinite%'`) + tri plus anciennes + assoc. fuzzy par carte.
 - **Langue** : (1) démo en anglais car GET /settings renvoyait Defaults() (lang=en) → fix backend (settings réels, lang=fr) ; (2) changement de langue KO car le sélecteur PATCH /settings (422 en démo) → fix frontend : `demo_mode` au bootstrap + useUpdateSettings bascule la langue client-side (setLocale, sans PATCH) + bandeau "settings figés". Langue non persistée au reload (store re-hydrate, pas de localStorage) — session-scoped.
 - **Reste** : déploiement (merge main + reseed VPS prod-stoppée ~1s, le job regen-demo a le bug de lock). Vérif end-to-end après deploy (pas d'itération isolée VPS sur ce lot). Persistance langue reload (localStorage) = option différée.
+
+---
+
+### [2026-06-07] Prestige : bonus de complétion d'arc branché + recalibré + affichage désambiguïsé
+
+- **Statut** : Complété (validé local : go build + go test + go vet + duckdb integration + tsc + eslint 0 erreur + vitest 82 tests). Branche `fix/enrichment-convergence`. NON commit (en attente autorisation user).
+- **Problème** (question user) : un arc rapportait « autant qu'un objectif ». Double cause : (1) le badge PP de l'arc = simple somme des objectifs (pas une récompense d'arc), trompeur ; (2) `arc_completion_bonus = 200` flat = exactement 1 objectif Mythic, ET `PPForArcCompletion` n'avait **aucun appelant** → code mort, bonus jamais crédité.
+- **Décision 1 — recalibrage** : `arc_completion_bonus` (flat int) → `arc_completion_bonus_ratio` (float, 0.5). Bonus = `round(ΣPP_objectifs × ratio)` : croît avec le nombre ET la difficulté des étapes, toujours > meilleur défi unitaire. `PPForArcCompletion(t, objectivesPP)`. Maj tuning.toml + DefaultTuning + Validate (ratio >= 0).
+- **Décision 2 — câblage** : `maybeCompleteArc` (service_evaluate.go) appelé depuis `creditCompletion` quand `c.ArcID != ""`. Dernière étape completed → `Arcs.MarkCompleted` + émet `PrestigeEvent{SourceType:"arc"}` (le `EmitEvent` DuckDB bump déjà `user_prestige.total_pp`). Idempotent (skip si `CompletedAt != nil`). Nouveaux champs `EvaluationOutcome.ArcCompletedID/ArcPPCredited`.
+- **Décision 3 — affichage autoritatif** : `Arc` enrichi en lecture (`enrichArcReward` dans ListArcs/GetArc) avec `objectives_pp` + `completion_bonus_pp` (corrige aussi le sous-comptage front qui ne sommait que les défis actifs). Démo (`prestige_lazy_service.go`) : `PPReward` sur les objectifs + `ObjectivesPP/CompletionBonusPP` sur l'arc, mêmes règles tuning. Front : ArcSummary affiche 2 badges distincts (« X PP » objectifs + « +Y PP bonus », i18n FR/EN `arcBonusBadge/arcBonusPPTooltip`).
+- **Tests** : `service_arc_completion_test.go` (4 cas : all-completed crédite 113, partiel no-op, déjà-clôturé idempotent, EvaluateForUser end-to-end ch+arc events) ; `TestPPForArcCompletion` en table ; stub `List` honore désormais le filtre ArcID.
+- **Garde-fou non rétroactif** : les arcs déjà 100 % complétés avant ce patch ne reçoivent pas le bonus a posteriori (pas de nouvel event de complétion). Pas de backfill demandé.
+- **Note concurrence** : `ArcSummary.tsx` + `prestige/i18n.ts` ont été modifiés par un process parallèle pendant la session (refactor i18n + layout flanking + form arc). Intégration **additive** sur la dernière version (badge bonus, source `arc.objectives_pp ?? totalPP`), sans toucher au layout ni aux call sites — à reconcilier au commit.
+- **Conclusion / prochaine étape** : feature complète bout-à-bout. À commit (sur autorisation) ; vérif visuelle démo après deploy (Home section Prestige + page Ascension).
