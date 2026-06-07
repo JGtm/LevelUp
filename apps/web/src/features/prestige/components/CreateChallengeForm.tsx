@@ -12,6 +12,7 @@
  * cible ajustable.
  */
 import { useState } from 'react'
+import { useAppShellStore } from '@/stores/appShellStore'
 import {
   type Cadence,
   type CreateChallengeBody,
@@ -21,6 +22,7 @@ import {
 } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 import { CADENCE_FREE_FALLBACK_FR } from '../fallback.i18n'
+import { getPrestigeText } from '../i18n'
 import { useCreateChallenge, useSuggestedTemplates } from '../hooks'
 
 type FormMode = 'hybride' | 'libre' | 'automatique'
@@ -39,6 +41,8 @@ export function CreateChallengeForm({
   onCancel,
 }: CreateChallengeFormProps) {
   const [mode, setMode] = useState<FormMode>('hybride')
+  const locale = useAppShellStore((s) => s.locale)
+  const t = getPrestigeText(locale)
   // Phase 4 plan finition multi-titres : libellé "Libre" via cadence.free du TOML.
   const libreLabelFromTOML = useAssetLabel('cadence', 'free')
   const libreLabel =
@@ -47,22 +51,22 @@ export function CreateChallengeForm({
   return (
     <div className="space-y-4">
       <header className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Nouveau défi</h2>
+        <h2 className="text-lg font-semibold">{t.formNewChallenge}</h2>
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
             className="text-sm text-muted-foreground hover:text-foreground"
           >
-            Annuler
+            {t.formCancel}
           </button>
         )}
       </header>
 
       <div className="flex gap-1 rounded-md border border-border bg-card p-0.5">
-        <ModeButton active={mode === 'hybride'} onClick={() => setMode('hybride')} label="Hybride" />
+        <ModeButton active={mode === 'hybride'} onClick={() => setMode('hybride')} label={t.formModeHybrid} />
         <ModeButton active={mode === 'libre'} onClick={() => setMode('libre')} label={libreLabel} />
-        <ModeButton active={mode === 'automatique'} onClick={() => setMode('automatique')} label="Automatique" />
+        <ModeButton active={mode === 'automatique'} onClick={() => setMode('automatique')} label={t.formModeAuto} />
       </div>
 
       {mode === 'libre' && (
@@ -96,6 +100,8 @@ function ModeButton({ active, onClick, label }: { active: boolean; onClick: () =
 // ─── Mode libre : tous les champs ───
 
 function FreeForm({ userId, titleSlug, onSuccess }: TabFormProps) {
+  const locale = useAppShellStore((s) => s.locale)
+  const t = getPrestigeText(locale)
   const [metric, setMetric] = useState('FieldKDA')
   const [target, setTarget] = useState('1.5')
   const [windowType, setWindowType] = useState<WindowType>('session')
@@ -125,7 +131,7 @@ function FreeForm({ userId, titleSlug, onSuccess }: TabFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <Field label="Métrique">
+      <Field label={t.formFieldMetric}>
         <select
           value={metric}
           onChange={(e) => setMetric(e.target.value)}
@@ -133,15 +139,15 @@ function FreeForm({ userId, titleSlug, onSuccess }: TabFormProps) {
         >
           <option value="FieldKDA">KDA</option>
           <option value="FieldKDR">K/D</option>
-          <option value="FieldAccuracy">Précision</option>
-          <option value="FieldHeadshotKills">Headshots</option>
-          <option value="FieldDamageDealt">Dégâts infligés</option>
-          <option value="FieldPersonalScore">Score perso</option>
-          <option value="FieldWinRate">Taux de victoire (%)</option>
+          <option value="FieldAccuracy">{t.metricAccuracy}</option>
+          <option value="FieldHeadshotKills">{t.metricHeadshots}</option>
+          <option value="FieldDamageDealt">{t.metricDamage}</option>
+          <option value="FieldPersonalScore">{t.metricPersonalScore}</option>
+          <option value="FieldWinRate">{t.metricWinRate}</option>
         </select>
       </Field>
 
-      <Field label="Cible">
+      <Field label={t.formFieldTarget}>
         <input
           type="number"
           step="0.01"
@@ -154,18 +160,18 @@ function FreeForm({ userId, titleSlug, onSuccess }: TabFormProps) {
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Fenêtre">
+        <Field label={t.formFieldWindow}>
           <select
             value={windowType}
             onChange={(e) => setWindowType(e.target.value as WindowType)}
             className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
           >
-            <option value="session">Sessions</option>
-            <option value="rolling_days">Jours glissants</option>
-            <option value="deadline">Deadline</option>
+            <option value="session">{t.windowSessions}</option>
+            <option value="rolling_days">{t.windowRollingDays}</option>
+            <option value="deadline">{t.windowDeadline}</option>
           </select>
         </Field>
-        <Field label={windowType === 'deadline' ? 'Date (YYYY-MM-DD)' : 'Valeur'}>
+        <Field label={windowType === 'deadline' ? t.formFieldDate : t.formFieldValue}>
           <input
             type="text"
             value={windowValue}
@@ -175,26 +181,26 @@ function FreeForm({ userId, titleSlug, onSuccess }: TabFormProps) {
         </Field>
       </div>
 
-      <Field label="Cadence">
+      <Field label={t.formFieldCadence}>
         <select
           value={cadence}
           onChange={(e) => setCadence(e.target.value as Cadence)}
           className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
         >
-          <option value="free">Libre</option>
-          <option value="daily">Quotidien</option>
-          <option value="weekly">Hebdomadaire</option>
-          <option value="monthly">Mensuel</option>
+          <option value="free">{t.cadenceFree}</option>
+          <option value="daily">{t.cadenceDaily}</option>
+          <option value="weekly">{t.cadenceWeekly}</option>
+          <option value="monthly">{t.cadenceMonthly}</option>
         </select>
       </Field>
 
-      <Field label="Label (optionnel)">
+      <Field label={t.formFieldLabel}>
         <input
           type="text"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           maxLength={128}
-          placeholder="Ex. Slayer Lv.2"
+          placeholder={t.formLabelPlaceholder}
           className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
         />
       </Field>
@@ -207,6 +213,8 @@ function FreeForm({ userId, titleSlug, onSuccess }: TabFormProps) {
 // ─── Mode hybride : template + ajustement ───
 
 function HybridForm({ userId, titleSlug, onSuccess }: TabFormProps) {
+  const locale = useAppShellStore((s) => s.locale)
+  const t = getPrestigeText(locale)
   const { data, isLoading } = useSuggestedTemplates(userId, titleSlug, 5)
   const [selected, setSelected] = useState<Template | null>(null)
   const [customTarget, setCustomTarget] = useState<string>('')
@@ -215,7 +223,7 @@ function HybridForm({ userId, titleSlug, onSuccess }: TabFormProps) {
   if (isLoading) {
     return (
       <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-        Chargement des suggestions…
+        {t.formLoadingSuggestions}
       </div>
     )
   }
@@ -224,14 +232,14 @@ function HybridForm({ userId, titleSlug, onSuccess }: TabFormProps) {
   if (templates.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-        Aucun template disponible. Bascule en mode libre pour créer un défi personnalisé.
+        {t.formNoTemplates}
       </div>
     )
   }
 
-  const handleSelect = (t: Template) => {
-    setSelected(t)
-    setCustomTarget(String(t.heroic_target)) // par défaut palier Heroic
+  const handleSelect = (tpl: Template) => {
+    setSelected(tpl)
+    setCustomTarget(String(tpl.heroic_target)) // par défaut palier Heroic
   }
 
   const handleSubmit = () => {
@@ -254,35 +262,33 @@ function HybridForm({ userId, titleSlug, onSuccess }: TabFormProps) {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
-        Choisis un template ; ajuste la cible si tu veux.
-      </p>
+      <p className="text-xs text-muted-foreground">{t.formHybridHint}</p>
       <ul className="space-y-2">
-        {templates.map((t) => (
+        {templates.map((tpl) => (
           <li
-            key={t.id}
+            key={tpl.id}
             className={[
               'cursor-pointer rounded-md border p-3 text-sm transition-colors',
-              selected?.id === t.id
+              selected?.id === tpl.id
                 ? 'border-primary bg-primary/5'
                 : 'border-border hover:border-primary/50',
             ].join(' ')}
-            onClick={() => handleSelect(t)}
+            onClick={() => handleSelect(tpl)}
           >
-            <h3 className="font-medium">{t.label_fr}</h3>
-            {t.description_fr && (
-              <p className="mt-0.5 text-xs text-muted-foreground">{t.description_fr}</p>
+            <h3 className="font-medium">{tpl.label_fr}</h3>
+            {tpl.description_fr && (
+              <p className="mt-0.5 text-xs text-muted-foreground">{tpl.description_fr}</p>
             )}
             <p className="mt-1 text-xs text-muted-foreground">
-              N: {t.normal_target} · H: {t.heroic_target} · L: {t.legendary_target} · M:{' '}
-              {t.mythic_target}
+              N: {tpl.normal_target} · H: {tpl.heroic_target} · L: {tpl.legendary_target} · M:{' '}
+              {tpl.mythic_target}
             </p>
           </li>
         ))}
       </ul>
 
       {selected && (
-        <Field label="Cible ajustée">
+        <Field label={t.formFieldAdjustedTarget}>
           <input
             type="number"
             step="0.01"
@@ -306,51 +312,51 @@ function HybridForm({ userId, titleSlug, onSuccess }: TabFormProps) {
 // ─── Mode automatique : 3 propositions ───
 
 function AutoForm({ userId, titleSlug, onSuccess }: TabFormProps) {
+  const locale = useAppShellStore((s) => s.locale)
+  const t = getPrestigeText(locale)
   const { data, isLoading } = useSuggestedTemplates(userId, titleSlug, 3)
   const create = useCreateChallenge(userId, titleSlug)
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Génération des propositions…</p>
+    return <p className="text-sm text-muted-foreground">{t.formGenerating}</p>
   }
 
   const templates = data?.templates ?? []
 
-  const handleAccept = (t: Template) => {
+  const handleAccept = (tpl: Template) => {
     const body: CreateChallengeBody = {
       user_id: userId,
       title_slug: titleSlug,
-      template_id: t.id,
-      metric: t.metric,
-      target: t.heroic_target,
-      window_type: t.window_type,
-      window_value: t.window_value,
-      cadence: t.cadence,
-      eval_type: t.eval_type,
+      template_id: tpl.id,
+      metric: tpl.metric,
+      target: tpl.heroic_target,
+      window_type: tpl.window_type,
+      window_value: tpl.window_value,
+      cadence: tpl.cadence,
+      eval_type: tpl.eval_type,
       mode: 'libre',
-      label: t.label_fr,
+      label: tpl.label_fr,
     }
     create.mutate(body, { onSuccess })
   }
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
-        3 défis tirés du catalogue, à accepter directement.
-      </p>
+      <p className="text-xs text-muted-foreground">{t.formAutoHint}</p>
       <ul className="space-y-2">
-        {templates.map((t) => (
-          <li key={t.id} className="rounded-md border border-border p-3">
-            <h3 className="text-sm font-medium">{t.label_fr}</h3>
-            {t.description_fr && (
-              <p className="mt-0.5 text-xs text-muted-foreground">{t.description_fr}</p>
+        {templates.map((tpl) => (
+          <li key={tpl.id} className="rounded-md border border-border p-3">
+            <h3 className="text-sm font-medium">{tpl.label_fr}</h3>
+            {tpl.description_fr && (
+              <p className="mt-0.5 text-xs text-muted-foreground">{tpl.description_fr}</p>
             )}
             <button
               type="button"
-              onClick={() => handleAccept(t)}
+              onClick={() => handleAccept(tpl)}
               disabled={create.isPending}
               className="mt-2 rounded-md border border-border px-3 py-1 text-xs hover:bg-accent disabled:opacity-50"
             >
-              Accepter (Heroic : {t.heroic_target})
+              {t.formAcceptHeroic.replace('{target}', String(tpl.heroic_target))}
             </button>
           </li>
         ))}
@@ -390,6 +396,8 @@ function SubmitRow({
   disabled?: boolean
   onSubmit?: () => void
 }) {
+  const locale = useAppShellStore((s) => s.locale)
+  const t = getPrestigeText(locale)
   return (
     <div className="space-y-2">
       {error && <p className="text-xs text-destructive">{error.message}</p>}
@@ -399,7 +407,7 @@ function SubmitRow({
         disabled={loading || disabled}
         className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
       >
-        {loading ? 'Création…' : 'Créer le défi'}
+        {loading ? t.formCreating : t.formCreate}
       </button>
     </div>
   )

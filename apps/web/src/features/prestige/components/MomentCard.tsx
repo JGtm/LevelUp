@@ -6,9 +6,11 @@
  *
  * Animations sobres : pas de flip/particules. Glow bordure + fade-in suffit.
  */
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { Challenge } from '@/lib/prestige'
 import { TIER_COLORS, TIER_LABELS_FR } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
+import { getPrestigeText } from '../i18n'
 
 interface MomentCardProps {
   challenge: Challenge
@@ -29,6 +31,8 @@ export function MomentCard({
   matchCount = 0,
   compact = false,
 }: MomentCardProps) {
+  const locale = useAppShellStore((s) => s.locale)
+  const t = getPrestigeText(locale)
   const tier = challenge.tier ?? 'normal'
   const color = TIER_COLORS[tier]
   const isMythic = tier === 'mythic'
@@ -43,7 +47,7 @@ export function MomentCard({
 
   const label = challenge.label || challenge.metric
   const date = challenge.completed_at
-    ? new Date(challenge.completed_at).toLocaleDateString('fr-FR', {
+    ? new Date(challenge.completed_at).toLocaleDateString(locale === 'en' ? 'en-US' : 'fr-FR', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
@@ -81,7 +85,7 @@ export function MomentCard({
 
         <div className={['mt-3 flex items-baseline gap-3', compact ? 'text-sm' : 'text-base'].join(' ')}>
           <div className="flex flex-col">
-            <span className="text-2xs uppercase text-muted-foreground">Atteint</span>
+            <span className="text-2xs uppercase text-muted-foreground">{t.momentAchieved}</span>
             <span className="font-bold" style={{ color }}>
               {achievedValue.toFixed(2)}
             </span>
@@ -89,11 +93,11 @@ export function MomentCard({
           {baselineValue > 0 && (
             <>
               <div className="flex flex-col">
-                <span className="text-2xs uppercase text-muted-foreground">Baseline</span>
+                <span className="text-2xs uppercase text-muted-foreground">{t.momentBaseline}</span>
                 <span className="text-foreground">{baselineValue.toFixed(2)}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-2xs uppercase text-muted-foreground">Delta</span>
+                <span className="text-2xs uppercase text-muted-foreground">{t.momentDelta}</span>
                 <span className="font-semibold" style={{ color }}>
                   {delta}
                 </span>
@@ -105,7 +109,7 @@ export function MomentCard({
 
       {/* Footer */}
       <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-2xs text-muted-foreground">
-        {matchCount > 0 ? <span>{matchCount} matchs</span> : <span />}
+        {matchCount > 0 ? <span>{matchCount} {t.momentMatches}</span> : <span />}
         <span>{date}</span>
       </div>
     </div>
