@@ -90,12 +90,13 @@ jobs:
             # Permissions fixées automatiquement par docker-entrypoint.sh (gosu pattern)
             mkdir -p data/demo
 
-            # Guard anti-crash-loop : si un backfill hôte tourne, il peut saisir le
-            # lock DuckDB quand on stoppe la prod → la prod ne rouvrirait plus
-            # (cf. mémoire deploy_hazards). On SKIP le regen sans faire échouer le
-            # déploiement ; la démo garde ses données (qui persistent sur disque).
-            if pgrep -f 'backfill' >/dev/null 2>&1; then
-              echo "[regen] ⚠️ Backfill hôte détecté — regen démo SKIP (prod préservée, démo inchangée)"
+            # Garde anti-crash-loop : si une tache de fond hote (cmd/[b]ackfill_*) tient
+            # le lock DuckDB, stopper la prod l'empecherait de rouvrir (cf. memoire
+            # deploy_hazards). On SKIP le regen sans faire echouer le deploiement (la
+            # demo garde ses donnees sur disque). Le motif [b]ackfill evite que pgrep
+            # matche le mot dans sa propre ligne de commande (faux positif permanent).
+            if pgrep -f '[b]ackfill' >/dev/null 2>&1; then
+              echo "[regen] Tache de fond hote detectee — regen demo SKIP (prod preservee)"
               exit 0
             fi
 
