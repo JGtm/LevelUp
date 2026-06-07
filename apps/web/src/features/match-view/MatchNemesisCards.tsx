@@ -1,7 +1,7 @@
 /**
  * MatchNemesisCards — match_view.12 (Némésis et Souffre-douleur).
  *
- * Deux cartes côte à côte sur fond sombre :
+ * Deux cartes côte à côte sur fond bg-card (aligné sur les autres blocs) :
  *   - Némésis : adversaire qui m'a le plus tué (max killed_me).
  *   - Souffre-douleur : adversaire que j'ai le plus tué (max i_killed).
  *
@@ -80,9 +80,8 @@ function NemesisCard({ title, accentToken, row, statLine, logoSrc, t }: CardProp
   const accent = tokenCssVar(accentToken)
   return (
     <div
-      className="relative overflow-hidden rounded-lg border border-border/60 p-5"
+      className="relative overflow-hidden rounded-lg border border-border/60 bg-card p-5"
       style={{
-        background: 'linear-gradient(135deg, rgb(15 18 24) 0%, rgb(24 27 36) 100%)',
         boxShadow: `inset 0 0 0 1px ${accent}33`,
       }}
     >

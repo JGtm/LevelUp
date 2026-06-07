@@ -27,6 +27,21 @@ import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { PageUnavailable } from '@/components/ui/page-unavailable'
 import { apiErrorCode } from '@/lib/api/client'
 import { useAppShellStore } from '@/stores/appShellStore'
+import type { ReactNode } from 'react'
+
+/**
+ * DetailSection — titre de section type-1 (catalogue UI d'harmonisation, même
+ * format que le Home : titre `text-base font-semibold`) + contenu groupé.
+ * Structure l'onglet Détails (dense) en sections lisibles et titrées.
+ */
+function DetailSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="space-y-4">
+      <h3 className="text-base font-semibold text-foreground">{title}</h3>
+      {children}
+    </section>
+  )
+}
 
 /**
  * Traduit un code stable de partial_reason en impact end-user concret.
@@ -323,81 +338,96 @@ export function MatchViewPage() {
           </div>
         ) : (
           <>
-            {/* Faits marquants | Frags cumulés */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[180px_1fr]">
-              <MatchImpactBadgesBar badges={impactBadges} scoreboard={scoreboard} />
-              <MatchKDCumulChart
+            {/* §1 — Déroulé du match (lecture chronologique) */}
+            <DetailSection title={t.sectionFlow}>
+              {/* Faits marquants | Frags cumulés */}
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[180px_1fr]">
+                <MatchImpactBadgesBar badges={impactBadges} scoreboard={scoreboard} />
+                <MatchKDCumulChart
+                  events={highlightEvents}
+                  badges={impactBadges}
+                  scoreboard={scoreboard}
+                  meXUID={meXUID}
+                  t={t}
+                />
+              </div>
+
+              {/* Dominance | Cadence des frags */}
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <MatchTugOfWarChart
+                  bins={tugOfWar}
+                  events={highlightEvents}
+                  scoreboard={scoreboard}
+                  meXUID={meXUID}
+                  t={t}
+                />
+                <MatchCadenceChart
+                  cadence={combat_tab.cadence}
+                  scoreboard={scoreboard}
+                  meXUID={meXUID}
+                  t={t}
+                />
+              </div>
+
+              {/* Engagement — remonté ici (avant Frags différentiel cumulé) */}
+              <EngagementMatchSection
+                playerSlug={playerSlug}
+                matchId={matchId}
+                granularity="intra"
+                emptyBehavior="placeholder"
+              />
+            </DetailSection>
+
+            {/* §2 — Duels & confrontations (face-à-face) */}
+            <DetailSection title={t.sectionDuels}>
+              {/* Némésis + Souffre-douleur | Antagonistes */}
+              <div className="flex flex-col gap-4">
+                <MatchNemesisCards
+                  nemesis={nemesis}
+                  scoreboard={scoreboard}
+                  meXUID={meXUID}
+                  t={t}
+                />
+                <MatchAntagonistChart
+                  pairs={killerVictim}
+                  scoreboard={scoreboard}
+                  meXUID={meXUID}
+                  t={t}
+                />
+              </div>
+
+              {/* Frags différentiel cumulé — descendu ici (après Antagonistes) */}
+              <MatchFragDiffChart
                 events={highlightEvents}
-                badges={impactBadges}
                 scoreboard={scoreboard}
-                meXUID={meXUID}
-                t={t}
-              />
-            </div>
-
-            {/* Dominance | Cadence des frags */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <MatchTugOfWarChart
-                bins={tugOfWar}
-                events={highlightEvents}
-                scoreboard={scoreboard}
-                meXUID={meXUID}
-                t={t}
-              />
-              <MatchCadenceChart
-                cadence={combat_tab.cadence}
-                scoreboard={scoreboard}
-                meXUID={meXUID}
-                t={t}
-              />
-            </div>
-
-            <MatchFragDiffChart
-              events={highlightEvents}
-              scoreboard={scoreboard}
-              roster={roster}
-              pairs={killerVictim}
-              meXUID={meXUID}
-              t={t}
-              friendGamertags={friendGamertags}
-            />
-
-            {/* Némésis + Souffre-douleur | Antagonistes */}
-            <div className="flex flex-col gap-4">
-              <MatchNemesisCards
-                nemesis={nemesis}
-                scoreboard={scoreboard}
-                meXUID={meXUID}
-                t={t}
-              />
-              <MatchAntagonistChart
+                roster={roster}
                 pairs={killerVictim}
-                scoreboard={scoreboard}
                 meXUID={meXUID}
                 t={t}
+                friendGamertags={friendGamertags}
               />
-            </div>
+            </DetailSection>
 
-            <EngagementMatchSection
-              playerSlug={playerSlug}
-              matchId={matchId}
-              granularity="intra"
-              emptyBehavior="placeholder"
-            />
+            {/* §3 — Tableau des scores (table sortie de son bloc) */}
+            <DetailSection title={t.scoreboardTitle}>
+              <MatchScoreboard
+                rows={scoreboard}
+                killerVictim={killerVictim}
+                citations={summary_tab.citations ?? []}
+                header={header}
+                rank={rank}
+                t={t}
+              />
+            </DetailSection>
 
-            <MatchScoreboard
-              rows={scoreboard}
-              killerVictim={killerVictim}
-              citations={summary_tab.citations ?? []}
-              header={header}
-              rank={rank}
-              t={t}
-            />
-
-            <MatchEncountersTable
-              rows={team_tab.encounters ?? []}
-              locale={locale === 'en' ? 'en' : 'fr'}
-            />
+            {/* §4 — Historique des rencontres (table sortie de son bloc) */}
+            <DetailSection title={t.sectionEncounters}>
+              <MatchEncountersTable
+                rows={team_tab.encounters ?? []}
+                locale={locale === 'en' ? 'en' : 'fr'}
+                hideCardWrapper
+              />
+            </DetailSection>
           </>
         )}
       </div>

@@ -11,7 +11,8 @@
  */
 import type { MatchViewRank, MatchExpectedStats, MatchNemesisRow, MatchSummaryKpis } from '@/lib/api/types'
 import { skillDeltaScale, kdScale } from '@/lib/accessibility/scales'
-import { tokenCssVar } from '@/lib/accessibility'
+import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import { KpiCard } from '@/components/cards/KpiCard'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { formatMessage } from '@/lib/i18n/format'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
@@ -212,6 +213,12 @@ interface MatchVsStatCardProps {
   lowerIsBetter?: boolean
   /** Formater la valeur (ex. décimales) */
   precision?: number
+  /**
+   * Accent FIXE (type 2 du catalogue) appliqué quand il n'y a pas de delta —
+   * ex. métrique sans comparaison (vie moyenne). Ignoré dès qu'un delta existe
+   * (l'accent dynamique type 4 prend le dessus).
+   */
+  fixedAccent?: SemanticToken
 }
 
 export function MatchVsStatCard({
@@ -223,6 +230,7 @@ export function MatchVsStatCard({
   delta,
   lowerIsBetter = false,
   precision = 0,
+  fixedAccent,
 }: MatchVsStatCardProps) {
   const fmt = (v: number | string | null | undefined) => {
     if (v == null) return '—'
@@ -233,39 +241,47 @@ export function MatchVsStatCard({
   const isFavorable =
     delta == null ? null : lowerIsBetter ? delta < 0 : delta > 0
 
+  // Accent dynamique (type 4 du catalogue) : barre 3px verte si favorable,
+  // rouge si défavorable. Sans delta, on retombe sur l'accent fixe éventuel
+  // (type 2 — ex. barre neutre pour une métrique sans comparaison).
+  const accent: SemanticToken | undefined =
+    isFavorable === null ? fixedAccent : isFavorable ? 'divergent-pos' : 'divergent-neg'
+
   const deltaStyle =
     isFavorable === null
       ? undefined
       : { color: tokenCssVar(isFavorable ? 'divergent-pos' : 'divergent-neg') }
 
   return (
-    <div className="rounded-lg border border-border bg-card px-4 py-3">
-      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">{label}</p>
-      <div className="flex items-baseline gap-2">
-        <div>
-          <span className="text-2xl font-bold text-foreground leading-none">{fmt(primary)}</span>
-          {primaryLabel && (
-            <p className="text-2xs text-muted-foreground mt-0.5">{primaryLabel}</p>
+    <KpiCard accent={accent} className="h-full">
+      <div className="px-4 py-3">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">{label}</p>
+        <div className="flex items-baseline gap-2">
+          <div>
+            <span className="text-2xl font-bold text-foreground leading-none">{fmt(primary)}</span>
+            {primaryLabel && (
+              <p className="text-2xs text-muted-foreground mt-0.5">{primaryLabel}</p>
+            )}
+          </div>
+          {secondary != null && (
+            <>
+              <span className="text-muted-foreground text-sm font-light">vs</span>
+              <div>
+                <span className="text-2xl font-bold text-foreground leading-none">{fmt(secondary)}</span>
+                {secondaryLabel && (
+                  <p className="text-2xs text-muted-foreground mt-0.5">{secondaryLabel}</p>
+                )}
+              </div>
+            </>
+          )}
+          {delta != null && (
+            <span className="ml-auto text-sm font-semibold" style={deltaStyle}>
+              {delta > 0 ? '+' : ''}{fmt(delta)}
+            </span>
           )}
         </div>
-        {secondary != null && (
-          <>
-            <span className="text-muted-foreground text-sm font-light">vs</span>
-            <div>
-              <span className="text-2xl font-bold text-foreground leading-none">{fmt(secondary)}</span>
-              {secondaryLabel && (
-                <p className="text-2xs text-muted-foreground mt-0.5">{secondaryLabel}</p>
-              )}
-            </div>
-          </>
-        )}
-        {delta != null && (
-          <span className="ml-auto text-sm font-semibold" style={deltaStyle}>
-            {delta > 0 ? '+' : ''}{fmt(delta)}
-          </span>
-        )}
       </div>
-    </div>
+    </KpiCard>
   )
 }
 
@@ -300,28 +316,35 @@ export function MatchWinProbCard({ winProb }: MatchWinProbCardProps) {
         ? tokenCssVar('divergent-pos')
         : tokenCssVar('divergent-neg')
 
+  // Accent dynamique (type 4) : barre 3px verte si favori, rouge si outsider,
+  // absente si équilibré / sans donnée.
+  const accent: SemanticToken | undefined =
+    pct == null || (pct > 45 && pct < 55)
+      ? undefined
+      : pct >= 55
+        ? 'divergent-pos'
+        : 'divergent-neg'
+
   return (
-    <div
-      className={`rounded-lg border px-4 py-3 ${
-        hasData ? 'border-border bg-card' : 'border-border/40 bg-card/50 opacity-50'
-      }`}
-    >
-      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-        {t('match_view.cards.expected_result')}
-      </p>
-      <div className="flex items-baseline gap-2">
-        <span
-          className="text-2xl font-bold text-foreground leading-none"
-          style={valueColor ? { color: valueColor } : undefined}
-        >
-          {pct != null ? `${pct} %` : '—'}
-        </span>
-        {pct != null && (
-          <span className="text-2xs text-muted-foreground">{t('match_view.cards.win_prob_label')}</span>
-        )}
+    <KpiCard accent={accent} className={hasData ? 'h-full' : 'h-full opacity-50'}>
+      <div className="px-4 py-3">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+          {t('match_view.cards.expected_result')}
+        </p>
+        <div className="flex items-baseline gap-2">
+          <span
+            className="text-2xl font-bold text-foreground leading-none"
+            style={valueColor ? { color: valueColor } : undefined}
+          >
+            {pct != null ? `${pct} %` : '—'}
+          </span>
+          {pct != null && (
+            <span className="text-2xs text-muted-foreground">{t('match_view.cards.win_prob_label')}</span>
+          )}
+        </div>
+        <p className="text-2xs text-muted-foreground mt-0.5">{t(qualitativeKey)}</p>
       </div>
-      <p className="text-2xs text-muted-foreground mt-0.5">{t(qualitativeKey)}</p>
-    </div>
+    </KpiCard>
   )
 }
 
@@ -394,6 +417,7 @@ export function MatchSummaryCardsSection({ kpis, expectedStats }: MatchSummaryCa
       <MatchVsStatCard
         label={t('match_view.cards.avg_life')}
         primary={kpis.average_life ?? null}
+        fixedAccent="divergent-neutral"
       />
     </div>
   )
