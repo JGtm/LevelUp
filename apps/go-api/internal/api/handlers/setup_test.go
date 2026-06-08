@@ -78,7 +78,7 @@ func TestSetupHandler_CreatePlayer_InstanceLocked(t *testing.T) {
 
 	h := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, &mockProfileService{playerKey: "x"})
 	r := chi.NewRouter()
-	r.Use(middleware.WithSession(sessionStore, false))
+	r.Use(middleware.WithSession(sessionStore, middleware.SecureCookiePolicy{}))
 	r.Post("/setup/players", h.CreatePlayer)
 
 	body := `{"gamertag": "TestPlayer", "profile_mode": "manual"}`
