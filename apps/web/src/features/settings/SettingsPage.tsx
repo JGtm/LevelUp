@@ -10,7 +10,6 @@ import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select } from '@/components/ui/select'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSettings, useUpdateSettings } from '@/features/settings/queries'
 import { getSettingsText, normalizeSettingsLocale } from '@/features/settings/i18n'
@@ -27,7 +26,7 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 
 // ─── Onglet Utilisateurs ────────────────────────────────────────────────────
 
-function UsersTab({ merged, handleChange, t }: TabProps) {
+function UsersTab({ t }: TabProps) {
   return (
     <>
       <Card className="border-border bg-card">
@@ -42,25 +41,6 @@ function UsersTab({ merged, handleChange, t }: TabProps) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t.authProviderTitle}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 divide-y divide-border/50">
-          <div className="flex items-center justify-between py-2">
-            <span className="text-sm text-foreground">{t.authProviderLabel}</span>
-            <Select
-              value={merged.auth_provider ?? 'msal'}
-              onChange={(e) => handleChange('auth_provider', e.target.value)}
-              className="w-auto"
-            >
-              <option value="msal">{t.authProviderMsal}</option>
-              <option value="sisu">{t.authProviderSisu}</option>
-            </Select>
-          </div>
-          <p className="pt-2 text-xs text-muted-foreground">{t.authProviderHint}</p>
-        </CardContent>
-      </Card>
     </>
   )
 }
