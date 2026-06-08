@@ -55,9 +55,11 @@ export const palmaresManifest = {
   "palmares.season_pass.content.tiers_label": { fr: "paliers", en: "tiers" },
   "palmares.season_pass.content.type_title": { fr: "Catégories", en: "Item types" },
   "palmares.season_pass.content.xp_boosts_label": { fr: "Boosts XP", en: "XP Boosts" },
+  "palmares.season_pass.cosmetics_unlocked_card": { fr: "Cosmétiques débloqués", en: "Cosmetics unlocked" },
   "palmares.season_pass.free_label": { fr: "gratuit", en: "free" },
   "palmares.season_pass.freshness_last_sync": { fr: "Dernière synchronisation réussie le {date}", en: "Last successful synchronization on {date}" },
   "palmares.season_pass.in_progress_card": { fr: "En cours", en: "In progress" },
+  "palmares.season_pass.loot_card": { fr: "Butin récolté", en: "Loot earned" },
   "palmares.season_pass.next_expiry": { fr: "Prochaine expiration", en: "Next expiry" },
   "palmares.season_pass.no_description": { fr: "Aucune description disponible pour ce pass.", en: "No description is available for this pass." },
   "palmares.season_pass.no_expiry": { fr: "Aucune échéance connue", en: "No known deadline" },
@@ -67,6 +69,8 @@ export const palmaresManifest = {
   "palmares.season_pass.obtained": { fr: "Obtenu", en: "Unlocked" },
   "palmares.season_pass.other_passes_title": { fr: "Autres passes", en: "Other passes" },
   "palmares.season_pass.premium": { fr: "Premium", en: "Premium" },
+  "palmares.season_pass.remaining_passes_card": { fr: "Pass restants", en: "Remaining passes" },
+  "palmares.season_pass.selected_pass_title": { fr: "Pass saisonnier", en: "Season pass" },
   "palmares.season_pass.status.active": { fr: "Actif", en: "Active" },
   "palmares.season_pass.status.completed": { fr: "Terminé", en: "Completed" },
   "palmares.season_pass.status.in_progress": { fr: "En cours", en: "In progress" },
@@ -76,6 +80,7 @@ export const palmaresManifest = {
   "palmares.season_pass.unavailable_title": { fr: "Pass saisonnier indisponible", en: "Season pass unavailable" },
   "palmares.season_pass.upcoming": { fr: "À venir", en: "Upcoming" },
   "palmares.season_pass.xp_available": { fr: "XP disponible", en: "XP available" },
+  "palmares.season_pass.xp_unlocked_card": { fr: "XP débloqué", en: "XP unlocked" },
 } as const
 
 export type PalmaresManifestKey = keyof typeof palmaresManifest

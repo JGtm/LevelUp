@@ -57,6 +57,10 @@ export interface PalmaresText {
     activeCard: string
     completedCard: string
     inProgressCard: string
+    remainingPassesCard: string
+    cosmeticsUnlockedCard: string
+    xpUnlockedCard: string
+    lootCard: string
     challengesCard: string
     challengesTitle: string
     challengesUnavailable: string
@@ -70,6 +74,7 @@ export interface PalmaresText {
     cardRank: string
     cardProgress: string
     activePassTitle: string
+    selectedPassTitle: string
     activeTierTitle: string
     activeTierProgress: string
     activeTierFallback: string
@@ -154,6 +159,10 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
       activeCard: t(loc, 'palmares.season_pass.active_card'),
       completedCard: t(loc, 'palmares.season_pass.completed_card'),
       inProgressCard: t(loc, 'palmares.season_pass.in_progress_card'),
+      remainingPassesCard: t(loc, 'palmares.season_pass.remaining_passes_card'),
+      cosmeticsUnlockedCard: t(loc, 'palmares.season_pass.cosmetics_unlocked_card'),
+      xpUnlockedCard: t(loc, 'palmares.season_pass.xp_unlocked_card'),
+      lootCard: t(loc, 'palmares.season_pass.loot_card'),
       challengesCard: t(loc, 'palmares.season_pass.challenges_card'),
       challengesTitle: t(loc, 'palmares.season_pass.challenges_title'),
       challengesUnavailable: t(loc, 'palmares.season_pass.challenges_unavailable'),
@@ -167,6 +176,7 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
       cardRank: t(loc, 'palmares.season_pass.card_rank'),
       cardProgress: t(loc, 'palmares.season_pass.card_progress'),
       activePassTitle: t(loc, 'palmares.season_pass.active_pass_title'),
+      selectedPassTitle: t(loc, 'palmares.season_pass.selected_pass_title'),
       activeTierTitle: t(loc, 'palmares.season_pass.active_tier_title'),
       activeTierProgress: t(loc, 'palmares.season_pass.active_tier_progress'),
       activeTierFallback: t(loc, 'palmares.season_pass.active_tier_fallback'),
