@@ -25,6 +25,35 @@
 
 ---
 
+## [2026-06-08] Fix onboarding bloqué — cookie de session Secure par schéma + récupération attempt_not_found (issue #22) — Complété
+
+**Statut** : Complété (branche `fix/session-cookie-secure-scheme`, depuis `feat/leaderboard-csr-world`). Go `go build ./...` OK, tests middleware/config/auth/handlers verts ; front XboxLoginPage 7/7 (dont récup). Non commité (attente autorisation).
+
+**Bug (issue #22 — Du1Bz, WSL2 `make dev`)** : Device Code Flow Xbox réussit (XSTS/gamertag/xuid loggés) mais aucun joueur créé, et le polling `GET /auth/device-flow/{id}` finit en `attempt_not_found`. Onboarding bloqué.
+
+**Cause racine** : `isProduction := cfg.SessionSecret != DefaultSessionSecret || cfg.IsProduction()` (server.go:115) couplait « secret de session custom défini » à « servi en HTTPS ». Pour utiliser le SSO Xbox il faut `LEVELUP_AUTH_MODE=xbox` + (cf. exemple) un `LEVELUP_SESSION_SECRET` → cookie posé `Secure=true`. Sur `http://localhost:5173` le navigateur **jette** le cookie Secure → chaque requête crée une nouvelle session → l'attempt stocké sous la session A est introuvable sous la session B (`snapshot.SessionID != sess.SessionID`) → `attempt_not_found`, et `OnAuthSuccess` (création joueur) jamais atteint. « Pas de joueur » = conséquence du blocage (le front crée le joueur via `POST /setup/players` APRÈS le device flow).
+
+**Décisions (validées user)** :
+- Flag `Secure` du cookie **décidé par requête** selon le schéma réel (TLS natif, ou `X-Forwarded-Proto=https` si `TrustProxyHeaders`), pas figé au boot. Override `LEVELUP_COOKIE_SECURE=auto|true|false` (défaut auto). Même modèle de confiance proxy que chi RealIP / LoopbackOnly.
+- **HSTS aussi par schéma** (`SecurityHeaders(trustProxy)`) — source de vérité unique `RequestIsHTTPS`.
+- **AttemptStore** : TTL 30 min + purge lazy (avant : aucune expiration → fuite mémoire). Persistance disque écartée volontairement (le `DevFlow` MSAL vivant n'est pas reprenable après restart → fausse durabilité).
+- **Front** : récupération gracieuse — sur `attempt_not_found` en polling, relance auto du flow (garde anti-boucle `MAX_AUTO_RECOVERY=3`, puis retry manuel). `useDeviceFlowStatus` passe en `retry:false`.
+
+**Implémentation** :
+- `middleware/request_scheme.go` (nouveau) : `RequestIsHTTPS(r, trustProxy)` + `SecureCookiePolicy{Mode, TrustProxy}.Secure(r)`.
+- `middleware/session.go` : `WithSession(store, SecureCookiePolicy)` → `setCookie` reçoit `policy.Secure(r)`.
+- `middleware/security_headers.go` : HSTS conditionné par `RequestIsHTTPS`.
+- `config.go` : champ `CookieSecure` + `parseCookieSecureMode` + warning `SecurityWarnings` si `=false`.
+- `server.go` : suppression de l'heuristique `isProduction` ; câblage `cookiePolicy` + `SecurityHeaders(cfg.TrustProxyHeaders)`.
+- `attempt_store.go` : `ttl`, `NewAttemptStoreWithTTL`, `PurgeExpired`, purge lazy dans `GetOrCreate`.
+- Front : `StepDeviceCode.tsx` + `XboxLoginPage.tsx` (effet de récup + compteur + retry manuel), `queries.ts` `retry:false`.
+
+**Tests** : `request_scheme_test.go` (table RequestIsHTTPS + policy, dont anti-spoof), `session_test.go` (cookie non-Secure sur http = **garde de non-régression du bug**, Secure sur TLS/proxy, force-false), `security_headers_test.go` réécrit (HSTS par schéma), `cookie_secure_test.go` (parsing + warning), `attempt_store_test.go` (TTL purge/recréation/fresh). 8 appelants de test `WithSession(_, false)` migrés vers `SecureCookiePolicy{}`. Front : test récupération `attempt_not_found` (XboxLoginPage 7/7).
+
+**Suite (option A validée)** : plan dédié auth (MDP optionnel post-onboarding + reconnect) APRÈS cette PR. Note refresh : le circuit sync auto-refresh déjà robuste (cache MSAL via `RefreshHaloTokensViaStoreFirst`) ; le watcher (`/watcher/auth/start`) ne capture PAS le cache MSAL → à unifier + brancher `RefreshUserXSTS` (PR 2.5c différée), plutôt que dupliquer la logique refresh_token.
+
+---
+
 ## [2026-06-08] Filtre sessions « Réinitialiser » + audio HLS « Jeu / Voix » — Complété
 
 **Statut** : Complété (branche courante `feat/nav-l1-mobile-drawer`, à la demande de l'utilisateur). Go `go build ./...` OK + `go test ./internal/media/...` verts ; web : SessionMultiSelect 23/23, CoverFlowModal HLS 7/7, eslint 0 erreur sur les fichiers touchés, `tsc -b` propre sur mes fichiers (résiduels préexistants hors scope dans `AscensionProfileTab.tsx`). Non commité (attente autorisation).

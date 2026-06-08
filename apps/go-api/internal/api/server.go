@@ -110,9 +110,11 @@ func NewRouter(
 		tokenProvider = auth_platform.NewMSALProvider()
 	}
 	// Sprint 14 : session store + Sprint 15 : attempt store auth
-	// secureCookies pose le flag Secure des cookies de session. Vrai dès que le
-	// secret de session est surchargé (déploiement réel) ou en mode production.
-	isProduction := cfg.SessionSecret != config.DefaultSessionSecret || cfg.IsProduction()
+	// Le flag Secure du cookie + HSTS sont décidés PAR REQUÊTE selon le schéma réel
+	// (TLS natif ou X-Forwarded-Proto derrière un proxy de confiance), pas figés au
+	// boot : ne plus coupler « secret custom » à « HTTPS » (sinon cookie Secure jeté
+	// sur http://localhost → onboarding bloqué). Override via LEVELUP_COOKIE_SECURE.
+	cookiePolicy := middleware.SecureCookiePolicy{Mode: cfg.CookieSecure, TrustProxy: cfg.TrustProxyHeaders}
 	sessionStore := session_platform.NewStore(cfg.SessionDir, session_platform.DefaultTTL, cfg.SessionSecret)
 	attemptStore := auth_platform.NewAttemptStore()
 
@@ -144,14 +146,14 @@ func NewRouter(
 		r.Use(chimiddleware.RealIP)
 	}
 	// En-têtes de sécurité HTTP sur toutes les réponses (HSTS seulement en prod/TLS).
-	r.Use(middleware.SecurityHeaders(isProduction))
+	r.Use(middleware.SecurityHeaders(cfg.TrustProxyHeaders))
 	r.Use(middleware.RequestID)
 	r.Use(middleware.CORS(cfg.CORSOrigins))
 	r.Use(middleware.CSRF(cfg.CORSOrigins))
 	r.Use(middleware.RateLimit(cfg.DemoMode))
 	r.Use(middleware.SlogLogger)
 	r.Use(chimiddleware.Compress(5))
-	r.Use(middleware.WithSession(sessionStore, isProduction))
+	r.Use(middleware.WithSession(sessionStore, cookiePolicy))
 
 	// Sprint 44 : TitleExtractor — injecte title_slug dans le contexte.
 	titleRegistry := titlePkg.NewRegistry()
