@@ -35,6 +35,10 @@ type resolverImpl struct {
 	// Nullable : si nil, la rotation est seulement mise à jour en mémoire.
 	onRotated TokenRotationCallback
 
+	// onReauth signale le changement d'état « reauth requise » (RT mort / refresh OK).
+	// Nullable : si nil, aucune notification.
+	onReauth ReauthCallback
+
 	// sfGroup dédupplique les Resolve concurrents pour un même gamertag. Cf.
 	// `golang.org/x/sync/singleflight`. Sans cette protection, N goroutines
 	// arrivant en même temps sur un cache miss appellent toutes Microsoft avec
@@ -59,6 +63,12 @@ type cachedToken struct {
 // cacheTTL : durée avant expiration (défaut ~3h30 pour Spartan ~4h).
 // onRotated : callback optionnel invoqué quand Microsoft rotate un RT.
 func NewResolver(provider auth.TokenProvider, cacheTTL time.Duration, onRotated TokenRotationCallback) Resolver {
+	return NewResolverWithReauth(provider, cacheTTL, onRotated, nil)
+}
+
+// NewResolverWithReauth crée un Resolver avec, en plus, le callback de changement
+// d'état « ré-authentification requise » (RT mort / refresh OK). PR-B.
+func NewResolverWithReauth(provider auth.TokenProvider, cacheTTL time.Duration, onRotated TokenRotationCallback, onReauth ReauthCallback) Resolver {
 	if cacheTTL == 0 {
 		cacheTTL = 3*time.Hour + 30*time.Minute
 	}
@@ -68,6 +78,7 @@ func NewResolver(provider auth.TokenProvider, cacheTTL time.Duration, onRotated 
 		cacheTTL:  cacheTTL,
 		sources:   make(map[string]CredentialSource),
 		onRotated: onRotated,
+		onReauth:  onReauth,
 	}
 }
 
@@ -117,17 +128,39 @@ func (r *resolverImpl) resolveExpensive(ctx context.Context, src CredentialSourc
 		"gamertag", src.Gamertag, "source", src.Source, "event", evID)
 
 	accessToken, err := r.acquireAccessToken(ctx, &src)
-	if err != nil {
-		return nil, err
-	}
-	if accessToken == "" {
-		err := fmt.Errorf("pool/resolver: aucun accessToken obtenu pour %s (pas de MSAL cache et pas de refresh_token)", src.Gamertag)
+	if err != nil || accessToken == "" {
+		// Credentials présents mais aucun token obtenu → refresh_token mort →
+		// signaler la ré-authentification requise (best-effort, cf. signalReauth).
+		r.signalReauth(ctx, src, true)
+		if err != nil {
+			return nil, err
+		}
+		nerr := fmt.Errorf("pool/resolver: aucun accessToken obtenu pour %s (pas de MSAL cache et pas de refresh_token)", src.Gamertag)
 		slog.ErrorContext(ctx, "pool/resolver: impossible d'obtenir accessToken",
-			"gamertag", src.Gamertag, "err", err)
-		return nil, err
+			"gamertag", src.Gamertag, "err", nerr)
+		return nil, nerr
 	}
 
-	return r.exchangeAndCache(ctx, src, accessToken)
+	resolved, xerr := r.exchangeAndCache(ctx, src, accessToken)
+	if xerr == nil {
+		// Refresh + échange OK → l'éventuel flag reauth_required est obsolète.
+		r.signalReauth(ctx, src, false)
+	}
+	return resolved, xerr
+}
+
+// signalReauth invoque onReauth (si présent). Pour required=true (RT mort), ne
+// déclenche QUE si des credentials existaient (sinon c'est un compte jamais
+// authentifié, pas une « mort »). Pour required=false (succès), déclenche
+// toujours afin d'effacer un éventuel flag.
+func (r *resolverImpl) signalReauth(ctx context.Context, src CredentialSource, required bool) {
+	if r.onReauth == nil {
+		return
+	}
+	if required && src.MSALCache == "" && src.RefreshToken == "" {
+		return
+	}
+	r.onReauth(ctx, src.Gamertag, src.XUID, required)
 }
 
 // lookupCachedToken retourne le token cached si encore valide, sinon (nil, false).

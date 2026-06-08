@@ -79,6 +79,9 @@ type NotifyConfig struct {
 	// NotifyVersion active les notifications de nouvelle version.
 	// Opt-in explicite : requiert aussi l'env var LEVELUP_NOTIFY_VERSIONS=1.
 	NotifyVersion bool
+	// NotifyReauth active la notification « reconnexion Xbox requise » quand le
+	// refresh_token d'un joueur meurt (PR-B). Défaut : true.
+	NotifyReauth bool
 	// SettingsPath est le chemin vers app_settings.json pour l'anti-spam de version.
 	SettingsPath string
 }
@@ -119,7 +122,22 @@ func LoadNotifyConfig(settingsPath string) NotifyConfig {
 	cfg.NotifyNewMedia = boolValDefault(s, "discord_notify_new_media", true)
 	cfg.NotifyFriends = boolValDefault(s, "discord_notify_friends", true)
 	cfg.NotifyVersion = boolValDefault(s, "discord_notify_new_version", true)
+	cfg.NotifyReauth = boolValDefault(s, "discord_notify_reauth", true)
 	return cfg
+}
+
+// NotifyReauthRequired envoie un embed « reconnexion Xbox requise » pour un joueur
+// dont le refresh_token est mort. Failsafe : no-op si webhook absent ou toggle off.
+func NotifyReauthRequired(cfg NotifyConfig, gamertag string) {
+	if cfg.WebhookURL == "" || !cfg.NotifyReauth {
+		return
+	}
+	_ = SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{{
+		Title:       T("discord_reauth_title", cfg.Lang),
+		Description: T("discord_reauth_desc", cfg.Lang, "gamertag", gamertag),
+		Color:       0xE0A800, // ambre — avertissement
+		Footer:      &EmbedFooter{Text: T("discord_footer", cfg.Lang)},
+	}}})
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -208,6 +226,12 @@ var discordStrings = map[string]map[string]string{
 	"discord_bf_perf_scores":     {"fr": "⚡  {count} perf score(s)", "en": "⚡  {count} perf score(s)"},
 	"discord_bf_aliases":         {"fr": "👤  {count} alias(es)", "en": "👤  {count} alias(es)"},
 	"discord_bf_pve":             {"fr": "🤖  {count} stat(s) PvE", "en": "🤖  {count} PvE stat(s)"},
+
+	"discord_reauth_title": {"fr": "🔑  Reconnexion Xbox requise", "en": "🔑  Xbox reconnection required"},
+	"discord_reauth_desc": {
+		"fr": "Le jeton de **{gamertag}** a expiré — la synchronisation est en pause. Reconnecte ton compte Xbox dans LevelUp.",
+		"en": "Token for **{gamertag}** expired — sync is paused. Reconnect your Xbox account in LevelUp.",
+	},
 
 	"discord_last_match":    {"fr": "Dernier match", "en": "Last match"},
 	"discord_ranked_tag":    {"fr": "Classé", "en": "Ranked"},

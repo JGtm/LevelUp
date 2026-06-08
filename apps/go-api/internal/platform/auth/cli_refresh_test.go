@@ -110,7 +110,7 @@ func TestRefreshHaloTokensViaStoreFirst_RTDead_MarksReauth(t *testing.T) {
 func TestRefreshHaloTokensViaStoreFirst_Success_ClearsReauth(t *testing.T) {
 	store := NewMultiUserTokenStore(tempTokenDir(t))
 	_ = store.UpdateOAuthRefreshToken("111", "rt-v1")
-	_ = store.MarkReauthRequired("111", "Alice") // flag préexistant
+	_, _ = store.MarkReauthRequired("111", "Alice") // flag préexistant
 
 	prov := &fakeProvider{
 		oauthAccess:    "access-ok",

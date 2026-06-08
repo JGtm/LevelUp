@@ -62,6 +62,63 @@ func (m *mockTokenProvider) Exchange(ctx context.Context, accessToken string) (*
 	return m.exchangeResult, m.exchangeErr
 }
 
+// TestResolverResolve_RTDead_FiresReauthRequired : credentials présents mais
+// refresh KO (RT mort) → onReauth(required=true). PR-B slice 3.
+func TestResolverResolve_RTDead_FiresReauthRequired(t *testing.T) {
+	provider := &mockTokenProvider{oauthRefreshErr: errors.New("invalid_grant")}
+
+	var gotRequired *bool
+	var gotGamertag, gotXUID string
+	onReauth := func(_ context.Context, gamertag, xuid string, required bool) {
+		v := required
+		gotRequired, gotGamertag, gotXUID = &v, gamertag, xuid
+	}
+	resolver := NewResolverWithReauth(provider, time.Hour, nil, onReauth)
+
+	_, err := resolver.Resolve(context.Background(), CredentialSource{Gamertag: "Alice", XUID: "111", RefreshToken: "rt-dead"})
+	if err == nil {
+		t.Fatal("erreur attendue (RT mort)")
+	}
+	if gotRequired == nil || !*gotRequired {
+		t.Fatal("onReauth(required=true) attendu")
+	}
+	if gotGamertag != "Alice" || gotXUID != "111" {
+		t.Errorf("callback args = %q/%q, want Alice/111", gotGamertag, gotXUID)
+	}
+}
+
+// TestResolverResolve_Success_FiresReauthCleared : un refresh+échange réussi
+// déclenche onReauth(required=false) pour effacer un éventuel flag.
+func TestResolverResolve_Success_FiresReauthCleared(t *testing.T) {
+	provider := &mockTokenProvider{
+		silentRefreshResult: "at",
+		exchangeResult:      &auth.ExchangeResult{Tokens: &domain.HaloTokens{SpartanToken: "s"}},
+	}
+	var lastRequired *bool
+	onReauth := func(_ context.Context, _, _ string, required bool) { v := required; lastRequired = &v }
+	resolver := NewResolverWithReauth(provider, time.Hour, nil, onReauth)
+
+	if _, err := resolver.Resolve(context.Background(), CredentialSource{Gamertag: "Alice", XUID: "111", MSALCache: "cache"}); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if lastRequired == nil || *lastRequired {
+		t.Error("onReauth(required=false) attendu sur succès")
+	}
+}
+
+// TestResolverResolve_NoCreds_NoReauthSignal : aucun credential (RT vide, pas de
+// cache) → pas de signal reauth (compte jamais authentifié, pas une mort).
+func TestResolverResolve_NoCreds_NoReauthSignal(t *testing.T) {
+	called := false
+	onReauth := func(_ context.Context, _, _ string, _ bool) { called = true }
+	resolver := NewResolverWithReauth(&mockTokenProvider{}, time.Hour, nil, onReauth)
+
+	_, _ = resolver.Resolve(context.Background(), CredentialSource{Gamertag: "Alice", XUID: "111"})
+	if called {
+		t.Error("aucun signal reauth attendu sans credentials")
+	}
+}
+
 // TestResolverResolve_PipelineSilentRefresh teste le chemin heureux : MSAL cache → TrySilentRefresh.
 func TestResolverResolve_PipelineSilentRefresh(t *testing.T) {
 	provider := &mockTokenProvider{

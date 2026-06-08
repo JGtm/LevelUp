@@ -68,6 +68,13 @@ type Resolver interface {
 // idéalement < 1 s.
 type TokenRotationCallback func(ctx context.Context, gamertag, newRefreshToken string) error
 
+// ReauthCallback est invoqué par le Resolver quand l'état « ré-authentification
+// requise » d'un joueur change : required=true lorsque le refresh_token est mort
+// (credentials présents mais refresh définitivement KO), required=false lors d'un
+// refresh réussi. Le caller persiste l'état (MultiUserTokenStore) et notifie
+// (bannière in-app + Discord opt-in, PR-B). Best-effort, non bloquant.
+type ReauthCallback func(ctx context.Context, gamertag, xuid string, required bool)
+
 // AcquirePolicy détermine comment le pool sélectionne un token.
 type AcquirePolicy int
 

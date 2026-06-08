@@ -27,8 +27,12 @@ func TestMultiUserTokenStore_ReauthMarkClear(t *testing.T) {
 	}
 
 	// Mark sur un xuid sans entrée préalable → crée l'entrée marquée.
-	if err := s.MarkReauthRequired("111", "Alice"); err != nil {
+	newly, err := s.MarkReauthRequired("111", "Alice")
+	if err != nil {
 		t.Fatalf("Mark: %v", err)
+	}
+	if !newly {
+		t.Error("première Mark devrait retourner newlyMarked=true")
 	}
 	if !s.IsReauthRequired("111") {
 		t.Fatal("après Mark, IsReauthRequired devrait être true")
@@ -40,7 +44,10 @@ func TestMultiUserTokenStore_ReauthMarkClear(t *testing.T) {
 
 	// Mark idempotent : ne réécrit pas ReauthDetectedAt.
 	first := got.ReauthDetectedAt
-	_ = s.MarkReauthRequired("111", "Bob")
+	newlyAgain, _ := s.MarkReauthRequired("111", "Bob")
+	if newlyAgain {
+		t.Error("Mark répété ne doit pas retourner newlyMarked=true")
+	}
 	got2, _ := s.Load("111")
 	if !got2.ReauthDetectedAt.Equal(first) {
 		t.Error("Mark répété ne doit pas changer ReauthDetectedAt")
