@@ -123,7 +123,9 @@ export interface Arc {
   completion_bonus_pp?: number
 }
 
-export interface PresetArcStep {
+// Non exporté : référencé via PresetArc.steps (exposé structurellement), aucun
+// consommateur ne l'importe par son nom → évite un export inutilisé (knip).
+interface PresetArcStep {
   preset_arc_id: string
   position: number
   template_id: string
