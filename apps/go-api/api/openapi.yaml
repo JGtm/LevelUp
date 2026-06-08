@@ -1522,6 +1522,16 @@ paths:
         "200": { description: "Compte créé" }
         "400": { $ref: "#/components/responses/BadRequest" }
 
+  /auth/password:
+    post:
+      tags: [auth]
+      operationId: postAuthPassword
+      summary: "Définit/change le mot de passe de l'utilisateur connecté (opt-in, PR-C)"
+      responses:
+        "204": { description: "Mot de passe défini" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   # Admin
   /admin/invites:
     get:
