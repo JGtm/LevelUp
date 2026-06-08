@@ -55,13 +55,13 @@ export function AssetDrawer() {
         />
       )}
 
-      {/* Panneau drawer */}
+      {/* Panneau drawer — mobile : sheet pleine hauteur ; desktop (sm:) : carte
+          flottante centrée verticalement (rendu desktop inchangé). */}
       <div
         role="complementary"
         aria-label={t('asset_drawer.toggle.open')}
         aria-hidden={!isOpen}
-        className="fixed right-0 top-1/2 z-50 hidden h-[min(600px,80vh)] w-[290px] flex-col rounded-l-lg border border-r-0 border-border bg-popover shadow-xl transition-transform duration-200 ease-out sm:flex"
-        style={{ transform: isOpen ? 'translateX(0) translateY(-50%)' : 'translateX(100%) translateY(-50%)' }}
+        className={`fixed right-0 top-0 z-50 flex h-full w-[88vw] max-w-sm flex-col rounded-l-lg border border-r-0 border-border bg-popover shadow-xl transition-transform duration-200 ease-out sm:top-1/2 sm:h-[min(600px,80vh)] sm:w-[290px] sm:max-w-none sm:-translate-y-1/2 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         {/* Header : onglets + bouton fermer */}
         <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2">

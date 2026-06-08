@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { log } from './_logger'
 import type { L1Section } from './navL1Sections'
 
 interface NavL1MobileMenuProps {
@@ -44,7 +45,10 @@ export function NavL1MobileMenu({ sections, pathname, resolvePath }: NavL1Mobile
     <div className="md:hidden">
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setOpen(true)
+          log.debug('nav:menu_open')
+        }}
         aria-label={t('common.shell.nav_menu_open')}
         aria-expanded={open}
         aria-haspopup="menu"

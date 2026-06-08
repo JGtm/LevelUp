@@ -205,16 +205,13 @@ export function FeedbackDrawer() {
         />
       )}
 
+      {/* Panneau — mobile : sheet pleine hauteur ; desktop (sm:) : carte flottante
+          centrée verticalement (rendu desktop inchangé). */}
       <div
         role="complementary"
         aria-label={t('feedback_drawer.title')}
         aria-hidden={!isOpen}
-        className="fixed right-0 top-1/2 z-50 hidden h-[min(540px,70vh)] w-[340px] flex-col rounded-l-lg border border-r-0 border-border bg-popover shadow-xl ring-1 ring-border transition-transform duration-200 ease-out sm:flex"
-        style={{
-          transform: isOpen
-            ? 'translateX(0) translateY(-50%)'
-            : 'translateX(100%) translateY(-50%)',
-        }}
+        className={`fixed right-0 top-0 z-50 flex h-full w-[88vw] max-w-sm flex-col rounded-l-lg border border-r-0 border-border bg-popover shadow-xl ring-1 ring-border transition-transform duration-200 ease-out sm:top-1/2 sm:h-[min(540px,70vh)] sm:w-[340px] sm:max-w-none sm:-translate-y-1/2 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2">
           <h2 className="text-sm font-semibold text-popover-foreground">

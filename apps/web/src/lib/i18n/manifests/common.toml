@@ -133,6 +133,34 @@ en = "Close menu"
 fr = "Navigation"
 en = "Navigation"
 
+[common.shell.nav_actions_open]
+fr = "Ouvrir le menu compte et outils"
+en = "Open account and tools menu"
+
+[common.shell.nav_actions_title]
+fr = "Compte & outils"
+en = "Account & tools"
+
+[common.shell.nav_account]
+fr = "Compte"
+en = "Account"
+
+[common.shell.nav_tools]
+fr = "Outils"
+en = "Tools"
+
+[common.shell.nav_help]
+fr = "Aide"
+en = "Help"
+
+[common.shell.nav_settings]
+fr = "Paramètres"
+en = "Settings"
+
+[common.shell.nav_theme]
+fr = "Thème"
+en = "Theme"
+
 [common.shell.nav_career_aria]
 fr = "Navigation carrière"
 en = "Career navigation"

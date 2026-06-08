@@ -10,6 +10,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useLogout } from '@/features/auth/queries'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { log } from './_logger'
 
 function LogoutIcon() {
   return (
@@ -38,8 +39,11 @@ export function LogoutButton() {
   function handleLogout() {
     logout.mutate(undefined, {
       onSuccess: () => window.location.assign('/'),
-      onError: (err) =>
-        toast.error(err instanceof Error ? err.message : t('common.shell.logout_failed')),
+      onError: (err) => {
+        const msg = err instanceof Error ? err.message : t('common.shell.logout_failed')
+        log.error('logout:failed', `logout failed: ${msg}`, err)
+        toast.error(msg)
+      },
     })
   }
 
