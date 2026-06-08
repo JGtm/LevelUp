@@ -1,3 +1,19 @@
+## [2026-06-08] PR-D — Consolidation SISU (défaut) + MSAL désactivé UI — Complété
+
+**Statut** : Complété (branche `feat/instance-lockdown`). Go build/test verts (cmd/server token provider) ; front tsc/eslint/vitest verts (SettingsPage 6/6).
+
+**But** : SISU devient le provider d'auth Microsoft par défaut (zéro app Azure — LevelUp est distribué à des self-hosters). MSAL conservé en code mais retiré de l'UI.
+
+- **Backend** : `buildTokenProvider` (main.go) — défaut désormais **SISU** (`""`/`"sisu"`/inconnu → SISU) ; `"msal"` reste activable explicitement (fallback config-only). Docstring + logs MAJ. Test `token_provider_test.go` (défaut SISU + msal explicite).
+- **Frontend** : **carte « Fournisseur d'authentification » retirée** de l'onglet Utilisateurs (SettingsPage) — l'UI ne propose plus MSAL. Clés i18n `authProvider*` supprimées (interface + FR + EN). `UsersTab` ne prend plus que `t` ; import `Select` retiré.
+- **Docs** : `.env.local.example` documente `auth_provider` (SISU défaut, MSAL config-only + risque client_id non officiel).
+
+**Risque assumé** : SISU utilise le client_id Xbox natif (000000004c20a908), non officiel — Microsoft pourrait le modifier. MSAL reste le filet (auth_provider=msal dans app_settings.json). Aligné sur les outils Halo communautaires (OpenSpartan, grunt-api).
+
+**Plan auth COMPLET** : PR-A (lockdown) + PR-B (reconnexion Xbox) + PR-C (MDP opt-in) + PR-D (SISU) tous livrés sur `feat/instance-lockdown`. Restes hors-plan : montage `SetPasswordCard` en settings, vérif réelle fix #22, ouverture des PRs GitHub.
+
+---
+
 ## [2026-06-08] PR-C — Mot de passe opt-in (re-login rapide SSO) — Complété
 
 **Statut** : Complété (branche `feat/instance-lockdown`). Go build/vet/tests verts (handlers, service, contracttest) ; front tsc/eslint/vitest verts (SetPasswordCard 3/3).

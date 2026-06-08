@@ -210,13 +210,6 @@ export interface SettingsText {
   coachProactiveLabel: string
   coachProactiveHint: string
 
-  // Admin — Fournisseur d'authentification
-  authProviderTitle: string
-  authProviderLabel: string
-  authProviderMsal: string
-  authProviderSisu: string
-  authProviderHint: string
-
   // Onglet Accessibilité
   tabAccessibility: string
   accessibilityTitle: string
@@ -484,14 +477,6 @@ const FR_TEXT: SettingsText = {
     "propositions apparaissent dans le centre de notifications avec des boutons Accepter / " +
     "Ignorer. Vous gardez la main : aucune création automatique. Opt-in (désactivé par défaut).",
 
-  authProviderTitle: "Fournisseur d'authentification",
-  authProviderLabel: 'Provider',
-  authProviderMsal: 'MSAL (Azure)',
-  authProviderSisu: 'SISU (Xbox natif)',
-  authProviderHint:
-    'MSAL utilise une app Azure enregistrée. ' +
-    'SISU utilise le client Xbox natif (000000004c20a908) sans configuration Azure. ' +
-    'Modification prise en compte au redémarrage du serveur.',
 
   tabAccessibility: 'Accessibilité',
   accessibilityTitle: 'Accessibilité visuelle',
@@ -758,14 +743,6 @@ const EN_TEXT: SettingsText = {
     'appear in the notification center with Accept / Dismiss buttons. You stay in ' +
     'control: nothing is created automatically. Opt-in (off by default).',
 
-  authProviderTitle: 'Authentication provider',
-  authProviderLabel: 'Provider',
-  authProviderMsal: 'MSAL (Azure)',
-  authProviderSisu: 'SISU (native Xbox)',
-  authProviderHint:
-    'MSAL uses a registered Azure app. ' +
-    'SISU uses the native Xbox client (000000004c20a908) with no Azure configuration required. ' +
-    'Change takes effect on server restart.',
 
   tabAccessibility: 'Accessibility',
   accessibilityTitle: 'Visual accessibility',

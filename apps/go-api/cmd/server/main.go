@@ -64,25 +64,30 @@ import (
 var version = "dev"
 
 // buildTokenProvider instancie le TokenProvider selon app_settings.json:auth_provider.
-// Par défaut (valeur vide ou "msal") : MSALProvider.
-// Si "sisu" : SISUProvider (authentification native Xbox, sans app Azure).
+//
+// PR-D : SISU est le défaut (authentification native Xbox, ZÉRO app Azure) — car
+// LevelUp est distribué à des self-hosters qui ne peuvent pas tous enregistrer
+// une app Azure. MSAL reste conservé en code et activable explicitement via
+// auth_provider="msal" (déprécié, sans entrée UI) : fallback si SISU casse
+// (client_id Xbox natif non officiel — risque que Microsoft le modifie).
+//
+//	"" (défaut) | "sisu" → SISUProvider
+//	"msal"               → MSALProvider (fallback config-only)
 func buildTokenProvider(settingsStore *settings.Store) auth.TokenProvider {
 	s, err := settingsStore.Load()
 	if err != nil {
-		slog.Warn("buildTokenProvider: impossible de lire les settings, utilisation MSAL", "err", err)
-		return auth.NewMSALProvider()
-	}
-	switch s.AuthProvider {
-	case "sisu":
-		slog.Info("buildTokenProvider: SISU provider activé")
+		slog.Warn("buildTokenProvider: lecture settings échouée, défaut SISU", "err", err)
 		return auth.NewSISUProvider()
-	default:
-		if s.AuthProvider != "" && s.AuthProvider != "msal" {
-			slog.Warn("buildTokenProvider: valeur auth_provider inconnue, utilisation MSAL", "value", s.AuthProvider)
-		}
-		slog.Info("buildTokenProvider: MSAL provider activé")
+	}
+	if s.AuthProvider == "msal" {
+		slog.Info("buildTokenProvider: MSAL provider activé (fallback config)")
 		return auth.NewMSALProvider()
 	}
+	if s.AuthProvider != "" && s.AuthProvider != "sisu" {
+		slog.Warn("buildTokenProvider: valeur auth_provider inconnue, défaut SISU", "value", s.AuthProvider)
+	}
+	slog.Info("buildTokenProvider: SISU provider activé (défaut)")
+	return auth.NewSISUProvider()
 }
 
 func main() {
