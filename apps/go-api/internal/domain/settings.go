@@ -62,6 +62,11 @@ type SettingsResponse struct {
 	// AuthProvider indique le mécanisme d'authentification actif.
 	// Valeurs : "msal" (défaut) | "sisu" (Xbox natif).
 	AuthProvider string `json:"auth_provider"`
+
+	// InstanceLocked : instance fermée (aucune nouvelle identité/BDD). Reflète
+	// app_settings.json:instance_locked (pas le verrou env forcé, exposé séparément
+	// au /bootstrap). Défaut : false.
+	InstanceLocked bool `json:"instance_locked"`
 }
 
 // UpdateSettingsRequest contient les champs modifiables (tous optionnels).
@@ -119,6 +124,9 @@ type UpdateSettingsRequest struct {
 
 	// AuthProvider bascule le mécanisme d'authentification. "msal" | "sisu".
 	AuthProvider *string `json:"auth_provider,omitempty"`
+
+	// InstanceLocked : verrou « instance fermée » activable à chaud (admin).
+	InstanceLocked *bool `json:"instance_locked,omitempty"`
 }
 
 // MediaResetRequest est le corps de POST /settings/media/reset-index.

@@ -18,6 +18,7 @@ export function RegisterPage() {
   const queryClient = useQueryClient()
   const authMode = useAppShellStore((s) => s.authMode)
   const registrationMode = useAppShellStore((s) => s.registrationMode)
+  const instanceLocked = useAppShellStore((s) => s.instanceLocked)
   const firstLaunch = useAppShellStore((s) => s.firstLaunch)
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
@@ -37,6 +38,11 @@ export function RegisterPage() {
     navigate({ to: '/login' })
     return null
   }
+
+  // Instance fermée (lockdown) : aucune nouvelle inscription hors bootstrap du
+  // premier admin (firstLaunch). On présente un écran « fermé » plutôt que le form.
+  const lockedOut = instanceLocked && !firstLaunch
+  const instanceClosedLabel = 'Cette instance est fermée aux nouvelles inscriptions.'
 
   const needsInvite = !firstLaunch && registrationMode === 'invite'
 
@@ -67,6 +73,7 @@ export function RegisterPage() {
             invite_required: 'Un code d\'invitation est requis.',
             invalid_invite: 'Code d\'invitation invalide ou expiré.',
             registration_closed: 'Les inscriptions sont fermées.',
+            instance_locked: 'Cette instance est fermée aux nouvelles inscriptions.',
             validation_error: apiErr.message,
           }
           setError(messages[apiErr.code] ?? apiErr.message ?? 'Erreur lors de l\'inscription.')
@@ -85,6 +92,18 @@ export function RegisterPage() {
 
         <Card>
           <CardContent className="pt-6">
+            {lockedOut ? (
+              <div className="space-y-4 text-center">
+                <p className="text-sm font-medium text-foreground">{instanceClosedLabel}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t('common.auth.already_account')}{' '}
+                  <Link to="/login" className="text-primary underline underline-offset-2">
+                    {t('common.auth.login_action')}
+                  </Link>
+                </p>
+              </div>
+            ) : (
+            <>
             {firstLaunch && (
               <div className="mb-4 rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
                 {t('common.auth.first_launch_admin')}
@@ -179,6 +198,8 @@ export function RegisterPage() {
                 {t('common.auth.login_action')}
               </Link>
             </p>
+            </>
+            )}
           </CardContent>
         </Card>
       </div>

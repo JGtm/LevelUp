@@ -169,6 +169,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		DemoMode:             s.cfg.DemoMode,
 		AuthMode:             s.cfg.AuthMode,
 		RegistrationMode:     s.cfg.RegistrationMode,
+		InstanceLocked:       s.cfg.InstanceLocked || getBoolSetting(appSettings, "instance_locked", false),
 		IsAdmin:              sess != nil && sess.Role != nil && *sess.Role == "admin",
 		CurrentUsername:      resolveUsername(sess),
 		FirstLaunch:          s.isFirstLaunch(),

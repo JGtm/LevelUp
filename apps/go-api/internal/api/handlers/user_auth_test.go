@@ -40,6 +40,56 @@ func newUserAuthRouter(t *testing.T, authMode string) (*chi.Mux, *userstore.Stor
 	return r, users
 }
 
+// newLockedUserAuthRouter assemble un routeur avec le verrou « instance fermée » actif.
+func newLockedUserAuthRouter(t *testing.T, authMode string) (*chi.Mux, *userstore.Store) {
+	t.Helper()
+	dir := t.TempDir()
+	users := userstore.NewStore(filepath.Join(dir, "users.json"))
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
+	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
+
+	h := handlers.NewUserAuthHandler(users, invites, sessStore, "open").
+		WithAuthMode(authMode).
+		WithInstanceLock(func() bool { return true })
+
+	r := chi.NewRouter()
+	r.Use(middleware.WithSession(sessStore, false))
+	r.Post("/auth/register", h.Register)
+	return r, users
+}
+
+// TestUserAuth_Register_InstanceLockedBlocksNewUsers : instance fermée → register
+// refusé (403 instance_locked) dès qu'un utilisateur existe déjà.
+func TestUserAuth_Register_InstanceLockedBlocksNewUsers(t *testing.T) {
+	r, users := newLockedUserAuthRouter(t, "password")
+	_, _ = users.Create("existing", testUserAuthPass, domain.RoleAdmin) // store non vide
+
+	w := postJSON(t, r, "/auth/register", domain.RegisterRequest{
+		Username: "newcomer", Password: testUserAuthPass,
+	})
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("register sous lockdown : status = %d, want 403. Body: %s", w.Code, w.Body.String())
+	}
+	if !bytes.Contains(w.Body.Bytes(), []byte("instance_locked")) {
+		t.Errorf("code d'erreur attendu instance_locked, body: %s", w.Body.String())
+	}
+}
+
+// TestUserAuth_Register_InstanceLockedExemptsFirstAdmin : le tout premier admin
+// (store vide) reste autorisé même sous lockdown — sinon instance non amorçable.
+func TestUserAuth_Register_InstanceLockedExemptsFirstAdmin(t *testing.T) {
+	r, _ := newLockedUserAuthRouter(t, "password") // store vide
+
+	w := postJSON(t, r, "/auth/register", domain.RegisterRequest{
+		Username: "firstadmin", Password: testUserAuthPass,
+	})
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("bootstrap 1er admin sous lockdown : status = %d, want 201. Body: %s", w.Code, w.Body.String())
+	}
+}
+
 func postJSON(t *testing.T, r http.Handler, path string, body any) *httptest.ResponseRecorder {
 	t.Helper()
 	data, _ := json.Marshal(body)

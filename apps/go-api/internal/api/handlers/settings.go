@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"strings"
 
+	"levelup/go-api/internal/api/middleware"
+	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/notifications"
@@ -119,6 +121,19 @@ func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
 		return
+	}
+
+	// Le verrou d'instance ne peut être basculé que par un admin : sinon un
+	// utilisateur standard pourrait rouvrir une instance volontairement fermée.
+	// No-op quand l'auth n'est pas appliquée (mode none/demo, single-user dev) :
+	// l'opérateur passe alors par env / app_settings.json directement.
+	if req.InstanceLocked != nil && authz.Enforced(h.cfg.DemoMode, h.cfg.AuthMode) {
+		sess := middleware.GetSession(r.Context())
+		if sess == nil || sess.Role == nil || *sess.Role != "admin" {
+			writeError(r.Context(), w, http.StatusForbidden, "admin_required",
+				"Seul un administrateur peut modifier le verrou d'instance.")
+			return
+		}
 	}
 
 	// Validation des champs analyse.

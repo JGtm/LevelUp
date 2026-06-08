@@ -584,6 +584,17 @@ func NewRouter(
 		sessionHandler := handlers.NewSessionHandler(sessionStore)
 		r.Post("/session/context", sessionHandler.PostContext)
 
+		// Verrou « instance fermée » (lockdown) : effectif = env (LEVELUP_INSTANCE_LOCKED,
+		// verrou forcé au boot) OU app_settings.instance_locked (mutable à chaud via
+		// PATCH /settings admin). Résolu live pour refléter une bascule runtime.
+		instanceLockedFn := func() bool {
+			if cfg.InstanceLocked {
+				return true
+			}
+			s, err := settingsStore.Load()
+			return err == nil && s.InstanceLocked
+		}
+
 		// Sprint 15 : Device Code Flow + authentification Halo
 		// D3 cohabitation (cf. SPRINT_XBOX_SSO §0bis) : en mode "xbox", la LinkStrategy
 		// est XboxSSOLinkStrategy (login direct via XUID + création user si nouveau).
@@ -607,7 +618,8 @@ func NewRouter(
 			}
 			xboxLinkStrategy = service.NewXboxSSOLinkStrategy(users).
 				WithTokenStore(multiUserTokens).
-				WithDaemonGetter(daemonGetter)
+				WithDaemonGetter(daemonGetter).
+				WithInstanceLock(instanceLockedFn)
 			authHandler.WithLinkStrategy(xboxLinkStrategy)
 		} else {
 			authHandler.WithUserStore(users)
@@ -630,7 +642,8 @@ func NewRouter(
 		// Auth locale : login/register/logout (mode password).
 		// D3 cohabitation : en mode "xbox", login réservé aux admins, register au bootstrap.
 		userAuthHandler := handlers.NewUserAuthHandler(users, invites, sessionStore, cfg.RegistrationMode).
-			WithAuthMode(cfg.AuthMode)
+			WithAuthMode(cfg.AuthMode).
+			WithInstanceLock(instanceLockedFn)
 		r.Post("/auth/login", userAuthHandler.Login)
 		r.Post("/auth/register", userAuthHandler.Register)
 		r.Post("/auth/logout", userAuthHandler.Logout)
@@ -723,9 +736,12 @@ func NewRouter(
 			r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
 			r.Post("/sync/initial", syncH.StartInitialSync)
 			r.Post("/sync/all", syncH.StartSyncAll)
+			// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types).
+			// Audit ownership 2026-06-08 (PR-A) : backfill lit player_slug dans le BODY
+			// (hors chokepoint /players/{slug}) → opération lourde sur un joueur arbitraire.
+			// Aligné sur /sync/* : admin-gated (no-op en demo/single-user).
+			r.Post("/backfill/start", handlers.NewBackfillHandler(cfg, jobStore).StartBackfill)
 		})
-		// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types)
-		r.Post("/backfill/start", handlers.NewBackfillHandler(cfg, jobStore).StartBackfill)
 
 		// OpenSpartan import (Sprint OpenSpartan PR 3.B + commit 15 sprint B1) :
 		// multipart upload du .db SQLite OpenSpartan, validation XUID via session
