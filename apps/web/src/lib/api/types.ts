@@ -3381,16 +3381,23 @@ export interface LeaderboardEntry {
   rank: number
   xuid: string
   gamertag: string
-  title_slug: string
-  season_id: string
-  playlist_id: string
+  title_slug?: string
+  season?: string
+  playlist?: string
   csr_value: number
   tier: string
   sub_tier: number
   is_local: boolean
+  // Catégories de stats (vides pour csr-world)
+  category?: string
+  value?: number
+  value_formatted?: string
+  unit?: string
+  matches_played?: number
 }
 
 export interface LeaderboardRequest {
+  category?: string
   season_id?: string
   playlist_id?: string
   limit?: number
@@ -3398,6 +3405,7 @@ export interface LeaderboardRequest {
 
 export interface LeaderboardResponse {
   entries: LeaderboardEntry[]
+  category: string
   season_id: string
   playlist_id: string
   title_slug: string

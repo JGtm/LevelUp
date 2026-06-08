@@ -1,30 +1,38 @@
 /**
- * queries.ts — hooks TanStack Query pour le Classement CSR.
- * Sprint 54-E.
+ * queries.ts — hooks TanStack Query pour la page Classement.
+ *
+ * Catégorie "csr-world" (défaut) : classement CSR mondial (snapshots Halo
+ * Waypoint). Catégories de stats (kills/kda/…) : agrégation des joueurs croisés.
  */
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import type { LeaderboardResponse } from '@/lib/api/types'
 
+export interface LeaderboardParams {
+  category?: string
+  season?: string
+  playlist?: string
+  limit?: number
+}
+
 /**
- * useLeaderboard — récupère le classement CSR d'un joueur.
- * GET /players/{slug}/pages/leaderboard?season=...&playlist=...
+ * useLeaderboard — récupère un classement.
+ * GET /players/{slug}/pages/leaderboard?category=...&season=...&playlist=...&limit=...
  */
-export function useLeaderboard(
-  playerSlug: string,
-  seasonId?: string,
-  playlistId?: string,
-) {
-  const params = new URLSearchParams()
-  if (seasonId) params.set('season', seasonId)
-  if (playlistId) params.set('playlist', playlistId)
-  const qs = params.toString() ? `?${params.toString()}` : ''
+export function useLeaderboard(playerSlug: string, params: LeaderboardParams = {}) {
+  const { category, season, playlist, limit } = params
+  const qs = new URLSearchParams()
+  if (category) qs.set('category', category)
+  if (season) qs.set('season', season)
+  if (playlist) qs.set('playlist', playlist)
+  if (limit) qs.set('limit', String(limit))
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
 
   return useQuery<LeaderboardResponse>({
-    queryKey: queryKeys.leaderboard(playerSlug, seasonId, playlistId),
+    queryKey: queryKeys.leaderboard(playerSlug, category, season, playlist),
     queryFn: () =>
-      api.get<LeaderboardResponse>(`/players/${playerSlug}/pages/leaderboard${qs}`),
+      api.get<LeaderboardResponse>(`/players/${playerSlug}/pages/leaderboard${suffix}`),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
   })

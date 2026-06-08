@@ -1,15 +1,17 @@
 /**
- * LeaderboardBlock — classement CSR des joueurs locaux + Waypoint.
- * Sprint 54-E.
+ * LeaderboardBlock — page Classement.
  *
- * Usage :
- *   <LeaderboardBlock playerSlug={slug} />
+ * Catégorie "csr-world" (défaut) : classement CSR mondial par playlist + saison
+ * classée (snapshots scrapés depuis Halo Waypoint). Catégories de stats
+ * (Frags/KDA/Précision…) : agrégation des joueurs croisés (données locales).
+ *
+ * Tableau triable (tri client), highlight du joueur local, clic gamertag →
+ * Explorer. Source de la donnée CSR : Halo Waypoint (pas de proxy tiers).
  */
-import { useState } from 'react'
-
-const SUB_TIER_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI']
-const toRoman = (n: number): string => SUB_TIER_ROMAN[n] ?? String(n)
+import { useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import type { ReactNode } from 'react'
+
 import { useLeaderboard } from './queries'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,119 +21,154 @@ import type { LeaderboardEntry } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { csrRankImageURL } from '@/lib/staticAssets'
+
+const SUB_TIER_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI']
+const toRoman = (n: number): string => SUB_TIER_ROMAN[n] ?? String(n)
+
+const CSR_WORLD = 'csr-world'
+
+/** Playlists classées (asset IDs stables). */
+const PLAYLISTS: { id: string; label: string }[] = [
+  { id: 'edfef3ac-9cbe-4fa2-b949-8f29deafd483', label: 'Arène classée' },
+  { id: 'dcb2e24e-05fb-4390-8076-32a0cdb4326e', label: 'Assassin classé' },
+  { id: 'fa5aa2a3-2428-4912-a023-e1eeea7b877c', label: 'Duo classé' },
+  { id: '6233381c-fc96-40b9-b1ff-f6a4de72dd7a', label: 'Snipers classés' },
+  { id: '57e417dd-7366-4dda-9bdd-2802151d5e81', label: 'Tactique classé' },
+  { id: '71734db4-4b8e-4682-9206-62b6eff92582', label: 'Chacun pour soi classé' },
+]
+
+/** Saisons CSR récentes (la plus récente en premier). */
+const SEASONS: { id: string; label: string }[] = [
+  { id: 'csrseason13-2', label: 'Infinite (13.2)' },
+  { id: 'csrseason13-1', label: 'Saison 13.1' },
+  { id: 'csrseason12-1', label: 'Shadows (12.1)' },
+  { id: 'csrseason11-1', label: 'Last Stand (11.1)' },
+]
+
+/** Catégories disponibles (clés i18n alignées sur common.leaderboard.cat_*). */
+const CATEGORIES: { id: string; key: CommonManifestKey }[] = [
+  { id: CSR_WORLD, key: 'common.leaderboard.cat_csr_world' },
+  { id: 'kills', key: 'common.leaderboard.cat_kills' },
+  { id: 'kda', key: 'common.leaderboard.cat_kda' },
+  { id: 'kdr', key: 'common.leaderboard.cat_kdr' },
+  { id: 'kills_per_game', key: 'common.leaderboard.cat_kills_per_game' },
+  { id: 'accuracy', key: 'common.leaderboard.cat_accuracy' },
+  { id: 'damage', key: 'common.leaderboard.cat_damage' },
+  { id: 'assists', key: 'common.leaderboard.cat_assists' },
+]
 
 interface LeaderboardBlockProps {
   playerSlug: string
-  defaultSeason?: string
-  defaultPlaylist?: string
-  /** E2.5 : callback appelé onMouseEnter pour prefetch compare */
   onHoverEntry?: (gamertag: string) => void
 }
 
-/** Ligne du classement. */
-function LeaderboardRow({
-  playerSlug,
-  entry,
-  onHover,
-}: {
-  playerSlug: string
-  entry: LeaderboardEntry
-  onHover?: (gamertag: string) => void
-}) {
+type SortDir = 'asc' | 'desc'
+
+function tierLabel(entry: LeaderboardEntry): string {
+  if (!entry.tier || entry.tier === 'Onyx') return 'Onyx'
+  return entry.sub_tier > 0 ? `${entry.tier} ${toRoman(entry.sub_tier)}` : entry.tier
+}
+
+/** Formate la valeur d'une catégorie de stat. */
+function formatStatValue(entry: LeaderboardEntry, locale: string): string {
+  const v = entry.value ?? 0
+  const intl = locale === 'en' ? 'en-US' : 'fr-FR'
+  const decimals = entry.unit === '%' || /kd|per_game/.test(entry.category ?? '') ? 2 : 0
+  return `${v.toLocaleString(intl, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}${entry.unit ?? ''}`
+}
+
+export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockProps) {
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const navigate = useNavigate()
 
-  function goToExplorer() {
+  const [category, setCategory] = useState(CSR_WORLD)
+  const [playlist, setPlaylist] = useState(PLAYLISTS[0].id)
+  const [season, setSeason] = useState(SEASONS[0].id)
+  const [sortKey, setSortKey] = useState('rank')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+
+  const isWorld = category === CSR_WORLD
+  const { data, isLoading, isError, error } = useLeaderboard(playerSlug, {
+    category,
+    season: isWorld ? season : undefined,
+    playlist: isWorld ? playlist : undefined,
+    limit: 200,
+  })
+
+  function goToExplorer(gamertag: string) {
     void navigate({
       to: '/players/$playerSlug/explorer',
       params: { playerSlug },
-      search: { mode: 'player', target: entry.gamertag },
+      search: { mode: 'player', target: gamertag },
     })
   }
 
-  return (
-    <tr
-      className="border-b last:border-0 text-sm hover:bg-muted transition-colors"
-      onMouseEnter={() => onHover?.(entry.gamertag)}
-    >
-      <td className="py-2 pr-4 text-center font-mono text-muted-foreground">
-        {entry.rank}
-      </td>
-      <td className="py-2 pr-4 font-medium text-foreground">
-        {entry.is_local ? (
-          <span>
-            {entry.gamertag}
-            <Badge variant="secondary" className="ml-2 text-xs">Local</Badge>
-          </span>
-        ) : (
-          <button
-            type="button"
-            className="hover:text-primary hover:underline transition-colors"
-            onClick={goToExplorer}
-            title={`Voir l'historique avec ${entry.gamertag}`}
-          >
-            {entry.gamertag}
-          </button>
-        )}
-      </td>
-      <td className="py-2 pr-4 text-center">
-        <span className="inline-block px-2 py-0.5 rounded bg-accent text-accent-foreground text-xs font-semibold">
-          {entry.tier}
-          {entry.sub_tier > 0 ? ` ${toRoman(entry.sub_tier)}` : ''}
-        </span>
-      </td>
-      <td className="py-2 text-right font-mono text-foreground">
-        {entry.csr_value.toLocaleString('fr-FR')}
-      </td>
-    </tr>
-  )
-}
+  function toggleSort(key: string) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir(key === 'rank' ? 'asc' : 'desc')
+    }
+  }
 
-/** Bloc complet du classement. */
-export function LeaderboardBlock({
-  playerSlug,
-  defaultSeason,
-  defaultPlaylist,
-  onHoverEntry,
-}: LeaderboardBlockProps) {
-  const [season, setSeason] = useState(defaultSeason ?? '')
-  const [playlist, setPlaylist] = useState(defaultPlaylist ?? '')
-  const locale = useAppShellStore((s) => s.locale)
-  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+  const entries = useMemo(() => {
+    const rows = data?.entries ?? []
+    const sortValue = (e: LeaderboardEntry): number => {
+      switch (sortKey) {
+        case 'csr':
+          return e.csr_value
+        case 'value':
+          return e.value ?? 0
+        case 'matches':
+          return e.matches_played ?? 0
+        default:
+          return e.rank
+      }
+    }
+    const sorted = [...rows].sort((a, b) => sortValue(a) - sortValue(b))
+    return sortDir === 'asc' ? sorted : sorted.reverse()
+  }, [data?.entries, sortKey, sortDir])
 
-  const { data, isLoading, isError, error } = useLeaderboard(
-    playerSlug,
-    season || undefined,
-    playlist || undefined,
-  )
+  const sortIcon = (key: string): string => (sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '')
 
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Classement CSR</CardTitle>
-          <div className="flex gap-2 text-xs">
-            <input
-              type="text"
-              value={season}
-              onChange={(e) => setSeason(e.target.value)}
-              placeholder={t('common.leaderboard.season_placeholder')}
-              className="border rounded px-2 py-1 w-28 focus:outline-none focus:ring-1 focus:ring-ring"
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className="text-base">
+            {isWorld ? t('common.leaderboard.title_world') : t('common.leaderboard.title_community')}
+          </CardTitle>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <Selector
+              label={t('common.leaderboard.category_label')}
+              value={category}
+              onChange={setCategory}
+              options={CATEGORIES.map((c) => ({ value: c.id, label: t(c.key) }))}
             />
-            <input
-              type="text"
-              value={playlist}
-              onChange={(e) => setPlaylist(e.target.value)}
-              placeholder={t('common.leaderboard.playlist_placeholder')}
-              className="border rounded px-2 py-1 w-32 focus:outline-none focus:ring-1 focus:ring-ring"
-            />
+            {isWorld && (
+              <>
+                <Selector
+                  label={t('common.leaderboard.playlist_label')}
+                  value={playlist}
+                  onChange={setPlaylist}
+                  options={PLAYLISTS.map((p) => ({ value: p.id, label: p.label }))}
+                />
+                <Selector
+                  label={t('common.leaderboard.season_label')}
+                  value={season}
+                  onChange={setSeason}
+                  options={SEASONS.map((s) => ({ value: s.id, label: s.label }))}
+                />
+              </>
+            )}
           </div>
         </div>
-        {data && (
-          <p className="text-xs text-muted-foreground mt-1">
-            {data.total} joueur{data.total > 1 ? 's' : ''} {t('common.leaderboard.season_prefix')}{' '}
-            <span className="font-medium">{data.season_id || '—'}</span>
-          </p>
-        )}
+        <p className="mt-1 text-xs text-muted-foreground">
+          {isWorld ? t('common.leaderboard.world_hint') : t('common.leaderboard.stats_hint')}
+        </p>
       </CardHeader>
 
       <CardContent className="p-0">
@@ -144,13 +181,13 @@ export function LeaderboardBlock({
         {isError && (
           <div className="p-4">
             <EmptyStateCard
-              title="Erreur"
-              description={error?.message ?? 'Impossible de charger le classement.'}
+              title={t('common.leaderboard.load_error')}
+              description={error?.message ?? t('common.leaderboard.load_error')}
             />
           </div>
         )}
 
-        {data && data.entries.length === 0 && (
+        {data && data.entries.length === 0 && !isLoading && (
           <div className="p-4">
             <EmptyStateCard
               title={t('common.leaderboard.empty_title')}
@@ -162,21 +199,144 @@ export function LeaderboardBlock({
         {data && data.entries.length > 0 && (
           <table className="w-full">
             <thead>
-              <tr className="text-xs text-muted-foreground border-b bg-muted">
-                <th className="py-2 pr-4 text-center font-medium w-12">#</th>
-                <th className="py-2 pr-4 text-left font-medium">Joueur</th>
-                <th className="py-2 pr-4 text-center font-medium">Rang</th>
-                <th className="py-2 text-right font-medium">CSR</th>
+              <tr className="border-b bg-muted text-xs text-muted-foreground">
+                <SortableTh label="#" className="w-12 text-center" onClick={() => toggleSort('rank')} suffix={sortIcon('rank')} />
+                <th className="py-2 pr-4 text-left font-medium">{t('common.leaderboard.col_player')}</th>
+                {isWorld ? (
+                  <>
+                    <th className="py-2 pr-4 text-center font-medium">{t('common.leaderboard.col_tier')}</th>
+                    <SortableTh label={t('common.leaderboard.col_csr')} className="text-right" onClick={() => toggleSort('csr')} suffix={sortIcon('csr')} />
+                  </>
+                ) : (
+                  <>
+                    <SortableTh label={t('common.leaderboard.col_matches')} className="text-center" onClick={() => toggleSort('matches')} suffix={sortIcon('matches')} />
+                    <SortableTh label={t('common.leaderboard.col_value')} className="text-right" onClick={() => toggleSort('value')} suffix={sortIcon('value')} />
+                  </>
+                )}
               </tr>
             </thead>
             <tbody>
-              {data.entries.map((entry) => (
-                <LeaderboardRow key={`${entry.xuid}-${entry.rank}`} playerSlug={playerSlug} entry={entry} onHover={onHoverEntry} />
+              {entries.map((entry) => (
+                <LeaderboardRow
+                  key={`${entry.xuid || entry.gamertag}-${entry.rank}`}
+                  entry={entry}
+                  isWorld={isWorld}
+                  localLabel={t('common.leaderboard.local_badge')}
+                  locale={locale}
+                  onHover={onHoverEntry}
+                  onGamertagClick={goToExplorer}
+                />
               ))}
             </tbody>
           </table>
         )}
       </CardContent>
     </Card>
+  )
+}
+
+/** En-tête de colonne triable. */
+function SortableTh({ label, className, onClick, suffix }: { label: string; className?: string; onClick: () => void; suffix: string }) {
+  return (
+    <th className={`py-2 pr-4 font-medium ${className ?? ''}`}>
+      <button type="button" onClick={onClick} className="transition-colors hover:text-foreground">
+        {label}
+        {suffix}
+      </button>
+    </th>
+  )
+}
+
+/** Ligne du classement. */
+function LeaderboardRow({
+  entry,
+  isWorld,
+  localLabel,
+  locale,
+  onHover,
+  onGamertagClick,
+}: {
+  entry: LeaderboardEntry
+  isWorld: boolean
+  localLabel: string
+  locale: string
+  onHover?: (gamertag: string) => void
+  onGamertagClick: (gamertag: string) => void
+}) {
+  const playerCell: ReactNode = (
+    <span className="inline-flex items-center gap-2">
+      {isWorld && (
+        <img
+          src={csrRankImageURL(entry.tier, entry.sub_tier)}
+          alt={entry.tier}
+          className="h-6 w-6 shrink-0 object-contain"
+          loading="lazy"
+        />
+      )}
+      <button
+        type="button"
+        className="transition-colors hover:text-primary hover:underline"
+        onClick={() => onGamertagClick(entry.gamertag)}
+        title={`Explorer : ${entry.gamertag}`}
+      >
+        {entry.gamertag}
+      </button>
+      {entry.is_local && (
+        <Badge variant="secondary" className="text-xs">
+          {localLabel}
+        </Badge>
+      )}
+    </span>
+  )
+
+  return (
+    <tr
+      className={`border-b text-sm transition-colors last:border-0 hover:bg-muted ${entry.is_local ? 'bg-accent/40' : ''}`}
+      onMouseEnter={() => onHover?.(entry.gamertag)}
+    >
+      <td className="py-2 pr-4 text-center font-mono text-muted-foreground">{entry.rank}</td>
+      <td className="py-2 pr-4 font-medium text-foreground">{playerCell}</td>
+      {isWorld ? (
+        <>
+          <td className="py-2 pr-4 text-center text-xs text-muted-foreground">{tierLabel(entry)}</td>
+          <td className="py-2 pr-4 text-right font-mono text-foreground">
+            {entry.csr_value.toLocaleString(locale === 'en' ? 'en-US' : 'fr-FR')}
+          </td>
+        </>
+      ) : (
+        <>
+          <td className="py-2 pr-4 text-center font-mono text-muted-foreground">{entry.matches_played ?? 0}</td>
+          <td className="py-2 pr-4 text-right font-mono text-foreground">{formatStatValue(entry, locale)}</td>
+        </>
+      )}
+    </tr>
+  )
+}
+
+/** Sélecteur natif compact avec libellé accessible. */
+function Selector({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  options: { value: string; label: string }[]
+}) {
+  return (
+    <select
+      aria-label={label}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="rounded border border-border bg-transparent px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+    >
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
   )
 }

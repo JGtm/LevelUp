@@ -147,9 +147,9 @@ export const queryKeys = {
     spec?: Record<string, unknown> | null,
   ) => ['match-neighbors', playerSlug, matchId, spec ?? null] as const,
 
-  // Classement CSR (Sprint 54-E)
-  leaderboard: (playerSlug: string, season?: string, playlist?: string) =>
-    ['leaderboard', playerSlug, season ?? '', playlist ?? ''] as const,
+  // Classement (CSR mondial + stats communautaires)
+  leaderboard: (playerSlug: string, category?: string, season?: string, playlist?: string) =>
+    ['leaderboard', playerSlug, category ?? '', season ?? '', playlist ?? ''] as const,
 
   // Notifications in-app (per-player)
   /** Préfixe broad — invalide/matche toutes les queries notifications d'un joueur. */
