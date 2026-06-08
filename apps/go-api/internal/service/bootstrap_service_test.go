@@ -173,6 +173,30 @@ func TestBuild_ReauthRequired_NoCurrentPlayer_False(t *testing.T) {
 	}
 }
 
+// TestCurrentUserHasPassword : has_password reflète le PasswordHash du user
+// courant (opt-in PR-C). False si pas de session/username/lookup.
+func TestCurrentUserHasPassword(t *testing.T) {
+	lookup := fakeBootstrapLookup{byName: map[string]*domain.User{
+		"alice": {Username: "alice", PasswordHash: "$2a$12$hashhashhashhashhashhash"},
+		"bob":   {Username: "bob"}, // pas de mot de passe (compte SSO)
+	}}
+	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{}).WithUserLookup(lookup)
+
+	alice, bob := "alice", "bob"
+	if !svc.currentUserHasPassword(&domain.SessionData{Username: &alice}) {
+		t.Error("alice a un mot de passe → true attendu")
+	}
+	if svc.currentUserHasPassword(&domain.SessionData{Username: &bob}) {
+		t.Error("bob (SSO sans MDP) → false attendu")
+	}
+	if svc.currentUserHasPassword(nil) {
+		t.Error("session nil → false")
+	}
+	if svc.currentUserHasPassword(&domain.SessionData{}) {
+		t.Error("sans username → false")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // ResolveAuthState
 // ---------------------------------------------------------------------------

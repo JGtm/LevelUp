@@ -71,6 +71,8 @@ func (h *SetupHandler) CreatePlayer(w http.ResponseWriter, r *http.Request) {
 	// Guard : instance fermée (lockdown) — pas de nouvelle BDD joueur.
 	// Verrou effectif = env (LEVELUP_INSTANCE_LOCKED) OU app_settings.instance_locked.
 	if h.cfg.InstanceLocked || appCfg.InstanceLocked {
+		slog.WarnContext(r.Context(), "setup: création profil refusée — instance verrouillée",
+			"env_locked", h.cfg.InstanceLocked, "settings_locked", appCfg.InstanceLocked)
 		writeError(r.Context(), w, http.StatusForbidden, "instance_locked",
 			"Cette instance est fermée : la création de nouveaux profils est désactivée.")
 		return
