@@ -73,6 +73,13 @@ type AppConfig struct {
 	// RemoteAddr reste l'adresse TCP réelle du peer (rate-limit, audit et le
 	// garde LoopbackOnly des endpoints /_diag ne sont alors pas falsifiables).
 	TrustProxyHeaders bool
+	// InstanceLocked : verrou « instance fermée ». Quand true, bloque la création
+	// de NOUVELLES identités/BDD (register, SSO sur xuid inconnu, /setup/players)
+	// sans casser les utilisateurs/joueurs existants. Lit LEVELUP_INSTANCE_LOCKED
+	// (1/true/yes) = verrou FORCÉ au boot (override). Le verrou est aussi activable
+	// à chaud via app_settings.json:instance_locked (cf. settings store). Le verrou
+	// effectif = env OU app_settings.
+	InstanceLocked bool
 	// CurrentCSRSeasonID est l'identifiant de saison CSR courant (ex: "CsrSeason8").
 	// Lit LEVELUP_CSR_SEASON_ID ou le champ csr_season_id dans app_settings.json.
 	// Vide → le sync CSR est skippé silencieusement.
@@ -154,6 +161,7 @@ func Load() (*AppConfig, error) {
 		RegistrationMode:  getEnvOrDefault("LEVELUP_REGISTRATION", "invite"),
 		Environment:       getEnvOrDefault("LEVELUP_ENV", ""),
 		TrustProxyHeaders: parseBoolEnv(getEnvOrDefault("LEVELUP_TRUST_PROXY_HEADERS", "")),
+		InstanceLocked:    parseBoolEnv(getEnvOrDefault("LEVELUP_INSTANCE_LOCKED", "")),
 		WebDistDir:        getEnvOrDefault("LEVELUP_WEB_DIST", ""),
 	}
 	appSettingsPath := getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))

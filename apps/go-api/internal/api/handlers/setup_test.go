@@ -58,6 +58,43 @@ func newSetupRouter(t *testing.T, provisionEnabled bool, profileSvc *mockProfile
 	return r
 }
 
+// TestSetupHandler_CreatePlayer_InstanceLocked : instance fermée → 403, même si
+// can_self_provision=true (le verrou est cumulatif).
+func TestSetupHandler_CreatePlayer_InstanceLocked(t *testing.T) {
+	dir := t.TempDir()
+	cfg := &config.AppConfig{
+		RepoRoot:        dir,
+		DBProfilesPath:  filepath.Join(dir, "db_profiles.json"),
+		SessionDir:      filepath.Join(dir, "sessions"),
+		AppSettingsPath: filepath.Join(dir, "app_settings.json"),
+		InstanceLocked:  true, // verrou forcé (env)
+	}
+	sessionStore := session_platform.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32-bytesXXXXXXXXXX")
+	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath)
+	jobStore := jobs.NewStore(filepath.Join(dir, "jobs.json"))
+	appCfg, _ := settingsStore.Load()
+	appCfg.CanSelfProvision = true // provisioning activé mais instance verrouillée
+	_ = settingsStore.Save(appCfg)
+
+	h := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, &mockProfileService{playerKey: "x"})
+	r := chi.NewRouter()
+	r.Use(middleware.WithSession(sessionStore, false))
+	r.Post("/setup/players", h.CreatePlayer)
+
+	body := `{"gamertag": "TestPlayer", "profile_mode": "manual"}`
+	req := httptest.NewRequest(http.MethodPost, "/setup/players", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 when instance locked, got %d: %s", w.Code, w.Body.String())
+	}
+	if !bytes.Contains(w.Body.Bytes(), []byte("instance_locked")) {
+		t.Errorf("expected code instance_locked, body: %s", w.Body.String())
+	}
+}
+
 func TestSetupHandler_CreatePlayer_ProvisionDisabled(t *testing.T) {
 	svc := &mockProfileService{playerKey: "test-player"}
 	r := newSetupRouter(t, false, svc)

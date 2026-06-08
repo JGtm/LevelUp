@@ -68,6 +68,14 @@ func (h *SetupHandler) CreatePlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Guard : instance fermée (lockdown) — pas de nouvelle BDD joueur.
+	// Verrou effectif = env (LEVELUP_INSTANCE_LOCKED) OU app_settings.instance_locked.
+	if h.cfg.InstanceLocked || appCfg.InstanceLocked {
+		writeError(r.Context(), w, http.StatusForbidden, "instance_locked",
+			"Cette instance est fermée : la création de nouveaux profils est désactivée.")
+		return
+	}
+
 	var req domain.CreatePlayerProfileRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")

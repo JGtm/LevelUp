@@ -60,6 +60,45 @@ func TestXboxSSOLinkStrategy_FirstLogin_CreatesUser(t *testing.T) {
 	}
 }
 
+// TestXboxSSOLinkStrategy_InstanceLocked_UnknownXUIDRefused : sous lockdown, un
+// XUID inconnu ne peut pas créer de compte (login SSO refusé).
+func TestXboxSSOLinkStrategy_InstanceLocked_UnknownXUIDRefused(t *testing.T) {
+	users := newXboxStore(t)
+	s := service.NewXboxSSOLinkStrategy(users).WithInstanceLock(func() bool { return true })
+
+	sess := &domain.SessionData{}
+	attempt := &auth.Attempt{Gamertag: "Newcomer", XUID: "xuid-unknown-999"}
+
+	err := s.OnAuthSuccess(context.Background(), attempt, sess)
+	if !errors.Is(err, service.ErrInstanceLocked) {
+		t.Fatalf("OnAuthSuccess sous lockdown (xuid inconnu) : err = %v, want ErrInstanceLocked", err)
+	}
+	if _, gErr := users.GetByXUID("xuid-unknown-999"); gErr == nil {
+		t.Error("aucun user ne doit être créé sous lockdown")
+	}
+	if sess.Username != nil {
+		t.Error("la session ne doit pas être wirée pour un xuid refusé")
+	}
+}
+
+// TestXboxSSOLinkStrategy_InstanceLocked_KnownXUIDAllowed : sous lockdown, un XUID
+// DÉJÀ connu se connecte normalement (seules les nouvelles identités sont bloquées).
+func TestXboxSSOLinkStrategy_InstanceLocked_KnownXUIDAllowed(t *testing.T) {
+	users := newXboxStore(t)
+	_, _ = users.CreateFromXbox("Spartan42", "xuid-spartan-42") // identité déjà connue
+	s := service.NewXboxSSOLinkStrategy(users).WithInstanceLock(func() bool { return true })
+
+	sess := &domain.SessionData{}
+	attempt := &auth.Attempt{Gamertag: "Spartan42", XUID: "xuid-spartan-42"}
+
+	if err := s.OnAuthSuccess(context.Background(), attempt, sess); err != nil {
+		t.Fatalf("user connu sous lockdown : err = %v, want nil", err)
+	}
+	if sess.Username == nil || *sess.Username != "spartan42" {
+		t.Errorf("session devrait être wirée pour un user connu, got %v", sess.Username)
+	}
+}
+
 func TestXboxSSOLinkStrategy_ExistingUser_AuthenticatesAndTouchesLastLogin(t *testing.T) {
 	users := newXboxStore(t)
 	// Pré-créer un user via CreateFromXbox.

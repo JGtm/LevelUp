@@ -24,6 +24,9 @@ type UserAuthHandler struct {
 	sessionStore *session.Store
 	regMode      string // "invite" | "open" | "closed"
 	authMode     string // "none" | "password" | "xbox" — D3 cohabitation
+	// instanceLocked résout le verrou « instance fermée » (env OU app_settings).
+	// nil → jamais verrouillé (rétrocompat tests). Cf. WithInstanceLock.
+	instanceLocked func() bool
 }
 
 // NewUserAuthHandler crée un UserAuthHandler.
@@ -47,6 +50,19 @@ func NewUserAuthHandler(
 func (h *UserAuthHandler) WithAuthMode(authMode string) *UserAuthHandler {
 	h.authMode = authMode
 	return h
+}
+
+// WithInstanceLock injecte le résolveur du verrou « instance fermée ». Quand il
+// retourne true, l'inscription de nouveaux comptes est refusée (sauf bootstrap
+// du tout premier admin, users.json vide).
+func (h *UserAuthHandler) WithInstanceLock(fn func() bool) *UserAuthHandler {
+	h.instanceLocked = fn
+	return h
+}
+
+// isInstanceLocked retourne true si le verrou est actif (résolveur non nil).
+func (h *UserAuthHandler) isInstanceLocked() bool {
+	return h.instanceLocked != nil && h.instanceLocked()
 }
 
 // Login authentifie un utilisateur par username/password.
@@ -129,6 +145,14 @@ func (h *UserAuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		role = domain.RoleAdmin
 		slog.Info("auth: premier utilisateur, rôle admin automatique", "username", req.Username)
 	} else {
+		// Instance fermée (lockdown) : aucune nouvelle inscription hors bootstrap
+		// du premier admin (déjà exempté par la branche `empty` ci-dessus).
+		if h.isInstanceLocked() {
+			slog.Warn("auth: register refusé — instance verrouillée", "username", req.Username)
+			writeError(r.Context(), w, http.StatusForbidden, "instance_locked",
+				"Cette instance est fermée aux nouvelles inscriptions.")
+			return
+		}
 		// D3 cohabitation : en mode "xbox", register password réservé au bootstrap admin
 		// initial (users.json vide). Hors bootstrap, les comptes sont créés via le flow SSO.
 		if h.authMode == "xbox" {

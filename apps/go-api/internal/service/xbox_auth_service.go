@@ -52,6 +52,10 @@ type XboxSSOLinkStrategy struct {
 	users        *userstore.Store
 	tokenStore   *auth.MultiUserTokenStore // optionnel
 	daemonGetter WatcherDaemonGetter       // optionnel — lazy resolve
+	// instanceLocked résout le verrou « instance fermée ». Quand true, un XUID
+	// INCONNU est refusé (pas de CreateFromXbox) ; un XUID connu se connecte
+	// normalement. nil → jamais verrouillé. Cf. WithInstanceLock.
+	instanceLocked func() bool
 }
 
 // NewXboxSSOLinkStrategy crée une XboxSSOLinkStrategy minimale (sans store ni daemon).
@@ -74,6 +78,18 @@ func (s *XboxSSOLinkStrategy) WithDaemonGetter(getter WatcherDaemonGetter) *Xbox
 	return s
 }
 
+// WithInstanceLock injecte le résolveur du verrou « instance fermée ». Quand il
+// retourne true, un XUID inconnu ne peut pas créer de compte (login SSO refusé) ;
+// les utilisateurs existants se connectent normalement.
+func (s *XboxSSOLinkStrategy) WithInstanceLock(fn func() bool) *XboxSSOLinkStrategy {
+	s.instanceLocked = fn
+	return s
+}
+
+// ErrInstanceLocked est retournée par OnAuthSuccess quand un XUID inconnu tente
+// de se connecter sur une instance fermée.
+var ErrInstanceLocked = errors.New("xbox_sso: instance fermée (nouvelle identité refusée)")
+
 // Vérification compile-time.
 var _ auth.LinkStrategy = (*XboxSSOLinkStrategy)(nil)
 
@@ -89,6 +105,12 @@ func (s *XboxSSOLinkStrategy) OnAuthSuccess(ctx context.Context, attempt *auth.A
 	user, err := s.users.GetByXUID(attempt.XUID)
 	switch {
 	case errors.Is(err, userstore.ErrUserNotFound):
+		// Instance fermée : un XUID inconnu ne peut pas créer de compte.
+		if s.instanceLocked != nil && s.instanceLocked() {
+			slog.WarnContext(ctx, "xbox_sso: nouvelle identité refusée — instance verrouillée",
+				"xuid", attempt.XUID, "gamertag", attempt.Gamertag)
+			return ErrInstanceLocked
+		}
 		user, err = s.users.CreateFromXbox(attempt.Gamertag, attempt.XUID)
 		if err != nil {
 			return fmt.Errorf("xbox_sso: CreateFromXbox: %w", err)

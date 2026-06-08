@@ -71,6 +71,11 @@ type AppSettings struct {
 	CanSelfProvision    bool `json:"can_self_provision"`
 	CanStartInitialSync bool `json:"can_start_initial_sync"`
 
+	// InstanceLocked : verrou « instance fermée » activable à chaud (défaut false).
+	// Bloque la création de nouvelles identités/BDD (register, SSO xuid inconnu,
+	// setup/players). Cumulé en OU avec LEVELUP_INSTANCE_LOCKED (env, verrou forcé).
+	InstanceLocked bool `json:"instance_locked"`
+
 	// AuthProvider détermine le mécanisme d'authentification Microsoft/Halo.
 	// Valeurs : "msal" (défaut, Azure app) | "sisu" (Xbox natif, sans Azure app).
 	AuthProvider string `json:"auth_provider"`
@@ -298,6 +303,9 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.AuthProvider != nil {
 		cfg.AuthProvider = *req.AuthProvider
 	}
+	if req.InstanceLocked != nil {
+		cfg.InstanceLocked = *req.InstanceLocked
+	}
 }
 
 // ToResponse convertit AppSettings en SettingsResponse (sans discord_webhook_url).
@@ -345,6 +353,7 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		ShowProgression:                     cfg.ShowProgression,
 		CoachProactiveMode:                  cfg.CoachProactiveMode,
 		AuthProvider:                        cfg.AuthProvider,
+		InstanceLocked:                      cfg.InstanceLocked,
 	}
 }
 

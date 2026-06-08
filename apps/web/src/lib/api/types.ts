@@ -58,6 +58,8 @@ export interface BootstrapResponse {
   auth_mode: 'none' | 'password' | 'xbox'
   /** Mode d'inscription ("invite" | "open" | "closed"). */
   registration_mode: 'invite' | 'open' | 'closed'
+  /** Instance fermée : aucune nouvelle identité/BDD (register, SSO xuid inconnu, setup/players). */
+  instance_locked?: boolean
   /** True si l'utilisateur courant est admin. */
   is_admin: boolean
   /** Username connecté (si mode password et connecté). */

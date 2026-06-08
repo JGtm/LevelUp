@@ -78,11 +78,15 @@ type BootstrapResponse struct {
 	// Sprint 54 B : privacy du compte courant (chargée en parallèle).
 	Privacy *MatchPrivacyInfo `json:"privacy,omitempty"`
 	// Auth locale
-	AuthMode         string  `json:"auth_mode"`
-	RegistrationMode string  `json:"registration_mode"`
-	IsAdmin          bool    `json:"is_admin"`
-	CurrentUsername  *string `json:"current_username"`
-	FirstLaunch      bool    `json:"first_launch"`
+	AuthMode         string `json:"auth_mode"`
+	RegistrationMode string `json:"registration_mode"`
+	// InstanceLocked : instance fermée (aucune nouvelle identité/BDD). Le frontend
+	// l'utilise pour afficher un bandeau « inscriptions fermées » et désactiver les
+	// CTA de création. Verrou effectif = env (LEVELUP_INSTANCE_LOCKED) OU app_settings.
+	InstanceLocked  bool    `json:"instance_locked"`
+	IsAdmin         bool    `json:"is_admin"`
+	CurrentUsername *string `json:"current_username"`
+	FirstLaunch     bool    `json:"first_launch"`
 	// PR 4 — Authorization Code Flow disponible (true si cfg.OAuthRedirectURI configuré).
 	// Le frontend affiche un bouton "SSO redirect" en plus du Device Code si true.
 	OAuthCodeFlowEnabled bool `json:"oauth_code_flow_enabled"`

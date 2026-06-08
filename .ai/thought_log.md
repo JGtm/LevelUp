@@ -1,3 +1,30 @@
+## [2026-06-08] PR-A — Lockdown d'instance + audit ownership/IDOR — Complété
+
+**Statut** : Complété (branche `feat/instance-lockdown`, depuis `feat/leaderboard-csr-world`). `go build ./...` OK ; tests handlers/service/config/settings/api/contracttest verts ; front tsc/eslint propres, appShellStore 9/9. Non commité (attente autorisation). Réf : `.ai/PLAN_AUTH_CONSOLIDATION_LOCKDOWN.md` (PR-A).
+
+**Tâche (demande user)** : pouvoir fermer une instance — bloquer nouvelles inscriptions/connexions(nouvelles identités)/création de BDD — sans casser les utilisateurs existants. + contrôle d'ownership (un appel ne doit pas pouvoir cibler un autre utilisateur que le connecté).
+
+**Décisions actées** : (1) mode « instance fermée » (pas maintenance dure) ; (2) activable via `LEVELUP_INSTANCE_LOCKED` (env, verrou forcé) OU `app_settings.json:instance_locked` (mutable à chaud, admin) ; verrou effectif = OU des deux ; (3) exemption du tout premier admin (0 user) sinon instance non amorçable ; (4) toggle via PATCH /settings réservé admin.
+
+**Implémentation (lockdown)** :
+- `config.InstanceLocked` ← `LEVELUP_INSTANCE_LOCKED` ; `settings.AppSettings.InstanceLocked` (+ Apply/ToResponse) ; `domain.SettingsResponse`/`UpdateSettingsRequest`/`BootstrapResponse` étendus.
+- Résolveur `instanceLockedFn` (env OU settings live) construit dans `server.go`, injecté dans `UserAuthHandler.WithInstanceLock` et `XboxSSOLinkStrategy.WithInstanceLock` ; `SetupHandler` lit cfg+settings inline.
+- Verrous : **register** (`user_auth.go`, hors bootstrap `empty`), **setup/players** (`setup.go`, cumulé avec can_self_provision), **SSO** (`xbox_auth_service.go` : xuid INCONNU → `ErrInstanceLocked` ; xuid connu → login OK).
+- `PatchSettings` : toggle `instance_locked` réservé admin (sinon 403 admin_required).
+- Exposé dans `/bootstrap.instance_locked` ; front : appShellStore `instanceLocked` + RegisterPage affiche un écran « instance fermée » hors bootstrap + message d'erreur `instance_locked`.
+
+**Audit ownership/IDOR (collègue)** :
+- Path-scoped `/players/{slug}/*` : déjà protégé par `RequirePlayerOwnership` (ADR 0024, testé `require_player_ownership_test.go`).
+- `/sync/initial`, `/sync/all` : déjà admin-gated (revue D3-01).
+- **Gap trouvé+corrigé** : `/backfill/start` (slug dans le body, hors chokepoint path) n'était PAS admin-gated → déplacé dans le groupe RequireAuth+RequireAdmin (no-op en demo/single-user, cohérent avec sync).
+- **À surveiller (documenté, hors scope PR-A)** : `catalog` (`xuid` en query), `health_home` (`player` en query), `session_context` (PlayerSlug body, faible risque car ownership ré-appliqué en aval). Principe acté : ne jamais faire confiance à l'identité fournie par le client ; dériver de la session.
+
+**Tests** : register bloqué+exemption 1er admin (`user_auth_test.go`), setup/players verrouillé (`setup_test.go`), SSO xuid inconnu refusé / xuid connu autorisé (`xbox_auth_service_test.go`). Chokepoint ownership couvert par le test middleware existant.
+
+**Prochaine étape** : PR-B (refresh auto + notif reauth in-app), PR-C (MDP opt-in), PR-D (consolidation SISU).
+
+---
+
 ## [2026-06-08] Filtre sessions « Réinitialiser » + audio HLS « Jeu / Voix » — Complété
 
 **Statut** : Complété (branche courante `feat/nav-l1-mobile-drawer`, à la demande de l'utilisateur). Go `go build ./...` OK + `go test ./internal/media/...` verts ; web : SessionMultiSelect 23/23, CoverFlowModal HLS 7/7, eslint 0 erreur sur les fichiers touchés, `tsc -b` propre sur mes fichiers (résiduels préexistants hors scope dans `AscensionProfileTab.tsx`). Non commité (attente autorisation).

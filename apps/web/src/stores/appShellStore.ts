@@ -42,6 +42,8 @@ interface AppShellState {
   // Auth locale
   authMode: 'none' | 'password' | 'xbox'
   registrationMode: 'invite' | 'open' | 'closed'
+  /** Instance fermée : aucune nouvelle inscription / identité / BDD. */
+  instanceLocked: boolean
   isAdmin: boolean
   currentUsername: string | null
   firstLaunch: boolean
@@ -95,6 +97,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
   activeSyncJobId: null,
   authMode: 'none',
   registrationMode: 'invite',
+  instanceLocked: false,
   isAdmin: false,
   currentUsername: null,
   firstLaunch: false,
@@ -123,6 +126,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
       activeSyncJobId: data.active_sync_job_id ?? null,
       authMode: data.auth_mode ?? 'none',
       registrationMode: data.registration_mode ?? 'invite',
+      instanceLocked: data.instance_locked ?? false,
       isAdmin: data.is_admin ?? false,
       currentUsername: data.current_username ?? null,
       firstLaunch: data.first_launch ?? false,
