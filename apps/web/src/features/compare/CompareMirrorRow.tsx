@@ -24,24 +24,24 @@ export interface CompareMirrorRowProps {
   lessIsBetter?: boolean
 }
 
-// Détermine quel joueur a la meilleure valeur parmi {A, B, C} disponibles.
-// Renvoie null si aucun candidat ou si deux+ candidats sont à égalité au sommet.
+// Détermine quels joueurs ont la meilleure valeur parmi {A, B, C} disponibles.
+// Renvoie l'ensemble des joueurs à égalité au sommet : un seul en cas de meilleur
+// net, deux (ou trois) en cas d'ex æquo pour la meilleure stat — tous sont alors
+// mis en valeur. Vide si moins de 2 comparables (rien à départager).
 function pickTopOfThree(
   rawA: number, rawB: number, rawC: number,
   availA: boolean, availB: boolean, availC: boolean,
   lessIsBetter: boolean,
-): 'a' | 'b' | 'c' | null {
+): Set<'a' | 'b' | 'c'> {
   const eps = 0.001
   const candidates: Array<{ key: 'a' | 'b' | 'c'; val: number }> = []
   if (availA && Number.isFinite(rawA)) candidates.push({ key: 'a', val: rawA })
   if (availB && Number.isFinite(rawB)) candidates.push({ key: 'b', val: rawB })
   if (availC && Number.isFinite(rawC)) candidates.push({ key: 'c', val: rawC })
-  if (candidates.length < 2) return null // pas assez de comparables pour parler de "top"
-  const sorted = [...candidates].sort((x, y) => lessIsBetter ? x.val - y.val : y.val - x.val)
-  const best = sorted[0]
-  const tiedAtTop = sorted.filter(c => Math.abs(c.val - best.val) <= eps)
-  if (tiedAtTop.length >= 2) return null
-  return best.key
+  if (candidates.length < 2) return new Set() // pas assez de comparables pour parler de "top"
+  const best = candidates.reduce((m, c) => ((lessIsBetter ? c.val < m.val : c.val > m.val) ? c : m))
+  // Tous les candidats à epsilon de la meilleure valeur sont co-leaders (ex æquo).
+  return new Set(candidates.filter((c) => Math.abs(c.val - best.val) <= eps).map((c) => c.key))
 }
 
 export function CompareMirrorRow({
@@ -61,8 +61,9 @@ export function CompareMirrorRow({
   const effWinnerAB = leftPairAvail ? winnerAB : 'tie'
   const effWinnerAC = rightPairAvail ? winnerAC : 'tie'
 
-  // Top des 3 joueurs : seule celui qui a la meilleure valeur globale est mis en gras + couleur.
-  const topPlayer = pickTopOfThree(rawA, rawB, rawC, availableA, availableB, availableC, lessIsBetter)
+  // Top des 3 joueurs : chaque joueur à la meilleure valeur globale (y compris
+  // les ex æquo) est mis en gras + couleur.
+  const topPlayers = pickTopOfThree(rawA, rawB, rawC, availableA, availableB, availableC, lessIsBetter)
 
   // Barre gauche : B | A (B en couleur compare-b à gauche, A en compare-a à droite)
   const a1 = availableA && Number.isFinite(rawA) ? rawA : 0
@@ -91,23 +92,28 @@ export function CompareMirrorRow({
   }
 
   const naClass = 'text-sm tabular-nums leading-tight text-muted-foreground italic'
+  const valueClass = 'text-sm tabular-nums leading-tight'
 
   return (
     <div className="space-y-1 w-full">
       <p className="text-center text-xs text-muted-foreground leading-tight">{label}</p>
       <div
         style={{
+          // Colonnes de valeur élargies (4.5rem) : les libellés texte « Rang
+          // carrière » / « CSR » (ex. "Diamant 3", "Non classé") tiennent sur une
+          // seule ligne et restent alignés comme les valeurs numériques.
           display: 'grid',
-          gridTemplateColumns: '3.5rem 1fr 4rem 1fr 3.5rem',
+          gridTemplateColumns: '4.5rem 1fr 4.5rem 1fr 4.5rem',
           gap: '0.5rem',
           alignItems: 'center',
         }}
       >
         {/* Valeur B (challenger gauche) */}
-        <div className="flex flex-col items-end">
+        <div className="flex min-w-0 flex-col items-end">
           <span
-            className={availableB ? 'text-sm tabular-nums leading-tight' : naClass}
-            style={availableB && topPlayer === 'b' ? { color: colorB, fontWeight: 600 } : undefined}
+            title={valueB}
+            className={`w-full truncate text-right ${availableB ? valueClass : naClass}`}
+            style={availableB && topPlayers.has('b') ? { color: colorB, fontWeight: 600 } : undefined}
           >
             {valueB}
           </span>
@@ -120,10 +126,11 @@ export function CompareMirrorRow({
         <div className="h-3 rounded-sm" style={leftBarStyle} />
 
         {/* Valeur A (joueur actif — ancre centrale) */}
-        <div className="flex flex-col items-center">
+        <div className="flex min-w-0 flex-col items-center">
           <span
-            className={availableA ? 'text-sm tabular-nums leading-tight' : naClass}
-            style={availableA && topPlayer === 'a' ? { color: colorA, fontWeight: 600 } : undefined}
+            title={valueA}
+            className={`w-full truncate text-center ${availableA ? valueClass : naClass}`}
+            style={availableA && topPlayers.has('a') ? { color: colorA, fontWeight: 600 } : undefined}
           >
             {valueA}
           </span>
@@ -133,10 +140,11 @@ export function CompareMirrorRow({
         <div className="h-3 rounded-sm" style={rightBarStyle} />
 
         {/* Valeur C (challenger droite) */}
-        <div className="flex flex-col items-start">
+        <div className="flex min-w-0 flex-col items-start">
           <span
-            className={availableC ? 'text-sm tabular-nums leading-tight' : naClass}
-            style={availableC && topPlayer === 'c' ? { color: colorC, fontWeight: 600 } : undefined}
+            title={valueC}
+            className={`w-full truncate text-left ${availableC ? valueClass : naClass}`}
+            style={availableC && topPlayers.has('c') ? { color: colorC, fontWeight: 600 } : undefined}
           >
             {valueC}
           </span>
