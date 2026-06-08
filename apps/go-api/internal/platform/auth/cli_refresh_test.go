@@ -88,6 +88,59 @@ func TestRefreshHaloTokensViaStoreFirst_StoreMSAL_SilentRefresh(t *testing.T) {
 	}
 }
 
+// TestRefreshHaloTokensViaStoreFirst_RTDead_MarksReauth : credentials présents
+// (RT) mais le refresh échoue (RT révoqué) → le store est marqué reauth_required.
+func TestRefreshHaloTokensViaStoreFirst_RTDead_MarksReauth(t *testing.T) {
+	store := NewMultiUserTokenStore(tempTokenDir(t))
+	_ = store.UpdateOAuthRefreshToken("111", "rt-revoked")
+
+	prov := &fakeProvider{oauthErr: errors.New("invalid_grant")} // refresh KO
+
+	result, _ := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice", LegacyAuthInputs{})
+	if result != nil {
+		t.Fatal("result devrait être nil (refresh KO)")
+	}
+	if !store.IsReauthRequired("111") {
+		t.Error("reauth_required attendu après mort du refresh_token")
+	}
+}
+
+// TestRefreshHaloTokensViaStoreFirst_Success_ClearsReauth : un refresh réussi
+// efface un flag reauth_required préexistant.
+func TestRefreshHaloTokensViaStoreFirst_Success_ClearsReauth(t *testing.T) {
+	store := NewMultiUserTokenStore(tempTokenDir(t))
+	_ = store.UpdateOAuthRefreshToken("111", "rt-v1")
+	_ = store.MarkReauthRequired("111", "Alice") // flag préexistant
+
+	prov := &fakeProvider{
+		oauthAccess:    "access-ok",
+		exchangeResult: okExchangeResult(),
+	}
+
+	result, _ := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice", LegacyAuthInputs{})
+	if result == nil {
+		t.Fatal("result nil (refresh devait réussir)")
+	}
+	if store.IsReauthRequired("111") {
+		t.Error("reauth_required aurait dû être effacé après refresh réussi")
+	}
+}
+
+// TestRefreshHaloTokensViaStoreFirst_NoCreds_NoMark : un xuid sans credentials
+// (jamais authentifié) ne doit PAS être marqué reauth_required.
+func TestRefreshHaloTokensViaStoreFirst_NoCreds_NoMark(t *testing.T) {
+	store := NewMultiUserTokenStore(tempTokenDir(t))
+	// Entrée présente mais sans MSAL ni RT (ex. gamertag seul).
+	_ = store.Upsert(&UserTokens{XUID: "111", Gamertag: "Alice"})
+
+	prov := &fakeProvider{}
+	_, _ = RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice", LegacyAuthInputs{})
+
+	if store.IsReauthRequired("111") {
+		t.Error("pas de marquage attendu sans credentials (compte jamais authentifié)")
+	}
+}
+
 func TestRefreshHaloTokensViaStoreFirst_StoreOAuth_RotationPersisted(t *testing.T) {
 	store := NewMultiUserTokenStore(tempTokenDir(t))
 	_ = store.UpdateOAuthRefreshToken("111", "rt-v1")

@@ -60,6 +60,8 @@ export interface BootstrapResponse {
   registration_mode: 'invite' | 'open' | 'closed'
   /** Instance fermée : aucune nouvelle identité/BDD (register, SSO xuid inconnu, setup/players). */
   instance_locked?: boolean
+  /** Joueur courant : refresh_token Microsoft mort → reconnexion Xbox requise (bannière). */
+  reauth_required?: boolean
   /** True si l'utilisateur courant est admin. */
   is_admin: boolean
   /** Username connecté (si mode password et connecté). */

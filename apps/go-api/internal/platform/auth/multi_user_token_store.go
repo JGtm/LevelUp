@@ -47,6 +47,14 @@ type UserTokens struct {
 	MSALCacheJSON     string    `json:"msal_cache_json,omitempty"`
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
+
+	// ReauthRequired : true quand le refresh silencieux a définitivement échoué
+	// (refresh_token Microsoft révoqué/expiré) → l'utilisateur DOIT se reconnecter
+	// via le SSO Xbox pour re-semer un cache/RT valide. Le front l'expose en
+	// bannière (cf. /bootstrap.reauth_required). Remis à false dès qu'un refresh
+	// réussit ou après une ré-authentification interactive (PR-B).
+	ReauthRequired   bool      `json:"reauth_required,omitempty"`
+	ReauthDetectedAt time.Time `json:"reauth_detected_at,omitempty"`
 }
 
 // IsXSTSValid retourne true si le XSTS est encore valide (avec marge).
@@ -280,6 +288,66 @@ func (s *MultiUserTokenStore) UpdateMSALCache(xuid, cacheJSON string) error {
 	existing.MSALCacheJSON = cacheJSON
 
 	return s.upsertLocked(existing)
+}
+
+// MarkReauthRequired positionne le flag de ré-authentification requise pour un
+// xuid (refresh_token mort). Read-modify-write atomique préservant les autres
+// champs. Crée l'entrée si absente. Idempotent : ReauthDetectedAt conserve la
+// première détection ; le gamertag n'est complété que s'il était vide.
+func (s *MultiUserTokenStore) MarkReauthRequired(xuid, gamertag string) error {
+	if !xuidIsSafe(xuid) {
+		return fmt.Errorf("multi_user_token_store: xuid invalide: %q", xuid)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	existing, err := s.loadLocked(xuid)
+	if err != nil && !errors.Is(err, ErrUserTokensNotFound) {
+		return fmt.Errorf("multi_user_token_store: lecture pour mark reauth: %w", err)
+	}
+	if existing == nil {
+		existing = &UserTokens{XUID: xuid}
+	}
+	if existing.ReauthRequired {
+		return nil // déjà marqué — préserve ReauthDetectedAt + évite un write inutile
+	}
+	existing.ReauthRequired = true
+	existing.ReauthDetectedAt = time.Now().UTC()
+	if existing.Gamertag == "" {
+		existing.Gamertag = gamertag
+	}
+	return s.upsertLocked(existing)
+}
+
+// ClearReauthRequired remet le flag à false (refresh réussi ou ré-auth interactive).
+// No-op si l'entrée est absente ou déjà non marquée.
+func (s *MultiUserTokenStore) ClearReauthRequired(xuid string) error {
+	if !xuidIsSafe(xuid) {
+		return fmt.Errorf("multi_user_token_store: xuid invalide: %q", xuid)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	existing, err := s.loadLocked(xuid)
+	if err != nil {
+		if errors.Is(err, ErrUserTokensNotFound) {
+			return nil
+		}
+		return fmt.Errorf("multi_user_token_store: lecture pour clear reauth: %w", err)
+	}
+	if !existing.ReauthRequired {
+		return nil
+	}
+	existing.ReauthRequired = false
+	existing.ReauthDetectedAt = time.Time{}
+	return s.upsertLocked(existing)
+}
+
+// IsReauthRequired retourne true si l'entrée du xuid existe et est marquée
+// reauth_required. Lecture sans effet de bord ; false si absente/illisible.
+func (s *MultiUserTokenStore) IsReauthRequired(xuid string) bool {
+	t, err := s.Load(xuid)
+	return err == nil && t != nil && t.ReauthRequired
 }
 
 // LoadByGamertag scanne le répertoire et retourne le premier UserTokens dont

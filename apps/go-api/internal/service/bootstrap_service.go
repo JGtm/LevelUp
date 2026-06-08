@@ -32,6 +32,7 @@ type BootstrapService struct {
 	privacyStateRepo port.PrivacyStateRepository // optionnel — nil = pas de fallback persisté
 	userStoreEmpty   func() (bool, error)        // optionnel — nil = first_launch toujours false
 	userLookup       authz.UserLookup            // optionnel — nil = pas de filtrage ownership (ADR 0024)
+	reauthCheck      func(xuid string) bool      // optionnel — nil = reauth_required toujours false (PR-B)
 }
 
 // NewBootstrapService crée un BootstrapService.
@@ -55,6 +56,13 @@ func (s *BootstrapService) WithPrivacyStateRepo(r port.PrivacyStateRepository) *
 // WithUserStoreEmpty injecte la fonction de vérification "user store vide" (mode password).
 func (s *BootstrapService) WithUserStoreEmpty(fn func() (bool, error)) *BootstrapService {
 	s.userStoreEmpty = fn
+	return s
+}
+
+// WithReauthChecker injecte la fonction qui dit si un xuid a son refresh_token
+// mort (reauth_required). Sans elle, reauth_required est toujours false. PR-B.
+func (s *BootstrapService) WithReauthChecker(fn func(xuid string) bool) *BootstrapService {
+	s.reauthCheck = fn
 	return s
 }
 
@@ -170,6 +178,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		AuthMode:             s.cfg.AuthMode,
 		RegistrationMode:     s.cfg.RegistrationMode,
 		InstanceLocked:       s.cfg.InstanceLocked || getBoolSetting(appSettings, "instance_locked", false),
+		ReauthRequired:       s.reauthCheck != nil && currentPlayer != nil && currentPlayer.XUID != "" && s.reauthCheck(currentPlayer.XUID),
 		IsAdmin:              sess != nil && sess.Role != nil && *sess.Role == "admin",
 		CurrentUsername:      resolveUsername(sess),
 		FirstLaunch:          s.isFirstLaunch(),

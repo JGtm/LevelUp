@@ -549,6 +549,10 @@ func main() {
 	if cfg.AuthMode == "password" {
 		bootSvc = bootSvc.WithUserStoreEmpty(us.IsEmpty)
 	}
+	// PR-B : expose reauth_required (refresh_token mort) du joueur courant au front.
+	// Lecture par-xuid dans le MultiUserTokenStore (data/auth/watcher_tokens/{xuid}.json).
+	reauthStore := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	bootSvc = bootSvc.WithReauthChecker(reauthStore.IsReauthRequired)
 
 	// --- 5. Sprint 0 : validation des types critiques ---
 	ctx := context.Background()

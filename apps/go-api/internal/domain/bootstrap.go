@@ -83,7 +83,11 @@ type BootstrapResponse struct {
 	// InstanceLocked : instance fermée (aucune nouvelle identité/BDD). Le frontend
 	// l'utilise pour afficher un bandeau « inscriptions fermées » et désactiver les
 	// CTA de création. Verrou effectif = env (LEVELUP_INSTANCE_LOCKED) OU app_settings.
-	InstanceLocked  bool    `json:"instance_locked"`
+	InstanceLocked bool `json:"instance_locked"`
+	// ReauthRequired : true si le refresh_token Microsoft du joueur courant est mort
+	// (refresh silencieux définitivement KO). Le front affiche une bannière
+	// « reconnecte ton compte Xbox ». Remis à false après une ré-auth réussie.
+	ReauthRequired  bool    `json:"reauth_required"`
 	IsAdmin         bool    `json:"is_admin"`
 	CurrentUsername *string `json:"current_username"`
 	FirstLaunch     bool    `json:"first_launch"`
