@@ -34,7 +34,8 @@ func TestNeedsHLS(t *testing.T) {
 	}
 }
 
-func TestPlanHLS_CopyOpusMultiTrack(t *testing.T) {
+func TestPlanHLS_TwoTracksGameVoicesFull(t *testing.T) {
+	// 2 pistes source (jeu Opus + micro Opus) → 3 renditions game/voices/full.
 	streams := []AVStreamDetail{
 		{CodecType: "video", CodecName: "h264"},
 		{CodecType: "audio", CodecName: "opus", Title: "Game", Language: "fra"},
@@ -47,43 +48,98 @@ func TestPlanHLS_CopyOpusMultiTrack(t *testing.T) {
 	if plan.VideoAction != actionCopy {
 		t.Errorf("VideoAction = %v, want copy", plan.VideoAction)
 	}
-	if len(plan.Audios) != 2 {
-		t.Fatalf("len(Audios) = %d, want 2", len(plan.Audios))
+	if len(plan.Audios) != 3 {
+		t.Fatalf("len(Audios) = %d, want 3 (game/voices/full)", len(plan.Audios))
 	}
-	for i, a := range plan.Audios {
-		if a.Action != actionCopy {
-			t.Errorf("Audios[%d].Action = %v, want copy (Opus)", i, a.Action)
-		}
+	g, v, f := plan.Audios[0], plan.Audios[1], plan.Audios[2]
+	if g.Slug != "game" || v.Slug != "voices" || f.Slug != "full" {
+		t.Errorf("slugs = [%q,%q,%q], want [game,voices,full]", g.Slug, v.Slug, f.Slug)
 	}
-	if !plan.Audios[0].Default || plan.Audios[1].Default {
-		t.Errorf("Default = [%v,%v], want [true,false]", plan.Audios[0].Default, plan.Audios[1].Default)
+	// game = piste 0 copiée (Opus), source directe ; voices = piste 1 copiée
+	// (Opus, une seule piste voix → map direct) ; full = amix réencodé AAC.
+	if g.MapSpec != "0:a:0" || g.Action != actionCopy {
+		t.Errorf("game = (%q,%v), want (0:a:0, copy)", g.MapSpec, g.Action)
 	}
-	if plan.Audios[0].Display != "Game" || plan.Audios[1].Display != "Mic" {
-		t.Errorf("Display = [%q,%q], want [Game,Mic]", plan.Audios[0].Display, plan.Audios[1].Display)
+	if v.MapSpec != "0:a:1" || v.Action != actionCopy {
+		t.Errorf("voices = (%q,%v), want (0:a:1, copy)", v.MapSpec, v.Action)
 	}
-	if plan.Audios[0].Language != "fra" {
-		t.Errorf("Audios[0].Language = %q, want fra", plan.Audios[0].Language)
+	if f.MapSpec != "[full]" || f.Action != actionReencode {
+		t.Errorf("full = (%q,%v), want ([full], reencode)", f.MapSpec, f.Action)
+	}
+	// Seul full est DEFAULT (les deux toggles actifs par défaut côté lecteur).
+	if g.Default || v.Default || !f.Default {
+		t.Errorf("Default = [%v,%v,%v], want [false,false,true]", g.Default, v.Default, f.Default)
+	}
+	// Display = slugs machine pour la détection du layout 2-toggles côté lecteur.
+	if g.Display != "game" || v.Display != "voices" || f.Display != "full" {
+		t.Errorf("Display = [%q,%q,%q], want [game,voices,full]", g.Display, v.Display, f.Display)
+	}
+	// 2 pistes → seul full passe par amix (voices est un map direct).
+	wantFC := "[0:a:0][0:a:1]amix=inputs=2:normalize=0:duration=longest[full]"
+	if plan.FilterComplex != wantFC {
+		t.Errorf("FilterComplex =\n  %q\nwant\n  %q", plan.FilterComplex, wantFC)
 	}
 }
 
-func TestPlanHLS_ReencodeWhenIncompatible(t *testing.T) {
+func TestPlanHLS_ThreeTracksVoicesAmix(t *testing.T) {
+	// 3 pistes source (jeu + micro + discord) → voices = amix de a:1+a:2.
 	streams := []AVStreamDetail{
-		{CodecType: "video", CodecName: "vp9"},
-		{CodecType: "audio", CodecName: "aac"},
-		{CodecType: "audio", CodecName: "vorbis"},
+		{CodecType: "video", CodecName: "h264"},
+		{CodecType: "audio", CodecName: "opus", Title: "Game"},
+		{CodecType: "audio", CodecName: "opus", Title: "Mic"},
+		{CodecType: "audio", CodecName: "opus", Title: "Discord"},
 	}
 	plan, err := planHLS(streams)
 	if err != nil {
 		t.Fatalf("planHLS: %v", err)
 	}
-	if plan.VideoAction != actionReencode || plan.VideoCodec != "h264" {
-		t.Errorf("video = (%v,%q), want (reencode,h264)", plan.VideoAction, plan.VideoCodec)
+	if len(plan.Audios) != 3 {
+		t.Fatalf("len(Audios) = %d, want 3", len(plan.Audios))
 	}
-	if plan.Audios[0].Action != actionCopy {
-		t.Errorf("AAC should copy, got %v", plan.Audios[0].Action)
+	v := plan.Audios[1]
+	if v.MapSpec != "[voices]" || v.Action != actionReencode {
+		t.Errorf("voices = (%q,%v), want ([voices], reencode)", v.MapSpec, v.Action)
 	}
-	if plan.Audios[1].Action != actionReencode {
-		t.Errorf("Vorbis should reencode, got %v", plan.Audios[1].Action)
+	wantFC := "[0:a:1][0:a:2]amix=inputs=2:normalize=0:duration=longest[voices];" +
+		"[0:a:0][0:a:1][0:a:2]amix=inputs=3:normalize=0:duration=longest[full]"
+	if plan.FilterComplex != wantFC {
+		t.Errorf("FilterComplex =\n  %q\nwant\n  %q", plan.FilterComplex, wantFC)
+	}
+}
+
+func TestPlanHLS_SingleAudioTrackLegacy(t *testing.T) {
+	// 1 seule piste audio (ex. MKV mono remuxé) → 1 rendition directe, pas de
+	// filtre, pas de layout toggle. Display = titre de la piste (legacy).
+	streams := []AVStreamDetail{
+		{CodecType: "video", CodecName: "h264"},
+		{CodecType: "audio", CodecName: "vorbis", Title: "Game"},
+	}
+	plan, err := planHLS(streams)
+	if err != nil {
+		t.Fatalf("planHLS: %v", err)
+	}
+	if len(plan.Audios) != 1 {
+		t.Fatalf("len(Audios) = %d, want 1", len(plan.Audios))
+	}
+	a := plan.Audios[0]
+	if a.Slug != "a0" || a.MapSpec != "0:a:0" || !a.Default {
+		t.Errorf("rendition = (%q,%q,default=%v), want (a0,0:a:0,true)", a.Slug, a.MapSpec, a.Default)
+	}
+	if a.Action != actionReencode {
+		t.Errorf("Vorbis devrait être réencodé, got %v", a.Action)
+	}
+	if a.Display != "Game" {
+		t.Errorf("Display = %q, want Game (legacy: titre de piste)", a.Display)
+	}
+	if plan.FilterComplex != "" {
+		t.Errorf("FilterComplex = %q, want vide (mono-piste)", plan.FilterComplex)
+	}
+}
+
+func TestRenditionSlugs(t *testing.T) {
+	got := renditionSlugs([]audioRendition{{Slug: "game"}, {Slug: "voices"}, {Slug: "full"}})
+	if len(got) != 3 || got[0] != "game" || got[1] != "voices" || got[2] != "full" {
+		t.Errorf("renditionSlugs = %v, want [game voices full]", got)
 	}
 }
 
@@ -113,21 +169,24 @@ func TestPlanHLS_SingleVideoTrack(t *testing.T) {
 }
 
 func TestBuildVarStreamMap(t *testing.T) {
+	// L'index a:N suit l'ordinal de sortie (position dans Audios), pas un champ
+	// source : game/voices/full → a:0/a:1/a:2 avec default:yes sur full.
 	plan := hlsPlan{
 		Audios: []audioRendition{
-			{SrcIndex: 0, Slug: "a0", Language: "fra", Default: true},
-			{SrcIndex: 1, Slug: "a1", Language: "eng"},
+			{Slug: "game", Language: "fra"},
+			{Slug: "voices"},
+			{Slug: "full", Default: true},
 		},
 	}
 	got := buildVarStreamMap(plan)
-	want := "v:0,agroup:aud a:0,agroup:aud,name:a0,default:yes,language:fra a:1,agroup:aud,name:a1,language:eng"
+	want := "v:0,agroup:aud a:0,agroup:aud,name:game,language:fra a:1,agroup:aud,name:voices a:2,agroup:aud,name:full,default:yes"
 	if got != want {
 		t.Errorf("buildVarStreamMap =\n  %q\nwant\n  %q", got, want)
 	}
 }
 
 func TestBuildVarStreamMap_NoLanguage(t *testing.T) {
-	plan := hlsPlan{Audios: []audioRendition{{SrcIndex: 0, Slug: "a0", Default: true}}}
+	plan := hlsPlan{Audios: []audioRendition{{Slug: "a0", Default: true}}}
 	got := buildVarStreamMap(plan)
 	want := "v:0,agroup:aud a:0,agroup:aud,name:a0,default:yes"
 	if got != want {
@@ -231,11 +290,16 @@ func TestBuildHLS_Integration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildHLS: %v", err)
 	}
-	if res.AudioTracks != 2 {
-		t.Errorf("AudioTracks = %d, want 2", res.AudioTracks)
+	// 2 pistes source → 3 renditions game/voices/full (pré-mixage pour les 2
+	// interrupteurs indépendants du lecteur).
+	if res.AudioTracks != 3 {
+		t.Errorf("AudioTracks = %d, want 3", res.AudioTracks)
 	}
 	if res.Segments == 0 {
 		t.Error("Segments = 0, want > 0")
+	}
+	if len(res.Renditions) != 3 || res.Renditions[0] != "game" || res.Renditions[2] != "full" {
+		t.Errorf("Renditions = %v, want [game voices full] (observabilité log)", res.Renditions)
 	}
 
 	master, err := os.ReadFile(res.MasterPath)
@@ -243,22 +307,26 @@ func TestBuildHLS_Integration(t *testing.T) {
 		t.Fatalf("lecture master: %v", err)
 	}
 	ms := string(master)
-	if n := strings.Count(ms, "TYPE=AUDIO"); n != 2 {
-		t.Errorf("master: %d TYPE=AUDIO, want 2\n%s", n, ms)
+	if n := strings.Count(ms, "TYPE=AUDIO"); n != 3 {
+		t.Errorf("master: %d TYPE=AUDIO, want 3\n%s", n, ms)
 	}
-	if !strings.Contains(ms, `NAME="Game"`) || !strings.Contains(ms, `NAME="Mic"`) {
-		t.Errorf("master: NAME réécrits manquants\n%s", ms)
+	if !strings.Contains(ms, `NAME="game"`) || !strings.Contains(ms, `NAME="voices"`) || !strings.Contains(ms, `NAME="full"`) {
+		t.Errorf("master: NAME game/voices/full manquants\n%s", ms)
 	}
 	if n := strings.Count(ms, "DEFAULT=YES"); n != 1 {
-		t.Errorf("master: %d DEFAULT=YES, want 1", n)
+		t.Errorf("master: %d DEFAULT=YES, want 1 (full)", n)
 	}
 
-	// Preuve du copy : audio reste opus, vidéo reste h264. On probe les init
-	// segments fMP4 (autonomes : leur moov porte la config codec) plutôt que les
-	// sous-playlists. ffprobe traite les chemins comme des URL (séparateur '/') :
-	// sur un chemin Windows en backslash, il ne résout pas les segments relatifs
-	// d'une playlist. Un fichier autonome n'a pas ce souci.
-	assertSegmentCodec(t, filepath.Join(outDir, "init_a0.mp4"), "audio", "opus")
+	// Preuves codec sur les init segments fMP4 (autonomes : leur moov porte la
+	// config codec). ffprobe traite les chemins comme des URL (séparateur '/') :
+	// sur un chemin Windows en backslash il ne résout pas les segments relatifs
+	// d'une playlist ; un fichier autonome n'a pas ce souci.
+	//   - game : copy de la piste 0 → opus
+	//   - voices : copy de la piste 1 (2 pistes → map direct) → opus
+	//   - full : amix réencodé → aac
+	assertSegmentCodec(t, filepath.Join(outDir, "init_game.mp4"), "audio", "opus")
+	assertSegmentCodec(t, filepath.Join(outDir, "init_voices.mp4"), "audio", "opus")
+	assertSegmentCodec(t, filepath.Join(outDir, "init_full.mp4"), "audio", "aac")
 	assertSegmentCodec(t, filepath.Join(outDir, "init_0.mp4"), "video", "h264")
 }
 

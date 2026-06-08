@@ -51,22 +51,25 @@ const (
 	actionReencode                     // réencodage (codec incompatible HLS)
 )
 
-// audioRendition décrit une piste audio dans le plan HLS.
+// audioRendition décrit une rendition audio de SORTIE dans le plan HLS. Une
+// rendition n'est plus forcément une piste source 1:1 : elle peut provenir d'un
+// label de filtre (-filter_complex amix) quand on agrège plusieurs sources.
 type audioRendition struct {
-	SrcIndex int          // index audio 0-based (a:N dans var_stream_map)
-	Slug     string       // identifiant fichier positionnel (a0, a1…) — jamais en collision
-	Display  string       // NAME lisible affiché dans le master (post-traité)
+	Slug     string       // identifiant fichier + name: dans var_stream_map (game/voices/full ou a0)
+	Display  string       // NAME écrit dans le master (post-traité) — slug machine pour le layout 2-toggles
+	MapSpec  string       // argument ffmpeg -map : "0:a:0" (source directe) ou "[voices]"/"[full]" (sortie de filtre)
 	Language string       // langue propagée au master si présente
 	Action   streamAction // copy ou réencode AAC
-	Default  bool         // DEFAULT=YES (première piste)
+	Default  bool         // DEFAULT=YES
 }
 
 // hlsPlan est le plan de transcodage dérivé des streams source — pur.
 type hlsPlan struct {
-	VideoAction  streamAction
-	VideoCodec   string // codec cible si réencode ("h264") ; "" si copy
-	Audios       []audioRendition
-	VarStreamMap string
+	VideoAction   streamAction
+	VideoCodec    string // codec cible si réencode ("h264") ; "" si copy
+	Audios        []audioRendition
+	FilterComplex string // -filter_complex (amix) ; "" si aucune agrégation
+	VarStreamMap  string
 }
 
 // HLSOptions configure BuildHLS.
@@ -76,9 +79,10 @@ type HLSOptions struct {
 
 // HLSResult résume la sortie de BuildHLS.
 type HLSResult struct {
-	MasterPath  string // chemin absolu du master.m3u8
-	AudioTracks int    // nombre de pistes audio exposées
-	Segments    int    // nombre de segments .m4s générés
+	MasterPath  string   // chemin absolu du master.m3u8
+	AudioTracks int      // nombre de pistes audio exposées
+	Segments    int      // nombre de segments .m4s générés
+	Renditions  []string // slugs des renditions audio (game/voices/full ou a0) — observabilité
 }
 
 // NeedsHLS retourne true si le fichier doit être transcodé en HLS :
@@ -104,7 +108,7 @@ func NeedsHLS(ext string, streams []AVStreamDetail) bool {
 func planHLS(streams []AVStreamDetail) (hlsPlan, error) {
 	var plan hlsPlan
 	hasVideo := false
-	audioIdx := 0
+	var srcAudios []AVStreamDetail
 	for _, s := range streams {
 		switch s.CodecType {
 		case "video":
@@ -114,25 +118,91 @@ func planHLS(streams []AVStreamDetail) (hlsPlan, error) {
 			hasVideo = true
 			plan.VideoAction, plan.VideoCodec = planVideo(s.CodecName)
 		case "audio":
-			plan.Audios = append(plan.Audios, audioRendition{
-				SrcIndex: audioIdx,
-				Slug:     fmt.Sprintf("a%d", audioIdx),
-				Display:  audioDisplay(s, audioIdx),
-				Language: sanitizeLanguage(s.Language),
-				Action:   planAudio(s.CodecName),
-				Default:  audioIdx == 0,
-			})
-			audioIdx++
+			srcAudios = append(srcAudios, s)
 		}
 	}
 	if !hasVideo {
 		return hlsPlan{}, fmt.Errorf("planHLS: aucune piste vidéo")
 	}
-	if len(plan.Audios) == 0 {
+	if len(srcAudios) == 0 {
 		return hlsPlan{}, fmt.Errorf("planHLS: aucune piste audio")
 	}
+	plan.Audios, plan.FilterComplex = planAudioRenditions(srcAudios)
 	plan.VarStreamMap = buildVarStreamMap(plan)
 	return plan, nil
+}
+
+// planAudioRenditions dérive les renditions de sortie des pistes source.
+//
+//   - mono-piste → 1 rendition directe (comportement historique, pas de toggle
+//     côté lecteur) ;
+//   - multipiste → 3 renditions pré-mixées pour les 2 interrupteurs indépendants
+//     "Jeu" / "Voix" : `game` (piste 0), `voices` (mix des pistes 1..N) et `full`
+//     (mix de toutes, DEFAULT). Le pré-mixage est nécessaire car les renditions
+//     HLS sont mutuellement exclusives à la lecture — on ne peut pas additionner
+//     deux pistes côté navigateur.
+//
+// Les Display valent les slugs machine (game/voices/full) : le lecteur les matche
+// pour détecter le layout 2-toggles ; sur un clip legacy (slugs absents) il
+// retombe sur le sélecteur par-piste.
+func planAudioRenditions(src []AVStreamDetail) ([]audioRendition, string) {
+	if len(src) < 2 {
+		s := src[0]
+		return []audioRendition{{
+			Slug:     "a0",
+			Display:  audioDisplay(s, 0),
+			MapSpec:  "0:a:0",
+			Action:   planAudio(s.CodecName),
+			Default:  true,
+			Language: sanitizeLanguage(s.Language),
+		}}, ""
+	}
+
+	game := audioRendition{
+		Slug: "game", Display: "game", MapSpec: "0:a:0",
+		Action: planAudio(src[0].CodecName), Language: sanitizeLanguage(src[0].Language),
+	}
+
+	var fcParts []string
+	// voices = pistes 1..N. Une seule piste voix → map direct (copy si possible) ;
+	// plusieurs → amix (donc réencode AAC, un flux filtré ne peut pas être copié).
+	voices := audioRendition{Slug: "voices", Display: "voices", Action: actionReencode}
+	if len(src) == 2 {
+		voices.MapSpec = "0:a:1"
+		voices.Action = planAudio(src[1].CodecName)
+	} else {
+		fcParts = append(fcParts, amixFilter(rangeIdx(1, len(src)), "voices"))
+		voices.MapSpec = "[voices]"
+	}
+
+	// full = toutes les pistes (jeu + voix), toujours via amix → réencode AAC.
+	fcParts = append(fcParts, amixFilter(rangeIdx(0, len(src)), "full"))
+	full := audioRendition{
+		Slug: "full", Display: "full", MapSpec: "[full]",
+		Action: actionReencode, Default: true,
+	}
+
+	return []audioRendition{game, voices, full}, strings.Join(fcParts, ";")
+}
+
+// rangeIdx retourne [from, to) sous forme de slice d'indices audio source.
+func rangeIdx(from, to int) []int {
+	out := make([]int, 0, to-from)
+	for i := from; i < to; i++ {
+		out = append(out, i)
+	}
+	return out
+}
+
+// amixFilter construit un segment -filter_complex amix mixant les pistes audio
+// source d'indices donnés vers le label de sortie nommé. normalize=0 conserve
+// les niveaux d'origine (sinon amix divise le volume par le nombre d'entrées).
+func amixFilter(srcIdx []int, label string) string {
+	var ins strings.Builder
+	for _, i := range srcIdx {
+		fmt.Fprintf(&ins, "[0:a:%d]", i)
+	}
+	return fmt.Sprintf("%samix=inputs=%d:normalize=0:duration=longest[%s]", ins.String(), len(srcIdx), label)
 }
 
 // planVideo décide copy/réencode pour la vidéo. H.264/AV1/HEVC passent en fMP4
@@ -183,13 +253,15 @@ func sanitizeLanguage(lang string) string {
 }
 
 // buildVarStreamMap construit la valeur -var_stream_map : une variante vidéo
-// liée au groupe audio "aud", puis chaque piste audio dans ce groupe.
-// Le name: pilote le nom de fichier (%v) ; le NAME affiché dans le master est
-// réécrit séparément par rewriteMasterAudioNames.
+// liée au groupe audio "aud", puis chaque rendition audio dans ce groupe.
+// L'index a:N réfère l'ordinal de SORTIE (position parmi les -map audio), pas
+// l'index source — une rendition peut provenir d'un filtre. Le name: pilote le
+// nom de fichier (%v) ; le NAME affiché dans le master est réécrit séparément
+// par rewriteMasterAudioNames.
 func buildVarStreamMap(plan hlsPlan) string {
 	parts := []string{"v:0,agroup:aud"}
-	for _, a := range plan.Audios {
-		seg := fmt.Sprintf("a:%d,agroup:aud,name:%s", a.SrcIndex, a.Slug)
+	for i, a := range plan.Audios {
+		seg := fmt.Sprintf("a:%d,agroup:aud,name:%s", i, a.Slug)
 		if a.Default {
 			seg += ",default:yes"
 		}
@@ -311,15 +383,34 @@ func BuildHLS(ctx context.Context, srcPath, outDir string, opts HLSOptions) (HLS
 			"master", masterPath, "err", err)
 	}
 
-	return validateHLSOutput(outDir, len(plan.Audios))
+	res, err := validateHLSOutput(outDir, len(plan.Audios))
+	if err != nil {
+		return HLSResult{}, err
+	}
+	res.Renditions = renditionSlugs(plan.Audios)
+	return res, nil
+}
+
+// renditionSlugs extrait les slugs des renditions audio (pour le logging
+// d'observabilité : distingue le layout pré-mixé game/voices/full du legacy a0).
+func renditionSlugs(audios []audioRendition) []string {
+	slugs := make([]string, len(audios))
+	for i, a := range audios {
+		slugs[i] = a.Slug
+	}
+	return slugs
 }
 
 // buildHLSArgs construit les arguments ffmpeg depuis le plan. Découpé de
 // BuildHLS pour rester sous la limite de taille et faciliter les tests.
 func buildHLSArgs(plan hlsPlan, src, outDir string, segDur int) []string {
-	args := []string{"-hide_banner", "-loglevel", "error", "-y", "-i", src, "-map", "0:v:0"}
+	args := []string{"-hide_banner", "-loglevel", "error", "-y", "-i", src}
+	if plan.FilterComplex != "" {
+		args = append(args, "-filter_complex", plan.FilterComplex)
+	}
+	args = append(args, "-map", "0:v:0")
 	for _, a := range plan.Audios {
-		args = append(args, "-map", fmt.Sprintf("0:a:%d", a.SrcIndex))
+		args = append(args, "-map", a.MapSpec)
 	}
 	if plan.VideoAction == actionCopy {
 		args = append(args, "-c:v", "copy")
