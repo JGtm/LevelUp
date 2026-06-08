@@ -40,6 +40,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/ops"
@@ -1587,7 +1588,11 @@ func startWatcherDaemon(
 	multiMirror := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
 	refreshLoop := auth.NewRefreshLoop(store, func(result *auth.XSTSResult) {
 		daemon.UpdateAuth(result.AuthHeader())
-	}).WithMultiUserMirror(multiMirror)
+	}).WithMultiUserMirror(multiMirror).
+		// PR-B : ping Discord opt-in quand le refresh_token meurt (reconnexion requise).
+		WithReauthNotify(func(_, gamertag string) {
+			notify.NotifyReauthRequired(notify.LoadNotifyConfig(cfg.AppSettingsPath), gamertag)
+		})
 	go refreshLoop.Run(ctx)
 
 	// Cleanup 2026-05-26 : la boucle de boot reload des userClients (PR 2.5c)

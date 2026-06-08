@@ -46,6 +46,11 @@ type RefreshLoop struct {
 	onXSTS        RefreshCallback
 	interval      time.Duration
 	acquireXSTSFn XSTSAcquireFn // nil → AcquireXSTSForRTA (prod)
+
+	// onReauthNotify est invoqué UNE fois (transition) quand le refresh_token meurt
+	// (reauth requise). Nullable. Sert au ping Discord opt-in (PR-B). Le marquage
+	// d'état est fait directement sur multiMirror (MarkReauthRequired).
+	onReauthNotify func(xuid, gamertag string)
 }
 
 // NewRefreshLoop crée un RefreshLoop.
@@ -66,6 +71,13 @@ func NewRefreshLoop(store *TokenStore, onXSTSRefreshed RefreshCallback) *Refresh
 // nil → no-op (comportement legacy strict).
 func (r *RefreshLoop) WithMultiUserMirror(multi *MultiUserTokenStore) *RefreshLoop {
 	r.multiMirror = multi
+	return r
+}
+
+// WithReauthNotify injecte le callback de notification (ping Discord opt-in)
+// invoqué une seule fois lors de la transition « refresh_token mort » (PR-B).
+func (r *RefreshLoop) WithReauthNotify(fn func(xuid, gamertag string)) *RefreshLoop {
+	r.onReauthNotify = fn
 	return r
 }
 
@@ -147,6 +159,7 @@ func (r *RefreshLoop) refreshOAuth(ctx context.Context, tokens *StoredTokens) er
 	}
 	if accessToken == "" {
 		slog.WarnContext(ctx, "refresh_loop: refresh_token révoqué ou expiré")
+		r.signalReauthRequired(ctx, tokens)
 		return nil
 	}
 	// rotatedRT == "" → UpdateOAuth préserve l'ancien RT (pas de rotation côté MS) ;
@@ -155,9 +168,37 @@ func (r *RefreshLoop) refreshOAuth(ctx context.Context, tokens *StoredTokens) er
 		return err
 	}
 	slog.InfoContext(ctx, "refresh_loop: access_token renouvelé")
+	// Refresh OK → l'éventuel flag reauth_required du tracker est obsolète.
+	r.clearReauthRequired(ctx, tokens)
 	// PR 2.5b — mirror OAuth refresh vers multi-user store si configuré.
 	r.mirrorTrackerToMultiUser(ctx)
 	return nil
+}
+
+// signalReauthRequired marque reauth_required (mirror multi-user) et notifie une
+// seule fois (transition) — refresh_token du tracker mort. Best-effort.
+func (r *RefreshLoop) signalReauthRequired(ctx context.Context, tokens *StoredTokens) {
+	if r.multiMirror == nil || tokens.XSTSXUID == "" {
+		return
+	}
+	newly, err := r.multiMirror.MarkReauthRequired(tokens.XSTSXUID, tokens.XSTSGamertag)
+	if err != nil {
+		slog.WarnContext(ctx, "refresh_loop: marquage reauth_required échoué", "xuid", tokens.XSTSXUID, "err", err)
+		return
+	}
+	if newly && r.onReauthNotify != nil {
+		r.onReauthNotify(tokens.XSTSXUID, tokens.XSTSGamertag)
+	}
+}
+
+// clearReauthRequired efface le flag reauth_required du tracker après un refresh OK.
+func (r *RefreshLoop) clearReauthRequired(ctx context.Context, tokens *StoredTokens) {
+	if r.multiMirror == nil || tokens.XSTSXUID == "" {
+		return
+	}
+	if err := r.multiMirror.ClearReauthRequired(tokens.XSTSXUID); err != nil {
+		slog.WarnContext(ctx, "refresh_loop: clear reauth_required échoué", "xuid", tokens.XSTSXUID, "err", err)
+	}
 }
 
 // refreshXSTS obtient un nouveau token XSTS pour RTA.

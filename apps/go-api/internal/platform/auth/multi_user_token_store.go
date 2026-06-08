@@ -294,29 +294,35 @@ func (s *MultiUserTokenStore) UpdateMSALCache(xuid, cacheJSON string) error {
 // xuid (refresh_token mort). Read-modify-write atomique préservant les autres
 // champs. Crée l'entrée si absente. Idempotent : ReauthDetectedAt conserve la
 // première détection ; le gamertag n'est complété que s'il était vide.
-func (s *MultiUserTokenStore) MarkReauthRequired(xuid, gamertag string) error {
+//
+// Retourne newlyMarked=true uniquement lors de la TRANSITION false→true (permet
+// au caller de ne notifier qu'une fois, cf. ping Discord PR-B).
+func (s *MultiUserTokenStore) MarkReauthRequired(xuid, gamertag string) (newlyMarked bool, err error) {
 	if !xuidIsSafe(xuid) {
-		return fmt.Errorf("multi_user_token_store: xuid invalide: %q", xuid)
+		return false, fmt.Errorf("multi_user_token_store: xuid invalide: %q", xuid)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	existing, err := s.loadLocked(xuid)
-	if err != nil && !errors.Is(err, ErrUserTokensNotFound) {
-		return fmt.Errorf("multi_user_token_store: lecture pour mark reauth: %w", err)
+	existing, lerr := s.loadLocked(xuid)
+	if lerr != nil && !errors.Is(lerr, ErrUserTokensNotFound) {
+		return false, fmt.Errorf("multi_user_token_store: lecture pour mark reauth: %w", lerr)
 	}
 	if existing == nil {
 		existing = &UserTokens{XUID: xuid}
 	}
 	if existing.ReauthRequired {
-		return nil // déjà marqué — préserve ReauthDetectedAt + évite un write inutile
+		return false, nil // déjà marqué — préserve ReauthDetectedAt + évite un write inutile
 	}
 	existing.ReauthRequired = true
 	existing.ReauthDetectedAt = time.Now().UTC()
 	if existing.Gamertag == "" {
 		existing.Gamertag = gamertag
 	}
-	return s.upsertLocked(existing)
+	if werr := s.upsertLocked(existing); werr != nil {
+		return false, werr
+	}
+	return true, nil
 }
 
 // ClearReauthRequired remet le flag à false (refresh réussi ou ré-auth interactive).

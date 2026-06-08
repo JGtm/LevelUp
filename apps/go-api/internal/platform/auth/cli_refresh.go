@@ -70,7 +70,7 @@ func RefreshHaloTokensViaStoreFirst(
 			// n'existait, ce n'est pas une « mort » mais un compte jamais authentifié
 			// → pas de marquage.)
 			if user.MSALCacheJSON != "" || user.OAuthRefreshToken != "" {
-				if merr := store.MarkReauthRequired(xuid, user.Gamertag); merr != nil {
+				if _, merr := store.MarkReauthRequired(xuid, user.Gamertag); merr != nil {
 					slog.WarnContext(ctx, "cli_auth: marquage reauth_required échoué", "xuid", xuid, "err", merr)
 				} else {
 					slog.WarnContext(ctx, "cli_auth: refresh_token mort — reauth_required",

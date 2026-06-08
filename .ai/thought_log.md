@@ -1,3 +1,26 @@
+## [2026-06-08] PR-B — Reconnexion Xbox : détection RT mort + bannière + Discord — Complété
+
+**Statut** : Complété (branche `feat/instance-lockdown`). 3 slices committées. Go build/vet OK ; tests auth/pool/notify/service/contracttest verts ; front tsc/eslint/vitest verts.
+
+**But** : prévenir l'utilisateur quand son refresh_token Microsoft meurt (sync en pause) et lui permettre de se reconnecter. Le XSTS est déjà auto-rafraîchi (RefreshLoop) ; seul le cas terminal « RT mort » demande une action.
+
+**Slice 1 — détection + état + /bootstrap** :
+- `UserTokens.ReauthRequired` + `ReauthDetectedAt` (MultiUserTokenStore) + `MarkReauthRequired` (retourne `newlyMarked` pour notifier une seule fois) / `ClearReauthRequired` / `IsReauthRequired`.
+- Hook dans `RefreshHaloTokensViaStoreFirst` (chemin CLI) : creds présents mais refresh KO → Mark ; OK → Clear ; pas de creds → pas de mark.
+- `BootstrapResponse.reauth_required` (joueur courant) via `BootstrapService.WithReauthChecker` câblé sur `IsReauthRequired` (main.go) + champ TS/store front.
+
+**Slice 2 — bannière in-app** :
+- `ReauthBanner` montée dans `AppShell` (sous NavL1) : message + bouton « Reconnecter » → redirect SSO 1-clic si dispo, sinon page login (device code). Ré-auth réussie → flag effacé → bannière disparaît. 3 tests.
+
+**Slice 3 — couverture prod + Discord** :
+- **Vrai chemin de refresh prod = `pool/resolver.go`** (pas `RefreshHaloTokensViaStoreFirst`, CLI-only). Ajout `ReauthCallback` + `NewResolverWithReauth` (sans churn : `NewResolver` délègue avec nil). Signal `required=true` sur RT mort (creds présents + refresh KO), `false` sur succès. 3 tests.
+- **RefreshLoop watcher** : `signalReauthRequired`/`clearReauthRequired` sur le multiMirror (mark/clear) + `WithReauthNotify` (transition → ping Discord). Câblé main.go.
+- **Discord opt-in** : `notify.NotifyReauthRequired` + toggle `discord_notify_reauth` (défaut true, lu du raw app_settings) + i18n FR/EN. Émis une seule fois (sur `newlyMarked`).
+
+**Limites assumées** : le resolver n'est utilisé en prod que par l'auto-sync diag ; la couverture continue vient surtout de la RefreshLoop watcher. La vraie « unification watcher store + RefreshUserXSTS multi-user RTA » (présence multi-user) reste un chantier distinct, hors scope reauth — non nécessaire à l'objectif notification.
+
+---
+
 ## [2026-06-08] PR-A — Lockdown d'instance + audit ownership/IDOR — Complété
 
 **Statut** : Complété (branche `feat/instance-lockdown`, depuis `feat/leaderboard-csr-world`). `go build ./...` OK ; tests handlers/service/config/settings/api/contracttest verts ; front tsc/eslint propres, appShellStore 9/9. Non commité (attente autorisation). Réf : `.ai/PLAN_AUTH_CONSOLIDATION_LOCKDOWN.md` (PR-A).
