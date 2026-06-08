@@ -1,3 +1,17 @@
+## [2026-06-08] LUSR v2 — live post-sync en owner-only (sync autonome par joueur) — Complété
+
+**Statut** : Complété. go vet OK, test d'autonomie + suite `internal/sync` verts. Code non commité (attente autorisation).
+
+**Demande user** : le sync live doit être AUTONOME par joueur — chaque joueur produit ses lignes LUSR complètes seul, sans dépendre du sync d'un coéquipier ni d'un backfill/sync supplémentaire (cf. directive convergence autonome).
+
+**Root cause (que j'avais soulevée puis embrouillée)** : le live appelait `RunLUSRV2Shadow` qui persiste l'état des **2 équipes** (`persistTeamSkillV2`) → avance le watermark `player_skill_state_v2.last_match_at` de TOUS les participants. Donc quand un coéquipier tracké syncait un match partagé en premier, il avançait le watermark des autres → ceux-ci sautaient le match (`skipped_already_seen`) sans jamais écrire leur ligne canonique (`writeCanonicalLUSRRow` n'écrit que pour le owner). Couplage cross-joueur. NB : c'est le curseur LUSR (par xuid+groupe), PAS les bitmasks par-match (events/killer_victim_pairs) qui eux sont corrects.
+
+**Décision** : le live passe en **owner-only** (`engine_postsync_scoring.go:125` : `RunLUSRV2Shadow` → `RunLUSRV2ShadowOwnerOnly`). Chaque sync n'avance que SON watermark + n'écrit que SA ligne. Même chemin que le backfill recovery (déjà validé). Compromis assumé et identique live/backfill : l'EP lit l'état courant des coéquipiers (pas leur état pré-match) — approximation inhérente au modèle per-joueur, cohérente entre les deux. Scope : LUSR uniquement (`persistTeamSkillV2` est le seul persist multi-participants ; les autres enrichissements sont per-joueur).
+
+**Résultats** : test `TestRunLUSRV2ShadowOwnerOnly_TeammateDoesNotBlockOwner` — coéquipier traité d'abord, le owner n'est PAS bloqué (processed=1, skipped_already_seen=0). `RunLUSRV2Shadow` (persist 2 équipes) conservé pour cmd/lusr_v2_replay + tests. Plus besoin de backfill pour combler les trous live : autonome.
+
+**Prochaine étape** : commit sur autorisation.
+
 ## [2026-06-07] Résolution XUID→gamertag : v_gamertag_lookup cascade sur killer_victim_pairs — Complété
 
 **Statut** : Complété. Fix vérifié sur données réelles. go vet OK (analysis/sync/migration), tests verts (vue + boot + ART rebuild + migration). Code non commité (attente autorisation).

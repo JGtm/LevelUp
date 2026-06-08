@@ -74,16 +74,29 @@ type shadowParticipant struct {
 //
 // Limites Phase 1 : ne traite que les matchs avec exactement 2 teams humaines
 // distinctes. Matchs FFA, 3+ teams, ou outcomes incohérents sont skippés.
+//
+// Variante "persist des 2 équipes" (avance le watermark de TOUS les participants).
+// N'est PLUS utilisée par le live (cf. RunLUSRV2ShadowOwnerOnly, fix 2026-06-08,
+// couplage cross-joueur) — conservée pour cmd/lusr_v2_replay et les tests.
 func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (int, error) {
 	return runLUSRV2Shadow(ctx, playerDB, sharedDB, xuid, false)
 }
 
-// RunLUSRV2ShadowOwnerOnly : variante RECOVERY (backfill). Persiste UNIQUEMENT
-// l'état v2 du joueur traité (pas celui de ses coéquipiers/adversaires). Combinée
-// à un reset par-joueur (DELETE player_skill_state_v2 WHERE xuid=?), elle donne à
-// CHAQUE joueur une couverture canonique complète sans écraser l'état des autres
-// — corrige le couplage cross-joueur du backfill séquentiel (cf. .ai/thought_log
-// 2026-06-07). Le live conserve RunLUSRV2Shadow (persist des 2 équipes, inchangé).
+// RunLUSRV2ShadowOwnerOnly : persiste UNIQUEMENT l'état v2 du joueur traité (pas
+// celui de ses coéquipiers/adversaires) → n'avance que SON watermark + n'écrit que
+// SA ligne canonique. C'est le chemin du LIVE post-sync ET du backfill recovery
+// (fix 2026-06-08).
+//
+// Pourquoi : avec le persist des 2 équipes (RunLUSRV2Shadow), le sync d'un joueur
+// avançait le watermark de ses coéquipiers trackés → ceux-ci sautaient leur match
+// partagé à jamais, sans ligne LUSR (couplage cross-joueur). Owner-only rend chaque
+// sync AUTONOME : un joueur obtient sa couverture canonique complète seul, sans
+// dépendre d'un backfill ni du sync d'un autre. Au backfill on l'associe à un reset
+// par-joueur (DELETE player_skill_state_v2 WHERE xuid=?) pour un replay propre.
+//
+// Compromis assumé : l'EP du joueur lit l'état COURANT de ses coéquipiers (pas
+// forcément leur état pré-match) — approximation inhérente au modèle per-joueur,
+// identique entre live et backfill (résultats cohérents).
 func RunLUSRV2ShadowOwnerOnly(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (int, error) {
 	return runLUSRV2Shadow(ctx, playerDB, sharedDB, xuid, true)
 }

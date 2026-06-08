@@ -122,7 +122,14 @@ func (e *SyncEngine) runSkillRatingSteps(ctx context.Context, playerDB, sharedDB
 	// le v2 sans modif des readers. Cf. ADR 0024. RunLUSRV2Shadow self-gate la
 	// capability ; le garde ici évite juste l'appel inutile.
 	if lusrEnabled && IsLUSRV2Enabled() {
-		if n, err := RunLUSRV2Shadow(ctx, playerDB, sharedDB, e.xuid); err != nil {
+		// OWNER-ONLY (fix 2026-06-08) : le post-sync de CE joueur ne persiste/avance
+		// que SON propre état + watermark + ligne canonique, jamais ceux de ses
+		// coéquipiers. Sinon (persist 2 équipes) le sync d'un coéquipier avançait le
+		// watermark des autres → leur match partagé sautait à jamais sans ligne LUSR
+		// (couplage cross-joueur). Owner-only rend chaque sync AUTONOME : un joueur
+		// obtient ses lignes complètes seul, sans dépendre d'un backfill ni du sync
+		// d'un autre. Même chemin que le backfill recovery, déjà validé.
+		if n, err := RunLUSRV2ShadowOwnerOnly(ctx, playerDB, sharedDB, e.xuid); err != nil {
 			slog.WarnContext(ctx, "post-sync: LUSR v2 shadow échoué",
 				"gamertag", e.gamertag, "err", err)
 		} else if n > 0 {
