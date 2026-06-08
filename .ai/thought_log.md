@@ -1,3 +1,291 @@
+## [2026-06-09] Pass saisonnier : fix hauteurs inégales (retrait h-full sur KpiCard en flex row) — Complété (front-only)
+
+**Statut** : Complété. typecheck 0 + eslint 0. Non commité.
+
+**Bug** (capture user) : malgré `items-stretch`, les cards n'avaient pas la même hauteur. **Cause** : `h-full` (`height:100%`) sur chaque `KpiCard` ; dans une flex row, un `height:100%` enfant se résout contre la hauteur du conteneur qui est `auto` (= max-content) → retombe sur la hauteur du contenu propre, annulant le stretch. **Fix** : `flex h-full flex-col` → `flex flex-col` sur les 3 cards (StatCard/Cosmetics/Loot). `items-stretch` étire alors toutes les cards à la hauteur de la plus grande ; `flex-1` interne remplit. (Le `h-full` venait de l'usage grille initial où la cellule définissait la hauteur ; inutile/nuisible en flex.)
+
+**Suivi** : « Butin récolté » avait une police plus petite (`text-base`) que les autres cards. Corrigé en `text-lg` (police alignée). L'ordre valeur-au-dessus/label-dessous est CONSERVÉ (préférence user explicite ; un essai label-en-haut a été annulé).
+
+**Suivi 2** : écart titre→valeur différent sur Butin (et Cosmétiques). Cause : `content-center` (centrage vertical des stats dans la card étirée) sur Butin + `gap-1.5` au lieu de `mt-1`. Fix : container `flex flex-1 flex-col p-3` (sans gap) + 1ʳᵉ rangée de contenu en `mt-1` top-aligné sur Cosmétiques ET Butin → écart titre→valeur identique aux StatCard.
+
+## [2026-06-09] Pass saisonnier : harmonisation hauteur cards (cosmétiques + butin compactés une ligne) + titre pass dynamique — Complété (front-only)
+
+**Statut** : Complété (validé local). typecheck 0 + eslint 0 + vitest palmares 3. Non commité.
+
+**Demandes** :
+1. Toutes les KPI cards à la même hauteur.
+2. Card « Cosmétiques débloqués » : « 489 / 1 007 49 % » + barre composite sur UNE ligne, sans retirer ni ajouter d'info.
+3. Titre « Pass actif » → « Pass saisonnier » quand on sélectionne un autre pass.
+4. (msg suivant) Card « Butin récolté » élargie aussi → stats sur une seule ligne.
+
+**Décisions** :
+1. Hauteur : `items-stretch` (déjà en place) égalise les hauteurs dans la rangée flex ; le levier réel = compacter les 2 cards riches pour baisser la hauteur max.
+2. Cosmétiques : valeur+%+barre dans un `flex items-center gap-3` (valeur `shrink-0`, barre `min-w-0 flex-1`) → une ligne. Légende rareté CONSERVÉE dessous (aucune info retirée ; tooltip par segment inchangé).
+3. Butin : grille 2×2 → `flex flex-wrap items-center gap-x-6` (4 stats sur une ligne) ; card passée de `flex-none` à `min-w-[15rem] flex-1` (s'élargit, comme cosmétiques). Cosmétiques + Butin partagent donc l'espace libéré par les compteurs.
+4. Titre dynamique : `isViewingActive ? activePassTitle : selectedPassTitle`. Nouvelle clé i18n `palmares.season_pass.selected_pass_title` (« Pass saisonnier » / « Season pass ») ajoutée au TOML + régénérée + exposée.
+
+**Résultats** : typecheck 0, eslint 0, vitest `src/features/palmares` 3.
+
+**Prochaine étape** : commit sur autorisation.
+
+## [2026-06-09] Pass saisonnier : barre KPI flex (largeur-contenu + cosmétiques flex-1), police réduite, suppression card Pass actif, 2 titres de section — Complété (front-only)
+
+**Statut** : Complété (validé local). typecheck 0 + eslint 0 + vitest palmares 3. Non commité.
+
+**Demandes (page Pass saisonnier — `SeasonPassPage.tsx`)** :
+1. Cards Terminés / En cours / Pass restants → largeur adaptée au contenu ; l'espace gagné va à « Cosmétiques débloqués ».
+2. Réduire la police (trop grande).
+3. Supprimer la KPI card « Pass actif ».
+4. Titre de section « Pass actif » juste sous la barre KPI.
+5. Label « Autres passes » → titre de section.
+
+**Décisions** :
+1. Barre KPI : grille `xl:grid-cols-7` → **flex** (`flex flex-wrap items-stretch gap-3`). Compteurs + XP + Butin en `flex-none` (largeur contenu) ; `CosmeticsUnlockedCard` en `min-w-[15rem] flex-1` (absorbe l'espace). Les 3 cards reçoivent une prop `className` transmise à `KpiCard`. Valeurs `whitespace-nowrap` (compteurs + butin) pour ne pas wrapper en largeur contenu.
+2. Police/densité réduites partout : value `text-2xl`→`text-lg` (StatCard, Cosmétiques) / `text-xl`→`text-base` (Butin), label `text-xs`→`text-2xs`, padding `p-4`→`p-3`, gaps resserrés.
+3. Card « Pass actif » supprimée (l'i18n `activeCard` devient inutilisée ; `activePass` reste utilisé pour `selectedPass`).
+4. Titre de section type 1 `text.seasonPass.activePassTitle` (« Pass actif », clé existante) enveloppant le `PassShowcase`, juste sous la barre KPI.
+5. « Autres passes » : `<p uppercase text-muted>` → `<section><header><h3 text-base font-semibold>` (type 1, clé `otherPassesTitle` existante).
+
+**Résultats** : typecheck 0, eslint 0, vitest `src/features/palmares` 3.
+
+**Réserve** : titre « Pass actif » statique même quand on navigue vers un autre pass via « Autres passes » (le showcase swappe). Acceptable (bouton « retour au pass actif » présent) ; à ajuster si gênant.
+
+**Prochaine étape** : commit sur autorisation.
+
+## [2026-06-09] Synthèse : découpage en sections à partir de « Comparaison Solo / Escouade » — Complété (front-only)
+
+**Statut** : Complété (validé local). typecheck 0 + eslint 0 err + vitest synthesis 16. Non commité.
+
+**Demande** : découper en sections à partir du graphe « Comparaison Solo / Escouade » ; le user a choisi le schéma **2 sections** (parmi 3 proposés).
+
+**Décision** : 2 sections type 1 (titre `<h3 text-base font-semibold>`, cf. [[reference-ui-canonical-types-catalog]]) après « Vue d'ensemble » :
+1. **« Comparaison Solo / Escouade »** (clé existante `synthesis.section.comparison`) — graphe bipolaire seul. Comme c'est l'unique graphe, le titre de section porte le nom et le `SynthesisBipolaireChart` est rendu **sans barre de titre** (`title` omis ; ChartCard ne rend la barre que si `title` présent) → pas de doublon titre/carte.
+2. **« Activité & répartition »** (nouvelle clé i18n `synthesis.section.activity_breakdown`, FR+EN) — heatmap jour×heure + Top vs Total par semaine + Par carte + Par mode. Plusieurs graphes → chacun garde sa barre de titre.
+
+i18n : 1 clé ajoutée au TOML + régénérée.
+
+**Résultats** : typecheck 0, eslint 0 erreur (3 warns strings FR pré-existants), vitest `src/features/synthesis` 16.
+
+**Prochaine étape** : commit sur autorisation.
+
+## [2026-06-08] Retours : Pass saisonnier (accent fixe + une seule rangée) + Synthèse AccentCard fond gris — Complété (front-only)
+
+**Statut** : Complété (validé local). typecheck 0 + eslint 0 err + vitest palmares+synthesis 19. Non commité.
+
+**Demandes** :
+1. Pass saisonnier : « accent fixe » (type 2) sur les KPI cards (j'avais mal compris « sans accent dynamique » = aucun accent ; le user voulait l'accent FIXE) + tout sur **une seule rangée**.
+2. Synthèse : les KPI cards de « Meilleures stats » et celles à gauche du graphe « frags par arme » doivent utiliser le fond gris foncé (`bg-card`) comme les autres blocs.
+
+**Décisions** :
+1. `StatCard`/`CosmeticsUnlockedCard`/`LootCard` reçoivent une prop `accent?: SemanticToken` transmise à `KpiCard` (barre 3px haute). Accents fixes : Pass actif=info, Terminés=outcome-win, En cours=chart-series-1, Pass restants=warning, Cosmétiques=perf-tier-2, XP=chart-series-4, Butin=outcome-draw. Les 2 grilles fusionnées en une seule (`grid-cols-2 sm:3 lg:4 xl:grid-cols-7`) → une rangée sur grand écran, wrap propre en dessous. Guards `hasLoot`/`hasCollection` supprimés (les cards collection renvoient null si pas de donnée, xp gardée par `agg.xpTotal>0`).
+2. `AccentCard` (SynthesisPage) : `rounded-lg overflow-hidden border` → `+ border-border bg-card`. Un seul composant → couvre les deux zones (Meilleures stats + colonne gauche de frags par arme).
+
+**Résultats** : typecheck 0, eslint 0 erreur (3 warns strings FR synthesis pré-existants), vitest palmares+synthesis 19 passés.
+
+**Réserve** : 7 cards sur une rangée à `xl` → les cards riches (Cosmétiques avec barre rareté+légende, Butin 2 colonnes) sont étroites (~1/7). À valider à l'écran ; fallback 2 rangées si trop serré.
+
+**Prochaine étape** : commit sur autorisation.
+
+## [2026-06-08] Synthèse : « Vue d'ensemble » dé-cardée (titre section) + Profil de combat en card pleine largeur + sous-titres type 6 — Complété (front-only)
+
+**Statut** : Complété (validé local). typecheck 0 + eslint 0 err (3 warns strings FR pré-existantes) + vitest synthesis 16. Non commité.
+
+**Demandes (page Synthèse — `SynthesisPage.tsx`, `SynthesisOverviewSection`)** :
+1. Sortir tout le contenu du bloc « Vue d'ensemble » ; « Vue d'ensemble » devient le titre de section (pas de carte englobante).
+2. « Profil de combat » : tout son contenu dans une card pleine largeur ; « Profil de combat » sorti en sous-titre de section (le user a accepté d'essayer titre→sous-titre direct).
+3. « Meilleures stats » : sous-titre de section.
+
+**Décisions** : application du catalogue UI canonique (cf. [[reference-ui-canonical-types-catalog]]) :
+- Type 1 (titre section) : `<section className="space-y-3"><header><h3 className="text-base font-semibold text-foreground">Vue d'ensemble</h3></header>…` — le `Card/CardHeader/CardContent` est supprimé (import retiré, plus aucun usage).
+- Type 6 (sous-titre + filet) : nouveau composant local `SectionSubtitle` = `text-3xs font-semibold uppercase tracking-label-md text-foreground/90` + `<div className="h-px w-full rounded-full bg-border" />`. Utilisé pour « Profil de combat » et « Meilleures stats ».
+- `CombatProfileInlineRow` : retrait du label interne « Profil de combat » + du `border-b/pb-3/mb-3` + du préfixe « · » ; il est maintenant enveloppé dans `<div className="rounded-lg border border-border bg-card p-4">` (card pleine largeur).
+- Le bloc « stats détaillées » (donut + win/FDA + frags par arme) reste tel quel, sous la section (non mentionné par le user).
+
+**Résultats** : typecheck 0, eslint 0 erreur (3 warns no-hardcoded-strings = strings FR déjà hardcodées sur cette page non-migrée), vitest `src/features/synthesis` 16 passés.
+
+**Prochaine étape** : commit sur autorisation.
+
+## [2026-06-08] Pass saisonnier : cards KPI + fix double pill « Actif » + 4 nouvelles cards collection — Complété (front-only)
+
+**Statut** : Complété (validé local). typecheck 0 + eslint 0 + vitest palmares 3. Non commité.
+
+**Demandes (page Pass saisonnier — `SeasonPassPage.tsx`)** :
+1. Cards résumé « Pass actif / Terminés / En cours » → format `KpiCard` du catalogue, sans accent dynamique.
+2. Ajouter des cards collection (réfléchi avec le user) : Pass restants, Cosmétiques débloqués (visuel), XP, Butin (CR/Pts Spartans/Boosts/Relances).
+3. Bug : le pass actif mis en valeur affichait deux fois la pill « Actif ».
+
+**Décisions** :
+1. `StatCard` réécrit sur `KpiCard` (`flex h-full flex-col` pour aligner les hauteurs en grille), import `Card/CardContent` retiré (plus d'autre usage).
+2. Double pill : `palmares.season_pass.active` ET `palmares.season_pass.status.active` valent « Actif ». Le badge `is_active` n'est plus rendu quand `pass.status === 'active'` (le badge de statut dit déjà « Actif »). Appliqué aux 3 emplacements (showcase hero, showcase normal, petite carte).
+3. Nouvelles cards (choix user : visuel = **barre segmentée par rareté** ; XP = **acquis/total**) :
+   - Agrégat `aggregatePasses` sur tous les pass : acquis = `content − remaining_content`, sommé. XP = `(total_tiers − restant) × xp_per_rank` (défaut 1000, constante métier palier).
+   - Rangée 1 : 4 KPI simples (Pass actif/Terminés/En cours/Pass restants).
+   - Rangée 2 : `CosmeticsUnlockedCard` (barre `flex` segmentée par rareté, couleurs rarity.ts + légende dots, acquis/total + %), `StatCard` XP (acquis/total en notation compacte), `LootCard` (grille 2col CR/SP/Boosts/Relances acquis). Guards : cards null si pas de donnée ; rangée masquée si `!hasCollection`.
+4. i18n : 4 clés `palmares.season_pass.{remaining_passes_card,cosmetics_unlocked_card,xp_unlocked_card,loot_card}` ajoutées au TOML (FR+EN) + régénérées + exposées dans `PalmaresText`.
+
+**Résultats** : typecheck 0, eslint 0, vitest `src/features/palmares` 3/3.
+
+**Prochaine étape** : commit sur autorisation.
+
+## [2026-06-08] Face à Face (3 joueurs) : highlight ex æquo + alignement valeurs Rang/CSR — Complété (front-only)
+
+**Statut** : Complété (validé local). typecheck 0 + eslint 0 + vitest compare 13. Non commité.
+
+**Demandes (page Face à Face, mode miroir 3 joueurs — `CompareMirrorRow`)** :
+1. La mise en valeur de la meilleure stat ne se faisait PAS quand 2 joueurs étaient ex æquo au sommet.
+2. Pour « Rang carrière » et « CSR (saison actuelle) », la police/positionnement des valeurs ne ressemblait pas aux autres lignes (« pas centré »).
+
+**Décisions** :
+1. `pickTopOfThree` renvoyait `null` dès que ≥2 candidats étaient à égalité au sommet → aucun highlight. Désormais il renvoie un `Set<'a'|'b'|'c'>` = tous les joueurs à epsilon de la meilleure valeur (1 si meilleur net, 2+ si ex æquo). Le composant teste `topPlayers.has(key)` → les co-leaders sont tous mis en gras + couleur. Vide si <2 comparables.
+2. Cause de l'alignement : `display` pour career_rank = titre de rang, csr = tier (« Diamant 3 », « Non classé ») — chaînes plus longues que les nombres, qui passaient à la ligne dans les colonnes 3.5rem/4rem (cassait le centrage vertical vs la barre). Fix : colonnes de valeur élargies (4.5rem) + valeurs sur une seule ligne (`truncate` + `min-w-0` + `title` pour le survol). Les valeurs numériques (courtes) ne tronquent jamais ; les libellés texte restent alignés comme partout.
+
+**Résultats** : typecheck 0, eslint 0, vitest `src/features/compare` 13/13. (Mode 2 joueurs `CompareBar` inchangé : colonnes 6rem déjà larges.)
+
+**Prochaine étape** : commit sur autorisation.
+
+## [2026-06-09] Noms de modes bruts (JGtm, matchs du 08/06) : pair_name = GUID dans match_registry — Diagnostic complet, fix en attente
+
+**Statut** : Root cause confirmée via API live. Fix identifié (CLI), **pas encore exécuté** (nécessite arrêt serveur dev — lock RW DuckDB). Aucun changement code.
+
+**Symptôme** : matchs du 08/06 affichent des noms de modes bruts non normalisés ("Slayer on Chasm sur Gouffre", "Slayer on Forbidden sur Forbidden") sur certaines surfaces ; d'autres matchs OK. Images cassées en parallèle = thrashing serveur (14 restarts/jour, surtout dus à mes éditions Go ; transitoire, Ctrl+F5 suffit).
+
+**Investigation (AUTH_MODE=none → API interrogeable sans auth, header `Origin: http://localhost:5173` requis sinon CSRF 403)** :
+- Home + match-view : noms corrects ("Assassin en équipe", "Super Fiesta") → ces pipelines passent par `analysis.ResolveModeUI` → `NormalizeModeLabel` (strip " on {map}").
+- Session-detail (`POST /pages/sessions/detail`, session "08/06/2026 19:27–20:27 (5)") : **`pair_name` = GUID brut** (`a904ca97-…`, `2cc63cce-…`, `861336e1-…`) ; map résolue, mode_ui résolu via fallback GameVariant FR.
+- Le nom public Halo d'une paire EST littéralement "{Mode} on {Map}" (ex "Slayer on Chasm"). Les surfaces front qui retombent sur `m.pair_name` brut quand `mode_ui` est vide (ex `SessionMatchesTable.tsx:72` `m.mode_ui || m.pair_name`) affichent donc "Slayer on Chasm" non normalisé.
+
+**Cause racine** : `EnrichRegistryFromMetadata` (sync-time, internal/sync/enrich_registry.go) résout les noms via `metadata.asset_translations[en-US]`. Pour les assets `pair` de ce soir (nouvelles maps Forbidden/Chasm → nouvelles combos pair), `asset_translations` n'a **pas** le nom → fallback GUID conservé dans `match_registry.pair_name`. Metadata SAIN pendant le sync (ART guard OK, pas de FATAL) → PAS la corruption "GUID partout" du 31/05, mais un **trou de contenu** (catalogue assets pas à jour pour le nouveau contenu Halo). `EnrichRegistryFromMetadata` ne mute qu'à l'insert → un re-sync ne corrige PAS les lignes existantes.
+
+**Fix (les 2 CLI exigent le serveur dev STOPPÉ — lock RW exclusif shared/metadata sur Windows)** :
+1. Dry-run d'abord : `go run -tags cgo ./cmd/backfill_registry_names --shared <shared_matches_v2.duckdb> --metadata <metadata.duckdb> --dry-run` → compte les UUIDs. Si `fixed` serait 0 → `asset_translations` manque les noms → refresh catalogue (cmd/populate-assets) requis avant.
+2. Run réel : même commande sans `--dry-run` → réécrit `pair_name == pair_id` (GUID) en nom canonique. Idempotent.
+
+## [2026-06-08] 2 × 500 schéma (JGtm) : `residual_brut` (patterns) + `xuid` (leaderboard CSR mondial) — Complété (non commité)
+
+**Statut** : Complété (validé local). `go test ./internal/platform/duckdb -run "Pattern|Leaderboard|World"` OK. Non commité. **Bugs préexistants, sans rapport avec le fix near-miss** — surfacés dans les logs de la même session.
+
+**Symptômes** : `GET /players/JGtm/patterns` → 500 `Binder Error: Referenced column "residual_brut" not found` ; `GET /players/JGtm/pages/leaderboard` → 500 `Binder Error: Referenced column "xuid" not found`.
+
+**Cause #1 (patterns)** : `loadEnrichments` ([patterns_repo.go:190](../apps/go-api/internal/platform/duckdb/patterns_repo.go)) sélectionnait `residual_brut`, mais la colonne réelle de `player_match_enrichment` est `engagement_score_brut` (migration `add_engagement_score_columns_to_player_match_enrichment`). Le test DB ([patterns_repo_db_test.go:55](../apps/go-api/internal/platform/duckdb/patterns_repo_db_test.go)) créait une fausse colonne `residual_brut` → test vert / prod KO. **Fix** : `engagement_score_brut AS residual_brut` dans la query + colonne du test alignée.
+
+**Cause #2 (leaderboard CSR mondial)** : `GetCSRWorldLeaderboard` ([leaderboard_world_repo.go:50](../apps/go-api/internal/platform/duckdb/leaderboard_world_repo.go)) sélectionnait `COALESCE(xuid,'')`, mais `world_csr_leaderboard_snapshots` (scrape Halo Waypoint) n'a **pas** de colonne `xuid` (seulement gamertag/csr_value/tier_derived). Le test de migration ne lit que gamertag/csr_value → ne couvrait pas la query. **Fix** : `'' AS xuid` (is_local toujours false sur ce classement mondial, attendu — pas de xuid dans le scrape).
+
+**Note** : `domain.CombatProfile.AvgResidualBrut` (combat_yield.go / session_compare) calcule la moyenne du champ Go `EngagementScoreBrut` en mémoire, sans colonne SQL `residual_brut` — aucun autre site impacté (vérifié par grep).
+
+## [2026-06-08] Spam notifs `record_near_miss` (JGtm) + valeurs non arrondies — Complété (non commité)
+
+**Statut** : Complété (validé local). `go test ./internal/progression/{records,coach}` OK + tsc front 0 erreur. Non commité (working tree, branche feat/instance-lockdown sur autorisation user).
+
+**Symptôme (JGtm)** : cloche inondée de notifs « Tu approches d'un record » répétées, avec des nombres bruts non arrondis (ex. « score perso / minute … 545.4545454545455 vs 545.4545454545455 »). Logs `notifications.log` : **10 `record_near_miss` émises d'un coup** au sync 21:51:40, identiques, value == target.
+
+**Cause racine #1 (spam)** : `IsNearMiss` ([records/detector.go:224](../apps/go-api/internal/progression/records/detector.go)) utilisait `current <= target`. Le détecteur compare le best in-window au PB stocké ; pour la fenêtre all_time le PB a été posé par un match toujours dans la fenêtre → `best == PB` à chaque passe → near-miss permanent. Chaque (métrique × période) ayant sa propre `dedup_key`, ~10 alertes passent le filtre 24 h et se ré-émettent chaque jour. Notif absurde : value == target.
+
+**Cause racine #2 (arrondi)** : `value`/`target` = float64 bruts injectés dans les params ([coach/generator.go:168-176](../apps/go-api/internal/progression/coach/generator.go)) puis interpolés via `String(v)` ([web format.ts:88](../apps/web/src/features/notifications/format.ts)).
+
+**Décision** :
+1. `IsNearMiss` : `current <= target` → `current < target` (inégalité stricte). On ne notifie que si on est *sous* le PB, jamais à égalité. Test `TestIsNearMiss_Cases` mis à jour (`{100,100}` → `false`, ajout `{99.99,100}` → `true`).
+2. `format.ts` `enrichParams` : arrondi `value`/`target`/`previous_value` à 2 décimales via `Math.round(n*100)/100` (préserve les entiers, couvre aussi les notifs déjà stockées dans la cloche).
+
+**Reste à faire** : purger les ~10 `record_near_miss` déjà en base (xuid 2533274823110022) dans `shared_social.duckdb` quand le serveur dev est arrêtable (DB verrouillée en RW) — ou laisser JGtm les dismisser. Front rounding les rendra lisibles en attendant.
+
+## [2026-06-08] Légendes « Frags / Morts » + « HS & Frags parfaits » : refactor légende React cliquable — Complété (front-only)
+
+**Statut** : Complété (validé local). typecheck 0 + eslint 0 + vitest squad 233. Non commité.
+
+**Demande (tâche 3/4 page Contributions, restée en suspens)** : les légendes ECharts des sous-charts « Frags / Morts » et « Tirs à la tête & Frags parfaits » étaient jugées trop compliquées (N joueurs × 2 types = légende scrollable dense). Suivre le modèle de « Premier frag / première mort » (`SquadFirstEventsChart`) : légende React compacte cliquable. **J'avais différé cette tâche et ne l'avais jamais faite** — le user a relevé l'absence de changement.
+
+**Décision** :
+1. Nouveau composant `SquadToggleLegendChart.tsx` — généralise le modèle `SquadFirstEventsChart` : 2 toggles de type + 1 toggle par joueur (carré couleur + nom), état `hiddenPlayers`/`hiddenTypes` (Sets) rendu en footer `border-t` du ChartCard, passé au builder via prop `buildOption(hidden)`.
+2. `squadPerformanceLineCharts.ts` — `CommonOpts` reçoit `hiddenPlayers?`/`hiddenTypes?: Set<string>`. `buildKillsDeathsButterflyOption` + `buildHsPerfectOption` vident (`emptyData`) les séries dont le joueur OU le type (clé = label) est masqué, et passent `legend: { show: false }` (légende ECharts retirée). Clé de type = le label de série (killsLabel/deathsLabel, hsLabel/perfectLabel).
+3. `SquadPerformanceCharts.tsx` — les 2 sous-charts concernés passent de `ChartCard` à `SquadToggleLegendChart` ; `buildKillsDeaths`/`buildHsPerfect` prennent l'état masqué en argument ; `legendPlayers` = playerOrder filtré sur ceux ayant des points. Les 7 autres sous-charts restent inchangés (légende ECharts simple ou pas de légende).
+
+**Résultats** : typecheck 0 erreur, eslint 0 erreur, vitest `src/features/squad` 233/233.
+
+**Prochaine étape** : commit sur autorisation.
+
+## [2026-06-08] Heatmap Intensité : axe Y « #N Carte » + récent en bas — Complété (front-only)
+
+**Statut** : Complété (validé local). typecheck OK + eslint exit 0 + vitest squad+timeseries 270. Non commité.
+
+**Demande** : graphe « Intensité » — axe Y au format « #numéro du match map » + match le plus récent en bas, le plus vieux en haut.
+
+**Décision** : `buildSquadIntensityHeatmapOption` est PARTAGÉ (timeseries `TimeseriesIntensityHeatmap` + squad `SquadIntensityHeatmapChart`). Changements :
+1. **Y labels** dans le builder : `r.label` ("Carte — date") → `#${i+1} ${truncateMap(carte)}` (carte = avant " — "). Label complet conservé dans `fullLabels` pour le tooltip. → s'applique aux 2 charts.
+2. **Ordre** : `yAxis.inverse:true` (rows[0] en haut). Contrat = rows oldest-first → #1 (ancien) en haut, #N (récent) en bas. Le timeseries inversait déjà ses rows ; ajout du même `[...].reverse()` dans `SquadIntensityHeatmapChart` (l'API squad renvoie récent→ancien, vu par le user via recent-en-haut). Test builder yAxis mis à jour (`['#1 Aquarius', '#2 Bazaar']`).
+
+**À confirmer user** : numérotation #1=plus ancien (haut). Si le user veut #1=plus récent, inverser la numérotation.
+
+**Prochaine étape** : commit sur autorisation.
+
+## [2026-06-08] SquadVerdict : bloc « Résultats + barre d'outcome » centré en hauteur + barre étalée — Complété (front-only)
+
+**Statut** : Complété (validé local). typecheck OK + eslint exit 0 + vitest SessionBriefing 14. Non commité.
+
+**Demande** : dans la bande verdict (zone score d'équipe + cards perf joueur), le bloc « Résultats + barre d'outcome » doit être centré en hauteur et la barre occuper la place libre à gauche. Idem page stat solo.
+
+**Décision** : la section RIGHT de `SquadVerdict` (`_shared/SessionBriefing`) passe de `ml-auto flex items-stretch` à `flex flex-1 items-center` (remplit l'espace restant + centre verticalement) ; le bloc Résultats de `min-w-[260px] flex-col` à `min-w-[200px] flex-1 flex-col justify-center` (la barre d'outcome s'étale, contenu centré). **Composant PARTAGÉ** : `SquadVerdict` n'est rendu que par `SessionBriefing`, monté sur la page squad ET la page solo (timeseries) → un seul edit couvre les deux (pas de composant solo séparé ; les « OutcomeSequenceTape » ailleurs sont un autre chart).
+
+**Prochaine étape** : commit sur autorisation.
+
+## [2026-06-08] Retours page Synergies : marge axe heatmap, fenêtre sessions +50% (backend), cellule impact en colonnes, medals expand partagé — Complété
+
+**Statut** : Complété (validé local). Frontend : typecheck OK + eslint exit 0 (1 warning TanStack préexistant) + vitest squad 233. Backend : `go test ./internal/analysis -run TestSquadSessionWindow` 5/5. Non commité.
+
+**Retours** :
+1. **Heatmap « Performance par joueur × carte »** : étiquettes X (2 lignes « #N\nCarte ») trop collées → `axisLabel.margin: 14` dans `squadMapHeatmapChart`.
+2. **« Performance d'escouade par session »** : (a) REVERT de mes étiquettes « #N\nSession » → retour à `p.session_label` (le user s'était trompé) ; (b) afficher +50% de sessions : la fenêtre adaptative backend (`analysis.DefaultSquadSessionWindow`) était trop sévère → élargie ~+50% (Target 12→18, Min 6→9, Max 20→30, MinDays 14→21, MaxDays 120→180). 2 tests à valeur codée recalculés (Hardcore 15→22, Occasional 13→19 ; Caps/Floors auto via cfg.*). **Change backend → effet après rebuild Go.**
+3. **Tableau « Impact des coéquipiers »** : la cellule joueur×match empilait les badges 2 par rangée (croît en hauteur). Remplacé `chunkPairs` par `splitTwoRows` : 2 rangées MAX qui s'élargissent en COLONNES.
+4. **« Médailles — Résumé de l'escouade »** : état « Voir toutes les médailles » remonté de `PlayerMedalCard` vers `MedalDigest` (partagé) → un clic déplie/replie TOUS les joueurs.
+
+**Prochaine étape** : commit sur autorisation.
+
+## [2026-06-08] Page Contributions escouade : charts au format ChartCard + Performance en section + filtre armes — Complété (3/4) (front-only)
+
+**Statut** : 3 des 4 retours faits + validés (typecheck OK + eslint exit 0 + vitest squad 233). Tâche légendes (4e) = refactor à part proposé au user. Non commité.
+
+**Retours** :
+1. **Charts au format ChartCard** : la page wrappait chaque chart dans un `<Card><CardContent><h3>` manuel ALORS QUE chaque wrapper (`SquadPerMinuteChart`, `SquadSynergyRadarChart`, `SquadIntensityHeatmapChart`, `SquadEfficiencyChart`, `SquadWeaponKillsChart`, `SquadFirstEventsChart`) utilise DÉJÀ `ChartCard` en interne + accepte un prop `title` (double-wrapping + titre dupliqué). Fix : passer `title` à chaque chart + retirer les `<Card>` de la page. Ajouts : `title?` sur `SquadEfficiencyChart` (n'en avait pas) ; `title?: ReactNode` sur `SquadSynergyRadarChart` (pour l'InfoTooltip dans la barre de titre).
+2. **Grand bloc « Performance » → section** : `<Card>` retirée, `<section>` + `<h3>` type-1 ; `SquadPerformanceCharts` (qui rend déjà ses sous-charts en ChartCard) gardé tel quel.
+3. **Filtre armes inconnues** (`squadWeaponKillsChart`) : `data.bars.filter(label !== '' && !/^weapon_-?\\d+$/)` → masque les "weapon_-XXXXXX".
+4. **[À FAIRE] Légendes** « Frags / Morts » + « Tirs à la tête & Frags parfaits » (sous-charts de `SquadPerformanceCharts`, `legendData = players.flatMap(p => [P—Frags, P—Morts])` = N×2 entrées scroll ECharts) → à passer au modèle `SquadFirstEventsChart` (légende React compacte : toggles type + toggles joueur, cliquables, builder reçoit hidden sets). Refactor : extraire la légende firstEvents en composant partagé + 2 builders acceptent hidden + state. Proposé au user comme étape dédiée.
+
+**Prochaine étape** : faire la tâche 4 (légendes) sur validation user, puis commit.
+
+## [2026-06-08] Page synergies escouade : axe X « #N map » + 2 blocs sortis en titres de section — Complété (front-only)
+
+**Statut** : Complété (validé local). typecheck OK + eslint exit 0 (1 warning TanStack préexistant) + vitest squad 233. Non commité.
+
+**Demandes** :
+1. **Axe X « #N\nmap »** (format des autres charts, via `truncateMap` de `lib/charts/matchLabels`) sur 2 charts de `SquadSynergiesPage` :
+   - `squadMapHeatmapChart` (« Performance par joueur × carte ») : maps → `#${i+1}\n${truncateMap(nom)}` ; nom complet conservé dans le tooltip (`mapNames`). Test xAxis mis à jour.
+   - `squadSessionTimelineChart` (« Performance d'escouade par session ») : `session_label` → `#${i+1}\n${truncateMap(label)}`.
+2. **Sortir 2 blocs de leur Card + titre en section** : `SquadImpactScoreboard` (« Impact des coéquipiers ») et `MedalDigest` (« Médailles — Résumé de l'escouade ») rendaient un `<Card><CardContent><titre>…`. Retiré Card + titre interne (les 2 ne servent QUE sur la page synergies, test impact OK car il vise `squad-impact-scoreboard` pas la Card). Titre porté par `<h3 text-base font-semibold>` (type-1) dans `SquadSynergiesPage`.
+
+**Prochaine étape** : commit sur autorisation.
+
+## [2026-06-08] Leaderboard CSR mondial — suivi Phase 2 (cron autonome + gaps) — Complété
+
+**Statut** : Complété (branche `feat/leaderboard-csr-followup`, dérivée de `feat/instance-lockdown`). Go build+tests verts ; front tsc/eslint/vitest verts.
+
+**But** : traiter le suivi backlog du classement CSR mondial (Phase 1 déjà livrée) — automatiser la capture + combler 4 gaps.
+
+**Livré** :
+- **Cron autonome** (`internal/scheduler/world_leaderboard_cron.go`) : capture 1×/jour du classement de la **saison active découverte** sur la page (`seasons[0]`, format waypoint) — zéro saison codée en dur, suit les changements de saison. Écrit via `SharedProvider.AcquireWriter` (serveur allumé, plus de manip CLI). **Décision archi clé** : scraping (réseau, minutes) effectué HORS lease writer ; writer acquis seulement pour les INSERT → fenêtre RW minimale, pas de blocage 503 des lecteurs HTTP. Garde-fou fraîcheur 20h (anti-spam boot/hot-reload Air).
+- **Scraper** : `FetchActiveSeason` + `FetchCatalog` (lecture `pageProps.seasons[0]` / playlists).
+- **Item 4** — endpoint `GET .../pages/leaderboard/catalog` (saisons+playlists distinctes des snapshots en base, libellés playlist via `rankedplaylists`) ; `LeaderboardBlock.tsx` câblé sur ce catalogue (fallback listes codées en dur). Sélection effective dérivée au rendu (pas de setState-in-effect → 0 warning eslint).
+- **Item 5** — filtre **saison** sur `GetStatLeaderboard` (`match_registry.season_id`). NB : format interne `CsrSeasonN`, DISTINCT du format waypoint du mondial (2 domaines de saison). Propagé port + noop + service + handler.
+- **Item 6** — compteur expvar `leaderboard_empty_page1` (canari changement de markup) + test.
+
+**Bug trouvé+corrigé** : 1er jet du garde-fou fraîcheur comparait `written_at` (TS DuckDB naïf relu UTC) à `time.Now()` local → en CEST le snapshot paraît ~2h dans le futur → toujours « frais » (skip permanent). Fix : âge calculé ENTIÈREMENT en SQL (`CURRENT_TIMESTAMP - max(written_at)`), même horloge des deux côtés (cf. reference_timezone_canonical_pattern). Révélé par le test cron.
+
+**Tests** : cron (insert/fraîcheur/skip/erreur saison/nil-guards), `GetStatLeaderboard` (filtres+is_local+saison), `GetWorldLeaderboardCatalog`, `FetchActiveSeason`/`FetchCatalog`, compteur page-1-vide. Contrat OpenAPI : route catalogue documentée (sinon `TestContractRoutesDocumented` rouge — même piège que PR-C auth).
+
+**Note WIP** : l'arbre contenait du travail non lié non commité (charts squad, records, patterns) — laissé intact, non stagé. Un fix nécessaire dans `leaderboard_world_repo.go` (query xuid inexistant) était déjà non commité → conservé.
+
+**Prochaine étape** : commit (en attente autorisation user). 1er snapshot prod auto au prochain boot serveur.
+
+---
+
 ## [2026-06-08] Fix panic boot — SISUProvider.Exchange stateless fallback — Complété
 
 **Statut** : Complété (branche `feat/instance-lockdown`). Build + tests auth verts.

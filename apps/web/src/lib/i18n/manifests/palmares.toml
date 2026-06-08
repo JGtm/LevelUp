@@ -169,6 +169,22 @@ en = "Completed"
 fr = "En cours"
 en = "In progress"
 
+[palmares.season_pass.remaining_passes_card]
+fr = "Pass restants"
+en = "Remaining passes"
+
+[palmares.season_pass.cosmetics_unlocked_card]
+fr = "Cosmétiques débloqués"
+en = "Cosmetics unlocked"
+
+[palmares.season_pass.xp_unlocked_card]
+fr = "XP débloqué"
+en = "XP unlocked"
+
+[palmares.season_pass.loot_card]
+fr = "Butin récolté"
+en = "Loot earned"
+
 [palmares.season_pass.challenges_card]
 fr = "Défis actifs"
 en = "Active challenges"
@@ -224,6 +240,10 @@ en = "Progress"
 [palmares.season_pass.active_pass_title]
 fr = "Pass actif"
 en = "Active pass"
+
+[palmares.season_pass.selected_pass_title]
+fr = "Pass saisonnier"
+en = "Season pass"
 
 [palmares.season_pass.active_tier_title]
 fr = "Palier actif"

@@ -2,8 +2,8 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 
 import { useParams } from '@tanstack/react-router'
 
+import { KpiCard } from '@/components/cards/KpiCard'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
 import { buildCompositeProgressEdgeLabels, clampCompositeProgress } from '@/components/ui/composite-progress-bar'
 import { DataFreshnessIndicator } from '@/components/ui/data-freshness-indicator'
 import { EmptyStateCard } from '@/components/ui/empty-state'
@@ -16,7 +16,7 @@ import { BattlePassRewardLightbox, type RewardLightboxData } from './BattlePassR
 import { getPalmaresText, normalizePalmaresLocale } from './i18n'
 import { PassContentSummary, type ContentLabels } from './PassContentSummary'
 import { useSeasonPassPage } from './queries'
-import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+import { tokenCssVar, type SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { isArmorItemType, rarityLabel, rarityStyle, type RarityTier } from './rarity'
 
 function statusVariant(status: SeasonPassStatus) {
@@ -120,14 +120,157 @@ function OverlayContentRows({
   )
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function StatCard({ label, value, accent, className = '' }: { label: string; value: string; accent?: SemanticToken; className?: string }) {
+  // KPI card du catalogue (type 2 : accent fixe par métrique) — chrome bg-card + bordure.
+  // className : contrôle de la largeur en flex (flex-none = largeur contenu, flex-1 = grandit).
   return (
-    <Card className="border-dashed">
-      <CardContent className="pt-5">
-        <p className="text-xs uppercase tracking-label-md text-muted-foreground">{label}</p>
-        <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
-      </CardContent>
-    </Card>
+    <KpiCard accent={accent} className={`flex flex-col ${className}`}>
+      <div className="flex flex-1 flex-col p-3">
+        <p className="text-2xs uppercase tracking-label-md text-muted-foreground">{label}</p>
+        <p className="mt-1 whitespace-nowrap text-lg font-semibold text-foreground">{value}</p>
+      </div>
+    </KpiCard>
+  )
+}
+
+// ── Agrégat multi-pass (collection complète) ────────────────────────────────
+// content = total du pass, remaining_content = paliers PAS encore atteints.
+// acquis = total − restant, sommé sur tous les pass.
+
+interface PassAggregate {
+  cosmeticsAcquired: number
+  cosmeticsTotal: number
+  rarityAcquired: Record<string, number>
+  xpAcquired: number
+  xpTotal: number
+  credits: number
+  spartanPoints: number
+  xpBoosts: number
+  challengeSwaps: number
+}
+
+const DEFAULT_XP_PER_RANK = 1000 // un palier = 1000 XP (constante métier Halo)
+
+function aggregatePasses(passes: SeasonPassTrackSummary[]): PassAggregate {
+  const acq = (tot?: number | null, rem?: number | null) => Math.max(0, (tot ?? 0) - (rem ?? 0))
+  const agg: PassAggregate = {
+    cosmeticsAcquired: 0, cosmeticsTotal: 0, rarityAcquired: {},
+    xpAcquired: 0, xpTotal: 0, credits: 0, spartanPoints: 0, xpBoosts: 0, challengeSwaps: 0,
+  }
+  for (const p of passes) {
+    const c = p.content
+    if (!c) continue
+    const r = p.remaining_content ?? null
+    agg.cosmeticsTotal += c.cosmetics_total ?? 0
+    agg.cosmeticsAcquired += acq(c.cosmetics_total, r?.cosmetics_total)
+    agg.credits += acq(c.credits, r?.credits)
+    agg.spartanPoints += acq(c.spartan_points, r?.spartan_points)
+    agg.xpBoosts += acq(c.xp_boosts, r?.xp_boosts)
+    agg.challengeSwaps += acq(c.challenge_swaps, r?.challenge_swaps)
+    const xpPerRank = p.xp_per_rank ?? DEFAULT_XP_PER_RANK
+    agg.xpTotal += (c.total_tiers ?? 0) * xpPerRank
+    agg.xpAcquired += acq(c.total_tiers, r?.total_tiers) * xpPerRank
+    if (c.rarity_breakdown) {
+      for (const [tier, v] of Object.entries(c.rarity_breakdown)) {
+        agg.rarityAcquired[tier] = (agg.rarityAcquired[tier] ?? 0) + acq(v, r?.rarity_breakdown?.[tier])
+      }
+    }
+  }
+  return agg
+}
+
+// ── Carte « Cosmétiques débloqués » : barre segmentée par rareté ────────────
+
+function CosmeticsUnlockedCard({ label, agg, intlLocale, palmaresLocale, accent, className = '' }: {
+  label: string
+  agg: PassAggregate
+  intlLocale: string
+  palmaresLocale: 'fr' | 'en'
+  accent?: SemanticToken
+  className?: string
+}) {
+  if (agg.cosmeticsTotal <= 0) return null
+  const pct = Math.round((agg.cosmeticsAcquired / agg.cosmeticsTotal) * 100)
+  const remainder = Math.max(0, agg.cosmeticsTotal - agg.cosmeticsAcquired)
+  const rarities = RARITY_ORDER
+    .map((tier) => ({ tier, acq: agg.rarityAcquired[tier] ?? 0 }))
+    .filter((e) => e.acq > 0)
+
+  return (
+    <KpiCard accent={accent} className={`flex flex-col ${className}`}>
+      <div className="flex flex-1 flex-col p-3">
+        <p className="text-2xs uppercase tracking-label-md text-muted-foreground">{label}</p>
+        {/* Valeur + % + barre composite sur une ligne, collée sous le titre (mt-1,
+            comme StatCard). Compacité = hauteur harmonisée ; aucune info retirée. */}
+        <div className="mt-1 flex items-center gap-3">
+          <p className="shrink-0 text-lg font-semibold tabular-nums text-foreground">
+            {agg.cosmeticsAcquired.toLocaleString(intlLocale)}
+            <span className="text-sm font-normal text-muted-foreground"> / {agg.cosmeticsTotal.toLocaleString(intlLocale)}</span>
+            <span className="ml-1.5 text-xs font-normal text-muted-foreground">{pct} %</span>
+          </p>
+          {/* Barre segmentée par rareté (mêmes infos qu'avant + tooltip par segment).
+              Couleurs de rareté Halo (rarity.ts, exception tolérée règle 20 CLAUDE.md). */}
+          <div className="flex h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+            {rarities.map(({ tier, acq }) => (
+              <div
+                key={tier}
+                className={rarityStyle(tier)?.segment ?? 'bg-muted-foreground/60'}
+                style={{ flex: acq }}
+                title={`${rarityLabel(tier, palmaresLocale)} : ${acq.toLocaleString(intlLocale)}`}
+              />
+            ))}
+            {remainder > 0 && <div style={{ flex: remainder }} aria-hidden />}
+          </div>
+        </div>
+        <div className="mt-auto flex flex-wrap gap-x-2.5 gap-y-0.5 text-2xs text-muted-foreground">
+          {rarities.map(({ tier, acq }) => (
+            <span key={tier} className="flex items-center gap-1">
+              <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${rarityStyle(tier)?.segment ?? 'bg-muted-foreground/60'}`} />
+              {rarityLabel(tier, palmaresLocale)}
+              <span className="font-semibold tabular-nums text-foreground">{acq.toLocaleString(intlLocale)}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </KpiCard>
+  )
+}
+
+// ── Carte « Butin récolté » : CR / Pts Spartans / Boosts XP / Relances ──────
+
+function LootCard({ label, agg, intlLocale, contentLabels, accent, className = '' }: {
+  label: string
+  agg: PassAggregate
+  intlLocale: string
+  contentLabels: ContentLabels
+  accent?: SemanticToken
+  className?: string
+}) {
+  const items: Array<{ key: string; value: number; itemLabel: string }> = []
+  if (agg.credits > 0) items.push({ key: 'cr', value: agg.credits, itemLabel: contentLabels.creditsLabel })
+  if (agg.spartanPoints > 0) items.push({ key: 'sp', value: agg.spartanPoints, itemLabel: contentLabels.spartanPointsLabel })
+  if (agg.xpBoosts > 0) items.push({ key: 'xp', value: agg.xpBoosts, itemLabel: contentLabels.xpBoostsLabel })
+  if (agg.challengeSwaps > 0) items.push({ key: 'swap', value: agg.challengeSwaps, itemLabel: contentLabels.challengeSwapsLabel })
+  if (items.length === 0) return null
+
+  return (
+    <KpiCard accent={accent} className={`flex flex-col ${className}`}>
+      <div className="flex flex-1 flex-col p-3">
+        <p className="text-2xs uppercase tracking-label-md text-muted-foreground">{label}</p>
+        {/* Une rangée (flex) collée sous le titre (mt-1, comme StatCard) : les 4 stats
+            restent alignées tant que la card a de la largeur ; wrap propre si étroit. */}
+        <div className="mt-1 flex flex-wrap items-center gap-x-6 gap-y-1.5">
+          {items.map(({ key, value, itemLabel }) => (
+            // Valeur au-dessus (préférence user), label dessous. Police de valeur
+            // alignée sur les autres cards (text-lg semibold).
+            <div key={key}>
+              <p className="whitespace-nowrap text-lg font-semibold tabular-nums text-foreground">{value.toLocaleString(intlLocale)}</p>
+              <p className="whitespace-nowrap text-2xs text-muted-foreground">{itemLabel}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </KpiCard>
   )
 }
 
@@ -182,7 +325,7 @@ function SeasonPassCard({ pass, intlLocale, statusLabel, labels, contentLabels, 
           <h3 className="text-lg font-semibold text-foreground">{pass.name}</h3>
           <div className="flex flex-wrap gap-2">
             {isSelected && <Badge variant="default">{labels.nowShowing}</Badge>}
-            {pass.is_active && <Badge variant="default">{labels.active}</Badge>}
+            {pass.is_active && pass.status !== 'active' && <Badge variant="default">{labels.active}</Badge>}
             {pass.is_owned && <Badge variant="outline">{labels.premium}</Badge>}
             <Badge variant={statusVariant(pass.status)}>{statusLabel}</Badge>
           </div>
@@ -311,7 +454,8 @@ function PassShowcase({
               <Badge variant={statusVariant(pass.status)}>
                 {text.seasonPass.status[pass.status] ?? pass.status}
               </Badge>
-              {pass.is_active && <Badge variant="default">{text.seasonPass.active}</Badge>}
+              {/* status === 'active' affiche déjà « Actif » → pas de second badge. */}
+              {pass.is_active && pass.status !== 'active' && <Badge variant="default">{text.seasonPass.active}</Badge>}
               {pass.is_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
             </div>
             {pass.content && (
@@ -337,7 +481,7 @@ function PassShowcase({
           </div>
           <div className="flex flex-wrap gap-2">
             {pass.is_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
-            {pass.is_active && <Badge variant="default">{text.seasonPass.active}</Badge>}
+            {pass.is_active && pass.status !== 'active' && <Badge variant="default">{text.seasonPass.active}</Badge>}
             <Badge variant={statusVariant(pass.status)}>{text.seasonPass.status[pass.status] ?? pass.status}</Badge>
           </div>
         </div>
@@ -416,7 +560,12 @@ export function SeasonPassPage() {
 
   const completedCount = data.passes.filter((p) => p.status === 'completed').length
   const inProgressCount = data.passes.filter((p) => p.status === 'in_progress').length
+  const remainingPasses = data.passes.filter((p) => p.status !== 'completed').length
   const activePass = data.passes.find((p) => p.is_active) ?? null
+
+  // Agrégat collection (tous pass) pour la 2e rangée de cards.
+  const agg = aggregatePasses(data.passes)
+  const compactNum = (n: number) => n.toLocaleString(text.intlLocale, { notation: 'compact', maximumFractionDigits: 2 })
   const selectedPass = (selectedPassPath
     ? data.passes.find((p) => p.reward_track_path === selectedPassPath)
     : null) ?? activePass
@@ -439,28 +588,62 @@ export function SeasonPassPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <div className="grid gap-4 xl:grid-cols-3">
-        <StatCard label={text.seasonPass.activeCard} value={activePass?.name ?? '—'} />
-        <StatCard label={text.seasonPass.completedCard} value={completedCount.toLocaleString(text.intlLocale)} />
-        <StatCard label={text.seasonPass.inProgressCard} value={inProgressCount.toLocaleString(text.intlLocale)} />
+      {/* Barre KPI sur une rangée (flex) : les compteurs (Terminés/En cours/Pass
+          restants) tiennent leur largeur contenu (flex-none) ; « Cosmétiques débloqués »
+          absorbe l'espace restant (flex-1). XP + Butin en largeur contenu. Cards
+          collection null si pas de donnée → la rangée se réduit proprement. */}
+      <div className="flex flex-wrap items-stretch gap-3">
+        <StatCard label={text.seasonPass.completedCard} value={completedCount.toLocaleString(text.intlLocale)} accent="outcome-win" className="flex-none" />
+        <StatCard label={text.seasonPass.inProgressCard} value={inProgressCount.toLocaleString(text.intlLocale)} accent="chart-series-1" className="flex-none" />
+        <StatCard label={text.seasonPass.remainingPassesCard} value={remainingPasses.toLocaleString(text.intlLocale)} accent="warning" className="flex-none" />
+        <CosmeticsUnlockedCard
+          label={text.seasonPass.cosmeticsUnlockedCard}
+          agg={agg}
+          intlLocale={text.intlLocale}
+          palmaresLocale={locale}
+          accent="perf-tier-2"
+          className="min-w-[15rem] flex-1"
+        />
+        {agg.xpTotal > 0 && (
+          <StatCard
+            label={text.seasonPass.xpUnlockedCard}
+            value={`${compactNum(agg.xpAcquired)} / ${compactNum(agg.xpTotal)}`}
+            accent="chart-series-4"
+            className="flex-none"
+          />
+        )}
+        <LootCard
+          label={text.seasonPass.lootCard}
+          agg={agg}
+          intlLocale={text.intlLocale}
+          contentLabels={text.seasonPass.content}
+          accent="outcome-draw"
+          className="min-w-[15rem] flex-1"
+        />
       </div>
 
+      {/* Section pass : titre juste sous la barre KPI, au-dessus du showcase. « Pass
+          actif » quand on regarde le pass en cours, « Pass saisonnier » quand on a
+          sélectionné un autre pass via « Autres passes ». */}
       {selectedPass ? (
-        <PassShowcase
-          pass={selectedPass}
-          text={text}
-          locale={locale}
-          isViewingActive={isViewingActive}
-          onBackToActive={backToActive}
-          showcaseRef={showcaseRef}
-        />
+        <section className="space-y-3">
+          <header><h3 className="text-base font-semibold text-foreground">{isViewingActive ? text.seasonPass.activePassTitle : text.seasonPass.selectedPassTitle}</h3></header>
+          <PassShowcase
+            pass={selectedPass}
+            text={text}
+            locale={locale}
+            isViewingActive={isViewingActive}
+            onBackToActive={backToActive}
+            showcaseRef={showcaseRef}
+          />
+        </section>
       ) : data.passes.length === 0 ? (
         <EmptyStateCard title={text.seasonPass.noPassesTitle} description={text.seasonPass.noPassesDescription} />
       ) : null}
 
       {otherPasses.length > 0 && (
-        <div className="space-y-4">
-          <p className="text-xs uppercase tracking-label-2xl text-muted-foreground">{text.seasonPass.otherPassesTitle}</p>
+        <section className="space-y-3">
+          <header><h3 className="text-base font-semibold text-foreground">{text.seasonPass.otherPassesTitle}</h3></header>
           <div className="grid gap-4 xl:grid-cols-2">
             {otherPasses.map((pass) => (
               <SeasonPassCard
@@ -481,7 +664,7 @@ export function SeasonPassPage() {
               />
             ))}
           </div>
-        </div>
+        </section>
       )}
     </div>
   )
