@@ -1,3 +1,47 @@
+## [2026-06-08] Lot D — Brancher le cooldown anti-farming (dormant) + retour UI — Complété
+
+**Statut** : Complété. `go vet ./...` OK, `go test ./internal/{prestige,api,platform/duckdb}/...` verts (+ tests `:memory:` taggés integration), tsc/eslint propres, vitest prestige+ascension 61/61. Code non commité (attente autorisation).
+
+**Tâche (demande user)** : le cooldown anti-farming était entièrement défini mais **jamais branché** (`IsCooldownActive`/`CooldownEndsAt` jamais appelés ; `ErrCooldownActive` + mapping 429 prêts mais dormants). Le brancher + retour UI au bon endroit.
+
+**Découverte clé pendant l'implémentation** : le cooldown était `Mode == ModePilote` only, MAIS (1) seuls des objectifs **libres** sont créables (les 3 modes du form envoient `mode:'libre'`, le PilotModeToggle est désactivé), et (2) le dialogue d'abandon promet déjà « Cooldown 48h » sur des objectifs libres. Donc un cooldown pilote-only = effet nul + UI mensongère. **Décision user** : appliquer le cooldown **aussi au mode libre**, déclencheurs **abandon (24h) + expiration (12h)**, pas la complétion.
+
+**Backend** :
+- `CooldownEndsAt` ([lifecycle.go](apps/go-api/internal/prestige/lifecycle.go)) : retrait du garde `Mode != ModePilote` → s'applique à tous les modes. Les durées par statut (`CompletedHours=0`) excluent automatiquement la complétion. Tuning `AbandonedHours: 48 → 24`.
+- `CreateChallenge` : nouvelle méthode `checkCooldown` (après `checkQuotas`) — liste les défis du joueur sur la même métrique et refuse `ErrCooldownActive` si `IsCooldownActive`. Tous modes.
+- `ChallengeFilter.Metric *string` ajouté (+ filtre SQL `metric = ?` dans `buildChallengeListQuery`).
+- `SuggestTemplates` enrichit chaque `Template.CooldownEndsAt` (nouveau champ non persisté, comme `Challenge.CurrentValue`) via une lecture unique des défis du joueur → map métrique→fin de cooldown. Le 429 `cooldown_active` (handler déjà prêt) se déclenche désormais.
+- Tests : `TestCreateChallenge_CooldownBlocks/_Expired_OK/_CompletedNoCooldown`, `TestService_SuggestTemplates_AnnotatesCooldown`, `TestPrestigeChallengeRepo_List_FilterByMetric` (`:memory:`), MAJ de `TestCooldownEndsAt` (48→24), `TestCooldownEndsAt_LibreHasCooldown` (ex-`LibreNoCooldown`, inversé), `TestCooldownEndsAt_CompletedNoCooldown`, `TestTuning_CooldownDuration` (48→24).
+
+**Frontend** :
+- `Template.cooldown_ends_at?: string` ([lib/prestige.ts](apps/web/src/lib/prestige.ts)).
+- `CreateChallengeForm` ([CreateChallengeForm.tsx](apps/web/src/features/prestige/components/CreateChallengeForm.tsx)) : helpers `cooldownEndsAt`/`formatCooldown`/`resolveCreateError` + `CooldownBadge`. Modes hybride & automatique : badge « Dispo dans Xh/Xj » + sélection/accept désactivés sur une métrique en cooldown. Refus 429 → message lisible (`cooldownErrorMessage`) au lieu du message serveur brut.
+- i18n `prestige/i18n.ts` : `cooldownBadge`, `cooldownUnitHour/Day`, `cooldownErrorMessage` (FR/EN). Message d'abandon 48h→24h dans AscensionProfileTab.
+- Test `CreateChallengeForm.test.tsx` (badge + sélection désactivée + message 429).
+
+**Note** : l'exemption libre était le trou réel ; la note CLAUDE.md « libre = pas de cooldown » est désormais caduque (documenté dans le commentaire de `CooldownEndsAt`).
+
+**Prochaine étape** : Lot A (suppression d'arc + exemption < 1h — s'appuie sur ce cooldown).
+
+## [2026-06-08] Lot C — Split Ascension en onglet « Entraînement » + fix node_modules désync — Complété
+
+**Statut** : Complété. tsc -b vert, eslint 0 erreur, vitest **1727 passed / 0 échec** (191 fichiers). Code non commité (attente autorisation explicite — l'user a autorisé l'implémentation, pas le commit).
+
+**Tâche** : scinder la page Ascension en 2 contenus distincts. Avant, `AscensionProfileTab` portait DEUX couches (Prestige : objectifs+arcs ; Coaching : proposals+campagne+profil+patterns). Découverte en cours d'implémentation : `AscensionLayout.tsx` existe déjà comme **layout de route TanStack** avec sa propre barre d'onglets in-page (Profil & objectifs / Réalisations) — il y a donc DEUX systèmes d'onglets à synchroniser (barre in-page + dropdown NavL1).
+
+**Réalisé** :
+- Helpers de layout extraits dans `features/ascension/AscensionLayers.tsx` (`LayerSection` + `SectionShell`) — évite la duplication entre les 2 tabs (le nom `AscensionLayout` était déjà pris par le layout de route).
+- `AscensionProfileTab` allégé : ne garde que la couche Prestige. `AscensionCoachingTab.tsx` créé : couche Coaching + `PatternsSection`.
+- Route enfant `routes/players/$playerSlug/ascension/coaching.tsx` → `AscensionCoachingTab`. `routeTree.gen.ts` régénéré via le `Generator` de `@tanstack/router-generator` (le CLI `tsr` n'est pas installé ; script `new Generator({config: getConfig({target:'react',autoCodeSplitting:true}), root}).run()`).
+- Onglet ajouté aux 2 endroits : barre in-page `AscensionLayout` (clé i18n `tabCoaching` = « Entraînement » / « Training ») ET dropdown `navL1Sections.tsx` (entre profile et realisations).
+- Tests : `AscensionProfileTab.test.tsx` réduit à la couche Prestige (assertions coaching retirées) ; `AscensionCoachingTab.test.tsx` créé (coach+profil+patterns) ; `NavL1.test.tsx` + 2 tests (dropdown Ascension ouvre, onglet « Entraînement » présent + position).
+
+**Label** : « Entraînement » (décision user — « Coaching » jugé trop anglais ; « Académie » gardé en réserve).
+
+**Fix erreurs pré-existantes (demande user)** : `tsc` échouait sur `media/CoverFlowModal.tsx` (`Cannot find module 'hls.js'` + TS7006). Cause : `node_modules` désynchronisé du `package-lock.json` (hls.js déclaré + locké mais absent ; tous les autres deps OK). `npm install` (resync au lockfile) → hls.js présent, types Hls résolus, **typecheck 100% vert**. Pas un bug de code, un artefact d'install.
+
+**Prochaine étape** : Lot D (brancher le cooldown + UI).
+
 ## [2026-06-08] Revue + décisions du plan « Arcs Prestige : presets + suppression + onglets » — Complété (plan validé, implémentation à suivre)
 
 **Statut** : Complété (phase plan/décision). Aucune ligne de code applicatif modifiée ; seuls `.ai/PLAN_ASCENSION_ARCS_PRESETS_ET_ONGLETS.md` (plan enrichi) et ce thought_log. Implémentation des 4 lots à venir sur autorisation.
@@ -22184,3 +22228,21 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
   - **i18n** : 3 clés ajoutées au manifest `common.toml` (`nav_menu_open/close/title`) + régénéré ; réutilise `nav_main_aria` existant. Pas d'aria-label hardcodé.
 - **Hors scope (signalé)** : le cluster droit (sélecteur joueur + cloche + aide + paramètres + logout) reste inline sur mobile ; il tient car surtout des icônes, mais si l'étroitesse persiste, le sélecteur joueur est le candidat à déplacer dans le drawer (follow-up).
 - **Conclusion / prochaine étape** : à commit (sur autorisation) ; vérif visuelle mobile réelle (DevTools responsive ≤ md) recommandée avant deploy.
+
+---
+
+### [2026-06-08] NavL1 mobile — volet 2 : cluster droit + outils latéraux (référentiels / feedback)
+
+- **Statut** : Complété (validé local : tsc 0 erreur nouvelle, eslint 0 sur les fichiers touchés, vitest NavL1 8/8 + FeedbackDrawer 11/11). Branche `feat/nav-l1-mobile-drawer`, suite du commit `266acdc7`. NON commit (attente autorisation).
+- **Constat critique** : les mini-tabs des drawers latéraux `AssetDrawer` (Référentiels) et `FeedbackDrawer` (Issue GitHub) étaient en `hidden sm:flex` → **totalement inatteignables sous 640px**. Le cluster droit (sélecteur joueur, cloche, aide, paramètres, logout) était présent mais tassé, cibles ~32px.
+- **Décision UX (validée user via AskUserQuestion)** : (1) **split gauche/droite** — tiroir gauche = navigation (volet 1) ; nouveau menu droite `⋯` = compte + outils ; (2) bandeau mobile garde **cloche + sélecteur joueur** visibles, le sélecteur **tronqué** proprement si trop large.
+- **Implémentation** :
+  - `NavL1MobileActions.tsx` (nouveau, `md:hidden`) : bouton kebab + panneau latéral droit. Sections : *Compte* (thème via `ThemeToggle variant=menu` + onglets Paramètres + déconnexion via `useLogout`) ; *Outils* (Référentiels + Feedback ouverts via leurs stores `open()`, + Aide → liens /help). Sous-composants présentation (SectionLabel/RowLabel/MenuButton/MenuLink/Divider).
+  - `NavL1.tsx` : `settingsTabs` extrait en const unique (partagée `SettingsSplitButton` desktop ↔ menu mobile) ; cluster droit (aide/paramètres/logout) wrappé en `hidden md:flex gap-0.5` (gap restauré pour fidélité desktop) ; sélecteur joueur + span gamertag en `max-w-[32vw] truncate sm:max-w-none` + parent `min-w-0` ; ajout `<NavL1MobileActions>`. Type `SettingsTabItem` dédupliqué (interface locale supprimée, importée depuis NavL1MobileActions).
+  - **Drawers responsives** (`AssetDrawer.tsx` + `FeedbackDrawer.tsx`) : transform inline `style` remplacé par classes Tailwind v4 (composent via custom props) → **mobile** : sheet pleine hauteur depuis la droite (`top-0 h-full w-[88vw] max-w-sm`, `translate-x-0/full`) ; **desktop (`sm:`)** : carte flottante centrée identique à avant (`sm:top-1/2 sm:h-[...] sm:w-[...] sm:-translate-y-1/2`). Mini-tabs de bord restent `sm:flex` (desktop). **Rendu desktop inchangé.**
+  - i18n : 7 clés common.toml (`nav_actions_open/title`, `nav_account/tools/help/settings/theme`) + régénéré ; réutilise `asset_drawer.mini_tab`, `feedback_drawer.title`, `common.help.*`, `common.shell.logout/player_select`.
+- **Desktop (`≥ md`)** : strictement inchangé (tout gated responsive ; gap-0.5 du cluster restauré).
+- **Logging (volet 3)** : ajout `components/shell/_logger.ts` (logger namespacé `[shell-nav]`, warn/error dédup par session → captés par `lib/global-capture` → joignables aux issues feedback ; debug dev-only) — aligné sur le pattern `features/*/_logger.ts`. Clés stables : `logout:failed` (error, câblé dans `NavL1MobileActions` **et** `LogoutButton` desktop, même clé dédupliquée), `nav:menu_open` / `nav:actions_open` / `nav:tool_open:{references|feedback}` (debug).
+- **Tests (volet 3)** : `_logger.test.ts` (6 : dédup warn+error indépendante, préfixe, args, reset), `NavL1MobileMenu.test.tsx` (7 : hamburger, ouverture, sections+onglets, aria-current actif, fermeture clic-lien/Escape), `NavL1MobileActions.test.tsx` (8 : kebab, ouverture, thème+onglets settings, outils Référentiels/Feedback ouvrent leur store + ferment le menu, déconnexion appelle la mutation, masquée sans session). **21 nouveaux tests, tous verts** ; + non-régression NavL1 (8) + FeedbackDrawer (11) = **40 verts** sur la feature.
+- **Vérif finale** : `tsc -b` 0 erreur nouvelle (seul résiduel préexistant : CoverFlowModal `hls.js`) ; eslint 0 sur les 7 fichiers shell touchés. **Incident env** : 1ʳᵉ passe vitest rouge (`Cannot find package '@/...'`) due à un **cache vite corrompu par un agent parallèle** (réécriture concurrente de `routeTree.gen.ts` + refactor `@/stores/filterDefaults`) — résolu par `rm -rf node_modules/.vite` ; **non lié à ce travail** (confirmé : NavL1.test passait avant, repasse après purge). Build complet `vite build` volontairement non lancé (faux négatifs probables vu les éditions concurrentes en cours ; intégrité de types déjà couverte par `tsc -b` global).
+- **Conclusion / prochaine étape** : feature complète (3 volets) + loggée + testée. À commit (sur autorisation). Vérif visuelle mobile réelle recommandée (2 sheets outils + troncature sélecteur multi-comptes).

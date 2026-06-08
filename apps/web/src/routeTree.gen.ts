@@ -45,6 +45,7 @@ import { Route as PlayersPlayerSlugPalmaresPrestigeRouteImport } from './routes/
 import { Route as PlayersPlayerSlugMatchesMatchIdRouteImport } from './routes/players/$playerSlug/matches/$matchId'
 import { Route as PlayersPlayerSlugCareerSeasonPassRouteImport } from './routes/players/$playerSlug/career/season-pass'
 import { Route as PlayersPlayerSlugAscensionRealisationsRouteImport } from './routes/players/$playerSlug/ascension/realisations'
+import { Route as PlayersPlayerSlugAscensionCoachingRouteImport } from './routes/players/$playerSlug/ascension/coaching'
 import { Route as PlayersPlayerSlugMatchesMatchIdReplayRouteImport } from './routes/players/$playerSlug/matches/$matchId/replay'
 
 const SetupRoute = SetupRouteImport.update({
@@ -247,6 +248,12 @@ const PlayersPlayerSlugAscensionRealisationsRoute =
     path: '/realisations',
     getParentRoute: () => PlayersPlayerSlugAscensionRoute,
   } as any)
+const PlayersPlayerSlugAscensionCoachingRoute =
+  PlayersPlayerSlugAscensionCoachingRouteImport.update({
+    id: '/coaching',
+    path: '/coaching',
+    getParentRoute: () => PlayersPlayerSlugAscensionRoute,
+  } as any)
 const PlayersPlayerSlugMatchesMatchIdReplayRoute =
   PlayersPlayerSlugMatchesMatchIdReplayRouteImport.update({
     id: '/replay',
@@ -276,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/players/$playerSlug/notifications': typeof PlayersPlayerSlugNotificationsRoute
   '/players/$playerSlug/squad': typeof PlayersPlayerSlugSquadRouteWithChildren
   '/players/$playerSlug/synthesis': typeof PlayersPlayerSlugSynthesisRoute
+  '/players/$playerSlug/ascension/coaching': typeof PlayersPlayerSlugAscensionCoachingRoute
   '/players/$playerSlug/ascension/realisations': typeof PlayersPlayerSlugAscensionRealisationsRoute
   '/players/$playerSlug/career/season-pass': typeof PlayersPlayerSlugCareerSeasonPassRoute
   '/players/$playerSlug/matches/$matchId': typeof PlayersPlayerSlugMatchesMatchIdRouteWithChildren
@@ -313,6 +321,7 @@ export interface FileRoutesByTo {
   '/players/$playerSlug/media': typeof PlayersPlayerSlugMediaRoute
   '/players/$playerSlug/notifications': typeof PlayersPlayerSlugNotificationsRoute
   '/players/$playerSlug/synthesis': typeof PlayersPlayerSlugSynthesisRoute
+  '/players/$playerSlug/ascension/coaching': typeof PlayersPlayerSlugAscensionCoachingRoute
   '/players/$playerSlug/ascension/realisations': typeof PlayersPlayerSlugAscensionRealisationsRoute
   '/players/$playerSlug/career/season-pass': typeof PlayersPlayerSlugCareerSeasonPassRoute
   '/players/$playerSlug/matches/$matchId': typeof PlayersPlayerSlugMatchesMatchIdRouteWithChildren
@@ -353,6 +362,7 @@ export interface FileRoutesById {
   '/players/$playerSlug/notifications': typeof PlayersPlayerSlugNotificationsRoute
   '/players/$playerSlug/squad': typeof PlayersPlayerSlugSquadRouteWithChildren
   '/players/$playerSlug/synthesis': typeof PlayersPlayerSlugSynthesisRoute
+  '/players/$playerSlug/ascension/coaching': typeof PlayersPlayerSlugAscensionCoachingRoute
   '/players/$playerSlug/ascension/realisations': typeof PlayersPlayerSlugAscensionRealisationsRoute
   '/players/$playerSlug/career/season-pass': typeof PlayersPlayerSlugCareerSeasonPassRoute
   '/players/$playerSlug/matches/$matchId': typeof PlayersPlayerSlugMatchesMatchIdRouteWithChildren
@@ -394,6 +404,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/notifications'
     | '/players/$playerSlug/squad'
     | '/players/$playerSlug/synthesis'
+    | '/players/$playerSlug/ascension/coaching'
     | '/players/$playerSlug/ascension/realisations'
     | '/players/$playerSlug/career/season-pass'
     | '/players/$playerSlug/matches/$matchId'
@@ -431,6 +442,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/media'
     | '/players/$playerSlug/notifications'
     | '/players/$playerSlug/synthesis'
+    | '/players/$playerSlug/ascension/coaching'
     | '/players/$playerSlug/ascension/realisations'
     | '/players/$playerSlug/career/season-pass'
     | '/players/$playerSlug/matches/$matchId'
@@ -470,6 +482,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/notifications'
     | '/players/$playerSlug/squad'
     | '/players/$playerSlug/synthesis'
+    | '/players/$playerSlug/ascension/coaching'
     | '/players/$playerSlug/ascension/realisations'
     | '/players/$playerSlug/career/season-pass'
     | '/players/$playerSlug/matches/$matchId'
@@ -756,6 +769,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlayersPlayerSlugAscensionRealisationsRouteImport
       parentRoute: typeof PlayersPlayerSlugAscensionRoute
     }
+    '/players/$playerSlug/ascension/coaching': {
+      id: '/players/$playerSlug/ascension/coaching'
+      path: '/coaching'
+      fullPath: '/players/$playerSlug/ascension/coaching'
+      preLoaderRoute: typeof PlayersPlayerSlugAscensionCoachingRouteImport
+      parentRoute: typeof PlayersPlayerSlugAscensionRoute
+    }
     '/players/$playerSlug/matches/$matchId/replay': {
       id: '/players/$playerSlug/matches/$matchId/replay'
       path: '/replay'
@@ -777,12 +797,15 @@ const LabRouteChildren: LabRouteChildren = {
 const LabRouteWithChildren = LabRoute._addFileChildren(LabRouteChildren)
 
 interface PlayersPlayerSlugAscensionRouteChildren {
+  PlayersPlayerSlugAscensionCoachingRoute: typeof PlayersPlayerSlugAscensionCoachingRoute
   PlayersPlayerSlugAscensionRealisationsRoute: typeof PlayersPlayerSlugAscensionRealisationsRoute
   PlayersPlayerSlugAscensionIndexRoute: typeof PlayersPlayerSlugAscensionIndexRoute
 }
 
 const PlayersPlayerSlugAscensionRouteChildren: PlayersPlayerSlugAscensionRouteChildren =
   {
+    PlayersPlayerSlugAscensionCoachingRoute:
+      PlayersPlayerSlugAscensionCoachingRoute,
     PlayersPlayerSlugAscensionRealisationsRoute:
       PlayersPlayerSlugAscensionRealisationsRoute,
     PlayersPlayerSlugAscensionIndexRoute: PlayersPlayerSlugAscensionIndexRoute,

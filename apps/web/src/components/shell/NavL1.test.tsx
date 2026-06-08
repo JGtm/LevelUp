@@ -1,7 +1,7 @@
 import type { ComponentPropsWithoutRef } from 'react'
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -102,6 +102,33 @@ describe('NavL1', () => {
     ).toBeTruthy()
     expect(
       objectifsLink.compareDocumentPosition(communauteLink) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('expose l\'onglet Entraînement dans la dropdown Ascension', () => {
+    renderWithProviders(<NavL1 />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Onglets Ascension' }))
+
+    const coaching = screen.getByRole('menuitem', { name: 'Entraînement' })
+    expect(coaching).toBeInTheDocument()
+    expect(coaching).toHaveAttribute('href', '/players/test-player/ascension/coaching')
+  })
+
+  it('place Entraînement entre Profil & objectifs et Réalisations dans la dropdown Ascension', () => {
+    renderWithProviders(<NavL1 />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Onglets Ascension' }))
+
+    const profile = screen.getByRole('menuitem', { name: 'Profil & objectifs' })
+    const coaching = screen.getByRole('menuitem', { name: 'Entraînement' })
+    const realisations = screen.getByRole('menuitem', { name: 'Réalisations' })
+
+    expect(
+      profile.compareDocumentPosition(coaching) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      coaching.compareDocumentPosition(realisations) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
   })
 })
