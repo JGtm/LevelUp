@@ -158,6 +158,140 @@ func (s *service) enrichArcReward(ctx context.Context, a Arc) Arc {
 	return a
 }
 
+// ListArcPresets retourne le catalogue d'arcs preset du titre, chaque preset
+// hydraté avec ses étapes. Best-effort sur l'hydratation des étapes (un preset
+// dont les étapes échouent est tout de même retourné, sans steps).
+func (s *service) ListArcPresets(ctx context.Context, _ /*userID*/, titleSlug string) ([]PresetArc, error) {
+	if titleSlug == "" {
+		return nil, fmt.Errorf("%w: title_slug requis", ErrInvalidInput)
+	}
+	presets, err := s.deps.PresetArcs.ListByTitle(ctx, titleSlug)
+	if err != nil {
+		return nil, fmt.Errorf("list preset arcs: %w", err)
+	}
+	for i := range presets {
+		steps, err := s.deps.PresetArcs.GetSteps(ctx, presets[i].ID)
+		if err != nil {
+			slog.WarnContext(ctx, "prestige: preset steps load failed",
+				"preset_id", presets[i].ID, "err", err)
+			continue
+		}
+		presets[i].Steps = steps
+	}
+	return presets, nil
+}
+
+// AdoptPresetArc matérialise un arc preset pour le joueur : crée l'arc
+// (IsPreset=true, PresetID) puis un objectif libre par étape (template + palier
+// cible). Best-effort par étape : un objectif refusé (cible trop facile, etc.)
+// n'annule pas l'adoption — on log et on poursuit.
+func (s *service) AdoptPresetArc(ctx context.Context, userID, titleSlug, presetID string) (Arc, error) {
+	if userID == "" || titleSlug == "" || presetID == "" {
+		return Arc{}, fmt.Errorf("%w: user_id/title_slug/preset_id requis", ErrInvalidInput)
+	}
+	preset, err := s.deps.PresetArcs.GetByID(ctx, presetID)
+	if err != nil {
+		return Arc{}, ErrArcNotFound
+	}
+	if preset.TitleSlug != titleSlug {
+		return Arc{}, fmt.Errorf("%w: preset hors du titre demandé", ErrInvalidInput)
+	}
+	steps, err := s.deps.PresetArcs.GetSteps(ctx, presetID)
+	if err != nil {
+		return Arc{}, fmt.Errorf("get preset steps: %w", err)
+	}
+
+	arc := Arc{
+		ID:          newID("arc"),
+		UserID:      userID,
+		TitleSlug:   titleSlug,
+		Title:       presetTitle(preset),
+		Description: presetDescription(preset),
+		IsPreset:    true,
+		PresetID:    presetID,
+		CreatedAt:   s.deps.Now(),
+	}
+	if err := s.deps.Arcs.Create(ctx, arc); err != nil {
+		return Arc{}, fmt.Errorf("create preset arc: %w", err)
+	}
+
+	templates, err := s.deps.Templates.ListByTitle(ctx, titleSlug)
+	if err != nil {
+		return Arc{}, fmt.Errorf("list templates: %w", err)
+	}
+	byID := make(map[string]Template, len(templates))
+	for _, t := range templates {
+		byID[t.ID] = t
+	}
+
+	created := 0
+	for _, st := range steps {
+		tmpl, ok := byID[st.TemplateID]
+		if !ok {
+			slog.WarnContext(ctx, "prestige: preset step template missing",
+				"template_id", st.TemplateID, "preset_id", presetID)
+			continue
+		}
+		if _, err := s.CreateChallenge(ctx, CreateChallengeRequest{
+			UserID:      userID,
+			TitleSlug:   titleSlug,
+			ArcID:       arc.ID,
+			Position:    st.Position,
+			TemplateID:  tmpl.ID,
+			Metric:      tmpl.Metric,
+			Target:      targetForTier(tmpl, st.TargetTier),
+			WindowType:  tmpl.WindowType,
+			WindowValue: tmpl.WindowValue,
+			Cadence:     tmpl.Cadence,
+			EvalType:    tmpl.EvalType,
+			Mode:        ModeLibre,
+			Label:       tmpl.LabelFR,
+		}); err != nil {
+			slog.WarnContext(ctx, "prestige: preset step skipped",
+				"template_id", tmpl.ID, "preset_id", presetID, "err", err)
+			continue
+		}
+		created++
+	}
+	if created == 0 && len(steps) > 0 {
+		slog.WarnContext(ctx, "prestige: preset arc adopted but all steps were skipped",
+			"arc_id", arc.ID, "preset_id", presetID, "user_id", userID, "steps_total", len(steps))
+	}
+	slog.InfoContext(ctx, "prestige: preset arc adopted",
+		"arc_id", arc.ID, "preset_id", presetID, "user_id", userID,
+		"steps_created", created, "steps_total", len(steps))
+	return arc, nil
+}
+
+// targetForTier sélectionne la cible du template correspondant au palier.
+func targetForTier(t Template, tier Tier) float64 {
+	switch tier {
+	case TierHeroic:
+		return t.HeroicTarget
+	case TierLegendary:
+		return t.LegendaryTarget
+	case TierMythic:
+		return t.MythicTarget
+	default:
+		return t.NormalTarget
+	}
+}
+
+// presetTitle / presetDescription : libellé FR prioritaire, repli EN.
+func presetTitle(p PresetArc) string {
+	if p.TitleFR != "" {
+		return p.TitleFR
+	}
+	return p.TitleEN
+}
+
+func presetDescription(p PresetArc) string {
+	if p.DescriptionFR != "" {
+		return p.DescriptionFR
+	}
+	return p.DescriptionEN
+}
+
 // ---------- Squad challenges ----------
 
 // CreateSquadChallenge crée un défi d'escouade (collectif ou compétitif).

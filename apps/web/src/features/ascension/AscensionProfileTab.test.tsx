@@ -42,6 +42,9 @@ vi.mock('@/features/prestige/hooks', () => ({
   useArcs: () => ({ data: { arcs: mockArcs.current }, isLoading: false }),
   useAbandonChallenge: () => ({ mutate: vi.fn(), isPending: false }),
   useDeleteArc: () => ({ mutate: deleteArcMutate, isPending: false }),
+  // Lot B : picker de presets (rendu seulement à l'ouverture).
+  useArcPresets: () => ({ data: { presets: [], count: 0 }, isLoading: false, isError: false }),
+  useAdoptArcPreset: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 vi.mock('@/features/prestige/components/ChallengeCard', () => ({
   ChallengeCard: () => <div data-testid="challenge-card" />,
@@ -118,13 +121,25 @@ describe('AscensionProfileTab — composition (couche Prestige seule)', () => {
   it('shows the empty-state message for empty arcs (Prestige layer)', () => {
     render(<AscensionProfileTab />)
     expect(
-      screen.getByText(/Aucun arc en cours. Crée ton premier arc/i),
+      screen.getByText(/Aucun arc en cours. Adopte un arc preset/i),
     ).toBeInTheDocument()
   })
 
   it('shows the "+ Nouvel arc" create button in the empty arcs state', () => {
     render(<AscensionProfileTab />)
     expect(screen.getByText(/\+ Nouvel arc/i)).toBeInTheDocument()
+  })
+
+  it('shows the "Parcourir les presets" button in the empty arcs state', () => {
+    render(<AscensionProfileTab />)
+    expect(screen.getByRole('button', { name: /Parcourir les presets/i })).toBeInTheDocument()
+  })
+
+  it('opens the preset picker when clicking "Parcourir les presets"', () => {
+    render(<AscensionProfileTab />)
+    fireEvent.click(screen.getByRole('button', { name: /Parcourir les presets/i }))
+    // Le picker affiche son en-tête + l'état vide (presets mock = []).
+    expect(screen.getByText(/Aucun preset disponible/i)).toBeInTheDocument()
   })
 
   it('shows the empty-state message for empty challenges (Prestige layer)', () => {

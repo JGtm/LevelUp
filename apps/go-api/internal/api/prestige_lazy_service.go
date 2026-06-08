@@ -348,6 +348,27 @@ func (l *LazyPrestigeService) GetArc(ctx context.Context, id string) (prestige.A
 	return svc.GetArc(ctx, id)
 }
 
+func (l *LazyPrestigeService) ListArcPresets(ctx context.Context, userID, titleSlug string) ([]prestige.PresetArc, error) {
+	svc, err := l.resolveByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return svc.ListArcPresets(ctx, userID, titleSlug)
+}
+
+func (l *LazyPrestigeService) AdoptPresetArc(ctx context.Context, userID, titleSlug, presetID string) (prestige.Arc, error) {
+	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, userID)
+	if err != nil {
+		return prestige.Arc{}, err
+	}
+	w, err := acquirePlayerWriter(pdb)
+	if err != nil {
+		return prestige.Arc{}, err
+	}
+	defer w.Release()
+	return svc.AdoptPresetArc(ctx, userID, titleSlug, presetID)
+}
+
 func (l *LazyPrestigeService) CreateSquadChallenge(ctx context.Context, req prestige.CreateSquadChallengeRequest) (prestige.SquadChallenge, error) {
 	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, req.CreatedBy)
 	if err != nil {

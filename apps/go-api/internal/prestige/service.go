@@ -54,6 +54,13 @@ type Service interface {
 	// DeleteArc supprime un arc appartenant à userID. opts.CascadeObjectives
 	// décide du sort des objectifs (supprimés/abandonnés vs détachés).
 	DeleteArc(ctx context.Context, userID, id string, opts DeleteArcOptions) error
+	// ListArcPresets retourne le catalogue d'arcs preset d'un titre, chaque
+	// preset hydraté avec ses étapes (pour l'aperçu). userID sert à la
+	// résolution du service côté lazy (les presets sont title-scoped).
+	ListArcPresets(ctx context.Context, userID, titleSlug string) ([]PresetArc, error)
+	// AdoptPresetArc matérialise un arc preset pour le joueur : crée l'arc
+	// (IsPreset=true) + un objectif par étape (depuis le template + palier cible).
+	AdoptPresetArc(ctx context.Context, userID, titleSlug, presetID string) (Arc, error)
 
 	// Escouade
 	CreateSquadChallenge(ctx context.Context, req CreateSquadChallengeRequest) (SquadChallenge, error)

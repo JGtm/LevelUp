@@ -1009,6 +1009,8 @@ func NewRouter(
 				// Arcs
 				r.Post("/arcs", ph.CreateArc)
 				r.Get("/arcs", ph.ListArcs)
+				r.Get("/arcs/presets", ph.ListArcPresets)
+				r.Post("/arcs/presets/{id}/adopt", ph.AdoptPresetArc)
 				r.Get("/arcs/{id}", ph.GetArc)
 				r.Delete("/arcs/{id}", ph.DeleteArc)
 				// Prestige (PP + niveau)

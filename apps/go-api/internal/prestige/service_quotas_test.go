@@ -16,6 +16,7 @@ type fakeChallengeRepo struct {
 	activeTotal     int
 	createdSince    int
 	createCalled    bool
+	createCount     int
 	listResult      []Challenge // renvoyé tel quel par List (pour tests cooldown)
 	detachedArc     string      // dernier arcID passé à DetachFromArc
 	deletedArc      string      // dernier arcID passé à DeleteByArc
@@ -23,6 +24,7 @@ type fakeChallengeRepo struct {
 
 func (r *fakeChallengeRepo) Create(_ context.Context, _ Challenge) error {
 	r.createCalled = true
+	r.createCount++
 	return nil
 }
 func (r *fakeChallengeRepo) Get(_ context.Context, _ string) (Challenge, error) {

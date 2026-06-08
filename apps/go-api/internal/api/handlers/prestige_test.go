@@ -36,6 +36,10 @@ type mockPrestigeService struct {
 	createSquadErr  error
 	joinSquadErr    error
 	deleteArcErr    error
+	listPresetsResp []prestige.PresetArc
+	listPresetsErr  error
+	adoptResp       prestige.Arc
+	adoptErr        error
 
 	lastCreate       prestige.CreateChallengeRequest
 	lastUpdate       prestige.UpdateChallengePatch
@@ -45,6 +49,8 @@ type mockPrestigeService struct {
 	lastDeleteArcID  string
 	lastDeleteArcUID string
 	lastDeleteArcCsc bool
+	lastAdoptID      string
+	lastAdoptUID     string
 }
 
 func (m *mockPrestigeService) CreateChallenge(ctx context.Context, req prestige.CreateChallengeRequest) (prestige.Challenge, error) {
@@ -94,6 +100,14 @@ func (m *mockPrestigeService) CreateArc(ctx context.Context, _ prestige.CreateAr
 func (m *mockPrestigeService) ListArcs(ctx context.Context, _, _ string) ([]prestige.Arc, error) {
 	return nil, nil
 }
+func (m *mockPrestigeService) ListArcPresets(ctx context.Context, _, _ string) ([]prestige.PresetArc, error) {
+	return m.listPresetsResp, m.listPresetsErr
+}
+func (m *mockPrestigeService) AdoptPresetArc(ctx context.Context, userID, _, presetID string) (prestige.Arc, error) {
+	m.lastAdoptUID = userID
+	m.lastAdoptID = presetID
+	return m.adoptResp, m.adoptErr
+}
 func (m *mockPrestigeService) GetArc(ctx context.Context, _ string) (prestige.Arc, error) {
 	return prestige.Arc{}, nil
 }
@@ -137,12 +151,83 @@ func newRouter(svc prestige.Service) *chi.Mux {
 	r.Delete("/challenges/{id}", h.AbandonChallenge)
 	r.Post("/challenges/{id}/suggest-next", h.SuggestNext)
 	r.Delete("/arcs/{id}", h.DeleteArc)
+	r.Get("/arcs/presets", h.ListArcPresets)
+	r.Post("/arcs/presets/{id}/adopt", h.AdoptPresetArc)
 	r.Get("/prestige/me", h.GetMyPrestige)
 	r.Get("/templates/suggest", h.SuggestTemplates)
 	return r
 }
 
 // ─────────── Tests ───────────
+
+func TestPrestigeHandler_ListArcPresets_OK(t *testing.T) {
+	mock := &mockPrestigeService{
+		listPresetsResp: []prestige.PresetArc{{ID: "p1", TitleSlug: "halo_infinite", TitleFR: "Ascension"}},
+	}
+	router := newRouter(mock)
+
+	req := httptest.NewRequest(http.MethodGet, "/arcs/presets?user_id=u1&title_slug=halo_infinite", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (body=%s)", w.Code, w.Body.String())
+	}
+}
+
+func TestPrestigeHandler_ListArcPresets_MissingParams400(t *testing.T) {
+	router := newRouter(&mockPrestigeService{})
+	req := httptest.NewRequest(http.MethodGet, "/arcs/presets?user_id=u1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 (title_slug manquant), got %d", w.Code)
+	}
+}
+
+func TestPrestigeHandler_AdoptPresetArc_Created201(t *testing.T) {
+	mock := &mockPrestigeService{adoptResp: prestige.Arc{ID: "arc1", IsPreset: true, PresetID: "p1"}}
+	router := newRouter(mock)
+
+	body := `{"user_id":"u1","title_slug":"halo_infinite"}`
+	req := httptest.NewRequest(http.MethodPost, "/arcs/presets/p1/adopt", bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d (body=%s)", w.Code, w.Body.String())
+	}
+	if mock.lastAdoptID != "p1" || mock.lastAdoptUID != "u1" {
+		t.Errorf("args not propagated: preset=%q uid=%q", mock.lastAdoptID, mock.lastAdoptUID)
+	}
+}
+
+func TestPrestigeHandler_AdoptPresetArc_MissingUser400(t *testing.T) {
+	router := newRouter(&mockPrestigeService{})
+	body := `{"title_slug":"halo_infinite"}`
+	req := httptest.NewRequest(http.MethodPost, "/arcs/presets/p1/adopt", bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 (user_id manquant), got %d", w.Code)
+	}
+}
+
+func TestPrestigeHandler_AdoptPresetArc_NotFound404(t *testing.T) {
+	mock := &mockPrestigeService{adoptErr: prestige.ErrArcNotFound}
+	router := newRouter(mock)
+
+	body := `{"user_id":"u1","title_slug":"halo_infinite"}`
+	req := httptest.NewRequest(http.MethodPost, "/arcs/presets/missing/adopt", bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
 
 func TestPrestigeHandler_CreateChallenge_Success(t *testing.T) {
 	mock := &mockPrestigeService{

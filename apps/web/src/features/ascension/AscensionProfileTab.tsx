@@ -11,6 +11,7 @@ import { CreateChallengeForm } from '@/features/prestige/components/CreateChalle
 import { ChallengeCard } from '@/features/prestige/components/ChallengeCard'
 import { ArcSummary } from '@/features/prestige/components/ArcSummary'
 import { CreateArcForm } from '@/features/prestige/components/CreateArcForm'
+import { ArcPresetPicker } from '@/features/prestige/components/ArcPresetPicker'
 import { Tooltip } from '@/components/ui/tooltip'
 import { useChallenges, useArcs, useAbandonChallenge, useDeleteArc } from '@/features/prestige/hooks'
 import { getPrestigeText } from '@/features/prestige/i18n'
@@ -225,6 +226,7 @@ function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
   const arcs: Arc[] = arcsData?.arcs ?? []
   const challenges: Challenge[] = challengesData?.challenges ?? []
   const [showArcForm, setShowArcForm] = useState(false)
+  const [showPicker, setShowPicker] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const stepsByArc = new Map<string, { completed: number; total: number }>()
@@ -237,6 +239,7 @@ function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
   }
 
   const newArcLabel = locale === 'en' ? '+ New arc' : '+ Nouvel arc'
+  const browseLabel = locale === 'en' ? 'Browse presets' : 'Parcourir les presets'
 
   return (
     <SectionShell title={locale === 'en' ? 'My active arcs' : 'Mes arcs en cours'}>
@@ -249,24 +252,47 @@ function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
             onCancel={() => setShowArcForm(false)}
           />
         </div>
+      ) : showPicker ? (
+        <ArcPresetPicker
+          playerSlug={playerSlug}
+          titleSlug={TITLE_SLUG}
+          locale={locale}
+          onClose={() => setShowPicker(false)}
+        />
       ) : arcs.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-6 text-center">
           <p className="text-sm text-muted-foreground">
             {locale === 'en'
-              ? 'No arc in progress. Create your first arc to group your objectives.'
-              : 'Aucun arc en cours. Crée ton premier arc pour regrouper tes objectifs.'}
+              ? 'No arc in progress. Adopt a preset arc or create your own.'
+              : 'Aucun arc en cours. Adopte un arc preset ou crée le tien.'}
           </p>
-          <button
-            type="button"
-            onClick={() => setShowArcForm(true)}
-            className="mt-3 rounded-md border border-border px-3 py-1 text-xs hover:bg-accent"
-          >
-            {newArcLabel}
-          </button>
+          <div className="mt-3 flex justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowPicker(true)}
+              className="rounded-md border border-border px-3 py-1 text-xs hover:bg-accent"
+            >
+              {browseLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowArcForm(true)}
+              className="rounded-md border border-border px-3 py-1 text-xs hover:bg-accent"
+            >
+              {newArcLabel}
+            </button>
+          </div>
         </div>
       ) : (
         <>
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowPicker(true)}
+              className="rounded-md border border-border px-3 py-1 text-xs hover:bg-accent"
+            >
+              {browseLabel}
+            </button>
             <button
               type="button"
               onClick={() => setShowArcForm(true)}

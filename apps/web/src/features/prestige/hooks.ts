@@ -15,7 +15,14 @@ export {
   useUpdateChallenge,
   useAbandonChallenge,
 } from './hooks/useChallenges'
-export { arcKeys, useArcs, useCreateArc, useDeleteArc } from './hooks/useArcs'
+export {
+  arcKeys,
+  useArcs,
+  useCreateArc,
+  useDeleteArc,
+  useArcPresets,
+  useAdoptArcPreset,
+} from './hooks/useArcs'
 export {
   prestigeKeys,
   useMyPrestige,
