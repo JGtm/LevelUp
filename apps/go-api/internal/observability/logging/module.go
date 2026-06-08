@@ -48,7 +48,11 @@ const (
 	ModuleHealth    = "health"    // data_health scheduler
 	ModulePersist   = "persist"   // refactor Collect→Persist : queue, workers, persisters
 	ModuleBackup    = "backup"    // pkg/duckdbbackup : scheduler restic + exporter
-	ModuleGeneral   = "general"   // fallback pour logs non catégorisés
+	// ModuleLeaderboard : classement CSR mondial — scraper Halo Waypoint +
+	// job snapshot + lecture (tag explicite `module=leaderboard` car le code
+	// vit dans les packages halo/duckdb qui ont leur propre module par défaut).
+	ModuleLeaderboard = "leaderboard"
+	ModuleGeneral     = "general" // fallback pour logs non catégorisés
 )
 
 // moduleAttrKey est la clé d'attribut slog reconnue pour spécifier
