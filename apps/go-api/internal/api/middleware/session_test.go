@@ -2,6 +2,7 @@
 package middleware_test
 
 import (
+	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -14,6 +15,74 @@ import (
 	"levelup/go-api/internal/platform/session"
 )
 
+// sessionCookie extrait le cookie de session de la réponse, ou nil.
+func sessionCookie(rec *httptest.ResponseRecorder) *http.Cookie {
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == session.CookieName {
+			return c
+		}
+	}
+	return nil
+}
+
+// runWithSession exécute le middleware WithSession avec la policy donnée sur une
+// requête (optionnellement TLS / X-Forwarded-Proto) et retourne la réponse.
+func runWithSession(t *testing.T, policy middleware.SecureCookiePolicy, tlsOn bool, fwdProto string) *httptest.ResponseRecorder {
+	t.Helper()
+	store := newSessionStore(t)
+	mw := middleware.WithSession(store, policy)
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	if tlsOn {
+		req.TLS = &tls.ConnectionState{}
+	}
+	if fwdProto != "" {
+		req.Header.Set("X-Forwarded-Proto", fwdProto)
+	}
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	return rec
+}
+
+// TestWithSession_CookieNotSecureOverHTTP est le garde de NON-RÉGRESSION du bug
+// onboarding 2026-06-08 : sur HTTP nu, le cookie de session NE DOIT PAS porter le
+// flag Secure (sinon le navigateur le jette sur http://localhost → session perdue
+// → device flow bloqué sur attempt_not_found).
+func TestWithSession_CookieNotSecureOverHTTP(t *testing.T) {
+	c := sessionCookie(runWithSession(t, middleware.SecureCookiePolicy{Mode: middleware.CookieSecureAuto}, false, ""))
+	if c == nil {
+		t.Fatal("cookie de session attendu")
+	}
+	if c.Secure {
+		t.Error("cookie Secure sur HTTP nu : régression du bug onboarding (navigateur jetterait le cookie)")
+	}
+}
+
+func TestWithSession_CookieSecureOverTLS(t *testing.T) {
+	c := sessionCookie(runWithSession(t, middleware.SecureCookiePolicy{Mode: middleware.CookieSecureAuto}, true, ""))
+	if c == nil || !c.Secure {
+		t.Errorf("cookie Secure attendu sur TLS, got %+v", c)
+	}
+}
+
+func TestWithSession_CookieSecureViaTrustedProxy(t *testing.T) {
+	policy := middleware.SecureCookiePolicy{Mode: middleware.CookieSecureAuto, TrustProxy: true}
+	c := sessionCookie(runWithSession(t, policy, false, "https"))
+	if c == nil || !c.Secure {
+		t.Errorf("cookie Secure attendu via X-Forwarded-Proto+trust, got %+v", c)
+	}
+}
+
+func TestWithSession_ForceFalseOverridesTLS(t *testing.T) {
+	c := sessionCookie(runWithSession(t, middleware.SecureCookiePolicy{Mode: middleware.CookieSecureFalse}, true, ""))
+	if c == nil {
+		t.Fatal("cookie de session attendu")
+	}
+	if c.Secure {
+		t.Error("Mode=false doit forcer non-Secure même sur TLS")
+	}
+}
+
 func newSessionStore(t *testing.T) *session.Store {
 	t.Helper()
 	dir := t.TempDir()
@@ -22,7 +91,7 @@ func newSessionStore(t *testing.T) *session.Store {
 
 func TestWithSession_CreatesSessionWhenNoCookie(t *testing.T) {
 	store := newSessionStore(t)
-	mw := middleware.WithSession(store, false)
+	mw := middleware.WithSession(store, middleware.SecureCookiePolicy{})
 
 	var capturedID string
 	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -62,7 +131,7 @@ func TestWithSession_LoadsExistingSession(t *testing.T) {
 	_ = store.Touch(sess)
 	signed := store.SignCookie(sess.SessionID)
 
-	mw := middleware.WithSession(store, false)
+	mw := middleware.WithSession(store, middleware.SecureCookiePolicy{})
 	var loadedID string
 	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		s := middleware.GetSession(r.Context())
@@ -100,7 +169,7 @@ func TestWithSession_InjectsHaloAuth(t *testing.T) {
 	_ = store.Save(sess)
 	signed := store.SignCookie(sess.SessionID)
 
-	mw := middleware.WithSession(store, false)
+	mw := middleware.WithSession(store, middleware.SecureCookiePolicy{})
 	var gotTokens *domain.HaloTokens
 	var gotXUID string
 	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +201,7 @@ func TestWithSession_NoHaloAuthWhenTokensAbsent(t *testing.T) {
 	_ = store.Save(sess)
 	signed := store.SignCookie(sess.SessionID)
 
-	mw := middleware.WithSession(store, false)
+	mw := middleware.WithSession(store, middleware.SecureCookiePolicy{})
 	var gotTokens *domain.HaloTokens
 	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotTokens = ctxkeys.HaloTokens(r.Context())
