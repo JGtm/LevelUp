@@ -12,7 +12,7 @@ import { useCallback, useState } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 
-export interface ToggleLegendType {
+interface ToggleLegendType {
   /** Clé = label de la série côté builder (testé via hiddenTypes.has(key)). */
   key: string
   label: string
