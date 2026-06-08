@@ -40,6 +40,10 @@ en = "Activity by day and hour"
 fr = "Comparaison Solo / Escouade"
 en = "Solo / Squad comparison"
 
+[synthesis.section.activity_breakdown]
+fr = "Activité & répartition"
+en = "Activity & breakdown"
+
 # ─── KPIs Vue d'ensemble ───────────────────────────────────────────────────
 
 [synthesis.overview.victories]

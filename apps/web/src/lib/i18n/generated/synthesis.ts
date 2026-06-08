@@ -46,6 +46,7 @@ export const synthesisManifest = {
   "synthesis.scope.solo_label": { fr: "Solo", en: "Solo" },
   "synthesis.scope.squad_label": { fr: "Escouade", en: "Squad" },
   "synthesis.section.activity": { fr: "Activité par jour et heure", en: "Activity by day and hour" },
+  "synthesis.section.activity_breakdown": { fr: "Activité & répartition", en: "Activity & breakdown" },
   "synthesis.section.breakdown_map": { fr: "Par carte", en: "By map" },
   "synthesis.section.breakdown_mode": { fr: "Par mode", en: "By mode" },
   "synthesis.section.comparison": { fr: "Comparaison Solo / Escouade", en: "Solo / Squad comparison" },

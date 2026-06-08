@@ -2,14 +2,13 @@
  * SynthesisPage --- Vue synthese / bilan periodique (Slice 7).
  * Types ref: SynthesisPageResponse, SynthesisKPIs, ComparisonMetricItem, HeatmapCell, TopWeekItem
  */
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { useSynthesisPage } from './queries'
 import { useFiltersPreview } from '@/features/filters/queries'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
 import { ProportionalBar } from '@/components/ui/proportional-bar'
@@ -68,6 +67,16 @@ function formatTimePlayed(seconds: number): string {
   return parts.join(' ')
 }
 
+// Sous-titre de section (type 6 du catalogue) : petit uppercase semibold + filet 1px.
+function SectionSubtitle({ children }: { children: ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <p className="text-3xs font-semibold uppercase tracking-label-md text-foreground/90">{children}</p>
+      <div className="h-px w-full rounded-full bg-border" />
+    </div>
+  )
+}
+
 // ─── Bloc 1 — Vue d'ensemble (D4) ─────────────────────────────────────────────
 
 const STYLE_OFFENSIVE_LABELS: Record<string, string> = {
@@ -92,9 +101,8 @@ function CombatProfileInlineRow({ combatProfile }: { combatProfile: CombatProfil
     combatProfile.style_defensive != null ||
     combatProfile.style_activity != null
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border pb-3 mb-3">
-      <span className="text-sm font-medium shrink-0">Profil de combat</span>
-      <span className="text-xs text-muted-foreground shrink-0">· {combatProfile.match_count} matchs analysés</span>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+      <span className="text-xs text-muted-foreground shrink-0">{combatProfile.match_count} matchs analysés</span>
       {hasStyles && (
         <>
           {combatProfile.style_offensive && (
@@ -135,7 +143,7 @@ interface AccentCardProps {
 }
 function AccentCard({ label, value, accent, onOpenMatch, openMatchLabel }: AccentCardProps) {
   return (
-    <div className="rounded-lg overflow-hidden border">
+    <div className="rounded-lg overflow-hidden border border-border bg-card">
       <div className="h-[3px]" style={{ backgroundColor: tokenCssVar(accent) }} />
       <div className="p-3">
         <div className="flex items-center gap-1.5">
@@ -190,20 +198,24 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, com
     (detailedStats.total_betrayals > 0 || detailedStats.total_suicides > 0)
 
   return (
-    <Card>
-      <CardHeader><CardTitle>Vue d'ensemble</CardTitle></CardHeader>
-      <CardContent>
+    <section className="space-y-3">
+      <header><h3 className="text-base font-semibold text-foreground">Vue d'ensemble</h3></header>
 
+        {/* Profil de combat — sous-titre (type 6) + card pleine largeur. */}
         {combatProfile != null && (
-          <CombatProfileInlineRow combatProfile={combatProfile} />
+          <div className="space-y-2">
+            <SectionSubtitle>Profil de combat</SectionSubtitle>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <CombatProfileInlineRow combatProfile={combatProfile} />
+            </div>
+          </div>
         )}
 
-        {/* Meilleures stats — top records cliquables, en ligne juste sous le profil de
-            combat (déplacés de la colonne gauche, 2026-05-30). La colonne accuracy est
-            déjà en 0..100 (cf. scoreboard / table de session) → pas de ×100 ici. */}
+        {/* Meilleures stats — sous-titre (type 6) + top records cliquables. La colonne
+            accuracy est déjà en 0..100 (cf. scoreboard / table de session) → pas de ×100. */}
         {(overview.best_kills_match != null || detailedStats != null || overview.best_kda_ref || overview.best_perf_ref || overview.best_accuracy_ref || overview.best_damage_ref || overview.best_headshots_ref || overview.best_personal_score_ref) && (
-          <div className="mb-4">
-            <p className="mb-2 text-sm font-medium">{t('synthesis.section.top_stats')}</p>
+          <div className="space-y-2">
+            <SectionSubtitle>{t('synthesis.section.top_stats')}</SectionSubtitle>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
               {overview.best_kills_match != null && (
                 <AccentCard
@@ -417,8 +429,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, com
         )}
 
 
-      </CardContent>
-    </Card>
+    </section>
   )
 }
 
@@ -694,52 +705,60 @@ export function SynthesisPage() {
         />
       )}
 
-      {/* synthesis.05 — Bipolaire Solo vs Escouade */}
-      <SynthesisBipolaireChart
-        title={t('synthesis.section.comparison')}
-        metrics={comparisonMetrics}
-        fieldLabels={comparisonMetrics.map((m) => labelOf(m.label))}
-      />
+      {/* Section — Comparaison Solo / Escouade (synthesis.05). Graphe unique : le
+          titre de section porte le nom, le ChartCard est rendu sans barre de titre
+          (title omis) pour éviter le doublon. */}
+      <section className="space-y-3">
+        <header><h3 className="text-base font-semibold text-foreground">{t('synthesis.section.comparison')}</h3></header>
+        <SynthesisBipolaireChart
+          metrics={comparisonMetrics}
+          fieldLabels={comparisonMetrics.map((m) => labelOf(m.label))}
+        />
+      </section>
 
-      {/* synthesis.03 — Heatmap activité jour × heure */}
-      <SynthesisHeatmapChart title={t('synthesis.section.activity')} cells={data.heatmap_data ?? []} />
+      {/* Section — Activité & répartition : heatmap jour×heure (synthesis.03),
+          Top vs Total par semaine (synthesis.04), répartition carte/mode (synthesis.01/02).
+          Plusieurs graphes → chacun garde sa propre barre de titre. */}
+      <section className="space-y-3">
+        <header><h3 className="text-base font-semibold text-foreground">{t('synthesis.section.activity_breakdown')}</h3></header>
 
-      {/* synthesis.04 — Top semaines */}
-      {topWeeks.length > 0 && (
-        <SynthesisTopWeeksChart title={t('synthesis.charts.top_vs_total_per_week')} weeks={topWeeks} />
-      )}
+        <SynthesisHeatmapChart title={t('synthesis.section.activity')} cells={data.heatmap_data ?? []} />
 
-      {/* synthesis.01 + synthesis.02 — Répartition carte / mode D7 */}
-      {data.breakdowns && (
-        <div className="flex flex-col gap-4">
-          {data.breakdowns.top_maps.length > 0 && (
-            <SynthesisOutcomesByGroupChart
-              title="Par carte"
-              entries={data.breakdowns.top_maps.map((m) => ({
-                name: m.map_name,
-                wins: m.wins,
-                losses: m.losses,
-                ties: m.ties,
-                unfinished: m.unfinished,
-              }))}
-              height={360}
-            />
-          )}
-          {data.breakdowns.top_modes.length > 0 && (
-            <SynthesisOutcomesByGroupChart
-              title="Par mode"
-              entries={data.breakdowns.top_modes.map((m) => ({
-                name: m.mode_name,
-                wins: m.wins,
-                losses: m.losses,
-                ties: m.ties,
-                unfinished: m.unfinished,
-              }))}
-              height={360}
-            />
-          )}
-        </div>
-      )}
+        {topWeeks.length > 0 && (
+          <SynthesisTopWeeksChart title={t('synthesis.charts.top_vs_total_per_week')} weeks={topWeeks} />
+        )}
+
+        {data.breakdowns && (
+          <div className="flex flex-col gap-4">
+            {data.breakdowns.top_maps.length > 0 && (
+              <SynthesisOutcomesByGroupChart
+                title="Par carte"
+                entries={data.breakdowns.top_maps.map((m) => ({
+                  name: m.map_name,
+                  wins: m.wins,
+                  losses: m.losses,
+                  ties: m.ties,
+                  unfinished: m.unfinished,
+                }))}
+                height={360}
+              />
+            )}
+            {data.breakdowns.top_modes.length > 0 && (
+              <SynthesisOutcomesByGroupChart
+                title="Par mode"
+                entries={data.breakdowns.top_modes.map((m) => ({
+                  name: m.mode_name,
+                  wins: m.wins,
+                  losses: m.losses,
+                  ties: m.ties,
+                  unfinished: m.unfinished,
+                }))}
+                height={360}
+              />
+            )}
+          </div>
+        )}
+      </section>
     </div>
   )
 }
