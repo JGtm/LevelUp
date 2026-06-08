@@ -15,6 +15,7 @@ import { buildPlayerDestination } from './shellNavigation'
 import { HelpSplitButton } from './HelpSplitButton'
 import { LogoutButton } from './LogoutButton'
 import { NavL1MobileMenu } from './NavL1MobileMenu'
+import { NavL1MobileActions, type SettingsTabItem } from './NavL1MobileActions'
 import { L1_SECTIONS, type L1Section, type L1Tab } from './navL1Sections'
 import { useSettings } from '@/features/settings/queries'
 import { NotificationsBell } from '@/features/notifications/NotificationsBell'
@@ -108,12 +109,6 @@ function SplitButton({ section, isActive, resolvedDefaultPath, resolvePath }: Sp
 }
 
 // ─── SettingsSplitButton ─────────────────────────────────────────────────────
-
-interface SettingsTabItem {
-  key: string
-  label: string
-  tab: string
-}
 
 interface SettingsSplitButtonProps {
   tabs: SettingsTabItem[]
@@ -237,6 +232,18 @@ export function NavL1() {
     ? L1_SECTIONS
     : L1_SECTIONS.filter((s) => s.key !== 'ascension')
 
+  // Onglets Paramètres — source unique partagée entre le split button desktop
+  // et le menu compte/outils mobile.
+  const settingsTabs: SettingsTabItem[] = [
+    { key: 'general', label: 'Général', tab: 'general' },
+    { key: 'sync', label: 'Synchronisation', tab: 'sync' },
+    { key: 'analyse', label: 'Analyse', tab: 'analyse' },
+    { key: 'accessibility', label: 'Accessibilité', tab: 'accessibility' },
+    { key: 'notifications', label: 'Notifications', tab: 'notifications' },
+    ...(canManageInstance ? [{ key: 'lab', label: 'Lab', tab: 'lab' as const }] : []),
+    ...(isAdmin ? [{ key: 'users', label: 'Utilisateurs', tab: 'users' as const }] : []),
+  ]
+
   function resolvePath(templatePath: string): string {
     return templatePath.replace('$playerSlug', playerSlug)
   }
@@ -312,14 +319,14 @@ export function NavL1() {
       {/* ── Spacer ──────────────────────────────────────────────────────── */}
       <div className="flex-1" />
 
-      {/* ── Gamertag / sélecteur joueur ──────────────────────────────────── */}
+      {/* ── Gamertag / sélecteur joueur (visible mobile, tronqué si large) ── */}
       {availablePlayers.length > 1 ? (
-        <div className="flex items-center gap-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
           <select
             value={playerSlug}
             onChange={(e) => handlePlayerChange(e.target.value)}
-            className="rounded-md border border-sidebar-border bg-sidebar-accent px-2 py-1 text-sm text-sidebar-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
-            aria-label="Joueur actif"
+            className="max-w-[32vw] truncate rounded-md border border-sidebar-border bg-sidebar-accent px-2 py-1 text-sm text-sidebar-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30 sm:max-w-none"
+            aria-label={t('common.shell.player_select')}
           >
             {availablePlayers.map((p) => (
               <option key={p.player_slug} value={p.player_slug}>
@@ -330,7 +337,7 @@ export function NavL1() {
         </div>
       ) : (
         currentPlayer && (
-          <span className="text-sm font-medium text-sidebar-foreground/70">
+          <span className="max-w-[32vw] truncate text-sm font-medium text-sidebar-foreground/70 sm:max-w-none">
             {currentPlayer.gamertag}
           </span>
         )
@@ -339,27 +346,17 @@ export function NavL1() {
       {/* ── Cloche notifications (per-player) ────────────────────────────── */}
       {currentPlayer && <NotificationsBell playerSlug={currentPlayer.player_slug} />}
 
-      {/* ── Aide ────────────────────────────────────────────────────────── */}
-      <div className="ml-1">
-        <HelpSplitButton isActive={pathname.startsWith('/help')} />
+      {/* ── Cluster droit desktop (≥ md) : aide · paramètres · déconnexion ── */}
+      <div className="hidden items-center gap-0.5 md:flex">
+        <div className="ml-1">
+          <HelpSplitButton isActive={pathname.startsWith('/help')} />
+        </div>
+        <SettingsSplitButton isActive={pathname.startsWith('/settings')} tabs={settingsTabs} />
+        <LogoutButton />
       </div>
 
-      {/* ── Split button Paramètres ──────────────────────────────────────── */}
-      <SettingsSplitButton
-        isActive={pathname.startsWith('/settings')}
-        tabs={[
-          { key: 'general', label: 'Général', tab: 'general' },
-          { key: 'sync', label: 'Synchronisation', tab: 'sync' },
-          { key: 'analyse', label: 'Analyse', tab: 'analyse' },
-          { key: 'accessibility', label: 'Accessibilité', tab: 'accessibility' },
-          { key: 'notifications', label: 'Notifications', tab: 'notifications' },
-          ...(canManageInstance ? [{ key: 'lab', label: 'Lab', tab: 'lab' }] : []),
-          ...(isAdmin ? [{ key: 'users', label: 'Utilisateurs', tab: 'users' }] : []),
-        ]}
-      />
-
-      {/* ── Déconnexion (visible si session ouverte) ─────────────────────── */}
-      <LogoutButton />
+      {/* ── Menu compte & outils mobile (< md) : regroupe le cluster droit ── */}
+      <NavL1MobileActions settingsTabs={settingsTabs} pathname={pathname} />
     </nav>
   )
 }
