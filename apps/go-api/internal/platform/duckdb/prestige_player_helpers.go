@@ -97,6 +97,10 @@ func buildChallengeListQuery(f prestige.ChallengeFilter) (string, []any) {
 		conds = append(conds, "mode = ?")
 		args = append(args, string(*f.Mode))
 	}
+	if f.Metric != nil {
+		conds = append(conds, "metric = ?")
+		args = append(args, *f.Metric)
+	}
 
 	q := challengeSelectColumns
 	if len(conds) > 0 {

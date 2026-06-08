@@ -190,6 +190,13 @@ type Template struct {
 
 	SchemaVersion int       `json:"schema_version"`
 	UpdatedAt     time.Time `json:"updated_at"`
+
+	// CooldownEndsAt : instant de fin du cooldown anti-farming sur la métrique
+	// du template pour le joueur courant. Non persisté — enrichi à la demande
+	// par SuggestTemplates (comme Challenge.CurrentValue). Nil = pas de cooldown
+	// actif → le template est sélectionnable. Permet au front d'afficher un
+	// badge « disponible dans Xh » et de désactiver le choix.
+	CooldownEndsAt *time.Time `json:"cooldown_ends_at,omitempty"`
 }
 
 // ---------- PresetArc + PresetArcStep ----------

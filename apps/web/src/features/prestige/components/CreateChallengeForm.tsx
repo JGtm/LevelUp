@@ -264,27 +264,36 @@ function HybridForm({ userId, titleSlug, onSuccess }: TabFormProps) {
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">{t.formHybridHint}</p>
       <ul className="space-y-2">
-        {templates.map((tpl) => (
-          <li
-            key={tpl.id}
-            className={[
-              'cursor-pointer rounded-md border p-3 text-sm transition-colors',
-              selected?.id === tpl.id
-                ? 'border-primary bg-primary/5'
-                : 'border-border hover:border-primary/50',
-            ].join(' ')}
-            onClick={() => handleSelect(tpl)}
-          >
-            <h3 className="font-medium">{tpl.label_fr}</h3>
-            {tpl.description_fr && (
-              <p className="mt-0.5 text-xs text-muted-foreground">{tpl.description_fr}</p>
-            )}
-            <p className="mt-1 text-xs text-muted-foreground">
-              N: {tpl.normal_target} · H: {tpl.heroic_target} · L: {tpl.legendary_target} · M:{' '}
-              {tpl.mythic_target}
-            </p>
-          </li>
-        ))}
+        {templates.map((tpl) => {
+          const cd = cooldownEndsAt(tpl)
+          return (
+            <li
+              key={tpl.id}
+              aria-disabled={cd ? true : undefined}
+              className={[
+                'rounded-md border p-3 text-sm transition-colors',
+                cd
+                  ? 'cursor-not-allowed border-border opacity-60'
+                  : selected?.id === tpl.id
+                    ? 'cursor-pointer border-primary bg-primary/5'
+                    : 'cursor-pointer border-border hover:border-primary/50',
+              ].join(' ')}
+              onClick={() => !cd && handleSelect(tpl)}
+            >
+              <h3 className="font-medium">
+                {tpl.label_fr}
+                {cd && <CooldownBadge end={cd} t={t} />}
+              </h3>
+              {tpl.description_fr && (
+                <p className="mt-0.5 text-xs text-muted-foreground">{tpl.description_fr}</p>
+              )}
+              <p className="mt-1 text-xs text-muted-foreground">
+                N: {tpl.normal_target} · H: {tpl.heroic_target} · L: {tpl.legendary_target} · M:{' '}
+                {tpl.mythic_target}
+              </p>
+            </li>
+          )
+        })}
       </ul>
 
       {selected && (
@@ -344,25 +353,31 @@ function AutoForm({ userId, titleSlug, onSuccess }: TabFormProps) {
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">{t.formAutoHint}</p>
       <ul className="space-y-2">
-        {templates.map((tpl) => (
-          <li key={tpl.id} className="rounded-md border border-border p-3">
-            <h3 className="text-sm font-medium">{tpl.label_fr}</h3>
-            {tpl.description_fr && (
-              <p className="mt-0.5 text-xs text-muted-foreground">{tpl.description_fr}</p>
-            )}
-            <button
-              type="button"
-              onClick={() => handleAccept(tpl)}
-              disabled={create.isPending}
-              className="mt-2 rounded-md border border-border px-3 py-1 text-xs hover:bg-accent disabled:opacity-50"
-            >
-              {t.formAcceptHeroic.replace('{target}', String(tpl.heroic_target))}
-            </button>
-          </li>
-        ))}
+        {templates.map((tpl) => {
+          const cd = cooldownEndsAt(tpl)
+          return (
+            <li key={tpl.id} className="rounded-md border border-border p-3">
+              <h3 className="text-sm font-medium">
+                {tpl.label_fr}
+                {cd && <CooldownBadge end={cd} t={t} />}
+              </h3>
+              {tpl.description_fr && (
+                <p className="mt-0.5 text-xs text-muted-foreground">{tpl.description_fr}</p>
+              )}
+              <button
+                type="button"
+                onClick={() => handleAccept(tpl)}
+                disabled={create.isPending || !!cd}
+                className="mt-2 rounded-md border border-border px-3 py-1 text-xs hover:bg-accent disabled:opacity-50"
+              >
+                {t.formAcceptHeroic.replace('{target}', String(tpl.heroic_target))}
+              </button>
+            </li>
+          )
+        })}
       </ul>
-      {create.error != null && (
-        <p className="text-xs text-destructive">{(create.error as Error).message}</p>
+      {resolveCreateError(create.error as Error | null, t) != null && (
+        <p className="text-xs text-destructive">{resolveCreateError(create.error as Error | null, t)}</p>
       )}
     </div>
   )
@@ -385,6 +400,38 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
+// ─── Cooldown anti-farming (métrique en repos) ───
+
+/** Retourne la date de fin de cooldown si elle est dans le futur, sinon null. */
+function cooldownEndsAt(tpl: Template): Date | null {
+  if (!tpl.cooldown_ends_at) return null
+  const end = new Date(tpl.cooldown_ends_at)
+  return end.getTime() > Date.now() ? end : null
+}
+
+/** Formate le délai restant en badge localisé (« Dispo dans 3 h » / « 2 j »). */
+function formatCooldown(end: Date, t: ReturnType<typeof getPrestigeText>): string {
+  const hours = Math.ceil((end.getTime() - Date.now()) / 3_600_000)
+  const time =
+    hours >= 24 ? `${Math.ceil(hours / 24)} ${t.cooldownUnitDay}` : `${hours} ${t.cooldownUnitHour}`
+  return t.cooldownBadge.replace('{time}', time)
+}
+
+/** Mappe un refus cooldown (429) sur un message lisible, sinon le message brut. */
+function resolveCreateError(error: Error | null, t: ReturnType<typeof getPrestigeText>): string | null {
+  if (!error) return null
+  if ((error as { code?: string }).code === 'cooldown_active') return t.cooldownErrorMessage
+  return error.message
+}
+
+function CooldownBadge({ end, t }: { end: Date; t: ReturnType<typeof getPrestigeText> }) {
+  return (
+    <span className="ml-2 rounded border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+      {formatCooldown(end, t)}
+    </span>
+  )
+}
+
 function SubmitRow({
   loading,
   error,
@@ -398,9 +445,10 @@ function SubmitRow({
 }) {
   const locale = useAppShellStore((s) => s.locale)
   const t = getPrestigeText(locale)
+  const errorMessage = resolveCreateError(error, t)
   return (
     <div className="space-y-2">
-      {error && <p className="text-xs text-destructive">{error.message}</p>}
+      {errorMessage && <p className="text-xs text-destructive">{errorMessage}</p>}
       <button
         type={onSubmit ? 'button' : 'submit'}
         onClick={onSubmit}

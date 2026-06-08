@@ -198,40 +198,58 @@ func TestCooldownEndsAt(t *testing.T) {
 		AbandonedAt: &abandonedAt,
 	}
 	end := CooldownEndsAt(tuning, c)
-	expected := abandonedAt.Add(48 * time.Hour)
+	expected := abandonedAt.Add(24 * time.Hour)
 	if !end.Equal(expected) {
 		t.Errorf("got %v want %v", end, expected)
 	}
 }
 
-func TestCooldownEndsAt_LibreNoCooldown(t *testing.T) {
+// Depuis 2026-06-08, le mode libre a un cooldown (il est le seul mode créable
+// côté UI). Un abandon libre déclenche donc le cooldown 24h comme le pilote.
+func TestCooldownEndsAt_LibreHasCooldown(t *testing.T) {
 	tuning := DefaultTuning()
-	abandonedAt := time.Now().UTC()
+	abandonedAt := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
 	c := Challenge{
 		Status:      StatusAbandoned,
 		Mode:        ModeLibre,
 		AbandonedAt: &abandonedAt,
 	}
+	end := CooldownEndsAt(tuning, c)
+	expected := abandonedAt.Add(24 * time.Hour)
+	if !end.Equal(expected) {
+		t.Errorf("libre abandon should have a 24h cooldown, got %v want %v", end, expected)
+	}
+}
+
+// La complétion ne déclenche aucun cooldown (CompletedHours = 0), tous modes.
+func TestCooldownEndsAt_CompletedNoCooldown(t *testing.T) {
+	tuning := DefaultTuning()
+	completedAt := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
+	c := Challenge{
+		Status:      StatusCompleted,
+		Mode:        ModeLibre,
+		CompletedAt: &completedAt,
+	}
 	if end := CooldownEndsAt(tuning, c); !end.IsZero() {
-		t.Errorf("libre mode should have no cooldown, got %v", end)
+		t.Errorf("completion should have no cooldown, got %v", end)
 	}
 }
 
 func TestIsCooldownActive(t *testing.T) {
 	tuning := DefaultTuning()
 	now := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
-	abandonedRecent := now.Add(-2 * time.Hour) // cooldown 48h → toujours actif
-	abandonedOld := now.Add(-100 * time.Hour)  // cooldown 48h → expiré
+	abandonedRecent := now.Add(-2 * time.Hour) // cooldown 24h → toujours actif
+	abandonedOld := now.Add(-100 * time.Hour)  // cooldown 24h → expiré
 
 	prevActive := []Challenge{
-		{Status: StatusAbandoned, Mode: ModePilote, AbandonedAt: &abandonedRecent},
+		{Status: StatusAbandoned, Mode: ModeLibre, AbandonedAt: &abandonedRecent},
 	}
 	if !IsCooldownActive(tuning, prevActive, now) {
 		t.Error("expected active cooldown")
 	}
 
 	prevExpired := []Challenge{
-		{Status: StatusAbandoned, Mode: ModePilote, AbandonedAt: &abandonedOld},
+		{Status: StatusAbandoned, Mode: ModeLibre, AbandonedAt: &abandonedOld},
 	}
 	if IsCooldownActive(tuning, prevExpired, now) {
 		t.Error("expected expired cooldown")
