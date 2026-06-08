@@ -121,6 +121,18 @@ en = "LevelUp — back to home"
 fr = "Onglets Paramètres"
 en = "Settings tabs"
 
+[common.shell.nav_menu_open]
+fr = "Ouvrir le menu de navigation"
+en = "Open navigation menu"
+
+[common.shell.nav_menu_close]
+fr = "Fermer le menu"
+en = "Close menu"
+
+[common.shell.nav_menu_title]
+fr = "Navigation"
+en = "Navigation"
+
 [common.shell.nav_career_aria]
 fr = "Navigation carrière"
 en = "Career navigation"

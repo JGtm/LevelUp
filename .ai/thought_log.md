@@ -1,3 +1,17 @@
+## [2026-06-08] Revue + décisions du plan « Arcs Prestige : presets + suppression + onglets » — Complété (plan validé, implémentation à suivre)
+
+**Statut** : Complété (phase plan/décision). Aucune ligne de code applicatif modifiée ; seuls `.ai/PLAN_ASCENSION_ARCS_PRESETS_ET_ONGLETS.md` (plan enrichi) et ce thought_log. Implémentation des 4 lots à venir sur autorisation.
+
+**Demande user** : vérifier [PLAN_ASCENSION_ARCS_PRESETS_ET_ONGLETS.md](PLAN_ASCENSION_ARCS_PRESETS_ET_ONGLETS.md), trancher les décisions ouvertes en mode interactif, rester sur la branche courante (`fix/enrichment-convergence`).
+
+**Vérification (2 explorations Explore)** : le plan est factuellement exact sur l'essentiel (ArcRepo sans Delete, ChallengeRepo sans Delete/DetachFromArc, Arc sans Status, PresetArcRepo sans route HTTP, AbandonChallenge/MarkAbandoned OK). 6 corrections consignées dans le plan (§ Faits vérifiés) : impl DuckDB dans `prestige_player_repo.go` (tables `arc`/`challenge`) ; `MyArcsSection`/`MyObjectivesSection` sont **inline** dans `AscensionProfileTab.tsx` (pas des fichiers séparés) ; `ChallengeFilter.ArcID` a déjà une sémantique `NoArc` ; Lot B.1 imprécis (`arc_composer.go` compose depuis des signaux, pas depuis les presets — helper d'adoption à relocaliser) ; `ChallengeFilter` sans champ `Metric` ; `api.delete` existe déjà.
+
+**Découverte majeure → nouveau Lot D** : le cooldown anti-farming est **entièrement défini mais jamais branché** (`IsCooldownActive`/`CooldownEndsAt` jamais appelés ; `ErrCooldownActive` + mapping 429 prêts mais dormants ; 48h, pilote-only). L'user a demandé de **le brancher** (c'est un bug) **+ retour UI au bon endroit**. Lot D ajouté : check dans `CreateChallenge`, abaissement 48h→24h, enrichissement `Template.cooldownEndsAt`, badge « dispo dans Xh » + désactivation dans le sélecteur de template de `CreateChallengeForm`, message friendly sur 429.
+
+**Décisions tranchées** (interactives) : (1) 3 lots + Lot D, branche courante, ordre **C→D→A→B** ; (2) cascade suppression objectifs = abandon soft par défaut ; (3) brancher cooldown + 48h→24h ; (4) exemption suppression d'arc = **arc créé < 1h → hard-delete sans cooldown**, ≥1h → abandon+cooldown ; (5) UI cooldown proactif (badge picker) + réactif (429) ; (6) label nouvel onglet = **« Entraînement »** (alt. « Académie » en réserve). Hors-scope : i18n NavL1, dette `TITLE_SLUG` hardcodé.
+
+**Prochaine étape** : implémenter Lot C (split onglet « Entraînement ») sur autorisation, puis D → A → B.
+
 ## [2026-06-08] LUSR v2 — live post-sync en owner-only (sync autonome par joueur) — Complété
 
 **Statut** : Complété. go vet OK, test d'autonomie + suite `internal/sync` verts. Code non commité (attente autorisation).
@@ -22155,3 +22169,18 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 - **Garde-fou non rétroactif** : les arcs déjà 100 % complétés avant ce patch ne reçoivent pas le bonus a posteriori (pas de nouvel event de complétion). Pas de backfill demandé.
 - **Note concurrence** : `ArcSummary.tsx` + `prestige/i18n.ts` ont été modifiés par un process parallèle pendant la session (refactor i18n + layout flanking + form arc). Intégration **additive** sur la dernière version (badge bonus, source `arc.objectives_pp ?? totalPP`), sans toucher au layout ni aux call sites — à reconcilier au commit.
 - **Conclusion / prochaine étape** : feature complète bout-à-bout. À commit (sur autorisation) ; vérif visuelle démo après deploy (Home section Prestige + page Ascension).
+
+---
+
+### [2026-06-08] NavL1 : drawer mobile (sections L1 injoignables sur petit écran)
+
+- **Statut** : Complété (validé local : tsc 0 erreur sur shell, eslint 0 warning sur les 3 fichiers, vitest NavL1 6/6). Branche `feat/nav-l1-mobile-drawer`. NON commit (en attente autorisation user).
+- **Problème** (question user) : sur écran mobile, plus de la moitié des entrées du menu L1 sont injoignables. Cause : `NavL1` = une seule barre `flex` horizontale sans `flex-wrap` ni overflow ; le `<div className="flex-1"/>` pousse le cluster droit (sélecteur joueur / aide / paramètres / logout) au bord, et les 8 sections de gauche débordent hors viewport sans scroll.
+- **Contrainte** : ne rien changer au rendu desktop « taille normale ».
+- **Décision — Option A (drawer mobile, hamburger)** : tout le comportement mobile vit sous le breakpoint `md`, le rendu actuel devient le rendu `≥ md`.
+  - **Extraction** : `L1_SECTIONS` + interfaces `L1Section/L1Tab` + icône flamme déplacés de `NavL1.tsx` vers `navL1Sections.tsx` (source unique, zéro duplication desktop/mobile). Icône convertie de composant `NavFlameIcon()` → nœud JSX constant `flameIcon` pour garder le module « data-only » (compat react-refresh).
+  - **Desktop** : sections inline wrappées dans `<div className="hidden items-center gap-0.5 md:flex">` → display:none sous `md`, identique au-dessus (gap-0.5 préservé). Hamburger en `md:hidden` → display:none ≥ md (pas tabbable, pas de slot flex). **Rendu desktop strictement inchangé.**
+  - **Mobile** : nouveau `NavL1MobileMenu.tsx` — bouton hamburger + panneau latéral gauche (slide translateX, overlay, fermeture Escape/overlay/clic-lien), liste sections + onglets, état actif. Consomme `L1_SECTIONS` filtré (Ascension masquée si `show_progression` off, comme desktop).
+  - **i18n** : 3 clés ajoutées au manifest `common.toml` (`nav_menu_open/close/title`) + régénéré ; réutilise `nav_main_aria` existant. Pas d'aria-label hardcodé.
+- **Hors scope (signalé)** : le cluster droit (sélecteur joueur + cloche + aide + paramètres + logout) reste inline sur mobile ; il tient car surtout des icônes, mais si l'étroitesse persiste, le sélecteur joueur est le candidat à déplacer dans le drawer (follow-up).
+- **Conclusion / prochaine étape** : à commit (sur autorisation) ; vérif visuelle mobile réelle (DevTools responsive ≤ md) recommandée avant deploy.
