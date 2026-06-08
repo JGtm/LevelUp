@@ -280,9 +280,15 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 
 **Tests** : cron (insert/fraîcheur/skip/erreur saison/nil-guards), `GetStatLeaderboard` (filtres+is_local+saison), `GetWorldLeaderboardCatalog`, `FetchActiveSeason`/`FetchCatalog`, compteur page-1-vide. Contrat OpenAPI : route catalogue documentée (sinon `TestContractRoutesDocumented` rouge — même piège que PR-C auth).
 
+**Durcissement robustesse (suite question user « insert du vide / incomplet ? »)** — 4 garde-fous pour ne jamais persister/afficher un snapshot partiel :
+1. Scrape vide → aucun insert (déjà : guard `len(entries)==0` avant `AcquireWriter`).
+2. Plancher de cohérence par playlist (`minEntries=25`) : un scrape non vide mais court (page tronquée / markup / coupure) est ignoré, snapshot précédent conservé.
+3. Insert atomique : `InsertWorldCSRSnapshot` enveloppé dans une transaction (tout ou rien, plus de demi-snapshot).
+4. Vue `_latest` par batch (migration `world_csr_leaderboard_latest_by_batch`) : groupe par `fetched_at` (batch de scrape) au lieu de par rang → fix « Frankenstein » (top d'aujourd'hui + queue d'hier). Compatible données existantes. Tests : SanityFloor + batch-replacement.
+
 **Note WIP** : l'arbre contenait du travail non lié non commité (charts squad, records, patterns) — laissé intact, non stagé. Un fix nécessaire dans `leaderboard_world_repo.go` (query xuid inexistant) était déjà non commité → conservé.
 
-**Prochaine étape** : commit (en attente autorisation user). 1er snapshot prod auto au prochain boot serveur.
+**Prochaine étape** : 1er snapshot prod auto au prochain boot serveur.
 
 ---
 

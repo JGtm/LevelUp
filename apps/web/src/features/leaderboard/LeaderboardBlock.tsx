@@ -12,7 +12,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
-import { useLeaderboard } from './queries'
+import { useLeaderboard, useLeaderboardCatalog } from './queries'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -28,7 +28,11 @@ const toRoman = (n: number): string => SUB_TIER_ROMAN[n] ?? String(n)
 
 const CSR_WORLD = 'csr-world'
 
-/** Playlists classées (asset IDs stables). */
+/**
+ * Playlists classées (asset IDs stables) — FALLBACK si le catalogue dynamique
+ * (snapshots réellement en base) est vide. Sert aussi de table de libellés
+ * localisés : un id présent ici prime sur le display_name renvoyé par l'API.
+ */
 const PLAYLISTS: { id: string; label: string }[] = [
   { id: 'edfef3ac-9cbe-4fa2-b949-8f29deafd483', label: 'Arène classée' },
   { id: 'dcb2e24e-05fb-4390-8076-32a0cdb4326e', label: 'Assassin classé' },
@@ -38,13 +42,18 @@ const PLAYLISTS: { id: string; label: string }[] = [
   { id: '71734db4-4b8e-4682-9206-62b6eff92582', label: 'Chacun pour soi classé' },
 ]
 
-/** Saisons CSR récentes (la plus récente en premier). */
+/** Saisons CSR récentes (FALLBACK + libellés localisés, cf. PLAYLISTS). */
 const SEASONS: { id: string; label: string }[] = [
   { id: 'csrseason13-2', label: 'Infinite (13.2)' },
   { id: 'csrseason13-1', label: 'Saison 13.1' },
   { id: 'csrseason12-1', label: 'Shadows (12.1)' },
   { id: 'csrseason11-1', label: 'Last Stand (11.1)' },
 ]
+
+const KNOWN_PLAYLIST_LABEL: Record<string, string> = Object.fromEntries(PLAYLISTS.map((p) => [p.id, p.label]))
+const KNOWN_SEASON_LABEL: Record<string, string> = Object.fromEntries(SEASONS.map((s) => [s.id, s.label]))
+
+type SelectorOption = { value: string; label: string }
 
 /** Catégories disponibles (clés i18n alignées sur common.leaderboard.cat_*). */
 const CATEGORIES: { id: string; key: CommonManifestKey }[] = [
@@ -90,10 +99,39 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
   const [sortDir, setSortDir] = useState<SortDir>('asc')
 
   const isWorld = category === CSR_WORLD
+
+  // Sélecteurs dynamiques : on liste les saisons/playlists qui ont réellement des
+  // snapshots en base (catalogue). Fallback sur les listes codées en dur si le
+  // catalogue est vide (avant le 1er snapshot). Libellé : on préfère un label
+  // localisé connu (KNOWN_*), sinon le display_name renvoyé par l'API.
+  const { data: catalog } = useLeaderboardCatalog(playerSlug)
+  const seasonOptions: SelectorOption[] = useMemo(
+    () =>
+      catalog?.seasons?.length
+        ? catalog.seasons.map((s) => ({ value: s.id, label: KNOWN_SEASON_LABEL[s.id] ?? s.display_name }))
+        : SEASONS.map((s) => ({ value: s.id, label: s.label })),
+    [catalog],
+  )
+  const playlistOptions: SelectorOption[] = useMemo(
+    () =>
+      catalog?.playlists?.length
+        ? catalog.playlists.map((p) => ({ value: p.id, label: KNOWN_PLAYLIST_LABEL[p.id] ?? p.display_name }))
+        : PLAYLISTS.map((p) => ({ value: p.id, label: p.label })),
+    [catalog],
+  )
+
+  // Sélection effective dérivée au rendu (pas de setState dans un effet) : si le
+  // choix courant n'est pas dans les options du catalogue, on retombe sur la 1re
+  // option (la saison active est en tête côté API). Un choix utilisateur explicite
+  // est toujours dans les options, donc préservé.
+  const effectiveSeason = seasonOptions.some((o) => o.value === season) ? season : (seasonOptions[0]?.value ?? season)
+  const effectivePlaylist = playlistOptions.some((o) => o.value === playlist)
+    ? playlist
+    : (playlistOptions[0]?.value ?? playlist)
   const { data, isLoading, isError, error } = useLeaderboard(playerSlug, {
     category,
-    season: isWorld ? season : undefined,
-    playlist: isWorld ? playlist : undefined,
+    season: isWorld ? effectiveSeason : undefined,
+    playlist: isWorld ? effectivePlaylist : undefined,
     limit: 200,
   })
 
@@ -152,15 +190,15 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
               <>
                 <Selector
                   label={t('common.leaderboard.playlist_label')}
-                  value={playlist}
+                  value={effectivePlaylist}
                   onChange={setPlaylist}
-                  options={PLAYLISTS.map((p) => ({ value: p.id, label: p.label }))}
+                  options={playlistOptions}
                 />
                 <Selector
                   label={t('common.leaderboard.season_label')}
-                  value={season}
+                  value={effectiveSeason}
                   onChange={setSeason}
-                  options={SEASONS.map((s) => ({ value: s.id, label: s.label }))}
+                  options={seasonOptions}
                 />
               </>
             )}

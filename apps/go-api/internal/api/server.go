@@ -1055,6 +1055,7 @@ func NewRouter(
 			// Sprint 54 : Classement CSR (Leaderboard)
 			leaderboard := handlers.NewLeaderboardHandler(reg.Leaderboard)
 			r.Get("/pages/leaderboard", leaderboard.GetLeaderboardPage)
+			r.Get("/pages/leaderboard/catalog", leaderboard.GetLeaderboardCatalog)
 
 			// Sync delta par joueur
 			r.Post("/sync", syncH.StartDeltaSync)

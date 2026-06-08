@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
 )
 
 // logModule est l'attribut de routage des logs du scraper vers logs/leaderboard.log
@@ -87,6 +88,13 @@ func (s *LeaderboardScraper) FetchCSRLeaderboard(
 			"season", seasonID, "playlist", playlistID, "page", page, "entries", len(parsed.Leaderboard))
 		if len(parsed.Leaderboard) == 0 {
 			if page == 1 {
+				// Canari de changement de markup Halo Waypoint : une page 1 vide
+				// signale soit une saison/playlist inexistante, soit un markup qui
+				// a évolué (bloc __NEXT_DATA__ déplacé/renommé). Compteur expvar
+				// (/debug/vars → levelup.leaderboard_empty_page1) pour le surveiller
+				// sans grep de logs ; au-delà de ~0 en régime nominal, rafraîchir la
+				// fixture testdata/leaderboard_sample.html et le parsing.
+				observability.IncCounter("leaderboard_empty_page1")
 				slog.WarnContext(ctx, "leaderboard vide en page 1 (saison/playlist inexistante ou markup changé ?)",
 					"module", logModule, "season", seasonID, "playlist", playlistID)
 			}
@@ -132,6 +140,74 @@ func (s *LeaderboardScraper) FetchCSRLeaderboard(
 		}
 	}
 	return out, nil
+}
+
+// WaypointRef est une entrée du menu déroulant saison/playlist exposé par la page
+// Halo Waypoint (props.pageProps.{seasons,playlists}). Sert à peupler les
+// sélecteurs côté UI et à découvrir la saison active côté cron.
+type WaypointRef struct {
+	ID          string
+	DisplayName string
+}
+
+// seedSeasonID est la saison « graine » utilisée pour bootstrapper la requête de
+// découverte du catalogue (FetchCatalog/FetchActiveSeason). Sa seule fonction est
+// de construire une URL leaderboard qui rend la page : la valeur retournée est
+// TOUJOURS seasons[0] (la saison active du jour), qui se corrige d'elle-même même
+// si cette graine est périmée. Les saisons passées restent accessibles
+// indéfiniment sur Halo Waypoint (cf. fixture : csrseason3-1 → 13-2 toutes
+// sélectionnables), donc l'URL graine ne 404 jamais une fois la saison créée.
+const seedSeasonID = "csrseason13-2"
+
+// FetchActiveSeason découvre la saison CSR active en lisant le menu déroulant de
+// la page Halo Waypoint (seasons[0], la liste étant ordonnée du plus récent au
+// plus ancien). Mode autonome : aucune saison codée en dur côté cron — quand Halo
+// passe à la saison suivante, la découverte suit automatiquement.
+//
+// refPlaylistID : une playlist classée valide quelconque (n'importe laquelle rend
+// le même menu de saisons). Retourne une erreur si la page n'expose aucune saison
+// (markup changé ou playlist invalide).
+func (s *LeaderboardScraper) FetchActiveSeason(ctx context.Context, refPlaylistID string) (string, error) {
+	seasons, _, err := s.FetchCatalog(ctx, refPlaylistID)
+	if err != nil {
+		return "", err
+	}
+	if len(seasons) == 0 {
+		return "", fmt.Errorf("FetchActiveSeason: aucune saison exposée par la page (markup changé ?)")
+	}
+	slog.DebugContext(ctx, "saison active découverte", "module", logModule,
+		"season", seasons[0].ID, "display", seasons[0].DisplayName, "total_seasons", len(seasons))
+	return seasons[0].ID, nil
+}
+
+// FetchCatalog récupère les listes saisons + playlists exposées par la page
+// (props.pageProps.{seasons,playlists}), via une unique requête « graine ». Utilisé
+// par le cron (saison active = seasons[0]) et par l'API des sélecteurs dynamiques.
+func (s *LeaderboardScraper) FetchCatalog(
+	ctx context.Context, refPlaylistID string,
+) (seasons, playlists []WaypointRef, err error) {
+	if strings.TrimSpace(refPlaylistID) == "" {
+		return nil, nil, fmt.Errorf("FetchCatalog: refPlaylistID requis")
+	}
+	body, err := s.fetchPageBytes(ctx, seedSeasonID, refPlaylistID, 1)
+	if err != nil {
+		return nil, nil, fmt.Errorf("FetchCatalog: %w", err)
+	}
+	parsed, err := parseLeaderboardPage(body)
+	if err != nil {
+		return nil, nil, fmt.Errorf("FetchCatalog: parse: %w", err)
+	}
+	for _, se := range parsed.Seasons {
+		if id := strings.TrimSpace(se.SeasonID); id != "" {
+			seasons = append(seasons, WaypointRef{ID: id, DisplayName: se.DisplayName})
+		}
+	}
+	for _, pl := range parsed.Playlists {
+		if id := strings.TrimSpace(pl.PlaylistID); id != "" {
+			playlists = append(playlists, WaypointRef{ID: id, DisplayName: pl.DisplayName})
+		}
+	}
+	return seasons, playlists, nil
 }
 
 // fetchPageBytes récupère le HTML brut d'une page du classement.

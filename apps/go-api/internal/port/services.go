@@ -238,6 +238,8 @@ type CompareService interface {
 // LeaderboardService construit la page Classement CSR.
 type LeaderboardService interface {
 	GetPage(ctx context.Context, req domain.LeaderboardRequest) (domain.LeaderboardResponse, error)
+	// GetCatalog liste saisons + playlists ayant des snapshots (sélecteurs).
+	GetCatalog(ctx context.Context) (domain.LeaderboardCatalog, error)
 }
 
 // PlayerStatsProvider fournit les stats d'un joueur distant via Waypoint.
