@@ -8,6 +8,7 @@
 import { Outlet } from '@tanstack/react-router'
 import { Toaster } from 'sonner'
 import { NavL1 } from './NavL1'
+import { ReauthBanner } from './ReauthBanner'
 import { TopProgressBar } from './TopProgressBar'
 import { ErrorBoundary } from './ErrorBoundary'
 import { NotificationsToastBridge } from '@/features/notifications/toastBridge'
@@ -23,6 +24,8 @@ export function AppShell() {
       {/* Barre de navigation L1 (fixe en haut) */}
       <div className="shrink-0">
         <NavL1 />
+        {/* Bannière reconnexion Xbox (refresh_token mort) — PR-B */}
+        <ReauthBanner />
       </div>
 
       {/* Barre de progression — flottante, hors du flux, collée sous NavL1 */}
