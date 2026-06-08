@@ -19,6 +19,7 @@ interface Texts {
   validate: string
   selectAll: string
   deselectAll: string
+  reset: string
   search: string
   empty: string
 }
@@ -37,6 +38,7 @@ function getTexts(locale: string): Texts {
     validate:   isFr ? 'Valider'                : 'Apply',
     selectAll:  isFr ? 'Tout sélectionner'      : 'Select all',
     deselectAll:isFr ? 'Tout désélectionner'    : 'Deselect all',
+    reset:      isFr ? 'Réinitialiser'          : 'Reset',
     search:     isFr ? 'Rechercher…'            : 'Search…',
     empty:      isFr ? 'Aucune session'         : 'No sessions',
   }
@@ -135,6 +137,10 @@ export function SessionMultiSelect({
     }
   }
 
+  function resetPending() {
+    setPending([])
+  }
+
   function handleOpen() {
     setPending(selected)
     setIsOpen(true)
@@ -197,9 +203,9 @@ export function SessionMultiSelect({
             </div>
           </div>
 
-          {/* Tout sélectionner / désélectionner */}
+          {/* Tout sélectionner / désélectionner (visibles) + Réinitialiser (toute la sélection) */}
           {filtered.length > 0 && (
-            <div className="px-3 py-1.5 border-b border-border/50">
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50">
               <button
                 type="button"
                 onClick={toggleAllFiltered}
@@ -207,6 +213,15 @@ export function SessionMultiSelect({
               >
                 {allFilteredSelected ? t.deselectAll : t.selectAll}
               </button>
+              {pending.length > 0 && (
+                <button
+                  type="button"
+                  onClick={resetPending}
+                  className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  {t.reset}
+                </button>
+              )}
             </div>
           )}
 
