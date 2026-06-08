@@ -1,3 +1,52 @@
+## [2026-06-08] Filtre sessions « Réinitialiser » + audio HLS « Jeu / Voix » — Complété
+
+**Statut** : Complété (branche courante `feat/nav-l1-mobile-drawer`, à la demande de l'utilisateur). Go `go build ./...` OK + `go test ./internal/media/...` verts ; web : SessionMultiSelect 23/23, CoverFlowModal HLS 7/7, eslint 0 erreur sur les fichiers touchés, `tsc -b` propre sur mes fichiers (résiduels préexistants hors scope dans `AscensionProfileTab.tsx`). Non commité (attente autorisation).
+
+**Tâche (demande user)** : deux ajustements UX indépendants. (1) Le filtre multi-sessions (`SessionMultiSelect`, partagé FilterOmnibar + Squad) n'avait pas de moyen de vider une sélection **partielle** en un clic (le toggle ne devient « Tout désélectionner » que si TOUT est coché). (2) Depuis le passage à HLS, le lecteur (`ClipPlayer` dans `CoverFlowModal`) affichait des boutons « Track X » bruts, anglais, sans retour visuel.
+
+**Décisions (validées via AskUserQuestion)** :
+- **Filtre** : garder le toggle + ajouter un lien « Réinitialiser » (visible dès qu'une session est cochée) qui vide **toute** la sélection (pas seulement les visibles).
+- **Audio** : modèle **deux interrupteurs indépendants** Jeu/Voix (les deux ON par défaut), pas un choix exclusif. Découverte clé pendant l'exploration : les pistes HLS sont des **renditions alternées mutuellement exclusives** (`hls.go` → 1 rendition isolée par source, hls.js ne joue qu'une `audioTrack`). Impossible d'additionner micro+Discord côté navigateur → **pré-mixage au transcodage** obligatoire.
+
+**Implémentation** :
+- **Filtre** (`SessionMultiSelect.tsx`) : i18n `reset`, handler `resetPending()` (`setPending([])`), lien à droite du toggle conditionné `pending.length > 0`. 4 tests ajoutés.
+- **Transcodage** (`hls.go`) : `audioRendition` découplée de l'index source (champ `MapSpec` = `0:a:0` OU label de filtre `[voices]`/`[full]`) + `hlsPlan.FilterComplex`. Nouveau `planAudioRenditions` : si ≥2 pistes source → 3 renditions `game` (a:0, copy si Opus), `voices` (amix de a:1..aN, ou map direct si 1 seule voix), `full` (amix de toutes, **DEFAULT**) via helpers `rangeIdx`/`amixFilter` (`amix=...:normalize=0:duration=longest`). Mono-piste → comportement historique inchangé. `Display = slug` (game/voices/full) = identifiant **stable** pour la détection front. `buildVarStreamMap` indexe `a:N` sur l'ordinal de sortie ; `buildHLSArgs` injecte `-filter_complex`. Tests Go réécrits (2 pistes, 3 pistes, mono legacy, var_stream_map, golden d'intégration → 3 renditions, NAME game/voices/full, init_full=aac).
+- **Lecteur** (`CoverFlowModal.tsx` + `i18n-modals.ts`) : i18n `audioGame/audioVoice/audioGroupLabel`. `ClipPlayer` reçoit `audioLabels`, détecte `isToggleLayout` (présence des 3 slugs dans `audioTracks`), état `gameOn/voiceOn` (défaut true, reset par clip via `key=file_path`). Effet : both→`full`, jeu→`game`, voix→`voices`, aucun→`video.muted=true`. Rendu : 2 boutons interrupteurs (`aria-pressed`, actif = fond plein `bg-primary text-primary-foreground`) si toggle layout, **sinon repli** sur le sélecteur par-piste actuel (clips déjà transcodés, source supprimée). 5 tests (4 toggle + 1 legacy préservé).
+
+**Backfill** : aucun outil dédié — `backfill-media-hls` réutilise `BuildHLS`, donc clips pas-encore-HLS prennent le nouveau layout automatiquement. Clips déjà HLS (source perdue) → repli front (décision user : « laisser, front dégrade en douceur »).
+
+**Logging (volet ajouté sur demande user)** :
+- **Go → `logs/media.log`** : `HLSResult.Renditions` (slugs produits) ajouté + helper `renditionSlugs`, loggé dans `RunHLSTranscode` (`ops`, déjà `module=media`) au niveau Info « terminé » → on voit si le clip est pré-mixé (`[game voices full]`) ou legacy (`[a0]`). Échecs (`BuildHLS échoué`, `finalize DB échoué`, `mark failed`) déjà loggés.
+- **Front → `lib/global-capture`** : nouveau `features/media/_logger.ts` (pattern aligné shell/feedback-drawer/squad : dédup warn+error par session, debug dev-only, préfixe `[media]`). Câblé dans `CoverFlowModal` sur les angles morts qui ne loggaient rien : `hls:unsupported` (warn), `hls:fatal` (error, avec type+details hls.js), `video:decode_error` (warn natif mp4/webm), + debug `pistes audio reçues` (layout) et `bascule interrupteur audio`. Les warn/error → console.* → buffer global → joignables aux issues feedback. 6 tests `_logger.test.ts`.
+
+**Limite connue / prochaine étape** : ffmpeg **absent du PATH** dans l'env de dev → le golden `TestBuildHLS_Integration` est **skippé**, donc le pattern réel (amix + copy dual-use d'une même source) n'a PAS été validé end-to-end ici. À confirmer sur une machine avec ffmpeg avant deploy (uploader un clip multipiste, écouter Jeu+Voix / Voix seule). Tuning `normalize=0` (risque de saturation à l'addition) à valider à l'écoute.
+
+**Vérif finale complète** : Go `go build ./...` + `go vet` OK, `go test ./internal/{media,ops,service}/...` verts (golden HLS skippé : ffmpeg absent). Front : **87/87** `features/media` (dont CoverFlowModal.hls 7, _logger 6) + SessionMultiSelect 23/23 ; eslint 0 erreur (4 warnings préexistants hors scope) ; `tsc -b` propre.
+
+---
+
+## [2026-06-08] Lot A — Suppression / annulation d'arc (cascade + détachement + exemption < 1h) — Complété
+
+**Statut** : Complété. `go vet` OK, `go test ./internal/{prestige,api/handlers}/...` verts + 3 tests `:memory:` (tag integration), tsc/eslint propres, vitest ascension/prestige 63/63. Code non commité (attente autorisation).
+
+**Tâche** : permettre de supprimer/annuler un arc, avec choix explicite du sort des objectifs (supprimer aussi vs détacher), + exemption de cooldown pour un arc à peine créé.
+
+**Backend** :
+- `ArcRepo.Delete` + `ChallengeRepo.DetachFromArc` (arc_id = NULL) + `ChallengeRepo.DeleteByArc` (hard delete) ajoutés aux interfaces ([repository.go](apps/go-api/internal/prestige/repository.go)) et impl DuckDB ([prestige_player_repo.go](apps/go-api/internal/platform/duckdb/prestige_player_repo.go), pattern `context.WithTimeout` + `r.db.Exec`).
+- `Service.DeleteArc(ctx, userID, id, DeleteArcOptions{CascadeObjectives})` ([service_arcs_squads.go](apps/go-api/internal/prestige/service_arcs_squads.go)) : vérif ownership (`arc.UserID == userID` sinon `ErrForbidden`, nouvelle sentinelle). Cascade : si arc créé < 1h (`arcCooldownExemptionWindow = time.Hour`) → `DeleteByArc` (zéro trace, zéro cooldown) ; sinon abandon des objectifs actifs via `AbandonChallenge` (cooldown 24h appliqué). Détachement : `DetachFromArc`.
+- Câblé dans `LazyPrestigeService.DeleteArc` (write → `resolveWithPlayerDBByUserID` + `acquirePlayerWriter`).
+- Handler `DELETE /arcs/{id}?user_id=&objectives=delete|detach` ([handlers/prestige.go](apps/go-api/internal/api/handlers/prestige.go)) : 204 / 400 (param) / 403 (`ErrForbidden` → nouveau case writeServiceError) / 404. Route dans server.go.
+- 6 implémenteurs d'interface mis à jour (réels + 5 mocks/stubs de test).
+- Tests : service (Detach, CascadeExempt hard-delete, CascadeAbandons, Forbidden, NotFound), handler (204×2, 400×2, 403, 404), duckdb `:memory:` (DetachFromArc, DeleteByArc, ArcRepo.Delete).
+
+**Frontend** :
+- `prestigeApi.deleteArc(id, userId, cascade)` ([lib/prestige.ts](apps/web/src/lib/prestige.ts)) + `useDeleteArc(userId, titleSlug)` ([useArcs.ts](apps/web/src/features/prestige/hooks/useArcs.ts), invalide arcs **et** challenges ; exporté dans le barrel hooks.ts).
+- `MyArcsSection` (inline dans AscensionProfileTab) : bouton « Supprimer » par arc → composant `ArcDeleteConfirm` (2 options « Supprimer aussi les N objectifs » / « Garder (détacher) » + Annuler ; si N=0, un seul « Supprimer »).
+- i18n `prestige/i18n.ts` : `arcDeleteButton/Title/WithObjectives/KeepObjectives/Cancel` (FR/EN).
+- Tests : flux ouverture confirmation + appel `deleteArc({id, cascade:true})` + annulation.
+
+**Reste du plan** : Lot B (picker de presets d'arc).
+
 ## [2026-06-08] Lot D — Brancher le cooldown anti-farming (dormant) + retour UI — Complété
 
 **Statut** : Complété. `go vet ./...` OK, `go test ./internal/{prestige,api,platform/duckdb}/...` verts (+ tests `:memory:` taggés integration), tsc/eslint propres, vitest prestige+ascension 61/61. Code non commité (attente autorisation).

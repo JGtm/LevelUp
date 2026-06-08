@@ -14,6 +14,7 @@ import type { MediaItemRow } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { MediaLikeButton } from './MediaViewer'
 import { getMediaModalsText } from './i18n-modals'
+import { log } from './_logger'
 
 interface CoverFlowModalProps {
   items: MediaItemRow[]
@@ -84,6 +85,8 @@ interface ClipPlayerProps {
   relPos: number
   videoRef: (el: HTMLVideoElement | null) => void
   onEnded: (() => void) | undefined
+  /** Libellés des deux interrupteurs audio (layout multipiste game/voices/full). */
+  audioLabels: { game: string; voice: string; group: string }
 }
 
 /** Une source est HLS si son chemin (hors query string) se termine par .m3u8. */
@@ -98,13 +101,18 @@ function isHlsSource(path: string): boolean {
  *   - les fichiers web-natifs (mp4/webm/mov) en lecture directe.
  * Affiche un message clair en cas d'erreur plutôt qu'un cadre noir vide.
  */
-function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded }: ClipPlayerProps) {
+function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, audioLabels }: ClipPlayerProps) {
   const [error, setError] = useState<string | null>(null)
   const [lastFilePath, setLastFilePath] = useState(filePath)
   const videoElRef = useRef<HTMLVideoElement | null>(null)
   const hlsRef = useRef<Hls | null>(null)
   const [audioTracks, setAudioTracks] = useState<{ id: number; name: string }[]>([])
   const [activeAudio, setActiveAudio] = useState(-1)
+  // Deux interrupteurs indépendants Jeu/Voix (les deux ON par défaut). N'ont de
+  // sens que sur le layout multipiste game/voices/full ; ClipPlayer est monté
+  // par clip (key=file_path) donc l'état se réinitialise à chaque clip.
+  const [gameOn, setGameOn] = useState(true)
+  const [voiceOn, setVoiceOn] = useState(true)
 
   if (filePath !== lastFilePath) {
     setLastFilePath(filePath)
@@ -134,6 +142,7 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded }:
       return
     }
     if (!Hls.isSupported()) {
+      log.warn('hls:unsupported', 'Lecture HLS non supportée par ce navigateur', { filePath })
       // eslint-disable-next-line react-hooks/set-state-in-effect -- erreur d'init d'un système externe (hls.js indisponible)
       setError('Lecture HLS non supportée par ce navigateur')
       return
@@ -146,13 +155,18 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded }:
     // Les pistes audio alternées sont peuplées via AUDIO_TRACKS_UPDATED (à
     // MANIFEST_PARSED, hls.audioTracks est encore vide — confirmé en navigateur).
     hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, (_evt, data) => {
-      setAudioTracks(
-        data.audioTracks.map((t, i) => ({ id: i, name: t.name || t.lang || `Audio ${i + 1}` })),
-      )
+      const tracks = data.audioTracks.map((t, i) => ({ id: i, name: t.name || t.lang || `Audio ${i + 1}` }))
+      setAudioTracks(tracks)
       setActiveAudio(hls.audioTrack)
+      log.debug('pistes audio reçues', { count: tracks.length, names: tracks.map((t) => t.name) })
     })
     hls.on(Hls.Events.ERROR, (_evt, data) => {
-      if (data.fatal) setError('Erreur de lecture du flux HLS')
+      if (data.fatal) {
+        log.error('hls:fatal', 'Erreur fatale du flux HLS', {
+          filePath, type: data.type, details: data.details,
+        })
+        setError('Erreur de lecture du flux HLS')
+      }
     })
     return () => {
       hls.destroy()
@@ -168,6 +182,38 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded }:
       setActiveAudio(id)
     }
   }
+
+  // Index des renditions par slug (game/voices/full). Présence des 3 = layout
+  // "2 toggles" produit par le transcodage récent ; sinon clip legacy (pistes
+  // brutes) → sélecteur par-piste en repli.
+  const bySlug = useMemo(() => {
+    const m: Record<string, number> = {}
+    for (const t of audioTracks) m[t.name] = t.id
+    return m
+  }, [audioTracks])
+  const isToggleLayout =
+    bySlug.game !== undefined && bySlug.voices !== undefined && bySlug.full !== undefined
+
+  // Applique l'état des deux interrupteurs à la rendition jouée. Combinaisons :
+  // both→full, jeu seul→game, voix seule→voices, aucun→vidéo muette. Le parent
+  // ne touche `.muted` que sur changement de clip centré (effet currentItem) ;
+  // comme ClipPlayer remonte par clip, pas de conflit avec le mute "deux OFF".
+  useEffect(() => {
+    if (!isToggleLayout) return
+    const video = videoElRef.current
+    if (!video) return
+    if (!gameOn && !voiceOn) {
+      video.muted = true
+      return
+    }
+    video.muted = false
+    const slug = gameOn && voiceOn ? 'full' : gameOn ? 'game' : 'voices'
+    const idx = bySlug[slug]
+    if (hlsRef.current && idx !== undefined) {
+      hlsRef.current.audioTrack = idx
+      setActiveAudio(idx)
+    }
+  }, [isToggleLayout, gameOn, voiceOn, bySlug])
 
   if (error) {
     return (
@@ -200,30 +246,59 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded }:
             : code === 3 ? 'Erreur de décodage de la vidéo'
             : code === 2 ? 'Erreur réseau lors du chargement'
             : 'Vidéo inaccessible'
+          log.warn('video:decode_error', msg, { filePath, code })
           setError(msg)
         }}
         className="h-full w-full bg-card"
       />
       {isCenter && audioTracks.length > 1 && (
-        <div className="absolute bottom-16 right-3 z-10 flex items-center gap-1 rounded-md border border-border bg-card/90 p-1 backdrop-blur-sm">
+        <div
+          className="absolute bottom-16 right-3 z-10 flex items-center gap-1 rounded-md border border-border bg-card/90 p-1 backdrop-blur-sm"
+          role="group"
+          aria-label={audioLabels.group}
+        >
           <svg className="ml-1 h-3.5 w-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 10v4m4-7v10m4-13v16m4-11v6m4-8v10" />
           </svg>
-          {audioTracks.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                selectAudioTrack(t.id)
-              }}
-              className={`rounded px-2 py-0.5 text-xs transition-colors ${
-                activeAudio === t.id ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {t.name}
-            </button>
-          ))}
+          {isToggleLayout
+            ? [
+                { on: gameOn, set: setGameOn, label: audioLabels.game },
+                { on: voiceOn, set: setVoiceOn, label: audioLabels.voice },
+              ].map(({ on, set, label }) => (
+                <button
+                  key={label}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    log.debug('bascule interrupteur audio', { label, next: !on })
+                    set((v) => !v)
+                  }}
+                  className={`rounded px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                    on
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))
+            : audioTracks.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  aria-pressed={activeAudio === t.id}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    selectAudioTrack(t.id)
+                  }}
+                  className={`rounded px-2 py-0.5 text-xs transition-colors ${
+                    activeAudio === t.id ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {t.name}
+                </button>
+              ))}
         </div>
       )}
     </div>
@@ -572,6 +647,11 @@ export function CoverFlowModal({
                       relPos={relPos}
                       videoRef={setVideoRef(item.file_path)}
                       onEnded={isCenter && autoChain && canAdvanceFurther ? handleVideoEnded : undefined}
+                      audioLabels={{
+                        game: text.coverFlow.audioGame,
+                        voice: text.coverFlow.audioVoice,
+                        group: text.coverFlow.audioGroupLabel,
+                      }}
                     />
                   ) : (
                     <img

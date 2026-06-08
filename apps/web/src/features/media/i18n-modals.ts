@@ -41,6 +41,9 @@ export interface CoverFlowText {
   enableChaining: string
   disableChaining: string
   closeAriaLabel: string
+  audioGame: string
+  audioVoice: string
+  audioGroupLabel: string
 }
 
 export interface MediaModalsText {
@@ -84,6 +87,9 @@ const FR: MediaModalsText = {
     enableChaining: 'Activer enchaînement',
     disableChaining: 'Désactiver enchaînement',
     closeAriaLabel: 'Fermer',
+    audioGame: 'Jeu',
+    audioVoice: 'Voix',
+    audioGroupLabel: 'Pistes audio',
   },
 }
 
@@ -123,6 +129,9 @@ const EN: MediaModalsText = {
     enableChaining: 'Enable chaining',
     disableChaining: 'Disable chaining',
     closeAriaLabel: 'Close',
+    audioGame: 'Game',
+    audioVoice: 'Voice',
+    audioGroupLabel: 'Audio tracks',
   },
 }
 
