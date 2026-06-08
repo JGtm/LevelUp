@@ -49,9 +49,11 @@ export function AscensionLayout() {
   const tips = useMemo(() => buildAscensionTips(locale === 'en' ? 'en' : 'fr'), [locale])
 
   const profileRoute = '/players/$playerSlug/ascension' as const
+  const coachingRoute = '/players/$playerSlug/ascension/coaching' as const
   const realisationsRoute = '/players/$playerSlug/ascension/realisations' as const
+  const isCoaching = !!matchRoute({ to: coachingRoute })
   const isRealisations = !!matchRoute({ to: realisationsRoute })
-  const isProfile = !isRealisations
+  const isProfile = !isCoaching && !isRealisations
 
   return (
     <main className="container mx-auto max-w-6xl space-y-6 px-4 py-6">
@@ -79,6 +81,15 @@ export function AscensionLayout() {
           className={tabClass(isProfile)}
         >
           {t.tabProfile}
+        </Link>
+        <Link
+          to={coachingRoute}
+          params={{ playerSlug }}
+          role="tab"
+          aria-selected={isCoaching}
+          className={tabClass(isCoaching)}
+        >
+          {t.tabCoaching}
         </Link>
         <Link
           to={realisationsRoute}

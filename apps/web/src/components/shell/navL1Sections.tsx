@@ -105,6 +105,7 @@ export const L1_SECTIONS: L1Section[] = [
     matchPathname: (p) => /\/players\/[^/]+\/(objectifs|ascension)/.test(p),
     tabs: [
       { key: 'profile', label: 'Profil & objectifs', path: '/players/$playerSlug/ascension' },
+      { key: 'coaching', label: 'Entraînement', path: '/players/$playerSlug/ascension/coaching' },
       { key: 'realisations', label: 'Réalisations', path: '/players/$playerSlug/ascension/realisations' },
     ],
   },

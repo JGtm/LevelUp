@@ -1,7 +1,7 @@
 # Plan — Gestion des arcs Prestige : presets + suppression + split en 2 onglets
 
-> Statut : PLAN (à valider avant implémentation). Auteur : agent IA. Date : 2026-06-07.
-> Branche cible suggérée : `feat/prestige-arc-management` (depuis `main`).
+> Statut : PLAN VALIDÉ (décisions tranchées 2026-06-08, voir § Décisions tranchées). Auteur : agent IA. Date : 2026-06-07.
+> Branche : **`fix/enrichment-convergence` (branche courante)** — décision utilisateur de rester sur la branche en cours, en commits séquentiels (≠ suggestion initiale `feat/prestige-arc-management`).
 
 ## Contexte et état actuel
 
@@ -28,6 +28,17 @@ Faits backend de référence (vérifiés) :
 - `prestige.Arc` n'a **pas** de champ `Status` — uniquement `CompletedAt` (lifecycle binaire). ([types.go:67](apps/go-api/internal/prestige/types.go#L67))
 - Adoption d'un preset (create arc + N challenges) déjà implémentée pour le coach : [arc_composer.go](apps/go-api/internal/progression/coach_advisor/arc_composer.go) + [service_generate.go:411](apps/go-api/internal/progression/coach_advisor/service_generate.go#L411).
 - Navigation L1/L2 : [NavL1.tsx](apps/web/src/components/shell/NavL1.tsx) — `L1_SECTIONS.ascension.tabs` contient `profile` (« Profil & objectifs ») et `realisations` (« Réalisations »). ([NavL1.tsx:115](apps/web/src/components/shell/NavL1.tsx#L115))
+
+## Faits vérifiés (2026-06-08) — corrections au plan initial
+
+Exploration de validation effectuée avant implémentation. Le plan est globalement exact ; corrections :
+
+1. **Impl DuckDB localisée** : `PrestigeArcRepo` (table `arc`) + `PrestigeChallengeRepo` (table `challenge`) sont dans [prestige_player_repo.go](apps/go-api/internal/platform/duckdb/prestige_player_repo.go) (`PrestigeArcRepo` ~L166, `PrestigeChallengeRepo` ~L21). Pattern d'accès : `ctx, cancel := context.WithTimeout(ctx, 5*time.Second)` puis `r.db.Exec/QueryRow`. C'est le pattern à suivre pour `Delete`/`DetachFromArc`. Presets : `PrestigePresetArcRepo` dans [prestige_metadata_repo.go](apps/go-api/internal/platform/duckdb/prestige_metadata_repo.go) (tables `preset_arc` + `preset_arc_step`).
+2. **`MyArcsSection` n'est PAS un fichier séparé** : il est défini *inline* dans [AscensionProfileTab.tsx](apps/web/src/features/ascension/AscensionProfileTab.tsx) (~L293-362), tout comme `MyObjectivesSection` (~L127-192). `CreateArcForm`/`ArcSummary`/`CreateChallengeForm` vivent dans `features/prestige/components/`. → Lot A.4 (bouton supprimer) édite l'inline ; Lot C (split) extrait ces blocs inline vers le nouveau composant.
+3. **`ChallengeFilter.ArcID`** porte le commentaire `"" interdit (utilise NoArc à la place)` → une sémantique « sans arc » existe déjà. À regarder avant d'écrire `DetachFromArc` (mettre `arc_id = NULL` et vérifier la cohérence lecture avec le concept `NoArc`).
+4. **Lot B.1 imprécis** : [arc_composer.go](apps/go-api/internal/progression/coach_advisor/arc_composer.go) compose des arcs depuis des **signaux** (dynamique, `TryCompose`/`ArcSpec`), PAS depuis `PresetArc`/`PresetArcStep`. La logique d'adoption *preset* (create arc + N challenges depuis `PresetArcStep`) est à relocaliser (réf. `service_generate.go:411`) — le helper partagé `composeArcFromPreset` reste à extraire/écrire au Lot B, mais pas depuis `arc_composer.go`.
+5. **`ChallengeFilter` n'a pas de champ `Metric`** ([repository.go:31](apps/go-api/internal/prestige/repository.go#L31)) : pour le cooldown (Lot D) il faut soit ajouter un champ `Metric *string`, soit filtrer en mémoire les terminaux sur la même métrique.
+6. **`api.delete<T>()` existe déjà** côté client ([client.ts:157](apps/web/src/lib/api/client.ts#L157)) — pas besoin de l'ajouter (contrairement à la note du Lot A.4).
 
 ## Objectif et critères de succès
 
@@ -130,19 +141,60 @@ Critère global : `go test ./...` + `go vet ./...` verts ; `tsc` + `eslint` + `v
 
 ---
 
-## Décisions ouvertes (à trancher avant ou pendant l'implémentation)
+## Lot D — Activer le cooldown anti-farming + retour UI
 
-1. **« Supprimer les objectifs » = abandon (soft) ou hard delete ?** Recommandation : **abandon** (réutilise le lifecycle, garde télémétrie + cooldown 48 h). Alternative : ajouter `ChallengeRepo.DeleteByArc` pour un vrai delete si on veut zéro trace.
-2. **Cooldown sur cascade** : abandonner N objectifs d'un coup déclenche N cooldowns 48 h sur leurs métriques. OK ? (Sinon : exempter la suppression d'arc du cooldown via un flag.)
-3. **Label du nouvel onglet** : « Coaching » (court) vs « Coaching d'amélioration ».
-4. **i18n NavL1** : les labels L2 actuels sont **FR-only** (hardcodés). On garde FR ou on i18n-ise la nav à cette occasion ? (hors-scope suggéré.)
-5. **Multi-titres** : `TITLE_SLUG='halo_infinite'` est hardcodé côté front (`AscensionProfileTab`) — dette existante, non introduite ici ; à ne pas propager dans les nouveaux composants (passer le slug en prop).
-6. **Branche** : `feat/prestige-arc-management` depuis `main` (lot conséquent, ≠ petit fix livré sur `fix/enrichment-convergence`).
+**Priorité : haute (bug : le cooldown est défini mais jamais appliqué). Effort : moyen.**
+
+### Constat
+Le cooldown post-terminaison (abandon/expiration/complétion) est entièrement défini mais **jamais branché** :
+- `IsCooldownActive(tuning, previousChallenges, now)` ([lifecycle.go:143](apps/go-api/internal/prestige/lifecycle.go#L143)) et `CooldownEndsAt` ([lifecycle.go:106](apps/go-api/internal/prestige/lifecycle.go#L106)) existent mais ne sont **appelés nulle part** en prod.
+- `ErrCooldownActive` ([lifecycle.go:24](apps/go-api/internal/prestige/lifecycle.go#L24)) + mapping HTTP **429 `cooldown_active`** ([handlers/prestige.go:488](apps/go-api/internal/api/handlers/prestige.go#L488)) sont prêts mais jamais déclenchés.
+- Durées dans `tuning.go` : `AbandonedHours: 48`, `ExpiredHours: 12`, `CompletedHours: 0` ([tuning.go:189](apps/go-api/internal/prestige/tuning.go#L189)). Cooldown **mode pilote uniquement** (`CooldownEndsAt` retourne zéro si `Mode != ModePilote`, [lifecycle.go:110](apps/go-api/internal/prestige/lifecycle.go#L110)) — cohérent avec les quotas.
+
+### D.1 — Backend : brancher le check + abaisser la durée
+- **Abaisser `AbandonedHours: 48 → 24`** dans `DefaultTuning()` (et la `tuning.toml` si surchargée). (Décision tranchée.)
+- `CreateChallenge` ([service.go:203](apps/go-api/internal/prestige/service.go#L203)) : après `validateCreateRequest` et avant/autour de `checkQuotas` (~L209, pilote-only), insérer :
+  1. Lister les défis **terminaux** du joueur **sur la même métrique** : `Challenges.List(ctx, ChallengeFilter{UserID, TitleSlug, ...})`. **Pré-requis** : ajouter `Metric *string` à `ChallengeFilter` ([repository.go:31](apps/go-api/internal/prestige/repository.go#L31)) + l'honorer dans `PrestigeChallengeRepo.List` (SQL `AND metric = ?`), OU filtrer en mémoire. Préférer le champ `Metric` (réutilisable par l'enrichissement D.2).
+  2. `if IsCooldownActive(tuning, prev, now) { return ErrCooldownActive }`.
+- Garde-rail : ne s'applique qu'au mode pilote (le mode libre n'a pas de cooldown — ne pas bloquer la création libre).
+- Tests : `service_full_test.go` — `TestCreateChallenge_CooldownBlocks` (pilote, métrique en cooldown → `ErrCooldownActive`), `TestCreateChallenge_CooldownExpired_OK`, `TestCreateChallenge_FreeMode_NoCooldown`.
+
+### D.2 — Backend : enrichir SuggestTemplates avec l'état cooldown (UI proactive)
+- Ajouter à `Template` ([types.go:141](apps/go-api/internal/prestige/types.go#L141)) un champ **non persisté** `CooldownEndsAt *time.Time` (enrichi à la demande, comme `Challenge.CurrentValue`).
+- Dans `SuggestTemplates` ([service.go](apps/go-api/internal/prestige/service.go)) : pour chaque template suggéré, calculer `CooldownEndsAt` via les défis terminaux du joueur sur la métrique du template (réutilise la requête D.1 + `CooldownEndsAt`). Renseigné uniquement en mode pilote.
+- Tests : `TestSuggestTemplates_AnnotatesCooldown`.
+
+### D.3 — Frontend : retour UI (picker proactif + form réactif)
+- **Proactif (le « bon endroit »)** : dans le sélecteur de template de [CreateChallengeForm.tsx](apps/web/src/features/prestige/components/CreateChallengeForm.tsx) (modes hybride/automatique), si `template.cooldownEndsAt` est dans le futur → badge « Disponible dans Xh » + option **désactivée** (non sélectionnable). Helper de formatage du delta (réutiliser un util de durée existant, FR/EN).
+- **Réactif** : sur erreur `cooldown_active` (429) du `useCreateChallenge`, afficher un message clair dans le `SubmitRow` (« Métrique en cooldown, disponible dans Xh ») plutôt que le message brut serveur. La gouttière d'erreur inline existe déjà ([CreateChallengeForm.tsx:403](apps/web/src/features/prestige/components/CreateChallengeForm.tsx#L403)).
+- Côté type front : ajouter `cooldownEndsAt?: string` au type `Template` (lib/prestige.ts) + mapping.
+- i18n (`prestige/i18n.ts`, FR sans franglais + EN) : `cooldownBadge` (interpolation Xh/Xj), `cooldownErrorTitle`, `cooldownAvailableIn`.
+- Tests : test du badge (template en cooldown → désactivé + label) ; test du chemin 429 (message friendly).
+
+### D.4 — Note de cohérence avec Lot A
+La règle d'exemption « arc récent < 1h » (cf. Décisions tranchées) s'appuie sur ce cooldown désormais vivant : à la suppression d'un arc créé il y a < 1h, les objectifs sont **hard-deletés** (donc aucun enregistrement terminal → aucun cooldown) ; ≥ 1h → abandon normal → cooldown 24h s'applique. → Lot A dépend de Lot D (ordre D avant A).
+
+---
+
+## Décisions tranchées (2026-06-08)
+
+> Validées avec l'utilisateur en questions interactives. Remplacent les « décisions ouvertes » du plan initial.
+
+1. **Périmètre & branche** : les **3 lots + Lot D**, tous sur la **branche courante `fix/enrichment-convergence`** en commits séquentiels (pas de nouvelle branche). Ordre : **C → D → A → B**.
+2. **« Supprimer les objectifs » (cascade Lot A)** = **abandon (soft)** par défaut (réutilise le lifecycle, garde la télémétrie), SAUF cas d'exemption ci-dessous.
+3. **Cooldown** : **le brancher** (Lot D — c'est un bug qu'il soit dormant) **ET abaisser 48h → 24h**.
+4. **Exemption à la suppression d'arc** : **arc créé il y a < 1h → exempt** (objectifs hard-deletés, zéro cooldown) ; **≥ 1h → abandon + cooldown 24h**. Signal : `arc.CreatedAt` (pas de calcul de progression nécessaire).
+5. **Retour UI cooldown** : **proactif** (badge « dispo dans Xh » + option désactivée dans le sélecteur de template, via `Template.cooldownEndsAt`) **+ réactif** (message clair sur le 429).
+6. **Label du nouvel onglet (Lot C)** : **« Entraînement »** (FR). Alternative gardée en réserve : « Académie » (résonance Halo *Academy*) si préférence in-universe.
+
+### Décisions restées hors-scope (dette, non traitée ici)
+- **i18n NavL1** : labels L2 FR-only hardcodés — on garde FR pour l'instant (i18n-isation de la nav = hors-scope).
+- **Multi-titres** : `TITLE_SLUG='halo_infinite'` hardcodé ([AscensionProfileTab.tsx:42](apps/web/src/features/ascension/AscensionProfileTab.tsx#L42)) — dette existante ; **ne pas la propager** dans les nouveaux composants (passer le slug en prop).
 
 ## Ordre recommandé
 
-`Lot C (split, léger, débloque la place)` → `Lot A (suppression, demande explicite)` → `Lot B (presets, le plus lourd)`.
-Chaque lot est **livrable indépendamment** (1 branche, N commits ; thought_log à chaque lot).
+`Lot C (split, léger, débloque la place)` → `Lot D (brancher cooldown + UI)` → `Lot A (suppression d'arc, s'appuie sur D pour l'exemption)` → `Lot B (presets, le plus lourd)`.
+Chaque lot = un ou plusieurs commits sur `fix/enrichment-convergence` ; **thought_log à chaque lot**.
 
 ## Checklist livraison (rappel delivery-checklist)
 - [ ] `go test ./... && go vet ./...` verts (nouveaux tests repo/service/handler)

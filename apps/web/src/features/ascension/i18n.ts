@@ -14,6 +14,7 @@ export interface AscensionText {
   pageSubtitle: string
   tabsAriaLabel: string
   tabProfile: string
+  tabCoaching: string
   tabRealisations: string
   tipsTickerAriaLabel: string
   prestigeLayerTitle: string
@@ -149,6 +150,7 @@ const FR: AscensionText = {
   pageSubtitle: 'Ton profil de jeu, tes objectifs et tes accomplissements.',
   tabsAriaLabel: 'Sections Ascension',
   tabProfile: 'Profil & objectifs',
+  tabCoaching: 'Entraînement',
   tabRealisations: 'Réalisations',
   tipsTickerAriaLabel: 'Astuces de jeu pour progresser',
   prestigeLayerTitle: 'Prestige — Objectifs et arcs',
@@ -314,6 +316,7 @@ const EN: AscensionText = {
   pageSubtitle: 'Your play profile, your objectives and your achievements.',
   tabsAriaLabel: 'Ascension sections',
   tabProfile: 'Profile & objectives',
+  tabCoaching: 'Training',
   tabRealisations: 'Achievements',
   tipsTickerAriaLabel: 'Gameplay tips to improve',
   prestigeLayerTitle: 'Prestige — Objectives and arcs',

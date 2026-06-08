@@ -1,27 +1,12 @@
-// cross-feature-allow: tab orchestrateur Ascension — agrège les composants
-// prestige (ChallengeCard, ArcSummary…) et coach (proposals).
 /**
- * AscensionProfileTab — tab "Profil & objectifs" (refonte 2026-05-26).
+ * AscensionProfileTab — tab "Profil & objectifs" (couche Prestige autonome).
  *
- * Composition (verticale, du plus actionnable au plus analytique) :
- *   1. CoachProposalsCard — suggestions proactives
- *   2. CampaignTracker     — campagne en cours (si active)
- *   3. PlayerProfileV3     — identité, style, performance, leviers + CTAs
- *   4. Mes objectifs actifs — pilot toggle, libres, pilotés, créer
- *   5. Mes arcs en cours
- *   6. Patterns contextuels + comportementaux + leviers calibrés
- *
- * Tout le contenu V1 (Profil) et V2 (Patterns + Coach) est préservé. La
- * navigation Coach → création d'objectif reste sur le même écran (modale
- * StartCampaign).
+ * Depuis le split en 2 onglets (2026-06-08), ce tab ne porte QUE la couche
+ * Prestige : objectifs + arcs. La couche coaching (proposals, campagne, profil,
+ * patterns) vit dans AscensionCoachingTab (onglet « Entraînement »).
  */
 import { useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { useSettings } from '@/features/settings/queries'
-import { CoachProposalsCard } from '@/features/coach/CoachProposalsCard'
-import { getCoachStrings } from '@/features/coach/i18n'
-import { CampaignTracker } from './campaign/CampaignTracker'
-import { StartCampaignModal } from './campaign/StartCampaignModal'
 import { CreateChallengeForm } from '@/features/prestige/components/CreateChallengeForm'
 import { ChallengeCard } from '@/features/prestige/components/ChallengeCard'
 import { ArcSummary } from '@/features/prestige/components/ArcSummary'
@@ -29,15 +14,8 @@ import { CreateArcForm } from '@/features/prestige/components/CreateArcForm'
 import { Tooltip } from '@/components/ui/tooltip'
 import { useChallenges, useArcs, useAbandonChallenge } from '@/features/prestige/hooks'
 import type { Challenge, Arc } from '@/lib/prestige'
-import type { AxisKind } from '@/lib/playerProfile'
-import { PlayerProfileV3 } from './profile/PlayerProfileV3'
-import { useActiveCampaign } from './profile/queries'
-import { usePatterns } from './queries'
 import { getAscensionText } from './i18n'
-import { PatternContextGrid } from './PatternContextGrid'
-import { SquadVsSoloCard } from './SquadVsSoloCard'
-import { BehaviorAlertList } from './BehaviorAlertList'
-import { LeverList } from './LeverList'
+import { LayerSection, SectionShell } from './AscensionLayers'
 
 const TITLE_SLUG = 'halo_infinite'
 
@@ -46,18 +24,6 @@ export function AscensionProfileTab() {
   const playerSlug = currentPlayer?.player_slug ?? ''
   const locale = useAppShellStore((s) => s.locale)
   const t = getAscensionText(locale)
-  const coachT = getCoachStrings(locale)
-  const { data: settings } = useSettings()
-  const proactiveEnabled = settings?.coach_proactive_mode ?? false
-
-  const { data: activeCampaign } = useActiveCampaign(playerSlug)
-  const hasActiveCampaign = !!activeCampaign && activeCampaign.status === 'active'
-
-  const [campaignModal, setCampaignModal] = useState<{ open: boolean; axis: string; axisKind: AxisKind }>(
-    { open: false, axis: '', axisKind: 'lusr_component' },
-  )
-  const openStartCampaign = (axis: string, axisKind: AxisKind) =>
-    setCampaignModal({ open: true, axis, axisKind })
 
   if (!playerSlug) {
     return (
@@ -74,46 +40,7 @@ export function AscensionProfileTab() {
         <MyObjectivesSection playerSlug={playerSlug} locale={locale} />
         <MyArcsSection playerSlug={playerSlug} locale={locale} />
       </LayerSection>
-
-      {/* ─── Couche Ascension (coaching s'appuyant sur Prestige) ──────────── */}
-      <LayerSection title={t.ascensionLayerTitle} description={t.ascensionLayerDescription}>
-        <CoachProposalsCard playerSlug={playerSlug} proactiveEnabled={proactiveEnabled} t={coachT} />
-        {hasActiveCampaign && <CampaignTracker playerSlug={playerSlug} campaign={activeCampaign} />}
-        <PlayerProfileV3
-          playerSlug={playerSlug}
-          onStartCampaign={hasActiveCampaign ? undefined : openStartCampaign}
-        />
-        <PatternsSection playerSlug={playerSlug} t={t} />
-      </LayerSection>
-
-      <StartCampaignModal
-        open={campaignModal.open}
-        playerSlug={playerSlug}
-        axis={campaignModal.axis}
-        axisKind={campaignModal.axisKind}
-        onOpenChange={(open) => setCampaignModal((s) => ({ ...s, open }))}
-      />
     </div>
-  )
-}
-
-// ─── Layer wrapper (Prestige / Ascension) ───────────────────────────────────
-
-interface LayerSectionProps {
-  title: string
-  description: string
-  children: React.ReactNode
-}
-
-function LayerSection({ title, description, children }: LayerSectionProps) {
-  return (
-    <section className="space-y-4">
-      <header className="space-y-1 border-l-2 border-primary/40 pl-3">
-        <h2 className="text-lg font-bold tracking-tight">{title}</h2>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </header>
-      <div className="space-y-6">{children}</div>
-    </section>
   )
 }
 
@@ -148,8 +75,8 @@ function MyObjectivesSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
   const handleAbandon = (id: string) => {
     const msg =
       locale === 'en'
-        ? 'Abandon this objective? 48h cooldown on the metric.'
-        : 'Abandonner cet objectif ? Cooldown 48h sur la métrique.'
+        ? 'Abandon this objective? 24h cooldown on the metric.'
+        : 'Abandonner cet objectif ? Cooldown 24h sur la métrique.'
     if (confirm(msg)) abandon.mutate(id)
   }
 
@@ -361,55 +288,3 @@ function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
   )
 }
 
-// ─── Patterns ────────────────────────────────────────────────────────────────
-
-interface PatternsSectionProps {
-  playerSlug: string
-  t: ReturnType<typeof getAscensionText>
-}
-
-function PatternsSection({ playerSlug, t }: PatternsSectionProps) {
-  const { data: patterns, isLoading } = usePatterns(playerSlug)
-  if (isLoading) return null
-  const contextPatterns = patterns?.context_patterns ?? []
-  const behaviorPatterns = patterns?.behavior_patterns ?? []
-  const levers = patterns?.levers ?? []
-
-  if (contextPatterns.length === 0 && behaviorPatterns.length === 0 && levers.length === 0) {
-    return null
-  }
-
-  return (
-    <div className="space-y-6">
-      {contextPatterns.length > 0 && (
-        <SectionShell title={t.patternsSectionTitle}>
-          <PatternContextGrid patterns={contextPatterns} t={t} />
-          <SquadVsSoloCard patterns={contextPatterns} t={t} />
-        </SectionShell>
-      )}
-      {behaviorPatterns.length > 0 && (
-        <SectionShell title={t.behaviorsSectionTitle}>
-          <BehaviorAlertList patterns={behaviorPatterns} t={t} />
-        </SectionShell>
-      )}
-      {levers.length > 0 && (
-        <SectionShell title={t.leversSectionTitle}>
-          <LeverList levers={levers} t={t} />
-        </SectionShell>
-      )}
-    </div>
-  )
-}
-
-// ─── Section helper ──────────────────────────────────────────────────────────
-
-function SectionShell({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-lg border border-border bg-card p-4">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        {title}
-      </h2>
-      <div className="space-y-3">{children}</div>
-    </section>
-  )
-}
