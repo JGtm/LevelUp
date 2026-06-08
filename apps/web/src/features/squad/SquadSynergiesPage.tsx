@@ -148,14 +148,20 @@ export function SquadSynergiesPage() {
         />
       )}
       {pageData?.impact_matrix && (
-        <SquadImpactScoreboard matrix={pageData.impact_matrix} />
+        <section className="space-y-3">
+          <h3 className="text-base font-semibold text-foreground">{t.impact.title}</h3>
+          <SquadImpactScoreboard matrix={pageData.impact_matrix} />
+        </section>
       )}
       {pageData?.medal_digest && pageData.medal_digest.length > 0 && (
-        <MedalDigest
-          entries={pageData.medal_digest}
-          mainPlayer={pageData.main_player ?? playerSlug}
-          t={t.medals}
-        />
+        <section className="space-y-3">
+          <h3 className="text-base font-semibold text-foreground">{t.medals.title}</h3>
+          <MedalDigest
+            entries={pageData.medal_digest}
+            mainPlayer={pageData.main_player ?? playerSlug}
+            t={t.medals}
+          />
+        </section>
       )}
     </div>
   )

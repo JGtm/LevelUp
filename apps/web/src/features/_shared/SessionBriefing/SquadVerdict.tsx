@@ -189,10 +189,13 @@ export function SquadVerdict({
       </div>
       )}
 
-      {/* RIGHT : Results bar + mini-cards Matchs/Durée alignées à droite. */}
-      <div className="ml-auto flex items-stretch gap-3">
+      {/* RIGHT : Results bar + mini-cards Matchs/Durée. La section remplit l'espace
+          restant (flex-1) et centre son contenu verticalement (items-center) →
+          le bloc Résultats est centré en hauteur et sa barre d'outcome s'étale
+          sur la place libre à gauche des mini-cards. */}
+      <div className="flex flex-1 items-center gap-3">
         {hasResults && (
-          <div className="flex min-w-[260px] flex-col gap-1.5">
+          <div className="flex min-w-[200px] flex-1 flex-col justify-center gap-1.5">
             <span className="text-3xs font-semibold uppercase tracking-wider text-muted-foreground">
               {texts.rail.resultsLabel}
             </span>

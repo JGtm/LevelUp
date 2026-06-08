@@ -17,6 +17,7 @@ import {
   getTooltipBase,
 } from '@/components/charts/_utils'
 import type { SquadIntensityMatchRow } from '@/lib/api/types'
+import { truncateMap } from '@/lib/charts/matchLabels'
 
 const PHASE_LABELS = [
   '0-10%', '10-20%', '20-30%', '30-40%', '40-50%',
@@ -43,7 +44,11 @@ export function buildSquadIntensityHeatmapOption(
 ): EChartsCoreOption {
   if (rows.length === 0) return { backgroundColor: CHART_BG }
 
-  const yLabels = rows.map((r) => r.label)
+  // Y axis : « #N Carte ». N = numéro du match dans l'ordre passé par le caller
+  // (oldest-first → #1 en haut, le plus récent en bas grâce à yAxis.inverse).
+  // La carte est extraite du label "Carte — date" ; label complet gardé pour le tooltip.
+  const fullLabels = rows.map((r) => r.label)
+  const yLabels = rows.map((r, i) => `#${i + 1} ${truncateMap(r.label.split(' — ')[0] || r.label)}`)
   const data: Array<[number, number, number]> = []
   for (let yi = 0; yi < rows.length; yi += 1) {
     const phases = rows[yi].phases ?? []
@@ -67,7 +72,7 @@ export function buildSquadIntensityHeatmapOption(
         const d = point?.data
         if (!d) return ''
         const [xi, yi, v] = d
-        return `${yLabels[yi]}<br/>${PHASE_LABELS[xi]}<br/>${opts.zLabel}: <b>${(v * 100).toFixed(0)}%</b>`
+        return `${fullLabels[yi]}<br/>${PHASE_LABELS[xi]}<br/>${opts.zLabel}: <b>${(v * 100).toFixed(0)}%</b>`
       },
     },
     xAxis: {

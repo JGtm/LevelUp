@@ -11,7 +11,6 @@
  * Grille adaptative : N joueurs → N colonnes égales (repeat(N, 1fr)).
  */
 import { useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
 import { tokenCssVar } from '@/lib/accessibility'
 import { dropShadowForDifficulty, boxShadowForDifficulty } from '@/lib/medalDifficulty'
 import type { MedalDigestEntry, MedalDigestItem } from '@/lib/api/types'
@@ -195,12 +194,16 @@ function PlayerMedalCard({
   entry,
   color,
   t,
+  expanded,
+  onToggle,
 }: {
   entry: MedalDigestEntry
   color: string
   t: SquadText['medals']
+  /** État déplié PARTAGÉ : un clic déplie/replie toutes les cartes joueur. */
+  expanded: boolean
+  onToggle: () => void
 }) {
-  const [expanded, setExpanded] = useState(false)
   const domCat = dominantCategoryFor(entry.all_medals)
   const domCatLabel = domCat
     ? (t.categoryLabels[domCat as keyof typeof t.categoryLabels] ?? domCat)
@@ -263,7 +266,7 @@ function PlayerMedalCard({
           <button
             type="button"
             className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline text-left"
-            onClick={() => setExpanded((e) => !e)}
+            onClick={onToggle}
           >
             {expanded ? t.collapseLabel : `${t.expandLabel} (${entry.all_medals.length})`}
           </button>
@@ -277,6 +280,10 @@ function PlayerMedalCard({
 }
 
 export function MedalDigest({ entries, mainPlayer, t }: MedalDigestProps) {
+  // État « voir toutes les médailles » PARTAGÉ entre toutes les cartes joueur :
+  // un clic sur n'importe quel bouton déplie/replie tout le monde (demande user).
+  const [expanded, setExpanded] = useState(false)
+
   if (!entries || entries.length === 0) {
     return null
   }
@@ -286,23 +293,21 @@ export function MedalDigest({ entries, mainPlayer, t }: MedalDigestProps) {
   // Toujours N colonnes égales — squads 2-4 joueurs, largeur fixe.
   const gridCols = `repeat(${entries.length}, 1fr)`
 
+  // Bloc « sorti » : grille seule, sans Card ni titre interne. Le titre
+  // « Médailles — Résumé de l'escouade » est porté par un titre de section
+  // dans SquadSynergiesPage.
   return (
-    <Card>
-      <CardContent className="pt-4 space-y-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {t.title}
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: '1rem' }}>
-          {entries.map((entry) => (
-            <PlayerMedalCard
-              key={entry.player}
-              entry={entry}
-              color={playerColorVar(mainPlayer, entry.player, allPlayers)}
-              t={t}
-            />
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+    <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: '1rem' }}>
+      {entries.map((entry) => (
+        <PlayerMedalCard
+          key={entry.player}
+          entry={entry}
+          color={playerColorVar(mainPlayer, entry.player, allPlayers)}
+          t={t}
+          expanded={expanded}
+          onToggle={() => setExpanded((e) => !e)}
+        />
+      ))}
+    </div>
   )
 }

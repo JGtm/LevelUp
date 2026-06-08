@@ -31,13 +31,13 @@ describe('buildSquadIntensityHeatmapOption', () => {
     expect(xAxis.data[9]).toBe('90-100%')
   })
 
-  it('yAxis = labels matchs avec inverse', () => {
+  it('yAxis = labels « #N Carte » (carte extraite du label) avec inverse', () => {
     const opt = buildSquadIntensityHeatmapOption(
       [row('m1', 'Aquarius — 30/04', new Array(10).fill(0)), row('m2', 'Bazaar — 01/05', new Array(10).fill(0))],
       { zLabel: 'Cadence' },
     )
     const yAxis = opt.yAxis as { data: string[]; inverse: boolean }
-    expect(yAxis.data).toEqual(['Aquarius — 30/04', 'Bazaar — 01/05'])
+    expect(yAxis.data).toEqual(['#1 Aquarius', '#2 Bazaar'])
     expect(yAxis.inverse).toBe(true)
   })
 

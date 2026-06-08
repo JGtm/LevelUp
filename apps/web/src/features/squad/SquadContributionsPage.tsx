@@ -10,7 +10,6 @@
  */
 import { useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Card, CardContent } from '@/components/ui/card'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSquadContext } from './SquadContext'
@@ -72,27 +71,23 @@ export function SquadContributionsPage() {
       {(perMinuteRows.length > 0 || synergyRadar.length > 0) && (
         <div className="grid gap-4 lg:grid-cols-2">
           {perMinuteRows.length > 0 && (
-            <Card>
-              <CardContent className="pt-4 space-y-3">
-                <h3 className="text-base font-semibold">{t.perMinute.title}</h3>
-                <SquadPerMinuteChart
-                  rows={perMinuteRows}
-                  colorByPlayer={playerColors}
-                  metricLabels={{
-                    frags: t.perMinute.frags,
-                    deaths: t.perMinute.deaths,
-                    assists: t.perMinute.assists,
-                  }}
-                  perMinuteSuffix={t.perMinute.suffix}
-                />
-              </CardContent>
-            </Card>
+            <SquadPerMinuteChart
+              title={t.perMinute.title}
+              rows={perMinuteRows}
+              colorByPlayer={playerColors}
+              metricLabels={{
+                frags: t.perMinute.frags,
+                deaths: t.perMinute.deaths,
+                assists: t.perMinute.assists,
+              }}
+              perMinuteSuffix={t.perMinute.suffix}
+            />
           )}
 
           {synergyRadar.length > 0 && (
-            <Card>
-              <CardContent className="pt-4 space-y-3">
-                <h3 className="flex items-center gap-1.5 text-base font-semibold">
+            <SquadSynergyRadarChart
+              title={
+                <span className="flex items-center gap-1.5">
                   {t.synergyRadar.title}
                   <InfoTooltip
                     content={
@@ -109,86 +104,66 @@ export function SquadContributionsPage() {
                       </div>
                     }
                   />
-                </h3>
-                <SquadSynergyRadarChart
-                  rows={synergyRadar}
-                  colorByPlayer={playerColors}
-                  axisLabels={synergyAxisLabels}
-                />
-              </CardContent>
-            </Card>
+                </span>
+              }
+              rows={synergyRadar}
+              colorByPlayer={playerColors}
+              axisLabels={synergyAxisLabels}
+            />
           )}
         </div>
       )}
 
       {intensityProfileLocalized && intensityProfileLocalized.options.length > 0 && (
-        <Card>
-          <CardContent className="pt-4 space-y-3">
-            <h3 className="text-base font-semibold">{t.intensity.title}</h3>
-            <SquadIntensityHeatmapChart
-              profile={intensityProfileLocalized}
-              colorByPlayer={playerColors}
-              zLabel={t.intensity.zLabel}
-            />
-          </CardContent>
-        </Card>
+        <SquadIntensityHeatmapChart
+          title={t.intensity.title}
+          profile={intensityProfileLocalized}
+          colorByPlayer={playerColors}
+          zLabel={t.intensity.zLabel}
+        />
       )}
 
       {performanceSeries && Object.keys(performanceSeries).length > 0 && (
-        <Card>
-          <CardContent className="pt-4 space-y-3">
-            <h3 className="text-base font-semibold">{t.efficiencySeries.title}</h3>
-            <SquadEfficiencyChart
-              rowsByPlayer={performanceSeries}
-              playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries[p])}
-              colorByPlayer={playerColors}
-              labels={t.efficiencySeries}
-            />
-          </CardContent>
-        </Card>
+        <SquadEfficiencyChart
+          title={t.efficiencySeries.title}
+          rowsByPlayer={performanceSeries}
+          playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries[p])}
+          colorByPlayer={playerColors}
+          labels={t.efficiencySeries}
+        />
       )}
 
       {performanceSeries && Object.keys(performanceSeries).length > 0 && (
-        <Card>
-          <CardContent className="pt-4 space-y-3">
-            <h3 className="text-base font-semibold">{t.performanceCharts.title}</h3>
-            <SquadPerformanceCharts
-              rowsByPlayer={performanceSeries}
-              playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries[p])}
-              colorByPlayer={playerColors}
-              labels={t.performanceCharts}
-            />
-          </CardContent>
-        </Card>
+        <section className="space-y-3">
+          <h3 className="text-base font-semibold text-foreground">{t.performanceCharts.title}</h3>
+          <SquadPerformanceCharts
+            rowsByPlayer={performanceSeries}
+            playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries[p])}
+            colorByPlayer={playerColors}
+            labels={t.performanceCharts}
+          />
+        </section>
       )}
 
       {weaponKills && weaponKills.bars.length > 0 && (
-        <Card>
-          <CardContent className="pt-4 space-y-3">
-            <h3 className="text-base font-semibold">{t.weaponKills.title}</h3>
-            <SquadWeaponKillsChart
-              data={weaponKills}
-              colorByPlayer={playerColors}
-            />
-          </CardContent>
-        </Card>
+        <SquadWeaponKillsChart
+          title={t.weaponKills.title}
+          data={weaponKills}
+          colorByPlayer={playerColors}
+        />
       )}
 
       <SquadEngagementSection playerSlug={playerSlug} teammates={engagementTeammates} colorByPlayer={playerColors} />
 
       {firstEvents && firstEvents.rows.length > 0 && (
-        <Card>
-          <CardContent className="pt-4 space-y-3">
-            <h3 className="text-base font-semibold">{t.firstEvents.title}</h3>
-            <SquadFirstEventsChart
-              data={firstEvents}
-              colorByPlayer={playerColors}
-              fragLabel={t.firstEvents.fragLabel}
-              deathLabel={t.firstEvents.deathLabel}
-              matchesSuffix={t.firstEvents.matchesSuffix}
-            />
-          </CardContent>
-        </Card>
+        <SquadFirstEventsChart
+          title={t.firstEvents.title}
+          data={firstEvents}
+          colorByPlayer={playerColors}
+          fragLabel={t.firstEvents.fragLabel}
+          deathLabel={t.firstEvents.deathLabel}
+          matchesSuffix={t.firstEvents.matchesSuffix}
+        />
       )}
 
     </div>
