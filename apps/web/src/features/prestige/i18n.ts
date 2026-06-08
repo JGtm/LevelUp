@@ -63,6 +63,14 @@ export interface PrestigeText {
   cooldownUnitDay: string
   /** Message affiché si la création est refusée (429 cooldown_active). */
   cooldownErrorMessage: string
+  // ── Suppression d'arc (MyArcsSection) ──
+  arcDeleteButton: string
+  /** Titre du dialogue. Interpolé : `{title}`. */
+  arcDeleteTitle: string
+  /** Option cascade. Interpolé : `{n}` (nombre d'objectifs). */
+  arcDeleteWithObjectives: string
+  arcDeleteKeepObjectives: string
+  arcDeleteCancel: string
   // ── Formulaire de création d'arc (CreateArcForm) ──
   arcFormNew: string
   arcFormTitle: string
@@ -124,6 +132,11 @@ const FR: PrestigeText = {
   cooldownUnitHour: 'h',
   cooldownUnitDay: 'j',
   cooldownErrorMessage: 'Métrique en repos (cooldown) — réessaie plus tard.',
+  arcDeleteButton: 'Supprimer',
+  arcDeleteTitle: 'Supprimer l\'arc « {title} » ?',
+  arcDeleteWithObjectives: 'Supprimer aussi les {n} objectifs',
+  arcDeleteKeepObjectives: 'Garder les objectifs (les détacher)',
+  arcDeleteCancel: 'Annuler',
   arcFormNew: 'Nouvel arc',
   arcFormTitle: 'Titre',
   arcFormTitlePlaceholder: 'Ex. Ascension du Spartan',
@@ -183,6 +196,11 @@ const EN: PrestigeText = {
   cooldownUnitHour: 'h',
   cooldownUnitDay: 'd',
   cooldownErrorMessage: 'Metric on cooldown — try again later.',
+  arcDeleteButton: 'Delete',
+  arcDeleteTitle: 'Delete the arc “{title}”?',
+  arcDeleteWithObjectives: 'Also delete the {n} objectives',
+  arcDeleteKeepObjectives: 'Keep the objectives (detach them)',
+  arcDeleteCancel: 'Cancel',
   arcFormNew: 'New arc',
   arcFormTitle: 'Title',
   arcFormTitlePlaceholder: 'e.g. Spartan Ascension',

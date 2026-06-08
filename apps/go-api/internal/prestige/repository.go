@@ -25,6 +25,12 @@ type ChallengeRepo interface {
 	CountActiveByCadence(ctx context.Context, userID, titleSlug string, cadence Cadence) (int, error)
 	CountActiveTotal(ctx context.Context, userID, titleSlug string) (int, error)
 	CountCreatedSince(ctx context.Context, userID, titleSlug string, mode ChallengeMode, since time.Time) (int, error)
+	// DetachFromArc dissocie tous les défis d'un arc (arc_id = NULL) sans les
+	// supprimer — utilisé quand on supprime l'arc en gardant ses objectifs.
+	DetachFromArc(ctx context.Context, arcID string) error
+	// DeleteByArc supprime physiquement tous les défis d'un arc — utilisé pour
+	// l'exemption « arc à peine créé » (zéro trace, donc zéro cooldown).
+	DeleteByArc(ctx context.Context, arcID string) error
 }
 
 // ChallengeFilter filtre la liste des défis.
@@ -46,6 +52,10 @@ type ArcRepo interface {
 	Get(ctx context.Context, id string) (Arc, error)
 	ListByUser(ctx context.Context, userID, titleSlug string) ([]Arc, error)
 	MarkCompleted(ctx context.Context, id string, at time.Time) error
+	// Delete supprime un arc (conteneur léger sans sémantique PP/cooldown :
+	// le hard delete est justifié). Les objectifs sont traités en amont par le
+	// service (détachés ou supprimés/abandonnés selon l'option).
+	Delete(ctx context.Context, id string) error
 }
 
 // ---------- MomentCardRepo (stats.duckdb par joueur) ----------

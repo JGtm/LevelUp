@@ -97,6 +97,23 @@ func (r *stubChallengeRepo) CountActiveTotal(_ context.Context, _, _ string) (in
 func (r *stubChallengeRepo) CountCreatedSince(_ context.Context, _, _ string, _ ChallengeMode, _ time.Time) (int, error) {
 	return 0, nil
 }
+func (r *stubChallengeRepo) DetachFromArc(_ context.Context, arcID string) error {
+	for id, c := range r.stored {
+		if c.ArcID == arcID {
+			c.ArcID = ""
+			r.stored[id] = c
+		}
+	}
+	return nil
+}
+func (r *stubChallengeRepo) DeleteByArc(_ context.Context, arcID string) error {
+	for id, c := range r.stored {
+		if c.ArcID == arcID {
+			delete(r.stored, id)
+		}
+	}
+	return nil
+}
 
 type stubArcRepo struct {
 	stored map[string]Arc
@@ -121,6 +138,10 @@ func (r *stubArcRepo) ListByUser(_ context.Context, _, _ string) ([]Arc, error) 
 	return r.list, nil
 }
 func (r *stubArcRepo) MarkCompleted(_ context.Context, _ string, _ time.Time) error { return nil }
+func (r *stubArcRepo) Delete(_ context.Context, id string) error {
+	delete(r.stored, id)
+	return nil
+}
 
 type stubSquadChallengeRepo struct {
 	stored      map[string]SquadChallenge
@@ -261,6 +282,85 @@ func TestService_AbandonChallenge_NotFound(t *testing.T) {
 	err := svc.AbandonChallenge(context.Background(), "missing")
 	if !errors.Is(err, ErrChallengeNotFound) {
 		t.Errorf("expected ErrChallengeNotFound, got %v", err)
+	}
+}
+
+// ─── DeleteArc (Lot A) ───
+
+func TestService_DeleteArc_Detach(t *testing.T) {
+	svc, chRepo, arcRepo, _, _, _ := buildCoverageService()
+	arcRepo.stored["arc1"] = Arc{ID: "arc1", UserID: "u1", TitleSlug: "halo_infinite",
+		CreatedAt: time.Date(2026, 4, 25, 10, 0, 0, 0, time.UTC)}
+	chRepo.stored["ch1"] = Challenge{ID: "ch1", UserID: "u1", ArcID: "arc1", Status: StatusActive, Mode: ModeLibre}
+
+	if err := svc.DeleteArc(context.Background(), "u1", "arc1", DeleteArcOptions{CascadeObjectives: false}); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if _, ok := arcRepo.stored["arc1"]; ok {
+		t.Error("arc should be deleted")
+	}
+	if got := chRepo.stored["ch1"].ArcID; got != "" {
+		t.Errorf("objective should be detached (arc_id vide), got %q", got)
+	}
+	if chRepo.stored["ch1"].Status != StatusActive {
+		t.Error("detached objective should stay active")
+	}
+}
+
+// Arc créé < 1h → exemption → objectifs supprimés physiquement (zéro cooldown).
+func TestService_DeleteArc_CascadeExempt_HardDeletes(t *testing.T) {
+	svc, chRepo, arcRepo, _, _, _ := buildCoverageService()
+	arcRepo.stored["arc1"] = Arc{ID: "arc1", UserID: "u1",
+		CreatedAt: time.Date(2026, 4, 25, 11, 30, 0, 0, time.UTC)} // now - 30min
+	chRepo.stored["ch1"] = Challenge{ID: "ch1", UserID: "u1", ArcID: "arc1", Status: StatusActive, Mode: ModeLibre}
+
+	if err := svc.DeleteArc(context.Background(), "u1", "arc1", DeleteArcOptions{CascadeObjectives: true}); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if _, ok := chRepo.stored["ch1"]; ok {
+		t.Error("objective should be hard-deleted under exemption")
+	}
+	if _, ok := arcRepo.stored["arc1"]; ok {
+		t.Error("arc should be deleted")
+	}
+}
+
+// Arc créé ≥ 1h → pas d'exemption → objectifs actifs abandonnés (cooldown).
+func TestService_DeleteArc_CascadeAbandons(t *testing.T) {
+	svc, chRepo, arcRepo, _, _, _ := buildCoverageService()
+	arcRepo.stored["arc1"] = Arc{ID: "arc1", UserID: "u1",
+		CreatedAt: time.Date(2026, 4, 25, 10, 0, 0, 0, time.UTC)} // now - 2h
+	chRepo.stored["ch1"] = Challenge{ID: "ch1", UserID: "u1", ArcID: "arc1", Status: StatusActive, Mode: ModeLibre}
+
+	if err := svc.DeleteArc(context.Background(), "u1", "arc1", DeleteArcOptions{CascadeObjectives: true}); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if got := chRepo.stored["ch1"].Status; got != StatusAbandoned {
+		t.Errorf("objective should be abandoned, got %s", got)
+	}
+	if _, ok := arcRepo.stored["arc1"]; ok {
+		t.Error("arc should be deleted")
+	}
+}
+
+func TestService_DeleteArc_Forbidden(t *testing.T) {
+	svc, _, arcRepo, _, _, _ := buildCoverageService()
+	arcRepo.stored["arc1"] = Arc{ID: "arc1", UserID: "owner",
+		CreatedAt: time.Date(2026, 4, 25, 10, 0, 0, 0, time.UTC)}
+	err := svc.DeleteArc(context.Background(), "intruder", "arc1", DeleteArcOptions{CascadeObjectives: true})
+	if !errors.Is(err, ErrForbidden) {
+		t.Errorf("expected ErrForbidden, got %v", err)
+	}
+	if _, ok := arcRepo.stored["arc1"]; !ok {
+		t.Error("arc must NOT be deleted on forbidden")
+	}
+}
+
+func TestService_DeleteArc_NotFound(t *testing.T) {
+	svc, _, _, _, _, _ := buildCoverageService()
+	err := svc.DeleteArc(context.Background(), "u1", "missing", DeleteArcOptions{})
+	if !errors.Is(err, ErrArcNotFound) {
+		t.Errorf("expected ErrArcNotFound, got %v", err)
 	}
 }
 

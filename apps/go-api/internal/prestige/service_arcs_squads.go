@@ -54,6 +54,78 @@ func (s *service) ListArcs(ctx context.Context, userID, titleSlug string) ([]Arc
 	return arcs, nil
 }
 
+// arcCooldownExemptionWindow : un arc supprimé moins d'une heure après sa
+// création est considéré « à peine entamé » → ses objectifs sont supprimés
+// physiquement (zéro cooldown). Au-delà, ils sont abandonnés (cooldown appliqué).
+const arcCooldownExemptionWindow = time.Hour
+
+// DeleteArcOptions paramètre la suppression d'un arc.
+type DeleteArcOptions struct {
+	// CascadeObjectives : true = supprime aussi les objectifs (abandon, ou
+	// hard delete si l'arc est dans la fenêtre d'exemption) ; false = détache
+	// les objectifs (arc_id = NULL), ils redeviennent libres.
+	CascadeObjectives bool
+}
+
+// DeleteArc supprime un arc appartenant à userID.
+//
+//   - CascadeObjectives=false : les objectifs sont détachés (gardés, libres).
+//   - CascadeObjectives=true & arc créé < 1h : objectifs supprimés (zéro cooldown).
+//   - CascadeObjectives=true & arc créé ≥ 1h : objectifs actifs abandonnés
+//     (cooldown 24h appliqué par métrique), puis l'arc est supprimé.
+func (s *service) DeleteArc(ctx context.Context, userID, id string, opts DeleteArcOptions) error {
+	arc, err := s.deps.Arcs.Get(ctx, id)
+	if err != nil {
+		if errors.Is(err, ErrArcNotFound) {
+			return ErrArcNotFound
+		}
+		return fmt.Errorf("get arc: %w", err)
+	}
+	if arc.UserID != userID {
+		return ErrForbidden
+	}
+
+	if opts.CascadeObjectives {
+		if err := s.cascadeDeleteObjectives(ctx, arc); err != nil {
+			return err
+		}
+	} else if err := s.deps.Challenges.DetachFromArc(ctx, id); err != nil {
+		return fmt.Errorf("detach objectives: %w", err)
+	}
+
+	if err := s.deps.Arcs.Delete(ctx, id); err != nil {
+		return fmt.Errorf("delete arc: %w", err)
+	}
+	slog.InfoContext(ctx, "prestige: arc deleted",
+		"arc_id", id, "user_id", userID, "cascade", opts.CascadeObjectives)
+	return nil
+}
+
+// cascadeDeleteObjectives traite les objectifs d'un arc supprimé en cascade :
+// hard delete si l'arc est dans la fenêtre d'exemption (zéro cooldown), sinon
+// abandon des objectifs encore actifs (cooldown appliqué, télémétrie conservée).
+func (s *service) cascadeDeleteObjectives(ctx context.Context, arc Arc) error {
+	if s.deps.Now().Sub(arc.CreatedAt) < arcCooldownExemptionWindow {
+		if err := s.deps.Challenges.DeleteByArc(ctx, arc.ID); err != nil {
+			return fmt.Errorf("delete objectives: %w", err)
+		}
+		return nil
+	}
+	objs, err := s.deps.Challenges.List(ctx, ChallengeFilter{ArcID: &arc.ID})
+	if err != nil {
+		return fmt.Errorf("list objectives: %w", err)
+	}
+	for _, c := range objs {
+		if !CanAbandon(c) {
+			continue
+		}
+		if err := s.AbandonChallenge(ctx, c.ID); err != nil {
+			return fmt.Errorf("abandon objective %s: %w", c.ID, err)
+		}
+	}
+	return nil
+}
+
 // GetArc retourne un arc par ID, enrichi avec sa récompense PP.
 func (s *service) GetArc(ctx context.Context, id string) (Arc, error) {
 	a, err := s.deps.Arcs.Get(ctx, id)

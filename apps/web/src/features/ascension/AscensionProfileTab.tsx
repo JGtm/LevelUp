@@ -12,7 +12,8 @@ import { ChallengeCard } from '@/features/prestige/components/ChallengeCard'
 import { ArcSummary } from '@/features/prestige/components/ArcSummary'
 import { CreateArcForm } from '@/features/prestige/components/CreateArcForm'
 import { Tooltip } from '@/components/ui/tooltip'
-import { useChallenges, useArcs, useAbandonChallenge } from '@/features/prestige/hooks'
+import { useChallenges, useArcs, useAbandonChallenge, useDeleteArc } from '@/features/prestige/hooks'
+import { getPrestigeText } from '@/features/prestige/i18n'
 import type { Challenge, Arc } from '@/lib/prestige'
 import { getAscensionText } from './i18n'
 import { LayerSection, SectionShell } from './AscensionLayers'
@@ -220,9 +221,11 @@ function PilotModeToggle({ locale }: { locale: 'fr' | 'en' }) {
 function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
   const { data: arcsData } = useArcs(playerSlug, TITLE_SLUG)
   const { data: challengesData } = useChallenges(playerSlug, TITLE_SLUG)
+  const deleteArc = useDeleteArc(playerSlug, TITLE_SLUG)
   const arcs: Arc[] = arcsData?.arcs ?? []
   const challenges: Challenge[] = challengesData?.challenges ?? []
   const [showArcForm, setShowArcForm] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const stepsByArc = new Map<string, { completed: number; total: number }>()
   for (const c of challenges) {
@@ -276,8 +279,31 @@ function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
             {arcs.map((a) => {
               const steps = stepsByArc.get(a.id) ?? { completed: 0, total: 0 }
               return (
-                <li key={a.id}>
+                <li key={a.id} className="space-y-1">
                   <ArcSummary arc={a} completedSteps={steps.completed} totalSteps={steps.total} />
+                  {confirmDeleteId === a.id ? (
+                    <ArcDeleteConfirm
+                      locale={locale}
+                      title={a.title}
+                      objectivesCount={steps.total}
+                      pending={deleteArc.isPending}
+                      onConfirm={(cascade) => {
+                        deleteArc.mutate({ id: a.id, cascade })
+                        setConfirmDeleteId(null)
+                      }}
+                      onCancel={() => setConfirmDeleteId(null)}
+                    />
+                  ) : (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId(a.id)}
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                      >
+                        {getPrestigeText(locale).arcDeleteButton}
+                      </button>
+                    </div>
+                  )}
                 </li>
               )
             })}
@@ -285,6 +311,58 @@ function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
         </>
       )}
     </SectionShell>
+  )
+}
+
+// ─── Confirmation de suppression d'arc ──────────────────────────────────────
+
+interface ArcDeleteConfirmProps {
+  locale: 'fr' | 'en'
+  title: string
+  objectivesCount: number
+  pending: boolean
+  onConfirm: (cascade: boolean) => void
+  onCancel: () => void
+}
+
+function ArcDeleteConfirm({
+  locale,
+  title,
+  objectivesCount,
+  pending,
+  onConfirm,
+  onCancel,
+}: ArcDeleteConfirmProps) {
+  const t = getPrestigeText(locale)
+  const optionClass =
+    'rounded-md border border-border px-3 py-1 text-xs hover:bg-accent disabled:opacity-50'
+  return (
+    <div className="space-y-2 rounded-md border border-border bg-background p-3">
+      <p className="text-xs text-muted-foreground">{t.arcDeleteTitle.replace('{title}', title)}</p>
+      <div className="flex flex-wrap gap-2">
+        {objectivesCount > 0 ? (
+          <>
+            <button type="button" disabled={pending} onClick={() => onConfirm(true)} className={optionClass}>
+              {t.arcDeleteWithObjectives.replace('{n}', String(objectivesCount))}
+            </button>
+            <button type="button" disabled={pending} onClick={() => onConfirm(false)} className={optionClass}>
+              {t.arcDeleteKeepObjectives}
+            </button>
+          </>
+        ) : (
+          <button type="button" disabled={pending} onClick={() => onConfirm(true)} className={optionClass}>
+            {t.arcDeleteButton}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-md px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          {t.arcDeleteCancel}
+        </button>
+      </div>
+    </div>
   )
 }
 

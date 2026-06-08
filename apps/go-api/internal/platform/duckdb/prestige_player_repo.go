@@ -160,6 +160,20 @@ func (r *PrestigeChallengeRepo) CountCreatedSince(
 	return n, err
 }
 
+func (r *PrestigeChallengeRepo) DetachFromArc(ctx context.Context, arcID string) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.db.Exec(ctx, `UPDATE challenge SET arc_id = NULL WHERE arc_id = ?`, arcID)
+	return err
+}
+
+func (r *PrestigeChallengeRepo) DeleteByArc(ctx context.Context, arcID string) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.db.Exec(ctx, `DELETE FROM challenge WHERE arc_id = ?`, arcID)
+	return err
+}
+
 // ─────────── ArcRepo ───────────
 
 // PrestigeArcRepo implémente prestige.ArcRepo.
@@ -220,6 +234,13 @@ func (r *PrestigeArcRepo) MarkCompleted(ctx context.Context, id string, at time.
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	_, err := r.db.Exec(ctx, `UPDATE arc SET completed_at = ? WHERE id = ?`, at, id)
+	return err
+}
+
+func (r *PrestigeArcRepo) Delete(ctx context.Context, id string) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := r.db.Exec(ctx, `DELETE FROM arc WHERE id = ?`, id)
 	return err
 }
 

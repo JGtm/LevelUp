@@ -316,6 +316,19 @@ func (l *LazyPrestigeService) CreateArc(ctx context.Context, req prestige.Create
 	return svc.CreateArc(ctx, req)
 }
 
+func (l *LazyPrestigeService) DeleteArc(ctx context.Context, userID, id string, opts prestige.DeleteArcOptions) error {
+	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	w, err := acquirePlayerWriter(pdb)
+	if err != nil {
+		return err
+	}
+	defer w.Release()
+	return svc.DeleteArc(ctx, userID, id, opts)
+}
+
 func (l *LazyPrestigeService) ListArcs(ctx context.Context, userID, titleSlug string) ([]prestige.Arc, error) {
 	if l.demoMode {
 		return demoArcs(userID, titleSlug), nil

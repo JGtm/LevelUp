@@ -26,6 +26,7 @@ var (
 	ErrArcNotFound       = errors.New("prestige: arc not found")
 	ErrUserNotFound      = errors.New("prestige: user not found")
 	ErrInvalidInput      = errors.New("prestige: invalid input")
+	ErrForbidden         = errors.New("prestige: forbidden")
 )
 
 // ---------- Service ----------
@@ -50,6 +51,9 @@ type Service interface {
 	CreateArc(ctx context.Context, req CreateArcRequest) (Arc, error)
 	ListArcs(ctx context.Context, userID, titleSlug string) ([]Arc, error)
 	GetArc(ctx context.Context, id string) (Arc, error)
+	// DeleteArc supprime un arc appartenant à userID. opts.CascadeObjectives
+	// décide du sort des objectifs (supprimés/abandonnés vs détachés).
+	DeleteArc(ctx context.Context, userID, id string, opts DeleteArcOptions) error
 
 	// Escouade
 	CreateSquadChallenge(ctx context.Context, req CreateSquadChallengeRequest) (SquadChallenge, error)
