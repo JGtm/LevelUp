@@ -574,6 +574,69 @@ func TestRunLUSRV2Shadow_FullFlow_2v2Match(t *testing.T) {
 	}
 }
 
+// TestRunLUSRV2ShadowOwnerOnly_TeammateDoesNotBlockOwner : fix autonomie live
+// (2026-06-08). En owner-only, traiter un coéquipier en premier ne doit PAS
+// avancer le watermark du owner ni le faire sauter — chaque joueur obtient sa
+// couverture seul. (Avec l'ancien persist 2-équipes, le owner aurait été skippé
+// car le run du coéquipier aurait avancé son watermark.)
+func TestRunLUSRV2ShadowOwnerOnly_TeammateDoesNotBlockOwner(t *testing.T) {
+	original := os.Getenv(lusrV2EnvFlag)
+	t.Cleanup(func() { _ = os.Setenv(lusrV2EnvFlag, original) })
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+
+	db := openShadowTestDB(t)
+	startTime := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+	if _, err := db.Exec(`INSERT INTO match_registry
+		(match_id, start_time, start_time_utc, pair_name, is_ranked, is_firefight, duration_seconds)
+		VALUES (?, ?, ?, 'Slayer', FALSE, FALSE, 600)`, "m1", startTime, startTime); err != nil {
+		t.Fatalf("insert match_registry: %v", err)
+	}
+	for _, q := range []struct {
+		xuid          string
+		team          int
+		outcome       int
+		kills, deaths int
+	}{
+		{"owner", 0, 2, 18, 6}, {"teammate1", 0, 2, 12, 9},
+		{"opp1", 1, 3, 7, 14}, {"opp2", 1, 3, 8, 14},
+	} {
+		if _, err := db.Exec(`INSERT INTO match_participants
+			(match_id, xuid, team_id, outcome, kills, deaths) VALUES (?, ?, ?, ?, ?, ?)`,
+			"m1", q.xuid, q.team, q.outcome, q.kills, q.deaths); err != nil {
+			t.Fatalf("insert participant: %v", err)
+		}
+	}
+
+	repo := duckdb.NewSkillV2Repo(db)
+	ctx := context.Background()
+
+	// 1) Coéquipier traité en premier (owner-only).
+	n1, err := RunLUSRV2ShadowOwnerOnly(ctx, nil, db, "teammate1")
+	if err != nil {
+		t.Fatalf("owner-only teammate1: %v", err)
+	}
+	if n1 != 1 {
+		t.Fatalf("teammate1 processed = %d, want 1", n1)
+	}
+	// Le owner ne doit PAS avoir d'état : owner-only n'a persisté que teammate1,
+	// donc le watermark du owner n'a pas bougé.
+	if st, _ := repo.LoadState(ctx, "owner", "arena_slayer"); st != nil {
+		t.Errorf("owner ne devrait pas avoir d'état après le run owner-only de teammate1, got μ=%v", st.Mu)
+	}
+
+	// 2) Owner traité ensuite : NE doit PAS être bloqué (autonomie).
+	n2, err := RunLUSRV2ShadowOwnerOnly(ctx, nil, db, "owner")
+	if err != nil {
+		t.Fatalf("owner-only owner: %v", err)
+	}
+	if n2 != 1 {
+		t.Fatalf("owner processed = %d, want 1 (coéquipier ne doit pas bloquer)", n2)
+	}
+	if st, _ := repo.LoadState(ctx, "owner", "arena_slayer"); st == nil {
+		t.Error("owner devrait avoir un état après son propre run")
+	}
+}
+
 // TestRunLUSRV2Shadow_Canonical_WritesLegacyLUSRRow vérifie la Stratégie C :
 // quand LEVELUP_LUSR_CANONICAL=LUSR_V2, le shadow runner écrit dans le
 // playerDB match_skill_rank (slot rating_type='LUSR') en plus de
