@@ -130,10 +130,12 @@ func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) 
 	if req.InstanceLocked != nil && authz.Enforced(h.cfg.DemoMode, h.cfg.AuthMode) {
 		sess := middleware.GetSession(r.Context())
 		if sess == nil || sess.Role == nil || *sess.Role != "admin" {
+			slog.WarnContext(r.Context(), "settings: toggle instance_locked refusé (admin requis)")
 			writeError(r.Context(), w, http.StatusForbidden, "admin_required",
 				"Seul un administrateur peut modifier le verrou d'instance.")
 			return
 		}
+		slog.InfoContext(r.Context(), "settings: verrou d'instance modifié", "locked", *req.InstanceLocked)
 	}
 
 	// Validation des champs analyse.

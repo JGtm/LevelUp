@@ -160,6 +160,10 @@ func (r *resolverImpl) signalReauth(ctx context.Context, src CredentialSource, r
 	if required && src.MSALCache == "" && src.RefreshToken == "" {
 		return
 	}
+	if required {
+		slog.WarnContext(ctx, "pool/resolver: refresh_token mort — reauth_required",
+			"gamertag", src.Gamertag, "xuid", src.XUID)
+	}
 	r.onReauth(ctx, src.Gamertag, src.XUID, required)
 }
 

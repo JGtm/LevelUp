@@ -186,8 +186,12 @@ func (r *RefreshLoop) signalReauthRequired(ctx context.Context, tokens *StoredTo
 		slog.WarnContext(ctx, "refresh_loop: marquage reauth_required échoué", "xuid", tokens.XSTSXUID, "err", err)
 		return
 	}
-	if newly && r.onReauthNotify != nil {
-		r.onReauthNotify(tokens.XSTSXUID, tokens.XSTSGamertag)
+	if newly {
+		slog.WarnContext(ctx, "refresh_loop: reauth_required — reconnexion Xbox nécessaire",
+			"xuid", tokens.XSTSXUID, "gamertag", tokens.XSTSGamertag)
+		if r.onReauthNotify != nil {
+			r.onReauthNotify(tokens.XSTSXUID, tokens.XSTSGamertag)
+		}
 	}
 }
 
