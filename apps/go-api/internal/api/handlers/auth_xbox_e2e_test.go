@@ -124,7 +124,7 @@ func newE2ERig(t *testing.T) *e2eRig {
 		WithLinkStrategy(xboxStrategy)
 
 	r := chi.NewRouter()
-	r.Use(middleware.WithSession(sessStore, false))
+	r.Use(middleware.WithSession(sessStore, middleware.SecureCookiePolicy{}))
 	r.Post("/auth/device-flow/start", authHandler.StartDeviceFlow)
 	r.Get("/auth/device-flow/{attempt_id}", authHandler.GetDeviceFlowStatus)
 
@@ -332,7 +332,7 @@ func TestE2E_AuthCodeFlow_CSRFGuard(t *testing.T) {
 	oauthHandler := handlers.NewXboxOAuthHandler(sessStore, provider, false, "http://localhost:8000/cb")
 
 	r := chi.NewRouter()
-	r.Use(middleware.WithSession(sessStore, false))
+	r.Use(middleware.WithSession(sessStore, middleware.SecureCookiePolicy{}))
 	r.Get("/auth/xbox/login", oauthHandler.LoginRedirect)
 	r.Get("/auth/xbox/callback", oauthHandler.Callback)
 

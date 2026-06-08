@@ -33,6 +33,10 @@ export function useDeviceFlowStatus(attemptId: string, enabled: boolean) {
     enabled: enabled && !!attemptId,
     refetchInterval: 5_000,
     staleTime: 0,
+    // Polling : ne pas réessayer un 404 (attempt_not_found, ex. tentative balayée
+    // ou backend redémarré). L'erreur doit remonter vite pour que l'onboarding
+    // relance proprement un nouveau flow (cf. StepDeviceCode / XboxLoginPage).
+    retry: false,
   })
 }
 

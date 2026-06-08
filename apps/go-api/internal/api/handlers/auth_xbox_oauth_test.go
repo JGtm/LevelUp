@@ -29,7 +29,7 @@ func newXboxOAuthRouter(t *testing.T, demoMode bool, redirectURI string) (*chi.M
 	h := handlers.NewXboxOAuthHandler(sessStore, &stubTokenProvider{}, demoMode, redirectURI)
 
 	r := chi.NewRouter()
-	r.Use(middleware.WithSession(sessStore, false))
+	r.Use(middleware.WithSession(sessStore, middleware.SecureCookiePolicy{}))
 	r.Get("/auth/xbox/login", h.LoginRedirect)
 	r.Get("/auth/xbox/callback", h.Callback)
 	return r, sessStore

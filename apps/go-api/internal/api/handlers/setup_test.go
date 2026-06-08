@@ -52,7 +52,7 @@ func newSetupRouter(t *testing.T, provisionEnabled bool, profileSvc *mockProfile
 	h := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, profileSvc)
 
 	r := chi.NewRouter()
-	r.Use(middleware.WithSession(sessionStore, false))
+	r.Use(middleware.WithSession(sessionStore, middleware.SecureCookiePolicy{}))
 	r.Post("/setup/players", h.CreatePlayer)
 	r.Post("/setup/smoke-test", h.SmokeTest)
 	return r

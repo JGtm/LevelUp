@@ -18,9 +18,12 @@ import { useStartDeviceFlow, useDeviceFlowStatus } from '@/features/setup/querie
 import { useLogin } from '@/features/auth/queries'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
-import { API_BASE_URL, type ApiError } from '@/lib/api/client'
+import { API_BASE_URL, apiErrorCode, type ApiError } from '@/lib/api/client'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+
+// Relances AUTO max sur attempt_not_found avant bascule sur retry manuel.
+const MAX_AUTO_RECOVERY = 3
 
 export function XboxLoginPage() {
   const navigate = useNavigate()
@@ -137,9 +140,10 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
   const [startError, setStartError] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const recoveryCountRef = useRef(0)
 
   const startFlow = useStartDeviceFlow()
-  const { data: status } = useDeviceFlowStatus(attemptId ?? '', !!attemptId)
+  const { data: status, error } = useDeviceFlowStatus(attemptId ?? '', !!attemptId)
 
   // Démarrer le flow au montage.
   useEffect(() => {
@@ -184,7 +188,37 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
     }
   }, [status?.status, onAuthorized])
 
+  // Récupération : attempt_not_found (tentative balayée / backend redémarré) →
+  // relancer un nouveau flow plutôt que de rester bloqué.
+  useEffect(() => {
+    if (!attemptId || apiErrorCode(error) !== 'attempt_not_found') return
+    if (recoveryCountRef.current >= MAX_AUTO_RECOVERY) {
+      setStartError('La connexion au serveur a été interrompue plusieurs fois. Veuillez réessayer.')
+      return
+    }
+    recoveryCountRef.current += 1
+    setAttemptId(null)
+    setUserCode(null)
+    setVerificationUri(null)
+    setExpiresAt(null)
+    setSecondsLeft(null)
+    startFlow.mutate(undefined, {
+      onSuccess: (data) => {
+        setAttemptId(data.attempt_id)
+        setUserCode(data.user_code)
+        setVerificationUri(data.verification_uri)
+        setExpiresAt(data.expires_in ? Date.now() + data.expires_in * 1000 : null)
+      },
+      onError: (err) => {
+        const apiErr = err as unknown as ApiError
+        setStartError(apiErr.message ?? 'Impossible de redémarrer le flow.')
+      },
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error, attemptId])
+
   function handleRetry() {
+    recoveryCountRef.current = 0
     setAttemptId(null)
     setUserCode(null)
     setVerificationUri(null)

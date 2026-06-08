@@ -33,7 +33,7 @@ func newAuthRouterWithProvider(t *testing.T, demoMode bool, provider auth_platfo
 	h := handlers.NewAuthHandler(sessStore, attempts, demoMode, provider)
 
 	r := chi.NewRouter()
-	r.Use(middleware.WithSession(sessStore, false))
+	r.Use(middleware.WithSession(sessStore, middleware.SecureCookiePolicy{}))
 	r.Post("/auth/device-flow/start", h.StartDeviceFlow)
 	r.Get("/auth/device-flow/{attempt_id}", h.GetDeviceFlowStatus)
 	return r, sessStore

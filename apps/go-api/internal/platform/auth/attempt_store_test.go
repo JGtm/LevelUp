@@ -3,6 +3,7 @@ package auth_test
 
 import (
 	"testing"
+	"time"
 
 	auth "levelup/go-api/internal/platform/auth"
 )
@@ -103,5 +104,55 @@ func TestAttemptStore_DifferentSessions_Isolated(t *testing.T) {
 
 	if a1.AttemptID == a2.AttemptID {
 		t.Error("different sessions should have different attempt IDs")
+	}
+}
+
+// TestAttemptStore_PurgeExpired vérifie que les tentatives plus vieilles que le
+// TTL sont balayées (bornage mémoire — fix onboarding 2026-06-08).
+func TestAttemptStore_PurgeExpired(t *testing.T) {
+	store := auth.NewAttemptStoreWithTTL(20 * time.Millisecond)
+	a, _ := store.GetOrCreate("session-ttl")
+
+	// Avant expiration : la tentative est toujours là.
+	if store.Snapshot(a.AttemptID) == nil {
+		t.Fatal("tentative attendue avant expiration")
+	}
+
+	time.Sleep(40 * time.Millisecond)
+
+	if n := store.PurgeExpired(); n != 1 {
+		t.Errorf("PurgeExpired = %d, attendu 1", n)
+	}
+	if store.Snapshot(a.AttemptID) != nil {
+		t.Error("tentative expirée doit être balayée")
+	}
+}
+
+// TestAttemptStore_GetOrCreate_PurgesAndRecreates : après expiration, GetOrCreate
+// purge en lazy et recrée une tentative neuve pour la même session.
+func TestAttemptStore_GetOrCreate_PurgesAndRecreates(t *testing.T) {
+	store := auth.NewAttemptStoreWithTTL(20 * time.Millisecond)
+	a1, _ := store.GetOrCreate("session-recreate")
+
+	time.Sleep(40 * time.Millisecond)
+
+	a2, isNew := store.GetOrCreate("session-recreate")
+	if !isNew {
+		t.Error("attendu isNew=true après expiration de la tentative précédente")
+	}
+	if a1.AttemptID == a2.AttemptID {
+		t.Error("une nouvelle tentative doit avoir un ID distinct après purge")
+	}
+}
+
+// TestAttemptStore_PurgeKeepsFresh : une tentative récente n'est pas balayée.
+func TestAttemptStore_PurgeKeepsFresh(t *testing.T) {
+	store := auth.NewAttemptStoreWithTTL(time.Hour)
+	a, _ := store.GetOrCreate("session-fresh")
+	if n := store.PurgeExpired(); n != 0 {
+		t.Errorf("PurgeExpired = %d, attendu 0 (tentative récente)", n)
+	}
+	if store.Snapshot(a.AttemptID) == nil {
+		t.Error("tentative récente ne doit pas être balayée")
 	}
 }

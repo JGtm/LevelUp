@@ -11,8 +11,14 @@ import { useSetupFlowStore } from '@/stores/setupFlowStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
 import { useStartDeviceFlow, useDeviceFlowStatus } from './queries'
+import { apiErrorCode } from '@/lib/api/client'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+
+// Nombre max de relances AUTOMATIQUES sur attempt_not_found (tentative balayée /
+// backend redémarré). Au-delà, on bascule sur un retry manuel pour éviter une
+// boucle de relances si la tentative disparaît systématiquement.
+const MAX_AUTO_RECOVERY = 3
 
 export function StepDeviceCode() {
   const currentAttemptId = useSetupFlowStore((s) => s.currentAttemptId)
@@ -30,6 +36,10 @@ export function StepDeviceCode() {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Récupération gracieuse : compteur de relances auto + bascule manuelle.
+  const recoveryCountRef = useRef(0)
+  const [recoveryExhausted, setRecoveryExhausted] = useState(false)
+
   useEffect(() => {
     if (!deviceFlowExpiresAt) return
     const update = () => {
@@ -42,7 +52,7 @@ export function StepDeviceCode() {
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [deviceFlowExpiresAt])
 
-  const { data: status } = useDeviceFlowStatus(currentAttemptId ?? '', !!currentAttemptId)
+  const { data: status, error } = useDeviceFlowStatus(currentAttemptId ?? '', !!currentAttemptId)
 
   // Démarrer le flow au montage si pas encore en cours
   useEffect(() => {
@@ -60,6 +70,29 @@ export function StepDeviceCode() {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Récupération : si le polling renvoie attempt_not_found (tentative balayée /
+  // backend redémarré), relancer automatiquement un nouveau flow plutôt que de
+  // rester bloqué jusqu'à l'expiration du compte à rebours.
+  useEffect(() => {
+    if (!currentAttemptId || apiErrorCode(error) !== 'attempt_not_found') return
+    if (recoveryCountRef.current >= MAX_AUTO_RECOVERY) {
+      setRecoveryExhausted(true)
+      return
+    }
+    recoveryCountRef.current += 1
+    setCurrentAttemptId(null)
+    startFlow.mutate(undefined, {
+      onSuccess: (data) => {
+        setCurrentAttemptId(data.attempt_id)
+        setDeviceFlowCodes(
+          data.user_code,
+          data.verification_uri,
+          data.expires_in ? Date.now() + data.expires_in * 1000 : null,
+        )
+      },
+    })
+  }, [error, currentAttemptId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Quand le flow réussit : invalider le bootstrap pour que setupState avance
   useEffect(() => {
     if (status?.status === 'authorized' || status?.status === 'provisioned') {
@@ -68,6 +101,8 @@ export function StepDeviceCode() {
   }, [status?.status, queryClient])
 
   function handleRetry() {
+    recoveryCountRef.current = 0
+    setRecoveryExhausted(false)
     setCurrentAttemptId(null)
     startFlow.mutate(undefined, {
       onSuccess: (data) => {
@@ -88,7 +123,9 @@ export function StepDeviceCode() {
   // Codes d'erreur structurés
   const errorCode = status?.status === 'failed' ? status.error?.code ?? null : null
 
-  if (status?.status === 'failed' || status?.status === 'expired' || (secondsLeft !== null && secondsLeft <= 0)) {
+  // recoveryExhausted : tentative balayée en boucle (backend instable) → on
+  // route vers la même UI d'erreur + bouton « Réessayer » que les autres échecs.
+  if (status?.status === 'failed' || status?.status === 'expired' || (secondsLeft !== null && secondsLeft <= 0) || recoveryExhausted) {
     const errorMessage: Record<string, string> = {
       device_flow_denied: "Vous avez refusé ou annulé la demande Microsoft.",
       device_flow_error: "Erreur lors de l'authentification Microsoft.",
