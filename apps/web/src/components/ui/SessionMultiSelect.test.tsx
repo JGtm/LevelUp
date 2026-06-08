@@ -246,3 +246,42 @@ describe('SessionMultiSelect — toggle tout sélectionner / désélectionner', 
     expect(payload).not.toContain('Session Casual B')
   })
 })
+
+describe('SessionMultiSelect — lien Réinitialiser', () => {
+  it('masque le lien Réinitialiser quand aucune session sélectionnée', () => {
+    const { openPanel } = setup()
+    openPanel()
+    expect(screen.queryByText(/Réinitialiser/i)).toBeNull()
+  })
+
+  it('affiche le lien Réinitialiser dès qu\'une session est cochée', () => {
+    const { openPanel } = setup(['Session Ranked A'])
+    openPanel()
+    expect(screen.getByText(/Réinitialiser/i)).toBeTruthy()
+  })
+
+  it('vide une sélection partielle au clic sur Réinitialiser', () => {
+    const { onChange, openPanel } = setup(['Session Ranked A'])
+    openPanel()
+    // Sélection partielle (1/3) → le toggle reste "Tout sélectionner".
+    expect(screen.getByText(/Tout sélectionner/i)).toBeTruthy()
+    fireEvent.click(screen.getByText(/Réinitialiser/i))
+    fireEvent.click(screen.getByText(/Valider|Apply/i))
+    const payload = onChange.mock.calls[0][0] as string[]
+    expect(payload).toHaveLength(0)
+  })
+
+  it('vide TOUTE la sélection, même les sessions masquées par la recherche', () => {
+    const { onChange, openPanel } = setup(['Session Ranked A', 'Session Casual B'])
+    openPanel()
+    // Filtrer pour ne montrer que les "Ranked" : Casual B est masquée mais
+    // reste sélectionnée → Réinitialiser doit aussi la retirer.
+    fireEvent.change(screen.getByPlaceholderText(/Rechercher/i), {
+      target: { value: 'Ranked' },
+    })
+    fireEvent.click(screen.getByText(/Réinitialiser/i))
+    fireEvent.click(screen.getByText(/Valider|Apply/i))
+    const payload = onChange.mock.calls[0][0] as string[]
+    expect(payload).toHaveLength(0)
+  })
+})
