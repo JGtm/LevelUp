@@ -83,6 +83,7 @@ export function SetPasswordCard({ onSaved }: SetPasswordCardProps) {
                 autoComplete="new-password"
                 required
                 minLength={8}
+                maxLength={72}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
@@ -98,6 +99,7 @@ export function SetPasswordCard({ onSaved }: SetPasswordCardProps) {
                 autoComplete="new-password"
                 required
                 minLength={8}
+                maxLength={72}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
