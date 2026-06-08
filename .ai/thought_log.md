@@ -1,3 +1,21 @@
+## [2026-06-08] Fix panic boot — SISUProvider.Exchange stateless fallback — Complété
+
+**Statut** : Complété (branche `feat/instance-lockdown`). Build + tests auth verts.
+
+**Symptôme** : panic au démarrage serveur — `sisu_provider: Exchange appelé sans InitDeviceFlow préalable — bug d'utilisation`, dans `buildAutoSyncPool` → `NewPool` → `resolver.Resolve` → `exchangeAndCache` → `provider.Exchange`. Front : `vite http proxy error ECONNREFUSED 127.0.0.1:8000` (conséquence : serveur Go crashé au boot).
+
+**Cause racine** : PR-D (commit `d9fcb1787`) a fait de `SISUProvider` le provider par défaut. Mais `SISUProvider.Exchange` ne supportait QUE le device flow interactif (exige un `sisuFlowContext` posé par `InitDeviceFlow`, panique sinon). Le pool auto-sync (+ scheduler/watcher) utilise `Exchange` dans un chemin **stateless** : `refresh_token` → `access_token` (OAuth refresh) → `Exchange(accessToken)`, sans `InitDeviceFlow`. → panic au boot.
+
+**Décision technique** : `TokenProvider.Exchange(ctx, accessToken)` a un contrat stateless (cf. `MSALProvider.Exchange` → `ExchangeAccessToken`). Quand `flowCtx == nil`, `SISUProvider.Exchange` bascule désormais sur `ExchangeAccessToken(ctx, accessToken)` (chaîne XBL → XSTS Halo → Spartan → Clearance) au lieu de paniquer. La session SISU n'est requise que pour le device flow interactif ; le pool fournit déjà un access_token valide. Cohérent avec `TryOAuthRefreshWithRotation` qui délègue déjà au même endpoint que MSAL.
+
+**Tests** : `TestSISUProvider_ExchangeWithoutInit` réécrit — vérifie désormais que `Exchange` sans init NE panique PAS et retourne une erreur (contexte annulé → pas d'I/O réseau, déterministe). Suite `internal/platform/auth/...` entièrement verte ; `go build ./cmd/server/` OK.
+
+**Fichiers** : `internal/platform/auth/sisu_provider.go` (Exchange), `sisu_provider_test.go` (test).
+
+**Prochaine étape** : rebuild Go server local et relancer (le proxy vite retrouvera 127.0.0.1:8000).
+
+---
+
 ## [2026-06-08] Vérification finale du travail auth (PR-A→D) + logging — Complété
 
 **Statut** : Complété (branche `feat/instance-lockdown`, poussée). Vérif globale demandée par l'utilisateur.

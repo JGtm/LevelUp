@@ -97,23 +97,31 @@ func TestSISUProvider_TryOAuthRefresh_EmptyToken(t *testing.T) {
 
 // ─── ExchangeWithoutInit ──────────────────────────────────────────────────────
 
-// TestSISUProvider_ExchangeWithoutInit vérifie que Exchange panics si InitDeviceFlow
-// n'a pas été appelé au préalable (protection contre un bug d'utilisation).
+// TestSISUProvider_ExchangeWithoutInit vérifie qu'Exchange appelé sans
+// InitDeviceFlow préalable NE panique PAS mais bascule sur l'échange stateless
+// (access_token Microsoft → XSTS Halo), exactement comme MSALProvider. C'est le
+// chemin emprunté par le pool auto-sync / scheduler / watcher, qui fournit un
+// access_token déjà obtenu via OAuth refresh sans passer par le device flow.
+//
+// On utilise un contexte déjà annulé pour que la chaîne HTTP échoue immédiatement
+// (erreur de contexte) sans appel réseau réel : le test reste déterministe et
+// vérifie le contrat — pas de panic, erreur propre retournée.
 func TestSISUProvider_ExchangeWithoutInit(t *testing.T) {
 	p := NewSISUProvider()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // annulé immédiatement → la 1ère requête HTTP échoue sans I/O réseau
+
 	defer func() {
-		r := recover()
-		if r == nil {
-			t.Fatal("Exchange sans InitDeviceFlow préalable devrait paniquer")
-		}
-		msg, ok := r.(string)
-		if !ok || msg == "" {
-			t.Fatalf("valeur de panic inattendue : %v", r)
+		if r := recover(); r != nil {
+			t.Fatalf("Exchange sans InitDeviceFlow ne doit PLUS paniquer (fallback stateless) ; panic reçue : %v", r)
 		}
 	}()
 
-	_, _ = p.Exchange(context.Background(), "fake-access-token") //nolint:errcheck
+	_, err := p.Exchange(ctx, "fake-access-token")
+	if err == nil {
+		t.Fatal("Exchange stateless avec access_token invalide devrait retourner une erreur")
+	}
 }
 
 // ─── InitDeviceFlow happy path (URLs mockées) ─────────────────────────────────
