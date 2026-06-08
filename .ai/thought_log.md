@@ -516,6 +516,48 @@
 
 **Prochaine étape** : confirmer avec user quel(s) joueur(s) re-authentifier ; option code : rendre la staleness visible (badge âge snapshot quand fallback cache). Commit UI sur autorisation. Restart serveur déjà nécessaire (révision 7 — champ Go RemainingContent).
 
+## [2026-06-08] Page Classement — Leaderboard CSR mondial (scraping Halo Waypoint + snapshots) — Complété
+
+**Statut** : Complété sur la branche **`feat/leaderboard-csr-world`** (créée depuis `main`, feature indépendante du nav-drawer). Code non commité (attente autorisation). Vérifs : `go build ./...` exit 0, `go test` verts (domain, service, halo, migration, api/handlers, sync ART guard), test d'intégration repo append-only `-tags integration` OK, dry-run scraper **live** OK (50 entrées réelles), vitest leaderboard 7/7, `tsc -b` exit 0, eslint exit 0.
+
+**Demande** : reproduire la page leaderboard de SpartanRecord dans la page Classement (à peine commencée), en respectant les conventions UI (page Carrière comme modèle), sans rien réinventer.
+
+**Investigation décisive (source de données)** :
+- SpartanRecord tirait ses classements mondiaux de **HaloDotAPI** (agrégateur tiers), **fermé depuis juillet 2025**. L'API officielle 343 (confirmé via la lib **Grunt** de Den Delimarsky) **n'expose AUCUN endpoint leaderboard** (module Skill = CSR par xuid connu uniquement).
+- Dissection du repo SpartanRecord : `SCData.GetCSRLeaderboard` → `SCPostman` → proxy Vercel maison `sr-nextjs.vercel.app/api/halodotapi?path=/games/halo-infinite/tooling/leaderboards/csr`. Test live : ce proxy répond, mais `cryptum.halodotapi.com` (HaloDotAPI direct) est mort. Conclusion : **le proxy de SR scrape lui-même halowaypoint.com**.
+- **Source réelle = pages publiques Halo Waypoint** (`/halo-infinite/leaderboards/{season}/{playlist}?page=N`), rendues côté serveur, sans auth. Données dans `__NEXT_DATA__.props.pageProps.leaderboard` (`player.{xuid,gamertag}`, `score`=CSR ; `rank` toujours 0 → recalculé `(page-1)*pageSize+i+1`, pageSize=100). **On NE passe PAS par le proxy de SR** (infra tierce, validé avec l'utilisateur) — scraping autonome.
+
+**Décisions techniques** :
+- Scraper [leaderboard_scraper.go](apps/go-api/internal/platform/halo/leaderboard_scraper.go) : parse `__NEXT_DATA__` (stdlib, zéro dépendance), pagination, garde-fous. Tier dérivé du CSR via [domain.DeriveCSRTier](apps/go-api/internal/domain/csr_tier.go). Test sur fixture HTML réelle (testdata/leaderboard_sample.html).
+- Persistance append-only (règle ART) : migration [steps_world_csr_leaderboard.go](apps/go-api/internal/migration/steps_world_csr_leaderboard.go) → table `world_csr_leaderboard_snapshots` (PK technique + `written_at`) + vue `world_csr_leaderboard_latest` (ROW_NUMBER par season/playlist/rank). Ajout à `canonicalOrder`. Persister `InsertWorldCSRSnapshot` = INSERT pur.
+- Domaine généralisé (`Category`/`Value`/`Unit`/`MatchesPlayed`/`Limit`), service routé par catégorie (`csr-world` → vue `_latest` ; stats → agrégation `match_participants`), handler lit `category`+`limit`. Repo [leaderboard_world_repo.go](apps/go-api/internal/platform/duckdb/leaderboard_world_repo.go) : `GetCSRWorldLeaderboard` + `GetStatLeaderboard`.
+- CLI [snapshot-world-leaderboard](apps/go-api/cmd/snapshot-world-leaderboard/main.go) : scrape playlists×saison → migration shared → INSERT. Aucune auth (page publique).
+- Frontend : refonte [LeaderboardBlock.tsx](apps/web/src/features/leaderboard/LeaderboardBlock.tsx) — tableau triable, sélecteurs catégorie/playlist/saison, badges tier (`csrRankImageURL`), highlight `is_local`, clic gamertag → Explorer. i18n `common.leaderboard.*` (régénéré). Types + query étendus.
+
+**Limites assumées** : scraping d'une page non documentée (fragile au markup → parsing isolé + test fixture ; CGU/anti-bot → requêtes polies, basse fréquence, snapshots). Sélecteurs playlist/saison hardcodés (v1). Classements de stats = joueurs croisés uniquement.
+
+**Prochaine étape** : snapshot réel (serveur arrêté) pour peupler la prod ; scheduler basse fréquence (Phase 2) ; affiner filtres playlist/saison des stats.
+
+## [2026-06-08] Lot B — Picker de presets d'arc (parcourir + adopter) — Complété
+
+**Statut** : Complété sur la branche **`feat/leaderboard-csr-world`** (à la demande de l'utilisateur). `go vet ./...` OK, `go test ./internal/{prestige,api/handlers}/...` verts, tsc/eslint propres, vitest prestige+ascension 58/58. Code non commité (attente autorisation).
+
+**Contexte branche** : les Lots C/D/A ont été livrés sur `feat/nav-l1-mobile-drawer` (commits c4274a0c, 48c2381c, d864ddae). L'utilisateur a ensuite basculé sur `feat/leaderboard-csr-world` et demandé le Lot B ici. Cette branche n'a PAS l'infra A/C/D — Lot B y est donc autonome (ne dépend que de l'infra PresetArc préexistante : `PresetArcRepo` + types + `Deps.PresetArcs`). L'empty-state de MyArcsSection mentionnait déjà les presets sans picker (référence pendante → comblée).
+
+**Backend** :
+- `Service.ListArcPresets(userID, titleSlug)` (hydrate les `Steps` via `PresetArcRepo.GetSteps`) + `AdoptPresetArc(userID, titleSlug, presetID)` ([service_arcs_squads.go](apps/go-api/internal/prestige/service_arcs_squads.go)). Adoption : crée l'arc (IsPreset=true, PresetID) puis un objectif libre par étape via `CreateChallenge` (target = `targetForTier(template, step.TargetTier)`). Best-effort par étape (objectif refusé → log + continue). Helpers `targetForTier` + `presetTitle/Description` (FR prioritaire, repli EN).
+- Lazy : `ListArcPresets` (read, resolveByUserID) + `AdoptPresetArc` (write, player writer lease).
+- Handlers + routes : `GET /arcs/presets?user_id=&title_slug=` + `POST /arcs/presets/{id}/adopt` (body user_id/title_slug). Routes placées avant `/arcs/{id}` (chi priorise le statique).
+- Mocks Service (sync_hook + handlers) + nouveau harness `stubPresetArcRepo` + `buildPresetService`. Tests : ListArcPresets (hydratation + title requis), AdoptPresetArc (OK arc preset + N objectifs, WrongTitle, NotFound), handlers (200/400, 201/400/404).
+
+**Frontend** :
+- Types `PresetArc` + `PresetArcStep` + client `listArcPresets`/`adoptArcPreset` ([lib/prestige.ts](apps/web/src/lib/prestige.ts)).
+- Hooks `useArcPresets` (query, cache 5 min) + `useAdoptArcPreset` (mutation → invalide arcs + challenges) ; `arcKeys.presets` ; exportés dans hooks.ts.
+- Composant `ArcPresetPicker` ([ArcPresetPicker.tsx](apps/web/src/features/prestige/components/ArcPresetPicker.tsx)) : liste presets (titre localisé, description, aperçu « N objectifs ») + bouton « Adopter ». i18n inline `locale === 'en'` (convention de cette branche — pas de dict prestige ici).
+- Intégration `MyArcsSection` : bouton « Parcourir les presets » (empty-state + en-tête liste) → ouvre le picker ; à l'adoption, ferme + l'arc apparaît. Test `ArcPresetPicker.test.tsx` + MAJ AscensionProfileTab.test (empty-state + bouton).
+
+**Note** : Lot B initialement livré sur `feat/leaderboard-csr-world`, puis **rebasé sur `feat/nav-l1-mobile-drawer`** (qui porte C/D/A) — la fonction `MyArcsSection` fusionne désormais création d'arc + suppression (Lot A) + picker de presets (Lot B).
+
 ## [2026-06-07] Demo durabilite : reseed auto + barres objectifs prestige — Complété
 
 **Statut** : Complété. Deploy reussi (run 27092269295). Prod + demo 200.

@@ -321,6 +321,51 @@ func (h *PrestigeHandler) ListArcs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"arcs": arcs, jsonKeyCount: len(arcs)})
 }
 
+// ListArcPresets gère GET /arcs/presets?user_id=&title_slug=.
+func (h *PrestigeHandler) ListArcPresets(w http.ResponseWriter, r *http.Request) {
+	userID := r.URL.Query().Get("user_id")
+	titleSlug := r.URL.Query().Get("title_slug")
+	if userID == "" || titleSlug == "" {
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
+		return
+	}
+	presets, err := h.svc.ListArcPresets(r.Context(), userID, titleSlug)
+	if err != nil {
+		writeServiceError(r.Context(), w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"presets": presets, jsonKeyCount: len(presets)})
+}
+
+type adoptPresetArcBody struct {
+	UserID    string `json:"user_id"`
+	TitleSlug string `json:"title_slug"`
+}
+
+// AdoptPresetArc gère POST /arcs/presets/{id}/adopt.
+func (h *PrestigeHandler) AdoptPresetArc(w http.ResponseWriter, r *http.Request) {
+	presetID := chi.URLParam(r, "id")
+	if presetID == "" {
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "id requis")
+		return
+	}
+	var body adoptPresetArcBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
+		return
+	}
+	if body.UserID == "" || body.TitleSlug == "" {
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
+		return
+	}
+	arc, err := h.svc.AdoptPresetArc(r.Context(), body.UserID, body.TitleSlug, presetID)
+	if err != nil {
+		writeServiceError(r.Context(), w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, arc)
+}
+
 // ─────────── Squad challenges ───────────
 
 type createSquadChallengeBody struct {

@@ -123,6 +123,26 @@ export interface Arc {
   completion_bonus_pp?: number
 }
 
+export interface PresetArcStep {
+  preset_arc_id: string
+  position: number
+  template_id: string
+  target_tier: Tier
+}
+
+export interface PresetArc {
+  id: string
+  title_slug: string
+  title_en: string
+  title_fr: string
+  description_en?: string
+  description_fr?: string
+  schema_version: number
+  updated_at: string
+  /** Étapes hydratées par le backend (aperçu du picker). */
+  steps?: PresetArcStep[]
+}
+
 export interface MomentCard {
   id: string
   challenge_id: string
@@ -265,6 +285,18 @@ export const prestigeApi = {
     api.delete<void>(
       `/arcs/${id}?user_id=${encodeURIComponent(userId)}&objectives=${cascade ? 'delete' : 'detach'}`,
     ),
+
+  // Presets d'arc (catalogue + adoption)
+  listArcPresets: (userId: string, titleSlug: string) =>
+    api.get<{ presets: PresetArc[]; count: number }>(
+      `/arcs/presets?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}`,
+    ),
+
+  adoptArcPreset: (presetId: string, userId: string, titleSlug: string) =>
+    api.post<Arc>(`/arcs/presets/${encodeURIComponent(presetId)}/adopt`, {
+      user_id: userId,
+      title_slug: titleSlug,
+    }),
 
   // Prestige (PP + niveau)
   getMyPrestige: (userId: string, titleSlug?: string) => {

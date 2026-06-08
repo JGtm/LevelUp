@@ -9,6 +9,8 @@ export const arcKeys = {
   list: (userId: string, titleSlug: string) =>
     ['prestige', 'arcs', userId, titleSlug] as const,
   one: (id: string) => ['prestige', 'arc', id] as const,
+  presets: (userId: string, titleSlug: string) =>
+    ['prestige', 'arc-presets', userId, titleSlug] as const,
 }
 
 export function useArcs(userId: string, titleSlug: string) {
@@ -39,6 +41,28 @@ export function useDeleteArc(userId: string, titleSlug: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: arcKeys.list(userId, titleSlug) })
       // La cascade abandonne/supprime des objectifs → rafraîchir aussi les défis.
+      qc.invalidateQueries({ queryKey: challengeKeys.list(userId, titleSlug) })
+    },
+  })
+}
+
+export function useArcPresets(userId: string, titleSlug: string) {
+  return useQuery({
+    queryKey: arcKeys.presets(userId, titleSlug),
+    queryFn: () => prestigeApi.listArcPresets(userId, titleSlug),
+    retry: false,
+    enabled: !!userId && !!titleSlug,
+    staleTime: 5 * 60_000, // catalogue versionné : cache long
+  })
+}
+
+export function useAdoptArcPreset(userId: string, titleSlug: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (presetId: string) => prestigeApi.adoptArcPreset(presetId, userId, titleSlug),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: arcKeys.list(userId, titleSlug) })
+      // L'adoption crée des objectifs → rafraîchir aussi les défis.
       qc.invalidateQueries({ queryKey: challengeKeys.list(userId, titleSlug) })
     },
   })
