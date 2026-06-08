@@ -266,7 +266,7 @@ const FR_TEXT: SettingsText = {
   tabSync: 'Synchronisation',
   tabAnalyse: 'Analyse',
   tabLab: 'Lab',
-  tabUsers: 'Utilisateurs',
+  tabUsers: 'Comptes',
 
   manualSyncTitle: 'Synchronisation manuelle',
   manualSyncButton: '↻ Synchroniser tous les joueurs',
@@ -531,7 +531,7 @@ const EN_TEXT: SettingsText = {
   tabSync: 'Synchronisation',
   tabAnalyse: 'Analysis',
   tabLab: 'Lab',
-  tabUsers: 'Users',
+  tabUsers: 'Accounts',
 
   manualSyncTitle: 'Manual synchronisation',
   manualSyncButton: '↻ Synchronise all players',
