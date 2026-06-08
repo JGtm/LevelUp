@@ -12,6 +12,26 @@
 
 ---
 
+### [leaderboard] Classement CSR mondial — actions de suivi (Phase 2 + gaps)
+
+**Noté le** : 2026-06-08 | **Priorité** : 🟢 Basse — Phase 1 livrée et vérifiée (branche `feat/leaderboard-csr-world`, commits `7c384015` + `762f3ef9`).
+
+**Contexte court** : leaderboard CSR mondial scrapé depuis les pages publiques `halowaypoint.com` (bloc `__NEXT_DATA__` — HaloDotAPI étant mort, aucune API officielle de leaderboard). Snapshots persistés append-only (`world_csr_leaderboard_snapshots` + vue `_latest`), page `Communauté > Classements` refondue (CSR mondial + classements de stats croisés). Logging dédié `logs/leaderboard.log`. Cf. thought_log 2026-06-08.
+
+**Opérationnel** :
+- [ ] Peupler la prod : 1er snapshot réel (serveur arrêté, shared DB RW) — `go run ./cmd/snapshot-world-leaderboard -season csrseason13-2 -limit 200`.
+- [ ] Brancher un scheduler basse fréquence (~1×/jour, saison courante) sur le modèle `internal/scheduler/auto_sync.go` ; saisons passées figées (1 snapshot suffit).
+
+**Gaps / dette** :
+- [ ] Test manquant : `GetStatLeaderboard` (agrégation `match_participants`) non couvert contre une vraie DB (harness `LegacySharedReader` lourd). SQL simple + vue/persister testés → dette mineure.
+- [ ] Sélecteurs playlist/saison **hardcodés** dans `LeaderboardBlock.tsx` (v1) → les exposer dynamiquement depuis `pageProps.{seasons,playlists}` (déjà parsés par le scraper, cf. `waypointSeasonRef`/`waypointPlaylistRef`) ou depuis la DB.
+- [ ] Filtres des **classements de stats** à affiner (playlist via ILIKE `playlist_name`, pas de filtre saison).
+- [ ] Robustesse scraping : surveiller le warn `leaderboard vide en page 1` (signal d'un changement de markup Halo Waypoint) ; rafraîchir la fixture `testdata/leaderboard_sample.html` si le markup évolue.
+
+**Risque** : scraping d'une page non documentée (CGU / anti-bot) — garder requêtes polies + basse fréquence + persistance pour minimiser les appels. Ne PAS dépendre du proxy tiers `sr-nextjs.vercel.app`.
+
+---
+
 ### [frontend/types] Migration `types.ts` → `generated.ts` + réconciliation du contrat OpenAPI
 
 **Noté le** : 2026-05-29 | **Priorité** : 🟡 Moyenne — non bloquant (`types.ts` manuel fonctionne) mais dette + contrat OpenAPI non fiable.
