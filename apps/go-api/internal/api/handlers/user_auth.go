@@ -181,7 +181,7 @@ func (h *UserAuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 			writeError(r.Context(), w, http.StatusConflict, "user_exists", "nom d'utilisateur déjà pris")
 			return
 		}
-		if errors.Is(err, userstore.ErrInvalidUsername) || errors.Is(err, userstore.ErrPasswordTooShort) {
+		if errors.Is(err, userstore.ErrInvalidUsername) || errors.Is(err, userstore.ErrPasswordTooShort) || errors.Is(err, userstore.ErrPasswordTooLong) {
 			writeError(r.Context(), w, http.StatusBadRequest, "validation_error", err.Error())
 			return
 		}
@@ -252,7 +252,7 @@ func (h *UserAuthHandler) SetPassword(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.users.ResetPassword(*sess.Username, req.Password); err != nil {
 		switch {
-		case errors.Is(err, userstore.ErrPasswordTooShort):
+		case errors.Is(err, userstore.ErrPasswordTooShort), errors.Is(err, userstore.ErrPasswordTooLong):
 			writeError(r.Context(), w, http.StatusBadRequest, "validation_error", err.Error())
 		case errors.Is(err, userstore.ErrUserNotFound):
 			writeError(r.Context(), w, http.StatusNotFound, "user_not_found", "utilisateur introuvable")

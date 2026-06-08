@@ -159,6 +159,32 @@ func TestUserAuth_SetPassword_OptIn(t *testing.T) {
 	}
 }
 
+// TestUserAuth_SetPassword_TooLong : un mot de passe > 72 octets → 400 (pas 500,
+// pas de troncature silencieuse bcrypt).
+func TestUserAuth_SetPassword_TooLong(t *testing.T) {
+	dir := t.TempDir()
+	users := userstore.NewStore(filepath.Join(dir, "users.json"))
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
+	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
+	u, _ := users.CreateFromXbox("Spartan", "xuid-1")
+	h := handlers.NewUserAuthHandler(users, invites, sessStore, "open")
+
+	long := make([]byte, 80)
+	for i := range long {
+		long[i] = 'a'
+	}
+	body := `{"password":"` + string(long) + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/auth/password", bytes.NewReader([]byte(body)))
+	sess := &domain.SessionData{Username: &u.Username}
+	req = req.WithContext(middleware.InjectSession(req.Context(), sess))
+	w := httptest.NewRecorder()
+	h.SetPassword(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("SetPassword trop long : status = %d, want 400. Body: %s", w.Code, w.Body.String())
+	}
+}
+
 // TestUserAuth_SetPassword_NoSession : sans session authentifiée → 401.
 func TestUserAuth_SetPassword_NoSession(t *testing.T) {
 	dir := t.TempDir()

@@ -30,6 +30,10 @@ const (
 	minUsernameLen = 3
 	maxUsernameLen = 30
 	minPasswordLen = 8
+	// maxPasswordLen : bcrypt ne prend en compte que les 72 premiers octets (et
+	// renvoie une erreur au-delà). On valide explicitement pour un 400 clair
+	// plutôt qu'une troncature silencieuse ou un 500.
+	maxPasswordLen = 72
 )
 
 var usernameRe = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
@@ -40,6 +44,7 @@ var (
 	ErrUserAlreadyExists  = errors.New("nom d'utilisateur déjà pris")
 	ErrInvalidUsername    = errors.New("nom d'utilisateur invalide (3-30 caractères alphanumériques, _, -)")
 	ErrPasswordTooShort   = errors.New("mot de passe trop court (8 caractères minimum)")
+	ErrPasswordTooLong    = errors.New("mot de passe trop long (72 octets maximum)")
 	ErrInvalidCredentials = errors.New("identifiants incorrects")
 )
 
@@ -123,6 +128,9 @@ func (s *Store) Create(username, password string, role domain.UserRole) (*domain
 	}
 	if len(password) < minPasswordLen {
 		return nil, ErrPasswordTooShort
+	}
+	if len(password) > maxPasswordLen {
+		return nil, ErrPasswordTooLong
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcryptCost)
@@ -271,6 +279,9 @@ func (s *Store) UpdateLastLogin(username string) error {
 func (s *Store) ResetPassword(username, newPassword string) error {
 	if len(newPassword) < minPasswordLen {
 		return ErrPasswordTooShort
+	}
+	if len(newPassword) > maxPasswordLen {
+		return ErrPasswordTooLong
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcryptCost)
