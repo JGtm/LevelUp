@@ -4,7 +4,7 @@
  * lecture directe. hls.js est mocké (jsdom n'a ni MediaSource ni décodeur).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { act, screen } from '@testing-library/react'
+import { act, screen, fireEvent } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { CoverFlowModal } from './CoverFlowModal'
 import type { MediaItemRow } from '@/lib/api/types'
@@ -78,11 +78,12 @@ describe('CoverFlowModal — lecture HLS', () => {
     expect(instances[0].attachMedia).toHaveBeenCalled()
   })
 
-  it('affiche le sélecteur de piste audio après MANIFEST_PARSED', () => {
+  it('affiche le sélecteur par-piste (legacy) quand les renditions ne sont pas game/voices/full', () => {
     const item = makeClip('/x/master.m3u8')
     renderWithProviders(
       <CoverFlowModal items={[item]} startIndex={0} onClose={vi.fn()} onToggleLike={vi.fn()} />,
     )
+    // Clip legacy : noms bruts "Game"/"Mic" → repli sur le sélecteur par-piste.
     act(() => {
       instances[0].handlers['audioTracksUpdated']?.(undefined, { audioTracks: instances[0].audioTracks })
     })
@@ -96,5 +97,63 @@ describe('CoverFlowModal — lecture HLS', () => {
       <CoverFlowModal items={[item]} startIndex={0} onClose={vi.fn()} onToggleLike={vi.fn()} />,
     )
     expect(instances).toHaveLength(0)
+  })
+})
+
+describe('CoverFlowModal — interrupteurs Jeu/Voix (layout game/voices/full)', () => {
+  beforeEach(() => {
+    instances.length = 0
+  })
+
+  // Peuple les 3 renditions pré-mixées et retourne l'instance hls.js mockée.
+  function setupToggleClip() {
+    const item = makeClip('/x/master.m3u8')
+    renderWithProviders(
+      <CoverFlowModal items={[item]} startIndex={0} onClose={vi.fn()} onToggleLike={vi.fn()} />,
+    )
+    act(() => {
+      instances[0].handlers['audioTracksUpdated']?.(undefined, {
+        audioTracks: [{ name: 'game' }, { name: 'voices' }, { name: 'full' }],
+      })
+    })
+    return instances[0]
+  }
+
+  it('affiche deux interrupteurs Jeu/Voix actifs par défaut → rendition full', () => {
+    const hls = setupToggleClip()
+    expect(screen.getByRole('button', { name: 'Jeu', pressed: true })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Voix', pressed: true })).toBeInTheDocument()
+    expect(screen.queryByText('game')).toBeNull() // pas de noms bruts
+    expect(hls.audioTrack).toBe(2) // index de 'full'
+  })
+
+  it('désactiver Voix bascule sur la rendition jeu seul', () => {
+    const hls = setupToggleClip()
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Voix' }))
+    })
+    expect(screen.getByRole('button', { name: 'Voix', pressed: false })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Jeu', pressed: true })).toBeInTheDocument()
+    expect(hls.audioTrack).toBe(0) // index de 'game'
+  })
+
+  it('désactiver Jeu seul bascule sur la rendition voix', () => {
+    const hls = setupToggleClip()
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Jeu' }))
+    })
+    expect(hls.audioTrack).toBe(1) // index de 'voices'
+  })
+
+  it('désactiver les deux interrupteurs coupe le son (vidéo muette)', () => {
+    setupToggleClip()
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Voix' }))
+    })
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Jeu' }))
+    })
+    const video = document.querySelector('video') as HTMLVideoElement
+    expect(video.muted).toBe(true)
   })
 })
