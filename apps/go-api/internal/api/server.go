@@ -649,6 +649,9 @@ func NewRouter(
 		r.Post("/auth/login", userAuthHandler.Login)
 		r.Post("/auth/register", userAuthHandler.Register)
 		r.Post("/auth/logout", userAuthHandler.Logout)
+		// PR-C : définition opt-in d'un mot de passe par l'utilisateur connecté
+		// (re-login rapide sans round-trip Microsoft). Self-gardé (401 si pas de session).
+		r.Post("/auth/password", userAuthHandler.SetPassword)
 
 		// Admin : gestion utilisateurs + invitations (protégé par RequireAuth + RequireAdmin).
 		adminHandler := handlers.NewAdminHandler(users, invites)

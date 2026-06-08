@@ -62,6 +62,8 @@ export interface BootstrapResponse {
   instance_locked?: boolean
   /** Joueur courant : refresh_token Microsoft mort → reconnexion Xbox requise (bannière). */
   reauth_required?: boolean
+  /** Utilisateur connecté : a défini un mot de passe (opt-in re-login rapide). */
+  has_password?: boolean
   /** True si l'utilisateur courant est admin. */
   is_admin: boolean
   /** Username connecté (si mode password et connecté). */

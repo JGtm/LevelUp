@@ -44,6 +44,15 @@ export function useLogout() {
   })
 }
 
+/** PR-C : définition/changement opt-in du mot de passe de l'utilisateur connecté. */
+export function useSetPassword() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (password: string) => api.post<void>('/auth/password', { password }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap }),
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Admin : utilisateurs
 // ---------------------------------------------------------------------------

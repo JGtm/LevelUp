@@ -179,11 +179,23 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		RegistrationMode:     s.cfg.RegistrationMode,
 		InstanceLocked:       s.cfg.InstanceLocked || getBoolSetting(appSettings, "instance_locked", false),
 		ReauthRequired:       s.reauthCheck != nil && currentPlayer != nil && currentPlayer.XUID != "" && s.reauthCheck(currentPlayer.XUID),
+		HasPassword:          s.currentUserHasPassword(sess),
 		IsAdmin:              sess != nil && sess.Role != nil && *sess.Role == "admin",
 		CurrentUsername:      resolveUsername(sess),
 		FirstLaunch:          s.isFirstLaunch(),
 		OAuthCodeFlowEnabled: s.cfg.AuthMode == "xbox" && s.cfg.OAuthRedirectURI != "",
 	}, nil
+}
+
+// currentUserHasPassword indique si l'utilisateur connecté a défini un mot de
+// passe (opt-in PR-C). False si pas de session/username, pas de userLookup, ou
+// utilisateur introuvable. Best-effort, sans erreur propagée.
+func (s *BootstrapService) currentUserHasPassword(sess *domain.SessionData) bool {
+	if s.userLookup == nil || sess == nil || sess.Username == nil || *sess.Username == "" {
+		return false
+	}
+	user, err := s.userLookup.Get(*sess.Username)
+	return err == nil && user != nil && user.PasswordHash != ""
 }
 
 // filterOwnedPlayers restreint la liste aux profils accessibles par l'utilisateur

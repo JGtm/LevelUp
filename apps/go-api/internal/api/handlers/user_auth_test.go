@@ -116,24 +116,65 @@ func TestUserAuth_XboxMode_LoginAdminAllowed(t *testing.T) {
 	}
 }
 
-// TestUserAuth_XboxMode_LoginNonAdminBlocked : en mode xbox, un user normal ne peut
-// PAS se logger par password — il doit passer par le SSO Xbox.
-func TestUserAuth_XboxMode_LoginNonAdminBlocked(t *testing.T) {
+// TestUserAuth_XboxMode_LoginWithPasswordAllowed : PR-C — en mode xbox, un user
+// NON-admin qui a défini un mot de passe peut désormais se logger par password
+// (opt-in). Avant PR-C : 403 password_login_admin_only.
+func TestUserAuth_XboxMode_LoginWithPasswordAllowed(t *testing.T) {
 	r, users := newUserAuthRouter(t, "xbox")
-	_, _ = users.Create("normaluser", testUserAuthPass, domain.RoleUser)
+	_, _ = users.Create("normaluser", testUserAuthPass, domain.RoleUser) // a un mot de passe
 
 	w := postJSON(t, r, "/auth/login", domain.LoginRequest{
 		Username: "normaluser",
 		Password: testUserAuthPass,
 	})
 
-	if w.Code != http.StatusForbidden {
-		t.Fatalf("user login en mode xbox : status = %d, want 403. Body: %s", w.Code, w.Body.String())
+	if w.Code != http.StatusOK {
+		t.Fatalf("login password non-admin (avec MDP) en mode xbox : status = %d, want 200. Body: %s", w.Code, w.Body.String())
 	}
-	var errResp map[string]any
-	_ = json.Unmarshal(w.Body.Bytes(), &errResp)
-	if errResp["code"] != "password_login_admin_only" {
-		t.Errorf("error code = %v, want password_login_admin_only", errResp["code"])
+}
+
+// TestUserAuth_SetPassword_OptIn : un compte SSO (sans mot de passe) en définit un
+// via POST /auth/password, puis peut s'authentifier avec.
+func TestUserAuth_SetPassword_OptIn(t *testing.T) {
+	dir := t.TempDir()
+	users := userstore.NewStore(filepath.Join(dir, "users.json"))
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
+	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
+	u, _ := users.CreateFromXbox("Spartan", "xuid-1") // compte SSO sans mot de passe
+
+	h := handlers.NewUserAuthHandler(users, invites, sessStore, "open").WithAuthMode("xbox")
+
+	req := httptest.NewRequest(http.MethodPost, "/auth/password", bytes.NewReader([]byte(`{"password":"NewPass123"}`)))
+	req.Header.Set("Content-Type", "application/json")
+	sess := &domain.SessionData{Username: &u.Username}
+	req = req.WithContext(middleware.InjectSession(req.Context(), sess))
+	w := httptest.NewRecorder()
+	h.SetPassword(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("SetPassword : status = %d, want 204. Body: %s", w.Code, w.Body.String())
+	}
+	if _, err := users.Authenticate(u.Username, "NewPass123"); err != nil {
+		t.Errorf("Authenticate après SetPassword devrait réussir, got %v", err)
+	}
+}
+
+// TestUserAuth_SetPassword_NoSession : sans session authentifiée → 401.
+func TestUserAuth_SetPassword_NoSession(t *testing.T) {
+	dir := t.TempDir()
+	users := userstore.NewStore(filepath.Join(dir, "users.json"))
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
+	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
+	h := handlers.NewUserAuthHandler(users, invites, sessStore, "open")
+
+	req := httptest.NewRequest(http.MethodPost, "/auth/password", bytes.NewReader([]byte(`{"password":"NewPass123"}`)))
+	sess := &domain.SessionData{} // pas de Username
+	req = req.WithContext(middleware.InjectSession(req.Context(), sess))
+	w := httptest.NewRecorder()
+	h.SetPassword(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("SetPassword sans session : status = %d, want 401", w.Code)
 	}
 }
 
