@@ -53,7 +53,7 @@ func newLockedUserAuthRouter(t *testing.T, authMode string) (*chi.Mux, *userstor
 		WithInstanceLock(func() bool { return true })
 
 	r := chi.NewRouter()
-	r.Use(middleware.WithSession(sessStore, false))
+	r.Use(middleware.WithSession(sessStore, middleware.SecureCookiePolicy{}))
 	r.Post("/auth/register", h.Register)
 	return r, users
 }
