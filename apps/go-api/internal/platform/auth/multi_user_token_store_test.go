@@ -15,6 +15,53 @@ func tempTokenDir(t *testing.T) string {
 	return filepath.Join(t.TempDir(), "watcher_tokens")
 }
 
+func TestMultiUserTokenStore_ReauthMarkClear(t *testing.T) {
+	s := NewMultiUserTokenStore(tempTokenDir(t))
+
+	// Absent → false, et Clear est un no-op.
+	if s.IsReauthRequired("111") {
+		t.Error("absent doit donner false")
+	}
+	if err := s.ClearReauthRequired("111"); err != nil {
+		t.Errorf("Clear sur absent: %v", err)
+	}
+
+	// Mark sur un xuid sans entrée préalable → crée l'entrée marquée.
+	if err := s.MarkReauthRequired("111", "Alice"); err != nil {
+		t.Fatalf("Mark: %v", err)
+	}
+	if !s.IsReauthRequired("111") {
+		t.Fatal("après Mark, IsReauthRequired devrait être true")
+	}
+	got, _ := s.Load("111")
+	if got.Gamertag != "Alice" || got.ReauthDetectedAt.IsZero() {
+		t.Errorf("Mark devrait poser gamertag + ReauthDetectedAt, got %+v", got)
+	}
+
+	// Mark idempotent : ne réécrit pas ReauthDetectedAt.
+	first := got.ReauthDetectedAt
+	_ = s.MarkReauthRequired("111", "Bob")
+	got2, _ := s.Load("111")
+	if !got2.ReauthDetectedAt.Equal(first) {
+		t.Error("Mark répété ne doit pas changer ReauthDetectedAt")
+	}
+	if got2.Gamertag != "Alice" {
+		t.Error("Mark répété ne doit pas écraser un gamertag existant")
+	}
+
+	// Clear → false + ReauthDetectedAt remis à zéro.
+	if err := s.ClearReauthRequired("111"); err != nil {
+		t.Fatalf("Clear: %v", err)
+	}
+	if s.IsReauthRequired("111") {
+		t.Error("après Clear, IsReauthRequired devrait être false")
+	}
+	cleared, _ := s.Load("111")
+	if !cleared.ReauthDetectedAt.IsZero() {
+		t.Error("Clear devrait remettre ReauthDetectedAt à zéro")
+	}
+}
+
 func TestMultiUserTokenStore_UpsertAndLoad(t *testing.T) {
 	s := NewMultiUserTokenStore(tempTokenDir(t))
 

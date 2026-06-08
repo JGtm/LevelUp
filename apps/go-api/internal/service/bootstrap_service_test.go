@@ -157,6 +157,22 @@ func TestBuild_HaloLinkedNoProfile(t *testing.T) {
 	}
 }
 
+// TestBuild_ReauthRequired_NoCurrentPlayer_False : sans joueur courant, le flag
+// reauth_required reste false même si le checker retournerait true (garde PR-B).
+func TestBuild_ReauthRequired_NoCurrentPlayer_False(t *testing.T) {
+	cfg := &config.AppConfig{} // 0 joueur → currentPlayer nil
+	svc := NewBootstrapService(cfg, &mockBootRepo{}).
+		WithReauthChecker(func(string) bool { return true })
+
+	resp, err := svc.Build(context.Background(), &domain.SessionData{})
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	if resp.ReauthRequired {
+		t.Error("reauth_required doit être false sans joueur courant (garde)")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // ResolveAuthState
 // ---------------------------------------------------------------------------

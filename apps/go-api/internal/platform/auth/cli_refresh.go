@@ -60,7 +60,22 @@ func RefreshHaloTokensViaStoreFirst(
 	if store != nil && xuid != "" {
 		if user, err := store.Load(xuid); err == nil && user != nil {
 			if result := tryRefreshFromUserEntry(ctx, provider, store, xuid, user); result != nil {
+				// Refresh OK → l'éventuel flag reauth_required est obsolète.
+				_ = store.ClearReauthRequired(xuid)
 				return result, nil
+			}
+			// PR-B : des credentials existaient (MSAL cache OU RT) mais le refresh
+			// silencieux a échoué → refresh_token mort. On marque reauth_required
+			// pour que le front propose une reconnexion Xbox. (Si AUCUN credential
+			// n'existait, ce n'est pas une « mort » mais un compte jamais authentifié
+			// → pas de marquage.)
+			if user.MSALCacheJSON != "" || user.OAuthRefreshToken != "" {
+				if merr := store.MarkReauthRequired(xuid, user.Gamertag); merr != nil {
+					slog.WarnContext(ctx, "cli_auth: marquage reauth_required échoué", "xuid", xuid, "err", merr)
+				} else {
+					slog.WarnContext(ctx, "cli_auth: refresh_token mort — reauth_required",
+						"xuid", xuid, "gamertag", user.Gamertag)
+				}
 			}
 		} else if err != nil && !errors.Is(err, ErrUserTokensNotFound) {
 			slog.WarnContext(ctx, "cli_auth: lecture store échouée", "xuid", xuid, "err", err)

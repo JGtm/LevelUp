@@ -44,6 +44,8 @@ interface AppShellState {
   registrationMode: 'invite' | 'open' | 'closed'
   /** Instance fermée : aucune nouvelle inscription / identité / BDD. */
   instanceLocked: boolean
+  /** Joueur courant : refresh_token Microsoft mort → reconnexion Xbox requise. */
+  reauthRequired: boolean
   isAdmin: boolean
   currentUsername: string | null
   firstLaunch: boolean
@@ -98,6 +100,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
   authMode: 'none',
   registrationMode: 'invite',
   instanceLocked: false,
+  reauthRequired: false,
   isAdmin: false,
   currentUsername: null,
   firstLaunch: false,
@@ -127,6 +130,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
       authMode: data.auth_mode ?? 'none',
       registrationMode: data.registration_mode ?? 'invite',
       instanceLocked: data.instance_locked ?? false,
+      reauthRequired: data.reauth_required ?? false,
       isAdmin: data.is_admin ?? false,
       currentUsername: data.current_username ?? null,
       firstLaunch: data.first_launch ?? false,
