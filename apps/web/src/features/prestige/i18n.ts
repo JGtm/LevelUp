@@ -56,6 +56,13 @@ export interface PrestigeText {
   formAcceptHeroic: string
   formCreating: string
   formCreate: string
+  // ── Cooldown anti-farming (métrique en repos) ──
+  /** Badge sur un modèle indisponible. Interpolé : `{time}` (ex: "3 h", "2 j"). */
+  cooldownBadge: string
+  cooldownUnitHour: string
+  cooldownUnitDay: string
+  /** Message affiché si la création est refusée (429 cooldown_active). */
+  cooldownErrorMessage: string
   // ── Formulaire de création d'arc (CreateArcForm) ──
   arcFormNew: string
   arcFormTitle: string
@@ -113,6 +120,10 @@ const FR: PrestigeText = {
   formAcceptHeroic: 'Accepter (Héroïque : {target})',
   formCreating: 'Création…',
   formCreate: 'Créer le défi',
+  cooldownBadge: 'Dispo dans {time}',
+  cooldownUnitHour: 'h',
+  cooldownUnitDay: 'j',
+  cooldownErrorMessage: 'Métrique en repos (cooldown) — réessaie plus tard.',
   arcFormNew: 'Nouvel arc',
   arcFormTitle: 'Titre',
   arcFormTitlePlaceholder: 'Ex. Ascension du Spartan',
@@ -168,6 +179,10 @@ const EN: PrestigeText = {
   formAcceptHeroic: 'Accept (Heroic: {target})',
   formCreating: 'Creating…',
   formCreate: 'Create challenge',
+  cooldownBadge: 'Available in {time}',
+  cooldownUnitHour: 'h',
+  cooldownUnitDay: 'd',
+  cooldownErrorMessage: 'Metric on cooldown — try again later.',
   arcFormNew: 'New arc',
   arcFormTitle: 'Title',
   arcFormTitlePlaceholder: 'e.g. Spartan Ascension',

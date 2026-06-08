@@ -212,6 +212,12 @@ func (s *service) CreateChallenge(ctx context.Context, req CreateChallengeReques
 
 	now := s.deps.Now()
 
+	// Cooldown anti-farming (tous modes) : refuse de recréer un défi sur une
+	// métrique dont un défi précédent a été abandonné/expiré récemment.
+	if err := s.checkCooldown(ctx, req, now); err != nil {
+		return Challenge{}, err
+	}
+
 	// Calculer la baseline et le palier.
 	baseline, err := s.computeBaselineFor(ctx, req.UserID, req.TitleSlug, req.Metric)
 	if err != nil {
@@ -327,6 +333,26 @@ func (s *service) checkQuotas(ctx context.Context, req CreateChallengeRequest) e
 			return fmt.Errorf("%w: %d défis %s actifs (max %d)",
 				ErrInvalidInput, actives, req.Cadence, cadenceMax)
 		}
+	}
+	return nil
+}
+
+// checkCooldown refuse la création d'un défi si la métrique est en cooldown
+// anti-farming, i.e. un défi précédent du joueur sur la MÊME métrique a été
+// abandonné (24h) ou a expiré (12h) dans la fenêtre. S'applique à tous les
+// modes (cf. CooldownEndsAt). La complétion ne déclenche pas de cooldown.
+func (s *service) checkCooldown(ctx context.Context, req CreateChallengeRequest, now time.Time) error {
+	metric := req.Metric
+	prev, err := s.deps.Challenges.List(ctx, ChallengeFilter{
+		UserID:    req.UserID,
+		TitleSlug: req.TitleSlug,
+		Metric:    &metric,
+	})
+	if err != nil {
+		return fmt.Errorf("list for cooldown: %w", err)
+	}
+	if IsCooldownActive(s.deps.Tuning, prev, now) {
+		return ErrCooldownActive
 	}
 	return nil
 }
@@ -527,7 +553,45 @@ func (s *service) SuggestTemplates(ctx context.Context, userID, titleSlug string
 		count = s.deps.Tuning.Suggestion.AlternativesCount
 	}
 	// TODO Phase 3 : exclure les templates déjà tentés (lookup dans challenges).
-	return s.deps.Templates.Suggest(ctx, titleSlug, nil, count)
+	tmpls, err := s.deps.Templates.Suggest(ctx, titleSlug, nil, count)
+	if err != nil {
+		return nil, err
+	}
+	s.annotateCooldowns(ctx, userID, titleSlug, tmpls)
+	return tmpls, nil
+}
+
+// annotateCooldowns renseigne Template.CooldownEndsAt pour chaque template dont
+// la métrique est en cooldown anti-farming actif pour le joueur. Une seule
+// lecture des défis du joueur, puis map métrique→fin de cooldown la plus
+// lointaine. Best-effort : en cas d'erreur de lecture, on n'annote pas (le
+// front retombe sur le refus réactif 429 à la création).
+func (s *service) annotateCooldowns(ctx context.Context, userID, titleSlug string, tmpls []Template) {
+	if userID == "" || len(tmpls) == 0 {
+		return
+	}
+	now := s.deps.Now()
+	all, err := s.deps.Challenges.List(ctx, ChallengeFilter{UserID: userID, TitleSlug: titleSlug})
+	if err != nil {
+		slog.WarnContext(ctx, "prestige: cooldown annotation skipped", "err", err)
+		return
+	}
+	endByMetric := make(map[string]time.Time)
+	for _, c := range all {
+		end := CooldownEndsAt(s.deps.Tuning, c)
+		if end.IsZero() || !now.Before(end) {
+			continue
+		}
+		if cur, ok := endByMetric[c.Metric]; !ok || end.After(cur) {
+			endByMetric[c.Metric] = end
+		}
+	}
+	for i := range tmpls {
+		if end, ok := endByMetric[tmpls[i].Metric]; ok {
+			e := end
+			tmpls[i].CooldownEndsAt = &e
+		}
+	}
 }
 
 func (s *service) SuggestNext(ctx context.Context, completedID string) ([]Template, error) {

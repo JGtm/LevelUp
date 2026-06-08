@@ -16,6 +16,7 @@ type fakeChallengeRepo struct {
 	activeTotal     int
 	createdSince    int
 	createCalled    bool
+	listResult      []Challenge // renvoyé tel quel par List (pour tests cooldown)
 }
 
 func (r *fakeChallengeRepo) Create(_ context.Context, _ Challenge) error {
@@ -26,7 +27,7 @@ func (r *fakeChallengeRepo) Get(_ context.Context, _ string) (Challenge, error) 
 	return Challenge{}, ErrChallengeNotFound
 }
 func (r *fakeChallengeRepo) List(_ context.Context, _ ChallengeFilter) ([]Challenge, error) {
-	return nil, nil
+	return r.listResult, nil
 }
 func (r *fakeChallengeRepo) UpdateStatus(_ context.Context, _ string, _ ChallengeStatus, _ time.Time) error {
 	return nil
@@ -199,6 +200,89 @@ func TestCreateChallenge_LibreNoQuotaCheck(t *testing.T) {
 	}
 	if !repo.createCalled {
 		t.Error("repo.Create should have been called")
+	}
+}
+
+// ─── Cooldown anti-farming (tous modes, depuis 2026-06-08) ───
+
+// Un abandon récent sur la même métrique bloque la recréation (libre inclus).
+func TestCreateChallenge_CooldownBlocks(t *testing.T) {
+	now := time.Now().UTC()
+	abandonedRecent := now.Add(-1 * time.Hour) // < 24h → cooldown actif
+	repo := &fakeChallengeRepo{
+		listResult: []Challenge{
+			{Metric: "FieldKDA", Mode: ModeLibre, Status: StatusAbandoned, AbandonedAt: &abandonedRecent},
+		},
+	}
+	svc := buildServiceForQuotaTests(repo)
+	_, err := svc.CreateChallenge(context.Background(), CreateChallengeRequest{
+		UserID:     "u1",
+		TitleSlug:  "halo_infinite",
+		Metric:     "FieldKDA",
+		Target:     1.5,
+		WindowType: WindowSession,
+		Cadence:    CadenceFree,
+		EvalType:   EvalThreshold,
+		Mode:       ModeLibre,
+	})
+	if !errors.Is(err, ErrCooldownActive) {
+		t.Fatalf("expected ErrCooldownActive, got %v", err)
+	}
+	if repo.createCalled {
+		t.Error("repo.Create should not have been called under cooldown")
+	}
+}
+
+// Un abandon ancien (> 24h) n'empêche plus la recréation.
+func TestCreateChallenge_CooldownExpired_OK(t *testing.T) {
+	now := time.Now().UTC()
+	abandonedOld := now.Add(-48 * time.Hour) // > 24h → cooldown expiré
+	repo := &fakeChallengeRepo{
+		listResult: []Challenge{
+			{Metric: "FieldKDA", Mode: ModeLibre, Status: StatusAbandoned, AbandonedAt: &abandonedOld},
+		},
+	}
+	svc := buildServiceForQuotaTests(repo)
+	_, err := svc.CreateChallenge(context.Background(), CreateChallengeRequest{
+		UserID:     "u1",
+		TitleSlug:  "halo_infinite",
+		Metric:     "FieldKDA",
+		Target:     1.5,
+		WindowType: WindowSession,
+		Cadence:    CadenceFree,
+		EvalType:   EvalThreshold,
+		Mode:       ModeLibre,
+	})
+	if err != nil {
+		t.Fatalf("expired cooldown should allow creation, got %v", err)
+	}
+	if !repo.createCalled {
+		t.Error("repo.Create should have been called once cooldown expired")
+	}
+}
+
+// La complétion ne crée pas de cooldown → recréation immédiate possible.
+func TestCreateChallenge_CompletedNoCooldown(t *testing.T) {
+	now := time.Now().UTC()
+	completedRecent := now.Add(-1 * time.Minute)
+	repo := &fakeChallengeRepo{
+		listResult: []Challenge{
+			{Metric: "FieldKDA", Mode: ModeLibre, Status: StatusCompleted, CompletedAt: &completedRecent},
+		},
+	}
+	svc := buildServiceForQuotaTests(repo)
+	_, err := svc.CreateChallenge(context.Background(), CreateChallengeRequest{
+		UserID:     "u1",
+		TitleSlug:  "halo_infinite",
+		Metric:     "FieldKDA",
+		Target:     1.5,
+		WindowType: WindowSession,
+		Cadence:    CadenceFree,
+		EvalType:   EvalThreshold,
+		Mode:       ModeLibre,
+	})
+	if err != nil {
+		t.Fatalf("completion should not trigger cooldown, got %v", err)
 	}
 }
 

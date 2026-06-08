@@ -167,6 +167,10 @@ export interface Template {
   mythic_target: number
   schema_version: number
   updated_at: string
+  /** Fin du cooldown anti-farming sur la métrique pour le joueur courant
+   *  (ISO 8601). Absent si aucun cooldown actif. Enrichi par le backend
+   *  (SuggestTemplates) ; permet d'afficher un badge + désactiver le choix. */
+  cooldown_ends_at?: string
 }
 
 export interface SquadChallenge {

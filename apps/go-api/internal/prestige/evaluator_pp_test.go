@@ -271,8 +271,8 @@ func TestTuning_CooldownDuration(t *testing.T) {
 	if d := tuning.CooldownDuration(StatusExpired); d != 12*time.Hour {
 		t.Errorf("expired got %v want 12h", d)
 	}
-	if d := tuning.CooldownDuration(StatusAbandoned); d != 48*time.Hour {
-		t.Errorf("abandoned got %v want 48h", d)
+	if d := tuning.CooldownDuration(StatusAbandoned); d != 24*time.Hour {
+		t.Errorf("abandoned got %v want 24h", d)
 	}
 	if d := tuning.CooldownDuration(StatusActive); d != 0 {
 		t.Errorf("active should have no cooldown, got %v", d)

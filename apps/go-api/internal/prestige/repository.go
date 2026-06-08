@@ -34,6 +34,7 @@ type ChallengeFilter struct {
 	Status    *ChallengeStatus // nil = tous statuts
 	ArcID     *string          // nil = tous, "" interdit (utilise NoArc à la place)
 	Mode      *ChallengeMode
+	Metric    *string // nil = toutes métriques (filtre cooldown par métrique)
 	Limit     int
 }
 

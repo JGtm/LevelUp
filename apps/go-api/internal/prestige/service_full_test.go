@@ -158,6 +158,37 @@ func TestService_CreateArc_RequiredFields(t *testing.T) {
 	}
 }
 
+// ─── Suggestions + cooldown ───
+
+// SuggestTemplates annote CooldownEndsAt sur les templates dont la métrique
+// est en cooldown actif pour le joueur, et laisse les autres à nil.
+func TestService_SuggestTemplates_AnnotatesCooldown(t *testing.T) {
+	svc, chRepo, _, _, _, tplRepo := buildFullService()
+	tplRepo.templates = []Template{
+		{ID: "t-kda", TitleSlug: "halo_infinite", Metric: "FieldKDA"},
+		{ID: "t-kills", TitleSlug: "halo_infinite", Metric: "FieldKills"},
+	}
+	recent := time.Now().UTC().Add(-1 * time.Hour) // < 24h → cooldown actif
+	chRepo.listResult = []Challenge{
+		{Metric: "FieldKDA", Mode: ModeLibre, Status: StatusAbandoned, AbandonedAt: &recent},
+	}
+
+	out, err := svc.SuggestTemplates(context.Background(), "u1", "halo_infinite", 5)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	byMetric := map[string]*time.Time{}
+	for _, tmpl := range out {
+		byMetric[tmpl.Metric] = tmpl.CooldownEndsAt
+	}
+	if byMetric["FieldKDA"] == nil {
+		t.Error("FieldKDA template should be annotated with a cooldown")
+	}
+	if byMetric["FieldKills"] != nil {
+		t.Errorf("FieldKills template should not have a cooldown, got %v", byMetric["FieldKills"])
+	}
+}
+
 // ─── Squad challenges ───
 
 func TestService_CreateSquadChallenge_AutoJoinsCreator(t *testing.T) {

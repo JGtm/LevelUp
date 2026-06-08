@@ -155,6 +155,43 @@ func TestPrestigeChallengeRepo_List_FilterByStatus(t *testing.T) {
 	}
 }
 
+func TestPrestigeChallengeRepo_List_FilterByMetric(t *testing.T) {
+	db := setupPrestigeDB(t, migration.TargetPlayer)
+	repo := NewPrestigeChallengeRepo(db)
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Second)
+
+	for i, metric := range []string{"FieldKDA", "FieldKills", "FieldKDA"} {
+		c := prestige.Challenge{
+			ID:     "ch_" + string(rune('a'+i)),
+			UserID: "u1", TitleSlug: "halo_infinite",
+			Metric: metric, Target: 1.0,
+			WindowType: prestige.WindowSession, Cadence: prestige.CadenceFree,
+			EvalType: prestige.EvalThreshold, Mode: prestige.ModeLibre,
+			DataTier: prestige.DataFull, Status: prestige.StatusActive, CreatedAt: now,
+		}
+		if err := repo.Create(ctx, c); err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+	}
+
+	kda := "FieldKDA"
+	list, err := repo.List(ctx, prestige.ChallengeFilter{
+		UserID: "u1", TitleSlug: "halo_infinite", Metric: &kda,
+	})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(list) != 2 {
+		t.Errorf("got %d FieldKDA, want 2", len(list))
+	}
+	for _, c := range list {
+		if c.Metric != "FieldKDA" {
+			t.Errorf("unexpected metric %q in filtered list", c.Metric)
+		}
+	}
+}
+
 // ─────────── PrestigeRepo (events + leaderboard) ───────────
 
 func TestPrestigeSocialRepo_EmitEvent_BumpsTotal(t *testing.T) {

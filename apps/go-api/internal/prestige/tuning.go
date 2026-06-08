@@ -187,7 +187,7 @@ func DefaultTuning() Tuning {
 			Session: 5, Rolling7d: 8, Rolling14d: 15, Rolling30d: 25,
 		},
 		Cooldowns: CooldownsTuning{
-			ExpiredHours: 12, AbandonedHours: 48, CompletedHours: 0,
+			ExpiredHours: 12, AbandonedHours: 24, CompletedHours: 0,
 		},
 		QuotasPilote: QuotasPiloteTuning{
 			DailyMax: 3, WeeklyMax: 5, MonthlyMax: 2,

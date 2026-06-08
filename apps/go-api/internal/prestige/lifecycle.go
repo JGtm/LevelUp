@@ -101,13 +101,14 @@ func MarkAbandoned(c Challenge, now time.Time) (Challenge, error) {
 // du défi terminé. Renvoie un time.Time zéro si pas de cooldown applicable
 // (statut non terminal ou cooldown=0).
 //
-// Le cooldown s'applique uniquement aux modes pilote (le mode libre n'a
-// pas de cooldown). L'appelant est responsable de filtrer.
+// Le cooldown s'applique à TOUS les modes (libre comme pilote) depuis
+// 2026-06-08 : le mode libre est le seul créable côté UI et le dialogue
+// d'abandon promet déjà un cooldown — l'exemption historique du libre était
+// donc un trou. Les déclencheurs sont gouvernés par la durée par statut :
+// abandon (24h) et expiration (12h) ; la complétion reste à 0h (pas de
+// cooldown). Cf. décision .ai/PLAN_ASCENSION_ARCS_PRESETS_ET_ONGLETS.md.
 func CooldownEndsAt(t Tuning, c Challenge) time.Time {
 	if !c.Status.IsTerminal() {
-		return time.Time{}
-	}
-	if c.Mode != ModePilote {
 		return time.Time{}
 	}
 	d := t.CooldownDuration(c.Status)
