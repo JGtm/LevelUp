@@ -7,7 +7,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
-import type { LeaderboardResponse } from '@/lib/api/types'
+import type { LeaderboardCatalog, LeaderboardResponse } from '@/lib/api/types'
 
 export interface LeaderboardParams {
   category?: string
@@ -35,5 +35,21 @@ export function useLeaderboard(playerSlug: string, params: LeaderboardParams = {
       api.get<LeaderboardResponse>(`/players/${playerSlug}/pages/leaderboard${suffix}`),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
+  })
+}
+
+/**
+ * useLeaderboardCatalog — saisons + playlists pour lesquelles des snapshots CSR
+ * mondiaux existent (sélecteurs dynamiques). Cache long : le catalogue ne bouge
+ * qu'au rythme des saisons.
+ * GET /players/{slug}/pages/leaderboard/catalog
+ */
+export function useLeaderboardCatalog(playerSlug: string) {
+  return useQuery<LeaderboardCatalog>({
+    queryKey: queryKeys.leaderboardCatalog(playerSlug),
+    queryFn: () =>
+      api.get<LeaderboardCatalog>(`/players/${playerSlug}/pages/leaderboard/catalog`),
+    enabled: !!playerSlug,
+    staleTime: 30 * 60 * 1000,
   })
 }

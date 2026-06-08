@@ -64,6 +64,22 @@ type LeaderboardRequest struct {
 	Limit     int    `json:"limit"`
 }
 
+// LeaderboardCatalogRef est une option de sélecteur (saison ou playlist) du
+// classement CSR mondial. ID est la valeur technique passée en query param ;
+// DisplayName est un libellé best-effort (le front peut le localiser).
+type LeaderboardCatalogRef struct {
+	ID          string `json:"id"`
+	DisplayName string `json:"display_name"`
+}
+
+// LeaderboardCatalog liste les saisons et playlists pour lesquelles des snapshots
+// CSR mondiaux existent réellement en base. Alimente les sélecteurs dynamiques de
+// la page Classement (remplace les listes codées en dur v1).
+type LeaderboardCatalog struct {
+	Seasons   []LeaderboardCatalogRef `json:"seasons"`
+	Playlists []LeaderboardCatalogRef `json:"playlists"`
+}
+
 // LeaderboardResponse est la réponse de GET .../pages/leaderboard.
 type LeaderboardResponse struct {
 	Entries    []LeaderboardEntry `json:"entries"`

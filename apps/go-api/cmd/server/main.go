@@ -955,6 +955,26 @@ func main() {
 			"interval", scheduler.DefaultSpartanCustomizationInterval)
 	}
 
+	// Cron classement CSR mondial : capture quotidienne du leaderboard scrapé
+	// depuis Halo Waypoint (saison active découverte automatiquement), persistée
+	// en append-only via le SharedDBProvider (AcquireWriter). Premier tick au boot
+	// → peuple la prod sans manip manuelle ; garde-fou fraîcheur 20h → pas de
+	// re-scrape à chaque hot-reload. Gardé par cfg.SharedProvider != nil : en mode
+	// legacy (RO direct), une 2e connexion RW sur shared entrerait en conflit
+	// "different configuration" — on désactive donc le cron in-process (le CLI
+	// snapshot-world-leaderboard reste la voie manuelle, serveur arrêté).
+	if cfg.SharedProvider != nil {
+		lbScraper := halo.NewLeaderboardScraper(800 * time.Millisecond)
+		worldLbCron := scheduler.NewWorldLeaderboardCron(cfg.SharedProvider, lbScraper, 0)
+		schedulerWG.Add(1)
+		go func() {
+			defer schedulerWG.Done()
+			worldLbCron.Run(schedulerCtx)
+		}()
+		slog.InfoContext(ctx, "world_leaderboard_cron: scheduled",
+			"interval", scheduler.DefaultWorldLeaderboardInterval)
+	}
+
 	// app_release : émission asynchrone d'une notification in-app par joueur si la
 	// version a changé depuis sync_meta.last_seen_app_version. Ne bloque pas le boot.
 	go api.EmitAppReleaseForAllPlayers(context.Background(), cfg, reg, cfg.AppVersion)

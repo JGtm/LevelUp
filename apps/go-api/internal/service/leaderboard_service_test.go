@@ -29,10 +29,14 @@ func (m *mockLeaderboardRepo) GetCSRWorldLeaderboard(_ context.Context, _, _ str
 	return m.csrWorld, m.err
 }
 
-func (m *mockLeaderboardRepo) GetStatLeaderboard(_ context.Context, category domain.LeaderboardCategory, _ string, limit int) ([]domain.LeaderboardEntry, error) {
+func (m *mockLeaderboardRepo) GetStatLeaderboard(_ context.Context, category domain.LeaderboardCategory, _, _ string, limit int) ([]domain.LeaderboardEntry, error) {
 	m.lastCategory = category
 	m.lastLimit = limit
 	return m.stats, m.err
+}
+
+func (m *mockLeaderboardRepo) GetWorldLeaderboardCatalog(_ context.Context) (domain.LeaderboardCatalog, error) {
+	return domain.LeaderboardCatalog{}, m.err
 }
 
 // --- tests ---

@@ -370,8 +370,12 @@ type LeaderboardRepository interface {
 	// (scrapé depuis Halo Waypoint) pour une saison + playlist.
 	GetCSRWorldLeaderboard(ctx context.Context, season, playlist string, limit int) ([]domain.LeaderboardEntry, error)
 	// GetStatLeaderboard agrège shared.match_participants par xuid pour une
-	// catégorie de stat (joueurs croisés).
-	GetStatLeaderboard(ctx context.Context, category domain.LeaderboardCategory, playlist string, limit int) ([]domain.LeaderboardEntry, error)
+	// catégorie de stat (joueurs croisés). playlist + season : filtres optionnels
+	// (season au format interne "CsrSeasonN", cf. match_registry.season_id).
+	GetStatLeaderboard(ctx context.Context, category domain.LeaderboardCategory, playlist, season string, limit int) ([]domain.LeaderboardEntry, error)
+	// GetWorldLeaderboardCatalog liste saisons + playlists ayant des snapshots
+	// CSR mondiaux (sélecteurs dynamiques).
+	GetWorldLeaderboardCatalog(ctx context.Context) (domain.LeaderboardCatalog, error)
 }
 
 // Ensure compile-time checks Sprint 54.
@@ -443,8 +447,11 @@ func (n *noopLeaderboardRepo) GetLocalLeaderboard(_ context.Context, _, _, _ str
 func (n *noopLeaderboardRepo) GetCSRWorldLeaderboard(_ context.Context, _, _ string, _ int) ([]domain.LeaderboardEntry, error) {
 	return nil, nil
 }
-func (n *noopLeaderboardRepo) GetStatLeaderboard(_ context.Context, _ domain.LeaderboardCategory, _ string, _ int) ([]domain.LeaderboardEntry, error) {
+func (n *noopLeaderboardRepo) GetStatLeaderboard(_ context.Context, _ domain.LeaderboardCategory, _, _ string, _ int) ([]domain.LeaderboardEntry, error) {
 	return nil, nil
+}
+func (n *noopLeaderboardRepo) GetWorldLeaderboardCatalog(_ context.Context) (domain.LeaderboardCatalog, error) {
+	return domain.LeaderboardCatalog{}, nil
 }
 
 // PrivacyStateRepository persiste et charge l'état de privacy d'un joueur.

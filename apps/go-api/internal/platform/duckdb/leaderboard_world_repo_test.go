@@ -12,19 +12,27 @@ import (
 	"levelup/go-api/internal/migration"
 )
 
-// applyWorldLeaderboardMigration applique la migration de création de
-// world_csr_leaderboard_snapshots sur une DB de test.
+// applyWorldLeaderboardMigration applique les migrations du classement mondial
+// (création de la table + vue _latest par batch) sur une DB de test, dans l'ordre.
 func applyWorldLeaderboardMigration(t *testing.T, db *sql.DB) {
 	t.Helper()
+	wanted := []string{
+		"create_world_csr_leaderboard_snapshots",
+		"world_csr_leaderboard_latest_by_batch",
+	}
+	byName := map[string]migration.Migration{}
 	for _, m := range migration.ForTarget(migration.TargetShared) {
-		if m.Name == "create_world_csr_leaderboard_snapshots" {
-			if err := m.ApplySchema(db); err != nil {
-				t.Fatalf("ApplySchema: %v", err)
-			}
-			return
+		byName[m.Name] = m
+	}
+	for _, name := range wanted {
+		m, ok := byName[name]
+		if !ok {
+			t.Fatalf("migration %s introuvable", name)
+		}
+		if err := m.ApplySchema(db); err != nil {
+			t.Fatalf("ApplySchema(%s): %v", name, err)
 		}
 	}
-	t.Fatal("migration create_world_csr_leaderboard_snapshots introuvable")
 }
 
 // TestInsertWorldCSRSnapshot_AppendOnlyAndLatestView valide que l'insertion est
@@ -86,5 +94,67 @@ func TestInsertWorldCSRSnapshot_AppendOnlyAndLatestView(t *testing.T) {
 	}
 	if gt != "NewKing" || csr != 2222 {
 		t.Fatalf("rank 1 latest = (%q, %d), want (NewKing, 2222)", gt, csr)
+	}
+
+	// Fix Frankenstein : la vue groupe par batch (fetched_at), pas par rang. Le
+	// batch2 (1 ligne, t1) REMPLACE entièrement batch1 pour (csrseason13-2, p) :
+	// la queue de batch1 (rang 2) ne doit PAS subsister dans _latest.
+	var latestCount int
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM world_csr_leaderboard_latest WHERE season_id='csrseason13-2' AND playlist_id='p'`,
+	).Scan(&latestCount); err != nil {
+		t.Fatalf("count latest après batch2: %v", err)
+	}
+	if latestCount != 1 {
+		t.Fatalf("latest count après batch2 = %d, want 1 (batch remplacé, pas fusionné)", latestCount)
+	}
+}
+
+// TestGetWorldLeaderboardCatalog valide la remontée des saisons/playlists
+// distinctes présentes en base + la résolution du libellé de playlist.
+func TestGetWorldLeaderboardCatalog(t *testing.T) {
+	shared := openMemDB(t)
+	applyWorldLeaderboardMigration(t, shared.SQLDb())
+	ctx := context.Background()
+
+	// 2 saisons, 2 playlists (dont une connue de rankedplaylists → libellé FR).
+	arenaID := "edfef3ac-9cbe-4fa2-b949-8f29deafd483" // Ranked Arena (NameFR "Arène classée")
+	rows := []domain.LeaderboardEntry{
+		{Season: "csrseason13-2", Playlist: arenaID, Rank: 1, Gamertag: "A", CSRValue: 2000, Tier: "Onyx", FetchedAt: time.Now().UTC()},
+		{Season: "csrseason12-1", Playlist: arenaID, Rank: 1, Gamertag: "B", CSRValue: 1900, Tier: "Onyx", FetchedAt: time.Now().UTC()},
+		{Season: "csrseason13-2", Playlist: "unknown-pl", Rank: 1, Gamertag: "C", CSRValue: 1800, Tier: "Diamond", FetchedAt: time.Now().UTC()},
+	}
+	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), rows); err != nil {
+		t.Fatalf("InsertWorldCSRSnapshot: %v", err)
+	}
+
+	repo := NewLeaderboardRepo(&PlayerDB{Shared: shared})
+	cat, err := repo.GetWorldLeaderboardCatalog(ctx)
+	if err != nil {
+		t.Fatalf("GetWorldLeaderboardCatalog: %v", err)
+	}
+
+	// Saisons triées DESC : csrseason13-2 d'abord.
+	if len(cat.Seasons) != 2 || cat.Seasons[0].ID != "csrseason13-2" {
+		t.Fatalf("seasons = %+v, attendu [13-2, 12-1]", cat.Seasons)
+	}
+	// Playlists : 2 distinctes ; la playlist connue a son libellé FR.
+	if len(cat.Playlists) != 2 {
+		t.Fatalf("playlists = %d, attendu 2 (%+v)", len(cat.Playlists), cat.Playlists)
+	}
+	var arenaLabel, unknownLabel string
+	for _, p := range cat.Playlists {
+		switch p.ID {
+		case arenaID:
+			arenaLabel = p.DisplayName
+		case "unknown-pl":
+			unknownLabel = p.DisplayName
+		}
+	}
+	if arenaLabel != "Arène classée" {
+		t.Errorf("libellé Arena = %q, attendu \"Arène classée\"", arenaLabel)
+	}
+	if unknownLabel != "unknown-pl" {
+		t.Errorf("libellé inconnu = %q, attendu fallback sur l'asset_id", unknownLabel)
 	}
 }

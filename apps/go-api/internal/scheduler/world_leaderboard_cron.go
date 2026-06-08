@@ -1,0 +1,242 @@
+// Package scheduler — world_leaderboard_cron.go : cron basse fréquence qui
+// capture le classement CSR mondial (scrape Halo Waypoint) et le persiste en
+// append-only dans shared.world_csr_leaderboard_snapshots.
+//
+// Pourquoi : Halo Waypoint n'expose aucune API de classement mondial (HaloDotAPI
+// mort). La seule source est la page web publique, qu'il faut re-photographier
+// régulièrement car le classement évolue. Le CLI cmd/snapshot-world-leaderboard
+// fait ce travail mais EXIGE d'arrêter le serveur (ouverture RW directe de la
+// shared DB). Ce cron fait la même chose serveur allumé, via le SharedDBProvider
+// (AcquireWriter), donc zéro intervention manuelle.
+//
+// Mode autonome (ADR : direction sync convergent autonome) : la saison active est
+// DÉCOUVERTE sur la page (seasons[0]), jamais codée en dur — quand Halo change de
+// saison, le cron suit tout seul. Seule la saison active est rafraîchie : les
+// saisons passées sont figées (un snapshot one-shot via le CLI suffit).
+//
+// Architecture clé — fenêtre RW minimale :
+//   - Le scraping (réseau, potentiellement plusieurs minutes : pagination + délais
+//     polis × N playlists) se fait HORS lease writer.
+//   - Le writer n'est acquis que pour les INSERT (quelques dizaines de ms), pour
+//     ne pas tenir la shared DB en mode RW pendant le scrape (sinon les handlers
+//     HTTP lecteurs seraient bloqués / 503 tout du long).
+package scheduler
+
+import (
+	"context"
+	"log/slog"
+	"time"
+
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
+	"levelup/go-api/internal/observability/logging"
+	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+)
+
+// LeaderboardScraperPort abstrait halo.LeaderboardScraper pour le mocking en test.
+type LeaderboardScraperPort interface {
+	// FetchActiveSeason découvre la saison CSR active (seasons[0] de la page).
+	FetchActiveSeason(ctx context.Context, refPlaylistID string) (string, error)
+	// FetchCSRLeaderboard scrape le classement d'une playlist pour une saison.
+	FetchCSRLeaderboard(ctx context.Context, seasonID, playlistID string, limit int) ([]domain.LeaderboardEntry, error)
+}
+
+const (
+	// DefaultWorldLeaderboardInterval : 1×/jour suffit — le classement mondial
+	// bouge lentement et le scraping doit rester poli (page non documentée).
+	DefaultWorldLeaderboardInterval = 24 * time.Hour
+	// defaultWorldLeaderboardFreshness : si un snapshot de la saison active date
+	// de moins que ça, on saute le cycle. Garde-fou anti-spam au boot / hot-reload
+	// Air (sinon chaque redémarrage re-scraperait Halo Waypoint). < interval pour
+	// tolérer une légère dérive du ticker.
+	defaultWorldLeaderboardFreshness = 20 * time.Hour
+	// defaultWorldLeaderboardLimit : nb max d'entrées scrapées par playlist.
+	defaultWorldLeaderboardLimit = 200
+	// defaultWorldLeaderboardMinEntries : plancher de cohérence. En dessous, on
+	// considère que le scrape de la playlist est tronqué (page à moitié cassée,
+	// markup changé, coupure réseau en pleine pagination) et on l'IGNORE plutôt
+	// que de persister un snapshot partiel — les données précédentes (append-only)
+	// restent affichées. Les playlists classées actives scrapées (Arène, Assassin,
+	// Duo, Legacy) comptent des milliers de joueurs classés : un top-200 qui
+	// renvoie < 25 est quasi-certainement un glitch, pas un classement légitime.
+	defaultWorldLeaderboardMinEntries = 25
+)
+
+// WorldLeaderboardCron capture périodiquement le classement CSR mondial de la
+// saison active pour toutes les playlists classées et le persiste en append-only.
+type WorldLeaderboardCron struct {
+	provider   sharedprovider.Provider
+	scraper    LeaderboardScraperPort
+	playlists  func() []string // asset IDs des playlists classées à scraper
+	interval   time.Duration
+	freshness  time.Duration
+	limit      int
+	minEntries int // plancher de cohérence par playlist (sous ce seuil → skip)
+}
+
+// NewWorldLeaderboardCron construit le cron. provider/scraper requis (nil → noop).
+// Si interval <= 0, DefaultWorldLeaderboardInterval est utilisé. La liste des
+// playlists est dérivée de rankedplaylists.Active() (playlists classées actives).
+func NewWorldLeaderboardCron(
+	provider sharedprovider.Provider,
+	scraper LeaderboardScraperPort,
+	interval time.Duration,
+) *WorldLeaderboardCron {
+	if interval <= 0 {
+		interval = DefaultWorldLeaderboardInterval
+	}
+	return &WorldLeaderboardCron{
+		provider:   provider,
+		scraper:    scraper,
+		playlists:  activeRankedPlaylistIDs,
+		interval:   interval,
+		freshness:  defaultWorldLeaderboardFreshness,
+		limit:      defaultWorldLeaderboardLimit,
+		minEntries: defaultWorldLeaderboardMinEntries,
+	}
+}
+
+// activeRankedPlaylistIDs retourne les asset IDs des playlists classées actives.
+func activeRankedPlaylistIDs() []string {
+	pls := rankedplaylists.Active()
+	out := make([]string, 0, len(pls))
+	for _, pl := range pls {
+		out = append(out, pl.AssetID)
+	}
+	return out
+}
+
+// Run lance le cron : un premier tick immédiat (peuple la prod au boot sans manip
+// manuelle), puis toutes les `interval`. Bloque jusqu'à ctx.Done().
+func (c *WorldLeaderboardCron) Run(ctx context.Context) {
+	if c == nil || c.provider == nil || c.scraper == nil {
+		slog.WarnContext(ctx, "world_leaderboard_cron: noop (provider/scraper nil)",
+			"module", logging.ModuleLeaderboard)
+		return
+	}
+	slog.InfoContext(ctx, "world_leaderboard_cron: started",
+		"module", logging.ModuleLeaderboard, "interval", c.interval)
+
+	c.RunOnce(ctx)
+
+	ticker := time.NewTicker(c.interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			slog.InfoContext(ctx, "world_leaderboard_cron: stopped (ctx done)",
+				"module", logging.ModuleLeaderboard)
+			return
+		case <-ticker.C:
+			c.RunOnce(ctx)
+		}
+	}
+}
+
+// RunOnce exécute un cycle complet. Exporté pour un éventuel endpoint admin
+// (force-refresh) et les tests. Best-effort : une playlist en échec n'interrompt
+// pas le cycle. Le writer n'est acquis qu'après le scraping (fenêtre RW minimale).
+func (c *WorldLeaderboardCron) RunOnce(ctx context.Context) {
+	if c == nil || c.provider == nil || c.scraper == nil {
+		return
+	}
+	start := time.Now()
+
+	playlists := c.playlists()
+	if len(playlists) == 0 {
+		slog.WarnContext(ctx, "world_leaderboard_cron: aucune playlist classée active — cycle ignoré",
+			"module", logging.ModuleLeaderboard)
+		return
+	}
+
+	// 1. Découvrir la saison active (autonome) via une playlist de référence.
+	season, err := c.scraper.FetchActiveSeason(ctx, playlists[0])
+	if err != nil {
+		slog.ErrorContext(ctx, "world_leaderboard_cron: découverte saison active échouée — cycle ignoré",
+			"module", logging.ModuleLeaderboard, "err", err)
+		return
+	}
+
+	// 2. Garde-fou fraîcheur (lecture RO, sans lease writer).
+	if c.snapshotIsFresh(ctx, season) {
+		slog.InfoContext(ctx, "world_leaderboard_cron: snapshot récent présent — cycle ignoré",
+			"module", logging.ModuleLeaderboard, "season", season, "freshness", c.freshness)
+		return
+	}
+
+	// 3. Scraper toutes les playlists HORS lease writer (réseau lent).
+	entries, scraped := c.scrapeAll(ctx, season, playlists)
+	if len(entries) == 0 {
+		slog.WarnContext(ctx, "world_leaderboard_cron: aucune entrée scrapée — rien à persister",
+			"module", logging.ModuleLeaderboard, "season", season)
+		return
+	}
+
+	// 4. Acquérir le writer brièvement et insérer (fenêtre RW minimale).
+	inserted, err := c.persist(ctx, entries)
+	if err != nil {
+		slog.ErrorContext(ctx, "world_leaderboard_cron: persistance échouée",
+			"module", logging.ModuleLeaderboard, "season", season, "err", err)
+		return
+	}
+
+	slog.InfoContext(ctx, "world_leaderboard_cron: cycle terminé",
+		"module", logging.ModuleLeaderboard, "season", season,
+		"playlists", len(playlists), "scraped", scraped, "inserted", inserted,
+		"duration", time.Since(start))
+}
+
+// snapshotIsFresh indique si un snapshot de la saison date de moins de freshness.
+// En cas d'erreur de lecture, retourne false (on préfère re-scraper que sauter).
+func (c *WorldLeaderboardCron) snapshotIsFresh(ctx context.Context, season string) bool {
+	db, release, err := c.provider.Get(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "world_leaderboard_cron: lecture fraîcheur impossible (shared reader)",
+			"module", logging.ModuleLeaderboard, "err", err)
+		return false
+	}
+	defer release()
+	age, ok, err := duckdb.WorldCSRSnapshotAge(ctx, db, season)
+	if err != nil || !ok {
+		return false
+	}
+	return age < c.freshness
+}
+
+// scrapeAll scrape chaque playlist pour la saison donnée et concatène les entrées.
+// Best-effort par playlist. Retourne aussi le total scrapé (pour le log).
+func (c *WorldLeaderboardCron) scrapeAll(ctx context.Context, season string, playlists []string) ([]domain.LeaderboardEntry, int) {
+	all := make([]domain.LeaderboardEntry, 0, len(playlists)*c.limit)
+	total := 0
+	for _, pl := range playlists {
+		entries, err := c.scraper.FetchCSRLeaderboard(ctx, season, pl, c.limit)
+		if err != nil {
+			slog.ErrorContext(ctx, "world_leaderboard_cron: scrape playlist échoué",
+				"module", logging.ModuleLeaderboard, "season", season, "playlist", pl, "err", err)
+			continue
+		}
+		// Plancher de cohérence : un scrape non vide mais suspicieusement court est
+		// traité comme un glitch (page tronquée / markup) et ignoré — on ne persiste
+		// pas un snapshot partiel, les données précédentes restent affichées.
+		if len(entries) > 0 && len(entries) < c.minEntries {
+			slog.WarnContext(ctx, "world_leaderboard_cron: snapshot playlist trop court — ignoré (glitch probable, snapshot précédent conservé)",
+				"module", logging.ModuleLeaderboard, "season", season, "playlist", pl,
+				"entries", len(entries), "min", c.minEntries)
+			continue
+		}
+		total += len(entries)
+		all = append(all, entries...)
+	}
+	return all, total
+}
+
+// persist acquiert le writer shared et insère les entrées en append-only.
+func (c *WorldLeaderboardCron) persist(ctx context.Context, entries []domain.LeaderboardEntry) (int, error) {
+	wh, err := c.provider.AcquireWriter(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer wh.Release()
+	return duckdb.InsertWorldCSRSnapshot(ctx, wh.DB(), entries)
+}

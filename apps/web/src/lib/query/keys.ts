@@ -150,6 +150,7 @@ export const queryKeys = {
   // Classement (CSR mondial + stats communautaires)
   leaderboard: (playerSlug: string, category?: string, season?: string, playlist?: string) =>
     ['leaderboard', playerSlug, category ?? '', season ?? '', playlist ?? ''] as const,
+  leaderboardCatalog: (playerSlug: string) => ['leaderboard-catalog', playerSlug] as const,
 
   // Notifications in-app (per-player)
   /** Préfixe broad — invalide/matche toutes les queries notifications d'un joueur. */

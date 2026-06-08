@@ -60,3 +60,20 @@ func (h *LeaderboardHandler) GetLeaderboardPage(w http.ResponseWriter, r *http.R
 
 	writeJSON(w, http.StatusOK, resp)
 }
+
+// GetLeaderboardCatalog retourne les saisons + playlists disponibles (sélecteurs).
+// GET /api/v1/players/{player_slug}/pages/leaderboard/catalog
+func (h *LeaderboardHandler) GetLeaderboardCatalog(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "player_slug")
+	svc, _, _, err := h.newSvc(r.Context(), slug)
+	if err != nil {
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
+		return
+	}
+	catalog, err := svc.GetCatalog(r.Context())
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "leaderboard_error", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, catalog)
+}

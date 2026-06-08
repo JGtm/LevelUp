@@ -3418,6 +3418,16 @@ export interface LeaderboardResponse {
   total: number
 }
 
+export interface LeaderboardCatalogRef {
+  id: string
+  display_name: string
+}
+
+export interface LeaderboardCatalog {
+  seasons: LeaderboardCatalogRef[]
+  playlists: LeaderboardCatalogRef[]
+}
+
 // ---------------------------------------------------------------------------
 // Auth locale
 // ---------------------------------------------------------------------------

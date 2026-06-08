@@ -44,7 +44,7 @@ func (s *LeaderboardService) GetPage(ctx context.Context, req domain.Leaderboard
 	if category == domain.LeaderboardCSRWorld {
 		entries, err = s.repo.GetCSRWorldLeaderboard(ctx, req.Season, req.Playlist, limit)
 	} else {
-		entries, err = s.repo.GetStatLeaderboard(ctx, category, req.Playlist, limit)
+		entries, err = s.repo.GetStatLeaderboard(ctx, category, req.Playlist, req.Season, limit)
 	}
 	if err != nil {
 		return domain.LeaderboardResponse{}, err
@@ -58,4 +58,9 @@ func (s *LeaderboardService) GetPage(ctx context.Context, req domain.Leaderboard
 		TitleSlug:  req.TitleSlug,
 		TotalLocal: len(entries),
 	}, nil
+}
+
+// GetCatalog retourne les saisons + playlists disponibles (sélecteurs dynamiques).
+func (s *LeaderboardService) GetCatalog(ctx context.Context) (domain.LeaderboardCatalog, error) {
+	return s.repo.GetWorldLeaderboardCatalog(ctx)
 }

@@ -151,6 +151,10 @@ func (s *captureLeaderboardService) GetPage(ctx context.Context, _ domain.Leader
 	return s.resp, nil
 }
 
+func (s *captureLeaderboardService) GetCatalog(_ context.Context) (domain.LeaderboardCatalog, error) {
+	return domain.LeaderboardCatalog{}, nil
+}
+
 func newLeaderboardMultiTitleRouter(svc *captureLeaderboardService) *chi.Mux {
 	registry := titlePkg.NewRegistry()
 	registry.Register(&titlePkg.TitleDescriptor{

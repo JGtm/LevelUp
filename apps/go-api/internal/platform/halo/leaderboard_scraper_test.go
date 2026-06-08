@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"levelup/go-api/internal/observability"
 )
 
 // buildLeaderboardHTML fabrique une page Halo Waypoint synthétique avec un bloc
@@ -81,6 +83,93 @@ func TestFetchCSRLeaderboard_PaginationAndRank(t *testing.T) {
 	}
 	if len(limited) != 3 || limited[2].Gamertag != "C" || limited[2].Rank != 3 {
 		t.Fatalf("limit=3 incorrect: %+v", limited)
+	}
+}
+
+// TestFetchCSRLeaderboard_EmptyPage1Counter valide le canari de changement de
+// markup : une page 1 vide incrémente le compteur expvar leaderboard_empty_page1.
+func TestFetchCSRLeaderboard_EmptyPage1Counter(t *testing.T) {
+	before := observability.LoadCounter("leaderboard_empty_page1")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(buildLeaderboardHTML(2, nil, 0)) // leaderboard vide
+	}))
+	defer srv.Close()
+
+	scraper := NewLeaderboardScraper(0)
+	scraper.host = srv.URL
+
+	entries, err := scraper.FetchCSRLeaderboard(context.Background(), "csrseason13-2", "p", 0)
+	if err != nil {
+		t.Fatalf("FetchCSRLeaderboard: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("attendu 0 entrée, got %d", len(entries))
+	}
+	if got := observability.LoadCounter("leaderboard_empty_page1"); got != before+1 {
+		t.Errorf("compteur leaderboard_empty_page1 = %d, attendu %d", got, before+1)
+	}
+}
+
+// buildCatalogHTML fabrique une page avec menus saisons/playlists (ordre
+// décroissant pour les saisons, comme en prod : seasons[0] = active).
+func buildCatalogHTML(seasons, playlists [][2]string) []byte {
+	toRefs := func(pairs [][2]string, idKey string) []map[string]any {
+		out := make([]map[string]any, 0, len(pairs))
+		for _, p := range pairs {
+			out = append(out, map[string]any{idKey: p[0], "displayName": p[1]})
+		}
+		return out
+	}
+	payload := map[string]any{
+		"props": map[string]any{
+			"pageProps": map[string]any{
+				"pageSize":    100,
+				"leaderboard": []map[string]any{},
+				"seasons":     toRefs(seasons, "seasonId"),
+				"playlists":   toRefs(playlists, "playlistId"),
+			},
+		},
+	}
+	b, _ := json.Marshal(payload)
+	return []byte(`<html><body><script id="__NEXT_DATA__" type="application/json">` +
+		string(b) + `</script></body></html>`)
+}
+
+// TestFetchActiveSeasonAndCatalog valide la découverte autonome de la saison
+// active (seasons[0]) et la remontée des deux menus.
+func TestFetchActiveSeasonAndCatalog(t *testing.T) {
+	seasons := [][2]string{{"csrseason13-2", "Infinite"}, {"csrseason12-1", "Shadows"}, {"csrseason11-1", "Combined Arms"}}
+	playlists := [][2]string{{"pl-arena", "Ranked Arena"}, {"pl-snipers", "Ranked Snipers"}}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(buildCatalogHTML(seasons, playlists))
+	}))
+	defer srv.Close()
+
+	scraper := NewLeaderboardScraper(0)
+	scraper.host = srv.URL
+
+	active, err := scraper.FetchActiveSeason(context.Background(), "pl-arena")
+	if err != nil {
+		t.Fatalf("FetchActiveSeason: %v", err)
+	}
+	if active != "csrseason13-2" {
+		t.Errorf("saison active = %q, attendu csrseason13-2 (seasons[0])", active)
+	}
+
+	gotSeasons, gotPlaylists, err := scraper.FetchCatalog(context.Background(), "pl-arena")
+	if err != nil {
+		t.Fatalf("FetchCatalog: %v", err)
+	}
+	if len(gotSeasons) != 3 || gotSeasons[0].ID != "csrseason13-2" || gotSeasons[0].DisplayName != "Infinite" {
+		t.Errorf("seasons incorrect: %+v", gotSeasons)
+	}
+	if len(gotPlaylists) != 2 || gotPlaylists[1].ID != "pl-snipers" {
+		t.Errorf("playlists incorrect: %+v", gotPlaylists)
+	}
+
+	// refPlaylistID vide → erreur claire.
+	if _, err := scraper.FetchActiveSeason(context.Background(), ""); err == nil {
+		t.Error("FetchActiveSeason avec refPlaylistID vide devrait échouer")
 	}
 }
 
