@@ -26,6 +26,14 @@ const (
 	AttemptStatusExpired     = "expired"
 )
 
+// defaultAttemptTTL borne la durée de vie d'une tentative dans le store.
+// Au-delà, la tentative est balayée : le device code Microsoft expire de toute
+// façon vers ~15 min, donc une tentative plus vieille est inexploitable. Sans ce
+// TTL le store fuyait (aucune purge) — cf. fix onboarding 2026-06-08. La
+// récupération côté frontend (relance sur attempt_not_found) couvre le cas d'une
+// tentative balayée pendant que l'utilisateur saisit encore son code.
+const defaultAttemptTTL = 30 * time.Minute
+
 // Attempt représente une tentative Device Code Flow en cours.
 type Attempt struct {
 	AttemptID       string
@@ -67,14 +75,50 @@ type AttemptStore struct {
 	mu        sync.RWMutex
 	attempts  map[string]*Attempt // clé : attempt_id
 	bySession map[string]string   // session_id → attempt_id (pour single-flight)
+	ttl       time.Duration       // durée de vie max d'une tentative (purge lazy)
 }
 
-// NewAttemptStore crée un AttemptStore vide.
+// NewAttemptStore crée un AttemptStore vide avec le TTL par défaut.
 func NewAttemptStore() *AttemptStore {
+	return NewAttemptStoreWithTTL(defaultAttemptTTL)
+}
+
+// NewAttemptStoreWithTTL crée un AttemptStore avec un TTL explicite (tuning/tests).
+// Un ttl <= 0 retombe sur le défaut.
+func NewAttemptStoreWithTTL(ttl time.Duration) *AttemptStore {
+	if ttl <= 0 {
+		ttl = defaultAttemptTTL
+	}
 	return &AttemptStore{
 		attempts:  make(map[string]*Attempt),
 		bySession: make(map[string]string),
+		ttl:       ttl,
 	}
+}
+
+// PurgeExpired supprime les tentatives plus vieilles que le TTL. Retourne le
+// nombre supprimé. Appelée en lazy depuis GetOrCreate (pas de goroutine janitor à
+// gérer), exposée pour les tests et un éventuel appel périodique.
+func (s *AttemptStore) PurgeExpired() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.purgeExpiredLocked()
+}
+
+// purgeExpiredLocked supprime les tentatives expirées. L'appelant DOIT tenir s.mu.
+func (s *AttemptStore) purgeExpiredLocked() int {
+	cutoff := time.Now().Add(-s.ttl)
+	removed := 0
+	for id, a := range s.attempts {
+		if a.StartedAt.Before(cutoff) {
+			delete(s.attempts, id)
+			if s.bySession[a.SessionID] == id {
+				delete(s.bySession, a.SessionID)
+			}
+			removed++
+		}
+	}
+	return removed
 }
 
 // GetOrCreate retourne la tentative existante pour une session (si pending),
@@ -83,6 +127,9 @@ func NewAttemptStore() *AttemptStore {
 func (s *AttemptStore) GetOrCreate(sessionID string) (*Attempt, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// Purge lazy : borne la mémoire et évite de renvoyer une tentative périmée.
+	s.purgeExpiredLocked()
 
 	if id, ok := s.bySession[sessionID]; ok {
 		if a := s.attempts[id]; a != nil && a.Status == AttemptStatusPending {

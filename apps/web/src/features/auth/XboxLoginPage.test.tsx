@@ -6,7 +6,9 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen, waitFor, fireEvent } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
 import { renderWithProviders } from '@/test/render-utils'
+import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { XboxLoginPage } from './XboxLoginPage'
 
@@ -77,6 +79,34 @@ describe('XboxLoginPage', () => {
     // Champs de form présents.
     expect(screen.getByLabelText(/Identifiant/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/Mot de passe/i)).toBeInTheDocument()
+  })
+
+  it('relance automatiquement le flow sur attempt_not_found (récupération gracieuse)', async () => {
+    // 1er start → attempt-1 (que le polling déclarera introuvable) ;
+    // 2e start (relance auto) → attempt-2 avec un nouveau code.
+    let startCount = 0
+    server.use(
+      http.post('/api/v1/auth/device-flow/start', () => {
+        startCount += 1
+        return startCount === 1
+          ? HttpResponse.json({ attempt_id: 'attempt-1', user_code: 'ABCD-1234', verification_uri: 'https://microsoft.com/link', expires_in: 900, poll_interval_sec: 5 })
+          : HttpResponse.json({ attempt_id: 'attempt-2', user_code: 'WXYZ-9999', verification_uri: 'https://microsoft.com/link', expires_in: 900, poll_interval_sec: 5 })
+      }),
+      http.get('/api/v1/auth/device-flow/:attemptId', ({ params }) => {
+        if (params.attemptId === 'attempt-1') {
+          return HttpResponse.json({ code: 'attempt_not_found', message: 'tentative introuvable', retryable: false }, { status: 404 })
+        }
+        return HttpResponse.json({ attempt_id: 'attempt-2', status: 'pending', gamertag: null, xuid: null, error: null })
+      }),
+    )
+
+    renderWithProviders(<XboxLoginPage />)
+
+    // Le flow doit avoir été relancé et afficher le code de la NOUVELLE tentative.
+    await waitFor(() => {
+      expect(screen.getByText(/WXYZ-9999/i)).toBeInTheDocument()
+    })
+    expect(startCount).toBeGreaterThanOrEqual(2)
   })
 
   it('toggle "Retour à la connexion Xbox" depuis le panel admin', async () => {

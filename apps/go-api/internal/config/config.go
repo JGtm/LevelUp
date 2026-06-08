@@ -73,6 +73,13 @@ type AppConfig struct {
 	// RemoteAddr reste l'adresse TCP réelle du peer (rate-limit, audit et le
 	// garde LoopbackOnly des endpoints /_diag ne sont alors pas falsifiables).
 	TrustProxyHeaders bool
+	// CookieSecure pilote le flag Secure du cookie de session : "auto" (défaut,
+	// décision par schéma de requête — TLS natif ou X-Forwarded-Proto derrière un
+	// proxy de confiance), "true" (force Secure) ou "false" (force non-Secure,
+	// filet de secours ops). Lit LEVELUP_COOKIE_SECURE. NE PAS coupler au secret
+	// de session : un secret custom en dev local ne doit pas forcer Secure (sinon
+	// le navigateur jette le cookie sur http://localhost → session perdue).
+	CookieSecure string
 	// CurrentCSRSeasonID est l'identifiant de saison CSR courant (ex: "CsrSeason8").
 	// Lit LEVELUP_CSR_SEASON_ID ou le champ csr_season_id dans app_settings.json.
 	// Vide → le sync CSR est skippé silencieusement.
@@ -154,6 +161,7 @@ func Load() (*AppConfig, error) {
 		RegistrationMode:  getEnvOrDefault("LEVELUP_REGISTRATION", "invite"),
 		Environment:       getEnvOrDefault("LEVELUP_ENV", ""),
 		TrustProxyHeaders: parseBoolEnv(getEnvOrDefault("LEVELUP_TRUST_PROXY_HEADERS", "")),
+		CookieSecure:      parseCookieSecureMode(getEnvOrDefault("LEVELUP_COOKIE_SECURE", "")),
 		WebDistDir:        getEnvOrDefault("LEVELUP_WEB_DIST", ""),
 	}
 	appSettingsPath := getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))
@@ -189,6 +197,9 @@ func (c *AppConfig) SecurityWarnings() []string {
 	}
 	if c.corsAllLocalhost() {
 		w = append(w, "LEVELUP_CORS_ORIGINS non défini : les origines CORS/CSRF autorisées sont limitées à localhost")
+	}
+	if strings.EqualFold(c.CookieSecure, "false") {
+		w = append(w, "LEVELUP_COOKIE_SECURE=false : le cookie de session est posé sans flag Secure (à réserver au dev local / debug ops ; jamais en prod exposée)")
 	}
 	return w
 }
@@ -231,6 +242,21 @@ func parseBoolEnv(s string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// parseCookieSecureMode normalise LEVELUP_COOKIE_SECURE en l'un des modes connus :
+// "true", "false" ou "auto" (défaut). Toute valeur vide ou non reconnue retombe
+// sur "auto" (décision par schéma de requête) — choix sûr car il pose Secure dès
+// qu'on détecte du HTTPS, sans le forcer à tort sur du HTTP local.
+func parseCookieSecureMode(s string) string {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "1", "true", "yes", "on":
+		return "true"
+	case "0", "false", "no", "off":
+		return "false"
+	default:
+		return "auto"
 	}
 }
 

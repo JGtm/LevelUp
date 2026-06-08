@@ -34,7 +34,7 @@ func newUserAuthRouter(t *testing.T, authMode string) (*chi.Mux, *userstore.Stor
 	h := handlers.NewUserAuthHandler(users, invites, sessStore, "open").WithAuthMode(authMode)
 
 	r := chi.NewRouter()
-	r.Use(middleware.WithSession(sessStore, false))
+	r.Use(middleware.WithSession(sessStore, middleware.SecureCookiePolicy{}))
 	r.Post("/auth/login", h.Login)
 	r.Post("/auth/register", h.Register)
 	return r, users

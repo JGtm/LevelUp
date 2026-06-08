@@ -20,12 +20,16 @@ type sessionKey struct{}
 
 // WithSession renvoie un middleware qui injecte une SessionData dans le contexte.
 // Si le cookie est absent ou invalide, une nouvelle session est créée.
-func WithSession(store *session.Store, isProduction bool) func(http.Handler) http.Handler {
+//
+// policy décide du flag Secure du cookie PAR REQUÊTE (cf. SecureCookiePolicy) :
+// un même binaire sert ainsi en HTTP local (cookie non-Secure → round-trip OK) et
+// en HTTPS prod (cookie Secure) sans reconfiguration.
+func WithSession(store *session.Store, policy SecureCookiePolicy) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			sess := loadOrCreate(r, store)
 			_ = store.Touch(sess)
-			setCookie(w, store, sess, isProduction)
+			setCookie(w, store, sess, policy.Secure(r))
 			ctx := context.WithValue(r.Context(), sessionKey{}, sess)
 			if sess.HaloTokens != nil {
 				xuid := ""
