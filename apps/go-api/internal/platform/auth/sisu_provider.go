@@ -167,9 +167,18 @@ func (p *SISUProvider) initDeviceFlowWithURLs(ctx context.Context, urls sisuProv
 	}, nil
 }
 
-// Exchange complète le flow SISU après la validation OAuth.
-// Utilise le sisuFlowContext posé par InitDeviceFlow, puis l'efface.
-// Panics si appelé sans InitDeviceFlow préalable (bug d'utilisation).
+// Exchange convertit un access_token Microsoft en tokens Halo Infinite.
+//
+// Deux chemins selon l'état du provider :
+//
+//   - Device flow interactif : si un sisuFlowContext a été posé par
+//     InitDeviceFlow, Exchange complète la session SISU (CompleteSISUFlow)
+//     puis l'efface. C'est le chemin d'onboarding (SSO web / device code).
+//   - Échange stateless : si aucun flow n'est en cours (flowCtx == nil),
+//     Exchange fait la chaîne XSTS standard via ExchangeAccessToken, identique
+//     à MSALProvider. C'est le chemin du pool auto-sync / scheduler / watcher,
+//     qui fournit un access_token déjà obtenu par OAuth refresh — sans passer
+//     par InitDeviceFlow. Honore le contrat de TokenProvider.Exchange.
 func (p *SISUProvider) Exchange(ctx context.Context, accessToken string) (*ExchangeResult, error) {
 	p.mu.Lock()
 	flowCtx := p.current
@@ -177,7 +186,10 @@ func (p *SISUProvider) Exchange(ctx context.Context, accessToken string) (*Excha
 	p.mu.Unlock()
 
 	if flowCtx == nil {
-		panic("sisu_provider: Exchange appelé sans InitDeviceFlow préalable — bug d'utilisation")
+		// Pas de session SISU interactive en cours : échange stateless standard
+		// (access_token Microsoft → XBL → XSTS Halo → Spartan → Clearance).
+		slog.DebugContext(ctx, "sisu_provider: Exchange stateless (pas de device flow) — ExchangeAccessToken")
+		return ExchangeAccessToken(ctx, accessToken)
 	}
 
 	slog.DebugContext(ctx, "sisu_provider: Exchange — CompleteSISUFlow")
