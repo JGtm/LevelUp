@@ -35,12 +35,16 @@ type mockPrestigeService struct {
 	suggestTplErr   error
 	createSquadErr  error
 	joinSquadErr    error
+	deleteArcErr    error
 
-	lastCreate      prestige.CreateChallengeRequest
-	lastUpdate      prestige.UpdateChallengePatch
-	lastUpdateID    string
-	lastAbandonID   string
-	lastSuggestNext string
+	lastCreate       prestige.CreateChallengeRequest
+	lastUpdate       prestige.UpdateChallengePatch
+	lastUpdateID     string
+	lastAbandonID    string
+	lastSuggestNext  string
+	lastDeleteArcID  string
+	lastDeleteArcUID string
+	lastDeleteArcCsc bool
 }
 
 func (m *mockPrestigeService) CreateChallenge(ctx context.Context, req prestige.CreateChallengeRequest) (prestige.Challenge, error) {
@@ -93,6 +97,12 @@ func (m *mockPrestigeService) ListArcs(ctx context.Context, _, _ string) ([]pres
 func (m *mockPrestigeService) GetArc(ctx context.Context, _ string) (prestige.Arc, error) {
 	return prestige.Arc{}, nil
 }
+func (m *mockPrestigeService) DeleteArc(ctx context.Context, userID, id string, opts prestige.DeleteArcOptions) error {
+	m.lastDeleteArcUID = userID
+	m.lastDeleteArcID = id
+	m.lastDeleteArcCsc = opts.CascadeObjectives
+	return m.deleteArcErr
+}
 func (m *mockPrestigeService) CreateSquadChallenge(ctx context.Context, _ prestige.CreateSquadChallengeRequest) (prestige.SquadChallenge, error) {
 	return prestige.SquadChallenge{}, m.createSquadErr
 }
@@ -126,6 +136,7 @@ func newRouter(svc prestige.Service) *chi.Mux {
 	r.Patch("/challenges/{id}", h.UpdateChallenge)
 	r.Delete("/challenges/{id}", h.AbandonChallenge)
 	r.Post("/challenges/{id}/suggest-next", h.SuggestNext)
+	r.Delete("/arcs/{id}", h.DeleteArc)
 	r.Get("/prestige/me", h.GetMyPrestige)
 	r.Get("/templates/suggest", h.SuggestTemplates)
 	return r
@@ -180,6 +191,89 @@ func TestPrestigeHandler_CreateChallenge_BadJSON(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected 400, got %d", w.Code)
+	}
+}
+
+// ─────────── DeleteArc (Lot A) ───────────
+
+func TestPrestigeHandler_DeleteArc_Cascade204(t *testing.T) {
+	mock := &mockPrestigeService{}
+	router := newRouter(mock)
+
+	req := httptest.NewRequest(http.MethodDelete, "/arcs/arc1?user_id=u1&objectives=delete", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d (body=%s)", w.Code, w.Body.String())
+	}
+	if mock.lastDeleteArcID != "arc1" || mock.lastDeleteArcUID != "u1" || !mock.lastDeleteArcCsc {
+		t.Errorf("args not propagated: id=%q uid=%q cascade=%v",
+			mock.lastDeleteArcID, mock.lastDeleteArcUID, mock.lastDeleteArcCsc)
+	}
+}
+
+func TestPrestigeHandler_DeleteArc_Detach204(t *testing.T) {
+	mock := &mockPrestigeService{}
+	router := newRouter(mock)
+
+	req := httptest.NewRequest(http.MethodDelete, "/arcs/arc1?user_id=u1&objectives=detach", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d", w.Code)
+	}
+	if mock.lastDeleteArcCsc {
+		t.Error("detach should not cascade")
+	}
+}
+
+func TestPrestigeHandler_DeleteArc_MissingObjectivesParam400(t *testing.T) {
+	router := newRouter(&mockPrestigeService{})
+	req := httptest.NewRequest(http.MethodDelete, "/arcs/arc1?user_id=u1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 (objectives manquant), got %d", w.Code)
+	}
+}
+
+func TestPrestigeHandler_DeleteArc_MissingUser400(t *testing.T) {
+	router := newRouter(&mockPrestigeService{})
+	req := httptest.NewRequest(http.MethodDelete, "/arcs/arc1?objectives=delete", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 (user_id manquant), got %d", w.Code)
+	}
+}
+
+func TestPrestigeHandler_DeleteArc_Forbidden403(t *testing.T) {
+	mock := &mockPrestigeService{deleteArcErr: prestige.ErrForbidden}
+	router := newRouter(mock)
+
+	req := httptest.NewRequest(http.MethodDelete, "/arcs/arc1?user_id=intruder&objectives=delete", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected 403, got %d", w.Code)
+	}
+}
+
+func TestPrestigeHandler_DeleteArc_NotFound404(t *testing.T) {
+	mock := &mockPrestigeService{deleteArcErr: prestige.ErrArcNotFound}
+	router := newRouter(mock)
+
+	req := httptest.NewRequest(http.MethodDelete, "/arcs/missing?user_id=u1&objectives=delete", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", w.Code)
 	}
 }
 

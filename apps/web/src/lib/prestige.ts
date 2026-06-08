@@ -259,6 +259,13 @@ export const prestigeApi = {
 
   getArc: (id: string) => api.get<Arc>(`/arcs/${id}`),
 
+  /** Supprime un arc. cascade=true supprime aussi les objectifs (abandon, ou
+   *  hard delete si l'arc a < 1h) ; cascade=false les détache (gardés, libres). */
+  deleteArc: (id: string, userId: string, cascade: boolean) =>
+    api.delete<void>(
+      `/arcs/${id}?user_id=${encodeURIComponent(userId)}&objectives=${cascade ? 'delete' : 'detach'}`,
+    ),
+
   // Prestige (PP + niveau)
   getMyPrestige: (userId: string, titleSlug?: string) => {
     const qs = titleSlug

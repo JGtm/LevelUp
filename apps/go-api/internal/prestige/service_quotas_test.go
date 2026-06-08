@@ -17,6 +17,8 @@ type fakeChallengeRepo struct {
 	createdSince    int
 	createCalled    bool
 	listResult      []Challenge // renvoyé tel quel par List (pour tests cooldown)
+	detachedArc     string      // dernier arcID passé à DetachFromArc
+	deletedArc      string      // dernier arcID passé à DeleteByArc
 }
 
 func (r *fakeChallengeRepo) Create(_ context.Context, _ Challenge) error {
@@ -28,6 +30,14 @@ func (r *fakeChallengeRepo) Get(_ context.Context, _ string) (Challenge, error) 
 }
 func (r *fakeChallengeRepo) List(_ context.Context, _ ChallengeFilter) ([]Challenge, error) {
 	return r.listResult, nil
+}
+func (r *fakeChallengeRepo) DetachFromArc(_ context.Context, arcID string) error {
+	r.detachedArc = arcID
+	return nil
+}
+func (r *fakeChallengeRepo) DeleteByArc(_ context.Context, arcID string) error {
+	r.deletedArc = arcID
+	return nil
 }
 func (r *fakeChallengeRepo) UpdateStatus(_ context.Context, _ string, _ ChallengeStatus, _ time.Time) error {
 	return nil

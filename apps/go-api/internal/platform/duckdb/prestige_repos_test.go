@@ -8,6 +8,7 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -189,6 +190,77 @@ func TestPrestigeChallengeRepo_List_FilterByMetric(t *testing.T) {
 		if c.Metric != "FieldKDA" {
 			t.Errorf("unexpected metric %q in filtered list", c.Metric)
 		}
+	}
+}
+
+func seedArcWithChallenges(t *testing.T, db *DB, arcID string, challengeIDs ...string) (*PrestigeChallengeRepo, *PrestigeArcRepo) {
+	t.Helper()
+	chRepo := NewPrestigeChallengeRepo(db)
+	arcRepo := NewPrestigeArcRepo(db)
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Second)
+	if err := arcRepo.Create(ctx, prestige.Arc{
+		ID: arcID, UserID: "u1", TitleSlug: "halo_infinite", Title: "T", CreatedAt: now,
+	}); err != nil {
+		t.Fatalf("arc Create: %v", err)
+	}
+	for _, id := range challengeIDs {
+		if err := chRepo.Create(ctx, prestige.Challenge{
+			ID: id, UserID: "u1", TitleSlug: "halo_infinite", ArcID: arcID,
+			Metric: "FieldKDA", Target: 1.0,
+			WindowType: prestige.WindowSession, Cadence: prestige.CadenceFree,
+			EvalType: prestige.EvalThreshold, Mode: prestige.ModeLibre,
+			DataTier: prestige.DataFull, Status: prestige.StatusActive, CreatedAt: now,
+		}); err != nil {
+			t.Fatalf("challenge Create: %v", err)
+		}
+	}
+	return chRepo, arcRepo
+}
+
+func TestPrestigeChallengeRepo_DetachFromArc(t *testing.T) {
+	db := setupPrestigeDB(t, migration.TargetPlayer)
+	chRepo, _ := seedArcWithChallenges(t, db, "arc1", "ch1", "ch2")
+	ctx := context.Background()
+
+	if err := chRepo.DetachFromArc(ctx, "arc1"); err != nil {
+		t.Fatalf("DetachFromArc: %v", err)
+	}
+	arcID := "arc1"
+	inArc, _ := chRepo.List(ctx, prestige.ChallengeFilter{UserID: "u1", TitleSlug: "halo_infinite", ArcID: &arcID})
+	if len(inArc) != 0 {
+		t.Errorf("after detach: %d défis encore liés, want 0", len(inArc))
+	}
+	all, _ := chRepo.List(ctx, prestige.ChallengeFilter{UserID: "u1", TitleSlug: "halo_infinite"})
+	if len(all) != 2 {
+		t.Errorf("after detach: défis supprimés à tort, got %d want 2", len(all))
+	}
+}
+
+func TestPrestigeChallengeRepo_DeleteByArc(t *testing.T) {
+	db := setupPrestigeDB(t, migration.TargetPlayer)
+	chRepo, _ := seedArcWithChallenges(t, db, "arc1", "ch1", "ch2")
+	ctx := context.Background()
+
+	if err := chRepo.DeleteByArc(ctx, "arc1"); err != nil {
+		t.Fatalf("DeleteByArc: %v", err)
+	}
+	all, _ := chRepo.List(ctx, prestige.ChallengeFilter{UserID: "u1", TitleSlug: "halo_infinite"})
+	if len(all) != 0 {
+		t.Errorf("after DeleteByArc: %d défis restants, want 0", len(all))
+	}
+}
+
+func TestPrestigeArcRepo_Delete(t *testing.T) {
+	db := setupPrestigeDB(t, migration.TargetPlayer)
+	_, arcRepo := seedArcWithChallenges(t, db, "arc1")
+	ctx := context.Background()
+
+	if err := arcRepo.Delete(ctx, "arc1"); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if _, err := arcRepo.Get(ctx, "arc1"); !errors.Is(err, prestige.ErrArcNotFound) {
+		t.Errorf("expected ErrArcNotFound after delete, got %v", err)
 	}
 }
 

@@ -14,6 +14,7 @@ import (
 // fakeArcRepo capture les arcs créés.
 type fakeArcRepo struct {
 	created []Arc
+	deleted []string
 	getResp Arc
 	getErr  error
 }
@@ -27,6 +28,10 @@ func (r *fakeArcRepo) Get(_ context.Context, _ string) (Arc, error) {
 }
 func (r *fakeArcRepo) ListByUser(_ context.Context, _, _ string) ([]Arc, error) { return nil, nil }
 func (r *fakeArcRepo) MarkCompleted(_ context.Context, _ string, _ time.Time) error {
+	return nil
+}
+func (r *fakeArcRepo) Delete(_ context.Context, id string) error {
+	r.deleted = append(r.deleted, id)
 	return nil
 }
 

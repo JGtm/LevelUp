@@ -275,6 +275,36 @@ func (h *PrestigeHandler) GetArc(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, a)
 }
 
+// DeleteArc gère DELETE /arcs/{id}?user_id=&objectives=delete|detach.
+//
+//   - objectives=delete : supprime aussi les objectifs (abandon, ou hard delete
+//     si l'arc a moins d'1h → zéro cooldown).
+//   - objectives=detach : détache les objectifs (gardés, redeviennent libres).
+func (h *PrestigeHandler) DeleteArc(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "id requis")
+		return
+	}
+	userID := r.URL.Query().Get("user_id")
+	if userID == "" {
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "user_id requis")
+		return
+	}
+	objectives := r.URL.Query().Get("objectives")
+	if objectives != "delete" && objectives != "detach" {
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_input",
+			"objectives doit valoir 'delete' ou 'detach'")
+		return
+	}
+	opts := prestige.DeleteArcOptions{CascadeObjectives: objectives == "delete"}
+	if err := h.svc.DeleteArc(r.Context(), userID, id, opts); err != nil {
+		writeServiceError(r.Context(), w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // ListArcs gère GET /arcs?user_id=&title_slug=.
 func (h *PrestigeHandler) ListArcs(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("user_id")
@@ -481,6 +511,8 @@ func writeServiceError(ctx context.Context, w http.ResponseWriter, err error) {
 		writeError(ctx, w, http.StatusNotFound, "not_found", err.Error())
 	case errors.Is(err, prestige.ErrInvalidInput):
 		writeError(ctx, w, http.StatusBadRequest, "invalid_input", err.Error())
+	case errors.Is(err, prestige.ErrForbidden):
+		writeError(ctx, w, http.StatusForbidden, "forbidden", err.Error())
 	case errors.Is(err, prestige.ErrNotEditable):
 		writeError(ctx, w, http.StatusForbidden, "not_editable", err.Error())
 	case errors.Is(err, prestige.ErrAlreadyTerminal):

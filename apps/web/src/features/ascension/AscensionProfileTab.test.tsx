@@ -9,7 +9,7 @@
  * composition, pas sur le comportement des sous-composants.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 
 // ── Stores ────────────────────────────────────────────────────────────────
 
@@ -27,14 +27,21 @@ vi.mock('@/stores/appShellStore', () => ({
 
 // ── Prestige (challenges + arcs) ──────────────────────────────────────────
 
+// Fixtures mutables (déclarées avant vi.mock ; la factory est une closure
+// évaluée à l'import, donc l'init est OK).
+type ArcFixture = { id: string; title: string }
+const mockArcs: { current: ArcFixture[] } = { current: [] }
+const deleteArcMutate = vi.fn()
+
 vi.mock('@/features/prestige/hooks', () => ({
   useChallenges: () => ({
     data: { challenges: [] },
     isLoading: false,
     isError: false,
   }),
-  useArcs: () => ({ data: { arcs: [] }, isLoading: false }),
+  useArcs: () => ({ data: { arcs: mockArcs.current }, isLoading: false }),
   useAbandonChallenge: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteArc: () => ({ mutate: deleteArcMutate, isPending: false }),
 }))
 vi.mock('@/features/prestige/components/ChallengeCard', () => ({
   ChallengeCard: () => <div data-testid="challenge-card" />,
@@ -66,6 +73,8 @@ describe('AscensionProfileTab — composition (couche Prestige seule)', () => {
       gamertag: 'DemoPlayer',
     }
     mockShellState.locale = 'fr'
+    mockArcs.current = []
+    deleteArcMutate.mockClear()
   })
 
   it('renders the Prestige LayerSection header', () => {
@@ -126,5 +135,27 @@ describe('AscensionProfileTab — composition (couche Prestige seule)', () => {
   it('renders the "+ Nouvel objectif" button in the objectives section', () => {
     render(<AscensionProfileTab />)
     expect(screen.getByRole('button', { name: /\+ Nouvel objectif/i })).toBeInTheDocument()
+  })
+
+  it('ouvre la confirmation de suppression d\'arc et appelle deleteArc', () => {
+    mockArcs.current = [{ id: 'arc1', title: 'Mon Arc' }]
+    render(<AscensionProfileTab />)
+
+    // Ouvre la confirmation (bouton « Supprimer » de l'élément d'arc).
+    fireEvent.click(screen.getByRole('button', { name: 'Supprimer' }))
+    expect(screen.getByText(/Supprimer l'arc « Mon Arc » \?/i)).toBeInTheDocument()
+
+    // 0 objectif → un seul bouton « Supprimer » de confirmation + Annuler.
+    fireEvent.click(screen.getByRole('button', { name: 'Supprimer' }))
+    expect(deleteArcMutate).toHaveBeenCalledWith({ id: 'arc1', cascade: true })
+  })
+
+  it('annule la suppression sans appeler deleteArc', () => {
+    mockArcs.current = [{ id: 'arc1', title: 'Mon Arc' }]
+    render(<AscensionProfileTab />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Supprimer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Annuler' }))
+    expect(deleteArcMutate).not.toHaveBeenCalled()
   })
 })

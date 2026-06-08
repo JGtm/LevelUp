@@ -51,6 +51,9 @@ func (m *mockService) CreateArc(ctx context.Context, _ CreateArcRequest) (Arc, e
 }
 func (m *mockService) ListArcs(ctx context.Context, _, _ string) ([]Arc, error) { return nil, nil }
 func (m *mockService) GetArc(ctx context.Context, _ string) (Arc, error)        { return Arc{}, nil }
+func (m *mockService) DeleteArc(ctx context.Context, _, _ string, _ DeleteArcOptions) error {
+	return nil
+}
 func (m *mockService) CreateSquadChallenge(ctx context.Context, _ CreateSquadChallengeRequest) (SquadChallenge, error) {
 	return SquadChallenge{}, nil
 }

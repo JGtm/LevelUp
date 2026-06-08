@@ -1010,6 +1010,7 @@ func NewRouter(
 				r.Post("/arcs", ph.CreateArc)
 				r.Get("/arcs", ph.ListArcs)
 				r.Get("/arcs/{id}", ph.GetArc)
+				r.Delete("/arcs/{id}", ph.DeleteArc)
 				// Prestige (PP + niveau)
 				r.Get("/prestige/me", ph.GetMyPrestige)
 				r.Get("/templates/suggest", ph.SuggestTemplates)
