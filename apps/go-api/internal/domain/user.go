@@ -42,6 +42,12 @@ type LoginResponse struct {
 	Gamertag string   `json:"gamertag,omitempty"`
 }
 
+// SetPasswordRequest est le body de POST /auth/password (self-service, PR-C).
+// L'utilisateur connecté définit/change son propre mot de passe (opt-in).
+type SetPasswordRequest struct {
+	Password string `json:"password"`
+}
+
 // RegisterResponse est la réponse de POST /auth/register.
 type RegisterResponse struct {
 	Username string   `json:"username"`

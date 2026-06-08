@@ -86,15 +86,11 @@ func (h *UserAuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// D3 cohabitation : en mode "xbox", le login password est réservé aux admins
-	// (fallback si SSO down). Les users normaux passent obligatoirement par le SSO Xbox.
-	if h.authMode == authModeXbox && user.Role != domain.RoleAdmin {
-		slog.Warn("auth: login password non-admin bloqué en mode xbox",
-			"username", user.Username, "role", user.Role)
-		writeError(r.Context(), w, http.StatusForbidden, "password_login_admin_only",
-			"mode SSO Xbox actif : login password réservé aux admins")
-		return
-	}
+	// PR-C : en mode xbox, le login password est autorisé pour tout utilisateur
+	// AYANT défini un mot de passe (opt-in en fin d'onboarding via POST /auth/password).
+	// Atteindre ce point implique qu'Authenticate a réussi → l'utilisateur a bien un
+	// mot de passe ; les comptes SSO sans mot de passe échouent déjà à Authenticate.
+	// (Avant PR-C : login password réservé aux admins en mode xbox.)
 
 	if err := h.users.UpdateLastLogin(user.Username); err != nil {
 		slog.Warn("auth: échec UpdateLastLogin", "username", user.Username, "err", err)
@@ -235,6 +231,39 @@ func (h *UserAuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		}
 		slog.Info("auth: logout", "username", username)
 	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// SetPassword définit/change le mot de passe de l'utilisateur connecté (opt-in PR-C).
+// POST /auth/password — permet à un compte SSO Xbox de se reconnecter ensuite par
+// mot de passe (re-login instantané, sans round-trip Microsoft).
+func (h *UserAuthHandler) SetPassword(w http.ResponseWriter, r *http.Request) {
+	sess := middleware.GetSession(r.Context())
+	if sess == nil || sess.Username == nil {
+		writeError(r.Context(), w, http.StatusUnauthorized, "auth_required", "authentification requise")
+		return
+	}
+
+	var req domain.SetPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "corps de requête invalide")
+		return
+	}
+
+	if err := h.users.ResetPassword(*sess.Username, req.Password); err != nil {
+		switch {
+		case errors.Is(err, userstore.ErrPasswordTooShort):
+			writeError(r.Context(), w, http.StatusBadRequest, "validation_error", err.Error())
+		case errors.Is(err, userstore.ErrUserNotFound):
+			writeError(r.Context(), w, http.StatusNotFound, "user_not_found", "utilisateur introuvable")
+		default:
+			slog.Error("auth: échec set password", "username", *sess.Username, "err", err)
+			writeError(r.Context(), w, http.StatusInternalServerError, "set_password_error", "erreur lors de la définition du mot de passe")
+		}
+		return
+	}
+
+	slog.Info("auth: mot de passe défini (opt-in)", "username", *sess.Username)
 	w.WriteHeader(http.StatusNoContent)
 }
 

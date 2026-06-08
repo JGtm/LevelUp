@@ -14,6 +14,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { OpenSpartanImportCard } from './OpenSpartanImportCard'
+import { SetPasswordCard } from '@/features/auth/SetPasswordCard'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
@@ -21,6 +22,7 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 export function OnboardingOpenSpartanPage() {
   const navigate = useNavigate()
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const hasPassword = useAppShellStore((s) => s.hasPassword)
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
@@ -49,6 +51,9 @@ export function OnboardingOpenSpartanPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* PR-C : opt-in mot de passe (re-login rapide). Masqué si déjà défini. */}
+        {!hasPassword && <SetPasswordCard />}
 
         {/* HTML5 <details> for native accessible disclosure. No extra deps. */}
         <details

@@ -87,7 +87,11 @@ type BootstrapResponse struct {
 	// ReauthRequired : true si le refresh_token Microsoft du joueur courant est mort
 	// (refresh silencieux définitivement KO). Le front affiche une bannière
 	// « reconnecte ton compte Xbox ». Remis à false après une ré-auth réussie.
-	ReauthRequired  bool    `json:"reauth_required"`
+	ReauthRequired bool `json:"reauth_required"`
+	// HasPassword : l'utilisateur connecté a défini un mot de passe (opt-in PR-C).
+	// Le front l'utilise pour proposer « définir » vs « changer » et masquer la
+	// proposition en onboarding une fois faite.
+	HasPassword     bool    `json:"has_password"`
 	IsAdmin         bool    `json:"is_admin"`
 	CurrentUsername *string `json:"current_username"`
 	FirstLaunch     bool    `json:"first_launch"`

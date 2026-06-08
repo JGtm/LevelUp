@@ -1,3 +1,23 @@
+## [2026-06-08] PR-C — Mot de passe opt-in (re-login rapide SSO) — Complété
+
+**Statut** : Complété (branche `feat/instance-lockdown`). Go build/vet/tests verts (handlers, service, contracttest) ; front tsc/eslint/vitest verts (SetPasswordCard 3/3).
+
+**But** : permettre à un compte SSO Xbox de définir un mot de passe (opt-in) pour se reconnecter vite sans round-trip Microsoft à l'expiration de la session 7j.
+
+**Backend** :
+- `POST /auth/password` (self-service, self-gardé 401 si pas de session) → `users.ResetPassword(sess.Username, pwd)` (hash bcrypt + validation min 8). `domain.SetPasswordRequest`.
+- **Relâche du garde `password_login_admin_only`** : en mode xbox, le login password est désormais autorisé pour tout user AYANT un mot de passe (atteindre le garde implique qu'Authenticate a réussi → a un MDP ; les comptes SSO sans MDP échouent déjà à Authenticate). Avant : admin-only.
+- `/bootstrap.has_password` (user courant) via `BootstrapService.currentUserHasPassword` (userLookup.Get → PasswordHash != "").
+- Tests : SetPassword OK (204 + Authenticate marche) / sans session (401) ; login non-admin avec MDP en xbox → 200 (ex-test « blocked » repurposé).
+
+**Frontend** :
+- `useSetPassword` (POST /auth/password) ; `has_password` dans type bootstrap + appShellStore `hasPassword`.
+- `SetPasswordCard` (form MDP + confirm, validation, état « enregistré ») réutilisable ; monté dans la landing onboarding post-SSO (`OnboardingOpenSpartanPage`), opt-in, masqué si `hasPassword`. 3 tests.
+
+**Suivi trivial non fait** : montage de `SetPasswordCard` dans les réglages (changer le MDP plus tard) — le composant est réutilisable, reste à trouver l'emplacement (pas de structure d'onglets settings évidente). PR-D (consolidation SISU) reste à faire.
+
+---
+
 ## [2026-06-08] PR-B — Reconnexion Xbox : détection RT mort + bannière + Discord — Complété
 
 **Statut** : Complété (branche `feat/instance-lockdown`). 3 slices committées. Go build/vet OK ; tests auth/pool/notify/service/contracttest verts ; front tsc/eslint/vitest verts.
