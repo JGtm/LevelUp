@@ -361,11 +361,17 @@ type CompareRepository interface {
 	GetCrossMatchSample(ctx context.Context, xuidA, xuidB string) (*domain.CrossMatchSample, error)
 }
 
-// LeaderboardRepository fournit les données pour le classement CSR local.
+// LeaderboardRepository fournit les données pour la page Classement.
 // Implémenté par platform/duckdb.LeaderboardRepo.
 type LeaderboardRepository interface {
-	// GetLocalLeaderboard retourne les joueurs locaux triés par CSR DESC.
+	// GetLocalLeaderboard retourne les joueurs locaux triés par CSR DESC (legacy).
 	GetLocalLeaderboard(ctx context.Context, titleSlug, season, playlist string) ([]domain.LeaderboardEntry, error)
+	// GetCSRWorldLeaderboard lit le dernier snapshot du classement CSR mondial
+	// (scrapé depuis Halo Waypoint) pour une saison + playlist.
+	GetCSRWorldLeaderboard(ctx context.Context, season, playlist string, limit int) ([]domain.LeaderboardEntry, error)
+	// GetStatLeaderboard agrège shared.match_participants par xuid pour une
+	// catégorie de stat (joueurs croisés).
+	GetStatLeaderboard(ctx context.Context, category domain.LeaderboardCategory, playlist string, limit int) ([]domain.LeaderboardEntry, error)
 }
 
 // Ensure compile-time checks Sprint 54.
@@ -432,6 +438,12 @@ func (n *noopCompareRepo) GetCrossMatchSample(_ context.Context, _, _ string) (*
 type noopLeaderboardRepo struct{}
 
 func (n *noopLeaderboardRepo) GetLocalLeaderboard(_ context.Context, _, _, _ string) ([]domain.LeaderboardEntry, error) {
+	return nil, nil
+}
+func (n *noopLeaderboardRepo) GetCSRWorldLeaderboard(_ context.Context, _, _ string, _ int) ([]domain.LeaderboardEntry, error) {
+	return nil, nil
+}
+func (n *noopLeaderboardRepo) GetStatLeaderboard(_ context.Context, _ domain.LeaderboardCategory, _ string, _ int) ([]domain.LeaderboardEntry, error) {
 	return nil, nil
 }
 

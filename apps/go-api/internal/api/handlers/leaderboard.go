@@ -9,6 +9,8 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -36,10 +38,18 @@ func (h *LeaderboardHandler) GetLeaderboardPage(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	limit := 0
+	if v := strings.TrimSpace(r.URL.Query().Get("limit")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			limit = n
+		}
+	}
 	req := domain.LeaderboardRequest{
+		Category:  r.URL.Query().Get("category"),
 		Season:    r.URL.Query().Get("season"),
 		Playlist:  r.URL.Query().Get("playlist"),
 		TitleSlug: r.URL.Query().Get("title_slug"),
+		Limit:     limit,
 	}
 
 	resp, err := svc.GetPage(r.Context(), req)

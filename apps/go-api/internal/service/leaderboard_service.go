@@ -1,7 +1,7 @@
-// Package service — leaderboard_service.go : classement CSR local + Waypoint.
+// Package service — leaderboard_service.go : page Classement multi-catégories.
 //
-// Sprint 54 E : LeaderboardService.
-// Les joueurs locaux (IsLocal=true) sont toujours en tête du classement.
+// Sprint 54 E (origine) + refonte Classement : CSR mondial (snapshots Halo
+// Waypoint) + classements de stats agrégées des joueurs croisés.
 package service
 
 import (
@@ -21,31 +21,41 @@ func NewLeaderboardService(repo port.LeaderboardRepository) *LeaderboardService 
 	return &LeaderboardService{repo: repo}
 }
 
-// GetPage construit la réponse du classement CSR.
-// Les joueurs locaux sont retournés en premier (IsLocal=true).
-// Les joueurs distants (Waypoint) sont ajoutés après, si disponibles.
+// defaultLeaderboardLimit borne la taille par défaut d'une page de classement.
+const defaultLeaderboardLimit = 100
+
+// GetPage construit la réponse du classement selon la catégorie demandée :
+//   - "csr-world" (défaut) : classement CSR mondial (snapshots Halo Waypoint).
+//   - kills/kda/accuracy/… : stats agrégées des joueurs croisés.
 func (s *LeaderboardService) GetPage(ctx context.Context, req domain.LeaderboardRequest) (domain.LeaderboardResponse, error) {
-	local, err := s.repo.GetLocalLeaderboard(ctx, req.TitleSlug, req.Season, req.Playlist)
+	category := domain.LeaderboardCategory(req.Category)
+	if category == "" {
+		category = domain.LeaderboardCSRWorld
+	}
+	limit := req.Limit
+	if limit <= 0 {
+		limit = defaultLeaderboardLimit
+	}
+
+	var (
+		entries []domain.LeaderboardEntry
+		err     error
+	)
+	if category == domain.LeaderboardCSRWorld {
+		entries, err = s.repo.GetCSRWorldLeaderboard(ctx, req.Season, req.Playlist, limit)
+	} else {
+		entries, err = s.repo.GetStatLeaderboard(ctx, category, req.Playlist, limit)
+	}
 	if err != nil {
 		return domain.LeaderboardResponse{}, err
 	}
 
-	// Ré-indexer les rangs après merge (locaux d'abord).
-	for i := range local {
-		if local[i].CSRValue == 0 {
-			local[i].CSRValue = local[i].CSR
-		}
-		if local[i].Tier == "" {
-			local[i].Tier = "—"
-		}
-		local[i].Rank = i + 1
-	}
-
 	return domain.LeaderboardResponse{
-		Entries:    local,
+		Entries:    entries,
+		Category:   string(category),
 		Season:     req.Season,
 		Playlist:   req.Playlist,
 		TitleSlug:  req.TitleSlug,
-		TotalLocal: len(local),
+		TotalLocal: len(entries),
 	}, nil
 }

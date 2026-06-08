@@ -139,7 +139,7 @@ func TestDTOs_NoNilSlicesOnEmptyInput(t *testing.T) {
 	})
 
 	t.Run("LeaderboardService.GetPage", func(t *testing.T) {
-		repo := &mockLeaderboardRepo{entries: []domain.LeaderboardEntry{}}
+		repo := &mockLeaderboardRepo{csrWorld: []domain.LeaderboardEntry{}}
 		svc := NewLeaderboardService(repo)
 		resp, err := svc.GetPage(context.Background(), domain.LeaderboardRequest{TitleSlug: "halo_infinite"})
 		if err != nil {
