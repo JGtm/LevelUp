@@ -1,3 +1,22 @@
+## [2026-06-08] Vérification finale du travail auth (PR-A→D) + logging — Complété
+
+**Statut** : Complété (branche `feat/instance-lockdown`, poussée). Vérif globale demandée par l'utilisateur.
+
+**Résultats** :
+- **Go** : `go test ./...` **entièrement vert** (0 échec). A révélé 1 vrai bug : `TestContractRoutesDocumented` (plafond 0) échouait car la route PR-C `POST /auth/password` n'était pas dans `api/openapi.yaml` → documentée (commit fix). Leçon : après ajout de route, relancer `internal/api` (pas seulement handlers).
+- **Front** : `vitest` **199 fichiers / 1779 tests verts** (14 skip) ; `tsc -b` propre ; eslint 0 erreur (1 warning préexistant hors scope).
+- **Hooks pré-push** : govulncheck, knip-ratchet, lints — verts.
+
+**Logging renforcé** (routage auto par package → fichiers `logs/` dédiés) :
+- `logs/handlers.log` : refus lockdown (register/setup), toggle verrou.
+- `logs/auth.log` : transition reauth_required (RefreshLoop), mark/clear, RT mort (cli_refresh).
+- `logs/pool.log` : RT mort détecté (resolver sync prod).
+- `logs/service.log` : SSO (création/refus xuid inconnu). `logs/notifications.log` : ping Discord. `logs/general.log` : provider au boot.
+
+**Tests ajoutés en vérif** : RefreshLoop reauth (signal/clear/notify-once/no-mirror), `currentUserHasPassword` (has_password).
+
+---
+
 ## [2026-06-08] PR-D — Consolidation SISU (défaut) + MSAL désactivé UI — Complété
 
 **Statut** : Complété (branche `feat/instance-lockdown`). Go build/test verts (cmd/server token provider) ; front tsc/eslint/vitest verts (SettingsPage 6/6).
