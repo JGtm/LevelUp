@@ -146,6 +146,7 @@ func RunHLSTranscode(ctx context.Context, p HLSTranscodeParams) error {
 	}
 	log.InfoContext(ctx, "RunHLSTranscode: terminé",
 		"source", p.SourceAbs, "hls", p.HLSRel,
-		"audio_tracks", res.AudioTracks, "segments", res.Segments)
+		"audio_tracks", res.AudioTracks, "segments", res.Segments,
+		"renditions", res.Renditions)
 	return nil
 }
