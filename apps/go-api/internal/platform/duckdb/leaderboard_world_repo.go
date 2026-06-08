@@ -9,11 +9,16 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
 )
+
+// logModuleLeaderboard route les logs de lecture du classement vers
+// logs/leaderboard.log (cf. observability/logging.ModuleLeaderboard).
+const logModuleLeaderboard = "leaderboard"
 
 // statLeaderboardMinMatches : nombre minimal de matchs pour figurer dans un
 // classement de stats (évite les flukes sur 1-2 parties).
@@ -49,6 +54,8 @@ func (r *LeaderboardRepo) GetCSRWorldLeaderboard(
 		LIMIT ?`
 	rows, err := sharedDB.QueryContext(ctx, q, season, playlist, limit)
 	if err != nil {
+		slog.WarnContext(ctx, "lecture classement CSR mondial échouée", "module", logModuleLeaderboard,
+			"season", season, "playlist", playlist, "err", err)
 		return nil, fmt.Errorf("GetCSRWorldLeaderboard: query: %w", err)
 	}
 	defer rows.Close()
@@ -76,7 +83,12 @@ func (r *LeaderboardRepo) GetCSRWorldLeaderboard(
 			IsLocal:  r.isLocalXUID(xuid),
 		})
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	slog.DebugContext(ctx, "classement CSR mondial lu", "module", logModuleLeaderboard,
+		"season", season, "playlist", playlist, "entries", len(out))
+	return out, nil
 }
 
 // statMetric décrit l'expression SQL d'agrégation et l'unité d'une catégorie.
@@ -147,6 +159,8 @@ func (r *LeaderboardRepo) GetStatLeaderboard(
 
 	rows, err := sharedDB.QueryContext(ctx, q, args...)
 	if err != nil {
+		slog.WarnContext(ctx, "lecture classement de stats échouée", "module", logModuleLeaderboard,
+			"category", string(category), "playlist", playlist, "err", err)
 		return nil, fmt.Errorf("GetStatLeaderboard(%s): query: %w", category, err)
 	}
 	defer rows.Close()

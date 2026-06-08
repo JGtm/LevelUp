@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strings"
@@ -29,6 +30,11 @@ import (
 
 	"levelup/go-api/internal/domain"
 )
+
+// logModule est l'attribut de routage des logs du scraper vers logs/leaderboard.log
+// (cf. internal/observability/logging.ModuleLeaderboard). Valeur littérale pour
+// éviter de coupler le package halo au package logging.
+const logModule = "leaderboard"
 
 const (
 	waypointLeaderboardHost = "https://www.halowaypoint.com"
@@ -77,7 +83,13 @@ func (s *LeaderboardScraper) FetchCSRLeaderboard(
 		if err != nil {
 			return nil, fmt.Errorf("FetchCSRLeaderboard page %d: parse: %w", page, err)
 		}
+		slog.DebugContext(ctx, "leaderboard page parsée", "module", logModule,
+			"season", seasonID, "playlist", playlistID, "page", page, "entries", len(parsed.Leaderboard))
 		if len(parsed.Leaderboard) == 0 {
+			if page == 1 {
+				slog.WarnContext(ctx, "leaderboard vide en page 1 (saison/playlist inexistante ou markup changé ?)",
+					"module", logModule, "season", seasonID, "playlist", playlistID)
+			}
 			break // fin de l'échelle
 		}
 		pageSize := parsed.PageSize

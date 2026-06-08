@@ -33,6 +33,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
 )
@@ -48,7 +49,9 @@ func main() {
 	dryRun := flag.Bool("dry-run", false, "scrape et affiche les comptes sans écrire")
 	flag.Parse()
 
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	closeLogs := logging.InstallCLI(os.Getenv("LEVELUP_REPO_ROOT"))
+	defer closeLogs()
+	log := slog.Default().With("module", logging.ModuleLeaderboard, "job", "snapshot-world-leaderboard")
 	ctx := context.Background()
 
 	if strings.TrimSpace(*season) == "" {
@@ -58,6 +61,8 @@ func main() {
 	if len(playlists) == 0 {
 		fatal("aucune playlist à traiter")
 	}
+	log.InfoContext(ctx, "snapshot world leaderboard démarré",
+		"season", *season, "playlists", len(playlists), "limit", *limit, "dry_run", *dryRun)
 	fmt.Printf("Saison %s — %d playlist(s), limite %d/playlist%s\n",
 		*season, len(playlists), *limit, dryRunSuffix(*dryRun))
 
@@ -81,23 +86,25 @@ func main() {
 	for _, pl := range playlists {
 		entries, err := scraper.FetchCSRLeaderboard(ctx, *season, pl, *limit)
 		if err != nil {
-			slog.ErrorContext(ctx, "scrape playlist échoué", "playlist", pl, "err", err)
+			log.ErrorContext(ctx, "scrape playlist échoué", "playlist", pl, "err", err)
 			continue
 		}
 		totalRows += len(entries)
+		log.InfoContext(ctx, "playlist scrapée", "playlist", pl, "entries", len(entries))
 		fmt.Printf("  %s : %d entrées scrapées\n", pl, len(entries))
 		if *dryRun || len(entries) == 0 {
 			continue
 		}
 		n, err := duckdb.InsertWorldCSRSnapshot(ctx, db, entries)
 		if err != nil {
-			slog.ErrorContext(ctx, "insert snapshot échoué", "playlist", pl, "inserted", n, "err", err)
+			log.ErrorContext(ctx, "insert snapshot échoué", "playlist", pl, "inserted", n, "err", err)
 			continue
 		}
 		totalInserted += n
+		log.InfoContext(ctx, "snapshot persisté", "playlist", pl, "rows", n)
 	}
 
-	slog.InfoContext(ctx, "snapshot world leaderboard terminé",
+	log.InfoContext(ctx, "snapshot world leaderboard terminé",
 		"season", *season, "playlists", len(playlists),
 		"rows_scraped", totalRows, "rows_inserted", totalInserted,
 		"dry_run", *dryRun, "duration", time.Since(t0).String())
