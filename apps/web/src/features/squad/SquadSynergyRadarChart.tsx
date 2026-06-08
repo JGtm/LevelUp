@@ -4,7 +4,7 @@
  * Réutilise le `ChartCard` via le même cast que `RadarChart` (payload radar
  * a une structure spécifique non-`ChartSeries<T>`).
  */
-import { useCallback } from 'react'
+import { useCallback, type ReactNode } from 'react'
 import { ChartCard } from '@/components/charts/ChartCard'
 import type { SquadSynergyRadarSeries } from '@/lib/api/types'
 import {
@@ -13,7 +13,7 @@ import {
 } from './charts/squadSynergyRadarChart'
 
 interface SquadSynergyRadarChartProps extends SquadSynergyRadarOpts {
-  title?: string
+  title?: ReactNode
   rows: SquadSynergyRadarSeries[]
   height?: number
 }

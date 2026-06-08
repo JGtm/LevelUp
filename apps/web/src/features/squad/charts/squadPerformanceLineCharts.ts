@@ -57,6 +57,10 @@ interface CommonOpts {
   playerOrder?: string[]
   /** Labels personnalisés pour l'axe X (ex: "#1 Tribord"). Sinon xAxisLabels(n). */
   xLabels?: string[]
+  /** Joueurs masqués via la légende React (séries vidées). Cf. SquadToggleLegendChart. */
+  hiddenPlayers?: Set<string>
+  /** Types masqués via la légende (la clé est le label de la série, ex. killsLabel). */
+  hiddenTypes?: Set<string>
 }
 
 export interface PerformanceLineOpts extends CommonOpts {
@@ -236,10 +240,15 @@ export function buildKillsDeathsButterflyOption(
   if (n === 0) return { backgroundColor: CHART_BG }
   const xLabels = opts.xLabels ?? xAxisLabels(n)
 
+  const hiddenPlayers = opts.hiddenPlayers ?? new Set<string>()
+  const hiddenTypes = opts.hiddenTypes ?? new Set<string>()
+  const emptyData = new Array<number | null>(n).fill(null)
   const seriesPerPlayer: Array<Record<string, unknown>> = []
   for (const player of players) {
     const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
     const negColor = hexComplement(color) // hue +180°, opaque — même convention que squadPerMinuteChart
+    const killsHidden = hiddenPlayers.has(player) || hiddenTypes.has(opts.killsLabel)
+    const deathsHidden = hiddenPlayers.has(player) || hiddenTypes.has(opts.deathsLabel)
     const killsData = new Array<number | null>(n).fill(null)
     const deathsData = new Array<number | null>(n).fill(null)
     for (const p of rows[player]) {
@@ -253,7 +262,7 @@ export function buildKillsDeathsButterflyOption(
       stack: player,
       barMaxWidth: 14,
       itemStyle: { color },
-      data: killsData,
+      data: killsHidden ? emptyData : killsData,
     })
     seriesPerPlayer.push({
       name: `${player} — ${opts.deathsLabel}`,
@@ -261,11 +270,9 @@ export function buildKillsDeathsButterflyOption(
       stack: player,
       barMaxWidth: 14,
       itemStyle: { color: negColor },
-      data: deathsData,
+      data: deathsHidden ? emptyData : deathsData,
     })
   }
-
-  const legendData = players.flatMap((p) => [`${p} — ${opts.killsLabel}`, `${p} — ${opts.deathsLabel}`])
 
   return {
     backgroundColor: CHART_BG,
@@ -276,7 +283,7 @@ export function buildKillsDeathsButterflyOption(
       axisPointer: { type: 'shadow' },
       valueFormatter: (v: unknown) => (typeof v === 'number' ? `${Math.abs(v)}` : '-'),
     },
-    legend: { ...getLegendBase(tc), data: legendData, type: 'scroll' },
+    legend: { show: false }, // légende custom React (cf. SquadToggleLegendChart)
     xAxis: { ...axis, type: 'category', data: xLabels },
     yAxis: {
       ...axis,
@@ -312,9 +319,14 @@ export function buildHsPerfectOption(
   // HS : barre opaque couleur joueur.
   // Perfect kills : stackée sur les HS, même couleur + bordure blanche + glow
   // dans la couleur du joueur → événement rare mis en valeur sans couleur externe.
+  const hiddenPlayers = opts.hiddenPlayers ?? new Set<string>()
+  const hiddenTypes = opts.hiddenTypes ?? new Set<string>()
+  const emptyData = new Array<number | null>(n).fill(null)
   const series: Array<Record<string, unknown>> = []
   for (const player of players) {
     const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+    const hsHidden = hiddenPlayers.has(player) || hiddenTypes.has(opts.hsLabel)
+    const perfectHidden = hiddenPlayers.has(player) || hiddenTypes.has(opts.perfectLabel)
     const hsData = new Array<number | null>(n).fill(null)
     const perfectData = new Array<number | null>(n).fill(null)
     for (const p of rows[player]) {
@@ -327,7 +339,7 @@ export function buildHsPerfectOption(
       stack: player,
       barMaxWidth: 14,
       itemStyle: { color },
-      data: hsData,
+      data: hsHidden ? emptyData : hsData,
     })
     series.push({
       name: `${player} — ${opts.perfectLabel}`,
@@ -342,17 +354,15 @@ export function buildHsPerfectOption(
         shadowColor: color,
       },
       emphasis: { focus: 'series' },
-      data: perfectData,
+      data: perfectHidden ? emptyData : perfectData,
     })
   }
-
-  const legendData = players.flatMap((p) => [`${p} — ${opts.hsLabel}`, `${p} — ${opts.perfectLabel}`])
 
   return {
     backgroundColor: CHART_BG,
     grid: { top: 36, bottom: 36, left: 8, right: 24, containLabel: true },
     tooltip: { ...getTooltipBase(tc), trigger: 'axis', axisPointer: { type: 'shadow' } },
-    legend: { ...getLegendBase(tc), data: legendData, type: 'scroll' },
+    legend: { show: false }, // légende custom React (cf. SquadToggleLegendChart)
     xAxis: { ...axis, type: 'category', data: xLabels },
     yAxis: {
       ...axis,

@@ -25,19 +25,19 @@ func TestSquadSessionWindowKeep_BelowFloorKeepsAll(t *testing.T) {
 
 func TestSquadSessionWindowKeep_HardcoreClampsToMinDays(t *testing.T) {
 	cfg := DefaultSquadSessionWindow()
-	// 30 sessions à 1 j d'écart : 12×1 = 12 j < MinDays(14) → horizon 14 j.
-	// cutoff = jour 29 − 14 = jour 15 → sessions 15..29 = 15.
-	if got := SquadSessionWindowKeep(times(30, 1), cfg); got != 15 {
-		t.Errorf("hardcore: expected 15, got %d", got)
+	// 30 sessions à 1 j d'écart : 18×1 = 18 j < MinDays(21) → horizon 21 j.
+	// cutoff = jour 29 − 21 = jour 8 → sessions 8..29 = 22.
+	if got := SquadSessionWindowKeep(times(30, 1), cfg); got != 22 {
+		t.Errorf("hardcore: expected 22, got %d", got)
 	}
 }
 
 func TestSquadSessionWindowKeep_OccasionalClampsToMaxDays(t *testing.T) {
 	cfg := DefaultSquadSessionWindow()
-	// 30 sessions à 10 j d'écart : 12×10 = 120 j = MaxDays → horizon 120 j.
-	// last = jour 290, cutoff = jour 170 → sessions i où 10i ≥ 170 → i=17..29 = 13.
-	if got := SquadSessionWindowKeep(times(30, 10), cfg); got != 13 {
-		t.Errorf("occasional: expected 13, got %d", got)
+	// 30 sessions à 10 j d'écart : 18×10 = 180 j = MaxDays → horizon 180 j.
+	// last = jour 290, cutoff = jour 110 → sessions i où 10i ≥ 110 → i=11..29 = 19.
+	if got := SquadSessionWindowKeep(times(30, 10), cfg); got != 19 {
+		t.Errorf("occasional: expected 19, got %d", got)
 	}
 }
 

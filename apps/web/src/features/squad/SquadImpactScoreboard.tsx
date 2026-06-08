@@ -30,7 +30,6 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { tokenCssVar } from '@/lib/accessibility'
 import { BadgeIcon } from '@/components/feedback/BadgeIcon'
 import { Tooltip } from '@/components/ui/tooltip'
-import { Card, CardContent } from '@/components/ui/card'
 import { getSquadText } from './i18n'
 
 /** Badges où un count élevé est PIRE (rouge=worst au lieu de best). */
@@ -114,11 +113,14 @@ function aggCellClass(badgeKey: string, count: number, ext: { min: number; max: 
   return ''
 }
 
-/** Découpe une liste de badge_keys en lignes de 2 pour l'empilage en cellule. */
-function chunkPairs<T>(arr: T[]): T[][] {
-  const out: T[][] = []
-  for (let i = 0; i < arr.length; i += 2) out.push(arr.slice(i, i + 2))
-  return out
+/**
+ * Répartit les badges sur 2 RANGÉES maximum, qui s'élargissent en COLONNES quand
+ * il y en a beaucoup (demande user : ajouter des colonnes plutôt que des rangées).
+ */
+function splitTwoRows<T>(arr: T[]): T[][] {
+  if (arr.length === 0) return []
+  const half = Math.ceil(arr.length / 2)
+  return [arr.slice(0, half), arr.slice(half)].filter((r) => r.length > 0)
 }
 
 interface SquadImpactScoreboardProps {
@@ -166,9 +168,9 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
           if (keys.length === 0) return null
           return (
             <div className="flex flex-col items-center gap-0.5" data-testid="squad-impact-cell">
-              {chunkPairs(keys).map((pair, i) => (
+              {splitTwoRows(keys).map((row, i) => (
                 <div key={i} className="flex gap-0.5">
-                  {pair.map((k) => (
+                  {row.map((k) => (
                     <Tooltip
                       key={k}
                       content={
@@ -265,46 +267,43 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
 
   if (matrix.matches.length === 0 || matrix.players.length === 0) return null
 
+  // Bloc « sorti » : table seule, sans Card ni titre interne. Le titre « Impact
+  // des coéquipiers » est porté par un titre de section dans SquadSynergiesPage.
   return (
-    <Card data-testid="squad-impact-section">
-      <CardContent className="pt-4 space-y-3">
-        <h3 className="text-base font-semibold">{i18n.title}</h3>
-        <div
-          className="overflow-x-auto rounded-md border border-border"
-          data-testid="squad-impact-scoreboard"
-        >
-          <table className="w-full border-collapse text-sm">
-            <thead className="bg-muted">
-              {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id} className="border-b border-border">
-                  {hg.headers.map((h, idx) => (
-                    <th
-                      key={h.id}
-                      className={`px-2 py-1 text-center align-bottom font-medium ${idx > 0 ? 'border-l border-border/60' : ''}`}
-                    >
-                      {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
-                    </th>
-                  ))}
-                </tr>
+    <div
+      className="overflow-x-auto rounded-md border border-border"
+      data-testid="squad-impact-scoreboard"
+    >
+      <table className="w-full border-collapse text-sm">
+        <thead className="bg-muted">
+          {table.getHeaderGroups().map((hg) => (
+            <tr key={hg.id} className="border-b border-border">
+              {hg.headers.map((h, idx) => (
+                <th
+                  key={h.id}
+                  className={`px-2 py-1 text-center align-bottom font-medium ${idx > 0 ? 'border-l border-border/60' : ''}`}
+                >
+                  {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
+                </th>
               ))}
-            </thead>
-            <tbody className="divide-y divide-border">
-              {table.getRowModel().rows.map((r) => (
-                <tr key={r.id}>
-                  {r.getVisibleCells().map((cell, idx) => (
-                    <td
-                      key={cell.id}
-                      className={`px-2 py-1 align-middle ${idx > 0 ? 'border-l border-border/60' : ''}`}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
+            </tr>
+          ))}
+        </thead>
+        <tbody className="divide-y divide-border">
+          {table.getRowModel().rows.map((r) => (
+            <tr key={r.id}>
+              {r.getVisibleCells().map((cell, idx) => (
+                <td
+                  key={cell.id}
+                  className={`px-2 py-1 align-middle ${idx > 0 ? 'border-l border-border/60' : ''}`}
+                >
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </td>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </CardContent>
-    </Card>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }

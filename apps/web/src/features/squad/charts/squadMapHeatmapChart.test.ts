@@ -47,10 +47,10 @@ describe('buildSquadMapHeatmapOption', () => {
     expect(buildSquadMapHeatmapOption(makeSeries(empty), OPTS)).toMatchObject({ backgroundColor: 'transparent' })
   })
 
-  it('mapLabelOf appliqué sur xAxis', () => {
+  it('xAxis = "#N\\nCarte" (mapLabelOf appliqué + numérotation)', () => {
     const opt = buildSquadMapHeatmapOption(makeSeries(makeData()), OPTS)
     const xAxis = opt.xAxis as { data: string[] }
-    expect(xAxis.data).toEqual(['AQUARIUS', 'BAZAAR'])
+    expect(xAxis.data).toEqual(['#1\nAQUARIUS', '#2\nBAZAAR'])
   })
 
   it('yAxis = liste des joueurs avec inverse', () => {

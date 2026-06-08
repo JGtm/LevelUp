@@ -37,13 +37,22 @@ export function buildSquadWeaponKillsOption(
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
 
+  // Masque les armes inconnues : label vide (→ fallback "weapon_<id>") ou label
+  // brut de la forme "weapon_-123456". On ne garde que les armes réellement
+  // nommées (demande user).
+  const bars = data.bars.filter((b) => {
+    const label = (b.label ?? '').trim()
+    return label !== '' && !/^weapon_-?\d+$/i.test(label)
+  })
+  if (bars.length === 0) return { backgroundColor: CHART_BG }
+
   // yAxis = labels d'armes (ASC par TotalSquad côté backend).
-  const yLabels = data.bars.map((b) => b.label || `weapon_${b.weapon_id}`)
+  const yLabels = bars.map((b) => b.label || `weapon_${b.weapon_id}`)
 
   // 1 série bar (horizontale, group) par joueur, valeurs alignées sur yLabels.
   const series = data.players.map((player) => {
     const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
-    const values = data.bars.map((b) => b.kills_by_player[player] ?? 0)
+    const values = bars.map((b) => b.kills_by_player[player] ?? 0)
     return {
       name: player,
       type: 'bar' as const,

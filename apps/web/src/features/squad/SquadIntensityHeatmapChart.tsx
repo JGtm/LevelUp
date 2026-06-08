@@ -32,7 +32,10 @@ export function SquadIntensityHeatmapChart({
   const [selectedKey, setSelectedKey] = useState<string>(defaultKey)
 
   const rows = useMemo<SquadIntensityMatchRow[]>(
-    () => profile.rows[selectedKey] ?? [],
+    // Inversé : l'API renvoie les matchs récent→ancien ; on passe ancien→récent
+    // pour que (via yAxis.inverse) le plus récent soit en bas et le plus vieux en
+    // haut, avec une numérotation #1 (haut, ancien) → #N (bas, récent).
+    () => [...(profile.rows[selectedKey] ?? [])].reverse(),
     [profile.rows, selectedKey],
   )
 

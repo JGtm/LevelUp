@@ -29,6 +29,7 @@ import {
   buildPerformanceLineOption,
   buildTeamMMROption,
 } from './charts/squadPerformanceLineCharts'
+import { SquadToggleLegendChart } from './SquadToggleLegendChart'
 
 interface I18nLabels {
   killsDeathsTitle: string
@@ -100,17 +101,26 @@ export function SquadPerformanceCharts({
     return Array.from({ length: maxOrder + 1 }, (_, i) => byOrder.get(i) ?? `#${i + 1}`)
   }, [rowsByPlayer])
 
+  // Joueurs affichés dans les légendes React (kills/deaths + hs/perfect), dans
+  // l'ordre stable, restreints à ceux ayant au moins un point de série.
+  const legendPlayers = useMemo(
+    () => playerOrder.filter((p) => (rowsByPlayer[p]?.length ?? 0) > 0),
+    [playerOrder, rowsByPlayer],
+  )
+
   const stacked = isMobile || xMatchLabels.length >= PAIR_LAYOUT_THRESHOLD
   const pairClass = stacked ? 'space-y-4' : 'grid grid-cols-1 md:grid-cols-2 gap-4'
 
   const commonOpts = { colorByPlayer, playerOrder, xLabels: xMatchLabels }
 
   const buildKillsDeaths = useCallback(
-    () =>
+    (hidden: { hiddenPlayers: Set<string>; hiddenTypes: Set<string> }) =>
       buildKillsDeathsButterflyOption(rowsByPlayer, {
         ...commonOpts,
         killsLabel: labels.killsLabel,
         deathsLabel: labels.deathsLabel,
+        hiddenPlayers: hidden.hiddenPlayers,
+        hiddenTypes: hidden.hiddenTypes,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels, labels.killsLabel, labels.deathsLabel],
@@ -205,11 +215,13 @@ export function SquadPerformanceCharts({
   )
 
   const buildHsPerfect = useCallback(
-    () =>
+    (hidden: { hiddenPlayers: Set<string>; hiddenTypes: Set<string> }) =>
       buildHsPerfectOption(rowsByPlayer, {
         ...commonOpts,
         hsLabel: labels.hsLabel,
         perfectLabel: labels.perfectLabel,
+        hiddenPlayers: hidden.hiddenPlayers,
+        hiddenTypes: hidden.hiddenTypes,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels, labels.hsLabel, labels.perfectLabel],
@@ -220,9 +232,15 @@ export function SquadPerformanceCharts({
   return (
     <div className="space-y-4" data-testid="squad-performance-charts">
       <div className={pairClass}>
-        <ChartCard
+        <SquadToggleLegendChart
           title={labels.killsDeathsTitle}
           series={series}
+          players={legendPlayers}
+          colorByPlayer={colorByPlayer}
+          types={[
+            { key: labels.killsLabel, label: labels.killsLabel },
+            { key: labels.deathsLabel, label: labels.deathsLabel },
+          ]}
           buildOption={buildKillsDeaths}
           height={SUBCHART_HEIGHT}
         />
@@ -274,9 +292,15 @@ export function SquadPerformanceCharts({
           buildOption={buildMaxSpree}
           height={SUBCHART_HEIGHT}
         />
-        <ChartCard
+        <SquadToggleLegendChart
           title={labels.hsPerfectTitle}
           series={series}
+          players={legendPlayers}
+          colorByPlayer={colorByPlayer}
+          types={[
+            { key: labels.hsLabel, label: labels.hsLabel },
+            { key: labels.perfectLabel, label: labels.perfectLabel },
+          ]}
           buildOption={buildHsPerfect}
           height={SUBCHART_HEIGHT}
         />

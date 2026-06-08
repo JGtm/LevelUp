@@ -22,11 +22,13 @@ type SquadSessionWindowConfig struct {
 // adaptative hybride retenue avec l'utilisateur).
 func DefaultSquadSessionWindow() SquadSessionWindowConfig {
 	return SquadSessionWindowConfig{
-		TargetSessions: 12,
-		MinSessions:    6,
-		MaxSessions:    20,
-		MinDays:        14,
-		MaxDays:        120,
+		// Fenêtre élargie ~+50% (retour user : la précédente était trop sévère et
+		// montrait trop peu de sessions).
+		TargetSessions: 18,
+		MinSessions:    9,
+		MaxSessions:    30,
+		MinDays:        21,
+		MaxDays:        180,
 	}
 }
 

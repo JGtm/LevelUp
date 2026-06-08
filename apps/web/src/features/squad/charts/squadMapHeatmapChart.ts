@@ -17,6 +17,7 @@ import {
 } from '@/components/charts/_utils'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadMapHeatmap, SquadMapHeatmapCell } from '@/lib/api/types'
+import { truncateMap } from '@/lib/charts/matchLabels'
 
 export interface SquadMapHeatmapOpts {
   mapLabelOf: (mapUI: string) => string
@@ -33,7 +34,10 @@ export function buildSquadMapHeatmapOption(
     return { backgroundColor: CHART_BG }
   }
 
-  const xLabels = heatmap.maps_topn.map(opts.mapLabelOf)
+  // Étiquettes X « #N\nCarte » (format compact 2 lignes, comme les autres charts).
+  // Nom complet conservé dans `mapNames` pour le tooltip.
+  const mapNames = heatmap.maps_topn.map(opts.mapLabelOf)
+  const xLabels = mapNames.map((name, i) => `#${i + 1}\n${truncateMap(name)}`)
   const yLabels = heatmap.players
 
   // Map (player, map) → cell pour lookup O(1).
@@ -68,14 +72,15 @@ export function buildSquadMapHeatmapOption(
         const cell = cellByKey.get(`${heatmap.players[yi]}|${heatmap.maps_topn[xi]}`)
         const perf = v === null ? opts.noScoreLabel : v.toFixed(1)
         const n = cell?.match_count ?? 0
-        return `${heatmap.players[yi]} — ${xLabels[xi]}<br/>Perf: ${perf}<br/>N: ${n}`
+        return `${heatmap.players[yi]} — ${mapNames[xi]}<br/>Perf: ${perf}<br/>N: ${n}`
       },
     },
     xAxis: {
       ...axis,
       type: 'category',
       data: xLabels,
-      axisLabel: { ...axis.axisLabel, rotate: -35, interval: 0 },
+      // margin : décolle les étiquettes (2 lignes « #N\nCarte ») du bas du graphe.
+      axisLabel: { ...axis.axisLabel, rotate: -35, interval: 0, margin: 14 },
     },
     yAxis: {
       ...axis,
