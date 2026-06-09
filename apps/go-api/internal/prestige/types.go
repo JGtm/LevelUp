@@ -234,9 +234,20 @@ type Squad struct {
 }
 
 // SquadMember représente l'appartenance d'un joueur à une Squad.
+//
+// Clé universelle = Xuid : tout membre en a un, qu'il soit ou non utilisateur de
+// l'app. Cela permet (a) d'inclure des amis hors-app (présents seulement comme
+// xuid dans shared.match_participants) et (b) de mesurer la progression des défis
+// d'escouade sur match_participants (clé xuid).
+//
+// UserID (player_slug) est OPTIONNEL : renseigné uniquement quand le membre est
+// utilisateur de l'app, ce qui lui ouvre l'accès lecture/écriture aux objectifs
+// et arcs de l'escouade (règle « membre-user, sans consentement » —
+// PLAN_COACH_V3_GENERATION § Identité d'escouade). Vide pour un ami hors-app.
 type SquadMember struct {
 	SquadID  string    `json:"squad_id"`
-	UserID   string    `json:"user_id"`
+	Xuid     string    `json:"xuid"`
+	UserID   string    `json:"user_id,omitempty"`
 	JoinedAt time.Time `json:"joined_at"`
 }
 

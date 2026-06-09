@@ -259,6 +259,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/migration/steps_shared_social_records_append_only.go":      "migrations records append-only",
 	"internal/migration/steps_shared_social_records_previous_cols.go":    "migration previous_* sur player_records_history (fix 2026-05-30)",
 	"internal/migration/steps_shared_social_records_window.go":           "migrations records window",
+	"internal/migration/steps_shared_social_squad_xuid.go":               "migration re-key squad_member par xuid (Phase C escouade)",
 	"internal/migration/steps_shared_social_align_media_files_schema.go": "ADR 0021 Bonus 12 — align media_files legacy schema",
 	"internal/platform/duckdb/art_probe.go":                              "ART probe sur shared_social",
 	"internal/platform/dblease/writer.go":                                "LeasedWriter (CommitWithCheckpoint, ADR 0021 Phase 3.2 bis)",
