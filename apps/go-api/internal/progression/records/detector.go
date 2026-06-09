@@ -212,8 +212,14 @@ func periodCutoff(period RecordPeriod, now time.Time) time.Time {
 	}
 }
 
-// IsNearMiss retourne true si `current` est proche de `target` sans le dépasser :
-// current >= target × (1 - NearMissRatio) ET current <= target.
+// IsNearMiss retourne true si `current` est proche de `target` sans l'atteindre :
+// current >= target × (1 - NearMissRatio) ET current < target.
+//
+// L'inégalité stricte (`current < target`) est volontaire : sur la fenêtre
+// all_time, le PB stocké a été posé par un match toujours présent dans la
+// fenêtre, donc le best courant est égal au PB à chaque passe. Avec un `<=`,
+// chaque sync ré-émettait une notif « tu approches ton record (X vs X) »
+// avec value == target — du spam. On ne notifie que si on est *sous* le PB.
 //
 // Exposé pour usage par le coach (commit 5) qui peut détecter des near-miss
 // même sur des évaluations partielles non passées par le Detector complet.
@@ -221,5 +227,5 @@ func IsNearMiss(current, target float64) bool {
 	if target <= 0 {
 		return false
 	}
-	return current >= target*(1-NearMissRatio) && current <= target
+	return current >= target*(1-NearMissRatio) && current < target
 }
