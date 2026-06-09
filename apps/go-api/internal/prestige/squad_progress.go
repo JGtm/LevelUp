@@ -93,6 +93,63 @@ func FilterSquadMatches(roster []string, otherKnownTeammates map[string]struct{}
 	return out
 }
 
+// SquadMatchMetric décrit un match candidat pour l'évaluation d'un défi
+// d'escouade : ses participants (pour la règle no-overlap) + la valeur de la
+// métrique du défi par membre du roster sur ce match.
+//
+// Values est indexé par xuid (membres du roster) ; un membre absent de la map
+// pour un match n'a pas contribué (ne compte pas dans son cumul).
+type SquadMatchMetric struct {
+	MatchID string
+	Xuids   []string
+	Values  map[string]float64
+}
+
+// SquadParticipantProgress est la progression cumulée d'un membre du roster sur
+// un défi d'escouade.
+type SquadParticipantProgress struct {
+	Xuid      string  `json:"xuid"`
+	Value     float64 `json:"value"`     // métrique cumulée sur les matchs comptés
+	Matches   int     `json:"matches"`   // nb de matchs comptés où le membre a contribué
+	Completed bool    `json:"completed"` // Value >= targetPerMember (mode cumulatif)
+}
+
+// AggregateSquadProgress calcule la progression de chaque membre du roster sur
+// un défi d'escouade en **mode cumulatif** (collectif) : on ne garde que les
+// matchs qui comptent pour l'escouade (règle no-overlap, cf. MatchCountsForSquad)
+// puis on somme la métrique par membre. Completed si la somme atteint
+// targetPerMember (> 0). Le résultat suit l'ordre de `roster`.
+//
+// Le mode « threshold » (cible atteinte sur un match plutôt que cumulée) n'est
+// pas couvert en V1 — à ajouter quand un défi d'escouade threshold sera proposé.
+func AggregateSquadProgress(roster []string, otherKnownTeammates map[string]struct{}, matches []SquadMatchMetric, targetPerMember float64) []SquadParticipantProgress {
+	rs := toXUIDSet(roster)
+	sums := make(map[string]float64, len(roster))
+	counts := make(map[string]int, len(roster))
+	for _, m := range matches {
+		if !MatchCountsForSquad(rs, otherKnownTeammates, m.Xuids) {
+			continue
+		}
+		for x := range rs {
+			if v, ok := m.Values[x]; ok {
+				sums[x] += v
+				counts[x]++
+			}
+		}
+	}
+	out := make([]SquadParticipantProgress, 0, len(roster))
+	for _, x := range roster {
+		v := sums[x]
+		out = append(out, SquadParticipantProgress{
+			Xuid:      x,
+			Value:     v,
+			Matches:   counts[x],
+			Completed: targetPerMember > 0 && v >= targetPerMember,
+		})
+	}
+	return out
+}
+
 // toXUIDSet construit un set depuis une liste de xuids.
 func toXUIDSet(xs []string) map[string]struct{} {
 	s := make(map[string]struct{}, len(xs))
