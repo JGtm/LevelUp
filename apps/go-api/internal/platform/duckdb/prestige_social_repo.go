@@ -214,17 +214,17 @@ func (r *PrestigeSquadRepo) AddMember(ctx context.Context, m prestige.SquadMembe
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	_, err := r.db.ExecRecovered(ctx,
-		`INSERT INTO squad_member (squad_id, user_id, joined_at) VALUES (?, ?, ?)
-		 ON CONFLICT (squad_id, user_id) DO NOTHING`,
-		m.SquadID, m.UserID, m.JoinedAt)
+		`INSERT INTO squad_member (squad_id, xuid, user_id, joined_at) VALUES (?, ?, ?, ?)
+		 ON CONFLICT (squad_id, xuid) DO NOTHING`,
+		m.SquadID, m.Xuid, m.UserID, m.JoinedAt)
 	return err
 }
 
-func (r *PrestigeSquadRepo) RemoveMember(ctx context.Context, squadID, userID string) error {
+func (r *PrestigeSquadRepo) RemoveMember(ctx context.Context, squadID, xuid string) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	_, err := r.db.ExecRecovered(ctx,
-		`DELETE FROM squad_member WHERE squad_id = ? AND user_id = ?`, squadID, userID)
+		`DELETE FROM squad_member WHERE squad_id = ? AND xuid = ?`, squadID, xuid)
 	return err
 }
 
@@ -232,7 +232,7 @@ func (r *PrestigeSquadRepo) ListMembers(ctx context.Context, squadID string) ([]
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	rows, err := r.db.QueryRecovered(ctx,
-		`SELECT squad_id, user_id, joined_at FROM squad_member WHERE squad_id = ?`, squadID)
+		`SELECT squad_id, xuid, COALESCE(user_id, ''), joined_at FROM squad_member WHERE squad_id = ?`, squadID)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +240,7 @@ func (r *PrestigeSquadRepo) ListMembers(ctx context.Context, squadID string) ([]
 	var out []prestige.SquadMember
 	for rows.Next() {
 		var m prestige.SquadMember
-		if err := rows.Scan(&m.SquadID, &m.UserID, &m.JoinedAt); err != nil {
+		if err := rows.Scan(&m.SquadID, &m.Xuid, &m.UserID, &m.JoinedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, m)
