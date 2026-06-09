@@ -1,3 +1,20 @@
+## [2026-06-09] Coach V3 — implémentation Phase C (squad) + Phase A V1 (CoachFocusCard) — Complété, poussé
+
+**Statut** : Complété et poussé sur `feat/coach-v3-squad` (≈18 commits, `131a29c8` → `7cefd911`). Backend Go : migration/prestige/api verts + gofmt/go-vet. Front : typecheck + vitest (62 tests ascension) + gardes pre-push (knip, cross-feature, colors, fields) verts.
+
+**Périmètre livré** (cf. `.ai/PLAN_COACH_V3_GENERATION.md`) :
+- **Phase C (escouade) — complète, backend + front**. Backend : identité roster **clé xuid** (membre-app `user_id` optionnel) ; règle **no-overlap** (« session » : roster complet présent ET aucun autre coéquipier connu, randoms ignorés) ; service CRUD roster + endpoints HTTP (`POST/GET /squads`, members, evaluate) + résolveur xuid↔slug (db_profiles) ; **évaluation de progression** (provider `match_participants`) ; **coach** : biais du pool (`RefreshSquadPool`) vers l'axe de perf le plus faible de l'escouade. Front : client API + hooks react-query + **strip « Cap d'escouade »** (match compo↔escouade / enregistrer la compo) + **drawer** (défis : rejoindre/réévaluer + proposer le pool → créer un défi). Monté en tête de l'onglet Synergies (hors zone FDA user).
+- **Phase A V1 (coach soft-négatif) — front**. `CoachFocusCard` « Cap du moment » en tête de l'onglet Entraînement : axe focal = composante LUSR qui bouge le plus ; accent **success** (progression) / **info** (soft-négatif, **jamais rouge**) / non rendu si non significatif ; ton universel non culpabilisant. `PerformanceSection.TrendBadge` négatif recadré `outcome-loss`→`info`.
+- **Phase B (ton)** : tranché universel, **pas de setting** ; appliqué dans CoachFocusCard (i18n local soft).
+
+**Décisions produit clés (validées user)** : escouade = entité partagée explicite, accès auto membres-app **sans consentement** ; comptage no-overlap **exact parmi coéquipiers connus** ; routes squad CRUD **top-level** (`/squads`, user_id en body) pour éviter un conflit chi avec `r.Route("/players/{player_slug}")`.
+
+**⚠️ Finding majeur (recherche, déclenchée par challenge user)** : **LUSR v2 / TrueSkill 2 = (μ,σ) win/loss SANS décomposition en axes**. Les 8 « composantes » (`CompositeWeights`/`lusr_component_history`, incl. `defensive_resistance`) sont du **LEGACY** (perf), affichées par l'UI + utilisées par le coach solo. Assumé : la perf est le bon levier ACTIONNABLE pour du coaching (proxy vers le sous-tier). **Noté au backlog** (`[coach/LUSR]`) avec les consommateurs à mettre à jour si v2 gagne une décomposition (Phase 3 TS2 §8).
+
+**Différé (non bloquant)** : backend signal soft-négatif (nouveau `SignalKind` → proposition de stabilisation + CTA depuis la card) ; **vérif visuelle in-app** du strip/drawer/CoachFocusCard (non testés visuellement) ; redesign #6 sur un vrai axe v2 le jour venu.
+
+---
+
 ## [2026-06-09] Feature Bonus — toggle légende sur graphes "Frags / Morts" (Solo Timeseries + Escouade butterfly) — Complété
 
 **Statut** : Complété. TSC clean. Non commité.
