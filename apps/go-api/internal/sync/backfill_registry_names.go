@@ -75,7 +75,42 @@ func BackfillRegistryNames(ctx context.Context, sharedDB, metadataDB *sql.DB) (B
 		*c.scanned = scanned
 		*c.fixed = fixed
 	}
+
+	// Étape finale : pour les paires dont le nom est resté un GUID (asset
+	//_translations[pair] absent — cas du nouveau contenu Halo), on CONSTRUIT
+	// "{game_variant} on {map}" depuis les colonnes voisines, désormais résolues
+	// par les passes ci-dessus. Miroir du fallback sync-time dans
+	// EnrichRegistryFromMetadata (constructPairName). Idempotent.
+	constructed, err := backfillPairNamesByConstruction(ctx, sharedDB)
+	if err != nil {
+		return stats, fmt.Errorf("backfill pair construction: %w", err)
+	}
+	stats.PairsFixed += constructed
 	return stats, nil
+}
+
+// backfillPairNamesByConstruction réécrit pair_name = "{game_variant_name} on
+// {map_name}" pour les rows où pair_name est resté un GUID (== pair_id) ALORS
+// que game_variant_name et map_name sont, eux, résolus (≠ leur id). Pur SQL,
+// idempotent. Retourne le nombre de rows mises à jour.
+func backfillPairNamesByConstruction(ctx context.Context, sharedDB *sql.DB) (int, error) {
+	const q = `
+		UPDATE match_registry
+		SET pair_name = game_variant_name || ' on ' || map_name
+		WHERE pair_id IS NOT NULL
+		  AND pair_name = pair_id
+		  AND game_variant_name IS NOT NULL AND game_variant_name <> game_variant_id
+		  AND map_name IS NOT NULL AND map_name <> map_id`
+	res, err := sharedDB.ExecContext(ctx, q)
+	if err != nil {
+		return 0, err
+	}
+	n, _ := res.RowsAffected()
+	if n > 0 {
+		slog.InfoContext(ctx, "BackfillRegistryNames: pairs construites depuis game_variant + map",
+			"rows", n)
+	}
+	return int(n), nil
 }
 
 // backfillOneColumn : (1) liste les asset_ids distincts dont *_name == *_id,

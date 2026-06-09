@@ -150,6 +150,61 @@ func TestBackfillRegistryNames_Idempotent(t *testing.T) {
 	}
 }
 
+// TestBackfillRegistryNames_ConstructsPairFromParts : la paire est absente
+// d'asset_translations (reste un GUID après la passe colonne) mais map +
+// game_variant y sont → l'étape de construction réécrit pair_name en
+// "{game_variant} on {map}". Cas du nouveau contenu Halo (maps inédites).
+func TestBackfillRegistryNames_ConstructsPairFromParts(t *testing.T) {
+	ctx := context.Background()
+	sharedDB, metaDB := setupBackfillRegistryDBs(t)
+
+	const pairGUID = "uuid-pair-absent"
+	const gvID = "uuid-gv-slayer"
+	const mapID = "uuid-map-chasm"
+	// m1 : pair/gv/map tous en GUID. m2 : pair a une vraie traduction → pas de construction.
+	if _, err := sharedDB.Exec(`INSERT INTO match_registry VALUES
+		('m1', NULL, NULL, ?, ?, ?, ?, ?, ?),
+		('m2', NULL, NULL, ?, ?, 'pair-real', 'Arena:Slayer on Chasm', ?, ?)`,
+		mapID, mapID, pairGUID, pairGUID, gvID, gvID,
+		mapID, mapID, gvID, gvID); err != nil {
+		t.Fatalf("seed shared: %v", err)
+	}
+	// asset_translations a map + game_variant, mais PAS la paire.
+	if _, err := metaDB.Exec(`INSERT INTO asset_translations VALUES
+		(?, 'map', 'en-US', 'Chasm'),
+		(?, 'game_variant', 'en-US', 'Slayer')`, mapID, gvID); err != nil {
+		t.Fatalf("seed meta: %v", err)
+	}
+
+	stats, err := BackfillRegistryNames(ctx, sharedDB, metaDB)
+	if err != nil {
+		t.Fatalf("backfill: %v", err)
+	}
+	if stats.PairsFixed != 1 {
+		t.Errorf("PairsFixed = %d, want 1 (construction)", stats.PairsFixed)
+	}
+	var name string
+	if err := sharedDB.QueryRow(`SELECT pair_name FROM match_registry WHERE match_id = 'm1'`).Scan(&name); err != nil {
+		t.Fatal(err)
+	}
+	if name != "Slayer on Chasm" {
+		t.Errorf("m1 pair_name = %q, want %q", name, "Slayer on Chasm")
+	}
+	// m2 garde sa vraie traduction (pas de construction).
+	if err := sharedDB.QueryRow(`SELECT pair_name FROM match_registry WHERE match_id = 'm2'`).Scan(&name); err != nil {
+		t.Fatal(err)
+	}
+	if name != "Arena:Slayer on Chasm" {
+		t.Errorf("m2 pair_name = %q, want préservé", name)
+	}
+
+	// Idempotence : un 2e run ne reconstruit rien (pair_name != pair_id désormais).
+	stats2, _ := BackfillRegistryNames(ctx, sharedDB, metaDB)
+	if stats2.PairsFixed != 0 {
+		t.Errorf("run 2 PairsFixed = %d, want 0 (idempotent)", stats2.PairsFixed)
+	}
+}
+
 func TestBackfillRegistryNames_NilMetadata_NoOp(t *testing.T) {
 	ctx := context.Background()
 	sharedDB, _ := setupBackfillRegistryDBs(t)
