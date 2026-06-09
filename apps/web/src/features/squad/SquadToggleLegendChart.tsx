@@ -31,8 +31,10 @@ interface SquadToggleLegendChartProps {
   players: string[]
   /** gamertag → couleur hex résolue. */
   colorByPlayer: Record<string, string>
-  /** Les deux types affichés en tête de légende. */
-  types: [ToggleLegendType, ToggleLegendType]
+  /** Types affichés en tête de légende (2 ou plus). */
+  types: ToggleLegendType[]
+  /** Types masqués par défaut au montage. */
+  initialHiddenTypes?: Set<string>
   /** Builder qui reçoit l'état masqué et renvoie l'option ECharts. */
   buildOption: (hidden: HiddenState) => EChartsCoreOption
   height?: number
@@ -51,11 +53,12 @@ export function SquadToggleLegendChart({
   players,
   colorByPlayer,
   types,
+  initialHiddenTypes,
   buildOption,
   height = 320,
 }: SquadToggleLegendChartProps) {
   const [hiddenPlayers, setHiddenPlayers] = useState<Set<string>>(() => new Set())
-  const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(() => new Set())
+  const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(() => initialHiddenTypes ?? new Set())
 
   const build = useCallback(
     () => buildOption({ hiddenPlayers, hiddenTypes }),

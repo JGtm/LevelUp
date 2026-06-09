@@ -1,8 +1,11 @@
-## [2026-06-09] Feature Bonus FDA — toggle légende ECharts native sur graphes Frags/Morts (Solo + Escouade) — Complété
+## [2026-06-09] Feature Bonus — toggle légende sur graphes "Frags / Morts" (Solo Timeseries + Escouade butterfly) — Complété
 
-**Statut** : Complété. TSC clean, 6 tests SessionFdaBars verts. Non commité.
+**Statut** : Complété. TSC clean. Non commité.
 
-**Décision** : Légende ECharts native (`legend.data: ['Bonus']`, `legend.selected: { Bonus: showBonus }`) + `onEvents.legendselectchanged` → React state, compatible `notMerge: true` de ChartCard. Grid bottom 36→56px. Valeur Bonus = assists/3, série stackée sur Frags uniquement (`stack: 'fda'` / `stack: r.player`). Couleur `chart-series-5`. Fichiers touchés : `ChartCard.tsx` (prop `onEvents`), `SessionFdaBars.tsx`, `squadPerMinuteChart.ts`, `SquadPerMinuteChart.tsx`.
+**Décision** : Deux graphes cibles corrects identifiés après correction de ciblage (v1 avait modifié les mauvais graphes `SessionFdaBars` + `SquadPerMinuteChart`, revertés).
+- **Solo (page Timeseries)** : `TimeseriesKdaTrend.tsx` — légende ECharts native + item 'Bonus' (`selected: { Bonus: false }` par défaut), série stackée `stack: 'kills'` avec `assists/3`, couleur `chart-series-5`, `onEvents.legendselectchanged` → React state `showBonus`.
+- **Escouade (butterfly)** : `buildKillsDeathsButterflyOption` ajoute une série Bonus par joueur (`stack: player`, `assists/3`, `chart-series-5`) quand `!hiddenTypes.has('Bonus')`. `SquadToggleLegendChart` : `types` étendu en `ToggleLegendType[]` + `initialHiddenTypes?: Set<string>`. `SquadPerformanceCharts` : 3ème type `Bonus` + `initialHiddenTypes={new Set(['Bonus'])}`.
+- `ChartCard.tsx` : prop `onEvents` forwarded à ReactECharts (conservé).
 
 ---
 
