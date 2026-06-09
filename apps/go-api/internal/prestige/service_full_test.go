@@ -35,12 +35,21 @@ func (r *fakeArcRepo) Delete(_ context.Context, id string) error {
 	return nil
 }
 
+// squadProgressUpdate capture un appel à UpdateParticipantProgress.
+type squadProgressUpdate struct {
+	ChallengeID string
+	UserID      string
+	Value       float64
+	CompletedAt *time.Time
+}
+
 // fakeSquadChallengeRepo capture les défis escouade.
 type fakeSquadChallengeRepo struct {
 	createdChallenges []SquadChallenge
 	addedParticipants []SquadChallengeParticipant
 	getResp           SquadChallenge
 	getErr            error
+	progressUpdates   []squadProgressUpdate
 }
 
 func (r *fakeSquadChallengeRepo) Create(_ context.Context, sc SquadChallenge) error {
@@ -57,7 +66,10 @@ func (r *fakeSquadChallengeRepo) AddParticipant(_ context.Context, p SquadChalle
 	r.addedParticipants = append(r.addedParticipants, p)
 	return nil
 }
-func (r *fakeSquadChallengeRepo) UpdateParticipantProgress(_ context.Context, _, _ string, _ float64, _ *time.Time) error {
+func (r *fakeSquadChallengeRepo) UpdateParticipantProgress(_ context.Context, challengeID, userID string, value float64, completedAt *time.Time) error {
+	r.progressUpdates = append(r.progressUpdates, squadProgressUpdate{
+		ChallengeID: challengeID, UserID: userID, Value: value, CompletedAt: completedAt,
+	})
 	return nil
 }
 func (r *fakeSquadChallengeRepo) ListParticipants(_ context.Context, _ string) ([]SquadChallengeParticipant, error) {

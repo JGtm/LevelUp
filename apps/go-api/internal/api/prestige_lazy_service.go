@@ -482,6 +482,19 @@ func (l *LazyPrestigeService) RemoveSquadMember(ctx context.Context, squadID, xu
 	return svc.RemoveSquadMember(ctx, squadID, xuid, requestedBy)
 }
 
+func (l *LazyPrestigeService) EvaluateSquadChallenge(ctx context.Context, squadChallengeID, requestedBy string) ([]prestige.SquadParticipantProgress, error) {
+	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, requestedBy)
+	if err != nil {
+		return nil, err
+	}
+	w, err := acquireSharedSocialWriter(pdb)
+	if err != nil {
+		return nil, err
+	}
+	defer w.Release()
+	return svc.EvaluateSquadChallenge(ctx, squadChallengeID, requestedBy)
+}
+
 func (l *LazyPrestigeService) EnablePilotMode(ctx context.Context, userID, titleSlug string) (prestige.PilotModeAttribution, error) {
 	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, userID)
 	if err != nil {

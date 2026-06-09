@@ -58,6 +58,9 @@ type mockPrestigeService struct {
 	lastAddSquadID     string
 	lastAddSquadMember prestige.SquadMember
 	lastAddSquadReqBy  string
+	evalSquadResp      []prestige.SquadParticipantProgress
+	lastEvalSquadID    string
+	lastEvalSquadReqBy string
 }
 
 func (m *mockPrestigeService) CreateChallenge(ctx context.Context, req prestige.CreateChallengeRequest) (prestige.Challenge, error) {
@@ -161,6 +164,11 @@ func (m *mockPrestigeService) AddSquadMember(ctx context.Context, squadID string
 func (m *mockPrestigeService) RemoveSquadMember(ctx context.Context, _, _, _ string) error {
 	return nil
 }
+func (m *mockPrestigeService) EvaluateSquadChallenge(ctx context.Context, squadChallengeID, requestedBy string) ([]prestige.SquadParticipantProgress, error) {
+	m.lastEvalSquadID = squadChallengeID
+	m.lastEvalSquadReqBy = requestedBy
+	return m.evalSquadResp, nil
+}
 func (m *mockPrestigeService) EnablePilotMode(ctx context.Context, _, _ string) (prestige.PilotModeAttribution, error) {
 	return prestige.PilotModeAttribution{}, nil
 }
@@ -196,10 +204,38 @@ func newRouter(svc prestige.Service) *chi.Mux {
 	r.Get("/squads", h.ListMySquads)
 	r.Post("/squads/{squad_id}/members", h.AddSquadMember)
 	r.Delete("/squads/{squad_id}/members/{xuid}", h.RemoveSquadMember)
+	r.Post("/squad-challenges/{id}/evaluate", h.EvaluateSquadChallenge)
 	return r
 }
 
 // ─────────── Tests ───────────
+
+func TestPrestigeHandler_EvaluateSquadChallenge_OK(t *testing.T) {
+	mock := &mockPrestigeService{
+		evalSquadResp: []prestige.SquadParticipantProgress{{Xuid: "xAlice", Value: 12, Completed: true}},
+	}
+	r := newRouter(mock)
+	req := httptest.NewRequest(http.MethodPost, "/squad-challenges/sc1/evaluate", bytes.NewBufferString(`{"requested_by":"alice"}`))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	if mock.lastEvalSquadID != "sc1" || mock.lastEvalSquadReqBy != "alice" {
+		t.Errorf("capturé: id=%q by=%q", mock.lastEvalSquadID, mock.lastEvalSquadReqBy)
+	}
+}
+
+func TestPrestigeHandler_EvaluateSquadChallenge_RequiresRequestedBy(t *testing.T) {
+	mock := &mockPrestigeService{}
+	r := newRouter(mock)
+	req := httptest.NewRequest(http.MethodPost, "/squad-challenges/sc1/evaluate", bytes.NewBufferString(`{}`))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status=%d, want 400 (requested_by requis)", w.Code)
+	}
+}
 
 func TestPrestigeHandler_CreateSquad_ResolvesCreatorAndTagsMembers(t *testing.T) {
 	mock := &mockPrestigeService{}

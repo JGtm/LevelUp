@@ -634,6 +634,35 @@ func (h *PrestigeHandler) RemoveSquadMember(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusNoContent)
 }
 
+type evaluateSquadChallengeBody struct {
+	RequestedBy string `json:"requested_by"` // player_slug de l'acteur (membre-user)
+}
+
+// EvaluateSquadChallenge gère POST /squad-challenges/{id}/evaluate : recalcule
+// et persiste la progression du défi, et retourne la progression par membre.
+func (h *PrestigeHandler) EvaluateSquadChallenge(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "id requis")
+		return
+	}
+	var body evaluateSquadChallengeBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
+		return
+	}
+	if body.RequestedBy == "" {
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_requested_by", "requested_by requis")
+		return
+	}
+	progress, err := h.svc.EvaluateSquadChallenge(r.Context(), id, body.RequestedBy)
+	if err != nil {
+		writeServiceError(r.Context(), w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"progress": progress})
+}
+
 // ─────────── Mode pilote ───────────
 
 type pilotModeBody struct {

@@ -4,7 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
+	"time"
 )
+
+// defaultSquadWindowMatches borne le nombre de matchs candidats évalués quand la
+// fenêtre n'est pas un last_n_matches explicite (V1).
+const defaultSquadWindowMatches = 50
 
 // service_squads.go — CRUD du roster d'escouade (entité Squad / SquadMember).
 //
@@ -120,4 +126,143 @@ func (s *service) assertMemberUser(ctx context.Context, squadID, userID string) 
 		return fmt.Errorf("%w: not a member of squad", ErrInvalidInput)
 	}
 	return nil
+}
+
+// EvaluateSquadChallenge recalcule la progression d'un défi d'escouade : résout
+// la métrique (via le template), le roster, les coéquipiers connus (no-overlap),
+// récupère les matchs comptants et agrège, puis persiste la progression des
+// membres-users. requestedBy doit être membre-user de l'escouade.
+func (s *service) EvaluateSquadChallenge(ctx context.Context, squadChallengeID, requestedBy string) ([]SquadParticipantProgress, error) {
+	if squadChallengeID == "" {
+		return nil, fmt.Errorf("%w: squad_challenge_id requis", ErrInvalidInput)
+	}
+	if s.deps.SquadMatches == nil {
+		return nil, fmt.Errorf("%w: provider de matchs d'escouade indisponible", ErrInvalidInput)
+	}
+	sc, err := s.deps.SquadChallenges.Get(ctx, squadChallengeID)
+	if err != nil {
+		return nil, fmt.Errorf("get squad challenge: %w", err)
+	}
+	if err := s.assertMemberUser(ctx, sc.SquadID, requestedBy); err != nil {
+		return nil, err
+	}
+	metric, err := s.squadChallengeMetric(ctx, sc)
+	if err != nil {
+		return nil, err
+	}
+	members, err := s.deps.Squads.ListMembers(ctx, sc.SquadID)
+	if err != nil {
+		return nil, fmt.Errorf("list members: %w", err)
+	}
+	roster := rosterXUIDs(members)
+	if len(roster) == 0 {
+		return nil, fmt.Errorf("%w: escouade sans membre", ErrInvalidInput)
+	}
+	other := s.otherKnownTeammates(ctx, sc.SquadID, members, roster)
+	limit := squadWindowLimit(sc.WindowType, sc.WindowValue)
+	matches, err := s.deps.SquadMatches.SquadMatchMetrics(ctx, roster, sc.TitleSlug, metric, limit)
+	if err != nil {
+		return nil, fmt.Errorf("squad match metrics: %w", err)
+	}
+	progress := AggregateSquadProgress(roster, other, matches, sc.TargetPerMember)
+	s.persistSquadProgress(ctx, squadChallengeID, members, progress)
+	return progress, nil
+}
+
+// squadChallengeMetric résout la métrique canonique d'un défi via son template.
+func (s *service) squadChallengeMetric(ctx context.Context, sc SquadChallenge) (string, error) {
+	if sc.TemplateID == "" {
+		return "", fmt.Errorf("%w: défi d'escouade sans template (métrique indéterminée)", ErrInvalidInput)
+	}
+	tpl, err := s.deps.Templates.GetByID(ctx, sc.TemplateID)
+	if err != nil {
+		return "", fmt.Errorf("get template: %w", err)
+	}
+	if tpl.Metric == "" {
+		return "", fmt.Errorf("%w: template sans métrique", ErrInvalidInput)
+	}
+	return tpl.Metric, nil
+}
+
+// otherKnownTeammates calcule les coéquipiers connus HORS roster : union des
+// rosters de toutes les AUTRES escouades des membres-users de cette escouade
+// (cf. règle no-overlap, PLAN_COACH_V3_GENERATION § Identité d'escouade).
+func (s *service) otherKnownTeammates(ctx context.Context, squadID string, members []SquadMember, roster []string) map[string]struct{} {
+	rosterSet := toXUIDSet(roster)
+	seenSquad := map[string]bool{squadID: true}
+	other := map[string]struct{}{}
+	for _, m := range members {
+		if m.UserID == "" {
+			continue
+		}
+		squads, err := s.deps.Squads.ListSquadsForUser(ctx, m.UserID)
+		if err != nil {
+			continue
+		}
+		for _, sq := range squads {
+			if seenSquad[sq.ID] {
+				continue
+			}
+			seenSquad[sq.ID] = true
+			mem, err := s.deps.Squads.ListMembers(ctx, sq.ID)
+			if err != nil {
+				continue
+			}
+			for _, mm := range mem {
+				if _, in := rosterSet[mm.Xuid]; in {
+					continue
+				}
+				other[mm.Xuid] = struct{}{}
+			}
+		}
+	}
+	return other
+}
+
+// persistSquadProgress écrit la progression des membres-users (ceux ayant un
+// user_id, donc une ligne squad_challenge_participant). Les amis hors-app ont
+// compté pour le no-overlap mais ne sont pas persistés.
+func (s *service) persistSquadProgress(ctx context.Context, squadChallengeID string, members []SquadMember, progress []SquadParticipantProgress) {
+	userIDByXUID := make(map[string]string, len(members))
+	for _, m := range members {
+		if m.UserID != "" {
+			userIDByXUID[m.Xuid] = m.UserID
+		}
+	}
+	for _, p := range progress {
+		userID := userIDByXUID[p.Xuid]
+		if userID == "" {
+			continue
+		}
+		var completedAt *time.Time
+		if p.Completed {
+			now := s.deps.Now()
+			completedAt = &now
+		}
+		if err := s.deps.SquadChallenges.UpdateParticipantProgress(ctx, squadChallengeID, userID, p.Value, completedAt); err != nil {
+			slog.WarnContext(ctx, "prestige: update squad progress failed",
+				"squad_challenge_id", squadChallengeID, "user_id", userID, "err", err)
+		}
+	}
+}
+
+// rosterXUIDs extrait les xuids (non vides) d'une liste de membres.
+func rosterXUIDs(members []SquadMember) []string {
+	out := make([]string, 0, len(members))
+	for _, m := range members {
+		if m.Xuid != "" {
+			out = append(out, m.Xuid)
+		}
+	}
+	return out
+}
+
+// squadWindowLimit borne le nombre de matchs candidats selon la fenêtre du défi.
+func squadWindowLimit(wt WindowType, wv string) int {
+	if wt == WindowLastNMatches {
+		if n, err := strconv.Atoi(wv); err == nil && n > 0 {
+			return n
+		}
+	}
+	return defaultSquadWindowMatches
 }

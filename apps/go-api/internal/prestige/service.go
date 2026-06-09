@@ -77,6 +77,10 @@ type Service interface {
 	ListSquadMembers(ctx context.Context, squadID string) ([]SquadMember, error)
 	AddSquadMember(ctx context.Context, squadID string, member SquadMember, requestedBy string) error
 	RemoveSquadMember(ctx context.Context, squadID, xuid, requestedBy string) error
+	// EvaluateSquadChallenge recalcule la progression de chaque membre d'un défi
+	// d'escouade (no-overlap + agrégation cumulative) et la persiste. requestedBy
+	// (player_slug) doit être membre-user de l'escouade.
+	EvaluateSquadChallenge(ctx context.Context, squadChallengeID, requestedBy string) ([]SquadParticipantProgress, error)
 
 	// Mode pilote (auto-attribution)
 	EnablePilotMode(ctx context.Context, userID, titleSlug string) (PilotModeAttribution, error)
@@ -199,7 +203,8 @@ type Deps struct {
 	PresetArcs       PresetArcRepo
 	SquadChallenges  SquadChallengeRepo
 	Squads           SquadRepo
-	BaselineProvider BaselineProvider // fournit les MatchData pour calculer la baseline
+	BaselineProvider BaselineProvider   // fournit les MatchData pour calculer la baseline
+	SquadMatches     SquadMatchProvider // métriques par match pour l'éval des défis d'escouade
 	Now              func() time.Time
 }
 
@@ -210,6 +215,16 @@ type Deps struct {
 type BaselineProvider interface {
 	RecentMatches(ctx context.Context, userID, titleSlug, metric string, window int) ([]MatchData, error)
 	PopulationPercentile(ctx context.Context, titleSlug, metric string, target float64) (percentile float64, popSize int, err error)
+}
+
+// SquadMatchProvider fournit, pour un roster d'escouade, les `limit` derniers
+// matchs où TOUT le roster a joué — chacun avec ses participants (pour la règle
+// no-overlap) et la valeur de `metric` (canonique, cf. Template.Metric) par
+// membre. Implémenté hors package (platform/duckdb) : le module reste découplé
+// de la sémantique des matchs. titleSlug est passé pour parité (la DB partagée
+// est déjà title-scopée par chemin).
+type SquadMatchProvider interface {
+	SquadMatchMetrics(ctx context.Context, rosterXUIDs []string, titleSlug, metric string, limit int) ([]SquadMatchMetric, error)
 }
 
 // service est l'implémentation par défaut.
