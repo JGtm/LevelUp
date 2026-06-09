@@ -96,6 +96,9 @@ func (m *mockService) RemoveSquadMember(ctx context.Context, _, _, _ string) err
 func (m *mockService) EvaluateSquadChallenge(ctx context.Context, _, _ string) ([]SquadParticipantProgress, error) {
 	return nil, nil
 }
+func (m *mockService) SquadOrientation(ctx context.Context, _, _ string) (string, error) {
+	return "", nil
+}
 func (m *mockService) EnablePilotMode(ctx context.Context, _, _ string) (PilotModeAttribution, error) {
 	return PilotModeAttribution{}, nil
 }

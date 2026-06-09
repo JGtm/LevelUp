@@ -10,34 +10,6 @@
 
 ---
 
-### [coach/LUSR] « Axes/composantes LUSR » affichés = LEGACY, pas v2 — à mettre à jour
-
-**Noté le** : 2026-06-09 | **Priorité** : Moyenne (cohérence produit, non bloquant)
-
-**Constat** (recherche 2026-06-09, déclenchée par revue squad coach) : **LUSR v2 / TrueSkill 2**
-(`internal/analysis/skill_v2/`, table `player_skill_state_v2`) ne produit qu'un **(μ, σ)** issu du
-**résultat seul** (win/loss/draw) — **aucune décomposition en composantes/axes** (intégrer kills/deaths
-comme observations est prévu Phase 3 TS2 §8, **non implémenté**). Les 8 « composantes » (`kills_vs_expected`,
-`deaths_vs_expected`, `win_factor`, `damage_efficiency`, `accuracy_delta`, `medal_exploit`,
-`offensive_conversion`, `defensive_resistance`) viennent du **composite LEGACY**
-(`internal/sync/skill_config.go` `CompositeWeights` → table `lusr_component_history`), séparé du rating v2.
-`defensive_resistance` n'existe pas en v2 (confirmé user).
-
-**Impact — consommateurs de la source legacy** (affichent/utilisent des « axes LUSR » qui ne sont PAS v2) :
-- Backend : `progression/profile/queries.go::loadLUSRComponentsBreakdown` (lit `lusr_component_history`) ;
-  `progression/profile/service.go::computeLUSRComponents` (→ `PlayerProfile.LUSRComponents`) ;
-  `progression/coach_advisor/signals.go::axisForLUSRComponent` (mapping composante→axe, **coach solo**).
-- Front : `apps/web/src/features/ascension/profile/PerformanceSection.tsx` (ComponentsBreakdown/ComponentRow) ;
-  type `apps/web/src/lib/playerProfile.ts`.
-
-**À faire** (quand v2 gagnera une décomposition de perf — Phase 3 — ou via redesign) : brancher la vraie
-source v2, OU assumer explicitement dans l'UI/coach que ces « axes » sont une lecture perf annexe (≠ rating
-v2). **Le squad coach (Phase C #6) hérite du même problème** : pas d'axes v2 → l'orientation/biais de pool
-ne peut s'appuyer que sur le legacy (comme le coach solo) ou être redesignée (tier/μ/vélocité). Décision
-produit à prendre.
-
----
-
 ### [POST-V7] Housekeeping post-cutover (optionnel, non bloquant)
 
 > Le cutover Go (la branche Go est devenue `main`) est **terminé** — cf. archive « Récemment complété ».

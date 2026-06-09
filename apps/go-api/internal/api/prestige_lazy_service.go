@@ -495,6 +495,14 @@ func (l *LazyPrestigeService) EvaluateSquadChallenge(ctx context.Context, squadC
 	return svc.EvaluateSquadChallenge(ctx, squadChallengeID, requestedBy)
 }
 
+func (l *LazyPrestigeService) SquadOrientation(ctx context.Context, squadID, requestedBy string) (string, error) {
+	svc, err := l.resolveByUserID(ctx, requestedBy)
+	if err != nil {
+		return "", err
+	}
+	return svc.SquadOrientation(ctx, squadID, requestedBy)
+}
+
 func (l *LazyPrestigeService) EnablePilotMode(ctx context.Context, userID, titleSlug string) (prestige.PilotModeAttribution, error) {
 	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, userID)
 	if err != nil {

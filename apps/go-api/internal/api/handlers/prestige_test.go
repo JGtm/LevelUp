@@ -61,6 +61,7 @@ type mockPrestigeService struct {
 	evalSquadResp      []prestige.SquadParticipantProgress
 	lastEvalSquadID    string
 	lastEvalSquadReqBy string
+	orientationResp    string
 }
 
 func (m *mockPrestigeService) CreateChallenge(ctx context.Context, req prestige.CreateChallengeRequest) (prestige.Challenge, error) {
@@ -169,6 +170,9 @@ func (m *mockPrestigeService) EvaluateSquadChallenge(ctx context.Context, squadC
 	m.lastEvalSquadReqBy = requestedBy
 	return m.evalSquadResp, nil
 }
+func (m *mockPrestigeService) SquadOrientation(ctx context.Context, _, _ string) (string, error) {
+	return m.orientationResp, nil
+}
 func (m *mockPrestigeService) EnablePilotMode(ctx context.Context, _, _ string) (prestige.PilotModeAttribution, error) {
 	return prestige.PilotModeAttribution{}, nil
 }
@@ -205,10 +209,40 @@ func newRouter(svc prestige.Service) *chi.Mux {
 	r.Post("/squads/{squad_id}/members", h.AddSquadMember)
 	r.Delete("/squads/{squad_id}/members/{xuid}", h.RemoveSquadMember)
 	r.Post("/squad-challenges/{id}/evaluate", h.EvaluateSquadChallenge)
+	r.Get("/squads/{squad_id}/orientation", h.SquadOrientation)
 	return r
 }
 
 // ─────────── Tests ───────────
+
+func TestPrestigeHandler_SquadOrientation_OK(t *testing.T) {
+	mock := &mockPrestigeService{orientationResp: "combat"}
+	r := newRouter(mock)
+	req := httptest.NewRequest(http.MethodGet, "/squads/sq1/orientation?requested_by=alice", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	var resp map[string]string
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp["axis"] != "combat" {
+		t.Errorf("axis=%q, want combat", resp["axis"])
+	}
+}
+
+func TestPrestigeHandler_SquadOrientation_RequiresRequestedBy(t *testing.T) {
+	mock := &mockPrestigeService{}
+	r := newRouter(mock)
+	req := httptest.NewRequest(http.MethodGet, "/squads/sq1/orientation", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status=%d, want 400 (requested_by requis)", w.Code)
+	}
+}
 
 func TestPrestigeHandler_EvaluateSquadChallenge_OK(t *testing.T) {
 	mock := &mockPrestigeService{

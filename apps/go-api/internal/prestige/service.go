@@ -81,6 +81,10 @@ type Service interface {
 	// d'escouade (no-overlap + agrégation cumulative) et la persiste. requestedBy
 	// (player_slug) doit être membre-user de l'escouade.
 	EvaluateSquadChallenge(ctx context.Context, squadChallengeID, requestedBy string) ([]SquadParticipantProgress, error)
+	// SquadOrientation retourne l'axe focal de l'escouade (le plus faible du
+	// profil de perf agrégé) — l'orientation à renforcer ; "" si pas de profil
+	// exploitable. requestedBy (player_slug) doit être membre-user.
+	SquadOrientation(ctx context.Context, squadID, requestedBy string) (string, error)
 
 	// Mode pilote (auto-attribution)
 	EnablePilotMode(ctx context.Context, userID, titleSlug string) (PilotModeAttribution, error)

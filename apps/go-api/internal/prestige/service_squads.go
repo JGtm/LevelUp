@@ -169,6 +169,23 @@ func (s *service) EvaluateSquadChallenge(ctx context.Context, squadChallengeID, 
 	return progress, nil
 }
 
+// SquadOrientation retourne l'axe focal de l'escouade (le plus faible du profil
+// de perf agrégé des membres). "" si aucun profil membre exploitable (→ pas
+// d'orientation affichée). requestedBy doit être membre-user.
+func (s *service) SquadOrientation(ctx context.Context, squadID, requestedBy string) (string, error) {
+	if squadID == "" {
+		return "", fmt.Errorf("%w: squad_id requis", ErrInvalidInput)
+	}
+	if err := s.assertMemberUser(ctx, squadID, requestedBy); err != nil {
+		return "", err
+	}
+	members, err := s.deps.Squads.ListMembers(ctx, squadID)
+	if err != nil {
+		return "", fmt.Errorf("list members: %w", err)
+	}
+	return s.squadFocusAxis(ctx, members, ""), nil
+}
+
 // squadChallengeMetric résout la métrique canonique d'un défi via son template.
 func (s *service) squadChallengeMetric(ctx context.Context, sc SquadChallenge) (string, error) {
 	if sc.TemplateID == "" {

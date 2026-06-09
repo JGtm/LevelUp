@@ -663,6 +663,27 @@ func (h *PrestigeHandler) EvaluateSquadChallenge(w http.ResponseWriter, r *http.
 	writeJSON(w, http.StatusOK, map[string]any{"progress": progress})
 }
 
+// SquadOrientation gère GET /squads/{squad_id}/orientation?requested_by=slug :
+// renvoie l'axe focal de l'escouade (orientation à renforcer), "" si indisponible.
+func (h *PrestigeHandler) SquadOrientation(w http.ResponseWriter, r *http.Request) {
+	squadID := chi.URLParam(r, "squad_id")
+	if squadID == "" {
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_squad_id", "squad_id requis")
+		return
+	}
+	requestedBy := r.URL.Query().Get("requested_by")
+	if requestedBy == "" {
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_requested_by", "requested_by requis")
+		return
+	}
+	axis, err := h.svc.SquadOrientation(r.Context(), squadID, requestedBy)
+	if err != nil {
+		writeServiceError(r.Context(), w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"axis": axis})
+}
+
 // ─────────── Mode pilote ───────────
 
 type pilotModeBody struct {
