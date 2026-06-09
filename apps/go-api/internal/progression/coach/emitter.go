@@ -36,7 +36,7 @@ func (a AlertType) NotificationCategory() notifications.Category {
 		return notifications.CategoryStreakMilestone
 	case AlertTypeComebackWelcome:
 		return notifications.CategoryComebackWelcome
-	case AlertTypeLOWESSPositive, AlertTypeCampaignProgress, AlertTypeCampaignCloseAuto:
+	case AlertTypeLOWESSPositive, AlertTypeLOWESSSoftNegative, AlertTypeCampaignProgress, AlertTypeCampaignCloseAuto:
 		return notifications.CategoryThresholdCrossed
 	case AlertPatternStrength:
 		return notifications.CategoryPatternStrength

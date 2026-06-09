@@ -63,7 +63,9 @@ export function AscensionCoachingTab() {
       {/* ─── Couche Ascension (coaching s'appuyant sur Prestige) ──────────── */}
       <LayerSection title={t.ascensionLayerTitle} description={t.ascensionLayerDescription}>
         <CoachFocusCard playerSlug={playerSlug} />
-        <CoachProposalsCard playerSlug={playerSlug} proactiveEnabled={proactiveEnabled} t={coachT} />
+        <div id="coach-proposals">
+          <CoachProposalsCard playerSlug={playerSlug} proactiveEnabled={proactiveEnabled} t={coachT} />
+        </div>
         {hasActiveCampaign && <CampaignTracker playerSlug={playerSlug} campaign={activeCampaign} />}
         <PlayerProfileV3
           playerSlug={playerSlug}

@@ -30,6 +30,7 @@ const STR = {
     consolidate: 'à consolider',
     up: (axis: string) => `Tu consolides ${axis}, continue sur ta lancée.`,
     down: (axis: string) => `${axis} mérite ton attention en ce moment.`,
+    cta: 'Voir le défi →',
   },
   en: {
     title: 'Current focus',
@@ -37,6 +38,7 @@ const STR = {
     consolidate: 'to consolidate',
     up: (axis: string) => `You're consolidating ${axis} — keep it up.`,
     down: (axis: string) => `${axis} deserves your attention right now.`,
+    cta: 'See the challenge →',
   },
 }
 
@@ -68,6 +70,17 @@ export function CoachFocusCard({ playerSlug }: { playerSlug: string }) {
         <p className="mt-0.5 text-xs text-muted-foreground">
           {positive ? str.up(axis) : str.down(axis)}
         </p>
+        <button
+          type="button"
+          className="mt-1.5 text-xs font-medium text-foreground underline-offset-2 hover:underline"
+          onClick={() =>
+            document
+              .getElementById('coach-proposals')
+              ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        >
+          {str.cta}
+        </button>
       </div>
     </KpiCard>
   )

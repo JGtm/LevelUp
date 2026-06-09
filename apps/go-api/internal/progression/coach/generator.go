@@ -102,6 +102,7 @@ func (g *Generator) Generate(_ context.Context, input GenerateInput) []Alert {
 	out = append(out, buildMilestoneAlerts(input)...)
 	out = append(out, buildLUSRTierApproachAlert(input)...)
 	out = append(out, buildLOWESSAlerts(input)...)
+	out = append(out, buildLOWESSSoftNegativeAlerts(input)...)
 	out = append(out, buildComebackAlert(input)...)
 	out = append(out, buildPatternAlerts(input)...)
 	out = append(out, buildCombatPatternAlerts(input)...)
@@ -264,6 +265,36 @@ func buildLOWESSAlerts(input GenerateInput) []Alert {
 				"window":    t.Window,
 			},
 			DedupKey: t.Component,
+		})
+	}
+	return out
+}
+
+// LOWESSSoftNegativeThreshold : pente (sur la fenêtre, échelle 0..1) en-dessous
+// de laquelle une composante en baisse soutenue déclenche un signal de
+// stabilisation doux. Plancher anti-bruit (le gate de strength en aval filtre
+// encore davantage).
+const LOWESSSoftNegativeThreshold = -0.10
+
+// buildLOWESSSoftNegativeAlerts émet une alerte par composante en tendance
+// NÉGATIVE soutenue (slope < LOWESSSoftNegativeThreshold) sur au moins
+// LOWESSObservationWindow jours — symétrique de buildLOWESSAlerts. Cadrage
+// produit : opportunité de consolidation, jamais reproche.
+func buildLOWESSSoftNegativeAlerts(input GenerateInput) []Alert {
+	var out []Alert
+	for _, t := range input.LOWESSTrends {
+		if t.Slope >= LOWESSSoftNegativeThreshold || t.Window < LOWESSObservationWindow {
+			continue
+		}
+		out = append(out, Alert{
+			Type:     AlertTypeLOWESSSoftNegative,
+			Severity: notifications.SeverityInfo,
+			Params: map[string]any{
+				"component": t.Component,
+				"slope":     t.Slope,
+				"window":    t.Window,
+			},
+			DedupKey: t.Component + "|soft_neg",
 		})
 	}
 	return out
