@@ -1019,7 +1019,10 @@ func NewRouter(
 			// Le bundle a été initialisé au boot ; si nil ou flag off, routes non montées.
 			if prestigeBundle != nil && cfg.PrestigeEnabled {
 				lazy := NewLazyPrestigeService(prestigeBundle, nil, cfg.DemoMode)
-				ph := handlers.NewPrestigeHandler(lazy)
+				appPlayers := func(context.Context) ([]domain.PlayerSummary, error) {
+					return cfg.LoadPlayers()
+				}
+				ph := handlers.NewPrestigeHandler(lazy, appPlayers)
 				// Défis
 				r.Post("/challenges", ph.CreateChallenge)
 				r.Get("/challenges", ph.ListActiveChallenges)
@@ -1042,10 +1045,15 @@ func NewRouter(
 				r.Get("/squads/{squad_id}/challenges", ph.ListSquadChallenges)
 				r.Post("/squads/{squad_id}/challenges/pool/refresh", ph.RefreshSquadPool)
 				r.Post("/squad-challenges/{id}/join", ph.JoinSquadChallenge)
+				// Squad CRUD (roster d'escouade, clé xuid)
+				r.Post("/squads", ph.CreateSquad)
+				r.Get("/squads", ph.ListMySquads)
+				r.Post("/squads/{squad_id}/members", ph.AddSquadMember)
+				r.Delete("/squads/{squad_id}/members/{xuid}", ph.RemoveSquadMember)
 				// Mode pilote
 				r.Post("/pilot-mode/enable", ph.EnablePilotMode)
 				r.Post("/pilot-mode/disable", ph.DisablePilotMode)
-				slog.Info("prestige_routes_mounted", "endpoints_count", 16)
+				slog.Info("prestige_routes_mounted", "endpoints_count", 20)
 			}
 
 			// Sprint 54 : Compare joueur vs joueur

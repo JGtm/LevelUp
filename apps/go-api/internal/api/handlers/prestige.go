@@ -23,6 +23,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/prestige"
 )
@@ -32,12 +33,19 @@ import (
 // Une seule struct car le module a un service unique et toutes les routes
 // sont closely related. Préférable à 5 handlers fragmentés pour la lisibilité.
 type PrestigeHandler struct {
-	svc prestige.Service
+	svc        prestige.Service
+	appPlayers AppPlayersFunc
 }
 
+// AppPlayersFunc retourne les joueurs de l'app (db_profiles). Sert à résoudre
+// xuid ↔ player_slug lors de la gestion du roster d'escouade (taguer user_id
+// des membres qui sont utilisateurs de l'app, résoudre le xuid du créateur).
+// Peut être nil (les membres ne seront alors pas tagués user_id).
+type AppPlayersFunc func(ctx context.Context) ([]domain.PlayerSummary, error)
+
 // NewPrestigeHandler construit le handler Prestige.
-func NewPrestigeHandler(svc prestige.Service) *PrestigeHandler {
-	return &PrestigeHandler{svc: svc}
+func NewPrestigeHandler(svc prestige.Service, appPlayers AppPlayersFunc) *PrestigeHandler {
+	return &PrestigeHandler{svc: svc, appPlayers: appPlayers}
 }
 
 // ─────────── DTOs requête/réponse ───────────
@@ -445,6 +453,181 @@ func (h *PrestigeHandler) JoinSquadChallenge(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if err := h.svc.JoinSquadChallenge(r.Context(), id, body.UserID, prestige.Tier(body.ChosenTier), body.IsPrivate); err != nil {
+		writeServiceError(r.Context(), w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ─────────── Escouade — roster (CRUD) ───────────
+
+type squadMemberInput struct {
+	XUID     string `json:"xuid"`
+	Gamertag string `json:"gamertag,omitempty"`
+}
+
+type createSquadBody struct {
+	Name      string             `json:"name"`
+	CreatedBy string             `json:"created_by"` // player_slug du créateur
+	Members   []squadMemberInput `json:"members,omitempty"`
+}
+
+type addSquadMemberBody struct {
+	XUID        string `json:"xuid"`
+	Gamertag    string `json:"gamertag,omitempty"`
+	RequestedBy string `json:"requested_by"` // player_slug de l'acteur (membre-user)
+}
+
+// squadWithMembers est la réponse d'une escouade avec son roster.
+type squadWithMembers struct {
+	Squad   prestige.Squad         `json:"squad"`
+	Members []prestige.SquadMember `json:"members"`
+}
+
+// playerDirectory construit les maps xuid→slug et slug→xuid depuis l'annuaire
+// db_profiles. Si appPlayers est nil, retourne des maps vides (pas de tag).
+func (h *PrestigeHandler) playerDirectory(ctx context.Context) (slugByXUID, xuidBySlug map[string]string, err error) {
+	slugByXUID = map[string]string{}
+	xuidBySlug = map[string]string{}
+	if h.appPlayers == nil {
+		return slugByXUID, xuidBySlug, nil
+	}
+	players, err := h.appPlayers(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, p := range players {
+		if p.XUID != "" {
+			slugByXUID[p.XUID] = p.PlayerSlug
+		}
+		if p.PlayerSlug != "" {
+			xuidBySlug[p.PlayerSlug] = p.XUID
+		}
+	}
+	return slugByXUID, xuidBySlug, nil
+}
+
+// buildSquadMembers assemble le roster : créateur (membre-user) + membres du
+// body, dédupliqués par xuid, chacun tagué user_id si joueur de l'app.
+func buildSquadMembers(body createSquadBody, creatorXUID string, slugByXUID map[string]string) []prestige.SquadMember {
+	seen := map[string]bool{}
+	members := make([]prestige.SquadMember, 0, len(body.Members)+1)
+	add := func(xuid string) {
+		if xuid == "" || seen[xuid] {
+			return
+		}
+		seen[xuid] = true
+		members = append(members, prestige.SquadMember{Xuid: xuid, UserID: slugByXUID[xuid]})
+	}
+	add(creatorXUID)
+	for _, m := range body.Members {
+		add(m.XUID)
+	}
+	return members
+}
+
+// CreateSquad gère POST /squads.
+func (h *PrestigeHandler) CreateSquad(w http.ResponseWriter, r *http.Request) {
+	var body createSquadBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
+		return
+	}
+	if body.Name == "" || body.CreatedBy == "" {
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_fields", "name et created_by requis")
+		return
+	}
+	slugByXUID, xuidBySlug, err := h.playerDirectory(r.Context())
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "directory_error", err.Error())
+		return
+	}
+	creatorXUID := xuidBySlug[body.CreatedBy]
+	if creatorXUID == "" {
+		writeError(r.Context(), w, http.StatusBadRequest, "unknown_creator",
+			"created_by introuvable parmi les joueurs de l'app")
+		return
+	}
+	sc, err := h.svc.CreateSquad(r.Context(), prestige.CreateSquadRequest{
+		Name:      body.Name,
+		CreatedBy: body.CreatedBy,
+		Members:   buildSquadMembers(body, creatorXUID, slugByXUID),
+	})
+	if err != nil {
+		writeServiceError(r.Context(), w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, sc)
+}
+
+// ListMySquads gère GET /squads?user_id=slug — escouades dont user_id est
+// membre-user, roster embarqué.
+func (h *PrestigeHandler) ListMySquads(w http.ResponseWriter, r *http.Request) {
+	userID := r.URL.Query().Get("user_id")
+	if userID == "" {
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_user_id", "user_id requis")
+		return
+	}
+	squads, err := h.svc.ListSquadsForUser(r.Context(), userID)
+	if err != nil {
+		writeServiceError(r.Context(), w, err)
+		return
+	}
+	out := make([]squadWithMembers, 0, len(squads))
+	for _, sq := range squads {
+		members, mErr := h.svc.ListSquadMembers(r.Context(), sq.ID)
+		if mErr != nil {
+			writeServiceError(r.Context(), w, mErr)
+			return
+		}
+		out = append(out, squadWithMembers{Squad: sq, Members: members})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"squads": out, jsonKeyCount: len(out)})
+}
+
+// AddSquadMember gère POST /squads/{squad_id}/members.
+func (h *PrestigeHandler) AddSquadMember(w http.ResponseWriter, r *http.Request) {
+	squadID := chi.URLParam(r, "squad_id")
+	if squadID == "" {
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_squad_id", "squad_id requis")
+		return
+	}
+	var body addSquadMemberBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
+		return
+	}
+	if body.XUID == "" || body.RequestedBy == "" {
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_fields", "xuid et requested_by requis")
+		return
+	}
+	slugByXUID, _, err := h.playerDirectory(r.Context())
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "directory_error", err.Error())
+		return
+	}
+	member := prestige.SquadMember{Xuid: body.XUID, UserID: slugByXUID[body.XUID]}
+	if err := h.svc.AddSquadMember(r.Context(), squadID, member, body.RequestedBy); err != nil {
+		writeServiceError(r.Context(), w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// RemoveSquadMember gère DELETE /squads/{squad_id}/members/{xuid}?requested_by=slug.
+func (h *PrestigeHandler) RemoveSquadMember(w http.ResponseWriter, r *http.Request) {
+	squadID := chi.URLParam(r, "squad_id")
+	xuid := chi.URLParam(r, "xuid")
+	if squadID == "" || xuid == "" {
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_fields", "squad_id et xuid requis")
+		return
+	}
+	requestedBy := r.URL.Query().Get("requested_by")
+	if requestedBy == "" {
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_requested_by", "requested_by requis")
+		return
+	}
+	if err := h.svc.RemoveSquadMember(r.Context(), squadID, xuid, requestedBy); err != nil {
 		writeServiceError(r.Context(), w, err)
 		return
 	}
