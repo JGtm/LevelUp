@@ -188,3 +188,50 @@ func TestService_EvaluateSquadChallenge_RequiresTemplate(t *testing.T) {
 		t.Errorf("défi sans template doit être rejeté, got %v", err)
 	}
 }
+
+// fakeSquadProfileProvider renvoie un profil 6-axes figé (sans DB).
+type fakeSquadProfileProvider struct {
+	axes []map[string]float64
+}
+
+func (f *fakeSquadProfileProvider) SquadAxes(_ context.Context, _ []string, _ string) ([]map[string]float64, error) {
+	return f.axes, nil
+}
+
+func TestService_RefreshSquadPool_CoachBiasFavorsWeakAxis(t *testing.T) {
+	svc, _, _, _, sqRepo, tplRepo := buildFullService()
+	sqRepo.members = []SquadMember{{SquadID: "sq1", Xuid: xA, UserID: "alice"}}
+	// Profil faible sur "support" → axe focal du coach.
+	svc.deps.SquadProfile = &fakeSquadProfileProvider{axes: []map[string]float64{
+		{"combat": 0.9, "support": 0.2, "survival": 0.7},
+	}}
+	// Un seul template "support", noyé parmi des combat/survival.
+	tplRepo.templates = []Template{
+		{ID: "c1", Metric: "kills_total", Cadence: CadenceWeekly},
+		{ID: "c2", Metric: "kills_total", Cadence: CadenceWeekly},
+		{ID: "s1", Metric: "assists", Cadence: CadenceWeekly},
+		{ID: "d1", Metric: "deaths_total", Cadence: CadenceWeekly},
+	}
+	pool, err := svc.RefreshSquadPool(context.Background(), "sq1", "halo_infinite", "alice")
+	if err != nil {
+		t.Fatalf("RefreshSquadPool: %v", err)
+	}
+	if len(pool) == 0 {
+		t.Fatal("pool vide")
+	}
+	// Le biais place le template de l'axe faible (support) en tête.
+	if MetricToRadarAxis(pool[0].Metric) != "support" {
+		t.Errorf("pool[0] axe = %q (metric %q), want support",
+			MetricToRadarAxis(pool[0].Metric), pool[0].Metric)
+	}
+}
+
+func TestService_RefreshSquadPool_NoProfileNoBias(t *testing.T) {
+	// Sans SquadProfile provider, RefreshSquadPool reste un shuffle (pas d'erreur).
+	svc, _, _, _, sqRepo, tplRepo := buildFullService()
+	sqRepo.members = []SquadMember{{SquadID: "sq1", Xuid: xA, UserID: "alice"}}
+	tplRepo.templates = []Template{{ID: "c1", Metric: "kills_total", Cadence: CadenceWeekly}}
+	if _, err := svc.RefreshSquadPool(context.Background(), "sq1", "halo_infinite", "alice"); err != nil {
+		t.Errorf("RefreshSquadPool sans profil: %v", err)
+	}
+}

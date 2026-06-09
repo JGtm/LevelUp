@@ -203,8 +203,9 @@ type Deps struct {
 	PresetArcs       PresetArcRepo
 	SquadChallenges  SquadChallengeRepo
 	Squads           SquadRepo
-	BaselineProvider BaselineProvider   // fournit les MatchData pour calculer la baseline
-	SquadMatches     SquadMatchProvider // métriques par match pour l'éval des défis d'escouade
+	BaselineProvider BaselineProvider     // fournit les MatchData pour calculer la baseline
+	SquadMatches     SquadMatchProvider   // métriques par match pour l'éval des défis d'escouade
+	SquadProfile     SquadProfileProvider // profil 6-axes agrégé pour le biais coach du pool (optionnel)
 	Now              func() time.Time
 }
 
@@ -225,6 +226,14 @@ type BaselineProvider interface {
 // est déjà title-scopée par chemin).
 type SquadMatchProvider interface {
 	SquadMatchMetrics(ctx context.Context, rosterXUIDs []string, titleSlug, metric string, limit int) ([]SquadMatchMetric, error)
+}
+
+// SquadProfileProvider fournit le profil 6-axes par membre d'une escouade
+// (réutilise la base du Synergy Radar analytics) pour orienter le coach
+// d'escouade : moyenne par axe → axe le plus faible → biais du pool de défis.
+// Optionnel dans Deps (nil → RefreshSquadPool reste un shuffle non biaisé).
+type SquadProfileProvider interface {
+	SquadAxes(ctx context.Context, rosterXUIDs []string, titleSlug string) ([]map[string]float64, error)
 }
 
 // service est l'implémentation par défaut.

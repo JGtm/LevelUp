@@ -180,12 +180,15 @@ func (s *service) RefreshSquadPool(ctx context.Context, squadID, titleSlug, requ
 		size = len(all)
 	}
 
-	// Mélange + sélection.
+	// Mélange, puis biais coach : si un profil d'escouade est disponible, on place
+	// en tête les templates ciblant l'axe le plus faible de l'escouade (au lieu du
+	// shuffle pur). Sans provider/profil, focusAxis == "" → shuffle inchangé.
 	shuffled := make([]Template, len(all))
 	copy(shuffled, all)
 	rand.Shuffle(len(shuffled), func(i, j int) {
 		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
 	})
+	shuffled = BiasTemplatesByAxis(shuffled, s.squadFocusAxis(ctx, members, titleSlug))
 	pool := shuffled[:size]
 
 	slog.InfoContext(ctx, "prestige: squad pool refreshed",
@@ -202,4 +205,18 @@ func isMember(members []SquadMember, userID string) bool {
 		}
 	}
 	return false
+}
+
+// squadFocusAxis dérive l'axe focal de l'escouade (le plus faible) depuis le
+// profil 6-axes agrégé des membres, via le SquadProfile provider. Retourne ""
+// (pas de biais) si le provider est absent ou si le profil est indisponible.
+func (s *service) squadFocusAxis(ctx context.Context, members []SquadMember, titleSlug string) string {
+	if s.deps.SquadProfile == nil {
+		return ""
+	}
+	axes, err := s.deps.SquadProfile.SquadAxes(ctx, rosterXUIDs(members), titleSlug)
+	if err != nil || len(axes) == 0 {
+		return ""
+	}
+	return SquadFocusAxis(AggregateSquadAxes(axes))
 }
