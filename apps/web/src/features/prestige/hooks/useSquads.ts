@@ -5,7 +5,13 @@
  * clé xuid ; le créateur/acteur est identifié par son player_slug (requested_by).
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { prestigeApi, type SquadMemberInput } from '@/lib/prestige'
+import {
+  prestigeApi,
+  type SquadMemberInput,
+  type SquadMode,
+  type EvalType,
+  type WindowType,
+} from '@/lib/prestige'
 
 export const squadKeys = {
   mine: (userId: string) => ['prestige', 'squads', userId] as const,
@@ -88,6 +94,41 @@ export function useEvaluateSquadChallenge(squadId: string) {
   return useMutation({
     mutationFn: ({ id, requestedBy }: { id: string; requestedBy: string }) =>
       prestigeApi.evaluateSquadChallenge(id, requestedBy),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: squadKeys.challenges(squadId) })
+    },
+  })
+}
+
+/** Génère un pool de défis suggérés (biaisé coach) pour l'escouade. */
+export function useRefreshSquadPool() {
+  return useMutation({
+    mutationFn: ({
+      squadId,
+      titleSlug,
+      requestedBy,
+    }: {
+      squadId: string
+      titleSlug: string
+      requestedBy: string
+    }) => prestigeApi.refreshSquadPool(squadId, { title_slug: titleSlug, requested_by: requestedBy }),
+  })
+}
+
+/** Crée un défi d'escouade (depuis un template du pool). */
+export function useCreateSquadChallenge(squadId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: {
+      template_id: string
+      title_slug: string
+      mode: SquadMode
+      eval_type: EvalType
+      window_type: WindowType
+      window_value?: string
+      target_per_member?: number
+      created_by: string
+    }) => prestigeApi.createSquadChallenge(squadId, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: squadKeys.challenges(squadId) })
     },

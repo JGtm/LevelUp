@@ -18,6 +18,8 @@ import {
   useSquadChallenges,
   useCreateSquad,
   useEvaluateSquadChallenge,
+  useRefreshSquadPool,
+  useCreateSquadChallenge,
 } from '@/features/prestige/hooks/useSquads'
 import { useJoinSquadChallenge } from '@/features/prestige/hooks'
 import type { SquadWithMembers } from '@/lib/prestige'
@@ -36,6 +38,11 @@ const STRINGS = {
     joined: 'Rejoint',
     evaluate: 'Réévaluer',
     challenge: 'Défi',
+    propose: 'Proposer des défis',
+    proposing: 'Génération…',
+    create: 'Créer',
+    creating: 'Création…',
+    poolEmpty: 'Aucun défi proposé.',
   },
   en: {
     title: 'Squad focus',
@@ -50,6 +57,11 @@ const STRINGS = {
     joined: 'Joined',
     evaluate: 'Re-evaluate',
     challenge: 'Challenge',
+    propose: 'Suggest challenges',
+    proposing: 'Generating…',
+    create: 'Create',
+    creating: 'Creating…',
+    poolEmpty: 'No challenge suggested.',
   },
 }
 
@@ -122,6 +134,9 @@ export function SquadFocusStrip() {
   )
 }
 
+// SQUAD_TITLE_SLUG : titre courant pour les défis d'escouade (V1 mono-titre).
+const SQUAD_TITLE_SLUG = 'halo_infinite'
+
 function SquadObjectivesPanel({
   squadId,
   playerSlug,
@@ -131,42 +146,100 @@ function SquadObjectivesPanel({
   playerSlug: string
   t: (typeof STRINGS)['fr']
 }) {
+  const locale = useAppShellStore((s) => s.locale)
   const { data } = useSquadChallenges(squadId)
   const join = useJoinSquadChallenge()
   const evaluate = useEvaluateSquadChallenge(squadId)
+  const refreshPool = useRefreshSquadPool()
+  const createChallenge = useCreateSquadChallenge(squadId)
   const challenges = data?.squad_challenges ?? []
-
-  if (challenges.length === 0) {
-    return <p className="mt-3 text-xs text-muted-foreground">{t.noObjectives}</p>
-  }
+  const pool = refreshPool.data?.pool ?? []
 
   return (
-    <ul className="mt-3 space-y-2">
-      {challenges.map((c) => (
-        <li
-          key={c.id}
-          className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2"
+    <div className="mt-3 space-y-3">
+      {/* Défis actifs */}
+      {challenges.length === 0 ? (
+        <p className="text-xs text-muted-foreground">{t.noObjectives}</p>
+      ) : (
+        <ul className="space-y-2">
+          {challenges.map((c) => (
+            <li
+              key={c.id}
+              className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2"
+            >
+              <span className="truncate text-sm">{c.template_id || t.challenge}</span>
+              <span className="flex shrink-0 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => evaluate.mutate({ id: c.id, requestedBy: playerSlug })}
+                  disabled={evaluate.isPending}
+                >
+                  {t.evaluate}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => join.mutate({ challengeId: c.id, userId: playerSlug })}
+                  disabled={join.isPending}
+                >
+                  {t.join}
+                </Button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Proposer puis créer un défi depuis le pool (biaisé coach). */}
+      <div className="border-t border-border pt-3">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            refreshPool.mutate({ squadId, titleSlug: SQUAD_TITLE_SLUG, requestedBy: playerSlug })
+          }
+          disabled={refreshPool.isPending}
         >
-          <span className="truncate text-sm">{c.template_id || t.challenge}</span>
-          <span className="flex shrink-0 gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => evaluate.mutate({ id: c.id, requestedBy: playerSlug })}
-              disabled={evaluate.isPending}
-            >
-              {t.evaluate}
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => join.mutate({ challengeId: c.id, userId: playerSlug })}
-              disabled={join.isPending}
-            >
-              {t.join}
-            </Button>
-          </span>
-        </li>
-      ))}
-    </ul>
+          {refreshPool.isPending ? t.proposing : t.propose}
+        </Button>
+
+        {refreshPool.isSuccess && pool.length === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">{t.poolEmpty}</p>
+        ) : null}
+
+        {pool.length > 0 ? (
+          <ul className="mt-2 space-y-2">
+            {pool.map((tpl) => (
+              <li
+                key={tpl.id}
+                className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2"
+              >
+                <span className="truncate text-sm">
+                  {locale === 'en' ? tpl.label_en : tpl.label_fr}
+                </span>
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    createChallenge.mutate({
+                      template_id: tpl.id,
+                      title_slug: tpl.title_slug,
+                      mode: 'collective',
+                      eval_type: tpl.eval_type,
+                      window_type: tpl.window_type,
+                      window_value: tpl.window_value,
+                      target_per_member: tpl.normal_target,
+                      created_by: playerSlug,
+                    })
+                  }
+                  disabled={createChallenge.isPending}
+                >
+                  {createChallenge.isPending ? t.creating : t.create}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+    </div>
   )
 }
