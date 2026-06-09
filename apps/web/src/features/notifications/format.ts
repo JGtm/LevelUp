@@ -78,6 +78,15 @@ function enrichParams(
       out[key] = subTierToRoman(out[key])
     }
   }
+  // Arrondit les valeurs de métriques flottantes à 2 décimales. Le backend
+  // envoie des float64 bruts (ex: pspm = 6000/11 = 545.4545…) ; sans ça les
+  // templates affichaient toute la mantisse. Math.round préserve les entiers
+  // (5 → 5, pas "5.00"). Couvre aussi les notifs déjà stockées.
+  for (const key of ['value', 'target', 'previous_value'] as const) {
+    if (typeof out[key] === 'number') {
+      out[key] = Math.round((out[key] as number) * 100) / 100
+    }
+  }
   return out
 }
 
