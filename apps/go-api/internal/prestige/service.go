@@ -69,6 +69,15 @@ type Service interface {
 	ListSquadChallenges(ctx context.Context, squadID string) ([]SquadChallenge, error)
 	RefreshSquadPool(ctx context.Context, squadID, titleSlug, requestedBy string) ([]Template, error)
 
+	// Escouade — roster (entité Squad / SquadMember, clé xuid). requestedBy =
+	// player_slug de l'acteur, qui doit être membre-user pour muter le roster.
+	CreateSquad(ctx context.Context, req CreateSquadRequest) (Squad, error)
+	ListSquadsForUser(ctx context.Context, userID string) ([]Squad, error)
+	GetSquad(ctx context.Context, id string) (Squad, error)
+	ListSquadMembers(ctx context.Context, squadID string) ([]SquadMember, error)
+	AddSquadMember(ctx context.Context, squadID string, member SquadMember, requestedBy string) error
+	RemoveSquadMember(ctx context.Context, squadID, xuid, requestedBy string) error
+
 	// Mode pilote (auto-attribution)
 	EnablePilotMode(ctx context.Context, userID, titleSlug string) (PilotModeAttribution, error)
 	DisablePilotMode(ctx context.Context, userID, titleSlug string) error
@@ -110,6 +119,17 @@ type CreateSquadChallengeRequest struct {
 	TargetPerMember float64
 	ExpiresAt       *time.Time
 	CreatedBy       string
+}
+
+// CreateSquadRequest est l'entrée pour créer une escouade.
+//
+// CreatedBy = player_slug du créateur (utilisateur de l'app). Members = roster
+// initial ; le handler y inclut le créateur et résout xuid + user_id(slug) de
+// chaque membre (le package prestige ne connaît pas db_profiles).
+type CreateSquadRequest struct {
+	Name      string
+	CreatedBy string
+	Members   []SquadMember
 }
 
 // ---------- DTOs ----------

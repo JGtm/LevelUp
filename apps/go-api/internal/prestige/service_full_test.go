@@ -67,20 +67,43 @@ func (r *fakeSquadChallengeRepo) CountActiveParticipants(_ context.Context, _ st
 	return 0, nil
 }
 
-// fakeSquadRepo capture les squads.
+// fakeSquadRepo capture les squads (stateful pour les tests CRUD).
+//
+// `members` est le roster renvoyé par ListMembers (seed) ; `squadsByUser` le
+// retour de ListSquadsForUser. created/added/removed capturent les écritures.
 type fakeSquadRepo struct {
-	members []SquadMember
+	members      []SquadMember
+	squadsByUser []Squad
+	created      []Squad
+	added        []SquadMember
+	removed      []string
 }
 
-func (r *fakeSquadRepo) Create(_ context.Context, _ Squad) error           { return nil }
-func (r *fakeSquadRepo) Get(_ context.Context, _ string) (Squad, error)    { return Squad{}, nil }
-func (r *fakeSquadRepo) AddMember(_ context.Context, _ SquadMember) error  { return nil }
-func (r *fakeSquadRepo) RemoveMember(_ context.Context, _, _ string) error { return nil }
+func (r *fakeSquadRepo) Create(_ context.Context, s Squad) error {
+	r.created = append(r.created, s)
+	return nil
+}
+func (r *fakeSquadRepo) Get(_ context.Context, id string) (Squad, error) {
+	for _, s := range r.created {
+		if s.ID == id {
+			return s, nil
+		}
+	}
+	return Squad{}, nil
+}
+func (r *fakeSquadRepo) AddMember(_ context.Context, m SquadMember) error {
+	r.added = append(r.added, m)
+	return nil
+}
+func (r *fakeSquadRepo) RemoveMember(_ context.Context, _, xuid string) error {
+	r.removed = append(r.removed, xuid)
+	return nil
+}
 func (r *fakeSquadRepo) ListMembers(_ context.Context, _ string) ([]SquadMember, error) {
 	return r.members, nil
 }
 func (r *fakeSquadRepo) ListSquadsForUser(_ context.Context, _ string) ([]Squad, error) {
-	return nil, nil
+	return r.squadsByUser, nil
 }
 
 // fakeTemplateRepo capture les templates.
