@@ -1,7 +1,5 @@
 — Tâches et TODO centralisés
 
-> Mis à jour le 2026-06-09 (audit de pertinence : items faits archivés en « Récemment complété » — go-live cutover, CSR/CSR ATH, consolidation auth ADR 0023, circuit breaker persist [D], leased-writer, nettoyage nav, feedback-drawer ; caducs retirés ; items « gardés de côté » marqués ⏸️ ; plans dédiés créés pour persist/arcs/coach/chiffrement). Historique antérieur : nettoyage go-live 2026-06-03 (cf. [.ai/RUNBOOK_GO_LIVE.md](.ai/RUNBOOK_GO_LIVE.md)). Fusion de : `backlog`, `BACKLOG.md`, `BACKLOG_COACH_PRESTIGE.md`.
-
 ---
 
 ## 🔄 Aucune tâche en cours
@@ -9,20 +7,6 @@
 ---
 
 ## 📋 Backlog
-
----
-
-### 📐 Chantiers avec plan dédié
-
-> Le détail vit dans les plans `.ai/` — **ne pas dupliquer ici**. Cette table sert d'index.
-
-| Chantier | Plan | État / note |
-|----------|------|-------------|
-| Migration types front `types.ts` → `generated.ts` | [PLAN_WEB_API_TYPES_MIGRATION.md](.ai/PLAN_WEB_API_TYPES_MIGRATION.md) | 🟡 fondation posée (7/319 types shimés) ; réconciliation OpenAPI aire par aire ; ⛔ pas de shim global |
-| Robustesse persist (gaps restants) | [PLAN_PERSIST_ROBUSTNESS.md](.ai/V7/PLAN_PERSIST_ROBUSTNESS.md) | 🟡 [C]/[D]/[F] faits ; **cœur = recovery WAL périodique + purge non-silencieuse** (trou boot-only + seule perte de données possible tracée) ; puis [G] test ; [A] complément ; **[E] health-check et [B] DLQ abandonnés** (pas de consommateur) |
-| Chiffrement at-rest watcher tokens | [PLAN_AUTH_TOKENS_ENCRYPTION_AT_REST.md](.ai/PLAN_AUTH_TOKENS_ENCRYPTION_AT_REST.md) | 🟢 conditionnel — uniquement avant distribution publique / incident / multi-tenant |
-| Cross-titre arcs (backend-ready) | [PLAN_CROSS_TITLE_ARCS_BACKEND.md](.ai/PLAN_CROSS_TITLE_ARCS_BACKEND.md) | 🟢 anticipation 2e titre ; table `arc_titles` ; **UX hors scope** |
-| Coach V3 — négatif soft / tone / squad | [PLAN_COACH_V3_GENERATION.md](.ai/PLAN_COACH_V3_GENERATION.md) | 🟡 Phases A/B/C ; arbitrage produit par phase ; A gatée sur mini-spec UX |
 
 ---
 
@@ -176,20 +160,6 @@ Ce backlog liste les extensions volontairement reportées **après** la livraiso
 3. Phase C — Squad coach (la plus lourde : coach + coach_advisor + prestige + front squad)
 4. Cross-titre arcs backend ([.ai/PLAN_CROSS_TITLE_ARCS_BACKEND.md](.ai/PLAN_CROSS_TITLE_ARCS_BACKEND.md)) — à anticiper avec l'arrivée du 2e titre
 5. Parkés : V2.1 télémétrie + auto-grammar (besoin analytics à définir d'abord)
-
----
-
-## 📊 Statistiques — Leased-Writer-Enforcement (PR 4-6 + PR 7)
-
-| Métrique | Valeur |
-|----------|--------|
-| Commits leased-writer-enforcement | 8 |
-| Commits PR 7 migration | 1 |
-| Nouveaux tests intégration | 26 |
-| Sites migrés (PR 7) | 17 |
-| Lignes ajoutées | ~3100 |
-| Baseline tests (preserved) | 1662 |
-| Branches affectées | 2 (refactor/leased-writer-enforcement, fix/theme-consistency-tokens) |
 
 ---
 
