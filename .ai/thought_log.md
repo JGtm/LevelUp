@@ -1,3 +1,28 @@
+## [2026-06-09] Robustesse persist : Phase 1 (recovery périodique + purge bruyante) + [A] retry + [G] tests — Complété
+
+**Statut** : Complété (validé local). `go build ./internal/persist/... ./cmd/server/...` OK ; `go test ./internal/persist/` (non-integration) vert ; nouveaux tests `-race` verts ; `go test -tags integration ./internal/persist/` vert (12s, cgo dispo) ; `go vet` (avec et sans tag integration) clean. Branche `feat/persist-robustness` (depuis `feat/leaderboard-csr-followup`). **Non commité**.
+
+**Décision (cf. PLAN_PERSIST_ROBUSTNESS)** : DLQ [B] et endpoint [E] abandonnés (pas de consommateur) ; [D] circuit breaker déjà livré. Périmètre retenu : Phase 1 (cœur), [G] test, [A] complément.
+
+**Trou réel corrigé (Phase 1)** : `RecoverPending` n'était appelé qu'au boot (`main.go`) → un batch échoué (DB busy mid-persist) restait bloqué en WAL jusqu'au reboot, et `PurgeOldWAL` l'effaçait **en silence** à 7 j (seule perte de données possible du système). Fixes :
+- **Recovery périodique** : nouvelle goroutine `main.go` (ticker 10 min) appelant `RecoverPending()` ; + appel dans le janitor **avant** `PurgeOldWAL` (garde-fou : ne jamais purger ce qu'on aurait pu rejouer).
+- **Dédup in-flight** (`queue.go`) : map `inFlight` marquée par `Submit`/`RecoverPending` (push) et effacée par le worker en fin de `handle` (defer, succès OU échec). `RecoverPending` skippe les batches in-flight → appelable périodiquement sans dupliquer un batch déjà dans le channel. Doc `RecoverPending` mise à jour (n'est plus « boot-only »).
+- **Purge non-silencieuse** : `PurgeOldWAL` (dossier principal) lit chaque WAL avant suppression, log **ERROR** avec `batch_id`/`player`/`source`/`match_id`/`age`, et appelle le hook `OnWALPurged` → métrique expvar `persist_wal_purged_total` (câblée dans `main.go`). Type `PurgedWALInfo` exposé. Le sous-dossier `corrupted/` garde son comportement (Warn par fichier).
+
+**[A] retry+backoff** (`worker.go`) : `persistWithRetry` re-tente UNIQUEMENT sur erreur transitoire (allowlist `transientErrorMarkers` : lock/busy/IO/timeout) avec backoff exponentiel (base 1s × 2^n, 3 tentatives par défaut). Erreur permanente (parse/contrainte) → 0 retry (anti-boucle poison). Épuisement → laisse en WAL (repris par la recovery périodique). Champs `maxPersistAttempts`/`retryBaseDelay` (non-exportés, surchargés par les tests).
+
+**[G] tests** : (1) worker-level non-integration `TestWorker_FatalPersist_WALSurvives_ThenRecoveryReplays` (FATAL → no-ACK → WAL survit → RecoverPending rejoue) ; (2) integration `TestE2E_FatalMidBatch_RollbackThenRecovery` (vraie DuckDB : `fatalMidTxPersister` INSERT registry partiel puis FATAL sans COMMIT → assert 0 row partielle = rollback + WAL survit + recovery → 1 row + ACK). + 3 tests retry [A] (succès après retry / permanent sans retry / épuisement) + dédup in-flight + purge bruyante.
+
+**Fichiers** : `internal/persist/queue.go` (inFlight + dédup RecoverPending + purge bruyante + `PurgedWALInfo`/`OnWALPurged`), `internal/persist/worker.go` (retry + `clearInFlight` defer + classifieur transitoire), `cmd/server/main.go` (goroutine recovery 10 min + RecoverPending pré-purge dans janitor + hook métrique). Tests : `worker_test.go`, `queue_test.go`, `e2e_test.go`.
+
+**Vérif finale (2026-06-09)** :
+- `go build ./...` (module entier) OK ; `gofmt -l` vide sur les 6 fichiers ; `go vet` (persist + observability + cmd/server) clean.
+- Couverture package persist **72.6%** (tag integration). Fonctions nouvelles/touchées : `isTransientPersistError` 100%, `handle` 91.7%, `persistWithRetry` 82.4%, `inspectWALForPurge` 84.6%, `PurgeOldWAL` 84.6%, helpers in-flight 100%. +2 tests ajoutés pour combler les gaps (`TestIsTransientPersistError` table, purge d'un WAL principal corrompu → fallback).
+- **Logging routé vers le dossier dédié** (`NewMultiModuleHandler`, FileLevel défaut=Info) : `queue.go`/`worker.go` (package `persist`) → **`logs/persist.log`** automatiquement (purge ERROR avec batch_id/player/match_id/age, retry WARN, recovery Info, persist-failed ERROR). Les logs persist-glue de `main.go` (recovery périodique + janitor) **taggés `module=persist`** pour atterrir aussi dans `logs/persist.log` (cohésion). Métrique expvar `persist_wal_purged_total` sur `/debug/vars`.
+- **Note `-race`** : `go test -race ./internal/persist/` (suite complète) panique sur un `checkptr` du driver DuckDB cgo (`vector_getters.go`, test pré-existant `shared_social_persister_test.go` `//go:build cgo`) — **incompatibilité connue DuckDB↔checkptr, sans rapport avec ce travail** (fichier non modifié, suite sans `-race` verte). Mon code pur-Go (map `inFlight`) validé race-free : `-race` scopé aux tests `TestBatchQueue|TestWorker` (dont concurrence Submit/Close + circuit breaker) vert.
+
+**Prochaine étape** : commit sur autorisation user. [B] DLQ / [E] endpoint restent abandonnés (réévaluer seulement si batch poison observé / consommateur de supervision introduit).
+
 ## [2026-06-09] Coach V3 : cadrage UX (mockups) Phases A/B/C avant implem — Complété (docs)
 
 **Statut** : Complété (docs uniquement : `.ai/PLAN_COACH_V3_GENERATION.md`, non commité). Branche `feat/leaderboard-csr-followup`.

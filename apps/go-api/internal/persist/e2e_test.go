@@ -19,9 +19,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -216,6 +218,109 @@ func TestE2E_Pipeline_CrashRecovery(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(walDir, id+".json")); !os.IsNotExist(err) {
 			t.Errorf("WAL %s doit être supprimé post-ACK", id)
 		}
+	}
+}
+
+// ─── Test [G] : FATAL mid-batch → ROLLBACK (0 row partielle) + WAL survit + recovery ──
+//
+// fatalMidTxPersister simule un FATAL DuckDB APRÈS insertion partielle dans la
+// même transaction : il ouvre une vraie TX, INSERT la row match_registry, puis
+// retourne une erreur FATAL sans COMMIT → le defer Rollback doit tout annuler.
+// Couvre l'invariant central post-incident ART (2026-05-24) : un crash mid-TX
+// ne laisse AUCUNE row partielle, le WAL survit (pas d'ACK), et la recovery
+// rejoue le batch proprement une fois la persistance rétablie.
+type fatalMidTxPersister struct {
+	mu       sync.Mutex
+	db       txBeginner
+	real     *SharedPersister
+	failNext bool
+}
+
+func (p *fatalMidTxPersister) Persist(ctx context.Context, batch *MatchBatch) error {
+	p.mu.Lock()
+	fail := p.failNext
+	p.mu.Unlock()
+	if !fail {
+		return p.real.Persist(ctx, batch)
+	}
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }() // doit annuler l'INSERT partiel ci-dessous
+	if batch.Shared.Match != nil {
+		if err := persistMatchRegistry(ctx, tx, batch.Shared.Match, false); err != nil {
+			return err
+		}
+	}
+	// FATAL mid-batch : on retourne SANS COMMIT → rollback.
+	return errors.New("FATAL: database has been invalidated")
+}
+
+func (p *fatalMidTxPersister) setFailNext(v bool) {
+	p.mu.Lock()
+	p.failNext = v
+	p.mu.Unlock()
+}
+
+func TestE2E_FatalMidBatch_RollbackThenRecovery(t *testing.T) {
+	db := openSharedTestDB(t)
+	walDir := t.TempDir()
+	q, err := NewBatchQueue(BatchQueueConfig{WALDir: walDir, ChanBufSize: 16})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = q.Close() })
+
+	p := &fatalMidTxPersister{db: db, real: NewSharedPersister(db), failNext: true}
+	w := NewWorker("fatal-midtx", q, TargetShared, p)
+	w.retryBaseDelay = time.Millisecond
+	var okCount, errCount atomic.Int64
+	w.OnPersistOK = func() { okCount.Add(1) }
+	w.OnPersistError = func(error) { errCount.Add(1) }
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	go func() { _ = w.Run(ctx) }()
+
+	batch := helperBuildSampleBatch("fatal_mid", "1111", "Alice")
+	walFile := filepath.Join(walDir, batch.BatchID+".json")
+	if err := q.Submit(batch); err != nil {
+		t.Fatal(err)
+	}
+
+	waitFor(t, func() bool { return errCount.Load() == 1 }, 3*time.Second,
+		"le FATAL mid-batch remonte une erreur")
+
+	// ROLLBACK : aucune row partielle malgré l'INSERT registry dans la TX.
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_registry WHERE match_id = ?`, "fatal_mid").Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Errorf("rollback raté : %d row(s) partielle(s) en DB, want 0", n)
+	}
+	// WAL survit (pas d'ACK sur échec).
+	if _, err := os.Stat(walFile); err != nil {
+		t.Errorf("WAL doit survivre au FATAL : %v", err)
+	}
+
+	// Persistance rétablie → recovery rejoue le batch jusqu'au succès complet.
+	p.setFailNext(false)
+	if err := q.RecoverPending(); err != nil {
+		t.Fatalf("RecoverPending: %v", err)
+	}
+	waitFor(t, func() bool { return okCount.Load() == 1 }, 3*time.Second,
+		"recovery persiste le batch précédemment FATAL")
+
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_registry WHERE match_id = ?`, "fatal_mid").Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Errorf("après recovery : %d row registry, want 1", n)
+	}
+	if _, err := os.Stat(walFile); !os.IsNotExist(err) {
+		t.Errorf("WAL doit être ACKé après recovery réussie")
 	}
 }
 
