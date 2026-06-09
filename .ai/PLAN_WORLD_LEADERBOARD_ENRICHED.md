@@ -37,6 +37,15 @@ podium SVG flat top 3.
 - `cmd/backfill-world-player-stats/main.go`
 - Extensions frontend (Phase E)
 
+**Dettes existantes à corriger avant/pendant Phase B (multi-titre + "Toutes") :**
+- Migration `add_title_slug_to_world_csr_leaderboard` : ADD COLUMN `title_slug VARCHAR NOT NULL DEFAULT 'halo_infinite'`, recréer vue avec `PARTITION BY title_slug, season_id, playlist_id, rank`, update index
+- Toutes les queries du repo (`GetCSRWorldLeaderboard`, `GetStatLeaderboard`, `WorldCSRSnapshotAge`, `GetWorldLeaderboardCatalog`) : ajouter `WHERE title_slug = ?`
+- `InsertWorldCSRSnapshot` : ajouter `title_slug` dans l'INSERT
+- `GetWorldLeaderboardCatalog` : ajouter param `titleSlug` + retourner `{ID:"", DisplayName:"Toutes"}` en tête de `Playlists`
+- `GetCSRWorldLeaderboard` : quand `playlist == ""` → query sans filtre playlist, MAX(csr_value) par gamertag, re-rank ROW_NUMBER()
+- `playlistDisplayName()` : remplacer import `rankedplaylists` Halo-only par un callback injecté `PlaylistNameResolver func(string) string`
+- Frontend `LeaderboardBlock.tsx` : état initial `playlist = ""`, `""` est une valeur valide (pas un fallback), label "Toutes" vient du catalogue API
+
 ---
 
 ## Contraintes API critiques (vérifiées dans le code)
@@ -86,9 +95,10 @@ stocker les compteurs bruts, dériver les ratios à la lecture.
 
 ```sql
 CREATE TABLE world_player_season_stats (
+    title_slug      TEXT      NOT NULL DEFAULT 'halo_infinite',
     gamertag        TEXT      NOT NULL,
     season_id       TEXT      NOT NULL,
-    playlist_id     TEXT      NOT NULL,
+    playlist_id     TEXT      NOT NULL,  -- '' = agrégat toutes playlists
     match_count     INTEGER   NOT NULL DEFAULT 0,
     win_count       INTEGER   NOT NULL DEFAULT 0,
     loss_count      INTEGER   NOT NULL DEFAULT 0,
@@ -100,7 +110,7 @@ CREATE TABLE world_player_season_stats (
     playtime_s      BIGINT    NOT NULL DEFAULT 0,
     medal_count     BIGINT    NOT NULL DEFAULT 0,
     computed_at     TIMESTAMP NOT NULL,
-    PRIMARY KEY (gamertag, season_id, playlist_id)
+    PRIMARY KEY (title_slug, gamertag, season_id, playlist_id)
 );
 ```
 
@@ -118,7 +128,8 @@ la saison précédente **où la même playlist existait**. Si la playlist n'exis
 on remonte automatiquement à N-2, N-3, etc. Si aucune saison antérieure trouvée → pas d'indicateur.
 
 **Pas de nouvelle colonne** — tout se calcule au moment de la lecture via `LAG()`.
-`PARTITION BY gamertag, playlist_id ORDER BY season_id` saute naturellement les saisons manquantes.
+`PARTITION BY title_slug, gamertag, playlist_id ORDER BY season_id` saute naturellement les saisons manquantes.
+Quand `playlist_id = ""` (toutes) : fenêtre `PARTITION BY title_slug, gamertag ORDER BY season_id`.
 
 **Query pattern (lecture enrichie) :**
 ```sql
