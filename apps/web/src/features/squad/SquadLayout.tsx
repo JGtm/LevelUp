@@ -23,7 +23,7 @@ import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useTeammates } from './queries'
 import { useSettings } from '@/features/settings/queries'
-import { useFiltersPreview, useFiltersResolve, useFollowLatestSession } from '@/features/filters/queries'
+import { useFiltersPreview, useFiltersResolve } from '@/features/filters/queries'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
 import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
@@ -37,7 +37,7 @@ import { SquadContext } from './SquadContext'
 import { getSquadTeammateColors } from './colors'
 import type { LabelValue, TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
-import { deriveSquadPending, reconcileSquadSessionLabels } from './squadPending'
+import { deriveSquadPending, reconcileSquadSessionLabels, decideCompositionReanchor } from './squadPending'
 
 import {
   FiltresPill,
@@ -82,14 +82,15 @@ export function SquadLayout() {
     setFilterContext,
     setSessions,
     resetFilters,
+    autoSnapToLatestSession,
   } = useSquadFilterStore()
   // Résout le filterContext squad côté backend → alimente `resolvedContext`
   // (session_options, available_options, period_presets) pour les pills et le rail.
   useFiltersResolve(playerSlug, useSquadFilterStore)
-  // Atterrissage sur la dernière session squad tant que rien n'est épinglé.
-  // Le snap pose le LABEL dans picked_sessions ; l'effet de sync local→global plus
-  // bas le propage vers pickedSquadSessionLabels (la session se coche dans le multi-select).
-  useFollowLatestSession(playerSlug, useSquadFilterStore, 'squad')
+  // L'ancrage de session est piloté par la COMPOSITION (cf. effet de ré-ancrage
+  // plus bas) — pas via useFollowLatestSession, qui snappait sur la dernière
+  // session squad du joueur principal (composition-agnostique → ajoutait un
+  // coéquipier à une session qu'il n'avait pas jouée).
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
   const tCommon = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
@@ -281,7 +282,7 @@ export function SquadLayout() {
     picked_squad_session_labels: pickedSquadSessionLabels.length > 0 ? pickedSquadSessionLabels : undefined,
     locale,
   }
-  const { data, isLoading, isError, error } = useTeammates(
+  const { data, isLoading, isError, error, isPlaceholderData } = useTeammates(
     playerSlug,
     request,
     filterContextHash,
@@ -289,29 +290,73 @@ export function SquadLayout() {
     pickedSquadSessionLabels,
   )
 
-  // Sessions escouade (stables : LoadSynthesisMatches charge TOUT l'historique,
-  // indépendamment de la période filtrée).
-  const squadSessions = data?.session_labels?.squad ?? []
+  // Sessions à afficher (multi-select) + référence pour le ré-ancrage.
+  // Avec coéquipier(s) : sessions de la COMPOSITION EXACTE (intersection back-end,
+  // historique complet). Sans coéquipier : sessions squad du joueur principal.
+  // On ne retombe PAS sur les sessions du main quand l'intersection est vide
+  // (sinon on afficherait des sessions non jouées par la composition).
+  const hasTeammates = confirmedGts.length > 0
+  const compositionSessions = useMemo(
+    () => (hasTeammates ? (data?.composition_sessions ?? []) : (data?.session_labels?.squad ?? [])),
+    [hasTeammates, data],
+  )
+  const latestCompositionSession = data?.latest_composition_session ?? ''
 
-  // Réconciliation anti-zombie des sessions pickées.
-  // Les labels backend embarquent un suffixe " (N)" = match-count figé au sync
-  // (cf. buildSessionLabel côté Go). Quand ce compte change (nouveau sync) ou
-  // que la session sort de la liste, le label persisté en localStorage devient
-  // un zombie : compté par le rail ("N sessions sélectionnées") mais sans case
-  // à cocher correspondante (donc indécochable via le dropdown), et filtré à 0
-  // match côté backend. On remappe chaque label pické vers sa forme courante
-  // (même session = même préfixe une fois le suffixe retiré) et on droppe les
-  // zombies introuvables. squadSessions est indépendant de la sélection
-  // (extractSynthesisSessionLabels sur allMatches), donc pas de boucle refetch.
+  // Réconciliation anti-zombie des sessions pickées (suffixe " (N)" volatil, cf.
+  // buildSessionLabel côté Go). On remappe chaque label pické vers sa forme
+  // courante dans compositionSessions et on droppe les doublons. Si TOUS les
+  // labels sont des zombies pour la composition courante, on ne fait rien : le
+  // ré-ancrage composition (effet suivant) reprend la main proprement.
   useEffect(() => {
-    if (squadSessions.length === 0 || pickedSquadSessionLabels.length === 0) return
-    const reconciled = reconcileSquadSessionLabels(pickedSquadSessionLabels, squadSessions)
+    if (compositionSessions.length === 0 || pickedSquadSessionLabels.length === 0) return
+    const reconciled = reconcileSquadSessionLabels(pickedSquadSessionLabels, compositionSessions)
+    if (reconciled.length === 0) return
     const unchanged =
       reconciled.length === pickedSquadSessionLabels.length &&
       reconciled.every((l, i) => l === pickedSquadSessionLabels[i])
     if (!unchanged) applySessionLabels(reconciled)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [squadSessions])
+  }, [compositionSessions])
+
+  // ── Ré-ancrage composition-aware ─────────────────────────────────────────
+  // Quand la composition change (ajout/retrait d'un coéquipier), on retombe sur
+  // la dernière session où exactement cette composition a joué ensemble
+  // (data.latest_composition_session, calculé back-end sur l'intersection), ou un
+  // état vide si elle n'a jamais joué ensemble.
+  //
+  // Anti-boucle : on n'agit qu'UNE fois par composition (ref) et seulement sur des
+  // données FRAÎCHES (!isPlaceholderData = data correspond à la sélection courante,
+  // pas au placeholder keepPreviousData). La navigation rail/manuelle et les
+  // changements de filtre ne changent pas la composition → pas de ré-ancrage, donc
+  // pas de conflit avec une sélection de session délibérée.
+  const lastAnchoredCompositionRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!data || isPlaceholderData) return
+    const compositionKey = hasTeammates ? [...confirmedGts].sort().join(',') : ''
+    if (compositionKey === lastAnchoredCompositionRef.current) return
+    lastAnchoredCompositionRef.current = compositionKey
+
+    const { filterContext: fc, isAutoSnappingToLatest } = useSquadFilterStore.getState()
+    const picked = fc.sessions?.picked_sessions ?? []
+    const hasPeriod = !!(fc.period?.start_date || fc.period?.end_date)
+    // « follow-latest » : pas de sélection manuelle épinglée (cf. useFollowLatestSession).
+    const followLatest = isAutoSnappingToLatest || (!hasPeriod && picked.length === 0)
+    const action = decideCompositionReanchor({
+      hasTeammates,
+      followLatest,
+      latestCompositionSession,
+      pickedSessions: picked,
+      compositionSessionLabels: compositionSessions.map((s) => s.label),
+    })
+    if (action.kind === 'clear') {
+      // Composition sans session commune → on vide et on affiche l'état vide
+      // (le backend logge déjà composition_resolved avec composition_sessions=0).
+      applySessionLabels([])
+    } else if (action.kind === 'snap') {
+      autoSnapToLatestSession({ session_id: action.label, label: action.label }, true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, isPlaceholderData, confirmedGts, hasTeammates])
 
   // ── Routes actives ───────────────────────────────────────────────────────
   const synergiesRoute = '/players/$playerSlug/squad/synergies' as const
@@ -409,10 +454,10 @@ export function SquadLayout() {
             presetCounts={presetCounts}
           />
 
-          {/* Sessions escouade (multi-select par label) */}
-          {squadSessions.length > 0 && (
+          {/* Sessions escouade (multi-select par label) — composition-aware */}
+          {compositionSessions.length > 0 && (
             <SessionMultiSelect
-              sessions={squadSessions}
+              sessions={compositionSessions}
               selected={pickedSquadSessionLabels}
               onChange={applySessionLabels}
               locale={locale}
@@ -481,7 +526,19 @@ export function SquadLayout() {
         </div>
       )}
 
-      {!isLoading && !isError && data && (
+      {/* Coéquipier(s) sélectionné(s) mais aucune session commune : la composition
+          exacte n'a jamais joué ensemble (sur le scope filtré) → état vide clair,
+          pas les stats du joueur principal. */}
+      {!isLoading && !isError && data && hasTeammates && compositionSessions.length === 0 && (
+        <div className="p-6">
+          <EmptyStateCard
+            title={t.empty.invalidSelectionTitle}
+            description={t.empty.invalidSelectionDescription}
+          />
+        </div>
+      )}
+
+      {!isLoading && !isError && data && !(hasTeammates && compositionSessions.length === 0) && (
         <div className="flex flex-col gap-6 p-6">
           {/* SessionBriefing — KPIs + verdict squad + drill-down click */}
           {/* Remplace l'ancienne section "Synergies avec les coéquipiers sélectionnés"

@@ -8,11 +8,55 @@ import (
 	"context"
 	"log/slog"
 	"sort"
+	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
+
+// buildCompositionSessionLabels dérive les sessions où la composition EXACTE a
+// joué ensemble, à partir des rows d'intersection NON filtrées par session
+// (allSquadRowsForTimeline = historique complet de la composition). Une entrée
+// par SessionLabel non vide, bornes calculées depuis StartTime, triée par
+// StartedAt DESC (la plus récente en tête). Dédup par match_id.
+//
+// Tri via les timestamps (StartTime), pas par parsing de label, pour éviter tout
+// décalage TZ/DST (cohérent buildSquadSessionTimeline). Alimente le
+// SessionMultiSelect ET le ré-ancrage front (sortie[0] = LatestCompositionSession).
+func buildCompositionSessionLabels(rows []domain.SquadMatchRow) []domain.SessionLabelEntry {
+	type bounds struct{ started, ended time.Time }
+	byLabel := make(map[string]*bounds)
+	seen := make(map[string]struct{}, len(rows))
+	for _, m := range rows {
+		if _, dup := seen[m.MatchID]; dup {
+			continue
+		}
+		seen[m.MatchID] = struct{}{}
+		if m.SessionLabel == nil || *m.SessionLabel == "" {
+			continue
+		}
+		label := *m.SessionLabel
+		b, ok := byLabel[label]
+		if !ok {
+			byLabel[label] = &bounds{started: m.StartTime, ended: m.StartTime}
+			continue
+		}
+		if m.StartTime.Before(b.started) {
+			b.started = m.StartTime
+		}
+		if m.StartTime.After(b.ended) {
+			b.ended = m.StartTime
+		}
+	}
+
+	out := make([]domain.SessionLabelEntry, 0, len(byLabel))
+	for label, b := range byLabel {
+		out = append(out, domain.SessionLabelEntry{Label: label, StartedAt: b.started, EndedAt: b.ended})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].StartedAt.After(out[j].StartedAt) })
+	return out
+}
 
 func buildSquadSessionTimeline(matches []domain.SquadMatchRow) []domain.SquadSessionPoint {
 	type agg struct {

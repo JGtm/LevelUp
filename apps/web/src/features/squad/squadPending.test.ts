@@ -9,7 +9,12 @@
  * que les autres filtres n'avaient aucun effet sur les sessions et inversement.
  */
 import { describe, expect, it } from 'vitest'
-import { deriveSquadPending, reconcileSquadSessionLabels, stripSessionCountSuffix } from './squadPending'
+import {
+  deriveSquadPending,
+  reconcileSquadSessionLabels,
+  stripSessionCountSuffix,
+  decideCompositionReanchor,
+} from './squadPending'
 import type { FilterContextInput, SessionLabelEntry } from '@/lib/api/types'
 
 function session(label: string): SessionLabelEntry {
@@ -125,5 +130,91 @@ describe('reconcileSquadSessionLabels', () => {
     const picked = ['B (2)', 'A (1)']
     const current = [session('A (9)'), session('B (9)')]
     expect(reconcileSquadSessionLabels(picked, current)).toEqual(['B (9)', 'A (9)'])
+  })
+})
+
+describe('decideCompositionReanchor', () => {
+  const base = { hasTeammates: true, followLatest: true, compositionSessionLabels: [] as string[] }
+
+  it('aucun coéquipier → none (ancrage non piloté par la composition)', () => {
+    expect(
+      decideCompositionReanchor({
+        ...base,
+        hasTeammates: false,
+        latestCompositionSession: 'S_new (3)',
+        pickedSessions: ['X (2)'],
+      }),
+    ).toEqual({ kind: 'none' })
+  })
+
+  it('follow-latest + composition jamais jouée ensemble + session pickée → clear', () => {
+    expect(
+      decideCompositionReanchor({ ...base, latestCompositionSession: '', pickedSessions: ['today (3)'] }),
+    ).toEqual({ kind: 'clear' })
+  })
+
+  it('follow-latest + composition jamais jouée ensemble + rien de pické → none', () => {
+    expect(
+      decideCompositionReanchor({ ...base, latestCompositionSession: '', pickedSessions: [] }),
+    ).toEqual({ kind: 'none' })
+  })
+
+  it('déjà ancré sur la dernière (suffixe « (N) » volatil ignoré) → none', () => {
+    expect(
+      decideCompositionReanchor({
+        ...base,
+        latestCompositionSession: 'S_new (5)',
+        pickedSessions: ['S_new (3)'],
+        compositionSessionLabels: ['S_new (5)'],
+      }),
+    ).toEqual({ kind: 'none' })
+  })
+
+  it('session courante ≠ dernière de la composition → snap (cœur du fix Choco/Madina)', () => {
+    // On ajoute un coéquipier, "today" n'est pas une session de la composition →
+    // on retombe sur S_old (dernière session où TOUS ont joué ensemble).
+    expect(
+      decideCompositionReanchor({
+        ...base,
+        latestCompositionSession: 'S_old (4)',
+        pickedSessions: ['today (3)'],
+        compositionSessionLabels: ['S_old (4)'],
+      }),
+    ).toEqual({ kind: 'snap', label: 'S_old (4)' })
+  })
+
+  it('aucune session pickée mais composition non vide → snap (atterrissage initial)', () => {
+    expect(
+      decideCompositionReanchor({
+        ...base,
+        latestCompositionSession: 'S_new (3)',
+        pickedSessions: [],
+        compositionSessionLabels: ['S_new (3)'],
+      }),
+    ).toEqual({ kind: 'snap', label: 'S_new (3)' })
+  })
+
+  it('sélection MANUELLE encore valide pour la composition → none (respect du choix, ex. reload)', () => {
+    expect(
+      decideCompositionReanchor({
+        ...base,
+        followLatest: false,
+        latestCompositionSession: 'S_new (5)',
+        pickedSessions: ['S_old (2)'],
+        compositionSessionLabels: ['S_new (5)', 'S_old (3)'], // S_old reste une session de la compo
+      }),
+    ).toEqual({ kind: 'none' })
+  })
+
+  it('sélection manuelle INVALIDE pour la nouvelle composition → snap sur la dernière', () => {
+    expect(
+      decideCompositionReanchor({
+        ...base,
+        followLatest: false,
+        latestCompositionSession: 'S_new (5)',
+        pickedSessions: ['ghost (2)'], // absente de compositionSessionLabels
+        compositionSessionLabels: ['S_new (5)'],
+      }),
+    ).toEqual({ kind: 'snap', label: 'S_new (5)' })
   })
 })

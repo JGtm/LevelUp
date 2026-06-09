@@ -183,6 +183,8 @@ const teammatesFixture = {
   total_matches: 0,
   session_labels: { solo: [], squad: [] },
   friends_count: 0,
+  composition_sessions: [],
+  latest_composition_session: '',
 }
 
 const synthesisKPIs = {

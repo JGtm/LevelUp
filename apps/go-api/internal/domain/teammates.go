@@ -425,4 +425,15 @@ type TeammatesPageResponse struct {
 	// résumé narratif médailles par joueur sur les matchs partagés.
 	// Nil si aucune médaille disponible ou squad vide.
 	MedalDigest []MedalDigestEntry `json:"medal_digest,omitempty"`
+	// CompositionSessions : sessions où la composition EXACTE (joueur principal +
+	// TOUS les coéquipiers sélectionnés) a joué ensemble — intersection des
+	// matchs, historique complet (non filtré par session). Alimente le
+	// SessionMultiSelect ET le ré-ancrage front. Sans coéquipier sélectionné,
+	// reprend les sessions squad du joueur principal (SessionLabels.Squad).
+	CompositionSessions []SessionLabelEntry `json:"composition_sessions,omitempty"`
+	// LatestCompositionSession : label de la session la plus récente de la
+	// composition exacte (1re entrée de CompositionSessions). Vide si la
+	// composition n'a jamais joué ensemble. Le front s'y ré-ancre quand la
+	// sélection change.
+	LatestCompositionSession string `json:"latest_composition_session,omitempty"`
 }
