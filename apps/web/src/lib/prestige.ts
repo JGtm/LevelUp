@@ -399,4 +399,11 @@ export const prestigeApi = {
       `/squad-challenges/${encodeURIComponent(id)}/evaluate`,
       { requested_by: requestedBy },
     ),
+
+  // Pool de défis suggérés pour l'escouade (biaisé coach). À consommer pour créer.
+  refreshSquadPool: (squadId: string, body: { title_slug: string; requested_by: string }) =>
+    api.post<{ pool: Template[]; count: number }>(
+      `/squads/${encodeURIComponent(squadId)}/challenges/pool/refresh`,
+      body,
+    ),
 }
