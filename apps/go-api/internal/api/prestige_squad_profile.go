@@ -1,13 +1,13 @@
 // Package api — SquadProfileProvider basé sur les axes de PERFORMANCE.
 //
-// ⚠️ Source = composite LEGACY (lusr_component_history / CompositeWeights), PAS
-// le rating LUSR v2 (qui est un (μ, σ) win/loss sans décomposition — cf.
-// .ai/BACKLOG.md « Axes/composantes LUSR affichés = LEGACY »). On l'assume :
-// ces 8 composantes mesurent la PERFORMANCE par dimension (calculées live,
-// normalisées 0..1), ce qui est le bon levier ACTIONNABLE pour du coaching
-// (« renforce tel axe » > « monte ton μ »). Le lien vers le sous-tier suivant
-// est un proxy (meilleure perf → plus de victoires → μ), pas une causalité v2.
-// Cohérent avec le coach SOLO qui utilise déjà ces composantes (axisForLUSRComponent).
+// Source = composite de PERFORMANCE par dimension (lusr_component_history /
+// CompositeWeights) : 8 composantes calculées live, normalisées 0..1. C'est la
+// décomposition par axe utilisée pour le coaching — le rating LUSR v2 est un
+// (μ, σ) win/loss SANS axes (et ne se décomposera pas), donc ce composite de
+// perf est la source PÉRENNE du coaching. La perf est le bon levier ACTIONNABLE
+// (« renforce tel axe » > « monte ton μ ») ; le lien vers le sous-tier suivant
+// est un proxy (meilleure perf → plus de victoires → μ). Cohérent avec le coach
+// SOLO qui utilise déjà ces composantes (axisForLUSRComponent).
 //
 // Implémente prestige.SquadProfileProvider : par membre-user, agrège les
 // composantes de performance par axe (moyenne des CurrentAvg). L'axe le plus

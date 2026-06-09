@@ -100,6 +100,16 @@ export function useEvaluateSquadChallenge(squadId: string) {
   })
 }
 
+/** Orientation coach de l'escouade : l'axe focal (le plus faible) à renforcer. */
+export function useSquadOrientation(squadId: string, requestedBy: string) {
+  return useQuery({
+    queryKey: ['prestige', 'squad-orientation', squadId, requestedBy] as const,
+    queryFn: () => prestigeApi.squadOrientation(squadId, requestedBy),
+    retry: false,
+    enabled: !!squadId && !!requestedBy,
+  })
+}
+
 /** Génère un pool de défis suggérés (biaisé coach) pour l'escouade. */
 export function useRefreshSquadPool() {
   return useMutation({

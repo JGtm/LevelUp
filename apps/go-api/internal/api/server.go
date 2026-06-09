@@ -1055,10 +1055,11 @@ func NewRouter(
 				r.Post("/squads/{squad_id}/members", ph.AddSquadMember)
 				r.Delete("/squads/{squad_id}/members/{xuid}", ph.RemoveSquadMember)
 				r.Post("/squad-challenges/{id}/evaluate", ph.EvaluateSquadChallenge)
+				r.Get("/squads/{squad_id}/orientation", ph.SquadOrientation)
 				// Mode pilote
 				r.Post("/pilot-mode/enable", ph.EnablePilotMode)
 				r.Post("/pilot-mode/disable", ph.DisablePilotMode)
-				slog.Info("prestige_routes_mounted", "endpoints_count", 21)
+				slog.Info("prestige_routes_mounted", "endpoints_count", 22)
 			}
 
 			// Sprint 54 : Compare joueur vs joueur

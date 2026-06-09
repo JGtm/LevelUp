@@ -20,6 +20,7 @@ import {
   useEvaluateSquadChallenge,
   useRefreshSquadPool,
   useCreateSquadChallenge,
+  useSquadOrientation,
 } from '@/features/prestige/hooks/useSquads'
 import { useJoinSquadChallenge } from '@/features/prestige/hooks'
 import type { SquadWithMembers } from '@/lib/prestige'
@@ -43,6 +44,15 @@ const STRINGS = {
     create: 'Créer',
     creating: 'Création…',
     poolEmpty: 'Aucun défi proposé.',
+    orientation: (axis: string) => `Axe à renforcer : ${axis}`,
+    axisLabels: {
+      combat: 'Combat',
+      survival: 'Survie',
+      support: 'Support',
+      score: 'Score',
+      objective: 'Objectif',
+      impact: 'Impact',
+    },
   },
   en: {
     title: 'Squad focus',
@@ -62,6 +72,15 @@ const STRINGS = {
     create: 'Create',
     creating: 'Creating…',
     poolEmpty: 'No challenge suggested.',
+    orientation: (axis: string) => `Focus to improve: ${axis}`,
+    axisLabels: {
+      combat: 'Combat',
+      survival: 'Survival',
+      support: 'Support',
+      score: 'Score',
+      objective: 'Objective',
+      impact: 'Impact',
+    },
   },
 }
 
@@ -108,9 +127,12 @@ export function SquadFocusStrip() {
         <div className="min-w-0">
           <p className="text-2xs uppercase tracking-wide text-muted-foreground">{t.title}</p>
           {matched ? (
-            <p className="truncate text-sm font-semibold text-foreground">
-              {t.saved(matched.squad.name)}
-            </p>
+            <>
+              <p className="truncate text-sm font-semibold text-foreground">
+                {t.saved(matched.squad.name)}
+              </p>
+              <SquadOrientationLine squadId={matched.squad.id} playerSlug={playerSlug} t={t} />
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">{t.saveCta}</p>
           )}
@@ -132,6 +154,24 @@ export function SquadFocusStrip() {
       ) : null}
     </section>
   )
+}
+
+// SquadOrientationLine affiche l'axe focal (à renforcer) de l'escouade — la
+// lecture du coach, dérivée du profil de perf agrégé. Rien si indisponible.
+function SquadOrientationLine({
+  squadId,
+  playerSlug,
+  t,
+}: {
+  squadId: string
+  playerSlug: string
+  t: (typeof STRINGS)['fr']
+}) {
+  const { data } = useSquadOrientation(squadId, playerSlug)
+  const axis = data?.axis
+  if (!axis) return null
+  const label = (t.axisLabels as Record<string, string>)[axis] ?? axis
+  return <p className="truncate text-2xs text-muted-foreground">{t.orientation(label)}</p>
 }
 
 // SQUAD_TITLE_SLUG : titre courant pour les défis d'escouade (V1 mono-titre).

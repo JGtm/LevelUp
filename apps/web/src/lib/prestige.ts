@@ -406,4 +406,10 @@ export const prestigeApi = {
       `/squads/${encodeURIComponent(squadId)}/challenges/pool/refresh`,
       body,
     ),
+
+  // Orientation coach de l'escouade : axe focal (le plus faible) à renforcer.
+  squadOrientation: (squadId: string, requestedBy: string) =>
+    api.get<{ axis: string }>(
+      `/squads/${encodeURIComponent(squadId)}/orientation?requested_by=${encodeURIComponent(requestedBy)}`,
+    ),
 }
