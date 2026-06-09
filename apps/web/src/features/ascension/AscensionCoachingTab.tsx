@@ -19,6 +19,7 @@ import { useSettings } from '@/features/settings/queries'
 import { CoachProposalsCard } from '@/features/coach/CoachProposalsCard'
 import { getCoachStrings } from '@/features/coach/i18n'
 import type { AxisKind } from '@/lib/playerProfile'
+import { CoachFocusCard } from './CoachFocusCard'
 import { CampaignTracker } from './campaign/CampaignTracker'
 import { StartCampaignModal } from './campaign/StartCampaignModal'
 import { PlayerProfileV3 } from './profile/PlayerProfileV3'
@@ -61,6 +62,7 @@ export function AscensionCoachingTab() {
     <div className="space-y-10">
       {/* ─── Couche Ascension (coaching s'appuyant sur Prestige) ──────────── */}
       <LayerSection title={t.ascensionLayerTitle} description={t.ascensionLayerDescription}>
+        <CoachFocusCard playerSlug={playerSlug} />
         <CoachProposalsCard playerSlug={playerSlug} proactiveEnabled={proactiveEnabled} t={coachT} />
         {hasActiveCampaign && <CampaignTracker playerSlug={playerSlug} campaign={activeCampaign} />}
         <PlayerProfileV3
