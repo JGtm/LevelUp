@@ -55,6 +55,62 @@ export function reconcileSquadSessionLabels(
   return reconciled
 }
 
+/** Action de ré-ancrage de session décidée quand la composition d'escouade change. */
+export type CompositionReanchorAction =
+  | { kind: 'none' }
+  | { kind: 'clear' }
+  | { kind: 'snap'; label: string }
+
+/** Entrée de `decideCompositionReanchor` (regroupée — au-delà de 3 params utiles). */
+export interface CompositionReanchorInput {
+  hasTeammates: boolean
+  /**
+   * « suit la dernière » : pas de sélection manuelle épinglée
+   * (isAutoSnappingToLatest OU ni période ni session pickée). Quand false,
+   * une sélection manuelle ENCORE valide pour la composition est respectée.
+   */
+  followLatest: boolean
+  /** Dernière session de la composition (back-end), '' si jamais jouée ensemble. */
+  latestCompositionSession: string
+  /** Sessions actuellement pickées (filterContext.sessions.picked_sessions). */
+  pickedSessions: string[]
+  /** Labels des sessions de la composition courante (validité d'une sélection manuelle). */
+  compositionSessionLabels: string[]
+}
+
+/**
+ * Décide du ré-ancrage de session pour la composition exacte courante
+ * (joueur principal + coéquipiers sélectionnés).
+ *
+ *  - aucun coéquipier → 'none' (l'ancrage n'est pas piloté par la composition) ;
+ *  - sélection MANUELLE (followLatest=false) encore valide pour la composition →
+ *    'none' (on respecte le choix, ex. session restaurée au reload) ;
+ *  - latest vide (composition jamais jouée ensemble) → 'clear' si une session est
+ *    pickée (vider pour afficher l'état vide), sinon 'none' ;
+ *  - déjà ancré sur la dernière (comparaison par clé SANS le suffixe « (N) »
+ *    volatil) → 'none' ;
+ *  - sinon → 'snap' sur la dernière session de la composition.
+ */
+export function decideCompositionReanchor(input: CompositionReanchorInput): CompositionReanchorAction {
+  const { hasTeammates, followLatest, latestCompositionSession, pickedSessions, compositionSessionLabels } = input
+  if (!hasTeammates) return { kind: 'none' }
+
+  const stillValid =
+    pickedSessions.length > 0 &&
+    pickedSessions.every((p) =>
+      compositionSessionLabels.some((l) => stripSessionCountSuffix(l) === stripSessionCountSuffix(p)),
+    )
+  if (!followLatest && stillValid) return { kind: 'none' }
+
+  if (!latestCompositionSession) {
+    return pickedSessions.length > 0 ? { kind: 'clear' } : { kind: 'none' }
+  }
+  const alreadyOnLatest =
+    pickedSessions.length === 1 &&
+    stripSessionCountSuffix(pickedSessions[0]) === stripSessionCountSuffix(latestCompositionSession)
+  return alreadyOnLatest ? { kind: 'none' } : { kind: 'snap', label: latestCompositionSession }
+}
+
 export function deriveSquadPending(
   pending: FilterContextInput,
   pickedSquadSessionLabels: string[],

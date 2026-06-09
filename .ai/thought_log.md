@@ -1,3 +1,24 @@
+## [2026-06-09] Page Escouade : session affichée = composition EXACTE (intersection + ré-ancrage) — Complété
+
+**Statut** : Complété (validé local). Go : `go test ./internal/service/` vert (dont nouveaux tests intersection), build module CGO + `go vet ./...` OK. Front : typecheck 0, `npm run lint` 0 erreur, vitest complet 1785 OK. Non commité. Branche `feat/leaderboard-csr-followup`.
+
+**Bug** (user) : page Escouade, après 3 parties avec Chocoboflor, ajouter Madina au multiselect l'ajoutait aux résultats de « la session du jour » alors qu'il n'avait pas joué. Attendu : ajouter/enlever un coéquipier doit re-ancrer sur la dernière session où la composition EXACTE a joué ensemble.
+
+**Cause racine (2 couches, composition-agnostique)** :
+1. Backend `TeammatesService.GetPage` (endpoint legacy `/pages/teammates`, page active = `SquadLayout`) UNIONNAIT les matchs par coéquipier (`allSquadRows`/`allSquadRowsForTimeline` via append par `LoadSquadMatches(main, mate)`), au lieu d'intersecter. Incohérence : le header SessionBriefing, lui, intersectait déjà (`intersectByMatchID`).
+2. Frontend : `useFollowLatestSession(..., 'squad')` snappait sur la dernière session squad du joueur principal via `/filters/resolve` (qui ne reçoit pas les coéquipiers). Les `selectedGts` vivent hors du filterContext → changer la composition ne re-snappait pas.
+
+**Décisions (validées user : périmètre Escouade seule ; sémantique intersection)** :
+- Backend : nouveau `intersectSquadRowsByMatchID` (garde les match_id présents chez TOUS les coéquipiers ; 1 set = comportement mono-coéquipier inchangé). Boucle `GetPage` réécrite (collecte sets per-mate → intersection). `matchSeries[gt]` reste per-mate (non intersecté). Nouveau `buildCompositionSessionLabels` + champs réponse `composition_sessions` / `latest_composition_session` (dérivés de l'intersection non filtrée par session).
+- Frontend : retrait de `useFollowLatestSession` pour le squad ; effet de ré-ancrage piloté par la réponse (`decideCompositionReanchor`, fonction pure testée). Anti-boucle : 1 action par composition (ref) + gate `!isPlaceholderData` (données fraîches) ; rail/manuel/filtre ne changent pas la composition → pas de conflit. `SessionMultiSelect` + réconciliation anti-zombie alimentés par `composition_sessions`. État vide explicite (`invalidSelection`) quand la composition n'a aucune session commune (pas de repli sur le main).
+- Sessions/Accueil : hors scope (aucun sélecteur de composition → symptôme impossible). Limite connue : le rail prev/next reste sur les sessions du main (pré-existant).
+
+**Fichiers** : `teammates_service.go`, `teammates_service_intersect.go` (neuf), `teammates_squad_charts_sessions_maps.go`, `domain/teammates.go` ; `lib/api/types.ts`, `features/squad/SquadLayout.tsx`, `features/squad/squadPending.ts` (+ `.test.ts`), `test/handlers.ts`. Tests Go neufs : `teammates_intersection_test.go` (+ mock `squadRowsByTeammate`).
+
+**Vérif finale** : logging Debug `teammates.composition_resolved` ajouté (→ `logs/service.log` ; anomalies coéquipier déjà en Warn/Error, visibles par défaut). Sémantique `followLatest`/`stillValid` réintégrée dans `decideCompositionReanchor` (respecte une session manuelle encore valide, ex. restaurée au reload — pas de régression vs ancien useFollowLatestSession). Tests étendus : `TestBuildCompositionSessionLabels` (Go) + 8 cas `decideCompositionReanchor` (front). Re-vérifié : `go build ./...` + `go test ./internal/service/` + `go vet` OK ; front typecheck 0, lint 0 erreur, vitest squad 241 + suite complète 1785. NB : la branche porte du WIP tiers (enrich_registry/backfill_registry_names/patterns_repo/detector/notifications) NON touché — commit à scoper aux seuls fichiers teammates/squad/composition.
+
+**Prochaine étape** : commit sur autorisation. Vérif manuelle in-app recommandée (ajout/retrait coéquipier → re-snap sur la dernière session de la compo ; intersection vide → état vide).
+
 ## [2026-06-09] Pass saisonnier : fix hauteurs inégales (retrait h-full sur KpiCard en flex row) — Complété (front-only)
 
 **Statut** : Complété. typecheck 0 + eslint 0. Non commité.
@@ -145,7 +166,20 @@ i18n : 1 clé ajoutée au TOML + régénérée.
 
 ## [2026-06-09] Noms de modes bruts (JGtm, matchs du 08/06) : pair_name = GUID dans match_registry — Diagnostic complet, fix en attente
 
-**Statut** : Root cause confirmée via API live. Fix identifié (CLI), **pas encore exécuté** (nécessite arrêt serveur dev — lock RW DuckDB). Aucun changement code.
+**Statut** : Root cause confirmée + **fix durable code livré** (non commité). Reste : nettoyage one-shot des matchs déjà cassés (CLI, serveur stoppé) + auto-drain catalogue (optionnel, différé).
+
+**Récurrence — cause structurelle (le "pas normal")** : la sync ENFILE bien les paires inconnues dans `catalog_fetch_queue` (catalog_enqueue.go) mais **rien ne draine cette queue automatiquement** — `CatalogFetcherService.Drain()` n'est appelé que par les CLI `populate-*` (aucun scheduler/boot/postsync). Design intentionnel ("zéro fetch HTTP au sync, drain mensuel via CLI") → mais le nouveau contenu reste en GUID jusqu'au drain manuel.
+
+**Fix durable livré (pur, zéro HTTP)** : fallback de CONSTRUCTION du pair_name.
+- `internal/sync/enrich_registry.go` : après les lookups asset_translations, si `pair_name == pair_id` (GUID) mais game_variant + map sont résolus, construit `pair_name = "{game_variant} on {map}"` (+ re-infère ModeCategory). Helpers `constructPairName` / `resolvedRegistryName`. → tout match futur n'expose JAMAIS un GUID comme libellé.
+- `internal/sync/backfill_registry_names.go` : `backfillPairNamesByConstruction` (SQL pur) en fin de `BackfillRegistryNames` → applique la même construction aux lignes existantes (après que les passes colonne aient résolu map + game_variant). Donc le one-shot backfill réparera VRAIMENT les matchs de ce soir.
+- Tests : `enrich_registry_construct_test.go` (pur, 2 fns) + cas intégration `TestEnrichRegistryFromMetadata_ConstructsPairFromParts` + `TestBackfillRegistryNames_ConstructsPairFromParts` (idempotent). vet OK, suite sync verte.
+
+**Reste (au choix)** :
+- One-shot pour les matchs du 08/06 : `go run -tags cgo ./cmd/backfill_registry_names --shared <shared_matches_v2.duckdb> --metadata <metadata.duckdb>` (serveur stoppé — lock RW). Avec le nouveau code, la passe construction réécrit les pair_name GUID → "{mode} on {map}".
+- Auto-drain catalogue (récupérer les noms canoniques + bonne catégorie) : brancher `CatalogFetcherService.Drain()` en scheduler/postsync. Différé (plus gros, dépend de tokens valides — 403 ce soir). Non bloquant car la construction couvre déjà l'affichage.
+
+**Détails diagnostic ci-dessous (conservés)** :
 
 **Symptôme** : matchs du 08/06 affichent des noms de modes bruts non normalisés ("Slayer on Chasm sur Gouffre", "Slayer on Forbidden sur Forbidden") sur certaines surfaces ; d'autres matchs OK. Images cassées en parallèle = thrashing serveur (14 restarts/jour, surtout dus à mes éditions Go ; transitoire, Ctrl+F5 suffit).
 

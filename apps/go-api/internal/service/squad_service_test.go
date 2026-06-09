@@ -14,20 +14,24 @@ import (
 // --- mock ---
 
 type mockSquadRepo struct {
-	topRows     []domain.TopTeammateRow
-	topErr      error
-	squadRows   []domain.SquadMatchRow
-	squadErr    error
-	tmRows      []domain.TeammateMatchRow
-	tmErr       error
-	impactRows  []domain.ImpactEventRow
-	impactErr   error
-	heatmapRows []domain.SynthesisHeatmapRow
-	heatmapErr  error
-	synthRows   []legacymatch.SynthesisMatchRow
-	synthErr    error
-	allyRows    []domain.AllyParticipant
-	allyErr     error
+	topRows   []domain.TopTeammateRow
+	topErr    error
+	squadRows []domain.SquadMatchRow
+	// squadRowsByTeammate (optionnel) : matchs communs par XUID de coéquipier.
+	// Permet de tester l'intersection multi-coéquipiers (chaque coéquipier a un set
+	// distinct). Si nil, LoadSquadMatches retombe sur squadRows (rétro-compatible).
+	squadRowsByTeammate map[string][]domain.SquadMatchRow
+	squadErr            error
+	tmRows              []domain.TeammateMatchRow
+	tmErr               error
+	impactRows          []domain.ImpactEventRow
+	impactErr           error
+	heatmapRows         []domain.SynthesisHeatmapRow
+	heatmapErr          error
+	synthRows           []legacymatch.SynthesisMatchRow
+	synthErr            error
+	allyRows            []domain.AllyParticipant
+	allyErr             error
 	// LookupXUIDByGamertag : lookup attendu (gamertag normalisÃ© en lowercase â†’ xuid).
 	// Si vide, retourne ("", false, nil) â€” comportement par dÃ©faut.
 	lookupAliases map[string]string
@@ -51,8 +55,14 @@ func (m *mockSquadRepo) LookupXUIDByGamertag(_ context.Context, gamertag string)
 	}
 	return "", false, nil
 }
-func (m *mockSquadRepo) LoadSquadMatches(_ context.Context, _, _ string) ([]domain.SquadMatchRow, error) {
-	return m.squadRows, m.squadErr
+func (m *mockSquadRepo) LoadSquadMatches(_ context.Context, _, teammateXUID string) ([]domain.SquadMatchRow, error) {
+	if m.squadErr != nil {
+		return nil, m.squadErr
+	}
+	if m.squadRowsByTeammate != nil {
+		return m.squadRowsByTeammate[teammateXUID], nil
+	}
+	return m.squadRows, nil
 }
 func (m *mockSquadRepo) LoadTeammateMatches(_ context.Context, _, _ string) ([]domain.TeammateMatchRow, error) {
 	return m.tmRows, m.tmErr

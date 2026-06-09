@@ -172,9 +172,14 @@ func (s *TeammatesService) GetPage(
 
 	// Calculs détaillés pour les gamertags sélectionnés.
 	teammates := make([]domain.TeammateRow, 0, len(req.SelectedGamertags))
-	var allSquadRows []domain.SquadMatchRow
-	var allSquadRowsForTimeline []domain.SquadMatchRow
 	matchSeries := map[string][]domain.SquadMatchSeriesPoint{}
+
+	// Sets par coéquipier : chaque set = matchs communs (main ∩ ce coéquipier).
+	// L'INTERSECTION de ces sets = matchs joués par le joueur principal ET TOUS
+	// les coéquipiers sélectionnés (composition exacte). Avant ce fix on faisait
+	// une union (un match joué sans un coéquipier survivait), d'où le bug
+	// "coéquipier ajouté à une session qu'il n'a pas jouée".
+	var setsFiltered, setsAllForTimeline [][]domain.SquadMatchRow
 
 	for _, gt := range req.SelectedGamertags {
 		row, squadMatches, allSquadMatchesTm, err := s.buildTeammateRowWithMatches(ctx, playerXUID, gt, topRows, filteredMatches, sessionMatchIDs)
@@ -184,13 +189,19 @@ func (s *TeammatesService) GetPage(
 		}
 		if row != nil {
 			teammates = append(teammates, *row)
-			allSquadRows = append(allSquadRows, squadMatches...)
-			allSquadRowsForTimeline = append(allSquadRowsForTimeline, allSquadMatchesTm...)
+			setsFiltered = append(setsFiltered, squadMatches)
+			setsAllForTimeline = append(setsAllForTimeline, allSquadMatchesTm)
+			// matchSeries reste per-coéquipier (trajectoire de CE coéquipier vs main) :
+			// volontairement non intersecté.
 			matchSeries[gt] = buildMatchSeries(squadMatches)
 		}
 	}
 
-	// Timeseries + MapBreakdown sur l'union des matchs escouade.
+	// Composition exacte : intersection sur tous les coéquipiers sélectionnés.
+	allSquadRows := intersectSquadRowsByMatchID(setsFiltered)
+	allSquadRowsForTimeline := intersectSquadRowsByMatchID(setsAllForTimeline)
+
+	// Timeseries + MapBreakdown sur l'intersection des matchs escouade (composition exacte).
 	var timeseries []domain.SquadTimeseriesPoint
 	var mapBreakdown []domain.MapBreakdownRow
 	var matchHistory []domain.SquadMatchHistoryRow
@@ -247,6 +258,30 @@ func (s *TeammatesService) GetPage(
 		ctx, mainFilteredCanonical, req.SelectedGamertags, req.Filters, sessionMatchIDs,
 	)
 
+	// Sessions de la composition exacte : dérivées de l'intersection NON filtrée
+	// par session (historique complet de la composition). Alimentent le
+	// SessionMultiSelect et le ré-ancrage front. Sans coéquipier sélectionné, on
+	// reprend les sessions squad du joueur principal (exploration inchangée).
+	var compositionSessions []domain.SessionLabelEntry
+	var latestCompositionSession string
+	if len(req.SelectedGamertags) > 0 {
+		compositionSessions = buildCompositionSessionLabels(allSquadRowsForTimeline)
+		if len(compositionSessions) > 0 {
+			latestCompositionSession = compositionSessions[0].Label
+		}
+		// Diagnostic : permet de tracer "pourquoi la session est vide / re-ancrée"
+		// pour une composition donnée (cf. ./logs/general.log).
+		slog.DebugContext(ctx, "teammates.composition_resolved",
+			"player", s.gamertag,
+			"selected_count", len(req.SelectedGamertags),
+			"shared_matches", len(allSquadRowsForTimeline),
+			"composition_sessions", len(compositionSessions),
+			"latest_session", latestCompositionSession,
+		)
+	} else {
+		compositionSessions = sessionLabels.Squad
+	}
+
 	return domain.TeammatesPageResponse{
 		Options:           options,
 		Teammates:         teammates,
@@ -269,6 +304,9 @@ func (s *TeammatesService) GetPage(
 		Header:            header,
 		MainPlayer:        s.gamertag,
 		MedalDigest:       medalDigest,
+
+		CompositionSessions:      compositionSessions,
+		LatestCompositionSession: latestCompositionSession,
 	}, nil
 }
 

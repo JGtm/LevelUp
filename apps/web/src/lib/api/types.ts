@@ -2094,6 +2094,13 @@ export interface TeammatesPageResponse {
   main_player?: string
   /** MedalDigest alimente <MedalDigest> en bas de SquadSynergiesPage. */
   medal_digest?: MedalDigestEntry[]
+  /** Sessions où la composition EXACTE (joueur principal + tous les coéquipiers
+   *  sélectionnés) a joué ensemble. Alimente le SessionMultiSelect + le
+   *  ré-ancrage. Sans coéquipier : sessions squad du joueur principal. */
+  composition_sessions?: SessionLabelEntry[]
+  /** Label de la session la plus récente de la composition exacte (1re entrée de
+   *  composition_sessions). Vide si la composition n'a jamais joué ensemble. */
+  latest_composition_session?: string
 }
 
 // ---------------------------------------------------------------------------
