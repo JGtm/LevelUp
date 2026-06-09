@@ -12,6 +12,7 @@ import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { OutcomeSequenceTape, type OutcomePoint, type OutcomeValue } from '@/components/charts/OutcomeSequenceTape'
 import { useSquadContext } from './SquadContext'
 import { getSquadText } from './i18n'
+import { SquadFocusStrip } from './SquadFocusStrip'
 import { WinRateVsHistoryBulletChart } from './WinRateVsHistoryBulletChart'
 import { MapPerfVsHistoryChart } from './MapPerfVsHistoryChart'
 import { SquadMapHeatmapChart } from './SquadMapHeatmapChart'
@@ -78,6 +79,7 @@ export function SquadSynergiesPage() {
 
   return (
     <div className="space-y-4">
+      <SquadFocusStrip />
       {mapBreakdown.length > 0 && (
         <div className="grid grid-cols-2 gap-4">
           <WinRateVsHistoryBulletChart
