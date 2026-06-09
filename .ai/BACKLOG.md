@@ -19,14 +19,14 @@
 **Contexte court** : leaderboard CSR mondial scrapé depuis les pages publiques `halowaypoint.com` (bloc `__NEXT_DATA__` — HaloDotAPI étant mort, aucune API officielle de leaderboard). Snapshots persistés append-only (`world_csr_leaderboard_snapshots` + vue `_latest`), page `Communauté > Classements` refondue (CSR mondial + classements de stats croisés). Logging dédié `logs/leaderboard.log`. Cf. thought_log 2026-06-08.
 
 **Opérationnel** :
-- [ ] Peupler la prod : 1er snapshot réel (serveur arrêté, shared DB RW) — `go run ./cmd/snapshot-world-leaderboard -season csrseason13-2 -limit 200`.
-- [ ] Brancher un scheduler basse fréquence (~1×/jour, saison courante) sur le modèle `internal/scheduler/auto_sync.go` ; saisons passées figées (1 snapshot suffit).
+- [x] ~~Peupler la prod : 1er snapshot réel~~ → désormais automatique : `WorldLeaderboardCron` peuple au 1er tick (boot) via `SharedProvider.AcquireWriter` (serveur allumé). Le CLI `snapshot-world-leaderboard` reste pour les **saisons passées** (one-shot).
+- [x] ~~Scheduler basse fréquence~~ → `internal/scheduler/world_leaderboard_cron.go` (1×/jour, garde-fou fraîcheur 20h, saison active **découverte** via `seasons[0]` → autonome aux changements de saison). Câblé `main.go` (gardé `cfg.SharedProvider != nil`).
 
-**Gaps / dette** :
-- [ ] Test manquant : `GetStatLeaderboard` (agrégation `match_participants`) non couvert contre une vraie DB (harness `LegacySharedReader` lourd). SQL simple + vue/persister testés → dette mineure.
-- [ ] Sélecteurs playlist/saison **hardcodés** dans `LeaderboardBlock.tsx` (v1) → les exposer dynamiquement depuis `pageProps.{seasons,playlists}` (déjà parsés par le scraper, cf. `waypointSeasonRef`/`waypointPlaylistRef`) ou depuis la DB.
-- [ ] Filtres des **classements de stats** à affiner (playlist via ILIKE `playlist_name`, pas de filtre saison).
-- [ ] Robustesse scraping : surveiller le warn `leaderboard vide en page 1` (signal d'un changement de markup Halo Waypoint) ; rafraîchir la fixture `testdata/leaderboard_sample.html` si le markup évolue.
+**Gaps / dette** (tous traités le 2026-06-08, branche `feat/leaderboard-csr-followup`) :
+- [x] Test `GetStatLeaderboard` contre vraie DB → `leaderboard_stat_repo_test.go` (tri, seuil min, exclusion bots, is_local, filtres playlist + saison).
+- [x] Sélecteurs playlist/saison dynamiques → endpoint `GET .../pages/leaderboard/catalog` (distinct des snapshots en base, libellés playlist via `rankedplaylists`) + `LeaderboardBlock.tsx` câblé (fallback listes codées en dur si catalogue vide).
+- [x] Filtre **saison** ajouté aux classements de stats (`match_registry.season_id`, format interne `CsrSeasonN` ≠ format waypoint du mondial). Propagé port + service.
+- [x] Robustesse scraping → compteur expvar `levelup.leaderboard_empty_page1` (canari changement de markup, `/debug/vars`) + test ; note fixture conservée dans le doc scraper.
 
 **Risque** : scraping d'une page non documentée (CGU / anti-bot) — garder requêtes polies + basse fréquence + persistance pour minimiser les appels. Ne PAS dépendre du proxy tiers `sr-nextjs.vercel.app`.
 
@@ -71,37 +71,6 @@
 - [ ] Vérifier baseline tests verts post-merge
 - [ ] Vérifier coverage >= 76%
 - [ ] Vérifier no new warnings (golangci-lint)
-
----
-
-### [POST-V7] Optional Cleanup
-
-- [ ] Supprimer branche `refactor/leased-writer-enforcement` (si besoin)
-- [ ] Supprimer branche `fix/theme-consistency-tokens` (si besoin)
-
----
-
-### [POST-V7] Optional Observability
-
-- [ ] Setup monitoring: `dblease_acquire_total{kind=player|shared_matches,status=success|timeout}`
-- [ ] Setup alerting si timeouts excessifs
-- [ ] Documenter les seuils d'alerte
-
----
-
-### [auth/unification] E.v2 — Callback push watcher → pool (optimisation latence) ✅ LIVRÉ 2026-05-24
-
-**Livré via approche révisée** (commit `4508df92`) :
-- `Pool.AddOrUpdateSource(ctx, src)` method — hot-add ou refresh d'un slot
-- Periodic re-scan goroutine en main.go (15min tick) : Discovery.Scan() + Pool.AddOrUpdateSource pour chaque source
-- 5 tests TDD GREEN
-
-**Différence vs plan initial** : au lieu de callback push depuis le watcher, periodic re-scan global. Avantages :
-- Couvre aussi les nouveaux env vars ajoutés en cours de session (pas seulement watcher)
-- Pas de couplage watcher → pool
-- Latence max 15 min (acceptable pour ce use case)
-
-**LIMITATION documentée** : nouveau slot ajouté APRÈS boot est seulement reachable via PolicyPinnedPlayer (canal round-robin sized at boot). Pas un problème pour LevelUp (auto-sync utilise PolicyPinnedPlayer per gamertag).
 
 ---
 
@@ -388,52 +357,6 @@ Commentaire explicite : "Migration du watcher : différée à PR 2.5b".
 
 ---
 
-### [Multi-titre/O10] Store / economy tracker
-
-**Noté le** : 2026-04-18 | **Priorité** : Basse — backlog multi-titre, hors scope Halo Infinite
-
-**Contexte** : Opportunité O10 identifiée lors de la revue des repos externes (SpartanRecord). Non pertinente pour Halo Infinite aujourd'hui (store en fin de cycle commercial, risque d'obsolescence avant livraison). Gardée en backlog car potentiellement utile si un nouveau titre Halo dispose d'une économie de store active (cosmétiques, battle pass, rotations de boutique).
-
-**Référence** : `.ai/go_migration_v2/HALO_EXTERNAL_OPPORTUNITIES.md` §O10
-
-**Conditions de déblocage** :
-1. Onboarding d'un nouveau titre avec économie de store active confirmée
-2. Signal utilisateur explicite sur l'intérêt du tracking store pour ce titre
-3. Atterrissage UI validé comme module optionnel dans `Home`, jamais comme menu prioritaire
-
-**Périmètre si débloqué** :
-- Fetcher Waypoint pour les rotations de boutique du titre concerné
-- Persistance dans `metadata.duckdb` avec `title_id` comme clé de partition (déjà prévu dans l'architecture O3/O8)
-- Module compact `Home` scoped au titre — pas de navigation globale
-- Jamais comme sous-produit autonome hors du scope analytics de LevelUp
-
-**Point de vigilance** : ne pas ouvrir ce chantier sur Halo Infinite même sous pression — le store y est en déclin et le risque d'obsolescence est élevé.
-
----
-
-### [Multi-titre/O11] Spartan Company / social layer
-
-**Noté le** : 2026-04-18 | **Priorité** : Basse — backlog multi-titre, hors scope Halo Infinite
-
-**Contexte** : Opportunité O11 identifiée lors de la revue des repos externes (SpartanRecord). Non pertinente pour Halo Infinite aujourd'hui (pas de signal utilisateur, dimension groupe déjà couverte partiellement par `Squad`). Gardée en backlog car potentiellement utile si un nouveau titre Halo dispose d'une dimension clan ou groupe native établie (guildes, escouades persistantes, companies).
-
-**Référence** : `.ai/go_migration_v2/HALO_EXTERNAL_OPPORTUNITIES.md` §O11
-
-**Conditions de déblocage** :
-1. Onboarding d'un nouveau titre avec dimension groupe native confirmée
-2. Ou signal utilisateur explicite sur le besoin de gestion de groupes dans LevelUp (hors `Squad` existant)
-3. Dans tous les cas : valider l'atterrissage dans `Squad` avant toute autre surface
-
-**Périmètre si débloqué** :
-- Extension de la page `Squad` existante : groupes / cohortes sauvegardées scoped au titre
-- Appels Waypoint vers les endpoints `Spartan Company` ou équivalent du nouveau titre
-- Jamais comme rubrique de navigation autonome ni comme sous-produit social parallèle à LevelUp
-- L'architecture multi-titre (`title_id` dans `xuid_aliases`, `match_participants`, etc.) le rend naturellement extensible sans restructuration
-
-**Point de vigilance** : toute dérive vers une surface sociale indépendante de `Squad` est à refuser — la valeur de LevelUp est analytique, pas sociale.
-
----
-
 ### [Migration] Cible desktop Tauri web-first, sans réécriture Rust métier
 
 **Noté le** : 2026-04-12 | **Priorité** : Moyenne (distribution simplifiée, non bloquante pour les slices MVP)
@@ -456,33 +379,6 @@ Commentaire explicite : "Migration du watcher : différée à PR 2.5b".
 7. Go/no-go : définir les critères du spike (installation propre, backend embarqué stable, auth utilisable, fichiers locaux OK, perf de lancement acceptable)
 
 **Point de vigilance** : Tauri implique mécaniquement une fine couche Rust côté shell. Ce point est acceptable uniquement comme détail d'enveloppe technique. Toute dérive vers des commandes Rust métier, un stockage canonique côté Tauri ou une divergence desktop-only dans les flux React/FastAPI doit être refusée.
-
----
-
-### Script d'analyse des kills par arme pour un match donné (v8+)
-
-**Noté le** : 2026-03-27
-**Priorité** : Basse
-
-**Contexte** : Outil de diagnostic/exploration permettant d'analyser en détail tous les kills d'un match donné, pour un joueur donné.
-
-**Entrée** : `match_id` + `gamertag`
-
-**Sortie** : Tableau avec, pour chaque kill :
-- `match_id`
-- Paire `killer` / `victim` (gamertag ou xuid si inconnu)
-- `timestamp` en format `mm:ss`
-- `weapon_id` (même si inconnu / non résolu)
-
-**Ce que ça impliquerait** :
-1. Requête sur `weapon_kills` (shared_matches_v2) jointure `killer_victim_pairs` + `xuid_aliases`
-2. Résolution des gamertags via `v_gamertag_lookup`
-3. Conversion `timestamp_ms` → `mm:ss`
-4. Affichage : script CLI + éventuellement widget UI dans la page d'un match
-
-**Complexité estimée** : Faible (données déjà disponibles dans `weapon_kills` + vues v6)
-
-**Priorité** : Basse — outil de debug / exploration, non bloquant pour les features v7
 
 ---
 
@@ -554,30 +450,6 @@ Ce backlog liste les extensions volontairement reportées **après** la livraiso
 **Sans consommateur** : ajouter la colonne maintenant = écriture pour personne, dette de schéma qui grossit. Reporter jusqu'à ce qu'un besoin analytics concret émerge.
 
 **Effort estimé** : rapide (ALTER TABLE + 2 lignes Go) — mais l'analyseur côté consommation est moyen (1 commit endpoint diag ou CLI).
-
----
-
-### [coach/prestige] V2.1 — Job GC `coach_advisor_template_gc`
-
-**Idée** : job nocturne qui supprime les templates `source='coach_synthesized'` avec `usage_count=0` et `updated_at > 90 j`.
-
-**Pré-requis** :
-- Mesure post-livraison V2 du volume de templates synthétisés.
-- Si volume reste < 200 templates synthétisés total, ne rien faire.
-
-**Effort estimé** : rapide (1 commit avec scheduler).
-
----
-
-### [coach/prestige] V2.1 — Compteurs expvar
-
-**Idée** : ajouter des compteurs `coach_proposals_generated_total{kind,origin}`, `coach_proposals_accepted_total{kind,origin}`, `coach_proposals_completed_total` pour mesurer l'efficacité du coach proactif vs user / pilot_mode.
-
-**Pré-requis** :
-- Conformité ADR 0009 (expvar stdlib).
-- Décision sur les labels (kind, origin, signal_kind ?) pour ne pas exploser la cardinalité.
-
-**Effort estimé** : rapide.
 
 ---
 
