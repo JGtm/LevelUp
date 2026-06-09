@@ -1,3 +1,37 @@
+## [2026-06-09] Feature Bonus FDA — toggle légende ECharts native sur graphes Frags/Morts (Solo + Escouade) — Complété
+
+**Statut** : Complété. TSC clean, 6 tests SessionFdaBars verts. Non commité.
+
+**Décision** : Légende ECharts native (`legend.data: ['Bonus']`, `legend.selected: { Bonus: showBonus }`) + `onEvents.legendselectchanged` → React state, compatible `notMerge: true` de ChartCard. Grid bottom 36→56px. Valeur Bonus = assists/3, série stackée sur Frags uniquement (`stack: 'fda'` / `stack: r.player`). Couleur `chart-series-5`. Fichiers touchés : `ChartCard.tsx` (prop `onEvents`), `SessionFdaBars.tsx`, `squadPerMinuteChart.ts`, `SquadPerMinuteChart.tsx`.
+
+---
+
+## [2026-06-09] Coach V3 Phase C — re-key squad_member par xuid (pré-requis identité) — Complété (commit 131a29c8)
+
+**Statut** : Complété, testé, commité `131a29c8` sur branche `feat/coach-v3-squad`. Migration + prestige + garde shared_social verts ; gofmt + go-vet OK.
+
+**Contexte** : 1ʳᵉ tranche d'implémentation de Phase C (squad coach). Investigation préalable : l'entité `Squad`/`SquadMember`/`SquadRepo` existe déjà (`shared_social.duckdb`) mais (a) `squad_member` était clé `user_id`, et (b) `user_id` du système prestige = **player_slug** (vérifié front : `useChallenges(playerSlug, …)`), pas le xuid. Or la mesure de progression se fait sur `shared.match_participants` (clé xuid) et un ami hors-app n'a pas de slug. Aucun endpoint de création d'escouade n'a jamais été livré (server.go : seules les routes squad_challenge) → toute l'infra Squad est du scaffolding ; `squad_member` prouvablement vide.
+
+**Décision/impl** : re-key `squad_member` en clé **xuid** (universelle) + `user_id`(slug) **optionnel** (renseigné = membre-user = accès lecture/écriture). Nouvelle migration `rekey_squad_member_xuid` (DROP+recreate, sûr car vide ; DuckDB ne permet pas de redéfinir une PK in place) ajoutée à `canonicalOrder`. `SquadMember{Xuid, UserID?}`. `PrestigeSquadRepo` : SQL sur xuid + `COALESCE(user_id,'')` pour scan NULL-safe. Whitelist `no_attach_on_social` enrichie. **Annexe** : `world_csr_leaderboard_latest_by_batch` ajoutée à `canonicalOrder` (complétude pré-existante manquante, `TestCanonicalOrderCompleteness` rouge sur la branche — sans rapport squad).
+
+**⚠️ Travail concurrent détecté** : pendant la session, l'arbre de travail a reçu des modifs **non issues de cette tâche** — feature frontend « Bonus FDA » (`SessionFdaBars.tsx`, `SquadPerMinuteChart.tsx`, `squadPerMinuteChart.ts`) + l'entrée thought_log ci-dessous. **Non touchées** (isolation par chemin : je n'ai stagé que mes 6 fichiers Go). Front Phase C **différé** (collision potentielle sur `features/squad/`).
+
+**Tranche 2 — cœur no-overlap (commit `473f8bb5`)** : `squad_progress.go` — `MatchCountsForSquad` / `OtherKnownTeammates` / `FilterSquadMatches`, pure logique zéro DB, encode la règle « session » (roster complet présent ET aucun autre coéquipier connu présent, randoms ignorés). Tests fixtures verts (trio/duo/session). Résolveur slug↔xuid identifié : `cfg.LoadPlayers(titleSlug)` → `[]PlayerSummary{PlayerSlug, Gamertag, XUID}` (match par XUID).
+
+**Prochaine étape** (routes validées user) : (3) squad CRUD service + `AppUserResolver` (xuid→slug via `cfg.LoadPlayers`) + endpoints HTTP `POST/GET /players/{slug}/squads`, `POST /squads/{id}/members`, `DELETE /squads/{id}/members/{xuid}` ; (4) câbler `FilterSquadMatches` à `shared.match_participants` + progression `squad_challenge` ; (5) squad coach (profil agrégé + signal + filtre pool). Front (strip/drawer/CoachFocusCard) repoussé (modifs FDA user en cours sur `features/squad/`).
+
+## [2026-06-09] Feature Bonus FDA — toggle légende "Bonus" sur graphes Frags/Morts (Solo + Escouade) — Complété
+
+**Statut** : Complété. TSC clean, 6 tests SessionFdaBars passent. Non commité.
+
+**Décision** : Bonus = assists/3, empilé sur la barre Frags via `stack: 'fda'` (Solo) / `stack: r.player` (Escouade). React state (pas légende ECharts native) car `notMerge={true}` dans ChartCard reset le selectedState à chaque re-render. Bouton toggle rendu via `children` slot ChartCard : carré coloré + texte "Bonus" barré quand inactif. Label Frags masqué au niveau data quand Bonus actif (label Bonus s'affiche en haut de la stack). Tooltip filtré pour supprimer les entrées Bonus valeur=0 (positions Morts/Assists). Token couleur `chart-series-5` (cyan/vert selon palette).
+
+**Fichiers modifiés** : `SessionFdaBars.tsx`, `squadPerMinuteChart.ts`, `SquadPerMinuteChart.tsx`.
+
+**Prochaine étape** : Commit + test visuel.
+
+---
+
 ## [2026-06-09] Robustesse persist : Phase 1 (recovery périodique + purge bruyante) + [A] retry + [G] tests — Complété
 
 **Statut** : Complété (validé local). `go build ./internal/persist/... ./cmd/server/...` OK ; `go test ./internal/persist/` (non-integration) vert ; nouveaux tests `-race` verts ; `go test -tags integration ./internal/persist/` vert (12s, cgo dispo) ; `go vet` (avec et sans tag integration) clean. Branche `feat/persist-robustness` (depuis `feat/leaderboard-csr-followup`). **Non commité**.
