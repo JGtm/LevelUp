@@ -87,7 +87,9 @@ function TrendBadge({ trend }: { trend?: LOWESSTrend }) {
   const { t } = useProfileI18n()
   if (!trend || !trend.Slope || !trend.Window) return null
   const positive = (trend.Slope ?? 0) > 0
-  const colorToken = positive ? 'outcome-win' : 'outcome-loss'
+  // Soft-négatif neutralisé (Phase A) : le rouge d'alerte passe en token neutre
+  // `info` — le « cap » prominent et son interprétation vivent dans CoachFocusCard.
+  const colorToken = positive ? 'outcome-win' : 'info'
   return (
     <span
       className="rounded-full px-2 py-0.5 text-xs font-medium"
