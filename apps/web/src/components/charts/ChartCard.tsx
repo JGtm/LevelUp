@@ -70,6 +70,8 @@ export interface ChartCardProps<T = unknown> {
   className?: string
   /** Slot enfant (legende custom, footer note...). */
   children?: ReactNode
+  /** Handlers d'événements ECharts (ex. legendselectchanged). Forwarded à ReactECharts onEvents. */
+  onEvents?: Record<string, (params: unknown) => void>
 }
 
 /**
@@ -87,6 +89,7 @@ export function ChartCard<T = unknown>({
   buildOption,
   className = '',
   children,
+  onEvents,
 }: ChartCardProps<T>) {
   const isEmpty = !loading && !error && series.length === 0
   // Le themeVersion s'incrémente lors d'un toggle data-theme : on l'inclut
@@ -142,6 +145,7 @@ export function ChartCard<T = unknown>({
               lazyUpdate
               theme={undefined}
               opts={{ devicePixelRatio: window.devicePixelRatio }}
+              onEvents={onEvents}
               data-testid="chart-card-echarts"
             />
           </Suspense>
