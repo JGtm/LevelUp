@@ -52,7 +52,7 @@ func newPatternsTestPDB(t *testing.T) *PlayerDB {
 
 	mustExec(t, playerSQL, `CREATE TABLE player_match_enrichment (
 		match_id VARCHAR, performance_score DOUBLE, session_id VARCHAR,
-		is_with_friends BOOLEAN, engagement_score DOUBLE, residual_brut DOUBLE)`)
+		is_with_friends BOOLEAN, engagement_score DOUBLE, engagement_score_brut DOUBLE)`)
 	mustExec(t, playerSQL, `INSERT INTO player_match_enrichment VALUES
 		('m1', 0.8, 's1', TRUE, 0.6, 0.1)`)
 
