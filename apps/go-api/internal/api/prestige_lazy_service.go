@@ -419,6 +419,69 @@ func (l *LazyPrestigeService) RefreshSquadPool(ctx context.Context, squadID, tit
 	return svc.RefreshSquadPool(ctx, squadID, titleSlug, requestedBy)
 }
 
+func (l *LazyPrestigeService) CreateSquad(ctx context.Context, req prestige.CreateSquadRequest) (prestige.Squad, error) {
+	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, req.CreatedBy)
+	if err != nil {
+		return prestige.Squad{}, err
+	}
+	w, err := acquireSharedSocialWriter(pdb)
+	if err != nil {
+		return prestige.Squad{}, err
+	}
+	defer w.Release()
+	return svc.CreateSquad(ctx, req)
+}
+
+func (l *LazyPrestigeService) ListSquadsForUser(ctx context.Context, userID string) ([]prestige.Squad, error) {
+	svc, err := l.resolveByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return svc.ListSquadsForUser(ctx, userID)
+}
+
+func (l *LazyPrestigeService) GetSquad(ctx context.Context, id string) (prestige.Squad, error) {
+	svc, err := l.resolve(ctx)
+	if err != nil {
+		return prestige.Squad{}, err
+	}
+	return svc.GetSquad(ctx, id)
+}
+
+func (l *LazyPrestigeService) ListSquadMembers(ctx context.Context, squadID string) ([]prestige.SquadMember, error) {
+	svc, err := l.resolve(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return svc.ListSquadMembers(ctx, squadID)
+}
+
+func (l *LazyPrestigeService) AddSquadMember(ctx context.Context, squadID string, member prestige.SquadMember, requestedBy string) error {
+	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, requestedBy)
+	if err != nil {
+		return err
+	}
+	w, err := acquireSharedSocialWriter(pdb)
+	if err != nil {
+		return err
+	}
+	defer w.Release()
+	return svc.AddSquadMember(ctx, squadID, member, requestedBy)
+}
+
+func (l *LazyPrestigeService) RemoveSquadMember(ctx context.Context, squadID, xuid, requestedBy string) error {
+	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, requestedBy)
+	if err != nil {
+		return err
+	}
+	w, err := acquireSharedSocialWriter(pdb)
+	if err != nil {
+		return err
+	}
+	defer w.Release()
+	return svc.RemoveSquadMember(ctx, squadID, xuid, requestedBy)
+}
+
 func (l *LazyPrestigeService) EnablePilotMode(ctx context.Context, userID, titleSlug string) (prestige.PilotModeAttribution, error) {
 	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, userID)
 	if err != nil {

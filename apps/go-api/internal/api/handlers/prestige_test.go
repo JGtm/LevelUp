@@ -132,6 +132,24 @@ func (m *mockPrestigeService) ListSquadChallenges(ctx context.Context, _ string)
 func (m *mockPrestigeService) RefreshSquadPool(ctx context.Context, _, _, _ string) ([]prestige.Template, error) {
 	return nil, nil
 }
+func (m *mockPrestigeService) CreateSquad(ctx context.Context, _ prestige.CreateSquadRequest) (prestige.Squad, error) {
+	return prestige.Squad{}, nil
+}
+func (m *mockPrestigeService) ListSquadsForUser(ctx context.Context, _ string) ([]prestige.Squad, error) {
+	return nil, nil
+}
+func (m *mockPrestigeService) GetSquad(ctx context.Context, _ string) (prestige.Squad, error) {
+	return prestige.Squad{}, nil
+}
+func (m *mockPrestigeService) ListSquadMembers(ctx context.Context, _ string) ([]prestige.SquadMember, error) {
+	return nil, nil
+}
+func (m *mockPrestigeService) AddSquadMember(ctx context.Context, _ string, _ prestige.SquadMember, _ string) error {
+	return nil
+}
+func (m *mockPrestigeService) RemoveSquadMember(ctx context.Context, _, _, _ string) error {
+	return nil
+}
 func (m *mockPrestigeService) EnablePilotMode(ctx context.Context, _, _ string) (prestige.PilotModeAttribution, error) {
 	return prestige.PilotModeAttribution{}, nil
 }
