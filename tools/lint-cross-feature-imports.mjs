@@ -70,6 +70,11 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'engagement=>squad',
   // Home orchestre prestige + palmares + media + match-history
   'home=>prestige',
+  // Ascension EST l'UI Prestige (objectifs/arcs/coach) → dépendance durable.
+  'ascension=>prestige',
+  // SquadFocusStrip consomme les hooks Prestige escouade (roster CRUD + défis +
+  // évaluation) — Phase C, dépendance durable comme home=>prestige.
+  'squad=>prestige',
   'home=>palmares',
   'home=>media',
   'home=>match-history',

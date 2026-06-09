@@ -28,7 +28,9 @@ const WEB_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'apps', '
 // exports=88 : buildSessionOcdrBarsOption (SessionOcdrBars, pas encore consommé côté layout).
 // types=86 : PageUnavailableAction (page-unavailable.tsx, ADR 0024 — pas encore consommé
 //   par les callers extérieurs ; TeamBanner + CoachingTipsManifestKey + divers WIP).
-const THRESHOLDS = { files: 31, exports: 88, types: 86 }
+// types=87 (2026-06-09) : SquadParticipantProgress (lib/prestige.ts, Phase C) — surface
+//   API de l'endpoint evaluate, consommée par l'UI de progression d'escouade à venir.
+const THRESHOLDS = { files: 31, exports: 88, types: 87 }
 
 function knipJson() {
   try {
