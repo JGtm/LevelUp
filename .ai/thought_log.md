@@ -1,3 +1,22 @@
+## [2026-06-09] Audit de pertinence du BACKLOG + plans dédiés — Complété (docs)
+
+**Statut** : Complété (docs uniquement, non commité). Branche `feat/leaderboard-csr-followup`.
+
+**Demande** : trier le backlog (items à faire vs déjà faits vs caducs), puis préparer des plans détaillés groupés pour les items restants pertinents.
+
+**Méthode** : chaque entrée croisée avec l'état réel du code via 5 agents d'exploration (auth, persist, frontend, CSR/leased-writer/feedback, coach×prestige) + un agent dédié au mécanisme de convergence. Vérité = le code, pas les dates du backlog.
+
+**Constats clés** :
+- **Faits → archivés** : go-live cutover (Python `src/` retiré de `main`), CSR/CSR ATH (cron mondial `world_leaderboard_cron.go`), consolidation auth ADR 0023 (phases 3a/3b/3c), persist gap [D] circuit breaker, leased-writer intégré, nettoyage `PlayerScopeNav` (knip), feedback-drawer mergé sur `main`.
+- **Caducs retirés** (sauf Kong) : frontend/nav, feedback-drawer labels, Post-Merge Validation. Kong conservé avec note « spec à re-écrire pour Go » (refs Python supprimées).
+- **Recouvrement persist/convergence** : la convergence autonome (`internal/sync/convergence.go`) rattrape les matchs *insérés mais non enrichis* à chaque cycle ; le WAL+`RecoverPending` absorbe les *échecs d'écriture*. Cas distincts → retry [A] non urgent. Les `/health*` sont read-only (l'ART venait d'un *heal post-sync* `ON CONFLICT`, décommissionné 01/06) → `/health/persist` read-only sans risque.
+
+**Décisions produit (via questions)** : télémétrie prestige **parkée** (but = tuner le coach, mais aucune question de tuning concrète) ; arcs cross-titre = **table de jointure** `arc_titles` (backend-ready, UX hors périmètre) ; coach négatif = **neutre/soft** avec mini-spec UX dédiée ; persist **dégraissé** ([G]+[E] cœur, [A] optionnel, [B] parké).
+
+**Livrables** : 4 plans créés (`PLAN_PERSIST_ROBUSTNESS.md`, `PLAN_CROSS_TITLE_ARCS_BACKEND.md`, `PLAN_COACH_V3_GENERATION.md`, `PLAN_AUTH_TOKENS_ENCRYPTION_AT_REST.md`) ; `PLAN_WEB_API_TYPES_MIGRATION.md` conservé tel quel ; `BACKLOG.md` réorganisé (archives + pointeurs + marqueurs ⏸️).
+
+**Prochaine étape** : aucune action code. Items « gardés de côté » (weapon_family, Tauri, push externes) laissés en l'état sur demande user.
+
 ## [2026-06-09] Page Escouade : session affichée = composition EXACTE (intersection + ré-ancrage) — Complété
 
 **Statut** : Complété (validé local). Go : `go test ./internal/service/` vert (dont nouveaux tests intersection), build module CGO + `go vet ./...` OK. Front : typecheck 0, `npm run lint` 0 erreur, vitest complet 1785 OK. Non commité. Branche `feat/leaderboard-csr-followup`.
