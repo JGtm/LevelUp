@@ -295,7 +295,11 @@ func NewRouter(
 	if pb, err := NewPrestigeBundle(cfg.RepoRoot, reg.resolve, cfg.PrestigeEnabled); err != nil {
 		slog.Warn("prestige_bundle_init_failed", "err", err.Error())
 	} else {
-		prestigeBundle = pb
+		prestigeBundle = pb.WithSquadProfile(newSquadPerfProfileProvider(
+			func() ([]domain.PlayerSummary, error) { return cfg.LoadPlayers() },
+			reg.resolve,
+			defaultProgressionTitleSlug(),
+		))
 		// Phase 2 plan stabilisation 2026-05-22 : enregistrer le bundle sur
 		// le registry pour fermeture au shutdown (évite la fuite de refCount
 		// sur metadata.duckdb qui causait le verrou au hot-reload Air).
