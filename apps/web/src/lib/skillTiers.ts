@@ -84,3 +84,34 @@ export function gridForRatingTypes(ratingTypes: Array<string | null | undefined>
   const upper = ratingTypes.map(t => (t ?? '').toUpperCase()).filter(Boolean)
   return upper.length > 0 && upper.every(t => t === 'CSR') ? CSR_TIER_GRID : LUSR_TIER_GRID
 }
+
+/** Position d'un rating à l'intérieur de son sous-palier courant. */
+export interface SubTierPosition {
+  /** Avancement [0,1) vers le sous-palier suivant. */
+  pct: number
+  /** Borne basse (sur l'échelle du rating) du sous-palier courant. */
+  subTierMin: number
+  /** Largeur du sous-palier sur l'échelle du rating. */
+  subTierWidth: number
+}
+
+/**
+ * Position d'un `ratingValue` dans son sous-palier courant, selon la grille.
+ *
+ * Indispensable parce que la largeur d'un sous-palier N'EST PAS constante :
+ * CSR = 50 pts partout, mais LUSR (échelle legacy 1000-2000) varie selon le
+ * tier (Bronze 200/6≈33, Argent 200/3≈67, Platine 200/2=100…). Calculer la
+ * progression avec une largeur fixe (l'ancien `rating mod 50`) faussait la
+ * barre LUSR et faisait disparaître la portion "avant match".
+ *
+ * Retourne `null` pour le palier ouvert (Onyx, `subTiers ≤ 1`) ou hors grille :
+ * pas de sous-palier suivant → pas de barre de progression significative.
+ */
+export function subTierPosition(grid: SkillTierGrid, ratingValue: number): SubTierPosition | null {
+  const tier = grid.tiers.find(t => ratingValue >= t.min && ratingValue < t.max)
+  if (!tier || tier.subTiers <= 1) return null
+  const subTierWidth = (tier.max - tier.min) / tier.subTiers
+  const subIndex = Math.floor((ratingValue - tier.min) / subTierWidth)
+  const subTierMin = tier.min + subIndex * subTierWidth
+  return { pct: (ratingValue - subTierMin) / subTierWidth, subTierMin, subTierWidth }
+}

@@ -6,9 +6,12 @@
  */
 import { tokenCssVar } from '@/lib/accessibility'
 import { skillDeltaScale } from '@/lib/accessibility/scales'
+import { gridForRatingTypes, subTierPosition } from '@/lib/skillTiers'
 import { MATCH_VIEW_TEXT, type MatchViewLocale } from './i18n'
 import type { MatchViewHeader as MatchViewHeaderData, MatchViewRank } from '@/lib/api/types'
 import { nextTierLabel } from './MatchHeader.utils'
+
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
 
 interface PerfRankRowProps {
   header: MatchViewHeaderData
@@ -25,15 +28,29 @@ export function PerfRankRow({ header, rank, perfColor, locale }: PerfRankRowProp
       ? tokenCssVar(skillDeltaScale(rank.delta_value))
       : 'inherit'
 
-  // Barre composite de progression dans le tier.
-  // tierSize = 50 pts (même constante que le backend buildRankBlock).
-  const TIER_SIZE = 50
-  const rankDeltaPct = rank.delta_value != null ? rank.delta_value / TIER_SIZE : 0
-  const rankCurrentFill = rank.progress_pct ?? null
-  // Position avant ce match (clampée à [0, 1] si le delta a changé de tier)
+  // Barre composite de progression DANS le sous-palier courant.
+  //
+  // Calculée depuis `numeric_value` + la grille réelle du type de rating (CSR =
+  // sous-paliers de 50 pts ; LUSR = échelle legacy 1000-2000 avec sous-paliers
+  // de largeur variable 33/67/100 selon le tier). L'ancienne reconstruction
+  // `progress_pct - delta/50` supposait à tort 50 pts pour TOUS les ratings :
+  // sur LUSR la base "avant match" tombait sous 0 et la barre passait entièrement
+  // en vert même sans changement de sous-palier (cf. thought_log 2026-06-09).
+  const grid = gridForRatingTypes([rank.rating_type])
+  const currentPos =
+    rank.numeric_value != null ? subTierPosition(grid, rank.numeric_value) : null
+
+  // Position courante (après match) dans le sous-palier.
+  const rankCurrentFill = currentPos ? currentPos.pct : null
+  // Position avant ce match, ramenée DANS le sous-palier courant : si le match
+  // a fait entrer dans un nouveau sous-palier, "avant" était sous la borne basse
+  // → clampé à 0 (barre qui se remplit depuis le bas du nouveau palier).
   const rankBeforeFill =
-    rankCurrentFill != null
-      ? Math.max(0, Math.min(1, rankCurrentFill - rankDeltaPct))
+    currentPos && rank.numeric_value != null
+      ? clamp01(
+          (rank.numeric_value - (rank.delta_value ?? 0) - currentPos.subTierMin) /
+            currentPos.subTierWidth,
+        )
       : null
   // Portion stable = la plus petite des deux positions
   const rankBaseFill = rankCurrentFill != null && rankBeforeFill != null
@@ -49,9 +66,9 @@ export function PerfRankRow({ header, rank, perfColor, locale }: PerfRankRowProp
       ? Math.abs(rankCurrentFill - rankBeforeFill) * 100
       : 0
   const rankDeltaColor =
-    rankDeltaPct > 0
+    (rank.delta_value ?? 0) > 0
       ? tokenCssVar('divergent-pos')
-      : rankDeltaPct < 0
+      : (rank.delta_value ?? 0) < 0
         ? tokenCssVar('divergent-neg')
         : tokenCssVar('divergent-neutral')
 
@@ -120,6 +137,7 @@ export function PerfRankRow({ header, rank, perfColor, locale }: PerfRankRowProp
               <div className="relative h-2 w-full overflow-hidden rounded-sm bg-muted">
                 {/* Portion stable (position avant le match) */}
                 <div
+                  data-testid="rank-progress-base"
                   className="absolute inset-y-0 left-0"
                   style={{
                     width: `${(rankBaseFill * 100).toFixed(1)}%`,
@@ -129,6 +147,7 @@ export function PerfRankRow({ header, rank, perfColor, locale }: PerfRankRowProp
                 {/* Segment delta (gain ou perte ce match) */}
                 {rankDeltaWidth > 0.1 && (
                   <div
+                    data-testid="rank-progress-delta"
                     className="absolute inset-y-0"
                     style={{
                       left: `${rankDeltaStart.toFixed(1)}%`,
