@@ -1,3 +1,22 @@
+## [2026-06-09] Match View : barre de progression rang « tout vert » (base bleue absente) sur LUSR — Complété
+
+**Statut** : Complété (validé local : vitest skillTiers + MatchHeader 36 OK, typecheck 0, eslint 0). Branche `feat/leaderboard-csr-followup`.
+
+**Bug** (user) : dans la Match View, la barre de progression du rang doit montrer la position **avant match** (bleu, `divergent-neutral` = `#60A5FA`) + le delta du match (vert si +, rouge si −). Sur des matchs récents où le joueur a progressé, **seule la barre verte** apparaissait. Question : la base bleue est-elle masquée ou absente ?
+
+**Diagnostic** : base **absente**, pas masquée — les deux segments sont rendus côte à côte (jamais superposés). La cause n'est PAS un franchissement de sous-palier (intuition user confirmée). `MatchHeader.perfRank.tsx` reconstruisait « avant » par `progress_pct − delta/50` avec un `TIER_SIZE = 50` **codé en dur**, et le backend (`buildRankBlock`, `match_view_builders_header.go`) calcule `progress_pct = (rating mod 50)/50`. Or 50 pts n'est juste **que pour le CSR** (300/6). Le **LUSR** est sur l'échelle legacy 1000-2000 avec des sous-paliers de largeur **variable** (Bronze 33, Argent 67, Or 33, Platine 100, Diamant 67 — cf. `LUSR_TIER_GRID` / Go `skill_v2/tier.go`). Sur LUSR, la grille fantôme des 50 pts faisait tomber la base « avant » sous 0 (clampée) dès qu'un gain franchissait une ligne des 50 **à l'intérieur d'un même vrai sous-palier** → barre 100% verte.
+
+**Décision** : fix **100% front, localisé**, pas de changement de contrat API. `rank.progress_pct` (backend) n'était consommé QUE par cette barre (les autres `progress_pct` sont d'autres types : career/home/jobs). Le front reçoit déjà `numeric_value` (rating brut) + `rating_type`, et les grilles exactes vivent déjà côté front (`skillTiers.ts`). On calcule donc la progression dans le **vrai** sous-palier depuis `numeric_value` (et `numeric_value − delta` pour « avant »).
+
+**Implémentation** :
+- `lib/skillTiers.ts` : nouveau helper pur `subTierPosition(grid, ratingValue)` → `{ pct, subTierMin, subTierWidth }`, `null` pour Onyx (palier ouvert) / hors grille.
+- `features/match-view/MatchHeader.perfRank.tsx` : suppression du `TIER_SIZE = 50` et de la reconstruction `progress_pct − delta/50`. `rankCurrentFill` = `subTierPosition(...).pct` ; `rankBeforeFill` = position de `numeric_value − delta` **ramenée dans le sous-palier courant** (clampée [0,1] → franchissement légitime = base 0, barre qui se remplit du bas). `data-testid` ajoutés (`rank-progress-base`, `rank-progress-delta`).
+- Comportement Onyx/Placement inchangé (pas de barre). `rank.progress_pct` reste dans le type API mais n'est plus lu par le front (laissé pour parité de contrat).
+
+**Tests** : `skillTiers.test.ts` (CSR 50 pts, LUSR Platine 100 / Or 33, Onyx→null, hors-grille→null) ; `MatchHeader.test.tsx` : régression LUSR Platine II 1740→1770 (+30, même sous-palier) → **base 40% visible** (l'ancien code donnait 0) ; franchissement 1680→1710 → base 0% / delta 10% (attendu) ; Onyx → pas de barre. Assertion `getByText('Diamond 1')` → `getAllByText` (le label du rang + le label bas-de-barre coexistent désormais).
+
+**Prochaine étape** : vérif visuelle in-app sur un match LUSR récent (base bleue + delta vert). NB : si un jour la barre est réutilisée ailleurs, envisager de corriger aussi `progress_pct` côté backend (même bug 50 pts) — non nécessaire ici car consommateur unique.
+
 ## [2026-06-09] Audit de pertinence du BACKLOG + plans dédiés — Complété (docs)
 
 **Statut** : Complété (docs uniquement, non commité). Branche `feat/leaderboard-csr-followup`.

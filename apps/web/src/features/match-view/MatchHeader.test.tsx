@@ -118,7 +118,8 @@ describe('MatchHeaderCard', () => {
     expect(screen.getByText('87 - 62')).toBeInTheDocument()
     expect(screen.getByText('Classée')).toBeInTheDocument()
     expect(screen.getByText('76')).toBeInTheDocument()
-    expect(screen.getByText('Diamond 1')).toBeInTheDocument()
+    // "Diamond 1" apparaît 2× : libellé du rang + label bas-gauche de la barre.
+    expect(screen.getAllByText('Diamond 1').length).toBeGreaterThan(0)
     expect(screen.getByText('CSR 1452')).toBeInTheDocument()
     expect(screen.getByText('▲ +34')).toBeInTheDocument()
     expect(screen.getByText('Performance')).toBeInTheDocument()
@@ -296,6 +297,84 @@ describe('MatchHeaderCard', () => {
       />,
     )
     expect(screen.getByRole('button', { name: 'Retirer des favoris' })).toBeInTheDocument()
+  })
+})
+
+describe('MatchHeaderCard — barre de progression du rang', () => {
+  // Régression du bug "tout vert" : sur LUSR (échelle legacy, sous-paliers de
+  // largeur ≠ 50), progresser DANS un sous-palier doit laisser la base bleue
+  // visible. L'ancienne reconstruction `progress_pct - delta/50` la mettait à 0.
+  it('LUSR — progression dans le sous-palier : la base (avant match) reste visible', () => {
+    // Platine LUSR [1600,1800], 2 sous-paliers de 100 pts. 1770 = Platine II
+    // (sous-palier [1700,1800]). +30 → avant = 1740, toujours dans le même
+    // sous-palier → base = 40 %, delta = 30 %. (Ancien code : base = 0.)
+    const lusrRank: MatchViewRank = {
+      rating_type: 'LUSR',
+      tier_label: 'Platinum 2',
+      numeric_value: 1770,
+      delta_value: 30,
+      icon_url: null,
+    }
+    renderWithQueryClient(
+      <MatchHeaderCard
+        header={baseHeader}
+        rank={lusrRank}
+        matchId="m1"
+        playerSlug="MonGT"
+        matchTitle="Slayer sur Aquarius"
+        locale="fr"
+      />,
+    )
+    const base = screen.getByTestId('rank-progress-base')
+    expect(base.style.width).toBe('40%')
+    const delta = screen.getByTestId('rank-progress-delta')
+    expect(delta.style.width).toBe('30%')
+    expect(delta.style.left).toBe('40%')
+  })
+
+  it('LUSR — franchissement de sous-palier : base à 0 (barre qui se remplit du bas)', () => {
+    // 1710 = Platine II, +30 → avant = 1680 (Platine I, sous-palier inférieur).
+    // "avant" sous la borne du sous-palier courant → base = 0, tout en delta.
+    const lusrRank: MatchViewRank = {
+      rating_type: 'LUSR',
+      tier_label: 'Platinum 2',
+      numeric_value: 1710,
+      delta_value: 30,
+      icon_url: null,
+    }
+    renderWithQueryClient(
+      <MatchHeaderCard
+        header={baseHeader}
+        rank={lusrRank}
+        matchId="m1"
+        playerSlug="MonGT"
+        matchTitle="Slayer sur Aquarius"
+        locale="fr"
+      />,
+    )
+    expect(screen.getByTestId('rank-progress-base').style.width).toBe('0%')
+    expect(screen.getByTestId('rank-progress-delta').style.width).toBe('10%')
+  })
+
+  it('Onyx (palier ouvert) : pas de barre de progression', () => {
+    const onyxRank: MatchViewRank = {
+      rating_type: 'CSR',
+      tier_label: 'Onyx 1600',
+      numeric_value: 1600,
+      delta_value: 12,
+      icon_url: null,
+    }
+    renderWithQueryClient(
+      <MatchHeaderCard
+        header={baseHeader}
+        rank={onyxRank}
+        matchId="m1"
+        playerSlug="MonGT"
+        matchTitle="Slayer sur Aquarius"
+        locale="fr"
+      />,
+    )
+    expect(screen.queryByTestId('rank-progress-base')).toBeNull()
   })
 })
 

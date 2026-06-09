@@ -4,7 +4,7 @@
  * et contre une régression de la logique de choix de grille (CSR vs LUSR vs mixte).
  */
 import { describe, it, expect } from 'vitest'
-import { LUSR_TIER_GRID, CSR_TIER_GRID, gridForRatingTypes } from './skillTiers'
+import { LUSR_TIER_GRID, CSR_TIER_GRID, gridForRatingTypes, subTierPosition } from './skillTiers'
 
 describe('grilles de paliers', () => {
   for (const [name, grid] of [['LUSR', LUSR_TIER_GRID], ['CSR', CSR_TIER_GRID]] as const) {
@@ -42,5 +42,42 @@ describe('gridForRatingTypes', () => {
   it('vide ou null/undefined → grille LUSR (défaut)', () => {
     expect(gridForRatingTypes([])).toBe(LUSR_TIER_GRID)
     expect(gridForRatingTypes([null, undefined])).toBe(LUSR_TIER_GRID)
+  })
+})
+
+describe('subTierPosition', () => {
+  it('CSR : sous-paliers de 50 pts (Diamant)', () => {
+    // Diamant CSR [1200,1500], 6 sous-paliers de 50. 1452 → sous-palier [1450,1500].
+    const p = subTierPosition(CSR_TIER_GRID, 1452)
+    expect(p).not.toBeNull()
+    expect(p!.subTierMin).toBe(1450)
+    expect(p!.subTierWidth).toBe(50)
+    expect(p!.pct).toBeCloseTo(0.04, 5)
+  })
+
+  it('LUSR : largeur de sous-palier variable selon le tier (Platine = 100)', () => {
+    // Platine LUSR [1600,1800], 2 sous-paliers de 100. 1770 → [1700,1800].
+    const p = subTierPosition(LUSR_TIER_GRID, 1770)
+    expect(p).not.toBeNull()
+    expect(p!.subTierMin).toBe(1700)
+    expect(p!.subTierWidth).toBe(100)
+    expect(p!.pct).toBeCloseTo(0.7, 5)
+  })
+
+  it('LUSR : Or = sous-paliers de 33.3 pts (≠ 50)', () => {
+    // Or LUSR [1400,1600], 6 sous-paliers ≈ 33.33. 1452 → [1433.3,1466.7].
+    const p = subTierPosition(LUSR_TIER_GRID, 1452)
+    expect(p).not.toBeNull()
+    expect(p!.subTierWidth).toBeCloseTo(33.333, 2)
+    expect(p!.subTierMin).toBeCloseTo(1433.333, 2)
+  })
+
+  it('palier ouvert (Onyx) → null', () => {
+    expect(subTierPosition(CSR_TIER_GRID, 1600)).toBeNull()
+    expect(subTierPosition(LUSR_TIER_GRID, 2100)).toBeNull()
+  })
+
+  it('hors grille (sous le plancher) → null', () => {
+    expect(subTierPosition(LUSR_TIER_GRID, 500)).toBeNull()
   })
 })
