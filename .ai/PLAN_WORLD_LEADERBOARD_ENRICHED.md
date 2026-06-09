@@ -1,0 +1,520 @@
+# Plan — Leaderboard mondial enrichi (stats joueur par saison/playlist)
+
+> **Créé le** : 2026-06-09
+> **Statut** : Phase A — Vérification préalable (à faire)
+> **Branche cible** : à créer depuis `main` (ex. `feat/world-leaderboard-enriched`)
+> **Branche courante au moment de l'écriture** : `feat/coach-v3-squad` — **ne pas commencer sur cette branche**
+
+---
+
+## Objectif
+
+Enrichir le classement CSR mondial (200 → 100 joueurs) avec des stats réelles par saison ET par playlist :
+FDA, temps de jeu, matchs joués, taux de victoire (dérivé), K/D/A, évolution de rang vs saison précédente,
+podium SVG flat top 3.
+
+---
+
+## Ce qui existe déjà (vérifié 2026-06-09)
+
+| Composant | Fichier | État |
+|-----------|---------|------|
+| Domain types | `internal/domain/leaderboard.go` | ✅ Exists — `LeaderboardEntry`, `LeaderboardCategory` |
+| World repo (lecture + snapshot) | `internal/platform/duckdb/leaderboard_world_repo.go` | ✅ Exists — `GetCSRWorldLeaderboard`, `InsertWorldCSRSnapshot`, `GetWorldLeaderboardCatalog` |
+| Migration table CSR | `internal/migration/steps_world_csr_leaderboard.go` | ✅ Exists — `world_csr_leaderboard_snapshots` + vue `world_csr_leaderboard_latest` |
+| Migration vue batch | `internal/migration/steps_world_csr_leaderboard_latest_by_batch.go` | ✅ Exists |
+| Scraper Halo Waypoint | `internal/platform/halo/leaderboard_scraper.go` | ✅ Exists |
+| Cron daily | `internal/scheduler/world_leaderboard_cron.go` | ✅ Exists |
+| Service | `internal/service/leaderboard_service.go` | ✅ Exists |
+| Handler HTTP | `internal/api/handlers/leaderboard.go` | ✅ Exists |
+| Client `GetMatchHistory` | `internal/sync/halo_client.go:197` | ✅ Exists — signature connue |
+| Client `GetMatchStats` | `internal/sync/halo_client.go:249` | ✅ Exists — retourne `map[string]any` brut |
+
+**À créer (Phases B–E) :**
+- `internal/migration/steps_shared_world_player_season_stats.go`
+- `internal/platform/duckdb/world_player_stats_repo.go` (UpsertPlayerSeasonStats)
+- `internal/service/world_player_stats_aggregator.go`
+- `cmd/backfill-world-player-stats/main.go`
+- Extensions frontend (Phase E)
+
+---
+
+## Contraintes API critiques (vérifiées dans le code)
+
+### `GetMatchHistory` — signature réelle
+```go
+func (c *HaloAPIClient) GetMatchHistory(
+    ctx context.Context,
+    gamertag, matchType string,  // gamertag DOIT être fmt.Sprintf("xuid(%s)", xuid)
+    start, count int,            // count max = 25
+) ([]MatchHistoryEntry, error)
+
+type MatchHistoryEntry struct {
+    MatchID   string
+    StartTime string   // ISO 8601
+}
+```
+
+**⚠️ CRITIQUE** : le param `gamertag` doit être `xuid(NNN)` — pas un gamertag textuel.
+L'API retourne une réponse stale figée (pas 404) si on passe un gamertag texte.
+→ Toujours résoudre gamertag → xuid **avant** d'appeler GetMatchHistory.
+
+**`GetMatchHistory` ne retourne que `MatchID + StartTime`** — aucune info playlist.
+Le pré-filtrage par playlist avant `GetMatchStats` est impossible.
+
+### `GetMatchStats` — retourne `map[string]any` brut
+```go
+func (c *HaloAPIClient) GetMatchStats(ctx context.Context, matchID string) (map[string]any, error)
+```
+Il faut extraire manuellement : kills, deaths, assists, outcome, playtime, playlist, medals.
+Les chemins exacts dans la map doivent être vérifiés sur fixture ou appel live avant implémentation.
+
+### Rate limiting
+Transparent — géré par `rate.Limiter` dans le client + pooling de tokens existant. Rien à configurer.
+
+---
+
+## Schéma de la table `world_player_season_stats`
+
+**Dans `shared_matches_v2.duckdb`.** UPSERT safe — writer unique (cron OU script, jamais en même temps).
+PK naturelle : `(gamertag, season_id, playlist_id)`.
+
+**Décision win_rate (2026-06-09)** : ne pas stocker `win_rate` comme colonne.
+Stocker `match_count` + `win_count` (+ optionnellement `tie_count`, `dnf_count`) et **dériver win_rate**
+au moment de la lecture (query layer ou API). Cela vaut aussi pour KDA et les stats par minute —
+stocker les compteurs bruts, dériver les ratios à la lecture.
+
+```sql
+CREATE TABLE world_player_season_stats (
+    gamertag        TEXT      NOT NULL,
+    season_id       TEXT      NOT NULL,
+    playlist_id     TEXT      NOT NULL,
+    match_count     INTEGER   NOT NULL DEFAULT 0,
+    win_count       INTEGER   NOT NULL DEFAULT 0,
+    loss_count      INTEGER   NOT NULL DEFAULT 0,
+    tie_count       INTEGER   NOT NULL DEFAULT 0,
+    dnf_count       INTEGER   NOT NULL DEFAULT 0,
+    kills           BIGINT    NOT NULL DEFAULT 0,
+    deaths          BIGINT    NOT NULL DEFAULT 0,
+    assists         BIGINT    NOT NULL DEFAULT 0,
+    playtime_s      BIGINT    NOT NULL DEFAULT 0,
+    medal_count     BIGINT    NOT NULL DEFAULT 0,
+    computed_at     TIMESTAMP NOT NULL,
+    PRIMARY KEY (gamertag, season_id, playlist_id)
+);
+```
+
+**Colonnes dérivées à calculer au moment de la lecture (jamais stockées) :**
+- `win_rate = win_count::DOUBLE / NULLIF(match_count, 0)`
+- `kda = (kills + assists::DOUBLE / 3) / NULLIF(deaths, 0)`
+- `kills_per_min = kills::DOUBLE / NULLIF(playtime_s / 60.0, 0)`
+- `deaths_per_min = deaths::DOUBLE / NULLIF(playtime_s / 60.0, 0)`
+- `assists_per_min = assists::DOUBLE / NULLIF(playtime_s / 60.0, 0)`
+
+## Indicateur de progression inter-saison
+
+**Principe** : pour chaque joueur × playlist, comparer les stats de la saison courante avec
+la saison précédente **où la même playlist existait**. Si la playlist n'existait pas en saison N-1
+on remonte automatiquement à N-2, N-3, etc. Si aucune saison antérieure trouvée → pas d'indicateur.
+
+**Pas de nouvelle colonne** — tout se calcule au moment de la lecture via `LAG()`.
+`PARTITION BY gamertag, playlist_id ORDER BY season_id` saute naturellement les saisons manquantes.
+
+**Query pattern (lecture enrichie) :**
+```sql
+WITH hist AS (
+    SELECT
+        gamertag, season_id, playlist_id,
+        match_count, win_count, kills, deaths, assists, playtime_s, medal_count,
+        -- saison précédente avec la même playlist (saute les saisons manquantes)
+        LAG(season_id)   OVER w AS prev_season_id,
+        LAG(match_count) OVER w AS prev_match_count,
+        LAG(win_count)   OVER w AS prev_win_count,
+        LAG(kills)       OVER w AS prev_kills,
+        LAG(deaths)      OVER w AS prev_deaths,
+        LAG(assists)     OVER w AS prev_assists
+    FROM world_player_season_stats
+    WINDOW w AS (PARTITION BY gamertag, playlist_id ORDER BY season_id)
+)
+SELECT
+    *,
+    -- ratios courants
+    win_count::DOUBLE / NULLIF(match_count, 0)                        AS win_rate,
+    (kills + assists / 3.0) / NULLIF(deaths, 0)                       AS kda,
+    -- ratios saison précédente
+    prev_win_count::DOUBLE / NULLIF(prev_match_count, 0)              AS prev_win_rate,
+    (prev_kills + prev_assists / 3.0) / NULLIF(prev_deaths, 0)        AS prev_kda,
+    -- indicateur directionnel (NULL si pas de saison précédente)
+    CASE
+        WHEN prev_season_id IS NULL THEN NULL
+        WHEN (kills + assists/3.0)/NULLIF(deaths,0)
+           > (prev_kills + prev_assists/3.0)/NULLIF(prev_deaths,0) THEN 'up'
+        WHEN (kills + assists/3.0)/NULLIF(deaths,0)
+           < (prev_kills + prev_assists/3.0)/NULLIF(prev_deaths,0) THEN 'down'
+        ELSE 'stable'
+    END AS kda_trend,
+    CASE
+        WHEN prev_season_id IS NULL THEN NULL
+        WHEN win_count::DOUBLE/NULLIF(match_count,0)
+           > prev_win_count::DOUBLE/NULLIF(prev_match_count,0) THEN 'up'
+        WHEN win_count::DOUBLE/NULLIF(match_count,0)
+           < prev_win_count::DOUBLE/NULLIF(prev_match_count,0) THEN 'down'
+        ELSE 'stable'
+    END AS win_rate_trend
+FROM hist
+WHERE season_id = ?
+  AND gamertag  = ?
+  AND playlist_id = ?
+```
+
+**Types Go (extension `WorldPlayerSeasonStats`) :**
+```go
+// Courant
+WinRate      *float64
+KDA          *float64
+KillsPerMin  *float64
+// Comparaison inter-saison (nil = pas de saison précédente avec cette playlist)
+PrevSeasonID  *string  // ex : "csrseason11-2" — permet à l'UI d'afficher "vs S11"
+PrevWinRate   *float64
+PrevKDA       *float64
+KDATrend      *string  // "up" | "down" | "stable" | nil
+WinRateTrend  *string  // idem
+```
+
+**Types TypeScript (extension `LeaderboardEntry`) :**
+```typescript
+prev_season_id?:  string        // saison de référence pour l'indicateur
+prev_kda?:        number        // KDA saison précédente
+prev_win_rate?:   number        // win_rate saison précédente
+kda_trend?:       'up'|'down'|'stable'   // null = pas d'historique
+win_rate_trend?:  'up'|'down'|'stable'
+```
+
+**Rendu frontend** :
+- `↑` (token `success`) / `↓` (token `outcome-loss`) / `=` (token `info`) / absent si null
+- Tooltip : "vs [prev_season_id]" (ex : "vs Saison 11")
+- Affiché sur les colonnes K/D/A et V% uniquement (pas sur les compteurs bruts)
+
+---
+
+## Volume d'appels API
+
+### Backfill historique (one-shot)
+
+Hypothèse : ~300 matchs/joueur/saison en moyenne (joueurs top, très actifs).
+
+| Étape | Calcul | Appels |
+|-------|--------|--------|
+| Match history pages | 100 joueurs × 13 saisons × 300/25 = 12 pages | ~15 600 |
+| GetMatchStats | 100 joueurs × 13 saisons × 300 matchs | ~390 000 |
+| **Total** | | **~400 000** |
+
+Le backfill tournera plusieurs heures voire une journée.
+
+### Cron daily (delta, saison courante uniquement)
+
+| Étape | Calcul | Appels |
+|-------|--------|--------|
+| GetMatchStats | 100 joueurs × ~5 nouveaux matchs | ~500 |
+
+---
+
+## Playlists par saison — source de vérité
+
+`rankedplaylists.go` est une liste **statique** (16 entrées, `Active bool`) sans mapping saison → playlists.
+Il n'existe **pas** de catalogue "playlist X active à partir de saison Y".
+
+**Source de vérité réelle** : requêter `world_csr_leaderboard_latest` dans la shared DB :
+```sql
+SELECT DISTINCT season_id, playlist_id
+FROM world_csr_leaderboard_latest
+WHERE season_id <> '' AND playlist_id <> ''
+ORDER BY season_id DESC, playlist_id
+```
+Ce résultat reflète ce qui a réellement été scrapé → c'est ça que le backfill doit couvrir.
+
+---
+
+## Phases d'implémentation
+
+### Phase A — Probe E2E sur échantillon ⬅️ PROCHAINE ÉTAPE
+
+**Nature** : script CLI Go de diagnostic, one-shot, **aucun INSERT**. Valide le process complet
+et calibre le backfill avant d'écrire le moindre code de production.
+
+**Fichier** : `cmd/probe-world-stats/main.go` (éphémère — peut être supprimé post-Phase A)
+
+**Ce que Phase A doit valider :**
+1. **XUID resolution via PeopleHub** : taux de succès sur les gamertags du top-100
+2. **Chemins dans `Players[]` de `GetMatchStats`** : comment localiser le joueur par xuid et extraire kills/deaths/assists/outcome/playtime/medals (structure à confirmer sur données réelles)
+3. **Format outcome** : numérique (WIN=2/LOSS=3/TIE=1/DNF=4) ou string ?
+4. **Complétude des playlist IDs** : comparer les IDs rencontrés pendant le fetch avec `rankedplaylists.All()` → documenter les éventuels gaps
+5. **Timing réel** : calibrer le volume et la durée du backfill historique
+6. **Couverture** : si un joueur du snapshot n'a pas de match pour la playlist cible dans la fenêtre saison → rotation sur le joueur suivant du snapshot
+
+**Chemins JSON déjà connus** (vérifiés dans `transforms.go`) :
+- `GetMatchStats` → `MatchInfo.Playlist.AssetId` (playlist_id), `MatchInfo.Playlist.PublicName`
+- Les chemins dans `Players[]` restent à confirmer sur données réelles
+
+**Résolution XUID — via PeopleHub Xbox Live**
+
+Endpoint : `GET https://peoplehub.xboxlive.com/users/me/people/search/decoration/detail,preferredColor?q={gamertag}&maxItems=25`
+
+Headers :
+```
+x-xbl-contract-version: 3
+Authorization: XBL3.0 x={user_hash};{xsts_token}
+Accept-Language: en-us
+```
+
+Réponse : `{"people": [{"gamertag": "...", "xuid": "2535462389823105"}, ...]}`
+
+Auth : chaîne MSAL → Xbox user token → XSTS (`RelyingParty: "http://xboxlive.com"`) → header `XBL3.0`.
+**L'app fait déjà cette chaîne** pour les tokens Halo (même MSAL, relying party différent).
+Point à confirmer en Phase A : est-ce que le XSTS générique (`http://xboxlive.com`) est déjà
+exposé dans l'infra auth, ou faut-il en dériver un nouveau ? Si nouveau → ajouter une méthode
+dans le package `auth` (pas de logique métier dans `auth`, cf. ADR 0023).
+
+La recherche est fuzzy → filtrer le résultat sur `gamertag == cible` (exact, case-insensitive).
+
+**Flags du script :**
+- `--token-gamertag <gt>` — gamertag dont les tokens sont utilisés pour les appels API
+- `--seasons <all|id1,id2>` — saisons à couvrir (défaut : toutes présentes dans le snapshot)
+- `--playlists-per-season <n>` — max playlists par saison à tester (défaut : 3, production : toutes)
+- `--matches <n>` — matchs à fetcher par joueur sélectionné (défaut : 10)
+- `--max-candidates <n>` — max joueurs à essayer par (saison, playlist) avant SKIP (défaut : 5)
+- `--dump-raw` — dump JSON brut du 1er GetMatchStats de la session
+
+**Algorithme :**
+
+```
+ÉTAPE 0 — Matrice saison × playlist depuis le snapshot
+  SELECT DISTINCT season_id, playlist_id
+  FROM world_csr_leaderboard_latest
+  WHERE season_id <> '' AND playlist_id <> ''
+  ORDER BY season_id DESC, playlist_id
+  → matrice complète des combinaisons à couvrir
+
+ÉTAPE 1 — Pour chaque saison (du plus récent au plus ancien)
+  Pour chaque playlist de cette saison (jusqu'à --playlists-per-season) :
+
+    Lire les gamertags du snapshot pour (season_id, playlist_id) — ordre rank ASC (top d'abord)
+
+    Pour chaque gamertag (jusqu'à --max-candidates sans résultat) :
+
+      [XUID resolution]
+      GET peoplehub.xboxlive.com/...?q={gamertag}
+      → Trouver l'entrée dont gamertag correspond exactement (case-insensitive)
+      → Extraire xuid
+      Si échec (rate limit / non trouvé / réseau) → logger XUID_MISS, candidat suivant
+
+      offset = 0
+      accumulator = zéro pour (kills, deaths, assists, wins, losses, ties, dnf, playtime_s, medals)
+
+      BOUCLE GetMatchHistory :
+        GetMatchHistory("xuid("+xuid+")", "matchmaking", offset, 10)
+        Pour chaque {MatchID, StartTime} :
+          Si StartTime < saison.Start → STOP (fin de la fenêtre, matchs trop anciens)
+          Si StartTime > saison.End   → SKIP (trop récent, hors fenêtre)
+
+          GetMatchStats(matchID)
+          → Extraire MatchInfo.Playlist.AssetId
+          Si AssetId != playlist_id cible → SKIP (autre playlist)
+
+          → Localiser xuid du joueur dans Players[]
+          → Extraire kills, deaths, assists, outcome, playtime, medals
+          → Accumuler
+
+          Si --dump-raw ET 1er GetMatchStats de la session → logger map brute complète
+          Logger tout AssetId rencontré → détection passive de gaps rankedplaylists
+
+        Si len(résultats) < 10 → fin de l'historique du joueur, STOP boucle
+        offset += 10
+
+      Si accumulator.match_count > 0 → STOP rotation (on a des données pour ce joueur)
+
+    Si aucun candidat n'a produit de données → logger COVERAGE_GAP (season, playlist)
+
+ÉTAPE 2 — Rapport final
+  Pour chaque (season_id, playlist_id) :
+    gamertag, xuid_resolved, matches_found, source (api | gap)
+    kills, deaths, assists, wins, losses, ties, dnf, playtime_s, medals
+    win_rate (dérivé), kda (dérivé)
+  Résumé global :
+    timing total, timing moyen par match
+    playlist IDs nouveaux vs rankedplaylists.All()
+    (season, playlist) en COVERAGE_GAP
+```
+
+**Phase A terminée quand :**
+- XUID resolution fonctionne (méthode PeopleHub validée ou alternative trouvée)
+- Chemins kills/deaths/assists/outcome/playtime/medals confirmés sur données réelles
+- Timing réel mesuré → calibrage durée backfill
+- Gaps rankedplaylists documentés (ou confirmés vides)
+
+### Phase B — Backend : migration + types + repo
+
+**Migration** `internal/migration/steps_shared_world_player_season_stats.go`
+- CREATE TABLE ci-dessus
+
+**Domain** `internal/domain/leaderboard.go`
+- Nouveau type `WorldPlayerSeasonStats` avec :
+  - compteurs bruts : `MatchCount`, `WinCount`, `LossCount`, `TieCount`, `DnfCount int`, `Kills`, `Deaths`, `Assists`, `PlaytimeSec`, `MedalCount int64`
+  - ratios courants (dérivés, nil si dénominateur nul) : `WinRate`, `KDA`, `KillsPerMin *float64`
+  - comparaison inter-saison (nil si aucune saison précédente avec cette playlist) :
+    `PrevSeasonID *string`, `PrevWinRate`, `PrevKDA *float64`, `KDATrend`, `WinRateTrend *string`
+- Extension de `LeaderboardEntry` avec champs optionnels (pointeurs, `nil` = non enrichi) :
+  `MatchCount *int`, `WinCount *int`, `LossCount *int`, `TieCount *int`, `DnfCount *int`,
+  `Kills *int64`, `Deaths *int64`, `Assists *int64`, `PlaytimeSec *int64`, `MedalCount *int64`,
+  `WinRate *float64`, `KDA *float64`, `KillsPerMin *float64`,
+  `PrevSeasonID *string`, `PrevWinRate *float64`, `PrevKDA *float64`,
+  `KDATrend *string`, `WinRateTrend *string`, `RankDelta *int`
+  
+**Repository** `internal/platform/duckdb/world_player_stats_repo.go` (nouveau fichier)
+- `UpsertPlayerSeasonStats(ctx, db, []WorldPlayerSeasonStats) error` — INSERT OR REPLACE
+- Ratios dérivés calculés dans le SELECT (pas dans l'INSERT)
+
+**Extension `GetCSRWorldLeaderboard`** dans `leaderboard_world_repo.go`
+- LEFT JOIN `world_player_season_stats` pour enrichir les entries
+- `computeRankDelta` : compare rang saison N vs N-1 depuis `world_csr_leaderboard_snapshots`
+
+### Phase C — Fetch : agrégateur + cron enrichi
+
+**Agrégateur** `internal/service/world_player_stats_aggregator.go`
+- Entrée : `xuid`, `seasonID`, `seasonStart/End time.Time`, playlists cibles
+- Appel `GetMatchHistory(ctx, fmt.Sprintf("xuid(%s)", xuid), "matchmaking", offset, 25)`
+- Pour chaque match dans la fenêtre saison → `GetMatchStats(ctx, matchID)`
+- Agréger les compteurs bruts en mémoire (struct `accumulator` par playlist)
+- Arrêter la pagination quand `StartTime < seasonStart`
+- Sortie : `[]WorldPlayerSeasonStats`
+
+**WorldLeaderboardCron étendu** `world_leaderboard_cron.go`
+- Après `scrapeAll`, pour la **saison courante uniquement** :
+  1. Résoudre gamertag → xuid (via `xuid_aliases`)
+  2. `aggregator.FetchAndAggregate(ctx, xuid, currentSeason, lastCheckpoint)` — delta only
+  3. `UpsertPlayerSeasonStats` dans la fenêtre RW minimale
+- Timeout global cycle étendu : 30 min
+
+### Phase D — Script backfill one-shot
+
+**`cmd/backfill-world-player-stats/main.go`** — reprenant, idempotent
+
+**Flags :**
+- `--season <id|all>` — une saison ou toutes (défaut : `all`)
+- `--limit <n>` — nb max de joueurs par saison (défaut 100)
+- `--force` — ré-écrase même si `computed_at` présent
+- `--dry-run` — logs sans INSERT ni checkpoint
+
+**Algorithme :**
+1. Charger le catalogue de saisons via `GetWorldLeaderboardCatalog` (liste saisons + dates)
+2. Pour chaque saison :
+   a. Si données déjà présentes et pas `--force` → skip
+   b. Charger checkpoint JSON si existant
+   c. Lire `world_csr_leaderboard_latest` → liste gamertags (≤ 100)
+   d. Pour chaque gamertag non complété dans checkpoint :
+      - Résoudre gamertag → xuid (via `xuid_aliases` OU lookup API si absent)
+      - Paginer `GetMatchHistory` depuis offset checkpointé
+      - `GetMatchStats` pour chaque match dans la fenêtre saison
+      - Agréger par playlist en mémoire
+      - Upsert dans `world_player_season_stats`
+      - Marquer joueur complet dans checkpoint
+3. Marquer saison complète dans checkpoint
+
+**Checkpoint** (1 JSON par saison, dans `data/checkpoints/backfill-world-{seasonID}.json`) :
+```json
+{
+  "season_id": "csrseason12-1",
+  "completed_gamertags": ["Gamertag1", "Gamertag2"],
+  "in_progress": {
+    "Gamertag3": { "last_match_offset": 75 }
+  },
+  "started_at": "2026-06-09T10:00:00Z",
+  "season_completed": false
+}
+```
+
+### Phase E — Frontend
+
+**TypeScript types** `apps/web/src/lib/api/types.ts` — extension de `LeaderboardEntry` :
+```typescript
+// Compteurs bruts
+match_count?:    number
+win_count?:      number
+loss_count?:     number
+kills?:          number
+deaths?:         number
+assists?:        number
+playtime_seconds?: number
+medal_count?:    number
+rank_delta?:     number | null
+// Ratios courants (calculés côté API, nil si dénominateur nul)
+win_rate?:       number
+kda?:            number
+kills_per_min?:  number
+// Indicateur inter-saison (absent si aucune saison précédente avec cette playlist)
+prev_season_id?:  string
+prev_kda?:        number
+prev_win_rate?:   number
+kda_trend?:       'up' | 'down' | 'stable'
+win_rate_trend?:  'up' | 'down' | 'stable'
+```
+
+**LeaderboardBlock.tsx**
+- Limit CSR world : 200 → 100
+- `PodiumRow` : top 3 en cartes (or/argent/bronze), gamertag, CSR, medals
+- Colonnes table : `# | Joueur | Matchs | V% | K/D/A | Temps | K/min | Δ rang`
+- `RankDeltaBadge` : ↑N (token `success`) / ↓N (token `outcome-loss`) / — (gris)
+- `TrendBadge` : ↑ / ↓ / = avec tooltip "vs [prev_season_id]" — affiché sur V% et K/D/A
+  - `null` (pas d'historique) → badge absent, pas de placeholder
+  - Token `success` pour 'up', token `outcome-loss` pour 'down', token `info` pour 'stable'
+  - **Jamais de rouge vif** — respecter la règle couleur sémantique (`tokenCssVar`)
+- Colonnes stats/min masquées sur mobile (`hidden sm:table-cell`)
+- Tri client sur toutes les colonnes
+
+**Nouveaux composants** `apps/web/src/features/leaderboard/` :
+- `PodiumRow.tsx`, `RichLeaderboardRow.tsx`, `RankDeltaBadge.tsx`
+
+---
+
+## Réutilisation de l'existant
+
+| Existant | Réutilisé pour |
+|----------|----------------|
+| `GetMatchHistory` + `GetMatchStats` | Fetch stats par match |
+| `world_csr_leaderboard_snapshots` | Calcul rank delta |
+| `GetWorldLeaderboardCatalog` | Piloter le backfill (liste saisons + dates) |
+| `InsertWorldCSRSnapshot` pattern (tx atomique) | Modèle pour `UpsertPlayerSeasonStats` |
+| `xuid_aliases` (shared DB) | Résolution gamertag → xuid sans appel API |
+| Rate limiter + pooling existants | Transparent |
+
+---
+
+## Statut des phases
+
+| Phase | Statut | Notes |
+|-------|--------|-------|
+| A — Probe E2E échantillon | ⬜ À faire | Script `cmd/probe-world-stats/main.go` — valide JSON paths + xuid resolution + timing |
+| B — Migration + types + repo | ⬜ À faire | Dépend de Phase A (chemins JSON confirmés) |
+| C — Agrégateur + cron | ⬜ À faire | Dépend de Phase B |
+| D — Script backfill | ⬜ À faire | Dépend de Phase B+C |
+| E — Frontend | ⬜ À faire | Dépend de Phase B (types API) |
+
+---
+
+## Checklist de lancement
+
+- [ ] Créer branche `feat/world-leaderboard-enriched` depuis `main`
+- [ ] Phase A : écrire `cmd/probe-world-stats/main.go`
+- [ ] Phase A : lancer avec `--dump-raw --playlists-per-season 3 --matches 10 --max-candidates 5`
+- [ ] Phase A : confirmer les chemins kills/deaths/assists/outcome/playtime/medals dans GetMatchStats live
+- [ ] Phase A : documenter les gaps rankedplaylists.go (IDs en match_registry absents de la liste statique)
+- [ ] Phase A : noter le taux de résolution xuid via xuid_aliases (objectif > 80%)
+- [ ] Phase A : noter le timing réel par match (base calibrage backfill)
+- [ ] Phase A : documenter les (saison, playlist) sans couverture après rotation 5 candidats
+- [ ] Phase B : migration + types + repo (schéma final basé sur Phase A)
+- [ ] Phase C : agrégateur + cron étendu
+- [ ] Phase D : script backfill avec checkpoint
+- [ ] Phase D : test `--dry-run` sur 1 saison, vérifier reprise après kill
+- [ ] Phase E : frontend + podium
+- [ ] `go test ./apps/go-api/internal/...` vert
+- [ ] Boot serveur → migration appliquée
