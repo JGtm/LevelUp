@@ -75,7 +75,55 @@ func EnrichRegistryFromMetadata(ctx context.Context, metadataDB *sql.DB, row *Ma
 		copied := canonical
 		*f.namePtr = &copied
 	}
+
+	// Fallback ultime pour la PAIRE : si après lookup asset_translations le
+	// pair_name reste un GUID (== pair_id), on le CONSTRUIT depuis le mode
+	// (game_variant) + la map, déjà résolus dans la boucle ci-dessus. Le nom
+	// public Halo d'une paire EST littéralement "{Mode} on {Map}" (ex "Slayer on
+	// Chasm"), et NormalizeModeLabel sait stripper le " on {map}". Sans ça, le
+	// nouveau contenu (maps inédites → paires absentes du catalogue) exposait un
+	// GUID brut comme libellé de mode tant que le drain catalogue n'avait pas
+	// tourné. Pur, zéro HTTP — robuste même si le catalogue est en retard.
+	if row.PairID != nil && needsRegistryNameOverride(row.PairName, *row.PairID) {
+		if constructed, ok := constructPairName(
+			row.GameVariantName, row.GameVariantID, row.MapName, row.MapID,
+		); ok {
+			row.PairName = &constructed
+			row.ModeCategory = determineModeCategory(constructed)
+		}
+	}
 	return nil
+}
+
+// constructPairName fabrique un nom de paire synthétique "{mode} on {map}" à
+// partir du game_variant et de la map, quand l'API/le catalogue n'a pas fourni
+// le nom public de la paire. Retourne ("", false) si l'un des deux est absent
+// ou encore non résolu (== son asset_id brut) — on ne fabrique jamais un nom à
+// partir d'un GUID.
+func constructPairName(gameVariantName, gameVariantID, mapName, mapID *string) (string, bool) {
+	gv := resolvedRegistryName(gameVariantName, gameVariantID)
+	mp := resolvedRegistryName(mapName, mapID)
+	if gv == "" || mp == "" {
+		return "", false
+	}
+	return gv + " on " + mp, true
+}
+
+// resolvedRegistryName retourne le nom trimé s'il s'agit d'un vrai nom (non vide
+// et différent de l'asset_id), sinon "". Sert à ne construire un libellé qu'à
+// partir de valeurs réellement résolues.
+func resolvedRegistryName(name, id *string) string {
+	if name == nil {
+		return ""
+	}
+	n := strings.TrimSpace(*name)
+	if n == "" {
+		return ""
+	}
+	if id != nil && strings.EqualFold(n, strings.TrimSpace(*id)) {
+		return ""
+	}
+	return n
 }
 
 // needsRegistryNameOverride indique qu'un nom d'asset doit être ré-résolu

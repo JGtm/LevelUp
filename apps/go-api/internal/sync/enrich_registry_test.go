@@ -31,7 +31,8 @@ func setupMetaWithTranslations(t *testing.T) *sql.DB {
 		{"playlist-known-uuid", "playlist", "en-US", "Quick Play"},
 		{"map-known-uuid", "map", "en-US", "Aquarius"},
 		{"pair-known-uuid", "pair", "en-US", "Arena:Slayer on Aquarius"},
-		// playlist-unknown-uuid n'a aucune traduction.
+		{"gv-known-uuid", "game_variant", "en-US", "Slayer"},
+		// playlist-unknown-uuid / pair-absent-uuid n'ont aucune traduction.
 	} {
 		if _, err := db.Exec(`INSERT INTO asset_translations VALUES (?, ?, ?, ?)`,
 			kv[0], kv[1], kv[2], kv[3]); err != nil {
@@ -103,6 +104,47 @@ func TestEnrichRegistryFromMetadata_OverridesUUIDFallback(t *testing.T) {
 	}
 	if got := derefSyncStr(rowD.PlaylistName); got != "Quick Play" {
 		t.Errorf("name nil: PlaylistName = %q, want %q", got, "Quick Play")
+	}
+}
+
+// TestEnrichRegistryFromMetadata_ConstructsPairFromParts couvre le cas du
+// nouveau contenu Halo : la PAIRE est absente d'asset_translations (pair_name
+// reste un GUID), MAIS le game_variant et la map y sont. Le fallback doit
+// construire "{mode} on {map}" pour ne jamais exposer un GUID comme libellé.
+func TestEnrichRegistryFromMetadata_ConstructsPairFromParts(t *testing.T) {
+	ctx := context.Background()
+	meta := setupMetaWithTranslations(t)
+
+	pairAbsent := "pair-absent-uuid" // pas de ligne asset_translations[pair]
+	row := &MatchRegistryRow{
+		PairID:          strPtr(pairAbsent),
+		PairName:        strPtr(pairAbsent), // GUID fallback
+		GameVariantID:   strPtr("gv-known-uuid"),
+		GameVariantName: strPtr("gv-known-uuid"), // sera résolu en "Slayer"
+		MapID:           strPtr("map-known-uuid"),
+		MapName:         strPtr("map-known-uuid"), // sera résolu en "Aquarius"
+	}
+	if err := EnrichRegistryFromMetadata(ctx, meta, row); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if got := derefSyncStr(row.PairName); got != "Slayer on Aquarius" {
+		t.Errorf("PairName construit = %q, want %q", got, "Slayer on Aquarius")
+	}
+	// La construction ne doit PAS s'appliquer quand la vraie traduction existe :
+	// pair-known-uuid → "Arena:Slayer on Aquarius" (pas la construction).
+	rowKnown := &MatchRegistryRow{
+		PairID:          strPtr("pair-known-uuid"),
+		PairName:        strPtr("pair-known-uuid"),
+		GameVariantID:   strPtr("gv-known-uuid"),
+		GameVariantName: strPtr("gv-known-uuid"),
+		MapID:           strPtr("map-known-uuid"),
+		MapName:         strPtr("map-known-uuid"),
+	}
+	if err := EnrichRegistryFromMetadata(ctx, meta, rowKnown); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if got := derefSyncStr(rowKnown.PairName); got != "Arena:Slayer on Aquarius" {
+		t.Errorf("PairName traduit = %q, want %q (asset_translations prioritaire)", got, "Arena:Slayer on Aquarius")
 	}
 }
 
