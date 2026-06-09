@@ -15,7 +15,7 @@ const defaultSquadWindowMatches = 50
 // service_squads.go — CRUD du roster d'escouade (entité Squad / SquadMember).
 //
 // Le roster est clé xuid (cf. SquadMember, PLAN_COACH_V3_GENERATION § Identité
-// d'escouade). Les writes vont dans shared_social via SquadRepo. Règle d'accès
+// d'escouade). Les writes passent par SquadRepo (base sociale partagée). Accès
 // « membre-user, sans consentement » : toute mutation exige que requestedBy
 // (player_slug) soit déjà membre-user de l'escouade — sauf CreateSquad, où le
 // créateur fonde l'escouade.
@@ -52,6 +52,8 @@ func (s *service) CreateSquad(ctx context.Context, req CreateSquadRequest) (Squa
 				"squad_id", sq.ID, "xuid", m.Xuid, "err", err)
 		}
 	}
+	slog.InfoContext(ctx, "prestige: squad created",
+		"squad_id", sq.ID, "name", sq.Name, "created_by", req.CreatedBy, "members", len(req.Members))
 	return sq, nil
 }
 
@@ -97,7 +99,12 @@ func (s *service) AddSquadMember(ctx context.Context, squadID string, member Squ
 	if member.JoinedAt.IsZero() {
 		member.JoinedAt = s.deps.Now()
 	}
-	return s.deps.Squads.AddMember(ctx, member)
+	if err := s.deps.Squads.AddMember(ctx, member); err != nil {
+		return err
+	}
+	slog.InfoContext(ctx, "prestige: squad member added",
+		"squad_id", squadID, "xuid", member.Xuid, "by", requestedBy)
+	return nil
 }
 
 // RemoveSquadMember retire un membre (par xuid). requestedBy doit être
@@ -109,7 +116,12 @@ func (s *service) RemoveSquadMember(ctx context.Context, squadID, xuid, requeste
 	if err := s.assertMemberUser(ctx, squadID, requestedBy); err != nil {
 		return err
 	}
-	return s.deps.Squads.RemoveMember(ctx, squadID, xuid)
+	if err := s.deps.Squads.RemoveMember(ctx, squadID, xuid); err != nil {
+		return err
+	}
+	slog.InfoContext(ctx, "prestige: squad member removed",
+		"squad_id", squadID, "xuid", xuid, "by", requestedBy)
+	return nil
 }
 
 // assertMemberUser vérifie que userID (player_slug) est membre-user de
@@ -166,6 +178,9 @@ func (s *service) EvaluateSquadChallenge(ctx context.Context, squadChallengeID, 
 	}
 	progress := AggregateSquadProgress(roster, other, matches, sc.TargetPerMember)
 	s.persistSquadProgress(ctx, squadChallengeID, members, progress)
+	slog.InfoContext(ctx, "prestige: squad challenge evaluated",
+		"squad_challenge_id", squadChallengeID, "roster", len(roster),
+		"candidate_matches", len(matches), "members", len(progress))
 	return progress, nil
 }
 
@@ -183,7 +198,10 @@ func (s *service) SquadOrientation(ctx context.Context, squadID, requestedBy str
 	if err != nil {
 		return "", fmt.Errorf("list members: %w", err)
 	}
-	return s.squadFocusAxis(ctx, members, ""), nil
+	axis := s.squadFocusAxis(ctx, members, "")
+	slog.DebugContext(ctx, "prestige: squad orientation",
+		"squad_id", squadID, "axis", axis, "members", len(members))
+	return axis, nil
 }
 
 // squadChallengeMetric résout la métrique canonique d'un défi via son template.

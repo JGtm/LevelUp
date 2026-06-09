@@ -17,6 +17,7 @@ package api
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -63,6 +64,8 @@ func (p *squadPerfProfileProvider) SquadAxes(ctx context.Context, rosterXUIDs []
 			out = append(out, axes)
 		}
 	}
+	slog.DebugContext(ctx, "prestige: squad profile axes",
+		"roster", len(rosterXUIDs), "with_profile", len(out))
 	return out, nil
 }
 
