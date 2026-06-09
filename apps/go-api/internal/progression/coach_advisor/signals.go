@@ -42,6 +42,8 @@ func signalFromAlert(a coach.Alert) (Signal, bool) {
 	switch a.Type {
 	case coach.AlertTypeLOWESSPositive:
 		return signalFromLOWESS(a), true
+	case coach.AlertTypeLOWESSSoftNegative:
+		return signalFromLOWESSSoftNegative(a), true
 	case coach.AlertTypeCombatPatternActif:
 		return signalFromCombatActif(a), true
 	case coach.AlertTypeCombatPatternDiscret:
@@ -73,6 +75,23 @@ func signalFromLOWESS(a coach.Alert) Signal {
 		LUSRComponent: component,
 		RadarAxis:     axisForLUSRComponent(component),
 		Strength:      clamp01(slope / 0.5),
+		Source:        a,
+	}
+}
+
+// signalFromLOWESSSoftNegative : tendance NÉGATIVE soutenue sur une composante
+// LUSR → opportunité de stabilisation (registre soft). Strength basée sur la
+// MAGNITUDE de la pente (|slope|/0.5), symétrique du positif ; le gate de
+// strength en aval (MinStrength) ne déclenche une proposal que pour une baisse
+// significative.
+func signalFromLOWESSSoftNegative(a coach.Alert) Signal {
+	component := stringParam(a.Params, "component")
+	slope := floatParam(a.Params, "slope")
+	return Signal{
+		Kind:          SignalLOWESSSoftNegative,
+		LUSRComponent: component,
+		RadarAxis:     axisForLUSRComponent(component),
+		Strength:      clamp01(math.Abs(slope) / 0.5),
 		Source:        a,
 	}
 }

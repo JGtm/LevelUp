@@ -54,6 +54,31 @@ func TestSignalsFromAlerts_LOWESSPositive_StrengthScalesWithSlope(t *testing.T) 
 	}
 }
 
+func TestSignalsFromAlerts_LOWESSSoftNegative_StrengthFromMagnitude(t *testing.T) {
+	in := []coach.Alert{
+		mkAlert(coach.AlertTypeLOWESSSoftNegative, map[string]any{
+			"component": "deaths_vs_expected",
+			"slope":     -0.25,
+			"window":    14,
+		}),
+	}
+	got := coach_advisor.SignalsFromAlerts(in)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 signal, got %d", len(got))
+	}
+	s := got[0]
+	if s.Kind != coach_advisor.SignalLOWESSSoftNegative {
+		t.Errorf("Kind: got %q, want lowess_soft_negative", s.Kind)
+	}
+	if s.RadarAxis != "survival" {
+		t.Errorf("RadarAxis: got %q, want survival (via mapping)", s.RadarAxis)
+	}
+	// |slope|=0.25 → strength = |slope|/0.5 = 0.5 (magnitude-based).
+	if s.Strength < 0.49 || s.Strength > 0.51 {
+		t.Errorf("Strength: got %f, want ~0.5", s.Strength)
+	}
+}
+
 func TestSignalsFromAlerts_LOWESS_SaturatesAtOne(t *testing.T) {
 	in := []coach.Alert{
 		mkAlert(coach.AlertTypeLOWESSPositive, map[string]any{
