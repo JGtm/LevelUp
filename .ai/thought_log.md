@@ -1,3 +1,17 @@
+## [2026-06-09] Coach V3 — vérification finale + couverture logging & tests escouade — Complété
+
+**Statut** : Complété. Vérification finale demandée par l'user (« tout est complet et fonctionne bien » + bonne couverture logging dossier dédié + tests). Build Go complet vert ; suites `prestige`/`api`/`api/handlers`/`coach`/`coach_advisor`/`migration`/`platform/duckdb` (complète) vertes ; front vitest 1791/1793.
+
+**Logging (slog → `logs/prestige.log`)** : ajout de traces structurées sur le cycle de vie escouade (convention préfixe `prestige:`, niveau INFO pour les mutations / DEBUG pour les lectures). `service_squads.go` : `squad created` / `squad member added` / `squad member removed` / `squad challenge evaluated` (INFO) + `squad orientation` (DEBUG). `api/prestige_squad_profile.go` : `squad profile axes` (DEBUG, roster vs membres profilés). `AddSquadMember`/`RemoveSquadMember` restructurés pour ne logguer qu'en cas de succès. Toutes via `*Context(ctx,…)` → routage module auto + propagation `event_id`.
+
+**Tests** : ajout du test **service-level** manquant `SquadOrientation` (3 cas : axe le plus faible retourné, non-membre rejeté `ErrInvalidInput`, absence de provider → axe vide) dans `service_squads_test.go` (le handler était déjà testé, pas la méthode service).
+
+**Garde-rail** : `service_squads.go` mentionnait `shared_social` en commentaire → faisait échouer `TestNoUnauthorizedSharedSocialMention` (scan littéral hors whitelist). Reformulé le commentaire (« base sociale partagée ») plutôt que d'élargir la whitelist — garde stricte préservée.
+
+**⚠️ 2 échecs front PRÉ-EXISTANTS, hors périmètre** : `features/squad/charts/squadPerformanceLineCharts.test.ts::buildKillsDeathsButterflyOption` (commits user `2c50ea5a`/`55829238`/`c3f270fa`, travail charts concurrent). (1) le butterfly produit **3 séries** par joueur depuis le toggle « Bonus » mais le test en attend 2 ; (2) un mock token/`hexComplement` retourne `hex(chart-series-5)` au lieu de `#aaaaaa`. **Non touchés** (rule 4 : WIP concurrent) — à corriger côté user (maj assertions / mock).
+
+---
+
 ## [2026-06-09] Coach V3 — implémentation Phase C (squad) + Phase A V1 (CoachFocusCard) — Complété, poussé
 
 **Statut** : Complété et poussé sur `feat/coach-v3-squad` (≈18 commits, `131a29c8` → `7cefd911`). Backend Go : migration/prestige/api verts + gofmt/go-vet. Front : typecheck + vitest (62 tests ascension) + gardes pre-push (knip, cross-feature, colors, fields) verts.

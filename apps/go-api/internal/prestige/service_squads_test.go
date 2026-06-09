@@ -235,3 +235,39 @@ func TestService_RefreshSquadPool_NoProfileNoBias(t *testing.T) {
 		t.Errorf("RefreshSquadPool sans profil: %v", err)
 	}
 }
+
+func TestService_SquadOrientation_WeakestAxis(t *testing.T) {
+	svc, _, _, _, sqRepo, _ := buildFullService()
+	sqRepo.members = []SquadMember{{SquadID: "sq1", Xuid: xA, UserID: "alice"}}
+	svc.deps.SquadProfile = &fakeSquadProfileProvider{axes: []map[string]float64{
+		{"combat": 0.8, "survival": 0.2, "score": 0.6}, // survival = le plus faible
+	}}
+	axis, err := svc.SquadOrientation(context.Background(), "sq1", "alice")
+	if err != nil {
+		t.Fatalf("SquadOrientation: %v", err)
+	}
+	if axis != "survival" {
+		t.Errorf("axis = %q, want survival (le plus faible)", axis)
+	}
+}
+
+func TestService_SquadOrientation_RejectsNonMember(t *testing.T) {
+	svc, _, _, _, sqRepo, _ := buildFullService()
+	sqRepo.members = []SquadMember{{SquadID: "sq1", Xuid: xA, UserID: "alice"}}
+	if _, err := svc.SquadOrientation(context.Background(), "sq1", "outsider"); !errors.Is(err, ErrInvalidInput) {
+		t.Errorf("non-membre doit être rejeté, got %v", err)
+	}
+}
+
+func TestService_SquadOrientation_NoProfileReturnsEmpty(t *testing.T) {
+	svc, _, _, _, sqRepo, _ := buildFullService()
+	sqRepo.members = []SquadMember{{SquadID: "sq1", Xuid: xA, UserID: "alice"}}
+	// Pas de SquadProfile provider → axe "" (pas d'orientation, pas d'erreur).
+	axis, err := svc.SquadOrientation(context.Background(), "sq1", "alice")
+	if err != nil {
+		t.Fatalf("SquadOrientation: %v", err)
+	}
+	if axis != "" {
+		t.Errorf("axis = %q, want vide (pas de provider)", axis)
+	}
+}
