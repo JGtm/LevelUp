@@ -187,7 +187,7 @@ func (r *PatternsRepo) loadEnrichments(ctx context.Context, matchIDs []string) (
 	ph := Placeholders(len(matchIDs))
 	q := fmt.Sprintf(`
 SELECT match_id, performance_score, session_id, is_with_friends,
-       engagement_score, residual_brut
+       engagement_score, engagement_score_brut AS residual_brut
 FROM player_match_enrichment
 WHERE match_id IN (%s)`, ph)
 
