@@ -161,6 +161,7 @@ func (b *PrestigeBundle) serviceAndPlayerDB(ctx context.Context, playerSlug stri
 		SquadChallenges:  b.squadChallRepo,
 		Squads:           b.squadRepo,
 		BaselineProvider: platform_duckdb.NewHaloBaselineProvider(pdb.SharedReadDB()),
+		SquadMatches:     platform_duckdb.NewPrestigeSquadMatchProvider(pdb.SharedReadDB()),
 	}
 	return pdb, prestige.NewService(deps), nil
 }

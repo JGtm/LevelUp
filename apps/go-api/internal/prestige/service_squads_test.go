@@ -123,3 +123,68 @@ func TestService_ListSquadsForUser(t *testing.T) {
 		t.Errorf("user vide: want ErrInvalidInput, got %v", err)
 	}
 }
+
+// fakeSquadMatchProvider renvoie des SquadMatchMetric figés (sans DB).
+type fakeSquadMatchProvider struct {
+	matches []SquadMatchMetric
+	err     error
+}
+
+func (f *fakeSquadMatchProvider) SquadMatchMetrics(_ context.Context, _ []string, _, _ string, _ int) ([]SquadMatchMetric, error) {
+	return f.matches, f.err
+}
+
+func TestService_EvaluateSquadChallenge_AggregatesAndPersists(t *testing.T) {
+	svc, _, _, scRepo, sqRepo, tplRepo := buildFullService()
+	svc.deps.SquadMatches = &fakeSquadMatchProvider{matches: []SquadMatchMetric{
+		{MatchID: "m1", Xuids: []string{xA, xB}, Values: map[string]float64{xA: 6, xB: 2}},
+		{MatchID: "m2", Xuids: []string{xA, xB}, Values: map[string]float64{xA: 5, xB: 1}},
+	}}
+	scRepo.getResp = SquadChallenge{
+		ID: "sc1", SquadID: "sq1", TemplateID: "tpl1", TitleSlug: "halo_infinite",
+		TargetPerMember: 10, WindowType: WindowLastNMatches, WindowValue: "5",
+	}
+	tplRepo.templates = []Template{{ID: "tpl1", Metric: "kills"}}
+	sqRepo.members = []SquadMember{
+		{SquadID: "sq1", Xuid: xA, UserID: "alice"},
+		{SquadID: "sq1", Xuid: xB, UserID: "bob"},
+	}
+
+	progress, err := svc.EvaluateSquadChallenge(context.Background(), "sc1", "alice")
+	if err != nil {
+		t.Fatalf("EvaluateSquadChallenge: %v", err)
+	}
+	byX := progressByXUID(progress)
+	if byX[xA].Value != 11 || !byX[xA].Completed {
+		t.Errorf("A: %+v, want value=11 completed", byX[xA])
+	}
+	if byX[xB].Value != 3 || byX[xB].Completed {
+		t.Errorf("B: %+v, want value=3 non-completed", byX[xB])
+	}
+	// Les 2 membres-app ont une progression persistée.
+	if len(scRepo.progressUpdates) != 2 {
+		t.Fatalf("progressUpdates=%d, want 2", len(scRepo.progressUpdates))
+	}
+}
+
+func TestService_EvaluateSquadChallenge_RejectsNonMember(t *testing.T) {
+	svc, _, _, scRepo, sqRepo, _ := buildFullService()
+	svc.deps.SquadMatches = &fakeSquadMatchProvider{}
+	scRepo.getResp = SquadChallenge{ID: "sc1", SquadID: "sq1", TemplateID: "tpl1"}
+	sqRepo.members = []SquadMember{{SquadID: "sq1", Xuid: xA, UserID: "alice"}}
+
+	if _, err := svc.EvaluateSquadChallenge(context.Background(), "sc1", "outsider"); !errors.Is(err, ErrInvalidInput) {
+		t.Errorf("non-membre doit être rejeté, got %v", err)
+	}
+}
+
+func TestService_EvaluateSquadChallenge_RequiresTemplate(t *testing.T) {
+	svc, _, _, scRepo, sqRepo, _ := buildFullService()
+	svc.deps.SquadMatches = &fakeSquadMatchProvider{}
+	scRepo.getResp = SquadChallenge{ID: "sc1", SquadID: "sq1", TemplateID: ""} // pas de template
+	sqRepo.members = []SquadMember{{SquadID: "sq1", Xuid: xA, UserID: "alice"}}
+
+	if _, err := svc.EvaluateSquadChallenge(context.Background(), "sc1", "alice"); !errors.Is(err, ErrInvalidInput) {
+		t.Errorf("défi sans template doit être rejeté, got %v", err)
+	}
+}
