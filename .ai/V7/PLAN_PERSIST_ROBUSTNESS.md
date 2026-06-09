@@ -12,7 +12,10 @@ Audit safety du chemin `submitMatchAsBatch` (ADR 0019). Sur les 6 gaps initiaux 
 - **[F] RecoverPending au boot** — déjà câblé (`cmd/server/main.go`, 2026-06-03).
 - **[D] circuit breaker** — ✅ **déjà livré** : `internal/persist/queue.go:69-79` (`consecutiveFailures` + seuil 5) + `queue_circuit_breaker_test.go` (5 tests verts). **Retiré du périmètre.**
 
-Restent A, B, E, G — recalibrés, **mais un trou réel a été identifié** (révision 2026-06-09, cf. ci-dessous).
+- **[E] endpoint `/health/persist`** — **abandonné** (2026-06-09) : aucun consommateur câblé (Docker HEALTHCHECK / systemd / monitoring externe), l'expvar `/debug/vars` + logs suffisent. À ne ressortir que si un consommateur est introduit, et alors dans le même lot.
+- **[B] DLQ** — **abandonnée** (2026-06-09) : quarantaine sans consommateur = soft-delete inutile ; le besoin (pas de perte silencieuse) est couvert par la purge non-silencieuse de la Phase 1, le churn par le circuit breaker [D].
+
+Restent A, G — recalibrés, **mais un trou réel a été identifié** (révision 2026-06-09, cf. ci-dessous).
 
 **Mécanismes existants** :
 1. **Worker continu** (`main.go:644-647`) : persiste les nouveaux batches en flux. OK en régime normal.
@@ -35,10 +38,11 @@ Restent A, B, E, G — recalibrés, **mais un trou réel a été identifié** (r
 1. Appeler `RecoverPending()` **périodiquement** en runtime, pas seulement au boot. Deux options (à trancher) :
    - **(a) recommandé** : le câbler dans le janitor existant (`main.go:663-695`), **avant** `PurgeOldWAL`, et descendre l'intervalle (ex. ticker dédié 10-15 min, ou hook au début de chaque cycle de sync). Re-soumet tout WAL pending dans le channel → le Worker continu le persiste.
    - (b) ticker dédié court (5-10 min) dans la goroutine persist.
-2. **Garde-fou anti-perte** : garantir que `RecoverPending()` tourne **avant** toute `PurgeOldWAL` du même cycle (sinon on purge ce qu'on aurait pu rejouer). Idéalement, ne purger un WAL > 7 j que s'il a déjà été tenté ≥ N fois (lien avec [B] DLQ si on l'active).
-3. **Idempotence** : `RecoverPending` est déjà idempotent (testé `queue_test.go:304`) — re-soumettre un WAL déjà en vol ne crée pas de doublon (ACK supprime le fichier). Vérifier qu'une re-soumission concurrente d'un batch en cours de persist ne double pas (dédup par `batch_id` / lock fichier).
+2. **Garde-fou anti-perte (ordonnancement)** : garantir que `RecoverPending()` tourne **avant** toute `PurgeOldWAL` du même cycle (sinon on purge ce qu'on aurait pu rejouer).
+3. **Purge non-silencieuse** : `PurgeOldWAL` (`queue.go:370-432`) supprime aujourd'hui tout WAL > 7 j **en silence** — c'est la **seule perte de données réellement possible** du système. La rendre **bruyante** : chaque fichier purgé → **log ERROR + métrique `persist_wal_purged_total`** traçant *ce qui* est jeté (`batch_id`, `match_id`, âge). Aucune donnée ne disparaît plus en silence. ~5 min, à faire systématiquement.
+4. **Idempotence** : `RecoverPending` est déjà idempotent (testé `queue_test.go:304`) — re-soumettre un WAL déjà en vol ne crée pas de doublon (ACK supprime le fichier). Vérifier qu'une re-soumission concurrente d'un batch en cours de persist ne double pas (dédup par `batch_id` / lock fichier).
 
-**Livrable** : recovery runtime câblée + 1 test (WAL pending re-soumis sans reboot, et non purgé avant tentative).
+**Livrable** : recovery runtime câblée + purge bruyante + 1 test (WAL pending re-soumis sans reboot, et non purgé avant tentative).
 
 ### Phase 2 — [G] Test E2E FATAL DuckDB injecté mid-batch (~1h)
 
@@ -56,36 +60,25 @@ Restent A, B, E, G — recalibrés, **mais un trou réel a été identifié** (r
 
 **Livrable** : 1 test dans `internal/persist/` (ou `worker_test.go`), vert.
 
-### Hors périmètre — [E] Endpoint `/health/persist` (retiré du plan)
-
-**Décision (2026-06-09) : on ne le fait pas.** Raisons :
-- La **Phase 1** (recovery périodique) ferme déjà le besoin de durabilité **sans** actionneur externe → l'endpoint n'a plus de rôle de remédiation.
-- L'**observabilité existe déjà** via `/debug/vars` (expvar persist) + logs, et le **diagnostic manuel** via le CLI `cmd/diag_replay_wal`.
-- Un endpoint ne *fait* rien seul : il **exige un consommateur** (Docker `HEALTHCHECK`, systemd, Uptime Robot…). Aucun n'est câblé sur ce projet → ce serait une jauge passive = poids mort (YAGNI).
-
-➡️ **À ne ressortir QUE si** on introduit un consommateur. **Règle** : endpoint et consommateur dans le **même lot**, jamais l'endpoint seul. Tant qu'il n'y a pas de besoin de supervision externe, l'expvar suffit.
-
 ### Complément — [A] Retry+backoff (utile, non prioritaire)
 
 Avec la **Phase 1** (recovery périodique), la durabilité ne dépend plus du reboot. [A] devient un **complément** qui réduit le churn (re-tente immédiatement un batch transitoirement échoué au lieu d'attendre le prochain tick de recovery).
 - Si fait : `persist.WithRetry(maxRetries, baseDelay)` dans `worker.handle()`, backoff 1s→2s→4s puis abandon (laisse en WAL → repris par la recovery périodique).
 - **Garde-fou** : ne retenter QUE sur erreurs transitoires (lock/busy/IO), **jamais** sur erreur de parse/contrainte (sinon boucle poison).
 
-### Parké — [B] DLQ après N retries
+### Abandonné — [B] DLQ après N retries
 
-**Reporté jusqu'à observation d'un batch « poison » réel.** Déclencheur : logs montrant le même `batch_id` rejoué ≥ N fois (boot ou recovery périodique). Fix alors : compteur d'attempts dans le nom WAL → `walDir/dlq/` au-delà de N + alerte ERROR. NB : la DLQ devient aussi le garde-fou propre du `PurgeOldWAL` (purger depuis `dlq/` plutôt que d'effacer des batches jamais tentés).
+**Décision (2026-06-09) : on ne la fait pas.** Une quarantaine `dlq/` sans consommateur (alerte + inspection + replay) n'est qu'un soft-delete qui occupe du stockage sans que personne ne le regarde — même travers que [E]. Or le besoin réel (ne pas perdre de données en silence) est **déjà couvert** par la **purge non-silencieuse** de la Phase 1, et le churn d'un batch poison est déjà borné par le circuit breaker [D]. La DLQ n'apporterait donc rien sans un lot « consommateur » complet qu'on ne veut pas construire. À ne réévaluer que si un besoin concret d'inspecter/rejouer des batches poison émerge (et alors : DLQ + consommateur dans le même lot, jamais le dossier seul).
 
 ## Ordre & estimation
 
-1. **Phase 1 — recovery périodique** — ~45min (**priorité réelle** : ferme le trou boot-only + risque de perte à 7 j)
+1. **Phase 1 — recovery périodique + purge non-silencieuse** — ~50min (**priorité réelle** : ferme le trou boot-only et trace la seule perte de données possible)
 2. **Phase 2 — [G] test FATAL** — ~1h (confiance ART)
-3. [A] complément / [B] parké — sur déclencheur
-4. [E] `/health/persist` — **hors périmètre** (à ressortir uniquement avec un consommateur)
+3. [A] complément — sur déclencheur (réduit le churn ; non prioritaire)
 
 Une seule branche `feat/persist-robustness`, commits par phase.
 
 ## Références
 - `internal/persist/{worker.go, queue.go, doc.go, shared_persister.go}`
 - `internal/sync/{convergence.go, engine_postsync.go}` (recouvrement convergence)
-- `internal/api/handlers/health.go` (modèle read-only)
 - ADR 0019 — Collect→Persist ; `.ai/V7/audit_art_writes.md` ; `.ai/V7/HANDOFF_ENRICHMENT_CONVERGENCE.md`

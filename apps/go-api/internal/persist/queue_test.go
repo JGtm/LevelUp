@@ -340,6 +340,138 @@ func TestBatchQueue_RecoverPending_Idempotent(t *testing.T) {
 	}
 }
 
+// ─── Phase 1 : recovery périodique sûre (dédup in-flight) ─────────────────
+//
+// Un Submit marque le batch in-flight ET le pousse dans le channel. Un
+// RecoverPending concurrent (tick de recovery runtime) ne doit PAS le
+// re-pousser — sinon double-traitement à chaque tick.
+func TestBatchQueue_RecoverPending_SkipsInFlight(t *testing.T) {
+	dir := t.TempDir()
+	q, err := NewBatchQueue(BatchQueueConfig{WALDir: dir, ChanBufSize: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = q.Close() })
+
+	// Submit : WAL écrit + in-flight marqué + push channel (pas de worker ici).
+	if err := q.Submit(helperNewBatch(t, "if1", "Alice")); err != nil {
+		t.Fatal(err)
+	}
+
+	// RecoverPending ne doit PAS re-pousser if1 (déjà in-flight).
+	if err := q.RecoverPending(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Exactement 1 exemplaire dans le channel.
+	select {
+	case b := <-q.Channel():
+		if b.BatchID != "if1" {
+			t.Errorf("1er élément batch_id=%q, want if1", b.BatchID)
+		}
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("le batch soumis devrait être dans le channel")
+	}
+	select {
+	case b := <-q.Channel():
+		t.Errorf("re-push inattendu (dédup in-flight cassé) : batch_id=%q", b.BatchID)
+	case <-time.After(150 * time.Millisecond):
+		// OK : pas de doublon.
+	}
+}
+
+// ─── Phase 1 : purge NON-silencieuse (log ERROR + hook par fichier) ───────
+func TestBatchQueue_PurgeOldWAL_LogsAndHooksEachFile(t *testing.T) {
+	dir := t.TempDir()
+	q, err := NewBatchQueue(BatchQueueConfig{WALDir: dir, ChanBufSize: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = q.Close() })
+
+	// Écrit un WAL directement puis backdate son mtime à 8 jours.
+	batch := helperNewBatch(t, "old1", "Bob")
+	data, _ := json.Marshal(batch)
+	walPath := filepath.Join(dir, "old1.json")
+	if err := os.WriteFile(walPath, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-8 * 24 * time.Hour)
+	if err := os.Chtimes(walPath, old, old); err != nil {
+		t.Fatal(err)
+	}
+
+	var purged []PurgedWALInfo
+	q.OnWALPurged = func(info PurgedWALInfo) { purged = append(purged, info) }
+
+	n, err := q.PurgeOldWAL(7 * 24 * time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Errorf("purged = %d, want 1", n)
+	}
+	if _, statErr := os.Stat(walPath); !os.IsNotExist(statErr) {
+		t.Errorf("le WAL old1 devrait être supprimé")
+	}
+	if len(purged) != 1 {
+		t.Fatalf("hook OnWALPurged appelé %d fois, want 1", len(purged))
+	}
+	if purged[0].BatchID != "old1" {
+		t.Errorf("PurgedWALInfo.BatchID = %q, want old1", purged[0].BatchID)
+	}
+	if purged[0].Player != "Bob" {
+		t.Errorf("PurgedWALInfo.Player = %q, want Bob", purged[0].Player)
+	}
+	if purged[0].Age <= 0 {
+		t.Errorf("PurgedWALInfo.Age = %v, want > 0", purged[0].Age)
+	}
+}
+
+// ─── Phase 1 : purge d'un WAL principal CORROMPU → fallback + log + hook ──
+//
+// Un WAL illisible (JSON invalide) dans le dossier principal doit quand même
+// être purgé à l'expiration, avec un PurgedWALInfo dont le BatchID retombe sur
+// le nom de fichier (inspectWALForPurge best-effort).
+func TestBatchQueue_PurgeOldWAL_CorruptMainWAL_StillLogsAndPurges(t *testing.T) {
+	dir := t.TempDir()
+	q, err := NewBatchQueue(BatchQueueConfig{WALDir: dir, ChanBufSize: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = q.Close() })
+
+	walPath := filepath.Join(dir, "corrupt1.json")
+	if err := os.WriteFile(walPath, []byte("{ not valid json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-8 * 24 * time.Hour)
+	if err := os.Chtimes(walPath, old, old); err != nil {
+		t.Fatal(err)
+	}
+
+	var purged []PurgedWALInfo
+	q.OnWALPurged = func(info PurgedWALInfo) { purged = append(purged, info) }
+
+	n, err := q.PurgeOldWAL(7 * 24 * time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Errorf("purged = %d, want 1", n)
+	}
+	if _, statErr := os.Stat(walPath); !os.IsNotExist(statErr) {
+		t.Errorf("le WAL corrompu devrait être supprimé")
+	}
+	if len(purged) != 1 {
+		t.Fatalf("hook appelé %d fois, want 1", len(purged))
+	}
+	// Fallback : BatchID dérivé du nom de fichier (JSON illisible).
+	if purged[0].BatchID != "corrupt1" {
+		t.Errorf("BatchID fallback = %q, want corrupt1", purged[0].BatchID)
+	}
+}
+
 // ─── Test PendingCount + Drain ─────────────────────────────────────────────
 
 func TestBatchQueue_PendingCount_CountsJSONFiles(t *testing.T) {

@@ -19,7 +19,7 @@
 | Chantier | Plan | État / note |
 |----------|------|-------------|
 | Migration types front `types.ts` → `generated.ts` | [PLAN_WEB_API_TYPES_MIGRATION.md](.ai/PLAN_WEB_API_TYPES_MIGRATION.md) | 🟡 fondation posée (7/319 types shimés) ; réconciliation OpenAPI aire par aire ; ⛔ pas de shim global |
-| Robustesse persist (gaps restants) | [PLAN_PERSIST_ROBUSTNESS.md](.ai/PLAN_PERSIST_ROBUSTNESS.md) | 🟡 [C]/[D]/[F] faits ; **cœur = recovery WAL périodique** (trou boot-only + risque purge à 7 j) ; puis [G] test ; [A]/[B] complément ; **[E] health-check retiré** (pas de consommateur, expvar suffit) |
+| Robustesse persist (gaps restants) | [PLAN_PERSIST_ROBUSTNESS.md](.ai/V7/PLAN_PERSIST_ROBUSTNESS.md) | 🟡 [C]/[D]/[F] faits ; **cœur = recovery WAL périodique + purge non-silencieuse** (trou boot-only + seule perte de données possible tracée) ; puis [G] test ; [A] complément ; **[E] health-check et [B] DLQ abandonnés** (pas de consommateur) |
 | Chiffrement at-rest watcher tokens | [PLAN_AUTH_TOKENS_ENCRYPTION_AT_REST.md](.ai/PLAN_AUTH_TOKENS_ENCRYPTION_AT_REST.md) | 🟢 conditionnel — uniquement avant distribution publique / incident / multi-tenant |
 | Cross-titre arcs (backend-ready) | [PLAN_CROSS_TITLE_ARCS_BACKEND.md](.ai/PLAN_CROSS_TITLE_ARCS_BACKEND.md) | 🟢 anticipation 2e titre ; table `arc_titles` ; **UX hors scope** |
 | Coach V3 — négatif soft / tone / squad | [PLAN_COACH_V3_GENERATION.md](.ai/PLAN_COACH_V3_GENERATION.md) | 🟡 Phases A/B/C ; arbitrage produit par phase ; A gatée sur mini-spec UX |
