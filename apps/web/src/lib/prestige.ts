@@ -210,6 +210,43 @@ export interface SquadChallenge {
   created_at: string
 }
 
+/** Escouade (roster) — entité Squad côté backend (clé xuid). */
+export interface Squad {
+  id: string
+  name: string
+  created_by: string
+  created_at: string
+}
+
+/** Membre d'escouade. `user_id` (player_slug) renseigné si le membre est un
+ *  utilisateur de l'app (accès lecture/écriture aux objectifs) ; vide sinon. */
+export interface SquadMember {
+  squad_id: string
+  xuid: string
+  user_id?: string
+  joined_at: string
+}
+
+/** Escouade + son roster (réponse de listMySquads). */
+export interface SquadWithMembers {
+  squad: Squad
+  members: SquadMember[]
+}
+
+/** Progression d'un membre sur un défi d'escouade (mode cumulatif). */
+export interface SquadParticipantProgress {
+  xuid: string
+  value: number
+  matches: number
+  completed: boolean
+}
+
+/** Membre initial fourni à la création d'une escouade. */
+export interface SquadMemberInput {
+  xuid: string
+  gamertag?: string
+}
+
 // ──────────────────────── DTOs requête ────────────────────────
 
 export interface CreateChallengeBody {
@@ -336,4 +373,30 @@ export const prestigeApi = {
 
   joinSquadChallenge: (id: string, body: { user_id: string; chosen_tier?: Tier; is_private?: boolean }) =>
     api.post<void>(`/squad-challenges/${id}/join`, body),
+
+  // Squad roster (CRUD) — clé xuid, cf. backend Phase C.
+  createSquad: (body: { name: string; created_by: string; members?: SquadMemberInput[] }) =>
+    api.post<Squad>(`/squads`, body),
+
+  listMySquads: (userId: string) =>
+    api.get<{ squads: SquadWithMembers[]; count: number }>(
+      `/squads?user_id=${encodeURIComponent(userId)}`,
+    ),
+
+  addSquadMember: (
+    squadId: string,
+    body: { xuid: string; gamertag?: string; requested_by: string },
+  ) => api.post<void>(`/squads/${encodeURIComponent(squadId)}/members`, body),
+
+  removeSquadMember: (squadId: string, xuid: string, requestedBy: string) =>
+    api.delete<void>(
+      `/squads/${encodeURIComponent(squadId)}/members/${encodeURIComponent(xuid)}?requested_by=${encodeURIComponent(requestedBy)}`,
+    ),
+
+  // Évaluation de progression d'un défi d'escouade (recalcule + persiste).
+  evaluateSquadChallenge: (id: string, requestedBy: string) =>
+    api.post<{ progress: SquadParticipantProgress[] }>(
+      `/squad-challenges/${encodeURIComponent(id)}/evaluate`,
+      { requested_by: requestedBy },
+    ),
 }
