@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/prestige"
 )
@@ -51,6 +52,12 @@ type mockPrestigeService struct {
 	lastDeleteArcCsc bool
 	lastAdoptID      string
 	lastAdoptUID     string
+
+	lastCreateSquad    prestige.CreateSquadRequest
+	listSquadsResp     []prestige.Squad
+	lastAddSquadID     string
+	lastAddSquadMember prestige.SquadMember
+	lastAddSquadReqBy  string
 }
 
 func (m *mockPrestigeService) CreateChallenge(ctx context.Context, req prestige.CreateChallengeRequest) (prestige.Challenge, error) {
@@ -132,11 +139,12 @@ func (m *mockPrestigeService) ListSquadChallenges(ctx context.Context, _ string)
 func (m *mockPrestigeService) RefreshSquadPool(ctx context.Context, _, _, _ string) ([]prestige.Template, error) {
 	return nil, nil
 }
-func (m *mockPrestigeService) CreateSquad(ctx context.Context, _ prestige.CreateSquadRequest) (prestige.Squad, error) {
-	return prestige.Squad{}, nil
+func (m *mockPrestigeService) CreateSquad(ctx context.Context, req prestige.CreateSquadRequest) (prestige.Squad, error) {
+	m.lastCreateSquad = req
+	return prestige.Squad{ID: "sq_test", Name: req.Name, CreatedBy: req.CreatedBy}, nil
 }
 func (m *mockPrestigeService) ListSquadsForUser(ctx context.Context, _ string) ([]prestige.Squad, error) {
-	return nil, nil
+	return m.listSquadsResp, nil
 }
 func (m *mockPrestigeService) GetSquad(ctx context.Context, _ string) (prestige.Squad, error) {
 	return prestige.Squad{}, nil
@@ -144,7 +152,10 @@ func (m *mockPrestigeService) GetSquad(ctx context.Context, _ string) (prestige.
 func (m *mockPrestigeService) ListSquadMembers(ctx context.Context, _ string) ([]prestige.SquadMember, error) {
 	return nil, nil
 }
-func (m *mockPrestigeService) AddSquadMember(ctx context.Context, _ string, _ prestige.SquadMember, _ string) error {
+func (m *mockPrestigeService) AddSquadMember(ctx context.Context, squadID string, member prestige.SquadMember, requestedBy string) error {
+	m.lastAddSquadID = squadID
+	m.lastAddSquadMember = member
+	m.lastAddSquadReqBy = requestedBy
 	return nil
 }
 func (m *mockPrestigeService) RemoveSquadMember(ctx context.Context, _, _, _ string) error {
@@ -159,8 +170,16 @@ func (m *mockPrestigeService) DisablePilotMode(ctx context.Context, _, _ string)
 
 // ─────────── Helpers ───────────
 
+// testAppPlayers simule l'annuaire db_profiles pour les tests roster.
+func testAppPlayers(_ context.Context) ([]domain.PlayerSummary, error) {
+	return []domain.PlayerSummary{
+		{PlayerSlug: "alice", Gamertag: "Alice", XUID: "xAlice"},
+		{PlayerSlug: "bob", Gamertag: "Bob", XUID: "xBob"},
+	}, nil
+}
+
 func newRouter(svc prestige.Service) *chi.Mux {
-	h := NewPrestigeHandler(svc)
+	h := NewPrestigeHandler(svc, testAppPlayers)
 	r := chi.NewRouter()
 	r.Post("/challenges", h.CreateChallenge)
 	r.Get("/challenges", h.ListActiveChallenges)
@@ -173,10 +192,99 @@ func newRouter(svc prestige.Service) *chi.Mux {
 	r.Post("/arcs/presets/{id}/adopt", h.AdoptPresetArc)
 	r.Get("/prestige/me", h.GetMyPrestige)
 	r.Get("/templates/suggest", h.SuggestTemplates)
+	r.Post("/squads", h.CreateSquad)
+	r.Get("/squads", h.ListMySquads)
+	r.Post("/squads/{squad_id}/members", h.AddSquadMember)
+	r.Delete("/squads/{squad_id}/members/{xuid}", h.RemoveSquadMember)
 	return r
 }
 
 // ─────────── Tests ───────────
+
+func TestPrestigeHandler_CreateSquad_ResolvesCreatorAndTagsMembers(t *testing.T) {
+	mock := &mockPrestigeService{}
+	r := newRouter(mock)
+	body := `{"name":"Trio","created_by":"alice","members":[{"xuid":"xBob"},{"xuid":"xFriend"}]}`
+	req := httptest.NewRequest(http.MethodPost, "/squads", bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("status=%d, want 201; body=%s", w.Code, w.Body.String())
+	}
+	got := mock.lastCreateSquad
+	if got.Name != "Trio" || got.CreatedBy != "alice" {
+		t.Errorf("req=%+v", got)
+	}
+	if len(got.Members) != 3 {
+		t.Fatalf("members=%d, want 3 (créateur + 2)", len(got.Members))
+	}
+	userIDByXUID := map[string]string{}
+	for _, m := range got.Members {
+		userIDByXUID[m.Xuid] = m.UserID
+	}
+	if userIDByXUID["xAlice"] != "alice" {
+		t.Errorf("créateur xAlice user_id=%q, want alice", userIDByXUID["xAlice"])
+	}
+	if userIDByXUID["xBob"] != "bob" {
+		t.Errorf("xBob user_id=%q, want bob (membre-app tagué)", userIDByXUID["xBob"])
+	}
+	if userIDByXUID["xFriend"] != "" {
+		t.Errorf("xFriend user_id=%q, want vide (ami hors-app)", userIDByXUID["xFriend"])
+	}
+}
+
+func TestPrestigeHandler_CreateSquad_UnknownCreator_400(t *testing.T) {
+	mock := &mockPrestigeService{}
+	r := newRouter(mock)
+	body := `{"name":"X","created_by":"nobody"}`
+	req := httptest.NewRequest(http.MethodPost, "/squads", bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status=%d, want 400 (créateur inconnu)", w.Code)
+	}
+}
+
+func TestPrestigeHandler_AddSquadMember_TagsAndForwards(t *testing.T) {
+	mock := &mockPrestigeService{}
+	r := newRouter(mock)
+	body := `{"xuid":"xBob","requested_by":"alice"}`
+	req := httptest.NewRequest(http.MethodPost, "/squads/sq1/members", bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("status=%d, want 204; body=%s", w.Code, w.Body.String())
+	}
+	if mock.lastAddSquadID != "sq1" || mock.lastAddSquadMember.Xuid != "xBob" || mock.lastAddSquadReqBy != "alice" {
+		t.Errorf("capturé: id=%q member=%+v by=%q", mock.lastAddSquadID, mock.lastAddSquadMember, mock.lastAddSquadReqBy)
+	}
+	if mock.lastAddSquadMember.UserID != "bob" {
+		t.Errorf("xBob user_id=%q, want bob (tag membre-app)", mock.lastAddSquadMember.UserID)
+	}
+}
+
+func TestPrestigeHandler_ListMySquads_RequiresUserID(t *testing.T) {
+	mock := &mockPrestigeService{}
+	r := newRouter(mock)
+	req := httptest.NewRequest(http.MethodGet, "/squads", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status=%d, want 400 (user_id requis)", w.Code)
+	}
+}
+
+func TestPrestigeHandler_ListMySquads_OK(t *testing.T) {
+	mock := &mockPrestigeService{listSquadsResp: []prestige.Squad{{ID: "sq1", Name: "Trio"}}}
+	r := newRouter(mock)
+	req := httptest.NewRequest(http.MethodGet, "/squads?user_id=alice", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d, want 200; body=%s", w.Code, w.Body.String())
+	}
+}
 
 func TestPrestigeHandler_ListArcPresets_OK(t *testing.T) {
 	mock := &mockPrestigeService{
@@ -674,7 +782,7 @@ func TestPrestigeHandler_NotFoundErrorsNotMistakenForDBLocked(t *testing.T) {
 // newSquadRouter étend newRouter avec les endpoints squad pour les tests
 // du commit 3 (lease shared_social.duckdb).
 func newSquadRouter(svc prestige.Service) *chi.Mux {
-	h := NewPrestigeHandler(svc)
+	h := NewPrestigeHandler(svc, testAppPlayers)
 	r := chi.NewRouter()
 	r.Post("/squads/{squad_id}/challenges", h.CreateSquadChallenge)
 	r.Post("/squad-challenges/{id}/join", h.JoinSquadChallenge)
