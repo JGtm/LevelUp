@@ -1,6 +1,6 @@
 — Tâches et TODO centralisés
 
-> Mis à jour le 2026-06-03 (nettoyage go-live : sections Main Merge / ADR 0013 / gap [F] caduques retirées — cf. [.ai/RUNBOOK_GO_LIVE.md](.ai/RUNBOOK_GO_LIVE.md)). Fusion de : `backlog`, `BACKLOG.md`, `BACKLOG_COACH_PRESTIGE.md`.
+> Mis à jour le 2026-06-09 (audit de pertinence : items faits archivés en « Récemment complété » — go-live cutover, CSR/CSR ATH, consolidation auth ADR 0023, circuit breaker persist [D], leased-writer, nettoyage nav, feedback-drawer ; caducs retirés ; items « gardés de côté » marqués ⏸️ ; plans dédiés créés pour persist/arcs/coach/chiffrement). Historique antérieur : nettoyage go-live 2026-06-03 (cf. [.ai/RUNBOOK_GO_LIVE.md](.ai/RUNBOOK_GO_LIVE.md)). Fusion de : `backlog`, `BACKLOG.md`, `BACKLOG_COACH_PRESTIGE.md`.
 
 ---
 
@@ -12,326 +12,32 @@
 
 ---
 
-### [leaderboard] Classement CSR mondial — actions de suivi (Phase 2 + gaps)
+### 📐 Chantiers avec plan dédié
 
-**Noté le** : 2026-06-08 | **Priorité** : 🟢 Basse — Phase 1 livrée et vérifiée (branche `feat/leaderboard-csr-world`, commits `7c384015` + `762f3ef9`).
+> Le détail vit dans les plans `.ai/` — **ne pas dupliquer ici**. Cette table sert d'index.
 
-**Contexte court** : leaderboard CSR mondial scrapé depuis les pages publiques `halowaypoint.com` (bloc `__NEXT_DATA__` — HaloDotAPI étant mort, aucune API officielle de leaderboard). Snapshots persistés append-only (`world_csr_leaderboard_snapshots` + vue `_latest`), page `Communauté > Classements` refondue (CSR mondial + classements de stats croisés). Logging dédié `logs/leaderboard.log`. Cf. thought_log 2026-06-08.
-
-**Opérationnel** :
-- [x] ~~Peupler la prod : 1er snapshot réel~~ → désormais automatique : `WorldLeaderboardCron` peuple au 1er tick (boot) via `SharedProvider.AcquireWriter` (serveur allumé). Le CLI `snapshot-world-leaderboard` reste pour les **saisons passées** (one-shot).
-- [x] ~~Scheduler basse fréquence~~ → `internal/scheduler/world_leaderboard_cron.go` (1×/jour, garde-fou fraîcheur 20h, saison active **découverte** via `seasons[0]` → autonome aux changements de saison). Câblé `main.go` (gardé `cfg.SharedProvider != nil`).
-
-**Gaps / dette** (tous traités le 2026-06-08, branche `feat/leaderboard-csr-followup`) :
-- [x] Test `GetStatLeaderboard` contre vraie DB → `leaderboard_stat_repo_test.go` (tri, seuil min, exclusion bots, is_local, filtres playlist + saison).
-- [x] Sélecteurs playlist/saison dynamiques → endpoint `GET .../pages/leaderboard/catalog` (distinct des snapshots en base, libellés playlist via `rankedplaylists`) + `LeaderboardBlock.tsx` câblé (fallback listes codées en dur si catalogue vide).
-- [x] Filtre **saison** ajouté aux classements de stats (`match_registry.season_id`, format interne `CsrSeasonN` ≠ format waypoint du mondial). Propagé port + service.
-- [x] Robustesse scraping → compteur expvar `levelup.leaderboard_empty_page1` (canari changement de markup, `/debug/vars`) + test ; note fixture conservée dans le doc scraper.
-
-**Risque** : scraping d'une page non documentée (CGU / anti-bot) — garder requêtes polies + basse fréquence + persistance pour minimiser les appels. Ne PAS dépendre du proxy tiers `sr-nextjs.vercel.app`.
+| Chantier | Plan | État / note |
+|----------|------|-------------|
+| Migration types front `types.ts` → `generated.ts` | [PLAN_WEB_API_TYPES_MIGRATION.md](.ai/PLAN_WEB_API_TYPES_MIGRATION.md) | 🟡 fondation posée (7/319 types shimés) ; réconciliation OpenAPI aire par aire ; ⛔ pas de shim global |
+| Robustesse persist (gaps restants) | [PLAN_PERSIST_ROBUSTNESS.md](.ai/PLAN_PERSIST_ROBUSTNESS.md) | 🟡 [C]/[D]/[F] faits ; **cœur = recovery WAL périodique** (trou boot-only + risque purge à 7 j) ; puis [G] test ; [A]/[B] complément ; **[E] health-check retiré** (pas de consommateur, expvar suffit) |
+| Chiffrement at-rest watcher tokens | [PLAN_AUTH_TOKENS_ENCRYPTION_AT_REST.md](.ai/PLAN_AUTH_TOKENS_ENCRYPTION_AT_REST.md) | 🟢 conditionnel — uniquement avant distribution publique / incident / multi-tenant |
+| Cross-titre arcs (backend-ready) | [PLAN_CROSS_TITLE_ARCS_BACKEND.md](.ai/PLAN_CROSS_TITLE_ARCS_BACKEND.md) | 🟢 anticipation 2e titre ; table `arc_titles` ; **UX hors scope** |
+| Coach V3 — négatif soft / tone / squad | [PLAN_COACH_V3_GENERATION.md](.ai/PLAN_COACH_V3_GENERATION.md) | 🟡 Phases A/B/C ; arbitrage produit par phase ; A gatée sur mini-spec UX |
 
 ---
 
-### [frontend/types] Migration `types.ts` → `generated.ts` + réconciliation du contrat OpenAPI
+### [POST-V7] Housekeeping post-cutover (optionnel, non bloquant)
 
-**Noté le** : 2026-05-29 | **Priorité** : 🟡 Moyenne — non bloquant (`types.ts` manuel fonctionne) mais dette + contrat OpenAPI non fiable.
-
-**Plan complet** : [.ai/PLAN_WEB_API_TYPES_MIGRATION.md](.ai/PLAN_WEB_API_TYPES_MIGRATION.md)
-
-**Contexte court** : fondation posée (pipeline `generate-types` réparé, types Go régénérés, inventaire fait, 7 types « bootstrap » migrés en shim de ré-export). Le calibrage a révélé le **vrai blocage** : `openapi.yaml` est largement **sous-spécifié** vs les réponses backend réelles (shim de masse → 453 erreurs `tsc`, dont 304 « property does not exist »). Le `types.ts` manuel est plus complet que le contrat.
-
-**Donc** : le chantier n'est pas un shim mécanique mais une **réconciliation du contrat aire par aire** (compléter `openapi.yaml` → régénérer Go+front → shimer → `tsc` oracle → commit). ⛔ Ne pas re-tenter un shim global.
-
-**Buckets** : 97 matchés (à réconcilier), 217 frontend-only (→ futur `viewModels.ts`), 15 schémas sans type. 1er cas bucket B : `BootstrapResponse` (8 champs manquants au schéma).
-
-**Quand traiter** : session(s) dédiée(s). Commencer par l'aire sessions/filtres (gros bucket).
-
----
-
-### [POST-V7] Go-live / cutover Python → Go
-
-> Nettoyé le 2026-06-03 : les sections « Main Merge (theme-consistency) » et « Main Merge
-> (Phase 4 Collect→Persist) » étaient **caduques** — Phase 4 + leased-writer sont déjà
-> intégrés sur la branche de migration et les defaults `LEVELUP_PERSIST_BATCH` / async sont
-> flippés ON. Le go-live n'est pas une série de PR vers main mais un **cutover : la branche
-> Go devient main**.
-
-**Procédure complète** : [.ai/RUNBOOK_GO_LIVE.md](.ai/RUNBOOK_GO_LIVE.md) — 4 vars prod
-(`LEVELUP_ENV=production` + AUTH_MODE + SESSION_SECRET + CORS `https://lvelup.info`),
-`force_rebuild_art --all true` local si DBs legacy, uploads VPS, config médias `/app/data/media`.
-
-**Restant optionnel (non bloquant)** :
+> Le cutover Go (la branche Go est devenue `main`) est **terminé** — cf. archive « Récemment complété ».
+> Reste 2 micro-tâches optionnelles, non bloquantes :
 - [ ] Documenter le default async ON dans le README utilisateur
 - [ ] Tuning du janitor (24h → 12h ?) si la latence WAL le justifie en prod
 
 ---
 
-### [POST-V7] Post-Merge Validation
+### [Multi-titre] Couche canonique `weapon_family` cross-titres — ⏸️ GARDÉ DE CÔTÉ
 
-- [ ] Vérifier baseline tests verts post-merge
-- [ ] Vérifier coverage >= 76%
-- [ ] Vérifier no new warnings (golangci-lint)
-
----
-
-### [auth/unification] PR 2.5b — Watcher daemon tracker migration TokenStore → MultiUserTokenStore ✅ PARTIEL 2026-05-24
-
-**Phase 1 livrée** (commit `157d80a8`) — mirror write :
-- `RefreshLoop.WithMultiUserMirror(multi)` builder
-- Chaque refresh XSTS/OAuth du tracker (legacy store) est aussi écrit dans MultiUserTokenStore[XSTSXUID]
-- 3 tests TDD GREEN
-- Read continue via legacy store (compat user, 0 changement comportement)
-
-**Phase 2 reportée** (read-path switch, ~2-3h) :
-- Daemon principal lit depuis multi-user store au lieu de legacy
-- Tracker rotation : si tracker xuid revoke, basculer sur autre user valide
-- **Décision product requise** : si N users SSO valides, quel est le tracker principal ? (random ? premier connecté ? config explicite ?)
-
-**Quand traiter Phase 2** : si on observe en prod un cas de "tracker xuid revoque → daemon mort" qui doit être fixed sans reboot. À ce jour, le fallback existing (lines 953-987 main.go) suffit au boot.
-
----
-
-### [auth/unification] Read-path switch vers MultiUserTokenStore (future PR post-2.5b)
-
-**Noté le** : 2026-05-24 | **Priorité** : 🟢 Basse — la phase 1 mirror suffit pour maintenir la cohérence.
-
-**Contexte** : Suite à PR 2.5b phase 1 (mirror legacy → multi-user), le multi-user store est toujours up-to-date avec le tracker actuel. La prochaine étape serait que le watcher daemon **LISE** depuis multi-user au lieu de legacy.
-
-**Bloqueur design** : si plusieurs users SSO sont enregistrés, quel xuid devient le "tracker principal" pour le watcher daemon ? Options :
-- 1. Premier dans la map (non-déterministe Go map iteration)
-- 2. Config explicite `watcher.tracker_xuid` dans app_settings.json
-- 3. User le plus récemment loggé (UpdatedAt max)
-- 4. User avec XSTS valide le plus longtemps (XSTSExpiresAt max)
-
-**Effort** : ~2-3h une fois la décision design prise.
-
-**Quand traiter** : pas urgent. Single-user reste le cas dominant.
-
----
-
-### [auth/security] Chiffrement at-rest des watcher tokens
-
-**Noté le** : 2026-05-24 | **Priorité** : 🟢 Basse — outil reste single-user local, threat model accepté.
-
-**Contexte** : `data/auth/watcher_tokens.json` (et le futur `watcher_tokens/{xuid}.json` post PR 2.5b) contient le **XSTS token** + le **MSAL cache** (qui contient le refresh_token Microsoft) **en clair JSON**, protégés uniquement par les permissions fichier (0600). Aucun chiffrement at-rest (`grep -rn "Encrypt|cipher|aes" internal/platform/auth/` → 0 résultat).
-
-**Threat model actuel** : outil desktop single-user local. Vol de fichier implique déjà compromission machine. Standard de fait dans la communauté Halo (SPNKr Python identique). Tokens TTL court (Spartan ~3h, XSTS ~12h) + refresh révocable côté Microsoft.
-
-**Pertinence du fix** :
-- 🟢 Bas si l'outil reste single-user local
-- 🟡 Moyen si on distribue à des users non-techniciens (ils n'auront pas le réflexe de protéger leur HOME)
-- 🔴 Haut si déploiement multi-tenant ou cloud (mais pas le cas actuel)
-
-**Fix proposé** : wrap natif OS via package Go `github.com/zalando/go-keyring` ou équivalent :
-- **Windows** : DPAPI (`CryptProtectData`)
-- **macOS** : Keychain
-- **Linux** : libsecret / GNOME Keyring
-
-Effort ~3h (1 nouveau package `internal/platform/auth/secureStore` qui wrap Read/Write/Delete avec fallback en clair si pas de keychain dispo).
-
-**Quand traiter** : avant distribution publique grand-public, OU si un incident token leak survient.
-
----
-
-### [auth/cleanup] Migration watcher daemon vers MultiUserTokenStore (PR 2.5b)
-
-**Noté le** : 2026-05-24 | **Priorité** : 🟡 Moyenne — dette technique connue, blocage partiel pour vrai multi-user.
-
-**Contexte** : 2 stores tokens coexistent dans `internal/platform/auth/` :
-- **TokenStore legacy** (`token_store.go`) — mono-user, `data/auth/watcher_tokens.json`. Utilisé par le watcher daemon historique.
-- **MultiUserTokenStore** (`multi_user_token_store.go`) — multi-user, `data/auth/watcher_tokens/{xuid}.json`. Utilisé par SSO Xbox PR 2.5a.
-
-Commentaire explicite : "Migration du watcher : différée à PR 2.5b".
-
-**Impacts** :
-- 1er user = mono-user au boot (watcher daemon ne sait gérer qu'un seul `current_user`)
-- Si plusieurs utilisateurs Xbox sur la même machine, conflit potentiel
-- Doublon de code (2 stores quasi-identiques à maintenir)
-
-**Fix** : Refactor `internal/sync/watcher_daemon.go` pour utiliser `MultiUserTokenStore` au lieu de `TokenStore`. Migrer les tokens existants au boot (lit `watcher_tokens.json` → écrit `watcher_tokens/{xuid}.json` → archive l'ancien). Effort ~2h.
-
-**Quand traiter** : avant cas d'usage multi-utilisateur réel sur même machine, OU avec le sprint auth unification (cf. `.ai/PLAN_AUTH_PROVIDER_UNIFICATION.md`).
-
----
-
-### [persist/safety] Garde-fous restants post-Phase 3 Collect→Persist
-
-**Noté le** : 2026-05-24 | **Priorité** : 🟡 Moyenne — non-bloquants pour Phase 3 (rollback via feature flag + code legacy intact)
-
-**Contexte** : Audit safety/guards du chemin `submitMatchAsBatch` (cf. ADR 0019, RUNBOOK_PHASE3, thought_log 2026-05-23). 19 garde-fous actifs livrés ; 6 gaps identifiés et reportés ici. Le gap C (timeout par Persist call) a été fixé immédiatement car simple et utile en prod (commit 2026-05-24). Le gap F (RecoverPending au boot) a été résolu le 2026-06-03 (câblé dans `cmd/server/main.go`, async ON par défaut) — retiré de la liste.
-
-**Gaps à traiter quand pertinent** :
-
-1. **[A] Retry avec backoff sur erreur transitoire** (`persist`)
-   - **Problème** : Un Persist qui échoue (lock timeout, DB busy, IO error) reste en WAL jusqu'au prochain boot. Pas de retry dans le cycle courant.
-   - **Impact** : Latence ajoutée (le batch attend le prochain reboot ou auto-sync) sans réelle perte de données.
-   - **Fix** : `persist.WithRetry(maxRetries, baseDelay)` autour du Persist call dans `submitMatchAsBatch` ou dans le Worker. Backoff exponentiel : 1s, 2s, 4s, abandon.
-   - **Effort** : ~1h.
-
-2. **[B] DLQ après N retries** (`persist`)
-   - **Problème** : Si un batch corrompu cause une erreur répétée, il reste en WAL indéfiniment (jusqu'à `PurgeOldWAL > 7j`). Pas de dead-letter quarantine.
-   - **Impact** : Batches "poison" boucle au boot via `RecoverPending` jusqu'à expiration WAL. Logs polluent.
-   - **Fix** : Compteur de retries dans le WAL filename (ex. `batch_id.attempts=N.json`) ou métadonnée dans le JSON. Au-delà de N (3-5), déplacer dans `walDir/dlq/` + alerte ERROR.
-   - **Effort** : ~1h30.
-
-3. **[D] Circuit breaker sur série d'erreurs** (`persist`)
-   - **Problème** : Si Persist échoue sur 10 batches consécutifs, le sync continue à submit (potentiel cascading failure).
-   - **Impact** : Surconsommation API + ressources + logs spam quand DB est en panne.
-   - **Fix** : Pattern circuit breaker classique (closed/open/half-open). Si error rate > threshold sur fenêtre 1min, ouvrir → skip Submit + log WARN + métrique. Half-open recheck toutes les 30s.
-   - **Effort** : ~2h.
-
-4. **[E] Health check endpoint `/health/persist`** (`api`)
-   - **Problème** : Pas d'endpoint dédié pour load balancer / monitoring externe (Datadog, Uptime Robot).
-   - **Impact** : Diagnostic ops via `/debug/vars` uniquement (pas de status compact).
-   - **Fix** : `GET /health/persist` → 200 OK + JSON `{wal_pending: 0, last_persist_ok_at: "...", recent_errors: 0}`. 503 si pending > seuil ou erreurs récentes > seuil.
-   - **Effort** : ~45min.
-
-5. **[G] Test E2E avec FATAL DuckDB injecté** (`internal/persist`)
-   - **Problème** : Les tests TDD unitaires couvrent les cas isolés (atomicity, idempotence, parse error). Pas de test qui simule un FATAL DuckDB mid-batch et vérifie la recovery propre.
-   - **Impact** : Confiance moindre sur le path de recovery en cas de crash réel.
-   - **Fix** : Mock `txBeginner` qui retourne une erreur FATAL après N rows insérées. Vérifier que la TX rollback, le WAL reste, et RecoverPending peut rejouer.
-   - **Effort** : ~1h.
-
-**Quand traiter** : après Phase 3 activée et stabilisée (10+ cycles propres en prod). Ou plus tôt si un incident révèle un de ces gaps.
-
----
-
-### [frontend/nav] Nettoyage code de navigation mort — `PlayerScopeNav` + constantes `shellNavigation`
-
-**Noté le** : 2026-05-10 | **Priorité** : Basse — cosmétique, 0 impact fonctionnel
-
-**Contexte** : Audit pages orphelines du 2026-05-10. Après suppression des pages mortes, il reste du code de navigation inutilisé :
-
-1. **`apps/web/src/components/shell/PlayerScopeNav.tsx`** — composant de nav défini mais jamais importé dans aucun layout ni page. Superseded par `NavL1.tsx`. À supprimer entièrement avec son test `shellNavigation.test.ts` si les cas testés couvrent uniquement ce composant.
-
-2. **`shellNavigation.ts` — `PLAYER_PRIMARY_NAV_ITEMS` + `PLAYER_SECONDARY_NAV_ITEMS`** — deux constantes uniquement consommées par `PlayerScopeNav` (lui-même mort). `buildPlayerDestination` reste actif (utilisé par `NavL1.tsx`) → garder le fichier, supprimer uniquement ces deux exports.
-
-3. **`apps/web/src/lib/pageTitle.ts` lignes ~59-60`** — consomme encore `PLAYER_PRIMARY_NAV_ITEMS` et `PLAYER_SECONDARY_NAV_ITEMS` via `.map()` pour construire `ROUTE_TITLE_RULES`. Après suppression des constantes, remplacer par une liste statique inline ou vider.
-
-**Ce qu'il faut faire** :
-1. Vérifier que `shellNavigation.test.ts` ne teste que `PlayerScopeNav`/les constantes mortes — si oui, supprimer le fichier de test aussi
-2. Supprimer `PlayerScopeNav.tsx`
-3. Retirer `PLAYER_PRIMARY_NAV_ITEMS` + `PLAYER_SECONDARY_NAV_ITEMS` de `shellNavigation.ts`
-4. Mettre à jour `pageTitle.ts` pour ne plus les consommer
-
-**Effort** : ~30 minutes
-
----
-
-### [db-concurrency] Suite et fin du refactor `leased-writer-enforcement`
-
-**Noté le** : 2026-05-05 | **Priorité** : 🔴 Bloquant merge pour les 3 premiers points, 🟡 follow-up pour le reste
-
-**Contexte** : la branche `refactor/leased-writer-enforcement` (9 commits, `ae03600f`→`5423da2a`) résout P1 (Prestige HTTP), P2 (Notifications), P3 (Media atomicité) en introduisant le type `*dblease.LeasedWriter`, deux patterns de configuration (Wrapper / Option), et 41 nouveaux tests + 3 benchmarks. Le code complet n'a **pas pu être buildé localement** faute de `gcc`/cgo dans l'environnement de la session — vérifié uniquement via `gofmt` et cohérence statique des signatures. Plan complet dans [.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md](.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md), ADR officielle dans [docs/adr/0013-leased-writer-enforcement.md](docs/adr/0013-leased-writer-enforcement.md).
-
-**🔴 Bloquant merge — à faire sur une machine cgo-enabled** :
-
-1. **Build complet cgo** :
-   ```bash
-   cd apps/go-api && make test 2>&1 | tee /tmp/post_branch_test.log
-   ```
-   Si rouge : la cause est probablement une typo / import / signature dans un de mes commits 2-7. Me remonter les fichiers en échec pour correctif.
-
-2. **Vérifier le baseline test** : relancer `bash scripts/check_test_baseline.sh tests` post-build cgo. Doit confirmer que les 1662 tests de la baseline pré-migration sont toujours présents et verts (contrat de non-régression du commit 0).
-
-3. **Valider les 2 tests d'intégration coordination** (build tag `integration`) :
-   - `TestCoordination_SyncLease_BlocksHTTPWriter` ([sync/lease_test.go](apps/go-api/internal/sync/lease_test.go))
-   - `TestCoordination_HTTPWriter_BlocksSyncLease`
-   
-   Si rouge → la coordination sync↔HTTP est cassée et P1 n'est pas réellement résolu. Faux sentiment de sécurité.
-
-**🟡 Follow-up dans des PRs séparées** :
-
-4. **Câbler les 2 scripts en CI** : `scripts/check_test_baseline.sh` et `apps/go-api/scripts/check_lease_enforcement.sh` doivent tourner en GitHub Actions. PR infra dédiée — pas dans le scope db-concurrency.
-
-5. **Tests intégration concurrentiels manquants** : le plan v3 prévoyait 17 scénarios sous build tag `integration`, seuls 2 ont été ajoutés (commit 7). Manquent (cf. [.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md §Tests d'intégration concurrentiels](.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md)) :
-   - `TestSyncVsPrestigeConcurrent` — sync long + 10 POST /challenges en parallèle.
-   - `TestSyncHookNoDeadlock` — pipeline sync + RunPostSyncHook avec timeout court (échoue par timeout si deadlock).
-   - `TestSyncVsNotificationsConcurrent`, `TestSyncVsMediaLikeConcurrent`, `TestSyncVsMatchFavoriteConcurrent`.
-   - `TestMediaLikeRollback`, `TestMediaLikeAtomic_PanicMidTx`, `TestPrestigeEmitEventAtomicity`.
-   - `TestSyncDeltaProducesSameOutput`, `TestSyncFullProducesSameOutput`, `TestSyncEngineFullPipeline` (ISO bit-à-bit).
-   - `TestNotificationsBurst`, `TestSyncBurstNoLeak`, `TestPrestigeBurst`.
-   - `TestProcessKillNoStaleLock`, `TestExternalProcessLock` (crash recovery).
-
-6. **Tests `Atomic_Success` + `Atomic_RepoError_Rollback` cgo-only** : documentés comme différés au commit 6 (exigent une vraie *sql.DB DuckDB :memory: pour `BeginTx`). À ajouter dans `internal/service/media_service_test.go` avec build tag `integration`. Couvrent l'invariant central de P3 (rollback observable du `*sql.Tx` mid-transaction).
-
-7. **Migrer sync engine vers `dblease.AcquireWriterCtx`** : 11 sites dans [sync/engine.go](apps/go-api/internal/sync/engine.go), [sync/backfill_weapons.go](apps/go-api/internal/sync/backfill_weapons.go), [sync/friends_recompute.go](apps/go-api/internal/sync/friends_recompute.go). Bénéfice : alimenter les compteurs `dblease_acquire_total{kind}` du commit 1 (visibilité observabilité). Risque : ~63 tests sync à préserver bit-à-bit. Documenté comme dette dans [sync/lease.go](apps/go-api/internal/sync/lease.go). Non bloquant pour la résolution fonctionnelle de P1/P2/P3.
-
-**🟢 Validation manuelle pré-prod** :
-
-8. **Suite de non-régression métier** : à valider en local après merge (cf. [.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md §Suite de non-régression métier](.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md)).
-   - Sync delta sur joueur réel : durée + nb matchs identiques.
-   - Création/édition/abandon défi via UI : flow inchangé.
-   - Page Prestige `/api/v1/prestige/me` : leaderboard et PP cohérents.
-   - Toggle favori match : visible immédiatement, persisté.
-   - Like/unlike média : état persistant après refresh.
-   - Notifications : émission, mark-read, suppression OK.
-   - **Comportements concurrents observables** : pendant un sync long, un POST /challenges retourne 200 ou 503 (jamais 500), retry après 5s succède.
-
-9. **Vérifier `PRESTIGE_ENABLED` en prod** : la variable est `true` par défaut dans le code ([prestige/sync_hook.go:32](apps/go-api/internal/prestige/sync_hook.go#L32) — false uniquement si la var vaut explicitement `0/false/no/off`). Si l'env de prod ne pose pas la var explicitement, P1 est déjà actif → la résolution apportée par cette branche est immédiatement bénéfique. Si la var est `false`, on peut activer Prestige plus tranquillement après les vérifs cgo (cf. ADR-0005).
-
-**Conditions de déblocage** :
-1. ❌ Build cgo complet vert (point 1).
-2. ❌ Baseline tests préservée (point 2).
-3. ❌ Tests coordination intégration verts (point 3).
-4. Une fois 1-3 OK : merge de la branche vers `fix/theme-consistency-tokens` ou `main` selon la stratégie.
-
-**Documents liés** :
-- [.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md](.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md) — plan v3 complet (~1100 lignes)
-- [docs/adr/0013-leased-writer-enforcement.md](docs/adr/0013-leased-writer-enforcement.md) — ADR officielle EN
-- [docs/FR/adr/0013-leased-writer-enforcement.md](docs/FR/adr/0013-leased-writer-enforcement.md) — version FR
-- [.ai/baselines/tests_pre_migration.jsonl](.ai/baselines/tests_pre_migration.jsonl) — 1662 tests baseline figés
-- [.ai/thought_log.md](.ai/thought_log.md) — 9 entrées commit-par-commit (pivots documentés)
-
----
-
-### [feedback-drawer] Activer la sync des labels GitHub après merge sur main
-
-**Noté le** : 2026-05-05 | **Priorité** : Bloquante au merge de `feat/feedback-drawer`
-
-**Contexte** : la feature drawer feedback (PR `feat/feedback-drawer`) introduit un workflow `.github/workflows/sync-labels.yml` qui crée automatiquement les labels GitHub (`feedback`, `bug`, `severity:critical`, `area:synthesis`, etc.) à partir de `.github/labels.yml`. Le workflow est trigger sur `push: branches: [main]` quand `labels.yml` change — donc au premier merge il devrait s'exécuter tout seul, **mais** la première fois c'est plus prudent de le lancer manuellement pour vérifier qu'il marche avant qu'une issue feedback réelle arrive.
-
-**À faire — juste APRÈS le merge de la PR feedback-drawer sur main** :
-
-1. Aller sur https://github.com/JGtm/LevelUp/actions
-2. Cliquer dans la liste de gauche sur **Sync labels**
-3. À droite, **Run workflow** → branch: `main` → **Run workflow**
-4. Attendre ~30 secondes
-5. Vérifier sur https://github.com/JGtm/LevelUp/labels que tous les labels du `.github/labels.yml` sont présents (`feedback`, `bug`, `enhancement`, `question`, `severity:*`, `area:*`, `triage:*`).
-
-**Pourquoi ce n'est pas critique au moment du merge** : sans ce run, la première issue feedback créée via le drawer aura une URL avec des `labels=feedback,bug,severity:high,area:synthesis` qui ne pourront pas être appliqués par GitHub puisque les labels n'existent pas encore. L'issue sera créée sans labels → la GitHub Action de triage ne se déclenchera PAS (elle est filtrée sur `contains(github.event.issue.labels.*.name, 'feedback')`). Pas de drame, juste un feedback qui dort sans triage IA tant que les labels ne sont pas créés.
-
-**Conditions de déblocage** :
-1. ❌ PR `feat/feedback-drawer` mergée sur main.
-
-**Documents liés** :
-- `.github/labels.yml` — déclaration versionnée des labels
-- `.github/workflows/sync-labels.yml` — workflow d'auto-sync
-- `.ai/V7/FEEDBACK_DRAWER.md` — plan complet
-- `.ai/thought_log.md` — entrée 2026-05-05 (drawer feedback)
-
----
-
-### [V8/Compare] CSR + CSR ATH (re-implémentation)
-
-**Noté le** : 2026-05-10 | **Priorité** : 🔵 V8 — reportée
-
-**Contexte** : retiré de la page Face-à-face le 2026-05-10 (commit `revert(compare): supprime CSR + CSR ATH`).
-
-**Pourquoi retiré** : appel live à `skill.svc.halowaypoint.com/hi/playlist/{id}/csrs` ne fonctionne pas pour les joueurs autres que celui logué (l'endpoint Waypoint scope la lecture du CSR au token courant). SpartanRecord contourne ça via un cron Firebase + un autocode privé qui pré-cache via un compte de service ; on n'a pas l'équivalent.
-
-**Stratégie v8** : reproduire le modèle SpartanRecord côté Go.
-- Cron background (1×/jour) qui appelle Waypoint pour la liste fermée des gamertags trackés (pool joueurs LevelUp).
-- Écriture dans `stats.duckdb` table `match_skill_rank` avec `rating_type='CSR'` (la colonne existe déjà, juste personne ne la remplit côté sync).
-- À l'affichage de Compare : lecture DuckDB locale (< 50ms, jamais d'appel live).
-- Restaurer les champs `CSRCurrent`, `CSRBest` côté domaine + sous-requêtes dans `compare_repo.go::GetPlayerATH/GetPlayerATHFor` + métriques `csr_current`/`csr_best` dans `compare_service.go::buildMetrics`.
-- Côté frontend : restaurer `csr_current`/`csr_best` dans `i18n.ts` et `ComparePage.tsx::CATEGORY_KEYS.bilan`.
-
-**À investiguer** : l'endpoint Waypoint accepte-t-il une lecture en service-account (compte 343i partner) ou faut-il rester sur le scope user ? Si scope user uniquement → cron tourne avec les tokens du joueur logué pour récupérer les CSR de ses coéquipiers.
-
----
-
-### [Multi-titre] Couche canonique `weapon_family` cross-titres
+> ⏸️ **Gardé de côté** (2026-06-09) : conservé volontairement, bloqué sur l'arrivée d'un 2e titre réel. Même déclencheur que `[coach/prestige] Cross-titre arcs`.
 
 **Noté le** : 2026-04-26 | **Priorité** : Basse — bloqué par arrivée d'un second titre réel
 
@@ -357,7 +63,9 @@ Commentaire explicite : "Migration du watcher : différée à PR 2.5b".
 
 ---
 
-### [Migration] Cible desktop Tauri web-first, sans réécriture Rust métier
+### [Migration] Cible desktop Tauri web-first, sans réécriture Rust métier — ⏸️ GARDÉ DE CÔTÉ
+
+> ⏸️ **Gardé de côté** (2026-06-09) : conservé pour distribution desktop néophyte future. Note : le cutover Go étant fait, le « backend Python local packagé » ci-dessous doit se lire **backend Go local** — à re-cadrer si réactivé.
 
 **Noté le** : 2026-04-12 | **Priorité** : Moyenne (distribution simplifiée, non bloquante pour les slices MVP)
 
@@ -383,6 +91,8 @@ Commentaire explicite : "Migration du watcher : différée à PR 2.5b".
 ---
 
 ### Kills environnementaux — catégorie dédiée (v8++)
+
+> ⚠️ **Spec à re-écrire pour Go (2026-06-09)** : les étapes ci-dessous référencent le code Python supprimé au cutover (`constants.py`, `_weapon_kills_repo.py`, `ParticipantBits`, `GRENADE_MEDALS`). L'idée reste valable mais doit être re-spécifiée côté Go (`apps/go-api`) avant toute implémentation. Priorité très basse (barrel kills extrêmement rares).
 
 **Contexte** : La médaille **Kong** (kill via baril projeté) est actuellement comptée dans `GRENADE_MEDALS` faute d'une meilleure catégorie. Ce classement est approximatif — il est impossible de savoir avec certitude si l'API inclut ces kills dans `GrenadeKills` ou non.
 
@@ -410,33 +120,9 @@ Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Syn
 
 Ce backlog liste les extensions volontairement reportées **après** la livraison V2 du pont coach → Prestige. Chaque entrée doit faire l'objet d'une décision produit séparée avant ouverture d'une nouvelle branche.
 
-### [coach/prestige] V3 — Squad coach
+### [coach/prestige] V2.1 — Plumbing `Source` → `prestige_telemetry.source` — ⏸️ PARKÉ
 
-**Idée** : étendre le pont aux escouades. Quand le coach détecte un pattern collectif (composition d'équipe orientée combat / objectif / support), il propose un `SquadChallenge` ou un pool d'arcs calibrés sur la composition.
-
-**Pré-requis** :
-- Profil agrégé d'escouade (moyenne LUSR sur les axes par membre).
-- Signal coach niveau escouade (à concevoir — `coach.GenerateInput` est aujourd'hui per-user).
-- Extension de `prestige.RefreshSquadPool` pour accepter un filtre coach.
-
-**Effort estimé** : lourd. Touche `coach`, `coach_advisor`, `prestige`, front-end squad UI.
-
----
-
-### [coach/prestige] V3 — Coach négatif soft
-
-**Idée** : autoriser le coach à signaler des **tendances dégradées** (LOWESS négative soutenue, baseline en chute) **sans culpabilisation**. Reformulation positive : "tu as l'opportunité de stabiliser X" plutôt que "tu régresses sur X".
-
-**Pré-requis** :
-- Décision produit explicite (ADR 0014 §6.1 cadre aujourd'hui le coach comme strictement positif — il faut un amendement ou une option par joueur).
-- Tone guidelines pour i18n (FR + EN) qui maintiennent le cadre positif.
-- A/B test ou opt-in séparé pour éviter d'imposer ce mode à tous les joueurs qui ont activé le coach proactif standard.
-
-**Effort estimé** : moyen côté code, lourd côté produit/UX.
-
----
-
-### [coach/prestige] V2.1 — Plumbing `Source` → `prestige_telemetry.source`
+> ⏸️ **Parké (2026-06-09)** : **but final = tuner le coach** (mesurer si les défis proposés par le coach sont acceptés/complétés davantage que ceux créés par le joueur, et réinjecter dans `synthesis_grammar.toml`). Mais **personne n'a aujourd'hui de question de tuning concrète** → écrire la télémétrie serait « écrire pour personne ». À ne ressortir **que** quand un besoin analytics réel émerge (définir d'abord la question, puis le consommateur, puis le plumbing). Vérifié : champ `Source` existe dans `CreateChallengeRequest` mais n'est pas propagé à la table, et `prestige_telemetry` n'est lue nulle part.
 
 **Idée** : ajouter une colonne `source` dans la table `prestige_telemetry` et propager `CreateChallengeRequest.Source` jusqu'à `EmitCreated` (puis aux EmitTransition pour suivre le devenir des challenges coach).
 
@@ -453,7 +139,9 @@ Ce backlog liste les extensions volontairement reportées **après** la livraiso
 
 ---
 
-### [coach/prestige] V3 — Apprentissage automatique de `synthesis_grammar.toml`
+### [coach/prestige] V3 — Apprentissage automatique de `synthesis_grammar.toml` — ⏸️ PARKÉ
+
+> ⏸️ **Parké (2026-06-09)** : downstream direct de la télémétrie ci-dessus (lit `prestige_telemetry`). Bloqué tant que V2.1 est parké. À reprendre seulement après qu'un consommateur de télémétrie existe et qu'un besoin de tuning concret est posé.
 
 **Idée** : analyser `prestige_telemetry` pour ajuster la grammaire de synthèse. Si les templates synthétisés sur metric=X ont taux de complétion < 30 % sur 50 acceptations, retirer X de la grammaire ou réduire ses windows autorisés.
 
@@ -466,32 +154,9 @@ Ce backlog liste les extensions volontairement reportées **après** la livraiso
 
 ---
 
-### [coach/prestige] V3 — Cross-titre arcs
+### [coach/prestige] V3 — Notifications push externes — ⏸️ GARDÉ DE CÔTÉ
 
-**Idée** : permettre un arc qui couvre deux titres (ex. progression accuracy partagée Halo Infinite + futur titre Halo MCC ou cross-game). Aujourd'hui chaque `Arc` est lié à un `title_slug` unique.
-
-**Pré-requis** :
-- Décision produit (les joueurs ont-ils ce besoin ?).
-- Refonte mineure `Arc.TitleSlug` → `Arc.TitleSlugs []string` ou table `arc_titles` séparée.
-- Adapter les répartitions PP par titre (un challenge cross-titre crédite-t-il les PP sur chaque titre ?).
-
-**Effort estimé** : moyen côté backend, lourd côté UX.
-
----
-
-### [coach/prestige] V3 — Coach narrative tone
-
-**Idée** : choix par joueur du "ton" du coach (technique / motivant / humour / neutre) influençant les `labelFR` / `labelEN` synthétisés et les réasons.
-
-**Pré-requis** :
-- Banque de templates i18n × 4 tons par signal kind.
-- Setting joueur `coach_tone` (extension de `user_preferences`).
-
-**Effort estimé** : moyen (surtout côté contenu i18n).
-
----
-
-### [coach/prestige] V3 — Notifications push externes
+> ⏸️ **Gardé de côté (2026-06-09)** : conservé tel quel. Vérifié : notifications coach **in-app uniquement** aujourd'hui (`player_notifications`). Pas de plan dédié pour l'instant (bloqué sur décision produit + infra push mobile inexistante).
 
 **Idée** : émission externe (push mobile, email, Discord) des proposals coach les plus fortes. Aujourd'hui les notifications restent in-app (`player_notifications` UI uniquement).
 
@@ -504,13 +169,13 @@ Ce backlog liste les extensions volontairement reportées **après** la livraiso
 
 ---
 
-**Ordre de priorisation suggéré (coach/prestige V3)** :
+**Ordre de priorisation suggéré (coach/prestige V3)** — voir [.ai/PLAN_COACH_V3_GENERATION.md](.ai/PLAN_COACH_V3_GENERATION.md) :
 
-1. V2.1 — Compteurs expvar (mesure → décision)
-2. V2.1 — Job GC (si volume justifie)
-3. V3 — Squad coach (le plus aligné avec les fondations Prestige squad existantes)
-4. V3 — Coach négatif soft (demande arbitrage produit explicite)
-5. Le reste — décisions au cas par cas
+1. Phase A — Coach négatif soft (backend testable vite ; front gaté sur mini-spec UX)
+2. Phase B — Coach tone (mutualisable i18n avec Phase A)
+3. Phase C — Squad coach (la plus lourde : coach + coach_advisor + prestige + front squad)
+4. Cross-titre arcs backend ([.ai/PLAN_CROSS_TITLE_ARCS_BACKEND.md](.ai/PLAN_CROSS_TITLE_ARCS_BACKEND.md)) — à anticiper avec l'arrivée du 2e titre
+5. Parkés : V2.1 télémétrie + auto-grammar (besoin analytics à définir d'abord)
 
 ---
 
@@ -532,6 +197,13 @@ Ce backlog liste les extensions volontairement reportées **après** la livraiso
 
 | Date | Item |
 |------|------|
+| 2026-06 | **[POST-V7] Go-live / cutover Python → Go** — la branche Go est devenue `main` (code applicatif Python `src/` retiré). Cutover terminé ; reste 2 micro-tâches optionnelles (doc async, tuning janitor) listées en backlog actif. |
+| 2026-06 | **[V8/Compare] CSR + CSR ATH (re-implémentation)** — cron CSR mondial autonome (`internal/scheduler/world_leaderboard_cron.go`, snapshots append-only), champs `HighestCSR*` restaurés dans `domain/compare.go` + `compare_service.go::applyCSRSummary`, exposés au front (`highest_csr`/`csr_alltime`). Commits `1693e6e1`, `aeaaffcd` (Phase 2 livrée). |
+| 2026-06 | **[auth/unification] Consolidation ADR 0023 — read-path + watcher daemon → MultiUserTokenStore** — phases 3a/3b/3c livrées (`ab0ebefa`, `9eb9b738`, `5c7d87a8`) : tous les chemins lisent le multi-user store en priorité (fallback legacy), tracker auto-découvert au boot, migration boot-time `MigrateLegacyTokens`. Couvre les items backlog « PR 2.5b watcher migration », « read-path switch » et « auth/cleanup migration ». PRs A–D du lockdown auth livrées (`2e2357db`, `00cb920c`, `58bf9ec7`, `d9fcb178`). |
+| 2026-06 | **[persist/safety] Gap [D] circuit breaker** — `internal/persist/queue.go:69-79` (`consecutiveFailures` + seuil 5, `ErrDrainCircuitBreaker` fail-fast ~1s) + 5 tests verts `queue_circuit_breaker_test.go`. Gaps restants (G/E + A/B optionnels) → [.ai/PLAN_PERSIST_ROBUSTNESS.md](.ai/PLAN_PERSIST_ROBUSTNESS.md). |
+| 2026-06 | **[db-concurrency] leased-writer-enforcement intégré** — `internal/platform/dblease/` (`LeasedWriter`, `AcquireWriterCtx`) mergé et utilisé dans 10+ sites sync (commits `351798cc`, `65ca246d`, `f50f5753`). Conditions de déblocage backlog (build cgo, baseline, coordination) levées par le go-live. |
+| 2026-05/06 | **[frontend/nav] Nettoyage `PlayerScopeNav`** — composant mort supprimé (cleanup knip `4b73b584`). Les constantes `PLAYER_*_NAV_ITEMS` sont conservées (toujours consommées par `pageTitle.ts`, donc non mortes). |
+| 2026-05/06 | **[feedback-drawer] Drawer feedback + sync labels** — feature mergée sur `main` (`apps/web/src/features/feedback-drawer/`), `.github/workflows/sync-labels.yml` + `.github/labels.yml` présents. Labels GitHub confirmés présents (2026-06-09) → item entièrement clos. |
 | 2026-05 | **[Go/PR 7] Sync Engine Migration to dblease** — 17 sites `AcquireLeaseCtx` → `AcquireWriterCtx` migrés (engine.go ×10, backfill_weapons.go ×1, citations_backfill.go ×2, friends_recompute.go ×2, session_recalc.go ×2). Deprecation comment sur legacy facade. |
 | 2026-05 | **[Go/PR 4-6] Leased-Writer-Enforcement Foundation** — type `LeasedWriter` + interfaces `DBExecutor`/`DBWriter`, expvar metrics `dblease_acquire_total{kind,status}`, 26 tests intégration (burst, coordination, atomicity), corrections fixtures (global schema), CI workflow updates (go-lease-enforcement, go-baseline-tests jobs), preservation 1662 tests baseline. |
 | 2026-05-24 | **[auth/unification] E.v2 — Pool.AddOrUpdateSource + periodic re-scan** (commit `4508df92`) : hot-add ou refresh d'un slot, goroutine main.go 15min tick, 5 tests TDD GREEN. |
