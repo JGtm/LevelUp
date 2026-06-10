@@ -1,3 +1,19 @@
+## [2026-06-10] Leaderboard mondial enrichi — Phase C (enricher + cron + header provider) — Quasi-complet
+
+**Statut** : Tous les blocs testables livrés ; reste uniquement le wiring boot cmd/server (prod-affectant, activation délibérée). 11 tests verts, module complet build OK.
+
+**Livré (suite du cœur)** :
+- `service/world_stats_enricher.go` (+ test) — `EnrichSeason(ctx, season, gamertags)` construit un agrégateur ciblé sur la saison (TargetSeasons normalisé) à chaque cycle. Interfaces `WorldMatchSource`/`WorldXUIDResolver` exportées.
+- `auth/cached_header_provider.go` (+ test) — `CachedHeaderProvider` mémoïse le header RTA (rebuild après TTL, thread-safe) ; `Header` = headerFn du résolveur. Isole la partie délicate (refresh) du wiring boot.
+- `duckdb.WorldSeasonGamertags(ctx, db, season)` — gamertags distincts d'une saison (union playlists).
+- `scheduler/world_leaderboard_cron.go` — `WithStatsEnricher` (optionnel, nil-safe) + phase `enrich()` après le snapshot CSR (lecture gamertags RO → EnrichSeason → InsertPlayerSeasonStats en fenêtre RW minimale). Cron existant non régressé (test scheduler vert).
+
+**Décision** : NE PAS câbler le boot cmd/server dans ce commit — ça active une nouvelle charge API Halo dans le cron prod (1×/jour) → nécessite validation live + accord explicite (règle prod-affectant). Le header provider + le résolveur isolent le risque ; le wiring restant = un `accessTokenFn` (logique both-shapes du probe) + 4 lignes de composition (recette dans le plan).
+
+**Prochaine étape** : soit câbler le boot (sur accord, avec validation live), soit Phase D (backfill CLI throttlé) qui réutilise exactement enricher/résolveur/header provider hors cron.
+
+---
+
 ## [2026-06-10] Leaderboard mondial enrichi — Phase C (agrégateur multi-tokens) — Cœur livré
 
 **Statut** : Cœur livré sur feat/world-leaderboard-enriched (wiring runtime restant). Build module complet OK, 8 tests verts.

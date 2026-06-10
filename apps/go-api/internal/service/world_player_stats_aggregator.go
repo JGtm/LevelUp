@@ -29,17 +29,18 @@ import (
 const worldMatchPageSize = 25 // plafond API Halo GetMatchHistory
 
 // Garantit que le client multi-tokens du pool satisfait la surface attendue.
-var _ worldMatchSource = (*syncpkg.PooledHaloClient)(nil)
+var _ WorldMatchSource = (*syncpkg.PooledHaloClient)(nil)
 
-// worldMatchSource : sous-ensemble de la surface client suffisant pour
+// WorldMatchSource : sous-ensemble de la surface client suffisant pour
 // l'agrégation. Satisfait par *syncpkg.PooledHaloClient (multi-tokens).
-type worldMatchSource interface {
+type WorldMatchSource interface {
 	GetMatchHistory(ctx context.Context, gamertag, matchType string, start, count int) ([]syncpkg.MatchHistoryEntry, error)
 	GetMatchStats(ctx context.Context, matchID string) (map[string]any, error)
 }
 
-// worldXUIDResolver résout gamertag -> xuid numérique (PeopleHub, single-token).
-type worldXUIDResolver interface {
+// WorldXUIDResolver résout gamertag -> xuid numérique (PeopleHub, single-token).
+// Satisfait par *auth.PeopleHubResolver.
+type WorldXUIDResolver interface {
 	ResolveXUID(ctx context.Context, gamertag string) (string, error)
 }
 
@@ -73,14 +74,14 @@ func (c *WorldStatsAggregatorConfig) withDefaults() {
 // WorldStatsAggregator agrège les stats brutes par (saison, playlist) pour un
 // ensemble de joueurs, via un client multi-tokens.
 type WorldStatsAggregator struct {
-	src      worldMatchSource
-	resolver worldXUIDResolver
+	src      WorldMatchSource
+	resolver WorldXUIDResolver
 	cfg      WorldStatsAggregatorConfig
 }
 
 // NewWorldStatsAggregator construit l'agrégateur. `src` doit être un client
 // multi-tokens (typiquement *syncpkg.PooledHaloClient construit avec PolicyAnyPublic).
-func NewWorldStatsAggregator(src worldMatchSource, resolver worldXUIDResolver, cfg WorldStatsAggregatorConfig) *WorldStatsAggregator {
+func NewWorldStatsAggregator(src WorldMatchSource, resolver WorldXUIDResolver, cfg WorldStatsAggregatorConfig) *WorldStatsAggregator {
 	cfg.withDefaults()
 	return &WorldStatsAggregator{src: src, resolver: resolver, cfg: cfg}
 }

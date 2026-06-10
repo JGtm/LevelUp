@@ -42,6 +42,13 @@ type LeaderboardScraperPort interface {
 	FetchCSRLeaderboard(ctx context.Context, seasonID, playlistID string, limit int) ([]domain.LeaderboardEntry, error)
 }
 
+// WorldStatsEnricherPort agrège les stats des joueurs d'une saison (Phase C).
+// Satisfait par *service.WorldStatsEnricher. Optionnel : si nil, le cron se limite
+// au scrape CSR (comportement historique). Best-effort par joueur.
+type WorldStatsEnricherPort interface {
+	EnrichSeason(ctx context.Context, season string, gamertags []string) ([]domain.WorldPlayerSeasonStats, []error)
+}
+
 const (
 	// DefaultWorldLeaderboardInterval : 1×/jour suffit — le classement mondial
 	// bouge lentement et le scraping doit rester poli (page non documentée).
@@ -68,11 +75,23 @@ const (
 type WorldLeaderboardCron struct {
 	provider   sharedprovider.Provider
 	scraper    LeaderboardScraperPort
-	playlists  func() []string // asset IDs des playlists classées à scraper
+	enricher   WorldStatsEnricherPort // optionnel (Phase C) ; nil → pas d'enrichissement
+	playlists  func() []string        // asset IDs des playlists classées à scraper
 	interval   time.Duration
 	freshness  time.Duration
 	limit      int
 	minEntries int // plancher de cohérence par playlist (sous ce seuil → skip)
+}
+
+// WithStatsEnricher branche l'enrichissement Phase C (agrégateur multi-tokens).
+// Retourne le cron pour chaînage. nil-safe : un enricher nil laisse le cron en
+// mode scrape-only. Le wiring (cmd/server) le fournit une fois le pool de tokens
+// + le résolveur PeopleHub construits.
+func (c *WorldLeaderboardCron) WithStatsEnricher(e WorldStatsEnricherPort) *WorldLeaderboardCron {
+	if c != nil {
+		c.enricher = e
+	}
+	return c
 }
 
 // NewWorldLeaderboardCron construit le cron. provider/scraper requis (nil → noop).
@@ -185,6 +204,76 @@ func (c *WorldLeaderboardCron) RunOnce(ctx context.Context) {
 		"module", logging.ModuleLeaderboard, "season", season,
 		"playlists", len(playlists), "scraped", scraped, "inserted", inserted,
 		"duration", time.Since(start))
+
+	// 5. Enrichissement Phase C (optionnel) : agréger les stats des joueurs de la
+	// saison active et les persister. Best-effort, après le snapshot CSR — un échec
+	// ici ne compromet pas le classement déjà persisté.
+	c.enrich(ctx, season)
+}
+
+// enrich agrège les stats des joueurs de la saison active (via l'enricher
+// multi-tokens) et les persiste en append-only. No-op si l'enricher est absent.
+// Lecture des gamertags hors lease writer ; writer acquis uniquement pour l'INSERT
+// (même discipline de fenêtre RW minimale que le scrape CSR).
+func (c *WorldLeaderboardCron) enrich(ctx context.Context, season string) {
+	if c.enricher == nil {
+		return
+	}
+	start := time.Now()
+
+	gamertags, err := c.seasonGamertags(ctx, season)
+	if err != nil {
+		slog.ErrorContext(ctx, "world_leaderboard_cron: lecture gamertags saison échouée — enrichissement ignoré",
+			"module", logging.ModuleLeaderboard, "season", season, "err", err)
+		return
+	}
+	if len(gamertags) == 0 {
+		slog.InfoContext(ctx, "world_leaderboard_cron: aucun gamertag à enrichir",
+			"module", logging.ModuleLeaderboard, "season", season)
+		return
+	}
+
+	stats, errs := c.enricher.EnrichSeason(ctx, season, gamertags)
+	if len(errs) > 0 {
+		slog.WarnContext(ctx, "world_leaderboard_cron: enrichissement partiel (erreurs par joueur)",
+			"module", logging.ModuleLeaderboard, "season", season,
+			"players", len(gamertags), "failures", len(errs), "first_err", errs[0])
+	}
+	if len(stats) == 0 {
+		slog.WarnContext(ctx, "world_leaderboard_cron: aucune stat agrégée — rien à persister",
+			"module", logging.ModuleLeaderboard, "season", season)
+		return
+	}
+
+	inserted, err := c.persistStats(ctx, stats)
+	if err != nil {
+		slog.ErrorContext(ctx, "world_leaderboard_cron: persistance stats échouée",
+			"module", logging.ModuleLeaderboard, "season", season, "err", err)
+		return
+	}
+	slog.InfoContext(ctx, "world_leaderboard_cron: enrichissement terminé",
+		"module", logging.ModuleLeaderboard, "season", season,
+		"players", len(gamertags), "rows", inserted, "duration", time.Since(start))
+}
+
+// seasonGamertags lit les gamertags distincts de la saison (reader RO).
+func (c *WorldLeaderboardCron) seasonGamertags(ctx context.Context, season string) ([]string, error) {
+	db, release, err := c.provider.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	return duckdb.WorldSeasonGamertags(ctx, db, season)
+}
+
+// persistStats acquiert le writer shared et insère les stats agrégées (append-only).
+func (c *WorldLeaderboardCron) persistStats(ctx context.Context, stats []domain.WorldPlayerSeasonStats) (int, error) {
+	wh, err := c.provider.AcquireWriter(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer wh.Release()
+	return duckdb.InsertPlayerSeasonStats(ctx, wh.DB(), stats)
 }
 
 // snapshotIsFresh indique si un snapshot de la saison date de moins de freshness.
