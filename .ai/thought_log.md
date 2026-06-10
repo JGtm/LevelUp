@@ -1,3 +1,25 @@
+## [2026-06-10] Revue branche feat/coach-v3-squad + correctifs pré-merge — Complété
+
+**Statut** : Complété. Revue demandée par l'user avant checkout/merge (code + concept + UX/UI), puis 3 correctifs validés + 1 fix sécurité. Mené dans un worktree dédié (`../LevelUp-coach-v3-squad`) pour ne pas perturber la branche bug-fix courante (`feat/leaderboard-csr-followup`). `feat/coach-v3-squad` = sur-ensemble strict du HEAD (24 commits, 57 fichiers) → merge fast-forward possible.
+
+**Revue** : concept solide (identité escouade clé xuid, règle no-overlap, coach soft-négatif neutre) ; code propre (archi hexagonale respectée, pas d'injection SQL — `mapMetricToColumn` whitelist, migration DROP squad_member gated/safe via `schema_migrations`, persist WAL robuste + e2e transactionnel). Findings : (1) 2 tests vitest rouges, (2) faille autZ squad/prestige (identité acteur client-asserted, routes hors `RequirePlayerOwnership`), (3) fenêtre de course markInFlight/recovery, (4) notif soft-négatif mal cadrée.
+
+**Vérif empirique** : Go `test ./...` vert (81 pkg) + `vet` propre ; front `typecheck` vert + `vitest` 1793 pass / 2 fail. Le « 1791/1793 » du journal précédent = ces 2 tests (réels, sur la feature Bonus livrée par cette branche).
+
+**Correctifs livrés (commits)** :
+- `310a74ea9` fix(squad) tests butterfly alignés sur le toggle Bonus (`hiddenTypes` → structure 2-séries, défaut UI).
+- `001fc5357` fix(persist) `markInFlight` AVANT le rename WAL (ferme la course recovery/Submit, double persist) + `clearInFlight` si rename échoue. Tests non-race + `-race` ciblé verts.
+- `b62d02a0e` feat(coach) catégorie notif NEUTRE `trend_consolidate` (default-on, pas de migration) pour le soft-négatif, au lieu de réutiliser `threshold_crossed` (rendu « Palier franchi »/flèche montante sur un axe en BAISSE). Backend (types + emitter + test verrou) + front (types/icons IconTarget/navigation onglet Entraînement/i18n FR+EN « Axe à consolider »).
+- (en cours d'autorisation) fix(squad) autZ Option A : `ActorGuard` (`WithActorGuard`) câblée sur les primitives ADR 0024 (`Enforced`/`GetSession`/`CurrentUser`/`CanAccessPlayer`, multi-profil famille) → 403 `player_forbidden` si l'acteur (created_by/requested_by/user_id) n'est pas un profil possédé par la session. Transparent demo/auth off. Tests httptest 403 sur les 6 routes.
+
+**Résultats** : suite Go complète **0 FAIL**, front vitest **1795 pass / 0 fail**, typecheck + vet propres.
+
+**Dette tracée** : faille autZ équivalente sur le prestige PRÉ-EXISTANT (challenges/arcs/me/pilot, `user_id` client) — non corrigée (hors périmètre coach, touche du livré) → PR dédiée. Findings mineurs non bloquants : double détection soft-négatif front (seuil 0.02) vs back (−0.10/14j), progression de défi d'escouade non affichée (type exporté non consommé), i18n inline du SquadFocusStrip.
+
+**Prochaine étape** : arbitrer la dette autZ prestige, puis merge fast-forward.
+
+---
+
 ## [2026-06-09] Coach V3 — vérification finale + couverture logging & tests escouade — Complété
 
 **Statut** : Complété. Vérification finale demandée par l'user (« tout est complet et fonctionne bien » + bonne couverture logging dossier dédié + tests). Build Go complet vert ; suites `prestige`/`api`/`api/handlers`/`coach`/`coach_advisor`/`migration`/`platform/duckdb` (complète) vertes ; front vitest 1791/1793.
