@@ -54,9 +54,8 @@ export function SquadEngagementSection(props: SquadEngagementSectionProps) {
     }
   }, [query.data])
 
-  if (query.isError) return null
-  if (query.data && query.data.labels.length === 0) return null
-
+  // Pas de `return null` sur erreur / session vide : SquadEngagementView
+  // (ChartCard) rend son état error / empty dans le même bloc titré.
   return (
     <SquadEngagementView
       session={session}

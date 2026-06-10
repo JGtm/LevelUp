@@ -244,13 +244,15 @@ export interface TimeseriesSkillProgressionProps {
   rows: TimeseriesMatchRow[]
   locale: ManifestLocale
   height?: number
+  emptyMessage?: string
 }
 
-export function TimeseriesSkillProgression({ rows, locale, height = 280 }: TimeseriesSkillProgressionProps) {
+export function TimeseriesSkillProgression({ rows, locale, height = 280, emptyMessage }: TimeseriesSkillProgressionProps) {
   const series = buildProgressionSeries(rows, locale)
 
-  if (series.length === 0) return null
-
+  // Pas de `return null` quand series est vide : on garde le bloc titré et on
+  // laisse ChartCard afficher son `emptyMessage` (buildTitle retombe sur le
+  // titre générique « Classement » quand aucun type de rating n'est présent).
   const title = buildTitle(series, locale)
 
   // Adaptateur ChartCard : séries passées = uniquement pour le guard "empty".
@@ -266,6 +268,7 @@ export function TimeseriesSkillProgression({ rows, locale, height = 280 }: Times
       title={title}
       series={chartSeriesForCard}
       height={height}
+      emptyMessage={emptyMessage}
       buildOption={() => buildOption(series, rows, locale)}
     />
   )

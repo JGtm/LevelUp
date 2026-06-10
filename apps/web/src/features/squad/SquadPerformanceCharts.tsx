@@ -227,8 +227,8 @@ export function SquadPerformanceCharts({
     [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels, labels.hsLabel, labels.perfectLabel],
   )
 
-  if (series.length === 0) return null
-
+  // Pas de `return null` quand aucune série : chaque sous-ChartCard affiche son
+  // état vide (titre + message) au lieu de faire disparaître toute la grille.
   return (
     <div className="space-y-4" data-testid="squad-performance-charts">
       <div className={pairClass}>

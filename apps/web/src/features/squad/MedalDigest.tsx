@@ -285,7 +285,13 @@ export function MedalDigest({ entries, mainPlayer, t }: MedalDigestProps) {
   const [expanded, setExpanded] = useState(false)
 
   if (!entries || entries.length === 0) {
-    return null
+    // Bloc vide : cadre type carte joueur (rounded-lg border bg-card) + message,
+    // au lieu de faire disparaître la section.
+    return (
+      <div className="flex min-h-[120px] items-center justify-center rounded-lg border border-border bg-card text-sm text-muted-foreground">
+        {t.noMedals}
+      </div>
+    )
   }
 
   const allPlayers = entries.map((e) => e.player)

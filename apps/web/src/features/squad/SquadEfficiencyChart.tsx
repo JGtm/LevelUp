@@ -70,8 +70,8 @@ export function SquadEfficiencyChart({
     [pts, labels],
   )
 
-  if (players.length === 0) return null
-
+  // Pas de `return null` quand aucun joueur n'a de données : ChartCard rend son
+  // emptyMessage (labels.noData) dans le bloc titré.
   return (
     <div className="space-y-2">
       {players.length > 1 && (

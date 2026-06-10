@@ -7,7 +7,6 @@
  */
 import { useMemo } from 'react'
 import { type ColumnDef } from '@tanstack/react-table'
-import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { tokenCssVar } from '@/lib/accessibility'
 import { formatWinProb } from '@/lib/winProbCategory'
 import { TimeseriesFirstEventDistribution } from './TimeseriesFirstEventDistribution'
@@ -22,7 +21,6 @@ import {
   TimeseriesEfficiency,
   TimeseriesIntensityHeatmap,
 } from './TimeseriesSquadAdapted'
-import { ChartFrame } from './ChartFrame'
 import { EngagementTimeseriesSection } from '@/features/engagement/EngagementTimeseriesSection'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
 import { TimeseriesSkillProgression } from './TimeseriesSkillProgression'
@@ -72,109 +70,91 @@ export function TimeseriesProgressionTab({
     ],
     [t],
   )
+  const emptyMsg = t('timeseries.empty.no_data_description')
   return (
     <div className="space-y-8">
       {/* timeseries.11 — Premier événement (gauche) | timeseries.14 — Par minute (droite) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartFrame
+        <TimeseriesFirstEventDistribution
           title={t('timeseries.progression.first_event_title')}
-        >
-          {data.first_events && data.first_events.buckets.length > 0 ? (
-            <TimeseriesFirstEventDistribution
-              data={data.first_events}
-              killsLabel={t('timeseries.progression.first_kill')}
-              deathsLabel={t('timeseries.progression.first_death')}
-              meanLabel={t('timeseries.progression.avg')}
-              xAxisLabel={t('timeseries.progression.time_axis')}
-            />
-          ) : (
-            <EmptyStateNotice
-              title={t('timeseries.empty.page_title')}
-              description={t('timeseries.empty.no_data_description')}
-            />
-          )}
-        </ChartFrame>
+          emptyMessage={emptyMsg}
+          data={data.first_events ?? { buckets: [], mean_first_kill_seconds: null, mean_first_death_seconds: null }}
+          killsLabel={t('timeseries.progression.first_kill')}
+          deathsLabel={t('timeseries.progression.first_death')}
+          meanLabel={t('timeseries.progression.avg')}
+          xAxisLabel={t('timeseries.progression.time_axis')}
+        />
 
-        <ChartFrame
+        <TimeseriesPerMinuteTrend
           title={t('timeseries.progression.per_minute_title')}
-        >
-          <TimeseriesPerMinuteTrend
-            rows={data.match_rows ?? []}
-            killsLabel={fieldMappings?.fields['kills_per_minute']?.label ?? 'Frags / min'}
-            deathsLabel={fieldMappings?.fields['deaths_per_minute']?.label ?? 'Morts / min'}
-            assistsLabel={fieldMappings?.fields['assists_per_minute']?.label ?? 'Assistances / min'}
-            perMinuteSuffix={t('timeseries.progression.per_minute_suffix')}
-          />
-        </ChartFrame>
+          emptyMessage={emptyMsg}
+          rows={data.match_rows ?? []}
+          killsLabel={fieldMappings?.fields['kills_per_minute']?.label ?? 'Frags / min'}
+          deathsLabel={fieldMappings?.fields['deaths_per_minute']?.label ?? 'Morts / min'}
+          assistsLabel={fieldMappings?.fields['assists_per_minute']?.label ?? 'Assistances / min'}
+          perMinuteSuffix={t('timeseries.progression.per_minute_suffix')}
+        />
       </div>
 
       {/* timeseries.12 (gauche) | timeseries.16 (droite) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartFrame title={t('timeseries.summary.perf_label')}>
-          <TimeseriesPerformanceTrend
-            rows={data.match_rows ?? []}
-            smoothingLabel={t('timeseries.summary.trend')}
-          />
-        </ChartFrame>
+        <TimeseriesPerformanceTrend
+          title={t('timeseries.summary.perf_label')}
+          emptyMessage={emptyMsg}
+          rows={data.match_rows ?? []}
+          smoothingLabel={t('timeseries.summary.trend')}
+        />
 
-        <ChartFrame
+        <TimeseriesSpreeHeadshots
           title={t('timeseries.progression.spree_headshots_title')}
-        >
-          <TimeseriesSpreeHeadshots
-            rows={data.match_rows ?? []}
-            spreeLabel={t('timeseries.progression.spree_label')}
-            headshotsLabel={fieldMappings?.fields['headshot_kills']?.label ?? 'Tirs à la tête'}
-            perfectLabel={
-              fieldMappings?.fields['perfect_kills']?.label ??
-              t('timeseries.progression.perfect_kills')
-            }
-          />
-        </ChartFrame>
+          emptyMessage={emptyMsg}
+          rows={data.match_rows ?? []}
+          spreeLabel={t('timeseries.progression.spree_label')}
+          headshotsLabel={fieldMappings?.fields['headshot_kills']?.label ?? 'Tirs à la tête'}
+          perfectLabel={
+            fieldMappings?.fields['perfect_kills']?.label ??
+            t('timeseries.progression.perfect_kills')
+          }
+        />
       </div>
 
       {/* Progression CSR (classé) ou LUSR (non classé) — pleine largeur, avant le bloc rank+perf. */}
-      <TimeseriesSkillProgression rows={data.match_rows ?? []} locale={locale} />
+      <TimeseriesSkillProgression rows={data.match_rows ?? []} locale={locale} emptyMessage={emptyMsg} />
 
       {/* timeseries.19 (gauche) | Skill rank + Performance (droite) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartFrame
+        <TimeseriesRankScore
           title={t('timeseries.progression.rank_score_title')}
-        >
-          <TimeseriesRankScore
-            rows={data.match_rows ?? []}
-            scoreLabel={fieldMappings?.fields['personal_score']?.label ?? 'Score personnel'}
-            rankLabel={
-              fieldMappings?.fields['rank']?.label ??
-              t('timeseries.progression.rank')
-            }
-          />
-        </ChartFrame>
+          emptyMessage={emptyMsg}
+          rows={data.match_rows ?? []}
+          scoreLabel={fieldMappings?.fields['personal_score']?.label ?? 'Score personnel'}
+          rankLabel={
+            fieldMappings?.fields['rank']?.label ??
+            t('timeseries.progression.rank')
+          }
+        />
 
-        <ChartFrame
+        <TimeseriesSkillRankPerformance
           title={t('timeseries.progression.rank_perf_title')}
-        >
-          <TimeseriesSkillRankPerformance
-            rows={data.match_rows ?? []}
-            ratingLabel={t('timeseries.progression.rank')}
-            perfLabel={
-              fieldMappings?.fields['performance_score']?.label ??
-              t('timeseries.summary.perf_label')
-            }
-          />
-        </ChartFrame>
+          emptyMessage={emptyMsg}
+          rows={data.match_rows ?? []}
+          ratingLabel={t('timeseries.progression.rank')}
+          perfLabel={
+            fieldMappings?.fields['performance_score']?.label ??
+            t('timeseries.summary.perf_label')
+          }
+        />
       </div>
 
       {/* Rendement & Résistance — pleine largeur. */}
-      <ChartFrame
+      <TimeseriesEfficiency
         title={t('timeseries.progression.efficiency_title')}
-      >
-        <TimeseriesEfficiency
-          rows={data.match_rows ?? []}
-          rendementLabel={t('timeseries.progression.dmg_per_kill')}
-          resistanceLabel={t('timeseries.progression.dmg_per_death')}
-          refLabel={t('timeseries.progression.ref_one_life')}
-        />
-      </ChartFrame>
+        emptyMessage={emptyMsg}
+        rows={data.match_rows ?? []}
+        rendementLabel={t('timeseries.progression.dmg_per_kill')}
+        resistanceLabel={t('timeseries.progression.dmg_per_death')}
+        refLabel={t('timeseries.progression.ref_one_life')}
+      />
 
       {/* Engagement — pleine largeur. EngagementTimeseriesSection
           rend déjà sa propre ChartCard avec titre interne, donc pas de
@@ -187,17 +167,13 @@ export function TimeseriesProgressionTab({
       />
 
       {/* Intensité — frags par phase de match (pleine largeur). */}
-      {(data.intensity_rows ?? []).length > 0 && (
-        <ChartFrame
-          title={t('timeseries.progression.intensity_title')}
-        >
-          <TimeseriesIntensityHeatmap
-            rows={data.intensity_rows ?? []}
-            zLabel={t('timeseries.progression.intensity_z')}
-            height={Math.max(200, Math.min(640, (data.intensity_rows ?? []).length * 18 + 80))}
-          />
-        </ChartFrame>
-      )}
+      <TimeseriesIntensityHeatmap
+        title={t('timeseries.progression.intensity_title')}
+        emptyMessage={emptyMsg}
+        rows={data.intensity_rows ?? []}
+        zLabel={t('timeseries.progression.intensity_z')}
+        height={Math.max(200, Math.min(640, (data.intensity_rows ?? []).length * 18 + 80))}
+      />
 
       {/* Historique des matchs — tableau Explorer standalone (sans bloc ni titre)
           en bas de Progression. Reflète le scope solo du filtre global (mêmes

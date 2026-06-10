@@ -107,6 +107,7 @@ export interface MatchViewText {
   combatNoData: string
   fragDiffNoData: string
   antagonistNoData: string
+  impactBadgesNoData: string
   // Sections de l'onglet Détails (titres type-1 du catalogue d'harmonisation)
   sectionFlow: string
   sectionDuels: string
@@ -257,6 +258,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatNoData: 'Pas de données disponibles',
     fragDiffNoData: 'Aucun événement de combat enregistré pour ce match.',
     antagonistNoData: 'Aucune donnée de duels disponible pour ce match.',
+    impactBadgesNoData: 'Aucun badge d\'impact sur ce match.',
     sectionFlow: 'Déroulé du match',
     sectionDuels: 'Duels & confrontations',
     sectionEncounters: 'Historique des rencontres',
@@ -399,6 +401,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatNoData: 'No data available',
     fragDiffNoData: 'No combat events recorded for this match.',
     antagonistNoData: 'No duel data available for this match.',
+    impactBadgesNoData: 'No impact badges for this match.',
     sectionFlow: 'Match flow',
     sectionDuels: 'Duels & head-to-head',
     sectionEncounters: 'Encounter history',

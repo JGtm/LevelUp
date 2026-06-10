@@ -251,7 +251,17 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
     getPaginationRowModel: getPaginationRowModel(),
   })
 
-  if (rows.length === 0) return null
+  if (rows.length === 0) {
+    // Bloc vide : on conserve le cadre bordé (même style que la table) + message.
+    return (
+      <div
+        className="flex min-h-[100px] items-center justify-center rounded-md border border-border text-sm text-muted-foreground"
+        data-testid="squad-synergy-history-table"
+      >
+        {t.empty.noBlockData}
+      </div>
+    )
+  }
 
   const pageIndex = table.getState().pagination.pageIndex
   const pageCount = table.getPageCount()

@@ -1,10 +1,10 @@
 /**
- * SquadContributionsPage.test.tsx — smoke tests post-suppression du radar.
+ * SquadContributionsPage.test.tsx — smoke tests.
  *
- * Le radar normalisé a été retiré (teammates.13 supprimé).
- * La page affiche désormais uniquement les sections conditionnelles (perMinute,
- * synergy, intensity, performance, weaponKills, firstEvents, impact, history).
- * Ces sections ne s'affichent que si pageData contient les données correspondantes.
+ * Depuis la refonte des états vides : les graphes sont TOUJOURS montés (chaque
+ * ChartCard gère son propre état vide titré) au lieu d'être masqués quand leur
+ * source de données est absente. Les tests vérifient donc que les graphes sont
+ * présents même sans données, et qu'ils restent présents avec données.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen } from '@testing-library/react'
@@ -47,11 +47,13 @@ describe('SquadContributionsPage', () => {
     expect(container).toBeTruthy()
   })
 
-  it('aucune section visible quand pageData est null', () => {
+  it('monte les graphes (état vide) même quand pageData est null', () => {
     mockSquadContext({})
     renderWithProviders(<SquadContributionsPage />)
-    expect(screen.queryByTestId('per-minute-chart')).toBeNull()
-    expect(screen.queryByTestId('synergy-radar-chart')).toBeNull()
+    // Les graphes ne disparaissent plus : ils sont montés et délèguent leur
+    // état vide à ChartCard (bloc titré + message).
+    expect(screen.getByTestId('per-minute-chart')).toBeInTheDocument()
+    expect(screen.getByTestId('synergy-radar-chart')).toBeInTheDocument()
   })
 
   it('affiche le per-minute chart quand per_minute_stats est renseigné', () => {

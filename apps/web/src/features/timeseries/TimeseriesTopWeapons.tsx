@@ -4,7 +4,7 @@
  * Bar chart horizontal des armes triées par kills (top N déjà filtré côté Go).
  * Catégorie sur Y, valeur sur X.
  */
-import { Suspense, lazy, useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import {
@@ -16,14 +16,13 @@ import {
 import { resolveToken } from '@/lib/accessibility'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import type { TimeseriesWeaponKill } from '@/lib/api/types'
-
-const ReactECharts = lazy(() =>
-  import('echarts-for-react').then((m) => ({ default: m.default ?? m })),
-)
+import { ChartFromOption } from './ChartFromOption'
 
 export interface TimeseriesTopWeaponsProps {
   weapons: TimeseriesWeaponKill[]
   height?: number
+  title?: ReactNode
+  emptyMessage?: string
   labels: {
     seriesName: string
     fallbackLabel: (id: number) => string
@@ -33,6 +32,8 @@ export interface TimeseriesTopWeaponsProps {
 export function TimeseriesTopWeapons({
   weapons,
   height = 360,
+  title,
+  emptyMessage,
   labels,
 }: TimeseriesTopWeaponsProps) {
   const themeVersion = useThemeVersion()
@@ -87,17 +88,7 @@ export function TimeseriesTopWeapons({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weapons, labels, themeVersion])
 
-  if (!option) return null
-
   return (
-    <Suspense fallback={null}>
-      <ReactECharts
-        option={option}
-        style={{ height, width: '100%' }}
-        notMerge
-        lazyUpdate
-        theme={undefined}
-      />
-    </Suspense>
+    <ChartFromOption title={title} option={option} height={height} emptyMessage={emptyMessage} />
   )
 }

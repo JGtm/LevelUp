@@ -122,10 +122,13 @@ describe('SquadImpactScoreboard', () => {
     expect(dashes.length).toBeGreaterThan(0)
   })
 
-  it('aucun match ou aucun joueur → null', () => {
+  it('aucun match ou aucun joueur → bloc vide titré (pas de disparition)', () => {
     const empty: SquadImpactMatrix = { matches: [], players: [], cells: [], badge_ord: [] }
     const { container } = renderWithProviders(<SquadImpactScoreboard matrix={empty} />)
-    expect(container.querySelector('[data-testid="squad-impact-scoreboard"]')).toBeNull()
+    // Le bloc reste monté avec un message vide au lieu de retourner null.
+    const block = container.querySelector('[data-testid="squad-impact-scoreboard"]')
+    expect(block).not.toBeNull()
+    expect(block?.querySelector('table')).toBeNull()
   })
 
   it('passager clandestin si score >= 0 sur le rang dernier', () => {

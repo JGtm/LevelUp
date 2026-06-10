@@ -8,7 +8,7 @@
  * Source : data.match_rows uniquement (pas de backend dédié — agrégation /
  * calcul côté front).
  */
-import { Suspense, lazy, useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import {
@@ -20,6 +20,7 @@ import {
 } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
+import { ChartFromOption } from './ChartFromOption'
 import type {
   TimeseriesMatchRow,
   IntensityMatchRow,
@@ -37,26 +38,15 @@ import {
 } from '@/lib/charts/oneLifeDamageGradient'
 import { buildMatchCategories } from './matchLabels'
 
-const ReactECharts = lazy(() =>
-  import('echarts-for-react').then((m) => ({ default: m.default ?? m })),
-)
-
 interface RenderProps {
   height: number
   option: EChartsCoreOption | null
+  title?: ReactNode
+  emptyMessage?: string
 }
-function ChartRender({ option, height }: RenderProps) {
-  if (!option) return null
+function ChartRender({ option, height, title, emptyMessage }: RenderProps) {
   return (
-    <Suspense fallback={null}>
-      <ReactECharts
-        option={option}
-        style={{ height, width: '100%' }}
-        notMerge
-        lazyUpdate
-        theme={undefined}
-      />
-    </Suspense>
+    <ChartFromOption title={title} option={option} height={height} emptyMessage={emptyMessage} />
   )
 }
 
@@ -71,6 +61,8 @@ export interface TimeseriesSessionPerformanceProps {
   points: SoloSessionPerfPoint[]
   granularity: 'session' | 'week' | 'month'
   height?: number
+  title?: ReactNode
+  emptyMessage?: string
   perfLabel: string
   winRateLabel: string
   mmrLabel: string
@@ -80,6 +72,8 @@ export function TimeseriesSessionPerformance({
   points,
   granularity,
   height = 360,
+  title,
+  emptyMessage,
   perfLabel,
   winRateLabel,
   mmrLabel,
@@ -177,7 +171,7 @@ export function TimeseriesSessionPerformance({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [points, granularity, perfLabel, winRateLabel, mmrLabel, themeVersion])
-  return <ChartRender option={option} height={height} />
+  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }
 
 // ─── Rendement & Résistance par match ────────────────────────────────────────
@@ -193,6 +187,8 @@ export function TimeseriesSessionPerformance({
 export interface TimeseriesEfficiencyProps {
   rows: TimeseriesMatchRow[]
   height?: number
+  title?: ReactNode
+  emptyMessage?: string
   rendementLabel: string
   resistanceLabel: string
   refLabel: string
@@ -206,12 +202,16 @@ export interface TimeseriesEfficiencyProps {
 export interface TimeseriesIntensityHeatmapProps {
   rows: IntensityMatchRow[]
   height?: number
+  title?: ReactNode
+  emptyMessage?: string
   zLabel: string
 }
 
 export function TimeseriesIntensityHeatmap({
   rows,
   height = 360,
+  title,
+  emptyMessage,
   zLabel,
 }: TimeseriesIntensityHeatmapProps) {
   const themeVersion = useThemeVersion()
@@ -224,12 +224,14 @@ export function TimeseriesIntensityHeatmap({
     return buildSquadIntensityHeatmapOption(ordered as SquadIntensityMatchRow[], { zLabel })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, zLabel, themeVersion])
-  return <ChartRender option={option} height={height} />
+  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }
 
 export function TimeseriesEfficiency({
   rows,
   height = 320,
+  title,
+  emptyMessage,
   rendementLabel,
   resistanceLabel,
   refLabel,
@@ -310,5 +312,5 @@ export function TimeseriesEfficiency({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, rendementLabel, resistanceLabel, refLabel, themeVersion])
-  return <ChartRender option={option} height={height} />
+  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }

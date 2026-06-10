@@ -8,24 +8,21 @@
  * propres séries / smoothings côté client. Aucune couleur hex directe : les
  * tokens sémantiques sont résolus via `resolveToken()`.
  */
-import { Suspense, lazy, useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import {
-  CHART_BG,
-  getAxisBase,
   getEChartsThemeColors,
+  getAxisBase,
   getLegendBase,
   getTooltipBase,
+  CHART_BG,
 } from '@/components/charts/_utils'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import type { TimeseriesMatchRow } from '@/lib/api/types'
 import { buildMatchCategories } from './matchLabels'
-
-const ReactECharts = lazy(() =>
-  import('echarts-for-react').then((m) => ({ default: m.default ?? m })),
-)
+import { ChartFromOption } from './ChartFromOption'
 
 // ─── Helpers numériques ───────────────────────────────────────────────────────
 
@@ -62,20 +59,13 @@ function perfTier(score: number): SemanticToken {
 interface CommonRenderProps {
   height: number
   option: EChartsCoreOption | null
+  title?: ReactNode
+  emptyMessage?: string
 }
 
-function ChartRender({ option, height }: CommonRenderProps) {
-  if (!option) return null
+function ChartRender({ option, height, title, emptyMessage }: CommonRenderProps) {
   return (
-    <Suspense fallback={null}>
-      <ReactECharts
-        option={option}
-        style={{ height, width: '100%' }}
-        notMerge
-        lazyUpdate
-        theme={undefined}
-      />
-    </Suspense>
+    <ChartFromOption title={title} option={option} height={height} emptyMessage={emptyMessage} />
   )
 }
 
@@ -84,12 +74,16 @@ function ChartRender({ option, height }: CommonRenderProps) {
 export interface TimeseriesKdaValueTrendProps {
   rows: TimeseriesMatchRow[]
   height?: number
+  title?: ReactNode
+  emptyMessage?: string
   fdaLabel: string
   smoothingLabel: string
 }
 
 export function TimeseriesKdaValueTrend({
   rows,
+  title,
+  emptyMessage,
   height = 360,
   fdaLabel,
   smoothingLabel,
@@ -156,7 +150,7 @@ export function TimeseriesKdaValueTrend({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, fdaLabel, smoothingLabel, themeVersion])
-  return <ChartRender option={option} height={height} />
+  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }
 
 // ─── timeseries.12 — Performance bars colorées par palier + smoothing ─────────
@@ -164,11 +158,15 @@ export function TimeseriesKdaValueTrend({
 export interface TimeseriesPerformanceTrendProps {
   rows: TimeseriesMatchRow[]
   height?: number
+  title?: ReactNode
+  emptyMessage?: string
   smoothingLabel: string
 }
 
 export function TimeseriesPerformanceTrend({
   rows,
+  title,
+  emptyMessage,
   height = 320,
   smoothingLabel,
 }: TimeseriesPerformanceTrendProps) {
@@ -223,7 +221,7 @@ export function TimeseriesPerformanceTrend({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, smoothingLabel, themeVersion])
-  return <ChartRender option={option} height={height} />
+  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }
 
 // ─── timeseries.13 — Assists timeseries — bars + smoothing rolling 10 ────────
@@ -231,12 +229,16 @@ export function TimeseriesPerformanceTrend({
 export interface TimeseriesAssistsTrendProps {
   rows: TimeseriesMatchRow[]
   height?: number
+  title?: ReactNode
+  emptyMessage?: string
   assistsLabel: string
   smoothingLabel: string
 }
 
 export function TimeseriesAssistsTrend({
   rows,
+  title,
+  emptyMessage,
   height = 320,
   assistsLabel,
   smoothingLabel,
@@ -286,7 +288,7 @@ export function TimeseriesAssistsTrend({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, assistsLabel, smoothingLabel, themeVersion])
-  return <ChartRender option={option} height={height} />
+  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }
 
 // ─── timeseries.14 — Stats par minute (groupées par match) ───────────────────
@@ -294,6 +296,8 @@ export function TimeseriesAssistsTrend({
 export interface TimeseriesPerMinuteTrendProps {
   rows: TimeseriesMatchRow[]
   height?: number
+  title?: ReactNode
+  emptyMessage?: string
   killsLabel: string
   deathsLabel: string
   assistsLabel: string
@@ -302,6 +306,8 @@ export interface TimeseriesPerMinuteTrendProps {
 
 export function TimeseriesPerMinuteTrend({
   rows,
+  title,
+  emptyMessage,
   height = 360,
   killsLabel,
   deathsLabel,
@@ -401,7 +407,7 @@ export function TimeseriesPerMinuteTrend({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, killsLabel, deathsLabel, assistsLabel, perMinuteSuffix, themeVersion])
-  return <ChartRender option={option} height={height} />
+  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }
 
 // ─── timeseries.15 — Average life timeseries ─────────────────────────────────
@@ -409,11 +415,15 @@ export function TimeseriesPerMinuteTrend({
 export interface TimeseriesAvgLifeTrendProps {
   rows: TimeseriesMatchRow[]
   height?: number
+  title?: ReactNode
+  emptyMessage?: string
   lifeLabel: string
 }
 
 export function TimeseriesAvgLifeTrend({
   rows,
+  title,
+  emptyMessage,
   height = 240,
   lifeLabel,
 }: TimeseriesAvgLifeTrendProps) {
@@ -455,7 +465,7 @@ export function TimeseriesAvgLifeTrend({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, lifeLabel, themeVersion])
-  return <ChartRender option={option} height={height} />
+  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }
 
 // ─── timeseries.16 — Spree + Headshots + Perfect kills (grouped bars) ───────
@@ -463,6 +473,8 @@ export function TimeseriesAvgLifeTrend({
 export interface TimeseriesSpreeHeadshotsProps {
   rows: TimeseriesMatchRow[]
   height?: number
+  title?: ReactNode
+  emptyMessage?: string
   spreeLabel: string
   headshotsLabel: string
   perfectLabel: string
@@ -470,6 +482,8 @@ export interface TimeseriesSpreeHeadshotsProps {
 
 export function TimeseriesSpreeHeadshots({
   rows,
+  title,
+  emptyMessage,
   height = 320,
   spreeLabel,
   headshotsLabel,
@@ -527,7 +541,7 @@ export function TimeseriesSpreeHeadshots({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, spreeLabel, headshotsLabel, perfectLabel, themeVersion])
-  return <ChartRender option={option} height={height} />
+  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }
 
 // ─── Skill rank + Performance line (Forme) ───────────────────────────────────
@@ -535,12 +549,16 @@ export function TimeseriesSpreeHeadshots({
 export interface TimeseriesSkillRankPerformanceProps {
   rows: TimeseriesMatchRow[]
   height?: number
+  title?: ReactNode
+  emptyMessage?: string
   ratingLabel: string
   perfLabel: string
 }
 
 export function TimeseriesSkillRankPerformance({
   rows,
+  title,
+  emptyMessage,
   height = 320,
   ratingLabel,
   perfLabel,
@@ -623,7 +641,7 @@ export function TimeseriesSkillRankPerformance({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, ratingLabel, perfLabel, themeVersion])
-  return <ChartRender option={option} height={height} />
+  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }
 
 // ─── timeseries.19 — Rank score (personal_score + rank Y2 inversé) ──────────
@@ -631,12 +649,16 @@ export function TimeseriesSkillRankPerformance({
 export interface TimeseriesRankScoreProps {
   rows: TimeseriesMatchRow[]
   height?: number
+  title?: ReactNode
+  emptyMessage?: string
   scoreLabel: string
   rankLabel: string
 }
 
 export function TimeseriesRankScore({
   rows,
+  title,
+  emptyMessage,
   height = 320,
   scoreLabel,
   rankLabel,
@@ -706,5 +728,5 @@ export function TimeseriesRankScore({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, scoreLabel, rankLabel, themeVersion])
-  return <ChartRender option={option} height={height} />
+  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }

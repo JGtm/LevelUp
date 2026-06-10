@@ -14,12 +14,14 @@ import {
 
 interface MapPerfVsHistoryChartProps extends MapPerfVsHistoryOpts {
   title?: string
+  emptyMessage?: string
   rows: MapBreakdownRow[]
 }
 
 export function MapPerfVsHistoryChart({
   rows,
   title,
+  emptyMessage,
   mapLabelOf,
   sessionLabel,
   historyLabel,
@@ -47,6 +49,7 @@ export function MapPerfVsHistoryChart({
       series={series}
       buildOption={buildOption}
       height={height}
+      emptyMessage={emptyMessage}
     />
   )
 }
