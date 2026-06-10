@@ -1,7 +1,7 @@
 /**
  * AdminPage — gestion des utilisateurs et des invitations.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -248,10 +248,51 @@ function InvitesSection() {
 // Section Intégrité des données (invariants sync — plan SYNC_INVARIANTS_GATE)
 // ---------------------------------------------------------------------------
 
+/**
+ * Tendance entre deux vérifications : snapshot des counts par
+ * (joueur, invariant) persisté en localStorage. Affiche un delta (+N / -N)
+ * à côté du count courant quand il a bougé depuis le run précédent —
+ * une CROISSANCE de WARN est le signal « un batch ne converge plus ».
+ */
+const INVARIANTS_SNAPSHOT_KEY = 'admin-invariants-snapshot'
+
+type InvariantsSnapshot = Record<string, number> // "slug|key" -> count
+
+function readInvariantsSnapshot(): InvariantsSnapshot {
+  try {
+    const raw = localStorage.getItem(INVARIANTS_SNAPSHOT_KEY)
+    return raw ? (JSON.parse(raw) as InvariantsSnapshot) : {}
+  } catch {
+    return {}
+  }
+}
+
+function buildInvariantsSnapshot(reports: AdminPlayerInvariantsReport[]): InvariantsSnapshot {
+  const snap: InvariantsSnapshot = {}
+  for (const r of reports) {
+    for (const v of r.violations) {
+      snap[`${r.player_slug}|${v.key}`] = v.count
+    }
+  }
+  return snap
+}
+
 function InvariantsSection() {
   const { data, isLoading, isError, refetch, isFetching } = useAdminInvariants()
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+
+  // Snapshot précédent figé au mount ; le courant remplace en localStorage à
+  // chaque réponse (generated_at change ⇒ nouveau run).
+  const [previous] = useState<InvariantsSnapshot>(() => readInvariantsSnapshot())
+  useEffect(() => {
+    if (!data?.reports) return
+    try {
+      localStorage.setItem(INVARIANTS_SNAPSHOT_KEY, JSON.stringify(buildInvariantsSnapshot(data.reports)))
+    } catch {
+      /* quota/SSR : tendance simplement absente */
+    }
+  }, [data])
 
   return (
     <Card>
@@ -282,7 +323,12 @@ function InvariantsSection() {
         ) : (
           <div className="space-y-3">
             {data.reports.map((r) => (
-              <PlayerInvariantsCard key={r.player_slug || r.gamertag} report={r} t={t} />
+              <PlayerInvariantsCard
+                key={r.player_slug || r.gamertag}
+                report={r}
+                previous={previous}
+                t={t}
+              />
             ))}
           </div>
         )}
@@ -293,12 +339,20 @@ function InvariantsSection() {
 
 function PlayerInvariantsCard({
   report,
+  previous,
   t,
 }: {
   report: AdminPlayerInvariantsReport
+  previous: InvariantsSnapshot
   t: (key: CommonManifestKey) => string
 }) {
   const healthy = !report.check_error && report.fail_count === 0 && report.warn_count === 0
+  // Delta vs run précédent : undefined = pas de référence (1er run / nouvelle clé).
+  const deltaOf = (key: string, count: number): number | undefined => {
+    const prev = previous[`${report.player_slug}|${key}`]
+    if (prev === undefined || prev === count) return undefined
+    return count - prev
+  }
   return (
     <div className="rounded-md border px-4 py-3">
       <div className="flex items-center justify-between">
@@ -338,26 +392,41 @@ function PlayerInvariantsCard({
 
       {report.violations.length > 0 && (
         <ul className="mt-2 space-y-1.5">
-          {report.violations.map((v) => (
-            <li key={v.key} className="text-xs">
-              <span
-                className={
-                  v.severity === 'fail'
-                    ? 'font-mono font-semibold text-destructive'
-                    : 'font-mono text-muted-foreground'
-                }
-              >
-                [{v.severity}] {v.key}
-              </span>{' '}
-              <span className="text-foreground">×{v.count}</span>
-              <span className="ml-1 text-muted-foreground">— {v.description}</span>
-              {(v.sample ?? []).length > 0 && (
-                <div className="mt-0.5 truncate font-mono text-muted-foreground/70">
-                  {(v.sample ?? []).join(', ')}
-                </div>
-              )}
-            </li>
-          ))}
+          {report.violations.map((v) => {
+            const delta = deltaOf(v.key, v.count)
+            return (
+              <li key={v.key} className="text-xs">
+                <span
+                  className={
+                    v.severity === 'fail'
+                      ? 'font-mono font-semibold text-destructive'
+                      : 'font-mono text-muted-foreground'
+                  }
+                >
+                  [{v.severity}] {v.key}
+                </span>{' '}
+                <span className="text-foreground">×{v.count}</span>
+                {delta !== undefined && (
+                  <span
+                    className={
+                      delta > 0
+                        ? 'ml-1 font-semibold text-destructive'
+                        : 'ml-1 text-muted-foreground'
+                    }
+                  >
+                    ({delta > 0 ? '+' : ''}
+                    {delta})
+                  </span>
+                )}
+                <span className="ml-1 text-muted-foreground">— {v.description}</span>
+                {(v.sample ?? []).length > 0 && (
+                  <div className="mt-0.5 truncate font-mono text-muted-foreground/70">
+                    {(v.sample ?? []).join(', ')}
+                  </div>
+                )}
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>
