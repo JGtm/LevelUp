@@ -1026,7 +1026,31 @@ func NewRouter(
 				appPlayers := func(context.Context) ([]domain.PlayerSummary, error) {
 					return cfg.LoadPlayers()
 				}
-				ph := handlers.NewPrestigeHandler(lazy, appPlayers)
+				// Garde d'autorisation acteur (ADR 0024 étendu aux routes squad
+				// top-level) : created_by/requested_by/user_id doivent désigner un
+				// profil possédé par la session. Réutilise les primitives de
+				// RequirePlayerOwnership. Transparent en demo / auth désactivée.
+				squadXUIDResolve := playerOwnershipXUIDResolver(cfg)
+				squadFamilyResolve := familyXUIDResolver(cfg, settingsStore)
+				squadActorGuard := func(ctx context.Context, actorSlug string) bool {
+					if !authz.Enforced(cfg.DemoMode, cfg.AuthMode) {
+						return true
+					}
+					sess := middleware.GetSession(ctx)
+					if sess == nil {
+						return false
+					}
+					xuid, found := squadXUIDResolve(ctx, actorSlug)
+					if !found {
+						return false
+					}
+					var fam map[string]bool
+					if squadFamilyResolve != nil {
+						fam = squadFamilyResolve(ctx)
+					}
+					return authz.CanAccessPlayer(true, authz.CurrentUser(sess, users), xuid, fam)
+				}
+				ph := handlers.NewPrestigeHandler(lazy, appPlayers).WithActorGuard(squadActorGuard)
 				// Défis
 				r.Post("/challenges", ph.CreateChallenge)
 				r.Get("/challenges", ph.ListActiveChallenges)

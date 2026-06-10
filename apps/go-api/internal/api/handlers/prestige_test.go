@@ -356,6 +356,66 @@ func TestPrestigeHandler_ListMySquads_OK(t *testing.T) {
 	}
 }
 
+// newRouterGuarded : comme newRouter mais avec une garde d'autorisation acteur
+// (ADR 0024 sur routes squad top-level).
+func newRouterGuarded(svc prestige.Service, guard ActorGuard) *chi.Mux {
+	h := NewPrestigeHandler(svc, testAppPlayers).WithActorGuard(guard)
+	r := chi.NewRouter()
+	r.Post("/squads", h.CreateSquad)
+	r.Get("/squads", h.ListMySquads)
+	r.Post("/squads/{squad_id}/members", h.AddSquadMember)
+	r.Delete("/squads/{squad_id}/members/{xuid}", h.RemoveSquadMember)
+	r.Post("/squad-challenges/{id}/evaluate", h.EvaluateSquadChallenge)
+	r.Get("/squads/{squad_id}/orientation", h.SquadOrientation)
+	return r
+}
+
+// TestPrestigeHandler_SquadActorGuard_DeniesForeignActor : un appelant ne peut
+// pas agir au nom d'un autre slug (created_by/requested_by/user_id) → 403. La
+// garde n'autorise ici que « alice » ; toutes les requêtes prétendent « bob ».
+func TestPrestigeHandler_SquadActorGuard_DeniesForeignActor(t *testing.T) {
+	onlyAlice := func(_ context.Context, slug string) bool { return slug == "alice" }
+	cases := []struct {
+		name, method, path, body string
+	}{
+		{"create_squad", http.MethodPost, "/squads", `{"name":"X","created_by":"bob"}`},
+		{"list_my_squads", http.MethodGet, "/squads?user_id=bob", ""},
+		{"add_member", http.MethodPost, "/squads/sq1/members", `{"xuid":"xBob","requested_by":"bob"}`},
+		{"remove_member", http.MethodDelete, "/squads/sq1/members/xBob?requested_by=bob", ""},
+		{"evaluate", http.MethodPost, "/squad-challenges/sc1/evaluate", `{"requested_by":"bob"}`},
+		{"orientation", http.MethodGet, "/squads/sq1/orientation?requested_by=bob", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newRouterGuarded(&mockPrestigeService{}, onlyAlice)
+			var req *http.Request
+			if tc.body == "" {
+				req = httptest.NewRequest(tc.method, tc.path, nil)
+			} else {
+				req = httptest.NewRequest(tc.method, tc.path, bytes.NewBufferString(tc.body))
+			}
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+			if w.Code != http.StatusForbidden {
+				t.Errorf("status=%d, want 403 (acteur étranger refusé); body=%s", w.Code, w.Body.String())
+			}
+		})
+	}
+}
+
+// TestPrestigeHandler_SquadActorGuard_AllowsOwnActor : l'acteur autorisé passe
+// la garde (la route s'exécute normalement).
+func TestPrestigeHandler_SquadActorGuard_AllowsOwnActor(t *testing.T) {
+	onlyAlice := func(_ context.Context, slug string) bool { return slug == "alice" }
+	r := newRouterGuarded(&mockPrestigeService{orientationResp: "combat"}, onlyAlice)
+	req := httptest.NewRequest(http.MethodGet, "/squads/sq1/orientation?requested_by=alice", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d, want 200 (acteur autorisé); body=%s", w.Code, w.Body.String())
+	}
+}
+
 func TestPrestigeHandler_ListArcPresets_OK(t *testing.T) {
 	mock := &mockPrestigeService{
 		listPresetsResp: []prestige.PresetArc{{ID: "p1", TitleSlug: "halo_infinite", TitleFR: "Ascension"}},
