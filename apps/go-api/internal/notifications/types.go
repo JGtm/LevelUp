@@ -49,6 +49,10 @@ const (
 	CategoryLUSRTierApproach  Category = "lusr_tier_approach"
 	CategoryStreakMilestone   Category = "streak_milestone"
 	CategoryComebackWelcome   Category = "comeback_welcome"
+	// 2026-06-09 : coach soft-négatif (Coach V3 Phase A) — axe en baisse soutenue
+	// « à consolider ». Catégorie NEUTRE distincte de threshold_crossed (positif) :
+	// une tendance descendante ne doit pas s'afficher « Palier franchi ».
+	CategoryTrendConsolidate Category = "trend_consolidate"
 	// 2026-05-24 : Pattern Engine v3 (PLAN_PATTERN_ENGINE.md phases 1-3).
 	CategoryPatternStrength Category = "pattern_strength"
 	CategoryPatternWeakness Category = "pattern_weakness"
@@ -75,6 +79,7 @@ func AllCategories() []Category {
 		CategoryRecordNearMiss, CategoryMilestoneUnlocked,
 		CategoryMilestoneNearMiss, CategoryLUSRTierApproach,
 		CategoryStreakMilestone, CategoryComebackWelcome,
+		CategoryTrendConsolidate,
 		// Pattern Engine v3.
 		CategoryPatternStrength, CategoryPatternWeakness,
 		CategoryPatternBehavior, CategoryPatternLever,
