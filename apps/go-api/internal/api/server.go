@@ -665,6 +665,11 @@ func NewRouter(
 			r.Get("/invites", adminHandler.ListInvites)
 			r.Post("/invites", adminHandler.GenerateInvite)
 			r.Delete("/invites/{code}", adminHandler.RevokeInvite)
+			// Intégrité des données : invariants du pipeline sync par joueur
+			// (Phase 4 du plan .ai/PLAN_SYNC_INVARIANTS_GATE.md). NoStore : le
+			// résultat reflète l'état courant des DBs, jamais de cache.
+			invariantsHandler := handlers.NewAdminInvariantsHandler(reg.RunDataInvariants)
+			r.With(middleware.NoStore).Get("/invariants", invariantsHandler.Get)
 		})
 
 		// Diagnostic — accessible en loopback (127.0.0.1) uniquement, sans auth.

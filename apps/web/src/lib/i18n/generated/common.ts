@@ -2,6 +2,14 @@
 // Source : apps/web/src/lib/i18n/manifests/common.toml
 
 export const commonManifest = {
+  "common.admin.invariants_all_ok": { fr: "Tous les invariants sont respectés.", en: "All invariants hold." },
+  "common.admin.invariants_check_error": { fr: "Vérification impossible", en: "Check failed" },
+  "common.admin.invariants_empty": { fr: "Aucun joueur suivi.", en: "No tracked players." },
+  "common.admin.invariants_generated_at": { fr: "Vérifié à", en: "Checked at" },
+  "common.admin.invariants_load_failed": { fr: "Échec de la vérification des invariants.", en: "Failed to run invariants check." },
+  "common.admin.invariants_loading": { fr: "Vérification…", en: "Checking…" },
+  "common.admin.invariants_refresh": { fr: "Vérifier", en: "Check" },
+  "common.admin.invariants_section": { fr: "Intégrité des données", en: "Data integrity" },
   "common.admin.invitation_codes_section": { fr: "Codes d'invitation", en: "Invitation codes" },
   "common.admin.invite_generate_failed": { fr: "Échec de la génération du code.", en: "Failed to generate code." },
   "common.admin.invite_generated": { fr: "Code généré :", en: "Code generated:" },
