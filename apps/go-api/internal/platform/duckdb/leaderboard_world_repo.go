@@ -91,9 +91,60 @@ func (r *LeaderboardRepo) GetCSRWorldLeaderboard(
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	// Enrichissement best-effort (Phase B) : stats joueur + delta rang, sur la même
+	// connexion shared. Données absentes (avant backfill Phase D) → entrées inchangées.
+	r.enrichWorldEntries(ctx, sharedDB, out, season, playlist)
 	slog.DebugContext(ctx, "classement CSR mondial lu", "module", logModuleLeaderboard,
 		"season", season, "playlist", playlist, "entries", len(out))
 	return out, nil
+}
+
+// enrichWorldEntries fusionne les stats par joueur (queryWorldPlayerStats) + le
+// delta de rang inter-saison dans les entrées du classement. Best-effort : toute
+// erreur d'enrichissement est loguée et n'invalide pas le classement de base.
+func (r *LeaderboardRepo) enrichWorldEntries(ctx context.Context, db *sql.DB, entries []domain.LeaderboardEntry, season, playlist string) {
+	if len(entries) == 0 {
+		return
+	}
+	enriched, err := queryWorldPlayerStats(ctx, db, season, playlist)
+	if err != nil {
+		slog.WarnContext(ctx, "enrichissement classement mondial échoué (non bloquant)",
+			"module", logModuleLeaderboard, "season", season, "playlist", playlist, "err", err)
+		return
+	}
+	byGT := make(map[string]domain.WorldPlayerSeasonStats, len(enriched))
+	for _, s := range enriched {
+		byGT[strings.ToLower(s.Gamertag)] = s
+	}
+	prevRanks, err := loadPrevSeasonRanks(ctx, db, playlist, season)
+	if err != nil {
+		slog.WarnContext(ctx, "delta rang classement mondial échoué (non bloquant)",
+			"module", logModuleLeaderboard, "season", season, "playlist", playlist, "err", err)
+		prevRanks = nil
+	}
+	for i := range entries {
+		key := strings.ToLower(entries[i].Gamertag)
+		if s, ok := byGT[key]; ok {
+			applyWorldEnrichment(&entries[i], s)
+		}
+		if pr, ok := prevRanks[key]; ok {
+			d := pr - entries[i].Rank // positif = a grimpé (rang plus petit = meilleur)
+			entries[i].RankDelta = &d
+		}
+	}
+}
+
+// applyWorldEnrichment recopie compteurs bruts + ratios dérivés + indicateur
+// inter-saison d'un WorldPlayerSeasonStats dans une LeaderboardEntry (pointeurs
+// frais → chaque entrée a ses propres pointeurs).
+func applyWorldEnrichment(e *domain.LeaderboardEntry, s domain.WorldPlayerSeasonStats) {
+	mc, wc, lc, tc, dc := s.MatchCount, s.WinCount, s.LossCount, s.TieCount, s.DnfCount
+	k, d, a, pt, md := s.Kills, s.Deaths, s.Assists, s.PlaytimeSec, s.MedalCount
+	e.MatchCount, e.WinCount, e.LossCount, e.TieCount, e.DnfCount = &mc, &wc, &lc, &tc, &dc
+	e.Kills, e.Deaths, e.Assists, e.PlaytimeSec, e.MedalCount = &k, &d, &a, &pt, &md
+	e.WinRate, e.KDA, e.KillsPerMin = s.WinRate, s.KDA, s.KillsPerMin
+	e.PrevSeasonID, e.PrevWinRate, e.PrevKDA = s.PrevSeasonID, s.PrevWinRate, s.PrevKDA
+	e.KDATrend, e.WinRateTrend = s.KDATrend, s.WinRateTrend
 }
 
 // GetWorldLeaderboardCatalog liste les saisons et playlists pour lesquelles des

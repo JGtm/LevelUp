@@ -552,7 +552,7 @@ win_rate_trend?:  'up' | 'down' | 'stable'
 | Phase | Statut | Notes |
 |-------|--------|-------|
 | A — Probe E2E échantillon | ✅ VALIDÉE (2026-06-10) | auth PeopleHub + xuid 100% + extraction + bucketing **playlist** + **dimension saison** (pagination 9 mois → CsrSeason12-1, attribution via `MatchInfo.SeasonId`) + timing ~0.9s/match. Design Phase B/C : attribuer par SeasonId (pas dates), auth single-token |
-| B — Migration + types + repo | ⬜ À faire | Dépend de Phase A ; chemins JSON confirmés ✅ |
+| B — Migration + types + repo | ✅ FAITE (2026-06-10) | Table append-only `world_player_season_stats` + vue `_latest` ; types `WorldPlayerSeasonStats` + `LeaderboardEntry` étendu ; repo (`InsertPlayerSeasonStats`, `GetWorldPlayerSeasonStats` LAG inter-saison, `loadPrevSeasonRanks`) ; `GetCSRWorldLeaderboard` enrichi (merge + RankDelta, best-effort). Tests :memory: verts |
 | C — Agrégateur + cron | ⬜ À faire | Dépend de Phase B ; **fetch saison/joueur 1× + bucket par `Playlist.AssetId`** (union des joueurs, pas le produit) |
 | D — Script backfill | ⬜ À faire | Dépend de Phase B+C |
 | E — Frontend | ⬜ À faire | Dépend de Phase B (types API) |
