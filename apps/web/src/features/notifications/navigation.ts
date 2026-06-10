@@ -76,6 +76,9 @@ export function resolveTarget(notif: Notification, playerSlug: string): NotifTar
       // Pas de page admin dédiée. On renvoie sur la page notifications du
       // joueur qui affiche le body complet (compteurs + hint repair).
       return { to: `/players/${playerSlug}/notifications` }
+    case 'trend_consolidate':
+      // Onglet Entraînement (CoachFocusCard « Cap du moment »).
+      return { to: `/players/${playerSlug}/ascension/coaching` }
     default:
       return null
   }

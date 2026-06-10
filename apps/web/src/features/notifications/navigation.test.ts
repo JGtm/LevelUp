@@ -28,6 +28,7 @@ const VALID_PLAYER_SUBPATHS = [
   '/synthesis',
   '/objectifs',
   '/ascension',
+  '/ascension/coaching',
   '/palmares',
   '/palmares/season-pass',
   '/palmares/prestige',

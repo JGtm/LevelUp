@@ -15,6 +15,7 @@ import (
 // AlertType. Les types qui réutilisent une catégorie existante :
 //   - AlertTypeRecordBroken     → CategoryPersonalRecord (déjà existant)
 //   - AlertTypeLOWESSPositive   → CategoryThresholdCrossed
+//   - AlertTypeLOWESSSoftNegative → CategoryTrendConsolidate (NEUTRE, « axe à consolider »)
 //   - AlertTypeCampaignProgress → CategoryThresholdCrossed (avec param campaign_id)
 //   - AlertTypeCampaignCloseAuto → CategoryThresholdCrossed (param close_suggestion=true)
 //
@@ -36,8 +37,12 @@ func (a AlertType) NotificationCategory() notifications.Category {
 		return notifications.CategoryStreakMilestone
 	case AlertTypeComebackWelcome:
 		return notifications.CategoryComebackWelcome
-	case AlertTypeLOWESSPositive, AlertTypeLOWESSSoftNegative, AlertTypeCampaignProgress, AlertTypeCampaignCloseAuto:
+	case AlertTypeLOWESSPositive, AlertTypeCampaignProgress, AlertTypeCampaignCloseAuto:
 		return notifications.CategoryThresholdCrossed
+	case AlertTypeLOWESSSoftNegative:
+		// Catégorie NEUTRE dédiée : une tendance descendante ne doit pas
+		// s'afficher « Palier franchi » (Coach V3 Phase A).
+		return notifications.CategoryTrendConsolidate
 	case AlertPatternStrength:
 		return notifications.CategoryPatternStrength
 	case AlertPatternWeakness:

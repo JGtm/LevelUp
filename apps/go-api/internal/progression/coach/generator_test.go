@@ -420,6 +420,19 @@ func TestAlertType_NotificationCategory_AllMapped(t *testing.T) {
 	}
 }
 
+// TestAlertType_LOWESSSoftNegative_NeutralCategory verrouille le cadrage : le
+// soft-négatif NE DOIT PAS réutiliser threshold_crossed (notif positive « Palier
+// franchi ») mais sa catégorie neutre dédiée. Cf. Coach V3 Phase A.
+func TestAlertType_LOWESSSoftNegative_NeutralCategory(t *testing.T) {
+	got := AlertTypeLOWESSSoftNegative.NotificationCategory()
+	if got != notifications.CategoryTrendConsolidate {
+		t.Errorf("LOWESSSoftNegative category = %s, want trend_consolidate", got)
+	}
+	if got == notifications.CategoryThresholdCrossed {
+		t.Error("soft-négatif ne doit pas réutiliser threshold_crossed (cadrage positif)")
+	}
+}
+
 // ─── buildCombatPatternAlerts ───────────────────────────────────────────────
 
 func TestBuildCombatPatternAlerts_NilMedians_NoAlerts(t *testing.T) {
