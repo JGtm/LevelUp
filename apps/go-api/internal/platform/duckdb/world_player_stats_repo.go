@@ -67,6 +67,30 @@ func InsertPlayerSeasonStats(ctx context.Context, db *sql.DB, stats []domain.Wor
 	return len(stats), nil
 }
 
+// WorldSeasonGamertags retourne les gamertags distincts présents dans les
+// snapshots CSR mondiaux d'une saison (toutes playlists confondues), via la vue
+// world_csr_leaderboard_latest. Sert à alimenter l'enrichissement (un joueur
+// fetché une fois couvre toutes ses playlists — cf. insight Phase A/C). `db` est
+// un lecteur shared. Triés pour un ordre déterministe.
+func WorldSeasonGamertags(ctx context.Context, db *sql.DB, season string) ([]string, error) {
+	const q = `SELECT DISTINCT gamertag FROM world_csr_leaderboard_latest
+		WHERE season_id = ? AND gamertag <> '' ORDER BY gamertag`
+	rows, err := db.QueryContext(ctx, q, season)
+	if err != nil {
+		return nil, fmt.Errorf("WorldSeasonGamertags(%s): %w", season, err)
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var gt string
+		if err := rows.Scan(&gt); err != nil {
+			return nil, fmt.Errorf("WorldSeasonGamertags scan: %w", err)
+		}
+		out = append(out, gt)
+	}
+	return out, rows.Err()
+}
+
 // worldPlayerStatsQuery : compteurs bruts + ratios dérivés + comparaison
 // inter-saison (LAG sur la saison précédente avec la même playlist) pour une
 // (saison, playlist) données. Lit la vue _latest. Paramètres : title, season, playlist.

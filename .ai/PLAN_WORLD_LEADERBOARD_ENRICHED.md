@@ -453,11 +453,15 @@ La recherche est fuzzy → filtrer le résultat sur `gamertag == cible` (exact, 
 **Résolveur** `internal/platform/auth/peoplehub_resolver.go` (✅ + tests httptest)
 - `NewPeopleHubResolver(httpClient, headerFn)` ; `headerFn` fournit un header `XBL3.0 x=<hash>;<token>` RTA frais (le caller mémoïse/rafraîchit). `ResolveXUID` filtre sur correspondance **exacte** case-insensitive (pas de faux positif fuzzy).
 
-**RESTE Phase C — wiring runtime (non livré)** :
-- Construire le `headerFn` réel (charger token → un seul `access_token` → `auth.AcquireXSTSForRTA` → header ; mémoïser avec rafraîchissement avant expiration — cf. leçon auth single-token).
-- Construire le `*PooledHaloClient` à partir du pool de tokens existant (cf. `cmd/server` wiring).
-- Persistance : `InsertPlayerSeasonStats` (déjà en place, Phase B) dans une fenêtre RW minimale.
-- Cron `world_leaderboard_cron.go` étendu (saison courante, delta) — voir ci-dessous.
+**Enricher + cron (✅ livrés)** :
+- `service/world_stats_enricher.go` (+ test) — `WorldStatsEnricher.EnrichSeason(ctx, season, gamertags)` : construit un agrégateur ciblé sur LA saison (TargetSeasons normalisé) à chaque cycle. Interfaces `WorldMatchSource`/`WorldXUIDResolver` exportées pour le wiring.
+- `auth/cached_header_provider.go` (+ test) — `CachedHeaderProvider` : mémoïse le header RTA, rebuild après TTL (défaut 3h), thread-safe. Sa méthode `Header` = le `headerFn` du résolveur.
+- `duckdb.WorldSeasonGamertags(ctx, db, season)` — gamertags distincts d'une saison (union toutes playlists, cf. insight Phase A : 1 joueur fetché couvre toutes ses playlists).
+- `scheduler/world_leaderboard_cron.go` étendu — `WithStatsEnricher(e)` (optionnel, nil-safe) ; phase 5 `enrich()` après le snapshot CSR : lecture gamertags (RO) → `EnrichSeason` → `InsertPlayerSeasonStats` (fenêtre RW minimale, même discipline que le scrape). Best-effort.
+
+**RESTE Phase C — wiring boot `cmd/server` (NON livré — ⚠️ change le comportement du cron prod : nouvelle charge API Halo pour l'enrichissement → activation délibérée + validation live requises)** :
+- Écrire `accessTokenFn(ctx)` réutilisant la logique both-shapes du probe (store → MSAL silent OU `ExchangeRefreshTokenWithRotation` → 1 `access_token`, persister le RT tourné) puis `auth.AcquireXSTSForRTA` → header `XBL3.0` (compte serveur primaire).
+- Composer : `hp := auth.NewCachedHeaderProvider(0, build)` ; `res := auth.NewPeopleHubResolver(nil, hp.Header)` ; `pooled := syncpkg.NewPooledHaloClient(haloPool, "", "", 5)` (déjà construit à main.go:1557) ; `enr := service.NewWorldStatsEnricher(pooled, res, service.WorldStatsAggregatorConfig{Concurrency: 8})` ; `worldLbCron.WithStatsEnricher(enr)` (cron construit à main.go:968 — ordonner après le pool, ou déplacer la construction du cron après `haloPool`).
 
 **WorldLeaderboardCron étendu** `world_leaderboard_cron.go`
 - Après `scrapeAll`, pour la **saison courante uniquement** :
@@ -566,7 +570,7 @@ win_rate_trend?:  'up' | 'down' | 'stable'
 |-------|--------|-------|
 | A — Probe E2E échantillon | ✅ VALIDÉE (2026-06-10) | auth PeopleHub + xuid 100% + extraction + bucketing **playlist** + **dimension saison** (pagination 9 mois → CsrSeason12-1, attribution via `MatchInfo.SeasonId`) + timing ~0.9s/match. Design Phase B/C : attribuer par SeasonId (pas dates), auth single-token |
 | B — Migration + types + repo | ✅ FAITE (2026-06-10) | Table append-only `world_player_season_stats` + vue `_latest` ; types `WorldPlayerSeasonStats` + `LeaderboardEntry` étendu ; repo (`InsertPlayerSeasonStats`, `GetWorldPlayerSeasonStats` LAG inter-saison, `loadPrevSeasonRanks`) ; `GetCSRWorldLeaderboard` enrichi (merge + RankDelta, best-effort). Tests :memory: verts |
-| C — Agrégateur + cron | PARTIEL — cœur livré (2026-06-10) | `analysis/world_stats.go` (extraction+accum pur) + `service/world_player_stats_aggregator.go` (**multi-tokens via PooledHaloClient/PolicyAnyPublic**) + `auth/peoplehub_resolver.go` — 8 tests verts, module build OK. **Reste** : wiring runtime (headerFn RTA mémoïsé, build PooledHaloClient depuis le pool, persistance, cron étendu) |
+| C — Agrégateur + cron | PARTIEL — tout sauf le wiring boot (2026-06-10) | Livrés + testés (11 tests verts, module build OK) : `analysis/world_stats.go` (pur), `service/world_player_stats_aggregator.go` (**multi-tokens PolicyAnyPublic**), `service/world_stats_enricher.go`, `auth/peoplehub_resolver.go`, `auth/cached_header_provider.go`, `duckdb.WorldSeasonGamertags`, cron `WithStatsEnricher` + phase enrich. **Reste** : wiring boot `cmd/server` (accessTokenFn + composition) — ⚠️ change le cron prod, activation délibérée |
 | D — Script backfill | ⬜ À faire | Dépend de Phase B+C |
 | E — Frontend | ⬜ À faire | Dépend de Phase B (types API) |
 | F — Enrichissement catalogue playlists | ⬜ À faire (**OBLIGATOIRE**) | `GetPlaylist` live → remplace/enrichit `rankedplaylists.go` (liste + poids map/mode, découverte nouvelles playlists) ; mutualisé avec les autres sections app |
