@@ -195,15 +195,17 @@ func (q *BatchQueue) Submit(batch *MatchBatch) error {
 	if err := os.WriteFile(tmpPath, data, 0o644); err != nil {
 		return fmt.Errorf("persist: write WAL tmp %s: %w", batch.BatchID, err)
 	}
+	// 3. Marquer in-flight AVANT le rename : dès que le WAL devient visible
+	// (rename), une recovery périodique concurrente pourrait le lire. Le
+	// marquer avant garantit qu'elle le voit déjà en vol et ne le re-pousse
+	// pas (sinon double persist). Le worker l'efface à la fin de handle.
+	q.markInFlight(batch.BatchID)
+
 	if err := os.Rename(tmpPath, walPath); err != nil {
-		_ = os.Remove(tmpPath) // best-effort cleanup
+		q.clearInFlight(batch.BatchID) // rename échoué → batch pas en vol
+		_ = os.Remove(tmpPath)         // best-effort cleanup
 		return fmt.Errorf("persist: rename WAL %s: %w", batch.BatchID, err)
 	}
-
-	// 3. Marquer in-flight AVANT le push : une recovery périodique concurrente
-	// ne doit pas re-pousser ce batch (il est sur le point d'entrer dans le
-	// channel). Le worker l'efface à la fin de handle.
-	q.markInFlight(batch.BatchID)
 
 	// 4. Push dans le channel (peut bloquer).
 	q.chMain <- batch
