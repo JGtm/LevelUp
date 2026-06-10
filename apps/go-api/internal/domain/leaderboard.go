@@ -32,9 +32,68 @@ type LeaderboardEntry struct {
 	Unit           string  `json:"unit,omitempty"`            // "%", "" …
 	MatchesPlayed  int     `json:"matches_played,omitempty"`
 
+	// Enrichissement stats mondiales (Phase B — leaderboard enrichi). Pointeurs :
+	// nil = joueur non enrichi (pas de ligne world_player_season_stats). Compteurs
+	// bruts + ratios dérivés à la lecture + comparaison inter-saison + delta rang.
+	MatchCount   *int     `json:"match_count,omitempty"`
+	WinCount     *int     `json:"win_count,omitempty"`
+	LossCount    *int     `json:"loss_count,omitempty"`
+	TieCount     *int     `json:"tie_count,omitempty"`
+	DnfCount     *int     `json:"dnf_count,omitempty"`
+	Kills        *int64   `json:"kills,omitempty"`
+	Deaths       *int64   `json:"deaths,omitempty"`
+	Assists      *int64   `json:"assists,omitempty"`
+	PlaytimeSec  *int64   `json:"playtime_seconds,omitempty"`
+	MedalCount   *int64   `json:"medal_count,omitempty"`
+	WinRate      *float64 `json:"win_rate,omitempty"`
+	KDA          *float64 `json:"kda,omitempty"`
+	KillsPerMin  *float64 `json:"kills_per_min,omitempty"`
+	PrevSeasonID *string  `json:"prev_season_id,omitempty"`
+	PrevWinRate  *float64 `json:"prev_win_rate,omitempty"`
+	PrevKDA      *float64 `json:"prev_kda,omitempty"`
+	KDATrend     *string  `json:"kda_trend,omitempty"`      // "up"|"down"|"stable"
+	WinRateTrend *string  `json:"win_rate_trend,omitempty"` // idem
+	RankDelta    *int     `json:"rank_delta,omitempty"`     // rang saison N vs N-1 (snapshots)
+
 	// FetchedAt : horodatage du scraping (interne, non sérialisé). Persisté en
 	// colonne fetched_at de world_csr_leaderboard_snapshots.
 	FetchedAt time.Time `json:"-"`
+}
+
+// WorldPlayerSeasonStats agrège les stats d'un joueur du classement mondial sur
+// une saison CSR x playlist. Compteurs BRUTS (table world_player_season_stats) ;
+// les ratios sont DÉRIVÉS à la lecture (nil si dénominateur nul), jamais stockés.
+// Attribution (Phase A) : SeasonID via MatchInfo.SeasonId, PlaylistID via
+// MatchInfo.Playlist.AssetId. Cf. PLAN_WORLD_LEADERBOARD_ENRICHED.md.
+type WorldPlayerSeasonStats struct {
+	TitleSlug  string `json:"title_slug"`
+	Gamertag   string `json:"gamertag"`
+	SeasonID   string `json:"season_id"`
+	PlaylistID string `json:"playlist_id"` // "" = agrégat toutes playlists
+
+	// Compteurs bruts.
+	MatchCount  int   `json:"match_count"`
+	WinCount    int   `json:"win_count"`
+	LossCount   int   `json:"loss_count"`
+	TieCount    int   `json:"tie_count"`
+	DnfCount    int   `json:"dnf_count"`
+	Kills       int64 `json:"kills"`
+	Deaths      int64 `json:"deaths"`
+	Assists     int64 `json:"assists"`
+	PlaytimeSec int64 `json:"playtime_seconds"`
+	MedalCount  int64 `json:"medal_count"`
+
+	// Ratios courants dérivés (nil si dénominateur nul).
+	WinRate     *float64 `json:"win_rate,omitempty"`
+	KDA         *float64 `json:"kda,omitempty"`
+	KillsPerMin *float64 `json:"kills_per_min,omitempty"`
+
+	// Comparaison inter-saison (nil = pas de saison précédente avec cette playlist).
+	PrevSeasonID *string  `json:"prev_season_id,omitempty"`
+	PrevWinRate  *float64 `json:"prev_win_rate,omitempty"`
+	PrevKDA      *float64 `json:"prev_kda,omitempty"`
+	KDATrend     *string  `json:"kda_trend,omitempty"`
+	WinRateTrend *string  `json:"win_rate_trend,omitempty"`
 }
 
 // LeaderboardCategory énumère les classements disponibles.
