@@ -38,9 +38,20 @@ runtime. Une seule source de définitions.
 |---|---|---|
 | `enrichment_missing` | FAIL | match en shared.match_participants (xuid) sans row player_match_enrichment |
 | `participants_without_registry` | FAIL | row participants orpheline (classe ART) |
+| `registry_without_participants` | FAIL | registry sans aucun participant (écriture partielle) |
+| `medals_without_registry` | FAIL | medals_earned orphelines |
+| `lusr_v2_orphan` | FAIL | row LUSR_V2 sans row LUSR (contrat dual-row, cf. RunDualRowSentinel) |
 | `session_missing` | WARN | enrichment sans session_id post-pipeline |
 | `performance_score_missing` | WARN | scores NULL (cold-start toléré ; croissance = batch en panne) |
-| `pair_name_uuid` | WARN | pair_name UUID brut (trou catalogue assets) |
+| `skill_rank_missing` | WARN | match du joueur sans row match_skill_rank (PvE toléré ; croissance = désync watermark LUSR, incident 2026-06-03) |
+| `citations_missing` | WARN | match avec médailles sans match_citations |
+| `psa_missing` | WARN | match enrichi sans personal_score_awards — **confirmé par le gate : les PSA ne convergent PAS après delta-skip** (audit Phase 3) |
+| `xuid_alias_missing` | WARN | xuid humain de participants sans alias gamertag. **Caveat** : vérifie shared.xuid_aliases ; post-ADR-0008 la source canonique est la DB globale → migrer le check quand le handle global sera câblé (Phase 4) |
+| `pair_name_uuid` | WARN | pair_name UUID brut (trou catalogue assets, 2026-06-09) |
+
+Extension 2026-06-10 (2e passe, depuis `.ai/ENRICHMENTS_CATALOG.md`) : +7
+invariants couvrant les classes désync watermark LUSR, orphelins ART
+(registry/medals), citations, PSA et alias gamertag.
 
 API : `invariants.CheckPlayer(ctx, playerDB, sharedDB, xuid) (Report, error)` ;
 `Report.Failures()` pour le gate.
@@ -62,27 +73,43 @@ API : `invariants.CheckPlayer(ctx, playerDB, sharedDB, xuid) (Report, error)` ;
 - CI : aucun changement requis — le job `go-coverage` exécute déjà
   `-tags=integration` avec CGO. Le gate est actif dès le merge.
 
-### Phase 3 — À FAIRE : étendre la couverture du gate
+### Phase 3 — PARTIELLEMENT LIVRÉE : étendre la couverture du gate
 
-- Invariant LUSR : intégrer la logique `RunDualRowSentinel` comme invariant
-  (clé `lusr_dual_row`), pour une définition unique test/runtime.
-- Invariant médailles/PSA : audit de la convergence de `personal_score_awards`
-  pour les matchs delta-skippés (axe « objectif » du radar) ; ajouter
-  `psa_missing` (sévérité à décider après audit).
-- Scénario gate supplémentaire : sync simultané (errgroup) plutôt que
-  séquentiel, pour couvrir la course réelle des watchers.
-- Test page Escouade 2 coéquipiers au niveau service (la régression
-  `851e10ef5` en test de service complet — les 3 tests unitaires de
-  régression existent déjà dans teammates_squad_charts_test.go).
+- [x] Invariant LUSR dual-row (`lusr_v2_orphan`) — définition unique
+  test/runtime, mêmes sémantiques que `RunDualRowSentinel`.
+- [x] `psa_missing` (WARN) — le gate a CONFIRMÉ que les PSA ne convergeaient
+  pas après delta-skip. **FIX LIVRÉ (2026-06-10)** : étape `convergePSA` dans
+  le pipeline post-sync (sélection `selectMatchesMissingPSA` bornée
+  convergenceHorizon → GetMatchStats → ExtractPersonalScoreAwards → insert
+  idempotent), marqueur terminal `psa_checked_at` sur player_match_enrichment
+  (migration `player_match_enrichment_psa_checked_v1` + bootstrap schema.go)
+  pour empêcher le re-fetch infini des matchs sans PSA extractibles. Backlog
+  PSA intégré à hasConvergenceBacklog. Le rattrapage historique se fait par
+  cycles (auto-backfill convergent, aucun backfill manuel). Validé rouge→vert
+  par le gate (assertion stricte psa_missing=0 dans le scénario delta-skip) +
+  compteurs expvar convergence_psa_pending/processed_total.
+- [ ] Scénario gate concurrent (errgroup) plutôt que séquentiel, pour couvrir
+  la course réelle des watchers.
+- [ ] Promotion WARN→FAIL de `skill_rank_missing` une fois la tolérance PvE
+  affinée (filtre lifecycle/playlist).
 
-### Phase 4 — À FAIRE : sentinelle runtime + alerting
+### Phase 4 — À FAIRE : dashboard monitoring admin (décision user 2026-06-10)
 
-- Brancher `invariants.CheckPlayer` dans le cycle sync (cadence : 1/cycle ou
-  1/heure), publier compteurs expvar (`levelup.invariants.*`).
-- Remonter les FAIL en **notification in-app** (pas seulement logs) — exigence
-  user : être prévenu sans aller chercher.
-- Le WARN `performance_score_missing` devient utile ici : suivre la tendance
-  (croissance = batch en panne).
+Décision : PAS de notification in-app (« on ne peut rien y faire ») —
+un **dashboard monitoring dans la partie admin** de l'app à la place.
+
+- Backend : `GET /api/v1/admin/invariants` — exécute `invariants.CheckPlayer`
+  pour chaque profil du titre (lectures RO, best-effort), retourne la liste
+  des Reports + timestamp. Handler admin-gated (même garde que les autres
+  routes admin).
+- Frontend : section « Intégrité des données » dans la page admin — tableau
+  joueur × invariant (sévérité, count, sample cliquable), badge global
+  vert/orange/rouge, bouton refresh. Tendance simple (count précédent vs
+  courant) en v2.
+- Compteurs expvar `levelup.invariants.*` publiés au passage (gratuit, déjà
+  le pattern RunDualRowSentinel).
+- Câbler le handle DB globale pour migrer `xuid_alias_missing` vers la source
+  canonique post-ADR-0008.
 
 ## Garde-fous
 

@@ -242,6 +242,20 @@ func (e *SyncEngine) runPostSyncPipeline(
 		}
 	}
 
+	// 1.56 PSA — convergence des personal_score_awards. Cas nominal : matchs
+	// delta-skippés (insérés en shared par un coéquipier) dont seul le
+	// traitement per-match écrivait les PSA (gate invariants psa_missing,
+	// 2026-06-10). Marqueur terminal psa_checked_at → chaque match n'est
+	// fetché qu'une fois, borné par convergenceHorizon.
+	psaWork := selectMatchesMissingPSA(ctx, playerDB)
+	observability.AddInt("convergence_psa_pending_total", int64(len(psaWork)))
+	if len(psaWork) > 0 {
+		n := convergePSA(ctx, playerDB, client, e.xuid, psaWork)
+		observability.AddInt("convergence_psa_processed_total", int64(n))
+		slog.InfoContext(ctx, "post-sync: convergence PSA",
+			"gamertag", e.gamertag, "selected", len(psaWork), "processed", n)
+	}
+
 	// Registry names heal DÉCOMMISSIONNÉ (2026-06-01) — map_name/pair_name/
 	// playlist_name/game_variant_name sont résolus au sync PRIMAIRE via
 	// EnrichRegistryFromMetadata (metadata saine). Le nettoyage one-shot des

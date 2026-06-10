@@ -51,6 +51,15 @@ func makeSquadMatchJSON(matchID string, users []*userSetup) map[string]any {
 			"Medals": []any{
 				map[string]any{"NameId": float64(100 + i), "Count": float64(2)},
 			},
+			// PersonalScores avec un NameId CONNU (psaKilledPlayer) : permet au
+			// gate de vérifier la convergence PSA des joueurs delta-skippés.
+			"PersonalScores": []any{
+				map[string]any{
+					"NameId":                    float64(1024030246), // killed_player
+					"Count":                     float64(10 + i),
+					"TotalPersonalScoreAwarded": float64((10 + i) * 100),
+				},
+			},
 		}
 		playersArr = append(playersArr, map[string]any{
 			"PlayerId":   fmt.Sprintf("xuid(%s)", u.xuid),
@@ -155,6 +164,16 @@ func TestGate_DeltaSkip_EnrichmentConverges_integration(t *testing.T) {
 		if fails := report.Failures(); len(fails) > 0 {
 			t.Errorf("user%d (%s) : %d violation(s) FAIL — le delta-skip n'a pas convergé : %v",
 				i, u.gamertag, len(fails), fails)
+		}
+		// psa_missing est WARN au catalogue (croissance tolérée en prod sur les
+		// vieux matchs), mais DANS CE SCÉNARIO la convergence PSA doit avoir
+		// rempli les awards des joueurs skippés (fixture avec NameId connu) —
+		// on l'asserte donc strictement ici.
+		for _, v := range report.Violations {
+			if v.Key == "psa_missing" {
+				t.Errorf("user%d (%s) : psa_missing=%d — la convergence PSA n'a pas tourné pour les matchs delta-skippés",
+					i, u.gamertag, v.Count)
+			}
 		}
 	}
 }
