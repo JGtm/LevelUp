@@ -436,15 +436,28 @@ La recherche est fuzzy → filtrer le résultat sur `gamertag == cible` (exact, 
 - LEFT JOIN `world_player_season_stats` pour enrichir les entries
 - `computeRankDelta` : compare rang saison N vs N-1 depuis `world_csr_leaderboard_snapshots`
 
-### Phase C — Fetch : agrégateur + cron enrichi
+### Phase C — Fetch : agrégateur + cron enrichi — ✅ CŒUR LIVRÉ (2026-06-10)
 
-**Agrégateur** `internal/service/world_player_stats_aggregator.go`
-- Entrée : `xuid`, `seasonID`, `seasonStart/End time.Time`, playlists cibles
-- Appel `GetMatchHistory(ctx, fmt.Sprintf("xuid(%s)", xuid), "matchmaking", offset, 25)`
-- Pour chaque match dans la fenêtre saison → `GetMatchStats(ctx, matchID)`
-- Agréger les compteurs bruts en mémoire (struct `accumulator` par playlist)
-- Arrêter la pagination quand `StartTime < seasonStart`
-- Sortie : `[]WorldPlayerSeasonStats`
+**Cœur pur** `internal/analysis/world_stats.go` (✅ + tests `world_stats_test.go`)
+- `NormalizeSeasonID("Csr/Seasons/CsrSeason13-2.json") -> "csrseason13-2"` — **clé du design** : `MatchInfo.SeasonId` est un chemin, les snapshots stockent l'id court ; les matchs hors-CSR (`Seasons/SeasonN.json` → `seasonN`) ne matchent aucun snapshot CSR (ignorés, attendu).
+- `ExtractPlayerMatchStat(matchJSON, xuid) (PlayerMatchStat, bool)` — chemins Phase A (`Players[]`/`PlayerId=="xuid(N)"`/`Outcome`/`PlayerTeamStats[0].Stats.CoreStats`/`ParticipationInfo.TimePlayed` ISO-8601).
+- `AccumulateWorldStats(gamertag, []PlayerMatchStat) []WorldPlayerSeasonStats` — bucket par (saison, playlist), somme W/L/T/DNF + K/D/A + playtime. **0 API, 0 DB → unit-testable.**
+
+**Agrégateur MULTI-TOKENS** `internal/service/world_player_stats_aggregator.go` (✅ + tests)
+- `worldMatchSource` = sous-ensemble satisfait par **`*syncpkg.PooledHaloClient`** (assertion compile-time). `PooledHaloClient.GetMatchHistory/GetMatchStats` utilisent **`PolicyAnyPublic` (round-robin sur tous les tokens du pool)** → parallélisme natif sans code custom (directive « multi tokens one-shot »).
+- `worldXUIDResolver` = `*auth.PeopleHubResolver` (résolution gamertag→xuid, single-token RTA, bas volume).
+- `AggregatePlayer(ctx, gamertag)` : résout xuid → pagine `GetMatchHistory(xuid(N), "matchmaking", page*25, 25)` → `GetMatchStats` par match → extraction → accumulation.
+- **Pas de fenêtre par dates** (calendrier vide en dev) : filtre `TargetSeasons` (saisons normalisées) + `StopAfterNonTarget` (arrêt anticipé une fois sous les saisons cibles, historique chronologique décroissant) + `MaxPages` (plafond dur).
+- `Run(ctx, gamertags)` : fan-out parallèle borné par `Concurrency` (errgroup `SetLimit`), best-effort par joueur (un KO n'interrompt pas le batch ; erreurs collectées). Le RPS global reste plafonné par le pool.
+
+**Résolveur** `internal/platform/auth/peoplehub_resolver.go` (✅ + tests httptest)
+- `NewPeopleHubResolver(httpClient, headerFn)` ; `headerFn` fournit un header `XBL3.0 x=<hash>;<token>` RTA frais (le caller mémoïse/rafraîchit). `ResolveXUID` filtre sur correspondance **exacte** case-insensitive (pas de faux positif fuzzy).
+
+**RESTE Phase C — wiring runtime (non livré)** :
+- Construire le `headerFn` réel (charger token → un seul `access_token` → `auth.AcquireXSTSForRTA` → header ; mémoïser avec rafraîchissement avant expiration — cf. leçon auth single-token).
+- Construire le `*PooledHaloClient` à partir du pool de tokens existant (cf. `cmd/server` wiring).
+- Persistance : `InsertPlayerSeasonStats` (déjà en place, Phase B) dans une fenêtre RW minimale.
+- Cron `world_leaderboard_cron.go` étendu (saison courante, delta) — voir ci-dessous.
 
 **WorldLeaderboardCron étendu** `world_leaderboard_cron.go`
 - Après `scrapeAll`, pour la **saison courante uniquement** :
@@ -553,7 +566,7 @@ win_rate_trend?:  'up' | 'down' | 'stable'
 |-------|--------|-------|
 | A — Probe E2E échantillon | ✅ VALIDÉE (2026-06-10) | auth PeopleHub + xuid 100% + extraction + bucketing **playlist** + **dimension saison** (pagination 9 mois → CsrSeason12-1, attribution via `MatchInfo.SeasonId`) + timing ~0.9s/match. Design Phase B/C : attribuer par SeasonId (pas dates), auth single-token |
 | B — Migration + types + repo | ✅ FAITE (2026-06-10) | Table append-only `world_player_season_stats` + vue `_latest` ; types `WorldPlayerSeasonStats` + `LeaderboardEntry` étendu ; repo (`InsertPlayerSeasonStats`, `GetWorldPlayerSeasonStats` LAG inter-saison, `loadPrevSeasonRanks`) ; `GetCSRWorldLeaderboard` enrichi (merge + RankDelta, best-effort). Tests :memory: verts |
-| C — Agrégateur + cron | ⬜ À faire | Dépend de Phase B ; **fetch saison/joueur 1× + bucket par `Playlist.AssetId`** (union des joueurs, pas le produit) |
+| C — Agrégateur + cron | PARTIEL — cœur livré (2026-06-10) | `analysis/world_stats.go` (extraction+accum pur) + `service/world_player_stats_aggregator.go` (**multi-tokens via PooledHaloClient/PolicyAnyPublic**) + `auth/peoplehub_resolver.go` — 8 tests verts, module build OK. **Reste** : wiring runtime (headerFn RTA mémoïsé, build PooledHaloClient depuis le pool, persistance, cron étendu) |
 | D — Script backfill | ⬜ À faire | Dépend de Phase B+C |
 | E — Frontend | ⬜ À faire | Dépend de Phase B (types API) |
 | F — Enrichissement catalogue playlists | ⬜ À faire (**OBLIGATOIRE**) | `GetPlaylist` live → remplace/enrichit `rankedplaylists.go` (liste + poids map/mode, découverte nouvelles playlists) ; mutualisé avec les autres sections app |

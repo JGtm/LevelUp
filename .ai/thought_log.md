@@ -1,3 +1,18 @@
+## [2026-06-10] Leaderboard mondial enrichi — Phase C (agrégateur multi-tokens) — Cœur livré
+
+**Statut** : Cœur livré sur feat/world-leaderboard-enriched (wiring runtime restant). Build module complet OK, 8 tests verts.
+
+**Livré** :
+- `internal/analysis/world_stats.go` (+ test) — extraction + accumulation PURE (0 API/0 DB) : `NormalizeSeasonID` (`"Csr/Seasons/CsrSeason13-2.json"` → `"csrseason13-2"`, indispensable car `MatchInfo.SeasonId` est un chemin ≠ id court des snapshots), `ExtractPlayerMatchStat` (chemins Phase A), `AccumulateWorldStats` (bucket par (saison, playlist)).
+- `internal/service/world_player_stats_aggregator.go` (+ test) — orchestrateur **MULTI-TOKENS** : surface `worldMatchSource` satisfaite par `*syncpkg.PooledHaloClient` (assertion compile-time) dont `GetMatchHistory/GetMatchStats` utilisent **`PolicyAnyPublic` (round-robin tous tokens)** → parallélisme natif (directive user). Fan-out par joueur borné par `Concurrency` (errgroup), best-effort. Fenêtre saison via `TargetSeasons` + `StopAfterNonTarget` + `MaxPages` (pas par dates, calendrier vide).
+- `internal/platform/auth/peoplehub_resolver.go` (+ test httptest) — `PeopleHubResolver.ResolveXUID` (extrait du probe), satisfait `worldXUIDResolver`, `headerFn` injecté (le caller mémoïse le header RTA).
+
+**Décisions** : multi-tokens = réutiliser le `PooledHaloClient` existant (PolicyAnyPublic) plutôt qu'un client custom ; séparer résolution xuid (single-token RTA, bas volume) du fetch matchs (pool, gros volume) ; cœur d'agrégation pur et testable sans réseau.
+
+**Prochaine étape (reste Phase C)** : wiring runtime — `headerFn` réel (1 access_token → `AcquireXSTSForRTA`, mémoïsé) ; construire le `PooledHaloClient` depuis le pool de tokens ; persistance `InsertPlayerSeasonStats` (fenêtre RW minimale) ; cron `world_leaderboard_cron.go` étendu (saison courante, delta). Puis D (backfill throttlé), E (front), F (catalogue — obligatoire).
+
+---
+
 ## [2026-06-10] Leaderboard mondial enrichi — Phase B (backend migration/types/repo) — Complété
 
 **Statut** : Complété sur feat/world-leaderboard-enriched.
