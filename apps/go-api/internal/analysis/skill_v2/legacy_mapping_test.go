@@ -71,6 +71,87 @@ func TestMapMuToLegacyRating_TierPreservation(t *testing.T) {
 	}
 }
 
+func TestMapMuToContinuousRating_Monotonic(t *testing.T) {
+	bs := DefaultTierBoundaries()
+	prev := math.Inf(-1)
+	for mu := 0.0; mu <= 30; mu += 0.05 {
+		got := MapMuToContinuousRating(mu, bs)
+		if got < prev-1e-9 {
+			t.Fatalf("non monotone à μ=%v : %v < %v", mu, got, prev)
+		}
+		prev = got
+	}
+}
+
+func TestMapMuToContinuousRating_ContinuousAtTierBoundaries(t *testing.T) {
+	bs := DefaultTierBoundaries()
+	// À chaque frontière de tier, la valeur juste en-dessous et pile à la borne
+	// doivent être quasi-égales (continuité C0 — pas de saut de palier).
+	for _, b := range bs[1:] { // skip Bronze (pas de frontière basse)
+		below := MapMuToContinuousRating(b.MinMu-1e-4, bs)
+		at := MapMuToContinuousRating(b.MinMu, bs)
+		if math.Abs(at-below) > 1.0 {
+			t.Errorf("discontinuité à μ=%v (%s) : below=%v at=%v", b.MinMu, b.Name, below, at)
+		}
+	}
+}
+
+func TestMapMuToContinuousRating_WithinTierRange(t *testing.T) {
+	bs := DefaultTierBoundaries()
+	mus := []float64{20.38, 23.52, 23.81, 25.75, 26.12, 26.17, 27.5}
+	for _, mu := range mus {
+		tier, _ := InferTier(mu, bs)
+		got := MapMuToContinuousRating(mu, bs)
+		min, max := LegacyTierRange(tier.Name)
+		if got < min-1e-9 || got > max+1e-9 {
+			t.Errorf("μ=%v (%s) → %v hors plage tier [%v, %v]", mu, tier.Name, got, min, max)
+		}
+	}
+}
+
+func TestMapMuToContinuousRating_DiffersFromQuantized(t *testing.T) {
+	// Cœur du fix : deux μ DIFFÉRENTS dans le MÊME sous-palier donnent des valeurs
+	// continues DIFFÉRENTES (≠ MapMuToLegacyRating qui les écrase au même bas de
+	// sous-palier → rating_delta resterait 0). Diamant D3 = [26.6, 27[.
+	bs := DefaultTierBoundaries()
+	muA, muB := 26.65, 26.85
+	qA, qB := MapMuToLegacyRating(muA, bs), MapMuToLegacyRating(muB, bs)
+	if qA != qB {
+		t.Fatalf("pré-condition : μ choisis pas dans le même sous-palier quantifié (qA=%v qB=%v)", qA, qB)
+	}
+	cA, cB := MapMuToContinuousRating(muA, bs), MapMuToContinuousRating(muB, bs)
+	if cA == cB {
+		t.Errorf("continu identique entre μ=%v et μ=%v (=%v) — le delta resterait 0", muA, muB, cA)
+	}
+	if cB <= cA {
+		t.Errorf("continu non croissant : μ=%v→%v vs μ=%v→%v", muA, cA, muB, cB)
+	}
+}
+
+func TestLegacySubTierRange(t *testing.T) {
+	bs := DefaultTierBoundaries()
+	get := func(name string) TierBoundary {
+		for _, b := range bs {
+			if b.Name == name {
+				return b
+			}
+		}
+		t.Fatalf("tier %s introuvable", name)
+		return TierBoundary{}
+	}
+	// Onyx : sous-palier unique → plage complète du tier.
+	if min, max := LegacySubTierRange(get("Onyx"), 0); min != 2000 || max != 2200 {
+		t.Errorf("Onyx → [%v,%v], want [2000,2200]", min, max)
+	}
+	// Gold [1400,1600], 6 sous-paliers → band 33.33.
+	if min, max := LegacySubTierRange(get("Gold"), 1); math.Abs(min-1400) > 1e-9 || math.Abs(max-1433.333) > 0.01 {
+		t.Errorf("Gold sub1 → [%v,%v], want [1400,1433.33]", min, max)
+	}
+	if min, _ := LegacySubTierRange(get("Gold"), 5); math.Abs(min-1533.333) > 0.01 {
+		t.Errorf("Gold sub5 min = %v, want ≈1533.33", min)
+	}
+}
+
 func TestMapSigmaToLegacyDeviation_Bounds(t *testing.T) {
 	// σ très bas → clamp à 60 (MinSigma v1)
 	if got := MapSigmaToLegacyDeviation(0.5); got != 60 {

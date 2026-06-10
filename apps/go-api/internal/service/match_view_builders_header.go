@@ -13,6 +13,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
+	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
@@ -260,17 +261,21 @@ func buildRankBlock(sr *domain.SkillRankRaw, assetURL games.TitleAssetURLAdapter
 	}
 
 	// ProgressPct : position dans le sous-tier (0.0–1.0).
-	// CSR et LUSR Halo Infinite ont tous les deux des sous-tiers de 50 points.
-	// Même constante que home_canonical.go (tierSize = 50).
-	// Onyx et Placement : nil (pas de tier suivant / valeur non significative).
+	// CSR : sous-paliers de 50 pts (échelle CSR propre). LUSR : rating_value continu
+	// → position via la grille legacy (sous-paliers à largeurs variables ; l'ancien
+	// mod-50 était faux pour LUSR). Onyx et Placement : nil.
 	if !isPlacement && sr.RatingValue != nil && sr.Tier != nil && !strings.EqualFold(*sr.Tier, "Onyx") {
-		const tierSize = 50.0
-		pts := math.Mod(*sr.RatingValue, tierSize)
-		if pts < 0 {
-			pts += tierSize
+		if strings.EqualFold(sr.RatingType, "CSR") {
+			const tierSize = 50.0
+			pts := math.Mod(*sr.RatingValue, tierSize)
+			if pts < 0 {
+				pts += tierSize
+			}
+			pct := pts / tierSize
+			rank.ProgressPct = &pct
+		} else if pct, ok := skillv2.LegacyContinuousSubTierProgress(*sr.RatingValue); ok {
+			rank.ProgressPct = &pct
 		}
-		pct := pts / tierSize
-		rank.ProgressPct = &pct
 	}
 
 	// Badge image — délégué au helper partagé avec le scoreboard.
