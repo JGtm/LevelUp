@@ -3,7 +3,7 @@
  * Chart 01 du mock session_compare.
  */
 import type { SessionCompareEntry } from '@/lib/api/types'
-import { displayRatingLabel } from '@/lib/formatters'
+import { displayRatingLabel, formatRankDelta } from '@/lib/formatters'
 
 export interface SessionCompareSkillHeaderProps {
   sessionA: SessionCompareEntry | null
@@ -47,7 +47,7 @@ function SkillRatingCell({
               delta > 0 ? 'text-success' : delta < 0 ? 'text-destructive' : 'text-muted-foreground'
             }`}
           >
-            {delta > 0 ? '+' : ''}{delta.toFixed(0)}
+            {formatRankDelta(delta, entry.skill_rating_type ?? '')}
           </span>
         )}
       </div>

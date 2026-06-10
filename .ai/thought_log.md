@@ -1,3 +1,35 @@
+## [2026-06-10] Audit A1 — Inventaire des lectures `shared.X` (préparation retrait B-swap) — Complété (read-only)
+
+**Statut** : Complété. Audit de lecture pur (aucune modification de code). Tâche A1 du projet "lire shared via handle in-process + merge Go pour retirer le B-swap (ADR 0016)".
+
+**Décision/constat principal** : la migration lecture vers `SharedReadDB().Get()` (SharedReader / sharedprovider.Provider) est **quasi-complète** sur TOUS les repos servant les pages stats. Les ~100 sites de lecture shared passent déjà par le pattern split 2-phases (Phase A player sur `pdb.Player`/`ReadDB()` → IN match_ids ; Phase B shared sur `SharedReadDB().Get()` → merge Go). L'audit `.ai/V7/AUDIT_SHARED_READER_GAPS.md` (2026-05-20) est **PÉRIMÉ** : chaque site qu'il classe "CRITIQUE crash garanti" est désormais `already-migrated` (vérifié dans le code réel) : `leaderboard_repo.GetLocalLeaderboard` (split A/B/C), `match_exclusion_repo.ListExcluded` (split A/B), career Q6/Q7/Q8/Q9/Q9b (splits Phase A/B), explorer Q19/Q19b (SharedReader), match_history Q5 (Q5SharedHistory), sessions Q22, stats Q23.
+
+**Sites `shared.`-préfixés résiduels = DEAD CODE (aucun caller live)** : `Q4MatchesForFilters`, `Q4MVMatchesForFilters` (queries_career.go) ; `Q30SquadMatches`, `Q42MapStatsForSquadTemplate` (queries_squad.go) ; `Q15MatchEvents` (queries_match.go) ; `Q26eHomeSkillPeakByType` (queries_home_citations.go). Tous remplacés par leur variante `*Shared*`/`*PhaseA/B*` root-level (sans préfixe). Candidats à suppression (hors scope A1).
+
+**Lectures shared hors pages stats (intentionnelles, non-page)** : `sync/invariants/invariants.go::checkXuidAliasMissing` (utilise l'ATTACH player avec fallback shared-conn — data-quality, pas page) ; `api/registry_notifications.go::loadParticipantXUIDs` (ouvre shared via `OpenReadOnly` direct) ; `sync/v2/known_loader.go`, `sync/engine.go::loadKnownMatchIDs`, `sync/convergence.go`, `sync/citations.go`, `sync/engagement.go` (chemin sync, pas lecture-page). `cmd/diag_*` = outils diag CLI (handle direct).
+
+**Résultat observé** : aucun site de lecture-page n'exécute encore un `shared.X` préfixé sur la conn player → le B-swap n'est plus requis par le chemin de lecture des pages. La contrainte (1) écriture intouchée est respectée (audit lecture seule). La contrainte (2) croisement correct des BDD est assurée par le pattern split+merge Go déjà en place.
+
+**Prochaine étape** : A2+ — vérifier la complétude du Provider/SharedReader vs B-swap, supprimer les constantes Q* mortes, confirmer qu'aucun chemin d'écriture ne dépend encore du swap RO↔RW.
+
+## [2026-06-10] LUSR : `rating_value` continu → `rating_delta` = vrai gain de skill/match — COMPLÉTÉ + backfill fait
+
+**Statut** : COMPLÉTÉ + vérifié. Code + tests verts (Go build/vet/tests ; web typecheck/lint/vitest 211 OK). Re-backfill `--commit` fait (2436 matchs : Madina 1058, JGtm 879, Choco 468, Daemon 31 ; serveur arrêté). Branche `fix/lusr-delta-continuous`. NON commité (accord user requis). ATTENTION travail CONCURRENT détecté dans le working tree (autre agent : invariants I10 PvE-exclusion, `expvar_metrics`, `registry_invariants`, `invariants_gate_integration_test`, `AdminPage.tsx` + entrée thought_log « Audit A1 ») → commit LUSR à SCOPER strictement à mes fichiers.
+
+**Résultats vérifiés (après backfill)** : deltas continus — JGtm 915 matchs, **0** delta=0 (885 valeurs distinctes) ; Madina 1133, 17 delta=0 (**1.5 %** vs 40 % avant). Clamp OK : valeurs ∈ plage du sous-palier affiché (Or 5 ∈ [1533,1567[, Diamant 1/3 ∈ leurs bandes). Non-régression paliers : Madina 4/4 identiques ; quelques sous-paliers ±1 cran (JGtm slayer Or V→IV, Choco) = effet replay-vs-live (EP lit l'état courant des coéquipiers), PAS la métrique (calcul du palier inchangé). Cibles `reference_lusr_target_levels` respectées.
+
+**Décision** : `rating_value` LUSR cesse d'être quantifié au bas du sous-palier ; il porte désormais la position CONTINUE de μ (μ remappé), clampée dans le sous-palier AFFICHÉ (lissé). Pas de colonne en plus (réutilisation de `rating_value`) → conforme au souhait user (valeur réelle, pas de doublon), portée circonscrite. Le palier/badge (`tier`/`sub_tier`/`tier_label`) + le lissage d'hystérésis restent INCHANGÉS. TrueSkill 2 (μ, σ, pondération temps-joué) NON touché — fix purement en aval (couche présentation).
+
+**Implémentation** :
+- `skill_v2/legacy_mapping.go` : `MapMuToContinuousRating(mu, boundaries)` (interpolation linéaire de μ dans son tier, continue par morceaux + aux frontières ; Onyx prolongé avec la pente Diamant, borné 2200) ; `LegacySubTierRange(tier, sub)` (clamp) ; `LegacyContinuousSubTierProgress(ratingValue)` (position 0..1 dans le sous-palier, déduite de la seule valeur — remplace `(rating mod 50)/50` faux pour LUSR). Tests : monotonie, continuité C0, within-range, differs-from-quantized.
+- `sync/skill_v2_canonical.go` (`writeCanonicalLUSRRow`) : `rating = clamp(MapMuToContinuousRating(state.Mu), LegacySubTierRange(tier_affiché, sub_affiché))`. `rating_delta` (déjà `rating - prev`) devient continu mécaniquement ; `computeLUSRRatingDeltas` (carrière) aussi.
+- 3 sites `progress_pct = mod 50` (bug préexistant : faux pour LUSR) : `match_view_builders_header.go`, `home_canonical_recent.go`, `home_recent.go` → branche CSR (mod 50, échelle propre) vs LUSR (`LegacyContinuousSubTierProgress`). `csr_writes.go` Onyx = CSR only → SAFE, intact.
+- Front : `formatRankDelta` migré de `session-detail/_shared.ts` vers `lib/formatters/rating.ts` (ré-export pour les 4 importeurs existants) ; propagé sur les 4 sites encore en `.toFixed(0)` (MatchHeader.perfRank, MatchStatCards, PlayerDetailPanel, SessionCompareSkillHeader) → LUSR affiché à 2 décimales, `±0.00` jamais `-0`. Barre de progression (`subTierPosition`) déjà grid-aware → SAFE.
+
+**Audit pré-fix** (3 agents) : les seuls sites « À ADAPTER » étaient les 3 mod-50 + les 4 deltas front ; `progress_pct`/`skill_progress_pct` backend ne sont pas consommés par le front (match-view recalcule via `subTierPosition`) → 0 régression. Vue `match_skill_rank_latest` = collapse/priorité, pas d'arithmétique sur la valeur → SAFE.
+
+**Prochaine étape** : (1) re-backfill canonical owner-only, un joueur à la fois (`go run -tags cgo ./cmd/lusr_v2_canonical_backfill --commit <GT>`, serveur arrêté) ; (2) garde-fou non-régression : `cmd/diag_lusr_displayed` avant/après → paliers + labels STRICTEMENT identiques (seules valeur fine + delta changent) ; (3) re-vérif cibles (Madina Diamant/Onyx, JGtm Or). Puis commit.
+
 ## [2026-06-10] Root cause : `rating_delta` LUSR = 0.0 sur les matchs récents (JGtm, Madina) — Diagnostic établi
 
 **Statut** : Diagnostic (root cause confirmée par lecture base, aucun code modifié). Branche `fix/chart-empty-states`. Question user : pourquoi JGtm et Madina97294 ont un delta LUSR de 0.0 sur énormément de matchs récents.
@@ -22955,3 +22987,16 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 - **Vérification empirique** : serveur dev arrêté (Air stoppé ~16:22, avant ces changements) → smoke-boot éphémère du binaire (build + run + curl + kill). GET /admin/invariants → 200 en 0.17s. **Première photographie d'intégrité réelle : 0 FAIL sur les 4 joueurs** ; WARNs cohérents avec les classes connues : psa_missing 34/79/88 (sera résorbé automatiquement par la convergence PSA livrée en passe 3), skill_rank_missing 6-12 (classe watermark LUSR, backlog connu), xuid_alias_missing ×113 identique pour tous (caveat ADR-0008 : le check lit shared.xuid_aliases legacy, à migrer vers la DB globale), pair_name_uuid ×12 (= les 12 matchs du 09/06 au soir, trou catalogue déjà repéré).
 - **Reste (noté au plan)** : compteurs expvar `levelup.invariants.*`, migration du check alias vers la DB globale, tendance (count précédent vs courant) en v2 du dashboard.
 - **Validation** : go build + tests handlers OK ; tsc 0 erreur ; eslint 0 erreur (67 warnings préexistants, aucun ajouté — strings via manifest).
+
+#### Passe 5 (même session) — reliquats du plan : backfills, gate concurrent, affinages, tendance
+
+- **Backfills de données exécutés** (serveur arrêté = verrous libres) :
+  1. `backfill_registry_names` : 24 noms réparés (10/11 pairs, 8/9 maps, 5/6 variants, 1/6 playlists) → invariant `pair_name_uuid` 12 → **1** (le restant n'a pas de traduction au catalogue metadata — attendu).
+  2. `lusr_v2_canonical_backfill --commit` : **2436 matchs écrits** (JGtm 879, Madina 1059, Choco 467, XxDaemon 31), 0 échec d'écriture. `skill_rank_missing` en baisse ; le reliquat (5-11/joueur) = matchs non-2-équipes/déséquilibrés légitimement skippés par EP.
+- **Gate concurrent** : `TestGate_ConcurrentSquadSync_Converges_integration` — 3 RunDelta SIMULTANÉS sur le même match squad (course réelle des watchers) + passe 2 d'idempotence (0 réinsertion) + registry unique + zéro FAIL par joueur. VERT.
+- **Affinages invariants** : `skill_rank_missing` exclut désormais le PvE (`mode_category='firefight'`) ; `xuid_alias_missing` lit la source canonique `global.xuid_aliases` via la connexion player (ATTACH AS global — l'attache `shared` ayant été retirée de cette conn par ADR 0016, le diff se fait en Go entre les 2 connexions), avec fallback legacy étiqueté dans la description.
+- **Expvar** : `observability.SetInt` ajouté (sémantique gauge) ; `RunDataInvariants` publie `invariants_runs_total` / `invariants_fail_last` / `invariants_warn_last` + WARN log si FAIL détectés.
+- **Tendance dashboard** : snapshot des counts par (joueur, invariant) en localStorage ; delta (+N rouge / -N neutre) affiché à côté du count quand il a bougé depuis le run précédent.
+- **Découverte (vrai signal, pas du bruit)** : les 113 `xuid_alias_missing` sont absents de la DB globale (15 370 alias) ET de la legacy shared → vrai backlog d'alias (adversaires jamais résolus, affichables en xuid brut dans l'UI). À traiter par un backfill alias dédié (résolution via JSONs de match en cache ou API) — noté, hors scope de cette passe.
+- **Piège opérationnel** : `kill $PID` bash ne tue pas toujours le process Windows — un smoke-server zombie (binaire `~` renommé) tenait la DB globale et faisait échouer l'ATTACH global pendant les vérifications (d'où le fallback shared_legacy observé). Tué via taskkill //F ; vérifier `netstat`/`tasklist` après chaque smoke-boot.
+- **Validation** : 3 tests gate verts ; suites sync + handlers + observability vertes ; tsc 0 erreur ; eslint 0 erreur.

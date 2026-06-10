@@ -125,9 +125,17 @@ func writeCanonicalLUSRRow(ctx context.Context, playerDB *sql.DB, matchID string
 	dispOrd := skillv2.SmoothDisplayedOrdinal(prevOrd, targetOrd, state.Experience)
 	tier, sub := skillv2.TierSubFromOrdinal(boundaries, dispOrd)
 
-	// rating_value reflète le palier AFFICHÉ (lissé), pas μ brut — sinon le
-	// libellé et la valeur divergeraient quand l'hystérésis bride la descente.
-	rating := skillv2.MapTierSubToLegacyRating(tier, sub)
+	// rating_value = position CONTINUE de μ (≠ bas du sous-palier), clampée dans
+	// la plage du sous-palier AFFICHÉ (lissé). Le clamp préserve la cohérence
+	// libellé↔valeur quand l'hystérésis bride une descente ; en régime normal μ
+	// tombe dans le sous-palier affiché → pas de clamp → la valeur bouge à chaque
+	// match, donc rating_delta = vrai gain de skill (cf. thought_log [2026-06-10]).
+	rating := skillv2.MapMuToContinuousRating(state.Mu, boundaries)
+	if subMin, subMax := skillv2.LegacySubTierRange(tier, sub); rating < subMin {
+		rating = subMin
+	} else if rating > subMax {
+		rating = subMax
+	}
 	label := skillv2.FormatTierSubLabel(tier, sub)
 
 	tierName := tier.Name

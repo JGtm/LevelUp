@@ -12,6 +12,7 @@
 import type { MatchViewRank, MatchExpectedStats, MatchNemesisRow, MatchSummaryKpis } from '@/lib/api/types'
 import { skillDeltaScale, kdScale } from '@/lib/accessibility/scales'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import { formatRankDelta } from '@/lib/formatters'
 import { KpiCard } from '@/components/cards/KpiCard'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { formatMessage } from '@/lib/i18n/format'
@@ -147,7 +148,7 @@ export function MatchRankBadge({ rank, hadBotTeammate = false }: MatchRankBadgeP
           className={`text-xl font-semibold ${deltaColor ?? ''}`}
           style={deltaStyle}
         >
-          {delta > 0 ? '+' : ''}{delta.toFixed(0)}
+          {formatRankDelta(delta, rank.rating_type)}
         </span>
       )}
       {hadBotTeammate && (

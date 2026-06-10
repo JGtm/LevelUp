@@ -7,6 +7,7 @@ import (
 	"math"
 	"strings"
 
+	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
@@ -95,15 +96,22 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 				skillRatingVal = &v
 				typ := string(ss.RatingType)
 				skillRatingType = &typ
-				const tierSize = 50.0
-				pts := math.Mod(*ss.RatingValue, tierSize)
-				if pts < 0 {
-					pts += tierSize
+				if typ == "CSR" {
+					const tierSize = 50.0
+					pts := math.Mod(*ss.RatingValue, tierSize)
+					if pts < 0 {
+						pts += tierSize
+					}
+					pct := pts / tierSize * 100.0
+					skillProgressPct = &pct
+					pInt := int(math.Round(pts))
+					skillPointsInTier = &pInt
+				} else if p, ok := skillv2.LegacyContinuousSubTierProgress(*ss.RatingValue); ok {
+					// LUSR : rating_value continu → position dans le sous-palier (grille
+					// legacy à largeurs variables ; l'ancien mod-50 était faux pour LUSR).
+					pct := p * 100.0
+					skillProgressPct = &pct
 				}
-				pct := pts / tierSize * 100.0
-				skillProgressPct = &pct
-				p := int(math.Round(pts))
-				skillPointsInTier = &p
 			}
 			skillRatingDelta = ss.Delta
 			if ss.PlaylistGroup != nil && *ss.PlaylistGroup != "" {

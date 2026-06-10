@@ -11,6 +11,7 @@ import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
 import { tokenCssVar } from '@/lib/accessibility'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
 import { displayPlayerName } from '@/lib/players/displayName'
+import { formatRankDelta } from '@/lib/formatters'
 import type {
   MatchCitationSnippet,
   MatchKillerVictimPair,
@@ -293,8 +294,7 @@ function LocalSection({ data, t }: { data: LocalRow; t: MatchViewText }) {
   }
   if (data.tierLabel) {
     const label = data.ratingType === 'CSR' ? t.sbDetailCsr : t.sbDetailLusr
-    const sign = (data.ratingDelta ?? 0) >= 0 ? '+' : ''
-    const deltaStr = data.ratingDelta != null ? ` (${sign}${data.ratingDelta.toFixed(0)} pts)` : ''
+    const deltaStr = data.ratingDelta != null ? ` (${formatRankDelta(data.ratingDelta, data.ratingType ?? '')} pts)` : ''
     rows.push(
       <KvRow key="rank" label={label} value={
         <span className="flex items-center gap-1.5">

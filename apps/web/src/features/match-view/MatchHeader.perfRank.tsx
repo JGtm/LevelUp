@@ -7,6 +7,7 @@
 import { tokenCssVar } from '@/lib/accessibility'
 import { skillDeltaScale } from '@/lib/accessibility/scales'
 import { gridForRatingTypes, subTierPosition } from '@/lib/skillTiers'
+import { formatRankDelta } from '@/lib/formatters'
 import { MATCH_VIEW_TEXT, type MatchViewLocale } from './i18n'
 import type { MatchViewHeader as MatchViewHeaderData, MatchViewRank } from '@/lib/api/types'
 import { nextTierLabel } from './MatchHeader.utils'
@@ -122,9 +123,8 @@ export function PerfRankRow({ header, rank, perfColor, locale }: PerfRankRowProp
                   className="font-bold tabular-nums"
                   style={{ color: deltaColor }}
                 >
-                  {rank.delta_value >= 0
-                    ? `▲ +${rank.delta_value.toFixed(0)}`
-                    : `▼ ${rank.delta_value.toFixed(0)}`}
+                  {rank.delta_value > 0 ? '▲ ' : rank.delta_value < 0 ? '▼ ' : ''}
+                  {formatRankDelta(rank.delta_value, rank.rating_type)}
                 </span>
               )}
             </div>
