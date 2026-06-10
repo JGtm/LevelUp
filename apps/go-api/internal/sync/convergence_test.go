@@ -68,6 +68,9 @@ func TestConvergence_SelectsOnlyIncompleteWeapons(t *testing.T) {
 
 // TestConvergence_NothingWhenAllComplete : work-set vide quand tout est complet
 // (la "roue de secours" reste dans le coffre — aucun retraitement récurrent).
+// « Complet » inclut depuis 2026-06-10 la présence des rows enrichment du
+// joueur (countSharedMatchesMissingEnrichment) — un match shared sans row
+// player_match_enrichment EST un backlog (contrat delta-skip).
 func TestConvergence_NothingWhenAllComplete(t *testing.T) {
 	shared := openBatchPathTestDB(t, migration.TargetShared)
 	player := openBatchPathTestDB(t, migration.TargetPlayer)
@@ -75,8 +78,32 @@ func TestConvergence_NothingWhenAllComplete(t *testing.T) {
 
 	seedConvergenceMatch(t, shared, "done-1", xuid, true, MBitWeaponKills)
 	seedConvergenceMatch(t, shared, "done-2", xuid, true, MBitWeaponKills)
+	for _, id := range []string{"done-1", "done-2"} {
+		if _, err := player.Exec(
+			`INSERT INTO player_match_enrichment (match_id) VALUES (?)`, id); err != nil {
+			t.Fatalf("seed enrichment %s: %v", id, err)
+		}
+	}
 
 	if backlog := hasConvergenceBacklog(context.Background(), player, shared, xuid); backlog {
 		t.Fatal("hasConvergenceBacklog doit être false quand tout est complet")
+	}
+}
+
+// TestConvergence_BacklogWhenEnrichmentMissing : un match présent en shared
+// pour ce xuid mais SANS row player_match_enrichment déclenche le backlog —
+// même si events et weapons sont complets (cycle « pur skip », gate 2026-06-10).
+func TestConvergence_BacklogWhenEnrichmentMissing(t *testing.T) {
+	shared := openBatchPathTestDB(t, migration.TargetShared)
+	player := openBatchPathTestDB(t, migration.TargetPlayer)
+	const xuid = "x1"
+
+	seedConvergenceMatch(t, shared, "skipped-1", xuid, true, MBitWeaponKills)
+
+	if missing := countSharedMatchesMissingEnrichment(context.Background(), player, shared, xuid); missing != 1 {
+		t.Fatalf("countSharedMatchesMissingEnrichment = %d (attendu 1)", missing)
+	}
+	if !hasConvergenceBacklog(context.Background(), player, shared, xuid) {
+		t.Fatal("hasConvergenceBacklog doit être true quand l'enrichment manque")
 	}
 }

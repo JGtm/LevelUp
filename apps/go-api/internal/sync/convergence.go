@@ -56,12 +56,73 @@ func selectMatchesMissingWeapons(ctx context.Context, playerDB, sharedDB *sql.DB
 	return ids
 }
 
-// hasConvergenceBacklog indique s'il reste des matchs à converger (events OU
-// weapons incomplets). Sert à déclencher le post-sync même quand aucun nouveau
-// match n'a été inséré : le sync n'a pas "fini" tant que tout n'est pas enrichi.
+// hasConvergenceBacklog indique s'il reste des matchs à converger (enrichment
+// manquant, events OU weapons incomplets). Sert à déclencher le post-sync même
+// quand aucun nouveau match n'a été inséré : le sync n'a pas "fini" tant que
+// tout n'est pas enrichi.
 func hasConvergenceBacklog(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) bool {
-	return len(selectMatchesMissingEvents(ctx, playerDB, sharedDB, xuid)) > 0 ||
+	return countSharedMatchesMissingEnrichment(ctx, playerDB, sharedDB, xuid) > 0 ||
+		len(selectMatchesMissingEvents(ctx, playerDB, sharedDB, xuid)) > 0 ||
 		len(selectMatchesMissingWeapons(ctx, playerDB, sharedDB, xuid)) > 0
+}
+
+// countSharedMatchesMissingEnrichment compte les matchs présents dans
+// shared.match_participants pour ce xuid mais SANS row player_match_enrichment.
+//
+// Cas couvert (gate 2026-06-10) : cycle « pur skip » — tous les matchs du
+// joueur ont été insérés en shared par le watcher d'un coéquipier (delta-skip
+// via loadKnownMatchIDs source 2), donc matchesInserted=0 pour ce joueur. Si
+// par ailleurs ses scores existants sont complets et events/weapons chargés,
+// AUCUN déclencheur ne lançait le pipeline → ensurePlayerEnrichmentRows ne
+// tournait jamais → enrichment manquant à durée indéterminée (la convergence
+// observée en prod reposait accidentellement sur des scores NULL cold-start
+// qui maintenaient needsScoreRefresh=true). Ce compteur rend le déclenchement
+// déterministe.
+//
+// Implémentation en diff Go (2 requêtes) : playerDB et sharedDB sont deux
+// connexions distinctes, pas de cross-join SQL possible sans ATTACH.
+func countSharedMatchesMissingEnrichment(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) int {
+	if playerDB == nil || sharedDB == nil || xuid == "" {
+		return 0
+	}
+	known := make(map[string]struct{}, 512)
+	rows, err := playerDB.QueryContext(ctx, `SELECT match_id FROM player_match_enrichment`)
+	if err != nil {
+		slog.WarnContext(ctx, "convergence: lecture player_match_enrichment échouée", "xuid", xuid, "err", err)
+		return 0
+	}
+	for rows.Next() {
+		var id string
+		if scanErr := rows.Scan(&id); scanErr == nil {
+			known[id] = struct{}{}
+		}
+	}
+	_ = rows.Close()
+
+	// Cast défensif xuid || '' aligné sur loadKnownMatchIDs (drift de type
+	// UBIGINT vs VARCHAR possible sur un titre futur).
+	shared, err := sharedDB.QueryContext(ctx,
+		`SELECT DISTINCT match_id FROM match_participants WHERE xuid || '' = ? AND match_id IS NOT NULL`, xuid)
+	if err != nil {
+		slog.WarnContext(ctx, "convergence: lecture shared.match_participants échouée", "xuid", xuid, "err", err)
+		return 0
+	}
+	defer shared.Close()
+	missing := 0
+	for shared.Next() {
+		var id string
+		if scanErr := shared.Scan(&id); scanErr != nil {
+			continue
+		}
+		if _, ok := known[id]; !ok {
+			missing++
+		}
+	}
+	if missing > 0 {
+		slog.InfoContext(ctx, "convergence: enrichment manquant détecté (matchs insérés par un coéquipier)",
+			"xuid", xuid, "missing", missing)
+	}
+	return missing
 }
 
 // convergeEvents re-fetch les highlight events des matchs events_loaded=false

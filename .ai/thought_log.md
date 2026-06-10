@@ -1,3 +1,18 @@
+## [2026-06-10] Root cause : `rating_delta` LUSR = 0.0 sur les matchs récents (JGtm, Madina) — Diagnostic établi
+
+**Statut** : Diagnostic (root cause confirmée par lecture base, aucun code modifié). Branche `fix/chart-empty-states`. Question user : pourquoi JGtm et Madina97294 ont un delta LUSR de 0.0 sur énormément de matchs récents.
+
+**Root cause (design, pas bug de pipeline)** : le `rating_delta` écrit dans `match_skill_rank` (`writeCanonicalLUSRRow`, `skill_v2_canonical.go:144`) est `rating_value(courant) − rating_value(précédent du même playlist_group)`. Or `rating_value` n'est PAS une mesure continue du skill : c'est la projection **discrète du sous-palier AFFICHÉ** via `MapTierSubToLegacyRating` (`skill_v2/display_smoothing.go:121`) = `minR + (sub−1)·band`. μ n'entre QUE par le choix du sous-palier. Le `rating_value` ne peut donc prendre que ~20 valeurs fixes (une par tier/sub). Tant que le sous-palier affiché ne change pas, `rating_value` est identique → `delta = x − x = 0.0` (le signe ±0.0 observé = bruit IEEE-754 de la soustraction de deux valeurs égales). Le delta ne « s'allume » qu'au franchissement d'un sous-palier, où il bondit alors d'une bande entière (Bronze/Or ±33, Argent/Diamant ±67, Platine ±100, Onyx jamais).
+
+**Preuve (lecture RO des player DB, serveur arrêté)** :
+- JGtm 914 matchs LUSR : delta=0 sur 234 (26%), mais les 30 derniers sont quasi tous `Or 5` (rv=1533.3) → 0.0 en série. `rating_value` ne prend QUE les valeurs de paliers (1400/1433.3/1466.7/1500/1533.3/1566.7…).
+- Madina 1132 matchs : delta=0 sur 454 (40%) ; 378 matchs **Onyx** (rv=2000, sous-palier unique → delta TOUJOURS 0 entre Onyx). Récents = alternance `Diamant 3` (1933.3, slayer) / `Diamant 1` (1800, objectif), chaque groupe stable → 0.0.
+- `rating_deviation` figé à 60 (= floor `MapSigmaToLegacyDeviation`, σ convergé ×40 < 60) → non discriminant, mais l'historique montre une vraie progression (Madina Silver→…→Onyx), donc μ bouge bien : ce n'est pas un μ figé ni un watermark desync (problème distinct de `project_lusr_v2_watermark_row_desync`).
+
+**Aggravants** : (1) hystérésis `SmoothDisplayedOrdinal` bride la descente à 1 sp/match → fige encore le palier affiché ; (2) σ convergé → micro-mouvement de μ/match → sous-palier quasi immobile ; (3) delta par `playlist_group` ; (4) cas Onyx = aucune granularité au sommet, delta structurellement 0 à vie.
+
+**Reco (non implémentée, à valider)** : dissocier le « delta de skill du match » du franchissement de sous-palier. Soit calculer le delta sur μ continu (Δμ remappé sur 1000-2000), soit interpoler la position de μ DANS le sous-palier (rating_value continu) — au prix de la cohérence « rating_value = palier lissé ». Le front connaît déjà la grille à largeur variable (`skillTiers.ts`, cf. entrée barre de progression du 2026-06-09).
+
 ## [2026-06-09] Match View : barre de progression rang « tout vert » (base bleue absente) sur LUSR — Complété
 
 **Statut** : Complété (validé local : vitest skillTiers + MatchHeader 36 OK, typecheck 0, eslint 0). Branche `feat/leaderboard-csr-followup`.
@@ -22897,3 +22912,18 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 - **Preuve après fix** (serveur dev rebuild par Air) : POST `/pages/teammates` → `synergy_radar:3`, `performance_series:3×354 pts`, `medal_digest:3 joueurs`.
 - **Notes annexes (non traitées, à suivre)** : (a) labels de session affichés en UTC (« 19:14–20:23 » pour une session locale 21:14–22:23) — rejoint la dette TZ `first_joined_time` ; (b) `pair_name` UUID bruts sur les 12 matchs du 09/06 au soir (trou catalogue assets) ; (c) timeouts DuckDB récurrents le 10/06 (SharedReader unavailable, 1 requête teammates 500 deadline) — contention lecture/écriture à surveiller ; (d) ma requête curl manuelle avec `picked_squad_session_labels` n'a pas appliqué le filtre (forme de requête, pas reproduit via le front réel — à recontrôler si le symptôme apparaît dans l'UI).
 - **Conclusion / prochaine étape** : recharger la page Escouade (session 09/06) → tous les graphes doivent se remplir. À commit (sur autorisation).
+
+---
+
+### [2026-06-10] Invariants sync : gate au commit + convergence delta-skip déterministe
+
+- **Statut** : Phases 1-2 complétées (validé : `go test -tags=integration ./internal/sync/...` TOUT VERT en 77s, incluant les 2 nouveaux tests gate + 2 tests convergence ; vet OK). Branche `fix/chart-empty-states`. NON commit (attente autorisation). Plan : `.ai/PLAN_SYNC_INVARIANTS_GATE.md`.
+- **Contexte** (frustration user légitime) : « un problème de sync tous les 3 jours, je passe mon temps à patcher ». Diagnostic : pipeline distribué (N joueurs → shared + player DBs → artefacts dérivés) sans invariants déclarés ni vérifiés, échecs silencieux par défaut → détection par le end-user des jours plus tard. Décision user : détection AU COMMIT (CI), pas dans les logs.
+- **Découverte structurelle pendant l'implémentation** : la convergence delta-skip (heal `ensurePlayerEnrichmentRows`, écrit après l'incident 2026-05-27 — même classe que celui du 2026-06-10) n'était déclenchée que par accident en cycle « 0 inséré » : `hasMatchesNeedingScoreRefresh` ne voit que les rows EXISTANTES à scores NULL (une row absente est invisible), `hasConvergenceBacklog` ne voyait que events/weapons. En prod, ce sont les scores NULL cold-start permanents (45 chez JGtm) qui maintenaient le pipeline actif. Un joueur « pur skip » avec données complètes n'aurait JAMAIS convergé.
+- **Livré** :
+  1. `internal/sync/invariants/` — 5 invariants déclarés (2 FAIL : enrichment_missing, participants_without_registry ; 3 WARN : session_missing, performance_score_missing, pair_name_uuid), API `CheckPlayer` → `Report.Failures()`. Package autonome (sql+context), même source pour tests et future sentinelle runtime.
+  2. Fix moteur : `countSharedMatchesMissingEnrichment` ajouté à `hasConvergenceBacklog` (convergence.go) → déclenchement déterministe du pipeline en cycle pur-skip. Log INFO `convergence: enrichment manquant détecté`.
+  3. Gate : `invariants_gate_integration_test.go` — `TestGate_DeltaSkip_EnrichmentConverges` (3 joueurs, même match squad avec leurs xuids réels en participants via `makeSquadMatchJSON`, user0 insère, users 1-2 delta-skippent, CheckPlayer×3 doit être sans FAIL) + `TestGate_PureSkipCycle_TriggersConvergence` (player DB vierge + match shared → missing≥1). Réutilise `newMultiUserEnv` existant. Tourne en CI via le job go-coverage existant (`-tags=integration`, CGO) — gate actif dès merge, AUCUN changement CI requis.
+  4. Fixture `TestConvergence_NothingWhenAllComplete` corrigée (« complet » inclut désormais l'enrichment) + nouveau `TestConvergence_BacklogWhenEnrichmentMissing`.
+- **Piège rencontré** : mock `GetMatchHistory` ignore `start` (rejoue la même page) → RunDelta insérait 5× le même match avec MaxMatches=5 ; borné à MaxMatches=1 dans les tests gate.
+- **Conclusion / prochaine étape** : Phases 3-4 du plan (invariant LUSR dual-row unifié, audit PSA delta-skip, scénario concurrent errgroup, sentinelle runtime + notification in-app). À commit (sur autorisation).
