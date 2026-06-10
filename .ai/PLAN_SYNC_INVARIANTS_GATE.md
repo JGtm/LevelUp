@@ -139,3 +139,22 @@ Reste (v2) — LIVRÉ 2026-06-10 (passe 5) :
   correspondant AVANT le fix (red → green), comme un test de régression.
 - Les sévérités WARN ne bloquent pas le gate ; toute promotion WARN→FAIL doit
   être justifiée dans ce document.
+
+## Vérification finale (2026-06-10, revue 20 agents + fixes)
+
+4 majeurs confirmés et corrigés : ordre engagement inversé (reverse ASC),
+baseline tendance figée au mount (roulante via generated_at), invariants
+globaux dupliqués ×N joueurs (split CheckPlayer/CheckShared + carte
+« Données partagées »), test handler GetSquadEngagementSession manquant.
+Couverture ajoutée : 12 checks exercés EN VIOLATION (invariants_violation_test),
+convergePSA chemins d'erreur, SetInt, ChartFromOption, invariantsTrend, ordre
+matchIds. Logs invariants routés vers logs/invariants.log (module dédié).
+
+Limites assumées (documentées, non corrigées) :
+- GET /admin/invariants peut créer/migrer une player DB déclarée absente
+  (résolution pool = même effet qu'une visite de page joueur).
+- Pas de timeout middleware dédié (WriteTimeout 30s serveur ; mesuré 0.1-0.2s
+  pour 4 joueurs) ni de garde anti-runs-concurrents.
+- Clé localStorage de tendance non namespacée par titre (latent, mono-titre).
+- convergePSA : pas de borne de retries sur échec fetch persistant (atténué
+  par rate-limiter + fetch-cache + ORDER BY récents d'abord).

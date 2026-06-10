@@ -134,3 +134,24 @@ func TestReset_ClearsAllMetrics(t *testing.T) {
 		t.Errorf("duration count should be 0 after Reset, got %d", count)
 	}
 }
+
+func TestSetInt_GaugeSemantics(t *testing.T) {
+	Reset()
+	// Première création : publie la clé et fixe la valeur.
+	SetInt("test_gauge_last", 42)
+	if got := LoadCounter("test_gauge_last"); got != 42 {
+		t.Fatalf("SetInt première valeur = %d, want 42", got)
+	}
+	// Sémantique gauge : Set ÉCRASE (ne cumule pas) — une régression vers Add
+	// transformerait les *_last en cumuls trompeurs sur /debug/vars.
+	SetInt("test_gauge_last", 7)
+	if got := LoadCounter("test_gauge_last"); got != 7 {
+		t.Fatalf("SetInt doit écraser : got %d, want 7", got)
+	}
+	// Interop : un compteur existant créé par AddInt peut être fixé par SetInt.
+	AddInt("test_gauge_mixed", 5)
+	SetInt("test_gauge_mixed", 2)
+	if got := LoadCounter("test_gauge_mixed"); got != 2 {
+		t.Fatalf("SetInt sur clé AddInt : got %d, want 2", got)
+	}
+}

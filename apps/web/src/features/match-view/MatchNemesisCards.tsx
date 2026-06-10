@@ -50,7 +50,7 @@ export function MatchNemesisCards({ nemesis, scoreboard, meXUID, t }: Props) {
         title={t.combatNemesisTitle}
         accentToken="outcome-loss"
         row={nemesisRow}
-        statLine={t.combatKilledMeFmt(nemesisRow?.killed_me ?? 0)}
+        statLine={nemesisRow ? t.combatKilledMeFmt(nemesisRow.killed_me) : null}
         logoSrc={`/icons/nemesis-${logoSuffix}.png`}
         t={t}
       />
@@ -58,7 +58,7 @@ export function MatchNemesisCards({ nemesis, scoreboard, meXUID, t }: Props) {
         title={t.combatBullyTitle}
         accentToken="outcome-win"
         row={bullyRow}
-        statLine={t.combatIKilledFmt(bullyRow?.i_killed ?? 0)}
+        statLine={bullyRow ? t.combatIKilledFmt(bullyRow.i_killed) : null}
         logoSrc={`/icons/victim-${logoSuffix}.png`}
         t={t}
       />
@@ -70,7 +70,8 @@ interface CardProps {
   title: string
   accentToken: SemanticToken
   row: MatchNemesisRow | null
-  statLine: string
+  /** null = etat vide (aucun duel) : la ligne de stat est masquee plutot que d afficher un 0 absurde. */
+  statLine: string | null
   logoSrc: string
   t: MatchViewText
 }
@@ -106,9 +107,11 @@ function NemesisCard({ title, accentToken, row, statLine, logoSrc, t }: CardProp
           <div className="mt-1 truncate text-2xl font-bold text-white">
             {row?.gamertag ?? t.combatNoNemesis}
           </div>
-          <div className="mt-3 text-sm text-white/80">
-            <div className="tabular-nums">{statLine}</div>
-          </div>
+          {statLine !== null && (
+            <div className="mt-3 text-sm text-white/80">
+              <div className="tabular-nums">{statLine}</div>
+            </div>
+          )}
         </div>
       </div>
     </div>

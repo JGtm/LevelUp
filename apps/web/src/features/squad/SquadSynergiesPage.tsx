@@ -84,6 +84,7 @@ export function SquadSynergiesPage() {
       <div className="grid grid-cols-2 gap-4">
         <WinRateVsHistoryBulletChart
           title={t.charts.winRateVsHistoryBulletTitle}
+          emptyMessage={t.empty.noBlockData}
           rows={mapBreakdown}
           mapLabelOf={mapLabelOf}
           sessionLabel={t.charts.winRateVsHistorySession}
@@ -93,6 +94,7 @@ export function SquadSynergiesPage() {
         />
         <MapPerfVsHistoryChart
           title={t.charts.mapPerfVsHistoryTitle}
+          emptyMessage={t.empty.noBlockData}
           rows={mapBreakdown}
           mapLabelOf={mapLabelOf}
           sessionLabel={t.charts.mapPerfVsHistorySession}
@@ -122,6 +124,7 @@ export function SquadSynergiesPage() {
       <SquadSynergyHistoryTable rows={matchHistory} playerSlug={playerSlug} />
       <SquadMapHeatmapChart
         title={t.heatmap.title}
+        emptyMessage={t.empty.noBlockData}
         data={mapHeatmap && mapHeatmap.players.length > 0 && mapHeatmap.maps_topn.length > 0 ? mapHeatmap : undefined}
         mapLabelOf={mapLabelOf}
         pieceLabels={{
@@ -135,6 +138,7 @@ export function SquadSynergiesPage() {
       />
       <SquadSessionTimelineChart
         title={t.timeline.title}
+        emptyMessage={t.empty.noBlockData}
         rows={sessionTimeline}
         perfLabel={t.timeline.perf}
         winRateLabel={t.timeline.winRate}

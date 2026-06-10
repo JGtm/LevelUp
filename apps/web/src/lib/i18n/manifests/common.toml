@@ -401,6 +401,10 @@ en = "Checked at"
 fr = "Échec de la vérification des invariants."
 en = "Failed to run invariants check."
 
+[common.admin.invariants_shared_scope]
+fr = "Données partagées"
+en = "Shared data"
+
 [common.setup.config_loading]
 fr = "Vérification de la configuration…"
 en = "Checking configuration…"

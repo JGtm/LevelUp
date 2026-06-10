@@ -14,6 +14,7 @@ import {
 
 interface SquadIntensityHeatmapChartProps extends SquadIntensityOpts {
   title?: string
+  emptyMessage?: string
   profile: SquadIntensityProfile
   /** gamertag → couleur hex résolue depuis semantic tokens. */
   colorByPlayer?: Record<string, string>
@@ -24,6 +25,7 @@ interface SquadIntensityHeatmapChartProps extends SquadIntensityOpts {
 export function SquadIntensityHeatmapChart({
   profile,
   title,
+  emptyMessage,
   zLabel,
   colorByPlayer,
   toggleLabel,
@@ -88,6 +90,7 @@ export function SquadIntensityHeatmapChart({
         series={series}
         buildOption={buildOption}
         height={height}
+        emptyMessage={emptyMessage}
       />
     </div>
   )

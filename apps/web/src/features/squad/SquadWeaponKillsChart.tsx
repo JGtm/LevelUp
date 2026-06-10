@@ -13,10 +13,11 @@ import {
 
 interface SquadWeaponKillsChartProps extends SquadWeaponKillsOpts {
   title?: string
+  emptyMessage?: string
   data: SquadWeaponKills | null | undefined
 }
 
-export function SquadWeaponKillsChart({ data, title, ...opts }: SquadWeaponKillsChartProps) {
+export function SquadWeaponKillsChart({ data, title, emptyMessage, ...opts }: SquadWeaponKillsChartProps) {
   const series = useMemo<ChartSeries<SquadWeaponBar>[]>(
     () => (data && data.bars.length > 0 ? [{ key: 'weapon-kills', datapoints: data.bars }] : []),
     [data],
@@ -28,6 +29,6 @@ export function SquadWeaponKillsChart({ data, title, ...opts }: SquadWeaponKills
   const n = data?.bars.length ?? 0
   const height = Math.max(350, Math.min(800, n * 38))
   return (
-    <ChartCard title={title} series={series} buildOption={buildOption} height={height} />
+    <ChartCard title={title} series={series} buildOption={buildOption} height={height} emptyMessage={emptyMessage} />
   )
 }

@@ -3650,4 +3650,9 @@ export interface AdminInvariantsResponse {
   title_slug: string
   generated_at: string
   reports: AdminPlayerInvariantsReport[]
+  /** Invariants globaux (shared DB) — exécutés une fois par run, pas par joueur. */
+  shared_violations: AdminInvariantViolation[]
+  shared_fail_count: number
+  shared_warn_count: number
+  shared_check_error?: string
 }

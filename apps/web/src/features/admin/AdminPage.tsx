@@ -1,7 +1,7 @@
 /**
  * AdminPage — gestion des utilisateurs et des invitations.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -21,7 +21,15 @@ import {
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { useAdminInvariants } from './queries'
-import type { AdminPlayerInvariantsReport } from '@/lib/api/types'
+import type { AdminInvariantViolation } from '@/lib/api/types'
+import {
+  SHARED_SCOPE_KEY,
+  buildInvariantsSnapshot,
+  invariantDelta,
+  readInvariantsSnapshot,
+  writeInvariantsSnapshot,
+  type InvariantsSnapshot,
+} from './invariantsTrend'
 
 export function AdminPage() {
   const navigate = useNavigate()
@@ -248,50 +256,27 @@ function InvitesSection() {
 // Section Intégrité des données (invariants sync — plan SYNC_INVARIANTS_GATE)
 // ---------------------------------------------------------------------------
 
-/**
- * Tendance entre deux vérifications : snapshot des counts par
- * (joueur, invariant) persisté en localStorage. Affiche un delta (+N / -N)
- * à côté du count courant quand il a bougé depuis le run précédent —
- * une CROISSANCE de WARN est le signal « un batch ne converge plus ».
- */
-const INVARIANTS_SNAPSHOT_KEY = 'admin-invariants-snapshot'
-
-type InvariantsSnapshot = Record<string, number> // "slug|key" -> count
-
-function readInvariantsSnapshot(): InvariantsSnapshot {
-  try {
-    const raw = localStorage.getItem(INVARIANTS_SNAPSHOT_KEY)
-    return raw ? (JSON.parse(raw) as InvariantsSnapshot) : {}
-  } catch {
-    return {}
-  }
-}
-
-function buildInvariantsSnapshot(reports: AdminPlayerInvariantsReport[]): InvariantsSnapshot {
-  const snap: InvariantsSnapshot = {}
-  for (const r of reports) {
-    for (const v of r.violations) {
-      snap[`${r.player_slug}|${v.key}`] = v.count
-    }
-  }
-  return snap
-}
-
 function InvariantsSection() {
   const { data, isLoading, isError, refetch, isFetching } = useAdminInvariants()
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
-  // Snapshot précédent figé au mount ; le courant remplace en localStorage à
-  // chaque réponse (generated_at change ⇒ nouveau run).
-  const [previous] = useState<InvariantsSnapshot>(() => readInvariantsSnapshot())
+  // Baseline ROULANTE : au 1er run de la session, comparaison au snapshot
+  // localStorage (inter-sessions) ; ensuite chaque nouveau run (generated_at
+  // différent) compare au run PRÉCÉDENT — pas au snapshot figé au mount
+  // (sinon un refetch intra-session masquerait une régression revenue au
+  // niveau pré-mount).
+  const [previous, setPrevious] = useState<InvariantsSnapshot>(() => readInvariantsSnapshot())
+  const lastRunRef = useRef<{ generatedAt: string; snapshot: InvariantsSnapshot } | null>(null)
   useEffect(() => {
-    if (!data?.reports) return
-    try {
-      localStorage.setItem(INVARIANTS_SNAPSHOT_KEY, JSON.stringify(buildInvariantsSnapshot(data.reports)))
-    } catch {
-      /* quota/SSR : tendance simplement absente */
+    if (!data) return
+    const snap = buildInvariantsSnapshot(data)
+    const last = lastRunRef.current
+    if (last && last.generatedAt !== data.generated_at) {
+      setPrevious(last.snapshot)
     }
+    lastRunRef.current = { generatedAt: data.generated_at, snapshot: snap }
+    writeInvariantsSnapshot(snap)
   }, [data])
 
   return (
@@ -322,10 +307,25 @@ function InvariantsSection() {
           <p className="text-sm text-muted-foreground">{t('common.admin.invariants_empty')}</p>
         ) : (
           <div className="space-y-3">
+            <InvariantsCard
+              title={t('common.admin.invariants_shared_scope')}
+              scope={SHARED_SCOPE_KEY}
+              checkError={data.shared_check_error}
+              failCount={data.shared_fail_count}
+              warnCount={data.shared_warn_count}
+              violations={data.shared_violations ?? []}
+              previous={previous}
+              t={t}
+            />
             {data.reports.map((r) => (
-              <PlayerInvariantsCard
+              <InvariantsCard
                 key={r.player_slug || r.gamertag}
-                report={r}
+                title={r.gamertag}
+                scope={r.player_slug}
+                checkError={r.check_error}
+                failCount={r.fail_count}
+                warnCount={r.warn_count}
+                violations={r.violations}
                 previous={previous}
                 t={t}
               />
@@ -337,41 +337,45 @@ function InvariantsSection() {
   )
 }
 
-function PlayerInvariantsCard({
-  report,
+function InvariantsCard({
+  title,
+  scope,
+  checkError,
+  failCount,
+  warnCount,
+  violations,
   previous,
   t,
 }: {
-  report: AdminPlayerInvariantsReport
+  title: string
+  scope: string
+  checkError?: string
+  failCount: number
+  warnCount: number
+  violations: AdminInvariantViolation[]
   previous: InvariantsSnapshot
   t: (key: CommonManifestKey) => string
 }) {
-  const healthy = !report.check_error && report.fail_count === 0 && report.warn_count === 0
-  // Delta vs run précédent : undefined = pas de référence (1er run / nouvelle clé).
-  const deltaOf = (key: string, count: number): number | undefined => {
-    const prev = previous[`${report.player_slug}|${key}`]
-    if (prev === undefined || prev === count) return undefined
-    return count - prev
-  }
+  const healthy = !checkError && failCount === 0 && warnCount === 0
   return (
     <div className="rounded-md border px-4 py-3">
       <div className="flex items-center justify-between">
-        <span className="font-medium text-foreground">{report.gamertag}</span>
+        <span className="font-medium text-foreground">{title}</span>
         <div className="flex items-center gap-2 text-xs">
-          {report.check_error ? (
+          {checkError ? (
             <span className="rounded bg-muted px-2 py-0.5 text-destructive">
               {t('common.admin.invariants_check_error')}
             </span>
           ) : (
             <>
-              {report.fail_count > 0 && (
+              {failCount > 0 && (
                 <span className="rounded bg-muted px-2 py-0.5 font-semibold text-destructive">
-                  {report.fail_count} FAIL
+                  {failCount} FAIL
                 </span>
               )}
-              {report.warn_count > 0 && (
+              {warnCount > 0 && (
                 <span className="rounded bg-muted px-2 py-0.5 text-muted-foreground">
-                  {report.warn_count} WARN
+                  {warnCount} WARN
                 </span>
               )}
               {healthy && (
@@ -382,18 +386,16 @@ function PlayerInvariantsCard({
         </div>
       </div>
 
-      {report.check_error && (
-        <p className="mt-2 text-xs text-muted-foreground">{report.check_error}</p>
-      )}
+      {checkError && <p className="mt-2 text-xs text-muted-foreground">{checkError}</p>}
 
-      {!report.check_error && report.violations.length === 0 && (
+      {!checkError && violations.length === 0 && (
         <p className="mt-2 text-xs text-muted-foreground">{t('common.admin.invariants_all_ok')}</p>
       )}
 
-      {report.violations.length > 0 && (
+      {violations.length > 0 && (
         <ul className="mt-2 space-y-1.5">
-          {report.violations.map((v) => {
-            const delta = deltaOf(v.key, v.count)
+          {violations.map((v) => {
+            const delta = invariantDelta(previous, scope, v.key, v.count)
             return (
               <li key={v.key} className="text-xs">
                 <span

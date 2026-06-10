@@ -67,11 +67,14 @@ func ensurePlayerEnrichmentRows(
 		return 0, nil
 	}
 
-	// Lire les match_ids du joueur côté shared.
+	// Lire les match_ids du joueur côté shared. Cast défensif xuid || '' :
+	// MÊME prédicat que le déclencheur countSharedMatchesMissingEnrichment et
+	// que loadKnownMatchIDs — un drift de type ferait diverger déclencheur et
+	// réparateur (re-trigger infini sans convergence).
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT DISTINCT match_id
 		FROM match_participants
-		WHERE xuid = ?
+		WHERE xuid || '' = ?
 		  AND match_id IS NOT NULL
 	`, xuid)
 	if err != nil {

@@ -14,6 +14,7 @@ import {
 
 interface SquadSynergyRadarChartProps extends SquadSynergyRadarOpts {
   title?: ReactNode
+  emptyMessage?: string
   rows: SquadSynergyRadarSeries[]
   height?: number
 }
@@ -21,6 +22,7 @@ interface SquadSynergyRadarChartProps extends SquadSynergyRadarOpts {
 export function SquadSynergyRadarChart({
   rows,
   title,
+  emptyMessage,
   colorByPlayer,
   axisLabels,
   height = 400,
@@ -38,6 +40,7 @@ export function SquadSynergyRadarChart({
         series={rows as unknown as { key: string; datapoints: unknown[] }[]}
         buildOption={buildOption}
         height={height}
+        emptyMessage={emptyMessage}
       />
     </div>
   )
