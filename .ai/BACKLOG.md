@@ -10,6 +10,22 @@
 
 ---
 
+### [sécurité/autZ] Routes prestige pré-existantes : identité acteur client-asserted (BOLA) — à corriger avant exposition élargie
+
+> Noté le 2026-06-10 (revue `feat/coach-v3-squad`). Le fix **squad-only** a été livré sur cette branche (`ActorGuard` sur les 6 routes squad) ; **les routes prestige pré-existantes restent vulnérables**. Priorité haute mais blast radius limité (instance invités-only + lockdown).
+
+**Problème** : les routes `/api/v1/{challenges,arcs,prestige/me,templates/suggest,pilot-mode,...}` sont montées à plat sous `/api/v1` (middleware `WithSession` + CSRF + RateLimit), **hors** du groupe `/players/{player_slug}` donc **sans** `RequirePlayerOwnership` (ADR 0024). L'identité de l'acteur vient du **client** (`user_id` en query/body) et n'est jamais réconciliée avec la session → un utilisateur authentifié peut lire/muter les données prestige d'un autre (BOLA / IDOR horizontal). Incohérent avec le contrôle d'ownership appliqué partout ailleurs.
+
+**Déjà fait (squad-only, cette branche)** : helper `squadActorGuard` (`server.go`) + `PrestigeHandler.WithActorGuard` → 403 `player_forbidden` si l'acteur n'est pas un profil possédé par la session (réutilise `authz.Enforced`/`CurrentUser`/`CanAccessPlayer`, multi-profil famille). Transparent demo/auth-off. Tests httptest 403 sur les 6 routes squad.
+
+**À faire (reste)** : étendre la même garde aux endpoints prestige pré-existants — soit (a) per-handler sur `user_id` (`CreateArc`, `ListActiveChallenges`, `GetMyPrestige`, `SuggestTemplates`, `DeleteArc`, `pilot-mode`, …), soit (b) un middleware sur le sous-groupe. Audit complet des handlers lisant `user_id`/`created_by`/`requested_by` requis. Tests 403 par endpoint.
+
+**Note design** : « dériver de la session » = en pratique « vérifier que le slug client ∈ profils possédés (`CanAccessPlayer`) » pour gérer le multi-profil famille, pas un slug unique figé.
+
+**Effort** : moyen (audit + N handlers + tests ; touche des features livrées → PR dédiée).
+
+---
+
 ### [POST-V7] Housekeeping post-cutover (optionnel, non bloquant)
 
 > Le cutover Go (la branche Go est devenue `main`) est **terminé** — cf. archive « Récemment complété ».
