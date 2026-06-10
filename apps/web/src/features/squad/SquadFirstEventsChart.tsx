@@ -16,6 +16,7 @@ import {
 
 interface SquadFirstEventsChartProps extends SquadFirstEventsOpts {
   title?: string
+  emptyMessage?: string
   data: SquadFirstEvents | null | undefined
   height?: number
 }
@@ -32,6 +33,7 @@ function toggleInSet<T>(set: Set<T>, key: T): Set<T> {
 export function SquadFirstEventsChart({
   data,
   title,
+  emptyMessage,
   height = 420,
   ...opts
 }: SquadFirstEventsChartProps) {
@@ -55,7 +57,7 @@ export function SquadFirstEventsChart({
   ]
 
   return (
-    <ChartCard title={title} series={series} buildOption={buildOption} height={height}>
+    <ChartCard title={title} series={series} buildOption={buildOption} height={height} emptyMessage={emptyMessage}>
       {series.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border px-3 py-2">
           {typeToggles.map(({ key, label }) => {

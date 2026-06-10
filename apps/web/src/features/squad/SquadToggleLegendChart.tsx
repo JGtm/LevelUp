@@ -36,6 +36,7 @@ interface SquadToggleLegendChartProps {
   /** Builder qui reçoit l'état masqué et renvoie l'option ECharts. */
   buildOption: (hidden: HiddenState) => EChartsCoreOption
   height?: number
+  emptyMessage?: string
 }
 
 function toggleInSet(set: Set<string>, key: string): Set<string> {
@@ -53,6 +54,7 @@ export function SquadToggleLegendChart({
   types,
   buildOption,
   height = 320,
+  emptyMessage,
 }: SquadToggleLegendChartProps) {
   const [hiddenPlayers, setHiddenPlayers] = useState<Set<string>>(() => new Set())
   const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(() => new Set())
@@ -63,7 +65,7 @@ export function SquadToggleLegendChart({
   )
 
   return (
-    <ChartCard title={title} series={series} buildOption={build} height={height}>
+    <ChartCard title={title} series={series} buildOption={build} height={height} emptyMessage={emptyMessage}>
       {series.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border px-3 py-2">
           {types.map(({ key, label }) => {

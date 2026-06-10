@@ -29,8 +29,19 @@ type PlayerInvariantsReport struct {
 }
 
 // AdminInvariantsResponse est la réponse de GET /admin/invariants.
+//
+// Les invariants GLOBAUX (orphelins registry/medals, pair_name UUID, alias)
+// sont exécutés UNE fois par run et reportés dans Shared* — pas dupliqués
+// par joueur (sinon full scans xN et compteurs gonflés d'un facteur N).
 type AdminInvariantsResponse struct {
 	TitleSlug   string                   `json:"title_slug"`
 	GeneratedAt string                   `json:"generated_at"` // RFC3339
 	Reports     []PlayerInvariantsReport `json:"reports"`
+
+	SharedViolations []InvariantViolation `json:"shared_violations"`
+	SharedFailCount  int                  `json:"shared_fail_count"`
+	SharedWarnCount  int                  `json:"shared_warn_count"`
+	// SharedCheckError non vide = les invariants globaux n'ont pas pu être
+	// vérifiés (aucune player DB résolvable pour porter l'ATTACH global).
+	SharedCheckError string `json:"shared_check_error,omitempty"`
 }

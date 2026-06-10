@@ -11,10 +11,11 @@ import {
 
 interface SquadSessionTimelineChartProps extends SquadSessionTimelineOpts {
   title?: string
+  emptyMessage?: string
   rows: SquadSessionPoint[]
 }
 
-export function SquadSessionTimelineChart({ rows, title, ...opts }: SquadSessionTimelineChartProps) {
+export function SquadSessionTimelineChart({ rows, title, emptyMessage, ...opts }: SquadSessionTimelineChartProps) {
   const series = useMemo<ChartSeries<SquadSessionPoint>[]>(
     () => (rows.length > 0 ? [{ key: 'squad-session-timeline', datapoints: rows }] : []),
     [rows],
@@ -23,5 +24,5 @@ export function SquadSessionTimelineChart({ rows, title, ...opts }: SquadSession
     (s: ChartSeries<SquadSessionPoint>[]) => buildSquadSessionTimelineOption(s, opts),
     [opts],
   )
-  return <ChartCard title={title} series={series} buildOption={buildOption} height={360} />
+  return <ChartCard title={title} series={series} buildOption={buildOption} height={360} emptyMessage={emptyMessage} />
 }

@@ -77,11 +77,17 @@ func hasConvergenceBacklog(ctx context.Context, playerDB, sharedDB *sql.DB, xuid
 // extractibles (NameIds inconnus, vieux matchs) n'est tenté qu'UNE fois.
 // Borné par convergenceHorizon comme les autres sélections.
 func selectMatchesMissingPSA(ctx context.Context, playerDB *sql.DB) []string {
+	// match_id IS NOT NULL dans le sous-select : défense contre les player DB
+	// legacy sans contraintes (un NULL rendrait le NOT IN faux pour TOUTES les
+	// rows → convergence silencieusement désactivée). ORDER BY created_at DESC :
+	// les matchs récents d'abord, aligné sur le contrat convergenceHorizon.
 	rows, err := playerDB.QueryContext(ctx, `
 		SELECT e.match_id
 		FROM player_match_enrichment e
 		WHERE e.psa_checked_at IS NULL
-		  AND e.match_id NOT IN (SELECT DISTINCT match_id FROM personal_score_awards)
+		  AND e.match_id NOT IN (
+		      SELECT DISTINCT match_id FROM personal_score_awards WHERE match_id IS NOT NULL)
+		ORDER BY e.created_at DESC NULLS LAST
 		LIMIT ?`, convergenceHorizon)
 	if err != nil {
 		slog.WarnContext(ctx, "convergence: sélection PSA manquants échouée", "err", err)
@@ -91,9 +97,14 @@ func selectMatchesMissingPSA(ctx context.Context, playerDB *sql.DB) []string {
 	var out []string
 	for rows.Next() {
 		var id string
-		if scanErr := rows.Scan(&id); scanErr == nil {
-			out = append(out, id)
+		if scanErr := rows.Scan(&id); scanErr != nil {
+			slog.WarnContext(ctx, "convergence: scan PSA manquant échoué", "err", scanErr)
+			continue
 		}
+		out = append(out, id)
+	}
+	if err := rows.Err(); err != nil {
+		slog.WarnContext(ctx, "convergence: itération PSA manquants interrompue", "err", err)
 	}
 	return out
 }
@@ -162,10 +173,17 @@ func countSharedMatchesMissingEnrichment(ctx context.Context, playerDB, sharedDB
 			known[id] = struct{}{}
 		}
 	}
+	if iterErr := rows.Err(); iterErr != nil {
+		// Itération tronquée = known partiel = sur-déclenchement possible du
+		// pipeline (bénin, le heal est idempotent) — mais on le trace.
+		slog.WarnContext(ctx, "convergence: itération enrichment interrompue", "xuid", xuid, "err", iterErr)
+	}
 	_ = rows.Close()
 
-	// Cast défensif xuid || '' aligné sur loadKnownMatchIDs (drift de type
-	// UBIGINT vs VARCHAR possible sur un titre futur).
+	// Cast défensif xuid || '' aligné sur loadKnownMatchIDs ET sur
+	// ensurePlayerEnrichmentRows (le repareur) — même prédicat partout, sinon
+	// un drift de type ferait diverger déclencheur et réparateur (re-trigger
+	// infini sans convergence).
 	shared, err := sharedDB.QueryContext(ctx,
 		`SELECT DISTINCT match_id FROM match_participants WHERE xuid || '' = ? AND match_id IS NOT NULL`, xuid)
 	if err != nil {
@@ -182,6 +200,9 @@ func countSharedMatchesMissingEnrichment(ctx context.Context, playerDB, sharedDB
 		if _, ok := known[id]; !ok {
 			missing++
 		}
+	}
+	if iterErr := shared.Err(); iterErr != nil {
+		slog.WarnContext(ctx, "convergence: itération participants interrompue", "xuid", xuid, "err", iterErr)
 	}
 	if missing > 0 {
 		slog.InfoContext(ctx, "convergence: enrichment manquant détecté (matchs insérés par un coéquipier)",

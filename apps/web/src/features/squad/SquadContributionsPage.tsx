@@ -52,9 +52,12 @@ export function SquadContributionsPage() {
   // (intersection composition exacte, session/période déjà filtrées). Sans ça,
   // le handler dérive les matchs de la timeseries d'engagement, qui renvoie
   // des bins agrégés (match_id vide) sur un gros historique → session vide.
-  // match_history arrive DESC (récent d'abord) — cap à 15 comme le fallback handler.
+  // match_history arrive DESC (récent d'abord) — cap à 15 comme le fallback
+  // handler, puis .reverse() : GetSquadSession préserve l'ordre du caller et
+  // étiquette M1..Mn dans cet ordre → il faut du chronologique ASC (ancien →
+  // récent), comme tous les autres charts timeseries.
   const engagementMatchIds = useMemo<string[]>(
-    () => (pageData?.match_history ?? []).slice(0, 15).map((m) => m.match_id),
+    () => (pageData?.match_history ?? []).slice(0, 15).map((m) => m.match_id).reverse(),
     [pageData?.match_history],
   )
   const intensityProfileLocalized = intensityProfile
@@ -82,6 +85,7 @@ export function SquadContributionsPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <SquadPerMinuteChart
           title={t.perMinute.title}
+          emptyMessage={t.empty.noBlockData}
           rows={perMinuteRows}
           colorByPlayer={playerColors}
           metricLabels={{
@@ -114,6 +118,7 @@ export function SquadContributionsPage() {
             </span>
           }
           rows={synergyRadar}
+          emptyMessage={t.empty.noBlockData}
           colorByPlayer={playerColors}
           axisLabels={synergyAxisLabels}
         />
@@ -121,6 +126,7 @@ export function SquadContributionsPage() {
 
       <SquadIntensityHeatmapChart
         title={t.intensity.title}
+        emptyMessage={t.empty.noBlockData}
         profile={intensityProfileLocalized ?? { options: [], rows: {} }}
         colorByPlayer={playerColors}
         zLabel={t.intensity.zLabel}
@@ -137,6 +143,7 @@ export function SquadContributionsPage() {
       <section className="space-y-3">
         <h3 className="text-base font-semibold text-foreground">{t.performanceCharts.title}</h3>
         <SquadPerformanceCharts
+          emptyMessage={t.empty.noBlockData}
           rowsByPlayer={performanceSeries ?? {}}
           playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p])}
           colorByPlayer={playerColors}
@@ -146,6 +153,7 @@ export function SquadContributionsPage() {
 
       <SquadWeaponKillsChart
         title={t.weaponKills.title}
+        emptyMessage={t.empty.noBlockData}
         data={weaponKills}
         colorByPlayer={playerColors}
       />
@@ -159,6 +167,7 @@ export function SquadContributionsPage() {
 
       <SquadFirstEventsChart
         title={t.firstEvents.title}
+        emptyMessage={t.empty.noBlockData}
         data={firstEvents}
         colorByPlayer={playerColors}
         fragLabel={t.firstEvents.fragLabel}

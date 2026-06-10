@@ -69,29 +69,37 @@ func (r Report) Failures() []Violation {
 	return out
 }
 
-// CheckPlayer exécute tous les invariants déclarés pour un joueur.
-// playerDB = stats.duckdb du joueur ; sharedDB = shared_matches_v2.duckdb
-// (RO suffit). Les erreurs SQL sont remontées (un invariant invérifiable est
-// un échec du harnais, pas un succès silencieux).
-func CheckPlayer(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (Report, error) {
-	rep := Report{XUID: xuid}
+type checkFn func(context.Context, *sql.DB, *sql.DB, string) (*Violation, error)
 
-	checks := []func(context.Context, *sql.DB, *sql.DB, string) (*Violation, error){
-		// FAIL — contrats durs.
-		checkEnrichmentMissing,
-		checkParticipantsWithoutRegistry,
-		checkRegistryWithoutParticipants,
-		checkMedalsWithoutRegistry,
-		checkLUSRV2Orphan,
-		// WARN — dérives tolérées/documentées, à surveiller en tendance.
-		checkSessionMissing,
-		checkPerformanceScoreMissing,
-		checkSkillRankMissing,
-		checkCitationsMissing,
-		checkPersonalScoreAwardsMissing,
-		checkXuidAliasMissing,
-		checkPairNameUUID,
-	}
+// playerChecks — invariants PAR JOUEUR (dépendent du xuid et/ou de la player DB).
+var playerChecks = []checkFn{
+	// FAIL — contrats durs.
+	checkEnrichmentMissing,
+	checkLUSRV2Orphan,
+	// WARN — dérives tolérées/documentées, à surveiller en tendance.
+	checkSessionMissing,
+	checkPerformanceScoreMissing,
+	checkSkillRankMissing,
+	checkCitationsMissing,
+	checkPersonalScoreAwardsMissing,
+}
+
+// sharedChecks — invariants GLOBAUX (shared DB / alias) : indépendants du
+// joueur, à exécuter UNE SEULE fois par run. Les exécuter par joueur
+// dupliquerait les full scans et gonflerait les compteurs d'un facteur N
+// (revue 2026-06-10).
+var sharedChecks = []checkFn{
+	// FAIL — contrats durs.
+	checkParticipantsWithoutRegistry,
+	checkRegistryWithoutParticipants,
+	checkMedalsWithoutRegistry,
+	// WARN.
+	checkXuidAliasMissing,
+	checkPairNameUUID,
+}
+
+func runChecks(ctx context.Context, checks []checkFn, playerDB, sharedDB *sql.DB, xuid string) (Report, error) {
+	rep := Report{XUID: xuid}
 	for _, check := range checks {
 		v, err := check(ctx, playerDB, sharedDB, xuid)
 		if err != nil {
@@ -102,6 +110,21 @@ func CheckPlayer(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (
 		}
 	}
 	return rep, nil
+}
+
+// CheckPlayer exécute les invariants PAR JOUEUR.
+// playerDB = stats.duckdb du joueur ; sharedDB = shared_matches_v2.duckdb
+// (RO suffit). Les erreurs SQL sont remontées (un invariant invérifiable est
+// un échec du harnais, pas un succès silencieux).
+func CheckPlayer(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (Report, error) {
+	return runChecks(ctx, playerChecks, playerDB, sharedDB, xuid)
+}
+
+// CheckShared exécute les invariants GLOBAUX (une fois par run, pas par
+// joueur). playerDB sert uniquement à l'accès global.xuid_aliases (ATTACH du
+// pool) — n'importe quelle player DB du titre convient.
+func CheckShared(ctx context.Context, playerDB, sharedDB *sql.DB) (Report, error) {
+	return runChecks(ctx, sharedChecks, playerDB, sharedDB, "shared")
 }
 
 // ─── I1 — enrichment_missing (FAIL) ─────────────────────────────────────────
@@ -442,12 +465,13 @@ func checkPersonalScoreAwardsMissing(ctx context.Context, playerDB, _ *sql.DB, _
 // gamertag (sinon l'UI retombe sur le xuid brut — classe « GUID/XUID
 // partout »). Les bots (préfixe bid() sont exclus.
 //
-// Source canonique post-ADR-0008 : la DB GLOBALE (global.xuid_aliases),
-// attachée AS global sur la connexion player par le pool (l'attache shared a
-// été retirée de cette connexion — ADR 0016 commit 9c.5 — d'où le diff Go
-// entre les deux connexions : participants via sharedDB, alias via playerDB).
-// Fallback : si l'ATTACH global est absent (connexion nue hors pool), on
-// retombe sur la table legacy shared.xuid_aliases.
+// Sources d'alias — UNION des deux : la DB GLOBALE (global.xuid_aliases,
+// attachée AS global sur la connexion player par le pool — l'attache shared a
+// été retirée de cette connexion, ADR 0016 commit 9c.5) ET la table
+// shared.xuid_aliases. Constat empirique 2026-06-10 : la globale est un
+// snapshot de migration (figée) tandis que le sync continue d'upserter dans
+// shared — chaque source manque des xuids que l'autre possède (113 vs 853).
+// Un xuid n'est en violation que s'il est absent des DEUX.
 func checkXuidAliasMissing(ctx context.Context, playerDB, sharedDB *sql.DB, _ string) (*Violation, error) {
 	participants, err := collectIDs(ctx, sharedDB, `
 		SELECT DISTINCT xuid || '' AS xid
@@ -458,19 +482,26 @@ func checkXuidAliasMissing(ctx context.Context, playerDB, sharedDB *sql.DB, _ st
 		return nil, fmt.Errorf("invariants/xuid_alias_missing: participants query: %w", err)
 	}
 
-	source := "global"
-	aliases, err := collectIDs(ctx, playerDB, `SELECT xuid || '' FROM global.xuid_aliases`)
-	if err != nil {
-		// ATTACH global absent (connexion hors pool) → fallback legacy shared.
-		source = "shared_legacy"
-		aliases, err = collectIDs(ctx, sharedDB, `SELECT xuid || '' FROM xuid_aliases`)
-		if err != nil {
-			return nil, fmt.Errorf("invariants/xuid_alias_missing: aliases query: %w", err)
+	aliasSet := make(map[string]struct{}, 1024)
+	source := ""
+	if ids, gerr := collectIDs(ctx, playerDB, `SELECT xuid || '' FROM global.xuid_aliases`); gerr == nil {
+		source = "global"
+		for _, id := range ids {
+			aliasSet[id] = struct{}{}
 		}
 	}
-	aliasSet := make(map[string]struct{}, len(aliases))
-	for _, id := range aliases {
-		aliasSet[id] = struct{}{}
+	if ids, serr := collectIDs(ctx, sharedDB, `SELECT xuid || '' FROM xuid_aliases`); serr == nil {
+		if source == "" {
+			source = "shared_legacy"
+		} else {
+			source = "global+shared"
+		}
+		for _, id := range ids {
+			aliasSet[id] = struct{}{}
+		}
+	}
+	if source == "" {
+		return nil, fmt.Errorf("invariants/xuid_alias_missing: aucune source d'alias accessible (global et shared)")
 	}
 	var missing []string
 	for _, id := range participants {

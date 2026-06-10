@@ -11,10 +11,11 @@ import {
 
 interface SquadPerMinuteChartProps extends SquadPerMinuteOpts {
   title?: string
+  emptyMessage?: string
   rows: SquadPerMinuteEntry[]
 }
 
-export function SquadPerMinuteChart({ rows, title, ...opts }: SquadPerMinuteChartProps) {
+export function SquadPerMinuteChart({ rows, title, emptyMessage, ...opts }: SquadPerMinuteChartProps) {
   const series = useMemo<ChartSeries<SquadPerMinuteEntry>[]>(
     () => (rows.length > 0 ? [{ key: 'squad-per-minute', datapoints: rows }] : []),
     [rows],
@@ -23,5 +24,5 @@ export function SquadPerMinuteChart({ rows, title, ...opts }: SquadPerMinuteChar
     (s: ChartSeries<SquadPerMinuteEntry>[]) => buildSquadPerMinuteOption(s, opts),
     [opts],
   )
-  return <ChartCard title={title} series={series} buildOption={buildOption} height={350} />
+  return <ChartCard title={title} series={series} buildOption={buildOption} height={350} emptyMessage={emptyMessage} />
 }

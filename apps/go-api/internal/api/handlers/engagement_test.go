@@ -338,3 +338,80 @@ func TestEngagementHandler_RecomputeCoefficients_Unavailable(t *testing.T) {
 		t.Errorf("expected 503, got %d: %s", w.Code, w.Body.String())
 	}
 }
+
+// =============================================================================
+// GET /pages/squad/v2/engagement (GetSquadEngagementSession)
+// =============================================================================
+
+func newSquadEngagementRouter(factory handlers.ServiceFactory[*service.PlayerEngagementService]) *chi.Mux {
+	r := chi.NewRouter()
+	h := handlers.NewEngagementHandler(factory)
+	r.Route("/players/{player_slug}", func(r chi.Router) {
+		r.Get("/pages/squad/v2/engagement", h.GetSquadEngagementSession)
+	})
+	return r
+}
+
+// TestEngagementHandler_GetSquadSession_ExplicitMatchIDs : le chemin nominal
+// post-fix 2026-06-10 — le front passe match_ids explicites. Le handler doit
+// parser les CSV (ids + teammates zippés avec les gamertags) et retourner une
+// session 200 avec main + coéquipiers dans players (même si les bundles
+// échouent avec le repo stub : la structure est garantie).
+func TestEngagementHandler_GetSquadSession_ExplicitMatchIDs(t *testing.T) {
+	repo := &engagementMockRepo{}
+	factory := func(_ context.Context, slug string) (*service.PlayerEngagementService, error) {
+		if slug != testPlayerSlug {
+			return nil, errors.New("player_not_found")
+		}
+		return service.NewPlayerEngagementService(repo, "xuid-main", "MainGT"), nil
+	}
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/players/test-player/pages/squad/v2/engagement?match_ids=m1,m2,m3&teammates=x1,x2&teammate_gamertags=Ami1,Ami2", nil)
+	w := httptest.NewRecorder()
+	newSquadEngagementRouter(factory).ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp domain.SquadEngagementSession
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(resp.Players) != 3 {
+		t.Fatalf("players = %d, want 3 (main + 2 coéquipiers)", len(resp.Players))
+	}
+	if resp.Players[0].Gamertag != "MainGT" {
+		t.Errorf("players[0] = %q, want le main en premier", resp.Players[0].Gamertag)
+	}
+	if resp.Players[1].XUID != "x1" || resp.Players[1].Gamertag != "Ami1" {
+		t.Errorf("teammate 1 mal zippé : %+v", resp.Players[1])
+	}
+}
+
+// TestEngagementHandler_GetSquadSession_FallbackEmptyDerivation : sans
+// match_ids, le handler dérive depuis GetTimeseries ; avec un historique vide,
+// la dérivation produit 0 match et la réponse DOIT être une session vide 200
+// (labels []), pas une erreur — le front (ChartCard) affiche son état vide.
+func TestEngagementHandler_GetSquadSession_FallbackEmptyDerivation(t *testing.T) {
+	repo := &engagementMockRepo{} // historyResult vide → timeseries vide
+	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+		return service.NewPlayerEngagementService(repo, "xuid-main", "MainGT"), nil
+	}
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/players/test-player/pages/squad/v2/engagement?teammates=x1&teammate_gamertags=Ami1", nil)
+	w := httptest.NewRecorder()
+	newSquadEngagementRouter(factory).ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp domain.SquadEngagementSession
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(resp.Labels) != 0 {
+		t.Errorf("labels = %d, want 0 (session vide propre)", len(resp.Labels))
+	}
+}

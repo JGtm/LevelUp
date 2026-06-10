@@ -10,6 +10,7 @@ export const commonManifest = {
   "common.admin.invariants_loading": { fr: "Vérification…", en: "Checking…" },
   "common.admin.invariants_refresh": { fr: "Vérifier", en: "Check" },
   "common.admin.invariants_section": { fr: "Intégrité des données", en: "Data integrity" },
+  "common.admin.invariants_shared_scope": { fr: "Données partagées", en: "Shared data" },
   "common.admin.invitation_codes_section": { fr: "Codes d'invitation", en: "Invitation codes" },
   "common.admin.invite_generate_failed": { fr: "Échec de la génération du code.", en: "Failed to generate code." },
   "common.admin.invite_generated": { fr: "Code généré :", en: "Code generated:" },

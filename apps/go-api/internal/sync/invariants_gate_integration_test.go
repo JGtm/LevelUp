@@ -177,6 +177,18 @@ func TestGate_DeltaSkip_EnrichmentConverges_integration(t *testing.T) {
 			}
 		}
 	}
+
+	// Invariants GLOBAUX (une fois, pas par joueur) : zéro FAIL non plus.
+	sharedReport, err := invariants.CheckShared(ctx, env.users[0].pool.Player.SQLDb(), sharedDB)
+	if err != nil {
+		t.Fatalf("CheckShared: %v", err)
+	}
+	for _, v := range sharedReport.Violations {
+		t.Logf("shared %s", v.String())
+	}
+	if fails := sharedReport.Failures(); len(fails) > 0 {
+		t.Errorf("invariants globaux : %d violation(s) FAIL : %v", len(fails), fails)
+	}
 }
 
 // TestGate_PureSkipCycle_TriggersConvergence_integration : cadenasse le

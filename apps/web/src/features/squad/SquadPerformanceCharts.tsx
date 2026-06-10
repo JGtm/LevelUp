@@ -49,6 +49,7 @@ interface I18nLabels {
 }
 
 interface SquadPerformanceChartsProps {
+  emptyMessage?: string
   rowsByPlayer: Record<string, SquadPerformanceSeriesPoint[]>
   /** Ordre stable des joueurs (main d'abord, puis coéquipiers). */
   playerOrder: string[]
@@ -66,6 +67,7 @@ export function SquadPerformanceCharts({
   playerOrder,
   colorByPlayer,
   labels,
+  emptyMessage,
 }: SquadPerformanceChartsProps) {
   const isMobile = useMediaQuery('(max-width: 768px)')
 
@@ -243,12 +245,14 @@ export function SquadPerformanceCharts({
           ]}
           buildOption={buildKillsDeaths}
           height={SUBCHART_HEIGHT}
+          emptyMessage={emptyMessage}
         />
         <ChartCard
           title={labels.assistsTitle}
           series={series}
           buildOption={buildAssists}
           height={SUBCHART_HEIGHT}
+          emptyMessage={emptyMessage}
         />
       </div>
       <ChartCard
@@ -256,6 +260,7 @@ export function SquadPerformanceCharts({
         series={series}
         buildOption={buildAccuracy}
         height={SUBCHART_HEIGHT}
+        emptyMessage={emptyMessage}
       />
       <div className={pairClass}>
         <ChartCard
@@ -263,12 +268,14 @@ export function SquadPerformanceCharts({
           series={series}
           buildOption={buildKda}
           height={SUBCHART_HEIGHT}
+          emptyMessage={emptyMessage}
         />
         <ChartCard
           title={labels.avgLifeTitle}
           series={series}
           buildOption={buildAvgLife}
           height={SUBCHART_HEIGHT}
+          emptyMessage={emptyMessage}
         />
       </div>
       <div className={pairClass}>
@@ -277,12 +284,14 @@ export function SquadPerformanceCharts({
           series={series}
           buildOption={buildPerformance}
           height={SUBCHART_HEIGHT}
+          emptyMessage={emptyMessage}
         />
         <ChartCard
           title={labels.rankTitle}
           series={series}
           buildOption={buildRank}
           height={SUBCHART_HEIGHT}
+          emptyMessage={emptyMessage}
         />
       </div>
       <div className={pairClass}>
@@ -291,6 +300,7 @@ export function SquadPerformanceCharts({
           series={series}
           buildOption={buildMaxSpree}
           height={SUBCHART_HEIGHT}
+          emptyMessage={emptyMessage}
         />
         <SquadToggleLegendChart
           title={labels.hsPerfectTitle}
@@ -303,6 +313,7 @@ export function SquadPerformanceCharts({
           ]}
           buildOption={buildHsPerfect}
           height={SUBCHART_HEIGHT}
+          emptyMessage={emptyMessage}
         />
       </div>
     </div>
