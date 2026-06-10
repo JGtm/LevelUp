@@ -1,3 +1,28 @@
+## [2026-06-10] Leaderboard mondial enrichi — Phase A (probe E2E) validée — Complété
+
+**Statut** : Complété. Phase A du plan PLAN_WORLD_LEADERBOARD_ENRICHED.md validée par un probe E2E (`cmd/probe-world-stats`, diagnostic, zéro INSERT) sur `feat/world-leaderboard-enriched` (worktree depuis `feat/leaderboard-csr-followup` qui a l'infra ; `main` ne l'a pas — vérifié). Token-bearer JGtm (RT brut).
+
+**Validé** :
+- Résolution xuid mondiale : 100% via PeopleHub. Auth = `AcquireXSTSForRTA` (XSTS audience http://xboxlive.com) -> header XBL3.0 direct. Zéro nouveau code auth.
+- Extraction stats (confirmée en exécution sur données réelles) : `Players[]` ciblé par `PlayerId == "xuid(N)"` ; `Outcome` numérique (2=W/3=L/1=T) ; `PlayerTeamStats[0].Stats.CoreStats` (Kills/Deaths/Assists/PersonalScore) ; `ParticipationInfo.TimePlayed` durée ISO-8601.
+- Bucketing par playlist : `Playlist.AssetId` mappé au catalogue `rankedplaylists.go` (Arena/Slayer/Legacy/Tactical). Le "mismatch" initial = fausse alerte (probe v1 sans filtre + échantillon Arena).
+- Dimension saison : pagination `GetMatchHistory` remonte jusqu'au lancement (2021-11-15, 4870 matchs/joueur) ; attribution via `MatchInfo.SeasonId`.
+- Timing : ~0.9 s/`GetMatchStats`.
+
+**Findings (actés dans le plan)** :
+- Attribuer la saison par `MatchInfo.SeasonId` (PAS par dates : `csr_season_calendars` vide en dev) ; fiable sur récents (`Csr/Seasons/CsrSeasonX-Y`), douteux sur vieux (match 2021 = `Seasons/Season6.json`).
+- Auth single-token OBLIGATOIRE : ne pas enchaîner deux refresh (double rotation RT -> churn). Un seul access_token (MSAL silent OU ExchangeRefreshTokenWithRotation selon la forme du token), dériver XSTS RTA + Halo, persister le RT tourné. Critique Phase D.
+- 429 rate-limit en pagination profonde (~start=3775) -> throttle au backfill.
+- Volume ~5000 matchs/joueur actif pour l'historique complet -> backfill toutes-saisons = semaines off-peak. N'enrichir que les saisons des snapshots (récentes).
+- Efficacité : fetch saison/joueur 1x + bucket par playlist (union des joueurs).
+- Phase F (enrichissement catalogue playlists via GetPlaylist) = obligatoire (décision user).
+
+**Incident** : probe v1/v2 a momentanément churné les tokens JGtm (double refresh) ; mon diagnostic "tokens cassés" était faux (access_token périmé + mauvais chemin MSAL) -> fix both-shapes. Tokens sains.
+
+**Prochaine étape** : Phase B (migration `world_player_season_stats` + types `WorldPlayerSeasonStats` + repo + extension `GetCSRWorldLeaderboard`), attribution par SeasonId, ratios dérivés à la lecture.
+
+---
+
 ## [2026-06-09] Match View : barre de progression rang « tout vert » (base bleue absente) sur LUSR — Complété
 
 **Statut** : Complété (validé local : vitest skillTiers + MatchHeader 36 OK, typecheck 0, eslint 0). Branche `feat/leaderboard-csr-followup`.

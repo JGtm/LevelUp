@@ -22,6 +22,38 @@ Revue conjointe concept + code. Le cœur est sain (probe-first, compteurs bruts 
 
 ---
 
+## Phase A — résultats du probe (2026-06-10)
+
+Probe `cmd/probe-world-stats` exécuté (token-bearer JGtm, échantillon csrseason13-2, serveur stoppé). **Concept validé** ; 1 finding bloquant pour Phase B.
+
+**Validé :**
+- **Auth PeopleHub** : `auth.RefreshUserXSTS(ctx, store, xuid)` → header `XBL3.0` (audience `http://xboxlive.com`) directement utilisable. **Zéro nouveau code auth.**
+- **Résolution xuid** : 100% sur l'échantillon (Gun Uchiha, Wacki Rz) via PeopleHub, match exact case-insensitive.
+- **Fetch joueur mondial (inconnu)** : `GetMatchHistory`/`GetMatchStats` OK avec les tokens d'un tiers (JGtm).
+- **Chemins extraction (Phase B)** : `Players[]` ; cible par `PlayerId == "xuid(N)"` ; `Outcome` **numérique** (2=win/3=loss) ; stats dans `PlayerTeamStats[0].Stats.CoreStats` (`Kills`/`Deaths`/`Assists`/`PersonalScore`) ; `ParticipationInfo.TimePlayed` = **durée ISO-8601** (`PT10M39.203S` → parser en s) ; `MatchInfo.SeasonId` présent. → réutiliser `transforms.go::findCoreStats`.
+- **Timing** : ~0.8–1.0 s / `GetMatchStats` → backfill ~390k ≈ **88–110 h mono-thread** → pool + étalement off-peak obligatoires.
+
+**✅ Filtrage playlist — RÉSOLU (faux problème détecté en v1)** : les ids snapshot SONT des `Playlist.AssetId` (même espace de noms que les matchs), confirmé par `rankedplaylists.go` ET le blog den.dev (16 playlists actives, asset+version ids) : `edfef3ac`=Ranked Arena, `dcb2e24e`=Ranked Slayer, `c94cb508`=Ranked Legacy. Le « mismatch » initial venait du probe v1 (qui ne filtrait pas) + d'un échantillon dont les matchs récents étaient en Arena. **Le bucketing `match.Playlist.AssetId == snapshot.playlist_id` fonctionne.**
+
+**✅ Extraction + bucketing validés end-to-end (probe v2, 2026-06-10)** : Gun Uchiha (classé Legacy) — 15 matchs récents = 8 Arena + 1 Tactical + 6 Legacy, correctement attribués/agrégés :
+- Ranked Arena 23m 7W-13L-3T KDA 1.03 V%30 ; RANKED LEGACY 6m 4W-2L KDA 1.78 V%67 ; Ranked Tactical 1m.
+- Chemins extraction confirmés en exécution : `Outcome` (2=W/3=L/1=T), `PlayerTeamStats[0].Stats.CoreStats` (Kills/Deaths/Assists/PersonalScore), `ParticipationInfo.TimePlayed` ISO→s.
+- ℹ️ Nuance : matchs `Outcome=1` (tie) à 0/0/0 (joueur non engagé / forfait) — à filtrer ou compter à part en Phase B.
+
+**✅ Dimension SAISON validée (depth-scan 2026-06-10)** : pagination de 500 matchs (20 pages, `GetMatchHistory` sans stats) sur Gun Uchiha → couvre **2025-09-14 → 2026-06-05 (~9 mois)**, et le **plus ancien match est en `CsrSeason12-1`** (≥2 saisons avant la courante). Donc : (1) `GetMatchHistory` **remonte loin** — les saisons passées sont atteignables, pas de limite de profondeur bloquante ; (2) **attribution saison via `MatchInfo.SeasonId`** (`"Csr/Seasons/CsrSeason12-1.json"`, présent dans chaque match) — robuste, self-describing.
+- ⚠️ **`csr_season_calendars` VIDE** dans la metadata.duckdb dev (serveur stoppé). **Design Phase B/C** : attribuer la saison via `MatchInfo.SeasonId` (par match), **PAS** par fenêtrage de dates calendrier. Le calendrier (peuplé par le serveur depuis Waypoint au runtime) sert au plus à **borner la pagination** — dérivable aussi des snapshots + SeasonId.
+- ✅ **Historique complet atteignable (deep-scan 250 pages, 2026-06-10)** : remonté à **2021-11-15 (lancement HI)**, **4870 matchs** pour Gun Uchiha → pas de limite de profondeur bloquante, la Saison 1 est paginable. **3 caveats** : (a) **429 rate-limit** dès ~`start=3775` en pagination rapide → throttle obligatoire au backfill ; (b) **`MatchInfo.SeasonId` varie selon l'époque** — récents ranked = `Csr/Seasons/CsrSeasonX-Y` (fiable), mais le match 2021 portait `Seasons/Season6.json` (format content-season, douteux) → attribution CSR fiable seulement pour les matchs récents ; (c) **volume ~5000 matchs/joueur actif** pour l'historique complet → backfill toutes-saisons = semaines off-peak. **Mitigation** : n'enrichir que les saisons présentes dans les snapshots (récentes, SeasonId fiable) ; remonter à 2021 est inutile (rien à enrichir avant le 1er snapshot).
+
+**⚠️ Auth — leçon (incident probe 2026-06-10)** : NE PAS enchaîner deux refresh (ex. `RefreshUserXSTS` MSAL **+** `RefreshHaloTokensViaStoreFirst` RT-brut) — double rotation de RT à usage unique → churn. **Un seul** `access_token` (chemin adapté à la forme du token : MSAL silent OU `ExchangeRefreshTokenWithRotation` pour les RT bruts type JGtm), puis dériver XSTS RTA (PeopleHub) **et** Halo de ce même token. Persister le RT tourné. Critique pour Phase D (backfill = beaucoup de refresh).
+
+**💡 Insight efficacité (Phase C/D)** : un joueur joue plusieurs playlists → **fetcher sa saison UNE fois et bucketer par `Playlist.AssetId`** couvre toutes ses playlists d'un coup. Charger l'**UNION** des joueurs d'une saison (pas le produit saison×playlist×joueur) → évite de re-fetcher le même joueur N fois.
+
+**Enrichissement catalogue — Phase F OBLIGATOIRE (dernière phase du plan, décision user 2026-06-10)** : le blog den.dev documente `GetPlaylist` (`…/hi/playlists/{id}/versions/{ver}?clearanceId=`) → `PlaylistEntries[]` {`MapModePairAssetId`, `Weight`}. Remplace/enrichit les 16 entrées hardcodées de `rankedplaylists.go` par la liste live + poids map/mode (et découvre les nouvelles playlists comme Ranked Legacy, absente du blog 2023). **Pas optionnel** : étape finale obligatoire, mutualisée avec les autres sections de l'app qui consomment le catalogue playlists. Détail à spécifier en Phase F.
+
+**Notes :** certains (saison, playlist) snapshot ont très peu d'entrées (ex. 2 gamertags) — complétude de scraping variable, à surveiller en Phase D.
+
+---
+
 ## Objectif
 
 Enrichir le classement CSR mondial (200 → 100 joueurs) avec des stats réelles par saison ET par playlist :
@@ -519,11 +551,12 @@ win_rate_trend?:  'up' | 'down' | 'stable'
 
 | Phase | Statut | Notes |
 |-------|--------|-------|
-| A — Probe E2E échantillon | ⬜ À faire | Script `cmd/probe-world-stats/main.go` — valide JSON paths + xuid resolution + timing |
-| B — Migration + types + repo | ⬜ À faire | Dépend de Phase A (chemins JSON confirmés) |
-| C — Agrégateur + cron | ⬜ À faire | Dépend de Phase B |
+| A — Probe E2E échantillon | ✅ VALIDÉE (2026-06-10) | auth PeopleHub + xuid 100% + extraction + bucketing **playlist** + **dimension saison** (pagination 9 mois → CsrSeason12-1, attribution via `MatchInfo.SeasonId`) + timing ~0.9s/match. Design Phase B/C : attribuer par SeasonId (pas dates), auth single-token |
+| B — Migration + types + repo | ⬜ À faire | Dépend de Phase A ; chemins JSON confirmés ✅ |
+| C — Agrégateur + cron | ⬜ À faire | Dépend de Phase B ; **fetch saison/joueur 1× + bucket par `Playlist.AssetId`** (union des joueurs, pas le produit) |
 | D — Script backfill | ⬜ À faire | Dépend de Phase B+C |
 | E — Frontend | ⬜ À faire | Dépend de Phase B (types API) |
+| F — Enrichissement catalogue playlists | ⬜ À faire (**OBLIGATOIRE**) | `GetPlaylist` live → remplace/enrichit `rankedplaylists.go` (liste + poids map/mode, découverte nouvelles playlists) ; mutualisé avec les autres sections app |
 
 ---
 
