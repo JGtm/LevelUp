@@ -35,6 +35,7 @@ import (
 type PrestigeHandler struct {
 	svc        prestige.Service
 	appPlayers AppPlayersFunc
+	actorGuard ActorGuard
 }
 
 // AppPlayersFunc retourne les joueurs de l'app (db_profiles). Sert à résoudre
@@ -43,9 +44,33 @@ type PrestigeHandler struct {
 // Peut être nil (les membres ne seront alors pas tagués user_id).
 type AppPlayersFunc func(ctx context.Context) ([]domain.PlayerSummary, error)
 
+// ActorGuard valide que l'appelant (session dans ctx) a le droit d'agir au nom
+// de `actorSlug` (created_by/requested_by/user_id des routes squad top-level).
+// Renvoie false → 403. Réutilise les primitives d'ownership (ADR 0024) ; câblé
+// par le routeur. Nil = non câblé (tests / enforcement off) → passant.
+type ActorGuard func(ctx context.Context, actorSlug string) bool
+
 // NewPrestigeHandler construit le handler Prestige.
 func NewPrestigeHandler(svc prestige.Service, appPlayers AppPlayersFunc) *PrestigeHandler {
 	return &PrestigeHandler{svc: svc, appPlayers: appPlayers}
+}
+
+// WithActorGuard injecte la garde d'autorisation acteur des routes squad
+// (ADR 0024 étendu aux routes top-level /squads, hors groupe /players/{slug}).
+func (h *PrestigeHandler) WithActorGuard(g ActorGuard) *PrestigeHandler {
+	h.actorGuard = g
+	return h
+}
+
+// authorizeActor renvoie true si l'appelant peut agir au nom de actorSlug (ou si
+// la garde n'est pas câblée). Sinon écrit 403 player_forbidden et renvoie false.
+func (h *PrestigeHandler) authorizeActor(w http.ResponseWriter, r *http.Request, actorSlug string) bool {
+	if h.actorGuard == nil || h.actorGuard(r.Context(), actorSlug) {
+		return true
+	}
+	writeError(r.Context(), w, http.StatusForbidden, "player_forbidden",
+		"Accès non autorisé à ce joueur.")
+	return false
 }
 
 // ─────────── DTOs requête/réponse ───────────
@@ -537,6 +562,9 @@ func (h *PrestigeHandler) CreateSquad(w http.ResponseWriter, r *http.Request) {
 		writeError(r.Context(), w, http.StatusBadRequest, "missing_fields", "name et created_by requis")
 		return
 	}
+	if !h.authorizeActor(w, r, body.CreatedBy) {
+		return
+	}
 	slugByXUID, xuidBySlug, err := h.playerDirectory(r.Context())
 	if err != nil {
 		writeError(r.Context(), w, http.StatusInternalServerError, "directory_error", err.Error())
@@ -566,6 +594,9 @@ func (h *PrestigeHandler) ListMySquads(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("user_id")
 	if userID == "" {
 		writeError(r.Context(), w, http.StatusBadRequest, "missing_user_id", "user_id requis")
+		return
+	}
+	if !h.authorizeActor(w, r, userID) {
 		return
 	}
 	squads, err := h.svc.ListSquadsForUser(r.Context(), userID)
@@ -601,6 +632,9 @@ func (h *PrestigeHandler) AddSquadMember(w http.ResponseWriter, r *http.Request)
 		writeError(r.Context(), w, http.StatusBadRequest, "missing_fields", "xuid et requested_by requis")
 		return
 	}
+	if !h.authorizeActor(w, r, body.RequestedBy) {
+		return
+	}
 	slugByXUID, _, err := h.playerDirectory(r.Context())
 	if err != nil {
 		writeError(r.Context(), w, http.StatusInternalServerError, "directory_error", err.Error())
@@ -625,6 +659,9 @@ func (h *PrestigeHandler) RemoveSquadMember(w http.ResponseWriter, r *http.Reque
 	requestedBy := r.URL.Query().Get("requested_by")
 	if requestedBy == "" {
 		writeError(r.Context(), w, http.StatusBadRequest, "missing_requested_by", "requested_by requis")
+		return
+	}
+	if !h.authorizeActor(w, r, requestedBy) {
 		return
 	}
 	if err := h.svc.RemoveSquadMember(r.Context(), squadID, xuid, requestedBy); err != nil {
@@ -655,6 +692,9 @@ func (h *PrestigeHandler) EvaluateSquadChallenge(w http.ResponseWriter, r *http.
 		writeError(r.Context(), w, http.StatusBadRequest, "missing_requested_by", "requested_by requis")
 		return
 	}
+	if !h.authorizeActor(w, r, body.RequestedBy) {
+		return
+	}
 	progress, err := h.svc.EvaluateSquadChallenge(r.Context(), id, body.RequestedBy)
 	if err != nil {
 		writeServiceError(r.Context(), w, err)
@@ -674,6 +714,9 @@ func (h *PrestigeHandler) SquadOrientation(w http.ResponseWriter, r *http.Reques
 	requestedBy := r.URL.Query().Get("requested_by")
 	if requestedBy == "" {
 		writeError(r.Context(), w, http.StatusBadRequest, "missing_requested_by", "requested_by requis")
+		return
+	}
+	if !h.authorizeActor(w, r, requestedBy) {
 		return
 	}
 	axis, err := h.svc.SquadOrientation(r.Context(), squadID, requestedBy)
