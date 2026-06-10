@@ -179,20 +179,18 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 		}
 	}
 
-	// 1. Matchs partagés (un match qui apparaît N=len(selectedGamertags) fois
-	// dans allSquadRows = présent pour tous les coéquipiers + le main).
-	matchOccurrences := make(map[string]int)
-	startTimeByMatch := make(map[string]int64)
+	// 1. Matchs partagés : allSquadRows est déjà l'intersection composition
+	// exacte — 1 row par match, dédupliquée par intersectSquadRowsByMatchID
+	// (commit 851e10ef5). L'ancien comptage d'occurrences
+	// (n >= len(selectedGamertags)) datait de l'ère "union avec doublons par
+	// coéquipier" : sur l'input dédupliqué il rendait la série TOUJOURS vide
+	// dès 2 coéquipiers sélectionnés (1 >= 2 faux).
+	startTimeByMatch := make(map[string]int64, len(allSquadRows))
+	sharedMatches := make([]string, 0, len(allSquadRows))
 	for _, m := range allSquadRows {
-		matchOccurrences[m.MatchID]++
 		if _, ok := startTimeByMatch[m.MatchID]; !ok {
 			startTimeByMatch[m.MatchID] = m.StartTime.Unix()
-		}
-	}
-	sharedMatches := make([]string, 0)
-	for mid, n := range matchOccurrences {
-		if n >= len(selectedGamertags) {
-			sharedMatches = append(sharedMatches, mid)
+			sharedMatches = append(sharedMatches, m.MatchID)
 		}
 	}
 	if len(sharedMatches) == 0 {

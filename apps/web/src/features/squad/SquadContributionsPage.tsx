@@ -48,6 +48,15 @@ export function SquadContributionsPage() {
         .map((r) => ({ xuid: r.xuid as string, gamertag: r.gamertag })),
     [selectedRows, confirmedGamertags],
   )
+  // match_ids explicites pour l'engagement : les matchs du scope courant
+  // (intersection composition exacte, session/période déjà filtrées). Sans ça,
+  // le handler dérive les matchs de la timeseries d'engagement, qui renvoie
+  // des bins agrégés (match_id vide) sur un gros historique → session vide.
+  // match_history arrive DESC (récent d'abord) — cap à 15 comme le fallback handler.
+  const engagementMatchIds = useMemo<string[]>(
+    () => (pageData?.match_history ?? []).slice(0, 15).map((m) => m.match_id),
+    [pageData?.match_history],
+  )
   const intensityProfileLocalized = intensityProfile
     ? {
         ...intensityProfile,
@@ -141,7 +150,12 @@ export function SquadContributionsPage() {
         colorByPlayer={playerColors}
       />
 
-      <SquadEngagementSection playerSlug={playerSlug} teammates={engagementTeammates} colorByPlayer={playerColors} />
+      <SquadEngagementSection
+        playerSlug={playerSlug}
+        matchIds={engagementMatchIds}
+        teammates={engagementTeammates}
+        colorByPlayer={playerColors}
+      />
 
       <SquadFirstEventsChart
         title={t.firstEvents.title}

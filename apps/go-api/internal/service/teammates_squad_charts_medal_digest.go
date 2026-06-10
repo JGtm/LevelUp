@@ -92,7 +92,7 @@ func (s *TeammatesService) buildMedalDigest(
 	if s.squadLoader == nil || len(allSquadRows) == 0 || len(teammates) == 0 {
 		return nil
 	}
-	sharedMatches := collectSharedMatchIDsForDigest(allSquadRows, len(teammates))
+	sharedMatches := collectSharedMatchIDsForDigest(allSquadRows)
 	if len(sharedMatches) == 0 {
 		return nil
 	}
@@ -123,18 +123,21 @@ func (s *TeammatesService) buildMedalDigest(
 	return assembleMedalDigest(rows, players, defs, emblems, s.titleSlug)
 }
 
-// collectSharedMatchIDsForDigest retourne les matchs présents pour au moins
-// minTeammates coéquipiers dans allSquadRows.
-func collectSharedMatchIDsForDigest(allSquadRows []domain.SquadMatchRow, minTeammates int) []string {
-	occ := make(map[string]int, len(allSquadRows))
+// collectSharedMatchIDsForDigest retourne les match_id distincts de
+// allSquadRows. L'input est déjà l'intersection composition exacte — 1 row
+// par match, dédupliquée par intersectSquadRowsByMatchID (commit 851e10ef5).
+// L'ancien seuil d'occurrences (n >= minTeammates) datait de l'ère "union
+// avec doublons par coéquipier" : sur l'input dédupliqué il rendait le digest
+// TOUJOURS vide dès 2 coéquipiers sélectionnés (1 >= 2 faux).
+func collectSharedMatchIDsForDigest(allSquadRows []domain.SquadMatchRow) []string {
+	seen := make(map[string]struct{}, len(allSquadRows))
+	out := make([]string, 0, len(allSquadRows))
 	for _, m := range allSquadRows {
-		occ[m.MatchID]++
-	}
-	out := make([]string, 0, len(occ))
-	for mid, n := range occ {
-		if n >= minTeammates {
-			out = append(out, mid)
+		if _, dup := seen[m.MatchID]; dup {
+			continue
 		}
+		seen[m.MatchID] = struct{}{}
+		out = append(out, m.MatchID)
 	}
 	return out
 }
