@@ -146,6 +146,7 @@ func TestConvergence_BacklogWhenEnrichmentMissing(t *testing.T) {
 //   - fetch OK avec PersonalScores → rows insérées + stamp.
 func TestConvergePSA_ErrorPaths(t *testing.T) {
 	player := openBatchPathTestDB(t, migration.TargetPlayer)
+	shared := openBatchPathTestDB(t, migration.TargetShared)
 	const xuid = "9999"
 	ctx := context.Background()
 
@@ -158,7 +159,7 @@ func TestConvergePSA_ErrorPaths(t *testing.T) {
 
 	// 1. Fetch KO sur tout : aucun stamp, tout reste sélectionnable.
 	failing := &mockHaloClient{getStatsErr: context.DeadlineExceeded}
-	if done := convergePSA(ctx, player, failing, xuid, []string{"psa-err"}); done != 0 {
+	if done := convergePSA(ctx, player, shared, failing, xuid, []string{"psa-err"}); done != 0 {
 		t.Fatalf("convergePSA avec fetch KO : done = %d, want 0", done)
 	}
 	if got := selectMatchesMissingPSA(ctx, player); len(got) != 3 {
@@ -170,7 +171,7 @@ func TestConvergePSA_ErrorPaths(t *testing.T) {
 	emptyBody := &mockHaloClient{statsBody: map[string]map[string]any{
 		"psa-empty": {"MatchId": "psa-empty", "Players": []any{}},
 	}}
-	if done := convergePSA(ctx, player, emptyBody, xuid, []string{"psa-empty"}); done != 1 {
+	if done := convergePSA(ctx, player, shared, emptyBody, xuid, []string{"psa-empty"}); done != 1 {
 		t.Fatalf("convergePSA sans PSA extractibles : done = %d, want 1 (stamp terminal)", done)
 	}
 	var awards int
@@ -188,7 +189,8 @@ func TestConvergePSA_ErrorPaths(t *testing.T) {
 			"MatchId": "psa-full",
 			"Players": []any{
 				map[string]any{
-					"PlayerId": "xuid(" + xuid + ")",
+					"PlayerId":   "xuid(" + xuid + ")",
+					"PlayerName": "OpportunistGT",
 					"PlayerTeamStats": []any{
 						map[string]any{"Stats": map[string]any{"CoreStats": map[string]any{
 							"PersonalScores": []any{
@@ -201,7 +203,7 @@ func TestConvergePSA_ErrorPaths(t *testing.T) {
 			},
 		},
 	}}
-	if done := convergePSA(ctx, player, fullBody, xuid, []string{"psa-full"}); done != 1 {
+	if done := convergePSA(ctx, player, shared, fullBody, xuid, []string{"psa-full"}); done != 1 {
 		t.Fatalf("convergePSA avec PSA : done = %d, want 1", done)
 	}
 	if err := player.QueryRow(
@@ -210,6 +212,17 @@ func TestConvergePSA_ErrorPaths(t *testing.T) {
 	}
 	if awards != 1 {
 		t.Fatalf("psa-full : %d awards, want 1", awards)
+	}
+
+	// Convergence opportuniste des alias : le participant du JSON psa-full
+	// doit avoir son alias upserté dans shared.xuid_aliases.
+	var aliasGT string
+	if err := shared.QueryRow(
+		`SELECT gamertag FROM xuid_aliases WHERE xuid = ?`, xuid).Scan(&aliasGT); err != nil {
+		t.Fatalf("alias opportuniste absent: %v", err)
+	}
+	if aliasGT != "OpportunistGT" {
+		t.Fatalf("alias = %q, want OpportunistGT", aliasGT)
 	}
 
 	// État final : seul psa-err reste sélectionnable.

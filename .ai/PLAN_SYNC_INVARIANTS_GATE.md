@@ -125,9 +125,13 @@ Reste (v2) — LIVRÉ 2026-06-10 (passe 5) :
 
 - [x] `lusr_v2_canonical_backfill --commit` exécuté (2436 matchs, 4 joueurs).
 - [x] `backfill_registry_names` exécuté (24 noms, pair_name_uuid 12→1).
-- [ ] Backlog alias : 113 xuids d'adversaires sans alias ni en global ni en
-  legacy — backfill dédié à concevoir (résolution depuis les JSONs de match
-  en cache sync_cache, sinon API). Sans urgence : WARN visible au dashboard.
+- [x] Backlog alias : convergence OPPORTUNISTE livrée (2026-06-10 soir) —
+  convergePSA upserte shared.xuid_aliases pour TOUS les participants de
+  chaque JSON match fetché (coût API nul, helper upsertAliasesFromMatchJSON,
+  testé). Le backlog se résorbe avec le backlog PSA ; le reliquat éventuel
+  (alias hors matchs PSA) reste visible au dashboard. Constat au passage :
+  le chemin live UpsertXUIDAlias écrit vers globalDB dont le handle est nil
+  en pratique (fichier global figé au 29/04) — à investiguer séparément.
 - [ ] `psa_missing` (34/79/88) : se résorbe automatiquement par cycles de
   convergence dès que le serveur dev tourne (50/cycle).
 

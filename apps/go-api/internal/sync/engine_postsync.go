@@ -250,7 +250,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	psaWork := selectMatchesMissingPSA(ctx, playerDB)
 	observability.AddInt("convergence_psa_pending_total", int64(len(psaWork)))
 	if len(psaWork) > 0 {
-		n := convergePSA(ctx, playerDB, client, e.xuid, psaWork)
+		n := convergePSA(ctx, playerDB, sharedDB, client, e.xuid, psaWork)
 		observability.AddInt("convergence_psa_processed_total", int64(n))
 		slog.InfoContext(ctx, "post-sync: convergence PSA",
 			"gamertag", e.gamertag, "selected", len(psaWork), "processed", n)

@@ -114,8 +114,15 @@ func selectMatchesMissingPSA(ctx context.Context, playerDB *sql.DB) []string {
 // idempotent DELETE+INSERT). Stampe psa_checked_at dans TOUS les cas où le
 // fetch a réussi (même 0 award) — état terminal. En cas d'échec fetch, pas de
 // stamp : retenté au cycle suivant.
-func convergePSA(ctx context.Context, playerDB *sql.DB, client HaloClient, xuid string, ids []string) int {
+//
+// Convergence OPPORTUNISTE des alias (2026-06-10) : le JSON fetché contient le
+// gamertag de TOUS les participants — on upserte shared.xuid_aliases au
+// passage, à coût API nul. Résorbe le backlog d'alias des vieux matchs
+// (113 xuids absents de global ET shared au moment de l'audit ; le chemin
+// live écrit vers globalDB, handle souvent nil → fichier global figé).
+func convergePSA(ctx context.Context, playerDB, sharedDB *sql.DB, client HaloClient, xuid string, ids []string) int {
 	done := 0
+	aliases := 0
 	for _, mid := range ids {
 		if ctx.Err() != nil {
 			break
@@ -125,6 +132,7 @@ func convergePSA(ctx context.Context, playerDB *sql.DB, client HaloClient, xuid 
 			slog.WarnContext(ctx, "convergence: PSA fetch échoué", "match_id", mid, "err", err)
 			continue
 		}
+		aliases += upsertAliasesFromMatchJSON(ctx, sharedDB, matchJSON)
 		awards := ExtractPersonalScoreAwards(matchJSON, mid, xuid)
 		if len(awards) > 0 {
 			if err := InsertPersonalScoreAwards(ctx, playerDB, mid, xuid, awards); err != nil {
@@ -139,7 +147,41 @@ func convergePSA(ctx context.Context, playerDB *sql.DB, client HaloClient, xuid 
 		}
 		done++
 	}
+	if aliases > 0 {
+		slog.InfoContext(ctx, "convergence: alias upsertés depuis les JSONs PSA",
+			"xuid", xuid, "aliases", aliases)
+	}
 	return done
+}
+
+// upsertAliasesFromMatchJSON upserte un alias xuid→gamertag dans
+// shared.xuid_aliases pour chaque participant du JSON match. Best-effort
+// (sharedDB nil ou erreurs individuelles ignorées — UpsertXUIDAlias normalise
+// déjà les bots). Retourne le nombre d'upserts réussis.
+func upsertAliasesFromMatchJSON(ctx context.Context, sharedDB *sql.DB, matchJSON map[string]any) int {
+	if sharedDB == nil {
+		return 0
+	}
+	players, _ := matchJSON["Players"].([]any)
+	n := 0
+	for _, p := range players {
+		player, ok := p.(map[string]any)
+		if !ok {
+			continue
+		}
+		pid := extractXUID(asString(player["PlayerId"]))
+		gt := asString(player["Gamertag"])
+		if gt == "" {
+			gt = asString(player["PlayerName"])
+		}
+		if pid == "" || gt == "" {
+			continue
+		}
+		if err := UpsertXUIDAlias(ctx, sharedDB, pid, gt); err == nil {
+			n++
+		}
+	}
+	return n
 }
 
 // countSharedMatchesMissingEnrichment compte les matchs présents dans
