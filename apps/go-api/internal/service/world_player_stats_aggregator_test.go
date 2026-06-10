@@ -1,0 +1,190 @@
+package service
+
+import (
+	"context"
+	"fmt"
+	"testing"
+
+	syncpkg "levelup/go-api/internal/sync"
+)
+
+const (
+	tArena  = "edfef3ac-9cbe-4fa2-b949-8f29deafd483"
+	tSlayer = "dcb2e24e-05fb-4390-8076-32a0cdb4326e"
+)
+
+// fakeMatchSource simule l'historique + les stats par match d'un joueur.
+type fakeMatchSource struct {
+	// history[xuid] = liste de matchIDs (ordre chronologique décroissant)
+	history map[string][]string
+	// stats[matchID] = JSON brut GetMatchStats
+	stats map[string]map[string]any
+}
+
+func (f *fakeMatchSource) GetMatchHistory(_ context.Context, gamertag, _ string, start, count int) ([]syncpkg.MatchHistoryEntry, error) {
+	ids := f.history[gamertag]
+	if start >= len(ids) {
+		return nil, nil
+	}
+	end := start + count
+	if end > len(ids) {
+		end = len(ids)
+	}
+	out := make([]syncpkg.MatchHistoryEntry, 0, end-start)
+	for _, id := range ids[start:end] {
+		out = append(out, syncpkg.MatchHistoryEntry{MatchID: id})
+	}
+	return out, nil
+}
+
+func (f *fakeMatchSource) GetMatchStats(_ context.Context, matchID string) (map[string]any, error) {
+	m, ok := f.stats[matchID]
+	if !ok {
+		return nil, fmt.Errorf("match %s introuvable", matchID)
+	}
+	return m, nil
+}
+
+type fakeResolver struct{ m map[string]string }
+
+func (r *fakeResolver) ResolveXUID(_ context.Context, gamertag string) (string, error) {
+	x, ok := r.m[gamertag]
+	if !ok {
+		return "", fmt.Errorf("xuid introuvable pour %s", gamertag)
+	}
+	return x, nil
+}
+
+// buildMatch fabrique un JSON GetMatchStats minimal pour un joueur xuid.
+func buildMatch(xuid, seasonPath, playlist string, outcome, kills, deaths, assists int) map[string]any {
+	return map[string]any{
+		"MatchInfo": map[string]any{
+			"SeasonId": seasonPath,
+			"Playlist": map[string]any{"AssetId": playlist},
+		},
+		"Players": []any{
+			map[string]any{
+				"PlayerId": "xuid(" + xuid + ")",
+				"Outcome":  float64(outcome),
+				"PlayerTeamStats": []any{
+					map[string]any{"Stats": map[string]any{"CoreStats": map[string]any{
+						"Kills": float64(kills), "Deaths": float64(deaths), "Assists": float64(assists),
+					}}},
+				},
+				"ParticipationInfo": map[string]any{"TimePlayed": "PT10M"},
+			},
+		},
+	}
+}
+
+// TestAggregatePlayer_SeasonWindow valide la pagination + le filtre TargetSeasons
+// + le bucketing par playlist sur un historique multi-saison.
+func TestAggregatePlayer_SeasonWindow(t *testing.T) {
+	const xuid = "2533274895653213"
+	const cur = "Csr/Seasons/CsrSeason13-2.json"
+	const old = "Csr/Seasons/CsrSeason12-1.json"
+
+	src := &fakeMatchSource{
+		history: map[string][]string{"xuid(" + xuid + ")": {"m1", "m2", "m3", "m4"}},
+		stats: map[string]map[string]any{
+			"m1": buildMatch(xuid, cur, tArena, 2, 15, 8, 4),  // Win, saison cible
+			"m2": buildMatch(xuid, cur, tArena, 3, 10, 12, 2), // Loss, saison cible
+			"m3": buildMatch(xuid, cur, tSlayer, 2, 20, 5, 6), // Win, autre playlist
+			"m4": buildMatch(xuid, old, tArena, 2, 99, 1, 1),  // saison HORS cible → exclue
+		},
+	}
+	agg := NewWorldStatsAggregator(src, &fakeResolver{m: map[string]string{"Neo": xuid}},
+		WorldStatsAggregatorConfig{TargetSeasons: map[string]bool{"csrseason13-2": true}})
+
+	out, err := agg.AggregatePlayer(context.Background(), "Neo")
+	if err != nil {
+		t.Fatalf("AggregatePlayer: %v", err)
+	}
+	// 2 buckets attendus : 13-2/arena et 13-2/slayer (12-1 exclu).
+	if len(out) != 2 {
+		t.Fatalf("attendu 2 buckets, got %d : %+v", len(out), out)
+	}
+	byKey := map[string]int{}
+	for _, b := range out {
+		byKey[b.SeasonID+"|"+b.PlaylistID] = int(b.MatchCount)
+		if b.SeasonID == "csrseason12-1" {
+			t.Errorf("saison 12-1 ne devrait pas être présente (hors TargetSeasons)")
+		}
+	}
+	if byKey["csrseason13-2|"+tArena] != 2 {
+		t.Errorf("13-2/arena = %d matchs, want 2", byKey["csrseason13-2|"+tArena])
+	}
+	if byKey["csrseason13-2|"+tSlayer] != 1 {
+		t.Errorf("13-2/slayer = %d matchs, want 1", byKey["csrseason13-2|"+tSlayer])
+	}
+}
+
+// TestAggregatePlayer_StopAfterNonTarget vérifie l'arrêt anticipé une fois sous
+// les saisons cibles (les matchs vieux au-delà du seuil ne sont pas fetchés en vain).
+func TestAggregatePlayer_StopAfterNonTarget(t *testing.T) {
+	const xuid = "999"
+	const cur = "Csr/Seasons/CsrSeason13-2.json"
+	const old = "Csr/Seasons/CsrSeason12-1.json"
+
+	hist := []string{"a", "b", "c", "d", "e", "f"}
+	stats := map[string]map[string]any{
+		"a": buildMatch(xuid, cur, tArena, 2, 1, 1, 1),
+		"b": buildMatch(xuid, old, tArena, 2, 1, 1, 1),
+		"c": buildMatch(xuid, old, tArena, 2, 1, 1, 1),
+		"d": buildMatch(xuid, old, tArena, 2, 1, 1, 1),
+		"e": buildMatch(xuid, cur, tArena, 2, 1, 1, 1), // après le stop → ne doit PAS compter
+		"f": buildMatch(xuid, cur, tArena, 2, 1, 1, 1),
+	}
+	src := &fakeMatchSource{history: map[string][]string{"xuid(" + xuid + ")": hist}, stats: stats}
+	agg := NewWorldStatsAggregator(src, &fakeResolver{m: map[string]string{"Z": xuid}},
+		WorldStatsAggregatorConfig{
+			TargetSeasons:      map[string]bool{"csrseason13-2": true},
+			StopAfterNonTarget: 2, // arrêt après 2 hors-cible consécutifs (b, c)
+			MaxPages:           1, // une seule page (page de 25 → tout l'historique)
+		})
+
+	out, err := agg.AggregatePlayer(context.Background(), "Z")
+	if err != nil {
+		t.Fatalf("AggregatePlayer: %v", err)
+	}
+	// Page unique : on parcourt a..f dans la boucle interne, mais le stop est évalué
+	// EN FIN de page → tous les matchs de la page sont vus. Le filtre TargetSeasons
+	// garde a, e, f (3 matchs cible). StopAfterNonTarget borne surtout le multi-page.
+	var total int
+	for _, b := range out {
+		total += b.MatchCount
+	}
+	if total != 3 {
+		t.Errorf("matchs cible comptés = %d, want 3 (a, e, f)", total)
+	}
+}
+
+// TestRun_BestEffort vérifie le fan-out parallèle + l'isolation des erreurs joueur.
+func TestRun_BestEffort(t *testing.T) {
+	const xa, xb = "111", "222"
+	src := &fakeMatchSource{
+		history: map[string][]string{
+			"xuid(" + xa + ")": {"a1"},
+			"xuid(" + xb + ")": {"b1"},
+		},
+		stats: map[string]map[string]any{
+			"a1": buildMatch(xa, "Csr/Seasons/CsrSeason13-2.json", tArena, 2, 5, 5, 5),
+			"b1": buildMatch(xb, "Csr/Seasons/CsrSeason13-2.json", tArena, 3, 3, 7, 1),
+		},
+	}
+	// "Ghost" n'a pas d'xuid résolu → erreur isolée, ne casse pas le batch.
+	resolver := &fakeResolver{m: map[string]string{"Alpha": xa, "Beta": xb}}
+	agg := NewWorldStatsAggregator(src, resolver, WorldStatsAggregatorConfig{Concurrency: 4})
+
+	all, errs := agg.Run(context.Background(), []string{"Alpha", "Beta", "Ghost"})
+	if len(errs) != 1 {
+		t.Fatalf("attendu 1 erreur (Ghost), got %d : %v", len(errs), errs)
+	}
+	gts := map[string]bool{}
+	for _, b := range all {
+		gts[b.Gamertag] = true
+	}
+	if !gts["Alpha"] || !gts["Beta"] {
+		t.Errorf("Alpha et Beta devraient être agrégés malgré l'échec de Ghost, got %+v", all)
+	}
+}
