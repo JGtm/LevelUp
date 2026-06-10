@@ -131,10 +131,19 @@ func writeCanonicalLUSRRow(ctx context.Context, playerDB *sql.DB, matchID string
 	// tombe dans le sous-palier affiché → pas de clamp → la valeur bouge à chaque
 	// match, donc rating_delta = vrai gain de skill (cf. thought_log [2026-06-10]).
 	rating := skillv2.MapMuToContinuousRating(state.Mu, boundaries)
-	if subMin, subMax := skillv2.LegacySubTierRange(tier, sub); rating < subMin {
-		rating = subMin
-	} else if rating > subMax {
-		rating = subMax
+	subMin, subMax := skillv2.LegacySubTierRange(tier, sub)
+	if rating < subMin || rating > subMax {
+		// μ continu hors du sous-palier AFFICHÉ : l'hystérésis bride l'affichage
+		// (descente protégée). On clampe pour garder valeur↔badge cohérents ; trace
+		// Debug pour observer un découplage prolongé (logs/sync.log).
+		slog.DebugContext(ctx, "LUSR v2: valeur continue clampée au sous-palier affiché (hystérésis)",
+			"match_id", matchID, "group", state.PlaylistGroup, "mu", state.Mu,
+			"raw_rating", rating, "tier", tier.Name, "sub", sub, "sub_min", subMin, "sub_max", subMax)
+		if rating < subMin {
+			rating = subMin
+		} else {
+			rating = subMax
+		}
 	}
 	label := skillv2.FormatTierSubLabel(tier, sub)
 

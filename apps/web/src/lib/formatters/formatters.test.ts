@@ -15,6 +15,7 @@ import {
   formatDurationMMSS,
   formatDurationHMS,
   displayRatingLabel,
+  formatRankDelta,
   formatOffensiveConversion,
   formatDefensiveResistance,
   effectiveDmgPerFrag,
@@ -207,5 +208,24 @@ describe('effectiveDmgPerFrag', () => {
     expect(effectiveDmgPerFrag(null, 10, 6)).toBeNull()
     expect(effectiveDmgPerFrag(undefined, 10, 6)).toBeNull()
     expect(effectiveDmgPerFrag(2000, 0, 0)).toBeNull()
+  })
+})
+
+describe('formatRankDelta', () => {
+  it('CSR : entier signé, ±0 sur zéro', () => {
+    expect(formatRankDelta(45, 'CSR')).toBe('+45')
+    expect(formatRankDelta(-12, 'csr')).toBe('-12')
+    expect(formatRankDelta(0, 'CSR')).toBe('±0')
+  })
+
+  it('LUSR : 2 décimales signées, ±0.00 sur zéro (jamais -0)', () => {
+    expect(formatRankDelta(1.234, 'LUSR')).toBe('+1.23')
+    expect(formatRankDelta(-2.5, 'LUSR')).toBe('-2.50')
+    expect(formatRankDelta(0, 'LUSR')).toBe('±0.00')
+  })
+
+  it('LUSR_V2 (row audit) est traité comme LUSR, pas CSR', () => {
+    expect(formatRankDelta(0, 'LUSR_V2')).toBe('±0.00')
+    expect(formatRankDelta(3, 'LUSR_V2')).toBe('+3.00')
   })
 })

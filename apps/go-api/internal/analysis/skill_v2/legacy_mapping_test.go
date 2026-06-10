@@ -152,6 +152,41 @@ func TestLegacySubTierRange(t *testing.T) {
 	}
 }
 
+func TestLegacyContinuousSubTierProgress(t *testing.T) {
+	cases := []struct {
+		name    string
+		rv      float64
+		wantPct float64
+		wantOK  bool
+	}{
+		// Gold [1400,1600], 6 sous-paliers (band 33.33).
+		{"Gold I début", 1400, 0.0, true},
+		{"Gold I milieu", 1416.667, 0.5, true},
+		{"Gold V milieu (1550)", 1550, 0.5, true},
+		// Diamant [1800,2000], 3 sous-paliers (band 66.67). On évite les bornes
+		// inter-sous-paliers non représentables (1866.6…/1933.3…) — ambiguës au
+		// floor — et on teste une borne entière + un milieu.
+		{"Diamant I début (borne tier)", 1800, 0.0, true},
+		{"Diamant III milieu", 1966.667, 0.5, true},
+		// Onyx [2000,2200[ — sous-palier unique → progression sur toute la bande.
+		{"Onyx milieu", 2100, 0.5, true},
+		// Hors grille.
+		{"sous Bronze", 900, 0.0, false},
+		{"au-dessus Onyx → plein", 2300, 1.0, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			pct, ok := LegacyContinuousSubTierProgress(c.rv)
+			if ok != c.wantOK {
+				t.Fatalf("rv=%v → ok=%v, want %v", c.rv, ok, c.wantOK)
+			}
+			if ok && math.Abs(pct-c.wantPct) > 0.01 {
+				t.Errorf("rv=%v → pct=%.4f, want ≈%.4f", c.rv, pct, c.wantPct)
+			}
+		})
+	}
+}
+
 func TestMapSigmaToLegacyDeviation_Bounds(t *testing.T) {
 	// σ très bas → clamp à 60 (MinSigma v1)
 	if got := MapSigmaToLegacyDeviation(0.5); got != 60 {
