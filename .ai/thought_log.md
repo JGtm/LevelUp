@@ -1,3 +1,24 @@
+## [2026-06-10] Leaderboard mondial enrichi — Phase D (CLI backfill multi-tokens) — Livré
+
+**Statut** : Livré sur feat/world-leaderboard-enriched. `cmd/backfill-world-player-stats` build + vet OK, aide affichée. Lancé manuellement par l'utilisateur (contrôle off-peak).
+
+**Livré** :
+- CLI `//go:build cgo` reprenant + idempotent + MULTI-TOKENS. Pool construit comme `cmd/levelup/cmd_sync` (Discovery + Resolver + NewPool) → `NewPooledHaloClient` round-robin pour le fetch ; résolution xuid PeopleHub via UN compte (`-token-gamertag`, header RTA mémoïsé via `CachedHeaderProvider`, both-shapes single-refresh comme le probe).
+- Pilotage `AggregatePlayer` par joueur dans un pool de workers (`-concurrency`) → granularité checkpoint/progression (pas `Run` all-or-nothing).
+- **Arrêt** : `signal.NotifyContext` (Ctrl-C) annule le ctx → flush du lot + checkpoint avant sortie. **Reprise** : relancer la même commande (skip gamertags faits + saisons complètes). **Progression** : ligne `\r` `[saison] done/total · lignes · err · elapsed`.
+- Checkpoint JSON atomique (tmp+rename), un fichier global (`-checkpoint`), structure `{seasons: {id: {done:[], completed}}}`.
+
+**Décisions** :
+- `StopAfterNonTarget=-1` (désactivé) pour le backfill → scan jusqu'à `-max-pages` (sinon l'arrêt anticipé stoppe sur les matchs récents avant d'atteindre une vieille saison cible). Ajout de la sémantique « négatif = désactivé » à l'agrégateur (+ garde `>0` dans collectPlayerMatches).
+- Flush par lots (`-flush-every`, défaut 20) → INSERT + checkpoint périodiques (compromis débit/granularité de reprise).
+- `-token-gamertag` résolu en xuid via db_profiles.json.
+
+**Limite connue** : `medal_count` non extrait (reste 0) — `AccumulateWorldStats` somme match/win/k/d/a/playtime ; médailles = suivi ultérieur (chemin CoreStats/Medals à confirmer).
+
+**Prochaine étape** : utilisateur lance le backfill (off-peak). Ensuite Phase E (frontend : exposer les champs enrichis + UI) puis Phase F (enrichissement catalogue via GetPlaylist — obligatoire). Le wiring boot cron (Phase C, prod-affectant) reste optionnel/différé.
+
+---
+
 ## [2026-06-10] Leaderboard mondial enrichi — Phase C (enricher + cron + header provider) — Quasi-complet
 
 **Statut** : Tous les blocs testables livrés ; reste uniquement le wiring boot cmd/server (prod-affectant, activation délibérée). 11 tests verts, module complet build OK.

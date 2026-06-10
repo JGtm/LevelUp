@@ -470,15 +470,30 @@ La recherche est fuzzy → filtrer le résultat sur `gamertag == cible` (exact, 
   3. `UpsertPlayerSeasonStats` dans la fenêtre RW minimale
 - Timeout global cycle étendu : 30 min
 
-### Phase D — Script backfill one-shot
+### Phase D — Script backfill one-shot — ✅ LIVRÉ (2026-06-10)
 
-**`cmd/backfill-world-player-stats/main.go`** — reprenant, idempotent
+**`cmd/backfill-world-player-stats/main.go`** (`//go:build cgo`) — reprenant, idempotent, MULTI-TOKENS. Build + vet OK.
 
-**Flags :**
-- `--season <id|all>` — une saison ou toutes (défaut : `all`)
-- `--limit <n>` — nb max de joueurs par saison (défaut 100)
-- `--force` — ré-écrase même si `computed_at` présent
-- `--dry-run` — logs sans INSERT ni checkpoint
+**Multi-tokens** : pool construit comme `cmd/levelup/cmd_sync` (Discovery + Resolver + NewPool) → `NewPooledHaloClient(pool, "", "", rps)` (round-robin). Résolution xuid PeopleHub via UN compte (`-token-gamertag`) : header RTA mémoïsé (`CachedHeaderProvider`, both-shapes single-refresh comme le probe). Pilote `AggregatePlayer` par joueur dans un pool de workers (`-concurrency`) pour garder la granularité checkpoint/progression.
+
+**Flags livrés :**
+- `-token-gamertag <gt>` — **requis** (compte résolvant les xuid)
+- `-season <id|all>` — défaut `all` (toutes les saisons des snapshots, récentes d'abord)
+- `-limit <n>` — nb max joueurs/saison (0 = tous)
+- `-concurrency <n>` (défaut 6) · `-rps <n>` (défaut 5/token) · `-max-pages <n>` (défaut 80 ; ↑ pour vieilles saisons)
+- `-flush-every <n>` (défaut 20 : persiste + checkpoint tous les N joueurs)
+- `-checkpoint <path>` (défaut `data/world_backfill_checkpoint.json`) · `-force` (ignore checkpoint) · `-dry-run`
+
+**Arrêt / reprise / progression :**
+- **Arrêt** : Ctrl-C (SIGINT/SIGTERM) → `signal.NotifyContext` annule le ctx → workers stoppent, lot en cours flushé + checkpoint sauvegardé, sortie propre.
+- **Reprise** : relancer la MÊME commande → lit le checkpoint, skip les gamertags faits + les saisons complètes. Idempotent (append-only + vue _latest).
+- **Progression** : ligne réécrite en place (`\r`) `[saison] done/total joueurs · lignes · err · elapsed`, + bilan par saison.
+
+**Limite connue** : `medal_count` non extrait (reste 0) — `AccumulateWorldStats` somme match/win/k/d/a/playtime ; les médailles sont un suivi ultérieur (chemin `CoreStats`/`Medals` à confirmer).
+
+**Backfill profond** : `StopAfterNonTarget=-1` (désactivé) → scanne jusqu'à `-max-pages`. Pour Season 1 (~4870 matchs ≈ 195 pages), passer `-max-pages 240+` et lancer off-peak.
+
+~~**Flags (plan initial)** :~~ (remplacé par les flags livrés ci-dessus)
 
 **Algorithme :**
 1. Charger le catalogue de saisons via `GetWorldLeaderboardCatalog` (liste saisons + dates)
@@ -571,7 +586,7 @@ win_rate_trend?:  'up' | 'down' | 'stable'
 | A — Probe E2E échantillon | ✅ VALIDÉE (2026-06-10) | auth PeopleHub + xuid 100% + extraction + bucketing **playlist** + **dimension saison** (pagination 9 mois → CsrSeason12-1, attribution via `MatchInfo.SeasonId`) + timing ~0.9s/match. Design Phase B/C : attribuer par SeasonId (pas dates), auth single-token |
 | B — Migration + types + repo | ✅ FAITE (2026-06-10) | Table append-only `world_player_season_stats` + vue `_latest` ; types `WorldPlayerSeasonStats` + `LeaderboardEntry` étendu ; repo (`InsertPlayerSeasonStats`, `GetWorldPlayerSeasonStats` LAG inter-saison, `loadPrevSeasonRanks`) ; `GetCSRWorldLeaderboard` enrichi (merge + RankDelta, best-effort). Tests :memory: verts |
 | C — Agrégateur + cron | PARTIEL — tout sauf le wiring boot (2026-06-10) | Livrés + testés (11 tests verts, module build OK) : `analysis/world_stats.go` (pur), `service/world_player_stats_aggregator.go` (**multi-tokens PolicyAnyPublic**), `service/world_stats_enricher.go`, `auth/peoplehub_resolver.go`, `auth/cached_header_provider.go`, `duckdb.WorldSeasonGamertags`, cron `WithStatsEnricher` + phase enrich. **Reste** : wiring boot `cmd/server` (accessTokenFn + composition) — ⚠️ change le cron prod, activation délibérée |
-| D — Script backfill | ⬜ À faire | Dépend de Phase B+C |
+| D — Script backfill | ✅ LIVRÉ (2026-06-10) | `cmd/backfill-world-player-stats` multi-tokens (pool round-robin) + Ctrl-C→checkpoint + reprise idempotente + progression terminal. Build+vet OK. Limite : medal_count=0 (suivi). Lancé manuellement par l'utilisateur (contrôle off-peak) |
 | E — Frontend | ⬜ À faire | Dépend de Phase B (types API) |
 | F — Enrichissement catalogue playlists | ⬜ À faire (**OBLIGATOIRE**) | `GetPlaylist` live → remplace/enrichit `rankedplaylists.go` (liste + poids map/mode, découverte nouvelles playlists) ; mutualisé avec les autres sections app |
 
