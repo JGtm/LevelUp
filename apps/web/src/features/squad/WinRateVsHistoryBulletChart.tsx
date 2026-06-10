@@ -14,12 +14,14 @@ import {
 
 interface WinRateVsHistoryBulletChartProps extends WinRateVsHistoryBulletOpts {
   title?: string
+  emptyMessage?: string
   rows: MapBreakdownRow[]
 }
 
 export function WinRateVsHistoryBulletChart({
   rows,
   title,
+  emptyMessage,
   mapLabelOf,
   sessionLabel,
   historyLabel,
@@ -51,6 +53,7 @@ export function WinRateVsHistoryBulletChart({
       series={series}
       buildOption={buildOption}
       height={height}
+      emptyMessage={emptyMessage}
     />
   )
 }

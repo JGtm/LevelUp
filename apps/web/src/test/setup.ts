@@ -36,6 +36,27 @@ if (typeof sessionStorage === 'undefined' || typeof sessionStorage.setItem !== '
   })
 }
 
+// ─── Mock matchMedia (gap jsdom) ─────────────────────────────────────────────
+// jsdom n'implémente pas window.matchMedia, requis par useMediaQuery (charts
+// responsives). Stub minimal : ne matche jamais (desktop par défaut).
+if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    configurable: true,
+    value: (query: string): MediaQueryList =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }) as unknown as MediaQueryList,
+  })
+}
+
 // ─── MSW ─────────────────────────────────────────────────────────────────────
 
 export const server = setupServer(...handlers)

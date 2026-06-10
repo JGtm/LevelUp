@@ -198,12 +198,11 @@ export function MatchKdaExpectedChart({ kpis, expectedStats, t }: MatchKdaExpect
     [kpis, expectedStats, t, hasExpected, hasHist],
   )
 
-  if (!hasExpected && !hasHist) return null
-
   return (
     <ChartCard
       title={t.chartKdaTitle}
-      series={DUMMY_SERIES}
+      series={hasExpected || hasHist ? DUMMY_SERIES : []}
+      emptyMessage={t.combatNoData}
       buildOption={buildOption}
       height={260}
     />
@@ -290,12 +289,11 @@ export function MatchSpreeChart({ kpis, expectedStats, t }: MatchSpreeChartProps
     kpis.headshot_kills != null ||
     kpis.perfect_kills != null
 
-  if (!hasAnyData) return null
-
   return (
     <ChartCard
       title={t.chartSpreeTitle}
-      series={DUMMY_SERIES}
+      series={hasAnyData ? DUMMY_SERIES : []}
+      emptyMessage={t.combatNoData}
       buildOption={buildOption}
       height={220}
     />
@@ -347,8 +345,6 @@ export function MatchSummaryRadarChart({ radar, meXUID, t }: MatchSummaryRadarCh
     [radar, meXUID, t],
   )
 
-  if (!mySeries) return null
-
   const titleNode = (
     <span className="flex items-center gap-1.5">
       {t.chartSynergyRadarTitle}
@@ -374,6 +370,7 @@ export function MatchSummaryRadarChart({ radar, meXUID, t }: MatchSummaryRadarCh
     <ChartCard
       title={titleNode}
       series={radarPayload as unknown as { key: string; datapoints: unknown[] }[]}
+      emptyMessage={t.combatNoData}
       buildOption={buildOption}
       height={220}
     />

@@ -52,13 +52,6 @@ export function MatchFragDiffChart({
   const xuidToGamertag = buildXUIDToGamertagMap(scoreboard, pairs, roster)
   const colors = buildMatchPlayerColors(scoreboard, meXUID, friendGamertags, roster)
   const series = allPlayersFragDiffSeries(events, xuidToGamertag, meXUID, colors.tokenByXUID)
-  if (series.length === 0) {
-    return (
-      <div className="flex min-h-[200px] items-center justify-center text-sm text-muted-foreground">
-        {t.fragDiffNoData}
-      </div>
-    )
-  }
   // Pré-résolution hex par xuid : on extrait le suffixe xuid de la clé de
   // chaque série et on lit `colors.hexByXUID`. Évite que ECharts retombe sur
   // sa palette interne (1ères entrées = bleu) si le token n'a pas pu être
@@ -78,6 +71,7 @@ export function MatchFragDiffChart({
       showSymbol={false}
       xAxisLabelFormatter={(v) => formatBinSeconds(Number(v))}
       series={series}
+      emptyMessage={t.fragDiffNoData}
       seriesColorResolver={colorResolver}
     />
   )

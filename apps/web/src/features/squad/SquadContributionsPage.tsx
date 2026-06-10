@@ -68,103 +68,89 @@ export function SquadContributionsPage() {
 
   return (
     <div className="space-y-4">
-      {(perMinuteRows.length > 0 || synergyRadar.length > 0) && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {perMinuteRows.length > 0 && (
-            <SquadPerMinuteChart
-              title={t.perMinute.title}
-              rows={perMinuteRows}
-              colorByPlayer={playerColors}
-              metricLabels={{
-                frags: t.perMinute.frags,
-                deaths: t.perMinute.deaths,
-                assists: t.perMinute.assists,
-              }}
-              perMinuteSuffix={t.perMinute.suffix}
-            />
-          )}
-
-          {synergyRadar.length > 0 && (
-            <SquadSynergyRadarChart
-              title={
-                <span className="flex items-center gap-1.5">
-                  {t.synergyRadar.title}
-                  <InfoTooltip
-                    content={
-                      <div className="space-y-1">
-                        <p><span className="font-medium">{t.synergyRadar.axes.impact}</span> — {t.synergyRadar.tooltip.impact}</p>
-                        <p><span className="font-medium">{t.synergyRadar.axes.combat}</span> — {t.synergyRadar.tooltip.combat}</p>
-                        <p><span className="font-medium">{t.synergyRadar.axes.survival}</span> — {t.synergyRadar.tooltip.survival}</p>
-                        <p><span className="font-medium">{t.synergyRadar.axes.support}</span> — {t.synergyRadar.tooltip.support}</p>
-                        <p><span className="font-medium">{t.synergyRadar.axes.score}</span> — {t.synergyRadar.tooltip.score}</p>
-                        <p><span className="font-medium">{t.synergyRadar.axes.objective}</span> — {t.synergyRadar.tooltip.objective}</p>
-                        <Link to="/help" search={{ tab: 'glossary' }} className="block mt-2 text-primary hover:underline">
-                          {t.synergyRadar.tooltip.glossaryLink}
-                        </Link>
-                      </div>
-                    }
-                  />
-                </span>
-              }
-              rows={synergyRadar}
-              colorByPlayer={playerColors}
-              axisLabels={synergyAxisLabels}
-            />
-          )}
-        </div>
-      )}
-
-      {intensityProfileLocalized && intensityProfileLocalized.options.length > 0 && (
-        <SquadIntensityHeatmapChart
-          title={t.intensity.title}
-          profile={intensityProfileLocalized}
+      {/* Graphes toujours montés : chaque ChartCard affiche son état vide
+          (titre + message) au lieu de disparaître quand sa source est vide. */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SquadPerMinuteChart
+          title={t.perMinute.title}
+          rows={perMinuteRows}
           colorByPlayer={playerColors}
-          zLabel={t.intensity.zLabel}
+          metricLabels={{
+            frags: t.perMinute.frags,
+            deaths: t.perMinute.deaths,
+            assists: t.perMinute.assists,
+          }}
+          perMinuteSuffix={t.perMinute.suffix}
         />
-      )}
 
-      {performanceSeries && Object.keys(performanceSeries).length > 0 && (
-        <SquadEfficiencyChart
-          title={t.efficiencySeries.title}
-          rowsByPlayer={performanceSeries}
-          playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries[p])}
+        <SquadSynergyRadarChart
+          title={
+            <span className="flex items-center gap-1.5">
+              {t.synergyRadar.title}
+              <InfoTooltip
+                content={
+                  <div className="space-y-1">
+                    <p><span className="font-medium">{t.synergyRadar.axes.impact}</span> — {t.synergyRadar.tooltip.impact}</p>
+                    <p><span className="font-medium">{t.synergyRadar.axes.combat}</span> — {t.synergyRadar.tooltip.combat}</p>
+                    <p><span className="font-medium">{t.synergyRadar.axes.survival}</span> — {t.synergyRadar.tooltip.survival}</p>
+                    <p><span className="font-medium">{t.synergyRadar.axes.support}</span> — {t.synergyRadar.tooltip.support}</p>
+                    <p><span className="font-medium">{t.synergyRadar.axes.score}</span> — {t.synergyRadar.tooltip.score}</p>
+                    <p><span className="font-medium">{t.synergyRadar.axes.objective}</span> — {t.synergyRadar.tooltip.objective}</p>
+                    <Link to="/help" search={{ tab: 'glossary' }} className="block mt-2 text-primary hover:underline">
+                      {t.synergyRadar.tooltip.glossaryLink}
+                    </Link>
+                  </div>
+                }
+              />
+            </span>
+          }
+          rows={synergyRadar}
           colorByPlayer={playerColors}
-          labels={t.efficiencySeries}
+          axisLabels={synergyAxisLabels}
         />
-      )}
+      </div>
 
-      {performanceSeries && Object.keys(performanceSeries).length > 0 && (
-        <section className="space-y-3">
-          <h3 className="text-base font-semibold text-foreground">{t.performanceCharts.title}</h3>
-          <SquadPerformanceCharts
-            rowsByPlayer={performanceSeries}
-            playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries[p])}
-            colorByPlayer={playerColors}
-            labels={t.performanceCharts}
-          />
-        </section>
-      )}
+      <SquadIntensityHeatmapChart
+        title={t.intensity.title}
+        profile={intensityProfileLocalized ?? { options: [], rows: {} }}
+        colorByPlayer={playerColors}
+        zLabel={t.intensity.zLabel}
+      />
 
-      {weaponKills && weaponKills.bars.length > 0 && (
-        <SquadWeaponKillsChart
-          title={t.weaponKills.title}
-          data={weaponKills}
+      <SquadEfficiencyChart
+        title={t.efficiencySeries.title}
+        rowsByPlayer={performanceSeries ?? {}}
+        playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p])}
+        colorByPlayer={playerColors}
+        labels={t.efficiencySeries}
+      />
+
+      <section className="space-y-3">
+        <h3 className="text-base font-semibold text-foreground">{t.performanceCharts.title}</h3>
+        <SquadPerformanceCharts
+          rowsByPlayer={performanceSeries ?? {}}
+          playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p])}
           colorByPlayer={playerColors}
+          labels={t.performanceCharts}
         />
-      )}
+      </section>
+
+      <SquadWeaponKillsChart
+        title={t.weaponKills.title}
+        data={weaponKills}
+        colorByPlayer={playerColors}
+      />
 
       <SquadEngagementSection playerSlug={playerSlug} teammates={engagementTeammates} colorByPlayer={playerColors} />
 
-      {firstEvents && firstEvents.rows.length > 0 && (
-        <SquadFirstEventsChart
-          title={t.firstEvents.title}
-          data={firstEvents}
-          colorByPlayer={playerColors}
-          fragLabel={t.firstEvents.fragLabel}
-          deathLabel={t.firstEvents.deathLabel}
-          matchesSuffix={t.firstEvents.matchesSuffix}
-        />
-      )}
+      <SquadFirstEventsChart
+        title={t.firstEvents.title}
+        data={firstEvents}
+        colorByPlayer={playerColors}
+        fragLabel={t.firstEvents.fragLabel}
+        deathLabel={t.firstEvents.deathLabel}
+        matchesSuffix={t.firstEvents.matchesSuffix}
+      />
 
     </div>
   )

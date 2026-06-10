@@ -265,7 +265,18 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
     getCoreRowModel: getCoreRowModel(),
   })
 
-  if (matrix.matches.length === 0 || matrix.players.length === 0) return null
+  if (matrix.matches.length === 0 || matrix.players.length === 0) {
+    // Bloc vide : on conserve le cadre bordé (même style que la table) avec un
+    // message, au lieu de faire disparaître la section.
+    return (
+      <div
+        className="flex min-h-[120px] items-center justify-center rounded-md border border-border text-sm text-muted-foreground"
+        data-testid="squad-impact-scoreboard"
+      >
+        {t.empty.noBlockData}
+      </div>
+    )
+  }
 
   // Bloc « sorti » : table seule, sans Card ni titre interne. Le titre « Impact
   // des coéquipiers » est porté par un titre de section dans SquadSynergiesPage.

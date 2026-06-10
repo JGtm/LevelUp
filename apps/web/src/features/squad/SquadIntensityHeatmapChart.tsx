@@ -51,8 +51,8 @@ export function SquadIntensityHeatmapChart({
     [zLabel],
   )
 
-  if (profile.options.length === 0) return null
-
+  // Pas de `return null` quand aucune option : on garde le bloc titré et
+  // ChartCard affiche son état vide (series vide ci-dessus).
   const matchCount = rows.length
   const height = Math.max(360, Math.min(600, matchCount * 28 + 120))
 

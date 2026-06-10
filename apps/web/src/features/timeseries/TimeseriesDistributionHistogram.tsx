@@ -4,7 +4,7 @@
  * Wrapper local (page Cumul) : reprend la logique de HistogramChart mais
  * ajoute une markLine verticale à la médiane interpolée depuis les buckets.
  */
-import { Suspense, lazy, useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import {
@@ -16,14 +16,13 @@ import {
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import type { DistributionBucket } from '@/lib/api/types'
-
-const ReactECharts = lazy(() =>
-  import('echarts-for-react').then((m) => ({ default: m.default ?? m })),
-)
+import { ChartFromOption } from './ChartFromOption'
 
 export interface TimeseriesDistributionHistogramProps {
   buckets: DistributionBucket[]
   height?: number
+  title?: ReactNode
+  emptyMessage?: string
   colorToken: SemanticToken
   xAxisLabel: string
   medianLabel: string
@@ -51,6 +50,8 @@ function bucketMedian(buckets: DistributionBucket[]): number | null {
 export function TimeseriesDistributionHistogram({
   buckets,
   height = 240,
+  title,
+  emptyMessage,
   colorToken,
   xAxisLabel,
   medianLabel,
@@ -149,17 +150,7 @@ export function TimeseriesDistributionHistogram({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buckets, colorToken, xAxisLabel, medianLabel, themeVersion])
 
-  if (!option) return null
-
   return (
-    <Suspense fallback={null}>
-      <ReactECharts
-        option={option}
-        style={{ height, width: '100%' }}
-        notMerge
-        lazyUpdate
-        theme={undefined}
-      />
-    </Suspense>
+    <ChartFromOption title={title} option={option} height={height} emptyMessage={emptyMessage} />
   )
 }

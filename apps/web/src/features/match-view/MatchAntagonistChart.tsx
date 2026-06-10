@@ -39,13 +39,6 @@ interface Props {
 
 export function MatchAntagonistChart({ pairs, scoreboard, meXUID, t }: Props) {
   const series = antagonistStackedSeries(pairs ?? [], scoreboard, meXUID)
-  if (series.length === 0) {
-    return (
-      <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-border bg-card text-sm text-muted-foreground">
-        {t.antagonistNoData}
-      </div>
-    )
-  }
 
   // Couleurs par victime — cycle ANTAGONIST_TOKENS (11 teintes distinctes).
   const victimSet = new Set<string>()
@@ -59,7 +52,9 @@ export function MatchAntagonistChart({ pairs, scoreboard, meXUID, t }: Props) {
     componentHexColors[gt] = resolveToken(ANTAGONIST_TOKENS[idx % ANTAGONIST_TOKENS.length])
   })
 
-  const killerCount = series[0].datapoints.length
+  // series vide => BarStackedChart (ChartCard) rend son emptyMessage dans le
+  // bloc titré au lieu de faire disparaître le graphe.
+  const killerCount = series.length > 0 ? series[0].datapoints.length : 0
   const height = Math.max(240, 80 + 24 * killerCount)
   return (
     <BarStackedChart
@@ -67,6 +62,7 @@ export function MatchAntagonistChart({ pairs, scoreboard, meXUID, t }: Props) {
       height={height}
       orientation="horizontal"
       series={series}
+      emptyMessage={t.antagonistNoData}
       componentHexColors={componentHexColors}
       tooltipHideZero
     />

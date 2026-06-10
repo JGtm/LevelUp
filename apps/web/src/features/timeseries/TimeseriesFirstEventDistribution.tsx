@@ -5,7 +5,7 @@
  * par bin de N secondes depuis le début du match. markLine verticale par
  * série pour la moyenne (Moy. 38s).
  */
-import { Suspense, lazy, useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import {
@@ -18,14 +18,13 @@ import {
 import { resolveToken } from '@/lib/accessibility'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import type { FirstEventDistribution } from '@/lib/api/types'
-
-const ReactECharts = lazy(() =>
-  import('echarts-for-react').then((m) => ({ default: m.default ?? m })),
-)
+import { ChartFromOption } from './ChartFromOption'
 
 export interface TimeseriesFirstEventDistributionProps {
   data: FirstEventDistribution
   height?: number
+  title?: ReactNode
+  emptyMessage?: string
   killsLabel: string
   deathsLabel: string
   meanLabel: string
@@ -35,6 +34,8 @@ export interface TimeseriesFirstEventDistributionProps {
 export function TimeseriesFirstEventDistribution({
   data,
   height = 360,
+  title,
+  emptyMessage,
   killsLabel,
   deathsLabel,
   meanLabel,
@@ -165,17 +166,7 @@ export function TimeseriesFirstEventDistribution({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, killsLabel, deathsLabel, meanLabel, xAxisLabel, themeVersion])
 
-  if (!option) return null
-
   return (
-    <Suspense fallback={null}>
-      <ReactECharts
-        option={option}
-        style={{ height, width: '100%' }}
-        notMerge
-        lazyUpdate
-        theme={undefined}
-      />
-    </Suspense>
+    <ChartFromOption title={title} option={option} height={height} emptyMessage={emptyMessage} />
   )
 }

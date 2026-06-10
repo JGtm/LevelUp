@@ -5,7 +5,7 @@
  * par correlationPointsToSeries et ajoute une ligne de régression linéaire
  * calculée sur tous les points (cf. mock timeseries.10).
  */
-import { Suspense, lazy, useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import {
@@ -16,13 +16,9 @@ import {
   getTooltipBase,
 } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
-import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import type { CorrelationDataPair } from '@/lib/api/types'
-
-const ReactECharts = lazy(() =>
-  import('echarts-for-react').then((m) => ({ default: m.default ?? m })),
-)
+import { ChartFromOption } from './ChartFromOption'
 
 export interface TimeseriesScatterWithTrendProps {
   /** Tous les correlation points (le composant filtre lui-même par metricKey). */
@@ -30,12 +26,12 @@ export interface TimeseriesScatterWithTrendProps {
   metricXKey: string
   metricYKey: string
   height?: number
+  title?: ReactNode
+  emptyMessage?: string
   xAxisLabel: string
   yAxisLabel: string
   outcomeLabels: { win: string; loss: string; tie?: string; dnf?: string; unknown: string }
   trendLabel: string
-  emptyTitle: string
-  emptyDescription: string
 }
 
 /** OLS sur des points (x, y). Null si <2 points ou variance nulle. */
@@ -69,12 +65,12 @@ export function TimeseriesScatterWithTrend({
   metricXKey,
   metricYKey,
   height = 260,
+  title,
+  emptyMessage,
   xAxisLabel,
   yAxisLabel,
   outcomeLabels,
   trendLabel,
-  emptyTitle,
-  emptyDescription,
 }: TimeseriesScatterWithTrendProps) {
   const themeVersion = useThemeVersion()
 
@@ -212,19 +208,7 @@ export function TimeseriesScatterWithTrend({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtered, xAxisLabel, yAxisLabel, outcomeLabels, trendLabel, themeVersion])
 
-  if (!option) {
-    return <EmptyStateNotice title={emptyTitle} description={emptyDescription} />
-  }
-
   return (
-    <Suspense fallback={null}>
-      <ReactECharts
-        option={option}
-        style={{ height, width: '100%' }}
-        notMerge
-        lazyUpdate
-        theme={undefined}
-      />
-    </Suspense>
+    <ChartFromOption title={title} option={option} height={height} emptyMessage={emptyMessage} />
   )
 }

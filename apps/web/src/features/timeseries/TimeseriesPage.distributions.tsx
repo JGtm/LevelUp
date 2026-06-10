@@ -4,10 +4,8 @@
  * Découpé depuis TimeseriesPage.tsx (audit #6 god-file split).
  * Contenu : 6 histogrammes + 4 scatters de corrélations + MMR team/enemy.
  */
-import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { TimeseriesDistributionHistogram } from './TimeseriesDistributionHistogram'
 import { TimeseriesScatterWithTrend } from './TimeseriesScatterWithTrend'
-import { ChartFrame } from './ChartFrame'
 import type { FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 import type { TimeseriesDistributionsTab } from '@/lib/api/types'
 import type { TimeseriesManifestKey } from '@/lib/i18n/generated/timeseries'
@@ -26,6 +24,7 @@ export function TimeseriesDistributionsTabView({
   fieldMappings,
   outcomeLabels,
 }: TimeseriesDistributionsTabProps) {
+  const emptyMsg = t('timeseries.empty.no_data_description')
   return (
     <div className="space-y-8">
       <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -92,22 +91,16 @@ export function TimeseriesDistributionsTabView({
             colorTokenByBucket: undefined,
           },
         ]).map((cfg, i) => (
-          <ChartFrame key={i} title={cfg.title}>
-            {cfg.buckets.length > 0 ? (
-              <TimeseriesDistributionHistogram
-                buckets={cfg.buckets}
-                colorToken={cfg.colorToken}
-                xAxisLabel={cfg.xAxisLabel}
-                medianLabel={t('timeseries.summary.median')}
-                colorTokenByBucket={cfg.colorTokenByBucket}
-              />
-            ) : (
-              <EmptyStateNotice
-                title={t('timeseries.empty.page_title')}
-                description={t('timeseries.empty.no_data_description')}
-              />
-            )}
-          </ChartFrame>
+          <TimeseriesDistributionHistogram
+            key={i}
+            title={cfg.title}
+            emptyMessage={emptyMsg}
+            buckets={cfg.buckets}
+            colorToken={cfg.colorToken}
+            xAxisLabel={cfg.xAxisLabel}
+            medianLabel={t('timeseries.summary.median')}
+            colorTokenByBucket={cfg.colorTokenByBucket}
+          />
         ))}
       </div>
 
@@ -150,40 +143,35 @@ export function TimeseriesDistributionsTabView({
               fieldMappings?.fields['deaths']?.label ?? 'Morts',
           },
         ] as const).map((cfg) => (
-          <ChartFrame key={`${cfg.metricXKey}_${cfg.metricYKey}`} title={cfg.title}>
-            <TimeseriesScatterWithTrend
-              points={distributions_tab.correlation_points ?? []}
-              metricXKey={cfg.metricXKey}
-              metricYKey={cfg.metricYKey}
-              xAxisLabel={cfg.xLabel}
-              yAxisLabel={cfg.yLabel}
-              outcomeLabels={outcomeLabels}
-              trendLabel={t('timeseries.summary.trend')}
-              emptyTitle={t('timeseries.empty.page_title')}
-              emptyDescription={t('timeseries.empty.no_data_description')}
-              height={240}
-            />
-          </ChartFrame>
+          <TimeseriesScatterWithTrend
+            key={`${cfg.metricXKey}_${cfg.metricYKey}`}
+            title={cfg.title}
+            emptyMessage={emptyMsg}
+            points={distributions_tab.correlation_points ?? []}
+            metricXKey={cfg.metricXKey}
+            metricYKey={cfg.metricYKey}
+            xAxisLabel={cfg.xLabel}
+            yAxisLabel={cfg.yLabel}
+            outcomeLabels={outcomeLabels}
+            trendLabel={t('timeseries.summary.trend')}
+            height={240}
+          />
         ))}
       </div>
 
       {/* MMR équipe / adverse — seul sur sa propre ligne. */}
-      <ChartFrame
+      <TimeseriesScatterWithTrend
         title={t('timeseries.distributions.mmr_title')}
-      >
-        <TimeseriesScatterWithTrend
-          points={distributions_tab.correlation_points ?? []}
-          metricXKey="mmr_team"
-          metricYKey="mmr_enemy"
-          xAxisLabel={fieldMappings?.fields['team_mmr']?.label ?? 'MMR équipe'}
-          yAxisLabel={fieldMappings?.fields['enemy_mmr']?.label ?? 'MMR adverse'}
-          outcomeLabels={outcomeLabels}
-          trendLabel={t('timeseries.summary.trend')}
-          emptyTitle={t('timeseries.empty.page_title')}
-          emptyDescription={t('timeseries.empty.no_data_description')}
-          height={320}
-        />
-      </ChartFrame>
+        emptyMessage={emptyMsg}
+        points={distributions_tab.correlation_points ?? []}
+        metricXKey="mmr_team"
+        metricYKey="mmr_enemy"
+        xAxisLabel={fieldMappings?.fields['team_mmr']?.label ?? 'MMR équipe'}
+        yAxisLabel={fieldMappings?.fields['enemy_mmr']?.label ?? 'MMR adverse'}
+        outcomeLabels={outcomeLabels}
+        trendLabel={t('timeseries.summary.trend')}
+        height={320}
+      />
     </div>
   )
 }

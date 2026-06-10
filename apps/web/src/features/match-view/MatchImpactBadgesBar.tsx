@@ -22,6 +22,7 @@ import { resolveToken } from '@/lib/accessibility'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { getSquadText } from '@/features/squad/i18n'
 import type { MatchImpactBadge, MatchScoreboardRow } from '@/lib/api/types'
+import type { MatchViewText } from './i18n'
 
 type Valence = 'positive' | 'negative' | 'neutral'
 
@@ -85,13 +86,22 @@ function isRawXUID(s: string | null | undefined): boolean {
 interface Props {
   badges: MatchImpactBadge[] | null | undefined
   scoreboard: MatchScoreboardRow[] | null | undefined
+  t: MatchViewText
 }
 
-export function MatchImpactBadgesBar({ badges, scoreboard }: Props) {
+export function MatchImpactBadgesBar({ badges, scoreboard, t }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   const badgeI18n = getSquadText(locale).impact
 
-  if (!badges || badges.length === 0) return null
+  if (!badges || badges.length === 0) {
+    // Placeholder muet (style carte badge) au lieu de disparaître : la colonne
+    // garde sa place à côté du graphe Frags cumulés.
+    return (
+      <div className="flex h-full min-h-[80px] items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-center text-xs text-muted-foreground">
+        {t.impactBadgesNoData}
+      </div>
+    )
+  }
 
   const xuidIndex = buildXUIDIndex(scoreboard ?? [])
 

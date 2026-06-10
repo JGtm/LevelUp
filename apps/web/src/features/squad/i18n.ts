@@ -61,6 +61,8 @@ export interface SquadText {
     noChartDescription: string
     noDataTitle: string
     noDataDescription: string
+    /** Message court pour un bloc non-graphe vide (tape, table, scoreboard). */
+    noBlockData: string
   }
   synergies: {
     description: string
@@ -282,6 +284,7 @@ const FR_TEXT: SquadText = {
     noDataTitle: 'Données d\'escouade indisponibles',
     noDataDescription:
       'Aucune réponse exploitable n\'a été renvoyée pour cette page. Vérifie les filtres ou la disponibilité des matchs partagés.',
+    noBlockData: 'Aucune donnée pour cette sélection.',
   },
   synergies: {
     description: 'Comparaison de tes stats avec chaque coéquipier sur les matchs joués ensemble.',
@@ -540,6 +543,7 @@ const EN_TEXT: SquadText = {
     noDataTitle: 'Squad data unavailable',
     noDataDescription:
       'No usable response was returned for this page. Check filters or shared matches availability.',
+    noBlockData: 'No data for this selection.',
   },
   synergies: {
     description: 'Comparison of your stats with each teammate on shared matches.',

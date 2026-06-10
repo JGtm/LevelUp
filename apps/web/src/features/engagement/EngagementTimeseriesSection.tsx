@@ -52,8 +52,8 @@ export function EngagementTimeseriesSection(props: EngagementTimeseriesSectionPr
     }))
   }, [pointsAPI])
 
-  if (query.isError) return null
-  if (data && pointsAPI.length === 0) return null
+  // Plus de `return null` sur erreur / dataset vide : on laisse EngagementCurve
+  // (ChartCard) rendre son état error / empty dans le même bloc titré.
 
   // Étiquettes X : pour "match" on garde `#N\nMap`. Pour les agrégats on
   // affiche le label brut (session_label / "2026-S18" / "2026-05").

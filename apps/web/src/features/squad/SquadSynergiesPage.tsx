@@ -78,35 +78,34 @@ export function SquadSynergiesPage() {
 
   return (
     <div className="space-y-4">
-      {mapBreakdown.length > 0 && (
-        <div className="grid grid-cols-2 gap-4">
-          <WinRateVsHistoryBulletChart
-            title={t.charts.winRateVsHistoryBulletTitle}
-            rows={mapBreakdown}
-            mapLabelOf={mapLabelOf}
-            sessionLabel={t.charts.winRateVsHistorySession}
-            historyLabel={t.charts.winRateVsHistoryHistory}
-            parityLabel={t.charts.winRateVsHistoryBulletParity}
-            zeroWinrateLabel={t.charts.winRateVsHistoryBulletZero}
-          />
-          {mapBreakdown.some(
-            (r) => r.performance_avg !== undefined && r.historical_performance_avg !== undefined,
-          ) && (
-            <MapPerfVsHistoryChart
-              title={t.charts.mapPerfVsHistoryTitle}
-              rows={mapBreakdown}
-              mapLabelOf={mapLabelOf}
-              sessionLabel={t.charts.mapPerfVsHistorySession}
-              historyLabel={t.charts.mapPerfVsHistoryHistory}
-            />
-          )}
-        </div>
-      )}
-      {matchHistory.length > 0 && (
-        <div>
-          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {t.charts.outcomeSequenceTitle}
-          </p>
+      {/* Graphes toujours montés : ChartCard affiche son état vide (titre +
+          message) au lieu de faire disparaître le bloc quand mapBreakdown
+          est vide ou sans champs de performance. */}
+      <div className="grid grid-cols-2 gap-4">
+        <WinRateVsHistoryBulletChart
+          title={t.charts.winRateVsHistoryBulletTitle}
+          rows={mapBreakdown}
+          mapLabelOf={mapLabelOf}
+          sessionLabel={t.charts.winRateVsHistorySession}
+          historyLabel={t.charts.winRateVsHistoryHistory}
+          parityLabel={t.charts.winRateVsHistoryBulletParity}
+          zeroWinrateLabel={t.charts.winRateVsHistoryBulletZero}
+        />
+        <MapPerfVsHistoryChart
+          title={t.charts.mapPerfVsHistoryTitle}
+          rows={mapBreakdown}
+          mapLabelOf={mapLabelOf}
+          sessionLabel={t.charts.mapPerfVsHistorySession}
+          historyLabel={t.charts.mapPerfVsHistoryHistory}
+        />
+      </div>
+      {/* Séquence des résultats : on garde le libellé + un message court quand
+          il n'y a pas d'historique, au lieu de masquer le bloc. */}
+      <div>
+        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {t.charts.outcomeSequenceTitle}
+        </p>
+        {matchHistory.length > 0 ? (
           <OutcomeSequenceTape
             matches={matchHistory.map<OutcomePoint>((m) => ({
               outcome: outcomeNumToValue(m.outcome),
@@ -116,53 +115,49 @@ export function SquadSynergiesPage() {
             }))}
             labels={outcomeLabels}
           />
-        </div>
-      )}
-      {matchHistory.length > 0 && (
-        <SquadSynergyHistoryTable rows={matchHistory} playerSlug={playerSlug} />
-      )}
-      {mapHeatmap && mapHeatmap.players.length > 0 && mapHeatmap.maps_topn.length > 0 && (
-        <SquadMapHeatmapChart
-          title={t.heatmap.title}
-          data={mapHeatmap}
-          mapLabelOf={mapLabelOf}
-          pieceLabels={{
-            tier1: t.heatmap.pieceTier1,
-            tier2: t.heatmap.pieceTier2,
-            tier3: t.heatmap.pieceTier3,
-            tier4: t.heatmap.pieceTier4,
-            tier5: t.heatmap.pieceTier5,
-          }}
-          noScoreLabel={t.heatmap.noScore}
+        ) : (
+          <p className="text-sm text-muted-foreground">{t.empty.noBlockData}</p>
+        )}
+      </div>
+      <SquadSynergyHistoryTable rows={matchHistory} playerSlug={playerSlug} />
+      <SquadMapHeatmapChart
+        title={t.heatmap.title}
+        data={mapHeatmap && mapHeatmap.players.length > 0 && mapHeatmap.maps_topn.length > 0 ? mapHeatmap : undefined}
+        mapLabelOf={mapLabelOf}
+        pieceLabels={{
+          tier1: t.heatmap.pieceTier1,
+          tier2: t.heatmap.pieceTier2,
+          tier3: t.heatmap.pieceTier3,
+          tier4: t.heatmap.pieceTier4,
+          tier5: t.heatmap.pieceTier5,
+        }}
+        noScoreLabel={t.heatmap.noScore}
+      />
+      <SquadSessionTimelineChart
+        title={t.timeline.title}
+        rows={sessionTimeline}
+        perfLabel={t.timeline.perf}
+        winRateLabel={t.timeline.winRate}
+        mmrLabel={t.timeline.teamMmr}
+        perfAxisLabel={t.timeline.perfAxis}
+        mmrAxisLabel={t.timeline.mmrAxis}
+      />
+      {/* Sections non-graphes toujours montées : titre + état vide géré par le
+          composant (cadre bordé / carte), au lieu de disparaître. */}
+      <section className="space-y-3">
+        <h3 className="text-base font-semibold text-foreground">{t.impact.title}</h3>
+        <SquadImpactScoreboard
+          matrix={pageData?.impact_matrix ?? { matches: [], players: [], cells: [], badge_ord: [] }}
         />
-      )}
-      {sessionTimeline.length > 0 && (
-        <SquadSessionTimelineChart
-          title={t.timeline.title}
-          rows={sessionTimeline}
-          perfLabel={t.timeline.perf}
-          winRateLabel={t.timeline.winRate}
-          mmrLabel={t.timeline.teamMmr}
-          perfAxisLabel={t.timeline.perfAxis}
-          mmrAxisLabel={t.timeline.mmrAxis}
+      </section>
+      <section className="space-y-3">
+        <h3 className="text-base font-semibold text-foreground">{t.medals.title}</h3>
+        <MedalDigest
+          entries={pageData?.medal_digest ?? []}
+          mainPlayer={pageData?.main_player ?? playerSlug}
+          t={t.medals}
         />
-      )}
-      {pageData?.impact_matrix && (
-        <section className="space-y-3">
-          <h3 className="text-base font-semibold text-foreground">{t.impact.title}</h3>
-          <SquadImpactScoreboard matrix={pageData.impact_matrix} />
-        </section>
-      )}
-      {pageData?.medal_digest && pageData.medal_digest.length > 0 && (
-        <section className="space-y-3">
-          <h3 className="text-base font-semibold text-foreground">{t.medals.title}</h3>
-          <MedalDigest
-            entries={pageData.medal_digest}
-            mainPlayer={pageData.main_player ?? playerSlug}
-            t={t.medals}
-          />
-        </section>
-      )}
+      </section>
     </div>
   )
 }

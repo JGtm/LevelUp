@@ -38,10 +38,9 @@ export function MatchNemesisCards({ nemesis, scoreboard, meXUID, t }: Props) {
     return teamSideByXUID.get(n.xuid) !== allyTeam
   })
 
-  if (enemyDuels.length === 0) {
-    return null
-  }
-
+  // Pas de `return null` quand il n'y a aucun duel : on garde les deux cartes
+  // titrées (Némésis / Souffre-douleur) qui affichent leur état vide
+  // (`combatNoNemesis`) au lieu de faire disparaître la section.
   const nemesisRow = pickMax(enemyDuels, (n) => n.killed_me)
   const bullyRow = pickMax(enemyDuels, (n) => n.i_killed)
 
