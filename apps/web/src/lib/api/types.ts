@@ -3624,3 +3624,30 @@ export interface BackupRunResult {
   exported?: string[]
   duration_ms?: number
 }
+
+// ─── Admin — Intégrité des données (invariants sync) ─────────────────────────
+// Miroir de domain.AdminInvariantsResponse (GET /admin/invariants).
+
+export interface AdminInvariantViolation {
+  key: string
+  severity: 'fail' | 'warn'
+  count: number
+  sample: string[] | null
+  description: string
+}
+
+export interface AdminPlayerInvariantsReport {
+  player_slug: string
+  gamertag: string
+  xuid: string
+  check_error?: string
+  violations: AdminInvariantViolation[]
+  fail_count: number
+  warn_count: number
+}
+
+export interface AdminInvariantsResponse {
+  title_slug: string
+  generated_at: string
+  reports: AdminPlayerInvariantsReport[]
+}

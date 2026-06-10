@@ -184,4 +184,7 @@ export const queryKeys = {
     ['coach', playerSlug, 'proposals', status ?? 'all'] as const,
   /** Préfixe broad — invalide toutes les queries coach d'un joueur. */
   coachAll: (playerSlug: string) => ['coach', playerSlug] as const,
+
+  // Admin — Intégrité des données (invariants sync, plan SYNC_INVARIANTS_GATE)
+  adminInvariants: ['admin', 'invariants'] as const,
 } as const

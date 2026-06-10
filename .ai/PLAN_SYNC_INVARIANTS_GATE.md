@@ -93,23 +93,29 @@ API : `invariants.CheckPlayer(ctx, playerDB, sharedDB, xuid) (Report, error)` ;
 - [ ] Promotion WARN→FAIL de `skill_rank_missing` une fois la tolérance PvE
   affinée (filtre lifecycle/playlist).
 
-### Phase 4 — À FAIRE : dashboard monitoring admin (décision user 2026-06-10)
+### Phase 4 — LIVRÉE (2026-06-10) : dashboard monitoring admin
 
-Décision : PAS de notification in-app (« on ne peut rien y faire ») —
+Décision user : PAS de notification in-app (« on ne peut rien y faire ») —
 un **dashboard monitoring dans la partie admin** de l'app à la place.
 
-- Backend : `GET /api/v1/admin/invariants` — exécute `invariants.CheckPlayer`
-  pour chaque profil du titre (lectures RO, best-effort), retourne la liste
-  des Reports + timestamp. Handler admin-gated (même garde que les autres
-  routes admin).
-- Frontend : section « Intégrité des données » dans la page admin — tableau
-  joueur × invariant (sévérité, count, sample cliquable), badge global
-  vert/orange/rouge, bouton refresh. Tendance simple (count précédent vs
-  courant) en v2.
-- Compteurs expvar `levelup.invariants.*` publiés au passage (gratuit, déjà
-  le pattern RunDualRowSentinel).
-- Câbler le handle DB globale pour migrer `xuid_alias_missing` vers la source
-  canonique post-ADR-0008.
+- [x] Backend : `GET /api/v1/admin/invariants?title=` —
+  `ServiceRegistry.RunDataInvariants` (LoadPlayers × resolveByGT ×
+  CheckPlayer, best-effort par joueur avec `check_error`), handler
+  admin-gated (RequireAuth + RequireAdmin + NoStore), 2 tests httptest.
+- [x] Frontend : section « Intégrité des données » dans AdminPage — badge
+  FAIL/WARN/OK par joueur, violations avec samples, bouton Vérifier,
+  timestamp. i18n FR/EN via manifest common, query key centralisée.
+- [x] Vérifié en live (smoke-boot) : **0 FAIL sur les 4 joueurs suivis** ;
+  WARNs = classes connues (psa_missing → résorbé par la convergence PSA ;
+  skill_rank_missing → backlog watermark LUSR ; xuid_alias_missing ×113 →
+  caveat ADR-0008 ; pair_name_uuid ×12 → matchs du 09/06).
+
+Reste (v2) :
+- [ ] Compteurs expvar `levelup.invariants.*`.
+- [ ] Migrer `xuid_alias_missing` vers la DB globale (source canonique
+  post-ADR-0008) quand le handle sera câblé dans le runner.
+- [ ] Tendance (count précédent vs courant) pour repérer la croissance des
+  WARN sans historique externe.
 
 ## Garde-fous
 
