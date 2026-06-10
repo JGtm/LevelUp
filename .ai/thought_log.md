@@ -18,6 +18,8 @@
 
 **Résultats vérifiés (après backfill)** : deltas continus — JGtm 915 matchs, **0** delta=0 (885 valeurs distinctes) ; Madina 1133, 17 delta=0 (**1.5 %** vs 40 % avant). Clamp OK : valeurs ∈ plage du sous-palier affiché (Or 5 ∈ [1533,1567[, Diamant 1/3 ∈ leurs bandes). Non-régression paliers : Madina 4/4 identiques ; quelques sous-paliers ±1 cran (JGtm slayer Or V→IV, Choco) = effet replay-vs-live (EP lit l'état courant des coéquipiers), PAS la métrique (calcul du palier inchangé). Cibles `reference_lusr_target_levels` respectées.
 
+**Vérification finale (couverture tests + logging)** : suite Go `./...` = 80 packages OK ; SEUL FAIL = `internal/api`/`TestContractRoutesDocumented` (route `/api/v1/admin/invariants` non documentée dans openapi.yaml) → c'est le travail CONCURRENT (registry_invariants/AdminPage), PAS ce commit (`git show df6039b80` = 0 fichier route/handler/openapi). Tests AJOUTÉS : `TestLegacyContinuousSubTierProgress` (Go) + `formatRankDelta` (web, CSR/LUSR/LUSR_V2, `±0`/`±0.00` jamais `-0`). Logging AJOUTÉ : `slog.DebugContext` sur clamp hystérésis (μ hors sous-palier affiché) → `logs/sync.log` (dossier dédié vérifié, routing par module actif) ; aucun `fmt.Println`. typecheck/lint/vitest web OK.
+
 **Décision** : `rating_value` LUSR cesse d'être quantifié au bas du sous-palier ; il porte désormais la position CONTINUE de μ (μ remappé), clampée dans le sous-palier AFFICHÉ (lissé). Pas de colonne en plus (réutilisation de `rating_value`) → conforme au souhait user (valeur réelle, pas de doublon), portée circonscrite. Le palier/badge (`tier`/`sub_tier`/`tier_label`) + le lissage d'hystérésis restent INCHANGÉS. TrueSkill 2 (μ, σ, pondération temps-joué) NON touché — fix purement en aval (couche présentation).
 
 **Implémentation** :
@@ -23000,3 +23002,20 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 - **Découverte (vrai signal, pas du bruit)** : les 113 `xuid_alias_missing` sont absents de la DB globale (15 370 alias) ET de la legacy shared → vrai backlog d'alias (adversaires jamais résolus, affichables en xuid brut dans l'UI). À traiter par un backfill alias dédié (résolution via JSONs de match en cache ou API) — noté, hors scope de cette passe.
 - **Piège opérationnel** : `kill $PID` bash ne tue pas toujours le process Windows — un smoke-server zombie (binaire `~` renommé) tenait la DB globale et faisait échouer l'ATTACH global pendant les vérifications (d'où le fallback shared_legacy observé). Tué via taskkill //F ; vérifier `netstat`/`tasklist` après chaque smoke-boot.
 - **Validation** : 3 tests gate verts ; suites sync + handlers + observability vertes ; tsc 0 erreur ; eslint 0 erreur.
+
+## [2026-06-10] Analyse scalabilité DuckDB + dossier B-swap shared — Complété (plan, pas de code)
+
+**Statut** : Complété (consultation + plan ; aucune ligne de code).
+
+**Contexte** : l'utilisateur s'inquiète que la concurrence DuckDB (lecteur/écriture) handicape la scalabilité (centaines de joueurs → sync quasi permanent → app stallée). Demande : changer de stack ? Puis : faire un plan pour retirer le B-swap.
+
+**Décision technique / constats vérifiés (workflow 35 agents)** :
+- La migration LECTURE est déjà finie : `attachShared` retiré des conns player (9c.5/9c.4), ~113 sites via `SharedReadDB().Get()` + 2-phases + merge Go. `AUDIT_SHARED_READER_GAPS.md` (2026-05-20) PÉRIMÉ. Zéro site de lecture à migrer.
+- Le B-swap n'est PAS dû à l'ATTACH (supprimé) mais à la contrainte driver DuckDB-Go : RO + RW interdits sur le même fichier in-process. Stall = fenêtre de drain pendant l'écriture.
+- Retirer le swap = problème d'ÉCRITURE/cycle de vie du handle. Revue adversariale : ~8 writers shared dont endpoints HTTP (F1) ; `dblease` mutex in-process (F2, risque ART si externalisation 2-process) ; coexistence RO+RW Windows non prouvée (F3) ; staleness RO permanent (F5).
+
+**Résultats** : 
+- Pas de changement de stack recommandé (bottleneck mesuré = réseau 95%, writes négligeables).
+- Plan livré : `.ai/PLAN_BSWAP_RETIRE_OR_MITIGATE.md` — Option B (mesurer cadence swap + resserrer fenêtre RW, zéro modif écriture) recommandée ; Option A (externaliser writer, corrigée des 12 findings) en réserve.
+
+**Conclusion / prochaine étape** : lancer le diagnostic Option B (B1) — compteurs expvar swap + granularité acquire/release du persist Worker — pour trancher « réglage de cadence » vs « plafond → Option A ». Mémoire : `project_bswap_root_cause_and_read_migration_done`.
