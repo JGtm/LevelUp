@@ -126,6 +126,7 @@ describe('buildKillsDeathsButterflyOption', () => {
       playerOrder: ['Me'],
       killsLabel: 'Frags',
       deathsLabel: 'Morts',
+      hiddenTypes: new Set(['Bonus']), // défaut UI (SquadPerformanceCharts) → structure 2-séries
     })
     const series = opt.series as Array<{ name: string; type: string; data: Array<number | null> }>
     expect(series).toHaveLength(2)
@@ -142,6 +143,7 @@ describe('buildKillsDeathsButterflyOption', () => {
       playerOrder: ['Me'],
       killsLabel: 'Frags',
       deathsLabel: 'Morts',
+      hiddenTypes: new Set(['Bonus']), // défaut UI → series[1] = Morts (Bonus masqué)
     })
     const series = opt.series as Array<{ itemStyle: { color: string; opacity?: number } }>
     expect(series[0].itemStyle).toMatchObject({ color: '#aaa' })
