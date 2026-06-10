@@ -158,7 +158,9 @@ var canonicalOrder = []string{
 	"create_player_records_history_append_only",               // shared_social
 	"player_records_history_previous_cols_v1",                 // shared_social
 	"extend_player_records_with_window",                       // shared_social
+	"create_world_player_season_stats",                        // shared
 	"create_world_csr_leaderboard_snapshots",                  // shared
+	"world_csr_leaderboard_latest_by_batch",                   // shared
 }
 
 var canonicalIndex = func() map[string]int {
