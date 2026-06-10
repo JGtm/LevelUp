@@ -935,3 +935,67 @@ func TestBuildSquadSynergyRadar_ObjectiveSumsFromPSA(t *testing.T) {
 		t.Errorf("friend1 objective raw: want 0 (aucun PSA), got %v", f1Obj)
 	}
 }
+
+// ---------- Régression 851e10ef5 : input dédupliqué + 2 coéquipiers ----------
+//
+// Depuis intersectSquadRowsByMatchID, allSquadRows arrive dédupliqué (1 row par
+// match). L'ancienne heuristique « occurrences >= len(selectedGamertags) »
+// rendait synergy radar / performance series / medal digest TOUJOURS vides dès
+// 2 coéquipiers sélectionnés (1 >= 2 faux). Ces tests cadenassent le fix.
+
+func TestBuildSquadPerformanceSeries_DedupedInput_TwoTeammates(t *testing.T) {
+	t0 := time.Date(2026, 6, 9, 19, 14, 0, 0, time.UTC)
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"main":    {rowWithStatsXUID("xuid-main", "m1", t0, canonical.OutcomeWin, 10, 5, 2, 600, 50, 80)},
+			"friend1": {rowWithStatsXUID("xuid-f1", "m1", t0, canonical.OutcomeWin, 3, 9, 7, 600, 35, 40)},
+			"friend2": {rowWithStatsXUID("xuid-f2", "m1", t0, canonical.OutcomeWin, 6, 6, 1, 600, 45, 60)},
+		},
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader}
+	// 1 seule row par match : sortie d'intersectSquadRowsByMatchID.
+	allSquadRows := []domain.SquadMatchRow{
+		{MatchID: "m1", StartTime: t0, Kills: 10, Deaths: 5},
+	}
+	got := svc.buildSquadPerformanceSeries(context.Background(), allSquadRows, "main", []string{"friend1", "friend2"})
+	if len(got) != 3 {
+		t.Fatalf("want 3 series (main + 2 friends), got %d — régression heuristique occurrences", len(got))
+	}
+	for _, gt := range []string{"main", "friend1", "friend2"} {
+		if len(got[gt]) == 0 {
+			t.Errorf("série %q vide alors que le match m1 est dans l'intersection", gt)
+		}
+	}
+}
+
+func TestBuildSquadSynergyRadar_DedupedInput_TwoTeammates(t *testing.T) {
+	t0 := time.Date(2026, 6, 9, 19, 14, 0, 0, time.UTC)
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"main":    {rowWithStatsXUID("xuid-main", "m1", t0, canonical.OutcomeWin, 10, 5, 2, 600, 50, 80)},
+			"friend1": {rowWithStatsXUID("xuid-f1", "m1", t0, canonical.OutcomeWin, 3, 9, 7, 600, 35, 40)},
+			"friend2": {rowWithStatsXUID("xuid-f2", "m1", t0, canonical.OutcomeWin, 6, 6, 1, 600, 45, 60)},
+		},
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader}
+	allRows := []domain.SquadMatchRow{
+		{MatchID: "m1", StartTime: t0, Kills: 10, Deaths: 5},
+	}
+	got := svc.buildSquadSynergyRadar(context.Background(), allRows, "main", []string{"friend1", "friend2"})
+	if len(got) != 3 {
+		t.Fatalf("want 3 series radar (main + 2 friends), got %d — régression heuristique occurrences", len(got))
+	}
+}
+
+func TestCollectSharedMatchIDsForDigest_DedupedInput(t *testing.T) {
+	t0 := time.Date(2026, 6, 9, 19, 14, 0, 0, time.UTC)
+	rows := []domain.SquadMatchRow{
+		{MatchID: "m1", StartTime: t0},
+		{MatchID: "m2", StartTime: t0},
+		{MatchID: "m2", StartTime: t0}, // doublon résiduel toléré
+	}
+	got := collectSharedMatchIDsForDigest(rows)
+	if len(got) != 2 {
+		t.Fatalf("want 2 match_ids distincts, got %d (%v)", len(got), got)
+	}
+}

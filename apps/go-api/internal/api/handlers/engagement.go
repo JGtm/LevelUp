@@ -12,6 +12,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -154,8 +155,13 @@ func (h *EngagementHandler) GetSquadEngagementSession(w http.ResponseWriter, r *
 	teammateGamertags := splitCSV(gamertgsParam)
 
 	// Si aucun match_id fourni, utilise les matchs recents du joueur (limite a 15).
-	// On reste sur la granularite "match" : avec limit=15 et workCap=200 le
-	// service renvoie 1 point par match avec MatchID non vide.
+	//
+	// PIEGE CONNU (2026-06-10) : GetTimeseries applique un binning adaptatif —
+	// sur un gros historique il renvoie des agregats session/semaine/saison
+	// avec MatchID vide → 0 match derive → session vide silencieuse. Le front
+	// (SquadContributionsPage) passe desormais match_ids explicitement ; ce
+	// fallback ne sert que d'eventuels autres consommateurs. On logge en WARN
+	// quand la derivation echoue pour rendre le cas observable.
 	if len(matchIDs) == 0 {
 		recent, err := svc.GetTimeseries(r.Context(), domain.FilterContextInput{}, 15)
 		if err != nil {
@@ -168,6 +174,10 @@ func (h *EngagementHandler) GetSquadEngagementSession(w http.ResponseWriter, r *
 				continue
 			}
 			matchIDs = append(matchIDs, m.MatchID)
+		}
+		if len(matchIDs) == 0 && len(recent.Points) > 0 {
+			slog.WarnContext(r.Context(), "engagement_squad: derivation match_ids vide (binning agrege, MatchID absent des points)",
+				"player", slug, "points", len(recent.Points), "granularity", recent.Granularity)
 		}
 	}
 

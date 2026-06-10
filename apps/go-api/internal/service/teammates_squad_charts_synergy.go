@@ -162,16 +162,14 @@ func (s *TeammatesService) buildSquadSynergyRadar(
 		return nil
 	}
 
-	// Matchs PARTAGÉS : présents pour chaque coéquipier sélectionné.
-	matchOccurrences := make(map[string]int)
+	// allSquadRows est déjà l'intersection composition exacte — 1 row par match,
+	// dédupliquée par intersectSquadRowsByMatchID (commit 851e10ef5). L'ancien
+	// comptage d'occurrences (n >= len(selectedGamertags)) datait de l'ère
+	// "union avec doublons par coéquipier" : sur l'input dédupliqué il rendait
+	// le radar TOUJOURS vide dès 2 coéquipiers sélectionnés (1 >= 2 faux).
+	sharedMatches := make(map[string]struct{}, len(allSquadRows))
 	for _, m := range allSquadRows {
-		matchOccurrences[m.MatchID]++
-	}
-	sharedMatches := make(map[string]struct{})
-	for mid, n := range matchOccurrences {
-		if n >= len(selectedGamertags) {
-			sharedMatches[mid] = struct{}{}
-		}
+		sharedMatches[m.MatchID] = struct{}{}
 	}
 	if len(sharedMatches) == 0 {
 		return nil
