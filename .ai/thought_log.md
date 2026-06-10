@@ -1,3 +1,18 @@
+## [2026-06-10] Leaderboard mondial enrichi — Phase B (backend migration/types/repo) — Complété
+
+**Statut** : Complété sur feat/world-leaderboard-enriched.
+- Migration append-only `world_player_season_stats` (+ vue `_latest`, pattern anti-ART) ajoutée à canonicalOrder (+ fix d'un trou pré-existant : `world_csr_leaderboard_latest_by_batch` manquait → order_test rouge).
+- Types `domain.WorldPlayerSeasonStats` + extension `LeaderboardEntry` (enrichissement en pointeurs, nil = non enrichi).
+- Repo `world_player_stats_repo.go` : `InsertPlayerSeasonStats` (INSERT pur en tx), `GetWorldPlayerSeasonStats` (ratios dérivés + indicateur inter-saison via `LAG`), `loadPrevSeasonRanks`.
+- `GetCSRWorldLeaderboard` étendu : merge stats par gamertag (case-insensitive) + `RankDelta` (rang N vs N-1), best-effort (entrées inchangées tant que pas de données backfill).
+- Tests :memory: integration verts : LAG saute une saison manquante + isolation par playlist + joueur sans historique → nil ; merge + RankDelta=+3.
+
+**Décisions** : attribution par `SeasonId` (pas dates, `csr_season_calendars` vide) ; append-only (pas UPSERT) ; ratios dérivés à la lecture ; enrichissement best-effort.
+
+**Prochaine étape** : Phase C (agrégateur + cron enrichi appelant le pipeline validé Phase A + `InsertPlayerSeasonStats`), puis D (backfill throttlé), E (front), F (catalogue — obligatoire).
+
+---
+
 ## [2026-06-10] Leaderboard mondial enrichi — Phase A (probe E2E) validée — Complété
 
 **Statut** : Complété. Phase A du plan PLAN_WORLD_LEADERBOARD_ENRICHED.md validée par un probe E2E (`cmd/probe-world-stats`, diagnostic, zéro INSERT) sur `feat/world-leaderboard-enriched` (worktree depuis `feat/leaderboard-csr-followup` qui a l'infra ; `main` ne l'a pas — vérifié). Token-bearer JGtm (RT brut).

@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/migration"
@@ -100,4 +101,59 @@ func derefF(p *float64) float64 {
 		return -1
 	}
 	return *p
+}
+
+// TestGetCSRWorldLeaderboard_Enrichment valide le merge dans GetCSRWorldLeaderboard :
+// stats enrichies fusionnées par gamertag + RankDelta (rang saison N vs N-1).
+func TestGetCSRWorldLeaderboard_Enrichment(t *testing.T) {
+	shared := openMemDB(t)
+	applyWorldLeaderboardMigration(t, shared.SQLDb())
+	applyWorldPlayerStatsMigration(t, shared.SQLDb())
+	ctx := context.Background()
+
+	const arena = "edfef3ac-9cbe-4fa2-b949-8f29deafd483"
+	t0 := time.Now().UTC()
+	// Saison précédente (13-1) : Alpha rang 5.
+	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), []domain.LeaderboardEntry{
+		{Season: "csrseason13-1", Playlist: arena, Rank: 5, Gamertag: "Alpha", CSRValue: 1800, Tier: "Diamond", FetchedAt: t0},
+	}); err != nil {
+		t.Fatalf("snapshot prev: %v", err)
+	}
+	// Saison courante (13-2) : Alpha rang 2 (a grimpé de 3).
+	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), []domain.LeaderboardEntry{
+		{Season: "csrseason13-2", Playlist: arena, Rank: 2, Gamertag: "Alpha", CSRValue: 2000, Tier: "Onyx", FetchedAt: t0.Add(time.Hour)},
+	}); err != nil {
+		t.Fatalf("snapshot cur: %v", err)
+	}
+	// Stats enrichies pour Alpha en 13-2/Arena.
+	if _, err := InsertPlayerSeasonStats(ctx, shared.SQLDb(), []domain.WorldPlayerSeasonStats{
+		{Gamertag: "Alpha", SeasonID: "csrseason13-2", PlaylistID: arena, MatchCount: 10, WinCount: 7, Kills: 150, Deaths: 100, Assists: 30},
+	}); err != nil {
+		t.Fatalf("enriched: %v", err)
+	}
+
+	repo := NewLeaderboardRepo(&PlayerDB{Shared: shared})
+	entries, err := repo.GetCSRWorldLeaderboard(ctx, "csrseason13-2", arena, 100)
+	if err != nil {
+		t.Fatalf("GetCSRWorldLeaderboard: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("attendu 1 entrée, got %d", len(entries))
+	}
+	e := entries[0]
+	if e.Gamertag != "Alpha" || e.Rank != 2 {
+		t.Fatalf("entrée = (%q, rang %d), want (Alpha, 2)", e.Gamertag, e.Rank)
+	}
+	if e.WinRate == nil || *e.WinRate < 0.69 || *e.WinRate > 0.71 {
+		t.Errorf("win_rate = %v, want ~0.70", derefF(e.WinRate))
+	}
+	if e.KDA == nil || *e.KDA < 1.59 || *e.KDA > 1.61 {
+		t.Errorf("kda = %v, want ~1.60", derefF(e.KDA))
+	}
+	if e.MatchCount == nil || *e.MatchCount != 10 {
+		t.Errorf("match_count = %v, want 10", e.MatchCount)
+	}
+	if e.RankDelta == nil || *e.RankDelta != 3 {
+		t.Errorf("rank_delta = %v, want +3 (rang 5 -> 2)", e.RankDelta)
+	}
 }

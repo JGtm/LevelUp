@@ -20,6 +20,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -125,10 +126,16 @@ func (r *LeaderboardRepo) GetWorldPlayerSeasonStats(
 		return nil, fmt.Errorf("GetWorldPlayerSeasonStats: shared reader: %w", err)
 	}
 	defer release()
+	return queryWorldPlayerStats(ctx, sharedDB, season, playlist)
+}
 
-	rows, err := sharedDB.QueryContext(ctx, worldPlayerStatsQuery, defaultLeaderboardTitleSlug, season, playlist)
+// queryWorldPlayerStats exécute worldPlayerStatsQuery sur une connexion shared
+// DÉJÀ acquise (réutilisable par GetCSRWorldLeaderboard sans re-acquérir le
+// reader → évite un Get imbriqué sur le SharedReader).
+func queryWorldPlayerStats(ctx context.Context, db *sql.DB, season, playlist string) ([]domain.WorldPlayerSeasonStats, error) {
+	rows, err := db.QueryContext(ctx, worldPlayerStatsQuery, defaultLeaderboardTitleSlug, season, playlist)
 	if err != nil {
-		return nil, fmt.Errorf("GetWorldPlayerSeasonStats: query: %w", err)
+		return nil, fmt.Errorf("queryWorldPlayerStats: query: %w", err)
 	}
 	defer rows.Close()
 
@@ -178,4 +185,34 @@ func nullStr(n sql.NullString) *string {
 	}
 	v := n.String
 	return &v
+}
+
+// loadPrevSeasonRanks retourne le rang de chaque gamertag à la saison PRÉCÉDENTE
+// (la plus récente < season pour cette playlist) depuis world_csr_leaderboard_latest.
+// Clé = gamertag en minuscules (matching case-insensitive). Vide si pas de saison
+// antérieure. Sert au calcul de RankDelta (rang N vs N-1). `db` déjà acquise.
+func loadPrevSeasonRanks(ctx context.Context, db *sql.DB, playlist, season string) (map[string]int, error) {
+	const q = `
+		WITH prev AS (
+			SELECT MAX(season_id) AS s FROM world_csr_leaderboard_latest
+			WHERE playlist_id = ? AND season_id < ?
+		)
+		SELECT l.gamertag, l.rank
+		FROM world_csr_leaderboard_latest l, prev
+		WHERE l.playlist_id = ? AND prev.s IS NOT NULL AND l.season_id = prev.s`
+	rows, err := db.QueryContext(ctx, q, playlist, season, playlist)
+	if err != nil {
+		return nil, fmt.Errorf("loadPrevSeasonRanks: query: %w", err)
+	}
+	defer rows.Close()
+	out := map[string]int{}
+	for rows.Next() {
+		var gt string
+		var rank int
+		if err := rows.Scan(&gt, &rank); err != nil {
+			return nil, fmt.Errorf("loadPrevSeasonRanks: scan: %w", err)
+		}
+		out[strings.ToLower(gt)] = rank
+	}
+	return out, rows.Err()
 }
