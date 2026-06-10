@@ -23,6 +23,7 @@ package sync
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -220,5 +221,93 @@ func TestGate_PureSkipCycle_TriggersConvergence_integration(t *testing.T) {
 	if missing < 1 {
 		t.Fatalf("countSharedMatchesMissingEnrichment = %d (attendu ≥ 1 : le déclencheur du cycle pur-skip)",
 			missing)
+	}
+}
+
+// TestGate_ConcurrentSquadSync_Converges_integration : la COURSE réelle des
+// watchers. Les 3 joueurs lancent RunDelta SIMULTANÉMENT sur le même match
+// squad (dblease sérialise les writers shared). Quel que soit l'ordre
+// d'arrivée (insert gagné, skip, double-fetch dédupliqué par PK), le contrat
+// final est identique : registry unique + zéro violation FAIL par joueur.
+// Un second RunDelta séquentiel vérifie l'idempotence (aucune nouvelle
+// insertion, invariants toujours verts).
+func TestGate_ConcurrentSquadSync_Converges_integration(t *testing.T) {
+	const nUsers = 3
+	env := newMultiUserEnv(t, nUsers)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	const squadMatchID = "c0000000-0000-4000-8000-000000000003"
+	matchJSON := makeSquadMatchJSON(squadMatchID, env.users)
+	for _, u := range env.users {
+		u.mock.history = makeHistory(squadMatchID)
+		u.mock.statsBody = map[string]map[string]any{squadMatchID: matchJSON}
+	}
+	opts := domain.SyncOptions{
+		MatchType:         "matchmaking",
+		MaxMatches:        1,
+		WithParticipants:  true,
+		WithMedals:        true,
+		RequestsPerSecond: 100,
+	}
+
+	// Passe 1 : course — les 3 RunDelta en parallèle.
+	var wg sync.WaitGroup
+	errs := make([]error, nUsers)
+	for i := 0; i < nUsers; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			_, errs[idx] = env.users[idx].engine.RunDelta(ctx, opts)
+		}(i)
+	}
+	wg.Wait()
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("RunDelta concurrent user%d: %v", i, err)
+		}
+	}
+
+	// Passe 2 : idempotence — un RunDelta séquentiel par joueur ne doit rien
+	// réinsérer (le match est connu partout) et laisser les invariants verts.
+	for i := 0; i < nUsers; i++ {
+		res, err := env.users[i].engine.RunDelta(ctx, opts)
+		if err != nil {
+			t.Fatalf("RunDelta passe 2 user%d: %v", i, err)
+		}
+		if res.MatchesInserted != 0 {
+			t.Errorf("passe 2 user%d MatchesInserted = %d (attendu 0 : idempotence)",
+				i, res.MatchesInserted)
+		}
+	}
+
+	sharedDB, release, err := env.provider.Get(ctx)
+	if err != nil {
+		t.Fatalf("provider.Get: %v", err)
+	}
+	defer release()
+
+	// Registry unique malgré la course (PK match_id + dédup insert).
+	var regCount int
+	if err := sharedDB.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM match_registry WHERE match_id = ?`, squadMatchID).Scan(&regCount); err != nil {
+		t.Fatalf("count registry: %v", err)
+	}
+	if regCount != 1 {
+		t.Errorf("match_registry count = %d pour le match squad (attendu 1)", regCount)
+	}
+
+	for i, u := range env.users {
+		report, err := invariants.CheckPlayer(ctx, u.pool.Player.SQLDb(), sharedDB, u.xuid)
+		if err != nil {
+			t.Fatalf("CheckPlayer user%d (%s): %v", i, u.gamertag, err)
+		}
+		for _, v := range report.Violations {
+			t.Logf("user%d (%s) %s", i, u.gamertag, v.String())
+		}
+		if fails := report.Failures(); len(fails) > 0 {
+			t.Errorf("user%d (%s) : %d violation(s) FAIL après course concurrente : %v",
+				i, u.gamertag, len(fails), fails)
+		}
 	}
 }

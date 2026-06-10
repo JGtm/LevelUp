@@ -63,6 +63,27 @@ func AddInt(name string, delta int64) {
 	}
 }
 
+// SetInt fixe la valeur du compteur nomme (semantique gauge : etat du dernier
+// run, pas un cumul). Ex. "invariants_fail_last".
+func SetInt(name string, value int64) {
+	if v, ok := counters.Load(name); ok {
+		v.(*atomic.Int64).Store(value)
+		return
+	}
+	c := &atomic.Int64{}
+	actual, loaded := counters.LoadOrStore(name, c)
+	actual.(*atomic.Int64).Store(value)
+	if !loaded {
+		key := name
+		metricsMap.Set(key, expvar.Func(func() any {
+			if v, ok := counters.Load(key); ok {
+				return v.(*atomic.Int64).Load()
+			}
+			return int64(0)
+		}))
+	}
+}
+
 // LoadCounter retourne la valeur courante du compteur nomme (0 si absent).
 // Threadsafe ; utile pour tests et snapshots.
 func LoadCounter(name string) int64 {

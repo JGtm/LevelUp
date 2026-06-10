@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/sync/invariants"
 )
 
@@ -28,6 +29,7 @@ func (r *ServiceRegistry) RunDataInvariants(ctx context.Context, titleSlug strin
 	if err != nil {
 		return resp, err
 	}
+	totalFail, totalWarn := 0, 0
 	for _, p := range players {
 		report := domain.PlayerInvariantsReport{
 			PlayerSlug: p.PlayerSlug,
@@ -36,7 +38,18 @@ func (r *ServiceRegistry) RunDataInvariants(ctx context.Context, titleSlug strin
 			Violations: []domain.InvariantViolation{},
 		}
 		r.fillPlayerInvariants(ctx, titleSlug, &report)
+		totalFail += report.FailCount
+		totalWarn += report.WarnCount
 		resp.Reports = append(resp.Reports, report)
+	}
+	// Compteurs expvar (pattern RunDualRowSentinel) : volumétrie observable
+	// sans ouvrir le dashboard. *_last = état du DERNIER run (pas un cumul).
+	observability.AddInt("invariants_runs_total", 1)
+	observability.SetInt("invariants_fail_last", int64(totalFail))
+	observability.SetInt("invariants_warn_last", int64(totalWarn))
+	if totalFail > 0 {
+		slog.WarnContext(ctx, "admin_invariants: violations FAIL détectées",
+			"title", titleSlug, "fail_total", totalFail, "warn_total", totalWarn)
 	}
 	return resp, nil
 }

@@ -318,11 +318,13 @@ func checkLUSRV2Orphan(ctx context.Context, playerDB, _ *sql.DB, _ string) (*Vio
 
 // ─── I10 — skill_rank_missing (WARN) ────────────────────────────────────────
 //
-// Contrat souple : tout match du joueur devrait porter une row match_skill_rank
-// (LUSR pour le social, CSR pour le ranked). WARN car certains contextes
-// (PvE/Firefight, DNF précoces) peuvent légitimement en manquer ; une
-// CROISSANCE du count signale en revanche la classe « désync watermark v2 »
-// (watermark shared avancé sans row player DB, incident 2026-06-03).
+// Contrat souple : tout match PvP du joueur devrait porter une row
+// match_skill_rank (LUSR pour le social, CSR pour le ranked). Les matchs
+// Firefight/PvE (mode_category='firefight') sont EXCLUS du périmètre — pas de
+// rating sur le PvE. WARN car des cas légitimes subsistent (matchs non
+// 2-équipes, déséquilibres skippés par EP) ; une CROISSANCE du count signale
+// en revanche la classe « désync watermark v2 » (watermark shared avancé sans
+// row player DB, incident 2026-06-03).
 func checkSkillRankMissing(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (*Violation, error) {
 	rated, err := collectIDs(ctx, playerDB, `SELECT DISTINCT match_id FROM match_skill_rank`)
 	if err != nil {
@@ -332,8 +334,13 @@ func checkSkillRankMissing(ctx context.Context, playerDB, sharedDB *sql.DB, xuid
 	for _, id := range rated {
 		ratedSet[id] = struct{}{}
 	}
-	sharedIDs, err := collectIDs(ctx, sharedDB,
-		`SELECT DISTINCT match_id FROM match_participants WHERE xuid || '' = ? AND match_id IS NOT NULL`, xuid)
+	sharedIDs, err := collectIDs(ctx, sharedDB, `
+		SELECT DISTINCT p.match_id
+		FROM match_participants p
+		JOIN match_registry r ON r.match_id = p.match_id
+		WHERE p.xuid || '' = ?
+		  AND p.match_id IS NOT NULL
+		  AND COALESCE(r.mode_category, '') <> 'firefight'`, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("invariants/skill_rank_missing: shared query: %w", err)
 	}
@@ -351,7 +358,7 @@ func checkSkillRankMissing(ctx context.Context, playerDB, sharedDB *sql.DB, xuid
 		Severity:    SeverityWarn,
 		Count:       len(missing),
 		Sample:      capSample(missing),
-		Description: "matchs du joueur sans row match_skill_rank (PvE toléré ; croissance = désync watermark LUSR)",
+		Description: "matchs PvP du joueur sans row match_skill_rank (firefight exclu ; croissance = désync watermark LUSR)",
 	}, nil
 }
 
@@ -432,28 +439,54 @@ func checkPersonalScoreAwardsMissing(ctx context.Context, playerDB, _ *sql.DB, _
 // ─── I13 — xuid_alias_missing (WARN) ────────────────────────────────────────
 //
 // Contrat : tout xuid humain présent dans match_participants a un alias
-// gamertag dans xuid_aliases (sinon l'UI retombe sur le xuid brut — classe
-// « GUID/XUID partout »). Les bots (préfixe bid() sont exclus.
-func checkXuidAliasMissing(ctx context.Context, _ *sql.DB, sharedDB *sql.DB, _ string) (*Violation, error) {
-	ids, err := collectIDs(ctx, sharedDB, `
-		SELECT DISTINCT p.xuid || '' AS xid
-		FROM match_participants p
-		LEFT JOIN xuid_aliases a ON a.xuid || '' = p.xuid || ''
-		WHERE a.xuid IS NULL
-		  AND p.xuid IS NOT NULL
-		  AND NOT starts_with(p.xuid || '', 'bid(')`)
+// gamertag (sinon l'UI retombe sur le xuid brut — classe « GUID/XUID
+// partout »). Les bots (préfixe bid() sont exclus.
+//
+// Source canonique post-ADR-0008 : la DB GLOBALE (global.xuid_aliases),
+// attachée AS global sur la connexion player par le pool (l'attache shared a
+// été retirée de cette connexion — ADR 0016 commit 9c.5 — d'où le diff Go
+// entre les deux connexions : participants via sharedDB, alias via playerDB).
+// Fallback : si l'ATTACH global est absent (connexion nue hors pool), on
+// retombe sur la table legacy shared.xuid_aliases.
+func checkXuidAliasMissing(ctx context.Context, playerDB, sharedDB *sql.DB, _ string) (*Violation, error) {
+	participants, err := collectIDs(ctx, sharedDB, `
+		SELECT DISTINCT xuid || '' AS xid
+		FROM match_participants
+		WHERE xuid IS NOT NULL
+		  AND NOT starts_with(xuid || '', 'bid(')`)
 	if err != nil {
-		return nil, fmt.Errorf("invariants/xuid_alias_missing: %w", err)
+		return nil, fmt.Errorf("invariants/xuid_alias_missing: participants query: %w", err)
 	}
-	if len(ids) == 0 {
+
+	source := "global"
+	aliases, err := collectIDs(ctx, playerDB, `SELECT xuid || '' FROM global.xuid_aliases`)
+	if err != nil {
+		// ATTACH global absent (connexion hors pool) → fallback legacy shared.
+		source = "shared_legacy"
+		aliases, err = collectIDs(ctx, sharedDB, `SELECT xuid || '' FROM xuid_aliases`)
+		if err != nil {
+			return nil, fmt.Errorf("invariants/xuid_alias_missing: aliases query: %w", err)
+		}
+	}
+	aliasSet := make(map[string]struct{}, len(aliases))
+	for _, id := range aliases {
+		aliasSet[id] = struct{}{}
+	}
+	var missing []string
+	for _, id := range participants {
+		if _, ok := aliasSet[id]; !ok {
+			missing = append(missing, id)
+		}
+	}
+	if len(missing) == 0 {
 		return nil, nil
 	}
 	return &Violation{
 		Key:         "xuid_alias_missing",
 		Severity:    SeverityWarn,
-		Count:       len(ids),
-		Sample:      capSample(ids),
-		Description: "xuids humains de match_participants sans alias gamertag (affichage xuid brut)",
+		Count:       len(missing),
+		Sample:      capSample(missing),
+		Description: "xuids humains de match_participants sans alias gamertag (source " + source + ")",
 	}, nil
 }
 

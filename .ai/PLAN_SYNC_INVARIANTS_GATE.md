@@ -88,10 +88,12 @@ API : `invariants.CheckPlayer(ctx, playerDB, sharedDB, xuid) (Report, error)` ;
   cycles (auto-backfill convergent, aucun backfill manuel). Validé rouge→vert
   par le gate (assertion stricte psa_missing=0 dans le scénario delta-skip) +
   compteurs expvar convergence_psa_pending/processed_total.
-- [ ] Scénario gate concurrent (errgroup) plutôt que séquentiel, pour couvrir
-  la course réelle des watchers.
-- [ ] Promotion WARN→FAIL de `skill_rank_missing` une fois la tolérance PvE
-  affinée (filtre lifecycle/playlist).
+- [x] Scénario gate concurrent (`TestGate_ConcurrentSquadSync_Converges`) :
+  3 RunDelta simultanés + passe d'idempotence + registry unique + zéro FAIL.
+- [x] Tolérance PvE de `skill_rank_missing` (exclusion mode_category=firefight).
+  Promotion WARN→FAIL toujours différée : le reliquat légitime (matchs
+  non-2-équipes / déséquilibres skippés EP, 5-11 par joueur post-backfill)
+  n'est pas distinguable par les colonnes actuelles.
 
 ### Phase 4 — LIVRÉE (2026-06-10) : dashboard monitoring admin
 
@@ -110,12 +112,24 @@ un **dashboard monitoring dans la partie admin** de l'app à la place.
   skill_rank_missing → backlog watermark LUSR ; xuid_alias_missing ×113 →
   caveat ADR-0008 ; pair_name_uuid ×12 → matchs du 09/06).
 
-Reste (v2) :
-- [ ] Compteurs expvar `levelup.invariants.*`.
-- [ ] Migrer `xuid_alias_missing` vers la DB globale (source canonique
-  post-ADR-0008) quand le handle sera câblé dans le runner.
-- [ ] Tendance (count précédent vs courant) pour repérer la croissance des
-  WARN sans historique externe.
+Reste (v2) — LIVRÉ 2026-06-10 (passe 5) :
+- [x] Compteurs expvar : `invariants_runs_total` + gauges `invariants_fail_last`
+  / `invariants_warn_last` (`observability.SetInt` ajouté) + WARN log si FAIL.
+- [x] `xuid_alias_missing` lit `global.xuid_aliases` via la conn player
+  (fallback legacy étiqueté). Découverte : les 113 manquants sont absents des
+  DEUX sources → vrai backlog d'alias (pas du bruit).
+- [x] Tendance : snapshot localStorage par (joueur, invariant), delta +N/-N
+  affiché au run suivant.
+
+## Backlog données restant (hors code — actions ponctuelles)
+
+- [x] `lusr_v2_canonical_backfill --commit` exécuté (2436 matchs, 4 joueurs).
+- [x] `backfill_registry_names` exécuté (24 noms, pair_name_uuid 12→1).
+- [ ] Backlog alias : 113 xuids d'adversaires sans alias ni en global ni en
+  legacy — backfill dédié à concevoir (résolution depuis les JSONs de match
+  en cache sync_cache, sinon API). Sans urgence : WARN visible au dashboard.
+- [ ] `psa_missing` (34/79/88) : se résorbe automatiquement par cycles de
+  convergence dès que le serveur dev tourne (50/cycle).
 
 ## Garde-fous
 
