@@ -53,7 +53,10 @@ type WorldStatsAggregatorConfig struct {
 	MaxPages int
 	// StopAfterNonTarget : arrête la pagination après N matchs consécutifs hors
 	// TargetSeasons (historique chronologique décroissant → une fois sous les saisons
-	// cibles on ne remonte plus). 0 = défaut 50. Ignoré si TargetSeasons vide.
+	// cibles on ne remonte plus). 0 = défaut 50. **Négatif = désactivé** (scan
+	// jusqu'à MaxPages — requis pour backfiller une VIEILLE saison, sinon l'arrêt
+	// se déclenche sur les matchs récents avant d'atteindre la cible). Ignoré si
+	// TargetSeasons vide.
 	StopAfterNonTarget int
 	// Concurrency : nb de joueurs traités en parallèle. 0 = défaut 8.
 	Concurrency int
@@ -63,8 +66,8 @@ func (c *WorldStatsAggregatorConfig) withDefaults() {
 	if c.MaxPages <= 0 {
 		c.MaxPages = 40
 	}
-	if c.StopAfterNonTarget <= 0 {
-		c.StopAfterNonTarget = 50
+	if c.StopAfterNonTarget == 0 {
+		c.StopAfterNonTarget = 50 // négatif laissé tel quel = désactivé (backfill)
 	}
 	if c.Concurrency <= 0 {
 		c.Concurrency = 8
@@ -134,7 +137,7 @@ func (a *WorldStatsAggregator) collectPlayerMatches(ctx context.Context, xuid st
 			nonTarget = 0
 			collected = append(collected, st)
 		}
-		if len(a.cfg.TargetSeasons) > 0 && nonTarget >= a.cfg.StopAfterNonTarget {
+		if a.cfg.StopAfterNonTarget > 0 && len(a.cfg.TargetSeasons) > 0 && nonTarget >= a.cfg.StopAfterNonTarget {
 			break
 		}
 		if len(hist) < worldMatchPageSize {
