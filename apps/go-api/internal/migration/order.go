@@ -96,6 +96,7 @@ var canonicalOrder = []string{
 	"create_prestige_player_schema",                           // player
 	"create_improvement_campaign_schema",                      // player
 	"create_progression_player_schema",                        // player
+	"player_match_enrichment_psa_checked_v1",                  // player
 	"rebuild_career_progression_defeat_art_corruption",        // player
 	"repair_player_match_enrichment_primary_key",              // player
 	"repair_match_citations_primary_key",                      // player
@@ -159,6 +160,7 @@ var canonicalOrder = []string{
 	"player_records_history_previous_cols_v1",                 // shared_social
 	"extend_player_records_with_window",                       // shared_social
 	"create_world_csr_leaderboard_snapshots",                  // shared
+	"world_csr_leaderboard_latest_by_batch",                   // shared
 }
 
 var canonicalIndex = func() map[string]int {

@@ -77,10 +77,19 @@ func CheckPlayer(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (
 	rep := Report{XUID: xuid}
 
 	checks := []func(context.Context, *sql.DB, *sql.DB, string) (*Violation, error){
+		// FAIL — contrats durs.
 		checkEnrichmentMissing,
 		checkParticipantsWithoutRegistry,
+		checkRegistryWithoutParticipants,
+		checkMedalsWithoutRegistry,
+		checkLUSRV2Orphan,
+		// WARN — dérives tolérées/documentées, à surveiller en tendance.
 		checkSessionMissing,
 		checkPerformanceScoreMissing,
+		checkSkillRankMissing,
+		checkCitationsMissing,
+		checkPersonalScoreAwardsMissing,
+		checkXuidAliasMissing,
 		checkPairNameUUID,
 	}
 	for _, check := range checks {
@@ -228,6 +237,223 @@ func checkPairNameUUID(ctx context.Context, _ *sql.DB, sharedDB *sql.DB, _ strin
 		Count:       len(ids),
 		Sample:      capSample(ids),
 		Description: "match_registry.pair_name est un UUID brut (catalogue assets non résolu)",
+	}, nil
+}
+
+// ─── I7 — registry_without_participants (FAIL) ──────────────────────────────
+//
+// Contrat : tout match_registry a au moins une row match_participants.
+// Un registre sans participants = écriture partielle (classe ART, miroir de I5).
+func checkRegistryWithoutParticipants(ctx context.Context, _ *sql.DB, sharedDB *sql.DB, _ string) (*Violation, error) {
+	ids, err := collectIDs(ctx, sharedDB, `
+		SELECT r.match_id
+		FROM match_registry r
+		LEFT JOIN match_participants p ON p.match_id = r.match_id
+		WHERE p.match_id IS NULL`)
+	if err != nil {
+		return nil, fmt.Errorf("invariants/registry_without_participants: %w", err)
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	return &Violation{
+		Key:         "registry_without_participants",
+		Severity:    SeverityFail,
+		Count:       len(ids),
+		Sample:      capSample(ids),
+		Description: "rows match_registry sans aucun participant (écriture partielle)",
+	}, nil
+}
+
+// ─── I8 — medals_without_registry (FAIL) ────────────────────────────────────
+//
+// Contrat : toute row medals_earned référence un match_registry existant.
+func checkMedalsWithoutRegistry(ctx context.Context, _ *sql.DB, sharedDB *sql.DB, _ string) (*Violation, error) {
+	ids, err := collectIDs(ctx, sharedDB, `
+		SELECT DISTINCT m.match_id
+		FROM medals_earned m
+		LEFT JOIN match_registry r ON r.match_id = m.match_id
+		WHERE r.match_id IS NULL`)
+	if err != nil {
+		return nil, fmt.Errorf("invariants/medals_without_registry: %w", err)
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	return &Violation{
+		Key:         "medals_without_registry",
+		Severity:    SeverityFail,
+		Count:       len(ids),
+		Sample:      capSample(ids),
+		Description: "rows medals_earned orphelines (match_id absent de match_registry)",
+	}, nil
+}
+
+// ─── I9 — lusr_v2_orphan (FAIL) ─────────────────────────────────────────────
+//
+// Contrat dual-row LUSR v2 (mêmes sémantiques que RunDualRowSentinel) : un
+// match noté porte soit LUSR seul (héritage v1), soit LUSR + LUSR_V2 (nominal
+// post-bascule). LUSR_V2 seul = bug d'écriture canonique.
+func checkLUSRV2Orphan(ctx context.Context, playerDB, _ *sql.DB, _ string) (*Violation, error) {
+	ids, err := collectIDs(ctx, playerDB, `
+		SELECT match_id
+		FROM match_skill_rank
+		GROUP BY match_id
+		HAVING SUM(CASE WHEN rating_type = 'LUSR_V2' THEN 1 ELSE 0 END) > 0
+		   AND SUM(CASE WHEN rating_type = 'LUSR' THEN 1 ELSE 0 END) = 0`)
+	if err != nil {
+		return nil, fmt.Errorf("invariants/lusr_v2_orphan: %w", err)
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	return &Violation{
+		Key:         "lusr_v2_orphan",
+		Severity:    SeverityFail,
+		Count:       len(ids),
+		Sample:      capSample(ids),
+		Description: "matchs avec row LUSR_V2 sans row LUSR (contrat dual-row violé, cf. RunDualRowSentinel)",
+	}, nil
+}
+
+// ─── I10 — skill_rank_missing (WARN) ────────────────────────────────────────
+//
+// Contrat souple : tout match du joueur devrait porter une row match_skill_rank
+// (LUSR pour le social, CSR pour le ranked). WARN car certains contextes
+// (PvE/Firefight, DNF précoces) peuvent légitimement en manquer ; une
+// CROISSANCE du count signale en revanche la classe « désync watermark v2 »
+// (watermark shared avancé sans row player DB, incident 2026-06-03).
+func checkSkillRankMissing(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (*Violation, error) {
+	rated, err := collectIDs(ctx, playerDB, `SELECT DISTINCT match_id FROM match_skill_rank`)
+	if err != nil {
+		return nil, fmt.Errorf("invariants/skill_rank_missing: player query: %w", err)
+	}
+	ratedSet := make(map[string]struct{}, len(rated))
+	for _, id := range rated {
+		ratedSet[id] = struct{}{}
+	}
+	sharedIDs, err := collectIDs(ctx, sharedDB,
+		`SELECT DISTINCT match_id FROM match_participants WHERE xuid || '' = ? AND match_id IS NOT NULL`, xuid)
+	if err != nil {
+		return nil, fmt.Errorf("invariants/skill_rank_missing: shared query: %w", err)
+	}
+	var missing []string
+	for _, id := range sharedIDs {
+		if _, ok := ratedSet[id]; !ok {
+			missing = append(missing, id)
+		}
+	}
+	if len(missing) == 0 {
+		return nil, nil
+	}
+	return &Violation{
+		Key:         "skill_rank_missing",
+		Severity:    SeverityWarn,
+		Count:       len(missing),
+		Sample:      capSample(missing),
+		Description: "matchs du joueur sans row match_skill_rank (PvE toléré ; croissance = désync watermark LUSR)",
+	}, nil
+}
+
+// ─── I11 — citations_missing (WARN) ─────────────────────────────────────────
+//
+// Contrat souple : un match où le joueur a gagné des médailles devrait avoir
+// des rows match_citations (pipeline BackfillMatchCitations). WARN : dépend de
+// metadata.citation_mappings (absent sur env minimal) et du passage du
+// post-sync citations.
+func checkCitationsMissing(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (*Violation, error) {
+	cited, err := collectIDs(ctx, playerDB, `SELECT DISTINCT match_id FROM match_citations`)
+	if err != nil {
+		return nil, fmt.Errorf("invariants/citations_missing: player query: %w", err)
+	}
+	citedSet := make(map[string]struct{}, len(cited))
+	for _, id := range cited {
+		citedSet[id] = struct{}{}
+	}
+	medaled, err := collectIDs(ctx, sharedDB,
+		`SELECT DISTINCT match_id FROM medals_earned WHERE xuid || '' = ?`, xuid)
+	if err != nil {
+		return nil, fmt.Errorf("invariants/citations_missing: shared query: %w", err)
+	}
+	var missing []string
+	for _, id := range medaled {
+		if _, ok := citedSet[id]; !ok {
+			missing = append(missing, id)
+		}
+	}
+	if len(missing) == 0 {
+		return nil, nil
+	}
+	return &Violation{
+		Key:         "citations_missing",
+		Severity:    SeverityWarn,
+		Count:       len(missing),
+		Sample:      capSample(missing),
+		Description: "matchs avec médailles mais sans match_citations (pipeline citations non passé)",
+	}, nil
+}
+
+// ─── I12 — psa_missing (WARN) ───────────────────────────────────────────────
+//
+// Contrat souple : un match enrichi devrait avoir ses personal_score_awards
+// (écrits par le traitement per-match — PAS convergés après delta-skip à date,
+// cf. audit Phase 3 du plan). Alimente l'axe « objectif » du radar synergie.
+func checkPersonalScoreAwardsMissing(ctx context.Context, playerDB, _ *sql.DB, _ string) (*Violation, error) {
+	enriched, err := collectIDs(ctx, playerDB, `SELECT match_id FROM player_match_enrichment`)
+	if err != nil {
+		return nil, fmt.Errorf("invariants/psa_missing: enrichment query: %w", err)
+	}
+	awarded, err := collectIDs(ctx, playerDB, `SELECT DISTINCT match_id FROM personal_score_awards`)
+	if err != nil {
+		return nil, fmt.Errorf("invariants/psa_missing: psa query: %w", err)
+	}
+	awardedSet := make(map[string]struct{}, len(awarded))
+	for _, id := range awarded {
+		awardedSet[id] = struct{}{}
+	}
+	var missing []string
+	for _, id := range enriched {
+		if _, ok := awardedSet[id]; !ok {
+			missing = append(missing, id)
+		}
+	}
+	if len(missing) == 0 {
+		return nil, nil
+	}
+	return &Violation{
+		Key:         "psa_missing",
+		Severity:    SeverityWarn,
+		Count:       len(missing),
+		Sample:      capSample(missing),
+		Description: "matchs enrichis sans personal_score_awards (delta-skip non convergé pour les PSA)",
+	}, nil
+}
+
+// ─── I13 — xuid_alias_missing (WARN) ────────────────────────────────────────
+//
+// Contrat : tout xuid humain présent dans match_participants a un alias
+// gamertag dans xuid_aliases (sinon l'UI retombe sur le xuid brut — classe
+// « GUID/XUID partout »). Les bots (préfixe bid() sont exclus.
+func checkXuidAliasMissing(ctx context.Context, _ *sql.DB, sharedDB *sql.DB, _ string) (*Violation, error) {
+	ids, err := collectIDs(ctx, sharedDB, `
+		SELECT DISTINCT p.xuid || '' AS xid
+		FROM match_participants p
+		LEFT JOIN xuid_aliases a ON a.xuid || '' = p.xuid || ''
+		WHERE a.xuid IS NULL
+		  AND p.xuid IS NOT NULL
+		  AND NOT starts_with(p.xuid || '', 'bid(')`)
+	if err != nil {
+		return nil, fmt.Errorf("invariants/xuid_alias_missing: %w", err)
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	return &Violation{
+		Key:         "xuid_alias_missing",
+		Severity:    SeverityWarn,
+		Count:       len(ids),
+		Sample:      capSample(ids),
+		Description: "xuids humains de match_participants sans alias gamertag (affichage xuid brut)",
 	}, nil
 }
 

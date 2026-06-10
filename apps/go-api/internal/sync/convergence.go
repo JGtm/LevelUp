@@ -57,13 +57,78 @@ func selectMatchesMissingWeapons(ctx context.Context, playerDB, sharedDB *sql.DB
 }
 
 // hasConvergenceBacklog indique s'il reste des matchs à converger (enrichment
-// manquant, events OU weapons incomplets). Sert à déclencher le post-sync même
-// quand aucun nouveau match n'a été inséré : le sync n'a pas "fini" tant que
-// tout n'est pas enrichi.
+// manquant, PSA non tentés, events OU weapons incomplets). Sert à déclencher le
+// post-sync même quand aucun nouveau match n'a été inséré : le sync n'a pas
+// "fini" tant que tout n'est pas enrichi.
 func hasConvergenceBacklog(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) bool {
 	return countSharedMatchesMissingEnrichment(ctx, playerDB, sharedDB, xuid) > 0 ||
+		len(selectMatchesMissingPSA(ctx, playerDB)) > 0 ||
 		len(selectMatchesMissingEvents(ctx, playerDB, sharedDB, xuid)) > 0 ||
 		len(selectMatchesMissingWeapons(ctx, playerDB, sharedDB, xuid)) > 0
+}
+
+// selectMatchesMissingPSA retourne les matchs enrichis dont les
+// personal_score_awards n'ont JAMAIS été tentés (psa_checked_at IS NULL) et
+// qui n'ont aucune row PSA. Cas nominal : matchs delta-skippés (insérés en
+// shared par un coéquipier) — seul le traitement per-match écrivait les PSA,
+// confirmé par le gate invariants (psa_missing, 2026-06-10).
+//
+// Le marqueur terminal psa_checked_at garantit qu'un match sans PersonalScores
+// extractibles (NameIds inconnus, vieux matchs) n'est tenté qu'UNE fois.
+// Borné par convergenceHorizon comme les autres sélections.
+func selectMatchesMissingPSA(ctx context.Context, playerDB *sql.DB) []string {
+	rows, err := playerDB.QueryContext(ctx, `
+		SELECT e.match_id
+		FROM player_match_enrichment e
+		WHERE e.psa_checked_at IS NULL
+		  AND e.match_id NOT IN (SELECT DISTINCT match_id FROM personal_score_awards)
+		LIMIT ?`, convergenceHorizon)
+	if err != nil {
+		slog.WarnContext(ctx, "convergence: sélection PSA manquants échouée", "err", err)
+		return nil
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if scanErr := rows.Scan(&id); scanErr == nil {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+// convergePSA re-fetch le JSON match des matchs sans PSA et extrait les
+// PersonalScores du joueur (ExtractPersonalScoreAwards + InsertPersonalScoreAwards,
+// idempotent DELETE+INSERT). Stampe psa_checked_at dans TOUS les cas où le
+// fetch a réussi (même 0 award) — état terminal. En cas d'échec fetch, pas de
+// stamp : retenté au cycle suivant.
+func convergePSA(ctx context.Context, playerDB *sql.DB, client HaloClient, xuid string, ids []string) int {
+	done := 0
+	for _, mid := range ids {
+		if ctx.Err() != nil {
+			break
+		}
+		matchJSON, err := client.GetMatchStats(ctx, mid)
+		if err != nil {
+			slog.WarnContext(ctx, "convergence: PSA fetch échoué", "match_id", mid, "err", err)
+			continue
+		}
+		awards := ExtractPersonalScoreAwards(matchJSON, mid, xuid)
+		if len(awards) > 0 {
+			if err := InsertPersonalScoreAwards(ctx, playerDB, mid, xuid, awards); err != nil {
+				slog.WarnContext(ctx, "convergence: PSA insert échoué", "match_id", mid, "err", err)
+				continue
+			}
+		}
+		if _, err := playerDB.ExecContext(ctx,
+			`UPDATE player_match_enrichment SET psa_checked_at = now() WHERE match_id = ?`, mid); err != nil {
+			slog.WarnContext(ctx, "convergence: PSA stamp échoué", "match_id", mid, "err", err)
+			continue
+		}
+		done++
+	}
+	return done
 }
 
 // countSharedMatchesMissingEnrichment compte les matchs présents dans

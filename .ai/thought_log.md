@@ -22927,3 +22927,23 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
   4. Fixture `TestConvergence_NothingWhenAllComplete` corrigée (« complet » inclut désormais l'enrichment) + nouveau `TestConvergence_BacklogWhenEnrichmentMissing`.
 - **Piège rencontré** : mock `GetMatchHistory` ignore `start` (rejoue la même page) → RunDelta insérait 5× le même match avec MaxMatches=5 ; borné à MaxMatches=1 dans les tests gate.
 - **Conclusion / prochaine étape** : Phases 3-4 du plan (invariant LUSR dual-row unifié, audit PSA delta-skip, scénario concurrent errgroup, sentinelle runtime + notification in-app). À commit (sur autorisation).
+
+#### Passe 2 (même session) — extension du catalogue d'invariants : 5 → 12
+
+- **Demande user** : couvrir davantage d'invariants depuis `.ai/ENRICHMENTS_CATALOG.md` ; Phase 4 réorientée — PAS de notification in-app (« on ne peut rien y faire ») mais un **dashboard monitoring admin**.
+- **+7 invariants** : FAIL → `registry_without_participants`, `medals_without_registry`, `lusr_v2_orphan` (contrat dual-row unifié avec RunDualRowSentinel) ; WARN → `skill_rank_missing` (classe désync watermark LUSR 2026-06-03), `citations_missing`, `psa_missing`, `xuid_alias_missing` (classe « GUID/XUID partout », caveat : vérifie shared.xuid_aliases, source canonique = DB globale post-ADR-0008, à migrer quand le handle sera câblé).
+- **Découverte via le gate** : `psa_missing` ressort pour les users delta-skippés du test → CONFIRME que `personal_score_awards` ne converge pas après delta-skip (seul le traitement per-match les écrit). Axe « objectif » du radar synergie dégradé pour ces matchs. Fix de convergence PSA à chiffrer (Phase 3 du plan).
+- **Validation** : gate vert avec les 12 invariants (WARNs informatifs loggés, zéro FAIL) ; suite complète `-tags=integration ./internal/sync/...` verte (84s) ; vet OK.
+- **Prochaine étape** : Phase 4 dashboard admin (`GET /api/v1/admin/invariants` + section « Intégrité des données ») ; fix convergence PSA ; scénario gate concurrent.
+
+#### Passe 3 (même session) — convergence PSA : fix structurel validé rouge→vert par le gate
+
+- **Question user** : « le fix PSA c'est un backfill ou du code ? » → réponse : du CODE convergent (directive sync convergent autonome) — une fois livré, le rattrapage historique se fait seul par cycles bornés, aucun backfill manuel.
+- **Livré** :
+  1. Migration `player_match_enrichment_psa_checked_v1` (+ colonne au bootstrap `schema.go`) — marqueur terminal `psa_checked_at` : un match sans PersonalScores extractibles n'est fetché qu'une fois (pas de boucle infinie de re-fetch).
+  2. `selectMatchesMissingPSA` (enrichment sans PSA et jamais tenté, borné convergenceHorizon) + `convergePSA` (GetMatchStats → ExtractPersonalScoreAwards → InsertPersonalScoreAwards idempotent → stamp) dans `convergence.go` ; backlog PSA intégré à `hasConvergenceBacklog` ; étape 1.56 câblée dans `runPostSyncPipeline` + compteurs expvar `convergence_psa_pending/processed_total`.
+  3. Gate durci : fixture `makeSquadMatchJSON` porte des PersonalScores (NameId connu `killed_player`) et le test asserte STRICTEMENT psa_missing=0 pour les 3 joueurs — preuve rouge→vert (logs : `convergence PSA selected=1 processed=1` pour les 2 joueurs delta-skippés).
+  4. Tests convergence : fixture « tout complet » stampe psa_checked_at + nouveau `TestConvergence_BacklogWhenPSANeverChecked` (sélection → stamp → terminal).
+- **Pièges rencontrés** : (a) commentaire SQL avec « ; » dans schema.go → le splitter de statements coupe dedans (« syntax error at end of input ») — reformulé sans ponctuation ; (b) `canonicalOrder` (migration/order.go) : ma migration insérée à sa position d'init réelle (après les fichiers prestige/progression, pe<pr<ps) + réparation d'un oubli PRÉEXISTANT de la branche leaderboard (`world_csr_leaderboard_latest_by_batch` absent de la liste → TestCanonicalOrderCompleteness était déjà rouge).
+- **Validation** : `go test -tags=integration ./internal/sync/... ./internal/migration/` TOUT VERT ; `go build ./...` OK ; vet OK.
+- **Prochaine étape** : Phase 4 — dashboard admin « Intégrité des données » (`GET /api/v1/admin/invariants`).

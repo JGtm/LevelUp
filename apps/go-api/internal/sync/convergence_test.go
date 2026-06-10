@@ -79,14 +79,43 @@ func TestConvergence_NothingWhenAllComplete(t *testing.T) {
 	seedConvergenceMatch(t, shared, "done-1", xuid, true, MBitWeaponKills)
 	seedConvergenceMatch(t, shared, "done-2", xuid, true, MBitWeaponKills)
 	for _, id := range []string{"done-1", "done-2"} {
+		// psa_checked_at non-NULL : la convergence PSA est terminale pour ces matchs.
 		if _, err := player.Exec(
-			`INSERT INTO player_match_enrichment (match_id) VALUES (?)`, id); err != nil {
+			`INSERT INTO player_match_enrichment (match_id, psa_checked_at) VALUES (?, now())`, id); err != nil {
 			t.Fatalf("seed enrichment %s: %v", id, err)
 		}
 	}
 
 	if backlog := hasConvergenceBacklog(context.Background(), player, shared, xuid); backlog {
 		t.Fatal("hasConvergenceBacklog doit être false quand tout est complet")
+	}
+}
+
+// TestConvergence_BacklogWhenPSANeverChecked : un match enrichi sans PSA et
+// jamais tenté (psa_checked_at NULL) déclenche le backlog ; une fois stampé,
+// il devient terminal même sans aucune row PSA.
+func TestConvergence_BacklogWhenPSANeverChecked(t *testing.T) {
+	shared := openBatchPathTestDB(t, migration.TargetShared)
+	player := openBatchPathTestDB(t, migration.TargetPlayer)
+	const xuid = "x1"
+
+	seedConvergenceMatch(t, shared, "psa-1", xuid, true, MBitWeaponKills)
+	if _, err := player.Exec(
+		`INSERT INTO player_match_enrichment (match_id) VALUES ('psa-1')`); err != nil {
+		t.Fatalf("seed enrichment: %v", err)
+	}
+
+	if got := selectMatchesMissingPSA(context.Background(), player); len(got) != 1 || got[0] != "psa-1" {
+		t.Fatalf("selectMatchesMissingPSA = %v (attendu [psa-1])", got)
+	}
+
+	// Stamp terminal → plus jamais sélectionné, même sans row PSA.
+	if _, err := player.Exec(
+		`UPDATE player_match_enrichment SET psa_checked_at = now() WHERE match_id = 'psa-1'`); err != nil {
+		t.Fatalf("stamp: %v", err)
+	}
+	if got := selectMatchesMissingPSA(context.Background(), player); len(got) != 0 {
+		t.Fatalf("selectMatchesMissingPSA post-stamp = %v (attendu vide — état terminal)", got)
 	}
 }
 

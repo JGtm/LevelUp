@@ -46,6 +46,10 @@ CREATE TABLE IF NOT EXISTS player_match_enrichment (
     friends_xuids          VARCHAR,
     had_bot_teammate       BOOLEAN,
     is_excluded            BOOLEAN   DEFAULT FALSE,
+    -- Marqueur terminal de la convergence PSA (cf. convergePSA). NULL = jamais
+    -- tente. Non-NULL = JSON match fetche et extraction tentee (meme si 0 award).
+    -- Empeche le re-fetch infini des matchs sans PersonalScores extractibles.
+    psa_checked_at         TIMESTAMP,
     created_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
