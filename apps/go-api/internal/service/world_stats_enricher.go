@@ -11,7 +11,20 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 )
+
+// RankedPlaylistSet retourne l'ensemble des asset IDs des playlists CLASSÉES
+// actives. Sert à filtrer le backfill/enrichissement en ranked-only (l'historique
+// matchmaking mêle classé et social ; le classement mondial est CSR/classé).
+func RankedPlaylistSet() map[string]bool {
+	pls := rankedplaylists.Active()
+	out := make(map[string]bool, len(pls))
+	for _, pl := range pls {
+		out[pl.AssetID] = true
+	}
+	return out
+}
 
 // WorldStatsEnricher produit les stats agrégées des joueurs d'une saison donnée.
 type WorldStatsEnricher struct {
@@ -36,6 +49,9 @@ func (e *WorldStatsEnricher) EnrichSeason(ctx context.Context, season string, ga
 	}
 	cfg := e.baseCfg
 	cfg.TargetSeasons = map[string]bool{analysis.NormalizeSeasonID(season): true}
+	if len(cfg.RankedPlaylists) == 0 {
+		cfg.RankedPlaylists = RankedPlaylistSet() // ranked-only (cron : toujours classé)
+	}
 	agg := NewWorldStatsAggregator(e.src, e.resolver, cfg)
 	return agg.Run(ctx, gamertags)
 }

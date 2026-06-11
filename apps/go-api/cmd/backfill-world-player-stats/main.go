@@ -38,10 +38,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -54,7 +57,6 @@ import (
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability/logging"
 	authpkg "levelup/go-api/internal/platform/auth"
-	authpool "levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
@@ -72,6 +74,8 @@ type cliFlags struct {
 	flushEvery    int
 	force         bool
 	dryRun        bool
+	allTokens     bool
+	deep          bool
 }
 
 func main() {
@@ -98,16 +102,18 @@ func parseFlags() cliFlags {
 	var f cliFlags
 	flag.StringVar(&f.season, "season", "all", "saison CSR ciblée (ex: csrseason13-2) ou 'all'")
 	flag.StringVar(&f.tokenGamertag, "token-gamertag", "", "gamertag du compte dont le token sert à résoudre les xuid (PeopleHub) — requis")
-	flag.StringVar(&f.sharedDB, "shared-db", "data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb",
-		"chemin shared_matches_v2.duckdb (RW — stopper le serveur)")
-	flag.StringVar(&f.checkpoint, "checkpoint", "data/world_backfill_checkpoint.json", "fichier de reprise (JSON)")
+	flag.StringVar(&f.sharedDB, "shared-db", "",
+		"chemin shared_matches_v2.duckdb (RW — stopper le serveur) ; vide = dérivé de RepoRoot")
+	flag.StringVar(&f.checkpoint, "checkpoint", "", "fichier de reprise (JSON) ; vide = <RepoRoot>/data/world_backfill_checkpoint.json")
 	flag.IntVar(&f.limit, "limit", 0, "nb max de joueurs par saison (0 = tous)")
-	flag.IntVar(&f.concurrency, "concurrency", 6, "nb de joueurs traités en parallèle")
+	flag.IntVar(&f.concurrency, "concurrency", 4, "nb de joueurs traités en parallèle (↓ si 429)")
 	flag.IntVar(&f.maxPages, "max-pages", 80, "pages d'historique max/joueur (25 matchs/page ; ↑ pour vieilles saisons)")
-	flag.IntVar(&f.rps, "rps", 5, "requêtes/seconde par token du pool")
+	flag.IntVar(&f.rps, "rps", 3, "requêtes/seconde PAR token (Halo limite ~par IP : RPS effectif = rps × nb tokens ; ↓ si 429)")
 	flag.IntVar(&f.flushEvery, "flush-every", 20, "persiste + checkpoint tous les N joueurs")
 	flag.BoolVar(&f.force, "force", false, "ignore le checkpoint (repart de zéro)")
 	flag.BoolVar(&f.dryRun, "dry-run", false, "agrège sans écrire en base")
+	flag.BoolVar(&f.allTokens, "all-tokens", false, "fetch en round-robin sur TOUS les comptes db_profiles résolus (Halo limite ~par IP → gain borné, pas N×)")
+	flag.BoolVar(&f.deep, "deep", false, "désactive l'arrêt-anticipé (scan profond) — pour backfiller une VIEILLE saison ; combiner avec -max-pages élevé")
 	flag.Parse()
 	if strings.TrimSpace(f.tokenGamertag) == "" {
 		fatal("-token-gamertag est requis (compte dont le token résout les xuid PeopleHub)")
@@ -116,23 +122,40 @@ func parseFlags() cliFlags {
 }
 
 func run(ctx context.Context, cfg *config.AppConfig, f cliFlags) error {
-	// 1. Pool de tokens multi-tokens + client public round-robin.
-	pl, err := buildPool(ctx, cfg, f.rps)
-	if err != nil {
-		return err
+	// 1. Source de fetch Halo (résolution store-first + legacy, comme les backfills
+	// existants — pas de pool reconstruit). Single-token par défaut ; -all-tokens
+	// round-robine tous les comptes db_profiles résolus (gain borné par l'IP).
+	var src service.WorldMatchSource
+	if f.allTokens {
+		s, gts, e := buildMultiHaloSource(cfg, f.rps)
+		if e != nil {
+			return e
+		}
+		src = s
+		fmt.Printf("tokens: %d comptes résolus (round-robin) — %v\n", len(gts), gts)
+	} else {
+		s, e := buildHaloSource(cfg, f.tokenGamertag, f.rps)
+		if e != nil {
+			return e
+		}
+		src = s
+		fmt.Printf("token: %s résolu — single-token (auto-refresh)\n", f.tokenGamertag)
 	}
-	defer pl.Close()
-	fmt.Printf("pool: %d token(s) — fetch matchs multi-tokens (round-robin)\n", pl.Size())
-	pooled := syncpkg.NewPooledHaloClient(pl, "", "", f.rps)
 
-	// 2. Résolveur xuid PeopleHub (single-token, header RTA mémoïsé).
+	// 2. Résolveur xuid PeopleHub (même compte, header RTA mémoïsé).
 	resolver, err := buildResolver(cfg, f.tokenGamertag)
 	if err != nil {
 		return err
 	}
 
 	// 3. Shared DB en RW (serveur stoppé) + migrations.
-	db, err := openSharedRW(f.sharedDB)
+	sharedPath := f.sharedDB
+	if strings.TrimSpace(sharedPath) == "" {
+		sharedPath = titlepkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(titlepkg.DefaultSlug)
+	}
+	f.sharedDB = sharedPath // propagé aux flush ultérieurs
+	fmt.Printf("shared DB: %s\n", sharedPath)
+	db, err := openSharedRW(sharedPath)
 	if err != nil {
 		return fmt.Errorf("open shared DB (serveur stoppé ?): %w", err)
 	}
@@ -152,8 +175,13 @@ func run(ctx context.Context, cfg *config.AppConfig, f cliFlags) error {
 		return fmt.Errorf("aucune saison à traiter (snapshots CSR absents ?)")
 	}
 
-	// 5. Checkpoint (reprise).
+	// 5. Checkpoint (reprise). Défaut dérivé de RepoRoot (dossier garanti existant
+	// après MkdirAll au save), pas relatif au CWD.
+	if strings.TrimSpace(f.checkpoint) == "" {
+		f.checkpoint = filepath.Join(cfg.RepoRoot, "data", "world_backfill_checkpoint.json")
+	}
 	cp := loadCheckpoint(f.checkpoint, f.force)
+	fmt.Printf("checkpoint: %s\n", f.checkpoint)
 	fmt.Printf("saisons: %v%s\n", seasons, dryRunSuffix(f.dryRun))
 
 	// 6. Backfill saison par saison.
@@ -162,7 +190,7 @@ func run(ctx context.Context, cfg *config.AppConfig, f cliFlags) error {
 			fmt.Printf("[%s] déjà complète — skip\n", season)
 			continue
 		}
-		if err := backfillSeason(ctx, db, pooled, resolver, season, f, cp); err != nil {
+		if err := backfillSeason(ctx, db, src, resolver, season, f, cp); err != nil {
 			if ctx.Err() != nil {
 				fmt.Printf("\nArrêt demandé — checkpoint sauvegardé. Relancer la même commande pour reprendre.\n")
 				return nil
@@ -192,23 +220,55 @@ func backfillSeason(
 		return err
 	}
 	pending := cp.remaining(season, gamertags, f.limit)
-	total := len(gamertags)
-	already := total - len(pending)
+	already := cp.doneCount(season, gamertags)
 	if len(pending) == 0 {
-		cp.markCompleted(season)
-		_ = cp.save(f.checkpoint)
-		fmt.Printf("[%s] %d joueurs déjà traités — saison complète\n", season, already)
+		markSeasonCompleteIfFull(season, gamertags, f, cp, already)
+		fmt.Printf("[%s] %d/%d joueurs déjà traités\n", season, already, len(gamertags))
 		return nil
 	}
-	fmt.Printf("[%s] %d joueurs à traiter (%d déjà faits)\n", season, len(pending), already)
+	target := already + len(pending) // borne réaliste de ce run (respecte -limit)
+	fmt.Printf("[%s] %d joueurs à traiter (%d déjà faits, %d au total)\n",
+		season, len(pending), already, len(gamertags))
 
+	// Arrêt-anticipé ACTIVÉ par défaut : l'historique est chronologique décroissant,
+	// donc pour la saison courante on s'arrête dès qu'on enchaîne assez de matchs de
+	// la saison précédente → fetch borné à ~(matchs de la saison + 2 pages), pas 80
+	// pages. -deep le désactive pour les VIEILLES saisons (scan profond nécessaire
+	// pour les atteindre), au prix d'un gros volume.
+	stopAfter := 0 // 0 → défaut 50 (cf. withDefaults)
+	if f.deep {
+		stopAfter = -1
+	}
 	agg := service.NewWorldStatsAggregator(pooled, resolver, service.WorldStatsAggregatorConfig{
 		TargetSeasons:      map[string]bool{analysis.NormalizeSeasonID(season): true},
 		MaxPages:           f.maxPages,
-		StopAfterNonTarget: -1, // désactivé : on veut scanner jusqu'à la saison cible
+		StopAfterNonTarget: stopAfter,
+		RankedPlaylists:    service.RankedPlaylistSet(), // ranked-only (ignore le social)
 	})
 
-	return runSeasonWorkers(ctx, agg, season, pending, already, total, f, cp)
+	// Résolution xuid EN AMONT : un seul GetMatchStats par match traite alors TOUS
+	// les joueurs mondiaux présents (jusqu'à 8) au lieu de re-fetcher par joueur.
+	if prepErrs := agg.PrepareWorldPlayers(ctx, pending); len(prepErrs) > 0 {
+		fmt.Printf("[%s] %d xuid non résolus (joueurs skippés) — 1er: %v\n", season, len(prepErrs), prepErrs[0])
+	}
+
+	if err := runSeasonWorkers(ctx, agg, season, pending, already, target, f, cp); err != nil {
+		return err
+	}
+	// Saison complète UNIQUEMENT si tous ses gamertags sont traités (recompte après le run).
+	markSeasonCompleteIfFull(season, gamertags, f, cp, cp.doneCount(season, gamertags))
+	return nil
+}
+
+// markSeasonCompleteIfFull marque la saison complète seulement si TOUS ses
+// gamertags sont traités (jamais sur un sous-ensemble -limit) et hors dry-run.
+func markSeasonCompleteIfFull(season string, gamertags []string, f cliFlags, cp *checkpoint, doneCount int) {
+	if f.dryRun || doneCount < len(gamertags) {
+		return
+	}
+	cp.markCompleted(season)
+	_ = cp.save(f.checkpoint)
+	fmt.Printf("[%s] saison complète (%d joueurs)\n", season, len(gamertags))
 }
 
 // runSeasonWorkers orchestre le pool de workers + le collecteur (flush/checkpoint/
@@ -263,9 +323,13 @@ func collectSeason(
 			return err
 		}
 		rows += n
-		cp.markDone(season, batchGTs)
-		if err := cp.save(f.checkpoint); err != nil {
-			return err
+		// Dry-run = répétition à blanc : ne JAMAIS toucher le checkpoint (sinon un run
+		// réel ultérieur saute des joueurs jamais insérés).
+		if !f.dryRun {
+			cp.markDone(season, batchGTs)
+			if err := cp.save(f.checkpoint); err != nil {
+				return err
+			}
 		}
 		batch, batchGTs = nil, nil
 		return nil
@@ -289,19 +353,27 @@ func collectSeason(
 	if err := flush(); err != nil { // reliquat (inclut le cas arrêt anticipé)
 		return err
 	}
+	// La complétude de saison est décidée par le caller (backfillSeason), jamais ici :
+	// un run -limit ne traite qu'un sous-ensemble et ne doit pas marquer la saison complète.
 	if ctx.Err() == nil {
-		cp.markCompleted(season)
-		_ = cp.save(f.checkpoint)
-		fmt.Printf("\n[%s] terminée : %d joueurs, %d lignes, %d erreurs, %s\n",
-			season, done-already, rows, failures, time.Since(t0).Round(time.Second))
+		suffix := ""
+		if f.dryRun {
+			suffix = " [dry-run, non persisté]"
+		}
+		fmt.Printf("\n[%s] terminé : %d joueurs traités, %d lignes%s, %d erreurs, %s\n",
+			season, done-already, rows, suffix, failures, time.Since(t0).Round(time.Second))
 	}
 	return ctx.Err()
 }
 
-// flushBatch persiste un lot (no-op en dry-run).
+// flushBatch persiste un lot. En dry-run, ne touche pas la base mais retourne le
+// nombre de lignes qui SERAIENT insérées (validation utile de l'agrégation).
 func flushBatch(ctx context.Context, f cliFlags, batch []domain.WorldPlayerSeasonStats) (int, error) {
-	if f.dryRun || len(batch) == 0 {
+	if len(batch) == 0 {
 		return 0, nil
+	}
+	if f.dryRun {
+		return len(batch), nil
 	}
 	db, err := openSharedRW(f.sharedDB)
 	if err != nil {
@@ -317,81 +389,204 @@ func printProgress(season string, done, total, failures, rows int, elapsed time.
 		season, done, total, rows, failures, elapsed.Round(time.Second))
 }
 
-// ─── Construction des dépendances ───
+// ─── Construction des dépendances (single-token, store-first MSAL — pattern
+// canonique des backfills, cf. cmd/backfill-csr-history) ───
 
-// buildPool construit le pool de tokens multi-tokens (Discovery + Resolver + Pool).
-func buildPool(ctx context.Context, cfg *config.AppConfig, rps int) (authpool.Pool, error) {
-	provider := authpkg.NewMSALProvider()
-	pr := titlepkg.NewPathResolver(cfg.RepoRoot)
-	discovery := authpool.NewDiscovery(cfg, pr, titlepkg.DefaultSlug)
-	sources, err := discovery.Scan(ctx)
+// loadLegacyInputs lit le couple (refresh_token, msal_cache) du sync_meta de la
+// player DB — fallback canonique ADR 0023 quand le watcher store ne couvre pas le
+// joueur (cf. cmd/backfill-csr-history). Best-effort (vide si DB/clé absente).
+func loadLegacyInputs(cfg *config.AppConfig, gamertag string) authpkg.LegacyAuthInputs {
+	path := titlepkg.NewPathResolver(cfg.RepoRoot).PlayerDBPath(titlepkg.DefaultSlug, gamertag)
+	db, err := sql.Open("duckdb", path+"?access_mode=read_only")
 	if err != nil {
-		return nil, fmt.Errorf("pool discovery: %w", err)
+		return authpkg.LegacyAuthInputs{}
 	}
-	if len(sources) == 0 {
-		return nil, fmt.Errorf("aucun token découvert (pas de credential)")
-	}
-	resolver := authpool.NewResolver(provider, 0, nil)
-	p, err := authpool.NewPool(ctx, resolver, sources, authpool.PoolOptions{MaxSize: 0, PerTokenRPS: rps})
-	if err != nil {
-		return nil, fmt.Errorf("pool creation: %w", err)
-	}
-	return p, nil
+	defer db.Close()
+	var rt, msal string
+	_ = db.QueryRowContext(context.Background(), `SELECT value FROM sync_meta WHERE key='oauth_refresh_token'`).Scan(&rt)
+	_ = db.QueryRowContext(context.Background(), `SELECT value FROM sync_meta WHERE key='msal_token_cache'`).Scan(&msal)
+	return authpkg.LegacyAuthInputs{OAuthRT: rt, MSALCache: msal, Source: "player_db.sync_meta"}
 }
 
-// buildResolver construit le résolveur xuid PeopleHub (header RTA mémoïsé dérivé
-// du token du compte tokenGamertag — both-shapes single-refresh, cf. probe).
+// resolveAccessToken obtient un access_token Microsoft frais pour xuid : store
+// watcher_tokens d'abord (canonique ADR 0023), puis legacy sync_meta. Pour chaque
+// source, MSAL silent puis refresh token (rotation persistée si store). C'est
+// exactement la résolution des backfills qui marchent — pas de pool reconstruit.
+func resolveAccessToken(ctx context.Context, provider authpkg.TokenProvider, store *authpkg.MultiUserTokenStore, xuid string, legacy authpkg.LegacyAuthInputs) (string, error) {
+	try := func(msal, rt string, persist bool) string {
+		if msal != "" {
+			if at, e := provider.TrySilentRefresh(ctx, msal); e == nil && at != "" {
+				return at
+			}
+		}
+		if rt != "" {
+			if at, rot, e := provider.TryOAuthRefreshWithRotation(ctx, rt); e == nil && at != "" {
+				if persist && rot != "" && rot != rt {
+					_ = store.UpdateOAuthRefreshToken(xuid, rot)
+				}
+				return at
+			}
+		}
+		return ""
+	}
+	if user, _ := store.Load(xuid); user != nil {
+		if at := try(user.MSALCacheJSON, user.OAuthRefreshToken, true); at != "" {
+			return at, nil
+		}
+	}
+	if at := try(legacy.MSALCache, legacy.OAuthRT, false); at != "" {
+		return at, nil
+	}
+	return "", fmt.Errorf("aucun access_token frais pour xuid(%s)", xuid)
+}
+
+// refreshingHaloSource : client Halo single-token (Spartan/Clearance) ré-résolu
+// quand le TTL expire (Spartan ~4h) — supporte les runs longs sans pool. Implémente
+// service.WorldMatchSource (GetMatchHistory + GetMatchStats).
+type refreshingHaloSource struct {
+	mu      sync.Mutex
+	resolve func(ctx context.Context) (*syncpkg.HaloAPIClient, error)
+	ttl     time.Duration
+	now     func() time.Time
+	client  *syncpkg.HaloAPIClient
+	exp     time.Time
+}
+
+func (s *refreshingHaloSource) get(ctx context.Context) (*syncpkg.HaloAPIClient, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.client != nil && s.now().Before(s.exp) {
+		return s.client, nil
+	}
+	c, err := s.resolve(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.client, s.exp = c, s.now().Add(s.ttl)
+	return c, nil
+}
+
+func (s *refreshingHaloSource) GetMatchHistory(ctx context.Context, gamertag, matchType string, start, count int) ([]syncpkg.MatchHistoryEntry, error) {
+	c, err := s.get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return c.GetMatchHistory(ctx, gamertag, matchType, start, count)
+}
+
+func (s *refreshingHaloSource) GetMatchStats(ctx context.Context, matchID string) (map[string]any, error) {
+	c, err := s.get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return c.GetMatchStats(ctx, matchID)
+}
+
+// buildHaloSource résout le compte tokenGamertag (store-first) et retourne un client
+// Halo single-token auto-rafraîchi pour le fetch des matchs. Échoue tôt si le token
+// est KO (avant d'ouvrir la base).
+func buildHaloSource(cfg *config.AppConfig, gamertag string, rps int) (service.WorldMatchSource, error) {
+	xuid, err := xuidForGamertag(cfg, gamertag)
+	if err != nil {
+		return nil, err
+	}
+	provider := authpkg.NewMSALProvider()
+	store := authpkg.NewMultiUserTokenStore(titlepkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	legacy := loadLegacyInputs(cfg, gamertag)
+	src := &refreshingHaloSource{
+		ttl: 3 * time.Hour, // Spartan ~4h, marge
+		now: time.Now,
+		resolve: func(ctx context.Context) (*syncpkg.HaloAPIClient, error) {
+			at, e := resolveAccessToken(ctx, provider, store, xuid, legacy)
+			if e != nil {
+				return nil, e
+			}
+			exch, e := authpkg.ExchangeAccessToken(ctx, at)
+			if e != nil {
+				return nil, fmt.Errorf("exchange Halo: %w", e)
+			}
+			if exch.Tokens == nil || strings.TrimSpace(exch.Tokens.SpartanToken) == "" {
+				return nil, fmt.Errorf("aucun Spartan token pour %s", gamertag)
+			}
+			return syncpkg.NewHaloAPIClient(exch.Tokens.SpartanToken, exch.Tokens.ClearanceToken, rps), nil
+		},
+	}
+	if _, err := src.get(context.Background()); err != nil {
+		return nil, fmt.Errorf("résolution token %s: %w", gamertag, err)
+	}
+	return src, nil
+}
+
+// multiHaloSource round-robine le fetch sur N clients single-token (un par compte
+// résolu). Chaque sous-source est résolue par le chemin prouvé (store-first + legacy)
+// et s'auto-rafraîchit. NB : Halo limitant ~par IP, le gain est borné par le plafond
+// IP, pas multiplié par N.
+type multiHaloSource struct {
+	sources []service.WorldMatchSource
+	idx     uint64
+}
+
+func (m *multiHaloSource) next() service.WorldMatchSource {
+	i := atomic.AddUint64(&m.idx, 1)
+	return m.sources[int(i)%len(m.sources)]
+}
+
+func (m *multiHaloSource) GetMatchHistory(ctx context.Context, gamertag, matchType string, start, count int) ([]syncpkg.MatchHistoryEntry, error) {
+	return m.next().GetMatchHistory(ctx, gamertag, matchType, start, count)
+}
+
+func (m *multiHaloSource) GetMatchStats(ctx context.Context, matchID string) (map[string]any, error) {
+	return m.next().GetMatchStats(ctx, matchID)
+}
+
+// buildMultiHaloSource résout TOUS les comptes db_profiles via le chemin prouvé et
+// round-robine sur ceux qui réussissent (les autres — RT mintés par un autre client,
+// ex. env-var .env.local — sont skippés avec un warn). Retourne les gamertags actifs.
+func buildMultiHaloSource(cfg *config.AppConfig, rps int) (service.WorldMatchSource, []string, error) {
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		return nil, nil, fmt.Errorf("chargement db_profiles.json: %w", err)
+	}
+	var sources []service.WorldMatchSource
+	var ok []string
+	for _, p := range players {
+		s, e := buildHaloSource(cfg, p.Gamertag, rps)
+		if e != nil {
+			slog.WarnContext(context.Background(), "backfill-world: compte skippé (token non résolu)",
+				"gamertag", p.Gamertag, "err", e)
+			continue
+		}
+		sources = append(sources, s)
+		ok = append(ok, p.Gamertag)
+	}
+	if len(sources) == 0 {
+		return nil, nil, fmt.Errorf("aucun compte db_profiles résolu")
+	}
+	return &multiHaloSource{sources: sources}, ok, nil
+}
+
+// buildResolver construit le résolveur xuid PeopleHub. Le header RTA est dérivé du
+// MÊME compte (access_token store-first → AcquireXSTSForRTA), mémoïsé (TTL).
 func buildResolver(cfg *config.AppConfig, tokenGamertag string) (*authpkg.PeopleHubResolver, error) {
 	xuid, err := xuidForGamertag(cfg, tokenGamertag)
 	if err != nil {
 		return nil, err
 	}
-	pr := titlepkg.NewPathResolver(cfg.RepoRoot)
-	store := authpkg.NewMultiUserTokenStore(pr.WatcherTokensDir())
+	provider := authpkg.NewMSALProvider()
+	store := authpkg.NewMultiUserTokenStore(titlepkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	legacy := loadLegacyInputs(cfg, tokenGamertag)
 	hp := authpkg.NewCachedHeaderProvider(0, func(ctx context.Context) (string, error) {
-		return buildRTAHeader(ctx, store, xuid)
+		at, e := resolveAccessToken(ctx, provider, store, xuid, legacy)
+		if e != nil {
+			return "", e
+		}
+		rta, e := authpkg.AcquireXSTSForRTA(ctx, at)
+		if e != nil {
+			return "", fmt.Errorf("AcquireXSTSForRTA: %w", e)
+		}
+		return fmt.Sprintf("XBL3.0 x=%s;%s", rta.UserHash, rta.Token), nil
 	})
 	return authpkg.NewPeopleHubResolver(nil, hp.Header), nil
-}
-
-// buildRTAHeader dérive un header XBL3.0 RTA frais (un seul access_token, forme
-// adaptée au token stocké : MSAL silent ou RT brut), puis AcquireXSTSForRTA.
-func buildRTAHeader(ctx context.Context, store *authpkg.MultiUserTokenStore, xuid string) (string, error) {
-	bearer, err := store.Load(xuid)
-	if err != nil {
-		return "", fmt.Errorf("chargement token xuid(%s): %w", xuid, err)
-	}
-	accessToken := ""
-	if bearer.MSALCacheJSON != "" {
-		accessor := authpkg.NewInMemoryCacheAccessorFromJSON(bearer.MSALCacheJSON)
-		if at, _ := authpkg.AcquireTokenSilent(ctx, accessor); at != "" {
-			accessToken = at
-			if updated, serr := accessor.Serialize(); serr == nil && updated != "" {
-				bearer.MSALCacheJSON = updated
-			}
-		}
-	}
-	if accessToken == "" && bearer.OAuthRefreshToken != "" {
-		at, rotatedRT, rerr := authpkg.ExchangeRefreshTokenWithRotation(ctx, bearer.OAuthRefreshToken)
-		if rerr != nil {
-			return "", fmt.Errorf("refresh RT brut: %w", rerr)
-		}
-		accessToken = at
-		if rotatedRT != "" && rotatedRT != bearer.OAuthRefreshToken {
-			bearer.OAuthRefreshToken = rotatedRT
-		}
-	}
-	if strings.TrimSpace(accessToken) == "" {
-		return "", fmt.Errorf("aucun access_token frais pour xuid(%s) — re-capture token requise (ADR 0023)", xuid)
-	}
-	bearer.AccessToken = accessToken
-	bearer.OAuthExpiresAt = time.Now().Add(50 * time.Minute)
-	_ = store.Upsert(bearer)
-	rta, err := authpkg.AcquireXSTSForRTA(ctx, accessToken)
-	if err != nil {
-		return "", fmt.Errorf("AcquireXSTSForRTA: %w", err)
-	}
-	return fmt.Sprintf("XBL3.0 x=%s;%s", rta.UserHash, rta.Token), nil
 }
 
 // xuidForGamertag résout l'xuid d'un gamertag depuis db_profiles.json.
@@ -525,6 +720,28 @@ func (c *checkpoint) remaining(season string, gamertags []string, limit int) []s
 	return out
 }
 
+// doneCount compte les gamertags de la saison déjà traités (intersection avec le
+// checkpoint). Sert à un affichage de progression correct (≠ exclus par -limit).
+func (c *checkpoint) doneCount(season string, gamertags []string) int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	sp := c.Seasons[season]
+	if sp == nil {
+		return 0
+	}
+	done := make(map[string]bool, len(sp.Done))
+	for _, gt := range sp.Done {
+		done[gt] = true
+	}
+	n := 0
+	for _, gt := range gamertags {
+		if done[gt] {
+			n++
+		}
+	}
+	return n
+}
+
 func (c *checkpoint) markDone(season string, gamertags []string) {
 	if len(gamertags) == 0 {
 		return
@@ -548,6 +765,11 @@ func (c *checkpoint) save(path string) error {
 	b, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		return err
+	}
+	if dir := filepath.Dir(path); dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
 	}
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, b, 0o644); err != nil {
