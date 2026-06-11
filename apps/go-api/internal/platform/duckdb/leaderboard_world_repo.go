@@ -142,7 +142,10 @@ func applyWorldEnrichment(e *domain.LeaderboardEntry, s domain.WorldPlayerSeason
 	k, d, a, pt, md := s.Kills, s.Deaths, s.Assists, s.PlaytimeSec, s.MedalCount
 	e.MatchCount, e.WinCount, e.LossCount, e.TieCount, e.DnfCount = &mc, &wc, &lc, &tc, &dc
 	e.Kills, e.Deaths, e.Assists, e.PlaytimeSec, e.MedalCount = &k, &d, &a, &pt, &md
-	e.WinRate, e.KDA, e.KillsPerMin = s.WinRate, s.KDA, s.KillsPerMin
+	// Valeurs natives brutes (sommées) — pointeurs frais.
+	kda, acc, dd, dt := s.KDA, s.Accuracy, s.DamageDealt, s.DamageTaken
+	e.KDA, e.Accuracy, e.DamageDealt, e.DamageTaken = &kda, &acc, &dd, &dt
+	e.WinRate, e.KillsPerMin = s.WinRate, s.KillsPerMin
 	e.PrevSeasonID, e.PrevWinRate, e.PrevKDA = s.PrevSeasonID, s.PrevWinRate, s.PrevKDA
 	e.KDATrend, e.WinRateTrend = s.KDATrend, s.WinRateTrend
 }

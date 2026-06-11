@@ -30,6 +30,11 @@ type PlayerMatchStat struct {
 	Deaths      int64
 	Assists     int64
 	PlaytimeSec float64
+	// Valeurs natives du jeu (CoreStats), lues telles quelles — sommées à l'accumulation.
+	KDA         float64 // CoreStats.KDA natif (K + A/3 − D)
+	Accuracy    float64 // CoreStats.Accuracy native (%)
+	DamageDealt int64   // CoreStats.DamageDealt
+	DamageTaken int64   // CoreStats.DamageTaken
 }
 
 // NormalizeSeasonID convertit MatchInfo.SeasonId ("Csr/Seasons/CsrSeason13-2.json")
@@ -45,41 +50,88 @@ func NormalizeSeasonID(raw string) string {
 	return strings.ToLower(strings.TrimSpace(s))
 }
 
+// matchHeader extrait la saison normalisée, la playlist et la liste des joueurs.
+func matchHeader(matchJSON map[string]any) (season, playlistID string, players []any, ok bool) {
+	mi, _ := matchJSON["MatchInfo"].(map[string]any)
+	if mi == nil {
+		return "", "", nil, false
+	}
+	season = NormalizeSeasonID(strOf(mi["SeasonId"]))
+	if pl, okp := mi["Playlist"].(map[string]any); okp {
+		playlistID, _ = pl["AssetId"].(string)
+	}
+	players, _ = matchJSON["Players"].([]any)
+	return season, playlistID, players, true
+}
+
+// playerStatFrom construit une PlayerMatchStat depuis le bloc joueur (valeurs natives brutes).
+func playerStatFrom(pm map[string]any, season, playlistID string) PlayerMatchStat {
+	core := coreStatsOf(pm)
+	return PlayerMatchStat{
+		SeasonID:    season,
+		PlaylistID:  playlistID,
+		Outcome:     intOf(pm["Outcome"]),
+		Kills:       i64Of(core, "Kills"),
+		Deaths:      i64Of(core, "Deaths"),
+		Assists:     i64Of(core, "Assists"),
+		PlaytimeSec: iso8601Seconds(timePlayedOf(pm)),
+		KDA:         floatOf(core, "KDA"),
+		Accuracy:    floatOf(core, "Accuracy"),
+		DamageDealt: i64Of(core, "DamageDealt"),
+		DamageTaken: i64Of(core, "DamageTaken"),
+	}
+}
+
+// xuidFromPlayerID extrait "N" de "xuid(N)" (sinon la chaîne telle quelle).
+func xuidFromPlayerID(playerID string) string {
+	s := strings.TrimPrefix(playerID, "xuid(")
+	return strings.TrimSuffix(s, ")")
+}
+
 // ExtractPlayerMatchStat extrait du JSON d'un match (GetMatchStats) les stats du
 // joueur `xuid`. ok=false si le joueur n'est pas dans Players[] (match d'un autre).
 func ExtractPlayerMatchStat(matchJSON map[string]any, xuid string) (PlayerMatchStat, bool) {
-	mi, _ := matchJSON["MatchInfo"].(map[string]any)
-	if mi == nil {
+	season, playlistID, players, ok := matchHeader(matchJSON)
+	if !ok {
 		return PlayerMatchStat{}, false
 	}
-	season := NormalizeSeasonID(strOf(mi["SeasonId"]))
-	playlistID := ""
-	if pl, ok := mi["Playlist"].(map[string]any); ok {
-		playlistID, _ = pl["AssetId"].(string)
-	}
-
-	players, _ := matchJSON["Players"].([]any)
 	want := "xuid(" + xuid + ")"
 	for _, p := range players {
-		pm, ok := p.(map[string]any)
-		if !ok {
+		pm, okp := p.(map[string]any)
+		if !okp {
 			continue
 		}
 		if id, _ := pm["PlayerId"].(string); id != want {
 			continue
 		}
-		core := coreStatsOf(pm)
-		return PlayerMatchStat{
-			SeasonID:    season,
-			PlaylistID:  playlistID,
-			Outcome:     intOf(pm["Outcome"]),
-			Kills:       i64Of(core, "Kills"),
-			Deaths:      i64Of(core, "Deaths"),
-			Assists:     i64Of(core, "Assists"),
-			PlaytimeSec: iso8601Seconds(timePlayedOf(pm)),
-		}, true
+		return playerStatFrom(pm, season, playlistID), true
 	}
 	return PlayerMatchStat{}, false
+}
+
+// ExtractWorldPlayersFromMatch extrait, en UNE passe, la stat de CHAQUE joueur
+// mondial (xuid ∈ worldXuids) présent dans le match. Clé du dédup : un seul
+// GetMatchStats traite jusqu'à 8 joueurs cibles (ils s'affrontent en permanence).
+// Retourne la saison normalisée du match + map xuid→stat (joueurs mondiaux présents).
+func ExtractWorldPlayersFromMatch(matchJSON map[string]any, worldXuids map[string]bool) (season string, out map[string]PlayerMatchStat) {
+	season, playlistID, players, ok := matchHeader(matchJSON)
+	if !ok {
+		return "", nil
+	}
+	out = make(map[string]PlayerMatchStat)
+	for _, p := range players {
+		pm, okp := p.(map[string]any)
+		if !okp {
+			continue
+		}
+		id, _ := pm["PlayerId"].(string)
+		xuid := xuidFromPlayerID(id)
+		if xuid == "" || !worldXuids[xuid] {
+			continue
+		}
+		out[xuid] = playerStatFrom(pm, season, playlistID)
+	}
+	return season, out
 }
 
 // AccumulateWorldStats bucket les stats par (saison, playlist) et somme les
@@ -118,6 +170,11 @@ func AccumulateWorldStats(gamertag string, stats []PlayerMatchStat) []domain.Wor
 		b.Deaths += s.Deaths
 		b.Assists += s.Assists
 		b.PlaytimeSec += int64(s.PlaytimeSec)
+		// Sommes des valeurs natives du jeu (brut, aucune dérivation).
+		b.KDA += s.KDA
+		b.Accuracy += s.Accuracy
+		b.DamageDealt += s.DamageDealt
+		b.DamageTaken += s.DamageTaken
 	}
 	out := make([]domain.WorldPlayerSeasonStats, 0, len(order))
 	for _, k := range order {
@@ -172,6 +229,14 @@ func i64Of(m map[string]any, key string) int64 {
 	}
 	f, _ := m[key].(float64)
 	return int64(f)
+}
+
+func floatOf(m map[string]any, key string) float64 {
+	if m == nil {
+		return 0
+	}
+	f, _ := m[key].(float64)
+	return f
 }
 
 // iso8601Seconds parse une durée ISO-8601 ("PT10M39.203S") en secondes.

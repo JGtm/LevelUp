@@ -35,18 +35,22 @@ type LeaderboardEntry struct {
 	// Enrichissement stats mondiales (Phase B — leaderboard enrichi). Pointeurs :
 	// nil = joueur non enrichi (pas de ligne world_player_season_stats). Compteurs
 	// bruts + ratios dérivés à la lecture + comparaison inter-saison + delta rang.
-	MatchCount   *int     `json:"match_count,omitempty"`
-	WinCount     *int     `json:"win_count,omitempty"`
-	LossCount    *int     `json:"loss_count,omitempty"`
-	TieCount     *int     `json:"tie_count,omitempty"`
-	DnfCount     *int     `json:"dnf_count,omitempty"`
-	Kills        *int64   `json:"kills,omitempty"`
-	Deaths       *int64   `json:"deaths,omitempty"`
-	Assists      *int64   `json:"assists,omitempty"`
-	PlaytimeSec  *int64   `json:"playtime_seconds,omitempty"`
-	MedalCount   *int64   `json:"medal_count,omitempty"`
+	MatchCount  *int   `json:"match_count,omitempty"`
+	WinCount    *int   `json:"win_count,omitempty"`
+	LossCount   *int   `json:"loss_count,omitempty"`
+	TieCount    *int   `json:"tie_count,omitempty"`
+	DnfCount    *int   `json:"dnf_count,omitempty"`
+	Kills       *int64 `json:"kills,omitempty"`
+	Deaths      *int64 `json:"deaths,omitempty"`
+	Assists     *int64 `json:"assists,omitempty"`
+	PlaytimeSec *int64 `json:"playtime_seconds,omitempty"`
+	MedalCount  *int64 `json:"medal_count,omitempty"`
+	// Valeurs natives du jeu, ACCUMULÉES (sommées) — données brutes, aucune dérivation.
+	KDA          *float64 `json:"kda,omitempty"`          // somme du KDA natif Halo
+	Accuracy     *float64 `json:"accuracy,omitempty"`     // somme de l'Accuracy native (%)
+	DamageDealt  *int64   `json:"damage_dealt,omitempty"` // somme des dégâts infligés
+	DamageTaken  *int64   `json:"damage_taken,omitempty"` // somme des dégâts subis
 	WinRate      *float64 `json:"win_rate,omitempty"`
-	KDA          *float64 `json:"kda,omitempty"`
 	KillsPerMin  *float64 `json:"kills_per_min,omitempty"`
 	PrevSeasonID *string  `json:"prev_season_id,omitempty"`
 	PrevWinRate  *float64 `json:"prev_win_rate,omitempty"`
@@ -83,9 +87,16 @@ type WorldPlayerSeasonStats struct {
 	PlaytimeSec int64 `json:"playtime_seconds"`
 	MedalCount  int64 `json:"medal_count"`
 
-	// Ratios courants dérivés (nil si dénominateur nul).
+	// Valeurs natives du jeu (CoreStats) ACCUMULÉES (sommées), AUCUNE dérivation à
+	// l'agrégation — données brutes demandées. KDA = somme du KDA natif Halo
+	// (K + A/3 − D par match) ; Accuracy = somme des % natifs ; dégâts = sommes.
+	KDA         float64 `json:"kda"`
+	Accuracy    float64 `json:"accuracy"`
+	DamageDealt int64   `json:"damage_dealt"`
+	DamageTaken int64   `json:"damage_taken"`
+
+	// Ratios dérivés à la LECTURE seulement (nil si dénominateur nul) — pas à l'agrégation.
 	WinRate     *float64 `json:"win_rate,omitempty"`
-	KDA         *float64 `json:"kda,omitempty"`
 	KillsPerMin *float64 `json:"kills_per_min,omitempty"`
 
 	// Comparaison inter-saison (nil = pas de saison précédente avec cette playlist).

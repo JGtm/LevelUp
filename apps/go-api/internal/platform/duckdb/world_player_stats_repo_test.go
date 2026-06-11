@@ -40,12 +40,12 @@ func TestGetWorldPlayerSeasonStats_DerivedAndInterSeason(t *testing.T) {
 	const slayer = "dcb2e24e-05fb-4390-8076-32a0cdb4326e"
 	fixture := []domain.WorldPlayerSeasonStats{
 		// Alpha/Arena : joue 12-1 et 13-2 mais PAS 13-1 → LAG doit sauter 13-1.
-		{Gamertag: "Alpha", SeasonID: "csrseason12-1", PlaylistID: arena, MatchCount: 10, WinCount: 4, Kills: 100, Deaths: 100, Assists: 30},
-		{Gamertag: "Alpha", SeasonID: "csrseason13-2", PlaylistID: arena, MatchCount: 10, WinCount: 7, Kills: 150, Deaths: 100, Assists: 30, PlaytimeSec: 6000},
+		{Gamertag: "Alpha", SeasonID: "csrseason12-1", PlaylistID: arena, MatchCount: 10, WinCount: 4, Kills: 100, Deaths: 100, Assists: 30, KDA: 11, Accuracy: 480, DamageDealt: 50000, DamageTaken: 49000},
+		{Gamertag: "Alpha", SeasonID: "csrseason13-2", PlaylistID: arena, MatchCount: 10, WinCount: 7, Kills: 150, Deaths: 100, Assists: 30, PlaytimeSec: 6000, KDA: 16, Accuracy: 700, DamageDealt: 70000, DamageTaken: 60000},
 		// Bruit : Alpha/Slayer en 13-2 (autre playlist) — ne doit PAS polluer Arena.
-		{Gamertag: "Alpha", SeasonID: "csrseason13-2", PlaylistID: slayer, MatchCount: 5, WinCount: 1, Kills: 50, Deaths: 80, Assists: 10},
+		{Gamertag: "Alpha", SeasonID: "csrseason13-2", PlaylistID: slayer, MatchCount: 5, WinCount: 1, Kills: 50, Deaths: 80, Assists: 10, KDA: 5},
 		// Beta : nouveau en 13-2/Arena → pas de saison précédente.
-		{Gamertag: "Beta", SeasonID: "csrseason13-2", PlaylistID: arena, MatchCount: 8, WinCount: 4, Kills: 80, Deaths: 80, Assists: 24},
+		{Gamertag: "Beta", SeasonID: "csrseason13-2", PlaylistID: arena, MatchCount: 8, WinCount: 4, Kills: 80, Deaths: 80, Assists: 24, KDA: 8},
 	}
 	if _, err := InsertPlayerSeasonStats(ctx, shared.SQLDb(), fixture); err != nil {
 		t.Fatalf("InsertPlayerSeasonStats: %v", err)
@@ -68,8 +68,15 @@ func TestGetWorldPlayerSeasonStats_DerivedAndInterSeason(t *testing.T) {
 	if a.WinRate == nil || *a.WinRate < 0.69 || *a.WinRate > 0.71 {
 		t.Errorf("Alpha win_rate = %v, want ~0.70", derefF(a.WinRate))
 	}
-	if a.KDA == nil || *a.KDA < 1.59 || *a.KDA > 1.61 {
-		t.Errorf("Alpha kda = %v, want ~1.60", derefF(a.KDA))
+	// KDA / accuracy / dégâts : valeurs natives BRUTES sommées (pas de dérivation).
+	if a.KDA < 15.9 || a.KDA > 16.1 {
+		t.Errorf("Alpha kda (brut sommé) = %v, want 16", a.KDA)
+	}
+	if a.Accuracy < 699 || a.Accuracy > 701 {
+		t.Errorf("Alpha accuracy (brut sommé) = %v, want 700", a.Accuracy)
+	}
+	if a.DamageDealt != 70000 || a.DamageTaken != 60000 {
+		t.Errorf("Alpha dégâts = %d/%d, want 70000/60000", a.DamageDealt, a.DamageTaken)
 	}
 	if a.KillsPerMin == nil || *a.KillsPerMin < 1.49 || *a.KillsPerMin > 1.51 {
 		t.Errorf("Alpha kills_per_min = %v, want ~1.50 (150 / (6000/60))", derefF(a.KillsPerMin))
@@ -78,7 +85,7 @@ func TestGetWorldPlayerSeasonStats_DerivedAndInterSeason(t *testing.T) {
 		t.Errorf("Alpha prev_season = %v, want csrseason12-1 (LAG saute 13-1)", derefStr(a.PrevSeasonID))
 	}
 	if a.KDATrend == nil || *a.KDATrend != "up" {
-		t.Errorf("Alpha kda_trend = %v, want up (1.60 > 1.10)", derefStr(a.KDATrend))
+		t.Errorf("Alpha kda_trend = %v, want up (kda brut 16 > 11)", derefStr(a.KDATrend))
 	}
 	if a.WinRateTrend == nil || *a.WinRateTrend != "up" {
 		t.Errorf("Alpha win_rate_trend = %v, want up (0.70 > 0.40)", derefStr(a.WinRateTrend))
@@ -125,9 +132,9 @@ func TestGetCSRWorldLeaderboard_Enrichment(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("snapshot cur: %v", err)
 	}
-	// Stats enrichies pour Alpha en 13-2/Arena.
+	// Stats enrichies pour Alpha en 13-2/Arena (valeurs natives brutes incluses).
 	if _, err := InsertPlayerSeasonStats(ctx, shared.SQLDb(), []domain.WorldPlayerSeasonStats{
-		{Gamertag: "Alpha", SeasonID: "csrseason13-2", PlaylistID: arena, MatchCount: 10, WinCount: 7, Kills: 150, Deaths: 100, Assists: 30},
+		{Gamertag: "Alpha", SeasonID: "csrseason13-2", PlaylistID: arena, MatchCount: 10, WinCount: 7, Kills: 150, Deaths: 100, Assists: 30, KDA: 16, Accuracy: 700, DamageDealt: 70000, DamageTaken: 60000},
 	}); err != nil {
 		t.Fatalf("enriched: %v", err)
 	}
@@ -147,8 +154,17 @@ func TestGetCSRWorldLeaderboard_Enrichment(t *testing.T) {
 	if e.WinRate == nil || *e.WinRate < 0.69 || *e.WinRate > 0.71 {
 		t.Errorf("win_rate = %v, want ~0.70", derefF(e.WinRate))
 	}
-	if e.KDA == nil || *e.KDA < 1.59 || *e.KDA > 1.61 {
-		t.Errorf("kda = %v, want ~1.60", derefF(e.KDA))
+	if e.KDA == nil || *e.KDA < 15.9 || *e.KDA > 16.1 {
+		t.Errorf("kda (brut sommé) = %v, want 16", derefF(e.KDA))
+	}
+	if e.Accuracy == nil || *e.Accuracy < 699 || *e.Accuracy > 701 {
+		t.Errorf("accuracy (brut sommé) = %v, want 700", derefF(e.Accuracy))
+	}
+	if e.DamageDealt == nil || *e.DamageDealt != 70000 {
+		t.Errorf("damage_dealt = %v, want 70000", e.DamageDealt)
+	}
+	if e.DamageTaken == nil || *e.DamageTaken != 60000 {
+		t.Errorf("damage_taken = %v, want 60000", e.DamageTaken)
 	}
 	if e.MatchCount == nil || *e.MatchCount != 10 {
 		t.Errorf("match_count = %v, want 10", e.MatchCount)

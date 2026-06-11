@@ -48,6 +48,10 @@ func init() {
 					assists      BIGINT NOT NULL DEFAULT 0,
 					playtime_s   BIGINT NOT NULL DEFAULT 0,
 					medal_count  BIGINT NOT NULL DEFAULT 0,
+					kda          DOUBLE NOT NULL DEFAULT 0,
+					accuracy     DOUBLE NOT NULL DEFAULT 0,
+					damage_dealt BIGINT NOT NULL DEFAULT 0,
+					damage_taken BIGINT NOT NULL DEFAULT 0,
 					computed_at  TIMESTAMP,
 					written_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 				);
