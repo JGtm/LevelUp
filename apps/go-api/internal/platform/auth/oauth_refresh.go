@@ -15,6 +15,7 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -27,10 +28,10 @@ import (
 	"levelup/go-api/internal/observability/logging"
 )
 
-const (
-	msalTokenURL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
-	xboxScopes   = "Xboxlive.signin Xboxlive.offline_access"
-)
+// msalTokenURL est une var (pas une const) pour permettre l'override httptest.
+var msalTokenURL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
+
+const xboxScopes = "Xboxlive.signin Xboxlive.offline_access"
 
 // oauthTokenResponse est la réponse JSON du endpoint /oauth2/v2.0/token.
 type oauthTokenResponse struct {
@@ -76,11 +77,14 @@ func ExchangeRefreshTokenWithRotation(ctx context.Context, refreshToken string) 
 	ctx, _ = logging.WithEvent(ctx, "auth.oauth_exchange")
 	start := time.Now()
 	defer func() {
+		// Échecs en Debug : l'erreur est propagée et loguée UNE fois au niveau
+		// du caller (pool/resolver, avec sa classe) — cf. plan anti-bruit
+		// 2026-06-11. Les compteurs expvar levelup.auth.* gardent la trace.
 		if err != nil {
-			slog.WarnContext(ctx, "oauth_refresh: échange échoué",
+			slog.DebugContext(ctx, "oauth_refresh: échange échoué",
 				"duration_ms", time.Since(start).Milliseconds(), "err", err)
 		} else if accessToken == "" {
-			slog.WarnContext(ctx, "oauth_refresh: token révoqué (réponse vide)",
+			slog.DebugContext(ctx, "oauth_refresh: token révoqué (réponse vide)",
 				"duration_ms", time.Since(start).Milliseconds())
 		} else {
 			slog.InfoContext(ctx, "oauth_refresh: échange OK",
@@ -89,21 +93,46 @@ func ExchangeRefreshTokenWithRotation(ctx context.Context, refreshToken string) 
 		}
 	}()
 
+	defer func() { recordOAuthRefreshOutcome(err) }()
+
 	clientID := os.Getenv("SPNKR_AZURE_CLIENT_ID")
 	if clientID == "" {
 		clientID = LevelUpClientID
 	}
 
+	// App confidentielle supposée si SPNKR_AZURE_CLIENT_SECRET est défini :
+	// 1re tentative avec le secret (les RT émis par le flux web confidentiel
+	// en ont besoin). Si Azure répond AADSTS90023 (RT émis par un flux client
+	// PUBLIC — ex. token-capture/device code — le secret est alors interdit),
+	// retenter UNE fois sans secret. Stateless : 1 round-trip de plus par
+	// refresh concerné (~toutes les 3h30), aucun état à mémoriser.
+	secret := ""
+	if s := os.Getenv("SPNKR_AZURE_CLIENT_SECRET"); s != "" && clientID != LevelUpClientID {
+		secret = s
+	}
+
+	accessToken, rotatedRefreshToken, err = postTokenExchange(ctx, clientID, refreshToken, secret)
+	if err != nil && secret != "" {
+		var oerr *OAuthExchangeError
+		if errors.As(err, &oerr) && oerr.IsSecretRejected() {
+			oauthRefreshRetryPublicTotal.Add(1)
+			slog.InfoContext(ctx, "oauth_refresh: client_secret refusé (AADSTS90023) — retry en flux client public")
+			accessToken, rotatedRefreshToken, err = postTokenExchange(ctx, clientID, refreshToken, "")
+		}
+	}
+	return accessToken, rotatedRefreshToken, err
+}
+
+// postTokenExchange exécute un POST /oauth2/v2.0/token et décode la réponse.
+// secret vide = flux client public (pas de champ client_secret).
+func postTokenExchange(ctx context.Context, clientID, refreshToken, secret string) (string, string, error) {
 	body := url.Values{
 		oauthFieldClientID:     {clientID},
 		"grant_type":           {oauthFieldRefreshToken},
 		oauthFieldRefreshToken: {refreshToken},
 		oauthFieldScope:        {xboxScopes},
 	}
-
-	// Si l'app Azure est confidentielle (SPNKR_AZURE_CLIENT_SECRET défini),
-	// inclure le client_secret dans la requête.
-	if secret := os.Getenv("SPNKR_AZURE_CLIENT_SECRET"); secret != "" && clientID != LevelUpClientID {
+	if secret != "" {
 		body.Set("client_secret", secret)
 	}
 
@@ -132,12 +161,13 @@ func ExchangeRefreshTokenWithRotation(ctx context.Context, refreshToken string) 
 	}
 
 	if tok.ErrorCode != "" {
-		slog.WarnContext(ctx, "oauth_refresh: erreur serveur", "error", tok.ErrorCode, "description", tok.ErrorDesc)
-		return "", "", fmt.Errorf("oauth_refresh: %s — %s", tok.ErrorCode, tok.ErrorDesc)
+		slog.DebugContext(ctx, "oauth_refresh: erreur serveur",
+			"error", tok.ErrorCode, "description", tok.ErrorDesc, "public_flow", secret == "")
+		return "", "", &OAuthExchangeError{ErrorCode: tok.ErrorCode, Description: tok.ErrorDesc}
 	}
 
 	if tok.AccessToken == "" {
-		slog.WarnContext(ctx, "oauth_refresh: access_token vide dans la réponse")
+		slog.DebugContext(ctx, "oauth_refresh: access_token vide dans la réponse")
 		return "", "", nil
 	}
 
