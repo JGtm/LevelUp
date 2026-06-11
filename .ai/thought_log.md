@@ -1,3 +1,19 @@
+## [2026-06-11] LUSR delta : ordering chronologique par start_time (vue + loadPrevious) + incident ART/WAL Choco géré — Complété (tests verts, non commité)
+
+**Statut** : Code complet + tests verts (sync/migration/persist normal + integration). Suite du fix rating_value continu (commits df6039b80, 29035e8f4). NON commité (accord user). Branche à VÉRIFIER avant commit (autre agent actif dans le tree).
+
+**Problème résiduel après le fix continu** : deltas de Chocoboflor encore faux (+75 constant). Root cause : SA base avait `written_at DEFAULT NULL` (migration append-only partielle — idempotente sur `id`, le `ALTER SET DEFAULT now()` n'avait pas abouti). `loadPreviousLUSRRating` ET la vue `match_skill_rank_latest` ordonnaient par `written_at DESC` (NULLS LAST) → les rows re-backfillées (written_at NULL) étaient ignorées → vieille row figée (1499) servie comme « précédent » et comme « latest ». Isolé à Choco (JGtm/Madina/Daemon = `written_at now()`).
+
+**Fix durable — ordonner par start_time (date réelle du match), pas written_at (ordre d'écriture, fragile)** :
+- `persist/lusr_append_only_persister` : `+StartTime` → colonne `start_time` peuplée à l'INSERT (était 100% NULL pour LUSR).
+- `sync/skill_v2_canonical` : `writeCanonicalLUSRRow(... startTime ...)` ; `loadPreviousLUSRRating`/`loadPreviousDisplayedOrdinal` → `WHERE (start_time IS NULL OR start_time < ?) ORDER BY start_time DESC NULLS LAST, written_at DESC, id DESC`. `canonicalGate` passe `m.startTime` (déjà chargé chrono par loadShadowMatches).
+- Vue `match_skill_rank_latest` : `ORDER BY CASE type, start_time DESC NULLS LAST, written_at DESC, id DESC` dans `sync/schema.go` (playerSchemaSQL — recréée à chaque `EnsurePlayerSchema`, donc toutes bases au boot) + migration `player_msr_view_priority_csr`. schema.go aussi aligné sur le CASE 3-voies (corrige un bug latent 2-voies). Test integration reproduisant le cas Choco.
+- Migration `msr_written_at_default_now_repair_v1` (fichier `steps_player_append_only_match_skill_rank_repair.go`, nommé pour s'init juste après l'append-only) : `ALTER written_at SET DEFAULT now()` SEUL. **UPDATE des NULL RETIRÉ** — un UPDATE de written_at (colonne indexée) déclenche le bug ART DuckDB.
+
+**Incident géré (leçon)** : tenter de réparer written_at par `UPDATE` → FATAL ART (`Failed to delete all rows from index`) + WAL non rejouable (`GetDefaultDatabase`). Récupéré : backup `data/.../Chocoboflor/_recovery_bak`, WAL retiré, base intègre (4659 rows). **Règle : JAMAIS UPDATE/DELETE/ALTER sur une player DB via outil externe** (laisse un WAL piégé + ART) — passer par le serveur (gère le WAL) ou INSERT pur (le re-backfill, lui, checkpointe).
+
+**Vérifié** : re-backfill 4 joueurs (start_time peuplé) ; deltas Choco corrects par start_time (+3.87, +1.19, −2.87 au lieu de +75). Reste : l'UI de Choco prendra les bonnes rows au **prochain boot serveur** (EnsurePlayerSchema applique la vue start_time). Non vérifiable sans booter (autre agent actif). Nettoyer `_recovery_bak` une fois confirmé.
+
 ## [2026-06-11] Bruit terminal auth/boot — root causes + observabilité dashboard — Complété (non commité)
 
 **Statut** : Complété, tests verts (suite Go complète sans FAIL, vet OK, typecheck/lint/vitest web OK). NON commité (accord user requis). Branche `feat/achievements-category-filter` (demande user — WIP LUSR concurrent dans le tree interdisait un checkout main). Plan : `.ai/PLAN_AUTH_WARNING_NOISE.md`.

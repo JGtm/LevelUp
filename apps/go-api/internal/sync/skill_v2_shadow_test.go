@@ -1454,35 +1454,40 @@ func TestRunLUSRV2Shadow_Canonical_HeldGroupSkipsLaterMatches(t *testing.T) {
 	}
 }
 
-// TestLoadPreviousLUSRRating_ExcludesCurrentMatch (fix delta 2026-06-07) : la
-// lecture du rating "précédent" EXCLUT le match courant. Sans ça, au re-traitement
-// d'un match (retry write-OK/persist-KO sur table append-only), sa propre ligne
-// serait lue comme "précédente" → rating_delta = R - R = 0 (corruption silencieuse).
-func TestLoadPreviousLUSRRating_ExcludesCurrentMatch(t *testing.T) {
+// TestLoadPreviousLUSRRating_ChronologicalOrder (fix delta figé 2026-06-11) : le
+// rating "précédent" est le match CHRONOLOGIQUEMENT antérieur (start_time), PAS le
+// dernier écrit (written_at — fragile : NULL/désordre → bug delta +75 sur Choco).
+// Vérifie aussi l'exclusion du match courant (retry append-only).
+func TestLoadPreviousLUSRRating_ChronologicalOrder(t *testing.T) {
 	playerDB := openCanonicalPlayerTestDB(t)
 	ctx := context.Background()
+	t1 := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+	t2 := time.Date(2025, 1, 1, 13, 0, 0, 0, time.UTC)
 	if _, err := playerDB.Exec(`INSERT INTO match_skill_rank
-		(match_id, rating_type, rating_value, playlist_group, written_at) VALUES
-		('m1', 'LUSR', 1500, 'arena_slayer', TIMESTAMP '2025-01-01 12:00:00'),
-		('m2', 'LUSR', 1600, 'arena_slayer', TIMESTAMP '2025-01-01 13:00:00')`); err != nil {
+		(match_id, rating_type, rating_value, playlist_group, start_time, written_at) VALUES
+		('m1', 'LUSR', 1500, 'arena_slayer', TIMESTAMP '2025-01-01 12:00:00', TIMESTAMP '2025-01-01 12:00:00'),
+		('m2', 'LUSR', 1600, 'arena_slayer', TIMESTAMP '2025-01-01 13:00:00', TIMESTAMP '2025-01-01 13:00:00')`); err != nil {
 		t.Fatalf("insert: %v", err)
 	}
-	// Exclure m2 → on obtient le match PRÉCÉDENT (m1=1500), pas m2 lui-même.
-	if prev := loadPreviousLUSRRating(ctx, playerDB, "arena_slayer", "m2"); prev == nil || *prev != 1500 {
-		t.Errorf("loadPreviousLUSRRating(exclude m2) = %v, want 1500 (m1)", prev)
+	// Précédent de m2 (start 13:00) = m1 (start 12:00 < 13:00).
+	if prev := loadPreviousLUSRRating(ctx, playerDB, "arena_slayer", "m2", t2); prev == nil || *prev != 1500 {
+		t.Errorf("prev(m2) = %v, want 1500 (m1)", prev)
 	}
-	// Doublon de m2 (simulate retry append) : m2 doit toujours être exclu → m1.
+	// Doublon m2 (retry append, written_at PLUS RÉCENT mais même start_time) : m2
+	// reste exclu (match_id ET start_time pas < 13:00) → toujours m1. C'est le cœur
+	// du fix : un written_at plus récent ne doit PAS détourner le "précédent".
 	if _, err := playerDB.Exec(`INSERT INTO match_skill_rank
-		(match_id, rating_type, rating_value, playlist_group, written_at)
-		VALUES ('m2', 'LUSR', 1600, 'arena_slayer', TIMESTAMP '2025-01-01 14:00:00')`); err != nil {
+		(match_id, rating_type, rating_value, playlist_group, start_time, written_at)
+		VALUES ('m2', 'LUSR', 1600, 'arena_slayer', TIMESTAMP '2025-01-01 13:00:00', TIMESTAMP '2025-01-01 14:00:00')`); err != nil {
 		t.Fatalf("insert dup: %v", err)
 	}
-	if prev := loadPreviousLUSRRating(ctx, playerDB, "arena_slayer", "m2"); prev == nil || *prev != 1500 {
-		t.Errorf("avec doublon m2, loadPreviousLUSRRating(exclude m2) = %v, want 1500 (m1)", prev)
+	if prev := loadPreviousLUSRRating(ctx, playerDB, "arena_slayer", "m2", t2); prev == nil || *prev != 1500 {
+		t.Errorf("avec doublon m2, prev(m2) = %v, want 1500 (m1)", prev)
 	}
-	// Exclure m1 → reste m2 (le plus récent) = 1600.
-	if prev := loadPreviousLUSRRating(ctx, playerDB, "arena_slayer", "m1"); prev == nil || *prev != 1600 {
-		t.Errorf("loadPreviousLUSRRating(exclude m1) = %v, want 1600 (m2)", prev)
+	// m1 est le PREMIER chronologiquement → aucun précédent (nil), MÊME si m2 existe
+	// (postérieur). L'ancien tri written_at DESC aurait retourné m2 à tort.
+	if prev := loadPreviousLUSRRating(ctx, playerDB, "arena_slayer", "m1", t1); prev != nil {
+		t.Errorf("prev(m1) = %v, want nil (m1 premier ; m2 postérieur)", *prev)
 	}
 }
 

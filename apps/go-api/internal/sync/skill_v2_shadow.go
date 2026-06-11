@@ -347,7 +347,7 @@ func canonicalGate(ctx context.Context, c shadowRunContext, m shadowMatch, group
 			"match_id", m.matchID, "group", group, "xuid", c.xuid)
 		return false
 	}
-	if err := writeCanonicalLUSRRow(ctx, c.playerDB, m.matchID, *computed.ownerNew, computed.expectedWinProb, c.tierBoundaries); err != nil {
+	if err := writeCanonicalLUSRRow(ctx, c.playerDB, m.matchID, *computed.ownerNew, computed.expectedWinProb, m.startTime, c.tierBoundaries); err != nil {
 		canonicalWriteHeldWatermark.Add(1)
 		s.skippedWriteFailed++
 		heldGroups[group] = true

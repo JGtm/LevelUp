@@ -91,7 +91,8 @@ CREATE OR REPLACE VIEW match_skill_rank_latest AS
     QUALIFY ROW_NUMBER() OVER (
         PARTITION BY match_id
         ORDER BY
-            CASE rating_type WHEN 'CSR' THEN 0 ELSE 1 END,
+            CASE rating_type WHEN 'CSR' THEN 0 WHEN 'LUSR' THEN 1 ELSE 2 END,
+            start_time DESC NULLS LAST,
             written_at DESC,
             id DESC
     ) = 1;

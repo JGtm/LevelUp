@@ -75,7 +75,7 @@ func applyMSRViewPriorityCSR(db *sql.DB) error {
 				PARTITION BY match_id
 				ORDER BY
 					CASE rating_type WHEN 'CSR' THEN 0 WHEN 'LUSR' THEN 1 ELSE 2 END,
-					written_at DESC,
+					start_time DESC NULLS LAST, written_at DESC,
 					id DESC
 			) = 1
 	`
