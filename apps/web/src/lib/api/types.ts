@@ -3407,6 +3407,30 @@ export interface LeaderboardEntry {
   value_formatted?: string
   unit?: string
   matches_played?: number
+  // Enrichissement stats mondiales CSR (Phase C/D) — nil tant que le joueur
+  // n'est pas backfillé (compteurs bruts + ratios dérivés + comparaison inter-saison).
+  match_count?: number | null
+  win_count?: number | null
+  loss_count?: number | null
+  tie_count?: number | null
+  dnf_count?: number | null
+  kills?: number | null
+  deaths?: number | null
+  assists?: number | null
+  playtime_seconds?: number | null
+  medal_count?: number | null
+  win_rate?: number | null
+  kda?: number | null // somme native brute du KDA Halo
+  accuracy?: number | null // somme native brute de l'Accuracy (%)
+  damage_dealt?: number | null // somme des dégâts infligés
+  damage_taken?: number | null // somme des dégâts subis
+  kills_per_min?: number | null
+  prev_season_id?: string | null
+  prev_win_rate?: number | null
+  prev_kda?: number | null
+  kda_trend?: 'up' | 'down' | 'stable' | null
+  win_rate_trend?: 'up' | 'down' | 'stable' | null
+  rank_delta?: number | null
 }
 
 export interface LeaderboardRequest {

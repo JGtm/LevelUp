@@ -22,6 +22,9 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { csrRankImageURL } from '@/lib/staticAssets'
+import { tokenCssVar } from '@/lib/accessibility'
+import { skillDeltaScale } from '@/lib/accessibility/scales'
+import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
 
 const SUB_TIER_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI']
 const toRoman = (n: number): string => SUB_TIER_ROMAN[n] ?? String(n)
@@ -85,6 +88,59 @@ function formatStatValue(entry: LeaderboardEntry, locale: string): string {
   const intl = locale === 'en' ? 'en-US' : 'fr-FR'
   const decimals = entry.unit === '%' || /kd|per_game/.test(entry.category ?? '') ? 2 : 0
   return `${v.toLocaleString(intl, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}${entry.unit ?? ''}`
+}
+
+type Trend = 'up' | 'down' | 'stable'
+const TREND_GLYPH: Record<Trend, string> = { up: '▲', down: '▼', stable: '=' }
+// Tokens sémantiques de tendance (cf. KPIStrip) — jamais de hex direct.
+const TREND_VAR: Record<Trend, string> = {
+  up: '--narrative-trend-positive',
+  down: '--narrative-trend-negative',
+  stable: '--narrative-trend-neutral',
+}
+const isTrend = (v: unknown): v is Trend => v === 'up' || v === 'down' || v === 'stable'
+
+/** Valeur d'une métrique suivie d'une flèche de tendance colorée (optionnelle). */
+function MetricWithTrend({ text, trend }: { text: string; trend?: string | null }) {
+  return (
+    <span className="inline-flex items-baseline justify-end gap-1">
+      <span>{text}</span>
+      {isTrend(trend) && (
+        <span className="text-[10px] font-bold leading-none" style={{ color: `var(${TREND_VAR[trend]})` }} aria-hidden="true">
+          {TREND_GLYPH[trend]}
+        </span>
+      )}
+    </span>
+  )
+}
+
+const fmtPct = (v: number, locale: string): string =>
+  `${(v * 100).toLocaleString(locale === 'en' ? 'en-US' : 'fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+
+// renderCombatYield rend Rendement/Résistance EXACTEMENT comme la tuile de match
+// (CombatYieldDisplay). Calcule oc/dr/dégâts-par-frag/dégâts-par-mort depuis les
+// compteurs bruts agrégés (baseline 225). Affichage uniquement — pas d'agrégation.
+function renderCombatYield(e: LeaderboardEntry): ReactNode {
+  const dd = e.damage_dealt
+  const dt = e.damage_taken
+  const k = e.kills ?? 0
+  const d = e.deaths ?? 0
+  const a = e.assists ?? 0
+  if (dd == null || dt == null || k <= 0 || d <= 0) {
+    return <span className="text-muted-foreground">—</span>
+  }
+  const dmgPerKill = dd / (k + a / 3)
+  const dmgPerDeath = dt / d
+  return (
+    <CombatYieldDisplay
+      className="min-w-[170px]"
+      offensiveConversion={dmgPerKill > 0 ? 225 / dmgPerKill : null}
+      defensiveResistance={dmgPerDeath / 225}
+      dmgPerKill={dmgPerKill}
+      dmgPerDeath={dmgPerDeath}
+      align="center"
+    />
+  )
 }
 
 export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockProps) {
@@ -162,6 +218,14 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
           return e.value ?? 0
         case 'matches':
           return e.matches_played ?? 0
+        case 'world_matches':
+          return e.match_count ?? 0
+        case 'win_rate':
+          return e.win_rate ?? 0
+        case 'kda':
+          return (e.kda ?? 0) / (e.match_count || 1)
+        case 'accuracy':
+          return (e.accuracy ?? 0) / (e.match_count || 1)
         default:
           return e.rank
       }
@@ -169,6 +233,10 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
     const sorted = [...rows].sort((a, b) => sortValue(a) - sortValue(b))
     return sortDir === 'asc' ? sorted : sorted.reverse()
   }, [data?.entries, sortKey, sortDir])
+
+  // Colonnes enrichies affichées uniquement si au moins un joueur est backfillé
+  // (sinon table CSR historique inchangée). Calculé une fois pour aligner en-tête + cellules.
+  const hasEnrichment = isWorld && entries.some((e) => e.match_count != null)
 
   const sortIcon = (key: string): string => (sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '')
 
@@ -244,6 +312,16 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
                   <>
                     <th className="py-2 pr-4 text-center font-medium">{t('common.leaderboard.col_tier')}</th>
                     <SortableTh label={t('common.leaderboard.col_csr')} className="text-right" onClick={() => toggleSort('csr')} suffix={sortIcon('csr')} />
+                    {hasEnrichment && (
+                      <>
+                        <SortableTh label={t('common.leaderboard.col_matches')} className="text-right" onClick={() => toggleSort('world_matches')} suffix={sortIcon('world_matches')} />
+                        <SortableTh label={t('common.leaderboard.col_win_rate')} className="text-right" onClick={() => toggleSort('win_rate')} suffix={sortIcon('win_rate')} />
+                        <SortableTh label={t('common.leaderboard.col_kda')} className="text-right" onClick={() => toggleSort('kda')} suffix={sortIcon('kda')} />
+                        <SortableTh label={t('common.leaderboard.col_accuracy')} className="text-right" onClick={() => toggleSort('accuracy')} suffix={sortIcon('accuracy')} />
+                        <th className="py-2 pr-4 text-center font-medium">{t('common.leaderboard.col_combat')}</th>
+                        <th className="py-2 pr-4 text-right font-medium">{t('common.leaderboard.col_rank_delta')}</th>
+                      </>
+                    )}
                   </>
                 ) : (
                   <>
@@ -259,6 +337,7 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
                   key={`${entry.xuid || entry.gamertag}-${entry.rank}`}
                   entry={entry}
                   isWorld={isWorld}
+                  hasEnrichment={hasEnrichment}
                   localLabel={t('common.leaderboard.local_badge')}
                   locale={locale}
                   onHover={onHoverEntry}
@@ -289,6 +368,7 @@ function SortableTh({ label, className, onClick, suffix }: { label: string; clas
 function LeaderboardRow({
   entry,
   isWorld,
+  hasEnrichment,
   localLabel,
   locale,
   onHover,
@@ -296,6 +376,7 @@ function LeaderboardRow({
 }: {
   entry: LeaderboardEntry
   isWorld: boolean
+  hasEnrichment: boolean
   localLabel: string
   locale: string
   onHover?: (gamertag: string) => void
@@ -340,6 +421,37 @@ function LeaderboardRow({
           <td className="py-2 pr-4 text-right font-mono text-foreground">
             {entry.csr_value.toLocaleString(locale === 'en' ? 'en-US' : 'fr-FR')}
           </td>
+          {hasEnrichment && (
+            <>
+              <td className="py-2 pr-4 text-right font-mono text-muted-foreground">{entry.match_count ?? '—'}</td>
+              <td className="py-2 pr-4 text-right font-mono text-foreground">
+                {entry.win_rate != null ? <MetricWithTrend text={fmtPct(entry.win_rate, locale)} trend={entry.win_rate_trend} /> : '—'}
+              </td>
+              <td className="py-2 pr-4 text-right font-mono text-foreground">
+                {entry.kda != null && entry.match_count ? (
+                  <MetricWithTrend text={(entry.kda / entry.match_count).toFixed(2)} trend={entry.kda_trend} />
+                ) : (
+                  '—'
+                )}
+              </td>
+              <td className="py-2 pr-4 text-right font-mono text-foreground">
+                {entry.accuracy != null && entry.match_count
+                  ? `${(entry.accuracy / entry.match_count).toLocaleString(locale === 'en' ? 'en-US' : 'fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+                  : '—'}
+              </td>
+              <td className="py-2 pr-4">{renderCombatYield(entry)}</td>
+              <td className="py-2 pr-4 text-right font-mono">
+                {entry.rank_delta != null && entry.rank_delta !== 0 ? (
+                  <span style={{ color: tokenCssVar(skillDeltaScale(entry.rank_delta)) }}>
+                    {entry.rank_delta > 0 ? '+' : ''}
+                    {entry.rank_delta}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </td>
+            </>
+          )}
         </>
       ) : (
         <>

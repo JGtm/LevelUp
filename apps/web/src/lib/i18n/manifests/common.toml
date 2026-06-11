@@ -457,6 +457,26 @@ en = "Matches"
 fr = "Valeur"
 en = "Value"
 
+[common.leaderboard.col_win_rate]
+fr = "Victoires"
+en = "Win rate"
+
+[common.leaderboard.col_kda]
+fr = "KDA"
+en = "KDA"
+
+[common.leaderboard.col_rank_delta]
+fr = "Δ rang"
+en = "Rank Δ"
+
+[common.leaderboard.col_accuracy]
+fr = "Précision"
+en = "Accuracy"
+
+[common.leaderboard.col_combat]
+fr = "Rendement / Résistance"
+en = "Yield / Resistance"
+
 [common.leaderboard.local_badge]
 fr = "Local"
 en = "Local"
