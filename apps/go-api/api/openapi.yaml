@@ -1639,6 +1639,40 @@ paths:
       responses:
         "200": { description: "Rôle mis à jour" }
 
+  /admin/invariants:
+    get:
+      tags: [admin]
+      operationId: getAdminInvariants
+      summary: "Intégrité des données — invariants du pipeline sync par joueur (auth admin requis)"
+      parameters:
+        - name: title
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200": { description: "Rapports d'invariants par joueur" }
+
+  /admin/db-contention:
+    get:
+      tags: [admin]
+      operationId: getAdminDBContention
+      summary: "Contention DB — compteurs du shared provider B-swap (auth admin requis)"
+      responses:
+        "200": { description: "Compteurs de contention (swaps, durées, lectures rejetées en 503)" }
+
+  /admin/token-health:
+    get:
+      tags: [admin]
+      operationId: getAdminTokenHealth
+      summary: "Santé des tokens auth (MSAL / XSTS / Refresh) par joueur (auth admin requis)"
+      parameters:
+        - name: title
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200": { description: "Statuts de santé des tokens par joueur" }
+
   # Assets (image serving)
   /assets/battlepass/{title_id}/{filename}:
     get:

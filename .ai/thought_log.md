@@ -23044,3 +23044,33 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 - **Constat à investiguer (noté au plan, hors scope)** : les call sites live `UpsertXUIDAlias(ctx, globalDB, ...)` (engine_batch_path/fetch/process_match/highlight_events) visent la DB GLOBALE dont le fichier est figé au 29/04 (handle nil en pratique, erreurs avalées par `_ =`) — explique le backlog d'alias ; la table shared reste alimentée par d'autres chemins.
 - **Tests** : `TestConvergePSA_ErrorPaths` étendu (assertion alias opportuniste `OpportunistGT` upserté en shared). Suite sync complète verte (104s).
 - **Piège outillage** : insertion de code via node -e avec backticks → chaîne SQL avalée par la substitution bash ; réparé via Edit. Préférer Edit pour tout littéral contenant des backticks.
+
+## [2026-06-10] Dashboard monitoring : cartes Contention DB + Santé des tokens — Complété
+
+**Statut** : Complété (backend + frontend, tests verts). Non commité (branche fix/chart-empty-states, en attente autorisation).
+
+**Décision technique** :
+- Carte « Contention DB (sync) » : le B-swap est DÉJÀ instrumenté (sharedprovider/metrics.go). Ajout d'un `sharedprovider.Snapshot()` 100% LECTURE des compteurs expvar existants (swaps RO↔RW, durées, drain, get_timeout=503, readers_in_use) — ZÉRO modification du write-path (aucun risque ART). Mapping via registry `DBContention()` → handler → `GET /admin/db-contention`.
+- Carte « Santé des tokens » (MSAL/XSTS/Refresh) : pure fonction `(*auth.UserTokens).Health(now, margin)` (statuts ok/expiring/expired/absent/reauth) calculée sur l'état PERSISTÉ (MultiUserTokenStore, ADR 0023) SANS refresh réseau. Registry `TokenHealth()` énumère LoadPlayers + authStore.Load(xuid) → handler → `GET /admin/token-health`.
+- Frontend : 2 sections dans AdminPage.tsx (pattern InvariantsSection), hooks useQuery, types miroir, badges de statut via `tokenCssVar('success'|'warning'|'destructive')` (mécanisme couleur sanctionné, pas de hex).
+
+**Résultats** :
+- Go : build CGO ucrt64 OK ; 3 suites vertes (auth Health table-driven, sharedprovider Snapshot, handlers httptest db-contention + token-health).
+- Front : `tsc -b` exit 0 ; eslint 0 erreur (16 warnings no-hardcoded-strings, libellés FR cohérents avec la section Utilisateurs existante qui hardcode déjà).
+
+**Conclusion / prochaine étape** : diagnostic Carte 1 maintenant visible dans /admin → on pourra trancher « cadence vs plafond » (Option B vs A du plan B-swap). Reste optionnel : (a) métrique blocked-window exacte (RW hold) si on veut la durée totale de stall par swap ; (b) migration i18n des libellés FR (warnings) si EN requis. Réf : `.ai/PLAN_BSWAP_RETIRE_OR_MITIGATE.md`, mémoire `project_bswap_root_cause_and_read_migration_done`.
+
+## [2026-06-10] Dashboard monitoring (suite) : i18n complet + métrique blocked-window + doc OpenAPI — Complété
+
+**Statut** : Complété (backend + frontend, tous tests verts). Non commité (branche fix/chart-empty-states).
+
+**Décision technique** :
+- Métrique blocked-window (EN COMPLÉMENT, demande user) : `shared_provider_blocked_window_ms` (observability.RecordDurationMS) mesure la fenêtre TOTALE de blocage des lecteurs par swap (gateToDraining → reopen RO = drain + maintien RW + reopen). Instrumentation observability-only dans provider.go (champ swapBlockStart) + provider_writer.go ; aucun changement de logique d'écriture (zéro risque ART). Exposée avg+max sur la carte Contention.
+- i18n COMPLET d'AdminPage : 46 clés ajoutées à common.toml (mes 2 sections + tout l'existant hardcodé : Utilisateurs, Invitations, boutons). Helpers useT()/useDateLocale() factorisés. Statuts token via Record<TokenStatus, CommonManifestKey>. Régénération `node apps/web/scripts/build_i18n_manifests.mjs` (327 clés common).
+- Doc OpenAPI : ajout des 3 routes admin (invariants + db-contention + token-health) dans apps/go-api/api/openapi.yaml — le contrat TestContractRoutesDocumented impose plafond 0 (clôture P8.8). Le test était déjà rouge avant (invariants WIP non documenté) ; maintenant 0 route non documentée.
+
+**Résultats** :
+- Go : build CGO OK ; vet clean ; sharedprovider unit + **intégration -race** (5.7s) verts ; auth + handlers verts ; **package api complet vert** (contract registered/documented/content-type tous PASS, 0 route non documentée).
+- Front : `tsc -b` exit 0 ; **eslint exit 0, zéro warning** (plus aucun no-hardcoded-strings sur AdminPage).
+
+**Conclusion / prochaine étape** : plan dashboard 100% terminé (Carte contention + Carte tokens + blocked-window + i18n FR/EN). Reste à la main du user : commit (autorisation requise), et décision stratégique Option A/B du plan B-swap après lecture des chiffres de contention en prod.

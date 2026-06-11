@@ -109,6 +109,12 @@ type providerImpl struct {
 	handle *duckdbpkg.DB
 	ready  chan struct{}
 
+	// swapBlockStart marque le début de la fenêtre où les Get sont gatés
+	// (gateToDraining). Lu à la réouverture RO pour mesurer la durée TOTALE de
+	// blocage des lecteurs (drain + maintien RW + reopen). Protégé par p.mu —
+	// un seul swap à la fois (dblease sérialise les writers).
+	swapBlockStart time.Time
+
 	// readersWG track les Get en vol. Add(1) sous p.mu quand state=RO,
 	// Done() dans le release retourné. AcquireWriter Wait() avant le close
 	// du handle pour éviter "database is closed" côté caller.

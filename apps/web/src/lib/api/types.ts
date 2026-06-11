@@ -3656,3 +3656,45 @@ export interface AdminInvariantsResponse {
   shared_warn_count: number
   shared_check_error?: string
 }
+
+// ─── Admin — Contention DB (B-swap shared) ───────────────────────────────────
+// Miroir de domain.DBContentionResponse (GET /admin/db-contention).
+
+export interface DBContentionResponse {
+  generated_at: string
+  state: string
+  swaps: number
+  avg_acquire_ms: number
+  avg_release_ms: number
+  drain_ms_total: number
+  reads_rejected: number
+  readers_in_use: number
+  swap_failures: number
+  /** Blocage lecteurs (drain + maintien RW + reopen) — la durée la plus représentative du stall. */
+  avg_blocked_ms: number
+  max_blocked_ms: number
+}
+
+// ─── Admin — Santé des tokens (MSAL / XSTS / Refresh) ────────────────────────
+// Miroir de domain.TokenHealthResponse (GET /admin/token-health).
+
+export type TokenStatus = 'ok' | 'expiring' | 'expired' | 'absent' | 'reauth'
+
+export interface PlayerTokenHealth {
+  player_slug: string
+  gamertag: string
+  xuid: string
+  refresh: TokenStatus
+  msal: TokenStatus
+  xsts: TokenStatus
+  xsts_expires_at?: string
+  oauth_expires_at?: string
+  updated_at?: string
+  load_error?: string
+}
+
+export interface TokenHealthResponse {
+  generated_at: string
+  players: PlayerTokenHealth[]
+  store_unavailable?: boolean
+}

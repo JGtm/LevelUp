@@ -187,4 +187,7 @@ export const queryKeys = {
 
   // Admin — Intégrité des données (invariants sync, plan SYNC_INVARIANTS_GATE)
   adminInvariants: ['admin', 'invariants'] as const,
+  // Admin — Contention DB (B-swap shared) + santé des tokens auth
+  adminDbContention: ['admin', 'db-contention'] as const,
+  adminTokenHealth: ['admin', 'token-health'] as const,
 } as const

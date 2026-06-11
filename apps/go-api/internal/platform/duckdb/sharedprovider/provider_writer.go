@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
@@ -111,6 +112,8 @@ func (p *providerImpl) gateToDraining() error {
 	}
 	p.state.Store(int32(StateDraining))
 	recordStateTransition(prev, StateDraining)
+	// Début de la fenêtre de blocage des lecteurs (mesurée à la réouverture RO).
+	p.swapBlockStart = time.Now()
 	p.ready = make(chan struct{})
 	return nil
 }
@@ -247,6 +250,12 @@ func (p *providerImpl) releaseWriter(ctx context.Context, rwHandle *duckdbpkg.DB
 		recordStateTransition(StateReopening, StateRO)
 		swapTotal.Add(swapDirRwToRo, 1)
 		swapDurationMsTotal.Add(swapDirRwToRo, time.Since(swapStart).Milliseconds())
+		// Fenêtre totale de blocage des lecteurs (drain + maintien RW + reopen) :
+		// le nombre le plus représentatif du « stall » ressenti par swap.
+		if !p.swapBlockStart.IsZero() {
+			observability.RecordDurationMS("shared_provider_blocked_window_ms",
+				time.Since(p.swapBlockStart).Milliseconds())
+		}
 		close(p.ready)
 		p.mu.Unlock()
 		slog.InfoContext(ctx, "provider: swap RW→RO terminé",

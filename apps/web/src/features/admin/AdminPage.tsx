@@ -1,5 +1,6 @@
 /**
- * AdminPage — gestion des utilisateurs et des invitations.
+ * AdminPage — gestion des utilisateurs, invitations, monitoring (contention DB,
+ * santé des tokens) et intégrité des données.
  */
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
@@ -20,8 +21,9 @@ import {
 } from '@/features/auth/queries'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
-import { useAdminInvariants } from './queries'
-import type { AdminInvariantViolation } from '@/lib/api/types'
+import { useAdminInvariants, useAdminDBContention, useAdminTokenHealth } from './queries'
+import type { AdminInvariantViolation, TokenStatus } from '@/lib/api/types'
+import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import {
   SHARED_SCOPE_KEY,
   buildInvariantsSnapshot,
@@ -31,10 +33,23 @@ import {
   type InvariantsSnapshot,
 } from './invariantsTrend'
 
+type T = (key: CommonManifestKey) => string
+
+function useT(): T {
+  const locale = useAppShellStore((s) => s.locale)
+  return (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+}
+
+function useDateLocale(): string {
+  const locale = useAppShellStore((s) => s.locale)
+  return locale === 'fr' ? 'fr-FR' : 'en-US'
+}
+
 export function AdminPage() {
   const navigate = useNavigate()
   const isAdmin = useAppShellStore((s) => s.isAdmin)
   const currentUsername = useAppShellStore((s) => s.currentUsername)
+  const t = useT()
 
   if (!isAdmin) {
     navigate({ to: '/' })
@@ -44,14 +59,16 @@ export function AdminPage() {
   return (
     <div className="p-6 space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Administration</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t('common.admin.page_title')}</h1>
         <Button variant="outline" onClick={() => navigate({ to: '/' })}>
-          Retour
+          {t('common.admin.back')}
         </Button>
       </div>
 
       <UsersSection currentUsername={currentUsername} />
       <InvitesSection />
+      <DBContentionSection />
+      <TokenHealthSection />
       <InvariantsSection />
     </div>
   )
@@ -67,14 +84,13 @@ function UsersSection({ currentUsername }: { currentUsername: string | null | un
   const deleteUser = useDeleteUser()
   const changeRole = useChangeRole()
   const resetPassword = useResetPassword()
-  const locale = useAppShellStore((s) => s.locale)
-  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+  const t = useT()
 
   const [resetTarget, setResetTarget] = useState<string | null>(null)
   const [newPassword, setNewPassword] = useState('')
 
   function handleDelete(username: string) {
-    if (!confirm(`Supprimer l'utilisateur "${username}" ?`)) return
+    if (!confirm(`${t('common.admin.delete_user_confirm')} "${username}" ?`)) return
     deleteUser.mutate(username, {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.users }),
     })
@@ -104,9 +120,9 @@ function UsersSection({ currentUsername }: { currentUsername: string | null | un
   return (
     <Card>
       <CardContent className="pt-6">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Utilisateurs</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">{t('common.admin.users_section')}</h2>
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Chargement…</p>
+          <p className="text-sm text-muted-foreground">{t('common.admin.loading')}</p>
         ) : !users?.length ? (
           <p className="text-sm text-muted-foreground">{t('common.admin.no_users')}</p>
         ) : (
@@ -126,17 +142,19 @@ function UsersSection({ currentUsername }: { currentUsername: string | null | un
                   {u.username !== currentUsername && (
                     <>
                       <Button size="sm" variant="outline" onClick={() => handleToggleRole(u.username, u.role)}>
-                        {u.role === 'admin' ? '→ user' : '→ admin'}
+                        {u.role === 'admin'
+                          ? t('common.admin.demote_to_user')
+                          : t('common.admin.promote_to_admin')}
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => setResetTarget(resetTarget === u.username ? null : u.username)}
                       >
-                        MDP
+                        {t('common.admin.password_btn')}
                       </Button>
                       <Button size="sm" variant="destructive" onClick={() => handleDelete(u.username)}>
-                        Supprimer
+                        {t('common.admin.delete')}
                       </Button>
                     </>
                   )}
@@ -158,10 +176,10 @@ function UsersSection({ currentUsername }: { currentUsername: string | null | un
                   placeholder={t('common.auth.password_placeholder_short')}
                 />
                 <Button size="sm" onClick={() => handleResetPassword(resetTarget)}>
-                  OK
+                  {t('common.admin.ok')}
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => { setResetTarget(null); setNewPassword('') }}>
-                  Annuler
+                  {t('common.admin.cancel')}
                 </Button>
               </div>
             )}
@@ -181,8 +199,8 @@ function InvitesSection() {
   const { data: invites, isLoading } = useAdminInvites()
   const generateInvite = useGenerateInvite()
   const revokeInvite = useRevokeInvite()
-  const locale = useAppShellStore((s) => s.locale)
-  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+  const t = useT()
+  const dateLocale = useDateLocale()
 
   function handleGenerate() {
     generateInvite.mutate(7, {
@@ -210,12 +228,12 @@ function InvitesSection() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground">{t('common.admin.invitation_codes_section')}</h2>
           <Button size="sm" onClick={handleGenerate} disabled={generateInvite.isPending}>
-            {generateInvite.isPending ? 'Génération…' : 'Générer un code'}
+            {generateInvite.isPending ? t('common.admin.generating') : t('common.admin.generate_code')}
           </Button>
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Chargement…</p>
+          <p className="text-sm text-muted-foreground">{t('common.admin.loading')}</p>
         ) : !invites?.length ? (
           <p className="text-sm text-muted-foreground">{t('common.admin.no_invitation_codes')}</p>
         ) : (
@@ -230,18 +248,20 @@ function InvitesSection() {
                     {inv.code}
                   </span>
                   <div className="flex gap-3 text-xs text-muted-foreground">
-                    <span>par {inv.created_by}</span>
-                    <span>expire {new Date(inv.expires_at).toLocaleDateString('fr-FR')}</span>
-                    {inv.used_by && <span className="text-primary">utilisé par {inv.used_by}</span>}
+                    <span>{t('common.admin.invite_by')} {inv.created_by}</span>
+                    <span>{t('common.admin.invite_expires')} {new Date(inv.expires_at).toLocaleDateString(dateLocale)}</span>
+                    {inv.used_by && (
+                      <span className="text-primary">{t('common.admin.invite_used_by')} {inv.used_by}</span>
+                    )}
                   </div>
                 </div>
                 {inv.valid && !inv.used_by && (
                   <Button size="sm" variant="outline" onClick={() => handleRevoke(inv.code)}>
-                    Révoquer
+                    {t('common.admin.revoke')}
                   </Button>
                 )}
                 {!inv.valid && !inv.used_by && (
-                  <span className="text-xs text-muted-foreground">expiré</span>
+                  <span className="text-xs text-muted-foreground">{t('common.admin.expired')}</span>
                 )}
               </div>
             ))}
@@ -432,5 +452,174 @@ function InvariantsCard({
         </ul>
       )}
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Section Contention DB (B-swap shared — diagnostic du stall pendant le sync)
+// ---------------------------------------------------------------------------
+
+function DBContentionSection() {
+  const { data, isLoading, isError, refetch, isFetching } = useAdminDBContention()
+  const t = useT()
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">{t('common.admin.contention_section')}</h2>
+            <p className="max-w-xl text-xs text-muted-foreground">{t('common.admin.contention_desc')}</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching}>
+            {isFetching ? t('common.admin.loading') : t('common.admin.refresh')}
+          </Button>
+        </div>
+
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">{t('common.admin.loading')}</p>
+        ) : isError || !data ? (
+          <p className="text-sm text-destructive">{t('common.admin.contention_unavailable')}</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Metric label={t('common.admin.contention_swaps')} value={String(data.swaps)} />
+            <Metric label={t('common.admin.contention_acquire')} value={`${data.avg_acquire_ms} ms`} />
+            <Metric label={t('common.admin.contention_release')} value={`${data.avg_release_ms} ms`} />
+            <Metric label={t('common.admin.contention_drain')} value={`${data.drain_ms_total} ms`} />
+            <Metric label={t('common.admin.contention_blocked_avg')} value={`${data.avg_blocked_ms} ms`} />
+            <Metric
+              label={t('common.admin.contention_blocked_max')}
+              value={`${data.max_blocked_ms} ms`}
+              alert={data.max_blocked_ms >= 1000}
+            />
+            <Metric
+              label={t('common.admin.contention_503')}
+              value={String(data.reads_rejected)}
+              alert={data.reads_rejected > 0}
+            />
+            <Metric
+              label={t('common.admin.contention_failures')}
+              value={String(data.swap_failures)}
+              alert={data.swap_failures > 0}
+            />
+            <Metric label={t('common.admin.contention_readers')} value={String(data.readers_in_use)} />
+            <Metric label={t('common.admin.contention_state')} value={data.state} />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function Metric({ label, value, alert }: { label: string; value: string; alert?: boolean }) {
+  return (
+    <div className="rounded-md border px-3 py-2">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div
+        className="text-lg font-semibold text-foreground"
+        style={alert ? { color: tokenCssVar('destructive') } : undefined}
+      >
+        {value}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Section Santé des tokens (MSAL / XSTS / Refresh par joueur — ADR 0023)
+// ---------------------------------------------------------------------------
+
+const TOKEN_STATUS_KEY: Record<TokenStatus, CommonManifestKey> = {
+  ok: 'common.admin.token_status_ok',
+  expiring: 'common.admin.token_status_expiring',
+  expired: 'common.admin.token_status_expired',
+  absent: 'common.admin.token_status_absent',
+  reauth: 'common.admin.token_status_reauth',
+}
+
+function tokenStatusColor(status: TokenStatus): string | undefined {
+  switch (status) {
+    case 'ok':
+      return tokenCssVar('success')
+    case 'expiring':
+      return tokenCssVar('warning')
+    case 'expired':
+    case 'reauth':
+      return tokenCssVar('destructive')
+    default:
+      return undefined // absent → neutre (text-muted-foreground)
+  }
+}
+
+function TokenBadge({ kind, status, t }: { kind: string; status: TokenStatus; t: T }) {
+  const color = tokenStatusColor(status)
+  return (
+    <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+      {kind}:{' '}
+      <span className={color ? 'font-semibold' : undefined} style={color ? { color } : undefined}>
+        {t(TOKEN_STATUS_KEY[status])}
+      </span>
+    </span>
+  )
+}
+
+function TokenHealthSection() {
+  const { data, isLoading, isError, refetch, isFetching } = useAdminTokenHealth()
+  const t = useT()
+  const dateLocale = useDateLocale()
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">{t('common.admin.tokens_section')}</h2>
+            <p className="max-w-xl text-xs text-muted-foreground">{t('common.admin.tokens_desc')}</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching}>
+            {isFetching ? t('common.admin.loading') : t('common.admin.refresh')}
+          </Button>
+        </div>
+
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">{t('common.admin.loading')}</p>
+        ) : isError ? (
+          <p className="text-sm text-destructive">{t('common.admin.tokens_unavailable')}</p>
+        ) : data?.store_unavailable ? (
+          <p className="text-sm text-muted-foreground">{t('common.admin.tokens_store_unavailable')}</p>
+        ) : !data?.players?.length ? (
+          <p className="text-sm text-muted-foreground">{t('common.admin.no_tracked_players')}</p>
+        ) : (
+          <div className="space-y-3">
+            {data.players.map((p) => (
+              <div key={p.xuid || p.gamertag} className="rounded-md border px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-medium text-foreground">{p.gamertag || p.xuid}</span>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {p.load_error ? (
+                      <span className="rounded bg-muted px-2 py-0.5 text-xs text-destructive">
+                        {p.load_error}
+                      </span>
+                    ) : (
+                      <>
+                        <TokenBadge kind={t('common.admin.token_refresh')} status={p.refresh} t={t} />
+                        <TokenBadge kind={t('common.admin.token_msal')} status={p.msal} t={t} />
+                        <TokenBadge kind={t('common.admin.token_xsts')} status={p.xsts} t={t} />
+                      </>
+                    )}
+                  </div>
+                </div>
+                {p.xsts_expires_at && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t('common.admin.xsts_expires_on')}{' '}
+                    {new Date(p.xsts_expires_at).toLocaleString(dateLocale)}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

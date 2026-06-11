@@ -670,6 +670,15 @@ func NewRouter(
 			// résultat reflète l'état courant des DBs, jamais de cache.
 			invariantsHandler := handlers.NewAdminInvariantsHandler(reg.RunDataInvariants)
 			r.With(middleware.NoStore).Get("/invariants", invariantsHandler.Get)
+			// Contention DB (B-swap shared) : compteurs de swap RO↔RW pendant le
+			// sync (cadence + lectures rejetées en 503). Lecture seule des
+			// métriques expvar du sharedprovider. NoStore : état courant.
+			contentionHandler := handlers.NewAdminDBContentionHandler(reg.DBContention)
+			r.With(middleware.NoStore).Get("/db-contention", contentionHandler.Get)
+			// Santé des tokens auth (MSAL / XSTS / Refresh) par joueur. Lecture
+			// seule du MultiUserTokenStore (ADR 0023), sans refresh réseau.
+			tokenHealthHandler := handlers.NewAdminTokenHealthHandler(reg.TokenHealth)
+			r.With(middleware.NoStore).Get("/token-health", tokenHealthHandler.Get)
 		})
 
 		// Diagnostic — accessible en loopback (127.0.0.1) uniquement, sans auth.
