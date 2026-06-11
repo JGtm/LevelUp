@@ -47,6 +47,8 @@ func TestExtractPlayerMatchStat(t *testing.T) {
 				"PlayerTeamStats": []any{
 					map[string]any{"Stats": map[string]any{"CoreStats": map[string]any{
 						"Kills": float64(15), "Deaths": float64(8), "Assists": float64(4),
+						"KDA": float64(7.33), "Accuracy": float64(52.5),
+						"DamageDealt": float64(3200), "DamageTaken": float64(2800),
 					}}},
 				},
 				"ParticipationInfo": map[string]any{"TimePlayed": "PT10M39.203S"},
@@ -73,6 +75,13 @@ func TestExtractPlayerMatchStat(t *testing.T) {
 	if st.PlaytimeSec < 639.2 || st.PlaytimeSec > 639.21 {
 		t.Errorf("PlaytimeSec = %v, want ~639.203 (10*60+39.203)", st.PlaytimeSec)
 	}
+	// Valeurs natives brutes lues telles quelles.
+	if st.KDA != 7.33 || st.Accuracy != 52.5 {
+		t.Errorf("KDA/Accuracy = %v/%v, want 7.33/52.5", st.KDA, st.Accuracy)
+	}
+	if st.DamageDealt != 3200 || st.DamageTaken != 2800 {
+		t.Errorf("dégâts = %d/%d, want 3200/2800", st.DamageDealt, st.DamageTaken)
+	}
 
 	if _, ok := ExtractPlayerMatchStat(match, "111111"); ok {
 		t.Error("ExtractPlayerMatchStat: xuid absent devrait retourner ok=false")
@@ -83,9 +92,9 @@ func TestAccumulateWorldStats(t *testing.T) {
 	const arena = "edfef3ac-9cbe-4fa2-b949-8f29deafd483"
 	const slayer = "dcb2e24e-05fb-4390-8076-32a0cdb4326e"
 	stats := []PlayerMatchStat{
-		{SeasonID: "csrseason13-2", PlaylistID: arena, Outcome: 2, Kills: 15, Deaths: 8, Assists: 4, PlaytimeSec: 600},
-		{SeasonID: "csrseason13-2", PlaylistID: arena, Outcome: 3, Kills: 10, Deaths: 12, Assists: 2, PlaytimeSec: 600},
-		{SeasonID: "csrseason13-2", PlaylistID: arena, Outcome: 1, Kills: 5, Deaths: 5, Assists: 1, PlaytimeSec: 300},
+		{SeasonID: "csrseason13-2", PlaylistID: arena, Outcome: 2, Kills: 15, Deaths: 8, Assists: 4, PlaytimeSec: 600, KDA: 3.0, Accuracy: 50, DamageDealt: 3000, DamageTaken: 2500},
+		{SeasonID: "csrseason13-2", PlaylistID: arena, Outcome: 3, Kills: 10, Deaths: 12, Assists: 2, PlaytimeSec: 600, KDA: 1.5, Accuracy: 40, DamageDealt: 2000, DamageTaken: 2800},
+		{SeasonID: "csrseason13-2", PlaylistID: arena, Outcome: 1, Kills: 5, Deaths: 5, Assists: 1, PlaytimeSec: 300, KDA: 0.5, Accuracy: 45, DamageDealt: 1000, DamageTaken: 1200},
 		// Autre playlist (ne doit pas fusionner avec Arena).
 		{SeasonID: "csrseason13-2", PlaylistID: slayer, Outcome: 2, Kills: 20, Deaths: 10, Assists: 5},
 		// Autre saison.
@@ -121,6 +130,13 @@ func TestAccumulateWorldStats(t *testing.T) {
 	}
 	if arenaCur.PlaytimeSec != 1500 {
 		t.Errorf("13-2/arena playtime = %d, want 1500", arenaCur.PlaytimeSec)
+	}
+	// Sommes brutes des valeurs natives (3.0+1.5+0.5, 50+40+45, 3000+2000+1000, 2500+2800+1200).
+	if arenaCur.KDA != 5.0 || arenaCur.Accuracy != 135.0 {
+		t.Errorf("13-2/arena KDA/Accuracy = %v/%v, want 5/135", arenaCur.KDA, arenaCur.Accuracy)
+	}
+	if arenaCur.DamageDealt != 6000 || arenaCur.DamageTaken != 6500 {
+		t.Errorf("13-2/arena dégâts = %d/%d, want 6000/6500", arenaCur.DamageDealt, arenaCur.DamageTaken)
 	}
 
 	prevArena := pick(t, out, "csrseason12-1", arena)

@@ -45,8 +45,9 @@ func InsertPlayerSeasonStats(ctx context.Context, db *sql.DB, stats []domain.Wor
 		INSERT INTO world_player_season_stats
 			(title_slug, gamertag, season_id, playlist_id,
 			 match_count, win_count, loss_count, tie_count, dnf_count,
-			 kills, deaths, assists, playtime_s, medal_count, computed_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			 kills, deaths, assists, playtime_s, medal_count,
+			 kda, accuracy, damage_dealt, damage_taken, computed_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	now := time.Now()
 	for _, s := range stats {
 		title := s.TitleSlug
@@ -56,7 +57,8 @@ func InsertPlayerSeasonStats(ctx context.Context, db *sql.DB, stats []domain.Wor
 		if _, err := tx.ExecContext(ctx, ins,
 			title, s.Gamertag, s.SeasonID, s.PlaylistID,
 			s.MatchCount, s.WinCount, s.LossCount, s.TieCount, s.DnfCount,
-			s.Kills, s.Deaths, s.Assists, s.PlaytimeSec, s.MedalCount, now,
+			s.Kills, s.Deaths, s.Assists, s.PlaytimeSec, s.MedalCount,
+			s.KDA, s.Accuracy, s.DamageDealt, s.DamageTaken, now,
 		); err != nil {
 			return 0, fmt.Errorf("InsertPlayerSeasonStats (%s/%s/%s): %w", s.Gamertag, s.SeasonID, s.PlaylistID, err)
 		}
@@ -100,12 +102,11 @@ WITH hist AS (
 		gamertag, season_id, playlist_id,
 		match_count, win_count, loss_count, tie_count, dnf_count,
 		kills, deaths, assists, playtime_s, medal_count,
+		kda, accuracy, damage_dealt, damage_taken,
 		LAG(season_id)   OVER w AS prev_season_id,
 		LAG(match_count) OVER w AS prev_match_count,
 		LAG(win_count)   OVER w AS prev_win_count,
-		LAG(kills)       OVER w AS prev_kills,
-		LAG(deaths)      OVER w AS prev_deaths,
-		LAG(assists)     OVER w AS prev_assists
+		LAG(kda)         OVER w AS prev_kda_raw
 	FROM world_player_season_stats_latest
 	WHERE title_slug = ?
 	WINDOW w AS (PARTITION BY title_slug, gamertag, playlist_id ORDER BY season_id)
@@ -114,16 +115,16 @@ SELECT
 	gamertag, season_id, playlist_id,
 	match_count, win_count, loss_count, tie_count, dnf_count,
 	kills, deaths, assists, playtime_s, medal_count,
+	kda, accuracy, damage_dealt, damage_taken,
 	win_count::DOUBLE / NULLIF(match_count, 0)                   AS win_rate,
-	(kills + assists / 3.0) / NULLIF(deaths, 0)                  AS kda,
 	kills::DOUBLE / NULLIF(playtime_s / 60.0, 0)                 AS kills_per_min,
 	prev_season_id,
 	prev_win_count::DOUBLE / NULLIF(prev_match_count, 0)         AS prev_win_rate,
-	(prev_kills + prev_assists / 3.0) / NULLIF(prev_deaths, 0)   AS prev_kda,
+	prev_kda_raw                                                AS prev_kda,
 	CASE
 		WHEN prev_season_id IS NULL THEN NULL
-		WHEN (kills + assists/3.0)/NULLIF(deaths,0) > (prev_kills + prev_assists/3.0)/NULLIF(prev_deaths,0) THEN 'up'
-		WHEN (kills + assists/3.0)/NULLIF(deaths,0) < (prev_kills + prev_assists/3.0)/NULLIF(prev_deaths,0) THEN 'down'
+		WHEN kda > prev_kda_raw THEN 'up'
+		WHEN kda < prev_kda_raw THEN 'down'
 		ELSE 'stable'
 	END AS kda_trend,
 	CASE
@@ -166,19 +167,19 @@ func queryWorldPlayerStats(ctx context.Context, db *sql.DB, season, playlist str
 	var out []domain.WorldPlayerSeasonStats
 	for rows.Next() {
 		var s domain.WorldPlayerSeasonStats
-		var winRate, kda, kpm, prevWinRate, prevKDA sql.NullFloat64
+		var winRate, kpm, prevWinRate, prevKDA sql.NullFloat64
 		var prevSeason, kdaTrend, wrTrend sql.NullString
 		if err := rows.Scan(
 			&s.Gamertag, &s.SeasonID, &s.PlaylistID,
 			&s.MatchCount, &s.WinCount, &s.LossCount, &s.TieCount, &s.DnfCount,
 			&s.Kills, &s.Deaths, &s.Assists, &s.PlaytimeSec, &s.MedalCount,
-			&winRate, &kda, &kpm, &prevSeason, &prevWinRate, &prevKDA, &kdaTrend, &wrTrend,
+			&s.KDA, &s.Accuracy, &s.DamageDealt, &s.DamageTaken,
+			&winRate, &kpm, &prevSeason, &prevWinRate, &prevKDA, &kdaTrend, &wrTrend,
 		); err != nil {
 			return nil, fmt.Errorf("GetWorldPlayerSeasonStats: scan: %w", err)
 		}
 		s.TitleSlug = defaultLeaderboardTitleSlug
 		s.WinRate = nullFloat(winRate)
-		s.KDA = nullFloat(kda)
 		s.KillsPerMin = nullFloat(kpm)
 		s.PrevSeasonID = nullStr(prevSeason)
 		s.PrevWinRate = nullFloat(prevWinRate)
