@@ -29,6 +29,7 @@ package migration
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 )
 
 func init() {
@@ -72,5 +73,6 @@ func repairMatchSkillRankWrittenAt(db *sql.DB) error {
 	if _, err := db.ExecContext(ctx, `ALTER TABLE match_skill_rank ALTER COLUMN written_at SET DEFAULT now()`); err != nil {
 		return fmt.Errorf("repair written_at: ALTER SET DEFAULT: %w", err)
 	}
+	slog.InfoContext(ctx, "match_skill_rank: written_at DEFAULT now() (ré)appliqué (réparation migration append-only partielle)")
 	return nil
 }

@@ -109,6 +109,47 @@ func TestApplyAppendOnlyMatchSkillRank_BasicMigration(t *testing.T) {
 	}
 }
 
+// TestRepairMatchSkillRankWrittenAt — la migration de réparation (re)pose le
+// DEFAULT now() sur written_at en DDL pur (jamais d'UPDATE → pas de bug ART).
+// Idempotente ; no-op si la table n'existe pas.
+func TestRepairMatchSkillRankWrittenAt(t *testing.T) {
+	db := setupLegacyMatchSkillRank(t, 0)
+	if err := applyAppendOnlyMatchSkillRank(db); err != nil {
+		t.Fatalf("append-only: %v", err)
+	}
+	// Simule une migration append-only partielle : DEFAULT de written_at absent.
+	if _, err := db.Exec(`ALTER TABLE match_skill_rank ALTER COLUMN written_at DROP DEFAULT`); err != nil {
+		t.Logf("DROP DEFAULT non supporté (%v) — on teste l'idempotence quand même", err)
+	}
+	if err := repairMatchSkillRankWrittenAt(db); err != nil {
+		t.Fatalf("repair: %v", err)
+	}
+	// Le DEFAULT now() est effectif : un INSERT sans written_at le peuple.
+	if _, err := db.Exec(`INSERT INTO match_skill_rank (match_id, rating_type, rating_value, playlist_group)
+		VALUES ('x', 'LUSR', 1500, 'arena_slayer')`); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+	var nNull int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_skill_rank WHERE match_id='x' AND written_at IS NULL`).Scan(&nNull); err != nil {
+		t.Fatal(err)
+	}
+	if nNull != 0 {
+		t.Errorf("written_at NULL après repair (%d) — DEFAULT now() devrait le peupler", nNull)
+	}
+	// Idempotente.
+	if err := repairMatchSkillRankWrittenAt(db); err != nil {
+		t.Errorf("repair idempotent: %v", err)
+	}
+	// No-op si la table n'existe pas.
+	empty := setupLegacyMatchSkillRank(t, 0)
+	if _, err := empty.Exec(`DROP TABLE match_skill_rank`); err != nil {
+		t.Fatal(err)
+	}
+	if err := repairMatchSkillRankWrittenAt(empty); err != nil {
+		t.Errorf("repair sans table devrait être no-op: %v", err)
+	}
+}
+
 // TestApplyAppendOnlyMatchSkillRank_Idempotent — re-appliquer la
 // migration sur une DB déjà migrée doit être un no-op.
 func TestApplyAppendOnlyMatchSkillRank_Idempotent(t *testing.T) {
