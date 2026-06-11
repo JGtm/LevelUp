@@ -2,6 +2,7 @@ package pool
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -39,6 +40,17 @@ type resolverImpl struct {
 	// Nullable : si nil, aucune notification.
 	onReauth ReauthCallback
 
+	// onAuthError signale un échec OAuth permanent (classe config/revoked) ou son
+	// effacement (class="") — persisté par le caller pour le dashboard admin.
+	// Nullable : si nil, aucune notification.
+	onAuthError AuthErrorCallback
+
+	// negative = cache négatif par gamertag : un échec PERMANENT (config/revoked)
+	// court-circuite les Resolve suivants pendant sa fenêtre (aucun appel réseau,
+	// log Debug). Une nouvelle CredentialSource (RT différent, ex. post
+	// token-capture) invalide l'entrée automatiquement.
+	negative map[string]*negativeEntry
+
 	// sfGroup dédupplique les Resolve concurrents pour un même gamertag. Cf.
 	// `golang.org/x/sync/singleflight`. Sans cette protection, N goroutines
 	// arrivant en même temps sur un cache miss appellent toutes Microsoft avec
@@ -59,6 +71,27 @@ type cachedToken struct {
 	expiresAt time.Time
 }
 
+// ErrPermanentAuthFailure marque une erreur servie depuis le cache négatif
+// (échec permanent récent, aucun nouvel appel réseau effectué). Les boucles de
+// retry (refresherLoop) peuvent la détecter via errors.Is pour ne pas re-loguer.
+var ErrPermanentAuthFailure = errors.New("pool/resolver: échec auth permanent récent")
+
+// negativeEntry mémorise un échec OAuth permanent pour un gamertag.
+type negativeEntry struct {
+	class auth.AuthErrorClass
+	err   error
+	until time.Time
+	// refreshToken = RT de la source au moment de l'échec. Si une source
+	// ultérieure porte un RT différent (re-capture), l'entrée est invalidée.
+	refreshToken string
+}
+
+// TTL du cache négatif par classe d'échec.
+const (
+	negativeTTLConfig  = 1 * time.Hour
+	negativeTTLRevoked = 6 * time.Hour
+)
+
 // NewResolver crée un Resolver avec cache TTL.
 // cacheTTL : durée avant expiration (défaut ~3h30 pour Spartan ~4h).
 // onRotated : callback optionnel invoqué quand Microsoft rotate un RT.
@@ -69,16 +102,27 @@ func NewResolver(provider auth.TokenProvider, cacheTTL time.Duration, onRotated 
 // NewResolverWithReauth crée un Resolver avec, en plus, le callback de changement
 // d'état « ré-authentification requise » (RT mort / refresh OK). PR-B.
 func NewResolverWithReauth(provider auth.TokenProvider, cacheTTL time.Duration, onRotated TokenRotationCallback, onReauth ReauthCallback) Resolver {
+	return NewResolverWithCallbacks(provider, cacheTTL, ResolverCallbacks{
+		OnRotated: onRotated,
+		OnReauth:  onReauth,
+	})
+}
+
+// NewResolverWithCallbacks crée un Resolver avec l'ensemble des callbacks
+// optionnels (rotation RT, reauth, échec auth permanent).
+func NewResolverWithCallbacks(provider auth.TokenProvider, cacheTTL time.Duration, cbs ResolverCallbacks) Resolver {
 	if cacheTTL == 0 {
 		cacheTTL = 3*time.Hour + 30*time.Minute
 	}
 	return &resolverImpl{
-		provider:  provider,
-		cache:     make(map[string]*cachedToken),
-		cacheTTL:  cacheTTL,
-		sources:   make(map[string]CredentialSource),
-		onRotated: onRotated,
-		onReauth:  onReauth,
+		provider:    provider,
+		cache:       make(map[string]*cachedToken),
+		cacheTTL:    cacheTTL,
+		sources:     make(map[string]CredentialSource),
+		onRotated:   cbs.OnRotated,
+		onReauth:    cbs.OnReauth,
+		onAuthError: cbs.OnAuthError,
+		negative:    make(map[string]*negativeEntry),
 	}
 }
 
@@ -95,6 +139,13 @@ func (r *resolverImpl) Resolve(ctx context.Context, src CredentialSource) (*Reso
 	// Fast path : cache hit avant tout — pas besoin de singleflight.
 	if cached, ok := r.lookupCachedToken(ctx, src.Gamertag); ok {
 		return cached, nil
+	}
+
+	// Cache négatif : un échec PERMANENT récent (config/revoked) court-circuite
+	// le pipeline — aucun appel réseau, log Debug (le WARN a été émis à la
+	// première occurrence). Une source au RT différent invalide l'entrée.
+	if nerr := r.lookupNegativeEntry(ctx, src); nerr != nil {
+		return nil, nerr
 	}
 
 	// Singleflight : dédupplique les Resolve concurrents par gamertag.
@@ -133,6 +184,7 @@ func (r *resolverImpl) resolveExpensive(ctx context.Context, src CredentialSourc
 		// signaler la ré-authentification requise (best-effort, cf. signalReauth).
 		r.signalReauth(ctx, src, true)
 		if err != nil {
+			r.recordPermanentFailure(ctx, src, err)
 			return nil, err
 		}
 		nerr := fmt.Errorf("pool/resolver: aucun accessToken obtenu pour %s (pas de MSAL cache et pas de refresh_token)", src.Gamertag)
@@ -143,10 +195,77 @@ func (r *resolverImpl) resolveExpensive(ctx context.Context, src CredentialSourc
 
 	resolved, xerr := r.exchangeAndCache(ctx, src, accessToken)
 	if xerr == nil {
-		// Refresh + échange OK → l'éventuel flag reauth_required est obsolète.
+		// Refresh + échange OK → l'éventuel flag reauth_required est obsolète,
+		// de même que le dernier échec auth mémorisé.
 		r.signalReauth(ctx, src, false)
+		r.clearPermanentFailure(ctx, src)
 	}
 	return resolved, xerr
+}
+
+// lookupNegativeEntry retourne l'erreur mémorisée si un échec permanent récent
+// existe pour cette source, nil sinon. Entrée expirée ou RT différent → purge.
+func (r *resolverImpl) lookupNegativeEntry(ctx context.Context, src CredentialSource) error {
+	r.mu.RLock()
+	entry, ok := r.negative[src.Gamertag]
+	r.mu.RUnlock()
+	if !ok {
+		return nil
+	}
+
+	if time.Now().After(entry.until) || entry.refreshToken != src.RefreshToken {
+		r.mu.Lock()
+		delete(r.negative, src.Gamertag)
+		r.mu.Unlock()
+		return nil
+	}
+
+	slog.DebugContext(ctx, "pool/resolver: resolve court-circuité — échec permanent récent",
+		"gamertag", src.Gamertag, "class", entry.class,
+		"retry_after", entry.until.Format(time.RFC3339))
+	return fmt.Errorf("%w (%s, retry après %s): %s",
+		ErrPermanentAuthFailure, entry.class,
+		entry.until.Format(time.RFC3339), entry.err)
+}
+
+// recordPermanentFailure mémorise un échec de classe config/revoked dans le
+// cache négatif (les échecs transitoires ne sont PAS mémorisés) et notifie
+// onAuthError pour persistance (dashboard admin).
+func (r *resolverImpl) recordPermanentFailure(ctx context.Context, src CredentialSource, err error) {
+	class := auth.ClassifyAuthError(err)
+	if class == auth.AuthErrorTransient {
+		return
+	}
+	ttl := negativeTTLConfig
+	if class == auth.AuthErrorRevoked {
+		ttl = negativeTTLRevoked
+	}
+	r.mu.Lock()
+	r.negative[src.Gamertag] = &negativeEntry{
+		class:        class,
+		err:          err,
+		until:        time.Now().Add(ttl),
+		refreshToken: src.RefreshToken,
+	}
+	r.mu.Unlock()
+
+	if r.onAuthError != nil {
+		r.onAuthError(ctx, src.Gamertag, src.XUID, string(class), err.Error())
+	}
+}
+
+// clearPermanentFailure purge le cache négatif du gamertag et signale
+// l'effacement de l'erreur persistée (refresh réussi). L'effacement est
+// signalé même sans entrée en mémoire : une erreur persistée par un process
+// précédent doit aussi être nettoyée (le store no-op si déjà vierge).
+func (r *resolverImpl) clearPermanentFailure(ctx context.Context, src CredentialSource) {
+	r.mu.Lock()
+	delete(r.negative, src.Gamertag)
+	r.mu.Unlock()
+
+	if r.onAuthError != nil {
+		r.onAuthError(ctx, src.Gamertag, src.XUID, "", "")
+	}
 }
 
 // signalReauth invoque onReauth (si présent). Pour required=true (RT mort), ne
@@ -216,8 +335,11 @@ func (r *resolverImpl) acquireAccessToken(ctx context.Context, src *CredentialSo
 func (r *resolverImpl) tryOAuthRefreshAndPropagateRotation(ctx context.Context, src *CredentialSource) (string, error) {
 	token, rotatedRT, err := r.provider.TryOAuthRefreshWithRotation(ctx, src.RefreshToken)
 	if err != nil {
+		// WARN unique de la chaîne : les logs intermédiaires (oauth_refresh,
+		// sisu_provider) sont en Debug ; les occurrences suivantes d'un échec
+		// permanent sont court-circuitées par le cache négatif (Debug aussi).
 		slog.WarnContext(ctx, "pool/resolver: TryOAuthRefresh erreur",
-			"gamertag", src.Gamertag, "err", err)
+			"gamertag", src.Gamertag, "class", auth.ClassifyAuthError(err), "err", err)
 		return "", fmt.Errorf("pool/resolver: TryOAuthRefresh échoué pour %s: %w", src.Gamertag, err)
 	}
 	if token == "" {

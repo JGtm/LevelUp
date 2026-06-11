@@ -55,6 +55,14 @@ type UserTokens struct {
 	// réussit ou après une ré-authentification interactive (PR-B).
 	ReauthRequired   bool      `json:"reauth_required,omitempty"`
 	ReauthDetectedAt time.Time `json:"reauth_detected_at,omitempty"`
+
+	// LastAuthError* : dernier échec OAuth permanent observé par le resolver
+	// (classe "config" ou "revoked", cf. auth.AuthErrorClass). Effacés au
+	// premier refresh réussi. Affichés par le dashboard admin « Santé des
+	// tokens ». Le message ne contient JAMAIS de token/secret.
+	LastAuthErrorClass string    `json:"last_auth_error_class,omitempty"`
+	LastAuthError      string    `json:"last_auth_error,omitempty"`
+	LastAuthErrorAt    time.Time `json:"last_auth_error_at,omitempty"`
 }
 
 // IsXSTSValid retourne true si le XSTS est encore valide (avec marge).
@@ -346,6 +354,57 @@ func (s *MultiUserTokenStore) ClearReauthRequired(xuid string) error {
 	}
 	existing.ReauthRequired = false
 	existing.ReauthDetectedAt = time.Time{}
+	return s.upsertLocked(existing)
+}
+
+// RecordAuthError persiste le dernier échec OAuth permanent d'un xuid
+// (read-modify-write atomique, préserve les autres champs, crée l'entrée si
+// absente). Le gamertag n'est complété que s'il était vide.
+func (s *MultiUserTokenStore) RecordAuthError(xuid, gamertag, class, msg string) error {
+	if !xuidIsSafe(xuid) {
+		return fmt.Errorf("multi_user_token_store: xuid invalide: %q", xuid)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	existing, err := s.loadLocked(xuid)
+	if err != nil && !errors.Is(err, ErrUserTokensNotFound) {
+		return fmt.Errorf("multi_user_token_store: lecture pour record auth error: %w", err)
+	}
+	if existing == nil {
+		existing = &UserTokens{XUID: xuid}
+	}
+	existing.LastAuthErrorClass = class
+	existing.LastAuthError = msg
+	existing.LastAuthErrorAt = time.Now().UTC()
+	if existing.Gamertag == "" {
+		existing.Gamertag = gamertag
+	}
+	return s.upsertLocked(existing)
+}
+
+// ClearAuthError efface le dernier échec OAuth mémorisé (refresh réussi).
+// No-op si l'entrée est absente ou déjà vierge.
+func (s *MultiUserTokenStore) ClearAuthError(xuid string) error {
+	if !xuidIsSafe(xuid) {
+		return fmt.Errorf("multi_user_token_store: xuid invalide: %q", xuid)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	existing, err := s.loadLocked(xuid)
+	if err != nil {
+		if errors.Is(err, ErrUserTokensNotFound) {
+			return nil
+		}
+		return fmt.Errorf("multi_user_token_store: lecture pour clear auth error: %w", err)
+	}
+	if existing.LastAuthErrorClass == "" && existing.LastAuthError == "" {
+		return nil
+	}
+	existing.LastAuthErrorClass = ""
+	existing.LastAuthError = ""
+	existing.LastAuthErrorAt = time.Time{}
 	return s.upsertLocked(existing)
 }
 

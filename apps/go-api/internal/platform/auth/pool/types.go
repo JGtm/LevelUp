@@ -75,6 +75,20 @@ type TokenRotationCallback func(ctx context.Context, gamertag, newRefreshToken s
 // (bannière in-app + Discord opt-in, PR-B). Best-effort, non bloquant.
 type ReauthCallback func(ctx context.Context, gamertag, xuid string, required bool)
 
+// AuthErrorCallback est invoqué par le Resolver quand un échec OAuth PERMANENT
+// (classe "config" ou "revoked") est observé pour un joueur — class et msg sont
+// alors non vides — puis avec class=="" lors d'un refresh réussi (effacement).
+// Le caller persiste l'état (dashboard admin « Santé des tokens »).
+// Best-effort, non bloquant. msg ne contient jamais de token/secret.
+type AuthErrorCallback func(ctx context.Context, gamertag, xuid, class, msg string)
+
+// ResolverCallbacks regroupe les callbacks optionnels du Resolver (tous nullables).
+type ResolverCallbacks struct {
+	OnRotated   TokenRotationCallback
+	OnReauth    ReauthCallback
+	OnAuthError AuthErrorCallback
+}
+
 // AcquirePolicy détermine comment le pool sélectionne un token.
 type AcquirePolicy int
 

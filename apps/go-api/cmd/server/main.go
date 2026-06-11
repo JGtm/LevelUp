@@ -283,8 +283,10 @@ func main() {
 			"hint", "définir LEVELUP_SESSION_SECRET (>=32 octets), LEVELUP_AUTH_MODE=xbox|password et LEVELUP_CORS_ORIGINS, ou retirer LEVELUP_ENV=production")
 		os.Exit(1)
 	}
-	for _, warning := range cfg.SecurityWarnings() {
-		slog.Warn("configuration non sûre pour un déploiement multi-user exposé", "issue", warning,
+	if warnings := cfg.SecurityWarnings(); len(warnings) > 0 {
+		slog.Warn("configuration non sûre pour un déploiement multi-user exposé",
+			"issues_count", len(warnings),
+			"issues", strings.Join(warnings, " | "),
 			"prod_guard", "LEVELUP_ENV=production refuserait de démarrer dans cet état")
 	}
 
@@ -380,7 +382,16 @@ func main() {
 				if p.Gamertag == "" || p.IsDemo {
 					continue
 				}
-				if err := RunPlayerMigrations(pr.PlayerDBPath(titleSlug, p.Gamertag)); err != nil {
+				dbPath := pr.PlayerDBPath(titleSlug, p.Gamertag)
+				// Comptes token-only (watchers, db_path vide dans db_profiles.json) :
+				// pas de player DB → rien à migrer. La création de la DB appartient
+				// au chemin sync/onboarding, pas au boot.
+				if _, statErr := os.Stat(dbPath); statErr != nil {
+					slog.Debug("migrations player ignorées — player DB absente (compte token-only ?)",
+						"gamertag", p.Gamertag, "db", dbPath)
+					continue
+				}
+				if err := RunPlayerMigrations(dbPath); err != nil {
 					slog.Warn("migrations player échouées (non-fatal)",
 						"gamertag", p.Gamertag, "err", err)
 				}
@@ -1345,7 +1356,13 @@ func buildAutoSyncPool(
 		}
 
 		// Compat DuckDB (sera retiré Phase 5 quand Phase 4 sera stabilisée).
+		// Comptes token-only (watchers) : pas de player DB → le store suffit.
 		dbPath := pr.PlayerDBPath(title.DefaultSlug, gamertag)
+		if _, statErr := os.Stat(dbPath); statErr != nil {
+			slog.DebugContext(ctx, "onRotated: pas de player DB, écriture compat sync_meta ignorée",
+				"gamertag", gamertag)
+			return nil
+		}
 		db, err := duckdb.OpenReadWriteShared(dbPath)
 		if err != nil {
 			return fmt.Errorf("open player db: %w", err)
@@ -1354,7 +1371,46 @@ func buildAutoSyncPool(
 		return duckdb.WriteOAuthRefreshToken(ctx, db, newRT)
 	}
 
-	resolver := pool.NewResolver(tokenProvider, 0, onRotated) // 0 = default TTL ~3h30
+	// Persistance des transitions reauth + du dernier échec OAuth permanent
+	// (dashboard admin « Santé des tokens », plan anti-bruit 2026-06-11).
+	// Best-effort : un échec d'écriture store ne casse pas le resolve.
+	onReauth := func(ctx context.Context, gamertag, xuid string, required bool) {
+		if xuid == "" {
+			return
+		}
+		if required {
+			if _, err := authStoreForCallback.MarkReauthRequired(xuid, gamertag); err != nil {
+				slog.WarnContext(ctx, "onReauth: écriture store échouée",
+					"gamertag", gamertag, "err", err)
+			}
+			return
+		}
+		if err := authStoreForCallback.ClearReauthRequired(xuid); err != nil {
+			slog.WarnContext(ctx, "onReauth: clear store échoué",
+				"gamertag", gamertag, "err", err)
+		}
+	}
+	onAuthError := func(ctx context.Context, gamertag, xuid, class, msg string) {
+		if xuid == "" {
+			return
+		}
+		var err error
+		if class == "" {
+			err = authStoreForCallback.ClearAuthError(xuid)
+		} else {
+			err = authStoreForCallback.RecordAuthError(xuid, gamertag, class, msg)
+		}
+		if err != nil {
+			slog.WarnContext(ctx, "onAuthError: écriture store échouée",
+				"gamertag", gamertag, "err", err)
+		}
+	}
+
+	resolver := pool.NewResolverWithCallbacks(tokenProvider, 0, pool.ResolverCallbacks{ // 0 = default TTL ~3h30
+		OnRotated:   onRotated,
+		OnReauth:    onReauth,
+		OnAuthError: onAuthError,
+	})
 	p, err := pool.NewPool(ctx, resolver, sources, pool.PoolOptions{
 		MaxSize:     0, // 0 = tous les sources découverts
 		PerTokenRPS: 5, // Option 2 audit 2026-05-21 : aligné sur le sync manuel

@@ -1,3 +1,19 @@
+## [2026-06-11] Bruit terminal auth/boot — root causes + observabilité dashboard — Complété (non commité)
+
+**Statut** : Complété, tests verts (suite Go complète sans FAIL, vet OK, typecheck/lint/vitest web OK). NON commité (accord user requis). Branche `feat/achievements-category-filter` (demande user — WIP LUSR concurrent dans le tree interdisait un checkout main). Plan : `.ai/PLAN_AUTH_WARNING_NOISE.md`.
+
+**Décisions techniques principales** :
+- Root cause AADSTS90023 (~80 % du bruit, 5 comptes watcher) : `client_secret` envoyé pour des RT émis en flux client public. Fix stateless dans `ExchangeRefreshTokenWithRotation` : retry unique SANS secret sur 90023 (1re tentative avec secret conservée — les 4 comptes principaux en dépendent). Erreurs OAuth désormais typées (`OAuthExchangeError` + classes config/revoked/transient) + compteurs expvar `levelup.auth.oauth_refresh_*`.
+- Cache négatif par gamertag dans `pool/resolver` : un échec PERMANENT (config 1h / revoked 6h) court-circuite les Resolve suivants (0 appel réseau, Debug) ; invalidation automatique si la source porte un RT différent (re-capture). 1 seul WARN par chaîne d'échec (resolver, avec classe) — logs intermédiaires (oauth_refresh, sisu_provider, MSALProvider) démotés en Debug. `ErrPermanentAuthFailure` sentinel pour que `refresherLoop` (10 s) ne re-logue pas en ERROR.
+- **BUG DÉCOUVERT en passant : boucle boot `pool.NewPool` (`i--`+`poolSize--`) retentait le même index après échec et ABANDONNAIT toutes les sources suivantes** (= burst 7× DankerGlue + comptes sains jamais montés dans le pool). Réécrite en append ; régression testée.
+- Persistance du dernier échec (`LastAuthErrorClass/Error/At` dans UserTokens, callbacks `onAuthError`/`onReauth` câblés dans buildAutoSyncPool) → dashboard admin Santé des tokens enrichi : badge erreur (classe + date + action) + chip Source de credentials (`pool.LastScanSource`, snapshot mémoire du dernier Scan — dette ADR-0023 visible en warning).
+- Warn « legacy sync_meta utilisée » : émis uniquement si la valeur legacy est réellement ADOPTÉE (l'ancien warn se déclenchait à la simple lecture même quand le store couvrait — bruit mensonger). Purge sync_meta REPORTÉE volontairement : le double-write compat onRotated la ré-écrirait à chaque rotation (cf. plan, déviation 3).
+- Boot : migrations player skippées (Debug) quand la player DB n'existe pas (comptes watcher token-only, db_path vide) ; 3 warns config dev consolidés en 1 ligne ; écriture compat sync_meta d'onRotated skippée sans player DB.
+
+**Résultats observés** : tests neufs verts (5 httptest oauth_refresh, 5 resolver/pool dont régression boot, 2 discovery DuckDB cgo) ; suite complète `./...` OK ; sentinel ADR-0023 mis à jour (allowlist test interne). Attendu au prochain boot : familles 3/4 éteintes, échecs OAuth = 1 WARN par compte et par fenêtre (1h/6h) au lieu de 20 lignes/15 min, et si les RT watcher sont encore vivants le retry public les remet en service.
+
+**Prochaine étape** : commits (accord user) ; validation boot réel DIFFÉRÉE tant que le WIP LUSR (migration repair match_skill_rank) est non commité dans le tree — booter exécuterait sa migration sur les vraies player DBs. Après boot : vérifier 0 ligne AADSTS90023 récurrente, dashboard admin (source + erreurs), et recommander la suppression des 4 `SPNKR_OAUTH_REFRESH_TOKEN_*` de `.env.local`.
+
 ## [2026-06-11] Filtre « Catégorie » sur les succès Xbox (multijoueur / campagne / autres) — Complété
 
 **Statut** : Complété, non commité (accord user requis). Branche `feat/achievements-category-filter`.

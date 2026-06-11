@@ -2,6 +2,7 @@ package pool
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -116,35 +117,33 @@ func NewPool(
 	// Titre propriétaire du pool (Phase 1.6) — compose la clé des slots.
 	poolTitle := poolTitleOf(sources)
 
-	// Créer les slots.
-	slots := make([]*slot, poolSize)
+	// Créer les slots. Une source en échec est SKIPPÉE et on passe à la
+	// SUIVANTE (fix 2026-06-11 : l'ancienne boucle `i--` + `poolSize--`
+	// retentait le même index en boucle et abandonnait silencieusement toutes
+	// les sources situées après la première en échec — cf. burst de 7
+	// tentatives DankerGlue au boot, .ai/PLAN_AUTH_WARNING_NOISE.md).
+	slots := make([]*slot, 0, poolSize)
 	slotsByKey := make(map[string]int)
 
-	for i := 0; i < poolSize; i++ {
-		src := sources[i]
-
-		// Résoudre la source au boot.
+	for _, src := range sources[:poolSize] {
 		resolved, err := resolver.Resolve(ctx, src)
 		if err != nil {
 			slog.WarnContext(ctx, "pool: impossible de résoudre token au boot, skip slot",
 				"gamertag", src.Gamertag, "err", err)
-			// Skip ce slot si la résolution échoue au boot.
-			slots = slots[:len(slots)-1]
-			poolSize--
-			i--
 			continue
 		}
 
-		slots[i] = &slot{
+		slotsByKey[gtKey(poolTitle, src.Gamertag)] = len(slots)
+		slots = append(slots, &slot{
 			gamertag:    src.Gamertag,
 			xuid:        src.XUID,
 			resolved:    resolved,
 			limiter:     rate.NewLimiter(rate.Limit(opts.PerTokenRPS), 1),
 			healthy:     true,
 			lastRefresh: time.Now(),
-		}
-		slotsByKey[gtKey(poolTitle, src.Gamertag)] = i
+		})
 	}
+	poolSize = len(slots)
 
 	if poolSize == 0 {
 		return nil, fmt.Errorf("pool: aucun slot créé (toutes les résolutions ont échoué)")
@@ -518,6 +517,14 @@ func (p *poolImpl) refresherLoop(baseCtx context.Context) {
 
 						refreshed, err := p.resolver.Refresh(ctx, gt)
 						if err != nil {
+							// Échec permanent récent servi par le cache négatif :
+							// Debug (la loop repasse toutes les 10s, le WARN initial
+							// a déjà été émis par le resolver).
+							if errors.Is(err, ErrPermanentAuthFailure) {
+								slog.DebugContext(ctx, "pool: refresh court-circuité (échec permanent récent)",
+									"gamertag", gt)
+								return
+							}
 							slog.ErrorContext(ctx, "pool: refresh échoué",
 								"gamertag", gt, "err", err)
 							return
