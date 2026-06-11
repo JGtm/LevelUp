@@ -224,6 +224,7 @@ func containsATTACHKeyword(litValue string) bool {
 var sharedSocialFilesWhitelist = map[string]string{
 	"cmd/analyze_media_tz/main.go":                                       "outil one-shot diag timezone media",
 	"cmd/backfill-media-hls/main.go":                                     "outil one-shot backfill HLS média : UPDATE media_files (commentaires + flag --db référencent le chemin shared_social.duckdb, serveur arrêté)",
+	"internal/ops/media_hls_sweep.go":                                    "balayage « assure le HLS » partagé scan/CLI (fix HEVC 2026-06-11) : candidats hls_path NULL + UPDATE via le handle injecté par le caller (MediaIndexService in-process ou CLI serveur arrêté) — la mention shared_social est le commentaire du champ DBPath",
 	"cmd/cleanup_media_index/main.go":                                    "outil one-shot cleanup index media",
 	"cmd/diag_match_id_tables/main.go":                                   "outil one-shot diag match_id",
 	"cmd/migrate-media-paths/main.go":                                    "outil one-shot migration paths media",

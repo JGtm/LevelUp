@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"golang.org/x/time/rate"
 
@@ -156,23 +157,27 @@ func (pc *PooledHaloClient) GetMatchHistory(
 	gamertag, matchType string,
 	start, count int,
 ) ([]MatchHistoryEntry, error) {
+	callStart := time.Now()
 	var result []MatchHistoryEntry
 	err := pc.doPublic(ctx, func(c *HaloAPIClient) error {
 		var e error
 		result, e = c.GetMatchHistory(ctx, gamertag, matchType, start, count)
 		return e
 	})
+	observeHaloCall("match_history", callStart, err)
 	return result, err
 }
 
 // GetMatchStats implémente HaloClient.GetMatchStats() avec PolicyAnyPublic.
 func (pc *PooledHaloClient) GetMatchStats(ctx context.Context, matchID string) (map[string]any, error) {
+	callStart := time.Now()
 	var result map[string]any
 	err := pc.doPublic(ctx, func(c *HaloAPIClient) error {
 		var e error
 		result, e = c.GetMatchStats(ctx, matchID)
 		return e
 	})
+	observeHaloCall("match_stats", callStart, err)
 	return result, err
 }
 
@@ -182,17 +187,20 @@ func (pc *PooledHaloClient) GetMatchSkill(
 	matchID string,
 	xuids []string,
 ) (map[string]*MatchSkillData, error) {
+	callStart := time.Now()
 	var result map[string]*MatchSkillData
 	err := pc.doPublic(ctx, func(c *HaloAPIClient) error {
 		var e error
 		result, e = c.GetMatchSkill(ctx, matchID, xuids)
 		return e
 	})
+	observeHaloCall("match_skill", callStart, err)
 	return result, err
 }
 
 // GetMatchFilm implémente HaloClient.GetMatchFilm() avec PolicyAnyPublic.
 func (pc *PooledHaloClient) GetMatchFilm(ctx context.Context, matchID string) (map[int]filmChunkData, bool, error) {
+	callStart := time.Now()
 	var result map[int]filmChunkData
 	var ok bool
 	err := pc.doPublic(ctx, func(c *HaloAPIClient) error {
@@ -200,11 +208,13 @@ func (pc *PooledHaloClient) GetMatchFilm(ctx context.Context, matchID string) (m
 		result, ok, e = c.GetMatchFilm(ctx, matchID)
 		return e
 	})
+	observeHaloCall("film", callStart, err)
 	return result, ok, err
 }
 
 // GetHighlightEventsChunk implémente HaloClient.GetHighlightEventsChunk() avec PolicyAnyPublic.
 func (pc *PooledHaloClient) GetHighlightEventsChunk(ctx context.Context, matchID string) ([]byte, int, bool, error) {
+	callStart := time.Now()
 	var result []byte
 	var ver int
 	var ok bool
@@ -213,6 +223,7 @@ func (pc *PooledHaloClient) GetHighlightEventsChunk(ctx context.Context, matchID
 		result, ver, ok, e = c.GetHighlightEventsChunk(ctx, matchID)
 		return e
 	})
+	observeHaloCall("film_chunk", callStart, err)
 	return result, ver, ok, err
 }
 
@@ -238,7 +249,10 @@ func (pc *PooledHaloClient) GetCareerRank(ctx context.Context, xuid string) (*Ca
 
 	client := pc.newAPIClient(lease)
 	// HaloAPIClient handles 401/403 internally (returns nil, nil)
-	return client.GetCareerRank(ctx, xuid)
+	callStart := time.Now()
+	rank, rankErr := client.GetCareerRank(ctx, xuid)
+	observeHaloCall("career_rank", callStart, rankErr)
+	return rank, rankErr
 }
 
 // GetPlayerCSRs implémente HaloClient.GetPlayerCSRs() avec PolicyAnyPublic.
@@ -252,7 +266,9 @@ func (pc *PooledHaloClient) GetPlayerCSRs(ctx context.Context, xuid, seasonID st
 	defer lease.Release()
 
 	client := pc.newAPIClient(lease)
+	callStart := time.Now()
 	result, err := client.GetPlayerCSRs(ctx, xuid, seasonID)
+	observeHaloCall("player_csrs", callStart, err)
 	pc.notifyPoolOnError(lease, err)
 	return result, err
 }
@@ -268,7 +284,9 @@ func (pc *PooledHaloClient) GetPlaylistCsr(ctx context.Context, playlistID, xuid
 	defer lease.Release()
 
 	client := pc.newAPIClient(lease)
+	callStart := time.Now()
 	result, err := client.GetPlaylistCsr(ctx, playlistID, xuid, seasonID)
+	observeHaloCall("playlist_csr", callStart, err)
 	pc.notifyPoolOnError(lease, err)
 	return result, err
 }

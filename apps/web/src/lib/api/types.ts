@@ -527,6 +527,8 @@ export interface AsyncJobStatus {
   subtasks_total: number | null
   eta_seconds: number | null
   warnings: string[]
+  /** Slug joueur ("_all" pour les jobs serveur-wide, ex. cycle de sync forcé). */
+  player_slug?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -3706,4 +3708,372 @@ export interface TokenHealthResponse {
   generated_at: string
   players: PlayerTokenHealth[]
   store_unavailable?: boolean
+}
+
+// ─── Admin — Dashboard monitoring ─────────────────────────────────────────────
+// Miroirs de domain.AdminMonitoringOverview (GET /admin/monitoring/overview),
+// de la réponse scheduler (GET /admin/monitoring/scheduler — types du package
+// Go scheduler) et de la liste de jobs (GET /admin/monitoring/jobs).
+
+export interface MonitoringSchedulerSummary {
+  available: boolean
+  /** RFC3339, absent si aucun cycle depuis le boot. */
+  last_cycle_at?: string
+  interval_minutes?: number
+  pool_size?: number
+  last_total: number
+  last_synced: number
+  last_skipped: number
+  last_failed: number
+  last_duration_ms: number
+  /** Joueurs ayant atteint le seuil d'alerte consecutive_zero_inserts. */
+  zero_insert_alerts: number
+  /** Syncs en vol toutes sources (watcher/HTTP/scheduler) vus par le SyncGate. */
+  in_flight_claims: number
+}
+
+export interface MonitoringJobsSummary {
+  active_count: number
+  recent: AsyncJobStatus[]
+}
+
+export interface MonitoringDataHealth {
+  /** RFC3339 — horodatage du dernier audit complet. */
+  ran_at: string
+  uuids_raw_count: number
+  lying_bits_events: number
+  lying_bits_weapon_kills: number
+  orphan_xuids: number
+  garbage_banner_urls: number
+  warnings_total: number
+  duration_ms: number
+}
+
+export interface MonitoringTokensSummary {
+  players: number
+  ok: number
+  expiring: number
+  expired: number
+  absent: number
+  reauth: number
+  with_auth_error: number
+}
+
+export interface MonitoringInvariantsSummary {
+  /** 0 = jamais couru depuis le boot (gauges expvar). */
+  runs_total: number
+  fail_last: number
+  warn_last: number
+}
+
+export interface MonitoringServerInfo {
+  uptime_s: number
+  started_at: string
+  version: string
+}
+
+export interface AdminMonitoringOverview {
+  title_slug: string
+  generated_at: string
+  server: MonitoringServerInfo
+  scheduler: MonitoringSchedulerSummary
+  jobs: MonitoringJobsSummary
+  data_health?: MonitoringDataHealth
+  tokens?: MonitoringTokensSummary
+  tokens_error?: string
+  invariants: MonitoringInvariantsSummary
+}
+
+/** Durée d'une étape du pipeline post-sync (timeline monitoring P4). */
+export interface PostSyncStepTiming {
+  step: string
+  duration_ms: number
+  items: number
+}
+
+/** Compteurs du pipeline post-sync (miroir domain.PostSyncResult). */
+export interface PostSyncCounters {
+  perf_scores_computed: number
+  lusr_updated: number
+  career_synced: boolean
+  views_refreshed: number
+  achievements_synced: boolean
+  matches_promoted_friends: number
+  engagement_scores_computed: number
+  engagement_coefs_updated: number
+  sessions_assigned: number
+  weapon_kills_processed: number
+  weapon_kills_no_film: number
+  citations_computed: number
+  dominance_flags_computed: number
+  /** Rattrapés par la convergence (étapes 1.54 / 1.56). */
+  converged_events: number
+  converged_psa: number
+  /** Durée totale du pipeline + détail par étape (timeline). */
+  duration_ms: number
+  step_timings?: PostSyncStepTiming[]
+  fatal_errors?: string[]
+}
+
+export type SchedulerOutcome = 'ok' | 'skipped' | 'failed'
+
+export interface SchedulerPlayerOutcome {
+  gamertag: string
+  xuid: string
+  outcome: SchedulerOutcome | ''
+  reason: string
+  attempted_at: string
+  duration_ms: number
+  matches_inserted?: number
+  matches_skipped?: number
+  medals_inserted?: number
+  sync_status?: string
+  error_count?: number
+  first_error?: string
+  consecutive_zero_inserts?: number
+  post_sync?: PostSyncCounters
+}
+
+export interface SchedulerGateClaim {
+  gamertag: string
+  source: string
+  age_ms: number
+  stale: boolean
+}
+
+export interface SchedulerGateSnapshot {
+  inflight_watcher: number
+  inflight_gate: number
+  granted_total: number
+  coalesced_total: number
+  stale_count: number
+  claims?: SchedulerGateClaim[]
+}
+
+export interface SchedulerSnapshot {
+  last_cycle_at: string
+  last_cycle_result?: {
+    total: number
+    synced: number
+    skipped: number
+    failed: number
+    duration_ns: number
+  }
+  interval_minutes: number
+  pool_size: number
+  players: SchedulerPlayerOutcome[]
+  gate: SchedulerGateSnapshot
+}
+
+export interface SchedulerCycleRecord {
+  /** RFC3339 */
+  at: string
+  trigger: 'tick' | 'manual'
+  total: number
+  synced: number
+  skipped: number
+  failed: number
+  duration_ms: number
+  /** Fenêtre cumulée d'INDISPONIBILITÉ des lectures shared pendant ce cycle
+   *  (drain + maintien RW + reopen, B-swap). */
+  blocked_ms: number
+  /** Swaps RO→RW complets pendant ce cycle. */
+  swap_count: number
+  /** Lectures rejetées en 503 pendant ce cycle. */
+  reads_rejected: number
+  /** Temps cumulé d'appels API Halo pendant ce cycle (toutes goroutines). */
+  api_ms: number
+  /** Temps cumulé d'écriture persist (shared + player) pendant ce cycle. */
+  persist_write_ms: number
+}
+
+export interface AdminSchedulerStatusResponse {
+  available: boolean
+  snapshot?: SchedulerSnapshot
+  /** Plus récent en premier — ring mémoire, perdu au restart serveur. */
+  history: SchedulerCycleRecord[]
+  history_since_boot: boolean
+  zero_insert_warn_threshold: number
+}
+
+export interface AdminJobsResponse {
+  generated_at: string
+  jobs: AsyncJobStatus[]
+}
+
+// ─── Admin — Convergence (backlog d'enrichissement par joueur) ────────────────
+// Miroir de domain.AdminConvergenceReport (GET /admin/monitoring/convergence).
+
+export interface PlayerConvergenceReport {
+  player_slug: string
+  gamertag: string
+  xuid: string
+  /** Non plafonné (diff complet shared vs player DB). */
+  missing_enrichment: number
+  /** Plafonnés à `horizon` — afficher « N+ » quand count == horizon. */
+  missing_psa: number
+  missing_events: number
+  missing_weapons: number
+  check_error?: string
+}
+
+export interface ConvergenceTotalsSinceBoot {
+  events_processed: number
+  weapons_processed: number
+  psa_processed: number
+  aliases_upserted: number
+}
+
+export interface AdminConvergenceReport {
+  title_slug: string
+  generated_at: string
+  horizon: number
+  players: PlayerConvergenceReport[]
+  /** Travail rattrapé par la convergence depuis le boot (perdu au restart). */
+  totals_since_boot: ConvergenceTotalsSinceBoot
+}
+
+// ─── Admin — Performance (agrégats expvar depuis le boot) ─────────────────────
+// Miroir de domain.AdminPerfStats (GET /admin/monitoring/perf).
+
+export interface PerfCallStats {
+  name: string
+  count: number
+  sum_ms: number
+  avg_ms: number
+  max_ms: number
+  errors?: number
+}
+
+export interface PerfAPIBuckets {
+  rate_limited_429: number
+  auth: number
+  server_5xx: number
+  network: number
+  other: number
+}
+
+export interface AdminPerfStats {
+  generated_at: string
+  api_calls: PerfCallStats[]
+  api_buckets: PerfAPIBuckets
+  persist_phases: PerfCallStats[]
+  postsync_steps: PerfCallStats[]
+  postsync_total: PerfCallStats
+  /** Fenêtre d'indispo des lectures shared par swap (count = swaps, sum = indispo cumulée). */
+  blocked_window: PerfCallStats
+}
+
+// NB : les types Watcher (WatcherStatusResponse, WatcherPlayerStatus) existent
+// déjà plus haut dans ce fichier (section watcher historique) — le dashboard
+// monitoring les réutilise via features/settings/watcher-queries.ts.
+
+// ─── Admin — Qualité données (inconnus + actions de résolution) ───────────────
+// Miroirs de domain.AdminDataQualityCounts / Issues / actions.
+
+export interface AdminDataQualityCounts {
+  title_slug: string
+  generated_at: string
+  raw_uuid_playlists: number
+  raw_uuid_maps: number
+  raw_uuid_pairs: number
+  raw_uuid_variants: number
+  raw_uuid_total: number
+  untranslated_modes: number
+  orphan_playlists: number
+  orphan_xuids: number
+  lying_bits_events: number
+  lying_bits_weapons: number
+}
+
+export type DataQualityIssueKind =
+  | 'raw_uuids'
+  | 'untranslated_modes'
+  | 'orphan_playlists'
+  | 'orphan_xuids'
+
+export interface AdminDataQualityIssue {
+  kind: string
+  asset_kind?: string
+  id: string
+  label?: string
+  occurrences: number
+  last_seen?: string
+}
+
+export interface AdminDataQualityIssues {
+  title_slug: string
+  generated_at: string
+  kind: string
+  items: AdminDataQualityIssue[]
+}
+
+export interface RegistryNamesBackfillResult {
+  dry_run: boolean
+  playlists_scanned: number
+  playlists_fixed: number
+  maps_scanned: number
+  maps_fixed: number
+  pairs_scanned: number
+  pairs_fixed: number
+  variants_scanned: number
+  variants_fixed: number
+  total_fixed: number
+}
+
+export interface ResolveResult {
+  action: 'created' | 'updated' | string
+  mode_en?: string
+  langs?: string[]
+}
+
+export interface AssetTranslationRequest {
+  asset_kind: string // playlist | map | pair | game_variant
+  asset_id: string
+  name_en?: string
+  name_fr?: string
+}
+
+export interface CatalogRefreshResult {
+  playlists: number
+  pairs: number
+  maps: number
+  game_variants: number
+}
+
+// ─── Admin — Viewer de logs ───────────────────────────────────────────────────
+// Miroirs de domain.AdminLogModules / AdminLogTail.
+
+export interface AdminLogModule {
+  module: string
+  size_bytes: number
+  modified_at: string
+}
+
+export interface AdminLogModules {
+  generated_at: string
+  modules: AdminLogModule[]
+}
+
+export interface AdminLogEntry {
+  time?: string
+  level: string
+  msg?: string
+  module?: string
+  request_id?: string
+  event_id?: string
+  err?: string
+  source?: string
+  fields?: Record<string, unknown>
+  raw?: string
+}
+
+export interface AdminLogTail {
+  module: string
+  generated_at: string
+  /** Du plus récent au plus ancien. */
+  entries: AdminLogEntry[]
+  scanned_bytes: number
+  /** Budget de scan épuisé — affiner les filtres pour voir plus ancien. */
+  truncated: boolean
 }

@@ -640,6 +640,16 @@ func main() {
 			slog.InfoContext(ctx, "persist: BatchQueue activée (async path)",
 				"wal_dir", walDir)
 
+			// Dashboard monitoring P4 : hook de chronométrage des phases
+			// d'écriture (acquire/lease/write par DB) → expvar, sans coupler
+			// persist à observability. Posé une fois avant le 1er batch.
+			persist.OnPersistPhase = func(phase string, d time.Duration, ok bool) {
+				observability.RecordDurationMS("persist_"+phase+"_ms", d.Milliseconds())
+				if !ok {
+					observability.IncCounter("persist_" + phase + "_err_total")
+				}
+			}
+
 			// Câblage Worker — CombinedPersister écrit shared + player par batch.
 			// context.Background() : le Worker doit finir le batch en cours avant
 			// de s'arrêter → ne doit pas être annulé par cancelScheduler().
@@ -881,6 +891,12 @@ func main() {
 	}
 	var router http.Handler
 	router, reg = api.NewRouter(routerCtx, cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider, autoScheduler, backupSched)
+
+	// Dashboard monitoring admin — câblage du HealthScheduler (créé plus haut,
+	// avant NewRouter). Les runners monitoring le lisent lazily à chaque
+	// requête : l'ordre boot est sûr, et l'overview expose le dernier audit
+	// data health + l'action POST /admin/actions/data-health/run.
+	reg.WithHealthScheduler(healthScheduler)
 
 	// Phase 4 plan stabilisation 2026-05-22 — câblage post-sync runner sur
 	// l'auto-sync scheduler. Avant ce fix, l'auto-sync court-circuitait

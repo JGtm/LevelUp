@@ -28,6 +28,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	gosync "sync"
 	"time"
 
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -52,6 +53,13 @@ type HealthScheduler struct {
 	repoRoot      string
 	intervalHours int
 	enabled       bool
+
+	// Dernier audit COMPLET (dashboard monitoring admin). Les cycles avortés
+	// (shared absente/illisible) ne l'écrasent pas : on garde le dernier
+	// signal réel plutôt qu'un faux « tout vert ».
+	lastMu     gosync.RWMutex
+	lastResult *DataHealthCheckResult
+	lastRunAt  time.Time
 }
 
 // NewDataHealthScheduler crée un scheduler avec les défauts (24h, enabled).
@@ -219,7 +227,31 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 		)
 	}
 
+	s.storeLastResult(res)
+
 	return res
+}
+
+// storeLastResult mémorise le dernier audit complet (thread-safe).
+func (s *HealthScheduler) storeLastResult(res *DataHealthCheckResult) {
+	s.lastMu.Lock()
+	defer s.lastMu.Unlock()
+	cp := *res
+	s.lastResult = &cp
+	s.lastRunAt = time.Now()
+}
+
+// LastResult retourne une copie du dernier audit complet et son horodatage.
+// (nil, zero time) si aucun cycle complet depuis le boot — le dashboard
+// affiche alors « jamais couru » et propose l'action data-health/run.
+func (s *HealthScheduler) LastResult() (*DataHealthCheckResult, time.Time) {
+	s.lastMu.RLock()
+	defer s.lastMu.RUnlock()
+	if s.lastResult == nil {
+		return nil, time.Time{}
+	}
+	cp := *s.lastResult
+	return &cp, s.lastRunAt
 }
 
 // openDBShared ouvre une DuckDB via le cache de connexions partagé du package

@@ -29,6 +29,12 @@ const (
 	JobTypeTranscodeMedia    JobType = "transcode_media"
 	JobTypeSessionsRecalc    JobType = "sessions_recalculate"
 	JobTypeOpenSpartanImport JobType = "openspartan_import"
+	// Dashboard monitoring admin (feat/admin-monitoring-dashboard) :
+	// cycle auto-sync forcé, convergence ciblée d'un joueur, refresh du
+	// catalogue playlists/pairs/maps metadata.
+	JobTypeForcedSyncCycle   JobType = "forced_sync_cycle"
+	JobTypePlayerConvergence JobType = "player_convergence"
+	JobTypeCatalogRefresh    JobType = "catalog_refresh"
 	JobTypeOther             JobType = "other"
 )
 

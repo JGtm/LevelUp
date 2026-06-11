@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 
@@ -125,6 +126,49 @@ func (s *Store) SetStatus(jobID string, status domain.JobStatus, step *string) b
 // FindActiveInitialSync retourne le job "initial_sync" actif (non terminal) pour un joueur.
 func (s *Store) FindActiveInitialSync(playerSlug string) *domain.AsyncJobStatus {
 	return s.FindActiveJob(domain.JobTypeInitialSync, playerSlug)
+}
+
+// List retourne jusqu'à limit jobs non expirés (copies), actifs d'abord puis
+// par StartedAt décroissant — pour le dashboard monitoring admin. limit <= 0
+// applique le défaut 20. Les jobs terminaux au-delà de la rétention sont
+// filtrés (la purge physique reste portée par Create).
+func (s *Store) List(limit int) []*domain.AsyncJobStatus {
+	if limit <= 0 {
+		limit = 20
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	out := make([]*domain.AsyncJobStatus, 0, len(s.jobs))
+	for _, job := range s.jobs {
+		if job.IsTerminal() && job.FinishedAt != nil &&
+			time.Since(*job.FinishedAt) > jobRetention {
+			continue
+		}
+		cp := *job
+		out = append(out, &cp)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		ai, aj := out[i].IsTerminal(), out[j].IsTerminal()
+		if ai != aj {
+			return !ai // actifs avant terminaux
+		}
+		ti, tj := out[i].StartedAt, out[j].StartedAt
+		switch {
+		case ti == nil && tj == nil:
+			return out[i].JobID > out[j].JobID
+		case ti == nil:
+			return false
+		case tj == nil:
+			return true
+		default:
+			return ti.After(*tj)
+		}
+	})
+	if len(out) > limit {
+		out = out[:limit]
+	}
+	return out
 }
 
 // FindActiveJob retourne un job actif (non terminal) du type et du joueur donnés.

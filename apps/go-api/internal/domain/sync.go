@@ -105,21 +105,41 @@ func (r *SyncResult) AddWarning(msg string) {
 	r.Warnings = append(r.Warnings, msg)
 }
 
+// PostSyncStepTiming chronomètre une étape du pipeline post-sync (dashboard
+// monitoring P4 — timeline + détection des goulots). Items = volume traité
+// par l'étape (0 si non significatif).
+type PostSyncStepTiming struct {
+	Step       string `json:"step"`
+	DurationMs int64  `json:"duration_ms"`
+	Items      int    `json:"items"`
+}
+
 // PostSyncResult agrège les compteurs du pipeline post-sync.
+// Tags JSON snake_case : la struct est exposée telle quelle par le dashboard
+// monitoring admin (champ PostSync de scheduler.PlayerOutcomeDetail).
 type PostSyncResult struct {
-	PerfScoresComputed       int
-	LUSRUpdated              int
-	CareerSynced             bool
-	ViewsRefreshed           int
-	AchievementsSynced       bool
-	MatchesPromotedFriends   int64 // §7 hook auto-recompute is_with_friends post-sync
-	EngagementScoresComputed int   // Phase 3 plan engagement
-	EngagementCoefsUpdated   int   // Phase recompute coefs : nb modes recomputes (0..2)
-	SessionsAssigned         int   // recalcul session_id post-sync (auto)
-	WeaponKillsProcessed     int   // nouveaux matchs traités par le pipeline film/weapon kills
-	WeaponKillsNoFilm        int   // matchs sans film (404/410, normal pour vieux matchs)
-	CitationsComputed        int   // matchs traités par le pipeline post-sync (étape 1.6 citations)
-	DominanceFlagsComputed   int   // matchs traités par le pipeline post-sync (étape 1.7 dominance_flag)
+	PerfScoresComputed       int   `json:"perf_scores_computed"`
+	LUSRUpdated              int   `json:"lusr_updated"`
+	CareerSynced             bool  `json:"career_synced"`
+	ViewsRefreshed           int   `json:"views_refreshed"`
+	AchievementsSynced       bool  `json:"achievements_synced"`
+	MatchesPromotedFriends   int64 `json:"matches_promoted_friends"`   // §7 hook auto-recompute is_with_friends post-sync
+	EngagementScoresComputed int   `json:"engagement_scores_computed"` // Phase 3 plan engagement
+	EngagementCoefsUpdated   int   `json:"engagement_coefs_updated"`   // Phase recompute coefs : nb modes recomputes (0..2)
+	SessionsAssigned         int   `json:"sessions_assigned"`          // recalcul session_id post-sync (auto)
+	WeaponKillsProcessed     int   `json:"weapon_kills_processed"`     // nouveaux matchs traités par le pipeline film/weapon kills
+	WeaponKillsNoFilm        int   `json:"weapon_kills_no_film"`       // matchs sans film (404/410, normal pour vieux matchs)
+	CitationsComputed        int   `json:"citations_computed"`         // matchs traités par le pipeline post-sync (étape 1.6 citations)
+	DominanceFlagsComputed   int   `json:"dominance_flags_computed"`   // matchs traités par le pipeline post-sync (étape 1.7 dominance_flag)
+	ConvergedEvents          int   `json:"converged_events"`           // matchs rattrapés par la convergence events (étape 1.54)
+	ConvergedPSA             int   `json:"converged_psa"`              // matchs rattrapés par la convergence PSA (étape 1.56)
+
+	// Chronométrage du pipeline (dashboard monitoring P4) : durée totale +
+	// durée par étape (timeline + détection des goulots). Renseigné par
+	// runPostSyncPipeline via postSyncClock ; vide sur le path léger
+	// CSR+achievements (DurationMs seul).
+	DurationMs  int64                `json:"duration_ms"`
+	StepTimings []PostSyncStepTiming `json:"step_timings,omitempty"`
 
 	// FatalErrors collecte les erreurs FATAL DuckDB (IsInvalidatedError)
 	// rencontrées dans le post-sync — chaque entrée = "<step>: <err>".
@@ -127,5 +147,5 @@ type PostSyncResult struct {
 	// Status() renvoie "partial_success" au lieu de mentir avec "success"
 	// alors qu'une étape critique a invalidé une DB.
 	// Cf. .ai/PLAN_LUSR_ART_HOME_CRASH.md Phase 5 "Status sync honnête".
-	FatalErrors []string
+	FatalErrors []string `json:"fatal_errors,omitempty"`
 }
