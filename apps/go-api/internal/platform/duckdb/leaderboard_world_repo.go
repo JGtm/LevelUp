@@ -172,15 +172,92 @@ func (r *LeaderboardRepo) GetWorldLeaderboardCatalog(ctx context.Context) (domai
 	if err != nil {
 		return domain.LeaderboardCatalog{}, fmt.Errorf("GetWorldLeaderboardCatalog: seasons: %w", err)
 	}
-	playlists, err := scanCatalogColumn(ctx, sharedDB,
+	plIDs, err := scanIDColumn(ctx, sharedDB,
 		`SELECT DISTINCT playlist_id FROM world_csr_leaderboard_latest
-		 WHERE playlist_id <> '' ORDER BY playlist_id`, playlistDisplayName)
+		 WHERE playlist_id <> '' ORDER BY playlist_id`)
 	if err != nil {
 		return domain.LeaderboardCatalog{}, fmt.Errorf("GetWorldLeaderboardCatalog: playlists: %w", err)
 	}
+	// Phase F : noms via le catalogue metadata mutualisé. Cascade :
+	// asset_translations[fr] (officiel) > rankedplaylists FR (curé) >
+	// playlists_catalog.name_canonical (EN) > rankedplaylists EN > id brut.
+	frMap, canonMap := r.resolvePlaylistNamesFromCatalog(ctx, plIDs)
+	playlists := make([]domain.LeaderboardCatalogRef, 0, len(plIDs))
+	for _, id := range plIDs {
+		playlists = append(playlists, domain.LeaderboardCatalogRef{
+			ID: id, DisplayName: playlistName(id, frMap[id], canonMap[id]),
+		})
+	}
 	slog.DebugContext(ctx, "catalogue classement mondial lu", "module", logModuleLeaderboard,
-		"seasons", len(seasons), "playlists", len(playlists))
+		"seasons", len(seasons), "playlists", len(playlists), "noms_fr_catalogue", len(frMap))
 	return domain.LeaderboardCatalog{Seasons: seasons, Playlists: playlists}, nil
+}
+
+// playlistName applique la cascade de résolution d'un nom de playlist.
+func playlistName(id, frOfficial, canonical string) string {
+	if frOfficial != "" {
+		return frOfficial
+	}
+	if pl, ok := rankedplaylists.Lookup(id); ok && pl.NameFR != "" {
+		return pl.NameFR
+	}
+	if canonical != "" {
+		return canonical
+	}
+	return playlistDisplayName(id) // rankedplaylists EN > id brut
+}
+
+// scanIDColumn lit une colonne d'IDs (une seule colonne string) en slice ordonné.
+func scanIDColumn(ctx context.Context, db *sql.DB, q string) ([]string, error) {
+	rows, err := db.QueryContext(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
+// resolvePlaylistNamesFromCatalog lit le catalogue metadata MUTUALISÉ et retourne
+// deux maps : frMap (asset_translations[fr], noms officiels localisés) et canonMap
+// (playlists_catalog.name_canonical, EN brut). Vides si metadata indisponible (le
+// caller retombe sur rankedplaylists). Ne touche jamais la shared DB.
+func (r *LeaderboardRepo) resolvePlaylistNamesFromCatalog(ctx context.Context, ids []string) (frMap, canonMap map[string]string) {
+	frMap, canonMap = map[string]string{}, map[string]string{}
+	if len(ids) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return frMap, canonMap
+	}
+	meta := r.pdb.Metadata
+	scan := func(q string, args []any, dst map[string]string) {
+		rows, err := meta.QueryRecovered(ctx, q, args...)
+		if err != nil {
+			return
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var id, name string
+			if rows.Scan(&id, &name) == nil && strings.TrimSpace(name) != "" {
+				dst[id] = name
+			}
+		}
+	}
+	scan(fmt.Sprintf(
+		`SELECT playlist_asset_id, COALESCE(name_canonical, '') FROM playlists_catalog
+		 WHERE title_slug = ? AND playlist_asset_id IN (%s)`, Placeholders(len(ids))),
+		append([]any{defaultLeaderboardTitleSlug}, ToAnySlice(ids)...), canonMap)
+	scan(fmt.Sprintf(
+		`SELECT asset_id, name FROM asset_translations
+		 WHERE asset_type = 'playlist' AND lang = 'fr' AND asset_id IN (%s)
+		   AND name IS NOT NULL AND TRIM(name) <> ''`, Placeholders(len(ids))),
+		ToAnySlice(ids), frMap)
+	return frMap, canonMap
 }
 
 // scanCatalogColumn lit une colonne d'IDs et construit des refs. displayFn

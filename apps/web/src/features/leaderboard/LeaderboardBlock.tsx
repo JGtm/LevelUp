@@ -171,7 +171,10 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
   const playlistOptions: SelectorOption[] = useMemo(
     () =>
       catalog?.playlists?.length
-        ? catalog.playlists.map((p) => ({ value: p.id, label: KNOWN_PLAYLIST_LABEL[p.id] ?? p.display_name }))
+        ? // Phase F : le backend renvoie le nom du catalogue mutualise (cascade
+          // asset_translations[fr] > rankedplaylists FR > catalogue EN). On le prefere
+          // au libelle code en dur (KNOWN_*), garde en fallback ultime.
+          catalog.playlists.map((p) => ({ value: p.id, label: p.display_name || KNOWN_PLAYLIST_LABEL[p.id] || p.id }))
         : PLAYLISTS.map((p) => ({ value: p.id, label: p.label })),
     [catalog],
   )
