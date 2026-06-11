@@ -1,3 +1,13 @@
+## [2026-06-11] Filtre « Catégorie » sur les succès Xbox (multijoueur / campagne / autres) — Complété
+
+**Statut** : Complété, non commité (accord user requis). Branche `feat/achievements-category-filter`.
+
+**Décision technique principale** : Xbox ne renvoyant aucune catégorie dans les définitions de succès, mapping statique en dur côté Go, dans `internal/domain/` (registre `map[titleSlug]map[nameNormalisé]AchievementCategory` → compatible multi-titres, aucun branchement `if slug ==` dans la logique). Lookup par `name_en` normalisé (minuscules + alphanumérique seul) pour absorber les divergences typographiques entre le guide Steam 2682508379 et la DB (apostrophes courbes, « Run Rabbit, Run » vs « Run Rabbit Run », « All-Seeing I » avec espace final, ellipse Unicode). Le service enrichit chaque `AchievementEntry` d'un champ `category` (`multiplayer`/`campaign`/`other`, vide si titre sans mapping) ; nom inconnu → `other` + `slog.WarnContext` (`category unmapped`). Aucune migration DB (calcul à la lecture).
+
+**Résultats observés** : la DB contient 144 succès Halo Infinite (119 du guide + 25 Winter Update, tous campagne co-op — vérifiés via leurs descriptions). Réconciliation script temporaire sur les `name_en` réels : 144/144 mappés, 0 unmapped, répartition 34 multijoueur / 94 campagne / 16 autres (customisation + Académie + Théâtre). Tests : Go domain+service verts (comptes, normalisation, collisions inter-catégories, fallback slug), suite Go complète `./...` sans FAIL, vitest 7/7 (filtrage par select, masquage du filtre si titre sans mapping), typecheck + lint OK. Front : 3e `<select>` dans la rangée de filtres du layout sidebar (`AchievementsCareerSection`), masqué si aucune entrée n'a de catégorie ; i18n FR/EN ajoutées.
+
+**Prochaine étape** : commit après accord user. Optionnel plus tard : exposer le filtre dans le layout carousel (CareerPage legacy, qui n'a aujourd'hui aucune rangée de filtres).
+
 ## [2026-06-10] Audit A1 — Inventaire des lectures `shared.X` (préparation retrait B-swap) — Complété (read-only)
 
 **Statut** : Complété. Audit de lecture pur (aucune modification de code). Tâche A1 du projet "lire shared via handle in-process + merge Go pour retirer le B-swap (ADR 0016)".

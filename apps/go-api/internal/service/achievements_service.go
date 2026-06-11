@@ -76,10 +76,16 @@ func (s *AchievementsService) GetAchievementsPage(ctx context.Context) (domain.A
 		playerByID[r.AchievementID] = r
 	}
 
+	titleSlug := s.titleSlug
+	if titleSlug == "" {
+		titleSlug = defaultAchievementsTitleSlug
+	}
+
 	entries := make([]domain.AchievementEntry, 0, len(defs))
 	summary := domain.AchievementsSummary{}
 	for _, d := range defs {
 		entry := buildAchievementEntry(d, playerByID[d.AchievementID])
+		entry.Category = resolveAchievementCategory(ctx, titleSlug, d.NameEN)
 		entries = append(entries, entry)
 		summary.TotalCount++
 		summary.TotalGamerscore += d.Gamerscore
@@ -104,6 +110,21 @@ func (s *AchievementsService) GetAchievementsPage(ctx context.Context) (domain.A
 		Summary:      summary,
 		Achievements: entries,
 	}, nil
+}
+
+// defaultAchievementsTitleSlug : fallback aligné sur le WHERE title_id du
+// metaRepo quand le slug n'a pas été injecté via WithTitleSlug.
+const defaultAchievementsTitleSlug = "halo_infinite"
+
+// resolveAchievementCategory délègue au mapping statique domain et trace les
+// succès non mappés (publiés après la rédaction du mapping → "other").
+func resolveAchievementCategory(ctx context.Context, titleSlug, nameEN string) domain.AchievementCategory {
+	category, unmapped := domain.AchievementCategoryFor(titleSlug, nameEN)
+	if unmapped {
+		slog.WarnContext(ctx, "achievements service: category unmapped",
+			"titleSlug", titleSlug, "name_en", nameEN)
+	}
+	return category
 }
 
 // buildAchievementEntry fusionne une définition et la ligne player (peut être zero-value

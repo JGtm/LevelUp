@@ -14,6 +14,7 @@ import { AchievementCard } from './AchievementCard'
 import { ACHIEVEMENTS_TEXT, type AchievementsLocale, type AchievementsText } from './i18n'
 
 type StatusFilter = 'all' | 'unlocked' | 'in-progress' | 'not-started'
+type CategoryFilter = 'all' | 'multiplayer' | 'campaign' | 'other'
 type DateSort = 'default' | 'asc' | 'desc'
 
 interface Props {
@@ -28,6 +29,7 @@ export function AchievementsCareerSection({ playerSlug, layout = 'carousel', fil
   const t = ACHIEVEMENTS_TEXT[locale]
   const { data, isLoading, isError, refetch } = useAchievementsPage(playerSlug)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
   const [dateSort, setDateSort] = useState<DateSort>('default')
 
   if (isLoading || isError || !data) {
@@ -57,12 +59,18 @@ export function AchievementsCareerSection({ playerSlug, layout = 'carousel', fil
     ? data.achievements.filter((a) => !a.xbox_title_id || a.xbox_title_id === filterXboxTitleId)
     : data.achievements
 
+  // Titre sans mapping de catégories (champ absent partout) → filtre masqué.
+  const hasCategories = data.achievements.some((a) => !!a.category)
+
+  const categoryFiltered =
+    categoryFilter === 'all' ? baseList : baseList.filter((a) => a.category === categoryFilter)
+
   const statusFiltered =
-    statusFilter === 'all' ? baseList
-    : statusFilter === 'unlocked' ? baseList.filter((a) => a.unlocked)
+    statusFilter === 'all' ? categoryFiltered
+    : statusFilter === 'unlocked' ? categoryFiltered.filter((a) => a.unlocked)
     : statusFilter === 'in-progress'
-      ? baseList.filter((a) => !a.unlocked && (a.current_progress ?? 0) > 0)
-      : baseList.filter((a) => !a.unlocked && (a.current_progress ?? 0) === 0)
+      ? categoryFiltered.filter((a) => !a.unlocked && (a.current_progress ?? 0) > 0)
+      : categoryFiltered.filter((a) => !a.unlocked && (a.current_progress ?? 0) === 0)
 
   const visible =
     dateSort === 'default'
@@ -92,6 +100,18 @@ export function AchievementsCareerSection({ playerSlug, layout = 'carousel', fil
             {summary.earned_gamerscore} / {summary.total_gamerscore} G
           </span>
           <div className="flex items-center gap-1.5">
+            {hasCategories ? (
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
+                className="cursor-pointer border-0 bg-card text-2xs text-muted-foreground outline-none"
+              >
+                <option value="all">{t.filterCategoryAll}</option>
+                <option value="multiplayer">{t.filterCategoryMultiplayer}</option>
+                <option value="campaign">{t.filterCategoryCampaign}</option>
+                <option value="other">{t.filterCategoryOther}</option>
+              </select>
+            ) : null}
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}

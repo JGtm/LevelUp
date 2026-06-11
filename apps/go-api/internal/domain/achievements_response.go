@@ -45,4 +45,8 @@ type AchievementEntry struct {
 	// XboxTitleID est l'identifiant Xbox numérique du titre source (ex: "1144039928"
 	// pour Halo Infinite). Vide pour les rows antérieures au champ.
 	XboxTitleID string `json:"xbox_title_id,omitempty"`
+	// Category est la catégorie produit ("multiplayer", "campaign", "other"),
+	// issue du mapping statique par titre (cf. achievement_categories.go).
+	// Vide pour un titre sans mapping — le frontend masque alors le filtre.
+	Category AchievementCategory `json:"category,omitempty"`
 }

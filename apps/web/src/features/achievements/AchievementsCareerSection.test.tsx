@@ -3,7 +3,7 @@
  * avec données. Mock du hook useAchievementsPage et du store locale.
  */
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createElement, type ReactNode } from 'react'
 
@@ -147,5 +147,101 @@ describe('AchievementsCareerSection', () => {
     const { container } = render(<AchievementsCareerSection playerSlug="jgtm" />, { wrapper })
     const cards = container.querySelectorAll('[role="listitem"]')
     expect(cards.length).toBe(50)
+  })
+
+  it('filtre par catégorie en layout sidebar (select visible si catégories présentes)', () => {
+    reset({
+      data: {
+        summary: {
+          total_count: 3,
+          unlocked_count: 0,
+          total_gamerscore: 60,
+          earned_gamerscore: 0,
+          completion_pct: 0,
+        },
+        achievements: [
+          {
+            achievement_id: 'a1',
+            name_en: 'Clocking In',
+            name_fr: 'Pointage',
+            description_en: '',
+            description_fr: '',
+            gamerscore: 10,
+            is_secret: false,
+            unlocked: false,
+            category: 'multiplayer',
+          },
+          {
+            achievement_id: 'a2',
+            name_en: 'Zeta',
+            name_fr: 'Zêta',
+            description_en: '',
+            description_fr: '',
+            gamerscore: 20,
+            is_secret: false,
+            unlocked: false,
+            category: 'campaign',
+          },
+          {
+            achievement_id: 'a3',
+            name_en: 'Get the Popcorn',
+            name_fr: 'Sortez le pop-corn',
+            description_en: '',
+            description_fr: '',
+            gamerscore: 30,
+            is_secret: false,
+            unlocked: false,
+            category: 'other',
+          },
+        ],
+      },
+    })
+    render(<AchievementsCareerSection playerSlug="jgtm" layout="sidebar" />, { wrapper })
+
+    // Les 3 cartes visibles par défaut (Toutes catégories)
+    expect(screen.getByText('Pointage')).toBeInTheDocument()
+    expect(screen.getByText('Zêta')).toBeInTheDocument()
+    expect(screen.getByText('Sortez le pop-corn')).toBeInTheDocument()
+
+    const categorySelect = screen.getByDisplayValue('Toutes catégories')
+    fireEvent.change(categorySelect, { target: { value: 'multiplayer' } })
+    expect(screen.getByText('Pointage')).toBeInTheDocument()
+    expect(screen.queryByText('Zêta')).not.toBeInTheDocument()
+    expect(screen.queryByText('Sortez le pop-corn')).not.toBeInTheDocument()
+
+    fireEvent.change(categorySelect, { target: { value: 'campaign' } })
+    expect(screen.queryByText('Pointage')).not.toBeInTheDocument()
+    expect(screen.getByText('Zêta')).toBeInTheDocument()
+  })
+
+  it('masque le select catégorie quand aucune entrée n\'a de catégorie (titre sans mapping)', () => {
+    reset({
+      data: {
+        summary: {
+          total_count: 1,
+          unlocked_count: 0,
+          total_gamerscore: 10,
+          earned_gamerscore: 0,
+          completion_pct: 0,
+        },
+        achievements: [
+          {
+            achievement_id: 'a1',
+            name_en: 'No Category',
+            name_fr: 'Sans catégorie',
+            description_en: '',
+            description_fr: '',
+            gamerscore: 10,
+            is_secret: false,
+            unlocked: false,
+          },
+        ],
+      },
+    })
+    render(<AchievementsCareerSection playerSlug="jgtm" layout="sidebar" />, { wrapper })
+    expect(screen.queryByDisplayValue('Toutes catégories')).not.toBeInTheDocument()
+    // Les filtres statut + tri date restent présents
+    expect(screen.getByDisplayValue('Tous')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Défaut')).toBeInTheDocument()
   })
 })

@@ -179,6 +179,55 @@ func TestAchievementsService_OrphanPlayerRow(t *testing.T) {
 	}
 }
 
+// TestAchievementsService_Categories : la catégorie est résolue via le mapping
+// statique du titre (fallback halo_infinite sans WithTitleSlug), nom inconnu →
+// other, titre sans mapping → catégorie vide.
+func TestAchievementsService_Categories(t *testing.T) {
+	defs := []domain.AchievementDefinitionRow{
+		{AchievementID: "a", NameEN: "Clocking In", Gamerscore: 10},
+		{AchievementID: "b", NameEN: "Zeta", Gamerscore: 10},
+		{AchievementID: "c", NameEN: "Get the Popcorn", Gamerscore: 10},
+		{AchievementID: "d", NameEN: "Some Future DLC Achievement", Gamerscore: 10},
+	}
+	// Sans WithTitleSlug → fallback halo_infinite.
+	svc := NewAchievementsService(
+		&mockAchievementsRepo{rows: nil},
+		&mockMetadataAchievementsRepo{defs: defs},
+	)
+	resp, err := svc.GetAchievementsPage(context.Background())
+	if err != nil {
+		t.Fatalf("GetAchievementsPage: %v", err)
+	}
+	want := map[string]domain.AchievementCategory{
+		"a": domain.AchievementCategoryMultiplayer,
+		"b": domain.AchievementCategoryCampaign,
+		"c": domain.AchievementCategoryOther,
+		"d": domain.AchievementCategoryOther, // inconnu → other
+	}
+	for _, e := range resp.Achievements {
+		if e.Category != want[e.AchievementID] {
+			t.Errorf("achievement %s: catégorie %q, attendu %q",
+				e.AchievementID, e.Category, want[e.AchievementID])
+		}
+	}
+
+	// Titre sans mapping → catégorie vide sur toutes les entrées.
+	svcNoMapping := NewAchievementsService(
+		&mockAchievementsRepo{rows: nil},
+		&mockMetadataAchievementsRepo{defs: defs},
+	).WithTitleSlug("halo_5")
+	resp, err = svcNoMapping.GetAchievementsPage(context.Background())
+	if err != nil {
+		t.Fatalf("GetAchievementsPage (halo_5): %v", err)
+	}
+	for _, e := range resp.Achievements {
+		if e.Category != "" {
+			t.Errorf("titre sans mapping: achievement %s a la catégorie %q, attendu vide",
+				e.AchievementID, e.Category)
+		}
+	}
+}
+
 // TestAchievementsService_RepoError : erreur repo propagée au caller.
 func TestAchievementsService_RepoError(t *testing.T) {
 	svc := NewAchievementsService(
