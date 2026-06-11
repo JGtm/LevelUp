@@ -1491,6 +1491,32 @@ func TestLoadPreviousLUSRRating_ChronologicalOrder(t *testing.T) {
 	}
 }
 
+// TestLoadPreviousDisplayedOrdinal_ChronologicalOrder — l'hystérésis lit le palier
+// du match CHRONOLOGIQUEMENT précédent (start_time), pas le dernier écrit. -1 si
+// aucun précédent (premier match), même si un match postérieur existe.
+func TestLoadPreviousDisplayedOrdinal_ChronologicalOrder(t *testing.T) {
+	playerDB := openCanonicalPlayerTestDB(t)
+	ctx := context.Background()
+	bnd := skillv2.DefaultTierBoundaries()
+	t1 := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+	t2 := time.Date(2025, 1, 1, 13, 0, 0, 0, time.UTC)
+	if _, err := playerDB.Exec(`INSERT INTO match_skill_rank
+		(match_id, rating_type, tier, sub_tier, playlist_group, start_time, written_at) VALUES
+		('m1', 'LUSR', 'Gold', 3, 'arena_slayer', TIMESTAMP '2025-01-01 12:00:00', TIMESTAMP '2025-01-01 12:00:00'),
+		('m2', 'LUSR', 'Gold', 5, 'arena_slayer', TIMESTAMP '2025-01-01 13:00:00', TIMESTAMP '2025-01-01 13:00:00')`); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+	// Précédent de m2 (13:00) = m1 (Gold 3).
+	wantM1 := skillv2.TierOrdinal(bnd, "Gold", 3)
+	if got := loadPreviousDisplayedOrdinal(ctx, playerDB, "arena_slayer", "m2", t2, bnd); got != wantM1 {
+		t.Errorf("prev ordinal(m2) = %d, want %d (m1 Gold 3)", got, wantM1)
+	}
+	// m1 est le premier chronologiquement → -1, même si m2 (postérieur) existe.
+	if got := loadPreviousDisplayedOrdinal(ctx, playerDB, "arena_slayer", "m1", t1, bnd); got != -1 {
+		t.Errorf("prev ordinal(m1) = %d, want -1 (premier match)", got)
+	}
+}
+
 // TestRunLUSRV2ShadowOwnerOnly_DoesNotOverwriteTeammateState (recovery 2026-06-07)
 // prouve que le mode owner-only persiste UNIQUEMENT l'état du joueur traité : un
 // coéquipier tracké conserve son état v2 (zéro écrasement croisé), tandis que le

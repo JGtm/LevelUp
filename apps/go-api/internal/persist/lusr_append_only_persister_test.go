@@ -139,6 +139,42 @@ func TestAppendOnlyLUSR_PersistAccumulates(t *testing.T) {
 	}
 }
 
+// TestAppendOnlyLUSR_PersistsStartTime — la colonne start_time est écrite (elle
+// alimente l'ordre CHRONOLOGIQUE des readers du delta + de la vue latest). nil →
+// colonne NULL.
+func TestAppendOnlyLUSR_PersistsStartTime(t *testing.T) {
+	db := openAppendOnlyLUSRTestDB(t)
+	p := NewAppendOnlyLUSRPersister(db)
+	ctx := context.Background()
+	st := time.Date(2026, 6, 10, 20, 0, 0, 0, time.UTC)
+
+	if err := p.Persist(ctx, []LUSRRatingInsert{
+		{MatchID: "m1", RatingValue: 1500, PlaylistGroup: "arena_slayer", StartTime: &st},
+	}); err != nil {
+		t.Fatalf("Persist avec StartTime: %v", err)
+	}
+	var got sql.NullTime
+	if err := db.QueryRow(`SELECT start_time FROM match_skill_rank WHERE match_id='m1'`).Scan(&got); err != nil {
+		t.Fatal(err)
+	}
+	if !got.Valid || !got.Time.UTC().Equal(st) {
+		t.Errorf("start_time = %v, want %v", got, st)
+	}
+
+	if err := p.Persist(ctx, []LUSRRatingInsert{
+		{MatchID: "m2", RatingValue: 1500, PlaylistGroup: "arena_slayer", StartTime: nil},
+	}); err != nil {
+		t.Fatalf("Persist StartTime nil: %v", err)
+	}
+	var got2 sql.NullTime
+	if err := db.QueryRow(`SELECT start_time FROM match_skill_rank WHERE match_id='m2'`).Scan(&got2); err != nil {
+		t.Fatal(err)
+	}
+	if got2.Valid {
+		t.Errorf("start_time m2 = %v, want NULL (StartTime nil)", got2)
+	}
+}
+
 // TestAppendOnlyLUSR_EmptyBatchNoOp — batch vide → no-op.
 func TestAppendOnlyLUSR_EmptyBatchNoOp(t *testing.T) {
 	db := openAppendOnlyLUSRTestDB(t)
