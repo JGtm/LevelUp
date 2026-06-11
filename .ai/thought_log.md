@@ -1,3 +1,42 @@
+## [2026-06-11] Leaderboard mondial — 4 stats natives + dédup match-centric + ranked-only — Livré
+
+**Statut** : Livré sur feat/world-leaderboard-enriched. Tests verts (analysis, service dont concurrents -race, integration duckdb), build module OK ; non committé.
+
+**4 stats natives brutes (demande user, SANS calcul à l'agrégation)** : `kda`, `accuracy`, `damage_dealt`, `damage_taken` extraites telles quelles de CoreStats (KDA/Accuracy/DamageDealt/DamageTaken natifs Halo) et SOMMÉES (comme kills/deaths). 4 colonnes table + insert + read + API `LeaderboardEntry` (pointeurs) + types TS. Affichage front : KDA/précision en MOYENNE (÷ match_count, au front), dégâts en **Rendement/Résistance** via `CombatYieldDisplay` (composant exact des tuiles de match : oc=225/dmgPerKill, dr=damage_taken/(225×deaths)). On a bien les 4 valeurs séparées kda+kills+deaths+assists. CSR par match écarté (trop lourd en BDD, décision user : on reste agrégé par saison).
+
+**Dédup match-centric (insight user : 1 match ranked = jusqu'à 8 tops qui s'affrontent)** : l'agrégateur tient un cache de matchs partagé (`mu`+`cache`+`singleflight` pour dédup STRICT concurrent) + l'ensemble `worldXuids` (résolus en amont via `PrepareWorldPlayers`). `getMatch` fetche 1× par matchID et `ExtractWorldPlayersFromMatch` extrait TOUS les joueurs mondiaux présents → 1 GetMatchStats traite jusqu'à 8 cibles. Set `seen` intra-joueur tue le double-comptage par overlap de pagination (trou identifié). Checkpoint par joueur du CLI préservé. **Bénéficie au CLI ET au cron** (même agrégateur via `Run`).
+
+**Ranked-only (concern user : on stockait du social)** : `RankedPlaylists` (config) = `rankedplaylists.Active()`. `collectPlayerMatches` n'accumule que les matchs en playlist classée (l'historique matchmaking mêle classé+social ; le 1er run de validation contenait bien des playlists sociales). Câblé dans le CLI + l'enricher (cron toujours ranked-only). NB : ne réduit pas les fetchs (la playlist n'est connue qu'après GetMatchStats) mais élimine les lignes sociales.
+
+**Trous traités** : double-comptage overlap pagination → set `seen` ; matchs déjà en BDD → non réutilisés mais sans risque (joueurs hors de notre catégorie, confirmé user).
+
+**Prochaine étape** : valider le run réel (ranked-only + dédup) puis commit (gros lot non committé : refactor auth + Phase D/E + 4 stats + dédup + ranked).
+
+---
+
+## [2026-06-10] Leaderboard mondial enrichi — Phase E (frontend MVP) + durcissement Phase D — Livré
+
+**Statut** : Livré sur feat/world-leaderboard-enriched. typecheck + lint + 9/9 vitest verts ; suite Go complète verte ; non committé (en attente autorisation).
+
+**Phase E (frontend MVP)** :
+- `types.ts` : `LeaderboardEntry` + 19 champs d'enrichissement optionnels (alignés sur les json tags backend).
+- `common.toml` (+ regen `generated/common.ts` via `scripts/build_i18n_manifests.mjs`) : `col_win_rate`/`col_kda`/`col_rank_delta` FR+EN.
+- `LeaderboardBlock.tsx` : colonnes Parties/Victoires(%)+trend/KDA+trend/Δrang sur la branche CSR mondial, **conditionnées à `hasEnrichment`** (table historique inchangée tant que pas de backfill). Tendances `--narrative-trend-*` (pattern KPIStrip), Δrang `tokenCssVar(skillDeltaScale())` — zéro hex (règle 20). Tri client étendu.
+- `LeaderboardBlock.test.tsx` +2 cas (masquage sans enrichissement / valeurs avec).
+
+**Durcissement Phase D (suite au 1er dry-run réel de l'utilisateur)** :
+- Cause racine 429 : `doPublic` (pooled client) déclenche le cooldown du pool sur 429 mais **ne retente pas** → un 429 faisait perdre tout le joueur. Ajout d'un **retry backoff** (2s/5s/12s) sur transitoires (429/5xx/réseau) dans l'agrégateur (`withRetry`/`isTransientErr`) — bénéficie aussi au cron. Tests : récupération après 429 + abandon après épuisement + classification.
+- Halo limite **~par IP** → multi-tokens n'accélère pas le débit depuis une machine. Défauts CLI abaissés (`-concurrency 4`, `-rps 3`), `-rps` documenté comme par-token.
+- Fiabilisations : chemins shared DB + checkpoint dérivés de `RepoRoot` (worktree n'a pas les données — gitignored) ; `buildPool` via `NewDiscoveryWithStores` (lit watcher_tokens canonique ADR 0023, sinon 0 token) ; dry-run compte les lignes simulées ; compteur "déjà faits" correct avec `-limit`.
+
+**Env dev** : worktree sans `node_modules`/données runtime (gitignored) → jonction `node_modules` worktree→repo principal (package.json identique) + `LEVELUP_REPO_ROOT` pointant le repo principal pour le CLI.
+
+**Décisions** : Phase E en MVP colonnes (podium/composants riches reportés post-backfill, sur données réelles) ; retry au niveau agrégateur (pas pooled client, qui laisse volontairement la policy au caller).
+
+**Prochaine étape** : commit (Phase D durcissement + Phase E), puis Phase F (enrichissement catalogue playlists via GetPlaylist — OBLIGATOIRE) une fois le backfill utilisateur terminé.
+
+---
+
 ## [2026-06-10] Leaderboard mondial enrichi — Phase D (CLI backfill multi-tokens) — Livré
 
 **Statut** : Livré sur feat/world-leaderboard-enriched. `cmd/backfill-world-player-stats` build + vet OK, aide affichée. Lancé manuellement par l'utilisateur (contrôle off-peak).

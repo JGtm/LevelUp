@@ -523,7 +523,17 @@ La recherche est fuzzy → filtrer le résultat sur `gamertag == cible` (exact, 
 }
 ```
 
-### Phase E — Frontend
+### Phase E — Frontend — ✅ LIVRÉ MVP (2026-06-10)
+
+**Livré** (colonnes enrichies dans le tableau existant, approche incrémentale plutôt que podium/composants séparés — ces derniers reportés en polish) :
+- `apps/web/src/lib/api/types.ts` — `LeaderboardEntry` étendu (19 champs d'enrichissement optionnels `?: T | null`).
+- `apps/web/src/lib/i18n/manifests/common.toml` (+ régénération `generated/common.ts`) — clés `col_win_rate` / `col_kda` / `col_rank_delta` (FR + EN). `col_matches` réutilisé pour le nb de matchs.
+- `apps/web/src/features/leaderboard/LeaderboardBlock.tsx` — colonnes **Parties / Victoires(%) + tendance / KDA + tendance / Δ rang** ajoutées à la branche CSR mondial, **affichées uniquement si `hasEnrichment`** (au moins un joueur backfillé → table CSR historique inchangée avant backfill). Tri client sur matchs/win_rate/kda. Tendances via `--narrative-trend-*` (pattern KPIStrip), Δ rang via `tokenCssVar(skillDeltaScale(delta))` — **zéro hex** (règle 20). Fallback `—` pour les entrées non enrichies (colonnes alignées).
+- Test : `LeaderboardBlock.test.tsx` +2 cas (colonnes masquées sans enrichissement / valeurs affichées avec). **9/9 vitest verts, typecheck + lint OK.**
+
+**Reporté en polish** (vision riche du plan) : `PodiumRow` (top 3 cartes or/argent/bronze), composants séparés `RankDeltaBadge`/`RichLeaderboardRow`, masquage colonnes mobile (`hidden sm:table-cell`), tooltip "vs prev_season". À faire après validation du backfill (données réelles).
+
+#### Spécification initiale (référence)
 
 **TypeScript types** `apps/web/src/lib/api/types.ts` — extension de `LeaderboardEntry` :
 ```typescript
@@ -587,7 +597,7 @@ win_rate_trend?:  'up' | 'down' | 'stable'
 | B — Migration + types + repo | ✅ FAITE (2026-06-10) | Table append-only `world_player_season_stats` + vue `_latest` ; types `WorldPlayerSeasonStats` + `LeaderboardEntry` étendu ; repo (`InsertPlayerSeasonStats`, `GetWorldPlayerSeasonStats` LAG inter-saison, `loadPrevSeasonRanks`) ; `GetCSRWorldLeaderboard` enrichi (merge + RankDelta, best-effort). Tests :memory: verts |
 | C — Agrégateur + cron | PARTIEL — tout sauf le wiring boot (2026-06-10) | Livrés + testés (11 tests verts, module build OK) : `analysis/world_stats.go` (pur), `service/world_player_stats_aggregator.go` (**multi-tokens PolicyAnyPublic**), `service/world_stats_enricher.go`, `auth/peoplehub_resolver.go`, `auth/cached_header_provider.go`, `duckdb.WorldSeasonGamertags`, cron `WithStatsEnricher` + phase enrich. **Reste** : wiring boot `cmd/server` (accessTokenFn + composition) — ⚠️ change le cron prod, activation délibérée |
 | D — Script backfill | ✅ LIVRÉ (2026-06-10) | `cmd/backfill-world-player-stats` multi-tokens (pool round-robin) + Ctrl-C→checkpoint + reprise idempotente + progression terminal. Build+vet OK. Limite : medal_count=0 (suivi). Lancé manuellement par l'utilisateur (contrôle off-peak) |
-| E — Frontend | ⬜ À faire | Dépend de Phase B (types API) |
+| E — Frontend | ✅ LIVRÉ MVP (2026-06-10) | Colonnes enrichies (Parties/Victoires+trend/KDA+trend/Δrang) dans LeaderboardBlock, conditionnelles à `hasEnrichment`. types TS + i18n FR/EN + 9/9 vitest + typecheck/lint OK. Podium/composants riches reportés en polish post-backfill |
 | F — Enrichissement catalogue playlists | ⬜ À faire (**OBLIGATOIRE**) | `GetPlaylist` live → remplace/enrichit `rankedplaylists.go` (liste + poids map/mode, découverte nouvelles playlists) ; mutualisé avec les autres sections app |
 
 ---
