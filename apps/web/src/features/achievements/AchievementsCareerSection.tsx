@@ -29,7 +29,9 @@ export function AchievementsCareerSection({ playerSlug, layout = 'carousel', fil
   const t = ACHIEVEMENTS_TEXT[locale]
   const { data, isLoading, isError, refetch } = useAchievementsPage(playerSlug)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
+  // Multijoueur par défaut : c'est la catégorie pertinente pour le dashboard.
+  // Sans effet sur un titre sans mapping (filtre inactif tant que hasCategories est faux).
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('multiplayer')
   const [dateSort, setDateSort] = useState<DateSort>('default')
 
   if (isLoading || isError || !data) {
@@ -63,7 +65,9 @@ export function AchievementsCareerSection({ playerSlug, layout = 'carousel', fil
   const hasCategories = data.achievements.some((a) => !!a.category)
 
   const categoryFiltered =
-    categoryFilter === 'all' ? baseList : baseList.filter((a) => a.category === categoryFilter)
+    !hasCategories || categoryFilter === 'all'
+      ? baseList
+      : baseList.filter((a) => a.category === categoryFilter)
 
   const statusFiltered =
     statusFilter === 'all' ? categoryFiltered
