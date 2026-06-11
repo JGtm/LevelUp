@@ -18,6 +18,10 @@ export interface AchievementsText {
   filterUnlocked: string
   filterInProgress: string
   filterNotStarted: string
+  filterCategoryAll: string
+  filterCategoryMultiplayer: string
+  filterCategoryCampaign: string
+  filterCategoryOther: string
   sortDefault: string
   sortDateAsc: string
   sortDateDesc: string
@@ -41,6 +45,10 @@ export const ACHIEVEMENTS_TEXT: Record<AchievementsLocale, AchievementsText> = {
     filterUnlocked: 'Débloqués',
     filterInProgress: 'En cours',
     filterNotStarted: 'Non commencé',
+    filterCategoryAll: 'Toutes catégories',
+    filterCategoryMultiplayer: 'Multijoueur',
+    filterCategoryCampaign: 'Campagne',
+    filterCategoryOther: 'Autres',
     sortDefault: 'Défaut',
     sortDateAsc: 'Date ↑',
     sortDateDesc: 'Date ↓',
@@ -62,6 +70,10 @@ export const ACHIEVEMENTS_TEXT: Record<AchievementsLocale, AchievementsText> = {
     filterUnlocked: 'Unlocked',
     filterInProgress: 'In progress',
     filterNotStarted: 'Not started',
+    filterCategoryAll: 'All categories',
+    filterCategoryMultiplayer: 'Multiplayer',
+    filterCategoryCampaign: 'Campaign',
+    filterCategoryOther: 'Other',
     sortDefault: 'Default',
     sortDateAsc: 'Date ↑',
     sortDateDesc: 'Date ↓',

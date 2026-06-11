@@ -3583,6 +3583,8 @@ export interface AchievementEntry {
   target_progress?: number
   /** Identifiant Xbox numérique du titre source (ex: "1144039928" pour Halo Infinite). Vide pour l'ancien data. */
   xbox_title_id?: string
+  /** Catégorie produit issue du mapping statique par titre. Absent si le titre n'a pas de mapping. */
+  category?: 'multiplayer' | 'campaign' | 'other'
 }
 
 export interface AchievementsPageResponse {
