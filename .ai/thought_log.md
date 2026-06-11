@@ -1,3 +1,19 @@
+## [2026-06-11] Leaderboard mondial — Phases F (catalogue) + C (wiring cron gaté) + E (polish) — Livré
+
+**Statut** : Complété sur feat/world-leaderboard-enriched. 4 commits thématiques (F `b1bee0145`, C `33919ff7b`, E `131fc2da4`, + ce doc). Build module complet OK, vet OK, tests world (service+duckdb) + 9/9 vitest verts.
+
+**Phase F — noms playlists mutualisés via catalogue** : `GetWorldLeaderboardCatalog` ne code plus les libellés en dur. Cascade `playlistName(id, frOfficial, canonical)` = `asset_translations[fr]` (officiel) > `rankedplaylists` FR (curé) > `playlists_catalog.name_canonical` (EN) > rankedplaylists EN > id brut. `resolvePlaylistNamesFromCatalog` lit `metadata.duckdb` (`r.pdb.Metadata`, RO), **nil-safe** : retombe sur rankedplaylists si le catalogue est absent — ne touche jamais la shared DB. Front : `playlistOptions` préfère `display_name` (cascade backend) au `KNOWN_*` hardcodé. Test `TestPlaylistName_Cascade` (4 cas). NB : pour les nouvelles playlists, peupler via `populate-playlists-catalog --from-match-registry`. La part "GetPlaylist live (poids map/mode)" reste un suivi optionnel séparé.
+
+**Phase C — wiring boot cron (gaté)** : décision clé = **extraire la glue auth du CLI dans `internal/worldenrich`** (package partagé) plutôt que dupliquer dans `cmd/server`. UNE implémentation de la résolution token store-first (ADR 0023) réutilisée par le CLI ET le serveur (zéro divergence). Ajout du param `eager` : CLI fail-fast (probe au build), serveur **lazy** (zéro I/O token au boot). `BuildEnricher` compose source + résolveur PeopleHub + `RankedPlaylistSet`. `cmd/server` : `worldLbCron.WithStatsEnricher(enr)` **gaté par `LEVELUP_WORLD_ENRICH`** (OFF par défaut → scrape-only, prod inchangé ; activation délibérée après validation backfill). Header PeopleHub via `LEVELUP_WORLD_ENRICH_TOKEN` (sinon 1er compte db_profiles). Le CLI bascule sur le package partagé (logique identique relocalisée → toujours fonctionnel, build OK).
+
+**Phase E — polish front** : (1) masquage colonnes mobile via `COL_HIDE_SM`/`COL_HIDE_LG` (mêmes classes en-tête+cellules → alignement) : la table 10 colonnes ne déborde plus ; (2) accent podium top-3 = rang gras + couleur pleine (tokens `foreground`/`muted` existants, **pas de nouvelle couleur** ni `PodiumRow` séparé — choix éditorial flat aligné sur la pref data-viz) ; (3) tooltips "vs saison précédente" sur tendances (victoires/KDA) + Δrang, clés i18n `trend_tooltip`/`rank_delta_tooltip` FR+EN régénérées.
+
+**Décision de prudence** : Phase C prod-affectante → livrée GATÉE (flag OFF par défaut) + build lazy, pour câbler sans changer le comportement prod tant que l'utilisateur ne valide pas. Ce n'est pas un offload : le défaut est tranché (OFF), un seul flag à poser documenté.
+
+**Prochaine étape** : pousser la branche ; l'utilisateur lance le backfill (off-peak, serveur stoppé) puis active `LEVELUP_WORLD_ENRICH=1` en prod après contrôle des données réelles.
+
+---
+
 ## [2026-06-11] Leaderboard mondial — 4 stats natives + dédup match-centric + ranked-only — Livré
 
 **Statut** : Livré sur feat/world-leaderboard-enriched. Tests verts (analysis, service dont concurrents -race, integration duckdb), build module OK ; non committé.

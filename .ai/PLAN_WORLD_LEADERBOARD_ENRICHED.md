@@ -1,7 +1,7 @@
 # Plan — Leaderboard mondial enrichi (stats joueur par saison/playlist)
 
-> **Créé le** : 2026-06-09 · **Mis à jour** : 2026-06-10 (revue + correction de la branche cible)
-> **Statut** : Phase A — probe E2E (branche de travail créée le 2026-06-10)
+> **Créé le** : 2026-06-09 · **Mis à jour** : 2026-06-11 (Phases F + C-wiring + E-polish livrées)
+> **Statut** : ✅ Phases A→F LIVRÉES. Reste : (1) lancer le backfill (manuel, off-peak), (2) activer le cron prod via `LEVELUP_WORLD_ENRICH=1` après validation des données réelles.
 > **Branche de travail** : `feat/world-leaderboard-enriched` — créée **depuis `feat/leaderboard-csr-followup`**, PAS `main`. ⚠️ Vérifié 2026-06-10 : `main` n'a PAS l'infra leaderboard (scraper/cron/repo/migrations absents ; branche courante 60 commits devant `main`) → brancher depuis `main` ne compilerait pas. L'infra vit sur `feat/leaderboard-csr-followup`.
 > **Données** : les binaires `cmd/` (probe, backfill) tournent contre le `data/` du repo principal via flags `--shared-db`/`--tokens-dir` (les DB sont gitignored, donc absentes des worktrees).
 
@@ -459,9 +459,10 @@ La recherche est fuzzy → filtrer le résultat sur `gamertag == cible` (exact, 
 - `duckdb.WorldSeasonGamertags(ctx, db, season)` — gamertags distincts d'une saison (union toutes playlists, cf. insight Phase A : 1 joueur fetché couvre toutes ses playlists).
 - `scheduler/world_leaderboard_cron.go` étendu — `WithStatsEnricher(e)` (optionnel, nil-safe) ; phase 5 `enrich()` après le snapshot CSR : lecture gamertags (RO) → `EnrichSeason` → `InsertPlayerSeasonStats` (fenêtre RW minimale, même discipline que le scrape). Best-effort.
 
-**RESTE Phase C — wiring boot `cmd/server` (NON livré — ⚠️ change le comportement du cron prod : nouvelle charge API Halo pour l'enrichissement → activation délibérée + validation live requises)** :
-- Écrire `accessTokenFn(ctx)` réutilisant la logique both-shapes du probe (store → MSAL silent OU `ExchangeRefreshTokenWithRotation` → 1 `access_token`, persister le RT tourné) puis `auth.AcquireXSTSForRTA` → header `XBL3.0` (compte serveur primaire).
-- Composer : `hp := auth.NewCachedHeaderProvider(0, build)` ; `res := auth.NewPeopleHubResolver(nil, hp.Header)` ; `pooled := syncpkg.NewPooledHaloClient(haloPool, "", "", 5)` (déjà construit à main.go:1557) ; `enr := service.NewWorldStatsEnricher(pooled, res, service.WorldStatsAggregatorConfig{Concurrency: 8})` ; `worldLbCron.WithStatsEnricher(enr)` (cron construit à main.go:968 — ordonner après le pool, ou déplacer la construction du cron après `haloPool`).
+**Wiring boot `cmd/server` — ✅ LIVRÉ (2026-06-11, gaté)** :
+- Glue extraite dans `internal/worldenrich` (package partagé CLI + serveur, **une seule** implémentation de la résolution token store-first ADR 0023) : `BuildHaloSource`/`BuildMultiHaloSource` (param `eager` : fail-fast CLI vs lazy serveur), `BuildResolver` (PeopleHub via `CachedHeaderProvider` + `AcquireXSTSForRTA`), `BuildEnricher` (compose source + résolveur + `RankedPlaylistSet`).
+- `cmd/server` : cron wire via `worldenrich.BuildEnricher(cfg, …)` **gaté par `LEVELUP_WORLD_ENRICH`** (OFF par défaut → scrape-only, comportement prod inchangé). Build **lazy** (`Eager:false`) : zéro résolution token au boot, différée au 1er tick (déjà dans la goroutine du cron, hors chemin de démarrage). Compte du header PeopleHub : `LEVELUP_WORLD_ENRICH_TOKEN` (sinon 1er compte `db_profiles`). `worldLbCron.WithStatsEnricher(enr)` avant le `go worldLbCron.Run`.
+- **Activation prod délibérée** : poser `LEVELUP_WORLD_ENRICH=1` après validation du backfill (⚠️ nouvelle charge API Halo quotidienne à l'enrichissement).
 
 **WorldLeaderboardCron étendu** `world_leaderboard_cron.go`
 - Après `scrapeAll`, pour la **saison courante uniquement** :
@@ -523,7 +524,7 @@ La recherche est fuzzy → filtrer le résultat sur `gamertag == cible` (exact, 
 }
 ```
 
-### Phase E — Frontend — ✅ LIVRÉ MVP (2026-06-10)
+### Phase E — Frontend — ✅ LIVRÉ + POLISH (2026-06-11)
 
 **Livré** (colonnes enrichies dans le tableau existant, approche incrémentale plutôt que podium/composants séparés — ces derniers reportés en polish) :
 - `apps/web/src/lib/api/types.ts` — `LeaderboardEntry` étendu (19 champs d'enrichissement optionnels `?: T | null`).
@@ -531,7 +532,13 @@ La recherche est fuzzy → filtrer le résultat sur `gamertag == cible` (exact, 
 - `apps/web/src/features/leaderboard/LeaderboardBlock.tsx` — colonnes **Parties / Victoires(%) + tendance / KDA + tendance / Δ rang** ajoutées à la branche CSR mondial, **affichées uniquement si `hasEnrichment`** (au moins un joueur backfillé → table CSR historique inchangée avant backfill). Tri client sur matchs/win_rate/kda. Tendances via `--narrative-trend-*` (pattern KPIStrip), Δ rang via `tokenCssVar(skillDeltaScale(delta))` — **zéro hex** (règle 20). Fallback `—` pour les entrées non enrichies (colonnes alignées).
 - Test : `LeaderboardBlock.test.tsx` +2 cas (colonnes masquées sans enrichissement / valeurs affichées avec). **9/9 vitest verts, typecheck + lint OK.**
 
-**Reporté en polish** (vision riche du plan) : `PodiumRow` (top 3 cartes or/argent/bronze), composants séparés `RankDeltaBadge`/`RichLeaderboardRow`, masquage colonnes mobile (`hidden sm:table-cell`), tooltip "vs prev_season". À faire après validation du backfill (données réelles).
+**Polish livré (2026-06-11)** :
+- **Masquage colonnes mobile** — `COL_HIDE_SM`/`COL_HIDE_LG` (mêmes classes en-tête + cellules) : #, joueur, CSR toujours visibles ; victoires/KDA dès `sm` ; tier/parties/précision/rendement/Δrang dès `lg`. La table 10 colonnes ne déborde plus sur petit écran.
+- **Accent podium top-3** — rang en gras + couleur pleine (vs muted) sur la cellule rang, **sans nouvelle couleur** (tokens `foreground`/`muted` existants — pas de `PodiumRow` séparé, choix éditorial flat aligné sur la pref data-viz). 
+- **Tooltips "vs saison précédente"** — sur les flèches de tendance (victoires, KDA) et le Δrang. Clés i18n `trend_tooltip` / `rank_delta_tooltip` (FR + EN), manifests régénérés.
+- **9/9 vitest verts, typecheck + lint OK.**
+
+**Reporté** (vision riche, optionnel) : composants séparés `PodiumRow`/`RankDeltaBadge`/`RichLeaderboardRow` (l'accent top-3 inline couvre le besoin sans sur-composant).
 
 #### Spécification initiale (référence)
 
@@ -595,10 +602,10 @@ win_rate_trend?:  'up' | 'down' | 'stable'
 |-------|--------|-------|
 | A — Probe E2E échantillon | ✅ VALIDÉE (2026-06-10) | auth PeopleHub + xuid 100% + extraction + bucketing **playlist** + **dimension saison** (pagination 9 mois → CsrSeason12-1, attribution via `MatchInfo.SeasonId`) + timing ~0.9s/match. Design Phase B/C : attribuer par SeasonId (pas dates), auth single-token |
 | B — Migration + types + repo | ✅ FAITE (2026-06-10) | Table append-only `world_player_season_stats` + vue `_latest` ; types `WorldPlayerSeasonStats` + `LeaderboardEntry` étendu ; repo (`InsertPlayerSeasonStats`, `GetWorldPlayerSeasonStats` LAG inter-saison, `loadPrevSeasonRanks`) ; `GetCSRWorldLeaderboard` enrichi (merge + RankDelta, best-effort). Tests :memory: verts |
-| C — Agrégateur + cron | PARTIEL — tout sauf le wiring boot (2026-06-10) | Livrés + testés (11 tests verts, module build OK) : `analysis/world_stats.go` (pur), `service/world_player_stats_aggregator.go` (**multi-tokens PolicyAnyPublic**), `service/world_stats_enricher.go`, `auth/peoplehub_resolver.go`, `auth/cached_header_provider.go`, `duckdb.WorldSeasonGamertags`, cron `WithStatsEnricher` + phase enrich. **Reste** : wiring boot `cmd/server` (accessTokenFn + composition) — ⚠️ change le cron prod, activation délibérée |
-| D — Script backfill | ✅ LIVRÉ (2026-06-10) | `cmd/backfill-world-player-stats` multi-tokens (pool round-robin) + Ctrl-C→checkpoint + reprise idempotente + progression terminal. Build+vet OK. Limite : medal_count=0 (suivi). Lancé manuellement par l'utilisateur (contrôle off-peak) |
-| E — Frontend | ✅ LIVRÉ MVP (2026-06-10) | Colonnes enrichies (Parties/Victoires+trend/KDA+trend/Δrang) dans LeaderboardBlock, conditionnelles à `hasEnrichment`. types TS + i18n FR/EN + 9/9 vitest + typecheck/lint OK. Podium/composants riches reportés en polish post-backfill |
-| F — Enrichissement catalogue playlists | ⬜ À faire (**OBLIGATOIRE**) | `GetPlaylist` live → remplace/enrichit `rankedplaylists.go` (liste + poids map/mode, découverte nouvelles playlists) ; mutualisé avec les autres sections app |
+| C — Agrégateur + cron | ✅ LIVRÉ (wiring boot 2026-06-11, gaté) | Cœur (2026-06-10, 11 tests) : `analysis/world_stats.go` (pur), `service/world_player_stats_aggregator.go` (multi-tokens, **dédup match-centric singleflight + ranked-only**), `world_stats_enricher.go`, `auth/peoplehub_resolver.go`, cron `WithStatsEnricher` + phase enrich. Wiring (2026-06-11) : `internal/worldenrich` (glue partagée CLI+serveur) + `cmd/server` gaté `LEVELUP_WORLD_ENRICH` (OFF par défaut, build lazy). Activation prod = poser le flag |
+| D — Script backfill | ✅ LIVRÉ (2026-06-10) | `cmd/backfill-world-player-stats` multi-tokens (round-robin) + Ctrl-C→checkpoint + reprise idempotente + dédup match-centric + ranked-only + early-stop (`-deep` pour vieilles saisons). Bascule sur `internal/worldenrich` (2026-06-11). Build+vet OK. Limite : medal_count=0 (suivi). Lancé manuellement (off-peak) |
+| E — Frontend | ✅ LIVRÉ + POLISH (2026-06-11) | Colonnes enrichies (Parties/Victoires+trend/KDA+trend/**Précision**/**Rendement-Résistance**/Δrang) conditionnelles à `hasEnrichment`. Polish : masquage colonnes mobile (sm/lg), accent podium top-3 (token-safe), tooltips "vs saison précédente" (i18n FR/EN). 9/9 vitest + typecheck/lint OK |
+| F — Catalogue playlists | ✅ LIVRÉ (noms mutualisés, 2026-06-11) | `GetWorldLeaderboardCatalog` résout les noms via le **catalogue metadata partagé** (cascade `asset_translations[fr]` > rankedplaylists FR > `playlists_catalog` EN > id), nil-safe (fallback rankedplaylists) ; front préfère `display_name`. Test cascade vert. **Suivi optionnel** : `GetPlaylist` live (poids map/mode + auto-découverte) — séparé, le catalogue se peuple déjà via `populate-playlists-catalog` |
 
 ---
 
@@ -615,9 +622,10 @@ win_rate_trend?:  'up' | 'down' | 'stable'
 - [ ] Phase A : noter le timing réel par match (base calibrage backfill)
 - [ ] Phase A : documenter les (saison, playlist) sans couverture après rotation 5 candidats
 - [ ] Phase B : migration + types + repo (schéma final basé sur Phase A)
-- [ ] Phase C : agrégateur + cron étendu
-- [ ] Phase D : script backfill avec checkpoint
-- [ ] Phase D : test `--dry-run` sur 1 saison, vérifier reprise après kill
-- [ ] Phase E : frontend + podium
+- [x] Phase C : agrégateur + cron étendu (wiring boot gaté `LEVELUP_WORLD_ENRICH`, 2026-06-11)
+- [x] Phase D : script backfill avec checkpoint
+- [x] Phase D : test `--dry-run` sur 1 saison, vérifier reprise après kill
+- [x] Phase E : frontend + polish (responsive, accent podium, tooltips saison)
+- [x] Phase F : noms playlists mutualisés via catalogue metadata (cascade FR/EN, fallback rankedplaylists)
 - [ ] `go test ./apps/go-api/internal/...` vert
 - [ ] Boot serveur → migration appliquée
