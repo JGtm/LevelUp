@@ -111,6 +111,40 @@ func TestApplyMSRViewPriorityCSR_LatestVersionWithinType(t *testing.T) {
 	}
 }
 
+// TestApplyMSRViewPriorityCSR_PrefersRowWithStartTime — reproduit le bug delta
+// figé de Chocoboflor (2026-06-11) : une vieille version sans start_time mais
+// written_at récent vs une version re-backfillée avec start_time peuplé mais
+// written_at NULL. La vue doit prendre celle qui a un start_time (chronologie du
+// match), pas celle au written_at le plus récent.
+func TestApplyMSRViewPriorityCSR_PrefersRowWithStartTime(t *testing.T) {
+	db := setupLegacyMatchSkillRank(t, 0)
+	if err := applyAppendOnlyMatchSkillRank(db); err != nil {
+		t.Fatalf("v1: %v", err)
+	}
+	if err := applyMSRViewPriorityCSR(db); err != nil {
+		t.Fatalf("v2: %v", err)
+	}
+	// Vieille row : start_time NULL, written_at récent (mai).
+	if _, err := db.Exec(`INSERT INTO match_skill_rank
+		(match_id, rating_type, rating_value, playlist_group, start_time, written_at)
+		VALUES ('m3', 'LUSR', 1499.0, 'arena_slayer', NULL, TIMESTAMP '2026-05-27 15:00:00')`); err != nil {
+		t.Fatal(err)
+	}
+	// Nouvelle row re-backfillée : start_time peuplé (juin), written_at NULL.
+	if _, err := db.Exec(`INSERT INTO match_skill_rank
+		(match_id, rating_type, rating_value, playlist_group, start_time, written_at)
+		VALUES ('m3', 'LUSR', 1570.0, 'arena_slayer', TIMESTAMP '2026-06-10 20:00:00', NULL)`); err != nil {
+		t.Fatal(err)
+	}
+	var got float64
+	if err := db.QueryRow(`SELECT rating_value FROM match_skill_rank_latest WHERE match_id='m3'`).Scan(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got != 1570.0 {
+		t.Errorf("latest = %.1f, want 1570 (row avec start_time, malgré written_at NULL)", got)
+	}
+}
+
 // TestApplyMSRViewPriorityCSR_Idempotent — re-apply de la migration v2
 // doit être un no-op (CREATE OR REPLACE est intrinsèquement idempotent).
 func TestApplyMSRViewPriorityCSR_Idempotent(t *testing.T) {

@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 )
 
 // LUSRRatingInsert — row LUSR prête à INSERT dans match_skill_rank.
@@ -43,6 +44,11 @@ type LUSRRatingInsert struct {
 	// (LUSR v2 Sprint 1.A). nil pour les chemins qui ne la calculent pas
 	// (CSR, héritage v1) → colonne NULL.
 	ExpectedWinProb *float64
+	// StartTime : timestamp réel du match (match_registry, UTC). Peuplé pour
+	// donner un ordre CHRONOLOGIQUE fiable aux readers du delta (loadPrevious*),
+	// indépendant de written_at (= ordre d'ÉCRITURE, fragile aux ré-écritures).
+	// nil → colonne NULL (chemins legacy qui ne le fournissent pas).
+	StartTime *time.Time
 }
 
 // AppendOnlyLUSRPersister écrit des ratings LUSR en mode strictement
@@ -123,11 +129,11 @@ func (p *AppendOnlyLUSRPersister) Persist(ctx context.Context, rows []LUSRRating
 			INSERT INTO match_skill_rank
 				(match_id, rating_type, rating_value, rating_deviation,
 				 tier, tier_fr, sub_tier, tier_label,
-				 rating_delta, playlist_group, expected_win_prob)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				 rating_delta, playlist_group, expected_win_prob, start_time)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			r.MatchID, rt, r.RatingValue, r.RatingDeviation,
 			r.Tier, r.TierFR, r.SubTier, r.TierLabel,
-			r.RatingDelta, r.PlaylistGroup, r.ExpectedWinProb,
+			r.RatingDelta, r.PlaylistGroup, r.ExpectedWinProb, r.StartTime,
 		); err != nil {
 			return fmt.Errorf("persist: INSERT LUSR append-only %s/%s: %w", r.MatchID, rt, err)
 		}

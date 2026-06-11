@@ -80,6 +80,7 @@ var canonicalOrder = []string{
 	"player_add_expected_win_prob",                            // player
 	"player_append_only_csr_snapshots_v1",                     // player
 	"player_append_only_match_skill_rank_v1",                  // player
+	"msr_written_at_default_now_repair_v1",                    // player
 	"create_streak_history_append_only",                       // player
 	"add_player_assists_model",                                // player
 	"create_coach_proposal_player_schema",                     // player
