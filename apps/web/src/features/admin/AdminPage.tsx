@@ -22,6 +22,7 @@ import {
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { useAdminInvariants, useAdminDBContention, useAdminTokenHealth } from './queries'
+import { credentialSourceParts, hasLegacyCredentialSource, TOKEN_ERROR_KEY } from './tokenHealthDisplay'
 import type { AdminInvariantViolation, TokenStatus } from '@/lib/api/types'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import {
@@ -563,34 +564,12 @@ function TokenBadge({ kind, status, t }: { kind: string; status: TokenStatus; t:
   )
 }
 
-const TOKEN_ERROR_KEY: Record<string, CommonManifestKey> = {
-  config: 'common.admin.token_error_config',
-  revoked: 'common.admin.token_error_revoked',
-  transient: 'common.admin.token_error_transient',
-}
-
-/**
- * credentialSourceParts — réduit le label composite du scan (ex.
- * "watcher_msal+watcher_oauth", "duckdb_msal+env_oauth") en familles courtes
- * dédupliquées : store / sync_meta / env / legacy.
- */
-function credentialSourceParts(source: string): string[] {
-  const mapped = source.split('+').map((part) => {
-    if (part === 'watcher_legacy') return 'legacy'
-    if (part.startsWith('watcher_')) return 'store'
-    if (part.startsWith('duckdb_')) return 'sync_meta'
-    if (part === 'env_oauth') return 'env'
-    return part
-  })
-  return [...new Set(mapped)]
-}
-
 /** Source de credentials du dernier scan — toute source hors store canonique = dette ADR-0023 (warning). */
 function CredentialSourceChip({ source, t }: { source?: string; t: T }) {
   if (!source) return null
   const unknown = source === 'unknown'
   const parts = unknown ? [] : credentialSourceParts(source)
-  const legacy = parts.some((p) => p !== 'store')
+  const legacy = hasLegacyCredentialSource(parts)
   return (
     <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground" title={unknown ? undefined : source}>
       {t('common.admin.token_source')}:{' '}
