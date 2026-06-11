@@ -38,13 +38,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -56,10 +54,9 @@ import (
 	titlepkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability/logging"
-	authpkg "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/service"
-	syncpkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/worldenrich"
 )
 
 type cliFlags struct {
@@ -127,14 +124,14 @@ func run(ctx context.Context, cfg *config.AppConfig, f cliFlags) error {
 	// round-robine tous les comptes db_profiles résolus (gain borné par l'IP).
 	var src service.WorldMatchSource
 	if f.allTokens {
-		s, gts, e := buildMultiHaloSource(cfg, f.rps)
+		s, gts, e := worldenrich.BuildMultiHaloSource(cfg, f.rps, true)
 		if e != nil {
 			return e
 		}
 		src = s
 		fmt.Printf("tokens: %d comptes résolus (round-robin) — %v\n", len(gts), gts)
 	} else {
-		s, e := buildHaloSource(cfg, f.tokenGamertag, f.rps)
+		s, e := worldenrich.BuildHaloSource(cfg, f.tokenGamertag, f.rps, true)
 		if e != nil {
 			return e
 		}
@@ -143,7 +140,7 @@ func run(ctx context.Context, cfg *config.AppConfig, f cliFlags) error {
 	}
 
 	// 2. Résolveur xuid PeopleHub (même compte, header RTA mémoïsé).
-	resolver, err := buildResolver(cfg, f.tokenGamertag)
+	resolver, err := worldenrich.BuildResolver(cfg, f.tokenGamertag)
 	if err != nil {
 		return err
 	}
@@ -387,223 +384,6 @@ func flushBatch(ctx context.Context, f cliFlags, batch []domain.WorldPlayerSeaso
 func printProgress(season string, done, total, failures, rows int, elapsed time.Duration) {
 	fmt.Printf("\r[%s] %d/%d joueurs · %d lignes · %d err · %s    ",
 		season, done, total, rows, failures, elapsed.Round(time.Second))
-}
-
-// ─── Construction des dépendances (single-token, store-first MSAL — pattern
-// canonique des backfills, cf. cmd/backfill-csr-history) ───
-
-// loadLegacyInputs lit le couple (refresh_token, msal_cache) du sync_meta de la
-// player DB — fallback canonique ADR 0023 quand le watcher store ne couvre pas le
-// joueur (cf. cmd/backfill-csr-history). Best-effort (vide si DB/clé absente).
-func loadLegacyInputs(cfg *config.AppConfig, gamertag string) authpkg.LegacyAuthInputs {
-	path := titlepkg.NewPathResolver(cfg.RepoRoot).PlayerDBPath(titlepkg.DefaultSlug, gamertag)
-	db, err := sql.Open("duckdb", path+"?access_mode=read_only")
-	if err != nil {
-		return authpkg.LegacyAuthInputs{}
-	}
-	defer db.Close()
-	var rt, msal string
-	_ = db.QueryRowContext(context.Background(), `SELECT value FROM sync_meta WHERE key='oauth_refresh_token'`).Scan(&rt)
-	_ = db.QueryRowContext(context.Background(), `SELECT value FROM sync_meta WHERE key='msal_token_cache'`).Scan(&msal)
-	return authpkg.LegacyAuthInputs{OAuthRT: rt, MSALCache: msal, Source: "player_db.sync_meta"}
-}
-
-// resolveAccessToken obtient un access_token Microsoft frais pour xuid : store
-// watcher_tokens d'abord (canonique ADR 0023), puis legacy sync_meta. Pour chaque
-// source, MSAL silent puis refresh token (rotation persistée si store). C'est
-// exactement la résolution des backfills qui marchent — pas de pool reconstruit.
-func resolveAccessToken(ctx context.Context, provider authpkg.TokenProvider, store *authpkg.MultiUserTokenStore, xuid string, legacy authpkg.LegacyAuthInputs) (string, error) {
-	try := func(msal, rt string, persist bool) string {
-		if msal != "" {
-			if at, e := provider.TrySilentRefresh(ctx, msal); e == nil && at != "" {
-				return at
-			}
-		}
-		if rt != "" {
-			if at, rot, e := provider.TryOAuthRefreshWithRotation(ctx, rt); e == nil && at != "" {
-				if persist && rot != "" && rot != rt {
-					_ = store.UpdateOAuthRefreshToken(xuid, rot)
-				}
-				return at
-			}
-		}
-		return ""
-	}
-	if user, _ := store.Load(xuid); user != nil {
-		if at := try(user.MSALCacheJSON, user.OAuthRefreshToken, true); at != "" {
-			return at, nil
-		}
-	}
-	if at := try(legacy.MSALCache, legacy.OAuthRT, false); at != "" {
-		return at, nil
-	}
-	return "", fmt.Errorf("aucun access_token frais pour xuid(%s)", xuid)
-}
-
-// refreshingHaloSource : client Halo single-token (Spartan/Clearance) ré-résolu
-// quand le TTL expire (Spartan ~4h) — supporte les runs longs sans pool. Implémente
-// service.WorldMatchSource (GetMatchHistory + GetMatchStats).
-type refreshingHaloSource struct {
-	mu      sync.Mutex
-	resolve func(ctx context.Context) (*syncpkg.HaloAPIClient, error)
-	ttl     time.Duration
-	now     func() time.Time
-	client  *syncpkg.HaloAPIClient
-	exp     time.Time
-}
-
-func (s *refreshingHaloSource) get(ctx context.Context) (*syncpkg.HaloAPIClient, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.client != nil && s.now().Before(s.exp) {
-		return s.client, nil
-	}
-	c, err := s.resolve(ctx)
-	if err != nil {
-		return nil, err
-	}
-	s.client, s.exp = c, s.now().Add(s.ttl)
-	return c, nil
-}
-
-func (s *refreshingHaloSource) GetMatchHistory(ctx context.Context, gamertag, matchType string, start, count int) ([]syncpkg.MatchHistoryEntry, error) {
-	c, err := s.get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return c.GetMatchHistory(ctx, gamertag, matchType, start, count)
-}
-
-func (s *refreshingHaloSource) GetMatchStats(ctx context.Context, matchID string) (map[string]any, error) {
-	c, err := s.get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return c.GetMatchStats(ctx, matchID)
-}
-
-// buildHaloSource résout le compte tokenGamertag (store-first) et retourne un client
-// Halo single-token auto-rafraîchi pour le fetch des matchs. Échoue tôt si le token
-// est KO (avant d'ouvrir la base).
-func buildHaloSource(cfg *config.AppConfig, gamertag string, rps int) (service.WorldMatchSource, error) {
-	xuid, err := xuidForGamertag(cfg, gamertag)
-	if err != nil {
-		return nil, err
-	}
-	provider := authpkg.NewMSALProvider()
-	store := authpkg.NewMultiUserTokenStore(titlepkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	legacy := loadLegacyInputs(cfg, gamertag)
-	src := &refreshingHaloSource{
-		ttl: 3 * time.Hour, // Spartan ~4h, marge
-		now: time.Now,
-		resolve: func(ctx context.Context) (*syncpkg.HaloAPIClient, error) {
-			at, e := resolveAccessToken(ctx, provider, store, xuid, legacy)
-			if e != nil {
-				return nil, e
-			}
-			exch, e := authpkg.ExchangeAccessToken(ctx, at)
-			if e != nil {
-				return nil, fmt.Errorf("exchange Halo: %w", e)
-			}
-			if exch.Tokens == nil || strings.TrimSpace(exch.Tokens.SpartanToken) == "" {
-				return nil, fmt.Errorf("aucun Spartan token pour %s", gamertag)
-			}
-			return syncpkg.NewHaloAPIClient(exch.Tokens.SpartanToken, exch.Tokens.ClearanceToken, rps), nil
-		},
-	}
-	if _, err := src.get(context.Background()); err != nil {
-		return nil, fmt.Errorf("résolution token %s: %w", gamertag, err)
-	}
-	return src, nil
-}
-
-// multiHaloSource round-robine le fetch sur N clients single-token (un par compte
-// résolu). Chaque sous-source est résolue par le chemin prouvé (store-first + legacy)
-// et s'auto-rafraîchit. NB : Halo limitant ~par IP, le gain est borné par le plafond
-// IP, pas multiplié par N.
-type multiHaloSource struct {
-	sources []service.WorldMatchSource
-	idx     uint64
-}
-
-func (m *multiHaloSource) next() service.WorldMatchSource {
-	i := atomic.AddUint64(&m.idx, 1)
-	return m.sources[int(i)%len(m.sources)]
-}
-
-func (m *multiHaloSource) GetMatchHistory(ctx context.Context, gamertag, matchType string, start, count int) ([]syncpkg.MatchHistoryEntry, error) {
-	return m.next().GetMatchHistory(ctx, gamertag, matchType, start, count)
-}
-
-func (m *multiHaloSource) GetMatchStats(ctx context.Context, matchID string) (map[string]any, error) {
-	return m.next().GetMatchStats(ctx, matchID)
-}
-
-// buildMultiHaloSource résout TOUS les comptes db_profiles via le chemin prouvé et
-// round-robine sur ceux qui réussissent (les autres — RT mintés par un autre client,
-// ex. env-var .env.local — sont skippés avec un warn). Retourne les gamertags actifs.
-func buildMultiHaloSource(cfg *config.AppConfig, rps int) (service.WorldMatchSource, []string, error) {
-	players, err := cfg.LoadPlayers()
-	if err != nil {
-		return nil, nil, fmt.Errorf("chargement db_profiles.json: %w", err)
-	}
-	var sources []service.WorldMatchSource
-	var ok []string
-	for _, p := range players {
-		s, e := buildHaloSource(cfg, p.Gamertag, rps)
-		if e != nil {
-			slog.WarnContext(context.Background(), "backfill-world: compte skippé (token non résolu)",
-				"gamertag", p.Gamertag, "err", e)
-			continue
-		}
-		sources = append(sources, s)
-		ok = append(ok, p.Gamertag)
-	}
-	if len(sources) == 0 {
-		return nil, nil, fmt.Errorf("aucun compte db_profiles résolu")
-	}
-	return &multiHaloSource{sources: sources}, ok, nil
-}
-
-// buildResolver construit le résolveur xuid PeopleHub. Le header RTA est dérivé du
-// MÊME compte (access_token store-first → AcquireXSTSForRTA), mémoïsé (TTL).
-func buildResolver(cfg *config.AppConfig, tokenGamertag string) (*authpkg.PeopleHubResolver, error) {
-	xuid, err := xuidForGamertag(cfg, tokenGamertag)
-	if err != nil {
-		return nil, err
-	}
-	provider := authpkg.NewMSALProvider()
-	store := authpkg.NewMultiUserTokenStore(titlepkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	legacy := loadLegacyInputs(cfg, tokenGamertag)
-	hp := authpkg.NewCachedHeaderProvider(0, func(ctx context.Context) (string, error) {
-		at, e := resolveAccessToken(ctx, provider, store, xuid, legacy)
-		if e != nil {
-			return "", e
-		}
-		rta, e := authpkg.AcquireXSTSForRTA(ctx, at)
-		if e != nil {
-			return "", fmt.Errorf("AcquireXSTSForRTA: %w", e)
-		}
-		return fmt.Sprintf("XBL3.0 x=%s;%s", rta.UserHash, rta.Token), nil
-	})
-	return authpkg.NewPeopleHubResolver(nil, hp.Header), nil
-}
-
-// xuidForGamertag résout l'xuid d'un gamertag depuis db_profiles.json.
-func xuidForGamertag(cfg *config.AppConfig, gamertag string) (string, error) {
-	players, err := cfg.LoadPlayers()
-	if err != nil {
-		return "", fmt.Errorf("chargement db_profiles.json: %w", err)
-	}
-	for _, p := range players {
-		if strings.EqualFold(p.Gamertag, gamertag) {
-			if strings.TrimSpace(p.XUID) == "" {
-				return "", fmt.Errorf("joueur %s sans xuid dans db_profiles.json", gamertag)
-			}
-			return p.XUID, nil
-		}
-	}
-	return "", fmt.Errorf("gamertag %q introuvable dans db_profiles.json", gamertag)
 }
 
 // resolveSeasons retourne la liste des saisons à traiter ("all" → toutes les

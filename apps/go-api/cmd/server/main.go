@@ -58,6 +58,7 @@ import (
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/watcher"
+	"levelup/go-api/internal/worldenrich"
 )
 
 // version est injectée au build via -ldflags "-X main.version=X.Y.Z".
@@ -966,6 +967,26 @@ func main() {
 	if cfg.SharedProvider != nil {
 		lbScraper := halo.NewLeaderboardScraper(800 * time.Millisecond)
 		worldLbCron := scheduler.NewWorldLeaderboardCron(cfg.SharedProvider, lbScraper, 0)
+		// Phase C : enrichissement des stats joueur (agrégateur ranked-only, dédup
+		// match-centric, append-only). Gaté par LEVELUP_WORLD_ENRICH (OFF par défaut —
+		// prod-safe : sans ce flag le cron reste scrape-only, comme avant). Construction
+		// LAZY (Eager:false) → zéro résolution token au boot, différée au 1er tick (qui
+		// tourne déjà dans la goroutine ci-dessous, hors du chemin de démarrage). Compte
+		// du header PeopleHub : LEVELUP_WORLD_ENRICH_TOKEN (sinon 1er compte db_profiles).
+		if v := strings.TrimSpace(os.Getenv("LEVELUP_WORLD_ENRICH")); v == "1" || strings.EqualFold(v, "true") {
+			if enr, gts, eerr := worldenrich.BuildEnricher(cfg, worldenrich.EnricherOptions{
+				RPS:           3,
+				TokenGamertag: strings.TrimSpace(os.Getenv("LEVELUP_WORLD_ENRICH_TOKEN")),
+				Eager:         false,
+			}); eerr != nil {
+				slog.WarnContext(ctx, "world_leaderboard_cron: enricher non construit — cron en scrape-only",
+					"err", eerr)
+			} else {
+				worldLbCron.WithStatsEnricher(enr)
+				slog.InfoContext(ctx, "world_leaderboard_cron: enrichissement Phase C activé",
+					"token_accounts", gts)
+			}
+		}
 		schedulerWG.Add(1)
 		go func() {
 			defer schedulerWG.Done()
