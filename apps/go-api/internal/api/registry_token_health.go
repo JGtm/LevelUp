@@ -10,6 +10,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/auth/pool"
 )
 
 // tokenHealthMargin : fenêtre « expire bientôt » pour les statuts token.
@@ -33,12 +34,13 @@ func (r *ServiceRegistry) TokenHealth(_ context.Context, titleSlug string) (doma
 	now := time.Now()
 	for _, p := range players {
 		ph := domain.PlayerTokenHealth{
-			PlayerSlug: p.PlayerSlug,
-			Gamertag:   p.Gamertag,
-			XUID:       p.XUID,
-			Refresh:    auth.TokenAbsent,
-			MSAL:       auth.TokenAbsent,
-			XSTS:       auth.TokenAbsent,
+			PlayerSlug:       p.PlayerSlug,
+			Gamertag:         p.Gamertag,
+			XUID:             p.XUID,
+			Refresh:          auth.TokenAbsent,
+			MSAL:             auth.TokenAbsent,
+			XSTS:             auth.TokenAbsent,
+			CredentialSource: credentialSourceFor(titleSlug, p.Gamertag),
 		}
 		u, lerr := r.authStore.Load(p.XUID)
 		if lerr != nil || u == nil {
@@ -58,7 +60,21 @@ func (r *ServiceRegistry) TokenHealth(_ context.Context, titleSlug string) (doma
 		if !u.UpdatedAt.IsZero() {
 			ph.UpdatedAt = u.UpdatedAt.UTC().Format(time.RFC3339)
 		}
+		ph.LastAuthErrorClass = u.LastAuthErrorClass
+		ph.LastAuthError = u.LastAuthError
+		if !u.LastAuthErrorAt.IsZero() {
+			ph.LastAuthErrorAt = u.LastAuthErrorAt.UTC().Format(time.RFC3339)
+		}
 		resp.Players = append(resp.Players, ph)
 	}
 	return resp, nil
+}
+
+// credentialSourceFor retourne la source de credentials du dernier scan du
+// pool pour un joueur, ou "unknown" si aucun scan n'a eu lieu depuis le boot.
+func credentialSourceFor(titleSlug, gamertag string) string {
+	if s, ok := pool.LastScanSource(titleSlug, gamertag); ok {
+		return s.Source
+	}
+	return "unknown"
 }

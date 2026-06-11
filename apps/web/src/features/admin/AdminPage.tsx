@@ -563,6 +563,47 @@ function TokenBadge({ kind, status, t }: { kind: string; status: TokenStatus; t:
   )
 }
 
+const TOKEN_ERROR_KEY: Record<string, CommonManifestKey> = {
+  config: 'common.admin.token_error_config',
+  revoked: 'common.admin.token_error_revoked',
+  transient: 'common.admin.token_error_transient',
+}
+
+/**
+ * credentialSourceParts — réduit le label composite du scan (ex.
+ * "watcher_msal+watcher_oauth", "duckdb_msal+env_oauth") en familles courtes
+ * dédupliquées : store / sync_meta / env / legacy.
+ */
+function credentialSourceParts(source: string): string[] {
+  const mapped = source.split('+').map((part) => {
+    if (part === 'watcher_legacy') return 'legacy'
+    if (part.startsWith('watcher_')) return 'store'
+    if (part.startsWith('duckdb_')) return 'sync_meta'
+    if (part === 'env_oauth') return 'env'
+    return part
+  })
+  return [...new Set(mapped)]
+}
+
+/** Source de credentials du dernier scan — toute source hors store canonique = dette ADR-0023 (warning). */
+function CredentialSourceChip({ source, t }: { source?: string; t: T }) {
+  if (!source) return null
+  const unknown = source === 'unknown'
+  const parts = unknown ? [] : credentialSourceParts(source)
+  const legacy = parts.some((p) => p !== 'store')
+  return (
+    <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground" title={unknown ? undefined : source}>
+      {t('common.admin.token_source')}:{' '}
+      <span
+        className={legacy ? 'font-semibold' : undefined}
+        style={legacy ? { color: tokenCssVar('warning') } : undefined}
+      >
+        {unknown ? t('common.admin.token_source_unknown') : parts.join('+')}
+      </span>
+    </span>
+  )
+}
+
 function TokenHealthSection() {
   const { data, isLoading, isError, refetch, isFetching } = useAdminTokenHealth()
   const t = useT()
@@ -602,6 +643,7 @@ function TokenHealthSection() {
                       </span>
                     ) : (
                       <>
+                        <CredentialSourceChip source={p.credential_source} t={t} />
                         <TokenBadge kind={t('common.admin.token_refresh')} status={p.refresh} t={t} />
                         <TokenBadge kind={t('common.admin.token_msal')} status={p.msal} t={t} />
                         <TokenBadge kind={t('common.admin.token_xsts')} status={p.xsts} t={t} />
@@ -615,6 +657,22 @@ function TokenHealthSection() {
                     {new Date(p.xsts_expires_at).toLocaleString(dateLocale)}
                   </p>
                 )}
+                {p.last_auth_error_class ? (
+                  <p
+                    className="mt-1 text-xs font-medium"
+                    style={{
+                      color: tokenCssVar(
+                        p.last_auth_error_class === 'transient' ? 'warning' : 'destructive',
+                      ),
+                    }}
+                    title={p.last_auth_error}
+                  >
+                    {t(TOKEN_ERROR_KEY[p.last_auth_error_class] ?? 'common.admin.token_error_transient')}
+                    {p.last_auth_error_at
+                      ? ` — ${t('common.admin.token_error_at')} : ${new Date(p.last_auth_error_at).toLocaleString(dateLocale)}`
+                      : null}
+                  </p>
+                ) : null}
               </div>
             ))}
           </div>

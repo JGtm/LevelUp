@@ -589,6 +589,30 @@ en = "absent"
 fr = "reauth requis"
 en = "reauth required"
 
+[common.admin.token_source]
+fr = "Source"
+en = "Source"
+
+[common.admin.token_source_unknown]
+fr = "inconnue (aucun scan)"
+en = "unknown (no scan yet)"
+
+[common.admin.token_error_config]
+fr = "Erreur de configuration OAuth"
+en = "OAuth configuration error"
+
+[common.admin.token_error_revoked]
+fr = "Refresh token mort — re-capture requise"
+en = "Refresh token dead — re-capture required"
+
+[common.admin.token_error_transient]
+fr = "Erreur transitoire"
+en = "Transient error"
+
+[common.admin.token_error_at]
+fr = "Dernier échec"
+en = "Last failure"
+
 [common.setup.config_loading]
 fr = "Vérification de la configuration…"
 en = "Checking configuration…"

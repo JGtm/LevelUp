@@ -20,6 +20,16 @@ type PlayerTokenHealth struct {
 	UpdatedAt      string `json:"updated_at,omitempty"`
 	// LoadError non vide = tokens illisibles pour ce joueur (≠ « sain »).
 	LoadError string `json:"load_error,omitempty"`
+	// LastAuthError* : dernier échec OAuth permanent (classe "config" |
+	// "revoked", message court, horodatage RFC3339). Vides si aucun échec
+	// mémorisé. Persistés par le resolver (plan anti-bruit 2026-06-11).
+	LastAuthErrorClass string `json:"last_auth_error_class,omitempty"`
+	LastAuthError      string `json:"last_auth_error,omitempty"`
+	LastAuthErrorAt    string `json:"last_auth_error_at,omitempty"`
+	// CredentialSource : source de credentials retenue au dernier scan du pool
+	// (ex. "watcher_oauth", "duckdb_msal+env_oauth"). "unknown" si aucun scan
+	// depuis le boot. Rend la dette ADR-0023 visible (objectif : watcher_*).
+	CredentialSource string `json:"credential_source,omitempty"`
 }
 
 // TokenHealthResponse est la réponse de GET /admin/token-health.
