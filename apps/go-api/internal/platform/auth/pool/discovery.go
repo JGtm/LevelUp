@@ -105,6 +105,7 @@ func (d *discoveryImpl) Scan(ctx context.Context) ([]CredentialSource, error) {
 			continue
 		}
 		sources = append(sources, *src)
+		recordScanSource(d.titleSlug, src.Gamertag, src.Source)
 		slog.DebugContext(ctx, "pool: credential source découverte",
 			"gamertag", src.Gamertag, "source", src.Source,
 			"has_msal", src.MSALCache != "", "has_oauth", src.RefreshToken != "")
@@ -144,15 +145,27 @@ func (d *discoveryImpl) scanPlayer(ctx context.Context, player domain.PlayerSumm
 	}
 
 	// --- Priorité 2 : sync_meta DuckDB (DEPRECATED) ---
+	// Le warn « à migrer » n'est émis QUE si une valeur legacy est réellement
+	// ADOPTÉE (fix 2026-06-11 : l'ancien warn se déclenchait à la simple
+	// lecture, même quand le store avait déjà fourni la valeur — bruit
+	// mensonger à chaque boot).
 	if msal == "" || oauth == "" {
 		if dbMsal, dbOauth, ok := d.readLegacyDuckDB(ctx, player, playerDBPath); ok {
+			var adopted []string
 			if msal == "" && dbMsal != "" {
 				msal = dbMsal
 				sourceLabel = appendSource(sourceLabel, credSourceDuckDBMSAL)
+				adopted = append(adopted, "msal")
 			}
 			if oauth == "" && dbOauth != "" {
 				oauth = dbOauth
 				sourceLabel = appendSource(sourceLabel, credSourceDuckDBOAuth)
+				adopted = append(adopted, "oauth")
+			}
+			if len(adopted) > 0 {
+				slog.WarnContext(ctx, "pool: legacy sync_meta DuckDB utilisée — à migrer",
+					"gamertag", player.Gamertag, "fields", strings.Join(adopted, "+"),
+					"deprecated_since", "ADR-0023")
 			}
 		}
 	}
@@ -198,8 +211,8 @@ func (d *discoveryImpl) scanPlayer(ctx context.Context, player domain.PlayerSumm
 	}
 }
 
-// readLegacyDuckDB lit msal+oauth depuis sync_meta. Logue un warn si une valeur
-// est lue (signale une install pas encore migrée vers le store).
+// readLegacyDuckDB lit msal+oauth depuis sync_meta. Ne logue PAS : c'est le
+// caller (scanPlayer) qui warn, et uniquement si une valeur est adoptée.
 func (d *discoveryImpl) readLegacyDuckDB(ctx context.Context, player domain.PlayerSummary, playerDBPath string) (msal, oauth string, ok bool) {
 	playerDB, dbErr := duckdb.OpenReadOnly(playerDBPath)
 	if dbErr != nil {
@@ -211,11 +224,6 @@ func (d *discoveryImpl) readLegacyDuckDB(ctx context.Context, player domain.Play
 
 	msal, _ = duckdb.ReadMSALCacheJSON(ctx, playerDB)
 	oauth, _ = duckdb.ReadOAuthRefreshToken(ctx, playerDB)
-	if msal != "" || oauth != "" {
-		slog.WarnContext(ctx, "pool: legacy sync_meta DuckDB utilisée — à migrer",
-			"gamertag", player.Gamertag, "has_msal", msal != "", "has_oauth", oauth != "",
-			"deprecated_since", "ADR-0023")
-	}
 	return msal, oauth, true
 }
 
