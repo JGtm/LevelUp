@@ -146,6 +146,12 @@ func (d *DirMediaIndexer) ResetAndReindex(
 		}
 	}
 
+	// Symétrique du transcoding à l'upload : transcoder en HLS, en arrière-plan,
+	// les vidéos réindexées encore sans HLS (HEVC/AVI/multipiste). Supprime
+	// l'asymétrie upload/scan à l'origine de "media remux failed" sur HEVC.
+	if reindexAfter {
+		triggerHLSSweep(capturesBaseDir, pr.SharedSocialDBPath(titleSlug), "")
+	}
 	return nil
 }
 
@@ -224,6 +230,9 @@ func (d *DirMediaIndexer) ScanAllMedia(
 		}
 	}
 
+	// Transcoder en HLS, en arrière-plan, les vidéos scannées encore sans HLS
+	// (HEVC/AVI/multipiste) — symétrique du transcoding déclenché à l'upload.
+	triggerHLSSweep(capturesBaseDir, pr.SharedSocialDBPath(titleSlug), "")
 	return nil
 }
 
@@ -279,7 +288,40 @@ func BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn, timezoneFn
 		}); err != nil {
 			slog.WarnContext(ctx, "post-sync: media scan échoué (non-fatal)", "gamertag", gamertag, "err", err)
 		}
+		// Transcoder en HLS, en arrière-plan, les captures fraîchement scannées
+		// encore sans HLS (HEVC/AVI/multipiste) — comme à l'upload.
+		triggerHLSSweep(capturesBaseDir, pr.SharedSocialDBPath(titleSlug), gamertag)
 	}
+}
+
+// triggerHLSSweep lance EN ARRIÈRE-PLAN (détaché du ctx scan/sync, qui peut être
+// annulé bien avant la fin d'un transcodage) un balayage EnsurePendingHLS : il
+// transcode en HLS les vidéos scannées encore sans HLS, exactement comme le fait
+// l'upload. C'est ce qui supprime l'asymétrie upload/scan responsable de l'erreur
+// "media remux failed" sur les captures HEVC. No-op si capturesBaseDir est vide
+// (mode legacy interne : HLSPathsFor exige une base multi-player). Le single-flight
+// est géré dans EnsurePendingHLS (un seul balayage à la fois dans le process).
+func triggerHLSSweep(capturesBaseDir, sharedSocialDBPath, onlySlug string) {
+	if capturesBaseDir == "" || sharedSocialDBPath == "" {
+		return
+	}
+	go func() {
+		ctx := context.Background()
+		log := slog.With("module", "media") // logs/media.log
+		st, err := ops.EnsurePendingHLS(ctx, ops.EnsureHLSParams{
+			DBPath:       sharedSocialDBPath,
+			CapturesBase: capturesBaseDir,
+			OnlySlug:     onlySlug,
+		})
+		if err != nil {
+			log.ErrorContext(ctx, "post-scan hls sweep échoué", "err", err)
+			return
+		}
+		if st.Transcoded > 0 || st.Failed > 0 {
+			log.InfoContext(ctx, "post-scan hls sweep",
+				"transcoded", st.Transcoded, "failed", st.Failed, "skipped_direct", st.SkippedDirect)
+		}
+	}()
 }
 
 // resetPlayerMediaIndex supprime toutes les entrées media_files et media_match_associations

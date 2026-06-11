@@ -1,50 +1,32 @@
 package main
 
 import (
-	"database/sql"
+	"os"
 	"path/filepath"
 	"testing"
-
-	_ "github.com/duckdb/duckdb-go/v2"
 )
 
-// TestSelectCandidates vérifie le filtrage : seules les vidéos sans hls_path
-// sont candidates ; images et clips déjà transcodés exclus ; filtre slug.
-func TestSelectCandidates(t *testing.T) {
+// TestLoadCapturesBase : lecture de media_captures_base_dir depuis
+// app_settings.json ; "" si fichier absent ou JSON invalide. La sélection des
+// candidats (vidéos sans HLS) est désormais testée dans internal/ops
+// (TestSelectPendingHLSCandidates) puisque la logique y a été centralisée.
+func TestLoadCapturesBase(t *testing.T) {
 	dir := t.TempDir()
-	dbPath := filepath.Join(dir, "shared_social.duckdb")
-
-	func() {
-		db, err := sql.Open("duckdb", dbPath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer db.Close()
-		if _, err := db.Exec(`CREATE TABLE media_files (id INTEGER, player_slug VARCHAR, file_path VARCHAR, hls_path VARCHAR, kind VARCHAR)`); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := db.Exec(`INSERT INTO media_files VALUES
-			(1, 'A', 'A/clip.mkv',  NULL,                       'video'),
-			(2, 'A', 'A/done.mkv',  'A/hls/done/master.m3u8',   'video'),
-			(3, 'B', 'B/other.mkv', NULL,                       'video'),
-			(4, 'A', 'A/img.png',   NULL,                       'image')`); err != nil {
-			t.Fatal(err)
-		}
-	}()
-
-	all, err := selectCandidates(dbPath, "")
-	if err != nil {
-		t.Fatalf("selectCandidates: %v", err)
-	}
-	if len(all) != 2 {
-		t.Errorf("tous: %d candidats, want 2 (clip.mkv + other.mkv ; done.mkv et img.png exclus)", len(all))
-	}
-
-	a, err := selectCandidates(dbPath, "A")
-	if err != nil {
+	settings := filepath.Join(dir, "app_settings.json")
+	if err := os.WriteFile(settings, []byte(`{"media_captures_base_dir":"C:/Captures"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if len(a) != 1 || a[0].filePath != "A/clip.mkv" {
-		t.Errorf("filtre slug A: got %+v, want [A/clip.mkv]", a)
+	if got := loadCapturesBase(settings); got != "C:/Captures" {
+		t.Errorf("loadCapturesBase = %q, want C:/Captures", got)
+	}
+	if got := loadCapturesBase(filepath.Join(dir, "absent.json")); got != "" {
+		t.Errorf("fichier absent: loadCapturesBase = %q, want \"\"", got)
+	}
+	bad := filepath.Join(dir, "bad.json")
+	if err := os.WriteFile(bad, []byte("{not json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := loadCapturesBase(bad); got != "" {
+		t.Errorf("JSON invalide: loadCapturesBase = %q, want \"\"", got)
 	}
 }
