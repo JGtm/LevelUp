@@ -31,6 +31,12 @@ const toRoman = (n: number): string => SUB_TIER_ROMAN[n] ?? String(n)
 
 const CSR_WORLD = 'csr-world'
 
+// Masquage responsive : le mode enrichi compte jusqu'à 10 colonnes. #, joueur et CSR
+// restent toujours visibles ; victoires/KDA apparaissent dès `sm` ; tier/parties/
+// précision/rendement/Δrang dès `lg`. Mêmes classes appliquées en-tête ET cellules.
+const COL_HIDE_SM = 'hidden sm:table-cell'
+const COL_HIDE_LG = 'hidden lg:table-cell'
+
 /**
  * Playlists classées (asset IDs stables) — FALLBACK si le catalogue dynamique
  * (snapshots réellement en base) est vide. Sert aussi de table de libellés
@@ -101,12 +107,17 @@ const TREND_VAR: Record<Trend, string> = {
 const isTrend = (v: unknown): v is Trend => v === 'up' || v === 'down' || v === 'stable'
 
 /** Valeur d'une métrique suivie d'une flèche de tendance colorée (optionnelle). */
-function MetricWithTrend({ text, trend }: { text: string; trend?: string | null }) {
+function MetricWithTrend({ text, trend, tooltip }: { text: string; trend?: string | null; tooltip?: string }) {
   return (
     <span className="inline-flex items-baseline justify-end gap-1">
       <span>{text}</span>
       {isTrend(trend) && (
-        <span className="text-[10px] font-bold leading-none" style={{ color: `var(${TREND_VAR[trend]})` }} aria-hidden="true">
+        <span
+          className="text-[10px] font-bold leading-none"
+          style={{ color: `var(${TREND_VAR[trend]})` }}
+          title={tooltip}
+          aria-label={tooltip}
+        >
           {TREND_GLYPH[trend]}
         </span>
       )}
@@ -313,16 +324,16 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
                 <th className="py-2 pr-4 text-left font-medium">{t('common.leaderboard.col_player')}</th>
                 {isWorld ? (
                   <>
-                    <th className="py-2 pr-4 text-center font-medium">{t('common.leaderboard.col_tier')}</th>
+                    <th className={`py-2 pr-4 text-center font-medium ${COL_HIDE_LG}`}>{t('common.leaderboard.col_tier')}</th>
                     <SortableTh label={t('common.leaderboard.col_csr')} className="text-right" onClick={() => toggleSort('csr')} suffix={sortIcon('csr')} />
                     {hasEnrichment && (
                       <>
-                        <SortableTh label={t('common.leaderboard.col_matches')} className="text-right" onClick={() => toggleSort('world_matches')} suffix={sortIcon('world_matches')} />
-                        <SortableTh label={t('common.leaderboard.col_win_rate')} className="text-right" onClick={() => toggleSort('win_rate')} suffix={sortIcon('win_rate')} />
-                        <SortableTh label={t('common.leaderboard.col_kda')} className="text-right" onClick={() => toggleSort('kda')} suffix={sortIcon('kda')} />
-                        <SortableTh label={t('common.leaderboard.col_accuracy')} className="text-right" onClick={() => toggleSort('accuracy')} suffix={sortIcon('accuracy')} />
-                        <th className="py-2 pr-4 text-center font-medium">{t('common.leaderboard.col_combat')}</th>
-                        <th className="py-2 pr-4 text-right font-medium">{t('common.leaderboard.col_rank_delta')}</th>
+                        <SortableTh label={t('common.leaderboard.col_matches')} className={`text-right ${COL_HIDE_LG}`} onClick={() => toggleSort('world_matches')} suffix={sortIcon('world_matches')} />
+                        <SortableTh label={t('common.leaderboard.col_win_rate')} className={`text-right ${COL_HIDE_SM}`} onClick={() => toggleSort('win_rate')} suffix={sortIcon('win_rate')} />
+                        <SortableTh label={t('common.leaderboard.col_kda')} className={`text-right ${COL_HIDE_SM}`} onClick={() => toggleSort('kda')} suffix={sortIcon('kda')} />
+                        <SortableTh label={t('common.leaderboard.col_accuracy')} className={`text-right ${COL_HIDE_LG}`} onClick={() => toggleSort('accuracy')} suffix={sortIcon('accuracy')} />
+                        <th className={`py-2 pr-4 text-center font-medium ${COL_HIDE_LG}`}>{t('common.leaderboard.col_combat')}</th>
+                        <th className={`py-2 pr-4 text-right font-medium ${COL_HIDE_LG}`}>{t('common.leaderboard.col_rank_delta')}</th>
                       </>
                     )}
                   </>
@@ -342,6 +353,8 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
                   isWorld={isWorld}
                   hasEnrichment={hasEnrichment}
                   localLabel={t('common.leaderboard.local_badge')}
+                  trendTooltip={t('common.leaderboard.trend_tooltip')}
+                  rankDeltaTooltip={t('common.leaderboard.rank_delta_tooltip')}
                   locale={locale}
                   onHover={onHoverEntry}
                   onGamertagClick={goToExplorer}
@@ -373,6 +386,8 @@ function LeaderboardRow({
   isWorld,
   hasEnrichment,
   localLabel,
+  trendTooltip,
+  rankDeltaTooltip,
   locale,
   onHover,
   onGamertagClick,
@@ -381,10 +396,16 @@ function LeaderboardRow({
   isWorld: boolean
   hasEnrichment: boolean
   localLabel: string
+  trendTooltip: string
+  rankDeltaTooltip: string
   locale: string
   onHover?: (gamertag: string) => void
   onGamertagClick: (gamertag: string) => void
 }) {
+  // Accent podium : top-3 en gras + couleur pleine (vs muted), sans nouvelle couleur
+  // (tokens sémantiques foreground/muted existants — pas de hex ni classe de teinte).
+  const isPodium = entry.rank <= 3
+  const rankClass = isPodium ? 'font-bold text-foreground' : 'text-muted-foreground'
   const playerCell: ReactNode = (
     <span className="inline-flex items-center gap-2">
       {isWorld && (
@@ -416,36 +437,36 @@ function LeaderboardRow({
       className={`border-b text-sm transition-colors last:border-0 hover:bg-muted ${entry.is_local ? 'bg-accent/40' : ''}`}
       onMouseEnter={() => onHover?.(entry.gamertag)}
     >
-      <td className="py-2 pr-4 text-center font-mono text-muted-foreground">{entry.rank}</td>
+      <td className={`py-2 pr-4 text-center font-mono ${rankClass}`}>{entry.rank}</td>
       <td className="py-2 pr-4 font-medium text-foreground">{playerCell}</td>
       {isWorld ? (
         <>
-          <td className="py-2 pr-4 text-center text-xs text-muted-foreground">{tierLabel(entry)}</td>
+          <td className={`py-2 pr-4 text-center text-xs text-muted-foreground ${COL_HIDE_LG}`}>{tierLabel(entry)}</td>
           <td className="py-2 pr-4 text-right font-mono text-foreground">
             {entry.csr_value.toLocaleString(locale === 'en' ? 'en-US' : 'fr-FR')}
           </td>
           {hasEnrichment && (
             <>
-              <td className="py-2 pr-4 text-right font-mono text-muted-foreground">{entry.match_count ?? '—'}</td>
-              <td className="py-2 pr-4 text-right font-mono text-foreground">
-                {entry.win_rate != null ? <MetricWithTrend text={fmtPct(entry.win_rate, locale)} trend={entry.win_rate_trend} /> : '—'}
+              <td className={`py-2 pr-4 text-right font-mono text-muted-foreground ${COL_HIDE_LG}`}>{entry.match_count ?? '—'}</td>
+              <td className={`py-2 pr-4 text-right font-mono text-foreground ${COL_HIDE_SM}`}>
+                {entry.win_rate != null ? <MetricWithTrend text={fmtPct(entry.win_rate, locale)} trend={entry.win_rate_trend} tooltip={trendTooltip} /> : '—'}
               </td>
-              <td className="py-2 pr-4 text-right font-mono text-foreground">
+              <td className={`py-2 pr-4 text-right font-mono text-foreground ${COL_HIDE_SM}`}>
                 {entry.kda != null && entry.match_count ? (
-                  <MetricWithTrend text={(entry.kda / entry.match_count).toFixed(2)} trend={entry.kda_trend} />
+                  <MetricWithTrend text={(entry.kda / entry.match_count).toFixed(2)} trend={entry.kda_trend} tooltip={trendTooltip} />
                 ) : (
                   '—'
                 )}
               </td>
-              <td className="py-2 pr-4 text-right font-mono text-foreground">
+              <td className={`py-2 pr-4 text-right font-mono text-foreground ${COL_HIDE_LG}`}>
                 {entry.accuracy != null && entry.match_count
                   ? `${(entry.accuracy / entry.match_count).toLocaleString(locale === 'en' ? 'en-US' : 'fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
                   : '—'}
               </td>
-              <td className="py-2 pr-4">{renderCombatYield(entry)}</td>
-              <td className="py-2 pr-4 text-right font-mono">
+              <td className={`py-2 pr-4 ${COL_HIDE_LG}`}>{renderCombatYield(entry)}</td>
+              <td className={`py-2 pr-4 text-right font-mono ${COL_HIDE_LG}`}>
                 {entry.rank_delta != null && entry.rank_delta !== 0 ? (
-                  <span style={{ color: tokenCssVar(skillDeltaScale(entry.rank_delta)) }}>
+                  <span style={{ color: tokenCssVar(skillDeltaScale(entry.rank_delta)) }} title={rankDeltaTooltip}>
                     {entry.rank_delta > 0 ? '+' : ''}
                     {entry.rank_delta}
                   </span>
