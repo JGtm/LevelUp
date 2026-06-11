@@ -198,16 +198,16 @@ describe('AchievementsCareerSection', () => {
     })
     render(<AchievementsCareerSection playerSlug="jgtm" layout="sidebar" />, { wrapper })
 
-    // Les 3 cartes visibles par défaut (Toutes catégories)
-    expect(screen.getByText('Pointage')).toBeInTheDocument()
-    expect(screen.getByText('Zêta')).toBeInTheDocument()
-    expect(screen.getByText('Sortez le pop-corn')).toBeInTheDocument()
-
-    const categorySelect = screen.getByDisplayValue('Toutes catégories')
-    fireEvent.change(categorySelect, { target: { value: 'multiplayer' } })
+    // Multijoueur par défaut : seule la carte MP est visible
+    const categorySelect = screen.getByDisplayValue('Multijoueur')
     expect(screen.getByText('Pointage')).toBeInTheDocument()
     expect(screen.queryByText('Zêta')).not.toBeInTheDocument()
     expect(screen.queryByText('Sortez le pop-corn')).not.toBeInTheDocument()
+
+    fireEvent.change(categorySelect, { target: { value: 'all' } })
+    expect(screen.getByText('Pointage')).toBeInTheDocument()
+    expect(screen.getByText('Zêta')).toBeInTheDocument()
+    expect(screen.getByText('Sortez le pop-corn')).toBeInTheDocument()
 
     fireEvent.change(categorySelect, { target: { value: 'campaign' } })
     expect(screen.queryByText('Pointage')).not.toBeInTheDocument()
@@ -239,7 +239,9 @@ describe('AchievementsCareerSection', () => {
       },
     })
     render(<AchievementsCareerSection playerSlug="jgtm" layout="sidebar" />, { wrapper })
-    expect(screen.queryByDisplayValue('Toutes catégories')).not.toBeInTheDocument()
+    expect(screen.queryByDisplayValue('Multijoueur')).not.toBeInTheDocument()
+    // Le défaut "multiplayer" ne doit pas filtrer un titre sans mapping : la carte reste visible
+    expect(screen.getByText('Sans catégorie')).toBeInTheDocument()
     // Les filtres statut + tri date restent présents
     expect(screen.getByDisplayValue('Tous')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Défaut')).toBeInTheDocument()

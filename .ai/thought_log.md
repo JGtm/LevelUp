@@ -6,6 +6,8 @@
 
 **Résultats observés** : la DB contient 144 succès Halo Infinite (119 du guide + 25 Winter Update, tous campagne co-op — vérifiés via leurs descriptions). Réconciliation script temporaire sur les `name_en` réels : 144/144 mappés, 0 unmapped, répartition 34 multijoueur / 94 campagne / 16 autres (customisation + Académie + Théâtre). Tests : Go domain+service verts (comptes, normalisation, collisions inter-catégories, fallback slug), suite Go complète `./...` sans FAIL, vitest 7/7 (filtrage par select, masquage du filtre si titre sans mapping), typecheck + lint OK. Front : 3e `<select>` dans la rangée de filtres du layout sidebar (`AchievementsCareerSection`), masqué si aucune entrée n'a de catégorie ; i18n FR/EN ajoutées.
 
+**Ajustement post-livraison (même jour, demande user)** : catégorie par défaut = `multiplayer` (au lieu de « Toutes catégories »), avec garde `!hasCategories` pour qu'un titre sans mapping ne soit pas filtré à vide par ce défaut. Tests mis à jour (défaut MP visible seul, retour à « Toutes catégories », carte visible sur titre sans mapping).
+
 **Prochaine étape** : commit après accord user. Optionnel plus tard : exposer le filtre dans le layout carousel (CareerPage legacy, qui n'a aujourd'hui aucune rangée de filtres).
 
 ## [2026-06-10] Audit A1 — Inventaire des lectures `shared.X` (préparation retrait B-swap) — Complété (read-only)
