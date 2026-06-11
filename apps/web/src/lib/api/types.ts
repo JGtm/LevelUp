@@ -3693,6 +3693,13 @@ export interface PlayerTokenHealth {
   oauth_expires_at?: string
   updated_at?: string
   load_error?: string
+  /** Dernier échec OAuth permanent ("config" | "revoked"), vide si aucun. */
+  last_auth_error_class?: 'config' | 'revoked' | 'transient' | ''
+  last_auth_error?: string
+  /** RFC3339 */
+  last_auth_error_at?: string
+  /** Source de credentials au dernier scan du pool (watcher_* = store canonique, sinon dette ADR-0023). */
+  credential_source?: string
 }
 
 export interface TokenHealthResponse {
