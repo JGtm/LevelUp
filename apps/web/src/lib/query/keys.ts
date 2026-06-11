@@ -190,4 +190,16 @@ export const queryKeys = {
   // Admin — Contention DB (B-swap shared) + santé des tokens auth
   adminDbContention: ['admin', 'db-contention'] as const,
   adminTokenHealth: ['admin', 'token-health'] as const,
+  // Admin — Dashboard monitoring (overview agrégé, scheduler + historique,
+  // jobs récents du JobStore, convergence, qualité données)
+  adminMonitoringOverview: ['admin', 'monitoring', 'overview'] as const,
+  adminMonitoringScheduler: ['admin', 'monitoring', 'scheduler'] as const,
+  adminMonitoringJobs: ['admin', 'monitoring', 'jobs'] as const,
+  adminMonitoringConvergence: ['admin', 'monitoring', 'convergence'] as const,
+  adminMonitoringPerf: ['admin', 'monitoring', 'perf'] as const,
+  adminDataQuality: ['admin', 'data-quality', 'counts'] as const,
+  adminDataQualityIssues: (kind: string) => ['admin', 'data-quality', 'issues', kind] as const,
+  adminLogModules: ['admin', 'logs', 'modules'] as const,
+  adminLogTail: (module: string, level: string, contains: string, limit: number) =>
+    ['admin', 'logs', 'tail', module, level, contains, limit] as const,
 } as const

@@ -679,6 +679,10 @@ func NewRouter(
 			// seule du MultiUserTokenStore (ADR 0023), sans refresh réseau.
 			tokenHealthHandler := handlers.NewAdminTokenHealthHandler(reg.TokenHealth)
 			r.With(middleware.NoStore).Get("/token-health", tokenHealthHandler.Get)
+			// Dashboard monitoring admin : overview/scheduler/convergence/jobs
+			// + actions correctives (data-health run, cycle auto-sync forcé).
+			// Cf. server_admin_monitoring.go.
+			mountAdminMonitoringRoutes(r, reg, autoSyncScheduler, jobStore, serverCtx)
 		})
 
 		// Diagnostic — accessible en loopback (127.0.0.1) uniquement, sans auth.

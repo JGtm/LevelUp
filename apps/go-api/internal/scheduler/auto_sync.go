@@ -96,6 +96,11 @@ type PlayerOutcomeDetail struct {
 	// précédente). Ajouté suite à l'incident 2026-05-20 : 14 jours de sync à
 	// inserted=0 sans alerte, cf. fix endpoint /matches xuid(NNN).
 	ConsecutiveZeroInserts int `json:"consecutive_zero_inserts,omitempty"`
+	// PostSync : compteurs du pipeline post-sync du dernier RunDelta réussi
+	// (dashboard monitoring admin). Limite assumée : seuls les syncs passés
+	// par syncPlayer (scheduler + cycle forcé) sont capturés — les paths
+	// watcher et HTTP /sync/all ne remontent pas ici (couverts par sync.log).
+	PostSync *domain.PostSyncResult `json:"post_sync,omitempty"`
 }
 
 // ConsecutiveZeroInsertWarnThreshold est le seuil au-delà duquel le scheduler
@@ -186,6 +191,7 @@ type AutoSyncScheduler struct {
 	lastCycleAt     time.Time
 	lastCycleResult *RunOnceResult
 	playerOutcomes  map[string]PlayerOutcomeDetail // keyed by gamertag
+	cycleHistory    []CycleRecord                  // ring FIFO borné (cf. auto_sync_history.go)
 }
 
 // New crée un AutoSyncScheduler. tokenPool peut être nil (cas où Discovery
@@ -461,7 +467,7 @@ func (s *AutoSyncScheduler) Run(ctx context.Context) {
 				ticker.Reset(interval)
 			}
 			slog.InfoContext(tickCtx, "auto_sync: tick démarré", "event", tickID)
-			res := s.RunOnce(tickCtx)
+			res := s.RunOnceTrigger(tickCtx, "tick")
 			slog.InfoContext(tickCtx, "auto_sync: cycle terminé",
 				"total", res.Total,
 				"synced", res.Synced,
@@ -490,7 +496,18 @@ func (s *AutoSyncScheduler) Run(ctx context.Context) {
 // RunOnce exécute un cycle de sync pour tous les joueurs configurés.
 // Peut être appelé manuellement (debug, endpoint admin) sans attendre un tick.
 func (s *AutoSyncScheduler) RunOnce(ctx context.Context) *RunOnceResult {
+	return s.RunOnceTrigger(ctx, "manual")
+}
+
+// RunOnceTrigger est RunOnce avec la provenance du déclenchement ("tick" pour
+// la boucle périodique, "manual" pour HTTP/diag/job) — tracée dans
+// l'historique des cycles du dashboard monitoring.
+func (s *AutoSyncScheduler) RunOnceTrigger(ctx context.Context, trigger string) *RunOnceResult {
 	start := time.Now()
+	// Cumuls process-wide capturés AVANT le cycle : les deltas après cycle
+	// attribuent au cycle sa fenêtre d'indispo lectures, ses 503, son temps
+	// API et son temps d'écriture (corrélation dashboard monitoring P4).
+	loadBefore := captureCycleLoad()
 	res := &RunOnceResult{}
 
 	players, err := s.cfg.LoadPlayers()
@@ -512,11 +529,7 @@ func (s *AutoSyncScheduler) RunOnce(ctx context.Context) *RunOnceResult {
 	// ou en cas d'échec global (best-effort, V1 reprend).
 	if s.shouldUseV2() {
 		if v2Res, v2Err := s.runOnceV2(ctx, players); v2Err == nil {
-			s.snapshotMu.Lock()
-			s.lastCycleAt = time.Now()
-			copyRes := *v2Res
-			s.lastCycleResult = &copyRes
-			s.snapshotMu.Unlock()
+			s.storeCycleResult(v2Res, trigger, captureCycleLoad().deltaSince(loadBefore))
 			return v2Res
 		} else if v2Err == syncv2.ErrNotImplemented {
 			slog.DebugContext(ctx, "auto_sync: V2 stub → fallback V1 silencieux")
@@ -575,11 +588,7 @@ func (s *AutoSyncScheduler) RunOnce(ctx context.Context) *RunOnceResult {
 
 	res.Duration = time.Since(start)
 
-	s.snapshotMu.Lock()
-	s.lastCycleAt = time.Now()
-	copyRes := *res
-	s.lastCycleResult = &copyRes
-	s.snapshotMu.Unlock()
+	s.storeCycleResult(res, trigger, captureCycleLoad().deltaSince(loadBefore))
 
 	return res
 }
@@ -698,6 +707,12 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 	detail.MedalsInserted = syncResult.MedalsInserted
 	detail.SyncStatus = syncResult.Status()
 	detail.ErrorCount = len(syncResult.Errors)
+	// Compteurs post-sync exposés au dashboard monitoring (copie défensive :
+	// le snapshot survit au SyncResult du cycle).
+	if syncResult.PostSync != nil {
+		ps := *syncResult.PostSync
+		detail.PostSync = &ps
+	}
 
 	// Counter zero-insert : reset si on insère ≥1 match, sinon incrément.
 	// Sentinelle d'API stale / format URL incorrect / gamertag changé.

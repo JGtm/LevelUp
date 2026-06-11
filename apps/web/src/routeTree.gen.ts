@@ -18,9 +18,16 @@ import { Route as HelpRouteImport } from './routes/help'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as PlayersPlayerSlugRouteImport } from './routes/players/$playerSlug'
 import { Route as OnboardingOpenspartanRouteImport } from './routes/onboarding.openspartan'
 import { Route as LabChartsRouteImport } from './routes/lab/charts'
+import { Route as AdminSystemRouteImport } from './routes/admin/system'
+import { Route as AdminSyncRouteImport } from './routes/admin/sync'
+import { Route as AdminLogsRouteImport } from './routes/admin/logs'
+import { Route as AdminDataQualityRouteImport } from './routes/admin/data-quality'
+import { Route as AdminConvergenceRouteImport } from './routes/admin/convergence'
+import { Route as AdminAccessRouteImport } from './routes/admin/access'
 import { Route as PlayersPlayerSlugSynthesisRouteImport } from './routes/players/$playerSlug/synthesis'
 import { Route as PlayersPlayerSlugSquadRouteImport } from './routes/players/$playerSlug/squad'
 import { Route as PlayersPlayerSlugNotificationsRouteImport } from './routes/players/$playerSlug/notifications'
@@ -93,6 +100,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
 const PlayersPlayerSlugRoute = PlayersPlayerSlugRouteImport.update({
   id: '/players/$playerSlug',
   path: '/players/$playerSlug',
@@ -107,6 +119,36 @@ const LabChartsRoute = LabChartsRouteImport.update({
   id: '/charts',
   path: '/charts',
   getParentRoute: () => LabRoute,
+} as any)
+const AdminSystemRoute = AdminSystemRouteImport.update({
+  id: '/system',
+  path: '/system',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSyncRoute = AdminSyncRouteImport.update({
+  id: '/sync',
+  path: '/sync',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLogsRoute = AdminLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDataQualityRoute = AdminDataQualityRouteImport.update({
+  id: '/data-quality',
+  path: '/data-quality',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminConvergenceRoute = AdminConvergenceRouteImport.update({
+  id: '/convergence',
+  path: '/convergence',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAccessRoute = AdminAccessRouteImport.update({
+  id: '/access',
+  path: '/access',
+  getParentRoute: () => AdminRoute,
 } as any)
 const PlayersPlayerSlugSynthesisRoute =
   PlayersPlayerSlugSynthesisRouteImport.update({
@@ -263,7 +305,7 @@ const PlayersPlayerSlugMatchesMatchIdReplayRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/changelog': typeof ChangelogRoute
   '/help': typeof HelpRoute
   '/lab': typeof LabRouteWithChildren
@@ -271,9 +313,16 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/admin/access': typeof AdminAccessRoute
+  '/admin/convergence': typeof AdminConvergenceRoute
+  '/admin/data-quality': typeof AdminDataQualityRoute
+  '/admin/logs': typeof AdminLogsRoute
+  '/admin/sync': typeof AdminSyncRoute
+  '/admin/system': typeof AdminSystemRoute
   '/lab/charts': typeof LabChartsRoute
   '/onboarding/openspartan': typeof OnboardingOpenspartanRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
+  '/admin/': typeof AdminIndexRoute
   '/players/$playerSlug/ascension': typeof PlayersPlayerSlugAscensionRouteWithChildren
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/citations': typeof PlayersPlayerSlugCitationsRoute
@@ -303,7 +352,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/changelog': typeof ChangelogRoute
   '/help': typeof HelpRoute
   '/lab': typeof LabRouteWithChildren
@@ -311,9 +359,16 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/admin/access': typeof AdminAccessRoute
+  '/admin/convergence': typeof AdminConvergenceRoute
+  '/admin/data-quality': typeof AdminDataQualityRoute
+  '/admin/logs': typeof AdminLogsRoute
+  '/admin/sync': typeof AdminSyncRoute
+  '/admin/system': typeof AdminSystemRoute
   '/lab/charts': typeof LabChartsRoute
   '/onboarding/openspartan': typeof OnboardingOpenspartanRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
+  '/admin': typeof AdminIndexRoute
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/citations': typeof PlayersPlayerSlugCitationsRoute
   '/players/$playerSlug/compare': typeof PlayersPlayerSlugCompareRoute
@@ -342,7 +397,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/changelog': typeof ChangelogRoute
   '/help': typeof HelpRoute
   '/lab': typeof LabRouteWithChildren
@@ -350,9 +405,16 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/admin/access': typeof AdminAccessRoute
+  '/admin/convergence': typeof AdminConvergenceRoute
+  '/admin/data-quality': typeof AdminDataQualityRoute
+  '/admin/logs': typeof AdminLogsRoute
+  '/admin/sync': typeof AdminSyncRoute
+  '/admin/system': typeof AdminSystemRoute
   '/lab/charts': typeof LabChartsRoute
   '/onboarding/openspartan': typeof OnboardingOpenspartanRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
+  '/admin/': typeof AdminIndexRoute
   '/players/$playerSlug/ascension': typeof PlayersPlayerSlugAscensionRouteWithChildren
   '/players/$playerSlug/career_': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/citations': typeof PlayersPlayerSlugCitationsRoute
@@ -392,9 +454,16 @@ export interface FileRouteTypes {
     | '/register'
     | '/settings'
     | '/setup'
+    | '/admin/access'
+    | '/admin/convergence'
+    | '/admin/data-quality'
+    | '/admin/logs'
+    | '/admin/sync'
+    | '/admin/system'
     | '/lab/charts'
     | '/onboarding/openspartan'
     | '/players/$playerSlug'
+    | '/admin/'
     | '/players/$playerSlug/ascension'
     | '/players/$playerSlug/career'
     | '/players/$playerSlug/citations'
@@ -424,7 +493,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/changelog'
     | '/help'
     | '/lab'
@@ -432,9 +500,16 @@ export interface FileRouteTypes {
     | '/register'
     | '/settings'
     | '/setup'
+    | '/admin/access'
+    | '/admin/convergence'
+    | '/admin/data-quality'
+    | '/admin/logs'
+    | '/admin/sync'
+    | '/admin/system'
     | '/lab/charts'
     | '/onboarding/openspartan'
     | '/players/$playerSlug'
+    | '/admin'
     | '/players/$playerSlug/career'
     | '/players/$playerSlug/citations'
     | '/players/$playerSlug/compare'
@@ -470,9 +545,16 @@ export interface FileRouteTypes {
     | '/register'
     | '/settings'
     | '/setup'
+    | '/admin/access'
+    | '/admin/convergence'
+    | '/admin/data-quality'
+    | '/admin/logs'
+    | '/admin/sync'
+    | '/admin/system'
     | '/lab/charts'
     | '/onboarding/openspartan'
     | '/players/$playerSlug'
+    | '/admin/'
     | '/players/$playerSlug/ascension'
     | '/players/$playerSlug/career_'
     | '/players/$playerSlug/citations'
@@ -503,7 +585,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   ChangelogRoute: typeof ChangelogRoute
   HelpRoute: typeof HelpRoute
   LabRoute: typeof LabRouteWithChildren
@@ -580,6 +662,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/players/$playerSlug': {
       id: '/players/$playerSlug'
       path: '/players/$playerSlug'
@@ -600,6 +689,48 @@ declare module '@tanstack/react-router' {
       fullPath: '/lab/charts'
       preLoaderRoute: typeof LabChartsRouteImport
       parentRoute: typeof LabRoute
+    }
+    '/admin/system': {
+      id: '/admin/system'
+      path: '/system'
+      fullPath: '/admin/system'
+      preLoaderRoute: typeof AdminSystemRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/sync': {
+      id: '/admin/sync'
+      path: '/sync'
+      fullPath: '/admin/sync'
+      preLoaderRoute: typeof AdminSyncRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/logs': {
+      id: '/admin/logs'
+      path: '/logs'
+      fullPath: '/admin/logs'
+      preLoaderRoute: typeof AdminLogsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/data-quality': {
+      id: '/admin/data-quality'
+      path: '/data-quality'
+      fullPath: '/admin/data-quality'
+      preLoaderRoute: typeof AdminDataQualityRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/convergence': {
+      id: '/admin/convergence'
+      path: '/convergence'
+      fullPath: '/admin/convergence'
+      preLoaderRoute: typeof AdminConvergenceRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/access': {
+      id: '/admin/access'
+      path: '/access'
+      fullPath: '/admin/access'
+      preLoaderRoute: typeof AdminAccessRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/players/$playerSlug/synthesis': {
       id: '/players/$playerSlug/synthesis'
@@ -786,6 +917,28 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminAccessRoute: typeof AdminAccessRoute
+  AdminConvergenceRoute: typeof AdminConvergenceRoute
+  AdminDataQualityRoute: typeof AdminDataQualityRoute
+  AdminLogsRoute: typeof AdminLogsRoute
+  AdminSyncRoute: typeof AdminSyncRoute
+  AdminSystemRoute: typeof AdminSystemRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAccessRoute: AdminAccessRoute,
+  AdminConvergenceRoute: AdminConvergenceRoute,
+  AdminDataQualityRoute: AdminDataQualityRoute,
+  AdminLogsRoute: AdminLogsRoute,
+  AdminSyncRoute: AdminSyncRoute,
+  AdminSystemRoute: AdminSystemRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 interface LabRouteChildren {
   LabChartsRoute: typeof LabChartsRoute
 }
@@ -903,7 +1056,7 @@ const PlayersPlayerSlugRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   ChangelogRoute: ChangelogRoute,
   HelpRoute: HelpRoute,
   LabRoute: LabRouteWithChildren,

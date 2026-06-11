@@ -1673,6 +1673,204 @@ paths:
       responses:
         "200": { description: "Statuts de santé des tokens par joueur" }
 
+  /admin/monitoring/overview:
+    get:
+      tags: [admin]
+      operationId: getAdminMonitoringOverview
+      summary: "Dashboard monitoring — KPIs agrégés (scheduler, jobs, data health, tokens, invariants) sans I/O DuckDB (auth admin requis)"
+      parameters:
+        - name: title
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200": { description: "Vue d'ensemble monitoring (sections best-effort)" }
+
+  /admin/monitoring/scheduler:
+    get:
+      tags: [admin]
+      operationId: getAdminMonitoringScheduler
+      summary: "Dashboard monitoring — snapshot scheduler auto-sync + historique des cycles depuis le boot (auth admin requis)"
+      responses:
+        "200": { description: "Snapshot + historique des cycles (ring mémoire 48 entrées)" }
+
+  /admin/monitoring/convergence:
+    get:
+      tags: [admin]
+      operationId: getAdminMonitoringConvergence
+      summary: "Dashboard monitoring — backlog de convergence (enrichment/PSA/events/weapons) par joueur (auth admin requis)"
+      parameters:
+        - name: title
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200": { description: "Backlog de convergence par joueur (compteurs plafonnés à l'horizon)" }
+
+  /admin/monitoring/jobs:
+    get:
+      tags: [admin]
+      operationId: getAdminMonitoringJobs
+      summary: "Dashboard monitoring — jobs asynchrones récents du JobStore (auth admin requis)"
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, maximum: 50 }
+      responses:
+        "200": { description: "Jobs récents, actifs d'abord" }
+
+  /admin/actions/data-health/run:
+    post:
+      tags: [admin]
+      operationId: postAdminActionDataHealthRun
+      summary: "Action admin — exécute l'audit data health immédiatement (lectures RO, synchrone) (auth admin requis)"
+      responses:
+        "200": { description: "Compteurs de l'audit (UUIDs bruts, lying bits, orphelins, garbage URLs)" }
+        "503": { description: "Health scheduler non câblé" }
+
+  /admin/actions/auto-sync/run:
+    post:
+      tags: [admin]
+      operationId: postAdminActionAutoSyncRun
+      summary: "Action admin — force un cycle auto-sync complet, suivi via le JobStore (auth admin requis)"
+      responses:
+        "202": { description: "Job créé (suivre via GET /jobs/{job_id})" }
+        "409": { description: "Un cycle forcé est déjà en vol (job_id en details)" }
+        "503": { description: "Scheduler indisponible" }
+
+  /admin/monitoring/data-quality:
+    get:
+      tags: [admin]
+      operationId: getAdminMonitoringDataQuality
+      summary: "Dashboard monitoring — compteurs d'inconnus data (assets UUID bruts, modes non traduits FR, playlists hors catalogue, xuids orphelins, lying bits) (auth admin requis)"
+      parameters:
+        - name: title
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200": { description: "Compteurs qualité données" }
+
+  /admin/monitoring/data-quality/issues:
+    get:
+      tags: [admin]
+      operationId: getAdminMonitoringDataQualityIssues
+      summary: "Dashboard monitoring — listes détaillées des inconnus d'un kind (alimente les formulaires de résolution) (auth admin requis)"
+      parameters:
+        - name: title
+          in: query
+          required: false
+          schema: { type: string }
+        - name: kind
+          in: query
+          required: true
+          schema: { type: string, enum: [raw_uuids, untranslated_modes, orphan_playlists, orphan_xuids] }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, maximum: 500 }
+      responses:
+        "200": { description: "Lignes détaillées, les plus fréquentes d'abord" }
+        "400": { description: "kind invalide" }
+
+  /admin/actions/registry-names/backfill:
+    post:
+      tags: [admin]
+      operationId: postAdminActionRegistryNamesBackfill
+      summary: "Action admin — résout les assets UUID bruts de match_registry via metadata.asset_translations (dry_run supporté, writer shared sérialisé dblease) (auth admin requis)"
+      responses:
+        "200": { description: "Compteurs scanned/fixed par type d'asset" }
+        "409": { description: "Backfill déjà en cours" }
+        "503": { description: "Writer shared occupé ou metadata absente" }
+
+  /admin/actions/translations/mode:
+    post:
+      tags: [admin]
+      operationId: postAdminActionModeTranslation
+      summary: "Action admin — upsert mode_name_tr[fr] pour un mode normalisé (résout un mode non traduit, effet immédiat) (auth admin requis)"
+      responses:
+        "200": { description: "created | updated + clé normalisée écrite" }
+        "400": { description: "Entrées invalides" }
+        "503": { description: "Metadata indisponible" }
+
+  /admin/actions/translations/asset:
+    post:
+      tags: [admin]
+      operationId: postAdminActionAssetTranslation
+      summary: "Action admin — upsert asset_translations (en-US et/ou fr-FR) pour un asset playlist/map/pair/game_variant (résolution effective des UUID inconnus) (auth admin requis)"
+      responses:
+        "200": { description: "created | updated + langues écrites" }
+        "400": { description: "Entrées invalides" }
+
+  /admin/actions/convergence/run:
+    post:
+      tags: [admin]
+      operationId: postAdminActionConvergenceRun
+      summary: "Action admin — relance la convergence d'un joueur (RunDelta + post-sync, claim SyncGate) via le JobStore (auth admin requis)"
+      responses:
+        "202": { description: "Job créé (suivre via GET /jobs/{job_id})" }
+        "400": { description: "player_slug requis" }
+        "409": { description: "Convergence déjà en cours pour ce joueur (job_id en details)" }
+        "503": { description: "Scheduler indisponible" }
+
+  /admin/actions/catalog/refresh:
+    post:
+      tags: [admin]
+      operationId: postAdminActionCatalogRefresh
+      summary: "Action admin — seed les tables catalog metadata (playlists/maps/pairs/variants) depuis match_registry, zéro réseau (le drain DiscoveryUGC reste CLI-only) (auth admin requis)"
+      responses:
+        "200": { description: "Compteurs d'upserts par table catalog" }
+        "409": { description: "Refresh déjà en cours" }
+        "503": { description: "Metadata ou shared inaccessibles" }
+
+  /admin/monitoring/perf:
+    get:
+      tags: [admin]
+      operationId: getAdminMonitoringPerf
+      summary: "Dashboard monitoring — agrégats de performance depuis le boot : latences API Halo par appel + buckets d'erreurs, phases d'écriture persist par DB, étapes post-sync, fenêtre d'indisponibilité des lectures shared (expvar pur, zéro I/O) (auth admin requis)"
+      responses:
+        "200": { description: "Agrégats count/sum/avg/max par appel/phase/étape" }
+
+  /admin/monitoring/logs/modules:
+    get:
+      tags: [admin]
+      operationId: getAdminMonitoringLogsModules
+      summary: "Dashboard monitoring — fichiers logs/{module}.log disponibles (taille, dernière écriture) (auth admin requis)"
+      responses:
+        "200": { description: "Modules de logs, plus actifs d'abord" }
+        "503": { description: "Dossier de logs illisible" }
+
+  /admin/monitoring/logs/tail:
+    get:
+      tags: [admin]
+      operationId: getAdminMonitoringLogsTail
+      summary: "Dashboard monitoring — dernières lignes filtrées d'un module de logs (lecture par la fin chunkée, budget 8 MiB) (auth admin requis)"
+      parameters:
+        - name: module
+          in: query
+          required: true
+          schema: { type: string }
+        - name: n
+          in: query
+          required: false
+          schema: { type: integer, maximum: 1000 }
+        - name: level
+          in: query
+          required: false
+          schema: { type: string, enum: [debug, info, warn, error] }
+        - name: contains
+          in: query
+          required: false
+          schema: { type: string }
+        - name: since
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+      responses:
+        "200": { description: "Entrées parsées (plus récentes d'abord) + truncated" }
+        "400": { description: "Module invalide" }
+
   # Assets (image serving)
   /assets/battlepass/{title_id}/{filename}:
     get:

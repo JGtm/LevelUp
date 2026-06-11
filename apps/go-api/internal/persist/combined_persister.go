@@ -31,6 +31,21 @@ import (
 // Le caller doit appeler la fonction release() retournée via defer.
 type SharedWriterFn func(ctx context.Context) (*sql.DB, func(), error)
 
+// OnPersistPhase (observabilité, optionnel) — hook branché par main.go pour
+// mesurer les phases d'écriture SANS coupler persist à observability (même
+// philosophie que Worker.OnPersistOK/OnPersistError). Posé une fois au boot,
+// jamais muté ensuite. phase ∈ {shared_acquire, shared_write, player_lease,
+// player_write}. NB : shared_write inclut les sous-batches PVE/metadata
+// (portés par SharedPersister).
+var OnPersistPhase func(phase string, d time.Duration, ok bool)
+
+// observePersistPhase mesure une phase si le hook est branché (no-op sinon).
+func observePersistPhase(phase string, start time.Time, ok bool) {
+	if OnPersistPhase != nil {
+		OnPersistPhase(phase, time.Since(start), ok)
+	}
+}
+
 // CombinedPersister implémente BatchPersister pour shared + player en un seul
 // appel. Conçu pour être utilisé par un Worker goroutine unique.
 type CombinedPersister struct {
@@ -61,13 +76,17 @@ func (p *CombinedPersister) Persist(ctx context.Context, batch *MatchBatch) erro
 	}
 
 	// ── 1. Shared DB ─────────────────────────────────────────────────────────
+	acquireStart := time.Now()
 	sharedDB, releaseShared, err := p.acquireShared(ctx)
+	observePersistPhase("shared_acquire", acquireStart, err == nil)
 	if err != nil {
 		return fmt.Errorf("CombinedPersister: acquire shared: %w", err)
 	}
 
+	writeStart := time.Now()
 	sharedErr := NewSharedPersister(sharedDB).Persist(ctx, batch)
 	releaseShared()
+	observePersistPhase("shared_write", writeStart, sharedErr == nil)
 
 	if sharedErr != nil {
 		slog.ErrorContext(ctx, "CombinedPersister: shared persist échoué",
@@ -86,7 +105,9 @@ func (p *CombinedPersister) Persist(ctx context.Context, batch *MatchBatch) erro
 	playerCtx, playerCancel := context.WithTimeout(ctx, 30*time.Second)
 	defer playerCancel()
 
+	leaseStart := time.Now()
 	playerLease, leaseErr := dblease.AcquireLeaseCtx(playerCtx, playerPath)
+	observePersistPhase("player_lease", leaseStart, leaseErr == nil)
 	if leaseErr != nil {
 		return fmt.Errorf("CombinedPersister: player lease %s: %w", batch.Player, leaseErr)
 	}
@@ -105,7 +126,10 @@ func (p *CombinedPersister) Persist(ctx context.Context, batch *MatchBatch) erro
 	defer playerHandle.Close()
 	playerDB := playerHandle.SQLDb()
 
-	if playerErr := NewPlayerPersister(playerDB).Persist(playerCtx, batch); playerErr != nil {
+	playerWriteStart := time.Now()
+	playerErr := NewPlayerPersister(playerDB).Persist(playerCtx, batch)
+	observePersistPhase("player_write", playerWriteStart, playerErr == nil)
+	if playerErr != nil {
 		slog.ErrorContext(ctx, "CombinedPersister: player persist échoué",
 			"batch_id", batch.BatchID, "player", batch.Player, "err", playerErr)
 		return fmt.Errorf("CombinedPersister: player: %w", playerErr)

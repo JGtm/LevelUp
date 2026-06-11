@@ -23,6 +23,7 @@ import (
 	"log/slog"
 	"runtime/debug"
 	"sync/atomic"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -83,12 +84,14 @@ func (e *SyncEngine) runConditionalPostSync(
 	// Carrière (XP + Spartan ID) retirée du post-sync : service.CareerLiveService
 	// la rafraîchit live à chaque chargement de /pages/home.
 	res := domain.PostSyncResult{}
+	lightStart := time.Now()
 	if csrs, err := e.runCSRSnapshotSync(ctx, playerDB, client); err != nil {
 		trackFatalErr(&res, "CSR snapshots", err)
 	} else if len(csrs) > 0 {
 		e.seedCatalogFromCSRs(ctx, csrs)
 	}
 	res.AchievementsSynced = e.runAchievementsSync(ctx, playerDB)
+	res.DurationMs = time.Since(lightStart).Milliseconds()
 	return res
 }
 
@@ -148,6 +151,12 @@ func (e *SyncEngine) runPostSyncPipeline(
 	slog.InfoContext(ctx, "post-sync: pipeline démarré",
 		"gamertag", e.gamertag, "matches_inserted", len(insertedIDs), "event", evID)
 
+	// Chronométrage P4 (dashboard monitoring) : un lap par bloc séquentiel.
+	// finish() en defer → DurationMs posé même sur retour partiel post-panic
+	// (r est un named return).
+	clock := newPostSyncClock(&r)
+	defer clock.finish()
+
 	// Fail-fast RC-A (defense-in-depth) : le post-sync écrit encore shared
 	// (LUSR match_skill_rank, dominance match_registry). Si le handle reçu est
 	// attaché en read-only (régression du bug RC-A 2026-06-01), on le détecte
@@ -170,6 +179,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	//
 	// Idempotent : 0 row créée pour un joueur dont tous les enrichments
 	// existent déjà (cas stationnaire JGtm post-sync).
+	enrichRows := 0
 	if n, err := ensurePlayerEnrichmentRows(ctx, playerDB, sharedDB, e.xuid); err != nil {
 		slog.WarnContext(ctx, "post-sync: ensure enrichment rows échoué",
 			"gamertag", e.gamertag, "err", err)
@@ -177,9 +187,11 @@ func (e *SyncEngine) runPostSyncPipeline(
 		// resteront no-op pour les matchs sans row, mais le reste du pipeline
 		// peut quand même tourner pour les matchs qui ont déjà leurs rows).
 	} else if n > 0 {
+		enrichRows = n
 		slog.InfoContext(ctx, "post-sync: enrichment rows créées",
 			"gamertag", e.gamertag, "rows_created", n)
 	}
+	clock.lap("enrichment_rows", enrichRows)
 
 	// HEALS DÉCOMMISSIONNÉS (2026-06-01) — stats / skill / events / weapon.
 	//
@@ -199,6 +211,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// bloc de scoring enrichment (player DB), extrait pour réduire la taille de
 	// runPostSyncPipeline (cf. revue D7-3).
 	e.runScoringSteps(ctx, playerDB, sharedDB, &r)
+	clock.lap("scoring", r.EngagementScoresComputed)
 
 	// 1.54 Convergence events — re-fetch des highlight_events des matchs
 	// events_loaded=false (matchs insérés par le watcher d'un teammate, ou film
@@ -215,10 +228,12 @@ func (e *SyncEngine) runPostSyncPipeline(
 	observability.AddInt("convergence_events_pending_total", int64(len(eventsWork)))
 	if len(eventsWork) > 0 {
 		n := convergeEvents(ctx, sharedDB, client, eventsWork)
+		r.ConvergedEvents = n
 		observability.AddInt("convergence_events_processed_total", int64(n))
 		slog.InfoContext(ctx, "post-sync: convergence events",
 			"gamertag", e.gamertag, "selected", len(eventsWork), "processed", n)
 	}
+	clock.lap("convergence_events", r.ConvergedEvents)
 
 	// 1.55 Weapon kills — pipeline film. Convergent : nouveaux matchs (insertedIDs)
 	// ∪ backlog incomplet (bits weapon non posés), bornés. La sélection weapons se
@@ -236,11 +251,13 @@ func (e *SyncEngine) runPostSyncPipeline(
 		}
 		r.WeaponKillsProcessed = done
 		r.WeaponKillsNoFilm = noFilm
+		observability.AddInt("convergence_weapons_processed_total", int64(done))
 		if done > 0 || noFilm > 0 {
 			slog.InfoContext(ctx, "post-sync: weapon kills",
 				"gamertag", e.gamertag, "done", done, "no_film", noFilm)
 		}
 	}
+	clock.lap("weapon_kills", r.WeaponKillsProcessed)
 
 	// 1.56 PSA — convergence des personal_score_awards. Cas nominal : matchs
 	// delta-skippés (insérés en shared par un coéquipier) dont seul le
@@ -251,10 +268,12 @@ func (e *SyncEngine) runPostSyncPipeline(
 	observability.AddInt("convergence_psa_pending_total", int64(len(psaWork)))
 	if len(psaWork) > 0 {
 		n := convergePSA(ctx, playerDB, sharedDB, client, e.xuid, psaWork)
+		r.ConvergedPSA = n
 		observability.AddInt("convergence_psa_processed_total", int64(n))
 		slog.InfoContext(ctx, "post-sync: convergence PSA",
 			"gamertag", e.gamertag, "selected", len(psaWork), "processed", n)
 	}
+	clock.lap("convergence_psa", r.ConvergedPSA)
 
 	// Registry names heal DÉCOMMISSIONNÉ (2026-06-01) — map_name/pair_name/
 	// playlist_name/game_variant_name sont résolus au sync PRIMAIRE via
@@ -272,6 +291,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 		r.CitationsComputed = n
 		slog.InfoContext(ctx, "post-sync: citations calculées", "gamertag", e.gamertag, "count", n)
 	}
+	clock.lap("citations", r.CitationsComputed)
 
 	// 1.7 Dominance flags — matchs nouvellement insérés + backlog (dominance_flag IS NULL).
 	// Reconstruit la courbe score depuis highlight_events. Valeur 0 = calculé/sans dominance,
@@ -295,11 +315,13 @@ func (e *SyncEngine) runPostSyncPipeline(
 			}
 		}
 	}
+	clock.lap("dominance", r.DominanceFlagsComputed)
 
 	// 2 / 2.5 / 2.6 — bloc LUSR (v1 + v2 shadow + sentinelle dual-row), extrait
 	// pour réduire la taille de runPostSyncPipeline (cf. revue D7-3). Self-gate
 	// sur la capability title.CapLUSR.
 	e.runSkillRatingSteps(ctx, playerDB, sharedDB, &r)
+	clock.lap("skill_rating", r.LUSRUpdated)
 
 	// 3. Career rank — DÉCOUPLÉ du post-sync depuis 2026-05-14.
 	// Le flow XP + Spartan ID est désormais géré par service.CareerLiveService
@@ -319,6 +341,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	} else {
 		pendingCSRs = csrs
 	}
+	clock.lap("csr_snapshots", len(pendingCSRs))
 
 	// 3.5 Friends recompute is_with_friends (best-effort).
 	// Avant l'étape 4 (aggregates) pour éviter un double-refresh : on passe
@@ -343,10 +366,12 @@ func (e *SyncEngine) runPostSyncPipeline(
 			}
 		}
 	}
+	clock.lap("friends", int(r.MatchesPromotedFriends))
 
 	// 4. Aggregates (vues matérialisées player) + catalog seeding, en parallèle
 	// via errgroup — extrait pour réduire runPostSyncPipeline (cf. revue D7-3).
 	e.runAggregatesRefresh(ctx, playerDB, pendingCSRs, &r)
+	clock.lap("aggregates", r.ViewsRefreshed)
 
 	// 4.5 Media scan post-sync — indexe les captures présentes dans le dossier
 	// du joueur et les associe aux matchs fraîchement insérés (best-effort).
@@ -356,9 +381,11 @@ func (e *SyncEngine) runPostSyncPipeline(
 		slog.DebugContext(ctx, "post-sync: scan médias", "gamertag", e.gamertag)
 		e.mediaHook(ctx)
 	}
+	clock.lap("media_scan", 0)
 
 	// 5. Achievements Xbox (fire-and-forget, non bloquant en cas d'erreur token)
 	r.AchievementsSynced = e.runAchievementsSync(ctx, playerDB)
+	clock.lap("achievements", 0)
 
 	return r
 }

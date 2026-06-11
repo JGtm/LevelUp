@@ -20,6 +20,8 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+
+	"levelup/go-api/internal/observability"
 )
 
 // convergenceHorizon borne le nombre de matchs incomplets repris par cycle
@@ -148,6 +150,8 @@ func convergePSA(ctx context.Context, playerDB, sharedDB *sql.DB, client HaloCli
 		done++
 	}
 	if aliases > 0 {
+		// Cumul boot-level pour le dashboard monitoring (rattrapage convergence).
+		observability.AddInt("convergence_aliases_upserted_total", int64(aliases))
 		slog.InfoContext(ctx, "convergence: alias upsertés depuis les JSONs PSA",
 			"xuid", xuid, "aliases", aliases)
 	}
