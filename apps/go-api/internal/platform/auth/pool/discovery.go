@@ -145,29 +145,8 @@ func (d *discoveryImpl) scanPlayer(ctx context.Context, player domain.PlayerSumm
 	}
 
 	// --- Priorité 2 : sync_meta DuckDB (DEPRECATED) ---
-	// Le warn « à migrer » n'est émis QUE si une valeur legacy est réellement
-	// ADOPTÉE (fix 2026-06-11 : l'ancien warn se déclenchait à la simple
-	// lecture, même quand le store avait déjà fourni la valeur — bruit
-	// mensonger à chaque boot).
 	if msal == "" || oauth == "" {
-		if dbMsal, dbOauth, ok := d.readLegacyDuckDB(ctx, player, playerDBPath); ok {
-			var adopted []string
-			if msal == "" && dbMsal != "" {
-				msal = dbMsal
-				sourceLabel = appendSource(sourceLabel, credSourceDuckDBMSAL)
-				adopted = append(adopted, "msal")
-			}
-			if oauth == "" && dbOauth != "" {
-				oauth = dbOauth
-				sourceLabel = appendSource(sourceLabel, credSourceDuckDBOAuth)
-				adopted = append(adopted, "oauth")
-			}
-			if len(adopted) > 0 {
-				slog.WarnContext(ctx, "pool: legacy sync_meta DuckDB utilisée — à migrer",
-					"gamertag", player.Gamertag, "fields", strings.Join(adopted, "+"),
-					"deprecated_since", "ADR-0023")
-			}
-		}
+		msal, oauth, sourceLabel = d.adoptLegacySyncMeta(ctx, player, playerDBPath, msal, oauth, sourceLabel)
 	}
 
 	// --- Priorité 3 : env var (DEPRECATED) ---
@@ -211,8 +190,41 @@ func (d *discoveryImpl) scanPlayer(ctx context.Context, player domain.PlayerSumm
 	}
 }
 
+// adoptLegacySyncMeta complète msal/oauth depuis sync_meta pour les champs que
+// le store n'a pas fournis. Le warn « à migrer » n'est émis QUE si une valeur
+// legacy est réellement ADOPTÉE (fix 2026-06-11 : l'ancien warn se déclenchait
+// à la simple lecture, même quand le store couvrait déjà — bruit mensonger à
+// chaque boot).
+func (d *discoveryImpl) adoptLegacySyncMeta(
+	ctx context.Context,
+	player domain.PlayerSummary,
+	playerDBPath, msal, oauth, sourceLabel string,
+) (string, string, string) {
+	dbMsal, dbOauth, ok := d.readLegacyDuckDB(ctx, player, playerDBPath)
+	if !ok {
+		return msal, oauth, sourceLabel
+	}
+	var adopted []string
+	if msal == "" && dbMsal != "" {
+		msal = dbMsal
+		sourceLabel = appendSource(sourceLabel, credSourceDuckDBMSAL)
+		adopted = append(adopted, "msal")
+	}
+	if oauth == "" && dbOauth != "" {
+		oauth = dbOauth
+		sourceLabel = appendSource(sourceLabel, credSourceDuckDBOAuth)
+		adopted = append(adopted, "oauth")
+	}
+	if len(adopted) > 0 {
+		slog.WarnContext(ctx, "pool: legacy sync_meta DuckDB utilisée — à migrer",
+			"gamertag", player.Gamertag, "fields", strings.Join(adopted, "+"),
+			"deprecated_since", "ADR-0023")
+	}
+	return msal, oauth, sourceLabel
+}
+
 // readLegacyDuckDB lit msal+oauth depuis sync_meta. Ne logue PAS : c'est le
-// caller (scanPlayer) qui warn, et uniquement si une valeur est adoptée.
+// caller (adoptLegacySyncMeta) qui warn, et uniquement si une valeur est adoptée.
 func (d *discoveryImpl) readLegacyDuckDB(ctx context.Context, player domain.PlayerSummary, playerDBPath string) (msal, oauth string, ok bool) {
 	playerDB, dbErr := duckdb.OpenReadOnly(playerDBPath)
 	if dbErr != nil {

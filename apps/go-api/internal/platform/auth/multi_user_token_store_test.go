@@ -69,6 +69,63 @@ func TestMultiUserTokenStore_ReauthMarkClear(t *testing.T) {
 	}
 }
 
+func TestMultiUserTokenStore_AuthErrorRecordClear(t *testing.T) {
+	s := NewMultiUserTokenStore(tempTokenDir(t))
+
+	// Clear sur absent : no-op sans erreur.
+	if err := s.ClearAuthError("111"); err != nil {
+		t.Errorf("Clear sur absent: %v", err)
+	}
+
+	// Record sans entrée préalable → crée l'entrée avec classe + message + date.
+	if err := s.RecordAuthError("111", "Alice", "config", "AADSTS90023: refused"); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+	got, err := s.Load("111")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got.LastAuthErrorClass != "config" || got.LastAuthError != "AADSTS90023: refused" {
+		t.Errorf("champs erreur: %+v", got)
+	}
+	if got.LastAuthErrorAt.IsZero() {
+		t.Error("Record devrait poser LastAuthErrorAt")
+	}
+	if got.Gamertag != "Alice" {
+		t.Error("Record devrait compléter le gamertag vide")
+	}
+
+	// Record préserve les autres champs (RT existant).
+	if err := s.UpdateOAuthRefreshToken("111", "rt-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordAuthError("111", "Bob", "revoked", "invalid_grant"); err != nil {
+		t.Fatal(err)
+	}
+	got, _ = s.Load("111")
+	if got.OAuthRefreshToken != "rt-1" {
+		t.Error("Record ne doit pas écraser le RT")
+	}
+	if got.Gamertag != "Alice" {
+		t.Error("Record ne doit pas écraser un gamertag existant")
+	}
+	if got.LastAuthErrorClass != "revoked" {
+		t.Errorf("classe mise à jour attendue, got %q", got.LastAuthErrorClass)
+	}
+
+	// Clear → champs vidés, RT intact.
+	if err := s.ClearAuthError("111"); err != nil {
+		t.Fatalf("Clear: %v", err)
+	}
+	got, _ = s.Load("111")
+	if got.LastAuthErrorClass != "" || got.LastAuthError != "" || !got.LastAuthErrorAt.IsZero() {
+		t.Errorf("Clear devrait vider les champs erreur: %+v", got)
+	}
+	if got.OAuthRefreshToken != "rt-1" {
+		t.Error("Clear ne doit pas toucher le RT")
+	}
+}
+
 func TestMultiUserTokenStore_UpsertAndLoad(t *testing.T) {
 	s := NewMultiUserTokenStore(tempTokenDir(t))
 

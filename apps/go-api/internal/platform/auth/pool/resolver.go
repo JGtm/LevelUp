@@ -240,14 +240,19 @@ func (r *resolverImpl) recordPermanentFailure(ctx context.Context, src Credentia
 	if class == auth.AuthErrorRevoked {
 		ttl = negativeTTLRevoked
 	}
+	until := time.Now().Add(ttl)
 	r.mu.Lock()
 	r.negative[src.Gamertag] = &negativeEntry{
 		class:        class,
 		err:          err,
-		until:        time.Now().Add(ttl),
+		until:        until,
 		refreshToken: src.RefreshToken,
 	}
 	r.mu.Unlock()
+
+	slog.InfoContext(ctx, "pool/resolver: échec permanent mémorisé — retries suspendus",
+		"gamertag", src.Gamertag, "class", class,
+		"retry_after", until.Format(time.RFC3339))
 
 	if r.onAuthError != nil {
 		r.onAuthError(ctx, src.Gamertag, src.XUID, string(class), err.Error())
