@@ -405,6 +405,190 @@ en = "Failed to run invariants check."
 fr = "Données partagées"
 en = "Shared data"
 
+[common.admin.page_title]
+fr = "Administration"
+en = "Administration"
+
+[common.admin.back]
+fr = "Retour"
+en = "Back"
+
+[common.admin.users_section]
+fr = "Utilisateurs"
+en = "Users"
+
+[common.admin.loading]
+fr = "Chargement…"
+en = "Loading…"
+
+[common.admin.refresh]
+fr = "Rafraîchir"
+en = "Refresh"
+
+[common.admin.delete_user_confirm]
+fr = "Supprimer l'utilisateur"
+en = "Delete user"
+
+[common.admin.demote_to_user]
+fr = "→ user"
+en = "→ user"
+
+[common.admin.promote_to_admin]
+fr = "→ admin"
+en = "→ admin"
+
+[common.admin.password_btn]
+fr = "MDP"
+en = "Password"
+
+[common.admin.delete]
+fr = "Supprimer"
+en = "Delete"
+
+[common.admin.ok]
+fr = "OK"
+en = "OK"
+
+[common.admin.cancel]
+fr = "Annuler"
+en = "Cancel"
+
+[common.admin.generating]
+fr = "Génération…"
+en = "Generating…"
+
+[common.admin.generate_code]
+fr = "Générer un code"
+en = "Generate a code"
+
+[common.admin.invite_by]
+fr = "par"
+en = "by"
+
+[common.admin.invite_expires]
+fr = "expire"
+en = "expires"
+
+[common.admin.invite_used_by]
+fr = "utilisé par"
+en = "used by"
+
+[common.admin.revoke]
+fr = "Révoquer"
+en = "Revoke"
+
+[common.admin.expired]
+fr = "expiré"
+en = "expired"
+
+[common.admin.contention_section]
+fr = "Contention DB (sync)"
+en = "DB contention (sync)"
+
+[common.admin.contention_desc]
+fr = "Bascules lecture/écriture de la base partagée pendant le sync. Beaucoup de swaps, une attente de drain élevée ou des lectures rejetées (503) = l'app patiente pendant les écritures."
+en = "Read/write switches of the shared database during sync. Many swaps, high drain wait, or rejected reads (503) = the app waits during writes."
+
+[common.admin.contention_unavailable]
+fr = "Métriques de contention indisponibles."
+en = "Contention metrics unavailable."
+
+[common.admin.contention_swaps]
+fr = "Écritures (swaps)"
+en = "Writes (swaps)"
+
+[common.admin.contention_acquire]
+fr = "Bascule RO→RW moy."
+en = "Avg RO→RW switch"
+
+[common.admin.contention_release]
+fr = "Retour RW→RO moy."
+en = "Avg RW→RO return"
+
+[common.admin.contention_drain]
+fr = "Attente drain (cumul)"
+en = "Drain wait (total)"
+
+[common.admin.contention_blocked_avg]
+fr = "Blocage lecteurs moy."
+en = "Avg reader block"
+
+[common.admin.contention_blocked_max]
+fr = "Blocage lecteurs max"
+en = "Max reader block"
+
+[common.admin.contention_503]
+fr = "Lectures rejetées (503)"
+en = "Reads rejected (503)"
+
+[common.admin.contention_failures]
+fr = "Échecs de swap"
+en = "Swap failures"
+
+[common.admin.contention_readers]
+fr = "Lecteurs en vol"
+en = "In-flight readers"
+
+[common.admin.contention_state]
+fr = "État courant"
+en = "Current state"
+
+[common.admin.tokens_section]
+fr = "Santé des tokens"
+en = "Token health"
+
+[common.admin.tokens_desc]
+fr = "État des tokens d'authentification Halo par joueur (lecture seule, sans déclencher de refresh). « reauth requis » = reconnexion SSO Xbox nécessaire."
+en = "State of Halo authentication tokens per player (read-only, no refresh triggered). « reauth required » = Xbox SSO sign-in needed."
+
+[common.admin.tokens_unavailable]
+fr = "Santé des tokens indisponible."
+en = "Token health unavailable."
+
+[common.admin.tokens_store_unavailable]
+fr = "Store de tokens non configuré (mode legacy)."
+en = "Token store not configured (legacy mode)."
+
+[common.admin.no_tracked_players]
+fr = "Aucun joueur suivi."
+en = "No tracked players."
+
+[common.admin.xsts_expires_on]
+fr = "XSTS expire le"
+en = "XSTS expires on"
+
+[common.admin.token_refresh]
+fr = "Refresh"
+en = "Refresh"
+
+[common.admin.token_msal]
+fr = "MSAL"
+en = "MSAL"
+
+[common.admin.token_xsts]
+fr = "XSTS"
+en = "XSTS"
+
+[common.admin.token_status_ok]
+fr = "OK"
+en = "OK"
+
+[common.admin.token_status_expiring]
+fr = "expire bientôt"
+en = "expiring soon"
+
+[common.admin.token_status_expired]
+fr = "expiré"
+en = "expired"
+
+[common.admin.token_status_absent]
+fr = "absent"
+en = "absent"
+
+[common.admin.token_status_reauth]
+fr = "reauth requis"
+en = "reauth required"
+
 [common.setup.config_loading]
 fr = "Vérification de la configuration…"
 en = "Checking configuration…"
