@@ -40,6 +40,14 @@ via stop/start). `.env.local` est préservé par `git clean --exclude=.env.local
       - `LEVELUP_AUTH_MODE=xbox`
       - `LEVELUP_SESSION_SECRET=` ← `openssl rand -base64 48`
       - `LEVELUP_CORS_ORIGINS=https://lvelup.info` (+ www / autres origines réelles)
+      - `LEVELUP_OAUTH_REDIRECT_URI=https://lvelup.info/auth/xbox/callback`
+        (SSO Xbox Authorization Code Flow ; chemin **racine**, pas `/api/v1`)
+- [ ] **Azure** (si SSO Xbox redirect-based activé) : App registration → Authentication →
+      plateforme **Web** → ajouter le redirect URI **identique au caractère près** à
+      `LEVELUP_OAUTH_REDIRECT_URI`. Scopes `Xboxlive.signin Xboxlive.offline_access`.
+      Sans ça : `AADSTS50011` à l'étape `/authorize`. Le callback est exposé à la racine
+      (`/auth/xbox/callback`) ET sous `/api/v1` — aucune réécriture `/auth/` à prévoir
+      côté reverse proxy, `location / → backend` suffit.
 
 ## Phase 2 — Cutover (la branche Go devient `main`)
 
