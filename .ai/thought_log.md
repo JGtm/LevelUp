@@ -1,3 +1,17 @@
+## [2026-06-12] Noms FR des 7 playlists classées manquantes — rempli rankedplaylists.go — Résolu
+
+**Statut** : Résolu. Build + vet + tests (cascade Phase F, rankedplaylists) verts.
+
+**Demande** : 7 des 16 playlists classées s'affichaient en EN sur le leaderboard (catalogue 16 ranked, 9 FR seulement). L'utilisateur veut que ce soit réglé définitivement, pas via des sondes API à répétition.
+
+**Égarement à ne pas refaire** : j'ai perdu du temps à recréer des sondes throwaway réimplémentant la résolution de token + l'appel gamecms `FetchAsset` à la main → 401 puis 403 (sur maps ET playlists : pas spécifique au type, c'est mon montage qui n'a pas la clearance/flight de l'outil testé). Le CLI testé `populate-assets` fait ça correctement mais ne pouvait tourner (il lit la shared DB que le backfill tient en RW). Cf. [[feedback_use_tested_clis_no_throwaway_probes]].
+
+**Fix retenu (déterministe, source unique compilée)** : remplir les 7 `NameFR` dans `rankedplaylists.go` (même source que les 9 qui marchaient). **Phase F lit `rankedplaylists.Lookup(id).NameFR` directement à la requête** (cascade tier 2, après `asset_translations[fr]`), donc rebuild = le leaderboard affiche le FR. Pas de DB, pas de migration, pas d'API. Bonus : un fresh DB reçoit les 16 via `seedRankedPlaylistFR`, et `ReconcileMetadataSeeds` (chaque boot) empêche toute dérive future. Traductions style « <x> classé(e)(s) » : Duel classé, Extraction classée, Bataille d'escouade classée, Survivants classés, Qualifications HaloWC (Chacun pour soi), Tactique classé (ancien), Snipers classés (ancien).
+
+**Prochaine étape** : rebuild + restart serveur (ou prochain deploy) → les 7 FR apparaissent. L'utilisateur peut ajuster un libellé en 1 ligne s'il préfère.
+
+---
+
 ## [2026-06-12] CORRECTION — parc d'auth MIXTE : try-retry secret (remplace IsPublicAzureClient) — Résolu
 
 **Statut** : Résolu + vérifié. Sonde : 9/9 comptes résolus. Build module + tests auth verts.
