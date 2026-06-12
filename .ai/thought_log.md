@@ -1,3 +1,35 @@
+## [2026-06-12] Nettoyage sessions : anti-spam data/sessions + purge périodique — Complété
+
+**Statut** : Code + 3 tests verts (domain + middleware). À déployer + purge ponctuelle VPS.
+
+**Problème (constat user + investigation)** : `data/sessions/` accumulait **~3 000 fichiers/jour** (29 881 au total). Cause : `middleware.WithSession` appelait `store.Touch(sess)` (= write disque) sur CHAQUE requête, y compris les requêtes anonymes sans cookie (bots, sondes, chargements d'assets) → un fichier de session par requête. `PurgeExpired` existait mais n'était branché nulle part. NB : ce n'était PAS la cause des déconnexions du user (les sessions persistent bien des jours — vérifié : sessions de 2 à 7 jours en base ; les reconnexions venaient des bugs auth corrigés ce soir).
+
+**Décision technique** : (1) Persistance conditionnelle — `domain.SessionData.IsMeaningful()` (porte auth/role/OAuthState/identité/tokens/joueur/titre/sync OU préférence modifiée vs défaut New()). Le middleware déplace la persistance APRÈS le handler et ne `Touch` que si la session était déjà sur disque (TTL glissant) OU est devenue significative pendant la requête. Le cookie reste posé avant le handler (l'ID ne change pas). → une session anonyme vierge ne crée plus de fichier. (2) Purge périodique — goroutine dans `NewRouter` : `PurgeExpired()` immédiat au boot (rattrape le backlog des expirés) puis toutes les 6 h, arrêt via `serverCtx`. (3) Purge ponctuelle du backlog actuel d'anonymes <7j (non expirés) côté VPS.
+
+**Résultats observés** : build CGO + 3 tests verts (`TestSessionData_IsMeaningful`, `TestWithSession_DoesNotPersistAnonymousSession` = 0 fichier, `TestWithSession_PersistsWhenHandlerAuthenticates` = 1 fichier). Tests existants du middleware inchangés (cookie toujours posé, sessions chargées toujours persistées).
+
+**Prochaine étape** : déployer + purge VPS des fichiers anonymes. Le flux OAuth reste OK (login persiste OAuthState via Save explicite → callback le retrouve).
+
+---
+
+## [2026-06-12] Régression auth-gate : /login rebondit vers / (race hydratation) — Complété
+
+**Statut** : Hotfix livré (`34039afa4`, main) + déployé + vérifié live (SSO Xbox de retour). Build prod complet validé.
+
+**Problème (user, régression majeure post-deploy)** : « Aucun joueur configuré / Configurer l'application », plus aucun SSO Xbox. `/login` rebondissait vers `/`.
+
+**Diagnostic** : PAS le backend (le `/bootstrap` prod est byte-identique à avant : auth_mode:xbox, oauth_code_flow_enabled:true, 4 joueurs intacts dans db_profiles), PAS le fix OAuth racine (ne touche pas le routing front). Cause = race d'hydratation dans le gate d'auth (code des PR auth A/B/C, déployées pour la 1ʳᵉ fois aujourd'hui par les deux deploys 20:01 + 20:24). Avant l'hydratation du store Zustand depuis `/bootstrap`, `authMode` vaut sa valeur par défaut `'none'`. `LoginPage` exécutait alors `if (authMode === 'none') navigate('/')` pendant la fenêtre pré-hydratation → `/login` → `/`. Le `useEffect` one-shot de `__root` (deps stables) ne re-corrigeait pas → bloqué sur `/` → `index.tsx` affiche `no_player_configured`. Confirmé live : `/login` redirige vers `/`, aucune erreur console, aucun chunk en échec.
+
+**Décision technique** : garde `if (!isBootstrapped) return null` en tête de `LoginPage`, AVANT toute décision de routage (le `authMode === 'none'` ne s'évalue plus tant que le store n'est pas hydraté). Minimal, localisé à l'entrée du flux login. Les autres `navigate('/')` du package auth sont tous post-login (onSuccess), non concernés.
+
+**Résultats observés** : `tsc` + `eslint` + `npm run build` (build production COMPLET cette fois, pas juste tsc) verts. Déployé. Vérif live Chrome : `/login` affiche de nouveau « Connexion Xbox » + boutons SSO/code/admin ; `/` redirige bien vers `/login`. Plus de rebond.
+
+**Leçon** : le `tsc --noEmit` + eslint ne rejouent pas le runtime SPA ; pour un changement touchant login/routing, lancer le build prod ET vérifier le rendu live avant de clore. La fragilité de fond (useEffect one-shot de `__root` + redirections prématurées dans les pages pré-hydratation) reste — candidate à durcissement ultérieur.
+
+**Prochaine étape** : RAS bloquant. L'user re-teste un vrai login Xbox de bout en bout.
+
+---
+
 ## [2026-06-12] Fix connexion Xbox (callback racine) + sauvegarde mdp navigateur — Complété (livraison à confirmer)
 
 **Statut** : Code Go + frontend + doc, build/typecheck/lint/tests OAuth verts. Diagnostic live confirmé (Chrome MCP + SSH VPS). Branche dédiée + commit à autoriser.

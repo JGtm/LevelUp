@@ -37,6 +37,27 @@ type SessionData struct {
 	OAuthState string `json:"oauth_state,omitempty"`
 }
 
+// IsMeaningful indique si la session porte un état qui mérite d'être persisté sur
+// disque. Une session anonyme « vierge » (telle que créée par Store.New : locale
+// "fr", hints visibles, auth_ready false, rien d'autre) ne vaut pas un fichier :
+// la persister à chaque requête sans cookie (bots, sondes, chargements d'assets)
+// sature data/sessions/. On ne persiste qu'à partir du moment où elle porte de
+// l'auth, un flow OAuth en cours, une identité/des tokens Halo, un joueur/titre
+// courant, un job de sync, ou une préférence explicitement modifiée.
+func (s *SessionData) IsMeaningful() bool {
+	return s.Username != nil ||
+		s.Role != nil ||
+		s.OAuthState != "" ||
+		s.LinkedHaloIdentity != nil ||
+		s.HaloTokens != nil ||
+		s.CurrentPlayerSlug != nil ||
+		s.ActiveSyncJobID != nil ||
+		s.AuthReady ||
+		s.CurrentTitleSlug != "" ||
+		s.Locale != "fr" ||
+		!s.HintsVisible
+}
+
 // SessionContextRequest est le body de POST /session/context.
 type SessionContextRequest struct {
 	PlayerSlug *string `json:"player_slug"`

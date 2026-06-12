@@ -5,7 +5,9 @@ import (
 	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -148,6 +150,59 @@ func TestWithSession_LoadsExistingSession(t *testing.T) {
 
 	if loadedID != sess.SessionID {
 		t.Fatalf("expected session %q, got %q", sess.SessionID, loadedID)
+	}
+}
+
+// countSessionFiles compte les fichiers .json dans le répertoire de sessions.
+func countSessionFiles(t *testing.T, dir string) int {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return 0
+	}
+	n := 0
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".json") {
+			n++
+		}
+	}
+	return n
+}
+
+// TestWithSession_DoesNotPersistAnonymousSession garantit qu'une requête sans
+// cookie dont le handler ne touche pas la session NE crée AUCUN fichier disque
+// (anti-spam data/sessions/ : bots, sondes, assets).
+func TestWithSession_DoesNotPersistAnonymousSession(t *testing.T) {
+	sessDir := filepath.Join(t.TempDir(), "sessions")
+	store := session.NewStore(sessDir, time.Hour, "test-secret-32bytesXXXXXXXXXXX")
+	mw := middleware.WithSession(store, middleware.SecureCookiePolicy{})
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK) // handler anonyme : ne touche pas la session
+	}))
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if n := countSessionFiles(t, sessDir); n != 0 {
+		t.Errorf("session anonyme vierge persistée (%d fichier(s)) — spam non corrigé", n)
+	}
+}
+
+// TestWithSession_PersistsWhenHandlerAuthenticates garantit qu'une session
+// devenue significative pendant la requête (le handler pose un username) EST
+// bien persistée sur disque.
+func TestWithSession_PersistsWhenHandlerAuthenticates(t *testing.T) {
+	sessDir := filepath.Join(t.TempDir(), "sessions")
+	store := session.NewStore(sessDir, time.Hour, "test-secret-32bytesXXXXXXXXXXX")
+	mw := middleware.WithSession(store, middleware.SecureCookiePolicy{})
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sess := middleware.GetSession(r.Context())
+		u := "alice"
+		sess.Username = &u // la session devient significative
+		w.WriteHeader(http.StatusOK)
+	}))
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if n := countSessionFiles(t, sessDir); n != 1 {
+		t.Errorf("session authentifiée non persistée: %d fichier(s) (attendu 1)", n)
 	}
 }
 

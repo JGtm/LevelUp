@@ -116,6 +116,26 @@ func NewRouter(
 	// sur http://localhost → onboarding bloqué). Override via LEVELUP_COOKIE_SECURE.
 	cookiePolicy := middleware.SecureCookiePolicy{Mode: cfg.CookieSecure, TrustProxy: cfg.TrustProxyHeaders}
 	sessionStore := session_platform.NewStore(cfg.SessionDir, session_platform.DefaultTTL, cfg.SessionSecret)
+	// Purge périodique des sessions expirées (TTL dépassé). Sans ça, data/sessions/
+	// accumule indéfiniment. Purge immédiate au boot (rattrape le backlog), puis
+	// toutes les 6h ; arrêt propre au shutdown via serverCtx.
+	go func() {
+		if n := sessionStore.PurgeExpired(); n > 0 {
+			slog.InfoContext(serverCtx, "session: purge initiale sessions expirées", "removed", n)
+		}
+		ticker := time.NewTicker(6 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-serverCtx.Done():
+				return
+			case <-ticker.C:
+				if n := sessionStore.PurgeExpired(); n > 0 {
+					slog.InfoContext(serverCtx, "session: purge sessions expirées", "removed", n)
+				}
+			}
+		}
+	}()
 	attemptStore := auth_platform.NewAttemptStore()
 
 	// Sprint 16 : settings store + Sprint 17 : job store
