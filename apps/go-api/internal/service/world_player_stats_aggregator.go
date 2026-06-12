@@ -74,6 +74,11 @@ type WorldStatsAggregatorConfig struct {
 	// accumulés. L'historique matchmaking mêle classé ET social ; le classement
 	// mondial étant CSR (classé), on ignore tout match hors de cet ensemble.
 	RankedPlaylists map[string]bool
+	// XUIDResolveDelay : délai entre deux résolutions PeopleHub (gamertag->xuid)
+	// dans PrepareWorldPlayers. PeopleHub limite ~10 req/15s PAR compte (single-token)
+	// → sans délai, résoudre 200+ joueurs d'affilée déclenche des 429 qui skippent les
+	// joueurs en masse. 0 = pas de throttle (tests bas volume) ; le CLI/cron met ~1.6s.
+	XUIDResolveDelay time.Duration
 }
 
 func (c *WorldStatsAggregatorConfig) withDefaults() {
@@ -129,6 +134,7 @@ func NewWorldStatsAggregator(src WorldMatchSource, resolver WorldXUIDResolver, c
 // À appeler avant AggregatePlayer. Best-effort : retourne les erreurs de résolution.
 func (a *WorldStatsAggregator) PrepareWorldPlayers(ctx context.Context, gamertags []string) []error {
 	var errs []error
+	first := true
 	for _, gt := range gamertags {
 		a.mu.Lock()
 		_, done := a.xuidByGamertag[gt]
@@ -136,6 +142,17 @@ func (a *WorldStatsAggregator) PrepareWorldPlayers(ctx context.Context, gamertag
 		if done {
 			continue
 		}
+		// Throttle PeopleHub (~10 req/15s/compte single-token) : espacer les
+		// résolutions évite les 429 qui skippent des joueurs en masse. 1er appel
+		// immédiat. XUIDResolveDelay=0 (tests) → pas d'attente.
+		if !first && a.cfg.XUIDResolveDelay > 0 {
+			select {
+			case <-ctx.Done():
+				return errs
+			case <-time.After(a.cfg.XUIDResolveDelay):
+			}
+		}
+		first = false
 		xuid, err := a.resolver.ResolveXUID(ctx, gt)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("%s: %w", gt, err))

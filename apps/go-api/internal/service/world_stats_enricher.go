@@ -8,6 +8,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
@@ -51,6 +52,12 @@ func (e *WorldStatsEnricher) EnrichSeason(ctx context.Context, season string, ga
 	cfg.TargetSeasons = map[string]bool{analysis.NormalizeSeasonID(season): true}
 	if len(cfg.RankedPlaylists) == 0 {
 		cfg.RankedPlaylists = RankedPlaylistSet() // ranked-only (cron : toujours classé)
+	}
+	if cfg.XUIDResolveDelay <= 0 {
+		// Throttle PeopleHub (~10 req/15s/compte) : l'enrichissement auto cape aussi
+		// le débit de résolution xuid, sinon une saison à 200+ joueurs déclenche des
+		// 429 qui les skippent (cf. PrepareWorldPlayers).
+		cfg.XUIDResolveDelay = 1600 * time.Millisecond
 	}
 	agg := NewWorldStatsAggregator(e.src, e.resolver, cfg)
 	return agg.Run(ctx, gamertags)
