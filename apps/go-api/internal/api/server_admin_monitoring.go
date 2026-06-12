@@ -69,6 +69,11 @@ func mountAdminMonitoringRoutes(
 		reg.RunPlayerConvergence, jobStore, serverCtx, ErrSyncInFlight)
 	r.Post("/actions/convergence/run", convH.Run)
 
+	// Drain DiscoveryUGC (job asynchrone — réseau, rate-limité). Complète le
+	// catalog/refresh zéro-réseau en hydratant les assets absents de match_registry.
+	drainH := handlers.NewAdminCatalogDrainHandler(reg.RunCatalogUGCDrain, jobStore, serverCtx)
+	r.Post("/actions/catalog/ugc-drain", drainH.Run)
+
 	// Viewer de logs : modules + tail filtré (lecture par la fin chunkée).
 	// LogsDir résolu par logging.LoadConfig (respecte LEVELUP_LOGS_DIR) — pas
 	// PathResolver : les logs ne vivent pas sous data/.

@@ -466,6 +466,22 @@ en = "Cleared"
 fr = "Détectés"
 en = "Detected"
 
+[admin.dq.run_ugc_drain]
+fr = "Drain UGC (réseau)"
+en = "UGC drain (network)"
+
+[admin.dq.run_ugc_drain_busy]
+fr = "Drain en cours…"
+en = "Draining…"
+
+[admin.dq.run_ugc_drain_confirm]
+fr = "Résoudre les assets manquants via l'API DiscoveryUGC ? Appels réseau réels (rate-limités à 60/min, peut durer plusieurs minutes) avec les tokens d'un joueur authentifié. Job asynchrone."
+en = "Resolve missing assets via the DiscoveryUGC API? Real network calls (rate-limited to 60/min, may take several minutes) using an authenticated player's tokens. Asynchronous job."
+
+[admin.dq.ugc_drain_done]
+fr = "Drain UGC terminé"
+en = "UGC drain complete"
+
 [admin.dq.modes_section]
 fr = "Modes sans traduction FR"
 en = "Modes without FR translation"
