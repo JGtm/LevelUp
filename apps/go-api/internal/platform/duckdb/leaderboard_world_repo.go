@@ -91,9 +91,63 @@ func (r *LeaderboardRepo) GetCSRWorldLeaderboard(
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	// Enrichissement best-effort (Phase B) : stats joueur + delta rang, sur la même
+	// connexion shared. Données absentes (avant backfill Phase D) → entrées inchangées.
+	r.enrichWorldEntries(ctx, sharedDB, out, season, playlist)
 	slog.DebugContext(ctx, "classement CSR mondial lu", "module", logModuleLeaderboard,
 		"season", season, "playlist", playlist, "entries", len(out))
 	return out, nil
+}
+
+// enrichWorldEntries fusionne les stats par joueur (queryWorldPlayerStats) + le
+// delta de rang inter-saison dans les entrées du classement. Best-effort : toute
+// erreur d'enrichissement est loguée et n'invalide pas le classement de base.
+func (r *LeaderboardRepo) enrichWorldEntries(ctx context.Context, db *sql.DB, entries []domain.LeaderboardEntry, season, playlist string) {
+	if len(entries) == 0 {
+		return
+	}
+	enriched, err := queryWorldPlayerStats(ctx, db, season, playlist)
+	if err != nil {
+		slog.WarnContext(ctx, "enrichissement classement mondial échoué (non bloquant)",
+			"module", logModuleLeaderboard, "season", season, "playlist", playlist, "err", err)
+		return
+	}
+	byGT := make(map[string]domain.WorldPlayerSeasonStats, len(enriched))
+	for _, s := range enriched {
+		byGT[strings.ToLower(s.Gamertag)] = s
+	}
+	prevRanks, err := loadPrevSeasonRanks(ctx, db, playlist, season)
+	if err != nil {
+		slog.WarnContext(ctx, "delta rang classement mondial échoué (non bloquant)",
+			"module", logModuleLeaderboard, "season", season, "playlist", playlist, "err", err)
+		prevRanks = nil
+	}
+	for i := range entries {
+		key := strings.ToLower(entries[i].Gamertag)
+		if s, ok := byGT[key]; ok {
+			applyWorldEnrichment(&entries[i], s)
+		}
+		if pr, ok := prevRanks[key]; ok {
+			d := pr - entries[i].Rank // positif = a grimpé (rang plus petit = meilleur)
+			entries[i].RankDelta = &d
+		}
+	}
+}
+
+// applyWorldEnrichment recopie compteurs bruts + ratios dérivés + indicateur
+// inter-saison d'un WorldPlayerSeasonStats dans une LeaderboardEntry (pointeurs
+// frais → chaque entrée a ses propres pointeurs).
+func applyWorldEnrichment(e *domain.LeaderboardEntry, s domain.WorldPlayerSeasonStats) {
+	mc, wc, lc, tc, dc := s.MatchCount, s.WinCount, s.LossCount, s.TieCount, s.DnfCount
+	k, d, a, pt, md := s.Kills, s.Deaths, s.Assists, s.PlaytimeSec, s.MedalCount
+	e.MatchCount, e.WinCount, e.LossCount, e.TieCount, e.DnfCount = &mc, &wc, &lc, &tc, &dc
+	e.Kills, e.Deaths, e.Assists, e.PlaytimeSec, e.MedalCount = &k, &d, &a, &pt, &md
+	// Valeurs natives brutes (sommées) — pointeurs frais.
+	kda, acc, dd, dt := s.KDA, s.Accuracy, s.DamageDealt, s.DamageTaken
+	e.KDA, e.Accuracy, e.DamageDealt, e.DamageTaken = &kda, &acc, &dd, &dt
+	e.WinRate, e.KillsPerMin = s.WinRate, s.KillsPerMin
+	e.PrevSeasonID, e.PrevWinRate, e.PrevKDA = s.PrevSeasonID, s.PrevWinRate, s.PrevKDA
+	e.KDATrend, e.WinRateTrend = s.KDATrend, s.WinRateTrend
 }
 
 // GetWorldLeaderboardCatalog liste les saisons et playlists pour lesquelles des
@@ -118,15 +172,92 @@ func (r *LeaderboardRepo) GetWorldLeaderboardCatalog(ctx context.Context) (domai
 	if err != nil {
 		return domain.LeaderboardCatalog{}, fmt.Errorf("GetWorldLeaderboardCatalog: seasons: %w", err)
 	}
-	playlists, err := scanCatalogColumn(ctx, sharedDB,
+	plIDs, err := scanIDColumn(ctx, sharedDB,
 		`SELECT DISTINCT playlist_id FROM world_csr_leaderboard_latest
-		 WHERE playlist_id <> '' ORDER BY playlist_id`, playlistDisplayName)
+		 WHERE playlist_id <> '' ORDER BY playlist_id`)
 	if err != nil {
 		return domain.LeaderboardCatalog{}, fmt.Errorf("GetWorldLeaderboardCatalog: playlists: %w", err)
 	}
+	// Phase F : noms via le catalogue metadata mutualisé. Cascade :
+	// asset_translations[fr] (officiel) > rankedplaylists FR (curé) >
+	// playlists_catalog.name_canonical (EN) > rankedplaylists EN > id brut.
+	frMap, canonMap := r.resolvePlaylistNamesFromCatalog(ctx, plIDs)
+	playlists := make([]domain.LeaderboardCatalogRef, 0, len(plIDs))
+	for _, id := range plIDs {
+		playlists = append(playlists, domain.LeaderboardCatalogRef{
+			ID: id, DisplayName: playlistName(id, frMap[id], canonMap[id]),
+		})
+	}
 	slog.DebugContext(ctx, "catalogue classement mondial lu", "module", logModuleLeaderboard,
-		"seasons", len(seasons), "playlists", len(playlists))
+		"seasons", len(seasons), "playlists", len(playlists), "noms_fr_catalogue", len(frMap))
 	return domain.LeaderboardCatalog{Seasons: seasons, Playlists: playlists}, nil
+}
+
+// playlistName applique la cascade de résolution d'un nom de playlist.
+func playlistName(id, frOfficial, canonical string) string {
+	if frOfficial != "" {
+		return frOfficial
+	}
+	if pl, ok := rankedplaylists.Lookup(id); ok && pl.NameFR != "" {
+		return pl.NameFR
+	}
+	if canonical != "" {
+		return canonical
+	}
+	return playlistDisplayName(id) // rankedplaylists EN > id brut
+}
+
+// scanIDColumn lit une colonne d'IDs (une seule colonne string) en slice ordonné.
+func scanIDColumn(ctx context.Context, db *sql.DB, q string) ([]string, error) {
+	rows, err := db.QueryContext(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
+// resolvePlaylistNamesFromCatalog lit le catalogue metadata MUTUALISÉ et retourne
+// deux maps : frMap (asset_translations[fr], noms officiels localisés) et canonMap
+// (playlists_catalog.name_canonical, EN brut). Vides si metadata indisponible (le
+// caller retombe sur rankedplaylists). Ne touche jamais la shared DB.
+func (r *LeaderboardRepo) resolvePlaylistNamesFromCatalog(ctx context.Context, ids []string) (frMap, canonMap map[string]string) {
+	frMap, canonMap = map[string]string{}, map[string]string{}
+	if len(ids) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return frMap, canonMap
+	}
+	meta := r.pdb.Metadata
+	scan := func(q string, args []any, dst map[string]string) {
+		rows, err := meta.QueryRecovered(ctx, q, args...)
+		if err != nil {
+			return
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var id, name string
+			if rows.Scan(&id, &name) == nil && strings.TrimSpace(name) != "" {
+				dst[id] = name
+			}
+		}
+	}
+	scan(fmt.Sprintf(
+		`SELECT playlist_asset_id, COALESCE(name_canonical, '') FROM playlists_catalog
+		 WHERE title_slug = ? AND playlist_asset_id IN (%s)`, Placeholders(len(ids))),
+		append([]any{defaultLeaderboardTitleSlug}, ToAnySlice(ids)...), canonMap)
+	scan(fmt.Sprintf(
+		`SELECT asset_id, name FROM asset_translations
+		 WHERE asset_type = 'playlist' AND lang = 'fr' AND asset_id IN (%s)
+		   AND name IS NOT NULL AND TRIM(name) <> ''`, Placeholders(len(ids))),
+		ToAnySlice(ids), frMap)
+	return frMap, canonMap
 }
 
 // scanCatalogColumn lit une colonne d'IDs et construit des refs. displayFn

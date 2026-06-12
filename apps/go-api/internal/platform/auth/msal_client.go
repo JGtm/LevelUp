@@ -28,6 +28,12 @@ const (
 	// LevelUpClientID est le client_id de l'app Azure "LevelUp Halo".
 	LevelUpClientID = "e1cb35ab-c41a-4ee5-a7a1-22ea4e94cdca" // pragma: allowlist secret
 
+	// HaloToolsClientID est l'app Azure PUBLIQUE "halo-tools" partagée avec les
+	// watchers du parc (client par défaut de cmd/token-capture, cf. defaultClientID).
+	// Étant publique, un refresh/échange OAuth NE DOIT PAS lui envoyer de client_secret
+	// (Azure rejette : AADSTS90023 "Public clients can't send a client secret").
+	HaloToolsClientID = "39829f7a-5262-4d22-a387-795c488f7102" // pragma: allowlist secret
+
 	// MSALAuthority pour les comptes personnels Microsoft (Xbox Live).
 	MSALAuthority = "https://login.microsoftonline.com/consumers"
 )

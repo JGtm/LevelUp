@@ -126,6 +126,200 @@
 **Aggravants** : (1) hystérésis `SmoothDisplayedOrdinal` bride la descente à 1 sp/match → fige encore le palier affiché ; (2) σ convergé → micro-mouvement de μ/match → sous-palier quasi immobile ; (3) delta par `playlist_group` ; (4) cas Onyx = aucune granularité au sommet, delta structurellement 0 à vie.
 
 **Reco (non implémentée, à valider)** : dissocier le « delta de skill du match » du franchissement de sous-palier. Soit calculer le delta sur μ continu (Δμ remappé sur 1000-2000), soit interpoler la position de μ DANS le sous-palier (rating_value continu) — au prix de la cohérence « rating_value = palier lissé ». Le front connaît déjà la grille à largeur variable (`skillTiers.ts`, cf. entrée barre de progression du 2026-06-09).
+## [2026-06-12] Noms FR des 7 playlists classées manquantes — rempli rankedplaylists.go — Résolu
+
+**Statut** : Résolu. Build + vet + tests (cascade Phase F, rankedplaylists) verts.
+
+**Demande** : 7 des 16 playlists classées s'affichaient en EN sur le leaderboard (catalogue 16 ranked, 9 FR seulement). L'utilisateur veut que ce soit réglé définitivement, pas via des sondes API à répétition.
+
+**Égarement à ne pas refaire** : j'ai perdu du temps à recréer des sondes throwaway réimplémentant la résolution de token + l'appel gamecms `FetchAsset` à la main → 401 puis 403 (sur maps ET playlists : pas spécifique au type, c'est mon montage qui n'a pas la clearance/flight de l'outil testé). Le CLI testé `populate-assets` fait ça correctement mais ne pouvait tourner (il lit la shared DB que le backfill tient en RW). Cf. [[feedback_use_tested_clis_no_throwaway_probes]].
+
+**Fix retenu (déterministe, source unique compilée)** : remplir les 7 `NameFR` dans `rankedplaylists.go` (même source que les 9 qui marchaient). **Phase F lit `rankedplaylists.Lookup(id).NameFR` directement à la requête** (cascade tier 2, après `asset_translations[fr]`), donc rebuild = le leaderboard affiche le FR. Pas de DB, pas de migration, pas d'API. Bonus : un fresh DB reçoit les 16 via `seedRankedPlaylistFR`, et `ReconcileMetadataSeeds` (chaque boot) empêche toute dérive future. Traductions style « <x> classé(e)(s) » : Duel classé, Extraction classée, Bataille d'escouade classée, Survivants classés, Qualifications HaloWC (Chacun pour soi), Tactique classé (ancien), Snipers classés (ancien).
+
+**Prochaine étape** : rebuild + restart serveur (ou prochain deploy) → les 7 FR apparaissent. L'utilisateur peut ajuster un libellé en 1 ligne s'il préfère.
+
+---
+
+## [2026-06-12] CORRECTION — parc d'auth MIXTE : try-retry secret (remplace IsPublicAzureClient) — Résolu
+
+**Statut** : Résolu + vérifié. Sonde : 9/9 comptes résolus. Build module + tests auth verts.
+
+**Ce qui clochait dans l'entrée précédente** : le parc est MIXTE, pas « tous publics ». 4 comptes principaux (JGtm, Madina97294, Chocoboflor, XxDaemonGamerxX) sont sur une app **CONFIDENTIELLE** (EXIGE le secret, AADSTS70002 sans) ; 5 récents (token-capture, halo-tools 39829f7a) sont **PUBLICS** (REJETTENT le secret, AADSTS90023). Mes 2 « fix » précédents étaient faux et **inversaient juste le groupe cassé** : (a) commenter le secret dans `.env.local` → 5 publics OK mais 4 principaux cassés (régression serveur) ; (b) `IsPublicAzureClient` (allowlist 39829f7a) → idem, le client_id global 39829f7a empêchait d'envoyer le secret aux comptes confidentiels.
+
+**Découverte clé** : `main` (feat/admin-monitoring-dashboard) avait **déjà** la bonne solution — `postTokenExchange` + retry sur `OAuthExchangeError.IsSecretRejected()` (AADSTS90023). Mon worktree avait divergé (version plus ancienne) et c'est lui que le backfill buildait.
+
+**Fix appliqué (worktree, aligné sur main)** : `oauth_refresh.go` essaie 1re tentative AVEC secret (si défini ET `clientID != LevelUpClientID`), retry UNE fois SANS si AADSTS90023 (détection par chaîne, le worktree n'a pas le type `OAuthExchangeError`). `postTokenExchange` extrait. `IsPublicAzureClient` + son test supprimés ; `auth_code.go` revenu à l'original ; `HaloToolsClientID` gardé (dedup token-capture). `.env.local` : secret **restauré** (commenté → actif), commentaire mis à jour. Cf. [[reference_env_local_secret_public_client_aadsts90023]].
+
+**Leçon** : vérifier l'état de `main` avant de « réparer » un fichier core dans un worktree divergent — la solution canonique peut déjà exister. Au merge, prendre la version de main (type d'erreur + métrique).
+
+**Prochaine étape** : rebuild le CLI backfill + relancer → les 9 tokens round-robinent.
+
+---
+
+## [2026-06-12] Backfill mondial — 5/9 tokens skippés : AADSTS90023 (secret envoyé à client public) — Résolu
+
+**Statut** : Résolu. Fix config (.env.local) + fix code (IsPublicAzureClient) + patch diagnostic. Build module OK, tous les tests auth verts, 5 comptes re-validés via sonde.
+
+**Symptôme** : `backfill-world -all-tokens` ne résout que 4/9 comptes ([JGtm, Madina97294, Chocoboflor, XxDaemonGamerxX]) alors que les 9 ont un RT valide dans watcher_tokens. Les 5 ajoutés via cmd/token-capture (DankerGlue/GeleJugefi/Trimbutton/QuiteSiren/UppedJoker) skippés « aucun access_token frais ».
+
+**Root cause** (sonde jetable reproduisant resolveAccessToken) : `AADSTS90023: Public clients can't send a client secret`. `.env.local` définit `SPNKR_AZURE_CLIENT_ID=39829f7a` (halo-tools, PUBLIQUE) ET un `SPNKR_AZURE_CLIENT_SECRET`. `oauth_refresh.go:106` + `auth_code.go:66` envoyaient le secret dès que `clientID != LevelUpClientID` — donc à halo-tools (public) → Azure rejette. Les 4 comptes établis esquivent via leur MSAL cache player-DB (silent refresh, sans secret) ; les 5 nouveaux n'ont que le RT → bloqués. Cf. [[reference_env_local_secret_public_client_aadsts90023]].
+
+**Fix config (immédiat, .env.local non versionné)** : `SPNKR_AZURE_CLIENT_SECRET` commenté (garde `SPNKR_AZURE_CLIENT_ID=39829f7a` — les RT y sont liés). Sonde post-fix : 5/5 résolus.
+
+**Fix code (vraie dette défensive)** : `auth.HaloToolsClientID` + `auth.IsPublicAzureClient(clientID)` (source unique). Les 2 sites d'envoi du secret utilisent `!IsPublicAzureClient(clientID)` au lieu de `clientID != LevelUpClientID` → un client public connu ne reçoit jamais de secret, un client tiers (confidentiel présumé) le reçoit toujours. `cmd/token-capture` dé-dupliqué sur la constante. Test `TestIsPublicAzureClient`.
+
+**Diagnostic** : `resolveAccessToken` (worldenrich) avalait l'erreur OAuth → générique « aucun access_token frais ». Patché pour `%w` la dernière erreur sous-jacente — c'est ce qui a révélé le AADSTS90023.
+
+**Note débit** : Halo limite ~par IP → 9 tokens vs 4 = résilience + répartition quotas par-token, pas un gain ×N de vitesse depuis une machine.
+
+---
+
+## [2026-06-11] Leaderboard mondial — Phases F (catalogue) + C (wiring cron gaté) + E (polish) — Livré
+
+**Statut** : Complété sur feat/world-leaderboard-enriched. 4 commits thématiques (F `b1bee0145`, C `33919ff7b`, E `131fc2da4`, + ce doc). Build module complet OK, vet OK, tests world (service+duckdb) + 9/9 vitest verts.
+
+**Phase F — noms playlists mutualisés via catalogue** : `GetWorldLeaderboardCatalog` ne code plus les libellés en dur. Cascade `playlistName(id, frOfficial, canonical)` = `asset_translations[fr]` (officiel) > `rankedplaylists` FR (curé) > `playlists_catalog.name_canonical` (EN) > rankedplaylists EN > id brut. `resolvePlaylistNamesFromCatalog` lit `metadata.duckdb` (`r.pdb.Metadata`, RO), **nil-safe** : retombe sur rankedplaylists si le catalogue est absent — ne touche jamais la shared DB. Front : `playlistOptions` préfère `display_name` (cascade backend) au `KNOWN_*` hardcodé. Test `TestPlaylistName_Cascade` (4 cas). NB : pour les nouvelles playlists, peupler via `populate-playlists-catalog --from-match-registry`. La part "GetPlaylist live (poids map/mode)" reste un suivi optionnel séparé.
+
+**Phase C — wiring boot cron (gaté)** : décision clé = **extraire la glue auth du CLI dans `internal/worldenrich`** (package partagé) plutôt que dupliquer dans `cmd/server`. UNE implémentation de la résolution token store-first (ADR 0023) réutilisée par le CLI ET le serveur (zéro divergence). Ajout du param `eager` : CLI fail-fast (probe au build), serveur **lazy** (zéro I/O token au boot). `BuildEnricher` compose source + résolveur PeopleHub + `RankedPlaylistSet`. `cmd/server` : `worldLbCron.WithStatsEnricher(enr)` **gaté par `LEVELUP_WORLD_ENRICH`** (OFF par défaut → scrape-only, prod inchangé ; activation délibérée après validation backfill). Header PeopleHub via `LEVELUP_WORLD_ENRICH_TOKEN` (sinon 1er compte db_profiles). Le CLI bascule sur le package partagé (logique identique relocalisée → toujours fonctionnel, build OK).
+
+**Phase E — polish front** : (1) masquage colonnes mobile via `COL_HIDE_SM`/`COL_HIDE_LG` (mêmes classes en-tête+cellules → alignement) : la table 10 colonnes ne déborde plus ; (2) accent podium top-3 = rang gras + couleur pleine (tokens `foreground`/`muted` existants, **pas de nouvelle couleur** ni `PodiumRow` séparé — choix éditorial flat aligné sur la pref data-viz) ; (3) tooltips "vs saison précédente" sur tendances (victoires/KDA) + Δrang, clés i18n `trend_tooltip`/`rank_delta_tooltip` FR+EN régénérées.
+
+**Décision de prudence** : Phase C prod-affectante → livrée GATÉE (flag OFF par défaut) + build lazy, pour câbler sans changer le comportement prod tant que l'utilisateur ne valide pas. Ce n'est pas un offload : le défaut est tranché (OFF), un seul flag à poser documenté.
+
+**Prochaine étape** : pousser la branche ; l'utilisateur lance le backfill (off-peak, serveur stoppé) puis active `LEVELUP_WORLD_ENRICH=1` en prod après contrôle des données réelles.
+
+---
+
+## [2026-06-11] Leaderboard mondial — 4 stats natives + dédup match-centric + ranked-only — Livré
+
+**Statut** : Livré sur feat/world-leaderboard-enriched. Tests verts (analysis, service dont concurrents -race, integration duckdb), build module OK ; non committé.
+
+**4 stats natives brutes (demande user, SANS calcul à l'agrégation)** : `kda`, `accuracy`, `damage_dealt`, `damage_taken` extraites telles quelles de CoreStats (KDA/Accuracy/DamageDealt/DamageTaken natifs Halo) et SOMMÉES (comme kills/deaths). 4 colonnes table + insert + read + API `LeaderboardEntry` (pointeurs) + types TS. Affichage front : KDA/précision en MOYENNE (÷ match_count, au front), dégâts en **Rendement/Résistance** via `CombatYieldDisplay` (composant exact des tuiles de match : oc=225/dmgPerKill, dr=damage_taken/(225×deaths)). On a bien les 4 valeurs séparées kda+kills+deaths+assists. CSR par match écarté (trop lourd en BDD, décision user : on reste agrégé par saison).
+
+**Dédup match-centric (insight user : 1 match ranked = jusqu'à 8 tops qui s'affrontent)** : l'agrégateur tient un cache de matchs partagé (`mu`+`cache`+`singleflight` pour dédup STRICT concurrent) + l'ensemble `worldXuids` (résolus en amont via `PrepareWorldPlayers`). `getMatch` fetche 1× par matchID et `ExtractWorldPlayersFromMatch` extrait TOUS les joueurs mondiaux présents → 1 GetMatchStats traite jusqu'à 8 cibles. Set `seen` intra-joueur tue le double-comptage par overlap de pagination (trou identifié). Checkpoint par joueur du CLI préservé. **Bénéficie au CLI ET au cron** (même agrégateur via `Run`).
+
+**Ranked-only (concern user : on stockait du social)** : `RankedPlaylists` (config) = `rankedplaylists.Active()`. `collectPlayerMatches` n'accumule que les matchs en playlist classée (l'historique matchmaking mêle classé+social ; le 1er run de validation contenait bien des playlists sociales). Câblé dans le CLI + l'enricher (cron toujours ranked-only). NB : ne réduit pas les fetchs (la playlist n'est connue qu'après GetMatchStats) mais élimine les lignes sociales.
+
+**Trous traités** : double-comptage overlap pagination → set `seen` ; matchs déjà en BDD → non réutilisés mais sans risque (joueurs hors de notre catégorie, confirmé user).
+
+**Prochaine étape** : valider le run réel (ranked-only + dédup) puis commit (gros lot non committé : refactor auth + Phase D/E + 4 stats + dédup + ranked).
+
+---
+
+## [2026-06-10] Leaderboard mondial enrichi — Phase E (frontend MVP) + durcissement Phase D — Livré
+
+**Statut** : Livré sur feat/world-leaderboard-enriched. typecheck + lint + 9/9 vitest verts ; suite Go complète verte ; non committé (en attente autorisation).
+
+**Phase E (frontend MVP)** :
+- `types.ts` : `LeaderboardEntry` + 19 champs d'enrichissement optionnels (alignés sur les json tags backend).
+- `common.toml` (+ regen `generated/common.ts` via `scripts/build_i18n_manifests.mjs`) : `col_win_rate`/`col_kda`/`col_rank_delta` FR+EN.
+- `LeaderboardBlock.tsx` : colonnes Parties/Victoires(%)+trend/KDA+trend/Δrang sur la branche CSR mondial, **conditionnées à `hasEnrichment`** (table historique inchangée tant que pas de backfill). Tendances `--narrative-trend-*` (pattern KPIStrip), Δrang `tokenCssVar(skillDeltaScale())` — zéro hex (règle 20). Tri client étendu.
+- `LeaderboardBlock.test.tsx` +2 cas (masquage sans enrichissement / valeurs avec).
+
+**Durcissement Phase D (suite au 1er dry-run réel de l'utilisateur)** :
+- Cause racine 429 : `doPublic` (pooled client) déclenche le cooldown du pool sur 429 mais **ne retente pas** → un 429 faisait perdre tout le joueur. Ajout d'un **retry backoff** (2s/5s/12s) sur transitoires (429/5xx/réseau) dans l'agrégateur (`withRetry`/`isTransientErr`) — bénéficie aussi au cron. Tests : récupération après 429 + abandon après épuisement + classification.
+- Halo limite **~par IP** → multi-tokens n'accélère pas le débit depuis une machine. Défauts CLI abaissés (`-concurrency 4`, `-rps 3`), `-rps` documenté comme par-token.
+- Fiabilisations : chemins shared DB + checkpoint dérivés de `RepoRoot` (worktree n'a pas les données — gitignored) ; `buildPool` via `NewDiscoveryWithStores` (lit watcher_tokens canonique ADR 0023, sinon 0 token) ; dry-run compte les lignes simulées ; compteur "déjà faits" correct avec `-limit`.
+
+**Env dev** : worktree sans `node_modules`/données runtime (gitignored) → jonction `node_modules` worktree→repo principal (package.json identique) + `LEVELUP_REPO_ROOT` pointant le repo principal pour le CLI.
+
+**Décisions** : Phase E en MVP colonnes (podium/composants riches reportés post-backfill, sur données réelles) ; retry au niveau agrégateur (pas pooled client, qui laisse volontairement la policy au caller).
+
+**Prochaine étape** : commit (Phase D durcissement + Phase E), puis Phase F (enrichissement catalogue playlists via GetPlaylist — OBLIGATOIRE) une fois le backfill utilisateur terminé.
+
+---
+
+## [2026-06-10] Leaderboard mondial enrichi — Phase D (CLI backfill multi-tokens) — Livré
+
+**Statut** : Livré sur feat/world-leaderboard-enriched. `cmd/backfill-world-player-stats` build + vet OK, aide affichée. Lancé manuellement par l'utilisateur (contrôle off-peak).
+
+**Livré** :
+- CLI `//go:build cgo` reprenant + idempotent + MULTI-TOKENS. Pool construit comme `cmd/levelup/cmd_sync` (Discovery + Resolver + NewPool) → `NewPooledHaloClient` round-robin pour le fetch ; résolution xuid PeopleHub via UN compte (`-token-gamertag`, header RTA mémoïsé via `CachedHeaderProvider`, both-shapes single-refresh comme le probe).
+- Pilotage `AggregatePlayer` par joueur dans un pool de workers (`-concurrency`) → granularité checkpoint/progression (pas `Run` all-or-nothing).
+- **Arrêt** : `signal.NotifyContext` (Ctrl-C) annule le ctx → flush du lot + checkpoint avant sortie. **Reprise** : relancer la même commande (skip gamertags faits + saisons complètes). **Progression** : ligne `\r` `[saison] done/total · lignes · err · elapsed`.
+- Checkpoint JSON atomique (tmp+rename), un fichier global (`-checkpoint`), structure `{seasons: {id: {done:[], completed}}}`.
+
+**Décisions** :
+- `StopAfterNonTarget=-1` (désactivé) pour le backfill → scan jusqu'à `-max-pages` (sinon l'arrêt anticipé stoppe sur les matchs récents avant d'atteindre une vieille saison cible). Ajout de la sémantique « négatif = désactivé » à l'agrégateur (+ garde `>0` dans collectPlayerMatches).
+- Flush par lots (`-flush-every`, défaut 20) → INSERT + checkpoint périodiques (compromis débit/granularité de reprise).
+- `-token-gamertag` résolu en xuid via db_profiles.json.
+
+**Limite connue** : `medal_count` non extrait (reste 0) — `AccumulateWorldStats` somme match/win/k/d/a/playtime ; médailles = suivi ultérieur (chemin CoreStats/Medals à confirmer).
+
+**Prochaine étape** : utilisateur lance le backfill (off-peak). Ensuite Phase E (frontend : exposer les champs enrichis + UI) puis Phase F (enrichissement catalogue via GetPlaylist — obligatoire). Le wiring boot cron (Phase C, prod-affectant) reste optionnel/différé.
+
+---
+
+## [2026-06-10] Leaderboard mondial enrichi — Phase C (enricher + cron + header provider) — Quasi-complet
+
+**Statut** : Tous les blocs testables livrés ; reste uniquement le wiring boot cmd/server (prod-affectant, activation délibérée). 11 tests verts, module complet build OK.
+
+**Livré (suite du cœur)** :
+- `service/world_stats_enricher.go` (+ test) — `EnrichSeason(ctx, season, gamertags)` construit un agrégateur ciblé sur la saison (TargetSeasons normalisé) à chaque cycle. Interfaces `WorldMatchSource`/`WorldXUIDResolver` exportées.
+- `auth/cached_header_provider.go` (+ test) — `CachedHeaderProvider` mémoïse le header RTA (rebuild après TTL, thread-safe) ; `Header` = headerFn du résolveur. Isole la partie délicate (refresh) du wiring boot.
+- `duckdb.WorldSeasonGamertags(ctx, db, season)` — gamertags distincts d'une saison (union playlists).
+- `scheduler/world_leaderboard_cron.go` — `WithStatsEnricher` (optionnel, nil-safe) + phase `enrich()` après le snapshot CSR (lecture gamertags RO → EnrichSeason → InsertPlayerSeasonStats en fenêtre RW minimale). Cron existant non régressé (test scheduler vert).
+
+**Décision** : NE PAS câbler le boot cmd/server dans ce commit — ça active une nouvelle charge API Halo dans le cron prod (1×/jour) → nécessite validation live + accord explicite (règle prod-affectant). Le header provider + le résolveur isolent le risque ; le wiring restant = un `accessTokenFn` (logique both-shapes du probe) + 4 lignes de composition (recette dans le plan).
+
+**Prochaine étape** : soit câbler le boot (sur accord, avec validation live), soit Phase D (backfill CLI throttlé) qui réutilise exactement enricher/résolveur/header provider hors cron.
+
+---
+
+## [2026-06-10] Leaderboard mondial enrichi — Phase C (agrégateur multi-tokens) — Cœur livré
+
+**Statut** : Cœur livré sur feat/world-leaderboard-enriched (wiring runtime restant). Build module complet OK, 8 tests verts.
+
+**Livré** :
+- `internal/analysis/world_stats.go` (+ test) — extraction + accumulation PURE (0 API/0 DB) : `NormalizeSeasonID` (`"Csr/Seasons/CsrSeason13-2.json"` → `"csrseason13-2"`, indispensable car `MatchInfo.SeasonId` est un chemin ≠ id court des snapshots), `ExtractPlayerMatchStat` (chemins Phase A), `AccumulateWorldStats` (bucket par (saison, playlist)).
+- `internal/service/world_player_stats_aggregator.go` (+ test) — orchestrateur **MULTI-TOKENS** : surface `worldMatchSource` satisfaite par `*syncpkg.PooledHaloClient` (assertion compile-time) dont `GetMatchHistory/GetMatchStats` utilisent **`PolicyAnyPublic` (round-robin tous tokens)** → parallélisme natif (directive user). Fan-out par joueur borné par `Concurrency` (errgroup), best-effort. Fenêtre saison via `TargetSeasons` + `StopAfterNonTarget` + `MaxPages` (pas par dates, calendrier vide).
+- `internal/platform/auth/peoplehub_resolver.go` (+ test httptest) — `PeopleHubResolver.ResolveXUID` (extrait du probe), satisfait `worldXUIDResolver`, `headerFn` injecté (le caller mémoïse le header RTA).
+
+**Décisions** : multi-tokens = réutiliser le `PooledHaloClient` existant (PolicyAnyPublic) plutôt qu'un client custom ; séparer résolution xuid (single-token RTA, bas volume) du fetch matchs (pool, gros volume) ; cœur d'agrégation pur et testable sans réseau.
+
+**Prochaine étape (reste Phase C)** : wiring runtime — `headerFn` réel (1 access_token → `AcquireXSTSForRTA`, mémoïsé) ; construire le `PooledHaloClient` depuis le pool de tokens ; persistance `InsertPlayerSeasonStats` (fenêtre RW minimale) ; cron `world_leaderboard_cron.go` étendu (saison courante, delta). Puis D (backfill throttlé), E (front), F (catalogue — obligatoire).
+
+---
+
+## [2026-06-10] Leaderboard mondial enrichi — Phase B (backend migration/types/repo) — Complété
+
+**Statut** : Complété sur feat/world-leaderboard-enriched.
+- Migration append-only `world_player_season_stats` (+ vue `_latest`, pattern anti-ART) ajoutée à canonicalOrder (+ fix d'un trou pré-existant : `world_csr_leaderboard_latest_by_batch` manquait → order_test rouge).
+- Types `domain.WorldPlayerSeasonStats` + extension `LeaderboardEntry` (enrichissement en pointeurs, nil = non enrichi).
+- Repo `world_player_stats_repo.go` : `InsertPlayerSeasonStats` (INSERT pur en tx), `GetWorldPlayerSeasonStats` (ratios dérivés + indicateur inter-saison via `LAG`), `loadPrevSeasonRanks`.
+- `GetCSRWorldLeaderboard` étendu : merge stats par gamertag (case-insensitive) + `RankDelta` (rang N vs N-1), best-effort (entrées inchangées tant que pas de données backfill).
+- Tests :memory: integration verts : LAG saute une saison manquante + isolation par playlist + joueur sans historique → nil ; merge + RankDelta=+3.
+
+**Décisions** : attribution par `SeasonId` (pas dates, `csr_season_calendars` vide) ; append-only (pas UPSERT) ; ratios dérivés à la lecture ; enrichissement best-effort.
+
+**Prochaine étape** : Phase C (agrégateur + cron enrichi appelant le pipeline validé Phase A + `InsertPlayerSeasonStats`), puis D (backfill throttlé), E (front), F (catalogue — obligatoire).
+
+---
+
+## [2026-06-10] Leaderboard mondial enrichi — Phase A (probe E2E) validée — Complété
+
+**Statut** : Complété. Phase A du plan PLAN_WORLD_LEADERBOARD_ENRICHED.md validée par un probe E2E (`cmd/probe-world-stats`, diagnostic, zéro INSERT) sur `feat/world-leaderboard-enriched` (worktree depuis `feat/leaderboard-csr-followup` qui a l'infra ; `main` ne l'a pas — vérifié). Token-bearer JGtm (RT brut).
+
+**Validé** :
+- Résolution xuid mondiale : 100% via PeopleHub. Auth = `AcquireXSTSForRTA` (XSTS audience http://xboxlive.com) -> header XBL3.0 direct. Zéro nouveau code auth.
+- Extraction stats (confirmée en exécution sur données réelles) : `Players[]` ciblé par `PlayerId == "xuid(N)"` ; `Outcome` numérique (2=W/3=L/1=T) ; `PlayerTeamStats[0].Stats.CoreStats` (Kills/Deaths/Assists/PersonalScore) ; `ParticipationInfo.TimePlayed` durée ISO-8601.
+- Bucketing par playlist : `Playlist.AssetId` mappé au catalogue `rankedplaylists.go` (Arena/Slayer/Legacy/Tactical). Le "mismatch" initial = fausse alerte (probe v1 sans filtre + échantillon Arena).
+- Dimension saison : pagination `GetMatchHistory` remonte jusqu'au lancement (2021-11-15, 4870 matchs/joueur) ; attribution via `MatchInfo.SeasonId`.
+- Timing : ~0.9 s/`GetMatchStats`.
+
+**Findings (actés dans le plan)** :
+- Attribuer la saison par `MatchInfo.SeasonId` (PAS par dates : `csr_season_calendars` vide en dev) ; fiable sur récents (`Csr/Seasons/CsrSeasonX-Y`), douteux sur vieux (match 2021 = `Seasons/Season6.json`).
+- Auth single-token OBLIGATOIRE : ne pas enchaîner deux refresh (double rotation RT -> churn). Un seul access_token (MSAL silent OU ExchangeRefreshTokenWithRotation selon la forme du token), dériver XSTS RTA + Halo, persister le RT tourné. Critique Phase D.
+- 429 rate-limit en pagination profonde (~start=3775) -> throttle au backfill.
+- Volume ~5000 matchs/joueur actif pour l'historique complet -> backfill toutes-saisons = semaines off-peak. N'enrichir que les saisons des snapshots (récentes).
+- Efficacité : fetch saison/joueur 1x + bucket par playlist (union des joueurs).
+- Phase F (enrichissement catalogue playlists via GetPlaylist) = obligatoire (décision user).
+
+**Incident** : probe v1/v2 a momentanément churné les tokens JGtm (double refresh) ; mon diagnostic "tokens cassés" était faux (access_token périmé + mauvais chemin MSAL) -> fix both-shapes. Tokens sains.
+
+**Prochaine étape** : Phase B (migration `world_player_season_stats` + types `WorldPlayerSeasonStats` + repo + extension `GetCSRWorldLeaderboard`), attribution par SeasonId, ratios dérivés à la lecture.
+
+---
 
 ## [2026-06-09] Match View : barre de progression rang « tout vert » (base bleue absente) sur LUSR — Complété
 

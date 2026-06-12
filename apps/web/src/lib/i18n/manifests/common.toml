@@ -701,6 +701,34 @@ en = "Matches"
 fr = "Valeur"
 en = "Value"
 
+[common.leaderboard.col_win_rate]
+fr = "Victoires"
+en = "Win rate"
+
+[common.leaderboard.col_kda]
+fr = "KDA"
+en = "KDA"
+
+[common.leaderboard.col_rank_delta]
+fr = "Δ rang"
+en = "Rank Δ"
+
+[common.leaderboard.col_accuracy]
+fr = "Précision"
+en = "Accuracy"
+
+[common.leaderboard.col_combat]
+fr = "Rendement / Résistance"
+en = "Yield / Resistance"
+
+[common.leaderboard.trend_tooltip]
+fr = "Tendance vs saison précédente"
+en = "Trend vs previous season"
+
+[common.leaderboard.rank_delta_tooltip]
+fr = "Évolution du rang vs saison précédente"
+en = "Rank change vs previous season"
+
 [common.leaderboard.local_badge]
 fr = "Local"
 en = "Local"
