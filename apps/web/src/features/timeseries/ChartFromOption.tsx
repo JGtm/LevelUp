@@ -33,6 +33,8 @@ export interface ChartFromOptionProps {
   emptyMessage?: string
   /** ClassName optionnel transmis à la ChartCard. */
   className?: string
+  /** Handlers d'événements ECharts (ex. legendselectchanged) transmis à ChartCard. */
+  onEvents?: Record<string, (params: unknown) => void>
 }
 
 export function ChartFromOption({
@@ -41,6 +43,7 @@ export function ChartFromOption({
   height,
   emptyMessage,
   className,
+  onEvents,
 }: ChartFromOptionProps) {
   return (
     <ChartCard
@@ -50,6 +53,7 @@ export function ChartFromOption({
       emptyMessage={emptyMessage}
       height={height}
       className={className}
+      onEvents={onEvents}
     />
   )
 }

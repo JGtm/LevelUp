@@ -242,7 +242,9 @@ export function SquadPerformanceCharts({
           types={[
             { key: labels.killsLabel, label: labels.killsLabel },
             { key: labels.deathsLabel, label: labels.deathsLabel },
+            { key: 'Bonus', label: 'Bonus' },
           ]}
+          initialHiddenTypes={new Set(['Bonus'])}
           buildOption={buildKillsDeaths}
           height={SUBCHART_HEIGHT}
           emptyMessage={emptyMessage}

@@ -149,11 +149,15 @@ type SquadChallengeRepo interface {
 // ---------- SquadRepo (shared_social.duckdb) ----------
 
 // SquadRepo gère les groupes Prestige.
+//
+// Membres clés par xuid (cf. SquadMember). RemoveMember prend donc un xuid.
+// ListSquadsForUser prend un userID = player_slug : ne remonte que les escouades
+// où le membre est un utilisateur de l'app (squad_member.user_id renseigné).
 type SquadRepo interface {
 	Create(ctx context.Context, s Squad) error
 	Get(ctx context.Context, id string) (Squad, error)
 	AddMember(ctx context.Context, m SquadMember) error
-	RemoveMember(ctx context.Context, squadID, userID string) error
+	RemoveMember(ctx context.Context, squadID, xuid string) error
 	ListMembers(ctx context.Context, squadID string) ([]SquadMember, error)
 	ListSquadsForUser(ctx context.Context, userID string) ([]Squad, error)
 }

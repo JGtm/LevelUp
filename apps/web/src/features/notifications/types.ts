@@ -36,6 +36,7 @@ export type NotificationCategory =
   | 'lusr_tier_approach'     // μ LUSR à moins de 10 pts du prochain sub-tier
   | 'streak_milestone'       // palier de streak atteint (4/8/15/30 j)
   | 'comeback_welcome'       // reprise après pause > 5 j
+  | 'trend_consolidate'      // 2026-06-09 — coach soft-négatif : axe en baisse « à consolider » (neutre)
 
 export const ALL_CATEGORIES: NotificationCategory[] = [
   'app_release',
@@ -65,6 +66,7 @@ export const ALL_CATEGORIES: NotificationCategory[] = [
   'lusr_tier_approach',
   'streak_milestone',
   'comeback_welcome',
+  'trend_consolidate',
 ]
 
 export type NotificationSeverity = 'info' | 'success' | 'warn' | 'error'

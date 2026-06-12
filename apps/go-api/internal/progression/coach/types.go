@@ -37,6 +37,10 @@ const (
 	AlertTypeComebackWelcome AlertType = "comeback_welcome"
 	// AlertTypeLOWESSPositive : composante LUSR en tendance positive sur 14j.
 	AlertTypeLOWESSPositive AlertType = "lowess_positive"
+	// AlertTypeLOWESSSoftNegative : composante LUSR en tendance NÉGATIVE soutenue
+	// sur 14j (slope < LOWESSSoftNegativeThreshold). Signal de stabilisation doux,
+	// non-culpabilisant (« axe à consolider », jamais « tu régresses »).
+	AlertTypeLOWESSSoftNegative AlertType = "lowess_soft_negative"
 	// AlertTypeCampaignProgress : progression Mann-Whitney confirmée (V1).
 	AlertTypeCampaignProgress AlertType = "campaign_progress"
 	// AlertTypeCampaignCloseAuto : axe ciblé sorti du bottom 3 (V1).
@@ -63,7 +67,7 @@ func AllAlertTypes() []AlertType {
 		AlertTypeRecordBroken, AlertTypeRecordNearMiss,
 		AlertTypeMilestoneUnlocked, AlertTypeMilestoneNearMiss,
 		AlertTypeLUSRTierApproach, AlertTypeStreakMilestone,
-		AlertTypeComebackWelcome, AlertTypeLOWESSPositive,
+		AlertTypeComebackWelcome, AlertTypeLOWESSPositive, AlertTypeLOWESSSoftNegative,
 		AlertTypeCampaignProgress, AlertTypeCampaignCloseAuto,
 		AlertPatternStrength, AlertPatternWeakness,
 		AlertPatternBehavior, AlertPatternLever,

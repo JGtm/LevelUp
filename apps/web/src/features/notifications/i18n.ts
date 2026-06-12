@@ -170,6 +170,7 @@ const FR: NotificationsText = {
     lusr_tier_approach: 'Approche d\'un tier LUSR',
     streak_milestone: 'Palier de streak',
     comeback_welcome: 'Bienvenue de retour',
+    trend_consolidate: 'Axe à consolider',
   },
   categoryDescription: {
     app_release: 'Une nouvelle version de LevelUp est disponible.',
@@ -198,6 +199,7 @@ const FR: NotificationsText = {
     lusr_tier_approach: 'Ton rating LUSR approche du prochain sub-tier.',
     streak_milestone: 'Ta streak atteint un palier (multiplicateur PP).',
     comeback_welcome: 'Tu reviens après une pause — bienvenue !',
+    trend_consolidate: 'Une composante de ta performance fléchit sur la durée — une occasion de la renforcer.',
   },
 
   // metricLabel : mapping des clés métriques (envoyées par le backend dans
@@ -247,6 +249,8 @@ const FR: NotificationsText = {
     'notif.personal_record.body': 'Nouveau record sur {metric_label} : {value}.',
     'notif.threshold_crossed.title': 'Palier franchi',
     'notif.threshold_crossed.body': 'Tu as franchi un palier de {metric_label} : {value}.',
+    'notif.trend_consolidate.title': 'Axe à consolider',
+    'notif.trend_consolidate.body': 'Une composante de ta performance baisse depuis quelque temps — l\'occasion de la renforcer.',
     'notif.friend_added.title': '{gamertag} ajouté à tes amis',
     'notif.friend_added.body': 'Les sessions communes seront reclassées en escouade en arrière-plan.',
     'notif.friend_sync_completed.title': 'Sessions amis mises à jour',
@@ -367,6 +371,7 @@ const EN: NotificationsText = {
     lusr_tier_approach: 'LUSR tier approach',
     streak_milestone: 'Streak milestone',
     comeback_welcome: 'Welcome back',
+    trend_consolidate: 'Focus to consolidate',
   },
   categoryDescription: {
     app_release: 'A new LevelUp version is available.',
@@ -395,6 +400,7 @@ const EN: NotificationsText = {
     lusr_tier_approach: 'Your LUSR rating is approaching the next sub-tier.',
     streak_milestone: 'Your streak hit a milestone (PP multiplier).',
     comeback_welcome: 'You are back after a pause — welcome!',
+    trend_consolidate: 'One of your performance areas has been trending down over time — a chance to shore it up.',
   },
 
   metricLabel: {
@@ -439,6 +445,8 @@ const EN: NotificationsText = {
     'notif.personal_record.body': 'New record on {metric_label}: {value}.',
     'notif.threshold_crossed.title': 'Threshold crossed',
     'notif.threshold_crossed.body': 'You crossed a {metric_label} threshold: {value}.',
+    'notif.trend_consolidate.title': 'Focus to consolidate',
+    'notif.trend_consolidate.body': 'One of your performance areas has been dipping lately — a chance to shore it up.',
     'notif.friend_added.title': '{gamertag} added to your friends',
     'notif.friend_added.body': 'Shared sessions will be reclassified as squad in the background.',
     'notif.friend_sync_completed.title': 'Friend sessions updated',

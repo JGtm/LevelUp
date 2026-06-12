@@ -69,6 +69,23 @@ type Service interface {
 	ListSquadChallenges(ctx context.Context, squadID string) ([]SquadChallenge, error)
 	RefreshSquadPool(ctx context.Context, squadID, titleSlug, requestedBy string) ([]Template, error)
 
+	// Escouade — roster (entité Squad / SquadMember, clé xuid). requestedBy =
+	// player_slug de l'acteur, qui doit être membre-user pour muter le roster.
+	CreateSquad(ctx context.Context, req CreateSquadRequest) (Squad, error)
+	ListSquadsForUser(ctx context.Context, userID string) ([]Squad, error)
+	GetSquad(ctx context.Context, id string) (Squad, error)
+	ListSquadMembers(ctx context.Context, squadID string) ([]SquadMember, error)
+	AddSquadMember(ctx context.Context, squadID string, member SquadMember, requestedBy string) error
+	RemoveSquadMember(ctx context.Context, squadID, xuid, requestedBy string) error
+	// EvaluateSquadChallenge recalcule la progression de chaque membre d'un défi
+	// d'escouade (no-overlap + agrégation cumulative) et la persiste. requestedBy
+	// (player_slug) doit être membre-user de l'escouade.
+	EvaluateSquadChallenge(ctx context.Context, squadChallengeID, requestedBy string) ([]SquadParticipantProgress, error)
+	// SquadOrientation retourne l'axe focal de l'escouade (le plus faible du
+	// profil de perf agrégé) — l'orientation à renforcer ; "" si pas de profil
+	// exploitable. requestedBy (player_slug) doit être membre-user.
+	SquadOrientation(ctx context.Context, squadID, requestedBy string) (string, error)
+
 	// Mode pilote (auto-attribution)
 	EnablePilotMode(ctx context.Context, userID, titleSlug string) (PilotModeAttribution, error)
 	DisablePilotMode(ctx context.Context, userID, titleSlug string) error
@@ -110,6 +127,17 @@ type CreateSquadChallengeRequest struct {
 	TargetPerMember float64
 	ExpiresAt       *time.Time
 	CreatedBy       string
+}
+
+// CreateSquadRequest est l'entrée pour créer une escouade.
+//
+// CreatedBy = player_slug du créateur (utilisateur de l'app). Members = roster
+// initial ; le handler y inclut le créateur et résout xuid + user_id(slug) de
+// chaque membre (le package prestige ne connaît pas db_profiles).
+type CreateSquadRequest struct {
+	Name      string
+	CreatedBy string
+	Members   []SquadMember
 }
 
 // ---------- DTOs ----------
@@ -179,7 +207,9 @@ type Deps struct {
 	PresetArcs       PresetArcRepo
 	SquadChallenges  SquadChallengeRepo
 	Squads           SquadRepo
-	BaselineProvider BaselineProvider // fournit les MatchData pour calculer la baseline
+	BaselineProvider BaselineProvider     // fournit les MatchData pour calculer la baseline
+	SquadMatches     SquadMatchProvider   // métriques par match pour l'éval des défis d'escouade
+	SquadProfile     SquadProfileProvider // profil 6-axes agrégé pour le biais coach du pool (optionnel)
 	Now              func() time.Time
 }
 
@@ -190,6 +220,24 @@ type Deps struct {
 type BaselineProvider interface {
 	RecentMatches(ctx context.Context, userID, titleSlug, metric string, window int) ([]MatchData, error)
 	PopulationPercentile(ctx context.Context, titleSlug, metric string, target float64) (percentile float64, popSize int, err error)
+}
+
+// SquadMatchProvider fournit, pour un roster d'escouade, les `limit` derniers
+// matchs où TOUT le roster a joué — chacun avec ses participants (pour la règle
+// no-overlap) et la valeur de `metric` (canonique, cf. Template.Metric) par
+// membre. Implémenté hors package (platform/duckdb) : le module reste découplé
+// de la sémantique des matchs. titleSlug est passé pour parité (la DB partagée
+// est déjà title-scopée par chemin).
+type SquadMatchProvider interface {
+	SquadMatchMetrics(ctx context.Context, rosterXUIDs []string, titleSlug, metric string, limit int) ([]SquadMatchMetric, error)
+}
+
+// SquadProfileProvider fournit le profil 6-axes par membre d'une escouade
+// (réutilise la base du Synergy Radar analytics) pour orienter le coach
+// d'escouade : moyenne par axe → axe le plus faible → biais du pool de défis.
+// Optionnel dans Deps (nil → RefreshSquadPool reste un shuffle non biaisé).
+type SquadProfileProvider interface {
+	SquadAxes(ctx context.Context, rosterXUIDs []string, titleSlug string) ([]map[string]float64, error)
 }
 
 // service est l'implémentation par défaut.

@@ -45,6 +45,7 @@ const ICONS: Record<NotificationCategory, React.ComponentType<{ className?: stri
   lusr_tier_approach: IconTrending,
   streak_milestone: IconFlame,
   comeback_welcome: IconSparkles,
+  trend_consolidate: IconTarget, // axe à consolider — neutre (pas IconTrending montant)
 }
 
 function svg(props: { className?: string; children: React.ReactNode }) {
