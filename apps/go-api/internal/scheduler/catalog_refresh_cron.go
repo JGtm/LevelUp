@@ -7,6 +7,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability/logging"
 )
 
 // DefaultCatalogRefreshInterval : le catalogue (noms localisés des playlists, couples
@@ -31,10 +32,13 @@ type CatalogRefreshCron struct {
 	run       CatalogDrainRunner
 	titleSlug string
 	interval  time.Duration
+	log       *slog.Logger // tagué module=catalog → logs/catalog.log
 }
 
 // NewCatalogRefreshCron construit le cron. interval <= 0 → hebdomadaire ;
-// titleSlug == "" → titre par défaut.
+// titleSlug == "" → titre par défaut. Le logger est capturé ici (après l'install
+// du handler au boot) et tagué module=catalog → tous les logs du cron vont dans
+// logs/catalog.log.
 func NewCatalogRefreshCron(run CatalogDrainRunner, titleSlug string, interval time.Duration) *CatalogRefreshCron {
 	if interval <= 0 {
 		interval = DefaultCatalogRefreshInterval
@@ -42,7 +46,12 @@ func NewCatalogRefreshCron(run CatalogDrainRunner, titleSlug string, interval ti
 	if titleSlug == "" {
 		titleSlug = titlePkg.DefaultSlug
 	}
-	return &CatalogRefreshCron{run: run, titleSlug: titleSlug, interval: interval}
+	return &CatalogRefreshCron{
+		run:       run,
+		titleSlug: titleSlug,
+		interval:  interval,
+		log:       slog.Default().With("module", logging.ModuleCatalog),
+	}
 }
 
 // Run lance le cron : 1er tick immédiat (catalogue frais après un déploiement) puis
@@ -50,10 +59,10 @@ func NewCatalogRefreshCron(run CatalogDrainRunner, titleSlug string, interval ti
 // tourne tant que le process vit. Bloque jusqu'à ctx.Done().
 func (c *CatalogRefreshCron) Run(ctx context.Context) {
 	if c == nil || c.run == nil {
-		slog.WarnContext(ctx, "catalog_refresh_cron: noop (runner nil)")
+		slog.WarnContext(ctx, "catalog_refresh_cron: noop (runner nil)", "module", logging.ModuleCatalog)
 		return
 	}
-	slog.InfoContext(ctx, "catalog_refresh_cron: started", "interval", c.interval, "title", c.titleSlug)
+	c.log.InfoContext(ctx, "catalog_refresh_cron: started", "interval", c.interval, "title", c.titleSlug)
 
 	c.RunOnce(ctx)
 
@@ -62,7 +71,7 @@ func (c *CatalogRefreshCron) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			slog.InfoContext(ctx, "catalog_refresh_cron: stopped (ctx done)")
+			c.log.InfoContext(ctx, "catalog_refresh_cron: stopped (ctx done)")
 			return
 		case <-ticker.C:
 			c.RunOnce(ctx)
@@ -78,13 +87,14 @@ func (c *CatalogRefreshCron) RunOnce(ctx context.Context) {
 		return
 	}
 	start := time.Now()
+	c.log.InfoContext(ctx, "catalog_refresh_cron: cycle démarré", "title", c.titleSlug)
 	res, err := c.run(ctx, c.titleSlug)
 	if err != nil {
-		slog.ErrorContext(ctx, "catalog_refresh_cron: drain échoué", "err", err,
+		c.log.ErrorContext(ctx, "catalog_refresh_cron: cycle échoué", "err", err,
 			"duration", time.Since(start))
 		return
 	}
-	slog.InfoContext(ctx, "catalog_refresh_cron: terminé",
+	c.log.InfoContext(ctx, "catalog_refresh_cron: cycle terminé",
 		"seeded", res.Seeded, "playlists", res.Playlists, "pairs", res.Pairs,
 		"maps", res.Maps, "game_variants", res.GameVariants, "errors", res.Errors,
 		"duration", time.Since(start))

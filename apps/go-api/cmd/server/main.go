@@ -916,9 +916,9 @@ func main() {
 			// (même jamais joués) + stocker les poids. Best-effort : un échec d'expansion
 			// n'empêche pas le drain de nommer ce qui a été joué.
 			if n, eerr := reg.ExpandPlaylistChildren(cctx, ts); eerr != nil {
-				slog.WarnContext(cctx, "catalog_refresh_cron: expansion playlists échouée (best-effort)", "err", eerr)
+				slog.WarnContext(cctx, "catalog_refresh_cron: expansion playlists échouée (best-effort)", "module", logging.ModuleCatalog, "err", eerr)
 			} else {
-				slog.InfoContext(cctx, "catalog_refresh_cron: playlists expansées", "children_enqueued", n)
+				slog.InfoContext(cctx, "catalog_refresh_cron: playlists expansées", "module", logging.ModuleCatalog, "children_enqueued", n)
 			}
 			return reg.RunCatalogUGCDrain(cctx, ts)
 		}, "", 0)
@@ -927,7 +927,7 @@ func main() {
 			defer schedulerWG.Done()
 			catalogCron.Run(schedulerCtx)
 		}()
-		slog.InfoContext(ctx, "catalog_refresh_cron: scheduled", "interval", scheduler.DefaultCatalogRefreshInterval)
+		slog.InfoContext(ctx, "catalog_refresh_cron: scheduled", "module", logging.ModuleCatalog, "interval", scheduler.DefaultCatalogRefreshInterval)
 	}
 
 	// Phase 4 plan stabilisation 2026-05-22 — câblage post-sync runner sur
