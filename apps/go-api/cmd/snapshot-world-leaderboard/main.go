@@ -44,7 +44,7 @@ func main() {
 		"chemin shared_matches_v2.duckdb (RW — stopper le serveur)")
 	playlistsCSV := flag.String("playlists", "",
 		"playlist asset IDs séparés par des virgules ; vide = playlists classées actives")
-	limit := flag.Int("limit", 200, "nombre max d'entrées par playlist (0 = échelle complète)")
+	limit := flag.Int("limit", 100, "nombre max d'entrées par playlist (défaut 100 = profondeur affichée ; 0 = échelle complète)")
 	politeMs := flag.Int("polite-ms", 800, "délai poli entre deux pages (ms)")
 	dryRun := flag.Bool("dry-run", false, "scrape et affiche les comptes sans écrire")
 	flag.Parse()

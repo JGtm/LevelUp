@@ -263,7 +263,9 @@ func (c *WorldLeaderboardCron) seasonGamertags(ctx context.Context, season strin
 		return nil, err
 	}
 	defer release()
-	return duckdb.WorldSeasonGamertags(ctx, db, season)
+	// Top N par playlist = profondeur affichée : l'enrichissement auto ne fetch pas
+	// les rangs jamais montrés (cf. duckdb.WorldLeaderboardTopN).
+	return duckdb.WorldSeasonGamertags(ctx, db, season, duckdb.WorldLeaderboardTopN)
 }
 
 // persistStats acquiert le writer shared et insère les stats agrégées (append-only).

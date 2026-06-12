@@ -69,15 +69,29 @@ func InsertPlayerSeasonStats(ctx context.Context, db *sql.DB, stats []domain.Wor
 	return len(stats), nil
 }
 
+// WorldLeaderboardTopN borne l'enrichissement à la profondeur RÉELLEMENT affichée
+// par le classement mondial : top 100 PAR playlist (cf. GetCSRWorldLeaderboard,
+// `ORDER BY rank ASC LIMIT 100` ; service.defaultLeaderboardLimit). Enrichir les
+// rangs 101+ serait du fetch jamais affiché (~moitié du coût). À garder synchronisé
+// avec le display si la profondeur change.
+const WorldLeaderboardTopN = 100
+
 // WorldSeasonGamertags retourne les gamertags distincts présents dans les
-// snapshots CSR mondiaux d'une saison (toutes playlists confondues), via la vue
-// world_csr_leaderboard_latest. Sert à alimenter l'enrichissement (un joueur
-// fetché une fois couvre toutes ses playlists — cf. insight Phase A/C). `db` est
-// un lecteur shared. Triés pour un ordre déterministe.
-func WorldSeasonGamertags(ctx context.Context, db *sql.DB, season string) ([]string, error) {
-	const q = `SELECT DISTINCT gamertag FROM world_csr_leaderboard_latest
-		WHERE season_id = ? AND gamertag <> '' ORDER BY gamertag`
-	rows, err := db.QueryContext(ctx, q, season)
+// snapshots CSR mondiaux d'une saison, restreints au top `topN` PAR playlist
+// (rank <= topN ; topN <= 0 = aucun cap, toutes playlists confondues). Sert à
+// alimenter l'enrichissement (un joueur fetché une fois couvre toutes ses
+// playlists — cf. insight Phase A/C). `db` est un lecteur shared. Triés pour un
+// ordre déterministe.
+func WorldSeasonGamertags(ctx context.Context, db *sql.DB, season string, topN int) ([]string, error) {
+	q := `SELECT DISTINCT gamertag FROM world_csr_leaderboard_latest
+		WHERE season_id = ? AND gamertag <> ''`
+	args := []any{season}
+	if topN > 0 {
+		q += ` AND rank <= ?`
+		args = append(args, topN)
+	}
+	q += ` ORDER BY gamertag`
+	rows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("WorldSeasonGamertags(%s): %w", season, err)
 	}

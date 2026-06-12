@@ -1,3 +1,17 @@
+## [2026-06-12] Backfill-world : cap top 100 PAR playlist (= profondeur affichée) — Complété
+
+**Statut** : Code + test intégration verts, exes reconstruits, branche fix/world-backfill-top100. Commit + merge à confirmer.
+
+**Problème (relevé par l'user)** : le backfill enrichissait 502 joueurs alors que le design est « top 100 ». Cause : le snapshot capture 200/playlist × 4 playlists classées dédupliqués = 502, et `WorldSeasonGamertags` faisait `SELECT DISTINCT gamertag ... ORDER BY gamertag` SANS cap ni tri par rang → enrichit tout. Or le display fait `GetCSRWorldLeaderboard` → `ORDER BY rank ASC LIMIT 100` PAR playlist. Donc les rangs 101-200 étaient fetchés (12-20 min, 429) mais **jamais affichés**.
+
+**Décision technique** : caper à `rank <= topN` PAR playlist (= ce qui est affiché). `WorldSeasonGamertags(ctx, db, season, topN)` ajoute `AND rank <= ?` (topN<=0 = pas de cap). Constante `duckdb.WorldLeaderboardTopN = 100` (à garder synchro avec `service.defaultLeaderboardLimit`). Sémantique PAR playlist (pas top-100 global) : un joueur hors top-100 d'une playlist mais top-100 d'une autre reste inclus → aucune liste affichée n'a de trou (choix user validé via question). Backfill : flag `-top-n` (défaut 100). Cron `world_leaderboard_cron` : passe la constante (l'enrichissement auto cape aussi). Snapshot : `-limit` défaut 200→100 (ne plus scraper l'invisible). 502 → ~270 (4×100 dédupliqués) = ~moitié de la charge API.
+
+**Résultats observés** : go build ./... + vet verts (2 appelants mis à jour : backfill CLI + cron). Test intégration `TestWorldSeasonGamertags_TopNPerPlaylist` PASS (Beta inclus via 2e playlist rang 5, Charlie rang 120 exclu, topN=0 = tout). Exes `backfill-world.exe` + `snapshot-world-leaderboard.exe` reconstruits.
+
+**Prochaine étape** : commit + merge main + push (déploie cron + CLI capés). csrseason13-2 déjà complète (les 270 du top-100 sont un sous-ensemble des 500 déjà enrichis → rien à re-faire).
+
+---
+
 ## [2026-06-12] Fix backfill-world : les joueurs en échec ne bloquent plus la saison (failed-tracking) — Complété
 
 **Statut** : Code + 5 tests verts, exe reconstruit, refactor (main.go 645→446 L). Checkpoint csrseason13-2 débloqué (marqué complet). Commit + merge main autorisés.
