@@ -1,3 +1,19 @@
+## [2026-06-12] Cron catalogue hebdomadaire (V1) — système unifié de noms playlists/maps/modes — Complété
+
+**Statut** : V1 livré sur feat/admin-monitoring-dashboard. Build + vet + tests verts.
+
+**Besoin** : noms des playlists (+ maps/modes enfants) récupérés automatiquement, sans dépendre d'un run manuel ni d'un redémarrage. Système unifié (pas de distinction classé/social).
+
+**V1** : `scheduler/catalog_refresh_cron.go` — cron HEBDOMADAIRE autour du drain testé `RunCatalogUGCDrain` (recensement match_registry → DiscoveryUGC → catalogue + asset_translations multi-langues). La régularité vient du ticker, PAS du boot (répond au retour user : web app rarement redémarrée). Câblé dans cmd/server gaté `LEVELUP_CATALOG_REFRESH` (OFF par défaut, prod-safe). Aucune distinction de type : le drain traite playlist/pair/map/game_variant pareil.
+
+**Boucle de correction (déjà en place, réutilisée)** : les assets non normalisés (nom == UUID brut, FR manquant) remontent dans la page admin data-quality (sections RawAssets / UntranslatedModes) + correction manuelle via `/admin/actions/translations/{asset,mode}` (UpsertAssetTranslation / UpsertModeTranslation, lus LIVE). Zéro UI à ajouter.
+
+**V2 (en cours)** : étape config playlist (den.dev `PlaylistEntries` via discovery-infiniteugc) → enfiler les couples map-mode enfants même injoués + récupérer les poids. Le drain part de match_registry (joué) donc ne découvre pas les enfants injoués sans cette étape.
+
+**Prochaine étape** : V2 (réutiliser le pattern discovery-infiniteugc de sync/halo_client_film.go).
+
+---
+
 ## [2026-06-11] Fix HEVC « media remux failed » — unification HLS scan = upload — Complété (non commité)
 
 **Statut** : Complété, tests verts (go vet + go test ops/media/service/CLI OK, build `./...` OK). NON commité (accord user requis). Branche `fix/media-hevc-hls-on-scan` (créée depuis `feat/achievements-category-filter`, tree propre au départ). Filet MP4 (étape optionnelle du plan) NON implémenté — l'unification suffit à corriger le bug. Plan : `~/.claude/plans/je-veux-que-tu-snuggly-shamir.md`.

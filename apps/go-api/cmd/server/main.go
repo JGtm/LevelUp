@@ -903,6 +903,22 @@ func main() {
 	// data health + l'action POST /admin/actions/data-health/run.
 	reg.WithHealthScheduler(healthScheduler)
 
+	// Cron catalogue (hebdomadaire) : rafraîchit les noms localisés des playlists /
+	// couples map-mode / maps / modes via le drain DiscoveryUGC testé (même chemin que
+	// l'action admin catalog/ugc-drain). Gaté par LEVELUP_CATALOG_REFRESH (OFF par défaut
+	// — prod-safe, activation délibérée). La régularité vient du ticker hebdo, PAS d'un
+	// redémarrage. Les assets non normalisés (nom resté UUID brut, FR manquant) remontent
+	// automatiquement dans la page admin data-quality, corrigeables à la main.
+	if v := strings.TrimSpace(os.Getenv("LEVELUP_CATALOG_REFRESH")); v == "1" || strings.EqualFold(v, "true") {
+		catalogCron := scheduler.NewCatalogRefreshCron(reg.RunCatalogUGCDrain, "", 0)
+		schedulerWG.Add(1)
+		go func() {
+			defer schedulerWG.Done()
+			catalogCron.Run(schedulerCtx)
+		}()
+		slog.InfoContext(ctx, "catalog_refresh_cron: scheduled", "interval", scheduler.DefaultCatalogRefreshInterval)
+	}
+
 	// Phase 4 plan stabilisation 2026-05-22 — câblage post-sync runner sur
 	// l'auto-sync scheduler. Avant ce fix, l'auto-sync court-circuitait
 	// systématiquement le pipeline progression V2 (streaks/records/milestones/
