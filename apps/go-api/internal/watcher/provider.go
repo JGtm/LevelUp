@@ -21,6 +21,7 @@ type PlayerPresenceStatus struct {
 	CooldownLeft   string          `json:"cooldown_left,omitempty"`
 	SubscribeError string          `json:"subscribe_error,omitempty"` // erreur d'abonnement REST, vide si OK
 	LastSeen       *LastSeenStatus `json:"last_seen,omitempty"`       // dernière activité connue Xbox (snapshot Offline)
+	LastEventAt    string          `json:"last_event_at,omitempty"`   // RFC3339 UTC du dernier event présence reçu (vivacité du poll)
 }
 
 // LastSeenStatus expose la dernière activité connue d'un joueur via l'API.
@@ -47,6 +48,11 @@ type WatcherStatus struct {
 	RTASubscribed  int                    `json:"rta_subscribed"`
 	PlayersWatched int                    `json:"players_watched"`
 	Players        []PlayerPresenceStatus `json:"players"`
+	// LastEventAt : instant le plus récent parmi tous les joueurs (RFC3339
+	// UTC), vide si aucun event reçu depuis le boot. Témoin global de vivacité
+	// du flux de présence : un écart croissant avec maintenant alors que le
+	// daemon tourne = polls en échec (le daemon est "mort" sans être arrêté).
+	LastEventAt string `json:"last_event_at,omitempty"`
 }
 
 // WatcherStateProvider fournit l'état du watcher en lecture seule.
@@ -91,6 +97,7 @@ func (p *StateProvider) GetStatus() WatcherStatus {
 	status.RTASubscribed = status.PlayersWatched
 	status.Players = make([]PlayerPresenceStatus, 0, len(p.daemon.players))
 
+	var maxEventAt time.Time
 	for _, pw := range p.daemon.players {
 		fsm := pw.FSM()
 		ps := PlayerPresenceStatus{
@@ -114,13 +121,25 @@ func (p *StateProvider) GetStatus() WatcherStatus {
 				TitleID:   pw.lastSeen.TitleID,
 			}
 		}
+		lastEventAt := pw.lastEventAt
 		pw.mu.Unlock()
+
+		if !lastEventAt.IsZero() {
+			ps.LastEventAt = lastEventAt.UTC().Format(time.RFC3339)
+			if lastEventAt.After(maxEventAt) {
+				maxEventAt = lastEventAt
+			}
+		}
 
 		if fsm.State() == StateCooling {
 			ps.CooldownLeft = fsm.CooldownRemaining().Truncate(time.Second).String()
 		}
 
 		status.Players = append(status.Players, ps)
+	}
+
+	if !maxEventAt.IsZero() {
+		status.LastEventAt = maxEventAt.UTC().Format(time.RFC3339)
 	}
 
 	return status

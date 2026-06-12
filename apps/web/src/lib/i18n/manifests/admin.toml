@@ -786,6 +786,18 @@ en = "Since"
 fr = "Aucun joueur surveillé."
 en = "No watched players."
 
+[admin.watcher.activity]
+fr = "Activité"
+en = "Activity"
+
+[admin.watcher.col_last_event]
+fr = "Dernier event"
+en = "Last event"
+
+[admin.watcher.no_event_yet]
+fr = "en attente"
+en = "awaiting"
+
 [admin.api.section]
 fr = "API Halo (depuis le boot)"
 en = "Halo API (since boot)"

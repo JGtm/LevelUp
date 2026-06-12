@@ -68,6 +68,37 @@ export function jobStatusToAdminStatus(status: JobStatus | string): AdminStatus 
   }
 }
 
+/**
+ * Seuil de fraîcheur du flux de présence : au-delà, le daemon tourne mais ne
+ * reçoit plus d'event. Le REST poll tique toutes les 10 s (cf.
+ * rest_poller.restPollInterval) ; 90 s = 9 polls ratés d'affilée, marge
+ * suffisante pour absorber un backoff transitoire (rate-limit/réseau) sans
+ * crier au loup, assez court pour repérer un flux franchement figé.
+ */
+export const WATCHER_STALE_MS = 90_000
+
+/**
+ * watcherLivenessStatus — vivacité du flux de présence, indépendante de l'état
+ * FSM des joueurs : un daemon "running" qui ne reçoit plus d'event est mort en
+ * pratique (polls en échec en boucle). `nowMs` est injecté pour la testabilité.
+ *
+ *  - daemon arrêté            → 'idle'   (non pertinent)
+ *  - aucun event depuis boot  → 'warning' (en attente du premier snapshot)
+ *  - dernier event récent     → 'ok'
+ *  - dernier event trop vieux → 'error'  (flux figé)
+ */
+export function watcherLivenessStatus(
+  lastEventAt: string | undefined,
+  daemonRunning: boolean,
+  nowMs: number = Date.now(),
+): AdminStatus {
+  if (!daemonRunning) return 'idle'
+  if (!lastEventAt) return 'warning'
+  const ts = new Date(lastEventAt).getTime()
+  if (Number.isNaN(ts)) return 'warning'
+  return nowMs - ts <= WATCHER_STALE_MS ? 'ok' : 'error'
+}
+
 /** Mappe un outcome scheduler ("ok"/"skipped"/"failed") vers un AdminStatus. */
 export function schedulerOutcomeToAdminStatus(outcome: SchedulerOutcome | string): AdminStatus {
   switch (outcome) {

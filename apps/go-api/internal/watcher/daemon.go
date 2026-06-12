@@ -415,6 +415,11 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 		// répondre "pourquoi ce user a/n'a pas déclenché un sync ?"
 		evCtx, evID := logging.WithEvent(ctx, "watcher.presence:"+pw.gamertag)
 
+		// Témoin de vivacité : tout event reçu (même Offline sans titre) fait
+		// avancer lastEventAt. Posé avant tout filtrage pour mesurer la santé
+		// du flux REST/RTA, pas l'activité in-game du joueur.
+		pw.RecordEvent(time.Now())
+
 		// Capture `lastSeen` si présent dans le payload, sans filtrage côté
 		// backend : tout est stocké tel que renvoyé par Xbox (jeu, ou
 		// Dashboard "Online" id=1022622766). Le frontend re-mappe les noms

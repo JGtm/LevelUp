@@ -5,6 +5,8 @@ import {
   jobTypeLabel,
   schedulerOutcomeToAdminStatus,
   statusDisplay,
+  watcherLivenessStatus,
+  WATCHER_STALE_MS,
 } from './statusDisplay'
 
 describe('statusDisplay', () => {
@@ -49,6 +51,35 @@ describe('schedulerOutcomeToAdminStatus', () => {
     expect(schedulerOutcomeToAdminStatus('skipped')).toBe('skipped')
     expect(schedulerOutcomeToAdminStatus('failed')).toBe('failed')
     expect(schedulerOutcomeToAdminStatus('')).toBe('idle')
+  })
+})
+
+describe('watcherLivenessStatus', () => {
+  const now = new Date('2026-06-12T12:00:00Z').getTime()
+
+  it('daemon arrêté → idle quel que soit le dernier event', () => {
+    expect(watcherLivenessStatus('2026-06-12T11:59:55Z', false, now)).toBe('idle')
+    expect(watcherLivenessStatus(undefined, false, now)).toBe('idle')
+  })
+
+  it('daemon actif sans aucun event → warning (en attente du premier snapshot)', () => {
+    expect(watcherLivenessStatus(undefined, true, now)).toBe('warning')
+  })
+
+  it('event récent (< seuil) → ok', () => {
+    const fresh = new Date(now - 10_000).toISOString() // 10 s, un cycle de poll
+    expect(watcherLivenessStatus(fresh, true, now)).toBe('ok')
+  })
+
+  it('event juste sous le seuil → ok ; juste au-dessus → error', () => {
+    const justUnder = new Date(now - (WATCHER_STALE_MS - 1)).toISOString()
+    const justOver = new Date(now - (WATCHER_STALE_MS + 1)).toISOString()
+    expect(watcherLivenessStatus(justUnder, true, now)).toBe('ok')
+    expect(watcherLivenessStatus(justOver, true, now)).toBe('error')
+  })
+
+  it('timestamp illisible → warning (jamais de crash)', () => {
+    expect(watcherLivenessStatus('pas-une-date', true, now)).toBe('warning')
   })
 })
 

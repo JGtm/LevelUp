@@ -3515,6 +3515,8 @@ export interface WatcherPlayerStatus {
   subscribe_error?: string
   /** Dernière activité connue Xbox (snapshot Offline). Renseigné par le REST poll. */
   last_seen?: WatcherLastSeen
+  /** RFC3339 UTC du dernier event présence reçu (chaque poll REST réussi). Vivacité du flux. */
+  last_event_at?: string
 }
 
 export interface WatcherStatusResponse {
@@ -3525,6 +3527,8 @@ export interface WatcherStatusResponse {
   token_gamertag?: string
   subscribed_players: string[]
   players: WatcherPlayerStatus[]
+  /** RFC3339 UTC du dernier event reçu tous joueurs confondus. Témoin global de vivacité du daemon. */
+  last_event_at?: string
 }
 
 export interface WatcherAuthAttempt {
