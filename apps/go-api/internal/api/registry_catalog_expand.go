@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/observability/logging"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
@@ -63,15 +64,19 @@ func (r *ServiceRegistry) ExpandPlaylistChildren(ctx context.Context, titleSlug 
 	}
 	_ = rows.Close()
 
-	enqueued := 0
+	slog.InfoContext(ctx, "catalog_expand: démarré", "module", logging.ModuleCatalog,
+		"title", titleSlug, "playlists", len(playlists))
+
+	enqueued, failed := 0, 0
 	for _, p := range playlists {
 		if err := ctx.Err(); err != nil {
 			return enqueued, err
 		}
 		cfg, ferr := client.GetPlaylistConfig(ctx, p.id, p.ver)
 		if ferr != nil {
+			failed++
 			slog.WarnContext(ctx, "catalog_expand: config playlist échouée (best-effort)",
-				"playlist", p.id, "err", ferr)
+				"module", logging.ModuleCatalog, "playlist", p.id, "err", ferr)
 			continue
 		}
 		for _, e := range cfg.Entries {
@@ -83,7 +88,7 @@ func (r *ServiceRegistry) ExpandPlaylistChildren(ctx context.Context, titleSlug 
 				titleSlug, e.MapModePairAssetID, e.VersionID,
 			); eerr != nil {
 				slog.WarnContext(ctx, "catalog_expand: enqueue enfant échoué",
-					"pair", e.MapModePairAssetID, "err", eerr)
+					"module", logging.ModuleCatalog, "pair", e.MapModePairAssetID, "err", eerr)
 				continue
 			}
 			enqueued++
@@ -91,8 +96,8 @@ func (r *ServiceRegistry) ExpandPlaylistChildren(ctx context.Context, titleSlug 
 		}
 	}
 	observability.IncCounter("catalog_playlist_expand_total")
-	slog.InfoContext(ctx, "catalog_expand: terminé",
-		"playlists", len(playlists), "children_enqueued", enqueued)
+	slog.InfoContext(ctx, "catalog_expand: terminé", "module", logging.ModuleCatalog,
+		"playlists", len(playlists), "children_enqueued", enqueued, "playlists_failed", failed)
 	return enqueued, nil
 }
 
