@@ -55,6 +55,7 @@ export const adminManifest = {
   "admin.convergence.ps_no_film": { fr: "Sans film", en: "No film" },
   "admin.convergence.ps_perf": { fr: "Perf", en: "Perf" },
   "admin.convergence.ps_sessions": { fr: "Sessions", en: "Sessions" },
+  "admin.convergence.ps_trend": { fr: "Tendance (durée)", en: "Trend (duration)" },
   "admin.convergence.ps_views": { fr: "Vues", en: "Views" },
   "admin.convergence.ps_weapons": { fr: "Armes", en: "Weapons" },
   "admin.convergence.run_player": { fr: "Converger", en: "Converge" },

@@ -724,6 +724,10 @@ en = "Achievements"
 fr = "Erreurs fatales"
 en = "Fatal errors"
 
+[admin.convergence.ps_trend]
+fr = "Tendance (durée)"
+en = "Trend (duration)"
+
 # ─── Panneau Diagnostic (verdicts) ─────────────────────────────────────────
 
 [admin.diag.section]

@@ -23202,3 +23202,17 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 - Tous fichiers touchés < 500 L ; fonctions < 80 L.
 
 **Conclusion / prochaine étape** : 7 angles morts livrés au total (P1/P2/P4/P5 lot 1 ; P6/P3/P7 lot 2). Restent NON traités : P8 (sparkline durée post-sync par joueur — bloqué, nécessite enrichir le ring buffer CycleRecord avec données par joueur) ; P9 (backfill events ciblé — largement couvert par P2 reset lying-bits + RunPlayerConvergence existant). À valider serveur lancé : le drain UGC P3 (appels réseau réels), le collecteur d'erreurs P6 et l'attribution joueur P7 (observer quelques cycles/erreurs réels).
+
+## [2026-06-12] Dashboard monitoring — P8 sparkline post-sync par joueur, P9 backfill events (couvert) — Complété
+
+**Statut** : P8 complété (tests verts). P9 : vérifié couvert par l'existant (aucun code). Branche `feat/admin-monitoring-dashboard` (8 commits déjà poussés sur origin). Clôture de l'axe monitoring (9 angles morts adressés).
+
+**Décision technique** :
+- **P8 — sparkline durée post-sync par joueur** : le ring buffer CycleRecord agrège par cycle (pas par joueur) et RunOnceResult ne porte pas les détails par joueur — donc un ring SÉPARÉ par joueur. AutoSyncScheduler.postSyncHistory map[gamertag][]int64 (ring borné postSyncHistorySize=16), alimenté dans recordOutcome (appelé une fois par joueur/cycle sous snapshotMu) UNIQUEMENT quand PostSync != nil (un point par post-sync réussi ; les skipped/failed préservent l'historique). Le choix de recordOutcome (et non storeCycleResult) évite de ré-itérer de vieilles entrées du map playerOutcomes. Exposé via Snapshot → PlayerOutcomeDetail.PostSyncHistoryMs (copie défensive). Front : colonne « Tendance (durée) » dans PostSyncMatrix réutilisant le composant Sparkline (P4) — import intra-admin convergence→sync (pas cross-feature). Affiché si >= 2 points.
+- **P9 — backfill events ciblé : COUVERT par l'existant, aucun code**. Vérifié : convergence.go dérive le travail du LEDGER (match_registry.events_loaded), selectMatchesMissingEvents + convergeEvents re-téléchargent les events des matchs où events_loaded=FALSE. Or P2 (reset lying-bits) remet events_loaded=FALSE pour les matchs aux highlight_events vides. Donc le workflow « reset lying-bits (global) → POST /admin/actions/convergence/run {player} (existant) » EST le backfill events ciblé. Un endpoint POST /admin/actions/backfill/events dédié serait strictement redondant avec /convergence/run. Décision : ne pas ajouter de code.
+
+**Résultats** :
+- Go : go vet ./... clean, go test ./... exit 0 (0 FAIL réel ; TestStartImport flaky timing job async — passe en isolation, non lié). Test TestPostSyncHistory_RingBounded (ring borné 16 + alimentation conditionnelle PostSync != nil + skipped sans historique).
+- Front : tsc -b exit 0, eslint admin 0 erreur, knip types 86/86 OK, cross-feature 10/10, vitest 1872 verts. i18n admin.toml 253 clés.
+
+**Conclusion / prochaine étape** : axe monitoring clos — 8 sujets livrés (P1-P8), P9 couvert par l'existant. Validation conditions réelles (serveur lancé) toujours à faire pour les features réseau/runtime : drain UGC P3, collecteur erreurs P6, attribution joueur P7, sparkline post-sync P8 (observer quelques cycles). À la main du user : merge de la branche.
