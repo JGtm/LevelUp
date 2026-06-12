@@ -27,8 +27,9 @@ type sessionKey struct{}
 func WithSession(store *session.Store, policy SecureCookiePolicy) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			sess := loadOrCreate(r, store)
-			_ = store.Touch(sess)
+			sess, loaded := loadOrCreate(r, store)
+			// Le cookie est posé AVANT le handler (header) : l'ID de session ne change
+			// pas même si le handler enrichit la session (login, OAuth state…).
 			setCookie(w, store, sess, policy.Secure(r))
 			ctx := context.WithValue(r.Context(), sessionKey{}, sess)
 			if sess.HaloTokens != nil {
@@ -39,6 +40,14 @@ func WithSession(store *session.Store, policy SecureCookiePolicy) func(http.Hand
 				ctx = ctxkeys.WithHaloAuth(ctx, sess.HaloTokens, xuid)
 			}
 			next.ServeHTTP(w, r.WithContext(ctx))
+			// Persistance APRÈS le handler : on n'écrit sur disque que pour une session
+			// déjà persistée (TTL glissant) ou devenue significative pendant la requête
+			// (login, OAuth, préférence…). Une session anonyme vierge n'est jamais
+			// persistée → plus de spam d'un fichier par requête sans cookie
+			// (bots/sondes/assets) dans data/sessions/.
+			if loaded || sess.IsMeaningful() {
+				_ = store.Touch(sess)
+			}
 		})
 	}
 }
@@ -61,16 +70,18 @@ func InjectSession(ctx context.Context, sess *domain.SessionData) context.Contex
 }
 
 // loadOrCreate charge la session depuis le cookie ou en crée une nouvelle.
-func loadOrCreate(r *http.Request, store *session.Store) *domain.SessionData {
+// Le second retour vaut true si la session a été chargée depuis le disque (elle
+// existe déjà), false si c'est une session neuve créée pour cette requête.
+func loadOrCreate(r *http.Request, store *session.Store) (*domain.SessionData, bool) {
 	c, err := r.Cookie(session.CookieName)
 	if err == nil && c.Value != "" {
 		if sessionID := store.UnsignCookie(c.Value); sessionID != "" {
 			if sess := store.Load(sessionID); sess != nil {
-				return sess
+				return sess, true
 			}
 		}
 	}
-	return store.New()
+	return store.New(), false
 }
 
 // setCookie pose le cookie de session signé sur la réponse.
