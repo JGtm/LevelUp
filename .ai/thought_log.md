@@ -1,3 +1,21 @@
+## [2026-06-12] Backfill mondial — 5/9 tokens skippés : AADSTS90023 (secret envoyé à client public) — Résolu
+
+**Statut** : Résolu. Fix config (.env.local) + fix code (IsPublicAzureClient) + patch diagnostic. Build module OK, tous les tests auth verts, 5 comptes re-validés via sonde.
+
+**Symptôme** : `backfill-world -all-tokens` ne résout que 4/9 comptes ([JGtm, Madina97294, Chocoboflor, XxDaemonGamerxX]) alors que les 9 ont un RT valide dans watcher_tokens. Les 5 ajoutés via cmd/token-capture (DankerGlue/GeleJugefi/Trimbutton/QuiteSiren/UppedJoker) skippés « aucun access_token frais ».
+
+**Root cause** (sonde jetable reproduisant resolveAccessToken) : `AADSTS90023: Public clients can't send a client secret`. `.env.local` définit `SPNKR_AZURE_CLIENT_ID=39829f7a` (halo-tools, PUBLIQUE) ET un `SPNKR_AZURE_CLIENT_SECRET`. `oauth_refresh.go:106` + `auth_code.go:66` envoyaient le secret dès que `clientID != LevelUpClientID` — donc à halo-tools (public) → Azure rejette. Les 4 comptes établis esquivent via leur MSAL cache player-DB (silent refresh, sans secret) ; les 5 nouveaux n'ont que le RT → bloqués. Cf. [[reference_env_local_secret_public_client_aadsts90023]].
+
+**Fix config (immédiat, .env.local non versionné)** : `SPNKR_AZURE_CLIENT_SECRET` commenté (garde `SPNKR_AZURE_CLIENT_ID=39829f7a` — les RT y sont liés). Sonde post-fix : 5/5 résolus.
+
+**Fix code (vraie dette défensive)** : `auth.HaloToolsClientID` + `auth.IsPublicAzureClient(clientID)` (source unique). Les 2 sites d'envoi du secret utilisent `!IsPublicAzureClient(clientID)` au lieu de `clientID != LevelUpClientID` → un client public connu ne reçoit jamais de secret, un client tiers (confidentiel présumé) le reçoit toujours. `cmd/token-capture` dé-dupliqué sur la constante. Test `TestIsPublicAzureClient`.
+
+**Diagnostic** : `resolveAccessToken` (worldenrich) avalait l'erreur OAuth → générique « aucun access_token frais ». Patché pour `%w` la dernière erreur sous-jacente — c'est ce qui a révélé le AADSTS90023.
+
+**Note débit** : Halo limite ~par IP → 9 tokens vs 4 = résilience + répartition quotas par-token, pas un gain ×N de vitesse depuis une machine.
+
+---
+
 ## [2026-06-11] Leaderboard mondial — Phases F (catalogue) + C (wiring cron gaté) + E (polish) — Livré
 
 **Statut** : Complété sur feat/world-leaderboard-enriched. 4 commits thématiques (F `b1bee0145`, C `33919ff7b`, E `131fc2da4`, + ce doc). Build module complet OK, vet OK, tests world (service+duckdb) + 9/9 vitest verts.

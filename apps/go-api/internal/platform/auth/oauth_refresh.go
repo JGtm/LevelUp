@@ -101,9 +101,11 @@ func ExchangeRefreshTokenWithRotation(ctx context.Context, refreshToken string) 
 		oauthFieldScope:        {xboxScopes},
 	}
 
-	// Si l'app Azure est confidentielle (SPNKR_AZURE_CLIENT_SECRET défini),
-	// inclure le client_secret dans la requête.
-	if secret := os.Getenv("SPNKR_AZURE_CLIENT_SECRET"); secret != "" && clientID != LevelUpClientID {
+	// Si l'app Azure est confidentielle (SPNKR_AZURE_CLIENT_SECRET défini ET client_id
+	// non-public), inclure le client_secret. Les clients PUBLICS connus (LevelUp,
+	// halo-tools) ne doivent jamais recevoir de secret — Azure rejette sinon
+	// (AADSTS90023). Cf. IsPublicAzureClient (source unique avec auth_code.go).
+	if secret := os.Getenv("SPNKR_AZURE_CLIENT_SECRET"); secret != "" && !IsPublicAzureClient(clientID) {
 		body.Set("client_secret", secret)
 	}
 

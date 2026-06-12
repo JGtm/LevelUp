@@ -40,13 +40,12 @@ import (
 )
 
 const (
-	// defaultClientID : Azure app "halo-tools" partagée avec les watchers du parc
-	// (39829f7a-...). Fallback si SPNKR_AZURE_CLIENT_ID absent — choisi pour matcher
-	// l'override actif dans .env.local et les RTs déjà émis pour 3/4 joueurs
-	// (2026-05-27 audit cmd/refresh-career-ranks). Le serveur lit SPNKR_AZURE_CLIENT_ID
-	// en priorité (oauth_refresh.go) — ce binaire doit utiliser le même client_id
-	// pour que le token capturé soit refreshable par le serveur.
-	defaultClientID = "39829f7a-5262-4d22-a387-795c488f7102" // #nosec G101 -- app publique
+	// defaultClientID : Azure app PUBLIQUE "halo-tools" partagée avec les watchers du
+	// parc. Fallback si SPNKR_AZURE_CLIENT_ID absent. Le serveur lit SPNKR_AZURE_CLIENT_ID
+	// en priorité (oauth_refresh.go) — ce binaire doit utiliser le même client_id pour
+	// que le token capturé soit refreshable. Source unique = auth.HaloToolsClientID
+	// (qui pilote aussi IsPublicAzureClient → pas de client_secret envoyé, AADSTS90023).
+	defaultClientID = auth.HaloToolsClientID // #nosec G101 -- app publique
 	deviceCodeURL   = "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode"
 	tokenURL        = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
 	xboxScopes      = "Xboxlive.signin Xboxlive.offline_access"

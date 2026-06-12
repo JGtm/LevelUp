@@ -62,8 +62,10 @@ func ExchangeAuthorizationCode(ctx context.Context, code, redirectURI string) (*
 		oauthFieldScope:    {xboxScopes},
 	}
 
-	// App confidentielle : inclure client_secret si défini.
-	if secret := os.Getenv("SPNKR_AZURE_CLIENT_SECRET"); secret != "" && clientID != LevelUpClientID {
+	// App confidentielle : inclure client_secret si défini ET client_id non-public.
+	// Les clients PUBLICS connus (LevelUp, halo-tools) ne doivent jamais recevoir de
+	// secret (AADSTS90023). Cf. IsPublicAzureClient (source unique avec oauth_refresh.go).
+	if secret := os.Getenv("SPNKR_AZURE_CLIENT_SECRET"); secret != "" && !IsPublicAzureClient(clientID) {
 		body.Set("client_secret", secret)
 	}
 
