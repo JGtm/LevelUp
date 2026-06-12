@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -123,11 +124,24 @@ func requestUserToken(ctx context.Context, client *http.Client, accessToken stri
 	if err != nil {
 		return "", err
 	}
+	// DIAG temporaire (SSO Authorization Code Flow) : structure de la réponse XBL
+	// pour comprendre l'absence de DisplayClaims en aval (xuid/gamertag vides).
+	slog.WarnContext(ctx, "DIAG xbl_user_token resp",
+		"keys", mapKeys(resp), "display_claims", resp["DisplayClaims"])
 	token, ok := resp[xboxFieldToken].(string)
 	if !ok || token == "" {
 		return "", fmt.Errorf("token absent dans la réponse XBL")
 	}
 	return token, nil
+}
+
+// mapKeys retourne les clés d'une map[string]any (diag, ne loggue pas les valeurs/tokens).
+func mapKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 // requestXSTSToken échange un User Token XBL contre un XSTS Token.
@@ -151,6 +165,11 @@ func requestXSTSToken(ctx context.Context, client *http.Client, userToken, relyi
 	if !ok || token == "" {
 		return "", "", "", fmt.Errorf("token absent dans la réponse XSTS")
 	}
+
+	// DIAG temporaire : structure complète de la réponse XSTS (hors token) pour
+	// diagnostiquer xuid/gamertag vides au callback SSO.
+	slog.WarnContext(ctx, "DIAG xsts resp",
+		"relying_party", relyingParty, "keys", mapKeys(resp), "display_claims", resp["DisplayClaims"])
 
 	// Extraire gamertag + xuid depuis DisplayClaims.xui[0]
 	gamertag, xuid := extractDisplayClaims(resp)
