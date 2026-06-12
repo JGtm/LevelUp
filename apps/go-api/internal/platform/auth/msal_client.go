@@ -38,15 +38,6 @@ const (
 	MSALAuthority = "https://login.microsoftonline.com/consumers"
 )
 
-// IsPublicAzureClient indique si clientID correspond à une app Azure PUBLIQUE connue
-// (LevelUp ou halo-tools). Pour ces clients, ne jamais joindre de client_secret aux
-// requêtes token — sinon AADSTS90023. Tout autre client_id est présumé confidentiel
-// (un secret défini lui sera transmis). Source unique de la décision secret/no-secret
-// partagée par oauth_refresh.go et auth_code.go.
-func IsPublicAzureClient(clientID string) bool {
-	return clientID == LevelUpClientID || clientID == HaloToolsClientID
-}
-
 // XboxScopes sont les scopes requis pour Xbox Live.
 var XboxScopes = []string{"Xboxlive.signin", "Xboxlive.offline_access"}
 

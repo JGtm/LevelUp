@@ -1,3 +1,19 @@
+## [2026-06-12] CORRECTION — parc d'auth MIXTE : try-retry secret (remplace IsPublicAzureClient) — Résolu
+
+**Statut** : Résolu + vérifié. Sonde : 9/9 comptes résolus. Build module + tests auth verts.
+
+**Ce qui clochait dans l'entrée précédente** : le parc est MIXTE, pas « tous publics ». 4 comptes principaux (JGtm, Madina97294, Chocoboflor, XxDaemonGamerxX) sont sur une app **CONFIDENTIELLE** (EXIGE le secret, AADSTS70002 sans) ; 5 récents (token-capture, halo-tools 39829f7a) sont **PUBLICS** (REJETTENT le secret, AADSTS90023). Mes 2 « fix » précédents étaient faux et **inversaient juste le groupe cassé** : (a) commenter le secret dans `.env.local` → 5 publics OK mais 4 principaux cassés (régression serveur) ; (b) `IsPublicAzureClient` (allowlist 39829f7a) → idem, le client_id global 39829f7a empêchait d'envoyer le secret aux comptes confidentiels.
+
+**Découverte clé** : `main` (feat/admin-monitoring-dashboard) avait **déjà** la bonne solution — `postTokenExchange` + retry sur `OAuthExchangeError.IsSecretRejected()` (AADSTS90023). Mon worktree avait divergé (version plus ancienne) et c'est lui que le backfill buildait.
+
+**Fix appliqué (worktree, aligné sur main)** : `oauth_refresh.go` essaie 1re tentative AVEC secret (si défini ET `clientID != LevelUpClientID`), retry UNE fois SANS si AADSTS90023 (détection par chaîne, le worktree n'a pas le type `OAuthExchangeError`). `postTokenExchange` extrait. `IsPublicAzureClient` + son test supprimés ; `auth_code.go` revenu à l'original ; `HaloToolsClientID` gardé (dedup token-capture). `.env.local` : secret **restauré** (commenté → actif), commentaire mis à jour. Cf. [[reference_env_local_secret_public_client_aadsts90023]].
+
+**Leçon** : vérifier l'état de `main` avant de « réparer » un fichier core dans un worktree divergent — la solution canonique peut déjà exister. Au merge, prendre la version de main (type d'erreur + métrique).
+
+**Prochaine étape** : rebuild le CLI backfill + relancer → les 9 tokens round-robinent.
+
+---
+
 ## [2026-06-12] Backfill mondial — 5/9 tokens skippés : AADSTS90023 (secret envoyé à client public) — Résolu
 
 **Statut** : Résolu. Fix config (.env.local) + fix code (IsPublicAzureClient) + patch diagnostic. Build module OK, tous les tests auth verts, 5 comptes re-validés via sonde.
