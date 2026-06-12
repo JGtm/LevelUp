@@ -35,6 +35,7 @@ const (
 	JobTypeForcedSyncCycle   JobType = "forced_sync_cycle"
 	JobTypePlayerConvergence JobType = "player_convergence"
 	JobTypeCatalogRefresh    JobType = "catalog_refresh"
+	JobTypeCatalogUGCDrain   JobType = "catalog_ugc_drain"
 	JobTypeOther             JobType = "other"
 )
 

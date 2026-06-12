@@ -1834,6 +1834,16 @@ paths:
         "409": { description: "Reset déjà en cours" }
         "503": { description: "Writer shared occupé ou shared absente" }
 
+  /admin/actions/catalog/ugc-drain:
+    post:
+      tags: [admin]
+      operationId: postAdminActionCatalogUGCDrain
+      summary: "Action admin — recense les asset IDs vus en jeu (catalog_fetch_queue) puis les résout via l'API DiscoveryUGC (réseau, rate-limité) ; complète le catalog/refresh zéro-réseau pour les assets absents de match_registry ; job asynchrone (auth admin requis)"
+      responses:
+        "202": { description: "Job créé (suivre via GET /jobs/{job_id})" }
+        "409": { description: "Drain déjà en cours pour ce titre (job_id en details)" }
+        "503": { description: "Drain indisponible (jobs non câblés)" }
+
   /admin/monitoring/perf:
     get:
       tags: [admin]

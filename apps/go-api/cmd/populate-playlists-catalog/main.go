@@ -79,8 +79,9 @@ func main() {
 		fatal("migrate metadata: %v", err)
 	}
 
-	// 1. Seed la queue depuis match_registry.
-	seeded, err := seedQueueFromMatchRegistry(ctx, metadataDB, sharedDB, *titleSlug)
+	// 1. Seed la queue depuis match_registry (logique partagée avec l'action
+	// admin POST /admin/actions/catalog/ugc-drain).
+	seeded, err := ops.SeedCatalogQueueFromRegistry(ctx, metadataDB, sharedDB, *titleSlug)
 	if err != nil {
 		fatal("seed queue: %v", err)
 	}
@@ -269,72 +270,6 @@ func loadTokensFromPlayerDB(ctx context.Context, dbPath string) (*domain.HaloTok
 		return nil, fmt.Errorf("access_token → Halo tokens: %w", err)
 	}
 	return result.Tokens, nil
-}
-
-type seedCounters struct {
-	Playlists, Pairs, Maps, GameVariants int
-}
-
-// seedQueueFromMatchRegistry insère dans catalog_fetch_queue tous les asset IDs
-// distincts vus dans shared.match_registry, sans appel HTTP.
-func seedQueueFromMatchRegistry(ctx context.Context, metadataDB, sharedDB *sql.DB, titleSlug string) (seedCounters, error) {
-	var counters seedCounters
-	type seedSpec struct {
-		assetType  string
-		col        string
-		versionCol string
-		counter    *int
-	}
-	specs := []seedSpec{
-		{"playlist", "playlist_id", "playlist_version_id", &counters.Playlists},
-		{"pair", "pair_id", "pair_version_id", &counters.Pairs},
-		{"map", "map_id", "map_version_id", &counters.Maps},
-		{"game_variant", "game_variant_id", "game_variant_version_id", &counters.GameVariants},
-	}
-	for _, s := range specs {
-		// Essai avec version_id — fallback sans si la colonne n'existe pas encore
-		// (migration add_match_registry_version_ids non encore appliquée).
-		query := fmt.Sprintf(
-			`SELECT DISTINCT %s, COALESCE(%s, '') FROM match_registry WHERE %s IS NOT NULL AND %s != ''`,
-			s.col, s.versionCol, s.col, s.col,
-		)
-		rows, err := sharedDB.QueryContext(ctx, query)
-		if err != nil {
-			// Colonne version_id absente → fallback : seed sans version_id
-			slog.WarnContext(ctx, "seed: version_id column absent, falling back to id-only seed",
-				"asset_type", s.assetType, "err", err)
-			query = fmt.Sprintf(
-				`SELECT DISTINCT %s, '' FROM match_registry WHERE %s IS NOT NULL AND %s != ''`,
-				s.col, s.col, s.col,
-			)
-			rows, err = sharedDB.QueryContext(ctx, query)
-			if err != nil {
-				return counters, fmt.Errorf("select %s (fallback): %w", s.assetType, err)
-			}
-		}
-		var inserted int
-		for rows.Next() {
-			var id, ver string
-			if err := rows.Scan(&id, &ver); err != nil {
-				rows.Close()
-				return counters, err
-			}
-			res, err := metadataDB.ExecContext(ctx,
-				`INSERT OR IGNORE INTO catalog_fetch_queue (title_slug, asset_type, asset_id, version_id) VALUES (?, ?, ?, ?)`,
-				titleSlug, s.assetType, id, ver)
-			if err != nil {
-				slog.WarnContext(ctx, "seed: insert queue failed", "err", err, "asset_type", s.assetType, "asset_id", id)
-				continue
-			}
-			n, _ := res.RowsAffected()
-			if n > 0 {
-				inserted++
-			}
-		}
-		rows.Close()
-		*s.counter = inserted
-	}
-	return counters, nil
 }
 
 // extractGamertag extrait le nom du dossier joueur depuis un chemin stats.duckdb.

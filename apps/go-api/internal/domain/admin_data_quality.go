@@ -111,6 +111,18 @@ type CatalogRefreshResult struct {
 	GameVariants int `json:"game_variants"`
 }
 
+// CatalogUGCDrainResult — compteurs de POST .../catalog/ugc-drain (job async).
+// Seeded = assets recensés dans la file ; les autres = résolus via l'API
+// DiscoveryUGC (réseau, rate-limité). Errors = assets en échec après retries.
+type CatalogUGCDrainResult struct {
+	Seeded       int `json:"seeded"`
+	Playlists    int `json:"playlists"`
+	Pairs        int `json:"pairs"`
+	Maps         int `json:"maps"`
+	GameVariants int `json:"game_variants"`
+	Errors       int `json:"errors"`
+}
+
 // LyingBitsResetResult — compteurs de POST .../lying-bits/reset. Les champs
 // *Cleared comptent les matchs concernés : en dry-run ce qui SERAIT corrigé,
 // en exécution ce qui A ÉTÉ corrigé (le WHERE est identique, le writer est

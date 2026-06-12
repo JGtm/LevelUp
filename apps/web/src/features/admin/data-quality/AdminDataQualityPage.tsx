@@ -5,6 +5,7 @@
  * playlists hors catalogue, xuids orphelins).
  */
 import { useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { KpiCard } from '@/components/cards/KpiCard'
@@ -16,8 +17,15 @@ import type {
   LyingBitsResetResult,
   RegistryNamesBackfillResult,
 } from '@/lib/api/types'
+import { AdminActionButton } from '../components/AdminActionButton'
 import { useDataQualityCounts } from './queries'
-import { useRunCatalogRefresh, useRunLyingBitsReset, useRunRegistryNamesBackfill } from './mutations'
+import {
+  invalidateDataQuality,
+  useRunCatalogRefresh,
+  useRunCatalogUGCDrain,
+  useRunLyingBitsReset,
+  useRunRegistryNamesBackfill,
+} from './mutations'
 import {
   OrphanPlaylistsSection,
   OrphanXuidsSection,
@@ -80,6 +88,7 @@ export function AdminDataQualityPage() {
         </h3>
         <RegistryNamesAction tA={tA} />
         <LyingBitsAction tA={tA} />
+        <CatalogDrainAction tA={tA} />
       </section>
 
       <UntranslatedModesSection />
@@ -241,6 +250,39 @@ function LyingBitsAction({ tA }: { tA: TAdmin }) {
       </div>
       {lastResult && <LyingBitsResult result={lastResult} tA={tA} />}
     </div>
+  )
+}
+
+/**
+ * Action drain DiscoveryUGC (réseau, rate-limité) : job asynchrone suivi inline
+ * via AdminActionButton. Confirm avertit des appels API réels ; au succès,
+ * invalide les compteurs (assets résolus → moins d'UUID bruts).
+ */
+function CatalogDrainAction({ tA }: { tA: TAdmin }) {
+  const drain = useRunCatalogUGCDrain()
+  const queryClient = useQueryClient()
+  return (
+    <AdminActionButton
+      label={tA('admin.dq.run_ugc_drain')}
+      busyLabel={tA('admin.dq.run_ugc_drain_busy')}
+      confirmMessage={tA('admin.dq.run_ugc_drain_confirm')}
+      onRun={async () => {
+        try {
+          const job = await drain.mutateAsync()
+          return job.job_id
+        } catch (err) {
+          toast.error(apiErrorMessage(err) ?? tA('admin.actions.failed'))
+          return null
+        }
+      }}
+      onJobTerminal={(job) => {
+        if (job.status === 'succeeded') {
+          invalidateDataQuality(queryClient)
+          toast.success(tA('admin.dq.ugc_drain_done'))
+        }
+        // Échec : JobProgressInline affiche déjà le détail, pas de toast redondant.
+      }}
+    />
   )
 }
 

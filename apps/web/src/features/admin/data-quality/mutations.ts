@@ -9,6 +9,7 @@ import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import type {
   AssetTranslationRequest,
+  AsyncJobStatus,
   CatalogRefreshResult,
   LyingBitsResetResult,
   RegistryNamesBackfillResult,
@@ -65,6 +66,14 @@ export function useRunCatalogRefresh() {
   return useMutation({
     mutationFn: () => api.post<CatalogRefreshResult>('/admin/actions/catalog/refresh', {}),
     onSuccess: () => invalidateDataQuality(queryClient),
+  })
+}
+
+export function useRunCatalogUGCDrain() {
+  return useMutation({
+    // Action asynchrone (202 + job) : le suivi se fait via JobProgressInline,
+    // l'invalidation au terminal du job (onJobTerminal côté composant).
+    mutationFn: () => api.post<AsyncJobStatus>('/admin/actions/catalog/ugc-drain', {}),
   })
 }
 
