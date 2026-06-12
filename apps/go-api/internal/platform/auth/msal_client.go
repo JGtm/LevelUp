@@ -28,9 +28,24 @@ const (
 	// LevelUpClientID est le client_id de l'app Azure "LevelUp Halo".
 	LevelUpClientID = "e1cb35ab-c41a-4ee5-a7a1-22ea4e94cdca" // pragma: allowlist secret
 
+	// HaloToolsClientID est l'app Azure PUBLIQUE "halo-tools" partagée avec les
+	// watchers du parc (client par défaut de cmd/token-capture, cf. defaultClientID).
+	// Étant publique, un refresh/échange OAuth NE DOIT PAS lui envoyer de client_secret
+	// (Azure rejette : AADSTS90023 "Public clients can't send a client secret").
+	HaloToolsClientID = "39829f7a-5262-4d22-a387-795c488f7102" // pragma: allowlist secret
+
 	// MSALAuthority pour les comptes personnels Microsoft (Xbox Live).
 	MSALAuthority = "https://login.microsoftonline.com/consumers"
 )
+
+// IsPublicAzureClient indique si clientID correspond à une app Azure PUBLIQUE connue
+// (LevelUp ou halo-tools). Pour ces clients, ne jamais joindre de client_secret aux
+// requêtes token — sinon AADSTS90023. Tout autre client_id est présumé confidentiel
+// (un secret défini lui sera transmis). Source unique de la décision secret/no-secret
+// partagée par oauth_refresh.go et auth_code.go.
+func IsPublicAzureClient(clientID string) bool {
+	return clientID == LevelUpClientID || clientID == HaloToolsClientID
+}
 
 // XboxScopes sont les scopes requis pour Xbox Live.
 var XboxScopes = []string{"Xboxlive.signin", "Xboxlive.offline_access"}
