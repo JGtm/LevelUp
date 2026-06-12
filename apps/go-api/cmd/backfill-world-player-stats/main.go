@@ -44,6 +44,8 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -78,6 +80,7 @@ type cliFlags struct {
 	deep          bool
 	retryFailed   bool
 	topN          int
+	xuidDelayMs   int
 }
 
 func main() {
@@ -118,6 +121,7 @@ func parseFlags() cliFlags {
 	flag.BoolVar(&f.deep, "deep", false, "désactive l'arrêt-anticipé (scan profond) — pour backfiller une VIEILLE saison ; combiner avec -max-pages élevé")
 	flag.BoolVar(&f.retryFailed, "retry-failed", false, "re-tente les joueurs précédemment en échec (par défaut ils sont sautés à la reprise pour ne pas rebloquer la saison)")
 	flag.IntVar(&f.topN, "top-n", duckdb.WorldLeaderboardTopN, "n'enrichit que le top N PAR playlist (= profondeur affichée ; 0 = toutes les playlists/rangs)")
+	flag.IntVar(&f.xuidDelayMs, "xuid-delay-ms", 1600, "délai entre résolutions xuid PeopleHub (limite ~10 req/15s/compte ; ↑ si 429, 0 = pas de throttle)")
 	flag.Parse()
 	if strings.TrimSpace(f.tokenGamertag) == "" {
 		fatal("-token-gamertag est requis (compte dont le token résout les xuid PeopleHub)")
@@ -249,6 +253,9 @@ func backfillSeason(
 		MaxPages:           f.maxPages,
 		StopAfterNonTarget: stopAfter,
 		RankedPlaylists:    service.RankedPlaylistSet(), // ranked-only (ignore le social)
+		// Throttle PeopleHub : la résolution xuid est single-token (~10 req/15s) ;
+		// sans délai, 200+ joueurs d'un coup → 429 qui les skippent en masse.
+		XUIDResolveDelay: time.Duration(f.xuidDelayMs) * time.Millisecond,
 	})
 
 	// Résolution xuid EN AMONT : un seul GetMatchStats par match traite alors TOUS
@@ -409,7 +416,7 @@ func resolveSeasons(ctx context.Context, db *sql.DB, season string) ([]string, e
 	}
 	rows, err := db.QueryContext(ctx,
 		`SELECT DISTINCT season_id FROM world_csr_leaderboard_latest
-		 WHERE season_id <> '' ORDER BY season_id DESC`)
+		 WHERE season_id <> ''`)
 	if err != nil {
 		return nil, fmt.Errorf("liste des saisons: %w", err)
 	}
@@ -422,7 +429,27 @@ func resolveSeasons(ctx context.Context, db *sql.DB, season string) ([]string, e
 		}
 		out = append(out, s)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// Récent d'abord. ATTENTION : un ORDER BY season_id en SQL est ALPHABÉTIQUE
+	// (csrseason6-1 > csrseason13-2 car '6' > '1') → mettrait les vieilles saisons
+	// en premier. On trie par NUMÉRO de saison.
+	sort.SliceStable(out, func(i, j int) bool { return seasonRank(out[i]) > seasonRank(out[j]) })
+	return out, nil
+}
+
+// seasonRank extrait un rang triable d'un id "csrseason{major}-{minor}"
+// (major*100 + minor). Format inconnu → 0 (relégué en fin).
+func seasonRank(id string) int {
+	s := strings.TrimPrefix(id, "csrseason")
+	major, minor := s, "0"
+	if i := strings.IndexByte(s, '-'); i >= 0 {
+		major, minor = s[:i], s[i+1:]
+	}
+	mj, _ := strconv.Atoi(major)
+	mn, _ := strconv.Atoi(minor)
+	return mj*100 + mn
 }
 
 // openSharedRW ouvre la shared DB en écriture (1 seule connexion).

@@ -5,9 +5,22 @@ package main
 import (
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"testing"
 )
+
+// TestSeasonRank_RecentFirst : le tri par seasonRank met les saisons RÉCENTES
+// d'abord (numérique), pas l'ordre alphabétique SQL qui mettait csrseason6-1 avant
+// csrseason13-2 (bug observé : le backfill -season all démarrait sur les vieilles).
+func TestSeasonRank_RecentFirst(t *testing.T) {
+	got := []string{"csrseason6-1", "csrseason13-2", "csrseason10-1", "csrseason3-1", "csrseason12-1"}
+	sort.SliceStable(got, func(i, j int) bool { return seasonRank(got[i]) > seasonRank(got[j]) })
+	want := []string{"csrseason13-2", "csrseason12-1", "csrseason10-1", "csrseason6-1", "csrseason3-1"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("ordre = %v, want %v (récent d'abord)", got, want)
+	}
+}
 
 // Les joueurs DÉJÀ tentés (done ∪ failed) sont sautés à la reprise ; -retry-failed
 // ré-inclut les seuls échecs.
