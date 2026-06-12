@@ -31,7 +31,7 @@ func okOverviewRunner(t *testing.T, wantTitle string) MonitoringOverviewRunner {
 // TestAdminMonitoring_Overview_OKAndTitleDefault : 200 + titre par défaut
 // quand ?title= absent.
 func TestAdminMonitoring_Overview_OKAndTitleDefault(t *testing.T) {
-	h := NewAdminMonitoringHandler(okOverviewRunner(t, "halo_infinite"), nil, nil, nil, nil)
+	h := NewAdminMonitoringHandler(okOverviewRunner(t, "halo_infinite"), nil, nil, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/admin/monitoring/overview", nil)
 	rec := httptest.NewRecorder()
 	h.GetOverview(rec, req)
@@ -52,7 +52,7 @@ func TestAdminMonitoring_Overview_OKAndTitleDefault(t *testing.T) {
 func TestAdminMonitoring_Overview_RunnerError(t *testing.T) {
 	h := NewAdminMonitoringHandler(func(context.Context, string) (domain.AdminMonitoringOverview, error) {
 		return domain.AdminMonitoringOverview{}, errors.New("boom")
-	}, nil, nil, nil, nil)
+	}, nil, nil, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/admin/monitoring/overview?title=halo_infinite", nil)
 	rec := httptest.NewRecorder()
 	h.GetOverview(rec, req)
@@ -65,7 +65,7 @@ func TestAdminMonitoring_Overview_RunnerError(t *testing.T) {
 // TestAdminMonitoring_Scheduler_UnavailableWhenNil : scheduler non câblé →
 // 200 avec available=false et history=[] (jamais de 500/panic).
 func TestAdminMonitoring_Scheduler_UnavailableWhenNil(t *testing.T) {
-	h := NewAdminMonitoringHandler(nil, nil, nil, nil, nil)
+	h := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/admin/monitoring/scheduler", nil)
 	rec := httptest.NewRecorder()
 	h.GetScheduler(rec, req)
@@ -98,7 +98,7 @@ func TestAdminMonitoring_Convergence_OK(t *testing.T) {
 				{Gamertag: "JGtm", MissingEvents: 3},
 			},
 		}, nil
-	}, nil, nil, nil)
+	}, nil, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/admin/monitoring/convergence", nil)
 	rec := httptest.NewRecorder()
 	h.GetConvergence(rec, req)
@@ -121,7 +121,7 @@ func TestAdminMonitoring_Jobs_ListAndClamp(t *testing.T) {
 	store := jobs.NewStore(filepath.Join(t.TempDir(), "jobs.json"))
 	store.Create(domain.JobTypeBackfill, "p1")
 
-	h := NewAdminMonitoringHandler(nil, nil, nil, nil, store)
+	h := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, store)
 	req := httptest.NewRequest(http.MethodGet, "/admin/monitoring/jobs?limit=9999", nil)
 	rec := httptest.NewRecorder()
 	h.GetJobs(rec, req)
@@ -138,10 +138,31 @@ func TestAdminMonitoring_Jobs_ListAndClamp(t *testing.T) {
 	}
 
 	// Store nil : dégradation sans panic.
-	hNil := NewAdminMonitoringHandler(nil, nil, nil, nil, nil)
+	hNil := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil)
 	recNil := httptest.NewRecorder()
 	hNil.GetJobs(recNil, httptest.NewRequest(http.MethodGet, "/admin/monitoring/jobs", nil))
 	if recNil.Code != http.StatusOK {
 		t.Fatalf("status store nil = %d (attendu 200)", recNil.Code)
+	}
+}
+
+// TestAdminMonitoring_Errors_OK : 200 + buckets d'erreurs agrégés.
+func TestAdminMonitoring_Errors_OK(t *testing.T) {
+	h := NewAdminMonitoringHandler(nil, nil, nil, func(context.Context) (domain.AdminErrorStats, error) {
+		return domain.AdminErrorStats{
+			GeneratedAt: "2026-06-12T12:00:00Z",
+			Buckets: []domain.AdminErrorBucket{
+				{Level: "ERROR", Module: "player_watcher", Message: "player_watcher: sync échoué", Count: 3},
+			},
+		}, nil
+	}, nil, nil)
+	rec := httptest.NewRecorder()
+	h.GetErrors(rec, httptest.NewRequest(http.MethodGet, "/admin/monitoring/errors", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d (attendu 200)", rec.Code)
+	}
+	var got domain.AdminErrorStats
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || len(got.Buckets) != 1 || got.Buckets[0].Count != 3 {
+		t.Fatalf("payload inattendu : %+v err=%v", got, err)
 	}
 }

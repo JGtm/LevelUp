@@ -1842,6 +1842,14 @@ paths:
       responses:
         "200": { description: "Agrégats count/sum/avg/max par appel/phase/étape" }
 
+  /admin/monitoring/errors:
+    get:
+      tags: [admin]
+      operationId: getAdminMonitoringErrors
+      summary: "Dashboard monitoring — logs WARN/ERROR agrégés par (niveau, message) depuis le boot avec compteur d'occurrences et dernier échantillon (collecteur mémoire, zéro I/O) (auth admin requis)"
+      responses:
+        "200": { description: "Buckets d'erreurs triés par occurrences décroissantes" }
+
   /admin/monitoring/logs/modules:
     get:
       tags: [admin]

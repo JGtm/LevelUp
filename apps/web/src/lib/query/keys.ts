@@ -197,6 +197,7 @@ export const queryKeys = {
   adminMonitoringJobs: ['admin', 'monitoring', 'jobs'] as const,
   adminMonitoringConvergence: ['admin', 'monitoring', 'convergence'] as const,
   adminMonitoringPerf: ['admin', 'monitoring', 'perf'] as const,
+  adminMonitoringErrors: ['admin', 'monitoring', 'errors'] as const,
   adminDataQuality: ['admin', 'data-quality', 'counts'] as const,
   adminDataQualityIssues: (kind: string) => ['admin', 'data-quality', 'issues', kind] as const,
   adminLogModules: ['admin', 'logs', 'modules'] as const,

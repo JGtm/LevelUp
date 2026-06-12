@@ -292,6 +292,28 @@ func loadPerfCallStats(name, metric string) domain.PerfCallStats {
 	return domain.PerfCallStats{Name: name, Count: count, SumMs: sum, AvgMs: avg, MaxMs: max}
 }
 
+// ErrorStats retourne les logs WARN/ERROR agrégés depuis le boot (collecteur
+// mémoire). Zéro I/O.
+func (r *ServiceRegistry) ErrorStats(_ context.Context) (domain.AdminErrorStats, error) {
+	buckets := observability.ErrorBuckets()
+	resp := domain.AdminErrorStats{
+		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+		Buckets:     make([]domain.AdminErrorBucket, 0, len(buckets)),
+	}
+	for _, b := range buckets {
+		resp.Buckets = append(resp.Buckets, domain.AdminErrorBucket{
+			Level:      b.Level,
+			Module:     b.Module,
+			Message:    b.Message,
+			Count:      b.Count,
+			FirstSeen:  b.FirstSeen.UTC().Format(time.RFC3339),
+			LastSeen:   b.LastSeen.UTC().Format(time.RFC3339),
+			LastDetail: b.LastDetail,
+		})
+	}
+	return resp, nil
+}
+
 // RunDataHealthNow exécute un audit data health immédiat (action admin —
 // lectures RO uniquement, safe pendant un sync). Le résultat est aussi
 // mémorisé par le HealthScheduler (LastResult) pour l'overview.

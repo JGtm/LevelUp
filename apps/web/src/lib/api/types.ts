@@ -3968,6 +3968,23 @@ export interface AdminPerfStats {
   blocked_window: PerfCallStats
 }
 
+/** Miroir de domain.AdminErrorStats — logs WARN/ERROR agrégés depuis le boot. */
+export interface AdminErrorStats {
+  generated_at: string
+  buckets: AdminErrorBucket[]
+}
+
+/** Une erreur agrégée par (niveau, message). Miroir de domain.AdminErrorBucket. */
+export interface AdminErrorBucket {
+  level: string
+  module?: string
+  message: string
+  count: number
+  first_seen: string
+  last_seen: string
+  last_detail?: string
+}
+
 // NB : les types Watcher (WatcherStatusResponse, WatcherPlayerStatus) existent
 // déjà plus haut dans ce fichier (section watcher historique) — le dashboard
 // monitoring les réutilise via features/settings/watcher-queries.ts.
