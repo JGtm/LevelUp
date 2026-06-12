@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useAdminT } from '../useAdminText'
 
-export interface ResolveField {
+interface ResolveField {
   key: string
   label: string
   initial?: string
