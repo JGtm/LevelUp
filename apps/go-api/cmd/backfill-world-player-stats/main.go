@@ -77,6 +77,7 @@ type cliFlags struct {
 	allTokens     bool
 	deep          bool
 	retryFailed   bool
+	topN          int
 }
 
 func main() {
@@ -116,6 +117,7 @@ func parseFlags() cliFlags {
 	flag.BoolVar(&f.allTokens, "all-tokens", false, "fetch en round-robin sur TOUS les comptes db_profiles résolus (Halo limite ~par IP → gain borné, pas N×)")
 	flag.BoolVar(&f.deep, "deep", false, "désactive l'arrêt-anticipé (scan profond) — pour backfiller une VIEILLE saison ; combiner avec -max-pages élevé")
 	flag.BoolVar(&f.retryFailed, "retry-failed", false, "re-tente les joueurs précédemment en échec (par défaut ils sont sautés à la reprise pour ne pas rebloquer la saison)")
+	flag.IntVar(&f.topN, "top-n", duckdb.WorldLeaderboardTopN, "n'enrichit que le top N PAR playlist (= profondeur affichée ; 0 = toutes les playlists/rangs)")
 	flag.Parse()
 	if strings.TrimSpace(f.tokenGamertag) == "" {
 		fatal("-token-gamertag est requis (compte dont le token résout les xuid PeopleHub)")
@@ -218,7 +220,7 @@ func backfillSeason(
 	ctx context.Context, db *sql.DB, pooled service.WorldMatchSource,
 	resolver service.WorldXUIDResolver, season string, f cliFlags, cp *checkpoint,
 ) error {
-	gamertags, err := duckdb.WorldSeasonGamertags(ctx, db, season)
+	gamertags, err := duckdb.WorldSeasonGamertags(ctx, db, season, f.topN)
 	if err != nil {
 		return err
 	}

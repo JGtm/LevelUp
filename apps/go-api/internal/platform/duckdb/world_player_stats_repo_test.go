@@ -5,6 +5,7 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"reflect"
 	"testing"
 	"time"
 
@@ -171,5 +172,45 @@ func TestGetCSRWorldLeaderboard_Enrichment(t *testing.T) {
 	}
 	if e.RankDelta == nil || *e.RankDelta != 3 {
 		t.Errorf("rank_delta = %v, want +3 (rang 5 -> 2)", e.RankDelta)
+	}
+}
+
+// TestWorldSeasonGamertags_TopNPerPlaylist valide le cap top-N PAR playlist :
+// un joueur hors du top-N d'une playlist mais DANS le top-N d'une autre reste
+// inclus (sémantique par playlist = ce qu'affiche le classement) ; un joueur hors
+// top-N partout est exclu ; topN <= 0 = aucun cap.
+func TestWorldSeasonGamertags_TopNPerPlaylist(t *testing.T) {
+	shared := openMemDB(t)
+	applyWorldLeaderboardMigration(t, shared.SQLDb())
+	ctx := context.Background()
+
+	const arena = "edfef3ac-9cbe-4fa2-b949-8f29deafd483"
+	const slayer = "dcb2e24e-05fb-4390-8076-32a0cdb4326e"
+	t0 := time.Now().UTC()
+	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), []domain.LeaderboardEntry{
+		{Season: "csrseason13-2", Playlist: arena, Rank: 1, Gamertag: "Alpha", CSRValue: 2000, Tier: "Onyx", FetchedAt: t0},
+		{Season: "csrseason13-2", Playlist: arena, Rank: 150, Gamertag: "Beta", CSRValue: 1200, Tier: "Diamond", FetchedAt: t0},
+		{Season: "csrseason13-2", Playlist: arena, Rank: 120, Gamertag: "Charlie", CSRValue: 1300, Tier: "Diamond", FetchedAt: t0},
+		// Beta est top-100 d'une AUTRE playlist (rang 5) → doit rester inclus malgré son rang 150 en arena.
+		{Season: "csrseason13-2", Playlist: slayer, Rank: 5, Gamertag: "Beta", CSRValue: 1900, Tier: "Onyx", FetchedAt: t0},
+	}); err != nil {
+		t.Fatalf("InsertWorldCSRSnapshot: %v", err)
+	}
+
+	top100, err := WorldSeasonGamertags(ctx, shared.SQLDb(), "csrseason13-2", 100)
+	if err != nil {
+		t.Fatalf("WorldSeasonGamertags(top100): %v", err)
+	}
+	// Alpha (arena rang 1) + Beta (slayer rang 5) ; Charlie (arena rang 120, nulle part ailleurs) exclu.
+	if !reflect.DeepEqual(top100, []string{"Alpha", "Beta"}) {
+		t.Errorf("top100 = %v, want [Alpha Beta] (Charlie >100 partout exclu, Beta inclus via slayer)", top100)
+	}
+
+	all, err := WorldSeasonGamertags(ctx, shared.SQLDb(), "csrseason13-2", 0)
+	if err != nil {
+		t.Fatalf("WorldSeasonGamertags(all): %v", err)
+	}
+	if !reflect.DeepEqual(all, []string{"Alpha", "Beta", "Charlie"}) {
+		t.Errorf("all (topN=0) = %v, want [Alpha Beta Charlie]", all)
 	}
 }
