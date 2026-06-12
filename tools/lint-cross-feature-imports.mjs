@@ -51,6 +51,9 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'auth=>auth',
   'admin=>auth',
   'admin=>setup',
+  // Le dashboard monitoring (WatcherSection) réutilise le hook useWatcherStatus
+  // de settings/watcher-queries plutôt que de le dupliquer — dépendance durable.
+  'admin=>settings',
   // Compare consommé par carrière + explorer + palmarès (tiroir latéral)
   'career=>compare',
   'explorer=>compare',
