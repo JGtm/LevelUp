@@ -9,10 +9,14 @@
 // résolution xuid PeopleHub. Persiste en append-only (InsertPlayerSeasonStats).
 //
 // REPRISE : un checkpoint JSON (un fichier) mémorise les gamertags déjà traités
-// par saison. Relancer la commande reprend où elle s'est arrêtée (skip des
-// gamertags faits, skip des saisons complètes). Ctrl-C (SIGINT/SIGTERM) arrête
-// proprement : le lot en cours est flushé + le checkpoint sauvegardé avant de
-// sortir. Idempotent par construction (append-only + vue _latest).
+// par saison (succès dans "done", échecs dans "failed"). Relancer la commande
+// reprend où elle s'est arrêtée (skip des gamertags faits ET échoués, skip des
+// saisons complètes). Un joueur en échec persistant (gros historique qui 429 en
+// boucle, xuid non résolu...) ne rebloque donc PLUS la saison : il est compté
+// comme tenté, la saison se complète, et -retry-failed le re-tente explicitement.
+// Ctrl-C (SIGINT/SIGTERM) arrête proprement : le lot en cours est flushé + le
+// checkpoint sauvegardé avant de sortir. Idempotent par construction (append-only
+// + vue _latest).
 //
 // IMPORTANT : stopper le serveur API avant de lancer (la shared DB est ouverte en
 // RW ; DuckDB interdit deux writers sur Windows). Lancer de préférence en heures
@@ -35,7 +39,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -73,6 +76,7 @@ type cliFlags struct {
 	dryRun        bool
 	allTokens     bool
 	deep          bool
+	retryFailed   bool
 }
 
 func main() {
@@ -111,6 +115,7 @@ func parseFlags() cliFlags {
 	flag.BoolVar(&f.dryRun, "dry-run", false, "agrège sans écrire en base")
 	flag.BoolVar(&f.allTokens, "all-tokens", false, "fetch en round-robin sur TOUS les comptes db_profiles résolus (Halo limite ~par IP → gain borné, pas N×)")
 	flag.BoolVar(&f.deep, "deep", false, "désactive l'arrêt-anticipé (scan profond) — pour backfiller une VIEILLE saison ; combiner avec -max-pages élevé")
+	flag.BoolVar(&f.retryFailed, "retry-failed", false, "re-tente les joueurs précédemment en échec (par défaut ils sont sautés à la reprise pour ne pas rebloquer la saison)")
 	flag.Parse()
 	if strings.TrimSpace(f.tokenGamertag) == "" {
 		fatal("-token-gamertag est requis (compte dont le token résout les xuid PeopleHub)")
@@ -183,7 +188,8 @@ func run(ctx context.Context, cfg *config.AppConfig, f cliFlags) error {
 
 	// 6. Backfill saison par saison.
 	for _, season := range seasons {
-		if cp.completed(season) {
+		// -retry-failed rouvre une saison complétée pour re-tenter ses joueurs en échec.
+		if cp.completed(season) && !f.retryFailed {
 			fmt.Printf("[%s] déjà complète — skip\n", season)
 			continue
 		}
@@ -216,10 +222,10 @@ func backfillSeason(
 	if err != nil {
 		return err
 	}
-	pending := cp.remaining(season, gamertags, f.limit)
+	pending := cp.remaining(season, gamertags, f.limit, f.retryFailed)
 	already := cp.doneCount(season, gamertags)
 	if len(pending) == 0 {
-		markSeasonCompleteIfFull(season, gamertags, f, cp, already)
+		markSeasonCompleteIfFull(season, gamertags, f, cp, cp.attemptedCount(season, gamertags))
 		fmt.Printf("[%s] %d/%d joueurs déjà traités\n", season, already, len(gamertags))
 		return nil
 	}
@@ -252,15 +258,17 @@ func backfillSeason(
 	if err := runSeasonWorkers(ctx, agg, season, pending, already, target, f, cp); err != nil {
 		return err
 	}
-	// Saison complète UNIQUEMENT si tous ses gamertags sont traités (recompte après le run).
-	markSeasonCompleteIfFull(season, gamertags, f, cp, cp.doneCount(season, gamertags))
+	// Saison complète quand tous ses gamertags ont été TENTÉS (done ∪ failed) — un
+	// échec accepté ne doit pas rebloquer indéfiniment (recompte après le run).
+	markSeasonCompleteIfFull(season, gamertags, f, cp, cp.attemptedCount(season, gamertags))
 	return nil
 }
 
 // markSeasonCompleteIfFull marque la saison complète seulement si TOUS ses
-// gamertags sont traités (jamais sur un sous-ensemble -limit) et hors dry-run.
-func markSeasonCompleteIfFull(season string, gamertags []string, f cliFlags, cp *checkpoint, doneCount int) {
-	if f.dryRun || doneCount < len(gamertags) {
+// gamertags ont été tentés (done ∪ failed ; jamais sur un sous-ensemble -limit) et
+// hors dry-run.
+func markSeasonCompleteIfFull(season string, gamertags []string, f cliFlags, cp *checkpoint, attemptedCount int) {
+	if f.dryRun || attemptedCount < len(gamertags) {
 		return
 	}
 	cp.markCompleted(season)
@@ -312,6 +320,7 @@ func collectSeason(
 	t0 := time.Now()
 	var batch []domain.WorldPlayerSeasonStats
 	var batchGTs []string
+	var failedGTs []string
 	done, failures, rows := already, 0, 0
 
 	flush := func() error {
@@ -324,11 +333,14 @@ func collectSeason(
 		// réel ultérieur saute des joueurs jamais insérés).
 		if !f.dryRun {
 			cp.markDone(season, batchGTs)
+			// Les joueurs en échec sont AUSSI checkpointés (liste failed) : ils ne
+			// rebloquent plus la saison à la reprise et comptent vers la complétude.
+			cp.markFailed(season, failedGTs)
 			if err := cp.save(f.checkpoint); err != nil {
 				return err
 			}
 		}
-		batch, batchGTs = nil, nil
+		batch, batchGTs, failedGTs = nil, nil, nil
 		return nil
 	}
 
@@ -336,11 +348,12 @@ func collectSeason(
 		done++
 		if o.err != nil {
 			failures++
+			failedGTs = append(failedGTs, o.gamertag)
 		} else {
 			batch = append(batch, o.stats...)
 			batchGTs = append(batchGTs, o.gamertag)
 		}
-		if len(batchGTs) >= f.flushEvery {
+		if len(batchGTs)+len(failedGTs) >= f.flushEvery {
 			if err := flush(); err != nil {
 				return err
 			}
@@ -430,130 +443,4 @@ func dryRunSuffix(dry bool) string {
 func fatal(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, "\nFATAL: "+format+"\n", args...)
 	os.Exit(1)
-}
-
-// ─── Checkpoint (reprise) ───
-
-type seasonProgress struct {
-	Done      []string `json:"done"`
-	Completed bool     `json:"completed"`
-}
-
-type checkpoint struct {
-	Seasons map[string]*seasonProgress `json:"seasons"`
-	mu      sync.Mutex
-}
-
-// loadCheckpoint lit le fichier de reprise (vide si absent ou si force).
-func loadCheckpoint(path string, force bool) *checkpoint {
-	cp := &checkpoint{Seasons: map[string]*seasonProgress{}}
-	if force {
-		return cp
-	}
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return cp
-	}
-	_ = json.Unmarshal(b, cp)
-	if cp.Seasons == nil {
-		cp.Seasons = map[string]*seasonProgress{}
-	}
-	return cp
-}
-
-func (c *checkpoint) get(season string) *seasonProgress {
-	sp := c.Seasons[season]
-	if sp == nil {
-		sp = &seasonProgress{}
-		c.Seasons[season] = sp
-	}
-	return sp
-}
-
-func (c *checkpoint) completed(season string) bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	sp := c.Seasons[season]
-	return sp != nil && sp.Completed
-}
-
-// remaining retourne les gamertags non encore traités (ordre stable), tronqué à
-// limit (0 = pas de limite). La limite s'applique au total de la saison.
-func (c *checkpoint) remaining(season string, gamertags []string, limit int) []string {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	sp := c.get(season)
-	doneSet := map[string]bool{}
-	for _, gt := range sp.Done {
-		doneSet[gt] = true
-	}
-	pool := gamertags
-	if limit > 0 && limit < len(pool) {
-		pool = pool[:limit]
-	}
-	var out []string
-	for _, gt := range pool {
-		if !doneSet[gt] {
-			out = append(out, gt)
-		}
-	}
-	return out
-}
-
-// doneCount compte les gamertags de la saison déjà traités (intersection avec le
-// checkpoint). Sert à un affichage de progression correct (≠ exclus par -limit).
-func (c *checkpoint) doneCount(season string, gamertags []string) int {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	sp := c.Seasons[season]
-	if sp == nil {
-		return 0
-	}
-	done := make(map[string]bool, len(sp.Done))
-	for _, gt := range sp.Done {
-		done[gt] = true
-	}
-	n := 0
-	for _, gt := range gamertags {
-		if done[gt] {
-			n++
-		}
-	}
-	return n
-}
-
-func (c *checkpoint) markDone(season string, gamertags []string) {
-	if len(gamertags) == 0 {
-		return
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	sp := c.get(season)
-	sp.Done = append(sp.Done, gamertags...)
-}
-
-func (c *checkpoint) markCompleted(season string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.get(season).Completed = true
-}
-
-// save écrit le checkpoint de façon atomique (tmp + rename).
-func (c *checkpoint) save(path string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	b, err := json.MarshalIndent(c, "", "  ")
-	if err != nil {
-		return err
-	}
-	if dir := filepath.Dir(path); dir != "" {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return err
-		}
-	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, b, 0o644); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
 }
