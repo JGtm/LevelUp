@@ -10,9 +10,11 @@
 
 **V2 — fetch PROUVÉ (2026-06-12)** : `sync.GetPlaylistConfig` (discovery-infiniteugc, réutilise doGet/haloUGCHost du client film) validé contre l'API RÉELLE. Auth OK (Spartan + 343-clearance). Découvertes : (1) pas d'endpoint « liste des playlists » — confirmé par le blog den.dev (la liste passe par un pipe AMQP/Bond, l'auteur l'a curée à la main → d'où rankedplaylists.go) ; (2) le fetch par-id REQUIERT un `version_id` (404 sans, 400 sur "latest"), fourni par `match_registry.playlist_version_id` (216 lignes non vides) ; (3) structure réelle : les enfants sont dans `RotationEntries[]` = `{AssetId, VersionId, Metadata.Weight}` (PAS `PlaylistEntries` comme den.dev — l'API a évolué ; CustomData.PlaylistEntries en repli). Parsing isolé dans `parsePlaylistConfig`, 3 tests verts.
 
-**Reste (V2 part 2)** : câbler l'expansion dans le cron, AVANT le drain — pour chaque playlist (id+version de match_registry) : fetch config → enfiler les enfants (AssetId+VersionId) dans catalog_fetch_queue (le drain les nommera) + upsert les poids dans une nouvelle table. Best-effort (un fetch raté ne casse pas le drain).
+**V2 part 2 — LIVRÉ** : `ServiceRegistry.ExpandPlaylistChildren` (registry_catalog_expand.go) lit la config de chaque playlist vue en match (id+version depuis match_registry) → enfile ses couples map-mode enfants (AssetId+VersionId, même injoués) dans `catalog_fetch_queue` (le drain les nomme ensuite) + upsert les poids dans `playlist_map_mode_weights` (CREATE TABLE IF NOT EXISTS inline ; SELECT-then-write anti-ART DuckDB). Best-effort par playlist (un fetch raté n'interrompt pas les autres ni le drain). Câblé dans le cron AVANT le drain (closure expand→drain). In-process (handles serveur) → pas de lock cross-process. Build module + tests verts.
 
-**Prochaine étape** : V2 part 2 (expansion + migration poids).
+**Limite connue** : la découverte reste bornée aux playlists VUES en match (match_registry a leur version). Une playlist jamais jouée par aucun joueur suivi n'a pas de version → pas fetchée (mais elle n'apparaît nulle part dans l'app de toute façon ; le classé injoué est couvert par rankedplaylists.go). Pas d'endpoint « liste des playlists » côté API (AMQP only).
+
+**Prochaine étape** : activer `LEVELUP_CATALOG_REFRESH=1` en prod après validation (le 1er run vérifie le fetch en conditions réelles — déjà prouvé en sonde 2026-06-12).
 
 ---
 
