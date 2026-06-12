@@ -94,18 +94,35 @@ func ExchangeRefreshTokenWithRotation(ctx context.Context, refreshToken string) 
 		clientID = LevelUpClientID
 	}
 
+	// Parc d'auth MIXTE : les RT émis par le flux web CONFIDENTIEL exigent le
+	// client_secret (AADSTS70002 sans lui) ; ceux émis par un flux client PUBLIC
+	// (token-capture/device code, halo-tools) le REJETTENT (AADSTS90023). On ne stocke
+	// pas le client_id par token → 1re tentative AVEC le secret (si défini, app non-
+	// LevelUp), et si Azure le refuse (AADSTS90023), on retente UNE fois SANS. Stateless,
+	// ~1 round-trip de plus tous les ~3h30. (Même comportement que main/auth.)
+	secret := ""
+	if s := os.Getenv("SPNKR_AZURE_CLIENT_SECRET"); s != "" && clientID != LevelUpClientID {
+		secret = s
+	}
+
+	accessToken, rotatedRefreshToken, err = postTokenExchange(ctx, clientID, refreshToken, secret)
+	if err != nil && secret != "" && strings.Contains(err.Error(), "AADSTS90023") {
+		slog.InfoContext(ctx, "oauth_refresh: client_secret refusé (AADSTS90023) — retry en flux client public")
+		accessToken, rotatedRefreshToken, err = postTokenExchange(ctx, clientID, refreshToken, "")
+	}
+	return accessToken, rotatedRefreshToken, err
+}
+
+// postTokenExchange exécute un POST /oauth2/v2.0/token et décode la réponse.
+// secret vide = flux client public (pas de champ client_secret).
+func postTokenExchange(ctx context.Context, clientID, refreshToken, secret string) (string, string, error) {
 	body := url.Values{
 		oauthFieldClientID:     {clientID},
 		"grant_type":           {oauthFieldRefreshToken},
 		oauthFieldRefreshToken: {refreshToken},
 		oauthFieldScope:        {xboxScopes},
 	}
-
-	// Si l'app Azure est confidentielle (SPNKR_AZURE_CLIENT_SECRET défini ET client_id
-	// non-public), inclure le client_secret. Les clients PUBLICS connus (LevelUp,
-	// halo-tools) ne doivent jamais recevoir de secret — Azure rejette sinon
-	// (AADSTS90023). Cf. IsPublicAzureClient (source unique avec auth_code.go).
-	if secret := os.Getenv("SPNKR_AZURE_CLIENT_SECRET"); secret != "" && !IsPublicAzureClient(clientID) {
+	if secret != "" {
 		body.Set("client_secret", secret)
 	}
 
@@ -134,12 +151,15 @@ func ExchangeRefreshTokenWithRotation(ctx context.Context, refreshToken string) 
 	}
 
 	if tok.ErrorCode != "" {
-		slog.WarnContext(ctx, "oauth_refresh: erreur serveur", "error", tok.ErrorCode, "description", tok.ErrorDesc)
+		// DebugContext (pas Warn) : la 1re tentative qui échoue en AADSTS90023 est
+		// attendue pour les comptes publics et suivie d'un retry — pas une vraie erreur.
+		slog.DebugContext(ctx, "oauth_refresh: erreur serveur",
+			"error", tok.ErrorCode, "description", tok.ErrorDesc, "public_flow", secret == "")
 		return "", "", fmt.Errorf("oauth_refresh: %s — %s", tok.ErrorCode, tok.ErrorDesc)
 	}
 
 	if tok.AccessToken == "" {
-		slog.WarnContext(ctx, "oauth_refresh: access_token vide dans la réponse")
+		slog.DebugContext(ctx, "oauth_refresh: access_token vide dans la réponse")
 		return "", "", nil
 	}
 
