@@ -108,4 +108,54 @@ describe('LeaderboardBlock', () => {
       expect(screen.getByText('Erreur de chargement')).toBeInTheDocument()
     })
   })
+
+  it('masque les colonnes enrichies tant qu’aucun joueur n’est backfillé', async () => {
+    mockLeaderboard(ENTRIES) // entrées sans champs d'enrichissement
+    renderWithProviders(<LeaderboardBlock playerSlug="test-player" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('LocalAce')).toBeInTheDocument()
+    })
+    // L'en-tête "Victoires" (col_win_rate) ne doit pas apparaître.
+    expect(screen.queryByText('Victoires')).not.toBeInTheDocument()
+    expect(screen.queryByText('Δ rang')).not.toBeInTheDocument()
+  })
+
+  it('affiche les colonnes enrichies (win rate, KDA, Δ rang) quand le joueur est backfillé', async () => {
+    const enriched = [
+      {
+        // kda/accuracy sont des SOMMES brutes → affichées en moyenne (÷ match_count).
+        rank: 1, xuid: 'x1', gamertag: 'Ace', csr_value: 1850, tier: 'Onyx', sub_tier: 0, is_local: false,
+        match_count: 20, win_rate: 0.65, kda: 36, accuracy: 1050, win_rate_trend: 'up', kda_trend: 'down', rank_delta: 3,
+        kills: 100, deaths: 80, assists: 30, damage_dealt: 50000, damage_taken: 48000,
+      },
+      {
+        rank: 2, xuid: 'x2', gamertag: 'Rival', csr_value: 1700, tier: 'Diamond', sub_tier: 6, is_local: false,
+        match_count: 15, win_rate: 0.4, kda: 16.5, accuracy: 600, win_rate_trend: 'stable', kda_trend: 'stable', rank_delta: -2,
+        kills: 60, deaths: 70, assists: 12, damage_dealt: 30000, damage_taken: 35000,
+      },
+    ]
+    mockLeaderboard(enriched as unknown as typeof ENTRIES)
+    renderWithProviders(<LeaderboardBlock playerSlug="test-player" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Ace')).toBeInTheDocument()
+    })
+    // En-têtes enrichis présents.
+    expect(screen.getByText('Victoires')).toBeInTheDocument()
+    expect(screen.getByText('Δ rang')).toBeInTheDocument()
+
+    // Valeurs de la ligne Ace : win rate FR, KDA moyen (36/20=1.80), précision
+    // moyenne (1050/20=52,5%), delta signé, nb matchs.
+    const aceRow = screen.getByText('Ace').closest('tr')!
+    expect(within(aceRow).getByText('65,0%')).toBeInTheDocument()
+    expect(within(aceRow).getByText('1.80')).toBeInTheDocument()
+    expect(within(aceRow).getByText('52,5%')).toBeInTheDocument()
+    expect(within(aceRow).getByText('+3')).toBeInTheDocument()
+    expect(within(aceRow).getByText('20')).toBeInTheDocument()
+
+    // Delta négatif sur la ligne Rival.
+    const rivalRow = screen.getByText('Rival').closest('tr')!
+    expect(within(rivalRow).getByText('-2')).toBeInTheDocument()
+  })
 })

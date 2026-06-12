@@ -22,11 +22,20 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { csrRankImageURL } from '@/lib/staticAssets'
+import { tokenCssVar } from '@/lib/accessibility'
+import { skillDeltaScale } from '@/lib/accessibility/scales'
+import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
 
 const SUB_TIER_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI']
 const toRoman = (n: number): string => SUB_TIER_ROMAN[n] ?? String(n)
 
 const CSR_WORLD = 'csr-world'
+
+// Masquage responsive : le mode enrichi compte jusqu'à 10 colonnes. #, joueur et CSR
+// restent toujours visibles ; victoires/KDA apparaissent dès `sm` ; tier/parties/
+// précision/rendement/Δrang dès `lg`. Mêmes classes appliquées en-tête ET cellules.
+const COL_HIDE_SM = 'hidden sm:table-cell'
+const COL_HIDE_LG = 'hidden lg:table-cell'
 
 /**
  * Playlists classées (asset IDs stables) — FALLBACK si le catalogue dynamique
@@ -87,6 +96,64 @@ function formatStatValue(entry: LeaderboardEntry, locale: string): string {
   return `${v.toLocaleString(intl, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}${entry.unit ?? ''}`
 }
 
+type Trend = 'up' | 'down' | 'stable'
+const TREND_GLYPH: Record<Trend, string> = { up: '▲', down: '▼', stable: '=' }
+// Tokens sémantiques de tendance (cf. KPIStrip) — jamais de hex direct.
+const TREND_VAR: Record<Trend, string> = {
+  up: '--narrative-trend-positive',
+  down: '--narrative-trend-negative',
+  stable: '--narrative-trend-neutral',
+}
+const isTrend = (v: unknown): v is Trend => v === 'up' || v === 'down' || v === 'stable'
+
+/** Valeur d'une métrique suivie d'une flèche de tendance colorée (optionnelle). */
+function MetricWithTrend({ text, trend, tooltip }: { text: string; trend?: string | null; tooltip?: string }) {
+  return (
+    <span className="inline-flex items-baseline justify-end gap-1">
+      <span>{text}</span>
+      {isTrend(trend) && (
+        <span
+          className="text-[10px] font-bold leading-none"
+          style={{ color: `var(${TREND_VAR[trend]})` }}
+          title={tooltip}
+          aria-label={tooltip}
+        >
+          {TREND_GLYPH[trend]}
+        </span>
+      )}
+    </span>
+  )
+}
+
+const fmtPct = (v: number, locale: string): string =>
+  `${(v * 100).toLocaleString(locale === 'en' ? 'en-US' : 'fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+
+// renderCombatYield rend Rendement/Résistance EXACTEMENT comme la tuile de match
+// (CombatYieldDisplay). Calcule oc/dr/dégâts-par-frag/dégâts-par-mort depuis les
+// compteurs bruts agrégés (baseline 225). Affichage uniquement — pas d'agrégation.
+function renderCombatYield(e: LeaderboardEntry): ReactNode {
+  const dd = e.damage_dealt
+  const dt = e.damage_taken
+  const k = e.kills ?? 0
+  const d = e.deaths ?? 0
+  const a = e.assists ?? 0
+  if (dd == null || dt == null || k <= 0 || d <= 0) {
+    return <span className="text-muted-foreground">—</span>
+  }
+  const dmgPerKill = dd / (k + a / 3)
+  const dmgPerDeath = dt / d
+  return (
+    <CombatYieldDisplay
+      className="min-w-[170px]"
+      offensiveConversion={dmgPerKill > 0 ? 225 / dmgPerKill : null}
+      defensiveResistance={dmgPerDeath / 225}
+      dmgPerKill={dmgPerKill}
+      dmgPerDeath={dmgPerDeath}
+      align="center"
+    />
+  )
+}
+
 export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
@@ -115,7 +182,10 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
   const playlistOptions: SelectorOption[] = useMemo(
     () =>
       catalog?.playlists?.length
-        ? catalog.playlists.map((p) => ({ value: p.id, label: KNOWN_PLAYLIST_LABEL[p.id] ?? p.display_name }))
+        ? // Phase F : le backend renvoie le nom du catalogue mutualise (cascade
+          // asset_translations[fr] > rankedplaylists FR > catalogue EN). On le prefere
+          // au libelle code en dur (KNOWN_*), garde en fallback ultime.
+          catalog.playlists.map((p) => ({ value: p.id, label: p.display_name || KNOWN_PLAYLIST_LABEL[p.id] || p.id }))
         : PLAYLISTS.map((p) => ({ value: p.id, label: p.label })),
     [catalog],
   )
@@ -162,6 +232,14 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
           return e.value ?? 0
         case 'matches':
           return e.matches_played ?? 0
+        case 'world_matches':
+          return e.match_count ?? 0
+        case 'win_rate':
+          return e.win_rate ?? 0
+        case 'kda':
+          return (e.kda ?? 0) / (e.match_count || 1)
+        case 'accuracy':
+          return (e.accuracy ?? 0) / (e.match_count || 1)
         default:
           return e.rank
       }
@@ -169,6 +247,10 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
     const sorted = [...rows].sort((a, b) => sortValue(a) - sortValue(b))
     return sortDir === 'asc' ? sorted : sorted.reverse()
   }, [data?.entries, sortKey, sortDir])
+
+  // Colonnes enrichies affichées uniquement si au moins un joueur est backfillé
+  // (sinon table CSR historique inchangée). Calculé une fois pour aligner en-tête + cellules.
+  const hasEnrichment = isWorld && entries.some((e) => e.match_count != null)
 
   const sortIcon = (key: string): string => (sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '')
 
@@ -242,8 +324,18 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
                 <th className="py-2 pr-4 text-left font-medium">{t('common.leaderboard.col_player')}</th>
                 {isWorld ? (
                   <>
-                    <th className="py-2 pr-4 text-center font-medium">{t('common.leaderboard.col_tier')}</th>
+                    <th className={`py-2 pr-4 text-center font-medium ${COL_HIDE_LG}`}>{t('common.leaderboard.col_tier')}</th>
                     <SortableTh label={t('common.leaderboard.col_csr')} className="text-right" onClick={() => toggleSort('csr')} suffix={sortIcon('csr')} />
+                    {hasEnrichment && (
+                      <>
+                        <SortableTh label={t('common.leaderboard.col_matches')} className={`text-right ${COL_HIDE_LG}`} onClick={() => toggleSort('world_matches')} suffix={sortIcon('world_matches')} />
+                        <SortableTh label={t('common.leaderboard.col_win_rate')} className={`text-right ${COL_HIDE_SM}`} onClick={() => toggleSort('win_rate')} suffix={sortIcon('win_rate')} />
+                        <SortableTh label={t('common.leaderboard.col_kda')} className={`text-right ${COL_HIDE_SM}`} onClick={() => toggleSort('kda')} suffix={sortIcon('kda')} />
+                        <SortableTh label={t('common.leaderboard.col_accuracy')} className={`text-right ${COL_HIDE_LG}`} onClick={() => toggleSort('accuracy')} suffix={sortIcon('accuracy')} />
+                        <th className={`py-2 pr-4 text-center font-medium ${COL_HIDE_LG}`}>{t('common.leaderboard.col_combat')}</th>
+                        <th className={`py-2 pr-4 text-right font-medium ${COL_HIDE_LG}`}>{t('common.leaderboard.col_rank_delta')}</th>
+                      </>
+                    )}
                   </>
                 ) : (
                   <>
@@ -259,7 +351,10 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
                   key={`${entry.xuid || entry.gamertag}-${entry.rank}`}
                   entry={entry}
                   isWorld={isWorld}
+                  hasEnrichment={hasEnrichment}
                   localLabel={t('common.leaderboard.local_badge')}
+                  trendTooltip={t('common.leaderboard.trend_tooltip')}
+                  rankDeltaTooltip={t('common.leaderboard.rank_delta_tooltip')}
                   locale={locale}
                   onHover={onHoverEntry}
                   onGamertagClick={goToExplorer}
@@ -289,18 +384,28 @@ function SortableTh({ label, className, onClick, suffix }: { label: string; clas
 function LeaderboardRow({
   entry,
   isWorld,
+  hasEnrichment,
   localLabel,
+  trendTooltip,
+  rankDeltaTooltip,
   locale,
   onHover,
   onGamertagClick,
 }: {
   entry: LeaderboardEntry
   isWorld: boolean
+  hasEnrichment: boolean
   localLabel: string
+  trendTooltip: string
+  rankDeltaTooltip: string
   locale: string
   onHover?: (gamertag: string) => void
   onGamertagClick: (gamertag: string) => void
 }) {
+  // Accent podium : top-3 en gras + couleur pleine (vs muted), sans nouvelle couleur
+  // (tokens sémantiques foreground/muted existants — pas de hex ni classe de teinte).
+  const isPodium = entry.rank <= 3
+  const rankClass = isPodium ? 'font-bold text-foreground' : 'text-muted-foreground'
   const playerCell: ReactNode = (
     <span className="inline-flex items-center gap-2">
       {isWorld && (
@@ -332,14 +437,45 @@ function LeaderboardRow({
       className={`border-b text-sm transition-colors last:border-0 hover:bg-muted ${entry.is_local ? 'bg-accent/40' : ''}`}
       onMouseEnter={() => onHover?.(entry.gamertag)}
     >
-      <td className="py-2 pr-4 text-center font-mono text-muted-foreground">{entry.rank}</td>
+      <td className={`py-2 pr-4 text-center font-mono ${rankClass}`}>{entry.rank}</td>
       <td className="py-2 pr-4 font-medium text-foreground">{playerCell}</td>
       {isWorld ? (
         <>
-          <td className="py-2 pr-4 text-center text-xs text-muted-foreground">{tierLabel(entry)}</td>
+          <td className={`py-2 pr-4 text-center text-xs text-muted-foreground ${COL_HIDE_LG}`}>{tierLabel(entry)}</td>
           <td className="py-2 pr-4 text-right font-mono text-foreground">
             {entry.csr_value.toLocaleString(locale === 'en' ? 'en-US' : 'fr-FR')}
           </td>
+          {hasEnrichment && (
+            <>
+              <td className={`py-2 pr-4 text-right font-mono text-muted-foreground ${COL_HIDE_LG}`}>{entry.match_count ?? '—'}</td>
+              <td className={`py-2 pr-4 text-right font-mono text-foreground ${COL_HIDE_SM}`}>
+                {entry.win_rate != null ? <MetricWithTrend text={fmtPct(entry.win_rate, locale)} trend={entry.win_rate_trend} tooltip={trendTooltip} /> : '—'}
+              </td>
+              <td className={`py-2 pr-4 text-right font-mono text-foreground ${COL_HIDE_SM}`}>
+                {entry.kda != null && entry.match_count ? (
+                  <MetricWithTrend text={(entry.kda / entry.match_count).toFixed(2)} trend={entry.kda_trend} tooltip={trendTooltip} />
+                ) : (
+                  '—'
+                )}
+              </td>
+              <td className={`py-2 pr-4 text-right font-mono text-foreground ${COL_HIDE_LG}`}>
+                {entry.accuracy != null && entry.match_count
+                  ? `${(entry.accuracy / entry.match_count).toLocaleString(locale === 'en' ? 'en-US' : 'fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+                  : '—'}
+              </td>
+              <td className={`py-2 pr-4 ${COL_HIDE_LG}`}>{renderCombatYield(entry)}</td>
+              <td className={`py-2 pr-4 text-right font-mono ${COL_HIDE_LG}`}>
+                {entry.rank_delta != null && entry.rank_delta !== 0 ? (
+                  <span style={{ color: tokenCssVar(skillDeltaScale(entry.rank_delta)) }} title={rankDeltaTooltip}>
+                    {entry.rank_delta > 0 ? '+' : ''}
+                    {entry.rank_delta}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </td>
+            </>
+          )}
         </>
       ) : (
         <>

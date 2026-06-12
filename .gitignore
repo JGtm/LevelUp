@@ -260,3 +260,6 @@ apps/go-api/cmd/tmp_*/
 
 # Cache images rank carrière (générées à la demande)
 data/cache/career-rank-image/
+
+# Logs runtime des CLI backfill
+apps/go-api/backfill.log
