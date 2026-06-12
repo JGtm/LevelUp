@@ -46,18 +46,27 @@ func loadLegacyInputs(cfg *config.AppConfig, gamertag string) auth.LegacyAuthInp
 // source, MSAL silent puis refresh token (rotation persistée si store). C'est
 // exactement la résolution des backfills qui marchent — pas de pool reconstruit.
 func resolveAccessToken(ctx context.Context, provider auth.TokenProvider, store *auth.MultiUserTokenStore, xuid string, legacy auth.LegacyAuthInputs) (string, error) {
+	var lastErr error // dernière erreur OAuth sous-jacente — surfacée pour le diagnostic
 	try := func(msal, rt string, persist bool) string {
 		if msal != "" {
-			if at, e := provider.TrySilentRefresh(ctx, msal); e == nil && at != "" {
+			at, e := provider.TrySilentRefresh(ctx, msal)
+			if e == nil && at != "" {
 				return at
+			}
+			if e != nil {
+				lastErr = e
 			}
 		}
 		if rt != "" {
-			if at, rot, e := provider.TryOAuthRefreshWithRotation(ctx, rt); e == nil && at != "" {
+			at, rot, e := provider.TryOAuthRefreshWithRotation(ctx, rt)
+			if e == nil && at != "" {
 				if persist && rot != "" && rot != rt {
 					_ = store.UpdateOAuthRefreshToken(xuid, rot)
 				}
 				return at
+			}
+			if e != nil {
+				lastErr = e
 			}
 		}
 		return ""
@@ -70,7 +79,12 @@ func resolveAccessToken(ctx context.Context, provider auth.TokenProvider, store 
 	if at := try(legacy.MSALCache, legacy.OAuthRT, false); at != "" {
 		return at, nil
 	}
-	return "", fmt.Errorf("aucun access_token frais pour xuid(%s)", xuid)
+	if lastErr != nil {
+		// Surface la cause réelle (ex. invalid_grant = RT minté par un autre client
+		// Azure ou révoqué) plutôt que le générique — sinon le skip est indiagnosticable.
+		return "", fmt.Errorf("aucun access_token frais pour xuid(%s): %w", xuid, lastErr)
+	}
+	return "", fmt.Errorf("aucun access_token frais pour xuid(%s) (aucun refresh token exploitable)", xuid)
 }
 
 // refreshingHaloSource : client Halo single-token (Spartan/Clearance) ré-résolu
