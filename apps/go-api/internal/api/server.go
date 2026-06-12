@@ -295,7 +295,11 @@ func NewRouter(
 	if pb, err := NewPrestigeBundle(cfg.RepoRoot, reg.resolve, cfg.PrestigeEnabled); err != nil {
 		slog.Warn("prestige_bundle_init_failed", "err", err.Error())
 	} else {
-		prestigeBundle = pb
+		prestigeBundle = pb.WithSquadProfile(newSquadPerfProfileProvider(
+			func() ([]domain.PlayerSummary, error) { return cfg.LoadPlayers() },
+			reg.resolve,
+			defaultProgressionTitleSlug(),
+		))
 		// Phase 2 plan stabilisation 2026-05-22 : enregistrer le bundle sur
 		// le registry pour fermeture au shutdown (évite la fuite de refCount
 		// sur metadata.duckdb qui causait le verrou au hot-reload Air).
@@ -1037,7 +1041,34 @@ func NewRouter(
 			// Le bundle a été initialisé au boot ; si nil ou flag off, routes non montées.
 			if prestigeBundle != nil && cfg.PrestigeEnabled {
 				lazy := NewLazyPrestigeService(prestigeBundle, nil, cfg.DemoMode)
-				ph := handlers.NewPrestigeHandler(lazy)
+				appPlayers := func(context.Context) ([]domain.PlayerSummary, error) {
+					return cfg.LoadPlayers()
+				}
+				// Garde d'autorisation acteur (ADR 0024 étendu aux routes squad
+				// top-level) : created_by/requested_by/user_id doivent désigner un
+				// profil possédé par la session. Réutilise les primitives de
+				// RequirePlayerOwnership. Transparent en demo / auth désactivée.
+				squadXUIDResolve := playerOwnershipXUIDResolver(cfg)
+				squadFamilyResolve := familyXUIDResolver(cfg, settingsStore)
+				squadActorGuard := func(ctx context.Context, actorSlug string) bool {
+					if !authz.Enforced(cfg.DemoMode, cfg.AuthMode) {
+						return true
+					}
+					sess := middleware.GetSession(ctx)
+					if sess == nil {
+						return false
+					}
+					xuid, found := squadXUIDResolve(ctx, actorSlug)
+					if !found {
+						return false
+					}
+					var fam map[string]bool
+					if squadFamilyResolve != nil {
+						fam = squadFamilyResolve(ctx)
+					}
+					return authz.CanAccessPlayer(true, authz.CurrentUser(sess, users), xuid, fam)
+				}
+				ph := handlers.NewPrestigeHandler(lazy, appPlayers).WithActorGuard(squadActorGuard)
 				// Défis
 				r.Post("/challenges", ph.CreateChallenge)
 				r.Get("/challenges", ph.ListActiveChallenges)
@@ -1060,10 +1091,17 @@ func NewRouter(
 				r.Get("/squads/{squad_id}/challenges", ph.ListSquadChallenges)
 				r.Post("/squads/{squad_id}/challenges/pool/refresh", ph.RefreshSquadPool)
 				r.Post("/squad-challenges/{id}/join", ph.JoinSquadChallenge)
+				// Squad CRUD (roster d'escouade, clé xuid)
+				r.Post("/squads", ph.CreateSquad)
+				r.Get("/squads", ph.ListMySquads)
+				r.Post("/squads/{squad_id}/members", ph.AddSquadMember)
+				r.Delete("/squads/{squad_id}/members/{xuid}", ph.RemoveSquadMember)
+				r.Post("/squad-challenges/{id}/evaluate", ph.EvaluateSquadChallenge)
+				r.Get("/squads/{squad_id}/orientation", ph.SquadOrientation)
 				// Mode pilote
 				r.Post("/pilot-mode/enable", ph.EnablePilotMode)
 				r.Post("/pilot-mode/disable", ph.DisablePilotMode)
-				slog.Info("prestige_routes_mounted", "endpoints_count", 16)
+				slog.Info("prestige_routes_mounted", "endpoints_count", 22)
 			}
 
 			// Sprint 54 : Compare joueur vs joueur

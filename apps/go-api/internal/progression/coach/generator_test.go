@@ -271,6 +271,32 @@ func TestGenerate_LOWESSPositive(t *testing.T) {
 	}
 }
 
+func TestGenerate_LOWESSSoftNegative(t *testing.T) {
+	g := NewGenerator()
+	now := fixedDate(2026, 5, 18)
+	alerts := g.Generate(context.Background(), GenerateInput{
+		UserID: "u1", TitleSlug: "halo_infinite", Now: now,
+		LOWESSTrends: []LOWESSTrend{
+			{Component: "accuracy", Slope: -0.15, Window: 14},          // baisse soutenue → alerte
+			{Component: "kills_vs_expected", Slope: -0.05, Window: 14}, // au-dessus du seuil (-0.10) → ignoré
+			{Component: "kda", Slope: -0.20, Window: 7},                // fenêtre trop courte → ignoré
+			{Component: "win_factor", Slope: 0.10, Window: 14},         // positif → pas soft-neg
+		},
+	})
+	if _, ok := findAlertByDedup(alerts, AlertTypeLOWESSSoftNegative, "accuracy|soft_neg"); !ok {
+		t.Error("expected LOWESSSoftNegative for accuracy (slope -0.15 < -0.10)")
+	}
+	if _, ok := findAlertByDedup(alerts, AlertTypeLOWESSSoftNegative, "kills_vs_expected|soft_neg"); ok {
+		t.Error("kills_vs_expected slope -0.05 above threshold, no soft-neg alert")
+	}
+	if _, ok := findAlertByDedup(alerts, AlertTypeLOWESSSoftNegative, "kda|soft_neg"); ok {
+		t.Error("kda window < 14, no alert")
+	}
+	if _, ok := findAlertByDedup(alerts, AlertTypeLOWESSSoftNegative, "win_factor|soft_neg"); ok {
+		t.Error("win_factor positive, no soft-neg alert")
+	}
+}
+
 // ─── Comeback welcome ───────────────────────────────────────────────────────
 
 func TestGenerate_ComebackWelcome_AfterLongPause(t *testing.T) {
@@ -391,6 +417,19 @@ func TestAlertType_NotificationCategory_AllMapped(t *testing.T) {
 		if cat == "" {
 			t.Errorf("AlertType %s has no category mapping", at)
 		}
+	}
+}
+
+// TestAlertType_LOWESSSoftNegative_NeutralCategory verrouille le cadrage : le
+// soft-négatif NE DOIT PAS réutiliser threshold_crossed (notif positive « Palier
+// franchi ») mais sa catégorie neutre dédiée. Cf. Coach V3 Phase A.
+func TestAlertType_LOWESSSoftNegative_NeutralCategory(t *testing.T) {
+	got := AlertTypeLOWESSSoftNegative.NotificationCategory()
+	if got != notifications.CategoryTrendConsolidate {
+		t.Errorf("LOWESSSoftNegative category = %s, want trend_consolidate", got)
+	}
+	if got == notifications.CategoryThresholdCrossed {
+		t.Error("soft-négatif ne doit pas réutiliser threshold_crossed (cadrage positif)")
 	}
 }
 

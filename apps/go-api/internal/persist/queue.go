@@ -67,6 +67,34 @@ type BatchQueue struct {
 	// apres chaque batch — la queue track les echecs consecutifs pour fail
 	// fast le Drain au lieu d'attendre le timeout 60s sur un worker casse.
 	consecutiveFailures atomic.Int32
+
+	// inFlight : batch_ids actuellement présents dans le channel ou en cours
+	// de persist par le worker. Permet à RecoverPending d'être appelé
+	// PÉRIODIQUEMENT en runtime (pas seulement au boot) sans re-pousser un
+	// batch déjà en vol — sinon double-traitement à chaque tick de recovery.
+	// Marqué par Submit (avant push) et RecoverPending (sur re-push), effacé
+	// par le worker à la fin de handle (succès OU échec : un batch échoué
+	// redevient éligible à la recovery). Cf. PLAN_PERSIST_ROBUSTNESS Phase 1.
+	inFlight   map[string]struct{}
+	inFlightMu sync.Mutex
+
+	// OnWALPurged (optionnel) : appelé pour chaque WAL du dossier PRINCIPAL
+	// purgé par PurgeOldWAL — c.-à-d. un batch jamais persisté (perte de
+	// données potentielle). Branché par main.go pour alimenter une métrique
+	// expvar (persist_wal_purged_total). Le log ERROR est émis
+	// INCONDITIONNELLEMENT par PurgeOldWAL ; ce hook ne sert qu'à la métrique.
+	OnWALPurged func(PurgedWALInfo)
+}
+
+// PurgedWALInfo décrit un WAL purgé par PurgeOldWAL sans avoir été persisté.
+// Sa simple existence > maxAge signale une perte de données potentielle.
+type PurgedWALInfo struct {
+	BatchID string
+	Player  string
+	Source  string
+	MatchID string // best-effort (Shared.Match.MatchID si présent)
+	Age     time.Duration
+	File    string
 }
 
 // circuitBreakerThreshold est le nombre d'echecs Persist consecutifs au-dela
@@ -92,9 +120,41 @@ func NewBatchQueue(cfg BatchQueueConfig) (*BatchQueue, error) {
 		return nil, fmt.Errorf("persist: mkdir WALDir: %w", err)
 	}
 	return &BatchQueue{
-		walDir: cfg.WALDir,
-		chMain: make(chan *MatchBatch, bufSize),
+		walDir:   cfg.WALDir,
+		chMain:   make(chan *MatchBatch, bufSize),
+		inFlight: make(map[string]struct{}),
 	}, nil
+}
+
+// markInFlight enregistre batchID comme présent dans le channel / en cours de
+// persist. Idempotent.
+func (q *BatchQueue) markInFlight(batchID string) {
+	q.inFlightMu.Lock()
+	q.inFlight[batchID] = struct{}{}
+	q.inFlightMu.Unlock()
+}
+
+// clearInFlight retire batchID du suivi (appelé par le worker à la fin de
+// handle, succès ou échec). Idempotent.
+func (q *BatchQueue) clearInFlight(batchID string) {
+	q.inFlightMu.Lock()
+	delete(q.inFlight, batchID)
+	q.inFlightMu.Unlock()
+}
+
+// isInFlight retourne true si batchID est déjà dans le channel / en cours de
+// persist — auquel cas RecoverPending NE doit PAS le re-pousser.
+func (q *BatchQueue) isInFlight(batchID string) bool {
+	q.inFlightMu.Lock()
+	_, ok := q.inFlight[batchID]
+	q.inFlightMu.Unlock()
+	return ok
+}
+
+// walIDFromFile extrait le batch_id du nom de fichier WAL ("{id}.json" → "id").
+// L'appelant garantit isJSONFile(name) (len >= 5, suffixe ".json").
+func walIDFromFile(name string) string {
+	return name[:len(name)-5]
 }
 
 // Submit écrit le batch dans le WAL puis le pousse dans le channel.
@@ -135,12 +195,19 @@ func (q *BatchQueue) Submit(batch *MatchBatch) error {
 	if err := os.WriteFile(tmpPath, data, 0o644); err != nil {
 		return fmt.Errorf("persist: write WAL tmp %s: %w", batch.BatchID, err)
 	}
+	// 3. Marquer in-flight AVANT le rename : dès que le WAL devient visible
+	// (rename), une recovery périodique concurrente pourrait le lire. Le
+	// marquer avant garantit qu'elle le voit déjà en vol et ne le re-pousse
+	// pas (sinon double persist). Le worker l'efface à la fin de handle.
+	q.markInFlight(batch.BatchID)
+
 	if err := os.Rename(tmpPath, walPath); err != nil {
-		_ = os.Remove(tmpPath) // best-effort cleanup
+		q.clearInFlight(batch.BatchID) // rename échoué → batch pas en vol
+		_ = os.Remove(tmpPath)         // best-effort cleanup
 		return fmt.Errorf("persist: rename WAL %s: %w", batch.BatchID, err)
 	}
 
-	// 3. Push dans le channel (peut bloquer).
+	// 4. Push dans le channel (peut bloquer).
 	q.chMain <- batch
 	return nil
 }
@@ -169,8 +236,13 @@ func (q *BatchQueue) ACK(batchID string) error {
 }
 
 // RecoverPending lit walDir/*.json, désérialise chaque batch, et re-pousse
-// dans le channel principal. À appeler UNE FOIS au boot AVANT de démarrer
-// les workers.
+// dans le channel principal.
+//
+// Appelable au boot ET PÉRIODIQUEMENT en runtime (PLAN_PERSIST_ROBUSTNESS
+// Phase 1) : les batches déjà en vol (présents dans le channel ou en cours de
+// persist, cf. inFlight) sont SKIPPÉS — seuls les WAL réellement bloqués (échec
+// de persist, plus dans le channel) sont re-poussés. Sans ce dédup, un tick de
+// recovery dupliquerait tout batch en vol dans le channel.
 //
 // Les fichiers JSON invalides sont déplacés vers walDir/corrupted/ + log ERROR.
 //
@@ -186,6 +258,11 @@ func (q *BatchQueue) RecoverPending() error {
 
 	for _, entry := range entries {
 		if entry.IsDir() || !isJSONFile(entry.Name()) {
+			continue
+		}
+		// Dédup runtime : ne pas re-pousser un batch déjà dans le channel /
+		// en cours de persist (le worker l'effacera de inFlight à la fin).
+		if q.isInFlight(walIDFromFile(entry.Name())) {
 			continue
 		}
 		walPath := filepath.Join(q.walDir, entry.Name())
@@ -215,6 +292,10 @@ func (q *BatchQueue) RecoverPending() error {
 			continue
 		}
 
+		// Marquer in-flight AVANT le push (idem Submit) pour qu'un tick de
+		// recovery ultérieur ne re-pousse pas ce même batch tant qu'il n'a pas
+		// été traité par le worker.
+		q.markInFlight(batch.BatchID)
 		// Push (peut bloquer si channel plein — back-pressure)
 		q.chMain <- &batch
 		slog.Info("persist: WAL recovery pushed",
@@ -371,8 +452,10 @@ func (q *BatchQueue) PurgeOldWAL(maxAge time.Duration) (int, error) {
 	cutoff := time.Now().Add(-maxAge)
 	purged := 0
 
-	// Dossier principal walDir/*.json
-	if n, err := purgeJSONFilesOlderThan(q.walDir, cutoff, false); err != nil {
+	// Dossier principal walDir/*.json — purge NON-SILENCIEUSE : chaque fichier
+	// est un batch jamais persisté (perte de données potentielle), tracé en
+	// ERROR + métrique via le hook. Cf. PLAN_PERSIST_ROBUSTNESS Phase 1.
+	if n, err := q.purgeMainWALOlderThan(cutoff); err != nil {
 		return purged, err
 	} else {
 		purged += n
@@ -394,6 +477,69 @@ func (q *BatchQueue) PurgeOldWAL(maxAge time.Duration) (int, error) {
 			"wal_dir", q.walDir, "purged_files", purged, "max_age", maxAge)
 	}
 	return purged, nil
+}
+
+// purgeMainWALOlderThan supprime les WAL > cutoff du dossier principal, en
+// loggant ERROR pour CHACUN (batch jamais persisté = perte potentielle) et en
+// appelant le hook OnWALPurged (métrique). Best-effort sur l'extraction des
+// métadonnées : si le JSON est illisible, on logge quand même file+age.
+func (q *BatchQueue) purgeMainWALOlderThan(cutoff time.Time) (int, error) {
+	entries, err := os.ReadDir(q.walDir)
+	if err != nil {
+		return 0, fmt.Errorf("persist: read %s: %w", q.walDir, err)
+	}
+	purged := 0
+	for _, entry := range entries {
+		if entry.IsDir() || !isJSONFile(entry.Name()) {
+			continue
+		}
+		info, ierr := entry.Info()
+		if ierr != nil {
+			continue
+		}
+		if info.ModTime().After(cutoff) {
+			continue // récent → garder
+		}
+		path := filepath.Join(q.walDir, entry.Name())
+		purgedInfo := q.inspectWALForPurge(path, entry.Name(), time.Since(info.ModTime()))
+
+		// Log INCONDITIONNEL avant suppression — aucune perte silencieuse.
+		slog.Error("persist: WAL purgé sans avoir été persisté — perte de données potentielle",
+			"file", purgedInfo.File, "batch_id", purgedInfo.BatchID,
+			"player", purgedInfo.Player, "source", purgedInfo.Source,
+			"match_id", purgedInfo.MatchID, "age", purgedInfo.Age)
+
+		if err := os.Remove(path); err != nil {
+			slog.Warn("persist: purge remove failed", "file", path, "err", err)
+			continue
+		}
+		purged++
+		if q.OnWALPurged != nil {
+			q.OnWALPurged(purgedInfo)
+		}
+	}
+	return purged, nil
+}
+
+// inspectWALForPurge lit best-effort le WAL pour en extraire les métadonnées de
+// traçabilité. Retourne au moins File + Age même si le JSON est illisible.
+func (q *BatchQueue) inspectWALForPurge(path, name string, age time.Duration) PurgedWALInfo {
+	pi := PurgedWALInfo{File: name, Age: age, BatchID: walIDFromFile(name)}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return pi
+	}
+	var batch MatchBatch
+	if json.Unmarshal(data, &batch) != nil {
+		return pi
+	}
+	pi.BatchID = batch.BatchID
+	pi.Player = batch.Player
+	pi.Source = batch.Source
+	if batch.Shared.Match != nil {
+		pi.MatchID = batch.Shared.Match.MatchID
+	}
+	return pi
 }
 
 // purgeJSONFilesOlderThan supprime les fichiers .json plus vieux que cutoff

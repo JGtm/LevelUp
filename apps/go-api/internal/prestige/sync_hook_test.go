@@ -75,6 +75,30 @@ func (m *mockService) ListSquadChallenges(ctx context.Context, _ string) ([]Squa
 func (m *mockService) RefreshSquadPool(ctx context.Context, _, _, _ string) ([]Template, error) {
 	return nil, nil
 }
+func (m *mockService) CreateSquad(ctx context.Context, _ CreateSquadRequest) (Squad, error) {
+	return Squad{}, nil
+}
+func (m *mockService) ListSquadsForUser(ctx context.Context, _ string) ([]Squad, error) {
+	return nil, nil
+}
+func (m *mockService) GetSquad(ctx context.Context, _ string) (Squad, error) {
+	return Squad{}, nil
+}
+func (m *mockService) ListSquadMembers(ctx context.Context, _ string) ([]SquadMember, error) {
+	return nil, nil
+}
+func (m *mockService) AddSquadMember(ctx context.Context, _ string, _ SquadMember, _ string) error {
+	return nil
+}
+func (m *mockService) RemoveSquadMember(ctx context.Context, _, _, _ string) error {
+	return nil
+}
+func (m *mockService) EvaluateSquadChallenge(ctx context.Context, _, _ string) ([]SquadParticipantProgress, error) {
+	return nil, nil
+}
+func (m *mockService) SquadOrientation(ctx context.Context, _, _ string) (string, error) {
+	return "", nil
+}
 func (m *mockService) EnablePilotMode(ctx context.Context, _, _ string) (PilotModeAttribution, error) {
 	return PilotModeAttribution{}, nil
 }

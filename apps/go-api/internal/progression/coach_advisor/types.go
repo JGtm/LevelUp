@@ -34,6 +34,10 @@ const (
 	// SignalLOWESSPositive : pente LOWESS positive soutenue sur une métrique
 	// (typiquement >= 14 jours), indique une amélioration à consolider.
 	SignalLOWESSPositive SignalKind = "lowess_positive"
+	// SignalLOWESSSoftNegative : pente LOWESS négative soutenue (>= 14 jours) —
+	// opportunité de STABILISER l'axe (registre soft, non-culpabilisant). Symétrique
+	// de SignalLOWESSPositive ; strength basée sur la magnitude de la pente.
+	SignalLOWESSSoftNegative SignalKind = "lowess_soft_negative"
 	// SignalCombatPatternActive : OC élevé + résidu engagement > +5 — joueur
 	// performant en combat, prêt pour un challenge offensif.
 	SignalCombatPatternActive SignalKind = "combat_pattern_active"

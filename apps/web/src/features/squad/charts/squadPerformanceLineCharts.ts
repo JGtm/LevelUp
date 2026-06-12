@@ -242,6 +242,8 @@ export function buildKillsDeathsButterflyOption(
 
   const hiddenPlayers = opts.hiddenPlayers ?? new Set<string>()
   const hiddenTypes = opts.hiddenTypes ?? new Set<string>()
+  const showBonus = !hiddenTypes.has('Bonus')
+  const bonusColor = resolveToken('chart-series-5')
   const emptyData = new Array<number | null>(n).fill(null)
   const seriesPerPlayer: Array<Record<string, unknown>> = []
   for (const player of players) {
@@ -249,13 +251,16 @@ export function buildKillsDeathsButterflyOption(
     const negColor = hexComplement(color) // hue +180°, opaque — même convention que squadPerMinuteChart
     const killsHidden = hiddenPlayers.has(player) || hiddenTypes.has(opts.killsLabel)
     const deathsHidden = hiddenPlayers.has(player) || hiddenTypes.has(opts.deathsLabel)
+    const playerHidden = hiddenPlayers.has(player)
     const killsData = new Array<number | null>(n).fill(null)
     const deathsData = new Array<number | null>(n).fill(null)
+    const bonusData = new Array<number | null>(n).fill(null)
     for (const p of rows[player]) {
       killsData[p.match_order] = p.kills
       deathsData[p.match_order] = -p.deaths
+      bonusData[p.match_order] = p.assists / 3
     }
-    // stack identique → kills (positif) et morts (négatif) partagent la même colonne x.
+    // stack identique → kills (positif), bonus (positif) et morts (négatif) partagent la même colonne x.
     seriesPerPlayer.push({
       name: `${player} — ${opts.killsLabel}`,
       type: 'bar',
@@ -264,6 +269,16 @@ export function buildKillsDeathsButterflyOption(
       itemStyle: { color },
       data: killsHidden ? emptyData : killsData,
     })
+    if (showBonus && !playerHidden) {
+      seriesPerPlayer.push({
+        name: `${player} — Bonus`,
+        type: 'bar',
+        stack: player,
+        barMaxWidth: 14,
+        itemStyle: { color: bonusColor },
+        data: bonusData,
+      })
+    }
     seriesPerPlayer.push({
       name: `${player} — ${opts.deathsLabel}`,
       type: 'bar',

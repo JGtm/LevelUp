@@ -4,7 +4,7 @@
  * Frags + Morts en barres groupées par match (étiquettes X `#N\nMap`).
  * La courbe FDA Y2 a été retirée (chart "FDA" dédié sur la même page).
  */
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import {
@@ -34,17 +34,19 @@ export interface TimeseriesKdaTrendProps {
 
 export function TimeseriesKdaTrend({ rows, height = 360, title, emptyMessage, labels }: TimeseriesKdaTrendProps) {
   const themeVersion = useThemeVersion()
-
+  const [showBonus, setShowBonus] = useState(false)
 
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     const colKills = resolveToken('chart-series-1')
     const colDeaths = resolveToken('outcome-loss')
+    const colBonus = resolveToken('chart-series-5')
 
     const categories = buildMatchCategories(rows)
     const kills = rows.map((r) => r.kills)
     const deaths = rows.map((r) => r.deaths)
+    const bonus = rows.map((r) => r.assists / 3)
 
     return {
       backgroundColor: CHART_BG,
@@ -57,7 +59,8 @@ export function TimeseriesKdaTrend({ rows, height = 360, title, emptyMessage, la
       legend: {
         ...getLegendBase(tc),
         bottom: 0,
-        data: [labels.kills, labels.deaths],
+        data: [labels.kills, labels.deaths, 'Bonus'],
+        selected: { Bonus: showBonus },
       },
       xAxis: {
         ...getAxisBase(tc),
@@ -80,9 +83,18 @@ export function TimeseriesKdaTrend({ rows, height = 360, title, emptyMessage, la
         {
           name: labels.kills,
           type: 'bar',
+          stack: 'kills',
           data: kills,
           itemStyle: { color: colKills, opacity: 0.85 },
           barGap: 0,
+          barMaxWidth: 14,
+        },
+        {
+          name: 'Bonus',
+          type: 'bar',
+          stack: 'kills',
+          data: bonus,
+          itemStyle: { color: colBonus, opacity: 0.85 },
           barMaxWidth: 14,
         },
         {
@@ -95,9 +107,25 @@ export function TimeseriesKdaTrend({ rows, height = 360, title, emptyMessage, la
       ],
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, labels, themeVersion])
+  }, [rows, labels, themeVersion, showBonus])
+
+  const onEvents = useMemo(
+    () => ({
+      legendselectchanged: (params: unknown) => {
+        const p = params as { selected: Record<string, boolean> }
+        setShowBonus(p.selected['Bonus'] ?? false)
+      },
+    }),
+    [],
+  )
 
   return (
-    <ChartFromOption title={title} option={option} height={height} emptyMessage={emptyMessage} />
+    <ChartFromOption
+      title={title}
+      option={option}
+      height={height}
+      emptyMessage={emptyMessage}
+      onEvents={onEvents}
+    />
   )
 }

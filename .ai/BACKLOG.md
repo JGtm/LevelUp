@@ -1,7 +1,5 @@
 — Tâches et TODO centralisés
 
-> Mis à jour le 2026-06-09 (audit de pertinence : items faits archivés en « Récemment complété » — go-live cutover, CSR/CSR ATH, consolidation auth ADR 0023, circuit breaker persist [D], leased-writer, nettoyage nav, feedback-drawer ; caducs retirés ; items « gardés de côté » marqués ⏸️ ; plans dédiés créés pour persist/arcs/coach/chiffrement). Historique antérieur : nettoyage go-live 2026-06-03 (cf. [.ai/RUNBOOK_GO_LIVE.md](.ai/RUNBOOK_GO_LIVE.md)). Fusion de : `backlog`, `BACKLOG.md`, `BACKLOG_COACH_PRESTIGE.md`.
-
 ---
 
 ## 🔄 Aucune tâche en cours
@@ -12,17 +10,19 @@
 
 ---
 
-### 📐 Chantiers avec plan dédié
+### [sécurité/autZ] Routes prestige pré-existantes : identité acteur client-asserted (BOLA) — à corriger avant exposition élargie
 
-> Le détail vit dans les plans `.ai/` — **ne pas dupliquer ici**. Cette table sert d'index.
+> Noté le 2026-06-10 (revue `feat/coach-v3-squad`). Le fix **squad-only** a été livré sur cette branche (`ActorGuard` sur les 6 routes squad) ; **les routes prestige pré-existantes restent vulnérables**. Priorité haute mais blast radius limité (instance invités-only + lockdown).
 
-| Chantier | Plan | État / note |
-|----------|------|-------------|
-| Migration types front `types.ts` → `generated.ts` | [PLAN_WEB_API_TYPES_MIGRATION.md](.ai/PLAN_WEB_API_TYPES_MIGRATION.md) | 🟡 fondation posée (7/319 types shimés) ; réconciliation OpenAPI aire par aire ; ⛔ pas de shim global |
-| Robustesse persist (gaps restants) | [PLAN_PERSIST_ROBUSTNESS.md](.ai/PLAN_PERSIST_ROBUSTNESS.md) | 🟡 [C]/[D]/[F] faits ; **cœur = recovery WAL périodique** (trou boot-only + risque purge à 7 j) ; puis [G] test ; [A]/[B] complément ; **[E] health-check retiré** (pas de consommateur, expvar suffit) |
-| Chiffrement at-rest watcher tokens | [PLAN_AUTH_TOKENS_ENCRYPTION_AT_REST.md](.ai/PLAN_AUTH_TOKENS_ENCRYPTION_AT_REST.md) | 🟢 conditionnel — uniquement avant distribution publique / incident / multi-tenant |
-| Cross-titre arcs (backend-ready) | [PLAN_CROSS_TITLE_ARCS_BACKEND.md](.ai/PLAN_CROSS_TITLE_ARCS_BACKEND.md) | 🟢 anticipation 2e titre ; table `arc_titles` ; **UX hors scope** |
-| Coach V3 — négatif soft / tone / squad | [PLAN_COACH_V3_GENERATION.md](.ai/PLAN_COACH_V3_GENERATION.md) | 🟡 Phases A/B/C ; arbitrage produit par phase ; A gatée sur mini-spec UX |
+**Problème** : les routes `/api/v1/{challenges,arcs,prestige/me,templates/suggest,pilot-mode,...}` sont montées à plat sous `/api/v1` (middleware `WithSession` + CSRF + RateLimit), **hors** du groupe `/players/{player_slug}` donc **sans** `RequirePlayerOwnership` (ADR 0024). L'identité de l'acteur vient du **client** (`user_id` en query/body) et n'est jamais réconciliée avec la session → un utilisateur authentifié peut lire/muter les données prestige d'un autre (BOLA / IDOR horizontal). Incohérent avec le contrôle d'ownership appliqué partout ailleurs.
+
+**Déjà fait (squad-only, cette branche)** : helper `squadActorGuard` (`server.go`) + `PrestigeHandler.WithActorGuard` → 403 `player_forbidden` si l'acteur n'est pas un profil possédé par la session (réutilise `authz.Enforced`/`CurrentUser`/`CanAccessPlayer`, multi-profil famille). Transparent demo/auth-off. Tests httptest 403 sur les 6 routes squad.
+
+**À faire (reste)** : étendre la même garde aux endpoints prestige pré-existants — soit (a) per-handler sur `user_id` (`CreateArc`, `ListActiveChallenges`, `GetMyPrestige`, `SuggestTemplates`, `DeleteArc`, `pilot-mode`, …), soit (b) un middleware sur le sous-groupe. Audit complet des handlers lisant `user_id`/`created_by`/`requested_by` requis. Tests 403 par endpoint.
+
+**Note design** : « dériver de la session » = en pratique « vérifier que le slug client ∈ profils possédés (`CanAccessPlayer`) » pour gérer le multi-profil famille, pas un slug unique figé.
+
+**Effort** : moyen (audit + N handlers + tests ; touche des features livrées → PR dédiée).
 
 ---
 
@@ -176,20 +176,6 @@ Ce backlog liste les extensions volontairement reportées **après** la livraiso
 3. Phase C — Squad coach (la plus lourde : coach + coach_advisor + prestige + front squad)
 4. Cross-titre arcs backend ([.ai/PLAN_CROSS_TITLE_ARCS_BACKEND.md](.ai/PLAN_CROSS_TITLE_ARCS_BACKEND.md)) — à anticiper avec l'arrivée du 2e titre
 5. Parkés : V2.1 télémétrie + auto-grammar (besoin analytics à définir d'abord)
-
----
-
-## 📊 Statistiques — Leased-Writer-Enforcement (PR 4-6 + PR 7)
-
-| Métrique | Valeur |
-|----------|--------|
-| Commits leased-writer-enforcement | 8 |
-| Commits PR 7 migration | 1 |
-| Nouveaux tests intégration | 26 |
-| Sites migrés (PR 7) | 17 |
-| Lignes ajoutées | ~3100 |
-| Baseline tests (preserved) | 1662 |
-| Branches affectées | 2 (refactor/leased-writer-enforcement, fix/theme-consistency-tokens) |
 
 ---
 

@@ -643,6 +643,12 @@ func main() {
 		} else {
 			autoBatchQueue = q
 			autoScheduler.WithBatchQueue(q)
+			// Métrique : chaque WAL purgé sans avoir été persisté (perte
+			// potentielle) incrémente persist_wal_purged_total (le log ERROR
+			// est émis par PurgeOldWAL). Cf. PLAN_PERSIST_ROBUSTNESS Phase 1.
+			q.OnWALPurged = func(info persist.PurgedWALInfo) {
+				observability.IncCounter("persist_wal_purged_total")
+			}
 			slog.InfoContext(ctx, "persist: BatchQueue activée (async path)",
 				"wal_dir", walDir)
 
@@ -700,12 +706,19 @@ func main() {
 					"dirs_removed", n)
 			}
 			if autoBatchQueue != nil {
+				// Garde-fou anti-perte (PLAN_PERSIST_ROBUSTNESS Phase 1) :
+				// re-tenter les WAL pending AVANT de purger, sinon on pourrait
+				// effacer un batch qu'on aurait pu rejouer.
+				if rerr := autoBatchQueue.RecoverPending(); rerr != nil {
+					slog.WarnContext(schedulerCtx, "janitor: RecoverPending échoué (non-bloquant)",
+						"module", logging.ModulePersist, "err", rerr)
+				}
 				if n, err := autoBatchQueue.PurgeOldWAL(7 * 24 * time.Hour); err != nil {
 					slog.WarnContext(schedulerCtx, "janitor: PurgeOldWAL échoué (non-bloquant)",
-						"err", err)
+						"module", logging.ModulePersist, "err", err)
 				} else if n > 0 {
 					slog.InfoContext(schedulerCtx, "janitor: WAL purgé",
-						"files_removed", n)
+						"module", logging.ModulePersist, "files_removed", n)
 				}
 			}
 		}
@@ -720,6 +733,30 @@ func main() {
 			}
 		}
 	}()
+
+	// Recovery périodique des WAL pending (PLAN_PERSIST_ROBUSTNESS Phase 1).
+	// Avant : RecoverPending n'était appelé qu'au boot → un batch échoué
+	// (DB busy au moment du persist) restait bloqué jusqu'au prochain reboot,
+	// sur une webapp qui tourne des semaines. Désormais re-soumis toutes les
+	// 10 min. Le dédup inFlight de la queue évite de re-pousser un batch déjà
+	// en vol (seuls les WAL réellement bloqués sont rejoués).
+	if autoBatchQueue != nil {
+		go func() {
+			recTicker := time.NewTicker(10 * time.Minute)
+			defer recTicker.Stop()
+			for {
+				select {
+				case <-schedulerCtx.Done():
+					return
+				case <-recTicker.C:
+					if rerr := autoBatchQueue.RecoverPending(); rerr != nil {
+						slog.WarnContext(schedulerCtx, "persist: recovery périodique échouée (non-bloquant)",
+							"module", logging.ModulePersist, "err", rerr)
+					}
+				}
+			}
+		}()
+	}
 
 	// CHECKPOINT périodique shared_social — vide le WAL toutes les 5 min sans
 	// bloquer les writes per-opération.

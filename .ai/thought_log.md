@@ -1,3 +1,24 @@
+## [2026-06-12] Merge 3 branches dans main (admin + world + coach) — réconciliation sans perte — Complété
+
+**Statut** : 3 branches parallèles (issues de main@df76060cb, base commune 9abc20019) fusionnées dans main. Build Go + vet + migration/scheduler/sync/sync-v2 verts ; typecheck + lint (0 err) + vitest (282) verts. Push prod à suivre.
+
+**Séquence** : (1) `feat/admin-monitoring-dashboard` → Fast-forward propre. (2) `feat/world-leaderboard-enriched` → 2 conflits (oauth_refresh.go, thought_log) résolus, commit 3177dac5f. (3) `feat/coach-v3-squad` → 5 conflits réconciliés (ci-dessous).
+
+**Principe directeur (user)** : « on garde ce qui a été travaillé, on jette pas du travail à la poubelle ». Toute résolution = UNION des deux apports, jamais un side pické en aveugle. Seule exception : auth (déduplication).
+
+**Réconciliations merge 3** :
+- `auth/oauth_refresh.go` : gardé la version de main (`postTokenExchange` + `OAuthExchangeError.IsSecretRejected()` typé). La version worktree était une réimplémentation redondante (string-match AADSTS90023) du MÊME comportement — dédup, pas une perte.
+- `TimeseriesKdaTrend.tsx` : ancêtre commun b03b2b5ee, HEAD avait refactoré vers `ChartFromOption` (empty-states homogènes), coach avait ajouté un toggle Bonus en légende (`onEvents`/`legendselectchanged`). Réconcilié en étendant `ChartFromOption` d'un passthrough `onEvents` → `ChartCard` (qui le forwardait DÉJÀ à ReactECharts). Résultat : empty-states (HEAD) ET toggle Bonus (coach), via le lazy-load canonique de ChartCard. Plus de `Suspense`/`lazy`/`ReactECharts` manuels.
+- `SquadSynergiesPage.tsx` : HEAD avait les graphes toujours-montés + `emptyMessage` (travail délibéré « etats vides homogenes »), coach avait ajouté `<SquadFocusStrip />` (composant net-new, absent de main). Réconcilié = empty-states de HEAD (structure ternaire préservée, cohérente avec la région non-conflictée d'après) + `<SquadFocusStrip />` préfixé (utilise aussi l'import coach, sinon typecheck KO).
+- `migration/order.go` : gardé les 2 migrations (`create_world_player_season_stats` shared + `rekey_squad_member_xuid` shared_social). PIÈGE : `TestSortByCanonicalIsNoOpOnCurrentRegistry` exige que l'ordre de `canonicalOrder` == ordre de registration `All()`. `rekey` (shared_social) doit rejoindre le bloc shared_social AVANT les migrations world (shared), pas être inséré au milieu d'elles. Le test est l'oracle (échec → rang exact du désordre).
+- `thought_log.md` + `PLAN_WORLD_LEADERBOARD_ENRICHED.md` : keep-both / version world maintenue.
+
+**Résultats observés** : 0 marqueur de conflit, 0 fichier non-mergé. go build ./... EXIT 0, go vet EXIT 0, `internal/migration` vert (après fix ordre), scheduler/sync/sync-v2 verts. Frontend : tsc EXIT 0, eslint 0 erreurs (67 warnings pré-existants hors fichiers touchés), vitest 282/282.
+
+**Prochaine étape** : commit du merge (autorisé) → push main (= déclenche deploy prod + demo) → vérifier CI + Actions (deploy prod ET demo) passent proprement.
+
+---
+
 ## [2026-06-12] Cron catalogue hebdomadaire (V1) — système unifié de noms playlists/maps/modes — Complété
 
 **Statut** : V1 livré sur feat/admin-monitoring-dashboard. Build + vet + tests verts.
@@ -320,6 +341,137 @@
 **Prochaine étape** : Phase B (migration `world_player_season_stats` + types `WorldPlayerSeasonStats` + repo + extension `GetCSRWorldLeaderboard`), attribution par SeasonId, ratios dérivés à la lecture.
 
 ---
+## [2026-06-10] Revue branche feat/coach-v3-squad + correctifs pré-merge — Complété
+
+**Statut** : Complété. Revue demandée par l'user avant checkout/merge (code + concept + UX/UI), puis 3 correctifs validés + 1 fix sécurité. Mené dans un worktree dédié (`../LevelUp-coach-v3-squad`) pour ne pas perturber la branche bug-fix courante (`feat/leaderboard-csr-followup`). `feat/coach-v3-squad` = sur-ensemble strict du HEAD (24 commits, 57 fichiers) → merge fast-forward possible.
+
+**Revue** : concept solide (identité escouade clé xuid, règle no-overlap, coach soft-négatif neutre) ; code propre (archi hexagonale respectée, pas d'injection SQL — `mapMetricToColumn` whitelist, migration DROP squad_member gated/safe via `schema_migrations`, persist WAL robuste + e2e transactionnel). Findings : (1) 2 tests vitest rouges, (2) faille autZ squad/prestige (identité acteur client-asserted, routes hors `RequirePlayerOwnership`), (3) fenêtre de course markInFlight/recovery, (4) notif soft-négatif mal cadrée.
+
+**Vérif empirique** : Go `test ./...` vert (81 pkg) + `vet` propre ; front `typecheck` vert + `vitest` 1793 pass / 2 fail. Le « 1791/1793 » du journal précédent = ces 2 tests (réels, sur la feature Bonus livrée par cette branche).
+
+**Correctifs livrés (commits)** :
+- `310a74ea9` fix(squad) tests butterfly alignés sur le toggle Bonus (`hiddenTypes` → structure 2-séries, défaut UI).
+- `001fc5357` fix(persist) `markInFlight` AVANT le rename WAL (ferme la course recovery/Submit, double persist) + `clearInFlight` si rename échoue. Tests non-race + `-race` ciblé verts.
+- `b62d02a0e` feat(coach) catégorie notif NEUTRE `trend_consolidate` (default-on, pas de migration) pour le soft-négatif, au lieu de réutiliser `threshold_crossed` (rendu « Palier franchi »/flèche montante sur un axe en BAISSE). Backend (types + emitter + test verrou) + front (types/icons IconTarget/navigation onglet Entraînement/i18n FR+EN « Axe à consolider »).
+- (en cours d'autorisation) fix(squad) autZ Option A : `ActorGuard` (`WithActorGuard`) câblée sur les primitives ADR 0024 (`Enforced`/`GetSession`/`CurrentUser`/`CanAccessPlayer`, multi-profil famille) → 403 `player_forbidden` si l'acteur (created_by/requested_by/user_id) n'est pas un profil possédé par la session. Transparent demo/auth off. Tests httptest 403 sur les 6 routes.
+
+**Résultats** : suite Go complète **0 FAIL**, front vitest **1795 pass / 0 fail**, typecheck + vet propres.
+
+**Dette tracée** : faille autZ équivalente sur le prestige PRÉ-EXISTANT (challenges/arcs/me/pilot, `user_id` client) — non corrigée (hors périmètre coach, touche du livré) → PR dédiée. Findings mineurs non bloquants : double détection soft-négatif front (seuil 0.02) vs back (−0.10/14j), progression de défi d'escouade non affichée (type exporté non consommé), i18n inline du SquadFocusStrip.
+
+**Prochaine étape** : arbitrer la dette autZ prestige, puis merge fast-forward.
+
+---
+
+## [2026-06-09] Coach V3 — vérification finale + couverture logging & tests escouade — Complété
+
+**Statut** : Complété. Vérification finale demandée par l'user (« tout est complet et fonctionne bien » + bonne couverture logging dossier dédié + tests). Build Go complet vert ; suites `prestige`/`api`/`api/handlers`/`coach`/`coach_advisor`/`migration`/`platform/duckdb` (complète) vertes ; front vitest 1791/1793.
+
+**Logging (slog → `logs/prestige.log`)** : ajout de traces structurées sur le cycle de vie escouade (convention préfixe `prestige:`, niveau INFO pour les mutations / DEBUG pour les lectures). `service_squads.go` : `squad created` / `squad member added` / `squad member removed` / `squad challenge evaluated` (INFO) + `squad orientation` (DEBUG). `api/prestige_squad_profile.go` : `squad profile axes` (DEBUG, roster vs membres profilés). `AddSquadMember`/`RemoveSquadMember` restructurés pour ne logguer qu'en cas de succès. Toutes via `*Context(ctx,…)` → routage module auto + propagation `event_id`.
+
+**Tests** : ajout du test **service-level** manquant `SquadOrientation` (3 cas : axe le plus faible retourné, non-membre rejeté `ErrInvalidInput`, absence de provider → axe vide) dans `service_squads_test.go` (le handler était déjà testé, pas la méthode service).
+
+**Garde-rail** : `service_squads.go` mentionnait `shared_social` en commentaire → faisait échouer `TestNoUnauthorizedSharedSocialMention` (scan littéral hors whitelist). Reformulé le commentaire (« base sociale partagée ») plutôt que d'élargir la whitelist — garde stricte préservée.
+
+**⚠️ 2 échecs front PRÉ-EXISTANTS, hors périmètre** : `features/squad/charts/squadPerformanceLineCharts.test.ts::buildKillsDeathsButterflyOption` (commits user `2c50ea5a`/`55829238`/`c3f270fa`, travail charts concurrent). (1) le butterfly produit **3 séries** par joueur depuis le toggle « Bonus » mais le test en attend 2 ; (2) un mock token/`hexComplement` retourne `hex(chart-series-5)` au lieu de `#aaaaaa`. **Non touchés** (rule 4 : WIP concurrent) — à corriger côté user (maj assertions / mock).
+
+---
+
+## [2026-06-09] Coach V3 — implémentation Phase C (squad) + Phase A V1 (CoachFocusCard) — Complété, poussé
+
+**Statut** : Complété et poussé sur `feat/coach-v3-squad` (≈18 commits, `131a29c8` → `7cefd911`). Backend Go : migration/prestige/api verts + gofmt/go-vet. Front : typecheck + vitest (62 tests ascension) + gardes pre-push (knip, cross-feature, colors, fields) verts.
+
+**Périmètre livré** (cf. `.ai/PLAN_COACH_V3_GENERATION.md`) :
+- **Phase C (escouade) — complète, backend + front**. Backend : identité roster **clé xuid** (membre-app `user_id` optionnel) ; règle **no-overlap** (« session » : roster complet présent ET aucun autre coéquipier connu, randoms ignorés) ; service CRUD roster + endpoints HTTP (`POST/GET /squads`, members, evaluate) + résolveur xuid↔slug (db_profiles) ; **évaluation de progression** (provider `match_participants`) ; **coach** : biais du pool (`RefreshSquadPool`) vers l'axe de perf le plus faible de l'escouade. Front : client API + hooks react-query + **strip « Cap d'escouade »** (match compo↔escouade / enregistrer la compo) + **drawer** (défis : rejoindre/réévaluer + proposer le pool → créer un défi). Monté en tête de l'onglet Synergies (hors zone FDA user).
+- **Phase A V1 (coach soft-négatif) — front**. `CoachFocusCard` « Cap du moment » en tête de l'onglet Entraînement : axe focal = composante LUSR qui bouge le plus ; accent **success** (progression) / **info** (soft-négatif, **jamais rouge**) / non rendu si non significatif ; ton universel non culpabilisant. `PerformanceSection.TrendBadge` négatif recadré `outcome-loss`→`info`.
+- **Phase B (ton)** : tranché universel, **pas de setting** ; appliqué dans CoachFocusCard (i18n local soft).
+
+**Décisions produit clés (validées user)** : escouade = entité partagée explicite, accès auto membres-app **sans consentement** ; comptage no-overlap **exact parmi coéquipiers connus** ; routes squad CRUD **top-level** (`/squads`, user_id en body) pour éviter un conflit chi avec `r.Route("/players/{player_slug}")`.
+
+**⚠️ Finding majeur (recherche, déclenchée par challenge user)** : **LUSR v2 / TrueSkill 2 = (μ,σ) win/loss SANS décomposition en axes**. Les 8 « composantes » (`CompositeWeights`/`lusr_component_history`, incl. `defensive_resistance`) sont du **LEGACY** (perf), affichées par l'UI + utilisées par le coach solo. Assumé : la perf est le bon levier ACTIONNABLE pour du coaching (proxy vers le sous-tier). **Noté au backlog** (`[coach/LUSR]`) avec les consommateurs à mettre à jour si v2 gagne une décomposition (Phase 3 TS2 §8).
+
+**Différé (non bloquant)** : backend signal soft-négatif (nouveau `SignalKind` → proposition de stabilisation + CTA depuis la card) ; **vérif visuelle in-app** du strip/drawer/CoachFocusCard (non testés visuellement) ; redesign #6 sur un vrai axe v2 le jour venu.
+
+---
+
+## [2026-06-09] Feature Bonus — toggle légende sur graphes "Frags / Morts" (Solo Timeseries + Escouade butterfly) — Complété
+
+**Statut** : Complété. TSC clean. Non commité.
+
+**Décision** : Deux graphes cibles corrects identifiés après correction de ciblage (v1 avait modifié les mauvais graphes `SessionFdaBars` + `SquadPerMinuteChart`, revertés).
+- **Solo (page Timeseries)** : `TimeseriesKdaTrend.tsx` — légende ECharts native + item 'Bonus' (`selected: { Bonus: false }` par défaut), série stackée `stack: 'kills'` avec `assists/3`, couleur `chart-series-5`, `onEvents.legendselectchanged` → React state `showBonus`.
+- **Escouade (butterfly)** : `buildKillsDeathsButterflyOption` ajoute une série Bonus par joueur (`stack: player`, `assists/3`, `chart-series-5`) quand `!hiddenTypes.has('Bonus')`. `SquadToggleLegendChart` : `types` étendu en `ToggleLegendType[]` + `initialHiddenTypes?: Set<string>`. `SquadPerformanceCharts` : 3ème type `Bonus` + `initialHiddenTypes={new Set(['Bonus'])}`.
+- `ChartCard.tsx` : prop `onEvents` forwarded à ReactECharts (conservé).
+
+---
+
+## [2026-06-09] Coach V3 Phase C — re-key squad_member par xuid (pré-requis identité) — Complété (commit 131a29c8)
+
+**Statut** : Complété, testé, commité `131a29c8` sur branche `feat/coach-v3-squad`. Migration + prestige + garde shared_social verts ; gofmt + go-vet OK.
+
+**Contexte** : 1ʳᵉ tranche d'implémentation de Phase C (squad coach). Investigation préalable : l'entité `Squad`/`SquadMember`/`SquadRepo` existe déjà (`shared_social.duckdb`) mais (a) `squad_member` était clé `user_id`, et (b) `user_id` du système prestige = **player_slug** (vérifié front : `useChallenges(playerSlug, …)`), pas le xuid. Or la mesure de progression se fait sur `shared.match_participants` (clé xuid) et un ami hors-app n'a pas de slug. Aucun endpoint de création d'escouade n'a jamais été livré (server.go : seules les routes squad_challenge) → toute l'infra Squad est du scaffolding ; `squad_member` prouvablement vide.
+
+**Décision/impl** : re-key `squad_member` en clé **xuid** (universelle) + `user_id`(slug) **optionnel** (renseigné = membre-user = accès lecture/écriture). Nouvelle migration `rekey_squad_member_xuid` (DROP+recreate, sûr car vide ; DuckDB ne permet pas de redéfinir une PK in place) ajoutée à `canonicalOrder`. `SquadMember{Xuid, UserID?}`. `PrestigeSquadRepo` : SQL sur xuid + `COALESCE(user_id,'')` pour scan NULL-safe. Whitelist `no_attach_on_social` enrichie. **Annexe** : `world_csr_leaderboard_latest_by_batch` ajoutée à `canonicalOrder` (complétude pré-existante manquante, `TestCanonicalOrderCompleteness` rouge sur la branche — sans rapport squad).
+
+**⚠️ Travail concurrent détecté** : pendant la session, l'arbre de travail a reçu des modifs **non issues de cette tâche** — feature frontend « Bonus FDA » (`SessionFdaBars.tsx`, `SquadPerMinuteChart.tsx`, `squadPerMinuteChart.ts`) + l'entrée thought_log ci-dessous. **Non touchées** (isolation par chemin : je n'ai stagé que mes 6 fichiers Go). Front Phase C **différé** (collision potentielle sur `features/squad/`).
+
+**Tranche 2 — cœur no-overlap (commit `473f8bb5`)** : `squad_progress.go` — `MatchCountsForSquad` / `OtherKnownTeammates` / `FilterSquadMatches`, pure logique zéro DB, encode la règle « session » (roster complet présent ET aucun autre coéquipier connu présent, randoms ignorés). Tests fixtures verts (trio/duo/session). Résolveur slug↔xuid identifié : `cfg.LoadPlayers(titleSlug)` → `[]PlayerSummary{PlayerSlug, Gamertag, XUID}` (match par XUID).
+
+**Prochaine étape** (routes validées user) : (3) squad CRUD service + `AppUserResolver` (xuid→slug via `cfg.LoadPlayers`) + endpoints HTTP `POST/GET /players/{slug}/squads`, `POST /squads/{id}/members`, `DELETE /squads/{id}/members/{xuid}` ; (4) câbler `FilterSquadMatches` à `shared.match_participants` + progression `squad_challenge` ; (5) squad coach (profil agrégé + signal + filtre pool). Front (strip/drawer/CoachFocusCard) repoussé (modifs FDA user en cours sur `features/squad/`).
+
+## [2026-06-09] Feature Bonus FDA — toggle légende "Bonus" sur graphes Frags/Morts (Solo + Escouade) — Complété
+
+**Statut** : Complété. TSC clean, 6 tests SessionFdaBars passent. Non commité.
+
+**Décision** : Bonus = assists/3, empilé sur la barre Frags via `stack: 'fda'` (Solo) / `stack: r.player` (Escouade). React state (pas légende ECharts native) car `notMerge={true}` dans ChartCard reset le selectedState à chaque re-render. Bouton toggle rendu via `children` slot ChartCard : carré coloré + texte "Bonus" barré quand inactif. Label Frags masqué au niveau data quand Bonus actif (label Bonus s'affiche en haut de la stack). Tooltip filtré pour supprimer les entrées Bonus valeur=0 (positions Morts/Assists). Token couleur `chart-series-5` (cyan/vert selon palette).
+
+**Fichiers modifiés** : `SessionFdaBars.tsx`, `squadPerMinuteChart.ts`, `SquadPerMinuteChart.tsx`.
+
+**Prochaine étape** : Commit + test visuel.
+
+---
+
+## [2026-06-09] Robustesse persist : Phase 1 (recovery périodique + purge bruyante) + [A] retry + [G] tests — Complété
+
+**Statut** : Complété (validé local). `go build ./internal/persist/... ./cmd/server/...` OK ; `go test ./internal/persist/` (non-integration) vert ; nouveaux tests `-race` verts ; `go test -tags integration ./internal/persist/` vert (12s, cgo dispo) ; `go vet` (avec et sans tag integration) clean. Branche `feat/persist-robustness` (depuis `feat/leaderboard-csr-followup`). **Non commité**.
+
+**Décision (cf. PLAN_PERSIST_ROBUSTNESS)** : DLQ [B] et endpoint [E] abandonnés (pas de consommateur) ; [D] circuit breaker déjà livré. Périmètre retenu : Phase 1 (cœur), [G] test, [A] complément.
+
+**Trou réel corrigé (Phase 1)** : `RecoverPending` n'était appelé qu'au boot (`main.go`) → un batch échoué (DB busy mid-persist) restait bloqué en WAL jusqu'au reboot, et `PurgeOldWAL` l'effaçait **en silence** à 7 j (seule perte de données possible du système). Fixes :
+- **Recovery périodique** : nouvelle goroutine `main.go` (ticker 10 min) appelant `RecoverPending()` ; + appel dans le janitor **avant** `PurgeOldWAL` (garde-fou : ne jamais purger ce qu'on aurait pu rejouer).
+- **Dédup in-flight** (`queue.go`) : map `inFlight` marquée par `Submit`/`RecoverPending` (push) et effacée par le worker en fin de `handle` (defer, succès OU échec). `RecoverPending` skippe les batches in-flight → appelable périodiquement sans dupliquer un batch déjà dans le channel. Doc `RecoverPending` mise à jour (n'est plus « boot-only »).
+- **Purge non-silencieuse** : `PurgeOldWAL` (dossier principal) lit chaque WAL avant suppression, log **ERROR** avec `batch_id`/`player`/`source`/`match_id`/`age`, et appelle le hook `OnWALPurged` → métrique expvar `persist_wal_purged_total` (câblée dans `main.go`). Type `PurgedWALInfo` exposé. Le sous-dossier `corrupted/` garde son comportement (Warn par fichier).
+
+**[A] retry+backoff** (`worker.go`) : `persistWithRetry` re-tente UNIQUEMENT sur erreur transitoire (allowlist `transientErrorMarkers` : lock/busy/IO/timeout) avec backoff exponentiel (base 1s × 2^n, 3 tentatives par défaut). Erreur permanente (parse/contrainte) → 0 retry (anti-boucle poison). Épuisement → laisse en WAL (repris par la recovery périodique). Champs `maxPersistAttempts`/`retryBaseDelay` (non-exportés, surchargés par les tests).
+
+**[G] tests** : (1) worker-level non-integration `TestWorker_FatalPersist_WALSurvives_ThenRecoveryReplays` (FATAL → no-ACK → WAL survit → RecoverPending rejoue) ; (2) integration `TestE2E_FatalMidBatch_RollbackThenRecovery` (vraie DuckDB : `fatalMidTxPersister` INSERT registry partiel puis FATAL sans COMMIT → assert 0 row partielle = rollback + WAL survit + recovery → 1 row + ACK). + 3 tests retry [A] (succès après retry / permanent sans retry / épuisement) + dédup in-flight + purge bruyante.
+
+**Fichiers** : `internal/persist/queue.go` (inFlight + dédup RecoverPending + purge bruyante + `PurgedWALInfo`/`OnWALPurged`), `internal/persist/worker.go` (retry + `clearInFlight` defer + classifieur transitoire), `cmd/server/main.go` (goroutine recovery 10 min + RecoverPending pré-purge dans janitor + hook métrique). Tests : `worker_test.go`, `queue_test.go`, `e2e_test.go`.
+
+**Vérif finale (2026-06-09)** :
+- `go build ./...` (module entier) OK ; `gofmt -l` vide sur les 6 fichiers ; `go vet` (persist + observability + cmd/server) clean.
+- Couverture package persist **72.6%** (tag integration). Fonctions nouvelles/touchées : `isTransientPersistError` 100%, `handle` 91.7%, `persistWithRetry` 82.4%, `inspectWALForPurge` 84.6%, `PurgeOldWAL` 84.6%, helpers in-flight 100%. +2 tests ajoutés pour combler les gaps (`TestIsTransientPersistError` table, purge d'un WAL principal corrompu → fallback).
+- **Logging routé vers le dossier dédié** (`NewMultiModuleHandler`, FileLevel défaut=Info) : `queue.go`/`worker.go` (package `persist`) → **`logs/persist.log`** automatiquement (purge ERROR avec batch_id/player/match_id/age, retry WARN, recovery Info, persist-failed ERROR). Les logs persist-glue de `main.go` (recovery périodique + janitor) **taggés `module=persist`** pour atterrir aussi dans `logs/persist.log` (cohésion). Métrique expvar `persist_wal_purged_total` sur `/debug/vars`.
+- **Note `-race`** : `go test -race ./internal/persist/` (suite complète) panique sur un `checkptr` du driver DuckDB cgo (`vector_getters.go`, test pré-existant `shared_social_persister_test.go` `//go:build cgo`) — **incompatibilité connue DuckDB↔checkptr, sans rapport avec ce travail** (fichier non modifié, suite sans `-race` verte). Mon code pur-Go (map `inFlight`) validé race-free : `-race` scopé aux tests `TestBatchQueue|TestWorker` (dont concurrence Submit/Close + circuit breaker) vert.
+
+**Prochaine étape** : commit sur autorisation user. [B] DLQ / [E] endpoint restent abandonnés (réévaluer seulement si batch poison observé / consommateur de supervision introduit).
+
+## [2026-06-09] Coach V3 : cadrage UX (mockups) Phases A/B/C avant implem — Complété (docs)
+
+**Statut** : Complété (docs uniquement : `.ai/PLAN_COACH_V3_GENERATION.md`, non commité). Branche `feat/leaderboard-csr-followup`.
+
+**Demande** (user) : avant d'implémenter, réfléchir aux mockups pour (1) le **coach squad** — priorité produit — sans casser l'intention analytique de la page Escouade, avec moyen de **définir/consulter** les objectifs d'escouade ; (2) le **coach soft-négatif** — comment présenter l'info sans multiplier cases/sections (Ascension déjà dense) ; (3) le **ton** — tranché : universel par défaut, **pas un setting joueur**.
+
+**Exploration (3 agents Explore)** : cartographie page Escouade (`SquadLayout` + onglets Synergies/Contributions, `SessionBriefing` KPI, aucune surface objectif), page Ascension (`AscensionCoachingTab` empile CoachProposals→Campaign→ProfileV3→Patterns = déjà lourd ; `PerformanceSection.TrendBadge` affiche déjà « Downtrend » en **rouge** `outcome-loss`), tokens sémantiques (`info`/`success` dispo, hex interdit). Backend : `SquadChallenge` a tout le CRUD (`Create/Get/ListBySquad/Join/RefreshSquadPool`) + client API front (`createSquadChallenge`, `listSquadChallenges`, `joinSquadChallenge`, hook `useJoinSquadChallenge`) → **seule l'UI manque**. Arcs d'escouade **non modélisés** (arcs perso only).
+
+**Décisions validées user** :
+- **Ton** : universel, pas de setting → Phase B vidée de son `coach_tone`, réduite à guideline + banque i18n, fusionnée de fait dans A.
+- **Soft-négatif → option B « Cap du moment »** : 1 headline adaptatif (`CoachFocusCard` via `KpiCard` accent dynamique) en tête de `AscensionCoachingTab`, qui **absorbe** le `TrendBadge` (retiré de `PerformanceSection`). Bascule `success` (progression) ↔ `info` neutre (soft-négatif, **jamais rouge**) ↔ non-rendu (neutre). Le coach donne interprétation + action, **ne ré-affiche ni stats ni streaks** (déjà ailleurs). 1 axe focal max, cooldown.
+- **Squad → option 1 « Cap d'escouade »** : strip compact en tête de Synergies (sous briefing, avant charts, prospectif isolé du rétrospectif) + **drawer « Objectifs d'escouade »** pour définir (`createSquadChallenge`) / consulter (`listSquadChallenges`) / rejoindre (`joinSquadChallenge`). Arcs d'escouade hors V1.
+
+**Identité d'escouade — tranchée (2026-06-09)** : escouade = **entité partagée, explicite, multiple, accès auto pour les membres-users, sans consentement** (pas de squadID déterministe-hash, pas de roster privé). **Correction en cours de cadrage** : l'entité existe DÉJÀ — `Squad{ID,Name,CreatedBy}` + `SquadMember{SquadID,UserID}` + `SquadRepo` (incl. `ListSquadsForUser` = convergence) dans `shared_social.duckdb` (`prestige/types.go:229`, `repository.go:149`). Donc **PAS de table à créer** (mon affirmation antérieure « squad_id = string libre sans roster » était fausse). **Vrai delta = re-keyer `SquadMember` en `xuid`** : `xuid` obligatoire (inclut amis non-app) + `userID` optionnel (présent ⇒ accès lecture/écriture auto). Convergence par **roster exact** (`{A,B}` ≠ `{A,B,C}`). **Comptage progression — no-overlap** (raisonnement « session » : un membre qui revient ne doit pas voir l'objectif avoir bougé sans lui) : match compte pour `S` ssi `roster(S) ⊆ participants` ET aucun autre coéquipier connu (`(⋃ rosters) \ roster(S)`) présent ; randoms (xuid hors tout roster) ignorés. → un match `{A,B,C}` ne crédite que le trio. **Arcs hors V1** (défis only), anticipés à coût nul (entité `Squad` générique + helper d'accès + 2ᵉ onglet drawer réservé). **Anti-ART** : réutiliser `SquadRepo`/`SquadChallengeRepo` (HTTP basse fréquence, hors hot-path `BatchBuilder`) ; pas de nouveau `ON CONFLICT DO UPDATE` ; vérifier allowlist `no_art_patterns_test.go`.
+
+**Prochaine étape** : Phase C prioritaire → en amont du front : re-key `SquadMember`→`xuid` via `SquadRepo` + helper résolution d'accès `xuid`→`userID` + évaluation règle no-overlap (PAS de nouvelle table). Backend squad (profil agrégé + signal + filtre pool sur `RefreshSquadPool`) livrable/testable indépendamment. Phase A backend (SignalKind soft-négatif) livrable indépendamment, signal non émis UI tant que `CoachFocusCard` absente.
 
 ## [2026-06-09] Match View : barre de progression rang « tout vert » (base bleue absente) sur LUSR — Complété
 

@@ -184,6 +184,263 @@ func TestWorker_Run_ChannelClosed_Returns(t *testing.T) {
 	}
 }
 
+// ─── [A] classifieur d'erreurs transitoires (allowlist) ──────────────────
+
+func TestIsTransientPersistError(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil", nil, false},
+		{"lock", errors.New("IO Error: database is locked"), true},
+		{"busy", errors.New("database is busy, retry later"), true},
+		{"set lock", errors.New("Could not set lock on file foo.db"), true},
+		{"io", errors.New("disk i/o error reading page"), true},
+		{"timeout", errors.New("context deadline exceeded"), true},
+		{"upper-case lock", errors.New("Conflicting Lock detected"), true},
+		{"constraint permanent", errors.New("Constraint Error: NOT NULL"), false},
+		{"parse permanent", errors.New("Binder Error: column missing"), false},
+		{"fatal permanent", errors.New("FATAL: database has been invalidated"), false},
+		{"generic permanent", errors.New("DB unavailable"), false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := isTransientPersistError(c.err); got != c.want {
+				t.Errorf("isTransientPersistError(%v) = %v, want %v", c.err, got, c.want)
+			}
+		})
+	}
+}
+
+// scriptedPersister échoue les `failN` premiers appels avec `failErr`, puis
+// réussit. Compte les appels. Pour tester le retry+backoff.
+type scriptedPersister struct {
+	mu      sync.Mutex
+	calls   int
+	failN   int
+	failErr error
+}
+
+func (s *scriptedPersister) Persist(_ context.Context, _ *MatchBatch) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.calls++
+	if s.calls <= s.failN {
+		return s.failErr
+	}
+	return nil
+}
+
+func (s *scriptedPersister) callCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.calls
+}
+
+// ─── [A] retry : erreur transitoire → retry → succès ──────────────────────
+
+func TestWorker_PersistRetry_TransientThenSuccess(t *testing.T) {
+	dir := t.TempDir()
+	q, err := NewBatchQueue(BatchQueueConfig{WALDir: dir, ChanBufSize: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = q.Close() })
+
+	p := &scriptedPersister{failN: 1, failErr: errors.New("IO Error: database is locked")}
+	w := NewWorker("retry-ok", q, TargetShared, p)
+	w.retryBaseDelay = time.Millisecond // pas de sommeil long en test
+
+	var okCount, errCount atomic.Int64
+	w.OnPersistOK = func() { okCount.Add(1) }
+	w.OnPersistError = func(error) { errCount.Add(1) }
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- w.Run(ctx) }()
+
+	if err := q.Submit(helperNewBatch(t, "r1", "Alice")); err != nil {
+		t.Fatal(err)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for okCount.Load() < 1 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if okCount.Load() != 1 {
+		t.Errorf("OnPersistOK = %d, want 1 (retry doit aboutir)", okCount.Load())
+	}
+	if errCount.Load() != 0 {
+		t.Errorf("OnPersistError = %d, want 0 (le retry a réussi)", errCount.Load())
+	}
+	if p.callCount() != 2 {
+		t.Errorf("Persist appelé %d fois, want 2 (1 échec transitoire + 1 succès)", p.callCount())
+	}
+	if _, err := os.Stat(filepath.Join(dir, "r1.json")); !os.IsNotExist(err) {
+		t.Errorf("WAL r1 doit être ACKé après le succès du retry")
+	}
+
+	cancel()
+	<-done
+}
+
+// ─── [A] retry : erreur PERMANENTE → AUCUN retry (anti-boucle poison) ──────
+
+func TestWorker_PersistRetry_PermanentError_NoRetry(t *testing.T) {
+	dir := t.TempDir()
+	q, err := NewBatchQueue(BatchQueueConfig{WALDir: dir, ChanBufSize: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = q.Close() })
+
+	// "Constraint violation" n'est PAS dans l'allowlist transitoire.
+	p := &scriptedPersister{failN: 99, failErr: errors.New("Constraint Error: NOT NULL")}
+	w := NewWorker("retry-perm", q, TargetShared, p)
+	w.retryBaseDelay = time.Millisecond
+
+	var errCount atomic.Int64
+	w.OnPersistError = func(error) { errCount.Add(1) }
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- w.Run(ctx) }()
+
+	if err := q.Submit(helperNewBatch(t, "p1", "Alice")); err != nil {
+		t.Fatal(err)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for errCount.Load() < 1 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if errCount.Load() != 1 {
+		t.Errorf("OnPersistError = %d, want 1", errCount.Load())
+	}
+	if p.callCount() != 1 {
+		t.Errorf("Persist appelé %d fois, want 1 (erreur permanente = pas de retry)", p.callCount())
+	}
+	if _, err := os.Stat(filepath.Join(dir, "p1.json")); err != nil {
+		t.Errorf("WAL p1 doit rester (pas d'ACK sur échec) : %v", err)
+	}
+
+	cancel()
+	<-done
+}
+
+// ─── [A] retry : transitoire qui épuise les tentatives → WAL survit ────────
+
+func TestWorker_PersistRetry_TransientExhausts(t *testing.T) {
+	dir := t.TempDir()
+	q, err := NewBatchQueue(BatchQueueConfig{WALDir: dir, ChanBufSize: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = q.Close() })
+
+	p := &scriptedPersister{failN: 99, failErr: errors.New("database is busy")}
+	w := NewWorker("retry-exhaust", q, TargetShared, p)
+	w.maxPersistAttempts = 3
+	w.retryBaseDelay = time.Millisecond
+
+	var errCount atomic.Int64
+	w.OnPersistError = func(error) { errCount.Add(1) }
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- w.Run(ctx) }()
+
+	if err := q.Submit(helperNewBatch(t, "e1", "Alice")); err != nil {
+		t.Fatal(err)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for errCount.Load() < 1 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if errCount.Load() != 1 {
+		t.Errorf("OnPersistError = %d, want 1 (un seul échec final après retries)", errCount.Load())
+	}
+	if p.callCount() != 3 {
+		t.Errorf("Persist appelé %d fois, want 3 (maxPersistAttempts)", p.callCount())
+	}
+	if _, err := os.Stat(filepath.Join(dir, "e1.json")); err != nil {
+		t.Errorf("WAL e1 doit rester après épuisement des retries : %v", err)
+	}
+
+	cancel()
+	<-done
+}
+
+// ─── [G] FATAL mid-batch → pas d'ACK, WAL survit, recovery le rejoue ───────
+//
+// Couvre le contrat dont dépend la recovery périodique (Phase 1) : un échec
+// FATAL (non-transitoire) PENDANT le traitement laisse le WAL intact, et un
+// RecoverPending ultérieur (la persistance étant rétablie) le rejoue jusqu'à
+// l'ACK. Complète le test integration CrashRecovery (qui part d'un WAL pré-seedé
+// au boot) en couvrant l'échec mid-run + dédup inFlight.
+func TestWorker_FatalPersist_WALSurvives_ThenRecoveryReplays(t *testing.T) {
+	dir := t.TempDir()
+	q, err := NewBatchQueue(BatchQueueConfig{WALDir: dir, ChanBufSize: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = q.Close() })
+
+	// FATAL non-transitoire (pas dans l'allowlist) → 1 seul appel, pas de retry.
+	p := &mockPersister{persistErr: errors.New("FATAL: database has been invalidated")}
+	w := NewWorker("fatal", q, TargetShared, p)
+	w.retryBaseDelay = time.Millisecond
+
+	var okCount, errCount atomic.Int64
+	w.OnPersistOK = func() { okCount.Add(1) }
+	w.OnPersistError = func(error) { errCount.Add(1) }
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- w.Run(ctx) }()
+
+	if err := q.Submit(helperNewBatch(t, "g1", "Alice")); err != nil {
+		t.Fatal(err)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for errCount.Load() < 1 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if errCount.Load() != 1 {
+		t.Fatalf("OnPersistError = %d, want 1 (FATAL)", errCount.Load())
+	}
+	// WAL doit survivre (pas d'ACK).
+	if _, err := os.Stat(filepath.Join(dir, "g1.json")); err != nil {
+		t.Fatalf("WAL g1 doit survivre au FATAL : %v", err)
+	}
+
+	// Persistance rétablie → la recovery périodique rejoue le batch bloqué.
+	p.mu.Lock()
+	p.persistErr = nil
+	p.mu.Unlock()
+
+	if err := q.RecoverPending(); err != nil {
+		t.Fatalf("RecoverPending: %v", err)
+	}
+
+	deadline = time.Now().Add(2 * time.Second)
+	for okCount.Load() < 1 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if okCount.Load() != 1 {
+		t.Errorf("OnPersistOK = %d, want 1 après recovery", okCount.Load())
+	}
+	if _, err := os.Stat(filepath.Join(dir, "g1.json")); !os.IsNotExist(err) {
+		t.Errorf("WAL g1 doit être ACKé après recovery réussie")
+	}
+
+	cancel()
+	<-done
+}
+
 // ─── Test 5 : Métriques compteurs ──────────────────────────────────────────
 
 func TestWorker_Run_IncrementsCounters(t *testing.T) {

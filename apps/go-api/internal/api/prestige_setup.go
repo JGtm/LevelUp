@@ -43,6 +43,7 @@ type PrestigeBundle struct {
 	templateRepo   *platform_duckdb.PrestigeTemplateRepo
 	presetArcRepo  *platform_duckdb.PrestigePresetArcRepo
 	resolve        PlayerResolver
+	squadProfile   prestige.SquadProfileProvider
 	mu             sync.Mutex
 }
 
@@ -92,6 +93,16 @@ func NewPrestigeBundle(repoRoot string, resolve PlayerResolver, enabled bool) (*
 		"feature_flag_enabled", enabled,
 	)
 	return bundle, nil
+}
+
+// WithSquadProfile injecte le provider de profil d'escouade (axes de perf) pour
+// le biais coach du pool. Optionnel ; sans lui RefreshSquadPool reste un shuffle.
+// Chainable.
+func (b *PrestigeBundle) WithSquadProfile(p prestige.SquadProfileProvider) *PrestigeBundle {
+	if b != nil {
+		b.squadProfile = p
+	}
+	return b
 }
 
 // Close libère les pools de connexions.
@@ -161,6 +172,8 @@ func (b *PrestigeBundle) serviceAndPlayerDB(ctx context.Context, playerSlug stri
 		SquadChallenges:  b.squadChallRepo,
 		Squads:           b.squadRepo,
 		BaselineProvider: platform_duckdb.NewHaloBaselineProvider(pdb.SharedReadDB()),
+		SquadMatches:     platform_duckdb.NewPrestigeSquadMatchProvider(pdb.SharedReadDB()),
+		SquadProfile:     b.squadProfile,
 	}
 	return pdb, prestige.NewService(deps), nil
 }
