@@ -64,6 +64,7 @@ type watcherStatusResponse struct {
 	TokenGamertag     string                         `json:"token_gamertag,omitempty"`
 	SubscribedPlayers []string                       `json:"subscribed_players"`
 	Players           []watcher.PlayerPresenceStatus `json:"players"`
+	LastEventAt       string                         `json:"last_event_at,omitempty"` // RFC3339 UTC du dernier event reçu (tous joueurs), vivacité du daemon
 }
 
 // watcherAuthStartResponse est la réponse de POST /watcher/auth/start.
@@ -120,6 +121,7 @@ func (h *WatcherHandler) GetStatus(w http.ResponseWriter, r *http.Request) {
 		status := h.daemon.GetStatus()
 		resp.DaemonRunning = status.Running
 		resp.RTAConnected = status.RTAConnected
+		resp.LastEventAt = status.LastEventAt
 		if status.Players != nil {
 			resp.Players = status.Players
 		}

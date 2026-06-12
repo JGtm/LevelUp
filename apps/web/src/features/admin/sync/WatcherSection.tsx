@@ -10,7 +10,7 @@ import type { WatcherPlayerStatus } from '@/lib/api/types'
 import { StatusBadge } from '../components/StatusBadge'
 import { adminAbsoluteTime, adminRelativeTime } from '../format'
 import { useAdminT, useAdminLocale, type TAdmin } from '../useAdminText'
-import type { AdminStatus } from '../statusDisplay'
+import { watcherLivenessStatus, type AdminStatus } from '../statusDisplay'
 
 /** État FSM watcher → statut de badge (Watching/Syncing actifs, Cooling warn). */
 function watcherStateStatus(state: string): AdminStatus {
@@ -54,6 +54,17 @@ export function WatcherSection() {
               label={`${tA('admin.watcher.token')}${data.token_gamertag ? ` (${data.token_gamertag})` : ''}`}
               title={data.token_expires_at}
             />
+            {data.daemon_running && (
+              <StatusBadge
+                status={watcherLivenessStatus(data.last_event_at, data.daemon_running)}
+                label={`${tA('admin.watcher.activity')} · ${
+                  data.last_event_at
+                    ? adminRelativeTime(data.last_event_at, locale)
+                    : tA('admin.watcher.no_event_yet')
+                }`}
+                title={data.last_event_at ? adminAbsoluteTime(data.last_event_at, locale) : undefined}
+              />
+            )}
           </div>
           {!data.daemon_running ? (
             <p className="text-xs text-muted-foreground">{tA('admin.watcher.disabled')}</p>
@@ -86,6 +97,7 @@ function WatcherPlayersTable({
             <th className="px-3 py-2 font-medium">{tA('admin.watcher.col_state')}</th>
             <th className="px-3 py-2 font-medium">{tA('admin.watcher.col_presence')}</th>
             <th className="px-3 py-2 font-medium">{tA('admin.watcher.col_since')}</th>
+            <th className="px-3 py-2 font-medium">{tA('admin.watcher.col_last_event')}</th>
           </tr>
         </thead>
         <tbody>
@@ -111,6 +123,12 @@ function WatcherPlayersTable({
                 title={adminAbsoluteTime(p.state_since, locale)}
               >
                 {adminRelativeTime(p.state_since, locale)}
+              </td>
+              <td
+                className="px-3 py-2 text-xs text-muted-foreground"
+                title={p.last_event_at ? adminAbsoluteTime(p.last_event_at, locale) : undefined}
+              >
+                {p.last_event_at ? adminRelativeTime(p.last_event_at, locale) : '—'}
               </td>
             </tr>
           ))}

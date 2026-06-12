@@ -76,7 +76,15 @@ type PlayerWatcher struct {
 	// "Hors-ligne" vs "Absent" vs "En ligne" — plus précis que le state FSM
 	// (qui reste "Idle" dans les 3 cas).
 	lastPresenceState string
-	mu                sync.Mutex
+	// lastEventAt : instant du dernier event de présence reçu (REST poll ou
+	// RTA), peu importe son contenu. Mis à jour à CHAQUE event dispatché par le
+	// handler — donc à chaque poll REST réussi (cf. rest_poller.tickOnce), pas
+	// seulement sur changement d'état. C'est un témoin de vivacité du daemon :
+	// si lastEventAt se fige alors que le daemon tourne, les polls échouent en
+	// boucle (backoff auth/réseau) → watcher "mort" malgré daemon_running=true.
+	// Zéro si aucun event reçu depuis le boot.
+	lastEventAt time.Time
+	mu          sync.Mutex
 }
 
 // NewPlayerWatcher crée un watcher pour un joueur.
@@ -173,6 +181,23 @@ func (pw *PlayerWatcher) LastPresenceState() string {
 	pw.mu.Lock()
 	defer pw.mu.Unlock()
 	return pw.lastPresenceState
+}
+
+// RecordEvent mémorise l'instant du dernier event de présence reçu. Appelé
+// par le handler du daemon pour CHAQUE event (avant tout filtrage de titre),
+// donc à chaque poll REST réussi. Aucun log : opération à très haute fréquence.
+func (pw *PlayerWatcher) RecordEvent(ts time.Time) {
+	pw.mu.Lock()
+	pw.lastEventAt = ts
+	pw.mu.Unlock()
+}
+
+// LastEventAt retourne l'instant du dernier event reçu, ou le zéro time.Time
+// si aucun event depuis le boot.
+func (pw *PlayerWatcher) LastEventAt() time.Time {
+	pw.mu.Lock()
+	defer pw.mu.Unlock()
+	return pw.lastEventAt
 }
 
 // WithLiveRefresh configure le refresher live BP/Challenges.
