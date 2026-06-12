@@ -1,3 +1,17 @@
+## [2026-06-12] Fix backfill-world : les joueurs en échec ne bloquent plus la saison (failed-tracking) — Complété
+
+**Statut** : Code + 5 tests verts, exe reconstruit, refactor (main.go 645→446 L). Checkpoint csrseason13-2 débloqué (marqué complet). Commit + merge main autorisés.
+
+**Problème** : `cmd/backfill-world-player-stats` bouclait à l'infini sur 2 joueurs. Cause : `collectSeason` n'enregistrait (`markDone`) que les joueurs RÉUSSIS ; un joueur en erreur (gros historique dont le deep scan `-max-pages 240` finit toujours par un fetch 429/réseau en échec → `AggregatePlayer` erreur) n'était jamais marqué → `remaining()` le re-renvoyait à chaque run → `markSeasonCompleteIfFull` (exigeait done==total) jamais déclenché → saison jamais complète, 12-19 min gaspillées par relance.
+
+**Décision technique** : suivi des joueurs en échec. `seasonProgress.Failed []string` ; `collectSeason` checkpoint aussi les échecs (`markFailed`) ; `remaining()` exclut done ∪ failed (sauf `-retry-failed`) ; complétude décidée sur `attemptedCount` (done ∪ failed) et non plus `doneCount` seul ; `-retry-failed` rouvre une saison complétée pour re-tenter ses échecs (markDone retire alors le joueur de failed). Un échec accepté ne rebloque plus le backfill. Extraction de la couche checkpoint (`checkpoint.go`, 211 L) hors de main.go pour repasser sous la limite 500 L + aligner avec `checkpoint_test.go`.
+
+**Résultats observés** : vet + 5 tests verts (dont `TestCheckpoint_SeasonCompletesDespiteFailures` reproduisant la régression : 500 done + 2 failed = 502 → complète). Exe reconstruit. Déblocage immédiat csrseason13-2 : checkpoint marqué `completed` (backup `.bak`), 500/502 enrichis, 2 erreurs acceptées.
+
+**Prochaine étape** : commit + merge main + push (déploie le CLI corrigé). Distinct ouvert : `-season all` ne couvre que les saisons présentes dans `world_csr_leaderboard_latest` (à ce jour : csrseason13-2 uniquement) — à investiguer (couverture du scraper leaderboard).
+
+---
+
 ## [2026-06-12] Fix gate ADR 0021 (shared_social) rouge — checkptr DuckDB sous -race — Complété
 
 **Statut** : Gate vert en local (4 steps). Commit + push à suivre. Découvert en vérifiant les Actions post-merge.
