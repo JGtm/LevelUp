@@ -8,9 +8,11 @@
 
 **Boucle de correction (déjà en place, réutilisée)** : les assets non normalisés (nom == UUID brut, FR manquant) remontent dans la page admin data-quality (sections RawAssets / UntranslatedModes) + correction manuelle via `/admin/actions/translations/{asset,mode}` (UpsertAssetTranslation / UpsertModeTranslation, lus LIVE). Zéro UI à ajouter.
 
-**V2 (en cours)** : étape config playlist (den.dev `PlaylistEntries` via discovery-infiniteugc) → enfiler les couples map-mode enfants même injoués + récupérer les poids. Le drain part de match_registry (joué) donc ne découvre pas les enfants injoués sans cette étape.
+**V2 — fetch PROUVÉ (2026-06-12)** : `sync.GetPlaylistConfig` (discovery-infiniteugc, réutilise doGet/haloUGCHost du client film) validé contre l'API RÉELLE. Auth OK (Spartan + 343-clearance). Découvertes : (1) pas d'endpoint « liste des playlists » — confirmé par le blog den.dev (la liste passe par un pipe AMQP/Bond, l'auteur l'a curée à la main → d'où rankedplaylists.go) ; (2) le fetch par-id REQUIERT un `version_id` (404 sans, 400 sur "latest"), fourni par `match_registry.playlist_version_id` (216 lignes non vides) ; (3) structure réelle : les enfants sont dans `RotationEntries[]` = `{AssetId, VersionId, Metadata.Weight}` (PAS `PlaylistEntries` comme den.dev — l'API a évolué ; CustomData.PlaylistEntries en repli). Parsing isolé dans `parsePlaylistConfig`, 3 tests verts.
 
-**Prochaine étape** : V2 (réutiliser le pattern discovery-infiniteugc de sync/halo_client_film.go).
+**Reste (V2 part 2)** : câbler l'expansion dans le cron, AVANT le drain — pour chaque playlist (id+version de match_registry) : fetch config → enfiler les enfants (AssetId+VersionId) dans catalog_fetch_queue (le drain les nommera) + upsert les poids dans une nouvelle table. Best-effort (un fetch raté ne casse pas le drain).
+
+**Prochaine étape** : V2 part 2 (expansion + migration poids).
 
 ---
 
