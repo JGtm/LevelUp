@@ -20,6 +20,10 @@ import (
 // cycleHistorySize borne l'historique mémoire des cycles (FIFO).
 const cycleHistorySize = 48
 
+// postSyncHistorySize borne le ring des durées post-sync par joueur (sparkline
+// de tendance — 16 derniers post-syncs réussis du joueur).
+const postSyncHistorySize = 16
+
 // CycleRecord est l'entrée d'historique d'un cycle auto-sync.
 //
 // Les champs « charge » (BlockedMs, SwapCount, ReadsRejected, APIMs,

@@ -101,6 +101,10 @@ type PlayerOutcomeDetail struct {
 	// par syncPlayer (scheduler + cycle forcé) sont capturés — les paths
 	// watcher et HTTP /sync/all ne remontent pas ici (couverts par sync.log).
 	PostSync *domain.PostSyncResult `json:"post_sync,omitempty"`
+	// PostSyncHistoryMs : durées post-sync (ms) des derniers cycles de CE joueur
+	// (ancien → récent), pour la sparkline de tendance. Rempli par Snapshot
+	// depuis le ring postSyncHistory.
+	PostSyncHistoryMs []int64 `json:"post_sync_history_ms,omitempty"`
 }
 
 // ConsecutiveZeroInsertWarnThreshold est le seuil au-delà duquel le scheduler
@@ -192,6 +196,10 @@ type AutoSyncScheduler struct {
 	lastCycleResult *RunOnceResult
 	playerOutcomes  map[string]PlayerOutcomeDetail // keyed by gamertag
 	cycleHistory    []CycleRecord                  // ring FIFO borné (cf. auto_sync_history.go)
+	// postSyncHistory : durées post-sync (ms) des derniers cycles PAR joueur
+	// (ring borné), pour la sparkline de tendance — repère un joueur qui
+	// converge toujours plus lentement. Alimenté par storeCycleResult.
+	postSyncHistory map[string][]int64 // keyed by gamertag
 }
 
 // New crée un AutoSyncScheduler. tokenPool peut être nil (cas où Discovery
@@ -204,11 +212,12 @@ func New(
 	tokenPool pool.Pool,
 ) *AutoSyncScheduler {
 	s := &AutoSyncScheduler{
-		cfg:            cfg,
-		settings:       settings,
-		provider:       provider,
-		pool:           tokenPool,
-		playerOutcomes: make(map[string]PlayerOutcomeDetail),
+		cfg:             cfg,
+		settings:        settings,
+		provider:        provider,
+		pool:            tokenPool,
+		playerOutcomes:  make(map[string]PlayerOutcomeDetail),
+		postSyncHistory: make(map[string][]int64),
 		// Défaut no-op : pas de dédup cross-source tant que main.go n'injecte pas
 		// le Coordinator partagé du watcher. Évite un nil-check à chaque appel.
 		SyncGate: sync.NopSyncGate{},
@@ -380,6 +389,9 @@ func (s *AutoSyncScheduler) Snapshot() SchedulerSnapshot {
 
 	players := make([]PlayerOutcomeDetail, 0, len(s.playerOutcomes))
 	for _, d := range s.playerOutcomes {
+		if hist := s.postSyncHistory[d.Gamertag]; len(hist) > 0 {
+			d.PostSyncHistoryMs = append([]int64(nil), hist...) // copie défensive
+		}
 		players = append(players, d)
 	}
 	poolSize := 0
@@ -403,6 +415,8 @@ func (s *AutoSyncScheduler) Snapshot() SchedulerSnapshot {
 }
 
 // recordOutcome enregistre le résultat détaillé pour un joueur (thread-safe).
+// Quand le joueur a effectué un post-sync (PostSync non nil → outcome=ok),
+// sa durée est ajoutée au ring postSyncHistory pour la sparkline de tendance.
 func (s *AutoSyncScheduler) recordOutcome(d PlayerOutcomeDetail) {
 	s.snapshotMu.Lock()
 	defer s.snapshotMu.Unlock()
@@ -410,6 +424,22 @@ func (s *AutoSyncScheduler) recordOutcome(d PlayerOutcomeDetail) {
 		s.playerOutcomes = make(map[string]PlayerOutcomeDetail)
 	}
 	s.playerOutcomes[d.Gamertag] = d
+	if d.PostSync != nil {
+		s.appendPostSyncSample(d.Gamertag, d.PostSync.DurationMs)
+	}
+}
+
+// appendPostSyncSample ajoute une durée au ring borné du joueur (appelé sous
+// snapshotMu).
+func (s *AutoSyncScheduler) appendPostSyncSample(gamertag string, ms int64) {
+	if s.postSyncHistory == nil {
+		s.postSyncHistory = make(map[string][]int64)
+	}
+	h := append(s.postSyncHistory[gamertag], ms)
+	if len(h) > postSyncHistorySize {
+		h = append([]int64(nil), h[len(h)-postSyncHistorySize:]...)
+	}
+	s.postSyncHistory[gamertag] = h
 }
 
 // previousZeroInsertCount retourne le compteur ConsecutiveZeroInserts du

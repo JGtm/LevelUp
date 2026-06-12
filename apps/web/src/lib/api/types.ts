@@ -3836,6 +3836,8 @@ export interface SchedulerPlayerOutcome {
   first_error?: string
   consecutive_zero_inserts?: number
   post_sync?: PostSyncCounters
+  /** Durées post-sync (ms) des derniers cycles de ce joueur (ancien → récent), sparkline de tendance. */
+  post_sync_history_ms?: number[]
 }
 
 export interface SchedulerGateClaim {
