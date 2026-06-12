@@ -246,6 +246,11 @@ func main() {
 			logHandler = mh
 		}
 	}
+	// Tee error collector : agrège les WARN/ERROR en mémoire (panneau monitoring
+	// "erreurs récurrentes") sans altérer la sortie. Wrapper le plus externe →
+	// vu une fois par record ; Enabled délègue (permissif), seul le collecteur
+	// filtre sur >= WARN, donc le fan-out fichiers/console reste intact.
+	logHandler = observability.NewErrorCollectorHandler(logHandler)
 	slog.SetDefault(slog.New(logHandler))
 	if multiHandler != nil {
 		slog.Info("logging: multi-module actif",

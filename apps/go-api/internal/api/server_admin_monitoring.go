@@ -36,12 +36,13 @@ func mountAdminMonitoringRoutes(
 	reg.WithAutoSyncScheduler(sched)
 
 	monitoringH := handlers.NewAdminMonitoringHandler(
-		reg.MonitoringOverview, reg.ConvergenceReport, reg.PerfStats, sched, jobStore)
+		reg.MonitoringOverview, reg.ConvergenceReport, reg.PerfStats, reg.ErrorStats, sched, jobStore)
 	r.With(middleware.NoStore).Get("/monitoring/overview", monitoringH.GetOverview)
 	r.With(middleware.NoStore).Get("/monitoring/scheduler", monitoringH.GetScheduler)
 	r.With(middleware.NoStore).Get("/monitoring/convergence", monitoringH.GetConvergence)
 	r.With(middleware.NoStore).Get("/monitoring/jobs", monitoringH.GetJobs)
 	r.With(middleware.NoStore).Get("/monitoring/perf", monitoringH.GetPerf)
+	r.With(middleware.NoStore).Get("/monitoring/errors", monitoringH.GetErrors)
 
 	actionsH := handlers.NewAdminActionsHandler(
 		reg.RunDataHealthNow, sched, jobStore, serverCtx)

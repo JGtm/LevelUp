@@ -90,6 +90,26 @@ en = "Detail"
 fr = "Logs indisponibles."
 en = "Logs unavailable."
 
+[admin.errors.section]
+fr = "Erreurs récurrentes (depuis le démarrage)"
+en = "Recurring errors (since boot)"
+
+[admin.errors.empty]
+fr = "Aucune erreur depuis le démarrage."
+en = "No errors since boot."
+
+[admin.errors.col_count]
+fr = "Occ."
+en = "Count"
+
+[admin.errors.col_message]
+fr = "Message"
+en = "Message"
+
+[admin.errors.col_last]
+fr = "Dernière"
+en = "Last"
+
 # ─── Vue d'ensemble (KPIs) ─────────────────────────────────────────────────
 
 [admin.overview.kpi_last_cycle]

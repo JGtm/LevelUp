@@ -12,6 +12,7 @@ import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import type {
   AdminConvergenceReport,
+  AdminErrorStats,
   AdminJobsResponse,
   AdminMonitoringOverview,
   AdminPerfStats,
@@ -54,6 +55,17 @@ export function usePerfStats() {
     queryKey: queryKeys.adminMonitoringPerf,
     queryFn: () => api.get<AdminPerfStats>('/admin/monitoring/perf'),
     // Agrégats expvar purs (zéro I/O serveur) — polling tranquille.
+    refetchInterval: 30_000,
+    staleTime: 25_000,
+    retry: false,
+  })
+}
+
+export function useMonitoringErrors() {
+  return useQuery({
+    queryKey: queryKeys.adminMonitoringErrors,
+    queryFn: () => api.get<AdminErrorStats>('/admin/monitoring/errors'),
+    // Collecteur mémoire (zéro I/O) — polling tranquille aligné sur l'overview.
     refetchInterval: 30_000,
     staleTime: 25_000,
     retry: false,

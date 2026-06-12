@@ -35,11 +35,16 @@ type ConvergenceReportRunner func(ctx context.Context, titleSlug string) (domain
 // (implémenté par ServiceRegistry.PerfStats — expvar pur).
 type PerfStatsRunner func(ctx context.Context) (domain.AdminPerfStats, error)
 
+// ErrorStatsRunner retourne les logs WARN/ERROR agrégés depuis le boot
+// (implémenté par ServiceRegistry.ErrorStats — collecteur mémoire).
+type ErrorStatsRunner func(ctx context.Context) (domain.AdminErrorStats, error)
+
 // AdminMonitoringHandler sert les endpoints lecture du dashboard monitoring.
 type AdminMonitoringHandler struct {
 	overview    MonitoringOverviewRunner
 	convergence ConvergenceReportRunner
 	perf        PerfStatsRunner
+	errors      ErrorStatsRunner
 	sched       *scheduler.AutoSyncScheduler // nil → scheduler indisponible
 	jobs        *jobs.Store                  // nil → liste jobs vide
 }
@@ -50,10 +55,24 @@ func NewAdminMonitoringHandler(
 	overview MonitoringOverviewRunner,
 	convergence ConvergenceReportRunner,
 	perf PerfStatsRunner,
+	errors ErrorStatsRunner,
 	sched *scheduler.AutoSyncScheduler,
 	jobStore *jobs.Store,
 ) *AdminMonitoringHandler {
-	return &AdminMonitoringHandler{overview: overview, convergence: convergence, perf: perf, sched: sched, jobs: jobStore}
+	return &AdminMonitoringHandler{overview: overview, convergence: convergence, perf: perf, errors: errors, sched: sched, jobs: jobStore}
+}
+
+// GetErrors retourne les logs WARN/ERROR agrégés depuis le boot.
+// GET /admin/monitoring/errors.
+func (h *AdminMonitoringHandler) GetErrors(w http.ResponseWriter, r *http.Request) {
+	resp, err := h.errors(r.Context())
+	if err != nil {
+		slog.ErrorContext(r.Context(), "admin_monitoring: errors failed", "err", err)
+		writeError(r.Context(), w, http.StatusInternalServerError, "monitoring_errors_error",
+			"Impossible d'agréger les erreurs récentes.")
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // GetPerf retourne les agrégats de performance depuis le boot.

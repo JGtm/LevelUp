@@ -143,7 +143,11 @@ dev-make*.log
 
 # Sprint B1 — fichiers logs par module générés au runtime du serveur Go
 # (cf. internal/observability/logging/). LEVELUP_LOGS_DIR override possible.
-logs/
+# Ancré à la racine (/logs/) : le pattern bare « logs/ » matchait à toutes les
+# profondeurs et excluait par erreur le dossier de code apps/web/src/features/
+# admin/logs/ (viewer de logs admin). Les autres logs runtime ont leurs propres
+# patterns ancrés (apps/go-api/logs/, data/logs/).
+/logs/
 apps/go-api/logs/
 apps/go-api/server-*.exe
 apps/go-api/server-*.log

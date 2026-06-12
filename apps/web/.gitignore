@@ -1,5 +1,7 @@
-# Logs
-logs
+# Logs (ancré /logs : le pattern bare « logs » du template Vite matchait à
+# toutes profondeurs et excluait par erreur src/features/admin/logs/ — code
+# source du viewer de logs admin).
+/logs
 *.log
 npm-debug.log*
 yarn-debug.log*
