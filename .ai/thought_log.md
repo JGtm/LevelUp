@@ -1,3 +1,17 @@
+## [2026-06-12] snapshot-world-leaderboard : -season all + délai anti-throttle — Complété
+
+**Statut** : Outil étendu, build+vet verts, 8 saisons snapshotées en base (2229 entrées). Branche fix/snapshot-all-seasons.
+
+**Problème (user)** : `backfill-world -season all` ne traitait qu'1 saison car `world_csr_leaderboard_latest` ne contenait que csrseason13-2. Cause : le snapshot ne faisait qu'une saison à la fois (`-season` requis), et le cron ne snapshote que l'active. Les saisons passées (csrseason3-1 → active) sont pourtant TOUTES exposées par Halo Waypoint.
+
+**Décision technique** : (1) `-season all` dans snapshot-world-leaderboard — `resolveSeasons` appelle `scraper.FetchCatalog` (menu déroulant Halo Waypoint) → boucle sur les 11 saisons. Miroir du `-season all` du backfill. (2) Délai poli ENTRE playlists/saisons (pas seulement entre pages) : Halo Waypoint throttle (429) au-delà de ~quelques requêtes rapprochées. Sans ça, `-season all` tirait ~14 requêtes d'affilée → coupé (363 insérées). Avec `-polite-ms 2500` inter-requête : 2229 insérées (8 saisons à données : 13-2/12-1/11-1/10-1/6-1/5-1/4-1/3-1 ; 7-1/8-1/9-1 vides côté Halo). Extraction `snapshotSeason` en closure (capture le contexte sans exploser le nb d'args).
+
+**Résultats observés** : build+vet verts. Snapshot réel exécuté (append-only, vue _latest) → 8 saisons en base. Le backfill `-season all` les voit désormais toutes. Caveat connu : les très vieilles saisons (3-1..6-1) s'enrichiront peu (historique match trop ancien pour le fetch API) mais leurs classements CSR sont là.
+
+**Prochaine étape** : commit + merge main + push. User lance `backfill-world.exe -season all` → traite les 8 saisons (13-2 déjà complète → skip).
+
+---
+
 ## [2026-06-12] Backfill-world : cap top 100 PAR playlist (= profondeur affichée) — Complété
 
 **Statut** : Code + test intégration verts, exes reconstruits, branche fix/world-backfill-top100. Commit + merge à confirmer.
