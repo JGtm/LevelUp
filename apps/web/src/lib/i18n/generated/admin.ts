@@ -228,6 +228,7 @@ export const adminManifest = {
   "admin.sync.summary_skipped": { fr: "Ignorés", en: "Skipped" },
   "admin.sync.summary_synced": { fr: "Synchronisés", en: "Synced" },
   "admin.sync.summary_total": { fr: "Joueurs", en: "Players" },
+  "admin.sync.trends_section": { fr: "Tendances", en: "Trends" },
   "admin.sync.trigger_manual": { fr: "manuel", en: "manual" },
   "admin.sync.trigger_tick": { fr: "auto", en: "auto" },
   "admin.watcher.activity": { fr: "Activité", en: "Activity" },
