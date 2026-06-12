@@ -140,6 +140,20 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	xstsRTA := h.tryAcquireXSTSForRTA(r, tokenResult.AccessToken)
+
+	// L'audience XSTS Halo ne renvoie que `uhs` dans DisplayClaims (pas xid/gtg) :
+	// suffisant pour les tokens Halo, mais pas pour identifier le joueur au login SSO.
+	// Le XSTS Xbox Live (xstsRTA, relying party http://xboxlive.com) porte lui xid +
+	// gamertag : on complète l'identité depuis cette source déjà acquise.
+	if xstsRTA != nil {
+		if exchangeResult.XUID == "" {
+			exchangeResult.XUID = xstsRTA.XUID
+		}
+		if exchangeResult.Gamertag == "" {
+			exchangeResult.Gamertag = xstsRTA.Gamertag
+		}
+	}
+
 	attempt := buildXboxOAuthAttempt(tokenResult, exchangeResult, xstsRTA)
 
 	if !h.linkAttemptToSession(w, r, attempt, sess) {
