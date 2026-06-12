@@ -22,6 +22,7 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 export function LoginPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const isBootstrapped = useAppShellStore((s) => s.isBootstrapped)
   const authMode = useAppShellStore((s) => s.authMode)
   const registrationMode = useAppShellStore((s) => s.registrationMode)
   const firstLaunch = useAppShellStore((s) => s.firstLaunch)
@@ -33,6 +34,15 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
 
   const login = useLogin()
+
+  // Tant que le store n'est pas hydraté depuis /bootstrap, authMode vaut sa
+  // valeur par défaut 'none'. Rediriger ici (vers '/') AVANT hydratation faisait
+  // rebondir /login -> / pendant la fenêtre pré-hydratation (race avec le gate de
+  // __root), d'où l'écran "Aucun joueur configuré" et la disparition du SSO Xbox.
+  // On attend donc l'hydratation avant toute décision de routage.
+  if (!isBootstrapped) {
+    return null
+  }
 
   // En mode none, pas de login nécessaire
   if (authMode === 'none') {
