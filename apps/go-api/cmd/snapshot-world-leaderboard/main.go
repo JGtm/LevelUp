@@ -39,7 +39,7 @@ import (
 )
 
 func main() {
-	season := flag.String("season", "", "saison CSR ciblée (ex: csrseason13-2) — requis")
+	season := flag.String("season", "", "saison CSR ciblée (ex: csrseason13-2) ou 'all' (toutes les saisons Halo Waypoint) — requis")
 	sharedDBPath := flag.String("shared-db", "data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb",
 		"chemin shared_matches_v2.duckdb (RW — stopper le serveur)")
 	playlistsCSV := flag.String("playlists", "",
@@ -55,22 +55,27 @@ func main() {
 	ctx := context.Background()
 
 	if strings.TrimSpace(*season) == "" {
-		fatal("-season est requis (ex: csrseason13-2)")
+		fatal("-season est requis (ex: csrseason13-2 ou 'all' pour toutes les saisons)")
 	}
 	playlists := resolvePlaylists(*playlistsCSV)
 	if len(playlists) == 0 {
 		fatal("aucune playlist à traiter")
 	}
-	log.InfoContext(ctx, "snapshot world leaderboard démarré",
-		"season", *season, "playlists", len(playlists), "limit", *limit, "dry_run", *dryRun)
-	fmt.Printf("Saison %s — %d playlist(s), limite %d/playlist%s\n",
-		*season, len(playlists), *limit, dryRunSuffix(*dryRun))
-
 	scraper := halo.NewLeaderboardScraper(time.Duration(*politeMs) * time.Millisecond)
+
+	// 'all' → snapshot TOUTES les saisons exposées par Halo Waypoint (csrseason3-1
+	// jusqu'à l'active), pas seulement la courante. Miroir du -season all du backfill.
+	seasons, err := resolveSeasons(ctx, scraper, *season, playlists[0])
+	if err != nil {
+		fatal("résolution des saisons: %v", err)
+	}
+	log.InfoContext(ctx, "snapshot world leaderboard démarré",
+		"seasons", len(seasons), "playlists", len(playlists), "limit", *limit, "dry_run", *dryRun)
+	fmt.Printf("Saisons (%d) : %v — %d playlist(s), limite %d/playlist%s\n",
+		len(seasons), seasons, len(playlists), *limit, dryRunSuffix(*dryRun))
 
 	var db *sql.DB
 	if !*dryRun {
-		var err error
 		db, err = openSharedRW(*sharedDBPath)
 		if err != nil {
 			fatal("open shared DB: %v", err)
@@ -81,34 +86,75 @@ func main() {
 		}
 	}
 
+	// Scrape+persiste une saison (toutes ses playlists). Closure pour capturer le
+	// contexte commun sans exploser le nombre d'arguments.
+	snapshotSeason := func(s string) (rows, inserted int) {
+		fmt.Printf("Saison %s :\n", s)
+		for i, pl := range playlists {
+			// Délai poli ENTRE playlists (pas seulement entre pages) : Halo Waypoint
+			// throttle au-delà de quelques requêtes rapprochées (429). Sans ça, un
+			// -season all tire ~14 requêtes d'affilée et se fait couper.
+			if i > 0 && *politeMs > 0 {
+				time.Sleep(time.Duration(*politeMs) * time.Millisecond)
+			}
+			entries, ferr := scraper.FetchCSRLeaderboard(ctx, s, pl, *limit)
+			if ferr != nil {
+				log.ErrorContext(ctx, "scrape playlist échoué", "season", s, "playlist", pl, "err", ferr)
+				continue
+			}
+			rows += len(entries)
+			fmt.Printf("  %s : %d entrées\n", pl, len(entries))
+			if *dryRun || len(entries) == 0 {
+				continue
+			}
+			n, ierr := duckdb.InsertWorldCSRSnapshot(ctx, db, entries)
+			if ierr != nil {
+				log.ErrorContext(ctx, "insert snapshot échoué", "season", s, "playlist", pl, "err", ierr)
+				continue
+			}
+			inserted += n
+		}
+		return rows, inserted
+	}
+
 	t0 := time.Now()
-	totalRows, totalInserted := 0, 0
-	for _, pl := range playlists {
-		entries, err := scraper.FetchCSRLeaderboard(ctx, *season, pl, *limit)
-		if err != nil {
-			log.ErrorContext(ctx, "scrape playlist échoué", "playlist", pl, "err", err)
-			continue
+	grandRows, grandInserted := 0, 0
+	for i, s := range seasons {
+		if i > 0 && *politeMs > 0 {
+			time.Sleep(time.Duration(*politeMs) * time.Millisecond)
 		}
-		totalRows += len(entries)
-		log.InfoContext(ctx, "playlist scrapée", "playlist", pl, "entries", len(entries))
-		fmt.Printf("  %s : %d entrées scrapées\n", pl, len(entries))
-		if *dryRun || len(entries) == 0 {
-			continue
-		}
-		n, err := duckdb.InsertWorldCSRSnapshot(ctx, db, entries)
-		if err != nil {
-			log.ErrorContext(ctx, "insert snapshot échoué", "playlist", pl, "inserted", n, "err", err)
-			continue
-		}
-		totalInserted += n
-		log.InfoContext(ctx, "snapshot persisté", "playlist", pl, "rows", n)
+		r, ins := snapshotSeason(s)
+		grandRows += r
+		grandInserted += ins
 	}
 
 	log.InfoContext(ctx, "snapshot world leaderboard terminé",
-		"season", *season, "playlists", len(playlists),
-		"rows_scraped", totalRows, "rows_inserted", totalInserted,
+		"seasons", len(seasons), "playlists", len(playlists),
+		"rows_scraped", grandRows, "rows_inserted", grandInserted,
 		"dry_run", *dryRun, "duration", time.Since(t0).String())
-	fmt.Printf("\nTerminé : %d entrées scrapées, %d insérées.\n", totalRows, totalInserted)
+	fmt.Printf("\nTerminé : %d saison(s), %d entrées scrapées, %d insérées.\n", len(seasons), grandRows, grandInserted)
+}
+
+// resolveSeasons : 'all' (ou vide) → toutes les saisons du catalogue Halo Waypoint
+// (csrseason3-1 → active, récentes d'abord) via FetchCatalog ; sinon la saison
+// fournie telle quelle. refPlaylist = une playlist classée valide quelconque (sert
+// juste à rendre la page qui porte le menu des saisons).
+func resolveSeasons(ctx context.Context, scraper *halo.LeaderboardScraper, season, refPlaylist string) ([]string, error) {
+	if s := strings.TrimSpace(season); s != "" && s != "all" {
+		return []string{s}, nil
+	}
+	refs, _, err := scraper.FetchCatalog(ctx, refPlaylist)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(refs))
+	for _, r := range refs {
+		out = append(out, r.ID)
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("aucune saison exposée par Halo Waypoint (markup changé ?)")
+	}
+	return out, nil
 }
 
 // resolvePlaylists retourne les asset IDs depuis le CSV fourni, sinon les
