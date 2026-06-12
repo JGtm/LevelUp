@@ -93,6 +93,11 @@ func (h *AdminConvergenceActionHandler) runConvergence(ctx context.Context, jobI
 		retryable := false
 		if h.inFlightErr != nil && errors.Is(err, h.inFlightErr) {
 			code, retryable = "sync_in_flight", true
+			slog.WarnContext(ctx, "admin_actions: convergence cédée (sync déjà en vol)",
+				"module", "monitoring", "job_id", jobID, "player_slug", playerSlug)
+		} else {
+			slog.ErrorContext(ctx, "admin_actions: convergence échouée",
+				"module", "monitoring", "job_id", jobID, "player_slug", playerSlug, "err", err)
 		}
 		h.jobs.Update(jobID, func(j *domain.AsyncJobStatus) {
 			j.Error = &domain.JobErrorDetail{Code: code, Message: err.Error(), Retryable: retryable}
