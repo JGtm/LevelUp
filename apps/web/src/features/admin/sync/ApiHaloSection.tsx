@@ -59,9 +59,54 @@ export function ApiHaloSection({ perf }: { perf: AdminPerfStats | undefined }) {
               </tbody>
             </table>
           </div>
+          {perf.api_by_player.length > 0 && <ApiByPlayerTable perf={perf} />}
         </>
       )}
     </section>
+  )
+}
+
+/** Sous-tableau des appels API attribuables par joueur (erreurs desc). */
+function ApiByPlayerTable({ perf }: { perf: AdminPerfStats }) {
+  const tA = useAdminT()
+  const locale = useAdminLocale()
+  return (
+    <div className="space-y-1.5">
+      <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {tA('admin.api.by_player_section')}
+      </h4>
+      <div className="overflow-x-auto rounded-md border">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <th className="px-3 py-2 font-medium">{tA('admin.api.col_player')}</th>
+              <th className="px-3 py-2 font-medium">{tA('admin.api.col_call')}</th>
+              <th className="px-3 py-2 text-right font-medium">{tA('admin.api.col_count')}</th>
+              <th className="px-3 py-2 text-right font-medium">{tA('admin.api.col_avg')}</th>
+              <th className="px-3 py-2 text-right font-medium">{tA('admin.api.col_max')}</th>
+              <th className="px-3 py-2 text-right font-medium">{tA('admin.api.col_errors')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {perf.api_by_player.map((s, i) => (
+              <tr key={`${s.player}-${s.call}-${i}`} className="border-b last:border-b-0 hover:bg-muted/30">
+                <td className="px-3 py-2 font-mono text-xs text-foreground">{s.player}</td>
+                <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{s.call}</td>
+                <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-muted-foreground">{s.count}</td>
+                <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-foreground">{formatDurationMs(s.avg_ms, locale)}</td>
+                <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-muted-foreground">{formatDurationMs(s.max_ms, locale)}</td>
+                <td
+                  className="px-3 py-2 text-right font-mono text-xs tabular-nums"
+                  style={s.errors > 0 ? { color: tokenCssVar('destructive') } : undefined}
+                >
+                  {s.errors}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }
 

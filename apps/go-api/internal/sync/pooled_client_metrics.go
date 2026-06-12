@@ -40,8 +40,14 @@ func HaloAPICallNames() []string {
 
 // observeHaloCall enregistre latence + classe d'erreur d'un appel API Halo.
 // À appeler en fin de méthode du client poolé (start capturé en tête).
-func observeHaloCall(call string, start time.Time, err error) {
-	observability.RecordDurationMS("halo_api_ms_"+call, time.Since(start).Milliseconds())
+//
+// `player` (xuid ou gamertag) attribue l'appel à un joueur pour le breakdown
+// par joueur — vide pour les appels match-level (match_stats, film, film_chunk,
+// match_skill) qui ne concernent pas un joueur unique.
+func observeHaloCall(call, player string, start time.Time, err error) {
+	ms := time.Since(start).Milliseconds()
+	observability.RecordDurationMS("halo_api_ms_"+call, ms)
+	observability.RecordPlayerAPICall(call, player, ms, err != nil)
 	if err == nil {
 		return
 	}
