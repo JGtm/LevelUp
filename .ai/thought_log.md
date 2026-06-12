@@ -1,3 +1,19 @@
+## [2026-06-12] Fix connexion Xbox (callback racine) + sauvegarde mdp navigateur — Complété (livraison à confirmer)
+
+**Statut** : Code Go + frontend + doc, build/typecheck/lint/tests OAuth verts. Diagnostic live confirmé (Chrome MCP + SSH VPS). Branche dédiée + commit à autoriser.
+
+**Problème (user)** : (1) « la connexion Xbox ne marche toujours pas » — l'user s'authentifie chez Microsoft mais retombe sur `/login`. (2) le mdp admin n'est jamais conservé / le navigateur ne propose jamais de l'enregistrer.
+
+**Diagnostic** : reproduit en direct dans Chrome. Le `redirect_uri` Azure pointe sur `https://lvelup.info/auth/xbox/callback` (chemin **racine**, sans `/api/v1`), mais les routes Go étaient montées UNIQUEMENT sous `/api/v1` (`server.go` `r.Route("/api/v1")`). Le backend sert aussi le SPA (catch-all `/*`), donc `GET /auth/xbox/callback` tombait sur l'index.html (**200 text/html**, pas le handler) → `bootstrap` reste `auth_state:"missing"` → retour `/login`. Vérifié côté VPS (SSH, lecture seule) : nginx n'a qu'un `location / → :8000` (aucune réécriture `/auth/`), `LEVELUP_OAUTH_REDIRECT_URI` sans `/api/v1`, `LEVELUP_SESSION_SECRET` stable len=65 (→ sessions disque 7j saines, le « non conservé » = en fait le navigateur qui n'enregistre jamais le mdp). Login admin soumis en `fetch` (TanStack Query) → Chrome ne déclenche pas son heuristique de sauvegarde.
+
+**Décision technique** : (1) **Fix dans le repo** (pas une rustine nginx VPS — le projet est public, les self-hosters doivent en bénéficier). Exposer `/auth/xbox/login` + `/auth/xbox/callback` AUSSI à la racine du routeur (`server.go`), liés tardivement au handler construit dans `/api/v1` (alias conservés pour le front). Le middleware `WithSession` est à la racine → l'`OAuthState` est lu ; callback en GET → CSRF non bloquant. Effet : aucun changement nginx requis (le `location / → :8000` existant transmet déjà `/auth/xbox/callback`, qui a désormais une vraie route Go) ; marche derrière tout reverse proxy standard. (2) Documenté `LEVELUP_OAUTH_REDIRECT_URI` + plateforme Azure « Web » dans `.env.local.example` + `RUNBOOK_GO_LIVE.md` (absents avant). (3) **Sauvegarde mdp** : helper `storePasswordCredential` (API Credential Management `navigator.credentials.store` + `PasswordCredential`, feature-detectée Chromium) appelé après login réussi dans `LoginPage` ET `XboxLoginPage/AdminPasswordPanel`.
+
+**Résultats observés** : `go build ./cmd/server` (CGO) + `tsc --noEmit` + `eslint` + tests `./internal/api/handlers -run Xbox|OAuth|Callback` verts. Pas de test full-`NewRouter` ajouté (fixtures disproportionnées) : la vérif bout-à-bout se fait en live Chrome post-deploy (callback attendu en **302**, bootstrap `auth_state` authentifié).
+
+**Prochaine étape** : branche dédiée + commit (autorisation user) + push → redeploy auto. Puis re-jouer le flux Xbox dans Chrome (302 + bootstrap authentifié) et vérifier la proposition d'enregistrement du mdp.
+
+---
+
 ## [2026-06-12] snapshot-world-leaderboard : -season all + délai anti-throttle — Complété
 
 **Statut** : Outil étendu, build+vet verts, 8 saisons snapshotées en base (2229 entrées). Branche fix/snapshot-all-seasons.

@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useLogin } from '@/features/auth/queries'
+import { storePasswordCredential } from '@/features/auth/credentials'
 import { XboxLoginPage } from '@/features/auth/XboxLoginPage'
 import { queryKeys } from '@/lib/query/keys'
 import type { ApiError } from '@/lib/api/client'
@@ -51,6 +52,8 @@ export function LoginPage() {
       { username, password },
       {
         onSuccess: async () => {
+          // Propose au navigateur d'enregistrer le mot de passe (login en fetch).
+          storePasswordCredential(username, password)
           await queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap })
           navigate({ to: '/' })
         },

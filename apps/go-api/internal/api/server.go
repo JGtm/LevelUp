@@ -485,6 +485,33 @@ func NewRouter(
 		r.Mount("/debug/vars", http.DefaultServeMux)
 	})
 
+	// PR 4 (fix routing OAuth) — Le redirect_uri Azure pointe sur le chemin racine
+	// /auth/xbox/callback (sans /api/v1). Comme le SPA est servi par ce backend, ce
+	// chemin tombait sur le catch-all `/*` (index.html) → le handler OAuth ne tournait
+	// jamais → l'utilisateur retombait sur /login. On expose donc login + callback AUSSI
+	// à la racine du routeur. Le handler est construit dans le groupe /api/v1 ci-dessous
+	// (mêmes deps), et lié tardivement ici : NewRouter s'exécute entièrement avant de
+	// servir la moindre requête, donc l'assignation précède tout appel. Le middleware de
+	// session est appliqué à la racine (cf. r.Use(WithSession) plus haut), donc l'OAuthState
+	// est bien lu sur ces routes racine. Les alias /api/v1/auth/xbox/* restent pour le front.
+	var xboxOAuthRoot *handlers.XboxOAuthHandler
+	if cfg.AuthMode == "xbox" && cfg.OAuthRedirectURI != "" {
+		r.Get("/auth/xbox/login", func(w http.ResponseWriter, req *http.Request) {
+			if xboxOAuthRoot == nil {
+				http.NotFound(w, req)
+				return
+			}
+			xboxOAuthRoot.LoginRedirect(w, req)
+		})
+		r.Get("/auth/xbox/callback", func(w http.ResponseWriter, req *http.Request) {
+			if xboxOAuthRoot == nil {
+				http.NotFound(w, req)
+				return
+			}
+			xboxOAuthRoot.Callback(w, req)
+		})
+	}
+
 	// v1 API
 	r.Route("/api/v1", func(r chi.Router) {
 		// Endpoints P0 : bootstrap + liste joueurs
@@ -641,6 +668,10 @@ func NewRouter(
 			xboxOAuthHandler := handlers.NewXboxOAuthHandler(sessionStore, tokenProvider, cfg.DemoMode, cfg.OAuthRedirectURI).
 				WithLinkStrategy(xboxLinkStrategy).
 				WithAuthStore(authStore)
+			// Lie les routes racine /auth/xbox/* déclarées avant ce groupe (cf. supra) :
+			// le redirect_uri Azure pointe sur le chemin racine, pas /api/v1.
+			xboxOAuthRoot = xboxOAuthHandler
+			// Alias /api/v1 conservés (le front initie via /api/v1/auth/xbox/login).
 			r.Get("/auth/xbox/login", xboxOAuthHandler.LoginRedirect)
 			r.Get("/auth/xbox/callback", xboxOAuthHandler.Callback)
 		}
