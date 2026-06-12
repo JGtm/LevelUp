@@ -1,3 +1,17 @@
+## [2026-06-12] Fix gate ADR 0021 (shared_social) rouge — checkptr DuckDB sous -race — Complété
+
+**Statut** : Gate vert en local (4 steps). Commit + push à suivre. Découvert en vérifiant les Actions post-merge.
+
+**Problème** : `shared-social-gate.yml` échouait sur TOUS les runs (toutes branches, depuis ≥ 06-07) — donc PAS causé par le merge (vérifié), mais à corriger quand même (un gate rouge sur main ne reste pas). Cause prouvée via log CI : `fatal error: checkptr: misaligned pointer conversion` dans `github.com/duckdb/duckdb-go/v2.(*vector).getBytes`. Le `-race` force-active l'instrumentation `checkptr`, qui juge « misaligned » une conversion de pointeur faite par le driver DuckDB sur TOUTE lecture VARCHAR → crash fatal AVANT toute assertion. Faux positif cgo, pas un vrai data race (les tests s'exécutent : logs « SharedSocial récupéré après quarantaine WAL »).
+
+**Décision technique** : ajouter `-gcflags=all=-d=checkptr=0` aux 2 steps `-race` du gate (race-clean + kill-brutal). Neutralise UNIQUEMENT le checkptr ; le `-race` reste actif → la détection de vraies data races (concurrent likes, WAL recovery, B-swap) est intacte. Commentaire inline « ne PAS retirer ce flag ». Supérieur à la stratégie mémoire historique (isoler les tests concurrents et lire DuckDB sans -race) : ici on garde le -race SUR les tests qui lisent du DuckDB, sans rien isoler.
+
+**Résultats observés** : 4 steps verts en local — race-clean (duckdb+dblease ok), kill-brutal (ops ok), rebuild tool (ok), coverage ratchet (aucune régression vs baseline). Reproduction du crash : log CI run 27433399546 (avant) ; fix `ok` en local (après).
+
+**Prochaine étape** : push + vérifier le gate passe au vert en CI. MàJ mémoire `reference_go_test_race_incompatible_duckdb.md` avec l'option `-gcflags=all=-d=checkptr=0`.
+
+---
+
 ## [2026-06-12] Merge 3 branches dans main (admin + world + coach) — réconciliation sans perte — Complété
 
 **Statut** : 3 branches parallèles (issues de main@df76060cb, base commune 9abc20019) fusionnées dans main. Build Go + vet + migration/scheduler/sync/sync-v2 verts ; typecheck + lint (0 err) + vitest (282) verts. Push prod à suivre.
