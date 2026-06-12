@@ -52,6 +52,11 @@ type RegistryNamesBackfillRequest struct {
 	DryRun bool `json:"dry_run"`
 }
 
+// LyingBitsResetRequest — corps de POST .../lying-bits/reset.
+type LyingBitsResetRequest struct {
+	DryRun bool `json:"dry_run"`
+}
+
 // RegistryNamesBackfillResult — compteurs du backfill (ou du scan dry-run).
 type RegistryNamesBackfillResult struct {
 	DryRun           bool `json:"dry_run"`
@@ -104,4 +109,17 @@ type CatalogRefreshResult struct {
 	Pairs        int `json:"pairs"`
 	Maps         int `json:"maps"`
 	GameVariants int `json:"game_variants"`
+}
+
+// LyingBitsResetResult — compteurs de POST .../lying-bits/reset. Les champs
+// *Cleared comptent les matchs concernés : en dry-run ce qui SERAIT corrigé,
+// en exécution ce qui A ÉTÉ corrigé (le WHERE est identique, le writer est
+// exclusif → pas de divergence). Reset débloque le heal events/weapons au
+// prochain sync delta.
+type LyingBitsResetResult struct {
+	DryRun              bool `json:"dry_run"`
+	EventsBitsCleared   int  `json:"events_bits_cleared"`   // MBitEvents posé, highlight_events vide
+	WeaponsBitsCleared  int  `json:"weapons_bits_cleared"`  // MBitWeaponKills posé, weapon_kills vide
+	EventsLoadedCleared int  `json:"events_loaded_cleared"` // events_loaded=TRUE, highlight_events vide
+	Total               int  `json:"total"`
 }

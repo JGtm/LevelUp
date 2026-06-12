@@ -39,6 +39,9 @@ var registryNamesMu gosync.Mutex
 // catalogRefreshMu sérialise le refresh catalog (single-flight).
 var catalogRefreshMu gosync.Mutex
 
+// lyingBitsResetMu sérialise le reset des bits menteurs (single-flight).
+var lyingBitsResetMu gosync.Mutex
+
 // acquireWriterTimeout borne l'attente du writer shared (un sync long tient
 // le lease — on rend la main au front plutôt que de pendre la requête).
 const acquireWriterTimeout = 60 * time.Second
@@ -101,6 +104,65 @@ func (r *ServiceRegistry) RunRegistryNamesBackfill(ctx context.Context, titleSlu
 		"title", titleSlug, "total_fixed", res.TotalFixed)
 	observability.IncCounter("admin_action_registry_names_total")
 	return res, nil
+}
+
+// RunLyingBitsReset clear les bits backfill_completed menteurs de
+// match_registry (events/weapons posés mais tables vides) + le flag
+// events_loaded menteur. Débloque le heal events/weapons au prochain sync.
+// dryRun → COUNT seul en RO (shared cache), aucun UPDATE.
+func (r *ServiceRegistry) RunLyingBitsReset(ctx context.Context, titleSlug string, dryRun bool) (domain.LyingBitsResetResult, error) {
+	res := domain.LyingBitsResetResult{DryRun: dryRun}
+
+	if dryRun {
+		sharedSQL, _, closeAll, err := r.dataQualityHandles(titleSlug)
+		if err != nil {
+			return res, err
+		}
+		defer closeAll()
+		opsRes, err := ops.ResetLyingBits(ctx, sharedSQL, true)
+		if err != nil {
+			return res, err
+		}
+		return lyingBitsToDomain(opsRes), nil
+	}
+
+	if !lyingBitsResetMu.TryLock() {
+		return res, ErrActionBusy
+	}
+	defer lyingBitsResetMu.Unlock()
+
+	if r.cfg.SharedProvider == nil {
+		return res, fmt.Errorf("shared provider non câblé (mode legacy) — reset indisponible")
+	}
+	acquireCtx, cancel := context.WithTimeout(ctx, acquireWriterTimeout)
+	defer cancel()
+	writer, err := r.cfg.SharedProvider.AcquireWriter(acquireCtx)
+	if err != nil {
+		return res, fmt.Errorf("acquisition writer shared (sync en cours ?): %w", err)
+	}
+	defer writer.Release()
+
+	opsRes, err := ops.ResetLyingBits(ctx, writer.DB(), false)
+	if err != nil {
+		return res, err
+	}
+	res = lyingBitsToDomain(opsRes)
+	monitoringLog.InfoContext(ctx, "admin_actions: reset lying bits terminé",
+		"title", titleSlug, "events", res.EventsBitsCleared,
+		"weapons", res.WeaponsBitsCleared, "events_loaded", res.EventsLoadedCleared)
+	observability.IncCounter("admin_action_lying_bits_reset_total")
+	return res, nil
+}
+
+// lyingBitsToDomain mappe le résultat ops vers le DTO API.
+func lyingBitsToDomain(o ops.LyingBitsResetResult) domain.LyingBitsResetResult {
+	return domain.LyingBitsResetResult{
+		DryRun:              o.DryRun,
+		EventsBitsCleared:   o.EventsBitsCleared,
+		WeaponsBitsCleared:  o.WeaponsBitsCleared,
+		EventsLoadedCleared: o.EventsLoadedCleared,
+		Total:               o.Total(),
+	}
 }
 
 // ResolveModeTranslation upserte mode_name_tr[fr] pour un mode (clé

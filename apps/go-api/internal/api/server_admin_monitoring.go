@@ -53,7 +53,7 @@ func mountAdminMonitoringRoutes(
 	dqH := handlers.NewAdminDataQualityHandler(
 		reg.DataQualityCounts, reg.DataQualityIssues,
 		reg.RunRegistryNamesBackfill, reg.ResolveModeTranslation, reg.ResolveAssetTranslation,
-		reg.RunCatalogRefresh,
+		reg.RunCatalogRefresh, reg.RunLyingBitsReset,
 		ErrActionBusy)
 	r.With(middleware.NoStore).Get("/monitoring/data-quality", dqH.GetCounts)
 	r.With(middleware.NoStore).Get("/monitoring/data-quality/issues", dqH.GetIssues)
@@ -61,6 +61,7 @@ func mountAdminMonitoringRoutes(
 	r.Post("/actions/translations/mode", dqH.ResolveModeTranslation)
 	r.Post("/actions/translations/asset", dqH.ResolveAssetTranslation)
 	r.Post("/actions/catalog/refresh", dqH.RunCatalogRefresh)
+	r.Post("/actions/lying-bits/reset", dqH.RunLyingBitsReset)
 
 	// Convergence ciblée d'un joueur (job asynchrone, claim SyncGate).
 	convH := handlers.NewAdminConvergenceActionHandler(

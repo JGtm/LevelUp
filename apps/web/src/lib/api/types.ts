@@ -4045,6 +4045,15 @@ export interface CatalogRefreshResult {
   game_variants: number
 }
 
+/** Miroir de domain.LyingBitsResetResult — reset des bits backfill_completed menteurs. */
+export interface LyingBitsResetResult {
+  dry_run: boolean
+  events_bits_cleared: number
+  weapons_bits_cleared: number
+  events_loaded_cleared: number
+  total: number
+}
+
 // ─── Admin — Viewer de logs ───────────────────────────────────────────────────
 // Miroirs de domain.AdminLogModules / AdminLogTail.
 

@@ -10,6 +10,7 @@ import { queryKeys } from '@/lib/query/keys'
 import type {
   AssetTranslationRequest,
   CatalogRefreshResult,
+  LyingBitsResetResult,
   RegistryNamesBackfillResult,
   ResolveResult,
 } from '@/lib/api/types'
@@ -64,5 +65,17 @@ export function useRunCatalogRefresh() {
   return useMutation({
     mutationFn: () => api.post<CatalogRefreshResult>('/admin/actions/catalog/refresh', {}),
     onSuccess: () => invalidateDataQuality(queryClient),
+  })
+}
+
+export function useRunLyingBitsReset() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (dryRun: boolean) =>
+      api.post<LyingBitsResetResult>('/admin/actions/lying-bits/reset', { dry_run: dryRun }),
+    onSuccess: (_res, dryRun) => {
+      // Le reset mute match_registry → invalide les compteurs (lying_bits).
+      if (!dryRun) invalidateDataQuality(queryClient)
+    },
   })
 }

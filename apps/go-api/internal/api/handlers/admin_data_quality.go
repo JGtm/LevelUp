@@ -29,6 +29,7 @@ type (
 	ModeTranslationRunner   func(ctx context.Context, titleSlug, modeEN, nameFR string) (domain.ResolveResult, error)
 	AssetTranslationRunner  func(ctx context.Context, titleSlug string, req domain.AssetTranslationRequest) (domain.ResolveResult, error)
 	CatalogRefreshRunner    func(ctx context.Context, titleSlug string) (domain.CatalogRefreshResult, error)
+	LyingBitsResetRunner    func(ctx context.Context, titleSlug string, dryRun bool) (domain.LyingBitsResetResult, error)
 )
 
 // ErrActionBusyMessage : message du 409 single-flight (aligné registry).
@@ -42,6 +43,7 @@ type AdminDataQualityHandler struct {
 	modeTranslation  ModeTranslationRunner
 	assetTranslation AssetTranslationRunner
 	catalogRefresh   CatalogRefreshRunner
+	lyingBitsReset   LyingBitsResetRunner
 	// busyErr : sentinelle ErrActionBusy du package api (injectée pour éviter
 	// le cycle d'import handlers → api).
 	busyErr error
@@ -55,13 +57,14 @@ func NewAdminDataQualityHandler(
 	modeTranslation ModeTranslationRunner,
 	assetTranslation AssetTranslationRunner,
 	catalogRefresh CatalogRefreshRunner,
+	lyingBitsReset LyingBitsResetRunner,
 	busyErr error,
 ) *AdminDataQualityHandler {
 	return &AdminDataQualityHandler{
 		counts: counts, issues: issues, registryNames: registryNames,
 		modeTranslation: modeTranslation, assetTranslation: assetTranslation,
-		catalogRefresh: catalogRefresh,
-		busyErr:        busyErr,
+		catalogRefresh: catalogRefresh, lyingBitsReset: lyingBitsReset,
+		busyErr: busyErr,
 	}
 }
 
@@ -156,6 +159,32 @@ func (h *AdminDataQualityHandler) RunRegistryNamesBackfill(w http.ResponseWriter
 			"title", titleSlug, "dry_run", req.DryRun, "err", err)
 		writeError(r.Context(), w, http.StatusServiceUnavailable, "registry_names_unavailable",
 			"Backfill indisponible (writer shared occupé ou metadata absente).")
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// RunLyingBitsReset clear les bits backfill_completed menteurs de
+// match_registry (events/weapons posés mais tables vides) + events_loaded
+// menteur. POST /admin/actions/lying-bits/reset {dry_run}.
+func (h *AdminDataQualityHandler) RunLyingBitsReset(w http.ResponseWriter, r *http.Request) {
+	var req domain.LyingBitsResetRequest
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req) // corps vide → run réel
+	}
+	titleSlug := titleOrDefault(r)
+	resp, err := h.lyingBitsReset(r.Context(), titleSlug, req.DryRun)
+	if err != nil {
+		if h.busyErr != nil && errors.Is(err, h.busyErr) {
+			writeJSON(w, http.StatusConflict, map[string]any{
+				"code": actionBusyCode, "message": "Reset des bits menteurs déjà en cours.", "retryable": true,
+			})
+			return
+		}
+		slog.ErrorContext(r.Context(), "admin_data_quality: lying bits reset failed",
+			"title", titleSlug, "dry_run", req.DryRun, "err", err)
+		writeError(r.Context(), w, http.StatusServiceUnavailable, "lying_bits_reset_unavailable",
+			"Reset indisponible (writer shared occupé ou shared absente).")
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
