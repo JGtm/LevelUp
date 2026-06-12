@@ -1824,6 +1824,16 @@ paths:
         "409": { description: "Refresh déjà en cours" }
         "503": { description: "Metadata ou shared inaccessibles" }
 
+  /admin/actions/lying-bits/reset:
+    post:
+      tags: [admin]
+      operationId: postAdminActionLyingBitsReset
+      summary: "Action admin — clear les bits backfill_completed menteurs de match_registry (events/weapons posés mais tables vides) + events_loaded menteur, débloque le heal au prochain sync (dry_run supporté, writer shared sérialisé dblease) (auth admin requis)"
+      responses:
+        "200": { description: "Compteurs de matchs clearés par catégorie (ou détectés en dry-run)" }
+        "409": { description: "Reset déjà en cours" }
+        "503": { description: "Writer shared occupé ou shared absente" }
+
   /admin/monitoring/perf:
     get:
       tags: [admin]

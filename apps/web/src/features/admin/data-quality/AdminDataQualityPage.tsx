@@ -11,9 +11,13 @@ import { KpiCard } from '@/components/cards/KpiCard'
 import { Button } from '@/components/ui/button'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { apiErrorMessage } from '@/lib/api/client'
-import type { AdminDataQualityCounts, RegistryNamesBackfillResult } from '@/lib/api/types'
+import type {
+  AdminDataQualityCounts,
+  LyingBitsResetResult,
+  RegistryNamesBackfillResult,
+} from '@/lib/api/types'
 import { useDataQualityCounts } from './queries'
-import { useRunCatalogRefresh, useRunRegistryNamesBackfill } from './mutations'
+import { useRunCatalogRefresh, useRunLyingBitsReset, useRunRegistryNamesBackfill } from './mutations'
 import {
   OrphanPlaylistsSection,
   OrphanXuidsSection,
@@ -75,6 +79,7 @@ export function AdminDataQualityPage() {
           {tA('admin.dq.actions_section')}
         </h3>
         <RegistryNamesAction tA={tA} />
+        <LyingBitsAction tA={tA} />
       </section>
 
       <UntranslatedModesSection />
@@ -200,6 +205,57 @@ function RegistryNamesResult({ result, tA }: { result: RegistryNamesBackfillResu
       {parts
         .map(([k, scanned, fixed]) => (result.dry_run ? `${k} ${scanned}` : `${k} ${fixed}/${scanned}`))
         .join(' · ')}
+    </p>
+  )
+}
+
+/**
+ * Action reset des bits menteurs (events/weapons/events_loaded) : scan à blanc
+ * + run réel (writer shared sérialisé) + résultat compact. Débloque le heal au
+ * prochain sync delta.
+ */
+function LyingBitsAction({ tA }: { tA: TAdmin }) {
+  const run = useRunLyingBitsReset()
+  const [lastResult, setLastResult] = useState<LyingBitsResetResult | null>(null)
+
+  function launch(dryRun: boolean) {
+    if (!dryRun && !confirm(tA('admin.dq.run_lying_bits_confirm'))) return
+    run.mutate(dryRun, {
+      onSuccess: (res) => {
+        setLastResult(res)
+        if (!res.dry_run) toast.success(`${tA('admin.actions.done')} — ${tA('admin.dq.lying_bits_result')} : ${res.total}`)
+      },
+      onError: (err) => toast.error(apiErrorMessage(err) ?? tA('admin.actions.failed')),
+    })
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <Button size="sm" variant="outline" onClick={() => launch(false)} disabled={run.isPending}>
+          {run.isPending ? tA('admin.job.in_progress') : tA('admin.dq.run_lying_bits')}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => launch(true)} disabled={run.isPending}>
+          {tA('admin.dq.run_lying_bits_dry')}
+        </Button>
+      </div>
+      {lastResult && <LyingBitsResult result={lastResult} tA={tA} />}
+    </div>
+  )
+}
+
+function LyingBitsResult({ result, tA }: { result: LyingBitsResetResult; tA: TAdmin }) {
+  const label = result.dry_run ? tA('admin.dq.lying_bits_scanned') : tA('admin.dq.lying_bits_result')
+  // Catégories techniques (noms de colonnes backend) assemblées en expression
+  // JS — comme RegistryNamesResult — pour éviter les littéraux JSX texte.
+  const parts: Array<[string, number]> = [
+    ['events', result.events_bits_cleared],
+    ['weapons', result.weapons_bits_cleared],
+    ['events_loaded', result.events_loaded_cleared],
+  ]
+  return (
+    <p className="font-mono text-xs text-muted-foreground">
+      {`${label} : ${parts.map(([k, n]) => `${k} ${n}`).join(' · ')}`}
     </p>
   )
 }

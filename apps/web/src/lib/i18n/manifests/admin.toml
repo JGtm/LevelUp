@@ -426,6 +426,26 @@ en = "Seed the playlists/maps/pairs/variants catalogs from match_registry? Zero 
 fr = "Upserts"
 en = "Upserts"
 
+[admin.dq.run_lying_bits]
+fr = "Reset bits menteurs"
+en = "Reset lying bits"
+
+[admin.dq.run_lying_bits_dry]
+fr = "Scan à blanc"
+en = "Dry-run scan"
+
+[admin.dq.run_lying_bits_confirm]
+fr = "Clearer les bits backfill_completed menteurs (events/weapons posés mais tables vides) ? Ces matchs redeviennent candidats au heal au prochain sync. L'écriture attend la fin du sync en cours le cas échéant (60 s max)."
+en = "Clear the lying backfill_completed bits (events/weapons set but tables empty)? These matches become heal candidates again on the next sync. The write waits for any running sync (60 s max)."
+
+[admin.dq.lying_bits_result]
+fr = "Clearés"
+en = "Cleared"
+
+[admin.dq.lying_bits_scanned]
+fr = "Détectés"
+en = "Detected"
+
 [admin.dq.modes_section]
 fr = "Modes sans traduction FR"
 en = "Modes without FR translation"

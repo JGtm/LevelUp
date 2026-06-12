@@ -44,6 +44,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -82,14 +83,12 @@ func main() {
 // Chantier 4 — Reset des bits menteurs (oubli post-fix parser)
 // ─────────────────────────────────────────────────────────────────────────
 
-// chantier4ResetLyingBits clear les bits MBitEvents (16) et MBitWeaponKills
-// (21) dans match_registry.backfill_completed pour les matchs où le bit est
-// set mais les tables correspondantes sont vides. Le heal filtre sur ces
-// flags : tant que le bit "loaded" est set, le heal skip → ces matchs ne
-// reçoivent jamais leurs events. Reset débloque la convergence au prochain
-// sync delta.
-//
-// Aussi clear `events_loaded=TRUE` quand highlight_events est vide.
+// chantier4ResetLyingBits délègue à ops.ResetLyingBits (logique partagée avec
+// l'action admin POST /admin/actions/lying-bits/reset). Clear les bits
+// MBitEvents (16) et MBitWeaponKills (21) de match_registry.backfill_completed
+// pour les matchs où le bit est set mais la table correspondante est vide, plus
+// `events_loaded=TRUE` menteur. Le heal filtre sur ces flags : tant que le bit
+// est set, le match est skip → reset débloque la convergence au prochain sync.
 func chantier4ResetLyingBits(sharedPath string, dryRun bool) error {
 	fmt.Println("┌─ [chantier 4] Reset bits menteurs ─────────────────────")
 	rwDB, err := duckdb.OpenReadWrite(sharedPath)
@@ -100,75 +99,19 @@ func chantier4ResetLyingBits(sharedPath string, dryRun bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	const mbitEvents = 1 << 16      // 65536
-	const mbitWeaponKills = 1 << 21 // 2097152
+	res, err := ops.ResetLyingBits(ctx, rwDB.SQLDb(), dryRun)
+	if err != nil {
+		return err
+	}
 
-	var liarEvents, liarWeapons, liarBool int
-	_ = rwDB.QueryRow(ctx, fmt.Sprintf(`
-		SELECT COUNT(*) FROM match_registry r
-		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
-		  AND NOT EXISTS (SELECT 1 FROM highlight_events h WHERE h.match_id = r.match_id)
-	`, mbitEvents)).Scan(&liarEvents)
-	_ = rwDB.QueryRow(ctx, fmt.Sprintf(`
-		SELECT COUNT(*) FROM match_registry r
-		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
-		  AND NOT EXISTS (SELECT 1 FROM weapon_kills w WHERE w.match_id = r.match_id)
-	`, mbitWeaponKills)).Scan(&liarWeapons)
-	_ = rwDB.QueryRow(ctx, `
-		SELECT COUNT(*) FROM match_registry r
-		WHERE COALESCE(r.events_loaded, FALSE) = TRUE
-		  AND NOT EXISTS (SELECT 1 FROM highlight_events h WHERE h.match_id = r.match_id)
-	`).Scan(&liarBool)
-
-	fmt.Printf("│ MBitEvents (16) menteurs       : %d matchs\n", liarEvents)
-	fmt.Printf("│ MBitWeaponKills (21) menteurs  : %d matchs\n", liarWeapons)
-	fmt.Printf("│ events_loaded=TRUE menteur     : %d matchs\n", liarBool)
-
+	fmt.Printf("│ MBitEvents (16) menteurs       : %d matchs\n", res.EventsBitsCleared)
+	fmt.Printf("│ MBitWeaponKills (21) menteurs  : %d matchs\n", res.WeaponsBitsCleared)
+	fmt.Printf("│ events_loaded=TRUE menteur     : %d matchs\n", res.EventsLoadedCleared)
 	if dryRun {
 		fmt.Println("│ [dry] would clear these bits → heal retentera au prochain sync")
-		fmt.Println("└────────────────────────────────────────────────────────")
-		return nil
+	} else {
+		fmt.Printf("│ ✓ bits clearés (total %d matchs) → candidats au heal au prochain sync\n", res.Total())
 	}
-
-	// Clear MBitEvents
-	res, err := rwDB.Exec(ctx, fmt.Sprintf(`
-		UPDATE match_registry
-		SET backfill_completed = COALESCE(backfill_completed, 0) & ~%d
-		WHERE (COALESCE(backfill_completed, 0) & %d) != 0
-		  AND NOT EXISTS (SELECT 1 FROM highlight_events h WHERE h.match_id = match_registry.match_id)
-	`, mbitEvents, mbitEvents))
-	if err != nil {
-		return fmt.Errorf("clear MBitEvents: %w", err)
-	}
-	n, _ := res.RowsAffected()
-	fmt.Printf("│ ✓ MBitEvents clearé sur %d matchs\n", n)
-
-	// Clear MBitWeaponKills
-	res, err = rwDB.Exec(ctx, fmt.Sprintf(`
-		UPDATE match_registry
-		SET backfill_completed = COALESCE(backfill_completed, 0) & ~%d
-		WHERE (COALESCE(backfill_completed, 0) & %d) != 0
-		  AND NOT EXISTS (SELECT 1 FROM weapon_kills w WHERE w.match_id = match_registry.match_id)
-	`, mbitWeaponKills, mbitWeaponKills))
-	if err != nil {
-		return fmt.Errorf("clear MBitWeaponKills: %w", err)
-	}
-	n, _ = res.RowsAffected()
-	fmt.Printf("│ ✓ MBitWeaponKills clearé sur %d matchs\n", n)
-
-	// Clear events_loaded boolean
-	res, err = rwDB.Exec(ctx, `
-		UPDATE match_registry
-		SET events_loaded = FALSE
-		WHERE COALESCE(events_loaded, FALSE) = TRUE
-		  AND NOT EXISTS (SELECT 1 FROM highlight_events h WHERE h.match_id = match_registry.match_id)
-	`)
-	if err != nil {
-		return fmt.Errorf("clear events_loaded: %w", err)
-	}
-	n, _ = res.RowsAffected()
-	fmt.Printf("│ ✓ events_loaded clearé sur %d matchs\n", n)
-	fmt.Println("│ → ces matchs deviendront candidats au heal events au prochain sync.")
 	fmt.Println("└────────────────────────────────────────────────────────")
 	return nil
 }

@@ -44,6 +44,12 @@ func newDQHandler(t *testing.T) *AdminDataQualityHandler {
 		func(_ context.Context, _ string) (domain.CatalogRefreshResult, error) {
 			return domain.CatalogRefreshResult{Playlists: 5}, nil
 		},
+		func(_ context.Context, _ string, dryRun bool) (domain.LyingBitsResetResult, error) {
+			if dryRun {
+				return domain.LyingBitsResetResult{DryRun: true, EventsBitsCleared: 7, Total: 7}, nil
+			}
+			return domain.LyingBitsResetResult{}, errBusySentinel
+		},
 		errBusySentinel,
 	)
 }
@@ -59,6 +65,32 @@ func TestAdminDQ_CatalogRefresh(t *testing.T) {
 	var got domain.CatalogRefreshResult
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || got.Playlists != 5 {
 		t.Fatalf("payload inattendu : %+v err=%v", got, err)
+	}
+}
+
+// TestAdminDQ_LyingBitsReset_DryRunAndBusy : dry-run → 200 compteurs ; run réel
+// busy (sentinelle) → 409 enveloppe already_running.
+func TestAdminDQ_LyingBitsReset_DryRunAndBusy(t *testing.T) {
+	h := newDQHandler(t)
+
+	rec := httptest.NewRecorder()
+	h.RunLyingBitsReset(rec, httptest.NewRequest(http.MethodPost, "/x", strings.NewReader(`{"dry_run":true}`)))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("dry-run : status=%d (attendu 200)", rec.Code)
+	}
+	var got domain.LyingBitsResetResult
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || !got.DryRun || got.EventsBitsCleared != 7 {
+		t.Fatalf("payload dry-run inattendu : %+v err=%v", got, err)
+	}
+
+	rec = httptest.NewRecorder()
+	h.RunLyingBitsReset(rec, httptest.NewRequest(http.MethodPost, "/x", nil)) // corps vide → run réel → busy
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("busy : status=%d (attendu 409)", rec.Code)
+	}
+	var conflict map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &conflict); err != nil || conflict["code"] != actionBusyCode {
+		t.Fatalf("enveloppe 409 inattendue : %+v err=%v", conflict, err)
 	}
 }
 
