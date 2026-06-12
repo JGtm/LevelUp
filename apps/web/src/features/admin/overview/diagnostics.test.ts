@@ -127,6 +127,7 @@ describe('evaluateDiagnostics', () => {
       postsync_steps: [],
       postsync_total: { name: 'postsync_total', count: 1, sum_ms: 0, avg_ms: 0, max_ms: 0 },
       blocked_window: { name: 'blocked_window', count: 0, sum_ms: 0, avg_ms: 0, max_ms: 0 },
+      api_by_player: [],
     }
     const sched = schedulerWith([cycle({})])
     sched.snapshot!.players = [

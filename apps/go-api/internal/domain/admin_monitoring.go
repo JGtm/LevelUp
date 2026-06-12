@@ -153,6 +153,22 @@ type AdminPerfStats struct {
 	// BlockedWindow : fenêtre d'indisponibilité des lectures shared par swap
 	// (count = swaps complets, sum = indispo cumulée depuis le boot).
 	BlockedWindow PerfCallStats `json:"blocked_window"`
+	// APIByPlayer : breakdown des appels API attribuables (match_history,
+	// career_rank, player_csrs, playlist_csr) par joueur — repère un joueur dont
+	// les tokens/réseau échouent. Trié erreurs desc. Vide pour les appels
+	// match-level (non attribuables).
+	APIByPlayer []PerfPlayerCallStats `json:"api_by_player"`
+}
+
+// PerfPlayerCallStats : agrégat d'un appel API Halo attribué à un joueur
+// (miroir de observability.PlayerAPIStat).
+type PerfPlayerCallStats struct {
+	Player string `json:"player"`
+	Call   string `json:"call"`
+	Count  int64  `json:"count"`
+	AvgMs  int64  `json:"avg_ms"`
+	MaxMs  int64  `json:"max_ms"`
+	Errors int64  `json:"errors"`
 }
 
 // PlayerConvergenceReport est le backlog de convergence d'un joueur.

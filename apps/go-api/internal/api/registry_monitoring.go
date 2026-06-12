@@ -283,6 +283,15 @@ func (r *ServiceRegistry) PerfStats(_ context.Context) (domain.AdminPerfStats, e
 	}
 	resp.PostSyncTotal = loadPerfCallStats("postsync_total", "postsync_total_ms")
 	resp.BlockedWindow = loadPerfCallStats("blocked_window", "shared_provider_blocked_window_ms")
+
+	// Breakdown par joueur des appels attribuables (collecteur dédié).
+	resp.APIByPlayer = []domain.PerfPlayerCallStats{}
+	for _, s := range observability.PlayerAPIStats() {
+		resp.APIByPlayer = append(resp.APIByPlayer, domain.PerfPlayerCallStats{
+			Player: s.Player, Call: s.Call, Count: s.Count,
+			AvgMs: s.AvgMs, MaxMs: s.MaxMs, Errors: s.Errors,
+		})
+	}
 	return resp, nil
 }
 

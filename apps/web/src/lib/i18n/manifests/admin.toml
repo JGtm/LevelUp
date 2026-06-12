@@ -906,6 +906,14 @@ en = "Network/timeout"
 fr = "Aucun appel API depuis le boot."
 en = "No API calls since boot."
 
+[admin.api.by_player_section]
+fr = "Par joueur (appels attribuables)"
+en = "By player (attributable calls)"
+
+[admin.api.col_player]
+fr = "Joueur"
+en = "Player"
+
 [admin.sync.col_blocked]
 fr = "Indispo lectures"
 en = "Reads blocked"

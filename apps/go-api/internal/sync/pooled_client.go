@@ -164,7 +164,7 @@ func (pc *PooledHaloClient) GetMatchHistory(
 		result, e = c.GetMatchHistory(ctx, gamertag, matchType, start, count)
 		return e
 	})
-	observeHaloCall("match_history", callStart, err)
+	observeHaloCall("match_history", gamertag, callStart, err)
 	return result, err
 }
 
@@ -177,7 +177,7 @@ func (pc *PooledHaloClient) GetMatchStats(ctx context.Context, matchID string) (
 		result, e = c.GetMatchStats(ctx, matchID)
 		return e
 	})
-	observeHaloCall("match_stats", callStart, err)
+	observeHaloCall("match_stats", "", callStart, err)
 	return result, err
 }
 
@@ -194,7 +194,7 @@ func (pc *PooledHaloClient) GetMatchSkill(
 		result, e = c.GetMatchSkill(ctx, matchID, xuids)
 		return e
 	})
-	observeHaloCall("match_skill", callStart, err)
+	observeHaloCall("match_skill", "", callStart, err)
 	return result, err
 }
 
@@ -208,7 +208,7 @@ func (pc *PooledHaloClient) GetMatchFilm(ctx context.Context, matchID string) (m
 		result, ok, e = c.GetMatchFilm(ctx, matchID)
 		return e
 	})
-	observeHaloCall("film", callStart, err)
+	observeHaloCall("film", "", callStart, err)
 	return result, ok, err
 }
 
@@ -223,7 +223,7 @@ func (pc *PooledHaloClient) GetHighlightEventsChunk(ctx context.Context, matchID
 		result, ver, ok, e = c.GetHighlightEventsChunk(ctx, matchID)
 		return e
 	})
-	observeHaloCall("film_chunk", callStart, err)
+	observeHaloCall("film_chunk", "", callStart, err)
 	return result, ver, ok, err
 }
 
@@ -251,7 +251,7 @@ func (pc *PooledHaloClient) GetCareerRank(ctx context.Context, xuid string) (*Ca
 	// HaloAPIClient handles 401/403 internally (returns nil, nil)
 	callStart := time.Now()
 	rank, rankErr := client.GetCareerRank(ctx, xuid)
-	observeHaloCall("career_rank", callStart, rankErr)
+	observeHaloCall("career_rank", xuid, callStart, rankErr)
 	return rank, rankErr
 }
 
@@ -268,7 +268,7 @@ func (pc *PooledHaloClient) GetPlayerCSRs(ctx context.Context, xuid, seasonID st
 	client := pc.newAPIClient(lease)
 	callStart := time.Now()
 	result, err := client.GetPlayerCSRs(ctx, xuid, seasonID)
-	observeHaloCall("player_csrs", callStart, err)
+	observeHaloCall("player_csrs", xuid, callStart, err)
 	pc.notifyPoolOnError(lease, err)
 	return result, err
 }
@@ -286,7 +286,7 @@ func (pc *PooledHaloClient) GetPlaylistCsr(ctx context.Context, playlistID, xuid
 	client := pc.newAPIClient(lease)
 	callStart := time.Now()
 	result, err := client.GetPlaylistCsr(ctx, playlistID, xuid, seasonID)
-	observeHaloCall("playlist_csr", callStart, err)
+	observeHaloCall("playlist_csr", xuid, callStart, err)
 	pc.notifyPoolOnError(lease, err)
 	return result, err
 }

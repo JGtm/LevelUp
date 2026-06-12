@@ -3966,6 +3966,18 @@ export interface AdminPerfStats {
   postsync_total: PerfCallStats
   /** Fenêtre d'indispo des lectures shared par swap (count = swaps, sum = indispo cumulée). */
   blocked_window: PerfCallStats
+  /** Breakdown des appels API attribuables (match_history, career_rank, csrs) par joueur. */
+  api_by_player: PerfPlayerCallStats[]
+}
+
+/** Agrégat d'un appel API Halo attribué à un joueur. Miroir de domain.PerfPlayerCallStats. */
+export interface PerfPlayerCallStats {
+  player: string
+  call: string
+  count: number
+  avg_ms: number
+  max_ms: number
+  errors: number
 }
 
 /** Miroir de domain.AdminErrorStats — logs WARN/ERROR agrégés depuis le boot. */
