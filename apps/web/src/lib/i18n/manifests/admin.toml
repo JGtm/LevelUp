@@ -806,6 +806,10 @@ en = "Since"
 fr = "Aucun joueur surveillé."
 en = "No watched players."
 
+[admin.sync.trends_section]
+fr = "Tendances"
+en = "Trends"
+
 [admin.watcher.activity]
 fr = "Activité"
 en = "Activity"

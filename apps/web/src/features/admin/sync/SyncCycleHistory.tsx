@@ -3,10 +3,11 @@
  * (marqueur carré coloré par état, trigger, compteurs, durée). Plus récent en
  * premier (ordre serveur). Flat hard-edge.
  */
-import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+import { tokenCssVar, type SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import type { SchedulerCycleRecord } from '@/lib/api/types'
-import { adminAbsoluteTime, adminRelativeTime, formatDurationMs } from '../format'
-import { useAdminT, useAdminLocale } from '../useAdminText'
+import { adminAbsoluteTime, adminRelativeTime, formatDurationMs, type AdminLocale } from '../format'
+import { useAdminT, useAdminLocale, type TAdmin } from '../useAdminText'
+import { Sparkline } from './Sparkline'
 
 export function SyncCycleHistory({ history }: { history: SchedulerCycleRecord[] }) {
   const tA = useAdminT()
@@ -17,7 +18,9 @@ export function SyncCycleHistory({ history }: { history: SchedulerCycleRecord[] 
   }
 
   return (
-    <div className="rounded-md border">
+    <div className="space-y-3">
+      {history.length >= 3 && <CycleTrends history={history} tA={tA} locale={locale} />}
+      <div className="rounded-md border">
       {history.map((c, i) => {
         const marker =
           c.failed > 0 ? tokenCssVar('destructive') : c.synced > 0 ? tokenCssVar('success') : tokenCssVar('divergent-neutral')
@@ -80,6 +83,66 @@ export function SyncCycleHistory({ history }: { history: SchedulerCycleRecord[] 
           </div>
         )
       })}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * CycleTrends — sparklines de tendance sur les N derniers cycles (ordre
+ * chronologique, ancien → récent) : activité (synced), indispo lectures
+ * (blocked_ms, B-swap) et temps API. Valeur courante = dernier cycle.
+ */
+function CycleTrends({
+  history,
+  tA,
+  locale,
+}: {
+  history: SchedulerCycleRecord[]
+  tA: TAdmin
+  locale: AdminLocale
+}) {
+  const chrono = [...history].reverse() // serveur = récent d'abord → on remet ancien → récent
+  const synced = chrono.map((c) => c.synced)
+  const blocked = chrono.map((c) => c.blocked_ms)
+  const api = chrono.map((c) => c.api_ms)
+  const rows: Array<{ label: string; values: number[]; token: SemanticToken; current: string }> = [
+    {
+      label: tA('admin.sync.summary_synced'),
+      values: synced,
+      token: 'success',
+      current: String(synced[synced.length - 1]),
+    },
+    {
+      label: tA('admin.sync.col_blocked'),
+      values: blocked,
+      token: 'warning',
+      current: formatDurationMs(blocked[blocked.length - 1], locale),
+    },
+    {
+      label: tA('admin.sync.col_api_time'),
+      values: api,
+      token: 'info',
+      current: formatDurationMs(api[api.length - 1], locale),
+    },
+  ]
+
+  return (
+    <div className="rounded-md border p-3">
+      <div className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+        {tA('admin.sync.trends_section')} ({history.length})
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {rows.map((r) => (
+          <div key={r.label} className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-[11px] text-muted-foreground">{r.label}</div>
+              <div className="font-mono text-sm tabular-nums text-foreground">{r.current}</div>
+            </div>
+            <Sparkline values={r.values} token={r.token} ariaLabel={`${r.label} — ${tA('admin.sync.trends_section')}`} />
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
