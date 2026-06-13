@@ -81,6 +81,7 @@ type cliFlags struct {
 	retryFailed   bool
 	topN          int
 	xuidDelayMs   int
+	probeDelayMs  int
 }
 
 func main() {
@@ -114,7 +115,7 @@ func parseFlags() cliFlags {
 	flag.IntVar(&f.concurrency, "concurrency", 4, "nb de joueurs traités en parallèle (↓ si 429)")
 	flag.IntVar(&f.maxPages, "max-pages", 80, "pages d'historique max/joueur (25 matchs/page ; ↑ pour vieilles saisons)")
 	flag.IntVar(&f.rps, "rps", 3, "requêtes/seconde PAR token (Halo limite ~par IP : RPS effectif = rps × nb tokens ; ↓ si 429)")
-	flag.IntVar(&f.flushEvery, "flush-every", 20, "persiste + checkpoint tous les N joueurs")
+	flag.IntVar(&f.flushEvery, "flush-every", 10, "persiste + checkpoint tous les N joueurs (↓ = persistance plus fréquente, moins de perte sur kill brutal)")
 	flag.BoolVar(&f.force, "force", false, "ignore le checkpoint (repart de zéro)")
 	flag.BoolVar(&f.dryRun, "dry-run", false, "agrège sans écrire en base")
 	flag.BoolVar(&f.allTokens, "all-tokens", false, "fetch en round-robin sur TOUS les comptes db_profiles résolus (Halo limite ~par IP → gain borné, pas N×)")
@@ -122,6 +123,7 @@ func parseFlags() cliFlags {
 	flag.BoolVar(&f.retryFailed, "retry-failed", false, "re-tente les joueurs précédemment en échec (par défaut ils sont sautés à la reprise pour ne pas rebloquer la saison)")
 	flag.IntVar(&f.topN, "top-n", duckdb.WorldLeaderboardTopN, "n'enrichit que le top N PAR playlist (= profondeur affichée ; 0 = toutes les playlists/rangs)")
 	flag.IntVar(&f.xuidDelayMs, "xuid-delay-ms", 1600, "délai entre résolutions xuid PeopleHub (limite ~10 req/15s/compte ; ↑ si 429, 0 = pas de throttle)")
+	flag.IntVar(&f.probeDelayMs, "probe-delay-ms", 350, "délai entre sondes de la recherche dichotomique d'offset (lisse la rafale qui déclenche les 429 halostats ; 0 = pas de throttle)")
 	flag.Parse()
 	if strings.TrimSpace(f.tokenGamertag) == "" {
 		fatal("-token-gamertag est requis (compte dont le token résout les xuid PeopleHub)")
@@ -272,9 +274,12 @@ func backfillSeason(
 		MaxPages:           f.maxPages,
 		StopAfterNonTarget: stopAfter,
 		RankedPlaylists:    service.RankedPlaylistSet(), // ranked-only (ignore le social)
-		// Throttle PeopleHub : la résolution xuid est single-token (~10 req/15s) ;
-		// sans délai, 200+ joueurs d'un coup → 429 qui les skippent en masse.
+		// Throttle PeopleHub (résolution xuid via PrepareWorldPlayers/Run uniquement) :
+		// le CLI résout désormais paresseusement (cf. plus bas), ce délai n'a d'effet que
+		// si un warm-up groupé est utilisé.
 		XUIDResolveDelay: time.Duration(f.xuidDelayMs) * time.Millisecond,
+		// Throttle des sondes de la dichotomie d'offset → lisse la rafale halostats.
+		ProbeDelay: time.Duration(f.probeDelayMs) * time.Millisecond,
 	}
 	// Fenêtre date de la saison cible → filtre l'historique AVANT fetch (LE fix des
 	// vieilles saisons). Absente (saison courante hors calendrier, ou calendrier
@@ -286,17 +291,13 @@ func backfillSeason(
 	}
 	agg := service.NewWorldStatsAggregator(pooled, resolver, cfg)
 
-	// Résolution xuid EN AMONT : un seul GetMatchStats par match traite alors TOUS
-	// les joueurs mondiaux présents (jusqu'à 8) au lieu de re-fetcher par joueur.
-	if prepErrs := agg.PrepareWorldPlayers(ctx, pending); len(prepErrs) > 0 {
-		fmt.Printf("[%s] %d xuid non résolus (joueurs skippés) — 1er: %v\n", season, len(prepErrs), prepErrs[0])
-	}
-	// Persiste les associations résolues TOUT DE SUITE (avant le scan, potentiellement
-	// long/interrompu) → un Ctrl-C ne fait pas perdre la résolution déjà payée.
-	if !f.dryRun {
-		_ = cp.save(f.checkpoint)
-	}
-
+	// Résolution xuid PARESSEUSE : chaque worker résout le xuid de SON joueur juste
+	// avant de fetcher ses matchs (pour fetcher X il suffit du xuid de X). On ne bloque
+	// donc plus sur un batch de résolution de tous les joueurs en amont — c'est
+	// l'opération lourde (le fetch d'historique) qui démarre immédiatement. L'extraction
+	// d'un match cache TOUS ses participants → l'attribution reste correcte quel que soit
+	// l'ordre de résolution. Les résolutions sont persistées au fil des flushs (cache
+	// checkpoint), un xuid qui échoue fait juste échouer SON joueur (isolé, re-tentable).
 	if err := runSeasonWorkers(ctx, agg, season, pending, already, target, f, cp); err != nil {
 		return err
 	}
@@ -363,14 +364,19 @@ func collectSeason(
 	var batch []domain.WorldPlayerSeasonStats
 	var batchGTs []string
 	var failedGTs []string
-	done, failures, rows := already, 0, 0
+	done, failures := already, 0
+	// rowsCollected = lignes agrégées DÈS leur collecte (progression honnête en temps
+	// réel) ; rowsPersisted = lignes réellement écrites en base (résumé). Ils convergent
+	// quand les flushs réussissent. Avant, on n'affichait que rowsPersisted → « 0 lignes »
+	// pendant les flushEvery premiers joueurs alors que le backfill travaillait.
+	rowsCollected, rowsPersisted := 0, 0
 
 	flush := func() error {
-		n, err := flushBatch(ctx, f, batch)
+		n, err := flushBatch(f, batch)
 		if err != nil {
 			return err
 		}
-		rows += n
+		rowsPersisted += n
 		// Dry-run = répétition à blanc : ne JAMAIS toucher le checkpoint (sinon un run
 		// réel ultérieur saute des joueurs jamais insérés).
 		if !f.dryRun {
@@ -394,33 +400,43 @@ func collectSeason(
 		} else {
 			batch = append(batch, o.stats...)
 			batchGTs = append(batchGTs, o.gamertag)
+			rowsCollected += len(o.stats) // compté à la collecte → affichage temps réel
 		}
 		if len(batchGTs)+len(failedGTs) >= f.flushEvery {
 			if err := flush(); err != nil {
 				return err
 			}
 		}
-		printProgress(season, done, total, failures, rows, time.Since(t0))
+		printProgress(season, done, total, failures, rowsCollected, time.Since(t0))
 	}
-	if err := flush(); err != nil { // reliquat (inclut le cas arrêt anticipé)
+	// Reliquat : flushBatch utilise un contexte FRAIS (pas le ctx du run) → le lot déjà
+	// collecté est persisté MÊME après un Ctrl-C. Sinon ~minutes de fetch étaient jetées.
+	if err := flush(); err != nil {
 		return err
 	}
 	// La complétude de saison est décidée par le caller (backfillSeason), jamais ici :
 	// un run -limit ne traite qu'un sous-ensemble et ne doit pas marquer la saison complète.
-	if ctx.Err() == nil {
-		suffix := ""
-		if f.dryRun {
-			suffix = " [dry-run, non persisté]"
-		}
-		fmt.Printf("\n[%s] terminé : %d joueurs traités, %d lignes%s, %d erreurs, %s\n",
-			season, done-already, rows, suffix, failures, time.Since(t0).Round(time.Second))
+	state := "terminé"
+	if ctx.Err() != nil {
+		state = "arrêt demandé (reprise OK)"
 	}
+	suffix := ""
+	if f.dryRun {
+		suffix = " [dry-run, non persisté]"
+	}
+	fmt.Printf("\n[%s] %s : %d joueurs traités, %d lignes persistées%s, %d erreurs, %s\n",
+		season, state, done-already, rowsPersisted, suffix, failures, time.Since(t0).Round(time.Second))
 	return ctx.Err()
 }
 
 // flushBatch persiste un lot. En dry-run, ne touche pas la base mais retourne le
 // nombre de lignes qui SERAIENT insérées (validation utile de l'agrégation).
-func flushBatch(ctx context.Context, f cliFlags, batch []domain.WorldPlayerSeasonStats) (int, error) {
+//
+// IMPORTANT : la persistance utilise un contexte FRAIS (pas le ctx du run). Un Ctrl-C
+// annule le ctx du run pour arrêter le FETCH (workers/producteur), mais le lot DÉJÀ
+// collecté doit être écrit — sinon le flush final hérite de l'annulation, l'INSERT
+// échoue et tout le travail déjà payé (fetch des matchs) est perdu silencieusement.
+func flushBatch(f cliFlags, batch []domain.WorldPlayerSeasonStats) (int, error) {
 	if len(batch) == 0 {
 		return 0, nil
 	}
@@ -432,6 +448,8 @@ func flushBatch(ctx context.Context, f cliFlags, batch []domain.WorldPlayerSeaso
 		return 0, err
 	}
 	defer db.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
 	return duckdb.InsertPlayerSeasonStats(ctx, db, batch)
 }
 

@@ -1,3 +1,22 @@
+## [2026-06-13] Backfill world : affichage temps réel + persist-au-Ctrl-C (+ lazy resolution) — Complété (validé)
+
+**Statut** : Code + tests verts (service/analysis/cmd), vet clean, exe rebuildé, validé. Commit sur `main` (sans push) — la branche a glissé (l'agent auth a fait atterrir son travail sur main) ; mes commits world `4c8491060`+`363ec4ab6` y étaient déjà. NB : changements lazy aussi sur `feat/oauth-pkce` (`8d471d697`).
+
+**Problème (user, run réel interrompu) : « 0 lignes » + travail perdu au Ctrl-C → impression de backfill cassé.** Diagnostic RIGOUREUX (pas supposé) : checkpoint `done=5` + base à 10 lignes après le Ctrl-C → joueurs 6-13 collectés mais NON persistés. Deux défauts réels du CLI :
+1. Compteur de lignes incrémenté seulement au flush (tous les 20 joueurs) → « 0 lignes » affiché pendant 20 joueurs alors que ça travaillait.
+2. Flush final héritant du **ctx annulé** par le Ctrl-C → `InsertPlayerSeasonStats` échouait → lot collecté (≈1m40s de fetch) jeté, ni écrit ni checkpointé.
+
+**Décisions techniques** :
+1. **Résolution xuid paresseuse + cache tous-participants** : `ExtractWorldPlayersFromMatch(raw, nil)` extrait TOUS les participants → attribution indépendante de l'ordre ; le CLI ne bloque plus sur `PrepareWorldPlayers`. Throttle sondes dichotomie (`-probe-delay-ms`).
+2. **Compteur lignes en TEMPS RÉEL** (`rowsCollected`, dès la collecte) ; `rowsPersisted` pour le résumé. Plus de « 0 lignes » trompeur.
+3. **Flush en contexte FRAIS** (`flushBatch` : `context.WithTimeout(context.Background(), 2min)`) → Ctrl-C arrête le FETCH mais PERSISTE le lot collecté. Résumé affiché même à l'arrêt. `flush-every` 20→10.
+
+**Résultats (mesures réelles, -all-tokens 9 comptes)** : single-token 7m42s/2j vs **-all-tokens 2m03s/2j (~3.7×, 0×429)**. Run réel `-limit 5` : 10 lignes en base, checkpoint+xuid persistés. Dry-run rangs **6-15** : **20 lignes, 0 erreur** → l'engine produit au-delà du top-5 (le « 0 » initial = perte au flush, pas un bug d'agrégation). Tests : `TestAggregatePlayer_SharedMatchOrderIndependent`, `TestExtractWorldPlayersFromMatch`.
+
+**Prochaine étape** : re-run réel csrseason6-1 complet (`-all-tokens -max-pages 600`, reprise auto au joueur 6), puis 5-1/4-1/3-1.
+
+---
+
 ## [2026-06-13] Phase 4 — PKCE sur le SSO Authorization Code Flow — Complété (non déployé)
 
 **Statut** : Code + tests verts (auth + domain + handlers OAuth, build ./...). Branche `feat/oauth-pkce` (empilée sur le seam). Commit local. À déployer + vérif live.
