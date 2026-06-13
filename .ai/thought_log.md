@@ -1,3 +1,17 @@
+## [2026-06-14] RT frais écrasé par le mirror du refresh-loop — la vraie raison du « ça ne tient pas » — Fix livré, à déployer
+
+**Symptôme** : même après une reconnexion SSO réussie (`RT persisté au store` confirmé dans `logs/handlers.log`), le RT du store de JGtm redevenait vide puis stale → `AADSTS70000` au cycle/boot suivant. La reconnexion semblait marcher (bannière partie) puis re-cassait — masquée entre deux cycles.
+
+**Root cause** : `RefreshLoop.mirrorTrackerToMultiUser` construisait un `UserTokens` neuf (XSTS/access seulement, SANS `OAuthRefreshToken`/`MSALCacheJSON`) et appelait `MultiUserTokenStore.Upsert` — qui REMPLACE toute l'entrée (`upsertLocked`). Le mirror (toutes les 5 min, après refresh XSTS/OAuth) écrasait donc le RT e1cb35ab frais à vide. Puis `MigrateLegacyTokens` au boot, voyant le RT vide, le re-remplissait depuis le RT env legacy `SPNKR_OAUTH_REFRESH_TOKEN_<GT>` (émis sous 39829f7a) → `AADSTS70000: token issued for a different client id`.
+
+**Fix** : mirror en read-modify-write — `Load` l'entrée existante, met à jour UNIQUEMENT XSTS/access, PRÉSERVE `OAuthRefreshToken`/`MSALCacheJSON`/flags reauth. Test de régression `TestRefreshLoop_MultiUserMirror_PreservesRefreshToken` (échoue sur l'ancien code, passe sur le nouveau). + retrait des 4 RT env legacy du `.env.local` VPS (la migration ne peut plus refill un RT mort).
+
+**Piège diagnostic majeur** : les logs du callback OAuth sont dans `logs/handlers.log` (PAS `auth.log` ni docker stdout, masqués par `LEVELUP_LOG_LEVEL=warn`) → j'ai conclu à tort « le callback ne tourne pas » pendant longtemps alors qu'il réussissait. Cf. [[reference_auth_logs_per_category_file]]. Logs catégorie désormais persistés (`LEVELUP_LOGS_DIR=/app/data/logs` posé sur le VPS) pour survivre aux restarts.
+
+**Prochaine étape** : deploy + retrait env RT + 1 dernière reconnexion user → vérifier en live que le store garde le RT après un cycle mirror.
+
+---
+
 ## [2026-06-13] Bannière "reconnecte-toi" récurrente — 3 root causes (faux positif + split-brain RT) — Code livré, à déployer
 
 **Déclencheur** : user signale le bandeau reauth qui "revient souvent" + doute de la fiabilité de détection. Investigation logs VPS (`docker compose logs levelup`, dir `/opt/levelup`).

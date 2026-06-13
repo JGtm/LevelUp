@@ -71,6 +71,70 @@ func TestRefreshLoop_MultiUserMirror_XSTS(t *testing.T) {
 	}
 }
 
+// TestRefreshLoop_MultiUserMirror_PreservesRefreshToken : le mirror NE doit PAS
+// faire disparaître le refresh_token / MSAL cache déjà dans le multi-user store
+// (ex. RT e1cb35ab frais semé par le callback SSO). Régression incident 2026-06-13 :
+// Upsert d'un UserTokens neuf (sans RT) écrasait le RT à vide → migration boot le
+// re-remplissait avec le RT env périmé (39829f7a) → AADSTS70000 en boucle.
+func TestRefreshLoop_MultiUserMirror_PreservesRefreshToken(t *testing.T) {
+	dir := t.TempDir()
+	store := NewTokenStore(filepath.Join(dir, "watcher_tokens.json"))
+	multi := NewMultiUserTokenStore(filepath.Join(dir, "watcher_tokens"))
+
+	const xuid = "2533274823110022"
+	// Pré-seed le multi-user store comme le ferait le callback SSO : RT + MSAL frais.
+	if err := multi.Upsert(&UserTokens{
+		XUID:              xuid,
+		Gamertag:          "JGtm",
+		OAuthRefreshToken: "rt_frais_e1cb35ab",
+		MSALCacheJSON:     `{"cache":"frais"}`,
+	}); err != nil {
+		t.Fatalf("seed multi: %v", err)
+	}
+
+	// Tracker legacy avec un RT DIFFÉRENT (périmé) + un XSTS à mirrorer.
+	initial := &StoredTokens{
+		AccessToken:    "access_tracker",
+		RefreshToken:   "rt_tracker_perime",
+		OAuthExpiresAt: time.Now().Add(1 * time.Hour),
+		XSTSToken:      "xsts_old",
+		XSTSUserHash:   "uhs_old",
+		XSTSGamertag:   "JGtm",
+		XSTSXUID:       xuid,
+		XSTSExpiresAt:  time.Now().Add(1 * time.Hour),
+	}
+	if err := store.Save(initial); err != nil {
+		t.Fatalf("Save legacy: %v", err)
+	}
+
+	r := NewRefreshLoop(store, nil).WithMultiUserMirror(multi)
+	r.acquireXSTSFn = func(_ context.Context, _ string) (*XSTSResult, error) {
+		return &XSTSResult{
+			Token: "xsts_refreshed", UserHash: "uhs_refreshed",
+			Gamertag: "JGtm", XUID: xuid, NotAfter: time.Now().Add(2 * time.Hour),
+		}, nil
+	}
+
+	tokens, _ := store.Load()
+	r.refreshXSTS(context.Background(), tokens) // déclenche le mirror
+
+	got, err := multi.Load(xuid)
+	if err != nil {
+		t.Fatalf("multi.Load: %v", err)
+	}
+	// RT + MSAL du store PRÉSERVÉS (pas écrasés par le mirror).
+	if got.OAuthRefreshToken != "rt_frais_e1cb35ab" {
+		t.Errorf("RT écrasé par le mirror = %q, want rt_frais_e1cb35ab (préservé)", got.OAuthRefreshToken)
+	}
+	if got.MSALCacheJSON != `{"cache":"frais"}` {
+		t.Errorf("MSAL cache écrasé = %q, want préservé", got.MSALCacheJSON)
+	}
+	// Champs XSTS bien mis à jour par le mirror.
+	if got.XSTSToken != "xsts_refreshed" {
+		t.Errorf("XSTSToken = %q, want xsts_refreshed (mis à jour)", got.XSTSToken)
+	}
+}
+
 // TestRefreshLoop_MultiUserMirror_NilMirror_NoOp verifie que sans mirror
 // configuré, refresh marche normalement sans toucher multi-user store.
 func TestRefreshLoop_MultiUserMirror_NilMirror_NoOp(t *testing.T) {

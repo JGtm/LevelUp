@@ -262,15 +262,24 @@ func (r *RefreshLoop) mirrorTrackerToMultiUser(ctx context.Context) {
 		slog.DebugContext(ctx, "refresh_loop: mirror — xuid vide, skip")
 		return
 	}
-	mirror := &UserTokens{
-		XUID:           tokens.XSTSXUID,
-		Gamertag:       tokens.XSTSGamertag,
-		XSTSToken:      tokens.XSTSToken,
-		XSTSUserHash:   tokens.XSTSUserHash,
-		XSTSExpiresAt:  tokens.XSTSExpiresAt,
-		AccessToken:    tokens.AccessToken,
-		OAuthExpiresAt: tokens.OAuthExpiresAt,
+	// Read-modify-write : PRÉSERVER le refresh_token + MSAL cache + flags reauth
+	// déjà dans le store (ex. RT e1cb35ab frais semé par le callback SSO). Upsert
+	// remplace TOUTE l'entrée ; un UserTokens neuf (sans RT) écraserait le RT du
+	// store à vide → la migration boot le re-remplirait avec un RT env legacy
+	// périmé → AADSTS70000 en boucle (incident 2026-06-13). Le mirror ne pousse
+	// QUE les champs XSTS/access issus du tracker.
+	mirror, lerr := r.multiMirror.Load(tokens.XSTSXUID)
+	if lerr != nil || mirror == nil {
+		mirror = &UserTokens{XUID: tokens.XSTSXUID}
 	}
+	if tokens.XSTSGamertag != "" {
+		mirror.Gamertag = tokens.XSTSGamertag
+	}
+	mirror.XSTSToken = tokens.XSTSToken
+	mirror.XSTSUserHash = tokens.XSTSUserHash
+	mirror.XSTSExpiresAt = tokens.XSTSExpiresAt
+	mirror.AccessToken = tokens.AccessToken
+	mirror.OAuthExpiresAt = tokens.OAuthExpiresAt
 	if err := r.multiMirror.Upsert(mirror); err != nil {
 		slog.WarnContext(ctx, "refresh_loop: mirror vers multi-user store échoué (non-bloquant)",
 			"xuid", tokens.XSTSXUID, "err", err)
