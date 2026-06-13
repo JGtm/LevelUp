@@ -134,12 +134,14 @@ func run(ctx context.Context, cfg *config.AppConfig, f cliFlags) error {
 	// existants — pas de pool reconstruit). Single-token par défaut ; -all-tokens
 	// round-robine tous les comptes db_profiles résolus (gain borné par l'IP).
 	var src service.WorldMatchSource
+	var tokenGamertags []string // comptes utilisés pour le fetch ET la résolution xuid
 	if f.allTokens {
 		s, gts, e := worldenrich.BuildMultiHaloSource(cfg, f.rps, true)
 		if e != nil {
 			return e
 		}
 		src = s
+		tokenGamertags = gts
 		fmt.Printf("tokens: %d comptes résolus (round-robin) — %v\n", len(gts), gts)
 	} else {
 		s, e := worldenrich.BuildHaloSource(cfg, f.tokenGamertag, f.rps, true)
@@ -147,14 +149,11 @@ func run(ctx context.Context, cfg *config.AppConfig, f cliFlags) error {
 			return e
 		}
 		src = s
+		tokenGamertags = []string{f.tokenGamertag}
 		fmt.Printf("token: %s résolu — single-token (auto-refresh)\n", f.tokenGamertag)
 	}
-
-	// 2. Résolveur xuid PeopleHub (même compte, header RTA mémoïsé).
-	resolver, err := worldenrich.BuildResolver(cfg, f.tokenGamertag)
-	if err != nil {
-		return err
-	}
+	// 2. Résolveur xuid : construit plus bas (étape 5bis, après le checkpoint) en
+	// multi-token + cache persistant — il a besoin de la graine d'associations connues.
 
 	// 3. Shared DB en RW (serveur stoppé) + migrations.
 	sharedPath := f.sharedDB
@@ -192,6 +191,25 @@ func run(ctx context.Context, cfg *config.AppConfig, f cliFlags) error {
 	fmt.Printf("checkpoint: %s\n", f.checkpoint)
 	fmt.Printf("saisons: %v%s\n", seasons, dryRunSuffix(f.dryRun))
 
+	// 5bis. Résolveur xuid : multi-token (round-robin sur TOUS les comptes → la limite
+	// PeopleHub est par compte, donc ~N× le quota) + cache mémoire amorcé par les
+	// associations DÉJÀ résolues (checkpoint) et qui persiste les nouvelles. On ne
+	// re-résout donc jamais un joueur déjà vu (les tops jouent plusieurs saisons → fort
+	// recouvrement) — c'est ce qui évite de "sans cesse recommencer".
+	xuidResolvers, resolverTokens, err := worldenrich.BuildMultiResolver(cfg, tokenGamertags)
+	if err != nil {
+		return fmt.Errorf("build resolver xuid: %w", err)
+	}
+	seed := cp.resolvedXUIDsSeed()
+	resolver := worldenrich.NewCachingResolver(xuidResolvers, seed, cp.setResolvedXUID)
+	fmt.Printf("résolution xuid: %d compte(s) en round-robin · %d association(s) déjà en cache (persistées)\n",
+		len(resolverTokens), len(seed))
+
+	// Calendrier CSR (fenêtres de dates par saison) : permet de filtrer l'historique
+	// par StartTime AVANT de fetcher → on atteint les vieilles saisons sans fetcher des
+	// milliers de matchs récents. Indisponible = filtre désactivé (fallback historique).
+	seasonWindows := loadSeasonWindowsOrWarn(ctx, cfg.RepoRoot)
+
 	// 6. Backfill saison par saison.
 	for _, season := range seasons {
 		// -retry-failed rouvre une saison complétée pour re-tenter ses joueurs en échec.
@@ -199,7 +217,7 @@ func run(ctx context.Context, cfg *config.AppConfig, f cliFlags) error {
 			fmt.Printf("[%s] déjà complète — skip\n", season)
 			continue
 		}
-		if err := backfillSeason(ctx, db, src, resolver, season, f, cp); err != nil {
+		if err := backfillSeason(ctx, db, src, resolver, season, f, cp, seasonWindows); err != nil {
 			if ctx.Err() != nil {
 				fmt.Printf("\nArrêt demandé — checkpoint sauvegardé. Relancer la même commande pour reprendre.\n")
 				return nil
@@ -223,6 +241,7 @@ type playerOutcome struct {
 func backfillSeason(
 	ctx context.Context, db *sql.DB, pooled service.WorldMatchSource,
 	resolver service.WorldXUIDResolver, season string, f cliFlags, cp *checkpoint,
+	seasonWindows map[string][2]time.Time,
 ) error {
 	gamertags, err := duckdb.WorldSeasonGamertags(ctx, db, season, f.topN)
 	if err != nil {
@@ -248,7 +267,7 @@ func backfillSeason(
 	if f.deep {
 		stopAfter = -1
 	}
-	agg := service.NewWorldStatsAggregator(pooled, resolver, service.WorldStatsAggregatorConfig{
+	cfg := service.WorldStatsAggregatorConfig{
 		TargetSeasons:      map[string]bool{analysis.NormalizeSeasonID(season): true},
 		MaxPages:           f.maxPages,
 		StopAfterNonTarget: stopAfter,
@@ -256,12 +275,26 @@ func backfillSeason(
 		// Throttle PeopleHub : la résolution xuid est single-token (~10 req/15s) ;
 		// sans délai, 200+ joueurs d'un coup → 429 qui les skippent en masse.
 		XUIDResolveDelay: time.Duration(f.xuidDelayMs) * time.Millisecond,
-	})
+	}
+	// Fenêtre date de la saison cible → filtre l'historique AVANT fetch (LE fix des
+	// vieilles saisons). Absente (saison courante hors calendrier, ou calendrier
+	// indispo) = fallback scan classique.
+	if w, ok := seasonWindows[analysis.NormalizeSeasonID(season)]; ok {
+		cfg.SeasonStart, cfg.SeasonEnd = w[0], w[1]
+		fmt.Printf("[%s] fenêtre date %s → %s (filtre actif : ne fetch que cette période)\n",
+			season, w[0].Format("2006-01-02"), w[1].Format("2006-01-02"))
+	}
+	agg := service.NewWorldStatsAggregator(pooled, resolver, cfg)
 
 	// Résolution xuid EN AMONT : un seul GetMatchStats par match traite alors TOUS
 	// les joueurs mondiaux présents (jusqu'à 8) au lieu de re-fetcher par joueur.
 	if prepErrs := agg.PrepareWorldPlayers(ctx, pending); len(prepErrs) > 0 {
 		fmt.Printf("[%s] %d xuid non résolus (joueurs skippés) — 1er: %v\n", season, len(prepErrs), prepErrs[0])
+	}
+	// Persiste les associations résolues TOUT DE SUITE (avant le scan, potentiellement
+	// long/interrompu) → un Ctrl-C ne fait pas perdre la résolution déjà payée.
+	if !f.dryRun {
+		_ = cp.save(f.checkpoint)
 	}
 
 	if err := runSeasonWorkers(ctx, agg, season, pending, already, target, f, cp); err != nil {
@@ -406,6 +439,63 @@ func flushBatch(ctx context.Context, f cliFlags, batch []domain.WorldPlayerSeaso
 func printProgress(season string, done, total, failures, rows int, elapsed time.Duration) {
 	fmt.Printf("\r[%s] %d/%d joueurs · %d lignes · %d err · %s    ",
 		season, done, total, rows, failures, elapsed.Round(time.Second))
+}
+
+// loadSeasonWindowsOrWarn charge le calendrier CSR (fenêtres de dates) depuis la
+// metadata DB. Échec → warn + nil (filtre date désactivé, fallback scan classique :
+// le backfill marche, juste moins vite sur les vieilles saisons).
+func loadSeasonWindowsOrWarn(ctx context.Context, repoRoot string) map[string][2]time.Time {
+	path := titlepkg.NewPathResolver(repoRoot).MetadataDBPath(titlepkg.DefaultSlug)
+	w, err := loadSeasonWindows(ctx, path)
+	if err != nil {
+		fmt.Printf("calendrier saisons CSR indisponible (%v) — filtre date OFF\n", err)
+		return nil
+	}
+	fmt.Printf("calendrier saisons CSR chargé (%d fenêtres) — filtre date ON\n", len(w))
+	return w
+}
+
+// loadSeasonWindows lit csr_placement_thresholds (metadata) et construit la fenêtre
+// [start, end) de chaque saison normalisée — fin = début de la saison suivante,
+// dernière = +1 an. Lecture seule (metadata n'est pas tenue en écriture par le backfill).
+func loadSeasonWindows(ctx context.Context, metadataPath string) (map[string][2]time.Time, error) {
+	db, err := sql.Open("duckdb", metadataPath+"?access_mode=read_only")
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	rows, err := db.QueryContext(ctx,
+		`SELECT season_id, valid_from FROM csr_placement_thresholds
+		 WHERE valid_from IS NOT NULL ORDER BY valid_from`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	type sw struct {
+		id    string
+		start time.Time
+	}
+	var ordered []sw
+	for rows.Next() {
+		var id string
+		var vf time.Time
+		if err := rows.Scan(&id, &vf); err != nil {
+			return nil, err
+		}
+		ordered = append(ordered, sw{analysis.NormalizeSeasonID(id), vf})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	out := make(map[string][2]time.Time, len(ordered))
+	for i, s := range ordered {
+		end := s.start.AddDate(1, 0, 0) // dernière saison : borne haute large
+		if i+1 < len(ordered) {
+			end = ordered[i+1].start
+		}
+		out[s.id] = [2]time.Time{s.start, end}
+	}
+	return out, nil
 }
 
 // resolveSeasons retourne la liste des saisons à traiter ("all" → toutes les

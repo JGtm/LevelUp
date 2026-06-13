@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	syncpkg "levelup/go-api/internal/sync"
 )
@@ -19,6 +20,10 @@ type fakeMatchSource struct {
 	history map[string][]string
 	// stats[matchID] = JSON brut GetMatchStats
 	stats map[string]map[string]any
+	// startTimes[matchID] = StartTime RFC3339 (optionnel ; vide = pas de filtre date)
+	startTimes map[string]string
+	// fetched = nb d'appels GetMatchStats (vérifie que le filtre date évite les fetchs)
+	fetched int
 }
 
 func (f *fakeMatchSource) GetMatchHistory(_ context.Context, gamertag, _ string, start, count int) ([]syncpkg.MatchHistoryEntry, error) {
@@ -32,12 +37,13 @@ func (f *fakeMatchSource) GetMatchHistory(_ context.Context, gamertag, _ string,
 	}
 	out := make([]syncpkg.MatchHistoryEntry, 0, end-start)
 	for _, id := range ids[start:end] {
-		out = append(out, syncpkg.MatchHistoryEntry{MatchID: id})
+		out = append(out, syncpkg.MatchHistoryEntry{MatchID: id, StartTime: f.startTimes[id]})
 	}
 	return out, nil
 }
 
 func (f *fakeMatchSource) GetMatchStats(_ context.Context, matchID string) (map[string]any, error) {
+	f.fetched++
 	m, ok := f.stats[matchID]
 	if !ok {
 		return nil, fmt.Errorf("match %s introuvable", matchID)
@@ -186,5 +192,54 @@ func TestRun_BestEffort(t *testing.T) {
 	}
 	if !gts["Alpha"] || !gts["Beta"] {
 		t.Errorf("Alpha et Beta devraient être agrégés malgré l'échec de Ghost, got %+v", all)
+	}
+}
+
+// TestAggregatePlayer_DateWindowSkipsFetch est LE test du fix vieilles saisons :
+// avec une fenêtre de dates, l'agrégateur saute les matchs hors fenêtre SANS appeler
+// GetMatchStats (au lieu de fetcher le match complet de chaque match pour lire sa
+// saison). Les matchs recent*/old1 ne sont volontairement PAS dans `stats` : si le
+// filtre les fetchait, GetMatchStats erreurrait et le test casserait.
+func TestAggregatePlayer_DateWindowSkipsFetch(t *testing.T) {
+	const xuid = "12345"
+	const s11 = "Csr/Seasons/CsrSeason11-1.json"
+	src := &fakeMatchSource{
+		history: map[string][]string{"xuid(" + xuid + ")": {"recent1", "recent2", "in1", "in2", "old1"}},
+		startTimes: map[string]string{
+			"recent1": "2026-01-10T00:00:00Z", // APRÈS la fenêtre → skip sans fetch
+			"recent2": "2025-09-01T00:00:00Z", // APRÈS la fenêtre → skip sans fetch
+			"in1":     "2025-06-15T00:00:00Z", // DANS la fenêtre → fetch + collecte
+			"in2":     "2025-07-01T00:00:00Z", // DANS la fenêtre → fetch + collecte
+			"old1":    "2025-03-01T00:00:00Z", // AVANT la fenêtre → skip sans fetch
+		},
+		stats: map[string]map[string]any{
+			"in1": buildMatch(xuid, s11, tArena, 2, 15, 8, 4),
+			"in2": buildMatch(xuid, s11, tArena, 3, 10, 12, 2),
+		},
+	}
+	start, _ := time.Parse("2006-01-02", "2025-05-06")
+	end, _ := time.Parse("2006-01-02", "2025-08-05")
+	agg := NewWorldStatsAggregator(src, &fakeResolver{m: map[string]string{"Pro": xuid}},
+		WorldStatsAggregatorConfig{
+			TargetSeasons: map[string]bool{"csrseason11-1": true},
+			SeasonStart:   start,
+			SeasonEnd:     end,
+			MaxPages:      1,
+		})
+
+	out, err := agg.AggregatePlayer(context.Background(), "Pro")
+	if err != nil {
+		t.Fatalf("AggregatePlayer: %v (le filtre date a fetché un match hors fenêtre)", err)
+	}
+	// SEULS in1/in2 fetchés : recent1/recent2/old1 sautés par date, jamais fetchés.
+	if src.fetched != 2 {
+		t.Errorf("GetMatchStats appelé %d fois, want 2 (uniquement les matchs DANS la fenêtre)", src.fetched)
+	}
+	var total int
+	for _, b := range out {
+		total += int(b.MatchCount)
+	}
+	if total != 2 {
+		t.Errorf("matchs S11 agrégés = %d, want 2 (in1, in2)", total)
 	}
 }
