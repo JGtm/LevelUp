@@ -1,7 +1,9 @@
 // Package auth — azure_credentials_test.go : golden / caractérisation du seam des
-// credentials Azure. Ces tests FIGENT le comportement ACTUEL (Phase 1). Ils doivent
-// rester verts après le refactor seam (preuve : aucun changement). En Phase 2
-// (uniformisation vers l'app canonique), le diff de ces assertions = le changement assumé.
+// credentials Azure. Phase 3 (uniformisation) : SSO + refresh + token-capture sont
+// sur l'app canonique e1cb35ab via LEVELUP_OAUTH_CLIENT_ID. e1cb35ab a un redirect
+// « Web » → client CONFIDENTIEL → SecretToSend envoie TOUJOURS le secret configuré
+// (AADSTS70002 sinon). Le diff vs Phase 1 (défaut TokenCapture, env var, garde
+// SecretToSend supprimée) = le changement assumé.
 package auth
 
 import (
@@ -10,7 +12,7 @@ import (
 )
 
 func TestResolveAzureOAuthClient_DefaultIsLevelUpHalo(t *testing.T) {
-	t.Setenv("SPNKR_AZURE_CLIENT_ID", "")
+	t.Setenv("LEVELUP_OAUTH_CLIENT_ID", "")
 	t.Setenv("SPNKR_AZURE_CLIENT_SECRET", "")
 
 	c := ResolveAzureOAuthClient()
@@ -18,12 +20,12 @@ func TestResolveAzureOAuthClient_DefaultIsLevelUpHalo(t *testing.T) {
 		t.Errorf("ClientID défaut = %q, want %q (LevelUp Halo)", c.ClientID, LevelUpClientID)
 	}
 	if s := c.SecretToSend(); s != "" {
-		t.Errorf("SecretToSend défaut = %q, want \"\" (pas de secret)", s)
+		t.Errorf("SecretToSend sans secret env = %q, want \"\"", s)
 	}
 }
 
 func TestResolveAzureOAuthClient_EnvClientIDOverride(t *testing.T) {
-	t.Setenv("SPNKR_AZURE_CLIENT_ID", "custom-app-id")
+	t.Setenv("LEVELUP_OAUTH_CLIENT_ID", "custom-app-id")
 	t.Setenv("SPNKR_AZURE_CLIENT_SECRET", "")
 
 	if c := ResolveAzureOAuthClient(); c.ClientID != "custom-app-id" {
@@ -31,28 +33,28 @@ func TestResolveAzureOAuthClient_EnvClientIDOverride(t *testing.T) {
 	}
 }
 
-func TestSecretToSend_ConfidentialClientSendsSecret(t *testing.T) {
-	// Client != LevelUpClientID + secret défini → secret envoyé (flux confidentiel).
-	t.Setenv("SPNKR_AZURE_CLIENT_ID", "39829f7a-confidential")
+func TestSecretToSend_CanonicalClientSendsSecret(t *testing.T) {
+	// Phase 3 : e1cb35ab (LevelUpClientID) en plateforme Web = confidentiel →
+	// le secret EST envoyé (AVANT, la garde l'excluait → AADSTS70002 en prod).
+	t.Setenv("LEVELUP_OAUTH_CLIENT_ID", LevelUpClientID)
 	t.Setenv("SPNKR_AZURE_CLIENT_SECRET", "s3cret")
 
 	if got := ResolveAzureOAuthClient().SecretToSend(); got != "s3cret" {
-		t.Errorf("SecretToSend = %q, want s3cret (client confidentiel)", got)
+		t.Errorf("SecretToSend (e1cb35ab confidentiel) = %q, want s3cret", got)
 	}
 }
 
-func TestSecretToSend_PublicClientNeverSendsSecret(t *testing.T) {
-	// Garde anti-AADSTS90023 : LevelUpClientID (public) + secret → JAMAIS de secret.
-	t.Setenv("SPNKR_AZURE_CLIENT_ID", LevelUpClientID)
+func TestSecretToSend_OtherClientSendsSecret(t *testing.T) {
+	t.Setenv("LEVELUP_OAUTH_CLIENT_ID", "39829f7a-confidential")
 	t.Setenv("SPNKR_AZURE_CLIENT_SECRET", "s3cret")
 
-	if got := ResolveAzureOAuthClient().SecretToSend(); got != "" {
-		t.Errorf("SecretToSend (client public) = %q, want \"\" (anti-AADSTS90023)", got)
+	if got := ResolveAzureOAuthClient().SecretToSend(); got != "s3cret" {
+		t.Errorf("SecretToSend = %q, want s3cret", got)
 	}
 }
 
 func TestSecretToSend_NoSecretEnv(t *testing.T) {
-	t.Setenv("SPNKR_AZURE_CLIENT_ID", "39829f7a-confidential")
+	t.Setenv("LEVELUP_OAUTH_CLIENT_ID", LevelUpClientID)
 	t.Setenv("SPNKR_AZURE_CLIENT_SECRET", "")
 
 	if got := ResolveAzureOAuthClient().SecretToSend(); got != "" {
@@ -67,14 +69,12 @@ func TestDeviceFlowClientID_IsLevelUpHalo(t *testing.T) {
 }
 
 func TestTokenCaptureClientID_DefaultAndOverride(t *testing.T) {
-	// Défaut (pas d'env) : HaloToolsClientID — DIFFÈRE volontairement du défaut
-	// serveur (LevelUpClientID), état actuel à figer.
-	t.Setenv("SPNKR_AZURE_CLIENT_ID", "")
-	if got := TokenCaptureClientID(); got != HaloToolsClientID {
-		t.Errorf("TokenCaptureClientID défaut = %q, want %q (halo-tools)", got, HaloToolsClientID)
+	// Phase 3 : défaut aligné sur l'app canonique LevelUpClientID (AVANT : HaloToolsClientID).
+	t.Setenv("LEVELUP_OAUTH_CLIENT_ID", "")
+	if got := TokenCaptureClientID(); got != LevelUpClientID {
+		t.Errorf("TokenCaptureClientID défaut = %q, want %q (LevelUp Halo)", got, LevelUpClientID)
 	}
-	// Override env (convergence avec le refresh serveur en prod).
-	t.Setenv("SPNKR_AZURE_CLIENT_ID", "39829f7a-shared")
+	t.Setenv("LEVELUP_OAUTH_CLIENT_ID", "39829f7a-shared")
 	if got := TokenCaptureClientID(); got != "39829f7a-shared" {
 		t.Errorf("TokenCaptureClientID override = %q, want 39829f7a-shared", got)
 	}
@@ -85,13 +85,13 @@ func TestTokenCaptureClientID_DefaultAndOverride(t *testing.T) {
 func TestBuildAuthorizeURL_ClientIDGolden(t *testing.T) {
 	redirect := "https://lvelup.info/auth/xbox/callback"
 
-	t.Setenv("SPNKR_AZURE_CLIENT_ID", "")
+	t.Setenv("LEVELUP_OAUTH_CLIENT_ID", "")
 	def, _ := url.Parse(BuildAuthorizeURL(redirect, "state123", ""))
 	if got := def.Query().Get("client_id"); got != LevelUpClientID {
 		t.Errorf("client_id défaut = %q, want %q (LevelUp Halo)", got, LevelUpClientID)
 	}
 
-	t.Setenv("SPNKR_AZURE_CLIENT_ID", "39829f7a-prod")
+	t.Setenv("LEVELUP_OAUTH_CLIENT_ID", "39829f7a-prod")
 	ovr, _ := url.Parse(BuildAuthorizeURL(redirect, "state123", ""))
 	if got := ovr.Query().Get("client_id"); got != "39829f7a-prod" {
 		t.Errorf("client_id override = %q, want 39829f7a-prod", got)

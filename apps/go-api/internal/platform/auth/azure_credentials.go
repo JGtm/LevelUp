@@ -3,12 +3,13 @@
 //
 // Seam introduit pour centraliser des lectures d'environnement auparavant
 // DUPLIQUÉES dans auth_code.go (Authorization Code Flow SSO) et oauth_refresh.go
-// (refresh token). Cf. .ai/PLAN_AUTH_HARDENING_OPTIONAL.md — Phase 1.
+// (refresh token). Cf. .ai/PLAN_AUTH_HARDENING_OPTIONAL.md.
 //
-// IMPORTANT : ce module ne change AUCUN comportement. Il déplace les lectures
-// existantes derrière une API unique pour préparer (Phase 2) l'uniformisation
-// vers l'app canonique. Le comportement actuel est figé par des golden tests
-// (azure_credentials_test.go).
+// Phase 3 (uniformisation) : SSO + refresh + token-capture sont consolidés sur
+// l'app canonique e1cb35ab (« LevelUp Halo ») via LEVELUP_OAUTH_CLIENT_ID. Son
+// redirect est en plateforme « Web » → client CONFIDENTIEL → le client_secret est
+// REQUIS (PKCE est additif). L'ancienne app « Spartan Graph » 39829f7a n'est plus
+// utilisée. Le changement est documenté par le diff des golden tests.
 package auth
 
 import "os"
@@ -17,20 +18,21 @@ import "os"
 // Microsoft (Authorization Code Flow SSO web + refresh token). Construire via
 // ResolveAzureOAuthClient.
 type AzureOAuthClient struct {
-	// ClientID : SPNKR_AZURE_CLIENT_ID si défini, sinon LevelUpClientID.
+	// ClientID : LEVELUP_OAUTH_CLIENT_ID si défini, sinon LevelUpClientID (e1cb35ab).
 	ClientID string
 	// rawSecret : valeur brute de SPNKR_AZURE_CLIENT_SECRET (éventuellement vide).
-	// Non exporté : passer par SecretToSend() qui applique la garde public/confidentiel.
+	// Non exporté : passer par SecretToSend().
 	rawSecret string
 }
 
-// ResolveAzureOAuthClient lit le client OAuth Azure depuis l'environnement.
-// Lecteur UNIQUE de SPNKR_AZURE_CLIENT_ID / SPNKR_AZURE_CLIENT_SECRET côté prod
-// (garanti par le test sentinelle Guard 4).
+// ResolveAzureOAuthClient lit le client OAuth Azure (SSO web + refresh) depuis
+// l'environnement. Lecteur UNIQUE de SPNKR_AZURE_CLIENT_SECRET côté prod (garanti
+// par le test sentinelle Guard 4).
 //
-// Comportement (inchangé) : SPNKR_AZURE_CLIENT_ID si défini, sinon LevelUpClientID.
+// Phase 3 : LEVELUP_OAUTH_CLIENT_ID si défini, sinon LevelUpClientID (= e1cb35ab,
+// app canonique). On NE lit PLUS SPNKR_AZURE_CLIENT_ID (ancienne app 39829f7a).
 func ResolveAzureOAuthClient() AzureOAuthClient {
-	clientID := os.Getenv("SPNKR_AZURE_CLIENT_ID")
+	clientID := os.Getenv("LEVELUP_OAUTH_CLIENT_ID")
 	if clientID == "" {
 		clientID = LevelUpClientID
 	}
@@ -40,38 +42,33 @@ func ResolveAzureOAuthClient() AzureOAuthClient {
 	}
 }
 
-// SecretToSend retourne le client_secret à inclure dans l'échange OAuth, ou ""
-// pour un flux client public. Garde anti-AADSTS90023 : on n'envoie un secret que
-// s'il est défini ET que le client n'est pas LevelUpClientID (app publique, qui
-// rejette tout secret). Le retry sans secret sur AADSTS90023 reste géré par
-// l'appelant (oauth_refresh) pour les RT émis par un flux public.
+// SecretToSend retourne le client_secret à inclure dans l'échange OAuth (ou "" si
+// non configuré). e1cb35ab (app canonique) a son redirect en plateforme « Web » →
+// client CONFIDENTIEL → Microsoft EXIGE le secret pour l'Authorization Code Flow
+// (AADSTS70002 sinon ; PKCE est additif, pas un substitut).
+//
+// Cas limite : un refresh_token émis par un flux PUBLIC (device code) refuse le
+// secret (AADSTS90023) — l'appelant oauth_refresh retente alors sans secret.
 func (c AzureOAuthClient) SecretToSend() string {
-	if c.rawSecret != "" && c.ClientID != LevelUpClientID {
-		return c.rawSecret
-	}
-	return ""
+	return c.rawSecret
 }
 
-// DeviceFlowClientID est le client_id du Device Code Flow (app publique
-// "LevelUp Halo"). Exposé ici pour que TOUS les client_id Azure transitent par
-// ce module (source unique de vérité).
+// DeviceFlowClientID est le client_id du Device Code Flow (app « LevelUp Halo »,
+// utilisée en client PUBLIC côté MSAL — sans secret). Source unique de vérité.
 func DeviceFlowClientID() string {
 	return LevelUpClientID
 }
 
 // TokenCaptureClientID retourne le client_id du CLI de génération manuelle de
-// tokens (cmd/token-capture). Défaut : HaloToolsClientID (app publique "halo-tools"),
-// override par SPNKR_AZURE_CLIENT_ID.
+// tokens (cmd/token-capture). Phase 3 : aligné sur l'app canonique —
+// LEVELUP_OAUTH_CLIENT_ID si défini, sinon LevelUpClientID (= e1cb35ab).
 //
-// ⚠️ COUPLAGE CRITIQUE : le client_id du token capturé DOIT matcher celui utilisé
-// par le refresh serveur (ResolveAzureOAuthClient) — un refresh_token est lié à son
-// client émetteur, sinon le refresh échoue (token révoqué). En prod, SPNKR_AZURE_CLIENT_ID
-// est posé → les deux convergent. NB : le DÉFAUT diffère volontairement de
-// ResolveAzureOAuthClient (HaloToolsClientID ici vs LevelUpClientID) — c'est l'état
-// actuel à figer ; Phase 2 (uniformisation) alignera les deux défauts sur l'app canonique.
+// ⚠️ COUPLAGE CRITIQUE : le client_id du token capturé DOIT matcher celui du refresh
+// serveur (ResolveAzureOAuthClient) — un refresh_token est lié à son client émetteur.
+// Les deux lisent désormais la MÊME source (LEVELUP_OAUTH_CLIENT_ID) → convergence.
 func TokenCaptureClientID() string {
-	if v := os.Getenv("SPNKR_AZURE_CLIENT_ID"); v != "" {
+	if v := os.Getenv("LEVELUP_OAUTH_CLIENT_ID"); v != "" {
 		return v
 	}
-	return HaloToolsClientID
+	return LevelUpClientID
 }

@@ -20,7 +20,7 @@ func withMockTokenEndpoint(t *testing.T, handler http.HandlerFunc, clientID, sec
 	prev := msalTokenURL
 	msalTokenURL = srv.URL
 	t.Cleanup(func() { msalTokenURL = prev })
-	t.Setenv("SPNKR_AZURE_CLIENT_ID", clientID)
+	t.Setenv("LEVELUP_OAUTH_CLIENT_ID", clientID)
 	t.Setenv("SPNKR_AZURE_CLIENT_SECRET", secret)
 }
 
@@ -124,16 +124,16 @@ func TestExchangeRefreshToken_NoSecretNoRetry(t *testing.T) {
 	}
 }
 
-// TestExchangeRefreshToken_PublicClientNeverSendsSecret : avec LevelUpClientID
-// (client public par défaut), le secret env est ignoré.
-func TestExchangeRefreshToken_PublicClientNeverSendsSecret(t *testing.T) {
+// TestExchangeRefreshToken_CanonicalClientSendsSecret : Phase 3 — avec LevelUpClientID
+// (e1cb35ab, redirect Web = confidentiel), le secret EST envoyé (AVANT il était exclu).
+func TestExchangeRefreshToken_CanonicalClientSendsSecret(t *testing.T) {
 	withMockTokenEndpoint(t, func(w http.ResponseWriter, r *http.Request) {
 		_ = r.ParseForm()
-		if r.PostForm.Get("client_secret") != "" {
-			t.Errorf("client_secret interdit avec LevelUpClientID")
+		if r.PostForm.Get("client_secret") == "" {
+			t.Errorf("client_secret attendu pour e1cb35ab (confidentiel)")
 		}
 		_, _ = w.Write([]byte(`{"access_token":"at","expires_in":3600}`))
-	}, "", "s3cret") // SPNKR_AZURE_CLIENT_ID vide → LevelUpClientID
+	}, "", "s3cret") // LEVELUP_OAUTH_CLIENT_ID vide → LevelUpClientID (e1cb35ab)
 
 	if _, _, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-1"); err != nil {
 		t.Fatalf("err inattendue : %v", err)
