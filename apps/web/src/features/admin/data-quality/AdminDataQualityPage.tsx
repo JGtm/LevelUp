@@ -149,6 +149,11 @@ function DQKpi({
   )
 }
 
+/** Ligne d'explication courte sous une action globale (à quoi ça sert / ce que ça fait). */
+function ActionHelp({ text }: { text: string }) {
+  return <p className="max-w-3xl text-xs text-muted-foreground">{text}</p>
+}
+
 /** Action backfill registry names : scan à blanc + run réel + résultat compact. */
 function RegistryNamesAction({ tA }: { tA: TAdmin }) {
   const run = useRunRegistryNamesBackfill()
@@ -196,6 +201,8 @@ function RegistryNamesAction({ tA }: { tA: TAdmin }) {
           {catalogRefresh.isPending ? tA('admin.job.in_progress') : tA('admin.dq.run_catalog_refresh')}
         </Button>
       </div>
+      <ActionHelp text={tA('admin.dq.run_registry_names_help')} />
+      <ActionHelp text={tA('admin.dq.run_catalog_refresh_help')} />
       {lastResult && <RegistryNamesResult result={lastResult} tA={tA} />}
     </div>
   )
@@ -248,6 +255,7 @@ function LyingBitsAction({ tA }: { tA: TAdmin }) {
           {tA('admin.dq.run_lying_bits_dry')}
         </Button>
       </div>
+      <ActionHelp text={tA('admin.dq.run_lying_bits_help')} />
       {lastResult && <LyingBitsResult result={lastResult} tA={tA} />}
     </div>
   )
@@ -262,27 +270,30 @@ function CatalogDrainAction({ tA }: { tA: TAdmin }) {
   const drain = useRunCatalogUGCDrain()
   const queryClient = useQueryClient()
   return (
-    <AdminActionButton
-      label={tA('admin.dq.run_ugc_drain')}
-      busyLabel={tA('admin.dq.run_ugc_drain_busy')}
-      confirmMessage={tA('admin.dq.run_ugc_drain_confirm')}
-      onRun={async () => {
-        try {
-          const job = await drain.mutateAsync()
-          return job.job_id
-        } catch (err) {
-          toast.error(apiErrorMessage(err) ?? tA('admin.actions.failed'))
-          return null
-        }
-      }}
-      onJobTerminal={(job) => {
-        if (job.status === 'succeeded') {
-          invalidateDataQuality(queryClient)
-          toast.success(tA('admin.dq.ugc_drain_done'))
-        }
-        // Échec : JobProgressInline affiche déjà le détail, pas de toast redondant.
-      }}
-    />
+    <div className="space-y-2">
+      <AdminActionButton
+        label={tA('admin.dq.run_ugc_drain')}
+        busyLabel={tA('admin.dq.run_ugc_drain_busy')}
+        confirmMessage={tA('admin.dq.run_ugc_drain_confirm')}
+        onRun={async () => {
+          try {
+            const job = await drain.mutateAsync()
+            return job.job_id
+          } catch (err) {
+            toast.error(apiErrorMessage(err) ?? tA('admin.actions.failed'))
+            return null
+          }
+        }}
+        onJobTerminal={(job) => {
+          if (job.status === 'succeeded') {
+            invalidateDataQuality(queryClient)
+            toast.success(tA('admin.dq.ugc_drain_done'))
+          }
+          // Échec : JobProgressInline affiche déjà le détail, pas de toast redondant.
+        }}
+      />
+      <ActionHelp text={tA('admin.dq.run_ugc_drain_help')} />
+    </div>
   )
 }
 

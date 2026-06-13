@@ -25,6 +25,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/halo"
 	settingsplatform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
@@ -132,7 +133,12 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 	if dryRun {
 		persister = newDryRunPersister()
 	} else {
-		persister = syncv2.NewCycleBatchPersister(deps.TitleSlug, deps.BatchQueue, 0)
+		// Résolution autonome des noms d'assets au sync V2 (primary write) : le
+		// fetcher (token-free, API GameCMS) est gaté par LEVELUP_SYNC_RESOLVE_ASSETS ;
+		// l'écriture asset_translations passe par le handle metadata RW PARTAGÉ
+		// (deps.MetaDB, OpenReadWriteShared). nil fetcher → feature off (legacy).
+		persister = syncv2.NewCycleBatchPersister(deps.TitleSlug, deps.BatchQueue, 0,
+			deps.MetaDB, halo.NewAssetNameFetcherIfEnabled())
 	}
 
 	// RC-A fix (2026-06-01) : le PostSyncRunner doit acquérir le shared en

@@ -426,6 +426,10 @@ en = "Resolve raw UUID assets via metadata.asset_translations? The write waits f
 fr = "Scan à blanc"
 en = "Dry-run scan"
 
+[admin.dq.run_registry_names_help]
+fr = "Réécrit dans match_registry les noms d'assets restés en UUID brut, en les lisant dans le dictionnaire (asset_translations). Fait baisser le compteur « Assets UUID bruts ». Sans réseau : ne résout que les assets déjà connus du dictionnaire."
+en = "Rewrites asset names still stored as raw UUIDs in match_registry, reading them from the dictionary (asset_translations). Lowers the “Raw UUID assets” counter. No network: only resolves assets already known to the dictionary."
+
 [admin.dq.registry_names_result]
 fr = "Résolus"
 en = "Fixed"
@@ -442,6 +446,10 @@ en = "Refresh catalog"
 fr = "Seeder les catalogues playlists/maps/paires/variantes depuis match_registry ? Zéro appel réseau, quelques secondes."
 en = "Seed the playlists/maps/pairs/variants catalogs from match_registry? Zero network calls, a few seconds."
 
+[admin.dq.run_catalog_refresh_help]
+fr = "Inscrit dans les tables catalogue les playlists/maps/paires/variantes vues en matchs. Résout les « Playlists hors catalogue ». Sans réseau, quelques secondes."
+en = "Registers the playlists/maps/pairs/variants seen in matches into the catalog tables. Resolves “Out-of-catalog playlists”. No network, a few seconds."
+
 [admin.dq.catalog_refresh_result]
 fr = "Upserts"
 en = "Upserts"
@@ -457,6 +465,10 @@ en = "Dry-run scan"
 [admin.dq.run_lying_bits_confirm]
 fr = "Clearer les bits backfill_completed menteurs (events/weapons posés mais tables vides) ? Ces matchs redeviennent candidats au heal au prochain sync. L'écriture attend la fin du sync en cours le cas échéant (60 s max)."
 en = "Clear the lying backfill_completed bits (events/weapons set but tables empty)? These matches become heal candidates again on the next sync. The write waits for any running sync (60 s max)."
+
+[admin.dq.run_lying_bits_help]
+fr = "Efface les drapeaux events/armes posés alors que les données sont absentes, pour que ces matchs soient re-traités au prochain sync. Sans rapport avec les noms d'assets."
+en = "Clears the events/weapons flags set while the data is actually missing, so these matches are reprocessed on the next sync. Unrelated to asset names."
 
 [admin.dq.lying_bits_result]
 fr = "Clearés"
@@ -477,6 +489,10 @@ en = "Draining…"
 [admin.dq.run_ugc_drain_confirm]
 fr = "Résoudre les assets manquants via l'API DiscoveryUGC ? Appels réseau réels (rate-limités à 60/min, peut durer plusieurs minutes) avec les tokens d'un joueur authentifié. Job asynchrone."
 en = "Resolve missing assets via the DiscoveryUGC API? Real network calls (rate-limited to 60/min, may take several minutes) using an authenticated player's tokens. Asynchronous job."
+
+[admin.dq.run_ugc_drain_help]
+fr = "Récupère les vrais noms localisés des assets via l'API Halo (réseau, tokens d'un joueur authentifié) et remplit le dictionnaire + le catalogue. C'est la source des noms pour les assets inconnus. Normalement automatique au sync — action manuelle de secours."
+en = "Fetches the real localized asset names from the Halo API (network, an authenticated player's tokens) and fills the dictionary + catalog. This is the source of names for unknown assets. Normally automatic during sync — manual fallback action."
 
 [admin.dq.ugc_drain_done]
 fr = "Drain UGC terminé"

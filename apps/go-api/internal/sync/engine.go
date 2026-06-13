@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"levelup/go-api/internal/assetnames"
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability/logging"
@@ -133,6 +134,14 @@ type SyncEngine struct {
 	// Si nil : submitMatchAsBatch reste synchrone (Phase 2.3 — direct
 	// Persister.Persist sans WAL). Reset à nil = pas d'async layer.
 	batchQueue *persist.BatchQueue
+
+	// assetFetcher (optionnel) — résolution autonome des noms d'assets au sync :
+	// si non-nil, un pré-pass (resolveCycleAssets) peuple metadata.asset_translations
+	// pour les assets neufs du cycle AVANT l'écriture registry, de sorte que les
+	// noms soient résolus dès le 1er passage (sans heal/backfill/action admin).
+	// Token-free (API publique GameCMS). Injecté via WithAssetNameResolution ;
+	// nil → feature off (parité legacy). Cf. assetnames_wiring.go.
+	assetFetcher assetnames.Fetcher
 }
 
 // NewSyncEngine, WithPrestigeHook, WithResolver, WithSharedProvider,
@@ -269,18 +278,25 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	// les UUIDs bruts en noms canoniques EN avant l'INSERT match_registry.
 	// Échec d'ouverture → enrichissement désactivé pour ce run, sync continue.
 	if e.metadataDBPath != "" {
-		// Phase 2 du PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : passage par le cache
-		// duckdbpkg.OpenReadOnly (cle "ro:"+path) pour aligner le DSN avec les
-		// autres sites RO/RW. Empeche le bug "Can't open a connection with a
-		// different configuration" cote metadata.
-		metaHandle, metaErr := duckdbpkg.OpenReadOnly(e.metadataDBPath)
+		// OpenReadForQuery RÉUTILISE le handle metadata déjà en cache (RW tenu par
+		// main.go via OpenReadWriteShared, sinon RO) au lieu d'ouvrir un 2e handle.
+		// Forcer OpenReadOnly ("ro:"+path) ici ouvrait une SECONDE instance DuckDB
+		// alors que le serveur tient déjà metadata en RW ("rw:"+path) → échec
+		// "Can't open ... with a different configuration" → e.metaDB nil →
+		// EnrichRegistryFromMetadata ET la résolution des noms d'assets désactivés
+		// silencieusement (cf. ADR 0016, thought_log "different configuration").
+		// Le handle ainsi obtenu est RW en prod : il sert la LECTURE (enrich) ET
+		// l'écriture basse-fréquence (asset_translations via ops.UpsertAssetTranslation,
+		// SELECT-then-write ART-safe). En CLI/test sans handle partagé, retombe sur un
+		// OpenReadOnly propre (lecture OK ; l'écriture résolution reste best-effort).
+		metaSQL, releaseMeta, metaErr := duckdbpkg.OpenReadForQuery(e.metadataDBPath)
 		if metaErr != nil {
 			slog.WarnContext(ctx, "sync: ouverture metadata DB échouée — enrich registry désactivé",
 				"db", e.metadataDBPath, "err", metaErr)
 		} else {
-			e.metaDB = metaHandle.SQLDb()
+			e.metaDB = metaSQL
 			defer func() {
-				_ = metaHandle.Close()
+				releaseMeta()
 				e.metaDB = nil
 			}()
 		}
@@ -433,6 +449,13 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 				})
 			}
 			_ = eg.Wait() // Attendre tous les fetches (même si certains échouent)
+
+			// ─── Pré-pass : résolution des noms d'assets (primary write) ───
+			// Peuple metadata.asset_translations pour les assets neufs du cycle
+			// AVANT la phase d'insert, pour qu'EnrichRegistryFromMetadata
+			// (submitOrInsertMatch) écrive un vrai nom dès le 1er passage.
+			// Best-effort, gated (assetFetcher nil → no-op).
+			e.resolveCycleAssets(ctx, fetchedMatches)
 
 			// ─── Phase 3 : Insert séquentiel (order-preserving) ───
 			for i, fm := range fetchedMatches {

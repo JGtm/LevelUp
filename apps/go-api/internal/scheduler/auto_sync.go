@@ -37,6 +37,7 @@ import (
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
+	"levelup/go-api/internal/platform/halo"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
@@ -318,6 +319,12 @@ func (s *AutoSyncScheduler) BuildEngine(_ context.Context, gamertag, xuid string
 	if s.cfg.CurrentCSRSeasonID != "" {
 		engine.WithCSRSeasonID(s.cfg.CurrentCSRSeasonID)
 	}
+	// Résolution autonome des noms d'assets au sync (primary write) — chemin V1
+	// engine.run (fallback quand V2 off + CLI). Fetcher gaté par
+	// LEVELUP_SYNC_RESOLVE_ASSETS (nil → feature off). Le pré-pass écrit
+	// asset_translations via le handle metadata RW ouvert par engine.run
+	// (OpenReadForQuery). Le chemin prod V2 est câblé séparément (persister).
+	engine.WithAssetNameResolution(halo.NewAssetNameFetcherIfEnabled())
 	return engine
 }
 

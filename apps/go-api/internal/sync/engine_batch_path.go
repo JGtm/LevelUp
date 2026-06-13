@@ -47,6 +47,21 @@ func (e *SyncEngine) submitOrInsertMatch(
 	result *domain.SyncResult,
 	fm *fetchedMatch,
 ) error {
+	// Résolution des noms d'assets (playlist/map/pair/game_variant) depuis
+	// metadata.asset_translations AVANT l'écriture registry. Câblé ICI, au
+	// chokepoint commun batch+legacy : depuis le refactor fetch/insert
+	// (2026-05-21) seul processMatch (legacy test-only) appelait
+	// EnrichRegistryFromMetadata — le chemin prod (fetchMatchData → submit/insert)
+	// écrivait donc l'UUID brut tel quel. Placé dans la phase d'insert séquentielle
+	// (et non dans fetchMatchData parallèle) pour bénéficier du dictionnaire
+	// fraîchement peuplé par le pré-pass de résolution d'assets. Best-effort :
+	// metaDB nil ou asset absent → fallback historique (no-op).
+	if fm != nil && fm.Registry != nil {
+		if err := EnrichRegistryFromMetadata(ctx, e.metaDB, fm.Registry); err != nil {
+			slog.WarnContext(ctx, "sync: EnrichRegistryFromMetadata non-bloquant",
+				"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err)
+		}
+	}
 	if e.batchMode {
 		return e.submitMatchAsBatch(ctx, sharedDB, playerDB, globalDB, result, fm)
 	}
