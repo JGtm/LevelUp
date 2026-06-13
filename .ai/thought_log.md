@@ -1,6 +1,6 @@
-## [2026-06-13] Backfill world saisons passées : filtre date + résolution xuid multi-token + cache persistant — Complété (testé : 4 lignes réelles)
+## [2026-06-13] Backfill world saisons passées : filtre date + xuid multi-token + cache persistant + dichotomie offset — Complété (testé : 4 lignes réelles)
 
-**Statut** : Testé bout-en-bout (csrseason11-1 : 0 → 4 lignes réelles en base). Commit sans push (accord user). Reste : optim dichotomie pour la vitesse (prochaine étape).
+**Statut** : Testé bout-en-bout (csrseason11-1 : 0 → 4 lignes réelles en base). Dichotomie de l'offset d'historique ajoutée + unit-testée. Commit sans push (accord user).
 
 **Problème** : le backfill produisait 0 ligne sur les saisons PASSÉES (seule la courante 13-2 marchait). Trois causes empilées, toutes diagnostiquées dans le code (pas supposées) :
 1. `collectPlayerMatches` fetchait le match COMPLET (`GetMatchStats`) de CHAQUE match juste pour lire sa saison (`ExtractWorldPlayersFromMatch`), puis jetait les hors-saison. Pour atteindre une vieille saison (profonde), il fetchait des milliers de matchs récents → jamais fini.
@@ -15,7 +15,21 @@
 
 **Résultats observés** : test csrseason11-1, 3 joueurs, multi-token : **4 lignes réelles en base** (Abature arena 478 matchs ; AURELIONIX × 3 playlists), 0 × 429 PeopleHub, 3 associations cachées. Tests : `TestAggregatePlayer_DateWindowSkipsFetch` (prouve le skip sans fetch), agrégateur + backfill verts.
 
-**Limite connue / prochaine étape** : la PAGINATION de l'historique pour ATTEINDRE une vieille saison reste O(profondeur) (~1 min/joueur, ~heures pour 287 × 7 saisons). Fix prévu : **recherche dichotomique** de l'offset via `StartTime` (~11 requêtes au lieu de ~84-200 pages).
+5. **Dichotomie de l'offset** (`findWindowStartOffset`) : au lieu de paginer linéairement des dizaines/centaines de pages de matchs récents pour atteindre une vieille saison, on sonde `GetMatchHistory(start=mid, count=1)` par recherche binaire sur l'offset (l'historique étant récent-d'abord, le `StartTime` décroît avec l'offset) → on saute directement à `startPage` = 1re entrée `<= SeasonEnd`, puis le filtre date gère les bords. ~log2(profondeur) requêtes au lieu de O(profondeur/25) pages. Garde-fou de date illisible → repli scan linéaire depuis `lo`.
+
+**Résultats observés (dichotomie)** : `TestAggregatePlayer_BinarySearchJumpsToWindow` — historique synthétique profond (2000 matchs, fenêtre aux offsets 1600-1649) : 50 matchs collectés, 50 `GetMatchStats` (uniquement la fenêtre), **`histCalls` ≈ 14** (≈ 11 sondes + 3 pages fenêtre) vs **≈ 66 en linéaire**. vet clean, 5 tests agrégateur verts, exe rebuildé.
+
+**Limite connue / prochaine étape** : valider sur une VRAIE vieille saison (ex. csrseason6-1) que la dichotomie rend le run rapide bout-en-bout (l'unit test prouve déjà le mécanisme).
+
+---
+
+## [2026-06-13] Promotion jgtm_xbox admin + plan durcissement auth/Azure — Complété
+
+**Statut** : Op prod faite (rôle admin), plan optionnel rédigé.
+
+**Action** : `jgtm_xbox` passé `user`→`admin` dans `data/auth/users.json` (VPS, backup `.bak` créé, `sed` borné au bloc jgtm_xbox pour ne pas toucher madina/xxdaemon restés `user`). Pas de jq sur le VPS, pas de CLI de rôle exposé (`userstore.SetRole` existe mais sans cmd). Re-login SSO déclenché pour que la session récupère le rôle (figé au login) → vérifié : session jgtm_xbox la plus récente porte `"role":"admin"`. NB : `is_admin` du bootstrap dérive de `sess.Role`, donc effectif seulement après re-login.
+
+**Plan** : `.ai/PLAN_AUTH_HARDENING_OPTIONAL.md` — 6 phases optionnelles, **Phase 0 = audit Azure solide AVANT toute suppression** (refresh tokens du parc liés à l'app émettrice ; supprimer la mauvaise app = re-capture forcée). Suite : PKCE + hygiène logs nginx, découplage `LEVELUP_OAUTH_CLIENT_ID` de l'app watcher, suppression apps mortes, lockdown instance, fusion comptes JGtm.
 
 ---
 

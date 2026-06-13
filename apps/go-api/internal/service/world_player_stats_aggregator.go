@@ -250,7 +250,19 @@ func (a *WorldStatsAggregator) collectPlayerMatches(ctx context.Context, xuid st
 	seen := map[string]bool{} // dédup overlap de pagination (intra-joueur)
 	nonTarget := 0
 	belowWindow := 0 // matchs consécutifs SOUS la fenêtre date (→ arrêt)
-	for page := 0; page < a.cfg.MaxPages; page++ {
+	// DICHOTOMIE : si on connaît la fenêtre de la saison, on saute DIRECTEMENT à
+	// l'offset où l'historique entre dans la fenêtre (~log requêtes) au lieu de
+	// paginer linéairement des centaines de pages de matchs récents pour atteindre
+	// une vieille saison. Le filtre date dans la boucle gère ensuite les bords précis.
+	startPage := 0
+	if !a.cfg.SeasonStart.IsZero() && !a.cfg.SeasonEnd.IsZero() {
+		off, err := a.findWindowStartOffset(ctx, player, a.cfg.MaxPages*worldMatchPageSize)
+		if err != nil {
+			return collected, err
+		}
+		startPage = off / worldMatchPageSize
+	}
+	for page := startPage; page < a.cfg.MaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return collected, err
 		}
@@ -317,6 +329,45 @@ func (a *WorldStatsAggregator) collectPlayerMatches(ctx context.Context, xuid st
 		}
 	}
 	return collected, nil
+}
+
+// findWindowStartOffset trouve par DICHOTOMIE le plus petit offset d'historique dont
+// le match a StartTime <= SeasonEnd — c.-à-d. la 1re entrée dans la fenêtre de la
+// saison (l'historique étant récent-d'abord, StartTime décroît avec l'offset). Évite
+// de paginer linéairement tous les matchs récents pour atteindre une vieille saison :
+// ~log2(maxOffset) requêtes au lieu de ~(profondeur/25) pages. Borné à maxOffset
+// (fenêtre au-delà du scan → offset = maxOffset → boucle vide → 0 collecté, attendu).
+// Sonde GetMatchHistory(start=mid, count=1) : 1 requête légère par étape.
+func (a *WorldStatsAggregator) findWindowStartOffset(ctx context.Context, player string, maxOffset int) (int, error) {
+	lo, hi := 0, maxOffset
+	for lo < hi {
+		if err := ctx.Err(); err != nil {
+			return lo, err
+		}
+		mid := (lo + hi) / 2
+		var hist []syncpkg.MatchHistoryEntry
+		if e := a.withRetry(ctx, func() error {
+			var err error
+			hist, err = a.src.GetMatchHistory(ctx, player, "matchmaking", mid, 1)
+			return err
+		}); e != nil {
+			return 0, e
+		}
+		if len(hist) == 0 {
+			hi = mid // au-delà de la fin de l'historique → la fenêtre est plus haut
+			continue
+		}
+		mt, ok := parseMatchStart(hist[0].StartTime)
+		if !ok {
+			return lo, nil // date illisible → scan linéaire de secours depuis lo
+		}
+		if mt.After(a.cfg.SeasonEnd) {
+			lo = mid + 1 // match trop récent → la fenêtre est plus profonde
+		} else {
+			hi = mid // <= SeasonEnd → candidat, chercher un offset plus petit (bord haut)
+		}
+	}
+	return lo, nil
 }
 
 // parseMatchStart parse le StartTime d'un match (RFC3339, avec ou sans nanosecondes).

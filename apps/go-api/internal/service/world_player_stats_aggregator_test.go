@@ -24,9 +24,12 @@ type fakeMatchSource struct {
 	startTimes map[string]string
 	// fetched = nb d'appels GetMatchStats (vérifie que le filtre date évite les fetchs)
 	fetched int
+	// histCalls = nb d'appels GetMatchHistory (vérifie que la dichotomie évite le linéaire)
+	histCalls int
 }
 
 func (f *fakeMatchSource) GetMatchHistory(_ context.Context, gamertag, _ string, start, count int) ([]syncpkg.MatchHistoryEntry, error) {
+	f.histCalls++
 	ids := f.history[gamertag]
 	if start >= len(ids) {
 		return nil, nil
@@ -241,5 +244,70 @@ func TestAggregatePlayer_DateWindowSkipsFetch(t *testing.T) {
 	}
 	if total != 2 {
 		t.Errorf("matchs S11 agrégés = %d, want 2 (in1, in2)", total)
+	}
+}
+
+// TestAggregatePlayer_BinarySearchJumpsToWindow prouve l'optimisation dichotomie :
+// sur un historique PROFOND (2000 matchs) dont la fenêtre cible est tout au fond
+// (offsets 1600-1649), l'agrégateur ne pagine PAS linéairement les 64 pages récentes
+// pour l'atteindre. Il sonde l'offset par recherche dichotomique (~log2(2000)≈11
+// sondes) puis ne lit que les ~3 pages de la fenêtre. Garde-fou : histCalls reste
+// très en-deçà du linéaire (~66 appels). Si la dichotomie régressait, on repaginerait
+// tout depuis l'offset 0 et histCalls exploserait.
+func TestAggregatePlayer_BinarySearchJumpsToWindow(t *testing.T) {
+	const xuid = "777"
+	const s11 = "Csr/Seasons/CsrSeason11-1.json"
+	const deep = 2000
+
+	history := make([]string, deep)
+	startTimes := make(map[string]string, deep)
+	stats := map[string]map[string]any{}
+	for i := 0; i < deep; i++ {
+		id := fmt.Sprintf("m%d", i)
+		history[i] = id
+		switch {
+		case i < 1600:
+			startTimes[id] = "2026-01-01T00:00:00Z" // APRÈS la fenêtre (récent)
+		case i < 1650:
+			startTimes[id] = "2025-06-15T00:00:00Z" // DANS la fenêtre → collecté
+			stats[id] = buildMatch(xuid, s11, tArena, 2, 10, 5, 3)
+		default:
+			startTimes[id] = "2025-03-01T00:00:00Z" // AVANT la fenêtre (vieux)
+		}
+	}
+	src := &fakeMatchSource{
+		history:    map[string][]string{"xuid(" + xuid + ")": history},
+		startTimes: startTimes,
+		stats:      stats,
+	}
+	start, _ := time.Parse("2006-01-02", "2025-05-06")
+	end, _ := time.Parse("2006-01-02", "2025-08-05")
+	agg := NewWorldStatsAggregator(src, &fakeResolver{m: map[string]string{"Deep": xuid}},
+		WorldStatsAggregatorConfig{
+			TargetSeasons: map[string]bool{"csrseason11-1": true},
+			SeasonStart:   start,
+			SeasonEnd:     end,
+			MaxPages:      80, // 80 × 25 = 2000 → toute la profondeur est atteignable
+		})
+
+	out, err := agg.AggregatePlayer(context.Background(), "Deep")
+	if err != nil {
+		t.Fatalf("AggregatePlayer: %v", err)
+	}
+	var total int
+	for _, b := range out {
+		total += int(b.MatchCount)
+	}
+	if total != 50 {
+		t.Errorf("matchs fenêtre collectés = %d, want 50 (offsets 1600-1649)", total)
+	}
+	if src.fetched != 50 {
+		t.Errorf("GetMatchStats appelé %d fois, want 50 (uniquement la fenêtre)", src.fetched)
+	}
+	// Dichotomie : ~11 sondes + ~3 pages de fenêtre ≈ 14 appels. Le linéaire
+	// (pagination depuis l'offset 0) ferait ~66 appels. Le seuil 25 sépare nettement
+	// les deux régimes sans être fragile.
+	if src.histCalls > 25 {
+		t.Errorf("GetMatchHistory appelé %d fois — la dichotomie a régressé (linéaire ≈ 66)", src.histCalls)
 	}
 }
