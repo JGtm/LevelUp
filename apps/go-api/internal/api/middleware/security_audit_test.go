@@ -34,7 +34,7 @@ func TestRateLimit_Constants(t *testing.T) {
 
 func TestRateLimit_DemoMode_ReturnsHandler(t *testing.T) {
 	// Vérifier que RateLimit(demoMode=true) retourne bien un handler valide.
-	handler := middleware.RateLimit(true)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	handler := middleware.RateLimit(true, 0)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -49,7 +49,7 @@ func TestRateLimit_DemoMode_ReturnsHandler(t *testing.T) {
 }
 
 func TestRateLimit_NormalMode_ReturnsHandler(t *testing.T) {
-	handler := middleware.RateLimit(false)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	handler := middleware.RateLimit(false, 0)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 

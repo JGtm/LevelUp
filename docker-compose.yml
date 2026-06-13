@@ -17,6 +17,10 @@ services:
     # Secrets et tokens API (sync Halo, Discord, Tailscale)
     # Créer .env.local depuis .env.local.example avant le premier `docker compose up`.
     # Si absent, le dashboard fonctionne en lecture seule (pas de sync API).
+    # ⚠ DERRIÈRE NGINX (prod VPS) : .env.local DOIT contenir
+    #   LEVELUP_TRUST_PROXY_HEADERS=true
+    # sinon le rate-limiter clé sur l'IP du proxy (127.0.0.1) et TOUS les visiteurs
+    # partagent un seul bucket → page « Too Many Requests » (429) en masse.
     env_file:
       - .env.local
     volumes:
