@@ -94,7 +94,9 @@ func TestRefreshHaloTokensViaStoreFirst_RTDead_MarksReauth(t *testing.T) {
 	store := NewMultiUserTokenStore(tempTokenDir(t))
 	_ = store.UpdateOAuthRefreshToken("111", "rt-revoked")
 
-	prov := &fakeProvider{oauthErr: errors.New("invalid_grant")} // refresh KO
+	// Erreur OAuth typée invalid_grant → classe "revoked" (un plain errors.New
+	// serait classé "transient" → pas de marquage, cf. test transitoire ci-dessous).
+	prov := &fakeProvider{oauthErr: &OAuthExchangeError{ErrorCode: "invalid_grant"}}
 
 	result, _ := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice", LegacyAuthInputs{})
 	if result != nil {
@@ -102,6 +104,25 @@ func TestRefreshHaloTokensViaStoreFirst_RTDead_MarksReauth(t *testing.T) {
 	}
 	if !store.IsReauthRequired("111") {
 		t.Error("reauth_required attendu après mort du refresh_token")
+	}
+}
+
+// TestRefreshHaloTokensViaStoreFirst_TransientError_NoMark : un échec TRANSITOIRE
+// du refresh (réseau / 429 → erreur non typée, classe "transient") ne doit PAS
+// marquer reauth_required : le RT n'est pas mort. Régression du faux positif
+// « bannière de reconnexion qui revient souvent ».
+func TestRefreshHaloTokensViaStoreFirst_TransientError_NoMark(t *testing.T) {
+	store := NewMultiUserTokenStore(tempTokenDir(t))
+	_ = store.UpdateOAuthRefreshToken("111", "rt-vivant")
+
+	prov := &fakeProvider{oauthErr: errors.New("dial tcp 20.190.1.1:443: i/o timeout")}
+
+	result, _ := RefreshHaloTokensViaStoreFirst(context.Background(), store, prov, "111", "Alice", LegacyAuthInputs{})
+	if result != nil {
+		t.Fatal("result devrait être nil (refresh KO transitoire)")
+	}
+	if store.IsReauthRequired("111") {
+		t.Error("aucun marquage reauth attendu sur échec transitoire (RT vivant, faux positif)")
 	}
 }
 

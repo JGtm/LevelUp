@@ -63,9 +63,13 @@ func (m *mockTokenProvider) Exchange(ctx context.Context, accessToken string) (*
 }
 
 // TestResolverResolve_RTDead_FiresReauthRequired : credentials présents mais
-// refresh KO (RT mort) → onReauth(required=true). PR-B slice 3.
+// refresh KO avec un RT RÉVOQUÉ (invalid_grant, erreur OAuth typée) →
+// onReauth(required=true). PR-B slice 3.
 func TestResolverResolve_RTDead_FiresReauthRequired(t *testing.T) {
-	provider := &mockTokenProvider{oauthRefreshErr: errors.New("invalid_grant")}
+	// Erreur OAuth typée invalid_grant → classe "revoked" (cf. ClassifyAuthError).
+	// Un plain errors.New serait classé "transient" et NE déclencherait PAS la
+	// bannière (cf. TestResolverResolve_TransientError_NoReauthSignal).
+	provider := &mockTokenProvider{oauthRefreshErr: &auth.OAuthExchangeError{ErrorCode: "invalid_grant"}}
 
 	var gotRequired *bool
 	var gotGamertag, gotXUID string
@@ -84,6 +88,53 @@ func TestResolverResolve_RTDead_FiresReauthRequired(t *testing.T) {
 	}
 	if gotGamertag != "Alice" || gotXUID != "111" {
 		t.Errorf("callback args = %q/%q, want Alice/111", gotGamertag, gotXUID)
+	}
+}
+
+// TestResolverResolve_TransientError_NoReauthSignal : un échec TRANSITOIRE du
+// refresh (réseau / 429 / 5xx Microsoft → erreur non typée, classe "transient")
+// ne doit PAS lever la bannière de reconnexion : le refresh_token n'est pas mort,
+// un retry ultérieur peut réussir. Régression du faux positif « bandeau reauth
+// qui revient souvent » (un simple 429 le déclenchait avant le fix).
+func TestResolverResolve_TransientError_NoReauthSignal(t *testing.T) {
+	provider := &mockTokenProvider{oauthRefreshErr: errors.New("dial tcp 20.190.1.1:443: i/o timeout")}
+
+	reauthFiredTrue := false
+	onReauth := func(_ context.Context, _, _ string, required bool) {
+		if required {
+			reauthFiredTrue = true
+		}
+	}
+	resolver := NewResolverWithReauth(provider, time.Hour, nil, onReauth)
+
+	_, err := resolver.Resolve(context.Background(), CredentialSource{Gamertag: "Alice", XUID: "111", RefreshToken: "rt-vivant"})
+	if err == nil {
+		t.Fatal("erreur attendue (échec transitoire)")
+	}
+	if reauthFiredTrue {
+		t.Error("aucun signal reauth(true) attendu sur échec transitoire — RT vivant (faux positif)")
+	}
+}
+
+// TestResolverResolve_ConfigError_NoReauthSignal : un échec de CONFIG (app Azure
+// mal configurée, ex. invalid_client) ne se règle pas par une reconnexion
+// utilisateur → pas de bannière (surfacé au dashboard admin à la place).
+func TestResolverResolve_ConfigError_NoReauthSignal(t *testing.T) {
+	provider := &mockTokenProvider{oauthRefreshErr: &auth.OAuthExchangeError{ErrorCode: "invalid_client"}}
+
+	reauthFiredTrue := false
+	onReauth := func(_ context.Context, _, _ string, required bool) {
+		if required {
+			reauthFiredTrue = true
+		}
+	}
+	resolver := NewResolverWithReauth(provider, time.Hour, nil, onReauth)
+
+	if _, err := resolver.Resolve(context.Background(), CredentialSource{Gamertag: "Alice", XUID: "111", RefreshToken: "rt"}); err == nil {
+		t.Fatal("erreur attendue (échec config)")
+	}
+	if reauthFiredTrue {
+		t.Error("aucun signal reauth(true) attendu sur échec config (problème serveur, pas RT mort)")
 	}
 }
 
