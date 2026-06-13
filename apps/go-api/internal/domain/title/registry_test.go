@@ -22,6 +22,18 @@ func TestTitleDescriptor_HasCapability(t *testing.T) {
 	}
 }
 
+// TestPathResolver_MediaDataDir vérifie la base média canonique {root}/data/media
+// (title-agnostic, plate) — fallback de résolution quand media_captures_base_dir
+// est absent/invalide (garde-fou incident prod 2026-06-13).
+func TestPathResolver_MediaDataDir(t *testing.T) {
+	pr := NewPathResolver(filepath.Join("srv", "app"))
+	got := pr.MediaDataDir()
+	want := filepath.Join("srv", "app", "data", "media")
+	if got != want {
+		t.Errorf("MediaDataDir() = %q, want %q", got, want)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // TitleRegistry
 // ---------------------------------------------------------------------------

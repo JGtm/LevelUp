@@ -276,6 +276,18 @@ func (p *PathResolver) ResolveCapturesDir(titleSlug, gamertag, baseDir string) s
 	return p.PlayerCapturesDir(titleSlug, gamertag)
 }
 
+// MediaDataDir retourne la base média interne canonique {repoRoot}/data/media.
+//
+// Layout title-agnostic et PLAT : data/media/{gamertag}/{thumbs,hls,...} — distinct
+// du PlayerCapturesDir per-titre (data/titles/.../{gamertag}/captures). C'est la
+// localisation réelle des médias en production (montée sur /app/data/media dans le
+// conteneur). Sert de fallback de résolution quand le media_captures_base_dir
+// configuré est absent ou invalide (garde-fou incident prod 2026-06-13 : un chemin
+// Windows déployé sur le VPS Linux rendait TOUS les médias illisibles).
+func (p *PathResolver) MediaDataDir() string {
+	return filepath.Join(p.repoRoot, "data", "media")
+}
+
 // BackupDir retourne le répertoire de backup d'un joueur pour un titre.
 // Ex: data/titles/halo_infinite/backups/Chocoboflor/
 func (p *PathResolver) BackupDir(titleSlug, gamertag string) string {

@@ -64,6 +64,7 @@ func (d *DirMediaIndexer) ResetAndReindex(
 ) error {
 	pr := titlePkg.NewPathResolver(repoRoot)
 	titleSlug := titlePkg.DefaultSlug
+	capturesBaseDir = effectiveMediaBase(ctx, pr, capturesBaseDir)
 	playersDir := filepath.Join(pr.TitleDataDir(titleSlug), "players")
 
 	entries, err := os.ReadDir(playersDir)
@@ -166,6 +167,7 @@ func (d *DirMediaIndexer) ScanAllMedia(
 ) error {
 	pr := titlePkg.NewPathResolver(repoRoot)
 	titleSlug := titlePkg.DefaultSlug
+	capturesBaseDir = effectiveMediaBase(ctx, pr, capturesBaseDir)
 	playersDir := filepath.Join(pr.TitleDataDir(titleSlug), "players")
 
 	entries, err := os.ReadDir(playersDir)
@@ -272,6 +274,7 @@ func BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn, timezoneFn
 		}
 		pr := titlePkg.NewPathResolver(repoRoot)
 		titleSlug := titlePkg.DefaultSlug
+		capturesBaseDir = effectiveMediaBase(ctx, pr, capturesBaseDir)
 		capturesDir := pr.ResolveCapturesDir(titleSlug, gamertag, capturesBaseDir)
 		if _, err := os.Stat(capturesDir); err != nil {
 			return // répertoire absent → rien à indexer
@@ -292,6 +295,31 @@ func BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn, timezoneFn
 		// encore sans HLS (HEVC/AVI/multipiste) — comme à l'upload.
 		triggerHLSSweep(capturesBaseDir, pr.SharedSocialDBPath(titleSlug), gamertag)
 	}
+}
+
+// effectiveMediaBase résout la base média effective pour l'indexation/scan/HLS :
+// retourne `configured` (settings.MediaCapturesBaseDir) s'il existe sur disque ;
+// sinon retombe sur la base interne canonique pr.MediaDataDir() ({root}/data/media)
+// si elle existe ; sinon "" (comportement interne PlayerCapturesDir inchangé).
+// Logge un WARN quand le fallback s'active.
+//
+// Garde-fou anti-régression (incident prod 2026-06-13) : un media_captures_base_dir
+// invalide — ex: chemin Windows recopié sur le VPS Linux — ne doit plus rendre
+// scan/HLS/thumbnails inopérants ni rediriger les écritures vers un dossier fantôme.
+func effectiveMediaBase(ctx context.Context, pr *titlePkg.PathResolver, configured string) string {
+	if configured == "" {
+		return ""
+	}
+	if fi, err := os.Stat(configured); err == nil && fi.IsDir() {
+		return configured
+	}
+	fallback := pr.MediaDataDir()
+	if fi, err := os.Stat(fallback); err == nil && fi.IsDir() {
+		slog.WarnContext(ctx, "media: media_captures_base_dir introuvable, fallback data/media",
+			"configured", configured, "effective", fallback)
+		return fallback
+	}
+	return ""
 }
 
 // triggerHLSSweep lance EN ARRIÈRE-PLAN (détaché du ctx scan/sync, qui peut être

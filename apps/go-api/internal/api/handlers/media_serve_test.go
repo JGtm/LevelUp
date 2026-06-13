@@ -201,3 +201,43 @@ func TestServeMediaFile_RemuxMKVtoWebM(t *testing.T) {
 		t.Errorf("body ne commence pas par EBML magic: % x", body[:min(8, len(body))])
 	}
 }
+
+// TestServeMediaFile_FallbackDataMediaOnInvalidBase couvre l'incident prod
+// 2026-06-13 : un media_captures_base_dir invalide (chemin Windows recopié sur le
+// VPS Linux, inexistant) rendait TOUS les médias en 404. Le durcissement ajoute
+// {repoRoot}/data/media aux bases candidates de résolution : un fichier présent au
+// layout réel (data/media/{owner}/...) doit donc être servi en 200 malgré la base
+// configurée invalide.
+func TestServeMediaFile_FallbackDataMediaOnInvalidBase(t *testing.T) {
+	root := t.TempDir()
+	abs := filepath.Join(root, "data", "media", "JGtm", "thumbs", "clip.webp")
+	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(abs, []byte("WEBPDATA"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Base configurée INVALIDE (n'existe pas) — simule le chemin Windows déployé.
+	store := writeSettingsJSON(t, filepath.Join(root, "Z-inexistant", "Captures"))
+	factory := func(_ context.Context, _ string) (port.MediaService, error) { return nil, nil }
+	h := handlers.NewMediaHandler(factory, nil, root).WithSettingsStore(store) // repoRoot non vide
+	r := chi.NewRouter()
+	r.Route("/players/{player_slug}", func(r chi.Router) {
+		r.Get("/media/files/*", h.ServeMediaFile)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/players/JGtm/media/files/JGtm/thumbs/clip.webp", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 via fallback data/media (body=%s)", w.Code, w.Body.String())
+	}
+	if ct := w.Header().Get("Content-Type"); ct != "image/webp" {
+		t.Errorf("Content-Type = %q, want image/webp", ct)
+	}
+	if w.Body.String() != "WEBPDATA" {
+		t.Errorf("body = %q, want WEBPDATA", w.Body.String())
+	}
+}

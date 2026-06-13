@@ -47,6 +47,10 @@ func (h *MediaHandler) ServeMediaFile(w http.ResponseWriter, r *http.Request) {
 	}
 	if h.repoRoot != "" {
 		pr := titlePkg.NewPathResolver(h.repoRoot)
+		// Base média canonique {root}/data/media (rpath = {owner}/{rel}). Rattrape un
+		// media_captures_base_dir absent/invalide — ex: chemin Windows déployé sur le
+		// VPS Linux, qui rendait TOUS les médias en 404 (incident prod 2026-06-13).
+		bases = append(bases, pr.MediaDataDir())
 		internalCapturesDir := pr.PlayerCapturesDir(titlePkg.DefaultSlug, slug)
 		bases = append(bases, filepath.Dir(internalCapturesDir)) // legacy interne data/
 	}
