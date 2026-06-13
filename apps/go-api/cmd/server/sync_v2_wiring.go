@@ -138,7 +138,7 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		// l'écriture asset_translations passe par le handle metadata RW PARTAGÉ
 		// (deps.MetaDB, OpenReadWriteShared). nil fetcher → feature off (legacy).
 		persister = syncv2.NewCycleBatchPersister(deps.TitleSlug, deps.BatchQueue, 0,
-			deps.MetaDB, halo.NewAssetNameFetcherIfEnabled())
+			deps.MetaDB, halo.NewAssetNameFetcherIfEnabled(), getSharedDB)
 	}
 
 	// RC-A fix (2026-06-01) : le PostSyncRunner doit acquérir le shared en

@@ -1,4 +1,4 @@
-## [2026-06-13] Résolution AUTONOME des noms d'assets au sync (UUID bruts) — Complété (PR5 catalogue différée)
+## [2026-06-13] Résolution AUTONOME des noms d'assets + catalogue au sync (UUID bruts / hors catalogue) — Complété
 
 **Statut** : Branche `feat/autonomous-asset-resolution`. Mécanique livrée (noms), **activée par défaut** (kill-switch d'urgence `LEVELUP_SYNC_RESOLVE_ASSETS=0`). Tests verts (sync 81s, v2, halo, scheduler, assetnames) + vet + front typecheck/lint.
 
@@ -10,7 +10,9 @@
 
 **Résultats observés** : test bout-en-bout `TestResolveCycleAssets_PopulatesTranslationsAndEnriches` (dico vide + asset neuf → asset_translations peuplé fr-FR+en-US → `EnrichRegistryFromMetadata` résout le registry). Skip-fresh + désactivé couverts. Module entier compile, vet clean.
 
-**Prochaine étape** : (1) feature ON par défaut ; le kill-switch `=0` ne sert qu'en urgence ops ; retrait du flag à 2026-09-01 + corriger le commentaire trompeur `engine_postsync.go:278` (« résolu au sync primaire » désormais vrai). (2) **PR5 différée** — « playlists hors catalogue » résorbées dans le sync : injection propre (handle shared post-persist + B-swap, granularité, anti-full-scan) non triviale ; le cron hebdo `LEVELUP_CATALOG_REFRESH=1` (actif) couvre déjà le catalogue. À implémenter en suivi dédié si résolution plus rapide souhaitée. Plan complet : `~/.claude/plans/non-le-post-sync-hazy-spark.md`.
+**Catalogue in-sync (PR5, livrée à la demande user)** : « playlists hors catalogue » résorbées DANS le sync. Après persist (matchs en shared), `ops.CatalogRefreshFromRegistry` (zéro réseau, réutilise la logique du bouton admin + l'allowlist `rankedplaylists.IsRanked`) inscrit les nouvelles playlists/maps/paires/variantes dans les tables catalogue. V2 : dans le persister après `queue.Drain`, gaté `assetFetcher!=nil && submitted>0`, sharedDB via getter lazy `getSharedDB` (post-swap). V1/CLI : étape dans `runPostSyncPipeline` gatée `assetFetcher!=nil && metaDB!=nil && len(insertedIDs)>0` (en V2 le post-sync n'a pas de metaDB → skip propre, le persister gère). Glue mince autour d'une fonction déjà testée (ops + admin handler + cron).
+
+**Prochaine étape** : feature ON par défaut ; kill-switch `=0` urgence ops uniquement ; retrait du flag à 2026-09-01 + corriger le commentaire trompeur `engine_postsync.go:278` (« résolu au sync primaire » désormais vrai). Note : échec test pré-existant `internal/ops TestSeedDemo_EndToEnd` (fixture `match_csrs`, sans rapport — package ops non modifié). Plan complet : `~/.claude/plans/non-le-post-sync-hazy-spark.md`.
 
 ---
 

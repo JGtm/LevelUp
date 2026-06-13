@@ -136,7 +136,7 @@ func buildE2EOrchestrator(t *testing.T, env *e2eEnv, client *mockNarrowClient, p
 	matchListProvider := NewMatchListProvider(clientFactory, "matchmaking", 25, 20)
 	sharedFetcher := NewSharedMatchFetcher(clientFactory)
 	playerEnr := NewPlayerEnrichmentFetcher()
-	persister := NewCycleBatchPersister("halo_infinite", env.queue, 5*time.Second, nil, nil)
+	persister := NewCycleBatchPersister("halo_infinite", env.queue, 5*time.Second, nil, nil, nil)
 
 	postSyncMock := &mockPostSyncRunner{
 		resultFor: map[string]PlayerPostSyncResult{},
