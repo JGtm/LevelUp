@@ -1,3 +1,62 @@
+## [2026-06-13] Phase 4 — PKCE sur le SSO Authorization Code Flow — Complété (non déployé)
+
+**Statut** : Code + tests verts (auth + domain + handlers OAuth, build ./...). Branche `feat/oauth-pkce` (empilée sur le seam). Commit local. À déployer + vérif live.
+
+**But** : durcir le SSO web (le `code` OAuth apparaît dans l'URL de callback) avec PKCE (RFC 7636, S256) — le code devient inexploitable sans le `code_verifier` secret.
+
+**Décision technique** : réutilise `GeneratePKCE()` EXISTANT (sisu_client.go, déjà testé S256) — pas de doublon. Nouveau champ `domain.SessionData.OAuthCodeVerifier` (one-shot, inclus dans `IsMeaningful`). `LoginRedirect` génère le couple, stocke le verifier en session, envoie le challenge S256 via `BuildAuthorizeURL(redirectURI, state, challenge)`. `Callback` capture le verifier AVANT que `validateCallbackParams` ne le consomme (one-shot aux 2 points, comme le state), puis `exchangeCallbackTokens(..., verifier)` → `ExchangeAuthorizationCode(..., codeVerifier)` ajoute `code_verifier`. Challenge ET verifier **optionnels** (vides → pas de PKCE) → fenêtre de déploiement sûre (login pré-deploy sans challenge complète sans verifier). Compatible client confidentiel (PKCE additif au secret).
+
+**Résultats observés** : build ./... + tests auth/domain/handlers verts. Nouveau test `TestBuildAuthorizeURL_PKCEChallenge` (challenge+method S256 présents / absents si vide). 2 tests device-flow e2e rouges = pré-existants (réseau).
+
+**Prochaine étape** : déployer (seam + PKCE) + vérif live SSO e2e (le verifier doit matcher, sinon Microsoft rejette). Reste Phase 4 : exclure la query `/auth/xbox/` des logs nginx (VPS).
+
+---
+
+## [2026-06-13] Backfill world : résolution xuid PARESSEUSE + cache tous-participants + throttle sondes — Complété (validé dry-run)
+
+**Statut** : Code + tests verts (service + analysis + cmd), vet clean, exe rebuildé, validé dry-run réel sur csrseason6-1 (6 lignes, 0 erreur). Commit en attente d'autorisation.
+
+**Contexte (question user)** : « pour fetcher les matchs de X on n'a besoin que du xuid de X ; pourquoi résoudre tout le monde d'abord ? priorité à l'opération lourde (le fetch) ». Juste.
+
+**Diagnostic du code** : `AggregatePlayer` résolvait DÉJÀ le xuid joueur par joueur (fallback). Le batch bloquant `PrepareWorldPlayers` (qui a gelé 9 min au démarrage) ne servait qu'à UNE optimisation : pré-remplir `worldXuids` pour que `ExtractWorldPlayersFromMatch` extraie d'un coup tous les joueurs cibles présents dans un match (match partagé par N tops → fetché 1×). Mais l'extraction FILTRAIT sur `worldXuids` → un joueur résolu APRÈS la mise en cache du match perdait sa stat → d'où l'obligation de tout pré-résoudre.
+
+**Décisions techniques** :
+1. **Extraction tous-participants** : `ExtractWorldPlayersFromMatch(raw, nil)` extrait DÉSORMAIS la stat de chaque participant (plus de filtre `worldXuids`, qui devient un paramètre de restriction OPTIONNEL). Le cache de match devient indépendant de l'ordre de résolution.
+2. **Résolution paresseuse** : le CLI ne bloque plus sur `PrepareWorldPlayers` ; chaque worker résout le xuid de SON joueur juste avant de fetcher ses matchs. L'opération lourde démarre immédiatement. Un xuid qui échoue fait juste échouer SON joueur (isolé, re-tentable). `worldXuids` (champ struct) supprimé (mort). `PrepareWorldPlayers` conservé (warm-up optionnel utilisé par `Run`).
+3. **Throttle sondes dichotomie** (`cfg.ProbeDelay`, CLI `-probe-delay-ms` défaut 350ms) : espace les ~log2(profondeur) sondes count=1 qui partaient en rafale et brûlaient le burst halostats.
+
+**Résultats observés (dry-run csrseason6-1, 2 joueurs, single-token)** : 6 lignes, 0 erreur, sans `Prepare`. Tests : `TestAggregatePlayer_SharedMatchOrderIndependent` (X scanné 1er cache le match avec TOUS les participants, Y résolu après lit sa stat du cache, fetch unique), `TestExtractWorldPlayersFromMatch` (nil=tous / sous-ensemble=restreint).
+
+**Mesure honnête du goulot** : les 429 sont TOUS dans les 31 premières secondes (rafale de sondes) ; le throttle les réduit (~15 vs ~19) mais le temps total reste 7m42s. Le coût DOMINANT = fetch des stats de chaque match de la fenêtre (joueur 1 fini à 5m18s, joueur 2 à 7m42s, zéro erreur entre les deux) — inhérent, bridé par le débit single-token (rps=3). Le throttle n'est PAS le levier.
+
+**Prochaine étape** : le vrai levier de vitesse pour le run COMPLET = débit de fetch. À grande échelle, le cache tous-participants donne des cache-hits inter-joueurs (les tops partagent leurs matchs). Tester `-all-tokens` (gain borné par l'IP selon l'aide du flag — à mesurer, pas à présumer) et/ou monter `rps`/`concurrency` prudemment (le fetch steady à ~6 req/s n'a PAS déclenché de 429 après la rafale → il y a de la marge). Lancer en réel off-peak (écriture base locale, prévenir).
+
+---
+
+## [2026-06-13] Plan auth renuméroté + vérif live déconnexion/admin + audit couplage tokens — Complété
+
+**Statut** : Plan `.ai/PLAN_AUTH_HARDENING_OPTIONAL.md` renuméroté (numéros = ordre d'exécution réel : Phase 1 seam déjà faite avant l'audit, car non destructive). Phase 7 ajoutée (vérif fonctionnelle).
+
+**Vérifs live (jgtm_xbox)** : ✅ Admin — `is_admin:true`, `GET /api/v1/admin/users` → 200 (route gardée RequireAdmin). ✅ Déconnexion — clic « Se déconnecter » → `current_username:null`, reload → `/login`, pas de reconnexion auto. (Piège outil noté : `navigate_page` MCP n'envoie pas le cookie en top-level `sec-fetch-site:none` → faux `is_admin:false` ; les vrais clics in-page sont fiables.) Minor non bloquant : le logout laisse `auth_state:"ready"` (halo_tokens résiduels dans la session sans username) — sans risque (pas de username = pas d'accès), à nettoyer un jour.
+
+**Audit couplage tokens (Phase 2.3, read-only)** : non déterminable en read-only (`access_token` vide dans `watcher_tokens/*.json`, refresh_token opaque, pas de client_id en cache). Conclusion DÉRIVÉE : les 4 RT sont liés à l'app SSO prod `39829f7a` → la bascule Phase 3 vers `e1cb35ab` exigera un re-login par joueur (cheap, le watcher récupère après). Se confirmera au switch (1er refresh échoué → re-login).
+
+---
+
+## [2026-06-13] Phase 1 — Seam credentials Azure (refactor sans changement de comportement) — Complété (non déployé)
+
+**Statut** : Code + 9 golden tests verts, sentinelle OK, build ./... + vet verts. Branche `refactor/azure-credentials-seam`. À reviewer/déployer (Phase 1.3 = vérif live).
+
+**But** : centraliser les lectures éparpillées de client_id/secret Azure derrière une source unique, SANS rien changer, pour préparer l'uniformisation (Phase 2) vers l'app canonique `e1cb35ab` (LevelUp Halo, confirmée par l'user).
+
+**Décision technique** : nouveau `internal/platform/auth/azure_credentials.go` = lecteur UNIQUE de `SPNKR_AZURE_CLIENT_ID`/`SPNKR_AZURE_CLIENT_SECRET`. 3 usages explicités : `ResolveAzureOAuthClient()` (SSO+refresh, défaut LevelUpClientID, `SecretToSend()` applique la garde public/confidentiel anti-AADSTS90023), `DeviceFlowClientID()` (device, = LevelUpClientID), `TokenCaptureClientID()` (CLI, défaut HaloToolsClientID — DIFFÉRENT, avec commentaire sur le **couplage critique** : le RT capturé est lié à son client émetteur, donc token-capture et le refresh serveur doivent converger ; en prod `SPNKR_AZURE_CLIENT_ID` posé → convergence). Câblé : `auth_code.go` (BuildAuthorizeURL + ExchangeAuthorizationCode), `oauth_refresh.go`, `msal_client.go` (×2), `cmd/token-capture/main.go` (delete `defaultClientID`+`resolveClientID` local → délègue). Sentinelle Guard 4 : allowlist mise à jour (seam = seul lecteur prod du secret ; auth_code.go/oauth_refresh.go retirés).
+
+**Résultats observés** : golden tests figent le comportement actuel (défaut LevelUpClientID, override env respecté, secret public→vide / confidentiel→envoyé, TokenCapture défaut HaloTools). Le diff de ces assertions en Phase 2 = le changement assumé. 2 tests e2e device-flow échouent mais PRÉ-EXISTANTS (vrai I/O réseau xboxlive.com — confirmé en échec sur `main` via worktree).
+
+**Prochaine étape** : commit (accord user) ; Phase 1.3 = déploiement + vérif live (SSO + device + refresh watcher) car les unit tests ne prouvent pas l'acceptation Microsoft/XSTS. Puis Phase 2 (uniformisation `LEVELUP_OAUTH_CLIENT_ID` → e1cb35ab) APRÈS audit du couplage tokens du parc.
+
+---
+
 ## [2026-06-13] Backfill world saisons passées : filtre date + xuid multi-token + cache persistant + dichotomie offset — Complété (testé : 4 lignes réelles)
 
 **Statut** : Testé bout-en-bout (csrseason11-1 : 0 → 4 lignes réelles en base). Dichotomie de l'offset d'historique ajoutée + unit-testée. Commit sans push (accord user).

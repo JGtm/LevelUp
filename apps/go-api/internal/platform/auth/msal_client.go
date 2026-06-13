@@ -100,7 +100,7 @@ func InitDeviceFlow(ctx context.Context, cacheAccessor cache.ExportReplace) (*ms
 		opts = append(opts, public.WithCache(cacheAccessor))
 	}
 
-	app, err := public.New(LevelUpClientID, opts...)
+	app, err := public.New(DeviceFlowClientID(), opts...)
 	if err != nil {
 		return nil, fmt.Errorf("MSAL init: %w", err)
 	}
@@ -140,7 +140,7 @@ func AcquireTokenSilent(ctx context.Context, cacheAccessor cache.ExportReplace) 
 		opts = append(opts, public.WithCache(cacheAccessor))
 	}
 
-	app, err := public.New(LevelUpClientID, opts...)
+	app, err := public.New(DeviceFlowClientID(), opts...)
 	if err != nil {
 		return "", fmt.Errorf("MSAL init: %w", err)
 	}

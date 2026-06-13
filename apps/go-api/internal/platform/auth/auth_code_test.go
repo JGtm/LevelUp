@@ -11,8 +11,27 @@ import (
 	"testing"
 )
 
+// (La correction S256 de GeneratePKCE est déjà couverte par TestGeneratePKCE
+// dans sisu_client_test.go ; ici on teste son câblage dans l'URL /authorize.)
+
+func TestBuildAuthorizeURL_PKCEChallenge(t *testing.T) {
+	redirect := "https://lvelup.info/auth/xbox/callback"
+	withPKCE, _ := url.Parse(BuildAuthorizeURL(redirect, "st", "chal123"))
+	if got := withPKCE.Query().Get("code_challenge"); got != "chal123" {
+		t.Errorf("code_challenge = %q, want chal123", got)
+	}
+	if got := withPKCE.Query().Get("code_challenge_method"); got != "S256" {
+		t.Errorf("code_challenge_method = %q, want S256", got)
+	}
+	// Sans challenge → aucun param PKCE (rétrocompat fenêtre de déploiement).
+	noPKCE, _ := url.Parse(BuildAuthorizeURL(redirect, "st", ""))
+	if noPKCE.Query().Has("code_challenge") {
+		t.Error("code_challenge présent alors que challenge vide — rétrocompat cassée")
+	}
+}
+
 func TestExchangeAuthorizationCode_EmptyCode(t *testing.T) {
-	_, err := ExchangeAuthorizationCode(context.Background(), "", "https://example.com/cb")
+	_, err := ExchangeAuthorizationCode(context.Background(), "", "https://example.com/cb", "")
 	if err == nil {
 		t.Fatal("attendu erreur pour code vide")
 	}
@@ -22,7 +41,7 @@ func TestExchangeAuthorizationCode_EmptyCode(t *testing.T) {
 }
 
 func TestExchangeAuthorizationCode_EmptyRedirectURI(t *testing.T) {
-	_, err := ExchangeAuthorizationCode(context.Background(), "test-code", "")
+	_, err := ExchangeAuthorizationCode(context.Background(), "test-code", "", "")
 	if err == nil {
 		t.Fatal("attendu erreur pour redirect_uri vide")
 	}
@@ -35,7 +54,7 @@ func TestBuildAuthorizeURL_Format(t *testing.T) {
 	redirectURI := "http://localhost:8000/api/v1/auth/xbox/callback"
 	state := "abc123def456"
 
-	got := BuildAuthorizeURL(redirectURI, state)
+	got := BuildAuthorizeURL(redirectURI, state, "")
 
 	// Doit pointer vers Microsoft consumers /authorize.
 	if !strings.HasPrefix(got, MSALAuthority+"/oauth2/v2.0/authorize?") {

@@ -21,10 +21,14 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 )
+
+// Note PKCE : la génération du couple (code_verifier, code_challenge S256) est
+// fournie par GeneratePKCE (sisu_client.go, partagée dans ce package). Le flux
+// Authorization Code la consomme via le handler (verifier en session, challenge
+// dans BuildAuthorizeURL, verifier renvoyé à ExchangeAuthorizationCode).
 
 // AuthCodeResult regroupe ce que retourne ExchangeAuthorizationCode.
 type AuthCodeResult struct {
@@ -36,10 +40,11 @@ type AuthCodeResult struct {
 // ExchangeAuthorizationCode échange un Authorization Code OAuth v2 contre
 // un access_token + refresh_token Microsoft.
 //
-// Utilise SPNKR_AZURE_CLIENT_ID si défini (tokens legacy), sinon LevelUpClientID.
+// Client/secret résolus par ResolveAzureOAuthClient (source unique).
 // Le redirectURI doit être strictement identique à celui passé dans la redirect
 // vers /authorize (Microsoft vérifie ce match).
-func ExchangeAuthorizationCode(ctx context.Context, code, redirectURI string) (*AuthCodeResult, error) {
+// codeVerifier : PKCE (RFC 7636) — vide = pas de PKCE (rétrocompat / device flow).
+func ExchangeAuthorizationCode(ctx context.Context, code, redirectURI, codeVerifier string) (*AuthCodeResult, error) {
 	if code == "" {
 		return nil, fmt.Errorf("auth_code: code vide")
 	}
@@ -47,23 +52,26 @@ func ExchangeAuthorizationCode(ctx context.Context, code, redirectURI string) (*
 		return nil, fmt.Errorf("auth_code: redirect_uri vide")
 	}
 
-	slog.DebugContext(ctx, "auth_code: échange code → tokens")
+	slog.DebugContext(ctx, "auth_code: échange code → tokens", "pkce", codeVerifier != "")
 
-	clientID := os.Getenv("SPNKR_AZURE_CLIENT_ID")
-	if clientID == "" {
-		clientID = LevelUpClientID
-	}
+	azClient := ResolveAzureOAuthClient()
 
 	body := url.Values{
-		oauthFieldClientID: {clientID},
+		oauthFieldClientID: {azClient.ClientID},
 		"grant_type":       {"authorization_code"},
 		oauthFieldCode:     {code},
 		"redirect_uri":     {redirectURI},
 		oauthFieldScope:    {xboxScopes},
 	}
 
-	// App confidentielle : inclure client_secret si défini.
-	if secret := os.Getenv("SPNKR_AZURE_CLIENT_SECRET"); secret != "" && clientID != LevelUpClientID {
+	// PKCE : renvoyer le code_verifier qui matche le code_challenge de l'authorize.
+	if codeVerifier != "" {
+		body.Set("code_verifier", codeVerifier)
+	}
+
+	// App confidentielle : inclure client_secret si la garde public/confidentiel
+	// l'autorise (cf. AzureOAuthClient.SecretToSend).
+	if secret := azClient.SecretToSend(); secret != "" {
 		body.Set("client_secret", secret)
 	}
 
@@ -118,11 +126,9 @@ func ExchangeAuthorizationCode(ctx context.Context, code, redirectURI string) (*
 // BuildAuthorizeURL construit l'URL de redirect vers Microsoft /authorize pour
 // initier le Authorization Code Flow. Le state doit être généré aléatoirement
 // (32+ bytes) et persisté en session pour vérification au callback.
-func BuildAuthorizeURL(redirectURI, state string) string {
-	clientID := os.Getenv("SPNKR_AZURE_CLIENT_ID")
-	if clientID == "" {
-		clientID = LevelUpClientID
-	}
+// codeChallenge : PKCE (RFC 7636, S256) — vide = pas de PKCE (rétrocompat).
+func BuildAuthorizeURL(redirectURI, state, codeChallenge string) string {
+	clientID := ResolveAzureOAuthClient().ClientID
 	params := url.Values{
 		oauthFieldClientID: {clientID},
 		"response_type":    {"code"},
@@ -130,6 +136,10 @@ func BuildAuthorizeURL(redirectURI, state string) string {
 		oauthFieldScope:    {xboxScopes},
 		"state":            {state},
 		"response_mode":    {"query"},
+	}
+	if codeChallenge != "" {
+		params.Set("code_challenge", codeChallenge)
+		params.Set("code_challenge_method", "S256")
 	}
 	return fmt.Sprintf("%s/oauth2/v2.0/authorize?%s", MSALAuthority, params.Encode())
 }

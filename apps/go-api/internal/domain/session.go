@@ -35,6 +35,11 @@ type SessionData struct {
 	// et vérifié par Callback. Stocké en session pour résister à un attaquant qui
 	// forcerait un callback avec un code volé sur une victime.
 	OAuthState string `json:"oauth_state,omitempty"`
+	// PKCE (RFC 7636) : code_verifier généré par LoginRedirect (le code_challenge
+	// S256 part dans l'URL /authorize), consommé par Callback pour l'échange du code.
+	// Lie le code d'autorisation au client initiateur → un code intercepté est
+	// inexploitable sans ce verifier secret.
+	OAuthCodeVerifier string `json:"oauth_code_verifier,omitempty"`
 }
 
 // IsMeaningful indique si la session porte un état qui mérite d'être persisté sur
@@ -48,6 +53,7 @@ func (s *SessionData) IsMeaningful() bool {
 	return s.Username != nil ||
 		s.Role != nil ||
 		s.OAuthState != "" ||
+		s.OAuthCodeVerifier != "" ||
 		s.LinkedHaloIdentity != nil ||
 		s.HaloTokens != nil ||
 		s.CurrentPlayerSlug != nil ||
