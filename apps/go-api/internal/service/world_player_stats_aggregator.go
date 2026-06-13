@@ -79,6 +79,14 @@ type WorldStatsAggregatorConfig struct {
 	// → sans délai, résoudre 200+ joueurs d'affilée déclenche des 429 qui skippent les
 	// joueurs en masse. 0 = pas de throttle (tests bas volume) ; le CLI/cron met ~1.6s.
 	XUIDResolveDelay time.Duration
+	// SeasonStart / SeasonEnd : fenêtre de dates de la saison CSR cible (depuis le
+	// calendrier csr_placement_thresholds). Quand renseignée, collectPlayerMatches
+	// FILTRE l'historique par StartTime AVANT de fetcher : il saute les matchs hors
+	// fenêtre sans les fetcher. C'est LE fix des vieilles saisons — sinon on fetch le
+	// match COMPLET de chaque match (des milliers de récents) juste pour lire sa saison,
+	// et on n'atteint jamais la saison profonde. Zéro = pas de filtre date (fallback
+	// historique : saison courante en tête, ou pas de calendrier).
+	SeasonStart, SeasonEnd time.Time
 }
 
 func (c *WorldStatsAggregatorConfig) withDefaults() {
@@ -241,6 +249,7 @@ func (a *WorldStatsAggregator) collectPlayerMatches(ctx context.Context, xuid st
 	var collected []analysis.PlayerMatchStat
 	seen := map[string]bool{} // dédup overlap de pagination (intra-joueur)
 	nonTarget := 0
+	belowWindow := 0 // matchs consécutifs SOUS la fenêtre date (→ arrêt)
 	for page := 0; page < a.cfg.MaxPages; page++ {
 		if err := ctx.Err(); err != nil {
 			return collected, err
@@ -262,6 +271,26 @@ func (a *WorldStatsAggregator) collectPlayerMatches(ctx context.Context, xuid st
 				continue
 			}
 			seen[h.MatchID] = true
+			// FILTRE DATE (le fix vieilles saisons) : l'entrée d'historique porte le
+			// StartTime du match. Si on connaît la fenêtre de la saison cible, on saute
+			// les matchs hors fenêtre SANS les fetcher — au lieu de fetcher le match
+			// complet de chaque match juste pour lire sa saison (ce qui faisait fetcher
+			// des milliers de matchs récents et ne jamais atteindre la saison profonde).
+			if mt, ok := parseMatchStart(h.StartTime); ok {
+				if !a.cfg.SeasonEnd.IsZero() && mt.After(a.cfg.SeasonEnd) {
+					continue // trop récent : pas encore entré dans la fenêtre
+				}
+				if !a.cfg.SeasonStart.IsZero() && mt.Before(a.cfg.SeasonStart) {
+					// Historique chronologique décroissant : une fois SOUS la fenêtre on
+					// n'y remontera plus. Une page entière sous la fenêtre = fini.
+					belowWindow++
+					if belowWindow >= worldMatchPageSize {
+						return collected, nil
+					}
+					continue // trop vieux
+				}
+				belowWindow = 0
+			}
 			cm, err := a.getMatch(ctx, h.MatchID)
 			if err != nil {
 				return collected, err
@@ -288,6 +317,20 @@ func (a *WorldStatsAggregator) collectPlayerMatches(ctx context.Context, xuid st
 		}
 	}
 	return collected, nil
+}
+
+// parseMatchStart parse le StartTime d'un match (RFC3339, avec ou sans nanosecondes).
+// ok=false si vide/format inconnu → le caller ne filtre alors pas par date (fallback sûr).
+func parseMatchStart(s string) (time.Time, bool) {
+	if s == "" {
+		return time.Time{}, false
+	}
+	for _, layout := range []string{time.RFC3339Nano, time.RFC3339} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t, true
+		}
+	}
+	return time.Time{}, false
 }
 
 // withRetry exécute fn en retentant sur erreur transitoire (429/503/réseau) avec

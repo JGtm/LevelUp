@@ -22,7 +22,37 @@ type seasonProgress struct {
 
 type checkpoint struct {
 	Seasons map[string]*seasonProgress `json:"seasons"`
-	mu      sync.Mutex
+	// ResolvedXUIDs : associations gamertag->xuid déjà résolues (PeopleHub), persistées
+	// entre runs. Sans ça on re-résout les MÊMES joueurs à chaque run (les tops jouent
+	// plusieurs saisons → fort recouvrement) et on rebrûle le quota PeopleHub. Le cache
+	// les réutilise → résolution une seule fois par joueur, jamais re-faite.
+	ResolvedXUIDs map[string]string `json:"resolved_xuids,omitempty"`
+	mu            sync.Mutex
+}
+
+// resolvedXUIDsSeed retourne une COPIE des associations connues (amorce du
+// CachingResolver). Thread-safe.
+func (c *checkpoint) resolvedXUIDsSeed() map[string]string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	out := make(map[string]string, len(c.ResolvedXUIDs))
+	for k, v := range c.ResolvedXUIDs {
+		out[k] = v
+	}
+	return out
+}
+
+// setResolvedXUID mémorise une NOUVELLE association gamertag->xuid (persistée au save).
+func (c *checkpoint) setResolvedXUID(gamertag, xuid string) {
+	if gamertag == "" || xuid == "" {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.ResolvedXUIDs == nil {
+		c.ResolvedXUIDs = map[string]string{}
+	}
+	c.ResolvedXUIDs[gamertag] = xuid
 }
 
 // loadCheckpoint lit le fichier de reprise (vide si absent ou si force).

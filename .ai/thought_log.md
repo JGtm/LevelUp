@@ -1,3 +1,24 @@
+## [2026-06-13] Backfill world saisons passées : filtre date + résolution xuid multi-token + cache persistant — Complété (testé : 4 lignes réelles)
+
+**Statut** : Testé bout-en-bout (csrseason11-1 : 0 → 4 lignes réelles en base). Commit sans push (accord user). Reste : optim dichotomie pour la vitesse (prochaine étape).
+
+**Problème** : le backfill produisait 0 ligne sur les saisons PASSÉES (seule la courante 13-2 marchait). Trois causes empilées, toutes diagnostiquées dans le code (pas supposées) :
+1. `collectPlayerMatches` fetchait le match COMPLET (`GetMatchStats`) de CHAQUE match juste pour lire sa saison (`ExtractWorldPlayersFromMatch`), puis jetait les hors-saison. Pour atteindre une vieille saison (profonde), il fetchait des milliers de matchs récents → jamais fini.
+2. Résolution xuid PeopleHub en SINGLE token → 429 (`30 req/300s` soutenu + `10/15s` burst) → 229/267 joueurs skippés → 0 ligne.
+3. `resolveSeasons` triait `ORDER BY season_id DESC` (alphabétique) → vieilles saisons traitées en premier.
+
+**Décisions techniques** :
+1. **Filtre date** : `MatchHistoryEntry.StartTime` (déjà rempli par l'API) + fenêtre `[start,end)` de la saison depuis le calendrier `csr_placement_thresholds` (metadata) → `collectPlayerMatches` saute les matchs hors fenêtre SANS les fetcher (`WorldStatsAggregatorConfig.SeasonStart/End`). 0 `GetMatchStats` gaspillé (vérifié). Fenêtres chargées par `loadSeasonWindows` (backfill).
+2. **Résolution multi-token** : `worldenrich.BuildMultiResolver` (un PeopleHubResolver par compte) + `CachingResolver` (round-robin sur les 9 comptes → limite PeopleHub par compte → ~9× le quota ; 0 × 429 au test). Token suivant sur 429.
+3. **Cache persistant** : `checkpoint.ResolvedXUIDs` (gamertag→xuid) amorce le `CachingResolver` et persiste les nouvelles résolutions → on ne re-résout JAMAIS un joueur déjà vu (fort recouvrement entre saisons). Sauvé juste après `PrepareWorldPlayers` (résilient au Ctrl-C).
+4. Tri saisons récent-d'abord (`seasonRank` numérique, commit précédent).
+
+**Résultats observés** : test csrseason11-1, 3 joueurs, multi-token : **4 lignes réelles en base** (Abature arena 478 matchs ; AURELIONIX × 3 playlists), 0 × 429 PeopleHub, 3 associations cachées. Tests : `TestAggregatePlayer_DateWindowSkipsFetch` (prouve le skip sans fetch), agrégateur + backfill verts.
+
+**Limite connue / prochaine étape** : la PAGINATION de l'historique pour ATTEINDRE une vieille saison reste O(profondeur) (~1 min/joueur, ~heures pour 287 × 7 saisons). Fix prévu : **recherche dichotomique** de l'offset via `StartTime` (~11 requêtes au lieu de ~84-200 pages).
+
+---
+
 ## [2026-06-13] Déconnexions répétées : cookie d'auth écrasé par session anonyme — Complété
 
 **Statut** : Code + tests verts (middleware + handlers OAuth + tsc/eslint/build front). À déployer + vérifier live.
