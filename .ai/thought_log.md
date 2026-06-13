@@ -1,3 +1,22 @@
+## [2026-06-13] Bannière "reconnecte-toi" récurrente — 3 root causes (faux positif + split-brain RT) — Code livré, à déployer
+
+**Déclencheur** : user signale le bandeau reauth qui "revient souvent" + doute de la fiabilité de détection. Investigation logs VPS (`docker compose logs levelup`, dir `/opt/levelup`).
+
+**Diagnostic (preuves)** : au boot, les 5 joueurs échouent leur refresh avec `AADSTS70000: token issued for a different client id` (class `revoked`). Cause directe = la bascule e1cb35ab (Phase 3b) : un refresh_token est lié à l'app émettrice ; les RT existants (émis sous 39829f7a) sont rejetés sous e1cb35ab. La bannière détecte donc JUSTE — mais 3 défauts l'amplifient. Décision user (AskUserQuestion) : **rester sur e1cb35ab** (les 3 autres re-loggeront via le bandeau, qui est l'invite correcte).
+
+**3 root causes + fixes** :
+1. **Faux positif transitoire (pool/resolver.go)** — `resolveExpensive` appelait `signalReauth(true)` pour TOUTE erreur de refresh, y compris transitoire (429/réseau/5xx). Fix : ne lever la bannière QUE si `ClassifyAuthError(err) == AuthErrorRevoked` (config/transient surfacés au dashboard admin, pas à l'utilisateur). +2 tests.
+2. **Même bug chemin live drain (cli_refresh.go)** — `RefreshHaloTokensViaStoreFirst` (appelé en live par `registry_catalog_drain.go`) marquait reauth sans gate de classe. `tryRefreshFromUserEntry` refactoré pour remonter l'erreur ; gate `== AuthErrorRevoked`. +1 test, 1 mis à jour (vrai `*OAuthExchangeError`).
+3. **Split-brain RT = root cause du clignotement de JGtm (auth_xbox_oauth.go)** — le callback SSO persistait le RT au store gardé par `exchangeResult.XUID != ""`, MAIS l'exchange Halo ne renvoie que `uhs` (XUID résolu APRÈS via xstsRTA). Persistance donc toujours sautée → store gardait un vieux RT 39829f7a → AADSTS70000. Fix : déplacer la persistance APRÈS la résolution d'identité (helper `persistRefreshTokenToStore`).
+
+**Tests** : `internal/platform/auth/...` + `internal/api/handlers/...` verts, vet OK. Fix #3 vérifié par lecture + tests existants ; preuve finale en live (log "RT persisté au store" + fin AADSTS70000 après re-login JGtm).
+
+**NB état repo** : working tree contient des modifs NON faites par moi (logging/cli.go, PLAN_TITLE_AGNOSTIC_*, fichiers stray `page`/`un`) + 2 commits récents non relus (429, asset resolution) → activité concurrente probable. Commit isolé à mes 5 fichiers ; deploy en attente d'accord user (un merge embarquerait ces commits non relus).
+
+**Prochaine étape** : accord deploy ; JGtm clique "Reconnecter" → vérifier store RT mis à jour + sync OK ; 3 autres re-loggent à leur rythme.
+
+---
+
 ## [2026-06-13] Fix « Too Many Requests » (429) en masse sur le VPS — rate-limit keyé sur l'IP du proxy — Complété (code, pending déploiement)
 
 **Statut** : Branche `fix/rate-limit-proxy-ip`. Code + tests + doc livrés ; tests middleware/config verts, build `cmd/server` OK (CGO). Le correctif racine est une variable d'env à poser sur le VPS (pas encore appliquée).

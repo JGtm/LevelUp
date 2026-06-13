@@ -166,6 +166,11 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Persistance ADR 0023 du RT frais APRÈS résolution d'identité : le XUID vient
+	// souvent de xstsRTA (l'exchange Halo ne renvoie que `uhs`). Garantit que le
+	// store reçoit le RT e1cb35ab frais → pas de split-brain au refresh suivant.
+	h.persistRefreshTokenToStore(r, exchangeResult.XUID, exchangeResult.Gamertag, tokenResult.RefreshToken)
+
 	attempt := buildXboxOAuthAttempt(tokenResult, exchangeResult, xstsRTA)
 
 	if !h.linkAttemptToSession(w, r, attempt, sess) {
@@ -235,18 +240,29 @@ func (h *XboxOAuthHandler) exchangeCallbackTokens(
 		return nil, nil, false
 	}
 
-	// Persistance ADR 0023 : RT Microsoft frais → MultiUserTokenStore.
-	if h.authStore != nil && tokenResult.RefreshToken != "" && exchangeResult.XUID != "" {
-		if werr := h.authStore.UpdateOAuthRefreshToken(exchangeResult.XUID, tokenResult.RefreshToken); werr != nil {
-			slog.WarnContext(r.Context(), "auth_xbox_oauth: persistance RT au store échouée",
-				"xuid", exchangeResult.XUID, "err", werr)
-		} else {
-			slog.InfoContext(r.Context(), "auth_xbox_oauth: RT persisté au store",
-				"xuid", exchangeResult.XUID, "gamertag", exchangeResult.Gamertag)
-		}
-	}
-
+	// NB : la persistance du RT au MultiUserTokenStore est faite par le Callback
+	// APRÈS la résolution d'identité (le XUID peut venir de xstsRTA, l'exchange Halo
+	// ne renvoyant que `uhs`). La faire ici la sauterait (XUID encore vide).
 	return tokenResult, exchangeResult, true
+}
+
+// persistRefreshTokenToStore écrit le refresh_token Microsoft frais dans le
+// MultiUserTokenStore (ADR 0023), keyé par le XUID RÉSOLU. À appeler APRÈS la
+// résolution d'identité : sinon le XUID est vide (l'exchange Halo ne renvoie que
+// `uhs`) et le RT n'est jamais persisté → le store garde un RT périmé →
+// AADSTS70000 « token issued for a different client id » aux refresh suivants
+// (split-brain tracker/store, bannière de reconnexion à tort).
+func (h *XboxOAuthHandler) persistRefreshTokenToStore(r *http.Request, xuid, gamertag, refreshToken string) {
+	if h.authStore == nil || refreshToken == "" || xuid == "" {
+		return
+	}
+	if werr := h.authStore.UpdateOAuthRefreshToken(xuid, refreshToken); werr != nil {
+		slog.WarnContext(r.Context(), "auth_xbox_oauth: persistance RT au store échouée",
+			"xuid", xuid, "err", werr)
+		return
+	}
+	slog.InfoContext(r.Context(), "auth_xbox_oauth: RT persisté au store",
+		"xuid", xuid, "gamertag", gamertag)
 }
 
 // tryAcquireXSTSForRTA best-effort, retourne nil si l'acquisition échoue (non bloquant).

@@ -59,17 +59,20 @@ func RefreshHaloTokensViaStoreFirst(
 	// --- Source 1 : MultiUserTokenStore ---
 	if store != nil && xuid != "" {
 		if user, err := store.Load(xuid); err == nil && user != nil {
-			if result := tryRefreshFromUserEntry(ctx, provider, store, xuid, user); result != nil {
+			result, refreshErr := tryRefreshFromUserEntry(ctx, provider, store, xuid, user)
+			if result != nil {
 				// Refresh OK → l'éventuel flag reauth_required est obsolète.
 				_ = store.ClearReauthRequired(xuid)
 				return result, nil
 			}
-			// PR-B : des credentials existaient (MSAL cache OU RT) mais le refresh
-			// silencieux a échoué → refresh_token mort. On marque reauth_required
-			// pour que le front propose une reconnexion Xbox. (Si AUCUN credential
-			// n'existait, ce n'est pas une « mort » mais un compte jamais authentifié
-			// → pas de marquage.)
-			if user.MSALCacheJSON != "" || user.OAuthRefreshToken != "" {
+			// PR-B : des credentials existaient (MSAL cache OU RT) mais le refresh a
+			// échoué. On ne marque reauth_required (→ bannière de reconnexion) QUE si
+			// le RT est réellement RÉVOQUÉ (invalid_grant). Un échec transitoire
+			// (429/réseau/5xx) ou config ne se règle pas par une reconnexion
+			// utilisateur → pas de bannière (faux positif). (Aucun credential = compte
+			// jamais authentifié → pas de marquage non plus.)
+			if (user.MSALCacheJSON != "" || user.OAuthRefreshToken != "") &&
+				ClassifyAuthError(refreshErr) == AuthErrorRevoked {
 				if _, merr := store.MarkReauthRequired(xuid, user.Gamertag); merr != nil {
 					slog.WarnContext(ctx, "cli_auth: marquage reauth_required échoué", "xuid", xuid, "err", merr)
 				} else {
@@ -86,24 +89,34 @@ func RefreshHaloTokensViaStoreFirst(
 	return tryRefreshFromLegacyInputs(ctx, provider, store, xuid, gamertag, legacy), nil
 }
 
+// tryRefreshFromUserEntry tente MSAL silent puis OAuth refresh depuis l'entrée
+// store. Retourne (result, nil) sur succès ; (nil, err) si l'OAuth refresh a
+// échoué — err porte la classe d'échec (cf. ClassifyAuthError), ce qui permet au
+// caller de ne marquer reauth_required QUE pour un RT révoqué. (nil, nil) si
+// aucune source n'a produit de token sans erreur classifiable (ex. Exchange KO).
 func tryRefreshFromUserEntry(
 	ctx context.Context,
 	provider TokenProvider,
 	store *MultiUserTokenStore,
 	xuid string,
 	user *UserTokens,
-) *ExchangeResult {
+) (*ExchangeResult, error) {
 	if user.MSALCacheJSON != "" {
 		if at, err := provider.TrySilentRefresh(ctx, user.MSALCacheJSON); err == nil && at != "" {
 			if result, err := provider.Exchange(ctx, at); err == nil && result != nil {
 				slog.DebugContext(ctx, "cli_auth: tokens via MSAL (store)", "xuid", xuid)
-				return result
+				return result, nil
 			}
 		}
 	}
 	if user.OAuthRefreshToken != "" {
 		at, rotatedRT, err := provider.TryOAuthRefreshWithRotation(ctx, user.OAuthRefreshToken)
-		if err == nil && at != "" {
+		if err != nil {
+			// Erreur classifiable (invalid_grant=revoked, 429/réseau=transient…) —
+			// remontée au caller pour décider du marquage reauth.
+			return nil, err
+		}
+		if at != "" {
 			if rotatedRT != "" && rotatedRT != user.OAuthRefreshToken {
 				if werr := store.UpdateOAuthRefreshToken(xuid, rotatedRT); werr != nil {
 					slog.WarnContext(ctx, "cli_auth: persistance RT rotaté échouée (store)",
@@ -112,11 +125,11 @@ func tryRefreshFromUserEntry(
 			}
 			if result, err := provider.Exchange(ctx, at); err == nil && result != nil {
 				slog.DebugContext(ctx, "cli_auth: tokens via OAuth (store)", "xuid", xuid)
-				return result
+				return result, nil
 			}
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func tryRefreshFromLegacyInputs(

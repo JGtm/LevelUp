@@ -180,13 +180,22 @@ func (r *resolverImpl) resolveExpensive(ctx context.Context, src CredentialSourc
 
 	accessToken, err := r.acquireAccessToken(ctx, &src)
 	if err != nil || accessToken == "" {
-		// Credentials présents mais aucun token obtenu → refresh_token mort →
-		// signaler la ré-authentification requise (best-effort, cf. signalReauth).
-		r.signalReauth(ctx, src, true)
 		if err != nil {
-			r.recordPermanentFailure(ctx, src, err)
+			// Bannière de reconnexion ("reauth requise") UNIQUEMENT pour un RT
+			// réellement RÉVOQUÉ (invalid_grant). Un échec CONFIG (app Azure mal
+			// configurée) ou TRANSITOIRE (429 rate-limit, réseau, 5xx Microsoft) ne
+			// se règle PAS par une reconnexion utilisateur → ne pas lever le bandeau
+			// (faux positif récurrent). Ces deux classes restent surfacées au
+			// dashboard admin via recordPermanentFailure/onAuthError.
+			if auth.ClassifyAuthError(err) == auth.AuthErrorRevoked {
+				r.signalReauth(ctx, src, true)
+			}
+			r.recordPermanentFailure(ctx, src, err) // mémorise config+revoked, skip transient
 			return nil, err
 		}
+		// accessToken == "" sans erreur → aucune credential exploitable (pas de MSAL
+		// cache utilisable ni de refresh_token) → ré-authentification requise.
+		r.signalReauth(ctx, src, true)
 		nerr := fmt.Errorf("pool/resolver: aucun accessToken obtenu pour %s (pas de MSAL cache et pas de refresh_token)", src.Gamertag)
 		slog.ErrorContext(ctx, "pool/resolver: impossible d'obtenir accessToken",
 			"gamertag", src.Gamertag, "err", nerr)
