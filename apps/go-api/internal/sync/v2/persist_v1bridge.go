@@ -11,10 +11,12 @@ package v2
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/assetnames"
 	"levelup/go-api/internal/persist"
 	syncpkg "levelup/go-api/internal/sync"
 )
@@ -30,6 +32,14 @@ type cycleBatchPersisterV1Bridge struct {
 	titleSlug       string
 	queue           *persist.BatchQueue
 	drainCtxTimeout time.Duration // typique 60s, configurable pour tests
+
+	// metaDB : handle metadata RW PARTAGÉ (celui de main.go via OpenReadWriteShared).
+	// Sert à la résolution autonome des noms d'assets (peuplement asset_translations)
+	// ET à l'enrich registry au primary write V2. nil → feature off (tests).
+	metaDB *sql.DB
+	// assetFetcher : source des noms d'assets (token-free, API publique GameCMS).
+	// nil → résolution désactivée (parité legacy / gating caller).
+	assetFetcher assetnames.Fetcher
 }
 
 // NewCycleBatchPersister construit un CycleBatchPersister V2.
@@ -42,10 +52,14 @@ type cycleBatchPersisterV1Bridge struct {
 //
 // playerBySlug est passé via CycleBatch.PlayerBySlug à chaque PersistCycle
 // (cf. RunPersist → orchestrator cycle.go).
+// metaDB : handle metadata RW partagé (résolution + enrich noms d'assets) ; nil → off.
+// assetFetcher : source des noms d'assets (token-free) ; nil → résolution désactivée.
 func NewCycleBatchPersister(
 	titleSlug string,
 	queue *persist.BatchQueue,
 	drainTimeout time.Duration,
+	metaDB *sql.DB,
+	assetFetcher assetnames.Fetcher,
 ) CycleBatchPersister {
 	if drainTimeout <= 0 {
 		drainTimeout = 60 * time.Second
@@ -54,6 +68,8 @@ func NewCycleBatchPersister(
 		titleSlug:       titleSlug,
 		queue:           queue,
 		drainCtxTimeout: drainTimeout,
+		metaDB:          metaDB,
+		assetFetcher:    assetFetcher,
 	}
 }
 
@@ -67,6 +83,20 @@ func NewCycleBatchPersister(
 func (p *cycleBatchPersisterV1Bridge) PersistCycle(ctx context.Context, batch CycleBatch) error {
 	if p.queue == nil {
 		return fmt.Errorf("PersistCycle: BatchQueue nil (le pipeline V2 nécessite une queue partagée)")
+	}
+
+	// Résolution autonome des noms d'assets (primary write) : peuple
+	// metadata.asset_translations pour les assets neufs du cycle AVANT le
+	// build/enrich des batches, pour que BuildBatchFromRawForV2WithMeta écrive un
+	// vrai nom en registry dès le 1er passage. Best-effort, gated (nil → no-op).
+	if p.assetFetcher != nil && p.metaDB != nil {
+		statsList := make([]map[string]any, 0, len(batch.Matches))
+		for _, sd := range batch.Matches {
+			if sd.Stats != nil {
+				statsList = append(statsList, sd.Stats)
+			}
+		}
+		syncpkg.ResolveAssetsFromStats(ctx, p.assetFetcher, p.metaDB, p.titleSlug, statsList)
 	}
 
 	submitted := 0
@@ -93,8 +123,9 @@ func (p *cycleBatchPersisterV1Bridge) PersistCycle(ctx context.Context, batch Cy
 		// T2 (parité V1) : V2 Phase 3 fetche désormais les highlights via
 		// SharedMatchFetcher. On les propage à BuildBatchFromRawForV2 pour
 		// qu'elles soient insérées en même temps que le reste.
-		matchBatch, err := syncpkg.BuildBatchFromRawForV2(
+		matchBatch, err := syncpkg.BuildBatchFromRawForV2WithMeta(
 			ctx,
+			p.metaDB,
 			p.titleSlug,
 			fetcherProfile.Gamertag,
 			fetcherProfile.XUID,

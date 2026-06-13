@@ -64,11 +64,36 @@ func BuildBatchFromRawForV2(
 	filmMajorVer int,
 	hasHighlights bool,
 ) (*persist.MatchBatch, error) {
+	return BuildBatchFromRawForV2WithMeta(ctx, nil, titleSlug, gamertag, xuid, matchID,
+		statsJSON, skillData, highlightChunk, filmMajorVer, hasHighlights)
+}
+
+// BuildBatchFromRawForV2WithMeta est identique à BuildBatchFromRawForV2 mais
+// ENRICHIT le registry depuis metadata.asset_translations (résolution des noms
+// d'assets restés en UUID brut) AVANT la construction du batch — le chemin V2
+// n'enrichissait pas, écrivant donc l'UUID tel quel dans match_registry. metaDB
+// est le handle metadata RW partagé ; nil → enrich no-op (parité legacy).
+func BuildBatchFromRawForV2WithMeta(
+	ctx context.Context,
+	metaDB *sql.DB,
+	titleSlug, gamertag, xuid, matchID string,
+	statsJSON map[string]any,
+	skillData map[string]*MatchSkillData,
+	highlightChunk []byte,
+	filmMajorVer int,
+	hasHighlights bool,
+) (*persist.MatchBatch, error) {
 	fm := &fetchedMatch{MatchID: matchID}
 
 	reg, err := ExtractRegistry(statsJSON, gamertag)
 	if err != nil {
 		return nil, fmt.Errorf("BuildBatchFromRawForV2 ExtractRegistry: %w", err)
+	}
+	// Enrich registry (UUID → nom) depuis asset_translations au primary write V2.
+	// Best-effort : metaDB nil ou asset absent → fallback historique conservé.
+	if eerr := EnrichRegistryFromMetadata(ctx, metaDB, reg); eerr != nil {
+		slog.WarnContext(ctx, "BuildBatchFromRawForV2: enrich registry non-bloquant",
+			"match_id", matchID, "err", eerr)
 	}
 	fm.Registry = reg
 
