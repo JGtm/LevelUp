@@ -32,6 +32,7 @@
 | 2 | Services title-agnostic (canonical-typé) | 🟡 | 70 | non |
 | 3a | Cleanup DTO (`*Raw` hors domain, nullable) | 🟡 | 50 | non |
 | 1.8 | Outillage diag Lab | ⬜ | 0 | **différé** (hors fenêtre) |
+| 1.9 | Watcher multi-title routing (présence→poll→sync) | ⬜ | 0 | **oui** (2e titre, runtime) — détection déjà title-agnostic ; reste = threader `titleSlug` (fetcher/PlayerWatcher/CoordinatorRequest) |
 
 ---
 
@@ -118,6 +119,19 @@
 | `MatchExpectedStats` 100% nullable | 🟡 | `HasExpectedData`/`HasHistAvg` (bool), `HistMatchCount` (int), `HistModeCategory` (string) non-nullable |
 | `MatchScoreboardRow` 100% nullable | 🟡 | `XUID`/`Gamertag`/`IsMe`/`OutcomeLabel`/... non-nullable |
 
+## Phase 1.9 — Watcher multi-title routing · ⬜ (0%) — **NOUVELLE 2026-06-13, prérequis 2e titre (runtime)**
+
+> Ajoutée après audit du poller de présence en jeu (2026-06-13). Spec détaillée dans le master ([PLAN_TITLE_AGNOSTIC_REFACTORING.md](PLAN_TITLE_AGNOSTIC_REFACTORING.md) §Phase 1.9). Hors fenêtre minimale 0→3a : à exécuter quand le 2e titre est enregistré, mais la plomberie peut se poser dès maintenant derrière une garde `DefaultSlug` (testée avec un Registry à 2 titres fixtures).
+
+| Item | Statut | Evidence / next action |
+|---|:-:|---|
+| Détection présence title-agnostic | ✅ | `watcher/daemon.go::makePresenceHandler` → `titleReg.MatchPresence(titleID)` → `title/matcher.go::MatchByXboxTitleID` itère tous les titres ; `TitleDescriptor` porte `XboxTitleID` + `SteamAppID` |
+| `MatchFetcher` par titre (resolver) | ⬜ | 1 seul `HaloMatchFetcher` partagé (`cmd/server/main.go` ~l.1728 → `DaemonConfig.MatchFetcher`) → API Halo only. Cible : `MatchFetcherResolver.FetcherFor(slug)`, fallback Warn+Idle si titre sans fetcher |
+| `PlayerWatcher.activeTitleSlug` | ⬜ | pas de champ titre ; `OnPresenceActive` ne propage pas le `td.Slug` matché |
+| `TitleSlug` dans `MatchRequest`/`CoordinatorRequest`/`TriggerSync` | ⬜ | `{Gamertag, XUID, MatchIDs}` sans titre → sync sur titre défaut |
+| Garde compat `DefaultSlug` + non-régression mono-titre | ⬜ | titleSlug vide → `halo_infinite` (même garde que 1.6) ; `WatcherStatus` byte-identique à 1 titre |
+| Steam fallback title-aware (`MatchBySteamAppID`) | ⬜→**optionnel** | `SteamPoller` non câblé (note W8) → hors scope tant que non activé |
+
 ---
 
 ## Hors fenêtre minimale (différé, tracké pour mémoire)
@@ -126,6 +140,31 @@
 - **Phase 4** — sync flags génériques (FieldKey-based) (5-6 j).
 - **Phase 5** — frontend canonical-aware + `<FeatureGate>` (7-9 j).
 - **Phase 1.8** — outillage diag Lab (3-4 j, différable même dans la fenêtre).
+
+## Périphérie multi-titre (audit 2026-06-14) — registre B (hors chemin data-lecture)
+
+> Index complet : [PLAN_MULTITITRE_INDEX.md](PLAN_MULTITITRE_INDEX.md) (`MT-01..MT-26`). Specs : [PLAN_MULTITITRE_PERIPHERY.md](PLAN_MULTITITRE_PERIPHERY.md) (`PMT-1..13` + `EXT-1.5/2/5`). **⚠ Pointeurs datés — RE-VÉRIFIER avant exécution.** Méthode : `expand → parity-gate → contract` + oracle double (parité Halo golden + `synthetic_test_title`).
+
+| Phase | Objet | Axes | Sév. | Statut | Prérequis |
+|---|---|---|:-:|:-:|---|
+| PMT-1 | Hosts d'ingestion title-aware | MT-01 | blocker | ⬜ | racine |
+| PMT-2 | Acquisition auth par titre | MT-02 | blocker | ⬜ | racine |
+| PMT-3 | Scheduler/sync titleSlug threading | MT-11 | blocker | ⬜ | PMT-1/2 |
+| PMT-4 | Settings par titre + config Discord | MT-04, MT-26 | major | ⬜ | PMT-3 |
+| PMT-5 | Canonicalisation Outcome | MT-06 | major | ⬜ | — |
+| PMT-6 | Achievements par titre | MT-08 | major | ⬜ | PMT-1/2 |
+| PMT-7 | World-stats / leaderboard par titre | MT-03 | major | ⬜ | PMT-3 |
+| PMT-8 | Cycle de vie du titre (Status) | MT-22 | major | ⬜ | — |
+| PMT-9 | Registre migrations + schema_version par titre | MT-23 | major | ⬜ | PMT-3 |
+| PMT-10 | Observabilité — dimension titre | MT-05 | major | ⬜ | — |
+| PMT-11 | Discord notifications (contenu) | MT-26 | major | ⬜ | — |
+| PMT-12 | Garde-fous & validateurs | MT-21, MT-09, MT-12 | major | ⬜ | après PMT-3 |
+| PMT-13 | Mineurs & bénins (décision documentée) | MT-24, MT-25, MT-20 | minor | ⬜ | — |
+| EXT-1.5 | Extension Phase 1.5 (metadata/ops/seed/notif) | MT-16/10/18/17 | major | ⬜ | PMT-3 |
+| EXT-2 | Extension Phase 2 (career/LUSR/extraction/prestige) | MT-07/15/14/19 | major | ⬜ | PMT-3 |
+| EXT-5 | Extension Phase 5 (slug constants + tables Halo front) | MT-12/13 | major | ⬜ | Phase 5 |
+
+**Bloquants 2ᵉ titre (récap)** : Phase 1.5 (DDL) + PMT-1 (hosts) + PMT-2 (auth) + PMT-3 (écriture par titre). Le reste suit.
 
 ## Prochaines 3 actions concrètes (quand on démarre l'exécution)
 
