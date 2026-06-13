@@ -1,3 +1,27 @@
+## [2026-06-13] Phase 3b — e1cb35ab CONFIDENTIEL (secret) — À déployer
+
+**Statut** : Code + tests verts. Branche `feat/oauth-e1cb35ab-confidential`. VPS env posé (secret e1cb35ab). À déployer + vérifier.
+
+**Décision** : user a créé un nouveau client_secret sur e1cb35ab (le redirect Web l'exige). Refonte vs Phase 3 initiale : `SecretToSend()` renvoie TOUJOURS le `rawSecret` (garde `ClientID != LevelUpClientID` SUPPRIMÉE) — e1cb35ab confidentiel doit recevoir le secret ; le retry AADSTS90023 d'oauth_refresh couvre les RT publics (device flow). Seam : `ResolveAzureOAuthClient` + `TokenCaptureClientID` lisent `LEVELUP_OAUTH_CLIENT_ID` (défaut e1cb35ab). Golden tests inversés (e1cb35ab envoie le secret). VPS `.env.local` : `SPNKR_AZURE_CLIENT_SECRET`=secret e1cb35ab (len 40) + `LEVELUP_OAUTH_CLIENT_ID=e1cb35ab` (conteneur courant garde l'ancien env jusqu'au restart deploy → bascule atomique code+env).
+
+**Prochaine étape** : commit + push + deploy → vérif live (login e1cb35ab + secret + PKCE → dashboard ; watcher refresh OK après re-login) ; re-login des 4 joueurs ; puis supprimer « Spartan Graph » 39829f7a. Re-créer `.ai/AUDIT_AZURE_APPS.md` (supprimé au revert).
+
+---
+
+## [2026-06-13] Phase 3 e1cb35ab REVERTÉE : redirect Web Azure = secret obligatoire (AADSTS70002) — Revert complété
+
+**Statut** : Phase 3 (bascule SSO vers e1cb35ab) déployée puis **revertée** (`57585b2da`) après échec live. SSO restauré sous 39829f7a + PKCE (vérifié : login → dashboard, watcher refresh OK).
+
+**Finding (à retenir)** : un redirect URI en plateforme **« Web »** sur une app Azure = client **CONFIDENTIEL** → `client_secret` OBLIGATOIRE pour l'Authorization Code Flow (PKCE est additif, pas un substitut). `AADSTS70002: must include a 'client_secret'`. « Allow public client flows: Enabled » ne concerne QUE le device flow/ROPC, PAS le flux web. Donc e1cb35ab (redirect Web) ET 39829f7a (redirect Web) sont tous deux confidentiels pour le SSO web. Mon hypothèse « e1cb35ab public → PKCE sans secret » était fausse.
+
+**Impact pendant la fenêtre cassée** : nouveaux logins KO (AADSTS70002) + watcher refresh des 4 joueurs KO (AADSTS70000 « token issued for different client id », car oauth_refresh tentait e1cb35ab sur des RT émis par 39829f7a). Aucun RT re-émis sous e1cb35ab (tous les logins ont échoué) → revert = restauration propre, RT 39829f7a intacts.
+
+**Phase 3 corrigée (si on reprend)** : (1) créer un NOUVEAU client_secret sur e1cb35ab (valeur de l'ancien non récupérable) ; (2) retirer la garde `ClientID != LevelUpClientID` dans `SecretToSend` (envoyer le secret aussi pour e1cb35ab) — l'oauth_refresh garde le retry AADSTS90023 pour les RT publics ; (3) poser ce secret sur le VPS ; (4) redeploy + re-login des 4 joueurs. Gain réel = 1 app au lieu de 2 (supprimer « Spartan Graph »). Sinon : rester sur 39829f7a (marche). Décision user en attente.
+
+**NB** : le revert a supprimé `.ai/AUDIT_AZURE_APPS.md` — à re-créer si on reprend (findings dans cette entrée + conversation).
+
+---
+
 ## [2026-06-13] Backfill world : affichage temps réel + persist-au-Ctrl-C (+ lazy resolution) — Complété (validé)
 
 **Statut** : Code + tests verts (service/analysis/cmd), vet clean, exe rebuildé, validé. Commit sur `main` (sans push) — la branche a glissé (l'agent auth a fait atterrir son travail sur main) ; mes commits world `4c8491060`+`363ec4ab6` y étaient déjà. NB : changements lazy aussi sur `feat/oauth-pkce` (`8d471d697`).
