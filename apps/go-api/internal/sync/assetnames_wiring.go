@@ -18,6 +18,7 @@ package sync
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -186,4 +187,85 @@ func (s opsAssetStore) Upsert(ctx context.Context, assetType, assetID, lang, nam
 func isMissingTableErr(err error) bool {
 	msg := err.Error()
 	return strings.Contains(msg, "does not exist") || strings.Contains(msg, "Table with name")
+}
+
+// assetSweepMaxAssets : cap du balayage périodique. Large car la traîne d'assets
+// distincts est bornée (centaines) ; ExistsFresh rend les balayages suivants ~no-op.
+const assetSweepMaxAssets = 500
+
+// unresolvedAssetColumns : colonnes (id, name, version) de match_registry par type
+// d'asset, pour le balayage des assets restés en UUID (name == id).
+var unresolvedAssetColumns = []struct{ kind, idCol, nameCol, verCol string }{
+	{games.AssetKindPlaylist, "playlist_id", "playlist_name", "playlist_version_id"},
+	{games.AssetKindMap, "map_id", "map_name", "map_version_id"},
+	{games.AssetKindPair, "pair_id", "pair_name", "pair_version_id"},
+	{games.AssetKindGameVariant, "game_variant_id", "game_variant_name", "game_variant_version_id"},
+}
+
+// ResolveUnresolvedAssetNames balaye match_registry pour les assets restés en UUID
+// (name == id) et résout leurs noms localisés via le fetcher → asset_translations.
+// FILET de convergence pour la traîne : un asset dont la résolution a échoué/été
+// capée au sync ET qui n'est jamais rejoué n'est sinon jamais re-tenté. À appeler
+// en BASSE fréquence (cron catalogue hebdo). Best-effort : ExistsFresh skippe ceux
+// déjà au dictionnaire → balayages suivants ~no-op. nil → no-op.
+func ResolveUnresolvedAssetNames(
+	ctx context.Context,
+	fetcher assetnames.Fetcher,
+	metaDB, sharedDB *sql.DB,
+	titleSlug string,
+) (assetnames.Result, error) {
+	var zero assetnames.Result
+	if fetcher == nil || metaDB == nil || sharedDB == nil {
+		return zero, nil
+	}
+	var refs []assetnames.AssetRef
+	for _, c := range unresolvedAssetColumns {
+		rs, err := collectUnresolvedRefs(ctx, sharedDB, c.kind, c.idCol, c.nameCol, c.verCol)
+		if err != nil {
+			slog.WarnContext(ctx, "asset sweep: collecte échouée", "asset_type", c.kind, "err", err)
+			continue
+		}
+		refs = append(refs, rs...)
+	}
+	if len(refs) == 0 {
+		return zero, nil
+	}
+	res, _ := assetnames.Resolve(ctx, fetcher, opsAssetStore{db: metaDB}, refs,
+		assetnames.Config{TitleID: titleSlug, MaxAssets: assetSweepMaxAssets})
+	slog.InfoContext(ctx, "asset sweep terminé", "title_slug", titleSlug,
+		"requested", res.Requested, "resolved", res.Resolved, "skipped", res.Skipped,
+		"capped", res.Capped, "errors", res.Errors)
+	return res, nil
+}
+
+// collectUnresolvedRefs liste les (asset_id, version_id) DISTINCTS d'un type dont
+// le nom est resté en UUID (name == id ou NULL). Fallback sans version_id si la
+// colonne n'existe pas (schéma ancien). Pur (lecture seule).
+func collectUnresolvedRefs(ctx context.Context, sharedDB *sql.DB, kind, idCol, nameCol, verCol string) ([]assetnames.AssetRef, error) {
+	q := fmt.Sprintf(
+		`SELECT DISTINCT %s, COALESCE(%s, '') FROM match_registry
+		 WHERE %s IS NOT NULL AND %s <> '' AND (%s IS NULL OR %s = %s)`,
+		idCol, verCol, idCol, idCol, nameCol, nameCol, idCol)
+	rows, err := sharedDB.QueryContext(ctx, q)
+	if err != nil {
+		// Fallback sans la colonne version_id.
+		q2 := fmt.Sprintf(
+			`SELECT DISTINCT %s, '' FROM match_registry
+			 WHERE %s IS NOT NULL AND %s <> '' AND (%s IS NULL OR %s = %s)`,
+			idCol, idCol, idCol, nameCol, nameCol, idCol)
+		rows, err = sharedDB.QueryContext(ctx, q2)
+		if err != nil {
+			return nil, err
+		}
+	}
+	defer rows.Close()
+	var out []assetnames.AssetRef
+	for rows.Next() {
+		var id, ver string
+		if scanErr := rows.Scan(&id, &ver); scanErr != nil {
+			return nil, scanErr
+		}
+		out = append(out, assetnames.AssetRef{AssetType: kind, AssetID: strings.TrimSpace(id), VersionID: strings.TrimSpace(ver)})
+	}
+	return out, rows.Err()
 }

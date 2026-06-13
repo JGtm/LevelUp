@@ -958,6 +958,14 @@ func main() {
 			} else {
 				slog.InfoContext(cctx, "catalog_refresh_cron: playlists expansées", "module", logging.ModuleCatalog, "children_enqueued", n)
 			}
+			// Filet traîne : balaye les noms d'assets restés en UUID (jamais résolus
+			// + jamais rejoués → jamais re-tentés in-sync) vers asset_translations.
+			// Self-gated par LEVELUP_SYNC_RESOLVE_ASSETS. Best-effort (n'empêche pas le drain).
+			if res, serr := reg.ResolveUnresolvedAssetNames(cctx, ts); serr != nil {
+				slog.WarnContext(cctx, "catalog_refresh_cron: balayage noms d'assets échoué (best-effort)", "module", logging.ModuleCatalog, "err", serr)
+			} else if res.Resolved > 0 || res.Errors > 0 {
+				slog.InfoContext(cctx, "catalog_refresh_cron: noms d'assets balayés", "module", logging.ModuleCatalog, "resolved", res.Resolved, "errors", res.Errors)
+			}
 			return reg.RunCatalogUGCDrain(cctx, ts)
 		}, "", 0)
 		schedulerWG.Add(1)

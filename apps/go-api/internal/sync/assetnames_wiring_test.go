@@ -4,6 +4,7 @@ package sync
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -87,6 +88,77 @@ func TestResolveCycleAssets_SkipsAlreadyKnown(t *testing.T) {
 	// en-US n'a eu lieu (skip-fresh effectif) : le seul appel possible est fr-FR.
 	if c := fetcher.calls["playlist-known-uuid"]; c > 1 {
 		t.Errorf("fetch calls = %d, want <= 1 (en-US déjà frais → pas re-fetché)", c)
+	}
+}
+
+// setupSharedWithRegistry crée une shared :memory: avec match_registry minimal.
+func setupSharedWithRegistry(t *testing.T) *sql.DB {
+	t.Helper()
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open shared: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+	if _, err := db.Exec(`CREATE TABLE match_registry (
+		match_id VARCHAR,
+		playlist_id VARCHAR, playlist_name VARCHAR, playlist_version_id VARCHAR,
+		map_id VARCHAR, map_name VARCHAR, map_version_id VARCHAR,
+		pair_id VARCHAR, pair_name VARCHAR, pair_version_id VARCHAR,
+		game_variant_id VARCHAR, game_variant_name VARCHAR, game_variant_version_id VARCHAR)`); err != nil {
+		t.Fatalf("create match_registry: %v", err)
+	}
+	return db
+}
+
+// TestResolveUnresolvedAssetNames_SweepsRegistry : le balayage trouve une playlist
+// restée en UUID (name == id) dans match_registry et la résout vers asset_translations,
+// même si elle n'est dans AUCUN nouveau match (filet pour la traîne).
+func TestResolveUnresolvedAssetNames_SweepsRegistry(t *testing.T) {
+	ctx := context.Background()
+	meta := setupMetaWithTranslations(t)
+	shared := setupSharedWithRegistry(t)
+
+	// playlist non résolue (name == id), absente d'asset_translations + une résolue.
+	if _, err := shared.Exec(`INSERT INTO match_registry (match_id, playlist_id, playlist_name) VALUES
+		('m1', 'pl-orphan', 'pl-orphan'),
+		('m2', 'playlist-known-uuid', 'Quick Play')`); err != nil {
+		t.Fatalf("seed registry: %v", err)
+	}
+
+	fetcher := &fakeAssetFetcher{
+		names: map[string]string{"pl-orphan|fr-FR": "Événement", "pl-orphan|en-US": "Event"},
+		calls: map[string]int{},
+	}
+	res, err := ResolveUnresolvedAssetNames(ctx, fetcher, meta, shared, "halo_infinite")
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	if res.Resolved != 1 {
+		t.Fatalf("Resolved = %d, want 1 (%+v)", res.Resolved, res)
+	}
+	// L'orphelin est désormais au dictionnaire (2 langues).
+	var n int
+	if err := meta.QueryRow(`SELECT COUNT(*) FROM asset_translations WHERE asset_id = 'pl-orphan'`).Scan(&n); err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 2 {
+		t.Fatalf("asset_translations[pl-orphan] = %d rows, want 2", n)
+	}
+	// La playlist résolue (name != id) n'a pas été fetchée.
+	if c := fetcher.calls["playlist-known-uuid"]; c != 0 {
+		t.Errorf("playlist résolue re-fetchée %d fois, want 0", c)
+	}
+}
+
+// TestResolveUnresolvedAssetNames_Disabled : fetcher nil → no-op.
+func TestResolveUnresolvedAssetNames_Disabled(t *testing.T) {
+	ctx := context.Background()
+	meta := setupMetaWithTranslations(t)
+	shared := setupSharedWithRegistry(t)
+	_, _ = shared.Exec(`INSERT INTO match_registry (match_id, playlist_id, playlist_name) VALUES ('m1', 'x', 'x')`)
+	res, err := ResolveUnresolvedAssetNames(ctx, nil, meta, shared, "halo_infinite")
+	if err != nil || res.Requested != 0 {
+		t.Fatalf("nil fetcher: %+v err=%v", res, err)
 	}
 }
 
