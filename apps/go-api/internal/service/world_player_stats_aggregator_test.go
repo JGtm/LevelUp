@@ -86,6 +86,66 @@ func buildMatch(xuid, seasonPath, playlist string, outcome, kills, deaths, assis
 	}
 }
 
+// playerBlock fabrique le bloc Players[] d'un joueur (réutilisé pour des matchs multi-joueurs).
+func playerBlock(xuid string, outcome, kills, deaths, assists int) map[string]any {
+	return map[string]any{
+		"PlayerId": "xuid(" + xuid + ")",
+		"Outcome":  float64(outcome),
+		"PlayerTeamStats": []any{
+			map[string]any{"Stats": map[string]any{"CoreStats": map[string]any{
+				"Kills": float64(kills), "Deaths": float64(deaths), "Assists": float64(assists),
+			}}},
+		},
+		"ParticipationInfo": map[string]any{"TimePlayed": "PT10M"},
+	}
+}
+
+// TestAggregatePlayer_SharedMatchOrderIndependent prouve le fix archi : la résolution
+// xuid est PARESSEUSE (pas de PrepareWorldPlayers) et l'attribution d'un match partagé
+// par deux joueurs reste correcte quel que soit l'ordre. X est scanné d'abord → le
+// match est fetché 1× et mis en cache avec TOUS ses participants. Y, résolu APRÈS, lit
+// sa stat depuis le cache (aucun re-fetch, aucun sous-comptage).
+func TestAggregatePlayer_SharedMatchOrderIndependent(t *testing.T) {
+	const xX, xY = "1001", "1002"
+	shared := map[string]any{
+		"MatchInfo": map[string]any{
+			"SeasonId": "Csr/Seasons/CsrSeason13-2.json",
+			"Playlist": map[string]any{"AssetId": tArena},
+		},
+		"Players": []any{
+			playerBlock(xX, 2, 12, 4, 2), // X : Win, 12 kills
+			playerBlock(xY, 3, 7, 9, 1),  // Y : Loss, 7 kills
+		},
+	}
+	src := &fakeMatchSource{
+		history: map[string][]string{
+			"xuid(" + xX + ")": {"shared"},
+			"xuid(" + xY + ")": {"shared"},
+		},
+		stats: map[string]map[string]any{"shared": shared},
+	}
+	agg := NewWorldStatsAggregator(src, &fakeResolver{m: map[string]string{"X": xX, "Y": xY}},
+		WorldStatsAggregatorConfig{TargetSeasons: map[string]bool{"csrseason13-2": true}})
+
+	outX, err := agg.AggregatePlayer(context.Background(), "X") // scanné EN PREMIER
+	if err != nil {
+		t.Fatalf("X: %v", err)
+	}
+	outY, err := agg.AggregatePlayer(context.Background(), "Y") // résolu APRÈS le cache
+	if err != nil {
+		t.Fatalf("Y: %v", err)
+	}
+	if len(outX) != 1 || outX[0].Kills != 12 || outX[0].WinCount != 1 {
+		t.Errorf("X: %+v, want 1 bucket 12 kills / 1 win", outX)
+	}
+	if len(outY) != 1 || outY[0].Kills != 7 || outY[0].LossCount != 1 {
+		t.Errorf("Y attribué depuis le cache: %+v, want 1 bucket 7 kills / 1 loss", outY)
+	}
+	if src.fetched != 1 {
+		t.Errorf("match partagé fetché %d fois, want 1 (cache partagé, pas de re-fetch)", src.fetched)
+	}
+}
+
 // TestAggregatePlayer_SeasonWindow valide la pagination + le filtre TargetSeasons
 // + le bucketing par playlist sur un historique multi-saison.
 func TestAggregatePlayer_SeasonWindow(t *testing.T) {

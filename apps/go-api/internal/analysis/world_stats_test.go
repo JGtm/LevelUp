@@ -144,3 +144,50 @@ func TestAccumulateWorldStats(t *testing.T) {
 		t.Errorf("12-1/arena = %+v, want 1 match / 1 DNF", prevArena)
 	}
 }
+
+// TestExtractWorldPlayersFromMatch vérifie les deux modes : nil/vide = TOUS les
+// participants (mode backfill, résolution paresseuse → cache indépendant de l'ordre) ;
+// ensemble non vide = restriction au sous-ensemble ciblé.
+func TestExtractWorldPlayersFromMatch(t *testing.T) {
+	const arena = "edfef3ac-9cbe-4fa2-b949-8f29deafd483"
+	mkPlayer := func(xuid string, kills int) map[string]any {
+		return map[string]any{
+			"PlayerId": "xuid(" + xuid + ")",
+			"Outcome":  float64(2),
+			"PlayerTeamStats": []any{
+				map[string]any{"Stats": map[string]any{"CoreStats": map[string]any{
+					"Kills": float64(kills), "Deaths": float64(5), "Assists": float64(3),
+				}}},
+			},
+			"ParticipationInfo": map[string]any{"TimePlayed": "PT10M"},
+		}
+	}
+	match := map[string]any{
+		"MatchInfo": map[string]any{
+			"SeasonId": "Csr/Seasons/CsrSeason13-2.json",
+			"Playlist": map[string]any{"AssetId": arena},
+		},
+		"Players": []any{mkPlayer("100", 10), mkPlayer("200", 20), mkPlayer("300", 30)},
+	}
+
+	// nil → tous les participants extraits (cache complet, ordre-indépendant).
+	season, all := ExtractWorldPlayersFromMatch(match, nil)
+	if season != "csrseason13-2" {
+		t.Errorf("season = %q, want csrseason13-2", season)
+	}
+	if len(all) != 3 {
+		t.Fatalf("nil worldXuids → %d participants, want 3 (tous)", len(all))
+	}
+	if all["200"].Kills != 20 {
+		t.Errorf("kills xuid 200 = %d, want 20", all["200"].Kills)
+	}
+
+	// Sous-ensemble → restriction (économie de parsing quand les cibles sont connues).
+	_, sub := ExtractWorldPlayersFromMatch(match, map[string]bool{"200": true})
+	if len(sub) != 1 {
+		t.Fatalf("restriction {200} → %d participants, want 1", len(sub))
+	}
+	if _, ok := sub["100"]; ok {
+		t.Error("xuid 100 hors restriction ne devrait pas être extrait")
+	}
+}

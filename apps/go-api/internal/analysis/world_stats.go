@@ -109,10 +109,18 @@ func ExtractPlayerMatchStat(matchJSON map[string]any, xuid string) (PlayerMatchS
 	return PlayerMatchStat{}, false
 }
 
-// ExtractWorldPlayersFromMatch extrait, en UNE passe, la stat de CHAQUE joueur
-// mondial (xuid ∈ worldXuids) présent dans le match. Clé du dédup : un seul
-// GetMatchStats traite jusqu'à 8 joueurs cibles (ils s'affrontent en permanence).
-// Retourne la saison normalisée du match + map xuid→stat (joueurs mondiaux présents).
+// ExtractWorldPlayersFromMatch extrait, en UNE passe, la stat de CHAQUE participant
+// du match, indexée par xuid. Clé du dédup : un seul GetMatchStats sert ensuite TOUS
+// les joueurs cibles présents (les tops s'affrontent en permanence), quel que soit
+// l'ordre où on les traite — l'appelant lit `out[xuid]` au moment où ce joueur est
+// agrégé. Retourne la saison normalisée du match + map xuid→stat.
+//
+// worldXuids RESTREINT optionnellement l'extraction à un sous-ensemble (xuid ciblés) :
+// utile pour économiser le parsing quand l'ensemble des cibles est connu d'avance.
+// nil ou vide = extraire TOUS les participants — le mode par défaut du backfill, qui
+// résout les xuid paresseusement (joueur par joueur) : le cache doit alors contenir
+// la stat de chaque participant indépendamment de qui a déjà été résolu, sinon un
+// joueur résolu APRÈS la mise en cache du match perdrait sa stat (sous-comptage).
 func ExtractWorldPlayersFromMatch(matchJSON map[string]any, worldXuids map[string]bool) (season string, out map[string]PlayerMatchStat) {
 	season, playlistID, players, ok := matchHeader(matchJSON)
 	if !ok {
@@ -126,8 +134,11 @@ func ExtractWorldPlayersFromMatch(matchJSON map[string]any, worldXuids map[strin
 		}
 		id, _ := pm["PlayerId"].(string)
 		xuid := xuidFromPlayerID(id)
-		if xuid == "" || !worldXuids[xuid] {
+		if xuid == "" {
 			continue
+		}
+		if len(worldXuids) > 0 && !worldXuids[xuid] {
+			continue // restriction explicite à un sous-ensemble de cibles
 		}
 		out[xuid] = playerStatFrom(pm, season, playlistID)
 	}

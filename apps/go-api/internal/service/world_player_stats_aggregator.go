@@ -87,6 +87,12 @@ type WorldStatsAggregatorConfig struct {
 	// et on n'atteint jamais la saison profonde. Zéro = pas de filtre date (fallback
 	// historique : saison courante en tête, ou pas de calendrier).
 	SeasonStart, SeasonEnd time.Time
+	// ProbeDelay : délai entre deux sondes de la recherche dichotomique de l'offset
+	// (findWindowStartOffset). Les ~log2(profondeur) sondes count=1 partent en rafale
+	// au démarrage de CHAQUE joueur → elles brûlent le burst halostats (~10 req/15s) et
+	// déclenchent des 429. Un léger espacement lisse la rafale. 0 = pas de throttle
+	// (tests bas volume) ; le CLI met ~350ms.
+	ProbeDelay time.Duration
 }
 
 func (c *WorldStatsAggregatorConfig) withDefaults() {
@@ -101,12 +107,14 @@ func (c *WorldStatsAggregatorConfig) withDefaults() {
 	}
 }
 
-// cachedMatch : un match déjà fetché (GetMatchStats), extrait pour TOUS les joueurs
-// mondiaux présents. Permet de ne fetcher chaque match qu'UNE fois même s'il
-// concerne jusqu'à 8 de nos cibles (les tops s'affrontent en permanence).
+// cachedMatch : un match déjà fetché (GetMatchStats), extrait pour TOUS ses
+// participants (indexé par xuid). Permet de ne fetcher chaque match qu'UNE fois même
+// s'il concerne plusieurs de nos cibles (les tops s'affrontent en permanence) — et,
+// l'extraction n'étant plus filtrée par un ensemble pré-résolu, l'attribution est
+// indépendante de l'ordre où les joueurs sont résolus (cf. résolution paresseuse).
 type cachedMatch struct {
 	season  string
-	players map[string]analysis.PlayerMatchStat // xuid -> stat (joueurs mondiaux présents)
+	players map[string]analysis.PlayerMatchStat // xuid -> stat (tous les participants)
 }
 
 // WorldStatsAggregator agrège les stats brutes par (saison, playlist) pour un
@@ -117,11 +125,13 @@ type WorldStatsAggregator struct {
 	resolver WorldXUIDResolver
 	cfg      WorldStatsAggregatorConfig
 
-	mu             sync.Mutex
-	cache          map[string]cachedMatch // matchID -> match extrait (dédup fetch)
-	worldXuids     map[string]bool        // xuid des joueurs cibles (extraction multi)
-	xuidByGamertag map[string]string      // gamertag -> xuid (pré-résolu, PrepareWorldPlayers)
-	sf             singleflight.Group     // dédup STRICT des fetchs concurrents par matchID
+	mu    sync.Mutex
+	cache map[string]cachedMatch // matchID -> match extrait pour TOUS ses participants (dédup fetch)
+	// xuidByGamertag : cache des résolutions gamertag->xuid (dédup intra-run). Rempli
+	// paresseusement par AggregatePlayer (1 résolution/joueur, au moment où on le traite)
+	// ou en amont par PrepareWorldPlayers (warm-up optionnel, utilisé par Run).
+	xuidByGamertag map[string]string
+	sf             singleflight.Group // dédup STRICT des fetchs concurrents par matchID
 }
 
 // NewWorldStatsAggregator construit l'agrégateur. `src` doit être un client
@@ -131,15 +141,17 @@ func NewWorldStatsAggregator(src WorldMatchSource, resolver WorldXUIDResolver, c
 	return &WorldStatsAggregator{
 		src: src, resolver: resolver, cfg: cfg,
 		cache:          map[string]cachedMatch{},
-		worldXuids:     map[string]bool{},
 		xuidByGamertag: map[string]string{},
 	}
 }
 
-// PrepareWorldPlayers résout EN AMONT les xuid de tous les gamertags cibles et
-// alimente l'ensemble worldXuids — indispensable pour que l'extraction d'un match
-// récupère TOUS les joueurs mondiaux présents (et pas juste celui en cours).
-// À appeler avant AggregatePlayer. Best-effort : retourne les erreurs de résolution.
+// PrepareWorldPlayers résout EN AMONT les xuid de tous les gamertags cibles (warm-up
+// OPTIONNEL). L'extraction d'un match récupère désormais TOUS ses participants, donc
+// l'attribution ne dépend plus d'un ensemble pré-résolu : ce batch n'est plus requis
+// pour la correction (AggregatePlayer résout paresseusement). Il reste utilisé par
+// Run (résolution groupée + collecte des erreurs en amont). Le backfill CLI, lui,
+// privilégie l'opération lourde (le fetch) et résout joueur par joueur sans bloquer.
+// Best-effort : retourne les erreurs de résolution.
 func (a *WorldStatsAggregator) PrepareWorldPlayers(ctx context.Context, gamertags []string) []error {
 	var errs []error
 	first := true
@@ -168,16 +180,16 @@ func (a *WorldStatsAggregator) PrepareWorldPlayers(ctx context.Context, gamertag
 		}
 		a.mu.Lock()
 		a.xuidByGamertag[gt] = xuid
-		a.worldXuids[xuid] = true
 		a.mu.Unlock()
 	}
 	return errs
 }
 
 // AggregatePlayer collecte l'historique du joueur et accumule ses stats par
-// (saison, playlist). L'xuid doit avoir été pré-résolu (PrepareWorldPlayers) ;
-// sinon il est résolu à la volée (le joueur ne profitera pas des matchs déjà
-// cachés AVANT sa résolution — d'où l'intérêt du Prepare amont).
+// (saison, playlist). Résout le xuid PARESSEUSEMENT (cache intra-run + résolveur) :
+// pour fetcher les matchs de X il suffit du xuid de X, donc on ne bloque pas sur la
+// résolution des autres. L'attribution depuis un match déjà caché reste correcte même
+// si X est résolu APRÈS coup : le cache contient la stat de TOUS les participants.
 func (a *WorldStatsAggregator) AggregatePlayer(ctx context.Context, gamertag string) ([]domain.WorldPlayerSeasonStats, error) {
 	a.mu.Lock()
 	xuid, ok := a.xuidByGamertag[gamertag]
@@ -189,7 +201,6 @@ func (a *WorldStatsAggregator) AggregatePlayer(ctx context.Context, gamertag str
 		}
 		a.mu.Lock()
 		a.xuidByGamertag[gamertag] = x
-		a.worldXuids[x] = true
 		a.mu.Unlock()
 		xuid = x
 	}
@@ -227,7 +238,9 @@ func (a *WorldStatsAggregator) getMatch(ctx context.Context, matchID string) (ca
 		}); e != nil {
 			return cachedMatch{}, fmt.Errorf("match stats %s: %w", matchID, e)
 		}
-		season, players := analysis.ExtractWorldPlayersFromMatch(raw, a.worldXuids)
+		// nil = extraire TOUS les participants : le cache devient indépendant de
+		// l'ordre de résolution (résolution paresseuse joueur par joueur).
+		season, players := analysis.ExtractWorldPlayersFromMatch(raw, nil)
 		fresh := cachedMatch{season: season, players: players}
 		a.mu.Lock()
 		a.cache[matchID] = fresh
@@ -337,13 +350,25 @@ func (a *WorldStatsAggregator) collectPlayerMatches(ctx context.Context, xuid st
 // de paginer linéairement tous les matchs récents pour atteindre une vieille saison :
 // ~log2(maxOffset) requêtes au lieu de ~(profondeur/25) pages. Borné à maxOffset
 // (fenêtre au-delà du scan → offset = maxOffset → boucle vide → 0 collecté, attendu).
-// Sonde GetMatchHistory(start=mid, count=1) : 1 requête légère par étape.
+// Sonde GetMatchHistory(start=mid, count=1) : 1 requête légère par étape. Un léger
+// délai (cfg.ProbeDelay) espace les sondes pour ne pas brûler le burst halostats.
 func (a *WorldStatsAggregator) findWindowStartOffset(ctx context.Context, player string, maxOffset int) (int, error) {
 	lo, hi := 0, maxOffset
+	first := true
 	for lo < hi {
 		if err := ctx.Err(); err != nil {
 			return lo, err
 		}
+		// Throttle : 1re sonde immédiate, puis espacement. Évite la rafale de
+		// ~log2(profondeur) count=1 qui déclenchait des 429 au démarrage du joueur.
+		if !first && a.cfg.ProbeDelay > 0 {
+			select {
+			case <-ctx.Done():
+				return lo, ctx.Err()
+			case <-time.After(a.cfg.ProbeDelay):
+			}
+		}
+		first = false
 		mid := (lo + hi) / 2
 		var hist []syncpkg.MatchHistoryEntry
 		if e := a.withRetry(ctx, func() error {
