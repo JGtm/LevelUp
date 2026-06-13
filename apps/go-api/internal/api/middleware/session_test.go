@@ -33,7 +33,16 @@ func runWithSession(t *testing.T, policy middleware.SecureCookiePolicy, tlsOn bo
 	t.Helper()
 	store := newSessionStore(t)
 	mw := middleware.WithSession(store, policy)
-	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+	// Le handler rend la session significative pour qu'un cookie soit posé : c'est
+	// le flag Secure de ce cookie qu'on assert (une session anonyme vierge n'en
+	// pose plus, cf. anti-clobber).
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s := middleware.GetSession(r.Context()); s != nil {
+			u := "tester"
+			s.Username = &u
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	if tlsOn {
 		req.TLS = &tls.ConnectionState{}
@@ -112,17 +121,11 @@ func TestWithSession_CreatesSessionWhenNoCookie(t *testing.T) {
 	if capturedID == "" {
 		t.Fatal("session ID should not be empty")
 	}
-	// Cookie doit être posé
-	cookies := w.Result().Cookies()
-	var found bool
-	for _, c := range cookies {
-		if c.Name == session.CookieName {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Fatal("session cookie should be set")
+	// Nouveau comportement : une session anonyme vierge ne pose PAS de cookie
+	// (anti-clobber du cookie d'auth + anti-spam disque). Le cookie n'apparaît
+	// qu'une fois la session significative (login, OAuth, préférence…).
+	if c := sessionCookie(w); c != nil {
+		t.Errorf("session anonyme vierge ne doit pas poser de cookie, got %+v", c)
 	}
 }
 
