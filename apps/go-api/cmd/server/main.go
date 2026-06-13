@@ -296,6 +296,18 @@ func main() {
 			"prod_guard", "LEVELUP_ENV=production refuserait de démarrer dans cet état")
 	}
 
+	// Foot-gun rate-limit (incident "Too Many Requests" prod) : le limiter applicatif
+	// (httprate) clé sur RemoteAddr. En production derrière un reverse proxy SANS
+	// LEVELUP_TRUST_PROXY_HEADERS=true, chi RealIP n'est pas câblé → RemoteAddr reste
+	// l'IP du proxy (127.0.0.1) pour TOUS les clients → un unique bucket partagé →
+	// 429 en masse sous trafic public. Non-fatal (une expo prod directe sans proxy est
+	// un setup légitime où TrustProxyHeaders=false est correct), mais on alerte.
+	if cfg.IsProduction() && !cfg.TrustProxyHeaders {
+		slog.Warn("rate-limit keyé sur RemoteAddr et LEVELUP_TRUST_PROXY_HEADERS non activé : derrière un reverse proxy, tous les clients partagent un seul bucket (429 en masse)",
+			"rate_limit_rpm", cfg.RateLimitRPM,
+			"recommendation", "si le serveur est derrière nginx/Caddy/Traefik, définir LEVELUP_TRUST_PROXY_HEADERS=true")
+	}
+
 	// Foot-gun ART (revue P1 2026-06-02) : LEVELUP_PERSIST_BATCH=0 désactive le
 	// chemin d'écriture batch INSERT-only et réactive le chemin legacy
 	// (ON CONFLICT DO UPDATE sur les tables shared match_registry/match_participants)

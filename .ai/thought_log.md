@@ -1,3 +1,17 @@
+## [2026-06-13] Fix « Too Many Requests » (429) en masse sur le VPS — rate-limit keyé sur l'IP du proxy — Complété (code, pending déploiement)
+
+**Statut** : Branche `fix/rate-limit-proxy-ip`. Code + tests + doc livrés ; tests middleware/config verts, build `cmd/server` OK (CGO). Le correctif racine est une variable d'env à poser sur le VPS (pas encore appliquée).
+
+**Root cause (confirmée par lecture de code)** : le rate-limiter applicatif (`internal/api/middleware/rate_limit.go`, `httprate.LimitByIP`) clé sur `r.RemoteAddr`. `chi RealIP` ne réécrit l'IP réelle du client (X-Real-IP / X-Forwarded-For) que si `cfg.TrustProxyHeaders` est vrai (`server.go:165-167`). Or `LEVELUP_TRUST_PROXY_HEADERS` a pour défaut `false` (`config.go`) et le service `levelup` de prod (`docker-compose.yml`) ne le définit nulle part. Derrière nginx (qui pose pourtant `X-Real-IP $remote_addr` de façon autoritaire), `RemoteAddr` = `127.0.0.1` pour TOUS les visiteurs → un unique bucket de 120 req/min partagé par tout le trafic → page « Too Many Requests » (body texte brut de `http.Error`, renvoyé jusque sur le document HTML) en masse sous trafic public. Symptôme exact rapporté : page entière = ce seul texte, alors que « beaucoup d'IP distinctes ». nginx prod n'a aucun `limit_req` → le 429 vient bien du Go.
+
+**Décision technique** : (1) Fix racine = config VPS `LEVELUP_TRUST_PROXY_HEADERS=true` + restart `docker compose up -d levelup` (sûr : nginx assainit X-Real-IP ; design voulu revue P0 2026-06-02 ; effets de bord cookie Secure + HSTS désirables en prod). (2) Durcissement anti-régression : warning boot non-fatal dans `cmd/server/main.go` si `IsProduction() && !TrustProxyHeaders` (non ajouté à `SecurityWarnings`/`Validate` car une expo prod DIRECTE sans proxy est légitime et ne doit pas fail-fast). (3) Limite rendue configurable via `LEVELUP_RATE_LIMIT_RPM` (réutilise `getEnvInt`) et défaut relevé 120→300 (`DefaultRateLimitRPM`, un SPA data-heavy émet des dizaines d'appels /api/v1/* par page même par vraie IP) ; signature `RateLimit(demoMode, rpm)` avec fallback si `rpm<=0`. (4) Doc : `.env.local.example` (bloc PRODUCTION corrigé `=true` + nouvelle var) + commentaire `env_file` de `docker-compose.yml`.
+
+**Résultats observés** : `go test ./internal/api/middleware/... ./internal/config/...` verts (tests rejet/bypass passés à un seuil bas explicite pour rester déterministes malgré le défaut 300 ; nouveau test `DefaultWhenNonPositive`). Build `cmd/server` + `internal/api` OK avec CGO. Aucun artefact parasite committé.
+
+**Prochaine étape** : appliquer la var d'env sur le VPS (action user, brève coupure) puis vérifier en live (plus de 429 sous charge normale, logs `slog` montrant la vraie IP client au lieu de 127.0.0.1). Commit en attente d'autorisation.
+
+---
+
 ## [2026-06-13] Résolution AUTONOME des noms d'assets + catalogue au sync (UUID bruts / hors catalogue) — Complété
 
 **Statut** : Branche `feat/autonomous-asset-resolution`. Mécanique livrée (noms), **activée par défaut** (kill-switch d'urgence `LEVELUP_SYNC_RESOLVE_ASSETS=0`). Tests verts (sync 81s, v2, halo, scheduler, assetnames) + vet + front typecheck/lint.

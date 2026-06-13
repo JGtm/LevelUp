@@ -26,6 +26,12 @@ const DefaultSessionSecret = "CHANGE_ME_IN_PRODUCTION" // pragma: allowlist secr
 // de session en production. 32 octets = 256 bits, aligné sur la sortie HMAC-SHA256.
 const minSessionSecretLen = 32
 
+// DefaultRateLimitRPM est le plafond par défaut du rate-limiter applicatif
+// (requêtes/minute/IP). 300 donne de la marge à un SPA data-heavy qui émet
+// plusieurs dizaines d'appels /api/v1/* par page, une fois le bucket keyé sur la
+// vraie IP client (LEVELUP_TRUST_PROXY_HEADERS=true derrière un proxy).
+const DefaultRateLimitRPM = 300
+
 // AppConfig centralise la configuration de l'application.
 type AppConfig struct {
 	RepoRoot        string
@@ -112,6 +118,12 @@ type AppConfig struct {
 	// Lit LEVELUP_WEB_DIST (posé par le Dockerfile/compose → /app/apps/web/dist).
 	// Vide en dev (Vite sert le front sur :5173) → la SPA n'est pas montée.
 	WebDistDir string
+	// RateLimitRPM : plafond de requêtes par minute et par IP du rate-limiter
+	// applicatif (httprate). Lit LEVELUP_RATE_LIMIT_RPM. Défaut : DefaultRateLimitRPM.
+	// ATTENTION : le limiter clé sur RemoteAddr — derrière un reverse proxy, il faut
+	// LEVELUP_TRUST_PROXY_HEADERS=true, sinon toutes les requêtes partagent le bucket
+	// de l'IP du proxy (127.0.0.1) et le site sature en 429 sous trafic public.
+	RateLimitRPM int
 }
 
 // BackupConfig centralise la configuration du backup périodique.
@@ -171,6 +183,7 @@ func Load() (*AppConfig, error) {
 		InstanceLocked:    parseBoolEnv(getEnvOrDefault("LEVELUP_INSTANCE_LOCKED", "")),
 		CookieSecure:      parseCookieSecureMode(getEnvOrDefault("LEVELUP_COOKIE_SECURE", "")),
 		WebDistDir:        getEnvOrDefault("LEVELUP_WEB_DIST", ""),
+		RateLimitRPM:      getEnvInt("LEVELUP_RATE_LIMIT_RPM", DefaultRateLimitRPM),
 	}
 	appSettingsPath := getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))
 	cfg.UserTimezone = loadUserTimezone(appSettingsPath)

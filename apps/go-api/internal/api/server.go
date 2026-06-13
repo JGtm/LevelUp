@@ -170,7 +170,7 @@ func NewRouter(
 	r.Use(middleware.RequestID)
 	r.Use(middleware.CORS(cfg.CORSOrigins))
 	r.Use(middleware.CSRF(cfg.CORSOrigins))
-	r.Use(middleware.RateLimit(cfg.DemoMode))
+	r.Use(middleware.RateLimit(cfg.DemoMode, cfg.RateLimitRPM))
 	r.Use(middleware.SlogLogger)
 	r.Use(chimiddleware.Compress(5))
 	r.Use(middleware.WithSession(sessionStore, cookiePolicy))
