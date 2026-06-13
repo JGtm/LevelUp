@@ -30,6 +30,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
+	"levelup/go-api/internal/ops"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
@@ -280,6 +281,18 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// EnrichRegistryFromMetadata (metadata saine). Le nettoyage one-shot des
 	// GUID hérités d'un incident ART metadata se fait via `cmd/backfill_registry_names`
 	// (CLI explicite), pas un heal post-sync automatique.
+
+	// Catalogue in-sync (chemin V1/CLI) : inscrit les nouvelles playlists/maps/
+	// paires/variantes dans les tables catalogue (zéro réseau) → résorbe les
+	// « playlists hors catalogue » sans action admin. Gaté sur la résolution de
+	// noms (e.assetFetcher) ; V2 gère le catalogue dans son persister (et son
+	// engine post-sync n'a pas de metaDB → skip propre ici). Best-effort.
+	if e.assetFetcher != nil && e.metaDB != nil && sharedDB != nil && len(insertedIDs) > 0 {
+		if _, cerr := ops.CatalogRefreshFromRegistry(ctx, e.metaDB, sharedDB, e.titleSlug); cerr != nil {
+			slog.WarnContext(ctx, "post-sync: refresh catalogue non-bloquant",
+				"gamertag", e.gamertag, "err", cerr)
+		}
+	}
 
 	// 1.6 Citations — pipeline primaire, pas un heal. Traite tous les matchs
 	// absents de match_citations (LEFT JOIN IS NULL). Le sentinel "_processed"

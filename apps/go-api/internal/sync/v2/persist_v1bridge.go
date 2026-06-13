@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/assetnames"
+	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/persist"
 	syncpkg "levelup/go-api/internal/sync"
 )
@@ -40,6 +41,9 @@ type cycleBatchPersisterV1Bridge struct {
 	// assetFetcher : source des noms d'assets (token-free, API publique GameCMS).
 	// nil → résolution désactivée (parité legacy / gating caller).
 	assetFetcher assetnames.Fetcher
+	// sharedDB : accès lazy au handle shared courant (post-swap), pour le refresh
+	// catalogue in-sync (résorbe « playlists hors catalogue »). nil → off.
+	sharedDB func() *sql.DB
 }
 
 // NewCycleBatchPersister construit un CycleBatchPersister V2.
@@ -54,12 +58,14 @@ type cycleBatchPersisterV1Bridge struct {
 // (cf. RunPersist → orchestrator cycle.go).
 // metaDB : handle metadata RW partagé (résolution + enrich noms d'assets) ; nil → off.
 // assetFetcher : source des noms d'assets (token-free) ; nil → résolution désactivée.
+// sharedDB : getter lazy du handle shared courant (refresh catalogue in-sync) ; nil → off.
 func NewCycleBatchPersister(
 	titleSlug string,
 	queue *persist.BatchQueue,
 	drainTimeout time.Duration,
 	metaDB *sql.DB,
 	assetFetcher assetnames.Fetcher,
+	sharedDB func() *sql.DB,
 ) CycleBatchPersister {
 	if drainTimeout <= 0 {
 		drainTimeout = 60 * time.Second
@@ -70,6 +76,7 @@ func NewCycleBatchPersister(
 		drainCtxTimeout: drainTimeout,
 		metaDB:          metaDB,
 		assetFetcher:    assetFetcher,
+		sharedDB:        sharedDB,
 	}
 }
 
@@ -160,6 +167,19 @@ func (p *cycleBatchPersisterV1Bridge) PersistCycle(ctx context.Context, batch Cy
 	if drainErr := p.queue.Drain(drainCtx); drainErr != nil {
 		return fmt.Errorf("PersistCycle: drain (submitted=%d parse_errors=%d): %w",
 			submitted, parseErrors, drainErr)
+	}
+
+	// Catalogue in-sync : après persist (les nouveaux matchs sont en shared),
+	// inscrit playlists/maps/paires/variantes dans les tables catalogue (zéro
+	// réseau) → résorbe « playlists hors catalogue » sans action admin. Gaté
+	// comme la résolution de noms ; uniquement si de nouveaux matchs ont été
+	// persistés. Best-effort.
+	if p.assetFetcher != nil && p.metaDB != nil && p.sharedDB != nil && submitted > 0 {
+		if shared := p.sharedDB(); shared != nil {
+			if _, cerr := ops.CatalogRefreshFromRegistry(ctx, p.metaDB, shared, p.titleSlug); cerr != nil {
+				slog.WarnContext(ctx, "PersistCycle: refresh catalogue non-bloquant", "err", cerr)
+			}
+		}
 	}
 
 	slog.InfoContext(ctx, "PersistCycle terminé",
