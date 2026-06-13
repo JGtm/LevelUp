@@ -241,8 +241,8 @@ func TestSentinel_TokenCaptureNoTxtFile(t *testing.T) {
 var clientSecretPattern = regexp.MustCompile(`SPNKR_AZURE_CLIENT_SECRET`)
 
 var allowedClientSecretReaders = map[string]string{
-	"internal/platform/auth/oauth_refresh.go":               "Microsoft OAuth v2 token endpoint exige client_secret pour certains tenants (legacy SPNKR app).",
-	"internal/platform/auth/auth_code.go":                   "Authorization Code Flow : POST /token exige client_secret pour le tenant SPNKR legacy.",
+	"internal/platform/auth/azure_credentials.go":           "SOURCE UNIQUE des credentials Azure (seam, Phase 1) : seul lecteur prod de SPNKR_AZURE_CLIENT_SECRET. auth_code.go / oauth_refresh.go délèguent désormais à ResolveAzureOAuthClient.",
+	"internal/platform/auth/azure_credentials_test.go":      "Golden tests du seam : t.Setenv pour caractériser la résolution client/secret (public vs confidentiel).",
 	"internal/platform/auth/oauth_refresh_internal_test.go": "Tests du module canonique OAuth : t.Setenv pour exercer le retry public AADSTS90023 (plan anti-bruit 2026-06-11).",
 	"internal/platform/auth/sentinel_test.go":               "Ce fichier.",
 }

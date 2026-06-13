@@ -40,15 +40,9 @@ import (
 )
 
 const (
-	// defaultClientID : Azure app PUBLIQUE "halo-tools" partagée avec les watchers du
-	// parc. Fallback si SPNKR_AZURE_CLIENT_ID absent. Le serveur lit SPNKR_AZURE_CLIENT_ID
-	// en priorité (oauth_refresh.go) — ce binaire doit utiliser le même client_id pour
-	// que le token capturé soit refreshable. Source unique = auth.HaloToolsClientID
-	// (qui pilote aussi IsPublicAzureClient → pas de client_secret envoyé, AADSTS90023).
-	defaultClientID = auth.HaloToolsClientID // #nosec G101 -- app publique
-	deviceCodeURL   = "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode"
-	tokenURL        = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
-	xboxScopes      = "Xboxlive.signin Xboxlive.offline_access"
+	deviceCodeURL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode"
+	tokenURL      = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
+	xboxScopes    = "Xboxlive.signin Xboxlive.offline_access"
 
 	authTimeout           = 15 * time.Minute
 	pollSlowDownIncrement = 5
@@ -74,13 +68,11 @@ type tokenResponse struct {
 	ErrorDesc    string `json:"error_description"`
 }
 
-// resolveClientID retourne SPNKR_AZURE_CLIENT_ID si défini, sinon defaultClientID.
-// Doit correspondre au client_id utilisé par le serveur dans oauth_refresh.go.
+// resolveClientID délègue à la source unique des credentials Azure (seam).
+// Doit correspondre au client_id du refresh serveur — cf. auth.TokenCaptureClientID
+// (couplage : un refresh_token est lié à son client émetteur).
 func resolveClientID() string {
-	if v := os.Getenv("SPNKR_AZURE_CLIENT_ID"); v != "" {
-		return v
-	}
-	return defaultClientID
+	return auth.TokenCaptureClientID()
 }
 
 func main() {

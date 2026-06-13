@@ -103,13 +103,22 @@ func (h *XboxOAuthHandler) LoginRedirect(w http.ResponseWriter, r *http.Request)
 	}
 	state := hex.EncodeToString(stateBytes)
 	sess.OAuthState = state
+
+	// PKCE (RFC 7636) : verifier secret en session, challenge S256 dans l'URL.
+	verifier, challenge, err := auth_platform.GeneratePKCE()
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "pkce_gen_failed", "génération PKCE échouée")
+		return
+	}
+	sess.OAuthCodeVerifier = verifier
+
 	if err := h.sessionStore.Save(sess); err != nil {
 		slog.ErrorContext(r.Context(), "auth_xbox_oauth: save session échec", "err", err)
 		writeError(r.Context(), w, http.StatusInternalServerError, "session_save_failed", "sauvegarde session échouée")
 		return
 	}
 
-	url := auth_platform.BuildAuthorizeURL(h.redirectURI, state)
+	url := auth_platform.BuildAuthorizeURL(h.redirectURI, state, challenge)
 	slog.InfoContext(r.Context(), "auth_xbox_oauth: redirect vers Microsoft /authorize",
 		"redirect_uri", h.redirectURI)
 	http.Redirect(w, r, url, http.StatusFound)
@@ -129,12 +138,15 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// PKCE : capturer le code_verifier AVANT que validateCallbackParams ne le consomme.
+	codeVerifier := sess.OAuthCodeVerifier
+
 	code, ok := h.validateCallbackParams(w, r, sess)
 	if !ok {
 		return
 	}
 
-	tokenResult, exchangeResult, ok := h.exchangeCallbackTokens(w, r, code)
+	tokenResult, exchangeResult, ok := h.exchangeCallbackTokens(w, r, code, codeVerifier)
 	if !ok {
 		return
 	}
@@ -177,6 +189,7 @@ func (h *XboxOAuthHandler) validateCallbackParams(w http.ResponseWriter, r *http
 		errDesc := r.URL.Query().Get("error_description")
 		slog.WarnContext(r.Context(), "auth_xbox_oauth: erreur Microsoft", "error", errCode, "description", errDesc)
 		sess.OAuthState = ""
+		sess.OAuthCodeVerifier = ""
 		_ = h.sessionStore.Save(sess)
 		writeError(r.Context(), w, http.StatusBadRequest, "oauth_denied", errDesc)
 		return "", false
@@ -191,7 +204,8 @@ func (h *XboxOAuthHandler) validateCallbackParams(w http.ResponseWriter, r *http
 
 	// Vérification CSRF : state doit matcher celui stocké en session.
 	expected := sess.OAuthState
-	sess.OAuthState = "" // consommer (one-shot)
+	sess.OAuthState = ""        // consommer (one-shot)
+	sess.OAuthCodeVerifier = "" // PKCE one-shot (déjà capturé par le Callback)
 	_ = h.sessionStore.Save(sess)
 	if expected == "" || state != expected {
 		slog.WarnContext(r.Context(), "auth_xbox_oauth: state mismatch — possible CSRF",
@@ -206,9 +220,9 @@ func (h *XboxOAuthHandler) validateCallbackParams(w http.ResponseWriter, r *http
 // Persiste aussi le refresh_token Microsoft dans le MultiUserTokenStore (ADR 0023)
 // pour que les refresh ultérieurs n'aient pas besoin d'un nouveau flow interactif.
 func (h *XboxOAuthHandler) exchangeCallbackTokens(
-	w http.ResponseWriter, r *http.Request, code string,
+	w http.ResponseWriter, r *http.Request, code, codeVerifier string,
 ) (*auth_platform.AuthCodeResult, *auth_platform.ExchangeResult, bool) {
-	tokenResult, err := auth_platform.ExchangeAuthorizationCode(r.Context(), code, h.redirectURI)
+	tokenResult, err := auth_platform.ExchangeAuthorizationCode(r.Context(), code, h.redirectURI, codeVerifier)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "auth_xbox_oauth: échange code échec", "err", err)
 		writeError(r.Context(), w, http.StatusInternalServerError, "code_exchange_failed", err.Error())

@@ -21,7 +21,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -43,7 +42,7 @@ type oauthTokenResponse struct {
 }
 
 // ExchangeRefreshToken échange un OAuth v2 refresh_token contre un access_token Microsoft.
-// Utilise SPNKR_AZURE_CLIENT_ID si défini (tokens legacy), sinon LevelUpClientID.
+// Client/secret résolus par ResolveAzureOAuthClient (source unique).
 // Retourne ("", nil) si le refresh_token est vide.
 //
 // Note : Microsoft rotate le refresh_token à chaque usage. Le token tourné est
@@ -95,21 +94,16 @@ func ExchangeRefreshTokenWithRotation(ctx context.Context, refreshToken string) 
 
 	defer func() { recordOAuthRefreshOutcome(err) }()
 
-	clientID := os.Getenv("SPNKR_AZURE_CLIENT_ID")
-	if clientID == "" {
-		clientID = LevelUpClientID
-	}
+	client := ResolveAzureOAuthClient()
+	clientID := client.ClientID
 
-	// App confidentielle supposée si SPNKR_AZURE_CLIENT_SECRET est défini :
-	// 1re tentative avec le secret (les RT émis par le flux web confidentiel
-	// en ont besoin). Si Azure répond AADSTS90023 (RT émis par un flux client
-	// PUBLIC — ex. token-capture/device code — le secret est alors interdit),
-	// retenter UNE fois sans secret. Stateless : 1 round-trip de plus par
-	// refresh concerné (~toutes les 3h30), aucun état à mémoriser.
-	secret := ""
-	if s := os.Getenv("SPNKR_AZURE_CLIENT_SECRET"); s != "" && clientID != LevelUpClientID {
-		secret = s
-	}
+	// 1re tentative avec le secret confidentiel si la garde public/confidentiel
+	// l'autorise (cf. AzureOAuthClient.SecretToSend) : les RT émis par le flux web
+	// confidentiel en ont besoin. Si Azure répond AADSTS90023 (RT émis par un flux
+	// client PUBLIC — ex. token-capture/device code — le secret est alors interdit),
+	// retenter UNE fois sans secret. Stateless : 1 round-trip de plus par refresh
+	// concerné (~toutes les 3h30), aucun état à mémoriser.
+	secret := client.SecretToSend()
 
 	accessToken, rotatedRefreshToken, err = postTokenExchange(ctx, clientID, refreshToken, secret)
 	if err != nil && secret != "" {
