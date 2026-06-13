@@ -65,6 +65,13 @@ function RootLayout() {
         navigate({ to: '/login' })
         return
       }
+      // Déjà connecté mais sur une page d'auth (lien direct, ancien onglet, retour
+      // arrière…) → renvoyer vers le dashboard plutôt que d'afficher le formulaire
+      // de login « quoi qu'il arrive ».
+      if (data.current_username && (path === '/login' || path === '/register')) {
+        navigate({ to: '/' })
+        return
+      }
     }
 
     if (data.setup_required) {

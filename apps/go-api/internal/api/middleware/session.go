@@ -28,9 +28,20 @@ func WithSession(store *session.Store, policy SecureCookiePolicy) func(http.Hand
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			sess, loaded := loadOrCreate(r, store)
-			// Le cookie est posé AVANT le handler (header) : l'ID de session ne change
-			// pas même si le handler enrichit la session (login, OAuth state…).
-			setCookie(w, store, sess, policy.Secure(r))
+			// Le cookie est posé via un wrapper, au moment de l'écriture de la réponse,
+			// et UNIQUEMENT si la session mérite d'être conservée (déjà existante, ou
+			// devenue significative pendant la requête : login, OAuth state, préférence…).
+			// CRUCIAL : une requête anonyme jetable (bot, sonde, asset, ou simple
+			// navigation non connectée) ne pose donc AUCUN cookie → elle ne peut plus
+			// ÉCRASER le cookie d'auth du navigateur (bug : utilisateur déconnecté car
+			// son cookie pointait soudain sur une session anonyme).
+			sw := &sessionResponseWriter{
+				ResponseWriter: w,
+				store:          store,
+				sess:           sess,
+				loaded:         loaded,
+				secure:         policy.Secure(r),
+			}
 			ctx := context.WithValue(r.Context(), sessionKey{}, sess)
 			if sess.HaloTokens != nil {
 				xuid := ""
@@ -39,12 +50,11 @@ func WithSession(store *session.Store, policy SecureCookiePolicy) func(http.Hand
 				}
 				ctx = ctxkeys.WithHaloAuth(ctx, sess.HaloTokens, xuid)
 			}
-			next.ServeHTTP(w, r.WithContext(ctx))
-			// Persistance APRÈS le handler : on n'écrit sur disque que pour une session
-			// déjà persistée (TTL glissant) ou devenue significative pendant la requête
-			// (login, OAuth, préférence…). Une session anonyme vierge n'est jamais
-			// persistée → plus de spam d'un fichier par requête sans cookie
-			// (bots/sondes/assets) dans data/sessions/.
+			next.ServeHTTP(sw, r.WithContext(ctx))
+			sw.commitCookie() // au cas où le handler n'a rien écrit
+			// Persistance disque : seulement pour une session déjà persistée (TTL
+			// glissant) ou devenue significative. Une session anonyme vierge n'est
+			// jamais écrite → plus de spam dans data/sessions/.
 			if loaded || sess.IsMeaningful() {
 				_ = store.Touch(sess)
 			}
@@ -82,6 +92,50 @@ func loadOrCreate(r *http.Request, store *session.Store) (*domain.SessionData, b
 		}
 	}
 	return store.New(), false
+}
+
+// sessionResponseWriter diffère la pose du cookie de session jusqu'à la première
+// écriture de la réponse, et ne le pose QUE si la session mérite d'être conservée
+// (déjà existante sur disque, ou devenue significative pendant la requête). Une
+// requête anonyme jetable ne pose ainsi aucun cookie et ne peut pas écraser le
+// cookie d'auth du navigateur.
+type sessionResponseWriter struct {
+	http.ResponseWriter
+	store       *session.Store
+	sess        *domain.SessionData
+	loaded      bool
+	secure      bool
+	wroteHeader bool
+}
+
+// commitCookie pose le cookie (une seule fois, avant l'écriture du statut) si la
+// session est significative ou déjà persistée. Idempotent.
+func (w *sessionResponseWriter) commitCookie() {
+	if w.wroteHeader {
+		return
+	}
+	w.wroteHeader = true
+	if w.loaded || w.sess.IsMeaningful() {
+		setCookie(w.ResponseWriter, w.store, w.sess, w.secure)
+	}
+}
+
+func (w *sessionResponseWriter) WriteHeader(status int) {
+	w.commitCookie()
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *sessionResponseWriter) Write(b []byte) (int, error) {
+	w.commitCookie()
+	return w.ResponseWriter.Write(b)
+}
+
+// Flush propage le Flush sous-jacent (compression, streaming) si supporté.
+func (w *sessionResponseWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		w.commitCookie()
+		f.Flush()
+	}
 }
 
 // setCookie pose le cookie de session signé sur la réponse.

@@ -1,3 +1,19 @@
+## [2026-06-13] Déconnexions répétées : cookie d'auth écrasé par session anonyme — Complété
+
+**Statut** : Code + tests verts (middleware + handlers OAuth + tsc/eslint/build front). À déployer + vérifier live.
+
+**Problème (user : « je dois toujours me reconnecter », « l'app renvoie au login quoi qu'il arrive »)** : diagnostic live confirmé. La session d'auth d'hier (`e78666ab`, jgtm_xbox) existe TOUJOURS sur disque et est valide, mais le cookie navigateur pointait sur `58ec20c2` = une session ANONYME (auth_ready false, pas de username, juste un oauth_state). Donc le bootstrap renvoyait `current_username:null` → redirection /login, alors que la vraie session existait.
+
+**Cause racine** : `middleware.WithSession` posait le cookie de session sur CHAQUE requête (`setCookie` inconditionnel). Dès qu'une requête créait une nouvelle session (anonyme jetable, OU ré-initiation d'un /auth/xbox/login dont le cookie courant n'était pas trouvé), le `Set-Cookie` ÉCRASAIT le cookie d'auth du navigateur → l'utilisateur basculait sur une session anonyme → déconnecté. Bug pré-existant (pas introduit par le nettoyage sessions, mais non corrigé par lui).
+
+**Décision technique** : (1) Backend — wrapper `sessionResponseWriter` qui diffère la pose du cookie jusqu'à l'écriture de la réponse et ne le pose QUE si la session est `loaded` (déjà persistée, TTL glissant) OU `IsMeaningful()` (devenue significative pendant la requête). Une requête anonyme jetable ne pose donc AUCUN cookie → ne peut plus écraser le cookie d'auth. Le wrapper pose le cookie au `WriteHeader`/`Write` (donc avant le 302 du redirect OAuth, une fois l'OAuthState posé → flux SSO intact ; Flush propagé). (2) Frontend — `__root.tsx` : un utilisateur déjà connecté (`current_username`) qui atterrit sur `/login` ou `/register` est renvoyé au dashboard (ne plus afficher le formulaire de login « quoi qu'il arrive »).
+
+**Résultats observés** : build CGO + tests middleware (anonyme → 0 cookie/0 fichier ; significative → cookie+fichier) + handlers OAuth verts ; tsc + eslint + build prod front verts. Tests Secure-flag adaptés (handler rend la session significative pour qu'un cookie soit posé).
+
+**Prochaine étape** : déployer + vérifier en live (login Xbox → dashboard, puis revisite → reste connecté, le cookie d'auth n'est plus écrasé par les requêtes anonymes).
+
+---
+
 ## [2026-06-12] Nettoyage sessions : anti-spam data/sessions + purge périodique — Complété
 
 **Statut** : Code + 3 tests verts (domain + middleware). À déployer + purge ponctuelle VPS.
