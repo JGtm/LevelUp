@@ -1,3 +1,39 @@
+## [2026-06-14] Registre multi-titre complet : index + plan périphérie (26 axes, audit + 16 specs re-vérifiées) — Complété (doc)
+
+**Statut** : Édition doc-only (aucun code Go modifié, pas de commit). Branche active courante (a bougé vers `fix/reauth-banner-transient-false-positive` en session). 4 fichiers : 2 créés (`.ai/PLAN_MULTITITRE_INDEX.md`, `.ai/PLAN_MULTITITRE_PERIPHERY.md`) + 2 édités (master `PLAN_TITLE_AGNOSTIC_REFACTORING.md` §0bis + notes 1.5/2/5, tracker).
+
+**Contexte** : suite à l'audit multi-titre (workflow `wpdukv3sr` : 22 axes classés + 4 du critique de complétude + Discord trouvé à la main), le user a demandé de TOUT répertorier dans un index, en exigeant que les infos ne soient PAS prises telles quelles mais **re-vérifiées à l'exécution**. Méthode user (factorisation → vérif → swap) durcie après challenge en `expand → parity-gate → contract` avec **oracle DOUBLE obligatoire** : (a) parité Halo golden byte-identique + (b) fixture `synthetic_test_title` (sinon abstraction cosmétique à une seule implémentation). Bloquants d'abord ; PR mince par axe (pas de méga-swap, cf. revert `steps_shared.go`).
+
+**Décision technique** : (1) Index = registre A (axes déjà planifiés) + registre B (`MT-01..MT-26` : sévérité/statut gap-partiel/phase/évidence) + carte des phases + DAG + doctrine RE-VÉRIFIER. (2) Périphérie = 16 specs détaillées (`PMT-1..13` + `EXT-1.5/2/5`) **re-vérifiées contre HEAD** par 16 agents (workflows `wbmehosde`+relance `wmlrszolc`), assemblées **mécaniquement via PowerShell** depuis les JSON de sortie (zéro transcription manuelle → zéro dérive d'octets). (3) Doctrine RE-VÉRIFIER en tête des deux nouveaux docs + master §0bis.
+
+**Résultats observés** : la re-vérification a corrigé l'audit initial (weapon_labels DDL :564-568 ≠ :463-640 ; `discovery_client.go:20` = UGC host pas stats ; audience Spartan `urn:343:s3:services` manquée = 4e leg auth ; `BuildEngine` = câblage UNIQUE watcher+scheduler+HTTP ; `MetadataDBPath(slug)` isole déjà par chemin → MT-16 devient une décision). Bloquants hors data-path = `PMT-1` (hosts) + `PMT-2` (auth) + `PMT-3` (écriture sync), racine du DAG. Incident : 9/16 agents rate-limités au 1er run → relance en 2 lots séquentiels → 16/16.
+
+**Conclusion / prochaine étape** : registre figé comme CARTE datée (pas vérité). Aucune implémentation lancée. Prochain pas concret = Phase 1.5 (DDL, vrai 1er bloquant déjà tracké) puis PMT-1/PMT-2/PMT-3, chacun en passe supervisée (re-vérif + oracle double).
+
+---
+
+## [2026-06-14] RE FRAME-deser de "object-multiplayer-properties-component" (i9) — structure bit-exacte identifiée — Complété (analyse)
+
+**Tâche** : déterminer le vrai FRAME-deser (descriptor+0x28) du composant le plus complexe (obje i9), entre les deux candidats `FUN_14080c1f8` (gros décodeur d'entité) et `FUN_1407d4c94` (R(1)+R(5)+blob).
+
+**Chaîne résolue (Ghidra, base 0x140000000)** : string `143c99238` → thunk `14064c6f0` (LEA;RET) → descriptor `143d0b9a8` (10 slots ×8o). Slot +0x28 = `1404f5308` (walker générique, fragment `FUN_1404f521f`, dispatch par tag 4-char). Le **vrai deser du composant** est le wrapper `FUN_142f03998` (offset per-instance `*int(p1+8)*600`, clear flag, puis `FUN_1407d4c94(bitstream, inst+0x4c)`) — câblé via vtable (COMPUTED_CALL depuis `FUN_142f0e528`, refs DATA `14568feb0`/`143e0dfd0`). 2e wrapper `FUN_140f53308` → même deser, sortie +0x2b4.
+
+**Verdict** : le FRAME-deser est **`FUN_1407d4c94`** (candidat 2), PAS le gros décodeur `FUN_14080c1f8` (qui est un autre record 0x328o avec variant_name + stat-loops + position/quat — pas ce composant).
+
+**Structure bit-exacte de `FUN_1407d4c94`** :
+1. `present = R(1)` (`FUN_1406cf008`). Si !present → byte+0xbc=0, FIN.
+2. `tag = R(5)` (inline, MSB-first sur l'accumulateur +0x30). Dispatch `FUN_1407d54ac` : kinds 0..5 (alloue le variant + stocke kind@+0xbc) ; >5 = assert.
+3. Blob variant : closure (`FUN_1407d4e10`→`FUN_1424ccb1c`→`FUN_140c7fedc`). Le corps lit un **flux TLV byte-orienté** : `FUN_140b4bc28` (varint type : 1 octet, low-5=type, ext 0xe0→+2o / 0xc0→+1o) en boucle, chaque champ dispatché par `FUN_141cbbae0` (skip fixe 1/4/8 octets OU `FUN_140b4ba68` = LEB128 length-prefix → N octets). Boucle jusqu'à type==0.
+4. Copy-out `FUN_1407d5450` (kind 0..5).
+
+**Octet vs bit** : `FUN_1408ccb7c` n'aligne sur octet QUE si stream-mode==2 ; en FRAME les octets du varint = `R(8)` consécutifs sur l'accumulateur (donc mappés `br.ReadBits(8)`).
+
+**Reproductibilité** : tout est length-driven (varint type + LEB128 length + skips fixes) → **bit-exact reproductible** (confident:true) tant qu'on consomme exactement les longueurs lues. Aucune dépendance popcount/RAM.
+
+**Prochaine étape** : porter ce skeleton (present+tag+TLV) à la place de `DecodeEntityRecordQ` approximatif pour i9 du spine biped (i9 AVANT i11) → débloquer le dead-state biped.
+
+---
+
 ## [2026-06-14] RT frais écrasé par le mirror du refresh-loop — la vraie raison du « ça ne tient pas » — Fix livré, à déployer
 
 **Symptôme** : même après une reconnexion SSO réussie (`RT persisté au store` confirmé dans `logs/handlers.log`), le RT du store de JGtm redevenait vide puis stale → `AADSTS70000` au cycle/boot suivant. La reconnexion semblait marcher (bannière partie) puis re-cassait — masquée entre deux cycles.

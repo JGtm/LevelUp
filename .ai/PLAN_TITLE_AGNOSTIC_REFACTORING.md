@@ -10,6 +10,14 @@
 
 ---
 
+## 0bis. Périmètre ÉLARGI — registre multi-titre complet (audit 2026-06-14)
+
+> Ce master couvre le **chemin data-lecture du match**. L'audit 2026-06-14 a révélé ~26 axes multi-titre **supplémentaires** (ingestion, acquisition auth, scheduler, settings, achievements, world-stats, outcome, observabilité, Discord, cycle de vie, registre de migrations…) — voir l'**index** [PLAN_MULTITITRE_INDEX.md](PLAN_MULTITITRE_INDEX.md) (registre `MT-01..MT-26`) et les specs détaillées [PLAN_MULTITITRE_PERIPHERY.md](PLAN_MULTITITRE_PERIPHERY.md) (`PMT-1..13` + extensions `EXT-1.5/2/5`).
+>
+> **⚠ Doctrine RE-VÉRIFIER (s'applique aussi aux phases de CE master)** : les pointeurs `file:line` sont une carte datée, pas une vérité figée. Re-grep/re-valider chaque évidence contre `HEAD` AVANT d'exécuter une phase (existante ou nouvelle). Une spec est une hypothèse à reconfirmer, jamais un copier-coller.
+>
+> **Méthode** : `expand → parity-gate → contract` avec **oracle double** (parité Halo golden + fixture `synthetic_test_title`). **Bloquants 2ᵉ titre hors data-path** : `PMT-1` (hosts ingestion) + `PMT-2` (acquisition auth) + `PMT-3` (écriture sync par titre) — racine du DAG.
+
 ## 0. Doctrine — alignement avec l'ADR 0011 + acquis ADR 0012
 
 L'ADR 0011 a tranché : **`canonical.*` reste minimal**, et trois adapters distincts collaborent côté service :
@@ -187,6 +195,8 @@ Sur la modif récente `drop assists_expected/assists_stddev` (Halo Infinite ne r
 **Critère de complétion** : `grep -rE "p\.\w+|mp\.\w+|mr\.\w+" internal/platform/duckdb/queries_*.go` produit une liste 100% couverte par `fields.toml`. Aucun magic number Halo dans `queries_*.go`.
 
 ### Phase 1.5 — DDL et schéma multi-titre (lourd, effort doublé)
+
+> **Extensions audit 2026-06-14 (à RE-VÉRIFIER)** — au-delà du déplacement DDL, cf. [EXT-1.5](PLAN_MULTITITRE_PERIPHERY.md) : colonnes `title_id` metadata (MT-16, **décision** car `MetadataDBPath(slug)` isole déjà par chemin), audit ops/CLI élargi à `healthcheck`+`gate`+`cmd/*` (MT-10), seed démo (MT-18), scoping `notification_preferences` (MT-17). + le **registre/ordre de migrations** reste 1 liste globale Halo → [PMT-9](PLAN_MULTITITRE_PERIPHERY.md) (MT-23). Index : [PLAN_MULTITITRE_INDEX.md](PLAN_MULTITITRE_INDEX.md).
 
 **Effort** : **8-10 jours** (vs 4-5 j en v2.4)
 **Risque** : élevé (touche **20+ fichiers** de migration accumulés)
@@ -490,7 +500,45 @@ levelup-titles diagnose --slug halo_mcc
 - Aucun endpoint ne mute le TOML côté serveur (lint : pas de `os.WriteFile` dans handlers Lab).
 - Les 3 layers (port + service + impl + handler + frontend) testés indépendamment.
 
+### Phase 1.9 — Watcher / présence multi-title routing (NOUVELLE 2026-06-13, post-v2.5)
+
+**Effort** : 3-5 j
+**Risque** : moyen (touche `internal/watcher/daemon`, la `MatchQueue` et la signature `Coordinator`/`SyncTrigger`), mais **entièrement additif derrière une garde `DefaultSlug`** → comportement mono-titre strictement identique tant qu'un seul titre est enregistré.
+**Branche cible** : `refactor/title-agnostic-services` (commit dédié) ou `feat/watcher-title-routing` si livrée isolément.
+**Prérequis** : Phase 1.6 (pool tokens clé `(titleSlug, gamertag)`) — **livrée**. Pleinement exerçable seulement quand un 2e titre est enregistré (Registry + son `MatchFetcher`), mais **toute la plomberie se pose dès maintenant** derrière la garde `DefaultSlug`, testée avec un Registry à 2 titres fixtures.
+
+**Contexte / diagnostic (audit code 2026-06-13)** : la *détection* de présence est déjà title-agnostic, mais toute la chaîne en aval est câblée Halo Infinite. Le poller « reconnaît un titre tracké » sans « router par titre ».
+
+| Maillon | État | Fuite mono-titre |
+|---|---|---|
+| Détection présence | title-agnostic | `daemon.makePresenceHandler` → `titleReg.MatchPresence(titleID)` → `MatchByXboxTitleID` itère **tous** les titres enregistrés ; `TitleDescriptor` porte déjà `XboxTitleID` + `SteamAppID` |
+| `MatchFetcher` | Halo-only | 1 seul fetcher partagé = `HaloMatchFetcher` (API Halo `GetMatchHistory`), câblé au boot (`cmd/server/main.go` ~l.1728) puis injecté dans `DaemonConfig.MatchFetcher` |
+| `PlayerWatcher` | pas de titre | aucun champ `titleSlug` ; `OnPresenceActive` ne propage pas le `td.Slug` matché |
+| Chaîne sync | pas de titre | `MatchRequest` / `CoordinatorRequest` = `{Gamertag, XUID, MatchIDs}` sans `TitleSlug` → sync sur titre par défaut |
+| Steam | inactif | `MatchBySteamAppID` non utilisé ; `SteamPoller` implémenté mais non câblé (note W8) |
+
+**Décision de modèle** : **1 `PlayerWatcher` par gamertag** (pas par `(gamertag, titleSlug)`). Un humain joue à un seul jeu à la fois sur un device, et l'event de présence dit lequel. Le watcher mémorise le **titre actif courant** (`activeTitleSlug`) et route match-poll + sync dessus ; un changement de titre redémarre le `MatchPoller` contre le fetcher du nouveau titre. Variante `(gamertag, titleSlug)` écartée (lourde, sans bénéfice — pas de jeu simultané).
+
+**Tâches** (ordre de risque croissant) :
+- [ ] **Propager le titre matché** : `makePresenceHandler` passe `td.Slug` à `OnPresenceActive(ctx, titleSlug)`. `PlayerWatcher` stocke `activeTitleSlug` (sous `mu`). Exposer via `WatcherStatus.Players[].title` (observabilité UI / WatcherCard).
+- [ ] **`MatchFetcher` par titre** : remplacer le champ unique `DaemonConfig.MatchFetcher` par un `MatchFetcherResolver` (`FetcherFor(titleSlug) (MatchFetcher, bool)`). `HaloMatchFetcher` = impl `halo_infinite`. `startPoller` résout le fetcher via `activeTitleSlug` ; **si aucun fetcher** (titre sans support) → log Warn + rester Idle (ne JAMAIS poller l'API Halo par défaut pour un autre titre). Câblage `main.go` : resolver `{halo_infinite: HaloMatchFetcher}`. Garde compat : resolver nil / titleSlug vide → `DefaultSlug`.
+- [ ] **Threader `TitleSlug` dans la chaîne sync** : ajouter `TitleSlug` à `MatchRequest` (queue), `CoordinatorRequest`, et `SyncTrigger.TriggerSync(ctx, titleSlug, gamertag, xuid, matchIDs)`. Le `SyncRunner` cible la bonne DB via `PathResolver(titleSlug)`. Compat : `TitleSlug` vide → `title.DefaultSlug` (même garde que Phase 1.6).
+- [ ] **(Optionnel) Steam fallback title-aware** : si/quand le `SteamPoller` est câblé, `MatchBySteamAppID(gameid)` résout le titre, même threading. Hors scope tant que W8 n'est pas activé.
+- [ ] **Garde-fou lint** : aucun `if titleSlug == "halo_infinite"` dans `internal/watcher/` (lint `no_slug_comparison` déjà actif). Routage via resolver + `PathResolver` uniquement.
+
+**Tests** (par couche) :
+- [ ] `daemon_test.go` : Registry à 2 titres fixtures ; event présence avec le `XboxTitleID` du titre B → `activeTitleSlug == "B"` + fetcher résolu = mock B (pas Halo).
+- [ ] `player_watcher_test.go` : changement HI → B redémarre le `MatchPoller` contre le fetcher B ; B → titre sans fetcher → Idle sans aucun fetch.
+- [ ] Queue / Coordinator : `TitleSlug` propagé jusqu'au `SyncRunner` (mock) ; vide → `DefaultSlug`.
+- [ ] **Non-régression** : Registry à 1 titre → `WatcherStatus` byte-identique à aujourd'hui (snapshot).
+
+**Logging** : `slog.InfoContext(ctx, "watcher: titre actif", "gamertag", gt, "title", slug)` à chaque transition de titre (clé standard `"title"`). Pas de log par poll.
+
+**Critère de complétion** : avec un Registry à 2 titres + 2 fetchers mock, un event de présence sur le titre B route match-poll **et** sync vers B. Avec `halo_infinite` seul enregistré, comportement strictement identique à aujourd'hui (zéro régression mono-titre). Aucun `MatchFetcher` Halo invoqué pour un titre non-Halo.
+
 ### Phase 2 — Repository abstrait par FieldKey (moyen, +1 j OpenSpartan)
+
+> **Extensions audit 2026-06-14 (à RE-VÉRIFIER)** — la canonicalisation déborde des données match, cf. [EXT-2](PLAN_MULTITITRE_PERIPHERY.md) : modèle rangs/tiers carrière (MT-07), chaîne LUSR/poids qui **importe** `halo_infinite` depuis `internal/sync` (MT-15), extraction JSON participant + persist mono-DB (MT-14), progression `defaultProgressionTitleSlug` + PrestigeBundle (MT-19). + le pipeline **world-stats** est hors des 7 services → [PMT-7](PLAN_MULTITITRE_PERIPHERY.md) (MT-03). Index : [PLAN_MULTITITRE_INDEX.md](PLAN_MULTITITRE_INDEX.md).
 
 **Effort** : 6-8 jours (vs 5-7 j en v2.4 ; +1 j test OpenSpartan continuity D11)
 **Risque** : moyen (refactor des repos existants, mais migration progressive service-par-service)
@@ -605,6 +653,8 @@ levelup-titles diagnose --slug halo_mcc
 **Critère de complétion** : ajouter un nouveau field stats = 1 ligne dans le TOML + 1 ligne dans le `TitleDataAdapter`. Le CLI le détecte automatiquement. Les opérations restent enumérées (pas de scope creep).
 
 ### Phase 5 — Frontend canonical-aware + FeatureGate (moyen)
+
+> **Extensions audit 2026-06-14 (à RE-VÉRIFIER)** — au-delà des hooks, cf. [EXT-5](PLAN_MULTITITRE_PERIPHERY.md) : retrait des constantes littérales `TITLE_SLUG='halo_infinite'` + fallback silencieux `DEFAULT_TITLE_SLUG` (MT-12, + lint front anti-littéral) ; externalisation des tables Halo client-side (teamNames/outline-colors/tier grids/badge `HINF`/225 HP, MT-13). Index : [PLAN_MULTITITRE_INDEX.md](PLAN_MULTITITRE_INDEX.md).
 
 **Effort** : 7-9 jours (inchangé)
 **Risque** : moyen (ajout d'abstractions front, mais OpenAPI gen capture les changes)
