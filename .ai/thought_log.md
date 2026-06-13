@@ -1,31 +1,3 @@
-## [2026-06-13] Phase 3 — Uniformisation SSO/refresh/capture vers e1cb35ab — Complété (à déployer)
-
-**Statut** : Code + golden tests verts (build ./... + auth/handlers). Branche `feat/oauth-uniformize-e1cb35ab`. Audit Azure fait (`.ai/AUDIT_AZURE_APPS.md`).
-
-**Audit Azure (user)** : 2 apps seulement. `e1cb35ab` « LevelUp Halo » = canonique (public, Personal accounts, redirect Web `/api/v1/auth/xbox/callback` + user a ajouté le **racine** `https://lvelup.info/auth/xbox/callback` — option B). `39829f7a` « Spartan Graph » = SSO/refresh actuel, 2 secrets, à retirer plus tard. Type de compte « Personal only » suffisant pour Xbox (ne PAS élargir).
-
-**Décision technique** : le seam lit désormais `LEVELUP_OAUTH_CLIENT_ID` (défaut `LevelUpClientID`=e1cb35ab) au lieu de `SPNKR_AZURE_CLIENT_ID` (plus aucun lecteur Go de ce dernier). `TokenCaptureClientID` défaut aligné HaloTools→LevelUpClientID. e1cb35ab public → `SecretToSend()=""` (pas de secret, sécurité = PKCE déployé). Diff des golden tests = le changement assumé. Tests refresh internes : `withMockTokenEndpoint` pose `LEVELUP_OAUTH_CLIENT_ID`. Docs `.env.local.example` (LEVELUP_OAUTH_CLIENT_ID + SPNKR_AZURE_CLIENT_ID déprécié OAuth).
-
-**⚠️ Impact deploy** : les RT des 4 joueurs (émis sous 39829f7a) deviennent invalides → re-login requis (sessions web restent valides ~4h, puis re-login au refresh échoué ; watcher dégradé jusqu'au re-login). Coût accepté par l'user. VPS : `LEVELUP_OAUTH_REDIRECT_URI` reste racine (e1cb35ab l'a) ; `LEVELUP_OAUTH_CLIENT_ID` non posé → défaut e1cb35ab → zéro changement env requis.
-
-**Prochaine étape** : commit (fichiers Phase 3 only, PAS le world-backfill non commité) + deploy + vérif live JGtm (re-login sous e1cb35ab : SSO public+PKCE+sans secret doit marcher).
-
----
-
-## [2026-06-13] Déploiement seam + PKCE en prod + vérif live — Complété (+ incident push world-backfill)
-
-**Statut** : Déployé (`e43fdaa9b` sur main/remote) et vérifié live. Seam (Phase 1) + PKCE (Phase 4) fonctionnels en prod.
-
-**Déploiement isolé** : la branche `feat/oauth-pkce` portait, entre mes 2 commits auth, un commit world-backfill (`8d471d697`) à l'user. Isolé via `git checkout feat/oauth-pkce -- <12 fichiers auth>` sur une branche issue de main (PAS de cherry-pick conflictuel) → seul l'auth déployé, `8d471d697` exclu (vérifié). Build ./... + tests auth/domain/handlers verts sur l'état isolé.
-
-**⚠️ Incident à signaler** : le push a aussi envoyé `4c8491060` + `363ec4ab6` (2 commits world-backfill de l'user « validés dry-run » mais NON poussés volontairement — « commit sans push ») car ils étaient sur le main LOCAL (remote était à `02e73ccf2`). Non anticipé. Signalé à l'user, 2 options proposées (laisser / retirer via force-push). Le commit world-backfill `8d471d697` (sur la feature branch) a bien été exclu, mais pas ceux du main local.
-
-**Vérif live (Chrome, session MS ouverte)** : ✅ seam behavior-preserving (`client_id=39829f7a` inchangé) ; ✅ PKCE actif (`code_challenge`+`code_challenge_method=S256` dans /authorize) ; ✅ login PKCE bout-en-bout (fresh login post-deploy → dashboard, `current_username:jgtm_xbox`, 0 erreur serveur — verifier matché) ; ✅ persistance session (pré-deploy survit au redéploiement) ; ✅ logout 204→null ; ✅ admin is_admin:true.
-
-**Prochaine étape** : décision user sur les 2 commits world-backfill poussés. Reste optionnel : Phase 4 logs nginx, Phase 2/3 (audit + uniformisation e1cb35ab), Phase 5 lockdown.
-
----
-
 ## [2026-06-13] Phase 4 — PKCE sur le SSO Authorization Code Flow — Complété (non déployé)
 
 **Statut** : Code + tests verts (auth + domain + handlers OAuth, build ./...). Branche `feat/oauth-pkce` (empilée sur le seam). Commit local. À déployer + vérif live.

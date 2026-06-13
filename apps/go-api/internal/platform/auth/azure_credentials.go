@@ -3,12 +3,12 @@
 //
 // Seam introduit pour centraliser des lectures d'environnement auparavant
 // DUPLIQUÉES dans auth_code.go (Authorization Code Flow SSO) et oauth_refresh.go
-// (refresh token). Cf. .ai/PLAN_AUTH_HARDENING_OPTIONAL.md.
+// (refresh token). Cf. .ai/PLAN_AUTH_HARDENING_OPTIONAL.md — Phase 1.
 //
-// Phase 3 (uniformisation) : SSO + refresh + token-capture sont consolidés sur
-// l'app canonique e1cb35ab (« LevelUp Halo », publique) via LEVELUP_OAUTH_CLIENT_ID.
-// L'ancienne app « Spartan Graph » 39829f7a n'est plus utilisée. Le changement est
-// documenté par le diff des golden tests (azure_credentials_test.go).
+// IMPORTANT : ce module ne change AUCUN comportement. Il déplace les lectures
+// existantes derrière une API unique pour préparer (Phase 2) l'uniformisation
+// vers l'app canonique. Le comportement actuel est figé par des golden tests
+// (azure_credentials_test.go).
 package auth
 
 import "os"
@@ -17,24 +17,20 @@ import "os"
 // Microsoft (Authorization Code Flow SSO web + refresh token). Construire via
 // ResolveAzureOAuthClient.
 type AzureOAuthClient struct {
-	// ClientID : LEVELUP_OAUTH_CLIENT_ID si défini, sinon LevelUpClientID (e1cb35ab).
+	// ClientID : SPNKR_AZURE_CLIENT_ID si défini, sinon LevelUpClientID.
 	ClientID string
 	// rawSecret : valeur brute de SPNKR_AZURE_CLIENT_SECRET (éventuellement vide).
 	// Non exporté : passer par SecretToSend() qui applique la garde public/confidentiel.
 	rawSecret string
 }
 
-// ResolveAzureOAuthClient lit le client OAuth Azure (SSO web + refresh) depuis
-// l'environnement. Lecteur UNIQUE de LEVELUP_OAUTH_CLIENT_ID / SPNKR_AZURE_CLIENT_SECRET
-// côté prod (garanti par le test sentinelle Guard 4).
+// ResolveAzureOAuthClient lit le client OAuth Azure depuis l'environnement.
+// Lecteur UNIQUE de SPNKR_AZURE_CLIENT_ID / SPNKR_AZURE_CLIENT_SECRET côté prod
+// (garanti par le test sentinelle Guard 4).
 //
-// Phase 3 (uniformisation) : LEVELUP_OAUTH_CLIENT_ID si défini, sinon LevelUpClientID
-// (= e1cb35ab, app canonique « LevelUp Halo », PUBLIQUE). On NE lit PLUS
-// SPNKR_AZURE_CLIENT_ID (ancienne app « Spartan Graph » 39829f7a) : SSO + refresh
-// + token-capture sont désormais sur l'app canonique. e1cb35ab étant publique,
-// SecretToSend() renvoie "" — la sécurité repose sur PKCE (RFC 7636).
+// Comportement (inchangé) : SPNKR_AZURE_CLIENT_ID si défini, sinon LevelUpClientID.
 func ResolveAzureOAuthClient() AzureOAuthClient {
-	clientID := os.Getenv("LEVELUP_OAUTH_CLIENT_ID")
+	clientID := os.Getenv("SPNKR_AZURE_CLIENT_ID")
 	if clientID == "" {
 		clientID = LevelUpClientID
 	}
@@ -64,16 +60,18 @@ func DeviceFlowClientID() string {
 }
 
 // TokenCaptureClientID retourne le client_id du CLI de génération manuelle de
-// tokens (cmd/token-capture). Phase 3 : aligné sur l'app canonique —
-// LEVELUP_OAUTH_CLIENT_ID si défini, sinon LevelUpClientID (= e1cb35ab).
+// tokens (cmd/token-capture). Défaut : HaloToolsClientID (app publique "halo-tools"),
+// override par SPNKR_AZURE_CLIENT_ID.
 //
-// ⚠️ COUPLAGE CRITIQUE : le client_id du token capturé DOIT matcher celui du refresh
-// serveur (ResolveAzureOAuthClient) — un refresh_token est lié à son client émetteur,
-// sinon le refresh échoue (token révoqué). Les deux lisent désormais la MÊME source
-// (LEVELUP_OAUTH_CLIENT_ID, même défaut e1cb35ab) → convergence garantie.
+// ⚠️ COUPLAGE CRITIQUE : le client_id du token capturé DOIT matcher celui utilisé
+// par le refresh serveur (ResolveAzureOAuthClient) — un refresh_token est lié à son
+// client émetteur, sinon le refresh échoue (token révoqué). En prod, SPNKR_AZURE_CLIENT_ID
+// est posé → les deux convergent. NB : le DÉFAUT diffère volontairement de
+// ResolveAzureOAuthClient (HaloToolsClientID ici vs LevelUpClientID) — c'est l'état
+// actuel à figer ; Phase 2 (uniformisation) alignera les deux défauts sur l'app canonique.
 func TokenCaptureClientID() string {
-	if v := os.Getenv("LEVELUP_OAUTH_CLIENT_ID"); v != "" {
+	if v := os.Getenv("SPNKR_AZURE_CLIENT_ID"); v != "" {
 		return v
 	}
-	return LevelUpClientID
+	return HaloToolsClientID
 }
