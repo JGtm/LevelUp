@@ -15,6 +15,46 @@ func tempTokenDir(t *testing.T) string {
 	return filepath.Join(t.TempDir(), "watcher_tokens")
 }
 
+// TestUpsert_PreservesRefreshTokenOnPartialWrite : un Upsert PARTIEL (XSTS/access
+// seulement, RT/MSAL vides — comme le mirror ou le link AddPlayer) ne doit PAS
+// effacer le refresh_token / MSAL cache déjà persistés. Régression incident
+// 2026-06-13/14 : RT e1cb35ab frais écrasé à vide → migration refill RT mort →
+// AADSTS70000 en boucle (la reconnexion ne tenait jamais).
+func TestUpsert_PreservesRefreshTokenOnPartialWrite(t *testing.T) {
+	s := NewMultiUserTokenStore(tempTokenDir(t))
+
+	// 1) Semer RT + MSAL frais (comme le callback SSO).
+	if err := s.Upsert(&UserTokens{
+		XUID: "111", Gamertag: "Alice",
+		OAuthRefreshToken: "rt_frais", MSALCacheJSON: `{"c":"frais"}`,
+	}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	// 2) Upsert PARTIEL : XSTS/access seulement, RT/MSAL vides.
+	if err := s.Upsert(&UserTokens{
+		XUID: "111", Gamertag: "Alice",
+		XSTSToken: "xsts_new", AccessToken: "at_new",
+	}); err != nil {
+		t.Fatalf("upsert partiel: %v", err)
+	}
+
+	// 3) RT + MSAL PRÉSERVÉS, XSTS mis à jour.
+	got, err := s.Load("111")
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if got.OAuthRefreshToken != "rt_frais" {
+		t.Errorf("RT effacé = %q, want rt_frais (préservé)", got.OAuthRefreshToken)
+	}
+	if got.MSALCacheJSON != `{"c":"frais"}` {
+		t.Errorf("MSAL effacé = %q, want préservé", got.MSALCacheJSON)
+	}
+	if got.XSTSToken != "xsts_new" {
+		t.Errorf("XSTSToken = %q, want xsts_new (mis à jour)", got.XSTSToken)
+	}
+}
+
 func TestMultiUserTokenStore_ReauthMarkClear(t *testing.T) {
 	s := NewMultiUserTokenStore(tempTokenDir(t))
 

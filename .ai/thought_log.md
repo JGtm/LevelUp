@@ -8,7 +8,9 @@
 
 **Piège diagnostic majeur** : les logs du callback OAuth sont dans `logs/handlers.log` (PAS `auth.log` ni docker stdout, masqués par `LEVELUP_LOG_LEVEL=warn`) → j'ai conclu à tort « le callback ne tourne pas » pendant longtemps alors qu'il réussissait. Cf. [[reference_auth_logs_per_category_file]]. Logs catégorie désormais persistés (`LEVELUP_LOGS_DIR=/app/data/logs` posé sur le VPS) pour survivre aux restarts.
 
-**Prochaine étape** : deploy + retrait env RT + 1 dernière reconnexion user → vérifier en live que le store garde le RT après un cycle mirror.
+**2e site de wipe (découvert APRÈS deploy du fix mirror + retrait env, en vérif live)** : la reconnexion persistait bien le RT (`RT persisté au store` 22:25:33.958128) mais le store était réécrit à vide 700µs après (22:25:33.958849) — par le **link/AddPlayer** du callback (`linkAttemptToSession`) qui Upsertait les tokens XSTS SANS le RT. Donc le wipe avait DEUX sites (mirror + link). Fix robuste à la source : `upsertLocked` **merge-preserve** `OAuthRefreshToken`/`MSALCacheJSON` quand l'entrant est vide (aucun appelant ne les vide volontairement via Upsert) → couvre link + mirror + AddPlayer + tout futur writer. Test `TestUpsert_PreservesRefreshTokenOnPartialWrite`.
+
+**Prochaine étape** : deploy du merge-preserve + 1 reconnexion user finale → vérifier que le RT survit toute la chaîne (callback persist → link Upsert → cycle mirror). Bruit résiduel attendu : le tracker legacy (`watcher_tokens.json` single-user) + `sync_meta` gardent un vieux RT 39829f7a → le refresh-loop logue des `AADSTS70000` mais N'arme PAS reauth → n'affecte ni le watcher (lit le multi-user store) ni la bannière.
 
 ---
 

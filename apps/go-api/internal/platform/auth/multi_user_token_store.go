@@ -496,8 +496,24 @@ func (s *MultiUserTokenStore) upsertLocked(tokens *UserTokens) error {
 		return fmt.Errorf("multi_user_token_store: path résolu vide pour xuid=%q", tokens.XUID)
 	}
 
-	if existing, err := s.loadLocked(tokens.XUID); err == nil && !existing.CreatedAt.IsZero() {
-		tokens.CreatedAt = existing.CreatedAt
+	if existing, err := s.loadLocked(tokens.XUID); err == nil {
+		if !existing.CreatedAt.IsZero() {
+			tokens.CreatedAt = existing.CreatedAt
+		} else if tokens.CreatedAt.IsZero() {
+			tokens.CreatedAt = time.Now().UTC()
+		}
+		// Merge-preserve des credentials COÛTEUX à ré-obtenir : un Upsert PARTIEL
+		// (mirror, link/AddPlayer… qui ne poussent que XSTS/access) ne doit JAMAIS
+		// effacer le refresh_token / MSAL cache déjà persistés. Aucun appelant ne les
+		// vide volontairement via Upsert (clear = Delete du fichier). Incident
+		// 2026-06-13/14 : RT e1cb35ab frais écrasé à vide par le mirror PUIS par le
+		// link → migration boot refill un RT mort (39829f7a) → AADSTS70000 en boucle.
+		if tokens.OAuthRefreshToken == "" && existing.OAuthRefreshToken != "" {
+			tokens.OAuthRefreshToken = existing.OAuthRefreshToken
+		}
+		if tokens.MSALCacheJSON == "" && existing.MSALCacheJSON != "" {
+			tokens.MSALCacheJSON = existing.MSALCacheJSON
+		}
 	} else if tokens.CreatedAt.IsZero() {
 		tokens.CreatedAt = time.Now().UTC()
 	}
