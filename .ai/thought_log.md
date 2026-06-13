@@ -1,3 +1,13 @@
+## [2026-06-13] Clôture durcissement auth/Azure — plan implémenté, AUDIT volontairement non versionné — Complété
+
+**Statut** : Plan `.ai/PLAN_AUTH_HARDENING_OPTIONAL.md` implémenté côté code et déployé. Phase 1 (seam credentials Azure) + Phase 3b (consolidation SSO/refresh/capture sur e1cb35ab CONFIDENTIEL, `0bdad05c8`) + Phase 4 (PKCE S256) : livrées, déployées, vérifiées en live (login e1cb35ab + secret + PKCE → dashboard, watcher refresh OK, jgtm_xbox admin, déconnexion OK). Phase 7 (vérif déconnexion + admin) : OK. Phases 5 (verrouillage instance multi-user) et 6 (fusion comptes JGtm) : différées par décision user (« je leur laisse un délai »).
+
+**Décision (supersede les notes « re-créer AUDIT » des entrées Phase 3/3b)** : `.ai/AUDIT_AZURE_APPS.md` NE SERA PAS re-créé ni versionné — il contenait IDs de secrets + config détaillée des app registrations ; le repo est public sur GitHub, donc ces infos restent hors-repo (décision user : « c'est mieux si ces infos ne sont pas publiques »). Findings techniques conservés dans les entrées Phase 3/3b ci-dessous (client IDs publics e1cb35ab/39829f7a déjà dans le code via `LevelUpClientID`/`HaloToolsClientID` ; aucune valeur ni ID de secret dans le versionné — scan `git grep` confirmé).
+
+**Reste = actions côté user (hors repo)** : (1) supprimer l'app « Spartan Graph » 39829f7a dans le portail Azure quand prêt (plus utilisée par le code) ; (2) re-login des 3 autres joueurs (leurs RT 39829f7a restent valides via le retry, mais conviendra de re-capturer sous e1cb35ab à terme). Aucun commit en attente : tout le travail auth est dans `0bdad05c8` et antérieurs.
+
+---
+
 ## [2026-06-13] Phase 3b — e1cb35ab CONFIDENTIEL (secret) — À déployer
 
 **Statut** : Code + tests verts. Branche `feat/oauth-e1cb35ab-confidential`. VPS env posé (secret e1cb35ab). À déployer + vérifier.
