@@ -162,6 +162,32 @@ func TestResolveUnresolvedAssetNames_Disabled(t *testing.T) {
 	}
 }
 
+// TestResolveAssetsFromStats_V2Path : le chemin V2 (raw Stats JSON → refs →
+// résolution) peuple asset_translations pour une playlist sans PublicName (UUID brut).
+func TestResolveAssetsFromStats_V2Path(t *testing.T) {
+	ctx := context.Background()
+	meta := setupMetaWithTranslations(t)
+	fetcher := &fakeAssetFetcher{
+		names: map[string]string{"pl-new|fr-FR": "Nouveau", "pl-new|en-US": "New"},
+		calls: map[string]int{},
+	}
+	stats := map[string]any{
+		"MatchId": "m1",
+		"MatchInfo": map[string]any{
+			"StartTime": "2026-06-13T12:00:00Z",              // requis par ExtractRegistry (parseISO)
+			"Playlist":  map[string]any{"AssetId": "pl-new"}, // pas de PublicName → UUID brut
+		},
+	}
+	ResolveAssetsFromStats(ctx, fetcher, meta, "halo_infinite", []map[string]any{stats})
+	var n int
+	if err := meta.QueryRow(`SELECT COUNT(*) FROM asset_translations WHERE asset_id = 'pl-new'`).Scan(&n); err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 2 {
+		t.Fatalf("asset_translations[pl-new] = %d rows, want 2 (fr-FR + en-US)", n)
+	}
+}
+
 // TestResolveCycleAssets_Disabled : assetFetcher nil → no-op total (parité legacy).
 func TestResolveCycleAssets_Disabled(t *testing.T) {
 	ctx := context.Background()

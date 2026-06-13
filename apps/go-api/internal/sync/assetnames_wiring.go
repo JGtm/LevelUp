@@ -175,12 +175,19 @@ func (s opsAssetStore) ExistsFresh(ctx context.Context, assetType, assetID, lang
 }
 
 // Upsert écrit asset_translations via le helper ART-safe SELECT-then-write.
+// Logge chaque résolution réussie en DEBUG (diagnostic : quel UUID → quel nom),
+// routé vers logs/sync.log (package sync). Les échecs de fetch sont déjà loggés
+// en DEBUG par halo.FetchAsset.
 func (s opsAssetStore) Upsert(ctx context.Context, assetType, assetID, lang, name string) error {
 	if s.db == nil {
 		return nil
 	}
-	_, err := ops.UpsertAssetTranslation(ctx, s.db, assetType, assetID, lang, name)
-	return err
+	if _, err := ops.UpsertAssetTranslation(ctx, s.db, assetType, assetID, lang, name); err != nil {
+		return err
+	}
+	slog.DebugContext(ctx, "asset name résolu",
+		"asset_type", assetType, "asset_id", assetID, "lang", lang, "name", name)
+	return nil
 }
 
 // isMissingTableErr reconnaît l'absence de table (fixtures DuckDB :memory:).
