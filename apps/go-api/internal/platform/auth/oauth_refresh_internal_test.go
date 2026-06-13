@@ -20,7 +20,7 @@ func withMockTokenEndpoint(t *testing.T, handler http.HandlerFunc, clientID, sec
 	prev := msalTokenURL
 	msalTokenURL = srv.URL
 	t.Cleanup(func() { msalTokenURL = prev })
-	t.Setenv("SPNKR_AZURE_CLIENT_ID", clientID)
+	t.Setenv("LEVELUP_OAUTH_CLIENT_ID", clientID)
 	t.Setenv("SPNKR_AZURE_CLIENT_SECRET", secret)
 }
 
