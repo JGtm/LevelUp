@@ -89,6 +89,7 @@ diagnose_*.py
 # Secrets & Configuration
 .env
 .env.local
+.env.local.bak*
 .streamlit/*
 !.streamlit/secrets.toml.example
 !.streamlit/friends_defaults.json
