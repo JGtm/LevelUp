@@ -7,6 +7,8 @@
  */
 import { useMemo } from 'react'
 import { type ColumnDef } from '@tanstack/react-table'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { EfficiencyTooltipText } from '@/components/charts/EfficiencyTooltipText'
 import { tokenCssVar } from '@/lib/accessibility'
 import { formatWinProb } from '@/lib/winProbCategory'
 import { TimeseriesFirstEventDistribution } from './TimeseriesFirstEventDistribution'
@@ -148,7 +150,12 @@ export function TimeseriesProgressionTab({
 
       {/* Rendement & Résistance — pleine largeur. */}
       <TimeseriesEfficiency
-        title={t('timeseries.progression.efficiency_title')}
+        title={
+          <span className="flex items-center gap-1.5">
+            {t('timeseries.progression.efficiency_title')}
+            <InfoTooltip content={<EfficiencyTooltipText locale={locale} />} />
+          </span>
+        }
         emptyMessage={emptyMsg}
         rows={data.match_rows ?? []}
         rendementLabel={t('timeseries.progression.dmg_per_kill')}

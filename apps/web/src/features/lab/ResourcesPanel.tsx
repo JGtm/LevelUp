@@ -67,6 +67,12 @@ export function ResourcesPanel({
     )
   }
 
+  // Défense : un slice nil côté Go sérialise en JSON `null` → `.length` / `.map`
+  // crashent (« data.snapshots is null »). On normalise les listes avant rendu.
+  const snapshots = data.snapshots ?? []
+  const assetItems = data.assets?.items ?? []
+  const medalItems = data.medals?.items ?? []
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -74,7 +80,7 @@ export function ResourcesPanel({
         <MetricCard
           label={text.resources.activeSeason}
           value={data.current_season?.name ?? text.resources.activeSeasonFallback}
-          hint={text.resources.snapshotsHint(data.snapshots.length)}
+          hint={text.resources.snapshotsHint(snapshots.length)}
         />
         <MetricCard
           label={text.resources.localAssets}
@@ -102,13 +108,13 @@ export function ResourcesPanel({
         </CardHeader>
         <CardContent className="grid gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
           <div className="space-y-2">
-            {data.snapshots.length === 0 ? (
+            {snapshots.length === 0 ? (
               <EmptyStateNotice
                 title={text.resources.noSnapshotsTitle}
                 description={text.resources.noSnapshotsDescription}
               />
             ) : (
-              data.snapshots.map((snapshot) => (
+              snapshots.map((snapshot) => (
                 <button
                   key={`${snapshot.resource_key}-${snapshot.version}`}
                   onClick={() => setSelectedSnapshotKey(snapshot.resource_key)}
@@ -166,7 +172,7 @@ export function ResourcesPanel({
           </div>
         </CardHeader>
         <CardContent className="grid gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-          <SelectableAssetList items={data.assets.items} selectedID={selectedAssetID} onSelect={setSelectedAssetID} text={text} />
+          <SelectableAssetList items={assetItems} selectedID={selectedAssetID} onSelect={setSelectedAssetID} text={text} />
           <div className="space-y-4">
             {data.assets.selected ? (
               <Card className="border-border">
@@ -206,7 +212,7 @@ export function ResourcesPanel({
           </div>
         </CardHeader>
         <CardContent className="grid gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-          <SelectableMedalList items={data.medals.items} selectedID={selectedMedalID} onSelect={setSelectedMedalID} text={text} />
+          <SelectableMedalList items={medalItems} selectedID={selectedMedalID} onSelect={setSelectedMedalID} text={text} />
           <div className="space-y-4">
             {data.medals.selected ? (
               <Card className="border-border">

@@ -37,9 +37,11 @@ interface NavL1MobileActionsProps {
   settingsTabs: SettingsTabItem[]
   /** Pathname courant pour l'état actif. */
   pathname: string
+  /** Affiche le lien Administration (réservé admin). */
+  isAdmin: boolean
 }
 
-export function NavL1MobileActions({ settingsTabs, pathname }: NavL1MobileActionsProps) {
+export function NavL1MobileActions({ settingsTabs, pathname, isAdmin }: NavL1MobileActionsProps) {
   const [open, setOpen] = useState(false)
   const locale = useAppShellStore((s) => s.locale)
   const currentUsername = useAppShellStore((s) => s.currentUsername)
@@ -154,6 +156,18 @@ export function NavL1MobileActions({ settingsTabs, pathname }: NavL1MobileAction
               {item.label}
             </MenuLink>
           ))}
+
+          {isAdmin && (
+            <MenuLink
+              to="/admin"
+              search={{}}
+              active={pathname.startsWith('/admin')}
+              onNavigate={() => setOpen(false)}
+              indent
+            >
+              {t('common.admin.page_title')}
+            </MenuLink>
+          )}
 
           {currentUsername && (
             <button

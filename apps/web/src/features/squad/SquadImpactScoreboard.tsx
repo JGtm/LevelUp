@@ -13,7 +13,7 @@
  *  - Tri serveur : players DESC par score → Champion (rank=1) / Passager
  *    clandestin (rank=N, score≥0) / Maillon faible (rank=N, score<0).
  */
-import { useMemo } from 'react'
+import { useMemo, type CSSProperties } from 'react'
 import {
   type ColumnDef,
   flexRender,
@@ -105,12 +105,29 @@ function computeExtremes(players: SquadImpactPlayerSummary[]): Record<string, { 
   return out
 }
 
-function aggCellClass(badgeKey: string, count: number, ext: { min: number; max: number } | undefined): string {
-  if (!ext) return ''
+type CellState = 'best' | 'worst' | 'neutral'
+
+/**
+ * Surbrillance best/worst — MÊME rendu que MVP/LVP du scoreboard de match
+ * (cf. match-view/MatchScoreboard.logic.ts::cellStyle) : fond teinté 28% +
+ * texte pleine couleur du token outcome-win (best) / outcome-loss (worst).
+ */
+function extremeStyle(state: CellState): CSSProperties {
+  if (state === 'neutral') return {}
+  const tokenVar = state === 'best' ? 'var(--ac-outcome-win)' : 'var(--ac-outcome-loss)'
+  return {
+    backgroundColor: `color-mix(in oklab, ${tokenVar} 28%, transparent)`,
+    color: tokenVar,
+    fontWeight: state === 'best' ? 600 : 500,
+  }
+}
+
+function aggCellState(badgeKey: string, count: number, ext: { min: number; max: number } | undefined): CellState {
+  if (!ext) return 'neutral'
   const inverted = BADGE_INVERTED[badgeKey] === true
-  if (count === ext.max) return inverted ? 'text-[var(--ac-perf-tier-5)] font-semibold' : 'text-[var(--ac-perf-tier-1)] font-semibold'
-  if (count === ext.min) return inverted ? 'text-[var(--ac-perf-tier-1)] font-semibold' : 'text-[var(--ac-perf-tier-5)] font-semibold'
-  return ''
+  if (count === ext.max) return inverted ? 'worst' : 'best'
+  if (count === ext.min) return inverted ? 'best' : 'worst'
+  return 'neutral'
 }
 
 /**
@@ -209,8 +226,12 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
         ),
         cell: (ctx) => {
           const v = ctx.row.original.perBadge[badgeKey] ?? 0
-          if (v === 0) return <span className="text-muted-foreground">—</span>
-          return <span className={aggCellClass(badgeKey, v, extremes[badgeKey])}>{v}</span>
+          const st: CellState = v === 0 ? 'neutral' : aggCellState(badgeKey, v, extremes[badgeKey])
+          return (
+            <div className="-mx-2 -my-1 px-2 py-1 text-center" style={extremeStyle(st)}>
+              {v === 0 ? <span className="text-muted-foreground">—</span> : v}
+            </div>
+          )
         },
       })),
       {
@@ -219,12 +240,14 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
         cell: (ctx) => {
           const s = ctx.row.original.score
           const formatted = s > 0 ? `+${s}` : `${s}`
-          let cls = ''
+          let st: CellState = 'neutral'
           if (scoreExt) {
-            if (s === scoreExt.max) cls = 'text-[var(--ac-perf-tier-1)] font-semibold'
-            else if (s === scoreExt.min) cls = 'text-[var(--ac-perf-tier-5)] font-semibold'
+            if (s === scoreExt.max) st = 'best'
+            else if (s === scoreExt.min) st = 'worst'
           }
-          return <span className={cls}>{formatted}</span>
+          return (
+            <div className="-mx-2 -my-1 px-2 py-1 text-center" style={extremeStyle(st)}>{formatted}</div>
+          )
         },
       },
       {
@@ -306,7 +329,7 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
               {r.getVisibleCells().map((cell, idx) => (
                 <td
                   key={cell.id}
-                  className={`px-2 py-1 align-middle ${idx > 0 ? 'border-l border-border/60' : ''}`}
+                  className={`px-2 py-1 align-middle ${idx > 0 ? 'border-l border-border/60 text-center' : ''}`}
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>

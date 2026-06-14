@@ -40,7 +40,7 @@ const SETTINGS_TABS: SettingsTabItem[] = [
 ]
 
 function setup(pathname = '/players/test-player/home') {
-  return renderWithProviders(<NavL1MobileActions settingsTabs={SETTINGS_TABS} pathname={pathname} />)
+  return renderWithProviders(<NavL1MobileActions settingsTabs={SETTINGS_TABS} pathname={pathname} isAdmin={false} />)
 }
 
 function openMenu() {

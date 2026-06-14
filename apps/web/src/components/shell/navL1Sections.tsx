@@ -118,7 +118,6 @@ export const L1_SECTIONS: L1Section[] = [
       { key: 'leaderboard', label: 'Classements', path: '/players/$playerSlug/palmares' },
       { key: 'relations', label: 'Relations', path: '/players/$playerSlug/palmares/relations' },
       { key: 'compare', label: 'Face-à-face', path: '/players/$playerSlug/compare' },
-      { key: 'prestige-leaderboard', label: 'Leaderboard PP', path: '/players/$playerSlug/palmares/prestige' },
     ],
   },
   {

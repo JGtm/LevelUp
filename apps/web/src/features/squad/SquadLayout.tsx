@@ -34,6 +34,7 @@ import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { log } from './_logger'
 import { SquadContext } from './SquadContext'
+import { SquadFocusStrip } from './SquadFocusStrip'
 import { getSquadTeammateColors } from './colors'
 import type { LabelValue, TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
@@ -582,6 +583,10 @@ export function SquadLayout() {
               </Link>
             </nav>
           </div>
+
+          {/* « Cap d'escouade » (Enregistrer cette compo) — remonté juste sous la
+              barre d'onglets L3, commun aux deux onglets (Synergies / Contributions). */}
+          <SquadFocusStrip />
 
           <Outlet />
         </div>

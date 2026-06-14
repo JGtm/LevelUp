@@ -38,7 +38,7 @@ display_order = 20
 group         = "combat"
 
 [fields.assists]
-labels        = { en = "Assists", fr = "Assists" }
+labels        = { en = "Assists", fr = "Assistances" }
 storage_unit  = "count"
 display_unit  = "count"
 format        = "integer"
@@ -423,7 +423,7 @@ display_order = 30
 group         = "derived"
 
 [fields.assists_per_min]
-labels        = { en = "Assists / min", fr = "Assists / min" }
+labels        = { en = "Assists / min", fr = "Assistances / min" }
 storage_unit  = ""
 display_unit  = ""
 format        = "kdr_2"

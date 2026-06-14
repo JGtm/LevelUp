@@ -11,6 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
+import { useSessionContextStore } from '@/stores/sessionContextStore'
 import type { FilterStore } from '@/stores/createFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useFiltersPreview } from '@/features/filters/queries'
@@ -69,9 +70,22 @@ interface FilterOmnibarProps {
    *  rétroactive avec NavL2/Stats Solo). SquadLayout injecte
    *  `useSquadFilterStore` quand il consomme ce composant. */
   filterStore?: FilterStore
+  /** Affiche le sélecteur de contexte (Solo / Escouade / Mixte) et fait piloter
+   *  le contexte par `useSessionContextStore` au lieu du prop `matchContext`.
+   *  Activé UNIQUEMENT sur la page Sessions — ailleurs, le contexte reste figé
+   *  sur `matchContext` (aucune régression sur Timeseries/History). */
+  contextSelectable?: boolean
 }
 
-export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore }: FilterOmnibarProps = {}) {
+// Libellés du sélecteur de contexte (FR/EN). Module-level pour éviter une
+// recréation par rendu.
+const CONTEXT_LABELS: Record<'fr' | 'en', Record<'solo' | 'squad' | 'all', string>> = {
+  fr: { solo: 'Solo', squad: 'Escouade', all: 'Mixte' },
+  en: { solo: 'Solo', squad: 'Squad', all: 'Mixed' },
+}
+const CONTEXT_ORDER = ['solo', 'squad', 'all'] as const
+
+export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore, contextSelectable = false }: FilterOmnibarProps = {}) {
   const filterContext = filterStore((s) => s.filterContext)
   const filterContextHash = filterStore((s) => s.filterContextHash)
   const resolvedContext = filterStore((s) => s.resolvedContext)
@@ -83,12 +97,20 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore }
 
   // État local (pending) — commité vers le store uniquement sur "Analyser".
   const [pending, setPending] = useState<FilterContextInput>(() => filterContext)
+
+  // Contexte de match effectif : piloté par useSessionContextStore UNIQUEMENT
+  // quand le sélecteur est actif (page Sessions). Sinon figé sur le prop
+  // `matchContext` → comportement Timeseries/History inchangé.
+  const sessionMatchContext = useSessionContextStore((s) => s.matchContext)
+  const setSessionMatchContext = useSessionContextStore((s) => s.setMatchContext)
+  const effectiveContext = contextSelectable ? sessionMatchContext : matchContext
+
   // Preview live : résout les options disponibles pour le pending courant,
-  // sans attendre "Analyser". Le matchContext de la page est injecté ici pour
+  // sans attendre "Analyser". Le contexte effectif est injecté ici pour
   // que les counts et session_options soient scoped correctement.
   const previewPending = useMemo<FilterContextInput>(
-    () => matchContext ? { ...pending, match_context: matchContext } : pending,
-    [pending, matchContext],
+    () => effectiveContext ? { ...pending, match_context: effectiveContext } : pending,
+    [pending, effectiveContext],
   )
   const { data: previewData, isFetching: isPreviewFetching } = useFiltersPreview(playerSlug, previewPending)
 
@@ -116,19 +138,29 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore }
       [],
     [previewData?.session_options?.all_sessions, resolvedContext?.session_options?.all_sessions],
   )
+  // Filtre solo/squad du sélecteur de sessions, piloté par le contexte effectif.
+  // Défaut 'solo' (ou contexte non défini) → on n'expose que les sessions solo,
+  // comportement historique. 'squad' → sessions escouade ; 'all' → toutes.
+  const sessionMatchesContext = (isSquad: boolean): boolean => {
+    if (effectiveContext === 'squad') return isSquad
+    if (effectiveContext === 'all') return true
+    return !isSquad
+  }
   const sessionLabels = useMemo<SessionLabelEntry[]>(
     () => allSessions
-      .filter((s) => !s.is_squad)
+      .filter((s) => sessionMatchesContext(s.is_squad))
       .map((s) => ({ label: s.label, started_at: s.started_at_utc ?? '', ended_at: s.ended_at_utc ?? '' })),
-    [allSessions],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allSessions, effectiveContext],
   )
   const sessionMatchCount = useMemo(() => {
     const map = new Map<string, number>()
     for (const s of allSessions) {
-      if (!s.is_squad) map.set(s.label, s.match_count_filtered)
+      if (sessionMatchesContext(s.is_squad)) map.set(s.label, s.match_count_filtered)
     }
     return map
-  }, [allSessions])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allSessions, effectiveContext])
   const getSessionCount = useMemo(
     () => (label: string) => sessionMatchCount.get(label),
     [sessionMatchCount],
@@ -242,6 +274,33 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore }
           onSetCascade={setPendingCascade}
           isFetching={isPreviewFetching}
         />
+      )}
+
+      {/* Sélecteur de contexte (Solo / Escouade / Mixte) — page Sessions uniquement.
+          Pilote useSessionContextStore ; n'affecte pas le filterContext partagé. */}
+      {contextSelectable && (
+        <div
+          className="flex shrink-0 items-center gap-0.5 rounded-md border border-input bg-background p-0.5 text-xs"
+          role="group"
+          aria-label="Contexte"
+        >
+          {CONTEXT_ORDER.map((ctx) => (
+            <button
+              key={ctx}
+              type="button"
+              onClick={() => setSessionMatchContext(ctx)}
+              aria-pressed={(effectiveContext ?? 'solo') === ctx}
+              className={[
+                'rounded px-2 py-0.5 transition-colors',
+                (effectiveContext ?? 'solo') === ctx
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
+              ].join(' ')}
+            >
+              {CONTEXT_LABELS[locale === 'en' ? 'en' : 'fr'][ctx]}
+            </button>
+          ))}
+        </div>
       )}
 
       {/* Séparateur données / scope temporel */}

@@ -73,6 +73,23 @@ func sessionIsRanked(matches []legacymatch.StatsMatchRow) bool {
 	return ranked*2 >= len(matches)
 }
 
+// sessionIsSquad : la session est-elle « escouade » (majorité de matchs joués
+// avec des amis) ? Sert d'approximation de composition pour la suggestion de
+// comparaison (squad ↔ squad, solo ↔ solo). Une vraie correspondance de roster
+// exigerait les participants par match (non disponibles à ce niveau).
+func sessionIsSquad(matches []legacymatch.StatsMatchRow) bool {
+	if len(matches) == 0 {
+		return false
+	}
+	withFriends := 0
+	for _, match := range matches {
+		if match.IsWithFriends {
+			withFriends++
+		}
+	}
+	return withFriends*2 >= len(matches)
+}
+
 type compareMapStats struct {
 	matchesA, winsA, lossesA int
 	matchesB, winsB, lossesB int

@@ -33,7 +33,6 @@ const COMMUNITY_TABS = [
   { label: 'Classements', path: '/players/$playerSlug/palmares' },
   { label: 'Relations', path: '/players/$playerSlug/palmares/relations' },
   { label: 'Face-à-face', path: '/players/$playerSlug/compare' },
-  { label: 'Leaderboard PP', path: '/players/$playerSlug/palmares/prestige' },
 ] as const
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -139,14 +138,17 @@ export function NavL2() {
   }
 
   // Stats : FilterOmnibar + PeriodSessionRail, sans onglets (virés).
-  // match_context='solo' : la page timeseries/history ne concerne que les matchs solo.
+  // match_context='solo' : Timeseries/History ne concernent que les matchs solo.
+  // Page Sessions : on active le sélecteur de contexte (Solo/Escouade/Mixte) —
+  // les autres pages stats restent figées sur 'solo' (aucune régression).
+  const isSessionsPage = /\/players\/[^/]+\/stats\/sessions/.test(pathname)
   return (
     <div
       className="sticky top-0 z-30 shrink-0 border-b border-border bg-background"
       role="navigation"
       aria-label={t('common.shell.nav_analytics_aria')}
     >
-      <FilterOmnibar matchContext="solo" />
+      <FilterOmnibar matchContext="solo" contextSelectable={isSessionsPage} />
       <PeriodSessionRail />
     </div>
   )
