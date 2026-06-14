@@ -104,18 +104,46 @@ describe('LeaderboardBlock', () => {
     expect(within(rows[3]).getByText('LocalVet')).toBeInTheDocument()
   })
 
-  it('affiche le CSR et le tier dérivé', async () => {
+  it('affiche le CSR + l’image de rang dans la colonne # (plus de colonne Tier)', async () => {
     mockLeaderboard(ENTRIES)
     renderWithProviders(<LeaderboardBlock playerSlug="test-player" />)
 
     await waitFor(() => {
-      expect(screen.getByText('Onyx')).toBeInTheDocument()
+      expect(screen.getByText(/1\s?850/)).toBeInTheDocument()
     })
-    expect(screen.getByText(/1\s?850/)).toBeInTheDocument()
     expect(screen.getByText(/1\s?720/)).toBeInTheDocument()
     expect(screen.getByText(/1\s?600/)).toBeInTheDocument()
-    expect(screen.getByText('Diamond VI')).toBeInTheDocument()
-    expect(screen.getByText('Diamond III')).toBeInTheDocument()
+    // Le tier est désormais porté par l'image de rang (colonne #, via alt), pas un libellé.
+    expect(screen.getByAltText('Onyx')).toBeInTheDocument()
+    expect(screen.getAllByAltText('Diamond').length).toBeGreaterThan(0)
+    // La colonne Tier (libellés texte « Diamond VI »…) est supprimée.
+    expect(screen.queryByText('Diamond VI')).not.toBeInTheDocument()
+  })
+
+  it('mode enrichi : colonnes Frags/Morts/Assistances + FDA (pas KDA)', async () => {
+    const enriched = [
+      {
+        rank: 1, xuid: 'e1', gamertag: 'Topfrag', csr_value: 1900, tier: 'Onyx', sub_tier: 0, is_local: false,
+        match_count: 10, kills: 200, deaths: 80, assists: 50, win_rate: 0.7, kda: 25, accuracy: 55,
+      },
+      {
+        rank: 2, xuid: 'e2', gamertag: 'Steady', csr_value: 1800, tier: 'Onyx', sub_tier: 0, is_local: false,
+        match_count: 10, kills: 150, deaths: 60, assists: 70, win_rate: 0.5, kda: 18, accuracy: 50,
+      },
+    ]
+    mockLeaderboard(enriched as unknown as typeof ENTRIES)
+    renderWithProviders(<LeaderboardBlock playerSlug="test-player" />)
+
+    await waitFor(() => expect(screen.getByText('Topfrag')).toBeInTheDocument())
+    // En-têtes (boutons triables) des nouvelles colonnes en FR + FDA (pas KDA).
+    expect(screen.getByRole('button', { name: /Frags/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Morts/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Assistances/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /FDA/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^KDA/ })).not.toBeInTheDocument()
+    // Valeurs Frags affichées.
+    expect(screen.getByText('200')).toBeInTheDocument()
+    expect(screen.getByText('150')).toBeInTheDocument()
   })
 
   it('affiche un état vide si le classement est vide', async () => {
