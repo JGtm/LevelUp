@@ -231,15 +231,29 @@ func nullStr(n sql.NullString) *string {
 // Clé = gamertag en minuscules (matching case-insensitive). Vide si pas de saison
 // antérieure. Sert au calcul de RankDelta (rang N vs N-1). `db` déjà acquise.
 func loadPrevSeasonRanks(ctx context.Context, db *sql.DB, playlist, season string) (map[string]int, error) {
-	const q = `
-		WITH prev AS (
-			SELECT MAX(season_id) AS s FROM world_csr_leaderboard_latest
-			WHERE playlist_id = ? AND season_id < ?
-		)
-		SELECT l.gamertag, l.rank
-		FROM world_csr_leaderboard_latest l, prev
-		WHERE l.playlist_id = ? AND prev.s IS NOT NULL AND l.season_id = prev.s`
-	rows, err := db.QueryContext(ctx, q, playlist, season, playlist)
+	// Saison précédente = plus grand rang NUMÉRIQUE strictement < la saison courante.
+	// Un MAX(season_id) / season_id < ? SQL serait LEXICOGRAPHIQUE (csrseason6-1 >
+	// csrseason13-2 car '6' > '1') → raterait par ex. prev(csrseason10-1) = csrseason6-1.
+	// On choisit donc la saison précédente en Go via worldSeasonRank.
+	seasons, err := scanIDColumn(ctx, db,
+		`SELECT DISTINCT season_id FROM world_csr_leaderboard_latest
+		 WHERE playlist_id = ? AND season_id <> ''`, playlist)
+	if err != nil {
+		return nil, fmt.Errorf("loadPrevSeasonRanks: seasons: %w", err)
+	}
+	cur := worldSeasonRank(season)
+	prev, prevRank := "", -1
+	for _, s := range seasons {
+		if r := worldSeasonRank(s); r < cur && r > prevRank {
+			prev, prevRank = s, r
+		}
+	}
+	if prev == "" {
+		return map[string]int{}, nil
+	}
+	rows, err := db.QueryContext(ctx,
+		`SELECT gamertag, rank FROM world_csr_leaderboard_latest WHERE playlist_id = ? AND season_id = ?`,
+		playlist, prev)
 	if err != nil {
 		return nil, fmt.Errorf("loadPrevSeasonRanks: query: %w", err)
 	}
