@@ -310,8 +310,8 @@ func playlistName(id, frOfficial, canonical string) string {
 }
 
 // scanIDColumn lit une colonne d'IDs (une seule colonne string) en slice ordonné.
-func scanIDColumn(ctx context.Context, db *sql.DB, q string) ([]string, error) {
-	rows, err := db.QueryContext(ctx, q)
+func scanIDColumn(ctx context.Context, db *sql.DB, q string, args ...any) ([]string, error) {
+	rows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}

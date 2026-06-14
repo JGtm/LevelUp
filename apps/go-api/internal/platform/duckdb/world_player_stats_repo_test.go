@@ -175,6 +175,53 @@ func TestGetCSRWorldLeaderboard_Enrichment(t *testing.T) {
 	}
 }
 
+// TestGetCSRWorldLeaderboard_PrevSeasonCrossDigit verrouille le tri NUMÉRIQUE des
+// saisons : la saison précédente de csrseason10-1 est csrseason6-1 (rang 601 < 1001),
+// que l'ancien tri LEXICOGRAPHIQUE ratait (csrseason6-1 > csrseason10-1 → RankDelta nil).
+// Couvre aussi le total de matchs CUMULÉ (6-1 + 10-1).
+func TestGetCSRWorldLeaderboard_PrevSeasonCrossDigit(t *testing.T) {
+	shared := openMemDB(t)
+	applyWorldLeaderboardMigration(t, shared.SQLDb())
+	applyWorldPlayerStatsMigration(t, shared.SQLDb())
+	ctx := context.Background()
+
+	const arena = "edfef3ac-9cbe-4fa2-b949-8f29deafd483"
+	t0 := time.Now().UTC()
+	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), []domain.LeaderboardEntry{
+		{Season: "csrseason6-1", Playlist: arena, Rank: 10, Gamertag: "Alpha", CSRValue: 1700, Tier: "Diamond", FetchedAt: t0},
+		{Season: "csrseason10-1", Playlist: arena, Rank: 4, Gamertag: "Alpha", CSRValue: 1950, Tier: "Onyx", FetchedAt: t0.Add(time.Hour)},
+	}); err != nil {
+		t.Fatalf("snapshot: %v", err)
+	}
+	if _, err := InsertPlayerSeasonStats(ctx, shared.SQLDb(), []domain.WorldPlayerSeasonStats{
+		{Gamertag: "Alpha", SeasonID: "csrseason6-1", PlaylistID: arena, MatchCount: 20, WinCount: 10, Kills: 200, Deaths: 150, Assists: 40, KDA: 30},
+		{Gamertag: "Alpha", SeasonID: "csrseason10-1", PlaylistID: arena, MatchCount: 12, WinCount: 8, Kills: 150, Deaths: 90, Assists: 30, KDA: 24},
+	}); err != nil {
+		t.Fatalf("enriched: %v", err)
+	}
+
+	repo := NewLeaderboardRepo(&PlayerDB{Shared: shared})
+	entries, err := repo.GetCSRWorldLeaderboard(ctx, "csrseason10-1", arena, 100)
+	if err != nil {
+		t.Fatalf("GetCSRWorldLeaderboard: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("attendu 1 entrée, got %d", len(entries))
+	}
+	e := entries[0]
+	// Δrang : prev = csrseason6-1 (rang 10) → csrseason10-1 (rang 4) = +6.
+	if e.RankDelta == nil || *e.RankDelta != 6 {
+		t.Errorf("rank_delta = %v, want +6 (csrseason6-1 rang 10 -> csrseason10-1 rang 4)", e.RankDelta)
+	}
+	if e.MatchCount == nil || *e.MatchCount != 12 {
+		t.Errorf("match_count = %v, want 12 (saison affichée)", e.MatchCount)
+	}
+	// Cumulé sur les saisons <= 10-1 (6-1: 20 + 10-1: 12).
+	if e.CumulativeMatchCount == nil || *e.CumulativeMatchCount != 32 {
+		t.Errorf("cumulative_match_count = %v, want 32 (20 + 12)", e.CumulativeMatchCount)
+	}
+}
+
 // TestWorldSeasonGamertags_TopNPerPlaylist valide le cap top-N PAR playlist :
 // un joueur hors du top-N d'une playlist mais DANS le top-N d'une autre reste
 // inclus (sémantique par playlist = ce qu'affiche le classement) ; un joueur hors

@@ -1,3 +1,15 @@
+## [2026-06-14] Fix Δrang inter-saison : tri saison NUMÉRIQUE (loadPrevSeasonRanks) — Complété
+
+**Statut** : vet + tests intégration duckdb verts (dont nouveau test cross-digit). Commit branche courante, sans push.
+
+**Bug** : `loadPrevSeasonRanks` trouvait la saison précédente via `MAX(season_id)` / `season_id < ?` = LEXICOGRAPHIQUE. Casse au passage simple→double chiffre : `prev(csrseason10-1)` devrait être `csrseason6-1`, mais `csrseason6-1 > csrseason10-1` lexicographiquement → précédente ratée → **Δrang manquant** pour csrseason10-1.
+
+**Fix** : sélection de la saison précédente en Go (plus grand `worldSeasonRank` strictement < courante) puis requête des rangs. `scanIDColumn` accepte des args variadiques (rétro-compatible) pour filtrer par playlist. Même principe que catalogue + cumulé.
+
+**Test** : `TestGetCSRWorldLeaderboard_PrevSeasonCrossDigit` (prev(10-1)=6-1 → Δrang +6 ; couvre aussi le cumulé 20+12=32). L'ancien code échouait ce test.
+
+---
+
 ## [2026-06-14] Classement : corrections layout (colonne Rang/placement) + matchs cumulés — Complété
 
 **Statut** : Backend (vet + tests intégration duckdb) + front (tsc + eslint + 11/11 vitest) verts. Commit branche courante, sans push.
@@ -24,21 +36,6 @@
 **Décision** : accès Lab conservé sur le modèle `can_manage_instance` (≠ admin role) ; la bascule admin-role est cadrée pour PMT-14 volet A (diagnostic titre exposé côté admin). Panneau Contracts laissé monté mais marqué pour retrait (réf FastAPI legacy).
 
 **Conclusion / prochaine étape** : Lab fonctionnel en prod. PMT-14 volets A (section admin Titres) + B (partage atoms `_labShared`) restent à faire.
-
----
-
-## [2026-06-14] Classement : corrections layout (colonne Rang/placement) + matchs cumulés — Complété
-
-**Statut** : Backend (vet + tests intégration duckdb) + front (tsc + eslint + 11/11 vitest) verts. Commit en attente d'autorisation (branche courante).
-
-**Corrections demandées (user) après la 1re passe** :
-- J'avais confondu **placement (#)** et **Rang (tier CSR)**. Corrigé : la colonne # = placement seul ; l'**image de rang** revient dans une colonne **« Rang »** (col 3, après Joueur) — image seule, pas de libellé texte (tout le top-100 est Onyx).
-- Colonne **« Parties » → « Matchs »** (i18n col_matches FR).
-- **FDA déplacée AVANT Frags** (ordre : Rang, CSR, FDA, Frags, Morts, Assists, %V, Matchs, Précision, Combat, Δrang).
-- **Colonnes chiffrées centrées** (text-right → text-center, helper `cell()` + en-têtes).
-- Colonne **Matchs = total CUMULÉ** : nouveau champ `LeaderboardEntry.CumulativeMatchCount` rempli par `loadCumulativeMatchCounts` (somme `match_count` sur les saisons de rang NUMÉRIQUE <= saison affichée — `worldSeasonRank`, pas lexicographique — filtré playlist si fournie, sinon toutes). Tri Matchs sur le cumulé. Domain + TS type ajoutés.
-
-**Note** : `loadPrevSeasonRanks` utilise encore `season_id < ?` (lexicographique) — bug latent du delta de rang inter-saison sur les saisons à un chiffre, non corrigé ici (hors scope, à noter).
 
 ---
 
