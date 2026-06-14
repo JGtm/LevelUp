@@ -15,6 +15,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	gosync "sync"
 	"time"
 
 	"levelup/go-api/internal/api/middleware"
@@ -76,6 +77,17 @@ type SyncHandler struct {
 	// WaitInFlight() peut rendre la main avant duckdb.CloseAll() (sinon write-after
 	// -close #7659). Par défaut context.Background() (comportement legacy).
 	serverCtx context.Context
+	// engineBuilder construit le moteur du sync manuel delta (StartSyncAll /
+	// StartDeltaSync) via le MÊME wiring que l'auto-sync (AutoSyncScheduler.
+	// BuildEngine → PooledHaloClient du pool partagé). Injecté par server.go.
+	// Nil → fallback legacy newEngineFor (session tokens). Cf. EngineBuilder.
+	engineBuilder EngineBuilder
+	// cooldown : fenêtre anti-spam du sync manuel delta. 0 = désactivé (tests).
+	// lastManualAt mémorise l'instant du dernier déclenchement par clé ("delta:"+
+	// slug pour /players/{slug}/sync, "all" pour /sync/all), protégé par cooldownMu.
+	cooldown     time.Duration
+	cooldownMu   gosync.Mutex
+	lastManualAt map[string]time.Time
 }
 
 // NewSyncHandler crée un SyncHandler.
@@ -92,6 +104,8 @@ func NewSyncHandler(
 		provider:      provider,
 		syncGate:      go_sync.NopSyncGate{}, // défaut no-op (pas de dédup tant que non injecté)
 		serverCtx:     context.Background(),  // défaut : pas d'annulation au shutdown
+		cooldown:      defaultManualSyncCooldown,
+		lastManualAt:  make(map[string]time.Time),
 	}
 }
 
@@ -380,6 +394,11 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Session requise + cooldown anti-spam (clé = slug). Tokens Halo via le pool.
+	if !h.guardManualDeltaSync(w, r, "delta:"+playerSlug) {
+		return
+	}
+
 	if active := h.jobStore.FindActiveInitialSync(playerSlug); active != nil {
 		writeError(r.Context(), w, http.StatusConflict, "sync_already_active",
 			"Une synchronisation est déjà en cours pour ce joueur.")
@@ -391,14 +410,6 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 	_, evID := logging.WithEvent(r.Context(), "http.sync.delta:"+playerSlug)
 	slog.InfoContext(r.Context(), "sync_handler: StartDeltaSync démarré",
 		"player_slug", playerSlug, "event", evID)
-
-	sess := middleware.GetSession(r.Context())
-	if sess == nil || sess.HaloTokens == nil {
-		writeError(r.Context(), w, http.StatusUnauthorized, "auth_required",
-			"Tokens Halo absents.")
-		return
-	}
-	tokens := sess.HaloTokens
 
 	players, err := h.cfg.LoadPlayers()
 	if err != nil {
@@ -439,7 +450,7 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 		if h.postSync != nil {
 			after = h.postSync(bgCtx, playerSlug)
 		}
-		engine := h.newEngineFor(gamertag, xuid, tokens)
+		engine := h.newPooledEngine(bgCtx, gamertag, xuid)
 		opts := domain.DefaultSyncOptions()
 
 		result, err := engine.RunDelta(bgCtx, opts)
@@ -465,12 +476,11 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 // StartSyncAll lance une synchronisation delta pour tous les joueurs configurés.
 // POST /api/v1/sync/all → 202 AsyncJobStatus.
 func (h *SyncHandler) StartSyncAll(w http.ResponseWriter, r *http.Request) {
-	sess := middleware.GetSession(r.Context())
-	if sess == nil || sess.HaloTokens == nil {
-		writeError(r.Context(), w, http.StatusUnauthorized, "auth_required", "Tokens Halo absents.")
+	// Session requise + cooldown anti-spam (clé "all"). Tokens Halo via le pool
+	// (même mécanique que l'auto-sync, ADR 0023), pas la session.
+	if !h.guardManualDeltaSync(w, r, "all") {
 		return
 	}
-	tokens := sess.HaloTokens
 
 	players, err := h.cfg.LoadPlayers()
 	if err != nil {
@@ -524,7 +534,7 @@ func (h *SyncHandler) StartSyncAll(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				defer release()
-				engine := h.newEngineFor(p.Gamertag, p.XUID, tokens)
+				engine := h.newPooledEngine(h.serverCtx, p.Gamertag, p.XUID)
 				opts := domain.DefaultSyncOptions()
 				// D3-04 : timeout par joueur (borne l'attente du lease KindPlayer).
 				pCtx, cancel := context.WithTimeout(h.serverCtx, syncJobTimeout)
