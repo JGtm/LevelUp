@@ -13,6 +13,7 @@ import { useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
 import { useLeaderboard, useLeaderboardCatalog } from './queries'
+import { SEASONS } from './seasons.i18n'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -50,29 +51,8 @@ const PLAYLISTS: { id: string; label: string }[] = [
   { id: '71734db4-4b8e-4682-9206-62b6eff92582', label: 'Chacun pour soi classé' },
 ]
 
-/**
- * Saisons CSR : noms officiels (saisons/opérations Halo Infinite), TEXTE SEUL (pas de
- * numéro). Sert de FALLBACK (catalogue vide) ET de table de libellés (override du
- * display_name brut de l'API). Noms recoupés PAR DATE de début via wiki.halo.fr
- * (Halo a abandonné les saisons numérotées après la S5 → opérations) :
- *   3-1 Echoes Within (mars 2023) · 4-1 Infection (juin 2023) · 5-1 Reckoning (oct 2023)
- *   6-1 Spirit of Fire (janv 2024) · 7-1 Banished Honor · 8-1 Fleetcom · 9-1 Great Journey
- *   10-1 Frontlines (fév 2025) · 11-1 Last Stand (mai 2025) · 12-1 Shadows · 13-2 Infinite.
- */
-const SEASONS: { id: string; label: string }[] = [
-  { id: 'csrseason13-2', label: 'Infinite' },
-  { id: 'csrseason13-1', label: 'Infinite' },
-  { id: 'csrseason12-1', label: 'Shadows' },
-  { id: 'csrseason11-1', label: 'Last Stand' },
-  { id: 'csrseason10-1', label: 'Frontlines' },
-  { id: 'csrseason9-1', label: 'Great Journey' },
-  { id: 'csrseason8-1', label: 'Fleetcom' },
-  { id: 'csrseason7-1', label: 'Banished Honor' },
-  { id: 'csrseason6-1', label: 'Spirit of Fire' },
-  { id: 'csrseason5-1', label: 'Reckoning' },
-  { id: 'csrseason4-1', label: 'Infection' },
-  { id: 'csrseason3-1', label: 'Echoes Within' },
-]
+// SEASONS (libellés de saison) déplacé dans ./seasons.i18n.ts — dict i18n local
+// (whitelist du linter no-hardcoded-fields ; noms propres de saison sans source catalogue).
 
 const KNOWN_PLAYLIST_LABEL: Record<string, string> = Object.fromEntries(PLAYLISTS.map((p) => [p.id, p.label]))
 const KNOWN_SEASON_LABEL: Record<string, string> = Object.fromEntries(SEASONS.map((s) => [s.id, s.label]))
