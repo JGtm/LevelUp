@@ -1,7 +1,7 @@
 # Plan — Leaderboard mondial enrichi (stats joueur par saison/playlist)
 
-> **Créé le** : 2026-06-09 · **Mis à jour** : 2026-06-11 (Phases F + C-wiring + E-polish livrées)
-> **Statut** : ✅ Phases A→F LIVRÉES. Reste : (1) lancer le backfill (manuel, off-peak), (2) activer le cron prod via `LEVELUP_WORLD_ENRICH=1` après validation des données réelles.
+> **Créé le** : 2026-06-09 · **Mis à jour** : 2026-06-14 (enrichissement cron dé-gaté : flag `LEVELUP_WORLD_ENRICH` + token dédié supprimés → toujours actif via le pool db_profiles)
+> **Statut** : ✅ Phases A→F LIVRÉES + enrichissement cron actif par défaut (pool multi-token, plus de flag). Reste : backfills **historiques** one-shot via CLI (la saison courante est tenue à jour par le cron).
 > **Branche de travail** : `feat/world-leaderboard-enriched` — créée **depuis `feat/leaderboard-csr-followup`**, PAS `main`. ⚠️ Vérifié 2026-06-10 : `main` n'a PAS l'infra leaderboard (scraper/cron/repo/migrations absents ; branche courante 60 commits devant `main`) → brancher depuis `main` ne compilerait pas. L'infra vit sur `feat/leaderboard-csr-followup`.
 > **Données** : les binaires `cmd/` (probe, backfill) tournent contre le `data/` du repo principal via flags `--shared-db`/`--tokens-dir` (les DB sont gitignored, donc absentes des worktrees).
 
