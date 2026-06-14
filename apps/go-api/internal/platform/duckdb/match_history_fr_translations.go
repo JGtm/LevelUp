@@ -197,6 +197,34 @@ func loadModeNamesFRForKeys(ctx context.Context, meta *DB, enKeys []string) map[
 	return out
 }
 
+// loadKnownModesEN charge la liste DISTINCTE des mode_en de mode_name_tr — les
+// modes canoniques connus — pour rattraper les variantes non canoniques
+// ("Legacy Slayer BR" → "Slayer") via analysis.ExtractKnownMode. Best-effort :
+// nil si meta absent ou table absente.
+func loadKnownModesEN(ctx context.Context, meta *DB) []string {
+	if meta == nil {
+		return nil
+	}
+	ctx2, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	rows, err := meta.QueryRecovered(ctx2, `SELECT DISTINCT mode_en FROM mode_name_tr`)
+	if err != nil {
+		if !isTableNotFoundErr(err) {
+			slog.WarnContext(ctx, "fr_translations: loadKnownModesEN failed", "err", err)
+		}
+		return nil
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var m string
+		if rows.Scan(&m) == nil && strings.TrimSpace(m) != "" {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
 // loadPairAssetNamesFR charge asset_translations[asset_type='pair', lang='fr'|'fr-FR']
 // pour les pair_id donnés. Helper partagé entre match_history et filters pour
 // le fallback de re-lookup mode_name_tr (cf. analysis.ResolvePairNameFR).

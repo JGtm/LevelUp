@@ -13,12 +13,16 @@ const (
 	AssetTypeGameVariant AssetType = "game_variant" // UgcGameVariants
 )
 
-// AssetTypeToEndpoint convertit un AssetType en segment d'URL Discovery UGC.
+// AssetTypeToEndpoint convertit un AssetType en segment d'URL discovery-infiniteugc.
+// Segments camelCase EXACTS de l'API (cf. SPNKr/Grunt + sync.GetPlaylistConfig validé
+// contre l'API réelle 2026-06-12) : /hi/{segment}/{assetId}/versions/{versionId}.
+// NB : les anciens segments hyphénés (map-variants…) + le host gamecms-hacs étaient
+// FAUX (403 systématique → asset_translations jamais peuplé au runtime).
 var AssetTypeToEndpoint = map[AssetType]string{
-	AssetTypeMap:         "map-variants",
+	AssetTypeMap:         "maps",
 	AssetTypePlaylist:    "playlists",
-	AssetTypePair:        "playlist-map-mode-pairs",
-	AssetTypeGameVariant: "ugc-game-variants",
+	AssetTypePair:        "mapModePairs",
+	AssetTypeGameVariant: "ugcGameVariants",
 }
 
 // AssetTypeToMatchInfoKey convertit un AssetType en clé JSON MatchInfo.
@@ -36,6 +40,10 @@ type DiscoveryAsset struct {
 	VersionID   string `json:"VersionId"`
 	PublicName  string `json:"PublicName"`
 	Description string `json:"Description,omitempty"`
+	// ImageURL : URL CDN de la miniature (construite depuis le bloc Files :
+	// Prefix + chemin d'image). Vide si l'asset n'expose pas d'image. Sert au
+	// peuplement de map_images_registry.image_url pour les cartes inconnues.
+	ImageURL string `json:"-"`
 }
 
 // MatchInfoAsset représente la structure {AssetId, VersionId} dans MatchInfo.

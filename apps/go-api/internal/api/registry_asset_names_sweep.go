@@ -3,10 +3,9 @@
 // traîne — assets dont la résolution a échoué/été capée au sync ET qui ne sont
 // jamais rejoués, donc jamais re-tentés par la résolution in-sync).
 //
-// Lancé par le cron catalogue hebdomadaire (cmd/server). Réutilise la chaîne
-// token-free GameCMS (halo.NewAssetNameFetcher) + ops.UpsertAssetTranslation
-// (ART-safe) — même mécanique que la résolution in-sync, mais sourcée depuis
-// match_registry sur TOUS les assets non résolus (pas seulement ceux du cycle).
+// Lancé par le cron catalogue hebdomadaire (cmd/server) avec le POOL UNIFIÉ de
+// tokens (la même source que tous les syncs — GameCMS exige un token Spartan).
+// Écrit asset_translations via ops.UpsertAssetTranslation (ART-safe).
 package api
 
 import (
@@ -14,18 +13,17 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/assetnames"
-	"levelup/go-api/internal/platform/halo"
+	"levelup/go-api/internal/platform/auth/pool"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
 // ResolveUnresolvedAssetNames balaye match_registry et résout les noms d'assets
-// restés en UUID vers asset_translations. Self-gated par le kill-switch
-// LEVELUP_SYNC_RESOLVE_ASSETS (fetcher nil → no-op). Handles : shared RO +
-// metadata RW partagé (dataQualityHandles). Best-effort.
-func (r *ServiceRegistry) ResolveUnresolvedAssetNames(ctx context.Context, titleSlug string) (assetnames.Result, error) {
-	fetcher := halo.NewAssetNameFetcherIfEnabled()
-	if fetcher == nil {
-		return assetnames.Result{}, nil // kill-switch actif
+// restés en UUID vers asset_translations, via le pool unifié p. Le gate
+// LEVELUP_SYNC_RESOLVE_ASSETS est appliqué côté sync. Handles : shared RO +
+// metadata RW partagé (dataQualityHandles). p nil → no-op. Best-effort.
+func (r *ServiceRegistry) ResolveUnresolvedAssetNames(ctx context.Context, titleSlug string, p pool.Pool) (assetnames.Result, error) {
+	if p == nil {
+		return assetnames.Result{}, nil
 	}
 	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(titleSlug)
 	if err != nil {
@@ -35,5 +33,5 @@ func (r *ServiceRegistry) ResolveUnresolvedAssetNames(ctx context.Context, title
 	if metaSQL == nil {
 		return assetnames.Result{}, fmt.Errorf("metadata indisponible pour %s", titleSlug)
 	}
-	return syncpkg.ResolveUnresolvedAssetNames(ctx, fetcher, metaSQL, sharedSQL, titleSlug)
+	return syncpkg.ResolveUnresolvedAssetNames(ctx, p, metaSQL, sharedSQL, titleSlug), nil
 }

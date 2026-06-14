@@ -126,7 +126,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			-- calcul de l'offset countdown t0_ms dans v_match_full / Q13.
 			real_start_time TIMESTAMP,
 			playlist_id VARCHAR,
-			map_id VARCHAR,
+			map_id VARCHAR, map_version_id VARCHAR,
 			pair_id VARCHAR,
 			game_variant_id VARCHAR,
 			last_updated_at TIMESTAMPTZ, map_name VARCHAR, map_name_fr VARCHAR,

@@ -20,6 +20,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 	"time"
 
@@ -29,6 +30,18 @@ import (
 // CatalogSeedResult compte les upserts par table catalog.
 type CatalogSeedResult struct {
 	Playlists, Pairs, Maps, GameVariants int
+}
+
+// CatalogRefreshEnabled : interrupteur MAÎTRE des écritures catalogue (drain réseau
+// hebdo ET refresh in-sync). LEVELUP_CATALOG_REFRESH=1|true active. OFF par défaut :
+// les UPSERT catalogue (ON CONFLICT DO UPDATE sur metadata) peuvent taper le bug ART
+// « Failed to delete all rows from index » qui invalide metadata.duckdb (cf. mémoire
+// projet : l'hypothèse « ces tables ont une PK donc c'est sûr » a été démentie en prod
+// 2026-05-24). À réactiver quand les écritures catalogue seront migrées append-only.
+// Indépendant de LEVELUP_SYNC_RESOLVE_ASSETS (résolution des NOMS, ART-safe, autonome).
+func CatalogRefreshEnabled() bool {
+	v := strings.TrimSpace(os.Getenv("LEVELUP_CATALOG_REFRESH"))
+	return v == "1" || strings.EqualFold(v, "true")
 }
 
 // CatalogRefreshFromRegistry peuple les tables catalog depuis match_registry

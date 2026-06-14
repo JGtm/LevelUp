@@ -18,6 +18,10 @@ type AssetConfig struct {
 	// TokenProvider est la fonction de récupération des tokens Halo.
 	// Nil → seuls les assets publics (médailles, maps) peuvent être fetchés.
 	TokenProvider TokenProvider
+	// MapImageURLFetcher résout l'URL CDN de l'image d'une map via DiscoveryUGC
+	// (KindMapImage). Injecté pour éviter le cycle assets→halo. Nil → pas de
+	// résolution d'image de carte inconnue (seul le local-first amont s'applique).
+	MapImageURLFetcher MapImageURLFetcher
 	// HTTPClient est le client HTTP à utiliser (nil → http.DefaultClient).
 	HTTPClient *http.Client
 	// ReconcileInterval est la périodicité du ReconcileWorker (0 → désactivé).
@@ -59,7 +63,8 @@ func New(cfg AssetConfig) (*DefaultResolver, error) {
 	// Fetcher.
 	gameCMSFetcher := NewGameCMSFetcher(cfg.HTTPClient, cfg.TokenProvider, cfg.GameCMSBaseURL)
 	medalFetcher := NewSpritesheetFallbackFetcher(gameCMSFetcher, cfg.GameCMSBaseURL)
-	fetcher := &multiFetcher{fetchers: []Fetcher{medalFetcher, gameCMSFetcher}}
+	mapFetcher := NewDiscoveryMapFetcher(cfg.MapImageURLFetcher) // KindMapImage (DiscoveryUGC)
+	fetcher := &multiFetcher{fetchers: []Fetcher{medalFetcher, gameCMSFetcher, mapFetcher}}
 
 	// Metrics (no-op par défaut — remplacer par PrometheusMetrics en prod).
 	metrics := Metrics(NoopMetrics{})

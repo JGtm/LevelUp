@@ -23,12 +23,12 @@ import (
 	"sync"
 	"time"
 
-	"levelup/go-api/internal/assetnames"
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
@@ -135,13 +135,13 @@ type SyncEngine struct {
 	// Persister.Persist sans WAL). Reset à nil = pas d'async layer.
 	batchQueue *persist.BatchQueue
 
-	// assetFetcher (optionnel) — résolution autonome des noms d'assets au sync :
-	// si non-nil, un pré-pass (resolveCycleAssets) peuple metadata.asset_translations
-	// pour les assets neufs du cycle AVANT l'écriture registry, de sorte que les
-	// noms soient résolus dès le 1er passage (sans heal/backfill/action admin).
-	// Token-free (API publique GameCMS). Injecté via WithAssetNameResolution ;
-	// nil → feature off (parité legacy). Cf. assetnames_wiring.go.
-	assetFetcher assetnames.Fetcher
+	// assetPool (optionnel) — POOL de tokens UNIFIÉ (auth/pool, la même source que
+	// tous les syncs) pour la résolution autonome des noms d'assets au sync : si
+	// non-nil, un pré-pass (resolveCycleAssets) peuple metadata.asset_translations
+	// pour les assets neufs du cycle AVANT l'écriture registry (noms résolus dès le
+	// 1er passage, sans heal/backfill/action admin). GameCMS exige un token Spartan.
+	// Injecté via WithAssetNameResolution ; nil → feature off. Cf. assetnames_wiring.go.
+	assetPool pool.Pool
 }
 
 // NewSyncEngine, WithPrestigeHook, WithResolver, WithSharedProvider,
@@ -454,7 +454,7 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 			// Peuple metadata.asset_translations pour les assets neufs du cycle
 			// AVANT la phase d'insert, pour qu'EnrichRegistryFromMetadata
 			// (submitOrInsertMatch) écrive un vrai nom dès le 1er passage.
-			// Best-effort, gated (assetFetcher nil → no-op).
+			// Best-effort, gated (assetPool nil → no-op).
 			e.resolveCycleAssets(ctx, fetchedMatches)
 
 			// ─── Phase 3 : Insert séquentiel (order-preserving) ───

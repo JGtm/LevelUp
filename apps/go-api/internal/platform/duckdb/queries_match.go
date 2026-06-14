@@ -133,7 +133,8 @@ SELECT
         WHEN r.real_start_time IS NOT NULL THEN
             epoch_ms(r.real_start_time AT TIME ZONE 'UTC')
             - epoch_ms(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))
-    END AS t0_ms
+    END AS t0_ms,
+    r.map_version_id
 FROM match_registry r
 WHERE r.match_id = ?`
 

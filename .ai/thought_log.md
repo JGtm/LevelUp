@@ -1,3 +1,37 @@
+## [2026-06-14] Affichage match : mode normalisé + playlist sans catégorie + image de carte (framework KindMapImage) — Complété côté code (image en vérif user)
+
+**Statut** : `go build ./...` = 0, `go vet ./...` = 0, suite duckdb intégration complète verte (68s) + analysis + assets. Branche courante. Commit en attente d'autorisation. Suite directe du fix endpoint (entrée ci-dessous) — sur match 1d0cebd1 : mode « Assassin » ✓, carte « Passages » ✓, playlist « Delta : Héritage » ✓ (validés user) ; image de carte = vérif user en attente.
+
+**Mode (variantes non canoniques)** : `analysis.ExtractKnownMode(label, knownModesEN)` (pure, mot entier, match le plus long) — rattrape « Legacy Slayer BR » → « Slayer » → `mode_name_tr` → « Assassin ». Branché dans `GetMatchMeta` (charge `SELECT DISTINCT mode_en FROM mode_name_tr` via `loadKnownModesEN`, applique après `NormalizeModeLabel`, priorise le mode extrait sinon cascade `ResolvePairNameFR`). Tests purs + repo (`TestGetMatchMeta_ExtractsModeVariantFR`).
+
+**Playlist (catégorie de tête)** : `analysis.NormalizePlaylistLabel` retire le préfixe catégorie matchmaking (« Arène delta : Héritage » → « Delta : Héritage »), appliqué à `PlaylistNameFR` dans `GetMatchMeta`. **EXCEPTION ranked** (demande user) : « Classé »/« Ranked » CONSERVÉS — et de toute façon `is_ranked` vient de la source autoritative (`Experience==ExperienceRanked`) + de `Q13MatchMeta` qui lit `r.playlist_name` BRUT (pas le `PlaylistNameFR` normalisé) → zéro impact détection ranked. Vérifié.
+
+**Image de carte (framework `KindMapImage`)** : le Kind existait mais SANS fetcher + endpoint `GET /api/v1/assets/maps/{title}/{map}/image` déjà câblé. Ajout : (1) `assets.NewDiscoveryMapFetcher` (Supports KindMapImage ; version via `ref.Variant` ; résolution réseau INJECTÉE `AssetConfig.MapImageURLFetcher` pour éviter le cycle assets→halo) ; (2) closure server.go = `reg.AnyPlayerTokens` + `halo.FetchAsset(map)` → `DiscoveryAsset.ImageURL` (extrait via `buildAssetImageURL` du bloc `Files` Prefix+FileRelativePaths) ; (3) handler lit `?v=` → `Ref.Variant` ; (4) `GetMatchMeta` : si pas d'image locale curée + `map_version_id` connu → `MapImageURL=/api/v1/assets/maps/hi/{map}/image?v={ver}` (lazy fetch+cache framework). `map_version_id` ajouté à `Q13MatchMeta` + `MatchMetaRaw` + scan + 2 schémas de test. Tests : 5 sur le fetcher.
+
+**À VÉRIFIER (live)** : structure `Files` du map asset DiscoveryUGC inférée de SPNKr (`Prefix` + `FileRelativePaths` → thumbnail) — 1er test réel au rechargement de 1d0cebd1. Si pas d'image → ajouter un log du JSON Files réel + ajuster `buildAssetImageURL`.
+
+---
+
+## [2026-06-14] Résolution autonome des noms d'assets : ROOT CAUSE (mauvais endpoint) + découplage ART — Complété (côté code ; vérif affichage user en attente)
+
+**Statut** : `go build ./...` = 0 + `go vet ./...` = 0 + tests sync/scheduler/assetnames/halo/games/service verts (5 tests assetnames_wiring à jour + nouveau test ref-sans-version ; 4 tests asset_name_sweep_cron). Seul FAIL : `internal/ops/TestSeedDemo_EndToEnd` — **pré-existant et sans rapport** (match_csrs/is_with_friends/is_ranked, mismatch schéma demo ; je n'ai touché à ops que pour ajouter `CatalogRefreshEnabled`). Branche courante (`feat/oauth-uniformize-e1cb35ab`). Commit en attente d'autorisation.
+
+**ROOT CAUSE (après plusieurs fausses pistes token)** : `halo.FetchAsset` (discovery_client.go) tapait le **mauvais endpoint** — `gamecms-hacs.svc.halowaypoint.com/hi/multiplayer/file/{seg}/{titleID}/{id}/{ver}` → **403 nu** pour TOUT asset UGC. Le commentaire « API publique » était faux de bout en bout. Comme `CatalogFetcher` (drain catalogue) utilise le MÊME `FetchAsset`, la résolution de noms n'a JAMAIS marché au runtime → `asset_translations` jamais peuplé hors seeds → symptôme « énormément d'UUID bruts ». Diagnostic : WARN temporaire → **403** (ni 401 ni 404) → clearance présente (Exchange hard-fail sinon) → donc endpoint, pas auth.
+
+**FIX endpoint** : `FetchAsset` re-pointé vers `discovery-infiniteugc.svc.halowaypoint.com/hi/{segment}/{id}/versions/{ver}` — host + chemin du client PROUVÉ `sync.GetPlaylistConfig` (validé contre l'API réelle 2026-06-12) + SPNKr. Segments camelCase corrigés : map→`maps`, playlist→`playlists`, pair→`mapModePairs`, game_variant→`ugcGameVariants`. `version_id` REQUIS (404 sans). `PublicName` décodé string OU `{value}` (`decodeLocalizedAssetName`). `titleID` désormais ignoré (préfixe jeu "hi" fixe). Auth Spartan + 343-clearance déjà posée par `doGetWithLang`. **Vérifié serveur live : 403 disparu.**
+
+**Source token = POOL unifié (ADR 0023)** : le pool était vide chez le user (2 creds `.env.local` cassés — secret vieille app `39829f7a` + RT morts post-cutover `e1cb35ab`), pas un mauvais choix de source. User corrigé → `pool_size=4` → Spartan+clearance OK.
+
+**Découplage ART** : le balayage de noms (ART-safe, `ops.UpsertAssetTranslation`) était prisonnier du cron catalogue gaté `LEVELUP_CATALOG_REFRESH=0` (coupé par le user car le DRAIN tape le bug ART). Extrait dans un cron dédié `scheduler.AssetNameSweepCron` (gaté `LEVELUP_SYNC_RESOLVE_ASSETS`, ON ; boot+60s puis hebdo ; module=sync → sync.log). Le refresh catalogue in-sync (`ops.CatalogRefreshFromRegistry`, ART-unsafe ON CONFLICT) gaté derrière `ops.CatalogRefreshEnabled()` (= `LEVELUP_CATALOG_REFRESH`) pour ne pas réintroduire le crash ART par-sync. Noms (ART-safe, autonome) et catalogue (ART-unsafe, coupé) désormais indépendants.
+
+**Refs sans version_id** : écartées proprement avant fetch (log agrégé « refs sans version_id ignorées », pas une erreur). Typiquement les paires map-mode (match_registry n'a pas leur version → nécessitent l'expansion playlist via RotationEntries). Le mode s'affiche de toute façon via le game_variant (qui a sa version).
+
+**Reste à vérifier (besoin session user / nouveaux matchs)** : (1) un 200 live discovery-infiniteugc pour map/gv/pair (tous skippés actuellement = déjà dans le dico, donc pas de fetch live observé) ; (2) affichage de match 1d0cebd1 (dépend du read-path + contenu dico) ; (3) paires : brancher l'expansion playlist pour leur version (différé — l'expansion est non-ART, mais le drain catalogue reste ART-gated).
+
+**Prochaine étape** : user vérifie 1d0cebd1 (noms playlist/map/mode) + compteur data-quality. Puis décider : enrichir `match_registry` existant (rows UUID) si le read-path ne résout pas via le dico ; + résolution paires via expansion.
+
+---
+
 ## [2026-06-14] Classement : padding/centrage cellules + couleur podium/winrate + constat cases vides 13-2 — Complété
 
 **Statut** : tsc + eslint 0 erreur + 11/11 vitest. Commit branche courante (pathspec, sans push).

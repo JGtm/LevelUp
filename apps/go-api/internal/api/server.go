@@ -367,6 +367,26 @@ func NewRouter(
 		CacheRootDir:  filepath.Join(cfg.RepoRoot, "data", "cache"),
 		MetaDBPath:    titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug),
 		TokenProvider: reg.AnyPlayerTokens,
+		// Résolution d'image de carte inconnue (KindMapImage) via DiscoveryUGC.
+		// Injectée ici (et non dans internal/assets) pour éviter le cycle
+		// assets→halo : réutilise halo.FetchAsset (→ DiscoveryAsset.ImageURL).
+		// Tokens Spartan+clearance via reg.AnyPlayerTokens. Résultat caché par le
+		// resolver → fetch ~1×/carte inconnue.
+		MapImageURLFetcher: func(ctx context.Context, titleID, mapID, versionID string) (string, error) {
+			tokens, terr := reg.AnyPlayerTokens(ctx)
+			if terr != nil {
+				return "", terr
+			}
+			a, ferr := halo.NewHaloProvider().WithTokens(tokens).FetchAsset(
+				ctx, halo.AssetTypeMap, titleID, mapID, versionID, "en-US")
+			if ferr != nil {
+				return "", ferr
+			}
+			if a == nil {
+				return "", nil
+			}
+			return a.ImageURL, nil
+		},
 	}
 	assetResolver, err := assets.New(assetCfg)
 	if err != nil {
