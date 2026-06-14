@@ -1,12 +1,14 @@
-## [2026-06-14] Catalogue classement mondial : filtre saisons ← stats enrichies (option B) + tri numérique — Complété
+## [2026-06-14] Catalogue classement mondial : option C (montrer toutes les saisons + flag `enriched`) + tri numérique — Complété
 
-**Statut** : Code + tests verts (vet, 2 tests intégration duckdb, service + handlers leaderboard). Commit sur la branche courante (`fix/media-captures-base-dir-resilience`, sans push) — demande user explicite « sur la branche courante ».
+**Statut** : Backend (vet + 2 tests intégration duckdb + service/handlers) + Front (tsc + eslint 0 erreur + 10/10 vitest LeaderboardBlock) verts. Commit sur la branche courante (`main`, sans push) — la branche a glissé pendant la session. Itération B → C (cf. ci-dessous).
 
-**Contexte** : le backfill world n'a pu enrichir que 6 des 8 saisons à leaderboard (3-1/4-1 = 0, au-delà de l'horizon de l'API match history Halo ; 7/8/9/13-1 absents du leaderboard Waypoint). Question user : le filtre de saisons doit-il montrer des saisons sans données, et faut-il un flag « archivé » ?
+**Contexte** : le backfill world n'a enrichi que 6 des 8 saisons à leaderboard (3-1/4-1 = 0 = au-delà de l'horizon de l'API match history Halo ; 7/8/9/13-1 absents du leaderboard Waypoint). Question user : le filtre doit-il montrer des saisons sans stats, et faut-il un flag « archivé » ?
 
-**Décision** : pas de flag d'archivage (machinerie à maintenir). Le catalogue (`GetWorldLeaderboardCatalog`) est déjà data-driven ; il sourçait les saisons/playlists depuis `world_csr_leaderboard_latest` (leaderboard scrappé, 8 saisons → 3-1/4-1 apparaissaient avec colonnes vides). **Option B** : sourcer depuis `world_player_season_stats_latest` (stats enrichies) → seules les saisons réellement exploitables sont proposées. Les stats dérivant du leaderboard, toute saison listée a forcément un classement. **Bonus** : corrigé le tri `ORDER BY season_id DESC` (lexicographique → csrseason6-1 avant csrseason13-2, faux) par un tri NUMÉRIQUE Go récent-d'abord (`worldSeasonRank` = major*100+minor).
+**Itération** : d'abord livré **option B** (sourcer le catalogue depuis `world_player_season_stats_latest` → 3-1/4-1 CACHÉES). Le user a fait remarquer à raison qu'on a scrappé un **classement CSR valide** (rangs + gamertags) pour 3-1/4-1 — les cacher jette cette donnée. → bascule sur **option C**.
 
-**Résultats** : `TestGetWorldLeaderboardCatalog` renforcé — une saison présente au leaderboard mais sans stats (csrseason4-1) est EXCLUE, et csrseason6-1 (1 chiffre) trié en dernier (pas en tête). Aucun changement front nécessaire (le front rend les saisons du catalogue).
+**Décision (C)** : `GetWorldLeaderboardCatalog` source les saisons/playlists depuis `world_csr_leaderboard_latest` (toutes les saisons à classement), et chaque saison porte un flag `Enriched` (true si stats détaillées dans `world_player_season_stats_latest`). Les saisons non enrichies (archivées) sont AFFICHÉES en « classement seul ». Pas de flag d'archivage à maintenir (dérivé des données). Front : suffixe « (archivée) » dans le sélecteur + bandeau `archived_season_note` quand la saison active n'est pas enrichie (la table dégrade déjà : `hasEnrichment=false` masque les colonnes stats). **Bonus gardé** : tri `ORDER BY season_id DESC` lexicographique (csrseason6-1 avant 13-2, faux) remplacé par tri NUMÉRIQUE Go récent-d'abord (`worldSeasonRank` = major*100+minor).
+
+**Résultats** : `TestGetWorldLeaderboardCatalog` — 4 saisons exposées, 4-1 `Enriched=false`, 6-1 trié en dernier. `LeaderboardBlock.test` — option « (archivée) » dans le menu + bandeau à la sélection. Champ `enriched` ajouté à `LeaderboardCatalogRef` (Go domain + TS) ; 2 clés i18n (`season_archived_badge`, `archived_season_note`) FR+EN régénérées.
 
 ---
 

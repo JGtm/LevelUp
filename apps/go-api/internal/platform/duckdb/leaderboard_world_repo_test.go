@@ -120,24 +120,24 @@ func TestGetWorldLeaderboardCatalog(t *testing.T) {
 
 	arenaID := "edfef3ac-9cbe-4fa2-b949-8f29deafd483" // Ranked Arena (NameFR "Arène classée")
 
-	// Leaderboard scrappé : inclut csrseason4-1 (archivée) SANS stats enrichies.
-	// Option B : le catalogue se base sur les STATS, donc 4-1 doit être EXCLUE même si
-	// elle a un classement CSR (son historique de matchs dépasse l'horizon API → 0 stat).
+	// Leaderboard scrappé : 4 saisons (dont csrseason6-1 à un chiffre pour valider le tri
+	// NUMÉRIQUE, et csrseason4-1 archivée), 2 playlists.
 	lbRows := []domain.LeaderboardEntry{
 		{Season: "csrseason13-2", Playlist: arenaID, Rank: 1, Gamertag: "A", CSRValue: 2000, Tier: "Onyx", FetchedAt: time.Now().UTC()},
+		{Season: "csrseason12-1", Playlist: arenaID, Rank: 1, Gamertag: "B", CSRValue: 1900, Tier: "Onyx", FetchedAt: time.Now().UTC()},
+		{Season: "csrseason6-1", Playlist: arenaID, Rank: 1, Gamertag: "C", CSRValue: 1800, Tier: "Diamond", FetchedAt: time.Now().UTC()},
+		{Season: "csrseason6-1", Playlist: "unknown-pl", Rank: 1, Gamertag: "D", CSRValue: 1750, Tier: "Diamond", FetchedAt: time.Now().UTC()},
 		{Season: "csrseason4-1", Playlist: arenaID, Rank: 1, Gamertag: "Z", CSRValue: 1700, Tier: "Diamond", FetchedAt: time.Now().UTC()},
 	}
 	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), lbRows); err != nil {
 		t.Fatalf("InsertWorldCSRSnapshot: %v", err)
 	}
 
-	// Stats enrichies : 3 saisons (dont csrseason6-1 à un chiffre, pour valider le tri
-	// NUMÉRIQUE récent-d'abord), 2 playlists. AUCUNE stat pour csrseason4-1.
+	// Stats enrichies pour 3 saisons ; PAS csrseason4-1 (archivée → restera Enriched=false).
 	statRows := []domain.WorldPlayerSeasonStats{
 		{TitleSlug: "halo_infinite", Gamertag: "A", SeasonID: "csrseason13-2", PlaylistID: arenaID, MatchCount: 10, WinCount: 6},
 		{TitleSlug: "halo_infinite", Gamertag: "B", SeasonID: "csrseason12-1", PlaylistID: arenaID, MatchCount: 8, WinCount: 4},
 		{TitleSlug: "halo_infinite", Gamertag: "C", SeasonID: "csrseason6-1", PlaylistID: arenaID, MatchCount: 5, WinCount: 2},
-		{TitleSlug: "halo_infinite", Gamertag: "C", SeasonID: "csrseason6-1", PlaylistID: "unknown-pl", MatchCount: 3, WinCount: 1},
 	}
 	if _, err := InsertPlayerSeasonStats(ctx, shared.SQLDb(), statRows); err != nil {
 		t.Fatalf("InsertPlayerSeasonStats: %v", err)
@@ -149,20 +149,25 @@ func TestGetWorldLeaderboardCatalog(t *testing.T) {
 		t.Fatalf("GetWorldLeaderboardCatalog: %v", err)
 	}
 
-	// Option B + tri numérique : [13-2, 12-1, 6-1] ; csrseason4-1 (leaderboard sans
-	// stats) EXCLUE ; 6-1 en DERNIER (un tri lexicographique l'aurait mis en tête).
-	gotSeasons := make([]string, len(cat.Seasons))
-	for i, s := range cat.Seasons {
-		gotSeasons[i] = s.ID
-		if s.ID == "csrseason4-1" {
-			t.Errorf("csrseason4-1 (sans stats enrichies) ne doit PAS apparaître dans le catalogue")
+	// Option C : TOUTES les saisons du leaderboard sont exposées, triées NUMÉRIQUEMENT
+	// récent-d'abord (6-1 en DERNIER, pas en tête comme un tri lexicographique) ; chaque
+	// saison porte Enriched (csrseason4-1 sans stats → false, affichée en classement seul).
+	want := []struct {
+		id       string
+		enriched bool
+	}{
+		{"csrseason13-2", true}, {"csrseason12-1", true}, {"csrseason6-1", true}, {"csrseason4-1", false},
+	}
+	if len(cat.Seasons) != len(want) {
+		t.Fatalf("seasons = %+v, attendu %d (toutes les saisons du leaderboard)", cat.Seasons, len(want))
+	}
+	for i, w := range want {
+		if cat.Seasons[i].ID != w.id || cat.Seasons[i].Enriched != w.enriched {
+			t.Errorf("season[%d] = {%s, enriched=%v}, attendu {%s, enriched=%v}",
+				i, cat.Seasons[i].ID, cat.Seasons[i].Enriched, w.id, w.enriched)
 		}
 	}
-	want := []string{"csrseason13-2", "csrseason12-1", "csrseason6-1"}
-	if len(gotSeasons) != 3 || gotSeasons[0] != want[0] || gotSeasons[1] != want[1] || gotSeasons[2] != want[2] {
-		t.Fatalf("seasons = %v, attendu %v (tri numérique récent-d'abord, 4-1 exclue)", gotSeasons, want)
-	}
-	// Playlists : 2 distinctes (depuis les stats) ; la playlist connue a son libellé FR.
+	// Playlists : 2 distinctes (depuis le leaderboard) ; la playlist connue a son libellé FR.
 	if len(cat.Playlists) != 2 {
 		t.Fatalf("playlists = %d, attendu 2 (%+v)", len(cat.Playlists), cat.Playlists)
 	}

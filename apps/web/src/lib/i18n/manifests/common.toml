@@ -681,6 +681,14 @@ en = "World top by ranked playlist and season (source: Halo Waypoint)."
 fr = "Classement des joueurs croisés (données locales)."
 en = "Ranking of players you have crossed (local data)."
 
+[common.leaderboard.season_archived_badge]
+fr = "archivée"
+en = "archived"
+
+[common.leaderboard.archived_season_note]
+fr = "Saison archivée : classement CSR uniquement (stats détaillées indisponibles pour cette saison)."
+en = "Archived season: CSR ranking only (detailed stats unavailable for this season)."
+
 [common.leaderboard.col_player]
 fr = "Joueur"
 en = "Player"
