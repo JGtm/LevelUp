@@ -3454,6 +3454,8 @@ export interface LeaderboardResponse {
 export interface LeaderboardCatalogRef {
   id: string
   display_name: string
+  /** Saison: stats détaillées disponibles (false = classement CSR seul, saison archivée). Toujours false pour les playlists. */
+  enriched: boolean
 }
 
 export interface LeaderboardCatalog {

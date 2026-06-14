@@ -5,7 +5,7 @@
  * highlight du joueur local, états vide / erreur.
  */
 import { describe, it, expect } from 'vitest'
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within, fireEvent } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/setup'
@@ -29,6 +29,17 @@ function mockLeaderboard(entries: typeof ENTRIES) {
         playlist_id: 'p',
         title_slug: 'halo_infinite',
         total: entries.length,
+      }),
+    ),
+  )
+}
+
+function mockCatalog(seasons: Array<{ id: string; display_name: string; enriched: boolean }>) {
+  server.use(
+    http.get(p('/players/:playerSlug/pages/leaderboard/catalog'), () =>
+      HttpResponse.json({
+        seasons,
+        playlists: [{ id: 'edfef3ac-9cbe-4fa2-b949-8f29deafd483', display_name: 'Arène classée', enriched: false }],
       }),
     ),
   )
@@ -58,6 +69,26 @@ describe('LeaderboardBlock', () => {
 
     const remoteRow = screen.getByText('RemoteRival').closest('tr')!
     expect(within(remoteRow).queryByText('Local')).not.toBeInTheDocument()
+  })
+
+  it('signale une saison archivée (non enrichie) : suffixe dans le sélecteur + bandeau à la sélection', async () => {
+    mockLeaderboard(ENTRIES)
+    mockCatalog([
+      { id: 'csrseason13-2', display_name: 'Infinite (13.2)', enriched: true },
+      { id: 'csrseason4-1', display_name: 'Saison 4.1', enriched: false },
+    ])
+    renderWithProviders(<LeaderboardBlock playerSlug="test-player" />)
+
+    // L'option archivée porte le suffixe « (archivée) » dans le menu déroulant.
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: /archivée/i })).toBeInTheDocument()
+    })
+    // Saison active par défaut (13.2, enrichie) → pas de bandeau.
+    expect(screen.queryByText(/Saison archivée/i)).not.toBeInTheDocument()
+
+    // Sélection de la saison archivée → bandeau « classement seul » affiché.
+    fireEvent.change(screen.getByLabelText('Saison'), { target: { value: 'csrseason4-1' } })
+    expect(screen.getByText(/Saison archivée/i)).toBeInTheDocument()
   })
 
   it('affiche les lignes dans l’ordre du rang', async () => {

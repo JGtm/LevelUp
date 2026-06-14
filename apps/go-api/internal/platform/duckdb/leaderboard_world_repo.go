@@ -152,16 +152,15 @@ func applyWorldEnrichment(e *domain.LeaderboardEntry, s domain.WorldPlayerSeason
 	e.KDATrend, e.WinRateTrend = s.KDATrend, s.WinRateTrend
 }
 
-// GetWorldLeaderboardCatalog liste les saisons et playlists pour lesquelles des
-// STATS ENRICHIES existent réellement (distinct sur world_player_season_stats_latest),
-// PAS le simple leaderboard scrappé. Une saison qui a un classement CSR mais aucune
-// stat détaillée — saison archivée dont l'historique de matchs dépasse l'horizon de
-// l'API Halo (ex. csrseason3-1 / 4-1) — n'est donc PAS proposée aux sélecteurs, sinon
-// le filtre offrirait une saison qui n'affiche que des colonnes vides. Les stats
-// dérivant du leaderboard, toute saison listée a forcément aussi un classement.
-// Tri du plus récent au plus ancien par NUMÉRO de saison (un ORDER BY season_id SQL
-// serait LEXICOGRAPHIQUE : csrseason6-1 > csrseason13-2 car '6' > '1' → faux). Les
-// playlists reçoivent un libellé via rankedplaylists (FR si dispo, sinon EN, sinon id brut).
+// GetWorldLeaderboardCatalog liste les saisons et playlists du classement CSR mondial
+// scrappé (world_csr_leaderboard_latest) : on EXPOSE toutes les saisons dont on a un
+// classement (rangs + gamertags), y compris les saisons archivées. Chaque saison porte
+// un flag Enriched : true si des stats détaillées (world_player_season_stats) existent,
+// false si seule la donnée de classement est disponible — historique de matchs au-delà
+// de l'horizon de l'API Halo, ex. csrseason3-1 / 4-1 → le front l'affiche en « classement
+// seul » avec un badge. Tri du plus récent au plus ancien par NUMÉRO de saison (un ORDER
+// BY season_id SQL serait LEXICOGRAPHIQUE : csrseason6-1 > csrseason13-2 car '6' > '1' →
+// faux). Les playlists reçoivent un libellé via rankedplaylists (FR si dispo, sinon EN, sinon id brut).
 func (r *LeaderboardRepo) GetWorldLeaderboardCatalog(ctx context.Context) (domain.LeaderboardCatalog, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -173,14 +172,28 @@ func (r *LeaderboardRepo) GetWorldLeaderboardCatalog(ctx context.Context) (domai
 	defer release()
 
 	seasons, err := scanCatalogColumn(ctx, sharedDB,
-		`SELECT DISTINCT season_id FROM world_player_season_stats_latest
+		`SELECT DISTINCT season_id FROM world_csr_leaderboard_latest
 		 WHERE season_id <> ''`, nil)
 	if err != nil {
 		return domain.LeaderboardCatalog{}, fmt.Errorf("GetWorldLeaderboardCatalog: seasons: %w", err)
 	}
 	sortSeasonsRecentFirst(seasons)
+	// Marque les saisons réellement enrichies (stats détaillées présentes). Celles sans
+	// stats restent affichées (classement seul) mais Enriched=false → badge côté front.
+	enrichedIDs, err := scanIDColumn(ctx, sharedDB,
+		`SELECT DISTINCT season_id FROM world_player_season_stats_latest WHERE season_id <> ''`)
+	if err != nil {
+		return domain.LeaderboardCatalog{}, fmt.Errorf("GetWorldLeaderboardCatalog: enriched seasons: %w", err)
+	}
+	enrichedSet := make(map[string]bool, len(enrichedIDs))
+	for _, id := range enrichedIDs {
+		enrichedSet[id] = true
+	}
+	for i := range seasons {
+		seasons[i].Enriched = enrichedSet[seasons[i].ID]
+	}
 	plIDs, err := scanIDColumn(ctx, sharedDB,
-		`SELECT DISTINCT playlist_id FROM world_player_season_stats_latest
+		`SELECT DISTINCT playlist_id FROM world_csr_leaderboard_latest
 		 WHERE playlist_id <> '' ORDER BY playlist_id`)
 	if err != nil {
 		return domain.LeaderboardCatalog{}, fmt.Errorf("GetWorldLeaderboardCatalog: playlists: %w", err)

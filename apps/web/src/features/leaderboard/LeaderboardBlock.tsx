@@ -62,7 +62,7 @@ const SEASONS: { id: string; label: string }[] = [
 const KNOWN_PLAYLIST_LABEL: Record<string, string> = Object.fromEntries(PLAYLISTS.map((p) => [p.id, p.label]))
 const KNOWN_SEASON_LABEL: Record<string, string> = Object.fromEntries(SEASONS.map((s) => [s.id, s.label]))
 
-type SelectorOption = { value: string; label: string }
+type SelectorOption = { value: string; label: string; enriched?: boolean }
 
 /** Catégories disponibles (clés i18n alignées sur common.leaderboard.cat_*). */
 const CATEGORIES: { id: string; key: CommonManifestKey }[] = [
@@ -172,12 +172,19 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
   // catalogue est vide (avant le 1er snapshot). Libellé : on préfère un label
   // localisé connu (KNOWN_*), sinon le display_name renvoyé par l'API.
   const { data: catalog } = useLeaderboardCatalog(playerSlug)
+  // Suffixe « (archivée) » sur les saisons non enrichies (classement CSR scrappé mais
+  // pas de stats détaillées — historique au-delà de l'horizon API). Calculé hors useMemo
+  // pour rester stable (dépend de la locale via t), et passé en dépendance.
+  const archivedBadge = t('common.leaderboard.season_archived_badge')
   const seasonOptions: SelectorOption[] = useMemo(
     () =>
       catalog?.seasons?.length
-        ? catalog.seasons.map((s) => ({ value: s.id, label: KNOWN_SEASON_LABEL[s.id] ?? s.display_name }))
-        : SEASONS.map((s) => ({ value: s.id, label: s.label })),
-    [catalog],
+        ? catalog.seasons.map((s) => {
+            const base = KNOWN_SEASON_LABEL[s.id] ?? s.display_name
+            return { value: s.id, label: s.enriched ? base : `${base} (${archivedBadge})`, enriched: s.enriched }
+          })
+        : SEASONS.map((s) => ({ value: s.id, label: s.label, enriched: true })),
+    [catalog, archivedBadge],
   )
   const playlistOptions: SelectorOption[] = useMemo(
     () =>
@@ -198,6 +205,10 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
   const effectivePlaylist = playlistOptions.some((o) => o.value === playlist)
     ? playlist
     : (playlistOptions[0]?.value ?? playlist)
+  // Saison active non enrichie → bandeau « classement seul » (la table dégrade déjà :
+  // hasEnrichment=false masque les colonnes stats détaillées).
+  const selectedSeasonArchived =
+    isWorld && seasonOptions.some((o) => o.value === effectiveSeason && o.enriched === false)
   const { data, isLoading, isError, error } = useLeaderboard(playerSlug, {
     category,
     season: isWorld ? effectiveSeason : undefined,
@@ -289,6 +300,9 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
         <p className="mt-1 text-xs text-muted-foreground">
           {isWorld ? t('common.leaderboard.world_hint') : t('common.leaderboard.stats_hint')}
         </p>
+        {selectedSeasonArchived && (
+          <p className="mt-1 text-xs italic text-muted-foreground">{t('common.leaderboard.archived_season_note')}</p>
+        )}
       </CardHeader>
 
       <CardContent className="p-0">

@@ -140,6 +140,11 @@ type LeaderboardRequest struct {
 type LeaderboardCatalogRef struct {
 	ID          string `json:"id"`
 	DisplayName string `json:"display_name"`
+	// Enriched : la saison a des stats détaillées (world_player_season_stats), pas
+	// seulement un classement CSR scrappé. false = saison archivée affichée en
+	// classement seul (le front badge « stats détaillées indisponibles »). Pertinent
+	// pour les saisons uniquement ; toujours false pour les playlists.
+	Enriched bool `json:"enriched"`
 }
 
 // LeaderboardCatalog liste les saisons et playlists pour lesquelles des snapshots
