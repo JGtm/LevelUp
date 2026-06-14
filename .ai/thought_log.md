@@ -1,3 +1,15 @@
+## [2026-06-14] Nettoyage : commit du flag -quiet (oublié) + gitignore artefacts world — Complété
+
+**Statut** : vet OK, commit branche courante (`main`, sans push). Working tree nettoyé.
+
+**Contexte** : working tree encombré de fichiers « en attente ». Diagnostic : (1) le flag `-quiet` du backfill (`InstallCLILevel` dans `logging/cli.go` + flag dans backfill `main.go`) était utilisé dans les runs mais JAMAIS commité (les changements de branche en cours de session l'avaient laissé non suivi) ; (2) 3 binaires CLI buildés (`*.exe`, 80-94 Mo) + le checkpoint runtime `world_backfill_checkpoint.json*` apparaissaient comme non suivis.
+
+**Décision** : committer le `-quiet` (vrai travail, sinon l'exe diverge de la source) ; ajouter `.gitignore` `*.exe` (section BUILD) + `data/world_backfill_checkpoint.json*` (section data) → artefacts/état runtime ne polluent plus le status. Le lazy/persist (`7fc960d07`) était déjà dans `main` (vérifié `merge-base --is-ancestor`).
+
+**Résultats** : status réduit à 3 fichiers légitimes (backfill main.go, cli.go, .gitignore) ; 5 artefacts désormais ignorés (vérifié `git check-ignore`).
+
+---
+
 ## [2026-06-14] Persistance cache resolved_xuids → xuid_aliases (world leaderboard) — Complété (1223 alias)
 
 **Statut** : Code (cmd/world-aliases-persist) + run réel exécuté + vérifié + idempotent. Commit en attente d'autorisation (branche courante `main`, sans push).

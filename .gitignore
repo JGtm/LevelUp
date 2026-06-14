@@ -34,6 +34,10 @@ wheels/
 *.egg
 MANIFEST
 
+# Go — binaires CLI buildés localement (cmd/*, ex. backfill-world / snapshot-world /
+# world-aliases-persist). Artefacts volumineux (80-94 Mo), jamais commités.
+*.exe
+
 # Node
 node_modules/
 
@@ -99,6 +103,8 @@ app_settings.json.bak
 db_profiles.json
 data/xuid_aliases.json
 GT-XUID.txt
+# Checkpoint runtime du backfill world (resolved_xuids + listes done/failed) — état local
+data/world_backfill_checkpoint.json*
 data/*.db
 data/*.db-journal
 data/investigation/

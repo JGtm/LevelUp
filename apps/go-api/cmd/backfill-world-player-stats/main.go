@@ -41,6 +41,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -82,12 +83,20 @@ type cliFlags struct {
 	topN          int
 	xuidDelayMs   int
 	probeDelayMs  int
+	quiet         bool
 }
 
 func main() {
 	f := parseFlags()
 
-	closeLogs := logging.InstallCLI(os.Getenv("LEVELUP_REPO_ROOT"))
+	// -quiet : console au niveau ERROR → masque les INFO (oauth/xsts/migration) et les
+	// WARN (retries 429/réseau) qui noient la progression. Les fichiers logs/*.log
+	// gardent le détail complet (niveau fichier indépendant).
+	consoleLevel := slog.LevelInfo
+	if f.quiet {
+		consoleLevel = slog.LevelError
+	}
+	closeLogs := logging.InstallCLILevel(os.Getenv("LEVELUP_REPO_ROOT"), consoleLevel)
 	defer closeLogs()
 
 	// Arrêt propre : SIGINT/SIGTERM annule le ctx → les workers s'arrêtent, le lot
@@ -124,6 +133,7 @@ func parseFlags() cliFlags {
 	flag.IntVar(&f.topN, "top-n", duckdb.WorldLeaderboardTopN, "n'enrichit que le top N PAR playlist (= profondeur affichée ; 0 = toutes les playlists/rangs)")
 	flag.IntVar(&f.xuidDelayMs, "xuid-delay-ms", 1600, "délai entre résolutions xuid PeopleHub (limite ~10 req/15s/compte ; ↑ si 429, 0 = pas de throttle)")
 	flag.IntVar(&f.probeDelayMs, "probe-delay-ms", 350, "délai entre sondes de la recherche dichotomique d'offset (lisse la rafale qui déclenche les 429 halostats ; 0 = pas de throttle)")
+	flag.BoolVar(&f.quiet, "quiet", false, "console silencieuse : masque les logs INFO/WARN (oauth, xsts, retries 429/réseau) ; garde la progression + les vraies erreurs. Le détail reste dans logs/*.log")
 	flag.Parse()
 	if strings.TrimSpace(f.tokenGamertag) == "" {
 		fatal("-token-gamertag est requis (compte dont le token résout les xuid PeopleHub)")

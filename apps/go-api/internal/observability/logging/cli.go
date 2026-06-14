@@ -18,17 +18,26 @@ import (
 // `slog.With("module", logging.ModuleLeaderboard)` sont routés vers
 // logs/leaderboard.log.
 func InstallCLI(repoRoot string) func() {
+	return InstallCLILevel(repoRoot, slog.LevelInfo)
+}
+
+// InstallCLILevel est comme InstallCLI mais fixe le niveau de la CONSOLE (stderr).
+// Les fichiers logs/*.log gardent leur propre niveau (cfg.FileLevel) : monter le
+// niveau console (ex. slog.LevelError pour un mode -quiet) coupe le bruit INFO/WARN
+// à l'écran SANS perdre le détail dans les fichiers. Utile aux jobs bruyants (backfill :
+// les retries 429/réseau sont des WARN qui polluent la progression).
+func InstallCLILevel(repoRoot string, consoleLevel slog.Level) func() {
 	cfg := LoadConfig(repoRoot)
 
 	var handler slog.Handler
 	switch cfg.ConsoleFormat {
 	case ConsoleFormatJSON:
-		handler = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})
+		handler = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: consoleLevel})
 	case ConsoleFormatText:
-		handler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})
+		handler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: consoleLevel})
 	default:
 		handler = NewConsoleHandler(os.Stderr, ConsoleHandlerOptions{
-			Level:    slog.LevelInfo,
+			Level:    consoleLevel,
 			MaxWidth: cfg.MaxLineWidth,
 			Color:    cfg.ConsoleColor,
 		})
