@@ -249,7 +249,7 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
         case 'matches':
           return e.matches_played ?? 0
         case 'world_matches':
-          return e.match_count ?? 0
+          return e.cumulative_match_count ?? e.match_count ?? 0
         case 'kills':
           return e.kills ?? 0
         case 'deaths':
@@ -374,18 +374,19 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
                 <th className="py-2 pr-4 text-left font-medium">{t('common.leaderboard.col_player')}</th>
                 {isWorld ? (
                   <>
-                    <SortableTh label={t('common.leaderboard.col_csr')} className="text-right" onClick={() => toggleSort('csr')} suffix={sortIcon('csr')} />
+                    <th className="py-2 pr-4 text-center font-medium">{t('common.leaderboard.col_tier')}</th>
+                    <SortableTh label={t('common.leaderboard.col_csr')} className="text-center" onClick={() => toggleSort('csr')} suffix={sortIcon('csr')} />
                     {hasEnrichment && (
                       <>
-                        <SortableTh label={t('common.leaderboard.col_frags')} className={`text-right ${COL_HIDE_SM}`} onClick={() => toggleSort('kills')} suffix={sortIcon('kills')} />
-                        <SortableTh label={t('common.leaderboard.col_deaths')} className={`text-right ${COL_HIDE_SM}`} onClick={() => toggleSort('deaths')} suffix={sortIcon('deaths')} />
-                        <SortableTh label={t('common.leaderboard.col_assists')} className={`text-right ${COL_HIDE_SM}`} onClick={() => toggleSort('assists')} suffix={sortIcon('assists')} />
-                        <SortableTh label={t('common.leaderboard.col_win_rate')} className={`text-right ${COL_HIDE_SM}`} onClick={() => toggleSort('win_rate')} suffix={sortIcon('win_rate')} />
-                        <SortableTh label={t('common.leaderboard.col_kda')} className={`text-right ${COL_HIDE_SM}`} onClick={() => toggleSort('kda')} suffix={sortIcon('kda')} />
-                        <SortableTh label={t('common.leaderboard.col_matches')} className={`text-right ${COL_HIDE_LG}`} onClick={() => toggleSort('world_matches')} suffix={sortIcon('world_matches')} />
-                        <SortableTh label={t('common.leaderboard.col_accuracy')} className={`text-right ${COL_HIDE_LG}`} onClick={() => toggleSort('accuracy')} suffix={sortIcon('accuracy')} />
+                        <SortableTh label={t('common.leaderboard.col_kda')} className={`text-center ${COL_HIDE_SM}`} onClick={() => toggleSort('kda')} suffix={sortIcon('kda')} />
+                        <SortableTh label={t('common.leaderboard.col_frags')} className={`text-center ${COL_HIDE_SM}`} onClick={() => toggleSort('kills')} suffix={sortIcon('kills')} />
+                        <SortableTh label={t('common.leaderboard.col_deaths')} className={`text-center ${COL_HIDE_SM}`} onClick={() => toggleSort('deaths')} suffix={sortIcon('deaths')} />
+                        <SortableTh label={t('common.leaderboard.col_assists')} className={`text-center ${COL_HIDE_SM}`} onClick={() => toggleSort('assists')} suffix={sortIcon('assists')} />
+                        <SortableTh label={t('common.leaderboard.col_win_rate')} className={`text-center ${COL_HIDE_SM}`} onClick={() => toggleSort('win_rate')} suffix={sortIcon('win_rate')} />
+                        <SortableTh label={t('common.leaderboard.col_matches')} className={`text-center ${COL_HIDE_LG}`} onClick={() => toggleSort('world_matches')} suffix={sortIcon('world_matches')} />
+                        <SortableTh label={t('common.leaderboard.col_accuracy')} className={`text-center ${COL_HIDE_LG}`} onClick={() => toggleSort('accuracy')} suffix={sortIcon('accuracy')} />
                         <th className={`py-2 pr-4 text-center font-medium ${COL_HIDE_LG}`}>{t('common.leaderboard.col_combat')}</th>
-                        <th className={`py-2 pr-4 text-right font-medium ${COL_HIDE_LG}`}>{t('common.leaderboard.col_rank_delta')}</th>
+                        <th className={`py-2 pr-4 text-center font-medium ${COL_HIDE_LG}`}>{t('common.leaderboard.col_rank_delta')}</th>
                       </>
                     )}
                   </>
@@ -474,8 +475,8 @@ function LeaderboardRow({
   // Valeurs PAR MATCH (FDA/Précision) — mêmes calculs que l'affichage pour comparer au best.
   const fda = entry.kda != null && entry.match_count ? entry.kda / entry.match_count : null
   const acc = entry.accuracy != null && entry.match_count ? entry.accuracy / entry.match_count : null
-  // Classe de cellule : meilleure valeur de la colonne mise en valeur (BEST_CLS), sinon foreground.
-  const cell = (isBest: boolean) => `text-right font-mono ${isBest ? BEST_CLS : 'text-foreground'}`
+  // Classe de cellule numérique : centrée ; meilleure valeur de la colonne mise en valeur.
+  const cell = (isBest: boolean) => `text-center font-mono ${isBest ? BEST_CLS : 'text-foreground'}`
 
   const playerCell: ReactNode = (
     <span className="inline-flex items-center gap-2">
@@ -500,25 +501,24 @@ function LeaderboardRow({
       className={`border-b text-sm transition-colors last:border-0 hover:bg-muted ${entry.is_local ? 'bg-accent/40' : ''}`}
       onMouseEnter={() => onHover?.(entry.gamertag)}
     >
-      <td className={`py-2 pr-4 text-center font-mono ${rankClass}`}>
-        <span className="inline-flex items-center justify-center gap-1.5">
-          {isWorld && (
-            <img
-              src={csrRankImageURL(entry.tier, entry.sub_tier)}
-              alt={entry.tier}
-              className="h-5 w-5 shrink-0 object-contain"
-              loading="lazy"
-            />
-          )}
-          {entry.rank}
-        </span>
-      </td>
+      <td className={`py-2 pr-4 text-center font-mono ${rankClass}`}>{entry.rank}</td>
       <td className="py-2 pr-4 font-medium text-foreground">{playerCell}</td>
       {isWorld ? (
         <>
+          <td className="py-2 pr-4 text-center">
+            <img
+              src={csrRankImageURL(entry.tier, entry.sub_tier)}
+              alt={entry.tier}
+              className="mx-auto h-5 w-5 object-contain"
+              loading="lazy"
+            />
+          </td>
           <td className={`py-2 pr-4 ${cell(best?.csr === entry.csr_value)}`}>{entry.csr_value.toLocaleString(intl)}</td>
           {hasEnrichment && (
             <>
+              <td className={`py-2 pr-4 ${COL_HIDE_SM} ${cell(fda != null && best?.fda === fda)}`}>
+                {fda != null ? <MetricWithTrend text={fda.toFixed(2)} trend={entry.kda_trend} tooltip={trendTooltip} /> : '—'}
+              </td>
               <td className={`py-2 pr-4 ${COL_HIDE_SM} ${cell(entry.kills != null && best?.kills === entry.kills)}`}>
                 {entry.kills?.toLocaleString(intl) ?? '—'}
               </td>
@@ -535,15 +535,14 @@ function LeaderboardRow({
                   '—'
                 )}
               </td>
-              <td className={`py-2 pr-4 ${COL_HIDE_SM} ${cell(fda != null && best?.fda === fda)}`}>
-                {fda != null ? <MetricWithTrend text={fda.toFixed(2)} trend={entry.kda_trend} tooltip={trendTooltip} /> : '—'}
+              <td className={`py-2 pr-4 text-center font-mono text-muted-foreground ${COL_HIDE_LG}`}>
+                {(entry.cumulative_match_count ?? entry.match_count)?.toLocaleString(intl) ?? '—'}
               </td>
-              <td className={`py-2 pr-4 text-right font-mono text-muted-foreground ${COL_HIDE_LG}`}>{entry.match_count ?? '—'}</td>
               <td className={`py-2 pr-4 ${COL_HIDE_LG} ${cell(acc != null && best?.accuracy === acc)}`}>
                 {acc != null ? `${acc.toLocaleString(intl, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%` : '—'}
               </td>
               <td className={`py-2 pr-4 ${COL_HIDE_LG}`}>{renderCombatYield(entry)}</td>
-              <td className={`py-2 pr-4 text-right font-mono ${COL_HIDE_LG}`}>
+              <td className={`py-2 pr-4 text-center font-mono ${COL_HIDE_LG}`}>
                 {entry.rank_delta != null && entry.rank_delta !== 0 ? (
                   <span style={{ color: tokenCssVar(skillDeltaScale(entry.rank_delta)) }} title={rankDeltaTooltip}>
                     {entry.rank_delta > 0 ? '+' : ''}

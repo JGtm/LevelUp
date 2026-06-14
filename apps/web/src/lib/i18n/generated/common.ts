@@ -160,7 +160,7 @@ export const commonManifest = {
   "common.leaderboard.col_deaths": { fr: "Morts", en: "Deaths" },
   "common.leaderboard.col_frags": { fr: "Frags", en: "Kills" },
   "common.leaderboard.col_kda": { fr: "FDA", en: "KDA" },
-  "common.leaderboard.col_matches": { fr: "Parties", en: "Matches" },
+  "common.leaderboard.col_matches": { fr: "Matchs", en: "Matches" },
   "common.leaderboard.col_player": { fr: "Joueur", en: "Player" },
   "common.leaderboard.col_rank_delta": { fr: "Δ rang", en: "Rank Δ" },
   "common.leaderboard.col_tier": { fr: "Rang", en: "Tier" },

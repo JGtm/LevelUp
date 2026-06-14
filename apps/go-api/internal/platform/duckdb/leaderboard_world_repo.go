@@ -124,6 +124,12 @@ func (r *LeaderboardRepo) enrichWorldEntries(ctx context.Context, db *sql.DB, en
 			"module", logModuleLeaderboard, "season", season, "playlist", playlist, "err", err)
 		prevRanks = nil
 	}
+	cumul, err := loadCumulativeMatchCounts(ctx, db, season, playlist)
+	if err != nil {
+		slog.WarnContext(ctx, "matchs cumulés classement mondial échoués (non bloquant)",
+			"module", logModuleLeaderboard, "season", season, "playlist", playlist, "err", err)
+		cumul = nil
+	}
 	for i := range entries {
 		key := strings.ToLower(entries[i].Gamertag)
 		if s, ok := byGT[key]; ok {
@@ -133,7 +139,62 @@ func (r *LeaderboardRepo) enrichWorldEntries(ctx context.Context, db *sql.DB, en
 			d := pr - entries[i].Rank // positif = a grimpé (rang plus petit = meilleur)
 			entries[i].RankDelta = &d
 		}
+		if c, ok := cumul[key]; ok {
+			cc := c
+			entries[i].CumulativeMatchCount = &cc
+		}
 	}
+}
+
+// loadCumulativeMatchCounts somme par gamertag les matchs (match_count) sur toutes les
+// saisons de rang NUMÉRIQUE <= la saison affichée (un `season_id < ?` SQL serait
+// LEXICOGRAPHIQUE → csrseason6-1 < csrseason13-2 faux). Filtré sur la playlist si
+// fournie (vide = toutes). Sert la colonne "Matchs" cumulés. Best-effort.
+func loadCumulativeMatchCounts(ctx context.Context, db *sql.DB, season, playlist string) (map[string]int, error) {
+	all, err := scanIDColumn(ctx, db,
+		`SELECT DISTINCT season_id FROM world_player_season_stats_latest WHERE season_id <> ''`)
+	if err != nil {
+		return nil, err
+	}
+	cur := worldSeasonRank(season)
+	inc := make([]string, 0, len(all))
+	for _, s := range all {
+		if worldSeasonRank(s) <= cur {
+			inc = append(inc, s)
+		}
+	}
+	if len(inc) == 0 {
+		return map[string]int{}, nil
+	}
+	args := make([]any, 0, len(inc)+2)
+	args = append(args, defaultLeaderboardTitleSlug)
+	ph := make([]string, len(inc))
+	for i, s := range inc {
+		ph[i] = "?"
+		args = append(args, s)
+	}
+	q := `SELECT gamertag, SUM(match_count) FROM world_player_season_stats_latest
+		WHERE title_slug = ? AND season_id IN (` + strings.Join(ph, ",") + `)`
+	if playlist != "" {
+		q += ` AND playlist_id = ?`
+		args = append(args, playlist)
+	}
+	q += ` GROUP BY gamertag`
+	rows, err := db.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("loadCumulativeMatchCounts: query: %w", err)
+	}
+	defer rows.Close()
+	out := map[string]int{}
+	for rows.Next() {
+		var gt string
+		var sum int64
+		if err := rows.Scan(&gt, &sum); err != nil {
+			return nil, fmt.Errorf("loadCumulativeMatchCounts: scan: %w", err)
+		}
+		out[strings.ToLower(gt)] = int(sum)
+	}
+	return out, rows.Err()
 }
 
 // applyWorldEnrichment recopie compteurs bruts + ratios dérivés + indicateur

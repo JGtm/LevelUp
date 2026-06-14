@@ -35,16 +35,20 @@ type LeaderboardEntry struct {
 	// Enrichissement stats mondiales (Phase B — leaderboard enrichi). Pointeurs :
 	// nil = joueur non enrichi (pas de ligne world_player_season_stats). Compteurs
 	// bruts + ratios dérivés à la lecture + comparaison inter-saison + delta rang.
-	MatchCount  *int   `json:"match_count,omitempty"`
-	WinCount    *int   `json:"win_count,omitempty"`
-	LossCount   *int   `json:"loss_count,omitempty"`
-	TieCount    *int   `json:"tie_count,omitempty"`
-	DnfCount    *int   `json:"dnf_count,omitempty"`
-	Kills       *int64 `json:"kills,omitempty"`
-	Deaths      *int64 `json:"deaths,omitempty"`
-	Assists     *int64 `json:"assists,omitempty"`
-	PlaytimeSec *int64 `json:"playtime_seconds,omitempty"`
-	MedalCount  *int64 `json:"medal_count,omitempty"`
+	MatchCount *int `json:"match_count,omitempty"`
+	// CumulativeMatchCount : total des matchs du joueur sur cette playlist cumulé sur
+	// toutes les saisons JUSQU'À celle affichée incluse (playlist vide = toutes). Sert
+	// à la colonne "Matchs" (≠ MatchCount qui est la seule saison affichée).
+	CumulativeMatchCount *int   `json:"cumulative_match_count,omitempty"`
+	WinCount             *int   `json:"win_count,omitempty"`
+	LossCount            *int   `json:"loss_count,omitempty"`
+	TieCount             *int   `json:"tie_count,omitempty"`
+	DnfCount             *int   `json:"dnf_count,omitempty"`
+	Kills                *int64 `json:"kills,omitempty"`
+	Deaths               *int64 `json:"deaths,omitempty"`
+	Assists              *int64 `json:"assists,omitempty"`
+	PlaytimeSec          *int64 `json:"playtime_seconds,omitempty"`
+	MedalCount           *int64 `json:"medal_count,omitempty"`
 	// Valeurs natives du jeu, ACCUMULÉES (sommées) — données brutes, aucune dérivation.
 	KDA          *float64 `json:"kda,omitempty"`          // somme du KDA natif Halo
 	Accuracy     *float64 `json:"accuracy,omitempty"`     // somme de l'Accuracy native (%)
