@@ -137,11 +137,17 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, a
     const video = videoElRef.current
     if (!video) return
 
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = filePath
-      return
-    }
+    // Préférer hls.js dès que MSE est disponible (Chrome/Firefox/Edge) : c'est le
+    // SEUL chemin qui peuple le sélecteur de pistes audio (via AUDIO_TRACKS_UPDATED).
+    // Le natif ne sert que de repli (Safari/iOS sans MSE). PIÈGE (incident 2026-06-14) :
+    // Chrome renvoie "maybe" à canPlayType('application/vnd.apple.mpegurl') — truthy —
+    // MAIS n'expose pas video.audioTracks. Prendre le natif en premier lisait la vidéo
+    // sans jamais afficher le sélecteur de pistes (game/voix ou Track1..N).
     if (!Hls.isSupported()) {
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = filePath
+        return
+      }
       log.warn('hls:unsupported', 'Lecture HLS non supportée par ce navigateur', { filePath })
       // eslint-disable-next-line react-hooks/set-state-in-effect -- erreur d'init d'un système externe (hls.js indisponible)
       setError('Lecture HLS non supportée par ce navigateur')
@@ -235,6 +241,12 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, a
         ref={setRefs}
         src={isHls ? undefined : filePath}
         controls={isCenter}
+        // On retire le bouton plein écran NATIF du <video> : le plein écran
+        // passe par notre bouton (sur le conteneur stage). Sinon le natif
+        // re-piégerait l'élément et l'autoChain casserait (image figée +
+        // audio hors champ sur l'enchaînement).
+        controlsList="nofullscreen"
+        disablePictureInPicture
         muted={!isCenter}
         preload={Math.abs(relPos) <= 1 ? 'auto' : 'metadata'}
         onEnded={onEnded}
@@ -249,7 +261,7 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, a
           log.warn('video:decode_error', msg, { filePath, code })
           setError(msg)
         }}
-        className="h-full w-full bg-card"
+        className="h-full w-full bg-card object-contain"
       />
       {isCenter && audioTracks.length > 1 && (
         <div
@@ -332,6 +344,32 @@ export function CoverFlowModal({
   const animatingRef = useRef(false)
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map())
   const autoChainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Plein écran : on met en fullscreen le CONTENEUR (stage) du carrousel, pas
+  // le <video> lui-même. Comme le stage ne change pas quand l'autoChain
+  // enchaîne, le plein écran persiste tout seul → fini l'image figée + audio
+  // hors champ (un requestFullscreen sur le nouveau <video> serait bloqué car
+  // hors d'un geste utilisateur lors d'un enchaînement automatique).
+  const stageRef = useRef<HTMLDivElement>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  useEffect(() => {
+    function onFsChange() {
+      setIsFullscreen(document.fullscreenElement === stageRef.current)
+    }
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => document.removeEventListener('fullscreenchange', onFsChange)
+  }, [])
+
+  function toggleFullscreen() {
+    const el = stageRef.current
+    if (!el) return
+    if (document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => undefined)
+    } else {
+      void el.requestFullscreen().catch(() => undefined)
+    }
+  }
 
   // Garde la dernière position valide pour éviter les sauts visuels si
   // l'item disparaît temporairement (refetch entre 2 vues).
@@ -585,6 +623,35 @@ export function CoverFlowModal({
             )}
             <button
               type="button"
+              onClick={toggleFullscreen}
+              title={isFullscreen ? text.coverFlow.exitFullscreen : text.coverFlow.enterFullscreen}
+              aria-label={isFullscreen ? text.coverFlow.exitFullscreen : text.coverFlow.enterFullscreen}
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-card/90 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <svg
+                className="h-3.5 w-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                {isFullscreen ? (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9 9L4 4m0 0v4m0-4h4m7 5l5-5m0 0v4m0-4h-4M9 15l-5 5m0 0v-4m0 4h4m7-5l5 5m0 0v-4m0 4h-4"
+                  />
+                ) : (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+                  />
+                )}
+              </svg>
+            </button>
+            <button
+              type="button"
               onClick={onClose}
               className="text-xl leading-none text-muted-foreground hover:text-foreground"
               aria-label={text.coverFlow.closeAriaLabel}
@@ -595,7 +662,17 @@ export function CoverFlowModal({
         </div>
 
         <div className="relative w-full flex-1 overflow-visible bg-card rounded-b-xl">
-          <div className="relative aspect-video w-full overflow-visible mx-auto">
+          {/* C'est CE conteneur qu'on met en plein écran (stageRef) → la vidéo
+              centrale remplit l'écran et l'enchaînement reste fullscreen, sans
+              transfert de fullscreen sur le nouveau <video>. */}
+          <div
+            ref={stageRef}
+            className={`relative mx-auto w-full ${
+              isFullscreen
+                ? 'flex h-full items-center justify-center overflow-hidden bg-black'
+                : 'aspect-video overflow-visible'
+            }`}
+          >
             <button
               onClick={(e) => {
                 e.stopPropagation()
@@ -623,7 +700,9 @@ export function CoverFlowModal({
                   className="absolute inset-0 overflow-hidden rounded-xl"
                   style={{
                     transform: `translateX(${pos.x}) scale(${pos.scale})`,
-                    opacity: pos.opacity,
+                    // En plein écran : on masque les voisins, seul le média
+                    // central est visible (il remplit l'écran).
+                    opacity: isFullscreen ? (isCenter ? 1 : 0) : pos.opacity,
                     transition: `transform ${ANIM_MS}ms ${ANIM_EASE}, opacity ${ANIM_MS}ms ${ANIM_EASE}`,
                     pointerEvents: isCenter ? 'auto' : 'none',
                     zIndex: 10 - Math.abs(relPos),
@@ -682,6 +761,35 @@ export function CoverFlowModal({
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
             </button>
+
+            {/* Sortie plein écran — overlay DANS le stage (seul élément visible
+                en fullscreen ; le header avec les boutons est hors champ). */}
+            {isFullscreen && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  toggleFullscreen()
+                }}
+                aria-label={text.coverFlow.exitFullscreen}
+                title={text.coverFlow.exitFullscreen}
+                className="absolute right-4 top-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-foreground transition-colors hover:bg-black/80"
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9 9L4 4m0 0v4m0-4h4m7 5l5-5m0 0v4m0-4h-4M9 15l-5 5m0 0v-4m0 4h4m7-5l5 5m0 0v-4m0 4h-4"
+                  />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
       </div>
