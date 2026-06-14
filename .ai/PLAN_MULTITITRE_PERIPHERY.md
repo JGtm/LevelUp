@@ -69,7 +69,7 @@ Indépendants (parité Halo seule, aucun prérequis dur) :
 
 ---
 
-## Specs (16 phases — re-vérifiées 2026-06-14)
+## Specs (17 phases — re-vérifiées 2026-06-14)
 
 ---
 
@@ -829,4 +829,74 @@ Indépendants (parité Halo seule, aucun prérequis dur) :
 **Exit gate** : Halo byte-identique (goldens (a) verts : URLs/labels/hex/grilles identiques au pré-migration) + `synthetic_title_b` route correctement ses valeurs divergentes pour les 4 kinds + un kind retiré du corpus B dégrade proprement (id/fallback, zéro fuite Halo, zéro crash) + lint front `no-title-slug-literal` en `error` sur le périmètre migré + `no_slug_comparison_test.go` toujours vert. Les 5 tables JS et les 4 const slug locales sont supprimées (pas conservées « au cas où » — anti-pattern « dead code museum »).
 
 **Dérive re-vérif** : a bougé / a changé — voir le champ `drift` détaillé. Synthèse : PrestigeSquadProgress déjà partiellement migré (fallback only) ; skillTiers.ts/medalDifficulty.ts/prestige.ts vivent sous `lib/` (pas `lib/halo/`) ; le `225 HP` est une docstring miroir d'une constante Go (hors scope front) ; le seam front (`useFieldMappings`/`useAssetMapping`) et le kind `challenge_tier` (2 titres) existent déjà — l'extension est surtout du *contract* (brancher+supprimer) plus 3 nouveaux kinds manifeste ; la garde « lint no_slug_comparison » est Go-only, l'équivalent front est `eslint-rules/no-hardcoded-strings.js` à étendre.
+
+---
+
+### PMT-14 — Admin : gestion des titres (+ réhabilitation Lab)  (sévérité: major)
+
+**Axes** : MT-22 (lifecycle Status, productisé) · réutilise 1.7a/b (capabilities/feature-matrix) · productise Phase 1.8 (diagnostic déclaré-vs-DB) dans l'**admin** (pas un Lab dev) · ponts MT-04 (PMT-4 settings overlay). Trois volets : **A** (feature admin Titres), **B** (réutilisation Lab → partage), **C** (réhabilitation Lab cassé).
+
+> Nature hybride : **A/B = feature** (oracle = réutilise endpoints existants + capability/role-gated + marche pour `synthetic_test_title`/`synthetic_title_b`) ; **C = fix** (caractériser la casse → réparer → test anti-régression d'intégration serveur). Le gabarit `expand → parity-gate → contract` s'applique au diagnostic titre (volet A) ; volet C suit un cycle fix classique.
+
+**Statut couverture actuelle** :
+- **A** : gap — aucune surface admin titres. Le Registry expose `All()`/`Get()`/`Exists()` (registry.go:131-149) ; `Status` (active/coming_soon/archived, :19-24) est **défini mais jamais lu/gaté** (MT-22, `resolveTitleSlug` title.go:30-47 ne consulte jamais `Status`). Pas de `GET /api/v1/titles` (liste) — uniquement via `BuildAvailableTitles()` (bootstrap_service.go:413) injecté dans `/bootstrap` + `/session/context`. Capabilities/feature-matrix montés derrière `MULTI_TITLE_API_ENABLED` (server.go:587-592), **non** auth-gatés admin. Phase 1.8 (diagnostic déclaré-vs-DB + export TOML draft + CLI `levelup-titles diagnose`) = ⬜ todo (index :41) ; `LabDiagnosticsResponse` n'a aucun champ titre. CLI : seul `levelup add-title` existe (cmd_title.go), `levelup-titles diagnose` absent.
+- **B** : gap — atoms Lab (`_labShared.tsx` : StatusBadge, MetricCard, JsonViewer, FileStatusRow, GuardRow, TabButton, formatters) + structure handler/service/provider Lab sont réutilisables mais cloisonnés `features/lab/`.
+- **C** : **broken** — backend Lab implémenté mais NON monté (`server.go` 0 occurrence `/lab`) ; front appelle 3 endpoints qui renvoient 404 ; casse masquée par MSW (handlers.ts) + tests chi-local.
+
+**Évidence (⚠ RE-VÉRIFIER avant exécution — pointeurs vérifiés 2026-06-14)** :
+- *Registry / lifecycle* : `internal/domain/title/registry.go:19-24` (`Status` enum), `:44-56` (`TitleDescriptor`), `:59-66` (`HasCapability`), `:131-149` (`Get`/`Exists`/`All`), `:85-91` (`XboxTitleIDFor`). `internal/api/middleware/title.go:30-47` — `resolveTitleSlug` ne lit JAMAIS `Status` (MT-22 confirmé).
+- *Liste titres* : `internal/service/bootstrap_service.go:413-432` (`BuildAvailableTitles() []TitleSummary{Slug,Name,IconURL,Status,Capabilities,IsDefault}`). Pas d'endpoint dédié.
+- *1.7a/b à réutiliser* : `internal/api/handlers/capabilities.go`, `internal/api/handlers/feature_matrix.go` ; montés `server.go:587-592` sous `cfg.MultiTitleAPIEnabled` (:576). `internal/games/mappings/registry.go` (`GetCapabilities`, `Slugs()`).
+- *Admin (cible du montage A)* : `internal/api/server.go:713-741` — `r.Route("/admin")` + `middleware.RequireAuth` + `middleware.RequireAdmin`. Front : `apps/web/src/features/admin/AdminLayout.tsx`, routes file-based `apps/web/src/routes/admin/*`, gate `useAppShellStore(s=>s.isAdmin)`, i18n `lib/i18n/manifests/admin.toml`. `features/admin/sections/*` (UsersSection, InvariantsSection…), `AdminActionButton`, `middleware.NoStore`.
+- *Lab cassé (volet C)* : `internal/api/handlers/lab.go:20` (`NewLabHandler`), `internal/service/lab_service.go:29-71` (`requireAccess()` lit `can_manage_instance`, **return nil si LoadAppSettings échoue** = permissif), `internal/platform/lab/provider.go`. `server.go` : **0** montage `/lab`. Front : `apps/web/src/routes/lab.tsx`, `features/lab/LabPage.tsx:30,80`, `queries.ts:53,62,71`. Masquage : `apps/web/src/test/handlers.ts` (MSW mocke `/lab/*`), `lab_test.go` (chi-local). NavL1.tsx:243 (tab gaté `can_manage_instance`, distinct de `isAdmin` :222,244).
+- *Phase 1.8 (à productiser dans A)* : master `.ai/PLAN_TITLE_AGNOSTIC_REFACTORING.md:412-501` (couches `domain/diagnostic`, `port.TableInspector`, `port.TitleDiagnosticService`, impl DuckDB read-only, handler, CLI, `TitleDiagnosticSection.tsx`, **D10 : aucune écriture serveur, export presse-papier uniquement**, lint « pas d'`os.WriteFile` dans handlers Lab »). Exit Gate :1035-1054.
+- *Fixtures titre synthétique* : `internal/games/synthetic_title_b/{adapter.go,isolation_test.go}` enregistré ; `config/titles/synthetic_title_b/mappings/{assets,fields,outcomes}.toml` présents **mais PAS de `capabilities.toml`** (idéal pour l'oracle « capability/donnée absente → dégradation propre »).
+
+**Volet A — Section admin « Titres » (feature ; productise Phase 1.8 + MT-22)** :
+- **Approche (expand → parity → contract)** :
+  - *Expand* : nouveau sous-arbre admin `r.Route("/admin/titles")` (sous `RequireAuth`+`RequireAdmin`, server.go:713) :
+    1. `GET /admin/titles` — liste : réutiliser `Registry.All()` + `BuildAvailableTitles()` (NE PAS dupliquer la projection ; extraire un helper partagé si besoin). Inclut `Status` (MT-22 enfin LU côté admin).
+    2. `GET /admin/titles/{slug}` — détail : descripteur + résumé capabilities (proxy/réutilise la logique `capabilities.go`/`feature_matrix.go`, PAS un recalcul — appeler le même `FeatureChecker`/registry mappings). Pont PMT-4 : afficher l'overlay settings résolu pour le titre (lien `settings.ResolveForTitle(slug)` quand PMT-4 livré ; sinon section « hérite du global »).
+    3. `GET /admin/titles/{slug}/diagnostic` — **productisation Phase 1.8** : `domain/diagnostic` + `port.TableInspector` (CountRows/ListExpectedTables read-only) + `port.TitleDiagnosticService.RunDiagnostic` comparant TOML déclaré (capabilities/fields) vs réalité DB (rows par table via `PathResolver(slug)`). Réutiliser le `FeatureChecker` de 1.7b. Handler **admin-gated** (≠ Lab `can_manage_instance`).
+    4. `GET /admin/titles/{slug}/toml-draft` — export bloc `[data]`/`[capabilities]` draft, **string renvoyée telle quelle, ZÉRO écriture serveur** (décision D10). Front copie via `navigator.clipboard`.
+    - Procédure « enregistrer un 2e titre » = page d'aide read-only qui documente le workflow existant (`levelup add-title` → snippet `registry.go` → `make build`), réutilisant `LabHelp`-style notice. Pas d'écriture de registre via HTTP.
+    - Gating : `RequireAdmin` (role) + flag dédié (réutiliser `MultiTitleAPIEnabled` ou un nouveau `ADMIN_TITLES_ENABLED`) ; **jamais** `slug == "halo_infinite"` (lint `no_slug_comparison`) ; route par capability/registry.
+  - *Parity-gate (oracle double)* :
+    - (a) **Parité** : pour `halo_infinite`, `GET /admin/titles/{slug}/diagnostic` doit refléter les capabilities déclarées dans `capabilities.toml` sans drift faux-positif (golden sur le rapport) ; `GET /admin/titles` retourne le set actuel (Halo seul) byte-stable.
+    - (b) **`synthetic_title_b`/`synthetic_test_title`** : enregistrer le titre synthétique (déjà fixture) → `GET /admin/titles` le liste avec son `Status` ; son diagnostic montre le DRIFT (capabilities.toml ABSENT ⇒ tout déclaré false vs DB éventuellement peuplée) ET dégrade proprement (table/DB absente → `actual=0 rows`, pas de panic, `slog.Warn capability_absent`). `toml-draft` produit un bloc collable non vide. C'est la preuve que le seam route vraiment.
+  - *Contract* : PR minces : PR-1 endpoint liste + détail (réutilise 1.7a/b) ; PR-2 diagnostic (port+service+impl) ; PR-3 toml-draft + CLI `levelup-titles diagnose` (appelle `service.RunDiagnostic` direct, output text-table/`--format=json`, golden) ; PR-4 front `AdminTitlesPage` + route `routes/admin/titles*`. Garde lint verte à chaque PR.
+- **Oracle de complétion A** : réutilise capabilities/feature-matrix (pas de recalcul divergent) + admin-gated + marche pour le titre synthétique (liste + diagnostic drift + dégradation propre + toml-draft non vide) + Status enfin lu/affiché.
+
+**Volet B — Réutilisation Lab (partage, pas duplication)** :
+- **Recensement** (à PORTER/partager, pas copier) :
+  - Front : `_labShared.tsx` atoms (`StatusBadge`, `MetricCard`, `JsonViewer`, `FileStatusRow`, `GuardRow`, `TabButton`, formatters `formatDate/Number/Bytes`, `getStatusVariant`) → promouvoir vers un emplacement partagé (`components/ui/` ou `lib/`) consommé par Lab ET admin/titles. `LabHelp` (`LabNotice`/`LabToolSectionCard`) → pattern d'aide contextuelle pour la page « enregistrer un titre ». `DiagnosticsPanel` (cards + FileStatusRow + GuardRow) → gabarit du `<DataCapabilitiesTable>`/`<FeatureDiscrepanciesTable>` de la Phase 1.8.
+  - Back : pattern handler/service/provider Lab (thin handler → service gate → provider read-only DuckDB+FS) = exactement le modèle pour `TitleDiagnosticService`+`TableInspector`. Réutiliser `writeJSON`/`writeError`, `middleware.NoStore` (diagnostics = état courant).
+- **Approche** : extraire d'abord les atoms partagés (PR sans changement de comportement : Lab importe la nouvelle source), puis A les consomme. Aucune copie : si un atom diverge, le partager via prop, pas un fork (cf. règle anti-`ExplorerBanner fork`).
+- **Oracle B** : 0 duplication d'atom (un seul `StatusBadge`/`MetricCard` dans le repo) ; Lab et admin/titles importent la même source ; tests Lab existants restent verts après extraction.
+
+**Volet C — Réhabilitation Lab (FIX : caractériser → réparer → anti-régression)** :
+- **Caractérisation de la casse** (cf. lab_health_detail) : backend complet mais NON monté → 3 endpoints 404 ; masquage MSW (handlers.ts) + tests chi-local ; `requireAccess()` permissif si `LoadAppSettings` échoue ; modèle d'accès = `can_manage_instance` (≠ admin role).
+- **Décision panneau par panneau** : Resources = RÉPARER (monter) ; Diagnostics = RÉPARER (monter, sert d'ancrage au diagnostic titre exposé côté admin) ; Contracts (diff OpenAPI vs FastAPI legacy) = MONTER tel quel mais MARQUER pour retrait/repurpose (cutover Go fait, faible valeur) — ne pas investir ; ChartsShowcase = SAIN, laisser.
+- **Réparation** : monter `LabHandler`/`LabService`/`LabProvider` dans `server.go` (instancier provider via `lab.NewProvider`, injecter dans la `ServiceRegistry`, `r.Route("/lab")` derrière la garde d'accès). **Durcir `requireAccess`** : échec `LoadAppSettings` → refuser (fail-closed), pas autoriser. Trancher le modèle d'accès : conserver `can_manage_instance` pour le Lab dev (cohérent avec NavL1) OU aligner sur `RequireAdmin` — documenter la décision (le diagnostic TITRE, lui, vit côté admin role via volet A, indépendamment).
+- **Oracle C / anti-régression** : un **test d'intégration serveur** (route réelle montée, PAS chi-local, PAS MSW) prouvant `/lab/resources|contracts|diagnostics` → 200 pour un manager autorisé et 403 sinon — c'est précisément le test absent qui aurait attrapé la casse. Retirer/ajuster le mock MSW pour qu'il ne masque plus un 404.
+
+**Tests (par couche)** :
+- *domain/diagnostic* : `RunDiagnostic` 4 scénarios (no drift / drift data / drift feature / cascade) — réutiliser plan §1.8.5.
+- *port/platform (TableInspector)* : DuckDB `:memory:` — table absente / présente vide / présente avec rows ; `PathResolver(slug)` route la bonne DB.
+- *service (TitleDiagnosticService)* : compose TableInspector+FeatureChecker+fields ; parité halo_infinite ; drift `synthetic_title_b`.
+- *api/handlers* : `/admin/titles*` admin-gated (401 sans session, 403 non-admin) ; `/admin/titles` liste avec Status ; `/admin/titles/{slug}/diagnostic` golden ; `toml-draft` string non vide ; **lint : aucun `os.WriteFile` dans handlers titres/Lab** (garde-fou D10).
+- *intégration serveur (volet C)* : `/lab/*` monté répond 200/403 (anti-régression de la casse) — NON mocké.
+- *CLI* : `levelup-titles diagnose --slug …` golden text-table + `--format=json`.
+- *front (Vitest, hors sandbox cf. mémoire)* : `AdminTitlesPage` 3 états diagnostic (no drift / drifts / vide) + clipboard mocké + hidden si non-admin ; `_labShared` atoms partagés rendent identiquement dans Lab et admin.
+- *archlint* : `no_slug_comparison` reste vert (aucun `slug == "halo_infinite"`).
+
+**Logging (clé `title`)** : `slog.InfoContext "admin.titles.list"` (`count`) ; `slog.InfoContext "title_diagnostic.report"` (`title`, `data_drifts`, `feature_drifts`) à chaque run (pas de Warn par drift — bruit) ; `slog.WarnContext "title_diagnostic.capability_absent"` (`title`, `table`/`capability`) quand DB/donnée absente ; `slog.InfoContext "admin.titles.toml_draft"` (`title`) ; volet C montage : `slog.InfoContext "lab_routes_mounted"`. Jamais de secret/token en valeur ; toujours propager `title`.
+
+**Exit gate** :
+- A : `/admin/titles` (liste + Status MT-22 lu) + `/admin/titles/{slug}` (détail réutilisant 1.7a/b sans recalcul) + `/admin/titles/{slug}/diagnostic` (parité Halo + drift `synthetic_title_b` + dégradation propre) + `/admin/titles/{slug}/toml-draft` (presse-papier, ZÉRO écriture serveur, lint `os.WriteFile` vert) + CLI `levelup-titles diagnose` golden + page « enregistrer un 2e titre » documentée, le tout admin-gated, `no_slug_comparison` vert.
+- B : 0 duplication d'atom (source unique partagée Lab↔admin), tests Lap existants verts post-extraction.
+- C : `/lab/*` monté et fonctionnel (3 panneaux 200 pour manager autorisé), `requireAccess` fail-closed, test d'INTÉGRATION serveur anti-régression vert, MSW ne masque plus le 404, décision d'accès + statut Contracts documentés.
+
+**Dérive re-vérif (2026-06-14)** :
+- a changé / précisé : (1) Le seed « Lab implémenté mais non monté » est CONFIRMÉ — `server.go` n'a 0 occurrence `/lab` ni `NewLabHandler`/`NewLabService`/`lab.NewProvider` ; `NewLabHandler` n'est référencé que par `lab.go`+`lab_test.go`. La stack existe dans l'arbre principal (pas uniquement le worktree cité par le seed `lab_backend_health`). (2) **Modèle d'accès du Lab = `can_manage_instance` (capability), PAS admin role** — distinction non explicitée dans le seed, déterminante pour A (admin role) vs C (capability) ; à trancher au montage. (3) `LabService.requireAccess()` est permissif sur erreur de chargement settings (`return nil`) — fail-open à corriger. (4) `LabDiagnosticsResponse` ne contient AUCUN champ diagnostic titre → Phase 1.8 reste entièrement à construire ; le diagnostic doit être exposé côté ADMIN (volet A), pas enfermé dans le Lab dev (correction de cap vs master qui le plaçait en « Lab »). (5) `synthetic_title_b` est le bon fixture (mappings présents, `capabilities.toml` ABSENT = oracle dégradation) — préférer-le au `synthetic_test_title` net-new sauf besoin d'isolation supplémentaire. (6) Capabilities/feature-matrix montés sous `MULTI_TITLE_API_ENABLED` et NON admin-gatés : volet A les CONSOMME mais ajoute sa propre garde admin sur les nouveaux endpoints. (7) `Status` jamais lu (`title.go` resolveTitleSlug) reste vrai (MT-22) ; PMT-14 est la première surface qui le LIT (affichage), le GATING runtime du Status reste PMT-8.
 

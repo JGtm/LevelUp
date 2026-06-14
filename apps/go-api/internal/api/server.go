@@ -38,6 +38,7 @@ import (
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
+	lab_platform "levelup/go-api/internal/platform/lab"
 	session_platform "levelup/go-api/internal/platform/session"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
@@ -621,6 +622,18 @@ func NewRouter(
 				},
 			)
 		}
+
+		// Réhabilitation Lab (2026-06-14, PMT-14 volet C) : le backend du Lab
+		// interne (handlers/service/provider + tests) existait mais n'était
+		// JAMAIS monté ici → /lab/{resources,contracts,diagnostics} renvoyait
+		// 404 en prod. La casse était masquée par les mocks MSW du front + les
+		// tests chi-local du handler (aucun ne vérifiait l'intégration serveur).
+		// L'accès reste gardé au niveau service (requireAccess → can_manage_instance).
+		// Anti-régression : lab_routes_mounted_test.go (chi.Walk sur le vrai routeur).
+		labHandler := handlers.NewLabHandler(service.NewLabService(cfg, lab_platform.NewProvider(cfg)))
+		r.Get("/lab/resources", labHandler.GetResources)
+		r.Get("/lab/contracts", labHandler.GetContracts)
+		r.Get("/lab/diagnostics", labHandler.GetDiagnostics)
 
 		// Sprint 43 : changelog (markdown brut)
 		changelog := handlers.NewChangelogHandler(cfg.RepoRoot)

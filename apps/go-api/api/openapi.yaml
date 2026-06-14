@@ -1527,6 +1527,34 @@ paths:
       responses:
         "200": { description: "Liste des release notes" }
 
+  # Lab interne (gestion d'instance — accès gardé par can_manage_instance).
+  # Réhabilité 2026-06-14 (PMT-14 vol. C) : routes existantes enfin montées + documentées.
+  /lab/resources:
+    get:
+      tags: [lab]
+      operationId: getLabResources
+      summary: "Lab interne — explorateur de ressources (snapshots, assets, médailles)"
+      responses:
+        "200": { description: "Ressources du Lab pour le titre courant" }
+        "400": { description: "Paramètre de requête invalide" }
+        "403": { description: "Lab non autorisé sur cette instance (can_manage_instance)" }
+  /lab/contracts:
+    get:
+      tags: [lab]
+      operationId: getLabContracts
+      summary: "Lab interne — diff de contrat OpenAPI (Go vs référence FastAPI)"
+      responses:
+        "200": { description: "Diff de contrat OpenAPI" }
+        "403": { description: "Lab non autorisé sur cette instance (can_manage_instance)" }
+  /lab/diagnostics:
+    get:
+      tags: [lab]
+      operationId: getLabDiagnostics
+      summary: "Lab interne — diagnostics d'instance (parité + garde-fous médailles)"
+      responses:
+        "200": { description: "Diagnostics d'instance pour le titre courant" }
+        "403": { description: "Lab non autorisé sur cette instance (can_manage_instance)" }
+
   # Auth
   /auth/login:
     post:

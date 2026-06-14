@@ -12,7 +12,7 @@
 
 ## 0bis. Périmètre ÉLARGI — registre multi-titre complet (audit 2026-06-14)
 
-> Ce master couvre le **chemin data-lecture du match**. L'audit 2026-06-14 a révélé ~26 axes multi-titre **supplémentaires** (ingestion, acquisition auth, scheduler, settings, achievements, world-stats, outcome, observabilité, Discord, cycle de vie, registre de migrations…) — voir l'**index** [PLAN_MULTITITRE_INDEX.md](PLAN_MULTITITRE_INDEX.md) (registre `MT-01..MT-26`) et les specs détaillées [PLAN_MULTITITRE_PERIPHERY.md](PLAN_MULTITITRE_PERIPHERY.md) (`PMT-1..13` + extensions `EXT-1.5/2/5`).
+> Ce master couvre le **chemin data-lecture du match**. L'audit 2026-06-14 a révélé ~26 axes multi-titre **supplémentaires** (ingestion, acquisition auth, scheduler, settings, achievements, world-stats, outcome, observabilité, Discord, cycle de vie, registre de migrations…) — voir l'**index** [PLAN_MULTITITRE_INDEX.md](PLAN_MULTITITRE_INDEX.md) (registre `MT-01..MT-26`) et les specs détaillées [PLAN_MULTITITRE_PERIPHERY.md](PLAN_MULTITITRE_PERIPHERY.md) (`PMT-1..14` + extensions `EXT-1.5/2/5`). **PMT-14** = section admin « Titres » + réhabilitation du **Lab cassé** (non monté dans `server.go`).
 >
 > **⚠ Doctrine RE-VÉRIFIER (s'applique aussi aux phases de CE master)** : les pointeurs `file:line` sont une carte datée, pas une vérité figée. Re-grep/re-valider chaque évidence contre `HEAD` AVANT d'exécuter une phase (existante ou nouvelle). Une spec est une hypothèse à reconfirmer, jamais un copier-coller.
 >

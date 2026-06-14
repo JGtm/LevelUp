@@ -60,7 +60,12 @@ func (s *LabService) GetDiagnostics(ctx context.Context) (*domain.LabDiagnostics
 func (s *LabService) requireAccess() error {
 	settings, err := s.cfg.LoadAppSettings()
 	if err != nil {
-		return nil
+		// Fail-closed (2026-06-14, PMT-14 vol. C) : si app_settings.json existe
+		// mais est illisible/corrompu, REFUSER l'accès au Lab (outil de gestion
+		// d'instance) plutôt que de l'ouvrir par défaut. Un fichier ABSENT renvoie
+		// un map vide SANS erreur (cf. config.LoadAppSettings) → le défaut
+		// « autorisé quand non configuré » est préservé.
+		return ErrLabForbidden
 	}
 	if raw, ok := settings["can_manage_instance"]; ok {
 		if allowed, ok := raw.(bool); ok && !allowed {
