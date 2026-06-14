@@ -45,7 +45,7 @@ func newMetaResolveTestPDB(t *testing.T) *PlayerDB {
 			start_time_utc TIMESTAMPTZ, end_time_utc TIMESTAMPTZ,
 			real_start_time TIMESTAMP,
 			playlist_id VARCHAR,
-			map_id VARCHAR,
+			map_id VARCHAR, map_version_id VARCHAR,
 			pair_id VARCHAR,
 			game_variant_id VARCHAR,
 			map_name VARCHAR, map_name_fr VARCHAR,
@@ -418,6 +418,37 @@ func TestGetMatchMeta_TranslatesModeFRViaModeNameTr(t *testing.T) {
 	// (buildMatchHeadingStr(MapNameFR, ModeNameFR, "fr")).
 }
 
+// TestGetMatchMeta_ExtractsModeVariantFR : un pair_name variante non canonique
+// ("Legacy Slayer BR on Narrows", absent tel quel de mode_name_tr) doit quand
+// même donner le mode FR via extraction du mode connu ("Slayer") + traduction
+// ("Assassin"). Rattrapage des variantes d'arme/saison.
+func TestGetMatchMeta_ExtractsModeVariantFR(t *testing.T) {
+	pdb := newMetaResolveTestPDB(t)
+	ctx := context.Background()
+
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO shared.match_registry
+			(match_id, start_time, start_time_utc, pair_name)
+		VALUES ('m8', '2026-05-01 22:00:00', '2026-05-01 22:00:00+00',
+		        'Legacy Slayer BR on Narrows')`); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+	// mode_name_tr connaît "Slayer" → "Assassin" mais PAS la variante complète.
+	if _, err := pdb.Metadata.Exec(ctx,
+		`INSERT INTO mode_name_tr (lang, mode_en, name) VALUES ('fr', 'Slayer', 'Assassin')`); err != nil {
+		t.Fatalf("seed mode_name_tr: %v", err)
+	}
+
+	repo := NewMatchViewRepo(pdb, "test-xuid")
+	meta, err := repo.GetMatchMeta(ctx, "m8")
+	if err != nil {
+		t.Fatalf("GetMatchMeta: %v", err)
+	}
+	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Assassin" {
+		t.Errorf("ModeNameFR = %v, want %q (Legacy Slayer BR → Slayer → Assassin)", meta.ModeNameFR, "Assassin")
+	}
+}
+
 // TestGetMatchMeta_ModeNameFRFallbackToEN : mode_name_tr absent → ModeNameFR
 // est le pair_name brut (COALESCE). Aligné sur home/match-history qui retournent
 // aussi le pair_name brut. Frontend normalise via normalizeModeLabel →
@@ -441,5 +472,30 @@ func TestGetMatchMeta_ModeNameFRFallbackToEN(t *testing.T) {
 	}
 	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Arena:Slayer on Live Fire" {
 		t.Errorf("ModeNameFR = %v, want 'Arena:Slayer on Live Fire' (frontend normalise, EN leak toléré)", meta.ModeNameFR)
+	}
+}
+
+// TestGetMatchMeta_MapImageURLFallsBackToEndpoint : sans image locale curée mais
+// avec map_version_id, MapImageURL pointe vers l'endpoint framework KindMapImage
+// (?v=version) → le front déclenche le fetch DiscoveryUGC lazy + cache.
+func TestGetMatchMeta_MapImageURLFallsBackToEndpoint(t *testing.T) {
+	pdb := newMetaResolveTestPDB(t)
+	ctx := context.Background()
+
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO shared.match_registry
+			(match_id, start_time, start_time_utc, map_id, map_version_id)
+		VALUES ('m_img', '2026-05-01 23:00:00', '2026-05-01 23:00:00+00', 'map-x', 'ver-x')`); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	repo := NewMatchViewRepo(pdb, "test-xuid")
+	meta, err := repo.GetMatchMeta(ctx, "m_img")
+	if err != nil {
+		t.Fatalf("GetMatchMeta: %v", err)
+	}
+	want := "/api/v1/assets/maps/halo_infinite/map-x/image?v=ver-x"
+	if meta.MapImageURL == nil || *meta.MapImageURL != want {
+		t.Errorf("MapImageURL = %v, want %q", meta.MapImageURL, want)
 	}
 }

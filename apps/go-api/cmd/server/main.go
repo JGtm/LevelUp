@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/api"
+	"levelup/go-api/internal/assetnames"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
@@ -959,7 +960,7 @@ func main() {
 	// — prod-safe, activation délibérée). La régularité vient du ticker hebdo, PAS d'un
 	// redémarrage. Les assets non normalisés (nom resté UUID brut, FR manquant) remontent
 	// automatiquement dans la page admin data-quality, corrigeables à la main.
-	if v := strings.TrimSpace(os.Getenv("LEVELUP_CATALOG_REFRESH")); v == "1" || strings.EqualFold(v, "true") {
+	if ops.CatalogRefreshEnabled() {
 		catalogCron := scheduler.NewCatalogRefreshCron(func(cctx context.Context, ts string) (domain.CatalogUGCDrainResult, error) {
 			// V2 — découverte « A à Z » : avant le drain, lire la config de chaque
 			// playlist (discovery-infiniteugc) pour enfiler ses couples map-mode enfants
@@ -970,14 +971,10 @@ func main() {
 			} else {
 				slog.InfoContext(cctx, "catalog_refresh_cron: playlists expansées", "module", logging.ModuleCatalog, "children_enqueued", n)
 			}
-			// Filet traîne : balaye les noms d'assets restés en UUID (jamais résolus
-			// + jamais rejoués → jamais re-tentés in-sync) vers asset_translations.
-			// Self-gated par LEVELUP_SYNC_RESOLVE_ASSETS. Best-effort (n'empêche pas le drain).
-			if res, serr := reg.ResolveUnresolvedAssetNames(cctx, ts); serr != nil {
-				slog.WarnContext(cctx, "catalog_refresh_cron: balayage noms d'assets échoué (best-effort)", "module", logging.ModuleCatalog, "err", serr)
-			} else if res.Resolved > 0 || res.Errors > 0 {
-				slog.InfoContext(cctx, "catalog_refresh_cron: noms d'assets balayés", "module", logging.ModuleCatalog, "resolved", res.Resolved, "errors", res.Errors)
-			}
+			// NB : le balayage des NOMS d'assets (asset_translations, ART-safe) NE vit
+			// plus ici — il est découplé dans asset_name_sweep_cron (gaté
+			// LEVELUP_SYNC_RESOLVE_ASSETS), pour rester autonome même quand ce cron
+			// catalogue est coupé (LEVELUP_CATALOG_REFRESH=0, drain ART-unsafe).
 			return reg.RunCatalogUGCDrain(cctx, ts)
 		}, "", 0)
 		schedulerWG.Add(1)
@@ -986,6 +983,24 @@ func main() {
 			catalogCron.Run(schedulerCtx)
 		}()
 		slog.InfoContext(ctx, "catalog_refresh_cron: scheduled", "module", logging.ModuleCatalog, "interval", scheduler.DefaultCatalogRefreshInterval)
+	}
+
+	// Balayage de noms d'assets (filet de rattrapage de la traîne) — DÉCOUPLÉ du cron
+	// catalogue : ART-safe (asset_translations via ops.UpsertAssetTranslation), gaté par
+	// LEVELUP_SYNC_RESOLVE_ASSETS (ON par défaut, kill-switch). Tourne même quand le drain
+	// catalogue est coupé (LEVELUP_CATALOG_REFRESH=0, bug ART). 1er passage ~60s après le
+	// boot (le temps que le pool de tokens se réchauffe), puis hebdomadaire. La résolution
+	// PRIMAIRE des noms reste in-sync ; ce cron ne rattrape que les assets jamais rejoués.
+	if halo.AssetNameResolutionEnabled() {
+		sweepCron := scheduler.NewAssetNameSweepCron(func(cctx context.Context, ts string) (assetnames.Result, error) {
+			return reg.ResolveUnresolvedAssetNames(cctx, ts, autoSyncPool)
+		}, "", 0)
+		schedulerWG.Add(1)
+		go func() {
+			defer schedulerWG.Done()
+			sweepCron.Run(schedulerCtx)
+		}()
+		slog.InfoContext(ctx, "asset_name_sweep_cron: scheduled", "module", logging.ModuleSync, "interval", scheduler.DefaultAssetNameSweepInterval)
 	}
 
 	// Phase 4 plan stabilisation 2026-05-22 — câblage post-sync runner sur

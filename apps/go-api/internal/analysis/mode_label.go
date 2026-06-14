@@ -136,3 +136,56 @@ func ResolveModeUI(pairName, pairNameFR *string) *string {
 	}
 	return &out
 }
+
+// ExtractKnownMode retrouve un mode CANONIQUE connu à l'intérieur d'un label déjà
+// normalisé mais non reconnu tel quel — typiquement une variante d'arme/saison
+// ("Legacy Slayer BR" → "Slayer", "Tactical Slayer" → "Slayer"). Cherche le mode
+// connu LE PLUS LONG apparaissant comme mot entier (case-insensitive).
+//
+// knownModesEN = noms EN canoniques (clés mode_en de mode_name_tr), chargés par le
+// caller (repo). Retourne "" si aucun match → le caller garde le label d'origine.
+// Fonction pure (aucun accès DB), à appliquer APRÈS NormalizeModeLabel.
+func ExtractKnownMode(label string, knownModesEN []string) string {
+	label = strings.TrimSpace(label)
+	if label == "" || len(knownModesEN) == 0 {
+		return ""
+	}
+	low := strings.ToLower(label)
+	best := ""
+	for _, m := range knownModesEN {
+		m = strings.TrimSpace(m)
+		if m == "" || len(m) <= len(best) {
+			continue // garde le match le plus long (ex. "Super Fiesta" > "Fiesta")
+		}
+		if wholeWordIndex(low, strings.ToLower(m)) >= 0 {
+			best = m
+		}
+	}
+	return best
+}
+
+// wholeWordIndex retourne l'index de needle dans haystack en exigeant des frontières
+// de mot (lettres/chiffres) de part et d'autre, sinon -1. Évite que "Slayer" matche
+// au milieu d'un autre mot. haystack/needle doivent être déjà en minuscules ASCII.
+func wholeWordIndex(haystack, needle string) int {
+	for from := 0; from <= len(haystack)-len(needle); {
+		i := strings.Index(haystack[from:], needle)
+		if i < 0 {
+			return -1
+		}
+		idx := from + i
+		beforeOK := idx == 0 || !isWordChar(haystack[idx-1])
+		end := idx + len(needle)
+		afterOK := end >= len(haystack) || !isWordChar(haystack[end])
+		if beforeOK && afterOK {
+			return idx
+		}
+		from = idx + 1
+	}
+	return -1
+}
+
+// isWordChar : caractère de mot ASCII (a-z, 0-9, _). haystack est déjà en minuscules.
+func isWordChar(b byte) bool {
+	return b == '_' || (b >= 'a' && b <= 'z') || (b >= '0' && b <= '9')
+}

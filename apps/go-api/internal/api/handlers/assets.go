@@ -67,10 +67,13 @@ func (h *AssetHandler) GetMapImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// version_id (optionnel) : porté par ?v=. Requis pour le fallback DiscoveryUGC
+	// (404 sans), et inclus dans la clé de cache (Variant) → cache par (map, version).
 	ref := assets.Ref{
 		Kind:    assets.KindMapImage,
 		TitleID: titleID,
 		ID:      mapID,
+		Variant: strings.TrimSpace(r.URL.Query().Get("v")),
 	}
 
 	resolved, err := h.resolver.Get(r.Context(), ref)

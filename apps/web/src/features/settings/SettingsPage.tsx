@@ -17,41 +17,11 @@ import { AccessibilityTab } from '@/features/settings/AccessibilityTab'
 import { SetPasswordCard } from '@/features/auth/SetPasswordCard'
 import { NotificationsSettingsTab } from '@/features/notifications/NotificationsSettingsTab'
 import type { SettingsResponse } from '@/lib/api/types'
-import type { TabProps } from './_settingsShared'
 import { GeneralTab } from './GeneralTab'
-import { SyncTab } from './SyncTab'
 import { AnalyseTab } from './AnalyseTab'
 import { BackupTab } from './BackupTab'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
-
-// ─── Onglet Comptes ──────────────────────────────────────────────────────────
-// Self-service (tout utilisateur connecté) : son mot de passe (opt-in re-login
-// rapide, PR-C). Admin uniquement : gestion des utilisateurs.
-
-function AccountsTab({ t, isAdmin }: { t: TabProps['t']; isAdmin: boolean }) {
-  return (
-    <>
-      {/* Mon compte — mot de passe opt-in (re-login rapide sans Microsoft). */}
-      <SetPasswordCard />
-
-      {/* Admin — gestion des utilisateurs. */}
-      {isAdmin && (
-        <Card className="border-border bg-card">
-          <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="mt-2 text-lg font-semibold text-foreground">{t.usersTitle}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{t.usersDescription}</p>
-            </div>
-            <Link to="/admin">
-              <Button>{t.openUsersButton}</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      )}
-    </>
-  )
-}
 
 // ─── Onglet Lab ──────────────────────────────────────────────────────────────
 
@@ -77,8 +47,6 @@ export function SettingsPage() {
   const { data: settings, isLoading } = useSettings()
   const mutation = useUpdateSettings()
   const canManageInstance = useAppShellStore((s) => s.capabilities?.can_manage_instance ?? false)
-  const isAdmin = useAppShellStore((s) => s.isAdmin)
-  const authMode = useAppShellStore((s) => s.authMode)
   const demoMode = useAppShellStore((s) => s.demoMode)
   const locale = normalizeSettingsLocale(useAppShellStore((s) => s.locale))
   const t = getSettingsText(locale)
@@ -168,15 +136,13 @@ export function SettingsPage() {
           {(
             [
               { id: 'general', label: t.tabGeneral },
-              { id: 'sync', label: t.tabSync },
               { id: 'analyse', label: t.tabAnalyse },
               { id: 'accessibility', label: t.tabAccessibility },
               { id: 'notifications', label: locale === 'en' ? 'Notifications' : 'Notifications' },
               { id: 'backup', label: t.tabBackup },
               ...(canManageInstance ? [{ id: 'lab', label: t.tabLab }] : []),
-              // Onglet « Comptes » : visible dès qu'il y a un compte (auth password/xbox).
-              // Self-service MDP pour tous ; gestion utilisateurs gardée admin à l'intérieur.
-              ...(authMode === 'password' || authMode === 'xbox' ? [{ id: 'users', label: t.tabUsers }] : []),
+              // « Synchronisation » et « Utilisateurs » ont migré vers la page Admin
+              // (Admin · Sync & Jobs / Accès). Cf. accès direct « Administration » dans le menu.
             ] as { id: 'general' | 'sync' | 'analyse' | 'lab' | 'users' | 'accessibility' | 'notifications' | 'backup'; label: string }[]
           ).map(({ id, label }) => (
             <button
@@ -199,19 +165,20 @@ export function SettingsPage() {
 
       <div className="space-y-6 p-6">
         {activeTab === 'general' && (
-          <GeneralTab merged={merged} handleChange={handleChange} t={t} />
-        )}
-        {activeTab === 'sync' && (
-          <SyncTab merged={merged} handleChange={handleChange} t={t} />
+          <>
+            <GeneralTab merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
+            {/* Mon compte — mot de passe opt-in (re-login rapide sans Microsoft).
+                Self-service conservé ici depuis le retrait de l'onglet « Comptes ». */}
+            <SetPasswordCard />
+          </>
         )}
         {activeTab === 'analyse' && (
-          <AnalyseTab merged={merged} handleChange={handleChange} t={t} />
+          <AnalyseTab merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
         )}
         {activeTab === 'lab' && <LabTab t={t} />}
-        {activeTab === 'users' && <AccountsTab t={t} isAdmin={isAdmin} />}
         {activeTab === 'accessibility' && <AccessibilityTab t={t} locale={locale} />}
         {activeTab === 'notifications' && <NotificationsSettingsTab />}
-        {activeTab === 'backup' && <BackupTab t={t} />}
+        {activeTab === 'backup' && <BackupTab t={t} frozen={demoMode} />}
       </div>
     </div>
   )

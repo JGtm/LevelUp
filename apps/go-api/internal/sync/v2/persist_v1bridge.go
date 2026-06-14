@@ -16,9 +16,9 @@ import (
 	"log/slog"
 	"time"
 
-	"levelup/go-api/internal/assetnames"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/platform/auth/pool"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
@@ -38,9 +38,9 @@ type cycleBatchPersisterV1Bridge struct {
 	// Sert à la résolution autonome des noms d'assets (peuplement asset_translations)
 	// ET à l'enrich registry au primary write V2. nil → feature off (tests).
 	metaDB *sql.DB
-	// assetFetcher : source des noms d'assets (token-free, API publique GameCMS).
-	// nil → résolution désactivée (parité legacy / gating caller).
-	assetFetcher assetnames.Fetcher
+	// assetPool : POOL de tokens UNIFIÉ (auth/pool) pour la résolution des noms
+	// d'assets (GameCMS exige un token). nil → résolution désactivée.
+	assetPool pool.Pool
 	// sharedDB : accès lazy au handle shared courant (post-swap), pour le refresh
 	// catalogue in-sync (résorbe « playlists hors catalogue »). nil → off.
 	sharedDB func() *sql.DB
@@ -57,14 +57,14 @@ type cycleBatchPersisterV1Bridge struct {
 // playerBySlug est passé via CycleBatch.PlayerBySlug à chaque PersistCycle
 // (cf. RunPersist → orchestrator cycle.go).
 // metaDB : handle metadata RW partagé (résolution + enrich noms d'assets) ; nil → off.
-// assetFetcher : source des noms d'assets (token-free) ; nil → résolution désactivée.
+// assetPool : pool de tokens unifié (GameCMS exige un token) ; nil → résolution désactivée.
 // sharedDB : getter lazy du handle shared courant (refresh catalogue in-sync) ; nil → off.
 func NewCycleBatchPersister(
 	titleSlug string,
 	queue *persist.BatchQueue,
 	drainTimeout time.Duration,
 	metaDB *sql.DB,
-	assetFetcher assetnames.Fetcher,
+	assetPool pool.Pool,
 	sharedDB func() *sql.DB,
 ) CycleBatchPersister {
 	if drainTimeout <= 0 {
@@ -75,7 +75,7 @@ func NewCycleBatchPersister(
 		queue:           queue,
 		drainCtxTimeout: drainTimeout,
 		metaDB:          metaDB,
-		assetFetcher:    assetFetcher,
+		assetPool:       assetPool,
 		sharedDB:        sharedDB,
 	}
 }
@@ -96,14 +96,14 @@ func (p *cycleBatchPersisterV1Bridge) PersistCycle(ctx context.Context, batch Cy
 	// metadata.asset_translations pour les assets neufs du cycle AVANT le
 	// build/enrich des batches, pour que BuildBatchFromRawForV2WithMeta écrive un
 	// vrai nom en registry dès le 1er passage. Best-effort, gated (nil → no-op).
-	if p.assetFetcher != nil && p.metaDB != nil {
+	if p.assetPool != nil && p.metaDB != nil {
 		statsList := make([]map[string]any, 0, len(batch.Matches))
 		for _, sd := range batch.Matches {
 			if sd.Stats != nil {
 				statsList = append(statsList, sd.Stats)
 			}
 		}
-		syncpkg.ResolveAssetsFromStats(ctx, p.assetFetcher, p.metaDB, p.titleSlug, statsList)
+		syncpkg.ResolveAssetsFromStats(ctx, p.assetPool, p.metaDB, p.titleSlug, statsList)
 	}
 
 	submitted := 0
@@ -171,10 +171,12 @@ func (p *cycleBatchPersisterV1Bridge) PersistCycle(ctx context.Context, batch Cy
 
 	// Catalogue in-sync : après persist (les nouveaux matchs sont en shared),
 	// inscrit playlists/maps/paires/variantes dans les tables catalogue (zéro
-	// réseau) → résorbe « playlists hors catalogue » sans action admin. Gaté
-	// comme la résolution de noms ; uniquement si de nouveaux matchs ont été
-	// persistés. Best-effort.
-	if p.assetFetcher != nil && p.metaDB != nil && p.sharedDB != nil && submitted > 0 {
+	// réseau) → résorbe « playlists hors catalogue » sans action admin. Gaté par
+	// l'interrupteur MAÎTRE catalogue (ops.CatalogRefreshEnabled /
+	// LEVELUP_CATALOG_REFRESH) : l'écriture est ART-unsafe (ON CONFLICT DO UPDATE
+	// sur metadata), donc coupée tant que le drain n'est pas migré append-only.
+	// Découplé de la résolution des NOMS (ART-safe, autonome). Best-effort.
+	if ops.CatalogRefreshEnabled() && p.assetPool != nil && p.metaDB != nil && p.sharedDB != nil && submitted > 0 {
 		if shared := p.sharedDB(); shared != nil {
 			if _, cerr := ops.CatalogRefreshFromRegistry(ctx, p.metaDB, shared, p.titleSlug); cerr != nil {
 				slog.WarnContext(ctx, "PersistCycle: refresh catalogue non-bloquant", "err", cerr)

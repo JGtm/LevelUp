@@ -31,7 +31,10 @@ type MatchMetaRaw struct {
 	IsRanked                bool
 	PlayableDurationSeconds *int64
 	MapAssetID              *string
-	GameVariantName         *string
+	// MapVersionID : version de la map jouée (match_registry.map_version_id), pour
+	// le fetch DiscoveryUGC de l'image (endpoint /api/v1/assets/maps/.../image?v=).
+	MapVersionID    *string
+	GameVariantName *string
 	// PlaylistAssetID : identifiant stable de la playlist (match_registry.playlist_id).
 	// Nil pour les matchs custom games sans playlist enregistrée.
 	PlaylistAssetID *string

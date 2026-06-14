@@ -69,6 +69,7 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 		&row.PairAssetID,
 		&row.GameVariantAssetID,
 		&row.T0Ms,
+		&row.MapVersionID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchMeta: %w", err)
@@ -80,9 +81,24 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 		row.MapNameFR = r.resolveAssetName(ctx, "map", *row.MapAssetID)
 		row.MapNameEN = r.resolveAssetNameEN(ctx, "map", *row.MapAssetID)
 		row.MapImageURL = r.lookupMapImageURL(ctx, *row.MapAssetID)
+		// Pas d'image locale curée + version connue → endpoint framework KindMapImage
+		// (DiscoveryUGC, lazy + cache). ?v = version requise par DiscoveryUGC. UUIDs
+		// URL-safe (pas d'échappement). Le header builder respecte ce MapImageURL.
+		if (row.MapImageURL == nil || *row.MapImageURL == "") &&
+			row.MapVersionID != nil && *row.MapVersionID != "" {
+			u := fmt.Sprintf("/api/v1/assets/maps/%s/%s/image?v=%s",
+				halo_infinite.TitleSlug, *row.MapAssetID, *row.MapVersionID)
+			row.MapImageURL = &u
+		}
 	}
 	if row.PlaylistAssetID != nil {
 		row.PlaylistNameFR = r.resolveAssetName(ctx, "playlist", *row.PlaylistAssetID)
+		// Retire la catégorie matchmaking de tête ("Arène delta : Héritage" →
+		// "Delta : Héritage") pour l'affichage.
+		if row.PlaylistNameFR != nil {
+			norm := analysis.NormalizePlaylistLabel(*row.PlaylistNameFR)
+			row.PlaylistNameFR = &norm
+		}
 	}
 	// Résolution du libellé de mode — même cascade que applyMatchHistoryFRTranslations :
 	// ResolveAssetNamesBulk(pair) → loadModeFRBatch(mode_name_tr) → ResolvePairNameFR.
@@ -98,16 +114,33 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 		}
 
 		rawPairName := derefString(row.PairName)
-		modeENSet := make(map[string]struct{})
-		if en := analysis.NormalizeModeLabel(rawPairName); en != "" {
-			modeENSet[en] = struct{}{}
+		normRaw := analysis.NormalizeModeLabel(rawPairName)
+		normAsset := analysis.NormalizeModeLabel(pairAssetName)
+
+		// Rattrapage des variantes non canoniques ("Legacy Slayer BR" → "Slayer")
+		// via extraction du mode connu (liste mode_en de mode_name_tr). Appliqué
+		// APRÈS NormalizeModeLabel pour préserver les préfixes d'identité de
+		// playlist (Super Fiesta…). Cf. analysis.ExtractKnownMode.
+		knownModes := loadKnownModesEN(ctx, r.pdb.Metadata)
+		extracted := analysis.ExtractKnownMode(normRaw, knownModes)
+		if extracted == "" {
+			extracted = analysis.ExtractKnownMode(normAsset, knownModes)
 		}
-		if en := analysis.NormalizeModeLabel(pairAssetName); en != "" {
-			modeENSet[en] = struct{}{}
+
+		modeENSet := make(map[string]struct{})
+		for _, en := range []string{normRaw, normAsset, extracted} {
+			if en != "" {
+				modeENSet[en] = struct{}{}
+			}
 		}
 		modeFR := loadModeFRBatch(ctx, r.pdb, modeENSet)
 
-		if fr := analysis.ResolvePairNameFR(rawPairName, derefString(row.PairNameFR), pairAssetName, modeFR); fr != "" {
+		// Priorité au mode canonique extrait + traduit (variante → mode connu FR),
+		// sinon cascade historique ResolvePairNameFR (modes standards / cas limites).
+		if extracted != "" && modeFR[extracted] != "" {
+			fr := modeFR[extracted]
+			row.ModeNameFR = &fr
+		} else if fr := analysis.ResolvePairNameFR(rawPairName, derefString(row.PairNameFR), pairAssetName, modeFR); fr != "" {
 			row.ModeNameFR = &fr
 		}
 	}

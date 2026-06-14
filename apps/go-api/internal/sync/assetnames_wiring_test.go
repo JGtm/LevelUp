@@ -7,6 +7,8 @@ import (
 	"database/sql"
 	"testing"
 
+	"levelup/go-api/internal/assetnames"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -21,74 +23,6 @@ func (f *fakeAssetFetcher) FetchName(_ context.Context, _, _, assetID, _, lang s
 		f.calls[assetID]++
 	}
 	return f.names[assetID+"|"+lang], nil
-}
-
-// TestResolveCycleAssets_PopulatesTranslationsAndEnriches : le pré-pass peuple
-// asset_translations (fr-FR + en-US) pour un asset neuf, puis
-// EnrichRegistryFromMetadata résout le registry depuis ce dictionnaire — preuve
-// du flux primary-write bout-en-bout.
-func TestResolveCycleAssets_PopulatesTranslationsAndEnriches(t *testing.T) {
-	ctx := context.Background()
-	meta := setupMetaWithTranslations(t)
-
-	newPlaylist := "playlist-new-uuid" // absent d'asset_translations
-	fetcher := &fakeAssetFetcher{
-		names: map[string]string{
-			newPlaylist + "|fr-FR": "Partie rapide",
-			newPlaylist + "|en-US": "Quick Play",
-		},
-		calls: map[string]int{},
-	}
-	e := &SyncEngine{gamertag: "Tester", titleSlug: "halo_infinite", metaDB: meta, assetFetcher: fetcher}
-
-	reg := &MatchRegistryRow{
-		PlaylistID:   strPtr(newPlaylist),
-		PlaylistName: strPtr(newPlaylist), // UUID brut
-	}
-	e.resolveCycleAssets(ctx, []*fetchedMatch{{MatchID: "m1", Registry: reg}})
-
-	// asset_translations doit contenir les 2 langues du nouvel asset.
-	var n int
-	if err := meta.QueryRow(
-		`SELECT COUNT(*) FROM asset_translations WHERE asset_id = ?`, newPlaylist,
-	).Scan(&n); err != nil {
-		t.Fatalf("count: %v", err)
-	}
-	if n != 2 {
-		t.Fatalf("asset_translations rows = %d, want 2 (fr-FR + en-US)", n)
-	}
-
-	// EnrichRegistryFromMetadata résout désormais le registry depuis le dico
-	// fraîchement peuplé (en-US prioritaire pour le nom canonique stocké).
-	if err := EnrichRegistryFromMetadata(ctx, meta, reg); err != nil {
-		t.Fatalf("enrich: %v", err)
-	}
-	if got := derefSyncStr(reg.PlaylistName); got != "Quick Play" {
-		t.Errorf("PlaylistName = %q, want %q", got, "Quick Play")
-	}
-}
-
-// TestResolveCycleAssets_SkipsAlreadyKnown : un asset déjà présent dans
-// asset_translations n'est jamais re-fetché (skip-fresh).
-func TestResolveCycleAssets_SkipsAlreadyKnown(t *testing.T) {
-	ctx := context.Background()
-	meta := setupMetaWithTranslations(t) // "playlist-known-uuid" déjà seedé (en-US)
-
-	fetcher := &fakeAssetFetcher{names: map[string]string{}, calls: map[string]int{}}
-	e := &SyncEngine{gamertag: "Tester", titleSlug: "halo_infinite", metaDB: meta, assetFetcher: fetcher}
-
-	reg := &MatchRegistryRow{
-		PlaylistID:   strPtr("playlist-known-uuid"),
-		PlaylistName: strPtr("playlist-known-uuid"), // UUID brut → candidat, mais déjà dans le dico (en-US)
-	}
-	e.resolveCycleAssets(ctx, []*fetchedMatch{{MatchID: "m1", Registry: reg}})
-
-	// en-US était frais → pas de fetch en-US. fr-FR absent → 1 tentative fr-FR
-	// (le fake renvoie "" → rien d'écrit). On vérifie surtout qu'aucun fetch
-	// en-US n'a eu lieu (skip-fresh effectif) : le seul appel possible est fr-FR.
-	if c := fetcher.calls["playlist-known-uuid"]; c > 1 {
-		t.Errorf("fetch calls = %d, want <= 1 (en-US déjà frais → pas re-fetché)", c)
-	}
 }
 
 // setupSharedWithRegistry crée une shared :memory: avec match_registry minimal.
@@ -110,33 +44,99 @@ func setupSharedWithRegistry(t *testing.T) *sql.DB {
 	return db
 }
 
-// TestResolveUnresolvedAssetNames_SweepsRegistry : le balayage trouve une playlist
-// restée en UUID (name == id) dans match_registry et la résout vers asset_translations,
-// même si elle n'est dans AUCUN nouveau match (filet pour la traîne).
-func TestResolveUnresolvedAssetNames_SweepsRegistry(t *testing.T) {
+// TestResolveRefs_PopulatesTranslationsAndEnriches : le cœur testable peuple
+// asset_translations (fr-FR + en-US) pour un asset neuf, puis
+// EnrichRegistryFromMetadata résout le registry depuis ce dictionnaire — preuve
+// du flux primary-write bout-en-bout (fetcher factice, sans pool/réseau).
+func TestResolveRefs_PopulatesTranslationsAndEnriches(t *testing.T) {
+	ctx := context.Background()
+	meta := setupMetaWithTranslations(t)
+
+	newPlaylist := "playlist-new-uuid" // absent d'asset_translations
+	fetcher := &fakeAssetFetcher{
+		names: map[string]string{
+			newPlaylist + "|fr-FR": "Partie rapide",
+			newPlaylist + "|en-US": "Quick Play",
+		},
+		calls: map[string]int{},
+	}
+	reg := &MatchRegistryRow{
+		PlaylistID:        strPtr(newPlaylist),
+		PlaylistName:      strPtr(newPlaylist), // UUID brut
+		PlaylistVersionID: strPtr("v-new"),     // version requise par discovery-infiniteugc
+	}
+	refs := collectAssetRefsFromRegistry(reg)
+	res := resolveRefs(ctx, fetcher, meta, "halo_infinite", "test", refs, 0)
+	if res.Resolved != 1 {
+		t.Fatalf("Resolved = %d, want 1 (%+v)", res.Resolved, res)
+	}
+
+	var n int
+	if err := meta.QueryRow(`SELECT COUNT(*) FROM asset_translations WHERE asset_id = ?`, newPlaylist).Scan(&n); err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 2 {
+		t.Fatalf("asset_translations rows = %d, want 2 (fr-FR + en-US)", n)
+	}
+
+	if err := EnrichRegistryFromMetadata(ctx, meta, reg); err != nil {
+		t.Fatalf("enrich: %v", err)
+	}
+	if got := derefSyncStr(reg.PlaylistName); got != "Quick Play" {
+		t.Errorf("PlaylistName = %q, want %q", got, "Quick Play")
+	}
+}
+
+// TestResolveRefs_SkipsAlreadyKnown : un asset déjà présent dans asset_translations
+// n'est jamais re-fetché (skip-fresh).
+func TestResolveRefs_SkipsAlreadyKnown(t *testing.T) {
+	ctx := context.Background()
+	meta := setupMetaWithTranslations(t) // "playlist-known-uuid" déjà seedé (en-US)
+
+	fetcher := &fakeAssetFetcher{names: map[string]string{}, calls: map[string]int{}}
+	reg := &MatchRegistryRow{
+		PlaylistID:        strPtr("playlist-known-uuid"),
+		PlaylistName:      strPtr("playlist-known-uuid"),
+		PlaylistVersionID: strPtr("v-known"),
+	}
+	refs := collectAssetRefsFromRegistry(reg)
+	resolveRefs(ctx, fetcher, meta, "halo_infinite", "test", refs, 0)
+	// en-US déjà frais → pas de re-fetch en-US (au plus 1 tentative fr-FR).
+	if c := fetcher.calls["playlist-known-uuid"]; c > 1 {
+		t.Errorf("fetch calls = %d, want <= 1 (en-US déjà frais)", c)
+	}
+}
+
+// TestCollectUnresolvedRefs_AndResolve : le balayage trouve une playlist restée
+// en UUID (name == id) dans match_registry et la résout — même si elle n'est dans
+// aucun nouveau match (filet pour la traîne). La playlist déjà résolue (name != id)
+// est exclue de la collecte.
+func TestCollectUnresolvedRefs_AndResolve(t *testing.T) {
 	ctx := context.Background()
 	meta := setupMetaWithTranslations(t)
 	shared := setupSharedWithRegistry(t)
-
-	// playlist non résolue (name == id), absente d'asset_translations + une résolue.
-	if _, err := shared.Exec(`INSERT INTO match_registry (match_id, playlist_id, playlist_name) VALUES
-		('m1', 'pl-orphan', 'pl-orphan'),
-		('m2', 'playlist-known-uuid', 'Quick Play')`); err != nil {
+	if _, err := shared.Exec(`INSERT INTO match_registry (match_id, playlist_id, playlist_name, playlist_version_id) VALUES
+		('m1', 'pl-orphan', 'pl-orphan', 'v-orphan'),
+		('m2', 'playlist-resolved', 'Quick Play', 'v-resolved')`); err != nil {
 		t.Fatalf("seed registry: %v", err)
+	}
+
+	refs, err := collectUnresolvedRefs(ctx, shared, "playlist", "playlist_id", "playlist_name", "playlist_version_id")
+	if err != nil {
+		t.Fatalf("collect: %v", err)
+	}
+	if len(refs) != 1 || refs[0].AssetID != "pl-orphan" {
+		t.Fatalf("collectUnresolvedRefs = %+v, want [pl-orphan] (résolu exclu)", refs)
 	}
 
 	fetcher := &fakeAssetFetcher{
 		names: map[string]string{"pl-orphan|fr-FR": "Événement", "pl-orphan|en-US": "Event"},
 		calls: map[string]int{},
 	}
-	res, err := ResolveUnresolvedAssetNames(ctx, fetcher, meta, shared, "halo_infinite")
-	if err != nil {
-		t.Fatalf("sweep: %v", err)
-	}
+	res := resolveRefs(ctx, fetcher, meta, "halo_infinite", "sweep", refs, 500)
 	if res.Resolved != 1 {
 		t.Fatalf("Resolved = %d, want 1 (%+v)", res.Resolved, res)
 	}
-	// L'orphelin est désormais au dictionnaire (2 langues).
 	var n int
 	if err := meta.QueryRow(`SELECT COUNT(*) FROM asset_translations WHERE asset_id = 'pl-orphan'`).Scan(&n); err != nil {
 		t.Fatalf("count: %v", err)
@@ -144,64 +144,30 @@ func TestResolveUnresolvedAssetNames_SweepsRegistry(t *testing.T) {
 	if n != 2 {
 		t.Fatalf("asset_translations[pl-orphan] = %d rows, want 2", n)
 	}
-	// La playlist résolue (name != id) n'a pas été fetchée.
-	if c := fetcher.calls["playlist-known-uuid"]; c != 0 {
-		t.Errorf("playlist résolue re-fetchée %d fois, want 0", c)
+}
+
+// TestResolveRefs_SkipsRefsWithoutVersion : une ref sans version_id (non fetchable
+// sur discovery-infiniteugc, qui 404 sans) est écartée — ni résolue ni comptée en
+// erreur — sans appeler le fetcher.
+func TestResolveRefs_SkipsRefsWithoutVersion(t *testing.T) {
+	ctx := context.Background()
+	meta := setupMetaWithTranslations(t)
+	fetcher := &fakeAssetFetcher{names: map[string]string{}, calls: map[string]int{}}
+	refs := []assetnames.AssetRef{{AssetType: "pair", AssetID: "pair-no-version", VersionID: ""}}
+	res := resolveRefs(ctx, fetcher, meta, "halo_infinite", "test", refs, 0)
+	if res.Requested != 0 || res.Resolved != 0 || res.Errors != 0 {
+		t.Fatalf("ref sans version: %+v, want tout à 0 (écartée avant fetch)", res)
+	}
+	if c := fetcher.calls["pair-no-version"]; c != 0 {
+		t.Errorf("fetcher appelé %d fois pour une ref sans version, want 0", c)
 	}
 }
 
-// TestResolveUnresolvedAssetNames_Disabled : fetcher nil → no-op.
-func TestResolveUnresolvedAssetNames_Disabled(t *testing.T) {
-	ctx := context.Background()
-	meta := setupMetaWithTranslations(t)
-	shared := setupSharedWithRegistry(t)
-	_, _ = shared.Exec(`INSERT INTO match_registry (match_id, playlist_id, playlist_name) VALUES ('m1', 'x', 'x')`)
-	res, err := ResolveUnresolvedAssetNames(ctx, nil, meta, shared, "halo_infinite")
-	if err != nil || res.Requested != 0 {
-		t.Fatalf("nil fetcher: %+v err=%v", res, err)
-	}
-}
-
-// TestResolveAssetsFromStats_V2Path : le chemin V2 (raw Stats JSON → refs →
-// résolution) peuple asset_translations pour une playlist sans PublicName (UUID brut).
-func TestResolveAssetsFromStats_V2Path(t *testing.T) {
-	ctx := context.Background()
-	meta := setupMetaWithTranslations(t)
-	fetcher := &fakeAssetFetcher{
-		names: map[string]string{"pl-new|fr-FR": "Nouveau", "pl-new|en-US": "New"},
-		calls: map[string]int{},
-	}
-	stats := map[string]any{
-		"MatchId": "m1",
-		"MatchInfo": map[string]any{
-			"StartTime": "2026-06-13T12:00:00Z",              // requis par ExtractRegistry (parseISO)
-			"Playlist":  map[string]any{"AssetId": "pl-new"}, // pas de PublicName → UUID brut
-		},
-	}
-	ResolveAssetsFromStats(ctx, fetcher, meta, "halo_infinite", []map[string]any{stats})
-	var n int
-	if err := meta.QueryRow(`SELECT COUNT(*) FROM asset_translations WHERE asset_id = 'pl-new'`).Scan(&n); err != nil {
-		t.Fatalf("count: %v", err)
-	}
-	if n != 2 {
-		t.Fatalf("asset_translations[pl-new] = %d rows, want 2 (fr-FR + en-US)", n)
-	}
-}
-
-// TestResolveCycleAssets_Disabled : assetFetcher nil → no-op total (parité legacy).
-func TestResolveCycleAssets_Disabled(t *testing.T) {
-	ctx := context.Background()
-	meta := setupMetaWithTranslations(t)
-	e := &SyncEngine{gamertag: "Tester", titleSlug: "halo_infinite", metaDB: meta} // pas de fetcher
-
-	reg := &MatchRegistryRow{PlaylistID: strPtr("x"), PlaylistName: strPtr("x")}
-	e.resolveCycleAssets(ctx, []*fetchedMatch{{MatchID: "m1", Registry: reg}})
-
-	var n int
-	if err := meta.QueryRow(`SELECT COUNT(*) FROM asset_translations WHERE asset_id = 'x'`).Scan(&n); err != nil {
-		t.Fatalf("count: %v", err)
-	}
-	if n != 0 {
-		t.Fatalf("résolution désactivée mais %d rows écrites", n)
+// TestResolveRefs_NilFetcher : fetcher nil → no-op.
+func TestResolveRefs_NilFetcher(t *testing.T) {
+	refs := collectAssetRefsFromRegistry(&MatchRegistryRow{PlaylistID: strPtr("x"), PlaylistName: strPtr("x")})
+	res := resolveRefs(context.Background(), nil, nil, "halo_infinite", "test", refs, 0)
+	if res.Requested != 0 || res.Resolved != 0 {
+		t.Fatalf("nil fetcher: %+v", res)
 	}
 }
