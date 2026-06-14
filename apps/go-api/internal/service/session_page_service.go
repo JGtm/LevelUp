@@ -265,8 +265,11 @@ type sessionCandidate struct {
 	Label    string
 	Category string
 	IsRanked bool
-	Count    int
-	Index    int
+	// IsSquad : composition approximée (majorité de matchs avec des amis). On
+	// préfère comparer une session escouade à une autre escouade (et solo↔solo).
+	IsSquad bool
+	Count   int
+	Index   int
 }
 
 // comparePoolFilters dérive le périmètre du VIVIER de comparaison à partir des
@@ -482,6 +485,7 @@ func makeSessionCandidate(label string, rows []legacymatch.StatsMatchRow, index 
 		Label:    label,
 		Category: dominantSessionCategory(rows),
 		IsRanked: sessionIsRanked(rows),
+		IsSquad:  sessionIsSquad(rows),
 		Count:    len(rows),
 		Index:    index,
 	}
@@ -489,6 +493,11 @@ func makeSessionCandidate(label string, rows []legacymatch.StatsMatchRow, index 
 
 func scoreSessionCandidate(current, candidate sessionCandidate) int {
 	score := 0
+	// Composition (escouade/solo) : dimension la plus déterminante pour comparer
+	// une session escouade — on lui donne le poids le plus fort.
+	if current.IsSquad == candidate.IsSquad {
+		score += 8
+	}
 	if current.Category == candidate.Category {
 		score += 6
 	}
@@ -516,7 +525,14 @@ func scoreSessionCandidate(current, candidate sessionCandidate) int {
 }
 
 func buildSuggestionReason(current, candidate sessionCandidate) string {
-	parts := make([]string, 0, 3)
+	parts := make([]string, 0, 4)
+	if current.IsSquad == candidate.IsSquad {
+		if candidate.IsSquad {
+			parts = append(parts, "même composition (escouade)")
+		} else {
+			parts = append(parts, "même composition (solo)")
+		}
+	}
 	if current.Category == candidate.Category {
 		parts = append(parts, fmt.Sprintf("même catégorie %s", strings.ToLower(candidate.Category)))
 	}

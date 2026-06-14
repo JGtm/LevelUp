@@ -77,6 +77,8 @@ export interface PerformanceLineOpts extends CommonOpts {
   complementBelowValue?: number
   /** Affiche des zones de fond colorées via perf-tier-1..5 (pour metric performance_score). */
   showPerformanceZones?: boolean
+  /** Si défini, trace une barre horizontale rouge gras à cette valeur Y (ex: seuil FDA = 1). */
+  redReferenceLineAt?: number
 }
 
 function extractValue(p: SquadPerformanceSeriesPoint, metric: PerformanceMetricKey): number | null {
@@ -170,8 +172,18 @@ export function buildPerformanceLineOption(
         type: 'bar' as const,
         barMaxWidth: 12,
         data: barData,
-        // markArea attaché au premier joueur seulement (rendu une fois pour tout le chart).
+        // markArea + markLine attachés au premier joueur seulement (rendus une fois pour tout le chart).
         ...(idx === 0 && perfZoneMarkArea ? { markArea: perfZoneMarkArea } : {}),
+        ...(idx === 0 && opts.redReferenceLineAt !== undefined
+          ? {
+              markLine: {
+                silent: true,
+                symbol: 'none',
+                lineStyle: { color: resolveToken('outcome-loss'), width: 2, type: 'solid' },
+                data: [{ yAxis: opts.redReferenceLineAt }],
+              },
+            }
+          : {}),
       }
     }
 

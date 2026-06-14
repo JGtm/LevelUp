@@ -11,6 +11,7 @@
 import { useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { EfficiencyTooltipText } from '@/components/charts/EfficiencyTooltipText'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSquadContext } from './SquadContext'
 import { getSquadText } from './i18n'
@@ -133,7 +134,12 @@ export function SquadContributionsPage() {
       />
 
       <SquadEfficiencyChart
-        title={t.efficiencySeries.title}
+        title={
+          <span className="flex items-center gap-1.5">
+            {t.efficiencySeries.title}
+            <InfoTooltip content={<EfficiencyTooltipText locale={locale} />} />
+          </span>
+        }
         rowsByPlayer={performanceSeries ?? {}}
         playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p])}
         colorByPlayer={playerColors}

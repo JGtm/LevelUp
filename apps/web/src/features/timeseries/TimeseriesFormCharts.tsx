@@ -132,7 +132,8 @@ export function TimeseriesKdaValueTrend({
           markLine: {
             silent: true,
             symbol: 'none',
-            lineStyle: { color: tc.axisLine, width: 1, type: 'dashed' },
+            // Seuil FDA = 1 : autant de frags+assists que de morts. Barre rouge gras.
+            lineStyle: { color: colNegative, width: 2, type: 'solid' },
             data: [{ yAxis: 1 }],
           },
         },

@@ -27,6 +27,7 @@ import { PageUnavailable } from '@/components/ui/page-unavailable'
 import { Spinner } from '@/components/ui/spinner'
 import { apiErrorCode } from '@/lib/api/client'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
+import { useSessionContextStore } from '@/stores/sessionContextStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { useSessionDetailPage } from './queries'
@@ -46,22 +47,46 @@ export function SessionDetailPage() {
 
   const filterContext = useSoloFilterStore((s) => s.filterContext)
   const filterContextHash = useSoloFilterStore((s) => s.filterContextHash)
+  // Contexte Solo/Escouade/Mixte (sélecteur de la barre de filtres, page Sessions).
+  // Store DÉDIÉ (≠ filterContext partagé) → n'affecte que cette page.
+  const sessionMatchContext = useSessionContextStore((s) => s.matchContext)
   // Locale envoyée au backend pour la résolution FR/EN des cartes/modes/playlists
   // (aligné Home/Explorer) ; incluse dans la queryKey → refetch au changement de locale.
   const locale = useAppShellStore((s) => s.locale)
+
+  // Le contexte filtre le périmètre (solo/escouade/mixte). On l'injecte dans les
+  // filtres envoyés au backend (sessions listées, session par défaut, prev/next,
+  // vivier de comparaison). Mémorisé pour stabiliser la requête.
+  const scopedFilters = useMemo(
+    () => ({ ...filterContext, match_context: sessionMatchContext }),
+    [filterContext, sessionMatchContext],
+  )
+
+  // Changement de contexte → la session courante (et la session comparée) peut ne
+  // plus exister dans le nouveau périmètre. On retombe sur la dernière session du
+  // nouveau contexte (sessionLabel vide → backend choisit la plus récente) et on
+  // ferme le compare. Ref-gardé pour ne PAS écraser un deep-link au montage.
+  const prevContextRef = useRef(sessionMatchContext)
+  useEffect(() => {
+    if (prevContextRef.current === sessionMatchContext) return
+    prevContextRef.current = sessionMatchContext
+    setSessionLabel('')
+    setCompareSessionLabel('')
+    setEnableCompare(false)
+  }, [sessionMatchContext])
 
   const navigate = useNavigate()
   const router = useRouter()
   const { data, isLoading, isError, error, isFetching, refetch } = useSessionDetailPage(
     playerSlug,
     {
-      filters: filterContext,
+      filters: scopedFilters,
       session_label: sessionLabel || undefined,
       compare_session_label: compareSessionLabel || undefined,
       enable_compare: enableCompare,
       locale,
     },
-    filterContextHash,
+    `${filterContextHash}:${sessionMatchContext}`,
     sessionLabel,
     compareSessionLabel,
     enableCompare,

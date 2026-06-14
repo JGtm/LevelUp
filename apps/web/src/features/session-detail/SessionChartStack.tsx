@@ -13,6 +13,9 @@
 import type { SemanticToken } from '@/lib/accessibility'
 import type { SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
 
+import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { EfficiencyTooltipText } from '@/components/charts/EfficiencyTooltipText'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { CompareScale } from './_compareScale'
 import { useSessionT } from './_shared'
 import { SessionOutcomeDonut } from './SessionOutcomeDonut'
@@ -52,6 +55,7 @@ export function SessionChartStack({
   scale,
 }: Props) {
   const t = useSessionT()
+  const locale = useAppShellStore((s) => s.locale)
 
   const outcomeDonut = (
     <SessionOutcomeDonut title={t('session.detail.chart_outcomes_title')} matches={matches} compact={compact} />
@@ -114,7 +118,17 @@ export function SessionChartStack({
       yDomain={scale?.engagement}
     />
   )
-  const ocdr = <SessionOcdrBars title={t('session.compare.ocdr_title')} matches={matches} />
+  const ocdr = (
+    <SessionOcdrBars
+      title={
+        <span className="flex items-center gap-1.5">
+          {t('session.compare.ocdr_title')}
+          <InfoTooltip content={<EfficiencyTooltipText locale={locale} />} />
+        </span>
+      }
+      matches={matches}
+    />
+  )
   const damage = <SessionDamageComposite title={t('session.detail.chart_damage_title')} matches={matches} />
 
   if (dense) {

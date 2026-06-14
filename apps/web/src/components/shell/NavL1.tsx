@@ -113,9 +113,10 @@ function SplitButton({ section, isActive, resolvedDefaultPath, resolvePath }: Sp
 interface SettingsSplitButtonProps {
   tabs: SettingsTabItem[]
   isActive: boolean
+  isAdmin: boolean
 }
 
-function SettingsSplitButton({ tabs, isActive }: SettingsSplitButtonProps) {
+function SettingsSplitButton({ tabs, isActive, isAdmin }: SettingsSplitButtonProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const locale = useAppShellStore((s) => s.locale)
@@ -206,6 +207,19 @@ function SettingsSplitButton({ tabs, isActive }: SettingsSplitButtonProps) {
               {item.label}
             </Link>
           ))}
+          {isAdmin && (
+            <>
+              <div role="separator" className="my-1 h-px bg-border" />
+              <Link
+                to="/admin"
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                className="block px-3 py-1.5 text-sm font-medium text-popover-foreground hover:bg-accent hover:text-accent-foreground whitespace-nowrap"
+              >
+                {t('common.admin.page_title')}
+              </Link>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -234,14 +248,14 @@ export function NavL1() {
 
   // Onglets Paramètres — source unique partagée entre le split button desktop
   // et le menu compte/outils mobile.
+  // « Synchronisation » et « Utilisateurs » ont migré vers la page Admin
+  // (lien « Administration » ci-dessous, gardé pour les admins).
   const settingsTabs: SettingsTabItem[] = [
     { key: 'general', label: 'Général', tab: 'general' },
-    { key: 'sync', label: 'Synchronisation', tab: 'sync' },
     { key: 'analyse', label: 'Analyse', tab: 'analyse' },
     { key: 'accessibility', label: 'Accessibilité', tab: 'accessibility' },
     { key: 'notifications', label: 'Notifications', tab: 'notifications' },
     ...(canManageInstance ? [{ key: 'lab', label: 'Lab', tab: 'lab' as const }] : []),
-    ...(isAdmin ? [{ key: 'users', label: 'Utilisateurs', tab: 'users' as const }] : []),
   ]
 
   function resolvePath(templatePath: string): string {
@@ -351,12 +365,12 @@ export function NavL1() {
         <div className="ml-1">
           <HelpSplitButton isActive={pathname.startsWith('/help')} />
         </div>
-        <SettingsSplitButton isActive={pathname.startsWith('/settings')} tabs={settingsTabs} />
+        <SettingsSplitButton isActive={pathname.startsWith('/settings')} tabs={settingsTabs} isAdmin={isAdmin} />
         <LogoutButton />
       </div>
 
       {/* ── Menu compte & outils mobile (< md) : regroupe le cluster droit ── */}
-      <NavL1MobileActions settingsTabs={settingsTabs} pathname={pathname} />
+      <NavL1MobileActions settingsTabs={settingsTabs} pathname={pathname} isAdmin={isAdmin} />
     </nav>
   )
 }

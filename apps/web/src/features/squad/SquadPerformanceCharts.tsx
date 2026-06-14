@@ -163,6 +163,7 @@ export function SquadPerformanceCharts({
         decimals: 2,
         chartType: 'bar',
         complementBelowValue: 1,
+        redReferenceLineAt: 1,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels],

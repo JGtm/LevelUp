@@ -4,7 +4,7 @@
  * Pattern aligné sur SquadIntensityHeatmapChart : boutons segmentés en haut,
  * un seul ECharts pour le joueur sélectionné. Joueur principal par défaut.
  */
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { buildSquadEfficiencyTrackOption } from './charts/squadEfficiencyChart'
@@ -22,8 +22,8 @@ interface SquadEfficiencyChartProps {
   /** gamertag → couleur hex résolue depuis semantic tokens. */
   colorByPlayer: Record<string, string>
   labels: EfficiencyLabels
-  /** Titre du ChartCard (barre de titre du catalogue). */
-  title?: string
+  /** Titre du ChartCard (barre de titre du catalogue). Accepte un ReactNode pour un InfoTooltip. */
+  title?: ReactNode
 }
 
 const TRACK_HEIGHT = 320

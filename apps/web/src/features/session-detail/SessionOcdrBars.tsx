@@ -9,7 +9,7 @@
  * markLine de moyenne pour chaque métrique. Couleurs : divergent-pos (OC),
  * divergent-neutral (DR), cohérentes avec CombatYieldBar et la KPI session.
  */
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
@@ -144,7 +144,7 @@ export function buildSessionOcdrBarsOption(
 }
 
 interface Props {
-  title: string
+  title: ReactNode
   matches: SessionDetailMatchRow[]
   height?: number
 }

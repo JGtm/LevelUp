@@ -25,6 +25,7 @@ import { SyncCycleHistory } from './SyncCycleHistory'
 import { AdminJobsTable } from './AdminJobsTable'
 import { WatcherSection } from './WatcherSection'
 import { ApiHaloSection } from './ApiHaloSection'
+import { AdminSyncSettingsSection } from './AdminSyncSettingsSection'
 
 export function AdminSyncPage() {
   const queryClient = useQueryClient()
@@ -89,6 +90,10 @@ export function AdminSyncPage() {
       <WatcherSection />
 
       <ApiHaloSection perf={perf.data} />
+
+      {/* Paramètres de synchronisation (app_settings) rapatriés des Réglages
+          utilisateur — auto-sync planifiée, watcher, backfill, amis par défaut. */}
+      <AdminSyncSettingsSection />
 
       <section className="space-y-3">
         <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">

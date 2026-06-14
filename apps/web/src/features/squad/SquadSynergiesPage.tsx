@@ -12,7 +12,6 @@ import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { OutcomeSequenceTape, type OutcomePoint, type OutcomeValue } from '@/components/charts/OutcomeSequenceTape'
 import { useSquadContext } from './SquadContext'
 import { getSquadText } from './i18n'
-import { SquadFocusStrip } from './SquadFocusStrip'
 import { WinRateVsHistoryBulletChart } from './WinRateVsHistoryBulletChart'
 import { MapPerfVsHistoryChart } from './MapPerfVsHistoryChart'
 import { SquadMapHeatmapChart } from './SquadMapHeatmapChart'
@@ -79,7 +78,6 @@ export function SquadSynergiesPage() {
 
   return (
     <div className="space-y-4">
-      <SquadFocusStrip />
       {/* Graphes toujours montés : ChartCard affiche son état vide (titre +
           message) au lieu de faire disparaître le bloc quand mapBreakdown
           est vide ou sans champs de performance. */}
@@ -111,7 +109,9 @@ export function SquadSynergiesPage() {
         </p>
         {matchHistory.length > 0 ? (
           <OutcomeSequenceTape
-            matches={matchHistory.map<OutcomePoint>((m) => ({
+            // matchHistory arrive DESC (récent→ancien) ; on inverse pour afficher
+            // du plus vieux au plus récent (gauche→droite).
+            matches={[...matchHistory].reverse().map<OutcomePoint>((m) => ({
               outcome: outcomeNumToValue(m.outcome),
               matchId: m.match_id,
               map: m.map_ui || undefined,
