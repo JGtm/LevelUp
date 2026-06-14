@@ -1,3 +1,19 @@
+## [2026-06-15] Borne hauteur blocs « liste longue appariée » sur écran étroit (Succès Xbox + Défis) — Complété
+
+**Statut** : `tsc -b` = 0 ; `eslint .` = 0 erreurs (69 warnings préexistants, aucun dans les fichiers touchés) ; vitest `AchievementsCareerSection` 7/7 + `HomePage` 15/15. Branche `fix/align-manual-sync-tokens` (fix UI indépendant du sujet sync de la branche). Choix de branche + commit en attente d'autorisation user.
+
+**Déclencheur (user)** : sur écran étroit (téléphone), le bloc Succès Xbox (sidebar carrière), apparié aux charts en grille 2 colonnes, passe seul sur sa rangée et — faute de hauteur max — empile 50-100+ cartes et allonge la page de façon très conséquente. Demande : auditer les blocs similaires sur chaque page.
+
+**Cause racine (Succès Xbox)** : la sidebar (`AchievementsCareerSection` layout="sidebar") n'était bornée qu'à `xl` via `xl:absolute xl:inset-0` (CareerChartsSection.tsx:67) qui donne une hauteur définie au parent. Sous `xl`, grille en 1 colonne → parent en hauteur `auto` → le `h-full overflow-y-auto` de la liste se résout en `auto` → aucune borne. Intention de design (cf. commentaire test:122 « maxHeight 640px ») perdue hors `xl`.
+
+**Fix (2 classes Tailwind)** : pattern « borner sous `xl`, lever à `xl` ». (1) AchievementsCareerSection.tsx:142 → ajout `max-h-[70vh] ... xl:max-h-none`. (2) HomeChallengesList.tsx:154 (liste des Défis Accueil, appariée au Battle Pass, même symptôme) → ajout `max-h-[70vh] overflow-y-auto xl:max-h-none xl:overflow-visible`. Layout ≥1280px inchangé dans les deux cas. Idiome `max-h-[70vh]` déjà présent (NotificationsBell). Valeur 70vh choisie par le user (adaptatif vs 640px fixe).
+
+**Audit (autres pages)** : faux positifs écartés après lecture — CareerRankingBlock (CSR/LUSR bornés domaine ~4-8 playlists + `LUSR_KNOWN_GROUPS` constant), ComparePage CategoryColumn (métriques fixes), SquadSynergyHistoryTable (pleine largeur non-appariée, paginée 20), charts Match/Timeseries/Squad/Lab (ChartCard hauteur fixe), HomePrestige (paginé max 3), Sessions (carousel horizontal). Seul vrai sibling = Défis Accueil (corrigé).
+
+**Reste** : vérif visuelle live (~390px) optionnelle ; choix branche (rester sur la courante vs nouvelle `fix/responsive-paired-blocks-maxheight`) + commit en attente d'autorisation.
+
+---
+
 ## [2026-06-15] Catalogue ART-safe + SUPPRESSION du flag LEVELUP_CATALOG_REFRESH — Complété
 
 **Statut** : go build/vet = 0 ; `internal/ops` `TestCatalogRefreshFromRegistry_PopulatesAndIsIdempotent` vert + sync/v2 verts. Seul FAIL ops = `seed_demo` (match_csrs, pré-existant, sans rapport). Branche `fix/align-manual-sync-tokens`. Commit en attente d'autorisation.
