@@ -1,3 +1,43 @@
+## [2026-06-14] Catalogue classement mondial : filtre saisons ← stats enrichies (option B) + tri numérique — Complété
+
+**Statut** : Code + tests verts (vet, 2 tests intégration duckdb, service + handlers leaderboard). Commit sur la branche courante (`fix/media-captures-base-dir-resilience`, sans push) — demande user explicite « sur la branche courante ».
+
+**Contexte** : le backfill world n'a pu enrichir que 6 des 8 saisons à leaderboard (3-1/4-1 = 0, au-delà de l'horizon de l'API match history Halo ; 7/8/9/13-1 absents du leaderboard Waypoint). Question user : le filtre de saisons doit-il montrer des saisons sans données, et faut-il un flag « archivé » ?
+
+**Décision** : pas de flag d'archivage (machinerie à maintenir). Le catalogue (`GetWorldLeaderboardCatalog`) est déjà data-driven ; il sourçait les saisons/playlists depuis `world_csr_leaderboard_latest` (leaderboard scrappé, 8 saisons → 3-1/4-1 apparaissaient avec colonnes vides). **Option B** : sourcer depuis `world_player_season_stats_latest` (stats enrichies) → seules les saisons réellement exploitables sont proposées. Les stats dérivant du leaderboard, toute saison listée a forcément un classement. **Bonus** : corrigé le tri `ORDER BY season_id DESC` (lexicographique → csrseason6-1 avant csrseason13-2, faux) par un tri NUMÉRIQUE Go récent-d'abord (`worldSeasonRank` = major*100+minor).
+
+**Résultats** : `TestGetWorldLeaderboardCatalog` renforcé — une saison présente au leaderboard mais sans stats (csrseason4-1) est EXCLUE, et csrseason6-1 (1 chiffre) trié en dernier (pas en tête). Aucun changement front nécessaire (le front rend les saisons du catalogue).
+
+---
+
+## [2026-06-14] CoverFlowModal : plein écran + autoChain (port du fix csstat 107f742) — Complété
+
+**Statut** : Complété (branche `fix/reauth-banner-transient-false-positive`, pas de commit — en attente d'autorisation). typecheck OK, eslint 0 erreur (4 warnings préexistants), 23/23 tests CoverFlowModal verts.
+
+**Contexte** : le projet voisin `csstat` a corrigé (commit `107f742`) un bug plein-écran + lecture auto dans son `VideoModal.tsx`. Le user a demandé si le même fix s'appliquait ici. Diagnostic : `apps/web/src/features/media/CoverFlowModal.tsx` est l'équivalent (même archi coverflow + autoChain). Bug latent confirmé présent : les `<video>` centraux exposent `controls={isCenter}` → bouton plein écran NATIF ; en plein écran natif + autoChain, le fullscreen reste collé à l'ancien `<video>` (image figée) pendant que le suivant joue hors champ avec audio.
+
+**Décision technique** : porté la stratégie csstat en l'adaptant à la structure locale (wrapper `ClipPlayer` HLS + toggles audio Jeu/Voix à préserver). On met en plein écran le **conteneur stage** (`stageRef`, la div `aspect-video` qui contient les slots), pas le `<video>` — l'enchaînement change la vidéo À L'INTÉRIEUR du conteneur déjà fullscreen → rien à transférer. Ajouts : bouton plein écran custom dans le header (geste valide), `controlsList="nofullscreen"` + `disablePictureInPicture` + `object-contain` sur le `<video>`, masquage des voisins en fullscreen (`opacity isCenter?1:0`), conteneur stage `flex h-full bg-black` en fullscreen, overlay de sortie DANS le stage (header hors champ), i18n FR/EN `enterFullscreen`/`exitFullscreen`.
+
+**Résultats observés** : `tsc -b` clean, `eslint` 0 erreur (warnings lignes 407/474/485/509 = effets préexistants, hors scope), `vitest run CoverFlowModal.test.tsx` = 23/23. Pas de helper `cn` dans ce projet → className conditionnel en template string (cohérent avec le reste du fichier).
+
+**Conclusion / prochaine étape** : prêt. À valider visuellement (plein écran + enchaînement auto d'images, et clip→clip) puis commit sur autorisation. Vérif manuelle conseillée : toggles audio HLS toujours visibles en fullscreen.
+
+---
+
+## [2026-06-14] Page Médias prod cassée (miniatures + lecture) — `media_captures_base_dir` Windows sur le VPS — Correctif livré + durcissement
+
+**Statut** : Complété. Étape 1 (config prod) LIVRÉE + vérifiée end-to-end (user confirme miniatures + vidéos visibles, y compris médias famille). Étape 2 (durcissement code) sur branche `fix/media-captures-base-dir-resilience`, tests verts — à déployer à la prochaine cadence de merge.
+
+**Contexte** : sur lvelup.info (VPS dockerisé `/opt/levelup` → conteneur `/app`), la galerie Médias n'affichait aucune miniature ni vidéo lisible. Diagnostic 100 % read-only (SSH `lvelup`, logs nginx + conteneur, FS, DB via `strings`). Cause racine : `/opt/levelup/app_settings.json` (gitignoré, monté `./app_settings.json:/app/app_settings.json`) avait `media_captures_base_dir = "C:\\Users\\Guillaume\\Videos\\Captures"` — chemin Windows recopié du poste local — alors que les médias vivent à `/app/data/media/{slug}` (118 HLS + 118 thumbs/joueur déjà présents). `ServeMediaFile` résolvait contre ce chemin inexistant → 404 sur TOUS les médias. DB saine (chemins relatifs `{owner}/{rel}`), seul le réglage était faux. Secondaires élucidés : 502 = fenêtres de redémarrage (backend down), pas un bug média ; `filters_error` = repro local (0 sur le VPS) ; « médias d'un autre joueur » déjà géré par `friend_gamertags` + `authz.CanAccessPlayer` (famille), masqué par le 404 universel.
+
+**Décision technique** : (1) Fix prod immédiat = `media_captures_base_dir` → `/app/data/media` + `docker compose up -d levelup` (réglage gitignoré → persiste aux deploys). (2) Durcissement : `PathResolver.MediaDataDir()` (base canonique title-agnostic `{root}/data/media`) ajoutée aux bases candidates de `ServeMediaFile` ; `effectiveMediaBase()` (fallback + WARN) câblé sur scan/sync/HLS (`media_index_service.go`) → un réglage invalide ne peut plus rendre les médias illisibles. Chemins via `PathResolver` (pas de `filepath.Join(repoRoot,"data",…)` hors resolver).
+
+**Résultats observés** : après le fix config, `curl` interne ne renvoie plus 404 (403 = gate auth sans session) ; fichier résolu présent ; user confirme miniatures + vidéos + médias famille. `go build ./...` OK, `gofmt`/`go vet` clean, 3 packages de tests verts (MediaDataDir, effectiveMediaBase toutes branches, ServeMediaFile régression base-invalide→200). `-race` écarté (incompatible driver DuckDB, checkptr).
+
+**Conclusion / prochaine étape** : prod réparée. Déployer le durcissement (`fix/media-captures-base-dir-resilience`) à la prochaine cadence de merge. **Point ouvert signalé par le user** : sélection des pistes audio HLS (4 renditions bien présentes dans les `master.m3u8` récents → data OK, suspect **frontend** : sélecteur de piste audio du player) — à investiguer séparément.
+
+---
+
 ## [2026-06-14] Registre multi-titre complet : index + plan périphérie (26 axes, audit + 16 specs re-vérifiées) — Complété (doc)
 
 **Statut** : Édition doc-only (aucun code Go modifié, pas de commit). Branche active courante (a bougé vers `fix/reauth-banner-transient-false-positive` en session). 4 fichiers : 2 créés (`.ai/PLAN_MULTITITRE_INDEX.md`, `.ai/PLAN_MULTITITRE_PERIPHERY.md`) + 2 édités (master `PLAN_TITLE_AGNOSTIC_REFACTORING.md` §0bis + notes 1.5/2/5, tracker).
