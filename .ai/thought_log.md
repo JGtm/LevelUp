@@ -1,3 +1,15 @@
+## [2026-06-14] Classement : padding/centrage cellules + couleur podium/winrate + constat cases vides 13-2 — Complété
+
+**Statut** : tsc + eslint 0 erreur + 11/11 vitest. Commit branche courante (pathspec, sans push).
+
+**Design (retour user « pas beau »)** : cellules `py-2 pr-4` → `px-3 py-2` (padding gauche+droite, le texte Joueur/# n'était plus collé aux bordures). Couleur (tokens sémantiques, skill color-tokens) : podium top-3 rang en `text-primary` + ligne `bg-primary/5` ; taux de victoire coloré par seuil (`tokenCssVar('success')` ≥55%, `'destructive'` ≤45%) via `winRateColor`.
+
+**Constat « beaucoup de vide » sur 13-2/Duo (investigué)** : ce n'est PAS une erreur. Le LEADERBOARD scrappé (200/playlist) et l'ENRICHISSEMENT (stats backfillées) sont 2 étapes distinctes. Couverture 13-2 : Arena 144/200, Slayer 115/200, Duo 120/200. Checkpoint 13-2 : done=573, completed=True. Deux causes des cases vides : (a) xuid NON résolu (ex. AoRaaw rang 3 → ligne 100% vide, pas même de cumulé) ; (b) joueur résolu mais sans ligne 13-2 (ex. TW0 PUFFS rang 1 : a un cumulé 352 mais pas de stats 13-2 → le backfill 13-2 est un instantané plus ancien que le snapshot leaderboard courant ; les nouveaux tops ne sont pas enrichis). « 0 erreurs » = pas de crash, ≠ tous enrichis.
+
+**Fix proposé (non fait, user lance)** : re-enrichir 13-2 sur le snapshot courant via un checkpoint séparé + `-force` (sans toucher le checkpoint principal ni le cache xuid) : `-season csrseason13-2 -all-tokens -force -checkpoint data/refresh13-2.json`. Retentera aussi les xuid non résolus (certains gamertags restent irrésolvables via PeopleHub).
+
+---
+
 ## [2026-06-14] Classement : redesign flat éditorial + noms saisons (wiki par date) — Complété
 
 **Statut** : tsc + eslint 0 erreur + 11/11 vitest. Commit branche courante, sans push. 11-1 à confirmer (cf. note).

@@ -138,6 +138,10 @@ function MetricWithTrend({ text, trend, tooltip }: { text: string; trend?: strin
 const fmtPct = (v: number, locale: string): string =>
   `${(v * 100).toLocaleString(locale === 'en' ? 'en-US' : 'fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
 
+// Couleur du taux de victoire (tokens sémantiques) : >=55% succès, <=45% défaite, sinon neutre.
+const winRateColor = (wr: number): string | undefined =>
+  wr >= 0.55 ? tokenCssVar('success') : wr <= 0.45 ? tokenCssVar('destructive') : undefined
+
 // dmgPerKill / dmgPerDeath : dégâts infligés par frag (k + a/3) et dégâts subis par
 // mort, depuis les compteurs bruts agrégés. Affichage en 2 colonnes chiffrées (les
 // barres composites Rendement/Résistance ont été retirées). null si dénominateur nul.
@@ -368,10 +372,10 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
             <thead>
               <tr className="border-b bg-muted text-[11px] uppercase tracking-wide text-muted-foreground divide-x divide-border">
                 <SortableTh label="#" className="w-12 text-center" onClick={() => toggleSort('rank')} suffix={sortIcon('rank')} />
-                <th className="py-2 pr-4 text-left font-medium">{t('common.leaderboard.col_player')}</th>
+                <th className="px-3 py-2 text-left font-medium">{t('common.leaderboard.col_player')}</th>
                 {isWorld ? (
                   <>
-                    <th className="py-2 pr-4 text-center font-medium">{t('common.leaderboard.col_tier')}</th>
+                    <th className="px-3 py-2 text-center font-medium">{t('common.leaderboard.col_tier')}</th>
                     <SortableTh label={t('common.leaderboard.col_csr')} className="text-center" onClick={() => toggleSort('csr')} suffix={sortIcon('csr')} />
                     {hasEnrichment && (
                       <>
@@ -384,7 +388,7 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
                         <SortableTh label={t('common.leaderboard.col_accuracy')} className={`text-center ${COL_HIDE_LG}`} onClick={() => toggleSort('accuracy')} suffix={sortIcon('accuracy')} />
                         <SortableTh label={t('common.leaderboard.col_dmg_per_kill')} className={`text-center ${COL_HIDE_LG}`} onClick={() => toggleSort('dmg_per_kill')} suffix={sortIcon('dmg_per_kill')} />
                         <SortableTh label={t('common.leaderboard.col_dmg_per_death')} className={`text-center ${COL_HIDE_LG}`} onClick={() => toggleSort('dmg_per_death')} suffix={sortIcon('dmg_per_death')} />
-                        <th className={`py-2 pr-4 text-center font-medium ${COL_HIDE_LG}`}>{t('common.leaderboard.col_rank_delta')}</th>
+                        <th className={`px-3 py-2 text-center font-medium ${COL_HIDE_LG}`}>{t('common.leaderboard.col_rank_delta')}</th>
                       </>
                     )}
                   </>
@@ -424,7 +428,7 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
 /** En-tête de colonne triable. */
 function SortableTh({ label, className, onClick, suffix }: { label: string; className?: string; onClick: () => void; suffix: string }) {
   return (
-    <th className={`py-2 pr-4 font-medium ${className ?? ''}`}>
+    <th className={`px-3 py-2 font-medium ${className ?? ''}`}>
       <button type="button" onClick={onClick} className="transition-colors hover:text-foreground">
         {label}
         {suffix}
@@ -472,7 +476,7 @@ function LeaderboardRow({
   const intl = locale === 'en' ? 'en-US' : 'fr-FR'
   // Accent podium : top-3 en gras (tokens foreground/muted, pas de hex).
   const isPodium = entry.rank <= 3
-  const rankClass = isPodium ? 'font-bold text-foreground' : 'text-muted-foreground'
+  const rankClass = isPodium ? 'font-bold text-primary' : 'text-muted-foreground'
   // Valeurs PAR MATCH (FDA/Précision) — mêmes calculs que l'affichage pour comparer au best.
   const fda = entry.kda != null && entry.match_count ? entry.kda / entry.match_count : null
   const acc = entry.accuracy != null && entry.match_count ? entry.accuracy / entry.match_count : null
@@ -501,14 +505,14 @@ function LeaderboardRow({
 
   return (
     <tr
-      className={`divide-x divide-border border-b text-sm transition-colors last:border-0 hover:bg-muted ${entry.is_local ? 'bg-accent/40' : 'even:bg-muted/30'}`}
+      className={`divide-x divide-border border-b text-sm transition-colors last:border-0 hover:bg-muted ${entry.is_local ? 'bg-accent/40' : isPodium ? 'bg-primary/5' : 'even:bg-muted/30'}`}
       onMouseEnter={() => onHover?.(entry.gamertag)}
     >
-      <td className={`py-2 pr-4 text-center font-mono ${rankClass}`}>{entry.rank}</td>
-      <td className="py-2 pr-4 font-medium text-foreground">{playerCell}</td>
+      <td className={`px-3 py-2 text-center font-mono ${rankClass}`}>{entry.rank}</td>
+      <td className="px-3 py-2 font-medium text-foreground">{playerCell}</td>
       {isWorld ? (
         <>
-          <td className="py-2 pr-4 text-center">
+          <td className="px-3 py-2 text-center">
             <img
               src={csrRankImageURL(entry.tier, entry.sub_tier)}
               alt={entry.tier}
@@ -516,41 +520,43 @@ function LeaderboardRow({
               loading="lazy"
             />
           </td>
-          <td className={`py-2 pr-4 ${cell(best?.csr === entry.csr_value)}`}>{entry.csr_value.toLocaleString(intl)}</td>
+          <td className={`px-3 py-2 ${cell(best?.csr === entry.csr_value)}`}>{entry.csr_value.toLocaleString(intl)}</td>
           {hasEnrichment && (
             <>
-              <td className={`py-2 pr-4 ${COL_HIDE_SM} ${cell(fda != null && best?.fda === fda)}`}>
+              <td className={`px-3 py-2 ${COL_HIDE_SM} ${cell(fda != null && best?.fda === fda)}`}>
                 {fda != null ? <MetricWithTrend text={fda.toFixed(2)} trend={entry.kda_trend} tooltip={trendTooltip} /> : '—'}
               </td>
-              <td className={`py-2 pr-4 ${COL_HIDE_SM} ${cell(entry.kills != null && best?.kills === entry.kills)}`}>
+              <td className={`px-3 py-2 ${COL_HIDE_SM} ${cell(entry.kills != null && best?.kills === entry.kills)}`}>
                 {entry.kills?.toLocaleString(intl) ?? '—'}
               </td>
-              <td className={`py-2 pr-4 ${COL_HIDE_SM} ${cell(entry.deaths != null && best?.deaths === entry.deaths)}`}>
+              <td className={`px-3 py-2 ${COL_HIDE_SM} ${cell(entry.deaths != null && best?.deaths === entry.deaths)}`}>
                 {entry.deaths?.toLocaleString(intl) ?? '—'}
               </td>
-              <td className={`py-2 pr-4 ${COL_HIDE_SM} ${cell(entry.assists != null && best?.assists === entry.assists)}`}>
+              <td className={`px-3 py-2 ${COL_HIDE_SM} ${cell(entry.assists != null && best?.assists === entry.assists)}`}>
                 {entry.assists?.toLocaleString(intl) ?? '—'}
               </td>
-              <td className={`py-2 pr-4 ${COL_HIDE_SM} ${cell(entry.win_rate != null && best?.winRate === entry.win_rate)}`}>
+              <td className={`px-3 py-2 ${COL_HIDE_SM} ${cell(entry.win_rate != null && best?.winRate === entry.win_rate)}`}>
                 {entry.win_rate != null ? (
-                  <MetricWithTrend text={fmtPct(entry.win_rate, locale)} trend={entry.win_rate_trend} tooltip={trendTooltip} />
+                  <span style={{ color: winRateColor(entry.win_rate) }}>
+                    <MetricWithTrend text={fmtPct(entry.win_rate, locale)} trend={entry.win_rate_trend} tooltip={trendTooltip} />
+                  </span>
                 ) : (
                   '—'
                 )}
               </td>
-              <td className={`py-2 pr-4 text-center font-mono text-muted-foreground ${COL_HIDE_LG}`}>
+              <td className={`px-3 py-2 text-center font-mono text-muted-foreground ${COL_HIDE_LG}`}>
                 {(entry.cumulative_match_count ?? entry.match_count)?.toLocaleString(intl) ?? '—'}
               </td>
-              <td className={`py-2 pr-4 ${COL_HIDE_LG} ${cell(acc != null && best?.accuracy === acc)}`}>
+              <td className={`px-3 py-2 ${COL_HIDE_LG} ${cell(acc != null && best?.accuracy === acc)}`}>
                 {acc != null ? `${acc.toLocaleString(intl, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%` : '—'}
               </td>
-              <td className={`py-2 pr-4 ${COL_HIDE_LG} ${cell(dpk != null && best?.dmgKill === dpk)}`}>
+              <td className={`px-3 py-2 ${COL_HIDE_LG} ${cell(dpk != null && best?.dmgKill === dpk)}`}>
                 {dpk != null ? Math.round(dpk).toLocaleString(intl) : '—'}
               </td>
-              <td className={`py-2 pr-4 ${COL_HIDE_LG} ${cell(dpd != null && best?.dmgDeath === dpd)}`}>
+              <td className={`px-3 py-2 ${COL_HIDE_LG} ${cell(dpd != null && best?.dmgDeath === dpd)}`}>
                 {dpd != null ? Math.round(dpd).toLocaleString(intl) : '—'}
               </td>
-              <td className={`py-2 pr-4 text-center font-mono ${COL_HIDE_LG}`}>
+              <td className={`px-3 py-2 text-center font-mono ${COL_HIDE_LG}`}>
                 {entry.rank_delta != null && entry.rank_delta !== 0 ? (
                   <span style={{ color: tokenCssVar(skillDeltaScale(entry.rank_delta)) }} title={rankDeltaTooltip}>
                     {entry.rank_delta > 0 ? '+' : ''}
@@ -565,8 +571,8 @@ function LeaderboardRow({
         </>
       ) : (
         <>
-          <td className="py-2 pr-4 text-center font-mono text-muted-foreground">{entry.matches_played ?? 0}</td>
-          <td className="py-2 pr-4 text-right font-mono text-foreground">{formatStatValue(entry, locale)}</td>
+          <td className="px-3 py-2 text-center font-mono text-muted-foreground">{entry.matches_played ?? 0}</td>
+          <td className="px-3 py-2 text-right font-mono text-foreground">{formatStatValue(entry, locale)}</td>
         </>
       )}
     </tr>
