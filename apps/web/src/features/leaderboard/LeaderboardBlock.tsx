@@ -24,7 +24,6 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 import { csrRankImageURL } from '@/lib/staticAssets'
 import { tokenCssVar } from '@/lib/accessibility'
 import { skillDeltaScale } from '@/lib/accessibility/scales'
-import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
 
 const CSR_WORLD = 'csr-world'
 
@@ -52,21 +51,27 @@ const PLAYLISTS: { id: string; label: string }[] = [
 ]
 
 /**
- * Saisons CSR : libellés officiels (noms d'opération Halo Infinite) + numéro, pour
- * que l'utilisateur les reconnaisse. Sert de FALLBACK (catalogue vide) ET de table de
- * libellés (override du display_name brut renvoyé par l'API). Noms sourcés du projet
- * (migration csr_placement_thresholds + scraper). Les saisons 6.1/10.1 n'ont pas de
- * nom marketing connu côté projet → numéro seul.
+ * Saisons CSR : noms officiels (saisons/opérations Halo Infinite), TEXTE SEUL (pas de
+ * numéro). Sert de FALLBACK (catalogue vide) ET de table de libellés (override du
+ * display_name brut de l'API). Noms recoupés PAR DATE de début via wiki.halo.fr
+ * (Halo a abandonné les saisons numérotées après la S5 → opérations) :
+ *   3-1 Echoes Within (mars 2023) · 4-1 Infection (juin 2023) · 5-1 Reckoning (oct 2023)
+ *   6-1 Spirit of Fire (janv 2024) · 7-1 Banished Honor · 8-1 Fleetcom · 9-1 Great Journey
+ *   10-1 Frontlines (fév 2025) · 11-1 Last Stand (mai 2025) · 12-1 Shadows · 13-2 Infinite.
  */
 const SEASONS: { id: string; label: string }[] = [
-  { id: 'csrseason13-2', label: 'Infinite (13.2)' },
-  { id: 'csrseason12-1', label: 'Shadows (12.1)' },
-  { id: 'csrseason11-1', label: 'Combined Arms (11.1)' },
-  { id: 'csrseason10-1', label: 'Saison 10.1' },
-  { id: 'csrseason6-1', label: 'Saison 6.1' },
-  { id: 'csrseason5-1', label: 'Reckoning (5.1)' },
-  { id: 'csrseason4-1', label: 'Infection (4.1)' },
-  { id: 'csrseason3-1', label: 'Echoes Within (3.1)' },
+  { id: 'csrseason13-2', label: 'Infinite' },
+  { id: 'csrseason13-1', label: 'Infinite' },
+  { id: 'csrseason12-1', label: 'Shadows' },
+  { id: 'csrseason11-1', label: 'Last Stand' },
+  { id: 'csrseason10-1', label: 'Frontlines' },
+  { id: 'csrseason9-1', label: 'Great Journey' },
+  { id: 'csrseason8-1', label: 'Fleetcom' },
+  { id: 'csrseason7-1', label: 'Banished Honor' },
+  { id: 'csrseason6-1', label: 'Spirit of Fire' },
+  { id: 'csrseason5-1', label: 'Reckoning' },
+  { id: 'csrseason4-1', label: 'Infection' },
+  { id: 'csrseason3-1', label: 'Echoes Within' },
 ]
 
 const KNOWN_PLAYLIST_LABEL: Record<string, string> = Object.fromEntries(PLAYLISTS.map((p) => [p.id, p.label]))
@@ -133,30 +138,15 @@ function MetricWithTrend({ text, trend, tooltip }: { text: string; trend?: strin
 const fmtPct = (v: number, locale: string): string =>
   `${(v * 100).toLocaleString(locale === 'en' ? 'en-US' : 'fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
 
-// renderCombatYield rend Rendement/Résistance EXACTEMENT comme la tuile de match
-// (CombatYieldDisplay). Calcule oc/dr/dégâts-par-frag/dégâts-par-mort depuis les
-// compteurs bruts agrégés (baseline 225). Affichage uniquement — pas d'agrégation.
-function renderCombatYield(e: LeaderboardEntry): ReactNode {
-  const dd = e.damage_dealt
-  const dt = e.damage_taken
-  const k = e.kills ?? 0
-  const d = e.deaths ?? 0
-  const a = e.assists ?? 0
-  if (dd == null || dt == null || k <= 0 || d <= 0) {
-    return <span className="text-muted-foreground">—</span>
-  }
-  const dmgPerKill = dd / (k + a / 3)
-  const dmgPerDeath = dt / d
-  return (
-    <CombatYieldDisplay
-      className="min-w-[170px]"
-      offensiveConversion={dmgPerKill > 0 ? 225 / dmgPerKill : null}
-      defensiveResistance={dmgPerDeath / 225}
-      dmgPerKill={dmgPerKill}
-      dmgPerDeath={dmgPerDeath}
-      align="center"
-    />
-  )
+// dmgPerKill / dmgPerDeath : dégâts infligés par frag (k + a/3) et dégâts subis par
+// mort, depuis les compteurs bruts agrégés. Affichage en 2 colonnes chiffrées (les
+// barres composites Rendement/Résistance ont été retirées). null si dénominateur nul.
+function dmgPerKill(e: LeaderboardEntry): number | null {
+  const eff = (e.kills ?? 0) + (e.assists ?? 0) / 3
+  return e.damage_dealt != null && eff > 0 ? e.damage_dealt / eff : null
+}
+function dmgPerDeath(e: LeaderboardEntry): number | null {
+  return e.damage_taken != null && e.deaths ? e.damage_taken / e.deaths : null
 }
 
 export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockProps) {
@@ -262,6 +252,10 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
           return (e.kda ?? 0) / (e.match_count || 1)
         case 'accuracy':
           return (e.accuracy ?? 0) / (e.match_count || 1)
+        case 'dmg_per_kill':
+          return dmgPerKill(e) ?? 0
+        case 'dmg_per_death':
+          return dmgPerDeath(e) ?? 0
         default:
           return e.rank
       }
@@ -296,6 +290,8 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
       winRate: pick((e) => e.win_rate),
       fda: pick((e) => perMatch(e, e.kda)),
       accuracy: pick((e) => perMatch(e, e.accuracy)),
+      dmgKill: pick(dmgPerKill, true), // moins de dégâts/frag = mieux
+      dmgDeath: pick(dmgPerDeath), // plus de dégâts/mort encaissés = mieux
     }
   }, [entries])
 
@@ -367,9 +363,10 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
         )}
 
         {data && data.entries.length > 0 && (
-          <table className="w-full">
+          <div className="overflow-x-auto border border-border">
+            <table className="w-full">
             <thead>
-              <tr className="border-b bg-muted text-xs text-muted-foreground divide-x divide-border">
+              <tr className="border-b bg-muted text-[11px] uppercase tracking-wide text-muted-foreground divide-x divide-border">
                 <SortableTh label="#" className="w-12 text-center" onClick={() => toggleSort('rank')} suffix={sortIcon('rank')} />
                 <th className="py-2 pr-4 text-left font-medium">{t('common.leaderboard.col_player')}</th>
                 {isWorld ? (
@@ -385,7 +382,8 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
                         <SortableTh label={t('common.leaderboard.col_win_rate')} className={`text-center ${COL_HIDE_SM}`} onClick={() => toggleSort('win_rate')} suffix={sortIcon('win_rate')} />
                         <SortableTh label={t('common.leaderboard.col_matches')} className={`text-center ${COL_HIDE_LG}`} onClick={() => toggleSort('world_matches')} suffix={sortIcon('world_matches')} />
                         <SortableTh label={t('common.leaderboard.col_accuracy')} className={`text-center ${COL_HIDE_LG}`} onClick={() => toggleSort('accuracy')} suffix={sortIcon('accuracy')} />
-                        <th className={`py-2 pr-4 text-center font-medium ${COL_HIDE_LG}`}>{t('common.leaderboard.col_combat')}</th>
+                        <SortableTh label={t('common.leaderboard.col_dmg_per_kill')} className={`text-center ${COL_HIDE_LG}`} onClick={() => toggleSort('dmg_per_kill')} suffix={sortIcon('dmg_per_kill')} />
+                        <SortableTh label={t('common.leaderboard.col_dmg_per_death')} className={`text-center ${COL_HIDE_LG}`} onClick={() => toggleSort('dmg_per_death')} suffix={sortIcon('dmg_per_death')} />
                         <th className={`py-2 pr-4 text-center font-medium ${COL_HIDE_LG}`}>{t('common.leaderboard.col_rank_delta')}</th>
                       </>
                     )}
@@ -415,7 +413,8 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
                 />
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -442,6 +441,8 @@ type BestValues = {
   winRate: number | null
   fda: number | null
   accuracy: number | null
+  dmgKill: number | null
+  dmgDeath: number | null
 }
 
 /** Ligne du classement. */
@@ -475,6 +476,8 @@ function LeaderboardRow({
   // Valeurs PAR MATCH (FDA/Précision) — mêmes calculs que l'affichage pour comparer au best.
   const fda = entry.kda != null && entry.match_count ? entry.kda / entry.match_count : null
   const acc = entry.accuracy != null && entry.match_count ? entry.accuracy / entry.match_count : null
+  const dpk = dmgPerKill(entry)
+  const dpd = dmgPerDeath(entry)
   // Classe de cellule numérique : centrée ; meilleure valeur de la colonne mise en valeur.
   const cell = (isBest: boolean) => `text-center font-mono ${isBest ? BEST_CLS : 'text-foreground'}`
 
@@ -498,7 +501,7 @@ function LeaderboardRow({
 
   return (
     <tr
-      className={`divide-x divide-border border-b text-sm transition-colors last:border-0 hover:bg-muted ${entry.is_local ? 'bg-accent/40' : ''}`}
+      className={`divide-x divide-border border-b text-sm transition-colors last:border-0 hover:bg-muted ${entry.is_local ? 'bg-accent/40' : 'even:bg-muted/30'}`}
       onMouseEnter={() => onHover?.(entry.gamertag)}
     >
       <td className={`py-2 pr-4 text-center font-mono ${rankClass}`}>{entry.rank}</td>
@@ -541,7 +544,12 @@ function LeaderboardRow({
               <td className={`py-2 pr-4 ${COL_HIDE_LG} ${cell(acc != null && best?.accuracy === acc)}`}>
                 {acc != null ? `${acc.toLocaleString(intl, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%` : '—'}
               </td>
-              <td className={`py-2 pr-4 ${COL_HIDE_LG}`}>{renderCombatYield(entry)}</td>
+              <td className={`py-2 pr-4 ${COL_HIDE_LG} ${cell(dpk != null && best?.dmgKill === dpk)}`}>
+                {dpk != null ? Math.round(dpk).toLocaleString(intl) : '—'}
+              </td>
+              <td className={`py-2 pr-4 ${COL_HIDE_LG} ${cell(dpd != null && best?.dmgDeath === dpd)}`}>
+                {dpd != null ? Math.round(dpd).toLocaleString(intl) : '—'}
+              </td>
               <td className={`py-2 pr-4 text-center font-mono ${COL_HIDE_LG}`}>
                 {entry.rank_delta != null && entry.rank_delta !== 0 ? (
                   <span style={{ color: tokenCssVar(skillDeltaScale(entry.rank_delta)) }} title={rankDeltaTooltip}>
