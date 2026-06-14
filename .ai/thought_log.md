@@ -1,3 +1,17 @@
+## [2026-06-14] Persistance cache resolved_xuids → xuid_aliases (world leaderboard) — Complété (1223 alias)
+
+**Statut** : Code (cmd/world-aliases-persist) + run réel exécuté + vérifié + idempotent. Commit en attente d'autorisation (branche courante `main`, sans push).
+
+**Contexte** : le backfill world résout gamertag→xuid via PeopleHub et gardait le mapping uniquement dans le checkpoint JSON (`resolved_xuids`, 1236 paires). Tâche en attente : le rendre durable + app-wide dans `xuid_aliases`.
+
+**Décision** : one-shot CLI `cmd/world-aliases-persist` qui lit `resolved_xuids` du checkpoint et upsert dans `xuid_aliases` (pattern canonique `INSERT ... ON CONFLICT (xuid)`). **INSERT-only (DO NOTHING)** : on n'écrase JAMAIS un alias existant (alimenté par le sync depuis les matchs, potentiellement plus frais) — on n'ajoute que les xuid inconnus, `source='world_leaderboard'`. Idempotent. Serveur stoppé requis (RW, zéro concurrence → ON CONFLICT sans risque ART). Pas de wiring dans le backfill (temporaire) : re-lancer le one-shot après un futur run.
+
+**Résultats observés** : dry-run 1236 cache → 1223 nouveaux / 13 déjà présents. Run réel : 1223 insérés (source=world_leaderboard). Vérif base : xuid_aliases 16126 → 17349 (+1223), dont 1223 world. Re-dry-run : 0 nouveau / 1236 présents (idempotence prouvée). Ces alias alimentent la source unique d'affichage gamertag (GamertagLookupView).
+
+**Prochaine étape** : aucune — fin du chantier world-leaderboard (backfill + filtre option C + persistance alias). Re-lancer le one-shot si un futur backfill ajoute des résolutions.
+
+---
+
 ## [2026-06-14] Catalogue classement mondial : option C (montrer toutes les saisons + flag `enriched`) + tri numérique — Complété
 
 **Statut** : Backend (vet + 2 tests intégration duckdb + service/handlers) + Front (tsc + eslint 0 erreur + 10/10 vitest LeaderboardBlock) verts. Commit sur la branche courante (`main`, sans push) — la branche a glissé pendant la session. Itération B → C (cf. ci-dessous).
