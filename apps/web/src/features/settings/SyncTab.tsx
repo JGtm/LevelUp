@@ -18,7 +18,7 @@ import { BackfillCard } from './BackfillCard'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
-export function SyncTab({ merged, handleChange, t }: TabProps) {
+export function SyncTab({ merged, handleChange, t, frozen }: TabProps) {
   const activeSyncJobId = useAppShellStore((s) => s.activeSyncJobId)
   const setActiveSyncJobId = useAppShellStore((s) => s.setActiveSyncJobId)
   const startSyncAll = useStartSyncAll()
@@ -68,7 +68,12 @@ export function SyncTab({ merged, handleChange, t }: TabProps) {
   }
 
   return (
-    <>
+    // En démo, tout l'onglet est figé : <fieldset disabled> neutralise nativement
+    // chaque contrôle (boutons, toggles, inputs, combobox) sans les câbler un à un.
+    <fieldset
+      disabled={frozen}
+      className={`m-0 min-w-0 space-y-6 border-0 p-0 ${frozen ? 'opacity-60' : ''}`}
+    >
       {/* Synchronisation manuelle */}
       <Card>
         <CardHeader>
@@ -161,6 +166,6 @@ export function SyncTab({ merged, handleChange, t }: TabProps) {
           />
         </CardContent>
       </Card>
-    </>
+    </fieldset>
   )
 }

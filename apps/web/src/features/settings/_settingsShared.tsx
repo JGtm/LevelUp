@@ -13,6 +13,9 @@ export interface TabProps {
   merged: Partial<SettingsResponse>
   handleChange: <K extends keyof SettingsResponse>(field: K, value: SettingsResponse[K]) => void
   t: ReturnType<typeof getSettingsText>
+  /** Mode démo : settings figés (read-only). Les contrôles restent visibles mais
+   *  désactivés — seules langue (Général) et accessibilité restent modifiables. */
+  frozen?: boolean
 }
 
 interface ToggleRowProps {

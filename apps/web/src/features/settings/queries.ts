@@ -18,10 +18,20 @@ import type {
 } from '@/lib/api/types'
 
 export function useSettings() {
+  // En démo, la langue est un choix purement client-side (le PATCH /settings est
+  // refusé et GET /settings renvoie la valeur figée et partagée). On superpose
+  // donc la locale du store appShell sur la réponse : sans cela, le refetch
+  // /settings déclenché après un switch écraserait le choix du visiteur dans le
+  // sélecteur de langue. Hors démo, la réponse serveur fait autorité (select nop).
+  const demoMode = useAppShellStore((s) => s.demoMode)
+  const demoLocale = useAppShellStore((s) => s.locale)
   return useQuery({
     queryKey: queryKeys.settings,
     queryFn: () => api.get<SettingsResponse>('/settings'),
     staleTime: 5 * 60 * 1000,
+    select: demoMode
+      ? (data: SettingsResponse): SettingsResponse => ({ ...data, lang: demoLocale })
+      : undefined,
   })
 }
 

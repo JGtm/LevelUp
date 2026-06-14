@@ -12,14 +12,19 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useRecalculateSessions } from '@/features/settings/queries'
 import { ToggleRow, BulletHint, type TabProps } from './_settingsShared'
 
-export function AnalyseTab({ merged, handleChange, t }: TabProps) {
+export function AnalyseTab({ merged, handleChange, t, frozen }: TabProps) {
   const activeSyncJobId = useAppShellStore((s) => s.activeSyncJobId)
   const syncRunning = !!activeSyncJobId
   const recalculate = useRecalculateSessions()
   const [showRecalcConfirm, setShowRecalcConfirm] = useState(false)
 
   return (
-    <>
+    // En démo, l'onglet est figé (cf. SyncTab) : <fieldset disabled> neutralise
+    // tous les contrôles d'un coup.
+    <fieldset
+      disabled={frozen}
+      className={`m-0 min-w-0 space-y-6 border-0 p-0 ${frozen ? 'opacity-60' : ''}`}
+    >
       {/* Card : Regroupement de sessions */}
       <Card>
         <CardHeader>
@@ -210,6 +215,6 @@ export function AnalyseTab({ merged, handleChange, t }: TabProps) {
           <p className="text-xs text-muted-foreground">{t.coachProactiveHint}</p>
         </CardContent>
       </Card>
-    </>
+    </fieldset>
   )
 }

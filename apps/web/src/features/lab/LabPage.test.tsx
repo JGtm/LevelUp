@@ -62,7 +62,7 @@ describe('LabPage', () => {
       expect(screen.getByText('DoubleKill')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Contrats API' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Contrats API' }))
 
     await waitFor(() => {
       expect(screen.getAllByText(/Diff de contrats API/i)).toHaveLength(2)
@@ -70,7 +70,7 @@ describe('LabPage', () => {
       expect(screen.getByText('/lab/resources')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Diagnostics' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Diagnostics' }))
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /Diagnostics d'instance/i })).toBeInTheDocument()
@@ -94,7 +94,7 @@ describe('LabPage', () => {
       expect(screen.getByText(/Capabilities/i)).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'API Contracts' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'API Contracts' }))
 
     await waitFor(() => {
       expect(screen.getAllByText(/API Contract Diff/i)).toHaveLength(2)
