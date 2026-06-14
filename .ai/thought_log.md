@@ -1,3 +1,58 @@
+## [2026-06-14] Classement : redesign flat éditorial + noms saisons (wiki par date) — Complété
+
+**Statut** : tsc + eslint 0 erreur + 11/11 vitest. Commit branche courante, sans push. 11-1 à confirmer (cf. note).
+
+**Demandes user** : tableau « amateur » (suggestions demandées) + liste déroulante texte SEUL (pas de chiffres).
+
+**Noms de saisons** : `assets.toml` n'a pas de section season → catalogue ne peut pas recouper. Résolu PAR DATE via wiki.halo.fr (user-fourni) : Halo a abandonné les saisons numérotées après S5 → opérations. Mapping date→nom : 6-1 Spirit of Fire (30/01/2024), 7-1 Banished Honor, 8-1 Fleetcom, 9-1 Great Journey, 10-1 Frontlines (04/02/2025), 11-1 Last Stand (06/05/2025), 12-1 Shadows, 13-2 Infinite ; 3-1/4-1/5-1 Echoes Within/Infection/Reckoning. `SEASONS` passé en **texte seul** (numéros retirés).
+
+**Design (user a choisi)** : barres composites Rendement/Résistance → **2 colonnes chiffrées** (Dég./frag = dmg/(k+a/3), Dég./mort = dmg_taken/deaths ; `renderCombatYield`+import CombatYieldDisplay retirés, helpers `dmgPerKill`/`dmgPerDeath`). Direction **flat éditorial encadré** : cadre extérieur `border` (hard-edge) + scroll-x, en-tête `uppercase tracking-wide`, zébrures `even:bg-muted/30` (hors lignes locales), bordures verticales conservées. Best ajouté pour les 2 colonnes (dég/frag = min, dég/mort = max). i18n : `col_combat` → `col_dmg_per_kill`/`col_dmg_per_death`.
+
+**À confirmer** : 11-1 = « Last Stand » (date + wiki + ancien libellé) — j'écrase le « Combined Arms » que le user avait validé tout à l'heure (sur ma mauvaise suggestion via le scraper test, qui est donc faux).
+
+---
+
+## [2026-06-14] Alignement sync manuel ↔ auto-sync (pool partagé + cooldown 5 min) — Complété
+
+**Statut** : Go build CGO (api + scheduler + cmd/server) + vet + tests handlers/scheduler verts (9 nouveaux tests + sync existants). Seuls échecs : `TestE2E_DeviceCodeFlow_*` (non-hermétiques pré-existants, MSAL/réseau réel — hors scope, fichiers non touchés). Branche `fix/align-manual-sync-tokens`. Commit en attente d'autorisation user.
+
+**Problème** : « Synchronisation manuelle via Settings impossible : tokens absents ». Le sync manuel delta (StartSyncAll / StartDeltaSync) construisait son moteur avec `sess.HaloTokens` via `newEngineFor`, une **copie divergente et partielle** de `AutoSyncScheduler.BuildEngine` (sans PooledHaloClient, post-sync runner ni batch queue). Quand `sess.HaloTokens` était nil/expiré — alors que le store ADR 0023 avait un RT valide — le handler répondait 401, divergent de l'auto-sync qui résout les tokens via le pool.
+
+**Décision (choix user a+b)** : réutiliser **exactement le même** `BuildEngine` que l'auto-sync → même `PooledHaloClient` (pool de tokens partagé) + cooldown anti-spam **5 min**.
+- `handlers/sync_handler_align.go` (**nouveau fichier**, extrait de sync_handler.go qui dépassait 500L) : type `EngineBuilder` + `WithEngineBuilder` (injecté par server.go = `autoSyncScheduler.BuildEngine`). `newPooledEngine()` délègue au builder (fallback legacy `newEngineFor` si non injecté). `guardManualDeltaSync()` factorise session+cooldown (→ StartSyncAll 90→83L, StartDeltaSync 94→85L, < leur taille pré-tâche). Cooldown : `tryManualSyncCooldown(key)` (clé `"all"` / `"delta:"+slug`) → 429 + `Retry-After`. `WithManualSyncCooldown` pour les tests.
+- `handlers/sync_handler.go` : StartSyncAll + StartDeltaSync → `if !h.guardManualDeltaSync(...) { return }` (« être connecté » suffit, tokens via le pool ; 401 « Connexion requise » si déconnecté).
+- `api/server.go` : `syncH.WithEngineBuilder(autoSyncScheduler.BuildEngine)` (1 ligne, dans le bloc `if autoSyncScheduler != nil`).
+- **StartInitialSync inchangé** (reste sur tokens de session) : l'onboarding cible un joueur pas encore dans le pool (Discovery ne tourne qu'au boot) — le pool échouerait à le résoudre. Confirmé par `TestSyncHandler_InitialSync_NoTokens` (toujours 401 sans tokens).
+
+**Logging (logs/handlers.log)** : cooldown throttlé (Info : key + retry_after_s), moteur via pool (Debug : gamertag/xuid), fallback EngineBuilder absent (Warn : repère un câblage manquant en prod). + 401/429/409 loggés par writeError ; détail sync par l'engine (sync.log/pool.log).
+
+**Tests** (9 nouveaux, verts) : `sync_handler_align_test.go` (interne : cooldown window + désactivé + sélection builder + fallback, sans driver RunDelta) ; `sync_handler_gate_test.go` (**session sans HaloTokens → 202** = cœur du fix ; pas de session → 401 ; cooldown 429+Retry-After sur /sync/all ET /players/{slug}/sync ; cooldown désactivable).
+
+**Note coordination (agent concurrent)** : leur entrée démo ci-dessous note « StartSyncAll 401 sans tokens Halo » comme garde-fou d'inertie démo. Mon changement remplace ce 401 par (202 + job qui échoue à l'auth, pool vide en démo) → toujours inerte (aucune écriture réelle, RunDelta échoue avant tout write) et leur `<fieldset disabled>` désactive déjà le bouton en démo. Pas de régression data, mode d'échec différent. server.go + thought_log partagés avec leur WIP non commité → stage chirurgical de mon hunk uniquement (`git apply --cached`) ; thought_log laissé non stagé.
+
+**Prochaine étape** : décision merge/deploy de l'utilisateur. Re-login requis si session expirée (401 « Connexion requise » subsiste si déconnecté — le pool fournit les tokens Halo, mais l'accès à l'endpoint exige une session admin).
+
+## [2026-06-14] Démo : sync/upload média figés + anglais par défaut + onglets Lab alignés — Complété
+
+**Statut** : Go build CGO + vet + tests (`internal/service`, `internal/api/handlers` zones touchées) verts. Front tsc + eslint (0 erreur) + vitest 153/153 (settings/media/lab). PAS de commit (branche active `fix/live-fetch-spartan-cache-invalidation` porte déjà du travail non commité non lié : squad/, shell/, timeseries/, fields.toml — laissé intact). 3 demandes user.
+
+**Tâche 1 — Désactiver sync + upload média en démo (visibles mais inertes)** :
+- Front : flag `frozen` (=`demoMode`) propagé via `TabProps` à SettingsPage → tabs. SyncTab/AnalyseTab/BackupTab enveloppés dans `<fieldset disabled={frozen}>` (neutralise nativement TOUS les contrôles imbriqués — WatcherSection, BackfillCard, GamertagCombobox — sans les câbler un à un ; + `opacity-60` comme signal « figé »). GeneralTab désactivé contrôle-par-contrôle (pour garder le sélecteur **langue** actif, cf. « sauf accessibilité »). `UploadButton` (galerie média) rendu inerte en démo (handlers no-op + opacity/cursor-not-allowed). La bannière démo existante (« settings figés, seules langue + accessibilité modifiables ») devient enfin VRAIE côté UI.
+- Back (garde-fou « ne rien faire ») : `PostUploadMedia` 403 `demo_mode_unsupported` (seule vraie faille — écrivait des fichiers en démo) via nouveau champ `MediaHandler.demoMode` + builder `WithDemoMode` câblé dans `server.go`. `PostMediaScan` 422 en démo. La sync est DÉJÀ inerte en démo (StartInitialSync 403 `can_start_initial_sync=false`, StartSyncAll 401 sans tokens Halo) → pas de changement back sync.
+
+**Tâche 2 — Démo en anglais par défaut + switch de langue fonctionnel** :
+- Cause du « switch cassé » : en démo, `GET /settings` renvoie `lang=fr` (figé, partagé) et le `invalidateQueries()` post-switch refetchait /settings → écrasait le choix du visiteur dans le sélecteur.
+- Fix : (a) `bootstrap_service.Build()` force `Locale="en"` en démo (défaut anglais ; le store appShell pilote l'affichage via `data.locale`). (b) `useSettings()` superpose, en démo uniquement, la locale du store sur `settings.lang` (`select`) → le sélecteur reflète le choix de session et le refetch ne l'écrase plus. Le switch reste client-side (le PATCH /settings restant 422 en démo). Hors démo : inchangé (`select` undefined).
+
+**Tâche 3 — Design page Lab aligné sur les autres pages** :
+- Remplacé la « barre de nav » pilule (`rounded-full bg-muted` + `TabButton`) par les onglets à soulignement bas (`border-b` + `border-b-2 border-primary`), même grammaire qu'AdminLayout/SettingsPage. Sémantique `role="tab"` + `aria-selected` (comme SettingsPage). Mécanisme inchangé (état client `useState`, pas de sous-routes). `TabButton` mort supprimé de `_labShared.tsx` (seul LabPage l'utilisait ; AssetDrawer a sa propre copie locale). Test `LabPage.test.tsx` : requêtes onglets `getByRole('button')` → `getByRole('tab')`.
+
+**Résultats** : 153/153 vitest, tsc/eslint OK, Go vet/build/tests zones touchées OK. 2 échecs Go PRÉEXISTANTS et non liés (`TestE2E_DeviceCodeFlow_HappyPath`/`_SingleFlight` — `auth_xbox_e2e_test.go`, MSAL/CSRF/`attempt_not_found`, fichier non touché).
+
+**Prochaine étape** : attendre validation user avant commit (travail tiers non commité présent sur la branche → stager uniquement mes fichiers le moment venu). Pas de garde back sur `StartSyncAll` ajouté (déjà inerte) ; à reconsidérer si une garde démo explicite est souhaitée.
+
+---
+
 ## [2026-06-14] Fix Δrang inter-saison : tri saison NUMÉRIQUE (loadPrevSeasonRanks) — Complété
 
 **Statut** : vet + tests intégration duckdb verts (dont nouveau test cross-digit). Commit branche courante, sans push.
@@ -24105,3 +24160,46 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 - Logging : `monitoringLog = slog.With("module","monitoring")` → `logs/monitoring.log` (routage MultiModuleHandler par attribut module). Trou comblé : les jobs async (drain UGC P3, convergence) ne loggaient QUE le panic, pas l'échec normal du job → ajout `slog.ErrorContext(..., "module","monitoring", "err", err)` (Warn pour sync_in_flight, attendu). Les actions synchrones loggent déjà succès (InfoContext) + échec (handler). Zéro `fmt.Println`/`log.Printf` introduit.
 - Tests : trou comblé — handler drain UGC sans test → `admin_actions_catalog_drain_test.go` (503 deps absentes / 409 déjà en vol / 202 + attente statut terminal). Tous les chemins testables couverts ; seul `RunCatalogUGCDrain` (drain réseau) non testé (mock lourd) mais son seed est testé + handler testé. `go test -race ./internal/observability/` : 0 DATA RACE sur les collecteurs concurrents (error/player_api).
 - Architecture : tous les fichiers créés < 500 L, fonctions < 80 L ; `auto_sync.go` 922 L = dette PRÉ-EXISTANTE (P8 +~30 L, non aggravée significativement). Aucun `filepath.Join("data")` (PathResolver respecté). Drain spécifique Halo assumé (comme ops/catalog_refresh.go).
+
+## [2026-06-14] Lot corrections UI (nav, escouade, timeseries, sessions) — Complété (8/10) + 1 vérif
+
+**Statut** : Branche `fix/live-fetch-spartan-cache-invalidation` (pas de commit sans autorisation). tsc -b exit 0, eslint 0 erreur, vitest ciblé 174 (shell+settings) + 342 (squad+session+timeseries) verts.
+
+**Décisions techniques** :
+- **Menu L1 "Leaderboard PP" retiré** (navL1Sections.tsx + NavL2.tsx COMMUNITY_TABS). Route /palmares/prestige conservée.
+- **Escouade "Enregistrer cette compo"** : SquadFocusStrip remonté de SquadSynergiesPage vers SquadLayout, juste sous la barre d'onglets L3 (commun Synergies/Contributions).
+- **Assists → Assistances** : fields.toml `assists` + `assists_per_min` FR corrigés (source unique field-mappings ; impacte toutes les pages).
+- **Impact des coéquipiers** : surbrillance best/worst alignée sur MVP/LVP du scoreboard de match (fond color-mix 28% + token outcome-win/loss, cf. cellStyle) au lieu de perf-tier text-only ; cellules centrées (full-bleed div).
+- **Ordre chronologique (règle vieux→récent, haut→bas, gauche→droite)** : seul vrai violateur = OutcomeSequenceTape Escouade (matchHistory DESC rendu tel quel) → `.reverse()`. Vérifié déjà conformes : Intensité (oldest en haut #1 via reverse+yAxis.inverse), tables (reverse ASC), Solo timeseries (ASC). Heatmaps map×joueur / "Perf par carte" = axes non temporels → inchangés.
+- **FDA ligne rouge à 1** : Timeseries KdaValueTrend (markLine outcome-loss solid w2) + Escouade FDA (nouvelle opt `redReferenceLineAt` sur buildPerformanceLineOption). Sessions = pas de chart FDA-ratio (seulement barres F/M/A), ligne à 1 non pertinente → rien.
+- **Tooltips (i) rendement/résistance** : InfoTooltip ajouté sur les titres de blocs efficacité — Timeseries (TimeseriesEfficiency), Sessions (SessionOcdrBars), Escouade (SquadEfficiencyChart, réutilise efficiencySeries.description). Props title élargies à ReactNode.
+- **Accès admin direct** : lien "Administration" (isAdmin) ajouté dans le dropdown Réglages (desktop) + menu mobile NavL1MobileActions.
+- **Comptes + Synchronisation → Admin** (choix user "réutiliser l'admin") : onglets "Synchronisation" et "Utilisateurs" retirés de SettingsPage + dropdowns ; SyncTab rapatrié dans /admin/sync via AdminSyncSettingsSection (câblage settings autonome) ; self-service mot de passe (SetPasswordCard) déplacé dans l'onglet Général. Léger doublon watcher/manual-sync assumé (validé user).
+
+**Vérif (non implémenté, à la demande du user "revérifie d'abord")** :
+- **Sessions "filtre ne propose que du solo"** : cause = FilterOmnibar (barre stats partagée via NavL2) construit le sélecteur de sessions en EXCLUANT les squad (`allSessions.filter(s => !s.is_squad)`, FilterOmnibar.tsx:121,128) + NavL2 passe `matchContext="solo"` (NavL2.tsx:149). Partagé par timeseries/history/sessions → ne pas retirer globalement. Fix propre proposé : nouveau filtre "Contexte" (Solo/Escouade/Mixte) dans la pill Filtres, ou prop per-page sur la page Sessions.
+- **Suggestion de comparaison de session** : buildSessionCompareSuggestion (session_page_service.go) score par catégorie/ranked/volume — NE prend PAS la composition d'escouade en compte. À enrichir si on active les sessions squad.
+
+**Conclusion / prochaine étape** : 8 corrections livrées + 3 (admin reorg). Reste à décider avec le user : implémenter le filtre Contexte Solo/Escouade/Mixte (sessions mixtes) + rendre la suggestion de comparaison composition-aware. Commits en attente d'autorisation.
+
+## [2026-06-14] Sessions mixtes — filtre Contexte (Solo/Escouade/Mixte) + suggestion compo-aware — Complété
+
+**Statut** : Complété. Front tsc -b exit 0, eslint 0 erreur, vitest 172 (shell+session-detail) verts. Go : `go build ./internal/service/` OK, `go test ./internal/service/ -run 'TestBuildSessionCompareSuggestion|TestSessionPage'` OK.
+
+**Décision technique** :
+- **Cause "filtre session = solo only"** : FilterOmnibar (barre stats partagée via NavL2 par Timeseries/History/Sessions) excluait les sessions escouade du sélecteur (`allSessions.filter(s => !s.is_squad)`) + NavL2 passait `matchContext="solo"` au preview.
+- **Filtre Contexte** : nouveau sélecteur segmenté Solo/Escouade/Mixte dans FilterOmnibar, **activé uniquement sur la page Sessions** via prop `contextSelectable` (NavL2 le passe `true` quand pathname = /stats/sessions). Le contexte est porté par un store DÉDIÉ `useSessionContextStore` (≠ soloFilterStore.filterContext) → garantie zéro régression sur Timeseries/History/Explorer/Squad qui consomment le filterContext partagé. `effectiveContext = contextSelectable ? sessionMatchContext : matchContext` → hors page Sessions, figé sur 'solo' (comportement inchangé). Le preview + le filtre solo/squad du sélecteur utilisent effectiveContext. SessionDetailPage NON modifiée (évite toute régression sur le détail : prev/next déjà mixtes côté backend, picked_sessions porte le choix).
+- **Suggestion de comparaison compo-aware** (Go) : ajout dimension `IsSquad` (helper `sessionIsSquad` = majorité is_with_friends) à `sessionCandidate`. `scoreSessionCandidate` : +8 si même composition (poids le plus fort, > catégorie +6). `buildSuggestionReason` préfixe "même composition (escouade|solo)". Limite documentée : correspondance de roster EXACT impossible ici (participants non chargés dans session_page_service) ; l'axe solo/squad est l'approximation disponible. Test reason mis à jour.
+
+**Régression — garde-fous** : store dédié (isolation), prop `contextSelectable` (page-scoped), défaut 'solo' partout, FilterOmnibar sans props (tests) inchangé. Vérifié : seul NavL2 consomme FilterOmnibar en prod.
+
+**⚠️ État du dépôt** : la branche `fix/live-fetch-spartan-cache-invalidation` contient des modifications NON commitées hors de mon périmètre (refactor asset-name/sync : internal/sync/engine.go, asset_name_fetcher.go, scheduler/auto_sync.go, handlers media/settings, web settings/lab…). Ces WIP cassent actuellement la compilation Go globale (`internal/sync/engine_postsync.go:290 e.assetFetcher undefined`) → `go test ./...` complet impossible tant que ce refactor concurrent n'est pas terminé. Mes changements Go (internal/service) compilent et testent en isolation. À signaler à l'utilisateur (travail concurrent sur la même branche).
+
+**Conclusion / prochaine étape** : filtre Contexte + suggestion compo-aware livrés. Commits en attente d'autorisation. Reste à l'utilisateur : finaliser le refactor sync concurrent (compile cassé) avant un `go test ./...` complet et un commit groupé.
+
+**Addendum [2026-06-14] — SessionDetailPage rendue context-aware** : le sélecteur Contexte ne pilotait que la LISTE du sélecteur de sessions ; la page affichait toujours la dernière session solo → la pill SessionParamPills restait "Solo". Correctif : SessionDetailPage lit `useSessionContextStore` et injecte `match_context` dans `scopedFilters` (sessions listées, session par défaut, prev/next, vivier de comparaison suivent le contexte). Reset de sessionLabel/compare au changement de contexte (ref-gardé, ne casse pas le deep-link au montage). queryKey suffixée `:${matchContext}` → refetch. Conséquence assumée (alignée sur la feature) : en contexte Solo (défaut), la page se cale sur la dernière session solo et filtre le détail aux matchs solo (avant : dernière session toutes-confondues). Front tsc/eslint OK, vitest 172 verts (shell+session-detail).
+
+**Addendum [2026-06-14] — Tooltips rendement/résistance unifiés + garde nil-slice Lab** :
+- **Unification** : composant unique `components/charts/EfficiencyTooltipText.tsx` (FR/EN) remplaçant les 3 textes divergents (Timeseries / Sessions / Escouade). Texte conceptuel (rendement = efficacité offensive, résistance = solidité défensive) ; chaque graphe garde sa propre ligne de référence pour l'échelle. Le champ i18n squad `efficiencySeries.description` n'est plus utilisé pour le tooltip (laissé en place, inoffensif).
+- **Crash Lab "data.snapshots is null"** : NON causé par mes changements (feature lab = WIP concurrent ; je n'avais touché aucun fichier lab). Cause = slice nil Go sérialisé en JSON `null` (table waypoint_resource_snapshots vide/absente) → `.length`/`.map` crashent. Correctif défensif front : `ResourcesPanel.tsx` normalise snapshots/assets.items/medals.items (`?? []`) ; `LabPage.tsx` garde les 3 accès `?.[0]`. Fix racine idéal = handler Go renvoyant des slices non-nil (RequireNoNilSlicesWithoutOmitempty), mais build Go cassé par le refactor concurrent → garde front robuste retenue.
+- Vérifs : tsc 0 erreur, eslint 0 erreur, vitest 457 verts (lab+session+squad+timeseries+shell).
