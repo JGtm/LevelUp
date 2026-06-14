@@ -1476,6 +1476,14 @@ func buildAutoSyncPool(
 				slog.WarnContext(ctx, "onRotated: écriture store échouée",
 					"gamertag", gamertag, "xuid", xuid, "err", err)
 			}
+			// Le RT a tourné → la chaîne d'auth a changé : le cache process des
+			// HaloTokens (Spartan/Clearance, TTL 50min) peut désormais servir des
+			// tokens dérivés de l'ANCIENNE chaîne → 401 sur les fetchs live
+			// token-gated (career rank/XP, challenges, battle pass, CSR, identité
+			// Explorer). On le purge pour forcer une re-dérivation fraîche au
+			// prochain enrichWithHaloTokens. Incident 2026-06-14 (post-consolidation
+			// client ID : seuls les CLI token-capture/import invalidaient ce cache).
+			halo.InvalidateCachedPlayerTokens(xuid)
 		} else {
 			slog.WarnContext(ctx, "onRotated: xuid introuvable, store non mis à jour",
 				"gamertag", gamertag)
