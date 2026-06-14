@@ -171,12 +171,10 @@ func (p *cycleBatchPersisterV1Bridge) PersistCycle(ctx context.Context, batch Cy
 
 	// Catalogue in-sync : après persist (les nouveaux matchs sont en shared),
 	// inscrit playlists/maps/paires/variantes dans les tables catalogue (zéro
-	// réseau) → résorbe « playlists hors catalogue » sans action admin. Gaté par
-	// l'interrupteur MAÎTRE catalogue (ops.CatalogRefreshEnabled /
-	// LEVELUP_CATALOG_REFRESH) : l'écriture est ART-unsafe (ON CONFLICT DO UPDATE
-	// sur metadata), donc coupée tant que le drain n'est pas migré append-only.
-	// Découplé de la résolution des NOMS (ART-safe, autonome). Best-effort.
-	if ops.CatalogRefreshEnabled() && p.assetPool != nil && p.metaDB != nil && p.sharedDB != nil && submitted > 0 {
+	// réseau) → résorbe « playlists hors catalogue » sans action admin. TOUJOURS
+	// actif (autonome) : CatalogRefreshFromRegistry est ART-safe (SELECT-then-write),
+	// plus de flag LEVELUP_CATALOG_REFRESH. Best-effort.
+	if p.assetPool != nil && p.metaDB != nil && p.sharedDB != nil && submitted > 0 {
 		if shared := p.sharedDB(); shared != nil {
 			if _, cerr := ops.CatalogRefreshFromRegistry(ctx, p.metaDB, shared, p.titleSlug); cerr != nil {
 				slog.WarnContext(ctx, "PersistCycle: refresh catalogue non-bloquant", "err", cerr)

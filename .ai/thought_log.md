@@ -1,3 +1,19 @@
+## [2026-06-15] Catalogue ART-safe + SUPPRESSION du flag LEVELUP_CATALOG_REFRESH — Complété
+
+**Statut** : go build/vet = 0 ; `internal/ops` `TestCatalogRefreshFromRegistry_PopulatesAndIsIdempotent` vert + sync/v2 verts. Seul FAIL ops = `seed_demo` (match_csrs, pré-existant, sans rapport). Branche `fix/align-manual-sync-tokens`. Commit en attente d'autorisation.
+
+**Déclencheur (user)** : « arrête avec les variables inutiles qui aggravent l'UX via des features partielles ». `LEVELUP_CATALOG_REFRESH=0` laissait la résolution catalogue (« playlists hors catalogue ») OFF = feature partielle.
+
+**Cause racine** : `ops.CatalogRefreshFromRegistry` écrivait en `INSERT ... ON CONFLICT DO UPDATE` (6 blocs) → bug ART (« Failed to delete all rows from index ») qui FATAL-invalide metadata. C'est pour ça que le flag était à 0. Le DRAIN, lui, était DÉJÀ ART-safe (`CatalogFetcherService.upsertRowNoConflict`) — le commentaire `.env.local` accusait à tort « le drain » ; le vrai coupable était `CatalogRefreshFromRegistry`.
+
+**Fix** : `CatalogRefreshFromRegistry` réécrit en **SELECT-then-write** (helper `upsertNoConflict`, miroir du service ; 4 helpers `refresh*Catalog` ≤80L + `upsertPairDefinition`/`upsertPairLabel`). **Flag SUPPRIMÉ partout** : `ops.CatalogRefreshEnabled` retiré ; gates in-sync (`engine_postsync` + `persist_v1bridge`) + cron (`main.go`) rendus TOUJOURS-actifs ; lignes `.env.local` + `.env.local.example` retirées. Résolution catalogue désormais **autonome + ART-safe, sans variable**.
+
+**Test** : `catalog_refresh_cgo_test.go` — 2 passages (INSERT puis UPDATE via SELECT-then-write) sans crash ni doublon + valeurs upsertées correctement (le 2e passage = ce que l'ancien ON CONFLICT risquait de crasher).
+
+**Principe** : aligné sur la directive autonomie — pas de flag qui laisse une feature OFF. Cohérent avec les noms d'assets (déjà ART-safe via `ops.UpsertAssetTranslation`).
+
+---
+
 ## [2026-06-14] Affichage match : mode normalisé + playlist sans catégorie + image de carte (framework KindMapImage) — Complété côté code (image en vérif user)
 
 **Statut** : `go build ./...` = 0, `go vet ./...` = 0, suite duckdb intégration complète verte (68s) + analysis + assets. Branche courante. Commit en attente d'autorisation. Suite directe du fix endpoint (entrée ci-dessous) — sur match 1d0cebd1 : mode « Assassin » ✓, carte « Passages » ✓, playlist « Delta : Héritage » ✓ (validés user) ; image de carte = vérif user en attente.

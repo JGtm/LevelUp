@@ -284,13 +284,11 @@ func (e *SyncEngine) runPostSyncPipeline(
 
 	// Catalogue in-sync (chemin V1/CLI) : inscrit les nouvelles playlists/maps/
 	// paires/variantes dans les tables catalogue (zéro réseau) → résorbe les
-	// « playlists hors catalogue » sans action admin. Gaté par l'interrupteur MAÎTRE
-	// catalogue (ops.CatalogRefreshEnabled / LEVELUP_CATALOG_REFRESH) car l'écriture
-	// est ART-unsafe (ON CONFLICT DO UPDATE sur metadata) — à per-sync ce n'est plus
-	// « basse fréquence ». Découplé de la résolution des NOMS (ART-safe, autonome).
-	// V2 gère le catalogue dans son persister (et son engine post-sync n'a pas de
-	// metaDB → skip propre ici). Best-effort.
-	if ops.CatalogRefreshEnabled() && e.assetPool != nil && e.metaDB != nil && sharedDB != nil && len(insertedIDs) > 0 {
+	// « playlists hors catalogue » sans action admin. TOUJOURS actif (autonome) :
+	// CatalogRefreshFromRegistry est désormais ART-safe (SELECT-then-write), plus de
+	// flag LEVELUP_CATALOG_REFRESH. V2 gère le catalogue dans son persister (et son
+	// engine post-sync n'a pas de metaDB → skip propre ici). Best-effort.
+	if e.assetPool != nil && e.metaDB != nil && sharedDB != nil && len(insertedIDs) > 0 {
 		if _, cerr := ops.CatalogRefreshFromRegistry(ctx, e.metaDB, sharedDB, e.titleSlug); cerr != nil {
 			slog.WarnContext(ctx, "post-sync: refresh catalogue non-bloquant",
 				"gamertag", e.gamertag, "err", cerr)

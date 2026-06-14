@@ -954,41 +954,35 @@ func main() {
 	// data health + l'action POST /admin/actions/data-health/run.
 	reg.WithHealthScheduler(healthScheduler)
 
-	// Cron catalogue (hebdomadaire) : rafraîchit les noms localisés des playlists /
-	// couples map-mode / maps / modes via le drain DiscoveryUGC testé (même chemin que
-	// l'action admin catalog/ugc-drain). Gaté par LEVELUP_CATALOG_REFRESH (OFF par défaut
-	// — prod-safe, activation délibérée). La régularité vient du ticker hebdo, PAS d'un
-	// redémarrage. Les assets non normalisés (nom resté UUID brut, FR manquant) remontent
-	// automatiquement dans la page admin data-quality, corrigeables à la main.
-	if ops.CatalogRefreshEnabled() {
-		catalogCron := scheduler.NewCatalogRefreshCron(func(cctx context.Context, ts string) (domain.CatalogUGCDrainResult, error) {
-			// V2 — découverte « A à Z » : avant le drain, lire la config de chaque
-			// playlist (discovery-infiniteugc) pour enfiler ses couples map-mode enfants
-			// (même jamais joués) + stocker les poids. Best-effort : un échec d'expansion
-			// n'empêche pas le drain de nommer ce qui a été joué.
-			if n, eerr := reg.ExpandPlaylistChildren(cctx, ts); eerr != nil {
-				slog.WarnContext(cctx, "catalog_refresh_cron: expansion playlists échouée (best-effort)", "module", logging.ModuleCatalog, "err", eerr)
-			} else {
-				slog.InfoContext(cctx, "catalog_refresh_cron: playlists expansées", "module", logging.ModuleCatalog, "children_enqueued", n)
-			}
-			// NB : le balayage des NOMS d'assets (asset_translations, ART-safe) NE vit
-			// plus ici — il est découplé dans asset_name_sweep_cron (gaté
-			// LEVELUP_SYNC_RESOLVE_ASSETS), pour rester autonome même quand ce cron
-			// catalogue est coupé (LEVELUP_CATALOG_REFRESH=0, drain ART-unsafe).
-			return reg.RunCatalogUGCDrain(cctx, ts)
-		}, "", 0)
-		schedulerWG.Add(1)
-		go func() {
-			defer schedulerWG.Done()
-			catalogCron.Run(schedulerCtx)
-		}()
-		slog.InfoContext(ctx, "catalog_refresh_cron: scheduled", "module", logging.ModuleCatalog, "interval", scheduler.DefaultCatalogRefreshInterval)
-	}
+	// Cron catalogue (hebdomadaire) : rafraîchit le catalogue (playlists / couples
+	// map-mode / maps / modes) via le drain DiscoveryUGC testé (même chemin que l'action
+	// admin catalog/ugc-drain). TOUJOURS actif (autonome, plus de flag) : le drain est
+	// ART-safe (CatalogFetcherService.upsertRowNoConflict, SELECT-then-write). La
+	// régularité vient du ticker hebdo, PAS d'un redémarrage.
+	catalogCron := scheduler.NewCatalogRefreshCron(func(cctx context.Context, ts string) (domain.CatalogUGCDrainResult, error) {
+		// V2 — découverte « A à Z » : avant le drain, lire la config de chaque
+		// playlist (discovery-infiniteugc) pour enfiler ses couples map-mode enfants
+		// (même jamais joués) + stocker les poids. Best-effort : un échec d'expansion
+		// n'empêche pas le drain de nommer ce qui a été joué.
+		if n, eerr := reg.ExpandPlaylistChildren(cctx, ts); eerr != nil {
+			slog.WarnContext(cctx, "catalog_refresh_cron: expansion playlists échouée (best-effort)", "module", logging.ModuleCatalog, "err", eerr)
+		} else {
+			slog.InfoContext(cctx, "catalog_refresh_cron: playlists expansées", "module", logging.ModuleCatalog, "children_enqueued", n)
+		}
+		// NB : le balayage des NOMS d'assets (asset_translations) vit dans
+		// asset_name_sweep_cron (découplé, gaté LEVELUP_SYNC_RESOLVE_ASSETS).
+		return reg.RunCatalogUGCDrain(cctx, ts)
+	}, "", 0)
+	schedulerWG.Add(1)
+	go func() {
+		defer schedulerWG.Done()
+		catalogCron.Run(schedulerCtx)
+	}()
+	slog.InfoContext(ctx, "catalog_refresh_cron: scheduled", "module", logging.ModuleCatalog, "interval", scheduler.DefaultCatalogRefreshInterval)
 
-	// Balayage de noms d'assets (filet de rattrapage de la traîne) — DÉCOUPLÉ du cron
+	// Balayage de noms d'assets (filet de rattrapage de la traîne), distinct du cron
 	// catalogue : ART-safe (asset_translations via ops.UpsertAssetTranslation), gaté par
-	// LEVELUP_SYNC_RESOLVE_ASSETS (ON par défaut, kill-switch). Tourne même quand le drain
-	// catalogue est coupé (LEVELUP_CATALOG_REFRESH=0, bug ART). 1er passage ~60s après le
+	// LEVELUP_SYNC_RESOLVE_ASSETS (ON par défaut, kill-switch). 1er passage ~60s après le
 	// boot (le temps que le pool de tokens se réchauffe), puis hebdomadaire. La résolution
 	// PRIMAIRE des noms reste in-sync ; ce cron ne rattrape que les assets jamais rejoués.
 	if halo.AssetNameResolutionEnabled() {
