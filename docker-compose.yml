@@ -12,6 +12,10 @@ services:
       - LEVELUP_DATA=/app/data
       # React static files (dist Vite buildé dans l'image)
       - LEVELUP_WEB_DIST=/app/apps/web/dist
+      # Logs catégorie (auth.log, handlers.log, pool.log…) écrits sous le volume host
+      # ./data/logs (persisté) au lieu de /app/logs (éphémère, perdu à chaque recreate).
+      # Survit aux restarts/deploys → historique de debug auth/sync conservé.
+      - LEVELUP_LOGS_DIR=/app/data/logs
       # Opt-in : notif Discord lors d'un nouveau déploiement (vX.Y). Absent sur demo/local.
       - LEVELUP_NOTIFY_VERSIONS=1
     # Secrets et tokens API (sync Halo, Discord, Tailscale)
