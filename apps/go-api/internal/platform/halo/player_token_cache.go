@@ -5,6 +5,7 @@
 package halo
 
 import (
+	"log/slog"
 	"sync"
 	"time"
 
@@ -55,6 +56,12 @@ func InvalidateCachedPlayerTokens(xuid string) {
 		return
 	}
 	playerTokenStore.mu.Lock()
-	defer playerTokenStore.mu.Unlock()
+	_, existed := playerTokenStore.store[xuid]
 	delete(playerTokenStore.store, xuid)
+	playerTokenStore.mu.Unlock()
+	// Observabilité : tracer une invalidation EFFECTIVE (rotation RT / re-login)
+	// — utile pour diagnostiquer la fraîcheur des fetchs live token-gated.
+	if existed {
+		slog.Debug("halo: cache HaloTokens invalidé — re-dérivation forcée au prochain Get", "xuid", xuid)
+	}
 }
