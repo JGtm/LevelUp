@@ -78,6 +78,24 @@ describe('CoverFlowModal — lecture HLS', () => {
     expect(instances[0].attachMedia).toHaveBeenCalled()
   })
 
+  it('utilise hls.js même quand canPlayType renvoie "maybe" (quirk Chrome)', () => {
+    // Régression incident 2026-06-14 : Chrome renvoie "maybe" pour HLS (truthy)
+    // MAIS n'expose pas video.audioTracks. Prendre le natif en premier lisait la
+    // vidéo sans jamais brancher hls.js → AUDIO_TRACKS_UPDATED jamais émis → aucun
+    // sélecteur de pistes audio. hls.js doit primer dès que MSE est supporté.
+    const spy = vi.spyOn(HTMLMediaElement.prototype, 'canPlayType').mockReturnValue('maybe')
+    try {
+      const item = makeClip('/api/v1/players/me/media/files/me/hls/clip/master.m3u8')
+      renderWithProviders(
+        <CoverFlowModal items={[item]} startIndex={0} onClose={vi.fn()} onToggleLike={vi.fn()} />,
+      )
+      expect(instances).toHaveLength(1) // hls.js branché malgré canPlayType="maybe"
+      expect(instances[0].attachMedia).toHaveBeenCalled()
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
   it('affiche le sélecteur par-piste (legacy) quand les renditions ne sont pas game/voices/full', () => {
     const item = makeClip('/x/master.m3u8')
     renderWithProviders(

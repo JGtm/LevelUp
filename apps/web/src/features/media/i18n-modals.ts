@@ -44,6 +44,8 @@ export interface CoverFlowText {
   audioGame: string
   audioVoice: string
   audioGroupLabel: string
+  enterFullscreen: string
+  exitFullscreen: string
 }
 
 export interface MediaModalsText {
@@ -90,6 +92,8 @@ const FR: MediaModalsText = {
     audioGame: 'Jeu',
     audioVoice: 'Voix',
     audioGroupLabel: 'Pistes audio',
+    enterFullscreen: 'Plein écran',
+    exitFullscreen: 'Quitter le plein écran',
   },
 }
 
@@ -132,6 +136,8 @@ const EN: MediaModalsText = {
     audioGame: 'Game',
     audioVoice: 'Voice',
     audioGroupLabel: 'Audio tracks',
+    enterFullscreen: 'Fullscreen',
+    exitFullscreen: 'Exit fullscreen',
   },
 }
 
