@@ -3,7 +3,7 @@
  *
  * P8.4 (revue 2026-04-29) : extraits de LabPage.tsx (~250L) pour permettre la
  * découpe en *Panel.tsx dédiés tout en partageant formatters + StatusBadge +
- * MetricCard + JsonViewer + FileStatusRow + RouteList + GuardRow + TabButton.
+ * MetricCard + JsonViewer + FileStatusRow + RouteList + GuardRow.
  */
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -235,30 +235,6 @@ export function GuardRow({
         </div>
       ) : null}
     </div>
-  )
-}
-
-export function TabButton({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean
-  label: string
-  onClick: () => void
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={[
-        'rounded-full px-4 py-2 text-sm font-medium transition-colors',
-        active
-          ? 'bg-primary text-primary-foreground'
-          : 'bg-background text-muted-foreground hover:bg-muted hover:text-foreground',
-      ].join(' ')}
-    >
-      {label}
-    </button>
   )
 }
 

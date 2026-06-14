@@ -159,6 +159,15 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		}
 	}
 
+	// Locale par défaut : en démo, on force l'anglais (audience internationale de
+	// la vitrine publique). Le visiteur peut toujours basculer la langue en session
+	// côté client (store appShell + header X-LevelUp-Locale) ; le PATCH /settings
+	// restant refusé en démo, ce choix n'est pas persisté côté serveur.
+	locale := settingsExcerpt.Lang
+	if s.cfg.DemoMode {
+		locale = "en"
+	}
+
 	return &domain.BootstrapResponse{
 		SetupRequired:        setupRequired,
 		AuthState:            ResolveAuthState(sess),
@@ -168,7 +177,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		AvailablePlayers:     ownedPlayers,
 		CurrentTitleSlug:     currentTitleSlug,
 		AvailableTitles:      BuildAvailableTitles(),
-		Locale:               settingsExcerpt.Lang,
+		Locale:               locale,
 		HintsVisibleDefault:  true,
 		FeatureFlags:         flags,
 		Capabilities:         capabilities,

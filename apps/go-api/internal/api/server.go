@@ -991,6 +991,7 @@ func NewRouter(
 			// P6.3 : guard de capability — media routes nécessitent CapMedia.
 			media := handlers.NewMediaHandler(reg.Media, reg.MediaUpload, cfg.RepoRoot).
 				WithSettingsStore(settingsStore).
+				WithDemoMode(cfg.DemoMode).
 				WithAuthorsContext(reg.MediaPlayerCtx, func(_ context.Context, titleSlug string) ([]domain.PlayerSummary, error) {
 					return cfg.LoadPlayers(titleSlug)
 				}).

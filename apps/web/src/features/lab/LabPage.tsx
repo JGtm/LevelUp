@@ -14,7 +14,6 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { LabIntroNotice, LabSelectedToolNotice } from './LabHelp'
 import { getLabText, normalizeLabLocale, type LabTab } from './i18n'
 import { useLabContracts, useLabDiagnostics, useLabResources } from './queries'
-import { TabButton } from './_labShared'
 import { ResourcesPanel } from './ResourcesPanel'
 import { ContractsPanel } from './ContractsPanel'
 import { DiagnosticsPanel } from './DiagnosticsPanel'
@@ -57,21 +56,21 @@ export function LabPage() {
   const diagnosticsQuery = useLabDiagnostics(canManageInstance && activeTab === 'diagnostics')
 
   useEffect(() => {
-    const first = resourcesQuery.data?.snapshots[0]
+    const first = resourcesQuery.data?.snapshots?.[0]
     if (first && !selectedSnapshotKey) {
       setSelectedSnapshotKey(first.resource_key)
     }
   }, [resourcesQuery.data?.snapshots, selectedSnapshotKey])
 
   useEffect(() => {
-    const first = resourcesQuery.data?.assets.items[0]
+    const first = resourcesQuery.data?.assets.items?.[0]
     if (first && !selectedAssetID) {
       setSelectedAssetID(first.asset_id)
     }
   }, [resourcesQuery.data?.assets.items, selectedAssetID])
 
   useEffect(() => {
-    const first = resourcesQuery.data?.medals.items[0]
+    const first = resourcesQuery.data?.medals.items?.[0]
     if (first && selectedMedalID == null) {
       setSelectedMedalID(first.medal_id)
     }
@@ -94,15 +93,30 @@ export function LabPage() {
         <Badge variant="outline">{text.page.currentTitleBadge}: {currentTitleSlug}</Badge>
       </div>
 
-      <div className="flex flex-wrap gap-2 rounded-full bg-muted p-1">
-        {TAB_VALUES.map((tab) => (
-          <TabButton
-            key={tab}
-            active={activeTab === tab}
-            label={text.tabs[tab]}
-            onClick={() => startTransition(() => setActiveTab(tab))}
-          />
-        ))}
+      {/* Onglets : même grammaire que Admin/Paramètres (soulignement bas), pas une
+          barre de nav « pilule ». État client (useState), pas de sous-routes. */}
+      <div className="border-b border-border">
+        <nav className="-mb-px flex gap-0 overflow-x-auto">
+          {TAB_VALUES.map((tab) => {
+            const active = activeTab === tab
+            return (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => startTransition(() => setActiveTab(tab))}
+                className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+                  active
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {text.tabs[tab]}
+              </button>
+            )
+          })}
+        </nav>
       </div>
 
       <LabIntroNotice locale={locale} />

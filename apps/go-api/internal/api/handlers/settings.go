@@ -345,8 +345,13 @@ func (h *SettingsHandler) PostMediaResetIndex(w http.ResponseWriter, r *http.Req
 }
 
 // PostMediaScan lance une indexation non-destructive des médias pour tous les joueurs.
-// POST /settings/media/scan — retourne un AsyncJobStatus (202).
+// POST /settings/media/scan — retourne un AsyncJobStatus (202). 422 en mode démo.
 func (h *SettingsHandler) PostMediaScan(w http.ResponseWriter, r *http.Request) {
+	if h.cfg.DemoMode {
+		writeError(r.Context(), w, http.StatusUnprocessableEntity, "demo_mode_unsupported",
+			"Le scan des médias n'est pas disponible en mode démo.")
+		return
+	}
 	job := h.jobStore.Create(domain.JobTypeScanMedia, "")
 	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
 	jobSnapshot := *job

@@ -16,6 +16,13 @@ import (
 )
 
 func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
+	if h.demoMode {
+		// Vitrine publique : l'upload reste visible mais inerte (cf. UploadButton
+		// figé côté front). Refus serveur en garde-fou — aucune écriture disque.
+		writeError(r.Context(), w, http.StatusForbidden, "demo_mode_unsupported",
+			"L'import de médias n'est pas disponible en mode démo.")
+		return
+	}
 	if h.newUpload == nil {
 		writeError(r.Context(), w, http.StatusNotImplemented, "upload_not_configured", "upload factory non configurée")
 		return

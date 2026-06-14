@@ -11,6 +11,8 @@ import type { IntegrityResult } from '@/lib/api/types'
 
 interface BackupTabProps {
   t: ReturnType<typeof getSettingsText>
+  /** Mode démo : sauvegarde figée (bouton désactivé), cf. SettingsPage. */
+  frozen?: boolean
 }
 
 function statusBadge(enabled: boolean, available: boolean, t: BackupTabProps['t']) {
@@ -50,7 +52,7 @@ function fmtDate(iso: string) {
   })
 }
 
-export function BackupTab({ t }: BackupTabProps) {
+export function BackupTab({ t, frozen }: BackupTabProps) {
   const { data: status, isLoading } = useBackupStatus()
   const runBackup = useRunBackup()
 
@@ -63,7 +65,12 @@ export function BackupTab({ t }: BackupTabProps) {
   else if (lastResult) runFeedback = lastResult.skipped ? t.backupRunSkipped : t.backupRunDone
 
   return (
-    <>
+    // En démo, la sauvegarde manuelle est figée (cf. SyncTab) : <fieldset disabled>
+    // neutralise le bouton « Lancer ». Le statut reste lisible.
+    <fieldset
+      disabled={frozen}
+      className={`m-0 min-w-0 space-y-6 border-0 p-0 ${frozen ? 'opacity-60' : ''}`}
+    >
       {/* Statut */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -167,6 +174,6 @@ export function BackupTab({ t }: BackupTabProps) {
           </CardContent>
         </Card>
       )}
-    </>
+    </fieldset>
   )
 }

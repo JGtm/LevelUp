@@ -24,16 +24,20 @@ export function UploadButton({ playerSlug, fullWidth = false }: Props) {
   const { mutate, isPending, isSuccess, data, error, reset } = useUploadMedia(playerSlug)
   const [isDragging, setIsDragging] = useState(false)
   const locale = useAppShellStore((s) => s.locale)
+  // En démo, l'upload est figé : la zone reste visible mais inerte (le serveur
+  // refuse aussi l'upload, cf. PostUploadMedia). Pas de modification possible.
+  const demoMode = useAppShellStore((s) => s.demoMode)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   function handleFiles(list: FileList | null) {
-    if (!list || list.length === 0) return
+    if (demoMode || !list || list.length === 0) return
     reset()
     mutate(Array.from(list))
     if (inputRef.current) inputRef.current.value = ''
   }
 
   function onDragOver(e: React.DragEvent) {
+    if (demoMode) return
     e.preventDefault()
     setIsDragging(true)
   }
@@ -47,6 +51,7 @@ export function UploadButton({ playerSlug, fullWidth = false }: Props) {
   function onDrop(e: React.DragEvent) {
     e.preventDefault()
     setIsDragging(false)
+    if (demoMode) return
     const files = filterAccepted(e.dataTransfer.files)
     handleFiles(files)
   }
@@ -60,6 +65,7 @@ export function UploadButton({ playerSlug, fullWidth = false }: Props) {
         accept={ACCEPTED_EXTS}
         className="hidden"
         aria-hidden="true"
+        disabled={demoMode}
         onChange={(e) => handleFiles(e.target.files)}
       />
 
@@ -68,15 +74,17 @@ export function UploadButton({ playerSlug, fullWidth = false }: Props) {
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
-        onClick={() => !isPending && inputRef.current?.click()}
+        onClick={() => !demoMode && !isPending && inputRef.current?.click()}
         className={[
-          'flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed text-sm transition-colors select-none',
+          'flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed text-sm transition-colors select-none',
           fullWidth ? 'w-full px-6 py-6' : 'px-6 py-4',
-          isPending
-            ? 'cursor-not-allowed border-input text-muted-foreground'
-            : isDragging
-              ? 'border-primary bg-primary/10 text-primary'
-              : 'border-input text-muted-foreground hover:border-border hover:text-foreground',
+          demoMode
+            ? 'cursor-not-allowed border-input text-muted-foreground opacity-50'
+            : isPending
+              ? 'cursor-not-allowed border-input text-muted-foreground'
+              : isDragging
+                ? 'cursor-pointer border-primary bg-primary/10 text-primary'
+                : 'cursor-pointer border-input text-muted-foreground hover:border-border hover:text-foreground',
         ].join(' ')}
       >
         {isPending ? (
