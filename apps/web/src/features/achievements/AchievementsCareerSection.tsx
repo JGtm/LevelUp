@@ -139,7 +139,7 @@ export function AchievementsCareerSection({ playerSlug, layout = 'carousel', fil
         </div>
         <div className="flex min-h-0 flex-1 flex-col p-3 pt-1">
           <div
-            className="flex h-full flex-col gap-2 overflow-y-auto"
+            className="flex h-full max-h-[70vh] flex-col gap-2 overflow-y-auto xl:max-h-none"
             role="list"
             aria-label={t.sectionTitle}
           >

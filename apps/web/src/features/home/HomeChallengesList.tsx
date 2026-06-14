@@ -151,7 +151,7 @@ export function HomeChallengesList({ items }: { items: ChallengeItem[] }) {
   const sections = useMemo(() => buildChallengeSections(sortedItems), [sortedItems])
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 max-h-[70vh] overflow-y-auto xl:max-h-none xl:overflow-visible">
       {sections.map((section) => (
         <ChallengeSection key={section.kind} section={section} />
       ))}
