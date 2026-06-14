@@ -369,7 +369,7 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
         {data && data.entries.length > 0 && (
           <table className="w-full">
             <thead>
-              <tr className="border-b bg-muted text-xs text-muted-foreground">
+              <tr className="border-b bg-muted text-xs text-muted-foreground divide-x divide-border">
                 <SortableTh label="#" className="w-12 text-center" onClick={() => toggleSort('rank')} suffix={sortIcon('rank')} />
                 <th className="py-2 pr-4 text-left font-medium">{t('common.leaderboard.col_player')}</th>
                 {isWorld ? (
@@ -498,7 +498,7 @@ function LeaderboardRow({
 
   return (
     <tr
-      className={`border-b text-sm transition-colors last:border-0 hover:bg-muted ${entry.is_local ? 'bg-accent/40' : ''}`}
+      className={`divide-x divide-border border-b text-sm transition-colors last:border-0 hover:bg-muted ${entry.is_local ? 'bg-accent/40' : ''}`}
       onMouseEnter={() => onHover?.(entry.gamertag)}
     >
       <td className={`py-2 pr-4 text-center font-mono ${rankClass}`}>{entry.rank}</td>
