@@ -1,3 +1,46 @@
+## [2026-06-14] Réhabilitation Lab : routes /lab/* montées (404 prod) + accès durci + test d'intégration — Complété (fix)
+
+**Statut** : Fix livré sur la branche active (`fix/media-captures-base-dir-resilience`). Build CGO OK, `go vet` clean, tests verts : `internal/api` (contrat + nouveau test d'intégration), `internal/api/handlers` (Lab + fail-closed). Front non touché (mocks MSW conservés). Commit autorisé.
+
+**Root cause** : le backend du Lab (`handlers/lab.go` + `service/lab_service.go` + `platform/lab/`) existait et était testé, mais n'était JAMAIS monté dans `server.go` → `/lab/{resources,contracts,diagnostics}` = 404 en prod. Casse masquée par les mocks MSW front + les tests chi-local du handler (aucun ne testait l'intégration serveur réelle). Cf. PMT-14 volet C.
+
+**Fix (4 fichiers)** : (1) `api/server.go` : montage des 3 routes sous `/api/v1` (`lab_platform.NewProvider(cfg)` → `LabService` → `LabHandler`), indépendant de `MULTI_TITLE_API_ENABLED`. (2) `service/lab_service.go` : `requireAccess()` durci **fail-closed** sur erreur `LoadAppSettings` (un fichier ABSENT renvoie un map vide sans erreur → défaut « autorisé quand non configuré » préservé ; seul un fichier corrompu refuse). (3) `api/lab_routes_mounted_test.go` (nouveau) : test d'intégration `chi.Walk` sur le VRAI routeur (`buildTestRouter`) prouvant les 3 routes — le test absent qui aurait attrapé la casse. (4) `api/openapi.yaml` : documentation des 3 paths (exigée par `TestContractRoutesDocumented`, plafond 0).
+
+**Décision** : accès Lab conservé sur le modèle `can_manage_instance` (≠ admin role) ; la bascule admin-role est cadrée pour PMT-14 volet A (diagnostic titre exposé côté admin). Panneau Contracts laissé monté mais marqué pour retrait (réf FastAPI legacy).
+
+**Conclusion / prochaine étape** : Lab fonctionnel en prod. PMT-14 volets A (section admin Titres) + B (partage atoms `_labShared`) restent à faire.
+
+---
+
+## [2026-06-14] Classement : corrections layout (colonne Rang/placement) + matchs cumulés — Complété
+
+**Statut** : Backend (vet + tests intégration duckdb) + front (tsc + eslint + 11/11 vitest) verts. Commit en attente d'autorisation (branche courante).
+
+**Corrections demandées (user) après la 1re passe** :
+- J'avais confondu **placement (#)** et **Rang (tier CSR)**. Corrigé : la colonne # = placement seul ; l'**image de rang** revient dans une colonne **« Rang »** (col 3, après Joueur) — image seule, pas de libellé texte (tout le top-100 est Onyx).
+- Colonne **« Parties » → « Matchs »** (i18n col_matches FR).
+- **FDA déplacée AVANT Frags** (ordre : Rang, CSR, FDA, Frags, Morts, Assists, %V, Matchs, Précision, Combat, Δrang).
+- **Colonnes chiffrées centrées** (text-right → text-center, helper `cell()` + en-têtes).
+- Colonne **Matchs = total CUMULÉ** : nouveau champ `LeaderboardEntry.CumulativeMatchCount` rempli par `loadCumulativeMatchCounts` (somme `match_count` sur les saisons de rang NUMÉRIQUE <= saison affichée — `worldSeasonRank`, pas lexicographique — filtré playlist si fournie, sinon toutes). Tri Matchs sur le cumulé. Domain + TS type ajoutés.
+
+**Note** : `loadPrevSeasonRanks` utilise encore `season_id < ?` (lexicographique) — bug latent du delta de rang inter-saison sur les saisons à un chiffre, non corrigé ici (hors scope, à noter).
+
+---
+
+## [2026-06-14] Multi-titre : ajout phase PMT-14 (admin gestion titres) + constat « Lab cassé » — Complété (doc)
+
+**Statut** : Édition doc-only (aucun code modifié, pas de commit) sur la branche active. Périphérie + index + tracker + master mis à jour (PMT-14 ajouté ; `16→17` phases).
+
+**Contexte** : demande user d'intégrer la gestion des titres/multititres dans l'admin + vérifier/réparer le Lab (potentiellement cassé). Workflow d'investigation (`wjzu1jikh`, 5 agents Explore + synthèse).
+
+**Constat majeur (re-vérifié HEAD)** : **le Lab est CASSÉ** — stack backend complète (`handlers/lab.go`, `service/lab_service.go`, `platform/lab/`) mais **jamais montée dans `server.go`** (0 occurrence `/lab`) → les 3 endpoints `/lab/{resources,contracts,diagnostics}` renvoient 404 en prod. Casse **masquée** par des mocks MSW (`apps/web/src/test/handlers.ts`) + tests chi-local → invisible aux 2 suites de tests. Nuances : accès Lab = capability `can_manage_instance` (≠ admin role) ; `requireAccess()` fail-open si `LoadAppSettings` échoue ; `LabDiagnosticsResponse` n'a aucun champ diagnostic titre → la Phase 1.8 reste entièrement à construire.
+
+**Décision technique** : nouvelle phase **PMT-14 — Admin : gestion des titres (+ réhabilitation Lab)**, 3 volets : **A** feature admin Titres (liste + Status MT-22 enfin LU, diagnostic déclaré-vs-DB = productisation Phase 1.8 dans l'ADMIN pas le Lab dev, export TOML draft presse-papier D10, réutilise capabilities/feature-matrix 1.7a/b sans recalcul, admin-gated) ; **B** réutilisation des atoms Lab (`_labShared`) en partage sans duplication ; **C** réhabilitation Lab (monter `/lab/*` + durcir `requireAccess` fail-closed + **test d'intégration serveur** anti-régression qui aurait attrapé la casse). Oracle double conservé (parité Halo + `synthetic_title_b` qui n'a pas de `capabilities.toml` = oracle de dégradation).
+
+**Conclusion / prochaine étape** : PMT-14 tracé. La réparation EFFECTIVE du Lab (volet C) = travail code à proposer séparément (touche `server.go`, branche partagée). Reste no-code pour l'instant.
+
+---
+
 ## [2026-06-14] Page Classement : 7 améliorations UI (colonnes FDA, noms saisons, surbrillance, tendances colorées) — Complété
 
 **Statut** : tsc + eslint 0 erreur + 11/11 vitest LeaderboardBlock. Commit en attente d'autorisation (branche courante). Noms de saisons à confirmer (cf. flag).

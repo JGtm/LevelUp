@@ -104,9 +104,12 @@ Specs complètes dans [PLAN_MULTITITRE_PERIPHERY.md](PLAN_MULTITITRE_PERIPHERY.m
 | **PMT-11** | Discord notifications (contenu) | MT-26(contenu) | major | — |
 | **PMT-12** | Garde-fous & validateurs | MT-21, MT-09, MT-12(lint) | major | **après** PMT-3 (cutoffs) |
 | **PMT-13** | Mineurs & bénins (décision documentée) | MT-24, MT-25, MT-20 | minor | — |
+| **PMT-14** | Admin : gestion des titres (+ réhabilitation Lab) | MT-22 (+1.7a/b, 1.8) | major | PMT-3, 1.7a/b✅, PMT-4/8 |
 | **EXT-1.5** | Extension Phase 1.5 (metadata/ops/seed/notif) | MT-16, MT-10, MT-18, MT-17 | major | PMT-3 |
 | **EXT-2** | Extension Phase 2 (career/LUSR/extraction/prestige) | MT-07, MT-15, MT-14, MT-19 | major | PMT-3 |
 | **EXT-5** | Extension Phase 5 (slug constants + tables Halo front) | MT-12, MT-13 | major | Phase 5 |
+
+> **Constat Lab (PMT-14 volet C, audit 2026-06-14)** : le Lab est **cassé** — backend complet (`handlers/lab.go`, `service/lab_service.go`, `platform/lab/`) mais **jamais monté** dans `server.go` (0 occurrence `/lab`) → les 3 endpoints `/lab/{resources,contracts,diagnostics}` renvoient **404 en prod**. Casse masquée par des mocks MSW (`test/handlers.ts`) + tests chi-local. Réhabilitation = monter + durcir `requireAccess` (fail-closed) + **test d'intégration serveur** anti-régression. Modèle d'accès Lab = capability `can_manage_instance` (≠ admin role) → décision à trancher au montage.
 
 ### Séquencement (relecteur de cohérence)
 

@@ -143,7 +143,7 @@
 
 ## Périphérie multi-titre (audit 2026-06-14) — registre B (hors chemin data-lecture)
 
-> Index complet : [PLAN_MULTITITRE_INDEX.md](PLAN_MULTITITRE_INDEX.md) (`MT-01..MT-26`). Specs : [PLAN_MULTITITRE_PERIPHERY.md](PLAN_MULTITITRE_PERIPHERY.md) (`PMT-1..13` + `EXT-1.5/2/5`). **⚠ Pointeurs datés — RE-VÉRIFIER avant exécution.** Méthode : `expand → parity-gate → contract` + oracle double (parité Halo golden + `synthetic_test_title`).
+> Index complet : [PLAN_MULTITITRE_INDEX.md](PLAN_MULTITITRE_INDEX.md) (`MT-01..MT-26`). Specs : [PLAN_MULTITITRE_PERIPHERY.md](PLAN_MULTITITRE_PERIPHERY.md) (`PMT-1..14` + `EXT-1.5/2/5`). **⚠ Pointeurs datés — RE-VÉRIFIER avant exécution.** Méthode : `expand → parity-gate → contract` + oracle double (parité Halo golden + `synthetic_test_title`).
 
 | Phase | Objet | Axes | Sév. | Statut | Prérequis |
 |---|---|---|:-:|:-:|---|
@@ -160,11 +160,14 @@
 | PMT-11 | Discord notifications (contenu) | MT-26 | major | ⬜ | — |
 | PMT-12 | Garde-fous & validateurs | MT-21, MT-09, MT-12 | major | ⬜ | après PMT-3 |
 | PMT-13 | Mineurs & bénins (décision documentée) | MT-24, MT-25, MT-20 | minor | ⬜ | — |
+| PMT-14 | Admin : gestion des titres (+ réhab. Lab cassé) | MT-22 (+1.7a/b, 1.8) | major | ⬜ | PMT-3, 1.7a/b✅, PMT-4/8 |
 | EXT-1.5 | Extension Phase 1.5 (metadata/ops/seed/notif) | MT-16/10/18/17 | major | ⬜ | PMT-3 |
 | EXT-2 | Extension Phase 2 (career/LUSR/extraction/prestige) | MT-07/15/14/19 | major | ⬜ | PMT-3 |
 | EXT-5 | Extension Phase 5 (slug constants + tables Halo front) | MT-12/13 | major | ⬜ | Phase 5 |
 
 **Bloquants 2ᵉ titre (récap)** : Phase 1.5 (DDL) + PMT-1 (hosts) + PMT-2 (auth) + PMT-3 (écriture par titre). Le reste suit.
+
+**Constat (PMT-14 vol. C, audit 2026-06-14)** : le **Lab est cassé** — backend implémenté mais **non monté** dans `server.go` (`/lab/*` → 404 en prod, masqué par mocks MSW + tests chi-local ; `requireAccess` fail-open). Réhabilitation tracée en PMT-14 volet C (monter + durcir + test d'intégration serveur).
 
 ## Prochaines 3 actions concrètes (quand on démarre l'exécution)
 
