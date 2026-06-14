@@ -1,3 +1,22 @@
+## [2026-06-14] Page Classement : 7 améliorations UI (colonnes FDA, noms saisons, surbrillance, tendances colorées) — Complété
+
+**Statut** : tsc + eslint 0 erreur + 11/11 vitest LeaderboardBlock. Commit en attente d'autorisation (branche courante). Noms de saisons à confirmer (cf. flag).
+
+**Demandes user (7)** sur la page Classement (LeaderboardBlock) :
+1. Colonnes **Frags/Morts/Assistances** ajoutées (sortables), depuis `entry.kills/deaths/assists`.
+2. **KDA → FDA** en FR (libellé catégorie `cat_kda` + colonne `col_kda`) ; EN reste KDA.
+3. Tri par colonne (existait ; étendu aux nouvelles via `toggleSort` + cases `kills/deaths/assists` dans `sortValue`).
+4. **Noms officiels de saisons** : `SEASONS`/`KNOWN_SEASON_LABEL` complétés pour les 8 saisons (sources projet : migration `csr_placement_thresholds` + scraper). 3-1 Echoes Within, 4-1 Infection, 5-1 Reckoning, 11-1 Combined Arms, 12-1 Shadows, 13-2 Infinite ; 6-1/10-1 sans nom marketing connu → « Saison N.M ».
+5. **Surbrillance du meilleur par colonne** (`best` memo + `BEST_CLS = font-semibold text-primary`) : max, SAUF Morts = min. FDA/Précision comparés sur la valeur PAR MATCH (=== exact).
+6. **Image de rang déplacée** dans la colonne # + **colonne Tier supprimée** (au top-100 tout le monde est Onyx). `tierLabel`/`toRoman`/`SUB_TIER_ROMAN` devenus morts → supprimés.
+7. **Triangles de tendance colorés** : BUG RACINE — les tokens `--narrative-trend-positive/negative/neutral` étaient RÉFÉRENCÉS (KPIStrip, LeaderboardBlock, PlayerScoreCard) mais **définis nulle part** → `var()` vide → incolores. Définis dans `globals.css` en référençant `--success`/`--destructive`/`--muted-foreground` (auto-adapté dark/light). Corrige les 3 composants.
+
+**À confirmer (user)** : 11-1 = « Combined Arms » (le composant disait « Last Stand » — contradiction, j'ai suivi le scraper test) ; 6-1 & 10-1 sans nom officiel connu.
+
+**Séparé (non-code)** : sur le VPS les colonnes enrichies sont vides car la donnée backfillée (`world_player_season_stats`) est LOCALE — à déployer (copier la DB / backfill côté VPS).
+
+---
+
 ## [2026-06-14] Nettoyage : commit du flag -quiet (oublié) + gitignore artefacts world — Complété
 
 **Statut** : vet OK, commit branche courante (`main`, sans push). Working tree nettoyé.

@@ -26,9 +26,6 @@ import { tokenCssVar } from '@/lib/accessibility'
 import { skillDeltaScale } from '@/lib/accessibility/scales'
 import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
 
-const SUB_TIER_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI']
-const toRoman = (n: number): string => SUB_TIER_ROMAN[n] ?? String(n)
-
 const CSR_WORLD = 'csr-world'
 
 // Masquage responsive : le mode enrichi compte jusqu'à 10 colonnes. #, joueur et CSR
@@ -36,6 +33,9 @@ const CSR_WORLD = 'csr-world'
 // précision/rendement/Δrang dès `lg`. Mêmes classes appliquées en-tête ET cellules.
 const COL_HIDE_SM = 'hidden sm:table-cell'
 const COL_HIDE_LG = 'hidden lg:table-cell'
+
+// Mise en valeur du meilleur de chaque colonne (token sémantique primary, pas de hex).
+const BEST_CLS = 'font-semibold text-primary'
 
 /**
  * Playlists classées (asset IDs stables) — FALLBACK si le catalogue dynamique
@@ -51,12 +51,22 @@ const PLAYLISTS: { id: string; label: string }[] = [
   { id: '71734db4-4b8e-4682-9206-62b6eff92582', label: 'Chacun pour soi classé' },
 ]
 
-/** Saisons CSR récentes (FALLBACK + libellés localisés, cf. PLAYLISTS). */
+/**
+ * Saisons CSR : libellés officiels (noms d'opération Halo Infinite) + numéro, pour
+ * que l'utilisateur les reconnaisse. Sert de FALLBACK (catalogue vide) ET de table de
+ * libellés (override du display_name brut renvoyé par l'API). Noms sourcés du projet
+ * (migration csr_placement_thresholds + scraper). Les saisons 6.1/10.1 n'ont pas de
+ * nom marketing connu côté projet → numéro seul.
+ */
 const SEASONS: { id: string; label: string }[] = [
   { id: 'csrseason13-2', label: 'Infinite (13.2)' },
-  { id: 'csrseason13-1', label: 'Saison 13.1' },
   { id: 'csrseason12-1', label: 'Shadows (12.1)' },
-  { id: 'csrseason11-1', label: 'Last Stand (11.1)' },
+  { id: 'csrseason11-1', label: 'Combined Arms (11.1)' },
+  { id: 'csrseason10-1', label: 'Saison 10.1' },
+  { id: 'csrseason6-1', label: 'Saison 6.1' },
+  { id: 'csrseason5-1', label: 'Reckoning (5.1)' },
+  { id: 'csrseason4-1', label: 'Infection (4.1)' },
+  { id: 'csrseason3-1', label: 'Echoes Within (3.1)' },
 ]
 
 const KNOWN_PLAYLIST_LABEL: Record<string, string> = Object.fromEntries(PLAYLISTS.map((p) => [p.id, p.label]))
@@ -82,11 +92,6 @@ interface LeaderboardBlockProps {
 }
 
 type SortDir = 'asc' | 'desc'
-
-function tierLabel(entry: LeaderboardEntry): string {
-  if (!entry.tier || entry.tier === 'Onyx') return 'Onyx'
-  return entry.sub_tier > 0 ? `${entry.tier} ${toRoman(entry.sub_tier)}` : entry.tier
-}
 
 /** Formate la valeur d'une catégorie de stat. */
 function formatStatValue(entry: LeaderboardEntry, locale: string): string {
@@ -245,6 +250,12 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
           return e.matches_played ?? 0
         case 'world_matches':
           return e.match_count ?? 0
+        case 'kills':
+          return e.kills ?? 0
+        case 'deaths':
+          return e.deaths ?? 0
+        case 'assists':
+          return e.assists ?? 0
         case 'win_rate':
           return e.win_rate ?? 0
         case 'kda':
@@ -262,6 +273,31 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
   // Colonnes enrichies affichées uniquement si au moins un joueur est backfillé
   // (sinon table CSR historique inchangée). Calculé une fois pour aligner en-tête + cellules.
   const hasEnrichment = isWorld && entries.some((e) => e.match_count != null)
+
+  // Meilleure valeur par colonne (mise en valeur). "Meilleur" = max, SAUF Morts (min).
+  // FDA/Précision comparés sur leur valeur PAR MATCH (même calcul que l'affichage → ===
+  // exact). null si aucune entrée enrichie.
+  const best = useMemo(() => {
+    const en = entries.filter((e) => e.match_count != null)
+    if (en.length === 0) return null
+    const pick = (f: (e: LeaderboardEntry) => number | null | undefined, min = false) =>
+      en.reduce<number | null>((acc, e) => {
+        const v = f(e)
+        if (v == null) return acc
+        if (acc == null) return v
+        return (min ? v < acc : v > acc) ? v : acc
+      }, null)
+    const perMatch = (e: LeaderboardEntry, v?: number | null) => (v != null && e.match_count ? v / e.match_count : null)
+    return {
+      csr: pick((e) => e.csr_value),
+      kills: pick((e) => e.kills),
+      deaths: pick((e) => e.deaths, true),
+      assists: pick((e) => e.assists),
+      winRate: pick((e) => e.win_rate),
+      fda: pick((e) => perMatch(e, e.kda)),
+      accuracy: pick((e) => perMatch(e, e.accuracy)),
+    }
+  }, [entries])
 
   const sortIcon = (key: string): string => (sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '')
 
@@ -338,13 +374,15 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
                 <th className="py-2 pr-4 text-left font-medium">{t('common.leaderboard.col_player')}</th>
                 {isWorld ? (
                   <>
-                    <th className={`py-2 pr-4 text-center font-medium ${COL_HIDE_LG}`}>{t('common.leaderboard.col_tier')}</th>
                     <SortableTh label={t('common.leaderboard.col_csr')} className="text-right" onClick={() => toggleSort('csr')} suffix={sortIcon('csr')} />
                     {hasEnrichment && (
                       <>
-                        <SortableTh label={t('common.leaderboard.col_matches')} className={`text-right ${COL_HIDE_LG}`} onClick={() => toggleSort('world_matches')} suffix={sortIcon('world_matches')} />
+                        <SortableTh label={t('common.leaderboard.col_frags')} className={`text-right ${COL_HIDE_SM}`} onClick={() => toggleSort('kills')} suffix={sortIcon('kills')} />
+                        <SortableTh label={t('common.leaderboard.col_deaths')} className={`text-right ${COL_HIDE_SM}`} onClick={() => toggleSort('deaths')} suffix={sortIcon('deaths')} />
+                        <SortableTh label={t('common.leaderboard.col_assists')} className={`text-right ${COL_HIDE_SM}`} onClick={() => toggleSort('assists')} suffix={sortIcon('assists')} />
                         <SortableTh label={t('common.leaderboard.col_win_rate')} className={`text-right ${COL_HIDE_SM}`} onClick={() => toggleSort('win_rate')} suffix={sortIcon('win_rate')} />
                         <SortableTh label={t('common.leaderboard.col_kda')} className={`text-right ${COL_HIDE_SM}`} onClick={() => toggleSort('kda')} suffix={sortIcon('kda')} />
+                        <SortableTh label={t('common.leaderboard.col_matches')} className={`text-right ${COL_HIDE_LG}`} onClick={() => toggleSort('world_matches')} suffix={sortIcon('world_matches')} />
                         <SortableTh label={t('common.leaderboard.col_accuracy')} className={`text-right ${COL_HIDE_LG}`} onClick={() => toggleSort('accuracy')} suffix={sortIcon('accuracy')} />
                         <th className={`py-2 pr-4 text-center font-medium ${COL_HIDE_LG}`}>{t('common.leaderboard.col_combat')}</th>
                         <th className={`py-2 pr-4 text-right font-medium ${COL_HIDE_LG}`}>{t('common.leaderboard.col_rank_delta')}</th>
@@ -366,6 +404,7 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
                   entry={entry}
                   isWorld={isWorld}
                   hasEnrichment={hasEnrichment}
+                  best={best}
                   localLabel={t('common.leaderboard.local_badge')}
                   trendTooltip={t('common.leaderboard.trend_tooltip')}
                   rankDeltaTooltip={t('common.leaderboard.rank_delta_tooltip')}
@@ -394,11 +433,22 @@ function SortableTh({ label, className, onClick, suffix }: { label: string; clas
   )
 }
 
+type BestValues = {
+  csr: number | null
+  kills: number | null
+  deaths: number | null
+  assists: number | null
+  winRate: number | null
+  fda: number | null
+  accuracy: number | null
+}
+
 /** Ligne du classement. */
 function LeaderboardRow({
   entry,
   isWorld,
   hasEnrichment,
+  best,
   localLabel,
   trendTooltip,
   rankDeltaTooltip,
@@ -409,6 +459,7 @@ function LeaderboardRow({
   entry: LeaderboardEntry
   isWorld: boolean
   hasEnrichment: boolean
+  best: BestValues | null
   localLabel: string
   trendTooltip: string
   rankDeltaTooltip: string
@@ -416,20 +467,18 @@ function LeaderboardRow({
   onHover?: (gamertag: string) => void
   onGamertagClick: (gamertag: string) => void
 }) {
-  // Accent podium : top-3 en gras + couleur pleine (vs muted), sans nouvelle couleur
-  // (tokens sémantiques foreground/muted existants — pas de hex ni classe de teinte).
+  const intl = locale === 'en' ? 'en-US' : 'fr-FR'
+  // Accent podium : top-3 en gras (tokens foreground/muted, pas de hex).
   const isPodium = entry.rank <= 3
   const rankClass = isPodium ? 'font-bold text-foreground' : 'text-muted-foreground'
+  // Valeurs PAR MATCH (FDA/Précision) — mêmes calculs que l'affichage pour comparer au best.
+  const fda = entry.kda != null && entry.match_count ? entry.kda / entry.match_count : null
+  const acc = entry.accuracy != null && entry.match_count ? entry.accuracy / entry.match_count : null
+  // Classe de cellule : meilleure valeur de la colonne mise en valeur (BEST_CLS), sinon foreground.
+  const cell = (isBest: boolean) => `text-right font-mono ${isBest ? BEST_CLS : 'text-foreground'}`
+
   const playerCell: ReactNode = (
     <span className="inline-flex items-center gap-2">
-      {isWorld && (
-        <img
-          src={csrRankImageURL(entry.tier, entry.sub_tier)}
-          alt={entry.tier}
-          className="h-6 w-6 shrink-0 object-contain"
-          loading="lazy"
-        />
-      )}
       <button
         type="button"
         className="transition-colors hover:text-primary hover:underline"
@@ -451,31 +500,47 @@ function LeaderboardRow({
       className={`border-b text-sm transition-colors last:border-0 hover:bg-muted ${entry.is_local ? 'bg-accent/40' : ''}`}
       onMouseEnter={() => onHover?.(entry.gamertag)}
     >
-      <td className={`py-2 pr-4 text-center font-mono ${rankClass}`}>{entry.rank}</td>
+      <td className={`py-2 pr-4 text-center font-mono ${rankClass}`}>
+        <span className="inline-flex items-center justify-center gap-1.5">
+          {isWorld && (
+            <img
+              src={csrRankImageURL(entry.tier, entry.sub_tier)}
+              alt={entry.tier}
+              className="h-5 w-5 shrink-0 object-contain"
+              loading="lazy"
+            />
+          )}
+          {entry.rank}
+        </span>
+      </td>
       <td className="py-2 pr-4 font-medium text-foreground">{playerCell}</td>
       {isWorld ? (
         <>
-          <td className={`py-2 pr-4 text-center text-xs text-muted-foreground ${COL_HIDE_LG}`}>{tierLabel(entry)}</td>
-          <td className="py-2 pr-4 text-right font-mono text-foreground">
-            {entry.csr_value.toLocaleString(locale === 'en' ? 'en-US' : 'fr-FR')}
-          </td>
+          <td className={`py-2 pr-4 ${cell(best?.csr === entry.csr_value)}`}>{entry.csr_value.toLocaleString(intl)}</td>
           {hasEnrichment && (
             <>
-              <td className={`py-2 pr-4 text-right font-mono text-muted-foreground ${COL_HIDE_LG}`}>{entry.match_count ?? '—'}</td>
-              <td className={`py-2 pr-4 text-right font-mono text-foreground ${COL_HIDE_SM}`}>
-                {entry.win_rate != null ? <MetricWithTrend text={fmtPct(entry.win_rate, locale)} trend={entry.win_rate_trend} tooltip={trendTooltip} /> : '—'}
+              <td className={`py-2 pr-4 ${COL_HIDE_SM} ${cell(entry.kills != null && best?.kills === entry.kills)}`}>
+                {entry.kills?.toLocaleString(intl) ?? '—'}
               </td>
-              <td className={`py-2 pr-4 text-right font-mono text-foreground ${COL_HIDE_SM}`}>
-                {entry.kda != null && entry.match_count ? (
-                  <MetricWithTrend text={(entry.kda / entry.match_count).toFixed(2)} trend={entry.kda_trend} tooltip={trendTooltip} />
+              <td className={`py-2 pr-4 ${COL_HIDE_SM} ${cell(entry.deaths != null && best?.deaths === entry.deaths)}`}>
+                {entry.deaths?.toLocaleString(intl) ?? '—'}
+              </td>
+              <td className={`py-2 pr-4 ${COL_HIDE_SM} ${cell(entry.assists != null && best?.assists === entry.assists)}`}>
+                {entry.assists?.toLocaleString(intl) ?? '—'}
+              </td>
+              <td className={`py-2 pr-4 ${COL_HIDE_SM} ${cell(entry.win_rate != null && best?.winRate === entry.win_rate)}`}>
+                {entry.win_rate != null ? (
+                  <MetricWithTrend text={fmtPct(entry.win_rate, locale)} trend={entry.win_rate_trend} tooltip={trendTooltip} />
                 ) : (
                   '—'
                 )}
               </td>
-              <td className={`py-2 pr-4 text-right font-mono text-foreground ${COL_HIDE_LG}`}>
-                {entry.accuracy != null && entry.match_count
-                  ? `${(entry.accuracy / entry.match_count).toLocaleString(locale === 'en' ? 'en-US' : 'fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
-                  : '—'}
+              <td className={`py-2 pr-4 ${COL_HIDE_SM} ${cell(fda != null && best?.fda === fda)}`}>
+                {fda != null ? <MetricWithTrend text={fda.toFixed(2)} trend={entry.kda_trend} tooltip={trendTooltip} /> : '—'}
+              </td>
+              <td className={`py-2 pr-4 text-right font-mono text-muted-foreground ${COL_HIDE_LG}`}>{entry.match_count ?? '—'}</td>
+              <td className={`py-2 pr-4 ${COL_HIDE_LG} ${cell(acc != null && best?.accuracy === acc)}`}>
+                {acc != null ? `${acc.toLocaleString(intl, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%` : '—'}
               </td>
               <td className={`py-2 pr-4 ${COL_HIDE_LG}`}>{renderCombatYield(entry)}</td>
               <td className={`py-2 pr-4 text-right font-mono ${COL_HIDE_LG}`}>

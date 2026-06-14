@@ -714,8 +714,20 @@ fr = "Victoires"
 en = "Win rate"
 
 [common.leaderboard.col_kda]
-fr = "KDA"
+fr = "FDA"
 en = "KDA"
+
+[common.leaderboard.col_frags]
+fr = "Frags"
+en = "Kills"
+
+[common.leaderboard.col_deaths]
+fr = "Morts"
+en = "Deaths"
+
+[common.leaderboard.col_assists]
+fr = "Assistances"
+en = "Assists"
 
 [common.leaderboard.col_rank_delta]
 fr = "Δ rang"
@@ -750,7 +762,7 @@ fr = "Frags"
 en = "Kills"
 
 [common.leaderboard.cat_kda]
-fr = "KDA"
+fr = "FDA"
 en = "KDA"
 
 [common.leaderboard.cat_kdr]

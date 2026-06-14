@@ -57,6 +57,13 @@
   --info: oklch(0.70 0.12 220);
   --info-foreground: oklch(0.985 0 0);
 
+  /* Tendance (▲ progression / ▼ régression / = stagnation) — réutilise les tokens
+     sémantiques (auto-adapté dark/light via var(), résolu à l'usage). Référencé en RAW
+     var(--narrative-trend-*) par KPIStrip / LeaderboardBlock / PlayerScoreCard. */
+  --narrative-trend-positive: var(--success);
+  --narrative-trend-negative: var(--destructive);
+  --narrative-trend-neutral: var(--muted-foreground);
+
   /* Semantic — compare pair */
   --compare-a: oklch(0.65 0.15 250);
   --compare-b: oklch(0.70 0.15 55);
