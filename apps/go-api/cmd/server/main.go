@@ -1083,28 +1083,28 @@ func main() {
 	if cfg.SharedProvider != nil {
 		lbScraper := halo.NewLeaderboardScraper(800 * time.Millisecond)
 		worldLbCron := scheduler.NewWorldLeaderboardCron(cfg.SharedProvider, lbScraper, 0)
-		// Enrichissement des stats joueur (agrégateur ranked-only, dédup match-centric,
-		// append-only) : TOUJOURS actif, via le POOL multi-token (tous les comptes
-		// db_profiles en round-robin — même chemin d'auth que le reste de l'app et que
-		// le CLI -all-tokens, store-first ADR 0023). Construction LAZY (Eager:false) →
-		// zéro résolution token au boot, différée au 1er tick (goroutine ci-dessous,
-		// hors chemin de démarrage ; le garde-fou fraîcheur 20h évite tout re-fetch à
-		// chaque hot-reload). Un build en échec (db_profiles vide/illisible) dégrade en
-		// scrape-only sans paniquer.
-		if enr, gts, eerr := worldenrich.BuildEnricher(cfg, worldenrich.EnricherOptions{
-			RPS:   5,
-			Eager: false, // TokenGamertag vide → BuildMultiHaloSource = pool db_profiles
-		}); eerr != nil {
-			slog.WarnContext(ctx, "world_leaderboard_cron: enricher non construit — cron en scrape-only",
-				"err", eerr)
-		} else {
-			worldLbCron.WithStatsEnricher(enr)
-			slog.InfoContext(ctx, "world_leaderboard_cron: enrichissement actif (pool multi-token)",
-				"token_accounts", gts)
-		}
 		schedulerWG.Add(1)
 		go func() {
 			defer schedulerWG.Done()
+			// Enrichissement des stats joueur (ranked-only, dédup match-centric,
+			// append-only) : TOUJOURS actif, via le POOL multi-token (comptes db_profiles
+			// round-robin — même chemin d'auth que le reste de l'app et que le CLI
+			// -all-tokens, store-first ADR 0023). Construit ICI, dans la goroutine (hors
+			// chemin de démarrage → boot non bloqué), en Eager:true : résout les tokens et
+			// ÉLIMINE les comptes au RT mort (invalid_grant). Indispensable — sinon le
+			// round-robin taperait des sources mortes et raterait des fetchs. Un build en
+			// échec (aucun compte résolu) dégrade en scrape-only sans paniquer.
+			if enr, gts, eerr := worldenrich.BuildEnricher(cfg, worldenrich.EnricherOptions{
+				RPS:   5,
+				Eager: true, // filtre les comptes db_profiles dont le RT ne résout pas
+			}); eerr != nil {
+				slog.WarnContext(ctx, "world_leaderboard_cron: enricher non construit — cron en scrape-only",
+					"err", eerr)
+			} else {
+				worldLbCron.WithStatsEnricher(enr)
+				slog.InfoContext(ctx, "world_leaderboard_cron: enrichissement actif (pool multi-token)",
+					"token_accounts", gts)
+			}
 			worldLbCron.Run(schedulerCtx)
 		}()
 		slog.InfoContext(ctx, "world_leaderboard_cron: scheduled",
