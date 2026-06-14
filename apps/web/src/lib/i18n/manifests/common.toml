@@ -702,7 +702,7 @@ fr = "CSR"
 en = "CSR"
 
 [common.leaderboard.col_matches]
-fr = "Parties"
+fr = "Matchs"
 en = "Matches"
 
 [common.leaderboard.col_value]

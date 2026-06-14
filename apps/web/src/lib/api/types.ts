@@ -3412,6 +3412,8 @@ export interface LeaderboardEntry {
   // Enrichissement stats mondiales CSR (Phase C/D) — nil tant que le joueur
   // n'est pas backfillé (compteurs bruts + ratios dérivés + comparaison inter-saison).
   match_count?: number | null
+  /** Matchs cumulés sur la playlist, toutes saisons jusqu'à celle affichée (colonne "Matchs"). */
+  cumulative_match_count?: number | null
   win_count?: number | null
   loss_count?: number | null
   tie_count?: number | null

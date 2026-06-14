@@ -1,3 +1,18 @@
+## [2026-06-14] Classement : corrections layout (colonne Rang/placement) + matchs cumulés — Complété
+
+**Statut** : Backend (vet + tests intégration duckdb) + front (tsc + eslint + 11/11 vitest) verts. Commit branche courante, sans push.
+
+**Corrections (user) après la 1re passe d'améliorations** :
+- Confusion **placement (#)** vs **Rang (tier CSR)** corrigée : # = placement seul ; l'**image de rang** revient dans une colonne **« Rang »** (col 3), image seule (pas de libellé — top-100 tous Onyx).
+- **« Parties » → « Matchs »** (i18n col_matches FR).
+- **FDA déplacée AVANT Frags** (ordre : Rang, CSR, FDA, Frags, Morts, Assists, %V, Matchs, Précision, Combat, Δrang).
+- **Colonnes chiffrées centrées** (helper `cell()` + en-têtes text-center).
+- Colonne **Matchs = total CUMULÉ** : champ `LeaderboardEntry.CumulativeMatchCount` rempli par `loadCumulativeMatchCounts` (somme `match_count` sur saisons de rang NUMÉRIQUE <= saison affichée via `worldSeasonRank`, filtré playlist si fournie). Tri Matchs sur le cumulé. Domain Go + type TS ajoutés.
+
+**Note** : `loadPrevSeasonRanks` (Δrang inter-saison) utilise encore `season_id < ?` lexicographique — bug latent sur les saisons à un chiffre, non corrigé ici.
+
+---
+
 ## [2026-06-14] Réhabilitation Lab : routes /lab/* montées (404 prod) + accès durci + test d'intégration — Complété (fix)
 
 **Statut** : Fix livré sur la branche active (`fix/media-captures-base-dir-resilience`). Build CGO OK, `go vet` clean, tests verts : `internal/api` (contrat + nouveau test d'intégration), `internal/api/handlers` (Lab + fail-closed). Front non touché (mocks MSW conservés). Commit autorisé.
