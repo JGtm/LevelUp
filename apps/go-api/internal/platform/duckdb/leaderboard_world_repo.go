@@ -10,6 +10,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -151,11 +153,15 @@ func applyWorldEnrichment(e *domain.LeaderboardEntry, s domain.WorldPlayerSeason
 }
 
 // GetWorldLeaderboardCatalog liste les saisons et playlists pour lesquelles des
-// snapshots CSR mondiaux existent réellement (distinct sur la vue _latest).
-// Alimente les sélecteurs dynamiques de la page Classement. Les saisons sont
-// triées du plus récent au plus ancien (ordre lexicographique inverse, cohérent
-// avec le format "csrseasonNN-M"). Les playlists reçoivent un libellé via la
-// référence rankedplaylists (FR si dispo, sinon EN, sinon l'asset_id brut).
+// STATS ENRICHIES existent réellement (distinct sur world_player_season_stats_latest),
+// PAS le simple leaderboard scrappé. Une saison qui a un classement CSR mais aucune
+// stat détaillée — saison archivée dont l'historique de matchs dépasse l'horizon de
+// l'API Halo (ex. csrseason3-1 / 4-1) — n'est donc PAS proposée aux sélecteurs, sinon
+// le filtre offrirait une saison qui n'affiche que des colonnes vides. Les stats
+// dérivant du leaderboard, toute saison listée a forcément aussi un classement.
+// Tri du plus récent au plus ancien par NUMÉRO de saison (un ORDER BY season_id SQL
+// serait LEXICOGRAPHIQUE : csrseason6-1 > csrseason13-2 car '6' > '1' → faux). Les
+// playlists reçoivent un libellé via rankedplaylists (FR si dispo, sinon EN, sinon id brut).
 func (r *LeaderboardRepo) GetWorldLeaderboardCatalog(ctx context.Context) (domain.LeaderboardCatalog, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -167,13 +173,14 @@ func (r *LeaderboardRepo) GetWorldLeaderboardCatalog(ctx context.Context) (domai
 	defer release()
 
 	seasons, err := scanCatalogColumn(ctx, sharedDB,
-		`SELECT DISTINCT season_id FROM world_csr_leaderboard_latest
-		 WHERE season_id <> '' ORDER BY season_id DESC`, nil)
+		`SELECT DISTINCT season_id FROM world_player_season_stats_latest
+		 WHERE season_id <> ''`, nil)
 	if err != nil {
 		return domain.LeaderboardCatalog{}, fmt.Errorf("GetWorldLeaderboardCatalog: seasons: %w", err)
 	}
+	sortSeasonsRecentFirst(seasons)
 	plIDs, err := scanIDColumn(ctx, sharedDB,
-		`SELECT DISTINCT playlist_id FROM world_csr_leaderboard_latest
+		`SELECT DISTINCT playlist_id FROM world_player_season_stats_latest
 		 WHERE playlist_id <> '' ORDER BY playlist_id`)
 	if err != nil {
 		return domain.LeaderboardCatalog{}, fmt.Errorf("GetWorldLeaderboardCatalog: playlists: %w", err)
@@ -191,6 +198,27 @@ func (r *LeaderboardRepo) GetWorldLeaderboardCatalog(ctx context.Context) (domai
 	slog.DebugContext(ctx, "catalogue classement mondial lu", "module", logModuleLeaderboard,
 		"seasons", len(seasons), "playlists", len(playlists), "noms_fr_catalogue", len(frMap))
 	return domain.LeaderboardCatalog{Seasons: seasons, Playlists: playlists}, nil
+}
+
+// worldSeasonRank extrait un rang triable d'un id "csrseason{major}-{minor}"
+// (major*100 + minor) ; format inconnu → 0. Sert au tri récent-d'abord du catalogue
+// (un tri lexicographique mettrait csrseason6-1 avant csrseason13-2).
+func worldSeasonRank(id string) int {
+	s := strings.TrimPrefix(id, "csrseason")
+	major, minor := s, "0"
+	if i := strings.IndexByte(s, '-'); i >= 0 {
+		major, minor = s[:i], s[i+1:]
+	}
+	mj, _ := strconv.Atoi(major)
+	mn, _ := strconv.Atoi(minor)
+	return mj*100 + mn
+}
+
+// sortSeasonsRecentFirst trie les saisons du plus récent au plus ancien (numérique).
+func sortSeasonsRecentFirst(seasons []domain.LeaderboardCatalogRef) {
+	sort.SliceStable(seasons, func(i, j int) bool {
+		return worldSeasonRank(seasons[i].ID) > worldSeasonRank(seasons[j].ID)
+	})
 }
 
 // playlistName applique la cascade de résolution d'un nom de playlist.
