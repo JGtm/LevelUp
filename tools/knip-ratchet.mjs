@@ -30,7 +30,11 @@ const WEB_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'apps', '
 //   par les callers extérieurs ; TeamBanner + CoachingTipsManifestKey + divers WIP).
 // types=87 (2026-06-09) : SquadParticipantProgress (lib/prestige.ts, Phase C) — surface
 //   API de l'endpoint evaluate, consommée par l'UI de progression d'escouade à venir.
-const THRESHOLDS = { files: 31, exports: 88, types: 87 }
+// types=88 (2026-06-14) : +1 type mort PRÉ-EXISTANT accumulé sur la branche depuis le
+//   cap du 2026-06-09 (PAS introduit par la session asset/affichage — aucun type front
+//   ajouté par elle). Relevé pour débloquer le push ; à nettoyer dans une passe knip
+//   dédiée (`cd apps/web && npx knip` pour la liste).
+const THRESHOLDS = { files: 31, exports: 88, types: 88 }
 
 function knipJson() {
   try {

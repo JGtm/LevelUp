@@ -1,0 +1,34 @@
+{
+  "seasons": {
+    "csrseason13-2": {
+      "done": [
+        "A Lil Greasy",
+        "AFGM Killjoy",
+        "AAAHHHH YEET",
+        "Acid XM",
+        "AM Creatures",
+        "A Bear Ate Jake",
+        "AlmightyJohnson",
+        "AoRaaw",
+        "Alleesi",
+        "AntZilla H2"
+      ],
+      "completed": false
+    }
+  },
+  "resolved_xuids": {
+    "A Bear Ate Jake": "2533274983802537",
+    "A Lil Greasy": "2535437602550771",
+    "AAAHHHH YEET": "2535434813934328",
+    "AFGM Killjoy": "2535443495317875",
+    "AM Creatures": "2535450458130578",
+    "Acendrado": "2535433900329504",
+    "Acid XM": "2533274886707468",
+    "Alleesi": "2533274891700084",
+    "AlmightyJohnson": "2781240841322331",
+    "AntZilla H2": "2533274820818474",
+    "AoRaaw": "2535453550672253",
+    "ArbitersGOON": "2535446195635286",
+    "Arbretter": "2533274899674759"
+  }
+}
