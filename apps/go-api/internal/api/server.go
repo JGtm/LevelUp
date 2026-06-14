@@ -811,6 +811,12 @@ func NewRouter(
 		// NopSyncGate par défaut → comportement legacy (lease seul rempart).
 		if autoSyncScheduler != nil {
 			syncH = syncH.WithSyncGate(autoSyncScheduler.Gate())
+			// Alignement sync manuel ↔ auto-sync (2026-06-14) : le sync HTTP delta
+			// (/sync/all, /players/{slug}/sync) construit son moteur via le MÊME
+			// BuildEngine que l'auto-sync → même PooledHaloClient (pool de tokens
+			// partagé, source unique ADR 0023), post-sync runner, batch queue.
+			// L'auth ne dépend plus des HaloTokens de session (le store a le RT).
+			syncH = syncH.WithEngineBuilder(autoSyncScheduler.BuildEngine)
 		}
 		// serverCtx (annulé au shutdown) : les syncs HTTP en dérivent leur bgCtx
 		// pour être annulés proprement à l'arrêt (avant duckdb.CloseAll).
