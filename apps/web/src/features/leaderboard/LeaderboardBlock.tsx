@@ -212,7 +212,10 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
     category,
     season: isWorld ? effectiveSeason : undefined,
     playlist: isWorld ? effectivePlaylist : undefined,
-    limit: 200,
+    // Top-100 : profondeur d'enrichissement du cron world (WorldLeaderboardTopN).
+    // NE PAS remonter à 200 — les rangs 101+ ne sont pas enrichis automatiquement
+    // (cron scrape 200 mais n'agrège que le top-100) → cellules vides à l'écran.
+    limit: 100,
   })
 
   function goToExplorer(gamertag: string) {
