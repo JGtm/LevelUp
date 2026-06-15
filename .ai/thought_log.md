@@ -1,3 +1,21 @@
+## [2026-06-15] Bonus assistances — couleur ambre plus distincte (Solo + Escouade) — Complété
+
+**Statut** : 2 edits (1 ligne chacun). `tsc -b` = 0 ; `eslint .` = 0 erreur (69 warnings préexistants, aucun sur les fichiers touchés) ; vitest `squadPerformanceLineCharts` 9/9. Branche `fix/bonus-assist-color` (créée depuis `main` — la session était passée sur main).
+
+**Déclencheur (user)** : « porter le bonus des assistances sur le graphe équivalent de la page Solo » + couleur plus distincte et claire pour ce bonus sur les deux.
+
+**Constat qui recadre** : le bonus (série « Bonus » = `assists/3` empilée sur les frags, toggle légende, masqué par défaut) était DÉJÀ présent sur les deux graphes Frags/Morts — ajouté ensemble dans `c3f270fa5`. Solo = `TimeseriesKdaTrend` (`/stats/timeseries`), Escouade = butterfly de `squadPerformanceLineCharts` (`/squad/contributions`). Le « port » était donc déjà fait → AskUserQuestion : périmètre = **couleur seulement** (toggle/masquage inchangés).
+
+**Cause du « peu visible »** : couleur `chart-series-5` = `#3730A3` (indigo-800, sombre) sur la palette par défaut, dans la même famille bleue que les frags (`chart-series-1` = `#93C5FD`). Empilé sur les frags → se distingue mal.
+
+**Décision technique** : bonus `chart-series-5` → `chart-series-7` (ambre `#F59E0B` défaut / violet-rosé `#CC79A7` Okabe), token de série propre, distinct du bleu frags et du rouge morts dans les deux palettes. 2 lignes : `TimeseriesKdaTrend.tsx:44` + `squadPerformanceLineCharts.ts:258`. Choix couleur validé par AskUserQuestion.
+
+**Résultats observés** : typecheck/lint/test verts. Aucun test à modifier (assertions sur la visibilité du bonus, pas la couleur ; snapshot palettes inchangé).
+
+**Conclusion / prochaine étape** : prêt à commit (en attente autorisation). Contrôle visuel à faire par le user — activer « Bonus » dans la légende sur les deux pages.
+
+---
+
 ## [2026-06-15] Tips Ascension — 3 lignes + découpe des murs — Complété
 
 **Statut** : `tsc --noEmit` = 0 ; vitest `tips-ticker` (5/5, dont le test de timing) ; eslint = 0 sur les fichiers touchés ; `build_i18n_manifests.mjs` régénéré (coaching_tips : 82 → 90 clés). Branche `feat/ascension-tips-3-lines`. Commit en attente d'autorisation.
