@@ -27,21 +27,25 @@ func TitleExtractor(registry *titlePkg.Registry) func(http.Handler) http.Handler
 }
 
 // resolveTitleSlug détermine le titre courant pour la requête.
+//
+// SEAM (PMT-8) : ce résolveur INJECTE le titre demandé dans le contexte dès
+// qu'il EXISTE dans le registre (header > session > défaut), y compris un titre
+// coming_soon/archived. Le rejet d'un titre non-actif n'est PAS fait ici (sinon
+// le fallback silencieux masquerait le titre demandé) mais par le gate
+// middleware.RequireActiveTitle (503 title_unavailable) monté sur les
+// sous-arbres title-scoped. Un header pointant un titre INCONNU retombe sur le
+// défaut.
 func resolveTitleSlug(r *http.Request, registry *titlePkg.Registry) string {
-	// MT-22 (PMT-8) : seul un titre ACTIF peut devenir le titre courant d'une
-	// requête. Un titre coming_soon/archived existe mais n'est jamais résolu ici
-	// (il s'inspecte via les surfaces admin) → on retombe sur le défaut actif.
-
 	// 1. Header explicite
 	if h := r.Header.Get("X-LevelUp-Title"); h != "" {
-		if registry.IsActive(h) {
+		if registry.Exists(h) {
 			return h
 		}
 	}
 
 	// 2. Session courante (via GetSession qui utilise la bonne context key)
 	if sess := GetSession(r.Context()); sess != nil {
-		if sess.CurrentTitleSlug != "" && registry.IsActive(sess.CurrentTitleSlug) {
+		if sess.CurrentTitleSlug != "" && registry.Exists(sess.CurrentTitleSlug) {
 			return sess.CurrentTitleSlug
 		}
 	}

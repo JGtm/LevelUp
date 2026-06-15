@@ -1,3 +1,25 @@
+## [2026-06-15] PMT-8 — CLÔTURE à l'Exit Gate (gate RequireActiveTitle + 503) — Complété
+
+**Statut** : Branche d'intégration `feat/multititre-peripherie`. Build/vet/gofmt verts (CGO). Tests : `domain/title`, `api/middleware`, `service`, `api/handlers` (les 3 ex-régressions repassent), suite contrat, archlint `no_slug_comparison`, vitest `appShellStore` 12/12, `tsc` + eslint front clean.
+
+**Contexte** : audit de complétude (2026-06-15) → la 1re livraison PMT-8 déviait du spec (fallback silencieux dans `resolveTitleSlug` au lieu du gate `RequireActiveTitle` + 503 prescrit) et introduisait une **régression réelle** : `resolveTitleSlug` (Exists→IsActive) cassait `TestCompare_TitleSlug_HaloMCC` / `NoTitleMixing` / `TestLeaderboard_TitleSlug_HaloMCC` (halo_mcc coming_soon → fallback silencieux halo_infinite = mélange de titres). Décision user : clôture séquentielle complète.
+
+**Décision technique (conforme Exit Gate spec PERIPHERY l.399-414)** :
+1. **Seam restauré** : `resolveTitleSlug` revient à `Exists()` → résout n'importe quel titre CONNU (y compris coming_soon) ; le rejet n'est PLUS fait au seam (sinon il masque le titre demandé). Répare les 3 régressions.
+2. **Gate dédié** : `middleware.RequireActiveTitle(registry)` (jumeau de `RequireCapability`) → `503 {code:"title_unavailable", title_slug, status, message, retryable:false}` pour coming_soon/archived/inconnu. Monté sur le sous-arbre `/players/{player_slug}` (server.go), AVANT `RequirePlayerOwnership`. No-op aujourd'hui (seul halo_infinite actif).
+3. **Domaine** : `(*TitleDescriptor).IsActive()` (prédicat pur) ; `Registry.IsActive`/`Active` le réutilisent. `Registry.NonArchived()` (active + coming_soon, exclut archived).
+4. **Switcher** : `BuildAvailableTitles` → `NonArchived()` (garde coming_soon AVEC son status, exclut archived). Helper testable `buildAvailableTitlesFrom(reg)`.
+5. **Front** : `buildTitleSwitcherEntries(titles, currentSlug)` (sélecteur pur) → coming_soon = `disabled` (« bientôt »), archived exclu, `isCurrent` marqué.
+6. **Logging** : `slog.WarnContext "title_rejected"` (clés `title`/`status`/`path`) ; dette annexe corrigée : `require_capability.go` clé `titleSlug` → `title`.
+
+**Oracle DOUBLE (parity-gate)** : (a) parité Halo = contrat + 3 multititle tests HI verts (routeur réel inchangé) ; (b) synthetic = `require_active_title_test.go` enregistre synthetic_b (coming_soon) + synthetic_archived (archived) → 503 + status correct + body machine-readable, jamais panic ; `Active()` les exclut, `NonArchived()` garde coming_soon.
+
+**Différé explicite** (hors Exit Gate PMT-8, tracé) : aucun — PMT-8 est livré intégralement. (Les surfaces admin d'inspection des coming_soon/archived relèvent de PMT-14, pas de PMT-8.)
+
+**Prochaine étape** : clôture PMT-12 (oracle synthetic_b + golden boot-safety halo_infinite + RequiredSetResolver), puis PMT-14 volet A, sur la même branche.
+
+---
+
 ## [2026-06-15] PMT-12 (MT-21) — validateur boot des mappings TOML requis — Complété
 
 **Statut** : `go build ./internal/...` = 0 ; `go vet ./internal/games/mappings/ ./internal/api/` = 0 ; `gofmt -l` = rien ; `go test ./internal/games/mappings/` vert (TestValidateRequiredTOML 0/1/2 erreurs) ; suite contrat `./internal/api/ -run Contract` verte. Branche `feat/title-required-toml-validator` (worktree dédié `levelup-pmt12`, depuis `main` d18dbf2ab).

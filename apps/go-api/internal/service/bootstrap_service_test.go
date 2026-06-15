@@ -7,6 +7,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 )
 
 // mockBootRepo is a minimal mock for BootstrapRepository used in tests.
@@ -378,5 +379,33 @@ func TestBuildAvailableTitles(t *testing.T) {
 	}
 	if !foundDefault {
 		t.Error("expected at least one default title")
+	}
+}
+
+// TestBuildAvailableTitles_FiltersArchivedKeepsComingSoon — MT-22 (PMT-8) :
+// le switcher exclut archived mais conserve coming_soon AVEC son status.
+func TestBuildAvailableTitles_FiltersArchivedKeepsComingSoon(t *testing.T) {
+	reg := titlePkg.NewRegistry()
+	reg.Register(&titlePkg.TitleDescriptor{Slug: "soon", Name: "Soon", Status: titlePkg.StatusComingSoon})
+	reg.Register(&titlePkg.TitleDescriptor{Slug: "old", Name: "Old", Status: titlePkg.StatusArchived})
+
+	titles := buildAvailableTitlesFrom(reg)
+
+	byslug := map[string]domain.TitleSummary{}
+	for _, ts := range titles {
+		byslug[ts.Slug] = ts
+	}
+	if _, ok := byslug["old"]; ok {
+		t.Error("le titre archived ne doit pas apparaître dans le switcher")
+	}
+	soon, ok := byslug["soon"]
+	if !ok {
+		t.Fatal("le titre coming_soon doit apparaître dans le switcher")
+	}
+	if soon.Status != string(titlePkg.StatusComingSoon) {
+		t.Errorf("status coming_soon doit être conservé, got %q", soon.Status)
+	}
+	if _, ok := byslug[titlePkg.DefaultSlug]; !ok {
+		t.Errorf("le titre actif par défaut %q doit apparaître", titlePkg.DefaultSlug)
 	}
 }

@@ -47,7 +47,7 @@ func RequireCapability(registry *titlePkg.Registry, cap titlePkg.Capability) fun
 			if desc == nil || !desc.HasCapability(cap) {
 				slog.WarnContext(r.Context(), "capability rejected",
 					"path", r.URL.Path,
-					"titleSlug", slug,
+					"title", slug,
 					"capability", string(cap),
 				)
 				w.Header().Set("Content-Type", "application/json")

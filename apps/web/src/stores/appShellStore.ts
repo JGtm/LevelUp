@@ -192,3 +192,36 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
     })
   },
 }))
+
+/**
+ * Entrée du title-switcher dérivée d'`availableTitles` (MT-22 / PMT-8).
+ *
+ * Le backend (`BuildAvailableTitles`) liste désormais les titres `active` ET
+ * `coming_soon` (exclut `archived`), en conservant leur `status`. Le front
+ * consomme ce signal : un titre `coming_soon` est listé mais `disabled`
+ * (affichage « bientôt disponible ») ; un titre `archived` est exclu (garde-fou
+ * défensif, le backend ne le renvoie déjà plus). L'entrée du titre courant est
+ * marquée `isCurrent`.
+ */
+export interface TitleSwitcherEntry {
+  slug: string
+  name: string
+  status: string
+  disabled: boolean
+  isCurrent: boolean
+}
+
+export function buildTitleSwitcherEntries(
+  titles: TitleSummary[],
+  currentSlug: string,
+): TitleSwitcherEntry[] {
+  return titles
+    .filter((t) => t.status !== 'archived')
+    .map((t) => ({
+      slug: t.slug,
+      name: t.name,
+      status: t.status ?? 'active',
+      disabled: (t.status ?? 'active') !== 'active',
+      isCurrent: t.slug === currentSlug,
+    }))
+}

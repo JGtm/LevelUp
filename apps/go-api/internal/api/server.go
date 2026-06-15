@@ -946,6 +946,13 @@ func NewRouter(
 
 		// Endpoints P1 : pages par joueur (Sprint 37 — DI via ServiceRegistry)
 		r.Route("/players/{player_slug}", func(r chi.Router) {
+			// MT-22 (PMT-8) : gate du cycle de vie du titre. Un titre courant
+			// coming_soon/archived/inconnu → 503 title_unavailable (machine-readable)
+			// au lieu de servir des données. No-op aujourd'hui (seul halo_infinite
+			// actif). Avant la garde de propriété : indisponibilité du titre =
+			// plus fondamental que l'appartenance du joueur.
+			r.Use(middleware.RequireActiveTitle(titleRegistry))
+
 			// Couche A (ADR 0024) : garde de propriété joueur. Chokepoint unique —
 			// 403 player_forbidden si l'utilisateur courant ne possède pas le slug.
 			// Transparent en mode demo / auth non activée. Toute route player-scoped

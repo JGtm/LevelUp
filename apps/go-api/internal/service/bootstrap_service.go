@@ -420,10 +420,17 @@ func getStringSetting(settings map[string]interface{}, key, def string) string {
 // BuildAvailableTitles construit la liste des titres depuis le registre.
 // Sprint 49 : exportée pour réutilisation par le handler session_context.
 func BuildAvailableTitles() []domain.TitleSummary {
-	reg := titlePkg.NewRegistry()
-	// MT-22 (PMT-8) : seuls les titres ACTIFS sont offerts dans le switcher.
-	// Les coming_soon/archived restent inspectables côté admin (/admin/titles).
-	all := reg.Active()
+	return buildAvailableTitlesFrom(titlePkg.NewRegistry())
+}
+
+// buildAvailableTitlesFrom projette les titres servables d'un registre donné.
+// Extrait pour testabilité (registre injectable avec coming_soon/archived).
+func buildAvailableTitlesFrom(reg *titlePkg.Registry) []domain.TitleSummary {
+	// MT-22 (PMT-8) : le switcher liste les titres jouables (active) ET ceux
+	// « bientôt disponibles » (coming_soon), en conservant leur Status pour que
+	// le front affiche l'état. Seuls les titres retirés (archived) sont exclus.
+	// Les archived restent inspectables côté admin (/admin/titles).
+	all := reg.NonArchived()
 	out := make([]domain.TitleSummary, 0, len(all))
 	for _, t := range all {
 		caps := make([]string, len(t.Capabilities))

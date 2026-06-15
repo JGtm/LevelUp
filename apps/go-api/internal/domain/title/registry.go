@@ -65,6 +65,13 @@ func (t *TitleDescriptor) HasCapability(cap Capability) bool {
 	return false
 }
 
+// IsActive indique si le titre est au statut actif. Prédicat pur (zéro IO) —
+// MT-22 (PMT-8). Utilisé par le middleware RequireActiveTitle et tout
+// consommateur qui n'a pas le registre sous la main.
+func (t *TitleDescriptor) IsActive() bool {
+	return t.Status == StatusActive
+}
+
 // ---------------------------------------------------------------------------
 // TitleRegistry — registre centralisé des titres
 // ---------------------------------------------------------------------------
@@ -143,14 +150,14 @@ func (r *Registry) Exists(slug string) bool {
 }
 
 // IsActive vérifie qu'un titre est enregistré ET actif (Status == StatusActive).
-// MT-22 (PMT-8) : un titre coming_soon/archived existe mais n'est PAS résolu
-// comme titre courant d'une requête (cf. middleware TitleExtractor) ni offert
-// dans le switcher (cf. BuildAvailableTitles). Le Status est enfin consulté.
+// MT-22 (PMT-8) : le Status est enfin consulté. Le gating runtime des routes
+// title-scoped passe par le middleware RequireActiveTitle (503 title_unavailable),
+// pas par le seam TitleExtractor (qui résout n'importe quel titre connu).
 func (r *Registry) IsActive(slug string) bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	td, ok := r.titles[slug]
-	return ok && td.Status == StatusActive
+	return ok && td.IsActive()
 }
 
 // Active retourne uniquement les titres au statut actif.
@@ -159,7 +166,23 @@ func (r *Registry) Active() []*TitleDescriptor {
 	defer r.mu.RUnlock()
 	out := make([]*TitleDescriptor, 0, len(r.titles))
 	for _, t := range r.titles {
-		if t.Status == StatusActive {
+		if t.IsActive() {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// NonArchived retourne les titres actifs ET coming_soon (exclut uniquement
+// archived). MT-22 (PMT-8) : le switcher front liste les titres jouables +
+// ceux « bientôt disponibles » (annotés via leur Status), mais jamais les
+// titres retirés (archived). Cf. BuildAvailableTitles.
+func (r *Registry) NonArchived() []*TitleDescriptor {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*TitleDescriptor, 0, len(r.titles))
+	for _, t := range r.titles {
+		if t.Status != StatusArchived {
 			out = append(out, t)
 		}
 	}

@@ -70,9 +70,11 @@ func TestTitleExtractor_NoHeader_DefaultFallback(t *testing.T) {
 	}
 }
 
-// MT-22 (PMT-8) : un titre enregistré mais coming_soon ne doit jamais être
-// résolu comme titre courant — on retombe sur le défaut actif.
-func TestTitleExtractor_ComingSoonHeader_Fallback(t *testing.T) {
+// MT-22 (PMT-8) : le SEAM résout n'importe quel titre CONNU, y compris
+// coming_soon — c'est le gate RequireActiveTitle (et non le seam) qui rejette
+// un titre non-actif en 503. Ici on prouve que le titre coming_soon demandé est
+// bien injecté dans le contexte (pas masqué par un fallback silencieux).
+func TestTitleExtractor_ComingSoonHeader_Resolved(t *testing.T) {
 	registry := titlePkg.NewRegistry()
 	registry.Register(&titlePkg.TitleDescriptor{
 		Slug: "futur_titre", Name: "Futur", Status: titlePkg.StatusComingSoon,
@@ -90,8 +92,8 @@ func TestTitleExtractor_ComingSoonHeader_Fallback(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
-	if captured != titlePkg.DefaultSlug {
-		t.Errorf("titre coming_soon ne doit pas être résolu, attendu %q, got %q",
-			titlePkg.DefaultSlug, captured)
+	if captured != "futur_titre" {
+		t.Errorf("le seam doit résoudre le titre coming_soon connu, attendu %q, got %q",
+			"futur_titre", captured)
 	}
 }
