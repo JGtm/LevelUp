@@ -85,6 +85,20 @@ func LoadConfig(repoRoot string) Config {
 	return cfg
 }
 
+// WithTitleNamespace retourne une COPIE de la Config dont le LogsDir est
+// namespacé par titre (`<LogsDir>/<titleSlug>/{module}.log`) — MT-05 (PMT-10
+// PR-4). À n'appliquer QUE quand plusieurs titres sont réellement servis
+// (len(registry) > 1) : en mono-titre le LogsDir reste nu → byte-identique.
+// No-op si LogsDir ou titleSlug est vide. Le receiver valeur garantit que la
+// Config d'origine n'est pas mutée.
+func (cfg Config) WithTitleNamespace(titleSlug string) Config {
+	if cfg.LogsDir == "" || titleSlug == "" {
+		return cfg
+	}
+	cfg.LogsDir = cfg.LogsDir + string(os.PathSeparator) + titleSlug
+	return cfg
+}
+
 // parseConsoleFormat résout le format console selon (priorité) :
 //  1. LEVELUP_LOG_FORMAT explicite (compact|text|json)
 //  2. LEVELUP_LOG_JSON=true → json (rétro-compat)

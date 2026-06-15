@@ -1,3 +1,9 @@
+## [2026-06-15] PMT-10 (MT-05) — Observabilité dimension titre — COMPLÉTÉ (PR-1→4)
+
+**Clôture** : PR-4 livré (namespacing LogsDir par titre). `logging.Config.WithTitleNamespace(titleSlug)` (copie, no-op si vide) + câblage gardé `len(title.NewRegistry().All()) > 1` dans cmd/server (no-op mono-titre → byte-identique ; s'active dès un 2e titre). Test unitaire vert. **PMT-10 complet : PR-1 (logs) + Expand (3 collecteurs) + PR-2 (endpoints ?title=) + PR-3 (émission sync) + PR-4 (logs namespacing).** Build all + archlint + observability + api + sync verts (sauf DeviceCodeFlow pré-existants).
+
+---
+
 ## [2026-06-15] PMT-10 (MT-05) — Observabilité dimension titre, PR-1 (ContextHandler) — En cours
 
 **Statut** : Branche `feat/multititre-peripherie`. Build/vet/gofmt verts ; `go test ./internal/observability/... ./internal/ctxkeys/ ./internal/api/` verts ; PR-1 test vert ; handlers = seuls 2 DeviceCodeFlow pré-existants rouges.
