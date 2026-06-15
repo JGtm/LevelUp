@@ -122,6 +122,7 @@ type AdminConvergenceReport struct {
 // PerfCallStats : agrégat de latence d'un appel/étape/phase depuis le boot
 // (miroir des agrégats expvar RecordDurationMS — count/sum/avg/max).
 type PerfCallStats struct {
+	Title  string `json:"title,omitempty"` // MT-05 : "" pour Halo (byte-identique)
 	Name   string `json:"name"`
 	Count  int64  `json:"count"`
 	SumMs  int64  `json:"sum_ms"`
@@ -163,6 +164,7 @@ type AdminPerfStats struct {
 // PerfPlayerCallStats : agrégat d'un appel API Halo attribué à un joueur
 // (miroir de observability.PlayerAPIStat).
 type PerfPlayerCallStats struct {
+	Title  string `json:"title,omitempty"` // MT-05 : "" pour Halo (byte-identique)
 	Player string `json:"player"`
 	Call   string `json:"call"`
 	Count  int64  `json:"count"`
@@ -197,6 +199,7 @@ type AdminErrorStats struct {
 // AdminErrorBucket — une erreur agrégée par (niveau, message). Count = nombre
 // d'occurrences ; LastDetail = dernier échantillon de l'attribut « err ».
 type AdminErrorBucket struct {
+	Title      string `json:"title,omitempty"` // MT-05 : "" pour Halo (byte-identique)
 	Level      string `json:"level"`
 	Module     string `json:"module,omitempty"`
 	Message    string `json:"message"`

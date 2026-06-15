@@ -8,9 +8,11 @@
 
 **Expand (livré)** : seam titré dans les 3 collecteurs. Helper unique `obsEffectiveTitle(title)` → collapse défaut(`halo_infinite`)/vide vers "" (parité Halo byte-identique). expvar : `obsKey(title,name)` (nu si effectif vide, sinon `title.name`) + wrappers titrés (`IncCounterT`/`RecordDurationMST`/…) délégant aux helpers legacy. error_collector : champ `ErrorBucket.Title` + `recordT(r,title)` (clé `title|level|message`) ; le tee handler lit `ctxkeys.TitleSlugIfSet(ctx)`. player_api : champ `PlayerAPIStat.Title` + `recordT` + clé 3-parties. Const `obsDefaultTitle` unique (pas de comparaison littérale dispersée → archlint vert). **Oracle double vert** : parité (legacy+`halo_infinite` → MÊME bucket nu) + routing (`synthetic_title_b` → bucket distinct, ne pollue pas Halo) sur les 3 collecteurs.
 
-**Reste PMT-10** : PR-2 (`PerfStats(ctx, titleSlug)`/`ErrorStats` + DTOs `Title` + handlers `?title=` via `titleOrDefault`) ; PR-3 (bascule des ~65 call-sites sync vers les variantes titrées) ; PR-4 (namespacing LogsDir par titre, différable).
+**PR-2 (livré)** : `PerfStats(ctx, titleSlug)`/`ErrorStats(ctx, titleSlug)` filtrent par titre via les accesseurs `LoadCounterT`/`LoadDurationStatsT`/`ErrorBucketsForTitle`/`PlayerAPIStatsForTitle`. DTOs `PerfCallStats`/`PerfPlayerCallStats`/`AdminErrorBucket` gagnent `Title \`json:"title,omitempty"\`` (Halo → "" → absent, byte-identique). Runner types + `GetPerf`/`GetErrors` passent `titleOrDefault(r)` (helper existant). Test : `?title=synthetic_title_b` propagé au runner, défaut sinon.
 
-**Prochaine étape** : PR-2.
+**Reste PMT-10** : PR-3 (bascule des ~65 call-sites sync vers les variantes titrées `…T` en passant `ctxkeys.TitleSlug(ctx)`) ; PR-4 (namespacing LogsDir par titre, différable).
+
+**Prochaine étape** : PR-3.
 
 ---
 

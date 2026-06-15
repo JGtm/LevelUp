@@ -248,69 +248,77 @@ var persistPhaseNames = []string{"shared_acquire", "shared_write", "player_lease
 // PerfStats agrège les latences depuis le boot (expvar pur, zéro I/O DuckDB) :
 // appels API Halo, phases d'écriture persist, étapes post-sync, fenêtre
 // d'indisponibilité des lectures shared.
-func (r *ServiceRegistry) PerfStats(_ context.Context) (domain.AdminPerfStats, error) {
+// MT-05 (PMT-10) : titleSlug filtre les agrégats par titre. Pour Halo
+// (titre par défaut → effectif "") les clés expvar restent nues → sortie
+// byte-identique. Un 2e titre lit ses propres clés/buckets.
+func (r *ServiceRegistry) PerfStats(_ context.Context, titleSlug string) (domain.AdminPerfStats, error) {
 	resp := domain.AdminPerfStats{
 		GeneratedAt:   time.Now().UTC().Format(time.RFC3339),
 		APICalls:      []domain.PerfCallStats{},
 		PersistPhases: []domain.PerfCallStats{},
 		PostSyncSteps: []domain.PerfCallStats{},
 		APIBuckets: domain.PerfAPIBuckets{
-			RateLimited429: observability.LoadCounter("halo_api_429_total"),
-			Auth:           observability.LoadCounter("halo_api_auth_total"),
-			Server5xx:      observability.LoadCounter("halo_api_5xx_total"),
-			Network:        observability.LoadCounter("halo_api_network_total"),
-			Other:          observability.LoadCounter("halo_api_other_total"),
+			RateLimited429: observability.LoadCounterT(titleSlug, "halo_api_429_total"),
+			Auth:           observability.LoadCounterT(titleSlug, "halo_api_auth_total"),
+			Server5xx:      observability.LoadCounterT(titleSlug, "halo_api_5xx_total"),
+			Network:        observability.LoadCounterT(titleSlug, "halo_api_network_total"),
+			Other:          observability.LoadCounterT(titleSlug, "halo_api_other_total"),
 		},
 	}
 	for _, call := range sync_pkg.HaloAPICallNames() {
-		stats := loadPerfCallStats(call, "halo_api_ms_"+call)
-		stats.Errors = observability.LoadCounter("halo_api_err_" + call + "_total")
+		stats := loadPerfCallStats(titleSlug, call, "halo_api_ms_"+call)
+		stats.Errors = observability.LoadCounterT(titleSlug, "halo_api_err_"+call+"_total")
 		if stats.Count > 0 || stats.Errors > 0 {
 			resp.APICalls = append(resp.APICalls, stats)
 		}
 	}
 	for _, phase := range persistPhaseNames {
-		stats := loadPerfCallStats(phase, "persist_"+phase+"_ms")
-		stats.Errors = observability.LoadCounter("persist_" + phase + "_err_total")
+		stats := loadPerfCallStats(titleSlug, phase, "persist_"+phase+"_ms")
+		stats.Errors = observability.LoadCounterT(titleSlug, "persist_"+phase+"_err_total")
 		if stats.Count > 0 || stats.Errors > 0 {
 			resp.PersistPhases = append(resp.PersistPhases, stats)
 		}
 	}
 	for _, step := range sync_pkg.PostSyncStepNames() {
-		if stats := loadPerfCallStats(step, "postsync_step_ms_"+step); stats.Count > 0 {
+		if stats := loadPerfCallStats(titleSlug, step, "postsync_step_ms_"+step); stats.Count > 0 {
 			resp.PostSyncSteps = append(resp.PostSyncSteps, stats)
 		}
 	}
-	resp.PostSyncTotal = loadPerfCallStats("postsync_total", "postsync_total_ms")
-	resp.BlockedWindow = loadPerfCallStats("blocked_window", "shared_provider_blocked_window_ms")
+	resp.PostSyncTotal = loadPerfCallStats(titleSlug, "postsync_total", "postsync_total_ms")
+	resp.BlockedWindow = loadPerfCallStats(titleSlug, "blocked_window", "shared_provider_blocked_window_ms")
 
-	// Breakdown par joueur des appels attribuables (collecteur dédié).
+	// Breakdown par joueur des appels attribuables (collecteur dédié, filtré titre).
 	resp.APIByPlayer = []domain.PerfPlayerCallStats{}
-	for _, s := range observability.PlayerAPIStats() {
+	for _, s := range observability.PlayerAPIStatsForTitle(titleSlug) {
 		resp.APIByPlayer = append(resp.APIByPlayer, domain.PerfPlayerCallStats{
-			Player: s.Player, Call: s.Call, Count: s.Count,
+			Title: s.Title, Player: s.Player, Call: s.Call, Count: s.Count,
 			AvgMs: s.AvgMs, MaxMs: s.MaxMs, Errors: s.Errors,
 		})
 	}
 	return resp, nil
 }
 
-// loadPerfCallStats mappe un agrégat expvar RecordDurationMS vers le DTO.
-func loadPerfCallStats(name, metric string) domain.PerfCallStats {
-	count, sum, avg, max := observability.LoadDurationStats(metric)
-	return domain.PerfCallStats{Name: name, Count: count, SumMs: sum, AvgMs: avg, MaxMs: max}
+// loadPerfCallStats mappe un agrégat expvar RecordDurationMS(T) vers le DTO,
+// filtré par titre (MT-05).
+func loadPerfCallStats(titleSlug, name, metric string) domain.PerfCallStats {
+	count, sum, avg, max := observability.LoadDurationStatsT(titleSlug, metric)
+	return domain.PerfCallStats{
+		Title: observability.EffectiveTitle(titleSlug),
+		Name:  name, Count: count, SumMs: sum, AvgMs: avg, MaxMs: max,
+	}
 }
 
 // ErrorStats retourne les logs WARN/ERROR agrégés depuis le boot (collecteur
 // mémoire). Zéro I/O.
-func (r *ServiceRegistry) ErrorStats(_ context.Context) (domain.AdminErrorStats, error) {
-	buckets := observability.ErrorBuckets()
+func (r *ServiceRegistry) ErrorStats(_ context.Context, titleSlug string) (domain.AdminErrorStats, error) {
+	buckets := observability.ErrorBucketsForTitle(titleSlug) // MT-05 : filtré par titre
 	resp := domain.AdminErrorStats{
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 		Buckets:     make([]domain.AdminErrorBucket, 0, len(buckets)),
 	}
 	for _, b := range buckets {
 		resp.Buckets = append(resp.Buckets, domain.AdminErrorBucket{
+			Title:      b.Title,
 			Level:      b.Level,
 			Module:     b.Module,
 			Message:    b.Message,

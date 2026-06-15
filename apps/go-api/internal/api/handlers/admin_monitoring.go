@@ -31,13 +31,13 @@ type MonitoringOverviewRunner func(ctx context.Context, titleSlug string) (domai
 // (implémenté par ServiceRegistry.ConvergenceReport).
 type ConvergenceReportRunner func(ctx context.Context, titleSlug string) (domain.AdminConvergenceReport, error)
 
-// PerfStatsRunner retourne les agrégats de performance depuis le boot
-// (implémenté par ServiceRegistry.PerfStats — expvar pur).
-type PerfStatsRunner func(ctx context.Context) (domain.AdminPerfStats, error)
+// PerfStatsRunner retourne les agrégats de performance depuis le boot, filtrés
+// par titre (MT-05 ; implémenté par ServiceRegistry.PerfStats — expvar pur).
+type PerfStatsRunner func(ctx context.Context, titleSlug string) (domain.AdminPerfStats, error)
 
-// ErrorStatsRunner retourne les logs WARN/ERROR agrégés depuis le boot
-// (implémenté par ServiceRegistry.ErrorStats — collecteur mémoire).
-type ErrorStatsRunner func(ctx context.Context) (domain.AdminErrorStats, error)
+// ErrorStatsRunner retourne les logs WARN/ERROR agrégés depuis le boot, filtrés
+// par titre (MT-05 ; implémenté par ServiceRegistry.ErrorStats — collecteur mémoire).
+type ErrorStatsRunner func(ctx context.Context, titleSlug string) (domain.AdminErrorStats, error)
 
 // AdminMonitoringHandler sert les endpoints lecture du dashboard monitoring.
 type AdminMonitoringHandler struct {
@@ -65,7 +65,7 @@ func NewAdminMonitoringHandler(
 // GetErrors retourne les logs WARN/ERROR agrégés depuis le boot.
 // GET /admin/monitoring/errors.
 func (h *AdminMonitoringHandler) GetErrors(w http.ResponseWriter, r *http.Request) {
-	resp, err := h.errors(r.Context())
+	resp, err := h.errors(r.Context(), titleOrDefault(r))
 	if err != nil {
 		slog.ErrorContext(r.Context(), "admin_monitoring: errors failed", "err", err)
 		writeError(r.Context(), w, http.StatusInternalServerError, "monitoring_errors_error",
@@ -78,7 +78,7 @@ func (h *AdminMonitoringHandler) GetErrors(w http.ResponseWriter, r *http.Reques
 // GetPerf retourne les agrégats de performance depuis le boot.
 // GET /admin/monitoring/perf.
 func (h *AdminMonitoringHandler) GetPerf(w http.ResponseWriter, r *http.Request) {
-	resp, err := h.perf(r.Context())
+	resp, err := h.perf(r.Context(), titleOrDefault(r))
 	if err != nil {
 		slog.ErrorContext(r.Context(), "admin_monitoring: perf failed", "err", err)
 		writeError(r.Context(), w, http.StatusInternalServerError, "monitoring_perf_error",
