@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/jobs"
 )
 
@@ -146,23 +147,37 @@ func TestAdminMonitoring_Jobs_ListAndClamp(t *testing.T) {
 	}
 }
 
-// TestAdminMonitoring_Errors_OK : 200 + buckets d'erreurs agrégés.
+// TestAdminMonitoring_Errors_OK : 200 + buckets agrégés + propagation du slug
+// (MT-05 : ?title= propagé au runner, défaut sinon).
 func TestAdminMonitoring_Errors_OK(t *testing.T) {
-	h := NewAdminMonitoringHandler(nil, nil, nil, func(context.Context) (domain.AdminErrorStats, error) {
+	var gotSlug string
+	runner := func(_ context.Context, titleSlug string) (domain.AdminErrorStats, error) {
+		gotSlug = titleSlug
 		return domain.AdminErrorStats{
 			GeneratedAt: "2026-06-12T12:00:00Z",
 			Buckets: []domain.AdminErrorBucket{
 				{Level: "ERROR", Module: "player_watcher", Message: "player_watcher: sync échoué", Count: 3},
 			},
 		}, nil
-	}, nil, nil)
+	}
+	h := NewAdminMonitoringHandler(nil, nil, nil, runner, nil, nil)
+
 	rec := httptest.NewRecorder()
 	h.GetErrors(rec, httptest.NewRequest(http.MethodGet, "/admin/monitoring/errors", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d (attendu 200)", rec.Code)
 	}
+	if gotSlug != titlePkg.DefaultSlug {
+		t.Errorf("sans ?title= : slug propagé = %q, want %q", gotSlug, titlePkg.DefaultSlug)
+	}
 	var got domain.AdminErrorStats
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || len(got.Buckets) != 1 || got.Buckets[0].Count != 3 {
 		t.Fatalf("payload inattendu : %+v err=%v", got, err)
+	}
+
+	h.GetErrors(httptest.NewRecorder(),
+		httptest.NewRequest(http.MethodGet, "/admin/monitoring/errors?title=synthetic_title_b", nil))
+	if gotSlug != "synthetic_title_b" {
+		t.Errorf("?title= : slug propagé = %q, want synthetic_title_b", gotSlug)
 	}
 }

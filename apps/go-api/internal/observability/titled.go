@@ -59,3 +59,36 @@ func LoadCounterT(title, name string) int64 { return LoadCounter(obsKey(title, n
 func LoadDurationStatsT(title, name string) (count, sumMS, avgMS, maxMS int64) {
 	return LoadDurationStats(obsKey(title, name))
 }
+
+// ─── Accès filtrés par titre (pour les endpoints monitoring, PMT-10 PR-2) ────
+
+// EffectiveTitle expose le titre effectif (défaut/vide → "") au package api,
+// pour peupler le champ DTO `Title` (omitempty → absent pour Halo).
+func EffectiveTitle(title string) string { return obsEffectiveTitle(title) }
+
+// ErrorBucketsForTitle retourne les buckets dont le titre effectif correspond
+// à `title` (défaut → buckets nus). Filtrage côté lecture.
+func ErrorBucketsForTitle(title string) []ErrorBucket {
+	et := obsEffectiveTitle(title)
+	all := ErrorBuckets()
+	out := make([]ErrorBucket, 0, len(all))
+	for _, b := range all {
+		if b.Title == et {
+			out = append(out, b)
+		}
+	}
+	return out
+}
+
+// PlayerAPIStatsForTitle retourne les stats player du titre effectif `title`.
+func PlayerAPIStatsForTitle(title string) []PlayerAPIStat {
+	et := obsEffectiveTitle(title)
+	all := PlayerAPIStats()
+	out := make([]PlayerAPIStat, 0, len(all))
+	for _, s := range all {
+		if s.Title == et {
+			out = append(out, s)
+		}
+	}
+	return out
+}
