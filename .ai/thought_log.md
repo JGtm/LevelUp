@@ -6,7 +6,9 @@
 
 **PR-1 (la plus mince)** : `ContextHandler.Handle` câble enfin `title` (le doc-comment le promettait sans l'attacher = dérive confirmée). Subtilité : `ctxkeys.TitleSlug` **force** le fallback `halo_infinite` → ajouté `ctxkeys.TitleSlugIfSet(ctx) (string, bool)` qui distingue l'absence. Le handler n'ajoute `title` que si réellement présent → logs background inchangés (byte-identique), seules les requêtes HTTP (TitleExtractor) gagnent l'attribut. Clé slog `"title"`.
 
-**Reste PMT-10 (PR mince par axe)** : PR-2 (`PerfStats(ctx, titleSlug)`/`ErrorStats` + handlers `?title=` via `titleOrDefault`) ; PR-3 (seam titré dans les 3 collecteurs expvar/error/player_api + bascule des ~65 call-sites sync) ; PR-4 (namespacing LogsDir par titre, différable). Oracle double (golden parité Halo + routing synthetic_title_b) à fournir avec PR-2/3.
+**Expand (livré)** : seam titré dans les 3 collecteurs. Helper unique `obsEffectiveTitle(title)` → collapse défaut(`halo_infinite`)/vide vers "" (parité Halo byte-identique). expvar : `obsKey(title,name)` (nu si effectif vide, sinon `title.name`) + wrappers titrés (`IncCounterT`/`RecordDurationMST`/…) délégant aux helpers legacy. error_collector : champ `ErrorBucket.Title` + `recordT(r,title)` (clé `title|level|message`) ; le tee handler lit `ctxkeys.TitleSlugIfSet(ctx)`. player_api : champ `PlayerAPIStat.Title` + `recordT` + clé 3-parties. Const `obsDefaultTitle` unique (pas de comparaison littérale dispersée → archlint vert). **Oracle double vert** : parité (legacy+`halo_infinite` → MÊME bucket nu) + routing (`synthetic_title_b` → bucket distinct, ne pollue pas Halo) sur les 3 collecteurs.
+
+**Reste PMT-10** : PR-2 (`PerfStats(ctx, titleSlug)`/`ErrorStats` + DTOs `Title` + handlers `?title=` via `titleOrDefault`) ; PR-3 (bascule des ~65 call-sites sync vers les variantes titrées) ; PR-4 (namespacing LogsDir par titre, différable).
 
 **Prochaine étape** : PR-2.
 

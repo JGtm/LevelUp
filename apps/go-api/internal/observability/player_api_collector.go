@@ -20,8 +20,10 @@ import (
 // joueurs trackés — large marge).
 const defaultPlayerAPICap = 64
 
-// PlayerAPIStat agrège un couple (call, player). AvgMs est dérivé à la lecture.
+// PlayerAPIStat agrège un couple (call, player) pour un titre. AvgMs est dérivé
+// à la lecture.
 type PlayerAPIStat struct {
+	Title  string // MT-05 : slug du titre ("" = défaut/Halo, byte-identique)
 	Player string
 	Call   string
 	Count  int64
@@ -37,7 +39,7 @@ type playerAPIEntry struct {
 
 type playerAPICollector struct {
 	mu      sync.Mutex
-	entries map[string]*playerAPIEntry // clé = call + "\x00" + player
+	entries map[string]*playerAPIEntry // clé = title + "\x00" + call + "\x00" + player
 	cap     int
 }
 
@@ -46,10 +48,14 @@ func newPlayerAPICollector(capacity int) *playerAPICollector {
 }
 
 func (c *playerAPICollector) record(call, player string, ms int64, isErr bool) {
+	c.recordT("", call, player, ms, isErr)
+}
+
+func (c *playerAPICollector) recordT(title, call, player string, ms int64, isErr bool) {
 	if call == "" || player == "" {
 		return
 	}
-	key := call + "\x00" + player
+	key := obsEffectiveTitle(title) + "\x00" + call + "\x00" + player
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -89,13 +95,13 @@ func (c *playerAPICollector) snapshot() []PlayerAPIStat {
 	c.mu.Lock()
 	out := make([]PlayerAPIStat, 0, len(c.entries))
 	for key, e := range c.entries {
-		call, player := splitPlayerKey(key)
+		title, call, player := splitPlayerKey(key)
 		avg := int64(0)
 		if e.count > 0 {
 			avg = e.sum / e.count
 		}
 		out = append(out, PlayerAPIStat{
-			Player: player, Call: call, Count: e.count,
+			Title: title, Player: player, Call: call, Count: e.count,
 			SumMs: e.sum, MaxMs: e.max, AvgMs: avg, Errors: e.errors,
 		})
 	}
@@ -117,23 +123,36 @@ func (c *playerAPICollector) reset() {
 	c.mu.Unlock()
 }
 
-func splitPlayerKey(key string) (call, player string) {
-	for i := 0; i < len(key); i++ {
+func splitPlayerKey(key string) (title, call, player string) {
+	parts := make([]string, 0, 3)
+	start := 0
+	for i := 0; i < len(key) && len(parts) < 2; i++ {
 		if key[i] == '\x00' {
-			return key[:i], key[i+1:]
+			parts = append(parts, key[start:i])
+			start = i + 1
 		}
 	}
-	return key, ""
+	parts = append(parts, key[start:])
+	for len(parts) < 3 {
+		parts = append(parts, "")
+	}
+	return parts[0], parts[1], parts[2]
 }
 
 // ─── Singleton + API publique ───────────────────────────────────────────────
 
 var defaultPlayerAPIColl = newPlayerAPICollector(defaultPlayerAPICap)
 
-// RecordPlayerAPICall agrège un appel API Halo attribué à un joueur. No-op si
-// call ou player est vide (appels match-level non attribuables).
+// RecordPlayerAPICall agrège un appel API Halo attribué à un joueur (titre par
+// défaut). No-op si call ou player est vide (appels match-level non attribuables).
 func RecordPlayerAPICall(call, player string, ms int64, isErr bool) {
 	defaultPlayerAPIColl.record(call, player, ms, isErr)
+}
+
+// RecordPlayerAPICallT — variante titre-aware (MT-05). Le titre par défaut/vide
+// collapse vers la dimension nue (parité Halo).
+func RecordPlayerAPICallT(title, call, player string, ms int64, isErr bool) {
+	defaultPlayerAPIColl.recordT(title, call, player, ms, isErr)
 }
 
 // PlayerAPIStats retourne l'agrégat par (call, player), trié erreurs desc.
