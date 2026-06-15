@@ -25,6 +25,47 @@ import (
 // order_audit_test.go).
 func Steps() []migration.Migration {
 	return []migration.Migration{
+		// Déplacés depuis internal/migration/steps_metadata.go (b4 — leaves additifs).
+		{
+			Name:        "add_waypoint_assets_raw",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Table waypoint_assets_raw : cache générique de blobs JSON Waypoint",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS waypoint_assets_raw (
+						title_id     VARCHAR NOT NULL,
+						asset_id     VARCHAR NOT NULL,
+						asset_type   VARCHAR NOT NULL DEFAULT '',
+						version_id   VARCHAR NOT NULL DEFAULT '',
+						name         VARCHAR NOT NULL DEFAULT '',
+						description  VARCHAR NOT NULL DEFAULT '',
+						raw_json     VARCHAR NOT NULL DEFAULT '',
+						fetched_at   TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+						content_hash VARCHAR NOT NULL DEFAULT '',
+						PRIMARY KEY (title_id, asset_id, version_id)
+					);
+				`)
+			},
+		},
+		{
+			Name:        "add_map_images_registry",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Table map_images_registry : cache-aside des images de maps avec local_path optionnel",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS map_images_registry (
+						title_id     VARCHAR NOT NULL,
+						map_id       VARCHAR NOT NULL,
+						image_url    VARCHAR NOT NULL DEFAULT '',
+						local_path   VARCHAR NOT NULL DEFAULT '',
+						fetched_at   TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+						content_hash VARCHAR NOT NULL DEFAULT '',
+						PRIMARY KEY (title_id, map_id)
+					);
+					CREATE INDEX IF NOT EXISTS idx_map_images_registry_fetched ON map_images_registry(fetched_at);
+				`)
+			},
+		},
 		// Déplacé depuis internal/migration/steps_shared_pve.go (b3 pilote).
 		{
 			Name:        "add_pve_schema",
