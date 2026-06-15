@@ -86,6 +86,134 @@ func Steps() []migration.Migration {
 			Description: "asset_translations : seed FR canoniques pour playlists Halo Infinite dont l'API a renvoyé l'EN raw en lang fr-FR (cf. thought_log 2026-05-09)",
 			ApplySchema: applyPlaylistFRSeeds,
 		},
+		// Famille medal_definitions (base + 3 ALTER) → migrée ATOMIQUEMENT (b8).
+		{
+			Name:        "add_medal_definitions",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Table medal_definitions (medal_name_id BIGINT, noms, descriptions)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS medal_definitions (
+						medal_name_id  BIGINT PRIMARY KEY,
+						name_fr        VARCHAR NOT NULL,
+						name_en        VARCHAR NOT NULL,
+						description_fr VARCHAR DEFAULT '',
+						description_en VARCHAR DEFAULT '',
+						is_custom      BOOLEAN DEFAULT FALSE
+					);
+				`)
+			},
+		},
+		{
+			Name:        "medal_definitions_add_indices",
+			TargetDB:    migration.TargetMetadata,
+			Description: "medal_definitions : ajout difficulty_index + type_index (entiers Waypoint) — idempotent via IF NOT EXISTS",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS difficulty_index TINYINT DEFAULT 0;
+					ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS type_index TINYINT DEFAULT 0;
+				`)
+			},
+		},
+		{
+			Name:        "enrich_medal_definitions_v2",
+			TargetDB:    migration.TargetMetadata,
+			Description: "medal_definitions : ajout difficulty (Normal/Heroic/Legendary/Mythic) + medal_type (multikill/spree/…) depuis difficulty_index/type_index existants",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS difficulty VARCHAR;
+					ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS medal_type VARCHAR;
+					UPDATE medal_definitions SET
+						difficulty = CASE difficulty_index
+							WHEN 0 THEN 'Normal'
+							WHEN 1 THEN 'Heroic'
+							WHEN 2 THEN 'Legendary'
+							WHEN 3 THEN 'Mythic'
+							ELSE 'Normal'
+						END,
+						medal_type = CASE type_index
+							WHEN 0 THEN 'spree'
+							WHEN 1 THEN 'mode'
+							WHEN 2 THEN 'multikill'
+							WHEN 3 THEN 'proficiency'
+							WHEN 4 THEN 'skill'
+							WHEN 5 THEN 'style'
+							ELSE ''
+						END;
+				`)
+			},
+		},
+		{
+			Name:        "medal_definitions_add_personal_score",
+			TargetDB:    migration.TargetMetadata,
+			Description: "medal_definitions : ajout personal_score (XP de carrière accordé par médaille, 0 par défaut)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS personal_score INTEGER DEFAULT 0;
+				`)
+			},
+		},
+		// Famille xbox_achievement_definitions (base + 4 ALTER/DELETE) → migrée ATOMIQUEMENT (b8).
+		{
+			Name:        "add_xbox_achievement_definitions",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Table xbox_achievement_definitions : référentiel achievements Halo Infinite (bilingue EN/FR)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS xbox_achievement_definitions (
+						achievement_id   VARCHAR PRIMARY KEY,
+						name_en          VARCHAR NOT NULL DEFAULT '',
+						name_fr          VARCHAR NOT NULL DEFAULT '',
+						description_en   VARCHAR,
+						description_fr   VARCHAR,
+						locked_desc_en   VARCHAR,
+						locked_desc_fr   VARCHAR,
+						gamerscore       INTEGER NOT NULL DEFAULT 0,
+						image_url        VARCHAR,
+						is_secret        BOOLEAN NOT NULL DEFAULT FALSE,
+						rarity_category  VARCHAR,
+						rarity_percent   FLOAT,
+						fetched_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					);
+				`)
+			},
+		},
+		{
+			Name:        "add_title_id_to_xbox_achievement_definitions",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Colonne title_id sur xbox_achievement_definitions (filtre par jeu — halo_infinite) pour exclure les succès d'autres titres Xbox stockés avant l'introduction du filtre titleId.",
+			ApplySchema: func(db *sql.DB) error {
+				_, err := db.ExecContext(migration.BootCtx(), `ALTER TABLE xbox_achievement_definitions ADD COLUMN IF NOT EXISTS title_id VARCHAR DEFAULT ''`)
+				return err
+			},
+		},
+		{
+			Name:        "cleanup_xbox_achievement_definitions_unknown_title",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Supprime les succès Xbox sans title_id connu (insertés avant le filtre halo_infinite). L'utilisateur doit relancer sync-achievements après cette migration.",
+			ApplySchema: func(db *sql.DB) error {
+				_, err := db.ExecContext(migration.BootCtx(), `DELETE FROM xbox_achievement_definitions WHERE title_id = '' OR title_id IS NULL`)
+				return err
+			},
+		},
+		{
+			Name:        "add_xbox_title_id_to_xbox_achievement_definitions",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Colonne xbox_title_id sur xbox_achievement_definitions : identifiant Xbox numérique du titre source (ex: '1144039928' pour Halo Infinite). Peuplée lors du prochain sync-achievements. Permet au frontend de filtrer les succès cross-titres sans DELETE.",
+			ApplySchema: func(db *sql.DB) error {
+				_, err := db.ExecContext(migration.BootCtx(), `ALTER TABLE xbox_achievement_definitions ADD COLUMN IF NOT EXISTS xbox_title_id VARCHAR DEFAULT ''`)
+				return err
+			},
+		},
+		{
+			Name:        "add_service_config_id_to_xbox_achievement_definitions",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Colonne service_config_id (SCID Xbox) sur xbox_achievement_definitions. Le SCID est le seul discriminateur fiable par jeu : l'API Xbox retourne tous les achievements de la franchise quand on filtre par titleId. Peuplée lors du prochain sync-achievements.",
+			ApplySchema: func(db *sql.DB) error {
+				_, err := db.ExecContext(migration.BootCtx(), `ALTER TABLE xbox_achievement_definitions ADD COLUMN IF NOT EXISTS service_config_id VARCHAR DEFAULT ''`)
+				return err
+			},
+		},
 		// Déplacés depuis internal/migration/steps_metadata.go (b5 — leaves additifs).
 		{
 			Name:        "add_battlepass_asset_refs",

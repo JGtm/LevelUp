@@ -1,3 +1,13 @@
+## [2026-06-15] Phase 1.5 (MT-23) — relocation b8 : familles medal_definitions + xbox_achievement (inline atomiques)
+
+**Mandat user** : « il faut tout faire de toute façon » → exécution autonome continue, commit/push par lot vérifié, sans redemander. Les 2 irréversibles (reorder inversion, PMT-2 store-cutover) en dernier avec garde-fou.
+
+**Livré (b8, 9 steps inline)** : famille `medal_definitions` (base + add_indices + enrich_v2 + add_personal_score) + famille `xbox_achievement_definitions` (base + add_title_id + cleanup + add_xbox_title_id + add_service_config_id) → games/halo_infinite/migrations/steps.go, ATOMIQUEMENT. `bootCtx()` → `migration.BootCtx()` pour les 4 ALTER/DELETE xbox. Vérif préalable : aucun autre step global ne touche ces 2 tables. Total title-owned : 20 → **29**.
+
+**Vérif** : build all + `go test migration + games/halo_infinite/migrations + duckdb (18s)` + gofmt verts.
+
+---
+
 ## [2026-06-15] Phase 1.5 (MT-23) — relocation b7 : famille mode_name_tr + playlist_fr (named-func + cascade)
 
 **Livré** : `add_mode_name_tr` + `seed_playlist_fr_translations` (named-func, partagent les consts mode*) → nouveau fichier `internal/games/halo_infinite/migrations/mode_playlist_fr.go` : consts mode* + `applyModeNameTr` + `playlistFRMapping`/`playlistFRSeeds`/`applyPlaylistFRSeeds` (`bootCtx()` → `migration.BootCtx()`). Total title-owned : 18 → **20**.
