@@ -18,7 +18,11 @@ export interface Tip {
 
 interface TipsTickerProps {
   tips: Tip[]
-  /** Durée d'affichage de chaque tip en secondes. Défaut : 6s. */
+  /**
+   * Durée d'affichage *plancher* de chaque tip en secondes. Défaut : 6s.
+   * Les tips longs restent affichés plus longtemps (cf. `readingSeconds`) pour
+   * laisser le temps de lire les 3 lignes ; ce plancher borne les tips courts.
+   */
   displaySeconds?: number
   /** Durée du fondu enchaîné en secondes. Défaut : 0.5s. */
   transitionSeconds?: number
@@ -26,6 +30,16 @@ interface TipsTickerProps {
   ariaLabel?: string
   /** Pictogramme optionnel affiché en tête de la pill. */
   leadingIcon?: ReactNode
+}
+
+/**
+ * Durée de lecture estimée d'un tip, proportionnelle à sa longueur.
+ * ~3 mots/s en lecture de bandeau, plancher 5s, plafond 12s — un tip de 3
+ * lignes pleines ne disparaît pas avant d'être lu.
+ */
+function readingSeconds(text: string): number {
+  const words = text.trim().split(/\s+/).length
+  return Math.min(12, Math.max(5, 2 + words * 0.3))
 }
 
 function useReducedMotion(): boolean {
@@ -59,17 +73,27 @@ export function TipsTicker({
   useEffect(() => {
     if (reducedMotion || tips.length <= 1) return
 
-    const cycleMs = (displaySeconds + transitionSeconds * 2) * 1000
-    const timer = setInterval(() => {
+    // Durée propre au tip courant : plancher `displaySeconds`, allongée pour
+    // les tips longs. Chaîne de setTimeout (re-planifiée à chaque index) plutôt
+    // qu'un setInterval fixe, pour que chaque tip ait sa propre durée.
+    const current = tips[currentIndex % tips.length]
+    const dwellMs = Math.max(displaySeconds, readingSeconds(current.shortDef)) * 1000
+    const fadeMs = transitionSeconds * 1000
+
+    let fadeTimer: ReturnType<typeof setTimeout> | undefined
+    const dwellTimer = setTimeout(() => {
       setVisible(false)
-      setTimeout(() => {
+      fadeTimer = setTimeout(() => {
         setCurrentIndex((i) => (i + 1) % tips.length)
         setVisible(true)
-      }, transitionSeconds * 1000)
-    }, cycleMs)
+      }, fadeMs)
+    }, dwellMs)
 
-    return () => clearInterval(timer)
-  }, [tips.length, displaySeconds, transitionSeconds, reducedMotion])
+    return () => {
+      clearTimeout(dwellTimer)
+      if (fadeTimer) clearTimeout(fadeTimer)
+    }
+  }, [currentIndex, tips, displaySeconds, transitionSeconds, reducedMotion])
 
   if (tips.length === 0) return null
 
@@ -91,7 +115,7 @@ export function TipsTicker({
     <section
       role="region"
       aria-label={ariaLabel}
-      className="relative w-full min-h-[2.75rem]"
+      className="relative w-full min-h-[3.5rem]"
     >
       <div
         style={{
@@ -112,7 +136,7 @@ interface TipPillProps {
 
 function TipPill({ tip, leadingIcon }: TipPillProps) {
   // Format « Catégorie : conseil » sur un seul flux inline (pas de saut de
-  // ligne entre la catégorie et le conseil), borné à 2 lignes par line-clamp.
+  // ligne entre la catégorie et le conseil), borné à 3 lignes par line-clamp.
   const inner = (
     <span className="flex items-start gap-1.5 text-xs leading-snug">
       {leadingIcon && (
@@ -120,7 +144,7 @@ function TipPill({ tip, leadingIcon }: TipPillProps) {
           {leadingIcon}
         </span>
       )}
-      <span className="line-clamp-2">
+      <span className="line-clamp-3">
         <span className="font-semibold text-foreground">{tip.term} : </span>
         <span className="text-muted-foreground">{tip.shortDef}</span>
       </span>
