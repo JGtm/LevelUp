@@ -6,11 +6,51 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
-## [Unreleased] - 2026-05-02
+## [Unreleased] - 2026-06-15
+
+> Consolidated entry grouping the work delivered since 2026-05-02 (v7.0 not yet released). Per-domain summary, not commit-by-commit.
 
 ### Added (React / TypeScript)
 
-- **Media — manual reassociation with match suggestions** — new `MediaMatchPicker` modal opened from the media cover-flow / detail view. Lists the player's matches inside an adjustable time window (±15 / ±60 / ±180 min) around the capture timestamp; each candidate is presented with the map thumbnail, localized map · mode · playlist, local start time + delta vs capture, outcome badge and full per-team lobby. Two-step confirmation (click to highlight, then *Confirm*) calls `POST /players/{slug}/media/associate` and invalidates the media cache on success. Useful when the automatic timestamp-based association picked the wrong match (DST edge cases, server-side mtime, OBS captures…). Backed by the existing `GET /players/{slug}/media/match-candidates` endpoint.
+- **Sessions page — rebuilt** — full UX overhaul: F/D/A per match and per minute, performance score by tier, F/D/A radar, OC/DR cloud and per-match engagement charts with explicit axes and skill-tier bands; A/B compare drawer with shared scales; single-session metrics (Win %, KDR, kills/match, rank delta); adaptive session window; sessions with a single match are no longer listed.
+- **Explorer — combat profiles & rivalries** — live read-only combat profile of any non-tracked player (career rank + Spartan grade, cadence charts, short-lived cache); dominance metrics and shared-history encounters; CSV export; cascade-aware filters across five dimensions; per-season match bars with CSR rank badge; partial match-ID search.
+- **Compare / Face-à-face** — dedicated page with 3-player mirror mode (B vs A vs C), readable career rank + all-time CSR for non-local players, encounter stats and badges.
+- **Citations** — dedicated page with composite score, LUSR/CSR badges and `CitationProgressRing`.
+- **Ascension** — V3 player profile (radar, style badge, LUSR components, leverage panel), behavioral pattern detection (tilt / fatigue / plateau / ceiling), context grid (by mode/map/squad), campaign tracker with start modal, two-tab layout.
+- **Objectives / Prestige** — challenges + squad challenges (collective / competitive), narrative arcs (free creation, presets, deletion, completion bonus), guided/coach-driven mode, PP leaderboard.
+- **Squad coach** — squad orientation strip, challenge-pool bias by performance axes, `CoachFocusCard` ("focus of the moment") with soft-negative signal.
+- **World leaderboard** — global CSR ranking enriched with native per-player stats, multi-season with cross-season trend indicator, local players surfaced first.
+- **Media — HLS player** — in-browser clip playback (`hls.js`) with audio-track selector (game / voice / full mix); manual reassociation modal `MediaMatchPicker` (±15 / ±60 / ±180 min window, map thumbnail, per-team lobby, outcome badge) calling `POST /players/{slug}/media/associate`.
+- **Admin dashboard** — full monitoring UI (sync cycles + trend sparklines, convergence, data-integrity invariants, token health, per-player Halo API-call attribution, recurring-error collector, logs, perf).
+- **Settings — Backup tab** — restic snapshot status, manual trigger, per-database integrity check.
+- **CSR / seasons** — CSR season selector + available seasons, dynamic placement thresholds, ranked badges, season pills with cascade-aware folding.
+
+### Added (Go API)
+
+- **CSR per match & per playlist** — `GetPlaylistCsr`, RankRecap per-match CSR, `season_id` + `is_ranked` at write time, dynamic per-season placement thresholds, authoritative ranked-playlist reference, automatic teammate CSR distribution, CLI `backfill-csr-history`.
+- **LUSR v2 (TrueSkill2)** — `internal/analysis/skill_v2/` factor graph + expectation propagation, time-played weighting, quit ordering, pre-match win probability, tier calibration, anti-volatility safeguards; shadow mode then canonical, with offline replay and batch hyperparameter tooling.
+- **World CSR leaderboard** — Halo Waypoint scraper, `world_player_season_stats` (append-only) enrichment, multi-token aggregator, dedicated cron + header provider, CLI backfill.
+- **Coach advisor & squad coach** — proposal generation/accept orchestration (ADR 0020/0021), post-sync hook, HTTP endpoints, squad orientation + challenge-pool bias.
+- **Backup / restore** — `pkg/duckdbbackup` generic restic scheduler + LevelUp adapter, `cmd/restore` point-in-time restore, structured logging.
+- **Convergent sync** — autonomous asset-name resolution at primary write, weekly safety-net for stragglers, in-cycle catalog refresh cron, cross-source sync dedup gate, data-quality invariants gate.
+- **Match timeline / T0** — `MatchTimeline` + `ComputeT0`, real gameplay duration (pre-match countdown subtracted), `CorrectEvents`/`CorrectImpactEvents` wiring, timezone re-normalization of `first_joined_time`/`last_leave_time`.
+- **Achievements (Xbox)** — `sync-achievements` CLI + `RunAchievementsOnly`, cross-DB merge service, HTTP handler, category filter.
+- **Access control** — multi-user player ownership + `RequirePlayerOwnership` middleware (ADR 0024), instance lockdown, "page unavailable" gating with `apiErrorCode`.
+- **Observability** — `event_id` propagated across sync/auth/watcher flows, expvar concurrency metrics, data-integrity invariants, admin diagnostics endpoints.
+
+### Changed
+
+- **Auth** — SISU provider by default (MSAL removed from UI); `MultiUserTokenStore` is the single source of truth for credentials (ADR 0023), with dead-refresh-token detection, reconnection banner and opt-in password for fast SSO re-login.
+- **DuckDB write safety** — critical tables migrated to append-only / INSERT-only to avoid the ART corruption bug (`match_skill_rank`, `match_csrs`, `player_csr_snapshots`, `pve_match_stats`); shared DB provider (B-swap) enabled by default.
+- **Token pool** — honors `Retry-After` (429/503) with exponential backoff, singleflight on the resolver to avoid `invalid_grant` bursts, periodic re-scan to hot-add tokens without reboot.
+
+### Fixed
+
+- **Gamertag display** — single-source lookup view, masked names resolved via `killer_victim_pairs`.
+- **Timezone** — `first_joined_time` re-normalization (fixes T0 + quit-ordering offsets).
+- **LUSR v2** — watermark-vs-row desync (skipped matches), delta ordered by `start_time`.
+- **Media** — HLS audio-track selection on Chrome, HEVC remux on scan, `data/media` fallback when the captures base dir is invalid.
+- **Squad** — empty charts with 2+ teammates (deduplicated intersection), displayed session = exact composition.
 
 ## [Go-API Phase 14] - 2026-04-29
 
