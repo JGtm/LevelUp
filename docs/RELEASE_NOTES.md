@@ -12,6 +12,7 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 - **Go API backend** — Python → Go switch for a lighter server, faster startup, smaller memory footprint
 - **Multi-title support** — the app now handles multiple Halo games (Infinite and beyond) via a **TitleSwitcher** in the nav bar; `levelup add-title` CLI command to register a new title
 - **Built-in Help page** — release notes (in-app changelog) plus a glossary of Halo terms, with a local 24 h cache for offline reading
+- **Multi-player demo mode** — a public read-only demo with an anonymized multi-player corpus (a Spartan and two teammates), real HLS clips and prestige fixtures, with client-side language switching
 
 **Home "Mission Control" — fully redesigned**
 - **Multi-title hero banner** — dynamic per-game banner with dedicated artwork
@@ -33,6 +34,8 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 - **Activity heatmap** — session frequency and kill density by day of week and time slot
 - **Combat profile** — Offensive Conversion (OC) and Defensive Resistance (DR) evolution over time
 - **Relations preview** — top teammates and most frequent opponents surfaced from your match history
+- **Combat Yield band** — Offensive Conversion / Defensive Resistance shown as a unified band across Synthesis, Sessions and Squad
+- **Real gameplay time** — durations now subtract the pre-match countdown, so time-played and per-minute stats reflect actual combat time
 
 **Media V2 — likes, Discord notifications, upload**
 - **Persistent likes** — like your screenshots and clips directly from the grid, state kept across reloads
@@ -42,6 +45,7 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 - **Non-destructive scanning** — automatic background re-indexing with a dedicated `--captures-dir` option
 - **Discord notifications for new media** — embed with a GIF or screenshot thumbnail whenever a new capture is indexed; anti-spam (each file notified once); toggle `discord_notify_new_media` in Settings
 - **Manual reassociation with match suggestions** — built-in modal listing your matches in a ±15 / ±60 / ±180 min window around the capture, with map thumbnail, map · mode · playlist, local time + delta, outcome badge and full lobby per team; one click + confirm to fix any media linked to the wrong match
+- **HLS video player** — in-browser clip playback with an audio-track selector (game / voice / full mix) and multi-track transcoding at ingestion (HEVC clips remuxed automatically)
 
 **Dedicated Match page & richer visualizations**
 - **Clean URL per match** — `/players/{gamertag}/matches/{id}`, shareable, with prev/next match navigation
@@ -52,12 +56,17 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 - **Combat Yield & Perfect Kills** — new metrics in the match view
 - **V7 scoreboard** — higher info density: expected stats, skill rank, linked media, citations
 - **Session comparison** — dedicated A/B page: pick any two sessions and compare KDA, performance score, Offensive Conversion / Defensive Resistance, outcome distribution and dominant playlist side by side
+- **Exclude a match** — drop a match from your stats with a full cascade recompute (sessions, performance score, citations) and a guard for ranked matches
+- **Rank badge always visible** — LUSR/CSR tier shown on the scoreboard, including shared CSRs for untracked players
 
 **Rebuilt authentication**
 - **SISU/PoP provider** — new Xbox authentication with Proof-of-Possession for more stable sessions and fewer reconnects
 - **OAuth redirect flow** — browser-based Xbox login (`/auth/xbox/login` → Microsoft → callback) as an alternative to Device Code; configurable via `LEVELUP_OAUTH_REDIRECT_URI`
 - **Local auth** — username/password mode for single-user / LAN deployments
 - **Invitation-based registration** — new `/register` page; account creation requires a server-issued invitation code (`?code=` query param); invalid or expired codes are rejected before the account is written
+- **SISU by default & instance lockdown** — the SISU provider is now the default Xbox auth; the instance can be sealed and per-player ownership checks isolate each player's data (no cross-account access)
+- **Opt-in password for fast re-login** — set a password to re-open your SSO session quickly without going through the full Xbox flow every time
+- **Reconnection banner & dead-token detection** — an in-app banner detects a dead Xbox refresh token and walks you through re-linking before sync breaks; the token store is the single source of truth for credentials
 
 **Xbox achievements & match events**
 - **Xbox achievements sync** — your Xbox achievements are pulled automatically from the Halo API on every sync
@@ -65,6 +74,7 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 - **Highlight events** — binary parser of match films to extract all major events (medals, clutches, spawns)
 - **Weapon kills backfill** — weapon used per frag reconstructed from the film (POV ~87 %)
 - **Comeback badges for teammates** — Remontada / Collapse / Counter-Remontada computed for squad members synced alongside you
+- **Achievement category filter** — filter your Xbox achievements by Multiplayer / Campaign / Other, with Multiplayer shown by default
 
 **Communauté — Hall of Fame, Relations & Face-à-face**
 - **Multilingual Season Pass** — Battle Pass translations in 26 languages, tier images from GameCMS
@@ -74,6 +84,8 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 **Objectives & Prestige**
 - **Objectives** — individual and squad challenge system: set personal goals or create squad challenges (collective or competitive) on any Halo metric with configurable windows, tiers, and narrative arcs; earn Prestige Points (PP) on completion; two evaluation modes (threshold / cumulative) and two creation modes (free / guided)
 - **Prestige leaderboard** — PP ranking in Palmares comparing your score against your squad and relations; four tiers: Normal / Heroic / Legendary / Mythic
+- **Narrative arcs** — group challenges into arcs with free creation, ready-made presets and deletion; an arc-completion bonus is credited and shown on the final step
+- **Coach-driven challenges** — guided mode proposes challenges auto-calibrated on your weaker performance axes
 
 **Ascension — progression tracking & game profile**
 - **Streak dashboard** — win streaks, loss streaks and kill streaks tracked over time, with your all-time personal records highlighted
@@ -85,6 +97,7 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 - **Contextual patterns** — how your stats shift by mode, map and squad composition
 - **Solo vs squad card** — side-by-side comparison of your playstyle when playing alone vs with teammates
 - **Proactive coach** — a background engine analyses your progress after every sync and fires positive-only alerts in the notification center: new personal records, near-misses, LUSR tier approaching, milestone unlocks, sustained stat improvements and contextual strengths by map, mode and squad type
+- **Campaign tracker** — start an improvement campaign on a chosen goal and follow your progress toward it over time, with a dedicated tracker and start modal
 
 **In-app notifications**
 - **Notification center** — per-player feed with unread badge in the nav bar, category filters, day-grouped timeline, bulk actions, and 60-second live refresh; preferences configurable per player in Settings
@@ -96,12 +109,16 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 - **Smart scheduler** — sync cadence adapts to player activity; no useless requests when nobody's playing
 - **Autonomous token refresh** — no more interruptions: Halo tokens renew themselves in the background
 - **Proactive reconnection** — status=3 handling with on-demand XSTS refresh, automatic reconnect on startup
+- **Convergent sync** — asset names (maps, modes, playlists) resolve themselves during sync, with a weekly catalog-refresh safety net for stragglers
+- **Cross-source dedup** — concurrent syncs of the same match are de-duplicated so nothing is fetched or written twice
 
 **Settings & admin**
 - **Settings auto-save** — settings persist immediately with an ephemeral visual indicator
 - **Admin page** — supervision UI (auth provider, job status, privacy)
 - **Browser preferences** — selected player, language and filters remembered across sessions
 - **Configurable API endpoints** — Halo Stats, SPNKr, CMS… all configurable from Settings
+- **Automatic backup & restore** — restic-based snapshots of every database, with a dedicated Settings tab (manual trigger, per-database status, informational integrity check) and point-in-time restore
+- **Monitoring dashboard** — full admin supervision: sync cycles and trend sparklines, convergence, data-integrity invariants, token health (MSAL/XSTS/Refresh), per-player Halo API-call attribution, recurring-error collector, logs and performance
 
 **Assets & maps**
 - **Cache-aside map images** — map artwork downloaded and cached locally, no more repeated external requests
@@ -111,6 +128,38 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 - **Colour-blind safe palette** — a new Okabe-Ito palette (designed in 2008, universally recommended) is available in Settings → Accessibility; it replaces every colour in the app — charts, performance indicators, match outcomes, K/D ratings — with tones that remain distinguishable under deuteranopia, protanopia and tritanopia
 - **Live preview** — the palette switches instantly across the whole app without a page reload; a swatch preview lets you compare before committing
 - **Persistent preference** — your choice is saved in the browser and restored automatically on every visit
+
+**Sessions — rebuilt page**
+- **Richer charts** — F/D/A per match and per minute, performance score by tier, F/D/A radar, OC/DR cloud and per-match engagement, with explicit axes and skill-tier bands
+- **A/B compare drawer** — pick two sessions and compare them side by side, with shared scales across all charts
+- **Single-session metrics** — Win %, KDR, kills/match, average precision and rank delta surfaced directly in the single view
+- **Rank delta per match** — LUSR/CSR movement shown match by match, with an adaptive session window
+
+**Explorer — combat profiles & rivalries**
+- **Live combat profile of any player** — read a non-tracked player's recent combat profile live (read-only, short-lived cache), with career rank and Spartan grade
+- **Dominance & encounters** — dominance metrics plus shared-history encounters (ally / rival / opponent) surfaced per player
+- **CSV export** — export the filtered match table in one click
+- **Cascade-aware filters** — five filter dimensions whose available options update as you narrow the others down
+- **Matches by season** — per-season match bars with a CSR rank badge
+
+**Ranked (CSR)**
+- **Per-match & per-playlist CSR** — CSR captured for every ranked match and for each active ranked playlist
+- **CSR season selector** — switch between available CSR seasons; past seasons can be backfilled
+- **Dynamic placement thresholds** — the placement-match count is resolved per season
+- **Automatic teammate CSR** — every registered co-player's CSR is pulled and distributed on a ranked sync
+- **Authoritative ranked-playlist reference** — ranked status is read from a stable reference instead of being guessed from matches
+
+**World leaderboard**
+- **Global CSR ranking** — a world CSR leaderboard scraped from Halo Waypoint, enriched with native per-player stats (KDA, accuracy, damage) across multiple seasons
+- **Cross-season trend** — a colored indicator shows each player's movement versus the previous season
+- **Local players first** — your tracked players are always surfaced at the top
+
+**Squad coach**
+- **Squad orientation** — the coach surfaces the squad's current focus and biases the challenge pool toward your weaker performance axes
+- **"Focus of the moment" card** — a CoachFocusCard highlights the single most useful thing to work on next, with a soft-negative signal that stays encouraging
+
+**Rating accuracy (LUSR v2)**
+- **Reworked rating engine** — a new TrueSkill2 model (factor graph + expectation propagation) with time-played weighting, quit handling, pre-match win probability and anti-volatility display safeguards, so your rating moves for the right reasons
 
 **v6.5 — Squad heatmap & hardened settings**
 - **Per-player intensity heatmap** (Teammates) — new visualization: match × phase (early/mid/late) heatmap for every squad member. See who strikes early, who ramps up late. Toggle between "all together" and "player by player"
