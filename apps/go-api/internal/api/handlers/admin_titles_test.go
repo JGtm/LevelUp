@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -103,6 +105,52 @@ func TestAdminTitles_Detail_NotFound(t *testing.T) {
 
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404, body=%s", w.Code, w.Body.String())
+	}
+}
+
+// TestAdminTitles_TOMLDraft — PMT-14 (D10) : le draft reprend les capabilities
+// déclarées + le schema_version, et 404 pour un titre inconnu.
+func TestAdminTitles_TOMLDraft(t *testing.T) {
+	set := mappings.NewCapabilityMappingSet(titlePkg.DefaultSlug, 3, map[string]string{
+		"match.history": mappings.CapStatusSupported,
+	})
+	h := newAdminTitlesHandlerForTest(set)
+	r := chi.NewRouter()
+	r.Get("/admin/titles/{slug}/toml-draft", h.TOMLDraft)
+
+	req := httptest.NewRequest("GET", "/admin/titles/"+titlePkg.DefaultSlug+"/toml-draft", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200, body=%s", w.Code, w.Body.String())
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "[capabilities]") || !strings.Contains(body, "schema_version = 3") {
+		t.Errorf("draft incomplet: %q", body)
+	}
+	if !strings.Contains(body, `"match.history" = "supported"`) {
+		t.Errorf("draft doit reprendre les capabilities déclarées, got: %q", body)
+	}
+
+	req404 := httptest.NewRequest("GET", "/admin/titles/inconnu_xyz/toml-draft", nil)
+	w404 := httptest.NewRecorder()
+	r.ServeHTTP(w404, req404)
+	if w404.Code != http.StatusNotFound {
+		t.Errorf("titre inconnu: status=%d want 404", w404.Code)
+	}
+}
+
+// TestAdminTitles_NoOsWriteFile_D10 — garde-fou D10 : aucune écriture serveur
+// dans les handlers titres (le draft est presse-papier côté front uniquement).
+func TestAdminTitles_NoOsWriteFile_D10(t *testing.T) {
+	for _, f := range []string{"admin_titles.go", "admin_title_diagnostic.go"} {
+		src, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatalf("lecture %s: %v", f, err)
+		}
+		if strings.Contains(string(src), "os.WriteFile") {
+			t.Errorf("%s contient os.WriteFile — viole D10 (zéro écriture serveur dans les handlers titres)", f)
+		}
 	}
 }
 

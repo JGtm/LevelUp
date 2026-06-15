@@ -1646,6 +1646,23 @@ paths:
           schema: { type: string }
       responses:
         "200": { description: "Rapport de diagnostic du titre" }
+  /admin/titles/{slug}/toml-draft:
+    get:
+      tags: [admin]
+      operationId: getAdminTitleTOMLDraft
+      summary: "Brouillon capabilities.toml collable pour un titre — ZÉRO écriture serveur (D10, auth admin requis)"
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: "Brouillon TOML (text/plain) à copier dans config/titles/{slug}/mappings/"
+          content:
+            text/plain:
+              schema: { type: string }
+        "404": { $ref: "#/components/responses/NotFound" }
   /admin/invites:
     get:
       tags: [admin]

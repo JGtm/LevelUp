@@ -805,6 +805,8 @@ func NewRouter(
 			adminTitlesHandler := handlers.NewAdminTitlesHandler(titleRegistry, fieldMappingsRegistry, slog.Default())
 			r.With(middleware.NoStore).Get("/titles", adminTitlesHandler.List)
 			r.With(middleware.NoStore).Get("/titles/{slug}", adminTitlesHandler.Detail)
+			// Draft capabilities.toml collable (décision D10 : ZÉRO écriture serveur).
+			r.With(middleware.NoStore).Get("/titles/{slug}/toml-draft", adminTitlesHandler.TOMLDraft)
 			// Diagnostic santé d'un titre (PMT-14 volet A — productise Phase 1.8) :
 			// présence des mappings TOML + réalité DB (lignes des tables cœur),
 			// read-only via port.TableInspector.
