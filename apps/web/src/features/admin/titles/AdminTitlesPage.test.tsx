@@ -59,6 +59,14 @@ vi.mock('./queries', () => ({
           tables: [{ name: 'season_calendars', exists: true, rows: 5 }],
         },
       ],
+      drifts: [
+        {
+          feature: 'match_history',
+          kind: 'data',
+          computed: 'available',
+          reason: 'feature déclarée disponible mais match_registry absente/vide',
+        },
+      ],
     },
     isLoading: false,
     isError: false,
@@ -81,6 +89,8 @@ describe('AdminTitlesPage', () => {
     expect(screen.getByText('season_calendars')).toBeTruthy()
     // Notice d'aide « enregistrer un 2e titre ».
     expect(screen.getByText('admin.titles.register_help_title')).toBeTruthy()
+    // Drift déclaré-vs-réalité : la feature en écart est rendue.
+    expect(screen.getByText('match_history')).toBeTruthy()
   })
 
   it('copie le brouillon TOML dans le presse-papier (D10)', async () => {

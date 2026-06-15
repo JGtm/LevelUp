@@ -261,6 +261,8 @@ export const adminManifest = {
   "admin.titles.diag_config": { fr: "Fichiers de config", en: "Config files" },
   "admin.titles.diag_databases": { fr: "Bases de données", en: "Databases" },
   "admin.titles.diag_db_absent": { fr: "base absente", en: "DB missing" },
+  "admin.titles.diag_drifts": { fr: "Écarts déclaré ↔ réalité", en: "Declared ↔ reality drift" },
+  "admin.titles.diag_no_drift": { fr: "Aucun écart détecté.", en: "No drift detected." },
   "admin.titles.diag_present": { fr: "présent", en: "present" },
   "admin.titles.diagnostic": { fr: "Diagnostic", en: "Diagnostic" },
   "admin.titles.empty": { fr: "Aucun titre enregistré.", en: "No registered titles." },
