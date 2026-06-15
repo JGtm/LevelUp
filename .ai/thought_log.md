@@ -1,3 +1,17 @@
+## [2026-06-15] PMT-12 MT-09 — CLÔTURE (cutoffs slug → factory player-scoped par titre) — Complété
+
+**Statut** : Branche `feat/multititre-peripherie` (23d088103). Build/vet/gofmt verts ; archlint `no_slug_comparison` vert avec **allowlist VIDE** ; tests api/handlers/service verts (sauf 2 DeviceCodeFlow pré-existants) ; oracle MT-09 (routing + parité) vert. **PMT-12 désormais complet** (MT-21 + MT-09 + lint MT-12).
+
+**Décision technique** : les 2 derniers hard-gates `pdb.TitleSlug != DefaultSlug` (`dataAdapterForPDB` registry.go, `TitleDataAdapter` registry_career.go) → lookup d'une **factory player-scoped PAR TITRE** : `ServiceRegistry.playerDataBuilders map[slug]func(*PlayerDB) TitleDataAdapter`. Le slug est une CLÉ de map (title-agnostic), plus aucune comparaison littérale. Halo enregistre son builder au boot (server.go : `RegisterPlayerDataBuilder(DefaultSlug, …)`, CareerRepo + hiCapabilities lus à la volée). `slugCompareAllowlist` vidée → garde mordante.
+
+**Pourquoi PAS le `titleResolver.Data()` du spec** : l'adapter du resolver est enregistré avec `career=nil` (server.go:297) → son `Capabilities()` rétrograde `career.progression` à `not_exposed` ; un swap naïf aurait cassé le career de TOUS les joueurs. La factory player-scoped préserve la parité Halo (CareerRepo lié → career.progression `supported`), prouvée par `registry_player_data_test.go`. **MT-09 n'était PAS bloqué par PMT-3** (le tracker était trop prudent) — confirmé par RE-VÉRIFICATION du code réel.
+
+**Oracle** : parité Halo (career.progression supported via CareerRepo lié) + routing synthetic_b (un 2e titre enregistré route par lookup) + dégradation (titre sans builder → nil / `ErrTitleNotResolved`, pdb nil → nil).
+
+**Prochaine étape** : sanity globale + push. PMT-12 et PMT-14 clos.
+
+---
+
 ## [2026-06-15] PMT-12 lint MT-12 + PMT-14 volets B/C (finition) + incident node_modules — Complété
 
 **Statut** : Branche `feat/multititre-peripherie`. lint MT-12 : règle eslint + RuleTester 8/8. PMT-14 volets B/C vérifiés. Tracker/index à jour.

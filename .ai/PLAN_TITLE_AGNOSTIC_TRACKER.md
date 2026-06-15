@@ -158,7 +158,7 @@
 | PMT-9 | Registre migrations + schema_version par titre | MT-23 | major | ⬜ | PMT-3 |
 | PMT-10 | Observabilité — dimension titre | MT-05 | major | ⬜ | — |
 | PMT-11 | Discord notifications (contenu) | MT-26 | major | ⬜ | — |
-| PMT-12 | Garde-fous & validateurs | MT-21, MT-09, MT-12 | major | 🟡 | MT-21 ✅ (dcfc01c31) ; MT-09 après PMT-3, lint MT-12 différés |
+| PMT-12 | Garde-fous & validateurs | MT-21, MT-09, MT-12 | major | ✅ | MT-21 ✅ + MT-09 ✅ (factory player-scoped, allowlist archlint vide) + lint MT-12 ✅ (warn) |
 | PMT-13 | Mineurs & bénins (décision documentée) | MT-24, MT-25, MT-20 | minor | ⬜ | — |
 | PMT-14 | Admin : gestion des titres (+ réhab. Lab cassé) | MT-22 (+1.7a/b, 1.8) | major | ✅ | vol.A ✅ ; vol.C ✅ (Lab monté 2026-06-14) ; vol.B = 0 dup (atoms feature-local corrects) |
 | EXT-1.5 | Extension Phase 1.5 (metadata/ops/seed/notif) | MT-16/10/18/17 | major | ⬜ | PMT-3 |
