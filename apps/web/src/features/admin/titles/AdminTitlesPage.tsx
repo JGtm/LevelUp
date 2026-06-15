@@ -14,6 +14,7 @@ import type { AdminManifestKey } from '@/lib/i18n/generated/admin'
 
 import { useAdminT } from '../useAdminText'
 import {
+  fetchTitleTomlDraft,
   useAdminTitleDetail,
   useAdminTitleDiagnostic,
   useAdminTitles,
@@ -86,7 +87,60 @@ export function AdminTitlesPage() {
 
       {activeSlug && <TitleDetailCard slug={activeSlug} />}
       {activeSlug && <TitleDiagnosticCard slug={activeSlug} />}
+      <RegisterHelpNotice />
     </div>
+  )
+}
+
+// TomlDraftButton — D10 : récupère le brouillon capabilities.toml (text/plain)
+// et le copie dans le presse-papier. AUCUNE écriture serveur.
+function TomlDraftButton({ slug }: { slug: string }) {
+  const tA = useAdminT()
+  const [state, setState] = useState<'idle' | 'done' | 'error'>('idle')
+
+  const onCopy = async () => {
+    try {
+      const draft = await fetchTitleTomlDraft(slug)
+      await navigator.clipboard.writeText(draft)
+      setState('done')
+    } catch {
+      setState('error')
+    }
+  }
+
+  const label =
+    state === 'done'
+      ? tA('admin.titles.copy_draft_done')
+      : state === 'error'
+        ? tA('admin.titles.copy_draft_failed')
+        : tA('admin.titles.copy_draft')
+
+  return (
+    <button
+      type="button"
+      onClick={onCopy}
+      className="mt-4 rounded-sm border border-border bg-muted px-3 py-1.5 text-xs text-foreground hover:bg-muted/70"
+    >
+      {label}
+    </button>
+  )
+}
+
+// RegisterHelpNotice — aide read-only documentant l'enregistrement d'un 2e titre
+// (workflow CLI existant). Aucune écriture de registre via HTTP.
+function RegisterHelpNotice() {
+  const tA = useAdminT()
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <h3 className="text-base font-semibold text-foreground">
+          {tA('admin.titles.register_help_title')}
+        </h3>
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+          {tA('admin.titles.register_help_body')}
+        </p>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -160,6 +214,8 @@ function TitleDetailCard({ slug }: { slug: string }) {
             />
           </div>
         )}
+
+        <TomlDraftButton slug={data.slug} />
       </CardContent>
     </Card>
   )

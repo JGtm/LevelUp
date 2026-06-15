@@ -141,6 +141,26 @@ en = "absent"
 fr = "base absente"
 en = "DB missing"
 
+[admin.titles.copy_draft]
+fr = "Copier le brouillon TOML"
+en = "Copy TOML draft"
+
+[admin.titles.copy_draft_done]
+fr = "Brouillon copié"
+en = "Draft copied"
+
+[admin.titles.copy_draft_failed]
+fr = "Échec de la copie"
+en = "Copy failed"
+
+[admin.titles.register_help_title]
+fr = "Enregistrer un 2e titre"
+en = "Register a 2nd title"
+
+[admin.titles.register_help_body]
+fr = "Procédure (aucune écriture via l'interface) : lancer « levelup add-title », déclarer le titre dans internal/domain/title/registry.go, puis « make build ». Le brouillon capabilities.toml ci-dessus sert de point de départ (à copier dans config/titles/{slug}/mappings/)."
+en = "Procedure (no write via the UI): run \"levelup add-title\", declare the title in internal/domain/title/registry.go, then \"make build\". The capabilities.toml draft above is a starting point (copy it to config/titles/{slug}/mappings/)."
+
 # ─── Page Logs ─────────────────────────────────────────────────────────────
 
 [admin.logs.module]

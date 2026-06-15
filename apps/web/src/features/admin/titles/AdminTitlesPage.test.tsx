@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 // i18n : renvoie la clé brute (suffit pour vérifier le rendu structurel).
@@ -63,6 +63,7 @@ vi.mock('./queries', () => ({
     isLoading: false,
     isError: false,
   }),
+  fetchTitleTomlDraft: () => Promise.resolve('DRAFT_TOML'),
 }))
 
 import { AdminTitlesPage } from './AdminTitlesPage'
@@ -78,5 +79,19 @@ describe('AdminTitlesPage', () => {
     // Diagnostic : fichier de config + table DB.
     expect(screen.getByText('fields.toml')).toBeTruthy()
     expect(screen.getByText('season_calendars')).toBeTruthy()
+    // Notice d'aide « enregistrer un 2e titre ».
+    expect(screen.getByText('admin.titles.register_help_title')).toBeTruthy()
+  })
+
+  it('copie le brouillon TOML dans le presse-papier (D10)', async () => {
+    const writeText = vi.fn(() => Promise.resolve())
+    Object.assign(navigator, { clipboard: { writeText } })
+
+    render(<AdminTitlesPage />)
+    fireEvent.click(screen.getByText('admin.titles.copy_draft'))
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('DRAFT_TOML'))
+    // Feedback visuel après copie.
+    expect(screen.getByText('admin.titles.copy_draft_done')).toBeTruthy()
   })
 })
