@@ -215,6 +215,27 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  # Drive-by : route existante (server.go) non documentée sur main —
+  # documentée ici pour passer TestContractRoutesDocumented (plafond 0).
+  # NB : même ajout sur la branche feat/admin-titles-pmt14 (prendre l'un au merge).
+  /players/{player_slug}/filters/match-ids:
+    post:
+      tags: [filters]
+      operationId: filtersMatchIDs
+      summary: "Résoudre la liste des match_ids correspondant à un contexte de filtres"
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FilterContextInput"
+      responses:
+        "200": { description: "Liste des match_ids filtrés" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   # -------------------------------------------------------------------------
   # Career (P1)
   # -------------------------------------------------------------------------

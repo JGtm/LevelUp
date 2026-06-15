@@ -1,14 +1,34 @@
+## [2026-06-15] PMT-12 (MT-21) — validateur boot des mappings TOML requis — Complété
+
+**Statut** : `go build ./internal/...` = 0 ; `go vet ./internal/games/mappings/ ./internal/api/` = 0 ; `gofmt -l` = rien ; `go test ./internal/games/mappings/` vert (TestValidateRequiredTOML 0/1/2 erreurs) ; suite contrat `./internal/api/ -run Contract` verte. Branche `feat/title-required-toml-validator` (worktree dédié `levelup-pmt12`, depuis `main` d18dbf2ab).
+
+**Déclencheur** : phase PMT-12 du plan multi-titres (`.ai/PLAN_MULTITITRE_PERIPHERY.md`) — axe MT-21. Complément BOOT (fail-fast) du diagnostic runtime admin livré en PMT-14 : un titre **actif** sans ses mappings TOML requis doit faire échouer le démarrage plutôt que servir des pages à moitié configurées.
+
+**Décision technique principale** :
+1. `internal/games/mappings/validate.go` : `ValidateRequiredTOML(repoRoot, slug) []error` — read-only (`os.Stat`), vérifie `config/titles/{slug}/mappings/{fields,capabilities}.toml`. `requiredTitleTOML = {fields, capabilities}` ; les autres TOML (outcomes/assets/constants) restent optionnels (dégradation gracieuse, cf. arch-rules). Une erreur par fichier manquant.
+2. `internal/api/server.go` (`NewRouter`, après `LoadFromConfigDir`) : boucle de validation au boot, gardée par `if !cfg.DemoMode` — pour chaque titre `Status == StatusActive`, `os.Exit(1)` + `slog.Error` si un mapping requis manque. Garde `!cfg.DemoMode` → le seul appelant de test (`buildTestRouter`, DemoMode=true) saute la validation, les tests contrat ne sont pas bloqués.
+
+**Pourquoi `NewRouter` et pas `cmd/server/main.go`** : centraliser dans le constructeur du routeur garantit que tout binaire qui monte l'API (serveur, futurs entrypoints) hérite du garde-fou, sans dupliquer la logique. Le garde `DemoMode` isole proprement le mode test/démo.
+
+**Drive-by** : `api/openapi.yaml` — documentation de `POST /players/{player_slug}/filters/match-ids` (route déjà montée sur `main` mais non documentée → `TestContractRoutesDocumented` échouait sur main, plafond 0). Corrigé ici pour que la suite contrat passe ; même ajout présent sur `feat/admin-titles-pmt14` (noté en commentaire YAML).
+
+**Résultats observés** : titre `halo_infinite` possède bien `fields.toml` + `capabilities.toml` → boot OK. Test unitaire couvre 0/1/2 fichiers présents.
+
+**Conclusion / prochaine étape** : prêt à commit (en attente autorisation). Suite du plan multi-titres : phases bornées candidates PMT-6 (achievements), PMT-10 (observability), PMT-5 (outcome) ; blockers (PMT-1 hosts, PMT-2 auth, PMT-3 scheduler, Phase 1.5 DDL) = passes supervisées larges.
+
+---
+
 ## [2026-06-15] PMT-8 : enforcement du cycle de vie du titre (Status, MT-22) — Complété (worktree)
 
 **Statut** : Implémenté + vérifié dans le worktree `feat/title-lifecycle-status` (depuis main). Build/vet + tests verts (registre, middleware, bootstrap), CGO. Backend-only.
 
 **Contexte** : MT-22 / PMT-8 du plan multititre. `TitleDescriptor.Status` (active/coming_soon/archived) était défini mais JAMAIS lu en prod (`resolveTitleSlug` n'utilisait que `Exists()`) → un titre coming_soon/archived aurait été servi comme actif.
 
-**Implémentation** : `Registry.IsActive(slug)` + `Registry.Active()` (domain/title). (A) `middleware.TitleExtractor.resolveTitleSlug` exige désormais `IsActive` (header + session) → un titre non-actif n'est jamais résolu comme titre courant (fallback défaut actif). (B) `BuildAvailableTitles` filtre `reg.Active()` → seuls les titres actifs dans le switcher front ; coming_soon/archived restent inspectables côté admin (/admin/titles, PMT-14). Tests : IsActive/Active (registre + titre coming_soon enregistré), middleware (header coming_soon → fallback défaut).
+**Implémentation** : `Registry.IsActive(slug)` + `Registry.Active()` (domain/title). (A) `middleware.TitleExtractor.resolveTitleSlug` exige désormais `IsActive` (header + session) → un titre non-actif n'est jamais résolu comme titre courant (fallback défaut actif). (B) `BuildAvailableTitles` filtre `reg.Active()`.
 
-**Parité** : zéro impact aujourd'hui (seul halo_infinite enregistré = actif). L'enforcement ne mord que lorsqu'un 2e titre est enregistré coming_soon/archived.
+**NB (consolidation 2026-06-15)** : entrée conservée pour historique. L'approche décrite ici (fallback silencieux dans `resolveTitleSlug` + `Active()` qui exclut aussi `coming_soon`) sera RÉVISÉE en clôture PMT-8 : middleware dédié `RequireActiveTitle` + 503 `title_unavailable`, et `BuildAvailableTitles` excluant SEULEMENT `archived` (conforme à l'Exit Gate du spec). Cf. entrée de clôture à venir.
 
-**Prochaine étape** : commit + push ; suite du plan multititre (blockers PMT-1/2/3, Phase 1.5).
+**Prochaine étape** : clôture PMT-8 jusqu'à l'Exit Gate sur la branche d'intégration `feat/multititre-peripherie`.
 
 ---
 
