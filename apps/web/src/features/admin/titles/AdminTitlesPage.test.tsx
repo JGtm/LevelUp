@@ -48,6 +48,21 @@ vi.mock('./queries', () => ({
     isLoading: false,
     isError: false,
   }),
+  useAdminTitleDiagnostic: () => ({
+    data: {
+      title_slug: 'halo_infinite',
+      config_files: [{ name: 'fields.toml', present: true, required: true }],
+      databases: [
+        {
+          name: 'metadata.duckdb',
+          exists: true,
+          tables: [{ name: 'season_calendars', exists: true, rows: 5 }],
+        },
+      ],
+    },
+    isLoading: false,
+    isError: false,
+  }),
 }))
 
 import { AdminTitlesPage } from './AdminTitlesPage'
@@ -60,5 +75,8 @@ describe('AdminTitlesPage', () => {
     // Détail : capability déclarée + feature (uniques → getByText sûr).
     expect(screen.getByText('match.history')).toBeTruthy()
     expect(screen.getByText('match_view.cadence')).toBeTruthy()
+    // Diagnostic : fichier de config + table DB.
+    expect(screen.getByText('fields.toml')).toBeTruthy()
+    expect(screen.getByText('season_calendars')).toBeTruthy()
   })
 })

@@ -50,6 +50,18 @@
 
 ---
 
+## [2026-06-15] PMT-14 volet A (suite) : diagnostic santé d'un titre — Complété (worktree)
+
+**Statut** : Ajouté dans le worktree `feat/admin-titles-pmt14`. Back : build/vet + tests (inspector DuckDB, service, handler) + contrat verts (CGO). Front : i18n régénéré, `tsc -b` clean, eslint clean, vitest 1/1.
+
+**Backend** : `GET /admin/titles/{slug}/diagnostic` (read-only, admin-gated). Rapport = présence des mappings TOML (fields/capabilities requis + outcomes/assets/constants) + réalité DB (existence des bases metadata/shared/pve + lignes des tables cœur via `port.TableInspector` → impl `platform/duckdb` `OpenReadForQuery`). Productise la Phase 1.8 côté ADMIN (pas un Lab dev). Cadré « santé du titre » faute de section `[data]` dans capabilities.toml. Couches : domain/title_diagnostic + port/table_inspector + platform/duckdb impl + service/title_diagnostic_service + handler. Tests : table_inspector (DuckDB temp), service (stub inspector + temp config/DB), handler (httptest).
+
+**Frontend** : hook `useAdminTitleDiagnostic` + carte « Diagnostic » dans AdminTitlesPage (config files présents/absents + bases/tables avec compteurs) + query key + 6 clés i18n FR/EN. Test vitest étendu.
+
+**Reste** : volet B (partage des atoms `_labShared`) non fait. Prochaine étape : commit + push, puis exécution du plan multititre.
+
+---
+
 ## [2026-06-15] PMT-14 volet A : section admin « Titres » (gestion multi-titres) — Complété (worktree)
 
 **Statut** : Implémenté + vérifié de bout en bout dans un worktree dédié `feat/admin-titles-pmt14` (créé depuis `main`). Back : `go build` + `go vet` + tests admin-titles + suite de contrat verts (CGO). Front : `vite build` OK, `tsc -b` clean, eslint clean, vitest 1/1.

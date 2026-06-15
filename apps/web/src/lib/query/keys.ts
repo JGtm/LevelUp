@@ -206,4 +206,5 @@ export const queryKeys = {
   // Admin — Titres (PMT-14 volet A : gestion multi-titres)
   adminTitles: ['admin', 'titles'] as const,
   adminTitleDetail: (slug: string) => ['admin', 'titles', slug] as const,
+  adminTitleDiagnostic: (slug: string) => ['admin', 'titles', slug, 'diagnostic'] as const,
 } as const

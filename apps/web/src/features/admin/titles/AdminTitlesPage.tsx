@@ -15,6 +15,7 @@ import type { AdminManifestKey } from '@/lib/i18n/generated/admin'
 import { useAdminT } from '../useAdminText'
 import {
   useAdminTitleDetail,
+  useAdminTitleDiagnostic,
   useAdminTitles,
   type AdminTitleSummary,
   type TitleStatus,
@@ -84,6 +85,7 @@ export function AdminTitlesPage() {
       </Card>
 
       {activeSlug && <TitleDetailCard slug={activeSlug} />}
+      {activeSlug && <TitleDiagnosticCard slug={activeSlug} />}
     </div>
   )
 }
@@ -185,5 +187,76 @@ function KeyStatusList({ title, entries }: { title: string; entries: Record<stri
         </ul>
       )}
     </div>
+  )
+}
+
+function TitleDiagnosticCard({ slug }: { slug: string }) {
+  const tA = useAdminT()
+  const { data } = useAdminTitleDiagnostic(slug)
+
+  if (!data) {
+    return null
+  }
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <h3 className="text-base font-semibold text-foreground">{tA('admin.titles.diagnostic')}</h3>
+
+        <div className="mt-4 grid gap-6 md:grid-cols-2">
+          <div>
+            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {tA('admin.titles.diag_config')}
+            </h4>
+            <ul className="space-y-1">
+              {data.config_files.map((cf) => (
+                <li key={cf.name} className="flex items-center justify-between gap-3 text-xs">
+                  <span className="font-mono text-foreground">
+                    {cf.name}
+                    {cf.required && <span className="ml-1 text-muted-foreground">*</span>}
+                  </span>
+                  <span className={cf.present ? 'text-muted-foreground' : 'text-destructive'}>
+                    {cf.present ? tA('admin.titles.diag_present') : tA('admin.titles.diag_absent')}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {tA('admin.titles.diag_databases')}
+            </h4>
+            <ul className="space-y-2">
+              {data.databases.map((db) => (
+                <li key={db.name} className="text-xs">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-mono text-foreground">{db.name}</span>
+                    {!db.exists && (
+                      <span className="text-destructive">{tA('admin.titles.diag_db_absent')}</span>
+                    )}
+                  </div>
+                  {db.exists && db.tables && db.tables.length > 0 && (
+                    <ul className="ml-3 mt-1 space-y-0.5">
+                      {db.tables.map((tb) => (
+                        <li
+                          key={tb.name}
+                          className="flex items-center justify-between gap-3 text-muted-foreground"
+                        >
+                          <span className="font-mono">{tb.name}</span>
+                          <span className="tabular-nums">
+                            {tb.exists ? tb.rows.toLocaleString() : tA('admin.titles.diag_absent')}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
