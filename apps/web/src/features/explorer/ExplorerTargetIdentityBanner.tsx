@@ -168,8 +168,8 @@ export function ExplorerTargetIdentityBanner({
             progress_pct=100 → barre verte pleine (success token). Plus de branche qui
             masque tout (régression du fix Héros précédent). */}
         {careerRank && (
-          <div className="relative bg-card px-5 pb-4">
-            <div className="space-y-2">
+          <div className="relative border-t border-border/70 bg-card px-5 py-4 sm:px-6">
+            <div className="space-y-3">
               {/* Ligne du haut (progression vers le rang suivant + %) : masquée au
                   rang max — pas de "suivant", et on ne garde qu'UN "Rang max", celui
                   en bout de barre composite (cf. retour user). */}
