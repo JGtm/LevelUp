@@ -1,3 +1,15 @@
+## [2026-06-15] Phase 1.5 (MT-23) — relocation b4 : 2 steps metadata leaf (arrêt du reclassement)
+
+**Déclencheur (user)** : « pourquoi on reclasse tout le temps ? Ce sont des choses à faire non ? » — reproche justifié du framing « reclassé/différé/prématuré » qui faisait passer du travail non fait pour terminé. Pivot : arrêter de bucketer Phase 1.5, la FAIRE.
+
+**Livré** : 2 steps additifs leaf relocalisés `internal/migration/steps_metadata.go` → `internal/games/halo_infinite/migrations/steps.go` (batch b4) : `add_waypoint_assets_raw` + `add_map_images_registry`. Recette suivie : leaf vérifié (aucun ALTER ultérieur sur leur table), `execScript` → `migration.ExecScript`, `Name` byte-identique, **order.go NON touché** (les noms y restent → position préservée). Tier A épuisé → **tier B entamé : 6 → 8 steps title-owned**.
+
+**Vérif** : build all + `go test ./internal/migration/ ./internal/games/halo_infinite/migrations/` verts (incl. `TestCanonicalCoversGlobalAndTitle` complétude union global+title==canonicalOrder, + `TestTitleStepsRunEndToEnd` applique la DDL via le provider) + gofmt.
+
+**Reste honnête** : ~158 steps. Les leaves additifs continuent au fil de l'eau (zéro risque ordre, CI-gardé). Les **familles ordering-sensibles** (chaînes de vues mv_player_matches/v_gamertag_lookup/lusr-msr, chaînes ALTER xbox_achievement/citation_mappings, rebuilds ART/PK) = lots ATOMIQUES dédiés. Les **tier-B cœur** (`create_base_*_schema`, `add_asset_translations`) = racine de DAG, à bouger avec tout leur aval. Le **reorder de l'inversion 132/133** reste escaladé (rippe le test no-op).
+
+---
+
 ## [2026-06-15] PMT-2 (MT-02) — Contract legs 1-2 (XSTS + Spartan + Clearance) — sous golden, via workflow ultracode
 
 **Statut** : Branche `feat/multititre-peripherie`. Build all + vet + gofmt + archlint + `go test ./internal/platform/auth/` verts (suite complète, 8.8s). **Legs d'échange (XSTS/Spartan/Clearance) threadés ; reste SISU (leg 3) + scopes (leg 4) + store-namespacing (leg 5, IRRÉVERSIBLE — escaladé).**

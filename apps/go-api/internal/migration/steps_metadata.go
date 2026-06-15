@@ -185,47 +185,11 @@ func init() {
 		},
 	})
 
-	Register(Migration{
-		Name:        "add_waypoint_assets_raw",
-		TargetDB:    TargetMetadata,
-		Description: "Table waypoint_assets_raw : cache générique de blobs JSON Waypoint",
-		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `
-				CREATE TABLE IF NOT EXISTS waypoint_assets_raw (
-					title_id     VARCHAR NOT NULL,
-					asset_id     VARCHAR NOT NULL,
-					asset_type   VARCHAR NOT NULL DEFAULT '',
-					version_id   VARCHAR NOT NULL DEFAULT '',
-					name         VARCHAR NOT NULL DEFAULT '',
-					description  VARCHAR NOT NULL DEFAULT '',
-					raw_json     VARCHAR NOT NULL DEFAULT '',
-					fetched_at   TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-					content_hash VARCHAR NOT NULL DEFAULT '',
-					PRIMARY KEY (title_id, asset_id, version_id)
-				);
-			`)
-		},
-	})
+	// add_waypoint_assets_raw → migré vers internal/games/halo_infinite/migrations/
+	// steps.go (Phase 1.5 voie B). Le nom reste dans canonicalOrder.
 
-	Register(Migration{
-		Name:        "add_map_images_registry",
-		TargetDB:    TargetMetadata,
-		Description: "Table map_images_registry : cache-aside des images de maps avec local_path optionnel",
-		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `
-				CREATE TABLE IF NOT EXISTS map_images_registry (
-					title_id     VARCHAR NOT NULL,
-					map_id       VARCHAR NOT NULL,
-					image_url    VARCHAR NOT NULL DEFAULT '',
-					local_path   VARCHAR NOT NULL DEFAULT '',
-					fetched_at   TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-					content_hash VARCHAR NOT NULL DEFAULT '',
-					PRIMARY KEY (title_id, map_id)
-				);
-				CREATE INDEX IF NOT EXISTS idx_map_images_registry_fetched ON map_images_registry(fetched_at);
-			`)
-		},
-	})
+	// add_map_images_registry → migré vers internal/games/halo_infinite/migrations/
+	// steps.go (Phase 1.5 voie B, ADR 0025). Le nom reste dans canonicalOrder.
 
 	Register(Migration{
 		Name:        "add_mode_name_tr",
