@@ -151,7 +151,7 @@
 | PMT-2 | Acquisition auth par titre | MT-02 | blocker | ⬜ | racine |
 | PMT-3 | Scheduler/sync titleSlug threading | MT-11 | blocker | ⬜ | PMT-1/2 |
 | PMT-4 | Settings par titre + config Discord | MT-04, MT-26 | major | ⬜ | PMT-3 |
-| PMT-5 | Canonicalisation Outcome | MT-06 | major | ⬜ | — |
+| PMT-5 | Canonicalisation Outcome | MT-06 | major | 🟡 | Expand ✅ (seam int↔canon, 4bc694fd7) ; Contract (migration ~20 sites) en session dédiée |
 | PMT-6 | Achievements par titre | MT-08 | major | ⬜ | PMT-1/2 |
 | PMT-7 | World-stats / leaderboard par titre | MT-03 | major | ⬜ | PMT-3 |
 | PMT-8 | Cycle de vie du titre (Status) | MT-22 | major | ✅ | branche `feat/multititre-peripherie` (cf27ff85f) |
@@ -168,6 +168,12 @@
 **Bloquants 2ᵉ titre (récap)** : Phase 1.5 (DDL) + PMT-1 (hosts) + PMT-2 (auth) + PMT-3 (écriture par titre). Le reste suit.
 
 **Clôture 2026-06-15 (branche `feat/multititre-peripherie`)** : PMT-8, PMT-12 (MT-21) et PMT-14 volet A livrés à leur Exit Gate (oracles double Halo+synthetic_b verts à chaque axe). Reste : **MT-09** (cutoffs DefaultSlug→lookup) — re-vérifié : faisable maintenant (resolver existe), pas bloqué par PMT-3 ; **lint MT-12** front ✅ livré. **PMT-14 volet C** ✅ (Lab monté + fail-closed + test anti-régression, livré 2026-06-14 sur main ; l'audit le croyait absent car il ne regardait que le diff de branche). **PMT-14 volet B** ✅ par construction : 0 duplication copy-paste d'atom ; les `StatusBadge` admin/lab/ascension sont des composants feature-local distincts (props/i18n propres) — les unifier violerait la modularité par feature. Les 3 phases ont été consolidées sur UNE branche (1 tâche = N commits) après un éclatement initial en 3 branches/worktrees (corrigé).
+
+**Reprise PMT-5 Contract (session dédiée — cartographié 2026-06-15)** : l'Expand (seam `OutcomeMappingSet.Canonical`/`RawCode`/`SQLIsWinExpr` + `raw_code` dans outcomes.toml) est livré. Le Contract migre ~20 littéraux `outcome=2/3/1/4`. **Découverte clé** : ces sites n'ont PAS l'`OutcomeMappingSet` en portée → vrai threading, pas mécanique ; **risque data-path** (assists/LUSR/stats) → golden parité par site obligatoire. Approche d'injection :
+- **Sync** : `NewSyncEngine` reçoit `repoRoot` → charger l'`OutcomeMappingSet` DANS le constructeur (`mappings.LoadOutcomesFromFile(repoRoot/config/titles/{DefaultSlug}/mappings/outcomes.toml)`, best-effort nil), stocker `e.outcomes`, threader vers `assists_model.go:70` (SQL `!= 4`) + `skill_v2_quit_penalty.go:51` (`m.outcome==4`, méthode struct par-match → passer le code DNF). Évite de toucher les 8+ appelants de `NewSyncEngine`.
+- **Repos lecture (PR-b, le gros)** : `ServiceRegistry` a `titleResolver` → `resolver.Semantic(slug).Outcomes()` ; injecter l'`OutcomeMappingSet` dans les constructeurs de `compare/explorer/match_history/squad/career_encounters/match_detail/mapstats` repos, remplacer `outcome = 2` par `SQLIsWinExpr("outcome")`.
+- **Citations (PR-c)** : `citations_custom.go` ×4 → `Outcomes().Canonical(ctx.Outcome)==OutcomeWin`. **Front (PR-d)** : supprimer `OUTCOME_KEY`/int-maps, dériver via `/field-mappings`.
+- **Garde** : archlint ratchet `no raw outcome literal` (regex `outcome\s*[=!]=\s*[1-4]`) avec allowlist décroissante par PR. Réf spec : `.ai/PLAN_MULTITITRE_PERIPHERY.md` PMT-5 (l.268-284).
 
 **Constat (PMT-14 vol. C) — RÉSOLU (2026-06-14, vérifié 2026-06-15)** : le Lab était cassé (backend non monté → `/lab/*` 404). Désormais **monté** dans `server.go:680-683` (les 3 routes), `requireAccess` **fail-closed** (refuse si `LoadAppSettings` échoue), test anti-régression `lab_routes_mounted_test.go` (chi.Walk sur le vrai routeur), panneau Contracts marqué « à retirer » (cutover Go fait). L'audit 2026-06-15 l'avait cru absent car il ne lisait que le diff de la branche PMT-14 (le montage vivait déjà sur main).
 
