@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
 )
@@ -101,10 +102,10 @@ func InsertParticipants(ctx context.Context, db *sql.DB, rows []ParticipantRow) 
 	now := time.Now().UTC()
 	for _, row := range rows {
 		if err := insertParticipantRow(ctx, db, row, now); err != nil {
-			observability.IncCounter("upsert_match_participants_total_error")
+			observability.IncCounterT(ctxkeys.TitleSlug(ctx), "upsert_match_participants_total_error")
 			return err
 		}
-		observability.IncCounter("upsert_match_participants_total_ok")
+		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "upsert_match_participants_total_ok")
 	}
 	return nil
 }

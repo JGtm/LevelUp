@@ -10,9 +10,11 @@
 
 **PR-2 (livré)** : `PerfStats(ctx, titleSlug)`/`ErrorStats(ctx, titleSlug)` filtrent par titre via les accesseurs `LoadCounterT`/`LoadDurationStatsT`/`ErrorBucketsForTitle`/`PlayerAPIStatsForTitle`. DTOs `PerfCallStats`/`PerfPlayerCallStats`/`AdminErrorBucket` gagnent `Title \`json:"title,omitempty"\`` (Halo → "" → absent, byte-identique). Runner types + `GetPerf`/`GetErrors` passent `titleOrDefault(r)` (helper existant). Test : `?title=synthetic_title_b` propagé au runner, défaut sinon.
 
-**Reste PMT-10** : PR-3 (bascule des ~65 call-sites sync vers les variantes titrées `…T` en passant `ctxkeys.TitleSlug(ctx)`) ; PR-4 (namespacing LogsDir par titre, différable).
+**PR-3 (livré)** : 61/65 call-sites d'émission `internal/sync` basculés vers les variantes titrées en passant `ctxkeys.TitleSlug(ctx)` (fallback `halo_infinite` → clé nue → byte-identique Halo, forward-compatible quand le sync ctx portera un 2e titre). Cas spéciaux : `observeHaloCall` → param `title` (8 callers pooled_client passent `ctxkeys.TitleSlug(ctx)`) ; `postSyncClock` → champ `titleSlug` (set via `e.titleSlug`). Les **4 sites du coordinator gate restent legacy** : métriques de concurrence **process-wide**, PAS title-scoped (décision documentée).
 
-**Prochaine étape** : PR-3.
+**Reste PMT-10** : PR-4 (namespacing LogsDir par titre, gardé derrière `len(registry)>1`, différable).
+
+**Prochaine étape** : PR-4.
 
 ---
 

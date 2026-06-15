@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/temporal"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/observability"
 )
 
@@ -59,13 +60,13 @@ func batchRecomputeCoefficients(
 	if !pacesColumnsAvailable(ctx, playerDB) {
 		slog.DebugContext(ctx, "engagement coefs: paces columns absent, skip recompute",
 			"xuid", xuid)
-		observability.IncCounter("engagement_unavailable_skips_total")
+		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_unavailable_skips_total")
 		return 0, nil
 	}
 	if !coefficientsTableAvailable(ctx, playerDB) {
 		slog.DebugContext(ctx, "engagement coefs: coefficients table absent, skip recompute",
 			"xuid", xuid)
-		observability.IncCounter("engagement_unavailable_skips_total")
+		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_unavailable_skips_total")
 		return 0, nil
 	}
 
@@ -99,7 +100,7 @@ func recomputeMode(
 	if errors.Is(err, temporal.ErrInsufficientCoefHistory) {
 		slog.DebugContext(ctx, "engagement coefs: cold-start (insufficient samples)",
 			"xuid", xuid, "mode", mode, "n_samples", len(samples))
-		observability.IncCounter("engagement_coef_skipped_insufficient_history")
+		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_coef_skipped_insufficient_history")
 		return false
 	}
 	if err != nil {
@@ -110,15 +111,15 @@ func recomputeMode(
 	if err := saveCoefficient(ctx, playerDB, xuid, mode, result, now); err != nil {
 		slog.ErrorContext(ctx, "engagement coefs: save failed",
 			"xuid", xuid, "mode", mode, "err", err)
-		observability.IncCounter("engagement_coef_save_error_total")
+		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_coef_save_error_total")
 		return false
 	}
 	slog.DebugContext(ctx, "engagement coefs: updated",
 		"xuid", xuid, "mode", mode,
 		"coef_team", result.CoefTeamShare, "coef_lobby", result.CoefLobbyShare,
 		"n_matches", result.NMatches, "n_rejected", result.NRejected)
-	observability.IncCounter("engagement_coef_recomputed_total")
-	observability.IncCounter("engagement_coef_team_bucket_" + coefBucket(result.CoefTeamShare))
+	observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_coef_recomputed_total")
+	observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_coef_team_bucket_"+coefBucket(result.CoefTeamShare))
 	return true
 }
 

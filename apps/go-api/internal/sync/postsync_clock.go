@@ -45,19 +45,20 @@ func PostSyncStepNames() []string {
 
 // postSyncClock chronomètre les étapes séquentielles d'un pipeline.
 type postSyncClock struct {
-	r     *domain.PostSyncResult
-	start time.Time
-	last  time.Time
+	r         *domain.PostSyncResult
+	titleSlug string // MT-05 : titre courant pour les agrégats expvar titrés
+	start     time.Time
+	last      time.Time
 }
 
-// newPostSyncClock démarre l'horloge sur le résultat donné.
-func newPostSyncClock(r *domain.PostSyncResult) *postSyncClock {
+// newPostSyncClock démarre l'horloge sur le résultat donné, pour `titleSlug`.
+func newPostSyncClock(r *domain.PostSyncResult, titleSlug string) *postSyncClock {
 	now := time.Now()
-	return &postSyncClock{r: r, start: now, last: now}
+	return &postSyncClock{r: r, titleSlug: titleSlug, start: now, last: now}
 }
 
 // lap enregistre l'étape écoulée depuis le lap précédent (durée + items) et
-// alimente l'agrégat expvar de l'étape.
+// alimente l'agrégat expvar titré de l'étape.
 func (c *postSyncClock) lap(step string, items int) {
 	now := time.Now()
 	ms := now.Sub(c.last).Milliseconds()
@@ -65,12 +66,12 @@ func (c *postSyncClock) lap(step string, items int) {
 	c.r.StepTimings = append(c.r.StepTimings, domain.PostSyncStepTiming{
 		Step: step, DurationMs: ms, Items: items,
 	})
-	observability.RecordDurationMS("postsync_step_ms_"+step, ms)
+	observability.RecordDurationMST(c.titleSlug, "postsync_step_ms_"+step, ms)
 }
 
 // finish fige la durée totale du pipeline. À appeler en defer (couvre aussi
 // le retour partiel après panic recover).
 func (c *postSyncClock) finish() {
 	c.r.DurationMs = time.Since(c.start).Milliseconds()
-	observability.RecordDurationMS("postsync_total_ms", c.r.DurationMs)
+	observability.RecordDurationMST(c.titleSlug, "postsync_total_ms", c.r.DurationMs)
 }

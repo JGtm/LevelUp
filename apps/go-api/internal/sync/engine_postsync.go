@@ -27,6 +27,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
@@ -155,7 +156,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// Chronométrage P4 (dashboard monitoring) : un lap par bloc séquentiel.
 	// finish() en defer → DurationMs posé même sur retour partiel post-panic
 	// (r est un named return).
-	clock := newPostSyncClock(&r)
+	clock := newPostSyncClock(&r, e.titleSlug)
 	defer clock.finish()
 
 	// Fail-fast RC-A (defense-in-depth) : le post-sync écrit encore shared
@@ -226,11 +227,11 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// PLAFONNER (convergence = filet exceptionnel). S'ils croissent en continu,
 	// c'est que le 1er passage laisse des trous récurrents → durcir l'ingestion.
 	// Lisibles sur /debug/vars (expvar "levelup").
-	observability.AddInt("convergence_events_pending_total", int64(len(eventsWork)))
+	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_events_pending_total", int64(len(eventsWork)))
 	if len(eventsWork) > 0 {
 		n := convergeEvents(ctx, sharedDB, client, eventsWork)
 		r.ConvergedEvents = n
-		observability.AddInt("convergence_events_processed_total", int64(n))
+		observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_events_processed_total", int64(n))
 		slog.InfoContext(ctx, "post-sync: convergence events",
 			"gamertag", e.gamertag, "selected", len(eventsWork), "processed", n)
 	}
@@ -242,7 +243,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// Best-effort : films absents (404/410) normaux pour les vieux matchs. Garde
 	// bit-honnête préservée (MBitWeaponKills posé seulement si ≥1 ligne insérée).
 	weaponBacklog := selectMatchesMissingWeapons(ctx, playerDB, sharedDB, e.xuid)
-	observability.AddInt("convergence_weapons_pending_total", int64(len(weaponBacklog)))
+	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_weapons_pending_total", int64(len(weaponBacklog)))
 	weaponWork := mergeUniqMatchIDs(insertedIDs, weaponBacklog)
 	if len(weaponWork) > 0 {
 		done, noFilm, werr := processWeaponKillsInline(ctx, sharedDB, client, e.xuid, weaponWork)
@@ -252,7 +253,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 		}
 		r.WeaponKillsProcessed = done
 		r.WeaponKillsNoFilm = noFilm
-		observability.AddInt("convergence_weapons_processed_total", int64(done))
+		observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_weapons_processed_total", int64(done))
 		if done > 0 || noFilm > 0 {
 			slog.InfoContext(ctx, "post-sync: weapon kills",
 				"gamertag", e.gamertag, "done", done, "no_film", noFilm)
@@ -266,11 +267,11 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// 2026-06-10). Marqueur terminal psa_checked_at → chaque match n'est
 	// fetché qu'une fois, borné par convergenceHorizon.
 	psaWork := selectMatchesMissingPSA(ctx, playerDB)
-	observability.AddInt("convergence_psa_pending_total", int64(len(psaWork)))
+	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_psa_pending_total", int64(len(psaWork)))
 	if len(psaWork) > 0 {
 		n := convergePSA(ctx, playerDB, sharedDB, client, e.xuid, psaWork)
 		r.ConvergedPSA = n
-		observability.AddInt("convergence_psa_processed_total", int64(n))
+		observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_psa_processed_total", int64(n))
 		slog.InfoContext(ctx, "post-sync: convergence PSA",
 			"gamertag", e.gamertag, "selected", len(psaWork), "processed", n)
 	}
