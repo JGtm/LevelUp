@@ -1,3 +1,19 @@
+## [2026-06-15] Phase 1.5 (MT-23) — relocation b5 : 9 steps metadata + découverte test-harness (via workflow ultracode)
+
+**Méthode** : workflow de classification (5 agents parallèles) des ~30 steps metadata restants → table par step (inline-execScript / named-func / rebuild ; leaf / famille ; helpers exportés ?). A permis de relocaliser SANS rater de dépendance.
+
+**Livré (b5, 9 steps)** : 5 leaves additifs (`add_battlepass_asset_refs`, `add_battlepass_metadata`, `add_challenge_metadata`, `drop_legacy_translation_tables`, `add_career_rank_translations`) + **famille citation_mappings ATOMIQUE (4)** : `add_citation_mappings` → `add_citation_mappings_pk` (rebuild) → `add_citation_mappings_v2_fields` → `fix_citation_image_paths_double_encoded` (data-fix downstream). Total title-owned : 8 → **17**. `steps_metadata_citation_fix.go` vidé (ne contenait que ce step).
+
+**Le test a attrapé un VRAI bug (discipline atomique validée)** : en relocalisant d'abord la famille citation SANS `fix_citation_image_paths_double_encoded` (resté global), `TestPlaylistsCatalog_NoSecondaryIndex` (run global-only) a planté — `fix_citation` UPDATE `citation_mappings`, absente du registre global après le déplacement. Fix : déplacer aussi `fix_citation` (4e membre de la famille). C'est EXACTEMENT le risque que la classif/verifier avait flaggé ; le test l'a confirmé empiriquement.
+
+**Découverte structurelle (test-harness)** : relocaliser des steps metadata casse les tests qui lancent `migration.RunForDB(TargetMetadata)` **en global-only** (sans câbler le provider title) puis interrogent une table déplacée. `internal/platform/duckdb` (~20 fichiers de test) tombait → **TestMain** ajouté qui câble `migration.SetTitleStepsProvider(halomigrations.StepsFor)` une fois pour tout le package (= mirroir du boot cmd/server). Vérif des autres packages lançant des migrations (service/sync/api.handlers/scheduler/progression) : seul duckdb avait besoin du fix (les autres câblent déjà ou créent leur schéma). **C'est la « relocation tests » que le tracker liste comme partie du tier B.**
+
+**Vérif** : build all + `go test migration + games/halo_infinite/migrations + platform/duckdb (17s) + service(OpenSpartan/SeasonPass) + sync(Pipeline/Citation) + api/handlers(OpenSpartan E2E)` verts.
+
+**Reste honnête** : ~149 steps. Restent les named-func (weapon_labels, mode_name_tr, seeds prestige/milestone/ranked — porter les funcs + structs/loaders), les familles player/shared (chaînes de vues, ART rebuilds — atomiques), les tier-B cœur (`create_base_*_schema`). Chaque relocation metadata future bénéficie maintenant du TestMain duckdb.
+
+---
+
 ## [2026-06-15] Phase 1.5 (MT-23) — relocation b4 : 2 steps metadata leaf (arrêt du reclassement)
 
 **Déclencheur (user)** : « pourquoi on reclasse tout le temps ? Ce sont des choses à faire non ? » — reproche justifié du framing « reclassé/différé/prématuré » qui faisait passer du travail non fait pour terminé. Pivot : arrêter de bucketer Phase 1.5, la FAIRE.

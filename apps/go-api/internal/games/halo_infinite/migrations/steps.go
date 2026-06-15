@@ -66,6 +66,215 @@ func Steps() []migration.Migration {
 				`)
 			},
 		},
+		// Déplacés depuis internal/migration/steps_metadata.go (b5 — leaves additifs).
+		{
+			Name:        "add_battlepass_asset_refs",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Table battlepass_asset_refs pour visuels battle pass",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS battlepass_asset_refs (
+						asset_key         VARCHAR PRIMARY KEY,
+						asset_kind        VARCHAR NOT NULL,
+						source_path       VARCHAR NOT NULL,
+						cache_rel_path    VARCHAR NOT NULL,
+						mime_type         VARCHAR NOT NULL DEFAULT 'image/png',
+						image_source_path VARCHAR,
+						source_origin     VARCHAR NOT NULL DEFAULT 'cms',
+						first_cached_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						last_cached_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						last_accessed_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					);
+					CREATE UNIQUE INDEX IF NOT EXISTS idx_battlepass_asset_refs_kind_source ON battlepass_asset_refs(asset_kind, source_path);
+					CREATE INDEX IF NOT EXISTS idx_battlepass_asset_refs_accessed ON battlepass_asset_refs(last_accessed_at);
+				`)
+			},
+		},
+		{
+			Name:        "add_battlepass_metadata",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Tables battlepass_track_definitions/translations + battlepass_item_definitions/translations",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS battlepass_track_definitions (
+						reward_track_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
+						xp_per_rank INTEGER, battlepass_image_path VARCHAR, background_image_path VARCHAR,
+						raw_payload_json VARCHAR NOT NULL, first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, is_current BOOLEAN NOT NULL DEFAULT TRUE,
+						PRIMARY KEY (reward_track_path, content_hash)
+					);
+					CREATE INDEX IF NOT EXISTS idx_battlepass_track_definitions_lookup ON battlepass_track_definitions(reward_track_path, is_current);
+					CREATE TABLE IF NOT EXISTS battlepass_track_translations (
+						reward_track_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
+						lang VARCHAR NOT NULL, track_name VARCHAR,
+						first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (reward_track_path, content_hash, lang)
+					);
+					CREATE INDEX IF NOT EXISTS idx_battlepass_track_translations_lookup ON battlepass_track_translations(reward_track_path, lang);
+					CREATE TABLE IF NOT EXISTS battlepass_item_definitions (
+						inventory_item_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
+						quality VARCHAR, item_type VARCHAR, display_path VARCHAR,
+						raw_payload_json VARCHAR NOT NULL, first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, is_current BOOLEAN NOT NULL DEFAULT TRUE,
+						PRIMARY KEY (inventory_item_path, content_hash)
+					);
+					CREATE INDEX IF NOT EXISTS idx_battlepass_item_definitions_lookup ON battlepass_item_definitions(inventory_item_path, is_current);
+					CREATE TABLE IF NOT EXISTS battlepass_item_translations (
+						inventory_item_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
+						lang VARCHAR NOT NULL, title VARCHAR, description VARCHAR,
+						first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (inventory_item_path, content_hash, lang)
+					);
+					CREATE INDEX IF NOT EXISTS idx_battlepass_item_translations_lookup ON battlepass_item_translations(inventory_item_path, lang);
+				`)
+			},
+		},
+		{
+			Name:        "add_challenge_metadata",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Tables challenge_definitions + challenge_translations",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS challenge_definitions (
+						challenge_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
+						category VARCHAR, difficulty VARCHAR, threshold_for_success INTEGER,
+						reward_xp INTEGER DEFAULT 0, secondary_reward_xp INTEGER DEFAULT 0,
+						first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						is_current BOOLEAN DEFAULT TRUE,
+						PRIMARY KEY (challenge_path, content_hash)
+					);
+					CREATE INDEX IF NOT EXISTS idx_challenge_definitions_current ON challenge_definitions(challenge_path, is_current);
+					CREATE INDEX IF NOT EXISTS idx_challenge_definitions_category ON challenge_definitions(category, difficulty);
+					CREATE TABLE IF NOT EXISTS challenge_translations (
+						challenge_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
+						lang VARCHAR NOT NULL, title VARCHAR, description VARCHAR,
+						first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (challenge_path, content_hash, lang)
+					);
+					CREATE INDEX IF NOT EXISTS idx_challenge_translations_lookup ON challenge_translations(challenge_path, lang);
+				`)
+			},
+		},
+		{
+			Name:        "drop_legacy_translation_tables",
+			TargetDB:    migration.TargetMetadata,
+			Description: "DROP mode_translations + playlist_translations",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					DROP TABLE IF EXISTS mode_translations;
+					DROP TABLE IF EXISTS playlist_translations;
+				`)
+			},
+		},
+		{
+			Name:        "add_career_rank_translations",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Table career_rank_translations : libellés rangs de carrière dans toutes les langues exposées par GameCMS",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS career_rank_translations (
+						rank_id  INTEGER NOT NULL,
+						lang     VARCHAR NOT NULL,
+						title    VARCHAR,
+						subtitle VARCHAR,
+						tier     VARCHAR,
+						fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (rank_id, lang)
+					);
+					CREATE INDEX IF NOT EXISTS idx_career_rank_translations_lookup ON career_rank_translations(rank_id, lang);
+				`)
+			},
+		},
+		// Famille citation_mappings (base→pk→v2_fields) — relocalisée ATOMIQUEMENT (b5).
+		{
+			Name:        "add_citation_mappings",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Table citation_mappings : mappings médaille→citation avec paliers, images et flags (portage populate_citation_mappings.py)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS citation_mappings (
+						citation_name_norm    VARCHAR NOT NULL,
+						citation_name_display VARCHAR NOT NULL,
+						mapping_type          VARCHAR NOT NULL DEFAULT 'medal',
+						category              VARCHAR,
+						image_path            VARCHAR,
+						description           VARCHAR,
+						tier_targets          VARCHAR,
+						medal_id              UBIGINT,
+						enabled               BOOLEAN NOT NULL DEFAULT TRUE
+					);
+					CREATE INDEX IF NOT EXISTS idx_citation_mappings_norm ON citation_mappings(citation_name_norm);
+					CREATE INDEX IF NOT EXISTS idx_citation_mappings_medal ON citation_mappings(medal_id);
+				`)
+			},
+		},
+		{
+			Name:        "add_citation_mappings_pk",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Ajout PRIMARY KEY (citation_name_norm, medal_id) sur citation_mappings (nécessaire pour ON CONFLICT DO NOTHING)",
+			ApplySchema: func(db *sql.DB) error {
+				// DuckDB ne supporte pas ALTER TABLE ADD CONSTRAINT PK.
+				// On recrée la table avec déduplication. La PK est sur citation_name_norm
+				// uniquement : medal_id peut être NULL (citations non liées à une médaille
+				// spécifique), ce qui interdit de l'inclure dans une PRIMARY KEY.
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS citation_mappings_v2 AS
+						SELECT DISTINCT ON (citation_name_norm)
+							citation_name_norm, citation_name_display, mapping_type,
+							category, image_path, description, tier_targets, medal_id, enabled
+						FROM citation_mappings;
+					DROP TABLE IF EXISTS citation_mappings;
+					ALTER TABLE citation_mappings_v2 RENAME TO citation_mappings;
+					ALTER TABLE citation_mappings ADD PRIMARY KEY (citation_name_norm);
+					CREATE INDEX IF NOT EXISTS idx_citation_mappings_norm ON citation_mappings(citation_name_norm);
+					CREATE INDEX IF NOT EXISTS idx_citation_mappings_medal ON citation_mappings(medal_id);
+				`)
+			},
+		},
+		{
+			Name:        "add_citation_mappings_v2_fields",
+			TargetDB:    migration.TargetMetadata,
+			Description: "citation_mappings : ajout medal_ids/stat_name/award_name/award_category/custom_function/composite_children/subcategory pour le moteur complet (parité avec scripts/populate_citation_mappings.py main)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS medal_ids          VARCHAR;
+					ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS stat_name          VARCHAR;
+					ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS award_name         VARCHAR;
+					ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS award_category     VARCHAR;
+					ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS custom_function    VARCHAR;
+					ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS composite_children VARCHAR;
+					ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS subcategory        VARCHAR;
+					CREATE INDEX IF NOT EXISTS idx_citation_mappings_type ON citation_mappings(mapping_type);
+				`)
+			},
+		},
+		{
+			// Downstream de la famille citation (data-fix). DOIT rester title-owned
+			// avec la chaîne : il UPDATE citation_mappings, absente en run global-only.
+			Name:        "fix_citation_image_paths_double_encoded",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Remplace les %XX URL-encodés par leurs caractères littéraux dans citation_mappings.image_path (16 entrées : Zéro défaut, Œil de lynx, etc.) — voir seed.go pour la liste canonique",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_À_la_charge.png'                  WHERE citation_name_norm = 'charge';
+					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_Annexion_forcée.png'              WHERE citation_name_norm = 'forced_annexation';
+					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_Défenseur_du_drapeau.png'         WHERE citation_name_norm = 'flag_defender';
+					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_Je_te_tiens_!.png'                WHERE citation_name_norm = 'got_you';
+					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_Écrasement.png'                   WHERE citation_name_norm = 'splatter';
+					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_Grenade_à_fragmentation.png'      WHERE citation_name_norm = 'frag_grenade';
+					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_Grenade_à_plasma.png'             WHERE citation_name_norm = 'plasma_grenade';
+					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_Combat_rapproché.png'             WHERE citation_name_norm = 'close_combat';
+					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_Tir_à_la_tête.png'                WHERE citation_name_norm = 'headshot';
+					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_Œil_de_lynx.png'                  WHERE citation_name_norm = 'eagle_eye';
+					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_Flag_''em_down.png'               WHERE citation_name_norm = 'flag_em_down';
+					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_I''m_just_perfect.png'            WHERE citation_name_norm = 'im_just_perfect';
+					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_Destructeur_d''apparitions.png'   WHERE citation_name_norm = 'wraith_destroyer';
+					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_Tueur_d''Élites.png'              WHERE citation_name_norm = 'elite_slayer';
+					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_Tueur_de_répliques_de_Marines.png' WHERE citation_name_norm = 'marine_slayer';
+					UPDATE citation_mappings SET image_path = 'static/commendations/halo_5_guardians/H5G_citation_Épée_à_énergie.png'               WHERE citation_name_norm = 'energy_sword_mastery';
+				`)
+			},
+		},
 		// Déplacé depuis internal/migration/steps_shared_pve.go (b3 pilote).
 		{
 			Name:        "add_pve_schema",

@@ -57,96 +57,8 @@ func init() {
 		},
 	})
 
-	Register(Migration{
-		Name:        "add_battlepass_asset_refs",
-		TargetDB:    TargetMetadata,
-		Description: "Table battlepass_asset_refs pour visuels battle pass",
-		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `
-				CREATE TABLE IF NOT EXISTS battlepass_asset_refs (
-					asset_key         VARCHAR PRIMARY KEY,
-					asset_kind        VARCHAR NOT NULL,
-					source_path       VARCHAR NOT NULL,
-					cache_rel_path    VARCHAR NOT NULL,
-					mime_type         VARCHAR NOT NULL DEFAULT 'image/png',
-					image_source_path VARCHAR,
-					source_origin     VARCHAR NOT NULL DEFAULT 'cms',
-					first_cached_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-					last_cached_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-					last_accessed_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-				);
-				CREATE UNIQUE INDEX IF NOT EXISTS idx_battlepass_asset_refs_kind_source ON battlepass_asset_refs(asset_kind, source_path);
-				CREATE INDEX IF NOT EXISTS idx_battlepass_asset_refs_accessed ON battlepass_asset_refs(last_accessed_at);
-			`)
-		},
-	})
-
-	Register(Migration{
-		Name:        "add_battlepass_metadata",
-		TargetDB:    TargetMetadata,
-		Description: "Tables battlepass_track_definitions/translations + battlepass_item_definitions/translations",
-		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `
-				CREATE TABLE IF NOT EXISTS battlepass_track_definitions (
-					reward_track_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
-					xp_per_rank INTEGER, battlepass_image_path VARCHAR, background_image_path VARCHAR,
-					raw_payload_json VARCHAR NOT NULL, first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-					last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, is_current BOOLEAN NOT NULL DEFAULT TRUE,
-					PRIMARY KEY (reward_track_path, content_hash)
-				);
-				CREATE INDEX IF NOT EXISTS idx_battlepass_track_definitions_lookup ON battlepass_track_definitions(reward_track_path, is_current);
-				CREATE TABLE IF NOT EXISTS battlepass_track_translations (
-					reward_track_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
-					lang VARCHAR NOT NULL, track_name VARCHAR,
-					first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-					PRIMARY KEY (reward_track_path, content_hash, lang)
-				);
-				CREATE INDEX IF NOT EXISTS idx_battlepass_track_translations_lookup ON battlepass_track_translations(reward_track_path, lang);
-				CREATE TABLE IF NOT EXISTS battlepass_item_definitions (
-					inventory_item_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
-					quality VARCHAR, item_type VARCHAR, display_path VARCHAR,
-					raw_payload_json VARCHAR NOT NULL, first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-					last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, is_current BOOLEAN NOT NULL DEFAULT TRUE,
-					PRIMARY KEY (inventory_item_path, content_hash)
-				);
-				CREATE INDEX IF NOT EXISTS idx_battlepass_item_definitions_lookup ON battlepass_item_definitions(inventory_item_path, is_current);
-				CREATE TABLE IF NOT EXISTS battlepass_item_translations (
-					inventory_item_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
-					lang VARCHAR NOT NULL, title VARCHAR, description VARCHAR,
-					first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-					PRIMARY KEY (inventory_item_path, content_hash, lang)
-				);
-				CREATE INDEX IF NOT EXISTS idx_battlepass_item_translations_lookup ON battlepass_item_translations(inventory_item_path, lang);
-			`)
-		},
-	})
-
-	Register(Migration{
-		Name:        "add_challenge_metadata",
-		TargetDB:    TargetMetadata,
-		Description: "Tables challenge_definitions + challenge_translations",
-		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `
-				CREATE TABLE IF NOT EXISTS challenge_definitions (
-					challenge_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
-					category VARCHAR, difficulty VARCHAR, threshold_for_success INTEGER,
-					reward_xp INTEGER DEFAULT 0, secondary_reward_xp INTEGER DEFAULT 0,
-					first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-					is_current BOOLEAN DEFAULT TRUE,
-					PRIMARY KEY (challenge_path, content_hash)
-				);
-				CREATE INDEX IF NOT EXISTS idx_challenge_definitions_current ON challenge_definitions(challenge_path, is_current);
-				CREATE INDEX IF NOT EXISTS idx_challenge_definitions_category ON challenge_definitions(category, difficulty);
-				CREATE TABLE IF NOT EXISTS challenge_translations (
-					challenge_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
-					lang VARCHAR NOT NULL, title VARCHAR, description VARCHAR,
-					first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-					PRIMARY KEY (challenge_path, content_hash, lang)
-				);
-				CREATE INDEX IF NOT EXISTS idx_challenge_translations_lookup ON challenge_translations(challenge_path, lang);
-			`)
-		},
-	})
+	// add_battlepass_asset_refs / add_battlepass_metadata / add_challenge_metadata
+	// → migrés vers games/halo_infinite/migrations (b5). Noms gardés dans canonicalOrder.
 
 	Register(Migration{
 		Name:        "add_medal_definitions",
@@ -173,17 +85,7 @@ func init() {
 		ApplySchema: applyWeaponLabels,
 	})
 
-	Register(Migration{
-		Name:        "drop_legacy_translation_tables",
-		TargetDB:    TargetMetadata,
-		Description: "DROP mode_translations + playlist_translations",
-		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `
-				DROP TABLE IF EXISTS mode_translations;
-				DROP TABLE IF EXISTS playlist_translations;
-			`)
-		},
-	})
+	// drop_legacy_translation_tables → migré vers games/halo_infinite/migrations (b5).
 
 	// add_waypoint_assets_raw → migré vers internal/games/halo_infinite/migrations/
 	// steps.go (Phase 1.5 voie B). Le nom reste dans canonicalOrder.
@@ -198,70 +100,8 @@ func init() {
 		ApplySchema: applyModeNameTr,
 	})
 
-	Register(Migration{
-		Name:        "add_citation_mappings",
-		TargetDB:    TargetMetadata,
-		Description: "Table citation_mappings : mappings médaille→citation avec paliers, images et flags (portage populate_citation_mappings.py)",
-		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `
-				CREATE TABLE IF NOT EXISTS citation_mappings (
-					citation_name_norm    VARCHAR NOT NULL,
-					citation_name_display VARCHAR NOT NULL,
-					mapping_type          VARCHAR NOT NULL DEFAULT 'medal',
-					category              VARCHAR,
-					image_path            VARCHAR,
-					description           VARCHAR,
-					tier_targets          VARCHAR,
-					medal_id              UBIGINT,
-					enabled               BOOLEAN NOT NULL DEFAULT TRUE
-				);
-				CREATE INDEX IF NOT EXISTS idx_citation_mappings_norm ON citation_mappings(citation_name_norm);
-				CREATE INDEX IF NOT EXISTS idx_citation_mappings_medal ON citation_mappings(medal_id);
-			`)
-		},
-	})
-
-	Register(Migration{
-		Name:        "add_citation_mappings_pk",
-		TargetDB:    TargetMetadata,
-		Description: "Ajout PRIMARY KEY (citation_name_norm, medal_id) sur citation_mappings (nécessaire pour ON CONFLICT DO NOTHING)",
-		ApplySchema: func(db *sql.DB) error {
-			// DuckDB ne supporte pas ALTER TABLE ADD CONSTRAINT PK.
-			// On recrée la table avec déduplication. La PK est sur citation_name_norm
-			// uniquement : medal_id peut être NULL (citations non liées à une médaille
-			// spécifique), ce qui interdit de l'inclure dans une PRIMARY KEY.
-			return execScript(db, `
-				CREATE TABLE IF NOT EXISTS citation_mappings_v2 AS
-					SELECT DISTINCT ON (citation_name_norm)
-						citation_name_norm, citation_name_display, mapping_type,
-						category, image_path, description, tier_targets, medal_id, enabled
-					FROM citation_mappings;
-				DROP TABLE IF EXISTS citation_mappings;
-				ALTER TABLE citation_mappings_v2 RENAME TO citation_mappings;
-				ALTER TABLE citation_mappings ADD PRIMARY KEY (citation_name_norm);
-				CREATE INDEX IF NOT EXISTS idx_citation_mappings_norm ON citation_mappings(citation_name_norm);
-				CREATE INDEX IF NOT EXISTS idx_citation_mappings_medal ON citation_mappings(medal_id);
-			`)
-		},
-	})
-
-	Register(Migration{
-		Name:        "add_citation_mappings_v2_fields",
-		TargetDB:    TargetMetadata,
-		Description: "citation_mappings : ajout medal_ids/stat_name/award_name/award_category/custom_function/composite_children/subcategory pour le moteur complet (parité avec scripts/populate_citation_mappings.py main)",
-		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `
-				ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS medal_ids          VARCHAR;
-				ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS stat_name          VARCHAR;
-				ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS award_name         VARCHAR;
-				ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS award_category     VARCHAR;
-				ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS custom_function    VARCHAR;
-				ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS composite_children VARCHAR;
-				ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS subcategory        VARCHAR;
-				CREATE INDEX IF NOT EXISTS idx_citation_mappings_type ON citation_mappings(mapping_type);
-			`)
-		},
-	})
+	// Famille citation_mappings (base→pk→v2_fields) → migrée ATOMIQUEMENT vers
+	// games/halo_infinite/migrations (b5). Noms gardés dans canonicalOrder.
 
 	Register(Migration{
 		Name:        "add_xbox_achievement_definitions",
@@ -288,25 +128,7 @@ func init() {
 		},
 	})
 
-	Register(Migration{
-		Name:        "add_career_rank_translations",
-		TargetDB:    TargetMetadata,
-		Description: "Table career_rank_translations : libellés rangs de carrière dans toutes les langues exposées par GameCMS",
-		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `
-				CREATE TABLE IF NOT EXISTS career_rank_translations (
-					rank_id  INTEGER NOT NULL,
-					lang     VARCHAR NOT NULL,
-					title    VARCHAR,
-					subtitle VARCHAR,
-					tier     VARCHAR,
-					fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-					PRIMARY KEY (rank_id, lang)
-				);
-				CREATE INDEX IF NOT EXISTS idx_career_rank_translations_lookup ON career_rank_translations(rank_id, lang);
-			`)
-		},
-	})
+	// add_career_rank_translations → migré vers games/halo_infinite/migrations (b5).
 
 	Register(Migration{
 		Name:        "medal_definitions_add_indices",
