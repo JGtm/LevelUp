@@ -153,6 +153,14 @@ en = "Draft copied"
 fr = "Échec de la copie"
 en = "Copy failed"
 
+[admin.titles.diag_drifts]
+fr = "Écarts déclaré ↔ réalité"
+en = "Declared ↔ reality drift"
+
+[admin.titles.diag_no_drift]
+fr = "Aucun écart détecté."
+en = "No drift detected."
+
 [admin.titles.register_help_title]
 fr = "Enregistrer un 2e titre"
 en = "Register a 2nd title"

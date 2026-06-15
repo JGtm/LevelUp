@@ -71,6 +71,8 @@ export interface TitleDiagnostic {
     tables?: { name: string; exists: boolean; rows: number }[]
     error?: string
   }[]
+  /** Écarts déclaré-vs-réalité (vide/absent = pas de drift). */
+  drifts?: { feature: string; kind: string; computed: string; reason: string }[]
 }
 
 export function useAdminTitleDiagnostic(slug: string | null) {

@@ -254,10 +254,35 @@ function TitleDiagnosticCard({ slug }: { slug: string }) {
     return null
   }
 
+  const drifts = data.drifts ?? []
+
   return (
     <Card>
       <CardContent className="pt-6">
         <h3 className="text-base font-semibold text-foreground">{tA('admin.titles.diagnostic')}</h3>
+
+        <div className="mt-4">
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {tA('admin.titles.diag_drifts')}
+          </h4>
+          {drifts.length === 0 ? (
+            <p className="text-xs text-muted-foreground">{tA('admin.titles.diag_no_drift')}</p>
+          ) : (
+            <ul className="space-y-1">
+              {drifts.map((d) => (
+                <li key={`${d.kind}:${d.feature}`} className="flex items-start gap-2 text-xs">
+                  <span className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-[10px] text-destructive">
+                    {d.kind}
+                  </span>
+                  <span className="text-foreground">
+                    <span className="font-mono">{d.feature}</span>
+                    <span className="text-muted-foreground"> — {d.reason}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <div className="mt-4 grid gap-6 md:grid-cols-2">
           <div>

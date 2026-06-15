@@ -811,7 +811,8 @@ func NewRouter(
 			// présence des mappings TOML + réalité DB (lignes des tables cœur),
 			// read-only via port.TableInspector.
 			adminTitleDiagHandler := handlers.NewAdminTitleDiagnosticHandler(
-				service.NewTitleDiagnosticService(cfg.RepoRoot, platform_duckdb.NewTableInspector()),
+				service.NewTitleDiagnosticService(cfg.RepoRoot, platform_duckdb.NewTableInspector()).
+					WithCapabilities(fieldMappingsRegistry),
 				slog.Default(),
 			)
 			r.With(middleware.NoStore).Get("/titles/{slug}/diagnostic", adminTitleDiagHandler.Get)

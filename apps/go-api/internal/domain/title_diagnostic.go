@@ -10,6 +10,24 @@ type TitleDiagnostic struct {
 	TitleSlug   string             `json:"title_slug"`
 	ConfigFiles []ConfigFileStatus `json:"config_files"`
 	Databases   []DatabaseStatus   `json:"databases"`
+	// Drifts = écarts entre la CONFIG déclarée (capabilities.toml, via la cascade
+	// feature-matrix) et la RÉALITÉ DB. Vide = pas de drift (ou capabilities non
+	// fournies au service). Cf. TitleDrift.
+	Drifts []TitleDrift `json:"drifts,omitempty"`
+}
+
+// TitleDrift = un écart déclaré-vs-réalité pour une feature produit.
+//
+//   - Kind "data"    : la feature est calculée available (capability déclarée)
+//     mais sa table de données est absente/vide → le titre PROMET une surface
+//     sans données pour l'alimenter.
+//   - Kind "feature" : la feature est calculée degraded (capability primaire
+//     déclarée mais un enrichissement manque) → surface partielle.
+type TitleDrift struct {
+	Feature  string `json:"feature"`  // ex: "match_history"
+	Kind     string `json:"kind"`     // "data" | "feature"
+	Computed string `json:"computed"` // statut feature calculé (available|degraded|unavailable)
+	Reason   string `json:"reason"`   // explication lisible
 }
 
 // ConfigFileStatus = présence d'un fichier de mapping TOML pour le titre.
