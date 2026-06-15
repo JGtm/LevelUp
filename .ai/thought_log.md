@@ -1,3 +1,23 @@
+## [2026-06-15] PMT-14 volet A — CLÔTURE à l'Exit Gate + CONSOLIDATION mono-branche — Complété
+
+**Statut** : Branche unique `feat/multititre-peripherie`. Go build/vet/gofmt verts ; tests verts : `service` (diagnostic + drift 4 scénarios), `handlers` (admin titres, gating 401/403, oracle synthetic_b, toml-draft, lint D10), `cmd/levelup-titles` (golden text+json), suite contrat. Front : tsc + eslint clean, vitest `AdminTitlesPage` (render+drift+clipboard) 2/2, regen i18n. Seuls 2 `DeviceCodeFlow` rouges = **pré-existants** (hors PMT).
+
+**Contexte / méthode** : sur demande user (« bosse séquentiellement », « chacun sur un worktree c'est du n'importe quoi »), les 3 phases (PMT-8/12/14) — d'abord livrées sur 3 branches/worktrees séparés depuis main (incohérent : PMT-14 ne voyait pas le gate PMT-8 ; recoupements openapi/server.go) — ont été **consolidées sur UNE branche** (cherry-pick dans l'ordre de dépendance, 2 recoupements résolus). La consolidation a **révélé une régression réelle** (resolveTitleSlug IsActive cassait halo_mcc) confirmant l'audit. Puis clôture séquentielle des 28 gaps, commit au fil de l'eau.
+
+**PMT-14 volet A — décisions (Exit Gate spec l.855-896)** :
+1. **toml-draft (D10)** : `GET /admin/titles/{slug}/toml-draft` → brouillon capabilities.toml (text/plain), ZÉRO écriture serveur ; front copie via `navigator.clipboard` ; garde-fou lint `TestAdminTitles_NoOsWriteFile_D10`.
+2. **CLI `levelup-titles diagnose`** : `cmd/levelup-titles` appelle `TitleDiagnosticService` direct, sortie text/json, golden déterministe.
+3. **Modèle drift** : le diagnostic ajoute `Drifts` (data drift = feature available mais table backing vide ; feature drift = degraded par enrichissement manquant), **réutilise `games.ComputeFeatureMatrix`** (FeatureChecker 1.7b) via `WithCapabilities` (builder optionnel, ripple minimal). Logs `title_diagnostic.report` (data_drifts/feature_drifts) + `capability_absent`. 4 scénarios testés.
+4. **Admin-gating** : `TestAdminTitles_Gating_401_403` monte la vraie chaîne RequireAuth+RequireAdmin.
+5. **Oracle synthetic_b** : listé avec Status + dégradation propre au détail.
+6. **Page aide « 2e titre »** : notice read-only (workflow CLI `levelup add-title`).
+
+**Différé explicite (tracé tracker+index)** : PMT-14 **volet B** (partage atoms `_labShared`) + **volet C** (réhab Lab cassé, /lab toujours 404) ; PMT-12 **MT-09** (cutoffs, après PMT-3) + **lint MT-12** front.
+
+**Prochaine étape** : sanity Go global, retrait des 3 branches/worktrees scratch, push de `feat/multititre-peripherie`.
+
+---
+
 ## [2026-06-15] PMT-12 — CLÔTURE à l'Exit Gate (MT-21 : resolver capability-driven + oracles) — Complété
 
 **Statut** : Branche `feat/multititre-peripherie`. Build/vet/gofmt verts. `go test ./internal/games/mappings/` : `TestRequiredTOMLFor`, `TestValidateRequiredTOML_TempDir`, `TestValidateRequiredTOML_RealHaloInfinite_Passes`, `TestValidateRequiredTOML_SyntheticDrift_MissingCapabilities` verts. Suite contrat verte.
