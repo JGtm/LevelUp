@@ -535,9 +535,10 @@ func (d *Daemon) consumeQueue(ctx context.Context) {
 			slog.InfoContext(reqCtx, "watcher_daemon: match dequeued → sync trigger",
 				"gamertag", req.Gamertag, "xuid", req.XUID, "match_count", len(req.MatchIDs), "event", reqID)
 			d.coordinator.Submit(reqCtx, syncpkg.CoordinatorRequest{
-				Gamertag: req.Gamertag,
-				XUID:     req.XUID,
-				MatchIDs: req.MatchIDs,
+				Gamertag:  req.Gamertag,
+				XUID:      req.XUID,
+				MatchIDs:  req.MatchIDs,
+				TitleSlug: req.TitleSlug, // MT-11 / PMT-3 : "" → halo_infinite (seul titre suivi)
 			})
 		}
 	}

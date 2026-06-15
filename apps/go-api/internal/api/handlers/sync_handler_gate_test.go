@@ -37,7 +37,11 @@ func (g *fakeHTTPGate) TryClaim(_ string) (func(), bool) {
 	}
 	return func() {}, true
 }
+func (g *fakeHTTPGate) TryClaimT(_ string, gamertag string) (func(), bool) {
+	return g.TryClaim(gamertag)
+}
 func (g *fakeHTTPGate) IsInFlight(_ string) bool               { return g.refuse }
+func (g *fakeHTTPGate) IsInFlightT(_ string, _ string) bool    { return g.refuse }
 func (g *fakeHTTPGate) WaitInFlight()                          {}
 func (g *fakeHTTPGate) BeginShutdown()                         {}
 func (g *fakeHTTPGate) GateSnapshot() go_sync.GateSnapshotData { return go_sync.GateSnapshotData{} }

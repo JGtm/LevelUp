@@ -42,6 +42,8 @@ import (
 	"sync"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
 )
@@ -76,9 +78,14 @@ type SyncGate interface {
 	// mémoire : jamais bloquant, pas d'IO, donc pas de ctx. Renvoie toujours
 	// (nil,false) après BeginShutdown().
 	TryClaim(gamertag string) (release func(), ok bool)
+	// TryClaimT est la variante title-aware (MT-11 / PMT-3) : clé de dédup
+	// composite (titre, gamertag). TryClaim délègue avec DefaultSlug.
+	TryClaimT(titleSlug, gamertag string) (release func(), ok bool)
 	// IsInFlight indique si un sync du joueur est en cours (watcher ou auto/HTTP).
 	// Pré-check best-effort (TOCTOU) — la garantie réelle d'exclusion est TryClaim.
 	IsInFlight(gamertag string) bool
+	// IsInFlightT est la variante title-aware d'IsInFlight.
+	IsInFlightT(titleSlug, gamertag string) bool
 	// WaitInFlight bloque jusqu'à la fin des claims auto/HTTP. À appeler au
 	// shutdown APRÈS BeginShutdown() et l'annulation des ctx de sync, sous un
 	// timeout dur côté caller. (Les syncs watcher sont attendus séparément par
@@ -121,8 +128,14 @@ type NopSyncGate struct{}
 // TryClaim accorde toujours le claim (pas de dédup).
 func (NopSyncGate) TryClaim(string) (func(), bool) { return func() {}, true }
 
+// TryClaimT accorde toujours le claim (pas de dédup, title-aware no-op).
+func (NopSyncGate) TryClaimT(string, string) (func(), bool) { return func() {}, true }
+
 // IsInFlight renvoie toujours false (pas de suivi).
 func (NopSyncGate) IsInFlight(string) bool { return false }
+
+// IsInFlightT renvoie toujours false (title-aware no-op).
+func (NopSyncGate) IsInFlightT(string, string) bool { return false }
 
 // WaitInFlight ne bloque jamais (aucun claim suivi).
 func (NopSyncGate) WaitInFlight() {}
@@ -144,6 +157,11 @@ type CoordinatorRequest struct {
 	Gamertag string
 	XUID     string
 	MatchIDs []string
+	// TitleSlug porte le titre du joueur (MT-11 / PMT-3). Vide = halo_infinite
+	// (clé de gate IDENTIQUE à l'historique). Sert (1) à la clé de dédup composite
+	// — deux titres, même gamertag, ne se coalescent PAS à tort — et (2) à poser le
+	// titre dans le ctx avant RunSync pour que le moteur écrive les bonnes DB.
+	TitleSlug string
 }
 
 // Coordinator coordonne les syncs avec contrôle de concurrence.
@@ -201,7 +219,7 @@ func (c *Coordinator) Submit(ctx context.Context, req CoordinatorRequest) bool {
 	// sync watcher du même joueur (jamais contre auto/HTTP). Il n'est donc jamais
 	// bloqué par un claim auto/HTTP — il pose son claim et lance son RunDelta ; le
 	// lease KindPlayer sérialise au besoin (le match frais est écrit dans le cycle).
-	key := normGT(req.Gamertag)
+	key := gateKey(req.TitleSlug, req.Gamertag)
 	c.inFlightMu.Lock()
 	if _, busy := c.inFlight[key]; busy {
 		c.inFlightMu.Unlock()
@@ -229,8 +247,17 @@ func (c *Coordinator) Submit(ctx context.Context, req CoordinatorRequest) bool {
 // vol NI côté watcher (inFlight) NI côté auto/HTTP (gateClaims) — donc auto/HTTP
 // cèdent au watcher ET entre eux. Renvoie (nil,false) après BeginShutdown. release
 // (sync.OnceFunc) retire le gateClaim + décrémente gateWG, idempotent même sur panic.
+// TryClaim — wrapper rétro-compat (titre par défaut). Cf. TryClaimT.
 func (c *Coordinator) TryClaim(gamertag string) (func(), bool) {
-	key := normGT(gamertag)
+	return c.TryClaimT(titlePkg.DefaultSlug, gamertag)
+}
+
+// TryClaimT — variante title-aware de TryClaim (MT-11 / PMT-3). Clé de dédup
+// composite (titre, gamertag) : deux titres avec le même gamertag ne se
+// coalescent PAS. Pour halo_infinite la clé est identique au comportement
+// historique (parité gate).
+func (c *Coordinator) TryClaimT(titleSlug, gamertag string) (func(), bool) {
+	key := gateKey(titleSlug, gamertag)
 	c.inFlightMu.Lock()
 	if c.closing {
 		c.inFlightMu.Unlock()
@@ -280,6 +307,18 @@ func normGT(gamertag string) string {
 	return strings.ToLower(strings.TrimSpace(gamertag))
 }
 
+// gateKey construit la clé de dédup composite (titre, gamertag) (MT-11 / PMT-3).
+// Pour halo_infinite / titre vide, la clé est IDENTIQUE à normGT(gamertag) seul
+// → zéro changement de comportement pour le seul titre live (parité gate). Un 2e
+// titre obtient une clé distincte (préfixe slug) → pas de coalescing croisé.
+func gateKey(titleSlug, gamertag string) string {
+	gt := normGT(gamertag)
+	if titleSlug == "" || titleSlug == titlePkg.DefaultSlug {
+		return gt
+	}
+	return titleSlug + "\x00" + gt
+}
+
 // Wait bloque jusqu'à ce que tous les syncs en vol (goroutines run) soient
 // terminés. À appeler par le daemon au shutdown APRÈS l'annulation du ctx (qui
 // fait abandonner les RunSync en cours), de préférence sous un timeout dur.
@@ -292,7 +331,10 @@ func (c *Coordinator) Wait() {
 // non acquis).
 func (c *Coordinator) run(ctx context.Context, req CoordinatorRequest) {
 	defer c.wg.Done()
-	defer c.releaseInFlight(req.Gamertag)
+	defer c.releaseInFlight(req.TitleSlug, req.Gamertag)
+	// MT-11 / PMT-3 : porter le titre dans le ctx pour que le moteur (via la
+	// factory du Trigger → BuildEngine) écrive dans les DB du bon titre.
+	ctx = ctxkeys.WithTitleSlug(ctx, req.TitleSlug)
 	// Acquérir le sémaphore (watcher uniquement — borne le parallélisme des syncs
 	// déclenchés par le watcher ; auto/HTTP ne consomment pas ce sémaphore).
 	select {
@@ -328,17 +370,22 @@ func (c *Coordinator) run(ctx context.Context, req CoordinatorRequest) {
 	}
 }
 
-// releaseInFlight retire le joueur de la map inFlight watcher (clé normalisée).
-func (c *Coordinator) releaseInFlight(gamertag string) {
+// releaseInFlight retire le joueur de la map inFlight watcher (clé composite).
+func (c *Coordinator) releaseInFlight(titleSlug, gamertag string) {
 	c.inFlightMu.Lock()
-	delete(c.inFlight, normGT(gamertag))
+	delete(c.inFlight, gateKey(titleSlug, gamertag))
 	c.inFlightMu.Unlock()
 }
 
-// IsInFlight vérifie si un joueur a un sync en cours, watcher OU auto/HTTP (clé
-// normalisée). Best-effort (TOCTOU) — la garantie d'exclusion est TryClaim.
+// IsInFlight — wrapper rétro-compat (titre par défaut). Cf. IsInFlightT.
 func (c *Coordinator) IsInFlight(gamertag string) bool {
-	key := normGT(gamertag)
+	return c.IsInFlightT(titlePkg.DefaultSlug, gamertag)
+}
+
+// IsInFlightT vérifie si un joueur (sur un titre) a un sync en cours, watcher OU
+// auto/HTTP (clé composite). Best-effort (TOCTOU) — la garantie est TryClaimT.
+func (c *Coordinator) IsInFlightT(titleSlug, gamertag string) bool {
+	key := gateKey(titleSlug, gamertag)
 	c.inFlightMu.Lock()
 	defer c.inFlightMu.Unlock()
 	_, w := c.inFlight[key]

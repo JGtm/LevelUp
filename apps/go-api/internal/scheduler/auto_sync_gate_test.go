@@ -54,10 +54,12 @@ func (g *fakeGate) TryClaim(_ string) (func(), bool) {
 	}, true
 }
 
-func (g *fakeGate) IsInFlight(_ string) bool              { return g.inflight.Load() }
-func (g *fakeGate) WaitInFlight()                         {}
-func (g *fakeGate) BeginShutdown()                        {}
-func (g *fakeGate) GateSnapshot() gosync.GateSnapshotData { return g.snapshot }
+func (g *fakeGate) TryClaimT(_ string, gamertag string) (func(), bool) { return g.TryClaim(gamertag) }
+func (g *fakeGate) IsInFlight(_ string) bool                           { return g.inflight.Load() }
+func (g *fakeGate) IsInFlightT(_ string, _ string) bool                { return g.inflight.Load() }
+func (g *fakeGate) WaitInFlight()                                      {}
+func (g *fakeGate) BeginShutdown()                                     {}
+func (g *fakeGate) GateSnapshot() gosync.GateSnapshotData              { return g.snapshot }
 
 // TestSyncPlayer_GateRefuses_Skipped : si le gate refuse le claim (sync déjà en
 // vol via une autre source), le joueur est skippé SANS appeler RunnerFactory.

@@ -30,6 +30,39 @@ func TestSyncGate_TryClaim_Dedup(t *testing.T) {
 	}
 }
 
+// TestSyncGate_TryClaimT_CrossTitleNoCollision — MT-11 / PMT-3 : deux titres avec
+// le MÊME gamertag ne se coalescent PAS (clé de dédup composite). Et la parité
+// halo : TryClaim(gt) == TryClaimT("halo_infinite", gt) (même clé).
+func TestSyncGate_TryClaimT_CrossTitleNoCollision(t *testing.T) {
+	coord := NewCoordinator(&mockRunner{}, 4)
+
+	relHalo, ok := coord.TryClaimT("halo_infinite", "GT")
+	if !ok {
+		t.Fatal("claim halo devrait réussir")
+	}
+	// Même gamertag, AUTRE titre → claim accordé (pas de collision cross-titre).
+	relSyn, ok := coord.TryClaimT("synthetic_test_title", "GT")
+	if !ok {
+		t.Fatal("claim synthetic (même gamertag, autre titre) devrait réussir — pas de coalescing croisé")
+	}
+	// Dédup intra-titre préservée : re-claim halo échoue tant que non relâché.
+	if _, ok := coord.TryClaimT("halo_infinite", "GT"); ok {
+		t.Error("re-claim halo (même titre) devrait échouer (déjà en vol)")
+	}
+	// Parité : le wrapper TryClaim(gt) cible la MÊME clé que TryClaimT(halo, gt).
+	if _, ok := coord.TryClaim("GT"); ok {
+		t.Error("TryClaim(gt) devrait coalescer avec le claim halo en vol (parité clé)")
+	}
+	relHalo()
+	relSyn()
+	// Après release des deux, le wrapper réussit de nouveau.
+	if rel, ok := coord.TryClaim("GT"); !ok {
+		t.Error("TryClaim après release devrait réussir")
+	} else {
+		rel()
+	}
+}
+
 func TestSyncGate_Release_Idempotent(t *testing.T) {
 	coord := NewCoordinator(&mockRunner{}, 2)
 

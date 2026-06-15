@@ -14,6 +14,12 @@ type MatchRequest struct {
 	Gamertag string
 	XUID     string
 	MatchIDs []string
+	// TitleSlug porte le titre du joueur (MT-11 / PMT-3). Vide = halo_infinite.
+	// Propagé au CoordinatorRequest → clé de dédup composite + ctx du moteur. Le
+	// watcher ne suit aujourd'hui que halo_infinite (titleReg.MatchPresence) ; ce
+	// champ est le point de câblage pour un 2e titre suivi (à remplir depuis le
+	// td.Slug résolu à la détection de présence).
+	TitleSlug string
 }
 
 // maxSeenEntries borne le cache de déduplication `seen` (W7, revue 2026-06-01).
