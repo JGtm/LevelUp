@@ -1,3 +1,20 @@
+## [2026-06-15] PMT-5 (MT-06) — Expand : seam Outcome int↔canonique — En cours
+
+**Statut** : Branche `feat/multititre-peripherie`. Build/vet/gofmt verts ; `go test ./internal/games/mappings/ ./internal/games/` verts ; 5 oracles MT-06 verts. **Expand livré ; Contract (migration ~20 sites SQL/Go + front) à suivre par PR mince.**
+
+**Déclencheur (user)** : « continue la périphérie [...] de manière séquentielle ». Phase périphérie sans blocage choisie : PMT-5 (Outcome). Travaillé sur la MÊME branche (pas de nouveau worktree — consigne « plus jamais de remove forcé »).
+
+**Décision technique (Expand)** : le trou réel = aucun seam int↔canonique (le code Halo `2/3/1/4` est ré-encodé en dur dans ~20 sites). Ajouté :
+1. `raw_code int` (optionnel) sur `OutcomeMapping` + `outcomes.toml` Halo (win=2, loss=3, tie=1, dnf=4). Validation : codes non nuls **uniques** (PAS restreints à {1..4} — le spec disait {1,2,3,4} mais le fixture synthetic inverse en 7/9 pour prouver le routing ; déviation assumée).
+2. `OutcomeMappingSet.Canonical(rawCode) (canonical.Outcome, bool)` + `RawCode(canonical) (int, bool)` (index inverse construit au load).
+3. `SQLIsWinExpr(col) (string, bool)` → `"outcome = 2"` pour Halo ; le repo ne connaît plus le littéral. `col` = nom de colonne de confiance, seul un entier interpolé.
+
+**Oracle DOUBLE** : (a) parité Halo (vrai outcomes.toml → `SQLIsWinExpr=="outcome = 2"`, `Canonical(2)==win`, round-trip) ; (b) synthetic codes inversés (7/9) → `"outcome = 7"` ≠ Halo (routing non cosmétique) + nil/absent dégradent (false, pas de panic).
+
+**Prochaine étape (Contract, PR mince par axe)** : PR-a ingestion/sync (`assists_model.go`, `skill_v2_quit_penalty.go`, `post_sync_*`) ; PR-b SQL repos lecture ; PR-c citations + analysis/patterns ; PR-d front (supprimer les int-maps). + archlint ratchet « no raw outcome literal » (allowlist décroissante).
+
+---
+
 ## [2026-06-15] PMT-12 MT-09 — CLÔTURE (cutoffs slug → factory player-scoped par titre) — Complété
 
 **Statut** : Branche `feat/multititre-peripherie` (23d088103). Build/vet/gofmt verts ; archlint `no_slug_comparison` vert avec **allowlist VIDE** ; tests api/handlers/service verts (sauf 2 DeviceCodeFlow pré-existants) ; oracle MT-09 (routing + parité) vert. **PMT-12 désormais complet** (MT-21 + MT-09 + lint MT-12).

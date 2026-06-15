@@ -5,6 +5,11 @@
 #
 # Clés admises : win | loss | tie | dnf (alignées sur canonical/enums.go Outcome).
 # Champs obligatoires : labels.en, labels.fr, color_token.
+# Champ optionnel : raw_code (entier brut du titre, MT-06/PMT-5) — code interne
+#   encodé dans la donnée (Halo : win=2, loss=3, tie=1, dnf=4). Sert au seam
+#   int↔canonique (OutcomeMappingSet.Canonical / RawCode / SQLIsWinExpr). Les
+#   codes non-nuls doivent être uniques ; un titre sans raw_code dégrade (pas de
+#   traduction int, le caller retombe sur son fallback).
 #
 # Toute modification breaking incrémente schema_version (cf. tools/mappings/CHANGELOG.md).
 
@@ -15,15 +20,19 @@ schema_version = 1
 [outcomes.win]
 labels = { en = "Win", fr = "Victoire" }
 color_token = "outcome.positive"
+raw_code = 2
 
 [outcomes.loss]
 labels = { en = "Loss", fr = "Défaite" }
 color_token = "outcome.negative"
+raw_code = 3
 
 [outcomes.tie]
 labels = { en = "Tie", fr = "Égalité" }
 color_token = "outcome.neutral"
+raw_code = 1
 
 [outcomes.dnf]
 labels = { en = "DNF", fr = "Non terminé" }
 color_token = "outcome.neutral"
+raw_code = 4

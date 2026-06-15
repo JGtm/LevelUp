@@ -18,6 +18,7 @@ type outcomesTOML struct {
 type outcomeEntryTOML struct {
 	Labels     map[string]string `toml:"labels"`
 	ColorToken string            `toml:"color_token"`
+	RawCode    int               `toml:"raw_code"` // MT-06 : code brut du titre (0 = absent)
 }
 
 // allowedOutcomeKeys est la liste exhaustive des outcomes canoniques admis.
@@ -55,6 +56,7 @@ func LoadOutcomesFromBytes(path string, raw []byte) (*OutcomeMappingSet, error) 
 	}
 
 	byKey := make(map[string]OutcomeMapping, len(doc.Outcomes))
+	rawCodeOwner := make(map[int]string) // raw_code (non nul) → key, pour l'unicité
 	for key, entry := range doc.Outcomes {
 		if _, ok := allowedOutcomeKeys[key]; !ok {
 			errs = append(errs, fmt.Errorf("[outcomes.%s] clé inconnue (admises : win, loss, tie, dnf)", key))
@@ -67,10 +69,20 @@ func LoadOutcomesFromBytes(path string, raw []byte) (*OutcomeMappingSet, error) 
 			}
 			continue
 		}
+		// MT-06 : raw_code optionnel (0 = absent), mais les codes non nuls
+		// doivent être uniques (deux outcomes ne peuvent pas partager un code).
+		if entry.RawCode != 0 {
+			if other, dup := rawCodeOwner[entry.RawCode]; dup {
+				errs = append(errs, fmt.Errorf("[outcomes.%s] raw_code=%d déjà utilisé par [outcomes.%s]", key, entry.RawCode, other))
+				continue
+			}
+			rawCodeOwner[entry.RawCode] = key
+		}
 		byKey[key] = OutcomeMapping{
 			Key:        key,
 			Labels:     copyStringMap(entry.Labels),
 			ColorToken: entry.ColorToken,
+			RawCode:    entry.RawCode,
 		}
 	}
 
