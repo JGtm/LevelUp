@@ -22,7 +22,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"levelup/go-api/internal/migration"
+	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 )
 
 func main() {
@@ -46,7 +46,7 @@ func main() {
 		fmt.Printf("Avant : %d rows dans weapon_labels\n", before)
 	}
 
-	if err := migration.ApplyWeaponLabels(db); err != nil {
+	if err := halomigrations.ApplyWeaponLabels(db); err != nil {
 		log.Fatalf("ApplyWeaponLabels: %v", err)
 	}
 
