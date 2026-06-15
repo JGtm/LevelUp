@@ -679,6 +679,10 @@ func NewRouter(
 		// Anti-régression : lab_routes_mounted_test.go (chi.Walk sur le vrai routeur).
 		labHandler := handlers.NewLabHandler(service.NewLabService(cfg, lab_platform.NewProvider(cfg)))
 		r.Get("/lab/resources", labHandler.GetResources)
+		// Contracts = diff OpenAPI Go ↔ FastAPI legacy : MARQUÉ POUR RETRAIT
+		// (PMT-14 volet C). Le cutover Go étant fait, ce panneau a une faible
+		// valeur résiduelle ; monté tel quel pour ne pas casser le front, à
+		// repurposer/retirer plutôt qu'à enrichir.
 		r.Get("/lab/contracts", labHandler.GetContracts)
 		r.Get("/lab/diagnostics", labHandler.GetDiagnostics)
 
