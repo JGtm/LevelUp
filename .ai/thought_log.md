@@ -16,6 +16,22 @@
 
 ---
 
+## [2026-06-15] Phase 1.5 (MT-23) — garde-fou direction de dépendance + escalade reorder (via workflow ultracode)
+
+**Statut** : Branche `feat/multititre-peripherie`. `go test ./internal/migration/` vert. **Filet additif livré ; reorder + relocation en masse = escaladés.**
+
+**Verdict workflow (ordre migration)** : le risque irréversible que j'avais flaggé (ordre `init()` migration) est **DÉJÀ MITIGÉ** — l'ordre est gouverné par `canonicalOrder []string` explicite (order.go), PAS l'ordre `init()`/fichier. Relocaliser un step `steps_*.go` → `games/halo_infinite/migrations/steps.go` ne change RIEN à l'ordre (clé = position du `Name` dans canonicalOrder ; `schema_migrations` name-keyed → re-run = no-op sur DB migrée). Règles mécaniques (CI-gardées) : `Name` byte-identique, ne pas toucher order.go, garder le nom dans canonicalOrder une fois.
+
+**Bug latent RÉEL trouvé par le vérificateur adversarial** : `shared_seed_tier_boundaries_v2` (title-owned, `ApplySchema: return nil`) `INSERT INTO lusr_hyperparams_v2`, table créée par `shared_create_skill_v2_tables` (global) — mais le seed est à canon pos 132, le créateur à 133 → **dépendant AVANT son créateur**. Survit car le backfill error est non-fatal (registry.go) → convergence sur 2 boots (latent, jamais un crash). Les tests de complétude existants sont AVEUGLES à la direction (ils prouvent la présence, pas l'ordre des dépendances).
+
+**Livré (additif, zéro risque)** : `order_dependency_test.go` — garde-fou de direction. `stepDependencies` (vide, à remplir aux relocations) → toute FUTURE inversion échoue CI. `knownPreExistingInversions` documente l'inversion connue (prod-safe, justifiée) + échoue si elle est « accidentellement corrigée » (force à la retirer de la liste → filet honnête, pas un masquage silencieux). C'est exactement la recommandation du vérificateur.
+
+**⚠ ESCALADÉ (sign-off requis, non livré)** :
+1. **Reorder de l'inversion 132/133** — corriger = bouger `shared_create_skill_v2_tables` avant le seed dans canonicalOrder. MAIS ça rippe `TestSortByCanonicalIsNoOpOnCurrentRegistry` (qui asserte canonicalOrder == ordre de registration) → exige aussi d'ajuster l'ordre de registration ou le test. No-op sur DB prod migrées ; change le 1er-boot des DB fraîches (demo regen, nouveau titre, DR restore). = le cas canonique « ordre migration » à ne pas trancher solo.
+2. **Relocation en masse des 160 steps restants** — multi-jours (8-10 j estimés). Les familles ordering-sensibles (chaînes de vues `mv_player_matches`/`v_gamertag_lookup`/`lusr`-`msr`, chaînes ALTER `xbox_achievement_definitions`/`citation_mappings`, rebuilds `*_defeat_art_corruption`/`repair_*_pk`) doivent être relocalisées ATOMIQUEMENT (jamais splittées). Les tier-B cœur (`create_base_*_schema`, `add_asset_translations`) = racine de chaque DAG, à bouger avec tout leur aval. Recette par step documentée (cut→paste→helpers exportés `migration.*`→Name identique→vérif order_audit).
+
+---
+
 ## [2026-06-15] PMT-2 (MT-02) — Acquisition auth par titre — Expand (AuthDescriptor + loader)
 
 **Statut** : Branche `feat/multititre-peripherie`. Build all + vet + gofmt + archlint + `go test ./internal/domain/title/` verts. **Expand livré (seam additif PUR, ZÉRO changement du chemin auth) ; Contract (5 PR HAUT RISQUE) à suivre — flag explicite.**
