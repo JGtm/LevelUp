@@ -718,7 +718,7 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 	// marque JAMAIS le joueur à jour → re-tenté au prochain tick quand le claim se
 	// libère. Complète l'ActivityChecker (déjà appliqué) pour le résidu TOCTOU.
 	if s.SyncGate != nil {
-		release, ok := s.SyncGate.TryClaim(p.Gamertag)
+		release, ok := s.SyncGate.TryClaimT(resolveTitleSlug(p), p.Gamertag)
 		if !ok {
 			slog.InfoContext(ctx, "auto_sync: sync déjà en vol (autre source) — tick différé",
 				"gamertag", p.Gamertag)

@@ -308,7 +308,7 @@ func (r *ServiceRegistry) RunPlayerConvergence(ctx context.Context, titleSlug, p
 		return nil, fmt.Errorf("joueur inconnu %q pour %s", playerSlug, titleSlug)
 	}
 
-	release, ok := r.autoSyncScheduler.Gate().TryClaim(gamertag)
+	release, ok := r.autoSyncScheduler.Gate().TryClaimT(titleSlug, gamertag)
 	if !ok {
 		return nil, ErrSyncInFlight
 	}

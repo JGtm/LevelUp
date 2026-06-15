@@ -20,6 +20,7 @@ import (
 
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/observability/logging"
@@ -341,7 +342,7 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 	// AVANT le retour du handler, son gateWG.Add a un happens-before avec le retour
 	// → il est garanti vu par WaitInFlight au shutdown (pas de goroutine détachée
 	// qui claim tardivement). release est passé à la goroutine (defer release()).
-	release, claimed := h.syncGate.TryClaim(gamertag)
+	release, claimed := h.syncGate.TryClaimT(ctxkeys.TitleSlug(r.Context()), gamertag)
 	if !claimed {
 		writeError(r.Context(), w, http.StatusConflict, "sync_already_active",
 			"Une synchronisation de ce joueur est déjà en cours (watcher ou auto-sync).")
@@ -431,7 +432,7 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Dédup cross-source (cf. StartInitialSync) : claim SYNCHRONE, 409 si déjà en vol.
-	release, claimed := h.syncGate.TryClaim(gamertag)
+	release, claimed := h.syncGate.TryClaimT(ctxkeys.TitleSlug(r.Context()), gamertag)
 	if !claimed {
 		writeError(r.Context(), w, http.StatusConflict, "sync_already_active",
 			"Une synchronisation de ce joueur est déjà en cours (watcher ou auto-sync).")
@@ -526,7 +527,7 @@ func (h *SyncHandler) StartSyncAll(w http.ResponseWriter, r *http.Request) {
 			// compter en échec. IIFE + defer release() → libération garantie même
 			// sur panic de RunDelta.
 			func() {
-				release, claimed := h.syncGate.TryClaim(p.Gamertag)
+				release, claimed := h.syncGate.TryClaimT(p.TitleSlug, p.Gamertag)
 				if !claimed {
 					coalesced++
 					slog.DebugContext(h.serverCtx, "sync_handler: joueur coalescé dans sync/all (déjà en vol via une autre source)",

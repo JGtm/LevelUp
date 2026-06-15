@@ -1,3 +1,21 @@
+## [2026-06-15] PMT-3 (MT-11) — Sync-write-per-title — PR-4 (gate composite + watcher) — EXIT GATE
+
+**Statut** : Branche `feat/multititre-peripherie`. Build all + vet + gofmt + archlint + `go test ./internal/sync/ ./internal/scheduler/ ./internal/watcher/` verts ; handlers verts SAUF les 2 DeviceCodeFlow pré-existants (CSRF/DuckDB invalidated, hors gate). **PMT-3 à l'Exit Gate.**
+
+**Approche additive (halo byte-identique)** : `gateKey(titleSlug, gamertag)` — pour halo_infinite/vide, clé == `normGT(gamertag)` seul → **zéro changement de comportement pour le seul titre live**. Un 2e titre → préfixe slug → clé distincte (pas de coalescing croisé). SyncGate gagne `TryClaimT`/`IsInFlightT` (title-aware) ; `TryClaim`/`IsInFlight` deviennent des wrappers DefaultSlug (les tests existants + 3 fakes inchangés sauf ajout des 2 méthodes). Coordinator + NopSyncGate implémentent les 2.
+
+**Câblage** : `CoordinatorRequest.TitleSlug` + `Coordinator.run` pose `ctxkeys.WithTitleSlug(ctx, req.TitleSlug)` avant RunSync (→ le moteur du watcher écrit dans les bonnes DB). Callers gate → `TryClaimT(slug, gt)` : scheduler (`resolveTitleSlug(p)`), registry_actions (`titleSlug`), sync_handler ×3 (`ctxkeys.TitleSlug(r.Context())` ou `p.TitleSlug`). `MatchRequest.TitleSlug` ajouté + propagé dans consumeQueue.
+
+**Watcher per-titre NON câblé (documenté)** : `queueSyncTrigger` n'a pas le titre → `MatchRequest.TitleSlug` reste "" (→ halo). Le watcher ne suit que halo_infinite (`titleReg.MatchPresence`) ; remplir le slug depuis le `td.Slug` de présence est le hook restant, **inexerçable** tant qu'aucun 2e titre n'a de presence-mapping. Sûr aujourd'hui (halo byte-identique).
+
+**Oracle** : `TestSyncGate_TryClaimT_CrossTitleNoCollision` — 2 titres même gamertag = 2 claims accordés (pas de collision) ; dédup intra-titre préservée ; parité `TryClaim(gt) == TryClaimT(halo, gt)`.
+
+**Bilan PMT-3** : les 2 paths d'écriture title-aware (scheduler V1 + pipeline V2) écrivent dans les DB du titre du joueur ; gate sans collision cross-titre ; dette `auto_sync.go:838-841` résorbée. Reste documenté : watcher per-titre (inexerçable sans 2e titre).
+
+**Prochaine étape** : PMT-2 (auth) ou Phase 1.5 (DDL) — les 2 HAUT RISQUE (flag avant exécution).
+
+---
+
 ## [2026-06-15] PMT-3 (MT-11) — Sync-write-per-title — PR-1 (seam) + PR-2 (scheduler/HTTP threading)
 
 **Statut** : Branche `feat/multititre-peripherie`. Build all + vet + gofmt + archlint + `go test ./internal/scheduler/ ./internal/sync/` verts. **PR-1+2/4 livrés ; reste PR-3 (V2 PlayerProfile) + PR-4 (gate composite + watcher).**
