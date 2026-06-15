@@ -334,6 +334,18 @@ func NewRouter(
 		WithRankCatalog(hiRanks).
 		WithRankImageURLs(hiRankImageURLs)
 
+	// MT-09 (PMT-12) : factory player-scoped de Halo enregistrée par SLUG (clé de
+	// map, pas de comparaison littérale). Le builder lit reg.hiCapabilities à la
+	// volée (posé ci-dessus). Un 2e titre enregistrerait ICI son propre builder,
+	// sans toucher aux factories dataAdapterForPDB/TitleDataAdapter.
+	reg.RegisterPlayerDataBuilder(titlePkg.DefaultSlug, func(pdb *platform_duckdb.PlayerDB) games.TitleDataAdapter {
+		a := halo_games.NewDataAdapter(platform_duckdb.NewCareerRepo(pdb), slog.Default())
+		if reg.hiCapabilities != nil {
+			a = a.WithCapabilities(reg.hiCapabilities)
+		}
+		return a
+	})
+
 	// Module Prestige — initialisation du bundle (best-effort, désactivable via flag).
 	// Charge tuning.toml + templates + preset arcs Halo, ouvre shared_social et metadata.
 	// Si le flag PRESTIGE_ENABLED est désactivé, les routes ne sont pas montées et

@@ -28,7 +28,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -37,9 +36,7 @@ import (
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
-	halo_games "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
@@ -61,31 +58,36 @@ type PlayerResolver func(ctx context.Context, slug string) (*duckdb.PlayerDB, er
 // ServiceRegistry centralise la construction des services métier.
 // Chaque méthode résout le joueur puis construit le service injecté.
 type ServiceRegistry struct {
-	cfg               *config.AppConfig
-	resolve           PlayerResolver
-	resolveByGT       duckdb.TitlePlayerResolver // résolution (titleSlug, gamertag) → PlayerDB pour Squad V2
-	provider          auth.TokenProvider
-	assetResolver     assets.Resolver                      // nil si le resolver n'est pas configuré (mode legacy)
-	timezone          string                               // IANA (ex: "Europe/Paris"), propagé aux services médias
-	notifiers         sync.Map                             // xuid → port.SessionNotifier (HomeService par joueur)
-	titleResolver     games.Resolver                       // nil → services tournent sans semantic adapter (libellés via fallbacks)
-	hiCapabilities    games.CapabilityMap                  // capabilities.toml HI chargées au boot (Phase 1.7a) ; nil → adapter player-scoped retombe sur son fallback
-	homeMatchesCache  *service.HomeMatchesCache            // cache TTL process-level matches+sessions
-	careerLiveCache   *service.CareerLiveCache             // cache TTL process-level XP (5 min) + customisation (6 h)
-	remoteStats       *service.CachedStatsProvider         // cache TTL process-level stats carrière remote (5 min), partagé Explorer/Compare
-	recentMatches     *service.CachedRecentMatchesProvider // cache TTL process-level 20 derniers matchs live (20 min), partagé Explorer/Compare (cibles non-locales)
-	settingsStore     *settings_platform.Store             // nil → services qui dépendent des settings (TeammatesService friend filter) tournent en mode legacy
-	seasonsCatalog    *service.SeasonsCatalog              // nil → FiltersService.Resolve ne renvoie pas SeasonCounts (dégradation gracieuse)
-	rankCatalog       *mappings.RankCatalog                // nil → CareerService.next_rank_name reste vide
-	rankImageURLs     map[int]*string                      // nil → CareerService.rank_image_url et next_rank_image_url restent absents
-	prestigeBundle    *PrestigeBundle                      // nil si feature désactivée ; possède 2 *DB (sharedSocial + metadata) à fermer au shutdown
-	advisorBundle     *CoachAdvisorBundle                  // nil → coach_advisor désactivé (ADR 0020 Phase 8)
-	authStore         auth.UserTokenStore                  // ADR 0023 : source unique tokens auth (nil → fallback legacy DuckDB+env)
-	jobStore          *jobs_platform.Store                 // nil → transcoding HLS désactivé (médias servis via remux WebM live)
-	autoSyncScheduler *scheduler.AutoSyncScheduler         // dashboard monitoring : snapshot scheduler agrégé dans l'overview (nil → section indisponible)
-	healthScheduler   *scheduler.HealthScheduler           // dashboard monitoring : dernier audit data health + action run (nil → section indisponible)
-	startedAt         time.Time                            // boot du process (uptime overview — posé par NewServiceRegistry)
-	metaHandles       []*duckdb.DB                         // handles RW "annexes" sur metadata.duckdb (seasons/playlists catalog, ouverts hors pool joueur dans NewRouter) fermés au shutdown via Close() — sinon fuite de refCount sur le cache duckdb.openDBs (cf. INCIDENT_2026-05-21)
+	cfg            *config.AppConfig
+	resolve        PlayerResolver
+	resolveByGT    duckdb.TitlePlayerResolver // résolution (titleSlug, gamertag) → PlayerDB pour Squad V2
+	provider       auth.TokenProvider
+	assetResolver  assets.Resolver     // nil si le resolver n'est pas configuré (mode legacy)
+	timezone       string              // IANA (ex: "Europe/Paris"), propagé aux services médias
+	notifiers      sync.Map            // xuid → port.SessionNotifier (HomeService par joueur)
+	titleResolver  games.Resolver      // nil → services tournent sans semantic adapter (libellés via fallbacks)
+	hiCapabilities games.CapabilityMap // capabilities.toml HI chargées au boot (Phase 1.7a) ; nil → adapter player-scoped retombe sur son fallback
+	// MT-09 (PMT-12) : factory player-scoped PAR TITRE. Le slug est une CLÉ de
+	// map (lookup title-agnostic), jamais une comparaison littérale — un 2e titre
+	// enregistre son builder au boot, sans toucher aux factories. Remplace les
+	// 2 cutoffs `pdb.TitleSlug != DefaultSlug` (allowlist archlint vidée).
+	playerDataBuilders map[string]func(*duckdb.PlayerDB) games.TitleDataAdapter
+	homeMatchesCache   *service.HomeMatchesCache            // cache TTL process-level matches+sessions
+	careerLiveCache    *service.CareerLiveCache             // cache TTL process-level XP (5 min) + customisation (6 h)
+	remoteStats        *service.CachedStatsProvider         // cache TTL process-level stats carrière remote (5 min), partagé Explorer/Compare
+	recentMatches      *service.CachedRecentMatchesProvider // cache TTL process-level 20 derniers matchs live (20 min), partagé Explorer/Compare (cibles non-locales)
+	settingsStore      *settings_platform.Store             // nil → services qui dépendent des settings (TeammatesService friend filter) tournent en mode legacy
+	seasonsCatalog     *service.SeasonsCatalog              // nil → FiltersService.Resolve ne renvoie pas SeasonCounts (dégradation gracieuse)
+	rankCatalog        *mappings.RankCatalog                // nil → CareerService.next_rank_name reste vide
+	rankImageURLs      map[int]*string                      // nil → CareerService.rank_image_url et next_rank_image_url restent absents
+	prestigeBundle     *PrestigeBundle                      // nil si feature désactivée ; possède 2 *DB (sharedSocial + metadata) à fermer au shutdown
+	advisorBundle      *CoachAdvisorBundle                  // nil → coach_advisor désactivé (ADR 0020 Phase 8)
+	authStore          auth.UserTokenStore                  // ADR 0023 : source unique tokens auth (nil → fallback legacy DuckDB+env)
+	jobStore           *jobs_platform.Store                 // nil → transcoding HLS désactivé (médias servis via remux WebM live)
+	autoSyncScheduler  *scheduler.AutoSyncScheduler         // dashboard monitoring : snapshot scheduler agrégé dans l'overview (nil → section indisponible)
+	healthScheduler    *scheduler.HealthScheduler           // dashboard monitoring : dernier audit data health + action run (nil → section indisponible)
+	startedAt          time.Time                            // boot du process (uptime overview — posé par NewServiceRegistry)
+	metaHandles        []*duckdb.DB                         // handles RW "annexes" sur metadata.duckdb (seasons/playlists catalog, ouverts hors pool joueur dans NewRouter) fermés au shutdown via Close() — sinon fuite de refCount sur le cache duckdb.openDBs (cf. INCIDENT_2026-05-21)
 }
 
 // WithJobStore attache le JobStore au registry — porte le cycle de vie des jobs
@@ -263,6 +265,19 @@ func (r *ServiceRegistry) WithCapabilities(caps games.CapabilityMap) *ServiceReg
 	return r
 }
 
+// RegisterPlayerDataBuilder enregistre la factory player-scoped d'un titre
+// (MT-09). Le builder reçoit le PlayerDB résolu et construit le TitleDataAdapter
+// du titre (Halo : CareerRepo + capabilities). Title-agnostic : les factories
+// `dataAdapterForPDB`/`TitleDataAdapter` font un simple lookup par slug, plus
+// aucune comparaison littérale.
+func (r *ServiceRegistry) RegisterPlayerDataBuilder(slug string, build func(*duckdb.PlayerDB) games.TitleDataAdapter) *ServiceRegistry {
+	if r.playerDataBuilders == nil {
+		r.playerDataBuilders = make(map[string]func(*duckdb.PlayerDB) games.TitleDataAdapter)
+	}
+	r.playerDataBuilders[slug] = build
+	return r
+}
+
 // WithSettingsStore attache un settings.Store au registry. Les services qui
 // dépendent de app_settings.json (TeammatesService.friendGamertags pour le
 // filtre amis-only du dropdown) le récupèrent via r.settingsStore.
@@ -365,14 +380,14 @@ func (r *ServiceRegistry) assetURLFor(slug string) games.TitleAssetURLAdapter {
 // Utilisé par les factories de services pour câbler la bascule Phase C+
 // sans la dupliquer à chaque endroit.
 func (r *ServiceRegistry) dataAdapterForPDB(pdb *duckdb.PlayerDB) games.TitleDataAdapter {
-	if pdb == nil || pdb.TitleSlug != title.DefaultSlug {
+	if pdb == nil {
 		return nil
 	}
-	a := halo_games.NewDataAdapter(duckdb.NewCareerRepo(pdb), slog.Default())
-	if r.hiCapabilities != nil {
-		a = a.WithCapabilities(r.hiCapabilities)
+	build, ok := r.playerDataBuilders[pdb.TitleSlug]
+	if !ok {
+		return nil // titre sans builder player-scoped enregistré → dégradation
 	}
-	return a
+	return build(pdb)
 }
 
 // GetSessionNotifier retourne le SessionNotifier enregistré pour le xuid donné.
