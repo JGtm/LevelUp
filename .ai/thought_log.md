@@ -1,3 +1,17 @@
+## [2026-06-15] PMT-8 : enforcement du cycle de vie du titre (Status, MT-22) — Complété (worktree)
+
+**Statut** : Implémenté + vérifié dans le worktree `feat/title-lifecycle-status` (depuis main). Build/vet + tests verts (registre, middleware, bootstrap), CGO. Backend-only.
+
+**Contexte** : MT-22 / PMT-8 du plan multititre. `TitleDescriptor.Status` (active/coming_soon/archived) était défini mais JAMAIS lu en prod (`resolveTitleSlug` n'utilisait que `Exists()`) → un titre coming_soon/archived aurait été servi comme actif.
+
+**Implémentation** : `Registry.IsActive(slug)` + `Registry.Active()` (domain/title). (A) `middleware.TitleExtractor.resolveTitleSlug` exige désormais `IsActive` (header + session) → un titre non-actif n'est jamais résolu comme titre courant (fallback défaut actif). (B) `BuildAvailableTitles` filtre `reg.Active()` → seuls les titres actifs dans le switcher front ; coming_soon/archived restent inspectables côté admin (/admin/titles, PMT-14). Tests : IsActive/Active (registre + titre coming_soon enregistré), middleware (header coming_soon → fallback défaut).
+
+**Parité** : zéro impact aujourd'hui (seul halo_infinite enregistré = actif). L'enforcement ne mord que lorsqu'un 2e titre est enregistré coming_soon/archived.
+
+**Prochaine étape** : commit + push ; suite du plan multititre (blockers PMT-1/2/3, Phase 1.5).
+
+---
+
 ## [2026-06-15] Bonus assistances — couleur ambre plus distincte (Solo + Escouade) — Complété
 
 **Statut** : 2 edits (1 ligne chacun). `tsc -b` = 0 ; `eslint .` = 0 erreur (69 warnings préexistants, aucun sur les fichiers touchés) ; vitest `squadPerformanceLineCharts` 9/9. Branche `fix/bonus-assist-color` (créée depuis `main` — la session était passée sur main).

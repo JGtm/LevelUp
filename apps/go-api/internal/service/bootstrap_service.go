@@ -421,7 +421,9 @@ func getStringSetting(settings map[string]interface{}, key, def string) string {
 // Sprint 49 : exportée pour réutilisation par le handler session_context.
 func BuildAvailableTitles() []domain.TitleSummary {
 	reg := titlePkg.NewRegistry()
-	all := reg.All()
+	// MT-22 (PMT-8) : seuls les titres ACTIFS sont offerts dans le switcher.
+	// Les coming_soon/archived restent inspectables côté admin (/admin/titles).
+	all := reg.Active()
 	out := make([]domain.TitleSummary, 0, len(all))
 	for _, t := range all {
 		caps := make([]string, len(t.Capabilities))
