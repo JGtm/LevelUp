@@ -33,20 +33,30 @@ func (h *ContextHandler) Enabled(ctx context.Context, level slog.Level) bool {
 	return h.inner.Enabled(ctx, level)
 }
 
-// Handle ajoute request_id et event_id (depuis le ctx) au record avant de
-// déléguer à l'inner handler. Si l'un ou l'autre est vide (background jobs,
-// tests, logs hors d'une opération taguée), l'attribut correspondant n'est
-// pas ajouté — le handler reste transparent.
+// Handle ajoute request_id, event_id et title (depuis le ctx) au record avant
+// de déléguer à l'inner handler. Si l'un est vide (background jobs, tests, logs
+// hors d'une opération taguée / sans titre courant), l'attribut correspondant
+// n'est PAS ajouté — le handler reste transparent (sortie byte-identique pour
+// les logs sans titre dans le ctx).
 //
 // Sprint B1 commit 16 : event_id propagé pour tracer les opérations
 // background multi-module (sync, swap RW, backfill) à travers les
 // fichiers logs/{module}.log.
+//
+// MT-05 (PMT-10) : title (slug du titre courant) câblé via ctxkeys.TitleSlug —
+// le doc-comment historique le promettait sans l'attacher. On NE force PAS le
+// fallback "halo_infinite" ici : seules les requêtes qui ont réellement un titre
+// dans le ctx (HTTP via TitleExtractor) gagnent l'attribut ; les logs background
+// restent inchangés. Clé "title" (convention slog CLAUDE.md / arch-rules).
 func (h *ContextHandler) Handle(ctx context.Context, record slog.Record) error {
 	if id := ctxkeys.RequestID(ctx); id != "" {
 		record.AddAttrs(slog.String("request_id", id))
 	}
 	if id := ctxkeys.EventID(ctx); id != "" {
 		record.AddAttrs(slog.String("event_id", id))
+	}
+	if slug, ok := ctxkeys.TitleSlugIfSet(ctx); ok {
+		record.AddAttrs(slog.String("title", slug))
 	}
 	return h.inner.Handle(ctx, record)
 }

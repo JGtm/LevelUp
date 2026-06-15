@@ -1,3 +1,17 @@
+## [2026-06-15] PMT-10 (MT-05) — Observabilité dimension titre, PR-1 (ContextHandler) — En cours
+
+**Statut** : Branche `feat/multititre-peripherie`. Build/vet/gofmt verts ; `go test ./internal/observability/... ./internal/ctxkeys/ ./internal/api/` verts ; PR-1 test vert ; handlers = seuls 2 DeviceCodeFlow pré-existants rouges.
+
+**Déclencheur (user)** : « enchaîne pmt 10 » (périphérie séquentielle, même branche, zéro worktree).
+
+**PR-1 (la plus mince)** : `ContextHandler.Handle` câble enfin `title` (le doc-comment le promettait sans l'attacher = dérive confirmée). Subtilité : `ctxkeys.TitleSlug` **force** le fallback `halo_infinite` → ajouté `ctxkeys.TitleSlugIfSet(ctx) (string, bool)` qui distingue l'absence. Le handler n'ajoute `title` que si réellement présent → logs background inchangés (byte-identique), seules les requêtes HTTP (TitleExtractor) gagnent l'attribut. Clé slog `"title"`.
+
+**Reste PMT-10 (PR mince par axe)** : PR-2 (`PerfStats(ctx, titleSlug)`/`ErrorStats` + handlers `?title=` via `titleOrDefault`) ; PR-3 (seam titré dans les 3 collecteurs expvar/error/player_api + bascule des ~65 call-sites sync) ; PR-4 (namespacing LogsDir par titre, différable). Oracle double (golden parité Halo + routing synthetic_title_b) à fournir avec PR-2/3.
+
+**Prochaine étape** : PR-2.
+
+---
+
 ## [2026-06-15] PMT-5 (MT-06) — Expand : seam Outcome int↔canonique — En cours
 
 **Statut** : Branche `feat/multititre-peripherie`. Build/vet/gofmt verts ; `go test ./internal/games/mappings/ ./internal/games/` verts ; 5 oracles MT-06 verts. **Expand livré ; Contract (migration ~20 sites SQL/Go + front) à suivre par PR mince.**
