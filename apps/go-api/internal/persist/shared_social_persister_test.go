@@ -91,6 +91,14 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			read_at TIMESTAMP,
 			PRIMARY KEY (xuid, id)
 		)`,
+		`CREATE TABLE notification_preferences (
+			xuid VARCHAR NOT NULL,
+			category VARCHAR NOT NULL,
+			enabled BOOLEAN NOT NULL DEFAULT TRUE,
+			delivery VARCHAR NOT NULL DEFAULT 'both',
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (xuid, category)
+		)`,
 		// Pour le test, on utilise la table _legacy player_records (sans _history)
 		// pour valider le fallback. La migration Phase 2 introduira _history.
 		`CREATE TABLE player_records (
@@ -585,5 +593,177 @@ func TestSharedSocialPersister_ToggleLike_AddThenRemove(t *testing.T) {
 	_ = db.QueryRow("SELECT COUNT(*) FROM media_likes WHERE media_path = '/t.mp4'").Scan(&count)
 	if count != 0 {
 		t.Errorf("toggle remove KO: count=%d", count)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mutations notifications user-facing (MarkNotificationsRead, MarkUnread,
+// MarkAll, Delete, CapAndSweep, UpsertPreferences) — ADR 0022 fermeture du gap.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// seedNotif insère une notification minimale pour les tests de mutations.
+func seedNotif(t *testing.T, db *sql.DB, xuid string, id int64, category string, createdAt time.Time) {
+	t.Helper()
+	if _, err := db.Exec(`
+		INSERT INTO player_notifications (xuid, id, category, severity, title_key, source, created_at)
+		VALUES (?, ?, ?, 'info', 'k', 's', ?)`,
+		xuid, id, category, createdAt); err != nil {
+		t.Fatalf("seed notif id=%d: %v", id, err)
+	}
+}
+
+func TestSharedSocialPersister_MarkNotificationsRead_Batch(t *testing.T) {
+	_, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	ctx := context.Background()
+	now := time.Now().UTC()
+	for _, id := range []int64{1, 2, 3} {
+		seedNotif(t, db, "x", id, "c", now)
+	}
+	n, err := p.MarkNotificationsRead(ctx, "x", []int64{1, 2}, now)
+	if err != nil {
+		t.Fatalf("MarkNotificationsRead: %v", err)
+	}
+	if n != 2 {
+		t.Errorf("n=%d want 2", n)
+	}
+	var unread int
+	_ = db.QueryRow(`SELECT COUNT(*) FROM player_notifications WHERE xuid='x' AND read_at IS NULL`).Scan(&unread)
+	if unread != 1 {
+		t.Errorf("unread=%d want 1", unread)
+	}
+	// Idempotent : re-marquer des déjà-lues → 0 ligne affectée.
+	n2, _ := p.MarkNotificationsRead(ctx, "x", []int64{1, 2}, now)
+	if n2 != 0 {
+		t.Errorf("re-mark n=%d want 0", n2)
+	}
+}
+
+func TestSharedSocialPersister_MarkNotificationUnread(t *testing.T) {
+	_, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	ctx := context.Background()
+	now := time.Now().UTC()
+	seedNotif(t, db, "x", 1, "c", now)
+	if _, err := p.MarkNotificationsRead(ctx, "x", []int64{1}, now); err != nil {
+		t.Fatalf("pre mark-read: %v", err)
+	}
+	n, err := p.MarkNotificationUnread(ctx, "x", 1)
+	if err != nil {
+		t.Fatalf("MarkNotificationUnread: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("n=%d want 1", n)
+	}
+	var read sql.NullTime
+	_ = db.QueryRow(`SELECT read_at FROM player_notifications WHERE xuid='x' AND id=1`).Scan(&read)
+	if read.Valid {
+		t.Error("read_at devrait être NULL après MarkNotificationUnread")
+	}
+	if n0, _ := p.MarkNotificationUnread(ctx, "x", 999); n0 != 0 {
+		t.Errorf("id inconnu n=%d want 0", n0)
+	}
+}
+
+func TestSharedSocialPersister_MarkAllNotificationsRead(t *testing.T) {
+	_, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	ctx := context.Background()
+	now := time.Now().UTC()
+	seedNotif(t, db, "x", 1, "A", now)
+	seedNotif(t, db, "x", 2, "A", now)
+	seedNotif(t, db, "x", 3, "B", now)
+	nA, err := p.MarkAllNotificationsRead(ctx, "x", "A", now)
+	if err != nil {
+		t.Fatalf("MarkAll cat A: %v", err)
+	}
+	if nA != 2 {
+		t.Errorf("nA=%d want 2", nA)
+	}
+	nAll, _ := p.MarkAllNotificationsRead(ctx, "x", "", now)
+	if nAll != 1 {
+		t.Errorf("nAll=%d want 1 (reste B)", nAll)
+	}
+}
+
+func TestSharedSocialPersister_DeleteNotification(t *testing.T) {
+	_, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	ctx := context.Background()
+	seedNotif(t, db, "x", 1, "c", time.Now().UTC())
+	n, err := p.DeleteNotification(ctx, "x", 1)
+	if err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("n=%d want 1", n)
+	}
+	var cnt int
+	_ = db.QueryRow(`SELECT COUNT(*) FROM player_notifications WHERE xuid='x' AND id=1`).Scan(&cnt)
+	if cnt != 0 {
+		t.Errorf("cnt=%d want 0", cnt)
+	}
+	if n0, _ := p.DeleteNotification(ctx, "x", 999); n0 != 0 {
+		t.Errorf("id inconnu n=%d want 0", n0)
+	}
+}
+
+func TestSharedSocialPersister_CapAndSweepNotifications(t *testing.T) {
+	_, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	ctx := context.Background()
+	base := time.Now().UTC().Add(-10 * time.Hour)
+	for i := int64(1); i <= 5; i++ {
+		seedNotif(t, db, "x", i, "c", base.Add(time.Duration(i)*time.Hour))
+	}
+	if err := p.CapAndSweepNotifications(ctx, "x", 3); err != nil {
+		t.Fatalf("CapAndSweep: %v", err)
+	}
+	var cnt int
+	_ = db.QueryRow(`SELECT COUNT(*) FROM player_notifications WHERE xuid='x'`).Scan(&cnt)
+	if cnt != 3 {
+		t.Errorf("cnt=%d want 3", cnt)
+	}
+	// Les 3 plus récentes (ids 3,4,5) restent → MIN(id)=3.
+	var minID int64
+	_ = db.QueryRow(`SELECT MIN(id) FROM player_notifications WHERE xuid='x'`).Scan(&minID)
+	if minID != 3 {
+		t.Errorf("minID=%d want 3 (plus récentes gardées)", minID)
+	}
+}
+
+func TestSharedSocialPersister_UpsertNotificationPreferences(t *testing.T) {
+	_, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	ctx := context.Background()
+	now := time.Now().UTC()
+	if err := p.UpsertNotificationPreferences(ctx, "x",
+		[]string{"A", "B"}, []bool{true, false}, []string{"both", "off"}, now); err != nil {
+		t.Fatalf("upsert insert: %v", err)
+	}
+	var cnt int
+	_ = db.QueryRow(`SELECT COUNT(*) FROM notification_preferences WHERE xuid='x'`).Scan(&cnt)
+	if cnt != 2 {
+		t.Errorf("cnt=%d want 2", cnt)
+	}
+	// Update de A (ON CONFLICT) — pas de doublon, valeurs changées.
+	if err := p.UpsertNotificationPreferences(ctx, "x",
+		[]string{"A"}, []bool{false}, []string{"inapp"}, now.Add(time.Hour)); err != nil {
+		t.Fatalf("upsert update: %v", err)
+	}
+	var enabled bool
+	var delivery string
+	_ = db.QueryRow(`SELECT enabled, delivery FROM notification_preferences WHERE xuid='x' AND category='A'`).Scan(&enabled, &delivery)
+	if enabled || delivery != "inapp" {
+		t.Errorf("A enabled=%v delivery=%s want false/inapp", enabled, delivery)
+	}
+	_ = db.QueryRow(`SELECT COUNT(*) FROM notification_preferences WHERE xuid='x'`).Scan(&cnt)
+	if cnt != 2 {
+		t.Errorf("après update cnt=%d want 2 (pas de doublon)", cnt)
+	}
+	// Slices de longueurs différentes → erreur.
+	if err := p.UpsertNotificationPreferences(ctx, "x",
+		[]string{"A", "B"}, []bool{true}, []string{"both"}, now); err == nil {
+		t.Error("slices parallèles de longueurs différentes devraient retourner une erreur")
 	}
 }
