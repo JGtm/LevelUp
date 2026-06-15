@@ -69,3 +69,29 @@ func TestTitleExtractor_NoHeader_DefaultFallback(t *testing.T) {
 		t.Errorf("expected default slug %q, got %q", titlePkg.DefaultSlug, captured)
 	}
 }
+
+// MT-22 (PMT-8) : un titre enregistré mais coming_soon ne doit jamais être
+// résolu comme titre courant — on retombe sur le défaut actif.
+func TestTitleExtractor_ComingSoonHeader_Fallback(t *testing.T) {
+	registry := titlePkg.NewRegistry()
+	registry.Register(&titlePkg.TitleDescriptor{
+		Slug: "futur_titre", Name: "Futur", Status: titlePkg.StatusComingSoon,
+	})
+	mw := middleware.TitleExtractor(registry)
+
+	var captured string
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captured = ctxkeys.TitleSlug(r.Context())
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set("X-LevelUp-Title", "futur_titre")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if captured != titlePkg.DefaultSlug {
+		t.Errorf("titre coming_soon ne doit pas être résolu, attendu %q, got %q",
+			titlePkg.DefaultSlug, captured)
+	}
+}

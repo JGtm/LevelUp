@@ -142,6 +142,30 @@ func (r *Registry) Exists(slug string) bool {
 	return ok
 }
 
+// IsActive vérifie qu'un titre est enregistré ET actif (Status == StatusActive).
+// MT-22 (PMT-8) : un titre coming_soon/archived existe mais n'est PAS résolu
+// comme titre courant d'une requête (cf. middleware TitleExtractor) ni offert
+// dans le switcher (cf. BuildAvailableTitles). Le Status est enfin consulté.
+func (r *Registry) IsActive(slug string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	td, ok := r.titles[slug]
+	return ok && td.Status == StatusActive
+}
+
+// Active retourne uniquement les titres au statut actif.
+func (r *Registry) Active() []*TitleDescriptor {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*TitleDescriptor, 0, len(r.titles))
+	for _, t := range r.titles {
+		if t.Status == StatusActive {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
 // All retourne tous les titres enregistrés.
 func (r *Registry) All() []*TitleDescriptor {
 	r.mu.RLock()

@@ -28,16 +28,20 @@ func TitleExtractor(registry *titlePkg.Registry) func(http.Handler) http.Handler
 
 // resolveTitleSlug détermine le titre courant pour la requête.
 func resolveTitleSlug(r *http.Request, registry *titlePkg.Registry) string {
+	// MT-22 (PMT-8) : seul un titre ACTIF peut devenir le titre courant d'une
+	// requête. Un titre coming_soon/archived existe mais n'est jamais résolu ici
+	// (il s'inspecte via les surfaces admin) → on retombe sur le défaut actif.
+
 	// 1. Header explicite
 	if h := r.Header.Get("X-LevelUp-Title"); h != "" {
-		if registry.Exists(h) {
+		if registry.IsActive(h) {
 			return h
 		}
 	}
 
 	// 2. Session courante (via GetSession qui utilise la bonne context key)
 	if sess := GetSession(r.Context()); sess != nil {
-		if sess.CurrentTitleSlug != "" && registry.Exists(sess.CurrentTitleSlug) {
+		if sess.CurrentTitleSlug != "" && registry.IsActive(sess.CurrentTitleSlug) {
 			return sess.CurrentTitleSlug
 		}
 	}
