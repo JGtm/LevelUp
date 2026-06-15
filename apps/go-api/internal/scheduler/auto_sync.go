@@ -31,6 +31,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability/logging"
@@ -251,8 +252,16 @@ func (s *AutoSyncScheduler) Gate() sync.SyncGate {
 //     client default si pas .SetCustomClient — non-recommandé en prod)
 //   - s.postSyncRunner == nil → post-sync runner V1 désactivé
 //   - s.batchQueue == nil → batch mode synchrone (sans WAL durable)
-func (s *AutoSyncScheduler) BuildEngine(_ context.Context, gamertag, xuid string) *sync.SyncEngine {
-	engine := sync.NewSyncEngine(s.cfg.RepoRoot, gamertag, xuid, &domain.HaloTokens{}, s.provider)
+func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid string) *sync.SyncEngine {
+	// MT-11 / PMT-3 : le titre du joueur est porté par le ctx (posé par les 3
+	// points d'entrée : scheduler syncPlayer, watcher/HTTP). BuildEngine reste
+	// l'UNIQUE funnel de construction (utilisé comme valeur de fonction par
+	// WithEngineFactory/WithEngineBuilder + appel direct) ; sa signature ne change
+	// donc PAS — le slug transite par ctxkeys (carrier titre établi par PMT-10),
+	// pas par un param qui rippler­ait EngineFactory/SyncRunner/Coordinator.
+	// Fallback DefaultSlug si le ctx ne porte pas de titre → byte-identique halo.
+	titleSlug := ctxkeys.TitleSlug(ctx)
+	engine := sync.NewSyncEngineForTitle(s.cfg.RepoRoot, titleSlug, gamertag, xuid, &domain.HaloTokens{}, s.provider)
 	// Commit 8i : en mode B-swap (LEVELUP_USE_SHARED_PROVIDER=1), router les
 	// ouvertures RW de shared via Provider.AcquireWriter au lieu d'OpenSharedDB
 	// direct. Coordonne avec le pool joueur via Subscribe (DETACH/REATTACH).
@@ -335,6 +344,16 @@ func (s *AutoSyncScheduler) BuildEngine(_ context.Context, gamertag, xuid string
 // (champ RunnerFactory, tests existants).
 func (s *AutoSyncScheduler) defaultRunnerFactory(ctx context.Context, gamertag, xuid string) DeltaRunner {
 	return s.BuildEngine(ctx, gamertag, xuid)
+}
+
+// resolveTitleSlug retourne le slug du profil joueur, avec fallback DefaultSlug
+// (profils flat implicitement halo_infinite, ou TitleSlug vide). Source unique de
+// la règle de fallback (MT-11 / PMT-3), partagée par syncPlayer + la précondition.
+func resolveTitleSlug(p domain.PlayerSummary) string {
+	if p.TitleSlug == "" {
+		return titlePkg.DefaultSlug
+	}
+	return p.TitleSlug
 }
 
 // WithBatchQueue branche la BatchQueue serveur-wide (Phase 4.7 closure
@@ -713,6 +732,10 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 	// ──────────────────────────────────────────────────────────────────────
 	// Sync delta via DeltaRunner (PooledHaloClient en production, mockable en test).
 	// ──────────────────────────────────────────────────────────────────────
+	// MT-11 / PMT-3 : pose le titre du joueur dans le ctx AVANT la factory, pour
+	// que BuildEngine (→ NewSyncEngineForTitle) écrive dans les DB du bon titre
+	// et que les sous-modules/logs héritent du slug.
+	ctx = ctxkeys.WithTitleSlug(ctx, resolveTitleSlug(p))
 	slog.InfoContext(ctx, "auto_sync: démarrage sync delta", "gamertag", p.Gamertag)
 
 	factory := s.RunnerFactory
@@ -832,16 +855,11 @@ func (s *AutoSyncScheduler) checkSyncPreconditions(ctx context.Context, p domain
 		)
 		return "watcher actif (Watching/Syncing/Cooling) — tick cédé", false
 	}
-	// Slug porté par le profil (db_profiles.json title-scoped). Fallback DefaultSlug
-	// pour les profils flat (implicitement halo_infinite), où LoadPlayers met déjà
-	// DefaultSlug, et par sécurité si TitleSlug est vide.
-	// NB : ne corrige QUE la précondition os.Stat. Le moteur (NewSyncEngine) écrit
-	// encore dans les DB DefaultSlug — le support multi-titre complet de l'auto-sync
-	// (threader le slug jusqu'à l'écriture) reste une dette dédiée.
-	slug := p.TitleSlug
-	if slug == "" {
-		slug = titlePkg.DefaultSlug
-	}
+	// Slug porté par le profil (db_profiles.json title-scoped), fallback DefaultSlug.
+	// MT-11 / PMT-3 : la dette « le moteur écrit encore en DefaultSlug » est RÉSORBÉE —
+	// syncPlayer pose le slug dans le ctx → BuildEngine construit via
+	// NewSyncEngineForTitle. La précondition os.Stat utilise le même helper.
+	slug := resolveTitleSlug(p)
 	dbPath := titlePkg.NewPathResolver(s.cfg.RepoRoot).PlayerDBPath(slug, p.Gamertag)
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		slog.InfoContext(ctx, "auto_sync: DB joueur absente, joueur ignoré",

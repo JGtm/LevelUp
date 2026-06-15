@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
@@ -313,6 +314,9 @@ func (r *ServiceRegistry) RunPlayerConvergence(ctx context.Context, titleSlug, p
 	}
 	defer release()
 
+	// MT-11 / PMT-3 : porter le titre dans le ctx pour que BuildEngine écrive
+	// dans les DB du bon titre (le moteur lit ctxkeys.TitleSlug).
+	ctx = ctxkeys.WithTitleSlug(ctx, titleSlug)
 	engine := r.autoSyncScheduler.BuildEngine(ctx, gamertag, xuid)
 	syncRes, err := engine.RunDelta(ctx, domain.DefaultSyncOptions())
 	if err != nil {

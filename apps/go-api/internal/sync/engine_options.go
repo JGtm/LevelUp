@@ -21,7 +21,11 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// NewSyncEngine crée un moteur de sync pour un joueur.
+// NewSyncEngine crée un moteur de sync pour un joueur sur le titre par défaut.
+//
+// Wrapper rétro-compatible (MT-11 / PMT-3) : délègue à NewSyncEngineForTitle
+// avec titlePkg.DefaultSlug. Conservé pour les appelants legacy ; le nouveau code
+// passe par NewSyncEngineForTitle avec le slug du profil.
 //
 //   - repoRoot    : racine du repo (cfg.RepoRoot)
 //   - gamertag    : gamertag Halo du joueur
@@ -33,15 +37,34 @@ func NewSyncEngine(
 	tokens *domain.HaloTokens,
 	provider auth.TokenProvider,
 ) *SyncEngine {
+	return NewSyncEngineForTitle(repoRoot, titlePkg.DefaultSlug, gamertag, xuid, tokens, provider)
+}
+
+// NewSyncEngineForTitle crée un moteur de sync pour un joueur sur un titre donné
+// (MT-11 / PMT-3). TOUS les chemins DB (player/shared/metadata) sont résolus via
+// PathResolver + titleSlug → le moteur écrit dans `data/titles/{titleSlug}/...`.
+// Le champ `titleSlug` (déjà consommé par CSR/batch/scoring/asset-names/prestige/
+// catalog) reçoit enfin sa vraie valeur au lieu de DefaultSlug systématique.
+//
+// titleSlug vide est traité comme DefaultSlug (garde défensive ; le caller
+// scheduler applique déjà ce fallback via resolveTitleSlug).
+func NewSyncEngineForTitle(
+	repoRoot, titleSlug, gamertag, xuid string,
+	tokens *domain.HaloTokens,
+	provider auth.TokenProvider,
+) *SyncEngine {
+	if titleSlug == "" {
+		titleSlug = titlePkg.DefaultSlug
+	}
 	pr := titlePkg.NewPathResolver(repoRoot)
 	return &SyncEngine{
 		gamertag:       gamertag,
 		xuid:           xuid,
-		titleSlug:      titlePkg.DefaultSlug,
-		playerDBPath:   pr.PlayerDBPath(titlePkg.DefaultSlug, gamertag),
-		sharedDBPath:   pr.SharedDBPath(titlePkg.DefaultSlug),
+		titleSlug:      titleSlug,
+		playerDBPath:   pr.PlayerDBPath(titleSlug, gamertag),
+		sharedDBPath:   pr.SharedDBPath(titleSlug),
 		globalDBPath:   pr.GlobalXuidAliasesDBPath(),
-		metadataDBPath: pr.MetadataDBPath(titlePkg.DefaultSlug),
+		metadataDBPath: pr.MetadataDBPath(titleSlug),
 		syncCacheDir:   pr.SyncCacheDir(),
 		tokens:         tokens,
 		provider:       provider,
