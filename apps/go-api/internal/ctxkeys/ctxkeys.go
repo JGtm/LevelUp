@@ -47,6 +47,17 @@ func TitleSlug(ctx context.Context) string {
 	return "halo_infinite"
 }
 
+// TitleSlugIfSet retourne le slug du titre ET true SEULEMENT s'il est réellement
+// présent dans le contexte — sans forcer le fallback "halo_infinite" (MT-05).
+// À utiliser quand l'absence doit rester distinguable de halo_infinite (ex.
+// observabilité : ne pas polluer les logs background avec un titre fantôme).
+func TitleSlugIfSet(ctx context.Context) (string, bool) {
+	if v, ok := ctx.Value(titleSlugKey).(string); ok && v != "" {
+		return v, true
+	}
+	return "", false
+}
+
 // WithHaloAuth place les tokens Halo et le XUID du joueur connecté dans le contexte.
 func WithHaloAuth(ctx context.Context, tokens *domain.HaloTokens, xuid string) context.Context {
 	ctx = context.WithValue(ctx, haloTokensKey, tokens)
