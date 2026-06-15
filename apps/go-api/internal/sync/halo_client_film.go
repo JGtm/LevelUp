@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"golang.org/x/sync/errgroup"
+
+	"levelup/go-api/internal/games"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -102,7 +104,7 @@ func (c *HaloAPIClient) fetchFilmManifest(ctx context.Context, matchID string) (
 	}
 
 	// 2. API Halo.
-	endpoint := fmt.Sprintf("%s/hi/films/matches/%s/spectate", haloUGCHost, url.PathEscape(matchID))
+	endpoint := fmt.Sprintf("%s/hi/films/matches/%s/spectate", c.hostFor(ctx, games.EndpointUGCFilm, haloUGCHost), url.PathEscape(matchID))
 	body, err := c.doGet(ctx, endpoint)
 	if err != nil {
 		if isNotFoundErr(err) {

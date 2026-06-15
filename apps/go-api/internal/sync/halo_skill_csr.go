@@ -15,6 +15,8 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	"levelup/go-api/internal/games"
 )
 
 // playlistCSRResponse : réponse de GET /hi/playlist/{id}/csrs?players=...&season=...
@@ -49,7 +51,7 @@ func (c *HaloAPIClient) GetPlaylistCsr(ctx context.Context, playlistID, xuid, se
 	}
 
 	endpoint := fmt.Sprintf("%s/hi/playlist/%s/csrs?players=xuid(%s)",
-		haloSkillHost, url.PathEscape(playlistID), url.PathEscape(xuid))
+		c.hostFor(ctx, games.EndpointSkill, haloSkillHost), url.PathEscape(playlistID), url.PathEscape(xuid))
 	if s := strings.TrimSpace(seasonID); s != "" {
 		endpoint += "&season=" + url.QueryEscape(s)
 	}

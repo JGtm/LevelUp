@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+
+	"levelup/go-api/internal/games"
 )
 
 // PlaylistEntry : un couple map-mode enfant d'une playlist + sa version + son poids
@@ -53,7 +55,7 @@ func (c *HaloAPIClient) GetPlaylistConfig(ctx context.Context, playlistID, versi
 		return nil, fmt.Errorf("GetPlaylistConfig(%s): version_id requis", playlistID)
 	}
 	endpoint := fmt.Sprintf("%s/hi/playlists/%s/versions/%s",
-		haloUGCHost, url.PathEscape(playlistID), url.PathEscape(versionID))
+		c.hostFor(ctx, games.EndpointDiscoveryUGC, haloUGCHost), url.PathEscape(playlistID), url.PathEscape(versionID))
 	body, err := c.doGet(ctx, endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("GetPlaylistConfig(%s): %w", playlistID, err)

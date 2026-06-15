@@ -1,3 +1,17 @@
+## [2026-06-15] PMT-1 (MT-01) — Contract axes 2-3 (skill + film/UGC + discovery playlist) — COMPLÉTÉ
+
+**Statut** : Branche `feat/multititre-peripherie`. Build sync + vet + gofmt + `go test ./internal/sync/ -run TestHostFor` verts. **Axes 2-3/6 livrés (5 call-sites sync, même pattern que l'axe 1).**
+
+**Axe 2 (skill, `haloSkillHost`)** : `GetMatchSkill` (halo_skill.go:145), `GetPlayerCSRs` (:393), `GetPlaylistCsr` (halo_skill_csr.go:52) → `c.hostFor(ctx, games.EndpointSkill, haloSkillHost)`.
+
+**Axe 3 (`haloUGCHost`, discovery-infiniteugc)** : `GetMatchFilm` spectate (halo_client_film.go:105) → `games.EndpointUGCFilm` ; `GetPlaylistConfig` (halo_client_playlist.go:56) → `games.EndpointDiscoveryUGC`. Deux clés sémantiques distinctes, **même host physique** → byte-identique pour halo. Cela retire le rôle de source du const `haloUGCHost` côté sync (le const discovery de `platform/halo` reste pour l'axe 6).
+
+**Oracle** : `TestHostFor_SkillAxis` (GetPlayerCSRs) + `TestHostFor_FilmAndDiscoveryAxis` (GetMatchFilm + GetPlaylistConfig) — parité halo + routing synthétique piloté par ctx slug + fallback. Helper générique `captureHostVia(call)` (host capturé avant réécriture locale).
+
+**Prochaine étape** : axes 4-6 dans `platform/halo` (HaloProvider) — economy/challenges, privacy/servicerecord, discovery+gamecms+nameplate. Nécessite de câbler le resolver dans HaloProvider (2e type de client), donc plus de surface.
+
+---
+
 ## [2026-06-15] PMT-1 (MT-01) — Contract axe 1 (stats/history) — COMPLÉTÉ
 
 **Statut** : Branche `feat/multititre-peripherie`. Build sync+api + vet + gofmt + archlint + `go test ./internal/sync/ -run HaloClient|...|HostFor` verts. **Axe 1/6 livré.**

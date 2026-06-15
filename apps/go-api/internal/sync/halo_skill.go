@@ -41,6 +41,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"levelup/go-api/internal/games"
 )
 
 const haloSkillHost = "https://skill.svc.halowaypoint.com:443"
@@ -142,7 +144,7 @@ func (c *HaloAPIClient) GetMatchSkill(
 		return map[string]*MatchSkillData{}, nil
 	}
 
-	endpoint := fmt.Sprintf("%s/hi/matches/%s/skill", haloSkillHost, url.PathEscape(matchID))
+	endpoint := fmt.Sprintf("%s/hi/matches/%s/skill", c.hostFor(ctx, games.EndpointSkill, haloSkillHost), url.PathEscape(matchID))
 	params := url.Values{}
 	for _, x := range humans {
 		params.Add("players", "xuid("+x+")")
@@ -390,7 +392,7 @@ func (c *HaloAPIClient) GetPlayerCSRs(ctx context.Context, xuid, seasonID string
 
 	endpoint := fmt.Sprintf(
 		"%s/hi/players/xuid(%s)/csrs?Season=%s",
-		haloSkillHost,
+		c.hostFor(ctx, games.EndpointSkill, haloSkillHost),
 		url.PathEscape(xuid),
 		url.QueryEscape(seasonID),
 	)
