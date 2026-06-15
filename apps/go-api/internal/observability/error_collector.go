@@ -20,13 +20,16 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"levelup/go-api/internal/ctxkeys"
 )
 
 // defaultErrorCap borne le nombre de buckets distincts conservés.
 const defaultErrorCap = 128
 
-// ErrorBucket agrège les occurrences d'un même (niveau, message).
+// ErrorBucket agrège les occurrences d'un même (titre, niveau, message).
 type ErrorBucket struct {
+	Title      string // MT-05 : slug du titre ("" = défaut/Halo, byte-identique)
 	Level      string
 	Module     string // préfixe du message avant ':' (heuristique), "" sinon
 	Message    string
@@ -46,9 +49,19 @@ func newErrorCollector(capacity int) *errorCollector {
 	return &errorCollector{buckets: make(map[string]*ErrorBucket), cap: capacity}
 }
 
-// record agrège un slog.Record (supposé déjà filtré >= WARN par le handler).
-func (c *errorCollector) record(r slog.Record) {
+// record agrège un slog.Record sans dimension titre (legacy = titre nu).
+func (c *errorCollector) record(r slog.Record) { c.recordT(r, "") }
+
+// recordT agrège un slog.Record (supposé déjà filtré >= WARN par le handler).
+// `title` = slug du titre courant ("" si absent du ctx). MT-05 : le titre
+// effectif (défaut/vide → "") préfixe la clé pour router les buckets par titre,
+// en conservant la clé NUE pour Halo (byte-identique).
+func (c *errorCollector) recordT(r slog.Record, title string) {
+	et := obsEffectiveTitle(title)
 	key := r.Level.String() + "|" + r.Message
+	if et != "" {
+		key = et + "|" + key
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -66,6 +79,7 @@ func (c *errorCollector) record(r slog.Record) {
 		c.evictOldest()
 	}
 	c.buckets[key] = &ErrorBucket{
+		Title:      et,
 		Level:      r.Level.String(),
 		Module:     moduleFromMessage(r.Message),
 		Message:    r.Message,
@@ -172,7 +186,8 @@ func (h *ErrorCollectorHandler) Enabled(ctx context.Context, level slog.Level) b
 
 func (h *ErrorCollectorHandler) Handle(ctx context.Context, record slog.Record) error {
 	if record.Level >= slog.LevelWarn {
-		defaultErrorColl.record(record)
+		title, _ := ctxkeys.TitleSlugIfSet(ctx) // "" si absent → bucket Halo nu
+		defaultErrorColl.recordT(record, title)
 	}
 	return h.inner.Handle(ctx, record)
 }
