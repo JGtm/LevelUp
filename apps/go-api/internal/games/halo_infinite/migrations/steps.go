@@ -86,6 +86,56 @@ func Steps() []migration.Migration {
 			Description: "asset_translations : seed FR canoniques pour playlists Halo Infinite dont l'API a renvoyé l'EN raw en lang fr-FR (cf. thought_log 2026-05-09)",
 			ApplySchema: applyPlaylistFRSeeds,
 		},
+		// Leaves additifs sibling-files → migrés (b9).
+		{
+			Name:        "add_csr_placement_thresholds",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Table csr_placement_thresholds (mapping season_id → seuil placement, 10 pré-S3 / 5 depuis S3)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS csr_placement_thresholds (
+						season_id  VARCHAR PRIMARY KEY,
+						threshold  INTEGER NOT NULL CHECK (threshold > 0 AND threshold <= 20),
+						valid_from DATE,
+						notes      VARCHAR
+					);
+
+					-- Seed initial : 13 saisons connues (S1-S13). INSERT OR REPLACE idempotent.
+					INSERT OR REPLACE INTO csr_placement_thresholds VALUES
+						('CsrSeason1',    10, DATE '2021-12-08', 'S1 Launch — seuil historique 10'),
+						('CsrSeason2',    10, DATE '2022-05-03', 'S2 Lone Wolves — seuil 10'),
+						('CsrSeason2-2', 10, DATE '2022-11-08', 'Winter 22 — seuil 10'),
+						('CsrSeason3-1',  5, DATE '2023-03-07', 'S3 Echoes Within — seuil baissé à 5'),
+						('CsrSeason4-1',  5, DATE '2023-06-20', 'S4 Infection'),
+						('CsrSeason5-1',  5, DATE '2023-10-17', 'S5 Reckoning'),
+						('CsrSeason6-1',  5, DATE '2024-01-30', 'S6'),
+						('CsrSeason7-1',  5, DATE '2024-04-30', 'S7'),
+						('CsrSeason8-1',  5, DATE '2024-07-30', 'S8'),
+						('CsrSeason9-1',  5, DATE '2024-11-05', 'S9'),
+						('CsrSeason10-1', 5, DATE '2025-02-04', 'S10'),
+						('CsrSeason11-1', 5, DATE '2025-05-06', 'S11'),
+						('CsrSeason12-1', 5, DATE '2025-08-05', 'S12'),
+						('CsrSeason13-1', 5, DATE '2025-11-18', 'S13 Infinite — saison courante (mai 2026)');
+				`)
+			},
+		},
+		{
+			Name:        "add_assists_model_coefs",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Table assists_model_coefs : coefs régressions expected_assists par mode",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS assists_model_coefs (
+						game_variant_name  VARCHAR PRIMARY KEY,
+						slope              DOUBLE  NOT NULL,
+						intercept          DOUBLE  NOT NULL,
+						r2                 DOUBLE  NOT NULL,
+						n_samples          INTEGER NOT NULL,
+						computed_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					);
+				`)
+			},
+		},
 		// Famille medal_definitions (base + 3 ALTER) → migrée ATOMIQUEMENT (b8).
 		{
 			Name:        "add_medal_definitions",
