@@ -912,6 +912,7 @@ func (s *AutoSyncScheduler) runOnceV2(ctx context.Context, players []domain.Play
 			Gamertag:   p.Gamertag,
 			XUID:       p.XUID,
 			PlayerSlug: p.PlayerSlug,
+			TitleSlug:  resolveTitleSlug(p), // MT-11 / PMT-3 : porte le titre au pipeline V2
 		})
 	}
 

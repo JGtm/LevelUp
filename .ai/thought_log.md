@@ -12,7 +12,9 @@
 
 **archlint vert** : `resolveTitleSlug` compare à `""`, pas à un littéral de titre ; aucun `slug == "halo_infinite"` introduit.
 
-**Prochaine étape** : PR-3 (`syncv2.PlayerProfile.TitleSlug` + runOnceV2 + buildSyncEngineFactoryParityComplete) puis PR-4 (SyncGate clé composite + CoordinatorRequest.TitleSlug + watcher ctx).
+**PR-3 (V2 parité, LIVRÉ)** : `syncv2.PlayerProfile.TitleSlug` (champ neuf, vide→DefaultSlug) ; `runOnceV2` le remplit via `resolveTitleSlug(p)` ; `buildSyncEngineFactoryParityComplete` (cmd/server) bascule `NewSyncEngine` → `NewSyncEngineForTitle(…, p.TitleSlug, …)` (threading EXPLICITE ici car le profil porte déjà le slug — pas besoin du ctx). Build all + `go test ./internal/sync/v2/ ./internal/scheduler/` verts.
+
+**Prochaine étape** : PR-4 (SyncGate clé composite `(titleSlug, gamertag)` + CoordinatorRequest.TitleSlug + watcher ctx).
 
 ---
 
