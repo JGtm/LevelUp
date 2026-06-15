@@ -21,6 +21,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games"
 
 	"golang.org/x/sync/singleflight"
 )
@@ -296,10 +297,7 @@ type battlePassTrack struct {
 // fetchBattlePass appelle l'endpoint economy operations et parse la réponse.
 // Retourne la réponse domaine, les bytes JSON bruts (pour persistance), et une erreur éventuelle.
 func (p *HaloProvider) fetchBattlePass(ctx context.Context, tokens *domain.HaloTokens, xuid string) (domain.BattlePassResponse, []byte, error) {
-	base := p.battlePassBaseURL
-	if base == "" {
-		base = defaultEconomyHost
-	}
+	base := p.hostFor(ctx, games.EndpointEconomy, p.battlePassBaseURL, defaultEconomyHost)
 	url := fmt.Sprintf("%s/hi/players/xuid(%s)/rewardtracks/operations", base, xuid)
 
 	body, err := p.doGet(ctx, url, tokens)
@@ -385,7 +383,7 @@ func (p *HaloProvider) GetChallengesWithRaw(ctx context.Context) (domain.Challen
 		rawBody  []byte
 	}
 
-	result, err, _ := challengesFetchSFGroup.Do(p.challengesFetchKey(xuid), func() (interface{}, error) {
+	result, err, _ := challengesFetchSFGroup.Do(p.challengesFetchKey(ctx, xuid), func() (interface{}, error) {
 		resp, raw, fetchErr := p.fetchChallenges(ctx, tokens, xuid)
 		if fetchErr != nil {
 			return nil, fetchErr
@@ -407,21 +405,15 @@ func (p *HaloProvider) GetChallengesWithRaw(ctx context.Context) (domain.Challen
 	return resolved.response, resolved.rawBody
 }
 
-func (p *HaloProvider) challengesFetchKey(xuid string) string {
-	base := p.challengesBaseURL
-	if base == "" {
-		base = defaultChallengesHost
-	}
+func (p *HaloProvider) challengesFetchKey(ctx context.Context, xuid string) string {
+	base := p.hostFor(ctx, games.EndpointChallenges, p.challengesBaseURL, defaultChallengesHost)
 	return xuid + "|" + base
 }
 
 // fetchChallenges appelle l'endpoint decks et parse la réponse.
 // Retourne la réponse domaine, les bytes JSON bruts (pour persistance), et une erreur éventuelle.
 func (p *HaloProvider) fetchChallenges(ctx context.Context, tokens *domain.HaloTokens, xuid string) (domain.ChallengesResponse, []byte, error) {
-	base := p.challengesBaseURL
-	if base == "" {
-		base = defaultChallengesHost
-	}
+	base := p.hostFor(ctx, games.EndpointChallenges, p.challengesBaseURL, defaultChallengesHost)
 	url := fmt.Sprintf("%s/hi/players/xuid(%s)/decks", base, xuid)
 
 	body, err := p.doGet(ctx, url, tokens)

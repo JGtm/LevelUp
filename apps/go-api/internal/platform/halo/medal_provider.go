@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/metadata"
 )
 
@@ -36,7 +37,7 @@ func (p *HaloProvider) FetchMedalsMetadata(ctx context.Context, titleID string) 
 		return nil, nil, fmt.Errorf("FetchMedalsMetadata: tokens absents du contexte")
 	}
 
-	url := defaultGameCMSHost + medalsMetadataPath
+	url := p.hostFor(ctx, games.EndpointGameCMS, p.gameCMSBaseURL, defaultGameCMSHost) + medalsMetadataPath
 	body, err := p.doGet(ctx, url, tokens)
 	if err != nil {
 		return nil, nil, fmt.Errorf("FetchMedalsMetadata: %w", err)

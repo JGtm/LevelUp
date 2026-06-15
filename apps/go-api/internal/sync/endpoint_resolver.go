@@ -5,51 +5,33 @@
 // appel vers l'host du titre courant (lu dans le ctx). Source de vérité : la
 // section [endpoints] de config/titles/{slug}/constants.toml, chargée au boot.
 //
-// Le resolver est câblé UNE fois au boot (server.go → SetDefaultEndpointResolver)
-// et partagé par tous les clients. Les const Halo legacy (haloStatsHost, …)
-// restent comme FALLBACK byte-identique pour les chemins non câblés (binaires
-// CLI hors boot, tests) — pour halo_infinite, le resolver rend exactement la
-// même valeur (golden de parité), donc zéro changement de comportement.
+// Le resolver est câblé UNE fois au boot (server.go → games.SetDefaultEndpointResolver)
+// et partagé par tous les clients (le holder vit dans le package games, bas
+// niveau, pour être consultable par sync ET platform/halo ET assets). Les const
+// Halo legacy (haloStatsHost, …) restent comme FALLBACK byte-identique pour les
+// chemins non câblés (binaires CLI hors boot, tests) — pour halo_infinite, le
+// resolver rend exactement la même valeur (golden de parité), donc zéro
+// changement de comportement.
 package sync
 
 import (
 	"context"
 	"log/slog"
-	"sync"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
 )
 
-var (
-	endpointResolverMu sync.RWMutex
-	sharedEndpoints    games.EndpointResolver
-)
-
-// SetDefaultEndpointResolver câble le resolver d'hosts partagé (appelé au boot,
-// après chargement de la mappings.Registry). Idempotent.
-func SetDefaultEndpointResolver(r games.EndpointResolver) {
-	endpointResolverMu.Lock()
-	sharedEndpoints = r
-	endpointResolverMu.Unlock()
-}
-
-// sharedEndpointResolver retourne le resolver partagé (nil tant que non câblé).
-func sharedEndpointResolver() games.EndpointResolver {
-	endpointResolverMu.RLock()
-	defer endpointResolverMu.RUnlock()
-	return sharedEndpoints
-}
-
 // hostFor résout l'host d'un endpoint pour le titre courant (lu dans le ctx).
-// Précédence : resolver d'instance (override de test) → resolver partagé (boot).
-// Fallback sur `legacy` (const Halo) si aucun resolver n'est câblé OU si le titre
-// ne déclare pas cet endpoint (warn `endpoint_missing` ; transition — la
-// validation boot PMT-12 garantit qu'un titre ACTIF déclare ses endpoints requis).
+// Précédence : resolver d'instance (override de test) → resolver partagé de boot
+// (games.DefaultEndpointResolver). Fallback sur `legacy` (const Halo) si aucun
+// resolver n'est câblé OU si le titre ne déclare pas cet endpoint (warn
+// `endpoint_missing` ; transition — la validation boot PMT-12 garantit qu'un
+// titre ACTIF déclare ses endpoints requis).
 func (c *HaloAPIClient) hostFor(ctx context.Context, key games.EndpointKey, legacy string) string {
 	res := c.endpoints
 	if res == nil {
-		res = sharedEndpointResolver()
+		res = games.DefaultEndpointResolver()
 	}
 	if res == nil {
 		return legacy

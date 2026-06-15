@@ -13,6 +13,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 )
 
 const (
@@ -47,7 +48,7 @@ func (p *HaloProvider) FetchSeasonCalendar(ctx context.Context, titleID string) 
 		return nil, nil, fmt.Errorf("FetchSeasonCalendar: tokens absents du contexte")
 	}
 
-	url := defaultGameCMSHost + seasonCalendarPath
+	url := p.hostFor(ctx, games.EndpointGameCMS, p.gameCMSBaseURL, defaultGameCMSHost) + seasonCalendarPath
 	body, err := p.doGet(ctx, url, tokens)
 	if err != nil {
 		return nil, nil, fmt.Errorf("FetchSeasonCalendar: %w", err)
@@ -90,7 +91,7 @@ func (p *HaloProvider) FetchCSRSeasonCalendar(ctx context.Context, titleID strin
 		return nil, nil, fmt.Errorf("FetchCSRSeasonCalendar: tokens absents du contexte")
 	}
 
-	url := defaultGameCMSHost + csrSeasonCalendarPath
+	url := p.hostFor(ctx, games.EndpointGameCMS, p.gameCMSBaseURL, defaultGameCMSHost) + csrSeasonCalendarPath
 	body, err := p.doGet(ctx, url, tokens)
 	if err != nil {
 		return nil, nil, fmt.Errorf("FetchCSRSeasonCalendar: %w", err)
