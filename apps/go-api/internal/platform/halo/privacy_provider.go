@@ -65,6 +65,13 @@ type privacyResponse struct {
 	CustomMatchesPrivacy string `json:"CustomMatchesPrivacy"`
 }
 
+// defaultStatsHost — host service-record/privacy. PMT-1 (MT-01) : NON migré sur
+// EndpointResolver à dessein. Sa valeur (sans `:443`) est byte-distincte de
+// EndpointStats (`https://halostats…:443`, utilisé par halo_client) ; les router
+// sous une même clé introduirait un `:443` sur le Host header de ce fetch prod
+// (cosmétique mais non byte-identique), et privacy/servicerecord ne mérite pas
+// une 9e clé d'endpoint. Reste sur la const jusqu'à ce qu'un 2e titre expose
+// réellement cette surface (capability-gated). Cf. .ai/thought_log.md.
 const defaultStatsHost = "https://halostats.svc.halowaypoint.com"
 
 // GetMatchPrivacy retourne la privacy du compte Halo pour le xuid donné.

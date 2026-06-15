@@ -73,13 +73,13 @@ func captureStatsHost(t *testing.T, ctx context.Context, configure func(*HaloAPI
 
 func TestHostFor_StatsAxis(t *testing.T) {
 	// Isoler l'état global : restaurer le resolver partagé en sortie.
-	prev := sharedEndpointResolver()
-	t.Cleanup(func() { SetDefaultEndpointResolver(prev) })
+	prev := games.DefaultEndpointResolver()
+	t.Cleanup(func() { games.SetDefaultEndpointResolver(prev) })
 
 	const haloHost = "halostats.svc.halowaypoint.com:443"
 
 	t.Run("instance resolver halo = parité byte-identique", func(t *testing.T) {
-		SetDefaultEndpointResolver(nil)
+		games.SetDefaultEndpointResolver(nil)
 		host := captureStatsHost(t, context.Background(), func(c *HaloAPIClient) {
 			c.WithEndpoints(realHaloResolver(t))
 		})
@@ -89,7 +89,7 @@ func TestHostFor_StatsAxis(t *testing.T) {
 	})
 
 	t.Run("routing synthétique piloté par le slug du ctx", func(t *testing.T) {
-		SetDefaultEndpointResolver(nil)
+		games.SetDefaultEndpointResolver(nil)
 		ctx := ctxkeys.WithTitleSlug(context.Background(), "synthetic_x")
 		host := captureStatsHost(t, ctx, func(c *HaloAPIClient) {
 			c.WithEndpoints(stubEndpoints{slug: "synthetic_x", key: games.EndpointStats, host: "https://stats.example.test"})
@@ -100,7 +100,7 @@ func TestHostFor_StatsAxis(t *testing.T) {
 	})
 
 	t.Run("aucun resolver câblé → fallback const legacy", func(t *testing.T) {
-		SetDefaultEndpointResolver(nil)
+		games.SetDefaultEndpointResolver(nil)
 		host := captureStatsHost(t, context.Background(), nil)
 		if host != haloHost {
 			t.Errorf("host = %q, want %q (fallback legacy)", host, haloHost)
@@ -108,7 +108,7 @@ func TestHostFor_StatsAxis(t *testing.T) {
 	})
 
 	t.Run("resolver partagé de boot (halo) → parité", func(t *testing.T) {
-		SetDefaultEndpointResolver(realHaloResolver(t))
+		games.SetDefaultEndpointResolver(realHaloResolver(t))
 		host := captureStatsHost(t, context.Background(), nil)
 		if host != haloHost {
 			t.Errorf("host = %q, want %q (resolver partagé)", host, haloHost)
@@ -116,7 +116,7 @@ func TestHostFor_StatsAxis(t *testing.T) {
 	})
 
 	t.Run("endpoint absent pour le titre → warn + fallback legacy", func(t *testing.T) {
-		SetDefaultEndpointResolver(nil)
+		games.SetDefaultEndpointResolver(nil)
 		ctx := ctxkeys.WithTitleSlug(context.Background(), "title_without_stats")
 		// stub ne connaît que "synthetic_x" → HostFor("title_without_stats") = false.
 		host := captureStatsHost(t, ctx, func(c *HaloAPIClient) {
@@ -150,8 +150,8 @@ func captureHostVia(t *testing.T, ctx context.Context, configure func(*HaloAPICl
 }
 
 func TestHostFor_SkillAxis(t *testing.T) {
-	prev := sharedEndpointResolver()
-	t.Cleanup(func() { SetDefaultEndpointResolver(prev) })
+	prev := games.DefaultEndpointResolver()
+	t.Cleanup(func() { games.SetDefaultEndpointResolver(prev) })
 
 	const skillHost = "skill.svc.halowaypoint.com:443"
 	// GetPlayerCSRs vise l'host skill ; capture indifférente au parsing.
@@ -160,7 +160,7 @@ func TestHostFor_SkillAxis(t *testing.T) {
 	}
 
 	t.Run("resolver halo = parité byte-identique", func(t *testing.T) {
-		SetDefaultEndpointResolver(nil)
+		games.SetDefaultEndpointResolver(nil)
 		host := captureHostVia(t, context.Background(), func(c *HaloAPIClient) {
 			c.WithEndpoints(realHaloResolver(t))
 		}, callCSRs)
@@ -170,7 +170,7 @@ func TestHostFor_SkillAxis(t *testing.T) {
 	})
 
 	t.Run("routing synthétique via ctx slug", func(t *testing.T) {
-		SetDefaultEndpointResolver(nil)
+		games.SetDefaultEndpointResolver(nil)
 		ctx := ctxkeys.WithTitleSlug(context.Background(), "synthetic_x")
 		host := captureHostVia(t, ctx, func(c *HaloAPIClient) {
 			c.WithEndpoints(stubEndpoints{slug: "synthetic_x", key: games.EndpointSkill, host: "https://skill.example.test"})
@@ -181,7 +181,7 @@ func TestHostFor_SkillAxis(t *testing.T) {
 	})
 
 	t.Run("aucun resolver → fallback const legacy", func(t *testing.T) {
-		SetDefaultEndpointResolver(nil)
+		games.SetDefaultEndpointResolver(nil)
 		host := captureHostVia(t, context.Background(), nil, callCSRs)
 		if host != skillHost {
 			t.Errorf("host = %q, want %q (fallback)", host, skillHost)
@@ -190,8 +190,8 @@ func TestHostFor_SkillAxis(t *testing.T) {
 }
 
 func TestHostFor_FilmAndDiscoveryAxis(t *testing.T) {
-	prev := sharedEndpointResolver()
-	t.Cleanup(func() { SetDefaultEndpointResolver(prev) })
+	prev := games.DefaultEndpointResolver()
+	t.Cleanup(func() { games.SetDefaultEndpointResolver(prev) })
 
 	const ugcHost = "discovery-infiniteugc.svc.halowaypoint.com"
 	callFilm := func(ctx context.Context, c *HaloAPIClient) {
@@ -202,7 +202,7 @@ func TestHostFor_FilmAndDiscoveryAxis(t *testing.T) {
 	}
 
 	t.Run("film (UGCFilm) parité halo", func(t *testing.T) {
-		SetDefaultEndpointResolver(nil)
+		games.SetDefaultEndpointResolver(nil)
 		host := captureHostVia(t, context.Background(), func(c *HaloAPIClient) {
 			c.WithEndpoints(realHaloResolver(t))
 		}, callFilm)
@@ -212,7 +212,7 @@ func TestHostFor_FilmAndDiscoveryAxis(t *testing.T) {
 	})
 
 	t.Run("film (UGCFilm) routing synthétique", func(t *testing.T) {
-		SetDefaultEndpointResolver(nil)
+		games.SetDefaultEndpointResolver(nil)
 		ctx := ctxkeys.WithTitleSlug(context.Background(), "synthetic_x")
 		host := captureHostVia(t, ctx, func(c *HaloAPIClient) {
 			c.WithEndpoints(stubEndpoints{slug: "synthetic_x", key: games.EndpointUGCFilm, host: "https://film.example.test"})
@@ -223,7 +223,7 @@ func TestHostFor_FilmAndDiscoveryAxis(t *testing.T) {
 	})
 
 	t.Run("playlist (DiscoveryUGC) parité halo", func(t *testing.T) {
-		SetDefaultEndpointResolver(nil)
+		games.SetDefaultEndpointResolver(nil)
 		host := captureHostVia(t, context.Background(), func(c *HaloAPIClient) {
 			c.WithEndpoints(realHaloResolver(t))
 		}, callPlaylist)
@@ -233,7 +233,7 @@ func TestHostFor_FilmAndDiscoveryAxis(t *testing.T) {
 	})
 
 	t.Run("playlist (DiscoveryUGC) routing synthétique", func(t *testing.T) {
-		SetDefaultEndpointResolver(nil)
+		games.SetDefaultEndpointResolver(nil)
 		ctx := ctxkeys.WithTitleSlug(context.Background(), "synthetic_x")
 		host := captureHostVia(t, ctx, func(c *HaloAPIClient) {
 			c.WithEndpoints(stubEndpoints{slug: "synthetic_x", key: games.EndpointDiscoveryUGC, host: "https://discovery.example.test"})

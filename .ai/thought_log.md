@@ -1,3 +1,23 @@
+## [2026-06-15] PMT-1 (MT-01) — Contract axes 4-6 (platform/halo HaloProvider) + relocate resolver → games — COMPLÉTÉ (part 1)
+
+**Statut** : Branche `feat/multititre-peripherie`. Build all + vet + gofmt + `go test ./internal/platform/halo/ ./internal/sync/ ./internal/games/` verts. **Bloc platform/halo des axes 4-6 livré ; reste sync career + nameplate + assets fetcher (part 2).**
+
+**Refactor de fondation** : le holder du resolver partagé déménage de `sync` vers **`games`** (`games.SetDefaultEndpointResolver` / `games.DefaultEndpointResolver`, mutex-guarded). Raison : `platform/halo` et `assets` ne peuvent PAS importer `sync` (sens de couche), mais tous importent `games` (bas niveau). server.go câble `games.SetDefaultEndpointResolver(...)` au boot. `sync.hostFor` et le test repointés. Zéro changement de comportement.
+
+**HaloProvider** : nouveau helper `(*HaloProvider).hostFor(ctx, key, override, legacy)` (miroir du sync) — précédence override d'instance (champ test) → resolver de boot → const legacy. Migré :
+- economy (battlepass) `fetchBattlePass` → `EndpointEconomy` (override `battlePassBaseURL`).
+- challenges `fetchChallenges` + `challengesFetchKey` (threadé `ctx` → clé singleflight title-aware) → `EndpointChallenges` (override `challengesBaseURL`).
+- gamecms `season_provider` (Season/CSRSeason calendars) + `medal_provider` (medals metadata) → `EndpointGameCMS` (override `gameCMSBaseURL`).
+- discovery `discovery_client.FetchAsset` → `EndpointDiscoveryUGC`.
+
+**Privacy DÉFÉRÉ (documenté, pas une omission)** : `privacy_provider.defaultStatsHost` (`halostats…` SANS `:443`) est byte-distinct de `EndpointStats` (`:443`). Les unifier sous une clé introduirait un `:443` sur le Host header de ce fetch prod (cosmétique mais non byte-identique) ; privacy/servicerecord ne mérite pas une 9e clé. Reste sur la const jusqu'à ce qu'un 2e titre expose réellement la surface (capability-gated). Commentaire ajouté dans privacy_provider.go.
+
+**Oracle** : `TestHaloProvider_hostFor` (override prioritaire + routing ctx slug + fallback + endpoint absent + parité halo gamecms-sans-:443). Tests platform/halo existants verts (parité).
+
+**Prochaine étape (part 2)** : sync HaloAPIClient career (`economyBaseURL`/`gameCMSBaseURL` → economy/gamecms) + nameplate resolver + assets GameCMSFetcher. Puis PMT-1 à l'Exit Gate (modulo privacy déféré).
+
+---
+
 ## [2026-06-15] PMT-1 (MT-01) — Contract axes 2-3 (skill + film/UGC + discovery playlist) — COMPLÉTÉ
 
 **Statut** : Branche `feat/multititre-peripherie`. Build sync + vet + gofmt + `go test ./internal/sync/ -run TestHostFor` verts. **Axes 2-3/6 livrés (5 call-sites sync, même pattern que l'axe 1).**

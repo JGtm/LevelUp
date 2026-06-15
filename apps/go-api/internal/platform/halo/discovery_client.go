@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 )
 
 const (
@@ -50,7 +51,7 @@ func (p *HaloProvider) FetchAsset(
 	}
 
 	rawURL := fmt.Sprintf("%s/hi/%s/%s/versions/%s",
-		discoveryUGCHost, segment, neturl.PathEscape(assetID), neturl.PathEscape(versionID))
+		p.hostFor(ctx, games.EndpointDiscoveryUGC, "", discoveryUGCHost), segment, neturl.PathEscape(assetID), neturl.PathEscape(versionID))
 
 	body, err := p.doGetWithLang(ctx, rawURL, lang)
 	if err != nil {
