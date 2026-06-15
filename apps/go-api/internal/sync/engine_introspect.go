@@ -67,3 +67,13 @@ func (e *SyncEngine) GamertagForTest() string {
 func (e *SyncEngine) XUIDForTest() string {
 	return e.xuid
 }
+
+// TitleSlugForTest retourne le titleSlug du moteur (MT-11 / PMT-3). Test-only.
+func (e *SyncEngine) TitleSlugForTest() string {
+	return e.titleSlug
+}
+
+// PlayerDBPathForTest retourne le chemin de la DB player du moteur. Test-only.
+func (e *SyncEngine) PlayerDBPathForTest() string {
+	return e.playerDBPath
+}

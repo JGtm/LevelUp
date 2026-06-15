@@ -1,3 +1,21 @@
+## [2026-06-15] PMT-3 (MT-11) — Sync-write-per-title — PR-1 (seam) + PR-2 (scheduler/HTTP threading)
+
+**Statut** : Branche `feat/multititre-peripherie`. Build all + vet + gofmt + archlint + `go test ./internal/scheduler/ ./internal/sync/` verts. **PR-1+2/4 livrés ; reste PR-3 (V2 PlayerProfile) + PR-4 (gate composite + watcher).**
+
+**Trou réel** : le moteur `SyncEngine` a déjà un champ `titleSlug` profondément consommé (CSR/batch/scoring/asset-names/prestige/catalog) ; il était juste TOUJOURS construit en `DefaultSlug` (`NewSyncEngine`). Le slug du profil était résolu pour la seule garde `os.Stat` puis jeté (dette `auto_sync.go:838-841`).
+
+**PR-1 (seam)** : `NewSyncEngineForTitle(repoRoot, titleSlug, gamertag, xuid, tokens, provider)` résout les 4 chemins DB via PathResolver + titleSlug. `NewSyncEngine` devient un wrapper mince → `…ForTitle(…, DefaultSlug, …)` (zéro caller cassé). Slug vide → DefaultSlug (garde). Oracle `engine_title_seam_test.go` : parité halo byte-identique (4 chemins + slug) + routing synthetic_test_title (chemins sous `data/titles/{slug}/`, globalDBPath xuid_aliases reste partagé).
+
+**PR-2 (threading)** — **DÉVIATION SPEC documentée (RE-VÉRIFIER)** : le spec voulait threader `titleSlug` en PARAM explicite à travers `DeltaRunnerFactory`/`BuildEngine`/`EngineFactory`/`SyncRunner`. Mais `BuildEngine` est utilisé comme VALEUR de fonction en 3 points (`WithEngineFactory`, `WithEngineBuilder`, appel direct) → changer sa signature ripplerait EngineFactory/SyncRunner/Coordinator + tests. **Choix : le slug transite par `ctxkeys` (carrier titre déjà établi par PMT-10), pas par un param.** `BuildEngine(ctx,…)` lit `ctxkeys.TitleSlug(ctx)` → `NewSyncEngineForTitle`. Signature inchangée → tous les bindings function-value compilent sans churn. Points d'entrée qui POSENT le slug : (1) scheduler `syncPlayer` → `ctx = WithTitleSlug(ctx, resolveTitleSlug(p))` avant la factory ; (2) HTTP `registry_actions` (titleSlug en scope) ; (3) HTTP sync_handler couvert par le middleware TitleExtractor. Helper unique `resolveTitleSlug(p)` (p.TitleSlug || DefaultSlug) partagé syncPlayer + précondition os.Stat ; dette `:838-841` RÉSORBÉE. Oracle scheduler `TestBuildEngine_TitleSlugFromCtx` (ctx sans titre → halo ; ctx synthetic → DB distinctes).
+
+**Watcher (Coordinator → Trigger.RunSync)** : 3e point d'entrée, PAS encore title-aware (le ctx du daemon ne porte pas le titre ; `CoordinatorRequest` n'a pas de TitleSlug). Reporté à **PR-4** (qui touche déjà Coordinator/gate). Sûr aujourd'hui : aucun 2e titre → fallback halo byte-identique.
+
+**archlint vert** : `resolveTitleSlug` compare à `""`, pas à un littéral de titre ; aucun `slug == "halo_infinite"` introduit.
+
+**Prochaine étape** : PR-3 (`syncv2.PlayerProfile.TitleSlug` + runOnceV2 + buildSyncEngineFactoryParityComplete) puis PR-4 (SyncGate clé composite + CoordinatorRequest.TitleSlug + watcher ctx).
+
+---
+
 ## [2026-06-15] PMT-1 (MT-01) — Contract axes 4-6 part 2 (career + nameplate + assets gamecms) — EXIT GATE
 
 **Statut** : Branche `feat/multititre-peripherie`. Build all + vet + gofmt + archlint + `go test ./internal/sync/ ./internal/assets/ ./internal/platform/halo/ ./internal/games/` verts. **PMT-1 Contract à l'Exit Gate (modulo privacy déféré + leaderboard web-scrape).**
