@@ -23,6 +23,10 @@ import { SaisonPill } from './_filter_pills/SaisonPill'
 import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
+import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
+import { api } from '@/lib/api/client'
+import type { FilterMatchIdsResponse } from '@/lib/api/types'
 import {
   DEFAULT_CASCADE,
   DEFAULT_PERIOD,
@@ -185,6 +189,41 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore, 
   // sinon il reste figé sur le dernier commit jusqu'au clic Analyser.
   const totalAfter =
     (previewData?.counts ?? resolvedContext?.counts)?.total_matches_after_filters ?? null
+
+  // Bouton "Voir les matchs" : on récupère à la volée la liste ORDONNÉE des
+  // match_id de la sélection (POST /filters/match-ids — même pipeline que le
+  // compteur, donc match_context/sessions/cascade respectés), puis on ouvre le
+  // 1er match en passant la liste explicite. Le parcours prev/next reste ainsi
+  // exact, là où /neighbors (shared-only) ne sait pas filtrer solo/squad.
+  const navigateToMatch = useNavigateToMatch(playerSlug)
+  const [isBrowsing, setIsBrowsing] = useState(false)
+  const canBrowse = (totalAfter ?? 0) > 0
+  const handleBrowseMatches = async () => {
+    if (isBrowsing || !canBrowse) return
+    // Même contexte effectif que le compteur affiché (pending si preview dispo),
+    // avec match_context injecté comme le fait previewPending.
+    const base = previewData ? previewPending : filterContext
+    const sourceCtx = effectiveContext ? { ...base, match_context: effectiveContext } : base
+    setIsBrowsing(true)
+    try {
+      const { match_ids } = await api.post<FilterMatchIdsResponse>(
+        `/players/${playerSlug}/filters/match-ids`,
+        sourceCtx,
+      )
+      if (match_ids.length === 0) return
+      const filterSpec = filterContextToMatchFilterSpec(sourceCtx)
+      navigateToMatch(match_ids[0], {
+        source: 'history',
+        matchIds: match_ids,
+        filterSpec: filterSpec ?? undefined,
+      })
+    } catch {
+      // Fail-open : pas de navigation si l'appel échoue (l'utilisateur réessaie).
+      // Un 401 déclenche déjà le flux de réauth global via l'event auth-required.
+    } finally {
+      setIsBrowsing(false)
+    }
+  }
 
   // Priorité au preview (temps réel) ; fallback sur le contexte commité
   // tant que le premier fetch preview n'est pas revenu.
@@ -349,6 +388,28 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore, 
         >
           {totalAfter} match{totalAfter > 1 ? 's' : ''}
         </span>
+      )}
+
+      {canBrowse && (
+        <button
+          type="button"
+          onClick={handleBrowseMatches}
+          disabled={isBrowsing}
+          className="shrink-0 inline-flex items-center gap-1 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-60"
+          title={tCommon('common.filters.browse_title')}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 16 16"
+            fill="currentColor"
+            className="h-3.5 w-3.5 opacity-70"
+            aria-hidden="true"
+          >
+            <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
+            <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
+          </svg>
+          {tCommon('common.filters.browse_label')}
+        </button>
       )}
 
       <button

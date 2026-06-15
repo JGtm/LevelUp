@@ -427,6 +427,12 @@ export interface FilterContextResolved {
   season_counts?: SeasonCount[]
 }
 
+/** Réponse de POST /filters/match-ids : liste ordonnée (start_time DESC) des
+ *  match_id de la sélection courante. Alimente le bouton "Voir les matchs". */
+export interface FilterMatchIdsResponse {
+  match_ids: string[]
+}
+
 // ---------------------------------------------------------------------------
 // Setup / Auth (Slice 1)
 // ---------------------------------------------------------------------------

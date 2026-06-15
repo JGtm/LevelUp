@@ -67,6 +67,40 @@ func TestFiltersService_Resolve_Empty(t *testing.T) {
 	}
 }
 
+func TestFilteredMatchIDs_OrderedDescAndContextFiltered(t *testing.T) {
+	t1 := time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)
+	t2 := time.Date(2026, 6, 5, 10, 0, 0, 0, time.UTC)
+	t3 := time.Date(2026, 6, 10, 10, 0, 0, 0, time.UTC)
+	rows := []domain.FilterMatchRow{
+		{MatchID: "m1", StartTime: &t1, IsWithFriends: false},
+		{MatchID: "m3", StartTime: &t3, IsWithFriends: false},
+		{MatchID: "m2", StartTime: &t2, IsWithFriends: true}, // squad
+	}
+
+	// Contexte solo : exclut m2, ordonné start_time DESC.
+	ids := FilteredMatchIDs(rows, domain.FilterContextInput{FilterMode: "period", MatchContext: domain.MatchContextSolo})
+	want := []string{"m3", "m1"}
+	if len(ids) != len(want) {
+		t.Fatalf("FilteredMatchIDs solo = %v, want %v", ids, want)
+	}
+	for i := range want {
+		if ids[i] != want[i] {
+			t.Errorf("FilteredMatchIDs solo[%d] = %q, want %q (full: %v)", i, ids[i], want[i], ids)
+		}
+	}
+
+	// Contexte squad : ne garde que m2.
+	squad := FilteredMatchIDs(rows, domain.FilterContextInput{FilterMode: "period", MatchContext: domain.MatchContextSquad})
+	if len(squad) != 1 || squad[0] != "m2" {
+		t.Errorf("FilteredMatchIDs squad = %v, want [m2]", squad)
+	}
+
+	// Ensemble vide → nil (bouton masqué côté front).
+	if got := FilteredMatchIDs(nil, domain.FilterContextInput{}); got != nil {
+		t.Errorf("FilteredMatchIDs(nil) = %v, want nil", got)
+	}
+}
+
 func TestFiltersService_Resolve_Error(t *testing.T) {
 	repo := &mockFiltersRepo{err: errors.New("fail")}
 	svc := NewFiltersService(repo)
