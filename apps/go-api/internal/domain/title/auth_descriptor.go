@@ -44,6 +44,14 @@ type AuthDescriptor struct {
 	OAuthScopes []string
 }
 
+// OAuthScopesParam retourne les scopes OAuth joints par un espace, forme attendue
+// par les endpoints form-encoded (oauth_refresh, auth_code, device_code). Source
+// unique : le champ OAuthScopes []string (MT-02) — pas de dérive entre les deux
+// formes (slice pour MSAL, string joint pour les form bodies).
+func (d AuthDescriptor) OAuthScopesParam() string {
+	return strings.Join(d.OAuthScopes, " ")
+}
+
 // DefaultHaloAuthDescriptor retourne le descripteur Halo Infinite câblé aux
 // valeurs ACTUELLES du package platform/auth (golden de parité MT-02). Toute
 // dérive de ces littéraux doit être répercutée ici ET dans platform/auth.

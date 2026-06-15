@@ -24,13 +24,16 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability/logging"
 )
 
 // msalTokenURL est une var (pas une const) pour permettre l'override httptest.
 var msalTokenURL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
 
-const xboxScopes = "Xboxlive.signin Xboxlive.offline_access"
+// xboxScopes — scopes Xbox Live joints par espace (form bodies), dérivés du
+// descripteur (MT-02, source unique avec XboxScopes []string → zéro dérive).
+var xboxScopes = title.DefaultHaloAuthDescriptor().OAuthScopesParam()
 
 // oauthTokenResponse est la réponse JSON du endpoint /oauth2/v2.0/token.
 type oauthTokenResponse struct {
