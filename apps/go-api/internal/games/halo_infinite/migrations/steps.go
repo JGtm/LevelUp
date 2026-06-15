@@ -66,6 +66,13 @@ func Steps() []migration.Migration {
 				`)
 			},
 		},
+		// Déplacé depuis internal/migration/steps_metadata.go (b6 — named-func, cf. weapon_labels.go).
+		{
+			Name:        "add_weapon_labels",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Table weapon_labels (weapon_id UBIGINT, name_en, name_fr)",
+			ApplySchema: applyWeaponLabels,
+		},
 		// Déplacés depuis internal/migration/steps_metadata.go (b5 — leaves additifs).
 		{
 			Name:        "add_battlepass_asset_refs",

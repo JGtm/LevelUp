@@ -1,3 +1,13 @@
+## [2026-06-15] Phase 1.5 (MT-23) — relocation b6 : named-func weapon_labels
+
+**Livré** : `add_weapon_labels` (named-func) déplacé vers nouveau fichier `internal/games/halo_infinite/migrations/weapon_labels.go` — porté `applyWeaponLabels` + le wrapper exporté `ApplyWeaponLabels` (consommé par `cmd/seed-weapon-labels`) + la const `labelEnergySwordFR` (utilisée UNIQUEMENT par cette func → move propre, non partagée). `bootCtx()` → `migration.BootCtx()`. `cmd/seed-weapon-labels` repointé `migration.ApplyWeaponLabels` → `halomigrations.ApplyWeaponLabels`. Retrait côté global : Register + les 2 funcs + la const + l'import `fmt` (devenu inutilisé). Total title-owned : 17 → **18**.
+
+**Vérif** : build (incl. cmd) + `go test ./internal/migration/ ./internal/games/halo_infinite/migrations/` (order_audit confirme add_weapon_labels toujours dans canonicalOrder, title-owned) + gofmt verts.
+
+**Prochaine** : famille mode_name_tr + playlist_fr (partagent les consts mode*, à déplacer ensemble).
+
+---
+
 ## [2026-06-15] Phase 1.5 (MT-23) — relocation b5 : 9 steps metadata + découverte test-harness (via workflow ultracode)
 
 **Méthode** : workflow de classification (5 agents parallèles) des ~30 steps metadata restants → table par step (inline-execScript / named-func / rebuild ; leaf / famille ; helpers exportés ?). A permis de relocaliser SANS rater de dépendance.
