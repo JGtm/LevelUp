@@ -22,15 +22,15 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 )
 
 const (
+	// URLs Xbox-platform (title-agnostic) — restent en const.
 	xblUserAuthURL   = "https://user.auth.xboxlive.com/user/authenticate"
 	xstsAuthorizeURL = "https://xsts.auth.xboxlive.com/xsts/authorize"
-	spartanTokenURL  = "https://settings.svc.halowaypoint.com/spartan-token"
-	clearanceURL     = "https://settings.svc.halowaypoint.com/oban/flight-configurations/titles/hi/audiences/RETAIL/active"
-
-	xstsHaloAudience = "https://prod.xsts.halowaypoint.com/"
+	// spartanTokenURL / clearanceURL / xstsHaloAudience (Halo-specific) ont migré
+	// vers title.AuthDescriptor (MT-02) — source : title.DefaultHaloAuthDescriptor().
 )
 
 // ExchangeResult regroupe les tokens Halo ET l'identité extraite de la réponse XSTS.
@@ -44,28 +44,37 @@ type ExchangeResult struct {
 // Implémente la chaîne : access_token → XBL user → XSTS Halo → Spartan → Clearance.
 // Retourne aussi le gamertag et le XUID extraits de la réponse XSTS.
 func ExchangeAccessToken(ctx context.Context, accessToken string) (*ExchangeResult, error) {
+	return ExchangeAccessTokenWithDescriptor(ctx, accessToken, title.DefaultHaloAuthDescriptor())
+}
+
+// ExchangeAccessTokenWithDescriptor échange un access_token Microsoft contre des
+// tokens d'un titre donné (MT-02). Le descripteur porte l'audience XSTS, l'audience
+// + endpoint spartan, et l'endpoint clearance. ExchangeAccessToken délègue avec le
+// défaut Halo → byte-identique. (Le *http.Client est construit en interne ; les
+// tests de parité ciblent les fonctions de leg, qui prennent le client.)
+func ExchangeAccessTokenWithDescriptor(ctx context.Context, accessToken string, d title.AuthDescriptor) (*ExchangeResult, error) {
 	client := &http.Client{Timeout: 20 * time.Second}
 
-	// Étape 1 : User Token XBL
+	// Étape 1 : User Token XBL (title-agnostic, Xbox platform)
 	userToken, err := requestUserToken(ctx, client, accessToken)
 	if err != nil {
 		return nil, fmt.Errorf("user token XBL: %w", err)
 	}
 
-	// Étape 2 : XSTS Token Halo (+ extraction gamertag/xuid)
-	xstsToken, gamertag, xuid, err := requestXSTSToken(ctx, client, userToken, xstsHaloAudience)
+	// Étape 2 : XSTS Token (audience du titre) + extraction gamertag/xuid
+	xstsToken, gamertag, xuid, err := requestXSTSToken(ctx, client, userToken, d.XSTSAudience)
 	if err != nil {
-		return nil, fmt.Errorf("XSTS token Halo: %w", err)
+		return nil, fmt.Errorf("XSTS token: %w", err)
 	}
 
-	// Étape 3 : Spartan Token
-	spartanToken, err := requestSpartanToken(ctx, client, xstsToken)
+	// Étape 3 : Spartan Token (audience + endpoint du titre)
+	spartanToken, err := requestSpartanTokenWith(ctx, client, xstsToken, d.SpartanAudience, d.SpartanTokenURL)
 	if err != nil {
 		return nil, fmt.Errorf("spartan token: %w", err)
 	}
 
-	// Étape 4 : Clearance Token
-	clearanceToken, err := requestClearanceToken(ctx, client, spartanToken)
+	// Étape 4 : Clearance Token (endpoint du titre)
+	clearanceToken, err := requestClearanceTokenWith(ctx, client, spartanToken, d.ClearanceURL)
 	if err != nil {
 		return nil, fmt.Errorf("clearance token: %w", err)
 	}
@@ -84,14 +93,20 @@ func ExchangeAccessToken(ctx context.Context, accessToken string) (*ExchangeResu
 // et un Clearance Token. Utile pour les CLIs batch qui chargent le token depuis tokens.json
 // sans refaire la chaîne OAuth complète.
 func ExchangeXSTSForHaloTokens(ctx context.Context, xstsToken string) (*domain.HaloTokens, error) {
+	return ExchangeXSTSForHaloTokensWithDescriptor(ctx, xstsToken, title.DefaultHaloAuthDescriptor())
+}
+
+// ExchangeXSTSForHaloTokensWithDescriptor échange un XSTS Token contre Spartan +
+// Clearance pour un titre donné (MT-02). ExchangeXSTSForHaloTokens délègue Halo.
+func ExchangeXSTSForHaloTokensWithDescriptor(ctx context.Context, xstsToken string, d title.AuthDescriptor) (*domain.HaloTokens, error) {
 	client := &http.Client{Timeout: 20 * time.Second}
 
-	spartanToken, err := requestSpartanToken(ctx, client, xstsToken)
+	spartanToken, err := requestSpartanTokenWith(ctx, client, xstsToken, d.SpartanAudience, d.SpartanTokenURL)
 	if err != nil {
 		return nil, fmt.Errorf("spartan token depuis XSTS: %w", err)
 	}
 
-	clearanceToken, err := requestClearanceToken(ctx, client, spartanToken)
+	clearanceToken, err := requestClearanceTokenWith(ctx, client, spartanToken, d.ClearanceURL)
 	if err != nil {
 		return nil, fmt.Errorf("clearance token: %w", err)
 	}
@@ -176,16 +191,25 @@ func extractDisplayClaims(resp map[string]any) (string, string) {
 	return gamertag, xuid
 }
 
-// requestSpartanToken échange un XSTS Token Halo contre un Spartan Token.
+// requestSpartanToken échange un XSTS Token Halo contre un Spartan Token (défaut Halo).
 func requestSpartanToken(ctx context.Context, client *http.Client, xstsToken string) (string, error) {
+	d := title.DefaultHaloAuthDescriptor()
+	return requestSpartanTokenWith(ctx, client, xstsToken, d.SpartanAudience, d.SpartanTokenURL)
+}
+
+// requestSpartanTokenWith échange un XSTS Token contre un Spartan Token avec une
+// audience + un endpoint paramétrés (MT-02). MinVersion="4" et le proof TokenType
+// "Xbox_XSTSv3" restent en dur : ce sont des constantes du PROTOCOLE spartan, pas
+// des paramètres de titre.
+func requestSpartanTokenWith(ctx context.Context, client *http.Client, xstsToken, audience, tokenURL string) (string, error) {
 	body := map[string]any{
-		"Audience":   "urn:343:s3:services",
+		"Audience":   audience,
 		"MinVersion": "4",
 		"Proof": []map[string]string{
 			{xboxFieldToken: xstsToken, xboxFieldTokenType: "Xbox_XSTSv3"},
 		},
 	}
-	resp, err := postJSON(ctx, client, spartanTokenURL, map[string]string{
+	resp, err := postJSON(ctx, client, tokenURL, map[string]string{
 		"Accept": "application/json",
 	}, body)
 	if err != nil {
@@ -198,9 +222,14 @@ func requestSpartanToken(ctx context.Context, client *http.Client, xstsToken str
 	return token, nil
 }
 
-// requestClearanceToken obtient le Clearance Token (FlightConfigurationId).
+// requestClearanceToken obtient le Clearance Token (FlightConfigurationId) (défaut Halo).
 func requestClearanceToken(ctx context.Context, client *http.Client, spartanToken string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, clearanceURL, nil)
+	return requestClearanceTokenWith(ctx, client, spartanToken, title.DefaultHaloAuthDescriptor().ClearanceURL)
+}
+
+// requestClearanceTokenWith obtient le Clearance Token via un endpoint paramétré (MT-02).
+func requestClearanceTokenWith(ctx context.Context, client *http.Client, spartanToken, clearanceEndpoint string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, clearanceEndpoint, nil)
 	if err != nil {
 		return "", err
 	}

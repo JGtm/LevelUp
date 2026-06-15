@@ -1,3 +1,17 @@
+## [2026-06-15] PMT-2 (MT-02) — Contract legs 1-2 (XSTS + Spartan + Clearance) — sous golden, via workflow ultracode
+
+**Statut** : Branche `feat/multititre-peripherie`. Build all + vet + gofmt + archlint + `go test ./internal/platform/auth/` verts (suite complète, 8.8s). **Legs d'échange (XSTS/Spartan/Clearance) threadés ; reste SISU (leg 3) + scopes (leg 4) + store-namespacing (leg 5, IRRÉVERSIBLE — escaladé).**
+
+**Méthode (ultracode)** : workflow d'analyse exhaustif AVANT de toucher le chemin login — 8 mappers parallèles (legs auth + mécanisme migration) + 2 vérificateurs adversariaux (golden-parité + ordre migration). Verdict golden : **GO par-leg** (path+headers+body byte-identiques) ; le client `*http.Client` est construit en interne par les entrées publiques → les tests de parité ciblent les fonctions de **leg** (qui prennent le client). Catches du vérificateur : MinVersion/Xbox_XSTSv3 = constantes de PROTOCOLE (pas de titre, gardées en dur) ; user-token (XBL) = 4e leg title-agnostic ; OAuth-refresh lit des env vars + retry AADSTS90023 (pin `t.Setenv` au test).
+
+**Décision (Contract legs 1-2)** : threading minimal-coupling. Fonctions de leg `*With` title-agnostic (prennent audience/url en string) ; seules les entrées publiques importent `title`. `requestSpartanTokenWith(ctx,client,xsts,audience,tokenURL)` + `requestClearanceTokenWith(ctx,client,spartan,endpoint)` ; les originales délèguent au défaut Halo. `ExchangeAccessTokenWithDescriptor(ctx,token,d)` + `ExchangeXSTSForHaloTokensWithDescriptor` câblent `d.XSTSAudience`/`d.SpartanAudience`/`d.SpartanTokenURL`/`d.ClearanceURL` ; `ExchangeAccessToken`/`ExchangeXSTSForHaloTokens` délèguent `DefaultHaloAuthDescriptor()` → byte-identique, ~20 callers externes intacts. **Const `spartanTokenURL`/`clearanceURL`/`xstsHaloAudience` SUPPRIMÉES** (0 ref, migrées au descripteur) ; `xblUserAuthURL`/`xstsAuthorizeURL` (Xbox-platform) gardées.
+
+**Oracle** : `halo_exchange_descriptor_test.go` (recordingRT capture la requête) — Spartan défaut → corps byte-identique `{"Audience":"urn:343:s3:services","MinVersion":"4","Proof":[{"Token":...,"TokenType":"Xbox_XSTSv3"}]}` + URL ; Clearance défaut → URL+GET+header `x-343-authorization-spartan` ; XSTS défaut → `RelyingParty` = prod.xsts.halowaypoint.com ; chacun + variante synthétique qui route vers `example.test`.
+
+**Prochaine étape** : leg 3 SISU (`buildTokenProvider` → `NewSISUProviderWithIDs(desc…)`) + leg 4 scopes (unifier `XboxScopes`/`xboxScopes` sur `OAuthScopes`). Leg 5 (store path namespacing) = **IRRÉVERSIBLE** (les fichiers token globaux sont l'UNIQUE copie du RT MS ; cutover nu = re-SSO de tous) → exige une copy-migration boot bundlée — escaladé.
+
+---
+
 ## [2026-06-15] PMT-2 (MT-02) — Acquisition auth par titre — Expand (AuthDescriptor + loader)
 
 **Statut** : Branche `feat/multititre-peripherie`. Build all + vet + gofmt + archlint + `go test ./internal/domain/title/` verts. **Expand livré (seam additif PUR, ZÉRO changement du chemin auth) ; Contract (5 PR HAUT RISQUE) à suivre — flag explicite.**
