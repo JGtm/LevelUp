@@ -190,19 +190,28 @@ func NewRouter(
 		slog.Warn("field_mappings_load_warning", "err", err.Error())
 	}
 
-	// PMT-12 / MT-21 : validateur boot des mappings TOML requis. Un titre ACTIF
-	// doit posséder fields.toml + capabilities.toml ; sinon fail-fast (ne jamais
-	// servir un titre à moitié configuré). Skip en DemoMode (tests/démo : repoRoot
-	// sans config TOML, cf. buildTestRouter). coming_soon/archived ne bloquent pas.
+	// PMT-12 / MT-21 : validateur boot des mappings TOML requis. Le required-set
+	// est dérivé des capabilities du titre (RequiredTOMLFor). Un titre ACTIF à
+	// moitié configuré fait fail-fast (os.Exit) ; un coming_soon/archived est
+	// loggé mais non bloquant (il n'est de toute façon pas servable, cf. gate
+	// RequireActiveTitle/PMT-8). Skip en DemoMode (tests/démo : repoRoot sans
+	// config TOML, cf. buildTestRouter).
 	if !cfg.DemoMode {
 		for _, td := range titleRegistry.All() {
-			if td.Status != titlePkg.StatusActive {
+			errs := mappings.ValidateRequiredTOML(cfg.RepoRoot, td)
+			if len(errs) == 0 {
 				continue
 			}
-			if errs := mappings.ValidateRequiredTOML(cfg.RepoRoot, td.Slug); len(errs) > 0 {
-				for _, e := range errs {
-					slog.Error("title_required_toml_missing", "title", td.Slug, "err", e.Error())
+			for _, e := range errs {
+				if m, ok := e.(mappings.MissingRequiredTOML); ok {
+					slog.Error("required_toml_missing",
+						"title", td.Slug, "path", m.Path, "required_by", m.RequiredBy)
+				} else {
+					slog.Error("required_toml_missing", "title", td.Slug, "err", e.Error())
 				}
+			}
+			if td.IsActive() {
+				slog.Error("boot_validation_failed", "title", td.Slug, "errors_count", len(errs))
 				os.Exit(1)
 			}
 		}

@@ -1,3 +1,23 @@
+## [2026-06-15] PMT-12 — CLÔTURE à l'Exit Gate (MT-21 : resolver capability-driven + oracles) — Complété
+
+**Statut** : Branche `feat/multititre-peripherie`. Build/vet/gofmt verts. `go test ./internal/games/mappings/` : `TestRequiredTOMLFor`, `TestValidateRequiredTOML_TempDir`, `TestValidateRequiredTOML_RealHaloInfinite_Passes`, `TestValidateRequiredTOML_SyntheticDrift_MissingCapabilities` verts. Suite contrat verte.
+
+**Contexte** : audit de complétude → la 1re livraison PMT-12 (MT-21) avait un required-set en **liste plate** ({fields, capabilities}, déviation du design « dérivé des capabilities » nommé dans le spec), **aucun test contre le vrai halo_infinite** (risque : `os.Exit(1)` fail-fast non couvert → crash prod si required-set mal calibré), oracle synthetic_b non exercé, et events de log non conformes.
+
+**Décision technique (Exit Gate spec PERIPHERY l.561-606, axe MT-21)** :
+1. **RequiredTOMLFor(desc)** : le required-set est **dérivé des capabilities** du `TitleDescriptor` (jamais un switch slug) — fields+capabilities toujours ; assets.toml si `CapAssetImages` ; outcomes.toml si `CapMatchmaking`. Un 2e titre hérite du bon set en déclarant ses capabilities.
+2. **Erreurs structurées** : `MissingRequiredTOML{Slug, File, Path, RequiredBy}` → le boot log porte `path` + `required_by` (capability).
+3. **Boot (server.go)** : valide TOUS les titres ; `required_toml_missing` (title/path/required_by) par fichier manquant ; titre ACTIF → `boot_validation_failed` (title/errors_count) + `os.Exit(1)` ; coming_soon/archived → loggé **non bloquant**.
+4. **Signature** : `ValidateRequiredTOML(repoRoot, *TitleDescriptor)` (le boot itère déjà des descripteurs).
+
+**Oracle DOUBLE** : (a) **boot-safety/parité** = `TestValidateRequiredTOML_RealHaloInfinite_Passes` exerce le VRAI halo_infinite (descripteur prod + config réelle) → 0 erreur ; fige que HI passe le fail-fast. (b) **synthetic** = `TestValidateRequiredTOML_SyntheticDrift_MissingCapabilities` : synthetic_title_b (fields/assets/outcomes présents, capabilities.toml ABSENT) → 1 erreur structurée nommant slug+fichier, sans panic.
+
+**Différé explicite (tracé, hors Exit Gate MT-21)** : **MT-09** (cutoffs DefaultSlug→lookup resolver) dépend de **PMT-3** (scheduler, blocker) — le spec lui-même séquence MT-09 après PMT-3. **lint MT-12** (front : interdiction de titres hardcodés) = axe tooling front distinct, différé. À acter au tracker.
+
+**Prochaine étape** : clôture PMT-14 volet A sur la même branche.
+
+---
+
 ## [2026-06-15] PMT-8 — CLÔTURE à l'Exit Gate (gate RequireActiveTitle + 503) — Complété
 
 **Statut** : Branche d'intégration `feat/multititre-peripherie`. Build/vet/gofmt verts (CGO). Tests : `domain/title`, `api/middleware`, `service`, `api/handlers` (les 3 ex-régressions repassent), suite contrat, archlint `no_slug_comparison`, vitest `appShellStore` 12/12, `tsc` + eslint front clean.
