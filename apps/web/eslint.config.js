@@ -6,6 +6,7 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 import noHardcodedStrings from './eslint-rules/no-hardcoded-strings.js'
+import noTitleSlugLiteral from './eslint-rules/no-title-slug-literal.js'
 
 export default defineConfig([
   // Tests E2E Playwright : moins stricts (mocks any, ts-ignore acceptes
@@ -31,11 +32,13 @@ export default defineConfig([
       '@levelup': {
         rules: {
           'no-hardcoded-strings': noHardcodedStrings,
+          'no-title-slug-literal': noTitleSlugLiteral,
         },
       },
     },
     rules: {
       '@levelup/no-hardcoded-strings': 'warn',
+      '@levelup/no-title-slug-literal': 'warn',
       // react-refresh/only-export-components : downgrade en warn — cette
       // regle est cosmetique (HMR fast refresh) et beaucoup de fichiers
       // composants exposent legitimement des const/types/helpers a cote.
