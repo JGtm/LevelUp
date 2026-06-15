@@ -1,3 +1,21 @@
+## [2026-06-15] Tips Ascension — 3 lignes + découpe des murs — Complété
+
+**Statut** : `tsc --noEmit` = 0 ; vitest `tips-ticker` (5/5, dont le test de timing) ; eslint = 0 sur les fichiers touchés ; `build_i18n_manifests.mjs` régénéré (coaching_tips : 82 → 90 clés). Branche `feat/ascension-tips-3-lines`. Commit en attente d'autorisation.
+
+**Déclencheur (user)** : les tips de la page Ascension à mettre sur 3 lignes ou décomposer les plus longs (3 lignes pour certains « ça commence à faire long »). Demande de reco.
+
+**Constat qui recadre** : le ticker (`TipsTicker`) était en `line-clamp-2` + `text-xs` mais en **pleine largeur** (`max-w-6xl`). Or la majorité des 70 tips font 250-640 car. → déjà tronqués au milieu d'une phrase sur mobile, et « murs » de 2-3 lignes pleines sur desktop. Passer simplement en `line-clamp-3` ne suffit pas (les murs 430-640 car. restent illisibles en 6 s). Reco retenue (AskUserQuestion) : **mix** — 3 lignes + durée proportionnelle + découpe des murs.
+
+**Décision technique principale** :
+1. `tips-ticker.tsx` : `line-clamp-2` → `line-clamp-3` ; `min-h-[2.75rem]` → `min-h-[3.5rem]` (hauteur réservée = pas de layout shift) ; **durée d'affichage proportionnelle à la longueur** (`readingSeconds()` ~3 mots/s, plancher 5 s / plafond 12 s ; `displaySeconds=6` reste le plancher → test inchangé). Cycle passé de `setInterval` fixe à une chaîne de `setTimeout` re-planifiée à chaque `currentIndex` pour que chaque tip ait sa propre durée.
+2. `coaching_tips.toml` : **8 découpes** des murs >400 car. en réutilisant le texte existant (zéro réécriture inventée, respect des règles éditoriales : pas de chiffres inventés, pas de termes EN). Nouveaux : `combat.ingame.5`, `combat.strategic.4`, `combat.routine.3`, `survival.strategic.5`, `support.routine.2`, `impact.strategic.9`, `impact.strategic.10`, `impact.routine.2`.
+
+**Résultats observés** : longueur FR max passée de 640 → 367 car. ; 0 tip > 400 car. (vs 8 avant). `buildAscensionTips` / regex inchangés (les nouvelles clés `.N` sont auto-incluses) ; MAX_TIPS=14 toujours valide.
+
+**Conclusion / prochaine étape** : prêt à commit (en attente autorisation). Pas de changement de format produit (pas d'expand/glossaire) — option « ne plus tronquer » écartée par le user au profit du mix.
+
+---
+
 ## [2026-06-15] Hauteur du bloc barre XP — parité Explorer ↔ Home — Complété
 
 **Statut** : 1 edit CSS (classes Tailwind), pas de logique. Commit en attente d'autorisation.

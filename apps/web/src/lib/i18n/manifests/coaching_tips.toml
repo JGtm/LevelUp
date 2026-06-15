@@ -50,8 +50,8 @@ fr = "Apprends par cœur combien de tirs propres chaque arme demande pour casser
 en = "Memorize how many clean shots each weapon needs to crack shields then finish, body or headshot: Battle Rifle, Commando, Bandit, Sidekick, Plasma Pistol. Knowing this number changes every duel — you know when to push, fall back, or switch weapons."
 
 [coaching_tips.combat.ingame.2]
-fr = "Les types de dégâts ont une logique simple : armes cinétiques UNSC (BR, Commando, Bandit) sont faibles contre le bouclier mais fortes contre la santé ; armes plasma (Pistolet à plasma surchargé, Carabine à impulsions) sont fortes contre le bouclier mais faibles contre la santé ; armes Forerunner / hard light font des dégâts égaux. Le combo Pistolet à plasma surchargé puis swap Fusil de combat ou Sidekick à la tête est imbattable."
-en = "Damage types follow a simple logic: UNSC kinetic (BR, Commando, Bandit) is weak vs shield but strong vs health; plasma (overcharged Plasma Pistol, Pulse Carbine) is strong vs shield but weak vs health; Forerunner / hard-light weapons deal equal damage. The overcharged Plasma Pistol then swap to BR or Sidekick headshot combo is unbeatable."
+fr = "Les types de dégâts ont une logique simple : armes cinétiques UNSC (BR, Commando, Bandit) sont faibles contre le bouclier mais fortes contre la santé ; armes plasma (Pistolet à plasma surchargé, Carabine à impulsions) sont fortes contre le bouclier mais faibles contre la santé ; armes Forerunner / hard light font des dégâts égaux."
+en = "Damage types follow a simple logic: UNSC kinetic (BR, Commando, Bandit) is weak vs shield but strong vs health; plasma (overcharged Plasma Pistol, Pulse Carbine) is strong vs shield but weak vs health; Forerunner / hard-light weapons deal equal damage."
 
 [coaching_tips.combat.ingame.3]
 fr = "Tant que le bouclier ennemi n'est pas brisé, un tir à la tête fait exactement les mêmes dégâts qu'un tir au corps. Vise donc la masse centrale tant que le bouclier tient (plus facile à toucher), puis switch tête au moment de la rupture pour la finition instantanée. Ça économise des balles et accélère la mise à mort."
@@ -60,6 +60,10 @@ en = "As long as the enemy shield is intact, a headshot deals the exact same dam
 [coaching_tips.combat.ingame.4]
 fr = "Halo Infinite est un jeu de visée au stick gauche : guide ton réticule sur la cible avec le mouvement du Spartan (gauche), et utilise le stick droit uniquement pour les micro-ajustements. C'est l'inverse de l'instinct CoD — les joueurs Onyx te le diront. Le strafe alimente ta mire."
 en = "Halo Infinite is a left-stick aim game: guide your crosshair onto the target with Spartan movement (left), and use the right stick only for micro-adjustments. It's the opposite of the CoD instinct — any Onyx player will tell you. Strafing feeds your aim."
+
+[coaching_tips.combat.ingame.5]
+fr = "Combo imbattable : Pistolet à plasma surchargé pour briser le bouclier, puis swap immédiat Fusil de combat ou Sidekick à la tête pour la finition. C'est l'application directe de la logique plasma-contre-bouclier, cinétique-contre-santé."
+en = "Unbeatable combo: overcharged Plasma Pistol to crack the shield, then immediately swap to BR or Sidekick headshot to finish. It's the plasma-vs-shield, kinetic-vs-health logic applied directly."
 
 [coaching_tips.combat.tactical.1]
 fr = "Pré-engage avec la bonne arme : Fusil de combat / Commando pour mi-distance, Sidekick / Bulldog au près, Aiguilleur ou combo Pistolet à plasma surchargé + Sidekick pour décharger un duel. Sortir la mauvaise arme coûte le duel avant le premier tir."
@@ -102,8 +106,12 @@ fr = "Adapte ton rythme au mode : Grosse Équipe (BTB) demande de la patience et
 en = "Match your rhythm to the mode: BTB demands patience and long positioning, 4v4 Arena demands speed and weapon switching, Ranked demands discipline (no unnecessary risk-taking). Playing Arena like BTB loses every duel."
 
 [coaching_tips.combat.strategic.3]
-fr = "Ton rendement offensif mesure combien de frags et d'assistances tu obtiens pour chaque point de dégâts infligé. Un style « précis » (haute conversion) signifie que tu finis tes propres duels efficacement. Un style « généreux » (basse conversion) signifie que tu crées de la pression et des dégâts que tes coéquipiers convertissent en frags. Les deux sont des atouts : le style précis maximise ton impact individuel, le style généreux fonctionne mieux dans les équipes qui team-shot bien. Si tu es « généreux » en solo queue, travailler ta finition de duel est plus rentable qu'augmenter ton volume de dégâts brut."
-en = "Your offensive conversion measures how many kills and assists you earn per point of damage dealt. A « precise » style (high conversion) means you efficiently finish your own duels. A « generous » style (low conversion) means you create pressure and damage that teammates convert into kills. Both are assets: precise style maximizes individual impact, generous style works best in teams that team-shot well. If you're « generous » in solo queue, working on your duel-finishing is more profitable than increasing raw damage volume."
+fr = "Ton rendement offensif mesure combien de frags et d'assistances tu obtiens pour chaque point de dégâts infligé. Style « précis » (haute conversion) = tu finis tes propres duels efficacement ; style « généreux » (basse conversion) = tu crées de la pression et des dégâts que tes coéquipiers convertissent en frags."
+en = "Your offensive conversion measures how many kills and assists you earn per point of damage dealt. « Precise » style (high conversion) = you finish your own duels efficiently; « generous » style (low conversion) = you create pressure and damage that teammates convert into kills."
+
+[coaching_tips.combat.strategic.4]
+fr = "Style offensif précis ou généreux, les deux sont des atouts : le précis maximise ton impact individuel, le généreux fonctionne mieux dans les équipes qui team-shot bien. Si tu es « généreux » en solo queue, travailler ta finition de duel est plus rentable qu'augmenter ton volume de dégâts brut."
+en = "Precise or generous offensive style, both are assets: precise maximizes individual impact, generous works best in teams that team-shot well. If you're « generous » in solo queue, working on your duel-finishing is more profitable than increasing raw damage volume."
 
 [coaching_tips.combat.settings.1]
 fr = "Configure tes zones mortes en premier, avant tout le reste (sensi, FOV). Réduis la zone morte intérieure de la manette jusqu'à ce que le stick réponde au moindre mouvement sans drifter. Pas de valeur universelle, c'est par essais — l'objectif est de pouvoir corriger un tir d'un demi-pixel."
@@ -122,8 +130,12 @@ fr = "Avant chaque session, fais quelques minutes des drills d'armes de l'Acadé
 en = "Before each session, do a few minutes of Academy weapon drills, or a Custom Game vs Spartan-difficulty bots with one forced weapon. The Bot Bootcamp playlist is gone, but both these modes still allow training."
 
 [coaching_tips.combat.routine.2]
-fr = "Pour booster sérieusement ton aim : crée un Match personnalisé Octagon (carte communautaire, munitions infinies, respawn instantané) avec 3-4 bots Spartan, JAMAIS avec Fusil de précision en primaire (les bots l'utilisent comme un aimbot). 20 minutes d'Octagon valent à peu près 2 heures d'Arène en termes de répétitions de duels. Variante recommandée : Octagon HCS 2042 (spawns aléatoires + rebords pour glissades)."
-en = "To seriously boost your aim: create a Custom Game on Octagon (community map, infinite ammo, instant respawn) with 3-4 Spartan bots, NEVER Sniper as primary (bots use it like an aimbot). 20 minutes of Octagon ≈ 2 hours of Arena in terms of duel reps. Recommended variant: Octagon HCS 2042 (randomized spawns + ledges for curb slides)."
+fr = "Pour booster sérieusement ton aim : crée un Match personnalisé Octagon (carte communautaire, munitions infinies, respawn instantané) avec 3-4 bots Spartan, JAMAIS avec Fusil de précision en primaire (les bots l'utilisent comme un aimbot). 20 minutes d'Octagon valent à peu près 2 heures d'Arène en répétitions de duels."
+en = "To seriously boost your aim: create a Custom Game on Octagon (community map, infinite ammo, instant respawn) with 3-4 Spartan bots, NEVER Sniper as primary (bots use it like an aimbot). 20 minutes of Octagon ≈ 2 hours of Arena in duel reps."
+
+[coaching_tips.combat.routine.3]
+fr = "Variante d'entraînement recommandée à l'Octagon : la version HCS 2042 (spawns aléatoires + rebords pour travailler les glissades), pour varier les angles et ajouter du mouvement à tes répétitions de duel."
+en = "Recommended Octagon training variant: the HCS 2042 version (randomized spawns + ledges to practice curb slides), to vary angles and add movement to your duel reps."
 
 # ─── Survie ────────────────────────────────────────────────────────────────
 
@@ -184,8 +196,12 @@ fr = "Quand deux coéquipiers tombent au même endroit en peu de temps, change d
 en = "When two teammates fall in the same spot within seconds, change lanes. Don't be the third X: flank, or fall back to a power-weapon spawn or power-up. Reading the death pattern is a strategic skill."
 
 [coaching_tips.survival.strategic.4]
-fr = "Prendre peu de dégâts n'est pas toujours un bon signal — tout dépend du contexte. Ce qui compte, c'est l'association : dégâts encaissés élevés + peu de morts = tu absorbes l'aggro de l'équipe tout en survivant, c'est le profil des joueurs d'impact. Dégâts encaissés faibles + peu de morts = tu évites les combats — si ton équipe perd pendant ce temps, tu n'as pas assez pesé sur la partie. Sur LevelUp, suis ta résistance défensive : elle mesure exactement ce rapport entre les coups reçus et les morts, pas juste les dégâts bruts."
-en = "Low damage taken is not always a good signal — context is everything. What matters is the combination: high damage taken + few deaths = you're absorbing team aggro while surviving, that's the high-impact player profile. Low damage taken + few deaths = you're avoiding fights — if your team is losing throughout, you haven't pulled your weight. On LevelUp, track your defensive resistance: it measures exactly the ratio of hits received to deaths, not just raw damage taken."
+fr = "Prendre peu de dégâts n'est pas toujours un bon signal — tout dépend du contexte. Dégâts encaissés élevés + peu de morts = tu absorbes l'aggro de l'équipe tout en survivant, c'est le profil des joueurs d'impact. Dégâts faibles + peu de morts = tu évites les combats, et si ton équipe perd pendant ce temps, tu n'as pas assez pesé sur la partie."
+en = "Low damage taken is not always a good signal — context is everything. High damage taken + few deaths = you're absorbing team aggro while surviving, the high-impact profile. Low damage + few deaths = you're avoiding fights, and if your team is losing meanwhile, you haven't pulled your weight."
+
+[coaching_tips.survival.strategic.5]
+fr = "Pour juger ta survie, ne regarde pas les dégâts encaissés bruts mais ta résistance défensive sur LevelUp : elle mesure le rapport entre les coups reçus et les morts, le seul chiffre qui distingue « absorber l'aggro en survivant » de « éviter les combats »."
+en = "To judge your survival, don't look at raw damage taken but at your defensive resistance on LevelUp: it measures the ratio of hits received to deaths — the only number that separates « absorbing aggro while surviving » from « avoiding fights »."
 
 [coaching_tips.survival.settings.1]
 fr = "Audio en casque, effets prioritaires sur la musique : entendre les pas, les rechargements, les déclenchements de Sur-bouclier ou de grappin change la lecture de chaque combat."
@@ -238,8 +254,12 @@ fr = "Place la commande de marquage et celle de scan sur des boutons accessibles
 en = "Bind both mark and scan commands to buttons reachable without lifting your aim-stick thumb. If they're on awkward combos, you won't use them in a duel — exactly when team info matters most."
 
 [coaching_tips.support.routine.1]
-fr = "Joue une partie sur trois en escouade vocale, même avec des inconnus. L'oreille s'éduque aux callouts (« Sniper en haut », « Roquette dans 10 », « je contourne par S2 »), et ces réflexes restent quand tu reviens jouer seul. Vise au moins une assistance par marquage par match — si tu finis sans, fais mieux la prochaine."
-en = "Play 1 in 3 matches in voice party, even with strangers. Your ear learns callouts (« Sniper top », « Rocket in 10 », « I flank from S2 »), and those reflexes carry over to solo play. Aim for at least one mark-assist kill per match — if you finish with none, do better next time."
+fr = "Joue une partie sur trois en escouade vocale, même avec des inconnus. L'oreille s'éduque aux callouts (« Sniper en haut », « Roquette dans 10 », « je contourne par S2 »), et ces réflexes restent quand tu reviens jouer seul."
+en = "Play 1 in 3 matches in voice party, even with strangers. Your ear learns callouts (« Sniper top », « Rocket in 10 », « I flank from S2 »), and those reflexes carry over to solo play."
+
+[coaching_tips.support.routine.2]
+fr = "Fixe-toi un objectif de support mesurable : au moins une assistance par marquage par match. Si tu finis une partie sans, c'est le premier réflexe à corriger à la partie suivante."
+en = "Set a measurable support goal: at least one mark-assist kill per match. If you finish a game with none, that's the first reflex to fix next game."
 
 # ─── Score ─────────────────────────────────────────────────────────────────
 
@@ -352,8 +372,12 @@ fr = "Pépite Onyx : distingue la « présence » (impact en forçant des flanks
 en = "Onyx insight: distinguish « presence » (impact by forcing flanks, contestations, enemy rotations) from « control » (zones held with overlapping angles). Stat-padding in a rat tunnel creates neither presence nor control, even if KD climbs. Play to force enemy decisions, not to grind consequence-free kills."
 
 [coaching_tips.impact.strategic.5]
-fr = "Prends le temps de connaître la carte : noms des lieux utilisés par la communauté, raccourcis (escalade, glissade, sauts latéraux qui économisent quelques secondes), angles où tu vois sans être vu, positions de respawn d'arme spéciale. Apprends aussi les « curb slides » (sprint depuis un petit rebord puis crouch à l'atterrissage = gros boost de vitesse). La connaissance de la carte vaut plus que la mire en haut niveau."
-en = "Take the time to learn the map: community callouts, shortcuts (clamber, slide, side jumps that save seconds), angles where you see without being seen, power-weapon spawn positions. Also learn « curb slides » (sprint from a small ledge then crouch on landing = big speed boost). Map knowledge beats aim at high level."
+fr = "Prends le temps de connaître la carte : noms des lieux utilisés par la communauté, raccourcis (escalade, glissade, sauts latéraux qui économisent quelques secondes), angles où tu vois sans être vu, positions de respawn d'arme spéciale. La connaissance de la carte vaut plus que la mire en haut niveau."
+en = "Take the time to learn the map: community callouts, shortcuts (clamber, slide, side jumps that save seconds), angles where you see without being seen, power-weapon spawn positions. Map knowledge beats aim at high level."
+
+[coaching_tips.impact.strategic.10]
+fr = "Apprends les « curb slides » : sprinte depuis un petit rebord puis crouch à l'atterrissage pour un gros boost de vitesse. Ces déplacements rapides te font gagner les rotations vers les armes spéciales et les bonus de carte."
+en = "Learn « curb slides »: sprint from a small ledge then crouch on landing for a big speed boost. These fast movements win your rotations to power weapons and map power-ups."
 
 [coaching_tips.impact.strategic.6]
 fr = "Vois chaque match comme une succession de moments-clés (apparition d'arme spéciale, point de bascule de score, dernier round). Ces moments comptent plus que la moyenne du match. Reconnaître qu'on est dans un moment-clé permet d'élever son niveau d'attention juste quand il faut."
@@ -364,13 +388,21 @@ fr = "BTB uniquement : le Grappin peut t'envoyer dans un véhicule ennemi et éj
 en = "BTB only: the Grappleshot can launch you into an enemy vehicle and eject the pilot. Keep this vehicle hijack in mind when a Mongoose, Warthog, or Wasp passes within range — it's an instant tempo and team-score reversal."
 
 [coaching_tips.impact.strategic.8]
-fr = "Dans Halo Infinite, les dégâts infligés par match prédisent mieux la victoire que le F/D — la structure d'échange de frags du jeu (deux joueurs à égalité de santé se tueront souvent mutuellement) rend le F/D bruité et peu fiable. Un match à 5 000 dégâts avec un F/D de 0.9 contribue généralement plus à l'équipe qu'un match à 3 500 dégâts avec un F/D de 1.3. Sur la page Synthèse, suis tes dégâts moyens par match en priorité ; le F/D s'améliorera en conséquence quand le positionnement et la finition progresseront."
-en = "In Halo Infinite, damage dealt per match predicts winning better than K/D — the kill-trading structure of the game (two equally healthy players will often kill each other simultaneously) makes K/D noisy and unreliable. A match at 5,000 damage with a 0.9 K/D generally contributes more to the team than 3,500 damage with a 1.3 K/D. On the Synthesis page, track your average damage per match first; K/D will follow naturally once positioning and duel-finishing improve."
+fr = "Dans Halo Infinite, les dégâts infligés par match prédisent mieux la victoire que le F/D : la structure d'échange de frags du jeu (deux joueurs à égalité de santé se tuent souvent mutuellement) rend le F/D bruité. Un match à 5 000 dégâts avec un F/D de 0.9 contribue souvent plus qu'un match à 3 500 dégâts avec un F/D de 1.3."
+en = "In Halo Infinite, damage dealt per match predicts winning better than K/D: the kill-trading structure (two equally healthy players often kill each other) makes K/D noisy. A match at 5,000 damage with a 0.9 K/D often contributes more than 3,500 damage with a 1.3 K/D."
+
+[coaching_tips.impact.strategic.9]
+fr = "Conséquence pratique : sur la page Synthèse, suis tes dégâts moyens par match en priorité plutôt que ton F/D. Le F/D s'améliorera de lui-même quand ton positionnement et ta finition de duel progresseront."
+en = "Practical takeaway: on the Synthesis page, track your average damage per match first, not your K/D. K/D will improve on its own once your positioning and duel-finishing get better."
 
 [coaching_tips.impact.settings.1]
 fr = "Si tu rates régulièrement les tirs décisifs en clutch, essaie de désactiver la vibration manette. Le bruit kinesthésique perturbe la micro-précision quand les mains sont déjà tendues."
 en = "If you regularly miss clutch shots, try turning off controller vibration. Kinesthetic noise disturbs micro-precision when your hands are already tense."
 
 [coaching_tips.impact.routine.1]
-fr = "Une fois par semaine, revois une de tes meilleures séquences sur la page Match. Ne te limite pas à ton propre POV — regarde aussi depuis le POV d'un coéquipier pour comprendre ce qui se passait pendant que tu jouais. Identifie un détail répétable (positionnement, choix d'arme, timing de grappin) et essaie de le reproduire la session suivante. La progression vient de la répétition consciente."
-en = "Once a week, review one of your best sequences on the Match page. Don't limit yourself to your own POV — also watch from a teammate's POV to understand what was happening while you played. Identify a repeatable detail (positioning, weapon choice, grapple timing) and try to reproduce it next session. Progress comes from conscious repetition."
+fr = "Une fois par semaine, revois une de tes meilleures séquences sur la page Match. Ne te limite pas à ton propre POV — regarde aussi depuis le POV d'un coéquipier pour comprendre ce qui se passait pendant que tu jouais."
+en = "Once a week, review one of your best sequences on the Match page. Don't limit yourself to your own POV — also watch from a teammate's POV to understand what was happening while you played."
+
+[coaching_tips.impact.routine.2]
+fr = "Quand tu revois une séquence, identifie un détail répétable (positionnement, choix d'arme, timing de grappin) et essaie de le reproduire la session suivante. La progression vient de la répétition consciente, pas du visionnage passif."
+en = "When you review a sequence, identify one repeatable detail (positioning, weapon choice, grapple timing) and try to reproduce it next session. Progress comes from conscious repetition, not passive watching."
