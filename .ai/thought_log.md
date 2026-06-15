@@ -1,3 +1,25 @@
+## [2026-06-15] PMT-1 (MT-01) — Ingestion title-aware (hosts API) — Expand — COMPLÉTÉ
+
+**Statut** : Branche `feat/multititre-peripherie`. Build all + vet + gofmt + archlint(`no_slug_comparison`) verts ; `go test ./internal/games/ ./internal/games/mappings/` verts ; oracle double vert. **Expand livré ; Contract (6 axes, PR mince par host) à suivre.**
+
+**Déclencheur (user)** : « Go phase 1.5 et pmt 1,2,3 » — racine du DAG (bloquants). Attaque dans l'ordre de risque croissant : **PMT-1 (hosts, bas risque : construction d'URL) → PMT-3 → PMT-2 (auth, haut risque) → Phase 1.5 (migrations, haut risque)**. Même branche, golden de parité à chaque incrément.
+
+**Trou réel (re-vérifié)** : aucun seam d'host. ~11 const Go dispersés (`haloStatsHost:443`, `haloGameCMSHost`, `haloUGCHost`, `haloSkillHost`, `nameplateHost`, `discoveryUGCHost`, `defaultEconomyHost`, `defaultChallengesHost`, `defaultGameCMSHost/Base`, `defaultStatsHost`) ré-encodent les URLs Halo en dur. Un 2e titre ne peut pas router ailleurs.
+
+**Décision technique (Expand)** :
+1. `mappings.EndpointKey` (8 clés : stats, gamecms, economy, skill, ugc_film, discovery_ugc, challenges, nameplate) + `EndpointSet` (lecture seule) + `LoadEndpointsFromFile/Bytes` (modèle loader_outcomes : valide [meta], section non vide, clé connue, host non vide, **https** obligatoire).
+2. Section `[endpoints]` ajoutée au **constants.toml existant au niveau titre** (PAS `mappings/constants.toml` comme disait le spec — éviter un doublon de nom de fichier ; le constants.toml documentaire `[medals]` y vit déjà). Valeurs Halo **byte-pour-byte** les const Go actuels (chaque ligne pointe son site source en commentaire). Subtilité : `stats`/`skill` portent `:443` explicite, `challenges` NON (parité exacte provider.go) → deux clés distinctes même quand l'host physique est partagé (nameplate=gamecms).
+3. `mappings.Registry` : map `endpoints[slug]` + `GetEndpoints(slug)` + chargement optionnel (`loadEndpointsIfExists`, absence silencieuse comme assets/outcomes). Loadé au boot (server.go:187-191) → log `endpoints_loaded` (clés `title`, `count`, `schema_version`).
+4. Port `games.EndpointResolver` + impl `MappingsEndpointResolver.HostFor(slug, key) (string, bool)` : résolution **par clé d'endpoint, jamais par slug** (archlint vert). Slug vide → défaut ; slug non vide inconnu → `ok=false` (**pas de fallback cross-titre silencieux**) ; nil-safe.
+
+**Oracle DOUBLE vert** : (a) golden de parité — vrai constants.toml HI → les 8 hosts == const Go exacts (ni plus ni moins). (b) routing `synthetic_test_title` (fixture temp dir, hosts `example.test` + `skill` ABSENT) chargée via la vraie `LoadFromConfigDir` (chemin file→loader→registry→resolver) : prouve (1) le seam route VRAIMENT vers example.test, (2) `HostFor(skill)` → `ok=false` = dégradation propre, (3) slug inconnu/nil dégradent sans panic.
+
+**Pas câblé en Expand (volontaire)** : le resolver n'est PAS injecté dans `HaloAPIClient`/boot tant qu'aucun call-site ne le consomme (éviter un champ mort — règle anti-dead-code). L'injection (`WithEndpoints` + champ `endpoints`/`titleSlug`) se fait au **Contract axe 1 (stats)**, premier consommateur.
+
+**Prochaine étape (Contract, PR mince par axe, golden parité chacune)** : (1) stats/history + littéral discovery_client:82, (2) skill, (3) film/UGC, (4) economy/battlepass + challenges, (5) privacy/servicerecord (gérer le `:443` manquant de defaultStatsHost), (6) discovery + gamecms + nameplate. Const supprimé seulement à 0 référence (grep par PR).
+
+---
+
 ## [2026-06-15] PMT-10 (MT-05) — Observabilité dimension titre — COMPLÉTÉ (PR-1→4)
 
 **Clôture** : PR-4 livré (namespacing LogsDir par titre). `logging.Config.WithTitleNamespace(titleSlug)` (copie, no-op si vide) + câblage gardé `len(title.NewRegistry().All()) > 1` dans cmd/server (no-op mono-titre → byte-identique ; s'active dès un 2e titre). Test unitaire vert. **PMT-10 complet : PR-1 (logs) + Expand (3 collecteurs) + PR-2 (endpoints ?title=) + PR-3 (émission sync) + PR-4 (logs namespacing).** Build all + archlint + observability + api + sync verts (sauf DeviceCodeFlow pré-existants).

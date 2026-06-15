@@ -13,6 +13,24 @@
 title_slug = "halo_infinite"
 schema_version = 1
 
+# ─── Hosts d'ingestion API (MT-01 / PMT-1) ──────────────────────────────────
+# Source de vérité title-agnostic des hosts consommés par platform/halo +
+# internal/sync. Valeurs ALIGNÉES byte-pour-byte sur les const Go actuels (le
+# Contract PMT-1 retire ces const un axe à la fois en basculant sur
+# EndpointResolver.HostFor). Deux clés peuvent partager un host (nameplate =
+# gamecms) ; elles restent distinctes pour migrer chaque call-site sans présumer
+# d'une fusion. Note : `stats` et `skill` portent `:443` explicite (halo_client),
+# `challenges` ne le porte pas (provider.go defaultChallengesHost).
+[endpoints]
+stats = "https://halostats.svc.halowaypoint.com:443"          # sync/halo_client.go:46 haloStatsHost
+gamecms = "https://gamecms-hacs.svc.halowaypoint.com"         # sync/halo_client.go:47 haloGameCMSHost
+economy = "https://economy.svc.halowaypoint.com"              # platform/halo/provider.go:98 defaultEconomyHost
+skill = "https://skill.svc.halowaypoint.com:443"              # sync/halo_skill.go:46 haloSkillHost
+ugc_film = "https://discovery-infiniteugc.svc.halowaypoint.com"      # sync/halo_client_film.go:20 haloUGCHost
+discovery_ugc = "https://discovery-infiniteugc.svc.halowaypoint.com" # sync/discovery_client.go:22 discoveryUGCHost
+challenges = "https://halostats.svc.halowaypoint.com"         # platform/halo/provider.go:99 defaultChallengesHost
+nameplate = "https://gamecms-hacs.svc.halowaypoint.com"       # sync/spartan_nameplate_resolver.go:34 nameplateHost
+
 # ─── Médailles référencées par ID dans les requêtes ─────────────────────────
 # medal_name_id (filmshell UBIGINT) des médailles dont l'agrégation est codée
 # en dur côté queries (perfect_kills). Sites actuels (à migrer en Phase 2) :
