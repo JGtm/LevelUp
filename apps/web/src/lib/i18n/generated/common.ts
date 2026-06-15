@@ -109,6 +109,8 @@ export const commonManifest = {
   "common.error.boundary_title": { fr: "Une erreur est survenue", en: "An error occurred" },
   "common.error.reload_action": { fr: "Recharger la page", en: "Reload page" },
   "common.filters.advanced_aria": { fr: "Filtres avancés", en: "Advanced filters" },
+  "common.filters.browse_label": { fr: "Voir les matchs", en: "View matches" },
+  "common.filters.browse_title": { fr: "Parcourir les matchs un par un", en: "Browse matches one by one" },
   "common.filters.experience_type_title": { fr: "Type d'expérience", en: "Experience type" },
   "common.filters.incompatible_aria": { fr: "Filtres incompatibles", en: "Incompatible filters" },
   "common.filters.incompatible_full": { fr: "{n, plural, one {# filtre incompatible} other {# filtres incompatibles}} avec la sélection actuelle. Cliquez Analyser pour les retirer automatiquement.", en: "{n, plural, one {# incompatible filter} other {# incompatible filters}} with the current selection. Click Analyse to remove them automatically." },

@@ -193,3 +193,13 @@ type FilterContextResolved struct {
 	PeriodPresets    []PeriodPresetCount    `json:"period_presets"`
 	SeasonCounts     []SeasonCount          `json:"season_counts,omitempty"` // nil si le titre n'a pas de kind "season"
 }
+
+// FilterMatchIDsResponse est la réponse de POST filters/match-ids : la liste
+// ordonnée (start_time DESC, récent d'abord) des match_id de la sélection
+// courante. Alimente le bouton "Voir les matchs" (L2) qui ouvre le 1er match
+// et parcourt la liste via prev/next. Calculée par le MÊME pipeline que
+// FilterContextResolved.Counts → respecte match_context (solo/squad), sessions,
+// période et cascade, là où le fallback /neighbors (shared-only) ne le peut pas.
+type FilterMatchIDsResponse struct {
+	MatchIDs []string `json:"match_ids"`
+}

@@ -50,6 +50,9 @@ type ExplorerService interface {
 // FiltersService résout le contexte de filtres d'un joueur.
 type FiltersService interface {
 	Resolve(ctx context.Context, input domain.FilterContextInput) (domain.FilterContextResolved, error)
+	// ResolveMatchIDs retourne la liste ordonnée (start_time DESC) des match_id
+	// de la sélection — alimente le bouton "Voir les matchs" (parcours prev/next).
+	ResolveMatchIDs(ctx context.Context, input domain.FilterContextInput) ([]string, error)
 }
 
 // HomeService construit les réponses de la page d'accueil Mission Control.

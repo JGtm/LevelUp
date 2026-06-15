@@ -849,6 +849,14 @@ en = "↺ Reset"
 fr = "Nombre de matchs correspondant aux filtres actifs"
 en = "Number of matches matching active filters"
 
+[common.filters.browse_label]
+fr = "Voir les matchs"
+en = "View matches"
+
+[common.filters.browse_title]
+fr = "Parcourir les matchs un par un"
+en = "Browse matches one by one"
+
 [common.filters.incompatible_title]
 fr = "Incompatible avec les filtres actifs — cliquez pour désélectionner"
 en = "Incompatible with active filters — click to deselect"

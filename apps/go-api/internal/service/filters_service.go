@@ -7,6 +7,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"sort"
 	"strings"
 	"time"
 
@@ -80,6 +81,29 @@ func (s *FiltersService) Resolve(
 	return resolved, nil
 }
 
+// ResolveMatchIDs charge les matchs du joueur et retourne, pour la sélection
+// `input`, la liste ordonnée (start_time DESC) des match_id. Réutilise le même
+// pipeline de filtrage que Resolve (donc match_context/sessions/cascade), ce qui
+// garantit que le parcours "Voir les matchs" reste dans le périmètre — y compris
+// solo/squad, que /neighbors ne sait pas filtrer.
+func (s *FiltersService) ResolveMatchIDs(
+	ctx context.Context,
+	input domain.FilterContextInput,
+) ([]string, error) {
+	rows, err := s.repo.LoadMatchesForFilters(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "load matches for filter match-ids", "err", err)
+		return nil, err
+	}
+	ids := FilteredMatchIDs(rows, input)
+	slog.DebugContext(ctx, "filters match-ids resolved",
+		"match_context", input.MatchContext,
+		"filter_mode", input.FilterMode,
+		"count", len(ids),
+	)
+	return ids, nil
+}
+
 // ResolveFiltersFromRows est la fonction pure testable sans repo.
 // Utilise time.Now() pour les period presets ; pour la testabilité
 // précise, voir ResolveFiltersFromRowsAt.
@@ -112,8 +136,39 @@ func ResolveFiltersFromRowsAt(
 		return emptyResolved(effective, buildSessionOptions(rows, effective.Cascade))
 	}
 
-	// Migre les valeurs stockées en anglais vers les noms FR (modes, cartes, playlists).
-	// Transparent si aucune traduction n'est disponible (map vide).
+	// Migre les valeurs cascade stockées en anglais vers les noms FR.
+	effective = migrateCascadeFromRows(rows, effective)
+
+	// Sessions enrichies (count + count post-cascade) — calculées sur rows
+	// post-match_context pour rester indépendantes du filter_mode courant.
+	sessionOpts := buildSessionOptions(rows, effective.Cascade)
+
+	// Period presets — counts si on switchait en mode period sur ce preset
+	// (indépendants du filter_mode courant et du filtre sessions).
+	periodPresetCounts := buildPeriodPresetCounts(rows, effective.Cascade, now)
+
+	// Filtre temporel (session OU période) puis cascade.
+	temporal, filtered := splitTemporalFiltered(rows, effective)
+
+	// Options disponibles (avant cascade) avec counts OR.
+	available := buildAvailableOptions(temporal, effective.Cascade)
+
+	return domain.FilterContextResolved{
+		Effective:        effective,
+		AvailableOptions: available,
+		SessionOptions:   sessionOpts,
+		Counts: domain.FilterCounts{
+			TotalMatchesBeforeFilters: totalBefore,
+			TotalMatchesAfterFilters:  len(filtered),
+		},
+		PeriodPresets: periodPresetCounts,
+	}
+}
+
+// migrateCascadeFromRows migre les valeurs cascade stockées en anglais vers les
+// noms FR (modes, cartes, playlists), à partir des traductions présentes dans
+// les rows. Transparent si aucune traduction n'est disponible (map vide).
+func migrateCascadeFromRows(rows []domain.FilterMatchRow, effective domain.FilterContextInput) domain.FilterContextInput {
 	if len(effective.Cascade.Modes) > 0 {
 		if tr := buildModeTranslationMap(rows); len(tr) > 0 {
 			effective.Cascade.Modes = migrateCascadeValues(effective.Cascade.Modes, tr)
@@ -129,43 +184,56 @@ func ResolveFiltersFromRowsAt(
 			effective.Cascade.Playlists = migrateCascadeValues(effective.Cascade.Playlists, tr)
 		}
 	}
+	return effective
+}
 
-	// Sessions enrichies (count + count post-cascade) — calculées sur rows
-	// post-match_context pour rester indépendantes du filter_mode courant.
-	sessionOpts := buildSessionOptions(rows, effective.Cascade)
-
-	// Period presets — counts si on switchait en mode period sur ce preset
-	// (indépendants du filter_mode courant et du filtre sessions).
-	periodPresetCounts := buildPeriodPresetCounts(rows, effective.Cascade, now)
-
-	// 1. Filtre temporel
-	// Symétrie avec applyAllFilters (match_history_service.go) : on déclenche
-	// applySessionFilter dès qu'il y a au moins une session sélectionnée, peu
-	// importe filter_mode. Évite les divergences quand un client ne propage
-	// pas correctement filter_mode mais coche des sessions.
-	var temporal []domain.FilterMatchRow
+// splitTemporalFiltered applique le filtre temporel (session si au moins une
+// session pickée, sinon période) puis la cascade. Retourne (temporal pré-cascade
+// pour available_options, filtered post-cascade). Symétrie avec applyAllFilters
+// (match_history_service.go) : applySessionFilter dès qu'une session est pickée,
+// peu importe filter_mode.
+func splitTemporalFiltered(rows []domain.FilterMatchRow, effective domain.FilterContextInput) (temporal, filtered []domain.FilterMatchRow) {
 	if hasPickedSessions(effective.Sessions) {
 		temporal = applySessionFilter(rows, effective.Sessions)
 	} else {
 		temporal = applyPeriodFilter(rows, effective.Period)
 	}
+	return temporal, applyCascadeFilter(temporal, effective.Cascade)
+}
 
-	// 2. Options disponibles (avant cascade) avec counts OR
-	available := buildAvailableOptions(temporal, effective.Cascade)
-
-	// 3. Cascade
-	filtered := applyCascadeFilter(temporal, effective.Cascade)
-
-	return domain.FilterContextResolved{
-		Effective:        effective,
-		AvailableOptions: available,
-		SessionOptions:   sessionOpts,
-		Counts: domain.FilterCounts{
-			TotalMatchesBeforeFilters: totalBefore,
-			TotalMatchesAfterFilters:  len(filtered),
-		},
-		PeriodPresets: periodPresetCounts,
+// FilteredMatchIDs retourne les match_id de la sélection — mêmes filtres que
+// ResolveFiltersFromRowsAt (match_context → temporel → cascade) — ordonnés par
+// start_time DESC (récent d'abord, comme la chronologie de navigation). Les rows
+// sans start_time sont reléguées en fin. Alimente le bouton "Voir les matchs" :
+// la liste explicite permet un parcours prev/next exact, là où /neighbors
+// (shared-only) ne sait pas filtrer solo/squad ni les sessions (player DB).
+func FilteredMatchIDs(rows []domain.FilterMatchRow, input domain.FilterContextInput) []string {
+	rows = applyMatchContextFilter(rows, input.MatchContext)
+	if len(rows) == 0 {
+		return nil
 	}
+	effective := migrateCascadeFromRows(rows, normalizeInput(input))
+	_, filtered := splitTemporalFiltered(rows, effective)
+
+	sort.SliceStable(filtered, func(i, j int) bool {
+		ti, tj := filtered[i].StartTime, filtered[j].StartTime
+		switch {
+		case ti == nil:
+			return false // i sans date → relégué après j
+		case tj == nil:
+			return true // j sans date → i avant
+		default:
+			return ti.After(*tj) // DESC : récent d'abord
+		}
+	})
+
+	ids := make([]string, 0, len(filtered))
+	for i := range filtered {
+		if filtered[i].MatchID != "" {
+			ids = append(ids, filtered[i].MatchID)
+		}
+	}
+	return ids
 }
 
 // applyMatchContextFilter restreint les rows selon le contexte de la page :

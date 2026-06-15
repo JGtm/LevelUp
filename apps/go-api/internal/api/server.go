@@ -921,6 +921,7 @@ func NewRouter(
 
 			filters := handlers.NewFiltersHandler(reg.Filters)
 			r.Post("/filters/resolve", filters.Resolve)
+			r.Post("/filters/match-ids", filters.MatchIDs)
 
 			mh := handlers.NewMatchHistoryHandler(reg.MatchHistoryCtx)
 			r.Post("/pages/match-history/query", mh.Query)

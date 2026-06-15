@@ -18,12 +18,17 @@ import (
 )
 
 type mockFiltersService struct {
-	result domain.FilterContextResolved
-	err    error
+	result   domain.FilterContextResolved
+	matchIDs []string
+	err      error
 }
 
 func (m *mockFiltersService) Resolve(_ context.Context, _ domain.FilterContextInput) (domain.FilterContextResolved, error) {
 	return m.result, m.err
+}
+
+func (m *mockFiltersService) ResolveMatchIDs(_ context.Context, _ domain.FilterContextInput) ([]string, error) {
+	return m.matchIDs, m.err
 }
 
 func newFiltersRouter(factory handlers.ServiceFactory[port.FiltersService]) *chi.Mux {
@@ -31,6 +36,7 @@ func newFiltersRouter(factory handlers.ServiceFactory[port.FiltersService]) *chi
 	h := handlers.NewFiltersHandler(factory)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		r.Post("/filters/resolve", h.Resolve)
+		r.Post("/filters/match-ids", h.MatchIDs)
 	})
 	return r
 }
@@ -62,6 +68,59 @@ func TestFiltersHandler_Resolve_OK(t *testing.T) {
 	}
 	if resp.Counts.TotalMatchesAfterFilters != expected.Counts.TotalMatchesAfterFilters {
 		t.Errorf("TotalMatches: got %d, want %d", resp.Counts.TotalMatchesAfterFilters, expected.Counts.TotalMatchesAfterFilters)
+	}
+}
+
+func TestFiltersHandler_MatchIDs_OK(t *testing.T) {
+	factory := func(_ context.Context, slug string) (port.FiltersService, error) {
+		if slug != testPlayerSlug {
+			return nil, errors.New("player_not_found")
+		}
+		return &mockFiltersService{matchIDs: []string{"m3", "m2", "m1"}}, nil
+	}
+
+	body, _ := json.Marshal(domain.FilterContextInput{})
+	req := httptest.NewRequest(http.MethodPost, "/players/test-player/filters/match-ids", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	newFiltersRouter(factory).ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp domain.FilterMatchIDsResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	want := []string{"m3", "m2", "m1"}
+	if len(resp.MatchIDs) != len(want) {
+		t.Fatalf("match_ids = %v, want %v", resp.MatchIDs, want)
+	}
+	for i := range want {
+		if resp.MatchIDs[i] != want[i] {
+			t.Errorf("match_ids[%d] = %q, want %q", i, resp.MatchIDs[i], want[i])
+		}
+	}
+}
+
+func TestFiltersHandler_MatchIDs_EmptyIsNotNull(t *testing.T) {
+	factory := func(_ context.Context, _ string) (port.FiltersService, error) {
+		return &mockFiltersService{matchIDs: nil}, nil
+	}
+
+	body, _ := json.Marshal(domain.FilterContextInput{})
+	req := httptest.NewRequest(http.MethodPost, "/players/test-player/filters/match-ids", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	newFiltersRouter(factory).ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	// Slice nil → JSON [] (jamais null) pour ne pas casser .length/.map côté front.
+	if got := w.Body.String(); !bytes.Contains([]byte(got), []byte(`"match_ids":[]`)) {
+		t.Errorf("expected match_ids:[] in body, got %s", got)
 	}
 }
 

@@ -51,6 +51,8 @@ import {
 } from '@/components/shell/FilterOmnibar'
 import { PeriodSessionRail } from '@/components/shell/PeriodSessionRail'
 import { useActiveSeason, seasonToPeriod } from './useActiveSeason'
+import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
+import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -303,6 +305,26 @@ export function SquadLayout() {
   )
   const latestCompositionSession = data?.latest_composition_session ?? ''
 
+  // Bouton "Voir les matchs" (L2) : la liste de matchs de la composition est
+  // déjà chargée ici (data.match_history, DESC), donc zéro aller-retour serveur.
+  // On reproduit exactement la logique de SquadMatchHistoryTable : matchIds en
+  // ordre chronologique (oldest-first), point d'entrée = match le plus récent.
+  const navigateToMatch = useNavigateToMatch(playerSlug)
+  const squadMatchIds = useMemo(
+    () => [...(data?.match_history ?? [])].reverse().map((m) => m.match_id),
+    [data?.match_history],
+  )
+  const squadEntryMatchId = data?.match_history?.[0]?.match_id
+  const handleBrowseMatches = () => {
+    if (!squadEntryMatchId) return
+    const filterSpec = filterContextToMatchFilterSpec(squadFilterContext)
+    navigateToMatch(squadEntryMatchId, {
+      source: 'session',
+      matchIds: squadMatchIds,
+      filterSpec: filterSpec ?? undefined,
+    })
+  }
+
   // Réconciliation anti-zombie des sessions pickées (suffixe " (N)" volatil, cf.
   // buildSessionLabel côté Go). On remappe chaque label pické vers sa forme
   // courante dans compositionSessions et on droppe les doublons. Si TOUS les
@@ -474,6 +496,29 @@ export function SquadLayout() {
             <span className="shrink-0 text-xs text-muted-foreground" aria-live="polite">
               {totalAfter} match{totalAfter > 1 ? 's' : ''}
             </span>
+          )}
+
+          {/* Voir les matchs — deep-link vers le match le plus récent de la
+              composition, puis parcours prev/next (matchIds déjà chargés). */}
+          {squadEntryMatchId && (totalAfter ?? 0) > 0 && (
+            <button
+              type="button"
+              onClick={handleBrowseMatches}
+              className="shrink-0 inline-flex items-center gap-1 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+              title={tCommon('common.filters.browse_title')}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+                className="h-3.5 w-3.5 opacity-70"
+                aria-hidden="true"
+              >
+                <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
+                <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
+              </svg>
+              {tCommon('common.filters.browse_label')}
+            </button>
           )}
 
           {/* Analyser */}
