@@ -215,9 +215,8 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  # Drive-by : route existante (server.go) non documentée sur main —
+  # Drive-by 2026-06-15 : route existante (server.go) non documentée sur main —
   # documentée ici pour passer TestContractRoutesDocumented (plafond 0).
-  # NB : même ajout sur la branche feat/admin-titles-pmt14 (prendre l'un au merge).
   /players/{player_slug}/filters/match-ids:
     post:
       tags: [filters]
@@ -1614,6 +1613,27 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   # Admin
+  # Gestion des titres (PMT-14 volet A) — read-only, auth admin requis.
+  /admin/titles:
+    get:
+      tags: [admin]
+      operationId: getAdminTitles
+      summary: "Liste des titres enregistrés (slug, nom, Status lifecycle, capabilities, has_mappings) (auth admin requis)"
+      responses:
+        "200": { description: "Liste des titres enregistrés" }
+  /admin/titles/{slug}:
+    get:
+      tags: [admin]
+      operationId: getAdminTitleDetail
+      summary: "Détail d'un titre : descripteur + capabilities déclarées (TOML) + feature-matrix calculée (auth admin requis)"
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: "Détail du titre" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /admin/invites:
     get:
       tags: [admin]

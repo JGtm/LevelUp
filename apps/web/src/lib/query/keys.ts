@@ -203,4 +203,7 @@ export const queryKeys = {
   adminLogModules: ['admin', 'logs', 'modules'] as const,
   adminLogTail: (module: string, level: string, contains: string, limit: number) =>
     ['admin', 'logs', 'tail', module, level, contains, limit] as const,
+  // Admin — Titres (PMT-14 volet A : gestion multi-titres)
+  adminTitles: ['admin', 'titles'] as const,
+  adminTitleDetail: (slug: string) => ['admin', 'titles', slug] as const,
 } as const

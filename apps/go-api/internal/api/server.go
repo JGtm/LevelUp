@@ -789,6 +789,13 @@ func NewRouter(
 			// + actions correctives (data-health run, cycle auto-sync forcé).
 			// Cf. server_admin_monitoring.go.
 			mountAdminMonitoringRoutes(r, reg, autoSyncScheduler, jobStore, serverCtx)
+			// Gestion des titres (PMT-14 volet A) : liste + détail (Status lifecycle
+			// MT-22 enfin lu/exposé, capabilities + feature-matrix réutilisés de
+			// 1.7a/b sans recalcul). Read-only, admin-gated, NoStore (reflète l'état
+			// du registre des titres au boot).
+			adminTitlesHandler := handlers.NewAdminTitlesHandler(titleRegistry, fieldMappingsRegistry, slog.Default())
+			r.With(middleware.NoStore).Get("/titles", adminTitlesHandler.List)
+			r.With(middleware.NoStore).Get("/titles/{slug}", adminTitlesHandler.Detail)
 		})
 
 		// Diagnostic — accessible en loopback (127.0.0.1) uniquement, sans auth.
