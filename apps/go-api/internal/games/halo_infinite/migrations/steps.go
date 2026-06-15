@@ -66,12 +66,25 @@ func Steps() []migration.Migration {
 				`)
 			},
 		},
-		// Déplacé depuis internal/migration/steps_metadata.go (b6 — named-func, cf. weapon_labels.go).
+		// Déplacés depuis internal/migration (b6/b7 — named-func, cf. weapon_labels.go
+		// + mode_playlist_fr.go).
 		{
 			Name:        "add_weapon_labels",
 			TargetDB:    migration.TargetMetadata,
 			Description: "Table weapon_labels (weapon_id UBIGINT, name_en, name_fr)",
 			ApplySchema: applyWeaponLabels,
+		},
+		{
+			Name:        "add_mode_name_tr",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Table mode_name_tr : traductions des modes de jeu (FR/EN), portage depuis metadata-prebuilt",
+			ApplySchema: applyModeNameTr,
+		},
+		{
+			Name:        "seed_playlist_fr_translations",
+			TargetDB:    migration.TargetMetadata,
+			Description: "asset_translations : seed FR canoniques pour playlists Halo Infinite dont l'API a renvoyé l'EN raw en lang fr-FR (cf. thought_log 2026-05-09)",
+			ApplySchema: applyPlaylistFRSeeds,
 		},
 		// Déplacés depuis internal/migration/steps_metadata.go (b5 — leaves additifs).
 		{

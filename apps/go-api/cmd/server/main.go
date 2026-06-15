@@ -1396,7 +1396,7 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 	// Réconciliation idempotente des seeds de traduction (mode_name_tr + playlists
 	// FR) : converge les bases dont la migration de seed est "done" mais incomplète
 	// (sous-modes / "Quick Play" restés en anglais). Cf. ReconcileMetadataSeeds.
-	if err := migration.ReconcileMetadataSeeds(metaDB.SQLDb()); err != nil {
+	if err := halomigrations.ReconcileMetadataSeeds(metaDB.SQLDb()); err != nil {
 		metaDB.Close()
 		return fmt.Errorf("metadata seed reconcile: %w", err)
 	}

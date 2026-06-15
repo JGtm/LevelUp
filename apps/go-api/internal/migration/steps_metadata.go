@@ -9,21 +9,8 @@ import (
 	"database/sql"
 )
 
-// Mode canoniques (EN) — utilisés comme clés dans mode_name_tr et comme
-// labels FR identiques (Halo n'a pas de traduction officielle pour ces modes).
-const (
-	modeAttrition  = "Attrition"
-	modeExtraction = "Extraction"
-	modeOddball    = "Oddball"
-)
-
-// Labels mode (cross-fichier metadata + playlist_fr).
-const (
-	modeTeamSlayer    = "Team Slayer"
-	modeTeamSnipers   = "Team Snipers"
-	modeTeamSlayerFR  = "Assassin en équipe"
-	modeTeamSnipersFR = "Snipers en équipe"
-)
+// consts mode* → déplacées avec applyModeNameTr/applyPlaylistFRSeeds vers
+// games/halo_infinite/migrations/mode_playlist_fr.go (Phase 1.5 b7).
 
 func init() {
 	Register(Migration{
@@ -84,12 +71,7 @@ func init() {
 	// add_map_images_registry → migré vers internal/games/halo_infinite/migrations/
 	// steps.go (Phase 1.5 voie B, ADR 0025). Le nom reste dans canonicalOrder.
 
-	Register(Migration{
-		Name:        "add_mode_name_tr",
-		TargetDB:    TargetMetadata,
-		Description: "Table mode_name_tr : traductions des modes de jeu (FR/EN), portage depuis metadata-prebuilt",
-		ApplySchema: applyModeNameTr,
-	})
+	// add_mode_name_tr → migré vers games/halo_infinite/migrations/mode_playlist_fr.go (b7).
 
 	// Famille citation_mappings (base→pk→v2_fields) → migrée ATOMIQUEMENT vers
 	// games/halo_infinite/migrations (b5). Noms gardés dans canonicalOrder.
@@ -189,12 +171,7 @@ func init() {
 		},
 	})
 
-	Register(Migration{
-		Name:        "seed_playlist_fr_translations",
-		TargetDB:    TargetMetadata,
-		Description: "asset_translations : seed FR canoniques pour playlists Halo Infinite dont l'API a renvoyé l'EN raw en lang fr-FR (cf. thought_log 2026-05-09)",
-		ApplySchema: applyPlaylistFRSeeds,
-	})
+	// seed_playlist_fr_translations → migré vers games/halo_infinite/migrations/mode_playlist_fr.go (b7).
 
 	Register(Migration{
 		Name:        "add_title_id_to_xbox_achievement_definitions",
@@ -235,97 +212,6 @@ func init() {
 			return err
 		},
 	})
-}
-
-// applyModeNameTr crée et peuple mode_name_tr avec les traductions connues.
-func applyModeNameTr(db *sql.DB) error {
-	if _, err := db.ExecContext(bootCtx(), `
-		CREATE TABLE IF NOT EXISTS mode_name_tr (
-			mode_en VARCHAR NOT NULL,
-			lang    VARCHAR NOT NULL,
-			name    VARCHAR NOT NULL,
-			PRIMARY KEY (mode_en, lang)
-		)
-	`); err != nil {
-		return err
-	}
-
-	type modeRow struct{ modeEN, lang, name string }
-	rows := []modeRow{
-		{"Assault", "en", "Assault"},
-		{modeAttrition, "en", modeAttrition},
-		{"CTF", "en", "CTF"},
-		{"CTF 3 Captures", "en", "CTF (3 Captures)"},
-		{"Escalation Slayer", "en", "Escalation Slayer"},
-		{modeExtraction, "en", modeExtraction},
-		{"FFA Slayer", "en", "FFA Slayer"},
-		{"Fiesta CTF", "en", "Fiesta CTF"},
-		{"Fiesta Slayer", "en", "Fiesta Slayer"},
-		{"Fiesta Total Control", "en", "Fiesta Total Control"},
-		{"Heroic KOTH", "en", "King of the Hill (Heroic)"},
-		{"Heroic King of the Hill", "en", "King of the Hill (Heroic)"},
-		{"King of the Hill", "en", "King of the Hill"},
-		{"Land Grab", "en", "Land Grab"},
-		{"Legendary King of the Hill", "en", "King of the Hill (Legendary)"},
-		{"Neutral Bomb", "en", "Neutral Bomb"},
-		{"Neutral Bomb Squad", "en", "Neutral Bomb Squad"},
-		{"Neutral Flag CTF", "en", "Neutral Flag CTF"},
-		{modeOddball, "en", modeOddball},
-		{"One Bomb", "en", "One Bomb"},
-		{"One Flag CTF", "en", "One Flag CTF"},
-		{"Sentry Defense", "en", "Sentry Defense"},
-		{"Shotty Snipe Slayer FFA", "en", "Shotty Snipers FFA"},
-		{"Shotty Snipes Slayer", "en", "Shotty Snipers"},
-		{"Slayer", "en", "Slayer"},
-		{"Stockpile", "en", "Stockpile"},
-		{"Strongholds", "en", "Strongholds"},
-		{modeTeamSlayer, "en", modeTeamSlayer},
-		{modeTeamSnipers, "en", modeTeamSnipers},
-		{"Total Control", "en", "Total Control"},
-		{"VIP", "en", "VIP"},
-		// FR
-		{"Assault", "fr", "Assaut"},
-		{modeAttrition, "fr", modeAttrition},
-		{"CTF", "fr", "Capture du drapeau"},
-		{"CTF 3 Captures", "fr", "CDD 3 captures"},
-		{"Escalation Slayer", "fr", "Escalade"},
-		{modeExtraction, "fr", modeExtraction},
-		{"FFA Slayer", "fr", "Chacun pour soi"},
-		{"Fiesta CTF", "fr", "Fiesta CDD"},
-		{"Fiesta Slayer", "fr", "Fiesta"},
-		{"Fiesta Total Control", "fr", "Fiesta Contrôle total"},
-		{"Heroic KOTH", "fr", "Roi de la colline héroïque"},
-		{"Heroic King of the Hill", "fr", "Roi de la colline héroïque"},
-		{"King of the Hill", "fr", "Roi de la colline"},
-		{"Land Grab", "fr", "Bases"},
-		{"Legendary King of the Hill", "fr", "Roi de la colline légendaire"},
-		{"Neutral Bomb", "fr", "Bombe neutre"},
-		{"Neutral Bomb Squad", "fr", "Escouade bombe neutre"},
-		{"Neutral Flag CTF", "fr", "Drapeau neutre"},
-		{modeOddball, "fr", modeOddball},
-		{"One Bomb", "fr", "Bombe neutre"},
-		{"One Flag CTF", "fr", "Drapeau neutre"},
-		{"Sentry Defense", "fr", "Défense sentinelle"},
-		{"Shotty Snipe Slayer FFA", "fr", "Fusils snipers à grenaille FFA"},
-		{"Shotty Snipes Slayer", "fr", "Fusils snipers à grenaille"},
-		{"Slayer", "fr", "Assassin"},
-		{"Stockpile", "fr", "Stockage"},
-		{"Strongholds", "fr", "Bases"},
-		{modeTeamSlayer, "fr", modeTeamSlayerFR},
-		{modeTeamSnipers, "fr", modeTeamSnipersFR},
-		{"Total Control", "fr", "Contrôle total"},
-		{"VIP", "fr", "VIP"},
-	}
-
-	for _, r := range rows {
-		if _, err := db.ExecContext(bootCtx(),
-			"INSERT OR IGNORE INTO mode_name_tr (mode_en, lang, name) VALUES (?, ?, ?)",
-			r.modeEN, r.lang, r.name,
-		); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // applyWeaponLabels / ApplyWeaponLabels + labelEnergySwordFR → migrés vers

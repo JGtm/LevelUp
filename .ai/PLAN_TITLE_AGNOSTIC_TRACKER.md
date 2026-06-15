@@ -25,7 +25,7 @@
 |---|---|:-:|:-:|---|
 | 0 | Décisions + setup (ADR/branche/lints/datasets) | 🟡 | 55 | non — reste = items **prématurés** (datasets/parity/chi-lint → leurs phases) + branche (bloquée user) |
 | 1 | FieldKey + `fields.toml` (+ constants.toml) | 🟡 | 80 | non — reste = SQL de-magic, **reclassé Phase 2** |
-| 1.5 | DDL par titre (sortir `migration/steps_*`) | 🟡 | 63 | **oui** (2e titre) — mécanisme B complet + **17 steps migrés** (PvE + 5 Shared + 11 metadata b4/b5 dont famille citation atomique) + garde-fou direction-de-dépendance + **TestMain duckdb** (câble le provider title pour les tests metadata) ; reste tier B (~149 steps : named-func seeds, familles player/shared atomiques, tier-B cœur + reorder inversion escaladé) |
+| 1.5 | DDL par titre (sortir `migration/steps_*`) | 🟡 | 66 | **oui** (2e titre) — mécanisme B complet + **20 steps migrés** (PvE + 5 Shared + 11 metadata b4/b5 dont famille citation + 3 named-func b6/b7 weapon_labels/mode_name_tr/playlist_fr avec cascade ReconcileMetadataSeeds) + garde-fou direction-de-dépendance + TestMain duckdb ; reste tier B (~146 steps : named-func seeds prestige/milestone/ranked, familles player/shared atomiques, tier-B cœur + reorder inversion escaladé) |
 | 1.6 | Pool tokens clé `(titleSlug,gamertag)` | ✅ | 100 | **oui** (2e titre) — livré : clé composite + garde anti-cross-title |
 | 1.7a | `capabilities.toml` + loader + endpoint | ✅ | 100 | non — TOML + loader + adapter consomme + endpoint, livré |
 | 1.7b | Feature-matrix 3 états + cascade | ✅ | 100 | non — cascade pure + endpoint, livré (revue adversariale 5 lentilles) |
