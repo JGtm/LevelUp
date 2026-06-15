@@ -21,14 +21,15 @@ import (
 	"levelup/go-api/internal/games/mappings"
 )
 
-// stubEndpoints route uniquement (slug, Stats) → host ; tout le reste → ok=false.
+// stubEndpoints route uniquement (slug, key) → host ; tout le reste → ok=false.
 type stubEndpoints struct {
 	slug string
+	key  games.EndpointKey
 	host string
 }
 
 func (s stubEndpoints) HostFor(slug string, key games.EndpointKey) (string, bool) {
-	if slug == s.slug && key == games.EndpointStats {
+	if slug == s.slug && key == s.key {
 		return s.host, true
 	}
 	return "", false
@@ -91,7 +92,7 @@ func TestHostFor_StatsAxis(t *testing.T) {
 		SetDefaultEndpointResolver(nil)
 		ctx := ctxkeys.WithTitleSlug(context.Background(), "synthetic_x")
 		host := captureStatsHost(t, ctx, func(c *HaloAPIClient) {
-			c.WithEndpoints(stubEndpoints{slug: "synthetic_x", host: "https://stats.example.test"})
+			c.WithEndpoints(stubEndpoints{slug: "synthetic_x", key: games.EndpointStats, host: "https://stats.example.test"})
 		})
 		if host != "stats.example.test" {
 			t.Errorf("host = %q, want stats.example.test (le seam route via le ctx)", host)
@@ -119,10 +120,126 @@ func TestHostFor_StatsAxis(t *testing.T) {
 		ctx := ctxkeys.WithTitleSlug(context.Background(), "title_without_stats")
 		// stub ne connaît que "synthetic_x" → HostFor("title_without_stats") = false.
 		host := captureStatsHost(t, ctx, func(c *HaloAPIClient) {
-			c.WithEndpoints(stubEndpoints{slug: "synthetic_x", host: "https://stats.example.test"})
+			c.WithEndpoints(stubEndpoints{slug: "synthetic_x", key: games.EndpointStats, host: "https://stats.example.test"})
 		})
 		if host != haloHost {
 			t.Errorf("host = %q, want %q (dégradation sur fallback)", host, haloHost)
+		}
+	})
+}
+
+// captureHostVia exécute `call` (un appel HaloAPIClient) et retourne l'host visé.
+func captureHostVia(t *testing.T, ctx context.Context, configure func(*HaloAPIClient), call func(context.Context, *HaloAPIClient)) string {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("{}"))
+	}))
+	defer srv.Close()
+
+	client, ct := newDryRunClient(srv)
+	if configure != nil {
+		configure(client)
+	}
+	call(ctx, client) // l'host est capturé avant la réécriture locale, succès indifférent
+	captured := ct.last()
+	if captured == nil {
+		t.Fatal("aucune requête capturée")
+	}
+	return captured.URL.Host
+}
+
+func TestHostFor_SkillAxis(t *testing.T) {
+	prev := sharedEndpointResolver()
+	t.Cleanup(func() { SetDefaultEndpointResolver(prev) })
+
+	const skillHost = "skill.svc.halowaypoint.com:443"
+	// GetPlayerCSRs vise l'host skill ; capture indifférente au parsing.
+	callCSRs := func(ctx context.Context, c *HaloAPIClient) {
+		_, _ = c.GetPlayerCSRs(ctx, "2535469190789936", "CsrSeason8")
+	}
+
+	t.Run("resolver halo = parité byte-identique", func(t *testing.T) {
+		SetDefaultEndpointResolver(nil)
+		host := captureHostVia(t, context.Background(), func(c *HaloAPIClient) {
+			c.WithEndpoints(realHaloResolver(t))
+		}, callCSRs)
+		if host != skillHost {
+			t.Errorf("host = %q, want %q", host, skillHost)
+		}
+	})
+
+	t.Run("routing synthétique via ctx slug", func(t *testing.T) {
+		SetDefaultEndpointResolver(nil)
+		ctx := ctxkeys.WithTitleSlug(context.Background(), "synthetic_x")
+		host := captureHostVia(t, ctx, func(c *HaloAPIClient) {
+			c.WithEndpoints(stubEndpoints{slug: "synthetic_x", key: games.EndpointSkill, host: "https://skill.example.test"})
+		}, callCSRs)
+		if host != "skill.example.test" {
+			t.Errorf("host = %q, want skill.example.test", host)
+		}
+	})
+
+	t.Run("aucun resolver → fallback const legacy", func(t *testing.T) {
+		SetDefaultEndpointResolver(nil)
+		host := captureHostVia(t, context.Background(), nil, callCSRs)
+		if host != skillHost {
+			t.Errorf("host = %q, want %q (fallback)", host, skillHost)
+		}
+	})
+}
+
+func TestHostFor_FilmAndDiscoveryAxis(t *testing.T) {
+	prev := sharedEndpointResolver()
+	t.Cleanup(func() { SetDefaultEndpointResolver(prev) })
+
+	const ugcHost = "discovery-infiniteugc.svc.halowaypoint.com"
+	callFilm := func(ctx context.Context, c *HaloAPIClient) {
+		_, _, _ = c.GetMatchFilm(ctx, "11111111-1111-1111-1111-000000000001")
+	}
+	callPlaylist := func(ctx context.Context, c *HaloAPIClient) {
+		_, _ = c.GetPlaylistConfig(ctx, "playlist-asset-id", "v1")
+	}
+
+	t.Run("film (UGCFilm) parité halo", func(t *testing.T) {
+		SetDefaultEndpointResolver(nil)
+		host := captureHostVia(t, context.Background(), func(c *HaloAPIClient) {
+			c.WithEndpoints(realHaloResolver(t))
+		}, callFilm)
+		if host != ugcHost {
+			t.Errorf("film host = %q, want %q", host, ugcHost)
+		}
+	})
+
+	t.Run("film (UGCFilm) routing synthétique", func(t *testing.T) {
+		SetDefaultEndpointResolver(nil)
+		ctx := ctxkeys.WithTitleSlug(context.Background(), "synthetic_x")
+		host := captureHostVia(t, ctx, func(c *HaloAPIClient) {
+			c.WithEndpoints(stubEndpoints{slug: "synthetic_x", key: games.EndpointUGCFilm, host: "https://film.example.test"})
+		}, callFilm)
+		if host != "film.example.test" {
+			t.Errorf("film host = %q, want film.example.test", host)
+		}
+	})
+
+	t.Run("playlist (DiscoveryUGC) parité halo", func(t *testing.T) {
+		SetDefaultEndpointResolver(nil)
+		host := captureHostVia(t, context.Background(), func(c *HaloAPIClient) {
+			c.WithEndpoints(realHaloResolver(t))
+		}, callPlaylist)
+		if host != ugcHost {
+			t.Errorf("playlist host = %q, want %q", host, ugcHost)
+		}
+	})
+
+	t.Run("playlist (DiscoveryUGC) routing synthétique", func(t *testing.T) {
+		SetDefaultEndpointResolver(nil)
+		ctx := ctxkeys.WithTitleSlug(context.Background(), "synthetic_x")
+		host := captureHostVia(t, ctx, func(c *HaloAPIClient) {
+			c.WithEndpoints(stubEndpoints{slug: "synthetic_x", key: games.EndpointDiscoveryUGC, host: "https://discovery.example.test"})
+		}, callPlaylist)
+		if host != "discovery.example.test" {
+			t.Errorf("playlist host = %q, want discovery.example.test", host)
 		}
 	})
 }
