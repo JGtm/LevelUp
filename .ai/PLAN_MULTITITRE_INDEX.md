@@ -56,7 +56,7 @@ La re-vérification a déjà corrigé plusieurs erreurs de la passe d'audit init
 
 | ID | Axe | Sév. | Statut | Phase | Évidence (1 pointeur, ⚠ re-vérif) |
 |---|---|:-:|:-:|---|---|
-| MT-01 | Hosts d'ingestion API (stats/economy/gamecms/skill/UGC/discovery) en const | blocker | gap | [PMT-1](PLAN_MULTITITRE_PERIPHERY.md) | `internal/sync/halo_client.go:46-47` |
+| MT-01 | Hosts d'ingestion API (stats/economy/gamecms/skill/UGC/discovery) en const | blocker | ✅ Exit Gate | [PMT-1](PLAN_MULTITITRE_PERIPHERY.md) — Expand bff9a1df3 + 6 axes Contract → cf2afefe2 (privacy `:443` + leaderboard web-scrape déférés/documentés) | `games.EndpointResolver` + `[endpoints]` constants.toml |
 | MT-02 | Acquisition auth (XSTS audience, SISU titleID 144209987, clearance `titles/hi`, scopes) | blocker | gap | [PMT-2](PLAN_MULTITITRE_PERIPHERY.md) | `internal/platform/auth/halo_exchange.go:30-33,182` |
 | MT-11 | Scheduler/auto-sync : `NewSyncEngine` écrit en `DefaultSlug` (slug résolu puis jeté) | blocker | gap | [PMT-3](PLAN_MULTITITRE_PERIPHERY.md) | `internal/scheduler/auto_sync.go:838-846` |
 | MT-04 | `app_settings.json` global (CurrentCSRSeasonID, friends, sessions, toggles) | major | gap | [PMT-4](PLAN_MULTITITRE_PERIPHERY.md) | `internal/config/config.go:96-99` |
