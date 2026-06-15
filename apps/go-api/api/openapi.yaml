@@ -1634,6 +1634,18 @@ paths:
       responses:
         "200": { description: "Détail du titre" }
         "404": { $ref: "#/components/responses/NotFound" }
+  /admin/titles/{slug}/diagnostic:
+    get:
+      tags: [admin]
+      operationId: getAdminTitleDiagnostic
+      summary: "Diagnostic santé d'un titre : présence des mappings TOML + réalité DB (auth admin requis)"
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: "Rapport de diagnostic du titre" }
   /admin/invites:
     get:
       tags: [admin]

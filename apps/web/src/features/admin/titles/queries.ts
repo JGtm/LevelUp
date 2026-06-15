@@ -57,3 +57,28 @@ export function useAdminTitleDetail(slug: string | null) {
     retry: false,
   })
 }
+
+// --- Diagnostic santé d'un titre (config TOML + réalité DB) ---
+
+// Formes imbriquées inlinées dans TitleDiagnostic (knip : pas d'export mort ;
+// elles ne sont consommées que via l'inférence du hook côté page).
+export interface TitleDiagnostic {
+  title_slug: string
+  config_files: { name: string; present: boolean; required: boolean }[]
+  databases: {
+    name: string
+    exists: boolean
+    tables?: { name: string; exists: boolean; rows: number }[]
+    error?: string
+  }[]
+}
+
+export function useAdminTitleDiagnostic(slug: string | null) {
+  return useQuery({
+    queryKey: queryKeys.adminTitleDiagnostic(slug ?? ''),
+    queryFn: () => api.get<TitleDiagnostic>(`/admin/titles/${slug}/diagnostic`),
+    enabled: !!slug,
+    staleTime: 30_000,
+    retry: false,
+  })
+}

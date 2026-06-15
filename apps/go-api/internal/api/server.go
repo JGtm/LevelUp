@@ -796,6 +796,14 @@ func NewRouter(
 			adminTitlesHandler := handlers.NewAdminTitlesHandler(titleRegistry, fieldMappingsRegistry, slog.Default())
 			r.With(middleware.NoStore).Get("/titles", adminTitlesHandler.List)
 			r.With(middleware.NoStore).Get("/titles/{slug}", adminTitlesHandler.Detail)
+			// Diagnostic santé d'un titre (PMT-14 volet A — productise Phase 1.8) :
+			// présence des mappings TOML + réalité DB (lignes des tables cœur),
+			// read-only via port.TableInspector.
+			adminTitleDiagHandler := handlers.NewAdminTitleDiagnosticHandler(
+				service.NewTitleDiagnosticService(cfg.RepoRoot, platform_duckdb.NewTableInspector()),
+				slog.Default(),
+			)
+			r.With(middleware.NoStore).Get("/titles/{slug}/diagnostic", adminTitleDiagHandler.Get)
 		})
 
 		// Diagnostic — accessible en loopback (127.0.0.1) uniquement, sans auth.

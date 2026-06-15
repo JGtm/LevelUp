@@ -117,6 +117,30 @@ en = "Feature matrix"
 fr = "Aucun mapping TOML chargé pour ce titre."
 en = "No TOML mappings loaded for this title."
 
+[admin.titles.diagnostic]
+fr = "Diagnostic"
+en = "Diagnostic"
+
+[admin.titles.diag_config]
+fr = "Fichiers de config"
+en = "Config files"
+
+[admin.titles.diag_databases]
+fr = "Bases de données"
+en = "Databases"
+
+[admin.titles.diag_present]
+fr = "présent"
+en = "present"
+
+[admin.titles.diag_absent]
+fr = "absent"
+en = "absent"
+
+[admin.titles.diag_db_absent]
+fr = "base absente"
+en = "DB missing"
+
 # ─── Page Logs ─────────────────────────────────────────────────────────────
 
 [admin.logs.module]
