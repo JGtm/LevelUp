@@ -1,3 +1,23 @@
+## [2026-06-15] PMT-12 lint MT-12 + PMT-14 volets B/C (finition) + incident node_modules — Complété
+
+**Statut** : Branche `feat/multititre-peripherie`. lint MT-12 : règle eslint + RuleTester 8/8. PMT-14 volets B/C vérifiés. Tracker/index à jour.
+
+**Déclencheur (user)** : « continue la périphérie mais finis pmt 12 et 14 ».
+
+**lint MT-12 (PMT-12 PR-D)** : `eslint-rules/no-title-slug-literal.js` — bannit le littéral `halo_infinite` (Literal+TemplateElement) dans `features/`+`components/` (whitelist tests/i18n), niveau `warn`. RuleTester 8 cas. Flag quelques littéraux existants en warn = dette de migration tracée.
+
+**PMT-14 volet C — RE-VÉRIFIÉ DÉJÀ FAIT** : le Lab est monté (server.go:680-683), `requireAccess` fail-closed, test anti-régression `lab_routes_mounted_test.go` (chi.Walk) — livré par la passe 2026-06-14 sur main. L'audit 2026-06-15 l'avait cru absent car il ne lisait que le **diff de la branche PMT-14**, pas l'état de main (piège du diff-de-branche). Seul ajout : commentaire marquant le panneau Contracts « à retirer » (cutover Go fait) → Exit Gate C complet.
+
+**PMT-14 volet B — satisfait par construction** : 0 duplication copy-paste d'atom. Les 3 `StatusBadge` (admin/lab/ascension) sont des composants **feature-local distincts** (props/i18n propres : admin=status/label/title, lab=status/text:LabText) ; `_labShared` n'est importé QUE par Lab. Les unifier de force coupler­ait admin à l'i18n Lab et **violerait la modularité par feature** (règle projet). Décision : garder feature-local — l'oracle « 0 duplication » est respecté, la clause « source partagée » est caduque/contre-productive.
+
+**MT-09 re-vérifié** : NON bloqué par PMT-3. Le spec proposait `titleResolver.Data()` (existe) mais c'est INCORRECT — l'adapter du resolver a `career=nil` (server.go:297) donc `Capabilities()` diffère (career.progression rétrogradé) ; swap naïf casserait le career de tous les joueurs. Vrai fix = factory player-scoped par titre dans le resolver (à livrer ensuite).
+
+**INCIDENT (consigné en mémoire)** : `git worktree remove --force` sur les worktrees scratch (jonctions node_modules) a **suivi les jonctions et vidé le node_modules du repo principal** (racine + apps/web). Réparé via `npm --prefix apps/web ci` (510 packages). Tous les commits antérieurs restaient valides (node_modules intact à leur moment). Leçon : retirer la jonction AVANT `git worktree remove`.
+
+**Prochaine étape** : MT-09 (factory player-scoped resolver + allowlist archlint vide + parité), puis push.
+
+---
+
 ## [2026-06-15] PMT-14 volet A — CLÔTURE à l'Exit Gate + CONSOLIDATION mono-branche — Complété
 
 **Statut** : Branche unique `feat/multititre-peripherie`. Go build/vet/gofmt verts ; tests verts : `service` (diagnostic + drift 4 scénarios), `handlers` (admin titres, gating 401/403, oracle synthetic_b, toml-draft, lint D10), `cmd/levelup-titles` (golden text+json), suite contrat. Front : tsc + eslint clean, vitest `AdminTitlesPage` (render+drift+clipboard) 2/2, regen i18n. Seuls 2 `DeviceCodeFlow` rouges = **pré-existants** (hors PMT).
