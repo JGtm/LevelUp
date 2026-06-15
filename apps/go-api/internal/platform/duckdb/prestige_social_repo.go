@@ -24,38 +24,65 @@ func NewPrestigeSocialRepo(db *DB) *PrestigeSocialRepo { return &PrestigeSocialR
 
 var _ prestige.PrestigeRepo = (*PrestigeSocialRepo)(nil)
 
-func (r *PrestigeSocialRepo) EmitEvent(ctx context.Context, ev prestige.PrestigeEvent) error {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	_, err := r.db.ExecRecovered(ctx, `
-		INSERT INTO prestige_events (id, user_id, title_slug, source_type, source_id, pp_amount, tier, created_at)
-		VALUES (?,?,?,?,?,?,?,?)
-	`, ev.ID, ev.UserID, ev.TitleSlug, ev.SourceType, nullableStr(ev.SourceID),
-		ev.PPAmount, nullableStr(string(ev.Tier)), ev.CreatedAt)
-	if err != nil {
-		return fmt.Errorf("PrestigeRepo.EmitEvent: %w", err)
+// execCheckpointed exécute une écriture mutative sur shared_social (avec reopen
+// auto sur invalidation) PUIS flushe le WAL via CHECKPOINT immédiat (non-fatal).
+//
+// Les writes Prestige tournent déjà sous le lease KindSharedSocial (acquis par
+// LazyPrestigeService pour le HTTP, tenu par le sync engine pour le post-sync) :
+// le CHECKPOINT s'exécute donc sous le lease, sérialisé avec le sync engine.
+// Sans lui, l'INSERT/UPDATE/DELETE reste dans le WAL et est perdu si la recovery
+// #7659 quarantine un WAL orphelin au restart — même classe de bug que les
+// mutations notifications (ADR 0022). CHECKPOINT non-fatal : la donnée est déjà
+// commit, le scheduler 5 min fera fallback.
+func execCheckpointed(ctx context.Context, db *DB, query string, args ...any) error {
+	if _, err := db.ExecRecovered(ctx, query, args...); err != nil {
+		return err
 	}
-	// Mettre à jour user_prestige (upsert)
-	if err := r.bumpUserPrestige(ctx, ev.UserID, ev.TitleSlug, ev.PPAmount, ev.CreatedAt); err != nil {
-		return fmt.Errorf("PrestigeRepo.EmitEvent bump: %w", err)
-	}
+	_ = CheckpointSharedSocial(ctx, db)
 	return nil
 }
 
-// bumpUserPrestige ajoute pp_amount au total + recalcule current_level (côté client).
-//
-// Le current_level est calculé par le service via LevelFromPP — ici on stocke
-// juste la valeur reçue. L'appelant doit avoir pré-calculé current_level, ou
-// laisser à 0 si non disponible (cas par défaut).
-func (r *PrestigeSocialRepo) bumpUserPrestige(ctx context.Context, userID, titleSlug string, delta int, at time.Time) error {
-	_, err := r.db.ExecRecovered(ctx, `
-		INSERT INTO user_prestige (user_id, title_slug, total_pp, current_level, updated_at)
-		VALUES (?, ?, ?, 0, ?)
-		ON CONFLICT (user_id, title_slug) DO UPDATE SET
-			total_pp = user_prestige.total_pp + EXCLUDED.total_pp,
-			updated_at = EXCLUDED.updated_at
-	`, userID, titleSlug, delta, at)
-	return err
+// EmitEvent journalise un gain de PP ET incrémente le total du joueur de façon
+// ATOMIQUE : l'INSERT dans prestige_events (journal) et l'UPSERT dans
+// user_prestige (total) sont dans UNE seule transaction — un crash entre les
+// deux ne peut plus laisser un événement journalisé sans bump du total. Toute la
+// TX est sous WithReopenOnInvalidated (résilience connexion shared_social), suivie
+// d'un CHECKPOINT immédiat (durabilité au restart, ADR 0022). Le current_level
+// est laissé à 0 ici (recalculé côté service via LevelFromPP).
+func (r *PrestigeSocialRepo) EmitEvent(ctx context.Context, ev prestige.PrestigeEvent) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	err := r.db.WithReopenOnInvalidated(func() error {
+		tx, txErr := r.db.SQLDb().BeginTx(ctx, nil)
+		if txErr != nil {
+			return txErr
+		}
+		if _, e := tx.ExecContext(ctx, `
+			INSERT INTO prestige_events (id, user_id, title_slug, source_type, source_id, pp_amount, tier, created_at)
+			VALUES (?,?,?,?,?,?,?,?)
+		`, ev.ID, ev.UserID, ev.TitleSlug, ev.SourceType, nullableStr(ev.SourceID),
+			ev.PPAmount, nullableStr(string(ev.Tier)), ev.CreatedAt); e != nil {
+			_ = tx.Rollback()
+			return e
+		}
+		if _, e := tx.ExecContext(ctx, `
+			INSERT INTO user_prestige (user_id, title_slug, total_pp, current_level, updated_at)
+			VALUES (?, ?, ?, 0, ?)
+			ON CONFLICT (user_id, title_slug) DO UPDATE SET
+				total_pp = user_prestige.total_pp + EXCLUDED.total_pp,
+				updated_at = EXCLUDED.updated_at
+		`, ev.UserID, ev.TitleSlug, ev.PPAmount, ev.CreatedAt); e != nil {
+			_ = tx.Rollback()
+			return e
+		}
+		return tx.Commit()
+	})
+	if err != nil {
+		return fmt.Errorf("PrestigeRepo.EmitEvent: %w", err)
+	}
+	_ = CheckpointSharedSocial(ctx, r.db)
+	return nil
 }
 
 func (r *PrestigeSocialRepo) GetUserPrestige(ctx context.Context, userID, titleSlug string) (prestige.UserPrestige, error) {
@@ -87,7 +114,7 @@ func (r *PrestigeSocialRepo) GetUserPrestigeCrossTitle(ctx context.Context, user
 func (r *PrestigeSocialRepo) UpsertUserPrestige(ctx context.Context, up prestige.UserPrestige) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.ExecRecovered(ctx, `
+	return execCheckpointed(ctx, r.db, `
 		INSERT INTO user_prestige (user_id, title_slug, total_pp, current_level, updated_at)
 		VALUES (?, ?, ?, ?, ?)
 		ON CONFLICT (user_id, title_slug) DO UPDATE SET
@@ -95,7 +122,6 @@ func (r *PrestigeSocialRepo) UpsertUserPrestige(ctx context.Context, up prestige
 			current_level = EXCLUDED.current_level,
 			updated_at = EXCLUDED.updated_at
 	`, up.UserID, up.TitleSlug, up.TotalPP, up.CurrentLevel, up.UpdatedAt)
-	return err
 }
 
 func (r *PrestigeSocialRepo) ListEvents(ctx context.Context, userID, titleSlug string, since time.Time) ([]prestige.PrestigeEvent, error) {
@@ -194,10 +220,9 @@ var _ prestige.SquadRepo = (*PrestigeSquadRepo)(nil)
 func (r *PrestigeSquadRepo) Create(ctx context.Context, s prestige.Squad) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.ExecRecovered(ctx,
+	return execCheckpointed(ctx, r.db,
 		`INSERT INTO squad (id, name, created_by, created_at) VALUES (?, ?, ?, ?)`,
 		s.ID, s.Name, s.CreatedBy, s.CreatedAt)
-	return err
 }
 
 func (r *PrestigeSquadRepo) Get(ctx context.Context, id string) (prestige.Squad, error) {
@@ -213,19 +238,17 @@ func (r *PrestigeSquadRepo) Get(ctx context.Context, id string) (prestige.Squad,
 func (r *PrestigeSquadRepo) AddMember(ctx context.Context, m prestige.SquadMember) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.ExecRecovered(ctx,
+	return execCheckpointed(ctx, r.db,
 		`INSERT INTO squad_member (squad_id, xuid, user_id, joined_at) VALUES (?, ?, ?, ?)
 		 ON CONFLICT (squad_id, xuid) DO NOTHING`,
 		m.SquadID, m.Xuid, m.UserID, m.JoinedAt)
-	return err
 }
 
 func (r *PrestigeSquadRepo) RemoveMember(ctx context.Context, squadID, xuid string) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.ExecRecovered(ctx,
+	return execCheckpointed(ctx, r.db,
 		`DELETE FROM squad_member WHERE squad_id = ? AND xuid = ?`, squadID, xuid)
-	return err
 }
 
 func (r *PrestigeSquadRepo) ListMembers(ctx context.Context, squadID string) ([]prestige.SquadMember, error) {
@@ -286,7 +309,7 @@ var _ prestige.SquadChallengeRepo = (*PrestigeSquadChallengeRepo)(nil)
 func (r *PrestigeSquadChallengeRepo) Create(ctx context.Context, sc prestige.SquadChallenge) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.ExecRecovered(ctx, `
+	return execCheckpointed(ctx, r.db, `
 		INSERT INTO squad_challenge (
 			id, squad_id, template_id, title_slug, mode, eval_type,
 			window_type, window_value, target_per_member, expires_at, created_by, created_at
@@ -295,7 +318,6 @@ func (r *PrestigeSquadChallengeRepo) Create(ctx context.Context, sc prestige.Squ
 		string(sc.Mode), string(sc.EvalType),
 		string(sc.WindowType), sc.WindowValue, sc.TargetPerMember,
 		sc.ExpiresAt, sc.CreatedBy, sc.CreatedAt)
-	return err
 }
 
 func (r *PrestigeSquadChallengeRepo) Get(ctx context.Context, id string) (prestige.SquadChallenge, error) {
@@ -353,7 +375,7 @@ func (r *PrestigeSquadChallengeRepo) ListBySquad(ctx context.Context, squadID st
 func (r *PrestigeSquadChallengeRepo) AddParticipant(ctx context.Context, p prestige.SquadChallengeParticipant) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.ExecRecovered(ctx, `
+	return execCheckpointed(ctx, r.db, `
 		INSERT INTO squad_challenge_participant (
 			squad_challenge_id, user_id, chosen_tier, data_tier,
 			current_value, completed_at, is_private, joined_at
@@ -361,7 +383,6 @@ func (r *PrestigeSquadChallengeRepo) AddParticipant(ctx context.Context, p prest
 		ON CONFLICT (squad_challenge_id, user_id) DO NOTHING
 	`, p.SquadChallengeID, p.UserID, nullableStr(string(p.ChosenTier)), string(p.DataTier),
 		p.CurrentValue, p.CompletedAt, p.IsPrivate, p.JoinedAt)
-	return err
 }
 
 func (r *PrestigeSquadChallengeRepo) UpdateParticipantProgress(
@@ -372,12 +393,11 @@ func (r *PrestigeSquadChallengeRepo) UpdateParticipantProgress(
 ) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.ExecRecovered(ctx, `
+	return execCheckpointed(ctx, r.db, `
 		UPDATE squad_challenge_participant
 		SET current_value = ?, completed_at = ?
 		WHERE squad_challenge_id = ? AND user_id = ?
 	`, value, completedAt, challengeID, userID)
-	return err
 }
 
 func (r *PrestigeSquadChallengeRepo) ListParticipants(ctx context.Context, challengeID string) ([]prestige.SquadChallengeParticipant, error) {
