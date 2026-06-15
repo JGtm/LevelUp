@@ -11,6 +11,10 @@ type PlayerProfile struct {
 	Gamertag   string
 	XUID       string
 	PlayerSlug string
+	// TitleSlug porte le titre du joueur (MT-11 / PMT-3) pour que le pipeline V2
+	// construise le moteur sur les bonnes DB (parité avec le path V1 scheduler).
+	// Vide = halo_infinite (fallback DefaultSlug au point de construction).
+	TitleSlug string
 }
 
 // CycleResult agrège le résultat d'un cycle V2 complet.

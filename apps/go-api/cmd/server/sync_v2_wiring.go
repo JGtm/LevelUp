@@ -237,7 +237,9 @@ func (r *dryRunPostSyncRunner) RunPostSync(ctx context.Context, p syncv2.PlayerP
 // répliquée ICI sous peine de divergence runtime V1↔V2.
 func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngineFactory {
 	return func(_ context.Context, p syncv2.PlayerProfile) (*syncpkg.SyncEngine, error) {
-		engine := syncpkg.NewSyncEngine(deps.Cfg.RepoRoot, p.Gamertag, p.XUID, &domain.HaloTokens{}, deps.TokenProvider)
+		// MT-11 / PMT-3 : le profil porte le titre → écrit dans les DB du bon
+		// titre (parité avec le path V1 BuildEngine). Slug vide → DefaultSlug.
+		engine := syncpkg.NewSyncEngineForTitle(deps.Cfg.RepoRoot, p.TitleSlug, p.Gamertag, p.XUID, &domain.HaloTokens{}, deps.TokenProvider)
 
 		// 1. SharedProvider (B-swap si LEVELUP_USE_SHARED_PROVIDER=1)
 		if deps.Cfg.SharedProvider != nil {
