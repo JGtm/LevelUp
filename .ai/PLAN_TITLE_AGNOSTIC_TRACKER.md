@@ -156,7 +156,7 @@
 | PMT-7 | World-stats / leaderboard par titre | MT-03 | major | ⬜ | PMT-3 |
 | PMT-8 | Cycle de vie du titre (Status) | MT-22 | major | ✅ | branche `feat/multititre-peripherie` (cf27ff85f) |
 | PMT-9 | Registre migrations + schema_version par titre | MT-23 | major | ⬜ | PMT-3 |
-| PMT-10 | Observabilité — dimension titre | MT-05 | major | ⬜ | — |
+| PMT-10 | Observabilité — dimension titre | MT-05 | major | ✅ | logs + 3 collecteurs + endpoints ?title= + émission sync + LogsDir (PR-1→4) |
 | PMT-11 | Discord notifications (contenu) | MT-26 | major | ⬜ | — |
 | PMT-12 | Garde-fous & validateurs | MT-21, MT-09, MT-12 | major | ✅ | MT-21 ✅ + MT-09 ✅ (factory player-scoped, allowlist archlint vide) + lint MT-12 ✅ (warn) |
 | PMT-13 | Mineurs & bénins (décision documentée) | MT-24, MT-25, MT-20 | minor | ⬜ | — |

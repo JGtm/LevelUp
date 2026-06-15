@@ -170,6 +170,14 @@ func main() {
 	preliminaryRepoRoot := os.Getenv("LEVELUP_REPO_ROOT") // peut être vide, sera résolu plus tard
 	logsCfg := logging.LoadConfig(preliminaryRepoRoot)
 
+	// MT-05 (PMT-10 PR-4) : namespacer les fichiers logs par titre UNIQUEMENT
+	// quand plusieurs titres sont servis (déploiement multi-titre). En mono-titre
+	// Halo (cas actuel, len==1), no-op → LogsDir nu, byte-identique. S'active
+	// automatiquement dès qu'un 2e titre est enregistré dans le registre.
+	if len(title.NewRegistry().All()) > 1 {
+		logsCfg = logsCfg.WithTitleNamespace(title.DefaultSlug)
+	}
+
 	// Crash output : redirige les panics Go runtime + fatal errors vers un
 	// fichier dédié (sinon ils partent sur stderr qui n'est capturé nulle part
 	// sous air/Windows). Sans ça : crash silencieux, pas de stack trace, diag
