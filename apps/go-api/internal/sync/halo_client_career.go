@@ -12,7 +12,12 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"levelup/go-api/internal/games"
 )
+
+// defaultEconomyHostSync est l'host economy Halo par défaut (fallback legacy MT-01).
+const defaultEconomyHostSync = "https://economy.svc.halowaypoint.com"
 
 func (c *HaloAPIClient) GetCareerProgress(ctx context.Context, xuid string) (*CareerRankData, error) {
 	if strings.TrimSpace(xuid) == "" {
@@ -20,7 +25,7 @@ func (c *HaloAPIClient) GetCareerProgress(ctx context.Context, xuid string) (*Ca
 	}
 	progressURL := fmt.Sprintf(
 		"%s/hi/careerranks/careerRank1?players=xuid(%s)",
-		c.economyHost(),
+		c.economyHost(ctx),
 		url.PathEscape(xuid),
 	)
 	progressBody, ok, err := c.doPlayerGatedGet(ctx, progressURL)
@@ -67,7 +72,7 @@ func (c *HaloAPIClient) GetSpartanCustomization(ctx context.Context, xuid string
 	}
 	customizationURL := fmt.Sprintf(
 		"%s/hi/players/xuid(%s)/customization/appearance",
-		c.economyHost(),
+		c.economyHost(ctx),
 		url.PathEscape(xuid),
 	)
 	customizationBody, ok, err := c.doPlayerGatedGet(ctx, customizationURL)
@@ -82,7 +87,7 @@ func (c *HaloAPIClient) GetSpartanCustomization(ctx context.Context, xuid string
 		// Décodée par le même parseCustomizationAppearance (navigation Appearance.*).
 		publicURL := fmt.Sprintf(
 			"%s/hi/players/xuid(%s)/customization?view=public",
-			c.economyHost(),
+			c.economyHost(ctx),
 			url.PathEscape(xuid),
 		)
 		pubBody, pubOK, pubErr := c.doPlayerGatedGet(ctx, publicURL)
@@ -166,18 +171,22 @@ func (c *HaloAPIClient) GetCareerRank(ctx context.Context, xuid string) (*Career
 	return data, nil
 }
 
-func (c *HaloAPIClient) economyHost() string {
-	if strings.TrimSpace(c.economyBaseURL) == "" {
-		return "https://economy.svc.halowaypoint.com"
+// economyHost résout l'host economy (career/customization). Précédence (MT-01) :
+// override d'instance `economyBaseURL` (champ test, non vide) → resolver
+// title-aware (ctx slug) → const Halo legacy. Byte-identique pour halo_infinite.
+func (c *HaloAPIClient) economyHost(ctx context.Context) string {
+	if s := strings.TrimSpace(c.economyBaseURL); s != "" {
+		return strings.TrimRight(s, "/")
 	}
-	return strings.TrimRight(c.economyBaseURL, "/")
+	return c.hostFor(ctx, games.EndpointEconomy, defaultEconomyHostSync)
 }
 
-func (c *HaloAPIClient) gameCMSHost() string {
-	if strings.TrimSpace(c.gameCMSBaseURL) == "" {
-		return haloGameCMSHost
+// gameCMSHost résout l'host gamecms (customization media). Même précédence.
+func (c *HaloAPIClient) gameCMSHost(ctx context.Context) string {
+	if s := strings.TrimSpace(c.gameCMSBaseURL); s != "" {
+		return strings.TrimRight(s, "/")
 	}
-	return strings.TrimRight(c.gameCMSBaseURL, "/")
+	return c.hostFor(ctx, games.EndpointGameCMS, haloGameCMSHost)
 }
 
 func (c *HaloAPIClient) doPlayerGatedGet(ctx context.Context, rawURL string) ([]byte, bool, error) {
@@ -342,7 +351,7 @@ func (c *HaloAPIClient) resolveCustomizationImageURL(ctx context.Context, invent
 		return "", fmt.Errorf("resolveCustomizationImageURL: inventory path vide")
 	}
 
-	endpoint := fmt.Sprintf("%s/hi/progression/file/%s", c.gameCMSHost(), trimmed)
+	endpoint := fmt.Sprintf("%s/hi/progression/file/%s", c.gameCMSHost(ctx), trimmed)
 	body, err := c.doGet(ctx, endpoint)
 	if err != nil {
 		return "", err
@@ -357,7 +366,7 @@ func (c *HaloAPIClient) resolveCustomizationImageURL(ctx context.Context, invent
 	if mediaPath == "" {
 		return "", fmt.Errorf("resolveCustomizationImageURL: media path absent")
 	}
-	return buildCustomizationImageURL(c.gameCMSHost(), mediaPath), nil
+	return buildCustomizationImageURL(c.gameCMSHost(ctx), mediaPath), nil
 }
 
 func extractCustomizationMediaPath(payload map[string]any) string {

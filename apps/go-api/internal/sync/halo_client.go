@@ -155,9 +155,10 @@ func NewHaloAPIClient(spartanToken, clearanceToken string, requestsPerSecond int
 		},
 		spartanToken:   spartanToken,
 		clearanceToken: clearanceToken,
-		economyBaseURL: "https://economy.svc.halowaypoint.com",
-		gameCMSBaseURL: haloGameCMSHost,
-		limiter:        rate.NewLimiter(rate.Limit(requestsPerSecond), 1),
+		// economyBaseURL/gameCMSBaseURL laissés vides : la résolution d'host passe
+		// par economyHost(ctx)/gameCMSHost(ctx) → EndpointResolver title-aware
+		// (fallback const Halo). Non vides = override d'instance (tests).
+		limiter: rate.NewLimiter(rate.Limit(requestsPerSecond), 1),
 	}
 }
 
