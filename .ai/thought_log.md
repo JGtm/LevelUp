@@ -8,7 +8,11 @@
 
 **Oracle** : `halo_exchange_descriptor_test.go` (recordingRT capture la requête) — Spartan défaut → corps byte-identique `{"Audience":"urn:343:s3:services","MinVersion":"4","Proof":[{"Token":...,"TokenType":"Xbox_XSTSv3"}]}` + URL ; Clearance défaut → URL+GET+header `x-343-authorization-spartan` ; XSTS défaut → `RelyingParty` = prod.xsts.halowaypoint.com ; chacun + variante synthétique qui route vers `example.test`.
 
-**Prochaine étape** : leg 3 SISU (`buildTokenProvider` → `NewSISUProviderWithIDs(desc…)`) + leg 4 scopes (unifier `XboxScopes`/`xboxScopes` sur `OAuthScopes`). Leg 5 (store path namespacing) = **IRRÉVERSIBLE** (les fichiers token globaux sont l'UNIQUE copie du RT MS ; cutover nu = re-SSO de tous) → exige une copy-migration boot bundlée — escaladé.
+**Legs 3-4 (LIVRÉS)** : leg 3 SISU — `buildTokenProvider(settingsStore, authDesc)` widened ; les 2 branches SISU → `NewSISUProviderWithIDs(authDesc.SISUAppID, authDesc.SISUTitleID)` (garde `NewSISUProvider()` si descripteur incomplet) ; call site main.go:613 + token_provider_test passent `DefaultHaloAuthDescriptor()`. Leg 4 scopes — `OAuthScopesParam()` (join) sur le descripteur ; `var XboxScopes = …OAuthScopes` (msal_client) + `var xboxScopes = …OAuthScopesParam()` (oauth_refresh, const→var) → **source unique, zéro dérive** []string↔string. Golden `TestScopes_DescriptorDerivation_GoldenParity`. Build all + auth + cmd/server + title verts.
+
+**Leg 5 (store path namespacing) — ESCALADÉ, NON livré** : **IRRÉVERSIBLE**. Le vérificateur adversarial confirme : les fichiers `data/auth/watcher_tokens/{xuid}.json` sont l'UNIQUE copie persistée du RT MS (`OAuthRefreshToken`/`MSALCacheJSON`) ; basculer `WatcherTokensDir()` → `data/titles/{slug}/auth/watcher_tokens` sans copy-migration = dir neuf vide → `LoadAll` rend `{}` → 0 credential → **re-SSO de tous les joueurs** (classe d'incident `invalid_grant`). 26 call-sites (pas 8). Exige : (A) `WatcherTokensDir(slug)` title-aware + champs `Spartan/Clearance/TitleSlug` sur `UserTokens` + (B) **copy-migration boot bundlée** (étendre `migrateLegacyAuthTokensAtBoot`, idempotent atomic rename). À livrer comme un tout, jamais le path-change seul → décision/sign-off requis.
+
+**Prochaine étape** : Phase 1.5 (relocation steps additifs SAFE) + escalade inversion canonicalOrder 148/149.
 
 ---
 

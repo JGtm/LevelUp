@@ -75,11 +75,19 @@ var version = "dev"
 //
 //	"" (défaut) | "sisu" → SISUProvider
 //	"msal"               → MSALProvider (fallback config-only)
-func buildTokenProvider(settingsStore *settings.Store) auth.TokenProvider {
+func buildTokenProvider(settingsStore *settings.Store, authDesc title.AuthDescriptor) auth.TokenProvider {
+	// MT-02 (PMT-2 leg 3) : les SISU app/title id viennent du descripteur du titre
+	// (byte-identique au défaut Halo). Descripteur incomplet → garde NewSISUProvider().
+	newSISU := func() auth.TokenProvider {
+		if authDesc.SISUAppID != "" && authDesc.SISUTitleID != "" {
+			return auth.NewSISUProviderWithIDs(authDesc.SISUAppID, authDesc.SISUTitleID)
+		}
+		return auth.NewSISUProvider()
+	}
 	s, err := settingsStore.Load()
 	if err != nil {
 		slog.Warn("buildTokenProvider: lecture settings échouée, défaut SISU", "err", err)
-		return auth.NewSISUProvider()
+		return newSISU()
 	}
 	if s.AuthProvider == "msal" {
 		slog.Info("buildTokenProvider: MSAL provider activé (fallback config)")
@@ -88,8 +96,9 @@ func buildTokenProvider(settingsStore *settings.Store) auth.TokenProvider {
 	if s.AuthProvider != "" && s.AuthProvider != "sisu" {
 		slog.Warn("buildTokenProvider: valeur auth_provider inconnue, défaut SISU", "value", s.AuthProvider)
 	}
-	slog.Info("buildTokenProvider: SISU provider activé (défaut)")
-	return auth.NewSISUProvider()
+	slog.Info("buildTokenProvider: SISU provider activé (défaut)",
+		"sisu_title_id", authDesc.SISUTitleID)
+	return newSISU()
 }
 
 func main() {
@@ -610,7 +619,7 @@ func main() {
 
 	// --- 6. Scheduler, watcher, puis routeur HTTP ---
 	settingsStore := settings.NewStore(cfg.AppSettingsPath)
-	tokenProvider := buildTokenProvider(settingsStore)
+	tokenProvider := buildTokenProvider(settingsStore, title.DefaultHaloAuthDescriptor())
 
 	// ADR 0023 Phase 2 — Migration boot-time des tokens legacy vers MultiUserTokenStore.
 	// Copie SPNKR_OAUTH_REFRESH_TOKEN_<GT> (env) + sync_meta.oauth_refresh_token (DuckDB)

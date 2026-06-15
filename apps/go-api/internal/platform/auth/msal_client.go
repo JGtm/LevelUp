@@ -22,6 +22,8 @@ import (
 
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/cache"
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/public"
+
+	"levelup/go-api/internal/domain/title"
 )
 
 const (
@@ -39,7 +41,8 @@ const (
 )
 
 // XboxScopes sont les scopes requis pour Xbox Live.
-var XboxScopes = []string{"Xboxlive.signin", "Xboxlive.offline_access"}
+// XboxScopes — scopes Xbox Live, dérivés du descripteur (MT-02, source unique).
+var XboxScopes = title.DefaultHaloAuthDescriptor().OAuthScopes
 
 // msalDeviceFlow implémente DeviceFlow via MSAL Device Code Flow.
 // Privé — créé uniquement par InitDeviceFlow.

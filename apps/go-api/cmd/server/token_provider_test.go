@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/settings"
 )
@@ -38,7 +39,7 @@ func TestBuildTokenProvider_DefaultIsSISU(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			p := buildTokenProvider(newSettingsStoreWithProvider(t, c.provider))
+			p := buildTokenProvider(newSettingsStoreWithProvider(t, c.provider), title.DefaultHaloAuthDescriptor())
 			if _, ok := p.(*auth.SISUProvider); !ok {
 				t.Errorf("attendu *SISUProvider, got %T", p)
 			}
@@ -47,7 +48,7 @@ func TestBuildTokenProvider_DefaultIsSISU(t *testing.T) {
 }
 
 func TestBuildTokenProvider_MsalExplicit(t *testing.T) {
-	p := buildTokenProvider(newSettingsStoreWithProvider(t, "msal"))
+	p := buildTokenProvider(newSettingsStoreWithProvider(t, "msal"), title.DefaultHaloAuthDescriptor())
 	if _, ok := p.(*auth.MSALProvider); !ok {
 		t.Errorf("attendu *MSALProvider pour auth_provider=msal, got %T", p)
 	}

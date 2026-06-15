@@ -111,6 +111,17 @@ func TestRequestClearanceTokenWith_GoldenAndRouting(t *testing.T) {
 	})
 }
 
+// TestScopes_DescriptorDerivation_GoldenParity prouve que les scopes dérivés du
+// descripteur (MT-02 leg 4) sont byte-identiques aux littéraux historiques.
+func TestScopes_DescriptorDerivation_GoldenParity(t *testing.T) {
+	if len(XboxScopes) != 2 || XboxScopes[0] != "Xboxlive.signin" || XboxScopes[1] != "Xboxlive.offline_access" {
+		t.Errorf("XboxScopes = %v, want [Xboxlive.signin Xboxlive.offline_access]", XboxScopes)
+	}
+	if xboxScopes != "Xboxlive.signin Xboxlive.offline_access" {
+		t.Errorf("xboxScopes = %q, want space-joined", xboxScopes)
+	}
+}
+
 // TestRequestXSTSToken_DescriptorAudience prouve que l'audience du descripteur
 // arrive dans le corps RelyingParty de la requête XSTS.
 func TestRequestXSTSToken_DescriptorAudience(t *testing.T) {
