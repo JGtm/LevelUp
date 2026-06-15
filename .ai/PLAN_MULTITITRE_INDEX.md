@@ -63,12 +63,12 @@ La re-vérification a déjà corrigé plusieurs erreurs de la passe d'audit init
 | MT-06 | Enum Outcome `2/3/1/4` baké en SQL + citations + front | major | gap | [PMT-5](PLAN_MULTITITRE_PERIPHERY.md) | `internal/domain/outcomes.go:15-20` |
 | MT-08 | `XboxTitleIDFor` + achievements (`WHERE title_id='halo_infinite'`) | major | gap | [PMT-6](PLAN_MULTITITRE_PERIPHERY.md) | `internal/domain/title/registry.go:81-91` |
 | MT-03 | World-stats / leaderboard (repos, enricher, CLIs, `DEFAULT 'halo_infinite'`) | major | gap | [PMT-7](PLAN_MULTITITRE_PERIPHERY.md) | `internal/analysis/world_stats.go` |
-| MT-22 | Cycle de vie titre (`Status` défini, jamais lu/gaté) | major | gap | [PMT-8](PLAN_MULTITITRE_PERIPHERY.md) | `internal/api/middleware/title.go:30-47` |
+| MT-22 | Cycle de vie titre (`Status` défini, jamais lu/gaté) | major | done | [PMT-8](PLAN_MULTITITRE_PERIPHERY.md) ✅ cf27ff85f | `middleware/require_active_title.go` (gate 503) |
 | MT-23 | Registre/ordre de migrations = 1 liste globale Halo lancée sur chaque titre | major | gap | [PMT-9](PLAN_MULTITITRE_PERIPHERY.md) | `internal/migration/order.go:15-54` |
 | MT-05 | Observabilité sans dimension titre (expvar/error/player-API/perf endpoints) | major | partiel | [PMT-10](PLAN_MULTITITRE_PERIPHERY.md) | `internal/observability/expvar_metrics.go:32-124` |
 | MT-26 | Discord : config globale (→PMT-4) + contenu 100% Halo (→PMT-11) | major | gap | [PMT-4](PLAN_MULTITITRE_PERIPHERY.md)/[PMT-11](PLAN_MULTITITRE_PERIPHERY.md) | `internal/notify/discord.go:188-297` + `embeds.go:211-250` |
 | MT-09 | Cutoffs factory `DefaultSlug` (`dataAdapterForPDB` → nil pour non-Halo) | major | partiel | [PMT-12](PLAN_MULTITITRE_PERIPHERY.md) | `internal/api/registry.go:367-376` |
-| MT-21 | Aucun validateur boot « TOML requis présents » par titre enregistré | minor | gap | [PMT-12](PLAN_MULTITITRE_PERIPHERY.md) | `internal/games/mappings/registry.go:123-142` |
+| MT-21 | Aucun validateur boot « TOML requis présents » par titre enregistré | minor | done | [PMT-12](PLAN_MULTITITRE_PERIPHERY.md) ✅ dcfc01c31 | `internal/games/mappings/validate.go` (capability-driven) |
 | MT-12 | Front : constantes littérales `TITLE_SLUG='halo_infinite'` + lint absent | major | partiel | [EXT-5](PLAN_MULTITITRE_PERIPHERY.md)/[PMT-12](PLAN_MULTITITRE_PERIPHERY.md) | `apps/web/src/lib/staticAssets.ts:26` |
 | MT-13 | Front : tables Halo client-side (teamNames, tier grids, badge `HINF`, 225 HP) | major | partiel | [EXT-5](PLAN_MULTITITRE_PERIPHERY.md) | `apps/web/src/lib/halo/teamNames.ts:17-27` |
 | MT-07 | Modèle rangs/tiers carrière (272 rangs, 6 tiers, P80) non externalisé | major | partiel | [EXT-2](PLAN_MULTITITRE_PERIPHERY.md) | `internal/migration/career_rank_data.go:16-60` |
@@ -108,6 +108,8 @@ Specs complètes dans [PLAN_MULTITITRE_PERIPHERY.md](PLAN_MULTITITRE_PERIPHERY.m
 | **EXT-1.5** | Extension Phase 1.5 (metadata/ops/seed/notif) | MT-16, MT-10, MT-18, MT-17 | major | PMT-3 |
 | **EXT-2** | Extension Phase 2 (career/LUSR/extraction/prestige) | MT-07, MT-15, MT-14, MT-19 | major | PMT-3 |
 | **EXT-5** | Extension Phase 5 (slug constants + tables Halo front) | MT-12, MT-13 | major | Phase 5 |
+
+> **Statut clôture (2026-06-15, branche `feat/multititre-peripherie`)** : **PMT-8** ✅ (gate `RequireActiveTitle` 503 + seam restauré + oracle synthetic_b). **PMT-12** 🟡 — MT-21 ✅ (validateur boot capability-driven + golden HI + oracle synthetic_b) ; **MT-09** (cutoffs) reste **après PMT-3**, **lint MT-12** front différé. **PMT-14** 🟡 — **volet A** ✅ (liste/détail/diagnostic+drift, toml-draft D10, CLI `levelup-titles diagnose`, admin-gating 401/403, page aide 2e titre) ; **volet B** (partage atoms Lab) et **volet C** (réhab Lab) différés.
 
 > **Constat Lab (PMT-14 volet C, audit 2026-06-14)** : le Lab est **cassé** — backend complet (`handlers/lab.go`, `service/lab_service.go`, `platform/lab/`) mais **jamais monté** dans `server.go` (0 occurrence `/lab`) → les 3 endpoints `/lab/{resources,contracts,diagnostics}` renvoient **404 en prod**. Casse masquée par des mocks MSW (`test/handlers.ts`) + tests chi-local. Réhabilitation = monter + durcir `requireAccess` (fail-closed) + **test d'intégration serveur** anti-régression. Modèle d'accès Lab = capability `can_manage_instance` (≠ admin role) → décision à trancher au montage.
 

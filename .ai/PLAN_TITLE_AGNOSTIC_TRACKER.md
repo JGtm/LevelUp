@@ -154,18 +154,20 @@
 | PMT-5 | Canonicalisation Outcome | MT-06 | major | ⬜ | — |
 | PMT-6 | Achievements par titre | MT-08 | major | ⬜ | PMT-1/2 |
 | PMT-7 | World-stats / leaderboard par titre | MT-03 | major | ⬜ | PMT-3 |
-| PMT-8 | Cycle de vie du titre (Status) | MT-22 | major | ⬜ | — |
+| PMT-8 | Cycle de vie du titre (Status) | MT-22 | major | ✅ | branche `feat/multititre-peripherie` (cf27ff85f) |
 | PMT-9 | Registre migrations + schema_version par titre | MT-23 | major | ⬜ | PMT-3 |
 | PMT-10 | Observabilité — dimension titre | MT-05 | major | ⬜ | — |
 | PMT-11 | Discord notifications (contenu) | MT-26 | major | ⬜ | — |
-| PMT-12 | Garde-fous & validateurs | MT-21, MT-09, MT-12 | major | ⬜ | après PMT-3 |
+| PMT-12 | Garde-fous & validateurs | MT-21, MT-09, MT-12 | major | 🟡 | MT-21 ✅ (dcfc01c31) ; MT-09 après PMT-3, lint MT-12 différés |
 | PMT-13 | Mineurs & bénins (décision documentée) | MT-24, MT-25, MT-20 | minor | ⬜ | — |
-| PMT-14 | Admin : gestion des titres (+ réhab. Lab cassé) | MT-22 (+1.7a/b, 1.8) | major | ⬜ | PMT-3, 1.7a/b✅, PMT-4/8 |
+| PMT-14 | Admin : gestion des titres (+ réhab. Lab cassé) | MT-22 (+1.7a/b, 1.8) | major | 🟡 | vol.A ✅ (b06964292→bca7514d5) ; vol.B/C (Lab) différés |
 | EXT-1.5 | Extension Phase 1.5 (metadata/ops/seed/notif) | MT-16/10/18/17 | major | ⬜ | PMT-3 |
 | EXT-2 | Extension Phase 2 (career/LUSR/extraction/prestige) | MT-07/15/14/19 | major | ⬜ | PMT-3 |
 | EXT-5 | Extension Phase 5 (slug constants + tables Halo front) | MT-12/13 | major | ⬜ | Phase 5 |
 
 **Bloquants 2ᵉ titre (récap)** : Phase 1.5 (DDL) + PMT-1 (hosts) + PMT-2 (auth) + PMT-3 (écriture par titre). Le reste suit.
+
+**Clôture 2026-06-15 (branche `feat/multititre-peripherie`)** : PMT-8, PMT-12 (MT-21) et PMT-14 volet A livrés à leur Exit Gate (oracles double Halo+synthetic_b verts à chaque axe). Différés explicites tracés : **MT-09** (cutoffs DefaultSlug→lookup) dépend de **PMT-3** ; **lint MT-12** (front, titres hardcodés) ; **PMT-14 volet B** (partage atoms Lab) et **volet C** (réhab Lab cassé, cf. constat ci-dessous). Les 3 phases ont été consolidées sur UNE branche (1 tâche = N commits) après un éclatement initial en 3 branches/worktrees (corrigé).
 
 **Constat (PMT-14 vol. C, audit 2026-06-14)** : le **Lab est cassé** — backend implémenté mais **non monté** dans `server.go` (`/lab/*` → 404 en prod, masqué par mocks MSW + tests chi-local ; `requireAccess` fail-open). Réhabilitation tracée en PMT-14 volet C (monter + durcir + test d'intégration serveur).
 
