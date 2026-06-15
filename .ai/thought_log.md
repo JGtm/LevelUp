@@ -1,3 +1,17 @@
+## [2026-06-15] Hauteur du bloc barre XP — parité Explorer ↔ Home — Complété
+
+**Statut** : 1 edit CSS (classes Tailwind), pas de logique. Commit en attente d'autorisation.
+
+**Déclencheur (user)** : sur la page Explorer (résultats recherche par joueur), le bloc noir/gris contenant la barre d'XP du Spartan ID n'avait pas la même hauteur que le bloc équivalent sur l'accueil (Home) — rendu pas harmonieux.
+
+**Cause** : `ExplorerTargetIdentityBanner` est un fork dégradé de `HomeSpartanIdentityBanner` (cf. mémoire `explorer_banner_forks_home`). Le wrapper du bloc XP divergait : Explorer = `relative bg-card px-5 pb-4` + `space-y-2` (pas de padding haut, pas de `border-t`, espacement serré), Home = `border-t border-border/70 bg-card px-5 py-4 sm:px-6` + `space-y-3`.
+
+**Fix** : aligner le wrapper Explorer sur le Home → `relative border-t border-border/70 bg-card px-5 py-4 sm:px-6` + `space-y-3`. Même hauteur / même séparation visuelle / même aération.
+
+**Fichier** : `apps/web/src/features/explorer/ExplorerTargetIdentityBanner.tsx` (bloc careerRank).
+
+---
+
 ## [2026-06-15] Bouton « Voir les matchs » en L2 (Solo / Sessions / Escouade) — Complété
 
 **Statut** : go build ./... + `go test ./internal/service ./internal/api/handlers -run Filter` verts (`FilteredMatchIDs` + handler `MatchIDs` couverts) ; `tsc --noEmit` = 0 ; `eslint --quiet` = 0 erreur sur les fichiers touchés ; vitest `FilterOmnibar` (15) + `SquadMatchHistoryTable` (9). (2 échecs `TestE2E_DeviceCodeFlow_*` = appel réseau live xboxlive, pré-existants, sans rapport.) Branche `fix/align-manual-sync-tokens` (sujet UI distinct du WIP sync — user a demandé de rester sur la branche, sans commit). Commit en attente d'autorisation.
@@ -15,6 +29,58 @@
 **Fichiers** : `domain/filters.go` (+`FilterMatchIDsResponse`), `service/filters_service.go` (refactor + `FilteredMatchIDs` + `ResolveMatchIDs`), `port/services.go` (+méthode interface), `api/handlers/filters.go` (+handler `MatchIDs`, slice jamais nil), `api/server.go` (+route), `lib/api/types.ts` (+`FilterMatchIdsResponse`), i18n `common.toml`+`generated/common.ts` (`browse_label`/`browse_title` FR/EN), `FilterOmnibar.tsx` (bouton + fetch au clic), `SquadLayout.tsx` (bouton via `match_history[0]`). Tests : `filters_service_test.go` (`FilteredMatchIDs` solo/squad/vide), `filters_test.go` (handler OK + slice `[]` non-null).
 
 **Reste** : vérif manuelle live (Sessions session pickée / Solo période+cascade / Escouade composition → bouton ouvre le plus récent, prev/next reste dans le périmètre). Commit en attente d'autorisation user.
+
+---
+
+## [2026-06-15] Durabilité des mutations Prestige shared_social (même bug que les notifs) — Complété
+
+**Statut** : build `./...` + vet verts ; `go test` (CGO_ENABLED=1, `-gcflags=all=-d=checkptr=0`) verts sur : 4 tests durabilité `TestSetPrestige*PersistsAfterReopen` (`internal/platform/duckdb`, oracle WAL), prestige integration `-tags integration` (`TestPrestige*`, dont EmitEvent_BumpsTotal/Leaderboard), sélection gate (duckdb+dblease), sentinelles ART (`internal/sync`). Suite du fix notifications (même branche `fix/notifications-durable-writes`). Commit en attente d'autorisation user.
+
+**Déclencheur (user)** : « tu pourras t'occuper des mutations prestige aussi » — après le fix notifications, étendre la durabilité aux écritures Prestige shared_social (le doc du persister listait Prestige comme contournant encore le CHECKPOINT).
+
+**Cause racine** : `prestige_social_repo.go` (3 repos : PrestigeSocialRepo, PrestigeSquadRepo, PrestigeSquadChallengeRepo) écrivait sur shared_social via `db.ExecRecovered` **sans CHECKPOINT** → WAL non flushé → perdu à la quarantaine d'un WAL orphelin #7659 au restart (même classe que les notifs).
+
+**Décision technique principale** : approche **plus légère que les notifs** car l'orchestrateur est DÉJÀ en place — `LazyPrestigeService` acquiert le lease `KindSharedSocial` avant les writes HTTP (`acquireSharedSocialWriter`), et le post-sync tourne sous le lease tenu par le sync engine (invariant deadlock-free, cf. `prestige_setup.go:RunPostSync`). Il ne manquait QUE le CHECKPOINT. Ajout d'un helper `execCheckpointed(ctx, db, query, args...)` (= `ExecRecovered` + `CheckpointSharedSocial` réutilisé, non-fatal) ; les 8 mutations y sont routées : `bumpUserPrestige`, `UpsertUserPrestige`, `Squad.Create/AddMember/RemoveMember`, `SquadChallenge.Create/AddParticipant/UpdateParticipantProgress`. `EmitEvent` garde son INSERT prestige_events en `ExecRecovered` simple puis `bumpUserPrestige` (checkpointé) flushe les DEUX writes en un seul CHECKPOINT. PAS de routage via SocialPersister (disproportionné : 6 tables au schéma évolué — squad_member rekeyé xuid — réimplémenter le SQL dans le persister serait risqué ; `r.db` EST déjà la connexion orchestrée, CHECKPOINT dessus = même garantie).
+
+**Atomicité EmitEvent (fait, demandé par user)** : `EmitEvent` enveloppe désormais l'INSERT prestige_events + l'UPSERT user_prestige dans UNE transaction (`r.db.SQLDb().BeginTx`), sous `WithReopenOnInvalidated`, + CHECKPOINT après commit. Un crash entre les deux ne peut plus laisser un événement journalisé sans bump du total. `bumpUserPrestige` (devenu mort — seul EmitEvent l'appelait) supprimé. Test dédié `TestPrestigeEmitEvent_Atomic_RollsBackOnBumpFailure` (DROP user_prestige → UPSERT échoue → INSERT prestige_events rollback, 0 ligne).
+
+**Fichiers** : `internal/platform/duckdb/prestige_social_repo.go` (+helper execCheckpointed, 8 mutations routées, EmitEvent atomique, bumpUserPrestige supprimé), `internal/platform/duckdb/prestige_writes_checkpoint_test.go` (nouveau, `package duckdb_test`, oracle WAL réutilisant `walSize` + test atomicité). Schéma de test via `migration.RunForDB(TargetSharedSocial)` (schéma évolué correct).
+
+**Reste / prochaine étape** : commit en attente d'autorisation (2e commit sur la branche, après le fix notifications). Mettre à jour la mémoire `reference_shared_social_durable_writes_checkpoint` (Prestige n'est plus un site restant).
+
+---
+
+## [2026-06-15] Durabilité des mutations notifications (mark-read/delete/prefs revenaient au restart) — Complété
+
+**Statut** : build `./...` + vet verts ; `go test` (CGO_ENABLED=1, `-gcflags=all=-d=checkptr=0`) verts sur `internal/persist` (6 nouveaux unitaires + harnais), `internal/notifications`, sélection gate `internal/platform/duckdb` (4 tests durabilité + sentinelles `TestNoATTACHOnSocialDB`/`TestRequireSocialPersister`), regressions ART `TestRegression_*` (chemin legacy), et sentinelles `internal/sync` (`TestNoARTPatterns*`, write-guards). Branche `fix/align-manual-sync-tokens` (sujet distinct du WIP sync — rester sur la branche courante). Commit en attente d'autorisation user.
+
+**Déclencheur (user)** : « les notifs ne veulent pas disparaître, je les marque comme lues et elles finissent par revenir plus tard, ça ne doit pas survivre à un reset de session ». AskUserQuestion : symptôme = **les mêmes** notifs qui redeviennent non-lues (bug de persistance, pas la ré-émission Coach 24h) ; étendue = **complète** (toutes les mutations). Directive ultérieure : « rendre durable **mais bien passer par l'orchestrateur** ».
+
+**Cause racine (cadrage corrigé après vérification)** : `Insert` était migré vers `SocialPersister.CreateNotification` (ADR 0022) mais les mutations `MarkRead/MarkUnread/MarkAllRead/Delete/CapAndSweep/UpsertPreferences` de `notifications_repo.go` écrivaient encore via `OpenReadWrite(...) + Exec` **sans CHECKPOINT**. NB : `OpenReadWrite` et `OpenReadWriteShared` partagent la clé de cache `"rw:"+path` → c'est la **même** instance DuckDB que les lectures (pas un handle isolé) ; le vrai défaut est le **CHECKPOINT manquant** → l'UPDATE `read_at` reste dans le WAL → **perdu** quand la recovery #7659 quarantine un WAL orphelin au restart. `Persist()` générique et le singulier `MarkNotificationRead` ne CHECKPOINT pas non plus → il fallait des **méthodes ciblées** (style `SetMediaLiked`).
+
+**Décision technique principale** : 6 méthodes ciblées sur `SharedSocialPersister` (`MarkNotificationsRead` batch N ids, `MarkNotificationUnread`, `MarkAllNotificationsRead`, `DeleteNotification`, `CapAndSweepNotifications`, `UpsertNotificationPreferences`) faisant `BeginTx → exec → Commit → CHECKPOINT` (helper `execNotifWriteCheckpointed`, CHECKPOINT non-fatal — sémantique `LeasedWriter.CommitWithCheckpoint`). **Orchestrateur** = lease `KindSharedSocial`, **déjà câblé** côté `notifications.Service.withWriter` (registry_notifications.go) → les méthodes n'acquièrent pas de lease elles-mêmes et écrivent sur `p.db` = la connexion orchestrée. Repo routé via persister avec garde `RequireSocialPersister` (refuse le legacy en prod) + fallback legacy conservé pour les tests. **Politique CHECKPOINT** : immédiat pour les actions user-facing (read/unread/all/delete/prefs) ; `CapAndSweep` sans CHECKPOINT (purge idempotente, best-effort, ne propage jamais — appelée sous `Emit`).
+
+**Finding test (important)** : un reopen `access_mode=READ_ONLY` **rejoue le WAL** → ne discrimine PAS un write non-checkpointé (vérifié empiriquement, le test naïf passait à tort). Oracle retenu = **taille du fichier `.wal`** : CHECKPOINT le tronque (==0), un write brut le laisse >0. Test négatif `..._LegacyNoCheckpoint_LeavesWAL` valide que l'oracle discrimine ; positifs `TestSet*PersistsAfterReopen` (nommés pour matcher le gate `-run 'TestSet.*PersistsAfter'`) asservissent WAL==0.
+
+**Fichiers** : `internal/persist/shared_social_persister.go` (+6 méthodes +helper, import `strings`), `internal/platform/duckdb/social_persister_iface.go` (+6 signatures interface), `internal/platform/duckdb/notifications_repo.go` (routage des 6 mutations + garde sur `Insert`), `internal/persist/shared_social_persister_test.go` (+`notification_preferences` au harnais +6 unitaires), `internal/platform/duckdb/notifications_writes_checkpoint_test.go` (nouveau, `package duckdb_test`, oracle WAL). Aucune modif `service.go` ni frontend (déjà corrects).
+
+**Reste / prochaine étape** : commit en attente d'autorisation user. Optionnel : enrichir `docs/adr/0022-shared-social-collect-persist.md` (gap mutations fermé) ; vérif manuelle live (marquer lu → restart serveur → reste lu). Le singulier `MarkNotificationRead` (sans CHECKPOINT) reste sur l'interface mais n'est plus appelé par le repo.
+
+---
+
+## [2026-06-15] Mise à jour What's New + Changelog (FR/EN) depuis le 2026-05-02 — Complété
+
+**Statut** : 4 fichiers docs édités (`docs/RELEASE_NOTES.md`, `docs/FR/RELEASE_NOTES.md`, `docs/CHANGELOG.md`, `docs/FR/CHANGELOG.md`) + entrée thought_log. Branche `fix/align-manual-sync-tokens`. Commit en attente d'autorisation user.
+
+**Déclencheur (user)** : le What's New (orienté end-user) était figé sur le bloc v7.0 (2026-04-12) et le changelog sur `[Unreleased] - 2026-05-02` (1 seule entrée média), alors que ~500 commits de fonctionnalités user-facing ont été livrés depuis. Cibles différentes : What's New = end-user narratif ; Changelog = dev/technique.
+
+**Décisions actées (AskUserQuestion)** : (1) **pas de nouveau numéro de version** — v7.0 pas encore considérée comme livrée → on **enrichit le bloc v7.0 existant** (puces dans sections existantes + nouvelles sections), on ne crée pas de v7.1. (2) Changelog = **entrée consolidée groupée par domaine** ; comme v7.0 n'est pas livrée, consolidée dans `[Unreleased]`/`[Non publié]` (date portée au 2026-06-15), pas un numéro publié. (3) Style = ajout de points, sections existantes conservées.
+
+**Contraintes de format respectées (lues dans le code)** : RELEASE_NOTES — `release_notes_service.go` trie par version décroissante, parse `**v7.0 — Titre**` ; sections = `**gras seul**`, jamais de ligne `**v<chiffre>…**` parasite (titres de section sans préfixe `v<digit>`). CHANGELOG — `parseChangelog.ts` parse `## [Unreleased] - YYYY-MM-DD` (tiret simple) ; icônes mappées sur le premier mot anglais (Added/Changed/Fixed…), donc EN garde ces mots-clés, FR garde Ajouté/Modifié/Corrigé (fallback icône neutre, comme l'existant). Pas d'emojis (icônes injectées par le front).
+
+**Contenu** : What's New v7.0 enrichi — puces dans Synthèse (OC/DR, durée réelle), Médias (HLS), Match (exclusion, badge rang), Auth (SISU/lockdown/mot de passe/bannière), Succès (filtre catégorie), Objectifs (arcs/coach), Ascension (campagne), Sync (convergent/dedup), Paramètres (backup restic/dashboard admin), app (démo) + 6 nouvelles sections (Sessions, Explorer profils live, Classé CSR, Classement mondial, Coach d'escouade, LUSR v2). Changelog `[Unreleased]` consolidé par domaine (Added React, Added Go, Changed, Fixed), item média existant fusionné.
+
+**Reste** : vérif rendu live (`/help?tab=release-notes` FR/EN + `/changelog`, attention cache release-notes 24 h disque + 5 min changelog) optionnelle ; commit en attente d'autorisation.
 
 ---
 
