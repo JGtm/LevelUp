@@ -1,3 +1,19 @@
+## [2026-06-15] PMT-1 (MT-01) — Contract axe 1 (stats/history) — COMPLÉTÉ
+
+**Statut** : Branche `feat/multititre-peripherie`. Build sync+api + vet + gofmt + archlint + `go test ./internal/sync/ -run HaloClient|...|HostFor` verts. **Axe 1/6 livré.**
+
+**Décision** : `HaloAPIClient` consomme le resolver via une nouvelle méthode `hostFor(ctx, key, legacy)` (fichier `endpoint_resolver.go`). Précédence : resolver d'instance (`WithEndpoints`, pour les tests) → resolver partagé de boot (`SetDefaultEndpointResolver`, câblé server.go depuis la mappings.Registry) → **fallback const Halo legacy** (byte-identique). Le slug vient du **ctx** (`ctxkeys.TitleSlug`), pas d'un champ client (cohérent PMT-10). Les 2 call-sites stats (`GetMatchHistory:214`, `GetMatchStats:253`) basculent sur `c.hostFor(ctx, games.EndpointStats, haloStatsHost)`.
+
+**Pourquoi garder la const comme fallback (déviation spec « supprimer la const »)** : ~13 sites construisent `NewHaloAPIClient` (api, service, sync, worldenrich, CLI). Retirer la const exigerait de garantir un resolver câblé sur TOUS → risque de host vide sur un chemin oublié (binaires CLI hors boot, tests). La const devient le **filet typé** du titre par défaut ; la **source de vérité est le TOML** (resolver consulté d'abord). Pour halo_infinite, le resolver rend exactement la const (golden) → zéro changement. `endpoint_missing` (warn) si un titre câblé n'a pas l'endpoint → fallback (la validation boot PMT-12 doit l'empêcher pour un titre ACTIF).
+
+**Correctif de carte (RE-VÉRIFIER)** : le spec disait « littéral inline discovery_client.go:82 bascule avec stats » — FAUX : :82 = `PublicName:` (pas un host), et discovery_client est dans `platform/halo` (pas `sync`). Le vrai host discovery (const :22) appartient à l'**axe 6** (discovery/gamecms/nameplate, même package). Axe 1 = uniquement les 2 call-sites stats de halo_client.go.
+
+**Oracle** (`halo_client_endpoints_test.go`, capture l'host via `captureTransport` AVANT réécriture locale) : (a) resolver réel chargé du vrai constants.toml → host == `halostats.svc.halowaypoint.com:443` (parité) ; (b) stub + ctx slug `synthetic_x` → host == `stats.example.test` (routing piloté par ctx) ; (c) aucun resolver → fallback legalcy ; (d) resolver partagé de boot → parité ; (e) endpoint absent → warn + fallback.
+
+**Prochaine étape** : axe 2 (skill — `haloSkillHost`, halo_skill.go).
+
+---
+
 ## [2026-06-15] PMT-1 (MT-01) — Ingestion title-aware (hosts API) — Expand — COMPLÉTÉ
 
 **Statut** : Branche `feat/multititre-peripherie`. Build all + vet + gofmt + archlint(`no_slug_comparison`) verts ; `go test ./internal/games/ ./internal/games/mappings/` verts ; oracle double vert. **Expand livré ; Contract (6 axes, PR mince par host) à suivre.**
