@@ -190,6 +190,24 @@ func NewRouter(
 		slog.Warn("field_mappings_load_warning", "err", err.Error())
 	}
 
+	// PMT-12 / MT-21 : validateur boot des mappings TOML requis. Un titre ACTIF
+	// doit posséder fields.toml + capabilities.toml ; sinon fail-fast (ne jamais
+	// servir un titre à moitié configuré). Skip en DemoMode (tests/démo : repoRoot
+	// sans config TOML, cf. buildTestRouter). coming_soon/archived ne bloquent pas.
+	if !cfg.DemoMode {
+		for _, td := range titleRegistry.All() {
+			if td.Status != titlePkg.StatusActive {
+				continue
+			}
+			if errs := mappings.ValidateRequiredTOML(cfg.RepoRoot, td.Slug); len(errs) > 0 {
+				for _, e := range errs {
+					slog.Error("title_required_toml_missing", "title", td.Slug, "err", e.Error())
+				}
+				os.Exit(1)
+			}
+		}
+	}
+
 	// Phase B multi-titres : resolver des adapters par titre.
 	// Le resolver est exposé aux services produit qui veulent consommer la
 	// couche canonique.
