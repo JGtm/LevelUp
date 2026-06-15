@@ -28,7 +28,24 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/games"
 )
+
+// nameplateHostFor résout l'host gamecms/nameplate pour le titre courant (MT-01).
+// Free function (les résolveurs nameplate ne sont pas des méthodes HaloAPIClient) :
+// consulte le resolver partagé de boot, fallback const Halo legacy.
+func nameplateHostFor(ctx context.Context) string {
+	res := games.DefaultEndpointResolver()
+	if res == nil {
+		return nameplateHost
+	}
+	if host, ok := res.HostFor(ctxkeys.TitleSlug(ctx), games.EndpointNameplate); ok {
+		return host
+	}
+	return nameplateHost
+}
 
 const (
 	nameplateHost            = "https://gamecms-hacs.svc.halowaypoint.com"
@@ -108,7 +125,7 @@ func seedEmblemMappingCacheForTest(data map[string]map[string]emblemMappingEntry
 func refreshEmblemMapping(ctx context.Context, spartanToken, clearanceToken string) {
 	reqCtx, cancel := context.WithTimeout(ctx, nameplateResolverTimeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(reqCtx, "GET", nameplateHost+emblemMappingPath, nil)
+	req, err := http.NewRequestWithContext(reqCtx, "GET", nameplateHostFor(ctx)+emblemMappingPath, nil)
 	if err != nil {
 		return
 	}
@@ -178,7 +195,7 @@ func ResolveNameplateURL(
 	// et autres).
 	if entry, ok := getEmblemMappingEntry(ctx, stem, cfg, spartanToken, clearanceToken); ok && entry.NameplateCmsPath != "" {
 		return fmt.Sprintf("%s/hi/Waypoint/file/%s",
-			nameplateHost, strings.TrimPrefix(entry.NameplateCmsPath, "/"))
+			nameplateHostFor(ctx), strings.TrimPrefix(entry.NameplateCmsPath, "/"))
 	}
 
 	// Fallback (mapping.json indisponible ou stem absent) : ancien comportement
@@ -194,7 +211,7 @@ func ResolveNameplateURL(
 		}
 	}
 	return fmt.Sprintf("%s/hi/Waypoint/file/images/nameplates/%s_%d.png",
-		nameplateHost, stem, resolvedCfg)
+		nameplateHostFor(ctx), stem, resolvedCfg)
 }
 
 // extractEmblemStem retourne `104-001-olympus-campa-2ddbe23b` depuis
@@ -225,7 +242,7 @@ func resolvePositiveEmblemCfg(
 	emblemPath, spartanToken, clearanceToken string,
 ) int64 {
 	cmsURL := fmt.Sprintf("%s/hi/progression/file/%s",
-		nameplateHost, strings.TrimPrefix(emblemPath, "/"))
+		nameplateHostFor(ctx), strings.TrimPrefix(emblemPath, "/"))
 
 	reqCtx, cancel := context.WithTimeout(ctx, nameplateResolverTimeout)
 	defer cancel()

@@ -7,10 +7,29 @@ import (
 	"net/http"
 	"strings"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 )
 
 const defaultGameCMSBase = "https://gamecms-hacs.svc.halowaypoint.com"
+
+// gamecmsHostFor résout l'host gamecms pour le titre courant (MT-01 / PMT-1). Si
+// le resolver partagé de boot est câblé, route par ctx slug ; sinon retombe sur
+// `fallback` (override de construction / const Halo, byte-identique).
+func gamecmsHostFor(ctx context.Context, fallback string) string {
+	if res := games.DefaultEndpointResolver(); res != nil {
+		if host, ok := res.HostFor(ctxkeys.TitleSlug(ctx), games.EndpointGameCMS); ok {
+			return strings.TrimRight(host, "/")
+		}
+	}
+	return fallback
+}
+
+// base résout l'host gamecms du fetcher (override f.baseURL → resolver title-aware).
+func (f *GameCMSFetcher) base(ctx context.Context) string {
+	return gamecmsHostFor(ctx, f.baseURL)
+}
 
 // GameCMSFetcher implémente Fetcher pour tous les assets GameCMS :
 // images de médailles, badges de défis, images BP, métadonnées médailles,
@@ -75,7 +94,7 @@ func (f *GameCMSFetcher) Fetch(ctx context.Context, ref Ref) (Payload, error) {
 // Retourne URLPayload (redirection) car les images sont publiques sur CDN.
 // Le fallback spritesheet est géré par ChainFetcher.
 func (f *GameCMSFetcher) fetchMedalImage(ctx context.Context, ref Ref) (Payload, error) {
-	url := fmt.Sprintf("%s/hi/Progression/file/medals/%s/%s.png", f.baseURL, ref.TitleID, ref.ID)
+	url := fmt.Sprintf("%s/hi/Progression/file/medals/%s/%s.png", f.base(ctx), ref.TitleID, ref.ID)
 	resp, err := f.doGet(ctx, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w: medal image GET: %v", ErrUpstreamUnavailable, err)
@@ -105,7 +124,7 @@ func (f *GameCMSFetcher) fetchChallengeBadge(ctx context.Context, ref Ref) (Payl
 	if err != nil {
 		return nil, fmt.Errorf("%w: tokens unavailable: %v", ErrUpstreamUnavailable, err)
 	}
-	url := fmt.Sprintf("%s/hi/waypoint/file/images/%s.png", f.baseURL, ref.ID)
+	url := fmt.Sprintf("%s/hi/waypoint/file/images/%s.png", f.base(ctx), ref.ID)
 	resp, err := f.doGet(ctx, url, tokens)
 	if err != nil {
 		return nil, fmt.Errorf("%w: challenge badge GET: %v", ErrUpstreamUnavailable, err)
@@ -136,7 +155,7 @@ func (f *GameCMSFetcher) fetchGameCMSImage(ctx context.Context, ref Ref) (Payloa
 	// Les images sont généralement publiques ; on envoie les tokens si disponibles,
 	// sans échouer si le provider n'en a pas sous la main.
 	tokens, _ := f.resolveTokens(ctx)
-	url := buildGameCMSImageFetchURL(f.baseURL, ref.ID)
+	url := buildGameCMSImageFetchURL(f.base(ctx), ref.ID)
 	if url == "" {
 		return nil, ErrNotFound
 	}
@@ -195,7 +214,7 @@ func buildGameCMSImageFetchURL(baseURL, raw string) string {
 
 // fetchMedalMetadata récupère le JSON des métadonnées de médailles.
 func (f *GameCMSFetcher) fetchMedalMetadata(ctx context.Context, _ Ref) (Payload, error) {
-	url := fmt.Sprintf("%s/hi/Progression/file/Metadata/Metadata.json", f.baseURL)
+	url := fmt.Sprintf("%s/hi/Progression/file/Metadata/Metadata.json", f.base(ctx))
 	resp, err := f.doGet(ctx, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w: medal metadata GET: %v", ErrUpstreamUnavailable, err)
@@ -219,7 +238,7 @@ func (f *GameCMSFetcher) fetchChallengeDefinition(ctx context.Context, ref Ref) 
 		return nil, fmt.Errorf("%w: tokens unavailable: %v", ErrUpstreamUnavailable, err)
 	}
 	challengePath := strings.TrimLeft(ref.ID, "/")
-	url := fmt.Sprintf("%s/hi/Progression/file/%s", f.baseURL, challengePath)
+	url := fmt.Sprintf("%s/hi/Progression/file/%s", f.base(ctx), challengePath)
 	resp, err := f.doGet(ctx, url, tokens)
 	if err != nil {
 		return nil, fmt.Errorf("%w: challenge definition GET: %v", ErrUpstreamUnavailable, err)
@@ -246,7 +265,7 @@ func (f *GameCMSFetcher) fetchRewardTrackDefinition(ctx context.Context, ref Ref
 		return nil, fmt.Errorf("%w: tokens unavailable: %v", ErrUpstreamUnavailable, err)
 	}
 	trackPath := strings.TrimLeft(ref.ID, "/")
-	url := fmt.Sprintf("%s/hi/Progression/file/%s", f.baseURL, trackPath)
+	url := fmt.Sprintf("%s/hi/Progression/file/%s", f.base(ctx), trackPath)
 	resp, err := f.doGet(ctx, url, tokens)
 	if err != nil {
 		return nil, fmt.Errorf("%w: track definition GET: %v", ErrUpstreamUnavailable, err)
@@ -273,7 +292,7 @@ func (f *GameCMSFetcher) fetchBPItemDefinition(ctx context.Context, ref Ref) (Pa
 		return nil, fmt.Errorf("%w: tokens unavailable: %v", ErrUpstreamUnavailable, err)
 	}
 	itemPath := strings.TrimLeft(ref.ID, "/")
-	url := fmt.Sprintf("%s/hi/Progression/file/%s", f.baseURL, itemPath)
+	url := fmt.Sprintf("%s/hi/Progression/file/%s", f.base(ctx), itemPath)
 	resp, err := f.doGet(ctx, url, tokens)
 	if err != nil {
 		return nil, fmt.Errorf("%w: bp item definition GET: %v", ErrUpstreamUnavailable, err)

@@ -1,3 +1,19 @@
+## [2026-06-15] PMT-1 (MT-01) — Contract axes 4-6 part 2 (career + nameplate + assets gamecms) — EXIT GATE
+
+**Statut** : Branche `feat/multititre-peripherie`. Build all + vet + gofmt + archlint + `go test ./internal/sync/ ./internal/assets/ ./internal/platform/halo/ ./internal/games/` verts. **PMT-1 Contract à l'Exit Gate (modulo privacy déféré + leaderboard web-scrape).**
+
+**sync HaloAPIClient career** : `economyHost(ctx)`/`gameCMSHost(ctx)` → override champ → `c.hostFor(ctx, EndpointEconomy|EndpointGameCMS, const)`. **Les défauts de construction `economyBaseURL`/`gameCMSBaseURL` sont RETIRÉS** (laissés vides en prod → le resolver est consulté ; non vide = override d'instance, ex. tests `srv.URL`). 5 call-sites threadés ctx (GetCareerProgress, GetSpartanCustomization ×2, resolveCustomizationImageURL ×2).
+
+**sync nameplate** : free function `nameplateHostFor(ctx)` (les résolveurs nameplate sont des fonctions libres, pas des méthodes client) → `EndpointNameplate`, fallback const. 4 sites (refreshEmblemMapping, nameplate URL builders).
+
+**assets GameCMSFetcher** : free function `gamecmsHostFor(ctx, fallback)` → `EndpointGameCMS`. `f.base(ctx)` délègue ; 7 sites fetcher_gamecms + 1 spritesheet fallback (fetcher_chain). Resolver-first-sinon-`f.baseURL` (sûr : les tests assets ne câblent pas le global games, isolation de package go test).
+
+**Bilan PMT-1** : grep final — **0 littéral d'host svc.halowaypoint à un call-site** (tous via resolver ou const-fallback). Les 8 clés d'endpoint (stats, skill, ugc_film, discovery_ugc, economy, challenges, gamecms, nameplate) routent title-aware, byte-identique halo. **Exceptions documentées** : (1) `privacy_provider.defaultStatsHost` (sans `:443`, byte-distinct d'EndpointStats, pas de 9e clé) ; (2) `leaderboard_scraper.waypointLeaderboardHost` (`www.halowaypoint.com` = scrape web, pas un host svc API des 8 axes).
+
+**Prochaine étape** : PMT-3 (sync-write-per-title/MT-11).
+
+---
+
 ## [2026-06-15] PMT-1 (MT-01) — Contract axes 4-6 (platform/halo HaloProvider) + relocate resolver → games — COMPLÉTÉ (part 1)
 
 **Statut** : Branche `feat/multititre-peripherie`. Build all + vet + gofmt + `go test ./internal/platform/halo/ ./internal/sync/ ./internal/games/` verts. **Bloc platform/halo des axes 4-6 livré ; reste sync career + nameplate + assets fetcher (part 2).**
