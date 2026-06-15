@@ -40,6 +40,83 @@ en = "Access"
 fr = "Système"
 en = "System"
 
+[admin.nav.titles]
+fr = "Titres"
+en = "Titles"
+
+# ─── Section Titres (PMT-14 volet A — gestion multi-titres) ─────────────────
+[admin.titles.heading]
+fr = "Gestion des titres"
+en = "Title management"
+
+[admin.titles.subtitle]
+fr = "Registre des titres supportés — statut, capabilities déclarées et feature-matrix calculée (lecture seule)."
+en = "Registry of supported titles — status, declared capabilities and computed feature matrix (read-only)."
+
+[admin.titles.loading]
+fr = "Chargement des titres…"
+en = "Loading titles…"
+
+[admin.titles.load_failed]
+fr = "Échec du chargement des titres."
+en = "Failed to load titles."
+
+[admin.titles.empty]
+fr = "Aucun titre enregistré."
+en = "No registered titles."
+
+[admin.titles.col_title]
+fr = "Titre"
+en = "Title"
+
+[admin.titles.col_status]
+fr = "Statut"
+en = "Status"
+
+[admin.titles.col_capabilities]
+fr = "Capabilities"
+en = "Capabilities"
+
+[admin.titles.col_mappings]
+fr = "Mappings TOML"
+en = "TOML mappings"
+
+[admin.titles.status_active]
+fr = "Actif"
+en = "Active"
+
+[admin.titles.status_coming_soon]
+fr = "À venir"
+en = "Coming soon"
+
+[admin.titles.status_archived]
+fr = "Archivé"
+en = "Archived"
+
+[admin.titles.default_badge]
+fr = "défaut"
+en = "default"
+
+[admin.titles.mappings_yes]
+fr = "Oui"
+en = "Yes"
+
+[admin.titles.mappings_no]
+fr = "Non"
+en = "No"
+
+[admin.titles.declared_capabilities]
+fr = "Capabilities déclarées"
+en = "Declared capabilities"
+
+[admin.titles.feature_matrix]
+fr = "Feature-matrix"
+en = "Feature matrix"
+
+[admin.titles.no_mappings]
+fr = "Aucun mapping TOML chargé pour ce titre."
+en = "No TOML mappings loaded for this title."
+
 # ─── Page Logs ─────────────────────────────────────────────────────────────
 
 [admin.logs.module]

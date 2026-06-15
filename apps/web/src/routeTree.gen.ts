@@ -22,6 +22,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as PlayersPlayerSlugRouteImport } from './routes/players/$playerSlug'
 import { Route as OnboardingOpenspartanRouteImport } from './routes/onboarding.openspartan'
 import { Route as LabChartsRouteImport } from './routes/lab/charts'
+import { Route as AdminTitlesRouteImport } from './routes/admin/titles'
 import { Route as AdminSystemRouteImport } from './routes/admin/system'
 import { Route as AdminSyncRouteImport } from './routes/admin/sync'
 import { Route as AdminLogsRouteImport } from './routes/admin/logs'
@@ -119,6 +120,11 @@ const LabChartsRoute = LabChartsRouteImport.update({
   id: '/charts',
   path: '/charts',
   getParentRoute: () => LabRoute,
+} as any)
+const AdminTitlesRoute = AdminTitlesRouteImport.update({
+  id: '/titles',
+  path: '/titles',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminSystemRoute = AdminSystemRouteImport.update({
   id: '/system',
@@ -319,6 +325,7 @@ export interface FileRoutesByFullPath {
   '/admin/logs': typeof AdminLogsRoute
   '/admin/sync': typeof AdminSyncRoute
   '/admin/system': typeof AdminSystemRoute
+  '/admin/titles': typeof AdminTitlesRoute
   '/lab/charts': typeof LabChartsRoute
   '/onboarding/openspartan': typeof OnboardingOpenspartanRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
@@ -365,6 +372,7 @@ export interface FileRoutesByTo {
   '/admin/logs': typeof AdminLogsRoute
   '/admin/sync': typeof AdminSyncRoute
   '/admin/system': typeof AdminSystemRoute
+  '/admin/titles': typeof AdminTitlesRoute
   '/lab/charts': typeof LabChartsRoute
   '/onboarding/openspartan': typeof OnboardingOpenspartanRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
@@ -411,6 +419,7 @@ export interface FileRoutesById {
   '/admin/logs': typeof AdminLogsRoute
   '/admin/sync': typeof AdminSyncRoute
   '/admin/system': typeof AdminSystemRoute
+  '/admin/titles': typeof AdminTitlesRoute
   '/lab/charts': typeof LabChartsRoute
   '/onboarding/openspartan': typeof OnboardingOpenspartanRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
@@ -460,6 +469,7 @@ export interface FileRouteTypes {
     | '/admin/logs'
     | '/admin/sync'
     | '/admin/system'
+    | '/admin/titles'
     | '/lab/charts'
     | '/onboarding/openspartan'
     | '/players/$playerSlug'
@@ -506,6 +516,7 @@ export interface FileRouteTypes {
     | '/admin/logs'
     | '/admin/sync'
     | '/admin/system'
+    | '/admin/titles'
     | '/lab/charts'
     | '/onboarding/openspartan'
     | '/players/$playerSlug'
@@ -551,6 +562,7 @@ export interface FileRouteTypes {
     | '/admin/logs'
     | '/admin/sync'
     | '/admin/system'
+    | '/admin/titles'
     | '/lab/charts'
     | '/onboarding/openspartan'
     | '/players/$playerSlug'
@@ -689,6 +701,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/lab/charts'
       preLoaderRoute: typeof LabChartsRouteImport
       parentRoute: typeof LabRoute
+    }
+    '/admin/titles': {
+      id: '/admin/titles'
+      path: '/titles'
+      fullPath: '/admin/titles'
+      preLoaderRoute: typeof AdminTitlesRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/system': {
       id: '/admin/system'
@@ -924,6 +943,7 @@ interface AdminRouteChildren {
   AdminLogsRoute: typeof AdminLogsRoute
   AdminSyncRoute: typeof AdminSyncRoute
   AdminSystemRoute: typeof AdminSystemRoute
+  AdminTitlesRoute: typeof AdminTitlesRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
@@ -934,6 +954,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminLogsRoute: AdminLogsRoute,
   AdminSyncRoute: AdminSyncRoute,
   AdminSystemRoute: AdminSystemRoute,
+  AdminTitlesRoute: AdminTitlesRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 

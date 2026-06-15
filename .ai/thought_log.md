@@ -50,6 +50,20 @@
 
 ---
 
+## [2026-06-15] PMT-14 volet A : section admin « Titres » (gestion multi-titres) — Complété (worktree)
+
+**Statut** : Implémenté + vérifié de bout en bout dans un worktree dédié `feat/admin-titles-pmt14` (créé depuis `main`). Back : `go build` + `go vet` + tests admin-titles + suite de contrat verts (CGO). Front : `vite build` OK, `tsc -b` clean, eslint clean, vitest 1/1.
+
+**Backend** : 2 endpoints read-only admin-gated (`internal/api/handlers/admin_titles.go`) montés dans le groupe `/admin` (server.go) : `GET /admin/titles` (liste : slug/nom/Status lifecycle MT-22 enfin LU + capabilities + has_mappings) et `GET /admin/titles/{slug}` (détail : capabilities déclarées TOML + feature-matrix, RÉUTILISE `games.ComputeFeatureMatrix` 1.7a/b sans recalcul). Title-agnostic (lecture du registre, zéro slug littéral). Tests httptest (liste/détail/404/no-mappings). Routes documentées dans openapi.yaml. Drive-by : doc de `POST /players/{slug}/filters/match-ids` (route existante non documentée sur main → faisait échouer `TestContractRoutesDocumented` plafond 0 ; gap échappé à la CI car test `//go:build cgo`).
+
+**Frontend** : route `routes/admin/titles.tsx` + onglet AdminLayout (`admin.nav.titles`) + page `features/admin/titles/AdminTitlesPage.tsx` (table des titres + carte détail capabilities déclarées + feature-matrix) + `queries.ts` (types locaux + hooks TanStack Query) + query keys + i18n (18 clés `admin.titles.*` FR/EN, manifest régénéré) + test vitest. Couleurs via tokens sémantiques.
+
+**Notes** : worktree node_modules = jonction vers le repo principal (pas de `npm install`). Les docs de plan PMT-14 (periphery/index) vivent sur d'autres branches (pas sur `main`) → à mettre à jour pour marquer volet A done à la convergence. Restent : volet B (partage des atoms `_labShared`) + le diagnostic déclaré-vs-DB (Phase 1.8).
+
+**Prochaine étape** : commit sur `feat/admin-titles-pmt14`, puis PR.
+
+---
+
 ## [2026-06-15] Tips Ascension — 3 lignes + découpe des murs — Complété
 
 **Statut** : `tsc --noEmit` = 0 ; vitest `tips-ticker` (5/5, dont le test de timing) ; eslint = 0 sur les fichiers touchés ; `build_i18n_manifests.mjs` régénéré (coaching_tips : 82 → 90 clés). Branche `feat/ascension-tips-3-lines`. Commit en attente d'autorisation.
