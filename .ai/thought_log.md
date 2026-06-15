@@ -1,3 +1,21 @@
+## [2026-06-15] PMT-2 (MT-02) — Acquisition auth par titre — Expand (AuthDescriptor + loader)
+
+**Statut** : Branche `feat/multititre-peripherie`. Build all + vet + gofmt + archlint + `go test ./internal/domain/title/` verts. **Expand livré (seam additif PUR, ZÉRO changement du chemin auth) ; Contract (5 PR HAUT RISQUE) à suivre — flag explicite.**
+
+**Trou réel** : toute la chaîne d'acquisition (audience XSTS, spartan Audience, clearance title path, SISU app/title id, scopes) est hardcodée Halo dans `platform/auth` ; aucun TOML ne porte de section auth.
+
+**Décision (Expand)** : `internal/domain/title/auth_descriptor.go` — `AuthDescriptor` (XSTSAudience, SpartanAudience, SpartanTokenURL, ClearanceURL, SISUAppID, SISUTitleID, XboxLiveRelyingParty, OAuthScopes) + `DefaultHaloAuthDescriptor()` câblé **byte-pour-byte** aux const actuelles (halo_exchange.go:30-33,182, sisu_provider.go:23-26, xsts.go:26, msal_client.go:42) + `LoadAuthDescriptor(repoRoot, slug)` depuis `config/titles/{slug}/auth.toml` (absent → `ErrAuthNotConfigured`, jamais de fallback silencieux) + validation (champs requis, https, scopes non vides).
+
+**Pas touché en Expand (volontaire)** : aucune signature de `platform/auth` (`ExchangeAccessToken`, `requestSpartanToken/Clearance/XSTS`, `SISUProvider`) modifiée — le seam descripteur existe et est testé en isolation, mais n'est PAS encore consommé par le chemin auth (additif pur = zéro risque). Cohérent avec l'approche PMT-1/PMT-3 (Expand = type+loader+oracle ; Contract = câblage call-sites).
+
+**Oracle DOUBLE vert** : (a) golden — `DefaultHaloAuthDescriptor()` == les 7 valeurs + 2 scopes EXACTES des const platform/auth (toute dérive casse). (b) routing — fixture `synthetic_test_title/auth.toml` (valeurs `example.test` distinctes) → loader route réellement ; titre sans auth.toml → `ErrAuthNotConfigured`. + validation (meta, champ requis, non-https, scopes vides).
+
+**⚠ Contract = HAUT RISQUE (login/token irréversible)** — PR mince par leg, golden de parité (requêtes sortantes byte-identiques) OBLIGATOIRE à chaque PR : PR-1 XSTS audience + spartan Audience ; PR-2 clearance URL/title path ; PR-3 SISU app/title id (`buildTokenProvider` → `NewSISUProviderWithIDs(desc…)`) ; PR-4 scopes OAuth ; PR-5 persistance namespacée titre (`WatcherTokensDir(slug)` + champs Spartan/Clearance/TitleSlug sur `UserTokens`). Un bug = plus personne ne s'authentifie → à dérouler prudemment, golden vert avant chaque commit.
+
+**Prochaine étape** : PMT-2 Contract PR-1 (sous golden), OU Phase 1.5 (DDL — escalade ordre init() migration).
+
+---
+
 ## [2026-06-15] PMT-3 (MT-11) — Sync-write-per-title — PR-4 (gate composite + watcher) — EXIT GATE
 
 **Statut** : Branche `feat/multititre-peripherie`. Build all + vet + gofmt + archlint + `go test ./internal/sync/ ./internal/scheduler/ ./internal/watcher/` verts ; handlers verts SAUF les 2 DeviceCodeFlow pré-existants (CSRF/DuckDB invalidated, hors gate). **PMT-3 à l'Exit Gate.**
