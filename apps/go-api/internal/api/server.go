@@ -46,6 +46,7 @@ import (
 	"levelup/go-api/internal/progression/coach_advisor"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
+	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/watcher"
 	"levelup/go-api/pkg/duckdbbackup"
 )
@@ -189,6 +190,11 @@ func NewRouter(
 	for _, err := range fieldMappingsRegistry.LoadFromConfigDir(cfg.RepoRoot, multiTitleSlugs, slog.Default()) {
 		slog.Warn("field_mappings_load_warning", "err", err.Error())
 	}
+
+	// PMT-1 / MT-01 : câble le resolver d'hosts d'ingestion title-aware partagé.
+	// Les HaloAPIClient routent désormais via [endpoints] de constants.toml
+	// (fallback const Halo byte-identique pour halo_infinite).
+	syncpkg.SetDefaultEndpointResolver(games.NewMappingsEndpointResolver(fieldMappingsRegistry, titlePkg.DefaultSlug))
 
 	// PMT-12 / MT-21 : validateur boot des mappings TOML requis. Le required-set
 	// est dérivé des capabilities du titre (RequiredTOMLFor). Un titre ACTIF à

@@ -40,6 +40,8 @@ import (
 	"time"
 
 	"golang.org/x/time/rate"
+
+	"levelup/go-api/internal/games"
 )
 
 const (
@@ -135,6 +137,10 @@ type HaloAPIClient struct {
 	// localFilmCache est consulté avant l'API pour les manifestes et chunks
 	// film. Nil = cache désactivé (comportement standard).
 	localFilmCache *LocalFilmCache
+	// endpoints override le resolver d'hosts partagé (MT-01). Nil = utilise le
+	// resolver de boot (sharedEndpointResolver) puis fallback const legacy.
+	// Injecté via WithEndpoints, surtout pour les tests de routing synthétique.
+	endpoints games.EndpointResolver
 }
 
 // NewHaloAPIClient crée un client authentifié avec les tokens Halo du joueur.
@@ -170,6 +176,14 @@ func (c *HaloAPIClient) WithHTTPClient(httpClient *http.Client) *HaloAPIClient {
 	if httpClient != nil {
 		c.http = httpClient
 	}
+	return c
+}
+
+// WithEndpoints injecte un resolver d'hosts d'instance (MT-01), prioritaire sur
+// le resolver partagé de boot. Utilisé par les tests pour router vers des hosts
+// synthétiques. Passer nil restaure le comportement par défaut (resolver partagé).
+func (c *HaloAPIClient) WithEndpoints(r games.EndpointResolver) *HaloAPIClient {
+	c.endpoints = r
 	return c
 }
 
@@ -211,7 +225,7 @@ func (c *HaloAPIClient) GetMatchHistory(
 	if count < 1 || count > matchCountMax {
 		return nil, fmt.Errorf("GetMatchHistory: count doit être entre 1 et %d (reçu %d)", matchCountMax, count)
 	}
-	endpoint := fmt.Sprintf("%s/hi/players/%s/matches", haloStatsHost, url.PathEscape(gamertag))
+	endpoint := fmt.Sprintf("%s/hi/players/%s/matches", c.hostFor(ctx, games.EndpointStats, haloStatsHost), url.PathEscape(gamertag))
 	params := url.Values{
 		"start": {strconv.Itoa(start)},
 		"count": {strconv.Itoa(count)},
@@ -250,7 +264,7 @@ func (c *HaloAPIClient) GetMatchStats(ctx context.Context, matchID string) (map[
 	if !rexUUID.MatchString(matchID) {
 		return nil, fmt.Errorf("GetMatchStats: matchID n'est pas un UUID valide %q", matchID)
 	}
-	endpoint := fmt.Sprintf("%s/hi/matches/%s/stats", haloStatsHost, url.PathEscape(matchID))
+	endpoint := fmt.Sprintf("%s/hi/matches/%s/stats", c.hostFor(ctx, games.EndpointStats, haloStatsHost), url.PathEscape(matchID))
 	body, err := c.doGet(ctx, endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("GetMatchStats(%s): %w", matchID, err)
