@@ -8,6 +8,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/middleware"
+	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/mappings"
 )
@@ -101,6 +103,107 @@ func TestAdminTitles_Detail_NotFound(t *testing.T) {
 
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404, body=%s", w.Code, w.Body.String())
+	}
+}
+
+// TestAdminTitles_Gating_401_403 — PMT-14 : les routes admin titres sont gatées
+// par la MÊME chaîne que server.go (RequireAuth + RequireAdmin) → 401 sans
+// session, 403 non-admin, 200 admin.
+func TestAdminTitles_Gating_401_403(t *testing.T) {
+	set := mappings.NewCapabilityMappingSet(titlePkg.DefaultSlug, 1, map[string]string{
+		"match.history": mappings.CapStatusSupported,
+	})
+	h := newAdminTitlesHandlerForTest(set)
+	r := chi.NewRouter()
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.RequireAuth(false, "password"))
+		r.Use(middleware.RequireAdmin(false, "password"))
+		r.Get("/admin/titles", h.List)
+	})
+
+	serve := func(sess *domain.SessionData) int {
+		req := httptest.NewRequest("GET", "/admin/titles", nil)
+		if sess != nil {
+			req = req.WithContext(middleware.InjectSession(req.Context(), sess))
+		}
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		return w.Code
+	}
+
+	if code := serve(nil); code != http.StatusUnauthorized {
+		t.Errorf("sans session : status=%d, want 401", code)
+	}
+
+	user := "bob"
+	roleUser := "user"
+	if code := serve(&domain.SessionData{Username: &user, Role: &roleUser}); code != http.StatusForbidden {
+		t.Errorf("non-admin : status=%d, want 403", code)
+	}
+
+	roleAdmin := "admin"
+	if code := serve(&domain.SessionData{Username: &user, Role: &roleAdmin}); code != http.StatusOK {
+		t.Errorf("admin : status=%d, want 200", code)
+	}
+}
+
+// TestAdminTitles_SyntheticTitle_ListedWithDegradation — ORACLE (b) PMT-14 :
+// enregistrer synthetic_title_b (coming_soon, sans capabilities.toml) → la liste
+// le montre avec son Status ; le détail dégrade proprement (200, has_mappings
+// false, feature_matrix omise, zéro panic). Preuve que la surface route vraiment
+// sur le registre et pas sur halo_infinite en dur.
+func TestAdminTitles_SyntheticTitle_ListedWithDegradation(t *testing.T) {
+	reg := titlePkg.NewRegistry()
+	reg.Register(&titlePkg.TitleDescriptor{
+		Slug: "synthetic_title_b", Name: "Synthetic B", Status: titlePkg.StatusComingSoon,
+	})
+	// Caps pour HI uniquement → synthetic_title_b n'a pas de mappings (dégradation).
+	set := mappings.NewCapabilityMappingSet(titlePkg.DefaultSlug, 1, map[string]string{
+		"match.history": mappings.CapStatusSupported,
+	})
+	h := NewAdminTitlesHandler(reg, &stubCapabilitiesRegistry{set: set}, nil)
+
+	// Liste : synthetic_title_b présent avec son Status coming_soon, has_mappings=false.
+	rl := chi.NewRouter()
+	rl.Get("/admin/titles", h.List)
+	reqL := httptest.NewRequest("GET", "/admin/titles", nil)
+	wL := httptest.NewRecorder()
+	rl.ServeHTTP(wL, reqL)
+	var list adminTitlesListResponse
+	if err := json.Unmarshal(wL.Body.Bytes(), &list); err != nil {
+		t.Fatalf("unmarshal list: %v", err)
+	}
+	var syn *adminTitleSummary
+	for i := range list.Titles {
+		if list.Titles[i].Slug == "synthetic_title_b" {
+			syn = &list.Titles[i]
+		}
+	}
+	if syn == nil {
+		t.Fatal("synthetic_title_b absent de la liste (la surface ne route pas sur le registre)")
+	}
+	if syn.Status != titlePkg.StatusComingSoon {
+		t.Errorf("synthetic_title_b status=%q, want coming_soon", syn.Status)
+	}
+	if syn.HasMappings {
+		t.Errorf("synthetic_title_b has_mappings=true, want false (pas de capabilities.toml)")
+	}
+
+	// Détail : dégradation propre (200, pas de panic, feature_matrix vide).
+	rd := chi.NewRouter()
+	rd.Get("/admin/titles/{slug}", h.Detail)
+	reqD := httptest.NewRequest("GET", "/admin/titles/synthetic_title_b", nil)
+	wD := httptest.NewRecorder()
+	rd.ServeHTTP(wD, reqD)
+	if wD.Code != http.StatusOK {
+		t.Fatalf("détail synthetic : status=%d, want 200", wD.Code)
+	}
+	var detail adminTitleDetail
+	if err := json.Unmarshal(wD.Body.Bytes(), &detail); err != nil {
+		t.Fatalf("unmarshal detail: %v", err)
+	}
+	if detail.HasMappings || len(detail.FeatureMatrix) != 0 {
+		t.Errorf("dégradation impropre : has_mappings=%v feature_matrix=%d", detail.HasMappings, len(detail.FeatureMatrix))
 	}
 }
 
