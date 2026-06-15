@@ -1,3 +1,23 @@
+## [2026-06-15] Bouton « Voir les matchs » en L2 (Solo / Sessions / Escouade) — Complété
+
+**Statut** : go build ./... + `go test ./internal/service ./internal/api/handlers -run Filter` verts (`FilteredMatchIDs` + handler `MatchIDs` couverts) ; `tsc --noEmit` = 0 ; `eslint --quiet` = 0 erreur sur les fichiers touchés ; vitest `FilterOmnibar` (15) + `SquadMatchHistoryTable` (9). (2 échecs `TestE2E_DeviceCodeFlow_*` = appel réseau live xboxlive, pré-existants, sans rapport.) Branche `fix/align-manual-sync-tokens` (sujet UI distinct du WIP sync — user a demandé de rester sur la branche, sans commit). Commit en attente d'autorisation.
+
+**Déclencheur (user)** : depuis Sessions/Solo/Escouade, plonger dans le détail des matchs de la sélection était fastidieux (scroller jusqu'à un tableau, cliquer une ligne). Demande : un bouton en L2 ouvrant le 1er match avec le contexte de la sélection, pour enchaîner via prev/next. Décisions AskUserQuestion : libellé **« Voir les matchs »** ; périmètre = **les 3 surfaces**.
+
+**Décision technique principale** : le moteur de parcours existe déjà (`useNavigateToMatch` + page match-view ; prev/next résolu soit depuis une **liste explicite de matchIds** (router state/sessionStorage), soit en fallback serveur `/matches/{id}/neighbors`). Pour rester dans le périmètre filtré, on passe **la liste explicite** :
+- **Escouade (zéro backend)** : `SquadLayout` a déjà `data.match_history` (DESC) → entrée = `match_history[0]`, matchIds = liste complète (oldest-first, comme `SquadMatchHistoryTable`).
+- **Solo + Sessions (nouvel endpoint)** : la barre L2 (`FilterOmnibar`) ne connaît que le compteur. Nouvel endpoint **POST `/players/{slug}/filters/match-ids`** (`FiltersService.ResolveMatchIDs` → `FilteredMatchIDs`) qui rejoue le MÊME pipeline de filtrage que le compteur et renvoie les match_id ordonnés start_time DESC. Le front fetch la liste **au clic** puis ouvre `match_ids[0]` avec la liste complète.
+
+**Pourquoi pas le fallback filterSpec/neighbors** (1ère approche, abandonnée) : `is_with_friends` (discriminant solo/squad) ET `session_id` vivent dans `player_match_enrichment` (player DB), NON jointe par Q25 neighbors (shared-only — c'est déjà pourquoi `session_id` y est ignoré). Un parcours basé filterSpec aurait laissé les voisins franchir solo/squad. La liste explicite (calculée par `FiltersService`, qui voit l'enrichment via `LoadMatchesForFilters`) supprime la dérive. Coût : un POST au clic (loading state sur le bouton) — volontairement hors du resolve fréquent pour ne pas gonfler chaque preview.
+
+**Refactor associé** : `ResolveFiltersFromRowsAt` factorisé en `migrateCascadeFromRows` + `splitTemporalFiltered` (réutilisés par `FilteredMatchIDs`, DRY).
+
+**Fichiers** : `domain/filters.go` (+`FilterMatchIDsResponse`), `service/filters_service.go` (refactor + `FilteredMatchIDs` + `ResolveMatchIDs`), `port/services.go` (+méthode interface), `api/handlers/filters.go` (+handler `MatchIDs`, slice jamais nil), `api/server.go` (+route), `lib/api/types.ts` (+`FilterMatchIdsResponse`), i18n `common.toml`+`generated/common.ts` (`browse_label`/`browse_title` FR/EN), `FilterOmnibar.tsx` (bouton + fetch au clic), `SquadLayout.tsx` (bouton via `match_history[0]`). Tests : `filters_service_test.go` (`FilteredMatchIDs` solo/squad/vide), `filters_test.go` (handler OK + slice `[]` non-null).
+
+**Reste** : vérif manuelle live (Sessions session pickée / Solo période+cascade / Escouade composition → bouton ouvre le plus récent, prev/next reste dans le périmètre). Commit en attente d'autorisation user.
+
+---
+
 ## [2026-06-15] Borne hauteur blocs « liste longue appariée » sur écran étroit (Succès Xbox + Défis) — Complété
 
 **Statut** : `tsc -b` = 0 ; `eslint .` = 0 erreurs (69 warnings préexistants, aucun dans les fichiers touchés) ; vitest `AchievementsCareerSection` 7/7 + `HomePage` 15/15. Branche `fix/align-manual-sync-tokens` (fix UI indépendant du sujet sync de la branche). Choix de branche + commit en attente d'autorisation user.
