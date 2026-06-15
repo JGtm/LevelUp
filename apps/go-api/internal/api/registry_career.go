@@ -12,9 +12,7 @@ import (
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
-	halo_games "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
@@ -192,16 +190,13 @@ func (r *ServiceRegistry) TitleDataAdapter(ctx context.Context, slug string) (ga
 	if err != nil {
 		return nil, err
 	}
-	if pdb.TitleSlug != title.DefaultSlug {
-		return nil, fmt.Errorf("%w: %q (seul halo_infinite a un DataAdapter player-scoped pour le moment)",
+	// MT-09 : lookup de la factory player-scoped par titre (title-agnostic).
+	build, ok := r.playerDataBuilders[pdb.TitleSlug]
+	if !ok {
+		return nil, fmt.Errorf("%w: %q (aucun DataAdapter player-scoped enregistré pour ce titre)",
 			games.ErrTitleNotResolved, pdb.TitleSlug)
 	}
-	careerRepo := duckdb.NewCareerRepo(pdb)
-	a := halo_games.NewDataAdapter(careerRepo, slog.Default())
-	if r.hiCapabilities != nil {
-		a = a.WithCapabilities(r.hiCapabilities)
-	}
-	return a, nil
+	return build(pdb), nil
 }
 
 // CareerLiveCtx retourne un CareerLiveService configuré pour le joueur slug.

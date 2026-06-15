@@ -20,13 +20,14 @@ import (
 )
 
 // slugCompareAllowlist : fichiers (chemin relatif depuis internal/) où un gating
-// slug est toléré transitoirement. Ce sont les hard-gates du câblage DataAdapter
-// multi-titre (cf. .ai/PLAN_TITLE_AGNOSTIC_TRACKER.md, gaps Phase 2) — à retirer
-// quand un 2e titre enregistre son adapter via le resolver.
-var slugCompareAllowlist = map[string]bool{
-	"api/registry.go":        true, // dataAdapterForPDB : gate DefaultSlug
-	"api/registry_career.go": true, // TitleDataAdapter factory : gate DefaultSlug
-}
+// slug est toléré transitoirement.
+//
+// VIDE depuis MT-09 (PMT-12) : les 2 derniers hard-gates `pdb.TitleSlug !=
+// DefaultSlug` (dataAdapterForPDB, TitleDataAdapter) sont remplacés par un lookup
+// de factory player-scoped par titre (ServiceRegistry.playerDataBuilders). La
+// garde est désormais MORDANTE — toute nouvelle comparaison de slug fait échouer
+// le test ; passer par une capability ou enregistrer un builder par titre.
+var slugCompareAllowlist = map[string]bool{}
 
 // slugCompareRE matche un gating de titre : une variable *Slug (ou le littéral
 // "halo_infinite") comparée par == / != à "halo_infinite" ou title.DefaultSlug.
