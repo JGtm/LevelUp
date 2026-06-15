@@ -6,7 +6,7 @@
  * passent bien.
  */
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useAppShellStore } from '@/stores/appShellStore'
+import { useAppShellStore, buildTitleSwitcherEntries } from '@/stores/appShellStore'
 
 const PLAYER = {
   player_slug: 'test-player',
@@ -136,5 +136,36 @@ describe('AppShellStore', () => {
   it('setCurrentTitle change le titre courant', () => {
     useAppShellStore.getState().setCurrentTitle('halo_mcc')
     expect(useAppShellStore.getState().currentTitleSlug).toBe('halo_mcc')
+  })
+})
+
+describe('buildTitleSwitcherEntries (MT-22 / PMT-8)', () => {
+  const TITLES = [
+    { slug: 'halo_infinite', name: 'Halo Infinite', status: 'active' as const, capabilities: [], is_default: true },
+    { slug: 'halo_mcc', name: 'Halo MCC', status: 'coming_soon' as const, capabilities: [], is_default: false },
+    { slug: 'halo_5', name: 'Halo 5', status: 'archived' as const, capabilities: [], is_default: false },
+  ]
+
+  it('garde active + coming_soon, exclut archived', () => {
+    const entries = buildTitleSwitcherEntries(TITLES, 'halo_infinite')
+    const slugs = entries.map((e) => e.slug)
+    expect(slugs).toContain('halo_infinite')
+    expect(slugs).toContain('halo_mcc')
+    expect(slugs).not.toContain('halo_5')
+  })
+
+  it('désactive l\'entrée coming_soon, laisse l\'active activée', () => {
+    const entries = buildTitleSwitcherEntries(TITLES, 'halo_infinite')
+    const active = entries.find((e) => e.slug === 'halo_infinite')
+    const soon = entries.find((e) => e.slug === 'halo_mcc')
+    expect(active?.disabled).toBe(false)
+    expect(soon?.disabled).toBe(true)
+    expect(soon?.status).toBe('coming_soon')
+  })
+
+  it('marque isCurrent sur le titre courant', () => {
+    const entries = buildTitleSwitcherEntries(TITLES, 'halo_infinite')
+    expect(entries.find((e) => e.slug === 'halo_infinite')?.isCurrent).toBe(true)
+    expect(entries.find((e) => e.slug === 'halo_mcc')?.isCurrent).toBe(false)
   })
 })

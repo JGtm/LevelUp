@@ -43,3 +43,47 @@ func TestRegistry_IsActiveAndActive(t *testing.T) {
 		t.Errorf("Active() ne doit pas contenir le titre coming_soon")
 	}
 }
+
+// TestTitleDescriptor_IsActive — prédicat domaine pur (PMT-8), par statut.
+func TestTitleDescriptor_IsActive(t *testing.T) {
+	cases := []struct {
+		status Status
+		want   bool
+	}{
+		{StatusActive, true},
+		{StatusComingSoon, false},
+		{StatusArchived, false},
+		{Status(""), false},
+	}
+	for _, tc := range cases {
+		td := &TitleDescriptor{Slug: "x", Status: tc.status}
+		if got := td.IsActive(); got != tc.want {
+			t.Errorf("IsActive() pour status %q : attendu %v, got %v", tc.status, tc.want, got)
+		}
+	}
+}
+
+// TestRegistry_NonArchived — le switcher garde active + coming_soon, exclut archived.
+func TestRegistry_NonArchived(t *testing.T) {
+	r := NewRegistry()
+	r.Register(&TitleDescriptor{Slug: "soon", Status: StatusComingSoon})
+	r.Register(&TitleDescriptor{Slug: "old", Status: StatusArchived})
+
+	var hasDefault, hasSoon, hasOld bool
+	for _, td := range r.NonArchived() {
+		switch td.Slug {
+		case DefaultSlug:
+			hasDefault = true
+		case "soon":
+			hasSoon = true
+		case "old":
+			hasOld = true
+		}
+	}
+	if !hasDefault || !hasSoon {
+		t.Errorf("NonArchived() doit inclure active (%v) + coming_soon (%v)", hasDefault, hasSoon)
+	}
+	if hasOld {
+		t.Error("NonArchived() ne doit pas inclure archived")
+	}
+}
