@@ -81,7 +81,32 @@ type SocialPersister interface {
 	// ses getters Get*).
 	CreateNotification(ctx context.Context, n any) error
 	// MarkNotificationRead : UPDATE read_at dans player_notifications.
+	// NB : pas de CHECKPOINT immédiat (délègue à Persist). Préférer
+	// MarkNotificationsRead pour les actions user-facing.
 	MarkNotificationRead(ctx context.Context, xuid string, id int64, readAt time.Time) error
+
+	// Mutations notifications user-facing — chaque appel = write atomique +
+	// CHECKPOINT immédiat (durabilité au restart, ADR 0022). Appelées sous le
+	// lease KindSharedSocial tenu par notifications.Service.
+
+	// MarkNotificationsRead : UPDATE read_at sur N ids (non-lus) en 1 TX +
+	// CHECKPOINT. Renvoie le nb de lignes affectées.
+	MarkNotificationsRead(ctx context.Context, xuid string, ids []int64, readAt time.Time) (int64, error)
+	// MarkNotificationUnread : UPDATE read_at = NULL + CHECKPOINT. Renvoie le
+	// nb de lignes affectées (0 = id inconnu).
+	MarkNotificationUnread(ctx context.Context, xuid string, id int64) (int64, error)
+	// MarkAllNotificationsRead : UPDATE read_at sur toutes les non-lues
+	// (filtré par category si non vide) + CHECKPOINT. Renvoie le nb affecté.
+	MarkAllNotificationsRead(ctx context.Context, xuid, category string, readAt time.Time) (int64, error)
+	// DeleteNotification : DELETE + CHECKPOINT. Renvoie le nb de lignes
+	// affectées (0 = id inconnu).
+	DeleteNotification(ctx context.Context, xuid string, id int64) (int64, error)
+	// CapAndSweepNotifications : purge de rétention (DELETE), SANS CHECKPOINT
+	// immédiat (idempotent, flush via scheduler 5min).
+	CapAndSweepNotifications(ctx context.Context, xuid string, max int) error
+	// UpsertNotificationPreferences : INSERT ON CONFLICT par (xuid, category)
+	// en 1 TX + CHECKPOINT. Slices parallèles pour éviter le cycle d'import.
+	UpsertNotificationPreferences(ctx context.Context, xuid string, categories []string, enabled []bool, delivery []string, updatedAt time.Time) error
 }
 
 // NotificationData : pure data type passé à CreateNotification. Évite une

@@ -120,6 +120,11 @@ func (r *NotificationsRepo) Insert(ctx context.Context, n *notifications.Notific
 			CreatedAt:    n.CreatedAt.UTC(),
 		})
 	}
+	// ADR 0021 Gap 1 : en prod (RequireSocialPersister=true) on refuse le path
+	// legacy qui ne CHECKPOINT pas (perte au restart). Fallback toléré en tests.
+	if RequireSocialPersister {
+		return ErrSocialPersisterNotWired
+	}
 
 	// Fallback legacy (tests sans wiring).
 	rwDB, err := OpenReadWrite(r.sharedSocialPath())
@@ -250,6 +255,10 @@ func (r *NotificationsRepo) UnreadCount(ctx context.Context) (notifications.Unre
 }
 
 // MarkRead positionne read_at = NOW() pour tous les IDs fournis (idempotent), scope xuid.
+//
+// Nominal : via SocialPersister (TX atomique + CHECKPOINT immédiat → survit au
+// restart, cf. ADR 0022). Le lease KindSharedSocial est déjà tenu par
+// notifications.Service.withWriter.
 func (r *NotificationsRepo) MarkRead(ctx context.Context, ids []int64) (int, error) {
 	if len(ids) == 0 || r.sharedSocialPath() == "" {
 		return 0, nil
@@ -257,6 +266,15 @@ func (r *NotificationsRepo) MarkRead(ctx context.Context, ids []int64) (int, err
 	ctx, cancel := context.WithTimeout(ctx, notifWriteTimeout)
 	defer cancel()
 
+	if r.pdb.SocialPersister != nil {
+		n, err := r.pdb.SocialPersister.MarkNotificationsRead(ctx, r.xuid, ids, nowUTC())
+		return int(n), err
+	}
+	if RequireSocialPersister {
+		return 0, ErrSocialPersisterNotWired
+	}
+
+	// Fallback legacy (tests sans wiring).
 	rwDB, err := OpenReadWrite(r.sharedSocialPath())
 	if err != nil {
 		return 0, fmt.Errorf("NotificationsRepo.MarkRead: open rw: %w", err)
@@ -285,6 +303,21 @@ func (r *NotificationsRepo) MarkUnread(ctx context.Context, id int64) error {
 	ctx, cancel := context.WithTimeout(ctx, notifWriteTimeout)
 	defer cancel()
 
+	if r.pdb.SocialPersister != nil {
+		n, err := r.pdb.SocialPersister.MarkNotificationUnread(ctx, r.xuid, id)
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			return notifications.ErrNotFound
+		}
+		return nil
+	}
+	if RequireSocialPersister {
+		return ErrSocialPersisterNotWired
+	}
+
+	// Fallback legacy (tests sans wiring).
 	rwDB, err := OpenReadWrite(r.sharedSocialPath())
 	if err != nil {
 		return fmt.Errorf("NotificationsRepo.MarkUnread: open rw: %w", err)
@@ -317,6 +350,15 @@ func (r *NotificationsRepo) MarkAllRead(ctx context.Context, category notificati
 	ctx, cancel := context.WithTimeout(ctx, notifWriteTimeout)
 	defer cancel()
 
+	if r.pdb.SocialPersister != nil {
+		n, err := r.pdb.SocialPersister.MarkAllNotificationsRead(ctx, r.xuid, string(category), nowUTC())
+		return int(n), err
+	}
+	if RequireSocialPersister {
+		return 0, ErrSocialPersisterNotWired
+	}
+
+	// Fallback legacy (tests sans wiring).
 	rwDB, err := OpenReadWrite(r.sharedSocialPath())
 	if err != nil {
 		return 0, fmt.Errorf("NotificationsRepo.MarkAllRead: open rw: %w", err)
@@ -353,6 +395,21 @@ func (r *NotificationsRepo) Delete(ctx context.Context, id int64) error {
 	ctx, cancel := context.WithTimeout(ctx, notifWriteTimeout)
 	defer cancel()
 
+	if r.pdb.SocialPersister != nil {
+		n, err := r.pdb.SocialPersister.DeleteNotification(ctx, r.xuid, id)
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			return notifications.ErrNotFound
+		}
+		return nil
+	}
+	if RequireSocialPersister {
+		return ErrSocialPersisterNotWired
+	}
+
+	// Fallback legacy (tests sans wiring).
 	rwDB, err := OpenReadWrite(r.sharedSocialPath())
 	if err != nil {
 		return fmt.Errorf("NotificationsRepo.Delete: open rw: %w", err)
@@ -378,6 +435,10 @@ func (r *NotificationsRepo) Delete(ctx context.Context, id int64) error {
 }
 
 // CapAndSweep purge les notifs au-delà du cap (best-effort, log si erreur), scope xuid.
+//
+// EXCEPTION au motif des autres mutations : appelée best-effort sous Emit
+// (withWriterBestEffort) → ne JAMAIS propager d'erreur, même si le Persister
+// n'est pas wired. Sans CHECKPOINT immédiat côté Persister (purge idempotente).
 func (r *NotificationsRepo) CapAndSweep(ctx context.Context, max int) error {
 	if max <= 0 || r.sharedSocialPath() == "" {
 		return nil
@@ -385,6 +446,18 @@ func (r *NotificationsRepo) CapAndSweep(ctx context.Context, max int) error {
 	ctx, cancel := context.WithTimeout(ctx, notifWriteTimeout)
 	defer cancel()
 
+	if r.pdb.SocialPersister != nil {
+		if err := r.pdb.SocialPersister.CapAndSweepNotifications(ctx, r.xuid, max); err != nil {
+			slog.WarnContext(ctx, "NotificationsRepo.CapAndSweep: persister", "err", err)
+		}
+		return nil
+	}
+	if RequireSocialPersister {
+		slog.WarnContext(ctx, "NotificationsRepo.CapAndSweep: SocialPersister non wired — purge ignorée")
+		return nil
+	}
+
+	// Fallback legacy (tests sans wiring).
 	rwDB, err := OpenReadWrite(r.sharedSocialPath())
 	if err != nil {
 		slog.Warn("NotificationsRepo.CapAndSweep: open rw", "err", err)
@@ -457,6 +530,22 @@ func (r *NotificationsRepo) UpsertPreferences(ctx context.Context, prefs []notif
 	ctx, cancel := context.WithTimeout(ctx, notifWriteTimeout)
 	defer cancel()
 
+	if r.pdb.SocialPersister != nil {
+		cats := make([]string, len(prefs))
+		enabled := make([]bool, len(prefs))
+		delivery := make([]string, len(prefs))
+		for i, p := range prefs {
+			cats[i] = string(p.Category)
+			enabled[i] = p.Enabled
+			delivery[i] = string(p.Delivery)
+		}
+		return r.pdb.SocialPersister.UpsertNotificationPreferences(ctx, r.xuid, cats, enabled, delivery, nowUTC())
+	}
+	if RequireSocialPersister {
+		return ErrSocialPersisterNotWired
+	}
+
+	// Fallback legacy (tests sans wiring).
 	rwDB, err := OpenReadWrite(r.sharedSocialPath())
 	if err != nil {
 		return fmt.Errorf("NotificationsRepo.UpsertPreferences: open rw: %w", err)

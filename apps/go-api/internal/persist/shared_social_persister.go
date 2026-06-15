@@ -55,6 +55,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 )
@@ -285,6 +286,10 @@ type notificationDataLike interface {
 }
 
 // MarkNotificationRead implémente duckdb.SocialPersister.MarkNotificationRead.
+//
+// NB : délègue à Persist() qui NE CHECKPOINT PAS (flush différé scheduler 5min).
+// Conservée pour rétrocompat ; les call sites user-facing doivent préférer
+// MarkNotificationsRead (CHECKPOINT immédiat).
 func (p *SharedSocialPersister) MarkNotificationRead(ctx context.Context, xuid string, id int64, readAt time.Time) error {
 	return p.Persist(ctx, &SharedSocialBatch{
 		BatchID: "notif-read",
@@ -293,6 +298,158 @@ func (p *SharedSocialPersister) MarkNotificationRead(ctx context.Context, xuid s
 			{XUID: xuid, ID: id, ReadAt: readAt},
 		},
 	})
+}
+
+// execNotifWriteCheckpointed exécute un write notif mono-instruction (UPDATE/
+// DELETE) en TX atomique. Si checkpoint=true, fait un CHECKPOINT immédiat
+// post-commit (non-fatal si échec — données déjà commit, scheduler 5min
+// fera fallback). Renvoie le nombre de lignes affectées.
+//
+// Garantie de durabilité identique à dblease.LeasedWriter.CommitWithCheckpoint
+// (ADR 0021 Phase 3.2 bis). Appelé exclusivement sous le lease KindSharedSocial
+// tenu par notifications.Service.withWriter — pas d'acquisition de lease ici.
+func (p *SharedSocialPersister) execNotifWriteCheckpointed(ctx context.Context, label string, checkpoint bool, query string, args ...any) (int64, error) {
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("shared_social %s: begin tx: %w", label, err)
+	}
+	res, err := tx.ExecContext(ctx, query, args...)
+	if err != nil {
+		if rbErr := tx.Rollback(); rbErr != nil && rbErr != sql.ErrTxDone {
+			slog.WarnContext(ctx, "shared_social "+label+": rollback failed (non-fatal)", "err", rbErr)
+		}
+		return 0, fmt.Errorf("shared_social %s: exec: %w", label, err)
+	}
+	n, _ := res.RowsAffected()
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("shared_social %s: commit: %w", label, err)
+	}
+	if checkpoint {
+		if _, err := p.db.ExecContext(ctx, "CHECKPOINT"); err != nil {
+			slog.WarnContext(ctx, "shared_social "+label+": CHECKPOINT post-commit non-fatal", "err", err)
+		}
+	}
+	return n, nil
+}
+
+// MarkNotificationsRead marque N notifications comme lues en UNE transaction +
+// CHECKPOINT immédiat. Ne touche que les non-lues (read_at IS NULL) pour rester
+// idempotent et renvoyer un count signifiant. Implémente
+// duckdb.SocialPersister.MarkNotificationsRead.
+func (p *SharedSocialPersister) MarkNotificationsRead(ctx context.Context, xuid string, ids []int64, readAt time.Time) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	placeholders := make([]string, len(ids))
+	args := make([]any, 0, len(ids)+2)
+	args = append(args, readAt, xuid)
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args = append(args, id)
+	}
+	q := fmt.Sprintf(
+		`UPDATE player_notifications SET read_at = ? WHERE xuid = ? AND read_at IS NULL AND id IN (%s)`,
+		strings.Join(placeholders, ","),
+	)
+	return p.execNotifWriteCheckpointed(ctx, "notif-mark-read", true, q, args...)
+}
+
+// MarkNotificationUnread remet read_at = NULL (+ CHECKPOINT). Renvoie le nb de
+// lignes affectées (0 = id inconnu, le caller traduit en ErrNotFound).
+func (p *SharedSocialPersister) MarkNotificationUnread(ctx context.Context, xuid string, id int64) (int64, error) {
+	return p.execNotifWriteCheckpointed(ctx, "notif-mark-unread", true,
+		`UPDATE player_notifications SET read_at = NULL WHERE xuid = ? AND id = ?`,
+		xuid, id)
+}
+
+// MarkAllNotificationsRead applique read_at à toutes les non-lues du joueur
+// (filtré par category si non vide) + CHECKPOINT immédiat.
+func (p *SharedSocialPersister) MarkAllNotificationsRead(ctx context.Context, xuid, category string, readAt time.Time) (int64, error) {
+	if category == "" {
+		return p.execNotifWriteCheckpointed(ctx, "notif-mark-all-read", true,
+			`UPDATE player_notifications SET read_at = ? WHERE xuid = ? AND read_at IS NULL`,
+			readAt, xuid)
+	}
+	return p.execNotifWriteCheckpointed(ctx, "notif-mark-all-read", true,
+		`UPDATE player_notifications SET read_at = ? WHERE xuid = ? AND read_at IS NULL AND category = ?`,
+		readAt, xuid, category)
+}
+
+// DeleteNotification supprime une notif (+ CHECKPOINT). Renvoie le nb de lignes
+// affectées (0 = id inconnu, le caller traduit en ErrNotFound).
+func (p *SharedSocialPersister) DeleteNotification(ctx context.Context, xuid string, id int64) (int64, error) {
+	return p.execNotifWriteCheckpointed(ctx, "notif-delete", true,
+		`DELETE FROM player_notifications WHERE xuid = ? AND id = ?`,
+		xuid, id)
+}
+
+// CapAndSweepNotifications purge les notifs au-delà du cap de rétention.
+// SANS CHECKPOINT immédiat : purge idempotente (re-tournée au prochain emit si
+// perdue), on s'appuie sur le scheduler 5min pour éviter un CHECKPOINT à chaque
+// émission de notification.
+func (p *SharedSocialPersister) CapAndSweepNotifications(ctx context.Context, xuid string, max int) error {
+	if max <= 0 {
+		return nil
+	}
+	_, err := p.execNotifWriteCheckpointed(ctx, "notif-cap-sweep", false, `
+		DELETE FROM player_notifications
+		WHERE xuid = ? AND id NOT IN (
+			SELECT id FROM player_notifications
+			WHERE xuid = ?
+			ORDER BY created_at DESC
+			LIMIT ?
+		)
+	`, xuid, xuid, max)
+	return err
+}
+
+// UpsertNotificationPreferences applique N préférences (INSERT ON CONFLICT par
+// (xuid, category)) en UNE transaction + CHECKPOINT immédiat. Signatures plates
+// (slices parallèles) pour éviter d'importer le package métier notifications
+// (cycle d'import).
+func (p *SharedSocialPersister) UpsertNotificationPreferences(ctx context.Context, xuid string, categories []string, enabled []bool, delivery []string, updatedAt time.Time) error {
+	if len(categories) == 0 {
+		return nil
+	}
+	if len(categories) != len(enabled) || len(categories) != len(delivery) {
+		return fmt.Errorf("shared_social notif-prefs: slices parallèles de longueurs différentes (cat=%d en=%d del=%d)",
+			len(categories), len(enabled), len(delivery))
+	}
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("shared_social notif-prefs: begin tx: %w", err)
+	}
+	rollback := func() {
+		if rbErr := tx.Rollback(); rbErr != nil && rbErr != sql.ErrTxDone {
+			slog.WarnContext(ctx, "shared_social notif-prefs: rollback failed (non-fatal)", "err", rbErr)
+		}
+	}
+	stmt, err := tx.PrepareContext(ctx, `
+		INSERT INTO notification_preferences (xuid, category, enabled, delivery, updated_at)
+		VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT (xuid, category) DO UPDATE SET
+			enabled    = EXCLUDED.enabled,
+			delivery   = EXCLUDED.delivery,
+			updated_at = EXCLUDED.updated_at
+	`)
+	if err != nil {
+		rollback()
+		return fmt.Errorf("shared_social notif-prefs: prepare: %w", err)
+	}
+	defer stmt.Close()
+	for i := range categories {
+		if _, err := stmt.ExecContext(ctx, xuid, categories[i], enabled[i], delivery[i], updatedAt); err != nil {
+			rollback()
+			return fmt.Errorf("shared_social notif-prefs (%s): %w", categories[i], err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("shared_social notif-prefs: commit: %w", err)
+	}
+	if _, err := p.db.ExecContext(ctx, "CHECKPOINT"); err != nil {
+		slog.WarnContext(ctx, "shared_social notif-prefs: CHECKPOINT post-commit non-fatal", "err", err)
+	}
+	return nil
 }
 
 // SetMediaMatchAssociation force l'association d'un média à un match précis
