@@ -1,3 +1,15 @@
+## [2026-06-15] Phase 1.5 (MT-23) — relocation b7 : famille mode_name_tr + playlist_fr (named-func + cascade)
+
+**Livré** : `add_mode_name_tr` + `seed_playlist_fr_translations` (named-func, partagent les consts mode*) → nouveau fichier `internal/games/halo_infinite/migrations/mode_playlist_fr.go` : consts mode* + `applyModeNameTr` + `playlistFRMapping`/`playlistFRSeeds`/`applyPlaylistFRSeeds` (`bootCtx()` → `migration.BootCtx()`). Total title-owned : 18 → **20**.
+
+**Cascade gérée (le build l'a forcée)** : `ReconcileMetadataSeeds` (exporté, rejoue les seeds à CHAQUE boot, idempotent) dépend des 2 funcs → ne peut PAS rester dans `migration` (cycle si elle importe le package titre) → **déplacée aussi** vers mode_playlist_fr.go (exportée `halomigrations.ReconcileMetadataSeeds`). Mises à jour en chaîne : (1) `cmd/server/main.go:1399` repointé `migration.` → `halomigrations.` ; (2) le test intégration `reconcile_metadata_seeds_test.go` (référence `modeTeamSlayerFR` + `ReconcileMetadataSeeds`) déplacé vers le package titre ; (3) reconcile_metadata_seeds.go + le test source vidés côté migration.
+
+**Vérif** : build all + `go test migration + games/halo_infinite/migrations + duckdb (17s)` + `go test -tags integration .../migrations -run Reconcile` (le garde-rail anti-régression « mode/playlist en anglais » converge) + gofmt + vet verts.
+
+**Leçon** : les named-func tirent leurs CONSUMERS (ReconcileMetadataSeeds, CLI, tests) — la « relocation tests » du tier B inclut ce travail de cascade, pas juste le step.
+
+---
+
 ## [2026-06-15] Phase 1.5 (MT-23) — relocation b6 : named-func weapon_labels
 
 **Livré** : `add_weapon_labels` (named-func) déplacé vers nouveau fichier `internal/games/halo_infinite/migrations/weapon_labels.go` — porté `applyWeaponLabels` + le wrapper exporté `ApplyWeaponLabels` (consommé par `cmd/seed-weapon-labels`) + la const `labelEnergySwordFR` (utilisée UNIQUEMENT par cette func → move propre, non partagée). `bootCtx()` → `migration.BootCtx()`. `cmd/seed-weapon-labels` repointé `migration.ApplyWeaponLabels` → `halomigrations.ApplyWeaponLabels`. Retrait côté global : Register + les 2 funcs + la const + l'import `fmt` (devenu inutilisé). Total title-owned : 17 → **18**.
