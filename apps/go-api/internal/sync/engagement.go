@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/temporal"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/observability"
@@ -160,7 +161,7 @@ func batchComputeEngagementScores(
 
 		pendingUpdates = append(pendingUpdates,
 			buildEngagementUpdate(m.MatchID, modeCategory, result, now, hasPaces))
-		observability.IncCounter("engagement_score_computed_total")
+		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_score_computed_total")
 
 		// Persist match_intensity dans shared.match_registry (best-effort).
 		if result.MatchIntensity > 0 {
@@ -182,7 +183,7 @@ func batchComputeEngagementScores(
 		if _, err := p.BatchUpdateMulti(ctx, pendingUpdates); err != nil {
 			slog.ErrorContext(ctx, "engagement: BatchUpdateMulti échoué",
 				"batch_size", len(pendingUpdates), "err", err)
-			observability.IncCounter("engagement_persist_error_total")
+			observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_persist_error_total")
 			return 0, fmt.Errorf("engagement batch flush: %w", err)
 		}
 	}

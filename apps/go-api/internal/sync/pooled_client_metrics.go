@@ -44,27 +44,27 @@ func HaloAPICallNames() []string {
 // `player` (xuid ou gamertag) attribue l'appel à un joueur pour le breakdown
 // par joueur — vide pour les appels match-level (match_stats, film, film_chunk,
 // match_skill) qui ne concernent pas un joueur unique.
-func observeHaloCall(call, player string, start time.Time, err error) {
+func observeHaloCall(title, call, player string, start time.Time, err error) {
 	ms := time.Since(start).Milliseconds()
-	observability.RecordDurationMS("halo_api_ms_"+call, ms)
-	observability.RecordPlayerAPICall(call, player, ms, err != nil)
+	observability.RecordDurationMST(title, "halo_api_ms_"+call, ms)
+	observability.RecordPlayerAPICallT(title, call, player, ms, err != nil)
 	if err == nil {
 		return
 	}
-	observability.IncCounter("halo_api_err_" + call + "_total")
+	observability.IncCounterT(title, "halo_api_err_"+call+"_total")
 	var httpErr *HTTPError
 	if !errors.As(err, &httpErr) {
-		observability.IncCounter("halo_api_network_total")
+		observability.IncCounterT(title, "halo_api_network_total")
 		return
 	}
 	switch {
 	case httpErr.StatusCode == 429:
-		observability.IncCounter("halo_api_429_total")
+		observability.IncCounterT(title, "halo_api_429_total")
 	case httpErr.StatusCode == 401 || httpErr.StatusCode == 403:
-		observability.IncCounter("halo_api_auth_total")
+		observability.IncCounterT(title, "halo_api_auth_total")
 	case httpErr.StatusCode >= 500:
-		observability.IncCounter("halo_api_5xx_total")
+		observability.IncCounterT(title, "halo_api_5xx_total")
 	default:
-		observability.IncCounter("halo_api_other_total")
+		observability.IncCounterT(title, "halo_api_other_total")
 	}
 }

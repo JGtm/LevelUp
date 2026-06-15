@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -175,7 +176,7 @@ func insertHighlightEventsFromData(
 	if err != nil {
 		// Phase 4.3 métriques : compteur erreurs de parse (zlib invalide,
 		// format film incorrect, etc.) pour observabilité prod.
-		observability.IncCounter("highlight_events_parse_total_invalid_data")
+		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_total_invalid_data")
 		return fmt.Errorf("ParseHighlightEvents: %w", err)
 	}
 	if len(events) == 0 {
@@ -184,8 +185,8 @@ func insertHighlightEventsFromData(
 		// était silencieusement loggé en DEBUG et faisait perdre tout
 		// l'historique highlight events. Désormais : WARN + compteur
 		// expvar pour qu'une regression soit immédiatement visible.
-		observability.IncCounter("highlight_events_parse_anomaly_total")
-		observability.IncCounter("highlight_events_parse_total_stale_cache")
+		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_anomaly_total")
+		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_total_stale_cache")
 		slog.WarnContext(ctx, "highlight_events parse_anomaly: chunk non-vide mais 0 events extraits",
 			"match_id", matchID,
 			"film_version", filmMajorVersion,
@@ -197,7 +198,7 @@ func insertHighlightEventsFromData(
 		}
 		return nil
 	}
-	observability.IncCounter("highlight_events_parse_total_ok")
+	observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_total_ok")
 
 	// Upsert XUID aliases from events (DB globale, hors TX shared).
 	if globalDB != nil {
@@ -265,14 +266,14 @@ func ProcessHighlightEvents(
 
 	events, err := analysis.ParseHighlightEvents(data, filmMajorVersion)
 	if err != nil {
-		observability.IncCounter("highlight_events_parse_total_invalid_data")
+		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_total_invalid_data")
 		return fmt.Errorf("ParseHighlightEvents: %w", err)
 	}
 	if len(events) == 0 {
 		// Anomalie : chunk téléchargé non-vide mais 0 event parsé.
 		// Voir insertHighlightEventsFromData pour la justification.
-		observability.IncCounter("highlight_events_parse_anomaly_total")
-		observability.IncCounter("highlight_events_parse_total_stale_cache")
+		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_anomaly_total")
+		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_total_stale_cache")
 		slog.WarnContext(ctx, "highlight_events parse_anomaly: chunk non-vide mais 0 events extraits",
 			"match_id", matchID,
 			"film_version", filmMajorVersion,
@@ -284,7 +285,7 @@ func ProcessHighlightEvents(
 		}
 		return nil
 	}
-	observability.IncCounter("highlight_events_parse_total_ok")
+	observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_total_ok")
 
 	// Upsert les gamertags extraits depuis le film (source la plus fiable).
 	// P5.3 : ecriture dans la DB globale xbox_aliases. DB séparée du shared →
