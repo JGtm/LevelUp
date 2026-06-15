@@ -160,16 +160,16 @@
 | PMT-11 | Discord notifications (contenu) | MT-26 | major | ⬜ | — |
 | PMT-12 | Garde-fous & validateurs | MT-21, MT-09, MT-12 | major | 🟡 | MT-21 ✅ (dcfc01c31) ; MT-09 après PMT-3, lint MT-12 différés |
 | PMT-13 | Mineurs & bénins (décision documentée) | MT-24, MT-25, MT-20 | minor | ⬜ | — |
-| PMT-14 | Admin : gestion des titres (+ réhab. Lab cassé) | MT-22 (+1.7a/b, 1.8) | major | 🟡 | vol.A ✅ (b06964292→bca7514d5) ; vol.B/C (Lab) différés |
+| PMT-14 | Admin : gestion des titres (+ réhab. Lab cassé) | MT-22 (+1.7a/b, 1.8) | major | ✅ | vol.A ✅ ; vol.C ✅ (Lab monté 2026-06-14) ; vol.B = 0 dup (atoms feature-local corrects) |
 | EXT-1.5 | Extension Phase 1.5 (metadata/ops/seed/notif) | MT-16/10/18/17 | major | ⬜ | PMT-3 |
 | EXT-2 | Extension Phase 2 (career/LUSR/extraction/prestige) | MT-07/15/14/19 | major | ⬜ | PMT-3 |
 | EXT-5 | Extension Phase 5 (slug constants + tables Halo front) | MT-12/13 | major | ⬜ | Phase 5 |
 
 **Bloquants 2ᵉ titre (récap)** : Phase 1.5 (DDL) + PMT-1 (hosts) + PMT-2 (auth) + PMT-3 (écriture par titre). Le reste suit.
 
-**Clôture 2026-06-15 (branche `feat/multititre-peripherie`)** : PMT-8, PMT-12 (MT-21) et PMT-14 volet A livrés à leur Exit Gate (oracles double Halo+synthetic_b verts à chaque axe). Différés explicites tracés : **MT-09** (cutoffs DefaultSlug→lookup) dépend de **PMT-3** ; **lint MT-12** (front, titres hardcodés) ; **PMT-14 volet B** (partage atoms Lab) et **volet C** (réhab Lab cassé, cf. constat ci-dessous). Les 3 phases ont été consolidées sur UNE branche (1 tâche = N commits) après un éclatement initial en 3 branches/worktrees (corrigé).
+**Clôture 2026-06-15 (branche `feat/multititre-peripherie`)** : PMT-8, PMT-12 (MT-21) et PMT-14 volet A livrés à leur Exit Gate (oracles double Halo+synthetic_b verts à chaque axe). Reste : **MT-09** (cutoffs DefaultSlug→lookup) — re-vérifié : faisable maintenant (resolver existe), pas bloqué par PMT-3 ; **lint MT-12** front ✅ livré. **PMT-14 volet C** ✅ (Lab monté + fail-closed + test anti-régression, livré 2026-06-14 sur main ; l'audit le croyait absent car il ne regardait que le diff de branche). **PMT-14 volet B** ✅ par construction : 0 duplication copy-paste d'atom ; les `StatusBadge` admin/lab/ascension sont des composants feature-local distincts (props/i18n propres) — les unifier violerait la modularité par feature. Les 3 phases ont été consolidées sur UNE branche (1 tâche = N commits) après un éclatement initial en 3 branches/worktrees (corrigé).
 
-**Constat (PMT-14 vol. C, audit 2026-06-14)** : le **Lab est cassé** — backend implémenté mais **non monté** dans `server.go` (`/lab/*` → 404 en prod, masqué par mocks MSW + tests chi-local ; `requireAccess` fail-open). Réhabilitation tracée en PMT-14 volet C (monter + durcir + test d'intégration serveur).
+**Constat (PMT-14 vol. C) — RÉSOLU (2026-06-14, vérifié 2026-06-15)** : le Lab était cassé (backend non monté → `/lab/*` 404). Désormais **monté** dans `server.go:680-683` (les 3 routes), `requireAccess` **fail-closed** (refuse si `LoadAppSettings` échoue), test anti-régression `lab_routes_mounted_test.go` (chi.Walk sur le vrai routeur), panneau Contracts marqué « à retirer » (cutover Go fait). L'audit 2026-06-15 l'avait cru absent car il ne lisait que le diff de la branche PMT-14 (le montage vivait déjà sur main).
 
 ## Prochaines 3 actions concrètes (quand on démarre l'exécution)
 
