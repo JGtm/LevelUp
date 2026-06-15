@@ -21,6 +21,7 @@ type Registry struct {
 	assets       map[string]*AssetMappingSet
 	outcomes     map[string]*OutcomeMappingSet
 	capabilities map[string]*CapabilityMappingSet
+	endpoints    map[string]*EndpointSet
 }
 
 // NewRegistry crée un registre vide.
@@ -30,6 +31,7 @@ func NewRegistry() *Registry {
 		assets:       make(map[string]*AssetMappingSet),
 		outcomes:     make(map[string]*OutcomeMappingSet),
 		capabilities: make(map[string]*CapabilityMappingSet),
+		endpoints:    make(map[string]*EndpointSet),
 	}
 }
 
@@ -46,7 +48,8 @@ func (r *Registry) LoadFromConfigDir(repoRoot string, slugs []string, logger *sl
 	}
 	var errs []error
 	for _, slug := range slugs {
-		mappingsDir := filepath.Join(repoRoot, "config", "titles", slug, "mappings")
+		titleDir := filepath.Join(repoRoot, "config", "titles", slug)
+		mappingsDir := filepath.Join(titleDir, "mappings")
 
 		// fields.toml — obligatoire
 		fieldsPath := filepath.Join(mappingsDir, "fields.toml")
@@ -116,6 +119,24 @@ func (r *Registry) LoadFromConfigDir(repoRoot string, slugs []string, logger *sl
 				"schema_version", cset.SchemaVersion(),
 			)
 		}
+
+		// constants.toml — optionnel ; section [endpoints] (MT-01). Au niveau
+		// du dossier titre (pas mappings/), aligné sur le constants.toml
+		// documentaire existant.
+		endpointsPath := filepath.Join(titleDir, "constants.toml")
+		if eset, loadErr := loadEndpointsIfExists(endpointsPath); loadErr != nil {
+			logger.Error("mappings_validation_failed", "title_slug", slug, "path", endpointsPath, "err", loadErr.Error())
+			errs = append(errs, fmt.Errorf("load endpoints %s: %w", slug, loadErr))
+		} else if eset != nil {
+			r.mu.Lock()
+			r.endpoints[slug] = eset
+			r.mu.Unlock()
+			logger.Info("endpoints_loaded",
+				"title", slug,
+				"count", len(eset.Keys()),
+				"schema_version", eset.SchemaVersion(),
+			)
+		}
 	}
 	return errs
 }
@@ -139,6 +160,13 @@ func loadCapabilitiesIfExists(path string) (*CapabilityMappingSet, error) {
 		return nil, nil
 	}
 	return LoadCapabilitiesFromFile(path)
+}
+
+func loadEndpointsIfExists(path string) (*EndpointSet, error) {
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	return LoadEndpointsFromFile(path)
 }
 
 // Get retourne le FieldMappingSet d'un titre s'il a été chargé.
@@ -170,6 +198,14 @@ func (r *Registry) GetCapabilities(slug string) (*CapabilityMappingSet, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	v, ok := r.capabilities[slug]
+	return v, ok
+}
+
+// GetEndpoints retourne l'EndpointSet d'un titre s'il a été chargé (MT-01).
+func (r *Registry) GetEndpoints(slug string) (*EndpointSet, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	v, ok := r.endpoints[slug]
 	return v, ok
 }
 
