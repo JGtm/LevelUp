@@ -1,3 +1,13 @@
+## [2026-06-16] Phase 1.5 (MT-23) — relocation b11 : famille milestones (schéma + seed TOML dynamique)
+
+**Livré (b11)** : famille milestones déplacée vers le titre, même découpe que prestige (b10) — schéma `create_milestone_catalog_metadata` (table `milestone_catalog`) inline dans `steps.go`, seed TOML `seed_milestone_catalog_v1` (multi-titres, itère `config/titles/*/milestones/catalog.toml`) dans nouveau `migrations/milestones.go` (`RegisterMilestonesSeedMigration` via `migration.IsRegistered` + `seedMilestonesAllTitles`/`seedMilestonesFromTOML`/`nullableStringForSeed`, `bootCtx()` → `migration.BootCtx()`). Boot repointé `migration.` → `halomigrations.RegisterMilestonesSeedMigration`. Cycle vérifié : `internal/progression/milestones` n'importe pas migration. Total title-owned : 34 statiques → **35** (+ **2** dynamiques : prestige + milestone). Globaux vidés : `steps_metadata_milestones_catalog.go` + `steps_metadata_milestones_seed.go`.
+
+**Test relocalisé + bug de fragilité corrigé** : `steps_metadata_milestones_seed_test.go` (intégration) → `migrations/milestones_test.go` (helper `openMetadataDB` câble le provider `StepsFor` + `RunForDB(TargetMetadata)` ; chemin config ajusté à 6 `..`). **J'ai retiré `TestRegisterMilestonesSeedMigration_Idempotent`** : appeler `RegisterMilestonesSeedMigration` enregistre `seed_milestone_catalog_v1` dans le registre global PERSISTANT du binaire de test → `TestCanonicalCoversGlobalAndTitle` (même package) le voyait hors `canonicalOrder` et plantait. En package `migration`, ce test passait par CHANCE (ordre alpha : `order_test.go` 'o' avant `steps_metadata_milestones…` 's', donc le check de complétude tournait AVANT la registration). Le move l'a exposé. Les seeds TOML dynamiques sont volontairement hors `canonicalOrder` (run-last via fallback `canonicalRank`=len, après leur schéma) — cohérent avec `seed_prestige_catalog_v1`. Idempotence du seed couverte par `TestSeedMilestonesFromTOML_Idempotent`.
+
+**Vérif** : build all + `go test` (3 packages) + **`-tags integration`** (les 5 tests milestones tournent sur le vrai TOML : 13 entrées Halo, idempotence, multi-titres, no-op root absent, skip titre sans catalogue) + gofmt + vet verts.
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-23) — relocation b10 : famille prestige metadata + seed TOML dynamique
 
 **Livré (b10)** : famille prestige metadata déplacée vers `games/halo_infinite/migrations/steps.go` ATOMIQUEMENT — `create_prestige_metadata_schema` (challenge_template + preset_arc + preset_arc_step) + `challenge_template_add_source_column` + `add_template_tagging_columns` (les 2 ALTER touchent challenge_template → même famille). Total title-owned statique : 31 → **34** (+ 1 dynamique, cf. ci-dessous).

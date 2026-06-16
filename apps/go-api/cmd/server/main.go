@@ -1376,7 +1376,7 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 	// Cf. AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21 §4 cause A.
 	if prestigeConfigDir != "" {
 		configTitlesRoot := filepath.Dir(prestigeConfigDir)
-		migration.RegisterMilestonesSeedMigration(configTitlesRoot)
+		halomigrations.RegisterMilestonesSeedMigration(configTitlesRoot)
 	}
 
 	// Phase 1.5.1 B (ADR 0025) : enregistre les migrations title-owned (Halo

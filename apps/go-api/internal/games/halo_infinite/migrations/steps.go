@@ -216,6 +216,31 @@ func Steps() []migration.Migration {
 				`)
 			},
 		},
+		// Famille milestones (schéma) → migrée (b11). Le seed TOML
+		// seed_milestone_catalog_v1 est enregistré dynamiquement par boot via
+		// RegisterMilestonesSeedMigration (cf. milestones.go).
+		{
+			Name:        "create_milestone_catalog_metadata",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Table milestone_catalog (référentiel des milestones cross-titres, chargée du TOML)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS milestone_catalog (
+						id          VARCHAR PRIMARY KEY,
+						title_slug  VARCHAR NOT NULL,
+						metric      VARCHAR NOT NULL,
+						threshold   DOUBLE NOT NULL,
+						title_en    VARCHAR NOT NULL,
+						title_fr    VARCHAR NOT NULL,
+						icon        VARCHAR,
+						condition   VARCHAR,
+						updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					);
+					CREATE INDEX IF NOT EXISTS idx_ms_cat_title ON milestone_catalog(title_slug);
+					CREATE INDEX IF NOT EXISTS idx_ms_cat_metric ON milestone_catalog(metric);
+				`)
+			},
+		},
 		// Famille medal_definitions (base + 3 ALTER) → migrée ATOMIQUEMENT (b8).
 		{
 			Name:        "add_medal_definitions",
