@@ -2,12 +2,12 @@ package migration
 
 // steps_shared_social.go — migrations ciblant shared_social.duckdb.
 //
-// Cette base centralise les données utilisateur/social qui n'appartiennent
-// ni aux stats de match (shared_matches_v2) ni aux enrichissements joueur (stats.duckdb) :
-//   - media_files       : fichiers médias de tous les joueurs
-//   - media_match_assoc : associations média↔match
-//   - media_likes       : likes sociaux sur les médias
-//   - match_favorites   : matchs mis en favoris par joueur
+// RACINE shared_social : create_base_shared_social_schema (media_files,
+// media_match_associations, media_likes, match_favorites) RESTE ici (global) tant que
+// tous ses consommateurs + tests ne sont pas title-owned. Les 6 ALTER media_files /
+// media_match_associations (consommateurs) ont été migrés vers
+// internal/games/halo_infinite/migrations/steps_shared_social.go (Phase 1.5 b19, voie B).
+// Les noms restent dans internal/migration/order.go (canonicalOrder).
 
 import "database/sql"
 
@@ -63,98 +63,6 @@ func init() {
 					PRIMARY KEY (player_slug, match_id)
 				);
 				CREATE INDEX IF NOT EXISTS idx_mfav_player ON match_favorites(player_slug);
-			`)
-		},
-	})
-
-	// Ajout player_slug à media_files Go (schéma créé par ensureMediaTables sans cette colonne).
-	Register(Migration{
-		Name:        "add_player_slug_to_media_files",
-		TargetDB:    TargetSharedSocial,
-		Description: "Ajoute player_slug à media_files si absente (schéma Go ops/media.go)",
-		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `ALTER TABLE media_files ADD COLUMN IF NOT EXISTS player_slug VARCHAR;`)
-		},
-	})
-
-	// Ajout file_name à media_files Go.
-	Register(Migration{
-		Name:        "add_file_name_to_media_files",
-		TargetDB:    TargetSharedSocial,
-		Description: "Ajoute file_name à media_files si absente",
-		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `ALTER TABLE media_files ADD COLUMN IF NOT EXISTS file_name VARCHAR;`)
-		},
-	})
-
-	// Ajout thumbnail_path, capture_end_utc, status, mtime à media_files Go.
-	Register(Migration{
-		Name:        "add_missing_columns_to_media_files",
-		TargetDB:    TargetSharedSocial,
-		Description: "Ajoute thumbnail_path, capture_end_utc, status, mtime à media_files si absentes",
-		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `
-				ALTER TABLE media_files ADD COLUMN IF NOT EXISTS thumbnail_path VARCHAR;
-				ALTER TABLE media_files ADD COLUMN IF NOT EXISTS capture_end_utc TIMESTAMPTZ;
-				ALTER TABLE media_files ADD COLUMN IF NOT EXISTS status VARCHAR;
-				ALTER TABLE media_files ADD COLUMN IF NOT EXISTS mtime TIMESTAMPTZ;
-			`)
-		},
-	})
-
-	// capture_start_utc + indexed_at : colonnes lues par le pipeline media (Q37,
-	// mode shared_social : SELECT mf.capture_start_utc + mf.indexed_at). Créées
-	// historiquement par l'ancien ops.IndexMedia (DDL legacy) mais ABSENTES du
-	// schéma migré → une shared_social fraîchement migrée (nouvelle install, ou
-	// fixture démo) plante en Binder Error sur la page Média. ADD IF NOT EXISTS.
-	Register(Migration{
-		Name:        "add_capture_start_indexed_at_to_media_files",
-		TargetDB:    TargetSharedSocial,
-		Description: "Ajoute capture_start_utc + indexed_at à media_files (lues par le pipeline media en mode shared_social ; absentes du schéma migré → 500 sur install fraîche)",
-		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `
-				ALTER TABLE media_files ADD COLUMN IF NOT EXISTS capture_start_utc TIMESTAMPTZ;
-				ALTER TABLE media_files ADD COLUMN IF NOT EXISTS indexed_at TIMESTAMPTZ;
-			`)
-		},
-	})
-
-	// Sprint 2026-04 : flag is_manual pour distinguer associations auto vs réassociées
-	// manuellement par l'utilisateur. Permet de préserver les corrections lors d'un
-	// reassociate global (DELETE WHERE NOT is_manual).
-	Register(Migration{
-		Name:        "add_is_manual_to_media_match_associations",
-		TargetDB:    TargetSharedSocial,
-		Description: "Ajoute is_manual BOOLEAN à media_match_associations pour tracer les réassociations manuelles",
-		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `
-				ALTER TABLE media_match_associations ADD COLUMN IF NOT EXISTS is_manual BOOLEAN DEFAULT FALSE;
-			`)
-		},
-	})
-
-	// Mai 2026 : file_stem + file_ext pour indexation extension-agnostique.
-	// Permet la conversion de vidéos (.mp4 → .webm) sans perdre media_match_associations.
-	// file_stem = filename sans extension ; utilisé comme clé de dédup applicative.
-	Register(Migration{
-		Name:        "add_file_stem_ext_to_media_files",
-		TargetDB:    TargetSharedSocial,
-		Description: "Ajoute file_stem et file_ext à media_files pour dédup extension-agnostique",
-		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `
-				ALTER TABLE media_files ADD COLUMN IF NOT EXISTS file_stem VARCHAR;
-				ALTER TABLE media_files ADD COLUMN IF NOT EXISTS file_ext VARCHAR;
-
-				-- Backfill depuis file_name existant
-				UPDATE media_files
-				SET
-					file_stem = regexp_replace(file_name, '\.[^.]+$', ''),
-					file_ext = regexp_extract(file_name, '(\.[^.]+)$', 1)
-				WHERE file_stem IS NULL AND file_name IS NOT NULL;
-
-				-- Index non-unique : évite migration destructive sur file_path UNIQUE
-				CREATE INDEX IF NOT EXISTS idx_mf_player_stem
-					ON media_files(player_slug, file_stem);
 			`)
 		},
 	})

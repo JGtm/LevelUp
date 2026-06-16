@@ -248,6 +248,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/api/prestige_setup.go":                                     "init prestige (path Persister)",
 	"internal/api/prestige_lazy_service.go":                              "lazy init prestige",
 	"internal/api/server.go":                                             "wiring API + boot",
+	"internal/games/halo_infinite/migrations/steps_shared_social.go":     "migrations shared_social CONSOMMATRICES title-owned (Phase 1.5 b19, voie B)",
 	"internal/migration/registry.go":                                     "framework migration (target TargetSharedSocial)",
 	"internal/migration/migration_test.go":                               "tests framework migration",
 	"internal/migration/steps_player.go":                                 "migrations player référencent shared_social path pour orchestration",
