@@ -90,7 +90,10 @@ func TestTitleStepsRunEndToEnd_Metadata(t *testing.T) {
 		t.Fatalf("RunForDB(Metadata): %v", err)
 	}
 
-	for _, table := range []string{"challenge_template", "preset_arc", "preset_arc_step"} {
+	for _, table := range []string{
+		"challenge_template", "preset_arc", "preset_arc_step",
+		"asset_translations", "medal_translations", "milestone_catalog", "playlists_catalog",
+	} {
 		var n int
 		if err := db.QueryRow(
 			"SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?", table,

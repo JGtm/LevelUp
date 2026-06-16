@@ -1,3 +1,15 @@
+## [2026-06-16] Phase 1.5 (MT-23) — relocation b26 : RACINE metadata (asset_translations) — RELOCATION COMPLÈTE
+
+**Livré (b26, 2 racines TargetMetadata, DERNIER root)** → nouveau `migrations/steps_metadata_root.go` (`metadataRootSteps()`) : `add_asset_translations` (asset_translations + medal_translations, pivot multi-langue) + `fix_super_fiesta_fr_label`. Écrites par de nombreux seeds tous déjà title-owned. **Hazard de cycle évité** : applyModeNameTr/ReconcileMetadataSeeds avaient déjà été déplacés au titre en b7 (pas de cycle restant). Total title-owned : 148 → **150** statiques (+ 2 dynamiques prestige/milestone).
+
+**RELOCATION PHASE 1.5 COMPLÈTE** : les 5 tiers (metadata, player, shared, shared_social, pve) sont entièrement title-owned. **Seule exception globale délibérée** : `rebuild_match_participants_defeat_art_corruption` reste dans le package migration (couplé à `RebuildMatchParticipantsART`, util appelé par cmd/server au boot — déplacer casserait le boot par cycle). Tous les autres ~150 steps DDL sont dans `internal/games/halo_infinite/migrations/`, fournis au runner via `SetTitleStepsProvider(StepsFor)`. `order_audit_test.go` (`TestCanonicalCoversGlobalAndTitle`) prouve la complétude bidirectionnelle global+title.
+
+**Bilan session (b10→b26, 17 lots autonomes)** : 8 → 150 steps title-owned. Pattern « racine globale, consommateurs partent d'abord » validé sur tous les tiers. Découvertes/pièges récurrents : créateur/consommateur/test global-only (b15), fragilité ordre alpha des tests (b11), carte datée vs util-vs-step (b20/b21), cycle boot-path (b23), helpers cross-fichiers à garder globaux (firstWords/loadTableColumns/Apply*Views). Tests : skip-guard + TestTitleStepsRunEndToEnd_* par target ; garde-rails sync/duckdb ajustés (/migrations/ pluriel, mentions sociales, count via CanonicalOrder).
+
+**Vérif** : build all + `go test` (migration + titre) + `-tags integration` + duckdb + sync + gofmt + vet verts. **Reste UNIQUEMENT les 2 irréversibles escaladés** (reorder inversion 132/133 + PMT-2 store cutover).
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-23) — relocation b25 : RACINE player (god-file 25 steps + prestige/campaign/progression)
 
 **Livré (b25, 29 racines TargetPlayer)** → nouveau `migrations/steps_player_base.go` (`playerBaseSteps()`) : god-file player (create_base_player_schema [player_match_enrichment, career_progression, sessions, match_citations, media_files, sync_meta] + add_skill_rating_table [match_skill_rank] + 23 autres) + create_prestige_player_schema + create_improvement_campaign_schema + create_progression_player_schema + drop_notifications_from_player_db. + 3 helpers (applyCareerProgressionSequence, applyCareerProgressionIdentityAssets, applyFixMvSessionStats). **Pas de caller externe** (≠ shared/RebuildMatchParticipantsART) → déplacement direct sans shim. consts col* inlinées. Total title-owned : 119 → **148** statiques.
