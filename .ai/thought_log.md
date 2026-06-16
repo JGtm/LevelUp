@@ -1,3 +1,15 @@
+## [2026-06-16] Phase 1.5 (MT-23) — relocation b18 : leaves shared (world CSR + squad offset + season stats + skill_v2 + backfill)
+
+**Livré (b18, 6 steps TargetShared)** → section shared de `Steps()` (steps.go) : `create_world_csr_leaderboard_snapshots` + `world_csr_leaderboard_latest_by_batch` (paire ATOMIQUE, vue world_csr_leaderboard_latest créée v1 puis remplacée par _by_batch) ; `shared_create_player_squad_offset` ; `create_world_player_season_stats` ; `shared_create_skill_v2_tables` ; `shared_backfill_is_ranked_and_season` (ALTER match_registry +season_id + ApplyBackfill is_ranked/season_id). Tous tables/vues append-only autonomes ou ALTER de match_registry (racine globale). Total title-owned : 51 → **57** statiques. 6 globaux vidés.
+
+**skill_v2 + inversion connue** : `shared_create_skill_v2_tables` crée lusr_hyperparams_v2, consommée par `shared_seed_tier_boundaries_v2` (déjà title-owned, b3). Les 2 sont désormais title. L'inversion canonicalOrder documentée (seed AVANT créateur, position 132/133, survie via backfill non-fatal swallowed) est INCHANGÉE — order.go non touché, comportement runtime identique (fix réservé au reorder escaladé).
+
+**Test relocalisé** : `steps_shared_backfill_is_ranked_and_season_test.go` (integration, 5 tests + helpers `applyMigrationInIsolation`/`mustTime`/`seedSharedMatchRegistry` tous locaux) → `shared_backfill_is_ranked_test.go` titre. `applyMigrationInIsolation` réécrit pour itérer `StepsFor(TargetShared)` (au lieu de `All()`) + paramètre `t` pour `t.Fatalf`. Réutilise `openEngMemDB` (helper integration partagé).
+
+**Vérif** : build all + `go test` (migration + titre + duckdb : LUSR v2 readers OK) + `-tags integration` + gofmt + vet verts.
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-23) — relocation b17 : famille engagement (split mixte player×4 + shared×1)
 
 **Livré (b17, 5 steps, fichier mixte)** : `steps_engagement.go` enregistrait 5 steps dans un seul init() (4 player + 1 shared) → splittés. **Player (4)** → `playerSteps()` (steps_player.go titre) : `add_engagement_score_columns_to_player_match_enrichment` + `add_engagement_pace_columns_to_player_match_enrichment` (ALTER player_match_enrichment, racine globale) + `create_engagement_coefficients_table` + `repair_engagement_coefficients_primary_key` (paire atomique create+repair PK, table self-contained). **Shared (1)** → section shared de `Steps()` (steps.go) : `add_match_intensity_to_match_registry` (ALTER match_registry, racine globale ; déjà inclus dans create_base_shared_schema v5.5, ALTER pour vieilles DB). Consts colDouble/colVarchar/colInteger inlinés. Import `fmt` ajouté à steps.go. Total title-owned : 46 → **51** statiques.

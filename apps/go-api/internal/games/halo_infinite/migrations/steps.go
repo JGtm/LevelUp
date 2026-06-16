@@ -775,6 +775,245 @@ func Steps() []migration.Migration {
 				`)
 			},
 		},
+		// ─── Leaves shared additifs (tables/vues append-only autonomes + backfill) → b18.
+		// world_csr_leaderboard : table snapshots + vue _latest (paire ATOMIQUE, la vue
+		// est créée en v1 puis remplacée par _latest_by_batch).
+		{
+			Name:        "create_world_csr_leaderboard_snapshots",
+			TargetDB:    migration.TargetShared,
+			Description: "Crée world_csr_leaderboard_snapshots (append-only) + vue _latest pour le classement CSR mondial scrapé depuis Halo Waypoint",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE SEQUENCE IF NOT EXISTS wcl_seq START 1;
+
+					CREATE TABLE IF NOT EXISTS world_csr_leaderboard_snapshots (
+						id            BIGINT PRIMARY KEY DEFAULT nextval('wcl_seq'),
+						season_id     VARCHAR NOT NULL,
+						playlist_id   VARCHAR NOT NULL,
+						rank          INTEGER NOT NULL,
+						gamertag      VARCHAR NOT NULL,
+						csr_value     INTEGER NOT NULL,
+						tier_derived  VARCHAR,
+						fetched_at    TIMESTAMP,
+						written_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					);
+
+					CREATE INDEX IF NOT EXISTS idx_wcl_lookup
+						ON world_csr_leaderboard_snapshots(season_id, playlist_id, rank, written_at);
+
+					CREATE OR REPLACE VIEW world_csr_leaderboard_latest AS
+						SELECT *
+						FROM world_csr_leaderboard_snapshots
+						QUALIFY ROW_NUMBER() OVER (
+							PARTITION BY season_id, playlist_id, rank
+							ORDER BY written_at DESC, id DESC
+						) = 1;
+				`)
+			},
+		},
+		{
+			Name:        "world_csr_leaderboard_latest_by_batch",
+			TargetDB:    migration.TargetShared,
+			Description: "Remplace world_csr_leaderboard_latest : dernier batch (fetched_at) par (season, playlist) au lieu du dernier par rang (fix snapshot Frankenstein)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE OR REPLACE VIEW world_csr_leaderboard_latest AS
+						SELECT s.*
+						FROM world_csr_leaderboard_snapshots s
+						WHERE s.fetched_at = (
+							SELECT max(s2.fetched_at)
+							FROM world_csr_leaderboard_snapshots s2
+							WHERE s2.season_id = s.season_id
+							  AND s2.playlist_id = s.playlist_id
+						);
+				`)
+			},
+		},
+		{
+			Name:        "shared_create_player_squad_offset",
+			TargetDB:    migration.TargetShared,
+			Description: "LUSR v2 Sprint 1.C — player_squad_offset (append-only) + vue _latest : offset synergie par paire de coéquipiers",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE SEQUENCE IF NOT EXISTS player_squad_offset_seq START 1;
+					CREATE TABLE IF NOT EXISTS player_squad_offset (
+						id              BIGINT DEFAULT nextval('player_squad_offset_seq') PRIMARY KEY,
+						xuid            VARCHAR NOT NULL,
+						partner_xuid    VARCHAR NOT NULL,
+						playlist_group  VARCHAR NOT NULL,
+						offset_value    DOUBLE  NOT NULL,
+						match_count     INTEGER NOT NULL DEFAULT 0,
+						source          VARCHAR NOT NULL,
+						written_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+					);
+					CREATE INDEX IF NOT EXISTS idx_pso_lookup
+						ON player_squad_offset(xuid, playlist_group, partner_xuid, written_at DESC);
+
+					CREATE OR REPLACE VIEW player_squad_offset_latest AS
+					SELECT o.*
+					FROM player_squad_offset o
+					JOIN (
+						SELECT xuid, partner_xuid, playlist_group, MAX(written_at) AS max_written_at
+						FROM player_squad_offset
+						GROUP BY xuid, partner_xuid, playlist_group
+					) m
+						ON o.xuid = m.xuid
+						AND o.partner_xuid = m.partner_xuid
+						AND o.playlist_group = m.playlist_group
+						AND o.written_at = m.max_written_at;
+				`)
+			},
+		},
+		{
+			Name:        "create_world_player_season_stats",
+			TargetDB:    migration.TargetShared,
+			Description: "Crée world_player_season_stats (append-only) + vue _latest : stats joueur du classement mondial par saison CSR x playlist (compteurs bruts, ratios dérivés à la lecture)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE SEQUENCE IF NOT EXISTS wpss_seq START 1;
+
+					CREATE TABLE IF NOT EXISTS world_player_season_stats (
+						id           BIGINT PRIMARY KEY DEFAULT nextval('wpss_seq'),
+						title_slug   VARCHAR NOT NULL DEFAULT 'halo_infinite',
+						gamertag     VARCHAR NOT NULL,
+						season_id    VARCHAR NOT NULL,
+						playlist_id  VARCHAR NOT NULL,
+						match_count  INTEGER NOT NULL DEFAULT 0,
+						win_count    INTEGER NOT NULL DEFAULT 0,
+						loss_count   INTEGER NOT NULL DEFAULT 0,
+						tie_count    INTEGER NOT NULL DEFAULT 0,
+						dnf_count    INTEGER NOT NULL DEFAULT 0,
+						kills        BIGINT NOT NULL DEFAULT 0,
+						deaths       BIGINT NOT NULL DEFAULT 0,
+						assists      BIGINT NOT NULL DEFAULT 0,
+						playtime_s   BIGINT NOT NULL DEFAULT 0,
+						medal_count  BIGINT NOT NULL DEFAULT 0,
+						kda          DOUBLE NOT NULL DEFAULT 0,
+						accuracy     DOUBLE NOT NULL DEFAULT 0,
+						damage_dealt BIGINT NOT NULL DEFAULT 0,
+						damage_taken BIGINT NOT NULL DEFAULT 0,
+						computed_at  TIMESTAMP,
+						written_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					);
+
+					CREATE INDEX IF NOT EXISTS idx_wpss_lookup
+						ON world_player_season_stats(title_slug, season_id, playlist_id, gamertag, written_at);
+
+					CREATE OR REPLACE VIEW world_player_season_stats_latest AS
+						SELECT *
+						FROM world_player_season_stats
+						QUALIFY ROW_NUMBER() OVER (
+							PARTITION BY title_slug, gamertag, season_id, playlist_id
+							ORDER BY written_at DESC, id DESC
+						) = 1;
+				`)
+			},
+		},
+		{
+			Name:        "shared_create_skill_v2_tables",
+			TargetDB:    migration.TargetShared,
+			Description: "LUSR v2 — player_skill_state_v2 (append-only) + lusr_hyperparams_v2 + vues _latest",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE SEQUENCE IF NOT EXISTS player_skill_state_v2_seq START 1;
+					CREATE TABLE IF NOT EXISTS player_skill_state_v2 (
+						id              BIGINT DEFAULT nextval('player_skill_state_v2_seq') PRIMARY KEY,
+						xuid            VARCHAR NOT NULL,
+						playlist_group  VARCHAR NOT NULL,
+						mu              DOUBLE  NOT NULL,
+						sigma           DOUBLE  NOT NULL,
+						experience      INTEGER NOT NULL DEFAULT 0,
+						last_match_id   VARCHAR,
+						last_match_at   TIMESTAMP,
+						written_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+					);
+					CREATE INDEX IF NOT EXISTS idx_pssv2_xuid_group_written
+						ON player_skill_state_v2(xuid, playlist_group, written_at DESC);
+
+					CREATE OR REPLACE VIEW player_skill_state_v2_latest AS
+					SELECT s.*
+					FROM player_skill_state_v2 s
+					JOIN (
+						SELECT xuid, playlist_group, MAX(written_at) AS max_written_at
+						FROM player_skill_state_v2
+						GROUP BY xuid, playlist_group
+					) m
+						ON s.xuid = m.xuid
+						AND s.playlist_group = m.playlist_group
+						AND s.written_at = m.max_written_at;
+
+					CREATE SEQUENCE IF NOT EXISTS lusr_hyperparams_v2_seq START 1;
+					CREATE TABLE IF NOT EXISTS lusr_hyperparams_v2 (
+						id              BIGINT DEFAULT nextval('lusr_hyperparams_v2_seq') PRIMARY KEY,
+						playlist_group  VARCHAR NOT NULL,
+						name            VARCHAR NOT NULL,
+						value           DOUBLE  NOT NULL,
+						source          VARCHAR NOT NULL,
+						written_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+					);
+					CREATE INDEX IF NOT EXISTS idx_lhv2_group_name_written
+						ON lusr_hyperparams_v2(playlist_group, name, written_at DESC);
+
+					CREATE OR REPLACE VIEW lusr_hyperparams_v2_latest AS
+					SELECT h.*
+					FROM lusr_hyperparams_v2 h
+					JOIN (
+						SELECT playlist_group, name, MAX(written_at) AS max_written_at
+						FROM lusr_hyperparams_v2
+						GROUP BY playlist_group, name
+					) m
+						ON h.playlist_group = m.playlist_group
+						AND h.name = m.name
+						AND h.written_at = m.max_written_at;
+				`)
+			},
+		},
+		{
+			Name:        "shared_backfill_is_ranked_and_season",
+			TargetDB:    migration.TargetShared,
+			Description: "Phase 1 plan CSR : ALTER +season_id, backfill is_ranked + season_id via heuristique nom playlist + bornes saison",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE match_registry ADD COLUMN IF NOT EXISTS season_id VARCHAR;
+					CREATE INDEX IF NOT EXISTS idx_match_registry_season_id ON match_registry(season_id);
+				`)
+			},
+			ApplyBackfill: func(db *sql.DB) error {
+				if _, err := db.ExecContext(migration.BootCtx(), `
+					UPDATE match_registry
+					SET is_ranked = TRUE
+					WHERE COALESCE(is_ranked, FALSE) = FALSE
+					  AND (
+					      LOWER(COALESCE(playlist_name, '')) LIKE '%ranked%'
+					      OR LOWER(COALESCE(pair_name, '')) LIKE 'ranked:%'
+					  );
+				`); err != nil {
+					return err
+				}
+				_, err := db.ExecContext(migration.BootCtx(), `
+					UPDATE match_registry
+					SET season_id = CASE
+						WHEN start_time >= TIMESTAMP '2025-11-18' THEN 'CsrSeason13-1'
+						WHEN start_time >= TIMESTAMP '2025-08-05' THEN 'CsrSeason12-1'
+						WHEN start_time >= TIMESTAMP '2025-05-06' THEN 'CsrSeason11-1'
+						WHEN start_time >= TIMESTAMP '2025-02-04' THEN 'CsrSeason10-1'
+						WHEN start_time >= TIMESTAMP '2024-11-05' THEN 'CsrSeason9-1'
+						WHEN start_time >= TIMESTAMP '2024-07-30' THEN 'CsrSeason8-1'
+						WHEN start_time >= TIMESTAMP '2024-04-30' THEN 'CsrSeason7-1'
+						WHEN start_time >= TIMESTAMP '2024-01-30' THEN 'CsrSeason6-1'
+						WHEN start_time >= TIMESTAMP '2023-10-17' THEN 'CsrSeason5-1'
+						WHEN start_time >= TIMESTAMP '2023-06-20' THEN 'CsrSeason4-1'
+						WHEN start_time >= TIMESTAMP '2023-03-07' THEN 'CsrSeason3-1'
+						WHEN start_time >= TIMESTAMP '2022-11-08' THEN 'CsrSeason2-2'
+						WHEN start_time >= TIMESTAMP '2022-05-03' THEN 'CsrSeason2'
+						WHEN start_time >= TIMESTAMP '2021-12-08' THEN 'CsrSeason1'
+						ELSE NULL
+					END
+					WHERE is_ranked = TRUE AND season_id IS NULL;
+				`)
+				return err
+			},
+		},
 		{
 			Name:        "shared_add_participation_info_booleans",
 			TargetDB:    migration.TargetShared,
