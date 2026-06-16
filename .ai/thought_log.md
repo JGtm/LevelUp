@@ -1,3 +1,19 @@
+## [2026-06-16] Phase 1.5 (MT-23) — b27 : reorder de l'inversion skill_v2/tier_boundaries (irréversible #1, sign-off OK)
+
+**Statut** : Complété (sign-off user explicite).
+
+**Décision** : swap dans `order.go::canonicalOrder` — `shared_create_skill_v2_tables` (créateur de lusr_hyperparams_v2) placé AVANT `shared_seed_tier_boundaries_v2` (ApplySchema nil, INSERT dans cette table). Corrige l'inversion historique (seed avant créateur).
+
+**Pourquoi c'était « escaladé » et pourquoi c'est devenu sûr** : la crainte initiale (garde-fou order_dependency_test) était que réordonner casse `TestSortByCanonicalIsNoOpOnCurrentRegistry` (canonicalOrder == ordre de registration GLOBAL). Mais après b3 (seed) + b18 (skill_v2), les 2 steps sont TITLE-owned → absents du registre global → le no-op test (qui ne trie que `All()`) est inchangé. Vérifié : `TestSortByCanonicalIsNoOp` + `TestCanonicalOrderCompleteness` + `TestCanonicalOrder_DependencyDirection` verts.
+
+**Garde-fou mis à jour** : dépendance déplacée de `knownPreExistingInversions` (vidé) vers `stepDependencies` (sens correct créateur→dépendant, vérifié par la partie (1) du test → toute régression future de cet ordre = échec CI).
+
+**Effet** : no-op sur DB déjà migrées (schema_migrations name-keyed, les 2 done) ; sur DB fraîche le seed des tier_boundaries réussit dès le 1er boot au lieu de converger sur 2 boots via backfill non-fatal swallowed. Git-réversible.
+
+**Vérif** : build + `go test` (migration + titre) + suite complète verts (sauf DeviceCodeFlow pré-existant).
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-23) — validation full-suite + fix 4 régressions de relocation (packages non testés par lot)
 
 **Contexte** : à la fin de la relocation (b26), `go test ./...` (suite COMPLÈTE, pas juste les 3 packages migration/titre/duckdb que je validais par lot) a révélé 4 régressions latentes : des packages câblent `RunForDB` ou cherchent une migration PAR NOM dans le registre global, qui ne voit plus les steps déplacés.

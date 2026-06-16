@@ -145,25 +145,30 @@ var canonicalOrder = []string{
 	"add_pve_schema",                                          // shared_pve
 	"shared_pve_append_only_v1",                               // shared_pve
 	"rebuild_match_participants_defeat_art_corruption",        // shared
-	"shared_seed_tier_boundaries_v2",                          // shared
-	"shared_create_skill_v2_tables",                           // shared
-	"create_base_shared_social_schema",                        // shared_social
-	"add_player_slug_to_media_files",                          // shared_social
-	"add_file_name_to_media_files",                            // shared_social
-	"add_missing_columns_to_media_files",                      // shared_social
-	"add_capture_start_indexed_at_to_media_files",             // shared_social
-	"add_is_manual_to_media_match_associations",               // shared_social
-	"add_file_stem_ext_to_media_files",                        // shared_social
-	"align_media_files_legacy_schema",                         // shared_social
-	"create_prestige_shared_social_schema",                    // shared_social
-	"purge_data_health_warning_notifs",                        // shared_social
-	"create_player_records_history_append_only",               // shared_social
-	"player_records_history_previous_cols_v1",                 // shared_social
-	"extend_player_records_with_window",                       // shared_social
-	"rekey_squad_member_xuid",                                 // shared_social
-	"create_world_player_season_stats",                        // shared
-	"create_world_csr_leaderboard_snapshots",                  // shared
-	"world_csr_leaderboard_latest_by_batch",                   // shared
+	// Phase 1.5 b27 (reorder escaladé) : skill_v2 (créateur de lusr_hyperparams_v2)
+	// AVANT le seed tier_boundaries (qui INSERT dedans). Corrige l'inversion 148/149
+	// historique. Sûr : les 2 sont title-owned → n'affecte pas l'ordre du registre global
+	// (TestSortByCanonicalIsNoOp). Name-keyed → no-op sur DB déjà migrées ; sur DB fraîche
+	// le seed réussit dès le 1er boot (au lieu de converger sur 2 boots via backfill swallowed).
+	"shared_create_skill_v2_tables",               // shared
+	"shared_seed_tier_boundaries_v2",              // shared
+	"create_base_shared_social_schema",            // shared_social
+	"add_player_slug_to_media_files",              // shared_social
+	"add_file_name_to_media_files",                // shared_social
+	"add_missing_columns_to_media_files",          // shared_social
+	"add_capture_start_indexed_at_to_media_files", // shared_social
+	"add_is_manual_to_media_match_associations",   // shared_social
+	"add_file_stem_ext_to_media_files",            // shared_social
+	"align_media_files_legacy_schema",             // shared_social
+	"create_prestige_shared_social_schema",        // shared_social
+	"purge_data_health_warning_notifs",            // shared_social
+	"create_player_records_history_append_only",   // shared_social
+	"player_records_history_previous_cols_v1",     // shared_social
+	"extend_player_records_with_window",           // shared_social
+	"rekey_squad_member_xuid",                     // shared_social
+	"create_world_player_season_stats",            // shared
+	"create_world_csr_leaderboard_snapshots",      // shared
+	"world_csr_leaderboard_latest_by_batch",       // shared
 }
 
 var canonicalIndex = func() map[string]int {
