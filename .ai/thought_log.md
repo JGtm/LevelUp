@@ -1,3 +1,13 @@
+## [2026-06-16] Phase 1.5 (MT-23) — relocation b17 : famille engagement (split mixte player×4 + shared×1)
+
+**Livré (b17, 5 steps, fichier mixte)** : `steps_engagement.go` enregistrait 5 steps dans un seul init() (4 player + 1 shared) → splittés. **Player (4)** → `playerSteps()` (steps_player.go titre) : `add_engagement_score_columns_to_player_match_enrichment` + `add_engagement_pace_columns_to_player_match_enrichment` (ALTER player_match_enrichment, racine globale) + `create_engagement_coefficients_table` + `repair_engagement_coefficients_primary_key` (paire atomique create+repair PK, table self-contained). **Shared (1)** → section shared de `Steps()` (steps.go) : `add_match_intensity_to_match_registry` (ALTER match_registry, racine globale ; déjà inclus dans create_base_shared_schema v5.5, ALTER pour vieilles DB). Consts colDouble/colVarchar/colInteger inlinés. Import `fmt` ajouté à steps.go. Total title-owned : 46 → **51** statiques.
+
+**Test relocalisé** : `steps_engagement_pkfix_test.go` (integration) → `player_engagement_pkfix_test.go` titre. Résout le step via `StepsFor(TargetPlayer)` (au lieu de `All()`), `hasPrimaryKey` → `migration.HasPrimaryKey`, openMemDB inline. Appelle `ApplySchema` direct (pas de RunForDB → provider non requis pour l'apply ; StepsFor est pur).
+
+**Vérif** : build all + `go test` (migration + titre + duckdb : match_registry.match_intensity OK via base) + `-tags integration` (les 3 tests pkfix) + gofmt + vet verts.
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-23) — relocation b16 : consommateurs progression (dedup record_history + streak append-only)
 
 **Livré (b16, 2 consommateurs player)** : `dedup_record_history_v1` (rebuild CTAS conditionnel de record_history, no-op si pas de doublon) + `create_streak_history_append_only` (table streak_history + vue streak_latest + backfill depuis streak) → `playerSteps()` (steps_player.go titre). Consommateurs de record_history/streak créées par `create_progression_player_schema` (RACINE, reste globale) → safe (créateur global + consommateur titre). Total title-owned : 44 → **46** statiques.
