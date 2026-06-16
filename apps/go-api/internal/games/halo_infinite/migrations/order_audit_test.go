@@ -157,3 +157,58 @@ func TestTitleStepsRunEndToEnd_Player(t *testing.T) {
 		}
 	}
 }
+
+// TestTitleStepsRunEndToEnd_Shared : le god-file shared title-owned (34 steps, b23),
+// fourni via le provider, est exécuté par RunForDB(TargetShared) et crée les tables de
+// base + les vues v6. Restaure la couverture des 4 tests skip-guardés (migration_test.go).
+func TestTitleStepsRunEndToEnd_Shared(t *testing.T) {
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open duckdb: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migration.SetTitleStepsProvider(StepsFor)
+	if err := migration.RunForDB(db, migration.TargetShared); err != nil {
+		t.Fatalf("RunForDB(Shared): %v", err)
+	}
+
+	for _, table := range []string{"match_registry", "match_participants", "medals_earned", "xuid_aliases", "weapon_kills"} {
+		var n int
+		if err := db.QueryRow(
+			"SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?", table,
+		).Scan(&n); err != nil {
+			t.Fatalf("query table %s: %v", table, err)
+		}
+		if n != 1 {
+			t.Errorf("table shared %s absente après migration title-owned", table)
+		}
+	}
+	for _, view := range []string{"v_gamertag_lookup", "v_weapon_kills", "v_match_full", "mv_player_matches"} {
+		var n int
+		if err := db.QueryRow(
+			"SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ? AND table_type = 'VIEW'", view,
+		).Scan(&n); err != nil {
+			t.Fatalf("query view %s: %v", view, err)
+		}
+		if n != 1 {
+			t.Errorf("vue shared %s absente après migration title-owned", view)
+		}
+	}
+
+	// v_gamertag_lookup résout les bots (BotSQLCase) — régression repair_v_gamertag_lookup.
+	if _, err := db.Exec(`
+		INSERT INTO match_registry (match_id, start_time) VALUES ('t_bot', '2026-05-16');
+		INSERT INTO match_participants (match_id, xuid, gamertag, team_id, outcome)
+		VALUES ('t_bot', 'bid(3.0)', NULL, 0, 2);
+	`); err != nil {
+		t.Fatalf("seed bot: %v", err)
+	}
+	var got string
+	if err := db.QueryRow(`SELECT gamertag FROM v_gamertag_lookup WHERE xuid = 'bid(3.0)'`).Scan(&got); err != nil {
+		t.Fatalf("query v_gamertag_lookup bot: %v", err)
+	}
+	if got != "343 Ellis" {
+		t.Errorf("bot bid(3.0) → %q, want 343 Ellis (BotSQLCase non appliqué)", got)
+	}
+}

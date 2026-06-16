@@ -152,6 +152,8 @@ func TestNoARTPatternsOnProtectedTables(t *testing.T) {
 			if strings.HasSuffix(path, "_test.go") ||
 				strings.Contains(path, "/migration/") ||
 				strings.Contains(path, "\\migration\\") ||
+				strings.Contains(path, "/migrations/") ||
+				strings.Contains(path, "\\migrations\\") ||
 				strings.Contains(path, "/ops/") ||
 				strings.Contains(path, "\\ops\\") ||
 				strings.Contains(path, "/cmd/") ||
@@ -282,6 +284,7 @@ func TestNoBulkMultiRowUpdateOnCriticalTables(t *testing.T) {
 			}
 			if strings.HasSuffix(path, "_test.go") ||
 				strings.Contains(path, "/migration/") || strings.Contains(path, "\\migration\\") ||
+				strings.Contains(path, "/migrations/") || strings.Contains(path, "\\migrations\\") ||
 				strings.Contains(path, "/ops/") || strings.Contains(path, "\\ops\\") ||
 				strings.Contains(path, "/cmd/") || strings.Contains(path, "\\cmd\\") ||
 				strings.Contains(path, "/scripts/") || strings.Contains(path, "\\scripts\\") {

@@ -167,10 +167,10 @@ func RebuildMatchParticipantsART(ctx context.Context, db *sql.DB) error {
 	}
 
 	// Recrée vues + indexes.
-	if err := applyResolutionViews(db); err != nil {
+	if err := ApplyResolutionViews(db); err != nil {
 		return fmt.Errorf("rebuild_mp_runtime: recreate resolution views: %w", err)
 	}
-	if err := applyMvPlayerMatchesView(db); err != nil {
+	if err := ApplyMvPlayerMatchesView(db); err != nil {
 		return fmt.Errorf("rebuild_mp_runtime: recreate mv_player_matches: %w", err)
 	}
 	for _, ddl := range matchParticipantsIndexes {
