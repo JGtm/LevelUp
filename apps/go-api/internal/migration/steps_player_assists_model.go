@@ -1,27 +1,6 @@
 package migration
 
-import "database/sql"
-
-func init() {
-	Register(Migration{
-		Name:        "add_player_assists_model",
-		TargetDB:    TargetPlayer,
-		Description: "Table player_assists_model : coefs OLS multi-variée expected_assists par mode",
-		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `
-				CREATE TABLE IF NOT EXISTS player_assists_model (
-					game_variant_name VARCHAR PRIMARY KEY,
-					coef_intercept    DOUBLE NOT NULL DEFAULT 0,
-					coef_kills        DOUBLE NOT NULL DEFAULT 0,
-					coef_deaths       DOUBLE NOT NULL DEFAULT 0,
-					coef_damage_dealt DOUBLE NOT NULL DEFAULT 0,
-					coef_damage_taken DOUBLE NOT NULL DEFAULT 0,
-					coef_mmr_delta    DOUBLE NOT NULL DEFAULT 0,
-					r2                DOUBLE NOT NULL DEFAULT 0,
-					n_samples         INTEGER NOT NULL DEFAULT 0,
-					computed_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-				);
-			`)
-		},
-	})
-}
+// steps_player_assists_model.go — add_player_assists_model (table player_assists_model)
+// a été migré vers internal/games/halo_infinite/migrations/steps.go (Phase 1.5 b14,
+// voie B). Le nom reste dans internal/migration/order.go (canonicalOrder).
+// NB : distinct de assists_model_coefs (metadata, steps_metadata_assists_model.go).

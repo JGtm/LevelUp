@@ -1,3 +1,11 @@
+## [2026-06-16] Phase 1.5 (MT-23) — relocation b14 : leaves player standalone (premier tier player)
+
+**Livré (b14, 3 leaves player)** : `add_player_assists_model` (player_assists_model), `create_lusr_component_history` (lusr_component_history), `create_coach_proposal_player_schema` (coach_proposal) → inline dans `steps.go`, TargetPlayer. Pures inline-schema (execScript → migration.ExecScript), aucune famille atomique, aucun test dédié, aucun caller externe, cycle NONE. Premier tier Player ouvert. Total title-owned : 38 → **41** statiques (+ 2 dynamiques). Garde-fou : `player_assists_model` (player DB) ≠ `assists_model_coefs` (metadata) — ne pas confondre.
+
+**Vérif** : build all + `go test` (migration + titre) + order_audit (`TestCanonicalCoversGlobalAndTitle` : les 3 Names dans canonicalOrder, title-owned) verts.
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-23) — b13 : gate d'export de helpers (prérequis tiers append-only/rebuild)
 
 **Méthode** : carte de relocation produite par un workflow ultracode (9 agents, 42 steps classés → plan ordonné b13→b26 avec familles atomiques, helpers partagés, tests dédiés, callers CLI, risques de cycle). Doctrine RE-VÉRIFIER appliquée : le plan est un guide, chaque lot est revalidé contre l'arbre avant exécution (ex. le plan liste `add_weapon_labels` dans steps_metadata.go alors qu'il est déjà déplacé en b6 — à re-checker en b26).
