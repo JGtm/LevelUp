@@ -10,13 +10,16 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 )
 
-// applyWorldPlayerStatsMigration applique la migration create_world_player_season_stats.
+// applyWorldPlayerStatsMigration applique create_world_player_season_stats (title-owned
+// depuis Phase 1.5 b18 → résolu via StepsFor, + fallback global ForTarget).
 func applyWorldPlayerStatsMigration(t *testing.T, db *sql.DB) {
 	t.Helper()
-	for _, m := range migration.ForTarget(migration.TargetShared) {
+	all := append(migration.ForTarget(migration.TargetShared), halomigrations.StepsFor(migration.TargetShared)...)
+	for _, m := range all {
 		if m.Name == "create_world_player_season_stats" {
 			if err := m.ApplySchema(db); err != nil {
 				t.Fatalf("ApplySchema(create_world_player_season_stats): %v", err)
