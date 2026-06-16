@@ -843,6 +843,85 @@ func Steps() []migration.Migration {
 				return nil
 			},
 		},
+		// Leaves player standalone (tables propres, aucune famille atomique) → migrés (b14).
+		{
+			Name:        "add_player_assists_model",
+			TargetDB:    migration.TargetPlayer,
+			Description: "Table player_assists_model : coefs OLS multi-variée expected_assists par mode",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS player_assists_model (
+						game_variant_name VARCHAR PRIMARY KEY,
+						coef_intercept    DOUBLE NOT NULL DEFAULT 0,
+						coef_kills        DOUBLE NOT NULL DEFAULT 0,
+						coef_deaths       DOUBLE NOT NULL DEFAULT 0,
+						coef_damage_dealt DOUBLE NOT NULL DEFAULT 0,
+						coef_damage_taken DOUBLE NOT NULL DEFAULT 0,
+						coef_mmr_delta    DOUBLE NOT NULL DEFAULT 0,
+						r2                DOUBLE NOT NULL DEFAULT 0,
+						n_samples         INTEGER NOT NULL DEFAULT 0,
+						computed_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					);
+				`)
+			},
+		},
+		{
+			Name:        "create_lusr_component_history",
+			TargetDB:    migration.TargetPlayer,
+			Description: "Table lusr_component_history (V2 §1 — alimentation live + backfill)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS lusr_component_history (
+						match_id        VARCHAR NOT NULL,
+						component_name  VARCHAR NOT NULL,
+						value           DOUBLE  NOT NULL,
+						weight          DOUBLE  NOT NULL,
+						computed_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (match_id, component_name)
+					);
+					CREATE INDEX IF NOT EXISTS idx_lch_component ON lusr_component_history(component_name);
+					CREATE INDEX IF NOT EXISTS idx_lch_match ON lusr_component_history(match_id);
+				`)
+			},
+		},
+		{
+			Name:        "create_coach_proposal_player_schema",
+			TargetDB:    migration.TargetPlayer,
+			Description: "Table coach_proposal pour le pont coach_advisor → Prestige (ADR 0020)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS coach_proposal (
+						id                    VARCHAR PRIMARY KEY,
+						user_id               VARCHAR NOT NULL,
+						title_slug            VARCHAR NOT NULL,
+						kind                  VARCHAR NOT NULL,
+						template_id           VARCHAR,
+						challenges_spec_json  VARCHAR,
+						suggested_tier        VARCHAR,
+						source_signal         VARCHAR NOT NULL,
+						source_metric         VARCHAR,
+						radar_axis            VARCHAR,
+						strength              DOUBLE,
+						origin                VARCHAR NOT NULL,
+						reason_key_en         VARCHAR,
+						reason_key_fr         VARCHAR,
+						reason_params         VARCHAR,
+						status                VARCHAR NOT NULL DEFAULT 'pending',
+						created_at            TIMESTAMP NOT NULL,
+						expires_at            TIMESTAMP,
+						resolved_at           TIMESTAMP,
+						resolved_ref          VARCHAR,
+						superseded_by         VARCHAR,
+						superseded_at         TIMESTAMP,
+						obsoleted_at          TIMESTAMP
+					);
+					CREATE INDEX IF NOT EXISTS idx_coach_proposal_user_status
+						ON coach_proposal(user_id, title_slug, status);
+					CREATE INDEX IF NOT EXISTS idx_coach_proposal_metric_axis
+						ON coach_proposal(user_id, title_slug, source_metric, radar_axis);
+				`)
+			},
+		},
 	}
 }
 
