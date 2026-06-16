@@ -9,11 +9,14 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 )
 
 // applyWorldLeaderboardMigration applique les migrations du classement mondial
 // (création de la table + vue _latest par batch) sur une DB de test, dans l'ordre.
+// Depuis Phase 1.5 b18 ces 3 steps sont title-owned → résolus via StepsFor (+ fallback
+// global ForTarget pour robustesse si l'un redevenait global).
 func applyWorldLeaderboardMigration(t *testing.T, db *sql.DB) {
 	t.Helper()
 	wanted := []string{
@@ -23,6 +26,9 @@ func applyWorldLeaderboardMigration(t *testing.T, db *sql.DB) {
 	}
 	byName := map[string]migration.Migration{}
 	for _, m := range migration.ForTarget(migration.TargetShared) {
+		byName[m.Name] = m
+	}
+	for _, m := range halomigrations.StepsFor(migration.TargetShared) {
 		byName[m.Name] = m
 	}
 	for _, name := range wanted {

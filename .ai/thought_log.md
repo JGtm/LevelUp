@@ -1,3 +1,20 @@
+## [2026-06-16] Phase 1.5 (MT-23) — validation full-suite + fix 4 régressions de relocation (packages non testés par lot)
+
+**Contexte** : à la fin de la relocation (b26), `go test ./...` (suite COMPLÈTE, pas juste les 3 packages migration/titre/duckdb que je validais par lot) a révélé 4 régressions latentes : des packages câblent `RunForDB` ou cherchent une migration PAR NOM dans le registre global, qui ne voit plus les steps déplacés.
+
+**Corrigées** :
+1. **duckdb integration** (`leaderboard_world_repo_test.go` + `world_player_stats_repo_test.go`) : helpers `applyWorldLeaderboardMigration`/`applyWorldPlayerStatsMigration` cherchaient create_world_csr_leaderboard_snapshots / create_world_player_season_stats dans `ForTarget(TargetShared)` (global) → déplacés en b18 → introuvables. Fix : itérer aussi `halomigrations.StepsFor(TargetShared)`.
+2. **scheduler** (`data_health_check_e2e_test.go`, SANS build tag) : `RunForDB(TargetShared)` sans provider → match_registry/match_participants absents (god-file title depuis b23). Fix : `TestMain` (package scheduler_test) câblant `SetTitleStepsProvider`.
+3. **api/handlers** (`notifications_duckdb_e2e_test.go`) : schémas shared_social title (b24) → notification_preferences absente. Fix : `TestMain` (package handlers_test) câblant le provider.
+
+**Leçon** : valider `go test ./...` complet APRÈS une relocation transverse, pas seulement les packages touchés — les TestMain-provider et les lookups-par-nom vivent ailleurs. Les futurs déplacements doivent grep `ForTarget(.*Target` hors package migration.
+
+**Pré-existant (HORS périmètre)** : `TestE2E_DeviceCodeFlow_HappyPath` + `_SingleFlight` (api/handlers, auth device-flow) échouent (404 attempt_not_found) — zéro overlap avec les migrations, `git status` confirme aucun fichier auth touché → pré-existant sur la branche.
+
+**Vérif** : `go test ./...` complet vert SAUF les 2 DeviceCodeFlow pré-existants ; `-tags integration` sur migration/titre/duckdb/scheduler/sync/config/persist verts ; compile-check `-tags integration ./...` OK.
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-23) — relocation b26 : RACINE metadata (asset_translations) — RELOCATION COMPLÈTE
 
 **Livré (b26, 2 racines TargetMetadata, DERNIER root)** → nouveau `migrations/steps_metadata_root.go` (`metadataRootSteps()`) : `add_asset_translations` (asset_translations + medal_translations, pivot multi-langue) + `fix_super_fiesta_fr_label`. Écrites par de nombreux seeds tous déjà title-owned. **Hazard de cycle évité** : applyModeNameTr/ReconcileMetadataSeeds avaient déjà été déplacés au titre en b7 (pas de cycle restant). Total title-owned : 148 → **150** statiques (+ 2 dynamiques prestige/milestone).
