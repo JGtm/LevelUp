@@ -394,11 +394,35 @@ func (p *PathResolver) WatcherTokensPath() string {
 	return filepath.Join(p.repoRoot, "data", "auth", "watcher_tokens.json")
 }
 
-// WatcherTokensDir retourne le répertoire des tokens watcher multi-user (SSO Xbox).
-// Layout : data/auth/watcher_tokens/{xuid}.json (1 fichier par utilisateur).
+// WatcherTokensDir retourne le répertoire des tokens watcher multi-user (SSO Xbox)
+// du titre par DÉFAUT (halo_infinite). Signature inchangée → les ~20 appelants existants
+// (tous mono-titre Halo) obtiennent automatiquement le chemin namespacé titre sans churn.
+// Layout : data/titles/{slug}/auth/watcher_tokens/{xuid}.json (1 fichier par utilisateur).
 // Décision D4 (cf. SPRINT_XBOX_SSO §0bis) : source unique, write-to-temp + rename atomique,
 // perms 0600 sur fichiers / 0700 sur répertoire.
+//
+// Phase 1.5 PMT-2 leg 5 (store path cutover, MT-02) : le chemin est passé de
+// data/auth/watcher_tokens (legacy global) à data/titles/halo_infinite/auth/watcher_tokens
+// (namespacé titre). La copy-migration boot (auth.MigrateWatcherTokens) recopie les tokens
+// existants depuis le legacy au 1er démarrage → transparent, zéro perte (legacy préservé).
 func (p *PathResolver) WatcherTokensDir() string {
+	return p.WatcherTokensDirFor(DefaultSlug)
+}
+
+// WatcherTokensDirFor retourne le répertoire des tokens watcher d'un titre donné
+// (namespacé : data/titles/{slug}/auth/watcher_tokens). Point d'injection title-aware
+// pour le multi-titre (2e titre → ses tokens ne collisionnent pas avec ceux d'Halo).
+func (p *PathResolver) WatcherTokensDirFor(slug string) string {
+	if slug == "" {
+		slug = DefaultSlug
+	}
+	return filepath.Join(p.repoRoot, "data", "titles", slug, "auth", "watcher_tokens")
+}
+
+// LegacyWatcherTokensDir retourne l'ANCIEN répertoire global (data/auth/watcher_tokens),
+// pré-namespacing titre. Utilisé uniquement par la copy-migration boot
+// (auth.MigrateWatcherTokens) comme source. Ne pas écrire ici.
+func (p *PathResolver) LegacyWatcherTokensDir() string {
 	return filepath.Join(p.repoRoot, "data", "auth", "watcher_tokens")
 }
 

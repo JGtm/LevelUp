@@ -1,3 +1,21 @@
+## [2026-06-16] Phase 1.5 (MT-02 / PMT-2 leg 5) — cutover du chemin du store de tokens watcher (irréversible #2, sign-off OK)
+
+**Statut** : Complété (sign-off user explicite : « Commit »).
+
+**Décision** : `PathResolver.WatcherTokensDir()` pointe désormais sur `data/titles/{slug}/auth/watcher_tokens` (namespacé titre) au lieu de `data/auth/watcher_tokens` (global legacy). Design signature-préservant : `WatcherTokensDir()` délègue à `WatcherTokensDirFor(DefaultSlug)` → zéro churn sur les ~30 callers existants. Ajout de `WatcherTokensDirFor(slug)` (injection title-aware) + `LegacyWatcherTokensDir()` (source de la migration).
+
+**Garde-fou (irréversibilité maîtrisée)** : nouvelle `auth.MigrateWatcherTokens(legacyDir, newDir)` — copy-migration **non destructive** (legacy préservé = filet de retour), **idempotente** (n'écrase jamais un `{xuid}.json` déjà présent dans le nouveau dossier → un RT rafraîchi post-migration n'est pas réécrasé par la version legacy périmée), no-op si legacy absent ou `legacy==new`, écriture temp+rename atomique (cohérent avec `MultiUserTokenStore.upsertLocked`). Appelée au **boot serveur** (`cmd/server/main.go`, AVANT toute création de store) ET par `token-capture` / `token-import` avant écriture.
+
+**Nuance documentée (sweep des callers)** : 7 CLI diag/backfill (`diag_appearance`, `diag_emblem_colors`, `diag_live_economy`, `backfill_kda_accuracy`, `refresh-metadata`, `refresh-career-ranks`, `populate-career-rank-images`) lisent `WatcherTokensDir()` SANS lancer la migration. En prod sans effet (le serveur boote toujours avant et migre une fois). Seul cas dégradé : un de ces diags lancé sur un checkout où le serveur n'a jamais booté depuis le cutover → nouveau dossier vide → « aucun token », **non destructif** (legacy intact), récupérable en bootant une fois. Durcissement (appel idempotent dans ces 7 CLI) = follow-up possible, non bloquant.
+
+**Tests** : `migrate_watcher_tokens_test.go` (4 cas : copie+legacy-préservé / idempotence-no-overwrite / no-legacy-no-op / same-dir-no-op) + `registry_test.go` (délégation défaut, fallback slug vide, isolation cross-titre, chemin legacy).
+
+**Vérif** : `go test` auth+title verts · `go vet` propre · `gofmt` propre · build `cmd/server` + `cmd/token-capture` + `cmd/token-import` OK.
+
+**Prochaine étape** : les 2 irréversibles de la Phase 1.5 (reorder + store cutover) sont livrés. Reprise de la séquence MT (périphérie multi-titre) — cf. `.ai/PLAN_MULTITITRE_INDEX.md`.
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-23) — b27 : reorder de l'inversion skill_v2/tier_boundaries (irréversible #1, sign-off OK)
 
 **Statut** : Complété (sign-off user explicite).

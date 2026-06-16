@@ -54,7 +54,12 @@ func main() {
 		fatalf("lecture stdin: %v\n", err)
 	}
 
-	storeDir := titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir()
+	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	// PMT-2 leg 5 : migre les tokens legacy AVANT d'écrire (idempotent, non destructif).
+	if _, mErr := auth.MigrateWatcherTokens(pr.LegacyWatcherTokensDir(), pr.WatcherTokensDir()); mErr != nil {
+		fmt.Fprintf(os.Stderr, "token-import: copy-migration tokens watcher échouée (legacy préservé): %v\n", mErr)
+	}
+	storeDir := pr.WatcherTokensDir()
 	store := auth.NewMultiUserTokenStore(storeDir)
 	if err := capturecli.PersistRefreshToken(store, xuid, canonicalGT, refreshToken, halo.InvalidateCachedPlayerTokens); err != nil {
 		fatalf("persistance RT: %v\n", err)

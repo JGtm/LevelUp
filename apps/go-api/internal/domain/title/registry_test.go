@@ -150,6 +150,42 @@ func TestPathResolver_BackupDir(t *testing.T) {
 	}
 }
 
+// TestPathResolver_WatcherTokensDir_TitleNamespaced (PMT-2 leg 5) : le store de tokens
+// watcher est namespacé titre ; le défaut (WatcherTokensDir()) délègue à DefaultSlug ; et
+// LegacyWatcherTokensDir() expose l'ancien chemin global pour la copy-migration.
+func TestPathResolver_WatcherTokensDir_TitleNamespaced(t *testing.T) {
+	pr := NewPathResolver("/repo")
+
+	// Défaut == chemin du titre par défaut, namespacé sous data/titles/{slug}/.
+	wantHalo := filepath.Join("/repo", "data", "titles", "halo_infinite", "auth", "watcher_tokens")
+	if got := pr.WatcherTokensDir(); got != wantHalo {
+		t.Errorf("WatcherTokensDir() = %q, want %q", got, wantHalo)
+	}
+	if got := pr.WatcherTokensDirFor(DefaultSlug); got != wantHalo {
+		t.Errorf("WatcherTokensDirFor(DefaultSlug) = %q, want %q", got, wantHalo)
+	}
+
+	// Slug vide → fallback DefaultSlug (robustesse).
+	if got := pr.WatcherTokensDirFor(""); got != wantHalo {
+		t.Errorf("WatcherTokensDirFor(\"\") = %q, want %q (fallback DefaultSlug)", got, wantHalo)
+	}
+
+	// Isolation cross-titre : un 2e titre ne collisionne pas avec Halo.
+	wantOther := filepath.Join("/repo", "data", "titles", "synthetic_title_b", "auth", "watcher_tokens")
+	if got := pr.WatcherTokensDirFor("synthetic_title_b"); got != wantOther {
+		t.Errorf("WatcherTokensDirFor(synthetic_title_b) = %q, want %q", got, wantOther)
+	}
+	if pr.WatcherTokensDirFor("synthetic_title_b") == pr.WatcherTokensDir() {
+		t.Error("collision cross-titre : synthetic_title_b partage le dossier d'Halo")
+	}
+
+	// Legacy = ancien chemin global (source de la copy-migration).
+	wantLegacy := filepath.Join("/repo", "data", "auth", "watcher_tokens")
+	if got := pr.LegacyWatcherTokensDir(); got != wantLegacy {
+		t.Errorf("LegacyWatcherTokensDir() = %q, want %q", got, wantLegacy)
+	}
+}
+
 func TestPathResolver_DemoFixturesDir(t *testing.T) {
 	r := NewRegistry()
 	pr := NewPathResolver("/repo", r)
