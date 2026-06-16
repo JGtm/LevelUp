@@ -1190,6 +1190,8 @@ func Steps() []migration.Migration {
 	steps = append(steps, playerMatchSkillRankSteps()...)
 	// Repairs/rebuilds player CONSOMMATEURS (repair PK pme/citations, rebuild career) → b21.
 	steps = append(steps, playerRepairSteps()...)
+	// Conversions append-only CONSOMMATRICES (csr_snapshots, match_csrs, pve_match_stats) → b22.
+	steps = append(steps, appendOnlyMiscSteps()...)
 	// Steps social CONSOMMATEURS (media ALTERs, records family, purge, rekey) → b19.
 	// Les racines du tier social restent globales (déplacées en dernier).
 	steps = append(steps, sharedSocialSteps()...)
