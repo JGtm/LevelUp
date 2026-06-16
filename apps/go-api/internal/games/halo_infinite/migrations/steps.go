@@ -24,7 +24,7 @@ import (
 // chaque entrée doit être listée dans migration.canonicalOrder (vérifié par
 // order_audit_test.go).
 func Steps() []migration.Migration {
-	return []migration.Migration{
+	steps := []migration.Migration{
 		// Déplacés depuis internal/migration/steps_metadata.go (b4 — leaves additifs).
 		{
 			Name:        "add_waypoint_assets_raw",
@@ -923,6 +923,10 @@ func Steps() []migration.Migration {
 			},
 		},
 	}
+	// Steps player CONSOMMATEURS (perf_chain, psa_checked, fix_career_xp) → b15.
+	// Le schéma de base player reste global (racine, déplacé en dernier).
+	steps = append(steps, playerSteps()...)
+	return steps
 }
 
 // StepsFor filtre Steps() par target — c'est la fonction enregistrée comme

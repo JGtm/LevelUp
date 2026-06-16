@@ -115,3 +115,45 @@ func TestTitleStepsRunEndToEnd_Metadata(t *testing.T) {
 		}
 	}
 }
+
+// TestTitleStepsRunEndToEnd_Player : les CONSOMMATEURS player title-owned (b15 :
+// perf_chain, psa_checked, fix_career_xp) s'appliquent sur le schéma de base player
+// GLOBAL via RunForDB(TargetPlayer) (provider câblé combine global+title). Prouve que
+// les ALTER title-owned tournent sur les tables créées par le schéma de base resté
+// global, dans le bon ordre (canonicalOrder).
+func TestTitleStepsRunEndToEnd_Player(t *testing.T) {
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open duckdb: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migration.SetTitleStepsProvider(StepsFor)
+	if err := migration.RunForDB(db, migration.TargetPlayer); err != nil {
+		t.Fatalf("RunForDB(Player): %v", err)
+	}
+
+	// Tables de base (créées par le schéma global) + colonnes additives title-owned.
+	for _, table := range []string{"player_match_enrichment", "career_progression"} {
+		var n int
+		if err := db.QueryRow(
+			"SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?", table,
+		).Scan(&n); err != nil {
+			t.Fatalf("query table %s: %v", table, err)
+		}
+		if n != 1 {
+			t.Errorf("table player %s absente", table)
+		}
+	}
+	for _, col := range []string{"performance_chain", "psa_checked_at"} {
+		var n int
+		if err := db.QueryRow(
+			"SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'player_match_enrichment' AND column_name = ?", col,
+		).Scan(&n); err != nil {
+			t.Fatalf("query pme.%s: %v", col, err)
+		}
+		if n != 1 {
+			t.Errorf("player_match_enrichment.%s absente — consommateur title-owned non appliqué", col)
+		}
+	}
+}
