@@ -96,8 +96,10 @@ func TestSharedMatchTablesWrittenViaPersistOrAllowlist(t *testing.T) {
 			return nil
 		}
 		// Exclure les one-shot mono-process (migrations, ops, CLI, scripts) — même
-		// statut que dans no_art_patterns_test.go.
+		// statut que dans no_art_patterns_test.go. NB : "/migrations/" (pluriel)
+		// couvre les migrations title-owned (internal/games/*/migrations/, Phase 1.5 b23).
 		if strings.Contains(path, "/migration/") || strings.Contains(path, "\\migration\\") ||
+			strings.Contains(path, "/migrations/") || strings.Contains(path, "\\migrations\\") ||
 			strings.Contains(path, "/ops/") || strings.Contains(path, "\\ops\\") ||
 			strings.Contains(path, "/cmd/") || strings.Contains(path, "\\cmd\\") ||
 			strings.Contains(path, "/scripts/") || strings.Contains(path, "\\scripts\\") {

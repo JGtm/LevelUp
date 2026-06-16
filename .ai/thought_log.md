@@ -1,3 +1,17 @@
+## [2026-06-16] Phase 1.5 (MT-23) — relocation b23 : god-file shared (34 steps, RACINE shared_matches_v2)
+
+**Livré (b23, 34 steps TargetShared, le plus gros lot)** → nouveau `migrations/steps_shared_core.go` (`sharedCoreSteps()`) : god-file shared (create_base_shared_schema [match_registry, match_participants, medals_earned, xuid_aliases, weapon_kills, killer_victim_pairs, highlight_events, sync_meta] … repair_v_gamertag_lookup_bots_2026_05_30). RACINE shared, déplacée maintenant car TOUS ses consommateurs (b3/b17/b18/b22) + tests sont title-owned. Total title-owned : 81 → **115** statiques.
+
+**Contrainte cycle (boot serveur) résolue** : `RebuildMatchParticipantsART` (rebuild ART de match_participants, appelé par **cmd/server au boot** + cmd/force_rebuild_art + internal/sync) appelle `applyResolutionViews`/`applyMvPlayerMatchesView`. Ces helpers DOIVENT rester dans le package migration (sinon cycle migration→titre = boot cassé). **Solution** : les 6 helpers RESTENT global, RENOMMÉS exportés (ApplyResolutionViews, ApplyMvPlayerMatchesView, ApplyHighlightEventsAutoincrement, ApplyMedalsBigint, ApplyDropHighlightEventsGamertag, DropAssistsExpectedShared) ; `steps_shared.go` devient un fichier de helpers (init() 34-Register retiré). Les 34 steps titre appellent migration.ApplyResolutionViews etc. Rebuild step + util restent global (carte datée). consts col* inlinées.
+
+**Tests** : 4 tests migration_test.go shared (RunForDB(TargetShared)) skip-guardés via `sharedBaseSchemaIsGlobal()`. Couverture restaurée : `TestTitleStepsRunEndToEnd_Shared` (tables + 4 vues v6 + résolution bot BotSQLCase). Les 2 fichiers test rebuild restent global (seedMatchParticipantsForRebuild manuel + RebuildMatchParticipantsART global, inchangés).
+
+**3 garde-rails ajustés** : `TestSharedMatchTablesWrittenViaPersistOrAllowlist` + `TestNoARTPatternsOnProtectedTables` (sync) excluaient `/migration/` (singulier) mais pas `/migrations/` (pluriel, package titre) → ajouté l'exclusion ; `TestNoUnauthorizedSharedSocialMention` (duckdb) → reformulé 1 description (« shared_social.duckdb » → « la base sociale »).
+
+**Vérif** : build all + `go test` (migration + titre) + `-tags integration` + duckdb + **sync (ART + shared-write guards)** + gofmt + vet verts.
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-23) — relocation b22 : 3 conversions append-only (csr_snapshots + match_csrs + pve)
 
 **Livré (b22, 3 consommateurs, ex-b22/b24/b25 du plan regroupés)** → nouveau `migrations/steps_appendonly_misc.go` (`appendOnlyMiscSteps()`) : `player_append_only_csr_snapshots_v1` (TargetPlayer), `shared_append_only_match_csrs_v1` (TargetShared), `shared_pve_append_only_v1` (TargetSharedPvE). CTAS swap append-only (id PK technique + written_at + vue _latest). Consommateurs de tables créées par des racines (player god-file global ; match_csrs via add_shared_match_csrs déjà title b3 ; pve_match_stats via add_pve_schema déjà title b3). Aucun test dédié migration-pkg. Total title-owned : 78 → **81** statiques.

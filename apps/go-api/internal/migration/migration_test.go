@@ -203,13 +203,25 @@ func assertTableExists(t *testing.T, db *sql.DB, tableName string) bool {
 	return cnt > 0
 }
 
+// sharedBaseSchemaIsGlobal indique si create_base_shared_schema est encore enregistré
+// dans le registre global (TargetShared). Depuis Phase 1.5 b23, le god-file shared est
+// title-owned → ces tests RunForDB(TargetShared) global-only sont skippés (le provider
+// title n'est pas câblable ici, cycle). Couverture réelle : TestTitleStepsRunEndToEnd_Shared.
+func sharedBaseSchemaIsGlobal() bool {
+	for _, m := range ForTarget(TargetShared) {
+		if m.Name == "create_base_shared_schema" {
+			return true
+		}
+	}
+	return false
+}
+
 // TestRunForDB_Shared_CoreTablesExist vérifie les tables centrales de shared.
 func TestRunForDB_Shared_CoreTablesExist(t *testing.T) {
 	db := openMemDB(t)
 
-	sharedMigs := ForTarget(TargetShared)
-	if len(sharedMigs) == 0 {
-		t.Skip("aucune migration shared enregistrée")
+	if !sharedBaseSchemaIsGlobal() {
+		t.Skip("create_base_shared_schema title-owned (Phase 1.5 b23) — couverture : TestTitleStepsRunEndToEnd_Shared")
 	}
 
 	if err := RunForDB(db, TargetShared); err != nil {
@@ -235,6 +247,10 @@ func TestRunForDB_Shared_CoreTablesExist(t *testing.T) {
 // Sprint 47 T18 — v_gamertag_lookup, v_match_full, v_killer_victim_full, v_weapon_kills.
 func TestRunForDB_Shared_V6ViewsExist(t *testing.T) {
 	db := openMemDB(t)
+
+	if !sharedBaseSchemaIsGlobal() {
+		t.Skip("create_base_shared_schema title-owned (Phase 1.5 b23) — couverture : TestTitleStepsRunEndToEnd_Shared")
+	}
 
 	if err := RunForDB(db, TargetShared); err != nil {
 		t.Fatalf("RunForDB(Shared): %v", err)
@@ -273,6 +289,10 @@ func TestRunForDB_Shared_V6ViewsExist(t *testing.T) {
 // force le re-déploiement ; ce test prévient toute future divergence définition/code.
 func TestRunForDB_Shared_VGamertagLookup_ResolvesBotNames(t *testing.T) {
 	db := openMemDB(t)
+
+	if !sharedBaseSchemaIsGlobal() {
+		t.Skip("create_base_shared_schema title-owned (Phase 1.5 b23) — couverture : TestTitleStepsRunEndToEnd_Shared")
+	}
 
 	if err := RunForDB(db, TargetShared); err != nil {
 		t.Fatalf("RunForDB(Shared): %v", err)
@@ -316,6 +336,10 @@ func TestRunForDB_Shared_VGamertagLookup_ResolvesBotNames(t *testing.T) {
 // Sprint 47 T18 — 3 passes, pas de doublons, schema_done = TRUE.
 func TestRunForDB_Shared_IdempotentOnExistingDB(t *testing.T) {
 	db := openMemDB(t)
+
+	if !sharedBaseSchemaIsGlobal() {
+		t.Skip("create_base_shared_schema title-owned (Phase 1.5 b23) — couverture : TestTitleStepsRunEndToEnd_Shared")
+	}
 
 	for pass := 1; pass <= 3; pass++ {
 		if err := RunForDB(db, TargetShared); err != nil {
