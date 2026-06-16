@@ -1,3 +1,18 @@
+## [2026-06-16] Phase 1.5 (MT-23) — relocation b12 : famille catalogue Playlists/Pairs/Maps + seed ranked (atomique)
+
+**Livré (b12, famille atomique)** : `add_catalog_playlists` (schéma 8 tables title-aware : playlists_catalog, maps_catalog, game_variants_catalog, map_mode_pair_definitions, playlist_pair_links, catalog_fetch_queue, pair_mode_label_translations, unknown_prefix_candidates) + `drop_playlists_catalog_secondary_indexes` (fix RC-E, MÊME table playlists_catalog → atomique) inline dans `steps.go` ; `seed_ranked_playlists_catalog` (named-func, source de vérité is_ranked depuis `rankedplaylists`) → nouveau `migrations/ranked_playlists.go` (`applyRankedPlaylistSeeds` + `seedRankedPlaylistFR`, `bootCtx()` → `migration.BootCtx()`). Step statique dans Steps() (`ApplySchema: applyRankedPlaylistSeeds`). Cycle vérifié : `rankedplaylists` n'importe pas migration. Total title-owned : 35 → **38** statiques (+ 2 dynamiques). 3 globaux vidés.
+
+**3 tests relocalisés (préservation de couverture, pas skip-guard)** :
+- `playlists_catalog_no_index_test.go` (garde-fou RC-E, build tag `cgo`) → titre, câble `StepsFor` + `RunForDB(TargetMetadata)`. **Important** : en global-only ce test serait passé À VIDE (table absente → 0 index → 0 offending), régression SILENCIEUSE de couverture → relocation obligatoire (pas skip). Vérifié PASS : playlists_catalog n'a aucun index secondaire après migration title-owned.
+- `catalog_test.go` (8 tables + isolation title_slug + INSERT OR IGNORE/VARCHAR[]) → titre via `openMetadataDB`.
+- `ranked_playlists_test.go` (FixesStuckFalse / SeedsActiveAndFR / Idempotent) → titre, self-contained (schéma manuel + `applyRankedPlaylistSeeds`).
+
+**Ordre validé bout-en-bout** : `seed_ranked_playlists_catalog` écrit playlists_catalog (créée par add_catalog_playlists, title) + asset_translations (créée par add_asset_translations, GLOBAL — racine, encore à déplacer). `RunForDB(TargetMetadata)` combine global+title trié par canonicalOrder → asset_translations + add_catalog_playlists tournent avant le seed. Les 3 tests catalog passent (la table existe, le seed s'applique).
+
+**Vérif** : build all + `go test` (3 packages) + `-tags integration` (les 7 tests catalog/ranked + RC-E) + duckdb + gofmt + vet verts.
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-23) — relocation b11 : famille milestones (schéma + seed TOML dynamique)
 
 **Livré (b11)** : famille milestones déplacée vers le titre, même découpe que prestige (b10) — schéma `create_milestone_catalog_metadata` (table `milestone_catalog`) inline dans `steps.go`, seed TOML `seed_milestone_catalog_v1` (multi-titres, itère `config/titles/*/milestones/catalog.toml`) dans nouveau `migrations/milestones.go` (`RegisterMilestonesSeedMigration` via `migration.IsRegistered` + `seedMilestonesAllTitles`/`seedMilestonesFromTOML`/`nullableStringForSeed`, `bootCtx()` → `migration.BootCtx()`). Boot repointé `migration.` → `halomigrations.RegisterMilestonesSeedMigration`. Cycle vérifié : `internal/progression/milestones` n'importe pas migration. Total title-owned : 34 statiques → **35** (+ **2** dynamiques : prestige + milestone). Globaux vidés : `steps_metadata_milestones_catalog.go` + `steps_metadata_milestones_seed.go`.
