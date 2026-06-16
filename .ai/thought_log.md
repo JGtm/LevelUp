@@ -1,3 +1,15 @@
+## [2026-06-16] Phase 1.5 (MT-23) — relocation b20 : chaîne match_skill_rank player (append-only + vues, ART-prone)
+
+**Livré (b20, 6 consommateurs player)** → nouveau `migrations/steps_player_match_skill_rank.go` (`playerMatchSkillRankSteps()`) : `player_add_expected_win_prob` (ALTER), `lusr_chain_rework_v1` (DELETE LUSR), `player_append_only_match_skill_rank_v1` (CTAS swap append-only, DML ART-prone), `msr_written_at_default_now_repair_v1` (ALTER DEFAULT), `player_msr_view_lusr_over_v2_v1` + `player_msr_view_priority_csr_v1` (CREATE OR REPLACE VIEW match_skill_rank_latest, ordre de priorité CSR>LUSR>LUSR_V2). Tous consommateurs de match_skill_rank (créée par add_skill_rating_table, RACINE globale). Helpers migration.LoadTableColumns + migration.FirstWords. Total title-owned : 69 → **75** statiques.
+
+**Piège carte datée corrigé** : le plan workflow listait `rebuild_match_skill_rank` comme step b20, MAIS `steps_player_rebuild_match_skill_rank.go` n'enregistre AUCUN step — il définit seulement l'util runtime exporté `RebuildMatchSkillRankART`, appelé par `cmd/force_rebuild_art`. Reste donc dans le package migration (pattern shim, comme RebuildMatchParticipantsART/RebuildPlayerMatchEnrichmentART). Non touché.
+
+**2 tests fusionnés** : `steps_player_append_only_match_skill_rank_test.go` + `steps_player_msr_view_priority_csr_test.go` (partageaient `setupLegacyMatchSkillRank`) → `player_match_skill_rank_test.go` titre. Appellent les apply* direct (pas de RunForDB → provider non requis). columnExists → migration.ColumnExists.
+
+**Vérif** : build all + `go test` (migration + titre) + `-tags integration` (les 11 tests append-only/vues) + duckdb (readers LUSR sur match_skill_rank_latest) + gofmt + vet verts.
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-23) — relocation b19 : consommateurs shared_social (media + records + purge + rekey)
 
 **Livré (b19, 12 consommateurs TargetSharedSocial)** → nouveau `migrations/steps_shared_social.go` (`sharedSocialSteps()` appendé à `Steps()`) : 6 ALTER media_files/media_match_associations (add_player_slug, add_file_name, add_missing_columns, add_capture_start_indexed_at, add_is_manual, add_file_stem_ext) + `align_media_files_legacy_schema` (+ helper loadMediaFilesColumns) + famille records (`create_player_records_history_append_only`, `player_records_history_previous_cols_v1`, `extend_player_records_with_window`) + `purge_data_health_warning_notifs` + `rekey_squad_member_xuid`. Total title-owned : 57 → **69** statiques.

@@ -1,16 +1,5 @@
 package migration
 
-import "database/sql"
-
-func init() {
-	Register(Migration{
-		Name:     "lusr_chain_rework_v1",
-		TargetDB: TargetPlayer,
-		Description: "Wipe des ratings LUSR pour recompute complet avec les nouvelles chaînes" +
-			" (arena_slayer / arena_objectif / btb / chaos remplacent ranked/arena/btb/fun).",
-		ApplySchema: func(db *sql.DB) error {
-			_, err := db.ExecContext(bootCtx(), `DELETE FROM match_skill_rank WHERE rating_type = 'LUSR'`)
-			return err
-		},
-	})
-}
+// steps_player_lusr_chain_rework.go — lusr_chain_rework_v1 a été migré vers
+// internal/games/halo_infinite/migrations/steps_player_match_skill_rank.go (Phase 1.5 b20,
+// voie B). Le nom reste dans internal/migration/order.go (canonicalOrder).
