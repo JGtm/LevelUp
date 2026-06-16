@@ -48,6 +48,18 @@ func All() []Migration {
 	return registry
 }
 
+// IsRegistered indique si une migration de ce Name est déjà enregistrée. Utilisé
+// par les enregistrements dynamiques title-owned (seeds TOML) pour rester idempotents
+// sans accéder au registre privé (Phase 1.5 voie B).
+func IsRegistered(name string) bool {
+	for _, m := range registry {
+		if m.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 // ForTarget filtre les migrations par target_db.
 func ForTarget(target TargetDB) []Migration {
 	var out []Migration

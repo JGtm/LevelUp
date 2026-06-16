@@ -73,3 +73,45 @@ func TestTitleStepsRunEndToEnd(t *testing.T) {
 		t.Errorf("table pve_match_stats absente après migration title-owned (voie B cassée)")
 	}
 }
+
+// TestTitleStepsRunEndToEnd_Metadata : la famille prestige metadata title-owned
+// (create_prestige_metadata_schema + ALTER challenge_template), fournie via le
+// provider, est exécutée par RunForDB(TargetMetadata) et crée ses tables.
+// Restaure la couverture du test skip-guardé côté package migration (b10).
+func TestTitleStepsRunEndToEnd_Metadata(t *testing.T) {
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open duckdb: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migration.SetTitleStepsProvider(StepsFor)
+	if err := migration.RunForDB(db, migration.TargetMetadata); err != nil {
+		t.Fatalf("RunForDB(Metadata): %v", err)
+	}
+
+	for _, table := range []string{"challenge_template", "preset_arc", "preset_arc_step"} {
+		var n int
+		if err := db.QueryRow(
+			"SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?", table,
+		).Scan(&n); err != nil {
+			t.Fatalf("query table %s: %v", table, err)
+		}
+		if n != 1 {
+			t.Errorf("table %s absente après migration metadata title-owned (voie B cassée)", table)
+		}
+	}
+
+	// Sanity : colonnes ajoutées par les ALTER title-owned (source + tagging).
+	for _, col := range []string{"source", "lusr_components", "radar_axes", "is_long_term"} {
+		var n int
+		if err := db.QueryRow(
+			"SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'challenge_template' AND column_name = ?", col,
+		).Scan(&n); err != nil {
+			t.Fatalf("query column %s: %v", col, err)
+		}
+		if n != 1 {
+			t.Errorf("challenge_template.%s absente — ALTER title-owned non appliqué", col)
+		}
+	}
+}
