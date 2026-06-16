@@ -183,6 +183,130 @@ func playerSteps() []migration.Migration {
 				return nil
 			},
 		},
+		// ─── engagement (player) — b17. ALTER player_match_enrichment (créée par le
+		// schéma de base global) + table engagement_coefficients (create+repair PK,
+		// paire atomique self-contained). Le step shared add_match_intensity_to_match_
+		// registry est dans la section shared de Steps() (steps.go).
+		{
+			Name:        "add_engagement_score_columns_to_player_match_enrichment",
+			TargetDB:    migration.TargetPlayer,
+			Description: "Ajoute engagement_score, engagement_score_brut, engagement_score_confidence et mode_category a player_match_enrichment (idempotent)",
+			ApplySchema: func(db *sql.DB) error {
+				exists, err := migration.TableExists(db, "player_match_enrichment")
+				if err != nil {
+					return fmt.Errorf("engagement migration: check table: %w", err)
+				}
+				if !exists {
+					return nil
+				}
+				for _, col := range []struct{ name, typ string }{
+					{"engagement_score", "DOUBLE"},
+					{"engagement_score_brut", "DOUBLE"},
+					{"engagement_score_confidence", "VARCHAR"},
+					{"mode_category", "VARCHAR"},
+				} {
+					if err := migration.AddColumnIfMissing(db, "player_match_enrichment", col.name, col.typ); err != nil {
+						return err
+					}
+				}
+				return migration.CreateIndexSafe(db, `
+					CREATE INDEX IF NOT EXISTS idx_pme_engagement_history
+						ON player_match_enrichment(mode_category, engagement_score_brut)
+				`)
+			},
+		},
+		{
+			Name:        "create_engagement_coefficients_table",
+			TargetDB:    migration.TargetPlayer,
+			Description: "Cree la table engagement_coefficients pour stocker coef_team_share et coef_lobby_share par (xuid, mode_category)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS engagement_coefficients (
+						xuid             VARCHAR NOT NULL,
+						mode_category    VARCHAR NOT NULL,
+						coef_team_share  DOUBLE NOT NULL,
+						coef_lobby_share DOUBLE NOT NULL,
+						n_matches        INTEGER NOT NULL,
+						last_updated     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (xuid, mode_category)
+					);
+					CREATE INDEX IF NOT EXISTS idx_engagement_coefficients_xuid
+						ON engagement_coefficients(xuid);
+				`)
+			},
+		},
+		{
+			Name:        "repair_engagement_coefficients_primary_key",
+			TargetDB:    migration.TargetPlayer,
+			Description: "Reconstruit engagement_coefficients avec PRIMARY KEY (xuid, mode_category) quand elle manque (CREATE TABLE IF NOT EXISTS historique)",
+			ApplySchema: func(db *sql.DB) error {
+				exists, err := migration.TableExists(db, "engagement_coefficients")
+				if err != nil {
+					return fmt.Errorf("repair eng coefs PK: check table: %w", err)
+				}
+				if !exists {
+					return nil
+				}
+				hasPK, err := migration.HasPrimaryKey(db, "engagement_coefficients")
+				if err != nil {
+					return fmt.Errorf("repair eng coefs PK: check PK: %w", err)
+				}
+				if hasPK {
+					return nil
+				}
+				return migration.ExecScript(db, `
+					CREATE TABLE engagement_coefficients__pkfix (
+						xuid             VARCHAR NOT NULL,
+						mode_category    VARCHAR NOT NULL,
+						coef_team_share  DOUBLE NOT NULL,
+						coef_lobby_share DOUBLE NOT NULL,
+						n_matches        INTEGER NOT NULL,
+						last_updated     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (xuid, mode_category)
+					);
+					INSERT INTO engagement_coefficients__pkfix
+						SELECT xuid, mode_category, coef_team_share, coef_lobby_share, n_matches, last_updated
+						FROM (
+							SELECT *, ROW_NUMBER() OVER (
+								PARTITION BY xuid, mode_category ORDER BY last_updated DESC
+							) AS rn
+							FROM engagement_coefficients
+						) WHERE rn = 1;
+					DROP TABLE engagement_coefficients;
+					ALTER TABLE engagement_coefficients__pkfix RENAME TO engagement_coefficients;
+					CREATE INDEX IF NOT EXISTS idx_engagement_coefficients_xuid
+						ON engagement_coefficients(xuid);
+				`)
+			},
+		},
+		{
+			Name:        "add_engagement_pace_columns_to_player_match_enrichment",
+			TargetDB:    migration.TargetPlayer,
+			Description: "Ajoute engagement_pace_player, engagement_pace_team, engagement_pace_lobby et engagement_player_activity a player_match_enrichment (Phase recompute coefs)",
+			ApplySchema: func(db *sql.DB) error {
+				exists, err := migration.TableExists(db, "player_match_enrichment")
+				if err != nil {
+					return fmt.Errorf("engagement paces migration: check table: %w", err)
+				}
+				if !exists {
+					return nil
+				}
+				for _, col := range []struct{ name, typ string }{
+					{"engagement_pace_player", "DOUBLE"},
+					{"engagement_pace_team", "DOUBLE"},
+					{"engagement_pace_lobby", "DOUBLE"},
+					{"engagement_player_activity", "INTEGER"},
+				} {
+					if err := migration.AddColumnIfMissing(db, "player_match_enrichment", col.name, col.typ); err != nil {
+						return err
+					}
+				}
+				return migration.CreateIndexSafe(db, `
+					CREATE INDEX IF NOT EXISTS idx_pme_engagement_paces
+						ON player_match_enrichment(mode_category)
+				`)
+			},
+		},
 	}
 }
 

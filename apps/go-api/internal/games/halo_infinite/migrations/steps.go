@@ -15,6 +15,7 @@ package migrations
 
 import (
 	"database/sql"
+	"fmt"
 
 	"levelup/go-api/internal/migration"
 )
@@ -751,6 +752,26 @@ func Steps() []migration.Migration {
 			ApplySchema: func(db *sql.DB) error {
 				return migration.ExecScript(db, `
 					ALTER TABLE match_registry ADD COLUMN IF NOT EXISTS t0_quality VARCHAR;
+				`)
+			},
+		},
+		// Déplacé depuis internal/migration/steps_engagement.go (b17, partie shared de
+		// la famille engagement). ALTER match_registry (créée par le god-file shared,
+		// racine globale). Guard tableExists : ordre canonicalOrder peut l'évaluer avant.
+		{
+			Name:        "add_match_intensity_to_match_registry",
+			TargetDB:    migration.TargetShared,
+			Description: "Ajoute match_intensity (DOUBLE) a shared.match_registry (events/min/joueur du lobby, caracteristique permanente du match)",
+			ApplySchema: func(db *sql.DB) error {
+				exists, err := migration.TableExists(db, "match_registry")
+				if err != nil {
+					return fmt.Errorf("add_match_intensity: check table: %w", err)
+				}
+				if !exists {
+					return nil
+				}
+				return migration.ExecScript(db, `
+					ALTER TABLE match_registry ADD COLUMN IF NOT EXISTS match_intensity DOUBLE;
 				`)
 			},
 		},
