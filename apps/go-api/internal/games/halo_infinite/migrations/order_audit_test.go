@@ -212,3 +212,45 @@ func TestTitleStepsRunEndToEnd_Shared(t *testing.T) {
 		t.Errorf("bot bid(3.0) → %q, want 343 Ellis (BotSQLCase non appliqué)", got)
 	}
 }
+
+// TestTitleStepsRunEndToEnd_SharedSocial : les racines shared_social title-owned (b24)
+// créent les tables média/notifications/prestige + drop_idx_pn_xuid_unread retire l'index
+// ART/NULL. Restaure la couverture des tests skip-guardés (migration_test/prestige/notifications).
+func TestTitleStepsRunEndToEnd_SharedSocial(t *testing.T) {
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open duckdb: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	migration.SetTitleStepsProvider(StepsFor)
+	if err := migration.RunForDB(db, migration.TargetSharedSocial); err != nil {
+		t.Fatalf("RunForDB(SharedSocial): %v", err)
+	}
+
+	for _, table := range []string{
+		"media_files", "media_match_associations", "match_favorites",
+		"player_notifications", "notification_preferences", "player_records",
+		"prestige_events", "user_prestige", "squad", "squad_member",
+		"squad_challenge", "squad_challenge_participant",
+	} {
+		var n int
+		if err := db.QueryRow(
+			"SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?", table,
+		).Scan(&n); err != nil {
+			t.Fatalf("query table %s: %v", table, err)
+		}
+		if n != 1 {
+			t.Errorf("table shared_social %s absente après migration title-owned", table)
+		}
+	}
+
+	// drop_idx_pn_xuid_unread : l'index ART/NULL doit être absent ; les 2 autres présents.
+	var nUnread int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM duckdb_indexes() WHERE index_name = 'idx_pn_xuid_unread'`).Scan(&nUnread); err != nil {
+		t.Fatalf("query idx_pn_xuid_unread: %v", err)
+	}
+	if nUnread != 0 {
+		t.Errorf("idx_pn_xuid_unread présent — drop_idx_pn_xuid_unread non appliqué")
+	}
+}

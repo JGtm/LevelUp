@@ -20,6 +20,202 @@ import (
 	"levelup/go-api/internal/migration"
 )
 
+// sharedSocialRootSteps retourne les RACINES shared_social (schémas de base), déplacées
+// après leurs consommateurs (b19) — Phase 1.5 b24. create_base_shared_social_schema (media),
+// create_notifications_in_shared_social (player_notifications/records), drop_idx_pn_xuid_unread,
+// create_prestige_shared_social_schema (prestige/squad). drop_notifications_from_player_db
+// (TargetPlayer) reste global (déplacé avec la racine player).
+func sharedSocialRootSteps() []migration.Migration {
+	return []migration.Migration{
+		{
+			Name:        "create_base_shared_social_schema",
+			TargetDB:    migration.TargetSharedSocial,
+			Description: "Tables de base shared_social.duckdb : médias, likes, favoris",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS media_files (
+						id                   VARCHAR PRIMARY KEY,
+						player_slug          VARCHAR NOT NULL,
+						file_path            VARCHAR NOT NULL UNIQUE,
+						file_name            VARCHAR NOT NULL,
+						kind                 VARCHAR NOT NULL DEFAULT 'video',
+						file_hash            VARCHAR,
+						file_size            INTEGER DEFAULT 0,
+						thumbnail_path       VARCHAR,
+						capture_end_utc      TIMESTAMP,
+						discord_notified_at  TIMESTAMP,
+						liked                BOOLEAN DEFAULT FALSE,
+						liked_at             TIMESTAMP,
+						created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						updated_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					);
+					CREATE INDEX IF NOT EXISTS idx_mf_player_slug ON media_files(player_slug);
+					CREATE INDEX IF NOT EXISTS idx_mf_kind ON media_files(kind);
+					CREATE INDEX IF NOT EXISTS idx_mf_created ON media_files(created_at);
+
+					CREATE TABLE IF NOT EXISTS media_match_associations (
+						media_file_id  VARCHAR NOT NULL,
+						match_id       VARCHAR NOT NULL,
+						delta_seconds  INTEGER,
+						created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (media_file_id, match_id)
+					);
+					CREATE INDEX IF NOT EXISTS idx_mma_match ON media_match_associations(match_id);
+
+					CREATE TABLE IF NOT EXISTS media_likes (
+						media_path      VARCHAR NOT NULL,
+						liker_slug      VARCHAR NOT NULL,
+						liker_gamertag  VARCHAR,
+						liked_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (media_path, liker_slug)
+					);
+					CREATE INDEX IF NOT EXISTS idx_ml_media_path ON media_likes(media_path);
+
+					CREATE TABLE IF NOT EXISTS match_favorites (
+						player_slug   VARCHAR NOT NULL,
+						match_id      VARCHAR NOT NULL,
+						favorited_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (player_slug, match_id)
+					);
+					CREATE INDEX IF NOT EXISTS idx_mfav_player ON match_favorites(player_slug);
+				`)
+			},
+		},
+		{
+			Name:        "create_notifications_in_shared_social",
+			TargetDB:    migration.TargetSharedSocial,
+			Description: "Tables player_notifications + notification_preferences + player_records dans shared_social.duckdb (multi-joueur, xuid PK).",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS player_notifications (
+						xuid          VARCHAR NOT NULL,
+						id            BIGINT NOT NULL,
+						category      VARCHAR NOT NULL,
+						severity      VARCHAR NOT NULL DEFAULT 'info',
+						title_key     VARCHAR NOT NULL,
+						body_key      VARCHAR,
+						params        VARCHAR,
+						target_route  VARCHAR,
+						target_search VARCHAR,
+						actor_xuid    VARCHAR,
+						actor_name    VARCHAR,
+						source        VARCHAR NOT NULL,
+						created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						read_at       TIMESTAMP,
+						PRIMARY KEY (xuid, id)
+					);
+					CREATE INDEX IF NOT EXISTS idx_pn_xuid_unread       ON player_notifications(xuid, read_at);
+					CREATE INDEX IF NOT EXISTS idx_pn_xuid_created_desc ON player_notifications(xuid, created_at DESC);
+					CREATE INDEX IF NOT EXISTS idx_pn_xuid_category     ON player_notifications(xuid, category);
+
+					CREATE TABLE IF NOT EXISTS notification_preferences (
+						xuid       VARCHAR NOT NULL,
+						category   VARCHAR NOT NULL,
+						enabled    BOOLEAN NOT NULL DEFAULT TRUE,
+						delivery   VARCHAR NOT NULL DEFAULT 'both',
+						updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (xuid, category)
+					);
+
+					CREATE TABLE IF NOT EXISTS player_records (
+						xuid              VARCHAR NOT NULL,
+						metric            VARCHAR NOT NULL,
+						value             DOUBLE NOT NULL,
+						achieved_at       TIMESTAMP,
+						achieved_match_id VARCHAR,
+						updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (xuid, metric)
+					);
+				`)
+			},
+		},
+		{
+			Name:        "drop_idx_pn_xuid_unread",
+			TargetDB:    migration.TargetSharedSocial,
+			Description: "Supprime idx_pn_xuid_unread (bug DuckDB ART/NULL sur UPDATE read_at).",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `DROP INDEX IF EXISTS idx_pn_xuid_unread;`)
+			},
+		},
+		{
+			Name:        "create_prestige_shared_social_schema",
+			TargetDB:    migration.TargetSharedSocial,
+			Description: "Tables Prestige (events, user_prestige, squad, squad_challenge)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS prestige_events (
+						id            VARCHAR PRIMARY KEY,
+						user_id       VARCHAR NOT NULL,
+						title_slug    VARCHAR NOT NULL,
+						source_type   VARCHAR NOT NULL,
+						source_id     VARCHAR,
+						pp_amount     INTEGER NOT NULL DEFAULT 0,
+						tier          VARCHAR,
+						created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					);
+					CREATE INDEX IF NOT EXISTS idx_pe_user_title ON prestige_events(user_id, title_slug);
+					CREATE INDEX IF NOT EXISTS idx_pe_created ON prestige_events(created_at);
+					CREATE INDEX IF NOT EXISTS idx_pe_source ON prestige_events(source_type, source_id);
+
+					CREATE TABLE IF NOT EXISTS user_prestige (
+						user_id        VARCHAR NOT NULL,
+						title_slug     VARCHAR NOT NULL,
+						total_pp       INTEGER NOT NULL DEFAULT 0,
+						current_level  INTEGER NOT NULL DEFAULT 0,
+						updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (user_id, title_slug)
+					);
+
+					CREATE TABLE IF NOT EXISTS squad (
+						id          VARCHAR PRIMARY KEY,
+						name        VARCHAR NOT NULL,
+						created_by  VARCHAR NOT NULL,
+						created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					);
+
+					CREATE TABLE IF NOT EXISTS squad_member (
+						squad_id    VARCHAR NOT NULL,
+						user_id     VARCHAR NOT NULL,
+						joined_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (squad_id, user_id)
+					);
+					CREATE INDEX IF NOT EXISTS idx_sm_user ON squad_member(user_id);
+
+					CREATE TABLE IF NOT EXISTS squad_challenge (
+						id              VARCHAR PRIMARY KEY,
+						squad_id        VARCHAR NOT NULL,
+						template_id     VARCHAR,
+						title_slug      VARCHAR NOT NULL,
+						mode            VARCHAR NOT NULL,
+						eval_type       VARCHAR NOT NULL,
+						window_type     VARCHAR NOT NULL,
+						window_value    VARCHAR,
+						target_per_member DOUBLE,
+						expires_at      TIMESTAMP,
+						created_by      VARCHAR NOT NULL,
+						created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					);
+					CREATE INDEX IF NOT EXISTS idx_sc_squad ON squad_challenge(squad_id);
+					CREATE INDEX IF NOT EXISTS idx_sc_title ON squad_challenge(title_slug);
+
+					CREATE TABLE IF NOT EXISTS squad_challenge_participant (
+						squad_challenge_id  VARCHAR NOT NULL,
+						user_id             VARCHAR NOT NULL,
+						chosen_tier         VARCHAR,
+						data_tier           VARCHAR NOT NULL DEFAULT 'full',
+						current_value       DOUBLE NOT NULL DEFAULT 0,
+						completed_at        TIMESTAMP,
+						is_private          BOOLEAN DEFAULT FALSE,
+						joined_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (squad_challenge_id, user_id)
+					);
+					CREATE INDEX IF NOT EXISTS idx_scp_user ON squad_challenge_participant(user_id);
+				`)
+			},
+		},
+	}
+}
+
 // sharedSocialSteps retourne les migrations TargetSharedSocial title-owned (consommateurs, b19).
 func sharedSocialSteps() []migration.Migration {
 	return []migration.Migration{

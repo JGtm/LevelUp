@@ -1,3 +1,15 @@
+## [2026-06-16] Phase 1.5 (MT-23) — relocation b24 : racines shared_social (media + notifications + prestige)
+
+**Livré (b24, 4 racines TargetSharedSocial)** → `sharedSocialRootSteps()` (steps_shared_social.go titre) : `create_base_shared_social_schema` (media_files/likes/favorites), `create_notifications_in_shared_social` (player_notifications/preferences/records), `drop_idx_pn_xuid_unread`, `create_prestige_shared_social_schema` (prestige/squad). Déplacées après leurs consommateurs (b19). `drop_notifications_from_player_db` (TargetPlayer) reste global jusqu'à la racine player (b25). Total title-owned : 115 → **119** statiques.
+
+**Tests** : 4 tests skip-guardés via `sharedSocialBaseIsGlobal()` (TestPrestige_SharedSocialMigration_* + TestRunForDB_SharedSocial_*). Couverture restaurée : `TestTitleStepsRunEndToEnd_SharedSocial` (12 tables + drop_idx). Les 2 tests `TestMigration_DropIdxPnXuidUnread_*` relocalisés → `shared_social_dropidx_test.go` titre (StepsFor + ApplySchema direct).
+
+**Garde-rail count corrigé** : `TestMigrationCount_MinimumExpected` mesurait `len(All())` (registre global, qui rétrécit avec la relocation) → bascule sur `len(CanonicalOrder())` (liste stable global+title, ≥36 robuste).
+
+**Vérif** : build all + `go test` (migration + titre) + `-tags integration` + duckdb + sync + gofmt + vet verts.
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-23) — relocation b23 : god-file shared (34 steps, RACINE shared_matches_v2)
 
 **Livré (b23, 34 steps TargetShared, le plus gros lot)** → nouveau `migrations/steps_shared_core.go` (`sharedCoreSteps()`) : god-file shared (create_base_shared_schema [match_registry, match_participants, medals_earned, xuid_aliases, weapon_kills, killer_victim_pairs, highlight_events, sync_meta] … repair_v_gamertag_lookup_bots_2026_05_30). RACINE shared, déplacée maintenant car TOUS ses consommateurs (b3/b17/b18/b22) + tests sont title-owned. Total title-owned : 81 → **115** statiques.

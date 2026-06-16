@@ -1195,8 +1195,9 @@ func Steps() []migration.Migration {
 	// God-file shared (34 steps, RACINE shared_matches_v2 : match_registry/participants/…) → b23.
 	steps = append(steps, sharedCoreSteps()...)
 	// Steps social CONSOMMATEURS (media ALTERs, records family, purge, rekey) → b19.
-	// Les racines du tier social restent globales (déplacées en dernier).
 	steps = append(steps, sharedSocialSteps()...)
+	// Racines du tier social (schémas de base media/notifications/prestige) → b24.
+	steps = append(steps, sharedSocialRootSteps()...)
 	return steps
 }
 

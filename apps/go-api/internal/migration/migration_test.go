@@ -156,18 +156,21 @@ func TestForTarget_ReturnsOnlyTargetMigrations(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestMigrationCount_MinimumExpected(t *testing.T) {
-	all := All()
-	// Sprint 21 : au moins 36 migrations portées (player+shared+shared_pve+metadata)
+	// Phase 1.5 (voie B) : les migrations se répartissent désormais entre le registre
+	// global All() et les steps title-owned. On mesure le total sur canonicalOrder (liste
+	// stable de TOUS les noms, global + title — order_audit garantit qu'elle les couvre).
+	all := CanonicalOrder()
 	if len(all) < 36 {
-		t.Errorf("seulement %d migrations enregistrées, minimum attendu: 36", len(all))
+		t.Errorf("seulement %d migrations dans canonicalOrder, minimum attendu: 36", len(all))
 	}
-	t.Logf("total migrations enregistrées: %d", len(all))
+	t.Logf("total migrations (canonicalOrder, global+title): %d ; registre global All(): %d",
+		len(all), len(All()))
 
 	metaCount := len(ForTarget(TargetMetadata))
 	playerCount := len(ForTarget(TargetPlayer))
 	sharedCount := len(ForTarget(TargetShared))
 	pveCount := len(ForTarget(TargetSharedPvE))
-	t.Logf("  metadata: %d, player: %d, shared: %d, pve: %d",
+	t.Logf("  global par target — metadata: %d, player: %d, shared: %d, pve: %d",
 		metaCount, playerCount, sharedCount, pveCount)
 }
 
@@ -210,6 +213,18 @@ func assertTableExists(t *testing.T, db *sql.DB, tableName string) bool {
 func sharedBaseSchemaIsGlobal() bool {
 	for _, m := range ForTarget(TargetShared) {
 		if m.Name == "create_base_shared_schema" {
+			return true
+		}
+	}
+	return false
+}
+
+// sharedSocialBaseIsGlobal : create_base_shared_social_schema encore global ? Depuis b24
+// les racines shared_social sont title-owned → tests RunForDB(TargetSharedSocial) global-only
+// skippés. Couverture : TestTitleStepsRunEndToEnd_SharedSocial.
+func sharedSocialBaseIsGlobal() bool {
+	for _, m := range ForTarget(TargetSharedSocial) {
+		if m.Name == "create_base_shared_social_schema" {
 			return true
 		}
 	}
