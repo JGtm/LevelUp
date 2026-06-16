@@ -1,3 +1,13 @@
+## [2026-06-16] Phase 1.5 (MT-23) — relocation b22 : 3 conversions append-only (csr_snapshots + match_csrs + pve)
+
+**Livré (b22, 3 consommateurs, ex-b22/b24/b25 du plan regroupés)** → nouveau `migrations/steps_appendonly_misc.go` (`appendOnlyMiscSteps()`) : `player_append_only_csr_snapshots_v1` (TargetPlayer), `shared_append_only_match_csrs_v1` (TargetShared), `shared_pve_append_only_v1` (TargetSharedPvE). CTAS swap append-only (id PK technique + written_at + vue _latest). Consommateurs de tables créées par des racines (player god-file global ; match_csrs via add_shared_match_csrs déjà title b3 ; pve_match_stats via add_pve_schema déjà title b3). Aucun test dédié migration-pkg. Total title-owned : 78 → **81** statiques.
+
+**Discipline relocation** : j'ai d'abord tenté un helper générique `rebuildAppendOnly` (DRY), mais il divergeait sur les NOMS d'index (`idx_pcs_seq_lookup` vs original `idx_pcs_lookup`) → reverté en 3 copies FIDÈLES. Une relocation est un déplacement, pas un refactor — le DRY se ferait dans un commit séparé si désiré.
+
+**Vérif** : build all + `go test` (migration + titre) + `-tags integration` + duckdb (readers _latest csr/pve) + gofmt + vet verts.
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-23) — relocation b21 : repairs/rebuilds player (PK pme/citations + career, ART)
 
 **Livré (b21, 3 consommateurs player)** → nouveau `migrations/steps_player_repairs.go` (`playerRepairSteps()`) : `repair_player_match_enrichment_primary_key` (réutilise `migration.RebuildPlayerMatchEnrichmentART`), `repair_match_citations_primary_key` (CTAS dynamique + dédup PK), `rebuild_career_progression_defeat_art_corruption` (swap + sentinel sync_meta, helper markCareerRebuildDone). Consommateurs de player_match_enrichment/match_citations/career_progression (RACINE god-file globale). Total title-owned : 75 → **78** statiques.
