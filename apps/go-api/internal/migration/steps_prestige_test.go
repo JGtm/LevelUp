@@ -41,6 +41,10 @@ func hasColumn(t *testing.T, db *sql.DB, table, column string) bool {
 func TestPrestige_SharedSocialMigration_CreatesTables(t *testing.T) {
 	db := openMemDB(t)
 
+	if !sharedSocialBaseIsGlobal() {
+		t.Skip("schémas shared_social title-owned (Phase 1.5 b24) — couverture : TestTitleStepsRunEndToEnd_SharedSocial")
+	}
+
 	if err := RunForDB(db, TargetSharedSocial); err != nil {
 		t.Fatalf("RunForDB(SharedSocial): %v", err)
 	}
@@ -73,6 +77,10 @@ func TestPrestige_SharedSocialMigration_CreatesTables(t *testing.T) {
 
 func TestPrestige_SharedSocialMigration_Idempotent(t *testing.T) {
 	db := openMemDB(t)
+
+	if !sharedSocialBaseIsGlobal() {
+		t.Skip("schémas shared_social title-owned (Phase 1.5 b24) — couverture : TestTitleStepsRunEndToEnd_SharedSocial")
+	}
 
 	if err := RunForDB(db, TargetSharedSocial); err != nil {
 		t.Fatalf("1ère passe: %v", err)

@@ -35,6 +35,10 @@ func indexExists(t *testing.T, db *sql.DB, name string) bool {
 func TestRunForDB_SharedSocial_CreatesNotificationsTables(t *testing.T) {
 	db := openMemDB(t)
 
+	if !sharedSocialBaseIsGlobal() {
+		t.Skip("schémas shared_social title-owned (Phase 1.5 b24) — couverture : TestTitleStepsRunEndToEnd_SharedSocial")
+	}
+
 	if err := RunForDB(db, TargetSharedSocial); err != nil {
 		t.Fatalf("RunForDB(SharedSocial): %v", err)
 	}
@@ -57,6 +61,10 @@ func TestRunForDB_SharedSocial_CreatesNotificationsTables(t *testing.T) {
 func TestRunForDB_SharedSocial_DropsIdxPnXuidUnread(t *testing.T) {
 	db := openMemDB(t)
 
+	if !sharedSocialBaseIsGlobal() {
+		t.Skip("schémas shared_social title-owned (Phase 1.5 b24) — couverture : TestTitleStepsRunEndToEnd_SharedSocial")
+	}
+
 	if err := RunForDB(db, TargetSharedSocial); err != nil {
 		t.Fatalf("RunForDB(SharedSocial): %v", err)
 	}
@@ -77,6 +85,10 @@ func TestRunForDB_SharedSocial_DropsIdxPnXuidUnread(t *testing.T) {
 // TargetSharedSocial complète sur 3 passes (incluant drop_idx_pn_xuid_unread).
 func TestRunForDB_SharedSocial_Idempotent(t *testing.T) {
 	db := openMemDB(t)
+
+	if !sharedSocialBaseIsGlobal() {
+		t.Skip("schémas shared_social title-owned (Phase 1.5 b24) — couverture : TestTitleStepsRunEndToEnd_SharedSocial")
+	}
 
 	for pass := 1; pass <= 3; pass++ {
 		if err := RunForDB(db, TargetSharedSocial); err != nil {
@@ -107,95 +119,6 @@ func TestRunForDB_SharedSocial_Idempotent(t *testing.T) {
 	}
 }
 
-// TestMigration_DropIdxPnXuidUnread_OnLegacyDB simule une DB de prod déjà
-// migrée avec l'index legacy : on crée manuellement la table + l'index, on
-// applique la migration ciblée, et on vérifie que l'index est bien supprimé.
-//
-// Reflète le scénario d'upgrade : une DB shared_social existante avec
-// player_notifications + idx_pn_xuid_unread → on doit pouvoir dropper l'index
-// sans tout recréer.
-func TestMigration_DropIdxPnXuidUnread_OnLegacyDB(t *testing.T) {
-	db := openMemDB(t)
-
-	// Reproduire l'état legacy : table + index ART problématique.
-	if _, err := db.Exec(`
-		CREATE TABLE player_notifications (
-			xuid       VARCHAR NOT NULL,
-			id         BIGINT NOT NULL,
-			category   VARCHAR NOT NULL,
-			severity   VARCHAR NOT NULL DEFAULT 'info',
-			title_key  VARCHAR NOT NULL,
-			source     VARCHAR NOT NULL,
-			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			read_at    TIMESTAMP,
-			PRIMARY KEY (xuid, id)
-		);
-		CREATE INDEX idx_pn_xuid_unread ON player_notifications(xuid, read_at);
-	`); err != nil {
-		t.Fatalf("seed legacy: %v", err)
-	}
-	if !indexExists(t, db, "idx_pn_xuid_unread") {
-		t.Fatal("seed legacy : idx_pn_xuid_unread devrait être créé")
-	}
-
-	// Récupérer la migration ciblée et l'appliquer directement.
-	var drop *Migration
-	for i := range All() {
-		m := &All()[i]
-		if m.Name == "drop_idx_pn_xuid_unread" {
-			drop = m
-			break
-		}
-	}
-	if drop == nil {
-		t.Fatal("migration drop_idx_pn_xuid_unread introuvable dans le registre")
-	}
-
-	if err := drop.ApplySchema(db); err != nil {
-		t.Fatalf("ApplySchema drop_idx_pn_xuid_unread: %v", err)
-	}
-	if indexExists(t, db, "idx_pn_xuid_unread") {
-		t.Error("idx_pn_xuid_unread devrait être supprimé après ApplySchema")
-	}
-
-	// 2e passe : DROP IF EXISTS doit rester silencieux sur index absent.
-	if err := drop.ApplySchema(db); err != nil {
-		t.Errorf("ApplySchema (2e passe, index déjà absent) doit être idempotent: %v", err)
-	}
-}
-
-// TestMigration_DropIdxPnXuidUnread_OnFreshDB vérifie que la migration ne
-// plante pas quand la table n'a jamais eu l'index (cas d'une DB neuve où la
-// migration `create_notifications_in_shared_social` aurait déjà inclus le
-// fix). Le DROP IF EXISTS doit rester silencieux.
-func TestMigration_DropIdxPnXuidUnread_OnFreshDB(t *testing.T) {
-	db := openMemDB(t)
-
-	// Table sans aucun index (cas hypothétique d'une DB neuve qui sauterait
-	// directement à la version post-fix).
-	if _, err := db.Exec(`
-		CREATE TABLE player_notifications (
-			xuid VARCHAR NOT NULL,
-			id   BIGINT NOT NULL,
-			PRIMARY KEY (xuid, id)
-		);
-	`); err != nil {
-		t.Fatalf("seed fresh: %v", err)
-	}
-
-	var drop *Migration
-	for i := range All() {
-		m := &All()[i]
-		if m.Name == "drop_idx_pn_xuid_unread" {
-			drop = m
-			break
-		}
-	}
-	if drop == nil {
-		t.Fatal("migration drop_idx_pn_xuid_unread introuvable")
-	}
-
-	if err := drop.ApplySchema(db); err != nil {
-		t.Errorf("ApplySchema doit être silencieuse sur DB sans index: %v", err)
-	}
-}
+// TestMigration_DropIdxPnXuidUnread_OnLegacyDB + _OnFreshDB ont été déplacés vers
+// internal/games/halo_infinite/migrations/shared_social_dropidx_test.go (Phase 1.5 b24) :
+// drop_idx_pn_xuid_unread est title-owned, résolu via StepsFor(TargetSharedSocial).
