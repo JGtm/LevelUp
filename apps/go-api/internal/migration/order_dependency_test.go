@@ -18,7 +18,10 @@ import "testing"
 // dépendant ne crée PAS sa table. canonicalOrder DOIT placer le créateur AVANT.
 // Étendre dès qu'une nouvelle step ApplySchema-nil est relocalisée.
 var stepDependencies = map[string]string{
-	// (à remplir au fil des relocations Phase 1.5)
+	// shared_seed_tier_boundaries_v2 (ApplySchema nil) INSERT dans lusr_hyperparams_v2,
+	// table créée par shared_create_skill_v2_tables → créateur DOIT précéder. Corrigé en
+	// b27 (reorder sous sign-off). La partie (1) du test vérifie que l'ordre reste correct.
+	"shared_seed_tier_boundaries_v2": "shared_create_skill_v2_tables",
 }
 
 // knownPreExistingInversions : inversions DÉJÀ présentes dans canonicalOrder à la
@@ -29,12 +32,12 @@ var stepDependencies = map[string]string{
 // TestSortByCanonicalIsNoOpOnCurrentRegistry (canonicalOrder == ordre de
 // registration) → décision/sign-off dédiée. NE PAS ajouter de NOUVELLE inversion
 // ici : toute nouvelle dépendance va dans stepDependencies (→ échec CI).
-var knownPreExistingInversions = map[string]string{
-	// shared_seed_tier_boundaries_v2 (title-owned, ApplySchema nil) INSERT dans
-	// lusr_hyperparams_v2, table créée par shared_create_skill_v2_tables (global,
-	// canon pos +1). Cf. .ai/thought_log.md (escalade reorder).
-	"shared_seed_tier_boundaries_v2": "shared_create_skill_v2_tables",
-}
+// CORRIGÉE (Phase 1.5 b27, reorder sous sign-off) : l'unique inversion connue
+// (shared_seed_tier_boundaries_v2 → shared_create_skill_v2_tables) a été résolue en
+// réordonnant canonicalOrder (créateur avant seed). Sûr car les 2 sont title-owned →
+// n'affecte pas l'ordre du registre global (TestSortByCanonicalIsNoOp inchangé). La
+// dépendance est maintenant dans stepDependencies (sens correct, vérifié par la partie (1)).
+var knownPreExistingInversions = map[string]string{}
 
 func TestCanonicalOrder_DependencyDirection(t *testing.T) {
 	last := len(canonicalOrder)
