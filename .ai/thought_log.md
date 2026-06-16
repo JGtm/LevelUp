@@ -1,3 +1,13 @@
+## [2026-06-16] Phase 1.5 (MT-23) — b13 : gate d'export de helpers (prérequis tiers append-only/rebuild)
+
+**Méthode** : carte de relocation produite par un workflow ultracode (9 agents, 42 steps classés → plan ordonné b13→b26 avec familles atomiques, helpers partagés, tests dédiés, callers CLI, risques de cycle). Doctrine RE-VÉRIFIER appliquée : le plan est un guide, chaque lot est revalidé contre l'arbre avant exécution (ex. le plan liste `add_weapon_labels` dans steps_metadata.go alors qu'il est déjà déplacé en b6 — à re-checker en b26).
+
+**Livré (b13, infra, 0 migration déplacée)** : 2 helpers privés cross-fichiers exportés dans `helpers_export.go` — `LoadTableColumns(ctx, db, table)` (déf. dans steps_player_rebuild_match_enrichment.go, 7 appelants in-pkg) et `FirstWords(s, n)` (déf. dans steps_shared_social_purge_data_health.go, 9 appelants in-pkg). Wrappers 1:1, formes privées conservées (zéro churn des appelants in-package). Ces 2 helpers sont la SEULE vraie lacune d'export pour relocaliser les familles append-only/rebuild (`col*` consts restent inline-littéraux). **Gate** : doit précéder b19/b20/b21/b22/b23/b24/b25.
+
+**Vérif** : build all + gofmt + vet verts.
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-23) — relocation b12 : famille catalogue Playlists/Pairs/Maps + seed ranked (atomique)
 
 **Livré (b12, famille atomique)** : `add_catalog_playlists` (schéma 8 tables title-aware : playlists_catalog, maps_catalog, game_variants_catalog, map_mode_pair_definitions, playlist_pair_links, catalog_fetch_queue, pair_mode_label_translations, unknown_prefix_candidates) + `drop_playlists_catalog_secondary_indexes` (fix RC-E, MÊME table playlists_catalog → atomique) inline dans `steps.go` ; `seed_ranked_playlists_catalog` (named-func, source de vérité is_ranked depuis `rankedplaylists`) → nouveau `migrations/ranked_playlists.go` (`applyRankedPlaylistSeeds` + `seedRankedPlaylistFR`, `bootCtx()` → `migration.BootCtx()`). Step statique dans Steps() (`ApplySchema: applyRankedPlaylistSeeds`). Cycle vérifié : `rankedplaylists` n'importe pas migration. Total title-owned : 35 → **38** statiques (+ 2 dynamiques). 3 globaux vidés.
