@@ -1192,6 +1192,8 @@ func Steps() []migration.Migration {
 	steps = append(steps, playerRepairSteps()...)
 	// Conversions append-only CONSOMMATRICES (csr_snapshots, match_csrs, pve_match_stats) → b22.
 	steps = append(steps, appendOnlyMiscSteps()...)
+	// RACINE player (god-file base + prestige/campaign/progression + drop_notifications) → b25.
+	steps = append(steps, playerBaseSteps()...)
 	// God-file shared (34 steps, RACINE shared_matches_v2 : match_registry/participants/…) → b23.
 	steps = append(steps, sharedCoreSteps()...)
 	// Steps social CONSOMMATEURS (media ALTERs, records family, purge, rekey) → b19.

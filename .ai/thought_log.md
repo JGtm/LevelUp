@@ -1,3 +1,13 @@
+## [2026-06-16] Phase 1.5 (MT-23) — relocation b25 : RACINE player (god-file 25 steps + prestige/campaign/progression)
+
+**Livré (b25, 29 racines TargetPlayer)** → nouveau `migrations/steps_player_base.go` (`playerBaseSteps()`) : god-file player (create_base_player_schema [player_match_enrichment, career_progression, sessions, match_citations, media_files, sync_meta] + add_skill_rating_table [match_skill_rank] + 23 autres) + create_prestige_player_schema + create_improvement_campaign_schema + create_progression_player_schema + drop_notifications_from_player_db. + 3 helpers (applyCareerProgressionSequence, applyCareerProgressionIdentityAssets, applyFixMvSessionStats). **Pas de caller externe** (≠ shared/RebuildMatchParticipantsART) → déplacement direct sans shim. consts col* inlinées. Total title-owned : 119 → **148** statiques.
+
+**Tests** : 2 tests migration_test.go player (CoreTablesExist, Idempotent) + TestPrestige_PlayerMigration_CreatesTables (steps_prestige_test.go) skip-guardés via `playerBaseSchemaIsGlobal()`. **Piège** : le skip-guard de TestPrestige_PlayerMigration que j'avais posé en b15 avait été RÉVERTÉ par le `git checkout` de b15 (revert du god-file) → re-posé. Couverture étendue : `TestTitleStepsRunEndToEnd_Player` asserte désormais les 14 tables base+prestige+progression + l'ordre challenge.campaign_id. Garde-rail shared_social mention : reformulé 1 description.
+
+**Vérif** : build all + `go test` (migration + titre) + `-tags integration` + duckdb + sync + gofmt + vet verts.
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-23) — relocation b24 : racines shared_social (media + notifications + prestige)
 
 **Livré (b24, 4 racines TargetSharedSocial)** → `sharedSocialRootSteps()` (steps_shared_social.go titre) : `create_base_shared_social_schema` (media_files/likes/favorites), `create_notifications_in_shared_social` (player_notifications/preferences/records), `drop_idx_pn_xuid_unread`, `create_prestige_shared_social_schema` (prestige/squad). Déplacées après leurs consommateurs (b19). `drop_notifications_from_player_db` (TargetPlayer) reste global jusqu'à la racine player (b25). Total title-owned : 115 → **119** statiques.
