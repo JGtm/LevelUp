@@ -44,3 +44,16 @@ func ExecScript(db *sql.DB, script string) error { return execScript(db, script)
 
 // SplitSQL découpe un script en statements individuels.
 func SplitSQL(script string) []string { return splitSQL(script) }
+
+// LoadTableColumns retourne la liste ordonnée des colonnes d'une table. Exposé
+// pour les rebuilds/append-only title-owned qui construisent un CTAS préservant
+// les colonnes existantes (Phase 1.5 b13). Les 7 appelants in-package gardent la
+// forme privée loadTableColumns.
+func LoadTableColumns(ctx context.Context, db *sql.DB, tableName string) ([]string, error) {
+	return loadTableColumns(ctx, db, tableName)
+}
+
+// FirstWords retourne les n premiers mots de s (séparés par des espaces). Exposé
+// pour les migrations title-owned qui en ont besoin (purge/rebuilds, Phase 1.5
+// b13). Les appelants in-package gardent la forme privée firstWords.
+func FirstWords(s string, n int) string { return firstWords(s, n) }
