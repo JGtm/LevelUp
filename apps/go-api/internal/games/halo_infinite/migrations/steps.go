@@ -1188,6 +1188,8 @@ func Steps() []migration.Migration {
 	steps = append(steps, playerSteps()...)
 	// Chaîne match_skill_rank player CONSOMMATRICE (append-only + vues) → b20.
 	steps = append(steps, playerMatchSkillRankSteps()...)
+	// Repairs/rebuilds player CONSOMMATEURS (repair PK pme/citations, rebuild career) → b21.
+	steps = append(steps, playerRepairSteps()...)
 	// Steps social CONSOMMATEURS (media ALTERs, records family, purge, rekey) → b19.
 	// Les racines du tier social restent globales (déplacées en dernier).
 	steps = append(steps, sharedSocialSteps()...)
