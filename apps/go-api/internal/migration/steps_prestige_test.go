@@ -138,6 +138,23 @@ func TestPrestige_PlayerMigration_CreatesTables(t *testing.T) {
 func TestPrestige_MetadataMigration_CreatesTables(t *testing.T) {
 	db := openMemDB(t)
 
+	// La famille prestige metadata (create_prestige_metadata_schema +
+	// challenge_template_add_source_column + add_template_tagging_columns) est
+	// title-owned (halo_infinite/migrations/steps.go, Phase 1.5 b10). Elle n'est
+	// pas registrée globalement dans ce package (cycle d'import). Couverture réelle :
+	// internal/games/halo_infinite/migrations/prestige_test.go (seeds) +
+	// internal/platform/duckdb (RunForDB end-to-end, provider câblé via TestMain).
+	hasSchemaMig := false
+	for _, m := range ForTarget(TargetMetadata) {
+		if m.Name == "create_prestige_metadata_schema" {
+			hasSchemaMig = true
+			break
+		}
+	}
+	if !hasSchemaMig {
+		t.Skip("migration create_prestige_metadata_schema non disponible — title steps provider requis")
+	}
+
 	if err := RunForDB(db, TargetMetadata); err != nil {
 		t.Fatalf("RunForDB(Metadata): %v", err)
 	}

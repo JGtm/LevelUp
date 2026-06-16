@@ -1366,7 +1366,7 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 
 	// Seed Prestige catalogue via migration backfill (une seule fois, idempotent).
 	if prestigeConfigDir != "" {
-		migration.RegisterPrestigeSeedMigration(prestigeConfigDir)
+		halomigrations.RegisterPrestigeSeedMigration(prestigeConfigDir)
 	}
 
 	// Seed Milestones catalogue (Phase 4 plan stabilisation 2026-05-22) via

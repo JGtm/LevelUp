@@ -1,3 +1,25 @@
+## [2026-06-16] Phase 1.5 (MT-23) — relocation b10 : famille prestige metadata + seed TOML dynamique
+
+**Livré (b10)** : famille prestige metadata déplacée vers `games/halo_infinite/migrations/steps.go` ATOMIQUEMENT — `create_prestige_metadata_schema` (challenge_template + preset_arc + preset_arc_step) + `challenge_template_add_source_column` + `add_template_tagging_columns` (les 2 ALTER touchent challenge_template → même famille). Total title-owned statique : 31 → **34** (+ 1 dynamique, cf. ci-dessous).
+
+**Pattern nouveau — seed TOML enregistré dynamiquement au boot** : `seed_prestige_catalog_v1` lit des TOML (`config/titles/{slug}/challenges/templates.toml` + `arcs/presets.toml`) → ne peut PAS vivre dans le slice statique `Steps()` (pas de repoRoot). Relocalisé vers nouveau fichier `migrations/prestige.go` : `RegisterPrestigeSeedMigration(tomlDir)` (idempotent via nouveau helper `migration.IsRegistered`) + `seedTemplates`/`seedPresets`/`seedPrestigeFromTOML` (`bootCtx()` → `migration.BootCtx()`). Boot repointé `migration.RegisterPrestigeSeedMigration` → `halomigrations.RegisterPrestigeSeedMigration` (`cmd/server/main.go`). C'est le pattern de référence pour tout seed TOML title-owned (un 2e titre appellera son propre Register au boot).
+
+**Tests** : (1) `migration/steps_metadata_prestige_seed_test.go` (couplé au registry privé + repoRoot) vidé → remplacé par `migrations/prestige_test.go` self-contained (schéma créé à la main + TOML synthétiques en `t.TempDir()` : populate + idempotence + erreurs fichier/title_slug manquant). (2) `migration/steps_metadata_playlist_fr_test.go` (oubli b7, référençait `applyPlaylistFRSeeds` déplacée) → relocalisé `migrations/playlist_fr_test.go`. (3) `TestPrestige_MetadataMigration_CreatesTables` (package migration, appelle `RunForDB(TargetMetadata)`) skip-guardé comme `add_pve_schema` (le step est title-owned, provider indisponible dans ce package = cycle). (4) Couverture bout-en-bout restaurée dans le BON package : `TestTitleStepsRunEndToEnd_Metadata` (order_audit_test.go) câble le provider et prouve que `RunForDB(TargetMetadata)` crée les 3 tables + les colonnes des ALTER.
+
+**Vérif** : build all + `go test migration + games/halo_infinite/migrations + duckdb` + **`go test -tags integration` sur les 2 packages migration** + gofmt + vet (les 2 tags) verts.
+
+---
+
+## [2026-06-15] Phase 1.5 (MT-23) — relocation b9 : leaves csr_placement_thresholds + assists_model (rétroactif)
+
+**Note** : entrée thought_log ajoutée rétroactivement (commit b9 `6dec609a4` livré sans entrée — comblé au moment du b10).
+
+**Livré (b9)** : 2 leaves additifs metadata déplacés vers `games/halo_infinite/migrations/steps.go` — `add_csr_placement_thresholds` (table `csr_placement_thresholds`, mapping season_id → seuil placement) + le step du modèle d'assists. Aucun test ne les asserte en isolation (additifs purs) → déplacement direct. Total title-owned : 29 → **31**. Fichiers globaux `steps_metadata_csr_thresholds.go` + `steps_metadata_assists_model.go` vidés (stub).
+
+**Vérif** : build + `go test migration + games/halo_infinite/migrations + duckdb` + gofmt verts.
+
+---
+
 ## [2026-06-15] Phase 1.5 (MT-23) — relocation b8 : familles medal_definitions + xbox_achievement (inline atomiques)
 
 **Mandat user** : « il faut tout faire de toute façon » → exécution autonome continue, commit/push par lot vérifié, sans redemander. Les 2 irréversibles (reorder inversion, PMT-2 store-cutover) en dernier avec garde-fou.

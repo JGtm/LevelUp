@@ -86,6 +86,86 @@ func Steps() []migration.Migration {
 			Description: "asset_translations : seed FR canoniques pour playlists Halo Infinite dont l'API a renvoyé l'EN raw en lang fr-FR (cf. thought_log 2026-05-09)",
 			ApplySchema: applyPlaylistFRSeeds,
 		},
+		// Famille prestige (schéma + 2 ALTER challenge_template) → migrée (b10).
+		// Le seed TOML seed_prestige_catalog_v1 est enregistré dynamiquement par boot
+		// via RegisterPrestigeSeedMigration (cf. prestige.go).
+		{
+			Name:        "create_prestige_metadata_schema",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Tables Prestige metadata (challenge_template, preset_arc, preset_arc_step)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS challenge_template (
+						id                  VARCHAR PRIMARY KEY,
+						title_slug          VARCHAR NOT NULL,
+						metric              VARCHAR NOT NULL,
+						window_type         VARCHAR NOT NULL,
+						window_value        VARCHAR,
+						cadence             VARCHAR NOT NULL,
+						eval_type           VARCHAR NOT NULL,
+						mode_filter         VARCHAR NOT NULL DEFAULT 'universal',
+						label_en            VARCHAR NOT NULL,
+						label_fr            VARCHAR NOT NULL,
+						description_en      VARCHAR,
+						description_fr      VARCHAR,
+						normal_target       DOUBLE NOT NULL,
+						heroic_target       DOUBLE NOT NULL,
+						legendary_target    DOUBLE NOT NULL,
+						mythic_target       DOUBLE NOT NULL,
+						schema_version      INTEGER NOT NULL DEFAULT 1,
+						updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					);
+					CREATE INDEX IF NOT EXISTS idx_ctmpl_title_cadence ON challenge_template(title_slug, cadence);
+					CREATE INDEX IF NOT EXISTS idx_ctmpl_metric ON challenge_template(metric);
+
+					CREATE TABLE IF NOT EXISTS preset_arc (
+						id              VARCHAR PRIMARY KEY,
+						title_slug      VARCHAR NOT NULL,
+						title_en        VARCHAR NOT NULL,
+						title_fr        VARCHAR NOT NULL,
+						description_en  VARCHAR,
+						description_fr  VARCHAR,
+						schema_version  INTEGER NOT NULL DEFAULT 1,
+						updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					);
+					CREATE INDEX IF NOT EXISTS idx_parc_title ON preset_arc(title_slug);
+
+					CREATE TABLE IF NOT EXISTS preset_arc_step (
+						preset_arc_id   VARCHAR NOT NULL,
+						position        INTEGER NOT NULL,
+						template_id     VARCHAR NOT NULL,
+						target_tier     VARCHAR NOT NULL,
+						PRIMARY KEY (preset_arc_id, position)
+					);
+				`)
+			},
+		},
+		{
+			Name:        "challenge_template_add_source_column",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Ajoute challenge_template.source pour distinguer catalog vs coach_synthesized (ADR 0021)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE challenge_template
+						ADD COLUMN IF NOT EXISTS source VARCHAR DEFAULT 'catalog';
+					UPDATE challenge_template SET source = 'catalog' WHERE source IS NULL;
+				`)
+			},
+		},
+		{
+			Name:        "add_template_tagging_columns",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Ajoute lusr_components, radar_axes, is_long_term à challenge_template pour le tagging V1 PlayerProfile.",
+			ApplySchema: func(db *sql.DB) error {
+				if err := migration.AddColumnIfMissing(db, "challenge_template", "lusr_components", "VARCHAR"); err != nil {
+					return err
+				}
+				if err := migration.AddColumnIfMissing(db, "challenge_template", "radar_axes", "VARCHAR"); err != nil {
+					return err
+				}
+				return migration.AddColumnIfMissing(db, "challenge_template", "is_long_term", "BOOLEAN DEFAULT FALSE")
+			},
+		},
 		// Leaves additifs sibling-files → migrés (b9).
 		{
 			Name:        "add_csr_placement_thresholds",

@@ -60,7 +60,9 @@
 | Test exhaustivité FieldKeys↔TOML | 🟡 | `loader_smoke_test.go` couvre TOML⊇FieldKeys ; sens inverse optionnel |
 | 0 `medal_name_id=<int>` inline (SQL) | 🟡→**Phase 2** | **couplé Phase 2** : le `1512363953` est baké dans des SQL const strings ; le sortir = rendre la couche requêtes title-aware (consommer `constants.toml`). 7 sites documentés pointant vers `constants.toml` |
 
-## Phase 1.5 — DDL par titre · 🟡 (~25%) — **PREMIER GROS MORCEAU, prérequis 2e titre**
+## Phase 1.5 — DDL par titre · 🟡 (~45%) — **PREMIER GROS MORCEAU, prérequis 2e titre**
+
+**Relocation en cours (b3→b10, autonome)** : **34 steps title-owned statiques** dans `games/halo_infinite/migrations/steps.go` + **1 dynamique** (`seed_prestige_catalog_v1` via `RegisterPrestigeSeedMigration`, pattern de réf pour les seeds TOML). Tier metadata quasi épuisé (leaves + familles citation/medal/xbox/mode_name_tr/playlist_fr/weapon_labels/prestige/csr/assists). **Reste** : `add_asset_translations` + `fix_super_fiesta` (root metadata, à faire en dernier), famille milestones (named-func TOML), ranked+catalog, puis tier-B CŒUR Shared (cluster `steps_shared.go` 982L — effort focalisé multi-fichiers). 2 irréversibles différés en fin de course (reorder inversion 132/133 + PMT-2 store-cutover).
 
 | Item | Statut | Evidence / next action |
 |---|:-:|---|
