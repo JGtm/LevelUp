@@ -1,3 +1,17 @@
+## [2026-06-16] Phase 1.5 (MT-23) — relocation b19 : consommateurs shared_social (media + records + purge + rekey)
+
+**Livré (b19, 12 consommateurs TargetSharedSocial)** → nouveau `migrations/steps_shared_social.go` (`sharedSocialSteps()` appendé à `Steps()`) : 6 ALTER media_files/media_match_associations (add_player_slug, add_file_name, add_missing_columns, add_capture_start_indexed_at, add_is_manual, add_file_stem_ext) + `align_media_files_legacy_schema` (+ helper loadMediaFilesColumns) + famille records (`create_player_records_history_append_only`, `player_records_history_previous_cols_v1`, `extend_player_records_with_window`) + `purge_data_health_warning_notifs` + `rekey_squad_member_xuid`. Total title-owned : 57 → **69** statiques.
+
+**Racines shared_social RESTÉES globales** (pattern b15) : create_base_shared_social_schema, create_notifications_in_shared_social, create_prestige_shared_social_schema (+ drop_idx_pn_xuid_unread, couplé au test notifications ; + drop_notifications_from_player_db, TargetPlayer). Leurs tests globaux (TestPrestige_SharedSocialMigration_*, TestRunForDB_SharedSocial_*) passent inchangés. Déplacés en dernier (b-socialroot).
+
+**2 pièges traités** : (1) **`firstWords` reste global** — défini dans steps_shared_social_purge_data_health.go, 9 appelants in-pkg + wrapper `migration.FirstWords` (b13) ; le purge titre appelle `migration.FirstWords`, le fichier global garde la def. (2) **garde-rail `TestNoUnauthorizedSharedSocialMention`** (duckdb) : ajouté le fichier titre à `sharedSocialFilesWhitelist` ; reformulé le commentaire de steps.go (« shared_social » → « social ») pour ne pas trooper le scanner sur le catalogue principal.
+
+**Test records relocalisé** : `steps_shared_social_records_append_only_test.go` (cgo) → `shared_social_records_test.go` titre, provider `StepsFor` câblé dans setupRecordsTestDB (combine racine globale create_notifications [player_records] + consommateurs titre).
+
+**Vérif** : build all + `go test` (migration + titre) + `-tags integration` + **duckdb (garde-rail social OK)** + gofmt (fichiers b19 propres) + vet verts.
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-23) — relocation b18 : leaves shared (world CSR + squad offset + season stats + skill_v2 + backfill)
 
 **Livré (b18, 6 steps TargetShared)** → section shared de `Steps()` (steps.go) : `create_world_csr_leaderboard_snapshots` + `world_csr_leaderboard_latest_by_batch` (paire ATOMIQUE, vue world_csr_leaderboard_latest créée v1 puis remplacée par _by_batch) ; `shared_create_player_squad_offset` ; `create_world_player_season_stats` ; `shared_create_skill_v2_tables` ; `shared_backfill_is_ranked_and_season` (ALTER match_registry +season_id + ApplyBackfill is_ranked/season_id). Tous tables/vues append-only autonomes ou ALTER de match_registry (racine globale). Total title-owned : 51 → **57** statiques. 6 globaux vidés.

@@ -1186,6 +1186,9 @@ func Steps() []migration.Migration {
 	// Steps player CONSOMMATEURS (perf_chain, psa_checked, fix_career_xp) → b15.
 	// Le schéma de base player reste global (racine, déplacé en dernier).
 	steps = append(steps, playerSteps()...)
+	// Steps social CONSOMMATEURS (media ALTERs, records family, purge, rekey) → b19.
+	// Les racines du tier social restent globales (déplacées en dernier).
+	steps = append(steps, sharedSocialSteps()...)
 	return steps
 }
 

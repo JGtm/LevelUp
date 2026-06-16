@@ -1,0 +1,416 @@
+package migrations
+
+// steps_shared_social.go — migrations DDL CONSOMMATRICES ciblant shared_social.duckdb,
+// déplacées depuis internal/migration/steps_shared_social_*.go (Phase 1.5 b19, voie B).
+//
+// Direction de relocation (cf. b15) : seuls des CONSOMMATEURS sont ici. Les RACINES
+// shared_social restent globales (create_base_shared_social_schema [media_files…],
+// create_notifications_in_shared_social [player_notifications, player_records],
+// create_prestige_shared_social_schema [prestige_events, squad…]) tant que leurs tests
+// globaux (TestPrestige_SharedSocialMigration_*, TestRunForDB_SharedSocial_*) ne sont
+// pas relocalisés. drop_idx_pn_xuid_unread reste aussi global (couplé au test
+// notifications). Les steps ci-dessous ALTERent/rebuildent des tables créées par ces
+// racines → safe (créateur global + consommateur titre, RunForDB combine global+title).
+
+import (
+	"database/sql"
+	"fmt"
+	"log/slog"
+
+	"levelup/go-api/internal/migration"
+)
+
+// sharedSocialSteps retourne les migrations TargetSharedSocial title-owned (consommateurs, b19).
+func sharedSocialSteps() []migration.Migration {
+	return []migration.Migration{
+		// ─── ALTER additifs media_files / media_match_associations ───
+		{
+			Name:        "add_player_slug_to_media_files",
+			TargetDB:    migration.TargetSharedSocial,
+			Description: "Ajoute player_slug à media_files si absente (schéma Go ops/media.go)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `ALTER TABLE media_files ADD COLUMN IF NOT EXISTS player_slug VARCHAR;`)
+			},
+		},
+		{
+			Name:        "add_file_name_to_media_files",
+			TargetDB:    migration.TargetSharedSocial,
+			Description: "Ajoute file_name à media_files si absente",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `ALTER TABLE media_files ADD COLUMN IF NOT EXISTS file_name VARCHAR;`)
+			},
+		},
+		{
+			Name:        "add_missing_columns_to_media_files",
+			TargetDB:    migration.TargetSharedSocial,
+			Description: "Ajoute thumbnail_path, capture_end_utc, status, mtime à media_files si absentes",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE media_files ADD COLUMN IF NOT EXISTS thumbnail_path VARCHAR;
+					ALTER TABLE media_files ADD COLUMN IF NOT EXISTS capture_end_utc TIMESTAMPTZ;
+					ALTER TABLE media_files ADD COLUMN IF NOT EXISTS status VARCHAR;
+					ALTER TABLE media_files ADD COLUMN IF NOT EXISTS mtime TIMESTAMPTZ;
+				`)
+			},
+		},
+		{
+			Name:        "add_capture_start_indexed_at_to_media_files",
+			TargetDB:    migration.TargetSharedSocial,
+			Description: "Ajoute capture_start_utc + indexed_at à media_files (lues par le pipeline media en mode shared_social ; absentes du schéma migré → 500 sur install fraîche)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE media_files ADD COLUMN IF NOT EXISTS capture_start_utc TIMESTAMPTZ;
+					ALTER TABLE media_files ADD COLUMN IF NOT EXISTS indexed_at TIMESTAMPTZ;
+				`)
+			},
+		},
+		{
+			Name:        "add_is_manual_to_media_match_associations",
+			TargetDB:    migration.TargetSharedSocial,
+			Description: "Ajoute is_manual BOOLEAN à media_match_associations pour tracer les réassociations manuelles",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE media_match_associations ADD COLUMN IF NOT EXISTS is_manual BOOLEAN DEFAULT FALSE;
+				`)
+			},
+		},
+		{
+			Name:        "add_file_stem_ext_to_media_files",
+			TargetDB:    migration.TargetSharedSocial,
+			Description: "Ajoute file_stem et file_ext à media_files pour dédup extension-agnostique",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE media_files ADD COLUMN IF NOT EXISTS file_stem VARCHAR;
+					ALTER TABLE media_files ADD COLUMN IF NOT EXISTS file_ext VARCHAR;
+
+					UPDATE media_files
+					SET
+						file_stem = regexp_replace(file_name, '\.[^.]+$', ''),
+						file_ext = regexp_extract(file_name, '(\.[^.]+)$', 1)
+					WHERE file_stem IS NULL AND file_name IS NOT NULL;
+
+					CREATE INDEX IF NOT EXISTS idx_mf_player_stem
+						ON media_files(player_slug, file_stem);
+				`)
+			},
+		},
+		{
+			Name:        "align_media_files_legacy_schema",
+			TargetDB:    migration.TargetSharedSocial,
+			Description: "ADR 0021 Bonus 12 : aligne media_files legacy vers schéma actuel (ADD COLUMN IF NOT EXISTS).",
+			ApplySchema: func(db *sql.DB) error {
+				cols, err := loadMediaFilesColumns(db)
+				if err != nil {
+					return fmt.Errorf("load media_files columns: %w", err)
+				}
+				if cols == nil {
+					return nil
+				}
+				addIfMissing := func(name, ddl string) error {
+					if _, ok := cols[name]; ok {
+						return nil
+					}
+					if _, err := db.Exec(`ALTER TABLE media_files ADD COLUMN ` + name + ` ` + ddl); err != nil {
+						return fmt.Errorf("ADD COLUMN %s: %w", name, err)
+					}
+					cols[name] = struct{}{}
+					return nil
+				}
+				if err := addIfMissing("file_size", "INTEGER DEFAULT 0"); err != nil {
+					return err
+				}
+				if err := addIfMissing("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"); err != nil {
+					return err
+				}
+				if err := addIfMissing("updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"); err != nil {
+					return err
+				}
+				if err := addIfMissing("discord_notified_at", "TIMESTAMP"); err != nil {
+					return err
+				}
+				if _, ok := cols["discord_notified"]; ok {
+					if _, err := db.Exec(`
+						UPDATE media_files
+						SET discord_notified_at = CURRENT_TIMESTAMP
+						WHERE discord_notified = TRUE AND discord_notified_at IS NULL
+					`); err != nil {
+						return nil
+					}
+				}
+				if _, ok := cols["indexed_at"]; ok {
+					if _, err := db.Exec(`
+						UPDATE media_files
+						SET created_at = indexed_at
+						WHERE created_at IS NULL AND indexed_at IS NOT NULL
+					`); err != nil {
+						return nil
+					}
+				}
+				return nil
+			},
+		},
+		// ─── famille records append-only (player_records → player_records_history) ───
+		{
+			Name:        "create_player_records_history_append_only",
+			TargetDB:    migration.TargetSharedSocial,
+			Description: "Pattern append-only pour player_records : nouvelle table _history (INSERT pur) + vue _latest. Backfill data existante depuis l'ancienne table player_records.",
+			ApplySchema: func(db *sql.DB) error {
+				hasHistory, err := migration.TableExists(db, "player_records_history")
+				if err != nil {
+					return fmt.Errorf("create_player_records_history: check table: %w", err)
+				}
+				if hasHistory {
+					return nil
+				}
+				hasSource, err := migration.TableExists(db, "player_records")
+				if err != nil {
+					return fmt.Errorf("create_player_records_history: check source: %w", err)
+				}
+				if _, err := db.ExecContext(migration.BootCtx(), `
+					CREATE SEQUENCE IF NOT EXISTS player_records_history_id_seq START 1;
+					CREATE TABLE player_records_history (
+						id                BIGINT PRIMARY KEY DEFAULT nextval('player_records_history_id_seq'),
+						xuid              VARCHAR NOT NULL,
+						metric            VARCHAR NOT NULL,
+						period            VARCHAR NOT NULL DEFAULT 'all_time',
+						value             DOUBLE NOT NULL,
+						achieved_at       TIMESTAMP,
+						achieved_match_id VARCHAR,
+						written_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+					);
+					CREATE INDEX idx_prh_lookup
+						ON player_records_history(xuid, metric, period, written_at DESC);
+				`); err != nil {
+					return fmt.Errorf("create_player_records_history: schema: %w", err)
+				}
+				if _, err := db.ExecContext(migration.BootCtx(), `
+					CREATE OR REPLACE VIEW player_records_latest AS
+					SELECT DISTINCT ON (xuid, metric, period)
+						id, xuid, metric, period, value, achieved_at, achieved_match_id, written_at
+					FROM player_records_history
+					ORDER BY xuid, metric, period, written_at DESC;
+				`); err != nil {
+					return fmt.Errorf("create_player_records_history: view: %w", err)
+				}
+				if hasSource {
+					hasPeriod, err := migration.ColumnExists(db, "player_records", "period")
+					if err != nil {
+						return fmt.Errorf("create_player_records_history: check period column: %w", err)
+					}
+					var backfillSQL string
+					if hasPeriod {
+						backfillSQL = `
+							INSERT INTO player_records_history
+								(xuid, metric, period, value, achieved_at, achieved_match_id, written_at)
+							SELECT
+								xuid, metric, period, value, achieved_at, achieved_match_id,
+								COALESCE(updated_at, CURRENT_TIMESTAMP)
+							FROM player_records;
+						`
+					} else {
+						backfillSQL = `
+							INSERT INTO player_records_history
+								(xuid, metric, period, value, achieved_at, achieved_match_id, written_at)
+							SELECT
+								xuid, metric, 'all_time', value, achieved_at, achieved_match_id,
+								COALESCE(updated_at, CURRENT_TIMESTAMP)
+							FROM player_records;
+						`
+					}
+					if _, err := db.ExecContext(migration.BootCtx(), backfillSQL); err != nil {
+						return fmt.Errorf("create_player_records_history: backfill: %w", err)
+					}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "player_records_history_previous_cols_v1",
+			TargetDB:    migration.TargetSharedSocial,
+			Description: "Ajoute previous_value/previous_achieved_at à player_records_history + recrée la vue player_records_latest (cols previous_* + tie-break id DESC).",
+			ApplySchema: func(db *sql.DB) error {
+				has, err := migration.TableExists(db, "player_records_history")
+				if err != nil {
+					return fmt.Errorf("records_previous_cols: check table: %w", err)
+				}
+				if !has {
+					return fmt.Errorf("records_previous_cols: player_records_history absente (ordre de migration brisé ?)")
+				}
+				if err := migration.AddColumnIfMissing(db, "player_records_history", "previous_value", "DOUBLE"); err != nil {
+					return fmt.Errorf("records_previous_cols: add previous_value: %w", err)
+				}
+				if err := migration.AddColumnIfMissing(db, "player_records_history", "previous_achieved_at", "TIMESTAMP"); err != nil {
+					return fmt.Errorf("records_previous_cols: add previous_achieved_at: %w", err)
+				}
+				if _, err := db.ExecContext(migration.BootCtx(), `
+					CREATE OR REPLACE VIEW player_records_latest AS
+					SELECT DISTINCT ON (xuid, metric, period)
+						id, xuid, metric, period, value, achieved_at, achieved_match_id,
+						previous_value, previous_achieved_at, written_at
+					FROM player_records_history
+					ORDER BY xuid, metric, period, written_at DESC, id DESC;
+				`); err != nil {
+					return fmt.Errorf("records_previous_cols: recreate view: %w", err)
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "extend_player_records_with_window",
+			TargetDB:    migration.TargetSharedSocial,
+			Description: "Étend player_records avec period (30d/90d/all_time) + previous_value/previous_achieved_at + PK migrée vers (xuid, metric, period).",
+			ApplySchema: func(db *sql.DB) error {
+				hasPeriod, err := migration.ColumnExists(db, "player_records", "period")
+				if err != nil {
+					return fmt.Errorf("extend_player_records: check period column: %w", err)
+				}
+				if hasPeriod {
+					return nil
+				}
+				hasTable, err := migration.TableExists(db, "player_records")
+				if err != nil {
+					return fmt.Errorf("extend_player_records: check table: %w", err)
+				}
+				if !hasTable {
+					return nil
+				}
+				if _, err := db.ExecContext(migration.BootCtx(), `DROP TABLE IF EXISTS player_records_v2`); err != nil {
+					return fmt.Errorf("extend_player_records: drop stale v2: %w", err)
+				}
+				return migration.ExecScript(db, `
+					CREATE TABLE player_records_v2 (
+						xuid                 VARCHAR NOT NULL,
+						metric               VARCHAR NOT NULL,
+						period               VARCHAR NOT NULL DEFAULT 'all_time',
+						value                DOUBLE NOT NULL,
+						achieved_at          TIMESTAMP,
+						achieved_match_id    VARCHAR,
+						previous_value       DOUBLE,
+						previous_achieved_at TIMESTAMP,
+						updated_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (xuid, metric, period)
+					);
+
+					INSERT INTO player_records_v2 (xuid, metric, period, value, achieved_at, achieved_match_id, updated_at)
+					SELECT xuid, metric, 'all_time', value, achieved_at, achieved_match_id, updated_at
+					FROM player_records;
+
+					DROP TABLE player_records;
+					ALTER TABLE player_records_v2 RENAME TO player_records;
+				`)
+			},
+		},
+		// ─── purge notifs data_health (rebuild via swap, utilise migration.FirstWords) ───
+		{
+			Name:        "purge_data_health_warning_notifs",
+			TargetDB:    migration.TargetSharedSocial,
+			Description: "Supprime les notifs persistées de catégorie `data_health_warning` (catégorie retirée le 2026-05-20).",
+			ApplySchema: func(db *sql.DB) error {
+				hasTable, err := migration.TableExists(db, "player_notifications")
+				if err != nil {
+					return fmt.Errorf("purge_data_health: check table: %w", err)
+				}
+				if !hasTable {
+					return nil
+				}
+				var toDelete int
+				if err := db.QueryRowContext(migration.BootCtx(), `
+					SELECT COUNT(*) FROM player_notifications
+					WHERE category = 'data_health_warning'
+				`).Scan(&toDelete); err != nil {
+					return fmt.Errorf("purge_data_health: count: %w", err)
+				}
+				if toDelete == 0 {
+					return nil
+				}
+				stmts := []string{
+					`CREATE TABLE player_notifications__purged (
+						xuid          VARCHAR NOT NULL,
+						id            BIGINT NOT NULL,
+						category      VARCHAR NOT NULL,
+						severity      VARCHAR NOT NULL DEFAULT 'info',
+						title_key     VARCHAR NOT NULL,
+						body_key      VARCHAR,
+						params        VARCHAR,
+						target_route  VARCHAR,
+						target_search VARCHAR,
+						actor_xuid    VARCHAR,
+						actor_name    VARCHAR,
+						source        VARCHAR NOT NULL,
+						created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						read_at       TIMESTAMP,
+						PRIMARY KEY (xuid, id)
+					)`,
+					`INSERT INTO player_notifications__purged
+					 SELECT * FROM player_notifications
+					 WHERE category <> 'data_health_warning'`,
+					`DROP TABLE player_notifications`,
+					`ALTER TABLE player_notifications__purged RENAME TO player_notifications`,
+					`CREATE INDEX IF NOT EXISTS idx_pn_xuid_unread       ON player_notifications(xuid, read_at)`,
+					`CREATE INDEX IF NOT EXISTS idx_pn_xuid_created_desc ON player_notifications(xuid, created_at DESC)`,
+					`CREATE INDEX IF NOT EXISTS idx_pn_xuid_category     ON player_notifications(xuid, category)`,
+				}
+				for _, sqlStmt := range stmts {
+					if _, err := db.ExecContext(migration.BootCtx(), sqlStmt); err != nil {
+						return fmt.Errorf("purge_data_health: swap step (%s): %w",
+							migration.FirstWords(sqlStmt, 3), err)
+					}
+				}
+				slog.Info("migration purge_data_health_warning_notifs: lignes purgées (rebuild via swap)",
+					"deleted", toDelete)
+				return nil
+			},
+		},
+		// ─── rekey squad_member (DROP+recreate ; créée par create_prestige_shared_social) ───
+		{
+			Name:        "rekey_squad_member_xuid",
+			TargetDB:    migration.TargetSharedSocial,
+			Description: "Re-key squad_member par xuid (membre universel) + user_id slug optionnel (accès app)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					DROP TABLE IF EXISTS squad_member;
+					CREATE TABLE IF NOT EXISTS squad_member (
+						squad_id   VARCHAR NOT NULL,
+						xuid       VARCHAR NOT NULL,
+						user_id    VARCHAR,
+						joined_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (squad_id, xuid)
+					);
+					CREATE INDEX IF NOT EXISTS idx_sm_xuid ON squad_member(xuid);
+					CREATE INDEX IF NOT EXISTS idx_sm_user ON squad_member(user_id);
+				`)
+			},
+		},
+	}
+}
+
+// loadMediaFilesColumns retourne l'ensemble des colonnes de media_files si la table
+// existe, nil si absente. Déplacé depuis steps_shared_social_align_media_files_schema.go
+// (utilisé uniquement par align_media_files_legacy_schema).
+func loadMediaFilesColumns(db *sql.DB) (map[string]struct{}, error) {
+	var tableCount int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'media_files'`,
+	).Scan(&tableCount); err != nil {
+		return nil, err
+	}
+	if tableCount == 0 {
+		return nil, nil
+	}
+	rows, err := db.Query(
+		`SELECT column_name FROM information_schema.columns WHERE table_name = 'media_files'`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[string]struct{})
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		out[name] = struct{}{}
+	}
+	return out, rows.Err()
+}
