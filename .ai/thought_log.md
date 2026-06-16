@@ -1,3 +1,13 @@
+## [2026-06-16] Phase 1.5 (MT-23) — relocation b16 : consommateurs progression (dedup record_history + streak append-only)
+
+**Livré (b16, 2 consommateurs player)** : `dedup_record_history_v1` (rebuild CTAS conditionnel de record_history, no-op si pas de doublon) + `create_streak_history_append_only` (table streak_history + vue streak_latest + backfill depuis streak) → `playerSteps()` (steps_player.go titre). Consommateurs de record_history/streak créées par `create_progression_player_schema` (RACINE, reste globale) → safe (créateur global + consommateur titre). Total title-owned : 44 → **46** statiques.
+
+**2 tests relocalisés (cgo)** : `steps_player_dedup_record_history_test.go` + `steps_player_append_only_streak_test.go` → titre (`player_dedup_record_history_test.go`, `player_streak_test.go`). Ils pilotent `RunForDB(TargetPlayer)` global-only → DEVAIENT bouger (sinon les steps title-owned ne tournent pas). Provider `StepsFor` câblé DANS les setup helpers (setupRecordHistoryTestDB / setupStreakTestDB), avant RunForDB → la chaîne combine schéma global progression + steps titre. Confirme la règle b15 en pratique : le créateur (progression) reste global, les consommateurs + leurs tests partent ensemble.
+
+**Vérif** : build all + `go test` (cgo : les 7 tests dedup/streak tournent sur DuckDB) + `-tags integration` + gofmt + vet verts.
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-23) — relocation b15 : consommateurs player + DÉCOUVERTE « schéma de base = racine »
 
 **Livré (b15, 3 consommateurs player)** : `player_match_enrichment_performance_chain_v1` + `player_match_enrichment_psa_checked_v1` (ALTER player_match_enrichment) + `fix_career_xp_total_default_zero` (ALTER career_progression, named-func + markXPTotalFixDone) → nouveau `migrations/steps_player.go` (`playerSteps()`, appendé à `Steps()`). Total title-owned : 41 → **44** statiques. Test `steps_player_perf_chain_test.go` relocalisé (`StepsFor` au lieu de `All()`, `migration.ColumnExists`) + couverture bout-en-bout `TestTitleStepsRunEndToEnd_Player`.
