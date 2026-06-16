@@ -133,8 +133,12 @@ func TestTitleStepsRunEndToEnd_Player(t *testing.T) {
 		t.Fatalf("RunForDB(Player): %v", err)
 	}
 
-	// Tables de base (créées par le schéma global) + colonnes additives title-owned.
-	for _, table := range []string{"player_match_enrichment", "career_progression"} {
+	// Tables de base + prestige/progression (title-owned depuis b25) + colonnes additives.
+	for _, table := range []string{
+		"player_match_enrichment", "career_progression", "match_skill_rank", "sessions",
+		"match_citations", "arc", "challenge", "moment_card", "prestige_telemetry",
+		"baseline_state", "improvement_campaign", "streak", "record_history", "milestone_earned",
+	} {
 		var n int
 		if err := db.QueryRow(
 			"SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?", table,
@@ -144,6 +148,17 @@ func TestTitleStepsRunEndToEnd_Player(t *testing.T) {
 		if n != 1 {
 			t.Errorf("table player %s absente", table)
 		}
+	}
+	// Ordre load-bearing : challenge.campaign_id (ALTER create_improvement_campaign_schema)
+	// après create_prestige_player_schema (crée challenge).
+	var nCamp int
+	if err := db.QueryRow(
+		"SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'challenge' AND column_name = 'campaign_id'",
+	).Scan(&nCamp); err != nil {
+		t.Fatalf("query challenge.campaign_id: %v", err)
+	}
+	if nCamp != 1 {
+		t.Errorf("challenge.campaign_id absente — ordre prestige→campaign cassé")
 	}
 	for _, col := range []string{"performance_chain", "psa_checked_at"} {
 		var n int

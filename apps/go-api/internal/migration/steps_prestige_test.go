@@ -109,6 +109,10 @@ func TestPrestige_SharedSocialMigration_Idempotent(t *testing.T) {
 func TestPrestige_PlayerMigration_CreatesTables(t *testing.T) {
 	db := openMemDB(t)
 
+	if !playerBaseSchemaIsGlobal() {
+		t.Skip("schémas player title-owned (Phase 1.5 b25) — couverture : TestTitleStepsRunEndToEnd_Player")
+	}
+
 	if err := RunForDB(db, TargetPlayer); err != nil {
 		t.Fatalf("RunForDB(Player): %v", err)
 	}

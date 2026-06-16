@@ -231,6 +231,18 @@ func sharedSocialBaseIsGlobal() bool {
 	return false
 }
 
+// playerBaseSchemaIsGlobal : create_base_player_schema encore global ? Depuis b25 la racine
+// player est title-owned → tests RunForDB(TargetPlayer) global-only skippés. Couverture :
+// TestTitleStepsRunEndToEnd_Player.
+func playerBaseSchemaIsGlobal() bool {
+	for _, m := range ForTarget(TargetPlayer) {
+		if m.Name == "create_base_player_schema" {
+			return true
+		}
+	}
+	return false
+}
+
 // TestRunForDB_Shared_CoreTablesExist vérifie les tables centrales de shared.
 func TestRunForDB_Shared_CoreTablesExist(t *testing.T) {
 	db := openMemDB(t)
@@ -382,9 +394,8 @@ func TestRunForDB_Shared_IdempotentOnExistingDB(t *testing.T) {
 func TestRunForDB_Player_CoreTablesExist(t *testing.T) {
 	db := openMemDB(t)
 
-	playerMigs := ForTarget(TargetPlayer)
-	if len(playerMigs) == 0 {
-		t.Skip("aucune migration player enregistrée")
+	if !playerBaseSchemaIsGlobal() {
+		t.Skip("schéma de base player title-owned (Phase 1.5 b25) — couverture : TestTitleStepsRunEndToEnd_Player")
 	}
 
 	if err := RunForDB(db, TargetPlayer); err != nil {
@@ -410,6 +421,10 @@ func TestRunForDB_Player_CoreTablesExist(t *testing.T) {
 // TestRunForDB_Player_IdempotentOnExistingDB vérifie l'idempotence de TargetPlayer.
 func TestRunForDB_Player_IdempotentOnExistingDB(t *testing.T) {
 	db := openMemDB(t)
+
+	if !playerBaseSchemaIsGlobal() {
+		t.Skip("schéma de base player title-owned (Phase 1.5 b25) — couverture : TestTitleStepsRunEndToEnd_Player")
+	}
 
 	for pass := 1; pass <= 3; pass++ {
 		if err := RunForDB(db, TargetPlayer); err != nil {
