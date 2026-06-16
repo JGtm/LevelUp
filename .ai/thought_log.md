@@ -1,3 +1,15 @@
+## [2026-06-16] Phase 1.5 (MT-23) — relocation b21 : repairs/rebuilds player (PK pme/citations + career, ART)
+
+**Livré (b21, 3 consommateurs player)** → nouveau `migrations/steps_player_repairs.go` (`playerRepairSteps()`) : `repair_player_match_enrichment_primary_key` (réutilise `migration.RebuildPlayerMatchEnrichmentART`), `repair_match_citations_primary_key` (CTAS dynamique + dédup PK), `rebuild_career_progression_defeat_art_corruption` (swap + sentinel sync_meta, helper markCareerRebuildDone). Consommateurs de player_match_enrichment/match_citations/career_progression (RACINE god-file globale). Total title-owned : 75 → **78** statiques.
+
+**Carte datée corrigée (3e fois)** : `steps_player_rebuild_match_enrichment.go` n'enregistre AUCUN step — seulement l'util exporté `RebuildPlayerMatchEnrichmentART` (appelé par cmd/force_rebuild_art) + le helper `loadTableColumns` (b13). Reste GLOBAL. Le step repair_pme l'appelle via `migration.RebuildPlayerMatchEnrichmentART`.
+
+**Test relocalisé** : `steps_player_repair_pk_test.go` (integration) → `player_repair_pk_test.go` titre, `migByName` réécrit pour `StepsFor(TargetPlayer)`, `hasPrimaryKey` → `migration.HasPrimaryKey`, openEngMemDB réutilisé.
+
+**Vérif** : build all + `go test` (migration + titre) + `-tags integration` + duckdb + gofmt + vet verts.
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-23) — relocation b20 : chaîne match_skill_rank player (append-only + vues, ART-prone)
 
 **Livré (b20, 6 consommateurs player)** → nouveau `migrations/steps_player_match_skill_rank.go` (`playerMatchSkillRankSteps()`) : `player_add_expected_win_prob` (ALTER), `lusr_chain_rework_v1` (DELETE LUSR), `player_append_only_match_skill_rank_v1` (CTAS swap append-only, DML ART-prone), `msr_written_at_default_now_repair_v1` (ALTER DEFAULT), `player_msr_view_lusr_over_v2_v1` + `player_msr_view_priority_csr_v1` (CREATE OR REPLACE VIEW match_skill_rank_latest, ordre de priorité CSR>LUSR>LUSR_V2). Tous consommateurs de match_skill_rank (créée par add_skill_rating_table, RACINE globale). Helpers migration.LoadTableColumns + migration.FirstWords. Total title-owned : 69 → **75** statiques.
