@@ -24,6 +24,14 @@ Les 3 fichiers `career_live_{service,merge,partial}.go` faisaient transiter les 
 
 **Avancement critère Phase 2** : importateurs duckdb restants (non-test) = `media_service`/`media_index_service` (`OpenReadWrite` = write-IO, pas data-read) → décision allowlist + lint à suivre.
 
+### MILESTONE — critère « 0 service n'importe duckdb pour la data » ATTEINT + verrouillé (lint)
+
+`no_duckdb_import_test.go` (NOUVEAU, archlint service) : aucun fichier non-test de `internal/service/` n'importe le package de données `internal/platform/duckdb`. Après SAFE-1/2/3, les SEULS restants sont `media_service`/`media_index_service` (`OpenReadWrite` = write-IO, hors lecture canonique) → **allowlistés** avec justification (le critère Phase 2 cible les services de LECTURE produit ; l'extraction d'un `MediaRepository` port est un refactor distinct). Sous-package `duckdb/sharedprovider` (openspartan_import) = pas le package de données, non compté.
+
+**État Phase 2** : le critère de complétion d'import est MET (services de lecture) + verrouillé. Reste le canonical-TYPING profond (explorer/match_view lisent encore `domain.*` via repos legacy ; career XP/LUSR/CSR partiel) = travail HIGH ultérieur, décisions requises (cf. plan workflow).
+
+**Vérif** : lint vert · gofmt propre.
+
 ---
 
 ## [2026-06-17] PMT-5 Contract — DERNIER site SQL migré, allowlist ratchet VIDE
