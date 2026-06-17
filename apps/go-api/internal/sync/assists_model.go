@@ -19,6 +19,7 @@ import (
 	"math"
 	"time"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
 )
 
@@ -67,12 +68,16 @@ func loadAssistsSamples(ctx context.Context, sharedDB *sql.DB, xuid string) ([]a
 		WHERE p.xuid = ?
 		  AND p.kills >= 0
 		  AND p.assists IS NOT NULL
-		  AND p.outcome != 4
+		  AND p.outcome != ?
 		  AND NOT isnan(COALESCE(CAST(p.damage_dealt AS DOUBLE), 0.0))
 		  AND NOT isnan(COALESCE(CAST(p.damage_taken AS DOUBLE), 0.0))
 		ORDER BY r.game_variant_name
 	`
-	rows, err := sharedDB.QueryContext(ctx, q, xuid)
+	// PMT-5 : le code DNF (exclu de la régression) est lié comme PARAMÈTRE depuis la
+	// constante canonique — plus de littéral brut « 4 » dans la chaîne SQL. La colonne
+	// match_participants.outcome porte les codes bruts du titre (Halo, écrits par CE
+	// moteur de sync) ; domain.OutcomeDNF == le raw_code DNF du manifeste Halo.
+	rows, err := sharedDB.QueryContext(ctx, q, xuid, domain.OutcomeDNF)
 	if err != nil {
 		return nil, fmt.Errorf("loadAssistsSamples: %w", err)
 	}

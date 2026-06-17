@@ -23,17 +23,12 @@ import (
 	"testing"
 )
 
-// rawOutcomeAllowlist : fichiers (relatifs depuis internal/) où une comparaison
-// d'outcome sur littéral brut est tolérée transitoirement (PMT-5 Contract non
-// terminé pour ces sites — littéral SQL et/ou pas de seam injecté). À décrémenter.
-var rawOutcomeAllowlist = map[string]bool{
-	// SEUL site restant : littéral `outcome != 4` à l'INTÉRIEUR d'une chaîne SQL
-	// (filtre DNF title-agnostic). Indé-magickable par const Go ; la résolution
-	// propre est le fragment SQL du seam `mappings.OutcomeMappingSet` (title-aware),
-	// threading différé tant qu'aucun 2e titre n'existe. Toutes les comparaisons Go
-	// (analysis/patterns, service/*) ont été migrées vers `domain.Outcome*`.
-	"sync/assists_model.go": true,
-}
+// rawOutcomeAllowlist : VIDE (PMT-5 Contract terminé). Tous les sites ont été
+// migrés — comparaisons Go → constantes `domain.Outcome*` ; dernier littéral SQL
+// (`sync/assists_model.go`, filtre DNF) → paramètre lié `domain.OutcomeDNF`
+// (`outcome != ?`). Toute nouvelle occurrence de littéral brut d'outcome fait
+// désormais échouer le test sans exception.
+var rawOutcomeAllowlist = map[string]bool{}
 
 // rawOutcomeRE matche une comparaison Go `Outcome|outcome [==|!=] <1..4>` — soit
 // un littéral brut Halo comparé directement. Ne matche PAS les définitions

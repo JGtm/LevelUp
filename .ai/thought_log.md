@@ -1,3 +1,17 @@
+## [2026-06-17] PMT-5 Contract — DERNIER site SQL migré, allowlist ratchet VIDE
+
+**Statut** : LIVRÉ. `internal/sync/assists_model.go` (dernière entrée de l'allowlist `no_raw_outcome_literal`) migrée → l'allowlist est désormais **vide**. Plus aucun littéral brut d'outcome (`2/3/1/4`) dans `internal/` (Go + SQL).
+
+**Résolution** : le filtre `AND p.outcome != 4` (exclusion DNF, à l'intérieur d'une chaîne SQL const) devient `AND p.outcome != ?`, avec `domain.OutcomeDNF` lié comme PARAMÈTRE de requête. Plus de littéral dans le source ; référence la constante canonique ; byte-identique (`OutcomeDNF == 4`).
+
+**Choix vs seam OutcomeMappingSet** : le seam title-aware (`OutcomeMappingSet.RawCode(canonical.OutcomeDNF)`) serait sur-dimensionné ici — `internal/sync` est le moteur d'ingestion HALO, `match_participants.outcome` porte les codes bruts Halo écrits par CE moteur, et `domain.OutcomeDNF` == le raw_code DNF du manifeste Halo. Le paramètre lié est la résolution proportionnée + prête au paramétrage (un 2e titre lierait son propre code DNF). Le ratchet acceptait explicitement les deux options.
+
+**Vérif** : build sync ✅ · ratchet `TestNoNewRawOutcomeLiteral` vert avec allowlist VIDE · suite `go test ./internal/sync/` complète verte (19.7s) · grep confirme 0 littéral brut résiduel dans internal/ · gofmt propre.
+
+**Reste** : front TS (apps/web) = surface distincte hors ratchet Go (pas dans le scope de cette passe backend).
+
+---
+
 ## [2026-06-17] PMT-11 — footer Discord unifié sur le seam NotifyLabels (titre courant)
 
 **Statut** : LIVRÉ. Le footer des embeds suit désormais la MÊME dimension titre que les outcomes (un seul seam `NotifyLabels`), au lieu d'être figé sur le descripteur par défaut.
