@@ -25,6 +25,7 @@ func runSyncAchievements(cfg *config.AppConfig, args []string) error {
 	gamertag := fs.String("gamertag", "", "Gamertag du joueur (obligatoire sauf avec --all)")
 	allPlayers := fs.Bool("all", false, "Synchronise les achievements de tous les joueurs configurés")
 	dryRun := fs.Bool("dry-run", false, "Liste les joueurs ciblés sans appeler l'API ni écrire")
+	titleFlag := fs.String("title", titlePkg.DefaultSlug, "Slug du titre à synchroniser (défaut halo_infinite)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -34,40 +35,45 @@ func runSyncAchievements(cfg *config.AppConfig, args []string) error {
 	if !*allPlayers && strings.TrimSpace(*gamertag) == "" {
 		return fmt.Errorf("--gamertag est obligatoire sauf avec --all")
 	}
+	// Slug du titre : défaut halo_infinite → byte-identique au comportement actuel.
+	titleSlug := strings.TrimSpace(*titleFlag)
+	if titleSlug == "" {
+		titleSlug = titlePkg.DefaultSlug
+	}
 
 	ctx := context.Background()
 	if *allPlayers {
-		return runSyncAchievementsAll(ctx, cfg, *dryRun)
+		return runSyncAchievementsAll(ctx, cfg, titleSlug, *dryRun)
 	}
 
 	player, err := loadPlayerSummary(cfg, *gamertag)
 	if err != nil {
 		return err
 	}
-	return runSyncAchievementsForPlayer(ctx, cfg, player, *dryRun)
+	return runSyncAchievementsForPlayer(ctx, cfg, player, titleSlug, *dryRun)
 }
 
-func runSyncAchievementsForPlayer(ctx context.Context, cfg *config.AppConfig, player *domain.PlayerSummary, dryRun bool) error {
+func runSyncAchievementsForPlayer(ctx context.Context, cfg *config.AppConfig, player *domain.PlayerSummary, titleSlug string, dryRun bool) error {
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
+	dbPath := resolver.PlayerDBPath(titleSlug, player.Gamertag)
 	if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
 		return fmt.Errorf("player DB introuvable pour %s (%s)", player.Gamertag, dbPath)
 	}
 
 	if dryRun {
-		fmt.Printf("sync achievements DRY-RUN: gamertag=%s xuid=%s db=%s\n",
-			player.Gamertag, player.XUID, dbPath)
+		fmt.Printf("sync achievements DRY-RUN: title=%s gamertag=%s xuid=%s db=%s\n",
+			titleSlug, player.Gamertag, player.XUID, dbPath)
 		return nil
 	}
 
 	// Appliquer les migrations metadata avant le sync (title_id colonne, cleanup stale rows).
-	metadataPath := resolver.MetadataDBPath(titlePkg.DefaultSlug)
+	metadataPath := resolver.MetadataDBPath(titleSlug)
 	if err := applyAchievementsMigrations(metadataPath); err != nil {
 		return fmt.Errorf("migrations metadata: %w", err)
 	}
 
 	provider := auth_platform.NewMSALProvider()
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, nil, provider)
+	engine := go_sync.NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, player.Gamertag, player.XUID, nil, provider)
 
 	start := time.Now()
 	ok := engine.RunAchievementsOnly(ctx)
@@ -95,7 +101,7 @@ func applyAchievementsMigrations(metadataPath string) error {
 	return migration.RunForDB(db.SQLDb(), migration.TargetMetadata)
 }
 
-func runSyncAchievementsAll(ctx context.Context, cfg *config.AppConfig, dryRun bool) error {
+func runSyncAchievementsAll(ctx context.Context, cfg *config.AppConfig, titleSlug string, dryRun bool) error {
 	players, err := cfg.LoadPlayers()
 	if err != nil {
 		return fmt.Errorf("chargement db_profiles.json: %w", err)
@@ -108,7 +114,7 @@ func runSyncAchievementsAll(ctx context.Context, cfg *config.AppConfig, dryRun b
 
 	// Migrations metadata une seule fois pour tout le batch.
 	if !dryRun {
-		metadataPath := resolver.MetadataDBPath(titlePkg.DefaultSlug)
+		metadataPath := resolver.MetadataDBPath(titleSlug)
 		if err := applyAchievementsMigrations(metadataPath); err != nil {
 			return fmt.Errorf("migrations metadata: %w", err)
 		}
@@ -117,13 +123,13 @@ func runSyncAchievementsAll(ctx context.Context, cfg *config.AppConfig, dryRun b
 
 	if dryRun {
 		for _, p := range players {
-			dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, p.Gamertag)
+			dbPath := resolver.PlayerDBPath(titleSlug, p.Gamertag)
 			status := "ok"
 			if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
 				status = "no_player_db"
 			}
-			fmt.Printf("sync achievements DRY-RUN: gamertag=%s xuid=%s status=%s\n",
-				p.Gamertag, p.XUID, status)
+			fmt.Printf("sync achievements DRY-RUN: title=%s gamertag=%s xuid=%s status=%s\n",
+				titleSlug, p.Gamertag, p.XUID, status)
 		}
 		fmt.Printf("sync achievements DRY-RUN total=%d\n", len(players))
 		return nil
@@ -136,14 +142,14 @@ func runSyncAchievementsAll(ctx context.Context, cfg *config.AppConfig, dryRun b
 	failed := 0
 
 	for _, player := range players {
-		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
+		dbPath := resolver.PlayerDBPath(titleSlug, player.Gamertag)
 		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
 			skipped++
 			fmt.Printf("sync achievements SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
 			continue
 		}
 
-		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, nil, provider)
+		engine := go_sync.NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, player.Gamertag, player.XUID, nil, provider)
 		start := time.Now()
 		ok := engine.RunAchievementsOnly(ctx)
 		duration := time.Since(start).Round(time.Millisecond)

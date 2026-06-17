@@ -1,3 +1,17 @@
+## [2026-06-17] Couverture-max #1 — PMT-6 PR-3 : flag CLI `--title` (ferme MT-08 à 100%)
+
+**Statut** : Complété. MT-08 passe de « done sauf PR-3 » à **done**.
+
+**Re-vérification (workflow cov-max)** : `cmd_sync_achievements.go` hardcodait `titlePkg.DefaultSlug` ×5 (paths player/metadata) + `NewSyncEngine` ×2 (wrapper DefaultSlug), aucun flag `--title`. Le seam `NewSyncEngineForTitle(repoRoot, titleSlug, …)` existait déjà (résout tous les chemins via slug) — il ne restait que le câblage CLI.
+
+**Livré** : flag `--title` (défaut `halo_infinite` → byte-identique), threadé via `titleSlug` à travers `runSyncAchievements` → `runSyncAchievementsForPlayer`/`runSyncAchievementsAll`. 5 `DefaultSlug` → `titleSlug` ; 2 `NewSyncEngine` → `NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, …)`. Dry-run affiche `title=`.
+
+**Byte-identique Halo** : `--title` absent → `DefaultSlug` → mêmes chemins DB + même engine qu'avant. Couverture : ferme MT-08 (achievements par titre, lecture+écriture CLI). Test : CLI thin (pas de harness cmd/levelup), couvert par build + le seam `NewSyncEngineForTitle` déjà testé ailleurs + défaut byte-identique.
+
+**Vérif** : build cmd/levelup · gofmt/vet propres · archlint no_slug_comparison vert.
+
+---
+
 ## [2026-06-17] PMT-4 (MT-04) PR-3a — adoption read-path : CSR season UI résolu par titre
 
 **Statut** : En cours (read-path CSR câblé ; write-path + Discord + toggles à suivre).
