@@ -104,6 +104,18 @@ func RunGateCheck4(ctx context.Context, cfg GateCheckConfig) *GateReport {
 		fn    func() (bool, string)
 	}
 
+	// MT-10 : les contrôles de DB partagées sont répétés pour CHAQUE titre
+	// enregistré (registry.All()). Mono-titre (halo_infinite seul) → une itération,
+	// sortie inchangée ; l'id n'est suffixé du slug que si plusieurs titres coexistent.
+	titles := titlePkg.DefaultRegistry().All()
+	labelTitle := len(titles) > 1
+	titledID := func(id, slug string) string {
+		if labelTitle {
+			return id + "[" + slug + "]"
+		}
+		return id
+	}
+
 	checks := []check{
 		{
 			"sync-binary",
@@ -112,35 +124,36 @@ func RunGateCheck4(ctx context.Context, cfg GateCheckConfig) *GateReport {
 				return checkBinary(cfg.RepoRoot)
 			},
 		},
-		{
-			"shared-db",
-			"shared_matches_v2.duckdb accessible en lecture",
-			func() (bool, string) {
-				return checkDBAccessible(ctx, pr.SharedDBPath(titlePkg.DefaultSlug))
+	}
+
+	for _, td := range titles {
+		slug := td.Slug
+		checks = append(checks,
+			check{
+				titledID("shared-db", slug),
+				"shared_matches_v2.duckdb accessible en lecture",
+				func() (bool, string) { return checkDBAccessible(ctx, pr.SharedDBPath(slug)) },
 			},
-		},
-		{
-			"metadata-db",
-			"metadata.duckdb accessible en lecture",
-			func() (bool, string) {
-				return checkDBAccessible(ctx, pr.MetadataDBPath(titlePkg.DefaultSlug))
+			check{
+				titledID("metadata-db", slug),
+				"metadata.duckdb accessible en lecture",
+				func() (bool, string) { return checkDBAccessible(ctx, pr.MetadataDBPath(slug)) },
 			},
-		},
-		{
-			"shared-tables",
-			"Tables critiques présentes dans shared_matches_v2.duckdb",
-			func() (bool, string) {
-				return checkSharedTables(ctx, pr.SharedDBPath(titlePkg.DefaultSlug))
+			check{
+				titledID("shared-tables", slug),
+				"Tables critiques présentes dans shared_matches_v2.duckdb",
+				func() (bool, string) { return checkSharedTables(ctx, pr.SharedDBPath(slug)) },
 			},
-		},
-		{
-			"shared-views",
-			"Vues V6 présentes (v_gamertag_lookup, v_match_full, v_weapon_kills)",
-			func() (bool, string) {
-				return checkSharedViews(ctx, pr.SharedDBPath(titlePkg.DefaultSlug))
+			check{
+				titledID("shared-views", slug),
+				"Vues V6 présentes (v_gamertag_lookup, v_match_full, v_weapon_kills)",
+				func() (bool, string) { return checkSharedViews(ctx, pr.SharedDBPath(slug)) },
 			},
-		},
-		{
+		)
+	}
+
+	checks = append(checks,
+		check{
 			"migrations-applied",
 			"Migrations DuckDB trackées dans schema_migrations",
 			func() (bool, string) {
@@ -152,7 +165,7 @@ func RunGateCheck4(ctx context.Context, cfg GateCheckConfig) *GateReport {
 				)
 			},
 		},
-		{
+		check{
 			"player-db",
 			"stats.duckdb joueur accessible (player_match_enrichment non vide)",
 			func() (bool, string) {
@@ -162,21 +175,21 @@ func RunGateCheck4(ctx context.Context, cfg GateCheckConfig) *GateReport {
 				return checkPlayerDB(ctx, titlePkg.NewPathResolver(cfg.RepoRoot).PlayerDBPath(titlePkg.DefaultSlug, cfg.Gamertag))
 			},
 		},
-		{
+		check{
 			"db-profiles",
 			"db_profiles.json valide (au moins 1 profil configuré)",
 			func() (bool, string) {
 				return checkDBProfiles(cfg.DBProfilesPath)
 			},
 		},
-		{
+		check{
 			"discord-notify",
 			"Notifications Discord configurées (DISCORD_WEBHOOK_URL ou app_settings.json)",
 			func() (bool, string) {
 				return checkDiscordNotify(cfg.RepoRoot)
 			},
 		},
-	}
+	)
 
 	allPassed := true
 	for _, c := range checks {
