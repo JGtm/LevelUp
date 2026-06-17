@@ -14,6 +14,7 @@ import (
 	"time"
 
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
+	"levelup/go-api/internal/domain"
 )
 
 // QuitSecondaryFactor : multiplicateur appliqué aux quitters non-primaires.
@@ -48,7 +49,7 @@ func isQuitter(m rosterMember) bool {
 	}
 	// Pas d'info de participation : on se replie sur outcome=4 (DNF). C'est
 	// une approximation — un DNF peut aussi être une déco involontaire.
-	return m.outcome == 4
+	return m.outcome == domain.OutcomeDNF
 }
 
 // identifyPrimaryQuitter retourne le xuid du quitter PARTI EN PREMIER selon,

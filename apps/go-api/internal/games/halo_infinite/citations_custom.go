@@ -73,7 +73,7 @@ func computeBulldozer(ctx domain.CitationContext) int {
 
 // computeWinsCTF : victoire en CTF.
 func computeWinsCTF(ctx domain.CitationContext) int {
-	if ctx.Outcome != 2 {
+	if ctx.Outcome != domain.OutcomeWin {
 		return 0
 	}
 	pl := ctx.Playlist
@@ -89,7 +89,7 @@ func computeWinsCTF(ctx domain.CitationContext) int {
 
 // computeWinsFirefight : victoire en Firefight.
 func computeWinsFirefight(ctx domain.CitationContext) int {
-	if ctx.Outcome != 2 {
+	if ctx.Outcome != domain.OutcomeWin {
 		return 0
 	}
 	pl := ctx.Playlist
@@ -104,7 +104,7 @@ func computeWinsFirefight(ctx domain.CitationContext) int {
 
 // computeWinsSlayer : victoire en Slayer/Assassin.
 func computeWinsSlayer(ctx domain.CitationContext) int {
-	if ctx.Outcome != 2 {
+	if ctx.Outcome != domain.OutcomeWin {
 		return 0
 	}
 	pl := ctx.Playlist
@@ -118,7 +118,7 @@ func computeWinsSlayer(ctx domain.CitationContext) int {
 
 // computeWinsStrongholds : victoire en Strongholds/Bases.
 func computeWinsStrongholds(ctx domain.CitationContext) int {
-	if ctx.Outcome != 2 {
+	if ctx.Outcome != domain.OutcomeWin {
 		return 0
 	}
 	pl := ctx.Playlist

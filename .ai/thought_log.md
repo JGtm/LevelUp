@@ -1,3 +1,20 @@
+## [2026-06-17] Couverture-max #4 — PMT-5 Contract (MT-06) : sites Go sûrs migrés + lint ratchet (ultracode : design + vérif adversariale)
+
+**Statut** : Contract DÉMARRÉ. Sites Go byte-identiques migrés + garde-fou anti-régression posé ; sites SQL/threading différés (documentés en allowlist décroissante).
+
+**Méthode (ultracode)** : workflow de **conception + vérification adversariale** (15 agents, 7 groupes de fichiers × design→skeptic→synthèse) AVANT de toucher au code. La vérif adversariale a tranché la confusion clé : les sites SQL (`mp.outcome = 2` dans des chaînes Go) NE SONT PAS des swaps de const (un const ne s'inline pas dans un string sans `fmt.Sprintf` + title-awareness exige le seam runtime) → **threading requis, différés** (même blocage que PMT-4 PR-3). Correction vérifiée : les consts `domain.Outcome*` (Draw=1/Win=2/Loss=3/DNF=4) **existaient déjà** (l'adversaire a halluciné un `outcomeWinHaloRaw` undefined).
+
+**2 régimes** : (a) **sûr byte-identique** = comparaison/switch Go sur un `int` (package Halo), littéral → const `domain.*` de même valeur ; (b) **cosmétique-latent** = littéral dans une chaîne SQL OU fonction sans seam injecté.
+
+**Livré (régime a)** : 9 littéraux migrés → `domain.*` : `citations_custom.go` ×4 (`!= 2`→`!= OutcomeWin`), `skill_v2_quit_penalty.go` (`== 4`→`OutcomeDNF`), `career_repo_top_matches.go` ×3 (`== 3`→`OutcomeLoss`, `case 2/3:`→`case OutcomeWin/Loss:`), `squad_repo_mapstats.go` (`== 2`→`OutcomeWin`). Byte-identique (compilo confirme les valeurs).
+- **Lint ratchet** `internal/archlint/no_raw_outcome_literal_test.go` : interdit toute NOUVELLE comparaison Go `Outcome [==|!=] [1-4]` hors seam, allowlist DÉCROISSANTE des 6 sites Go encore bloqués (assists_model SQL + patterns ×2 + services ×3). **Le ratchet a trouvé un site que le workflow avait MANQUÉ** (`squad_repo_mapstats.go:56`) → migré, pas allowlisté. Preuve de la valeur de la vérif empirique.
+
+**Différés (régime b, documentés)** : SQL repos (compare/explorer/match_history), `assists_model.go`/`performance_helpers.go` (filtres DNF title-agnostic — **risque data-path** : titre B avec dnf≠4 → exclusion fausse), `sql_fragments.go` (const→fonction runtime), patterns, 3 services (SemanticAdapter non injecté), front (couplé au lot Go). Tous nécessitent l'injection `OutcomeMappingSet`/threading slug — à faire au onboarding 2e titre. Listés dans l'allowlist du ratchet + PMT-5 §2/§5 du plan.
+
+**Vérif** : build ./... · 3 packages (halo_infinite/sync/duckdb) verts · ratchet vert (+ no_slug_comparison) · `go test ./...` = seuls les 2 DeviceCodeFlow pré-existants · gofmt/vet propres.
+
+---
+
 ## [2026-06-17] Couverture-max #3 — EXT-1.5 : décisions metadata/notif consignées (MT-16/17) ; refactors MT-10/18 différés (latents)
 
 **Statut** : MT-16 + MT-17 fermés (documentation) ; MT-10 + MT-18 différés avec justification.
