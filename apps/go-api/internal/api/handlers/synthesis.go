@@ -2,18 +2,32 @@
 //
 // Sprint 55 D1 : extrait de squad.go — SynthesisHandler devient autonome.
 //
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// (préfixe /players/{player_slug} + middleware ownership/title hérités, lit
+// {player_slug} parent) et enregistre le POST via huma.Post. Logique métier
+// inchangée (SynthesisService), seul le wrapping HTTP change.
+//
+// Le corps est lu via RawBody (pas de Body typé) pour reproduire EXACTEMENT le
+// contrat de décodage d'origine : un JSON invalide renvoie 400 {invalid_body}
+// (parse maison) et non le 422 de validation Huma qu'un Body typé produirait.
+// Corps absent (ContentLength == 0) → requête vide tolérée.
+//
 // Endpoint :
 //
 //	POST /api/v1/players/{player_slug}/pages/synthesis → SynthesisPageV2Response
 package handlers
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -29,40 +43,63 @@ func NewSynthesisHandler(newSvc ContextFactory[port.SynthesisService]) *Synthesi
 	return &SynthesisHandler{newSvc: newSvc}
 }
 
-// GetSynthesisPage retourne la page Synthèse avec scope explicite et filtres appliqués.
+// Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
+// /players/{player_slug} + middleware ownership/title hérités).
+func (h *SynthesisHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Post(api, "/pages/synthesis", h.handleGetSynthesisPage)
+	// Body OPTIONNEL (décodé seulement si présent) : RawBody requis par défaut
+	// côté Huma → optionnel pour préserver le 200 sur corps absent.
+	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/pages/synthesis")
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// synthesisInput : {player_slug} parent + corps brut décodé maison.
+// RawBody (pas Body typé) → préserve le contrat 400 {invalid_body} sur JSON
+// invalide (un Body typé renverrait le 422 de validation Huma). Corps vide
+// (RawBody nil) → requête zéro-valeur tolérée (reproduit ContentLength > 0).
+type synthesisInput struct {
+	PlayerSlug string `path:"player_slug"`
+	RawBody    []byte
+}
+
+type synthesisPageOutput struct {
+	Body *domain.SynthesisPageV2Response
+}
+
+// ─── Endpoint ────────────────────────────────────────────────────────────────
+
+// handleGetSynthesisPage retourne la page Synthèse avec scope explicite et filtres appliqués.
 // POST /api/v1/players/{player_slug}/pages/synthesis
 // Body (optionnel) : { "period": "1m", "filters": {...} }
-func (h *SynthesisHandler) GetSynthesisPage(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, xuid, _, err := h.newSvc(r.Context(), slug)
+func (h *SynthesisHandler) handleGetSynthesisPage(ctx context.Context, in *synthesisInput) (*synthesisPageOutput, error) {
+	svc, xuid, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		slog.WarnContext(r.Context(), "synthesis: joueur introuvable", "player_slug", slug, "err", err)
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		slog.WarnContext(ctx, "synthesis: joueur introuvable", "player_slug", in.PlayerSlug, "err", err)
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
 
 	var req domain.SynthesisRequest
-	if r.ContentLength > 0 {
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			slog.WarnContext(r.Context(), "synthesis: corps de requête invalide", "player_slug", slug, "err", err)
-			writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-			return
+	if len(in.RawBody) > 0 {
+		if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
+			slog.WarnContext(ctx, "synthesis: corps de requête invalide", "player_slug", in.PlayerSlug, "err", err)
+			return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 		}
 	}
 
-	slog.DebugContext(r.Context(), "synthesis: calcul page", "player_slug", slug, "period", req.Period)
+	slog.DebugContext(ctx, "synthesis: calcul page", "player_slug", in.PlayerSlug, "period", req.Period)
 
-	page, err := svc.GetSynthesisPage(r.Context(), xuid, req)
+	page, err := svc.GetSynthesisPage(ctx, xuid, req)
 	if err != nil {
-		slog.ErrorContext(r.Context(), "synthesis: erreur service", "player_slug", slug, "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "synthesis_page_error", err.Error())
-		return
+		slog.ErrorContext(ctx, "synthesis: erreur service", "player_slug", in.PlayerSlug, "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "synthesis_page_error", err.Error())
 	}
 
-	slog.InfoContext(r.Context(), "synthesis: page générée",
-		"player_slug", slug,
+	slog.InfoContext(ctx, "synthesis: page générée",
+		"player_slug", in.PlayerSlug,
 		"period", req.Period,
 		"match_count", page.Scope.MatchCount,
 	)
-	writeJSON(w, http.StatusOK, page)
+	return &synthesisPageOutput{Body: page}, nil
 }

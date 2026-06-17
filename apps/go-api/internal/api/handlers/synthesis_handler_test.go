@@ -41,7 +41,7 @@ func newSynthesisTestRouter(factory handlers.ContextFactory[port.SynthesisServic
 	r := chi.NewRouter()
 	h := handlers.NewSynthesisHandler(factory)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Post("/pages/synthesis", h.GetSynthesisPage)
+		h.Mount(r)
 	})
 	return r
 }

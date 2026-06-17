@@ -1019,7 +1019,7 @@ func NewRouter(
 			filters.Mount(r)
 
 			mh := handlers.NewMatchHistoryHandler(reg.MatchHistoryCtx)
-			r.Post("/pages/match-history/query", mh.Query)
+			mh.Mount(r) // POST /pages/match-history/query (export CSV reste chi, plus bas)
 
 			// P6.3 : guard de capability — career routes nécessitent CapCareer.
 			// Migré vers Huma (Phase 3b) : Mount sur le sous-groupe capability
@@ -1056,7 +1056,7 @@ func NewRouter(
 			})
 
 			explorer := handlers.NewExplorerHandler(reg.ExplorerCtxWithAuth, reg.MatchHistoryCtx)
-			r.Post("/pages/explorer/player-query", explorer.QueryPlayer)
+			explorer.Mount(r) // player-query + matches-query (2 routes)
 
 			// Sprint 9 : Sessions
 			sessions := handlers.NewSessionsHandler(reg.Sessions)
@@ -1088,12 +1088,11 @@ func NewRouter(
 
 			// Sprint 55 D1 : SynthesisHandler extrait de SquadHandler (frontière produit)
 			synthesis := handlers.NewSynthesisHandler(reg.SynthesisCtx)
-			r.Post("/pages/synthesis", synthesis.GetSynthesisPage)
+			synthesis.Mount(r)
 
 			// Sprint 13 → Sprint 32 : Citations + Commendations + Médias → POST
 			citations := handlers.NewCitationsHandler(reg.CitationsCtx)
-			r.Post("/pages/citations", citations.GetCitations)
-			r.Post("/pages/commendations", citations.GetCommendations)
+			citations.Mount(r)
 
 			// P6.3 : guard de capability — media routes nécessitent CapMedia.
 			media := handlers.NewMediaHandler(reg.Media, reg.MediaUpload, cfg.RepoRoot).
@@ -1117,21 +1116,21 @@ func NewRouter(
 				r.Get("/media/files/*", media.ServeMediaFile)
 			})
 
-			// Sprint 32 : Explorer matches-query + Match History export
-			r.Post("/pages/explorer/matches-query", explorer.QueryMatches)
+			// Sprint 32 : Match History export (CSV — reste chi, hors scope migration
+			// JSON ; explorer matches-query est migré dans explorer.Mount ci-dessus).
 			r.Get("/pages/match-history/export", mh.Export)
 
 			// Sprint 33 : Teammates (contrat FastAPI)
 			teammates := handlers.NewTeammatesHandler(reg.TeammatesCtx)
-			r.Post("/pages/teammates", teammates.GetPage)
+			teammates.Mount(r)
 
 			// Sprint 33 : Timeseries (contrat FastAPI)
 			timeseries := handlers.NewTimeseriesHandler(reg.Timeseries)
-			r.Post("/pages/timeseries", timeseries.GetPage)
+			timeseries.Mount(r)
 
 			// Sprint 33 : Session Compare
 			sc := handlers.NewSessionCompareHandler(reg.SessionCompare)
-			r.Post("/pages/session-compare", sc.Compare)
+			sc.Mount(r)
 
 			// Exclusion manuelle de matchs non pertinents
 			// NOTE : GET /match-exclusions supprimé en revue 2026-04-29 P0.2 Q6

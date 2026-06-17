@@ -1,3 +1,15 @@
+## [2026-06-18] Phase 3b — routes inline player-group DIRECTES batch 2b (7 handlers) + helper body optionnel — Complété
+
+**Statut** : Complété. Workflow `huma-inline-direct-2b` (7 agents) → explorer/citations/teammates/timeseries/session_compare/synthesis/match_history(query). server.go recâblé (Mount directs ; explorer 2 routes éparses fusionnées ; match_history `Export` CSV reste chi). Build/gofmt/vet OK, **goldens des 7 verts**, `internal/api`+humacore verts. 9 routes. Cumul = **57 routes**.
+
+**Découverte clé — body OPTIONNEL avec `RawBody` (helper `humacore.MarkRequestBodyOptional`)** : les agents ont utilisé `RawBody []byte` partout (décodage maison → 400 invalid_json/invalid_body au lieu du 422 Huma). OK pour les bodies REQUIS (stats/session_page/teammates/timeseries/session_compare/explorer/match_history). MAIS pour les bodies OPTIONNELS (citations/commendations/synthesis : l'original ne décodait que si ContentLength>0), Huma rend `RawBody` REQUIS → 400 "request body is required" sur corps absent (cassait le 200). Ni `RawBody` (requis) ni `Body *T` pointeur (422 sur malformé) ne préservent le contrat « optionnel + 400-sur-malformé ». Solution : helper qui met `op.RequestBody.Required = false` post-enregistrement — le pointeur d'opération est PARTAGÉ entre l'OpenAPI et le handler runtime (huma `AddOperation(&op)` / `Handle(&op)` ligne 749/777), donc la mutation prend effet au runtime. Vérifié dans la source huma + goldens citations/synthesis verts (200 corps absent ET 400 malformé).
+
+**Autres corrections d'intégration** : (1) synthesis avait un test `synthesis_handler_test.go` (nom non-standard, raté par la spec « pas de test ») → mis à jour vers Mount. (2) explorer : 2 routes server.go éparses (player-query l.1059 + matches-query l.1121) fusionnées en un seul `explorer.Mount(r)`.
+
+**Player-group : routes JSON migrées, needs_care restent chi** : home (cached/ETag), battlepass/challenges (NoStore), media (multipart upload + binaire), match-history/export (CSV). Toutes les autres routes player-scoped sont en Huma.
+
+**Conclusion / prochaine étape** : player-group quasi terminé (hors needs_care). Reste les sous-groupes hors player : top-level /api/v1 (auth, bootstrap, players, leaderboard/catalog, asset-metadata, lab, help, session/context, health), /admin (users/invites), /watcher, _diag. Push branche en fin de phase.
+
 ## [2026-06-18] Phase 3b — routes inline player-group DIRECTES batch 2a (9 handlers) — Complété
 
 **Statut** : Complété. Workflow `huma-inline-direct-2a` (9 agents) → filters/match_view/sessions/session_page/stats/squad/squad_v2/season_pass/match_exclusion convertis (Mount+Huma) + tests màj. server.go recâblé (Mount directs dans /players/{player_slug}). Build/gofmt/vet OK, **goldens des 9 verts**, `internal/api` (contract inclus) vert. 11 routes. Cumul = **48 routes**.

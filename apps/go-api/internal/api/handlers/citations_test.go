@@ -35,9 +35,8 @@ func (m *mockCitationsService) GetCommendationsPage(_ context.Context, _ string)
 func newCitationsRouter(factory handlers.ContextFactory[port.CitationsService]) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewCitationsHandler(factory)
-	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Post("/pages/citations", h.GetCitations)
-		r.Post("/pages/commendations", h.GetCommendations)
+	r.Route("/players/{player_slug}", func(sub chi.Router) {
+		h.Mount(sub)
 	})
 	return r
 }

@@ -30,8 +30,8 @@ func (m *mockTimeseriesService) GetPage(_ context.Context, _ domain.TimeseriesQu
 func newTimeseriesRouter(factory handlers.ServiceFactory[port.TimeseriesService]) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewTimeseriesHandler(factory)
-	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Post("/pages/timeseries", h.GetPage)
+	r.Route("/players/{player_slug}", func(sub chi.Router) {
+		h.Mount(sub)
 	})
 	return r
 }

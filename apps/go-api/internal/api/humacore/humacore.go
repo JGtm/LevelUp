@@ -202,6 +202,37 @@ func ErrorCodeForStatus(status int) string {
 // Factory d'API Huma coexistante avec chi.
 // ---------------------------------------------------------------------------
 
+// MarkRequestBodyOptional met RequestBody.Required = false sur l'opération
+// (method, path) déjà enregistrée. À utiliser pour les routes à body OPTIONNEL
+// déclarées avec un champ Input `RawBody []byte` — que Huma rend REQUIS par défaut
+// (400 "request body is required" si corps absent). Cela préserve le 200 sur
+// corps absent TOUT EN gardant le décodage maison (400 sur JSON malformé), contrat
+// que ni RawBody seul (corps requis) ni un Body typé pointeur (422 sur malformé)
+// ne reproduisent. Le pointeur d'opération est partagé entre l'OpenAPI et le
+// handler runtime (huma AddOperation/Handle), donc la mutation prend effet au runtime.
+func MarkRequestBodyOptional(api huma.API, method, path string) {
+	pi, ok := api.OpenAPI().Paths[path]
+	if !ok || pi == nil {
+		return
+	}
+	var op *huma.Operation
+	switch method {
+	case http.MethodGet:
+		op = pi.Get
+	case http.MethodPost:
+		op = pi.Post
+	case http.MethodPut:
+		op = pi.Put
+	case http.MethodPatch:
+		op = pi.Patch
+	case http.MethodDelete:
+		op = pi.Delete
+	}
+	if op != nil && op.RequestBody != nil {
+		op.RequestBody.Required = false
+	}
+}
+
 // NewAPI crée une API Huma adossée au routeur chi `r` (qui peut être le routeur
 // racine OU un sous-routeur d'un r.Route/r.Group — les routes Huma héritent alors
 // du middleware du sous-groupe et lisent les path params parents, cf.

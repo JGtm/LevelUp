@@ -47,9 +47,8 @@ func newExplorerRouter(
 ) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewExplorerHandler(explorerF, matchHistF)
-	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Post("/pages/explorer/player-query", h.QueryPlayer)
-		r.Post("/pages/explorer/matches-query", h.QueryMatches)
+	r.Route("/players/{player_slug}", func(sub chi.Router) {
+		h.Mount(sub)
 	})
 	return r
 }
