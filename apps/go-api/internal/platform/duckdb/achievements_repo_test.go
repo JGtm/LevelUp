@@ -119,7 +119,7 @@ func TestMetadataRepo_GetAchievementDefinitions_Empty(t *testing.T) {
 	db := openAchievementsMetadataDB(t)
 	repo := NewMetadataRepoFromDB(db)
 
-	rows, err := repo.GetAchievementDefinitions(context.Background())
+	rows, err := repo.GetAchievementDefinitions(context.Background(), "halo_infinite")
 	if err != nil {
 		t.Fatalf("GetAchievementDefinitions: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestMetadataRepo_GetAchievementDefinitions_Populated(t *testing.T) {
 	}
 
 	repo := NewMetadataRepoFromDB(db)
-	rows, err := repo.GetAchievementDefinitions(ctx)
+	rows, err := repo.GetAchievementDefinitions(ctx, "halo_infinite")
 	if err != nil {
 		t.Fatalf("GetAchievementDefinitions: %v", err)
 	}
@@ -209,5 +209,45 @@ func TestMetadataRepo_GetAchievementDefinitions_Populated(t *testing.T) {
 	}
 	if min.RarityCategory != "" || min.RarityPercent != 0 {
 		t.Errorf("ach_min rarity doit être nulle")
+	}
+}
+
+// TestMetadataRepo_GetAchievementDefinitions_TitleRouting (PMT-6 oracle b) : le
+// filtre title_id route réellement par titre — seules les défs du slug demandé
+// reviennent ; "" → défaut halo_infinite ; slug inconnu → slice vide.
+func TestMetadataRepo_GetAchievementDefinitions_TitleRouting(t *testing.T) {
+	db := openAchievementsMetadataDB(t)
+	ctx := context.Background()
+	insert := `INSERT INTO xbox_achievement_definitions
+		(achievement_id, name_en, name_fr, gamerscore, is_secret, title_id)
+		VALUES (?, ?, ?, ?, ?, ?)`
+	if _, err := db.Exec(ctx, insert, "hi_1", "HI One", "HI Un", 10, false, "halo_infinite"); err != nil {
+		t.Fatalf("insert hi: %v", err)
+	}
+	if _, err := db.Exec(ctx, insert, "synth_1", "Synth One", "Synth Un", 20, false, "synthetic_test_title"); err != nil {
+		t.Fatalf("insert synth: %v", err)
+	}
+	repo := NewMetadataRepoFromDB(db)
+
+	onlyOne := func(slug, wantID string) {
+		t.Helper()
+		got, err := repo.GetAchievementDefinitions(ctx, slug)
+		if err != nil {
+			t.Fatalf("GetAchievementDefinitions(%q): %v", slug, err)
+		}
+		if len(got) != 1 || got[0].AchievementID != wantID {
+			t.Errorf("slug %q → %d défs, attendu 1 (%s)", slug, len(got), wantID)
+		}
+	}
+	onlyOne("halo_infinite", "hi_1")
+	onlyOne("synthetic_test_title", "synth_1")
+	onlyOne("", "hi_1") // "" → défaut halo_infinite (parité historique)
+
+	unknown, err := repo.GetAchievementDefinitions(ctx, "no_such_title")
+	if err != nil {
+		t.Fatalf("slug inconnu: %v", err)
+	}
+	if len(unknown) != 0 {
+		t.Errorf("slug inconnu → %d défs, attendu 0", len(unknown))
 	}
 }

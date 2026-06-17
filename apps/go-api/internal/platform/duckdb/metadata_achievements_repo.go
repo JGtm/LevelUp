@@ -9,15 +9,22 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 )
 
 // GetAchievementDefinitions retourne toutes les définitions bilingues d'achievements
-// triées par achievement_id (tri stable). Slice vide si la table est encore vide
-// (backfill jamais lancé). Implémente port.MetadataAchievementsRepository.
-func (r *MetadataRepo) GetAchievementDefinitions(ctx context.Context) ([]domain.AchievementDefinitionRow, error) {
+// du titre `titleSlug` (filtre title_id), triées par achievement_id (tri stable).
+// titleSlug == "" → titre par défaut (halo_infinite), préservant le comportement
+// historique. Slice vide si la table est encore vide (backfill jamais lancé).
+// Implémente port.MetadataAchievementsRepository (PMT-6 : lecture title-aware).
+func (r *MetadataRepo) GetAchievementDefinitions(ctx context.Context, titleSlug string) ([]domain.AchievementDefinitionRow, error) {
+	if titleSlug == "" {
+		titleSlug = titlePkg.DefaultSlug
+	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -26,8 +33,8 @@ func (r *MetadataRepo) GetAchievementDefinitions(ctx context.Context) ([]domain.
 		       locked_desc_en, locked_desc_fr, gamerscore, image_url, is_secret,
 		       rarity_category, rarity_percent, xbox_title_id, service_config_id
 		FROM xbox_achievement_definitions
-		WHERE title_id = 'halo_infinite'
-		ORDER BY achievement_id`)
+		WHERE title_id = ?
+		ORDER BY achievement_id`, titleSlug)
 	if err != nil {
 		return nil, fmt.Errorf("GetAchievementDefinitions query: %w", err)
 	}
@@ -76,5 +83,6 @@ func (r *MetadataRepo) GetAchievementDefinitions(ctx context.Context) ([]domain.
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("GetAchievementDefinitions rows: %w", err)
 	}
+	slog.DebugContext(ctx, "GetAchievementDefinitions", "title", titleSlug, "count", len(out))
 	return out, nil
 }

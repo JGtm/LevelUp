@@ -85,14 +85,33 @@ type Registry struct {
 // DefaultSlug est le slug du titre par défaut (Halo Infinite).
 const DefaultSlug = "halo_infinite"
 
-// XboxTitleIDFor retourne l'identifiant Xbox numérique (en string) pour un slug LevelUp.
-// Utilisé lors du sync achievements pour filtrer l'API Xbox par titre.
-// Retourne "" si le slug n'est pas reconnu — l'appelant doit gérer ce cas.
-// Note: 2043073184 = Halo Infinite standalone (distinct de 1144039928 = MCC).
+// defaultRegistry : registre lazy partagé par les helpers package-level
+// (XboxTitleIDFor) qui n'ont pas d'instance de Registry sous la main. Les
+// descripteurs sont la source UNIQUE de vérité (plus de switch dupliqué).
+var (
+	defaultRegistryOnce sync.Once
+	defaultRegistryInst *Registry
+)
+
+func defaultRegistry() *Registry {
+	defaultRegistryOnce.Do(func() { defaultRegistryInst = NewRegistry() })
+	return defaultRegistryInst
+}
+
+// XboxTitleIDFor retourne l'identifiant Xbox numérique (en string) pour un slug
+// LevelUp, lu depuis le descripteur du titre (registry-driven, PMT-6 — supprime
+// le switch qui dupliquait TitleDescriptor.XboxTitleID). Utilisé lors du sync
+// achievements pour filtrer l'API Xbox par titre. "" si le slug est inconnu —
+// l'appelant doit gérer ce cas. (Halo Infinite standalone = 2043073184, porté par
+// son descripteur ; distinct de 1144039928 = MCC.)
 func XboxTitleIDFor(slug string) string {
-	switch slug {
-	case DefaultSlug:
-		return "2043073184"
+	return defaultRegistry().XboxTitleIDFor(slug)
+}
+
+// XboxTitleIDFor lit l'XboxTitleID du descripteur du titre. "" si inconnu.
+func (r *Registry) XboxTitleIDFor(slug string) string {
+	if d := r.Get(slug); d != nil {
+		return d.XboxTitleID
 	}
 	return ""
 }

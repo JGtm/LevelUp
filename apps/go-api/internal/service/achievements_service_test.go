@@ -24,15 +24,39 @@ func (m *mockAchievementsRepo) GetPlayerAchievements(_ context.Context) ([]domai
 
 // mockMetadataAchievementsRepo implémente port.MetadataAchievementsRepository.
 type mockMetadataAchievementsRepo struct {
-	defs []domain.AchievementDefinitionRow
-	err  error
+	defs    []domain.AchievementDefinitionRow
+	err     error
+	gotSlug string // capture le slug passé par le service (PMT-6)
 }
 
-func (m *mockMetadataAchievementsRepo) GetAchievementDefinitions(_ context.Context) ([]domain.AchievementDefinitionRow, error) {
+func (m *mockMetadataAchievementsRepo) GetAchievementDefinitions(_ context.Context, titleSlug string) ([]domain.AchievementDefinitionRow, error) {
+	m.gotSlug = titleSlug
 	if m.err != nil {
 		return nil, m.err
 	}
 	return m.defs, nil
+}
+
+// TestAchievementsService_PassesTitleSlugToRepo (PMT-6) : le service transmet son
+// slug au filtre de définitions ; absence de slug → fallback halo_infinite.
+func TestAchievementsService_PassesTitleSlugToRepo(t *testing.T) {
+	meta := &mockMetadataAchievementsRepo{}
+	svc := NewAchievementsService(&mockAchievementsRepo{}, meta).WithTitleSlug("synthetic_test_title")
+	if _, err := svc.GetAchievementsPage(context.Background()); err != nil {
+		t.Fatalf("GetAchievementsPage: %v", err)
+	}
+	if meta.gotSlug != "synthetic_test_title" {
+		t.Errorf("slug passé au repo = %q, attendu synthetic_test_title", meta.gotSlug)
+	}
+
+	meta2 := &mockMetadataAchievementsRepo{}
+	svc2 := NewAchievementsService(&mockAchievementsRepo{}, meta2)
+	if _, err := svc2.GetAchievementsPage(context.Background()); err != nil {
+		t.Fatalf("GetAchievementsPage(default): %v", err)
+	}
+	if meta2.gotSlug != "halo_infinite" {
+		t.Errorf("slug par défaut = %q, attendu halo_infinite (fallback)", meta2.gotSlug)
+	}
 }
 
 // intPtr est défini dans testhelpers_test.go.

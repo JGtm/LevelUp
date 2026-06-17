@@ -57,28 +57,30 @@ func (s *AchievementsService) GetAchievementsPage(ctx context.Context) (domain.A
 		observability.RecordDurationMS("achievements_get_page", time.Since(start).Milliseconds())
 	}(time.Now())
 
-	defs, err := s.metaRepo.GetAchievementDefinitions(ctx)
+	// Slug effectif (fallback défaut) — passé À LA FOIS au filtre de définitions
+	// (lecture title-aware, PMT-6) et à la résolution de catégorie.
+	titleSlug := s.titleSlug
+	if titleSlug == "" {
+		titleSlug = defaultAchievementsTitleSlug
+	}
+
+	defs, err := s.metaRepo.GetAchievementDefinitions(ctx, titleSlug)
 	if err != nil {
 		slog.ErrorContext(ctx, "achievements service: load definitions failed",
-			"err", err, "titleSlug", s.titleSlug)
+			"err", err, "title", titleSlug)
 		return domain.AchievementsPageResponse{}, err
 	}
 
 	playerRows, err := s.repo.GetPlayerAchievements(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "achievements service: load player rows failed",
-			"err", err, "titleSlug", s.titleSlug)
+			"err", err, "title", titleSlug)
 		return domain.AchievementsPageResponse{}, err
 	}
 
 	playerByID := make(map[string]domain.PlayerAchievementRow, len(playerRows))
 	for _, r := range playerRows {
 		playerByID[r.AchievementID] = r
-	}
-
-	titleSlug := s.titleSlug
-	if titleSlug == "" {
-		titleSlug = defaultAchievementsTitleSlug
 	}
 
 	entries := make([]domain.AchievementEntry, 0, len(defs))
