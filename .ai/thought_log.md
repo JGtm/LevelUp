@@ -1,3 +1,17 @@
+## [2026-06-17] EXT-2 (MT-07/15/14/19) — micro-harvest MT-19 slug ; reste structurel confirmé différé (re-vérifié)
+
+**Statut** : un seul de-magic harvestable livré (MT-19 slug). Les 3 autres sous-axes restent différés-structurels — re-vérification HEAD confirme : ce n'est PAS du de-magic mais du découplage de packages (Phase 2), à risque LUSR, valeur nulle single-titre.
+
+**Re-vérification par sous-axe (carte datée → état réel)** :
+- **MT-19** (`defaultProgressionTitleSlug()` post_sync_deltas.go) — DE-MAGIC LIVRÉ : la fonction était DÉJÀ le seam centralisé (8 callers) ; son corps `return "halo_infinite"` → `return titlePkg.DefaultSlug` (byte-identique). Le reste de MT-19 (threading `ctxkeys.TitleSlug` dans les handlers progression + PrestigeBundle multi-DB) reste différé.
+- **MT-15** (`sync/skill_config.go`) — DIFFÉRÉ STRUCTUREL : **import package-level** `internal/games/halo_infinite` + appels `InferModeCategoryFromPairName` / `ModeCategoryRanked|Firefight|BTB|Fiesta|...` DANS la chaîne de pondération LUSR. Pas de littéral à swapper ; découpler = router la catégorisation de modes via le `TitleSemanticAdapter`. Touche la chaîne LUSR (fragile, cf. mémoires LUSR_CARRY/watermark) → golden parity + re-backfill + validation 3 joueurs requis. Skill `halo-modes` confirme : logique Halo-spécifique à NE PAS généraliser sans vérif compat.
+- **MT-14** (`sync/transforms.go`) — DIFFÉRÉ STRUCTUREL : même import `halo_infinite` (défaut `ModeCategoryOther` à l'extraction JSON). Même découplage Phase 2.
+- **MT-07** (`migration/career_rank_data.go`) — DIFFÉRÉ STRUCTUREL : grille des 272 rangs carrière (grades FR/EN, tiers) codée en Go. Externaliser en TOML = changement structurel Phase 2 ; la donnée est CORRECTE pour Halo → 0 valeur single-titre. Pas de littéral slug.
+
+**Verdict** : le harvest rentable de l'axe est épuisé (1 slug de-magic). Le reste = découplage du package `halo_infinite` (mode-categories + rank-grid + LUSR weighting) vers les adapters canoniques Phase 2. Forcer ce refactor maintenant = churn massif + risque data-path (chaîne LUSR) pour ZÉRO comportement single-titre changé. À faire quand Phase 2 mûrit ET qu'un 2e titre à grille LUSR / catégories de modes divergentes le justifie. Aligné sur le verdict workflow antérieur.
+
+---
+
 ## [2026-06-17] PMT-11 footer (MT-26) — footer dérivé du descripteur de titre (source unique, byte-identique)
 
 **Statut** : harvest DRY/single-source livré. La passe précédente classait le footer « différé » ; re-vérif (carte datée) → un harvest propre existe sans threading invasif.
