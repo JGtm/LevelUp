@@ -1,3 +1,17 @@
+## [2026-06-17] PMT-4 (MT-04) PR-2 — overlay Discord par titre (LoadNotifyConfigForTitle)
+
+**Statut** : En cours (PR-2 livrée ; reste le Contract PR-3).
+
+**Livré** : `notify.LoadNotifyConfigForTitle(settingsPath, overlayPath)` — settings globaux + overlay du titre (champ-présent-only sur la map JSON), puis construit le `NotifyConfig`. Refactor DRY : `readSettingsMap` + `notifyConfigFromMap` partagés avec `LoadNotifyConfig` (byte-identique). Le caller fournit les 2 chemins (`AppSettingsPath` + `TitleSettingsPath(slug)`) → notify ne dépend pas du registre titres. Gate `discord_notifications_enabled` évalué sur la map RÉSOLUE (overlay > global). overlayPath vide/absent/`{}` ⇒ identique à `LoadNotifyConfig`.
+
+**Tests** : parité Halo (overlay absent == global) ; override synthétique (webhook/lang surchargés, toggles hérités) ; gate `discord_notifications_enabled=false` dans l'overlay ⇒ webhook vide.
+
+**Bilan EXPAND PMT-4 (PR-0/1/2)** : le seam « base globale + overlay par titre » est complet et prouvé sur les 3 surfaces (settings typés via `ResolveForTitle`, CSR season via `CSRSeasonIDForTitle`, Discord via `LoadNotifyConfigForTitle`), chacune avec oracle double + dégradation. **Exit gate atteint** (Halo byte-identique + synthetic route + CapRanked dégrade + no_slug_comparison vert). **Reste PR-3 (Contract)** : adoption — basculer les call-sites (~8 lecteurs `CurrentCSRSeasonID` + 5 sites `LoadNotifyConfig` + toggles métier) sur les résolveurs avec `ctxkeys.TitleSlug(ctx)`. Byte-identique pour Halo ; réalise la valeur multi-titre quand un 2e titre existe.
+
+**Vérif** : build ./... · notify tests verts · gofmt/vet propres.
+
+---
+
 ## [2026-06-17] PMT-4 (MT-04) PR-1 — résolveur CSR season par titre + dégradation CapRanked
 
 **Statut** : En cours (PR-1 livrée). Le blocant runtime headline de PMT-4 (un 2e titre héritait de la saison CSR d'Halo → sync CSR sur une saison inexistante).
