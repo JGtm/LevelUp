@@ -34,6 +34,7 @@ import (
 	"time"
 
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
+	"levelup/go-api/internal/games/halo_infinite/skillchain"
 	"levelup/go-api/internal/platform/duckdb"
 	lusync "levelup/go-api/internal/sync"
 
@@ -55,6 +56,8 @@ type pairKey struct {
 }
 
 func main() {
+	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain) // MT-15 (fail-loud)
+
 	dbPath := flag.String("db", sharedDBPath, "chemin vers shared_matches_v2.duckdb")
 	weeks := flag.Int("weeks", 4, "fenêtre glissante (semaines) des matchs analysés")
 	minMatches := flag.Int("min-matches", 10, "# minimum de matchs ensemble pour estimer une paire")

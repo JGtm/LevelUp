@@ -1,3 +1,25 @@
+## [2026-06-17] EXT-2 STAGE 3 — MT-15 : chaîne LUSR découplée de halo_infinite (seam fail-loud, golden byte-identique)
+
+**Statut** : LIVRÉ. `internal/sync/skill_config.go` n'importe plus `halo_infinite` ni `analysis`. La classification pair_name→chaîne LUSR (Halo-spécifique) vit dans un package de titre ; le moteur LUSR (title-agnostique) la consomme via un seam. Axe le plus à risque d'EXT-2 (chemin data-path LUSR) — conçu + vérifié adversarialement (3 skeptics) avant toute édition.
+
+**Découplage** :
+- `internal/games/halo_infinite/skillchain/classify.go` (NOUVEAU) : `ClassifyLUSRChain` + `lusrChainForOther`/`lusrChainForAssassin` + `containsI`/`toLowerASCII` déplacés VERBATIM. Importe `halo_infinite` + `analysis`. Les 4 valeurs de chaîne sont DUPLIQUÉES (interdiction d'importer `sync` = cycle `sync→skillchain→sync`).
+- `internal/sync/skill_chain_provider.go` (NOUVEAU) : `var lusrChainClassifier` + `SetLUSRChainClassifier` + dispatcher `GetLUSRChain` qui **PANIQUE si non câblé** (fail-loud — sa sortie est persistée dans match_skill_rank.playlist_group ; un fallback silencieux arena_slayer ferait entrer Ranked/Firefight dans le LUSR = corruption indétectable). `GetPerformanceChain` inchangé (reste sync, délègue au dispatcher).
+
+**Décisions skeptics intégrées** :
+1. **Fallback = panic**, pas arena_slayer silencieux (les 3 lenses l'ont flaggé comme violation byte-identique sur le data-path).
+2. **5 cmd LUSR câblés explicitement** (aucun n'avait de hook SetTitleStepsProvider) : `lusr_v2_canonical_backfill` (ÉCRIT match_skill_rank), `diag_lusr_player`, `lusr_v2_phase0`, `lusr_v2_squad_estimate`, `lusr_v2_ttt_batch` + `cmd/server` (live).
+3. **Littéraux dupliqués + cross-check test** (pas d'import sync = cycle).
+4. **TestContainsI déplacé** dans skillchain (containsI supprimé de sync).
+
+**Golden byte-identique (multi-niveaux)** : (a) `TestGetLUSRChain` (48 cas) tourne inchangé contre le dispatcher câblé ; (b) `TestClassifyLUSRChain_Golden` (48 cas) dans skillchain ; (c) `TestSkillChainLiterals_NoDrift` (skillchain values == sync.LUSRChain*) ; (d) `TestDispatcherEqualsClassifier` (corpus). **Sweep empirique `go test ./...`** : le panic a capturé un straggler non énuméré — `internal/api/handlers` (handlers atteignant GetLUSRChain via placement) → câblé son TestMain. C'est exactement la valeur du fail-loud.
+
+**Câblage TestMain** : `sync` (existant) + `service` (NOUVEAU, applyLUSRPlacements) + `api/handlers` (existant, étendu).
+
+**Vérif** : `go build ./...` ✅ · `go test ./internal/sync/ ./internal/service/ ./internal/games/halo_infinite/skillchain/` verts · `go test ./...` = AUCUN panic, seuls les 2 `DeviceCodeFlow` pré-existants (auth, sans rapport) rouges · gofmt/vet propres.
+
+---
+
 ## [2026-06-17] EXT-2 STAGE 2 — MT-14 : transforms.go découplé de halo_infinite (mode_category = constantes locales)
 
 **Statut** : livré. `internal/sync/transforms.go` + `transforms_helpers.go` n'importent plus `halo_infinite`. Décision workflow : **Option B** (constantes locales, PAS de seam provider).

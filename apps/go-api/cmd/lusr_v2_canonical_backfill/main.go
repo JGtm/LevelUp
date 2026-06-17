@@ -35,6 +35,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/games/halo_infinite/skillchain"
 	lusync "levelup/go-api/internal/sync"
 )
 
@@ -49,6 +50,10 @@ func playerDBPath(root, gamertag string) string {
 }
 
 func main() {
+	// MT-15 : câble le classifier LUSR (fail-loud). CRITIQUE — ce binaire ÉCRIT
+	// match_skill_rank.playlist_group via GetLUSRChain.
+	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
+
 	commit := flag.Bool("commit", false, "écrit match_skill_rank (canonical). Défaut: dry-run shadow-only (compte).")
 	dataRoot := flag.String("data-root", ".", "racine du repo (depuis apps/go-api : ../..)")
 	flag.Parse()

@@ -5,7 +5,9 @@ import (
 	"testing"
 
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
+	"levelup/go-api/internal/games/halo_infinite/skillchain"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/sync"
 )
 
 // TestMain câble le provider de steps title-owned (halo_infinite) AVANT tous les
@@ -19,5 +21,9 @@ import (
 // câblés, sync oublié).
 func TestMain(m *testing.M) {
 	migration.SetTitleStepsProvider(halomigrations.StepsFor)
+	// MT-15 : câble le classifier LUSR title-owned avant les tests sync (sinon
+	// GetLUSRChain panique — fail-loud par design). Couvre TestGetLUSRChain,
+	// TestGetPerformanceChain et tous les tests d'intégration de scoring.
+	sync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
 	os.Exit(m.Run())
 }
