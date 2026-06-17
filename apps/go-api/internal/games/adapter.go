@@ -96,6 +96,11 @@ type TitleDataAdapter interface {
 	// (Explorer sample, Phase 2 HIGH-B). nil si set vide ; ErrCapabilityNotSupported
 	// si pas de substrat participant.
 	LoadParticipantStats(ctx context.Context, xuid string, matchIDs []string) (*canonical.PlayerMatchSetStats, error)
+	// LoadPlayerIntersection : matchs communs + kills croisés entre 2 joueurs
+	// (Explorer, Phase 2 HIGH-B). Échec sur les matchs communs = fatal ; échec sur
+	// les kills croisés = dégradation gracieuse (CrossKills vide). ErrCapabilityNotSupported
+	// si le titre n'a pas de substrat match partagé.
+	LoadPlayerIntersection(ctx context.Context, selfXUID, otherXUID string) (*canonical.PlayerIntersection, error)
 	LoadTimeseries(ctx context.Context, xuid string, query canonical.TimeseriesQuery) (*canonical.MetricSeries, error)
 
 	// Phase B+ : scoreboard étendu + événements + amis (CapScoreboardExtra).

@@ -16,6 +16,62 @@ import (
 	halo_games "levelup/go-api/internal/games/halo_infinite"
 )
 
+// TestExplorerService_PlayerIntersection_DataAdapterParity (HIGH-B Path C) prouve
+// que la bascule de l'intersection 2-joueurs (matchs communs + kills croisés) vers
+// TitleDataAdapter.LoadPlayerIntersection produit STRICTEMENT le même
+// ExplorerPlayerQueryResponse complet (common_matches, badges, encounter_stats,
+// wins/losses, activity_heatmap) que le repo legacy. Fixture hétérogène : allié +
+// ennemi + égalité, team IDs nil, kills croisés non nuls.
+func TestExplorerService_PlayerIntersection_DataAdapterParity(t *testing.T) {
+	t.Parallel()
+	t1, t2 := 1, 2
+	now := time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC)
+	matches := []domain.CommonMatchRaw{
+		{MatchID: "m1", StartTime: now, MapUI: "Aquarius", ModeUI: "Slayer", Player1TeamID: &t1, Player2TeamID: &t1, Player1Outcome: 2, Player1Kills: 20, Player1Deaths: 5, Player1KDA: 4.5},  // alliés, win
+		{MatchID: "m2", StartTime: now, MapUI: "Live Fire", ModeUI: "CTF", Player1TeamID: &t1, Player2TeamID: &t2, Player1Outcome: 3, Player1Kills: 8, Player1Deaths: 12, Player1KDA: 0.7},    // ennemis, loss
+		{MatchID: "m3", StartTime: now, MapUI: "Streets", ModeUI: "Oddball", Player1TeamID: nil, Player2TeamID: nil, Player1Outcome: 1, Player1Kills: 10, Player1Deaths: 10, Player1KDA: 1.0}, // team nil, tie
+	}
+	kv := domain.KillerVictimAggregate{KillsDealt: 7, DeathsSuffered: 3}
+
+	legacy, err := NewExplorerService(&mockExplorerRepo{xuid: "target-x", matches: matches, kv: kv}, "self").
+		GetCommonMatches(context.Background(), "TargetGT", 1)
+	if err != nil {
+		t.Fatalf("legacy: %v", err)
+	}
+
+	repoAdapter := &mockExplorerRepo{xuid: "target-x", matches: matches, kv: kv}
+	adapter := halo_games.NewDataAdapter(nil, slog.New(slog.NewJSONHandler(io.Discard, nil))).WithCrossPlayerSource(repoAdapter)
+	viaAdapter, err := NewExplorerService(repoAdapter, "self").WithDataAdapter(adapter).
+		GetCommonMatches(context.Background(), "TargetGT", 1)
+	if err != nil {
+		t.Fatalf("adapter: %v", err)
+	}
+
+	jsonLegacy, _ := json.Marshal(legacy)
+	jsonAdapter, _ := json.Marshal(viaAdapter)
+	if string(jsonLegacy) != string(jsonAdapter) {
+		t.Errorf("player intersection parity cassée :\nlegacy=  %s\nadapter= %s", jsonLegacy, jsonAdapter)
+	}
+}
+
+// TestExplorerService_PlayerIntersection_AdapterFallbackOnUnsupported : adapter sans
+// CrossPlayerSource → ErrCapabilityNotSupported → fallback silencieux sur repo.
+func TestExplorerService_PlayerIntersection_AdapterFallbackOnUnsupported(t *testing.T) {
+	t.Parallel()
+	t1 := 1
+	matches := []domain.CommonMatchRaw{{MatchID: "m1", Player1TeamID: &t1, Player2TeamID: &t1, Player1Outcome: 2, Player1Kills: 10, Player1Deaths: 5}}
+	repo := &mockExplorerRepo{xuid: "target-x", matches: matches}
+	adapter := halo_games.NewDataAdapter(nil, slog.New(slog.NewJSONHandler(io.Discard, nil))) // pas de CrossPlayerSource
+	resp, err := NewExplorerService(repo, "self").WithDataAdapter(adapter).
+		GetCommonMatches(context.Background(), "TargetGT", 1)
+	if err != nil {
+		t.Fatalf("fallback devrait être silencieux, got %v", err)
+	}
+	if resp.TotalCount != 1 {
+		t.Errorf("TotalCount via fallback = %d, want 1", resp.TotalCount)
+	}
+}
+
 // --- HIGH-B Path A : parité profil de combat récent via l'adapter ---
 
 // TestExplorerService_CombatProfileLocal_DataAdapterParity prouve que la bascule

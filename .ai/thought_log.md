@@ -20,6 +20,16 @@
 
 **Reste HIGH-B** : Path C uniquement (intersection cross-joueur `canonical.PlayerIntersection`, le + gros).
 
+### Path C — intersection cross-joueur canonical-typée (LIVRÉ) — **HIGH-B COMPLET**
+
+`GetCommonMatches` + `GetKillerVictimBetween` (cœur cross-joueur Explorer) → nouveaux types `canonical.CommonMatchRow` (Self/Other, SelfOutcomeCode BRUT, team IDs deep-copy ; were_teammates dérivé hors canonique) + `canonical.CrossKillTally` (KillsBySelf/KillsByOther), regroupés sous `canonical.PlayerIntersection` → UNE méthode `LoadPlayerIntersection`. Nouvelle source `CrossPlayerSource` + `WithCrossPlayerSource`. DI : les 3 sources Explorer (recent/participant/cross) câblées sur le même ExplorerRepo.
+
+**Sémantique d'erreur préservée** : l'adapter `LoadPlayerIntersection` réplique le legacy — matchs communs en échec = FATAL (propagé) ; kills croisés en échec = dégradation gracieuse (CrossKills vide + warn). Le service `loadPlayerIntersection` : adapter-first + fallback sur les 2 appels repo avec la gestion d'erreur EXACTE. Tout l'aval (pagination, badges, heatmap, wins/losses, encounter_stats) consomme les structs bruts inchangés → byte-identique par construction.
+
+**Golden** : `TestExplorerService_PlayerIntersection_DataAdapterParity` (ExplorerPlayerQueryResponse COMPLET ; fixture allié/ennemi/égalité + team IDs nil + kills croisés) + fallback.
+
+**HIGH-B TERMINÉ** : les 3 chemins cross-titre d'Explorer (recent/participant/intersection) sont canonical-typés via l'adapter, byte-identiques + réellement câblés en prod (DI). Les 5 chemins enrichment-boundary (medals/weapons/i18n/primitifs) documentés, non canonicalisés (décision scope). Reste Phase 2 : **HIGH-A match_view** (le + complexe, sous-décision design canonical-vs-enrichment).
+
 ---
 
 ## [2026-06-17] Phase 2 HIGH-C Path A — historique XP canonical-typé (golden parity byte-identique)

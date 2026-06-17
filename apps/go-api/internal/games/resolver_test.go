@@ -41,6 +41,9 @@ func (s *stubData) LoadTargetRecentMatches(_ context.Context, _ string, _ int) (
 func (s *stubData) LoadParticipantStats(_ context.Context, _ string, _ []string) (*canonical.PlayerMatchSetStats, error) {
 	return nil, nil
 }
+func (s *stubData) LoadPlayerIntersection(_ context.Context, _, _ string) (*canonical.PlayerIntersection, error) {
+	return nil, nil
+}
 func (s *stubData) LoadTimeseries(_ context.Context, _ string, _ canonical.TimeseriesQuery) (*canonical.MetricSeries, error) {
 	return nil, nil
 }

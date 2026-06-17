@@ -5,6 +5,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
 )
@@ -207,6 +209,71 @@ func (s *ExplorerService) logCapabilityIfMissing(ctx context.Context, cap games.
 // GetCommonMatches retourne l'historique paginé de matchs communs avec un autre
 // joueur, enrichi des badges encounter (ally_plus, tough_enemy, ordinal).
 // page est 1-indexé ; PageSizeCommonMatches = 20 éléments par page.
+// loadPlayerIntersection centralise la résolution repo/adapter de l'intersection
+// 2-joueurs (HIGH-B). Adapter-first via LoadPlayerIntersection ; fallback sur les 2
+// appels repo avec la gestion d'erreur EXACTE de l'historique (matchs communs =
+// fatal, kills croisés = dégradation gracieuse).
+func (s *ExplorerService) loadPlayerIntersection(ctx context.Context, otherXUID string) ([]domain.CommonMatchRaw, domain.KillerVictimAggregate, error) {
+	if s.dataAdapter != nil {
+		inter, err := s.dataAdapter.LoadPlayerIntersection(ctx, s.xuid, otherXUID)
+		if err == nil {
+			return commonMatchesFromCanonical(inter.Matches), killerVictimFromCanonical(inter.CrossKills), nil
+		}
+		if !errors.Is(err, games.ErrCapabilityNotSupported) {
+			return nil, domain.KillerVictimAggregate{}, fmt.Errorf("ExplorerService: matchs communs: %w", err)
+		}
+	}
+	rawMatches, err := s.repo.GetCommonMatches(ctx, s.xuid, otherXUID)
+	if err != nil {
+		return nil, domain.KillerVictimAggregate{}, fmt.Errorf("ExplorerService: matchs communs: %w", err)
+	}
+	kv, kvErr := s.repo.GetKillerVictimBetween(ctx, s.xuid, otherXUID)
+	if kvErr != nil {
+		// Dégradation gracieuse : les badges tough_enemy ne seront pas calculés,
+		// mais le reste de la réponse reste valide.
+		slog.WarnContext(ctx, "explorer_kv_between_failed",
+			"xuid1", s.xuid, "xuid2", otherXUID, "err", kvErr)
+		kv = domain.KillerVictimAggregate{}
+	}
+	return rawMatches, kv, nil
+}
+
+// commonMatchesFromCanonical projette []canonical.CommonMatchRow → []domain.CommonMatchRaw
+// (Self/Other → Player1/Player2 ; team IDs deep-copiés ; nil pour vide).
+func commonMatchesFromCanonical(cs []canonical.CommonMatchRow) []domain.CommonMatchRaw {
+	if len(cs) == 0 {
+		return nil
+	}
+	out := make([]domain.CommonMatchRaw, 0, len(cs))
+	for _, c := range cs {
+		r := domain.CommonMatchRaw{
+			MatchID:        c.MatchID,
+			StartTime:      c.StartTime,
+			MapUI:          c.MapUI,
+			ModeUI:         c.ModeUI,
+			Player1Outcome: c.SelfOutcomeCode,
+			Player1Kills:   c.SelfKills,
+			Player1Deaths:  c.SelfDeaths,
+			Player1KDA:     c.SelfKDA,
+		}
+		if c.SelfTeamID != nil {
+			v := *c.SelfTeamID
+			r.Player1TeamID = &v
+		}
+		if c.OtherTeamID != nil {
+			v := *c.OtherTeamID
+			r.Player2TeamID = &v
+		}
+		out = append(out, r)
+	}
+	return out
+}
+
+// killerVictimFromCanonical projette canonical.CrossKillTally → domain.KillerVictimAggregate.
+func killerVictimFromCanonical(c canonical.CrossKillTally) domain.KillerVictimAggregate {
+	return domain.KillerVictimAggregate{KillsDealt: c.KillsBySelf, DeathsSuffered: c.KillsByOther}
+}
+
 func (s *ExplorerService) GetCommonMatches(
 	ctx context.Context,
 	otherGamertag string,
@@ -220,19 +287,9 @@ func (s *ExplorerService) GetCommonMatches(
 			fmt.Errorf("ExplorerService: résolution gamertag %q: %w", otherGamertag, err)
 	}
 
-	rawMatches, err := s.repo.GetCommonMatches(ctx, s.xuid, otherXUID)
+	rawMatches, kv, err := s.loadPlayerIntersection(ctx, otherXUID)
 	if err != nil {
-		return domain.ExplorerPlayerQueryResponse{},
-			fmt.Errorf("ExplorerService: matchs communs: %w", err)
-	}
-
-	kv, err := s.repo.GetKillerVictimBetween(ctx, s.xuid, otherXUID)
-	if err != nil {
-		// Dégradation gracieuse : les badges tough_enemy ne seront pas calculés,
-		// mais le reste de la réponse reste valide.
-		slog.WarnContext(ctx, "explorer_kv_between_failed",
-			"xuid1", s.xuid, "xuid2", otherXUID, "err", err)
-		kv = domain.KillerVictimAggregate{}
+		return domain.ExplorerPlayerQueryResponse{}, err
 	}
 
 	totalCount := len(rawMatches)

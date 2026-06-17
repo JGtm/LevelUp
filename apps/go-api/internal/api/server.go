@@ -352,7 +352,9 @@ func NewRouter(
 		// HIGH-B : sources Explorer canonical-typées (profil de combat récent +
 		// agrégat sample stats). Le même ExplorerRepo satisfait les 2.
 		explorerRepo := platform_duckdb.NewExplorerRepo(pdb, pdb.XUID)
-		a = a.WithRecentSource(explorerRepo).WithParticipantSource(explorerRepo)
+		a = a.WithRecentSource(explorerRepo).
+			WithParticipantSource(explorerRepo).
+			WithCrossPlayerSource(explorerRepo)
 		return a
 	})
 
