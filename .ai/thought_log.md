@@ -1,3 +1,19 @@
+## [2026-06-18] Phase 3b — NotificationsHandler migré (template exhaustif : POST-body, 204, PATCH/DELETE, erreur+headers) — Complété
+
+**Statut** : Complété. `go build ./...` OK, gofmt/vet propres, **golden notifications** vert (suite normale, pas integration) : 9 endpoints + cas d'erreur. Mêmes 2 échecs pré-existants device-flow E2E.
+
+**But** : prouver TOUTES les shapes restantes avant le fan-out codegen, sur un seul handler représentatif (NotificationsHandler couvre le spectre). Toutes validées par le golden existant (mount prod-like `r.Route("/players/{player_slug}", h.Mount)`) :
+- **POST avec body** (`Body struct{...}` dans l'Input) → 200 (mark-read, update-preferences).
+- **Body OPTIONNEL** : `Body *struct{...}` pointeur → nil si absent (mark-all-read).
+- **204 No Content** : Output `struct{ Status int }`, retour `&out{Status: 204}` (Huma lit le champ `Status` et saute le corps). mark-unread/delete/test.
+- **PATCH / DELETE** : `huma.Patch` / `huma.Delete` (existent).
+- **Erreur avec header** : `huma.ErrorWithHeaders(humacore.NewError(503,"db_busy",...), {Retry-After:5})` → préserve le 503 + Retry-After du contrat (golden l'asserte).
+- **Path param custom-parsé** : `{id}` pris en **string** (pas int64) + parse maison → 400 `invalid_id` (sinon Huma renvoie 422 sur un id non numérique — piège attrapé par le golden `MarkUnread_BadID`).
+
+**Leçon template (à propager au codegen)** : un param custom-parsé avec code d'erreur spécifique reste `string` côté Input + parse dans le handler ; sinon le typage Huma change le code (422 au lieu de 400). Nettoyage : `parseIDParam`/`atoi64` supprimés (morts) ; `atoi` conservé (player_profile).
+
+**Conclusion / prochaine étape** : 6 routes self-register migrées (progression×3 + notifications×9 = 12 routes au total). TOUTES les shapes structurelles + réponses prouvées + committées comme exemples. Fan-out codegen (workflow) sur les handlers self-register restants (campaign, coach_proposals, patterns, player_profile) avec progression.go + notifications.go comme templates. Pas de PR avant autorisation.
+
 ## [2026-06-18] Phase 3b — socle `humacore` + pattern sous-routeur imbriqué + 1er handler auto-enregistré (progression) — Complété
 
 **Statut** : Complété. `go build ./...` OK, gofmt/vet propres. Verts : `humacore` (5 tests), `internal/api` (contract + goldens + probe imbriqué), **golden d'intégration progression** (`-tags integration` : 3 routes + 404 bout-en-bout via chi+Huma). Mêmes 2 échecs pré-existants device-flow E2E (réseau Xbox Live hors sandbox).
