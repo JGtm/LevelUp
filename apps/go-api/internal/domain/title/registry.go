@@ -98,6 +98,12 @@ func defaultRegistry() *Registry {
 	return defaultRegistryInst
 }
 
+// DefaultRegistry expose le registre lazy par défaut (titres câblés en dur, ex.
+// halo_infinite) pour les call-sites qui n'ont pas d'instance de Registry sous la
+// main (PMT-4 : résolveurs settings/CSR). Transitionnel : un déploiement
+// multi-titre réel injectera un registre peuplé depuis config/titles/*.
+func DefaultRegistry() *Registry { return defaultRegistry() }
+
 // XboxTitleIDFor retourne l'identifiant Xbox numérique (en string) pour un slug
 // LevelUp, lu depuis le descripteur du titre (registry-driven, PMT-6 — supprime
 // le switch qui dupliquait TitleDescriptor.XboxTitleID). Utilisé lors du sync

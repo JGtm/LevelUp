@@ -1,3 +1,19 @@
+## [2026-06-17] PMT-4 (MT-04) PR-3a — adoption read-path : CSR season UI résolu par titre
+
+**Statut** : En cours (read-path CSR câblé ; write-path + Discord + toggles à suivre).
+
+**Livré** :
+- `title.DefaultRegistry()` exposé (registre lazy par défaut) ; `CSRSeasonIDForTitle` retombe dessus quand `reg == nil` → les call-sites sans registre sous la main passent juste `ctx` + slug. Transitionnel (cohérent avec `XboxTitleIDFor`).
+- 5 sites read-path (UI) basculés de `cfg.CurrentCSRSeasonID` → `cfg.CSRSeasonIDForTitle(ctx, pdb.TitleSlug, nil)` : `registry_career.Career` (×2 : thresholds + WithCSRSeasonID), `registry_pages` (Explorer home, newHomeRepo, Compare). **Titre = `pdb.TitleSlug`** (pas le `slug` param des méthodes ServiceRegistry, qui est le slug JOUEUR). `newHomeRepo` sans ctx → `context.Background()` (ctx non utilisé pour Halo, seulement le log de dégradation).
+
+**Byte-identique Halo** : halo a `CapRanked` + pas d'overlay → résolveur rend env-ou-global = `CurrentCSRSeasonID`. Vérifié : `go test ./...` = seuls les 2 DeviceCodeFlow pré-existants.
+
+**Reste (PR-3 suite)** : write-path CSR (sync_handler/auto_sync/cmd_sync/sync_v2_wiring) — ces builders d'engine n'ont pas de source de slug titre propre (résoudraient `DefaultSlug`, cosmétique) ; vrai fix = threading titre dans le sync engine (territoire PMT-3). Discord (5 sites `LoadNotifyConfig` → `…ForTitle`, `friends_orchestrator` a déjà le slug). Toggles métier (coach/sessions/friends → `ResolveForTitle` au point d'usage).
+
+**Vérif** : build ./... · api build/vet · archlint no_slug_comparison vert · gofmt propres.
+
+---
+
 ## [2026-06-17] PMT-4 (MT-04) PR-2 — overlay Discord par titre (LoadNotifyConfigForTitle)
 
 **Statut** : En cours (PR-2 livrée ; reste le Contract PR-3).
