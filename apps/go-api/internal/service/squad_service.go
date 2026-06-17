@@ -208,9 +208,9 @@ func extractScoreInputs(
 	var nKDA int
 	for _, r := range myRows {
 		scores = append(scores, r.PerformanceScore)
-		if r.Outcome == 2 || r.Outcome == 3 {
+		if r.Outcome == domain.OutcomeWin || r.Outcome == domain.OutcomeLoss {
 			total++
-			if r.Outcome == 2 {
+			if r.Outcome == domain.OutcomeWin {
 				wins++
 			}
 		}

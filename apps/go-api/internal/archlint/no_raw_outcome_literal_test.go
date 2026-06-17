@@ -27,15 +27,12 @@ import (
 // d'outcome sur littéral brut est tolérée transitoirement (PMT-5 Contract non
 // terminé pour ces sites — littéral SQL et/ou pas de seam injecté). À décrémenter.
 var rawOutcomeAllowlist = map[string]bool{
-	// Littéral `outcome != 4` dans une chaîne SQL (filtre DNF title-agnostic).
+	// SEUL site restant : littéral `outcome != 4` à l'INTÉRIEUR d'une chaîne SQL
+	// (filtre DNF title-agnostic). Indé-magickable par const Go ; la résolution
+	// propre est le fragment SQL du seam `mappings.OutcomeMappingSet` (title-aware),
+	// threading différé tant qu'aucun 2e titre n'existe. Toutes les comparaisons Go
+	// (analysis/patterns, service/*) ont été migrées vers `domain.Outcome*`.
 	"sync/assists_model.go": true,
-	// Comparaisons Go sans SemanticAdapter injecté (cosmétique trompeur tant que
-	// l'adapter n'est pas threadé — cf. PMT-5 §5).
-	"analysis/patterns/context.go":            true,
-	"analysis/patterns/behavioral.go":         true,
-	"service/squad_service.go":                true,
-	"service/career_service_encounters.go":    true,
-	"service/match_history_service_enrich.go": true,
 }
 
 // rawOutcomeRE matche une comparaison Go `Outcome|outcome [==|!=] <1..4>` — soit

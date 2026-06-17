@@ -1,3 +1,19 @@
+## [2026-06-17] PMT-5 Contract — toutes les comparaisons Go d'outcome dé-magickées (allowlist → 1 site SQL)
+
+**Statut** : terminé pour le chemin Go. L'allowlist du ratchet `no_raw_outcome_literal` passe de 6 → 1 entrée.
+
+**Livré** : les 5 dernières comparaisons Go sur littéral brut Halo migrées vers les constantes `domain.Outcome*` (byte-identiques, `OutcomeWin=2`/`OutcomeLoss=3`) :
+- `analysis/patterns/context.go` (×2, win rate par contexte + global) + `behavioral.go` (×1, détection tilt = LOSS) — pure analyse, comparaison à l'enum canonique = correcte par nature.
+- `service/career_service_encounters.go` (split best/worst), `service/match_history_service_enrich.go` (win count par adversaire), `service/squad_service.go` (×3, W/L count escouade).
+
+**Verdict workflow révisé** : la passe précédente classait les 3 services « cosmétique trompeur, attendre le SemanticAdapter ». Faux dilemme : dé-magicker le littéral (`2` → `domain.OutcomeWin`) est TOUJOURS sûr+correct (byte-identique) et c'est l'option (a) explicitement offerte par le docstring du ratchet ; le threading SemanticAdapter (option b) est le travail 2e-titre, distinct. Pas de raison de retenir l'option (a).
+
+**Reste allowlisté (SEUL, irréductible single-titre)** : `sync/assists_model.go:70` — `outcome != 4` À L'INTÉRIEUR d'une chaîne SQL. Indé-magickable par const Go ; résolution propre = fragment SQL du seam `mappings.OutcomeMappingSet`, threading différé tant qu'aucun 2e titre n'existe.
+
+**Vérif** : build service+patterns · ratchet vert (allowlist=1) · `go test ./internal/analysis/patterns/ ./internal/service/` verts · gofmt propre.
+
+---
+
 ## [2026-06-17] PMT-7 write-path complété — MT-03 fermé à 100%
 
 **Statut** : write-path livré (suite au read-path 3427b8853). MT-03 → done.

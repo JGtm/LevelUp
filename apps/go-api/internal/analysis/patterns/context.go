@@ -1,5 +1,7 @@
 package patterns
 
+import "levelup/go-api/internal/domain"
+
 // context.go — analyse des patterns contextuels (by_mode, by_map, by_squad).
 
 // analyzeContext calcule les patterns contextuels pour les 3 axes :
@@ -72,7 +74,7 @@ func buildSinglePattern(ctxType ContextType, key string, rows []MatchRow, cfg Pa
 	var perfVals, deltaCSRVals, deltaLUSRVals []float64
 
 	for _, r := range rows {
-		if r.Outcome == 2 { // WIN
+		if r.Outcome == domain.OutcomeWin {
 			wins++
 		}
 		sumKDA += r.KDA
@@ -142,7 +144,7 @@ func globalWinRate(rows []MatchRow) float64 {
 	}
 	wins := 0
 	for _, r := range rows {
-		if r.Outcome == 2 {
+		if r.Outcome == domain.OutcomeWin {
 			wins++
 		}
 	}

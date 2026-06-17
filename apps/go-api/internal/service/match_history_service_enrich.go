@@ -46,7 +46,7 @@ func computeMapWinRates(rows []domain.MatchHistoryRawRow) map[string][2]int {
 		}
 		entry := m[name]
 		entry[1]++ // total
-		if r.Outcome == 2 {
+		if r.Outcome == domain.OutcomeWin {
 			entry[0]++ // wins
 		}
 		m[name] = entry
