@@ -17,8 +17,6 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
-
-	"levelup/go-api/internal/platform/duckdb"
 )
 
 // HomeService orchestre les donnÃ©es de la page d'accueil.
@@ -26,7 +24,7 @@ type HomeService struct {
 	repo         port.HomeRepository
 	cacheRepo    port.BattlePassCacheRepository
 	provider     *halo.HaloProvider
-	sink         *duckdb.PersistSink // nil â†’ pas de persistance (tests, joueurs sans auth)
+	sink         port.HomePersistSink // nil â†’ pas de persistance (tests, joueurs sans auth)
 	socialRepo   port.SocialRepository
 	playerSlug   string
 	semantic     games.TitleSemanticAdapter // nil â†’ libellÃ©s rangs construits via fallbacks (RankName)
@@ -86,7 +84,7 @@ func (s *HomeService) WithHaloProvider(provider *halo.HaloProvider) *HomeService
 
 // WithPersistSink configure le sink de persistance fire-and-forget.
 // Retourne le service pour permettre le chaÃ®nage.
-func (s *HomeService) WithPersistSink(sink *duckdb.PersistSink) *HomeService {
+func (s *HomeService) WithPersistSink(sink port.HomePersistSink) *HomeService {
 	s.sink = sink
 	return s
 }
