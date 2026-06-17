@@ -12,8 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"levelup/go-api/internal/games/halo_infinite"
 )
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -143,17 +141,17 @@ func determineModeCategory(pairName string) string {
 	lower := strings.ToLower(pairName)
 	switch {
 	case strings.Contains(lower, PerfChainRanked):
-		return halo_infinite.ModeCategoryRanked
+		return modeCategoryRanked
 	case strings.Contains(lower, PerfChainFirefight):
-		return halo_infinite.ModeCategoryFirefight
+		return modeCategoryFirefight
 	case strings.Contains(lower, "btb") || strings.Contains(lower, "big team") || strings.Contains(lower, "big-team"):
-		return halo_infinite.ModeCategoryBTB
+		return modeCategoryBTB
 	case strings.Contains(lower, "fiesta"):
-		return halo_infinite.ModeCategoryFiesta
+		return modeCategoryFiesta
 	case strings.Contains(lower, "assassin"):
-		return halo_infinite.ModeCategoryAssassin
+		return modeCategoryAssassin
 	default:
-		return halo_infinite.ModeCategoryOther
+		return modeCategoryOther
 	}
 }
 
