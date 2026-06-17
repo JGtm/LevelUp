@@ -111,7 +111,7 @@ func NotifyNewMedia(cfg NotifyConfig, dbPath, gamertag string) {
 
 	slog.InfoContext(ctx, "discord_media_new", "op", "media", "gamertag", gamertag, "count", len(rows))
 
-	embed := buildMediaEmbed(rows, gamertag, cfg.Lang)
+	embed := buildMediaEmbed(rows, gamertag, cfg.Lang, cfg.Labels)
 	if !SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}}) {
 		slog.WarnContext(ctx, "discord_media_send_failed", "op", "media", "gamertag", gamertag)
 		return
@@ -197,7 +197,7 @@ func markMediaNotified(ctx context.Context, db *sql.DB, filePaths []string) erro
 // BuildMediaEmbed — embed pour les médias
 // ─────────────────────────────────────────────────────────────────────────────
 
-func buildMediaEmbed(rows []mediaRow, gamertag, lang string) Embed {
+func buildMediaEmbed(rows []mediaRow, gamertag, lang string, labels NotifyLabels) Embed {
 	nVideos, nImages := 0, 0
 	for _, r := range rows {
 		if r.Kind == mediaKindVideo {
@@ -223,7 +223,7 @@ func buildMediaEmbed(rows []mediaRow, gamertag, lang string) Embed {
 		Title:       title,
 		Description: desc,
 		Color:       colorBlurple,
-		Footer:      &EmbedFooter{Text: discordFooterText()},
+		Footer:      &EmbedFooter{Text: discordFooterText(labels)},
 		Timestamp:   time.Now().UTC().Format(time.RFC3339),
 	}
 
@@ -287,7 +287,7 @@ func NotifyFriendAdded(cfg NotifyConfig, gamertag string) {
 		Title:       T("discord_friend_added_title", cfg.Lang),
 		Description: T("discord_friend_added_desc", cfg.Lang, "gamertag", gamertag),
 		Color:       colorBlurple,
-		Footer:      &EmbedFooter{Text: discordFooterText()},
+		Footer:      &EmbedFooter{Text: discordFooterText(cfg.Labels)},
 		Timestamp:   time.Now().UTC().Format(time.RFC3339),
 	}
 	if SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}}) {
@@ -322,7 +322,7 @@ func NotifyFriendSyncCompleted(cfg NotifyConfig, slug string, promoted int64) {
 		Title:       T("discord_friend_sync_title", cfg.Lang),
 		Description: T(descKey, cfg.Lang, "promoted", promoted, "slug", slug),
 		Color:       colorSuccess,
-		Footer:      &EmbedFooter{Text: discordFooterText()},
+		Footer:      &EmbedFooter{Text: discordFooterText(cfg.Labels)},
 		Timestamp:   time.Now().UTC().Format(time.RFC3339),
 	}
 	if SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}}) {

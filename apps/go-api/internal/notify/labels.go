@@ -26,22 +26,24 @@ func defaultTitleDisplayName() string {
 }
 
 // discordFooterText construit le footer des embeds Discord (« LevelUp · {nom}
-// Stats ») à partir du nom du titre par défaut — au lieu d'une 2e copie codée en
-// dur dans la map i18n. Locale-indépendant (footer identique FR/EN). Seam PMT-11 :
-// les embeds ne portent pas encore de titre (threading différé) ; quand il
-// arrivera, passer le nom du titre courant en paramètre ici.
-func discordFooterText() string {
-	return "LevelUp · " + defaultTitleDisplayName() + " Stats"
+// Stats ») à partir du nom de titre porté par `labels` (PMT-11 : le footer suit
+// désormais la MÊME dimension titre que les outcomes — un seul seam). Locale-
+// indépendant (footer identique FR/EN). labels nil → libellés Halo → nom du titre
+// par défaut → "LevelUp · Halo Infinite Stats" (byte-identique).
+func discordFooterText(labels NotifyLabels) string {
+	return "LevelUp · " + labelsOrDefault(labels).TitleName() + " Stats"
 }
 
-// NotifyLabels expose les libellés title-aware nécessaires au rendu des embeds.
-// Périmètre minimal de cette phase : les outcomes (les seuls dont le manifeste
-// par titre — outcomes.toml — existe déjà). Footer/backfill restent Halo tant que
-// le manifeste i18n par titre ne les porte pas.
+// NotifyLabels expose les libellés title-aware nécessaires au rendu des embeds :
+// les outcomes (manifeste outcomes.toml du titre) ET le nom d'affichage du titre
+// (pour le footer). Un même seam pilote tout le contenu title-dépendant de l'embed.
 type NotifyLabels interface {
 	// Outcome retourne le libellé d'un résultat de match pour une langue, à partir
 	// de sa clé canonique (win|loss|tie|dnf).
 	Outcome(canonicalKey, lang string) string
+	// TitleName retourne le nom d'affichage du titre (ex. "Halo Infinite") — utilisé
+	// dans le footer. Le titre par défaut côté Halo, le nom du 2e titre via LabelsFor.
+	TitleName() string
 }
 
 // OutcomeSource est la surface MINIMALE dont notify a besoin d'un adapter
@@ -70,14 +72,19 @@ func (haloLabels) Outcome(canonicalKey, lang string) string {
 	return canonicalKey
 }
 
+// TitleName retourne le nom du titre par défaut (registre) — "Halo Infinite".
+func (haloLabels) TitleName() string { return defaultTitleDisplayName() }
+
 // HaloLabels retourne l'implémentation par défaut (Halo, byte-identique).
 func HaloLabels() NotifyLabels { return haloLabels{} }
 
-// semanticLabels : libellés du titre courant via son outcomes.toml, avec
-// dégradation vers fallback (Halo) si la source ou la clé est absente.
+// semanticLabels : libellés du titre courant via son outcomes.toml + son nom
+// d'affichage, avec dégradation vers fallback (Halo) si la source/la clé/le nom
+// est absent.
 type semanticLabels struct {
-	src      OutcomeSource
-	fallback NotifyLabels
+	src       OutcomeSource
+	titleName string
+	fallback  NotifyLabels
 }
 
 func (s semanticLabels) Outcome(canonicalKey, lang string) string {
@@ -93,14 +100,23 @@ func (s semanticLabels) Outcome(canonicalKey, lang string) string {
 	return s.fallback.Outcome(canonicalKey, lang)
 }
 
+// TitleName retourne le nom du titre fourni à LabelsFor, ou le fallback Halo si vide.
+func (s semanticLabels) TitleName() string {
+	if s.titleName != "" {
+		return s.titleName
+	}
+	return s.fallback.TitleName()
+}
+
 // LabelsFor construit un NotifyLabels title-aware : les outcomes viennent du
-// manifeste du titre (via src), avec dégradation failsafe vers les libellés Halo.
-// src nil → HaloLabels pur (cas du titre par défaut ou absence d'adapter).
-func LabelsFor(src OutcomeSource) NotifyLabels {
+// manifeste du titre (via src) et le footer de son nom (titleName), avec
+// dégradation failsafe vers les libellés Halo. src nil → HaloLabels pur (cas du
+// titre par défaut ou absence d'adapter). titleName vide → nom du titre par défaut.
+func LabelsFor(src OutcomeSource, titleName string) NotifyLabels {
 	if src == nil {
 		return haloLabels{}
 	}
-	return semanticLabels{src: src, fallback: haloLabels{}}
+	return semanticLabels{src: src, titleName: titleName, fallback: haloLabels{}}
 }
 
 // labelsOrDefault garantit le caractère failsafe : nil → HaloLabels.

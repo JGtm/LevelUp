@@ -133,7 +133,7 @@ func BuildSyncEmbedWithLabels(
 		Title:       title,
 		Description: desc,
 		Color:       color,
-		Footer:      &EmbedFooter{Text: discordFooterText()},
+		Footer:      &EmbedFooter{Text: discordFooterText(labels)},
 		Timestamp:   finishedAt.UTC().Format(time.RFC3339),
 	}
 

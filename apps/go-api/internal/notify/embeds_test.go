@@ -363,11 +363,16 @@ func TestT_KnownKey(t *testing.T) {
 	}
 }
 
-// TestDiscordFooterText garantit que le footer dérivé du descripteur de titre
-// reste byte-identique au libellé historique « LevelUp · Halo Infinite Stats ».
+// TestDiscordFooterText garantit que le footer reste byte-identique au libellé
+// historique « LevelUp · Halo Infinite Stats » pour les libellés par défaut (nil
+// → Halo), et qu'il SUIT le nom du titre quand des labels title-aware sont fournis.
 func TestDiscordFooterText(t *testing.T) {
-	if got := discordFooterText(); got != "LevelUp · Halo Infinite Stats" {
-		t.Errorf("discordFooterText() = %q, want \"LevelUp · Halo Infinite Stats\"", got)
+	if got := discordFooterText(nil); got != "LevelUp · Halo Infinite Stats" {
+		t.Errorf("discordFooterText(nil) = %q, want \"LevelUp · Halo Infinite Stats\"", got)
+	}
+	titled := LabelsFor(fakeOutcomeSrc{set: nil}, "Game Two")
+	if got := discordFooterText(titled); got != "LevelUp · Game Two Stats" {
+		t.Errorf("discordFooterText(titled) = %q, want \"LevelUp · Game Two Stats\"", got)
 	}
 }
 
@@ -452,7 +457,7 @@ func TestBuildMediaEmbed(t *testing.T) {
 		{FilePath: "/path/to/clip1.mp4", FileName: "clip1.mp4", Kind: "video", MatchID: "match1"},
 		{FilePath: "/path/to/clip2.mp4", FileName: "clip2.mp4", Kind: "video", MatchID: "match2"},
 	}
-	embed := buildMediaEmbed(rows, "TestPlayer", "en")
+	embed := buildMediaEmbed(rows, "TestPlayer", "en", nil)
 	if embed.Title == "" {
 		t.Error("expected non-empty title")
 	}
