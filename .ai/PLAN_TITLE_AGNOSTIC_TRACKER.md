@@ -29,7 +29,7 @@
 | 1.6 | Pool tokens clé `(titleSlug,gamertag)` | ✅ | 100 | **oui** (2e titre) — livré : clé composite + garde anti-cross-title |
 | 1.7a | `capabilities.toml` + loader + endpoint | ✅ | 100 | non — TOML + loader + adapter consomme + endpoint, livré |
 | 1.7b | Feature-matrix 3 états + cascade | ✅ | 100 | non — cascade pure + endpoint, livré (revue adversariale 5 lentilles) |
-| 2 | Services title-agnostic (canonical-typé) | 🟡 | 92 | non — critère IMPORT verrouillé ; **HIGH-C career** ✅ + **HIGH-B explorer** ✅ (3 chemins cross-titre canonical + 5 enrichment-boundary documentés, golden parity) ; reste **HIGH-A match_view** (le + complexe, sous-décision design canonical-vs-enrichment) |
+| 2 | Services title-agnostic (canonical-typé) | 🟡 | 94 | non — critère IMPORT verrouillé ; **HIGH-C career** ✅ + **HIGH-B explorer** ✅ (3 chemins cross-titre canonical + 5 enrichment-boundary, golden parity) ; **HIGH-A match_view** ✅ events T0 câblés (cadence+rôles canonical T0-corrigés, golden) — reste 20/21 slices enrichment-boundary (médailles/armes/i18n/scoreboard) légitimes + décision optionnelle T0 sur kill-feed affiché |
 | 3a | Cleanup DTO (`*Raw` hors domain, nullable) | 🟡 | 50 | non |
 | 1.8 | Outillage diag Lab | ⬜ | 0 | **différé** (hors fenêtre) |
 | 1.9 | Watcher multi-title routing (présence→poll→sync) | ⬜ | 0 | **oui** (2e titre, runtime) — détection déjà title-agnostic ; reste = threader `titleSlug` (fetcher/PlayerWatcher/CoordinatorRequest) |
@@ -115,7 +115,7 @@
 | `timeseries_service` | 🟡 | canonical via `playerMatchesRepo` ; OK |
 | `career_service` | ✅ | **HIGH-C COMPLET 2026-06-17** : rang+encounters (déjà) + XP (`e1c1570ad`) + LUSR (`bfe33f625`, new `canonical.LUSRCheckpoint`) + TopMatches (`392c252f2`, new `canonical.CareerTopMatch`) canonical via l'adapter, golden parity par chemin |
 | `explorer_service` | ✅ | **HIGH-B COMPLET 2026-06-17** : 3 chemins cross-titre canonical via l'adapter — recent (`d99dec588`, `canonical.RecentMatchRow`) + participant-sum (`85dea3c99`, `PlayerMatchSetStats`) + intersection (`492bf77cd`, `PlayerIntersection`/`CommonMatchRow`/`CrossKillTally`) ; câblés en prod (DI). 5 chemins enrichment-boundary (medals/weapons/i18n/primitifs) documentés non-canonicalisés |
-| `match_view_service` | 🟡 | `dataAdapter` injecté mais data via `MatchViewRepository` (legacy) ; bascule = la plus complexe |
+| `match_view_service` | 🟡 | **HIGH-A 2026-06-17 — events T0 complets** : (1) `WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb))` câblé (seam Timeseries via `highlightEventsLoader`) → cadence + 8 rôles sur `canonical.HighlightEvent` **T0-corrigés** ; (2) extension `correctMatchViewEventsT0` (point unique) : `d.events` recalé via nouveau `timeline.CorrectEventRaws` → `event_time_ms` (axe X des charts KD-cumul/frag-diff/tug-scatter) + badges d'impact sur le vrai début de match ; skips `<0` (countdown) sur evtList + badges. `d.kvPairs` NON corrigé (inerte affichage : kd_timeline mort front, axe tug dérivé de la durée — vérifié par workflow front). Golden `TestMatchViewService_T0_EventsHonorRealMatchStart` + tests `CorrectEventRaws`. Reste enrichment-boundary (medals/weapons/i18n/scoreboard) |
 | ~~`port.MatchFieldRepository` (FieldKey-map)~~ | ⛔ | **supersédé** (réconciliation 2) — ne pas construire |
 | 0 service importe `platform/duckdb` pour la data | 🟡 | vrai sauf `home_service` (PersistSink, non-data) |
 | 7 stubs `Load*` de l'adapter | ⬜ | scoreboard/highlight = low effort ; summaries/playerstats = medium ; matchDetail/timeseries/friends = high — **à retenir ou non selon (2)** |

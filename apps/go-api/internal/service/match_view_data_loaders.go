@@ -131,10 +131,10 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 					"match_id", matchID, "err", e)
 				return nil
 			}
-			canonicalEv, e := s.eventsRepo.LoadHighlightEvents(gctx, s.titleSlug, filters)
+			canonicalEv, e := s.eventsRepo.Load(gctx, filters)
 			if e != nil {
 				if !errors.Is(e, games.ErrCapabilityNotSupported) {
-					slog.WarnContext(gctx, "match_view: LoadHighlightEvents echec",
+					slog.WarnContext(gctx, "match_view: Load highlight events echec",
 						"match_id", matchID, "err", e)
 				}
 				return nil
@@ -274,18 +274,17 @@ func (s *MatchViewService) buildMatchViewFromData(
 	}
 
 	// Correction chronologie T0 (Phase 3 : T0 réel depuis meta.T0Ms, 0 si
-	// indisponible). Recale les events canoniques au référentiel gameplay avant
-	// les builders narrative (combat).
-	if len(d.canonicalEvents) > 0 {
-		var t0Ms int64
-		if meta != nil && meta.T0Ms != nil {
-			t0Ms = *meta.T0Ms
-		}
-		tl := timeline.BuildForMatchMs(durationMS, t0Ms)
-		d.canonicalEvents = timeline.CorrectEvents(
-			d.canonicalEvents, map[string]domain.MatchTimeline{matchID: tl},
-		)
+	// indisponible). Recale TOUTES les sources d'events au référentiel gameplay
+	// (vrai début de match) en un POINT UNIQUE, avant les builders combat. Sans
+	// ça la cadence/les rôles (canonicalEvents) seraient sur l'horloge gameplay
+	// mais le kill-feed (event_time_ms, axe X des charts KD-cumul/frag-diff/tug)
+	// + les badges d'impact (events bruts) resteraient sur l'horloge film
+	// (countdown inclus) → incohérence visuelle sur la même page.
+	var t0Ms int64
+	if meta != nil && meta.T0Ms != nil {
+		t0Ms = *meta.T0Ms
 	}
+	correctMatchViewEventsT0(&d, matchID, timeline.BuildForMatchMs(durationMS, t0Ms))
 
 	// IsFavorite : lookup synchrone (cheap, indexé sur PK player_slug+match_id).
 	// Dégradation gracieuse si socialRepo nil ou shared_social indisponible.
@@ -383,6 +382,25 @@ func (s *MatchViewService) buildMatchViewFromData(
 		IsPartial:      len(partialReasons) > 0,
 		PartialReasons: partialReasons,
 	}
+}
+
+// correctMatchViewEventsT0 recale les sources d'events d'un match au référentiel
+// gameplay (T0 retranché) en un point unique, avant les builders combat.
+//
+// canonicalEvents (cadence + 8 rôles) ET events bruts (evtList/kill-feed +
+// badges d'impact) partagent ainsi la même horloge — celle du vrai début de
+// match (meta.T0Ms). kvPairs n'est PAS recalé : ses consommateurs ne dépendent
+// pas de kv.TimeMS pour l'affichage (killer/victim n'utilise pas le temps ;
+// l'axe tug-of-war dérive de la durée du match, pas des temps de frags ; la
+// sortie kd_timeline n'est pas rendue en Match View — le front reconstruit la
+// courbe K/D depuis event_time_ms). T0=0/inconnu → identité (recalage no-op).
+func correctMatchViewEventsT0(d *matchViewData, matchID string, tl domain.MatchTimeline) {
+	if len(d.canonicalEvents) > 0 {
+		d.canonicalEvents = timeline.CorrectEvents(
+			d.canonicalEvents, map[string]domain.MatchTimeline{matchID: tl},
+		)
+	}
+	d.events = timeline.CorrectEventRaws(d.events, tl)
 }
 
 // loadAwardsForScoreboard charge les awards pour tous les xuids du scoreboard
