@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/api/handlers"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
@@ -110,7 +111,7 @@ func buildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 // Quand le projet supportera plusieurs titres, lire depuis le contexte
 // (ctxkeys.TitleSlug) sera la voie à privilégier.
 func defaultProgressionTitleSlug() string {
-	return "halo_infinite"
+	return titlePkg.DefaultSlug
 }
 
 // readCoachProactiveMode lit la valeur courante du toggle dans
