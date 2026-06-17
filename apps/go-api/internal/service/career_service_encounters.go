@@ -19,7 +19,7 @@ import (
 
 // GetTopMatches retourne les 10 meilleurs et 10 moins bons matchs.
 func (s *CareerService) GetTopMatches(ctx context.Context) (domain.CareerTopMatchesResponse, error) {
-	rows, err := s.repo.GetTopMatches(ctx)
+	rows, err := s.loadTopMatchRows(ctx)
 	if err != nil {
 		return domain.CareerTopMatchesResponse{}, fmt.Errorf("CareerService.GetTopMatches: %w", err)
 	}
@@ -36,6 +36,72 @@ func (s *CareerService) GetTopMatches(ctx context.Context) (domain.CareerTopMatc
 		BestMatches:  best,
 		WorstMatches: worst,
 	}, nil
+}
+
+// loadTopMatchRows centralise la résolution repo/adapter pour les top matches
+// (HIGH-C). Adapter-first via LoadTopMatches + reconstitution byte-identique
+// (OutcomeCode → Outcome BRUT) ; fallback repo.GetTopMatches sur capability absente.
+func (s *CareerService) loadTopMatchRows(ctx context.Context) ([]domain.TopMatchRawRow, error) {
+	if s.dataAdapter != nil {
+		canonicalRows, err := s.dataAdapter.LoadTopMatches(ctx, "")
+		if err == nil {
+			if len(canonicalRows) == 0 {
+				return nil, nil
+			}
+			out := make([]domain.TopMatchRawRow, 0, len(canonicalRows))
+			for _, c := range canonicalRows {
+				out = append(out, topMatchRowFromCanonical(c))
+			}
+			return out, nil
+		}
+		if !errors.Is(err, games.ErrCapabilityNotSupported) {
+			return nil, err
+		}
+	}
+	return s.repo.GetTopMatches(ctx)
+}
+
+// topMatchRowFromCanonical projette canonical.CareerTopMatch → domain.TopMatchRawRow
+// (copie profonde des pointeurs). Outcome = OutcomeCode BRUT (le split WIN/LOSS aval
+// compare à domain.OutcomeWin ; jamais via une string canonique).
+func topMatchRowFromCanonical(c canonical.CareerTopMatch) domain.TopMatchRawRow {
+	r := domain.TopMatchRawRow{
+		MatchID:          c.MatchID,
+		PerformanceScore: c.PerformanceScore,
+		Outcome:          c.OutcomeCode,
+		Kills:            c.Kills,
+		Deaths:           c.Deaths,
+		DominanceFlag:    c.DominanceFlag,
+	}
+	if c.StartTime != nil {
+		v := *c.StartTime
+		r.StartTime = &v
+	}
+	if c.MapName != nil {
+		v := *c.MapName
+		r.MapName = &v
+	}
+	if c.PairName != nil {
+		v := *c.PairName
+		r.PairName = &v
+	}
+	if c.PlaylistName != nil {
+		v := *c.PlaylistName
+		r.PlaylistName = &v
+	}
+	if c.KDA != nil {
+		v := *c.KDA
+		r.KDA = &v
+	}
+	if c.TeamMMR != nil {
+		v := *c.TeamMMR
+		r.TeamMMR = &v
+	}
+	if c.EnemyMMR != nil {
+		v := *c.EnemyMMR
+		r.EnemyMMR = &v
+	}
+	return r
 }
 
 // GetEncounters retourne les joueurs les plus fréquemment croisés.

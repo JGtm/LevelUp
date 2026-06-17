@@ -87,6 +87,8 @@ type TitleDataAdapter interface {
 	// LoadLUSRHistory : historique des checkpoints de rating LUSR/CSR (Phase 2
 	// HIGH-C). ErrCapabilityNotSupported si le titre ne porte pas de rating LUSR.
 	LoadLUSRHistory(ctx context.Context, xuid string) ([]canonical.LUSRCheckpoint, error)
+	// LoadTopMatches : meilleurs/pires matchs carrière (Phase 2 HIGH-C).
+	LoadTopMatches(ctx context.Context, xuid string) ([]canonical.CareerTopMatch, error)
 	LoadTimeseries(ctx context.Context, xuid string, query canonical.TimeseriesQuery) (*canonical.MetricSeries, error)
 
 	// Phase B+ : scoreboard étendu + événements + amis (CapScoreboardExtra).

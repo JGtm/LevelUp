@@ -23,6 +23,8 @@ type stubCareer struct {
 	xpHistoryErr   error
 	lusrHistory    []domain.LUSRCheckpointDTO
 	lusrHistoryErr error
+	topMatches     []domain.TopMatchRawRow
+	topMatchesErr  error
 }
 
 func (s *stubCareer) GetLatestRank(_ context.Context) (*domain.CareerRankData, error) {
@@ -39,6 +41,10 @@ func (s *stubCareer) GetXPHistory(_ context.Context) ([]domain.XPHistoryPoint, e
 
 func (s *stubCareer) GetLUSRHistory(_ context.Context) ([]domain.LUSRCheckpointDTO, error) {
 	return s.lusrHistory, s.lusrHistoryErr
+}
+
+func (s *stubCareer) GetTopMatches(_ context.Context) ([]domain.TopMatchRawRow, error) {
+	return s.topMatches, s.topMatchesErr
 }
 
 func newSilentAdapter(c CareerSource) *DataAdapter {

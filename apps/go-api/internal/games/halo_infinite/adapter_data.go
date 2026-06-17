@@ -33,6 +33,8 @@ type CareerSource interface {
 	GetXPHistory(ctx context.Context) ([]domain.XPHistoryPoint, error)
 	// GetLUSRHistory : historique des checkpoints de rating LUSR/CSR (Phase 2 HIGH-C).
 	GetLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpointDTO, error)
+	// GetTopMatches : meilleurs/pires matchs carrière (Phase 2 HIGH-C).
+	GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow, error)
 }
 
 // DataAdapter est l'implémentation HI de games.TitleDataAdapter.
@@ -281,6 +283,74 @@ func projectLUSRCheckpoint(r domain.LUSRCheckpointDTO) canonical.LUSRCheckpoint 
 	if r.BadgeImageURL != nil {
 		v := *r.BadgeImageURL
 		c.BadgeImageURL = &v
+	}
+	return c
+}
+
+// LoadTopMatches wrappe CareerSource.GetTopMatches et projette vers le canonique
+// (Phase 2 HIGH-C). career source nil → ErrCapabilityNotSupported. Retourne nil
+// sur entrée vide (préserve la sémantique du legacy GetTopMatches).
+func (a *DataAdapter) LoadTopMatches(ctx context.Context, xuid string) ([]canonical.CareerTopMatch, error) {
+	if a.career == nil {
+		a.logger.Warn("capability_not_supported",
+			"title_slug", a.TitleSlug(),
+			"capability", "career.top_matches",
+		)
+		return nil, games.ErrCapabilityNotSupported
+	}
+
+	rows, err := a.career.GetTopMatches(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, nil
+	}
+	out := make([]canonical.CareerTopMatch, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, projectCareerTopMatch(r))
+	}
+	return out, nil
+}
+
+// projectCareerTopMatch projette un top-match domaine → canonique (copie profonde
+// des pointeurs). OutcomeCode = code BRUT (jamais via canonical.Outcome string).
+func projectCareerTopMatch(r domain.TopMatchRawRow) canonical.CareerTopMatch {
+	c := canonical.CareerTopMatch{
+		MatchID:          r.MatchID,
+		PerformanceScore: r.PerformanceScore,
+		OutcomeCode:      r.Outcome,
+		Kills:            r.Kills,
+		Deaths:           r.Deaths,
+		DominanceFlag:    r.DominanceFlag,
+	}
+	if r.StartTime != nil {
+		v := *r.StartTime
+		c.StartTime = &v
+	}
+	if r.MapName != nil {
+		v := *r.MapName
+		c.MapName = &v
+	}
+	if r.PairName != nil {
+		v := *r.PairName
+		c.PairName = &v
+	}
+	if r.PlaylistName != nil {
+		v := *r.PlaylistName
+		c.PlaylistName = &v
+	}
+	if r.KDA != nil {
+		v := *r.KDA
+		c.KDA = &v
+	}
+	if r.TeamMMR != nil {
+		v := *r.TeamMMR
+		c.TeamMMR = &v
+	}
+	if r.EnemyMMR != nil {
+		v := *r.EnemyMMR
+		c.EnemyMMR = &v
 	}
 	return c
 }
