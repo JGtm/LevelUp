@@ -271,7 +271,7 @@ func encounterDTOFromCanonical(r canonical.EncounterRow) domain.EncounterDTO {
 
 func splitTopRows(rows []domain.TopMatchRawRow) (best, worst []domain.TopMatchRawRow) {
 	for _, r := range rows {
-		if r.Outcome == 2 { // WIN
+		if r.Outcome == domain.OutcomeWin {
 			best = append(best, r)
 		} else {
 			worst = append(worst, r)

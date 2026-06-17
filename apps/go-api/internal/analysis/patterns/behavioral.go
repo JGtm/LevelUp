@@ -1,6 +1,10 @@
 package patterns
 
-import "fmt"
+import (
+	"fmt"
+
+	"levelup/go-api/internal/domain"
+)
 
 // behavioral.go — détection des patterns comportementaux (tilt + fatigue).
 //
@@ -34,7 +38,7 @@ func detectTilt(rows []MatchRow, cfg PatternConfig) (BehavioralPattern, bool) {
 	cur := 0
 	curStart := 0
 	for i, r := range rows {
-		if r.Outcome == 3 { // LOSS
+		if r.Outcome == domain.OutcomeLoss {
 			if cur == 0 {
 				curStart = i
 			}
