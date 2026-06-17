@@ -1,3 +1,29 @@
+## [2026-06-16] PMT-9 (MT-23) — routage des migrations PAR TITRE + ledger schema_version par titre
+
+**Statut** : Complété (PMT-9 livré ; exit gate atteint).
+
+**Re-vérification (doctrine carte datée)** : la spec PERIPHERY de PMT-9 était datée 2026-06-13/14, AVANT la relocation b10-b26. Sa prémisse « 6 steps title-owned » est périmée (≈150 le sont). Mais le gap structurel tient : `RunForDB`/`titleStepsProvider`/`schema_migrations` n'ont AUCUNE dimension slug ; `canonicalOrder` + l'algo de tri vivent dans le package `migration` ; les DB sont déjà per-titre. Phase 1.5 a déplacé les DÉFINITIONS de steps ; PMT-9 ajoute le routage/ledger par titre.
+
+**Livré** :
+- `migration.TitleMigrationSet{Slug, CanonicalOrder, Steps}` + `RegisterMigrationSet` + `migrationSetFor` (title_set.go). Routage par **lookup de map** (`migrationSets[slug]`), JAMAIS de comparaison de slug → `archlint/no_slug_comparison` reste vert.
+- `RunForTitleDB(db, slug, target)` : si un set est enregistré (titre non-défaut), applique SON jeu + SON ordre canonique (isolation totale) ; sinon retombe sur le chemin legacy (registre global + provider, ordonné par `canonicalOrder`) — byte-identique au défaut Halo. `RunForDB` = wrapper `RunForTitleDB(_, DefaultSlug, _)`.
+- Ledger : colonne `title_slug` sur `schema_migrations` (ADD COLUMN IF NOT EXISTS, défaut halo_infinite) + nouvelle table `title_schema_version(title_slug, target, version, PK)`. `sortByOrder(order, ms)` généralise `sortByCanonicalOrder`. Logging : clé `title` + event id `migration.run:{slug}:{target}`.
+- Tests : `title_ledger_test.go` (mécanique ledger + routage set isolé) ; `default_slug_test.go` (migration.DefaultSlug == title.DefaultSlug) ; **oracle b** `synthetic_title_b/migration_isolation_test.go` (le titre B route ses 2 steps, ZÉRO table Halo même provider Halo câblé, `title_schema_version`=(synthetic_title_b,shared,2), target vide = no-op).
+
+**2 déviations délibérées vs la spec** (réduisent le risque, justifiées par la réalité post-relocation) :
+1. `schema_migrations` garde sa **PK `name`** (title_slug informatif, pas composite) — DB per-titre → pas de collision ; recréer la table-de-tracking = risque pour bénéfice hypothétique (DB partagée, inexistante).
+2. `canonicalOrder` **reste dans le package `migration`** (pas relocalisé vers halomigrations) — c'est l'ordre UNIFIÉ couvrant les steps Halo encore globaux (rebuild_match_participants + seeds dynamiques) ET title-owned. Le runner utilise `set.CanonicalOrder` pour les titres non-défaut. Relocaliser priverait le chemin par défaut de son ordre.
+
+**Exit gate** : Halo byte-identique (oracle a — chemin défaut inchangé, parité ledger vérifiée) + `synthetic_title_b` isolé (oracle b) + `no_slug_comparison` vert. ✓
+
+**Effet de bord découvert + corrigé (fallout de la relocation, pré-existant à PMT-9)** : `go test -tags integration ./internal/sync/` était à **40 échecs** (« match_registry/match_citations/achievements does not exist »). Cause : `internal/sync` n'avait pas de `TestMain` câblant `SetTitleStepsProvider` — la relocation l'a câblé pour scheduler/handlers/duckdb mais a OUBLIÉ sync. Confirmé pré-existant : baseline HEAD~1 (pré-PMT-9) = mêmes 40 échecs ; `comm` des sets = 0 régression de PMT-9. Fix : `internal/sync/migration_provider_test.go` (TestMain provider) → 40→1. Le dernier (`TestAssertProgressionDeps_HookWiredOnAllSyncPaths`) = entrée whitelist obsolète (`auto_sync.go` ne crée plus de SyncEngine) → retirée (garde-rail bidirectionnel intact). Sync integration : **vert**.
+
+**Vérif** : migration/halo-migrations/synthetic_title_b/sync integration verts · archlint no_slug_comparison vert · `go test ./...` (no tag) = seuls les 2 DeviceCodeFlow pré-existants · gofmt/vet propres · build cmd/server OK.
+
+**Prochaine étape** : quick wins PMT-11 (Discord embeds dé-Halo-ifiés) + PMT-6 (achievements lecture title-aware).
+
+---
+
 ## [2026-06-16] Phase 1.5 (MT-02 / PMT-2 leg 5) — cutover du chemin du store de tokens watcher (irréversible #2, sign-off OK)
 
 **Statut** : Complété (sign-off user explicite : « Commit »).
