@@ -55,17 +55,19 @@ func NotifySync(
 		return
 	}
 
+	labels := labelsOrDefault(cfg.Labels)
+
 	// Mode skipIdle : embed allégé si tous les joueurs sont à jour
 	if skipIdle && allIdle(players) {
 		slog.DebugContext(ctx, "discord_sync_idle", "op", op, "players", len(players))
-		embed := BuildSyncEmbed(op, startedAt, finishedAt, players, success, cfg.Lang)
+		embed := BuildSyncEmbedWithLabels(op, startedAt, finishedAt, players, success, cfg.Lang, labels)
 		if SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}}) {
 			slog.InfoContext(ctx, "discord_sync_idle_sent", "op", op)
 		}
 		return
 	}
 
-	embed := BuildSyncEmbed(op, startedAt, finishedAt, players, success, cfg.Lang)
+	embed := BuildSyncEmbedWithLabels(op, startedAt, finishedAt, players, success, cfg.Lang, labels)
 	if SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}}) {
 		slog.InfoContext(ctx, "discord_sync_sent", "op", op, "players", len(players))
 	} else {

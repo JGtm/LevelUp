@@ -202,7 +202,7 @@ func TestLastMatchLines(t *testing.T) {
 		Assists:      4,
 		Outcome:      2,
 	}
-	lines := lastMatchLines(lm, "en")
+	lines := lastMatchLines(lm, "en", HaloLabels())
 	if len(lines) == 0 {
 		t.Error("expected at least one line")
 	}
@@ -219,7 +219,7 @@ func TestLastMatchLines_WithSquad(t *testing.T) {
 		Assists:      2,
 		SquadFriends: []string{"Friend1", "Friend2"},
 	}
-	lines := lastMatchLines(lm, "en")
+	lines := lastMatchLines(lm, "en", HaloLabels())
 	if len(lines) < 2 {
 		t.Errorf("expected squad lines, got %d", len(lines))
 	}
@@ -237,7 +237,7 @@ func TestBuildPlayerField(t *testing.T) {
 			Assists: 3,
 		},
 	}
-	name, value := buildPlayerField(p, "sync_delta", "en")
+	name, value := buildPlayerField(p, "sync_delta", "en", HaloLabels())
 	if name == "" || value == "" {
 		t.Error("expected non-empty field")
 	}

@@ -84,6 +84,10 @@ type NotifyConfig struct {
 	NotifyReauth bool
 	// SettingsPath est le chemin vers app_settings.json pour l'anti-spam de version.
 	SettingsPath string
+	// Labels fournit les libellés title-aware des embeds (PMT-11). nil → libellés
+	// Halo (failsafe, byte-identique). Un caller multi-titre pose
+	// notify.LabelsFor(titleSemanticAdapter) pour rendre les outcomes du titre.
+	Labels NotifyLabels
 }
 
 // LoadNotifyConfig charge la configuration Discord depuis app_settings.json.

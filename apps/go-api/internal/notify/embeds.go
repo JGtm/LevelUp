@@ -67,7 +67,8 @@ type PlayerSyncResult struct {
 // Construction de l'embed sync/backfill
 // ─────────────────────────────────────────────────────────────────────────────
 
-// BuildSyncEmbed crée le Rich Embed Discord pour une opération sync ou backfill.
+// BuildSyncEmbed crée le Rich Embed Discord pour une opération sync ou backfill,
+// avec les libellés Halo par défaut (byte-identique au comportement historique).
 func BuildSyncEmbed(
 	op string,
 	startedAt, finishedAt time.Time,
@@ -75,6 +76,20 @@ func BuildSyncEmbed(
 	success bool,
 	lang string,
 ) Embed {
+	return BuildSyncEmbedWithLabels(op, startedAt, finishedAt, players, success, lang, HaloLabels())
+}
+
+// BuildSyncEmbedWithLabels est la variante title-aware : les libellés d'outcome
+// passent par `labels` (PMT-11). labels nil → libellés Halo (failsafe).
+func BuildSyncEmbedWithLabels(
+	op string,
+	startedAt, finishedAt time.Time,
+	players []PlayerSyncResult,
+	success bool,
+	lang string,
+	labels NotifyLabels,
+) Embed {
+	labels = labelsOrDefault(labels)
 	opLabel := resolveOpLabel(op, lang)
 	duration := formatDuration(startedAt, finishedAt)
 
@@ -124,7 +139,7 @@ func BuildSyncEmbed(
 
 	// Un field par joueur
 	for _, p := range players {
-		name, value := buildPlayerField(p, op, lang)
+		name, value := buildPlayerField(p, op, lang, labels)
 		embed.Fields = append(embed.Fields, EmbedField{
 			Name:  truncate(name, 256),
 			Value: truncate(value, 1024),
@@ -138,7 +153,7 @@ func BuildSyncEmbed(
 // Helpers field joueur
 // ─────────────────────────────────────────────────────────────────────────────
 
-func buildPlayerField(p PlayerSyncResult, op, lang string) (string, string) {
+func buildPlayerField(p PlayerSyncResult, op, lang string, labels NotifyLabels) (string, string) {
 	name := "👤  " + p.Gamertag
 	var lines []string
 
@@ -175,11 +190,16 @@ func buildPlayerField(p PlayerSyncResult, op, lang string) (string, string) {
 
 	// Dernier match
 	if p.LastMatch != nil {
-		lines = append(lines, lastMatchLines(p.LastMatch, lang)...)
+		lines = append(lines, lastMatchLines(p.LastMatch, lang, labels)...)
 	}
 
 	return name, strings.Join(lines, "\n")
 }
+
+// outcomeCanonicalKey : pont du code Outcome Discord (1=Tie 2=Win 3=Loss 4=Quit)
+// vers la clé canonique (tie|win|loss|dnf) du manifeste outcomes.toml. « Quit »
+// Discord correspond au DNF canonique.
+var outcomeCanonicalKey = map[int]string{1: "tie", 2: "win", 3: "loss", 4: "dnf"}
 
 func backfillLines(bc BackfillCounts, lang string) []string {
 	type pair struct {
@@ -208,21 +228,16 @@ func backfillLines(bc BackfillCounts, lang string) []string {
 	return lines
 }
 
-func lastMatchLines(lm *LastMatchInfo, lang string) []string {
+func lastMatchLines(lm *LastMatchInfo, lang string, labels NotifyLabels) []string {
+	labels = labelsOrDefault(labels)
 	outcomeIcons := map[int]string{1: "⚖️", 2: "🏆", 3: "💀", 4: "🚶"}
-	outcomeKeys := map[int]string{
-		1: "discord_outcome_draw",
-		2: "discord_outcome_win",
-		3: "discord_outcome_loss",
-		4: "discord_outcome_quit",
-	}
 	icon := outcomeIcons[lm.Outcome]
 	if icon == "" {
 		icon = "❓"
 	}
 	outcomeLabel := "—"
-	if key, ok := outcomeKeys[lm.Outcome]; ok {
-		outcomeLabel = T(key, lang)
+	if key, ok := outcomeCanonicalKey[lm.Outcome]; ok {
+		outcomeLabel = labels.Outcome(key, lang)
 	}
 	rankedTag := ""
 	if lm.IsRanked {
