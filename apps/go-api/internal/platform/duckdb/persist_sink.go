@@ -21,7 +21,12 @@ import (
 	"time"
 
 	"levelup/go-api/internal/platform/dblease"
+	"levelup/go-api/internal/port"
 )
+
+// PersistSink satisfait le port consommé par HomeService (Phase 2 : le service
+// dépend de l'interface, pas du type concret).
+var _ port.HomePersistSink = (*PersistSink)(nil)
 
 // PersistSink centralise les écritures battlepass/challenges (fire-and-forget).
 // Les ouvertures RW passent par le cache `openDBs`, puis sont relâchées en fin

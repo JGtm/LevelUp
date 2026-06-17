@@ -1,3 +1,17 @@
+## [2026-06-17] Phase 2 — démarrage : critère « 0 service n'importe duckdb pour la data » (re-vérifié workflow 9 agents)
+
+**Cadrage (carte datée → HEAD)** : workflow de readiness (9 agents). Le seam canonique `PlayerMatchesRepository → canonical.PlayerMatchRow` est déjà câblé dans 12 services. Le critère de complétion Phase 2 (« aucun service n'importe `platform/duckdb` pour la data ») échoue sur **7 fichiers** : home (PersistSink, type), skill_v2 (SkillV2Repo, data), career_live ×3 (CareerRankRow/CareerProgressionPartial, DTO), media ×2 (OpenReadWrite, write-IO). Les 6 services de lecture sont duckdb-free mais explorer/match_view/career-partiel lisent encore `domain.*` (canonical-typing = travail HIGH ultérieur, décisions requises).
+
+**Approche** : exécuter les incréments SAFE (relocations de types/seams, byte-identiques) pour clore le critère d'import + le verrouiller par lint ; escalader les décisions HIGH (match_view canonical-vs-enrichment, types cross-joueur explorer).
+
+### SAFE-1 — home_service PersistSink → port.HomePersistSink (LIVRÉ)
+
+Le seul import duckdb de `home_service.go` était le type write-only `*duckdb.PersistSink` (sink fire-and-forget BP/défis, hors payload de lecture). Extrait en `port.HomePersistSink` (2 méthodes : PersistBattlePassSync/PersistChallengesSync). Champ + setter re-typés vers l'interface ; import duckdb supprimé ; assertion `var _ port.HomePersistSink = (*duckdb.PersistSink)(nil)`. Câblage (registry_auth) inchangé (NewPersistSink satisfait l'interface, toujours non-nil → pas de typed-nil). Byte-identique (le sink n'est pas dans le payload `GetHomePage`).
+
+**Vérif** : build service+duckdb+port+api ✅ · home tests verts · gofmt propre · `home_service.go` n'importe plus duckdb.
+
+---
+
 ## [2026-06-17] PMT-5 Contract — DERNIER site SQL migré, allowlist ratchet VIDE
 
 **Statut** : LIVRÉ. `internal/sync/assists_model.go` (dernière entrée de l'allowlist `no_raw_outcome_literal`) migrée → l'allowlist est désormais **vide**. Plus aucun littéral brut d'outcome (`2/3/1/4`) dans `internal/` (Go + SQL).
