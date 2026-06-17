@@ -37,6 +37,12 @@ type CareerSource interface {
 	GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow, error)
 }
 
+// RecentSource est la surface minimale de lecture du profil de combat récent d'un
+// joueur (Explorer, Phase 2 HIGH-B). Implémentée par internal/platform/duckdb.ExplorerRepo.
+type RecentSource interface {
+	GetTargetRecentMatches(ctx context.Context, xuid string, limit int) ([]domain.ExplorerTargetRecentMatch, error)
+}
+
 // DataAdapter est l'implémentation HI de games.TitleDataAdapter.
 //
 // Phase B : seules les méthodes nécessaires aux endpoints prévus en Phase C
@@ -44,6 +50,7 @@ type CareerSource interface {
 // les absences explicites côté caller (cf. plan §5.7).
 type DataAdapter struct {
 	career CareerSource
+	recent RecentSource // Explorer profil de combat (Phase 2 HIGH-B). nil → ErrCapabilityNotSupported.
 	// staticCaps : CapabilityMap chargée depuis capabilities.toml (Phase 1.7a),
 	// injectée via WithCapabilities. nil → fallbackCapabilities (sécurité boot).
 	staticCaps games.CapabilityMap
@@ -66,6 +73,13 @@ func NewDataAdapter(career CareerSource, logger *slog.Logger) *DataAdapter {
 // C'est le chemin nominal (Phase 1.7a) : la map TOML remplace le fallback codé.
 func (a *DataAdapter) WithCapabilities(caps games.CapabilityMap) *DataAdapter {
 	a.staticCaps = caps
+	return a
+}
+
+// WithRecentSource câble la source du profil de combat récent (Explorer, HIGH-B).
+// nil → LoadTargetRecentMatches retourne ErrCapabilityNotSupported. Chaînable.
+func (a *DataAdapter) WithRecentSource(src RecentSource) *DataAdapter {
+	a.recent = src
 	return a
 }
 
@@ -351,6 +365,58 @@ func projectCareerTopMatch(r domain.TopMatchRawRow) canonical.CareerTopMatch {
 	if r.EnemyMMR != nil {
 		v := *r.EnemyMMR
 		c.EnemyMMR = &v
+	}
+	return c
+}
+
+// LoadTargetRecentMatches wrappe RecentSource.GetTargetRecentMatches et projette
+// vers le canonique (Phase 2 HIGH-B). source nil → ErrCapabilityNotSupported.
+// Retourne nil sur entrée vide (préserve la sémantique du legacy).
+func (a *DataAdapter) LoadTargetRecentMatches(ctx context.Context, xuid string, limit int) ([]canonical.RecentMatchRow, error) {
+	if a.recent == nil {
+		a.logger.Warn("capability_not_supported",
+			"title_slug", a.TitleSlug(),
+			"capability", "explorer.recent_matches",
+		)
+		return nil, games.ErrCapabilityNotSupported
+	}
+
+	rows, err := a.recent.GetTargetRecentMatches(ctx, xuid, limit)
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, nil
+	}
+	out := make([]canonical.RecentMatchRow, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, projectRecentMatchRow(r))
+	}
+	return out, nil
+}
+
+// projectRecentMatchRow projette un match récent domaine → canonique. Outcome =
+// code BRUT ; Rank deep-copié ; ModePairAssetID (transient live) NON porté.
+func projectRecentMatchRow(r domain.ExplorerTargetRecentMatch) canonical.RecentMatchRow {
+	c := canonical.RecentMatchRow{
+		MatchID:         r.MatchID,
+		StartTime:       r.StartTime,
+		MapUI:           r.MapUI,
+		ModeUI:          r.ModeUI,
+		Outcome:         r.Outcome,
+		Kills:           r.Kills,
+		Deaths:          r.Deaths,
+		Assists:         r.Assists,
+		KDA:             r.KDA,
+		Score:           r.Score,
+		DamageDealt:     r.DamageDealt,
+		DamageTaken:     r.DamageTaken,
+		MaxKillingSpree: r.MaxKillingSpree,
+		PerfectKills:    r.PerfectKills,
+	}
+	if r.Rank != nil {
+		v := *r.Rank
+		c.Rank = &v
 	}
 	return c
 }

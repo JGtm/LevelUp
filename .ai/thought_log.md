@@ -1,3 +1,17 @@
+## [2026-06-17] Phase 2 HIGH-B Path A — profil de combat récent Explorer canonical-typé
+
+**Statut** : LIVRÉ (1er des 3 chemins « canonicalize » d'HIGH-B). Conçu + scopé par workflow (4 agents). **Scope HIGH-B décidé** : canonicaliser 3 chemins cross-titre (recent / participant-sum / intersection) ; laisser en **enrichment-boundary documenté** les 5 autres (medals/weapons = taxonomie Halo `medal_name_id`/filmshell `weapon_id` ; `TranslateModeUIsFR` = i18n locale ADR 0011 ; `ResolveXUIDByGamertag`/`GetMatchStartTimesForXUID` = primitifs). NE PAS sur-canoniser.
+
+**Path A — GetTargetRecentMatches** : nouveau type `canonical.RecentMatchRow` (1:1 de `domain.ExplorerTargetRecentMatch` SAUF `ModePairAssetID` transient live ; Outcome code BRUT). Méthode `LoadTargetRecentMatches` sur l'interface (4 sites + nouvelle source `RecentSource` sur le halo adapter + `WithRecentSource`). **Câblage DI** : le builder HI (`server.go:348`) pose `WithRecentSource(NewExplorerRepo(pdb, pdb.XUID))` → le chemin canonique est RÉELLEMENT exercé en prod (pas juste fallback). Service : `loadTargetRecentRows` + `recentMatchesFromCanonical` (deep-copy Rank, ModePairAssetID="" ; nil pour vide). Swap `computeTargetCombatProfileLocal:16`.
+
+**Golden** : `TestExplorerService_CombatProfileLocal_DataAdapterParity` (json-equal legacy vs adapter ; fixture Rank nil/DNF + KDA fractionnaire + PerfectKills) + fallback. Le chemin LIVE (`computeTargetCombatProfileLive` + `TranslateModeUIsFR`) reste sur le repo (inchangé).
+
+**Vérif** : `go build ./...` ✅ · `go test ./internal/service/ ./internal/games/...` verts · gofmt/vet propres.
+
+**Reste HIGH-B** : Path B (GetParticipantStatsForMatches → `canonical.PlayerMatchSetStats`, piège float64 dégâts) ; Path C (intersection GetCommonMatches+GetKillerVictimBetween → `canonical.PlayerIntersection`, le + gros). ~2 j restants.
+
+---
+
 ## [2026-06-17] Phase 2 HIGH-C Path A — historique XP canonical-typé (golden parity byte-identique)
 
 **Statut** : LIVRÉ (1er des 3 chemins HIGH-C). `career_service.GetCareerPage` lit l'historique XP via le `TitleDataAdapter` (canonical) au lieu du repo direct, byte-identique. Décision « les 3 HIGH en séquence » (user). Conçu + vérifié par workflow (4 agents, field-coverage par chemin).

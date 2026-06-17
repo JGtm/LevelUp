@@ -2,24 +2,78 @@ package service
 
 import (
 	"context"
+	"errors"
 	"hash/fnv"
+	"log/slog"
+
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
-	"log/slog"
+	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/canonical"
 )
 
 // computeTargetCombatProfileLocal retourne les N derniers matchs PvP de la cible
 // présents en base locale (shared.match_participants — surtout les matchs communs).
 // Alimente le toggle "local" de la section. nil si erreur / aucun match.
 func (s *ExplorerService) computeTargetCombatProfileLocal(ctx context.Context, targetXUID string) []domain.ExplorerTargetRecentMatch {
-	rows, err := s.repo.GetTargetRecentMatches(ctx, targetXUID, explorerCombatProfileLimit)
+	rows, err := s.loadTargetRecentRows(ctx, targetXUID, explorerCombatProfileLimit)
 	if err != nil {
 		slog.WarnContext(ctx, "explorer_target_combat_profile_local_failed", "xuid", targetXUID, "err", err)
 		return nil
 	}
 	slog.DebugContext(ctx, "explorer_target_combat_profile", "xuid", targetXUID, "matches", len(rows), "source", "local")
 	return rows
+}
+
+// loadTargetRecentRows centralise la résolution repo/adapter du profil de combat
+// récent (HIGH-B). Adapter-first via LoadTargetRecentMatches + reconstitution
+// byte-identique ; fallback repo.GetTargetRecentMatches sur capability absente.
+func (s *ExplorerService) loadTargetRecentRows(ctx context.Context, xuid string, limit int) ([]domain.ExplorerTargetRecentMatch, error) {
+	if s.dataAdapter != nil {
+		canonicalRows, err := s.dataAdapter.LoadTargetRecentMatches(ctx, xuid, limit)
+		if err == nil {
+			return recentMatchesFromCanonical(canonicalRows), nil
+		}
+		if !errors.Is(err, games.ErrCapabilityNotSupported) {
+			return nil, err
+		}
+	}
+	return s.repo.GetTargetRecentMatches(ctx, xuid, limit)
+}
+
+// recentMatchesFromCanonical projette []canonical.RecentMatchRow →
+// []domain.ExplorerTargetRecentMatch (copie profonde de Rank). ModePairAssetID reste
+// vide (transient live, hors canonique). Retourne nil pour une entrée vide.
+func recentMatchesFromCanonical(cs []canonical.RecentMatchRow) []domain.ExplorerTargetRecentMatch {
+	if len(cs) == 0 {
+		return nil
+	}
+	out := make([]domain.ExplorerTargetRecentMatch, 0, len(cs))
+	for _, c := range cs {
+		r := domain.ExplorerTargetRecentMatch{
+			MatchID:         c.MatchID,
+			StartTime:       c.StartTime,
+			MapUI:           c.MapUI,
+			ModeUI:          c.ModeUI,
+			Outcome:         c.Outcome,
+			Kills:           c.Kills,
+			Deaths:          c.Deaths,
+			Assists:         c.Assists,
+			KDA:             c.KDA,
+			Score:           c.Score,
+			DamageDealt:     c.DamageDealt,
+			DamageTaken:     c.DamageTaken,
+			MaxKillingSpree: c.MaxKillingSpree,
+			PerfectKills:    c.PerfectKills,
+		}
+		if c.Rank != nil {
+			v := *c.Rank
+			r.Rank = &v
+		}
+		out = append(out, r)
+	}
+	return out
 }
 
 // computeTargetCombatProfileLive fetche en LIVE les ~20 derniers matchs PvP de la

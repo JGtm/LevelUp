@@ -89,6 +89,9 @@ type TitleDataAdapter interface {
 	LoadLUSRHistory(ctx context.Context, xuid string) ([]canonical.LUSRCheckpoint, error)
 	// LoadTopMatches : meilleurs/pires matchs carrière (Phase 2 HIGH-C).
 	LoadTopMatches(ctx context.Context, xuid string) ([]canonical.CareerTopMatch, error)
+	// LoadTargetRecentMatches : profil de combat récent d'un joueur cible (Explorer,
+	// Phase 2 HIGH-B). ErrCapabilityNotSupported si pas de substrat match local.
+	LoadTargetRecentMatches(ctx context.Context, xuid string, limit int) ([]canonical.RecentMatchRow, error)
 	LoadTimeseries(ctx context.Context, xuid string, query canonical.TimeseriesQuery) (*canonical.MetricSeries, error)
 
 	// Phase B+ : scoreboard étendu + événements + amis (CapScoreboardExtra).

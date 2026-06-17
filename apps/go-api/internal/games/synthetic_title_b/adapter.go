@@ -100,6 +100,10 @@ func (a *DataAdapter) LoadTopMatches(ctx context.Context, xuid string) ([]canoni
 	return nil, games.ErrCapabilityNotSupported
 }
 
+func (a *DataAdapter) LoadTargetRecentMatches(ctx context.Context, xuid string, limit int) ([]canonical.RecentMatchRow, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+
 func (a *DataAdapter) LoadTimeseries(ctx context.Context, xuid string, query canonical.TimeseriesQuery) (*canonical.MetricSeries, error) {
 	return nil, games.ErrCapabilityNotSupported
 }
