@@ -31,6 +31,8 @@ type CareerSource interface {
 	// GetXPHistory : historique XP (Phase 2 HIGH-C) — alimente CareerSnapshot.History
 	// quand CareerOptions.IncludeHistory. Déjà implémenté par duckdb.CareerRepo.
 	GetXPHistory(ctx context.Context) ([]domain.XPHistoryPoint, error)
+	// GetLUSRHistory : historique des checkpoints de rating LUSR/CSR (Phase 2 HIGH-C).
+	GetLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpointDTO, error)
 }
 
 // DataAdapter est l'implémentation HI de games.TitleDataAdapter.
@@ -222,6 +224,65 @@ func (a *DataAdapter) LoadEncounters(ctx context.Context, xuid string) ([]canoni
 		out = append(out, projectEncounterRow(r))
 	}
 	return out, nil
+}
+
+// LoadLUSRHistory wrappe CareerSource.GetLUSRHistory et projette vers le canonique
+// (Phase 2 HIGH-C). career source nil → ErrCapabilityNotSupported. Retourne nil sur
+// historique vide (préserve la sémantique nil du legacy GetLUSRHistory).
+func (a *DataAdapter) LoadLUSRHistory(ctx context.Context, xuid string) ([]canonical.LUSRCheckpoint, error) {
+	if a.career == nil {
+		a.logger.Warn("capability_not_supported",
+			"title_slug", a.TitleSlug(),
+			"capability", "career.lusr_history",
+		)
+		return nil, games.ErrCapabilityNotSupported
+	}
+
+	rows, err := a.career.GetLUSRHistory(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, nil
+	}
+	out := make([]canonical.LUSRCheckpoint, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, projectLUSRCheckpoint(r))
+	}
+	return out, nil
+}
+
+// projectLUSRCheckpoint projette un checkpoint LUSR domaine → canonique (copie
+// profonde des pointeurs pour éviter tout aliasing avec la slice source).
+func projectLUSRCheckpoint(r domain.LUSRCheckpointDTO) canonical.LUSRCheckpoint {
+	c := canonical.LUSRCheckpoint{
+		MatchID:      r.MatchID,
+		RatingType:   r.RatingType,
+		RatingValue:  r.RatingValue,
+		PlaylistName: r.PlaylistName,
+		PlaylistID:   r.PlaylistID,
+	}
+	if r.TierLabel != nil {
+		v := *r.TierLabel
+		c.TierLabel = &v
+	}
+	if r.PlaylistGroup != nil {
+		v := *r.PlaylistGroup
+		c.PlaylistGroup = &v
+	}
+	if r.RecordedAt != nil {
+		v := *r.RecordedAt
+		c.RecordedAt = &v
+	}
+	if r.RatingDelta != nil {
+		v := *r.RatingDelta
+		c.RatingDelta = &v
+	}
+	if r.BadgeImageURL != nil {
+		v := *r.BadgeImageURL
+		c.BadgeImageURL = &v
+	}
+	return c
 }
 
 func projectEncounterRow(r domain.EncounterRawRow) canonical.EncounterRow {
