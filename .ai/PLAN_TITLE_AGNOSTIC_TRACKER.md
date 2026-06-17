@@ -29,7 +29,7 @@
 | 1.6 | Pool tokens clé `(titleSlug,gamertag)` | ✅ | 100 | **oui** (2e titre) — livré : clé composite + garde anti-cross-title |
 | 1.7a | `capabilities.toml` + loader + endpoint | ✅ | 100 | non — TOML + loader + adapter consomme + endpoint, livré |
 | 1.7b | Feature-matrix 3 états + cascade | ✅ | 100 | non — cascade pure + endpoint, livré (revue adversariale 5 lentilles) |
-| 2 | Services title-agnostic (canonical-typé) | 🟡 | 70 | non |
+| 2 | Services title-agnostic (canonical-typé) | 🟡 | 78 | non — critère IMPORT atteint+verrouillé (lint `no_duckdb_import`) ; reste = canonical-typing profond (explorer/match_view/career) = HIGH, décisions requises |
 | 3a | Cleanup DTO (`*Raw` hors domain, nullable) | 🟡 | 50 | non |
 | 1.8 | Outillage diag Lab | ⬜ | 0 | **différé** (hors fenêtre) |
 | 1.9 | Watcher multi-title routing (présence→poll→sync) | ⬜ | 0 | **oui** (2e titre, runtime) — détection déjà title-agnostic ; reste = threader `titleSlug` (fetcher/PlayerWatcher/CoordinatorRequest) |
@@ -96,7 +96,16 @@
 | Loader + handler `/title/feature_matrix` | ✅ | Pas de loader `[feature]` séparé (définitions produit en Go, partagées ; la variation par titre vient de SA `capabilities.toml` 1.7a — plus simple, pas de drift). Handler `GET /api/v1/titles/{slug}/feature-matrix` (gated `MULTI_TITLE_API_ENABLED`, ETag/Cache-Control/schema_version cohérents avec frères). |
 | Qualité | ✅ | **Revue adversariale 5 lentilles** (workflow `wgki7z18p` : layering/multi-titres/cascade/tests/intégration — 0 blocker, 3 major + 5 minor **tous traités**). Tests : cascade (tous états + cap absente = dégradation gracieuse + enrichissement degraded), handler httptest (success+headers/404/304/slug-vide/caps-invalides). |
 
-## Phase 2 — Services title-agnostic · 🟡 (~70%) — **mécanisme canonical-typé (FieldKey-map supersédé)**
+## Phase 2 — Services title-agnostic · 🟡 (~78%) — **mécanisme canonical-typé (FieldKey-map supersédé)**
+
+> **Maj 2026-06-17 (workflow readiness 9 agents + SAFE-1/2/3 + lint)** : le critère
+> de complétion d'IMPORT « 0 service n'importe `platform/duckdb` pour la data » est
+> ATTEINT et VERROUILLÉ (`internal/service/no_duckdb_import_test.go`). Cleared :
+> home (`PersistSink`→`port.HomePersistSink`, `ca38d98b8`), skill_v2 (→`port.SkillV2Repository`,
+> `39d5eeb29`), career_live ×3 (DTOs→`domain`, `4f607df65`). media ×2 (`OpenReadWrite`
+> write-IO) allowlistés (`895af83f4`). **Reste = canonical-TYPING profond** (HIGH,
+> décisions requises) : explorer (types cross-joueur NET-NEW), match_view (split
+> canonical vs enrichment), career XP/LUSR/CSR. « pas d'import duckdb » ≠ « canonical ».
 
 | Service | Statut | Evidence / next action |
 |---|:-:|---|
