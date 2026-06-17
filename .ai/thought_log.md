@@ -25691,3 +25691,19 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Limites assumées (documentées, non régressives)** : (1) `engine_postsync_scoring.go:34` (sync live) garde gap hard-codé 120 — jamais lu le store, hors-scope. (2) En post-sync background (auto-sync/CLI) le ctx ne porte pas de titre → `pdb2.TitleSlug`=DefaultSlug (correct mono-titre ; à threader depuis l'engine au 2e titre). **PR-3c différée** : `GET /settings` title-aware pour ShowProgression/OutcomeExclude* est un no-op tant qu'aucun middleware titre n'est monté sur `/settings` + ces flags n'ont aucun consommateur Go (front-only) → reportée sans perte.
 
 **Conclusion / prochaine étape** : PMT-4 settings UX per-titre runtime livré (sessions + coach), FriendGamertags acté global. Reste PR-3c (cosmétique, différée). Commit en attente d'autorisation.
+
+## [2026-06-17] Phase 3a — volet « *Raw hors domain » = NO-OP acté + dead-code WeaponKillRaw — Complété
+
+**Statut** : Complété. `go build ./...` OK, `go vet` (domain/port/duckdb/service) OK, gofmt clean, guard `TestServicesDoNotImportDuckDB` vert, tests service verts.
+
+**Décision (workflow ultracode 5 agents + 3 lentilles adversariales)** : le volet « déplacer les *Raw hors de `domain` vers `platform/duckdb` » est **IMPOSSIBLE par design**, pas un refactor à faire :
+- Les **17 *Raw exportés** (`MatchMetaRaw`, `ScoreboardRaw`, `EventRaw`, … + `CommonMatchRaw`, `HomeMatchCitationRaw`) croisent TOUS une signature `internal/port` → ce sont les **DTO du contrat port** (`port` retourne `domain.*Raw`, `service` les consomme, `duckdb` les produit). Les mettre dans `duckdb` ferait `port→duckdb` alors que `duckdb→port` (impl des interfaces) → **cycle d'import Go**, refus de compilation. Le compilateur l'interdit, indépendamment de tout lint.
+- Un package neutre `internal/dto` = churn massif sans valeur : `domain/match_view_raw.go` n'importe que `time` (couche feuille), `port` et `service` importent déjà `domain`. Aucune pureté gagnée.
+- Les **5 *Raw réellement DB-internes** (`battlePassTrackRaw`, `trackDefRaw`, `itemDefRaw`, `deckChallengeRaw`, `seasonPassRankRaw`) sont déjà privés dans `platform/duckdb`. Rien à bouger.
+- Conclusion : les *Raw restent canoniquement en `domain` (couche partagée, conforme arch-rules « types partagés entre couches »). Tracker mis à jour (volet ⛔ ABANDONNÉ par design).
+
+**Piège méthodologique évité** : le plan du workflow a été produit en grepant le MAUVAIS dépôt (`LevelUp-go-migration` main, sans le refactor Phase 2) → il prétendait à tort que `no_duckdb_import_test.go` n'existe pas et que 5 services importent duckdb. Les **3 verdicts adversariaux ont tous re-vérifié dans le worktree** `levelup-multititre` et corrigé : le guard EXISTE, est vert, et le découplage career_live/home/skill_v2 est déjà livré (alias `domain.CareerRankRow`). J'ai re-confirmé moi-même (guard vert, seuls media_*.go importent duckdb).
+
+**Seul deliverable concret — dead-code** : `WeaponKillRaw` + `GetMatchWeaponKills` (Q16) supprimés. Vérifié sans consommateur service non-test (le builder Combat agrège via `BulkWeaponKillRaw`/Q28). Retiré : struct `domain.WeaponKillRaw`, méthode `port.MatchViewRepository.GetMatchWeaponKills` + noop, impl duckdb (67 L) + import `sort` orphelin, mock+fixtures service, 2 tests impl duckdb. `lookupWeaponLabels` (partagé avec le scoreboard) et le const `Q16WeaponKills` (doc-référencé) conservés.
+
+**Conclusion / prochaine étape** : Phase 3a volet *Raw clos (NO-OP + dead-code). Reste le volet nullabilité des DTO (séparé). Enchaîne Phase 1.9 (watcher) puis Front EXT-5. Commit en attente d'autorisation.

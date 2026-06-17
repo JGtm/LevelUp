@@ -533,37 +533,6 @@ func TestMatchViewRepo_GetMatchMedals_WithMetadataLabels(t *testing.T) {
 	}
 }
 
-func TestMatchViewRepo_GetMatchWeaponKills_WithMetadataLabels(t *testing.T) {
-	pdb := newTestPlayerDB(t)
-	ctx := context.Background()
-	// Q16WeaponKills agrege via COUNT(*) sur shared.v_weapon_kills :
-	// chaque row de la table weapon_kills represente 1 kill effectif.
-	for i := 0; i < 4; i++ {
-		_, err := pdb.Player.Exec(ctx,
-			`INSERT INTO shared.weapon_kills (match_id, xuid, weapon_id) VALUES (?,?,?)`,
-			"m1", pTestXUID, uint64(42),
-		)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	repo := NewMatchViewRepo(pdb, pTestXUID)
-	rows, err := repo.GetMatchWeaponKills(ctx, pTestXUID, "m1")
-	if err != nil {
-		t.Fatalf("GetMatchWeaponKills: %v", err)
-	}
-	if len(rows) != 1 {
-		t.Fatalf("attendu 1 arme, obtenu %d", len(rows))
-	}
-	if rows[0].WeaponLabel != "BR75" {
-		t.Errorf("weapon_label = %q, want %q", rows[0].WeaponLabel, "BR75")
-	}
-	if rows[0].Kills != 4 {
-		t.Errorf("kills = %d, want 4", rows[0].Kills)
-	}
-}
-
 // ---------------------------------------------------------------------------
 // SquadRepo
 // ---------------------------------------------------------------------------
