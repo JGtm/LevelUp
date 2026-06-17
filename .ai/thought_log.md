@@ -10,6 +10,12 @@ Le seul import duckdb de `home_service.go` était le type write-only `*duckdb.Pe
 
 **Vérif** : build service+duckdb+port+api ✅ · home tests verts · gofmt propre · `home_service.go` n'importe plus duckdb.
 
+### SAFE-3 — skill_v2_service → port.SkillV2Repository (LIVRÉ)
+
+`skill_v2_service.go` injectait le type concret `*duckdb.SkillV2Repo`. Re-typé vers le port **EXISTANT** `port.SkillV2Repository` (déjà défini dans `port/skill_v2.go`, superset : LoadState/UpsertState/LoadAllStates/LoadHyperparams ; le service n'en utilise que 2). Import duckdb supprimé ; assertion `var _ port.SkillV2Repository = (*SkillV2Repo)(nil)`. (Premier réflexe : j'ai créé un port dupliqué → conflit de redéclaration → réutilisé l'existant, le bon move.) Byte-identique.
+
+**Vérif** : build ✅ · skill_v2 tests verts · gofmt propre · import duckdb retiré.
+
 ---
 
 ## [2026-06-17] PMT-5 Contract — DERNIER site SQL migré, allowlist ratchet VIDE
