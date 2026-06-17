@@ -8,6 +8,10 @@
 // Le pipeline de génération s'exécute côté post-sync hook (ADR 0020 Phase 8).
 // Ces handlers sont purement lecture (GET) + action joueur (POST).
 //
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// (hérite ownership/title + lit {player_slug} parent) et enregistre via huma.*.
+// Logique métier inchangée (coach_advisor.Service), seul le wrapping HTTP change.
+//
 // Réf : ADR 0020 §"Architecture proposée".
 package handlers
 
@@ -18,8 +22,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/progression/coach_advisor"
 )
 
@@ -46,15 +52,35 @@ func NewCoachProposalsHandler(resolve CoachAdvisorResolver, titleSlug string) *C
 	return &CoachProposalsHandler{resolve: resolve, titleSlug: titleSlug}
 }
 
-// Mount enregistre les 3 routes sur un sous-routeur déjà préfixé par
-// /players/{player_slug}.
+// Mount enregistre les 3 routes via Huma (Phase 3b) sur un sous-routeur déjà
+// préfixé par /players/{player_slug} (humacore.NewAPI lit le path param parent
+// et hérite du middleware ownership/title du sous-groupe).
 func (h *CoachProposalsHandler) Mount(r chi.Router) {
-	r.Route("/coach", func(r chi.Router) {
-		r.Get("/proposals", h.ListProposals)
-		r.Post("/proposals/{id}/accept", h.AcceptProposal)
-		r.Post("/proposals/{id}/dismiss", h.DismissProposal)
-	})
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/coach/proposals", h.handleListProposals)
+	huma.Post(api, "/coach/proposals/{id}/accept", h.handleAcceptProposal)
+	huma.Post(api, "/coach/proposals/{id}/dismiss", h.handleDismissProposal)
 }
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// coachListInput : {player_slug} + ?status= (filtre par status, optionnel).
+type coachListInput struct {
+	PlayerSlug string `path:"player_slug"`
+	Status     string `query:"status"`
+}
+
+// coachActionInput : {player_slug} + {id} (accept/dismiss). L'id reste en STRING
+// (identifiant opaque côté service) ; le guard missing_id du contrat d'origine est
+// reproduit dans le handler.
+type coachActionInput struct {
+	PlayerSlug string `path:"player_slug"`
+	ID         string `path:"id"`
+}
+
+type proposalsListOutput struct{ Body proposalsListResponse }
+type acceptOutput struct{ Body acceptResponse }
+type dismissOutput struct{ Body dismissResponse }
 
 // ─── DTOs ───
 
@@ -94,109 +120,97 @@ type dismissResponse struct {
 
 // ─── Endpoints ───
 
-// ListProposals : GET /proposals?status=pending
+// handleListProposals : GET /proposals?status=pending
 //
 // Query param `status` filtre par status (pending|accepted|dismissed|
 // superseded|obsoleted|stale). Si vide, retourne toutes les proposals.
-func (h *CoachProposalsHandler) ListProposals(w http.ResponseWriter, r *http.Request) {
-	playerSlug := chi.URLParam(r, "player_slug")
-	svc, userID, ok := h.resolveOr404(w, r, playerSlug)
-	if !ok {
-		return
+func (h *CoachProposalsHandler) handleListProposals(ctx context.Context, in *coachListInput) (*proposalsListOutput, error) {
+	svc, userID, err := h.resolveOr404(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, err
 	}
 
-	status := coach_advisor.ProposalStatus(r.URL.Query().Get("status"))
-	props, err := svc.ListProposals(r.Context(), userID, h.titleSlug, status)
+	status := coach_advisor.ProposalStatus(in.Status)
+	props, err := svc.ListProposals(ctx, userID, h.titleSlug, status)
 	if err != nil {
-		slog.WarnContext(r.Context(), "coach_proposals: list", "err", err, "player", playerSlug)
-		writeError(r.Context(), w, http.StatusInternalServerError, "list_proposals_error", err.Error())
-		return
+		slog.WarnContext(ctx, "coach_proposals: list", "err", err, "player", in.PlayerSlug)
+		return nil, humacore.NewError(http.StatusInternalServerError, "list_proposals_error", err.Error())
 	}
 	items := make([]proposalDTO, 0, len(props))
 	for _, p := range props {
 		items = append(items, toProposalDTO(p))
 	}
-	writeJSON(w, http.StatusOK, proposalsListResponse{Items: items})
+	return &proposalsListOutput{Body: proposalsListResponse{Items: items}}, nil
 }
 
-// AcceptProposal : POST /proposals/{id}/accept
+// handleAcceptProposal : POST /proposals/{id}/accept
 //
 // Matérialise la proposal via prestige.CreateChallenge ou CreateArc.
 // 409 Conflict si la proposal n'est plus pending.
-func (h *CoachProposalsHandler) AcceptProposal(w http.ResponseWriter, r *http.Request) {
-	playerSlug := chi.URLParam(r, "player_slug")
-	svc, _, ok := h.resolveOr404(w, r, playerSlug)
-	if !ok {
-		return
+func (h *CoachProposalsHandler) handleAcceptProposal(ctx context.Context, in *coachActionInput) (*acceptOutput, error) {
+	svc, _, err := h.resolveOr404(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, err
 	}
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "proposal id required")
-		return
+	if in.ID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_id", "proposal id required")
 	}
 
-	result, err := svc.AcceptProposal(r.Context(), id)
+	result, err := svc.AcceptProposal(ctx, in.ID)
 	switch {
 	case errors.Is(err, coach_advisor.ErrProposalNotFound):
-		writeError(r.Context(), w, http.StatusNotFound, "proposal_not_found", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "proposal_not_found", err.Error())
 	case errors.Is(err, coach_advisor.ErrProposalNotAcceptable):
-		writeError(r.Context(), w, http.StatusConflict, "proposal_not_acceptable", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusConflict, "proposal_not_acceptable", err.Error())
 	case err != nil:
-		slog.WarnContext(r.Context(), "coach_proposals: accept", "err", err, "id", id)
-		writeError(r.Context(), w, http.StatusInternalServerError, "accept_error", err.Error())
-		return
+		slog.WarnContext(ctx, "coach_proposals: accept", "err", err, "id", in.ID)
+		return nil, humacore.NewError(http.StatusInternalServerError, "accept_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, acceptResponse{
+	return &acceptOutput{Body: acceptResponse{
 		Status:       "accepted",
 		ChallengeID:  result.ChallengeID,
 		ArcID:        result.ArcID,
 		ChallengeIDs: result.ChallengeIDs,
-	})
+	}}, nil
 }
 
-// DismissProposal : POST /proposals/{id}/dismiss
+// handleDismissProposal : POST /proposals/{id}/dismiss
 //
 // Idempotent — pas d'erreur si déjà dismissed.
-func (h *CoachProposalsHandler) DismissProposal(w http.ResponseWriter, r *http.Request) {
-	playerSlug := chi.URLParam(r, "player_slug")
-	svc, _, ok := h.resolveOr404(w, r, playerSlug)
-	if !ok {
-		return
+func (h *CoachProposalsHandler) handleDismissProposal(ctx context.Context, in *coachActionInput) (*dismissOutput, error) {
+	svc, _, err := h.resolveOr404(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, err
 	}
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "proposal id required")
-		return
+	if in.ID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_id", "proposal id required")
 	}
-	if err := svc.DismissProposal(r.Context(), id); err != nil {
-		slog.WarnContext(r.Context(), "coach_proposals: dismiss", "err", err, "id", id)
-		writeError(r.Context(), w, http.StatusInternalServerError, "dismiss_error", err.Error())
-		return
+	if err := svc.DismissProposal(ctx, in.ID); err != nil {
+		slog.WarnContext(ctx, "coach_proposals: dismiss", "err", err, "id", in.ID)
+		return nil, humacore.NewError(http.StatusInternalServerError, "dismiss_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, dismissResponse{Status: "dismissed"})
+	return &dismissOutput{Body: dismissResponse{Status: "dismissed"}}, nil
 }
 
 // ─── Helpers ───
 
-func (h *CoachProposalsHandler) resolveOr404(w http.ResponseWriter, r *http.Request, playerSlug string) (coach_advisor.Service, string, bool) {
+// resolveOr404 résout le service coach + userID pour le slug courant, ou renvoie
+// l'erreur Huma au contrat d'origine (503 coach_advisor_disabled si resolve nil,
+// 404 player_not_found si introuvable, 503 coach_advisor_unavailable si service nil).
+func (h *CoachProposalsHandler) resolveOr404(ctx context.Context, playerSlug string) (coach_advisor.Service, string, error) {
 	if h.resolve == nil {
-		writeError(r.Context(), w, http.StatusServiceUnavailable, "coach_advisor_disabled",
+		return nil, "", humacore.NewError(http.StatusServiceUnavailable, "coach_advisor_disabled",
 			"coach_advisor not configured")
-		return nil, "", false
 	}
-	svc, userID, err := h.resolve(r.Context(), playerSlug)
+	svc, userID, err := h.resolve(ctx, playerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return nil, "", false
+		return nil, "", humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
 	if svc == nil {
-		writeError(r.Context(), w, http.StatusServiceUnavailable, "coach_advisor_unavailable",
+		return nil, "", humacore.NewError(http.StatusServiceUnavailable, "coach_advisor_unavailable",
 			"coach_advisor service could not be built for this player")
-		return nil, "", false
 	}
-	return svc, userID, true
+	return svc, userID, nil
 }
 
 func toProposalDTO(p coach_advisor.Proposal) proposalDTO {

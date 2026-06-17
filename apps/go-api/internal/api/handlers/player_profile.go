@@ -4,18 +4,25 @@
 // Route exposée (sous /api/v1/players/{player_slug}/) :
 //   - GET /profile : PlayerProfile complet (Sections A1/A2/B/C).
 //
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// (hérite ownership/title + lit {player_slug} parent) et enregistre via huma.Get.
+// Logique métier inchangée (profile.BuildProfile), seul le wrapping HTTP change.
+//
 // Le PlayerProfile est construit à la volée via progression/profile.BuildProfile
 // (pas de cache en V1 — la fenêtre LOWESS est de 30 jours et le calcul tient
 // en < 200ms sur 100 matchs).
 package handlers
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/platform/duckdb"
@@ -48,21 +55,38 @@ func (h *PlayerProfileHandler) WithAwardMapping(set *mappings.AwardMappingSet) *
 	return h
 }
 
-// Mount enregistre /profile sur un router chi sous-monté.
+// Mount enregistre /profile via Huma (Phase 3b) sur le sous-routeur chi
+// (préfixe /players/{player_slug} + middleware ownership/title hérités).
 func (h *PlayerProfileHandler) Mount(r chi.Router) {
-	r.Get("/profile", h.GetProfile)
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/profile", h.handleGetProfile)
 }
 
-// GetProfile : GET /profile → PlayerProfile complet.
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// profileInput : {player_slug} parent + ?window_days= (parse tolérant maison).
+// window_days reste en STRING pour reproduire le contrat d'origine : une valeur
+// invalide retombe sur le défaut (atoi → 0 → ProfileWindowDays), PAS le 422 de
+// validation Huma qu'un `int` produirait.
+type profileInput struct {
+	PlayerSlug string `path:"player_slug"`
+	WindowDays string `query:"window_days"`
+}
+
+type profileOutput struct{ Body *profile.PlayerProfile }
+
+// ─── Endpoints ─────────────────────────────────────────────────────────────
+
+// handleGetProfile : GET /profile → PlayerProfile complet.
 //
 // Query params optionnels :
 //   - window_days : fenêtre d'analyse (défaut 30, min 7, max 120)
-func (h *PlayerProfileHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
-	pdb, ok := h.resolveOr404(w, r)
-	if !ok {
-		return
+func (h *PlayerProfileHandler) handleGetProfile(ctx context.Context, in *profileInput) (*profileOutput, error) {
+	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, err
 	}
-	window := atoi(r.URL.Query().Get("window_days"))
+	window := atoi(in.WindowDays)
 	if window <= 0 {
 		window = ProfileWindowDays
 	}
@@ -77,22 +101,20 @@ func (h *PlayerProfileHandler) GetProfile(w http.ResponseWriter, r *http.Request
 	if h.awards != nil {
 		svc = svc.WithAwardMapping(h.awards)
 	}
-	prof, err := svc.BuildProfile(r.Context(), pdb.XUID, h.titleSlug, window, time.Now().UTC())
+	prof, err := svc.BuildProfile(ctx, pdb.XUID, h.titleSlug, window, time.Now().UTC())
 	if err != nil {
-		slog.WarnContext(r.Context(), "profile: build", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "build_profile_error", err.Error())
-		return
+		slog.WarnContext(ctx, "profile: build", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "build_profile_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, prof)
+	return &profileOutput{Body: prof}, nil
 }
 
-// resolveOr404 résout le slug courant ou écrit 404.
-func (h *PlayerProfileHandler) resolveOr404(w http.ResponseWriter, r *http.Request) (*duckdb.PlayerDB, bool) {
-	slug := chi.URLParam(r, "player_slug")
-	pdb, err := h.resolve(r.Context(), slug)
+// resolvePlayer résout le slug courant ou renvoie une erreur Huma 404
+// (contrat préservé : {code:player_not_found}).
+func (h *PlayerProfileHandler) resolvePlayer(ctx context.Context, slug string) (*duckdb.PlayerDB, error) {
+	pdb, err := h.resolve(ctx, slug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return nil, false
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
-	return pdb, true
+	return pdb, nil
 }
