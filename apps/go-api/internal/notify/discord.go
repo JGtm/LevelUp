@@ -93,22 +93,55 @@ type NotifyConfig struct {
 // LoadNotifyConfig charge la configuration Discord depuis app_settings.json.
 // La variable d'environnement DISCORD_WEBHOOK_URL prévaut sur le champ JSON.
 func LoadNotifyConfig(settingsPath string) NotifyConfig {
-	cfg := NotifyConfig{Lang: "fr", SettingsPath: settingsPath}
+	return notifyConfigFromMap(settingsPath, readSettingsMap(settingsPath))
+}
 
-	raw, err := os.ReadFile(settingsPath)
+// LoadNotifyConfigForTitle charge la config Discord du titre (PMT-4) : settings
+// globaux + overlay du titre (champ-présent-only) lu depuis overlayPath. Le caller
+// fournit les 2 chemins (`PathResolver.AppSettingsPath()` + `TitleSettingsPath(slug)`)
+// → notify ne dépend pas du registre titres. overlayPath vide / absent / vide ⇒
+// identique à LoadNotifyConfig (Halo byte-identique). Le gate
+// `discord_notifications_enabled` est évalué sur la map RÉSOLUE (overlay > global).
+func LoadNotifyConfigForTitle(settingsPath, overlayPath string) NotifyConfig {
+	m := readSettingsMap(settingsPath)
+	if overlayPath != "" {
+		if overlay := readSettingsMap(overlayPath); len(overlay) > 0 {
+			merged := make(map[string]any, len(m)+len(overlay))
+			for k, v := range m {
+				merged[k] = v
+			}
+			for k, v := range overlay {
+				merged[k] = v
+			}
+			m = merged
+		}
+	}
+	return notifyConfigFromMap(settingsPath, m)
+}
+
+// readSettingsMap lit un fichier JSON de settings en map. nil si absent/illisible.
+func readSettingsMap(path string) map[string]any {
+	raw, err := os.ReadFile(path)
 	if err != nil {
-		return cfg
+		return nil
 	}
 	var s map[string]any
 	if err := json.Unmarshal(raw, &s); err != nil {
+		return nil
+	}
+	return s
+}
+
+// notifyConfigFromMap construit le NotifyConfig à partir d'une map de settings
+// (globale ou globale+overlay résolue). Logique partagée par LoadNotifyConfig et
+// LoadNotifyConfigForTitle (une seule source de vérité).
+func notifyConfigFromMap(settingsPath string, s map[string]any) NotifyConfig {
+	cfg := NotifyConfig{Lang: "fr", SettingsPath: settingsPath}
+	if s == nil || !boolVal(s, "discord_notifications_enabled") {
 		return cfg
 	}
 
-	if !boolVal(s, "discord_notifications_enabled") {
-		return cfg
-	}
-
-	// Résolution webhook : env var > app_settings.json
+	// Résolution webhook : env var > settings (résolus)
 	url := strings.TrimSpace(os.Getenv("DISCORD_WEBHOOK_URL"))
 	if url == "" {
 		url = strings.TrimSpace(strVal(s, "discord_webhook_url"))
