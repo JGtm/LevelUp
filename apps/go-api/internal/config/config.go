@@ -339,6 +339,9 @@ func (c *AppConfig) CSRSeasonIDForTitle(ctx context.Context, slug string, reg *t
 	if id := os.Getenv("LEVELUP_CSR_SEASON_ID"); id != "" {
 		return id // override process-global (parité loadCSRSeasonID)
 	}
+	if reg == nil {
+		reg = titlePkg.DefaultRegistry() // call-sites sans registre sous la main
+	}
 	desc := reg.Get(slug)
 	if desc == nil || !desc.HasCapability(titlePkg.CapRanked) {
 		slog.DebugContext(ctx, "csr_season.degraded", "title", slug, "reason", "cap_ranked_absent")

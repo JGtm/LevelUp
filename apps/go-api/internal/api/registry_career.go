@@ -37,7 +37,7 @@ func (r *ServiceRegistry) Career(ctx context.Context, slug string) (port.CareerS
 	if pdb.Metadata != nil {
 		csrSeasonID := ""
 		if r.cfg != nil {
-			csrSeasonID = r.cfg.CurrentCSRSeasonID
+			csrSeasonID = r.cfg.CSRSeasonIDForTitle(ctx, pdb.TitleSlug, nil)
 		}
 		careerRepo = careerRepo.WithCSRThresholds(duckdb.NewCSRThresholdsRepo(pdb.Metadata), csrSeasonID)
 	}
@@ -73,8 +73,10 @@ func (r *ServiceRegistry) Career(ctx context.Context, slug string) (port.CareerS
 	if r.seasonsCatalog != nil {
 		svc = svc.WithSeasonsCatalog(r.seasonsCatalog)
 	}
-	if r.cfg != nil && r.cfg.CurrentCSRSeasonID != "" {
-		svc = svc.WithCSRSeasonID(r.cfg.CurrentCSRSeasonID)
+	if r.cfg != nil {
+		if id := r.cfg.CSRSeasonIDForTitle(ctx, pdb.TitleSlug, nil); id != "" {
+			svc = svc.WithCSRSeasonID(id)
+		}
 	}
 	return svc, nil
 }

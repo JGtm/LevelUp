@@ -267,7 +267,7 @@ func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) 
 	homeRepo := r.newHomeRepo(pdb)
 	csrSeasonID := ""
 	if r.cfg != nil {
-		csrSeasonID = r.cfg.CurrentCSRSeasonID
+		csrSeasonID = r.cfg.CSRSeasonIDForTitle(ctx, pdb.TitleSlug, nil)
 	}
 	var seasons []service.SeasonCatalogEntry
 	if r.seasonsCatalog != nil {
@@ -540,7 +540,8 @@ func (r *ServiceRegistry) newHomeRepo(pdb *duckdb.PlayerDB) *duckdb.HomeRepo {
 	if pdb.Metadata != nil {
 		csrSeasonID := ""
 		if r.cfg != nil {
-			csrSeasonID = r.cfg.CurrentCSRSeasonID
+			// newHomeRepo n'a pas de ctx en paramètre ; le titre vient du pdb.
+			csrSeasonID = r.cfg.CSRSeasonIDForTitle(context.Background(), pdb.TitleSlug, nil)
 		}
 		repo = repo.WithCSRThresholds(duckdb.NewCSRThresholdsRepo(pdb.Metadata), csrSeasonID)
 	}
@@ -695,7 +696,7 @@ func (r *ServiceRegistry) Compare(ctx context.Context, slug string) (port.Compar
 	).WithLiveIdentity(r.newCareerLiveService(pdb, r.newHomeRepo(pdb)))
 	csrSeasonID := ""
 	if r.cfg != nil {
-		csrSeasonID = r.cfg.CurrentCSRSeasonID
+		csrSeasonID = r.cfg.CSRSeasonIDForTitle(ctx, pdb.TitleSlug, nil)
 	}
 	svc = svc.WithCSR(r.newExplorerCSRProvider(), csrSeasonID)
 	// Catalogue de rangs carrière (même source que le profil de combat) pour
