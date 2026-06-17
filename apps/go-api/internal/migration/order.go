@@ -200,8 +200,27 @@ func canonicalRank(name string) int {
 
 // sortByCanonicalOrder réordonne les migrations selon canonicalOrder (tri
 // stable : les inconnus gardent leur ordre relatif d'entrée, en fin de liste).
+// Utilisé par le chemin par défaut (Halo) ; un titre non-défaut passe son propre
+// ordre via sortByOrder.
 func sortByCanonicalOrder(ms []Migration) {
+	sortByOrder(canonicalOrder, ms)
+}
+
+// sortByOrder réordonne ms selon l'ordre des noms dans `order` (tri stable ; les
+// inconnus vont en fin, ordre relatif préservé). Généralise sortByCanonicalOrder
+// pour permettre à un TitleMigrationSet d'imposer SON propre ordre (PMT-9).
+func sortByOrder(order []string, ms []Migration) {
+	rank := make(map[string]int, len(order))
+	for i, n := range order {
+		rank[n] = i
+	}
+	rankOf := func(name string) int {
+		if idx, ok := rank[name]; ok {
+			return idx
+		}
+		return len(order)
+	}
 	sort.SliceStable(ms, func(i, j int) bool {
-		return canonicalRank(ms[i].Name) < canonicalRank(ms[j].Name)
+		return rankOf(ms[i].Name) < rankOf(ms[j].Name)
 	})
 }
