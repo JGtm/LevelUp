@@ -389,6 +389,54 @@ func (e TitleSummaryStatus) Valid() bool {
 	}
 }
 
+// Defines values for GetAdminMonitoringDataQualityIssuesParamsKind.
+const (
+	OrphanPlaylists   GetAdminMonitoringDataQualityIssuesParamsKind = "orphan_playlists"
+	OrphanXuids       GetAdminMonitoringDataQualityIssuesParamsKind = "orphan_xuids"
+	RawUuids          GetAdminMonitoringDataQualityIssuesParamsKind = "raw_uuids"
+	UntranslatedModes GetAdminMonitoringDataQualityIssuesParamsKind = "untranslated_modes"
+)
+
+// Valid indicates whether the value is a known member of the GetAdminMonitoringDataQualityIssuesParamsKind enum.
+func (e GetAdminMonitoringDataQualityIssuesParamsKind) Valid() bool {
+	switch e {
+	case OrphanPlaylists:
+		return true
+	case OrphanXuids:
+		return true
+	case RawUuids:
+		return true
+	case UntranslatedModes:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAdminMonitoringLogsTailParamsLevel.
+const (
+	Debug GetAdminMonitoringLogsTailParamsLevel = "debug"
+	Error GetAdminMonitoringLogsTailParamsLevel = "error"
+	Info  GetAdminMonitoringLogsTailParamsLevel = "info"
+	Warn  GetAdminMonitoringLogsTailParamsLevel = "warn"
+)
+
+// Valid indicates whether the value is a known member of the GetAdminMonitoringLogsTailParamsLevel enum.
+func (e GetAdminMonitoringLogsTailParamsLevel) Valid() bool {
+	switch e {
+	case Debug:
+		return true
+	case Error:
+		return true
+	case Info:
+		return true
+	case Warn:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetCareerHighlightMatchesParamsExperience.
 const (
 	GetCareerHighlightMatchesParamsExperienceAll      GetCareerHighlightMatchesParamsExperience = "all"
@@ -516,6 +564,7 @@ type AssociatedMediaItem struct {
 	FileId          string     `json:"file_id"`
 	FileName        string     `json:"file_name"`
 	FilePath        string     `json:"file_path"`
+	Kind            string     `json:"kind"`
 	Liked           *bool      `json:"liked,omitempty"`
 	ThumbnailUrl    *string    `json:"thumbnail_url,omitempty"`
 }
@@ -1154,9 +1203,8 @@ type MatchEncounterRow struct {
 
 // MatchExpectedStats defines model for MatchExpectedStats.
 type MatchExpectedStats struct {
-	ExpectedDeaths  *float32 `json:"expected_deaths,omitempty"`
-	ExpectedKills   *float32 `json:"expected_kills,omitempty"`
-	HasExpectedData *bool    `json:"has_expected_data,omitempty"`
+	ExpectedDeaths *float32 `json:"expected_deaths,omitempty"`
+	ExpectedKills  *float32 `json:"expected_kills,omitempty"`
 }
 
 // MatchHighlightEvent defines model for MatchHighlightEvent.
@@ -1675,6 +1723,58 @@ type NotFound = ApiErrorSchema
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = ApiErrorSchema
 
+// GetAdminInvariantsParams defines parameters for GetAdminInvariants.
+type GetAdminInvariantsParams struct {
+	Title *string `form:"title,omitempty" json:"title,omitempty"`
+}
+
+// GetAdminMonitoringConvergenceParams defines parameters for GetAdminMonitoringConvergence.
+type GetAdminMonitoringConvergenceParams struct {
+	Title *string `form:"title,omitempty" json:"title,omitempty"`
+}
+
+// GetAdminMonitoringDataQualityParams defines parameters for GetAdminMonitoringDataQuality.
+type GetAdminMonitoringDataQualityParams struct {
+	Title *string `form:"title,omitempty" json:"title,omitempty"`
+}
+
+// GetAdminMonitoringDataQualityIssuesParams defines parameters for GetAdminMonitoringDataQualityIssues.
+type GetAdminMonitoringDataQualityIssuesParams struct {
+	Title *string                                       `form:"title,omitempty" json:"title,omitempty"`
+	Kind  GetAdminMonitoringDataQualityIssuesParamsKind `form:"kind" json:"kind"`
+	Limit *int                                          `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// GetAdminMonitoringDataQualityIssuesParamsKind defines parameters for GetAdminMonitoringDataQualityIssues.
+type GetAdminMonitoringDataQualityIssuesParamsKind string
+
+// GetAdminMonitoringJobsParams defines parameters for GetAdminMonitoringJobs.
+type GetAdminMonitoringJobsParams struct {
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// GetAdminMonitoringLogsTailParams defines parameters for GetAdminMonitoringLogsTail.
+type GetAdminMonitoringLogsTailParams struct {
+	Module   string                                 `form:"module" json:"module"`
+	N        *int                                   `form:"n,omitempty" json:"n,omitempty"`
+	Level    *GetAdminMonitoringLogsTailParamsLevel `form:"level,omitempty" json:"level,omitempty"`
+	Contains *string                                `form:"contains,omitempty" json:"contains,omitempty"`
+	Since    *time.Time                             `form:"since,omitempty" json:"since,omitempty"`
+}
+
+// GetAdminMonitoringLogsTailParamsLevel defines parameters for GetAdminMonitoringLogsTail.
+type GetAdminMonitoringLogsTailParamsLevel string
+
+// GetAdminMonitoringOverviewParams defines parameters for GetAdminMonitoringOverview.
+type GetAdminMonitoringOverviewParams struct {
+	Title *string `form:"title,omitempty" json:"title,omitempty"`
+}
+
+// GetAdminTokenHealthParams defines parameters for GetAdminTokenHealth.
+type GetAdminTokenHealthParams struct {
+	Title *string `form:"title,omitempty" json:"title,omitempty"`
+}
+
 // SearchGamertagsParams defines parameters for SearchGamertags.
 type SearchGamertagsParams struct {
 	// Q Requête de recherche (min. 2 caractères)
@@ -1765,6 +1865,9 @@ type GetTitleFieldMappingsParamsLocale string
 
 // PostEngagementTimeseriesJSONRequestBody defines body for PostEngagementTimeseries for application/json ContentType.
 type PostEngagementTimeseriesJSONRequestBody PostEngagementTimeseriesJSONBody
+
+// FiltersMatchIDsJSONRequestBody defines body for FiltersMatchIDs for application/json ContentType.
+type FiltersMatchIDsJSONRequestBody = FilterContextInput
 
 // ResolveFiltersJSONRequestBody defines body for ResolveFilters for application/json ContentType.
 type ResolveFiltersJSONRequestBody = FilterContextInput

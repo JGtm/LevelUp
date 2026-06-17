@@ -78,7 +78,11 @@ interface ExpectedCardsSectionProps {
 }
 
 export function ExpectedCardsSection({ kpis, expectedStats }: ExpectedCardsSectionProps) {
-  const { has_expected_data, expected_kills, expected_deaths, expected_assists } = expectedStats
+  const { expected_kills, expected_deaths, expected_assists } = expectedStats
+  // hasExpected dérivé de la présence d'au moins une stat attendue. Le champ
+  // has_expected_data a été retiré du contrat (Phase 3a-B) : la dérivation est
+  // strictement équivalente (= ExpectedKills!=nil || ... côté Go).
+  const hasExpected = expected_kills != null || expected_deaths != null || expected_assists != null
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string): string =>
     fieldMappings?.fields[key]?.label ?? key
@@ -89,21 +93,21 @@ export function ExpectedCardsSection({ kpis, expectedStats }: ExpectedCardsSecti
         actual={kpis.kills}
         expected={expected_kills}
         lowerIsBetter={false}
-        hasData={has_expected_data}
+        hasData={hasExpected}
       />
       <StatExpectedCard
         label={labelOf('deaths')}
         actual={kpis.deaths}
         expected={expected_deaths}
         lowerIsBetter={true}
-        hasData={has_expected_data}
+        hasData={hasExpected}
       />
       <StatExpectedCard
         label={labelOf('assists')}
         actual={kpis.assists}
         expected={expected_assists}
         lowerIsBetter={false}
-        hasData={has_expected_data}
+        hasData={hasExpected}
       />
     </div>
   )

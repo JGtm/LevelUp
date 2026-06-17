@@ -41,7 +41,7 @@
     ],
     "citations": [],
     "expected_stats": {
-      "has_expected_data": false
+      "has_hist_avg": false
     }
   },
   "combat_tab": {

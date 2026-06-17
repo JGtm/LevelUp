@@ -120,7 +120,11 @@ interface MatchKdaExpectedChartProps {
 }
 
 export function MatchKdaExpectedChart({ kpis, expectedStats, t }: MatchKdaExpectedChartProps) {
-  const hasExpected = expectedStats.has_expected_data
+  // has_expected_data retiré du contrat (Phase 3a-B) : dérivation strictement équivalente.
+  const hasExpected =
+    expectedStats.expected_kills != null ||
+    expectedStats.expected_deaths != null ||
+    expectedStats.expected_assists != null
   const hasHist = expectedStats.has_hist_avg ?? false
 
   const buildOption = useCallback(

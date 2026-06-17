@@ -147,7 +147,6 @@ type MatchPersonalResult struct {
 // MatchExpectedStats : comparaison réel vs attendu + moyennes historiques.
 // ExpectedAssists est calculé à la volée depuis assists_model_coefs (slope×(personal_score+shots_hit)+intercept).
 type MatchExpectedStats struct {
-	HasExpectedData bool     `json:"has_expected_data"`
 	ExpectedKills   *float64 `json:"expected_kills,omitempty"`
 	ExpectedDeaths  *float64 `json:"expected_deaths,omitempty"`
 	ExpectedAssists *float64 `json:"expected_assists,omitempty"`

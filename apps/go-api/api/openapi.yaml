@@ -4459,9 +4459,6 @@ components:
     MatchExpectedStats:
       type: object
       properties:
-        has_expected_data:
-          type: boolean
-          default: false
         expected_kills:
           type: number
           format: float
