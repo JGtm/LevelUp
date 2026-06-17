@@ -1,3 +1,15 @@
+## [2026-06-17] Couverture-max #6+#7 — PMT-11 footer/backfill + EXT-2 : décisions de report (latent, justifié)
+
+**Statut** : les 2 derniers axes du registre sont des reports DOCUMENTÉS (cosmétique-latent, bloqués sur infra absente / vraie valeur multi-titre uniquement). Clôture honnête de la passe couverture-max.
+
+**PMT-11 footer/backfill (MT-26 reste)** — DIFFÉRÉ : les outcomes Discord sont déjà title-aware (commit b571f1df5). Le footer (« LevelUp · Halo Infinite Stats ») et les libellés backfill (LUSR/CSR/médailles/PvE) restent Halo car (1) **aucun manifeste i18n par titre n'existe** (prérequis du seam) ; (2) le footer est dérivable de `TitleDescriptor.Name` MAIS les embeds (BuildSyncEmbed/media/friend/reauth) ne portent pas de titre → threading byte-identique pour un seul titre ; (3) les libellés backfill sont **title-spécifiques** (un 2e titre peut ne pas avoir LUSR/CSR) → capability-gating requis quand un 2e titre existe. Report aligné sur la reco du workflow (« candidat décision-documentée plutôt qu'impl »).
+
+**EXT-2 (MT-07/15/14/19, career/tiers 272 rangs + chaîne LUSR/poids + extraction JSON + PrestigeBundle)** — DIFFÉRÉ : verdict workflow « COSMÉTIQUE/LATENT — vraie valeur SEULEMENT si un 2e titre réel arrive ET déclare une grille LUSR différente / catégories de modes divergentes ». C'est le plus gros axe (≈16 étapes, extension Phase 2 — services canonical). Forcer ce refactor maintenant = churn massif + risque (chaîne LUSR/skill_config touchée par l'irréversible #1 reorder) pour ZÉRO valeur single-titre. À faire quand Phase 2 est mûre + un 2e titre divergent justifie l'effort.
+
+**Doctrine appliquée** : « do all » ≠ churner du byte-identique sans valeur. La couverture RENTABLE du registre est harvestée (PMT-6/13/16-17/5-Go/7-read-path fermés cette passe) ; le reste est du câblage latent débloqué uniquement par un vrai 2e titre — reporté avec rationale, comme MT-10/18, PMT-7 write-path, PMT-5 SQL sites, PMT-4 PR-3 write-path.
+
+---
+
 ## [2026-06-17] Couverture-max #5 — PMT-7 (MT-03) : leaderboard CSR mondial par titre (read-path complet + oracle b)
 
 **Statut** : read-path LIVRÉ (le « fil coupé » reconnecté de bout en bout) + prouvé. Write-path (writers/cron/CLIs) différé (byte-identique, path-isolé).
