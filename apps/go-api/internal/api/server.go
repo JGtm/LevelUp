@@ -1307,7 +1307,8 @@ func NewRouter(
 
 		// Endpoints P1 : répertoire gamertags
 		// Sprint 49 : route inconditionnelle — retourne 503 si shared DB absente.
-		r.Get("/directory/gamertags/search", handlers.NewGamertagHandler(gamertagSvc).Search)
+		// Migré vers Huma (Phase 3b, shape query-param ?q=).
+		registerGamertagHuma(humaAPI, handlers.NewGamertagHandler(gamertagSvc))
 
 		// Watcher présence Xbox RTA — RequireAuth + RequireAdmin.
 		watcherAttempts := auth_platform.NewWatcherAttemptStore()
