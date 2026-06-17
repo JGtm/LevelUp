@@ -223,7 +223,7 @@ func buildMediaEmbed(rows []mediaRow, gamertag, lang string) Embed {
 		Title:       title,
 		Description: desc,
 		Color:       colorBlurple,
-		Footer:      &EmbedFooter{Text: T("discord_footer", lang)},
+		Footer:      &EmbedFooter{Text: discordFooterText()},
 		Timestamp:   time.Now().UTC().Format(time.RFC3339),
 	}
 
@@ -287,7 +287,7 @@ func NotifyFriendAdded(cfg NotifyConfig, gamertag string) {
 		Title:       T("discord_friend_added_title", cfg.Lang),
 		Description: T("discord_friend_added_desc", cfg.Lang, "gamertag", gamertag),
 		Color:       colorBlurple,
-		Footer:      &EmbedFooter{Text: T("discord_footer", cfg.Lang)},
+		Footer:      &EmbedFooter{Text: discordFooterText()},
 		Timestamp:   time.Now().UTC().Format(time.RFC3339),
 	}
 	if SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}}) {
@@ -322,7 +322,7 @@ func NotifyFriendSyncCompleted(cfg NotifyConfig, slug string, promoted int64) {
 		Title:       T("discord_friend_sync_title", cfg.Lang),
 		Description: T(descKey, cfg.Lang, "promoted", promoted, "slug", slug),
 		Color:       colorSuccess,
-		Footer:      &EmbedFooter{Text: T("discord_footer", cfg.Lang)},
+		Footer:      &EmbedFooter{Text: discordFooterText()},
 		Timestamp:   time.Now().UTC().Format(time.RFC3339),
 	}
 	if SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}}) {

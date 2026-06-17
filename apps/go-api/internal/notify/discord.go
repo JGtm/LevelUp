@@ -173,7 +173,7 @@ func NotifyReauthRequired(cfg NotifyConfig, gamertag string) {
 		Title:       T("discord_reauth_title", cfg.Lang),
 		Description: T("discord_reauth_desc", cfg.Lang, "gamertag", gamertag),
 		Color:       0xE0A800, // ambre — avertissement
-		Footer:      &EmbedFooter{Text: T("discord_footer", cfg.Lang)},
+		Footer:      &EmbedFooter{Text: discordFooterText()},
 	}}})
 }
 
@@ -270,9 +270,10 @@ var discordStrings = map[string]map[string]string{
 		"en": "Token for **{gamertag}** expired — sync is paused. Reconnect your Xbox account in LevelUp.",
 	},
 
-	"discord_last_match":    {"fr": "Dernier match", "en": "Last match"},
-	"discord_ranked_tag":    {"fr": "Classé", "en": "Ranked"},
-	"discord_footer":        {"fr": "LevelUp · Halo Infinite Stats", "en": "LevelUp · Halo Infinite Stats"},
+	"discord_last_match": {"fr": "Dernier match", "en": "Last match"},
+	"discord_ranked_tag": {"fr": "Classé", "en": "Ranked"},
+	// discord_footer retiré : le footer est dérivé du nom du titre (descripteur),
+	// cf. discordFooterText() dans labels.go (source unique, évite la 2e copie).
 	"discord_title":         {"fr": "🎮  LevelUp — {op}", "en": "🎮  LevelUp — {op}"},
 	"discord_time_range":    {"fr": "🕐  `{t_start}`  →  `{t_end}`", "en": "🕐  `{t_start}`  →  `{t_end}`"},
 	"discord_kda":           {"fr": "{k}F / {d}D / {a}A", "en": "{k}K / {d}D / {a}A"},

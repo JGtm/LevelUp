@@ -9,7 +9,30 @@
 // absente → dégradation propre vers les libellés Halo.
 package notify
 
-import "levelup/go-api/internal/games/mappings"
+import (
+	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/mappings"
+)
+
+// defaultTitleDisplayName retourne le nom d'affichage du titre par défaut depuis
+// le registre (source UNIQUE du nom du titre). Failsafe défensif vers "Halo
+// Infinite" si le descripteur est absent — en pratique jamais atteint, le
+// registre par défaut s'auto-initialise avec le descripteur Halo.
+func defaultTitleDisplayName() string {
+	if d := titlePkg.DefaultRegistry().Get(titlePkg.DefaultSlug); d != nil && d.Name != "" {
+		return d.Name
+	}
+	return "Halo Infinite"
+}
+
+// discordFooterText construit le footer des embeds Discord (« LevelUp · {nom}
+// Stats ») à partir du nom du titre par défaut — au lieu d'une 2e copie codée en
+// dur dans la map i18n. Locale-indépendant (footer identique FR/EN). Seam PMT-11 :
+// les embeds ne portent pas encore de titre (threading différé) ; quand il
+// arrivera, passer le nom du titre courant en paramètre ici.
+func discordFooterText() string {
+	return "LevelUp · " + defaultTitleDisplayName() + " Stats"
+}
 
 // NotifyLabels expose les libellés title-aware nécessaires au rendu des embeds.
 // Périmètre minimal de cette phase : les outcomes (les seuls dont le manifeste
