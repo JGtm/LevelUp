@@ -140,48 +140,9 @@ func TestWriteJSON_PreservesValidFloats(t *testing.T) {
 	}
 }
 
-func TestSanitizeFloatsForJSON_ReportsPaths(t *testing.T) {
-	nan := math.NaN()
-	payload := sanitizePayload{
-		Score:    nan,
-		Accuracy: math.Inf(1),
-		KDA:      &nan,
-		Axes:     []float64{1.0, nan},
-		ByPlayer: map[string]float64{"alice": nan},
-		Nested:   sanitizeNested{Ratio: nan},
-	}
-	_, paths := sanitizeFloatsForJSON(payload)
-	if len(paths) == 0 {
-		t.Fatalf("expected paths to be reported, got none")
-	}
-	// Each NaN/Inf source should appear (order not guaranteed, no duplicate check).
-	expectedSubstrings := []string{".Score", ".Accuracy", ".KDA", ".Axes[1]", ".ByPlayer[alice]", ".Nested.Ratio"}
-	joined := ""
-	for _, p := range paths {
-		joined += p + "|"
-	}
-	for _, want := range expectedSubstrings {
-		if !containsSubstr(joined, want) {
-			t.Errorf("expected path containing %q, got: %v", want, paths)
-		}
-	}
-}
-
-func containsSubstr(s, substr string) bool {
-	for i := 0; i+len(substr) <= len(s); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
-
-func TestSanitizeFloatsForJSON_NilSafe(t *testing.T) {
-	out, paths := sanitizeFloatsForJSON(nil)
-	if out != nil || paths != nil {
-		t.Fatalf("nil input must return (nil, nil), got (%v, %v)", out, paths)
-	}
-}
+// NB : les tests unitaires directs de la sanitisation (paths reportés, nil-safe)
+// vivent désormais dans internal/api/humacore (la logique y a été déplacée).
+// Ici on garde la validation d'INTÉGRATION via writeJSON (qui appelle humacore).
 
 func TestWriteJSON_PointerArgumentStillWorks(t *testing.T) {
 	w := httptest.NewRecorder()

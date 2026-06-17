@@ -1,0 +1,228 @@
+// Package humacore — socle partagé de la migration Huma (Phase 3b).
+//
+// Contient l'infrastructure réutilisable par TOUTES les routes migrées, quel que
+// soit leur package d'enregistrement :
+//   - le package api (routes inline de server.go) ;
+//   - le package handlers (handlers qui s'auto-enregistrent, ex. ProgressionHandler.Mount).
+//
+// humacore n'importe AUCUN package du projet (seulement huma/humachi/chi + stdlib)
+// pour rester sans cycle : handlers et api l'importent tous les deux.
+//
+// Garanties contractuelles (identiques à handlers.writeJSON / writeError) :
+//   - corps JSON byte-identique à writeJSON : SanitizeFloatsForJSON (NaN/Inf
+//     neutralisés) → json.Marshal (HTML-escaping) → trailing "\n" ;
+//   - format d'erreur {code, message, retryable} avec « internal error » générique
+//     sur status >= 500 (pas de fuite d'info interne) ;
+//   - PAS de champ $schema injecté (CreateHooks nil) ;
+//   - aucune route OpenAPI/docs/schemas auto-enregistrée sur chi (paths vides) tant
+//     que l'openapi.yaml manuel reste la source de vérité contractuelle.
+package humacore
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"math"
+	"net/http"
+	"reflect"
+	"strconv"
+
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/danielgtaylor/huma/v2/adapters/humachi"
+	"github.com/go-chi/chi/v5"
+)
+
+// ---------------------------------------------------------------------------
+// Sanitisation NaN/Inf (déplacée depuis handlers.sanitizeFloatsForJSON).
+// ---------------------------------------------------------------------------
+
+// SanitizeFloatsForJSON parcourt v via reflect et neutralise toute valeur
+// float64/float32 NaN ou +/-Inf (non représentable en JSON).
+//
+// Pour *float64/*float32 NaN/Inf, le pointeur est mis à nil (omitempty disparaît).
+// Pour float64/float32 NaN/Inf direct, la valeur est mise à 0.
+// Retourne (sanitized, paths) — paths = chemins des champs neutralisés (log).
+func SanitizeFloatsForJSON(v interface{}) (interface{}, []string) {
+	if v == nil {
+		return nil, nil
+	}
+	rv := reflect.ValueOf(v)
+	var paths []string
+	if rv.Kind() == reflect.Pointer {
+		if rv.IsNil() {
+			return v, nil
+		}
+		walkSanitize(rv, "", &paths)
+		return v, paths
+	}
+	ptr := reflect.New(rv.Type())
+	ptr.Elem().Set(rv)
+	walkSanitize(ptr, "", &paths)
+	return ptr.Elem().Interface(), paths
+}
+
+func walkSanitize(v reflect.Value, path string, paths *[]string) {
+	if !v.IsValid() {
+		return
+	}
+	switch v.Kind() {
+	case reflect.Pointer:
+		if v.IsNil() {
+			return
+		}
+		elem := v.Elem()
+		if elem.Kind() == reflect.Float64 || elem.Kind() == reflect.Float32 {
+			if math.IsNaN(elem.Float()) || math.IsInf(elem.Float(), 0) {
+				if v.CanSet() {
+					v.Set(reflect.Zero(v.Type())) // pointer → nil
+					*paths = append(*paths, path+"*")
+				}
+			}
+			return
+		}
+		walkSanitize(elem, path, paths)
+	case reflect.Interface:
+		if v.IsNil() {
+			return
+		}
+		walkSanitize(v.Elem(), path, paths)
+	case reflect.Struct:
+		t := v.Type()
+		for i := 0; i < v.NumField(); i++ {
+			f := v.Field(i)
+			if !f.CanSet() {
+				continue // champ non-exporté → ignorer
+			}
+			walkSanitize(f, path+"."+t.Field(i).Name, paths)
+		}
+	case reflect.Slice, reflect.Array:
+		for i := 0; i < v.Len(); i++ {
+			walkSanitize(v.Index(i), path+"["+strconv.Itoa(i)+"]", paths)
+		}
+	case reflect.Map:
+		for _, k := range v.MapKeys() {
+			val := v.MapIndex(k)
+			keyStr := fmt.Sprintf("%v", k.Interface())
+			subPath := path + "[" + keyStr + "]"
+			if val.Kind() == reflect.Float64 || val.Kind() == reflect.Float32 {
+				if math.IsNaN(val.Float()) || math.IsInf(val.Float(), 0) {
+					v.SetMapIndex(k, reflect.Zero(val.Type()))
+					*paths = append(*paths, subPath)
+				}
+				continue
+			}
+			ptr := reflect.New(val.Type())
+			ptr.Elem().Set(val)
+			walkSanitize(ptr, subPath, paths)
+			v.SetMapIndex(k, ptr.Elem())
+		}
+	case reflect.Float64, reflect.Float32:
+		if v.CanSet() && (math.IsNaN(v.Float()) || math.IsInf(v.Float(), 0)) {
+			v.SetFloat(0)
+			*paths = append(*paths, path)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Format JSON byte-identique à handlers.writeJSON.
+// ---------------------------------------------------------------------------
+
+// JSONFormat reproduit EXACTEMENT la sérialisation de handlers.writeJSON :
+// sanitisation NaN/Inf en amont, json.Marshal (HTML-escaping activé, comme
+// writeJSON — pas json.Encoder qui le désactive), trailing "\n".
+var JSONFormat = huma.Format{
+	Marshal: func(w io.Writer, v any) error {
+		sanitized, _ := SanitizeFloatsForJSON(v)
+		body, err := json.Marshal(sanitized)
+		if err != nil {
+			return err
+		}
+		if _, err := w.Write(body); err != nil {
+			return err
+		}
+		_, err = w.Write([]byte("\n"))
+		return err
+	},
+	Unmarshal: json.Unmarshal,
+}
+
+// ---------------------------------------------------------------------------
+// Modèle d'erreur (identique à handlers.writeError).
+// ---------------------------------------------------------------------------
+
+// apiError reproduit le contrat d'erreur de handlers.writeError : corps JSON
+// {code, message, retryable}, message générique « internal error » sur 5xx.
+// Implémente huma.StatusError → Huma le sérialise tel quel (erreurs handler ET
+// erreurs de validation Huma via NewError override).
+type apiError struct {
+	status    int
+	Code      string `json:"code"`
+	Message   string `json:"message"`
+	Retryable bool   `json:"retryable"`
+}
+
+func (e *apiError) Error() string  { return e.Message }
+func (e *apiError) GetStatus() int { return e.status }
+
+// NewError construit une erreur Huma au contrat writeError (équivalent de
+// writeError(ctx, w, status, code, message)).
+func NewError(status int, code, message string) huma.StatusError {
+	clientMessage := message
+	if status >= http.StatusInternalServerError {
+		clientMessage = "internal error"
+	}
+	return &apiError{status: status, Code: code, Message: clientMessage, Retryable: status >= http.StatusInternalServerError}
+}
+
+// ErrorCodeForStatus mappe un status HTTP vers un code stable pour les erreurs
+// générées par Huma lui-même (validation d'input). Les handlers passent leur
+// propre code via NewError.
+func ErrorCodeForStatus(status int) string {
+	switch status {
+	case http.StatusBadRequest:
+		return "bad_request"
+	case http.StatusUnauthorized:
+		return "unauthorized"
+	case http.StatusForbidden:
+		return "forbidden"
+	case http.StatusNotFound:
+		return "not_found"
+	case http.StatusUnprocessableEntity:
+		return "validation_error"
+	default:
+		if status >= http.StatusInternalServerError {
+			return "internal_error"
+		}
+		return "error"
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Factory d'API Huma coexistante avec chi.
+// ---------------------------------------------------------------------------
+
+// NewAPI crée une API Huma adossée au routeur chi `r` (qui peut être le routeur
+// racine OU un sous-routeur d'un r.Route/r.Group — les routes Huma héritent alors
+// du middleware du sous-groupe et lisent les path params parents, cf.
+// TestHumaNestedSubrouterProbe).
+//
+// Config : format byte-identique writeJSON, pas de $schema, aucune route auto
+// (OpenAPI/docs/schemas) — l'openapi.yaml MANUEL reste source de vérité.
+func NewAPI(r chi.Router) huma.API {
+	config := huma.DefaultConfig("LevelUp API", "1.0.0")
+	config.Formats = map[string]huma.Format{
+		"application/json": JSONFormat,
+		"json":             JSONFormat,
+	}
+	config.OpenAPIPath = ""
+	config.DocsPath = ""
+	config.SchemasPath = ""
+	config.CreateHooks = nil
+	// huma.NewError est un var package-level (une seule instance par process) ;
+	// override idempotent (même valeur quelle que soit l'API).
+	huma.NewError = func(status int, msg string, _ ...error) huma.StatusError {
+		return NewError(status, ErrorCodeForStatus(status), msg)
+	}
+	return humachi.New(r, config)
+}

@@ -1,3 +1,23 @@
+## [2026-06-18] Phase 3b — socle `humacore` + pattern sous-routeur imbriqué + 1er handler auto-enregistré (progression) — Complété
+
+**Statut** : Complété. `go build ./...` OK, gofmt/vet propres. Verts : `humacore` (5 tests), `internal/api` (contract + goldens + probe imbriqué), **golden d'intégration progression** (`-tags integration` : 3 routes + 404 bout-en-bout via chi+Huma). Mêmes 2 échecs pré-existants device-flow E2E (réseau Xbox Live hors sandbox).
+
+**Contexte (workflow inventaire ultracode, 13 agents)** : classification des 169 routes → **trivial=90, needs_care=67, exclude=12**. Exclude = redirects OAuth, binary/image/file serving, CSV export, multipart upload, catch-all SPA (restent chi). La cartographie a révélé que la majorité des routes trivial sont sous des **sous-routeurs à middleware** (`/players/{player_slug}` ownership+title, sous-groupes capability, `/admin`, `/watcher`) avec **path param parent** — mes 3 pilotes (top-level) ne l'avaient pas exposé.
+
+**Go/no-go sous-routeur imbriqué PROUVÉ** ([huma_nested_probe_test.go](../apps/go-api/internal/api/huma_nested_probe_test.go)) : une route Huma montée sur un sous-routeur chi (1) lit le path param PARENT `{player_slug}`, (2) **hérite du middleware du sous-groupe** (pas de bypass ownership), (3) ne panique pas à l'enregistrement malgré le param dans le mount parent. C'est le déblocage de ~70 routes player-scoped.
+
+**Socle `humacore`** ([internal/api/humacore](../apps/go-api/internal/api/humacore/humacore.go)) : package SANS import projet (huma/humachi/chi + stdlib), donc importable par `api` ET `handlers` sans cycle. Regroupe `SanitizeFloatsForJSON` (déplacé de handlers), `JSONFormat` (byte-identique writeJSON), modèle d'erreur (`NewError`/`ErrorCodeForStatus`, contrat writeError), et la factory `NewAPI(r chi.Router)`. `api/huma_setup.go` devient des alias minces. `handlers.writeJSON`/`writeJSONCached` consomment `humacore.SanitizeFloatsForJSON` (source unique, plus de duplication). Tests sanitize directs déplacés en `humacore_test.go` + ajout tests erreur/format.
+
+**1er handler auto-enregistré migré — ProgressionHandler** (`GET /players/{player_slug}/{streaks,records,milestones}`) : `Mount(r)` crée `humacore.NewAPI(r)` et enregistre 3 `huma.Get` IN-PACKAGE (accès aux DTO non-exportés `streaksResponse`/`streakDTO` — impossible depuis le package `api`). Méthodes refondues en `(ctx, *Input) (*Output, error)` ; `resolveOr404` → `resolvePlayer` (renvoie `humacore.NewError(404)`). Le golden d'intégration EXISTANT (`progression_test.go`, mount prod-like) valide le contrat sans réécriture. Note : `history_limit` passe d'`atoi` (0 sur invalide) à int Huma (400 sur invalide) — plus strict, sans incidence réelle.
+
+**Pattern de migration consolidé (2 variantes structurelles prouvées)** :
+- **inline server.go / top-level** → wrapper dans `api/huma_routes.go` sur le `humaAPI` existant.
+- **sous-routeur à middleware (player/admin/watcher) ou handler auto-enregistré** → `humacore.NewAPI(subRouter)` DANS le sous-groupe ; Input avec `path:"player_slug"` ; registration in-package si DTO non-exportés.
+
+**Reste** : ~85 routes trivial (fan-out codegen par groupe de middleware), puis needs_care au cas par cas. Étape finale : bascule openapi.yaml généré.
+
+**Conclusion / prochaine étape** : socle + 2 patterns structurels prouvés (5 routes migrées : changelog, jobs, gamertag, progression×3). Fan-out codegen sur les groupes restants avec `humacore` comme boîte à outils. Pas de PR avant autorisation.
+
 ## [2026-06-17] Phase 3b — 3e route migrée (query-param) + recensement shape cached — Complété
 
 **Statut** : Complété (increment item 1). `go build ./...` OK, gofmt/vet propres, golden `TestRegisterGamertagHuma_ContractPreserved` + tout `contract_test` + goldens changelog/jobs/coexistence verts. Mêmes 2 échecs pré-existants device-flow E2E (réseau Xbox Live hors sandbox), sans rapport.
