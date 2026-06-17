@@ -1,91 +1,59 @@
-// Package handlers_test — changelog_test.go : tests ChangelogHandler.
+// Package handlers_test — changelog_test.go : tests de la logique de cache du
+// ChangelogHandler (Content). La route HTTP GET /changelog est migrée vers Huma
+// (Phase 3b) et testée au contrat dans internal/api (huma_routes_test.go).
 package handlers_test
 
 import (
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/go-chi/chi/v5"
-
 	"levelup/go-api/internal/api/handlers"
 )
 
-func TestChangelogHandler_OK(t *testing.T) {
-	dir := t.TempDir()
+func writeChangelog(t *testing.T, dir, content string) {
+	t.Helper()
 	docsDir := filepath.Join(dir, "docs")
 	if err := os.MkdirAll(docsDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	content := "# Changelog\n## v1.0\n- Initial release"
 	if err := os.WriteFile(filepath.Join(docsDir, "CHANGELOG.md"), []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
-
-	h := handlers.NewChangelogHandler(dir)
-	r := chi.NewRouter()
-	r.Get("/changelog", h.GetChangelog)
-
-	req := httptest.NewRequest(http.MethodGet, "/changelog", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
-	}
-	var resp map[string]string
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("invalid JSON: %v", err)
-	}
-	if resp["content"] != content {
-		t.Errorf("content mismatch: got %q", resp["content"])
-	}
 }
 
-func TestChangelogHandler_NotFound(t *testing.T) {
-	dir := t.TempDir() // pas de docs/CHANGELOG.md
-	h := handlers.NewChangelogHandler(dir)
-	r := chi.NewRouter()
-	r.Get("/changelog", h.GetChangelog)
-
-	req := httptest.NewRequest(http.MethodGet, "/changelog", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d", w.Code)
-	}
-}
-
-func TestChangelogHandler_CacheHit(t *testing.T) {
+func TestChangelogHandler_Content_OK(t *testing.T) {
 	dir := t.TempDir()
-	docsDir := filepath.Join(dir, "docs")
-	_ = os.MkdirAll(docsDir, 0o755)
-	_ = os.WriteFile(filepath.Join(docsDir, "CHANGELOG.md"), []byte("v1"), 0o600)
+	content := "# Changelog\n## v1.0\n- Initial release"
+	writeChangelog(t, dir, content)
 
-	h := handlers.NewChangelogHandler(dir)
-	r := chi.NewRouter()
-	r.Get("/changelog", h.GetChangelog)
-
-	// Premier appel → charge du disque
-	w1 := httptest.NewRecorder()
-	r.ServeHTTP(w1, httptest.NewRequest(http.MethodGet, "/changelog", nil))
-	if w1.Code != http.StatusOK {
-		t.Fatalf("first call: expected 200, got %d", w1.Code)
+	got, err := handlers.NewChangelogHandler(dir).Content()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
+	if got != content {
+		t.Errorf("content mismatch: got %q", got)
+	}
+}
 
-	// Modifier le fichier → le cache ne doit PAS relire immédiatement
-	_ = os.WriteFile(filepath.Join(docsDir, "CHANGELOG.md"), []byte("v2"), 0o600)
+func TestChangelogHandler_Content_NotFound(t *testing.T) {
+	got, err := handlers.NewChangelogHandler(t.TempDir()).Content()
+	if err == nil {
+		t.Fatalf("expected error for missing CHANGELOG.md, got content %q", got)
+	}
+}
 
-	w2 := httptest.NewRecorder()
-	r.ServeHTTP(w2, httptest.NewRequest(http.MethodGet, "/changelog", nil))
+func TestChangelogHandler_Content_CacheHit(t *testing.T) {
+	dir := t.TempDir()
+	writeChangelog(t, dir, "v1")
+	h := handlers.NewChangelogHandler(dir)
 
-	var resp map[string]string
-	_ = json.Unmarshal(w2.Body.Bytes(), &resp)
-	if resp["content"] != "v1" {
-		t.Error("expected cached value 'v1' on second call within TTL")
+	if got, _ := h.Content(); got != "v1" {
+		t.Fatalf("first call: got %q want v1", got)
+	}
+	// Modifier le fichier → le cache (TTL) ne doit PAS relire immédiatement.
+	writeChangelog(t, dir, "v2")
+	if got, _ := h.Content(); got != "v1" {
+		t.Error("expected cached 'v1' within TTL on second call")
 	}
 }
