@@ -5,7 +5,9 @@ import (
 	"testing"
 
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
+	"levelup/go-api/internal/games/halo_infinite/skillchain"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/sync"
 )
 
 // TestMain câble le provider de steps title-owned (halo_infinite) AVANT tous les tests
@@ -15,5 +17,8 @@ import (
 // E2E DuckDB des notifications ne trouvent pas leurs tables via RunForDB.
 func TestMain(m *testing.M) {
 	migration.SetTitleStepsProvider(halomigrations.StepsFor)
+	// MT-15 : des handlers atteignent sync.GetLUSRChain (placement match-history) →
+	// câbler le classifier (fail-loud par design).
+	sync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
 	os.Exit(m.Run())
 }

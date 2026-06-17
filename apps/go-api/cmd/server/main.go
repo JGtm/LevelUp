@@ -40,6 +40,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
+	"levelup/go-api/internal/games/halo_infinite/skillchain"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/observability"
@@ -1398,6 +1399,9 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 	migration.SetTitleStepsProvider(halomigrations.StepsFor)
 	// MT-07 : source title-owned des libellés de rangs de carrière (seed offline).
 	migration.SetCareerRankTranslationsProvider(halomigrations.CareerRankTranslations)
+	// MT-15 : classifier LUSR title-owned (pair_name → chaîne TrueSkill). GetLUSRChain
+	// panique si non posé (fail-loud) — protège le chemin de scoring live.
+	syncpkg.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
 
 	// 1. metadata.duckdb
 	metaDB, err := duckdb.OpenReadWrite(metaPath)

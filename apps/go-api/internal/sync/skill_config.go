@@ -4,12 +4,7 @@
 // Centralise tous les paramètres numériques de l'algorithme LUSR.
 package sync
 
-import (
-	"math"
-
-	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/games/halo_infinite"
-)
+import "math"
 
 // ── TrueSkill 2 paramètres ─────────────────────────────────────────────────
 
@@ -167,48 +162,10 @@ var LUSRChains = map[string]LUSRChainConfig{
 	LUSRChainChaos:         {LabelFR: "Chaos", LabelEN: "Chaos"},
 }
 
-// GetLUSRChain détermine la chaîne TrueSkill LUSR depuis le pair_name d'un match.
-// Retourne "" si le match est exclu du LUSR (Ranked → CSR, Firefight → PvE).
-//
-// Classification :
-//   - Ranked, Firefight                          → exclu ("")
-//   - BTB, BTB Heavies                           → btb
-//   - Fiesta, Super Fiesta, Husky Raid           → chaos
-//   - Other : Infection/Griffball/Rocket Hog/Action Sack/Event → chaos
-//     Rumble Pit + préfixes inconnus     → arena_slayer (fallback)
-//   - Assassin (Arena/Tactical/Assault/Community) :
-//     sous-mode objectif (CTF, Strongholds…)  → arena_objectif
-//     tout le reste                            → arena_slayer
-func GetLUSRChain(pairName string) string {
-	category := halo_infinite.InferModeCategoryFromPairName(pairName)
-	switch category {
-	case halo_infinite.ModeCategoryRanked, halo_infinite.ModeCategoryFirefight:
-		return ""
-	case halo_infinite.ModeCategoryBTB:
-		if containsI(pairName, "rocket hog") {
-			return LUSRChainChaos
-		}
-		return LUSRChainBTB
-	case halo_infinite.ModeCategoryFiesta, halo_infinite.ModeCategorySuperFiesta, halo_infinite.ModeCategoryHuskyRaid:
-		return LUSRChainChaos
-	case halo_infinite.ModeCategoryOther:
-		return lusrChainForOther(pairName)
-	default: // ModeCategoryAssassin
-		return lusrChainForAssassin(pairName)
-	}
-}
-
-// lusrChainForOther classe les modes de catégorie Other.
-// Chaos : Infection, Griffball, Rocket Hog Race, Action Sack, Event.
-// Fallback arena_slayer : Rumble Pit et tout préfixe inconnu.
-func lusrChainForOther(pairName string) string {
-	if containsI(pairName, "infection") || containsI(pairName, "griffball") ||
-		containsI(pairName, "rocket hog") || containsI(pairName, "action sack") ||
-		containsI(pairName, "event") {
-		return LUSRChainChaos
-	}
-	return LUSRChainArenaSlayer
-}
+// GetLUSRChain (classification pair_name → chaîne LUSR) est désormais le seam
+// title-aware défini dans skill_chain_provider.go (dispatcher vers le classifier
+// title-owned skillchain.ClassifyLUSRChain). La logique Halo a été déplacée dans
+// internal/games/halo_infinite/skillchain (MT-15).
 
 // GetPerformanceChain détermine la chaîne du score de performance d'un match.
 // Contrairement à GetLUSRChain (qui exclut Ranked/Firefight pour CSR/PvE), cette
@@ -232,22 +189,6 @@ func GetPerformanceChain(pairName string, isRanked, isFirefight bool) string {
 		return c
 	}
 	return LUSRChainArenaSlayer
-}
-
-// lusrChainForAssassin classe les sous-modes Arena/Tactical/Assault/Community.
-// Objectif reconnus : CTF, Oddball, Strongholds, KotH, Total Control,
-// Land Grab, Extraction, Stockpile, One Flag CTF, Covert One Flag.
-// Tout le reste (Slayer, Attrition, Elimination, inconnu) → arena_slayer.
-func lusrChainForAssassin(pairName string) string {
-	subMode := toLowerASCII(analysis.NormalizeModeLabel(pairName))
-	switch subMode {
-	case "ctf", "capture the flag", "neutral flag ctf", "one flag ctf", "covert one flag",
-		"strongholds", "oddball", "king of the hill",
-		"total control", "land grab", "extraction", "stockpile":
-		return LUSRChainArenaObjectif
-	default:
-		return LUSRChainArenaSlayer
-	}
 }
 
 // ── Tiers LUSR ──────────────────────────────────────────────────────────────
@@ -346,36 +287,6 @@ func sigmoidRatio(num, denom float64) float64 {
 	}
 	r := num / denom
 	return clampF(r/(1.0+r), 0.0, 1.0)
-}
-
-// containsI est un contains case-insensitive simplifié.
-func containsI(s, substr string) bool {
-	if len(substr) == 0 {
-		return true
-	}
-	if len(s) < len(substr) {
-		return false
-	}
-	s = toLowerASCII(s)
-	substr = toLowerASCII(substr)
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
-
-func toLowerASCII(s string) string {
-	b := make([]byte, len(s))
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c >= 'A' && c <= 'Z' {
-			c += 32
-		}
-		b[i] = c
-	}
-	return string(b)
 }
 
 // drawMargin calcule la marge d'égalité à partir de la probabilité de draw.

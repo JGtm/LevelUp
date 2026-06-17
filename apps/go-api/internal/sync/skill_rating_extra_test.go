@@ -1,8 +1,8 @@
 // Package sync — skill_rating_extra_test.go : tests unitaires des fonctions LUSR pures.
 //
 // Couvre applyInactivityDecay, computeCompositeScore, estimateIndividualMU,
-// computeEnemyStrength, GetLUSRChain, GetTierForRating, FormatTierLabel,
-// clampF, sigmoidRatio, containsI.
+// computeEnemyStrength, GetLUSRChain (dispatcher), GetTierForRating,
+// FormatTierLabel, clampF, sigmoidRatio.
 package sync
 
 import (
@@ -319,7 +319,8 @@ func TestFormatTierLabel_Unranked(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// clampF / sigmoidRatio / containsI
+// clampF / sigmoidRatio
+// (containsI/toLowerASCII déplacés dans skillchain — MT-15)
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestClampF(t *testing.T) {
@@ -357,24 +358,5 @@ func TestSigmoidRatio_HighRatio(t *testing.T) {
 	got := sigmoidRatio(100, 1) // ratio=100 → near 1.0
 	if got < 0.95 {
 		t.Errorf("high ratio: got %v, want > 0.95", got)
-	}
-}
-
-func TestContainsI(t *testing.T) {
-	cases := []struct {
-		s, sub string
-		want   bool
-	}{
-		{"Ranked Arena", "ranked", true},
-		{"RANKED Arena", "ranked", true},
-		{"Quick Play", "ranked", false},
-		{"anything", "", true},
-		{"", "x", false},
-	}
-	for _, c := range cases {
-		got := containsI(c.s, c.sub)
-		if got != c.want {
-			t.Errorf("containsI(%q, %q) = %v, want %v", c.s, c.sub, got, c.want)
-		}
 	}
 }
