@@ -1,3 +1,22 @@
+## [2026-06-17] PMT-11 — footer Discord unifié sur le seam NotifyLabels (titre courant)
+
+**Statut** : LIVRÉ. Le footer des embeds suit désormais la MÊME dimension titre que les outcomes (un seul seam `NotifyLabels`), au lieu d'être figé sur le descripteur par défaut.
+
+**Constat** : la passe footer précédente dérivait du titre PAR DÉFAUT (`defaultTitleDisplayName()`), déconnectée du seam title-aware des outcomes (`cfg.Labels`). Les builders ne portaient pas le titre de l'embed.
+
+**Découplage** :
+- `NotifyLabels` gagne `TitleName() string`. `haloLabels.TitleName()` → nom du titre par défaut (registre). `semanticLabels` porte un `titleName` (fourni à `LabelsFor(src, titleName)`) → `TitleName()` le retourne (fallback Halo si vide).
+- `discordFooterText(labels NotifyLabels)` : « LevelUp · {labels.TitleName()} Stats ». nil → Halo → byte-identique.
+- 5 sites footer câblés sur les labels en portée : `discord.go` (cfg.Labels), `embeds.go` BuildSyncEmbedWithLabels (param `labels` déjà normalisé), `notifiers.go` ×3 (buildMediaEmbed gagne un param `labels` ; friend_added/friend_sync via cfg.Labels).
+
+**Effet** : quand un caller pose `cfg.Labels = LabelsFor(adapter, "Nom Titre 2")` (onboarding 2e titre), l'embed ENTIER (outcomes + footer) reflète ce titre, via un seul seam. Pour Halo (cfg.Labels nil) → haloLabels → nom par défaut → « LevelUp · Halo Infinite Stats » inchangé.
+
+**Reste différé (activation 2e-titre)** : aucun caller live ne pose `cfg.Labels` (le trigger sync→notify ne porte pas de titre — `NotifySync` n'a qu'un caller : le CLI manuel `levelup notify-sync`). C'est le câblage d'activation au branchement d'un 2e titre, pas l'infra. Les libellés backfill (LUSR/CSR/médailles/PvE) restent title-spécifiques (capability-gating au 2e titre).
+
+**Golden** : `TestDiscordFooterText` étendu — nil → « LevelUp · Halo Infinite Stats » (byte-identique) ET `LabelsFor(src, "Game Two")` → « LevelUp · Game Two Stats » (le footer suit le titre). Suite notify complète verte ; build ./... + archlint verts.
+
+---
+
 ## [2026-06-17] MT-10 — healthcheck/gate itèrent registry.All() (diagnostic multi-titre)
 
 **Statut** : LIVRÉ. `RunHealthcheck` (ops) et `RunGateCheck4` (validation) répètent leurs contrôles dépendant du titre pour CHAQUE titre enregistré (`titlePkg.DefaultRegistry().All()`), au lieu du seul `DefaultSlug`.

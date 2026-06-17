@@ -173,7 +173,7 @@ func NotifyReauthRequired(cfg NotifyConfig, gamertag string) {
 		Title:       T("discord_reauth_title", cfg.Lang),
 		Description: T("discord_reauth_desc", cfg.Lang, "gamertag", gamertag),
 		Color:       0xE0A800, // ambre — avertissement
-		Footer:      &EmbedFooter{Text: discordFooterText()},
+		Footer:      &EmbedFooter{Text: discordFooterText(cfg.Labels)},
 	}}})
 }
 

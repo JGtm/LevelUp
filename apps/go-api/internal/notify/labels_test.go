@@ -104,7 +104,7 @@ func TestNotifyLabels_BuildSyncEmbedDefaultEqualsHalo(t *testing.T) {
 // TestNotifyLabels_SyntheticRouted (oracle b) : un titre au manifeste divergent
 // rend ses propres outcomes via le seam — « Triomphe » et pas « Victoire ».
 func TestNotifyLabels_SyntheticRouted(t *testing.T) {
-	labels := LabelsFor(fakeOutcomeSrc{set: syntheticOutcomes(t)})
+	labels := LabelsFor(fakeOutcomeSrc{set: syntheticOutcomes(t)}, "")
 
 	winFR := renderOutcome(t, 2, "fr", labels)
 	if !strings.Contains(winFR, "Triomphe") {
@@ -125,10 +125,10 @@ func TestNotifyLabels_SyntheticRouted(t *testing.T) {
 // TestNotifyLabels_FailsafeDegradation : src nil / Outcomes() nil / clé absente
 // dégradent proprement vers les libellés Halo, sans panic.
 func TestNotifyLabels_FailsafeDegradation(t *testing.T) {
-	if got := LabelsFor(nil).Outcome("win", "fr"); got != "Victoire" {
+	if got := LabelsFor(nil, "").Outcome("win", "fr"); got != "Victoire" {
 		t.Errorf("LabelsFor(nil).Outcome(win,fr) = %q, want Victoire (Halo)", got)
 	}
-	if got := LabelsFor(fakeOutcomeSrc{set: nil}).Outcome("win", "fr"); got != "Victoire" {
+	if got := LabelsFor(fakeOutcomeSrc{set: nil}, "").Outcome("win", "fr"); got != "Victoire" {
 		t.Errorf("Outcomes()==nil → %q, want Victoire (fallback Halo)", got)
 	}
 
@@ -144,7 +144,7 @@ color_token = "outcome.positive"
 	if err != nil {
 		t.Fatalf("load partial: %v", err)
 	}
-	labels := LabelsFor(fakeOutcomeSrc{set: partial})
+	labels := LabelsFor(fakeOutcomeSrc{set: partial}, "")
 	if got := labels.Outcome("win", "fr"); got != "Gagné" {
 		t.Errorf("win présent → %q, want Gagné", got)
 	}
