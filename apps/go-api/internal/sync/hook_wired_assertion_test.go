@@ -38,11 +38,6 @@ type syncCallSite struct {
 
 var expectedSyncCallSites = []syncCallSite{
 	{
-		pathSuffix: "internal/scheduler/auto_sync.go",
-		status:     "wired",
-		reason:     "defaultRunnerFactory câble WithPostSyncRunner si scheduler.postSyncRunner != nil (Phase 4)",
-	},
-	{
 		pathSuffix: "internal/api/handlers/sync_handler.go",
 		status:     "legacy-hook",
 		reason:     "SyncHandler HTTP utilise WithPostSyncDeltaHook (legacy) — migration vers WithPostSyncRunner prévue follow-up",
