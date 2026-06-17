@@ -25745,3 +25745,22 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Différé à Phase 5** : hook `useCapability(key)` + composant `FeatureGate` canonical-aware (la fondation `CapabilityMap` au bootstrap + `CapabilityGap` existe, mais pas de hook d'abstraction).
 
 **Conclusion** : run autonome ultracode 3/3 terminé — Phase 3a (NO-OP+dead-code) + Phase 1.9 (watcher threading) + EXT-5 (MT-12 littéraux + MT-13 décision). Commit en attente d'autorisation.
+
+## [2026-06-17] Master plan 3a/4/3b — re-vérif + Phase 3b start (Huma coexistant) — Complété (partiel honnête)
+
+**Statut** : Complété pour ce qui est livrable+valuable. `go build ./...` OK, `go vet`/gofmt OK, `TestHumaCoexistsWithChiWalk` PASS, suite `internal/api` verte.
+
+**Re-vérif des 3 phases (workflow ultracode 7 agents + 3 lentilles)** — constat honnête : 2 des 3 phases sont vestigiales.
+
+- **Phase 4 (sync flags FieldKey) = NO-GO**. Les 12 champs stats de `SyncScope` (TeamMMR/KillsExpected/Damage/...) ont **ZÉRO lecteur prod** (tous les hits grep sont d'AUTRES structs : `agg.HeadshotKills`, `r.Enrichment.TeamMMR`...) et `NewBackfillFlagSet` n'a **aucun caller** (mort-né ; `buildSyncScope` HTTP n'en set aucun). Le refactor FieldKey serait du churn byte-identique sur code mort — interdit par CLAUDE.md (anti-pattern « dead code museum » / churn-sans-valeur). **Reporté** tant qu'aucun consommateur réel. Vérifié moi-même après le verdict.
+
+- **Phase 3a (nullabilité) = quasi-complète**. Les stats `*float64`/`*int` de `MatchExpectedStats`/`MatchScoreboardRow` sont **DÉJÀ** `*T omitempty` (le « 30+ champs » du master plan est acté). Reste : (a) pointer-iser 4-5 booléens (`IsMVP`/`IsLVP`/`IsBot`/`HadBotTeammate`/`HasHistAvg`) = **NO-OP front** (front recalcule MVP/LVP, lit le reste en `?? false`/truthy) + risque d'ambiguïté (≥3 structs portent `HadBotTeammate`) → churn-sans-valeur, écarté ; (b) **retrait de `HasExpectedData`** = le seul vrai gain, MAIS champ REQUIS dans le contrat front (`types.ts:2551` + `generated.ts`, consommé `MatchStatCards`/`MatchSummaryCharts`) → **changement de contrat coordonné Go+front DIFFÉRÉ** (le verdict byte-identical l'a explicitement recommandé en différé).
+
+- **Phase 3b (Huma) = start posé, full multi-session**. Vérifié : huma absent de go.mod (ajouté v2.38.0), `openapi.yaml` MANUEL (source de vérité → ne pas écraser), client front généré = `generated.ts` (PAS `types.gen.ts` — nom erroné du master plan), **79 fichiers handlers / ~139 routes** (pas 113). **Livré (start sûr, byte-identique, 0 route migrée)** :
+  - [huma_setup.go](../apps/go-api/internal/api/huma_setup.go) : `newHumaAPI(chi.Router)` via `humachi.New` — API Huma coexistante, OpenAPI sur path interne neutre (pas `/openapi.yaml` ni `/docs`).
+  - **Go/no-go DUR prouvé** : `TestHumaCoexistsWithChiWalk` — une route Huma APPARAÎT dans `chi.Walk` (humachi enregistre sur le `*chi.Mux` existant) → `contract_test.go` reste valide à chaque migration → la stratégie incrémentale chi+Huma est VALIDE.
+  - **Différé (multi-session, documenté)** : lint D13 (allowlist 79, brittle/prématuré à 0 migré), pilote `capabilities` (re-impl ETag/304 + golden SÉMANTIQUE car Huma ≠ `writeJSON` : trailing `\n` + champ `$schema`), les ~139 routes, bascule `openapi.yaml`→généré + régén `generated.ts`.
+
+**Piège méthodo (4e fois)** : le plan du workflow a de nouveau cité les chemins du MAUVAIS dépôt (`LevelUp-go-migration`) et 2 verdicts ont dû re-vérifier le worktree. J'ai re-confirmé moi-même chaque fait load-bearing (dead consumers Phase 4, `HasExpectedData` requis front, huma absent).
+
+**Conclusion / prochaine étape** : Phase 3b « start » livré (coexistence Huma prouvée). Phases 3a/4 documentées vestigiales. La vraie suite = soit la migration Huma (multi-session, à planifier en sessions dédiées par groupe de routes), soit la consolidation/PR de `feat/multititre-peripherie`, soit le retrait coordonné `HasExpectedData` (3a-B). Commit en attente d'autorisation.

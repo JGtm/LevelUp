@@ -41,9 +41,9 @@ La re-vérification a déjà corrigé plusieurs erreurs de la passe d'audit init
 | Outillage diagnostic Lab | Phase 1.8 | master | ⬜ |
 | Watcher / présence — routing par titre | Phase 1.9 | master | ⬜ |
 | Services title-agnostic (canonical) | Phase 2 | master (+ [EXT-2](PLAN_MULTITITRE_PERIPHERY.md)) | ✅ |
-| Cleanup DTO (`*Raw` hors domain) | Phase 3a | master | 🟡 |
-| Migration Huma (113 handlers) | Phase 3b | master | ⬜ |
-| Sync flags FieldKey-based | Phase 4 | master | ⬜ |
+| Cleanup DTO (`*Raw` hors domain) | Phase 3a | master | 🟢 quasi-done (re-vérif 2026-06-17 : `*Raw`=NO-OP cycle ; stats nullable `*T omitempty` DÉJÀ faits ; reste = retrait `HasExpectedData` = changement contrat coordonné Go+front DIFFÉRÉ) |
+| Migration Huma (~79 fichiers / ~139 routes, pas 113) | Phase 3b | master | 🟡 **start posé 2026-06-17** : huma/v2 + `newHumaAPI` coexistant + **go/no-go coexistence chi.Walk PROUVÉ** (`TestHumaCoexistsWithChiWalk`). Full = multi-session (D13 lint + pilote capabilities + 139 routes) |
+| Sync flags FieldKey-based | Phase 4 | master | ⛔ **NO-GO (re-vérif 2026-06-17)** : les 12 champs stats `SyncScope` + `NewBackfillFlagSet` ont **ZÉRO consommateur prod** (mort-né) → refactor = churn byte-identique sur code mort. Reporté tant qu'aucun consommateur réel (CLI revival / 2e titre) |
 | Frontend canonical-aware + `<FeatureGate>` | Phase 5 | master (+ [EXT-5](PLAN_MULTITITRE_PERIPHERY.md)) | ⬜ |
 | Arcs Prestige cross-titre (table `arc_titles`) | — | [cross-title-arcs](PLAN_CROSS_TITLE_ARCS_BACKEND.md) | ⬜ |
 | Famille d'armes canonique | — | [weapon-family](PLAN_WEAPON_FAMILY_CANONICAL.md) | 🟡 |
