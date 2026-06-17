@@ -36,6 +36,11 @@ func NoStore(next http.Handler) http.Handler {
 }
 
 // ETagFromBytes calcule un ETag SHA-256 tronqué (16 hex chars) depuis un payload.
+//
+// Décision multi-titre (MT-25, PMT-13) : l'ETag est dérivé du CORPS de la réponse
+// (hash), donc title-correct par construction — deux titres produisent des corps
+// différents → ETags différents → le cache 304 ne fuit jamais entre titres. Aucune
+// dimension slug à ajouter.
 func ETagFromBytes(b []byte) string {
 	sum := sha256.Sum256(b)
 	return fmt.Sprintf(`"%x"`, sum[:8])

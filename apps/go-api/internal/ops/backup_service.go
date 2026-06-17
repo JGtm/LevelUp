@@ -26,6 +26,13 @@ func NewLevelUpBackupScheduler(cfg config.BackupConfig, pr *title.PathResolver) 
 // toPkgConfig converts a LevelUp BackupConfig to the generic duckdbbackup.Config.
 // No password is set: restic uses --insecure-no-password (repo non chiffré,
 // adapté à un usage local personnel).
+//
+// Décision multi-titre (MT-24, PMT-13) : la rétention (KeepDaily/Weekly/Monthly)
+// est INTENTIONNELLEMENT une enveloppe GLOBALE unique, pas une politique par titre.
+// La découverte (discoverLevelUpDBs) énumère déjà les DBs de TOUS les titres
+// (clés préfixées par slug) ; un seul snapshot restic + une seule politique de
+// rétention les couvre. Pas de besoin de rétention per-titre (le coût/valeur d'une
+// politique différenciée par jeu est nul tant que le parc reste local mono-utilisateur).
 func toPkgConfig(cfg config.BackupConfig) duckdbbackup.Config {
 	return duckdbbackup.Config{
 		Enabled:          cfg.Enabled,

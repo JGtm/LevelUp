@@ -63,6 +63,12 @@ func (a *DataAdapter) WithCapabilities(caps games.CapabilityMap) *DataAdapter {
 }
 
 // TitleSlug retourne le slug HI canonique.
+//
+// Décision multi-titre (MT-20, PMT-13) : retourner DefaultSlug est l'IDENTITÉ
+// PROPRE de l'adapter Halo Infinite (cet adapter EST Halo) — ce n'est pas un
+// gating de titre. Le routage/gating par titre passe par le registre
+// (HasCapability) et le Resolver d'adapters, jamais par cette valeur. Un futur
+// adapter d'un autre jeu retournera SON slug ici, par le même pattern.
 func (a *DataAdapter) TitleSlug() string { return titlePkg.DefaultSlug }
 
 // Capabilities décrit l'état des capabilities HI exposées par cet adapter.
