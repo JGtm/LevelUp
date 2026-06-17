@@ -25728,3 +25728,20 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Différé (justifié)** : **PMT-2 auth par titre** — le pool (`NewPooledHaloClient`, `PolicyAnyPublic`) sert des tokens Halo non title-scopés. Inexerçable sans 2e titre (aucun périmètre auth distinct à valider) → seul axe réellement absent. Le host (PMT-1) n'est PAS à différer : déjà ctx-driven, activé automatiquement par le threading ci-dessus.
 
 **Conclusion / prochaine étape** : Phase 1.9 threading livré (byte-identique), reste PMT-2 auth différé. Enchaîne Front EXT-5 (3/3). Commit en attente d'autorisation.
+
+## [2026-06-17] Front EXT-5 — MT-12 littéraux slug nettoyés (lint error) + MT-13 décision gardé — Complété
+
+**Statut** : Complété. `tsc -b` vert, eslint **0 erreur** (rule `no-title-slug-literal` passée error), vitest **332 tests verts** (ascension+home+squad). Byte-identique mono-titre.
+
+**MT-12 (livré)** : 6 littéraux `'halo_infinite'` en dur dans `features/` migrés vers la source canonique `useAppShellStore((s) => s.currentTitleSlug)` (ou `DEFAULT_TITLE_SLUG` pour le fallback d'images) :
+- [AscensionRealisationsTab](../apps/web/src/features/ascension/AscensionRealisationsTab.tsx), [AscensionProfileTab](../apps/web/src/features/ascension/AscensionProfileTab.tsx) (6 usages, 2 sous-composants), [PrestigeSquadProgress](../apps/web/src/features/ascension/PrestigeSquadProgress.tsx) (`|| TITLE_FALLBACK` mort supprimé — store a une valeur initiale non vide), [SquadFocusStrip](../apps/web/src/features/squad/SquadFocusStrip.tsx), [HomePage](../apps/web/src/features/home/HomePage.tsx), [HomeHeroBanner](../apps/web/src/features/home/HomeHeroBanner.tsx) (`[DEFAULT_TITLE_SLUG]`).
+- Règle eslint `@levelup/no-title-slug-literal` **warn → error** (eslint.config.js) : 0 erreur résiduelle (vérifié). Fix mock `AscensionProfileTab.test.tsx` (`currentTitleSlug` ajouté au mockShellState). Défauts `lib/api/client.ts` + `stores/appShellStore.ts` = fallbacks légitimes hors-scope eslint, gardés.
+- **Byte-identique** : le store retourne `'halo_infinite'` dès l'init (avant bootstrap) → substitution `string→string` sans changement de rendu mono-titre.
+
+**MT-13 (décision : GARDER, ne pas externaliser)** : les 7 tables Halo client-side (teamNames, LUSR/CSR tier grids, ONE_LIFE_DAMAGE=225, badge HINF, HALO_OUTLINE_COLORS, TIER_COLORS Prestige, perf-tier) restent en l'état. Externaliser exigerait un NOUVEAU seam backend (kind `team`/`skill_tier_grid`/`gameplay_constant`, ou champ `badge_image_url` sur l'entrée leaderboard — **vérifié inexistant** sur `LeaderboardEntry`) = sur-engineering pour mono-titre. À externaliser au 2e titre via les seams existants (`useAssetLabel`/asset-URL). HALO_OUTLINE_COLORS + perf-tier = données structurelles/produit légitimes (pas MT-13).
+
+**Piège méthodo récurrent (3e fois) rattrapé** : le PLAN du workflow a affirmé que la règle eslint `no-title-slug-literal` « n'existe pas » (grep mauvais dépôt) et voulait la créer + externaliser le badge HINF. Les verdicts ont re-vérifié le worktree (règle existe à `warn` ; `LeaderboardEntry` sans `badge_image_url`) → j'ai re-confirmé moi-même (`eslint-rules/no-title-slug-literal.js` présent, `DEFAULT_TITLE_SLUG` à staticAssets.ts:26) avant d'agir. Périmètre resserré à 6 edits + 1 fix test + 1 flip de flag.
+
+**Différé à Phase 5** : hook `useCapability(key)` + composant `FeatureGate` canonical-aware (la fondation `CapabilityMap` au bootstrap + `CapabilityGap` existe, mais pas de hook d'abstraction).
+
+**Conclusion** : run autonome ultracode 3/3 terminé — Phase 3a (NO-OP+dead-code) + Phase 1.9 (watcher threading) + EXT-5 (MT-12 littéraux + MT-13 décision). Commit en attente d'autorisation.

@@ -23,14 +23,13 @@ import { RecordsTimeline } from './RecordsTimeline'
 import { MilestonesGrid } from './MilestonesGrid'
 import { PrestigeSquadProgress } from './PrestigeSquadProgress'
 
-const TITLE_SLUG = 'halo_infinite'
-
 export function AscensionRealisationsTab() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const playerSlug = currentPlayer?.player_slug ?? ''
   const locale = useAppShellStore((s) => s.locale)
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
 
-  const { data: challengesData } = useChallenges(playerSlug, TITLE_SLUG)
+  const { data: challengesData } = useChallenges(playerSlug, titleSlug)
 
   if (!playerSlug) {
     return (

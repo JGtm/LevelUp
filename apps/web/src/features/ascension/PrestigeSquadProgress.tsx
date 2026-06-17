@@ -27,8 +27,6 @@ import { prestigeApi, type UserPrestige } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 import type { PlayerSummary } from '@/lib/api/types'
 
-const TITLE_FALLBACK = 'halo_infinite'
-
 interface RowData {
   slug: string
   gamertag: string
@@ -65,7 +63,7 @@ function resolveSquadSlugs(
 export function PrestigeSquadProgress() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const availablePlayers = useAppShellStore((s) => s.availablePlayers)
-  const titleSlug = useAppShellStore((s) => s.currentTitleSlug) || TITLE_FALLBACK
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const locale = useAppShellStore((s) => s.locale)
   const { data: settings } = useSettings()
 

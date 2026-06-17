@@ -174,9 +174,6 @@ function SquadOrientationLine({
   return <p className="truncate text-2xs text-muted-foreground">{t.orientation(label)}</p>
 }
 
-// SQUAD_TITLE_SLUG : titre courant pour les défis d'escouade (V1 mono-titre).
-const SQUAD_TITLE_SLUG = 'halo_infinite'
-
 function SquadObjectivesPanel({
   squadId,
   playerSlug,
@@ -187,6 +184,7 @@ function SquadObjectivesPanel({
   t: (typeof STRINGS)['fr']
 }) {
   const locale = useAppShellStore((s) => s.locale)
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const { data } = useSquadChallenges(squadId)
   const join = useJoinSquadChallenge()
   const evaluate = useEvaluateSquadChallenge(squadId)
@@ -236,7 +234,7 @@ function SquadObjectivesPanel({
           variant="outline"
           size="sm"
           onClick={() =>
-            refreshPool.mutate({ squadId, titleSlug: SQUAD_TITLE_SLUG, requestedBy: playerSlug })
+            refreshPool.mutate({ squadId, titleSlug, requestedBy: playerSlug })
           }
           disabled={refreshPool.isPending}
         >

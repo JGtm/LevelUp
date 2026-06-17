@@ -19,8 +19,6 @@ import type { Challenge, Arc } from '@/lib/prestige'
 import { getAscensionText } from './i18n'
 import { LayerSection, SectionShell } from './AscensionLayers'
 
-const TITLE_SLUG = 'halo_infinite'
-
 export function AscensionProfileTab() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const playerSlug = currentPlayer?.player_slug ?? ''
@@ -54,8 +52,9 @@ interface PlayerLocaleSectionProps {
 }
 
 function MyObjectivesSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
-  const { data, isLoading, isError } = useChallenges(playerSlug, TITLE_SLUG)
-  const abandon = useAbandonChallenge(playerSlug, TITLE_SLUG)
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const { data, isLoading, isError } = useChallenges(playerSlug, titleSlug)
+  const abandon = useAbandonChallenge(playerSlug, titleSlug)
   const [showForm, setShowForm] = useState(false)
 
   if (isError) {
@@ -89,7 +88,7 @@ function MyObjectivesSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
         <div className="rounded-lg border border-border bg-card p-4">
           <CreateChallengeForm
             userId={playerSlug}
-            titleSlug={TITLE_SLUG}
+            titleSlug={titleSlug}
             onSuccess={() => setShowForm(false)}
             onCancel={() => setShowForm(false)}
           />
@@ -220,9 +219,10 @@ function PilotModeToggle({ locale }: { locale: 'fr' | 'en' }) {
 // ─── Mes arcs ────────────────────────────────────────────────────────────────
 
 function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
-  const { data: arcsData } = useArcs(playerSlug, TITLE_SLUG)
-  const { data: challengesData } = useChallenges(playerSlug, TITLE_SLUG)
-  const deleteArc = useDeleteArc(playerSlug, TITLE_SLUG)
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const { data: arcsData } = useArcs(playerSlug, titleSlug)
+  const { data: challengesData } = useChallenges(playerSlug, titleSlug)
+  const deleteArc = useDeleteArc(playerSlug, titleSlug)
   const arcs: Arc[] = arcsData?.arcs ?? []
   const challenges: Challenge[] = challengesData?.challenges ?? []
   const [showArcForm, setShowArcForm] = useState(false)
@@ -247,7 +247,7 @@ function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
         <div className="rounded-lg border border-border bg-background p-4">
           <CreateArcForm
             userId={playerSlug}
-            titleSlug={TITLE_SLUG}
+            titleSlug={titleSlug}
             onSuccess={() => setShowArcForm(false)}
             onCancel={() => setShowArcForm(false)}
           />
@@ -255,7 +255,7 @@ function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
       ) : showPicker ? (
         <ArcPresetPicker
           playerSlug={playerSlug}
-          titleSlug={TITLE_SLUG}
+          titleSlug={titleSlug}
           locale={locale}
           onClose={() => setShowPicker(false)}
         />
