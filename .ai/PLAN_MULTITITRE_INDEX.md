@@ -79,9 +79,9 @@ La re-vérification a déjà corrigé plusieurs erreurs de la passe d'audit init
 | MT-16 | Tables metadata globales sans `title_id` (décision : path-isolation suffit ?) | major | partiel | [EXT-1.5](PLAN_MULTITITRE_PERIPHERY.md) | `internal/migration/steps_metadata.go:466-568` |
 | MT-17 | `notification_preferences` sans dimension titre (décision de scoping) | minor | gap | [EXT-1.5](PLAN_MULTITITRE_PERIPHERY.md) | `internal/migration/steps_player_notifications.go:54-61` |
 | MT-18 | Seed démo : préfixe `'Halo Infinite'` + résolution xuid halo-first | minor | gap | [EXT-1.5](PLAN_MULTITITRE_PERIPHERY.md) | `internal/ops/seed_demo_media.go:32` |
-| MT-24 | Politique backup restic globale (1 repo/rétention, pas par titre) | minor | partiel | [PMT-13](PLAN_MULTITITRE_PERIPHERY.md) | `internal/ops/backup_service.go:19-41` |
-| MT-25 | Cache HTTP / rate-limit sans dimension titre (bénin) | info | no-action | [PMT-13](PLAN_MULTITITRE_PERIPHERY.md) | `internal/api/middleware/rate_limit.go:37-57` |
-| MT-20 | Adapter Halo `TitleSlug()` → `DefaultSlug` (auto-identité correcte) | info | no-action | [PMT-13](PLAN_MULTITITRE_PERIPHERY.md) | `internal/games/halo_infinite/adapter_data.go:66` |
+| MT-24 | Politique backup restic globale (1 repo/rétention, pas par titre) | minor | done | [PMT-13](PLAN_MULTITITRE_PERIPHERY.md) ✅ décision consignée (rétention globale intentionnelle, découverte déjà per-titre) + test `TestDiscoverLevelUpDBs_MultiTitle` | `internal/ops/backup_service.go` |
+| MT-25 | Cache HTTP / rate-limit sans dimension titre (bénin) | info | done | [PMT-13](PLAN_MULTITITRE_PERIPHERY.md) ✅ décision consignée (rate-limit IP-invariant ; ETag par corps → title-correct) | `rate_limit.go` + `http_cache.go` |
+| MT-20 | Adapter Halo `TitleSlug()` → `DefaultSlug` (auto-identité correcte) | info | done | [PMT-13](PLAN_MULTITITRE_PERIPHERY.md) ✅ décision consignée (self-identity, gating via registre) | `internal/games/halo_infinite/adapter_data.go:66` |
 
 ---
 

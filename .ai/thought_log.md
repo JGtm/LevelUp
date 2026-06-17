@@ -1,3 +1,18 @@
+## [2026-06-17] Couverture-max #2 — PMT-13 : décisions documentées (ferme MT-24/25/20)
+
+**Statut** : Complété. 3 axes `minor/info` fermés, doc + 1 test de régression, zéro logique.
+
+**Re-vérification** : ces axes étaient des **décisions à consigner**, pas des gaps de code. Confirmé contre HEAD :
+- **MT-24 (backup)** : `discoverLevelUpDBs` énumère DÉJÀ les DBs de tous les titres (clés préfixées slug). La rétention (`toPkgConfig`) est intentionnellement une **enveloppe globale unique** — pas de politique per-titre. Décision consignée + test `TestDiscoverLevelUpDBs_MultiTitle` (2 titres coexistent, zéro collision de clés).
+- **MT-25 (rate-limit + http-cache)** : `RateLimit` = protection par IP **invariante au titre** (exemptions par préfixe d'URL, title-agnostiques) ; `ETagFromBytes` dérive l'ETag du **corps** → title-correct par construction (corps diffèrent → ETags diffèrent → pas de fuite 304 entre titres). Décisions consignées, aucun changement requis.
+- **MT-20 (adapter)** : `DataAdapter.TitleSlug()==DefaultSlug` est l'**identité propre** de l'adapter Halo (il EST Halo), pas un gating ; routage par registre/HasCapability. Décision consignée.
+
+**Livré** : 4 commentaires-décision (backup_service/rate_limit/http_cache/adapter_data) + 1 test multi-titre + cette entrée. Tout byte-identique (zéro logique modifiée).
+
+**Vérif** : build · `TestDiscoverLevelUpDBs_MultiTitle` vert · gofmt/vet propres.
+
+---
+
 ## [2026-06-17] Couverture-max #1 — PMT-6 PR-3 : flag CLI `--title` (ferme MT-08 à 100%)
 
 **Statut** : Complété. MT-08 passe de « done sauf PR-3 » à **done**.

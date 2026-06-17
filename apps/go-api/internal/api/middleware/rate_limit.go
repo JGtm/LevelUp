@@ -34,6 +34,11 @@ const (
 // les endpoints applicatifs (cf. bugs images home page 2026-05-06 et Season Pass /
 // Héritage 2026-05-06). Le rate limit reste actif sur tout le reste — endpoints
 // applicatifs et données.
+//
+// Décision multi-titre (MT-25, PMT-13) : le rate limit est une protection
+// transverse PAR IP, INVARIANTE au titre — il n'a (et ne doit avoir) aucune
+// dimension slug. Les exemptions (/static/*, /api/v1/assets/*) sont définies par
+// préfixe d'URL, donc title-agnostiques par construction. Aucun changement requis.
 func RateLimit(demoMode bool, rpm int) func(http.Handler) http.Handler {
 	limit := rpm
 	if limit <= 0 {
