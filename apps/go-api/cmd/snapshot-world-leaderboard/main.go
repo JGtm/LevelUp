@@ -47,6 +47,7 @@ func main() {
 	limit := flag.Int("limit", 100, "nombre max d'entrées par playlist (défaut 100 = profondeur affichée ; 0 = échelle complète)")
 	politeMs := flag.Int("polite-ms", 800, "délai poli entre deux pages (ms)")
 	dryRun := flag.Bool("dry-run", false, "scrape et affiche les comptes sans écrire")
+	titleSlug := flag.String("title", "halo_infinite", "slug du titre (défaut halo_infinite)")
 	flag.Parse()
 
 	closeLogs := logging.InstallCLI(os.Getenv("LEVELUP_REPO_ROOT"))
@@ -107,7 +108,7 @@ func main() {
 			if *dryRun || len(entries) == 0 {
 				continue
 			}
-			n, ierr := duckdb.InsertWorldCSRSnapshot(ctx, db, entries)
+			n, ierr := duckdb.InsertWorldCSRSnapshot(ctx, db, *titleSlug, entries)
 			if ierr != nil {
 				log.ErrorContext(ctx, "insert snapshot échoué", "season", s, "playlist", pl, "err", ierr)
 				continue

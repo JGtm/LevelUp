@@ -55,7 +55,7 @@ func TestInsertWorldCSRSnapshot_AppendOnlyAndLatestView(t *testing.T) {
 		{Season: "csrseason13-2", Playlist: "p", Rank: 1, Gamertag: "Twissted Mindss", CSRValue: 2180, Tier: "Onyx", FetchedAt: t0},
 		{Season: "csrseason13-2", Playlist: "p", Rank: 2, Gamertag: "OR81TAL", CSRValue: 2097, Tier: "Onyx", FetchedAt: t0},
 	}
-	n, err := InsertWorldCSRSnapshot(ctx, db, batch1)
+	n, err := InsertWorldCSRSnapshot(ctx, db, "halo_infinite", batch1)
 	if err != nil {
 		t.Fatalf("InsertWorldCSRSnapshot batch1: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestInsertWorldCSRSnapshot_AppendOnlyAndLatestView(t *testing.T) {
 	batch2 := []domain.LeaderboardEntry{
 		{Season: "csrseason13-2", Playlist: "p", Rank: 1, Gamertag: "NewKing", CSRValue: 2222, Tier: "Onyx", FetchedAt: t1},
 	}
-	if _, err := InsertWorldCSRSnapshot(ctx, db, batch2); err != nil {
+	if _, err := InsertWorldCSRSnapshot(ctx, db, "halo_infinite", batch2); err != nil {
 		t.Fatalf("InsertWorldCSRSnapshot batch2: %v", err)
 	}
 
@@ -136,7 +136,7 @@ func TestGetWorldLeaderboardCatalog(t *testing.T) {
 		{Season: "csrseason6-1", Playlist: "unknown-pl", Rank: 1, Gamertag: "D", CSRValue: 1750, Tier: "Diamond", FetchedAt: time.Now().UTC()},
 		{Season: "csrseason4-1", Playlist: arenaID, Rank: 1, Gamertag: "Z", CSRValue: 1700, Tier: "Diamond", FetchedAt: time.Now().UTC()},
 	}
-	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), lbRows); err != nil {
+	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), "halo_infinite", lbRows); err != nil {
 		t.Fatalf("InsertWorldCSRSnapshot: %v", err)
 	}
 

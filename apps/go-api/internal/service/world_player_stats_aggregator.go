@@ -26,6 +26,7 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	syncpkg "levelup/go-api/internal/sync"
 )
@@ -208,7 +209,7 @@ func (a *WorldStatsAggregator) AggregatePlayer(ctx context.Context, gamertag str
 	if err != nil {
 		return nil, err
 	}
-	return analysis.AccumulateWorldStats(gamertag, stats), nil
+	return analysis.AccumulateWorldStats(ctxkeys.TitleSlug(ctx), gamertag, stats), nil
 }
 
 // getMatch retourne le match (extrait pour tous les joueurs mondiaux) depuis le

@@ -104,7 +104,7 @@ func TestAccumulateWorldStats(t *testing.T) {
 		{SeasonID: "season6", PlaylistID: "", Outcome: 2, Kills: 99},
 	}
 
-	out := AccumulateWorldStats("Alpha", stats)
+	out := AccumulateWorldStats("halo_infinite", "Alpha", stats)
 	if len(out) != 3 {
 		t.Fatalf("attendu 3 buckets (13-2/arena, 13-2/slayer, 12-1/arena), got %d : %+v", len(out), out)
 	}

@@ -148,7 +148,10 @@ func ExtractWorldPlayersFromMatch(matchJSON map[string]any, worldXuids map[strin
 // AccumulateWorldStats bucket les stats par (saison, playlist) et somme les
 // compteurs bruts. Les stats sans saison/playlist (hors-CSR, ou playlist absente)
 // sont ignorées. L'ordre de sortie suit l'ordre de première apparition.
-func AccumulateWorldStats(gamertag string, stats []PlayerMatchStat) []domain.WorldPlayerSeasonStats {
+func AccumulateWorldStats(titleSlug, gamertag string, stats []PlayerMatchStat) []domain.WorldPlayerSeasonStats {
+	if titleSlug == "" {
+		titleSlug = "halo_infinite" // défaut (analysis pur, sans dépendance au pkg title)
+	}
 	type key struct{ season, playlist string }
 	buckets := map[key]*domain.WorldPlayerSeasonStats{}
 	var order []key
@@ -160,7 +163,7 @@ func AccumulateWorldStats(gamertag string, stats []PlayerMatchStat) []domain.Wor
 		b, ok := buckets[k]
 		if !ok {
 			b = &domain.WorldPlayerSeasonStats{
-				TitleSlug: "halo_infinite", Gamertag: gamertag,
+				TitleSlug: titleSlug, Gamertag: gamertag,
 				SeasonID: s.SeasonID, PlaylistID: s.PlaylistID,
 			}
 			buckets[k] = b

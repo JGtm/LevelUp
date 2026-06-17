@@ -1,3 +1,15 @@
+## [2026-06-17] PMT-7 write-path complété — MT-03 fermé à 100%
+
+**Statut** : write-path livré (suite au read-path 3427b8853). MT-03 → done.
+
+**Livré** : `InsertWorldCSRSnapshot(ctx, db, titleSlug, entries)` écrit la colonne `title_slug` (défaut halo) ; `AccumulateWorldStats(titleSlug, gamertag, stats)` remplace le littéral `"halo_infinite"` par le param. Callers threadés : aggregator → `ctxkeys.TitleSlug(ctx)` ; cron → `titlePkg.DefaultSlug` (mono-titre, commentaire pour l'itération multi-titre future) ; CLI snapshot-world-leaderboard → flag `-title` (défaut halo). Tests (8 call-sites) ajustés.
+
+**Byte-identique Halo** : tous les writers posent halo (défaut/ctx) → mêmes lignes qu'avant. Couvre désormais le couple lecture+écriture par titre (oracle b read-path déjà prouvé). Reste hors MT-03 : backfill-world-player-stats/probe CLIs (`-title`) — flag trivial, suivi mineur.
+
+**Vérif** : build ./... · analysis + duckdb world integration verts · gofmt propre.
+
+---
+
 ## [2026-06-17] Couverture-max #6+#7 — PMT-11 footer/backfill + EXT-2 : décisions de report (latent, justifié)
 
 **Statut** : les 2 derniers axes du registre sont des reports DOCUMENTÉS (cosmétique-latent, bloqués sur infra absente / vraie valeur multi-titre uniquement). Clôture honnête de la passe couverture-max.
