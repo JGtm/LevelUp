@@ -84,10 +84,8 @@ func (m *engagementMockRepo) LoadRatioSamples(_ context.Context, _, _ string, _ 
 func newEngagementRouter(factory handlers.ServiceFactory[*service.PlayerEngagementService]) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewEngagementHandler(factory)
-	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Get("/matches/{match_id}/engagement", h.GetMatchEngagement)
-		r.Get("/engagement_profile", h.GetEngagementProfile)
-		r.Post("/engagement/recompute_coefficients", h.PostRecomputeCoefficients)
+	r.Route("/players/{player_slug}", func(sub chi.Router) {
+		h.Mount(sub)
 	})
 	return r
 }
@@ -346,8 +344,8 @@ func TestEngagementHandler_RecomputeCoefficients_Unavailable(t *testing.T) {
 func newSquadEngagementRouter(factory handlers.ServiceFactory[*service.PlayerEngagementService]) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewEngagementHandler(factory)
-	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Get("/pages/squad/v2/engagement", h.GetSquadEngagementSession)
+	r.Route("/players/{player_slug}", func(sub chi.Router) {
+		h.Mount(sub)
 	})
 	return r
 }

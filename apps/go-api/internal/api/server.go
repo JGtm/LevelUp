@@ -1023,23 +1023,19 @@ func NewRouter(
 			r.Post("/pages/match-history/query", mh.Query)
 
 			// P6.3 : guard de capability — career routes nécessitent CapCareer.
+			// Migré vers Huma (Phase 3b) : Mount sur le sous-groupe capability
+			// (humacore.NewAPI hérite du middleware RequireCapability + ownership).
 			career := handlers.NewCareerHandler(reg.Career, reg.MatchHistoryCtx)
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapCareer))
-				r.Get("/pages/career", career.GetCareer)
-				r.Get("/pages/career/top-matches", career.GetTopMatches)
-				r.Get("/pages/career/encounters", career.GetEncounters)
-				r.Get("/pages/career/highlight-matches", career.GetHighlightMatches)
-				r.Get("/pages/career/top-encounters", career.GetTopEncountersRich)
-				r.Get("/pages/career/rivals", career.GetRivals)
-				r.Get("/pages/career/csrs", career.GetCareerCSRs)
+				career.Mount(r)
 			})
 
 			// Achievements (Xbox bilingues) : guard CapAchievements.
 			achievements := handlers.NewAchievementsHandler(reg.Achievements)
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapAchievements))
-				r.Get("/pages/achievements", achievements.GetAchievementsPage)
+				achievements.Mount(r)
 			})
 
 			// Sprint 8 : Match View + Explorer
@@ -1058,11 +1054,7 @@ func NewRouter(
 			eng := handlers.NewEngagementHandler(reg.Engagement)
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapEngagement))
-				r.Get("/matches/{match_id}/engagement", eng.GetMatchEngagement)
-				r.Get("/engagement_profile", eng.GetEngagementProfile)
-				r.Post("/engagement/timeseries", eng.GetEngagementTimeseries)
-				r.Get("/pages/squad/v2/engagement", eng.GetSquadEngagementSession)
-				r.Post("/engagement/recompute_coefficients", eng.PostRecomputeCoefficients)
+				eng.Mount(r)
 			})
 
 			explorer := handlers.NewExplorerHandler(reg.ExplorerCtxWithAuth, reg.MatchHistoryCtx)

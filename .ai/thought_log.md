@@ -1,3 +1,15 @@
+## [2026-06-18] Phase 3b — routes inline player-group : capability-groups (career/achievements/engagement) migrées via Mount — Complété
+
+**Statut** : Complété. Workflow `huma-inline-capgroups` (3 agents parallèles) → career/achievements/engagement convertis en handlers auto-enregistrés (Mount+Huma) + tests mis à jour. server.go recâblé (3 sous-groupes capability). `go build ./...` OK, gofmt/vet propres, **goldens career/achievements/engagement/squad verts**, suite `internal/api`+`handlers` verte (seuls échecs = device-flow E2E pré-existants).
+
+**Pattern inline→Mount validé** : pour un handler dont les routes étaient INLINE dans server.go, on ajoute `Mount(r chi.Router)` (humacore.NewAPI + huma.*) et server.go remplace les `r.Get/Post(...)` par `h.Mount(r)` DANS le même sous-groupe (capability `r.Group(r.Use(RequireCapability...))`) → le middleware (ownership + title + capability) reste hérité. Le test golden est mis à jour : la liste `r.Get(...)` du routeur de test devient `h.Mount(sub)` ; requêtes/assertions inchangées → le golden valide la migration Huma bout-en-bout. **Avantage clé** : les goldens existants couvrent la vérification (contrairement au batch self-register où 3/4 manquaient).
+
+**Détails** : career = 7 GET (dont highlight-matches avec query CSV reconstruite en url.Values pour réutiliser `parseHighlightFilterInput` inchangé, + csrs avec `?season=`). engagement = 5 routes dont POST body optionnel (timeseries, `Body *domain.EngagementTimeseriesRequest` nil→{}), {match_id} en string+parse (400 invalid_request, pas 422), 503 db_busy+Retry-After (huma.ErrorWithHeaders), squad-engagement avec query CSV (splitCSV partagé conservé). Tous corps = types de retour EXACTS du service.
+
+**Cumul migration : 37 routes** (24 + career×7 + achievements×1 + engagement×5).
+
+**Conclusion / prochaine étape** : capability-groups faits. Enchaîne le batch des routes player-group DIRECTES (filters, match_history/query, match_view, explorer, sessions, session_page, stats, squad, squad_v2, synthesis, citations, teammates, timeseries, session_compare, season_pass, match_exclusion) via même méthodo (workflow + Mount + wiring server.go direct). Laissés en chi (needs_care) : home (cached/ETag), battlepass/challenges (NoStore), media (multipart+binaire mixte), match-history/export (CSV). Push branche quand phase inline trivial terminée.
+
 ## [2026-06-18] Phase 3b — fan-out codegen : 4 handlers self-register migrés (workflow parallèle) + vérif adversariale — Complété
 
 **Statut** : Complété. Workflow `huma-migrate-selfreg` (4 agents parallèles) → campaign/coach_proposals/patterns/player_profile migrés EN PLACE. `go build ./...` OK, gofmt/vet propres, **golden coach_proposals** vert, suite `internal/api`+`handlers` verte (seuls échecs = device-flow E2E pré-existants). 4 fichiers touchés, **server.go intact** (signatures Mount inchangées).
