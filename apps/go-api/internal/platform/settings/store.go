@@ -121,21 +121,75 @@ func (s *Store) Load() (*AppSettings, error) {
 		return nil, fmt.Errorf("settings.Load typed: %w", err)
 	}
 	cfg.raw = raw
+	applyAbsentDefaults(cfg, raw)
+	return cfg, nil
+}
 
-	// can_self_provision absent → default true
+// applyAbsentDefaults réapplique les défauts « clé absente → true » sur un
+// AppSettings dérivé de la map raw donnée (rétrocompatibilité fichiers existants).
+// Partagé entre Load et ResolveForTitle pour garder une seule source de vérité.
+func applyAbsentDefaults(cfg *AppSettings, raw map[string]json.RawMessage) {
 	if _, ok := raw["can_self_provision"]; !ok {
 		cfg.CanSelfProvision = true
 	}
-	// can_start_initial_sync absent → default true
 	if _, ok := raw["can_start_initial_sync"]; !ok {
 		cfg.CanStartInitialSync = true
 	}
-	// show_progression absent → default true (rétrocompatibilité fichiers existants)
 	if _, ok := raw["show_progression"]; !ok {
 		cfg.ShowProgression = true
 	}
+}
 
-	return cfg, nil
+// ResolveForTitle charge les settings GLOBAUX puis applique l'overlay du titre
+// (champ-présent-only) lu depuis overlayPath (PMT-4). Modèle « base globale +
+// overlay par titre » : seules les clés présentes dans l'overlay surchargent le
+// global ; les autres héritent. overlayPath vide ou fichier absent/vide ⇒ renvoie
+// le global INCHANGÉ (cas Halo sans overlay déclaré → byte-identique à Load).
+//
+// Le caller fournit le chemin (via PathResolver.TitleSettingsPath(slug)) : le
+// package settings ne dépend ni du registre de titres ni d'un slug littéral.
+func (s *Store) ResolveForTitle(overlayPath string) (*AppSettings, error) {
+	base, err := s.Load()
+	if err != nil {
+		return nil, err
+	}
+	if overlayPath == "" {
+		return base, nil
+	}
+	overlayData, err := os.ReadFile(overlayPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return base, nil // pas d'overlay → global inchangé
+		}
+		return nil, fmt.Errorf("settings.ResolveForTitle read overlay: %w", err)
+	}
+	var overlayRaw map[string]json.RawMessage
+	if err := json.Unmarshal(overlayData, &overlayRaw); err != nil {
+		return nil, fmt.Errorf("settings.ResolveForTitle overlay json: %w", err)
+	}
+	if len(overlayRaw) == 0 {
+		return base, nil
+	}
+
+	// Fusion au niveau raw : global ∪ overlay (overlay gagne), puis re-parse typé.
+	merged := make(map[string]json.RawMessage, len(base.raw)+len(overlayRaw))
+	for k, v := range base.raw {
+		merged[k] = v
+	}
+	for k, v := range overlayRaw {
+		merged[k] = v
+	}
+	mergedJSON, err := json.Marshal(merged)
+	if err != nil {
+		return nil, fmt.Errorf("settings.ResolveForTitle marshal merged: %w", err)
+	}
+	out := defaultSettings()
+	if err := json.Unmarshal(mergedJSON, out); err != nil {
+		return nil, fmt.Errorf("settings.ResolveForTitle unmarshal merged: %w", err)
+	}
+	out.raw = merged
+	applyAbsentDefaults(out, merged)
+	return out, nil
 }
 
 // Save persiste app_settings.json en préservant les champs inconnus.

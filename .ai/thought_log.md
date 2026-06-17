@@ -1,3 +1,22 @@
+## [2026-06-17] PMT-4 (MT-04) PR-0 — primitive d'overlay de settings par titre
+
+**Statut** : En cours (PR-0/foundation livrée ; consumers + Contract à suivre).
+
+**Re-vérification** : conforme au seed. `app_settings.json` est global ; `Store` n'est clé que par `path`. Note clé : `csr_season_id` n'est PAS un champ typé d'`AppSettings` (lu séparément par `config.loadCSRSeasonID` sur le JSON brut) → la primitive d'overlay couvre les champs typés (Discord/sessions/friends/toggles) ; le résolveur CSR sera un piece config-level parallèle.
+
+**Livré (PR-0, foundation)** :
+- `PathResolver.TitleSettingsPath(slug)` → `data/titles/<slug>/settings.json` (miroir per-titre d'`AppSettingsPath` global). Fichier OPTIONNEL : absent ⇒ héritage intégral du global.
+- `settings.Store.ResolveForTitle(overlayPath)` : charge le global puis applique l'overlay **champ-présent-only** (fusion au niveau raw : global ∪ overlay, overlay gagne, re-parse typé). overlayPath vide / absent / `{}` ⇒ renvoie le global INCHANGÉ (Halo byte-identique). Découplé : prend un PATH (pas un slug ni le registre titres) → settings ne dépend pas de domain/title.
+- Refactor DRY : `applyAbsentDefaults(cfg, raw)` partagé entre `Load` et `ResolveForTitle` (défauts « clé absente → true »).
+
+**Tests (oracle DOUBLE)** : (a) parité Halo — overlayPath vide/absent/`{}` ⇒ `ResolveForTitle` DeepEqual `Load` ; (b) overlay synthétique — champs surchargés routés (webhook/session_gap/friends), non-surchargés hérités ; + global-sans-défauts ⇒ absent→true réappliqués ; + `TitleSettingsPath` isolation cross-titre.
+
+**Reste (séquence PMT-4)** : (1) résolveur CSR `CSRSeasonIDForTitle(slug)` + dégradation `CapRanked` absente → `""` ; (2) `notify.LoadNotifyConfigForTitle` (overlay webhook/lang/toggles via `ResolveForTitle`) ; (3) résolution overlay aux points d'usage (coach/sessions/friends) ; (4) Contract — basculer les call-sites (~12 CSR + 5 Discord) sur `ctxkeys.TitleSlug(ctx)`, byte-identique pour Halo. Exit gate complet à l'issue.
+
+**Vérif** : build settings+title · tests verts · gofmt/vet propres.
+
+---
+
 ## [2026-06-17] Hygiène dashboard — re-flip des statuts datés (doctrine « carte datée, pas vérité »)
 
 **Statut** : Complété (doc-only).

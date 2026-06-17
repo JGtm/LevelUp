@@ -404,6 +404,18 @@ func (p *PathResolver) AppSettingsPath() string {
 	return filepath.Join(p.repoRoot, "app_settings.json")
 }
 
+// TitleSettingsPath retourne le chemin de l'overlay de settings d'un titre
+// (data/titles/<slug>/settings.json) — miroir per-titre d'AppSettingsPath
+// (global), point d'extension du seam PMT-4 « base globale + overlay par titre ».
+// Le fichier est OPTIONNEL : absent ⇒ le titre hérite intégralement du global.
+// slug vide → titre par défaut.
+func (p *PathResolver) TitleSettingsPath(slug string) string {
+	if slug == "" {
+		slug = DefaultSlug
+	}
+	return filepath.Join(p.repoRoot, "data", "titles", slug, "settings.json")
+}
+
 // WatcherTokensPath retourne le chemin du fichier de tokens watcher.
 // Ex: data/auth/watcher_tokens.json
 //
