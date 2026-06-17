@@ -114,7 +114,7 @@ func (r *CareerRepo) loadTopMatchSharedRows(
 			// Asymétrie bot teammate : LOSS avec bot dans MA team = handicap
 			// 4v3, responsabilité du joueur non isolable → skip. WIN+bot reste
 			// (perf personnelle méritoire). Cohérent avec GetHighlightMatchIDs.
-			if m.Outcome == 3 && pme.hadBotTeammate {
+			if m.Outcome == domain.OutcomeLoss && pme.hadBotTeammate {
 				continue
 			}
 			m.PerformanceScore = pme.perfScore
@@ -138,9 +138,9 @@ func splitWinsLossesAndSortTopMatches(enriched []domain.TopMatchRawRow) ([]domai
 	var wins, losses []domain.TopMatchRawRow
 	for _, m := range enriched {
 		switch m.Outcome {
-		case 2:
+		case domain.OutcomeWin:
 			wins = append(wins, m)
-		case 3:
+		case domain.OutcomeLoss:
 			losses = append(losses, m)
 		}
 	}

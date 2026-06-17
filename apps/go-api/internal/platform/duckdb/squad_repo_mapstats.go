@@ -53,7 +53,7 @@ func (r *SquadRepo) LoadMapStatsForSquad(ctx context.Context, mainXUID string, s
 			aggs[m.mapID] = a
 		}
 		a.total++
-		if m.outcome == 2 {
+		if m.outcome == domain.OutcomeWin {
 			a.wins++
 		}
 		if perf, ok := perfMap[m.matchID]; ok {
