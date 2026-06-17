@@ -18,6 +18,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability/logging"
@@ -326,6 +327,7 @@ func (d *Daemon) AddPlayer(ctx context.Context, p domain.PlayerSummary) error {
 		gamertag: p.Gamertag,
 		xuid:     p.XUID,
 	})
+	pw.SetTitleSlug(p.TitleSlug) // Phase 1.9 : titre configuré → ctx poller + write-path
 	if d.cfg.LiveRefreshFactory != nil {
 		pw = pw.WithLiveRefresh(d.cfg.LiveRefreshFactory(p.Gamertag, p.XUID))
 	}
@@ -376,6 +378,7 @@ func (d *Daemon) initPlayers(ctx context.Context, playerList []domain.PlayerSumm
 			gamertag: p.Gamertag,
 			xuid:     p.XUID,
 		})
+		pw.SetTitleSlug(p.TitleSlug) // Phase 1.9 : titre configuré → ctx poller + write-path
 		if d.cfg.LiveRefreshFactory != nil {
 			pw = pw.WithLiveRefresh(d.cfg.LiveRefreshFactory(p.Gamertag, p.XUID))
 		}
@@ -551,11 +554,15 @@ type queueSyncTrigger struct {
 	xuid     string
 }
 
-func (q *queueSyncTrigger) TriggerSync(_ context.Context, gamertag, xuid string, matchIDs []string) error {
+func (q *queueSyncTrigger) TriggerSync(ctx context.Context, gamertag, xuid string, matchIDs []string) error {
 	q.queue.Enqueue(MatchRequest{
 		Gamertag: gamertag,
 		XUID:     xuid,
 		MatchIDs: matchIDs,
+		// Phase 1.9 : le ctx du poller porte le titre du joueur (startPoller) →
+		// propagé au CoordinatorRequest (clé de dédup composite + ctx du moteur).
+		// Vide ⇒ halo_infinite (byte-identique mono-titre).
+		TitleSlug: ctxkeys.TitleSlug(ctx),
 	})
 	return nil
 }

@@ -72,6 +72,9 @@ func (q *MatchQueue) Enqueue(req MatchRequest) {
 		Gamertag: req.Gamertag,
 		XUID:     req.XUID,
 		MatchIDs: newIDs,
+		// Phase 1.9 : préserver le titre (sinon droppé ici → CoordinatorRequest
+		// retombe sur halo_infinite même pour un 2e titre suivi).
+		TitleSlug: req.TitleSlug,
 	}
 
 	select {

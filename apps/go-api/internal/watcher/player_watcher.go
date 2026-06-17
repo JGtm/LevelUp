@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/presence"
 )
 
@@ -47,6 +48,12 @@ type SyncTrigger interface {
 type PlayerWatcher struct {
 	gamertag string
 	xuid     string
+	// titleSlug : titre configuré du joueur (PlayerSummary.TitleSlug). Posé sur
+	// le ctx du poller (startPoller) → le fetch match-history est routé par titre
+	// (host PMT-1 via ctxkeys) ET le MatchRequest porte le titre jusqu'au
+	// CoordinatorRequest. Vide ⇒ halo_infinite (byte-identique). Champ intrinsèque
+	// (pas lu du ctx entrant) → robuste au broadcast de présence inter-joueurs.
+	titleSlug string
 
 	fsm           *FSM
 	fetcher       MatchFetcher
@@ -116,6 +123,16 @@ func (pw *PlayerWatcher) FSM() *FSM {
 func (pw *PlayerWatcher) SetSubscribeError(err error) {
 	pw.mu.Lock()
 	pw.subscribeError = err
+	pw.mu.Unlock()
+}
+
+// SetTitleSlug fixe le titre du joueur surveillé (Phase 1.9). Source =
+// PlayerSummary.TitleSlug (titre configuré du joueur). Le slug est ensuite posé
+// sur le ctx du poller (startPoller) pour router le fetch par titre (host PMT-1)
+// et alimenter MatchRequest.TitleSlug → CoordinatorRequest. Vide ⇒ halo_infinite.
+func (pw *PlayerWatcher) SetTitleSlug(slug string) {
+	pw.mu.Lock()
+	pw.titleSlug = slug
 	pw.mu.Unlock()
 }
 
@@ -443,7 +460,17 @@ func (pw *PlayerWatcher) startPoller(ctx context.Context) {
 		pw.pollerCancel()
 	}
 
-	pollerCtx, cancel := context.WithCancel(ctx)
+	// Phase 1.9 : poser le titre du joueur sur le ctx du poller → le fetch
+	// match-history est routé par titre (host PMT-1 via ctxkeys) et le ctx remonte
+	// jusqu'à TriggerSync → MatchRequest.TitleSlug → CoordinatorRequest. Le slug
+	// vient du CHAMP pw.titleSlug (lu sous le lock détenu par OnPresenceActive, seul
+	// appelant prod), pas du ctx entrant → robuste au broadcast de présence (le ctx
+	// d'un autre joueur ne contamine pas ce poller). Vide ⇒ ctx inchangé ⇒ halo_infinite.
+	pollerBaseCtx := ctx
+	if pw.titleSlug != "" {
+		pollerBaseCtx = ctxkeys.WithTitleSlug(ctx, pw.titleSlug)
+	}
+	pollerCtx, cancel := context.WithCancel(pollerBaseCtx)
 	pw.pollerCancel = cancel
 
 	poller := NewMatchPoller(pw.xuid, pw.gamertag, pw.fetcher, func(matchIDs []string) bool {
