@@ -19,6 +19,7 @@ func (careerStub) GetLatestRank(context.Context) (*domain.CareerRankData, error)
 func (careerStub) GetEncounters(context.Context) ([]domain.EncounterRawRow, error) {
 	return nil, nil
 }
+func (careerStub) GetXPHistory(context.Context) ([]domain.XPHistoryPoint, error) { return nil, nil }
 
 // TestCapabilitiesTOMLMatchesHardcoded est le garde-fou de la Phase 1.7a : le
 // capabilities.toml versionné doit reproduire EXACTEMENT la CapabilityMap codée
