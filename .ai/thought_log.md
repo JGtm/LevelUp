@@ -23,6 +23,14 @@
 
 **Vérif** : build ./... ✅ · `go test ./internal/service/ ./internal/games/...` verts · gofmt propre.
 
+### Path C — top matches canonical-typé (LIVRÉ) — **HIGH-C COMPLET**
+
+`GetTopMatches` → nouveau type `canonical.CareerTopMatch` (porteur 1:1 des 13 champs de `domain.TopMatchRawRow` ; **OutcomeCode = code BRUT 2/3/1/4**, JAMAIS via `canonical.Outcome` string — lossy pour 0/unknown + casserait le split WIN/LOSS aval qui compare à `domain.OutcomeWin` ; `DominanceFlag int` plain). Méthode `LoadTopMatches` sur l'interface (4 sites stubés + 2 CareerSource). Service : `loadTopMatchRows` + `topMatchRowFromCanonical` (nil pour vide). `splitTopRows`/`convertTopMatches` intacts. Remplace `GetTopMatches:22`.
+
+**Golden** : `TestCareerService_GetTopMatches_DataAdapterParity` (CareerTopMatchesResponse complet ; fixture avec TOUS les codes outcome WIN=2/LOSS=3/TIE=1/DNF=4/unknown=0 + map nil ET map vide) + fallback.
+
+**HIGH-C TERMINÉ** : les 3 chemins de lecture restants de career_service (XP, LUSR, TopMatches) sont canonical-typés via l'adapter, byte-identiques. `career_service` ne lit plus aucune donnée hors du chemin canonique (rang/encounters déjà faits + XP/LUSR/TopMatches maintenant). Reste Phase 2 : HIGH-B (explorer, types cross-joueur net-new) + HIGH-A (match_view, le + complexe).
+
 ---
 
 ## [2026-06-17] Phase 2 — démarrage : critère « 0 service n'importe duckdb pour la data » (re-vérifié workflow 9 agents)

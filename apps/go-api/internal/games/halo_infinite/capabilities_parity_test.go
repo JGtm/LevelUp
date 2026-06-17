@@ -23,6 +23,7 @@ func (careerStub) GetXPHistory(context.Context) ([]domain.XPHistoryPoint, error)
 func (careerStub) GetLUSRHistory(context.Context) ([]domain.LUSRCheckpointDTO, error) {
 	return nil, nil
 }
+func (careerStub) GetTopMatches(context.Context) ([]domain.TopMatchRawRow, error) { return nil, nil }
 
 // TestCapabilitiesTOMLMatchesHardcoded est le garde-fou de la Phase 1.7a : le
 // capabilities.toml versionné doit reproduire EXACTEMENT la CapabilityMap codée

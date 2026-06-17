@@ -194,6 +194,68 @@ func TestCareerService_GetTopMatches_Error(t *testing.T) {
 	}
 }
 
+// TestCareerService_GetTopMatches_DataAdapterParity (HIGH-C Path C) prouve que la
+// bascule via TitleDataAdapter.LoadTopMatches produit STRICTEMENT le même
+// CareerTopMatchesResponse que le repo legacy. Fixture avec TOUS les codes outcome
+// (WIN=2/LOSS=3/TIE=1/DNF=4/unknown=0 — verrouille le code BRUT vs string canonique
+// lossy + le split WIN/LOSS aval) + une map nil ET une map vide (verrouille la
+// dérivation pointeur de convertTopMatches).
+func TestCareerService_GetTopMatches_DataAdapterParity(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC)
+	mapA, mapEmpty := "Aquarius", ""
+	kda := 2.5
+	mmr := 1500.0
+	rows := []domain.TopMatchRawRow{
+		{MatchID: "m1", PerformanceScore: 95, Outcome: 2, Kills: 20, Deaths: 5, StartTime: &now, MapName: &mapA, KDA: &kda, TeamMMR: &mmr, DominanceFlag: 3},
+		{MatchID: "m2", PerformanceScore: 90, Outcome: 3, Kills: 8, Deaths: 12, StartTime: &now, MapName: &mapEmpty}, // map vide → pointeur dérivé nil aval
+		{MatchID: "m3", PerformanceScore: 70, Outcome: 1, Kills: 10, Deaths: 10, MapName: nil},                       // TIE + map nil
+		{MatchID: "m4", PerformanceScore: 50, Outcome: 4, Kills: 1, Deaths: 1},                                       // DNF
+		{MatchID: "m5", PerformanceScore: 40, Outcome: 0, Kills: 5, Deaths: 5},                                       // unknown
+	}
+
+	svcLegacy := NewCareerService(&mockCareerRepo{topRows: rows})
+	respLegacy, err := svcLegacy.GetTopMatches(context.Background())
+	if err != nil {
+		t.Fatalf("legacy: %v", err)
+	}
+
+	repoAdapter := &mockCareerRepo{topRows: rows}
+	dataAdapter := halo_games.NewDataAdapter(repoAdapter, slog.New(slog.NewJSONHandler(io.Discard, nil)))
+	svcAdapter := NewCareerService(repoAdapter).WithDataAdapter(dataAdapter)
+	respAdapter, err := svcAdapter.GetTopMatches(context.Background())
+	if err != nil {
+		t.Fatalf("adapter: %v", err)
+	}
+
+	jsonLegacy, _ := json.Marshal(respLegacy)
+	jsonAdapter, _ := json.Marshal(respAdapter)
+	if string(jsonLegacy) != string(jsonAdapter) {
+		t.Errorf("top matches parity cassée :\nlegacy=  %s\nadapter= %s", jsonLegacy, jsonAdapter)
+	}
+}
+
+// TestCareerService_GetTopMatches_AdapterFallbackOnUnsupported : adapter sans
+// CareerSource → ErrCapabilityNotSupported → fallback silencieux sur repo.
+func TestCareerService_GetTopMatches_AdapterFallbackOnUnsupported(t *testing.T) {
+	t.Parallel()
+	rows := []domain.TopMatchRawRow{
+		{MatchID: "m1", PerformanceScore: 95, Outcome: 2, Kills: 20, Deaths: 5},
+	}
+	repo := &mockCareerRepo{topRows: rows}
+	dataAdapter := halo_games.NewDataAdapter(nil, slog.New(slog.NewJSONHandler(io.Discard, nil)))
+	svc := NewCareerService(repo).WithDataAdapter(dataAdapter)
+
+	resp, err := svc.GetTopMatches(context.Background())
+	if err != nil {
+		t.Fatalf("fallback devrait être silencieux, got %v", err)
+	}
+	if len(resp.BestMatches) != 1 {
+		t.Errorf("BestMatches via fallback = %d, want 1", len(resp.BestMatches))
+	}
+}
+
 func TestCareerService_GetEncounters_OK(t *testing.T) {
 	repo := &mockCareerRepo{
 		encRows: []domain.EncounterRawRow{
