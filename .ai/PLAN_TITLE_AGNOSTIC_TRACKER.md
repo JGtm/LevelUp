@@ -130,17 +130,18 @@
 | `MatchExpectedStats` 100% nullable | 🟡 | `HasExpectedData`/`HasHistAvg` (bool), `HistMatchCount` (int), `HistModeCategory` (string) non-nullable |
 | `MatchScoreboardRow` 100% nullable | 🟡 | `XUID`/`Gamertag`/`IsMe`/`OutcomeLabel`/... non-nullable |
 
-## Phase 1.9 — Watcher multi-title routing · ⬜ (0%) — **NOUVELLE 2026-06-13, prérequis 2e titre (runtime)**
+## Phase 1.9 — Watcher multi-title routing · 🟢 (85%) — **threading LIVRÉ 2026-06-17 (byte-identique mono-titre) ; reste PMT-2 auth par titre (différé)**
 
-> Ajoutée après audit du poller de présence en jeu (2026-06-13). Spec détaillée dans le master ([PLAN_TITLE_AGNOSTIC_REFACTORING.md](PLAN_TITLE_AGNOSTIC_REFACTORING.md) §Phase 1.9). Hors fenêtre minimale 0→3a : à exécuter quand le 2e titre est enregistré, mais la plomberie peut se poser dès maintenant derrière une garde `DefaultSlug` (testée avec un Registry à 2 titres fixtures).
+> Ajoutée après audit du poller de présence en jeu (2026-06-13). **Re-vérif 2026-06-17 (workflow ultracode)** : le write-path (CoordinatorRequest.TitleSlug + gateKey composite + WithTitleSlug ctx moteur) ET le host read-path (`endpoint_resolver.hostFor(ctx)` ctx-driven, fallback const byte-identique) étaient DÉJÀ livrés (PMT-3 + PMT-1). Le seul gap réel : `td.Slug` n'était jamais propagé jusqu'à `MatchRequest.TitleSlug` (toujours `""` → halo_infinite). Threading livré.
 
 | Item | Statut | Evidence / next action |
 |---|:-:|---|
-| Détection présence title-agnostic | ✅ | `watcher/daemon.go::makePresenceHandler` → `titleReg.MatchPresence(titleID)` → `title/matcher.go::MatchByXboxTitleID` itère tous les titres ; `TitleDescriptor` porte `XboxTitleID` + `SteamAppID` |
-| `MatchFetcher` par titre (resolver) | ⬜ | 1 seul `HaloMatchFetcher` partagé (`cmd/server/main.go` ~l.1728 → `DaemonConfig.MatchFetcher`) → API Halo only. Cible : `MatchFetcherResolver.FetcherFor(slug)`, fallback Warn+Idle si titre sans fetcher |
-| `PlayerWatcher.activeTitleSlug` | ⬜ | pas de champ titre ; `OnPresenceActive` ne propage pas le `td.Slug` matché |
-| `TitleSlug` dans `MatchRequest`/`CoordinatorRequest`/`TriggerSync` | ⬜ | `{Gamertag, XUID, MatchIDs}` sans titre → sync sur titre défaut |
-| Garde compat `DefaultSlug` + non-régression mono-titre | ⬜ | titleSlug vide → `halo_infinite` (même garde que 1.6) ; `WatcherStatus` byte-identique à 1 titre |
+| Détection présence title-agnostic | ✅ | `watcher/daemon.go::makePresenceHandler` → `titleReg.MatchPresence(titleID)` → `title/matcher.go::MatchByXboxTitleID` itère tous les titres |
+| `MatchFetcher` routé par titre | ✅ | **Pas un resolver per-fetcher** : 1 client partagé, routé au RUNTIME par le ctx (`halo_client.hostFor(ctx)` → `endpoint_resolver` lit `ctxkeys.TitleSlug`). Devient title-aware dès que `pollerCtx` porte le slug (livré ci-dessous) — rien à recâbler côté fetcher |
+| `PlayerWatcher.titleSlug` | ✅ | **Livré 2026-06-17** : champ `titleSlug` + `SetTitleSlug` (intrinsèque, posé à la construction depuis `PlayerSummary.TitleSlug` — robuste au broadcast de présence) ; `startPoller` pose le slug sur `pollerCtx` → fetch routé par titre |
+| `TitleSlug` dans `MatchRequest`/`CoordinatorRequest`/`TriggerSync` | ✅ | **Livré 2026-06-17** : CoordinatorRequest.TitleSlug (PMT-3, déjà) + `queueSyncTrigger.TriggerSync` lit `ctxkeys.TitleSlug(ctx)` → `MatchRequest.TitleSlug` ; bug `Enqueue` qui droppait `TitleSlug` dans `filtered` corrigé. Threading PAR ctx (zéro changement d'interface `SyncTrigger`) |
+| Garde compat `DefaultSlug` + non-régression mono-titre | ✅ | registre mono-entrée → `td.Slug == halo_infinite` ; `gateKey(halo_infinite, gt) == normGT(gt)` (court-circuit) → clé/host inchangés. Tests : `title_routing_test.go` (3) + suite watcher existante verte |
+| **PMT-2 auth par titre (pool)** | ⬜ **différé** | `NewPooledHaloClient` sert des tokens Halo round-robin non title-scopés (`main.go` pool `PolicyAnyPublic`). **Inexerçable sans 2e titre** (pas de périmètre auth distinct à valider) → seul axe réellement absent, à brancher au 2e titre |
 | Steam fallback title-aware (`MatchBySteamAppID`) | ⬜→**optionnel** | `SteamPoller` non câblé (note W8) → hors scope tant que non activé |
 
 ---

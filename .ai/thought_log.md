@@ -25707,3 +25707,24 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Seul deliverable concret — dead-code** : `WeaponKillRaw` + `GetMatchWeaponKills` (Q16) supprimés. Vérifié sans consommateur service non-test (le builder Combat agrège via `BulkWeaponKillRaw`/Q28). Retiré : struct `domain.WeaponKillRaw`, méthode `port.MatchViewRepository.GetMatchWeaponKills` + noop, impl duckdb (67 L) + import `sort` orphelin, mock+fixtures service, 2 tests impl duckdb. `lookupWeaponLabels` (partagé avec le scoreboard) et le const `Q16WeaponKills` (doc-référencé) conservés.
 
 **Conclusion / prochaine étape** : Phase 3a volet *Raw clos (NO-OP + dead-code). Reste le volet nullabilité des DTO (séparé). Enchaîne Phase 1.9 (watcher) puis Front EXT-5. Commit en attente d'autorisation.
+
+## [2026-06-17] Phase 1.9 — Watcher : propagation du titre présence → MatchRequest — Complété
+
+**Statut** : Complété. `go build ./...` OK, `go vet` watcher+sync OK, gofmt clean, suite watcher existante verte (byte-identique), 3 nouveaux tests verts, `archlint/no_slug_comparison` vert.
+
+**Re-vérif (workflow ultracode 5 agents + 3 lentilles)** : la carte donnait Phase 1.9 à 0%. **Faux** — le write-path (`CoordinatorRequest.TitleSlug` + `gateKey(titleSlug,gamertag)` composite + `ctx = WithTitleSlug(...)` avant RunSync) ET le host read-path (`endpoint_resolver.hostFor(ctx)` ctx-driven, fallback const byte-identique) étaient DÉJÀ livrés (PMT-3 + PMT-1). Piège répété : le PLAN du workflow a grepé le MAUVAIS dépôt (`LevelUp-go-migration` main, branche `feat/autonomous-asset-resolution`) et prétendait l'inverse ; les 3 verdicts ont re-vérifié dans le worktree et rétabli — j'ai re-confirmé moi-même (`coordinator.go:164/222/337`).
+
+**Le seul gap réel** : `td.Slug` (résolu à la détection de présence) n'était jamais propagé jusqu'à `MatchRequest.TitleSlug` → `req.TitleSlug` toujours `""` → tout retombait sur halo_infinite. Plus un bug latent : `MatchQueue.Enqueue` reconstruisait `filtered` en DROPPANT `TitleSlug`.
+
+**Livré (threading par ctx, source unique, broadcast-safe)** :
+- [player_watcher.go](../apps/go-api/internal/watcher/player_watcher.go) : champ `titleSlug` + `SetTitleSlug` ; `startPoller` pose `pollerCtx = ctxkeys.WithTitleSlug(ctx, pw.titleSlug)`. Le slug vient du CHAMP (intrinsèque), pas du ctx entrant → robuste au piège `broadcastPresenceActive` (OnPresenceActive appelé avec le ctx d'un AUTRE joueur en session de groupe — relevé par la lentille runtime-safety).
+- [daemon.go](../apps/go-api/internal/watcher/daemon.go) : `pw.SetTitleSlug(p.TitleSlug)` aux 2 constructions (initPlayers/AddPlayer) depuis `PlayerSummary.TitleSlug` ; `queueSyncTrigger.TriggerSync` lit `ctxkeys.TitleSlug(ctx)` → `MatchRequest.TitleSlug` (zéro changement de l'interface `SyncTrigger`).
+- [match_queue.go](../apps/go-api/internal/watcher/match_queue.go) : `filtered` préserve `TitleSlug` (corrige le drop). Clé `seen` laissée `gamertag:matchID` (volontaire mono-titre ; à composer au 2e titre).
+
+**Source unique** : `pw.titleSlug` → `pollerCtx` alimente À LA FOIS le fetch (routing host PMT-1 via `hostFor(ctx)`) ET le write-path (`TriggerSync` lit le ctx → `MatchRequest` → `CoordinatorRequest`). Rien à recâbler côté fetcher.
+
+**Byte-identique mono-titre** : registre mono-entrée → `td.Slug`/`p.TitleSlug == halo_infinite` ; `gateKey(halo_infinite, gt) == normGT(gt)` (court-circuit) → clé de dédup + host inchangés. Tests `title_routing_test.go` : (1) Enqueue préserve TitleSlug, (2) `queueSyncTrigger` lit le ctx (titre + défaut halo_infinite), (3) `SetTitleSlug` → le fetch voit le slug sur son ctx (sinon halo_infinite).
+
+**Différé (justifié)** : **PMT-2 auth par titre** — le pool (`NewPooledHaloClient`, `PolicyAnyPublic`) sert des tokens Halo non title-scopés. Inexerçable sans 2e titre (aucun périmètre auth distinct à valider) → seul axe réellement absent. Le host (PMT-1) n'est PAS à différer : déjà ctx-driven, activé automatiquement par le threading ci-dessus.
+
+**Conclusion / prochaine étape** : Phase 1.9 threading livré (byte-identique), reste PMT-2 auth différé. Enchaîne Front EXT-5 (3/3). Commit en attente d'autorisation.
