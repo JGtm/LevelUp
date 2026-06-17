@@ -37,7 +37,7 @@ func newMatchHistoryRouter(factory handlers.ContextFactory[port.MatchHistoryServ
 	r := chi.NewRouter()
 	h := handlers.NewMatchHistoryHandler(factory)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Post("/pages/match-history/query", h.Query)
+		h.Mount(r)
 		r.Get("/pages/match-history/export", h.Export)
 	})
 	return r

@@ -30,8 +30,8 @@ func (m *mockTeammatesService) GetPage(_ context.Context, _ string, _ domain.Tea
 func newTeammatesRouter(factory handlers.ContextFactory[port.TeammatesService]) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewTeammatesHandler(factory)
-	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Post("/pages/teammates", h.GetPage)
+	r.Route("/players/{player_slug}", func(sub chi.Router) {
+		h.Mount(sub)
 	})
 	return r
 }

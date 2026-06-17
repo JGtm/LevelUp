@@ -30,8 +30,8 @@ func (m *mockSessionCompareService) Compare(_ context.Context, _ domain.SessionC
 func newSessionCompareRouter(factory handlers.ServiceFactory[port.SessionCompareService]) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewSessionCompareHandler(factory)
-	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Post("/pages/session-compare", h.Compare)
+	r.Route("/players/{player_slug}", func(sub chi.Router) {
+		h.Mount(sub)
 	})
 	return r
 }

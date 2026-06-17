@@ -4,14 +4,28 @@
 //
 //	POST /api/v1/players/{player_slug}/pages/citations        → CitationsPageResponse
 //	POST /api/v1/players/{player_slug}/pages/commendations    → CommendationsPageResponse
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// (préfixe /players/{player_slug} + middleware ownership/title hérités, lit
+// {player_slug} parent) et enregistre les 2 POST via huma.Post. Logique métier
+// inchangée (CitationsService), seul le wrapping HTTP change.
+//
+// Le corps est lu via RawBody (pas de Body typé) pour reproduire EXACTEMENT le
+// contrat de décodage d'origine : un JSON invalide renvoie 400 {invalid_body}
+// (parse maison, uniquement si un corps est présent) et non le 422 de validation
+// Huma qu'un Body typé produirait.
 package handlers
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -26,30 +40,56 @@ func NewCitationsHandler(newSvc ContextFactory[port.CitationsService]) *Citation
 	return &CitationsHandler{newSvc: newSvc}
 }
 
-// GetCitations retourne la page Citations (accomplissements personnels).
+// Mount enregistre les 2 routes via Huma sur le sous-routeur chi (préfixe
+// /players/{player_slug} + middleware ownership/title hérités).
+func (h *CitationsHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Post(api, "/pages/citations", h.handleGetCitations)
+	huma.Post(api, "/pages/commendations", h.handleGetCommendations)
+	// Body OPTIONNEL (décodé seulement si présent) : RawBody est requis par défaut
+	// côté Huma → on le rend optionnel pour préserver le 200 sur corps absent.
+	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/pages/citations")
+	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/pages/commendations")
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// citationsInput : {player_slug} parent + corps brut décodé maison.
+// RawBody (pas Body typé) → préserve le contrat 400 {invalid_body} sur JSON
+// invalide (un Body typé renverrait le 422 de validation Huma). Corps optionnel :
+// décodé uniquement si présent.
+type citationsInput struct {
+	PlayerSlug string `path:"player_slug"`
+	RawBody    []byte
+}
+
+type citationsPageOutput struct{ Body *domain.CitationsPageResponse }
+type commendationsPageOutput struct {
+	Body *domain.CommendationsPageResponse
+}
+
+// ─── Endpoints ───────────────────────────────────────────────────────────────
+
+// handleGetCitations retourne la page Citations (accomplissements personnels).
 // POST /api/v1/players/{player_slug}/pages/citations
 // Body (optionnel) : { "category": "..." }
-func (h *CitationsHandler) GetCitations(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, _, _, err := h.newSvc(r.Context(), slug)
+func (h *CitationsHandler) handleGetCitations(ctx context.Context, in *citationsInput) (*citationsPageOutput, error) {
+	svc, _, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
 
 	var req domain.CitationsPageRequest
 	// Body optionnel : décoder uniquement si présent.
-	if r.ContentLength > 0 {
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-			return
+	if len(in.RawBody) > 0 {
+		if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
+			return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 		}
 	}
 
-	page, err := svc.GetCitationsPage(r.Context())
+	page, err := svc.GetCitationsPage(ctx)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "citations_page_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "citations_page_error", err.Error())
 	}
 
 	// Filtrage par catégorie si demandé.
@@ -57,32 +97,28 @@ func (h *CitationsHandler) GetCitations(w http.ResponseWriter, r *http.Request) 
 		page = filterCitationsByCategory(page, req.Category)
 	}
 
-	writeJSON(w, http.StatusOK, page)
+	return &citationsPageOutput{Body: page}, nil
 }
 
-// GetCommendations retourne la page Commendations (médailles gagnées).
+// handleGetCommendations retourne la page Commendations (médailles gagnées).
 // POST /api/v1/players/{player_slug}/pages/commendations
 // Body (optionnel) : { "category": "..." }
-func (h *CitationsHandler) GetCommendations(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, xuid, _, err := h.newSvc(r.Context(), slug)
+func (h *CitationsHandler) handleGetCommendations(ctx context.Context, in *citationsInput) (*commendationsPageOutput, error) {
+	svc, xuid, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
 
 	var req domain.CommendationsPageRequest
-	if r.ContentLength > 0 {
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-			return
+	if len(in.RawBody) > 0 {
+		if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
+			return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 		}
 	}
 
-	page, err := svc.GetCommendationsPage(r.Context(), xuid)
+	page, err := svc.GetCommendationsPage(ctx, xuid)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "commendations_page_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "commendations_page_error", err.Error())
 	}
 
 	// Filtrage par catégorie si demandé.
@@ -90,7 +126,7 @@ func (h *CitationsHandler) GetCommendations(w http.ResponseWriter, r *http.Reque
 		page = filterCommendationsByCategory(page, req.Category)
 	}
 
-	writeJSON(w, http.StatusOK, page)
+	return &commendationsPageOutput{Body: page}, nil
 }
 
 // ---------------------------------------------------------------------------

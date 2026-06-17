@@ -1,15 +1,27 @@
 // Package handlers — ExplorerHandler : POST .../pages/explorer/player-query
 //
 //	POST .../pages/explorer/matches-query
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// (préfixe /players/{player_slug} + middleware ownership/title hérités, lit
+// {player_slug} parent) et enregistre les 2 POST via huma.Post. Logique métier
+// inchangée (ExplorerService + MatchHistoryService), seul le wrapping HTTP change.
+//
+// Les corps sont lus via RawBody (pas de Body typé) pour reproduire EXACTEMENT le
+// contrat de décodage d'origine : un JSON invalide renvoie 400 {invalid_body}
+// (parse maison) et non le 422 de validation Huma qu'un Body typé produirait.
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -37,50 +49,69 @@ func NewExplorerHandler(
 	}
 }
 
-// QueryPlayer retourne les matchs en commun avec un autre joueur.
+// Mount enregistre les 2 routes via Huma sur le sous-routeur chi (préfixe
+// /players/{player_slug} + middleware ownership/title hérités).
+func (h *ExplorerHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Post(api, "/pages/explorer/player-query", h.handleQueryPlayer)
+	huma.Post(api, "/pages/explorer/matches-query", h.handleQueryMatches)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// explorerQueryInput : {player_slug} parent + corps brut décodé maison.
+// RawBody (pas Body typé) → préserve le contrat 400 {invalid_body} sur JSON
+// invalide (un Body typé renverrait le 422 de validation Huma).
+type explorerQueryInput struct {
+	PlayerSlug string `path:"player_slug"`
+	RawBody    []byte
+}
+
+type explorerPlayerQueryOutput struct {
+	Body domain.ExplorerPlayerQueryResponse
+}
+type explorerMatchesQueryOutput struct {
+	Body domain.ExplorerMatchesQueryResponse
+}
+
+// ─── Endpoints ───────────────────────────────────────────────────────────────
+
+// handleQueryPlayer retourne les matchs en commun avec un autre joueur.
 // POST /api/v1/players/{player_slug}/pages/explorer/player-query
 // Body JSON : { "target_gamertag": "...", "limit": 50 }
-func (h *ExplorerHandler) QueryPlayer(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, enrichedCtx, _, _, err := h.newExplorerSvc(r.Context(), slug)
+func (h *ExplorerHandler) handleQueryPlayer(ctx context.Context, in *explorerQueryInput) (*explorerPlayerQueryOutput, error) {
+	svc, enrichedCtx, _, _, err := h.newExplorerSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
 
 	var req domain.ExplorerPlayerQueryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
 	if req.TargetGamertag == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_gamertag", "target_gamertag est requis")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_gamertag", "target_gamertag est requis")
 	}
 
 	resp, err := svc.GetCommonMatches(enrichedCtx, req.TargetGamertag, req.Page)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "explorer_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "explorer_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, resp)
+	return &explorerPlayerQueryOutput{Body: resp}, nil
 }
 
-// QueryMatches retourne les matchs filtrés du joueur (explorer context).
+// handleQueryMatches retourne les matchs filtrés du joueur (explorer context).
 // POST /api/v1/players/{player_slug}/pages/explorer/matches-query
 // Body JSON : { "filters": {...}, "pagination": {...}, "sort_field": "...", "sort_dir": "..." }
-func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	mhSvc, _, _, err := h.newMatchHistSvc(r.Context(), slug)
+func (h *ExplorerHandler) handleQueryMatches(ctx context.Context, in *explorerQueryInput) (*explorerMatchesQueryOutput, error) {
+	mhSvc, _, _, err := h.newMatchHistSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
 
 	var req domain.ExplorerMatchesQueryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
 
 	// Délégation au service match-history avec les mêmes filtres/tri/pagination.
@@ -105,10 +136,9 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 		MatchIDs:          req.MatchIDs,
 	}
 
-	mhResp, err := mhSvc.GetPage(r.Context(), mhReq)
+	mhResp, err := mhSvc.GetPage(ctx, mhReq)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "explorer_matches_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "explorer_matches_error", err.Error())
 	}
 
 	// Génération du token d'export si demandé (même mécanisme que MatchHistoryHandler.Query).
@@ -143,5 +173,5 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 			Pagination: mhResp.Table.Pagination,
 		},
 	}
-	writeJSON(w, http.StatusOK, resp)
+	return &explorerMatchesQueryOutput{Body: resp}, nil
 }

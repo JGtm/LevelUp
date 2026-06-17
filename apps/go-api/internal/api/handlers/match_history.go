@@ -1,9 +1,22 @@
 // Package handlers — MatchHistoryHandler : POST .../pages/match-history/query
 //
 //	GET  .../pages/match-history/export
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// (préfixe /players/{player_slug} + middleware ownership/title hérités, lit
+// {player_slug} parent) et enregistre le POST query via huma.Post. Logique métier
+// inchangée (MatchHistoryService), seul le wrapping HTTP change. La route GET
+// export reste servie en chi inline (CSV — non migrée).
+//
+// Le corps de query est lu via RawBody (pas de Body typé) pour reproduire
+// EXACTEMENT le contrat de décodage d'origine : un JSON invalide renvoie
+// 400 {invalid_body} (parse maison) et non le 422 de validation Huma qu'un Body
+// typé produirait.
 package handlers
 
 import (
+	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/csv"
 	"encoding/json"
@@ -11,8 +24,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -28,30 +43,50 @@ func NewMatchHistoryHandler(newSvc ContextFactory[port.MatchHistoryService]) *Ma
 	return &MatchHistoryHandler{newSvc: newSvc}
 }
 
-// Query retourne la page d'historique paginée et filtrée.
-func (h *MatchHistoryHandler) Query(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, _, _, err := h.newSvc(r.Context(), slug)
+// Mount enregistre la route POST query via Huma sur le sous-routeur chi
+// (préfixe /players/{player_slug} + middleware ownership/title hérités).
+// La route GET export reste enregistrée en chi inline (server.go) — non migrée.
+func (h *MatchHistoryHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Post(api, "/pages/match-history/query", h.handleQuery)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// matchHistoryQueryInput : {player_slug} parent + corps brut décodé maison.
+// RawBody (pas Body typé) → préserve le contrat 400 {invalid_body} sur JSON
+// invalide (un Body typé renverrait le 422 de validation Huma).
+type matchHistoryQueryInput struct {
+	PlayerSlug string `path:"player_slug"`
+	RawBody    []byte
+}
+
+type matchHistoryQueryOutput struct {
+	Body domain.MatchHistoryPageResponse
+}
+
+// ─── Endpoint ────────────────────────────────────────────────────────────────
+
+// handleQuery retourne la page d'historique paginée et filtrée.
+// POST /api/v1/players/{player_slug}/pages/match-history/query
+func (h *MatchHistoryHandler) handleQuery(ctx context.Context, in *matchHistoryQueryInput) (*matchHistoryQueryOutput, error) {
+	svc, _, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
 
 	var req domain.MatchHistoryQueryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
 
 	if err := req.Validate(); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_request", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_request", err.Error())
 	}
 
-	resp, err := svc.GetPage(r.Context(), req)
+	resp, err := svc.GetPage(ctx, req)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "match_history_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "match_history_error", err.Error())
 	}
 
 	// Générer le token d'export si demandé.
@@ -62,7 +97,7 @@ func (h *MatchHistoryHandler) Query(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	return &matchHistoryQueryOutput{Body: resp}, nil
 }
 
 // Export retourne un CSV de l'historique des matchs filtrés.
