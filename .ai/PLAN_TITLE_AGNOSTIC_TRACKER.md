@@ -25,7 +25,7 @@
 |---|---|:-:|:-:|---|
 | 0 | Décisions + setup (ADR/branche/lints/datasets) | 🟡 | 55 | non — reste = items **prématurés** (datasets/parity/chi-lint → leurs phases) + branche (bloquée user) |
 | 1 | FieldKey + `fields.toml` (+ constants.toml) | 🟡 | 80 | non — reste = SQL de-magic, **reclassé Phase 2** |
-| 1.5 | DDL par titre (sortir `migration/steps_*`) | 🟡 | 70 | **oui** (2e titre) — mécanisme B complet + **20 steps migrés** (PvE + 5 Shared + 11 metadata b4/b5 dont famille citation + 3 named-func b6/b7 weapon_labels/mode_name_tr/playlist_fr avec cascade ReconcileMetadataSeeds) + garde-fou direction-de-dépendance + TestMain duckdb ; reste tier B (~146 steps : named-func seeds prestige/milestone/ranked, familles player/shared atomiques, tier-B cœur + reorder inversion escaladé) |
+| 1.5 | DDL par titre (sortir `migration/steps_*`) | ✅ | 100 | **DÉBLOQUÉ** — relocation voie B COMPLÈTE (b3→b26 : 150 steps statiques + 2 dynamiques title-owned) + les 2 irréversibles escaladés livrés (reorder inversion skill_v2/tier_boundaries `18f3adae2` + PMT-2 store cutover `873637195`). Seule exception globale délibérée : `rebuild_match_participants_defeat_art_corruption` (boot-path cycle). PMT-9 (`743f9467c`) ajoute le routage `RunForTitleDB(slug)` + ledger par titre |
 | 1.6 | Pool tokens clé `(titleSlug,gamertag)` | ✅ | 100 | **oui** (2e titre) — livré : clé composite + garde anti-cross-title |
 | 1.7a | `capabilities.toml` + loader + endpoint | ✅ | 100 | non — TOML + loader + adapter consomme + endpoint, livré |
 | 1.7b | Feature-matrix 3 états + cascade | ✅ | 100 | non — cascade pure + endpoint, livré (revue adversariale 5 lentilles) |
@@ -60,7 +60,7 @@
 | Test exhaustivité FieldKeys↔TOML | 🟡 | `loader_smoke_test.go` couvre TOML⊇FieldKeys ; sens inverse optionnel |
 | 0 `medal_name_id=<int>` inline (SQL) | 🟡→**Phase 2** | **couplé Phase 2** : le `1512363953` est baké dans des SQL const strings ; le sortir = rendre la couche requêtes title-aware (consommer `constants.toml`). 7 sites documentés pointant vers `constants.toml` |
 
-## Phase 1.5 — DDL par titre · 🟡 (~45%) — **PREMIER GROS MORCEAU, prérequis 2e titre**
+## Phase 1.5 — DDL par titre · ✅ (100%) — **PREMIER GROS MORCEAU LIVRÉ, prérequis 2e titre débloqué**
 
 **Relocation 1.5.1 (voie B) COMPLÈTE (b3→b26, autonome)** : **150 steps title-owned statiques** (+ 2 dynamiques) dans `internal/games/halo_infinite/migrations/`. Les 5 tiers (metadata/player/shared/shared_social/pve) entièrement déplacés. **Seule exception globale délibérée** : `rebuild_match_participants_defeat_art_corruption` (couplé à RebuildMatchParticipantsART, boot-path — cycle). `order_audit_test.go` prouve la complétude global+title. **Reste UNIQUEMENT les 2 irréversibles escaladés** (reorder inversion 132/133 + PMT-2 store cutover). dans `games/halo_infinite/migrations/steps.go` + **2 dynamiques** (`seed_prestige_catalog_v1`, `seed_milestone_catalog_v1` via `Register*SeedMigration`, pattern de réf pour les seeds TOML — enregistrés au boot car ils lisent `config/titles/`). Tier metadata quasi épuisé (leaves + familles citation/medal/xbox/mode_name_tr/playlist_fr/weapon_labels/prestige/milestones/csr/assists/catalogue+ranked). **Reste metadata** : `add_asset_translations` + `fix_super_fiesta` (root, à faire en dernier) + world_csr_leaderboard. Puis tier-B CŒUR Shared (cluster `steps_shared.go` 982L — effort focalisé multi-fichiers) + tiers player/shared_social/pve. 2 irréversibles différés en fin de course (reorder inversion 132/133 + PMT-2 store-cutover).
 

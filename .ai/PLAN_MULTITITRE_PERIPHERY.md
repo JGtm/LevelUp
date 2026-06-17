@@ -116,7 +116,7 @@ Indépendants (parité Halo seule, aucun prérequis dur) :
 ### PMT-2 — Acquisition auth par titre  (sévérité: blocker)
 
 **Axes** : MT-02
-**Statut couverture actuelle** : gap — toute la chaîne d'acquisition (audience XSTS, spartan-token Audience, clearance title path, SISU app/title id, scopes OAuth, persistance Spartan/clearance) est hardcodée Halo dans le package `internal/platform/auth` ; aucun `TitleDescriptor` / config TOML ne porte de section auth, et le `MultiUserTokenStore` n'est pas namespacé par titre.
+**Statut couverture actuelle** : **done ✅** (5 legs : XSTS/Spartan/Clearance/SISU/scopes via `AuthDescriptor` + store namespacé titre `873637195`). *Gap initial (historique)* : toute la chaîne d'acquisition était hardcodée Halo dans `internal/platform/auth` ; aucun `TitleDescriptor`/TOML ne portait de section auth, et le `MultiUserTokenStore` n'était pas namespacé par titre.
 
 **Évidence (⚠ RE-VÉRIFIER avant exécution — pointeurs datés 2026-06-13/14, re-vérifiés)** :
 - `internal/platform/auth/halo_exchange.go:30-33` — consts `spartanTokenURL` (settings.svc.halowaypoint.com/spartan-token), `clearanceURL` (`oban/flight-configurations/titles/hi/audiences/RETAIL/active` — le `hi` est Halo-specific), `xstsHaloAudience = "https://prod.xsts.halowaypoint.com/"`. (Le seed pointait 188/203 = corps des appelants `requestSpartanToken`/`requestClearanceToken` ; les consts sont en 30-33.)
@@ -291,7 +291,7 @@ Indépendants (parité Halo seule, aucun prérequis dur) :
 
 **Axes** : MT-08
 
-**Statut couverture actuelle** : partial — l'écriture (sync) et la garde de capability sont déjà title-aware ; le seul vrai trou est la **lecture** (`GetAchievementDefinitions` filtre en dur `title_id='halo_infinite'`, ignore le slug que le service porte déjà) + l'absence de flag `--title` au CLI + `XboxTitleIDFor` qui duplique la vérité au lieu de lire `TitleDescriptor.XboxTitleID`.
+**Statut couverture actuelle** : **done ✅** (PR1 lecture `GetAchievementDefinitions(ctx, slug)` filtre `title_id=?` + PR2 `XboxTitleIDFor` registry-driven, `e7f06fe71`). **Reste** : PR3 flag CLI `--title` + propagation engine — différé (write-side, exerçable seulement avec un 2e titre). *Gap initial* : lecture filtrait en dur `title_id='halo_infinite'` en ignorant le slug du service ; `XboxTitleIDFor` dupliquait `TitleDescriptor.XboxTitleID`.
 
 **Évidence (⚠ RE-VÉRIFIER avant exécution — pointeurs datés 2026-06-13, re-vérifiés 2026-06-14)** :
 - `internal/platform/duckdb/metadata_achievements_repo.go:29` — `WHERE title_id = 'halo_infinite'` en dur dans `GetAchievementDefinitions` ; le slug n'est ni paramètre ni lu. **C'est LE gap lecture.**
@@ -421,7 +421,7 @@ Indépendants (parité Halo seule, aucun prérequis dur) :
 
 **Axes** : MT-23
 
-**Statut couverture actuelle** : gap — le jeu de migrations est UNE liste globale Halo (`canonicalOrder`, ~150 steps), `schema_migrations` est keyé sur `name` seul par fichier DB, et le runner (`RunForDB`/`RunSteps`/`StepsFor`) n'a AUCUN paramètre `titleSlug` : le même set Halo s'exécute contre la DB de chaque titre.
+**Statut couverture actuelle** : **done ✅** (`743f9467c` : `RunForTitleDB(db, slug, target)` route par set enregistré (`TitleMigrationSet`/`RegisterMigrationSet`) ou retombe sur le défaut Halo byte-identique ; ledger `title_schema_version` + colonne `title_slug` sur `schema_migrations` ; oracle b `synthetic_title_b`). **2 déviations doc** : PK `name` conservée (DB per-titre → pas de collision), `canonicalOrder` reste dans le runner (ordre unifié global+title). *Gap initial* : liste globale Halo unique exécutée contre la DB de chaque titre, runner sans paramètre `titleSlug`.
 
 **Évidence (⚠ RE-VÉRIFIER avant exécution — pointeurs datés 2026-06-13, re-vérifiés 2026-06-14)** :
 - `internal/migration/registry.go:42-49` — `Register()`/`All()` peuplent un `var registry []Migration` (:39) global, sans dimension titre. Confirmé.
@@ -518,7 +518,7 @@ Indépendants (parité Halo seule, aucun prérequis dur) :
 
 **Axes** : MT-26
 
-**Statut couverture actuelle** : gap — le contenu des embeds Discord (footer « LevelUp · Halo Infinite Stats », outcomes Victoire/Défaite/Égalité/Abandon, KDA, tag Classé, libellés backfill LUSR/CSR/médailles/PvE, layout dernier match map/playlist/variant) est 100% Halo, codé en dur sur 2 fichiers (`discord.go` strings + `embeds.go` rendu/mapping), aucun slug ne circule dans le chemin de notification.
+**Statut couverture actuelle** : **done ✅** (outcomes — périmètre minimal) (`b571f1df5` : seam `NotifyLabels`/`OutcomeSource`, `BuildSyncEmbedWithLabels`, `NotifyConfig.Labels` ; oracle a Halo byte-identique + oracle b `synthetic_title_b` → « Triomphe »). **Reste** : footer + libellés backfill (pas de manifeste i18n par titre — hors scope minimal). *Gap initial* : contenu 100% Halo codé en dur (`discord.go` strings + `embeds.go` rendu), aucun slug dans le chemin de notification.
 
 **Évidence (⚠ RE-VÉRIFIER avant exécution — pointeurs re-vérifiés 2026-06-14)** :
 - `internal/notify/discord.go:188-297` — map `discordStrings` codée en dur ; footer l.238 (`LevelUp · Halo Infinite Stats`, FR=EN), outcomes l.189-192, KDA l.241, ranked tag l.237, libellés backfill l.218-228, `discord_last_match` l.236. **Confirmé exact.**

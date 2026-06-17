@@ -34,7 +34,7 @@ La re-vérification a déjà corrigé plusieurs erreurs de la passe d'audit init
 | Axe | Phase | Doc | Statut |
 |---|---|---|:-:|
 | FieldKey + `fields.toml` (stats canoniques) | Phase 1 | master | 🟡 |
-| DDL/schéma par titre | Phase 1.5 | master (+ [EXT-1.5](PLAN_MULTITITRE_PERIPHERY.md)) | 🟡 |
+| DDL/schéma par titre | Phase 1.5 | master (+ [EXT-1.5](PLAN_MULTITITRE_PERIPHERY.md)) | ✅ |
 | Pool tokens clé `(titleSlug,gamertag)` | Phase 1.6 | master | ✅ |
 | `capabilities.toml` + loader + endpoint | Phase 1.7a | master | ✅ |
 | Feature-matrix 3 états + cascade | Phase 1.7b | master | ✅ |
@@ -57,16 +57,16 @@ La re-vérification a déjà corrigé plusieurs erreurs de la passe d'audit init
 | ID | Axe | Sév. | Statut | Phase | Évidence (1 pointeur, ⚠ re-vérif) |
 |---|---|:-:|:-:|---|---|
 | MT-01 | Hosts d'ingestion API (stats/economy/gamecms/skill/UGC/discovery) en const | blocker | ✅ Exit Gate | [PMT-1](PLAN_MULTITITRE_PERIPHERY.md) — Expand bff9a1df3 + 6 axes Contract → cf2afefe2 (privacy `:443` + leaderboard web-scrape déférés/documentés) | `games.EndpointResolver` + `[endpoints]` constants.toml |
-| MT-02 | Acquisition auth (XSTS audience, SISU titleID 144209987, clearance `titles/hi`, scopes) | blocker | gap | [PMT-2](PLAN_MULTITITRE_PERIPHERY.md) | `internal/platform/auth/halo_exchange.go:30-33,182` |
+| MT-02 | Acquisition auth (XSTS audience, SISU titleID 144209987, clearance `titles/hi`, scopes) | blocker | done | [PMT-2](PLAN_MULTITITRE_PERIPHERY.md) ✅ 5 legs (XSTS/Spartan/Clearance/SISU/scopes) + store namespacé titre 873637195 | `AuthDescriptor` + `PathResolver.WatcherTokensDirFor(slug)` + `MigrateWatcherTokens` |
 | MT-11 | Scheduler/auto-sync : `NewSyncEngine` écrit en `DefaultSlug` (slug résolu puis jeté) | blocker | ✅ Exit Gate | [PMT-3](PLAN_MULTITITRE_PERIPHERY.md) — PR-1→4 → a934cde77 (V1+V2 écrivent per-titre, gate clé composite ; watcher per-titre documenté/inexerçable) | `NewSyncEngineForTitle` + ctxkeys carrier + `gateKey` |
 | MT-04 | `app_settings.json` global (CurrentCSRSeasonID, friends, sessions, toggles) | major | gap | [PMT-4](PLAN_MULTITITRE_PERIPHERY.md) | `internal/config/config.go:96-99` |
 | MT-06 | Enum Outcome `2/3/1/4` baké en SQL + citations + front | major | partiel | [PMT-5](PLAN_MULTITITRE_PERIPHERY.md) — Expand ✅ 4bc694fd7, Contract en backlog | seam `mappings.OutcomeMappingSet` (raw_code + Canonical/RawCode/SQLIsWinExpr) |
-| MT-08 | `XboxTitleIDFor` + achievements (`WHERE title_id='halo_infinite'`) | major | gap | [PMT-6](PLAN_MULTITITRE_PERIPHERY.md) | `internal/domain/title/registry.go:81-91` |
+| MT-08 | `XboxTitleIDFor` + achievements (`WHERE title_id='halo_infinite'`) | major | done | [PMT-6](PLAN_MULTITITRE_PERIPHERY.md) ✅ PR1+PR2 e7f06fe71 (lecture filtre `title_id=?` + XboxTitleIDFor registry-driven ; CLI `--title`=PR3 différé) | `GetAchievementDefinitions(ctx, slug)` + `(r *Registry).XboxTitleIDFor` |
 | MT-03 | World-stats / leaderboard (repos, enricher, CLIs, `DEFAULT 'halo_infinite'`) | major | gap | [PMT-7](PLAN_MULTITITRE_PERIPHERY.md) | `internal/analysis/world_stats.go` |
 | MT-22 | Cycle de vie titre (`Status` défini, jamais lu/gaté) | major | done | [PMT-8](PLAN_MULTITITRE_PERIPHERY.md) ✅ cf27ff85f | `middleware/require_active_title.go` (gate 503) |
-| MT-23 | Registre/ordre de migrations = 1 liste globale Halo lancée sur chaque titre | major | gap | [PMT-9](PLAN_MULTITITRE_PERIPHERY.md) | `internal/migration/order.go:15-54` |
+| MT-23 | Registre/ordre de migrations = 1 liste globale Halo lancée sur chaque titre | major | done | [PMT-9](PLAN_MULTITITRE_PERIPHERY.md) ✅ 743f9467c (relocation Phase 1.5 + routage `RunForTitleDB(slug)` + ledger `title_schema_version` ; 2 déviations doc : PK `name`, `canonicalOrder` reste runner) | `migration.TitleMigrationSet` + `RegisterMigrationSet` + oracle b synthetic_title_b |
 | MT-05 | Observabilité sans dimension titre (expvar/error/player-API/perf endpoints) | major | done | [PMT-10](PLAN_MULTITITRE_PERIPHERY.md) ✅ (PR-1→4) | seam titré 3 collecteurs + logs `title` + endpoints `?title=` + émission sync |
-| MT-26 | Discord : config globale (→PMT-4) + contenu 100% Halo (→PMT-11) | major | gap | [PMT-4](PLAN_MULTITITRE_PERIPHERY.md)/[PMT-11](PLAN_MULTITITRE_PERIPHERY.md) | `internal/notify/discord.go:188-297` + `embeds.go:211-250` |
+| MT-26 | Discord : config globale (→PMT-4) + contenu 100% Halo (→PMT-11) | major | partiel | [PMT-11](PLAN_MULTITITRE_PERIPHERY.md) ✅ contenu/outcomes b571f1df5 (seam `NotifyLabels`) ; [PMT-4](PLAN_MULTITITRE_PERIPHERY.md) config = gap | `notify.NotifyLabels`+`OutcomeSource` ; footer/backfill restent Halo |
 | MT-09 | Cutoffs factory `DefaultSlug` (`dataAdapterForPDB` → nil pour non-Halo) | major | done | [PMT-12](PLAN_MULTITITRE_PERIPHERY.md) ✅ 23d088103 | factory player-scoped par titre (`ServiceRegistry.playerDataBuilders`), allowlist archlint vide |
 | MT-21 | Aucun validateur boot « TOML requis présents » par titre enregistré | minor | done | [PMT-12](PLAN_MULTITITRE_PERIPHERY.md) ✅ dcfc01c31 | `internal/games/mappings/validate.go` (capability-driven) |
 | MT-12 | Front : constantes littérales `TITLE_SLUG='halo_infinite'` + lint absent | major | partiel | [EXT-5](PLAN_MULTITITRE_PERIPHERY.md)/[PMT-12](PLAN_MULTITITRE_PERIPHERY.md) | `apps/web/src/lib/staticAssets.ts:26` |

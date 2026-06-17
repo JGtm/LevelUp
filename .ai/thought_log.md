@@ -1,3 +1,16 @@
+## [2026-06-17] Hygiène dashboard — re-flip des statuts datés (doctrine « carte datée, pas vérité »)
+
+**Statut** : Complété (doc-only).
+
+**Contexte** : les registres de statut (INDEX/TRACKER/PERIPHERY) étaient datés 2026-06-13/14, antérieurs aux livraisons PMT-2 leg 5, PMT-9, PMT-11, PMT-6 + relocation Phase 1.5. Synchronisés sur la réalité commitée :
+- `PLAN_MULTITITRE_INDEX.md` : MT-02/PMT-2 → done (873637195) ; MT-08/PMT-6 → done (e7f06fe71, PR3 CLI différé) ; MT-23/PMT-9 → done (743f9467c) ; MT-26 → **partiel** (PMT-11 contenu done b571f1df5, PMT-4 config = gap) ; Phase 1.5 (Registre A) 🟡 → ✅.
+- `PLAN_TITLE_AGNOSTIC_TRACKER.md` : Phase 1.5 🟡 70/45% → ✅ 100% (relocation complète + 2 irréversibles livrés).
+- `PLAN_MULTITITRE_PERIPHERY.md` : « Statut couverture actuelle » de PMT-2/6/9/11 → done (gap initial conservé en historique).
+
+**Note** : MT-26 reste partiel à dessein — seul le contenu (PMT-11) est livré, la config Discord par titre (PMT-4) est un axe distinct non démarré.
+
+---
+
 ## [2026-06-17] PMT-6 (MT-08) — Achievements : lecture title-aware (filtre title_id paramétré) + XboxTitleIDFor registry-driven
 
 **Statut** : Complété (exit gate atteint).
