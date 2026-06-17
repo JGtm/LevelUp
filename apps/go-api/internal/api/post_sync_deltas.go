@@ -92,14 +92,20 @@ func buildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 			// Couche progression V2 (Ascension) — pipeline streaks/records/
 			// milestones/coach + coach_advisor (Phase 8 ADR 0020). Non
 			// bloquant : toute erreur reste en slog.Warn.
+			// PMT-4 : coach proactif + pipeline progression résolus pour le TITRE
+			// du joueur syncé (pdb2.TitleSlug), JAMAIS le slug joueur de la closure
+			// (`slug` = PlayerSlug ici, cf. sync_handler.postSync). Limite connue :
+			// en post-sync background (auto-sync/CLI) le ctx ne porte pas de titre
+			// → pdb2.TitleSlug = DefaultSlug (correct mono-titre ; à threader depuis
+			// l'engine quand un 2e titre arrivera).
 			progDeps := BuildPlayerProgressionDepsWithAdvisor(
 				pdb2, emitter,
 				reg.CoachAdvisorBundle(),
 				reg.PrestigeBundle(),
-				readCoachProactiveMode(reg),
+				readCoachProactiveMode(reg, pdb2.TitleSlug),
 				slug,
 			)
-			if _, err := EvaluateProgressionAfterSync(ctx, pdb2, defaultProgressionTitleSlug(), progDeps, time.Now().UTC()); err != nil {
+			if _, err := EvaluateProgressionAfterSync(ctx, pdb2, pdb2.TitleSlug, progDeps, time.Now().UTC()); err != nil {
 				slog.WarnContext(ctx, "post_sync: progression evaluate", "slug", slug, "err", err)
 			}
 		}
@@ -114,16 +120,18 @@ func defaultProgressionTitleSlug() string {
 	return titlePkg.DefaultSlug
 }
 
-// readCoachProactiveMode lit la valeur courante du toggle dans
-// app_settings.json via le SettingsStore du registry. Retourne false si le
-// store n'est pas attaché ou si la lecture échoue — comportement opt-in
-// strict (cf. ADR 0020 Phase 1).
-func readCoachProactiveMode(reg *ServiceRegistry) bool {
+// readCoachProactiveMode lit le toggle coach proactif RÉSOLU pour le titre
+// (overlay per-titre PMT-4 : le coach proactif est lié au système de
+// progression/Prestige propre au titre). Overlay absent ⇒ valeur globale
+// byte-identique. Retourne false si le store n'est pas attaché ou si la lecture
+// échoue — comportement opt-in strict (cf. ADR 0020 Phase 1).
+func readCoachProactiveMode(reg *ServiceRegistry, titleSlug string) bool {
 	store := reg.SettingsStore()
 	if store == nil {
 		return false
 	}
-	cfg, err := store.Load()
+	pr := titlePkg.NewPathResolver(reg.cfg.RepoRoot)
+	cfg, err := store.ResolveForTitle(pr.TitleSettingsPath(titleSlug))
 	if err != nil || cfg == nil {
 		return false
 	}

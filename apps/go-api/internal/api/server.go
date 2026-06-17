@@ -73,6 +73,15 @@ func playerOwnershipXUIDResolver(cfg *config.AppConfig) middleware.PlayerXUIDRes
 // autoriser le switch de BDD entre membres de la famille/amis (#21 Phase A).
 // Retourne nil (→ accès strict d'origine) si settings ou profils indisponibles,
 // ou si aucun ami n'est configuré.
+//
+// PMT-4 — DÉCISION : FriendGamertags est cross_title_global, JAMAIS résolu par
+// overlay titre (Load(), pas ResolveForTitle). Les amis sont des PERSONNES
+// transverses aux titres, et cette liste se résout en grant d'accès cross-player
+// (ownership famille) : un overlay per-titre serait un footgun authz (cercle de
+// confiance qui rétrécirait/élargirait silencieusement par jeu). Même logique
+// pour tous les sites is_with_friends (loaders engine V1/V2/auto_sync, CLI
+// recompute-friends). Seuls les settings UX (sessions/coach/progression/outcomes)
+// passent par l'overlay. (Décision PMT-4, 2026-06-17.)
 func familyXUIDResolver(cfg *config.AppConfig, settingsStore *settings_platform.Store) middleware.FamilyXUIDResolver {
 	return func(ctx context.Context) map[string]bool {
 		appSettings, err := settingsStore.Load()

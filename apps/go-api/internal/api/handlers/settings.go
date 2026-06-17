@@ -17,6 +17,7 @@ import (
 	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/platform/jobs"
@@ -402,15 +403,43 @@ func (h *SettingsHandler) PostMediaScan(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusAccepted, &jobSnapshot)
 }
 
+// sessionComputeOptionsFor résout les options de calcul de sessions d'un titre
+// via l'overlay PMT-4 (SessionGapMinutes / split / team-change sont per-titre :
+// le rythme de session dépend du titre). Overlay absent ⇒ valeurs globales
+// byte-identiques ; store nil ou erreur ⇒ Defaults(). Extrait pour rester
+// testable hors de la goroutine de PostRecalculateSessions.
+func sessionComputeOptionsFor(store *settings_platform.Store, pr *titlePkg.PathResolver, titleSlug string) domain.SessionComputeOptions {
+	cfg := settings_platform.Defaults()
+	if store != nil {
+		if resolved, err := store.ResolveForTitle(pr.TitleSettingsPath(titleSlug)); err == nil && resolved != nil {
+			cfg = resolved
+		}
+	}
+	gap := cfg.SessionGapMinutes
+	if gap <= 0 {
+		gap = 120
+	}
+	return domain.SessionComputeOptions{
+		GapMinutes:          gap,
+		SplitOnRankedChange: cfg.SessionSplitOnRankedChange,
+		TeamChangeMode:      domain.TeamChangeMode(cfg.SessionTeamChangeMode),
+		Mode:                domain.SessionModeContext,
+	}
+}
+
 // PostRecalculateSessions lance un recalcul des sessions pour tous les joueurs.
 // POST /settings/sessions/recalculate — retourne un AsyncJobStatus (202).
 func (h *SettingsHandler) PostRecalculateSessions(w http.ResponseWriter, r *http.Request) {
-	settingsCfg := settings_platform.Defaults()
+	// FriendGamertags reste GLOBAL (cross-titre, PMT-4) : les amis sont des
+	// personnes transverses au titre + le grant d'accès famille ne doit pas
+	// varier par jeu. Résolu une seule fois via Load(), jamais par overlay.
+	globalCfg := settings_platform.Defaults()
 	if h.settingsStore != nil {
 		if cfg, err := h.settingsStore.Load(); err == nil {
-			settingsCfg = cfg
+			globalCfg = cfg
 		}
 	}
+	friendGamertags := globalCfg.FriendGamertags
 
 	players, err := h.cfg.LoadPlayers()
 	if err != nil {
@@ -423,17 +452,7 @@ func (h *SettingsHandler) PostRecalculateSessions(w http.ResponseWriter, r *http
 	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
 	jobSnapshot := *job
 
-	gapMinutes := settingsCfg.SessionGapMinutes
-	if gapMinutes <= 0 {
-		gapMinutes = 120
-	}
-	opts := domain.SessionComputeOptions{
-		GapMinutes:          gapMinutes,
-		SplitOnRankedChange: settingsCfg.SessionSplitOnRankedChange,
-		TeamChangeMode:      domain.TeamChangeMode(settingsCfg.SessionTeamChangeMode),
-		Mode:                domain.SessionModeContext,
-	}
-	friendGamertags := settingsCfg.FriendGamertags
+	pr := titlePkg.NewPathResolver(h.cfg.RepoRoot)
 	sharedDBPath := config.SharedDBPath(h.cfg, "")
 
 	go func() {
@@ -445,6 +464,10 @@ func (h *SettingsHandler) PostRecalculateSessions(w http.ResponseWriter, r *http
 			if p.XUID == "" {
 				continue
 			}
+			// SessionGapMinutes / split / team-change sont per-titre (overlay
+			// PMT-4 : le rythme de session dépend du titre). Overlay absent ⇒
+			// valeurs globales byte-identiques.
+			opts := sessionComputeOptionsFor(h.settingsStore, pr, p.TitleSlug)
 			playerDBPath := config.PlayerDBPath(h.cfg, "", p.Gamertag)
 			n, err := go_sync.RecalculatePlayerSessions(
 				context.Background(), h.cfg.SharedProvider, playerDBPath, sharedDBPath, p.XUID,
