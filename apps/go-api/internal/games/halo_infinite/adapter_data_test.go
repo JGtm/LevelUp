@@ -19,6 +19,8 @@ type stubCareer struct {
 	err           error
 	encounters    []domain.EncounterRawRow
 	encountersErr error
+	xpHistory     []domain.XPHistoryPoint
+	xpHistoryErr  error
 }
 
 func (s *stubCareer) GetLatestRank(_ context.Context) (*domain.CareerRankData, error) {
@@ -27,6 +29,10 @@ func (s *stubCareer) GetLatestRank(_ context.Context) (*domain.CareerRankData, e
 
 func (s *stubCareer) GetEncounters(_ context.Context) ([]domain.EncounterRawRow, error) {
 	return s.encounters, s.encountersErr
+}
+
+func (s *stubCareer) GetXPHistory(_ context.Context) ([]domain.XPHistoryPoint, error) {
+	return s.xpHistory, s.xpHistoryErr
 }
 
 func newSilentAdapter(c CareerSource) *DataAdapter {

@@ -200,7 +200,7 @@ func (s *CareerService) GetCareerPage(ctx context.Context) (domain.CareerPageRes
 	if err != nil {
 		return domain.CareerPageResponse{}, fmt.Errorf("CareerService.GetCareerPage: %w", err)
 	}
-	xpHistory, err := s.repo.GetXPHistory(ctx)
+	xpHistory, err := s.loadXPHistory(ctx)
 	if err != nil {
 		return domain.CareerPageResponse{}, fmt.Errorf("CareerService.GetCareerPage: %w", err)
 	}
@@ -297,6 +297,48 @@ func rankDataFromCanonical(snap *canonical.CareerSnapshot) *domain.CareerRankDat
 		row.RankLabel = &v
 	}
 	return row
+}
+
+// loadXPHistory centralise la résolution repo/adapter pour l'historique XP (HIGH-C).
+// Si dataAdapter est fourni et supporte career.progression, passe par
+// LoadCareerSnapshot(IncludeHistory) et reconstitue []domain.XPHistoryPoint
+// strictement identique à repo.GetXPHistory. Fallback repo sur capability absente.
+//
+// Note : GetCareerPage appelle loadLatestRank AVANT loadXPHistory ; une erreur
+// GetLatestRank avorte donc la page en amont — le double appel via LoadCareerSnapshot
+// est sans effet sur le payload (mêmes données, mêmes erreurs gérées en amont).
+func (s *CareerService) loadXPHistory(ctx context.Context) ([]domain.XPHistoryPoint, error) {
+	if s.dataAdapter != nil {
+		snap, err := s.dataAdapter.LoadCareerSnapshot(ctx, "", canonical.CareerOptions{IncludeHistory: true})
+		if err == nil {
+			return xpHistoryFromCanonical(snap.History), nil
+		}
+		if !errors.Is(err, games.ErrCapabilityNotSupported) {
+			return nil, err
+		}
+	}
+	return s.repo.GetXPHistory(ctx)
+}
+
+// xpHistoryFromCanonical projette canonical.CareerSnapshot.History →
+// []domain.XPHistoryPoint. Retourne nil pour une entrée vide (préserve le
+// short-circuit projections len<2 + la ré-init nil→[] de GetCareerPage).
+func xpHistoryFromCanonical(entries []canonical.CareerHistoryEntry) []domain.XPHistoryPoint {
+	if len(entries) == 0 {
+		return nil
+	}
+	out := make([]domain.XPHistoryPoint, 0, len(entries))
+	for _, e := range entries {
+		p := domain.XPHistoryPoint{RecordedAt: e.RecordedAt, Rank: e.RankNumber}
+		if e.CurrentXP != nil {
+			p.CurrentXP = *e.CurrentXP
+		}
+		if e.XPTotal != nil {
+			p.XPTotal = *e.XPTotal
+		}
+		out = append(out, p)
+	}
+	return out
 }
 
 // ── Sprint 54-A7/A8 : résolution saison courante avec fallback synthétique ──

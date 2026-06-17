@@ -28,6 +28,9 @@ import (
 type CareerSource interface {
 	GetLatestRank(ctx context.Context) (*domain.CareerRankData, error)
 	GetEncounters(ctx context.Context) ([]domain.EncounterRawRow, error)
+	// GetXPHistory : historique XP (Phase 2 HIGH-C) — alimente CareerSnapshot.History
+	// quand CareerOptions.IncludeHistory. Déjà implémenté par duckdb.CareerRepo.
+	GetXPHistory(ctx context.Context) ([]domain.XPHistoryPoint, error)
 }
 
 // DataAdapter est l'implémentation HI de games.TitleDataAdapter.
@@ -146,16 +149,47 @@ func (a *DataAdapter) LoadCareerSnapshot(ctx context.Context, xuid string, opts 
 	defer cancel()
 
 	row, err := a.career.GetLatestRank(ctx)
-	if err != nil {
-		if isNoRowsErr(err) {
-			return &canonical.CareerSnapshot{
-				Player: canonical.PlayerIdentity{XUID: xuid},
-			}, nil
-		}
+	var snap *canonical.CareerSnapshot
+	switch {
+	case err == nil:
+		snap = projectCareerSnapshot(xuid, row)
+	case isNoRowsErr(err):
+		snap = &canonical.CareerSnapshot{Player: canonical.PlayerIdentity{XUID: xuid}}
+	default:
 		return nil, err
 	}
 
-	return projectCareerSnapshot(xuid, row), nil
+	// HIGH-C : l'historique XP est INDÉPENDANT du rang courant (le legacy
+	// repo.GetXPHistory ne dépend pas de GetLatestRank) → fetch séparé quand demandé.
+	if opts.IncludeHistory {
+		hist, herr := a.career.GetXPHistory(ctx)
+		if herr != nil {
+			return nil, herr
+		}
+		snap.History = projectCareerHistory(hist)
+	}
+
+	return snap, nil
+}
+
+// projectCareerHistory projette l'historique XP domaine → canonique. Retourne nil
+// pour une entrée vide (préserve la sémantique nil du legacy GetXPHistory : le
+// service ré-initialise nil→[] APRÈS les projections, cf. GetCareerPage).
+func projectCareerHistory(rows []domain.XPHistoryPoint) []canonical.CareerHistoryEntry {
+	if len(rows) == 0 {
+		return nil
+	}
+	out := make([]canonical.CareerHistoryEntry, 0, len(rows))
+	for _, p := range rows {
+		cur, tot := p.CurrentXP, p.XPTotal
+		out = append(out, canonical.CareerHistoryEntry{
+			RecordedAt: p.RecordedAt,
+			RankNumber: p.Rank,
+			CurrentXP:  &cur,
+			XPTotal:    &tot,
+		})
+	}
+	return out
 }
 
 // LoadEncounters wrappe CareerSource.GetEncounters et projette le résultat

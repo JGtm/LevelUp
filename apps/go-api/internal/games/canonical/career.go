@@ -31,10 +31,18 @@ type CareerSnapshot struct {
 }
 
 // CareerHistoryEntry est une entrée de progression carrière historisée.
+//
+// Les champs RankNumber/CurrentXP/XPTotal (Phase 2 HIGH-C) portent l'historique XP
+// numérique tel que servi par le titre : Rank *AssetReference (libellé/asset) et
+// XP *int (XP générique) ne couvrent pas losslessly le triplet (rangNum, currentXP,
+// xpTotal) du payload Carrière → champs additifs dédiés, byte-identique au domaine.
 type CareerHistoryEntry struct {
 	RecordedAt time.Time
 	Rank       *AssetReference
 	XP         *int
+	RankNumber int  // numéro de rang brut (domain.XPHistoryPoint.Rank)
+	CurrentXP  *int // XP courant dans le rang (domain.XPHistoryPoint.CurrentXP)
+	XPTotal    *int // XP cumulé (domain.XPHistoryPoint.XPTotal)
 }
 
 // EncounterRow représente un joueur croisé fréquemment, dans le canonique.

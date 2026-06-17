@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -317,6 +318,90 @@ func TestCareerService_GetCareerPage_DataAdapterParity(t *testing.T) {
 	jsonAdapter, _ := json.Marshal(respAdapter.Summary)
 	if string(jsonLegacy) != string(jsonAdapter) {
 		t.Errorf("Summary parity cassée :\nlegacy=  %s\nadapter= %s", jsonLegacy, jsonAdapter)
+	}
+}
+
+// TestCareerService_GetXPHistory_DataAdapterParity (HIGH-C) prouve que la bascule
+// de l'historique XP vers le TitleDataAdapter (LoadCareerSnapshot + IncludeHistory)
+// produit STRICTEMENT le même CareerPageResponse que la version repo legacy. Le
+// fixture force XPTotal != CurrentXP pour attraper toute collision des deux entiers
+// (le canonique CareerHistoryEntry porte RankNumber/CurrentXP/XPTotal séparés).
+func TestCareerService_GetXPHistory_DataAdapterParity(t *testing.T) {
+	t.Parallel()
+
+	rankTier := "GOLD"
+	xpTotal := 5_000_000
+	rankData := &domain.CareerRankData{
+		RankNumber: 50, CurrentXP: 1000, RankTier: &rankTier, XPTotal: &xpTotal,
+		RecordedAt: time.Date(2026, 4, 25, 12, 0, 0, 0, time.UTC),
+	}
+	xpHist := []domain.XPHistoryPoint{
+		{RecordedAt: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC), Rank: 48, CurrentXP: 200, XPTotal: 4_000_000},
+		{RecordedAt: time.Date(2026, 4, 10, 0, 0, 0, 0, time.UTC), Rank: 49, CurrentXP: 500, XPTotal: 4_500_000},
+		{RecordedAt: time.Date(2026, 4, 20, 0, 0, 0, 0, time.UTC), Rank: 50, CurrentXP: 1000, XPTotal: 5_000_000},
+	}
+
+	// Path 1 : repo direct.
+	svcLegacy := NewCareerService(&mockCareerRepo{rank: rankData, xpHist: xpHist})
+	respLegacy, err := svcLegacy.GetCareerPage(context.Background())
+	if err != nil {
+		t.Fatalf("legacy: %v", err)
+	}
+
+	// Path 2 : DataAdapter (LoadCareerSnapshot IncludeHistory).
+	repoAdapter := &mockCareerRepo{rank: rankData, xpHist: xpHist}
+	dataAdapter := halo_games.NewDataAdapter(repoAdapter, slog.New(slog.NewJSONHandler(io.Discard, nil)))
+	svcAdapter := NewCareerService(repoAdapter).WithDataAdapter(dataAdapter)
+	respAdapter, err := svcAdapter.GetCareerPage(context.Background())
+	if err != nil {
+		t.Fatalf("adapter: %v", err)
+	}
+
+	// Parité du CareerPageResponse COMPLET : XPHistory ET Projections (XPTotal
+	// alimente les deux) doivent être byte-identiques.
+	jsonLegacy, _ := json.Marshal(respLegacy)
+	jsonAdapter, _ := json.Marshal(respAdapter)
+	if string(jsonLegacy) != string(jsonAdapter) {
+		t.Errorf("XP history parity cassée :\nlegacy=  %s\nadapter= %s", jsonLegacy, jsonAdapter)
+	}
+}
+
+// TestCareerService_GetXPHistory_EmptySerializesAsArray garantit que l'historique
+// XP vide sérialise en `[]` (pas `null`) via les deux chemins — l'adapter retourne
+// nil (comme le repo), que GetCareerPage ré-initialise en [].
+func TestCareerService_GetXPHistory_EmptySerializesAsArray(t *testing.T) {
+	t.Parallel()
+	repoAdapter := &mockCareerRepo{} // rank nil, xpHist nil
+	dataAdapter := halo_games.NewDataAdapter(repoAdapter, slog.New(slog.NewJSONHandler(io.Discard, nil)))
+	svc := NewCareerService(repoAdapter).WithDataAdapter(dataAdapter)
+	resp, err := svc.GetCareerPage(context.Background())
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	b, _ := json.Marshal(resp)
+	if strings.Contains(string(b), `"xp_history":null`) {
+		t.Errorf("xp_history sérialisé en null (attendu []) : %s", b)
+	}
+}
+
+// TestCareerService_GetXPHistory_AdapterFallbackOnUnsupported : adapter sans
+// CareerSource → ErrCapabilityNotSupported → fallback silencieux sur repo.GetXPHistory.
+func TestCareerService_GetXPHistory_AdapterFallbackOnUnsupported(t *testing.T) {
+	t.Parallel()
+	xpHist := []domain.XPHistoryPoint{
+		{RecordedAt: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC), Rank: 48, CurrentXP: 200, XPTotal: 4_000_000},
+		{RecordedAt: time.Date(2026, 4, 10, 0, 0, 0, 0, time.UTC), Rank: 49, CurrentXP: 500, XPTotal: 4_500_000},
+	}
+	repo := &mockCareerRepo{xpHist: xpHist}
+	dataAdapter := halo_games.NewDataAdapter(nil, slog.New(slog.NewJSONHandler(io.Discard, nil)))
+	svc := NewCareerService(repo).WithDataAdapter(dataAdapter)
+
+	resp, err := svc.GetCareerPage(context.Background())
+	if err != nil {
+		t.Fatalf("fallback devrait être silencieux, got %v", err)
+	}
+	if len(resp.XPHistory) != 2 {
+		t.Errorf("XPHistory via fallback repo = %d, want 2", len(resp.XPHistory))
 	}
 }
 

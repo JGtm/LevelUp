@@ -1,3 +1,22 @@
+## [2026-06-17] Phase 2 HIGH-C Path A — historique XP canonical-typé (golden parity byte-identique)
+
+**Statut** : LIVRÉ (1er des 3 chemins HIGH-C). `career_service.GetCareerPage` lit l'historique XP via le `TitleDataAdapter` (canonical) au lieu du repo direct, byte-identique. Décision « les 3 HIGH en séquence » (user). Conçu + vérifié par workflow (4 agents, field-coverage par chemin).
+
+**Découverte clé (workflow)** : `canonical.CareerHistoryEntry{RecordedAt, Rank *AssetReference, XP *int}` NE COUVRE PAS `domain.XPHistoryPoint{RecordedAt, Rank int, CurrentXP int, XPTotal int}` (Rank asset-ref vs int ; un seul XP vs deux). Extension ADDITIVE requise : `CareerHistoryEntry` gagne `RankNumber int`, `CurrentXP *int`, `XPTotal *int` (champs existants intacts → 0 churn).
+
+**Implémentation (Path A choisi 1er car ZÉRO changement d'interface `TitleDataAdapter`)** :
+- `CareerSource` (petite interface halo, 1 impl = duckdb.CareerRepo) gagne `GetXPHistory` (déjà implémenté côté repo, pas de SQL touché).
+- `LoadCareerSnapshot` : quand `opts.IncludeHistory`, fetch `GetXPHistory` INDÉPENDAMMENT du rang (le legacy GetXPHistory ne dépend pas de GetLatestRank) → `projectCareerHistory` (nil pour vide).
+- `career_service.loadXPHistory` (miroir `loadLatestRank` : adapter-first + fallback repo sur `ErrCapabilityNotSupported`) + `xpHistoryFromCanonical` (nil pour vide → préserve short-circuit projections + ré-init nil→[]). Remplace l'appel direct `GetCareerPage:203`.
+
+**Golden** : `TestCareerService_GetXPHistory_DataAdapterParity` (CareerPageResponse COMPLET byte-identique legacy vs adapter ; fixture `XPTotal != CurrentXP` pour attraper la collision 2-entiers ; XP feeds XPHistory ET Projections) + `_EmptySerializesAsArray` (nil→[]) + `_AdapterFallbackOnUnsupported`. Stubs CareerSource de test (×3 : mockCareerRepo, stubCareer, careerStub) étendus.
+
+**Vérif** : `go build ./...` ✅ · `go test ./internal/service/ ./internal/games/...` verts (dont GetCareerPage_DataAdapterParity inchangé : l'extension additive ne perturbe pas le chemin rang-seul) · gofmt/vet propres.
+
+**Reste HIGH-C** : Path B (GetLUSRHistory → new `canonical.LUSRCheckpoint` + méthode interface, risque LOW) ; Path C (GetTopMatches → new `canonical.CareerTopMatch`, OutcomeCode int brut PAS canonical.Outcome string, risque MEDIUM).
+
+---
+
 ## [2026-06-17] Phase 2 — démarrage : critère « 0 service n'importe duckdb pour la data » (re-vérifié workflow 9 agents)
 
 **Cadrage (carte datée → HEAD)** : workflow de readiness (9 agents). Le seam canonique `PlayerMatchesRepository → canonical.PlayerMatchRow` est déjà câblé dans 12 services. Le critère de complétion Phase 2 (« aucun service n'importe `platform/duckdb` pour la data ») échoue sur **7 fichiers** : home (PersistSink, type), skill_v2 (SkillV2Repo, data), career_live ×3 (CareerRankRow/CareerProgressionPartial, DTO), media ×2 (OpenReadWrite, write-IO). Les 6 services de lecture sont duckdb-free mais explorer/match_view/career-partiel lisent encore `domain.*` (canonical-typing = travail HIGH ultérieur, décisions requises).
