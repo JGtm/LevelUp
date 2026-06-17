@@ -18,8 +18,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/progression/milestones"
@@ -54,13 +56,33 @@ func (h *ProgressionHandler) WithDemoMode(demo bool) *ProgressionHandler {
 	return h
 }
 
-// Mount enregistre les 3 routes sur un router chi sous-monté (le sub-router
-// inclut déjà le préfixe /players/{player_slug}).
+// Mount enregistre les 3 routes via Huma (Phase 3b) sur le sous-routeur chi
+// (qui inclut déjà le préfixe /players/{player_slug} + son middleware
+// ownership/title). humacore.NewAPI lit le path param parent {player_slug} et
+// hérite du middleware du sous-groupe (cf. TestHumaNestedSubrouterProbe).
 func (h *ProgressionHandler) Mount(r chi.Router) {
-	r.Get("/streaks", h.ListStreaks)
-	r.Get("/records", h.ListRecords)
-	r.Get("/milestones", h.ListMilestones)
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/streaks", h.handleStreaks)
+	huma.Get(api, "/records", h.handleRecords)
+	huma.Get(api, "/milestones", h.handleMilestones)
 }
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// progPlayerInput : path param parent {player_slug} (streaks + milestones).
+type progPlayerInput struct {
+	PlayerSlug string `path:"player_slug"`
+}
+
+// progRecordsInput : {player_slug} + ?history_limit= (records).
+type progRecordsInput struct {
+	PlayerSlug   string `path:"player_slug"`
+	HistoryLimit int    `query:"history_limit"`
+}
+
+type streaksHumaOutput struct{ Body streaksResponse }
+type recordsHumaOutput struct{ Body recordsResponse }
+type milestonesHumaOutput struct{ Body milestonesResponse }
 
 // ─── DTOs réponse ──────────────────────────────────────────────────────────
 
@@ -128,40 +150,36 @@ type milestonesResponse struct {
 
 // ─── Endpoints ─────────────────────────────────────────────────────────────
 
-// ListStreaks : GET /streaks → toutes les streaks du joueur (active + historique).
-func (h *ProgressionHandler) ListStreaks(w http.ResponseWriter, r *http.Request) {
+// handleStreaks : GET /streaks → toutes les streaks du joueur (active + historique).
+func (h *ProgressionHandler) handleStreaks(ctx context.Context, in *progPlayerInput) (*streaksHumaOutput, error) {
 	if h.demoMode {
-		writeJSON(w, http.StatusOK, demoStreaks())
-		return
+		return &streaksHumaOutput{Body: demoStreaks()}, nil
 	}
-	pdb, ok := h.resolveOr404(w, r)
-	if !ok {
-		return
+	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, err
 	}
 	repo := duckdb.NewStreaksRepo(pdb.Player)
-	list, err := repo.List(r.Context(), pdb.XUID, h.titleSlug)
+	list, err := repo.List(ctx, pdb.XUID, h.titleSlug)
 	if err != nil {
-		slog.WarnContext(r.Context(), "progression: list streaks", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "list_streaks_error", err.Error())
-		return
+		slog.WarnContext(ctx, "progression: list streaks", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "list_streaks_error", err.Error())
 	}
 	items := make([]streakDTO, 0, len(list))
 	for _, s := range list {
 		items = append(items, toStreakDTO(s))
 	}
-	writeJSON(w, http.StatusOK, streaksResponse{Items: items})
+	return &streaksHumaOutput{Body: streaksResponse{Items: items}}, nil
 }
 
-// ListRecords : GET /records → PB courants + timeline.
-//
-// Query params optionnels :
-//   - history_limit : limite l'historique (défaut 50, max 200)
-func (h *ProgressionHandler) ListRecords(w http.ResponseWriter, r *http.Request) {
-	pdb, ok := h.resolveOr404(w, r)
-	if !ok {
-		return
+// handleRecords : GET /records → PB courants + timeline.
+// Query param optionnel history_limit (défaut 50, max 200).
+func (h *ProgressionHandler) handleRecords(ctx context.Context, in *progRecordsInput) (*recordsHumaOutput, error) {
+	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, err
 	}
-	limit := atoi(r.URL.Query().Get("history_limit"))
+	limit := in.HistoryLimit
 	if limit <= 0 {
 		limit = 50
 	}
@@ -170,19 +188,17 @@ func (h *ProgressionHandler) ListRecords(w http.ResponseWriter, r *http.Request)
 	}
 
 	pbRepo := duckdb.NewPersonalRecordsRepo(pdb)
-	pbList, err := pbRepo.ListByXUID(r.Context(), pdb.XUID)
+	pbList, err := pbRepo.ListByXUID(ctx, pdb.XUID)
 	if err != nil {
-		slog.WarnContext(r.Context(), "progression: list PBs", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "list_pbs_error", err.Error())
-		return
+		slog.WarnContext(ctx, "progression: list PBs", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "list_pbs_error", err.Error())
 	}
 
 	historyRepo := duckdb.NewRecordHistoryRepo(pdb.Player)
-	histList, err := historyRepo.ListRecent(r.Context(), pdb.XUID, h.titleSlug, limit)
+	histList, err := historyRepo.ListRecent(ctx, pdb.XUID, h.titleSlug, limit)
 	if err != nil {
-		slog.WarnContext(r.Context(), "progression: list record history", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "list_history_error", err.Error())
-		return
+		slog.WarnContext(ctx, "progression: list record history", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "list_history_error", err.Error())
 	}
 
 	resp := recordsResponse{
@@ -192,33 +208,31 @@ func (h *ProgressionHandler) ListRecords(w http.ResponseWriter, r *http.Request)
 	for _, pb := range pbList {
 		resp.PersonalBests = append(resp.PersonalBests, toPBDTO(pb))
 	}
-	for _, h := range histList {
-		resp.History = append(resp.History, toHistoryDTO(h))
+	for _, hh := range histList {
+		resp.History = append(resp.History, toHistoryDTO(hh))
 	}
-	writeJSON(w, http.StatusOK, resp)
+	return &recordsHumaOutput{Body: resp}, nil
 }
 
-// ListMilestones : GET /milestones → catalogue du titre + statut Earned.
-func (h *ProgressionHandler) ListMilestones(w http.ResponseWriter, r *http.Request) {
-	pdb, ok := h.resolveOr404(w, r)
-	if !ok {
-		return
+// handleMilestones : GET /milestones → catalogue du titre + statut Earned.
+func (h *ProgressionHandler) handleMilestones(ctx context.Context, in *progPlayerInput) (*milestonesHumaOutput, error) {
+	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, err
 	}
 
 	catalogRepo := duckdb.NewMilestoneCatalogRepo(pdb.Metadata)
-	catalog, err := catalogRepo.ListByTitle(r.Context(), h.titleSlug)
+	catalog, err := catalogRepo.ListByTitle(ctx, h.titleSlug)
 	if err != nil {
-		slog.WarnContext(r.Context(), "progression: list catalog", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "list_catalog_error", err.Error())
-		return
+		slog.WarnContext(ctx, "progression: list catalog", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "list_catalog_error", err.Error())
 	}
 
 	earnedRepo := duckdb.NewMilestoneEarnedRepo(pdb.Player)
-	earnedList, err := earnedRepo.ListByUser(r.Context(), pdb.XUID, h.titleSlug)
+	earnedList, err := earnedRepo.ListByUser(ctx, pdb.XUID, h.titleSlug)
 	if err != nil {
-		slog.WarnContext(r.Context(), "progression: list earned", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "list_earned_error", err.Error())
-		return
+		slog.WarnContext(ctx, "progression: list earned", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "list_earned_error", err.Error())
 	}
 	earnedByID := make(map[string]time.Time, len(earnedList))
 	for _, e := range earnedList {
@@ -235,21 +249,19 @@ func (h *ProgressionHandler) ListMilestones(w http.ResponseWriter, r *http.Reque
 		}
 		items = append(items, dto)
 	}
-	writeJSON(w, http.StatusOK, milestonesResponse{Items: items})
+	return &milestonesHumaOutput{Body: milestonesResponse{Items: items}}, nil
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-// resolveOr404 résout le slug courant ou écrit 404. Pattern aligné sur
-// NotificationsHandler.resolve.
-func (h *ProgressionHandler) resolveOr404(w http.ResponseWriter, r *http.Request) (*duckdb.PlayerDB, bool) {
-	slug := chi.URLParam(r, "player_slug")
-	pdb, err := h.resolve(r.Context(), slug)
+// resolvePlayer résout le slug courant ou renvoie une erreur Huma 404
+// (contrat préservé : {code:player_not_found}).
+func (h *ProgressionHandler) resolvePlayer(ctx context.Context, slug string) (*duckdb.PlayerDB, error) {
+	pdb, err := h.resolve(ctx, slug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return nil, false
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
-	return pdb, true
+	return pdb, nil
 }
 
 func toStreakDTO(s streaks.Streak) streakDTO {
