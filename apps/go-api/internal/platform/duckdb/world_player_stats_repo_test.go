@@ -125,13 +125,13 @@ func TestGetCSRWorldLeaderboard_Enrichment(t *testing.T) {
 	const arena = "edfef3ac-9cbe-4fa2-b949-8f29deafd483"
 	t0 := time.Now().UTC()
 	// Saison précédente (13-1) : Alpha rang 5.
-	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), []domain.LeaderboardEntry{
+	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), "halo_infinite", []domain.LeaderboardEntry{
 		{Season: "csrseason13-1", Playlist: arena, Rank: 5, Gamertag: "Alpha", CSRValue: 1800, Tier: "Diamond", FetchedAt: t0},
 	}); err != nil {
 		t.Fatalf("snapshot prev: %v", err)
 	}
 	// Saison courante (13-2) : Alpha rang 2 (a grimpé de 3).
-	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), []domain.LeaderboardEntry{
+	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), "halo_infinite", []domain.LeaderboardEntry{
 		{Season: "csrseason13-2", Playlist: arena, Rank: 2, Gamertag: "Alpha", CSRValue: 2000, Tier: "Onyx", FetchedAt: t0.Add(time.Hour)},
 	}); err != nil {
 		t.Fatalf("snapshot cur: %v", err)
@@ -190,7 +190,7 @@ func TestGetCSRWorldLeaderboard_PrevSeasonCrossDigit(t *testing.T) {
 
 	const arena = "edfef3ac-9cbe-4fa2-b949-8f29deafd483"
 	t0 := time.Now().UTC()
-	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), []domain.LeaderboardEntry{
+	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), "halo_infinite", []domain.LeaderboardEntry{
 		{Season: "csrseason6-1", Playlist: arena, Rank: 10, Gamertag: "Alpha", CSRValue: 1700, Tier: "Diamond", FetchedAt: t0},
 		{Season: "csrseason10-1", Playlist: arena, Rank: 4, Gamertag: "Alpha", CSRValue: 1950, Tier: "Onyx", FetchedAt: t0.Add(time.Hour)},
 	}); err != nil {
@@ -237,7 +237,7 @@ func TestWorldSeasonGamertags_TopNPerPlaylist(t *testing.T) {
 	const arena = "edfef3ac-9cbe-4fa2-b949-8f29deafd483"
 	const slayer = "dcb2e24e-05fb-4390-8076-32a0cdb4326e"
 	t0 := time.Now().UTC()
-	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), []domain.LeaderboardEntry{
+	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), "halo_infinite", []domain.LeaderboardEntry{
 		{Season: "csrseason13-2", Playlist: arena, Rank: 1, Gamertag: "Alpha", CSRValue: 2000, Tier: "Onyx", FetchedAt: t0},
 		{Season: "csrseason13-2", Playlist: arena, Rank: 150, Gamertag: "Beta", CSRValue: 1200, Tier: "Diamond", FetchedAt: t0},
 		{Season: "csrseason13-2", Playlist: arena, Rank: 120, Gamertag: "Charlie", CSRValue: 1300, Tier: "Diamond", FetchedAt: t0},

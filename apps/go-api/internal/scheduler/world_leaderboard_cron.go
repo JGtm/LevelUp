@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/duckdb"
@@ -329,5 +330,7 @@ func (c *WorldLeaderboardCron) persist(ctx context.Context, entries []domain.Lea
 		return 0, err
 	}
 	defer wh.Release()
-	return duckdb.InsertWorldCSRSnapshot(ctx, wh.DB(), entries)
+	// Cron mono-titre (la saison active scrappée est celle du titre par défaut) ;
+	// un déploiement multi-titre itérera les titres actifs ici (PMT-7 write-path).
+	return duckdb.InsertWorldCSRSnapshot(ctx, wh.DB(), titlePkg.DefaultSlug, entries)
 }

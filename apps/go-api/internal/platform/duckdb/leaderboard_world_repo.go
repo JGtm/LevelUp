@@ -563,9 +563,12 @@ func WorldCSRSnapshotAge(ctx context.Context, db *sql.DB, seasonID string) (time
 // en cours de route, rien n'est commité (pas de demi-snapshot). Garantit aussi un
 // `fetched_at` cohérent sur tout le lot (déjà fixé en amont par le scraper), ce
 // qui permet à la vue _latest de grouper par batch de scrape.
-func InsertWorldCSRSnapshot(ctx context.Context, db *sql.DB, entries []domain.LeaderboardEntry) (int, error) {
+func InsertWorldCSRSnapshot(ctx context.Context, db *sql.DB, titleSlug string, entries []domain.LeaderboardEntry) (int, error) {
 	if len(entries) == 0 {
 		return 0, nil
+	}
+	if titleSlug == "" {
+		titleSlug = titlePkg.DefaultSlug
 	}
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -575,11 +578,11 @@ func InsertWorldCSRSnapshot(ctx context.Context, db *sql.DB, entries []domain.Le
 
 	const ins = `
 		INSERT INTO world_csr_leaderboard_snapshots
-			(season_id, playlist_id, rank, gamertag, csr_value, tier_derived, fetched_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`
+			(title_slug, season_id, playlist_id, rank, gamertag, csr_value, tier_derived, fetched_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 	for _, e := range entries {
 		if _, err := tx.ExecContext(ctx, ins,
-			e.Season, e.Playlist, e.Rank, e.Gamertag, e.CSRValue, e.Tier, e.FetchedAt,
+			titleSlug, e.Season, e.Playlist, e.Rank, e.Gamertag, e.CSRValue, e.Tier, e.FetchedAt,
 		); err != nil {
 			return 0, fmt.Errorf("InsertWorldCSRSnapshot (rank %d): %w", e.Rank, err)
 		}
