@@ -22,6 +22,7 @@ func applyWorldLeaderboardMigration(t *testing.T, db *sql.DB) {
 	wanted := []string{
 		"create_world_csr_leaderboard_snapshots",
 		"world_csr_leaderboard_latest_by_batch",
+		"add_title_slug_to_world_csr_leaderboard",
 		"create_world_player_season_stats",
 	}
 	byName := map[string]migration.Migration{}
@@ -150,7 +151,7 @@ func TestGetWorldLeaderboardCatalog(t *testing.T) {
 	}
 
 	repo := NewLeaderboardRepo(&PlayerDB{Shared: shared})
-	cat, err := repo.GetWorldLeaderboardCatalog(ctx)
+	cat, err := repo.GetWorldLeaderboardCatalog(ctx, "halo_infinite")
 	if err != nil {
 		t.Fatalf("GetWorldLeaderboardCatalog: %v", err)
 	}

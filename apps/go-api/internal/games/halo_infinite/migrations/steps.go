@@ -840,6 +840,37 @@ func Steps() []migration.Migration {
 			},
 		},
 		{
+			// PMT-7 (MT-03) : dimension titre sur le leaderboard CSR mondial. Colonne
+			// title_slug (défaut halo_infinite → rétro-compatible byte-identique) + vue
+			// _latest partitionnée par titre + index lookup titré. Permet à
+			// GetCSRWorldLeaderboard(titleSlug, …) de filtrer par titre.
+			Name:        "add_title_slug_to_world_csr_leaderboard",
+			TargetDB:    migration.TargetShared,
+			Description: "PMT-7 : colonne title_slug sur world_csr_leaderboard_snapshots + vue _latest par titre",
+			ApplySchema: func(db *sql.DB) error {
+				// DuckDB ne supporte pas NOT NULL sur ADD COLUMN ; le DEFAULT rétro-remplit
+				// les lignes existantes ET les nouvelles (les writers posent toujours le slug).
+				return migration.ExecScript(db, `
+					ALTER TABLE world_csr_leaderboard_snapshots
+						ADD COLUMN IF NOT EXISTS title_slug VARCHAR DEFAULT 'halo_infinite';
+
+					CREATE INDEX IF NOT EXISTS idx_wcl_lookup_title
+						ON world_csr_leaderboard_snapshots(title_slug, season_id, playlist_id, rank, written_at);
+
+					CREATE OR REPLACE VIEW world_csr_leaderboard_latest AS
+						SELECT s.*
+						FROM world_csr_leaderboard_snapshots s
+						WHERE s.fetched_at = (
+							SELECT max(s2.fetched_at)
+							FROM world_csr_leaderboard_snapshots s2
+							WHERE s2.title_slug = s.title_slug
+							  AND s2.season_id = s.season_id
+							  AND s2.playlist_id = s.playlist_id
+						);
+				`)
+			},
+		},
+		{
 			Name:        "shared_create_player_squad_offset",
 			TargetDB:    migration.TargetShared,
 			Description: "LUSR v2 Sprint 1.C — player_squad_offset (append-only) + vue _latest : offset synergie par paire de coéquipiers",
