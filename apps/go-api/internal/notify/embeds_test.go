@@ -357,9 +357,17 @@ func TestReadLastNotifiedVersion_MissingFile(t *testing.T) {
 
 func TestT_KnownKey(t *testing.T) {
 	// T should return a string for known keys
-	result := T("discord_footer", "en")
+	result := T("discord_last_match", "en")
 	if result == "" {
 		t.Error("expected non-empty string for known key")
+	}
+}
+
+// TestDiscordFooterText garantit que le footer dérivé du descripteur de titre
+// reste byte-identique au libellé historique « LevelUp · Halo Infinite Stats ».
+func TestDiscordFooterText(t *testing.T) {
+	if got := discordFooterText(); got != "LevelUp · Halo Infinite Stats" {
+		t.Errorf("discordFooterText() = %q, want \"LevelUp · Halo Infinite Stats\"", got)
 	}
 }
 

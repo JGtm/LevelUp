@@ -1,3 +1,20 @@
+## [2026-06-17] PMT-11 footer (MT-26) — footer dérivé du descripteur de titre (source unique, byte-identique)
+
+**Statut** : harvest DRY/single-source livré. La passe précédente classait le footer « différé » ; re-vérif (carte datée) → un harvest propre existe sans threading invasif.
+
+**Re-vérification** : le footer « LevelUp · Halo Infinite Stats » était une 2e copie codée en dur du nom du titre (dans la map i18n `discordStrings`), alors que `TitleDescriptor.Name == "Halo Infinite"` en est la source canonique. Dérivation directe = byte-identique + supprime la duplication.
+
+**Livré** :
+- `notify/labels.go` : `defaultTitleDisplayName()` (lit `DefaultRegistry().Get(DefaultSlug).Name`, failsafe défensif) + `discordFooterText()` (« LevelUp · {Name} Stats », locale-indépendant).
+- 5 sites embed (`discord.go` reauth, `embeds.go` sync, `notifiers.go` ×3) : `T("discord_footer", lang)` → `discordFooterText()`.
+- Map `discord_footer` retirée (plus de copie dupliquée). Test `TestT_KnownKey` repointé sur `discord_last_match` ; nouveau `TestDiscordFooterText` (garde byte-identique « LevelUp · Halo Infinite Stats »).
+
+**Reste différé (vrai travail 2e-titre)** : threading PAR-TITRE des embeds (les builders ne portent toujours pas de titre courant → le footer source le titre PAR DÉFAUT, pas le titre de l'embed) ; libellés backfill (LUSR/CSR/médailles/PvE) = title-spécifiques, capability-gating requis. Le footer version (« Mise à jour automatique ») est déjà title-agnostique.
+
+**Vérif** : `go build ./...` ✅ · vet ✅ · `go test ./internal/notify/` vert (dont `TestDiscordFooterText`) · gofmt propre.
+
+---
+
 ## [2026-06-17] EXT-1.5 MT-10/18 — dé-magic slug des CLIs ops (literal → DefaultSlug) ; itération registry.All() différée
 
 **Statut** : harvest byte-identique livré. Le cœur multi-titre (itérer `registry.All()` → diagnostic multi-titre) reste différé-latent comme prévu (il CHANGE le format de sortie pour 0 valeur single-titre).
