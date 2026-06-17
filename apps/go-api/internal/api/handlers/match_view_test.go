@@ -37,7 +37,7 @@ func newMatchViewRouter(factory handlers.ServiceFactory[port.MatchViewService]) 
 	r := chi.NewRouter()
 	h := handlers.NewMatchViewHandler(factory)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Get("/matches/{match_id}", h.GetMatchView)
+		h.Mount(r)
 	})
 	return r
 }
@@ -194,7 +194,7 @@ func TestMatchViewHandler_MediaURLsTransformed(t *testing.T) {
 	// (post-migration) se transforment sans capturesBase/repoRoot.
 	h := handlers.NewMatchViewHandler(factory).WithMediaURLs(nil, "")
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Get("/matches/{match_id}", h.GetMatchView)
+		h.Mount(r)
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/m-media", nil)

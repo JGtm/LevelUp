@@ -28,8 +28,8 @@ func (m *mockSessionsService) GetSessions(_ context.Context, _ domain.SessionCom
 func newSessionsRouter(factory handlers.ServiceFactory[port.SessionsService]) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewSessionsHandler(factory)
-	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Get("/pages/sessions", h.GetSessions)
+	r.Route("/players/{player_slug}", func(sub chi.Router) {
+		h.Mount(sub)
 	})
 	return r
 }

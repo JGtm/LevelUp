@@ -435,36 +435,10 @@ func TestHomeHandler_GetChallenges_PlayerNotFound(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// SquadHandler — GetSynthesisPage NotFound and Error
-// ---------------------------------------------------------------------------
-
-func TestSquadHandler_GetSynthesisPage_PlayerNotFound(t *testing.T) {
-	factory := func(_ context.Context, slug string) (port.SquadService, string, string, error) {
-		return nil, "", "", errors.New("not_found")
-	}
-	r := newSquadRouter(factory)
-	req := httptest.NewRequest(http.MethodPost, "/players/unknown/pages/synthesis", bytes.NewBufferString(`{}`))
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d", w.Code)
-	}
-}
-
-func TestSquadHandler_GetSynthesisPage_ServiceDBError(t *testing.T) {
-	mock := &mockSquadService{synthesisErr: errors.New("db_failure")}
-	factory := func(_ context.Context, _ string) (port.SquadService, string, string, error) {
-		return mock, "x", "g", nil
-	}
-	r := newSquadRouter(factory)
-	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/synthesis", bytes.NewBufferString(`{"gamertags":["A"]}`))
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusInternalServerError {
-		t.Fatalf("expected 500, got %d", w.Code)
-	}
-}
+// NB (Phase 3b) : les tests TestSquadHandler_GetSynthesisPage_* ont été retirés —
+// la route POST /pages/synthesis est servie par SynthesisHandler (server.go), pas
+// par SquadHandler ; sa méthode HTTP côté squad était morte (jamais montée en prod)
+// et n'est plus enregistrée par squad.Mount. Couverture réelle : synthesis_handler_test.go.
 
 // ---------------------------------------------------------------------------
 // MediaHandler — PostUploadMedia guard (nil factory)

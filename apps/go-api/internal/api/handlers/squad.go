@@ -1,23 +1,32 @@
-// Package handlers — squad.go : handlers HTTP pour les pages Escouade et Synthèse.
+// Package handlers — squad.go : handler HTTP pour la page Escouade.
 //
-// Endpoints :
+// Endpoint :
 //
-//	GET  /api/v1/players/{player_slug}/pages/squad             → SquadPageResponse
-//	GET  /api/v1/players/{player_slug}/pages/squad?teammate=xuid
-//	POST /api/v1/players/{player_slug}/pages/synthesis         → SynthesisPageResponse
+//	GET /api/v1/players/{player_slug}/pages/squad             → SquadPageResponse
+//	GET /api/v1/players/{player_slug}/pages/squad?teammate=xuid
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// (préfixe /players/{player_slug} + middleware ownership/title hérités, lit
+// {player_slug} parent) et enregistre la route via huma.Get. Logique métier
+// inchangée (SquadService), seul le wrapping HTTP change.
+//
+// Note : la page Synthèse (POST /pages/synthesis) est servie depuis Sprint 55 D1
+// par SynthesisHandler (synthesis.go) — pas par ce handler.
 package handlers
 
 import (
-	"encoding/json"
+	"context"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
 
-// SquadHandler gère les endpoints de la page Escouade et Synthèse.
+// SquadHandler gère l'endpoint de la page Escouade.
 type SquadHandler struct {
 	newSvc ContextFactory[port.SquadService]
 }
@@ -27,53 +36,47 @@ func NewSquadHandler(newSvc ContextFactory[port.SquadService]) *SquadHandler {
 	return &SquadHandler{newSvc: newSvc}
 }
 
-// GetSquadPage retourne la page Escouade.
-// GET /api/v1/players/{player_slug}/pages/squad[?teammate=xuid]
-func (h *SquadHandler) GetSquadPage(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, xuid, gamertag, err := h.newSvc(r.Context(), slug)
-	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
-	}
-
-	teammateXUID := r.URL.Query().Get("teammate")
-
-	page, err := svc.GetSquadPage(r.Context(), xuid, gamertag, teammateXUID)
-	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "squad_page_error", err.Error())
-		return
-	}
-
-	writeJSON(w, http.StatusOK, page)
+// Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
+// /players/{player_slug} + middleware ownership/title hérités).
+func (h *SquadHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/pages/squad", h.handleGetSquadPage)
 }
 
-// GetSynthesisPage retourne la page Synthèse (heatmap + top semaines).
-// POST /api/v1/players/{player_slug}/pages/synthesis
-// Body (optionnel) : { "filters": {...} }
-func (h *SquadHandler) GetSynthesisPage(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, xuid, _, err := h.newSvc(r.Context(), slug)
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// squadPageInput : {player_slug} + ?teammate= optionnel (toléré vide).
+type squadPageInput struct {
+	PlayerSlug string `path:"player_slug"`
+	Teammate   string `query:"teammate"`
+}
+
+type squadPageOutput struct{ Body *domain.SquadPageResponse }
+
+// ─── Endpoints ───────────────────────────────────────────────────────────────
+
+// handleGetSquadPage retourne la page Escouade.
+// GET /api/v1/players/{player_slug}/pages/squad[?teammate=xuid]
+func (h *SquadHandler) handleGetSquadPage(ctx context.Context, in *squadPageInput) (*squadPageOutput, error) {
+	svc, xuid, gamertag, err := h.resolve(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, err
 	}
 
-	// Body optionnel — filters déclarés mais utilisés en Sprint 33.
-	var req domain.SynthesisPageRequest
-	if r.ContentLength > 0 {
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-			return
-		}
-	}
-	_ = req // filtres Sprint 33
-
-	page, err := svc.GetSynthesisPage(r.Context(), xuid)
+	page, err := svc.GetSquadPage(ctx, xuid, gamertag, in.Teammate)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "synthesis_page_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "squad_page_error", err.Error())
 	}
 
-	writeJSON(w, http.StatusOK, page)
+	return &squadPageOutput{Body: page}, nil
+}
+
+// resolve résout le slug courant en SquadService (+ xuid/gamertag) ou renvoie une
+// erreur Huma 404 (contrat préservé : {code:player_not_found}).
+func (h *SquadHandler) resolve(ctx context.Context, slug string) (port.SquadService, string, string, error) {
+	svc, xuid, gamertag, err := h.newSvc(ctx, slug)
+	if err != nil {
+		return nil, "", "", humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+	}
+	return svc, xuid, gamertag, nil
 }

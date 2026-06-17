@@ -1016,8 +1016,7 @@ func NewRouter(
 			r.Use(middleware.RequirePlayerOwnership(cfg.DemoMode, cfg.AuthMode, playerOwnershipXUIDResolver(cfg), users, familyXUIDResolver(cfg, settingsStore)))
 
 			filters := handlers.NewFiltersHandler(reg.Filters)
-			r.Post("/filters/resolve", filters.Resolve)
-			r.Post("/filters/match-ids", filters.MatchIDs)
+			filters.Mount(r)
 
 			mh := handlers.NewMatchHistoryHandler(reg.MatchHistoryCtx)
 			r.Post("/pages/match-history/query", mh.Query)
@@ -1043,8 +1042,7 @@ func NewRouter(
 			// URLs servables, comme la galerie (settingsStore + repoRoot déjà en portée).
 			mv := handlers.NewMatchViewHandler(reg.MatchView).
 				WithMediaURLs(settingsStore, cfg.RepoRoot)
-			r.Get("/matches/{match_id}", mv.GetMatchView)
-			r.Get("/matches/{match_id}/neighbors", mv.GetMatchNeighbors)
+			mv.Mount(r)
 
 			// Phase 4 plan engagement : score + courbe par match + profil + timeseries + squad
 			// + admin recompute. Toutes les routes sont gated par CapEngagement
@@ -1062,13 +1060,13 @@ func NewRouter(
 
 			// Sprint 9 : Sessions
 			sessions := handlers.NewSessionsHandler(reg.Sessions)
-			r.Get("/pages/sessions", sessions.GetSessions)
+			sessions.Mount(r)
 			sessionPage := handlers.NewSessionPageHandler(reg.SessionPage)
-			r.Post("/pages/sessions/detail", sessionPage.GetPage)
+			sessionPage.Mount(r)
 
 			// Sprint 10 : Stats/Séries temporelles
 			stats := handlers.NewStatsHandler(reg.Stats)
-			r.Post("/pages/stats/query", stats.GetPage)
+			stats.Mount(r)
 
 			// Sprint 11 : Accueil/Home + Battle Pass + Challenges
 			home := handlers.NewHomeHandler(reg.HomeCtxWithAuth, settingsStore)
@@ -1078,15 +1076,15 @@ func NewRouter(
 
 			// Season Pass (palmares)
 			seasonPass := handlers.NewSeasonPassHandler(reg.SeasonPassCtxWithAuth)
-			r.Get("/pages/palmares/season-pass", seasonPass.GetSeasonPass)
+			seasonPass.Mount(r)
 
 			// Sprint 12 : Escouade | Sprint 55 D1 : Synthèse → handler autonome
 			squad := handlers.NewSquadHandler(reg.SquadCtx)
-			r.Get("/pages/squad", squad.GetSquadPage)
+			squad.Mount(r)
 
 			// Phase 1 chunk S1b : Squad V2 (multi-coéquipiers, fondations Phase 0)
 			squadV2 := handlers.NewSquadV2Handler(reg.SquadV2Ctx)
-			r.Get("/pages/squad/v2", squadV2.GetSquadPage)
+			squadV2.Mount(r)
 
 			// Sprint 55 D1 : SynthesisHandler extrait de SquadHandler (frontière produit)
 			synthesis := handlers.NewSynthesisHandler(reg.SynthesisCtx)
@@ -1139,7 +1137,7 @@ func NewRouter(
 			// NOTE : GET /match-exclusions supprimé en revue 2026-04-29 P0.2 Q6
 			// (orphelin côté front, vue admin jamais implémentée).
 			excl := handlers.NewMatchExclusionHandler(reg.MatchExclusion)
-			r.Patch("/matches/{match_id}/exclusion", excl.SetExclusion)
+			excl.Mount(r)
 
 			// Système de notifications in-app (per-player).
 			notifH := handlers.NewNotificationsHandler(reg.Notifications)

@@ -29,8 +29,8 @@ func (m *mockStatsService) GetPage(_ context.Context, _ domain.StatsQueryRequest
 func newStatsRouter(factory handlers.ServiceFactory[port.StatsService]) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewStatsHandler(factory)
-	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Post("/pages/stats/query", h.GetPage)
+	r.Route("/players/{player_slug}", func(sub chi.Router) {
+		h.Mount(sub)
 	})
 	return r
 }

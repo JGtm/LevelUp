@@ -64,7 +64,7 @@ func newSquadV2Router(factory handlers.ContextFactory[port.SquadV2Service]) *chi
 	r := chi.NewRouter()
 	h := handlers.NewSquadV2Handler(factory)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Get("/pages/squad/v2", h.GetSquadPage)
+		h.Mount(r)
 	})
 	return r
 }
