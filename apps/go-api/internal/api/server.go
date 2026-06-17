@@ -349,6 +349,8 @@ func NewRouter(
 		if reg.hiCapabilities != nil {
 			a = a.WithCapabilities(reg.hiCapabilities)
 		}
+		// HIGH-B : source du profil de combat récent Explorer (canonical-typé).
+		a = a.WithRecentSource(platform_duckdb.NewExplorerRepo(pdb, pdb.XUID))
 		return a
 	})
 

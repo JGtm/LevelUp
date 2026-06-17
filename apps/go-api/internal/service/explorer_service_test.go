@@ -5,13 +5,60 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	halo_games "levelup/go-api/internal/games/halo_infinite"
 )
+
+// --- HIGH-B Path A : parité profil de combat récent via l'adapter ---
+
+// TestExplorerService_CombatProfileLocal_DataAdapterParity prouve que la bascule
+// du profil de combat récent vers TitleDataAdapter.LoadTargetRecentMatches produit
+// STRICTEMENT le même []ExplorerTargetRecentMatch que le repo legacy. Fixture
+// hétérogène : Rank nil (DNF), KDA fractionnaire, PerfectKills>0.
+func TestExplorerService_CombatProfileLocal_DataAdapterParity(t *testing.T) {
+	t.Parallel()
+	rank2 := 2
+	now := time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC)
+	rows := []domain.ExplorerTargetRecentMatch{
+		{MatchID: "m1", StartTime: now, MapUI: "Aquarius", ModeUI: "Slayer", Outcome: 2, Rank: &rank2, Kills: 20, Deaths: 5, Assists: 3, KDA: 4.5, Score: 1500, DamageDealt: 3000, DamageTaken: 1000, MaxKillingSpree: 5, PerfectKills: 2},
+		{MatchID: "m2", StartTime: now, MapUI: "Live Fire", ModeUI: "CTF", Outcome: 4, Rank: nil, Kills: 1, Deaths: 1, KDA: 1.0}, // DNF + Rank nil
+	}
+
+	legacy := NewExplorerService(&mockExplorerRepo{recentMatches: rows}, "self").
+		computeTargetCombatProfileLocal(context.Background(), "target")
+
+	repoAdapter := &mockExplorerRepo{recentMatches: rows}
+	adapter := halo_games.NewDataAdapter(nil, slog.New(slog.NewJSONHandler(io.Discard, nil))).WithRecentSource(repoAdapter)
+	viaAdapter := NewExplorerService(repoAdapter, "self").WithDataAdapter(adapter).
+		computeTargetCombatProfileLocal(context.Background(), "target")
+
+	jsonLegacy, _ := json.Marshal(legacy)
+	jsonAdapter, _ := json.Marshal(viaAdapter)
+	if string(jsonLegacy) != string(jsonAdapter) {
+		t.Errorf("combat profile parity cassée :\nlegacy=  %s\nadapter= %s", jsonLegacy, jsonAdapter)
+	}
+}
+
+// TestExplorerService_CombatProfileLocal_AdapterFallbackOnUnsupported : adapter sans
+// RecentSource → ErrCapabilityNotSupported → fallback silencieux sur repo.
+func TestExplorerService_CombatProfileLocal_AdapterFallbackOnUnsupported(t *testing.T) {
+	t.Parallel()
+	rows := []domain.ExplorerTargetRecentMatch{{MatchID: "m1", Outcome: 2, Kills: 10, Deaths: 5}}
+	repo := &mockExplorerRepo{recentMatches: rows}
+	adapter := halo_games.NewDataAdapter(nil, slog.New(slog.NewJSONHandler(io.Discard, nil))) // pas de RecentSource
+	out := NewExplorerService(repo, "self").WithDataAdapter(adapter).
+		computeTargetCombatProfileLocal(context.Background(), "target")
+	if len(out) != 1 {
+		t.Errorf("profil via fallback repo = %d matchs, want 1", len(out))
+	}
+}
 
 // --- mock ---
 
