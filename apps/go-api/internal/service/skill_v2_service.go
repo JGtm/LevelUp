@@ -15,7 +15,7 @@ import (
 
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 )
 
 // SkillV2Service applique le modèle TrueSkill classique (Phase 1) sur les matchs
@@ -23,7 +23,7 @@ import (
 // connaissance des conventions sync en dehors du paramètre playlistGroup (qui
 // arrive précalculé par le caller via internal/sync.GetLUSRChain).
 type SkillV2Service struct {
-	repo   *duckdb.SkillV2Repo
+	repo   port.SkillV2Repository
 	priors skillv2.Priors
 }
 
@@ -31,7 +31,7 @@ type SkillV2Service struct {
 // Le caller fournit les Priors — soit DefaultPriors() pour démarrer avec les
 // constantes du paper, soit des Priors chargés via repo.LoadHyperparams après
 // un batch de ré-estimation (Phase 5, non implémentée).
-func NewSkillV2Service(repo *duckdb.SkillV2Repo, priors skillv2.Priors) *SkillV2Service {
+func NewSkillV2Service(repo port.SkillV2Repository, priors skillv2.Priors) *SkillV2Service {
 	return &SkillV2Service{repo: repo, priors: priors}
 }
 

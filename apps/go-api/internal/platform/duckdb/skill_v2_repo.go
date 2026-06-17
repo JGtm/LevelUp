@@ -11,7 +11,12 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/port"
 )
+
+// SkillV2Repo satisfait le port consommé par SkillV2Service (Phase 2 : le service
+// dépend de l'interface, pas du type concret).
+var _ port.SkillV2Repository = (*SkillV2Repo)(nil)
 
 // SkillV2Repo encapsule les accès aux tables LUSR v2 dans shared_matches_v2.duckdb.
 // Reçoit *sql.DB directement (pas de wrapper PlayerDB / SharedReadDB) : ce repo
