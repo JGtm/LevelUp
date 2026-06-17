@@ -34,6 +34,8 @@ import (
 	"os"
 
 	"levelup/go-api/internal/config"
+	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
+	"levelup/go-api/internal/migration"
 )
 
 func main() {
@@ -47,6 +49,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "erreur config: %v\n", err)
 		os.Exit(1)
 	}
+
+	// MT-07 : source title-owned des libellés de rangs (le sous-commande
+	// `seed rank-translations` via ops.SeedRankTranslations en dépend).
+	migration.SetCareerRankTranslationsProvider(halomigrations.CareerRankTranslations)
 
 	subcmd := os.Args[1]
 	args := os.Args[2:]

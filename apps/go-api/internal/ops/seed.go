@@ -177,9 +177,11 @@ func SeedCareerRanks(ctx context.Context, opts SeedOptions) (SeedResult, error) 
 // ─────────────────────────────────────────────────────────────────────────────
 
 // SeedRankTranslations peuple career_rank_translations (272 rangs × FR/EN) depuis
-// le builder offline partagé (migration.BuildHaloCareerRankTranslations). Données
-// de référence statiques : sans elles, le rang carrière s'affiche en EN faute de
-// fetch GameCMS (career_rank_translations vide → fallback RankName EN côté home).
+// le provider title-owned (migration.CareerRankTranslationRows, posé au boot via
+// migration.SetCareerRankTranslationsProvider — MT-07). Données de référence
+// statiques : sans elles, le rang carrière s'affiche en EN faute de fetch GameCMS
+// (career_rank_translations vide → fallback RankName EN côté home). Provider non
+// posé → 0 ligne (dégradation gracieuse ; le câblage du binaire doit le poser).
 // Idempotent : INSERT OR REPLACE sur la PK (rank_id, lang). La table est créée par
 // la migration add_career_rank_translations (appliquée avant le seed via runSeed).
 func SeedRankTranslations(ctx context.Context, opts SeedOptions) (SeedResult, error) {
@@ -189,7 +191,7 @@ func SeedRankTranslations(ctx context.Context, opts SeedOptions) (SeedResult, er
 	}
 	defer db.Close()
 
-	rows := migration.BuildHaloCareerRankTranslations()
+	rows := migration.CareerRankTranslationRows()
 	inserted := 0
 	for _, t := range rows {
 		if _, err := db.ExecContext(ctx, `INSERT OR REPLACE INTO career_rank_translations
