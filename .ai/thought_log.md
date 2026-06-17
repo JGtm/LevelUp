@@ -1,3 +1,17 @@
+## [2026-06-17] EXT-2 STAGE 2 — MT-14 : transforms.go découplé de halo_infinite (mode_category = constantes locales)
+
+**Statut** : livré. `internal/sync/transforms.go` + `transforms_helpers.go` n'importent plus `halo_infinite`. Décision workflow : **Option B** (constantes locales, PAS de seam provider).
+
+**Audit décisif (workflow)** : `shared.match_registry.mode_category` est **WRITE-ONLY** — aucun lecteur Go n'en dérive de décision (le filtre catégorie de l'UI dérive de `pair_name` via `PairNamePrefixesForCategory`, pas de la colonne ; les autres `mode_category` Go visent des espaces orthogonaux : engagement_coefficients, catalogue map_mode_pair). La valeur n'est donc qu'un libellé de colonne opaque → 6 constantes LOCALES `sync` (`mode_category.go`), strictement égales aux ex-`halo_infinite.ModeCategory*`. Option B retenue sur Option A (provider) car la valeur ne porte aucune sémantique title-spécifique consommée → un provider n'ajouterait qu'une surface de divergence silencieuse (nil → tout « Other ») pour zéro bénéfice.
+
+**Piège évité** : `determineModeCategory` (basé `strings.Contains`) est une fonction DISTINCTE de `halo_infinite.InferModeCategoryFromPairName` (parsing préfixe/`:`) — mappings différents. Ne pas « simplifier » l'une en l'autre (changerait les bytes). Ordre de priorité du switch (ranked>firefight>btb>fiesta>assassin>other) préservé verbatim.
+
+**Golden** : `TestDetermineModeCategoryTable` (22 cas, asserte les libellés littéraux) + `TestExtractRegistry_Valid` (ModeCategory=='Other') = garde-fou byte-identique déjà en place. Guard ciblé `transforms_no_title_import_test.go` (les 2 fichiers ne réimportent pas halo_infinite ; les AUTRES fichiers sync le peuvent encore, hors scope).
+
+**Vérif** : build sync ✅ · suite `go test ./internal/sync/` complète verte (19.9s) · gofmt propre.
+
+---
+
 ## [2026-06-17] EXT-2 STAGE 1 — MT-07 : grille de rangs carrière externalisée du package migration (seam provider, golden byte-identique)
 
 **Statut** : livré. `internal/migration` ne contient plus de donnée Halo ; la grille des 272 rangs vit dans le package de titre, remontée via un seam provider mirror de `SetTitleStepsProvider`. Décidé en ultracode (user : « go pour ce qui reste, ext 2 »), conçu + vérifié adversarialement par workflow (7 agents).
