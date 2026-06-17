@@ -14,11 +14,15 @@
 package api
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/handlers"
 )
 
 // humaAPIError reproduit le contrat d'erreur de handlers.writeError pour les
@@ -69,6 +73,33 @@ func errorCodeForStatus(status int) string {
 	}
 }
 
+// humaJSONFormat reproduit EXACTEMENT la sérialisation de handlers.writeJSON pour
+// que le corps des routes migrées soit byte-identique à celui des routes chi :
+//   - sanitizeFloatsForJSON en amont (NaN/Inf → 0 ou pointeur nil) : sinon
+//     json.Marshal échoue sur un float NaN et Huma renvoie 500 là où writeJSON
+//     renvoyait 200 sanitisé ;
+//   - json.Marshal (HTML-escaping activé, comme writeJSON) — PAS json.Encoder
+//     qui désactive l'escaping dans le format Huma par défaut ;
+//   - trailing "\n" (writeJSON l'ajoute explicitement).
+//
+// Couvre TOUTES les routes migrées en un point unique (les ~100 routes à floats
+// n'ont donc aucune sanitisation par-route à recâbler).
+var humaJSONFormat = huma.Format{
+	Marshal: func(w io.Writer, v any) error {
+		sanitized, _ := handlers.SanitizeFloatsForJSON(v)
+		body, err := json.Marshal(sanitized)
+		if err != nil {
+			return err
+		}
+		if _, err := w.Write(body); err != nil {
+			return err
+		}
+		_, err = w.Write([]byte("\n"))
+		return err
+	},
+	Unmarshal: json.Unmarshal,
+}
+
 // newHumaAPI crée l'API Huma adossée au routeur chi existant. Les routes
 // enregistrées via huma.Register / huma.Get apparaissent sur le même routeur chi
 // (humachi → chiMux.MethodFunc), donc visibles à chi.Walk et au contract_test.
@@ -77,6 +108,12 @@ func errorCodeForStatus(status int) string {
 // /openapi.yaml ni /docs côté Huma tant que le YAML manuel est la source de vérité.
 func newHumaAPI(r chi.Router) huma.API {
 	config := huma.DefaultConfig("LevelUp API", "1.0.0")
+	// Sérialisation byte-identique à writeJSON (NaN-safe + HTML-escaping + \n) sur
+	// les deux clés de format JSON utilisées par Huma (content-negotiation).
+	config.Formats = map[string]huma.Format{
+		"application/json": humaJSONFormat,
+		"json":             humaJSONFormat,
+	}
 	// Huma n'enregistre AUCUNE route auto (spec OpenAPI / docs / schemas) sur le
 	// routeur chi : ces paths vides désactivent leur enregistrement (huma api.go
 	// 507/557/561). Sinon `contract_test` (route chi ⟷ openapi.yaml) verrait ces
