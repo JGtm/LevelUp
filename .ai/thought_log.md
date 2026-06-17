@@ -25764,3 +25764,19 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Piège méthodo (4e fois)** : le plan du workflow a de nouveau cité les chemins du MAUVAIS dépôt (`LevelUp-go-migration`) et 2 verdicts ont dû re-vérifier le worktree. J'ai re-confirmé moi-même chaque fait load-bearing (dead consumers Phase 4, `HasExpectedData` requis front, huma absent).
 
 **Conclusion / prochaine étape** : Phase 3b « start » livré (coexistence Huma prouvée). Phases 3a/4 documentées vestigiales. La vraie suite = soit la migration Huma (multi-session, à planifier en sessions dédiées par groupe de routes), soit la consolidation/PR de `feat/multititre-peripherie`, soit le retrait coordonné `HasExpectedData` (3a-B). Commit en attente d'autorisation.
+
+## [2026-06-17] Phase 3b — fondations migration + 1re route (changelog) — Complété
+
+**Statut** : Complété. `go build ./...` OK, suite `internal/api` verte **contract_test INCLUS**, gofmt/vet OK, golden `TestRegisterChangelogHuma_ContractPreserved` PASS.
+
+**Fondations Huma livrées (réutilisables par toute la migration)** :
+- **Modèle d'erreur** ([huma_setup.go](../apps/go-api/internal/api/huma_setup.go)) : `humaAPIError` (`{code, message, retryable}`, « internal error » sur 5xx) + override `huma.NewError` → contrat d'erreur IDENTIQUE à `handlers.writeError`, pour les erreurs handler ET la validation Huma.
+- **Pas de `$schema`** : `config.CreateHooks = nil` (désactive le SchemaLinkTransformer) → corps JSON identique à `writeJSON`.
+- **Pas de route auto** : `OpenAPIPath`/`DocsPath`/`SchemasPath = ""` → Huma n'enregistre AUCUNE route interne sur chi (sinon `contract_test` les voit « non documentées »). L'openapi.yaml MANUEL reste source de vérité jusqu'à la fin de la migration.
+- **Pattern de migration** : logique métier dans `handlers/` (méthode exportée, ex. `ChangelogHandler.Content()`), wrapper Input/Output + `huma.Register/Get` dans le package `api` ([huma_routes.go](../apps/go-api/internal/api/huma_routes.go)) — `api` importe `handlers` (pas de cycle).
+
+**1re route migrée — GET /api/v1/changelog** : `humaAPI := newHumaAPI(r)` créé en tête du bloc `/api/v1` (coexistant), `registerChangelogHuma`. Ancien handler chi `GetChangelog` SUPPRIMÉ (+ import `net/http` orphelin), tests retargetés sur `Content()`. Golden : 200 `{content}` SANS `$schema` + 404 `{code:CHANGELOG_NOT_FOUND, retryable:false}`. `contract_test` (route↔openapi.yaml) reste vert → la coexistence chi+Huma est confirmée sur le VRAI serveur.
+
+**Reste (multi-session, mécanique sur ces fondations)** : ~138 routes. Nuances par groupe : sanitisation NaN/Inf (routes à floats, `writeJSON` le fait, pas Huma), ETag/304 (routes `writeJSONCached`), authz (`RequirePlayerOwnership`/`RequireActiveTitle` — héritées des middlewares racine, OK), path/query params (structs Input + tags). Étape finale SEULEMENT : bascule openapi.yaml manuel→généré + régén `generated.ts`.
+
+**Conclusion / prochaine étape** : fondations Huma + 1re route livrées et prouvées. Enchaîne item 2 (retrait `HasExpectedData`, 3a-B). Migration des routes restantes = sessions dédiées par groupe.

@@ -615,6 +615,13 @@ func NewRouter(
 
 	// v1 API
 	r.Route("/api/v1", func(r chi.Router) {
+		// Phase 3b : API Huma COEXISTANTE sur ce sous-routeur /api/v1. Les routes
+		// migrées (huma.Register/huma.Get) cohabitent avec les routes chi non
+		// migrées sur le MÊME *chi.Mux → mêmes middlewares racine + visibles à
+		// chi.Walk/contract_test. La migration est incrémentale, route par route.
+		humaAPI := newHumaAPI(r)
+		registerChangelogHuma(humaAPI, handlers.NewChangelogHandler(cfg.RepoRoot))
+
 		// Endpoints P0 : bootstrap + liste joueurs
 		r.Get("/bootstrap", handlers.NewBootstrapHandler(bootSvc).ServeHTTP)
 		r.Get("/players", handlers.NewPlayersHandler(bootSvc).ServeHTTP)
@@ -719,9 +726,8 @@ func NewRouter(
 		r.Get("/lab/contracts", labHandler.GetContracts)
 		r.Get("/lab/diagnostics", labHandler.GetDiagnostics)
 
-		// Sprint 43 : changelog (markdown brut)
-		changelog := handlers.NewChangelogHandler(cfg.RepoRoot)
-		r.Get("/changelog", changelog.GetChangelog)
+		// Sprint 43 : changelog (markdown brut) — MIGRÉ vers Huma (Phase 3b),
+		// enregistré en tête de bloc via registerChangelogHuma.
 
 		// Aide : notes de version extraites du README (EN/FR).
 		// P8.10 : la logique git + parsing markdown vit dans

@@ -2,7 +2,6 @@
 package handlers
 
 import (
-	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -27,14 +26,11 @@ func NewChangelogHandler(rootDir string) *ChangelogHandler {
 	}
 }
 
-// GetChangelog retourne le contenu markdown du changelog.
-func (h *ChangelogHandler) GetChangelog(w http.ResponseWriter, r *http.Request) {
-	content, err := h.loadCached()
-	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "CHANGELOG_NOT_FOUND", "Changelog introuvable")
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]string{"content": content})
+// Content retourne le contenu markdown caché du changelog (ou une erreur si le
+// fichier est introuvable). Consommé par le wrapper Huma GET /changelog (Phase 3b,
+// registerChangelogHuma dans le package api) ; la logique de cache reste ici.
+func (h *ChangelogHandler) Content() (string, error) {
+	return h.loadCached()
 }
 
 func (h *ChangelogHandler) loadCached() (string, error) {
