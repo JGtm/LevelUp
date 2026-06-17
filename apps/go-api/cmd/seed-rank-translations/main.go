@@ -1,8 +1,9 @@
 //go:build cgo
 
 // cmd/seed-rank-translations — Peuple career_rank_translations offline à partir
-// des libellés codés en dur (migration.BuildHaloCareerRankTranslations, source
-// unique partagée avec `levelup seed rank-translations`).
+// des libellés title-owned (halomigrations.CareerRankTranslations, posés via le
+// seam migration.SetCareerRankTranslationsProvider — source unique partagée avec
+// `levelup seed rank-translations`).
 //
 // Préférer `levelup seed rank-translations` (CLI in-image). Ce binaire reste un
 // fallback direct quand refresh-career-ranks n'est pas jouable (tokens invalides,
@@ -25,11 +26,15 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
 func main() {
+	// Pose la source title-owned des libellés de rangs (MT-07).
+	migration.SetCareerRankTranslationsProvider(halomigrations.CareerRankTranslations)
+
 	fs := flag.NewFlagSet("seed-rank-translations", flag.ExitOnError)
 	dryRun := fs.Bool("dry-run", false, "Affiche les rangs sans écrire en base")
 	titleID := fs.String("title-id", titlePkg.DefaultSlug, "Title ID (ex: halo_infinite)")
@@ -44,7 +49,7 @@ func main() {
 }
 
 func run(titleID string, dryRun bool) error {
-	rows := migration.BuildHaloCareerRankTranslations()
+	rows := migration.CareerRankTranslationRows()
 
 	if dryRun {
 		for _, r := range rows {

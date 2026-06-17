@@ -1,11 +1,22 @@
 package migration
 
-import "fmt"
+// career_rank_data.go — contrat de table + seam provider pour les libellés de
+// rangs de carrière (MT-07).
+//
+// La donnée Halo-spécifique (15 grades × 6 tiers × algorithme 272 rangs) a été
+// déplacée vers internal/games/halo_infinite/migrations (title-owned), ce package
+// title-agnostique ne conserve que :
+//   - le STRUCT CareerRankTranslation (contrat de la table career_rank_translations,
+//     consommé par internal/ops.SeedRankTranslations) ;
+//   - un seam provider mirror de SetTitleStepsProvider : le câblage qui importe le
+//     package de titre pose la source des lignes au boot.
+//
+// Provider non posé (nil) ⇒ CareerRankTranslationRows() retourne nil → le seeder
+// écrit 0 ligne (dégradation gracieuse identique au contrat Ranks()==vide).
 
 // CareerRankTranslation est une ligne (rank_id, lang) de career_rank_translations.
-// Source unique des libellés FR/EN des 272 rangs de carrière Halo Infinite —
-// partagée par la migration seed_career_rank_translations (boot) et le CLI
-// cmd/seed-rank-translations (fallback manuel). Évite la divergence des données.
+// Contrat title-agnostique de la table : produit par le générateur title-owned,
+// consommé par le seeder (internal/ops) et le CLI cmd/seed-rank-translations.
 type CareerRankTranslation struct {
 	RankID int
 	Lang   string // "fr" ou "en"
@@ -13,49 +24,22 @@ type CareerRankTranslation struct {
 	Tier   string
 }
 
-// Grades militaires — 15 paliers (le grade se répète sur 3 niveaux I/II/III par tier).
-var careerGradesFR = [15]string{
-	"Cadet", "Soldat", "Caporal suppléant", "Caporal",
-	"Sergent", "Sergent-chef", "Sergent d'artillerie", "Adjudant",
-	"Lieutenant", "Capitaine", "Lieutenant-major", "Lieutenant-colonel",
-	"Colonel", "Général de brigade", "Général",
-}
-var careerGradesEN = [15]string{
-	"Cadet", "Private", "Lance Corporal", "Corporal",
-	"Sergeant", "Staff Sergeant", "Gunnery Sergeant", "Master Sergeant",
-	"Lieutenant", "Captain", "Major", "Lieutenant Colonel",
-	"Colonel", "Brigadier General", "General",
+// careerRankTranslationsProvider fournit les lignes de rangs du titre courant.
+// Posé une fois au boot via SetCareerRankTranslationsProvider (par le câblage qui
+// importe le package de titre). nil = aucune donnée (le seeder n'écrit rien).
+var careerRankTranslationsProvider func() []CareerRankTranslation
+
+// SetCareerRankTranslationsProvider enregistre la source des libellés de rangs.
+// À appeler au boot, avant tout SeedRankTranslations. Idempotent (dernier gagne).
+func SetCareerRankTranslationsProvider(p func() []CareerRankTranslation) {
+	careerRankTranslationsProvider = p
 }
 
-// 6 tranches (Bronze→Onyx), chacune = 15 grades × 3 niveaux = 45 rangs.
-var careerTiersFR = [6]string{"Bronze", "Argent", "Or", "Platine", "Diamant", "Onyx"}
-var careerTiersEN = [6]string{"Bronze", "Silver", "Gold", "Platinum", "Diamond", "Onyx"}
-
-// BuildHaloCareerRankTranslations génère les 544 lignes (272 rangs × FR/EN).
-//
-// Rangs : 0 = Recrue, 1–270 = grades × tiers × niveaux, 271 = Héros.
-// Algorithme (1–270) : tierIdx=(i-1)/45, posInTier=(i-1)%45, gradeIdx=posInTier/3,
-// level=posInTier%3+1.
-func BuildHaloCareerRankTranslations() []CareerRankTranslation {
-	out := make([]CareerRankTranslation, 0, 272*2)
-	add := func(id int, titleFR, tierFR, titleEN, tierEN string) {
-		out = append(out,
-			CareerRankTranslation{RankID: id, Lang: "fr", Title: titleFR, Tier: tierFR},
-			CareerRankTranslation{RankID: id, Lang: "en", Title: titleEN, Tier: tierEN},
-		)
+// CareerRankTranslationRows retourne les lignes du provider, ou nil si non posé.
+// Source canonique unique pour le seeder et les CLI (plus de générateur Halo ici).
+func CareerRankTranslationRows() []CareerRankTranslation {
+	if careerRankTranslationsProvider == nil {
+		return nil
 	}
-
-	add(0, "Recrue", "Bronze", "Recruit", "Bronze")
-	for i := 1; i <= 270; i++ {
-		tierIdx := (i - 1) / 45
-		posInTier := (i - 1) % 45
-		gradeIdx := posInTier / 3
-		level := posInTier%3 + 1
-		add(i,
-			fmt.Sprintf("%s %d", careerGradesFR[gradeIdx], level), careerTiersFR[tierIdx],
-			fmt.Sprintf("%s %d", careerGradesEN[gradeIdx], level), careerTiersEN[tierIdx],
-		)
-	}
-	add(271, "Héros", "Onyx", "Hero", "Onyx")
-	return out
+	return careerRankTranslationsProvider()
 }

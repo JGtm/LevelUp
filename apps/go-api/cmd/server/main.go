@@ -1396,6 +1396,8 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 	// Infinite) auprès du runner, avant tout RunForDB. Vide tant qu'aucun step
 	// n'a été déplacé hors du package migration (no-op) ; se remplit en b3.
 	migration.SetTitleStepsProvider(halomigrations.StepsFor)
+	// MT-07 : source title-owned des libellés de rangs de carrière (seed offline).
+	migration.SetCareerRankTranslationsProvider(halomigrations.CareerRankTranslations)
 
 	// 1. metadata.duckdb
 	metaDB, err := duckdb.OpenReadWrite(metaPath)

@@ -1,3 +1,20 @@
+## [2026-06-17] EXT-2 STAGE 1 — MT-07 : grille de rangs carrière externalisée du package migration (seam provider, golden byte-identique)
+
+**Statut** : livré. `internal/migration` ne contient plus de donnée Halo ; la grille des 272 rangs vit dans le package de titre, remontée via un seam provider mirror de `SetTitleStepsProvider`. Décidé en ultracode (user : « go pour ce qui reste, ext 2 »), conçu + vérifié adversarialement par workflow (7 agents).
+
+**Découplage** :
+- `internal/migration/career_rank_data.go` : ne garde que le STRUCT `CareerRankTranslation` (contrat de table) + le seam `SetCareerRankTranslationsProvider` / `CareerRankTranslationRows()` (nil → 0 ligne, dégradation gracieuse).
+- `internal/games/halo_infinite/migrations/career_rank_data.go` (NOUVEAU) : générateur `CareerRankTranslations()` (15 grades × 6 tiers × algo 272 rangs) déplacé VERBATIM, retourne `[]migration.CareerRankTranslation`.
+- Consommateurs : `ops/seed.go` + `cmd/seed-rank-translations` → accessor `CareerRankTranslationRows()`. Provider câblé au boot : `cmd/server:1398`, `cmd/levelup/main.go` (après config.Load — le seul caller de `ops.SeedRankTranslations`), `cmd/seed-rank-translations/main.go`.
+
+**Golden byte-identique** : baseline capturée AVANT déplacement (FNV-1a `0x4c3eb7c01615f4eb`, len 544, bornes). `career_rank_data_test.go` re-vérifie hash + len + bornes (Recrue/Recruit … Héros/Hero). Garde-fou archlint `no_title_import_test.go` : `internal/migration` ne doit jamais importer un package de titre (verrouille MT-07).
+
+**Risque** : NONE (donnée déterministe pure, hors data-path). Seul piège (corrigé) : provider non posé → 0 ligne ; tous les entrypoints du seed sont câblés. `cmd/levelup` n'avait AUCUN câblage provider → ajouté (sinon `levelup seed rank-translations` régressait à 0 ligne).
+
+**Vérif** : `go build ./...` ✅ · golden + migration + ops + halo/migrations verts · gofmt/vet propres.
+
+---
+
 ## [2026-06-17] EXT-2 (MT-07/15/14/19) — micro-harvest MT-19 slug ; reste structurel confirmé différé (re-vérifié)
 
 **Statut** : un seul de-magic harvestable livré (MT-19 slug). Les 3 autres sous-axes restent différés-structurels — re-vérification HEAD confirme : ce n'est PAS du de-magic mais du découplage de packages (Phase 2), à risque LUSR, valeur nulle single-titre.
