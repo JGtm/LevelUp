@@ -42,6 +42,48 @@ func (s *ExplorerService) loadTargetRecentRows(ctx context.Context, xuid string,
 	return s.repo.GetTargetRecentMatches(ctx, xuid, limit)
 }
 
+// loadParticipantStats centralise la résolution repo/adapter de l'agrégat sample
+// (HIGH-B). Adapter-first via LoadParticipantStats + reconstitution byte-identique ;
+// fallback repo.GetParticipantStatsForMatches sur capability absente.
+func (s *ExplorerService) loadParticipantStats(ctx context.Context, xuid string, matchIDs []string) (*domain.ParticipantStatsAggregate, error) {
+	if s.dataAdapter != nil {
+		c, err := s.dataAdapter.LoadParticipantStats(ctx, xuid, matchIDs)
+		if err == nil {
+			return participantStatsFromCanonical(c), nil
+		}
+		if !errors.Is(err, games.ErrCapabilityNotSupported) {
+			return nil, err
+		}
+	}
+	return s.repo.GetParticipantStatsForMatches(ctx, xuid, matchIDs)
+}
+
+// participantStatsFromCanonical projette *canonical.PlayerMatchSetStats →
+// *domain.ParticipantStatsAggregate (nil → nil).
+func participantStatsFromCanonical(c *canonical.PlayerMatchSetStats) *domain.ParticipantStatsAggregate {
+	if c == nil {
+		return nil
+	}
+	return &domain.ParticipantStatsAggregate{
+		Kills:             c.Kills,
+		Deaths:            c.Deaths,
+		Assists:           c.Assists,
+		Wins:              c.Wins,
+		Losses:            c.Losses,
+		Draws:             c.Draws,
+		ShotsFired:        c.ShotsFired,
+		ShotsHit:          c.ShotsHit,
+		DamageDealt:       c.DamageDealt,
+		DamageTaken:       c.DamageTaken,
+		HeadshotKills:     c.HeadshotKills,
+		MeleeKills:        c.MeleeKills,
+		PowerWeaponKills:  c.PowerWeaponKills,
+		GrenadeKills:      c.GrenadeKills,
+		TimePlayedSeconds: c.TimePlayedSeconds,
+		PersonalScore:     c.PersonalScore,
+	}
+}
+
 // recentMatchesFromCanonical projette []canonical.RecentMatchRow →
 // []domain.ExplorerTargetRecentMatch (copie profonde de Rank). ModePairAssetID reste
 // vide (transient live, hors canonique). Retourne nil pour une entrée vide.
@@ -269,7 +311,7 @@ func (s *ExplorerService) computeTargetSampleStats(ctx context.Context, targetXU
 	if len(matchIDs) == 0 {
 		return nil
 	}
-	agg, err := s.repo.GetParticipantStatsForMatches(ctx, targetXUID, matchIDs)
+	agg, err := s.loadParticipantStats(ctx, targetXUID, matchIDs)
 	if err != nil {
 		slog.WarnContext(ctx, "explorer_target_sample_stats_failed", "xuid", targetXUID, "err", err)
 		return nil
