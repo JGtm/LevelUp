@@ -1,3 +1,17 @@
+## [2026-06-17] Phase 3b — 3e route migrée (query-param) + recensement shape cached — Complété
+
+**Statut** : Complété (increment item 1). `go build ./...` OK, gofmt/vet propres, golden `TestRegisterGamertagHuma_ContractPreserved` + tout `contract_test` + goldens changelog/jobs/coexistence verts. Mêmes 2 échecs pré-existants device-flow E2E (réseau Xbox Live hors sandbox), sans rapport.
+
+**3e route migrée — GET /directory/gamertags/search?q= (shape query-param)** : prouve le binding de query param (Input `struct{ Q string \`query:"q"\` }`). Logique extraite en `GamertagHandler.Query(ctx, q) (domain.GamertagSearchResponse, error)` ([gamertag.go](../apps/go-api/internal/api/handlers/gamertag.go)) + sentinelle `ErrGamertagSearchUnavailable` (503). Wrapper `registerGamertagHuma` ([huma_routes.go](../apps/go-api/internal/api/huma_routes.go)) mappe les erreurs : `ErrGamertagSearchUnavailable` → 503 `shared_db_unavailable`, autre → 500 `gamertag_search_error`. Handler chi `Search` supprimé, `gamertag_test.go` retargeté sur `Query` (OK/empty/error/unavailable), golden route ajouté (200 query lié + items, 503, 500 message générique + retryable). server.go:1310 rewire.
+
+**Point fin de contrat re-vérifié** : le `writeError(503/500, code, err.Error())` original neutralise déjà le message en « internal error » + `retryable:true` (tout status ≥ 500). `newHumaError` reproduit exactement → 503 et 500 byte-équivalents (golden l'assert sur la 500).
+
+**Recensement shape cached/ETag** : `writeJSONCached` n'est utilisé que par **`home.go`** (1 handler) → shape niche, PAS un bloquant pour le gros des routes (qui sont en `writeJSON` simple). Sera traité au moment de migrer `home`. Faisabilité Huma vérifiée : `Status int` (status dynamique 200/304, huma.go:1509), `header:"ETag"` (réponse), Huma saute déjà le body sur 304 (huma.go:621) ; Input `header:"If-None-Match"`. ETag calculé `sha256(json.Marshal(sanitized))[:8]` (identique writeJSONCached) → 304 préservé à travers la migration.
+
+**Bilan shapes (3/4 prouvées)** : no-param ✅, path-param ✅, query-param ✅, cached/ETag ⏳ (niche home). Après cached, le reste (~136 routes) est purement mécanique sur le pattern consolidé.
+
+**Conclusion / prochaine étape** : item 1 à 3/139 routes, 3 shapes prouvées. Continue par groupes ; le pattern est désormais établi pour la quasi-totalité des routes. Pas de PR avant autorisation.
+
 ## [2026-06-17] Phase 3b — format JSON byte-identique + 2e route migrée (path-param) — Complété
 
 **Statut** : Complété (increment item 1). `go build ./...` OK, gofmt/vet propres, golden `TestRegisterChangelogHuma_ContractPreserved` + `TestRegisterJobsHuma_ContractPreserved` + `TestHumaCoexistsWithChiWalk` + tout `contract_test` verts. Échecs résiduels du package handlers = **`TestE2E_DeviceCodeFlow_HappyPath`/`_SingleFlight` uniquement**, **pré-existants** (vérifiés identiques sur worktree HEAD pristine `ecdd30d50` — E2E device-flow exige un accès réseau Xbox Live indisponible en sandbox ; rien à voir avec cet increment).

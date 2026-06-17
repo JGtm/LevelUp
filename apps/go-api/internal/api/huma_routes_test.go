@@ -3,11 +3,14 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -16,6 +19,16 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/jobs"
 )
+
+// stubGamertagSearch : mock port.GamertagSearchService pour le golden Huma.
+type stubGamertagSearch struct {
+	results []domain.GamertagSearchResult
+	err     error
+}
+
+func (s *stubGamertagSearch) Search(_ context.Context, _ string) ([]domain.GamertagSearchResult, error) {
+	return s.results, s.err
+}
 
 func writeTmpChangelog(t *testing.T, content string) string {
 	t.Helper()
@@ -117,5 +130,87 @@ func TestRegisterJobsHuma_ContractPreserved(t *testing.T) {
 	}
 	if er["retryable"] != false {
 		t.Errorf("retryable = %v, want false", er["retryable"])
+	}
+}
+
+// TestRegisterGamertagHuma_ContractPreserved (Phase 3b, shape query-param) : GET
+// /directory/gamertags/search?q= migré vers Huma préserve le contrat —
+// 200 {query, items} (query param lié), 503 si service absent, 500 sur erreur
+// service (message générique « internal error » + retryable:true, comme writeError).
+func TestRegisterGamertagHuma_ContractPreserved(t *testing.T) {
+	newRouter := func(svc *stubGamertagSearch) *chi.Mux {
+		r := chi.NewRouter()
+		registerGamertagHuma(newHumaAPI(r), handlers.NewGamertagHandler(svc))
+		return r
+	}
+	do := func(r *chi.Mux, url string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, url, nil))
+		return rec
+	}
+
+	// 200 — query param lié, items renvoyés, SANS $schema.
+	r := newRouter(&stubGamertagSearch{results: []domain.GamertagSearchResult{{Gamertag: "Chocoboflor", XUID: "1"}}})
+	rec := do(r, "/directory/gamertags/search?q=cho")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("200 attendu, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var ok struct {
+		Query string `json:"query"`
+		Items []struct {
+			Gamertag string `json:"gamertag"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &ok); err != nil {
+		t.Fatalf("JSON invalide: %v", err)
+	}
+	if ok.Query != "cho" {
+		t.Errorf("query = %q, want cho (query param non lié)", ok.Query)
+	}
+	if len(ok.Items) != 1 || ok.Items[0].Gamertag != "Chocoboflor" {
+		t.Errorf("items = %+v", ok.Items)
+	}
+	if strings.Contains(rec.Body.String(), "$schema") {
+		t.Error("$schema ne doit PAS être injecté")
+	}
+
+	// 200 — query vide → items [] sans appel service.
+	recEmpty := do(newRouter(&stubGamertagSearch{err: errors.New("ne doit pas être appelé")}), "/directory/gamertags/search?q=")
+	if recEmpty.Code != http.StatusOK {
+		t.Fatalf("200 attendu (query vide), got %d", recEmpty.Code)
+	}
+
+	// 503 — service absent.
+	r503 := chi.NewRouter()
+	registerGamertagHuma(newHumaAPI(r503), handlers.NewGamertagHandler(nil))
+	rec503 := do(r503, "/directory/gamertags/search?q=abc")
+	if rec503.Code != http.StatusServiceUnavailable {
+		t.Fatalf("503 attendu, got %d", rec503.Code)
+	}
+	var er503 map[string]any
+	if err := json.Unmarshal(rec503.Body.Bytes(), &er503); err != nil {
+		t.Fatalf("JSON erreur invalide: %v", err)
+	}
+	if er503["code"] != "shared_db_unavailable" {
+		t.Errorf("code = %v, want shared_db_unavailable", er503["code"])
+	}
+
+	// 500 — erreur service (message générique, retryable:true).
+	rec500 := do(newRouter(&stubGamertagSearch{err: errors.New("db boom")}), "/directory/gamertags/search?q=abc")
+	if rec500.Code != http.StatusInternalServerError {
+		t.Fatalf("500 attendu, got %d", rec500.Code)
+	}
+	var er500 map[string]any
+	if err := json.Unmarshal(rec500.Body.Bytes(), &er500); err != nil {
+		t.Fatalf("JSON erreur invalide: %v", err)
+	}
+	if er500["code"] != "gamertag_search_error" {
+		t.Errorf("code = %v, want gamertag_search_error", er500["code"])
+	}
+	if er500["message"] != "internal error" {
+		t.Errorf("message = %v, want 'internal error' (pas de fuite err.Error() sur 5xx)", er500["message"])
+	}
+	if er500["retryable"] != true {
+		t.Errorf("retryable = %v, want true", er500["retryable"])
 	}
 }

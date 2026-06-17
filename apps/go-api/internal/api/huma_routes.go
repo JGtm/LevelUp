@@ -11,6 +11,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -62,5 +63,32 @@ func registerJobsHuma(api huma.API, h *handlers.JobsHandler) {
 			return nil, newHumaError(http.StatusNotFound, "job_not_found", "Job introuvable ou expiré : "+in.JobID)
 		}
 		return &jobStatusHumaOutput{Body: job}, nil
+	})
+}
+
+// gamertagSearchHumaInput : query param ?q= du GET /directory/gamertags/search.
+type gamertagSearchHumaInput struct {
+	Q string `query:"q"`
+}
+
+// gamertagSearchHumaOutput : corps = GamertagSearchResponse (writeJSON(200, resp)).
+type gamertagSearchHumaOutput struct {
+	Body domain.GamertagSearchResponse
+}
+
+// registerGamertagHuma migre GET /directory/gamertags/search vers Huma (shape
+// query-param — Phase 3b). Contrat préservé : 200 {query, items} ; 503
+// {code:shared_db_unavailable} si service absent ; 500 {code:gamertag_search_error}
+// (message générique « internal error » sur 5xx, comme writeError).
+func registerGamertagHuma(api huma.API, h *handlers.GamertagHandler) {
+	huma.Get(api, "/directory/gamertags/search", func(ctx context.Context, in *gamertagSearchHumaInput) (*gamertagSearchHumaOutput, error) {
+		resp, err := h.Query(ctx, in.Q)
+		if err != nil {
+			if errors.Is(err, handlers.ErrGamertagSearchUnavailable) {
+				return nil, newHumaError(http.StatusServiceUnavailable, "shared_db_unavailable", "gamertag search requires shared database")
+			}
+			return nil, newHumaError(http.StatusInternalServerError, "gamertag_search_error", err.Error())
+		}
+		return &gamertagSearchHumaOutput{Body: resp}, nil
 	})
 }

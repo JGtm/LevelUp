@@ -1,15 +1,12 @@
-// Package handlers — gamertag_test.go : tests unitaires GamertagHandler avec mock service.
+// Package handlers — gamertag_test.go : tests unitaires GamertagHandler.Query
+// avec mock service. Le routage HTTP (200/500/503, query-param) est testé côté
+// api via le golden Huma TestRegisterGamertagHuma_ContractPreserved (Phase 3b).
 package handlers_test
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"net/http"
-	"net/http/httptest"
 	"testing"
-
-	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
@@ -25,64 +22,53 @@ func (m *mockGamertagSearchService) Search(_ context.Context, _ string) ([]domai
 	return m.results, m.err
 }
 
-func newGamertagRouter(svc port.GamertagSearchService) *chi.Mux {
-	r := chi.NewRouter()
-	h := handlers.NewGamertagHandler(svc)
-	r.Get("/directory/gamertags/search", h.Search)
-	return r
-}
+// compile-time : le mock satisfait le port.
+var _ port.GamertagSearchService = (*mockGamertagSearchService)(nil)
 
-func TestGamertagHandler_Search_OK(t *testing.T) {
+func TestGamertagHandler_Query_OK(t *testing.T) {
 	expected := []domain.GamertagSearchResult{{Gamertag: testGamertag, XUID: "123"}}
-	svc := &mockGamertagSearchService{results: expected}
-	r := newGamertagRouter(svc)
+	h := handlers.NewGamertagHandler(&mockGamertagSearchService{results: expected})
 
-	req := httptest.NewRequest(http.MethodGet, "/directory/gamertags/search?q=test", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
-	}
-
-	var resp domain.GamertagSearchResponse
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("unmarshal: %v", err)
+	resp, err := h.Query(context.Background(), "test")
+	if err != nil {
+		t.Fatalf("Query: %v", err)
 	}
 	if len(resp.Items) != 1 || resp.Items[0].Gamertag != testGamertag {
 		t.Errorf("unexpected items: %+v", resp.Items)
 	}
+	if resp.Query != "test" {
+		t.Errorf("Query = %q, want test", resp.Query)
+	}
 }
 
-func TestGamertagHandler_Search_EmptyQuery(t *testing.T) {
-	svc := &mockGamertagSearchService{} // ne doit pas être appelé
-	r := newGamertagRouter(svc)
+func TestGamertagHandler_Query_Empty(t *testing.T) {
+	// svc ne doit pas être appelé sur une query vide.
+	h := handlers.NewGamertagHandler(&mockGamertagSearchService{err: errors.New("ne doit pas être appelé")})
 
-	req := httptest.NewRequest(http.MethodGet, "/directory/gamertags/search?q=", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Code)
-	}
-	var resp domain.GamertagSearchResponse
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("unmarshal: %v", err)
+	resp, err := h.Query(context.Background(), "   ")
+	if err != nil {
+		t.Fatalf("Query vide ne doit pas renvoyer d'erreur: %v", err)
 	}
 	if len(resp.Items) != 0 {
 		t.Errorf("expected empty items, got %v", resp.Items)
 	}
+	if resp.Items == nil {
+		t.Error("Items ne doit jamais être nil (contrat JSON [])")
+	}
 }
 
-func TestGamertagHandler_Search_ServiceError(t *testing.T) {
-	svc := &mockGamertagSearchService{err: errors.New("db error")}
-	r := newGamertagRouter(svc)
+func TestGamertagHandler_Query_ServiceError(t *testing.T) {
+	h := handlers.NewGamertagHandler(&mockGamertagSearchService{err: errors.New("db error")})
 
-	req := httptest.NewRequest(http.MethodGet, "/directory/gamertags/search?q=abc", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	if _, err := h.Query(context.Background(), "abc"); err == nil {
+		t.Fatal("erreur attendue, got nil")
+	}
+}
 
-	if w.Code != http.StatusInternalServerError {
-		t.Fatalf("expected 500, got %d", w.Code)
+func TestGamertagHandler_Query_Unavailable(t *testing.T) {
+	h := handlers.NewGamertagHandler(nil)
+
+	if _, err := h.Query(context.Background(), "abc"); !errors.Is(err, handlers.ErrGamertagSearchUnavailable) {
+		t.Fatalf("err = %v, want ErrGamertagSearchUnavailable", err)
 	}
 }

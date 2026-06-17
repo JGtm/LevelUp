@@ -1,13 +1,23 @@
 // Package handlers — GamertagHandler : GET /api/v1/directory/gamertags/search.
+//
+// Route MIGRÉE vers Huma (Phase 3b, registerGamertagHuma dans le package api,
+// shape query-param). La logique métier (recherche + normalisation) reste ici
+// via Query ; le wrapping HTTP (query param + mapping 503/500) vit dans
+// api/huma_routes.go.
 package handlers
 
 import (
-	"net/http"
+	"context"
+	"errors"
 	"strings"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
+
+// ErrGamertagSearchUnavailable : le service de recherche n'est pas câblé (shared
+// DB absente) → 503 côté HTTP.
+var ErrGamertagSearchUnavailable = errors.New("gamertag search unavailable")
 
 // GamertagHandler gère GET /api/v1/directory/gamertags/search?q=.
 type GamertagHandler struct {
@@ -19,27 +29,23 @@ func NewGamertagHandler(svc port.GamertagSearchService) *GamertagHandler {
 	return &GamertagHandler{svc: svc}
 }
 
-// Search cherche les gamertags correspondant à la query ?q=.
-func (h *GamertagHandler) Search(w http.ResponseWriter, r *http.Request) {
-	// Sprint 49 : route inconditionnelle — 503 si shared DB absente.
+// Query cherche les gamertags correspondant à q (trim interne). Items jamais nil.
+// Retourne ErrGamertagSearchUnavailable si le service n'est pas câblé (503) ;
+// une query vide court-circuite avec une réponse vide (200, pas d'appel service).
+func (h *GamertagHandler) Query(ctx context.Context, q string) (domain.GamertagSearchResponse, error) {
 	if h.svc == nil {
-		writeError(r.Context(), w, http.StatusServiceUnavailable, "shared_db_unavailable", "gamertag search requires shared database")
-		return
+		return domain.GamertagSearchResponse{}, ErrGamertagSearchUnavailable
 	}
-
-	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	q = strings.TrimSpace(q)
 	if q == "" {
-		writeJSON(w, http.StatusOK, domain.GamertagSearchResponse{Query: q, Items: []domain.GamertagSearchResult{}})
-		return
+		return domain.GamertagSearchResponse{Query: q, Items: []domain.GamertagSearchResult{}}, nil
 	}
-
-	items, err := h.svc.Search(r.Context(), q)
+	items, err := h.svc.Search(ctx, q)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "gamertag_search_error", err.Error())
-		return
+		return domain.GamertagSearchResponse{}, err
 	}
 	if items == nil {
 		items = []domain.GamertagSearchResult{}
 	}
-	writeJSON(w, http.StatusOK, domain.GamertagSearchResponse{Query: q, Items: items})
+	return domain.GamertagSearchResponse{Query: q, Items: items}, nil
 }
