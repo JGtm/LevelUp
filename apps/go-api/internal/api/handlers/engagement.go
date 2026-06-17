@@ -1,5 +1,9 @@
 // Package handlers — engagement.go : endpoints API EngagementScore (Phase 4 plan).
 //
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// (hérite ownership/title + lit {player_slug} parent) et enregistre via huma.*.
+// Logique métier inchangée (PlayerEngagementService), seul le wrapping HTTP change.
+//
 // Routes :
 //
 //   - GET /api/v1/players/{slug}/matches/{match_id}/engagement
@@ -7,17 +11,28 @@
 //
 //   - GET /api/v1/players/{slug}/engagement_profile
 //     Retourne les coefficients d'engagement par categorie de mode.
+//
+//   - POST /api/v1/players/{slug}/engagement/timeseries
+//     Retourne les N derniers matchs PvP du scope avec leurs paces (Mock 11).
+//
+//   - GET /api/v1/players/{slug}/pages/squad/v2/engagement
+//     Retourne le payload SquadEngagementSession (Mock 15 v2).
+//
+//   - POST /api/v1/players/{slug}/engagement/recompute_coefficients
+//     Force le recalcul des coefficients d'engagement.
 package handlers
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/port"
@@ -34,7 +49,61 @@ func NewEngagementHandler(newSvc ServiceFactory[*service.PlayerEngagementService
 	return &EngagementHandler{newSvc: newSvc}
 }
 
-// GetMatchEngagement : GET /matches/{match_id}/engagement
+// Mount enregistre tous les endpoints via Huma sur le sous-routeur chi
+// (préfixe /players/{player_slug} + middleware ownership/title hérités).
+func (h *EngagementHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/matches/{match_id}/engagement", h.handleMatchEngagement)
+	huma.Get(api, "/engagement_profile", h.handleEngagementProfile)
+	huma.Post(api, "/engagement/timeseries", h.handleEngagementTimeseries)
+	huma.Get(api, "/pages/squad/v2/engagement", h.handleSquadEngagementSession)
+	huma.Post(api, "/engagement/recompute_coefficients", h.handleRecomputeCoefficients)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// engPlayerInput : path param parent {player_slug} seul.
+type engPlayerInput struct {
+	PlayerSlug string `path:"player_slug"`
+}
+
+// engMatchInput : {player_slug} + {match_id} (string ; parse maison pour
+// reproduire le 400 invalid_request quand match_id est vide).
+type engMatchInput struct {
+	PlayerSlug string `path:"player_slug"`
+	MatchID    string `path:"match_id"`
+}
+
+// engTimeseriesInput : {player_slug} + body OPTIONNEL (pointeur) — un body absent
+// ou vide équivaut à `{}` (compat integration tests / smoke).
+type engTimeseriesInput struct {
+	PlayerSlug string `path:"player_slug"`
+	Body       *domain.EngagementTimeseriesRequest
+}
+
+// engSquadInput : {player_slug} + query params CSV (parse maison comme avant).
+type engSquadInput struct {
+	PlayerSlug        string `path:"player_slug"`
+	MatchIDs          string `query:"match_ids"`
+	Teammates         string `query:"teammates"`
+	TeammateGamertags string `query:"teammate_gamertags"`
+}
+
+type engMatchOutput struct{ Body *domain.EngagementScoreResult }
+type engProfileOutput struct {
+	Body []domain.EngagementCoefficient
+}
+type engTimeseriesOutput struct {
+	Body *domain.EngagementTimeseriesResponse
+}
+type engSquadOutput struct {
+	Body *domain.SquadEngagementSession
+}
+type engRecomputeOutput struct{ Body *service.RecomputeReport }
+
+// ─── Endpoints ───────────────────────────────────────────────────────────────
+
+// handleMatchEngagement : GET /matches/{match_id}/engagement
 //
 // Reponse JSON :
 //
@@ -53,39 +122,34 @@ func NewEngagementHandler(newSvc ServiceFactory[*service.PlayerEngagementService
 //   - 422 pve_not_supported (match PvE - non couvert v1)
 //   - 503 engagement_unavailable (migration Phase 2 non appliquee)
 //   - 500 engagement_error (autre)
-func (h *EngagementHandler) GetMatchEngagement(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *EngagementHandler) handleMatchEngagement(ctx context.Context, in *engMatchInput) (*engMatchOutput, error) {
+	svc, err := h.resolve(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, err
 	}
 
-	matchID := chi.URLParam(r, "match_id")
-	if matchID == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_request", "match_id est requis")
-		return
+	if in.MatchID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_request", "match_id est requis")
 	}
 
-	result, err := svc.GetMatchEngagement(r.Context(), matchID)
+	result, err := svc.GetMatchEngagement(ctx, in.MatchID)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrEngagementMatchNotFound):
-			writeError(r.Context(), w, http.StatusNotFound, "match_not_found", "match introuvable pour ce joueur : "+matchID)
+			return nil, humacore.NewError(http.StatusNotFound, "match_not_found", "match introuvable pour ce joueur : "+in.MatchID)
 		case errors.Is(err, service.ErrEngagementPvENotSupported):
-			writeError(r.Context(), w, http.StatusUnprocessableEntity, "pve_not_supported", "engagement non couvert pour les matchs PvE en v1")
+			return nil, humacore.NewError(http.StatusUnprocessableEntity, "pve_not_supported", "engagement non couvert pour les matchs PvE en v1")
 		case errors.Is(err, port.ErrEngagementUnavailable):
-			writeError(r.Context(), w, http.StatusServiceUnavailable, "engagement_unavailable", "migration EngagementScore non appliquee")
+			return nil, humacore.NewError(http.StatusServiceUnavailable, "engagement_unavailable", "migration EngagementScore non appliquee")
 		default:
-			writeError(r.Context(), w, http.StatusInternalServerError, "engagement_error", err.Error())
+			return nil, humacore.NewError(http.StatusInternalServerError, "engagement_error", err.Error())
 		}
-		return
 	}
 
-	writeJSON(w, http.StatusOK, result)
+	return &engMatchOutput{Body: result}, nil
 }
 
-// GetEngagementTimeseries : POST /engagement/timeseries
+// handleEngagementTimeseries : POST /engagement/timeseries
 //
 // Body JSON (optionnel) :
 //
@@ -99,25 +163,19 @@ func (h *EngagementHandler) GetMatchEngagement(w http.ResponseWriter, r *http.Re
 // — aligne sur le contrat POST /pages/timeseries. `limit` est optionnel
 // (defaut 50, max 500). Un body vide est tolere et equivaut a `{}` (compat
 // integration tests / smoke).
-func (h *EngagementHandler) GetEngagementTimeseries(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *EngagementHandler) handleEngagementTimeseries(ctx context.Context, in *engTimeseriesInput) (*engTimeseriesOutput, error) {
+	svc, err := h.resolve(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, err
 	}
 
 	var req domain.EngagementTimeseriesRequest
 	// Body optionnel : si vide ou absent, on garde la valeur zero (filters vide, limit 0 → 50).
-	if r.Body != nil && r.ContentLength != 0 {
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&req); err != nil {
-			writeError(r.Context(), w, http.StatusBadRequest, "invalid_json", "corps JSON invalide")
-			return
-		}
+	if in.Body != nil {
+		req = *in.Body
 	}
 	if err := req.Filters.Validate(); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_filters", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_filters", err.Error())
 	}
 	limit := req.Limit
 	if limit <= 0 {
@@ -127,32 +185,25 @@ func (h *EngagementHandler) GetEngagementTimeseries(w http.ResponseWriter, r *ht
 		limit = 500
 	}
 
-	out, err := svc.GetTimeseries(r.Context(), req.Filters, limit)
+	out, err := svc.GetTimeseries(ctx, req.Filters, limit)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "engagement_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "engagement_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, out)
+	return &engTimeseriesOutput{Body: out}, nil
 }
 
-// GetSquadEngagementSession : GET /pages/squad/v2/engagement?match_ids=m1,m2&teammates=xuid1,xuid2
+// handleSquadEngagementSession : GET /pages/squad/v2/engagement?match_ids=m1,m2&teammates=xuid1,xuid2
 //
 // Retourne le payload SquadEngagementSession pour Mock 15 v2.
-func (h *EngagementHandler) GetSquadEngagementSession(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *EngagementHandler) handleSquadEngagementSession(ctx context.Context, in *engSquadInput) (*engSquadOutput, error) {
+	svc, err := h.resolve(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, err
 	}
 
-	matchIDsParam := r.URL.Query().Get("match_ids")
-	teammatesParam := r.URL.Query().Get("teammates")
-	gamertgsParam := r.URL.Query().Get("teammate_gamertags")
-
-	matchIDs := splitCSV(matchIDsParam)
-	teammateXUIDs := splitCSV(teammatesParam)
-	teammateGamertags := splitCSV(gamertgsParam)
+	matchIDs := splitCSV(in.MatchIDs)
+	teammateXUIDs := splitCSV(in.Teammates)
+	teammateGamertags := splitCSV(in.TeammateGamertags)
 
 	// Si aucun match_id fourni, utilise les matchs recents du joueur (limite a 15).
 	//
@@ -163,10 +214,9 @@ func (h *EngagementHandler) GetSquadEngagementSession(w http.ResponseWriter, r *
 	// fallback ne sert que d'eventuels autres consommateurs. On logge en WARN
 	// quand la derivation echoue pour rendre le cas observable.
 	if len(matchIDs) == 0 {
-		recent, err := svc.GetTimeseries(r.Context(), domain.FilterContextInput{}, 15)
+		recent, err := svc.GetTimeseries(ctx, domain.FilterContextInput{}, 15)
 		if err != nil {
-			writeError(r.Context(), w, http.StatusInternalServerError, "engagement_error", err.Error())
-			return
+			return nil, humacore.NewError(http.StatusInternalServerError, "engagement_error", err.Error())
 		}
 		matchIDs = make([]string, 0, len(recent.Points))
 		for _, m := range recent.Points {
@@ -176,8 +226,8 @@ func (h *EngagementHandler) GetSquadEngagementSession(w http.ResponseWriter, r *
 			matchIDs = append(matchIDs, m.MatchID)
 		}
 		if len(matchIDs) == 0 && len(recent.Points) > 0 {
-			slog.WarnContext(r.Context(), "engagement_squad: derivation match_ids vide (binning agrege, MatchID absent des points)",
-				"player", slug, "points", len(recent.Points), "granularity", recent.Granularity)
+			slog.WarnContext(ctx, "engagement_squad: derivation match_ids vide (binning agrege, MatchID absent des points)",
+				"player", in.PlayerSlug, "points", len(recent.Points), "granularity", recent.Granularity)
 		}
 	}
 
@@ -191,12 +241,11 @@ func (h *EngagementHandler) GetSquadEngagementSession(w http.ResponseWriter, r *
 		teammates = append(teammates, domain.EngagementCoefficient{XUID: x, Gamertag: gt})
 	}
 
-	session, err := svc.GetSquadSession(r.Context(), matchIDs, teammates)
+	session, err := svc.GetSquadSession(ctx, matchIDs, teammates)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "engagement_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "engagement_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, session)
+	return &engSquadOutput{Body: session}, nil
 }
 
 // splitCSV split "a,b,c" en ["a","b","c"], ignorant les vides.
@@ -214,7 +263,7 @@ func splitCSV(s string) []string {
 	return out
 }
 
-// PostRecomputeCoefficients : POST /matches/.../engagement/recompute_coefficients
+// handleRecomputeCoefficients : POST /engagement/recompute_coefficients
 //
 // Force le recalcul des coefficients d'engagement (coef_team_share /
 // coef_lobby_share) pour toutes les categories de mode supportees, depuis
@@ -232,34 +281,33 @@ func splitCSV(s string) []string {
 // Codes d'erreur :
 //   - 404 player_not_found
 //   - 503 engagement_unavailable (migration Phase 2 ou recompute non appliquee)
+//   - 503 db_busy (database occupée, Retry-After: 5)
 //   - 500 engagement_error (autre)
-func (h *EngagementHandler) PostRecomputeCoefficients(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *EngagementHandler) handleRecomputeCoefficients(ctx context.Context, in *engPlayerInput) (*engRecomputeOutput, error) {
+	svc, err := h.resolve(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, err
 	}
 
-	report, err := svc.RecomputeCoefficients(r.Context())
+	report, err := svc.RecomputeCoefficients(ctx)
 	if err != nil {
 		switch {
 		case errors.Is(err, port.ErrEngagementUnavailable):
-			writeError(r.Context(), w, http.StatusServiceUnavailable, "engagement_unavailable",
+			return nil, humacore.NewError(http.StatusServiceUnavailable, "engagement_unavailable",
 				"migration EngagementScore non appliquee")
 		case errors.Is(err, dblease.ErrDBLocked):
-			w.Header().Set("Retry-After", "5")
-			writeError(r.Context(), w, http.StatusServiceUnavailable, "db_busy",
-				"database is currently busy, please retry")
+			return nil, huma.ErrorWithHeaders(
+				humacore.NewError(http.StatusServiceUnavailable, "db_busy", "database is currently busy, please retry"),
+				http.Header{"Retry-After": []string{"5"}},
+			)
 		default:
-			writeError(r.Context(), w, http.StatusInternalServerError, "engagement_error", err.Error())
+			return nil, humacore.NewError(http.StatusInternalServerError, "engagement_error", err.Error())
 		}
-		return
 	}
-	writeJSON(w, http.StatusOK, report)
+	return &engRecomputeOutput{Body: report}, nil
 }
 
-// GetEngagementProfile : GET /engagement_profile
+// handleEngagementProfile : GET /engagement_profile
 //
 // Reponse JSON : tableau de coefficients par categorie de mode.
 //
@@ -269,18 +317,24 @@ func (h *EngagementHandler) PostRecomputeCoefficients(w http.ResponseWriter, r *
 //	]
 //
 // Reponse vide si aucun coefficient n'a encore ete calcule (cold start).
-func (h *EngagementHandler) GetEngagementProfile(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *EngagementHandler) handleEngagementProfile(ctx context.Context, in *engPlayerInput) (*engProfileOutput, error) {
+	svc, err := h.resolve(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, err
 	}
 
-	coefs, err := svc.GetEngagementProfile(r.Context())
+	coefs, err := svc.GetEngagementProfile(ctx)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "engagement_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "engagement_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, coefs)
+	return &engProfileOutput{Body: coefs}, nil
+}
+
+// resolve récupère le service pour le slug courant ou renvoie une erreur Huma 404.
+func (h *EngagementHandler) resolve(ctx context.Context, slug string) (*service.PlayerEngagementService, error) {
+	svc, err := h.newSvc(ctx, slug)
+	if err != nil {
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+	}
+	return svc, nil
 }

@@ -1,4 +1,9 @@
-// Package handlers — CareerHandler : GET .../pages/career[/top-matches|/encounters|/highlight-matches|/top-encounters|/rivals].
+// Package handlers — CareerHandler : GET .../pages/career[/top-matches|/encounters|/highlight-matches|/top-encounters|/rivals|/csrs].
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// (préfixe /players/{player_slug} + middleware ownership/title hérités, lit
+// {player_slug} parent) et enregistre les 7 GET via huma.Get. Logique métier
+// inchangée (CareerService + MatchHistoryService), seul le wrapping HTTP change.
 package handlers
 
 import (
@@ -7,8 +12,10 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -41,55 +48,100 @@ func NewCareerHandler(
 	return &CareerHandler{newSvc: newSvc, newMHSvc: newMHSvc}
 }
 
-// GetCareer retourne la réponse complète de la page Carrière.
-func (h *CareerHandler) GetCareer(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
-	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
-	}
-	resp, err := svc.GetCareerPage(r.Context())
-	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "career_error", err.Error())
-		return
-	}
-	writeJSON(w, http.StatusOK, resp)
+// Mount enregistre les 7 routes via Huma sur le sous-routeur chi (préfixe
+// /players/{player_slug} + middleware ownership/title hérités).
+func (h *CareerHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/pages/career", h.handleGetCareer)
+	huma.Get(api, "/pages/career/top-matches", h.handleGetTopMatches)
+	huma.Get(api, "/pages/career/encounters", h.handleGetEncounters)
+	huma.Get(api, "/pages/career/highlight-matches", h.handleGetHighlightMatches)
+	huma.Get(api, "/pages/career/top-encounters", h.handleGetTopEncountersRich)
+	huma.Get(api, "/pages/career/rivals", h.handleGetRivals)
+	huma.Get(api, "/pages/career/csrs", h.handleGetCareerCSRs)
 }
 
-// GetTopMatches retourne les top/pires matchs du joueur (format léger legacy).
-func (h *CareerHandler) GetTopMatches(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
-	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
-	}
-	resp, err := svc.GetTopMatches(r.Context())
-	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "top_matches_error", err.Error())
-		return
-	}
-	writeJSON(w, http.StatusOK, resp)
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// careerPlayerInput : path param parent {player_slug} (endpoints sans query).
+type careerPlayerInput struct {
+	PlayerSlug string `path:"player_slug"`
 }
 
-// GetEncounters retourne les joueurs les plus fréquemment croisés (format léger).
-func (h *CareerHandler) GetEncounters(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
-	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
-	}
-	resp, err := svc.GetEncounters(r.Context())
-	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "encounters_error", err.Error())
-		return
-	}
-	writeJSON(w, http.StatusOK, resp)
+// careerHighlightInput : {player_slug} + query params de filtrage (tous tolérés
+// vides — parseHighlightFilterInput applique les normalisations côté service).
+type careerHighlightInput struct {
+	PlayerSlug    string `path:"player_slug"`
+	Experience    string `query:"experience"`
+	SeasonIDs     string `query:"season_ids"`
+	ModeUIs       string `query:"mode_uis"`
+	PlaylistNames string `query:"playlist_names"`
 }
 
-// GetHighlightMatches retourne les 15 meilleurs et 15 pires matchs au format
+// careerCSRsInput : {player_slug} + ?season= optionnel.
+type careerCSRsInput struct {
+	PlayerSlug string `path:"player_slug"`
+	Season     string `query:"season"`
+}
+
+type careerPageOutput struct{ Body domain.CareerPageResponse }
+type careerTopMatchesOutput struct {
+	Body domain.CareerTopMatchesResponse
+}
+type careerEncountersOutput struct {
+	Body domain.CareerEncountersResponse
+}
+type careerHighlightOutput struct {
+	Body domain.CareerHighlightMatchesResponse
+}
+type careerTopEncountersOutput struct {
+	Body domain.CareerTopEncountersResponse
+}
+type careerRivalsOutput struct{ Body domain.CareerRivalsResponse }
+type careerCSRsOutput struct{ Body domain.CareerCSRResponse }
+
+// ─── Endpoints ───────────────────────────────────────────────────────────────
+
+// handleGetCareer retourne la réponse complète de la page Carrière.
+func (h *CareerHandler) handleGetCareer(ctx context.Context, in *careerPlayerInput) (*careerPageOutput, error) {
+	svc, err := h.resolve(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := svc.GetCareerPage(ctx)
+	if err != nil {
+		return nil, humacore.NewError(http.StatusInternalServerError, "career_error", err.Error())
+	}
+	return &careerPageOutput{Body: resp}, nil
+}
+
+// handleGetTopMatches retourne les top/pires matchs du joueur (format léger legacy).
+func (h *CareerHandler) handleGetTopMatches(ctx context.Context, in *careerPlayerInput) (*careerTopMatchesOutput, error) {
+	svc, err := h.resolve(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := svc.GetTopMatches(ctx)
+	if err != nil {
+		return nil, humacore.NewError(http.StatusInternalServerError, "top_matches_error", err.Error())
+	}
+	return &careerTopMatchesOutput{Body: resp}, nil
+}
+
+// handleGetEncounters retourne les joueurs les plus fréquemment croisés (format léger).
+func (h *CareerHandler) handleGetEncounters(ctx context.Context, in *careerPlayerInput) (*careerEncountersOutput, error) {
+	svc, err := h.resolve(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := svc.GetEncounters(ctx)
+	if err != nil {
+		return nil, humacore.NewError(http.StatusInternalServerError, "encounters_error", err.Error())
+	}
+	return &careerEncountersOutput{Body: resp}, nil
+}
+
+// handleGetHighlightMatches retourne les 15 meilleurs et 15 pires matchs au format
 // ExplorerMatchesRow (mêmes 21 colonnes que la page Explorer) avec les cascade
 // counts pour les filtres Expérience / Saisons.
 //
@@ -98,31 +150,25 @@ func (h *CareerHandler) GetEncounters(w http.ResponseWriter, r *http.Request) {
 // Query params optionnels :
 //   - experience : "all" | "ranked" | "unranked" (défaut "all")
 //   - season_ids : CSV des IDs de saison à filtrer (ex. "season6,season7")
-func (h *CareerHandler) GetHighlightMatches(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-
+func (h *CareerHandler) handleGetHighlightMatches(ctx context.Context, in *careerHighlightInput) (*careerHighlightOutput, error) {
 	if h.newMHSvc == nil {
-		writeError(r.Context(), w, http.StatusServiceUnavailable, "match_history_unavailable",
+		return nil, humacore.NewError(http.StatusServiceUnavailable, "match_history_unavailable",
 			"highlight-matches requires MatchHistoryService factory")
-		return
 	}
 
-	svc, err := h.newSvc(r.Context(), slug)
+	svc, err := h.resolve(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, err
 	}
-	mhSvc, _, _, err := h.newMHSvc(r.Context(), slug)
+	mhSvc, _, _, err := h.newMHSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
 
-	input := parseHighlightFilterInput(r.URL.Query())
-	data, err := svc.GetHighlightMatchIDs(r.Context(), input)
+	input := parseHighlightFilterInput(in.highlightQuery())
+	data, err := svc.GetHighlightMatchIDs(ctx, input)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "highlight_matches_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "highlight_matches_error", err.Error())
 	}
 
 	var bestRows, worstRows []domain.HighlightMatchIDRow
@@ -135,25 +181,34 @@ func (h *CareerHandler) GetHighlightMatches(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	bestMatches, err := enrichHighlightMatches(r.Context(), mhSvc, bestRows)
+	bestMatches, err := enrichHighlightMatches(ctx, mhSvc, bestRows)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "highlight_best_enrich_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "highlight_best_enrich_error", err.Error())
 	}
-	worstMatches, err := enrichHighlightMatches(r.Context(), mhSvc, worstRows)
+	worstMatches, err := enrichHighlightMatches(ctx, mhSvc, worstRows)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "highlight_worst_enrich_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "highlight_worst_enrich_error", err.Error())
 	}
 
-	writeJSON(w, http.StatusOK, domain.CareerHighlightMatchesResponse{
+	return &careerHighlightOutput{Body: domain.CareerHighlightMatchesResponse{
 		BestMatches:         bestMatches,
 		WorstMatches:        worstMatches,
 		AvailableExperience: data.AvailableExperience,
 		AvailableSeasons:    data.AvailableSeasons,
 		AvailableModes:      data.AvailableModes,
 		AvailablePlaylists:  data.AvailablePlaylists,
-	})
+	}}, nil
+}
+
+// highlightQuery reconstruit un url.Values depuis les champs query de l'input
+// pour réutiliser parseHighlightFilterInput à l'identique (CSV → []string).
+func (in *careerHighlightInput) highlightQuery() url.Values {
+	q := url.Values{}
+	q.Set("experience", in.Experience)
+	q.Set("season_ids", in.SeasonIDs)
+	q.Set("mode_uis", in.ModeUIs)
+	q.Set("playlist_names", in.PlaylistNames)
+	return q
 }
 
 // parseHighlightFilterInput extrait les query params en domain.HighlightFilterInput.
@@ -183,62 +238,63 @@ func parseHighlightFilterInput(q url.Values) domain.HighlightFilterInput {
 	return in
 }
 
-// GetTopEncountersRich retourne les 10 joueurs les plus croisés au niveau
+// handleGetTopEncountersRich retourne les 10 joueurs les plus croisés au niveau
 // carrière (hors amis) au format MatchEncounterRow (mêmes 8 colonnes que le
 // tableau "Historique de rencontre" de Match View).
 //
 // GET /api/v1/players/{player_slug}/pages/career/top-encounters
-func (h *CareerHandler) GetTopEncountersRich(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *CareerHandler) handleGetTopEncountersRich(ctx context.Context, in *careerPlayerInput) (*careerTopEncountersOutput, error) {
+	svc, err := h.resolve(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, err
 	}
-	resp, err := svc.GetTopEncounters(r.Context())
+	resp, err := svc.GetTopEncounters(ctx)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "top_encounters_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "top_encounters_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, resp)
+	return &careerTopEncountersOutput{Body: resp}, nil
 }
 
-// GetRivals retourne les top némésis (deaths DESC) et top souffre-douleur
+// handleGetRivals retourne les top némésis (deaths DESC) et top souffre-douleur
 // (frags DESC), 10 chacun.
 //
 // GET /api/v1/players/{player_slug}/pages/career/rivals
-func (h *CareerHandler) GetRivals(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *CareerHandler) handleGetRivals(ctx context.Context, in *careerPlayerInput) (*careerRivalsOutput, error) {
+	svc, err := h.resolve(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, err
 	}
-	resp, err := svc.GetRivals(r.Context())
+	resp, err := svc.GetRivals(ctx)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "rivals_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "rivals_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, resp)
+	return &careerRivalsOutput{Body: resp}, nil
 }
 
-// GetCareerCSRs retourne les classements CSR par playlist.
+// handleGetCareerCSRs retourne les classements CSR par playlist.
 // GET /players/{player_slug}/pages/career/csrs
-func (h *CareerHandler) GetCareerCSRs(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *CareerHandler) handleGetCareerCSRs(ctx context.Context, in *careerCSRsInput) (*careerCSRsOutput, error) {
+	svc, err := h.resolve(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, err
 	}
 	// ?season= optionnel : saison CSR à afficher (vide → saison courante).
-	season := strings.TrimSpace(r.URL.Query().Get("season"))
-	resp, err := svc.GetCareerCSRs(r.Context(), season)
+	season := strings.TrimSpace(in.Season)
+	resp, err := svc.GetCareerCSRs(ctx, season)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "csrs_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "csrs_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, resp)
+	return &careerCSRsOutput{Body: resp}, nil
+}
+
+// resolve résout le slug courant en CareerService ou renvoie une erreur Huma 404
+// (contrat préservé : {code:player_not_found}).
+func (h *CareerHandler) resolve(ctx context.Context, slug string) (port.CareerService, error) {
+	svc, err := h.newSvc(ctx, slug)
+	if err != nil {
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+	}
+	return svc, nil
 }
 
 // enrichHighlightMatches enrichit une liste de rows highlight via

@@ -63,9 +63,7 @@ func newTestRouter(factory handlers.ServiceFactory[port.CareerService]) *chi.Mux
 	// factory passée à nil (comportement 503 testé séparément si besoin).
 	h := handlers.NewCareerHandler(factory, nil)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Get("/pages/career", h.GetCareer)
-		r.Get("/pages/career/top-matches", h.GetTopMatches)
-		r.Get("/pages/career/encounters", h.GetEncounters)
+		h.Mount(r)
 	})
 	return r
 }

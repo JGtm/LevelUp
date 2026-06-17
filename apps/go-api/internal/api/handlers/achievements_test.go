@@ -30,7 +30,7 @@ func newAchievementsRouter(factory handlers.ServiceFactory[port.AchievementsServ
 	r := chi.NewRouter()
 	h := handlers.NewAchievementsHandler(factory)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Get("/pages/achievements", h.GetAchievementsPage)
+		h.Mount(r)
 	})
 	return r
 }
