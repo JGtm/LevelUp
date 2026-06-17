@@ -29,7 +29,7 @@
 | 1.6 | Pool tokens clé `(titleSlug,gamertag)` | ✅ | 100 | **oui** (2e titre) — livré : clé composite + garde anti-cross-title |
 | 1.7a | `capabilities.toml` + loader + endpoint | ✅ | 100 | non — TOML + loader + adapter consomme + endpoint, livré |
 | 1.7b | Feature-matrix 3 états + cascade | ✅ | 100 | non — cascade pure + endpoint, livré (revue adversariale 5 lentilles) |
-| 2 | Services title-agnostic (canonical-typé) | 🟡 | 78 | non — critère IMPORT atteint+verrouillé (lint `no_duckdb_import`) ; reste = canonical-typing profond (explorer/match_view/career) = HIGH, décisions requises |
+| 2 | Services title-agnostic (canonical-typé) | 🟡 | 85 | non — critère IMPORT atteint+verrouillé ; **HIGH-C career COMPLET** (XP/LUSR/TopMatches canonical, golden parity) ; reste HIGH-B explorer (types cross-joueur net-new) + HIGH-A match_view (le + complexe, sous-décision design) |
 | 3a | Cleanup DTO (`*Raw` hors domain, nullable) | 🟡 | 50 | non |
 | 1.8 | Outillage diag Lab | ⬜ | 0 | **différé** (hors fenêtre) |
 | 1.9 | Watcher multi-title routing (présence→poll→sync) | ⬜ | 0 | **oui** (2e titre, runtime) — détection déjà title-agnostic ; reste = threader `titleSlug` (fetcher/PlayerWatcher/CoordinatorRequest) |
@@ -113,7 +113,7 @@
 | `home_service` | 🟡 | idem ; importe duckdb **uniquement** pour le type `PersistSink` (non-data) — à isoler |
 | `match_history_service` | 🟡 | canonical via `playerMatchesRepo` ; OK |
 | `timeseries_service` | 🟡 | canonical via `playerMatchesRepo` ; OK |
-| `career_service` | 🟡 | consomme `dataAdapter.LoadCareerSnapshot/LoadEncounters` ; reste XP/LUSR/CSR à canoniser |
+| `career_service` | ✅ | **HIGH-C COMPLET 2026-06-17** : rang+encounters (déjà) + XP (`e1c1570ad`) + LUSR (`bfe33f625`, new `canonical.LUSRCheckpoint`) + TopMatches (`392c252f2`, new `canonical.CareerTopMatch`) canonical via l'adapter, golden parity par chemin |
 | `explorer_service` | 🟡 | `dataAdapter` pour capability-gating seulement ; data via `ExplorerRepository` (pas encore canonical) |
 | `match_view_service` | 🟡 | `dataAdapter` injecté mais data via `MatchViewRepository` (legacy) ; bascule = la plus complexe |
 | ~~`port.MatchFieldRepository` (FieldKey-map)~~ | ⛔ | **supersédé** (réconciliation 2) — ne pas construire |
