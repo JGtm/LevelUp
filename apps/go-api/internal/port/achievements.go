@@ -20,7 +20,10 @@ type AchievementsRepository interface {
 // saisons/waypoint complet. Implémenté par platform/duckdb.MetadataRepo
 // (lit xbox_achievement_definitions depuis metadata.duckdb).
 type MetadataAchievementsRepository interface {
-	GetAchievementDefinitions(ctx context.Context) ([]domain.AchievementDefinitionRow, error)
+	// GetAchievementDefinitions retourne les définitions du titre `titleSlug`
+	// (filtre title_id). Le slug est fourni par le service (title-aware, PMT-6) ;
+	// titleSlug == "" laisse l'impl appliquer son défaut (halo_infinite).
+	GetAchievementDefinitions(ctx context.Context, titleSlug string) ([]domain.AchievementDefinitionRow, error)
 }
 
 // AchievementsService construit la réponse de la page Achievements.
