@@ -92,6 +92,10 @@ func (a *DataAdapter) LoadEncounters(ctx context.Context, xuid string) ([]canoni
 	return nil, games.ErrCapabilityNotSupported
 }
 
+func (a *DataAdapter) LoadLUSRHistory(ctx context.Context, xuid string) ([]canonical.LUSRCheckpoint, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+
 func (a *DataAdapter) LoadTimeseries(ctx context.Context, xuid string, query canonical.TimeseriesQuery) (*canonical.MetricSeries, error) {
 	return nil, games.ErrCapabilityNotSupported
 }

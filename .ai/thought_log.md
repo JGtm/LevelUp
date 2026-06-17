@@ -15,6 +15,14 @@
 
 **Reste HIGH-C** : Path B (GetLUSRHistory → new `canonical.LUSRCheckpoint` + méthode interface, risque LOW) ; Path C (GetTopMatches → new `canonical.CareerTopMatch`, OutcomeCode int brut PAS canonical.Outcome string, risque MEDIUM).
 
+### Path B — historique LUSR canonical-typé (LIVRÉ)
+
+`GetLUSRHistory` → nouveau type `canonical.LUSRCheckpoint` (porteur 1:1 des 10 champs de `domain.LUSRCheckpointDTO` ; RatingType reste string brut — le coercer changerait les octets). Méthode `LoadLUSRHistory` ajoutée à l'interface `games.TitleDataAdapter` (LUSR est une liste d'enrichment sans home dans CareerSnapshot, contrairement à XP) → 4 sites stubés : halo (réel, clone LoadEncounters + `projectLUSRCheckpoint` deep-copy pointeurs), synthetic_title_b (`ErrCapabilityNotSupported`), resolver_test stubData (nil), + les 2 stubs CareerSource halo (`GetLUSRHistory`). `CareerSource` étendu (déjà sur duckdb.CareerRepo). Service : `loadLUSRHistory` + `lusrCheckpointsFromCanonical` (nil pour vide → buildLUSRSummary émet Checkpoints:[] comme legacy). Remplace `GetCareerPage:207`.
+
+**Golden** : `TestCareerService_GetLUSRHistory_DataAdapterParity` (CareerPageResponse complet, fixture nullables set ET nil + delta omitempty) + fallback. Piège attrapé pendant l'écriture : un rang nil (mock `GetLatestRank (nil,nil)`, irréaliste en prod) divergeait sur le bloc summary → fixture avec rang non-nil pour isoler la parité LUSR.
+
+**Vérif** : build ./... ✅ · `go test ./internal/service/ ./internal/games/...` verts · gofmt propre.
+
 ---
 
 ## [2026-06-17] Phase 2 — démarrage : critère « 0 service n'importe duckdb pour la data » (re-vérifié workflow 9 agents)

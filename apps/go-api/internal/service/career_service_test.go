@@ -405,6 +405,71 @@ func TestCareerService_GetXPHistory_AdapterFallbackOnUnsupported(t *testing.T) {
 	}
 }
 
+// TestCareerService_GetLUSRHistory_DataAdapterParity (HIGH-C Path B) prouve que la
+// bascule de l'historique LUSR vers TitleDataAdapter.LoadLUSRHistory produit
+// STRICTEMENT le même CareerPageResponse que la version repo legacy. Fixture
+// hétérogène (champs nullables set ET nil, delta omitempty).
+func TestCareerService_GetLUSRHistory_DataAdapterParity(t *testing.T) {
+	t.Parallel()
+
+	tier := "Diamant 2"
+	grp := "ranked"
+	t1 := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+	t2 := time.Date(2026, 4, 10, 0, 0, 0, 0, time.UTC)
+	delta := 35.5
+	badge := "https://img/badge.png"
+	lusr := []domain.LUSRCheckpointDTO{
+		{MatchID: "m1", RatingType: "lusr", RatingValue: 1850.0, TierLabel: &tier, PlaylistGroup: &grp, PlaylistName: "Arène", PlaylistID: "p1", RecordedAt: &t1, RatingDelta: nil, BadgeImageURL: &badge},
+		{MatchID: "m2", RatingType: "lusr", RatingValue: 1885.5, TierLabel: &tier, PlaylistGroup: &grp, PlaylistName: "Arène", PlaylistID: "p1", RecordedAt: &t2, RatingDelta: &delta, BadgeImageURL: nil},
+	}
+	// Rang non-nil pour isoler la parité LUSR (un GetLatestRank (nil,nil) du mock
+	// — irréaliste en prod où il retourne ErrNoRows/une row — diverge sur le bloc
+	// summary, hors scope de ce test).
+	rankTier := "GOLD"
+	rank := &domain.CareerRankData{RankNumber: 50, CurrentXP: 1000, RankTier: &rankTier, RecordedAt: t1}
+
+	svcLegacy := NewCareerService(&mockCareerRepo{rank: rank, lusrHist: lusr})
+	respLegacy, err := svcLegacy.GetCareerPage(context.Background())
+	if err != nil {
+		t.Fatalf("legacy: %v", err)
+	}
+
+	repoAdapter := &mockCareerRepo{rank: rank, lusrHist: lusr}
+	dataAdapter := halo_games.NewDataAdapter(repoAdapter, slog.New(slog.NewJSONHandler(io.Discard, nil)))
+	svcAdapter := NewCareerService(repoAdapter).WithDataAdapter(dataAdapter)
+	respAdapter, err := svcAdapter.GetCareerPage(context.Background())
+	if err != nil {
+		t.Fatalf("adapter: %v", err)
+	}
+
+	jsonLegacy, _ := json.Marshal(respLegacy)
+	jsonAdapter, _ := json.Marshal(respAdapter)
+	if string(jsonLegacy) != string(jsonAdapter) {
+		t.Errorf("LUSR history parity cassée :\nlegacy=  %s\nadapter= %s", jsonLegacy, jsonAdapter)
+	}
+}
+
+// TestCareerService_GetLUSRHistory_AdapterFallbackOnUnsupported : adapter sans
+// CareerSource → ErrCapabilityNotSupported → fallback silencieux sur repo.
+func TestCareerService_GetLUSRHistory_AdapterFallbackOnUnsupported(t *testing.T) {
+	t.Parallel()
+	tier := "Or 1"
+	lusr := []domain.LUSRCheckpointDTO{
+		{MatchID: "m1", RatingType: "lusr", RatingValue: 1450, TierLabel: &tier, PlaylistName: "Arène", PlaylistID: "p1"},
+	}
+	repo := &mockCareerRepo{lusrHist: lusr}
+	dataAdapter := halo_games.NewDataAdapter(nil, slog.New(slog.NewJSONHandler(io.Discard, nil)))
+	svc := NewCareerService(repo).WithDataAdapter(dataAdapter)
+
+	resp, err := svc.GetCareerPage(context.Background())
+	if err != nil {
+		t.Fatalf("fallback devrait être silencieux, got %v", err)
+	}
+	if len(resp.LUSR.Checkpoints) != 1 {
+		t.Errorf("LUSR checkpoints via fallback = %d, want 1", len(resp.LUSR.Checkpoints))
+	}
+}
+
 // TestCareerService_GetEncounters_AdapterFallbackOnUnsupported prouve que si
 // le DataAdapter retourne ErrCapabilityNotSupported, le service retombe sur
 // le repo sans propager l'erreur (dégradation gracieuse).

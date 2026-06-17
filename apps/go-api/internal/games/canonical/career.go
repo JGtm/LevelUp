@@ -45,6 +45,24 @@ type CareerHistoryEntry struct {
 	XPTotal    *int // XP cumulé (domain.XPHistoryPoint.XPTotal)
 }
 
+// LUSRCheckpoint est un point d'historique de rating LUSR/CSR dans le canonique
+// (Phase 2 HIGH-C). Porteur 1:1 de domain.LUSRCheckpointDTO : aucun type canonique
+// existant ne convient (CareerSnapshot.History = progression XP, pas rating ;
+// HighestLUSR = pic scalaire ; SkillSnapshot = skill de scoreboard par match).
+// RatingType reste un string brut (le coercer en enum changerait les octets).
+type LUSRCheckpoint struct {
+	MatchID       string
+	RatingType    string
+	RatingValue   float64
+	TierLabel     *string
+	PlaylistGroup *string
+	PlaylistName  string
+	PlaylistID    string
+	RecordedAt    *time.Time
+	RatingDelta   *float64
+	BadgeImageURL *string
+}
+
 // EncounterRow représente un joueur croisé fréquemment, dans le canonique.
 //
 // Les compteurs `AsTeammate` et `AsEnemy` permettent au consommateur de

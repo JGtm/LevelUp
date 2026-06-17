@@ -84,6 +84,9 @@ type TitleDataAdapter interface {
 	LoadPlayerStats(ctx context.Context, xuid string, scope canonical.StatsScope) (*canonical.PlayerStats, error)
 	LoadCareerSnapshot(ctx context.Context, xuid string, opts canonical.CareerOptions) (*canonical.CareerSnapshot, error)
 	LoadEncounters(ctx context.Context, xuid string) ([]canonical.EncounterRow, error)
+	// LoadLUSRHistory : historique des checkpoints de rating LUSR/CSR (Phase 2
+	// HIGH-C). ErrCapabilityNotSupported si le titre ne porte pas de rating LUSR.
+	LoadLUSRHistory(ctx context.Context, xuid string) ([]canonical.LUSRCheckpoint, error)
 	LoadTimeseries(ctx context.Context, xuid string, query canonical.TimeseriesQuery) (*canonical.MetricSeries, error)
 
 	// Phase B+ : scoreboard étendu + événements + amis (CapScoreboardExtra).

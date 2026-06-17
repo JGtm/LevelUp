@@ -204,7 +204,7 @@ func (s *CareerService) GetCareerPage(ctx context.Context) (domain.CareerPageRes
 	if err != nil {
 		return domain.CareerPageResponse{}, fmt.Errorf("CareerService.GetCareerPage: %w", err)
 	}
-	lusrHistory, err := s.repo.GetLUSRHistory(ctx)
+	lusrHistory, err := s.loadLUSRHistory(ctx)
 	if err != nil {
 		return domain.CareerPageResponse{}, fmt.Errorf("CareerService.GetCareerPage: %w", err)
 	}
@@ -337,6 +337,63 @@ func xpHistoryFromCanonical(entries []canonical.CareerHistoryEntry) []domain.XPH
 			p.XPTotal = *e.XPTotal
 		}
 		out = append(out, p)
+	}
+	return out
+}
+
+// loadLUSRHistory centralise la résolution repo/adapter pour l'historique LUSR
+// (HIGH-C). Adapter-first via LoadLUSRHistory + reconstitution byte-identique ;
+// fallback repo.GetLUSRHistory sur capability absente.
+func (s *CareerService) loadLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpointDTO, error) {
+	if s.dataAdapter != nil {
+		checkpoints, err := s.dataAdapter.LoadLUSRHistory(ctx, "")
+		if err == nil {
+			return lusrCheckpointsFromCanonical(checkpoints), nil
+		}
+		if !errors.Is(err, games.ErrCapabilityNotSupported) {
+			return nil, err
+		}
+	}
+	return s.repo.GetLUSRHistory(ctx)
+}
+
+// lusrCheckpointsFromCanonical projette []canonical.LUSRCheckpoint →
+// []domain.LUSRCheckpointDTO (copie profonde des pointeurs). Retourne nil pour
+// une entrée vide (buildLUSRSummary émet alors Checkpoints: [] comme le legacy).
+func lusrCheckpointsFromCanonical(cs []canonical.LUSRCheckpoint) []domain.LUSRCheckpointDTO {
+	if len(cs) == 0 {
+		return nil
+	}
+	out := make([]domain.LUSRCheckpointDTO, 0, len(cs))
+	for _, c := range cs {
+		d := domain.LUSRCheckpointDTO{
+			MatchID:      c.MatchID,
+			RatingType:   c.RatingType,
+			RatingValue:  c.RatingValue,
+			PlaylistName: c.PlaylistName,
+			PlaylistID:   c.PlaylistID,
+		}
+		if c.TierLabel != nil {
+			v := *c.TierLabel
+			d.TierLabel = &v
+		}
+		if c.PlaylistGroup != nil {
+			v := *c.PlaylistGroup
+			d.PlaylistGroup = &v
+		}
+		if c.RecordedAt != nil {
+			v := *c.RecordedAt
+			d.RecordedAt = &v
+		}
+		if c.RatingDelta != nil {
+			v := *c.RatingDelta
+			d.RatingDelta = &v
+		}
+		if c.BadgeImageURL != nil {
+			v := *c.BadgeImageURL
+			d.BadgeImageURL = &v
+		}
+		out = append(out, d)
 	}
 	return out
 }
