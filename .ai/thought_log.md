@@ -10,6 +10,16 @@
 
 **Reste HIGH-B** : Path B (GetParticipantStatsForMatches → `canonical.PlayerMatchSetStats`, piège float64 dégâts) ; Path C (intersection GetCommonMatches+GetKillerVictimBetween → `canonical.PlayerIntersection`, le + gros). ~2 j restants.
 
+### Path B — agrégat sample stats Explorer canonical-typé (LIVRÉ)
+
+`GetParticipantStatsForMatches` (chemin sample du target-profile) → nouveau type `canonical.PlayerMatchSetStats` (1:1 de `domain.ParticipantStatsAggregate`, 16 champs ; **DamageDealt/DamageTaken restent float64** — tronquer casserait ComputeCombatYield). Nouvelle source `ParticipantStatsSource` + `WithParticipantSource` ; `LoadParticipantStats` (pointeur, nil si set vide) sur l'interface (4 sites). DI : `WithParticipantSource(explorerRepo)` (le même ExplorerRepo satisfait recent + participant). Service : `loadParticipantStats` + `participantStatsFromCanonical` (nil→nil). Swap `computeTargetSampleStats:272`. Medals/weapons restent sur le repo (enrichment-boundary).
+
+**Golden** : `TestExplorerService_SampleStats_DataAdapterParity` (ExplorerTargetSampleStats complet ; fixture DamageDealt/DamageTaken float64 non-entiers) + fallback.
+
+**Vérif** : build ./... ✅ · `go test ./internal/service/ ./internal/games/...` verts · gofmt propre.
+
+**Reste HIGH-B** : Path C uniquement (intersection cross-joueur `canonical.PlayerIntersection`, le + gros).
+
 ---
 
 ## [2026-06-17] Phase 2 HIGH-C Path A — historique XP canonical-typé (golden parity byte-identique)

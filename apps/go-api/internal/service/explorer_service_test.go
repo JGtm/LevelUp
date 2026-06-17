@@ -46,6 +46,49 @@ func TestExplorerService_CombatProfileLocal_DataAdapterParity(t *testing.T) {
 	}
 }
 
+// TestExplorerService_SampleStats_DataAdapterParity (HIGH-B Path B) prouve que la
+// bascule de l'agrégat sample stats vers TitleDataAdapter.LoadParticipantStats
+// produit STRICTEMENT le même ExplorerTargetSampleStats que le repo legacy. Fixture
+// avec DamageDealt/DamageTaken float64 non-entiers (piège de la troncature int).
+func TestExplorerService_SampleStats_DataAdapterParity(t *testing.T) {
+	t.Parallel()
+	agg := &domain.ParticipantStatsAggregate{
+		Kills: 50, Deaths: 30, Assists: 20, Wins: 6, Losses: 4, Draws: 0,
+		ShotsFired: 500, ShotsHit: 250, DamageDealt: 12345.67, DamageTaken: 9876.54,
+		HeadshotKills: 12, MeleeKills: 3, PowerWeaponKills: 5, GrenadeKills: 2,
+		TimePlayedSeconds: 3600, PersonalScore: 8000,
+	}
+	rawMatches := []domain.CommonMatchRaw{{MatchID: "m1"}, {MatchID: "m2"}}
+
+	legacy := NewExplorerService(&mockExplorerRepo{participants: agg}, "self").
+		computeTargetSampleStats(context.Background(), "target", rawMatches)
+
+	repoAdapter := &mockExplorerRepo{participants: agg}
+	adapter := halo_games.NewDataAdapter(nil, slog.New(slog.NewJSONHandler(io.Discard, nil))).WithParticipantSource(repoAdapter)
+	viaAdapter := NewExplorerService(repoAdapter, "self").WithDataAdapter(adapter).
+		computeTargetSampleStats(context.Background(), "target", rawMatches)
+
+	jsonLegacy, _ := json.Marshal(legacy)
+	jsonAdapter, _ := json.Marshal(viaAdapter)
+	if string(jsonLegacy) != string(jsonAdapter) {
+		t.Errorf("sample stats parity cassée :\nlegacy=  %s\nadapter= %s", jsonLegacy, jsonAdapter)
+	}
+}
+
+// TestExplorerService_SampleStats_AdapterFallbackOnUnsupported : adapter sans
+// ParticipantSource → ErrCapabilityNotSupported → fallback silencieux sur repo.
+func TestExplorerService_SampleStats_AdapterFallbackOnUnsupported(t *testing.T) {
+	t.Parallel()
+	agg := &domain.ParticipantStatsAggregate{Kills: 10, Deaths: 5, Wins: 1}
+	repo := &mockExplorerRepo{participants: agg}
+	adapter := halo_games.NewDataAdapter(nil, slog.New(slog.NewJSONHandler(io.Discard, nil))) // pas de ParticipantSource
+	out := NewExplorerService(repo, "self").WithDataAdapter(adapter).
+		computeTargetSampleStats(context.Background(), "target", []domain.CommonMatchRaw{{MatchID: "m1"}})
+	if out == nil {
+		t.Error("sample stats via fallback repo = nil, attendu non-nil")
+	}
+}
+
 // TestExplorerService_CombatProfileLocal_AdapterFallbackOnUnsupported : adapter sans
 // RecentSource → ErrCapabilityNotSupported → fallback silencieux sur repo.
 func TestExplorerService_CombatProfileLocal_AdapterFallbackOnUnsupported(t *testing.T) {

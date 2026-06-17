@@ -43,14 +43,21 @@ type RecentSource interface {
 	GetTargetRecentMatches(ctx context.Context, xuid string, limit int) ([]domain.ExplorerTargetRecentMatch, error)
 }
 
+// ParticipantStatsSource est la surface de lecture de l'agrégat de stats d'un
+// joueur sur un set de matchs (Explorer sample, HIGH-B). Implémentée par ExplorerRepo.
+type ParticipantStatsSource interface {
+	GetParticipantStatsForMatches(ctx context.Context, xuid string, matchIDs []string) (*domain.ParticipantStatsAggregate, error)
+}
+
 // DataAdapter est l'implémentation HI de games.TitleDataAdapter.
 //
 // Phase B : seules les méthodes nécessaires aux endpoints prévus en Phase C
 // sont câblées. Les autres retournent ErrCapabilityNotSupported pour rendre
 // les absences explicites côté caller (cf. plan §5.7).
 type DataAdapter struct {
-	career CareerSource
-	recent RecentSource // Explorer profil de combat (Phase 2 HIGH-B). nil → ErrCapabilityNotSupported.
+	career      CareerSource
+	recent      RecentSource           // Explorer profil de combat (Phase 2 HIGH-B). nil → ErrCapabilityNotSupported.
+	participant ParticipantStatsSource // Explorer sample stats (HIGH-B). nil → ErrCapabilityNotSupported.
 	// staticCaps : CapabilityMap chargée depuis capabilities.toml (Phase 1.7a),
 	// injectée via WithCapabilities. nil → fallbackCapabilities (sécurité boot).
 	staticCaps games.CapabilityMap
@@ -80,6 +87,13 @@ func (a *DataAdapter) WithCapabilities(caps games.CapabilityMap) *DataAdapter {
 // nil → LoadTargetRecentMatches retourne ErrCapabilityNotSupported. Chaînable.
 func (a *DataAdapter) WithRecentSource(src RecentSource) *DataAdapter {
 	a.recent = src
+	return a
+}
+
+// WithParticipantSource câble la source d'agrégat sample stats (Explorer, HIGH-B).
+// nil → LoadParticipantStats retourne ErrCapabilityNotSupported. Chaînable.
+func (a *DataAdapter) WithParticipantSource(src ParticipantStatsSource) *DataAdapter {
+	a.participant = src
 	return a
 }
 
@@ -419,6 +433,51 @@ func projectRecentMatchRow(r domain.ExplorerTargetRecentMatch) canonical.RecentM
 		c.Rank = &v
 	}
 	return c
+}
+
+// LoadParticipantStats wrappe ParticipantStatsSource.GetParticipantStatsForMatches
+// et projette vers le canonique (Phase 2 HIGH-B). source nil →
+// ErrCapabilityNotSupported. nil agg (set vide) → nil canonique.
+func (a *DataAdapter) LoadParticipantStats(ctx context.Context, xuid string, matchIDs []string) (*canonical.PlayerMatchSetStats, error) {
+	if a.participant == nil {
+		a.logger.Warn("capability_not_supported",
+			"title_slug", a.TitleSlug(),
+			"capability", "explorer.participant_stats",
+		)
+		return nil, games.ErrCapabilityNotSupported
+	}
+
+	agg, err := a.participant.GetParticipantStatsForMatches(ctx, xuid, matchIDs)
+	if err != nil {
+		return nil, err
+	}
+	if agg == nil {
+		return nil, nil
+	}
+	return projectParticipantStats(agg), nil
+}
+
+// projectParticipantStats projette l'agrégat domaine → canonique (DamageDealt/
+// DamageTaken restent float64).
+func projectParticipantStats(a *domain.ParticipantStatsAggregate) *canonical.PlayerMatchSetStats {
+	return &canonical.PlayerMatchSetStats{
+		Kills:             a.Kills,
+		Deaths:            a.Deaths,
+		Assists:           a.Assists,
+		Wins:              a.Wins,
+		Losses:            a.Losses,
+		Draws:             a.Draws,
+		ShotsFired:        a.ShotsFired,
+		ShotsHit:          a.ShotsHit,
+		DamageDealt:       a.DamageDealt,
+		DamageTaken:       a.DamageTaken,
+		HeadshotKills:     a.HeadshotKills,
+		MeleeKills:        a.MeleeKills,
+		PowerWeaponKills:  a.PowerWeaponKills,
+		GrenadeKills:      a.GrenadeKills,
+		TimePlayedSeconds: a.TimePlayedSeconds,
+		PersonalScore:     a.PersonalScore,
+	}
 }
 
 func projectEncounterRow(r domain.EncounterRawRow) canonical.EncounterRow {

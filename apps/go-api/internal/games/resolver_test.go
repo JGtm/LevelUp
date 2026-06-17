@@ -38,6 +38,9 @@ func (s *stubData) LoadTopMatches(_ context.Context, _ string) ([]canonical.Care
 func (s *stubData) LoadTargetRecentMatches(_ context.Context, _ string, _ int) ([]canonical.RecentMatchRow, error) {
 	return nil, nil
 }
+func (s *stubData) LoadParticipantStats(_ context.Context, _ string, _ []string) (*canonical.PlayerMatchSetStats, error) {
+	return nil, nil
+}
 func (s *stubData) LoadTimeseries(_ context.Context, _ string, _ canonical.TimeseriesQuery) (*canonical.MetricSeries, error) {
 	return nil, nil
 }

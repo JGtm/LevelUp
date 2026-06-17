@@ -104,6 +104,10 @@ func (a *DataAdapter) LoadTargetRecentMatches(ctx context.Context, xuid string, 
 	return nil, games.ErrCapabilityNotSupported
 }
 
+func (a *DataAdapter) LoadParticipantStats(ctx context.Context, xuid string, matchIDs []string) (*canonical.PlayerMatchSetStats, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+
 func (a *DataAdapter) LoadTimeseries(ctx context.Context, xuid string, query canonical.TimeseriesQuery) (*canonical.MetricSeries, error) {
 	return nil, games.ErrCapabilityNotSupported
 }

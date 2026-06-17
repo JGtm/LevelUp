@@ -92,6 +92,10 @@ type TitleDataAdapter interface {
 	// LoadTargetRecentMatches : profil de combat récent d'un joueur cible (Explorer,
 	// Phase 2 HIGH-B). ErrCapabilityNotSupported si pas de substrat match local.
 	LoadTargetRecentMatches(ctx context.Context, xuid string, limit int) ([]canonical.RecentMatchRow, error)
+	// LoadParticipantStats : agrégat des stats d'un joueur sur un set de matchs
+	// (Explorer sample, Phase 2 HIGH-B). nil si set vide ; ErrCapabilityNotSupported
+	// si pas de substrat participant.
+	LoadParticipantStats(ctx context.Context, xuid string, matchIDs []string) (*canonical.PlayerMatchSetStats, error)
 	LoadTimeseries(ctx context.Context, xuid string, query canonical.TimeseriesQuery) (*canonical.MetricSeries, error)
 
 	// Phase B+ : scoreboard étendu + événements + amis (CapScoreboardExtra).

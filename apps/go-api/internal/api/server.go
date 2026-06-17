@@ -349,8 +349,10 @@ func NewRouter(
 		if reg.hiCapabilities != nil {
 			a = a.WithCapabilities(reg.hiCapabilities)
 		}
-		// HIGH-B : source du profil de combat récent Explorer (canonical-typé).
-		a = a.WithRecentSource(platform_duckdb.NewExplorerRepo(pdb, pdb.XUID))
+		// HIGH-B : sources Explorer canonical-typées (profil de combat récent +
+		// agrégat sample stats). Le même ExplorerRepo satisfait les 2.
+		explorerRepo := platform_duckdb.NewExplorerRepo(pdb, pdb.XUID)
+		a = a.WithRecentSource(explorerRepo).WithParticipantSource(explorerRepo)
 		return a
 	})
 
