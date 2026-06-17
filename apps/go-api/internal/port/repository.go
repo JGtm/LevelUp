@@ -189,9 +189,6 @@ type MatchViewRepository interface {
 	// GetMatchEvents retourne les events highlight du match (Q21).
 	GetMatchEvents(ctx context.Context, matchID string) ([]domain.EventRaw, error)
 
-	// GetMatchWeaponKills retourne les kills par arme du joueur (Q16).
-	GetMatchWeaponKills(ctx context.Context, xuid, matchID string) ([]domain.WeaponKillRaw, error)
-
 	// GetMatchKVPairs retourne les paires killer→victim du match (Q20).
 	GetMatchKVPairs(ctx context.Context, matchID string) ([]domain.KVPairRaw, error)
 
@@ -404,9 +401,6 @@ func (n *noopMatchViewRepo) GetMatchMedals(_ context.Context, _, _ string) ([]do
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchEvents(_ context.Context, _ string) ([]domain.EventRaw, error) {
-	return nil, nil
-}
-func (n *noopMatchViewRepo) GetMatchWeaponKills(_ context.Context, _, _ string) ([]domain.WeaponKillRaw, error) {
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchKVPairs(_ context.Context, _ string) ([]domain.KVPairRaw, error) {

@@ -30,7 +30,7 @@
 | 1.7a | `capabilities.toml` + loader + endpoint | ✅ | 100 | non — TOML + loader + adapter consomme + endpoint, livré |
 | 1.7b | Feature-matrix 3 états + cascade | ✅ | 100 | non — cascade pure + endpoint, livré (revue adversariale 5 lentilles) |
 | 2 | Services title-agnostic (canonical-typé) | ✅ | 100 | **CLOSE 2026-06-17** — critère IMPORT verrouillé (lint) ; les 3 services lourds canonical-typés via l'adapter : **HIGH-C career** ✅ + **HIGH-B explorer** ✅ + **HIGH-A match_view** ✅ (events T0 complets : cadence+rôles+kill-feed+badges recalés sur le vrai début de match). Le reste (médailles/armes i18n/scoreboard/citations) est **enrichment-boundary par conception** (ADR 0011), title-specific légitime — PAS du travail en attente |
-| 3a | Cleanup DTO (`*Raw` hors domain, nullable) | 🟡 | 50 | non |
+| 3a | Cleanup DTO (`*Raw` hors domain, nullable) | 🟢 | 70 | non — **volet « *Raw hors domain » = NO-OP acté** (2026-06-17, workflow 5 agents) : les 17 *Raw exportés croisent tous une signature `port` → DTO de contrat ; les sortir vers `platform/duckdb` crée un **cycle d'import Go `port↔duckdb`** (compilateur). Ils restent légitimement en `domain` (couche partagée feuille, arch-rules). Les 5 *Raw DB-internes sont déjà privés dans duckdb. Dead-code `WeaponKillRaw`+`GetMatchWeaponKills` supprimé. Reste seul le volet **nullabilité** des DTO (ligne 130-131) |
 | 1.8 | Outillage diag Lab | ⬜ | 0 | **différé** (hors fenêtre) |
 | 1.9 | Watcher multi-title routing (présence→poll→sync) | ⬜ | 0 | **oui** (2e titre, runtime) — détection déjà title-agnostic ; reste = threader `titleSlug` (fetcher/PlayerWatcher/CoordinatorRequest) |
 
@@ -126,7 +126,7 @@
 |---|:-:|---|
 | `domain/match_view.go` sans `*Raw` | ✅ | `*Raw` isolés dans `match_view_raw.go` (split 2026-06-02) |
 | `domain/match_view.go` ≤ 500 L | ✅ | 487 L |
-| 16 `*Raw` déplacés **hors `domain/`** (→ `platform/duckdb`) | ⬜ | encore dans `domain/match_view_raw.go` |
+| 16 `*Raw` déplacés **hors `domain/`** (→ `platform/duckdb`) | ⛔ | **ABANDONNÉ — impossible par design.** Les *Raw croisent `port` (DTO de contrat) ; les mettre dans `duckdb` ferait `port→duckdb` alors que `duckdb→port` = cycle d'import Go. Restent canoniquement en `domain` (couche partagée). Un package `internal/dto` neutre = churn sans valeur (domain a déjà la propriété feuille). Décision 2026-06-17 |
 | `MatchExpectedStats` 100% nullable | 🟡 | `HasExpectedData`/`HasHistAvg` (bool), `HistMatchCount` (int), `HistModeCategory` (string) non-nullable |
 | `MatchScoreboardRow` 100% nullable | 🟡 | `XUID`/`Gamertag`/`IsMe`/`OutcomeLabel`/... non-nullable |
 

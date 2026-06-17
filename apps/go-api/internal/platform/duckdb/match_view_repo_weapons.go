@@ -6,7 +6,6 @@ package duckdb
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -14,74 +13,6 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 )
-
-// GetMatchWeaponKills retourne les kills par arme du joueur (Q16).
-// Applique la fusion variante→canonique (Duelist Energy Sword → Energy Sword,
-// M392 Bandit → Bandit Evo, etc.) avant le lookup pour regrouper les skins
-// — comportement aligné sur la Python resolve_weapon_display.
-func (r *MatchViewRepo) GetMatchWeaponKills(ctx context.Context, xuid, matchID string) ([]domain.WeaponKillRaw, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	// Q16 lit v_weapon_kills (shared-only) — via SharedReader (ADR 0016).
-	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		return nil, nil //nolint:nilerr
-	}
-	defer release()
-
-	rows, err := sharedDB.QueryContext(ctx, Q16WeaponKills, xuid, matchID)
-	if err != nil {
-		return nil, nil //nolint:nilerr
-	}
-	defer rows.Close()
-
-	// Étape 1 : scan + fusion variant→canonique + regroupement par ID canonique.
-	killsByID := make(map[int64]int)
-	orderedIDs := make([]int64, 0, 16)
-	for rows.Next() {
-		var widU uint64
-		var kills int
-		if err := rows.Scan(&widU, &kills); err != nil {
-			return nil, fmt.Errorf("MatchViewRepo.GetMatchWeaponKills scan: %w", err)
-		}
-		canonicalU := widU
-		if canon, ok := analysis.WeaponFusionMapID[widU]; ok {
-			canonicalU = canon
-		}
-		canonicalID := int64(canonicalU) //nolint:gosec
-		if _, seen := killsByID[canonicalID]; !seen {
-			orderedIDs = append(orderedIDs, canonicalID)
-		}
-		killsByID[canonicalID] += kills
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	// Étape 2 : assembler trié par kills DESC (Q16 est déjà ORDER BY kills DESC,
-	// mais la fusion peut réordonner — re-trier garde le contrat).
-	results := make([]domain.WeaponKillRaw, 0, len(orderedIDs))
-	for _, id := range orderedIDs {
-		results = append(results, domain.WeaponKillRaw{WeaponID: id, Kills: killsByID[id]})
-	}
-	sort.SliceStable(results, func(i, j int) bool { return results[i].Kills > results[j].Kills })
-
-	// Étape 3 : résolution labels.
-	weaponIDs := make([]int64, 0, len(results))
-	for _, w := range results {
-		weaponIDs = append(weaponIDs, w.WeaponID)
-	}
-	labels := r.lookupWeaponLabels(ctx, weaponIDs)
-	for index := range results {
-		if label, ok := labels[results[index].WeaponID]; ok {
-			results[index].WeaponLabel = label
-			continue
-		}
-		results[index].WeaponLabel = strconv.FormatInt(results[index].WeaponID, 10)
-	}
-	return results, nil
-}
 
 type weaponMetaEntry struct {
 	label  string

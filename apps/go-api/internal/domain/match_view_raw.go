@@ -187,13 +187,6 @@ type EventRaw struct {
 	Gamertag *string
 }
 
-// WeaponKillRaw : données brutes de Q16.
-type WeaponKillRaw struct {
-	WeaponID    int64
-	WeaponLabel string
-	Kills       int
-}
-
 // KVPairRaw : données brutes de Q20.
 type KVPairRaw struct {
 	KillerXUID string

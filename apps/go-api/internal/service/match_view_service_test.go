@@ -24,8 +24,6 @@ type mockMatchViewRepo struct {
 	medalsErr error
 	events    []domain.EventRaw
 	eventsErr error
-	weapons   []domain.WeaponKillRaw
-	weaponErr error
 	kvPairs   []domain.KVPairRaw
 	kvErr     error
 	// notParticipant : si true, IsParticipant renvoie false (gating ADR 0024).
@@ -57,9 +55,6 @@ func (m *mockMatchViewRepo) GetMatchMedals(_ context.Context, _, _ string) ([]do
 }
 func (m *mockMatchViewRepo) GetMatchEvents(_ context.Context, _ string) ([]domain.EventRaw, error) {
 	return m.events, m.eventsErr
-}
-func (m *mockMatchViewRepo) GetMatchWeaponKills(_ context.Context, _, _ string) ([]domain.WeaponKillRaw, error) {
-	return m.weapons, m.weaponErr
 }
 func (m *mockMatchViewRepo) GetMatchKVPairs(_ context.Context, _ string) ([]domain.KVPairRaw, error) {
 	return m.kvPairs, m.kvErr
@@ -219,7 +214,6 @@ func TestMatchViewService_GetMatchView_OK(t *testing.T) {
 		},
 		medals:  []domain.MedalRaw{{MedalID: 1, Count: 2, Label: "Double Kill"}},
 		events:  []domain.EventRaw{{EventType: "kill"}},
-		weapons: []domain.WeaponKillRaw{{WeaponID: 100, WeaponLabel: "BR75", Kills: 8}},
 		kvPairs: []domain.KVPairRaw{{KillerXUID: "x1", VictimXUID: "x2", KillCount: 3}},
 	}
 	svc := NewMatchViewService(repo, "xuid1")
@@ -287,7 +281,6 @@ func TestMatchViewService_GetMatchView_GracefulDegradation(t *testing.T) {
 		boardErr:  errors.New("no board"),
 		medalsErr: errors.New("no medals"),
 		eventsErr: errors.New("no events"),
-		weaponErr: errors.New("no weapons"),
 		kvErr:     errors.New("no kv"),
 	}
 	svc := NewMatchViewService(repo, "xuid1")

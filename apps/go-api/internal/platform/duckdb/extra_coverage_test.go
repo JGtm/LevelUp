@@ -101,22 +101,6 @@ func TestMatchViewRepo_GetMatchEvents_Empty(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// MatchViewRepo — GetMatchWeaponKills (Q16)
-// ---------------------------------------------------------------------------
-
-func TestMatchViewRepo_GetMatchWeaponKills_Empty(t *testing.T) {
-	pdb := newTestPlayerDB(t)
-	repo := NewMatchViewRepo(pdb, pTestXUID)
-	kills, err := repo.GetMatchWeaponKills(context.Background(), pTestXUID, "m1")
-	if err != nil {
-		t.Fatalf("GetMatchWeaponKills: %v", err)
-	}
-	if len(kills) != 0 {
-		t.Errorf("attendu 0 kills, obtenu %d", len(kills))
-	}
-}
-
-// ---------------------------------------------------------------------------
 // MatchViewRepo — GetMatchKVPairs (Q20, vue v_killer_victim_full)
 // ---------------------------------------------------------------------------
 
