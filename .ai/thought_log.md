@@ -1,3 +1,20 @@
+## [2026-06-18] Phase 3b — routes inline player-group DIRECTES batch 2a (9 handlers) — Complété
+
+**Statut** : Complété. Workflow `huma-inline-direct-2a` (9 agents) → filters/match_view/sessions/session_page/stats/squad/squad_v2/season_pass/match_exclusion convertis (Mount+Huma) + tests màj. server.go recâblé (Mount directs dans /players/{player_slug}). Build/gofmt/vet OK, **goldens des 9 verts**, `internal/api` (contract inclus) vert. 11 routes. Cumul = **48 routes**.
+
+**Fidélité contrat — variantes choisies par les agents (toutes correctes)** :
+- **session_page / stats** : `RawBody []byte` (pas Body typé) → décodage maison pour PRÉSERVER le 400 `invalid_json` exact (au lieu du 422 Huma). Vérifié dans huma v2.38 : RawBody sans champ Body ⇒ pas d'unmarshal Huma.
+- **sessions** : contrat inhabituel préservé — `player_not_found` renvoie **400** (pas 404) ; pas de helper resolve→404.
+- **match_view** : filtres de voisinage relus via un `huma.Resolver` reconstruisant `*http.Request` (ctx.URL()) → réutilise `parseNeighborsFilterSpec` (tolérance inchangée, jamais 422).
+- **match_exclusion** : 204 + 503 db_busy+Retry-After (huma.ErrorWithHeaders).
+- filters / match_exclusion : body malformé → 422 (écart délibéré documenté, comme campaign/notifications).
+
+**2 corrections d'intégration (orchestrateur)** :
+1. **season_pass** : l'agent avait monté le path relatif `/season-pass` (son test montait sous `/pages/palmares`), mais server.go monte sous `/players/{player_slug}` direct → corrigé en `huma.Get("/pages/palmares/season-pass")` + test remonté sous `/players/{player_slug}` (sinon path absolu cassé + contract_test rouge).
+2. **squad** : l'agent a retiré la méthode HTTP morte `SquadHandler.GetSynthesisPage` (synthesis servi par SynthesisHandler en prod ; la garder dans Mount collisionnerait avec la vraie route). 2 tests orphelins `TestSquadHandler_GetSynthesisPage_*` dans `handlers_extra_test.go` (oubliés par l'agent) retirés — ils exerçaient la route morte. Couverture réelle = synthesis_handler_test.go.
+
+**Conclusion / prochaine étape** : batch 2b (explorer, citations, teammates, timeseries, session_compare, synthesis, match_history-query) puis sous-groupes admin/watcher/top-level. Push branche en fin de phase inline trivial.
+
 ## [2026-06-18] Phase 3b — routes inline player-group : capability-groups (career/achievements/engagement) migrées via Mount — Complété
 
 **Statut** : Complété. Workflow `huma-inline-capgroups` (3 agents parallèles) → career/achievements/engagement convertis en handlers auto-enregistrés (Mount+Huma) + tests mis à jour. server.go recâblé (3 sous-groupes capability). `go build ./...` OK, gofmt/vet propres, **goldens career/achievements/engagement/squad verts**, suite `internal/api`+`handlers` verte (seuls échecs = device-flow E2E pré-existants).

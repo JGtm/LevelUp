@@ -1,14 +1,27 @@
 // Package handlers — session_page.go : handler HTTP pour la page détail de session.
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// (préfixe /players/{player_slug} + middleware ownership/title hérités, lit
+// {player_slug} parent) et enregistre le POST via huma.Post. Logique métier
+// inchangée (SessionPageService), seul le wrapping HTTP change.
+//
+// Le corps est pris en RawBody []byte (pas Body domain.SessionPageRequest) pour
+// reproduire EXACTEMENT le contrat d'erreur d'origine : un JSON invalide renvoie
+// 400 invalid_json (decode maison), PAS le 422 de validation Huma. Un corps
+// absent (ContentLength 0 → RawBody vide) est toléré comme requête zéro-valeur.
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -23,53 +36,69 @@ func NewSessionPageHandler(newSvc ServiceFactory[port.SessionPageService]) *Sess
 	return &SessionPageHandler{newSvc: newSvc}
 }
 
+// Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
+// /players/{player_slug} + middleware ownership/title hérités).
+func (h *SessionPageHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Post(api, "/pages/sessions/detail", h.GetPage)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// sessionPageInput : {player_slug} parent + corps brut décodé à la main.
+// RawBody (pas Body) → Huma ne valide PAS le JSON, le handler reproduit le
+// contrat d'erreur d'origine (invalid_json / invalid_body).
+type sessionPageInput struct {
+	PlayerSlug string `path:"player_slug"`
+	RawBody    []byte
+}
+
+type sessionPageOutput struct {
+	Body domain.SessionPageResponse
+}
+
 // GetPage retourne la page de détail d'une session.
-func (h *SessionPageHandler) GetPage(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *SessionPageHandler) GetPage(ctx context.Context, in *sessionPageInput) (*sessionPageOutput, error) {
+	slug := in.PlayerSlug
+	svc, err := h.newSvc(ctx, slug)
 	if err != nil {
-		slog.WarnContext(r.Context(), "session page: joueur introuvable", "player_slug", slug, "err", err)
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		slog.WarnContext(ctx, "session page: joueur introuvable", "player_slug", slug, "err", err)
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
 
 	var req domain.SessionPageRequest
-	if r.ContentLength > 0 {
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&req); err != nil {
-			slog.WarnContext(r.Context(), "session page: corps invalide", "player_slug", slug, "err", err)
-			writeError(r.Context(), w, http.StatusBadRequest, "invalid_json", "corps JSON invalide")
-			return
+	if len(in.RawBody) > 0 {
+		if err := json.Unmarshal(in.RawBody, &req); err != nil {
+			slog.WarnContext(ctx, "session page: corps invalide", "player_slug", slug, "err", err)
+			return nil, humacore.NewError(http.StatusBadRequest, "invalid_json", "corps JSON invalide")
 		}
 	}
 	if err := req.Validate(); err != nil {
-		slog.WarnContext(r.Context(), "session page: requête invalide", "player_slug", slug, "err", err)
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+		slog.WarnContext(ctx, "session page: requête invalide", "player_slug", slug, "err", err)
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
 
-	slog.DebugContext(r.Context(), "session page: calcul",
+	slog.DebugContext(ctx, "session page: calcul",
 		"player_slug", slug,
 		"session_label", derefReqString(req.SessionLabel),
 		"compare_session_label", derefReqString(req.CompareSessionLabel),
 		"enable_compare", req.EnableCompare,
 	)
 
-	page, err := svc.GetPage(r.Context(), req)
+	page, err := svc.GetPage(ctx, req)
 	if err != nil {
 		var apiErr *domain.APIError
 		if errors.As(err, &apiErr) && apiErr.Code == "session_not_found" {
 			// Couche B (ADR 0024) : session demandée inexistante dans le périmètre.
-			slog.InfoContext(r.Context(), "session page: session introuvable",
+			slog.InfoContext(ctx, "session page: session introuvable",
 				"player_slug", slug, "session_label", derefReqString(req.SessionLabel))
-			writeError(r.Context(), w, http.StatusNotFound, "session_not_found", apiErr.Message)
-			return
+			return nil, humacore.NewError(http.StatusNotFound, "session_not_found", apiErr.Message)
 		}
-		slog.ErrorContext(r.Context(), "session page: erreur service", "player_slug", slug, "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "session_page_error", err.Error())
-		return
+		slog.ErrorContext(ctx, "session page: erreur service", "player_slug", slug, "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "session_page_error", err.Error())
 	}
 
-	slog.InfoContext(r.Context(), "session page: générée",
+	slog.InfoContext(ctx, "session page: générée",
 		"player_slug", slug,
 		"session_label", derefReqString(req.SessionLabel),
 		"resolved_session", derefSessionLabel(page.CurrentSession),
@@ -81,7 +110,7 @@ func (h *SessionPageHandler) GetPage(w http.ResponseWriter, r *http.Request) {
 		"previous_session_label", derefReqString(page.PreviousSessionLabel),
 		"next_session_label", derefReqString(page.NextSessionLabel),
 	)
-	writeJSON(w, http.StatusOK, page)
+	return &sessionPageOutput{Body: page}, nil
 }
 
 func derefReqString(value *string) string {

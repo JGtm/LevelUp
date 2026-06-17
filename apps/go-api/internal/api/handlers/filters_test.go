@@ -35,8 +35,7 @@ func newFiltersRouter(factory handlers.ServiceFactory[port.FiltersService]) *chi
 	r := chi.NewRouter()
 	h := handlers.NewFiltersHandler(factory)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Post("/filters/resolve", h.Resolve)
-		r.Post("/filters/match-ids", h.MatchIDs)
+		h.Mount(r)
 	})
 	return r
 }

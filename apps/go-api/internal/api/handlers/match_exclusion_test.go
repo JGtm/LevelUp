@@ -35,8 +35,8 @@ func (m *mockMatchExclusionService) ListExcluded(_ context.Context) ([]domain.Ex
 func newMatchExclusionRouter(factory handlers.ServiceFactory[port.MatchExclusionService]) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewMatchExclusionHandler(factory)
-	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Patch("/matches/{match_id}/exclusion", h.SetExclusion)
+	r.Route("/players/{player_slug}", func(sub chi.Router) {
+		h.Mount(sub)
 	})
 	return r
 }

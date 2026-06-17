@@ -3,14 +3,22 @@
 // Endpoint :
 //
 //	GET /api/v1/players/{player_slug}/pages/palmares/season-pass → SeasonPassPageResponse
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// (préfixe /players/{player_slug} + middleware ownership/title hérités, lit
+// {player_slug} parent) et enregistre le GET via huma.Get. Logique métier
+// inchangée (SeasonPassService + contexte enrichi), seul le wrapping HTTP change.
 package handlers
 
 import (
 	"context"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
 
@@ -27,21 +35,33 @@ func NewSeasonPassHandler(newSvc SeasonPassAuthFactory) *SeasonPassHandler {
 	return &SeasonPassHandler{newSvc: newSvc}
 }
 
+// Mount enregistre la route via Huma sur le sous-routeur chi /players/{player_slug}
+// (middleware ownership/title hérités). Chemin relatif complet pour reproduire le
+// path absolu /players/{player_slug}/pages/palmares/season-pass de server.go.
+func (h *SeasonPassHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/pages/palmares/season-pass", h.GetSeasonPass)
+}
+
+// seasonPassInput : path param parent {player_slug}.
+type seasonPassInput struct {
+	PlayerSlug string `path:"player_slug"`
+}
+
+type seasonPassOutput struct{ Body domain.SeasonPassPageResponse }
+
 // GetSeasonPass retourne la page Season Pass complète.
 // GET /api/v1/players/{player_slug}/pages/palmares/season-pass
-func (h *SeasonPassHandler) GetSeasonPass(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, ctx, err := h.newSvc(r.Context(), slug)
+func (h *SeasonPassHandler) GetSeasonPass(ctx context.Context, in *seasonPassInput) (*seasonPassOutput, error) {
+	svc, enrichedCtx, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", "joueur introuvable")
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", "joueur introuvable")
 	}
 
-	page, err := svc.GetSeasonPassPage(ctx)
+	page, err := svc.GetSeasonPassPage(enrichedCtx)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "season_pass_error", "erreur chargement page Season Pass")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "season_pass_error", "erreur chargement page Season Pass")
 	}
 
-	writeJSON(w, http.StatusOK, page)
+	return &seasonPassOutput{Body: page}, nil
 }

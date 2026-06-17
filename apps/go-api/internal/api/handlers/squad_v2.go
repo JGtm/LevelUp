@@ -8,21 +8,30 @@
 // Vit en parallèle de l'endpoint legacy /pages/squad jusqu'à migration complète
 // du frontend (cf. PLAN_SQUAD_GO_PORTAGE).
 //
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// (préfixe /players/{player_slug} + middleware ownership/title hérités, lit
+// {player_slug} parent) et enregistre le GET via huma.Get. Logique métier
+// inchangée (SquadV2Service), seul le wrapping HTTP change.
+//
 // Filtres cascade supportés : experience_types, playlists, maps, modes
 // (label FR COALESCE(name_fr, name) via PairMode/AssetReference).
 package handlers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/analysis/temporal"
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
@@ -41,6 +50,31 @@ func NewSquadV2Handler(newSvc ContextFactory[port.SquadV2Service]) *SquadV2Handl
 	return &SquadV2Handler{newSvc: newSvc}
 }
 
+// Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
+// /players/{player_slug} + middleware ownership/title hérités).
+func (h *SquadV2Handler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/pages/squad/v2", h.GetSquadPage)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// squadV2PageInput : {player_slug} + query params (tous tolérés vides — le
+// parsing maison reproduit les codes d'erreur d'origine).
+type squadV2PageInput struct {
+	PlayerSlug      string `path:"player_slug"`
+	Teammates       string `query:"teammates"`
+	Period          string `query:"period"`
+	ExperienceTypes string `query:"experience_types"`
+	Playlists       string `query:"playlists"`
+	Maps            string `query:"maps"`
+	Modes           string `query:"modes"`
+}
+
+type squadV2PageOutput struct{ Body *domain.SquadPageV2Response }
+
+// ─── Endpoint ────────────────────────────────────────────────────────────────
+
 // GetSquadPage traite GET /api/v1/players/{player_slug}/pages/squad/v2.
 //
 // Query params :
@@ -55,33 +89,29 @@ func NewSquadV2Handler(newSvc ContextFactory[port.SquadV2Service]) *SquadV2Handl
 //   - 400 : params invalides (period inconnu, trop de coéquipiers)
 //   - 404 : joueur principal introuvable (factory)
 //   - 503 : capability match.history absente pour le titre courant
-func (h *SquadV2Handler) GetSquadPage(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, _, gamertag, err := h.newSvc(r.Context(), slug)
+func (h *SquadV2Handler) GetSquadPage(ctx context.Context, in *squadV2PageInput) (*squadV2PageOutput, error) {
+	svc, _, gamertag, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
 
-	teammates, err := parseSquadV2Teammates(r.URL.Query().Get("teammates"))
+	teammates, err := parseSquadV2Teammates(in.Teammates)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_teammates", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_teammates", err.Error())
 	}
-	period, err := parseSquadV2Period(r.URL.Query().Get("period"))
+	period, err := parseSquadV2Period(in.Period)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_period", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_period", err.Error())
 	}
 
-	experienceTypes := parseCSVFilter(r.URL.Query().Get("experience_types"))
-	playlists := parseCSVFilter(r.URL.Query().Get("playlists"))
-	maps := parseCSVFilter(r.URL.Query().Get("maps"))
-	modes := parseCSVFilter(r.URL.Query().Get("modes"))
+	experienceTypes := parseCSVFilter(in.ExperienceTypes)
+	playlists := parseCSVFilter(in.Playlists)
+	maps := parseCSVFilter(in.Maps)
+	modes := parseCSVFilter(in.Modes)
 
-	titleSlug := titleSlugFromContext(r)
+	titleSlug := ctxkeys.TitleSlug(ctx)
 
-	slog.InfoContext(r.Context(), "squad_v2: lecture page",
+	slog.InfoContext(ctx, "squad_v2: lecture page",
 		"player", gamertag,
 		"title_slug", titleSlug,
 		"teammates_count", len(teammates),
@@ -92,21 +122,19 @@ func (h *SquadV2Handler) GetSquadPage(w http.ResponseWriter, r *http.Request) {
 		"modes", modes,
 	)
 
-	resp, err := svc.GetSquadPage(r.Context(), titleSlug, gamertag, teammates, period, experienceTypes, playlists, maps, modes)
+	resp, err := svc.GetSquadPage(ctx, titleSlug, gamertag, teammates, period, experienceTypes, playlists, maps, modes)
 	if err != nil {
 		if errors.Is(err, games.ErrCapabilityNotSupported) {
-			slog.WarnContext(r.Context(), "squad_v2: capability match.history absente",
+			slog.WarnContext(ctx, "squad_v2: capability match.history absente",
 				"player", gamertag, "title_slug", titleSlug, "err", err)
-			writeError(r.Context(), w, http.StatusServiceUnavailable, "capability_not_supported", err.Error())
-			return
+			return nil, humacore.NewError(http.StatusServiceUnavailable, "capability_not_supported", err.Error())
 		}
-		slog.ErrorContext(r.Context(), "squad_v2: erreur service",
+		slog.ErrorContext(ctx, "squad_v2: erreur service",
 			"player", gamertag, "title_slug", titleSlug, "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "squad_v2_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "squad_v2_error", err.Error())
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	return &squadV2PageOutput{Body: resp}, nil
 }
 
 // parseSquadV2Teammates valide et découpe la liste CSV de coéquipiers.
@@ -163,10 +191,4 @@ func parseCSVFilter(raw string) []string {
 		return nil
 	}
 	return out
-}
-
-// titleSlugFromContext lit le titre courant depuis le contexte (middleware
-// title.go) ; fallback chaîne vide laissé au service.
-func titleSlugFromContext(r *http.Request) string {
-	return ctxkeys.TitleSlug(r.Context())
 }

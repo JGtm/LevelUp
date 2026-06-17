@@ -3,7 +3,6 @@ package handlers_test
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -17,26 +16,26 @@ import (
 )
 
 type mockSquadService struct {
-	squadPage     *domain.SquadPageResponse
-	synthesisPage *domain.SynthesisPageResponse
-	squadErr      error
-	synthesisErr  error
+	squadPage *domain.SquadPageResponse
+	squadErr  error
 }
 
 func (m *mockSquadService) GetSquadPage(_ context.Context, _, _, _ string) (*domain.SquadPageResponse, error) {
 	return m.squadPage, m.squadErr
 }
 
+// GetSynthesisPage satisfait port.SquadService (la route POST /pages/synthesis
+// est servie par SynthesisHandler depuis Sprint 55 D1 — ce mock n'a plus à la
+// piloter, mais l'interface l'exige toujours).
 func (m *mockSquadService) GetSynthesisPage(_ context.Context, _ string) (*domain.SynthesisPageResponse, error) {
-	return m.synthesisPage, m.synthesisErr
+	return nil, nil
 }
 
 func newSquadRouter(factory handlers.ContextFactory[port.SquadService]) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewSquadHandler(factory)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Get("/pages/squad", h.GetSquadPage)
-		r.Post("/pages/synthesis", h.GetSynthesisPage)
+		h.Mount(r)
 	})
 	return r
 }
@@ -73,38 +72,5 @@ func TestSquadHandler_GetSquadPage_PlayerNotFound(t *testing.T) {
 
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", w.Code)
-	}
-}
-
-func TestSquadHandler_GetSynthesisPage_OK(t *testing.T) {
-	expected := &domain.SynthesisPageResponse{}
-	svc := &mockSquadService{synthesisPage: expected}
-	r := newSquadRouter(makeSquadFactory(svc))
-
-	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/synthesis", nil)
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
-	}
-
-	var resp domain.SynthesisPageResponse
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-}
-
-func TestSquadHandler_GetSynthesisPage_ServiceError(t *testing.T) {
-	svc := &mockSquadService{synthesisErr: errors.New("db error")}
-	r := newSquadRouter(makeSquadFactory(svc))
-
-	req := httptest.NewRequest(http.MethodPost, "/players/p/pages/synthesis", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusInternalServerError {
-		t.Fatalf("expected 500, got %d", w.Code)
 	}
 }

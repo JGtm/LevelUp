@@ -1,4 +1,9 @@
 // Package handlers — MatchViewHandler : GET .../matches/{match_id}.
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// (préfixe /players/{player_slug} + middleware ownership/title hérités, lit
+// {player_slug} parent) et enregistre les 2 GET via huma.Get. Logique métier
+// inchangée (MatchViewService), seul le wrapping HTTP change.
 package handlers
 
 import (
@@ -10,9 +15,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
@@ -145,46 +152,81 @@ func (h *MatchViewHandler) WithMediaURLs(store *settings.Store, repoRoot string)
 	return h
 }
 
-// GetMatchView retourne la vue détaillée d'un match pour un joueur.
+// Mount enregistre les 2 routes via Huma sur le sous-routeur chi (préfixe
+// /players/{player_slug} + middleware ownership/title hérités).
+func (h *MatchViewHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/matches/{match_id}", h.handleGetMatchView)
+	huma.Get(api, "/matches/{match_id}/neighbors", h.handleGetMatchNeighbors)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// matchViewInput : {player_slug} parent + {match_id}. match_id pris en STRING
+// (parse maison ci-dessous) pour reproduire le contrat d'origine — un match_id
+// vide renvoie 400 missing_match_id.
+type matchViewInput struct {
+	PlayerSlug string `path:"player_slug"`
+	MatchID    string `path:"match_id"`
+}
+
+// matchNeighborsInput : {player_slug} parent + {match_id}. Les filtres de
+// voisinage sont relus depuis la query brute via parseNeighborsFilterSpec, pour
+// préserver à l'identique le parsing tolérant (jamais 400) — aucun query param
+// n'est déclaré dans l'input (sinon Huma 422 sur valeur invalide).
+type matchNeighborsInput struct {
+	PlayerSlug string `path:"player_slug"`
+	MatchID    string `path:"match_id"`
+	request    *http.Request
+}
+
+// Resolve (interface huma.Resolver) reconstruit une *http.Request portant
+// l'URL brute (query) + le contexte, pour réutiliser parseNeighborsFilterSpec
+// à l'identique (qui lit r.URL.Query() + r.Context()).
+func (in *matchNeighborsInput) Resolve(ctx huma.Context) []error {
+	u := ctx.URL()
+	in.request = (&http.Request{Method: http.MethodGet, URL: &u}).WithContext(ctx.Context())
+	return nil
+}
+
+type matchViewOutput struct{ Body domain.MatchViewResponse }
+type matchNeighborsOutput struct{ Body domain.MatchNeighbors }
+
+// ─── Endpoints ───────────────────────────────────────────────────────────────
+
+// handleGetMatchView retourne la vue détaillée d'un match pour un joueur.
 // GET /api/v1/players/{player_slug}/matches/{match_id}
-func (h *MatchViewHandler) GetMatchView(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *MatchViewHandler) handleGetMatchView(ctx context.Context, in *matchViewInput) (*matchViewOutput, error) {
+	svc, err := h.resolve(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, err
 	}
 
-	matchID := chi.URLParam(r, "match_id")
+	matchID := in.MatchID
 	if matchID == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_match_id", "match_id est requis")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_match_id", "match_id est requis")
 	}
 
-	resp, err := svc.GetMatchView(r.Context(), matchID)
+	resp, err := svc.GetMatchView(ctx, matchID)
 	if err != nil {
 		var apiErr *domain.APIError
 		if errors.As(err, &apiErr) && apiErr.Code == "match_not_participant" {
 			// Couche B (ADR 0024) : match existant mais joueur non-participant.
-			writeError(r.Context(), w, http.StatusNotFound, "match_not_participant", apiErr.Message)
-			return
+			return nil, humacore.NewError(http.StatusNotFound, "match_not_participant", apiErr.Message)
 		}
 		if errors.As(err, &apiErr) && apiErr.Code == "not_found" {
-			writeError(r.Context(), w, http.StatusNotFound, "match_not_found", apiErr.Message)
-			return
+			return nil, humacore.NewError(http.StatusNotFound, "match_not_found", apiErr.Message)
 		}
 		if strings.Contains(err.Error(), "no rows") || strings.Contains(err.Error(), "no rows in result set") {
-			writeError(r.Context(), w, http.StatusNotFound, "match_not_found", "match introuvable : "+matchID)
-			return
+			return nil, humacore.NewError(http.StatusNotFound, "match_not_found", "match introuvable : "+matchID)
 		}
-		writeError(r.Context(), w, http.StatusInternalServerError, "match_view_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "match_view_error", err.Error())
 	}
 	// Onglet médias : réécrire les chemins bruts en URLs servables (même
 	// transformation que la galerie /pages/media). Sans ça les vignettes webp
 	// et le média dans le lecteur tombent en 404 (chemins relatifs bruts).
-	h.transformMatchMediaURLs(slug, resp.MediaTab.MediaItems)
-	writeJSON(w, http.StatusOK, resp)
+	h.transformMatchMediaURLs(in.PlayerSlug, resp.MediaTab.MediaItems)
+	return &matchViewOutput{Body: resp}, nil
 }
 
 // transformMatchMediaURLs réécrit file_path + thumbnail_url de chaque média en
@@ -205,34 +247,38 @@ func (h *MatchViewHandler) transformMatchMediaURLs(slug string, items []domain.M
 	}
 }
 
-// GetMatchNeighbors retourne les matchs adjacents pour la navigation prev/next.
+// handleGetMatchNeighbors retourne les matchs adjacents pour la navigation prev/next.
 // GET /api/v1/players/{player_slug}/matches/{match_id}/neighbors
-func (h *MatchViewHandler) GetMatchNeighbors(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *MatchViewHandler) handleGetMatchNeighbors(ctx context.Context, in *matchNeighborsInput) (*matchNeighborsOutput, error) {
+	svc, err := h.resolve(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, err
 	}
 
-	matchID := chi.URLParam(r, "match_id")
+	matchID := in.MatchID
 	if matchID == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_match_id", "match_id est requis")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_match_id", "match_id est requis")
 	}
 
-	spec := parseNeighborsFilterSpec(r)
-	var (
-		resp domain.MatchNeighbors
-	)
+	spec := parseNeighborsFilterSpec(in.request)
+	var resp domain.MatchNeighbors
 	if spec != nil {
-		resp, err = svc.GetMatchNeighborsFiltered(r.Context(), matchID, spec)
+		resp, err = svc.GetMatchNeighborsFiltered(ctx, matchID, spec)
 	} else {
-		resp, err = svc.GetMatchNeighbors(r.Context(), matchID)
+		resp, err = svc.GetMatchNeighbors(ctx, matchID)
 	}
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "neighbors_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "neighbors_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, resp)
+	return &matchNeighborsOutput{Body: resp}, nil
+}
+
+// resolve résout le slug courant en MatchViewService ou renvoie une erreur Huma
+// 404 (contrat préservé : {code:player_not_found}).
+func (h *MatchViewHandler) resolve(ctx context.Context, slug string) (port.MatchViewService, error) {
+	svc, err := h.newSvc(ctx, slug)
+	if err != nil {
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+	}
+	return svc, nil
 }

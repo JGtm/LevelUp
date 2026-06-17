@@ -31,8 +31,8 @@ var _ port.SeasonPassService = (*mockSeasonPassService)(nil)
 func newSeasonPassRouter(factory handlers.SeasonPassAuthFactory) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewSeasonPassHandler(factory)
-	r.Route("/players/{player_slug}/pages/palmares", func(r chi.Router) {
-		r.Get("/season-pass", h.GetSeasonPass)
+	r.Route("/players/{player_slug}", func(r chi.Router) {
+		h.Mount(r)
 	})
 	return r
 }

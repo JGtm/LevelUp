@@ -1,17 +1,24 @@
-// Package handlers — FiltersHandler : POST /api/v1/players/{player_slug}/filters/resolve.
+// Package handlers — FiltersHandler : POST .../filters/resolve | .../filters/match-ids.
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// (préfixe /players/{player_slug} + middleware ownership/title hérités, lit
+// {player_slug} parent) et enregistre les 2 POST via huma.Post. Logique métier
+// inchangée (FiltersService), seul le wrapping HTTP change.
 package handlers
 
 import (
-	"encoding/json"
+	"context"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
 
-// FiltersHandler gère POST .../filters/resolve.
+// FiltersHandler gère POST .../filters/resolve et .../filters/match-ids.
 type FiltersHandler struct {
 	newSvc ServiceFactory[port.FiltersService]
 }
@@ -21,66 +28,78 @@ func NewFiltersHandler(newSvc ServiceFactory[port.FiltersService]) *FiltersHandl
 	return &FiltersHandler{newSvc: newSvc}
 }
 
+// Mount enregistre les 2 routes via Huma sur le sous-routeur chi (préfixe
+// /players/{player_slug} + middleware ownership/title hérités).
+func (h *FiltersHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Post(api, "/filters/resolve", h.Resolve)
+	huma.Post(api, "/filters/match-ids", h.MatchIDs)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// filtersInput : {player_slug} parent + body domain.FilterContextInput (mêmes
+// tags json que l'original).
+type filtersInput struct {
+	PlayerSlug string `path:"player_slug"`
+	Body       domain.FilterContextInput
+}
+
+type filtersResolveOutput struct{ Body domain.FilterContextResolved }
+type filtersMatchIDsOutput struct{ Body domain.FilterMatchIDsResponse }
+
+// ─── Endpoints ───────────────────────────────────────────────────────────────
+
 // Resolve applique le filtre et retourne les options disponibles.
-func (h *FiltersHandler) Resolve(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *FiltersHandler) Resolve(ctx context.Context, in *filtersInput) (*filtersResolveOutput, error) {
+	svc, err := h.resolve(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, err
 	}
 
-	var input domain.FilterContextInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := in.Body.Validate(); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_filters", err.Error())
 	}
 
-	if err := input.Validate(); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_filters", err.Error())
-		return
-	}
-
-	result, err := svc.Resolve(r.Context(), input)
+	result, err := svc.Resolve(ctx, in.Body)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "filters_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "filters_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, result)
+	return &filtersResolveOutput{Body: result}, nil
 }
 
 // MatchIDs retourne la liste ordonnée (start_time DESC) des match_id de la
 // sélection. Alimente le bouton "Voir les matchs" : le front ouvre le 1er
 // match et parcourt la liste via prev/next. Même pipeline de filtrage que
 // Resolve → respecte match_context (solo/squad), sessions, période et cascade.
-func (h *FiltersHandler) MatchIDs(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *FiltersHandler) MatchIDs(ctx context.Context, in *filtersInput) (*filtersMatchIDsOutput, error) {
+	svc, err := h.resolve(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, err
 	}
 
-	var input domain.FilterContextInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := in.Body.Validate(); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_filters", err.Error())
 	}
 
-	if err := input.Validate(); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_filters", err.Error())
-		return
-	}
-
-	ids, err := svc.ResolveMatchIDs(r.Context(), input)
+	ids, err := svc.ResolveMatchIDs(ctx, in.Body)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "filters_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "filters_error", err.Error())
 	}
 	// Slice jamais nil : un slice Go nil sérialise en JSON `null`, ce qui casse
 	// `.length`/`.map` côté front. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
 	if ids == nil {
 		ids = []string{}
 	}
-	writeJSON(w, http.StatusOK, domain.FilterMatchIDsResponse{MatchIDs: ids})
+	return &filtersMatchIDsOutput{Body: domain.FilterMatchIDsResponse{MatchIDs: ids}}, nil
+}
+
+// resolve résout le slug courant en FiltersService ou renvoie une erreur Huma 404
+// (contrat préservé : {code:player_not_found}).
+func (h *FiltersHandler) resolve(ctx context.Context, slug string) (port.FiltersService, error) {
+	svc, err := h.newSvc(ctx, slug)
+	if err != nil {
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+	}
+	return svc, nil
 }
