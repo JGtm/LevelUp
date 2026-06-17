@@ -47,7 +47,6 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/duckdb"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
@@ -84,22 +83,22 @@ type CareerFetcherFactory func(ctx context.Context) CareerFetcher
 // Interface volontairement étroite pour faciliter le mocking en tests
 // unitaires (cf. career_live_service_test.go).
 type CareerLiveRepo interface {
-	LoadLastCareerRank(ctx context.Context, xuid string) (*duckdb.CareerRankRow, error)
-	EnrichFromMetadata(ctx context.Context, row *duckdb.CareerRankRow) error
+	LoadLastCareerRank(ctx context.Context, xuid string) (*domain.CareerRankRow, error)
+	EnrichFromMetadata(ctx context.Context, row *domain.CareerRankRow) error
 	// InsertCareerProgressionIfChanged écrit une copie complète (live + carry-forward).
 	// Conservé pour compat tests legacy. Le chemin V2 utilise
 	// InsertCareerProgressionPartial qui n'écrit que les champs frais.
-	InsertCareerProgressionIfChanged(ctx context.Context, xuid string, data *duckdb.CareerRankRow) (bool, error)
+	InsertCareerProgressionIfChanged(ctx context.Context, xuid string, data *domain.CareerRankRow) (bool, error)
 	// InsertCareerProgressionPartial écrit UNIQUEMENT les champs set du partial,
 	// les autres restent NULL (Phase 2/3 PLAN_V2 §5).
-	InsertCareerProgressionPartial(ctx context.Context, xuid string, partial *duckdb.CareerProgressionPartial) (bool, error)
+	InsertCareerProgressionPartial(ctx context.Context, xuid string, partial *domain.CareerProgressionPartial) (bool, error)
 }
 
 // CareerIdentityBuilder construit le HomeSpartanIdentityRow final à partir
 // d'une CareerRankRow (déjà mergée) + skill peaks. Implémenté par
 // duckdb.HomeRepo.BuildSpartanIdentityFromCareerRow.
 type CareerIdentityBuilder interface {
-	BuildSpartanIdentityFromCareerRow(ctx context.Context, careerRow *duckdb.CareerRankRow, includePeaks bool) *domain.HomeSpartanIdentityRow
+	BuildSpartanIdentityFromCareerRow(ctx context.Context, careerRow *domain.CareerRankRow, includePeaks bool) *domain.HomeSpartanIdentityRow
 }
 
 // CareerLiveService orchestre live + cache + fallback + INSERT-if-changed.
@@ -245,7 +244,7 @@ func (s *CareerLiveService) GetSpartanIdentityFor(ctx context.Context, xuid stri
 // internes loggées), mais une future intégration LiveAPI pourrait remonter ici.
 //
 //nolint:unparam // err maintenu en signature pour cohérence avec autres fetchers
-func (s *CareerLiveService) fetchAndMerge(ctx context.Context, xuid string, allowPersist bool) (*duckdb.CareerRankRow, error) {
+func (s *CareerLiveService) fetchAndMerge(ctx context.Context, xuid string, allowPersist bool) (*domain.CareerRankRow, error) {
 	tokens := ctxkeys.HaloTokens(ctx)
 	hasAuth := tokens != nil && tokens.SpartanToken != ""
 
@@ -443,7 +442,7 @@ func computeFetchStatus(progress *syncpkg.CareerRankData, custom *syncpkg.Sparta
 // pour ne jamais montrer un bloc Spartan vide à l'utilisateur si une row
 // historique existe.
 func (s *CareerLiveService) serveDBFallback(ctx context.Context, xuid string, includePeaks bool) *domain.HomeSpartanIdentityRow {
-	var dbRow *duckdb.CareerRankRow
+	var dbRow *domain.CareerRankRow
 	if xuid != "" && s.repo != nil {
 		row, err := s.repo.LoadLastCareerRank(ctx, xuid)
 		if err != nil {
