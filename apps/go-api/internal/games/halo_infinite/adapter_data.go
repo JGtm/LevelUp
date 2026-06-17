@@ -49,6 +49,13 @@ type ParticipantStatsSource interface {
 	GetParticipantStatsForMatches(ctx context.Context, xuid string, matchIDs []string) (*domain.ParticipantStatsAggregate, error)
 }
 
+// CrossPlayerSource est la surface de lecture de l'intersection 2-joueurs (matchs
+// communs + kills croisés ; Explorer, HIGH-B). Implémentée par ExplorerRepo.
+type CrossPlayerSource interface {
+	GetCommonMatches(ctx context.Context, xuid1, xuid2 string) ([]domain.CommonMatchRaw, error)
+	GetKillerVictimBetween(ctx context.Context, xuid1, xuid2 string) (domain.KillerVictimAggregate, error)
+}
+
 // DataAdapter est l'implémentation HI de games.TitleDataAdapter.
 //
 // Phase B : seules les méthodes nécessaires aux endpoints prévus en Phase C
@@ -58,6 +65,7 @@ type DataAdapter struct {
 	career      CareerSource
 	recent      RecentSource           // Explorer profil de combat (Phase 2 HIGH-B). nil → ErrCapabilityNotSupported.
 	participant ParticipantStatsSource // Explorer sample stats (HIGH-B). nil → ErrCapabilityNotSupported.
+	cross       CrossPlayerSource      // Explorer intersection 2-joueurs (HIGH-B). nil → ErrCapabilityNotSupported.
 	// staticCaps : CapabilityMap chargée depuis capabilities.toml (Phase 1.7a),
 	// injectée via WithCapabilities. nil → fallbackCapabilities (sécurité boot).
 	staticCaps games.CapabilityMap
@@ -94,6 +102,13 @@ func (a *DataAdapter) WithRecentSource(src RecentSource) *DataAdapter {
 // nil → LoadParticipantStats retourne ErrCapabilityNotSupported. Chaînable.
 func (a *DataAdapter) WithParticipantSource(src ParticipantStatsSource) *DataAdapter {
 	a.participant = src
+	return a
+}
+
+// WithCrossPlayerSource câble la source d'intersection 2-joueurs (Explorer, HIGH-B).
+// nil → LoadPlayerIntersection retourne ErrCapabilityNotSupported. Chaînable.
+func (a *DataAdapter) WithCrossPlayerSource(src CrossPlayerSource) *DataAdapter {
+	a.cross = src
 	return a
 }
 
@@ -478,6 +493,66 @@ func projectParticipantStats(a *domain.ParticipantStatsAggregate) *canonical.Pla
 		TimePlayedSeconds: a.TimePlayedSeconds,
 		PersonalScore:     a.PersonalScore,
 	}
+}
+
+// LoadPlayerIntersection wrappe CrossPlayerSource (matchs communs + kills croisés)
+// et projette vers le canonique (Phase 2 HIGH-B). source nil →
+// ErrCapabilityNotSupported. Échec matchs communs = fatal (propagé) ; échec kills
+// croisés = dégradation gracieuse (CrossKills vide + warn) — réplique le service legacy.
+func (a *DataAdapter) LoadPlayerIntersection(ctx context.Context, selfXUID, otherXUID string) (*canonical.PlayerIntersection, error) {
+	if a.cross == nil {
+		a.logger.Warn("capability_not_supported",
+			"title_slug", a.TitleSlug(),
+			"capability", "explorer.cross_player",
+		)
+		return nil, games.ErrCapabilityNotSupported
+	}
+
+	matches, err := a.cross.GetCommonMatches(ctx, selfXUID, otherXUID)
+	if err != nil {
+		return nil, err // matchs communs = fatal
+	}
+	kv, kvErr := a.cross.GetKillerVictimBetween(ctx, selfXUID, otherXUID)
+	if kvErr != nil {
+		a.logger.Warn("explorer_kv_between_failed",
+			"xuid1", selfXUID, "xuid2", otherXUID, "err", kvErr.Error())
+		kv = domain.KillerVictimAggregate{} // gracieux : badges non calculés
+	}
+
+	out := &canonical.PlayerIntersection{
+		CrossKills: canonical.CrossKillTally{KillsBySelf: kv.KillsDealt, KillsByOther: kv.DeathsSuffered},
+	}
+	if len(matches) > 0 {
+		out.Matches = make([]canonical.CommonMatchRow, 0, len(matches))
+		for _, m := range matches {
+			out.Matches = append(out.Matches, projectCommonMatchRow(m))
+		}
+	}
+	return out, nil
+}
+
+// projectCommonMatchRow projette une ligne de match commun domaine → canonique
+// (team IDs deep-copiés ; SelfOutcomeCode = code BRUT).
+func projectCommonMatchRow(m domain.CommonMatchRaw) canonical.CommonMatchRow {
+	c := canonical.CommonMatchRow{
+		MatchID:         m.MatchID,
+		StartTime:       m.StartTime,
+		MapUI:           m.MapUI,
+		ModeUI:          m.ModeUI,
+		SelfOutcomeCode: m.Player1Outcome,
+		SelfKills:       m.Player1Kills,
+		SelfDeaths:      m.Player1Deaths,
+		SelfKDA:         m.Player1KDA,
+	}
+	if m.Player1TeamID != nil {
+		v := *m.Player1TeamID
+		c.SelfTeamID = &v
+	}
+	if m.Player2TeamID != nil {
+		v := *m.Player2TeamID
+		c.OtherTeamID = &v
+	}
+	return c
 }
 
 func projectEncounterRow(r domain.EncounterRawRow) canonical.EncounterRow {

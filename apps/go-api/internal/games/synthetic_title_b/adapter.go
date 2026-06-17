@@ -108,6 +108,10 @@ func (a *DataAdapter) LoadParticipantStats(ctx context.Context, xuid string, mat
 	return nil, games.ErrCapabilityNotSupported
 }
 
+func (a *DataAdapter) LoadPlayerIntersection(ctx context.Context, selfXUID, otherXUID string) (*canonical.PlayerIntersection, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+
 func (a *DataAdapter) LoadTimeseries(ctx context.Context, xuid string, query canonical.TimeseriesQuery) (*canonical.MetricSeries, error) {
 	return nil, games.ErrCapabilityNotSupported
 }
