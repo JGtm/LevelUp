@@ -22,7 +22,7 @@ package service
 import (
 	"strings"
 
-	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/domain"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
@@ -48,8 +48,8 @@ const (
 func PartialFromLive(
 	progress *syncpkg.CareerRankData,
 	custom *syncpkg.SpartanCustomizationData,
-) *duckdb.CareerProgressionPartial {
-	p := &duckdb.CareerProgressionPartial{}
+) *domain.CareerProgressionPartial {
+	p := &domain.CareerProgressionPartial{}
 
 	if progress != nil && progressHasRealData(progress) {
 		// On set Rank/XP même si CurrentXP=0 (vraie valeur début palier),

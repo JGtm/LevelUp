@@ -16,6 +16,14 @@ Le seul import duckdb de `home_service.go` était le type write-only `*duckdb.Pe
 
 **Vérif** : build ✅ · skill_v2 tests verts · gofmt propre · import duckdb retiré.
 
+### SAFE-2 — cluster career_live ×3 : DTOs relocalisés dans domain (LIVRÉ)
+
+Les 3 fichiers `career_live_{service,merge,partial}.go` faisaient transiter les types concrets `duckdb.CareerRankRow` / `duckdb.CareerProgressionPartial` (DTOs de ligne `career_progression`, struct pures + méthodes `IsEmpty`/`HasOnlyStatus`/`MatchesLast`). Relocalisés dans `internal/domain/career_live.go` (structs + méthodes verbatim). duckdb conserve des **alias** (`type CareerRankRow = domain.CareerRankRow`) → les 31 références internes au package duckdb (career_repo, home_repo_identity, le repo lui-même) restent inchangées (churn minimal, byte-identique). Les 3 services référencent `domain.CareerRankRow` → import duckdb supprimé. Mocks de test inchangés (alias = même type).
+
+**Vérif** : build service+duckdb+domain ✅ · suite `go test ./internal/service/` complète verte (4.7s) · gofmt propre · les 3 career_live n'importent plus duckdb.
+
+**Avancement critère Phase 2** : importateurs duckdb restants (non-test) = `media_service`/`media_index_service` (`OpenReadWrite` = write-IO, pas data-read) → décision allowlist + lint à suivre.
+
 ---
 
 ## [2026-06-17] PMT-5 Contract — DERNIER site SQL migré, allowlist ratchet VIDE

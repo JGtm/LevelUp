@@ -12,41 +12,15 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/domain"
 )
 
-// CareerRankRow est la projection raw d'une ligne `career_progression` après
-// per-field merge (dernière valeur non-vide par colonne via ARG_MAX + FILTER).
-// Les URLs d'images sont les valeurs absolues stockées en DB (résolues à la
-// sync précédente) — la construction des URLs d'asset internes (/api/v1/...)
-// reste l'affaire du service consommateur.
-type CareerRankRow struct {
-	Rank             int
-	RankName         string
-	RankTier         string
-	CurrentXP        int
-	XPForNextRank    int
-	XPTotal          int
-	IsMaxRank        bool
-	SpartanID        string
-	BannerImageURL   string
-	EmblemImageURL   string
-	BackdropImageURL string
-	AdornmentPath    string
-}
-
-// IsEmpty retourne true si la row ne porte aucune donnée exploitable
-// (utilisé pour décider si on retourne nil au caller).
-func (r *CareerRankRow) IsEmpty() bool {
-	if r == nil {
-		return true
-	}
-	return r.Rank <= 0 &&
-		r.CurrentXP == 0 &&
-		r.SpartanID == "" &&
-		r.BannerImageURL == "" &&
-		r.EmblemImageURL == "" &&
-		r.BackdropImageURL == ""
-}
+// CareerRankRow / CareerProgressionPartial : DTOs relocalisés dans domain
+// (Phase 2 — le service ne dépend plus de duckdb). Alias conservés pour le code
+// interne au package duckdb. La définition + les méthodes vivent dans
+// internal/domain/career_live.go.
+type CareerRankRow = domain.CareerRankRow
 
 // CareerLiveRepo expose les opérations DB du flow live carrière.
 type CareerLiveRepo struct {

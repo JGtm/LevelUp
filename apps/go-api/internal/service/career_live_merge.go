@@ -13,7 +13,6 @@ package service
 
 import (
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/duckdb"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
@@ -64,13 +63,13 @@ func overlayIdentityFromFallback(identity, fallback *domain.HomeSpartanIdentityR
 func mergeCareerRow(
 	progress *syncpkg.CareerRankData,
 	custom *syncpkg.SpartanCustomizationData,
-	dbLast *duckdb.CareerRankRow,
-) *duckdb.CareerRankRow {
+	dbLast *domain.CareerRankRow,
+) *domain.CareerRankRow {
 	if progress == nil && custom == nil && dbLast == nil {
 		return nil
 	}
 
-	merged := &duckdb.CareerRankRow{}
+	merged := &domain.CareerRankRow{}
 	carryForward := mergeProgressInto(merged, progress, dbLast)
 	carryForward = mergeCustomInto(merged, custom, dbLast) || carryForward
 	carryForward = carryForwardDerivedFields(merged, dbLast) || carryForward
@@ -87,7 +86,7 @@ func mergeCareerRow(
 // mergeProgressInto applique progress live + dbLast carry-forward sur les
 // champs rank/current_xp/is_max_rank. Retourne true si au moins un champ a
 // été carry-forward depuis dbLast.
-func mergeProgressInto(merged *duckdb.CareerRankRow, progress *syncpkg.CareerRankData, dbLast *duckdb.CareerRankRow) bool {
+func mergeProgressInto(merged *domain.CareerRankRow, progress *syncpkg.CareerRankData, dbLast *domain.CareerRankRow) bool {
 	if progress != nil {
 		merged.Rank = progress.CurrentRank
 		merged.CurrentXP = progress.CurrentXP
@@ -116,7 +115,7 @@ func mergeProgressInto(merged *duckdb.CareerRankRow, progress *syncpkg.CareerRan
 // mergeCustomInto applique custom live + dbLast carry-forward sur les champs
 // spartan_id/banner/emblem/backdrop. Retourne true si au moins un champ a été
 // carry-forward depuis dbLast.
-func mergeCustomInto(merged *duckdb.CareerRankRow, custom *syncpkg.SpartanCustomizationData, dbLast *duckdb.CareerRankRow) bool {
+func mergeCustomInto(merged *domain.CareerRankRow, custom *syncpkg.SpartanCustomizationData, dbLast *domain.CareerRankRow) bool {
 	if custom != nil {
 		merged.SpartanID = custom.SpartanID
 		merged.BannerImageURL = custom.BannerImageURL
@@ -151,7 +150,7 @@ func mergeCustomInto(merged *duckdb.CareerRankRow, custom *syncpkg.SpartanCustom
 // EnrichFromMetadata les recalculera depuis merged.Rank ; ce carry-forward
 // est utile uniquement si metadata est indisponible. Retourne false car ces
 // champs sont dérivés (pas du "vrai" carry-forward métier).
-func carryForwardDerivedFields(merged *duckdb.CareerRankRow, dbLast *duckdb.CareerRankRow) bool {
+func carryForwardDerivedFields(merged *domain.CareerRankRow, dbLast *domain.CareerRankRow) bool {
 	if dbLast == nil {
 		return false
 	}
