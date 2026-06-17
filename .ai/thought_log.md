@@ -1,3 +1,47 @@
+## [2026-06-17] PMT-6 (MT-08) — Achievements : lecture title-aware (filtre title_id paramétré) + XboxTitleIDFor registry-driven
+
+**Statut** : Complété (exit gate atteint).
+
+**Re-vérification** : conforme au seed — write-side + garde `CapAchievements` DÉJÀ title-aware ; le seul vrai trou = la **lecture** (`GetAchievementDefinitions` filtrait en dur `title_id='halo_infinite'`, ignorant le slug que le service portait déjà) + `XboxTitleIDFor` dupliquant `TitleDescriptor.XboxTitleID`.
+
+**Livré (PR1 — lecture)** :
+- `port.MetadataAchievementsRepository.GetAchievementDefinitions(ctx, titleSlug)` (seam paramétré).
+- `duckdb.MetadataRepo` : `WHERE title_id = ?` (param), défaut `titleSlug==""` → `title.DefaultSlug` (parité historique), `slog.Debug` avec `title`+`count`.
+- `service.AchievementsService` : calcule le slug effectif (fallback défaut) UNE fois et le passe au filtre ET à la catégorie. Aucun littéral de slug, aucune comparaison `== DefaultSlug` (`no_slug_comparison` vert).
+
+**Livré (PR2 — XboxTitleIDFor registry-driven)** :
+- Méthode `(r *Registry) XboxTitleIDFor(slug)` lit `descripteur.XboxTitleID` (source unique). Helper package-level délègue à un registre lazy (`sync.Once`). Suppression du `switch slug { case DefaultSlug: return "2043073184" }` (valeur identique au descripteur → dédup pure, zéro changement de comportement ; 1 seul caller `engine_postsync_csr.go` inchangé).
+
+**Périmètre** : PR3 (flag CLI `--title` + propagation engine) NON livré — write-side CLI, plus value faible (n'est exerçable qu'avec un vrai 2e titre) et nécessite de threader un param dans `NewSyncEngine` ; documenté comme follow-up. L'exit gate (lecture route par titre + XboxTitleIDFor registry-driven + Halo byte-identique + dégradation) est atteint sans lui.
+
+**Tests** (oracle DOUBLE) : (a) Halo — repo Populated inchangé filtre `halo_infinite`, `XboxTitleIDFor("halo_infinite")=="2043073184"` inchangé ; (b) synthetic — `GetAchievementDefinitions` route par titre (hi_1 vs synth_1, `""`→défaut, slug inconnu→vide) ; service transmet bien son slug (mock capture `gotSlug`) ; `r.XboxTitleIDFor(synthetic)` rend un XboxTitleID distinct. Catégorisation non touchée (dégrade déjà).
+
+**Vérif** : build ./... · title/service/archlint/duckdb verts · sync write-side (achievements integration) non régressé · `go test ./...` = seuls les 2 DeviceCodeFlow pré-existants · gofmt/vet propres.
+
+---
+
+## [2026-06-17] PMT-11 (MT-26) — Discord embeds : outcomes title-aware via TitleSemanticAdapter.Outcomes()
+
+**Statut** : Complété (exit gate atteint ; périmètre minimal = outcomes).
+
+**Re-vérification** : pointeurs du seed exacts MAIS le contenu Halo est (surtout) rendu dans `embeds.go` (`lastMatchLines`), pas seulement `discord.go` — surface bicéphale. Le seam `TitleSemanticAdapter.Outcomes()` + `outcomes.toml` (halo + synthetic divergent) existait déjà ; il ne manquait que le câblage + un pont int→clé canonique.
+
+**Livré** (`internal/notify`) :
+- `labels.go` : interface `NotifyLabels{Outcome(canonicalKey, lang)}` + `OutcomeSource` (surface minimale `Outcomes() *mappings.OutcomeMappingSet` — évite d'importer tout `games`). Impl `haloLabels` (clé canonique → clé i18n Halo `discord_outcome_*` → `T`, byte-identique) et `semanticLabels{src, fallback}` (libellé du titre via `Outcomes().Get(key).Label(lang)`, dégradation failsafe vers Halo si src/Outcomes()/clé absente). `LabelsFor(src)` + `labelsOrDefault`.
+- `embeds.go` : `BuildSyncEmbed` devient un wrapper byte-identique de `BuildSyncEmbedWithLabels(..., HaloLabels())` ; `labels` threadé jusqu'à `lastMatchLines`. Pont `outcomeCanonicalKey{1:tie,2:win,3:loss,4:dnf}` (Quit Discord = DNF canonique). Icônes inchangées (structurelles, pas des libellés).
+- `discord.go` : `NotifyConfig.Labels NotifyLabels` (nil → Halo). `notifiers.go` : `NotifySync` route via `labelsOrDefault(cfg.Labels)`.
+- Routage par présence d'`OutcomeSource`, JAMAIS de comparaison de slug → `no_slug_comparison` reste vert.
+
+**Périmètre** : seuls les **outcomes** (seul manifeste par titre existant). Footer/backfill restent Halo (pas de manifeste i18n par titre — hors scope minimal). Wiring prod prêt : un caller multi-titre posera `cfg.Labels = notify.LabelsFor(semanticAdapter)`. Aujourd'hui (titre unique halo) tous les call-sites laissent `Labels` nil → Halo byte-identique (correct, pas partiel).
+
+**Tests** (`labels_test.go`) : oracle a (parité Halo FR+EN les 4 outcomes + `BuildSyncEmbed` == `...WithLabels(HaloLabels())` via reflect.DeepEqual) ; oracle b (titre synthétique → « Triomphe »/« Forfait »/« Match nul », jamais « Victoire ») ; failsafe (src nil / Outcomes() nil / clé absente → Halo, sans panic). `embeds_test.go` ajusté (3 call-sites internes + `HaloLabels()`).
+
+**Vérif** : build ./... · `go test ./internal/notify/` vert · archlint no_slug_comparison vert · gofmt/vet propres.
+
+**Prochaine étape** : PMT-6 (achievements lecture title-aware).
+
+---
+
 ## [2026-06-16] PMT-9 (MT-23) — routage des migrations PAR TITRE + ledger schema_version par titre
 
 **Statut** : Complété (PMT-9 livré ; exit gate atteint).
