@@ -32,7 +32,7 @@
 | 2 | Services title-agnostic (canonical-typé) | ✅ | 100 | **CLOSE 2026-06-17** — critère IMPORT verrouillé (lint) ; les 3 services lourds canonical-typés via l'adapter : **HIGH-C career** ✅ + **HIGH-B explorer** ✅ + **HIGH-A match_view** ✅ (events T0 complets : cadence+rôles+kill-feed+badges recalés sur le vrai début de match). Le reste (médailles/armes i18n/scoreboard/citations) est **enrichment-boundary par conception** (ADR 0011), title-specific légitime — PAS du travail en attente |
 | 3a | Cleanup DTO (`*Raw` hors domain, nullable) | 🟢 | 70 | non — **volet « *Raw hors domain » = NO-OP acté** (2026-06-17, workflow 5 agents) : les 17 *Raw exportés croisent tous une signature `port` → DTO de contrat ; les sortir vers `platform/duckdb` crée un **cycle d'import Go `port↔duckdb`** (compilateur). Ils restent légitimement en `domain` (couche partagée feuille, arch-rules). Les 5 *Raw DB-internes sont déjà privés dans duckdb. Dead-code `WeaponKillRaw`+`GetMatchWeaponKills` supprimé. Reste seul le volet **nullabilité** des DTO (ligne 130-131) |
 | 1.8 | Outillage diag Lab | ⬜ | 0 | **différé** (hors fenêtre) |
-| 1.9 | Watcher multi-title routing (présence→poll→sync) | ⬜ | 0 | **oui** (2e titre, runtime) — détection déjà title-agnostic ; reste = threader `titleSlug` (fetcher/PlayerWatcher/CoordinatorRequest) |
+| 1.9 | Watcher multi-title routing (présence→poll→sync) | 🟢 | 85 | non — **threading LIVRÉ 2026-06-17** (`b265a01d9`) : `td.Slug`/`PlayerSummary.TitleSlug` → `pollerCtx` (host PMT-1) + `MatchRequest.TitleSlug` (write-path PMT-3), byte-identique mono-titre. Reste **PMT-2 auth par titre** (pool non title-scopé, inexerçable sans 2e titre) |
 
 ---
 
