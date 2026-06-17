@@ -1,3 +1,19 @@
+## [2026-06-17] MT-10 — healthcheck/gate itèrent registry.All() (diagnostic multi-titre)
+
+**Statut** : LIVRÉ. `RunHealthcheck` (ops) et `RunGateCheck4` (validation) répètent leurs contrôles dépendant du titre pour CHAQUE titre enregistré (`titlePkg.DefaultRegistry().All()`), au lieu du seul `DefaultSlug`.
+
+**Découplage** :
+- `ops/healthcheck.go` : sections 4-7 (répertoires data, DBs shared/metadata/pve, DBs joueur) extraites dans `titleDataChecks(ctx, pr, slug, labelTitle)` ; boucle sur `registry.All()`.
+- `validation/gate.go` : les 4 contrôles DB (shared-db, metadata-db, shared-tables, shared-views) répétés par titre via une boucle `append` ; les contrôles gamertag-scoped (migrations, player-db) + title-agnostiques (binary, db-profiles, discord) restent uniques.
+
+**Byte-identique mono-titre** : `labelTitle = len(titles) > 1`. Avec le seul `halo_infinite` enregistré par défaut → 1 itération, noms NON préfixés → sortie strictement identique (tests existants healthcheck/gate verts sans modification). Quand un 2e titre coexiste, les noms sont préfixés du slug (`synthetic_title_b/shared_matches_v2`, id `shared-db[synthetic_title_b]`) pour désambiguïser.
+
+**Oracle** : `TestTitleDataChecks_PerTitleLabeling` (ops) — labelTitle=false → 0 préfixe (byte-identique) ; labelTitle=true → tous préfixés du slug, même structure. Ne mute PAS le singleton DefaultRegistry (testerait le seam unitairement, sans casser les tests mono-titre voisins).
+
+**Vérif** : build+vet ops+validation ✅ · suites `go test ./internal/ops/ ./internal/validation/` verts (mono-titre inchangé) · oracle vert · gofmt propre.
+
+---
+
 ## [2026-06-17] EXT-2 STAGE 3 — MT-15 : chaîne LUSR découplée de halo_infinite (seam fail-loud, golden byte-identique)
 
 **Statut** : LIVRÉ. `internal/sync/skill_config.go` n'importe plus `halo_infinite` ni `analysis`. La classification pair_name→chaîne LUSR (Halo-spécifique) vit dans un package de titre ; le moteur LUSR (title-agnostique) la consomme via un seam. Axe le plus à risque d'EXT-2 (chemin data-path LUSR) — conçu + vérifié adversarialement (3 skeptics) avant toute édition.

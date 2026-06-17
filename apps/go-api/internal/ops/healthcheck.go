@@ -72,38 +72,15 @@ func RunHealthcheck(ctx context.Context, opts HealthcheckOptions) HealthReport {
 		checks = append(checks, checkFileExists(filepath.Base(cfg), cfg))
 	}
 
-	// 4. Répertoires de données
-	for _, dir := range []string{
-		pr.WarehouseDir(titlePkg.DefaultSlug),
-		filepath.Join(pr.TitleDataDir(titlePkg.DefaultSlug), "players"),
-	} {
-		checks = append(checks, checkDirExists(filepath.Base(dir), dir))
-	}
-
-	// 5. Bases DuckDB critiques
-	for _, db := range []struct{ name, path string }{
-		{"shared_matches_v2", pr.SharedDBPath(titlePkg.DefaultSlug)},
-		{"metadata", pr.MetadataDBPath(titlePkg.DefaultSlug)},
-	} {
-		checks = append(checks, checkDuckDB(ctx, db.name, db.path))
-	}
-
-	// 6. shared_pve.duckdb (optionnel)
-	pvePath := pr.SharedPVEDBPath(titlePkg.DefaultSlug)
-	if _, err := os.Stat(pvePath); err == nil {
-		checks = append(checks, checkDuckDB(ctx, "shared_pve", pvePath))
-	}
-
-	// 7. Joueurs configurés
-	playersDir := filepath.Join(pr.TitleDataDir(titlePkg.DefaultSlug), "players")
-	if entries, err := os.ReadDir(playersDir); err == nil {
-		for _, e := range entries {
-			if !e.IsDir() {
-				continue
-			}
-			dbPath := pr.PlayerDBPath(titlePkg.DefaultSlug, e.Name())
-			checks = append(checks, checkDuckDB(ctx, "player:"+e.Name(), dbPath))
-		}
+	// 4-7. Contrôles dépendant du titre (répertoires de données, DBs critiques,
+	// shared_pve, DBs joueur) — répétés pour CHAQUE titre enregistré (MT-10 :
+	// diagnostic multi-titre via registry.All()). Mono-titre (halo_infinite seul)
+	// → une seule itération, sortie inchangée ; les noms ne sont préfixés par le
+	// slug que lorsque plusieurs titres coexistent (désambiguïsation).
+	titles := titlePkg.DefaultRegistry().All()
+	labelTitle := len(titles) > 1
+	for _, td := range titles {
+		checks = append(checks, titleDataChecks(ctx, pr, td.Slug, labelTitle)...)
 	}
 
 	// 8. Outillage média : ffmpeg/ffprobe (transcoding HLS + miniatures).
@@ -124,6 +101,55 @@ func RunHealthcheck(ctx context.Context, opts HealthcheckOptions) HealthReport {
 		Checks:   checks,
 		Duration: time.Since(start),
 	}
+}
+
+// titleDataChecks produit les contrôles d'intégrité dépendant d'un titre
+// (répertoires de données, bases shared/metadata/pve, DBs par joueur) pour le slug
+// donné. labelTitle préfixe le nom de chaque contrôle par le slug quand plusieurs
+// titres sont enregistrés (sinon la sortie mono-titre reste identique — MT-10).
+func titleDataChecks(ctx context.Context, pr *titlePkg.PathResolver, slug string, labelTitle bool) []HealthCheck {
+	name := func(base string) string {
+		if labelTitle {
+			return slug + "/" + base
+		}
+		return base
+	}
+	var checks []HealthCheck
+
+	// Répertoires de données.
+	for _, dir := range []string{
+		pr.WarehouseDir(slug),
+		filepath.Join(pr.TitleDataDir(slug), "players"),
+	} {
+		checks = append(checks, checkDirExists(name(filepath.Base(dir)), dir))
+	}
+
+	// Bases DuckDB critiques.
+	for _, db := range []struct{ name, path string }{
+		{"shared_matches_v2", pr.SharedDBPath(slug)},
+		{"metadata", pr.MetadataDBPath(slug)},
+	} {
+		checks = append(checks, checkDuckDB(ctx, name(db.name), db.path))
+	}
+
+	// shared_pve.duckdb (optionnel).
+	pvePath := pr.SharedPVEDBPath(slug)
+	if _, err := os.Stat(pvePath); err == nil {
+		checks = append(checks, checkDuckDB(ctx, name("shared_pve"), pvePath))
+	}
+
+	// Joueurs configurés.
+	playersDir := filepath.Join(pr.TitleDataDir(slug), "players")
+	if entries, err := os.ReadDir(playersDir); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			dbPath := pr.PlayerDBPath(slug, e.Name())
+			checks = append(checks, checkDuckDB(ctx, name("player:"+e.Name()), dbPath))
+		}
+	}
+	return checks
 }
 
 // Summary retourne un résumé lisible du rapport.
