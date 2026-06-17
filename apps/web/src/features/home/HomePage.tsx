@@ -43,6 +43,7 @@ export function HomePage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const navigate = useNavigate()
   const locale = useAppShellStore((s) => s.locale)
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const userTimezone = useAppShellStore((s) => s.userTimezone)
   const { data: fieldMappings } = useFieldMappings()
   const { data: settings } = useSettings()
@@ -317,7 +318,7 @@ export function HomePage() {
         {/* Section Prestige (2/3) + Ascension (1/3) — masquées si show_progression=false */}
         {showProgression && (
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[2fr_1fr]">
-            <HomePrestigeSection playerSlug={playerSlug} titleSlug="halo_infinite" locale={locale} />
+            <HomePrestigeSection playerSlug={playerSlug} titleSlug={titleSlug} locale={locale} />
             <HomeAscensionWidget playerSlug={playerSlug} locale={locale} />
           </div>
         )}

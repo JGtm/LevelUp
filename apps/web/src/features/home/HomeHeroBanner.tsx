@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { DEFAULT_TITLE_SLUG } from '@/lib/staticAssets'
 
 /**
  * Images headers par titre (slug → liste de chemins dans /public/titles/{slug}/).
@@ -29,7 +30,7 @@ function pickOther(images: string[], current: string): string {
 export function HomeHeroBanner() {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const images = useMemo(
-    () => HEADER_IMAGES_BY_TITLE[titleSlug] ?? HEADER_IMAGES_BY_TITLE['halo_infinite'] ?? [],
+    () => HEADER_IMAGES_BY_TITLE[titleSlug] ?? HEADER_IMAGES_BY_TITLE[DEFAULT_TITLE_SLUG] ?? [],
     [titleSlug],
   )
 

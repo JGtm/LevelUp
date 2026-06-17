@@ -38,7 +38,9 @@ export default defineConfig([
     },
     rules: {
       '@levelup/no-hardcoded-strings': 'warn',
-      '@levelup/no-title-slug-literal': 'warn',
+      // EXT-5 / MT-12 : périmètre features/+components/ nettoyé (slug courant lu
+      // via useAppShellStore) → error pour bloquer toute régression de littéral.
+      '@levelup/no-title-slug-literal': 'error',
       // react-refresh/only-export-components : downgrade en warn — cette
       // regle est cosmetique (HMR fast refresh) et beaucoup de fichiers
       // composants exposent legitimement des const/types/helpers a cote.

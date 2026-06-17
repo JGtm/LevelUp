@@ -18,6 +18,7 @@ const mockShellState = {
     | { player_slug: string; gamertag: string }
     | null,
   locale: 'fr' as 'fr' | 'en',
+  currentTitleSlug: 'halo_infinite',
 }
 
 vi.mock('@/stores/appShellStore', () => ({
