@@ -902,8 +902,9 @@ func NewRouter(
 		r.Post("/setup/players", setupHandler.CreatePlayer)
 		r.Post("/setup/smoke-test", setupHandler.SmokeTest)
 
-		// Sprint 17 : Jobs longs persistants + sync initiale
-		r.Get("/jobs/{job_id}", handlers.NewJobsHandler(jobStore).GetJob)
+		// Sprint 17 : Jobs longs persistants + sync initiale.
+		// GET /jobs/{job_id} migré vers Huma (Phase 3b, shape path-param).
+		registerJobsHuma(humaAPI, handlers.NewJobsHandler(jobStore))
 		syncH := handlers.NewSyncHandler(cfg, settingsStore, jobStore, tokenProvider)
 		// Branche le hook Prestige post-sync (best-effort, no-op si flag off ou bundle nil).
 		if prestigeBundle != nil {

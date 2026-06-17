@@ -1,3 +1,24 @@
+## [2026-06-17] Phase 3b — format JSON byte-identique + 2e route migrée (path-param) — Complété
+
+**Statut** : Complété (increment item 1). `go build ./...` OK, gofmt/vet propres, golden `TestRegisterChangelogHuma_ContractPreserved` + `TestRegisterJobsHuma_ContractPreserved` + `TestHumaCoexistsWithChiWalk` + tout `contract_test` verts. Échecs résiduels du package handlers = **`TestE2E_DeviceCodeFlow_HappyPath`/`_SingleFlight` uniquement**, **pré-existants** (vérifiés identiques sur worktree HEAD pristine `ecdd30d50` — E2E device-flow exige un accès réseau Xbox Live indisponible en sandbox ; rien à voir avec cet increment).
+
+**Fondation clé — sérialisation byte-identique à writeJSON (`humaJSONFormat`, [huma_setup.go](../apps/go-api/internal/api/huma_setup.go))** : override de `config.Formats["application/json"]`/`["json"]` par un marshaler qui (1) passe `handlers.SanitizeFloatsForJSON` (NaN/Inf → 0 ou pointeur nil), (2) `json.Marshal` (HTML-escaping activé, **comme writeJSON** — pas `json.Encoder` qui le désactive), (3) ajoute le trailing `\n`. Découverte load-bearing : le `DefaultJSONFormat` de Huma utilise `json.NewEncoder().Encode` → il ajoute DÉJÀ le `\n` mais SANS HTML-escape. Sans cet override, une route à float NaN renverrait 500 (Marshal échoue) là où writeJSON renvoyait 200 sanitisé. **Centralisé en 1 point → les ~100 routes à floats n'ont aucune sanitisation par-route à recâbler.** Export mince `handlers.SanitizeFloatsForJSON` (wrapper, zéro duplication).
+
+**Standard d'équivalence retenu** : SÉMANTIQUE (même objet JSON décodé, même status, même shape d'erreur, pas de `$schema`, NaN neutralisé pareil) — pas byte-exact (le front consomme via `res.json()`, insensible au whitespace). Mais avec `humaJSONFormat` le corps est de facto byte-identique à writeJSON pour les routes non-cachées.
+
+**2e route migrée — GET /jobs/{job_id} (shape path-param)** : prouve le binding de path param (Input `struct{ JobID string \`path:"job_id"\` }`). Logique métier (lookup store) extraite en `JobsHandler.Lookup(jobID) *domain.AsyncJobStatus` ([jobs.go](../apps/go-api/internal/api/handlers/jobs.go)) ; wrapper Input/Output + mapping 404 dans [huma_routes.go](../apps/go-api/internal/api/huma_routes.go) (`registerJobsHuma`). Ancien handler chi `GetJob` supprimé (imports `net/http`+`chi` orphelins retirés), `jobs_test.go` retargeté sur `Lookup`, golden route ajouté. server.go:906 : `r.Get(.../GetJob)` → `registerJobsHuma(humaAPI, ...)`. `contract_test` reste vert (humachi enregistre `/jobs/{job_id}` sur le même `*chi.Mux` → visible à chi.Walk, présent dans openapi.yaml).
+
+**Pattern de migration consolidé (réutilisable pour les ~137 restantes)** :
+1. Extraire la logique métier en méthode exportée sur le handler (`Content()`, `Lookup()`).
+2. Input struct (`path:`/`query:` tags) + Output struct (`Body T`) dans `api/huma_routes.go`.
+3. `huma.Get/Register` ; erreurs via `newHumaError(status, code, msg)` (contrat writeError).
+4. Supprimer le handler chi + retarget tests ; rewire server.go (`registerXHuma(humaAPI, ...)`).
+5. Golden sémantique dans `huma_routes_test.go` (200 + erreur, pas de `$schema`).
+
+**Reste (multi-session)** : ~137 routes ; shapes encore à prouver = **query-param** (struct `query:` tags) et **cached/ETag** (writeJSONCached : header ETag + 304 via Output header field/status — golden sémantique à ajouter). Étape FINALE seulement : bascule openapi.yaml manuel → généré Huma + régén `generated.ts`.
+
+**Conclusion / prochaine étape** : item 1 avance (2/139 + fondation NaN-safe universelle). Continue par groupes de routes (prochaines shapes : query-param puis cached). Pas de PR avant autorisation.
+
 ## [2026-06-17] Phase 3a-B — retrait de `HasExpectedData` (champ dérivé redondant) — Complété
 
 **Statut** : Complété. Go `go build ./...` OK, `go vet`/gofmt OK, service match_view + `contract_test` + golden verts (0 résidu `HasExpectedData`). Front `tsc -b` propre, eslint 0 erreur, vitest match-view 113 verts.

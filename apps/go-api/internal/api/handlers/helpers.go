@@ -53,6 +53,14 @@ const (
 // Sécurité défensive : on a déjà nettoyé en aval (cf. sanitizeF64 dans
 // match_view_repo.go) mais cette passe finale couvre tous les chemins futurs
 // (Q17, Q22, Q18, agrégats, narrative, etc.) sans avoir à patcher chaque scan.
+// SanitizeFloatsForJSON expose sanitizeFloatsForJSON à la couche api (format
+// Huma, Phase 3b) : le marshaler JSON des routes migrées doit neutraliser les
+// NaN/Inf exactement comme writeJSON (sinon json.Marshal échoue → 500 au lieu du
+// 200 sanitisé). Wrapper mince, zéro duplication de logique.
+func SanitizeFloatsForJSON(v interface{}) (interface{}, []string) {
+	return sanitizeFloatsForJSON(v)
+}
+
 func sanitizeFloatsForJSON(v interface{}) (interface{}, []string) {
 	if v == nil {
 		return nil, nil

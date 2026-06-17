@@ -1,13 +1,12 @@
 // Package handlers — jobs.go : polling de statut des jobs asynchrones (Sprint 17).
 //
-// GET /jobs/{job_id} → retourne le statut d'un job ou 404 si inconnu/expiré.
+// GET /jobs/{job_id} → MIGRÉ vers Huma (Phase 3b, registerJobsHuma dans le
+// package api). La logique métier (lookup store) reste ici via Lookup ; le
+// wrapping HTTP (path param + mapping 404) vit dans api/huma_routes.go.
 package handlers
 
 import (
-	"net/http"
-
-	"github.com/go-chi/chi/v5"
-
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/jobs"
 )
 
@@ -21,21 +20,7 @@ func NewJobsHandler(store *jobs.Store) *JobsHandler {
 	return &JobsHandler{store: store}
 }
 
-// GetJob retourne le statut d'un job par son ID.
-// GET /jobs/{job_id} → 200 AsyncJobStatus ou 404.
-func (h *JobsHandler) GetJob(w http.ResponseWriter, r *http.Request) {
-	jobID := chi.URLParam(r, "job_id")
-	if jobID == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_job_id", "Identifiant de job manquant.")
-		return
-	}
-
-	job := h.store.Get(jobID)
-	if job == nil {
-		writeError(r.Context(), w, http.StatusNotFound, "job_not_found",
-			"Job introuvable ou expiré : "+jobID)
-		return
-	}
-
-	writeJSON(w, http.StatusOK, job)
+// Lookup retourne le statut d'un job par son ID, ou nil si inconnu/expiré.
+func (h *JobsHandler) Lookup(jobID string) *domain.AsyncJobStatus {
+	return h.store.Get(jobID)
 }
