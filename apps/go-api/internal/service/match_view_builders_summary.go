@@ -155,7 +155,6 @@ func buildExpectedStats(e *domain.ExpectedStatsRaw, histRows []domain.MatchHistA
 		out.ExpectedKills = e.KillsExpected
 		out.ExpectedDeaths = e.DeathsExpected
 		out.ExpectedAssists = e.AssistsExpected
-		out.HasExpectedData = out.ExpectedKills != nil || out.ExpectedDeaths != nil || out.ExpectedAssists != nil
 	}
 	if len(histRows) == 0 || meta == nil {
 		return out

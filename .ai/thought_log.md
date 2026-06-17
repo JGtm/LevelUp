@@ -1,3 +1,18 @@
+## [2026-06-17] Phase 3a-B — retrait de `HasExpectedData` (champ dérivé redondant) — Complété
+
+**Statut** : Complété. Go `go build ./...` OK, `go vet`/gofmt OK, service match_view + `contract_test` + golden verts (0 résidu `HasExpectedData`). Front `tsc -b` propre, eslint 0 erreur, vitest match-view 113 verts.
+
+**Décision** : suppression du booléen `has_expected_data` du contrat Match View. C'était un champ **strictement dérivé** côté serveur (`HasExpectedData = ExpectedKills != nil || ExpectedDeaths != nil || ExpectedAssists != nil`) — donc reconstructible par le client sans perte d'information. Le différé byte-identique (re-vérif 3a/4/3b) l'avait explicitement listé comme « seul vrai gain de 3a, mais changement de contrat coordonné Go+front ».
+
+**Équivalence prouvée** : le front recalcule la même expression (`hasExpected = expected_kills != null || expected_deaths != null || expected_assists != null`). Le serveur ne fournissait aucune information que le client ne possède déjà (les 3 `expected_*` sont dans le même bloc `expected_stats`). Substitution 1:1, rendu inchangé.
+
+**Stack touchée (contrat coordonné)** :
+- **Go** : retrait du champ de `domain.MatchExpectedStats` ([match_view.go:149](../apps/go-api/internal/domain/match_view.go)) + de la propriété OpenAPI `MatchExpectedStats` ([openapi.yaml](../apps/go-api/api/openapi.yaml)) + de l'affectation dans `buildExpectedStats` ([match_view_builders_summary.go:152](../apps/go-api/internal/service/match_view_builders_summary.go)). Régén `types.gen.go` (oapi-codegen, paquet inutilisé en prod mais maintenu cohérent).
+- **Front** : retrait de `MatchExpectedStats.has_expected_data` ([types.ts:2551](../apps/web/src/lib/api/types.ts)) + régén `generated.ts` (openapi-typescript). Dérivation locale `hasExpected` dans [MatchStatCards.tsx](../apps/web/src/features/match-view/MatchStatCards.tsx) (×3 `hasData`) et [MatchSummaryCharts.tsx](../apps/web/src/features/match-view/MatchSummaryCharts.tsx).
+- **Fixture** : golden `match_view_slayer.json` mise à jour (`has_expected_data:false` → `has_hist_avg:false`, le champ que le sérialiseur émet réellement pour un bloc vide ; le test `TestGolden_MatchViewSlayer_Structure` ne checke que les clés de tête, donc pas de casse, mais on garde la fixture fidèle au contrat).
+
+**Conclusion / prochaine étape** : Phase 3a-B livrée (contrat allégé, équivalence stricte). Reste de la roadmap multititre : item 1 (migration Huma complète, ~138 routes sur les fondations posées en 3b — sessions dédiées par groupe) ; consolidation/PR `feat/multititre-peripherie` en attente d'autorisation explicite.
+
 ## [2026-06-17] Phase 2 HIGH-B Path A — profil de combat récent Explorer canonical-typé
 
 **Statut** : LIVRÉ (1er des 3 chemins « canonicalize » d'HIGH-B). Conçu + scopé par workflow (4 agents). **Scope HIGH-B décidé** : canonicaliser 3 chemins cross-titre (recent / participant-sum / intersection) ; laisser en **enrichment-boundary documenté** les 5 autres (medals/weapons = taxonomie Halo `medal_name_id`/filmshell `weapon_id` ; `TranslateModeUIsFR` = i18n locale ADR 0011 ; `ResolveXUIDByGamertag`/`GetMatchStartTimesForXUID` = primitifs). NE PAS sur-canoniser.

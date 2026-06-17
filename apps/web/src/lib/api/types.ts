@@ -2548,7 +2548,6 @@ export interface MatchPersonalResult {
 }
 
 export interface MatchExpectedStats {
-  has_expected_data: boolean
   expected_kills: number | null
   expected_deaths: number | null
   expected_assists: number | null
