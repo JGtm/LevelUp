@@ -6,6 +6,12 @@ package handlers
 // Query params :
 //   - n : nombre de matchs récents à analyser (défaut 50, min 10, max 200)
 //
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// (hérite ownership/title + lit {player_slug} parent) et enregistre via huma.Get.
+// Le param n reste pris en STRING + parsé maison pour préserver la tolérance
+// d'origine (valeur hors plage/invalide → ignorée, défaut servi), au lieu du 422
+// de validation Huma qu'un `int` produirait.
+//
 // L'accès données vit dans duckdb.PatternsRepo (port.PatternsRepository) :
 // ce handler ne connaît ni le SQL ni le moteur de stockage (refactor Axe 1).
 //
@@ -18,9 +24,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/analysis/patterns"
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
 )
@@ -49,40 +57,51 @@ func NewPatternsHandler(resolveRepo PatternsRepoResolver, titleSlug string) *Pat
 	return &PatternsHandler{resolveRepo: resolveRepo, titleSlug: titleSlug}
 }
 
-// Mount enregistre la route sur le router chi.
+// Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
+// /players/{player_slug} + middleware ownership/title hérités).
 func (h *PatternsHandler) Mount(r chi.Router) {
-	r.Get("/patterns", h.GetPatterns)
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/patterns", h.GetPatterns)
 }
 
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// patternsInput : path param parent {player_slug} + ?n= (string, parsé maison).
+type patternsInput struct {
+	PlayerSlug string `path:"player_slug"`
+	N          string `query:"n"`
+}
+
+type patternsOutput struct{ Body patterns.PatternReport }
+
+// ─── Endpoint ────────────────────────────────────────────────────────────────
+
 // GetPatterns : GET /patterns?n=50
-func (h *PatternsHandler) GetPatterns(w http.ResponseWriter, r *http.Request) {
-	playerSlug := chi.URLParam(r, "player_slug")
-	repo, err := h.resolveRepo(r.Context(), playerSlug)
+func (h *PatternsHandler) GetPatterns(ctx context.Context, in *patternsInput) (*patternsOutput, error) {
+	repo, err := h.resolveRepo(ctx, in.PlayerSlug)
 	if err != nil {
-		slog.WarnContext(r.Context(), "patterns: player not found", "player_slug", playerSlug, "err", err)
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		slog.WarnContext(ctx, "patterns: player not found", "player_slug", in.PlayerSlug, "err", err)
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
 
 	n := patternDefaultN
-	if nStr := r.URL.Query().Get("n"); nStr != "" {
-		if v, parseErr := strconv.Atoi(nStr); parseErr == nil && v >= patternMinN && v <= patternMaxN {
+	if in.N != "" {
+		if v, parseErr := strconv.Atoi(in.N); parseErr == nil && v >= patternMinN && v <= patternMaxN {
 			n = v
 		} else {
-			slog.DebugContext(r.Context(), "patterns: n param ignoré (hors plage ou invalide)", "raw", nStr, "default", patternDefaultN)
+			slog.DebugContext(ctx, "patterns: n param ignoré (hors plage ou invalide)", "raw", in.N, "default", patternDefaultN)
 		}
 	}
 
-	slog.DebugContext(r.Context(), "patterns: chargement des rows", "player_slug", playerSlug, "n", n)
+	slog.DebugContext(ctx, "patterns: chargement des rows", "player_slug", in.PlayerSlug, "n", n)
 
-	rows, err := repo.LoadRows(r.Context(), n)
+	rows, err := repo.LoadRows(ctx, n)
 	if err != nil {
-		slog.ErrorContext(r.Context(), "patterns: échec chargement rows", "player_slug", playerSlug, "n", n, "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "load_error", err.Error())
-		return
+		slog.ErrorContext(ctx, "patterns: échec chargement rows", "player_slug", in.PlayerSlug, "n", n, "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "load_error", err.Error())
 	}
 	if len(rows) == 0 {
-		slog.InfoContext(r.Context(), "patterns: aucun row chargé — rapport vide retourné", "player_slug", playerSlug)
+		slog.InfoContext(ctx, "patterns: aucun row chargé — rapport vide retourné", "player_slug", in.PlayerSlug)
 	}
 
 	report := patterns.Analyze(patterns.AnalyzeInput{
@@ -91,12 +110,12 @@ func (h *PatternsHandler) GetPatterns(w http.ResponseWriter, r *http.Request) {
 		Config: patterns.DefaultPatternConfig(),
 		Now:    time.Now().UTC(),
 	})
-	slog.DebugContext(r.Context(), "patterns: analyse terminée",
-		"player_slug", playerSlug,
+	slog.DebugContext(ctx, "patterns: analyse terminée",
+		"player_slug", in.PlayerSlug,
 		"rows", len(rows),
 		"context_patterns", len(report.ContextPatterns),
 		"behavior_patterns", len(report.BehaviorPatterns),
 		"levers", len(report.Levers),
 	)
-	writeJSON(w, http.StatusOK, report)
+	return &patternsOutput{Body: report}, nil
 }

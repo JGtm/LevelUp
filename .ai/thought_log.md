@@ -1,3 +1,20 @@
+## [2026-06-18] Phase 3b — fan-out codegen : 4 handlers self-register migrés (workflow parallèle) + vérif adversariale — Complété
+
+**Statut** : Complété. Workflow `huma-migrate-selfreg` (4 agents parallèles) → campaign/coach_proposals/patterns/player_profile migrés EN PLACE. `go build ./...` OK, gofmt/vet propres, **golden coach_proposals** vert, suite `internal/api`+`handlers` verte (seuls échecs = device-flow E2E pré-existants). 4 fichiers touchés, **server.go intact** (signatures Mount inchangées).
+
+**Méthode** : agents édité chacun SON fichier (zéro conflit, pas de build par les agents) sur la base des 2 templates committés (progression.go + notifications.go). Intégration = build+goldens+vérif par l'orchestrateur (moi).
+
+**Vérification adversariale (ultracode, 3/4 handlers sans golden)** : diff systématique migré vs `git HEAD` sur status/codes/erreurs.
+- **campaign** (le plus subtil) : VÉRIFIÉ fidèle — 201 Created (Status field), GET /active renvoie 200 `null` sur ErrNotFound (Body `*ImprovementCampaign` nil→`null`, comme l'ancien `writeJSON(200,nil)`), 4 transitions 204, codes 409/400/404/500 identiques. `{id}` en string (pass-through, pas de 422).
+- **patterns** / **player_profile** : VÉRIFIÉS fidèles — 404 player_not_found + 500 (load_error/build_profile_error) préservés ; query `n`/`window_days` en string+parse tolérant (pas de 422 introduit) ; body 200 = type exact (PatternReport / *PlayerProfile).
+- **coach_proposals** : golden existant (mount prod-like) passe → fidèle.
+
+**Écart de contrat DÉLIBÉRÉ (unique, documenté)** : un corps de requête JSON malformé/invalide est désormais rejeté par la **validation Huma en 422 validation_error** (au lieu de l'ancien 400 invalid_body via json.Decode manuel). Concerne les routes à body (campaign POST /campaigns + notifications mark-read/mark-all-read/preferences). Justification : (1) n'affecte QUE les requêtes malformées (jamais émises par le front bien formé), (2) 422 + détail de champ est plus correct, (3) préserver 400 invalid_body exigerait d'abandonner les bodies typés Huma (re-decode manuel partout = anti-pattern). Noté en commentaire dans campaign.handleStart. Aucun test existant ne dépend du 400.
+
+**Total migré** : 16 routes (changelog, jobs, gamertag, progression×3, notifications×9 = 12 + campaign×7... attention : campaign=7, coach=3, patterns=1, profile=1 → +12). **Cumul = 24 routes** sur les ~90 trivial. Tous les handlers self-register player-scoped sont faits.
+
+**Conclusion / prochaine étape** : fan-out self-register terminé et vérifié. Reste : routes INLINE de server.go (player-group + admin + watcher + top-level) — celles-ci exigent de câbler un `humaAPI` par sous-groupe DANS server.go (edit séquentiel partagé), donc fan-out par GÉNÉRATION (agents produisent le wrapper api/huma_routes.go + edits handler) puis intégration séquentielle server.go. Pas de PR avant autorisation.
+
 ## [2026-06-18] Phase 3b — NotificationsHandler migré (template exhaustif : POST-body, 204, PATCH/DELETE, erreur+headers) — Complété
 
 **Statut** : Complété. `go build ./...` OK, gofmt/vet propres, **golden notifications** vert (suite normale, pas integration) : 9 endpoints + cas d'erreur. Mêmes 2 échecs pré-existants device-flow E2E.

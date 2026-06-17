@@ -10,17 +10,23 @@
 //	POST   /campaigns/{id}/resume      → ResumeCampaign
 //	POST   /campaigns/{id}/close       → CloseCampaign
 //	POST   /campaigns/{id}/abandon     → AbandonCampaign
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// (hérite ownership/title + lit {player_slug} parent) et enregistre via huma.*.
+// Logique métier inchangée (campaign.Service), seul le wrapping HTTP change.
 package handlers
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/campaign"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
@@ -40,18 +46,37 @@ func NewCampaignHandler(resolve ProgressionResolver, titleSlug string) *Campaign
 	return &CampaignHandler{resolve: resolve, titleSlug: titleSlug}
 }
 
-// Mount enregistre les routes sur un router chi sous-monté.
+// Mount enregistre les routes via Huma sur le sous-routeur chi (préfixe
+// /players/{player_slug} + middleware ownership/title hérités).
 func (h *CampaignHandler) Mount(r chi.Router) {
-	r.Post("/campaigns", h.Start)
-	r.Get("/campaigns/active", h.GetActive)
-	r.Get("/campaigns/{id}", h.GetByID)
-	r.Post("/campaigns/{id}/pause", h.Pause)
-	r.Post("/campaigns/{id}/resume", h.Resume)
-	r.Post("/campaigns/{id}/close", h.Close)
-	r.Post("/campaigns/{id}/abandon", h.Abandon)
+	api := humacore.NewAPI(r)
+	huma.Post(api, "/campaigns", h.handleStart)
+	huma.Get(api, "/campaigns/active", h.handleGetActive)
+	huma.Get(api, "/campaigns/{id}", h.handleGetByID)
+	huma.Post(api, "/campaigns/{id}/pause", h.handlePause)
+	huma.Post(api, "/campaigns/{id}/resume", h.handleResume)
+	huma.Post(api, "/campaigns/{id}/close", h.handleClose)
+	huma.Post(api, "/campaigns/{id}/abandon", h.handleAbandon)
 }
 
-// ─── DTOs ──────────────────────────────────────────────────────────────────
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// campaignPlayerInput : path param parent {player_slug} (active).
+type campaignPlayerInput struct {
+	PlayerSlug string `path:"player_slug"`
+}
+
+// campaignIDInput : {player_slug} + {id} (id passé tel quel au service).
+type campaignIDInput struct {
+	PlayerSlug string `path:"player_slug"`
+	ID         string `path:"id"`
+}
+
+// startCampaignInput : {player_slug} + body de création.
+type startCampaignInput struct {
+	PlayerSlug string `path:"player_slug"`
+	Body       startCampaignRequest
+}
 
 type startCampaignRequest struct {
 	Axis          string `json:"axis"`
@@ -59,122 +84,137 @@ type startCampaignRequest struct {
 	PlaylistGroup string `json:"playlist_group,omitempty"`
 }
 
+// campaignCreatedOutput : 201 Created avec la campagne créée.
+type campaignCreatedOutput struct {
+	Status int
+	Body   campaign.ImprovementCampaign
+}
+
+// campaignOutput : 200 avec la campagne (GetByID).
+type campaignOutput struct {
+	Body campaign.ImprovementCampaign
+}
+
+// campaignActiveOutput : 200 avec la campagne active OU null (ErrNotFound). Le
+// pointeur reproduit le contrat d'origine (writeJSON nil → corps `null`).
+type campaignActiveOutput struct {
+	Body *campaign.ImprovementCampaign
+}
+
+// campaignNoContent : réponse 204 sans corps (transitions pause/resume/close/abandon).
+type campaignNoContent struct {
+	Status int
+}
+
 // ─── Endpoints ─────────────────────────────────────────────────────────────
 
-// Start : POST /campaigns → crée une nouvelle campagne sur axe ciblé.
-func (h *CampaignHandler) Start(w http.ResponseWriter, r *http.Request) {
-	pdb, ok := h.resolveOr404Campaign(w, r)
-	if !ok {
-		return
-	}
-	var req startCampaignRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+// handleStart : POST /campaigns → crée une nouvelle campagne sur axe ciblé (201).
+// NB contrat (Phase 3b) : un corps JSON malformé/invalide est désormais rejeté par
+// la validation Huma en 422 validation_error (au lieu de l'ancien 400 invalid_body) —
+// seul écart délibéré de la migration, sans incidence pour un client bien formé.
+func (h *CampaignHandler) handleStart(ctx context.Context, in *startCampaignInput) (*campaignCreatedOutput, error) {
+	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, err
 	}
 	svc := h.serviceFromPDB(pdb)
-	c, err := svc.StartCampaign(r.Context(), campaign.StartParams{
+	c, err := svc.StartCampaign(ctx, campaign.StartParams{
 		UserID:        pdb.XUID,
 		TitleSlug:     h.titleSlug,
-		Axis:          req.Axis,
-		AxisKind:      campaign.AxisKind(req.AxisKind),
-		PlaylistGroup: req.PlaylistGroup,
+		Axis:          in.Body.Axis,
+		AxisKind:      campaign.AxisKind(in.Body.AxisKind),
+		PlaylistGroup: in.Body.PlaylistGroup,
 	}, time.Now().UTC())
 	if err != nil {
 		switch {
 		case errors.Is(err, campaign.ErrAlreadyActive):
-			writeError(r.Context(), w, http.StatusConflict, "campaign_already_active", err.Error())
+			return nil, humacore.NewError(http.StatusConflict, "campaign_already_active", err.Error())
 		case errors.Is(err, campaign.ErrInvalidAxis):
-			writeError(r.Context(), w, http.StatusBadRequest, "invalid_axis", err.Error())
+			return nil, humacore.NewError(http.StatusBadRequest, "invalid_axis", err.Error())
 		default:
-			slog.WarnContext(r.Context(), "campaign: start", "err", err)
-			writeError(r.Context(), w, http.StatusInternalServerError, "start_campaign_error", err.Error())
+			slog.WarnContext(ctx, "campaign: start", "err", err)
+			return nil, humacore.NewError(http.StatusInternalServerError, "start_campaign_error", err.Error())
 		}
-		return
 	}
-	writeJSON(w, http.StatusCreated, c)
+	return &campaignCreatedOutput{Status: http.StatusCreated, Body: c}, nil
 }
 
-// GetActive : GET /campaigns/active → campagne active du joueur.
-func (h *CampaignHandler) GetActive(w http.ResponseWriter, r *http.Request) {
-	pdb, ok := h.resolveOr404Campaign(w, r)
-	if !ok {
-		return
+// handleGetActive : GET /campaigns/active → campagne active du joueur (ou null).
+func (h *CampaignHandler) handleGetActive(ctx context.Context, in *campaignPlayerInput) (*campaignActiveOutput, error) {
+	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, err
 	}
 	svc := h.serviceFromPDB(pdb)
-	c, err := svc.GetActive(r.Context(), pdb.XUID, h.titleSlug)
+	c, err := svc.GetActive(ctx, pdb.XUID, h.titleSlug)
 	if err != nil {
 		if errors.Is(err, campaign.ErrNotFound) {
-			writeJSON(w, http.StatusOK, nil)
-			return
+			return &campaignActiveOutput{Body: nil}, nil
 		}
-		slog.WarnContext(r.Context(), "campaign: get active", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "get_active_error", err.Error())
-		return
+		slog.WarnContext(ctx, "campaign: get active", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "get_active_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, c)
+	return &campaignActiveOutput{Body: &c}, nil
 }
 
-// GetByID : GET /campaigns/{id} → détail + défis liés.
-func (h *CampaignHandler) GetByID(w http.ResponseWriter, r *http.Request) {
-	pdb, ok := h.resolveOr404Campaign(w, r)
-	if !ok {
-		return
+// handleGetByID : GET /campaigns/{id} → détail + défis liés.
+func (h *CampaignHandler) handleGetByID(ctx context.Context, in *campaignIDInput) (*campaignOutput, error) {
+	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, err
 	}
 	svc := h.serviceFromPDB(pdb)
-	c, err := svc.GetByID(r.Context(), chi.URLParam(r, "id"))
+	c, err := svc.GetByID(ctx, in.ID)
 	if err != nil {
 		if errors.Is(err, campaign.ErrNotFound) {
-			writeError(r.Context(), w, http.StatusNotFound, "campaign_not_found", err.Error())
-			return
+			return nil, humacore.NewError(http.StatusNotFound, "campaign_not_found", err.Error())
 		}
-		slog.WarnContext(r.Context(), "campaign: get by id", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "get_campaign_error", err.Error())
-		return
+		slog.WarnContext(ctx, "campaign: get by id", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "get_campaign_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, c)
+	return &campaignOutput{Body: c}, nil
 }
 
-// Pause : POST /campaigns/{id}/pause.
-func (h *CampaignHandler) Pause(w http.ResponseWriter, r *http.Request) {
-	h.runTransition(w, r, func(svc *campaign.Service, id string) error {
-		return svc.PauseCampaign(r.Context(), id)
+// handlePause : POST /campaigns/{id}/pause → 204.
+func (h *CampaignHandler) handlePause(ctx context.Context, in *campaignIDInput) (*campaignNoContent, error) {
+	return h.runTransition(ctx, in, func(svc *campaign.Service, id string) error {
+		return svc.PauseCampaign(ctx, id)
 	})
 }
 
-// Resume : POST /campaigns/{id}/resume.
-func (h *CampaignHandler) Resume(w http.ResponseWriter, r *http.Request) {
-	h.runTransition(w, r, func(svc *campaign.Service, id string) error {
-		return svc.ResumeCampaign(r.Context(), id)
+// handleResume : POST /campaigns/{id}/resume → 204.
+func (h *CampaignHandler) handleResume(ctx context.Context, in *campaignIDInput) (*campaignNoContent, error) {
+	return h.runTransition(ctx, in, func(svc *campaign.Service, id string) error {
+		return svc.ResumeCampaign(ctx, id)
 	})
 }
 
-// Close : POST /campaigns/{id}/close.
-func (h *CampaignHandler) Close(w http.ResponseWriter, r *http.Request) {
+// handleClose : POST /campaigns/{id}/close → 204.
+func (h *CampaignHandler) handleClose(ctx context.Context, in *campaignIDInput) (*campaignNoContent, error) {
 	now := time.Now().UTC()
-	h.runTransition(w, r, func(svc *campaign.Service, id string) error {
-		return svc.CloseCampaign(r.Context(), id, now)
+	return h.runTransition(ctx, in, func(svc *campaign.Service, id string) error {
+		return svc.CloseCampaign(ctx, id, now)
 	})
 }
 
-// Abandon : POST /campaigns/{id}/abandon.
-func (h *CampaignHandler) Abandon(w http.ResponseWriter, r *http.Request) {
+// handleAbandon : POST /campaigns/{id}/abandon → 204.
+func (h *CampaignHandler) handleAbandon(ctx context.Context, in *campaignIDInput) (*campaignNoContent, error) {
 	now := time.Now().UTC()
-	h.runTransition(w, r, func(svc *campaign.Service, id string) error {
-		return svc.AbandonCampaign(r.Context(), id, now)
+	return h.runTransition(ctx, in, func(svc *campaign.Service, id string) error {
+		return svc.AbandonCampaign(ctx, id, now)
 	})
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-func (h *CampaignHandler) resolveOr404Campaign(w http.ResponseWriter, r *http.Request) (*duckdb.PlayerDB, bool) {
-	slug := chi.URLParam(r, "player_slug")
-	pdb, err := h.resolve(r.Context(), slug)
+// resolvePlayer résout le slug courant ou renvoie une erreur Huma 404
+// (contrat préservé : {code:player_not_found}).
+func (h *CampaignHandler) resolvePlayer(ctx context.Context, slug string) (*duckdb.PlayerDB, error) {
+	pdb, err := h.resolve(ctx, slug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return nil, false
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
-	return pdb, true
+	return pdb, nil
 }
 
 func (h *CampaignHandler) serviceFromPDB(pdb *duckdb.PlayerDB) *campaign.Service {
@@ -183,24 +223,25 @@ func (h *CampaignHandler) serviceFromPDB(pdb *duckdb.PlayerDB) *campaign.Service
 	return campaign.NewService(repo, samples)
 }
 
-func (h *CampaignHandler) runTransition(w http.ResponseWriter, r *http.Request, fn func(*campaign.Service, string) error) {
-	pdb, ok := h.resolveOr404Campaign(w, r)
-	if !ok {
-		return
+// runTransition factorise les 4 transitions d'état (pause/resume/close/abandon),
+// chacune renvoyant 204 No Content en succès. Contrat d'erreur identique à
+// l'ancien handler chi (404 campaign_not_found, 409 invalid_status_transition).
+func (h *CampaignHandler) runTransition(ctx context.Context, in *campaignIDInput, fn func(*campaign.Service, string) error) (*campaignNoContent, error) {
+	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, err
 	}
-	id := chi.URLParam(r, "id")
 	svc := h.serviceFromPDB(pdb)
-	if err := fn(svc, id); err != nil {
+	if err := fn(svc, in.ID); err != nil {
 		switch {
 		case errors.Is(err, campaign.ErrNotFound):
-			writeError(r.Context(), w, http.StatusNotFound, "campaign_not_found", err.Error())
+			return nil, humacore.NewError(http.StatusNotFound, "campaign_not_found", err.Error())
 		case errors.Is(err, campaign.ErrInvalidStatus):
-			writeError(r.Context(), w, http.StatusConflict, "invalid_status_transition", err.Error())
+			return nil, humacore.NewError(http.StatusConflict, "invalid_status_transition", err.Error())
 		default:
-			slog.WarnContext(r.Context(), "campaign: transition", "err", err)
-			writeError(r.Context(), w, http.StatusInternalServerError, "campaign_transition_error", err.Error())
+			slog.WarnContext(ctx, "campaign: transition", "err", err)
+			return nil, humacore.NewError(http.StatusInternalServerError, "campaign_transition_error", err.Error())
 		}
-		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	return &campaignNoContent{Status: http.StatusNoContent}, nil
 }
