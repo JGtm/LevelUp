@@ -1,3 +1,19 @@
+## [2026-06-17] Couverture-max #3 — EXT-1.5 : décisions metadata/notif consignées (MT-16/17) ; refactors MT-10/18 différés (latents)
+
+**Statut** : MT-16 + MT-17 fermés (documentation) ; MT-10 + MT-18 différés avec justification.
+
+**Re-vérification (workflow)** : verdict net — *« le reliquat EXT-1.5 n'est pas un gap d'implémentation mais un gap de DOCUMENTATION »*. Les décisions étaient prises EN CODE mais non consignées.
+
+**MT-16 (title_id metadata) — consigné** : stratégie **nuancée**, pas binaire. `map_images_registry` + `waypoint_assets_raw` portent `title_id` (PK) car caches d'assets GÉNÉRIQUES (collision possible d'asset_id entre titres dans une même metadata.duckdb → défense en profondeur). Les référentiels canoniques (`weapon_labels`, `mode_name_tr`, `citation_mappings`, `career_rank_translations`) RESTENT path-isolés (data/titles/<slug>/.../metadata.duckdb, ADR 0008), pas de title_id. Commentaire-décision ajouté au step `add_map_images_registry`.
+
+**MT-17 (notification_preferences) — consigné** : `notification_preferences` + `player_notifications` sont per-titre PAR ISOLATION DE CHEMIN (shared_social.duckdb sous data/titles/<slug>/), aucune colonne `title_id` (cohérent avec le modèle player-DB-per-titre). Décision implicite Phase 1.5, désormais consignée.
+
+**MT-10 + MT-18 — DIFFÉRÉS (latents, justifié)** : (1) `healthcheck.go`/`gate.go` hardcodent `"halo_infinite"` — les rendre title-aware (itérer `registry.All()`) **change le format de sortie diagnostic** (sections par titre) pour ZÉRO valeur single-titre ; (2) `seed_demo.go:400` (`Profiles["halo_infinite"]`) touche du code seed **sensible** (cf. dette deploy regen destructif) et a déjà un fallback. Tous deux byte-identiques pour Halo, vraie valeur seulement en multi-titre simultané (MT-4/7/9). À faire au onboarding d'un 2e titre réel, pas en churn spéculatif.
+
+**Vérif** : build (commentaire seul, zéro logique).
+
+---
+
 ## [2026-06-17] Couverture-max #2 — PMT-13 : décisions documentées (ferme MT-24/25/20)
 
 **Statut** : Complété. 3 axes `minor/info` fermés, doc + 1 test de régression, zéro logique.

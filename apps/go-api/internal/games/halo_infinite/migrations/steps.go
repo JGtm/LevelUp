@@ -48,6 +48,16 @@ func Steps() []migration.Migration {
 				`)
 			},
 		},
+		// Décision MT-16 (EXT-1.5, PMT-13) — stratégie title_id NUANCÉE :
+		// map_images_registry ET waypoint_assets_raw PORTENT `title_id` (PK) car ce
+		// sont des caches d'assets GÉNÉRIQUES (blobs Waypoint indexés par title_id +
+		// asset_id) — défense en profondeur contre une collision d'asset_id entre
+		// titres dans une même metadata.duckdb. À l'INVERSE, les référentiels
+		// canoniques (weapon_labels, mode_name_tr, citation_mappings,
+		// career_rank_translations) RESTENT SANS title_id : isolés PAR CHEMIN
+		// (data/titles/<slug>/warehouse/metadata.duckdb, cf. ADR 0008). La reco
+		// EXT-1.5 « path suffit » tient pour le canonique ; title_id n'est ajouté
+		// que là où l'asset_id seul n'est pas globalement unique.
 		{
 			Name:        "add_map_images_registry",
 			TargetDB:    migration.TargetMetadata,
