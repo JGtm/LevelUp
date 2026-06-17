@@ -25668,3 +25668,26 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Vérifs** : `go build ./...` OK ; `go test ./internal/service/... ./internal/analysis/...` verts ; `go vet` service+timeline+api OK ; gofmt clean. (Seul rouge inchangé : `TestE2E_DeviceCodeFlow_*` réseau Xbox.)
 
 **Conclusion** : Match View — cadence + kill-feed (axe des 3 charts) + badges tous recalés sur le vrai début de match, en un point unique, sans toucher aux sources non affichées. Commit (fix câblage + extension) autorisé par le user ce tour.
+
+## [2026-06-17] Phase 2 close + PMT-4 PR-3b (settings UX per-titre via overlay) — Complété
+
+**Statut** : Complété. `go build ./...` OK, `go vet ./internal/api/...` OK, gofmt clean, tests overlay verts, `archlint/no_slug_comparison` vert. Seul rouge inchangé : `TestE2E_DeviceCodeFlow_*` (réseau Xbox réel, HTTP 400).
+
+**Phase 2 = CLOSE** : les 3 services lourds (career/explorer/match_view) sont canonical-typés + critère import verrouillé ; le reste est enrichment-boundary par conception (ADR 0011). Tracker + index passés ✅.
+
+**Re-vérif périphérie (doctrine carte-datée)** : le dashboard donnait MT-04/PMT-4 = `gap` — **périmé**. Git log : PR-0 primitive `settings.Store.ResolveForTitle` + `PathResolver.TitleSettingsPath(slug)` (`22649f23e`), PR-1 `CSRSeasonIDForTitle` (`afef1195f`), PR-2 Discord overlay (`83953208f`), PR-3a CSR UI (`ae7a1627b`) DÉJÀ livrés. Registre B + periphery doc re-flippés `gap`→`partiel`.
+
+**Scoping PMT-4 (workflow ultracode, 6 agents)** — décisions per-titre-vs-global :
+- **per_title_overlay** : SessionGapMinutes/Split/TeamChange (rythme propre au titre), CoachProactiveMode (lié progression/Prestige title-bound), ShowProgression + OutcomeExcludeBotMatches* (présentation/outcomes propres au titre).
+- **cross_title_global** : **FriendGamertags** — alimente `authz.ResolveFamilyXUIDs` (grant d'accès cross-player DB). Les amis sont des PERSONNES transverses au titre ; un overlay per-titre = footgun authz (cercle de confiance variant par jeu). Les 8 sites is_with_friends restent sur `Load()`. Décision consignée en commentaire (server.go familyXUIDResolver) + ici.
+
+**Bug du plan rattrapé par la vérif adversariale (3 lentilles)** : le plan câblait Edit 2/3 sur `slug` de la closure `buildPostSyncDeltaHook` — or `slug` = **PlayerSlug** (`h.postSync(bgCtx, req.PlayerSlug)`), pas un titre. Aurait (a) lu `data/titles/<gamertag>/settings.json` (inexistant → feature morte) et (b) écrit la progression taguée d'un faux titre (régression data). **Correctif** : utiliser `pdb2.TitleSlug` (en scope). Et `defaultProgressionTitleSlug()` a 8 appelants vivants → NON supprimé, seul l'argument du site post_sync_deltas.go:102 change.
+
+**PR-3b livré** (valeur runtime) :
+- [post_sync_deltas.go](../apps/go-api/internal/api/post_sync_deltas.go) : `readCoachProactiveMode(reg, titleSlug)` → `ResolveForTitle(TitleSettingsPath(titleSlug))` ; call-site + `EvaluateProgressionAfterSync` threadés sur `pdb2.TitleSlug`.
+- [handlers/settings.go](../apps/go-api/internal/api/handlers/settings.go) : `PostRecalculateSessions` résout `opts` par `p.TitleSlug` dans la boucle (helper testable `sessionComputeOptionsFor`) ; `friendGamertags` reste résolu une fois via `Load()` (global).
+- Test `settings_overlay_test.go` : parité Halo (overlay absent=global) + exercice `synthetic_title_b` (gap 90→30, isolation) + fallback gap<=0→120 / store nil.
+
+**Limites assumées (documentées, non régressives)** : (1) `engine_postsync_scoring.go:34` (sync live) garde gap hard-codé 120 — jamais lu le store, hors-scope. (2) En post-sync background (auto-sync/CLI) le ctx ne porte pas de titre → `pdb2.TitleSlug`=DefaultSlug (correct mono-titre ; à threader depuis l'engine au 2e titre). **PR-3c différée** : `GET /settings` title-aware pour ShowProgression/OutcomeExclude* est un no-op tant qu'aucun middleware titre n'est monté sur `/settings` + ces flags n'ont aucun consommateur Go (front-only) → reportée sans perte.
+
+**Conclusion / prochaine étape** : PMT-4 settings UX per-titre runtime livré (sessions + coach), FriendGamertags acté global. Reste PR-3c (cosmétique, différée). Commit en attente d'autorisation.

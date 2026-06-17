@@ -29,7 +29,7 @@
 | 1.6 | Pool tokens clé `(titleSlug,gamertag)` | ✅ | 100 | **oui** (2e titre) — livré : clé composite + garde anti-cross-title |
 | 1.7a | `capabilities.toml` + loader + endpoint | ✅ | 100 | non — TOML + loader + adapter consomme + endpoint, livré |
 | 1.7b | Feature-matrix 3 états + cascade | ✅ | 100 | non — cascade pure + endpoint, livré (revue adversariale 5 lentilles) |
-| 2 | Services title-agnostic (canonical-typé) | 🟡 | 94 | non — critère IMPORT verrouillé ; **HIGH-C career** ✅ + **HIGH-B explorer** ✅ (3 chemins cross-titre canonical + 5 enrichment-boundary, golden parity) ; **HIGH-A match_view** ✅ events T0 câblés (cadence+rôles canonical T0-corrigés, golden) — reste 20/21 slices enrichment-boundary (médailles/armes/i18n/scoreboard) légitimes + décision optionnelle T0 sur kill-feed affiché |
+| 2 | Services title-agnostic (canonical-typé) | ✅ | 100 | **CLOSE 2026-06-17** — critère IMPORT verrouillé (lint) ; les 3 services lourds canonical-typés via l'adapter : **HIGH-C career** ✅ + **HIGH-B explorer** ✅ + **HIGH-A match_view** ✅ (events T0 complets : cadence+rôles+kill-feed+badges recalés sur le vrai début de match). Le reste (médailles/armes i18n/scoreboard/citations) est **enrichment-boundary par conception** (ADR 0011), title-specific légitime — PAS du travail en attente |
 | 3a | Cleanup DTO (`*Raw` hors domain, nullable) | 🟡 | 50 | non |
 | 1.8 | Outillage diag Lab | ⬜ | 0 | **différé** (hors fenêtre) |
 | 1.9 | Watcher multi-title routing (présence→poll→sync) | ⬜ | 0 | **oui** (2e titre, runtime) — détection déjà title-agnostic ; reste = threader `titleSlug` (fetcher/PlayerWatcher/CoordinatorRequest) |
