@@ -36,6 +36,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -395,9 +396,9 @@ func ResolveSourceXUIDFromProfiles(profilesPath, gamertag string) (xuid, playerD
 		Profiles map[string]map[string]profileEntry `json:"profiles"`
 	}
 	if err := json.Unmarshal(data, &docV3); err == nil && docV3.Version >= "3.0" {
-		// Chercher d'abord dans halo_infinite (titre par défaut), puis fallback
-		// sur le premier titre qui contient le gamertag.
-		if titleProfiles, ok := docV3.Profiles["halo_infinite"]; ok {
+		// Chercher d'abord dans le titre par défaut, puis fallback sur le premier
+		// titre qui contient le gamertag.
+		if titleProfiles, ok := docV3.Profiles[titlePkg.DefaultSlug]; ok {
 			if p, ok := titleProfiles[gamertag]; ok {
 				if p.XUID == "" {
 					return "", "", fmt.Errorf("profile %q sans xuid", gamertag)

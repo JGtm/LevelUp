@@ -74,34 +74,34 @@ func RunHealthcheck(ctx context.Context, opts HealthcheckOptions) HealthReport {
 
 	// 4. Répertoires de données
 	for _, dir := range []string{
-		pr.WarehouseDir("halo_infinite"),
-		filepath.Join(pr.TitleDataDir("halo_infinite"), "players"),
+		pr.WarehouseDir(titlePkg.DefaultSlug),
+		filepath.Join(pr.TitleDataDir(titlePkg.DefaultSlug), "players"),
 	} {
 		checks = append(checks, checkDirExists(filepath.Base(dir), dir))
 	}
 
 	// 5. Bases DuckDB critiques
 	for _, db := range []struct{ name, path string }{
-		{"shared_matches_v2", pr.SharedDBPath("halo_infinite")},
-		{"metadata", pr.MetadataDBPath("halo_infinite")},
+		{"shared_matches_v2", pr.SharedDBPath(titlePkg.DefaultSlug)},
+		{"metadata", pr.MetadataDBPath(titlePkg.DefaultSlug)},
 	} {
 		checks = append(checks, checkDuckDB(ctx, db.name, db.path))
 	}
 
 	// 6. shared_pve.duckdb (optionnel)
-	pvePath := pr.SharedPVEDBPath("halo_infinite")
+	pvePath := pr.SharedPVEDBPath(titlePkg.DefaultSlug)
 	if _, err := os.Stat(pvePath); err == nil {
 		checks = append(checks, checkDuckDB(ctx, "shared_pve", pvePath))
 	}
 
 	// 7. Joueurs configurés
-	playersDir := filepath.Join(pr.TitleDataDir("halo_infinite"), "players")
+	playersDir := filepath.Join(pr.TitleDataDir(titlePkg.DefaultSlug), "players")
 	if entries, err := os.ReadDir(playersDir); err == nil {
 		for _, e := range entries {
 			if !e.IsDir() {
 				continue
 			}
-			dbPath := pr.PlayerDBPath("halo_infinite", e.Name())
+			dbPath := pr.PlayerDBPath(titlePkg.DefaultSlug, e.Name())
 			checks = append(checks, checkDuckDB(ctx, "player:"+e.Name(), dbPath))
 		}
 	}

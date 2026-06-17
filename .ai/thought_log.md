@@ -1,3 +1,20 @@
+## [2026-06-17] EXT-1.5 MT-10/18 — dé-magic slug des CLIs ops (literal → DefaultSlug) ; itération registry.All() différée
+
+**Statut** : harvest byte-identique livré. Le cœur multi-titre (itérer `registry.All()` → diagnostic multi-titre) reste différé-latent comme prévu (il CHANGE le format de sortie pour 0 valeur single-titre).
+
+**Re-vérification (carte datée)** : `cmd/populate-assets` a DÉJÀ `--title-id` (défaut `titlePkg.DefaultSlug`) → rien à faire (la carte le listait à tort). La « préfixe 'Halo Infinite' » de MT-18 = `seed_demo_media.go:32 const haloInfinitePrefix` : c'est un préfixe de NOM DE FICHIER de capture Xbox réel (« Halo Infinite 2025-12-18 … »), donnée légitimement title-spécifique → PAS un de-magic, laissé tel quel.
+
+**Livré (literal `"halo_infinite"` → `titlePkg.DefaultSlug`, byte-identique, source unique du défaut)** :
+- `ops/healthcheck.go` (×7 args PathResolver : warehouse/players/shared/metadata/pve/playerDB).
+- `validation/gate.go` (×5 : shared/metadata/tables/views/playerDB ; harmonise avec la ligne 162 qui utilisait déjà `DefaultSlug`).
+- `ops/seed_demo.go:400` (résolution xuid « titre par défaut d'abord » + import `titlePkg`).
+
+**Reste différé (cœur MT-10)** : faire que healthcheck/gate ITÈRENT sur `registry.All()` (diagnostic par titre) → vrai travail 2e-titre, change le rapport. Idem MT-18 : le code seed (regen destructif) reste mono-titre par construction tant qu'un seul titre existe. Les `cmd/diag_*` (≈25 outils throwaway avec chemins `filepath.Join(…, "halo_infinite", …)` codés en dur) : hors scope (réécrire 25 sondes de dev = churn + risque, 0 valeur single-titre).
+
+**Vérif** : build+vet ops+validation · `go test ./internal/ops/ ./internal/validation/` verts · gofmt propre.
+
+---
+
 ## [2026-06-17] PMT-5 Contract — toutes les comparaisons Go d'outcome dé-magickées (allowlist → 1 site SQL)
 
 **Statut** : terminé pour le chemin Go. L'allowlist du ratchet `no_raw_outcome_literal` passe de 6 → 1 entrée.
