@@ -1,3 +1,21 @@
+## [2026-06-17] PMT-4 (MT-04) PR-1 — résolveur CSR season par titre + dégradation CapRanked
+
+**Statut** : En cours (PR-1 livrée). Le blocant runtime headline de PMT-4 (un 2e titre héritait de la saison CSR d'Halo → sync CSR sur une saison inexistante).
+
+**Re-vérification** : `csr_season_id` est lu par `config.loadCSRSeasonID` (JSON brut, hors `AppSettings`). `AppConfig` (pas `Config`) porte `RepoRoot` + `CurrentCSRSeasonID`. config n'importe pas title → `config→title` acyclique (vérifié).
+
+**Livré** :
+- `AppConfig.CSRSeasonIDForTitle(ctx, slug, reg)` — précédence : env `LEVELUP_CSR_SEASON_ID` > overlay titre (`csr_season_id` dans `data/titles/<slug>/settings.json` via `PathResolver.TitleSettingsPath`) > global `CurrentCSRSeasonID`. **Dégradation** : titre sans `CapRanked` (ou inconnu du registre) → `""` (sync CSR skippé proprement, jamais de saison Halo héritée par erreur). Routage **par capability**, jamais `slug ==` (no_slug_comparison vert).
+- Refactor : `readCSRSeasonIDFromFile(path)` extrait de `loadCSRSeasonID` (réutilisé pour l'overlay).
+
+**Tests** (oracle a+b+dégradation) : Halo sans overlay → global ; Halo avec overlay → overlay prioritaire ; titre sans `CapRanked` → `""` même si overlay déclare une saison ; titre inconnu → `""` ; override env prioritaire.
+
+**Reste PMT-4** : PR-2 (`notify.LoadNotifyConfigForTitle` overlay Discord) ; PR-3 (Contract — basculer les 8 lecteurs `CurrentCSRSeasonID` + 5 sites Discord sur `ctxkeys.TitleSlug(ctx)`, byte-identique Halo).
+
+**Vérif** : build ./... · config tests verts · archlint no_slug_comparison vert · `go test ./...` = seuls les 2 DeviceCodeFlow pré-existants · gofmt/vet propres.
+
+---
+
 ## [2026-06-17] PMT-4 (MT-04) PR-0 — primitive d'overlay de settings par titre
 
 **Statut** : En cours (PR-0/foundation livrée ; consumers + Contract à suivre).

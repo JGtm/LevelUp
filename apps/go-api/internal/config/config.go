@@ -3,13 +3,16 @@
 package config
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
 
@@ -305,7 +308,14 @@ func loadCSRSeasonID(settingsPath string) string {
 	if id := os.Getenv("LEVELUP_CSR_SEASON_ID"); id != "" {
 		return id
 	}
-	data, err := os.ReadFile(settingsPath)
+	return readCSRSeasonIDFromFile(settingsPath)
+}
+
+// readCSRSeasonIDFromFile lit csr_season_id dans un fichier JSON (global ou
+// overlay titre). "" si fichier absent / illisible / champ absent. PMT-4 : réutilisé
+// par CSRSeasonIDForTitle pour lire l'overlay du titre.
+func readCSRSeasonIDFromFile(path string) string {
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return ""
 	}
@@ -317,6 +327,28 @@ func loadCSRSeasonID(settingsPath string) string {
 		return s
 	}
 	return ""
+}
+
+// CSRSeasonIDForTitle résout la saison CSR pour un titre (PMT-4). Précédence :
+// env LEVELUP_CSR_SEASON_ID (override process) > overlay titre (csr_season_id dans
+// data/titles/<slug>/settings.json) > global (CurrentCSRSeasonID). **Dégradation** :
+// si le titre n'a pas la capability `Ranked` (ou est inconnu du registre), retourne
+// "" — le sync CSR est skippé proprement (jamais de saison Halo héritée par erreur).
+// Routage par capability, jamais par comparaison de slug (no_slug_comparison vert).
+func (c *AppConfig) CSRSeasonIDForTitle(ctx context.Context, slug string, reg *titlePkg.Registry) string {
+	if id := os.Getenv("LEVELUP_CSR_SEASON_ID"); id != "" {
+		return id // override process-global (parité loadCSRSeasonID)
+	}
+	desc := reg.Get(slug)
+	if desc == nil || !desc.HasCapability(titlePkg.CapRanked) {
+		slog.DebugContext(ctx, "csr_season.degraded", "title", slug, "reason", "cap_ranked_absent")
+		return ""
+	}
+	pr := titlePkg.NewPathResolver(c.RepoRoot, reg)
+	if id := readCSRSeasonIDFromFile(pr.TitleSettingsPath(slug)); id != "" {
+		return id // overlay du titre
+	}
+	return c.CurrentCSRSeasonID // fallback global
 }
 
 // loadUserTimezone lit user_timezone depuis app_settings.json.
