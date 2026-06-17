@@ -110,8 +110,15 @@ type MatchViewService struct {
 	// loader unifié des highlight_events qui remplace progressivement
 	// repo.GetMatchEvents. Quand non-nil, les builders narrative cadence/impact
 	// consomment directement des canonical.HighlightEvent (pas de conversion à
-	// la volée). Dégradation gracieuse si nil : on retombe sur GetMatchEvents.
-	eventsRepo port.HighlightEventsRepository
+	// la volée) APRÈS correction T0 (vrai début de match). Dégradation gracieuse
+	// si nil : on retombe sur GetMatchEvents (horloge film, T0 non appliqué).
+	//
+	// Type = highlightEventsLoader (même seam prouvé que Timeseries) : la PlayerDB
+	// fixe déjà le titre, donc Load(filters) suffit — pas besoin de la signature
+	// multi-titres LoadHighlightEvents(slug, filters). Le port aspirationnel
+	// HighlightEventsRepository n'a aucun implémenteur de prod (LoadHighlightEvents
+	// stub sur le DataAdapter, pas d'InvalidateMatch côté duckdb).
+	eventsRepo highlightEventsLoader
 	// awardsRepo (optionnel, chunk MV4.B) : loader des personal_score_awards
 	// pour le radar 6 axes via narrative.ComputeParticipationProfile. Si nil,
 	// le radar reste vide (axes à 0).
@@ -168,11 +175,13 @@ func (s *MatchViewService) WithCitationsRepo(r port.CitationsRepository) *MatchV
 
 // WithHighlightEventsRepo injecte le loader unifié des highlight_events
 // (Phase 0 méta-plan, chunk 7). Quand câblé, le service consomme directement
-// des canonical.HighlightEvent au lieu de convertir des EventRaw à la volée.
+// des canonical.HighlightEvent (T0-corrigés) au lieu de convertir des EventRaw
+// à la volée. Mêmes repo et seam que Timeseries (duckdb.HighlightEventsRepo).
 //
 // Dégradation gracieuse : si nil, le service retombe sur repo.GetMatchEvents
-// (Q21 legacy) + conversion EventRaw → canonical.HighlightEvent (chunk MV2).
-func (s *MatchViewService) WithHighlightEventsRepo(r port.HighlightEventsRepository) *MatchViewService {
+// (Q21 legacy) + conversion EventRaw → canonical.HighlightEvent (chunk MV2),
+// SANS correction T0 (cadence/rôles sur l'horloge film, countdown inclus).
+func (s *MatchViewService) WithHighlightEventsRepo(r highlightEventsLoader) *MatchViewService {
 	s.eventsRepo = r
 	return s
 }

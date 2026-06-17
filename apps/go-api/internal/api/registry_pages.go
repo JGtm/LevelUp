@@ -69,7 +69,13 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
 		WithAssetURL(r.assetURLFor(pdb.TitleSlug)).
 		WithTitleSlug(pdb.TitleSlug).
-		WithMetadataRepo(duckdb.NewMetadataRepo(pdb))
+		WithMetadataRepo(duckdb.NewMetadataRepo(pdb)).
+		// Loader unifié des highlight_events (MV4.A) : sans lui, d.canonicalEvents
+		// reste nil et la correction T0 (vrai début de match) est du code mort sur
+		// cette page → cadence + 8 rôles bucketés sur l'horloge du film (countdown
+		// inclus). Câblé ici comme Timeseries (parité), le pipeline route les events
+		// par timeline.CorrectEvents avant les builders narrative.
+		WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb))
 	if loader := r.buildFriendsExtrasResolver(pdb); loader != nil {
 		svc = svc.WithFriendsExtras(loader)
 	}

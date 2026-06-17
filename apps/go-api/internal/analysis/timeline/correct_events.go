@@ -37,6 +37,36 @@ func CorrectEvents(
 	return out
 }
 
+// CorrectEventRaws est l'équivalent de CorrectEvents pour les domain.EventRaw
+// (events bruts Q21 consommés par Match View : kill-feed/evtList + badges
+// d'impact). Retourne une copie avec TimeMS ramené au référentiel gameplay (T0
+// retranché). Signature UNITAIRE (tl du match unique) et non map match_id→tl :
+// Match View est strictement mono-match, contrairement à CorrectEvents /
+// CorrectImpactEvents qui agrègent plusieurs matchs (Timeseries / Escouade).
+//
+// Pièges respectés :
+//   - EventRaw.TimeMS est un *int64 : copy() duplique le POINTEUR, pas l'int64
+//     pointé. On réalloue (v := ...; out[i].TimeMS = &v) pour NE PAS muter
+//     l'input partagé (un double appel re-soustrairait T0 sinon).
+//   - TimeMS nil est préservé tel quel.
+//   - Un TimeMS corrigé peut être négatif si l'event précède T0 (countdown) —
+//     au caller de filtrer (cf. evtList / buildImpactInput skip < 0).
+func CorrectEventRaws(events []domain.EventRaw, tl domain.MatchTimeline) []domain.EventRaw {
+	if events == nil {
+		return nil
+	}
+	out := make([]domain.EventRaw, len(events))
+	copy(out, events)
+	for i := range out {
+		if out[i].TimeMS == nil {
+			continue
+		}
+		v := tl.CorrectEventTime(*out[i].TimeMS)
+		out[i].TimeMS = &v
+	}
+	return out
+}
+
 // CorrectImpactEvents est l'équivalent de CorrectEvents pour les
 // domain.ImpactEventRow (page Escouade / TeammatesService, type Q32 distinct de
 // canonical.HighlightEvent). Retourne une copie avec TimeMS ramené au

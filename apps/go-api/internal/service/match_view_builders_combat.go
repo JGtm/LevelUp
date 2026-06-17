@@ -42,6 +42,13 @@ func buildCombatTabFull(
 
 	evtList := make([]domain.MatchHighlightEvent, 0, len(events))
 	for _, e := range events {
+		// Skip des events pré-T0 (countdown) : après la correction T0 centrale,
+		// event_time_ms peut être négatif. event_time_ms est l'axe X des charts
+		// KD-cumul / frag-diff / scatter tug — un négatif y rendrait "-1m00s" et
+		// un point hors-axe. Aligné sur le précédent skip<0 (first_events).
+		if e.TimeMS != nil && *e.TimeMS < 0 {
+			continue
+		}
 		evtList = append(evtList, domain.MatchHighlightEvent{
 			EventType:     e.EventType,
 			EventTimeMS:   e.TimeMS,
@@ -188,6 +195,13 @@ func buildImpactInput(events []domain.EventRaw, scoreboard []domain.ScoreboardRa
 	impactEvents := make([]analysis.ImpactEvent, 0, len(events))
 	for _, ev := range events {
 		if ev.TimeMS == nil || ev.XUID == nil {
+			continue
+		}
+		// Skip des events pré-T0 (countdown) après correction T0 centrale :
+		// aligne délibérément first_blood / top_gun / last_casualty sur le
+		// gameplay (un frag de countdown ne doit pas gagner first_blood —
+		// parité first_events) et évite un badge exposé à time_ms négatif.
+		if *ev.TimeMS < 0 {
 			continue
 		}
 		et := ev.EventType

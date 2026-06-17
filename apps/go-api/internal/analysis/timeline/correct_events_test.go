@@ -132,6 +132,60 @@ func TestCorrectImpactEvents_NilAndPreGameplayNegative(t *testing.T) {
 	}
 }
 
+// ptrI64 alloue un *int64 (helper de test pour EventRaw.TimeMS).
+func ptrI64(v int64) *int64 { return &v }
+
+func TestCorrectEventRaws_NilInput(t *testing.T) {
+	if got := CorrectEventRaws(nil, domain.NewMatchTimeline(0, 0)); got != nil {
+		t.Errorf("nil events should return nil, got %v", got)
+	}
+}
+
+func TestCorrectEventRaws_AppliesT0_NilPreserved(t *testing.T) {
+	in := []domain.EventRaw{
+		{EventType: "kill", TimeMS: ptrI64(35000)}, // T0=30000 → 5000
+		{EventType: "medal", TimeMS: nil},          // nil → préservé
+	}
+	tl := domain.NewMatchTimeline(600000, 30000)
+	out := CorrectEventRaws(in, tl)
+	if out[0].TimeMS == nil || *out[0].TimeMS != 5000 {
+		t.Errorf("event 0: got %v, want 5000", out[0].TimeMS)
+	}
+	if out[1].TimeMS != nil {
+		t.Errorf("event 1 nil TimeMS doit rester nil, got %v", out[1].TimeMS)
+	}
+}
+
+// Piège load-bearing : EventRaw.TimeMS est *int64 ; copy() partage le pointeur.
+// CorrectEventRaws DOIT réallouer pour ne pas corrompre l'input (sinon un 2e
+// appel re-soustrairait T0).
+func TestCorrectEventRaws_DoesNotMutateInput(t *testing.T) {
+	in := []domain.EventRaw{{EventType: "kill", TimeMS: ptrI64(35000)}}
+	tl := domain.NewMatchTimeline(600000, 30000)
+	_ = CorrectEventRaws(in, tl)
+	if in[0].TimeMS == nil || *in[0].TimeMS != 35000 {
+		t.Fatalf("input muté : TimeMS source = %v, want 35000 (pointeur partagé non réalloué)", in[0].TimeMS)
+	}
+}
+
+func TestCorrectEventRaws_ZeroTimelineIsIdentity(t *testing.T) {
+	in := []domain.EventRaw{{EventType: "kill", TimeMS: ptrI64(12345)}}
+	out := CorrectEventRaws(in, domain.MatchTimeline{}) // T0=0 → identité
+	if out[0].TimeMS == nil || *out[0].TimeMS != 12345 {
+		t.Errorf("tl zéro-value doit être identité, got %v", out[0].TimeMS)
+	}
+}
+
+func TestCorrectEventRaws_PreGameplayNegative(t *testing.T) {
+	// Frag de countdown (TimeMS < T0) → corrigé négatif (au caller de filtrer).
+	in := []domain.EventRaw{{EventType: "kill", TimeMS: ptrI64(10000)}}
+	tl := domain.NewMatchTimeline(600000, 30000)
+	out := CorrectEventRaws(in, tl)
+	if out[0].TimeMS == nil || *out[0].TimeMS != -20000 {
+		t.Errorf("pre-T0 event: got %v, want -20000", out[0].TimeMS)
+	}
+}
+
 func TestCorrectEvents_PreservesRelativeOrder(t *testing.T) {
 	in := []canonical.HighlightEvent{
 		ev("m1", 50000),
