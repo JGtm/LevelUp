@@ -169,6 +169,7 @@ var canonicalOrder = []string{
 	"create_world_player_season_stats",            // shared
 	"create_world_csr_leaderboard_snapshots",      // shared
 	"world_csr_leaderboard_latest_by_batch",       // shared
+	"add_title_slug_to_world_csr_leaderboard",     // shared (PMT-7)
 }
 
 var canonicalIndex = func() map[string]int {

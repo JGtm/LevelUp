@@ -144,7 +144,7 @@ func TestGetCSRWorldLeaderboard_Enrichment(t *testing.T) {
 	}
 
 	repo := NewLeaderboardRepo(&PlayerDB{Shared: shared})
-	entries, err := repo.GetCSRWorldLeaderboard(ctx, "csrseason13-2", arena, 100)
+	entries, err := repo.GetCSRWorldLeaderboard(ctx, "halo_infinite", "csrseason13-2", arena, 100)
 	if err != nil {
 		t.Fatalf("GetCSRWorldLeaderboard: %v", err)
 	}
@@ -204,7 +204,7 @@ func TestGetCSRWorldLeaderboard_PrevSeasonCrossDigit(t *testing.T) {
 	}
 
 	repo := NewLeaderboardRepo(&PlayerDB{Shared: shared})
-	entries, err := repo.GetCSRWorldLeaderboard(ctx, "csrseason10-1", arena, 100)
+	entries, err := repo.GetCSRWorldLeaderboard(ctx, "halo_infinite", "csrseason10-1", arena, 100)
 	if err != nil {
 		t.Fatalf("GetCSRWorldLeaderboard: %v", err)
 	}

@@ -7,7 +7,9 @@ package service
 import (
 	"context"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
 )
 
@@ -37,30 +39,51 @@ func (s *LeaderboardService) GetPage(ctx context.Context, req domain.Leaderboard
 		limit = defaultLeaderboardLimit
 	}
 
+	// Slug effectif (fallback défaut). Gating capability (PMT-7) : un titre sans
+	// world.leaderboard dégrade en vide + 200 (jamais 500), via le registre — pas
+	// de comparaison de slug.
+	titleSlug := req.TitleSlug
+	if titleSlug == "" {
+		titleSlug = titlePkg.DefaultSlug
+	}
+	resp := domain.LeaderboardResponse{
+		Category: string(category), Season: req.Season, Playlist: req.Playlist, TitleSlug: titleSlug,
+	}
+	if !titleHasWorldLeaderboard(titleSlug) {
+		return resp, nil
+	}
+
 	var (
 		entries []domain.LeaderboardEntry
 		err     error
 	)
 	if category == domain.LeaderboardCSRWorld {
-		entries, err = s.repo.GetCSRWorldLeaderboard(ctx, req.Season, req.Playlist, limit)
+		entries, err = s.repo.GetCSRWorldLeaderboard(ctx, titleSlug, req.Season, req.Playlist, limit)
 	} else {
-		entries, err = s.repo.GetStatLeaderboard(ctx, category, req.Playlist, req.Season, limit)
+		entries, err = s.repo.GetStatLeaderboard(ctx, titleSlug, category, req.Playlist, req.Season, limit)
 	}
 	if err != nil {
 		return domain.LeaderboardResponse{}, err
 	}
 
-	return domain.LeaderboardResponse{
-		Entries:    entries,
-		Category:   string(category),
-		Season:     req.Season,
-		Playlist:   req.Playlist,
-		TitleSlug:  req.TitleSlug,
-		TotalLocal: len(entries),
-	}, nil
+	resp.Entries = entries
+	resp.TotalLocal = len(entries)
+	return resp, nil
 }
 
-// GetCatalog retourne les saisons + playlists disponibles (sélecteurs dynamiques).
+// titleHasWorldLeaderboard : le titre supporte-t-il les classements mondiaux ?
+// Capability-gated (jamais de comparaison de slug). Titre inconnu → false.
+func titleHasWorldLeaderboard(slug string) bool {
+	d := titlePkg.DefaultRegistry().Get(slug)
+	return d != nil && d.HasCapability(titlePkg.CapWorldLeaderboard)
+}
+
+// GetCatalog retourne les saisons + playlists disponibles (sélecteurs dynamiques)
+// pour le titre courant (ctx). Titre sans world.leaderboard → catalogue vide.
 func (s *LeaderboardService) GetCatalog(ctx context.Context) (domain.LeaderboardCatalog, error) {
-	return s.repo.GetWorldLeaderboardCatalog(ctx)
+	titleSlug := ctxkeys.TitleSlug(ctx)
+	if !titleHasWorldLeaderboard(titleSlug) {
+		return domain.LeaderboardCatalog{}, nil
+	}
+	return s.repo.GetWorldLeaderboardCatalog(ctx, titleSlug)
 }

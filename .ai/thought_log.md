@@ -1,3 +1,22 @@
+## [2026-06-17] Couverture-max #5 — PMT-7 (MT-03) : leaderboard CSR mondial par titre (read-path complet + oracle b)
+
+**Statut** : read-path LIVRÉ (le « fil coupé » reconnecté de bout en bout) + prouvé. Write-path (writers/cron/CLIs) différé (byte-identique, path-isolé).
+
+**Re-vérification (workflow)** : confirmé — le handler reçoit `req.TitleSlug`, le service le ré-émet, mais le repo le JETAIT (`GetCSRWorldLeaderboard` sans slug). **Préalable migration découvert** : `world_csr_leaderboard_snapshots` n'avait PAS de colonne `title_slug` (la spec la présupposait). Contrairement à PMT-4 PR-3, le slug EST porté jusqu'au handler → le read-path est complétable.
+
+**Livré** :
+- **Migration** `add_title_slug_to_world_csr_leaderboard` : colonne `title_slug` (DEFAULT 'halo_infinite' → byte-identique ; DuckDB refuse NOT NULL sur ADD COLUMN) + vue `_latest` partitionnée par titre + index titré. Ajoutée à `canonicalOrder`.
+- **Capability** `CapWorldLeaderboard` (+ ajoutée au descripteur Halo).
+- **Port** : `GetCSRWorldLeaderboard/GetStatLeaderboard/GetWorldLeaderboardCatalog` prennent `titleSlug` (+ noop). **Repo** : `GetCSRWorldLeaderboard` filtre `WHERE title_slug = ?` ; catalog/stat portent le slug (shared DB isolé par chemin ADR 0008 → pas de WHERE redondant). **Service** : `GetPage`/`GetCatalog` résolvent le slug (fallback défaut) + **gating capability** (titre sans `CapWorldLeaderboard` → vide+200, jamais 500) via le registre, pas de comparaison de slug.
+
+**Oracle DOUBLE** : (a) Halo byte-identique (tests repo/service existants verts, slug défaut halo) ; (b) `leaderboard_title_isolation_test` (halo vs synthetic_title_b dans la même table → `GetCSRWorldLeaderboard` route par title_slug, zéro fuite) + `TestLeaderboardService_NoCapability_EmptyNot500` (titre sans cap → vide+200).
+
+**Différé (write-path, byte-identique cosmétique)** : `AccumulateWorldStats`/enricher/cron + `InsertWorldCSRSnapshot` (pose title_slug explicite) + CLIs `-title` (snapshot:43 littéral chemin). Le shared DB est path-isolé → les rows sont déjà du bon titre (DEFAULT halo) ; threader les writers est sans effet single-titre. À faire au onboarding 2e titre.
+
+**Vérif** : build ./... · duckdb world integration + migration shared E2E + audit verts · service/title verts · `go test ./...` = seuls les 2 DeviceCodeFlow pré-existants · gofmt/vet propres.
+
+---
+
 ## [2026-06-17] Couverture-max #4 — PMT-5 Contract (MT-06) : sites Go sûrs migrés + lint ratchet (ultracode : design + vérif adversariale)
 
 **Statut** : Contract DÉMARRÉ. Sites Go byte-identiques migrés + garde-fou anti-régression posé ; sites SQL/threading différés (documentés en allowlist décroissante).

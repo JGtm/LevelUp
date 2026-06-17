@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 )
 
@@ -32,8 +33,11 @@ const statLeaderboardMinMatches = 10
 // Le tier/sous-palier sont re-dérivés du CSR (source unique domain.DeriveCSRTier).
 // is_local = true si le xuid correspond au joueur courant.
 func (r *LeaderboardRepo) GetCSRWorldLeaderboard(
-	ctx context.Context, season, playlist string, limit int,
+	ctx context.Context, titleSlug, season, playlist string, limit int,
 ) ([]domain.LeaderboardEntry, error) {
+	if strings.TrimSpace(titleSlug) == "" {
+		titleSlug = titlePkg.DefaultSlug
+	}
 	if strings.TrimSpace(season) == "" || strings.TrimSpace(playlist) == "" {
 		return nil, fmt.Errorf("GetCSRWorldLeaderboard: season et playlist requis")
 	}
@@ -56,10 +60,10 @@ func (r *LeaderboardRepo) GetCSRWorldLeaderboard(
 	const q = `
 		SELECT rank, COALESCE(gamertag, ''), '' AS xuid, csr_value
 		FROM world_csr_leaderboard_latest
-		WHERE season_id = ? AND playlist_id = ?
+		WHERE title_slug = ? AND season_id = ? AND playlist_id = ?
 		ORDER BY rank ASC
 		LIMIT ?`
-	rows, err := sharedDB.QueryContext(ctx, q, season, playlist, limit)
+	rows, err := sharedDB.QueryContext(ctx, q, titleSlug, season, playlist, limit)
 	if err != nil {
 		slog.WarnContext(ctx, "lecture classement CSR mondial échouée", "module", logModuleLeaderboard,
 			"season", season, "playlist", playlist, "err", err)
@@ -222,7 +226,13 @@ func applyWorldEnrichment(e *domain.LeaderboardEntry, s domain.WorldPlayerSeason
 // seul » avec un badge. Tri du plus récent au plus ancien par NUMÉRO de saison (un ORDER
 // BY season_id SQL serait LEXICOGRAPHIQUE : csrseason6-1 > csrseason13-2 car '6' > '1' →
 // faux). Les playlists reçoivent un libellé via rankedplaylists (FR si dispo, sinon EN, sinon id brut).
-func (r *LeaderboardRepo) GetWorldLeaderboardCatalog(ctx context.Context) (domain.LeaderboardCatalog, error) {
+func (r *LeaderboardRepo) GetWorldLeaderboardCatalog(ctx context.Context, titleSlug string) (domain.LeaderboardCatalog, error) {
+	if strings.TrimSpace(titleSlug) == "" {
+		titleSlug = titlePkg.DefaultSlug
+	}
+	// Le shared DB est isolé par titre (ADR 0008 : data/titles/<slug>/…), donc les
+	// world_*_latest n'y contiennent que les lignes du titre courant — pas de WHERE
+	// title_slug redondant ici. Le slug est porté pour la traçabilité (PMT-7).
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -428,8 +438,13 @@ var statMetrics = map[domain.LeaderboardCategory]statMetric{
 // Bots exclus, seuil min de matchs appliqué. Le JOIN match_registry n'est ajouté
 // que si au moins un des deux filtres est actif (évite un JOIN inutile sinon).
 func (r *LeaderboardRepo) GetStatLeaderboard(
-	ctx context.Context, category domain.LeaderboardCategory, playlist, season string, limit int,
+	ctx context.Context, titleSlug string, category domain.LeaderboardCategory, playlist, season string, limit int,
 ) ([]domain.LeaderboardEntry, error) {
+	if strings.TrimSpace(titleSlug) == "" {
+		titleSlug = titlePkg.DefaultSlug
+	}
+	// Agrégation de match_participants : le shared DB est isolé par titre (ADR 0008)
+	// → pas de colonne/WHERE title_slug. Le slug est porté pour la traçabilité (PMT-7).
 	metric, ok := statMetrics[category]
 	if !ok {
 		return nil, fmt.Errorf("GetStatLeaderboard: catégorie inconnue %q", category)

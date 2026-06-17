@@ -79,7 +79,7 @@ func TestGetStatLeaderboard_AggregationFiltersAndLocal(t *testing.T) {
 
 	// Kills, sans filtre playlist : Alpha (120) puis Bravo (50). Charlie exclu
 	// (5 matchs < 10), bot exclu.
-	res, err := repo.GetStatLeaderboard(ctx, domain.LeaderboardKills, "", "", 50)
+	res, err := repo.GetStatLeaderboard(ctx, "halo_infinite", domain.LeaderboardKills, "", "", 50)
 	if err != nil {
 		t.Fatalf("GetStatLeaderboard: %v", err)
 	}
@@ -105,7 +105,7 @@ func TestGetStatLeaderboard_AggregationFiltersAndLocal(t *testing.T) {
 	}
 
 	// Filtre playlist "Arena" : seul Alpha a des matchs Ranked Arena (>= seuil).
-	arena, err := repo.GetStatLeaderboard(ctx, domain.LeaderboardKills, "Arena", "", 50)
+	arena, err := repo.GetStatLeaderboard(ctx, "halo_infinite", domain.LeaderboardKills, "Arena", "", 50)
 	if err != nil {
 		t.Fatalf("GetStatLeaderboard(Arena): %v", err)
 	}
@@ -114,7 +114,7 @@ func TestGetStatLeaderboard_AggregationFiltersAndLocal(t *testing.T) {
 	}
 
 	// Filtre saison "CsrSeason13" (toutes les données seedées) : Alpha + Bravo.
-	s13, err := repo.GetStatLeaderboard(ctx, domain.LeaderboardKills, "", "CsrSeason13", 50)
+	s13, err := repo.GetStatLeaderboard(ctx, "halo_infinite", domain.LeaderboardKills, "", "CsrSeason13", 50)
 	if err != nil {
 		t.Fatalf("GetStatLeaderboard(CsrSeason13): %v", err)
 	}
@@ -123,7 +123,7 @@ func TestGetStatLeaderboard_AggregationFiltersAndLocal(t *testing.T) {
 	}
 
 	// Filtre saison inexistante → aucun résultat.
-	none, err := repo.GetStatLeaderboard(ctx, domain.LeaderboardKills, "", "CsrSeason99", 50)
+	none, err := repo.GetStatLeaderboard(ctx, "halo_infinite", domain.LeaderboardKills, "", "CsrSeason99", 50)
 	if err != nil {
 		t.Fatalf("GetStatLeaderboard(CsrSeason99): %v", err)
 	}
@@ -132,7 +132,7 @@ func TestGetStatLeaderboard_AggregationFiltersAndLocal(t *testing.T) {
 	}
 
 	// Catégorie inconnue → erreur claire.
-	if _, err := repo.GetStatLeaderboard(ctx, domain.LeaderboardCategory("inexistante"), "", "", 10); err == nil {
+	if _, err := repo.GetStatLeaderboard(ctx, "halo_infinite", domain.LeaderboardCategory("inexistante"), "", "", 10); err == nil {
 		t.Error("catégorie inconnue devrait retourner une erreur")
 	}
 }

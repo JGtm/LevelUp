@@ -23,20 +23,39 @@ func (m *mockLeaderboardRepo) GetLocalLeaderboard(_ context.Context, _, _, _ str
 	return m.local, m.err
 }
 
-func (m *mockLeaderboardRepo) GetCSRWorldLeaderboard(_ context.Context, _, _ string, limit int) ([]domain.LeaderboardEntry, error) {
+func (m *mockLeaderboardRepo) GetCSRWorldLeaderboard(_ context.Context, _, _, _ string, limit int) ([]domain.LeaderboardEntry, error) {
 	m.lastCategory = domain.LeaderboardCSRWorld
 	m.lastLimit = limit
 	return m.csrWorld, m.err
 }
 
-func (m *mockLeaderboardRepo) GetStatLeaderboard(_ context.Context, category domain.LeaderboardCategory, _, _ string, limit int) ([]domain.LeaderboardEntry, error) {
+func (m *mockLeaderboardRepo) GetStatLeaderboard(_ context.Context, _ string, category domain.LeaderboardCategory, _, _ string, limit int) ([]domain.LeaderboardEntry, error) {
 	m.lastCategory = category
 	m.lastLimit = limit
 	return m.stats, m.err
 }
 
-func (m *mockLeaderboardRepo) GetWorldLeaderboardCatalog(_ context.Context) (domain.LeaderboardCatalog, error) {
+func (m *mockLeaderboardRepo) GetWorldLeaderboardCatalog(_ context.Context, _ string) (domain.LeaderboardCatalog, error) {
 	return domain.LeaderboardCatalog{}, m.err
+}
+
+// TestLeaderboardService_NoCapability_EmptyNot500 (PMT-7 oracle b) : un titre sans
+// CapWorldLeaderboard (ou inconnu) dégrade en vide + 200 — JAMAIS 500, et sans
+// appeler le repo. Gating par capability, pas par comparaison de slug.
+func TestLeaderboardService_NoCapability_EmptyNot500(t *testing.T) {
+	repo := &mockLeaderboardRepo{csrWorld: []domain.LeaderboardEntry{{Rank: 1, Gamertag: "X"}}}
+	svc := NewLeaderboardService(repo)
+
+	resp, err := svc.GetPage(context.Background(), domain.LeaderboardRequest{TitleSlug: "unknown_title_no_cap"})
+	if err != nil {
+		t.Fatalf("titre sans capability devrait dégrader (pas err) : %v", err)
+	}
+	if len(resp.Entries) != 0 {
+		t.Errorf("titre sans CapWorldLeaderboard → %d entrées, want 0 (vide+200)", len(resp.Entries))
+	}
+	if resp.TitleSlug != "unknown_title_no_cap" {
+		t.Errorf("TitleSlug résolu = %q, want unknown_title_no_cap", resp.TitleSlug)
+	}
 }
 
 // --- tests ---
