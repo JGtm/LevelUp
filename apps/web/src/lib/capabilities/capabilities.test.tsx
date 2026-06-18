@@ -10,7 +10,8 @@ import { render, renderHook, screen } from '@testing-library/react'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { FeatureGate } from './FeatureGate'
-import { useCapability } from './capabilities'
+import { RouteCapabilityGate } from './RouteCapabilityGate'
+import { hasCapabilityIn, useCapability, useTitleCapabilities } from './capabilities'
 
 function setTitleCaps(caps: string[]) {
   useAppShellStore.setState({
@@ -65,5 +66,48 @@ describe('FeatureGate', () => {
     )
     expect(screen.queryByText('contenu')).not.toBeInTheDocument()
     expect(screen.getByText('indispo')).toBeInTheDocument()
+  })
+})
+
+describe('useTitleCapabilities / hasCapabilityIn', () => {
+  it('retourne la liste des capabilities du titre courant', () => {
+    setTitleCaps(['firefight', 'media'])
+    const { result } = renderHook(() => useTitleCapabilities())
+    expect(result.current).toEqual(['firefight', 'media'])
+  })
+
+  it('retourne null (fail-open) si le titre courant est introuvable', () => {
+    useAppShellStore.setState({ currentTitleSlug: 'unknown', availableTitles: [] })
+    const { result } = renderHook(() => useTitleCapabilities())
+    expect(result.current).toBeNull()
+  })
+
+  it('hasCapabilityIn : présence/absence + fail-open sur null', () => {
+    expect(hasCapabilityIn(['media', 'ranked'], 'media')).toBe(true)
+    expect(hasCapabilityIn(['ranked'], 'media')).toBe(false)
+    expect(hasCapabilityIn(null, 'media')).toBe(true)
+  })
+})
+
+describe('RouteCapabilityGate', () => {
+  it('rend la page si la capability est présente', () => {
+    setTitleCaps(['career'])
+    render(
+      <RouteCapabilityGate capability="career">
+        <span>page-carriere</span>
+      </RouteCapabilityGate>,
+    )
+    expect(screen.getByText('page-carriere')).toBeInTheDocument()
+  })
+
+  it('rend le placeholder indisponible si la capability est absente', () => {
+    setTitleCaps(['ranked'])
+    render(
+      <RouteCapabilityGate capability="career">
+        <span>page-carriere</span>
+      </RouteCapabilityGate>,
+    )
+    expect(screen.queryByText('page-carriere')).not.toBeInTheDocument()
+    expect(screen.getByText('Indisponible pour ce titre')).toBeInTheDocument()
   })
 })

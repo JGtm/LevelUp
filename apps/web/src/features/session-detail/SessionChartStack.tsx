@@ -30,6 +30,7 @@ import { SessionNetScoreArea } from './SessionNetScoreArea'
 import { SessionMmrDumbbell } from './SessionMmrDumbbell'
 import { SessionPerfTrend } from './SessionPerfTrend'
 import { SessionEngagementChart } from './SessionEngagementChart'
+import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { SessionDamageComposite } from './SessionDamageComposite'
 import { SessionOcdrBars } from './SessionOcdrBars'
 
@@ -111,12 +112,14 @@ export function SessionChartStack({
   const mmr = <SessionMmrDumbbell title={t('session.detail.chart_mmr_title')} matches={matches} />
   const perf = <SessionPerfTrend title={t('session.detail.chart_perf_title')} matches={matches} />
   const engagement = (
-    <SessionEngagementChart
-      title={t('session.detail.chart_engagement_title')}
-      matches={matches}
-      entry={entry}
-      yDomain={scale?.engagement}
-    />
+    <FeatureGate capability="engagement">
+      <SessionEngagementChart
+        title={t('session.detail.chart_engagement_title')}
+        matches={matches}
+        entry={entry}
+        yDomain={scale?.engagement}
+      />
+    </FeatureGate>
   )
   const ocdr = (
     <SessionOcdrBars

@@ -24,6 +24,7 @@ import {
   TimeseriesIntensityHeatmap,
 } from './TimeseriesSquadAdapted'
 import { EngagementTimeseriesSection } from '@/features/engagement/EngagementTimeseriesSection'
+import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
 import { TimeseriesSkillProgression } from './TimeseriesSkillProgression'
 import type { FilterContextInput, TimeseriesPageResponse, ExplorerMatchRow } from '@/lib/api/types'
@@ -165,13 +166,15 @@ export function TimeseriesProgressionTab({
 
       {/* Engagement — pleine largeur. EngagementTimeseriesSection
           rend déjà sa propre ChartCard avec titre interne, donc pas de
-          wrapper supplémentaire (sinon double titre). */}
-      <EngagementTimeseriesSection
-        playerSlug={playerSlug}
-        filters={soloFilterContext}
-        filterHash={filterContextHash}
-        limit={30}
-      />
+          wrapper supplémentaire (sinon double titre). Gaté sur `engagement`. */}
+      <FeatureGate capability="engagement">
+        <EngagementTimeseriesSection
+          playerSlug={playerSlug}
+          filters={soloFilterContext}
+          filterHash={filterContextHash}
+          limit={30}
+        />
+      </FeatureGate>
 
       {/* Intensité — frags par phase de match (pleine largeur). */}
       <TimeseriesIntensityHeatmap

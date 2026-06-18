@@ -13,6 +13,7 @@ import { CareerTopMatchesTable } from './CareerTopMatchesTable'
 import { CareerEncountersSection } from './CareerEncountersSection'
 import { CareerRankingBlock } from './CareerRankingBlock'
 import { AchievementsCareerSection } from '@/features/achievements/AchievementsCareerSection'
+import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { formatMessage } from '@/lib/i18n/format'
 import { careerManifest, type CareerManifestKey } from '@/lib/i18n/generated/career'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -98,8 +99,11 @@ export function CareerPage() {
           friendsXpHistory={data.friends_xp_history}
         />
 
-        {/* Succès Xbox — section horizontale (KPI inline + scroll de cartes) */}
-        <AchievementsCareerSection playerSlug={playerSlug} />
+        {/* Succès Xbox — section horizontale (KPI inline + scroll de cartes).
+            Gatée sur `achievements` : masquée pour un titre sans succès Xbox. */}
+        <FeatureGate capability="achievements">
+          <AchievementsCareerSection playerSlug={playerSlug} />
+        </FeatureGate>
 
         {/* Section CSR + LUSR unifiée */}
         <CareerRankingBlock playerSlug={playerSlug} lusrData={data.lusr} />

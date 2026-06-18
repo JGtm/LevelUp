@@ -9,6 +9,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { CareerChartsSection } from './CareerChartsSection'
 import { CareerRankingBlock } from './CareerRankingBlock'
 import { AchievementsCareerSection } from '@/features/achievements/AchievementsCareerSection'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { CareerHighlightMatchesSection } from './CareerHighlightMatchesSection'
 import { CareerTopEncountersSection } from './CareerTopEncountersSection'
 import { CareerRivalsSection } from './CareerRivalsSection'
@@ -22,6 +23,10 @@ export function CareerProgressionTab() {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const t = (key: keyof typeof careerManifest) => careerManifest[key][locale]
   const { data, isLoading, isError, refetch } = useCareerPage(playerSlug)
+  // Sidebar Succès Xbox gatée sur `achievements` : on passe `undefined` (et non un
+  // FeatureGate rendant null) pour que CareerChartsSection replie sa grille au lieu
+  // de réserver une colonne droite vide. NO-OP pour halo_infinite.
+  const hasAchievements = useCapability('achievements')
 
   if (isLoading) {
     return (
@@ -69,7 +74,11 @@ export function CareerProgressionTab() {
         heroProgress={data.hero_progress}
         projections={data.projections ?? null}
         friendsXpHistory={data.friends_xp_history}
-        rightSlot={<AchievementsCareerSection playerSlug={playerSlug} layout="sidebar" />}
+        rightSlot={
+          hasAchievements ? (
+            <AchievementsCareerSection playerSlug={playerSlug} layout="sidebar" />
+          ) : undefined
+        }
         lusrLeftSlot={<CareerRankingBlock playerSlug={playerSlug} lusrData={data.lusr} />}
       />
 

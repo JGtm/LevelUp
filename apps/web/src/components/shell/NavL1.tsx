@@ -17,6 +17,7 @@ import { LogoutButton } from './LogoutButton'
 import { NavL1MobileMenu } from './NavL1MobileMenu'
 import { NavL1MobileActions, type SettingsTabItem } from './NavL1MobileActions'
 import { L1_SECTIONS, type L1Section, type L1Tab } from './navL1Sections'
+import { useTitleCapabilities, hasCapabilityIn } from '@/lib/capabilities/capabilities'
 import { useSettings } from '@/features/settings/queries'
 import { NotificationsBell } from '@/features/notifications/NotificationsBell'
 import { formatMessage } from '@/lib/i18n/format'
@@ -242,9 +243,28 @@ export function NavL1() {
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
   const playerSlug = currentPlayer?.player_slug ?? ''
-  const visibleSections = showProgression
+
+  // Gating multi-titre (Phase 5) : on masque les sections / onglets dont la
+  // capability n'est pas déclarée par le titre courant. Fail-open (titleCaps null
+  // pendant le bootstrap → tout visible) ⇒ NO-OP pour halo_infinite. Le filtre
+  // alimente à la fois le rendu desktop inline ET le drawer mobile (même tableau).
+  const titleCaps = useTitleCapabilities()
+  const sectionVisible = (s: L1Section) => s.capability == null || hasCapabilityIn(titleCaps, s.capability)
+  const tabVisible = (tab: L1Tab) => tab.capability == null || hasCapabilityIn(titleCaps, tab.capability)
+  const visibleSections = (showProgression
     ? L1_SECTIONS
-    : L1_SECTIONS.filter((s) => s.key !== 'ascension')
+    : L1_SECTIONS.filter((s) => s.key !== 'ascension'))
+    .filter(sectionVisible)
+    .map((s) => {
+      if (!s.tabs) return s
+      const tabs = s.tabs.filter(tabVisible)
+      // Si l'onglet servant de landing par défaut est masqué (ex: « Classements »
+      // gaté sur world.leaderboard), replier le défaut sur le 1er onglet visible.
+      const defaultPath = tabs.some((tab) => tab.path === s.defaultPath)
+        ? s.defaultPath
+        : (tabs[0]?.path ?? s.defaultPath)
+      return { ...s, tabs: tabs.length > 0 ? tabs : undefined, defaultPath }
+    })
 
   // Onglets Paramètres — source unique partagée entre le split button desktop
   // et le menu compte/outils mobile.

@@ -30,6 +30,7 @@ import { useSettings } from '@/features/settings/queries'
 import { useSetMatchFavorite } from '@/features/match-history/queries'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { OutcomeSequenceTape } from '@/components/charts/OutcomeSequenceTape'
 import { getHighlightText } from './highlights.i18n'
@@ -50,6 +51,10 @@ export function HomePage() {
   const showProgression = settings?.show_progression ?? true
   const t = (key: HomeManifestKey, values?: Record<string, string | number>) =>
     formatMessage(homeManifest, key, locale, values)
+  // Gating multi-titre (Phase 5) : la carte « Playlists récentes » (CSR) dépend de
+  // `ranked`. NO-OP pour halo_infinite ; pour un titre sans `ranked`, la grille se
+  // replie sur les seules « Sessions récentes » (transverses) au lieu d'une colonne vide.
+  const hasRanked = useCapability('ranked')
   const { data, isLoading, isError, refetch } = useHomePage(playerSlug)
   const {
     data: seasonPass,
@@ -268,10 +273,18 @@ export function HomePage() {
         </div>
 
         {/* Playlists récentes + Rang | Sessions récentes */}
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(320px,0.65fr)_minmax(0,1.35fr)]">
-          <HomeRecentPlaylistsCard
-            recentPlaylistRanks={data.recent_playlist_ranks}
-          />
+        <div
+          className={
+            hasRanked
+              ? 'grid grid-cols-1 gap-4 xl:grid-cols-[minmax(320px,0.65fr)_minmax(0,1.35fr)]'
+              : 'grid grid-cols-1 gap-4'
+          }
+        >
+          {hasRanked && (
+            <HomeRecentPlaylistsCard
+              recentPlaylistRanks={data.recent_playlist_ranks}
+            />
+          )}
 
           {/* Sessions récentes */}
           <section className="flex flex-col gap-3">

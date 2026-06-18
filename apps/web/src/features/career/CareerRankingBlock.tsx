@@ -17,6 +17,7 @@ import type { ManifestLocale } from '@/lib/i18n/format'
 import { careerManifest } from '@/lib/i18n/generated/career'
 import { staticAssetURL } from '@/lib/staticAssets'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { useCareerCSRs } from './queries'
 import { lusrChainLabel, LUSR_KNOWN_GROUPS } from './lusr-chains'
 
@@ -74,6 +75,11 @@ function deriveLatestLUSRByGroup(
 export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const t = (key: keyof typeof careerManifest) => careerManifest[key][locale]
+  // Gating multi-titre (Phase 5) : colonne CSR ⇒ `ranked`, colonne LUSR ⇒ `lusr`.
+  // NO-OP pour halo_infinite (déclare les deux). Si AUCUNE des deux capabilities,
+  // le bloc entier est masqué (sinon : carte vide à 2 colonnes mortes).
+  const hasRanked = useCapability('ranked')
+  const hasLusr = useCapability('lusr')
   // Saison CSR sélectionnée (undefined → saison courante côté backend).
   const [season, setSeason] = useState<string | undefined>(undefined)
   const { data: csrData } = useCareerCSRs(playerSlug, season)
@@ -83,6 +89,8 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
   const selectedSeason = season ?? csrData?.season_id ?? ''
   const lusrByGroup = lusrData ? deriveLatestLUSRByGroup(lusrData.checkpoints) : new Map<string, LusrCheckpoint>()
 
+  if (!hasRanked && !hasLusr) return null
+
   return (
     <Card className="flex h-full flex-col">
       <div className="border-b border-border px-3 py-2 text-sm font-medium">
@@ -90,8 +98,9 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
         <InfoTooltip content={t('career.ranking.tooltip')} />
       </div>
       <CardContent className="flex flex-1 items-center p-3">
-        <div className="grid w-full grid-cols-1 gap-6 sm:grid-cols-2">
-          {/* Colonne gauche — CSR (par saison) */}
+        <div className={`grid w-full grid-cols-1 gap-6 ${hasRanked && hasLusr ? 'sm:grid-cols-2' : ''}`}>
+          {/* Colonne gauche — CSR (par saison) — gatée sur `ranked` */}
+          {hasRanked && (
           <div>
             <div className="mb-2 flex items-center justify-between gap-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -143,7 +152,10 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
             )}
           </div>
 
-          {/* Colonne droite — LUSR (cumulatif, hors saison) */}
+          )}
+
+          {/* Colonne droite — LUSR (cumulatif, hors saison) — gatée sur `lusr` */}
+          {hasLusr && (
           <div>
             <div className="mb-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -181,6 +193,7 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
               })}
             </ul>
           </div>
+          )}
         </div>
       </CardContent>
     </Card>

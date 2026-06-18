@@ -9,6 +9,7 @@
  */
 import type { ReactNode } from 'react'
 import { isCommunityPath } from './shellNavigation'
+import type { TitleCapability } from '@/lib/capabilities/capabilities'
 
 // ─── Icône flamme (label Ascension) ──────────────────────────────────────────
 // Nœud JSX statique (pas un composant) pour garder ce module « data-only »
@@ -37,6 +38,11 @@ export interface L1Tab {
   label: string
   /** Chemin avec $playerSlug en placeholder. */
   path: string
+  /**
+   * Capability produit requise pour afficher cet onglet (multi-titre, Phase 5).
+   * Absente ⇒ onglet toujours visible. NO-OP pour `halo_infinite`.
+   */
+  capability?: TitleCapability
 }
 
 export interface L1Section {
@@ -50,6 +56,13 @@ export interface L1Section {
   matchPathname: (pathname: string) => boolean
   /** Onglets du dropdown (optionnel — si absent, bouton simple). */
   tabs?: L1Tab[]
+  /**
+   * Capability produit requise pour afficher CETTE section dans la nav (multi-titre,
+   * Phase 5). Absente ⇒ section toujours visible. NO-OP pour `halo_infinite` (déclare
+   * toutes les capabilities). Les sections transverses (home, stats, squad, explorer,
+   * community) restent non gatées : leur contenu dérive des matchs (suit matchmaking).
+   */
+  capability?: TitleCapability
 }
 
 // Refonte nav L1 (Phase 4 Prestige) :
@@ -89,6 +102,7 @@ export const L1_SECTIONS: L1Section[] = [
   {
     key: 'career',
     label: 'Carrière',
+    capability: 'career',
     defaultPath: '/players/$playerSlug/career',
     matchPathname: (p) => /\/players\/[^/]+\/(career|citations|profile)/.test(p),
     tabs: [
@@ -101,6 +115,10 @@ export const L1_SECTIONS: L1Section[] = [
     key: 'ascension',
     label: 'Ascension',
     icon: flameIcon,
+    // Ascension (profil LUSR + leviers + coaching) dérive entièrement du rating
+    // LUSR ⇒ gatée sur `lusr`. (Reste aussi conditionnée par le réglage
+    // `show_progression` côté NavL1.)
+    capability: 'lusr',
     defaultPath: '/players/$playerSlug/ascension',
     matchPathname: (p) => /\/players\/[^/]+\/(objectifs|ascension)/.test(p),
     tabs: [
@@ -114,8 +132,15 @@ export const L1_SECTIONS: L1Section[] = [
     label: 'Communauté',
     defaultPath: '/players/$playerSlug/palmares',
     matchPathname: isCommunityPath,
+    // Section transverse non gatée (Relations / Face-à-face dérivent des matchs) ;
+    // seul l'onglet « Classements » dépend de `world.leaderboard`.
     tabs: [
-      { key: 'leaderboard', label: 'Classements', path: '/players/$playerSlug/palmares' },
+      {
+        key: 'leaderboard',
+        label: 'Classements',
+        path: '/players/$playerSlug/palmares',
+        capability: 'world.leaderboard',
+      },
       { key: 'relations', label: 'Relations', path: '/players/$playerSlug/palmares/relations' },
       { key: 'compare', label: 'Face-à-face', path: '/players/$playerSlug/compare' },
     ],
@@ -123,6 +148,7 @@ export const L1_SECTIONS: L1Section[] = [
   {
     key: 'media',
     label: 'Médias',
+    capability: 'media',
     defaultPath: '/players/$playerSlug/media',
     matchPathname: (p) => /\/players\/[^/]+\/media/.test(p),
   },

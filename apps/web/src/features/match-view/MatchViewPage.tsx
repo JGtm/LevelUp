@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useSettings } from '@/features/settings/queries'
 import { EngagementMatchSection } from '@/features/engagement/EngagementMatchSection'
+import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useMatchView } from './queries'
 import { MatchBreadcrumb, MatchNavigationBar, MatchHeaderCard } from './MatchHeader'
 import { MatchAntagonistChart } from './MatchAntagonistChart'
@@ -324,17 +325,21 @@ export function MatchViewPage() {
               <MatchMedalsSection medals={summary_tab.medals ?? []} t={t} />
               <MatchCitationsSection citations={summary_tab.citations ?? []} t={t} />
             </div>
-            <div className="rounded-lg border border-border bg-card">
-              <div className="border-b border-border px-3 py-2 text-sm font-medium">{t.sectionMedia}</div>
-              <div className="p-3">
-                <MatchMediaTab
-                  items={media_tab.media_items}
-                  playerSlug={playerSlug}
-                  matchId={matchId}
-                  locale={locale === 'en' ? 'en' : 'fr'}
-                />
+            {/* Section Médias gatée sur `media` : masque l'en-tête + le bloc entier
+                (pas seulement le contenu) pour un titre sans captures/clips. */}
+            <FeatureGate capability="media">
+              <div className="rounded-lg border border-border bg-card">
+                <div className="border-b border-border px-3 py-2 text-sm font-medium">{t.sectionMedia}</div>
+                <div className="p-3">
+                  <MatchMediaTab
+                    items={media_tab.media_items}
+                    playerSlug={playerSlug}
+                    matchId={matchId}
+                    locale={locale === 'en' ? 'en' : 'fr'}
+                  />
+                </div>
               </div>
-            </div>
+            </FeatureGate>
           </div>
         ) : (
           <>
@@ -369,13 +374,17 @@ export function MatchViewPage() {
                 />
               </div>
 
-              {/* Engagement — remonté ici (avant Frags différentiel cumulé) */}
-              <EngagementMatchSection
-                playerSlug={playerSlug}
-                matchId={matchId}
-                granularity="intra"
-                emptyBehavior="placeholder"
-              />
+              {/* Engagement — remonté ici (avant Frags différentiel cumulé).
+                  Gaté sur `engagement` : évite le fetch + la carte placeholder
+                  pour un titre sans score d'engagement intra-match. */}
+              <FeatureGate capability="engagement">
+                <EngagementMatchSection
+                  playerSlug={playerSlug}
+                  matchId={matchId}
+                  granularity="intra"
+                  emptyBehavior="placeholder"
+                />
+              </FeatureGate>
             </DetailSection>
 
             {/* §2 — Duels & confrontations (face-à-face) */}
