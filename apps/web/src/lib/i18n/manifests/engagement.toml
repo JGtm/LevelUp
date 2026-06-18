@@ -99,8 +99,20 @@ fr = "Engagement equipe"
 en = "Team engagement"
 
 [engagement.squad.subtitle]
-fr = "Lobby, attendu, equipe observee — clic chip pour overlay un joueur"
-en = "Lobby, expected, observed team — click chip to overlay a player"
+fr = "Lobby, escouade attendue, escouade reelle — clic chip pour overlay un joueur"
+en = "Lobby, squad expected, squad actual — click chip to overlay a player"
+
+[engagement.squad.trace.lobby]
+fr = "Lobby"
+en = "Lobby"
+
+[engagement.squad.trace.expected]
+fr = "Escouade attendue"
+en = "Squad (expected)"
+
+[engagement.squad.trace.observed]
+fr = "Escouade reelle"
+en = "Squad (actual)"
 
 # ─── Timeseries intensity tab (sous-titre / granularite) ────────────────────
 

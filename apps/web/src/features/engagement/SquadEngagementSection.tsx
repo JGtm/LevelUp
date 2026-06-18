@@ -13,6 +13,9 @@ import {
 } from '@/features/squad/v2/SquadEngagementView'
 import { useSquadEngagementSession, type SquadTeammateEntry } from '@/features/engagement/queries'
 import type { SemanticToken } from '@/lib/accessibility'
+import { formatMessage } from '@/lib/i18n/format'
+import { engagementManifest } from '@/lib/i18n/generated/engagement'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 export interface SquadEngagementSectionProps {
   playerSlug: string
@@ -31,6 +34,7 @@ const COLOR_TOKENS: SemanticToken[] = [
 
 export function SquadEngagementSection(props: SquadEngagementSectionProps) {
   const { playerSlug, matchIds = [], teammates = [], colorByPlayer } = props
+  const locale = useAppShellStore((s) => s.locale)
   const query = useSquadEngagementSession(playerSlug, matchIds, teammates)
 
   const session: ViewSession = useMemo(() => {
@@ -60,6 +64,11 @@ export function SquadEngagementSection(props: SquadEngagementSectionProps) {
     <SquadEngagementView
       session={session}
       state={query.isLoading ? 'loading' : query.isError ? 'error' : 'ready'}
+      seriesLabels={{
+        lobby: formatMessage(engagementManifest, 'engagement.squad.trace.lobby', locale),
+        expected: formatMessage(engagementManifest, 'engagement.squad.trace.expected', locale),
+        observed: formatMessage(engagementManifest, 'engagement.squad.trace.observed', locale),
+      }}
     />
   )
 }

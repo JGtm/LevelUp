@@ -1,3 +1,18 @@
+## [2026-06-18] Escouade Engagement : relabel « équipe observée » → « Escouade réelle » (maps FR différé) — Complété (partiel)
+
+**Statut** : commit 5/5. `tsc`/`eslint`/vitest squad 242/242 ✓.
+
+**Déclencheur (user)** : « Revoir le graphe Engagement sur Escouade : c'est quoi "équipe observée" et les noms des maps pas résolu. Est-ce que le coef est bien calculé en post sync ? ».
+
+**Réponses / décisions** :
+- **« équipe observée »** = rythme réel moyen de l'escouade (per-player, joueur inclus depuis le commit pace_team). Relabel des 3 courbes via i18n (nouvelles clés `engagement.squad.trace.{lobby,expected,observed}`) : « Lobby / Escouade attendue / Escouade réelle » (FR), « Lobby / Squad (expected) / Squad (actual) » (EN). `SquadEngagementView` ne hardcode plus les noms (prop `seriesLabels`, passée localisée par `SquadEngagementSection`). Sous-titre manifest aligné.
+- **coef post-sync** : confirmé OK (diagnostic antérieur : JGtm/Madina ont bien leur coef PvP_unranked ; ranked vide = joueur ne joue pas classé, normal).
+- **noms de maps** : truncation front assouplie (9→14 car). **Résolution FR backend DIFFÉRÉE** : la requête `LoadMatchEngagementContext` fait `COALESCE(mr.map_name_fr, mr.map_name)` qui n'emprunte pas le pattern canonique `asset_translations` (cf. mémoire reference_asset_translations_fr + helper `applyMapFRTranslations` dans filters_repo.go). Diagnostic bloqué : shared/metadata DB tenue par `backfill-world.exe`. À faire quand DB libre : vérifier si `map_name_fr` est NULL (→ enrichir via asset_translations, mirroring applyMapFRTranslations) vs simple troncature.
+
+**Prochaine étape** : re-backfill engagement (--with-scores) + diagnostic maps quand `backfill-world.exe` relâche la shared DB.
+
+---
+
 ## [2026-06-18] Engagement Match View : message honnête (fin du « migration en cours » trompeur) — Complété
 
 **Statut** : commit 4/5. `go build`+tests handlers/service ✓, `tsc`/`eslint`/vitest engagement ✓.
