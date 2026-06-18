@@ -84,8 +84,10 @@ func newGateRouterSess(t *testing.T, gate go_sync.SyncGate, sess *domain.Session
 			next.ServeHTTP(w, req.WithContext(ctx))
 		})
 	})
-	r.Post("/sync/all", h.StartSyncAll)
-	r.Post("/players/{player_slug}/sync", h.StartDeltaSync)
+	h.MountInitialAndAll(r)
+	r.Route("/players/{player_slug}", func(r chi.Router) {
+		h.MountDelta(r)
+	})
 	return r, jobStore
 }
 
@@ -188,7 +190,7 @@ func TestStartSyncAll_CooldownDisabled_NoThrottle(t *testing.T) {
 			next.ServeHTTP(w, req.WithContext(middleware.InjectSession(req.Context(), sess)))
 		})
 	})
-	r.Post("/sync/all", h.StartSyncAll)
+	h.MountInitialAndAll(r)
 
 	for i := 0; i < 2; i++ {
 		w := httptest.NewRecorder()

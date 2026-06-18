@@ -907,8 +907,7 @@ func NewRouter(
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 			r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
-			r.Post("/sync/initial", syncH.StartInitialSync)
-			r.Post("/sync/all", syncH.StartSyncAll)
+			syncH.MountInitialAndAll(r) // POST /sync/initial, /sync/all (Huma)
 			// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types).
 			// Audit ownership 2026-06-08 (PR-A) : backfill lit player_slug dans le BODY
 			// (hors chokepoint /players/{slug}) → opération lourde sur un joueur arbitraire.
@@ -939,7 +938,7 @@ func NewRouter(
 		}
 
 		// Galerie médias — version de flux pour polling léger
-		r.Get("/media/feed-version", handlers.GetMediaFeedVersion)
+		handlers.NewMediaFeedVersionHandler().Mount(r) // GET /media/feed-version (Huma)
 
 		// Assets cache-aside unifiés (médailles, maps, battlepass, badges de défi).
 		// Couche d'abstraction DefaultResolver : local-first → API-fallback + DuckDB index.
@@ -1223,7 +1222,7 @@ func NewRouter(
 			leaderboard.Mount(r)
 
 			// Sync delta par joueur
-			r.Post("/sync", syncH.StartDeltaSync)
+			syncH.MountDelta(r) // POST /sync (Huma, sous /players/{player_slug})
 		})
 
 		// Endpoints P1 : répertoire gamertags

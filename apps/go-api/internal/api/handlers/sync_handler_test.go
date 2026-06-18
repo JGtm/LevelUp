@@ -49,7 +49,7 @@ func newSyncRouter(t *testing.T, canStart bool) (*chi.Mux, *jobs.Store) {
 
 	h := handlers.NewSyncHandler(cfg, settingsStore, jobStore, nil)
 	r := chi.NewRouter()
-	r.Post("/sync/initial", h.StartInitialSync)
+	h.MountInitialAndAll(r)
 	return r, jobStore
 }
 

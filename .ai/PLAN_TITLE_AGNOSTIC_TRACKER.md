@@ -148,7 +148,7 @@
 
 ## Hors fenêtre minimale (différé, tracké pour mémoire)
 
-- **Phase 3b — Huma** (17-25 j) : migre ~113 handlers chi → Huma, auto-génère `openapi.yaml` + client TS. **Absorbe PLAN_WEB_API_TYPES.** Démarre par le tag `phase-3b-start` + lint D13.
+- **Phase 3b — Huma** : ✅ **CONTRAT JSON MIGRÉ 2026-06-18 — 166 routes** (12 workflows ultracode, cf. thought_log + registre A PLAN_MULTITITRE_INDEX). Socle `internal/api/humacore` (factory + erreur writeError + format byte-identique writeJSON NaN-safe + `MarkRequestBodyOptional`), middleware imbriqué hérité (ownership/title/capability/NoStore/LoopbackOnly), toutes shapes prouvées (GET/POST body req+opt/201/202/204/PATCH/DELETE/erreur+header/cached-ETag/nil-guard). Reste sur chi **par conception** (~20 routes non-JSON : multipart, binaire, redirects OAuth, device-flow, CSV, home cached, SPA). **RESTE pour clore la phase** : bascule `openapi.yaml` manuel → généré par Huma + régén client TS (`generated.ts`) — implique de traiter les ~20 routes chi dans le spec (Huma raw/passthrough ou doc résiduelle) puis valider la parité. **Absorbe PLAN_WEB_API_TYPES.**
 - **Phase 4** — sync flags génériques (FieldKey-based) (5-6 j).
 - **Phase 5** — frontend canonical-aware + `<FeatureGate>` (7-9 j).
 - **Phase 1.8** — outillage diag Lab (3-4 j, différable même dans la fenêtre).

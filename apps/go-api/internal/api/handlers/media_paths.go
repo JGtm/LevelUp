@@ -3,12 +3,15 @@ package handlers
 import (
 	"context"
 	"log/slog"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/settings"
@@ -60,11 +63,36 @@ func BumpMediaFeedVersion() {
 	atomic.AddInt64(&mediaFeedVersion, 1)
 }
 
-// GetMediaFeedVersion retourne la version courante du flux médias.
-// GET /api/v1/media/feed-version
-func GetMediaFeedVersion(w http.ResponseWriter, _ *http.Request) {
+// MediaFeedVersionHandler expose GET /media/feed-version via Huma (Phase 3b).
+//
+// Sans état (la version vit dans le compteur atomique de package mediaFeedVersion).
+// Mount crée humacore.NewAPI(r) et reproduit EXACTEMENT le corps JSON et le statut
+// de l'ancienne GetMediaFeedVersion : 200 + {"version": <int64>} sérialisé via
+// JSONFormat (byte-identique à writeJSON).
+type MediaFeedVersionHandler struct{}
+
+// NewMediaFeedVersionHandler crée un MediaFeedVersionHandler.
+func NewMediaFeedVersionHandler() *MediaFeedVersionHandler {
+	return &MediaFeedVersionHandler{}
+}
+
+// Mount enregistre GET /media/feed-version via Huma sur le routeur chi fourni.
+func (h *MediaFeedVersionHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/media/feed-version", h.handleFeedVersion)
+}
+
+// mediaFeedVersionOutput : corps {"version": <int64>} — même forme que
+// map[string]int64{"version": v} de l'ancienne GetMediaFeedVersion.
+type mediaFeedVersionOutput struct {
+	Body map[string]int64
+}
+
+// handleFeedVersion lit le compteur atomique et renvoie {"version": <int64>}.
+// Pas de path/query/body : input *struct{}.
+func (h *MediaFeedVersionHandler) handleFeedVersion(_ context.Context, _ *struct{}) (*mediaFeedVersionOutput, error) {
 	v := atomic.LoadInt64(&mediaFeedVersion)
-	writeJSON(w, http.StatusOK, map[string]int64{"version": v})
+	return &mediaFeedVersionOutput{Body: map[string]int64{"version": v}}, nil
 }
 
 // filePathToURL transforme un chemin stocké en DB en URL servable via l'API.

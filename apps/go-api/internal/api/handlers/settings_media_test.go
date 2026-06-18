@@ -90,9 +90,7 @@ func newSettingsRouterWithIndexer(t *testing.T, indexer service.MediaIndexer) (*
 	h := handlers.NewSettingsHandlerWithIndexer(cfg, settingsStore, jobStore, indexer)
 
 	r := chi.NewRouter()
-	r.Get("/settings", h.GetSettings)
-	r.Patch("/settings", h.PatchSettings)
-	r.Post("/settings/media/reset-index", h.PostMediaResetIndex)
+	h.Mount(r)
 	return r, jobStore
 }
 
