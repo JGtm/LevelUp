@@ -87,7 +87,8 @@ WITH this_match AS (
     WHERE p.match_id = ?
       AND p.xuid != ?
       -- Bots exclus : pas d'historique cross-match pertinent (cf. Q23).
-      AND p.xuid NOT LIKE 'bid(%'
+      -- %% car ce template est désormais consommé via fmt.Sprintf (PMT-5).
+      AND p.xuid NOT LIKE 'bid(%%'
 ),
 my_team AS (
     SELECT team_id FROM match_participants
@@ -117,10 +118,10 @@ encounter_stats AS (
         eh.xuid,
         COUNT(DISTINCT CASE WHEN eh.is_ally_in_hist THEN eh.match_id END) AS ally_count,
         COUNT(DISTINCT CASE WHEN NOT eh.is_ally_in_hist THEN eh.match_id END) AS enemy_count,
-        COUNT(DISTINCT CASE WHEN eh.is_ally_in_hist AND eh.me_outcome = 2 THEN eh.match_id END) AS wins_as_ally,
-        COUNT(DISTINCT CASE WHEN eh.is_ally_in_hist AND eh.me_outcome = 3 THEN eh.match_id END) AS losses_as_ally,
-        COUNT(DISTINCT CASE WHEN NOT eh.is_ally_in_hist AND eh.me_outcome = 2 THEN eh.match_id END) AS wins_vs_enemy,
-        COUNT(DISTINCT CASE WHEN NOT eh.is_ally_in_hist AND eh.me_outcome = 3 THEN eh.match_id END) AS losses_vs_enemy,
+        COUNT(DISTINCT CASE WHEN eh.is_ally_in_hist AND %s THEN eh.match_id END) AS wins_as_ally,
+        COUNT(DISTINCT CASE WHEN eh.is_ally_in_hist AND %s THEN eh.match_id END) AS losses_as_ally,
+        COUNT(DISTINCT CASE WHEN NOT eh.is_ally_in_hist AND %s THEN eh.match_id END) AS wins_vs_enemy,
+        COUNT(DISTINCT CASE WHEN NOT eh.is_ally_in_hist AND %s THEN eh.match_id END) AS losses_vs_enemy,
         MAX(eh.hist_start_time) AS last_seen_at
     FROM encounter_history eh
     GROUP BY eh.xuid

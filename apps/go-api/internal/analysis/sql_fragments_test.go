@@ -16,12 +16,6 @@ func TestSQLFragments_StableStrings(t *testing.T) {
 	}{
 		{"SQLIsBot", SQLIsBot, "xuid LIKE 'bid(%'"},
 		{"SQLIsNotBot", SQLIsNotBot, "xuid NOT LIKE 'bid(%'"},
-		{"SQLIsWin", SQLIsWin, "outcome = 2"},
-		{
-			"SQLWinRateExpr",
-			SQLWinRateExpr,
-			"COALESCE(CAST(SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END) AS DOUBLE) / NULLIF(COUNT(*), 0), 0)",
-		},
 		{
 			"SQLKDRExpr",
 			SQLKDRExpr,

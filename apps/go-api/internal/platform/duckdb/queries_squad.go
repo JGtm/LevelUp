@@ -31,9 +31,9 @@ SELECT
     p2.xuid,
     COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p2.xuid, 4))) AS gamertag,
     COUNT(DISTINCT p1.match_id)                  AS games_together,
-    SUM(CASE WHEN p1.outcome = 2 THEN 1 ELSE 0 END) AS wins_together,
+    SUM(CASE WHEN %s THEN 1 ELSE 0 END) AS wins_together,
     ROUND(
-        SUM(CASE WHEN p1.outcome = 2 THEN 1 ELSE 0 END) * 100.0
+        SUM(CASE WHEN %s THEN 1 ELSE 0 END) * 100.0
         / NULLIF(COUNT(DISTINCT p1.match_id), 0), 1
     )                                            AS win_rate,
     COALESCE(AVG(CAST(p2.kills AS DOUBLE)), 0.0)  AS avg_kills,
@@ -253,7 +253,7 @@ SELECT
     COALESCE(r.map_name_fr, r.map_name, 'Unknown')    AS map_name,
     COALESCE(r.pair_name_fr, r.pair_name, 'Unknown')  AS mode_name,
     COUNT(DISTINCT p.match_id)                         AS match_count,
-    SUM(CASE WHEN p.outcome = 2 THEN 1 ELSE 0 END)    AS wins
+    SUM(CASE WHEN %s THEN 1 ELSE 0 END)    AS wins
 FROM match_participants p
 JOIN v_match_full r ON r.match_id = p.match_id
 WHERE p.xuid = ?
@@ -316,34 +316,7 @@ JOIN squad_matches sm       ON sm.match_id = mp.match_id
 WHERE mp.xuid = ?
   AND COALESCE(r.map_id, '') <> ''`
 
-// Q42MapStatsForSquadTemplate : taux de victoire et performance moyenne par carte
-// du joueur principal, restreint aux matchs où TOUS les xuids de l'escouade
-// sélectionnée sont participants. Aucun filtre temporel — c'est l'historique
-// complet "avec cette escouade exacte". Si le squad est composé d'un seul xuid
-// (uniquement le main = solo), retombe sur les stats solo+squad du main.
-//
-// Construit dynamiquement (fmt.Sprintf) car la clause IN dépend de la taille
-// du squad. Ne PAS utiliser directement — passer par squad_repo.LoadMapStatsForSquad().
-//
-// Paramètres positionnels :
-//   - autant de '?' que de xuids dans le squad (clause IN)
-//   - 1 '?' pour le main xuid (filtre des rows main)
-const Q42MapStatsForSquadTemplate = `
-WITH squad_matches AS (
-    SELECT match_id
-    FROM shared.match_participants
-    WHERE xuid IN (%s)
-    GROUP BY match_id
-    HAVING COUNT(DISTINCT xuid) = %d
-)
-SELECT COALESCE(r.map_id, '')                            AS map_id,
-       COUNT(*)                                           AS total,
-       SUM(CASE WHEN mp.outcome = 2 THEN 1 ELSE 0 END)   AS wins,
-       AVG(pme.performance_score)                         AS perf_avg
-FROM shared.match_participants mp
-JOIN shared.match_registry r       ON r.match_id = mp.match_id
-JOIN squad_matches sm              ON sm.match_id = mp.match_id
-LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id
-WHERE mp.xuid = ?
-  AND COALESCE(r.map_id, '') <> ''
-GROUP BY r.map_id`
+// Q42MapStatsForSquadTemplate (legacy non-shared) RETIRÉ (PMT-5 / dead-code) :
+// aucun consommateur — superseded par Q42MapStatsForSquadSharedTpl (ci-dessus,
+// chemin shared-DB actif). Son unique littéral `mp.outcome = 2` partait donc en
+// code mort ; supprimé pour ne laisser aucun littéral d'issue codé en dur.

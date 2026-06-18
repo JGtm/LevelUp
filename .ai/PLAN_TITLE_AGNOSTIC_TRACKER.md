@@ -163,7 +163,7 @@
 | PMT-2 | Acquisition auth par titre | MT-02 | blocker | ⬜ | racine |
 | PMT-3 | Scheduler/sync titleSlug threading | MT-11 | blocker | ⬜ | PMT-1/2 |
 | PMT-4 | Settings par titre + config Discord | MT-04, MT-26 | major | ⬜ | PMT-3 |
-| PMT-5 | Canonicalisation Outcome | MT-06 | major | 🟡 | Expand ✅ + **Contract Go COMPLET** (archlint rawOutcomeAllowlist VIDE) ; **infra SQL resolver + 1er repo livré 2026-06-18** : `SQLEqExpr` (4 issues), port `games.OutcomeResolver`+`SetDefaultOutcomeResolver` (miroir endpoints), helper `duckdb.outcomeSQLEq` (fallback littéral byte-identique Halo), `explorer_repo` wins/losses/draws migré + golden. **Reste** : ~8 repos SQL (compare_repo, match_history_repo, queries_career_encounters/match_detail, sql_fragments const) = même pattern golden-protégé, follow-up mécanique non bloquant |
+| PMT-5 | Canonicalisation Outcome | MT-06 | major | ✅ | **COMPLET 2026-06-18** : Contract Go (archlint rawOutcomeAllowlist VIDE) + infra SQL resolver (`SQLEqExpr` 4 issues, port `games.OutcomeResolver`+`SetDefaultOutcomeResolver`, helper `duckdb.outcomeSQLEq`/`outcomeSQLEqSlug`, fallback byte-identique Halo) + **TOUS les repos SQL migrés** (explorer, compare, match_history, career_encounters, match_detail, squad ×3 templates) + **dead consts retirés** (`SQLIsWin`/`SQLWinRateExpr`, `Q42MapStatsForSquadTemplate`). 0 littéral d'issue actif restant. Validé : duckdb `-tags integration` (67s) + archlint verts |
 | PMT-6 | Achievements par titre | MT-08 | major | ⬜ | PMT-1/2 |
 | PMT-7 | World-stats / leaderboard par titre | MT-03 | major | ⬜ | PMT-3 |
 | PMT-8 | Cycle de vie du titre (Status) | MT-22 | major | ✅ | branche `feat/multititre-peripherie` (cf27ff85f) |

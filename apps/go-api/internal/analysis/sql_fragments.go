@@ -29,21 +29,11 @@ const SQLIsBot = `xuid LIKE 'bid(%'`
 // double négation côté repository.
 const SQLIsNotBot = `xuid NOT LIKE 'bid(%'`
 
-// SQLIsWin est le prédicat SQL pour un match gagné. Aligné sur
-// domain.OutcomeWin == 2 (cf. internal/domain/outcomes.go).
-//
-// Usage : `SUM(CASE WHEN ` + SQLIsWin + ` THEN 1 ELSE 0 END) AS wins`
-const SQLIsWin = `outcome = 2`
-
-// SQLWinRateExpr est l'expression SQL canonique pour calculer un winrate
-// 0..1 (ratio, pas pourcent). Aligné sur analysis.WinRate (ADR 0006).
-//
-// Usage : `SELECT ` + SQLWinRateExpr + ` AS win_rate FROM ...`
-//
-// Renvoie 0 si aucun match (NULLIF + COALESCE).
-const SQLWinRateExpr = `COALESCE(` +
-	`CAST(SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END) AS DOUBLE) ` +
-	`/ NULLIF(COUNT(*), 0), 0)`
+// Note : les prédicats d'issue (win/loss/tie) NE sont PAS des fragments const
+// (ils dépendent du titre — MT-06 / PMT-5). Construire l'expression via le
+// resolver d'issues : `duckdb.outcomeSQLEq(ctx, col, canonical.OutcomeWin, "outcome = 2")`.
+// Les ex-const `SQLIsWin` / `SQLWinRateExpr` (codées en dur `outcome = 2`) ont été
+// retirées (0 consommateur) au profit de ce seam title-aware.
 
 // SQLKDRExpr est l'expression SQL canonique pour calculer un K/D ratio
 // agrégé (sum(kills)/max(1,sum(deaths))). Aligné sur analysis.KDR.

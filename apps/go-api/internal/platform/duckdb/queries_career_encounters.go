@@ -27,10 +27,10 @@ encounter_stats AS (
         COUNT(DISTINCT e.match_id) AS count_together,
         COUNT(DISTINCT CASE WHEN e.opp_team_id  = e.my_team_id THEN e.match_id END) AS ally_count,
         COUNT(DISTINCT CASE WHEN e.opp_team_id <> e.my_team_id THEN e.match_id END) AS enemy_count,
-        COUNT(DISTINCT CASE WHEN e.opp_team_id  = e.my_team_id AND e.my_outcome = 2 THEN e.match_id END) AS wins_as_ally,
-        COUNT(DISTINCT CASE WHEN e.opp_team_id  = e.my_team_id AND e.my_outcome = 3 THEN e.match_id END) AS losses_as_ally,
-        COUNT(DISTINCT CASE WHEN e.opp_team_id <> e.my_team_id AND e.my_outcome = 2 THEN e.match_id END) AS wins_vs_enemy,
-        COUNT(DISTINCT CASE WHEN e.opp_team_id <> e.my_team_id AND e.my_outcome = 3 THEN e.match_id END) AS losses_vs_enemy,
+        COUNT(DISTINCT CASE WHEN e.opp_team_id  = e.my_team_id AND %s THEN e.match_id END) AS wins_as_ally,
+        COUNT(DISTINCT CASE WHEN e.opp_team_id  = e.my_team_id AND %s THEN e.match_id END) AS losses_as_ally,
+        COUNT(DISTINCT CASE WHEN e.opp_team_id <> e.my_team_id AND %s THEN e.match_id END) AS wins_vs_enemy,
+        COUNT(DISTINCT CASE WHEN e.opp_team_id <> e.my_team_id AND %s THEN e.match_id END) AS losses_vs_enemy,
         MAX(e.start_time) AS last_seen_at
     FROM encounters e
     GROUP BY e.xuid

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -70,7 +71,9 @@ func (r *SquadRepo) LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]do
 	}
 	defer release()
 
-	rows, err := db.QueryContext(ctx, Q33SynthesisHeatmap, xuid)
+	// PMT-5 : win title-aware (fallback "p.outcome = 2" byte-identique Halo).
+	winExpr := outcomeSQLEq(ctx, "p.outcome", canonical.OutcomeWin, "p.outcome = 2")
+	rows, err := db.QueryContext(ctx, fmt.Sprintf(Q33SynthesisHeatmap, winExpr), xuid)
 	if err != nil {
 		return nil, fmt.Errorf("LoadSynthesisHeatmap: %w", err)
 	}

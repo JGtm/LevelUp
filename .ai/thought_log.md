@@ -1,3 +1,19 @@
+## [2026-06-18] PMT-5 — TOUS les repos SQL outcome migrés (100%) — Complété
+
+**Statut** : Complété. `go build` OK, `go vet` OK, archlint vert, **duckdb `-tags integration` (67s) vert** (les tests exécutent les vraies requêtes → valident l'ordre des args Sprintf des templates). Byte-identique Halo (le helper rend le littéral legacy).
+
+**Sites migrés** (tous les `outcome = N` SQL actifs → `outcomeSQLEq`/`outcomeSQLEqSlug`) :
+- `compare_repo` GetLocalStats (win, slug explicite) + GetEncounterStats (2× win ally/enemy).
+- `match_history_repo` LoadMapWinRates (win).
+- `career_repo_encounters` / `Q26CareerTopEncountersTpl` (win/loss ×2, %s threadés au consumer dans l'ordre win,loss,win,loss,excludeClause).
+- `match_view_repo_extras` / `Q23bMatchEncounterStats` (win/loss ×2 ; const→Sprintf, `'bid(%'`→`'bid(%%'` escapé).
+- `squad_repo` / `Q29TopTeammatesSharedTpl` (2× win + IN-list) ; `squad_repo_synthesis` / `Q33SynthesisHeatmap` (win, const→Sprintf).
+- **Dead-code retiré** : consts `SQLIsWin`/`SQLWinRateExpr` (0 consommateur) + `Q42MapStatsForSquadTemplate` (legacy non-shared sans consommateur).
+
+**Garantie** : 0 littéral d'issue codé en dur dans le code actif (vérifié grep) ; les seuls `outcome = N` restants sont des commentaires ou les chaînes de fallback legacy (intentionnelles, byte-identiques). Risque d'ordre des args Sprintf neutralisé par les tests d'intégration qui exécutent les requêtes.
+
+**Conclusion** : PMT-5 = 100%.
+
 ## [2026-06-18] Reliquats multi-titre (PMT-1/4/5) — investigation + slice PMT-5 outcome resolver — Complété
 
 **Statut** : Complété. `go build` (CGO) OK, `go vet` OK, archlint vert, tests neufs verts (mappings SQLEqExpr + duckdb outcomeSQLEq + explorer inchangé). **Byte-identique halo_infinite** (golden : l'expression SQL reste `outcome = 2/3/1`).
