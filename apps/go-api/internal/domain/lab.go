@@ -206,6 +206,14 @@ type LabDiagnosticsResponse struct {
 	MedalGuards      *LabMedalGuardsReport `json:"medal_guards,omitempty"`
 }
 
+// Segments Discovery UGC valides pour LabWaypointQuery.Segment (= halo.AssetType).
+const (
+	LabSegmentMap         = "map"
+	LabSegmentPlaylist    = "playlist"
+	LabSegmentPair        = "pair"
+	LabSegmentGameVariant = "game_variant"
+)
+
 // LabWaypointQuery paramètre une exploration live de l'API Discovery UGC depuis
 // le Lab (segment = AssetType : map | playlist | pair | game_variant).
 type LabWaypointQuery struct {

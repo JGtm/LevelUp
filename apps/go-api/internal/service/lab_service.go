@@ -80,7 +80,12 @@ func (s *LabService) GetDiagnostics(ctx context.Context) (*domain.LabDiagnostics
 
 // validLabSegments liste les AssetType acceptés par l'explorateur d'API (miroir
 // de halo.AssetTypeToEndpoint, sans dépendre du package halo dans ce service).
-var validLabSegments = map[string]bool{"map": true, "playlist": true, "pair": true, "game_variant": true}
+var validLabSegments = map[string]bool{
+	domain.LabSegmentMap:         true,
+	domain.LabSegmentPlaylist:    true,
+	domain.LabSegmentPair:        true,
+	domain.LabSegmentGameVariant: true,
+}
 
 // ExploreWaypoint exécute un appel live Discovery UGC pour un asset donné
 // (Lab). Valide la requête, puis délègue à l'explorateur injecté.
