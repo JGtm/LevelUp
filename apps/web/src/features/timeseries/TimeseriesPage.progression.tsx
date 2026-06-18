@@ -25,6 +25,7 @@ import {
 } from './TimeseriesSquadAdapted'
 import { EngagementTimeseriesSection } from '@/features/engagement/EngagementTimeseriesSection'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
 import { TimeseriesSkillProgression } from './TimeseriesSkillProgression'
 import type { FilterContextInput, TimeseriesPageResponse, ExplorerMatchRow } from '@/lib/api/types'
@@ -74,6 +75,13 @@ export function TimeseriesProgressionTab({
     [t],
   )
   const emptyMsg = t('timeseries.empty.no_data_description')
+  // Charts dépendant du rating de skill (CSR/LUSR) : masqués pour un titre sans
+  // système de rang. NO-OP halo_infinite (déclare 'ranked' + 'lusr'). RankScore
+  // (score + placement de match) reste générique. Les deux hooks sont appelés
+  // inconditionnellement (règles des hooks) avant la combinaison.
+  const hasRanked = useCapability('ranked')
+  const hasLusr = useCapability('lusr')
+  const hasSkillRating = hasRanked || hasLusr
   return (
     <div className="space-y-8">
       {/* timeseries.11 — Premier événement (gauche) | timeseries.14 — Par minute (droite) */}
@@ -121,11 +129,16 @@ export function TimeseriesProgressionTab({
         />
       </div>
 
-      {/* Progression CSR (classé) ou LUSR (non classé) — pleine largeur, avant le bloc rank+perf. */}
-      <TimeseriesSkillProgression rows={data.match_rows ?? []} locale={locale} emptyMessage={emptyMsg} />
+      {/* Progression CSR (classé) ou LUSR (non classé) — pleine largeur, avant le
+          bloc rank+perf. Masquée pour un titre sans système de rang (CSR/LUSR). */}
+      {hasSkillRating && (
+        <TimeseriesSkillProgression rows={data.match_rows ?? []} locale={locale} emptyMessage={emptyMsg} />
+      )}
 
-      {/* timeseries.19 (gauche) | Skill rank + Performance (droite) */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {/* timeseries.19 — Score & rang de match (générique : personal_score +
+          placement). | Skill rank + Performance (CSR/LUSR, masqué sans rang).
+          Sans rang, Score & rang passe pleine largeur (pas de colonne vide). */}
+      <div className={hasSkillRating ? 'grid grid-cols-1 gap-4 lg:grid-cols-2' : ''}>
         <TimeseriesRankScore
           title={t('timeseries.progression.rank_score_title')}
           emptyMessage={emptyMsg}
@@ -137,16 +150,18 @@ export function TimeseriesProgressionTab({
           }
         />
 
-        <TimeseriesSkillRankPerformance
-          title={t('timeseries.progression.rank_perf_title')}
-          emptyMessage={emptyMsg}
-          rows={data.match_rows ?? []}
-          ratingLabel={t('timeseries.progression.rank')}
-          perfLabel={
-            fieldMappings?.fields['performance_score']?.label ??
-            t('timeseries.summary.perf_label')
-          }
-        />
+        {hasSkillRating && (
+          <TimeseriesSkillRankPerformance
+            title={t('timeseries.progression.rank_perf_title')}
+            emptyMessage={emptyMsg}
+            rows={data.match_rows ?? []}
+            ratingLabel={t('timeseries.progression.rank')}
+            perfLabel={
+              fieldMappings?.fields['performance_score']?.label ??
+              t('timeseries.summary.perf_label')
+            }
+          />
+        )}
       </div>
 
       {/* Rendement & Résistance — pleine largeur. */}

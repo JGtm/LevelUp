@@ -11,6 +11,7 @@ import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { MultiSelectFilter, type MultiSelectOption } from './MultiSelectFilter'
 import { ExplorerMatchesTable } from './ExplorerMatchesTable'
 import { SaisonPill } from '@/components/shell/FilterOmnibar'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import type { ContextDescriptor, MatchFilterSpec } from '@/lib/match-nav/navContext'
 import type { ExplorerMatchesQueryResponse } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
@@ -145,6 +146,10 @@ function ExplorerFiltersBar({
   hasActiveFilter,
   onResetFilters,
 }: ExplorerMatchesModeProps) {
+  // Le filtre paliers de skill (CSR Halo Bronze→Onyx) est une surface 'ranked' :
+  // masqué pour un titre sans rang (NO-OP halo_infinite). Distinct du `disabled`
+  // existant, qui dépend du contexte playlist classée sélectionné.
+  const hasRanked = useCapability('ranked')
   return (
     <Card>
       <CardContent className="py-3 pt-3 space-y-3">
@@ -252,15 +257,17 @@ function ExplorerFiltersBar({
             placeholder={t('explorer.filters.perf_tier_label')}
             alwaysShow
           />
-          <MultiSelectFilter
-            options={skillTierOptions}
-            selected={skillTiers}
-            toggle={onToggleSkillTier}
-            placeholder={t('explorer.filters.skill_tier_label')}
-            alwaysShow
-            disabled={rankedContext === ''}
-            title={rankedContext === '' ? t('explorer.filters.skill_tier_disabled') : undefined}
-          />
+          {hasRanked && (
+            <MultiSelectFilter
+              options={skillTierOptions}
+              selected={skillTiers}
+              toggle={onToggleSkillTier}
+              placeholder={t('explorer.filters.skill_tier_label')}
+              alwaysShow
+              disabled={rankedContext === ''}
+              title={rankedContext === '' ? t('explorer.filters.skill_tier_disabled') : undefined}
+            />
+          )}
           {hasActiveFilter && (
             <button
               className="ml-auto text-xs text-primary hover:underline"
