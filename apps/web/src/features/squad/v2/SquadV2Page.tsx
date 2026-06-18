@@ -52,6 +52,7 @@ function useSquadV2Translator() {
 
 // SquadEngagementSection lazy-loaded pour eviter la cyclic deps avec @/features/squad
 import { SquadEngagementSection } from '@/features/engagement/SquadEngagementSection'
+import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 
 export function SquadV2Page({ playerSlug, teammates, period, experienceTypes, playlists, maps, modes }: SquadV2PageProps) {
   const t = useSquadV2Translator()
@@ -218,13 +219,15 @@ export function SquadV2Page({ playerSlug, teammates, period, experienceTypes, pl
         </section>
       )}
 
-      {/* Engagement equipe (Mock 15 v2) */}
-      <section data-testid="squad-v2-engagement">
-        <SquadEngagementSection
-          playerSlug={playerSlug}
-          teammates={teammates?.map((x) => ({ xuid: x, gamertag: x }))}
-        />
-      </section>
+      {/* Engagement equipe (Mock 15 v2) — gaté sur `engagement` */}
+      <FeatureGate capability="engagement">
+        <section data-testid="squad-v2-engagement">
+          <SquadEngagementSection
+            playerSlug={playerSlug}
+            teammates={teammates?.map((x) => ({ xuid: x, gamertag: x }))}
+          />
+        </section>
+      </FeatureGate>
 
       {/* Radar (S8) */}
       {charts?.radar && charts.radar.length > 0 && (

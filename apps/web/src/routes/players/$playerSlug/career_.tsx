@@ -12,6 +12,7 @@ import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import type { CareerPageResponse } from '@/lib/api/types'
 import { CareerHubPage } from '@/features/career/CareerHubPage'
+import { RouteCapabilityGate } from '@/lib/capabilities/RouteCapabilityGate'
 
 export const Route = createFileRoute('/players/$playerSlug/career_')({
   loader: ({ params, context }) => {
@@ -21,5 +22,9 @@ export const Route = createFileRoute('/players/$playerSlug/career_')({
         api.get<CareerPageResponse>(`/players/${params.playerSlug}/pages/career`),
     })
   },
-  component: CareerHubPage,
+  component: () => (
+    <RouteCapabilityGate capability="career">
+      <CareerHubPage />
+    </RouteCapabilityGate>
+  ),
 })

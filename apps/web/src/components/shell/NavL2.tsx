@@ -17,7 +17,11 @@ import { PeriodSessionRail } from './PeriodSessionRail'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { isCommunityPath } from './shellNavigation'
+
+// Onglet « Classements » de la section Communauté (gaté sur world.leaderboard).
+const COMMUNITY_LEADERBOARD_PATH = '/players/$playerSlug/palmares'
 
 // ─── Sous-onglets de la section Carrière ──────────────────────────────────────
 
@@ -104,6 +108,10 @@ export function NavL2() {
   const playerSlug = params.playerSlug ?? ''
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+  // Gating multi-titre (Phase 5) — hooks appelés inconditionnellement (avant tout
+  // early-return). NO-OP pour halo_infinite (déclare career + world.leaderboard).
+  const hasCareer = useCapability('career')
+  const hasWorldLeaderboard = useCapability('world.leaderboard')
 
   const section = detectSection(pathname)
   if (!section) return null
@@ -116,6 +124,8 @@ export function NavL2() {
 
   // Carrière & Communauté : barre d'onglets uniquement, pas de filtres analytiques.
   if (section === 'career') {
+    // Titre sans capability `career` : pas de barre (la page est gatée en amont).
+    if (!hasCareer) return null
     return (
       <NavTabBar
         tabs={CAREER_TABS}
@@ -127,9 +137,14 @@ export function NavL2() {
   }
 
   if (section === 'community') {
+    // Section transverse : on retire seulement l'onglet « Classements » si le titre
+    // ne déclare pas world.leaderboard (Relations / Face-à-face restent visibles).
+    const communityTabs = hasWorldLeaderboard
+      ? COMMUNITY_TABS
+      : COMMUNITY_TABS.filter((tab) => tab.path !== COMMUNITY_LEADERBOARD_PATH)
     return (
       <NavTabBar
-        tabs={COMMUNITY_TABS}
+        tabs={communityTabs}
         pathname={pathname}
         resolvePath={resolvePath}
         ariaLabel={t('common.shell.nav_community_aria')}

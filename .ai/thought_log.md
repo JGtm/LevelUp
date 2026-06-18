@@ -1,3 +1,26 @@
+## [2026-06-18] Phase 5 — câblage gating capability (nav + routes + sections) — Complété
+
+**Statut** : Complété. `tsc -b` propre, eslint **0 erreur** (69 warnings pré-existants hors fichiers touchés), **vitest 1902 pass / 14 skip** (suite complète, outside sandbox). NO-OP mono-titre (halo_infinite déclare les 11 capabilities). 26 fichiers (24 modifiés + 2 créés).
+
+**Méthode (2 workflows ultracode)** : (1) `phase5-capability-map` — 4 agents Explore cartographient les surfaces front → 99 gates bruts, MAIS désaccords (Ascension taguée `achievements`/`engagement`/`lusr` par 3 agents) + fichiers parfois inexistants. (2) `phase5-gate-reconcile` — **1 agent par capability** (perspective-diverse → zéro désaccord inter-agent), chacun **vérifie l'existence réelle** du fichier/symbole (`exists` flag) avant de recommander → **35 gates vérifiés**. Réconciliation manuelle dans le worktree (jamais confiance aveugle) au **granularité la plus fine suffisante**, sans double-gate des pages transverses.
+
+**Décisions tranchées** :
+- **Ascension = `lusr`** (résout le désaccord 3-agents) : l'agent `lusr`, lecture en profondeur, a établi que les 3 onglets (profil tier LUSR, leviers `lusr_components`, coaching) consomment tous `skill_rating`/`lusr_components`. Gate au niveau route (`AscensionLayout` via Outlet) + nav.
+- **firefight/forge = 0 gate** : firefight self-hide partout (engagement répond 422 `pve_not_supported`, synthèse agrège PvE correctement) ; aucune surface Forge dédiée front.
+- **Pages transverses NON gatées sur une capability partielle** : Home/CareerPage/MatchView/Squad/Timeseries restent montées (suivent `matchmaking`), on gate leurs SECTIONS. Évite de masquer du contenu transverse.
+- **Intra-composant** : `CareerRankingBlock` = colonne CSR gatée `ranked` / colonne LUSR gatée `lusr` (carte masquée si aucune des deux). `HomeSpartanIdentityBanner` = carte « Meilleur CSR » `ranked` / « Meilleur LUSR » `lusr` séparément.
+
+**Socle ajouté** ([apps/web/src/lib/capabilities/](../apps/web/src/lib/capabilities/)) : `useTitleCapabilities()` + `hasCapabilityIn()` (filtrer un tableau hors-hook, fail-open) ; `<RouteCapabilityGate capability>` (page non montée → pas de fetch si capability absente) ; `<FeatureUnavailable>` (placeholder gracieux FR/EN, sur `EmptyStateCard`).
+
+**Câblage** (tout NO-OP halo_infinite) :
+- **nav** : `L1Section.capability` + `L1Tab.capability` ; `NavL1` filtre `visibleSections` + replie le landing par défaut si l'onglet est gaté (desktop + drawer mobile via le même tableau) ; `NavL2` (career bar `career`, onglet Classements `world.leaderboard`). media→media, career→career, ascension→lusr, onglet Classements→world.leaderboard.
+- **route-page** (`<RouteCapabilityGate>`) : media, career_, citations, season-pass, palmares/index (world.leaderboard), ascension (lusr).
+- **section** : `AchievementsCareerSection`→achievements (CareerPage en `<FeatureGate>` + CareerProgressionTab via slot conditionnel pour replier la grille), `CareerLusrEvolutionChart`→lusr, bloc Médias match-view→media, 4 sites engagement (match-view + timeseries + squad×2 + session)→engagement, Home « Playlists récentes » (CSR)→ranked + repli de grille.
+
+**Reste Phase 5** : « canonical-aware labels » (libellés stats via field-mappings TOML) = **déjà en place** (`useFieldLabel`/`useOutcomeLabel`/`useAssetLabel`). Le gating capability était le vrai reliquat.
+
+**Conclusion / prochaine étape** : Phase 5 (volet gating, pilier fonctionnel « n'afficher que le dispo ») livrée + branche poussée. Trackers (INDEX registre A row 47, TRACKER Phase 5) à jour. Prochain axe master : registre B (bloquants 2e titre PMT-1/2/3) — hors data-path, non requis tant qu'un seul titre.
+
 ## [2026-06-18] Phase 5 — socle gating par capability (`useCapability` + `<FeatureGate>`) — Complété (fondation)
 
 **Statut** : Fondation livrée. `tsc -b` propre, eslint 0, **vitest 5/5** (outside sandbox). Pure frontend, **NO-OP mono-titre**.

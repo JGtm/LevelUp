@@ -39,6 +39,10 @@ describe('NavL1', () => {
       locale: 'fr',
       authMode: 'none',
       isAdmin: false,
+      // Baseline fail-open : titre courant introuvable dans availableTitles → toutes
+      // les sections visibles. Les tests de gating posent un titre partiel explicite.
+      currentTitleSlug: 'halo_infinite',
+      availableTitles: [],
     })
   })
 
@@ -130,5 +134,40 @@ describe('NavL1', () => {
     expect(
       coaching.compareDocumentPosition(realisations) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
+  })
+
+  // ─── Gating capabilities multi-titre (Phase 5) ────────────────────────────
+  // Le titre courant (halo_infinite par défaut) déclare toutes les capabilities
+  // → aucune section masquée. Un titre partiel masque les sections gatées.
+
+  function setPartialTitle(capabilities: string[]) {
+    useAppShellStore.setState({
+      currentTitleSlug: 'partial',
+      availableTitles: [
+        { slug: 'partial', name: 'Partial', status: 'active', capabilities, is_default: false },
+      ] as unknown as ReturnType<typeof useAppShellStore.getState>['availableTitles'],
+    })
+  }
+
+  it('masque Médias et Carrière pour un titre sans ces capabilities', () => {
+    setPartialTitle(['matchmaking', 'world.leaderboard'])
+
+    renderWithProviders(<NavL1 />)
+
+    expect(screen.queryByRole('link', { name: 'Médias' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Carrière' })).not.toBeInTheDocument()
+    // Sections transverses toujours présentes (non gatées).
+    expect(screen.getByRole('link', { name: 'Accueil' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Communauté' })).toBeInTheDocument()
+  })
+
+  it('masque Ascension pour un titre sans capability lusr', () => {
+    setPartialTitle(['matchmaking', 'career', 'media'])
+
+    renderWithProviders(<NavL1 />)
+
+    expect(screen.queryByRole('link', { name: 'Ascension' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Carrière' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Médias' })).toBeInTheDocument()
   })
 })

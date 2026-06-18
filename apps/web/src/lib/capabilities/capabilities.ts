@@ -46,3 +46,32 @@ export function useCapability(capability: TitleCapability): boolean {
     return title.capabilities.includes(capability)
   })
 }
+
+/**
+ * useTitleCapabilities — liste brute des capabilities du titre courant, ou `null`
+ * si le bootstrap n'est pas (encore) chargé / titre introuvable (fail-open).
+ *
+ * À utiliser pour FILTRER un tableau (ex: sections de nav) : on lit la liste UNE
+ * fois puis on filtre en JS via {@link hasCapabilityIn}, au lieu d'appeler
+ * `useCapability` dans une boucle (interdit par les règles des hooks). Retourne la
+ * référence stable du store → pas de re-render superflu.
+ */
+export function useTitleCapabilities(): readonly string[] | null {
+  return useAppShellStore((s) => {
+    const title = s.availableTitles.find((t) => t.slug === s.currentTitleSlug)
+    return title ? title.capabilities : null
+  })
+}
+
+/**
+ * hasCapabilityIn — prédicat pur, miroir hors-hook de {@link useCapability}.
+ * `caps === null` (bootstrap non chargé / titre inconnu) ⇒ `true` (fail-open).
+ * Combiner avec {@link useTitleCapabilities} pour filtrer une liste sans hook.
+ */
+export function hasCapabilityIn(
+  caps: readonly string[] | null,
+  capability: TitleCapability,
+): boolean {
+  if (caps == null) return true
+  return caps.includes(capability)
+}

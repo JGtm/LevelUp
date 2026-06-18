@@ -6,6 +6,7 @@
  */
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import type { HomeSkillPeakSummary, HomeSpartanIdentity } from '@/lib/api/types'
 import { getSpartanIdentityText } from './spartanIdentity.i18n'
 import { HomeSkillPeakCard, resolveSkillPeakState } from './HomeSkillPeakCard'
@@ -46,6 +47,11 @@ export function HomeSpartanIdentityBanner({
   const hasAnySkillHistory = hasRankedHistory || hasUnrankedHistory
   const csrState = resolveSkillPeakState(highestCSR, hasRankedHistory, 'ranked')
   const lusrState = resolveSkillPeakState(highestLUSR, hasUnrankedHistory, 'unranked')
+
+  // Gating multi-titre (Phase 5) : carte « Meilleur CSR » ⇒ `ranked`, carte
+  // « Meilleur LUSR » ⇒ `lusr`. NO-OP pour halo_infinite (déclare les deux).
+  const hasRankedCap = useCapability('ranked')
+  const hasLusrCap = useCapability('lusr')
 
   const emptySkillPanelTitle = hasPrivacyWarning
     ? spartanText.emptyPanel.titleUnavailable
@@ -190,7 +196,9 @@ export function HomeSpartanIdentityBanner({
         data-testid="home-skill-peaks-panel"
         className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 lg:auto-rows-fr"
       >
-        {!highestCSR && !highestLUSR && !hasAnySkillHistory ? (
+        {!hasRankedCap && !hasLusrCap ? null : !highestCSR &&
+          !highestLUSR &&
+          !hasAnySkillHistory ? (
           <div
             data-testid="home-skill-peaks-empty"
             className="rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-4 text-foreground shadow-[0_12px_30px_rgba(8,15,28,0.2)]"
@@ -200,22 +208,26 @@ export function HomeSpartanIdentityBanner({
           </div>
         ) : (
           <>
-            <HomeSkillPeakCard
-              label={labels.highestCsr}
-              peak={highestCSR}
-              numberLocale={numberLocale}
-              testIdPrefix="home-highest-csr"
-              state={csrState.state}
-              detail={csrState.detail}
-            />
-            <HomeSkillPeakCard
-              label={labels.highestLusr}
-              peak={highestLUSR}
-              numberLocale={numberLocale}
-              testIdPrefix="home-highest-lusr"
-              state={lusrState.state}
-              detail={lusrState.detail}
-            />
+            {hasRankedCap && (
+              <HomeSkillPeakCard
+                label={labels.highestCsr}
+                peak={highestCSR}
+                numberLocale={numberLocale}
+                testIdPrefix="home-highest-csr"
+                state={csrState.state}
+                detail={csrState.detail}
+              />
+            )}
+            {hasLusrCap && (
+              <HomeSkillPeakCard
+                label={labels.highestLusr}
+                peak={highestLUSR}
+                numberLocale={numberLocale}
+                testIdPrefix="home-highest-lusr"
+                state={lusrState.state}
+                detail={lusrState.detail}
+              />
+            )}
           </>
         )}
       </div>

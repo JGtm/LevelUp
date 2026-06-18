@@ -1,2 +1,10 @@
 export { FeatureGate } from './FeatureGate'
-export { TITLE_CAPABILITIES, useCapability, type TitleCapability } from './capabilities'
+export { FeatureUnavailable } from './FeatureUnavailable'
+export { RouteCapabilityGate } from './RouteCapabilityGate'
+export {
+  TITLE_CAPABILITIES,
+  useCapability,
+  useTitleCapabilities,
+  hasCapabilityIn,
+  type TitleCapability,
+} from './capabilities'

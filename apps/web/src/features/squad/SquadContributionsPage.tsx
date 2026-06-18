@@ -23,6 +23,7 @@ import { SquadPerformanceCharts } from './SquadPerformanceCharts'
 import { SquadWeaponKillsChart } from './SquadWeaponKillsChart'
 import { SquadFirstEventsChart } from './SquadFirstEventsChart'
 import { SquadEngagementSection } from '@/features/engagement/SquadEngagementSection'
+import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import type { SquadTeammateEntry } from '@/features/engagement/queries'
 import { getSquadPlayerColors } from './colors'
 
@@ -164,12 +165,14 @@ export function SquadContributionsPage() {
         colorByPlayer={playerColors}
       />
 
-      <SquadEngagementSection
-        playerSlug={playerSlug}
-        matchIds={engagementMatchIds}
-        teammates={engagementTeammates}
-        colorByPlayer={playerColors}
-      />
+      <FeatureGate capability="engagement">
+        <SquadEngagementSection
+          playerSlug={playerSlug}
+          matchIds={engagementMatchIds}
+          teammates={engagementTeammates}
+          colorByPlayer={playerColors}
+        />
+      </FeatureGate>
 
       <SquadFirstEventsChart
         title={t.firstEvents.title}

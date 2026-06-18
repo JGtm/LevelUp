@@ -20,6 +20,7 @@ import type {
 import { CareerRankGaugeChart, CareerHeroGaugeChart } from './CareerChartsSection.gauges'
 import { CareerXpHistoryChart } from './CareerChartsSection.xpHistory'
 import { CareerLusrEvolutionChart } from './CareerChartsSection.lusrEvolution'
+import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 
 export interface CareerChartsSectionProps {
   xpHistory: CareerHistoryPoint[]
@@ -71,16 +72,22 @@ export function CareerChartsSection({
         )}
       </div>
 
-      {/* career.04 — Évolution LUSR / CSR, optionnellement avec Classements à gauche */}
+      {/* career.04 — Évolution LUSR / CSR, optionnellement avec Classements à gauche.
+          Graphe LUSR gaté sur `lusr` ; le slot gauche (CareerRankingBlock, gating
+          CSR/LUSR interne) reste affiché pour un titre `ranked` sans `lusr`. */}
       {lusrLeftSlot ? (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[0.9fr_2fr]">
           <div className="min-w-0 h-full">{lusrLeftSlot}</div>
           <div className="min-w-0">
-            <CareerLusrEvolutionChart lusrCheckpoints={lusrCheckpoints} locale={locale} />
+            <FeatureGate capability="lusr">
+              <CareerLusrEvolutionChart lusrCheckpoints={lusrCheckpoints} locale={locale} />
+            </FeatureGate>
           </div>
         </div>
       ) : (
-        <CareerLusrEvolutionChart lusrCheckpoints={lusrCheckpoints} locale={locale} />
+        <FeatureGate capability="lusr">
+          <CareerLusrEvolutionChart lusrCheckpoints={lusrCheckpoints} locale={locale} />
+        </FeatureGate>
       )}
     </div>
   )
