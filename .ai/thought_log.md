@@ -1,3 +1,22 @@
+## [2026-06-18] Phase 3b — bascule openapi.yaml généré : INVESTIGUÉE → bloquant architectural, descopée (route-migration close)
+
+**Statut** : Investigation conclue. La bascule `openapi.yaml` manuel → **généré par Huma** (dernier jalon nominal de 3b) est **NON réalisable proprement** avec l'architecture actuelle (multi-instances, qui est le bon choix pour le middleware). Décision : **descoper la bascule**, déclarer la **migration des routes COMPLÈTE** (166 routes, contract_test vert = parité route garantie). Rien committé côté prod (pas de refactor risqué).
+
+**Faits établis (vérifiés)** :
+1. **~133 instances `humacore.NewAPI`** (une par sous-groupe middleware : top-level, player, chaque groupe capability, admin, watcher, NoStore-wrappers, etc.). Il n'existe **aucune** OpenAPI unifiée — chaque instance a la sienne.
+2. **Chemins RELATIFS** (vérifié empiriquement, `TestSpecPathRelative` jetable) : Huma enregistre `op.Path` = le chemin passé à `huma.Get` (ex. `/pages/probe`), **PAS** le chemin chi complet (`/api/v1/players/{player_slug}/pages/probe`) — Huma ignore l'arbre de montage chi. Un spec mergé aurait donc des **chemins faux** (préfixes manquants), non reconstructibles proprement.
+3. `Components.Schemas` est un **`Registry`** (interface huma avec son namespace `$ref` propre) → merger 133 registries = réconciliation + risque de collisions (types homonymes inter-packages).
+4. **~20 routes non-JSON** (multipart/binaire/redirects/CSV/SPA/device-flow) absentes de toute spec Huma.
+5. `contract_test` (le filet de sécurité) est couplé au YAML **manuel** + ce YAML porte des descriptions riches que Huma ne reproduit pas.
+
+**Pourquoi descoper plutôt que forcer** : obtenir un openapi.yaml généré correct exigerait de **ré-architecturer** vers une **API Huma unique avec chemins COMPLETS + middleware ré-appliqué par route/groupe à la main** — gros refactor qui SACRIFIE l'héritage de middleware propre (ownership/title/capability/NoStore/LoopbackOnly) construit pendant la migration. **Coût élevé, valeur faible** : le YAML manuel fonctionne et est gardé par contract_test (parité route des 166 déjà prouvée) ; `generated.ts` a **0 importeur** (le front consomme `types.ts`) → la « dérive » que la génération devait éliminer n'a pas d'impact réel.
+
+**Recommandation** : garder le YAML manuel comme source de vérité (gardé par contract_test). Si un jour la génération est souhaitée, c'est un **projet d'archi dédié** (single-API full-path + middleware manuel), à arbitrer explicitement (tradeoff middleware-inheritance vs spec auto). Tracé dans les 2 registres.
+
+**Phase 3b — CLÔTURÉE au niveau migration** : 166 routes JSON sur Huma, socle humacore, toutes shapes prouvées, contract_test vert. La bascule openapi.yaml est descopée (bloquant archi documenté).
+
+**Conclusion / prochaine étape** : aucune action prod sur la bascule. Phase 3b route-migration = livrée + poussée. Décision de la bascule = arbitrage produit/archi à part. Pas de PR.
+
 ## [2026-06-18] Phase 3b — reliquat sync + media-feed migrés ; import reste chi (multipart) — Complété + trackers
 
 **Statut** : Complété. Workflow `huma-tail-d-sync` (3 agents). SyncHandler (3 routes) + MediaFeedVersionHandler migrés ; OpenSpartanImport **non migré** (revert — voir ci-dessous). Build/gofmt/vet OK, **goldens sync (test+gate+align) + media-feed + settings verts**, `internal/api` (contract) vert. 4 routes. Cumul = **166 routes**.
