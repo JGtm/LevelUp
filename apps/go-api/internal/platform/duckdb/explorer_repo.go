@@ -14,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 )
 
 // ExplorerRepo implémente port.ExplorerRepository sur DuckDB.
@@ -99,14 +100,19 @@ func (r *ExplorerRepo) GetParticipantStatsForMatches(
 		return nil, nil
 	}
 	placeholders := strings.TrimRight(strings.Repeat("?,", len(matchIDs)), ",")
+	// PMT-5 / MT-06 : agrégats wins/losses/draws title-aware via le resolver d'issues
+	// (fallback littéral Halo byte-identique si non câblé / titre sans raw_code).
+	winExpr := outcomeSQLEq(ctx, "outcome", canonical.OutcomeWin, "outcome = 2")
+	lossExpr := outcomeSQLEq(ctx, "outcome", canonical.OutcomeLoss, "outcome = 3")
+	drawExpr := outcomeSQLEq(ctx, "outcome", canonical.OutcomeTie, "outcome = 1")
 	q := fmt.Sprintf(`
 		SELECT
 			COALESCE(SUM(kills), 0)               AS kills,
 			COALESCE(SUM(deaths), 0)              AS deaths,
 			COALESCE(SUM(assists), 0)             AS assists,
-			COALESCE(SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END), 0) AS wins,
-			COALESCE(SUM(CASE WHEN outcome = 3 THEN 1 ELSE 0 END), 0) AS losses,
-			COALESCE(SUM(CASE WHEN outcome = 1 THEN 1 ELSE 0 END), 0) AS draws,
+			COALESCE(SUM(CASE WHEN %s THEN 1 ELSE 0 END), 0) AS wins,
+			COALESCE(SUM(CASE WHEN %s THEN 1 ELSE 0 END), 0) AS losses,
+			COALESCE(SUM(CASE WHEN %s THEN 1 ELSE 0 END), 0) AS draws,
 			COALESCE(SUM(shots_fired), 0)         AS shots_fired,
 			COALESCE(SUM(shots_hit), 0)           AS shots_hit,
 			COALESCE(SUM(damage_dealt), 0.0)      AS damage_dealt,
@@ -119,7 +125,7 @@ func (r *ExplorerRepo) GetParticipantStatsForMatches(
 			COALESCE(SUM(personal_score), 0)      AS personal_score
 		FROM match_participants
 		WHERE xuid = ? AND match_id IN (%s)
-	`, placeholders)
+	`, winExpr, lossExpr, drawExpr, placeholders)
 
 	args := make([]any, 0, 1+len(matchIDs))
 	args = append(args, xuid)
