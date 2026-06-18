@@ -1,0 +1,42 @@
+# config/titles/synthetic_title_b/title.toml
+#
+# Manifest du titre (MT-16 / day-one 2e titre). Découvert au boot par
+# title.LoadTitlesIntoRegistry → enregistré dans le registre partagé.
+#
+# SQUELETTE 2e titre COMPLET (« même niveau d'information que Halo ») : déclare les
+# 11 capabilities + porte tous les fichiers de config (mappings, constants,
+# capabilities, auth) pour minimiser le travail quand un vrai 2e titre arrivera.
+#
+# status = "coming_soon" : le titre est DÉCOUVERT + listé dans le switcher (badge
+# « bientôt »), mais N'EST PAS servi (RequireActiveTitle → 503) ni provisionné au
+# boot (provisionAdditionalActiveTitles n'itère que les titres actifs). Pour
+# l'activer réellement : (1) passer status="active", (2) enregistrer le DataAdapter
+# de prod (internal/games/synthetic_title_b), (3) implémenter ses méthodes Load*
+# contre la vraie source de données. La plomberie (registre, provisioning DB,
+# hosts, auth, gating front) est déjà en place et byte-identique pour halo_infinite.
+
+[meta]
+title_slug = "synthetic_title_b"
+schema_version = 1
+
+[title]
+name = "Synthetic Title B"
+provider = "synthetic"
+status = "coming_soon"
+icon_url = ""
+xbox_title_id = "999000111"
+steam_app_id = ""
+# Même niveau d'information que Halo : les 11 capabilities produit déclarées.
+capabilities = [
+  "matchmaking",
+  "firefight",
+  "forge",
+  "media",
+  "ranked",
+  "career",
+  "asset.images",
+  "achievements",
+  "engagement",
+  "lusr",
+  "world.leaderboard",
+]

@@ -1,0 +1,21 @@
+# config/titles/synthetic_title_b/auth.toml
+#
+# Descripteur d'acquisition auth du squelette 2e titre (MT-02 / PMT-2). Chargé par
+# title.LoadAuthDescriptor → la chaîne d'échange de tokens route ces valeurs
+# DISTINCTES d'Halo (audience XSTS, spartan, clearance, SISU). Valeurs fictives :
+# ce titre n'est pas authentifié (coming_soon). Pour un vrai 2e titre, remplacer
+# par ses vraies valeurs Xbox/services.
+
+[meta]
+title_slug     = "synthetic_title_b"
+schema_version = 1
+
+[auth]
+xsts_audience           = "https://prod.xsts.synthetic.example.test/"
+spartan_audience        = "urn:synthetic:s1:services"
+spartan_token_url       = "https://settings.synthetic.example.test/spartan-token"
+clearance_url           = "https://settings.synthetic.example.test/oban/flight-configurations/titles/synthb/audiences/RETAIL/active"
+sisu_app_id             = "000000004c20b909"
+sisu_title_id           = "999000111"
+xbox_live_relying_party = "http://xboxlive.com"
+oauth_scopes            = ["Xboxlive.signin", "Xboxlive.offline_access"]

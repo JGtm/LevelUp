@@ -1,0 +1,23 @@
+# config/titles/synthetic_title_b/mappings/capabilities.toml
+#
+# Capabilities produit FINES (CapabilityKey canoniques, cf. internal/games/adapter.go)
+# du squelette 2e titre. « Même niveau d'information que Halo » → toutes supported.
+# Lu au boot par loader_capabilities.go + exposé via Registry.GetCapabilities.
+#
+# Valeurs admises : "supported" | "degraded" | "not_exposed".
+# Toute modification breaking incrémente schema_version.
+
+[meta]
+title_slug     = "synthetic_title_b"
+schema_version = 1
+
+[capabilities]
+"match.history"          = "supported"
+"match.detail.core"      = "supported"
+"match.skill.snapshot"   = "supported"
+"career.progression"     = "supported"
+"pve.firefight_stats"    = "supported"
+"analytics.timeseries"   = "supported"
+"match.scoreboard.extra" = "supported"
+"citations.engine"       = "supported"
+"engagement.score"       = "supported"

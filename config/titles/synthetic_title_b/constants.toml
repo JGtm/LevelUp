@@ -1,0 +1,23 @@
+# config/titles/synthetic_title_b/constants.toml
+#
+# Constantes title-specific du squelette 2e titre. Découvert au boot par
+# mappings.Registry.LoadFromConfigDir → section [endpoints] consommée par
+# l'EndpointResolver (MT-01 / PMT-1). Hosts DISTINCTS (example.test) : prouvent que
+# le seam route VRAIMENT différemment d'Halo (oracle b). Pour un vrai 2e titre,
+# remplacer par ses hosts d'ingestion réels.
+
+[meta]
+title_slug = "synthetic_title_b"
+schema_version = 1
+
+# Hosts d'ingestion API par axe (MT-01 / PMT-1). 8 clés, miroir de la structure
+# Halo. Valeurs fictives (example.test) : ce titre n'est pas servi (coming_soon).
+[endpoints]
+stats         = "https://stats.synthetic.example.test:443"
+gamecms       = "https://gamecms.synthetic.example.test"
+economy       = "https://economy.synthetic.example.test"
+skill         = "https://skill.synthetic.example.test:443"
+ugc_film      = "https://ugc.synthetic.example.test"
+discovery_ugc = "https://discovery.synthetic.example.test"
+challenges    = "https://challenges.synthetic.example.test"
+nameplate     = "https://nameplate.synthetic.example.test"
