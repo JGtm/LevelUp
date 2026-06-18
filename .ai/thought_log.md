@@ -1,3 +1,15 @@
+## [2026-06-18] Switcher de titre livré + Lever A aire bootstrap + Lever B lancé — En cours
+
+**Statut** : switcher Complété ; Lever A aire 1 Complété ; Lever B (générateur openapi) en investigation.
+
+**Switcher (PMT-8/MT-22)** : `components/shell/TitleSwitcher.tsx` posé dans le menu Paramètres NavL1 (avant le toggle thème, placement demandé par l'utilisateur). NO-OP mono-titre (null si <2 titres) ; apparaît dès un 2e titre ; `coming_soon` listé désactivé « Bientôt disponible » (validé : montrer pour prouver UI+back). Branche la plomberie existante (`switchTitle`/`buildTitleSwitcherEntries`). i18n FR/EN (common.shell.nav_game + title_coming_soon, manifest régénéré). Test 5 cas. typecheck/eslint/vitest verts. Committé+poussé.
+
+**Lever A — aire bootstrap (migration types.ts→generated.ts)** : le schéma `openapi.yaml BootstrapResponse` était sous-spécifié vs `domain.BootstrapResponse` (réponse réelle). 12 champs ajoutés + `required` corrigé sur les tags JSON non-omitempty. Régénéré generated.ts + gen/types.gen.go ; `BootstrapResponse` shimé. **Oracle tsc -b VERT côté prod** (réconciliation exacte) ; seuls les fixtures de test complétés. Go build + contracttest verts. Committé.
+
+**Lever B — PIVOT découvert (vérifié grep)** : les handlers Huma migrés utilisent des **OUTPUTS TYPÉS** (ex `bootstrapOutput struct{ Body *domain.BootstrapResponse }`) → Huma **auto-dérive** le schéma OpenAPI du struct Go par réflexion (= exactement le schéma réconcilié à la main pour BootstrapResponse). Ratio **63 handlers typés / 24 RawBody**. Conséquence : **agréger les `Components.Schemas` des instances Huma reconstruit le contrat de types AUTOMATIQUEMENT** → rend la réconciliation manuelle de Lever A largement obsolète. L'investigation précédente (« re-archi complète ») se focalisait sur les PATHS (durs) ; la valeur pour les types front est dans les SCHÉMAS (auto-dérivables, faciles). Workflow de feasabilité + prototype lancé.
+
+**Prochaine étape** : implémenter le générateur de schémas (Lever B) selon le design du workflow ; s'il marche, Lever A = régénérer + shimer (mécanique).
+
 ## [2026-06-18] Audit UI multi-titre vérifié + gating Explorer/Timeseries — Complété (partiel : switcher reste)
 
 **Statut** : Complété pour les 2 trous de gating. typecheck + eslint + vitest **1902 pass / 14 skip** (baseline inchangée). Switcher = design proposé, pas codé.
