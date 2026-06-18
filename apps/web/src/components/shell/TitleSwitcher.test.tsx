@@ -1,0 +1,85 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+
+import { TitleSwitcher } from './TitleSwitcher'
+import { useAppShellStore } from '@/stores/appShellStore'
+
+const HALO = {
+  slug: 'halo_infinite',
+  name: 'Halo Infinite',
+  status: 'active' as const,
+  capabilities: [],
+  is_default: true,
+}
+const SOON = {
+  slug: 'halo_mcc',
+  name: 'Halo MCC',
+  status: 'coming_soon' as const,
+  capabilities: [],
+  is_default: false,
+}
+const OTHER = {
+  slug: 'halo_3',
+  name: 'Halo 3',
+  status: 'active' as const,
+  capabilities: [],
+  is_default: false,
+}
+
+describe('TitleSwitcher (PMT-8 / MT-22)', () => {
+  beforeEach(() => {
+    useAppShellStore.setState({ locale: 'fr', isTitleSwitching: false })
+  })
+  afterEach(() => cleanup())
+
+  it('NO-OP mono-titre : ne rend rien avec moins de 2 titres', () => {
+    useAppShellStore.setState({ availableTitles: [HALO], currentTitleSlug: 'halo_infinite' })
+    const { container } = render(<TitleSwitcher />)
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('liste les titres ; coming_soon désactivé + « Bientôt disponible »', () => {
+    useAppShellStore.setState({ availableTitles: [HALO, SOON], currentTitleSlug: 'halo_infinite' })
+    render(<TitleSwitcher />)
+    expect(screen.getByText('Halo Infinite')).toBeInTheDocument()
+    expect(screen.getByText('Halo MCC')).toBeInTheDocument()
+    expect(screen.getByText('Bientôt disponible')).toBeInTheDocument()
+    expect(screen.getByRole('menuitemradio', { name: /Halo MCC/ })).toBeDisabled()
+  })
+
+  it('clic sur coming_soon ne déclenche PAS switchTitle', () => {
+    const switchTitle = vi.fn().mockResolvedValue(undefined)
+    useAppShellStore.setState({
+      availableTitles: [HALO, SOON],
+      currentTitleSlug: 'halo_infinite',
+      switchTitle,
+    })
+    render(<TitleSwitcher />)
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /Halo MCC/ }))
+    expect(switchTitle).not.toHaveBeenCalled()
+  })
+
+  it('clic sur un titre actif non courant déclenche switchTitle', () => {
+    const switchTitle = vi.fn().mockResolvedValue(undefined)
+    useAppShellStore.setState({
+      availableTitles: [HALO, OTHER],
+      currentTitleSlug: 'halo_infinite',
+      switchTitle,
+    })
+    render(<TitleSwitcher />)
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Halo 3' }))
+    expect(switchTitle).toHaveBeenCalledWith('halo_3')
+  })
+
+  it('clic sur le titre courant ne déclenche pas switchTitle', () => {
+    const switchTitle = vi.fn().mockResolvedValue(undefined)
+    useAppShellStore.setState({
+      availableTitles: [HALO, OTHER],
+      currentTitleSlug: 'halo_infinite',
+      switchTitle,
+    })
+    render(<TitleSwitcher />)
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Halo Infinite' }))
+    expect(switchTitle).not.toHaveBeenCalled()
+  })
+})

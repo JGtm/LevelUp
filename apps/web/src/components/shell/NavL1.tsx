@@ -11,6 +11,7 @@ import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useRef, useEffect, useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { ThemeToggle } from './ThemeToggle'
+import { TitleSwitcher } from './TitleSwitcher'
 import { buildPlayerDestination } from './shellNavigation'
 import { HelpSplitButton } from './HelpSplitButton'
 import { LogoutButton } from './LogoutButton'
@@ -191,6 +192,9 @@ function SettingsSplitButton({ tabs, isActive, isAdmin }: SettingsSplitButtonPro
           role="menu"
           className="absolute right-0 top-full mt-1 z-50 min-w-[12rem] rounded-md border border-border bg-popover py-1 shadow-lg"
         >
+          {/* Sélecteur de jeu (titre) — NO-OP mono-titre, apparaît dès qu'un 2e
+              titre est configuré (PMT-8/MT-22). Placé avant le toggle de thème. */}
+          <TitleSwitcher onSwitched={() => setOpen(false)} />
           <div className="flex items-center justify-between gap-4 px-3 py-1.5">
             <span className="text-sm text-popover-foreground">Thème</span>
             <ThemeToggle variant="menu" />

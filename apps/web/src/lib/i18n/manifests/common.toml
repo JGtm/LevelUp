@@ -161,6 +161,14 @@ en = "Settings"
 fr = "Thème"
 en = "Theme"
 
+[common.shell.nav_game]
+fr = "Jeu"
+en = "Game"
+
+[common.shell.title_coming_soon]
+fr = "Bientôt disponible"
+en = "Coming soon"
+
 [common.shell.nav_career_aria]
 fr = "Navigation carrière"
 en = "Career navigation"

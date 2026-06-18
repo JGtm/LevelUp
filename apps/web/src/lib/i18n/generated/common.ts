@@ -334,6 +334,7 @@ export const commonManifest = {
   "common.shell.nav_analytics_aria": { fr: "Navigation analytique", en: "Analytics navigation" },
   "common.shell.nav_career_aria": { fr: "Navigation carrière", en: "Career navigation" },
   "common.shell.nav_community_aria": { fr: "Navigation communauté", en: "Community navigation" },
+  "common.shell.nav_game": { fr: "Jeu", en: "Game" },
   "common.shell.nav_help": { fr: "Aide", en: "Help" },
   "common.shell.nav_main_aria": { fr: "Navigation principale", en: "Main navigation" },
   "common.shell.nav_menu_close": { fr: "Fermer le menu", en: "Close menu" },
@@ -350,6 +351,7 @@ export const commonManifest = {
   "common.shell.sync_running_title": { fr: "Synchronisation en cours…", en: "Sync in progress…" },
   "common.shell.sync_uptodate_aria": { fr: "Synchronisation à jour", en: "Sync up to date" },
   "common.shell.sync_uptodate_title": { fr: "À jour", en: "Up to date" },
+  "common.shell.title_coming_soon": { fr: "Bientôt disponible", en: "Coming soon" },
   "common.tooltip.more_info_aria": { fr: "Plus d'informations", en: "More information" },
 } as const
 
