@@ -194,7 +194,7 @@ function SettingsSplitButton({ tabs, isActive, isAdmin }: SettingsSplitButtonPro
             <span className="text-sm text-popover-foreground">Thème</span>
             <ThemeToggle variant="menu" />
           </div>
-          <div role="separator" className="my-1 h-px bg-border" />
+          <div role="separator" className="my-1 h-px bg-foreground/20" />
           {tabs.map((item) => (
             <Link
               key={item.key}
@@ -209,7 +209,7 @@ function SettingsSplitButton({ tabs, isActive, isAdmin }: SettingsSplitButtonPro
           ))}
           {isAdmin && (
             <>
-              <div role="separator" className="my-1 h-px bg-border" />
+              <div role="separator" className="my-1 h-px bg-foreground/20" />
               <Link
                 to="/admin"
                 role="menuitem"
@@ -220,6 +220,8 @@ function SettingsSplitButton({ tabs, isActive, isAdmin }: SettingsSplitButtonPro
               </Link>
             </>
           )}
+          <div role="separator" className="my-1 h-px bg-foreground/20" />
+          <LogoutButton variant="menu" />
         </div>
       )}
     </div>
@@ -358,13 +360,12 @@ export function NavL1() {
       {/* ── Cloche notifications (per-player) ────────────────────────────── */}
       {currentPlayer && <NotificationsBell playerSlug={currentPlayer.player_slug} />}
 
-      {/* ── Cluster droit desktop (≥ md) : aide · paramètres · déconnexion ── */}
+      {/* ── Cluster droit desktop (≥ md) : aide · paramètres (déconnexion dans le menu) ── */}
       <div className="hidden items-center gap-0.5 md:flex">
         <div className="ml-1">
           <HelpSplitButton isActive={pathname.startsWith('/help')} />
         </div>
         <SettingsSplitButton isActive={pathname.startsWith('/settings')} tabs={settingsTabs} isAdmin={isAdmin} />
-        <LogoutButton />
       </div>
 
       {/* ── Menu compte & outils mobile (< md) : regroupe le cluster droit ── */}
