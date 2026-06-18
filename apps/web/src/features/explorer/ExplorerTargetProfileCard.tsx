@@ -15,6 +15,7 @@
  *  - SampleStats reste affiché (calcul local)
  */
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import type { ExplorerTargetProfile } from '@/lib/api/types'
@@ -33,6 +34,9 @@ interface ExplorerTargetProfileCardProps {
 
 export function ExplorerTargetProfileCard({ profile, gamertag }: ExplorerTargetProfileCardProps) {
   const appLocale = useAppShellStore((s) => s.locale)
+  // Classements CSR = surface "ranked" : masquée pour un titre sans rang
+  // (fail-open mono-titre, NO-OP halo_infinite qui déclare 'ranked').
+  const hasRanked = useCapability('ranked')
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, appLocale, values)
 
@@ -69,16 +73,19 @@ export function ExplorerTargetProfileCard({ profile, gamertag }: ExplorerTargetP
         </section>
       )}
 
-      {/* Section saisons TOUJOURS rendue (placeholders titrés si vide) pour rendre
-          visibles les manques de données : Classements CSR (1/3, gauche) + Matchs
-          par saison (2/3, droite). Chaque sous-bloc gère son propre état vide. */}
+      {/* Section saisons (placeholders titrés si vide) : Classements CSR (1/3,
+          gauche, surface 'ranked') + Matchs par saison (2/3, droite). Le bloc CSR
+          est masqué pour un titre sans rang ; les matchs par saison passent alors
+          pleine largeur (pas de colonne vide). Chaque sous-bloc gère son état vide. */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <ExplorerTargetSeasonCSR
-          csrs={seasonCSRs}
-          title={t('explorer.target_profile.season_csr_title')}
-          emptyMessage={t('explorer.target_profile.season_csr_empty')}
-        />
-        <div className="lg:col-span-2">
+        {hasRanked && (
+          <ExplorerTargetSeasonCSR
+            csrs={seasonCSRs}
+            title={t('explorer.target_profile.season_csr_title')}
+            emptyMessage={t('explorer.target_profile.season_csr_empty')}
+          />
+        )}
+        <div className={hasRanked ? 'lg:col-span-2' : 'lg:col-span-3'}>
           <ExplorerTargetSeasonMatches
             seasons={matchesPerSeason}
             title={t('explorer.target_profile.matches_per_season_title')}
