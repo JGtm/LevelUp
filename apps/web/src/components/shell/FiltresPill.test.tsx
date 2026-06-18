@@ -19,7 +19,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useSoloFilterStore as useGlobalFilterStore } from '@/stores/soloFilterStore'
-import { DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
+import { DEFAULT_GAP_MINUTES } from '@/stores/createFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { FilterContextResolved } from '@/lib/api/types'
 
@@ -63,9 +63,23 @@ function renderPill(props: Partial<FiltresPillProps> = {}) {
   return renderWithProviders(<FiltresPill {...defaults} {...props} />)
 }
 
+// Contexte effectif conforme au contrat (champs requis, nullable explicites).
+const DEFAULT_EFFECTIVE: FilterContextResolved['effective'] = {
+  filter_mode: 'period',
+  period: { start_date: null, end_date: null },
+  sessions: {
+    gap_minutes: DEFAULT_GAP_MINUTES,
+    picked_sessions: [],
+    picked_session_label: null,
+    picked_solo_session_label: null,
+    picked_squad_session_label: null,
+  },
+  cascade: { experience_types: [], playlists: [], modes: [], maps: [] },
+}
+
 function buildResolved(availOverrides: Partial<FilterContextResolved['available_options']> = {}): FilterContextResolved {
   return {
-    effective: DEFAULT_FILTER_CONTEXT,
+    effective: DEFAULT_EFFECTIVE,
     available_options: {
       experience_types: [{ label: 'PVP non classé', value: 'PVP non classé', count: 1 }],
       playlists: [{ label: 'Quick Play', value: 'Quick Play', count: 1 }],

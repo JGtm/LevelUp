@@ -340,7 +340,7 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
           </div>
         )}
 
-        {data && data.entries.length === 0 && !isLoading && (
+        {data && entries.length === 0 && !isLoading && (
           <div className="p-4">
             <EmptyStateCard
               title={t('common.leaderboard.empty_title')}
@@ -349,7 +349,7 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
           </div>
         )}
 
-        {data && data.entries.length > 0 && (
+        {data && entries.length > 0 && (
           <div className="overflow-x-auto border border-border">
             <table className="w-full">
             <thead>

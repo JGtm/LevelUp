@@ -89,7 +89,7 @@ export function TimeseriesProgressionTab({
         <TimeseriesFirstEventDistribution
           title={t('timeseries.progression.first_event_title')}
           emptyMessage={emptyMsg}
-          data={data.first_events ?? { buckets: [], mean_first_kill_seconds: null, mean_first_death_seconds: null }}
+          data={data.first_events ?? { buckets: [] }}
           killsLabel={t('timeseries.progression.first_kill')}
           deathsLabel={t('timeseries.progression.first_death')}
           meanLabel={t('timeseries.progression.avg')}

@@ -36,7 +36,7 @@ export function SessionOcdrScatter({ title, matches, height = 280 }: Props) {
     const buckets: Record<string, ChartPointScatter[]> = {}
     for (const m of matches) {
       if (m.offensive_conversion == null || m.defensive_resistance == null) continue
-      const key = outcomeIntToKey(m.outcome) ?? 'dnf'
+      const key = outcomeIntToKey(m.outcome ?? null) ?? 'dnf'
       ;(buckets[key] ??= []).push({ x: round2(m.offensive_conversion), y: round2(m.defensive_resistance) })
     }
     const outcomeLabel = (key: string): string => fieldMappings?.outcomes?.[key]?.label ?? key

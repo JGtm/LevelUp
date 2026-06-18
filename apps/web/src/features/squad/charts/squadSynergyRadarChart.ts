@@ -36,7 +36,7 @@ export function buildSquadSynergyRadarOption(
   const tc = getEChartsThemeColors()
 
   // Tous les profils ont la même structure d'axes ; on prend le premier.
-  const axes = series[0].axes.map((a) => ({
+  const axes = (series[0].axes ?? []).map((a) => ({
     name: opts.axisLabels[a.axis] ?? a.axis,
     max: 100,
   }))
@@ -45,7 +45,7 @@ export function buildSquadSynergyRadarOption(
     const color = opts.colorByPlayer[s.player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
     return {
       name: s.player,
-      value: s.axes.map((a) => a.value),
+      value: (s.axes ?? []).map((a) => a.value),
       itemStyle: { color },
       lineStyle: { color, width: 2 },
       // Pas d'areaStyle → ligne seule (spec : show_fill=false).

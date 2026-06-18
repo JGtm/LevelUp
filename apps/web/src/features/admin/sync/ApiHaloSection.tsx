@@ -18,7 +18,7 @@ export function ApiHaloSection({ perf }: { perf: AdminPerfStats | undefined }) {
       <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
         {tA('admin.api.section')}
       </h3>
-      {!perf || perf.api_calls.length === 0 ? (
+      {!perf || (perf.api_calls?.length ?? 0) === 0 ? (
         <EmptyStateNotice title={tA('admin.api.empty')} description="" />
       ) : (
         <>
@@ -41,7 +41,7 @@ export function ApiHaloSection({ perf }: { perf: AdminPerfStats | undefined }) {
                 </tr>
               </thead>
               <tbody>
-                {perf.api_calls.map((c) => (
+                {(perf.api_calls ?? []).map((c) => (
                   <tr key={c.name} className="border-b last:border-b-0 hover:bg-muted/30">
                     <td className="px-3 py-2 font-mono text-xs text-foreground">{c.name}</td>
                     <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-muted-foreground">{c.count}</td>
@@ -59,7 +59,7 @@ export function ApiHaloSection({ perf }: { perf: AdminPerfStats | undefined }) {
               </tbody>
             </table>
           </div>
-          {perf.api_by_player.length > 0 && <ApiByPlayerTable perf={perf} />}
+          {(perf.api_by_player?.length ?? 0) > 0 && <ApiByPlayerTable perf={perf} />}
         </>
       )}
     </section>
@@ -88,7 +88,7 @@ function ApiByPlayerTable({ perf }: { perf: AdminPerfStats }) {
             </tr>
           </thead>
           <tbody>
-            {perf.api_by_player.map((s, i) => (
+            {(perf.api_by_player ?? []).map((s, i) => (
               <tr key={`${s.player}-${s.call}-${i}`} className="border-b last:border-b-0 hover:bg-muted/30">
                 <td className="px-3 py-2 font-mono text-xs text-foreground">{s.player}</td>
                 <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{s.call}</td>

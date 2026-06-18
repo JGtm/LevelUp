@@ -134,7 +134,7 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
                     )}
                   </td>
                   <td className="py-1.5 pl-3">
-                    <MatchBadge type={m.badge_type} />
+                    <MatchBadge type={m.badge_type ?? null} />
                   </td>
                 </tr>
               ))}

@@ -123,7 +123,7 @@ describe('SquadMatchHistoryTable', () => {
   })
 
   it('valeurs nulles → "-" (accuracy + perf + session_label)', () => {
-    const r = row(1, { accuracy: undefined, performance_score: undefined, session_label: null })
+    const r = row(1, { accuracy: undefined, performance_score: undefined, session_label: undefined })
     renderWithProviders(<SquadMatchHistoryTable rows={[r]} playerSlug="me" />)
     const table = screen.getByTestId('squad-match-history-table')
     const dashCells = within(table).getAllByText('-')

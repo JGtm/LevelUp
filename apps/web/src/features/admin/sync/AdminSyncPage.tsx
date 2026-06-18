@@ -72,7 +72,7 @@ export function AdminSyncPage() {
               {tA('admin.sync.players_section')}
             </h3>
             <SyncPlayersTable
-              players={data.snapshot.players}
+              players={data.snapshot.players ?? []}
               zeroInsertThreshold={data.zero_insert_warn_threshold}
             />
           </section>
@@ -82,7 +82,7 @@ export function AdminSyncPage() {
               {tA('admin.sync.history_section')}{' '}
               <span className="normal-case font-normal">({tA('admin.sync.history_since_boot')})</span>
             </h3>
-            <SyncCycleHistory history={data.history} />
+            <SyncCycleHistory history={data.history ?? []} />
           </section>
         </>
       )}

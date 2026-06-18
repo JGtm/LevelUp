@@ -57,7 +57,13 @@ export function EngagementTimeseriesSection(props: EngagementTimeseriesSectionPr
 
   // Étiquettes X : pour "match" on garde `#N\nMap`. Pour les agrégats on
   // affiche le label brut (session_label / "2026-S18" / "2026-05").
-  const granularity: EngagementGranularity = data?.granularity ?? 'match'
+  const rawGranularity = data?.granularity
+  const granularity: EngagementGranularity =
+    rawGranularity === 'session' ||
+    rawGranularity === 'week' ||
+    rawGranularity === 'month'
+      ? rawGranularity
+      : 'match'
   const xLabels = pointsAPI.map((m, i) => {
     if (granularity === 'match') {
       return m.map_name ? `#${i + 1}\n${truncateMap(m.map_name)}` : `#${i + 1}`

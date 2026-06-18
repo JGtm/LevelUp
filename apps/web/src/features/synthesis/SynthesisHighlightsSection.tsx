@@ -65,11 +65,13 @@ interface SynthesisHighlightsSectionProps {
 }
 
 export function SynthesisHighlightsSection({ highlights, playerSlug }: SynthesisHighlightsSectionProps) {
-  const best = highlights.top_by_kills.length > 0
-    ? highlights.top_by_kills
-    : highlights.top_by_kda
+  // Le contrat autorise ces listes à être null (Go peut renvoyer null) → gardes.
+  const topByKills = highlights.top_by_kills ?? []
+  const best = topByKills.length > 0
+    ? topByKills
+    : highlights.top_by_kda ?? []
 
-  const worst = highlights.worst_by_deaths
+  const worst = highlights.worst_by_deaths ?? []
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: SynthesisManifestKey) => formatMessage(synthesisManifest, key, locale)
 

@@ -204,7 +204,11 @@ function PlayerMedalCard({
   expanded: boolean
   onToggle: () => void
 }) {
-  const domCat = dominantCategoryFor(entry.all_medals)
+  // Le contrat OpenAPI expose top_medals / all_medals en `T[] | null` (le Go
+  // peut renvoyer null) → vues non-null réutilisées dans le rendu.
+  const allMedals = entry.all_medals ?? []
+  const topMedals = entry.top_medals ?? []
+  const domCat = dominantCategoryFor(allMedals)
   const domCatLabel = domCat
     ? (t.categoryLabels[domCat as keyof typeof t.categoryLabels] ?? domCat)
     : null
@@ -234,13 +238,13 @@ function PlayerMedalCard({
         )}
       </div>
 
-      {entry.top_medals.length > 0 && (
+      {topMedals.length > 0 && (
         <div>
           <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-1.5">
             {t.topMedals}
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {entry.top_medals.map((m) => (
+            {topMedals.map((m) => (
               <MedalChip key={m.medal_id} item={m} />
             ))}
           </div>
@@ -261,17 +265,17 @@ function PlayerMedalCard({
         </span>
       </div>
 
-      {entry.all_medals.length > entry.top_medals.length && (
+      {allMedals.length > topMedals.length && (
         <>
           <button
             type="button"
             className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline text-left"
             onClick={onToggle}
           >
-            {expanded ? t.collapseLabel : `${t.expandLabel} (${entry.all_medals.length})`}
+            {expanded ? t.collapseLabel : `${t.expandLabel} (${allMedals.length})`}
           </button>
           {expanded && (
-            <MedalExpandedGrid medals={entry.all_medals} categoryLabels={t.categoryLabels} />
+            <MedalExpandedGrid medals={allMedals} categoryLabels={t.categoryLabels} />
           )}
         </>
       )}

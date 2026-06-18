@@ -211,7 +211,13 @@ export function SessionComparePage() {
     )
   }
 
-  const hasAvailableSessions = data.available_sessions.length > 0
+  // Le contrat OpenAPI déclare ces collections nullable (le Go peut renvoyer null) ;
+  // on les normalise en tableaux pour les itérations et les passages aux sous-composants.
+  const availableSessions = data.available_sessions ?? []
+  const metrics = data.metrics ?? []
+  const mapsTable = data.maps_table ?? []
+  const modesTable = data.modes_table ?? []
+  const hasAvailableSessions = availableSessions.length > 0
   const hasComparisonSelection = Boolean(sessionA && sessionB)
 
   const labelA = t('session.compare.session_card_title', {
@@ -238,7 +244,7 @@ export function SessionComparePage() {
                   onChange={(e) => setSessionA(e.target.value)}
                 >
                   <option value="">{t('session.compare.placeholder_select')}</option>
-                  {data.available_sessions.map((s) => (
+                  {availableSessions.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
@@ -251,7 +257,7 @@ export function SessionComparePage() {
                   onChange={(e) => setSessionB(e.target.value)}
                 >
                   <option value="">{t('session.compare.placeholder_select')}</option>
-                  {data.available_sessions.map((s) => (
+                  {availableSessions.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
@@ -401,7 +407,7 @@ export function SessionComparePage() {
                       <SessionCompareRadar
                         sessionA={data.session_a}
                         sessionB={data.session_b}
-                        metrics={data.metrics}
+                        metrics={metrics}
                         labels={{
                           title: t('session.compare.radar_title'),
                           axisKD: t('session.compare.radar_axis_kd'),
@@ -420,7 +426,7 @@ export function SessionComparePage() {
                   <Card>
                     <CardContent className="pt-4">
                       <SessionCompareBarMetrics
-                        metrics={data.metrics}
+                        metrics={metrics}
                         labels={{
                           title: t('session.compare.bar_metrics_title'),
                           sessionA: labelA,
@@ -442,10 +448,10 @@ export function SessionComparePage() {
                     <CardTitle className="text-base">{t('session.compare.summary_title')}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {data.metrics.length > 0 && data.session_a && data.session_b ? (
+                    {metrics.length > 0 && data.session_a && data.session_b ? (
                       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                         {(['kd_ratio', 'win_rate', 'kills_per_match', 'score'] as const).flatMap((key) => {
-                          const row = data.metrics.find((m) => m.key === key)
+                          const row = metrics.find((m) => m.key === key)
                           if (!row) return []
                           const delta = row.delta ? parseFloat(row.delta) : null
                           return [
@@ -474,7 +480,7 @@ export function SessionComparePage() {
                     <CardTitle className="text-base">{t('session.compare.metrics_title')}</CardTitle>
                   </CardHeader>
                   <CardContent className="pb-4 overflow-x-auto">
-                    {data.metrics.length > 0 ? (
+                    {metrics.length > 0 ? (
                       <table className="w-full">
                         <thead>
                           <tr className="border-b text-left text-xs text-muted-foreground">
@@ -485,7 +491,7 @@ export function SessionComparePage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {data.metrics.map((row) => (
+                          {metrics.map((row) => (
                             <MetricRow key={row.key} row={row} />
                           ))}
                         </tbody>
@@ -679,7 +685,7 @@ export function SessionComparePage() {
                     <CardTitle className="text-base">{t('session.compare.maps_title')}</CardTitle>
                   </CardHeader>
                   <CardContent className="pb-4 overflow-x-auto">
-                    {data.maps_table.length > 0 ? (
+                    {mapsTable.length > 0 ? (
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b text-left text-xs text-muted-foreground">
@@ -691,7 +697,7 @@ export function SessionComparePage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {data.maps_table.map((row) => (
+                          {mapsTable.map((row) => (
                             <MapTableRow key={row.map_name} row={row} />
                           ))}
                         </tbody>
@@ -711,7 +717,7 @@ export function SessionComparePage() {
                     <CardTitle className="text-base">{t('session.compare.modes_title')}</CardTitle>
                   </CardHeader>
                   <CardContent className="pb-4 overflow-x-auto">
-                    {data.modes_table.length > 0 ? (
+                    {modesTable.length > 0 ? (
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b text-left text-xs text-muted-foreground">
@@ -723,7 +729,7 @@ export function SessionComparePage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {data.modes_table.map((row) => (
+                          {modesTable.map((row) => (
                             <ModeTableRow key={row.mode_name} row={row} />
                           ))}
                         </tbody>

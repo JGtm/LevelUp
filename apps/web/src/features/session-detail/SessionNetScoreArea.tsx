@@ -163,7 +163,7 @@ export function SessionNetScoreArea({ title, matches, height = 280, yDomain }: P
     const datapoints = sorted.map((m, i) => {
       // Garde-fou : un kills/deaths manquant ne doit pas propager un NaN dans le cumul.
       running += (m.kills ?? 0) - (m.deaths ?? 0)
-      const outcomeKey = outcomeIntToKey(m.outcome)
+      const outcomeKey = outcomeIntToKey(m.outcome ?? null)
       return {
         label: sessionMatchAxisLabel(i, m.map_name, m.pair_name),
         cumulative: running,

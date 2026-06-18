@@ -9,7 +9,12 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { useAdminInvariants } from '../queries'
-import type { AdminInvariantViolation } from '@/lib/api/types'
+import type { components } from '@/lib/api/generated'
+
+// Le contrat (struct Go) est la source de vérité : InvariantViolation.severity
+// est un string et sample est nullable. On type le sous-composant sur le
+// contrat plutôt que sur le mirror hand-écrit AdminInvariantViolation (périmé).
+type InvariantViolation = components['schemas']['InvariantViolation']
 import {
   SHARED_SCOPE_KEY,
   buildInvariantsSnapshot,
@@ -88,7 +93,7 @@ export function InvariantsSection() {
                 checkError={r.check_error}
                 failCount={r.fail_count}
                 warnCount={r.warn_count}
-                violations={r.violations}
+                violations={r.violations ?? []}
                 previous={previous}
                 t={t}
               />
@@ -115,7 +120,7 @@ function InvariantsCard({
   checkError?: string
   failCount: number
   warnCount: number
-  violations: AdminInvariantViolation[]
+  violations: InvariantViolation[]
   previous: InvariantsSnapshot
   t: (key: CommonManifestKey) => string
 }) {

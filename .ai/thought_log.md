@@ -26309,3 +26309,21 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Reste (multi-session, mécanique sur ces fondations)** : ~138 routes. Nuances par groupe : sanitisation NaN/Inf (routes à floats, `writeJSON` le fait, pas Huma), ETag/304 (routes `writeJSONCached`), authz (`RequirePlayerOwnership`/`RequireActiveTitle` — héritées des middlewares racine, OK), path/query params (structs Input + tags). Étape finale SEULEMENT : bascule openapi.yaml manuel→généré + régén `generated.ts`.
 
 **Conclusion / prochaine étape** : fondations Huma + 1re route livrées et prouvées. Enchaîne item 2 (retrait `HasExpectedData`, 3a-B). Migration des routes restantes = sessions dédiées par groupe.
+
+## [2026-06-18] Étape 3 — migration front `types.ts` → contrat `generated.ts` (shim large + reverts view-models) — Complété
+
+**Statut** : Complété. `npm run typecheck` = **0 erreur**, `npm run lint` = **0 erreur** (74 warnings pré-existants, aucun dans `types.ts`), `npx vitest run` = **214 fichiers / 1907 tests PASS** (14 skipped). Suite de l'Étape 2 (commit `9187d2c1e`, réconciliation des 69 DIVERGENT).
+
+**Décision technique principale** : appliquer le shim de masse `export type X = components['schemas']['X']` partout où le contrat (auto-dérivé des outputs Huma) == l'usage réel du front, et **garder/reverter en interface manuelle** les **view-models** (conteneurs qui agrègent des feuilles enrichies côté client). Bilan : **228 types shimés / 125 interfaces manuelles** dans `types.ts` (de 3934 → ~1800 lignes, −2187/+712 sur l'ensemble du changeset front).
+
+**Méthode (oracle tsc adversarial, « contredire »)** :
+- Le workflow (10 agents, Étape 3b) a câblé les garde-fous null + complété les fixtures de test sur ~50 fichiers consommateurs → 296 erreurs ramenées à 29.
+- Les **29 erreurs résiduelles** étaient toutes du même motif : un **conteneur shimé** exposait une feuille au format contrat-maigre, alors que le consommateur attend la feuille **manuelle riche** (champs calculés client : `badge_image_url`, `effective_weapon_id`, `average_life`, `tier_label`, `target_xuid`, etc.). Diagnostic dirigé par les messages tsc (TARGET = type riche, SOURCE = shim maigre).
+- **8 conteneurs view-model revertis** en interface manuelle (référencent à nouveau les feuilles riches) : `CareerLusrSection`, `CareerHighlightMatchesResponse`, `MatchCombatTab`, `MatchTeamTab`, `MatchViewResponse`, `SchedulerSnapshot`, `AdminSchedulerStatusResponse`, `AdminJobsResponse`. Source des interfaces = `git show 9187d2c1e:…/types.ts` (HEAD pré-Étape-3). → tsc 0.
+- **`AdminConvergenceReport`/`PlayerConvergenceReport` NON revertis** (n'apparaissaient dans aucune erreur — le shim y est sain) : pas de sur-revert.
+
+**Régression test attrapée + corrigée (vitest)** : `PeriodSessionRail.test.tsx` — le workflow avait rendu la fixture `SessionOption` **fidèle au contrat** (`started_at_utc`/`ended_at_utc` sont **requis** dans `openapi.yaml`). Conséquence runtime : `SessionRail` appelle `formatSessionLabel()` qui, dès qu'un timestamp existe, **formate** le label (« Session du … ») au lieu d'afficher le label brut de fallback. L'assertion `getByText('06/04 21h24')` ne matchait donc plus. Fix : assertion `getByText(/Session du/)` (TZ-indépendante ; `formatSessionLabel` formate en heure locale, pas en UTC) — préserve l'intention (le label de session FORMATÉ s'affiche) et reste fidèle au contrat. **Ne pas retirer les timestamps de la fixture** (ils sont requis → casserait tsc).
+
+**Résultats observés** : `generated.ts` inchangé (aucune modif d'`openapi.yaml` en Étape 3, donc pas de désync) ; Go intact (changeset 100 % `apps/web/`) ; les 269 consommateurs `import { X } from '@/lib/api/types'` continuent de compiler.
+
+**Conclusion / prochaine étape** : auto-gen contrat (Lever B) + migration front shim **livrés et verts**. La dette restante = Phase D du plan (déplacer les 125 interfaces view-model dans un `viewModels.ts` dédié + ratchet anti-régression) — non bloquant, à faire à l'occasion. Commit en attente d'autorisation. Réf : [PLAN_WEB_API_TYPES_MIGRATION.md](PLAN_WEB_API_TYPES_MIGRATION.md).

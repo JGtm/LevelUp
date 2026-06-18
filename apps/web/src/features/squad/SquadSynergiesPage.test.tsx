@@ -13,7 +13,7 @@ const ROW = (gamertag: string): TeammateRow => ({
   gamertag,
   xuid: 'x',
   encounter_count: 5,
-  last_seen_at: null,
+  last_seen_at: undefined,
   with_kpis: {
     match_count: 5,
     wins: 3,
@@ -25,7 +25,7 @@ const ROW = (gamertag: string): TeammateRow => ({
     headshot_kills_per_game: 3,
     perfect_kills_per_game: 1,
   },
-  without_kpis: null,
+  without_kpis: undefined,
 })
 
 function mockSquadContext(opts: {

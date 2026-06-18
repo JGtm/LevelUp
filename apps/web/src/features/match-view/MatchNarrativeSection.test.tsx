@@ -31,7 +31,7 @@ const baseLabels: MatchNarrativeLabels = {
 
 const headerWithoutBadge: MatchViewHeader = {
   match_id: 'm1',
-  start_time: null,
+  start_time: undefined,
   start_time_label: '',
   outcome_code: 2,
   outcome_label: 'Win',
@@ -40,11 +40,11 @@ const headerWithoutBadge: MatchViewHeader = {
   dominance_flag: false,
   had_bot_teammate: false,
   map_ui: 'Aquarius',
-  map_id: null,
+  map_id: undefined,
   mode_ui: 'Slayer',
   playlist_label: 'Ranked',
   performance_display: '85',
-  performance_color: null,
+  performance_color: undefined,
   is_excluded: false,
   is_ranked: false,
   is_favorite: false,

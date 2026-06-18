@@ -18,15 +18,15 @@ interface SquadWeaponKillsChartProps extends SquadWeaponKillsOpts {
 }
 
 export function SquadWeaponKillsChart({ data, title, emptyMessage, ...opts }: SquadWeaponKillsChartProps) {
-  const series = useMemo<ChartSeries<SquadWeaponBar>[]>(
-    () => (data && data.bars.length > 0 ? [{ key: 'weapon-kills', datapoints: data.bars }] : []),
-    [data],
-  )
+  const series = useMemo<ChartSeries<SquadWeaponBar>[]>(() => {
+    const bars = data?.bars ?? []
+    return bars.length > 0 ? [{ key: 'weapon-kills', datapoints: bars }] : []
+  }, [data])
   const buildOption = useCallback(
     () => buildSquadWeaponKillsOption(data, opts),
     [data, opts],
   )
-  const n = data?.bars.length ?? 0
+  const n = data?.bars?.length ?? 0
   const height = Math.max(350, Math.min(800, n * 38))
   return (
     <ChartCard title={title} series={series} buildOption={buildOption} height={height} emptyMessage={emptyMessage} />

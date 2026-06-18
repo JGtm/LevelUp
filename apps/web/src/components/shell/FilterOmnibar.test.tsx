@@ -16,14 +16,30 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useSoloFilterStore as useGlobalFilterStore } from '@/stores/soloFilterStore'
-import { DEFAULT_GAP_MINUTES, DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
+import { DEFAULT_GAP_MINUTES } from '@/stores/createFilterStore'
 import type { FilterContextResolved } from '@/lib/api/types'
 
 import { FilterOmnibar } from './FilterOmnibar'
 
+// Contexte effectif conforme au contrat (FilterContextInput côté API : champs requis,
+// nullable explicites). DEFAULT_FILTER_CONTEXT côté store est l'input front (optionnels)
+// et ne matche pas la forme résolue renvoyée par l'API.
+const DEFAULT_EFFECTIVE: FilterContextResolved['effective'] = {
+  filter_mode: 'period',
+  period: { start_date: null, end_date: null },
+  sessions: {
+    gap_minutes: DEFAULT_GAP_MINUTES,
+    picked_sessions: [],
+    picked_session_label: null,
+    picked_solo_session_label: null,
+    picked_squad_session_label: null,
+  },
+  cascade: { experience_types: [], playlists: [], modes: [], maps: [] },
+}
+
 function buildResolved(): FilterContextResolved {
   return {
-    effective: DEFAULT_FILTER_CONTEXT,
+    effective: DEFAULT_EFFECTIVE,
     available_options: {
       experience_types: [{ label: 'PVP non classé', value: 'PVP non classé', count: 8 }],
       playlists: [{ label: 'Arène classée', value: 'Arène classée', count: 8 }],

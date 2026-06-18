@@ -29,8 +29,8 @@ function makeRow(): SessionDetailMatchRow {
     performance_score: 72,
     session_label: 'S1',
     dominant_category: 'Ranked',
-    offensive_conversion: null,
-    defensive_resistance: null,
+    offensive_conversion: undefined,
+    defensive_resistance: undefined,
     map_name: 'Tir réel',
     mode_ui: 'Oddball',
     duration_seconds: 540,
@@ -65,7 +65,7 @@ describe('toExplorerRow — adapter session → Explorer', () => {
   })
 
   it('palier passthrough ; outcome null → DNF(4) ; solo', () => {
-    const row = { ...makeRow(), skill_rating_type: 'lusr', skill_tier_label: 'Diamant V', outcome: null }
+    const row = { ...makeRow(), skill_rating_type: 'lusr', skill_tier_label: 'Diamant V', outcome: undefined }
     const r = toExplorerRow(row, false)
     expect(r.rating_type).toBe('LUSR')
     expect(r.skill_tier_label).toBe('Diamant V') // libellé fourni par le backend, tel quel

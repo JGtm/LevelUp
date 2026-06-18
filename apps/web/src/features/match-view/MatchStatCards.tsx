@@ -91,21 +91,21 @@ export function ExpectedCardsSection({ kpis, expectedStats }: ExpectedCardsSecti
       <StatExpectedCard
         label={labelOf('kills')}
         actual={kpis.kills}
-        expected={expected_kills}
+        expected={expected_kills ?? null}
         lowerIsBetter={false}
         hasData={hasExpected}
       />
       <StatExpectedCard
         label={labelOf('deaths')}
         actual={kpis.deaths}
-        expected={expected_deaths}
+        expected={expected_deaths ?? null}
         lowerIsBetter={true}
         hasData={hasExpected}
       />
       <StatExpectedCard
         label={labelOf('assists')}
         actual={kpis.assists}
-        expected={expected_assists}
+        expected={expected_assists ?? null}
         lowerIsBetter={false}
         hasData={hasExpected}
       />
@@ -390,7 +390,7 @@ export function MatchSummaryCardsSection({ kpis, expectedStats }: MatchSummaryCa
       />
       <MatchVsStatCard
         label={t('match_view.cards.frags_vs_expected')}
-        primary={kpis.kills}
+        primary={kpis.kills ?? null}
         secondary={expected_kills != null ? Math.round(expected_kills) : null}
         primaryLabel={t('match_view.cards.label_real')}
         secondaryLabel={t('match_view.cards.label_expected')}
@@ -400,7 +400,7 @@ export function MatchSummaryCardsSection({ kpis, expectedStats }: MatchSummaryCa
       />
       <MatchVsStatCard
         label={t('match_view.cards.deaths_vs_expected')}
-        primary={kpis.deaths}
+        primary={kpis.deaths ?? null}
         secondary={expected_deaths != null ? Math.round(expected_deaths) : null}
         primaryLabel={t('match_view.cards.label_real')}
         secondaryLabel={t('match_view.cards.label_expected')}
@@ -410,7 +410,7 @@ export function MatchSummaryCardsSection({ kpis, expectedStats }: MatchSummaryCa
       />
       <MatchVsStatCard
         label={t('match_view.cards.assists_vs_expected')}
-        primary={kpis.assists}
+        primary={kpis.assists ?? null}
         secondary={expected_assists != null ? Math.round(expected_assists) : null}
         primaryLabel={t('match_view.cards.label_real')}
         secondaryLabel={t('match_view.cards.label_expected')}

@@ -36,7 +36,8 @@ import { log } from './_logger'
 import { SquadContext } from './SquadContext'
 import { SquadFocusStrip } from './SquadFocusStrip'
 import { getSquadTeammateColors } from './colors'
-import type { LabelValue, TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
+import type { KPIStats, LabelValue, TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
+import type { KPIStats as V2KPIStats } from './v2/types'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
 import { deriveSquadPending, reconcileSquadSessionLabels, decideCompositionReanchor } from './squadPending'
 
@@ -58,6 +59,22 @@ import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContex
 
 const MAX_SELECTION = 3
 const CHART_COLORS = getSquadTeammateColors(MAX_SELECTION)
+
+/**
+ * Le DTO local v2/types.ts::KPIStats déclare avg_offensive_conversion /
+ * avg_defensive_resistance / combat_profile en `T | null` (le Go peut renvoyer
+ * null), alors que le contrat OpenAPI (KPIStats) les expose en `T | undefined`.
+ * SessionBriefing consomme le type du contrat → on normalise null→undefined au
+ * passage (le consommateur traite déjà null et undefined comme « absent »).
+ */
+function toContractKpis(k: V2KPIStats): KPIStats {
+  return {
+    ...k,
+    avg_offensive_conversion: k.avg_offensive_conversion ?? undefined,
+    avg_defensive_resistance: k.avg_defensive_resistance ?? undefined,
+    combat_profile: k.combat_profile ?? undefined,
+  }
+}
 
 function formatError(err: unknown): string {
   if (err == null) return 'Erreur inconnue'
@@ -461,7 +478,7 @@ export function SquadLayout() {
               onClose={closeAll}
               seasons={seasons}
               activeSeason={activeSeason}
-              seasonCounts={seasonCounts}
+              seasonCounts={seasonCounts ?? undefined}
               onSelectSeason={(s) => setPendingPeriod(seasonToPeriod(s))}
               onClear={() => setPendingPeriod(DEFAULT_PERIOD)}
             />
@@ -474,7 +491,7 @@ export function SquadLayout() {
             onClose={closeAll}
             period={pendingPeriod}
             onSetPeriod={setPendingPeriod}
-            presetCounts={presetCounts}
+            presetCounts={presetCounts ?? undefined}
           />
 
           {/* Sessions escouade (multi-select par label) — composition-aware */}
@@ -601,12 +618,14 @@ export function SquadLayout() {
                 ? {
                     score: header.squad_score,
                     players: header.player_cards,
-                    kpisByXuid: header.kpis_by_xuid,
-                    teamAvgKpis: header.team_avg_kpis,
+                    kpisByXuid: Object.fromEntries(
+                      Object.entries(header.kpis_by_xuid).map(([x, k]) => [x, toContractKpis(k)]),
+                    ),
+                    teamAvgKpis: toContractKpis(header.team_avg_kpis),
                     activeXuid: mainXuid,
                   }
                 : undefined
-            return <SessionBriefing kpis={soloKpis} squad={briefingSquad} />
+            return <SessionBriefing kpis={toContractKpis(soloKpis)} squad={briefingSquad} />
           })()}
 
           {/* Navigation onglets */}

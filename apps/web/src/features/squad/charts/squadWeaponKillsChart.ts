@@ -30,7 +30,9 @@ export function buildSquadWeaponKillsOption(
   data: SquadWeaponKills | null | undefined,
   opts: SquadWeaponKillsOpts,
 ): EChartsCoreOption {
-  if (!data || data.bars.length === 0 || data.players.length === 0) {
+  const allBars = data?.bars ?? []
+  const players = data?.players ?? []
+  if (!data || allBars.length === 0 || players.length === 0) {
     return { backgroundColor: CHART_BG }
   }
 
@@ -40,7 +42,7 @@ export function buildSquadWeaponKillsOption(
   // Masque les armes inconnues : label vide (→ fallback "weapon_<id>") ou label
   // brut de la forme "weapon_-123456". On ne garde que les armes réellement
   // nommées (demande user).
-  const bars = data.bars.filter((b) => {
+  const bars = allBars.filter((b) => {
     const label = (b.label ?? '').trim()
     return label !== '' && !/^weapon_-?\d+$/i.test(label)
   })
@@ -50,7 +52,7 @@ export function buildSquadWeaponKillsOption(
   const yLabels = bars.map((b) => b.label || `weapon_${b.weapon_id}`)
 
   // 1 série bar (horizontale, group) par joueur, valeurs alignées sur yLabels.
-  const series = data.players.map((player) => {
+  const series = players.map((player) => {
     const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
     const values = bars.map((b) => b.kills_by_player[player] ?? 0)
     return {

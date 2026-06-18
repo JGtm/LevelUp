@@ -24,7 +24,7 @@ export function SquadMapHeatmapChart({ data, title, emptyMessage, ...opts }: Squ
     (s: ChartSeries<SquadMapHeatmap>[]) => buildSquadMapHeatmapOption(s, opts),
     [opts],
   )
-  const playerCount = data?.players.length ?? 0
+  const playerCount = data?.players?.length ?? 0
   const height = Math.max(220, Math.min(640, playerCount * 60 + 160))
   return <ChartCard title={title} series={series} buildOption={buildOption} height={height} emptyMessage={emptyMessage} />
 }

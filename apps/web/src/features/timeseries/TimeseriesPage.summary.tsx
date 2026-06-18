@@ -57,7 +57,10 @@ export function TimeseriesSummaryTab({
 }: TimeseriesSummaryTabProps) {
   const emptyMsg = t('timeseries.empty.no_data_description')
   const soloPerf = data.solo_session_perf
-  const soloGranularity = soloPerf?.granularity ?? 'session'
+  const soloGranularity: 'session' | 'week' | 'month' =
+    soloPerf?.granularity === 'week' || soloPerf?.granularity === 'month'
+      ? soloPerf.granularity
+      : 'session'
   const soloPerfTitle =
     soloGranularity === 'week'
       ? t('timeseries.summary.solo_perf_week')

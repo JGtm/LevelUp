@@ -730,10 +730,10 @@ export function SynthesisPage() {
 
         {data.breakdowns && (
           <div className="flex flex-col gap-4">
-            {data.breakdowns.top_maps.length > 0 && (
+            {(data.breakdowns.top_maps ?? []).length > 0 && (
               <SynthesisOutcomesByGroupChart
                 title="Par carte"
-                entries={data.breakdowns.top_maps.map((m) => ({
+                entries={(data.breakdowns.top_maps ?? []).map((m) => ({
                   name: m.map_name,
                   wins: m.wins,
                   losses: m.losses,
@@ -743,10 +743,10 @@ export function SynthesisPage() {
                 height={360}
               />
             )}
-            {data.breakdowns.top_modes.length > 0 && (
+            {(data.breakdowns.top_modes ?? []).length > 0 && (
               <SynthesisOutcomesByGroupChart
                 title="Par mode"
-                entries={data.breakdowns.top_modes.map((m) => ({
+                entries={(data.breakdowns.top_modes ?? []).map((m) => ({
                   name: m.mode_name,
                   wins: m.wins,
                   losses: m.losses,

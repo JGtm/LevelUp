@@ -34,7 +34,7 @@ export interface ConfiguredItem {
 
 export interface FrequentItem {
   gamertag: string
-  xuid: string | null
+  xuid: string | null | undefined
   score: number
   encounter_count: number
   isConfigured: false
@@ -42,7 +42,7 @@ export interface FrequentItem {
 
 export interface RemoteItem {
   gamertag: string
-  xuid: string | null
+  xuid: string | null | undefined
   exact_match: boolean
   isConfigured: false
 }

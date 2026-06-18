@@ -53,7 +53,7 @@ describe('ExplorerCombatProfile', () => {
   it('rend la section + 5 graphes quand des matchs sont fournis', async () => {
     const matches = [
       match({ match_id: 'm1', start_time: '2026-05-01T10:00:00Z', mode_ui: 'Slayer', rank: 1 }),
-      match({ match_id: 'm2', start_time: '2026-05-02T10:00:00Z', mode_ui: 'CTF', rank: null }),
+      match({ match_id: 'm2', start_time: '2026-05-02T10:00:00Z', mode_ui: 'CTF', rank: undefined }),
       match({ match_id: 'm3', start_time: '2026-05-03T10:00:00Z', mode_ui: 'Slayer', rank: 2 }),
     ]
     renderWithProviders(<ExplorerCombatProfile liveMatches={matches} localMatches={[]} locale="fr" t={t} />)

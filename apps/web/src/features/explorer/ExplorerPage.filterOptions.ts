@@ -63,7 +63,7 @@ export function buildExplorerFilterOptions(
         { value: '4', label: t('explorer.filters.perf_tier_faible'), swatch: tokenCssVar('perf-tier-4' as SemanticToken) },
         { value: '5', label: t('explorer.filters.perf_tier_mauvais'), swatch: tokenCssVar('perf-tier-5' as SemanticToken) },
       ],
-      summary?.available_perf_tiers,
+      summary?.available_perf_tiers ?? undefined,
     ),
 
     outcomeOptions: withCounts(
@@ -72,7 +72,7 @@ export function buildExplorerFilterOptions(
         { value: '3', label: t('explorer.filters.outcome_loss'), swatch: tokenCssVar('outcome-loss' as SemanticToken) },
         { value: '1', label: t('explorer.filters.outcome_tie'), swatch: tokenCssVar('outcome-draw' as SemanticToken) },
       ],
-      summary?.available_outcomes,
+      summary?.available_outcomes ?? undefined,
     ),
 
     skillTierOptions: withCounts(
@@ -84,7 +84,7 @@ export function buildExplorerFilterOptions(
         { value: SKILL_TIER_VALUES[4], label: t('explorer.filters.skill_tier_diamond') },
         { value: SKILL_TIER_VALUES[5], label: t('explorer.filters.skill_tier_onyx') },
       ],
-      summary?.available_skill_tiers,
+      summary?.available_skill_tiers ?? undefined,
     ),
 
     // Count pour le single-select squad scope — interpolé dans les <option>

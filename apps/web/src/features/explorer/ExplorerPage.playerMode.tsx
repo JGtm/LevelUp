@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { GamertagSearchInput } from './GamertagSearchInput'
 import { ExplorerMatchesTable } from './ExplorerMatchesTable'
+import { normalizeExplorerTableRows } from './ExplorerPage.matchesMode'
 import { ExplorerEncounterBriefing } from './ExplorerEncounterBriefing'
 import { ExplorerActivityHeatmapChart } from './ExplorerActivityHeatmapChart'
 import { ExplorerTargetProfileCard } from './ExplorerTargetProfileCard'
@@ -191,7 +192,7 @@ export function ExplorerPlayerMode({
               expander pour passer à 20. */}
           {allyMatchIds.length > 0 && allyMatchesData && (
             <ExplorerMatchesTable
-              rows={allyMatchesData.table.items}
+              rows={normalizeExplorerTableRows(allyMatchesData.table.items)}
               playerSlug={playerSlug}
               teamBanner={{
                 variant: 'ally',
@@ -209,7 +210,7 @@ export function ExplorerPlayerMode({
           {/* Tableau "matchs en ennemi" — token team-enemy. */}
           {enemyMatchIds.length > 0 && enemyMatchesData && (
             <ExplorerMatchesTable
-              rows={enemyMatchesData.table.items}
+              rows={normalizeExplorerTableRows(enemyMatchesData.table.items)}
               playerSlug={playerSlug}
               teamBanner={{
                 variant: 'enemy',

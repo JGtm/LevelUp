@@ -82,7 +82,7 @@ export function UntranslatedModesSection() {
       kind="untranslated_modes"
       emptyTitle={tA('admin.dq.modes_empty_title')}
       emptyDesc={tA('admin.dq.modes_empty_desc')}
-      count={data?.items.length}
+      count={data?.items?.length}
     >
       <IssueTable
         issues={data?.items ?? []}
@@ -146,7 +146,7 @@ export function RawAssetsSection() {
       kind="raw_uuids"
       emptyTitle={tA('admin.dq.raw_uuids_empty_title')}
       emptyDesc={tA('admin.dq.raw_uuids_empty_desc')}
-      count={data?.items.length}
+      count={data?.items?.length}
     >
       <IssueTable
         issues={data?.items ?? []}
@@ -229,7 +229,7 @@ export function OrphanPlaylistsSection() {
       kind="orphan_playlists"
       emptyTitle={tA('admin.dq.orphan_playlists_empty_title')}
       emptyDesc={tA('admin.dq.orphan_playlists_empty_desc')}
-      count={data?.items.length}
+      count={data?.items?.length}
     >
       <IssueTable
         issues={data?.items ?? []}
@@ -265,7 +265,7 @@ export function OrphanXuidsSection() {
       kind="orphan_xuids"
       emptyTitle={tA('admin.dq.orphan_xuids_empty_title')}
       emptyDesc={tA('admin.dq.orphan_xuids_empty_desc')}
-      count={data?.items.length}
+      count={data?.items?.length}
     >
       <IssueTable issues={data?.items ?? []} columns={columns} />
     </SectionShell>

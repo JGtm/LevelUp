@@ -20,7 +20,7 @@ import { useMemo, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
 import { MultiSelectFilter, type MultiSelectOption } from '@/features/explorer/MultiSelectFilter'
-import { ExperienceDropdown, type Experience } from '@/features/_shared/ExperienceDropdown'
+import { ExperienceDropdown, type Experience, type ExperienceCount } from '@/features/_shared/ExperienceDropdown'
 import { Spinner } from '@/components/ui/spinner'
 import { useCareerHighlightMatches } from './queries'
 import { careerManifest } from '@/lib/i18n/generated/career'
@@ -56,7 +56,23 @@ export function CareerHighlightMatchesSection() {
 
   const { data, isLoading, isError } = useCareerHighlightMatches(playerSlug, filters)
 
-  const rows = !data ? [] : variant === 'best' ? data.best_matches : data.worst_matches
+  // Le contrat autorise best_matches / worst_matches = null (le backend Go peut
+  // renvoyer null pour un filtre sans résultat).
+  const rows = !data ? [] : (variant === 'best' ? data.best_matches : data.worst_matches) ?? []
+
+  // Le contrat type `value: string` ; ExperienceDropdown attend l'union Experience.
+  // Le backend ne renvoie que all/ranked/unranked pour ce filtre → on narrow.
+  const VALID_EXPERIENCES: readonly Experience[] = ['all', 'ranked', 'unranked']
+  const experienceCounts: ExperienceCount[] = useMemo(
+    () =>
+      (data?.available_experience ?? [])
+        .filter((c): c is { value: Experience; count: number } =>
+          (VALID_EXPERIENCES as readonly string[]).includes(c.value),
+        )
+        .map((c) => ({ value: c.value, count: c.count })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data?.available_experience],
+  )
 
   // Construit les options de la dropdown Saisons à partir du catalog des saisons
   // côté frontend (label localisé), enrichies des cascade counts du backend.
@@ -109,7 +125,7 @@ export function CareerHighlightMatchesSection() {
           <ExperienceDropdown
             value={experience}
             onChange={setExperience}
-            counts={data?.available_experience ?? []}
+            counts={experienceCounts}
             labels={{
               placeholder: t('career.highlight_matches.filter_experience'),
               all: t('career.highlight_matches.experience_all'),

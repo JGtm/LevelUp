@@ -43,12 +43,12 @@ function buildHomeResponse(): HomePageResponse {
     },
     spartan_identity: {
       spartan_id: 'JGTM',
-      banner_image_url: null,
-      emblem_image_url: null,
-      backdrop_image_url: null,
-      highest_csr: null,
-      highest_lusr: null,
-      career_rank: null,
+      banner_image_url: undefined,
+      emblem_image_url: undefined,
+      backdrop_image_url: undefined,
+      highest_csr: undefined,
+      highest_lusr: undefined,
+      career_rank: undefined,
     },
     highlights: [],
     recent_matches: [],
@@ -106,7 +106,7 @@ describe('Home ranking states', () => {
       ...response.spartan_identity!,
       highest_csr: {
         rating_value: 0,
-        tier_label: null,
+        tier_label: undefined,
         badge_image_url: '/static/ranks/halo_infinite/unranked_3.png',
         measurement_matches_remaining: 7,
       },
@@ -138,7 +138,7 @@ describe('Home ranking states', () => {
       ...response.spartan_identity!,
       highest_lusr: {
         rating_value: 0,
-        tier_label: null,
+        tier_label: undefined,
         badge_image_url: '/static/ranks/halo_infinite/unranked_6.png',
         measurement_matches_remaining: 4,
       },
@@ -167,7 +167,7 @@ describe('Home ranking states', () => {
       ...response.spartan_identity!,
       highest_csr: {
         rating_value: 0,
-        tier_label: null,
+        tier_label: undefined,
         badge_image_url: '/static/ranks/halo_infinite/unranked_6.png',
         measurement_matches_remaining: 2,
         placement_total: 5, // S13 et postérieures

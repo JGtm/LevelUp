@@ -12,14 +12,28 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useSoloFilterStore as useGlobalFilterStore } from '@/stores/soloFilterStore'
-import { DEFAULT_GAP_MINUTES, DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
+import { DEFAULT_GAP_MINUTES } from '@/stores/createFilterStore'
 import type { FilterContextResolved } from '@/lib/api/types'
 
 import { PeriodSessionRail } from './PeriodSessionRail'
 
+// Contexte effectif conforme au contrat (champs requis, nullable explicites).
+const DEFAULT_EFFECTIVE: FilterContextResolved['effective'] = {
+  filter_mode: 'period',
+  period: { start_date: null, end_date: null },
+  sessions: {
+    gap_minutes: DEFAULT_GAP_MINUTES,
+    picked_sessions: [],
+    picked_session_label: null,
+    picked_solo_session_label: null,
+    picked_squad_session_label: null,
+  },
+  cascade: { experience_types: [], playlists: [], modes: [], maps: [] },
+}
+
 function buildResolved(allSessions: Array<{ id: string; label: string }>): FilterContextResolved {
   return {
-    effective: DEFAULT_FILTER_CONTEXT,
+    effective: DEFAULT_EFFECTIVE,
     available_options: { experience_types: [], playlists: [], modes: [], maps: [] },
     session_options: {
       all_sessions: allSessions.map((s) => ({
@@ -28,6 +42,8 @@ function buildResolved(allSessions: Array<{ id: string; label: string }>): Filte
         match_count: 5,
         match_count_filtered: 5,
         is_squad: false,
+        started_at_utc: '2026-04-01T21:00:00Z',
+        ended_at_utc: '2026-04-01T22:30:00Z',
       })),
       solo_labels: [],
       squad_labels: [],
@@ -74,7 +90,10 @@ describe('PeriodSessionRail', () => {
     store.setSessions({ picked_sessions: ['s-latest'], gap_minutes: DEFAULT_GAP_MINUTES })
 
     renderWithProviders(<PeriodSessionRail />)
-    expect(screen.getByText('06/04 21h24')).toBeTruthy()
+    // Le contrat garantit désormais started_at_utc/ended_at_utc (requis) → le rail
+    // affiche le label de session FORMATÉ (« Session du … ») plutôt que le label
+    // brut. Assertion TZ-indépendante (formatSessionLabel formate en heure locale).
+    expect(screen.getByText(/Session du/)).toBeTruthy()
     expect(screen.getByLabelText(/Session précédente|Previous session/)).toBeTruthy()
     expect(screen.getByLabelText(/Session suivante|Next session/)).toBeTruthy()
   })

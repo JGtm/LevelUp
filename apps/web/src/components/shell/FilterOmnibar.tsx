@@ -352,7 +352,7 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore, 
           onClose={closeAll}
           seasons={seasons}
           activeSeason={activeSeason}
-          seasonCounts={seasonCounts}
+          seasonCounts={seasonCounts ?? undefined}
           onSelectSeason={(s) => setPendingPeriod(seasonToPeriod(s))}
           onClear={() => setPendingPeriod(DEFAULT_PERIOD)}
         />
@@ -364,7 +364,7 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore, 
         onClose={closeAll}
         period={pendingPeriod}
         onSetPeriod={setPendingPeriod}
-        presetCounts={presetCounts}
+        presetCounts={presetCounts ?? undefined}
       />
 
       {sessionLabels.length > 0 && (

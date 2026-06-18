@@ -30,26 +30,29 @@ export function buildSquadMapHeatmapOption(
   opts: SquadMapHeatmapOpts,
 ): EChartsCoreOption {
   const heatmap = series[0]?.datapoints[0]
-  if (!heatmap || heatmap.players.length === 0 || heatmap.maps_topn.length === 0) {
+  const players = heatmap?.players ?? []
+  const mapsTopn = heatmap?.maps_topn ?? []
+  const cells = heatmap?.cells ?? []
+  if (!heatmap || players.length === 0 || mapsTopn.length === 0) {
     return { backgroundColor: CHART_BG }
   }
 
   // Étiquettes X « #N\nCarte » (format compact 2 lignes, comme les autres charts).
   // Nom complet conservé dans `mapNames` pour le tooltip.
-  const mapNames = heatmap.maps_topn.map(opts.mapLabelOf)
+  const mapNames = mapsTopn.map(opts.mapLabelOf)
   const xLabels = mapNames.map((name, i) => `#${i + 1}\n${truncateMap(name)}`)
-  const yLabels = heatmap.players
+  const yLabels = players
 
   // Map (player, map) → cell pour lookup O(1).
   const cellByKey = new Map<string, SquadMapHeatmapCell>()
-  for (const c of heatmap.cells) {
+  for (const c of cells) {
     cellByKey.set(`${c.player}|${c.map_ui}`, c)
   }
 
   const data: Array<[number, number, number | null]> = []
-  for (let yi = 0; yi < heatmap.players.length; yi += 1) {
-    for (let xi = 0; xi < heatmap.maps_topn.length; xi += 1) {
-      const c = cellByKey.get(`${heatmap.players[yi]}|${heatmap.maps_topn[xi]}`)
+  for (let yi = 0; yi < players.length; yi += 1) {
+    for (let xi = 0; xi < mapsTopn.length; xi += 1) {
+      const c = cellByKey.get(`${players[yi]}|${mapsTopn[xi]}`)
       const v = c?.perf_avg !== undefined ? Number(c.perf_avg.toFixed(1)) : null
       data.push([xi, yi, v])
     }
@@ -69,10 +72,10 @@ export function buildSquadMapHeatmapOption(
         const d = point?.data
         if (!d) return ''
         const [xi, yi, v] = d
-        const cell = cellByKey.get(`${heatmap.players[yi]}|${heatmap.maps_topn[xi]}`)
+        const cell = cellByKey.get(`${players[yi]}|${mapsTopn[xi]}`)
         const perf = v === null ? opts.noScoreLabel : v.toFixed(1)
         const n = cell?.match_count ?? 0
-        return `${heatmap.players[yi]} — ${mapNames[xi]}<br/>Perf: ${perf}<br/>N: ${n}`
+        return `${players[yi]} — ${mapNames[xi]}<br/>Perf: ${perf}<br/>N: ${n}`
       },
     },
     xAxis: {

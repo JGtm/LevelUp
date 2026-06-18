@@ -107,23 +107,25 @@ function buildXpSeries(
   // Toutes les séries d'un ami partagent le même playerName (= gamertag).
   // Un clic sur leur entrée légende affiche/masque réel + estimé + projections.
   friendsXpHistory.forEach((friend, i) => {
-    if (friend.history.length === 0) return
+    // Le contrat autorise `history: null` (le backend Go peut renvoyer null).
+    const friendHistory = friend.history ?? []
+    if (friendHistory.length === 0) return
     const idx = i + 1
     const gt = friend.gamertag
 
-    push(`career.xp.friend.${gt}`, gt, idx, 'real', friend.history.map(p => [p.recorded_at.slice(0, 10), p.xp_total]))
+    push(`career.xp.friend.${gt}`, gt, idx, 'real', friendHistory.map(p => [p.recorded_at.slice(0, 10), p.xp_total]))
 
-    const friendEst = buildEstimatedXpPoints(friend.history)
+    const friendEst = buildEstimatedXpPoints(friendHistory)
     if (friendEst.length > 0) push(`career.xp.friend.${gt}.est`, gt, idx, 'estimated', friendEst)
 
-    const friendProjs = deriveFriendProjections(friend.history)
+    const friendProjs = deriveFriendProjections(friendHistory)
     if (friendProjs) {
-      const lastXp = friend.history[friend.history.length - 1].xp_total
+      const lastXp = friendHistory[friendHistory.length - 1].xp_total
       if (lastXp < HERO_XP_TOTAL) {
-        const nc = buildNormalProjection(friend.history, friendProjs)
+        const nc = buildNormalProjection(friendHistory, friendProjs)
         if (nc.length > 0) push(`career.xp.friend.${gt}.proj.normal`, gt, idx, 'proj-normal', nc)
 
-        const oc = buildOptimisticProjection(friend.history, friendProjs)
+        const oc = buildOptimisticProjection(friendHistory, friendProjs)
         if (oc.length > 0) push(`career.xp.friend.${gt}.proj.opt`, gt, idx, 'proj-optimiste', oc)
       }
     }

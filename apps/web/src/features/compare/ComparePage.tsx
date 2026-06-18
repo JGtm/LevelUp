@@ -59,6 +59,13 @@ function formatMetricValue(
   return value.toLocaleString(text.intlLocale, { minimumFractionDigits: 1, maximumFractionDigits: 2 })
 }
 
+// Le contrat type winner en `string` (struct Go) ; les barres de comparaison
+// n'admettent que le domaine fermé 'a' | 'b' | 'tie' | null. Toute valeur hors
+// domaine retombe sur null (traité comme 'tie' par les composants).
+function asWinner(winner: string): 'a' | 'b' | 'tie' | null {
+  return winner === 'a' || winner === 'b' || winner === 'tie' ? winner : null
+}
+
 function getCategoryRows(rows: CompareMetricRow[], keys: readonly string[]) {
   const byKey = new Map(rows.map(r => [r.metric, r]))
   return keys.flatMap(k => {
@@ -111,7 +118,7 @@ function CategoryColumn({ title, rows, text, gamertagA, gamertagB }: CategoryCol
               valueB={valB}
               rawA={row.value_a}
               rawB={row.value_b}
-              winner={row.winner}
+              winner={asWinner(row.winner)}
               ariaLabel={ariaLabel}
               sampleNote={sampleNote}
               availableA={availableA}
@@ -180,8 +187,8 @@ function CategoryMirrorSection({ title, keys, metricsLeft, metricsRight, text }:
               rawA={left.value_a}
               rawB={left.value_b}
               rawC={right.value_b}
-              winnerAB={left.winner}
-              winnerAC={right.winner}
+              winnerAB={asWinner(left.winner)}
+              winnerAC={asWinner(right.winner)}
               sampleNoteB={sampleNoteB}
               sampleNoteC={sampleNoteC}
               availableA={availableA}

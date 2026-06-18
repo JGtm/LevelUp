@@ -36,7 +36,7 @@ function formatDate(iso: string): string {
   }
 }
 
-function OutcomeBadge({ outcome, labels }: { outcome: number | null; labels: { win: string; loss: string; other: string } }) {
+function OutcomeBadge({ outcome, labels }: { outcome: number | null | undefined; labels: { win: string; loss: string; other: string } }) {
   if (outcome === OUTCOME_WIN)
     return <span className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-success/20 text-success">{labels.win}</span>
   if (outcome === OUTCOME_LOSS)

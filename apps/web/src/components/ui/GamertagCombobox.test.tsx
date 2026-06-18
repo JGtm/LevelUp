@@ -48,7 +48,7 @@ describe('GamertagCombobox', () => {
         selected={[]}
         onChange={() => {}}
         frequentOptions={[
-          { gamertag: 'CharlieX', xuid: 'xuid-CharlieX', encounter_count: 12, last_seen_at: null },
+          { gamertag: 'CharlieX', xuid: 'xuid-CharlieX', encounter_count: 12, last_seen_at: undefined },
         ]}
       />,
     )

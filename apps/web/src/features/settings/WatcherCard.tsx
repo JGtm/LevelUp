@@ -317,7 +317,7 @@ function RTAStatus({ t }: { t: SettingsText }) {
           {data.rta_connected ? t.watcherRtaConnected : t.watcherRtaDisconnected}
         </span>
       </div>
-      {data.players.length > 0 && (
+      {data.players && data.players.length > 0 && (
         <ul className="mt-1 space-y-1">
           {data.players.map((p) => {
             const presence = resolvePresenceTone(p.presence_state, t)

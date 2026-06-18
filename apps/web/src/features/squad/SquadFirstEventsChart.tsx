@@ -42,10 +42,10 @@ export function SquadFirstEventsChart({
 
   const players = useMemo(() => (data?.rows ?? []).map((r) => r.player), [data])
 
-  const series = useMemo<ChartSeries<SquadFirstEventsRow>[]>(
-    () => (data && data.rows.length > 0 ? [{ key: 'first-events', datapoints: data.rows }] : []),
-    [data],
-  )
+  const series = useMemo<ChartSeries<SquadFirstEventsRow>[]>(() => {
+    const rows = data?.rows ?? []
+    return rows.length > 0 ? [{ key: 'first-events', datapoints: rows }] : []
+  }, [data])
   const buildOption = useCallback(
     () => buildSquadFirstEventsOption(data, { ...opts, hiddenPlayers, hiddenTypes }),
     [data, opts, hiddenPlayers, hiddenTypes],

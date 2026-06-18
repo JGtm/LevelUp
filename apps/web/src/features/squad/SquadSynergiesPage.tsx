@@ -127,7 +127,7 @@ export function SquadSynergiesPage() {
       <SquadMapHeatmapChart
         title={t.heatmap.title}
         emptyMessage={t.empty.noBlockData}
-        data={mapHeatmap && mapHeatmap.players.length > 0 && mapHeatmap.maps_topn.length > 0 ? mapHeatmap : undefined}
+        data={mapHeatmap && (mapHeatmap.players?.length ?? 0) > 0 && (mapHeatmap.maps_topn?.length ?? 0) > 0 ? mapHeatmap : undefined}
         mapLabelOf={mapLabelOf}
         pieceLabels={{
           tier1: t.heatmap.pieceTier1,

@@ -11,7 +11,7 @@ const makeRow = (gamertag: string, hs: number, pk: number): TeammateRow => ({
   gamertag,
   xuid: 'x',
   encounter_count: 5,
-  last_seen_at: null,
+  last_seen_at: undefined,
   with_kpis: {
     match_count: 5,
     wins: 3,
@@ -23,7 +23,7 @@ const makeRow = (gamertag: string, hs: number, pk: number): TeammateRow => ({
     headshot_kills_per_game: hs,
     perfect_kills_per_game: pk,
   },
-  without_kpis: null,
+  without_kpis: undefined,
 })
 
 describe('buildHsPkSeries', () => {
