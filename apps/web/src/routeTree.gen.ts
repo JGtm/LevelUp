@@ -13,7 +13,6 @@ import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as LabRouteImport } from './routes/lab'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -27,6 +26,7 @@ import { Route as AdminSyncRouteImport } from './routes/admin/sync'
 import { Route as AdminLogsRouteImport } from './routes/admin/logs'
 import { Route as AdminDataQualityRouteImport } from './routes/admin/data-quality'
 import { Route as AdminConvergenceRouteImport } from './routes/admin/convergence'
+import { Route as AdminAtelierRouteImport } from './routes/admin/atelier'
 import { Route as AdminAccessRouteImport } from './routes/admin/access'
 import { Route as PlayersPlayerSlugSynthesisRouteImport } from './routes/players/$playerSlug/synthesis'
 import { Route as PlayersPlayerSlugSquadRouteImport } from './routes/players/$playerSlug/squad'
@@ -75,11 +75,6 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LabRoute = LabRouteImport.update({
-  id: '/lab',
-  path: '/lab',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const HelpRoute = HelpRouteImport.update({
   id: '/help',
   path: '/help',
@@ -116,9 +111,9 @@ const OnboardingOpenspartanRoute = OnboardingOpenspartanRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const LabChartsRoute = LabChartsRouteImport.update({
-  id: '/charts',
-  path: '/charts',
-  getParentRoute: () => LabRoute,
+  id: '/lab/charts',
+  path: '/lab/charts',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AdminSystemRoute = AdminSystemRouteImport.update({
   id: '/system',
@@ -143,6 +138,11 @@ const AdminDataQualityRoute = AdminDataQualityRouteImport.update({
 const AdminConvergenceRoute = AdminConvergenceRouteImport.update({
   id: '/convergence',
   path: '/convergence',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAtelierRoute = AdminAtelierRouteImport.update({
+  id: '/atelier',
+  path: '/atelier',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminAccessRoute = AdminAccessRouteImport.update({
@@ -308,12 +308,12 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/changelog': typeof ChangelogRoute
   '/help': typeof HelpRoute
-  '/lab': typeof LabRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/admin/access': typeof AdminAccessRoute
+  '/admin/atelier': typeof AdminAtelierRoute
   '/admin/convergence': typeof AdminConvergenceRoute
   '/admin/data-quality': typeof AdminDataQualityRoute
   '/admin/logs': typeof AdminLogsRoute
@@ -354,12 +354,12 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/changelog': typeof ChangelogRoute
   '/help': typeof HelpRoute
-  '/lab': typeof LabRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/admin/access': typeof AdminAccessRoute
+  '/admin/atelier': typeof AdminAtelierRoute
   '/admin/convergence': typeof AdminConvergenceRoute
   '/admin/data-quality': typeof AdminDataQualityRoute
   '/admin/logs': typeof AdminLogsRoute
@@ -400,12 +400,12 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/changelog': typeof ChangelogRoute
   '/help': typeof HelpRoute
-  '/lab': typeof LabRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/admin/access': typeof AdminAccessRoute
+  '/admin/atelier': typeof AdminAtelierRoute
   '/admin/convergence': typeof AdminConvergenceRoute
   '/admin/data-quality': typeof AdminDataQualityRoute
   '/admin/logs': typeof AdminLogsRoute
@@ -449,12 +449,12 @@ export interface FileRouteTypes {
     | '/admin'
     | '/changelog'
     | '/help'
-    | '/lab'
     | '/login'
     | '/register'
     | '/settings'
     | '/setup'
     | '/admin/access'
+    | '/admin/atelier'
     | '/admin/convergence'
     | '/admin/data-quality'
     | '/admin/logs'
@@ -495,12 +495,12 @@ export interface FileRouteTypes {
     | '/'
     | '/changelog'
     | '/help'
-    | '/lab'
     | '/login'
     | '/register'
     | '/settings'
     | '/setup'
     | '/admin/access'
+    | '/admin/atelier'
     | '/admin/convergence'
     | '/admin/data-quality'
     | '/admin/logs'
@@ -540,12 +540,12 @@ export interface FileRouteTypes {
     | '/admin'
     | '/changelog'
     | '/help'
-    | '/lab'
     | '/login'
     | '/register'
     | '/settings'
     | '/setup'
     | '/admin/access'
+    | '/admin/atelier'
     | '/admin/convergence'
     | '/admin/data-quality'
     | '/admin/logs'
@@ -588,11 +588,11 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   ChangelogRoute: typeof ChangelogRoute
   HelpRoute: typeof HelpRoute
-  LabRoute: typeof LabRouteWithChildren
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
   SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
+  LabChartsRoute: typeof LabChartsRoute
   OnboardingOpenspartanRoute: typeof OnboardingOpenspartanRoute
   PlayersPlayerSlugRoute: typeof PlayersPlayerSlugRouteWithChildren
 }
@@ -625,13 +625,6 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lab': {
-      id: '/lab'
-      path: '/lab'
-      fullPath: '/lab'
-      preLoaderRoute: typeof LabRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/help': {
@@ -685,10 +678,10 @@ declare module '@tanstack/react-router' {
     }
     '/lab/charts': {
       id: '/lab/charts'
-      path: '/charts'
+      path: '/lab/charts'
       fullPath: '/lab/charts'
       preLoaderRoute: typeof LabChartsRouteImport
-      parentRoute: typeof LabRoute
+      parentRoute: typeof rootRouteImport
     }
     '/admin/system': {
       id: '/admin/system'
@@ -723,6 +716,13 @@ declare module '@tanstack/react-router' {
       path: '/convergence'
       fullPath: '/admin/convergence'
       preLoaderRoute: typeof AdminConvergenceRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/atelier': {
+      id: '/admin/atelier'
+      path: '/atelier'
+      fullPath: '/admin/atelier'
+      preLoaderRoute: typeof AdminAtelierRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/access': {
@@ -919,6 +919,7 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminAccessRoute: typeof AdminAccessRoute
+  AdminAtelierRoute: typeof AdminAtelierRoute
   AdminConvergenceRoute: typeof AdminConvergenceRoute
   AdminDataQualityRoute: typeof AdminDataQualityRoute
   AdminLogsRoute: typeof AdminLogsRoute
@@ -929,6 +930,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAccessRoute: AdminAccessRoute,
+  AdminAtelierRoute: AdminAtelierRoute,
   AdminConvergenceRoute: AdminConvergenceRoute,
   AdminDataQualityRoute: AdminDataQualityRoute,
   AdminLogsRoute: AdminLogsRoute,
@@ -938,16 +940,6 @@ const AdminRouteChildren: AdminRouteChildren = {
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
-
-interface LabRouteChildren {
-  LabChartsRoute: typeof LabChartsRoute
-}
-
-const LabRouteChildren: LabRouteChildren = {
-  LabChartsRoute: LabChartsRoute,
-}
-
-const LabRouteWithChildren = LabRoute._addFileChildren(LabRouteChildren)
 
 interface PlayersPlayerSlugAscensionRouteChildren {
   PlayersPlayerSlugAscensionCoachingRoute: typeof PlayersPlayerSlugAscensionCoachingRoute
@@ -1059,11 +1051,11 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   ChangelogRoute: ChangelogRoute,
   HelpRoute: HelpRoute,
-  LabRoute: LabRouteWithChildren,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
   SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
+  LabChartsRoute: LabChartsRoute,
   OnboardingOpenspartanRoute: OnboardingOpenspartanRoute,
   PlayersPlayerSlugRoute: PlayersPlayerSlugRouteWithChildren,
 }

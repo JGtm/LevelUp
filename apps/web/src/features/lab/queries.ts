@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
 import type {
-  LabContractsResponse,
   LabDiagnosticsResponse,
   LabResourcesResponse,
 } from '@/lib/api/types'
@@ -53,15 +52,6 @@ export function useLabResources(params: LabResourcesParams, enabled = true) {
     queryFn: () => api.get<LabResourcesResponse>(buildLabResourcesPath(params)),
     enabled,
     staleTime: 30 * 1000,
-  })
-}
-
-export function useLabContracts(enabled = true) {
-  return useQuery({
-    queryKey: queryKeys.labContracts,
-    queryFn: () => api.get<LabContractsResponse>('/lab/contracts'),
-    enabled,
-    staleTime: 60 * 1000,
   })
 }
 

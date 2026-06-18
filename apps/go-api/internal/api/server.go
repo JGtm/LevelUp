@@ -651,9 +651,18 @@ func NewRouter(
 		// L'accès reste gardé au niveau service (requireAccess → can_manage_instance).
 		// Anti-régression : lab_routes_mounted_test.go (chi.Walk sur le vrai routeur).
 		labHandler := handlers.NewLabHandler(service.NewLabService(cfg, lab_platform.NewProvider(cfg)))
-		r.Get("/lab/resources", labHandler.GetResources)
-		r.Get("/lab/contracts", labHandler.GetContracts)
-		r.Get("/lab/diagnostics", labHandler.GetDiagnostics)
+		// Durcissement (2026-06-18) : le Lab (désormais l'« Atelier » de l'Admin) est
+		// un outil opérateur → gardé RequireAuth+RequireAdmin comme /admin/*. Auparavant
+		// /lab/* n'était filtré qu'au niveau service (can_manage_instance, hardcodé true
+		// au bootstrap → de fait ouvert à tout utilisateur connecté). Le gate service
+		// subsiste comme kill-switch d'instance.
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
+			r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+			r.Get("/lab/resources", labHandler.GetResources)
+			r.Get("/lab/contracts", labHandler.GetContracts)
+			r.Get("/lab/diagnostics", labHandler.GetDiagnostics)
+		})
 
 		// Sprint 43 : changelog (markdown brut)
 		changelog := handlers.NewChangelogHandler(cfg.RepoRoot)
