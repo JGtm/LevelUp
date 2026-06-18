@@ -97,9 +97,12 @@ func run(
 	freshnessDays int,
 	titleID string,
 ) error {
-	// Ouvrir metadata.duckdb
+	// Ouvrir metadata.duckdb DU TITRE ciblé (MT-16 / day-one 2e titre : le flag
+	// --title-id était threadé au fetch d'assets mais IGNORÉ pour les chemins DB →
+	// `--title-id X` écrivait dans la metadata de Halo. Corrigé : chemins résolus
+	// pour titleID. Défaut du flag = DefaultSlug → byte-identique en mono-titre.)
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
-	metaPath := pr.MetadataDBPath(titlePkg.DefaultSlug)
+	metaPath := pr.MetadataDBPath(titleID)
 	metaDB, err := duckdb.OpenReadWrite(metaPath)
 	if err != nil {
 		return fmt.Errorf("open metadata.duckdb: %w", err)
@@ -108,8 +111,8 @@ func run(
 
 	metaRepo := duckdb.NewMetadataRepoFromDB(metaDB)
 
-	// Ouvrir shared_matches_v2.duckdb
-	sharedPath := pr.SharedDBPath(titlePkg.DefaultSlug)
+	// Ouvrir shared_matches_v2.duckdb DU TITRE ciblé.
+	sharedPath := pr.SharedDBPath(titleID)
 	sharedDB, err := duckdb.OpenReadOnly(sharedPath)
 	if err != nil {
 		return fmt.Errorf("open shared_matches_v2.duckdb: %w", err)

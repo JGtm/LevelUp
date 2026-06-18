@@ -84,7 +84,7 @@ func runSeasons(cfg *config.AppConfig, args []string, _ bool) error {
 		return err
 	}
 
-	metaDB, err := openMetadataDB(cfg)
+	metaDB, err := openMetadataDB(cfg, *titleID)
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func runCSRSeasons(cfg *config.AppConfig, args []string, _ bool) error {
 		return err
 	}
 
-	metaDB, err := openMetadataDB(cfg)
+	metaDB, err := openMetadataDB(cfg, *titleID)
 	if err != nil {
 		return err
 	}
@@ -204,7 +204,7 @@ func runMedals(cfg *config.AppConfig, args []string) error {
 		return err
 	}
 
-	metaDB, err := openMetadataDB(cfg)
+	metaDB, err := openMetadataDB(cfg, *titleID)
 	if err != nil {
 		return err
 	}
@@ -274,7 +274,7 @@ func runAssets(cfg *config.AppConfig, args []string) error {
 		return err
 	}
 
-	metaDB, err := openMetadataDB(cfg)
+	metaDB, err := openMetadataDB(cfg, *titleID)
 	if err != nil {
 		return err
 	}
@@ -322,7 +322,7 @@ func runAssets(cfg *config.AppConfig, args []string) error {
 // runStaging crée les tables de staging waypoint_medals_raw et waypoint_assets_raw.
 // Ne fait pas de fetch Waypoint : crée juste le schéma (prêt pour un futur backfill).
 func runStaging(cfg *config.AppConfig, _ []string) error {
-	metaDB, err := openMetadataDB(cfg)
+	metaDB, err := openMetadataDB(cfg, titlePkg.DefaultSlug)
 	if err != nil {
 		return err
 	}
@@ -337,11 +337,15 @@ func runStaging(cfg *config.AppConfig, _ []string) error {
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-func openMetadataDB(cfg *config.AppConfig) (*duckdb.DB, error) {
+// openMetadataDB ouvre la metadata.duckdb DU TITRE `slug` (MT-16 / day-one 2e
+// titre : le flag --title-id était threadé au fetch Waypoint mais IGNORÉ pour le
+// chemin DB → écriture dans la metadata de Halo. Corrigé : chemin résolu pour slug.
+// Les commandes passent leur *titleID ; runStaging (sans flag) passe DefaultSlug.
+func openMetadataDB(cfg *config.AppConfig, slug string) (*duckdb.DB, error) {
 	if cfg.RepoRoot == "" {
 		return nil, fmt.Errorf("LEVELUP_REPO_ROOT non défini — ne peut pas localiser metadata.duckdb")
 	}
-	metaPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug)
+	metaPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(slug)
 	return duckdb.OpenReadWrite(metaPath)
 }
 
