@@ -34,6 +34,7 @@ import (
 	// expvar "levelup". Le handler /debug/vars (stdlib) découvre ces compteurs
 	// automatiquement via http.DefaultServeMux (P8.3, ADR 0009).
 	_ "levelup/go-api/internal/observability"
+	"levelup/go-api/internal/observability/logging"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
@@ -650,7 +651,7 @@ func NewRouter(
 		// tests chi-local du handler (aucun ne vérifiait l'intégration serveur).
 		// L'accès reste gardé au niveau service (requireAccess → can_manage_instance).
 		// Anti-régression : lab_routes_mounted_test.go (chi.Walk sur le vrai routeur).
-		// Explorateur d'API live (Atelier, Stage 1b) : résout un token Spartan via
+		// Explorateur d'API live (Lab, Stage 1b) : résout un token Spartan via
 		// reg.AnyPlayerTokens (seam canonique) puis FetchAsset sur Discovery UGC.
 		// Réutilise le pattern MapImageURLFetcher (supra). Injecté dans le service
 		// pour le garder découplé de halo/auth + testable. Les erreurs d'appel
@@ -662,6 +663,7 @@ func NewRouter(
 			if lang == "" {
 				lang = "en-US"
 			}
+			titleSlug := ctxkeys.TitleSlug(ctx)
 			resp := &domain.LabWaypointResponse{
 				Segment:   q.Segment,
 				Endpoint:  halo.AssetTypeToEndpoint[assetType],
@@ -674,13 +676,20 @@ func NewRouter(
 			if terr != nil {
 				resp.Error = "aucun token Spartan disponible : " + terr.Error()
 				resp.LatencyMS = time.Since(start).Milliseconds()
+				slog.WarnContext(ctx, "lab waypoint: token Spartan indisponible",
+					"module", logging.ModuleLab, "segment", q.Segment, "asset_id", q.AssetID,
+					"titleSlug", titleSlug, "err", terr)
 				return resp, nil
 			}
 			asset, ferr := halo.NewHaloProvider().WithTokens(tokens).FetchAsset(
-				ctx, assetType, titlePkg.DefaultSlug, q.AssetID, q.VersionID, lang)
+				ctx, assetType, titleSlug, q.AssetID, q.VersionID, lang)
 			resp.LatencyMS = time.Since(start).Milliseconds()
 			if ferr != nil {
 				resp.Error = ferr.Error()
+				slog.WarnContext(ctx, "lab waypoint: fetch échoué",
+					"module", logging.ModuleLab, "segment", q.Segment, "asset_id", q.AssetID,
+					"version_id", q.VersionID, "titleSlug", titleSlug,
+					"duration_ms", resp.LatencyMS, "err", ferr)
 				return resp, nil
 			}
 			if asset != nil {
@@ -689,11 +698,15 @@ func NewRouter(
 				resp.Description = asset.Description
 				resp.ImageURL = asset.ImageURL
 			}
+			slog.InfoContext(ctx, "lab waypoint: exploration",
+				"module", logging.ModuleLab, "segment", q.Segment, "asset_id", q.AssetID,
+				"version_id", q.VersionID, "titleSlug", titleSlug,
+				"resolved", resp.ResolvedOK, "duration_ms", resp.LatencyMS)
 			return resp, nil
 		}
 		labHandler := handlers.NewLabHandler(
 			service.NewLabService(cfg, lab_platform.NewProvider(cfg)).WithWaypointExplorer(waypointExplore))
-		// Durcissement (2026-06-18) : le Lab (désormais l'« Atelier » de l'Admin) est
+		// Durcissement (2026-06-18) : le Lab (désormais sous l'Admin) est
 		// un outil opérateur → gardé RequireAuth+RequireAdmin comme /admin/*. Auparavant
 		// /lab/* n'était filtré qu'au niveau service (can_manage_instance, hardcodé true
 		// au bootstrap → de fait ouvert à tout utilisateur connecté). Le gate service

@@ -78,7 +78,7 @@ describe('SettingsPage', () => {
     })
   })
 
-  it('ne propose plus le Lab dans les Paramètres (déplacé vers Admin · Atelier)', () => {
+  it('ne propose plus le Lab dans les Paramètres (déplacé vers Admin · Lab)', () => {
     vi.mocked(useRouterState).mockReturnValue({
       location: { pathname: '/settings', search: '?tab=lab' },
     } as ReturnType<typeof useRouterState>)

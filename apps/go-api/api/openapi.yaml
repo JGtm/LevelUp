@@ -1073,6 +1073,16 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /players/{player_slug}/filters/match-ids:
+    post:
+      tags: [filters]
+      operationId: postFilterMatchIDs
+      summary: "Résout la liste des match_id correspondant à un FilterSpec (cascade)"
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200": { description: "Liste des match_id filtrés" }
+
   # -------------------------------------------------------------------------
   # Sessions (Sprint 9) — ajoutées au contrat sprint 29
   # Go-only : FastAPI expose /pages/timeseries (POST) qui couvre session-compare.
@@ -1554,6 +1564,16 @@ paths:
       responses:
         "200": { description: "Diagnostics d'instance pour le titre courant" }
         "403": { description: "Lab non autorisé sur cette instance (can_manage_instance)" }
+  /lab/waypoint:
+    get:
+      tags: [lab]
+      operationId: getLabWaypoint
+      summary: "Lab — exploration live de l'API Discovery UGC (résolution d'un asset par segment/id/version)"
+      responses:
+        "200": { description: "Résultat de l'exploration (asset résolu, ou erreur d'appel portée dans la réponse)" }
+        "400": { description: "Paramètres requis manquants (segment/asset_id/version_id)" }
+        "403": { description: "Lab non autorisé sur cette instance (can_manage_instance)" }
+        "503": { description: "Explorateur d'API indisponible (aucune source de token Spartan)" }
 
   # Auth
   /auth/login:

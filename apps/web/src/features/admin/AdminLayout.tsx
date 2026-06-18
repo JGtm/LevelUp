@@ -31,7 +31,7 @@ const TABS: AdminTab[] = [
   { to: '/admin/logs', labelKey: 'admin.nav.logs' },
   { to: '/admin/access', labelKey: 'admin.nav.access' },
   { to: '/admin/system', labelKey: 'admin.nav.system' },
-  { to: '/admin/atelier', labelKey: 'admin.nav.atelier' },
+  { to: '/admin/lab', labelKey: 'admin.nav.lab' },
 ]
 
 export function AdminLayout() {

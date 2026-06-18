@@ -107,9 +107,19 @@ export function AdminDataQualityPage() {
       <OrphanXuidsSection />
 
       <section className="space-y-3">
-        <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          {tA('admin.dq.diagnostics_section')}
-        </h3>
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+            {tA('admin.dq.diagnostics_section')}
+          </h3>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void diagnostics.refetch()}
+            disabled={diagnostics.isFetching}
+          >
+            {diagnostics.isFetching ? tA('admin.job.in_progress') : tA('admin.dq.diagnostics_refresh')}
+          </Button>
+        </div>
         <DiagnosticsPanel
           data={diagnostics.data}
           isLoading={diagnostics.isLoading}

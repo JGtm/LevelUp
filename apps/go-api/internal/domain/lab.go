@@ -207,7 +207,7 @@ type LabDiagnosticsResponse struct {
 }
 
 // LabWaypointQuery paramètre une exploration live de l'API Discovery UGC depuis
-// l'Atelier (segment = AssetType : map | playlist | pair | game_variant).
+// le Lab (segment = AssetType : map | playlist | pair | game_variant).
 type LabWaypointQuery struct {
 	Segment   string `json:"segment"`
 	AssetID   string `json:"asset_id"`
@@ -215,7 +215,7 @@ type LabWaypointQuery struct {
 	Lang      string `json:"lang,omitempty"`
 }
 
-// LabWaypointResponse expose le résultat d'un appel Discovery UGC live (Atelier).
+// LabWaypointResponse expose le résultat d'un appel Discovery UGC live (Lab).
 // Les erreurs d'appel (404, auth, token indisponible) sont portées dans Error
 // avec ResolvedOK=false (réponse 200 côté HTTP : l'exploration a abouti, l'asset
 // non) — pas une erreur HTTP, pour que le panneau affiche le détail.

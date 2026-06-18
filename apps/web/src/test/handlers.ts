@@ -450,6 +450,20 @@ export const handlers = [
   http.get(p('/lab/resources'), () => HttpResponse.json(labResourcesFixture)),
   http.get(p('/lab/contracts'), () => HttpResponse.json(labContractsFixture)),
   http.get(p('/lab/diagnostics'), () => HttpResponse.json(labDiagnosticsFixture)),
+  http.get(p('/lab/waypoint'), () =>
+    HttpResponse.json({
+      segment: 'map',
+      endpoint: 'maps',
+      asset_id: 'demo-asset',
+      version_id: '1',
+      lang: 'en-US',
+      resolved_ok: true,
+      asset_name: 'Live Fire',
+      description: 'Arena map',
+      image_url: '',
+      latency_ms: 42,
+    }),
+  ),
 
   // Career
   http.get(p(`/players/${SLUG}/pages/career`), () => HttpResponse.json(careerFixture)),

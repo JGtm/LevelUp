@@ -32,7 +32,7 @@ var ErrLabWaypointInvalid = errors.New("lab waypoint query invalid")
 // halo/auth et testable.
 type WaypointExplorerFunc func(ctx context.Context, q domain.LabWaypointQuery) (*domain.LabWaypointResponse, error)
 
-// LabService orchestre les panneaux du Lab interne / Atelier.
+// LabService orchestre les panneaux du Lab interne.
 type LabService struct {
 	cfg      *config.AppConfig
 	provider port.LabProvider
@@ -44,7 +44,7 @@ func NewLabService(cfg *config.AppConfig, provider port.LabProvider) *LabService
 	return &LabService{cfg: cfg, provider: provider}
 }
 
-// WithWaypointExplorer câble l'explorateur d'API live (Atelier). Sans lui,
+// WithWaypointExplorer câble l'explorateur d'API live (Lab). Sans lui,
 // ExploreWaypoint renvoie ErrLabWaypointUnavailable.
 func (s *LabService) WithWaypointExplorer(fn WaypointExplorerFunc) *LabService {
 	s.explore = fn
@@ -83,7 +83,7 @@ func (s *LabService) GetDiagnostics(ctx context.Context) (*domain.LabDiagnostics
 var validLabSegments = map[string]bool{"map": true, "playlist": true, "pair": true, "game_variant": true}
 
 // ExploreWaypoint exécute un appel live Discovery UGC pour un asset donné
-// (Atelier). Valide la requête, puis délègue à l'explorateur injecté.
+// (Lab). Valide la requête, puis délègue à l'explorateur injecté.
 func (s *LabService) ExploreWaypoint(ctx context.Context, q domain.LabWaypointQuery) (*domain.LabWaypointResponse, error) {
 	if err := s.requireAccess(); err != nil {
 		return nil, err

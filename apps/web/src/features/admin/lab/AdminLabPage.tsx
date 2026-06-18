@@ -1,5 +1,5 @@
 /**
- * AdminAtelierPage — onglet « Atelier » de l'Admin.
+ * AdminLabPage — onglet « Lab » de l'Admin.
  *
  * Réhabilitation Lab (2026-06-18) : l'ancien /lab (outil opérateur enfoui dans
  * les Paramètres) est rapatrié dans l'Admin, où vit déjà la console opérateur.
@@ -27,16 +27,16 @@ import { WaypointExplorerPanel } from './WaypointExplorerPanel'
 
 const RESOURCE_LIMIT = 12
 
-type AtelierTab = 'resources' | 'api'
+type LabSubTab = 'resources' | 'api'
 
-const TABS: ReadonlyArray<{ id: AtelierTab; labelKey: AdminManifestKey }> = [
-  { id: 'resources', labelKey: 'admin.atelier.tab_resources' },
-  { id: 'api', labelKey: 'admin.atelier.tab_api' },
+const TABS: ReadonlyArray<{ id: LabSubTab; labelKey: AdminManifestKey }> = [
+  { id: 'resources', labelKey: 'admin.lab.tab_resources' },
+  { id: 'api', labelKey: 'admin.lab.tab_api' },
 ]
 
-export function AdminAtelierPage() {
+export function AdminLabPage() {
   const tA = useAdminT()
-  const [tab, setTab] = useState<AtelierTab>('resources')
+  const [tab, setTab] = useState<LabSubTab>('resources')
 
   return (
     <div className="space-y-6">

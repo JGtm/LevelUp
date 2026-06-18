@@ -1,3 +1,43 @@
+## [2026-06-18] Refonte Lab — renommage « Atelier » → « Lab » (préférence user + cohérence) — Complété
+
+**Statut** : `tsc`=0, `eslint`=0 erreur, vitest admin+lab 71/71, `vite build` ok (routeTree régénéré → `/admin/lab`), i18n régénéré. Commit en attente.
+
+**Déclencheur (user)** : « j'aimais bien le nom de Lab ». J'avais renommé l'onglet en « Atelier » sans raison forte — concédé. « Lab » est en fait plus cohérent : backend déjà en `/lab/*`, logs `logs/lab.log`, dossier `features/lab/`. Mon « Atelier » créait une dérive front/back.
+
+**Décision technique** : rename complet côté front — route `/admin/atelier` → `/admin/lab` ; dossier `features/admin/atelier/` → `features/admin/lab/` (`AdminLabPage`) ; clés `admin.atelier.*` → `admin.lab.*` ; libellé nav « Lab » (fr/en). Backend inchangé (déjà `/lab/*`).
+
+---
+
+## [2026-06-18] Refonte Lab — vérification finale + logging dédié + doc OpenAPI — Complété
+
+**Statut** : branche `refactor/lab-admin-atelier`. Go : `internal/api` (contrat + lab_routes_mounted) ok, `internal/api/handlers` Lab 8/8 ok, `service` + `observability/logging` ok, `go vet ./internal/...` ok. Front : vitest **1877 passed / 14 skip / 0 fail** (210 fichiers), `tsc -b`=0, `eslint .`=0 erreur, `vite build` ok. Commit en attente d'autorisation.
+
+**Demande user** : vérification finale (complétude + fonctionnement) + bonne couverture de logging (dossier logs dédié) + tests.
+
+**Régression attrapée par la vérif complète** (le hook pre-commit ne lance que go-vet, pas go test) : `TestContractRoutesDocumented` (ratchet OpenAPI à 0) échouait — `GET /lab/waypoint` non documentée + une route **pré-existante** `POST /players/{slug}/filters/match-ids` (pas la mienne, dette `main`). Les deux ajoutées à `api/openapi.yaml` → ratchet revenu à 0.
+
+**Logging** : closure Waypoint instrumentée — `slog.InfoContext` (succès : segment / asset_id / version_id / titleSlug / resolved / duration_ms) + `slog.WarnContext` (token Spartan absent, fetch échoué) routés vers `logs/lab.log` via `module="lab"` (nouvelle constante `logging.ModuleLab`, pattern `ModuleCatalog`). Passage `titlePkg.DefaultSlug` → `ctxkeys.TitleSlug(ctx)` (correction multi-titre).
+
+**Tests ajoutés** : backend `TestLabHandler_GetWaypoint_{OK,InvalidSegment,Unavailable}` ; front `WaypointExplorerPanel.test.tsx` (rendu / bouton désactivé / résultat résolu) + mock MSW `/lab/waypoint` ; `lab_routes_mounted_test` étendu à `/lab/waypoint`.
+
+**Échecs pré-existants (hors périmètre, confirmés)** : `TestE2E_DeviceCodeFlow_{HappyPath,SingleFlight}` (auth device-flow, échouent en isolation ; 0 fichier auth dans le diff vs main) + flakiness DuckDB ART sous tests handlers parallèles. À traiter séparément.
+
+**Conclusion** : refonte Lab complète et vérifiée. Prochaine étape : push branche + PR (sur autorisation).
+
+---
+
+## [2026-06-18] Atelier — clôture refonte Lab (Stage 1c : bouton Rafraîchir diagnostics) — Complété
+
+**Statut** : branche `refactor/lab-admin-atelier` (commits 1a `81e9148bb`, 1b `c27de5654`). `tsc -b`=0, `eslint .`=0 erreur, vitest admin 68/68, i18n régénéré (+1 clé). Commit en attente d'autorisation.
+
+**Constat qui recadre (1c)** : les actions diagnostics du plan initial sont redondantes ou non exposables — « lancer sync » + « audit data » existent déjà (`AdminQuickActions` → `/admin/actions/auto-sync/run`, `data-health/run`) ; la probe tokens est **loopback-only** par sécurité (`admin_auto_sync`) ; le rapport de parité est produit par l'outillage Python (pas d'endpoint Go). Surtout, le Stage 1a a déjà **colocalisé** Diagnostics avec ses actions de remédiation dans « Qualité données ». Construire des boutons sync/probe aurait dupliqué l'existant ou régressé la sécurité.
+
+**Décision technique** : seule action safe et non-redondante retenue (choix user) — bouton « Rafraîchir » sur la section Diagnostics de `AdminDataQualityPage` (re-fetch `useLabDiagnostics`, `isFetching` → busy ; zéro nouveau backend). i18n `admin.dq.diagnostics_refresh`.
+
+**Conclusion** : refonte Lab terminée (1a consolidation IA + 1b explorateur d'API + 1c clôture). Horizon 2 (cockpit onboarding titre) reste différé, gated par le chantier multi-titre (PMT-1/2/3). Prochaine étape : push branche + PR (sur autorisation).
+
+---
+
 ## [2026-06-18] Atelier — Explorateur d'API Waypoint (refonte Lab, Stage 1b) — Complété
 
 **Statut** : branche `refactor/lab-admin-atelier` (suite du commit 1a `81e9148bb`). Go `internal/api` + `internal/api/handlers` = ok (3 nouveaux tests handler : OK / segment invalide / explorateur indisponible) ; `tsc -b` = 0 ; vitest admin+lab 68/68 ; `eslint .` = 0 erreur ; `vite build` OK ; i18n régénéré (admin 278 clés, +19). Commit en attente d'autorisation.

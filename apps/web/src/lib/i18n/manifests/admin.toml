@@ -40,85 +40,85 @@ en = "Access"
 fr = "Système"
 en = "System"
 
-[admin.nav.atelier]
-fr = "Atelier"
-en = "Workshop"
+[admin.nav.lab]
+fr = "Lab"
+en = "Lab"
 
-# ─── Atelier (explorateur d'API Waypoint) ───────────────────────────────────
+# ─── Lab (explorateur d'API Waypoint) ───────────────────────────────────
 
-[admin.atelier.tab_resources]
+[admin.lab.tab_resources]
 fr = "Ressources"
 en = "Resources"
 
-[admin.atelier.tab_api]
+[admin.lab.tab_api]
 fr = "Explorateur d'API"
 en = "API explorer"
 
-[admin.atelier.api_intro]
+[admin.lab.api_intro]
 fr = "Interroge en direct l'API Discovery UGC de Halo Waypoint : résolution d'un asset par identifiant et version. Utile pour la maintenance et la préparation d'un nouveau titre."
 en = "Query Halo Waypoint's Discovery UGC API live: resolve an asset by id and version. Useful for maintenance and preparing a new title."
 
-[admin.atelier.api_segment]
+[admin.lab.api_segment]
 fr = "Type d'asset"
 en = "Asset type"
 
-[admin.atelier.api_asset_id]
+[admin.lab.api_asset_id]
 fr = "Identifiant d'asset"
 en = "Asset ID"
 
-[admin.atelier.api_version_id]
+[admin.lab.api_version_id]
 fr = "Identifiant de version"
 en = "Version ID"
 
-[admin.atelier.api_lang]
+[admin.lab.api_lang]
 fr = "Langue"
 en = "Language"
 
-[admin.atelier.api_run]
+[admin.lab.api_run]
 fr = "Interroger"
 en = "Query"
 
-[admin.atelier.api_running]
+[admin.lab.api_running]
 fr = "Appel en cours…"
 en = "Calling…"
 
-[admin.atelier.api_resolved]
+[admin.lab.api_resolved]
 fr = "Résolu"
 en = "Resolved"
 
-[admin.atelier.api_failed]
+[admin.lab.api_failed]
 fr = "Échec"
 en = "Failed"
 
-[admin.atelier.api_name]
+[admin.lab.api_name]
 fr = "Nom public"
 en = "Public name"
 
-[admin.atelier.api_description]
+[admin.lab.api_description]
 fr = "Description"
 en = "Description"
 
-[admin.atelier.api_latency]
+[admin.lab.api_latency]
 fr = "Latence"
 en = "Latency"
 
-[admin.atelier.api_image]
+[admin.lab.api_image]
 fr = "Image"
 en = "Image"
 
-[admin.atelier.seg_map]
+[admin.lab.seg_map]
 fr = "Carte"
 en = "Map"
 
-[admin.atelier.seg_playlist]
+[admin.lab.seg_playlist]
 fr = "Playlist"
 en = "Playlist"
 
-[admin.atelier.seg_pair]
+[admin.lab.seg_pair]
 fr = "Paire carte/mode"
 en = "Map-mode pair"
 
-[admin.atelier.seg_game_variant]
+[admin.lab.seg_game_variant]
 fr = "Variante de jeu"
 en = "Game variant"
 
@@ -499,6 +499,10 @@ en = "Global actions"
 [admin.dq.diagnostics_section]
 fr = "Diagnostics d'instance"
 en = "Instance diagnostics"
+
+[admin.dq.diagnostics_refresh]
+fr = "Rafraîchir"
+en = "Refresh"
 
 [admin.dq.run_registry_names]
 fr = "Résoudre les noms registry"
