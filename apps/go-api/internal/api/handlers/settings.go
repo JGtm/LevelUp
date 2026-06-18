@@ -185,6 +185,10 @@ func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) 
 	// Le rendement combat (OffensiveConversion) est un réglage global process :
 	// propager immédiatement pour que les recomputes au query-time reflètent le
 	// toggle sans redémarrage. Idempotent.
+	if req.RendementExcludeAssists != nil {
+		slog.InfoContext(r.Context(), "settings: rendement_exclude_assists modifié",
+			"value", cfg.RendementExcludeAssists)
+	}
 	analysis.SetExcludeAssistsFromYield(cfg.RendementExcludeAssists)
 
 	// §4 plan Squad/Sessions overhaul : si friend_gamertags a changé,

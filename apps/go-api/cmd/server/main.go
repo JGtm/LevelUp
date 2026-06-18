@@ -607,6 +607,9 @@ func main() {
 	// dès le boot (sinon le défaut false s'applique jusqu'au premier PATCH).
 	if s, lerr := settingsStore.Load(); lerr == nil {
 		analysis.SetExcludeAssistsFromYield(s.RendementExcludeAssists)
+		if s.RendementExcludeAssists {
+			slog.Info("rendement combat : assistances EXCLUES (réglage rendement_exclude_assists actif)")
+		}
 	}
 	tokenProvider := buildTokenProvider(settingsStore)
 

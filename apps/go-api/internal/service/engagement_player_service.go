@@ -97,6 +97,15 @@ func (s *PlayerEngagementService) GetMatchEngagement(
 		// joueur+coequipiers) -> sentinelle dediee mappee en 422 cote handler, et
 		// non un 500 generique affiche "migration en cours" cote front.
 		if errors.Is(err, temporal.ErrMatchTooShort) || errors.Is(err, temporal.ErrInsufficientData) {
+			// Log diagnostic : compteurs d'events par segment pour pister la cause
+			// racine (attribution xuid/team_id) quand un match parait pourtant peuple.
+			slog.WarnContext(ctx, "engagement: courbe non calculable pour ce match",
+				"match_id", matchID, "xuid", s.xuid,
+				"n_player_events", len(input.PlayerEvents),
+				"n_team_events", len(input.TeamEvents),
+				"n_lobby_events", len(input.LobbyEvents),
+				"n_team", mctx.NTeam, "target_team_id", mctx.TargetTeamID,
+				"reason", err.Error())
 			return nil, ErrEngagementInsufficient
 		}
 		return nil, fmt.Errorf("PlayerEngagementService: compute: %w", err)

@@ -1,3 +1,22 @@
+## [2026-06-18] Vérification finale lot rendement/engagement + logging + test 422 — Complété
+
+**Statut** : vérification go/no-go du lot (5 commits). Ajouts logging + 1 test. Tout vert.
+
+**Déclencheur (user)** : « Vérification finale… bonne couverture de logging dans le dossier logs dédié et de tests aussi ».
+
+**Logging ajouté** (route vers `logs/{module}.log` via observability/context_handler.go) :
+- `GetMatchEngagement` : `slog.WarnContext` quand un match renvoie ErrEngagementInsufficient, avec `match_id`, `xuid`, `n_player_events`, `n_team_events`, `n_lobby_events`, `n_team`, `target_team_id`, `reason` → permet de pister en direct la cause racine (attribution xuid/team_id) quand le user recroise un match cassé.
+- PATCH /settings : `slog.InfoContext` quand `rendement_exclude_assists` change.
+- Boot : `slog.Info` si le toggle est actif au démarrage.
+
+**Test ajouté** : `TestEngagementHandler_GetMatchEngagement_Insufficient` (match < 3 min → 422 `engagement_insufficient`, pas 500/migration). + tests existants des commits : `excludeAssistsToggle`, `PaceTeamIncludesPlayer`.
+
+**Résultats vérif** : `go build ./...` ✓, `go vet` (packages touchés) ✓, `go test` analysis/temporal/service/handlers/settings ✓ (3 nouveaux tests verts). Front : `tsc` ✓, `eslint` **0 erreur** (20 warnings pré-existants hors fichiers touchés), **vitest 210 fichiers / 1877 pass / 14 skip** ✓. Tailles fichiers touchés < 500L, fonctions < 80L.
+
+**Reste BLOQUÉ** (backfill-world.exe PID 33736 tient la shared DB) : re-backfill `engagement-coefs --all --with-scores --force` + diagnostic résolution FR maps Escouade. À lancer dès DB libre.
+
+---
+
 ## [2026-06-18] Escouade Engagement : relabel « équipe observée » → « Escouade réelle » (maps FR différé) — Complété (partiel)
 
 **Statut** : commit 5/5. `tsc`/`eslint`/vitest squad 242/242 ✓.
