@@ -3,6 +3,14 @@
 // GET  /settings              → retourne la configuration courante
 // PATCH /settings             → mise à jour partielle (403 demo_mode)
 // POST /settings/media/reset-index → réinitialise l'index médias (job asynchrone)
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) au point de montage
+// racine (server.go monte ces routes en absolu, ex. r.Get("/settings", ...)) et
+// enregistre les 7 routes via huma.*. Logique métier inchangée (settingsStore +
+// jobStore + scheduler backup), seul le wrapping HTTP change. PATCH /settings et
+// les POST media/reset-index ont un body décodé maison (RawBody + MarkRequestBody
+// Optional) pour préserver le contrat 400 {invalid_body} sur JSON malformé / corps
+// absent (un Body typé renverrait le 422 de validation Huma).
 package handlers
 
 import (
@@ -13,6 +21,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/config"
@@ -82,46 +94,81 @@ func (h *SettingsHandler) WithBackupScheduler(s *duckdbbackup.Scheduler) *Settin
 	return h
 }
 
-// GetSettings retourne la configuration courante.
+// Mount enregistre les 7 routes via Huma au point de montage racine (server.go
+// monte ces chemins en absolu). Les POST media/reset-index et le PATCH /settings
+// ont un body OPTIONNEL/décodé maison (RawBody + MarkRequestBodyOptional) :
+// préserve le 400 {invalid_body} sur corps absent ou JSON malformé.
+func (h *SettingsHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/settings", h.handleGetSettings)
+	huma.Patch(api, "/settings", h.handlePatchSettings)
+	humacore.MarkRequestBodyOptional(api, http.MethodPatch, "/settings")
+	huma.Post(api, "/settings/media/reset-index", h.handlePostMediaResetIndex)
+	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/settings/media/reset-index")
+	huma.Post(api, "/settings/media/scan", h.handlePostMediaScan)
+	huma.Post(api, "/settings/sessions/recalculate", h.handlePostRecalculateSessions)
+	huma.Get(api, "/settings/backup/status", h.handleGetBackupStatus)
+	huma.Post(api, "/settings/backup/run", h.handlePostBackupRun)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// settingsBodyInput : corps brut décodé maison (400 invalid_body sur JSON
+// malformé ou corps absent — body marqué optionnel pour que le décodage maison
+// reproduise le contrat EOF→400 de l'ancien json.NewDecoder).
+type settingsBodyInput struct {
+	RawBody []byte
+}
+
+// settingsJSONOutput : 200 avec un corps JSON quelconque (settings response,
+// backup status/run). Reproduit writeJSON(w, 200, ...).
+type settingsJSONOutput struct {
+	Body any
+}
+
+// asyncJobOutput : 202 Accepted avec un AsyncJobStatus.
+type asyncJobOutput struct {
+	Status int
+	Body   *domain.AsyncJobStatus
+}
+
+// ─── Endpoints ───────────────────────────────────────────────────────────────
+
+// handleGetSettings retourne la configuration courante.
 // GET /settings
-func (h *SettingsHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
+func (h *SettingsHandler) handleGetSettings(ctx context.Context, _ *struct{}) (*settingsJSONOutput, error) {
 	if h.cfg.DemoMode {
 		// Mode démo : renvoyer les settings RÉELS de la démo (app_settings.json
 		// avec lang=fr) et non Defaults() — qui renverrait lang="en" et ferait
 		// afficher la démo en anglais. Fallback Defaults+fr si lecture échoue.
 		if h.settingsStore != nil {
 			if cfg, err := h.settingsStore.Load(); err == nil {
-				writeJSON(w, http.StatusOK, settings_platform.ToResponse(cfg))
-				return
+				return &settingsJSONOutput{Body: settings_platform.ToResponse(cfg)}, nil
 			}
 		}
 		d := settings_platform.Defaults()
 		d.Lang = "fr"
-		writeJSON(w, http.StatusOK, settings_platform.ToResponse(d))
-		return
+		return &settingsJSONOutput{Body: settings_platform.ToResponse(d)}, nil
 	}
 
 	cfg, err := h.settingsStore.Load()
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
 	}
-	writeJSON(w, http.StatusOK, settings_platform.ToResponse(cfg))
+	return &settingsJSONOutput{Body: settings_platform.ToResponse(cfg)}, nil
 }
 
-// PatchSettings met à jour partiellement la configuration.
+// handlePatchSettings met à jour partiellement la configuration.
 // PATCH /settings — 422 en mode démo.
-func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) {
+func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsBodyInput) (*settingsJSONOutput, error) {
 	if h.cfg.DemoMode {
-		writeError(r.Context(), w, http.StatusUnprocessableEntity, "demo_mode_unsupported",
+		return nil, humacore.NewError(http.StatusUnprocessableEntity, "demo_mode_unsupported",
 			"La modification des settings n'est pas disponible en mode démo.")
-		return
 	}
 
 	var req domain.UpdateSettingsRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
-		return
+	if err := json.Unmarshal(in.RawBody, &req); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
 	}
 
 	// Le verrou d'instance ne peut être basculé que par un admin : sinon un
@@ -129,30 +176,27 @@ func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) 
 	// No-op quand l'auth n'est pas appliquée (mode none/demo, single-user dev) :
 	// l'opérateur passe alors par env / app_settings.json directement.
 	if req.InstanceLocked != nil && authz.Enforced(h.cfg.DemoMode, h.cfg.AuthMode) {
-		sess := middleware.GetSession(r.Context())
+		sess := middleware.GetSession(ctx)
 		if sess == nil || sess.Role == nil || *sess.Role != "admin" {
-			slog.WarnContext(r.Context(), "settings: toggle instance_locked refusé (admin requis)")
-			writeError(r.Context(), w, http.StatusForbidden, "admin_required",
+			slog.WarnContext(ctx, "settings: toggle instance_locked refusé (admin requis)")
+			return nil, humacore.NewError(http.StatusForbidden, "admin_required",
 				"Seul un administrateur peut modifier le verrou d'instance.")
-			return
 		}
-		slog.InfoContext(r.Context(), "settings: verrou d'instance modifié", "locked", *req.InstanceLocked)
+		slog.InfoContext(ctx, "settings: verrou d'instance modifié", "locked", *req.InstanceLocked)
 	}
 
 	// Validation des champs analyse.
 	if req.SessionGapMinutes != nil && *req.SessionGapMinutes < 0 {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_session_gap",
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_session_gap",
 			"session_gap_minutes doit être ≥ 0.")
-		return
 	}
 	if req.SessionTeamChangeMode != nil {
 		switch *req.SessionTeamChangeMode {
 		case "ignore", "group", "friends":
 			// valide
 		default:
-			writeError(r.Context(), w, http.StatusBadRequest, "invalid_team_change_mode",
+			return nil, humacore.NewError(http.StatusBadRequest, "invalid_team_change_mode",
 				"session_team_change_mode doit être \"ignore\", \"group\" ou \"friends\".")
-			return
 		}
 	}
 	if req.OutcomeBadgeSensitivity != nil {
@@ -160,16 +204,14 @@ func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) 
 		case "relaxed", "standard", "strict":
 			// valide
 		default:
-			writeError(r.Context(), w, http.StatusBadRequest, "invalid_badge_sensitivity",
+			return nil, humacore.NewError(http.StatusBadRequest, "invalid_badge_sensitivity",
 				"outcome_badge_sensitivity doit être \"relaxed\", \"standard\" ou \"strict\".")
-			return
 		}
 	}
 
 	cfg, err := h.settingsStore.Load()
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
 	}
 
 	// Snapshot friend_gamertags avant Apply pour détecter le diff post-save.
@@ -178,8 +220,7 @@ func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) 
 	settings_platform.Apply(cfg, &req)
 
 	if err := h.settingsStore.Save(cfg); err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "settings_save_error", "Impossible de sauvegarder la configuration.")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "settings_save_error", "Impossible de sauvegarder la configuration.")
 	}
 
 	// §4 plan Squad/Sessions overhaul : si friend_gamertags a changé,
@@ -187,9 +228,9 @@ func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) 
 	// Idempotent (la garde FALSE dans friends_recompute.go protège les retries).
 	if h.friendsOrchestrator != nil && friendGamertagsChanged(prevFriends, cfg.FriendGamertags) {
 		go func() {
-			ctx := context.Background()
-			if err := h.friendsOrchestrator.OnFriendsChanged(ctx); err != nil {
-				slog.ErrorContext(ctx, "friends recompute orchestration failed", "err", err)
+			bgCtx := context.Background()
+			if err := h.friendsOrchestrator.OnFriendsChanged(bgCtx); err != nil {
+				slog.ErrorContext(bgCtx, "friends recompute orchestration failed", "err", err)
 			}
 		}()
 	}
@@ -200,11 +241,11 @@ func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) 
 	if h.notifierFor != nil {
 		added := newFriendsAdded(prevFriends, cfg.FriendGamertags)
 		if len(added) > 0 {
-			h.emitFriendsAdded(r.Context(), added)
+			h.emitFriendsAdded(ctx, added)
 		}
 	}
 
-	writeJSON(w, http.StatusOK, settings_platform.ToResponse(cfg))
+	return &settingsJSONOutput{Body: settings_platform.ToResponse(cfg)}, nil
 }
 
 // newFriendsAdded retourne les gamertags présents dans next mais pas dans prev
@@ -275,20 +316,18 @@ func normalizeGamertag(gt string) string {
 	return strings.ToLower(strings.TrimSpace(gt))
 }
 
-// PostMediaResetIndex réinitialise l'index des médias (opération destructive).
+// handlePostMediaResetIndex réinitialise l'index des médias (opération destructive).
 // POST /settings/media/reset-index — retourne un AsyncJobStatus (202).
 // confirm_destructive doit être true.
-func (h *SettingsHandler) PostMediaResetIndex(w http.ResponseWriter, r *http.Request) {
+func (h *SettingsHandler) handlePostMediaResetIndex(ctx context.Context, in *settingsBodyInput) (*asyncJobOutput, error) {
 	var req domain.MediaResetRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
-		return
+	if err := json.Unmarshal(in.RawBody, &req); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
 	}
 
 	if !req.ConfirmDestructive {
-		writeError(r.Context(), w, http.StatusBadRequest, "confirmation_required",
+		return nil, humacore.NewError(http.StatusBadRequest, "confirmation_required",
 			"confirm_destructive doit être true pour autoriser la réinitialisation de l'index.")
-		return
 	}
 
 	job := h.jobStore.Create(domain.JobTypeReindexMedia, "")
@@ -342,16 +381,15 @@ func (h *SettingsHandler) PostMediaResetIndex(w http.ResponseWriter, r *http.Req
 		})
 	}()
 
-	writeJSON(w, http.StatusAccepted, &jobSnapshot)
+	return &asyncJobOutput{Status: http.StatusAccepted, Body: &jobSnapshot}, nil
 }
 
-// PostMediaScan lance une indexation non-destructive des médias pour tous les joueurs.
+// handlePostMediaScan lance une indexation non-destructive des médias pour tous les joueurs.
 // POST /settings/media/scan — retourne un AsyncJobStatus (202). 422 en mode démo.
-func (h *SettingsHandler) PostMediaScan(w http.ResponseWriter, r *http.Request) {
+func (h *SettingsHandler) handlePostMediaScan(ctx context.Context, _ *struct{}) (*asyncJobOutput, error) {
 	if h.cfg.DemoMode {
-		writeError(r.Context(), w, http.StatusUnprocessableEntity, "demo_mode_unsupported",
+		return nil, humacore.NewError(http.StatusUnprocessableEntity, "demo_mode_unsupported",
 			"Le scan des médias n'est pas disponible en mode démo.")
-		return
 	}
 	job := h.jobStore.Create(domain.JobTypeScanMedia, "")
 	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
@@ -400,7 +438,7 @@ func (h *SettingsHandler) PostMediaScan(w http.ResponseWriter, r *http.Request) 
 		})
 	}()
 
-	writeJSON(w, http.StatusAccepted, &jobSnapshot)
+	return &asyncJobOutput{Status: http.StatusAccepted, Body: &jobSnapshot}, nil
 }
 
 // sessionComputeOptionsFor résout les options de calcul de sessions d'un titre
@@ -427,9 +465,9 @@ func sessionComputeOptionsFor(store *settings_platform.Store, pr *titlePkg.PathR
 	}
 }
 
-// PostRecalculateSessions lance un recalcul des sessions pour tous les joueurs.
+// handlePostRecalculateSessions lance un recalcul des sessions pour tous les joueurs.
 // POST /settings/sessions/recalculate — retourne un AsyncJobStatus (202).
-func (h *SettingsHandler) PostRecalculateSessions(w http.ResponseWriter, r *http.Request) {
+func (h *SettingsHandler) handlePostRecalculateSessions(ctx context.Context, _ *struct{}) (*asyncJobOutput, error) {
 	// FriendGamertags reste GLOBAL (cross-titre, PMT-4) : les amis sont des
 	// personnes transverses au titre + le grant d'accès famille ne doit pas
 	// varier par jeu. Résolu une seule fois via Load(), jamais par overlay.
@@ -443,9 +481,8 @@ func (h *SettingsHandler) PostRecalculateSessions(w http.ResponseWriter, r *http
 
 	players, err := h.cfg.LoadPlayers()
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "players_load_error",
+		return nil, humacore.NewError(http.StatusInternalServerError, "players_load_error",
 			"Impossible de charger les joueurs configurés.")
-		return
 	}
 
 	job := h.jobStore.Create(domain.JobTypeSessionsRecalc, "")
@@ -490,5 +527,5 @@ func (h *SettingsHandler) PostRecalculateSessions(w http.ResponseWriter, r *http
 		})
 	}()
 
-	writeJSON(w, http.StatusAccepted, &jobSnapshot)
+	return &asyncJobOutput{Status: http.StatusAccepted, Body: &jobSnapshot}, nil
 }

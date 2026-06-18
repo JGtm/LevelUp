@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
+
 	"levelup/go-api/internal/domain"
 )
 
@@ -30,10 +32,14 @@ func TestAdminInvariantsHandler_Get_OK(t *testing.T) {
 		}, nil
 	}
 	h := NewAdminInvariantsHandler(run)
+	r := chi.NewRouter()
+	r.Route("/admin", func(r chi.Router) {
+		h.Mount(r)
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/invariants", nil)
 	rec := httptest.NewRecorder()
-	h.Get(rec, req)
+	r.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d (attendu 200)", rec.Code)
@@ -56,10 +62,14 @@ func TestAdminInvariantsHandler_Get_RunnerError(t *testing.T) {
 		return domain.AdminInvariantsResponse{}, errors.New("boom")
 	}
 	h := NewAdminInvariantsHandler(run)
+	r := chi.NewRouter()
+	r.Route("/admin", func(r chi.Router) {
+		h.Mount(r)
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/invariants?title=halo_infinite", nil)
 	rec := httptest.NewRecorder()
-	h.Get(rec, req)
+	r.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d (attendu 500)", rec.Code)

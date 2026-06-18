@@ -4,6 +4,12 @@
 // GET /admin/invariants?title={slug} → exécute les invariants de données
 // déclarés (internal/sync/invariants) pour chaque joueur suivi et retourne
 // les violations par joueur. Lectures seules, best-effort par joueur.
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// /admin (middleware RequireAuth/RequireAdmin + NoStore hérités) et enregistre
+// la route via huma.Get. Logique métier inchangée (InvariantsRunner), seul le
+// wrapping HTTP change. Le chemin relatif est identique à la route chi d'origine
+// (montée sous /admin par server.go).
 package handlers
 
 import (
@@ -11,6 +17,10 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 )
@@ -29,19 +39,34 @@ func NewAdminInvariantsHandler(run InvariantsRunner) *AdminInvariantsHandler {
 	return &AdminInvariantsHandler{run: run}
 }
 
-// Get retourne les rapports d'invariants par joueur.
+// Mount enregistre la route via Huma sur le sous-routeur chi (préfixe /admin +
+// middleware RequireAuth/RequireAdmin + NoStore hérités).
+func (h *AdminInvariantsHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/invariants", h.handleGet)
+}
+
+// adminInvariantsInput : ?title= optionnel (défaut : titre par défaut).
+type adminInvariantsInput struct {
+	Title string `query:"title"`
+}
+
+type adminInvariantsOutput struct {
+	Body domain.AdminInvariantsResponse
+}
+
+// handleGet retourne les rapports d'invariants par joueur.
 // GET /admin/invariants?title={slug} (défaut : titre par défaut).
-func (h *AdminInvariantsHandler) Get(w http.ResponseWriter, r *http.Request) {
-	titleSlug := r.URL.Query().Get("title")
+func (h *AdminInvariantsHandler) handleGet(ctx context.Context, in *adminInvariantsInput) (*adminInvariantsOutput, error) {
+	titleSlug := in.Title
 	if titleSlug == "" {
 		titleSlug = titlePkg.DefaultSlug
 	}
-	resp, err := h.run(r.Context(), titleSlug)
+	resp, err := h.run(ctx, titleSlug)
 	if err != nil {
-		slog.ErrorContext(r.Context(), "admin_invariants: run failed", "title", titleSlug, "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "invariants_error",
+		slog.ErrorContext(ctx, "admin_invariants: run failed", "title", titleSlug, "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "invariants_error",
 			"Impossible d'exécuter les invariants de données.")
-		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	return &adminInvariantsOutput{Body: resp}, nil
 }

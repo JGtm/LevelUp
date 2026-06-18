@@ -5,6 +5,15 @@
 // GET  /api/v1/watcher/auth/{id}       → poll état de la tentative
 // PATCH /api/v1/watcher/subscriptions  → met à jour les joueurs surveillés
 //
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// /watcher (middleware RequireAuth/RequireAdmin hérités) et enregistre SEULEMENT
+// les 3 routes idempotentes (status, auth/{attempt_id}, subscriptions). Logique
+// métier inchangée, seul le wrapping HTTP change.
+//
+// POST /auth/start (Device Code Flow) reste un handler chi inline (StartAuth) :
+// il déclenche une goroutine de polling et n'est PAS migré ici (server.go l'enregistre
+// en chi). Mount ne le touche pas.
+//
 // Tous les endpoints nécessitent RequireAuth + RequireAdmin.
 // Le daemon peut être nil (watcher désactivé) — géré proprement sans panic.
 package handlers
@@ -16,8 +25,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/title"
 	auth_platform "levelup/go-api/internal/platform/auth"
@@ -55,6 +66,43 @@ func NewWatcherHandler(
 	}
 }
 
+// Mount enregistre via Huma SEULEMENT les 3 routes idempotentes sur le sous-routeur
+// chi (préfixe /watcher + middleware RequireAuth/RequireAdmin hérités). Le body
+// PATCH /subscriptions est OPTIONNEL (MarkRequestBodyOptional) — corps absent →
+// défaut ["all"], comme l'inline d'origine.
+//
+// POST /auth/start (StartAuth) n'est PAS enregistré ici : il reste un handler chi
+// inline (Device Code Flow + goroutine de polling).
+func (h *WatcherHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/status", h.handleGetStatus)
+	huma.Get(api, "/auth/{attempt_id}", h.handleGetAuthStatus)
+	huma.Patch(api, "/subscriptions", h.handlePatchSubscriptions)
+	humacore.MarkRequestBodyOptional(api, http.MethodPatch, "/subscriptions")
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// watcherAuthStatusInput : path param {attempt_id}.
+type watcherAuthStatusInput struct {
+	AttemptID string `path:"attempt_id"`
+}
+
+// watcherSubscriptionsInput : corps brut décodé maison (400 invalid_body si JSON
+// malformé, contrat préservé). Body OPTIONNEL via MarkRequestBodyOptional —
+// corps absent → req.SubscribedPlayers nil → défaut ["all"].
+type watcherSubscriptionsInput struct {
+	RawBody []byte
+}
+
+type watcherStatusOutput struct{ Body watcherStatusResponse }
+type watcherAuthStatusOutput struct{ Body watcherAuthStatusResponse }
+type watcherSubscriptionsOutput struct {
+	Body struct {
+		SubscribedPlayers []string `json:"subscribed_players"`
+	}
+}
+
 // watcherStatusResponse est la réponse de GET /watcher/status.
 type watcherStatusResponse struct {
 	DaemonRunning     bool                           `json:"daemon_running"`
@@ -88,14 +136,13 @@ type watcherSubscriptionsRequest struct {
 	SubscribedPlayers []string `json:"subscribed_players"`
 }
 
-// GetStatus retourne l'état courant du watcher.
+// handleGetStatus retourne l'état courant du watcher.
 // GET /api/v1/watcher/status
-func (h *WatcherHandler) GetStatus(w http.ResponseWriter, r *http.Request) {
+func (h *WatcherHandler) handleGetStatus(ctx context.Context, _ *struct{}) (*watcherStatusOutput, error) {
 	slog.Debug("watcher_handler: GetStatus appelé")
 	cfg, err := h.settingsStore.Load()
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "settings_error", "impossible de lire les settings")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "settings_error", "impossible de lire les settings")
 	}
 
 	resp := watcherStatusResponse{
@@ -127,7 +174,7 @@ func (h *WatcherHandler) GetStatus(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	return &watcherStatusOutput{Body: resp}, nil
 }
 
 // StartAuth démarre un Device Code Flow Microsoft pour obtenir un token XSTS watcher.
@@ -175,38 +222,40 @@ func (h *WatcherHandler) StartAuth(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GetAuthStatus retourne l'état d'une tentative d'auth watcher.
+// handleGetAuthStatus retourne l'état d'une tentative d'auth watcher.
 // GET /api/v1/watcher/auth/{attempt_id}
-func (h *WatcherHandler) GetAuthStatus(w http.ResponseWriter, r *http.Request) {
-	attemptID := chi.URLParam(r, "attempt_id")
-	slog.Debug("watcher_handler: GetAuthStatus", "attempt_id", attemptID)
-	snap := h.attempts.Snapshot(attemptID)
+func (h *WatcherHandler) handleGetAuthStatus(ctx context.Context, in *watcherAuthStatusInput) (*watcherAuthStatusOutput, error) {
+	slog.Debug("watcher_handler: GetAuthStatus", "attempt_id", in.AttemptID)
+	snap := h.attempts.Snapshot(in.AttemptID)
 	if snap == nil {
-		writeError(r.Context(), w, http.StatusNotFound, "attempt_not_found", "tentative introuvable")
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "attempt_not_found", "tentative introuvable")
 	}
 
-	writeJSON(w, http.StatusOK, watcherAuthStatusResponse{
+	return &watcherAuthStatusOutput{Body: watcherAuthStatusResponse{
 		Status:    snap.Status,
 		ErrorCode: snap.ErrorCode,
 		Gamertag:  snap.Gamertag,
 		XUID:      snap.XUID,
-	})
+	}}, nil
 }
 
-// PatchSubscriptions met à jour les joueurs surveillés.
+// handlePatchSubscriptions met à jour les joueurs surveillés.
 // PATCH /api/v1/watcher/subscriptions
-func (h *WatcherHandler) PatchSubscriptions(w http.ResponseWriter, r *http.Request) {
+func (h *WatcherHandler) handlePatchSubscriptions(ctx context.Context, in *watcherSubscriptionsInput) (*watcherSubscriptionsOutput, error) {
 	var req watcherSubscriptionsRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "corps JSON invalide")
-		return
+	// Body OPTIONNEL (MarkRequestBodyOptional) : corps absent → req zéro (défaut
+	// ["all"] plus bas). Corps présent mais malformé → 400 invalid_body (parse
+	// maison, contrat préservé). Le décodeur d'origine (json.NewDecoder(r.Body))
+	// rejetait aussi un corps vide ; ici Huma laisse passer le corps absent.
+	if len(in.RawBody) > 0 {
+		if err := json.Unmarshal(in.RawBody, &req); err != nil {
+			return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "corps JSON invalide")
+		}
 	}
 
 	cfg, err := h.settingsStore.Load()
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "settings_error", "impossible de lire les settings")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "settings_error", "impossible de lire les settings")
 	}
 
 	players := req.SubscribedPlayers
@@ -216,8 +265,7 @@ func (h *WatcherHandler) PatchSubscriptions(w http.ResponseWriter, r *http.Reque
 	cfg.WatcherSubscribedPlayers = players
 
 	if err := h.settingsStore.Save(cfg); err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "settings_save_error", "impossible de sauvegarder les settings")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "settings_save_error", "impossible de sauvegarder les settings")
 	}
 
 	// Mettre à jour le daemon si actif
@@ -226,9 +274,9 @@ func (h *WatcherHandler) PatchSubscriptions(w http.ResponseWriter, r *http.Reque
 	}
 
 	slog.Info("watcher_handler: subscriptions mises à jour", "players", players)
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"subscribed_players": players,
-	})
+	out := &watcherSubscriptionsOutput{}
+	out.Body.SubscribedPlayers = players
+	return out, nil
 }
 
 // pollWatcherAuth attend la validation du Device Code Flow puis acquiert le token XSTS.

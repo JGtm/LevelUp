@@ -32,7 +32,7 @@ func newMatchFavoriteRouter(factory handlers.ServiceFactory[port.SocialService])
 	r := chi.NewRouter()
 	h := handlers.NewMatchFavoriteHandler(factory)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Patch("/matches/{match_id}/favorite", h.PatchMatchFavorite)
+		h.Mount(r)
 	})
 	return r
 }

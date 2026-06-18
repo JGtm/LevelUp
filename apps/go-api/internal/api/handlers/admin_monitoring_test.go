@@ -1,5 +1,9 @@
 // Package handlers — admin_monitoring_test.go : contrats HTTP des endpoints
 // lecture du dashboard monitoring (runners mockés — pattern admin_token_health).
+//
+// MIGRÉ vers Huma : les requêtes passent par un routeur chi montant h.Mount sous
+// /admin (même point de montage que server_admin_monitoring.go). Requêtes et
+// assertions inchangées.
 package handlers
 
 import (
@@ -11,10 +15,24 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
+
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/jobs"
 )
+
+// serveAdminMonitoring monte h sous /admin (point de montage de
+// server_admin_monitoring.go) et sert la requête via le routeur chi.
+func serveAdminMonitoring(h *AdminMonitoringHandler, req *http.Request) *httptest.ResponseRecorder {
+	r := chi.NewRouter()
+	r.Route("/admin", func(r chi.Router) {
+		h.Mount(r)
+	})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	return rec
+}
 
 func okOverviewRunner(t *testing.T, wantTitle string) MonitoringOverviewRunner {
 	t.Helper()
@@ -34,8 +52,7 @@ func okOverviewRunner(t *testing.T, wantTitle string) MonitoringOverviewRunner {
 func TestAdminMonitoring_Overview_OKAndTitleDefault(t *testing.T) {
 	h := NewAdminMonitoringHandler(okOverviewRunner(t, "halo_infinite"), nil, nil, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/admin/monitoring/overview", nil)
-	rec := httptest.NewRecorder()
-	h.GetOverview(rec, req)
+	rec := serveAdminMonitoring(h, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d (attendu 200) body=%s", rec.Code, rec.Body.String())
@@ -55,8 +72,7 @@ func TestAdminMonitoring_Overview_RunnerError(t *testing.T) {
 		return domain.AdminMonitoringOverview{}, errors.New("boom")
 	}, nil, nil, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/admin/monitoring/overview?title=halo_infinite", nil)
-	rec := httptest.NewRecorder()
-	h.GetOverview(rec, req)
+	rec := serveAdminMonitoring(h, req)
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d (attendu 500)", rec.Code)
@@ -68,8 +84,7 @@ func TestAdminMonitoring_Overview_RunnerError(t *testing.T) {
 func TestAdminMonitoring_Scheduler_UnavailableWhenNil(t *testing.T) {
 	h := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/admin/monitoring/scheduler", nil)
-	rec := httptest.NewRecorder()
-	h.GetScheduler(rec, req)
+	rec := serveAdminMonitoring(h, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d (attendu 200)", rec.Code)
@@ -101,8 +116,7 @@ func TestAdminMonitoring_Convergence_OK(t *testing.T) {
 		}, nil
 	}, nil, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/admin/monitoring/convergence", nil)
-	rec := httptest.NewRecorder()
-	h.GetConvergence(rec, req)
+	rec := serveAdminMonitoring(h, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d (attendu 200)", rec.Code)
@@ -124,8 +138,7 @@ func TestAdminMonitoring_Jobs_ListAndClamp(t *testing.T) {
 
 	h := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, store)
 	req := httptest.NewRequest(http.MethodGet, "/admin/monitoring/jobs?limit=9999", nil)
-	rec := httptest.NewRecorder()
-	h.GetJobs(rec, req)
+	rec := serveAdminMonitoring(h, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d (attendu 200)", rec.Code)
@@ -140,8 +153,7 @@ func TestAdminMonitoring_Jobs_ListAndClamp(t *testing.T) {
 
 	// Store nil : dégradation sans panic.
 	hNil := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil)
-	recNil := httptest.NewRecorder()
-	hNil.GetJobs(recNil, httptest.NewRequest(http.MethodGet, "/admin/monitoring/jobs", nil))
+	recNil := serveAdminMonitoring(hNil, httptest.NewRequest(http.MethodGet, "/admin/monitoring/jobs", nil))
 	if recNil.Code != http.StatusOK {
 		t.Fatalf("status store nil = %d (attendu 200)", recNil.Code)
 	}
@@ -162,8 +174,7 @@ func TestAdminMonitoring_Errors_OK(t *testing.T) {
 	}
 	h := NewAdminMonitoringHandler(nil, nil, nil, runner, nil, nil)
 
-	rec := httptest.NewRecorder()
-	h.GetErrors(rec, httptest.NewRequest(http.MethodGet, "/admin/monitoring/errors", nil))
+	rec := serveAdminMonitoring(h, httptest.NewRequest(http.MethodGet, "/admin/monitoring/errors", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d (attendu 200)", rec.Code)
 	}
@@ -175,7 +186,7 @@ func TestAdminMonitoring_Errors_OK(t *testing.T) {
 		t.Fatalf("payload inattendu : %+v err=%v", got, err)
 	}
 
-	h.GetErrors(httptest.NewRecorder(),
+	serveAdminMonitoring(h,
 		httptest.NewRequest(http.MethodGet, "/admin/monitoring/errors?title=synthetic_title_b", nil))
 	if gotSlug != "synthetic_title_b" {
 		t.Errorf("?title= : slug propagé = %q, want synthetic_title_b", gotSlug)
