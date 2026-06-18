@@ -4,6 +4,13 @@
 //
 // POST /admin/actions/catalog/ugc-drain → 202 + AsyncJobStatus (409 si un drain
 // est déjà en cours pour ce titre).
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le routeur chi
+// (point de montage /admin/actions/catalog, middleware RequireAuth/RequireAdmin
+// hérités) et enregistre le POST via huma.Post. Logique métier inchangée (drain
+// en goroutine de job), seul le wrapping HTTP change. Le 409 est un corps de
+// CONFLIT (pas une erreur Huma standard) → Status explicite + Body map pour
+// préserver le champ details.job_id du contrat d'origine.
 package handlers
 
 import (
@@ -11,6 +18,10 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/jobs"
 )
@@ -34,32 +45,56 @@ func NewAdminCatalogDrainHandler(run CatalogDrainRunner, jobStore *jobs.Store, b
 	return &AdminCatalogDrainHandler{run: run, jobs: jobStore, bgCtx: bgCtx}
 }
 
-// Run démarre le drain UGC.
+// Mount enregistre la route via Huma sur le routeur chi (point de montage
+// /admin/actions/catalog, middleware RequireAuth/RequireAdmin hérités du groupe).
+func (h *AdminCatalogDrainHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Post(api, "/actions/catalog/ugc-drain", h.handleRun)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// catalogDrainInput : ?title= optionnel (fallback titre par défaut via
+// titleOrDefaultSlug, comme l'ancien titleOrDefault(r)).
+type catalogDrainInput struct {
+	Title string `query:"title"`
+}
+
+// catalogDrainOutput : 202 + AsyncJobStatus au lancement, OU 409 + corps de
+// conflit (code/message/retryable/details). Le 409 n'est PAS une erreur Huma
+// standard (NewError ne porte pas details.job_id) → Status explicite + Body map
+// pour préserver byte-identique l'enveloppe d'origine.
+type catalogDrainOutput struct {
+	Status int
+	Body   any
+}
+
+// ─── Endpoint ────────────────────────────────────────────────────────────────
+
+// handleRun démarre le drain UGC.
 // POST /admin/actions/catalog/ugc-drain → 202 (409 si déjà en cours).
-func (h *AdminCatalogDrainHandler) Run(w http.ResponseWriter, r *http.Request) {
+func (h *AdminCatalogDrainHandler) handleRun(ctx context.Context, in *catalogDrainInput) (*catalogDrainOutput, error) {
 	if h.run == nil || h.jobs == nil {
-		writeError(r.Context(), w, http.StatusServiceUnavailable, "catalog_drain_unavailable",
+		return nil, humacore.NewError(http.StatusServiceUnavailable, "catalog_drain_unavailable",
 			"Drain UGC indisponible.")
-		return
 	}
-	titleSlug := titleOrDefault(r)
+	titleSlug := titleOrDefaultSlug(in.Title)
 
 	if active := h.jobs.FindActiveJob(domain.JobTypeCatalogUGCDrain, titleSlug); active != nil {
-		writeJSON(w, http.StatusConflict, map[string]any{
+		return &catalogDrainOutput{Status: http.StatusConflict, Body: map[string]any{
 			"code":      "already_running",
 			"message":   "Un drain UGC est déjà en cours pour ce titre.",
 			"retryable": false,
 			"details":   map[string]string{"job_id": active.JobID},
-		})
-		return
+		}}, nil
 	}
 
 	job := h.jobs.Create(domain.JobTypeCatalogUGCDrain, titleSlug)
 	step := "drain DiscoveryUGC (réseau, rate-limité)"
 	h.jobs.SetStatus(job.JobID, domain.JobStatusRunning, &step)
 	go h.runDrain(h.bgCtx, job.JobID, titleSlug)
-	slog.InfoContext(r.Context(), "admin_actions: drain UGC démarré", "job_id", job.JobID, "title", titleSlug)
-	writeJSON(w, http.StatusAccepted, h.jobs.Get(job.JobID))
+	slog.InfoContext(ctx, "admin_actions: drain UGC démarré", "job_id", job.JobID, "title", titleSlug)
+	return &catalogDrainOutput{Status: http.StatusAccepted, Body: h.jobs.Get(job.JobID)}, nil
 }
 
 // runDrain exécute le drain dans la goroutine du job.

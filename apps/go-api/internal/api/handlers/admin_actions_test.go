@@ -1,5 +1,9 @@
 // Package handlers — admin_actions_test.go : contrats HTTP des actions du
 // dashboard monitoring (503 si dépendance absente, 409 si job déjà en vol).
+//
+// MIGRÉ vers Huma : les requêtes passent par un routeur chi montant h.Mount sous
+// /admin (même point de montage que server_admin_monitoring.go). Requêtes et
+// assertions inchangées.
 package handlers
 
 import (
@@ -11,18 +15,31 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
+
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/jobs"
 	"levelup/go-api/internal/scheduler"
 )
+
+// serveAdminActions monte h sous /admin (point de montage de
+// server_admin_monitoring.go) et sert la requête via le routeur chi.
+func serveAdminActions(h *AdminActionsHandler, req *http.Request) *httptest.ResponseRecorder {
+	r := chi.NewRouter()
+	r.Route("/admin", func(r chi.Router) {
+		h.Mount(r)
+	})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	return rec
+}
 
 // TestAdminActions_DataHealth_OK : 200 + compteurs du runner.
 func TestAdminActions_DataHealth_OK(t *testing.T) {
 	h := NewAdminActionsHandler(func(context.Context) (*domain.MonitoringDataHealth, error) {
 		return &domain.MonitoringDataHealth{WarningsTotal: 7, OrphanXUIDs: 2}, nil
 	}, nil, nil, context.Background())
-	rec := httptest.NewRecorder()
-	h.RunDataHealth(rec, httptest.NewRequest(http.MethodPost, "/admin/actions/data-health/run", nil))
+	rec := serveAdminActions(h, httptest.NewRequest(http.MethodPost, "/admin/actions/data-health/run", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d (attendu 200) body=%s", rec.Code, rec.Body.String())
@@ -44,8 +61,7 @@ func TestAdminActions_DataHealth_Unavailable(t *testing.T) {
 			return nil, errors.New("scheduler non câblé")
 		}, nil, nil, nil),
 	} {
-		rec := httptest.NewRecorder()
-		h.RunDataHealth(rec, httptest.NewRequest(http.MethodPost, "/admin/actions/data-health/run", nil))
+		rec := serveAdminActions(h, httptest.NewRequest(http.MethodPost, "/admin/actions/data-health/run", nil))
 		if rec.Code != http.StatusServiceUnavailable {
 			t.Errorf("%s : status = %d (attendu 503)", name, rec.Code)
 		}
@@ -59,8 +75,7 @@ func TestAdminActions_SyncCycle_UnavailableWhenNoScheduler(t *testing.T) {
 		"sched nil": NewAdminActionsHandler(nil, nil, store, nil),
 		"store nil": NewAdminActionsHandler(nil, &scheduler.AutoSyncScheduler{}, nil, nil),
 	} {
-		rec := httptest.NewRecorder()
-		h.RunSyncCycle(rec, httptest.NewRequest(http.MethodPost, "/admin/actions/auto-sync/run", nil))
+		rec := serveAdminActions(h, httptest.NewRequest(http.MethodPost, "/admin/actions/auto-sync/run", nil))
 		if rec.Code != http.StatusServiceUnavailable {
 			t.Errorf("%s : status = %d (attendu 503)", name, rec.Code)
 		}
@@ -77,8 +92,7 @@ func TestAdminActions_SyncCycle_ConflictWhenAlreadyRunning(t *testing.T) {
 	store.SetStatus(existing.JobID, domain.JobStatusRunning, nil)
 
 	h := NewAdminActionsHandler(nil, &scheduler.AutoSyncScheduler{}, store, context.Background())
-	rec := httptest.NewRecorder()
-	h.RunSyncCycle(rec, httptest.NewRequest(http.MethodPost, "/admin/actions/auto-sync/run", nil))
+	rec := serveAdminActions(h, httptest.NewRequest(http.MethodPost, "/admin/actions/auto-sync/run", nil))
 
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("status = %d (attendu 409)", rec.Code)

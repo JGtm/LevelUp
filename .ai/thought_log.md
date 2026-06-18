@@ -1,3 +1,22 @@
+## [2026-06-18] Phase 3b — tail C : cluster admin-actions (7 handlers) — Complété + push
+
+**Statut** : Complété. Workflow `huma-tail-c-adminactions` (7 agents). admin_actions/admin_data_quality/admin_actions_convergence/admin_actions_catalog_drain/admin_logs/admin_db_contention/admin_title_diagnostic convertis. Build/gofmt/vet OK, **goldens (actions/data-quality/catalog-drain/db-contention/title-diag) verts** + vérif adversariale convergence/logs (sans golden) vs HEAD = fidèles. `internal/api` (contract) vert. 15 routes. Cumul = **162 routes**.
+
+**Touches fines (agents)** :
+- **409 already_running avec `details.job_id`** (convergence, catalog-drain, auto-sync) : `humacore.NewError` ne porte pas de champ `details` et force `retryable:false` sur 409 → types `huma.StatusError` dédiés (`conflictWithJobError`, `dqBusyError`) qui reproduisent le corps `{code,message,retryable,details:{job_id}}` byte-identique à l'ancien `writeJSON`.
+- **NoStore data-quality** : posé en interne par le handler (champ `header:"Cache-Control"` sur les 2 GET succès + `huma.ErrorWithHeaders` sur leurs erreurs) → `dqH.Mount(r)` sans wrapper. logs/db-contention/title-diag : `Mount(r.With(middleware.NoStore))`.
+- **db-contention** (AdminDBContentionHandler) enfin migré (avait été confondu en tail B). monitoringH (6 `/monitoring/*`) câblé en tail B.
+
+**Nettoyage** : `titleOrDefault(*http.Request)` (admin_monitoring.go) devenu mort après migration de ses 3 consommateurs → supprimé (CLAUDE.md anti-dead-code).
+
+**Push** : poussé sur origin.
+
+**BILAN Phase 3b — 162 routes migrées** (~96 % du contrat JSON). Reste (NON migré, justifié) :
+- **À traiter au cas par cas** : `/sync` ×3 (points de montage éparpillés, 1 handler), `import/openspartan`, `media/feed-version` (fonction nue, pas un handler-struct), `watcher /auth/start` (device-flow).
+- **needs_care/exclude DÉFINITIFS (restent chi par conception)** : home (cached/ETag), battlepass/challenges (NoStore home), media upload (multipart) + files (binaire), match-history/export (CSV), redirections OAuth xbox, device-flow auth, images d'assets (binaire), catch-all SPA `/*`.
+
+**Conclusion / prochaine étape** : quasi-totalité du contrat JSON sur Huma. Étape finale du plan (différée) : bascule `openapi.yaml` manuel → généré par Huma + régén `generated.ts` — à faire quand le petit reliquat sync/import sera tranché. Pas de PR.
+
 ## [2026-06-18] Phase 3b — tail B : admin/ops (settings/setup/favorite/watcher/backfill/admin-monitoring…) — Complété
 
 **Statut** : Complété. Workflow `huma-tail-b-adminops` (10 agents). settings/setup/match_favorite/watcher(partiel)/backfill/admin_invariants/admin_token_health/admin_monitoring/admin_titles/admin_auto_sync convertis. Build/gofmt/vet OK, **goldens des 10 verts**, `internal/api` (contract) vert. 28 routes. Cumul = **147 routes**.

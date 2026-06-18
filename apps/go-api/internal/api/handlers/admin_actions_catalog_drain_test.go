@@ -1,6 +1,10 @@
 // Package handlers — admin_actions_catalog_drain_test.go : contrat HTTP de
 // l'action drain DiscoveryUGC (job async : 503 si deps absentes, 409 si déjà
 // en vol, 202 + job au lancement).
+//
+// MIGRÉ vers Huma : les requêtes passent par un routeur chi montant h.Mount sous
+// /admin (même point de montage que server_admin_monitoring.go). Requêtes et
+// assertions inchangées.
 package handlers
 
 import (
@@ -12,6 +16,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/jobs"
 )
@@ -22,6 +28,18 @@ func okDrainRunner() CatalogDrainRunner {
 	}
 }
 
+// serveDrain monte h sous /admin (point de montage de
+// server_admin_monitoring.go) et sert la requête via le routeur chi.
+func serveDrain(h *AdminCatalogDrainHandler, req *http.Request) *httptest.ResponseRecorder {
+	r := chi.NewRouter()
+	r.Route("/admin", func(r chi.Router) {
+		h.Mount(r)
+	})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	return rec
+}
+
 // TestAdminCatalogDrain_Unavailable : run ou store nil → 503.
 func TestAdminCatalogDrain_Unavailable(t *testing.T) {
 	store := jobs.NewStore(filepath.Join(t.TempDir(), "jobs.json"))
@@ -29,8 +47,7 @@ func TestAdminCatalogDrain_Unavailable(t *testing.T) {
 		"run nil":   NewAdminCatalogDrainHandler(nil, store, nil),
 		"store nil": NewAdminCatalogDrainHandler(okDrainRunner(), nil, nil),
 	} {
-		rec := httptest.NewRecorder()
-		h.Run(rec, httptest.NewRequest(http.MethodPost, "/admin/actions/catalog/ugc-drain", nil))
+		rec := serveDrain(h, httptest.NewRequest(http.MethodPost, "/admin/actions/catalog/ugc-drain", nil))
 		if rec.Code != http.StatusServiceUnavailable {
 			t.Errorf("%s : status = %d (attendu 503)", name, rec.Code)
 		}
@@ -45,8 +62,7 @@ func TestAdminCatalogDrain_Conflict(t *testing.T) {
 	store.SetStatus(existing.JobID, domain.JobStatusRunning, nil)
 
 	h := NewAdminCatalogDrainHandler(okDrainRunner(), store, context.Background())
-	rec := httptest.NewRecorder()
-	h.Run(rec, httptest.NewRequest(http.MethodPost, "/admin/actions/catalog/ugc-drain?title=halo_infinite", nil))
+	rec := serveDrain(h, httptest.NewRequest(http.MethodPost, "/admin/actions/catalog/ugc-drain?title=halo_infinite", nil))
 
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("status = %d (attendu 409)", rec.Code)
@@ -73,8 +89,7 @@ func TestAdminCatalogDrain_Accepted(t *testing.T) {
 		return domain.CatalogUGCDrainResult{Seeded: 3, Playlists: 1}, nil
 	}, store, context.Background())
 
-	rec := httptest.NewRecorder()
-	h.Run(rec, httptest.NewRequest(http.MethodPost, "/admin/actions/catalog/ugc-drain?title=halo_infinite", nil))
+	rec := serveDrain(h, httptest.NewRequest(http.MethodPost, "/admin/actions/catalog/ugc-drain?title=halo_infinite", nil))
 	if rec.Code != http.StatusAccepted {
 		t.Fatalf("status = %d (attendu 202) body=%s", rec.Code, rec.Body.String())
 	}

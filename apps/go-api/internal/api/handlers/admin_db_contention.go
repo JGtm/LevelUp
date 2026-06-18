@@ -4,12 +4,21 @@
 // GET /admin/db-contention → compteurs du sharedprovider B-swap (nombre de
 // swaps RO↔RW, durées, lectures rejetées en 503). Lecture seule des métriques
 // expvar — ne déclenche aucune écriture, ne peut pas échouer.
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// /admin (middleware RequireAuth/RequireAdmin + NoStore hérités) et enregistre
+// la route via huma.Get. Logique métier inchangée (DBContentionProvider), seul
+// le wrapping HTTP change. Le chemin relatif est identique à la route chi
+// d'origine (montée sous /admin par server.go).
 package handlers
 
 import (
 	"context"
-	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 )
 
@@ -27,8 +36,19 @@ func NewAdminDBContentionHandler(get DBContentionProvider) *AdminDBContentionHan
 	return &AdminDBContentionHandler{get: get}
 }
 
-// Get retourne les compteurs de contention du shared provider (B-swap).
+// Mount enregistre la route via Huma sur le sous-routeur chi (préfixe /admin +
+// middleware RequireAuth/RequireAdmin + NoStore hérités).
+func (h *AdminDBContentionHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/db-contention", h.handleGet)
+}
+
+type adminDBContentionOutput struct {
+	Body domain.DBContentionResponse
+}
+
+// handleGet retourne les compteurs de contention du shared provider (B-swap).
 // GET /admin/db-contention.
-func (h *AdminDBContentionHandler) Get(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, h.get(r.Context()))
+func (h *AdminDBContentionHandler) handleGet(ctx context.Context, _ *struct{}) (*adminDBContentionOutput, error) {
+	return &adminDBContentionOutput{Body: h.get(ctx)}, nil
 }

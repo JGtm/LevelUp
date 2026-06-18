@@ -1,5 +1,10 @@
 // Package handlers — admin_logs.go : viewer de logs du dashboard monitoring.
 //
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// chi (middleware RequireAuth/RequireAdmin/NoStore hérités) et enregistre les
+// 2 GET via huma.Get. Logique métier inchangée (ops.ListLogModules /
+// ops.TailModuleLog), seul le wrapping HTTP change.
+//
 // Routes (RequireAuth+RequireAdmin+NoStore) :
 //   - GET /admin/monitoring/logs/modules : fichiers logs/{module}.log dispo
 //   - GET /admin/monitoring/logs/tail?module=&n=&level=&contains=&since=
@@ -7,14 +12,23 @@
 // Lecture par la fin chunkée (ops.TailModuleLog — budget 8 MiB, n ≤ 1000).
 // Anti-boucle : ce handler ne logue qu'en DEBUG (chaque tail écrirait sinon
 // dans http.log qu'on est précisément en train de lire).
+//
+// Les paramètres n et since sont pris en STRING pour reproduire le contrat
+// d'origine (valeur non numérique / date non RFC3339 ignorée silencieusement),
+// PAS le 422 de validation Huma qu'un `int`/`time.Time` typé produirait.
 package handlers
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/ops"
 )
@@ -30,15 +44,39 @@ func NewAdminLogsHandler(logsDir string) *AdminLogsHandler {
 	return &AdminLogsHandler{logsDir: logsDir}
 }
 
-// GetModules liste les modules de logs disponibles.
+// Mount enregistre les 2 routes via Huma sur le sous-routeur chi /admin
+// (middleware RequireAuth/RequireAdmin/NoStore hérités).
+func (h *AdminLogsHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/monitoring/logs/modules", h.handleGetModules)
+	huma.Get(api, "/monitoring/logs/tail", h.handleGetTail)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// logsTailInput : query params du tail filtré. n et since en STRING pour
+// préserver le parsing lenient d'origine (valeur invalide ignorée).
+type logsTailInput struct {
+	Module   string `query:"module"`
+	Level    string `query:"level"`
+	Contains string `query:"contains"`
+	N        string `query:"n"`
+	Since    string `query:"since"`
+}
+
+type logsModulesOutput struct{ Body domain.AdminLogModules }
+type logsTailOutput struct{ Body domain.AdminLogTail }
+
+// ─── Endpoints ───────────────────────────────────────────────────────────────
+
+// handleGetModules liste les modules de logs disponibles.
 // GET /admin/monitoring/logs/modules.
-func (h *AdminLogsHandler) GetModules(w http.ResponseWriter, r *http.Request) {
+func (h *AdminLogsHandler) handleGetModules(ctx context.Context, _ *struct{}) (*logsModulesOutput, error) {
 	mods, err := ops.ListLogModules(h.logsDir)
 	if err != nil {
-		slog.DebugContext(r.Context(), "admin_logs: list modules failed", "err", err)
-		writeError(r.Context(), w, http.StatusServiceUnavailable, "logs_unavailable",
+		slog.DebugContext(ctx, "admin_logs: list modules failed", "err", err)
+		return nil, humacore.NewError(http.StatusServiceUnavailable, "logs_unavailable",
 			"Dossier de logs illisible.")
-		return
 	}
 	resp := domain.AdminLogModules{
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
@@ -51,39 +89,36 @@ func (h *AdminLogsHandler) GetModules(w http.ResponseWriter, r *http.Request) {
 			ModifiedAt: m.ModifiedAt.UTC().Format(time.RFC3339),
 		})
 	}
-	writeJSON(w, http.StatusOK, resp)
+	return &logsModulesOutput{Body: resp}, nil
 }
 
-// GetTail retourne les dernières lignes filtrées d'un module.
+// handleGetTail retourne les dernières lignes filtrées d'un module.
 // GET /admin/monitoring/logs/tail?module=sync&n=200&level=warn&contains=x&since=RFC3339.
-func (h *AdminLogsHandler) GetTail(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	module := q.Get("module")
+func (h *AdminLogsHandler) handleGetTail(ctx context.Context, in *logsTailInput) (*logsTailOutput, error) {
+	module := in.Module
 	if module == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_module", "module requis.")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_module", "module requis.")
 	}
 	opts := ops.LogTailOptions{
-		Level:    q.Get("level"),
-		Contains: q.Get("contains"),
+		Level:    in.Level,
+		Contains: in.Contains,
 	}
-	if raw := q.Get("n"); raw != "" {
-		if n, err := strconv.Atoi(raw); err == nil {
+	if in.N != "" {
+		if n, err := strconv.Atoi(in.N); err == nil {
 			opts.N = n
 		}
 	}
-	if raw := q.Get("since"); raw != "" {
-		if t, err := time.Parse(time.RFC3339, raw); err == nil {
+	if in.Since != "" {
+		if t, err := time.Parse(time.RFC3339, in.Since); err == nil {
 			opts.Since = t
 		}
 	}
 
 	res, err := ops.TailModuleLog(h.logsDir, module, opts)
 	if err != nil {
-		slog.DebugContext(r.Context(), "admin_logs: tail failed", "module", module, "err", err)
-		writeError(r.Context(), w, http.StatusBadRequest, "logs_tail_failed",
+		slog.DebugContext(ctx, "admin_logs: tail failed", "module", module, "err", err)
+		return nil, humacore.NewError(http.StatusBadRequest, "logs_tail_failed",
 			"Lecture du module impossible (module inconnu ou dossier illisible).")
-		return
 	}
 
 	resp := domain.AdminLogTail{
@@ -110,5 +145,5 @@ func (h *AdminLogsHandler) GetTail(w http.ResponseWriter, r *http.Request) {
 		}
 		resp.Entries = append(resp.Entries, entry)
 	}
-	writeJSON(w, http.StatusOK, resp)
+	return &logsTailOutput{Body: resp}, nil
 }

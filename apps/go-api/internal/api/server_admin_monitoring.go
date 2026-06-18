@@ -42,38 +42,29 @@ func mountAdminMonitoringRoutes(
 
 	actionsH := handlers.NewAdminActionsHandler(
 		reg.RunDataHealthNow, sched, jobStore, serverCtx)
-	r.Post("/actions/data-health/run", actionsH.RunDataHealth)
-	r.Post("/actions/auto-sync/run", actionsH.RunSyncCycle)
+	actionsH.Mount(r) // POST /actions/data-health/run, /actions/auto-sync/run
 
 	// Qualité données : compteurs/listes d'inconnus + actions de résolution
 	// (backfill registry names, traductions metadata) — Phase 2.
+	// Mount gère le Cache-Control:no-store des 2 GET en interne (champ header).
 	dqH := handlers.NewAdminDataQualityHandler(
 		reg.DataQualityCounts, reg.DataQualityIssues,
 		reg.RunRegistryNamesBackfill, reg.ResolveModeTranslation, reg.ResolveAssetTranslation,
 		reg.RunCatalogRefresh, reg.RunLyingBitsReset,
 		ErrActionBusy)
-	r.With(middleware.NoStore).Get("/monitoring/data-quality", dqH.GetCounts)
-	r.With(middleware.NoStore).Get("/monitoring/data-quality/issues", dqH.GetIssues)
-	r.Post("/actions/registry-names/backfill", dqH.RunRegistryNamesBackfill)
-	r.Post("/actions/translations/mode", dqH.ResolveModeTranslation)
-	r.Post("/actions/translations/asset", dqH.ResolveAssetTranslation)
-	r.Post("/actions/catalog/refresh", dqH.RunCatalogRefresh)
-	r.Post("/actions/lying-bits/reset", dqH.RunLyingBitsReset)
+	dqH.Mount(r)
 
 	// Convergence ciblée d'un joueur (job asynchrone, claim SyncGate).
 	convH := handlers.NewAdminConvergenceActionHandler(
 		reg.RunPlayerConvergence, jobStore, serverCtx, ErrSyncInFlight)
-	r.Post("/actions/convergence/run", convH.Run)
+	convH.Mount(r) // POST /actions/convergence/run
 
 	// Drain DiscoveryUGC (job asynchrone — réseau, rate-limité). Complète le
 	// catalog/refresh zéro-réseau en hydratant les assets absents de match_registry.
 	drainH := handlers.NewAdminCatalogDrainHandler(reg.RunCatalogUGCDrain, jobStore, serverCtx)
-	r.Post("/actions/catalog/ugc-drain", drainH.Run)
+	drainH.Mount(r) // POST /actions/catalog/ugc-drain
 
 	// Viewer de logs : modules + tail filtré (lecture par la fin chunkée).
-	// LogsDir résolu par logging.LoadConfig (respecte LEVELUP_LOGS_DIR) — pas
-	// PathResolver : les logs ne vivent pas sous data/.
 	logsH := handlers.NewAdminLogsHandler(logging.LoadConfig(reg.cfg.RepoRoot).LogsDir)
-	r.With(middleware.NoStore).Get("/monitoring/logs/modules", logsH.GetModules)
-	r.With(middleware.NoStore).Get("/monitoring/logs/tail", logsH.GetTail)
+	logsH.Mount(r.With(middleware.NoStore)) // GET /monitoring/logs/{modules,tail}
 }

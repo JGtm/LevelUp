@@ -141,13 +141,6 @@ func titleOrDefaultSlug(title string) string {
 	return titlePkg.DefaultSlug
 }
 
-// titleOrDefault lit ?title= avec fallback sur le titre par défaut (variante
-// *http.Request — encore consommée par les handlers admin non migrés vers Huma :
-// admin_data_quality, admin_actions_convergence, admin_actions_catalog_drain).
-func titleOrDefault(r *http.Request) string {
-	return titleOrDefaultSlug(r.URL.Query().Get("title"))
-}
-
 // ─── Endpoints ───────────────────────────────────────────────────────────────
 
 // handleGetOverview retourne les KPIs agrégés.
