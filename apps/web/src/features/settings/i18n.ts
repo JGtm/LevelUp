@@ -210,6 +210,11 @@ export interface SettingsText {
   coachProactiveLabel: string
   coachProactiveHint: string
 
+  // Onglet Analyse — Rendement combat (OffensiveConversion)
+  rendementTitle: string
+  rendementExcludeAssistsLabel: string
+  rendementExcludeAssistsHint: string
+
   // Onglet Accessibilité
   tabAccessibility: string
   accessibilityTitle: string
@@ -477,6 +482,14 @@ const FR_TEXT: SettingsText = {
     "propositions apparaissent dans le centre de notifications avec des boutons Accepter / " +
     "Ignorer. Vous gardez la main : aucune création automatique. Opt-in (désactivé par défaut).",
 
+  rendementTitle: 'Rendement combat',
+  rendementExcludeAssistsLabel: 'Calculer le rendement sans les assistances',
+  rendementExcludeAssistsHint:
+    "Par défaut, le rendement (conversion offensive) compte chaque assistance comme 1/3 " +
+    "d'élimination (convention Halo). Activez cette option pour ignorer totalement les " +
+    "assistances : le rendement devient 225 × éliminations / dégâts. S'applique partout " +
+    "(Accueil, Timeseries, Sessions, Explorer, Escouade, Match view). Désactivé par défaut.",
+
 
   tabAccessibility: 'Accessibilité',
   accessibilityTitle: 'Accessibilité visuelle',
@@ -742,6 +755,14 @@ const EN_TEXT: SettingsText = {
     'recent trends (positive LOWESS, near-miss records, combat patterns). Suggestions ' +
     'appear in the notification center with Accept / Dismiss buttons. You stay in ' +
     'control: nothing is created automatically. Opt-in (off by default).',
+
+  rendementTitle: 'Combat yield',
+  rendementExcludeAssistsLabel: 'Compute yield without assists',
+  rendementExcludeAssistsHint:
+    'By default, yield (offensive conversion) counts each assist as 1/3 of a kill (Halo ' +
+    'convention). Enable this to ignore assists entirely: yield becomes 225 × kills / ' +
+    'damage. Applies everywhere (Home, Timeseries, Sessions, Explorer, Squad, Match view). ' +
+    'Off by default.',
 
 
   tabAccessibility: 'Accessibility',

@@ -1,3 +1,19 @@
+## [2026-06-18] Toggle « rendement sans assistances » (réglage global) — Complété
+
+**Statut** : branche `feat/rendement-engagement-matchview` (depuis `main`). Commit 1/5 du lot rendement/engagement/match-view. `go build ./...` ✓, tests analysis+service+handlers ✓, front `tsc` + `eslint` ✓. Commit en attente d'autorisation.
+
+**Déclencheur (user)** : « option dans les settings pour que tous les composants rendement soient calculés sans tenir compte des assistances (désactivé par défaut) et forcément brancher cette option sur les composants ».
+
+**Décision technique** : le rendement = `OffensiveConversion` = `225×(kills + assists/3)/dégâts`, calculé backend dans `internal/analysis/combat_yield.go` et consommé par ~13 sites (analysis purs + services + patterns_repo). Plutôt que threader un bool à travers 13 agrégateurs + leurs appelants + tests (gros ripple, risque), j'ai porté le flag en **variable globale atomique** dans le package `analysis` (`excludeAssistsFromYield atomic.Bool`), lue dans `FragEquivalents`. Justification : c'est un réglage app **unique** (pas par-user), donc une valeur process-wide est sémantiquement correcte ; `atomic.Bool` la rend thread-safe + réactive à chaud. Zéro changement de signature aux call-sites → OffensiveConversion (et DamagePerFragEquivalent) respectent le toggle partout (Home, Timeseries, Sessions, Explorer, Escouade, Match view). Quand ON : OC = OffensiveFinishing (225×kills/dégâts). DefensiveResistance non touchée (n'utilise pas les assists).
+
+**Câblage** : `domain.Settings{Response,Request}` + `platform/settings` (AppSettings/Apply/ToResponse) + handler PATCH (`analysis.SetExcludeAssistsFromYield` après Save) + boot `cmd/server/main.go` (set depuis app_settings au démarrage). Front : type `SettingsResponse.rendement_exclude_assists`, carte « Rendement » dans `AnalyseTab.tsx` (ToggleRow), i18n FR/EN. Le PATCH invalide les queries → recompute query-time reflète le toggle sans redémarrage.
+
+**Résultats observés** : build Go vert ; `TestComputeCombatYield_excludeAssistsToggle` vert (OC==OffensiveFinishing quand exclu, retour défaut après reset) ; tests combat-yield existants non régressés (défaut false) ; typecheck/eslint front verts.
+
+**Prochaine étape** : commits 2-5 (engagement message honnête, pace_team inclut joueur + relabel 3 courbes, Escouade, KPI bar match-view).
+
+---
+
 ## [2026-06-18] Remise au vert CI post-merge Lab (4 jobs rouges) — Complété
 
 **Statut** : branche `refactor/lab-admin-atelier`. Les 4 jobs CI rouges sur le commit Lab (`b9fde414c`, déjà sur `main` + déployé) corrigés et revalidés localement. Commit en attente d'autorisation.

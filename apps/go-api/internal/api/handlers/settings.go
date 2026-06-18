@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/config"
@@ -180,6 +181,11 @@ func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) 
 		writeError(r.Context(), w, http.StatusInternalServerError, "settings_save_error", "Impossible de sauvegarder la configuration.")
 		return
 	}
+
+	// Le rendement combat (OffensiveConversion) est un réglage global process :
+	// propager immédiatement pour que les recomputes au query-time reflètent le
+	// toggle sans redémarrage. Idempotent.
+	analysis.SetExcludeAssistsFromYield(cfg.RendementExcludeAssists)
 
 	// §4 plan Squad/Sessions overhaul : si friend_gamertags a changé,
 	// déclencher async le recompute is_with_friends sur toutes les player DBs.
