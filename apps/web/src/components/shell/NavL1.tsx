@@ -234,7 +234,6 @@ export function NavL1() {
   const availablePlayers = useAppShellStore((s) => s.availablePlayers)
   const setCurrentPlayer = useAppShellStore((s) => s.setCurrentPlayer)
   const isAdmin = useAppShellStore((s) => s.isAdmin)
-  const canManageInstance = useAppShellStore((s) => s.capabilities?.can_manage_instance ?? false)
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const { data: settings } = useSettings()
@@ -255,7 +254,6 @@ export function NavL1() {
     { key: 'analyse', label: 'Analyse', tab: 'analyse' },
     { key: 'accessibility', label: 'Accessibilité', tab: 'accessibility' },
     { key: 'notifications', label: 'Notifications', tab: 'notifications' },
-    ...(canManageInstance ? [{ key: 'lab', label: 'Lab', tab: 'lab' as const }] : []),
   ]
 
   function resolvePath(templatePath: string): string {

@@ -17,7 +17,6 @@ export const queryKeys = {
   deviceFlow: (attemptId: string) => ['device-flow', attemptId] as const,
   job: (jobId: string) => ['job', jobId] as const,
   settings: ['settings'] as const,
-  labContracts: ['lab', 'contracts'] as const,
   labDiagnostics: ['lab', 'diagnostics'] as const,
   labResources: (requestHash: string) => ['lab', 'resources', requestHash] as const,
 

@@ -40,6 +40,10 @@ en = "Access"
 fr = "Système"
 en = "System"
 
+[admin.nav.atelier]
+fr = "Atelier"
+en = "Workshop"
+
 # ─── Page Logs ─────────────────────────────────────────────────────────────
 
 [admin.logs.module]
@@ -413,6 +417,10 @@ en = "Data quality counters unavailable."
 [admin.dq.actions_section]
 fr = "Actions globales"
 en = "Global actions"
+
+[admin.dq.diagnostics_section]
+fr = "Diagnostics d'instance"
+en = "Instance diagnostics"
 
 [admin.dq.run_registry_names]
 fr = "Résoudre les noms registry"

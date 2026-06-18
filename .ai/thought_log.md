@@ -1,3 +1,26 @@
+## [2026-06-18] Lab → Admin « Atelier » (refonte Lab, Stage 1a : consolidation IA) — Complété
+
+**Statut** : branche `refactor/lab-admin-atelier` (depuis `main`). `tsc -b` = 0 ; `eslint .` = 0 erreur (69 warnings préexistants, aucun sur les fichiers touchés) ; vitest zones touchées 242/242 ; `vite build` OK (routeTree régénéré) ; Go `internal/api` = ok (compile CGO + tests Lab dont `lab_routes_mounted` + `TestLabHandler_Forbidden`). Commit en attente d'autorisation.
+
+**Déclencheur (user)** : revue UX du Lab — « dans cette page j'ai des infos sans savoir quoi en faire ». Plan approuvé : rapatrier le Lab dans l'Admin, rôle opérateur unique. Question en cours de route : « le Lab ne devrait-il pas être dans l'Admin ? » → oui.
+
+**Constat qui recadre** :
+- Lab = console **lecture seule** (Explorateur / Contrats / Diagnostics) enfouie sous Paramètres → onglet Lab → « Ouvrir le Lab » (triple indirection).
+- Onglet **Contrats API** (diff Go↔FastAPI) = scaffolding de migration périmé (cutover Go fait).
+- Les **actions** visées (catalog refresh, backfill noms, résolution traductions) **existent déjà** dans l'onglet Admin « Qualité données » (`data-quality/mutations.ts`) → consolidation, pas re-câblage.
+- `buildCapabilities` renvoyait `CanManageInstance: true` **en dur** → Lab non gardé par-utilisateur (ouvert à tout user connecté) ; vrai gate par-user = `isAdmin`.
+
+**Décision technique** :
+1. Backend : `/lab/*` enveloppé `RequireAuth+RequireAdmin` (server.go) — admin-only, cohérent avec `/admin/*`. Gate service `can_manage_instance` conservé en kill-switch d'instance.
+2. Front : onglet Admin **« Atelier »** (`/admin/atelier`, `AdminAtelierPage`) réutilisant `ResourcesPanel` + i18n Lab local (zéro réécriture). **Diagnostics** (parité + guards) fusionné dans `AdminDataQualityPage` via `useLabDiagnostics`. **Contrats** retiré. `LabPage`/`routes/lab.tsx`/`ContractsPanel`/`useLabContracts` supprimés ; entrée Lab retirée des Paramètres (`LabTab`) et du menu NavL1.
+3. i18n : `admin.nav.atelier` + `admin.dq.diagnostics_section` (manifeste régénéré). routeTree régénéré via `vite build`.
+
+**Résultats observés** : tous les gates verts (cf. Statut). `/lab/charts` (galerie ECharts dev-sandbox) laissée intacte, hors périmètre.
+
+**Conclusion / prochaine étape** : Stage 1a (consolidation IA) livré. Restent **Stage 1b** (handler passthrough Waypoint ~50 LOC + panneau « Explorateur d'API ») et **Stage 1c** (actions diagnostics : relancer parité / probe tokens / sync). Plan : `C:\Users\Guillaume\.claude\plans\agile-noodling-key.md`.
+
+---
+
 ## [2026-06-15] Bonus assistances — couleur ambre plus distincte (Solo + Escouade) — Complété
 
 **Statut** : 2 edits (1 ligne chacun). `tsc -b` = 0 ; `eslint .` = 0 erreur (69 warnings préexistants, aucun sur les fichiers touchés) ; vitest `squadPerformanceLineCharts` 9/9. Branche `fix/bonus-assist-color` (créée depuis `main` — la session était passée sur main).
