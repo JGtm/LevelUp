@@ -1,3 +1,18 @@
+## [2026-06-18] Phase 5 — socle gating par capability (`useCapability` + `<FeatureGate>`) — Complété (fondation)
+
+**Statut** : Fondation livrée. `tsc -b` propre, eslint 0, **vitest 5/5** (outside sandbox). Pure frontend, **NO-OP mono-titre**.
+
+**Cadrage (correction d'un malentendu)** : le pilier « par titre, quelles données dispo → quelles features afficher (pas de pages/graphes morts) » n'est PAS Huma — c'est le système **capabilities**. Source front déjà présente : `bootstrap.availableTitles[].capabilities` (string[], miroir des `Cap*` Go de `registry.go`) + `currentTitleSlug` dans `appShellStore`. **Aucune modif backend requise.** halo_infinite déclare **les 11 capabilities** (`matchmaking/firefight/forge/media/ranked/career/asset.images/achievements/engagement/lusr/world.leaderboard`, registry.go:148-150) → tout gating est **NO-OP aujourd'hui**, zéro régression ; ne prend effet qu'au 2e titre partiel.
+
+**Livré** ([apps/web/src/lib/capabilities/](../apps/web/src/lib/capabilities/)) :
+- `capabilities.ts` : `TITLE_CAPABILITIES` (typé) + `useCapability(key): boolean` — lit les caps du titre courant via sélecteur zustand (booléen primitif, pas de re-render). **Fail-open** : true si bootstrap non chargé / titre introuvable (jamais de masquage transitoire ni de régression mono-titre).
+- `FeatureGate.tsx` : `<FeatureGate capability fallback>` masque ses enfants si la capability est absente.
+- tests : présence/absence/fail-open + rend/masque/fallback.
+
+**Distinction** : ces 11 capabilities = features COARSE (titre-registry, dans le bootstrap). À ne pas confondre avec les `games.CapabilityKey` fins des adapters (match.history, pve.firefight_stats…) qui pilotent le `CapabilityGap` au niveau champ. Phase 5 gate au niveau feature/onglet/page.
+
+**Conclusion / prochaine étape** : socle posé. Reste = **câblage** : nav (NavL1), pages/onglets/sections sur la bonne capability (workflows : carte features→capability puis exécution parallèle). NO-OP mono-titre garanti (halo_infinite a tout).
+
 ## [2026-06-18] Phase 3b — bascule openapi.yaml généré : INVESTIGUÉE → bloquant architectural, descopée (route-migration close)
 
 **Statut** : Investigation conclue. La bascule `openapi.yaml` manuel → **généré par Huma** (dernier jalon nominal de 3b) est **NON réalisable proprement** avec l'architecture actuelle (multi-instances, qui est le bon choix pour le middleware). Décision : **descoper la bascule**, déclarer la **migration des routes COMPLÈTE** (166 routes, contract_test vert = parité route garantie). Rien committé côté prod (pas de refactor risqué).
