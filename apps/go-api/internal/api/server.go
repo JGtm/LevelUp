@@ -650,7 +650,49 @@ func NewRouter(
 		// tests chi-local du handler (aucun ne vérifiait l'intégration serveur).
 		// L'accès reste gardé au niveau service (requireAccess → can_manage_instance).
 		// Anti-régression : lab_routes_mounted_test.go (chi.Walk sur le vrai routeur).
-		labHandler := handlers.NewLabHandler(service.NewLabService(cfg, lab_platform.NewProvider(cfg)))
+		// Explorateur d'API live (Atelier, Stage 1b) : résout un token Spartan via
+		// reg.AnyPlayerTokens (seam canonique) puis FetchAsset sur Discovery UGC.
+		// Réutilise le pattern MapImageURLFetcher (supra). Injecté dans le service
+		// pour le garder découplé de halo/auth + testable. Les erreurs d'appel
+		// (404/auth/token absent) sont portées dans la réponse (ResolvedOK=false),
+		// pas en erreur HTTP — le panneau affiche le détail.
+		waypointExplore := func(ctx context.Context, q domain.LabWaypointQuery) (*domain.LabWaypointResponse, error) {
+			assetType := halo.AssetType(q.Segment)
+			lang := q.Lang
+			if lang == "" {
+				lang = "en-US"
+			}
+			resp := &domain.LabWaypointResponse{
+				Segment:   q.Segment,
+				Endpoint:  halo.AssetTypeToEndpoint[assetType],
+				AssetID:   q.AssetID,
+				VersionID: q.VersionID,
+				Lang:      lang,
+			}
+			start := time.Now()
+			tokens, terr := reg.AnyPlayerTokens(ctx)
+			if terr != nil {
+				resp.Error = "aucun token Spartan disponible : " + terr.Error()
+				resp.LatencyMS = time.Since(start).Milliseconds()
+				return resp, nil
+			}
+			asset, ferr := halo.NewHaloProvider().WithTokens(tokens).FetchAsset(
+				ctx, assetType, titlePkg.DefaultSlug, q.AssetID, q.VersionID, lang)
+			resp.LatencyMS = time.Since(start).Milliseconds()
+			if ferr != nil {
+				resp.Error = ferr.Error()
+				return resp, nil
+			}
+			if asset != nil {
+				resp.ResolvedOK = true
+				resp.AssetName = asset.PublicName
+				resp.Description = asset.Description
+				resp.ImageURL = asset.ImageURL
+			}
+			return resp, nil
+		}
+		labHandler := handlers.NewLabHandler(
+			service.NewLabService(cfg, lab_platform.NewProvider(cfg)).WithWaypointExplorer(waypointExplore))
 		// Durcissement (2026-06-18) : le Lab (désormais l'« Atelier » de l'Admin) est
 		// un outil opérateur → gardé RequireAuth+RequireAdmin comme /admin/*. Auparavant
 		// /lab/* n'était filtré qu'au niveau service (can_manage_instance, hardcodé true
@@ -662,6 +704,7 @@ func NewRouter(
 			r.Get("/lab/resources", labHandler.GetResources)
 			r.Get("/lab/contracts", labHandler.GetContracts)
 			r.Get("/lab/diagnostics", labHandler.GetDiagnostics)
+			r.Get("/lab/waypoint", labHandler.GetWaypoint)
 		})
 
 		// Sprint 43 : changelog (markdown brut)

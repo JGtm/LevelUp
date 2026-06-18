@@ -19,15 +19,36 @@ const (
 // ErrLabForbidden est retournée quand l'instance ne permet pas la gestion interne.
 var ErrLabForbidden = errors.New("lab access forbidden")
 
-// LabService orchestre les trois panneaux du Lab.
+// ErrLabWaypointUnavailable : l'explorateur d'API live n'est pas câblé (aucune
+// source de token Spartan disponible au démarrage).
+var ErrLabWaypointUnavailable = errors.New("lab waypoint explorer unavailable")
+
+// ErrLabWaypointInvalid : segment / asset_id / version_id manquant ou invalide.
+var ErrLabWaypointInvalid = errors.New("lab waypoint query invalid")
+
+// WaypointExplorerFunc exécute un appel live à l'API Discovery UGC (résolution
+// d'un token Spartan + FetchAsset). Injectée depuis server.go (où le pool de
+// tokens et le client halo sont disponibles) pour garder ce service découplé de
+// halo/auth et testable.
+type WaypointExplorerFunc func(ctx context.Context, q domain.LabWaypointQuery) (*domain.LabWaypointResponse, error)
+
+// LabService orchestre les panneaux du Lab interne / Atelier.
 type LabService struct {
 	cfg      *config.AppConfig
 	provider port.LabProvider
+	explore  WaypointExplorerFunc
 }
 
 // NewLabService crée un LabService.
 func NewLabService(cfg *config.AppConfig, provider port.LabProvider) *LabService {
 	return &LabService{cfg: cfg, provider: provider}
+}
+
+// WithWaypointExplorer câble l'explorateur d'API live (Atelier). Sans lui,
+// ExploreWaypoint renvoie ErrLabWaypointUnavailable.
+func (s *LabService) WithWaypointExplorer(fn WaypointExplorerFunc) *LabService {
+	s.explore = fn
+	return s
 }
 
 // GetResources charge l'explorateur de ressources pour le titre courant.
@@ -55,6 +76,25 @@ func (s *LabService) GetDiagnostics(ctx context.Context) (*domain.LabDiagnostics
 		return nil, err
 	}
 	return s.provider.GetDiagnostics(ctx, ctxkeys.TitleSlug(ctx))
+}
+
+// validLabSegments liste les AssetType acceptés par l'explorateur d'API (miroir
+// de halo.AssetTypeToEndpoint, sans dépendre du package halo dans ce service).
+var validLabSegments = map[string]bool{"map": true, "playlist": true, "pair": true, "game_variant": true}
+
+// ExploreWaypoint exécute un appel live Discovery UGC pour un asset donné
+// (Atelier). Valide la requête, puis délègue à l'explorateur injecté.
+func (s *LabService) ExploreWaypoint(ctx context.Context, q domain.LabWaypointQuery) (*domain.LabWaypointResponse, error) {
+	if err := s.requireAccess(); err != nil {
+		return nil, err
+	}
+	if !validLabSegments[q.Segment] || q.AssetID == "" || q.VersionID == "" {
+		return nil, ErrLabWaypointInvalid
+	}
+	if s.explore == nil {
+		return nil, ErrLabWaypointUnavailable
+	}
+	return s.explore(ctx, q)
 }
 
 func (s *LabService) requireAccess() error {

@@ -23,6 +23,7 @@ func TestLabRoutesMounted(t *testing.T) {
 		"/lab/resources",
 		"/lab/contracts",
 		"/lab/diagnostics",
+		"/lab/waypoint",
 	}
 	for _, suffix := range wantSuffixes {
 		found := false

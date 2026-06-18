@@ -3,27 +3,74 @@
  *
  * Réhabilitation Lab (2026-06-18) : l'ancien /lab (outil opérateur enfoui dans
  * les Paramètres) est rapatrié dans l'Admin, où vit déjà la console opérateur.
- * L'Atelier héberge l'explorateur de ressources Waypoint (snapshots / assets /
- * médailles) — socle pour la maintenance et la préparation de nouveaux titres.
- * Le diff « Contrats API » (scaffolding de migration) est retiré ; les
- * diagnostics de parité rejoignent l'onglet « Qualité données ».
+ * Deux sous-onglets :
+ *   - Ressources : explorateur des ressources Waypoint déjà en base (snapshots /
+ *     assets / médailles) — réutilise ResourcesPanel + i18n Lab local.
+ *   - Explorateur d'API : interroge l'API Discovery UGC en direct (Stage 1b).
  *
- * Réutilise les panneaux Lab existants (ResourcesPanel + i18n local). Le gating
- * est assuré par AdminLayout (RequireAdmin côté serveur, redirection côté front).
+ * Le diff « Contrats API » (scaffolding de migration) est retiré ; les
+ * diagnostics de parité rejoignent l'onglet « Qualité données ». Le gating est
+ * assuré par AdminLayout (RequireAdmin côté serveur, redirection côté front).
  */
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { useAppShellStore } from '@/stores/appShellStore'
+import type { AdminManifestKey } from '@/lib/i18n/generated/admin'
 
 import { LabIntroNotice, LabSelectedToolNotice } from '@/features/lab/LabHelp'
 import { getLabText, normalizeLabLocale } from '@/features/lab/i18n'
 import { useLabResources } from '@/features/lab/queries'
 import { ResourcesPanel } from '@/features/lab/ResourcesPanel'
+import { useAdminT } from '../useAdminText'
+import { WaypointExplorerPanel } from './WaypointExplorerPanel'
 
 const RESOURCE_LIMIT = 12
 
+type AtelierTab = 'resources' | 'api'
+
+const TABS: ReadonlyArray<{ id: AtelierTab; labelKey: AdminManifestKey }> = [
+  { id: 'resources', labelKey: 'admin.atelier.tab_resources' },
+  { id: 'api', labelKey: 'admin.atelier.tab_api' },
+]
+
 export function AdminAtelierPage() {
+  const tA = useAdminT()
+  const [tab, setTab] = useState<AtelierTab>('resources')
+
+  return (
+    <div className="space-y-6">
+      <div className="border-b border-border">
+        <nav className="-mb-px flex gap-0 overflow-x-auto">
+          {TABS.map((t) => {
+            const active = tab === t.id
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setTab(t.id)}
+                className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+                  active
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {tA(t.labelKey)}
+              </button>
+            )
+          })}
+        </nav>
+      </div>
+
+      {tab === 'resources' ? <ResourcesExplorerTab /> : <WaypointExplorerPanel />}
+    </div>
+  )
+}
+
+/** Explorateur des ressources Waypoint déjà en base (ex-onglet Lab Resources). */
+function ResourcesExplorerTab() {
   const currentTitleSlug = useAppShellStore((state) => state.currentTitleSlug)
   const locale = normalizeLabLocale(useAppShellStore((state) => state.locale))
   const text = useMemo(() => getLabText(locale), [locale])

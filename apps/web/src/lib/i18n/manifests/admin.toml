@@ -44,6 +44,84 @@ en = "System"
 fr = "Atelier"
 en = "Workshop"
 
+# ─── Atelier (explorateur d'API Waypoint) ───────────────────────────────────
+
+[admin.atelier.tab_resources]
+fr = "Ressources"
+en = "Resources"
+
+[admin.atelier.tab_api]
+fr = "Explorateur d'API"
+en = "API explorer"
+
+[admin.atelier.api_intro]
+fr = "Interroge en direct l'API Discovery UGC de Halo Waypoint : résolution d'un asset par identifiant et version. Utile pour la maintenance et la préparation d'un nouveau titre."
+en = "Query Halo Waypoint's Discovery UGC API live: resolve an asset by id and version. Useful for maintenance and preparing a new title."
+
+[admin.atelier.api_segment]
+fr = "Type d'asset"
+en = "Asset type"
+
+[admin.atelier.api_asset_id]
+fr = "Identifiant d'asset"
+en = "Asset ID"
+
+[admin.atelier.api_version_id]
+fr = "Identifiant de version"
+en = "Version ID"
+
+[admin.atelier.api_lang]
+fr = "Langue"
+en = "Language"
+
+[admin.atelier.api_run]
+fr = "Interroger"
+en = "Query"
+
+[admin.atelier.api_running]
+fr = "Appel en cours…"
+en = "Calling…"
+
+[admin.atelier.api_resolved]
+fr = "Résolu"
+en = "Resolved"
+
+[admin.atelier.api_failed]
+fr = "Échec"
+en = "Failed"
+
+[admin.atelier.api_name]
+fr = "Nom public"
+en = "Public name"
+
+[admin.atelier.api_description]
+fr = "Description"
+en = "Description"
+
+[admin.atelier.api_latency]
+fr = "Latence"
+en = "Latency"
+
+[admin.atelier.api_image]
+fr = "Image"
+en = "Image"
+
+[admin.atelier.seg_map]
+fr = "Carte"
+en = "Map"
+
+[admin.atelier.seg_playlist]
+fr = "Playlist"
+en = "Playlist"
+
+[admin.atelier.seg_pair]
+fr = "Paire carte/mode"
+en = "Map-mode pair"
+
+[admin.atelier.seg_game_variant]
+fr = "Variante de jeu"
+en = "Game variant"
+
 # ─── Page Logs ─────────────────────────────────────────────────────────────
 
 [admin.logs.module]
