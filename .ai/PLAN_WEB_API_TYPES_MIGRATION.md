@@ -18,7 +18,13 @@
 > 3. Ajouter les **garde-fous null** dans la feature consommatrice (`x.foo ?? []`, `x?.bar`) — le contrat est plus correct, le code devient plus robuste. NE PAS affaiblir le contrat.
 > 4. eslint + vitest de l'aire + commit. Aire suivante.
 >
-> **État migration** : Batch 1 (7 bootstrap) + **aire Lab (20 types)** faites. **Reste ~prochaines aires** (par taille MISSING) : match-view, squad, session, career, timeseries, synthesis, explorer, admin, notifications, prestige… (liste exacte = sortie MISSING avant complétion, ou `grep "export interface" types.ts`). **+ 69 DIVERGENT** à réconcilier (schémas manuels qui divergent des structs Go — remplacer le manuel, plus risqué car change l'existant).
+> **État migration** : Batch 1 (7 bootstrap) + **aire Lab (20 types)** faites (28 types shimés, tsc vert).
+>
+> **⚠️ FINDING CRITIQUE 2026-06-18 (expérience mass-shim, REVERTÉE)** : shimer en masse les **251 types matchés** (nom présent dans le contrat) produit **766 erreurs tsc dont ~567 STRUCTURELLES** (396 TS2339 « property does not exist », 118 TS2322, 53 TS2353), pas du null-safety. Cause : pour ~250 types, **le contrat (auto-dérivé des OUTPUTS typés Huma) est plus MAIGRE que l'usage réel du front** — le front lit des champs que le schéma ne déclare pas (ex contrat `SessionOption={label,session_id,match_count,is_squad}` mais le front utilise `match_count_filtered`/`started_at_utc`/`ended_at_utc`). **Donc la migration N'EST PAS un shim+null-guards mécanique** : chaque type divergent demande une **réconciliation par décision** :
+> - soit **enrichir le type d'OUTPUT Go** (si le handler envoie réellement ces champs mais l'annotation Huma est trop maigre) → corrige le contrat (bug : contrat sous-déclare),
+> - soit **retirer l'accès front** (si le front lit des champs jamais envoyés = code mort/bug runtime).
+>
+> Seuls les types où **contrat == usage front** shiment proprement (cas Lab/bootstrap : structs Go fidèles). **Conséquence** : la migration restante est un **vrai chantier de réconciliation aire par aire** (judgment, touche parfois le backend Go), PAS un mass-shim. À faire en sessions dédiées, par aire, avec l'oracle tsc -b. L'auto-gen « contrat fiable + complet + gate » est livré ; la migration `types.ts`→`generated.ts` complète reste graduelle.
 
 ## But
 

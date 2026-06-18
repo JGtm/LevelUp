@@ -1,3 +1,13 @@
+## [2026-06-18] Migration types.ts : aire Lab shimée + finding mass-shim (reverté) — Complété (aire Lab) / Diagnostic (reste)
+
+**Statut** : aire Lab Complétée (commit 77d4addcb) ; mass-shim expérimenté + **reverté** (finding).
+
+**Aire Lab** : 20 interfaces → `components['schemas']`. Oracle tsc -b a révélé que le contrat type les slices Go en nullable (manuel optimiste) → 10 garde-fous null ajoutés. Vert.
+
+**Finding mass-shim (REVERTÉ)** : shimer les 251 types matchés d'un coup → **766 erreurs tsc, ~567 STRUCTURELLES** (TS2339/2322/2353), pas du null-safety. Cause : pour ~250 types le **contrat auto-dérivé est plus maigre que l'usage front** (ex `SessionOption` : le front lit `match_count_filtered`/`started_at_utc` absents du schéma). **Donc la migration restante = réconciliation par décision aire par aire** (enrichir l'output Go OU retirer l'accès front mort), PAS un shim mécanique. Reverté à l'état propre (28 types shimés, tsc vert). Documenté dans PLAN_WEB_API_TYPES.
+
+**Conclusion auto-gen** : le CŒUR (contrat complet+fiable+gate+tooling) est livré. La migration `types.ts`→`generated.ts` complète est un vrai chantier de réconciliation (graduel, sessions dédiées, touche parfois le backend Go) — pas finissable mécaniquement. Le mass-shim l'a prouvé + quantifié.
+
 ## [2026-06-18] Auto-gen openapi : CONTRAT COMPLÉTÉ (332→0 schémas manquants) + gate — Complété
 
 **Statut** : Complété (sous-objectif 1 « contrat fiable »). make gen + generate-types + tsc -b + contracttest + full api verts.
