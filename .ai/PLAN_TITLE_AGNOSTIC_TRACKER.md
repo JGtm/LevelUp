@@ -162,7 +162,7 @@
 | PMT-1 | Hosts d'ingestion title-aware | MT-01 | blocker | ⬜ | racine |
 | PMT-2 | Acquisition auth par titre | MT-02 | blocker | ⬜ | racine |
 | PMT-3 | Scheduler/sync titleSlug threading | MT-11 | blocker | ⬜ | PMT-1/2 |
-| PMT-4 | Settings par titre + config Discord | MT-04, MT-26 | major | ⬜ | PMT-3 |
+| PMT-4 | Settings par titre + config Discord | MT-04, MT-26 | ✅ | **COMPLET 2026-06-18** : PR-0 `ResolveForTitle`+`TitleSettingsPath`, PR-1 CSR season overlay, PR-2 Discord `LoadNotifyConfigForTitle`, PR-3a/b CSR+session per-titre, **PR-3c GET/PATCH /settings overlay** (GET résout l'overlay ; PATCH écrit les champs valeur per-titre — ShowProgression/OutcomeExclude* — dans `data/titles/<slug>/settings.json` via `SaveTitleOverlay` sparse, titre par défaut byte-identique, amis/verrou/lang restent globaux). FriendGamertags = global PAR DÉCISION (personnes ≠ titre). Tests : overlay sparse + global jamais modifié + merge incrémental |
 | PMT-5 | Canonicalisation Outcome | MT-06 | major | ✅ | **COMPLET 2026-06-18** : Contract Go (archlint rawOutcomeAllowlist VIDE) + infra SQL resolver (`SQLEqExpr` 4 issues, port `games.OutcomeResolver`+`SetDefaultOutcomeResolver`, helper `duckdb.outcomeSQLEq`/`outcomeSQLEqSlug`, fallback byte-identique Halo) + **TOUS les repos SQL migrés** (explorer, compare, match_history, career_encounters, match_detail, squad ×3 templates) + **dead consts retirés** (`SQLIsWin`/`SQLWinRateExpr`, `Q42MapStatsForSquadTemplate`). 0 littéral d'issue actif restant. Validé : duckdb `-tags integration` (67s) + archlint verts |
 | PMT-6 | Achievements par titre | MT-08 | major | ⬜ | PMT-1/2 |
 | PMT-7 | World-stats / leaderboard par titre | MT-03 | major | ⬜ | PMT-3 |

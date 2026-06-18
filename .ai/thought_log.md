@@ -1,3 +1,17 @@
+## [2026-06-18] PMT-4 PR-3c — GET/PATCH /settings overlay per-titre — Complété (PMT-4 = 100%)
+
+**Statut** : Complété. settings + handler tests verts, vet + archlint verts. Titre par défaut byte-identique.
+
+**Livré** :
+- `settings.Store.SaveTitleOverlay(overlayPath, fields sparse)` : écrit/merge l'overlay du titre (`data/titles/<slug>/settings.json`), JAMAIS le global. Pendant écriture de `ResolveForTitle`.
+- `handleGetSettings` : `ResolveForTitle(TitleSettingsPath(ctx slug))` au lieu de `Load()` (overlay résolu ; défaut sans overlay = byte-identique).
+- `handlePatchSettings` : `extractPerTitleOverlay(&req)` sort les 3 champs valeur per-titre (`show_progression`, `outcome_exclude_bot_matches_from_{badges,records}`) du req global → overlay du titre SI titre non-défaut (flag `IsDefault`, pas de comparaison de slug). Le reste (amis, verrou, langue, Discord, sync…) reste global. Défaut → chemin global inchangé. Réponse = settings résolus.
+- Test : overlay sparse (1 clé, pas une copie du global) + global jamais modifié + héritage friends/lang + merge incrémental.
+
+**Décision** : FriendGamertags reste global (personnes ≠ titre, pilote le recompute cross-titre is_with_friends). Les 3 champs valeur sont per-titre. Isolation prouvée (un PATCH sur un 2e titre ne fuit jamais vers Halo).
+
+**Conclusion** : PMT-4 = 100% (toutes les surfaces settings sont title-aware : CSR season, Discord, sessions, ShowProgression/OutcomeExclude*).
+
 ## [2026-06-18] Squelette 2e titre COMPLET (synthetic_title_b, coming_soon, niveau Halo) — Complété
 
 **Statut** : Complété. 5 tests squelette verts + tests title/synthetic/bootstrap/session inchangés. Le registre découvre `synthetic_title_b` en `coming_soon` (log `title_registered_from_config ... capabilities=11`).

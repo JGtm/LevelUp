@@ -28,6 +28,7 @@ import (
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/notifications"
@@ -151,11 +152,38 @@ func (h *SettingsHandler) handleGetSettings(ctx context.Context, _ *struct{}) (*
 		return &settingsJSONOutput{Body: settings_platform.ToResponse(d)}, nil
 	}
 
-	cfg, err := h.settingsStore.Load()
+	// PMT-4 PR-3c : résout l'overlay per-titre (ShowProgression / OutcomeExclude*).
+	// Titre par défaut sans overlay ⇒ == Load() (byte-identique).
+	pr := titlePkg.NewPathResolver(h.cfg.RepoRoot)
+	cfg, err := h.settingsStore.ResolveForTitle(pr.TitleSettingsPath(ctxkeys.TitleSlug(ctx)))
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
 	}
 	return &settingsJSONOutput{Body: settings_platform.ToResponse(cfg)}, nil
+}
+
+// perTitleOverlayKeys — champs « valeur » per-titre (PMT-4 PR-3c) : un PATCH sur un
+// titre NON défaut les écrit dans son overlay (data/titles/<slug>/settings.json),
+// pas dans le global. Les autres champs (amis, verrou d'instance, langue, Discord,
+// sync…) restent globaux. Liste explicite et bornée (cf. ResolveForTitle).
+//
+// extractPerTitleOverlay sort ces champs du req (les met à nil pour le Save global)
+// et retourne leur projection JSON sparse pour l'overlay. Mutation in-place du req.
+func extractPerTitleOverlay(req *domain.UpdateSettingsRequest) map[string]json.RawMessage {
+	overlay := map[string]json.RawMessage{}
+	if req.ShowProgression != nil {
+		overlay["show_progression"], _ = json.Marshal(*req.ShowProgression)
+		req.ShowProgression = nil
+	}
+	if req.OutcomeExcludeBotMatchesFromBadges != nil {
+		overlay["outcome_exclude_bot_matches_from_badges"], _ = json.Marshal(*req.OutcomeExcludeBotMatchesFromBadges)
+		req.OutcomeExcludeBotMatchesFromBadges = nil
+	}
+	if req.OutcomeExcludeBotMatchesFromRecords != nil {
+		overlay["outcome_exclude_bot_matches_from_records"], _ = json.Marshal(*req.OutcomeExcludeBotMatchesFromRecords)
+		req.OutcomeExcludeBotMatchesFromRecords = nil
+	}
+	return overlay
 }
 
 // handlePatchSettings met à jour partiellement la configuration.
@@ -209,6 +237,18 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 		}
 	}
 
+	// PMT-4 PR-3c : pour un titre NON défaut, les champs « valeur » per-titre
+	// (ShowProgression / OutcomeExclude*) sont retirés du req global et écrits dans
+	// l'overlay du titre. Titre par défaut ⇒ perTitleOverlay vide, req inchangé,
+	// chemin global byte-identique. Détection via le flag IsDefault (jamais une
+	// comparaison de slug littérale — archlint no_slug_comparison).
+	titleSlug := ctxkeys.TitleSlug(ctx)
+	pr := titlePkg.NewPathResolver(h.cfg.RepoRoot)
+	var perTitleOverlay map[string]json.RawMessage
+	if desc := titlePkg.DefaultRegistry().Get(titleSlug); desc != nil && !desc.IsDefault {
+		perTitleOverlay = extractPerTitleOverlay(&req)
+	}
+
 	cfg, err := h.settingsStore.Load()
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
@@ -245,7 +285,21 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 		}
 	}
 
-	return &settingsJSONOutput{Body: settings_platform.ToResponse(cfg)}, nil
+	// PMT-4 PR-3c : persiste l'overlay per-titre (après le Save global réussi).
+	if len(perTitleOverlay) > 0 {
+		if err := h.settingsStore.SaveTitleOverlay(pr.TitleSettingsPath(titleSlug), perTitleOverlay); err != nil {
+			return nil, humacore.NewError(http.StatusInternalServerError, "settings_overlay_save_error",
+				"Impossible de sauvegarder l'overlay du titre.")
+		}
+	}
+
+	// Réponse : settings RÉSOLUS pour le titre (global + overlay). Titre par défaut
+	// sans overlay ⇒ == cfg global (byte-identique).
+	resolved, rerr := h.settingsStore.ResolveForTitle(pr.TitleSettingsPath(titleSlug))
+	if rerr != nil {
+		resolved = cfg
+	}
+	return &settingsJSONOutput{Body: settings_platform.ToResponse(resolved)}, nil
 }
 
 // newFriendsAdded retourne les gamertags présents dans next mais pas dans prev
