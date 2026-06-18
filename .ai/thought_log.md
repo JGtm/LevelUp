@@ -1,3 +1,19 @@
+## [2026-06-18] Engagement Match View : message honnête (fin du « migration en cours » trompeur) — Complété
+
+**Statut** : commit 4/5. `go build`+tests handlers/service ✓, `tsc`/`eslint`/vitest engagement ✓.
+
+**Déclencheur (user)** : « migration en cours » sur le graphe Engagement de matchs récents JGtm, alors que la migration est appliquée. Diagnostic (logs/general.log) : le endpoint renvoie HTTP 500 « insufficient event data » (ErrInsufficientData, branche `default` du handler) quand le split par xuid ne trouve aucun event joueur+coéquipiers ; le front affiche `engagement.error.unavailable` (= « migration en cours ») pour TOUTE erreur/courbe vide → message doublement faux.
+
+**Décision technique** : (1) backend — nouvelle sentinelle `service.ErrEngagementInsufficient` ; `GetMatchEngagement` traduit `temporal.ErrMatchTooShort`/`ErrInsufficientData` en cette sentinelle ; handler la mappe en **422 `engagement_insufficient`** (au lieu du 500 générique). (2) front — `EngagementMatchSection` n'affiche « migration en cours » QUE si `ApiError.code === 'engagement_unavailable'` (vrai 503 schéma manquant) ; sinon message neutre `engagement.error.match_unavailable` (« Engagement indisponible pour ce match… »).
+
+**Note diagnostic (non corrigé ici)** : la cause racine du `insufficient_event_data` sur des matchs où les events EXISTENT reste un mismatch d'attribution xuid/team_id par match (les 2 matchs loggés ont depuis des données complètes → transitoire au moment du sync, OU re-attribution par un rebuild highlight_events). Pas de match actuellement reproductible identifié ; le user fournira un match_id cassé live si recroisé. Le présent commit corrige le message (sûr, quelle que soit la cause) ; la cause data reste à confirmer.
+
+**Résultats** : backend+front verts. Message honnête livré.
+
+**Prochaine étape** : commit 5 (Escouade), re-backfill engagement (bloqué : backfill-world.exe tient la shared DB).
+
+---
+
 ## [2026-06-18] Engagement : pace_team inclut le joueur + relabel 3 courbes — Complété (code) / re-backfill à lancer
 
 **Statut** : commit 3/5. Backend temporal + front relabel verts (`go test temporal/sync` ✓, `tsc`/`eslint` ✓, vitest EngagementCurve 4/4). **Re-backfill data à exécuter** (paces/coefs).
