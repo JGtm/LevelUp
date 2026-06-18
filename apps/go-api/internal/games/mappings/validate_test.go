@@ -99,26 +99,58 @@ func TestValidateRequiredTOML_RealHaloInfinite_Passes(t *testing.T) {
 	}
 }
 
-// TestValidateRequiredTOML_SyntheticDrift_MissingCapabilities — ORACLE (b) :
-// synthetic_title_b (fixture : fields/assets/outcomes présents, capabilities.toml
-// ABSENT) → exactement 1 erreur STRUCTURÉE nommant slug + capabilities.toml,
-// sans panic. Preuve que le validateur détecte un titre mal configuré.
-func TestValidateRequiredTOML_SyntheticDrift_MissingCapabilities(t *testing.T) {
+// TestValidateRequiredTOML_RealSyntheticTitleB_Passes — ORACLE (c) : le squelette
+// 2e titre synthetic_title_b (config-complet : fields/capabilities/assets/outcomes)
+// passe le validateur boot. Preuve « day-one » : un 2e titre déclaré config-complet
+// est boot-safe, sans toucher de code (cf. PLAN_MULTITITRE_INDEX).
+func TestValidateRequiredTOML_RealSyntheticTitleB_Passes(t *testing.T) {
 	root := repoRootForTest(t)
+	// Caps suffisantes pour exiger les 4 fichiers (fields+capabilities toujours,
+	// +assets via CapAssetImages, +outcomes via CapMatchmaking).
 	desc := &titlePkg.TitleDescriptor{
 		Slug:         "synthetic_title_b",
 		Status:       titlePkg.StatusComingSoon,
 		Capabilities: []titlePkg.Capability{titlePkg.CapAssetImages, titlePkg.CapMatchmaking},
 	}
+	if errs := ValidateRequiredTOML(root, desc); len(errs) != 0 {
+		t.Fatalf("synthetic_title_b config-complet doit passer le validateur, got %d erreur(s) : %v", len(errs), errs)
+	}
+}
+
+// TestValidateRequiredTOML_Drift_MissingCapabilities — ORACLE (b) : un titre
+// dont la config dérive (fields/assets/outcomes présents, capabilities.toml
+// ABSENT) → exactement 1 erreur STRUCTURÉE nommant slug + capabilities.toml,
+// sans panic. Preuve que le validateur détecte un titre mal configuré.
+//
+// Fixture EN TEMP (et non le vrai synthetic_title_b, désormais config-complet
+// avec capabilities.toml — cf. squelette 2e titre) : l'oracle reste valide quel
+// que soit l'état des titres réels du repo.
+func TestValidateRequiredTOML_Drift_MissingCapabilities(t *testing.T) {
+	root := t.TempDir()
+	slug := "drift_fixture"
+	dir := filepath.Join(root, "config", "titles", slug, "mappings")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// fields/assets/outcomes présents ; capabilities.toml ABSENT.
+	mustWriteFile(t, filepath.Join(dir, "fields.toml"))
+	mustWriteFile(t, filepath.Join(dir, "assets.toml"))
+	mustWriteFile(t, filepath.Join(dir, "outcomes.toml"))
+
+	desc := &titlePkg.TitleDescriptor{
+		Slug:         slug,
+		Status:       titlePkg.StatusComingSoon,
+		Capabilities: []titlePkg.Capability{titlePkg.CapAssetImages, titlePkg.CapMatchmaking},
+	}
 	errs := ValidateRequiredTOML(root, desc)
 	if len(errs) != 1 {
-		t.Fatalf("synthetic_title_b → attendu 1 erreur (capabilities.toml), got %d : %v", len(errs), errs)
+		t.Fatalf("%s → attendu 1 erreur (capabilities.toml), got %d : %v", slug, len(errs), errs)
 	}
 	m, ok := errs[0].(MissingRequiredTOML)
 	if !ok {
 		t.Fatalf("erreur doit être structurée MissingRequiredTOML, got %T", errs[0])
 	}
-	if m.Slug != "synthetic_title_b" || m.File != "capabilities.toml" {
+	if m.Slug != slug || m.File != "capabilities.toml" {
 		t.Errorf("erreur doit nommer slug+fichier, got slug=%q file=%q", m.Slug, m.File)
 	}
 	if m.Path == "" {
