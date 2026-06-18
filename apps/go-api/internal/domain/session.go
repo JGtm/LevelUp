@@ -40,6 +40,13 @@ type SessionData struct {
 	// Lie le code d'autorisation au client initiateur → un code intercepté est
 	// inexploitable sans ce verifier secret.
 	OAuthCodeVerifier string `json:"oauth_code_verifier,omitempty"`
+	// PendingDeviceFlowAttempt : id de la tentative Device Code Flow en cours,
+	// posé par StartDeviceFlow. Rend la session « significative » → un cookie
+	// stable est posé dès le démarrage du flow, indispensable pour que les
+	// requêtes de statut (et le single-flight) retrouvent la MÊME session.
+	// Sans ça, chaque requête repart sur une session anonyme distincte →
+	// attempt introuvable (404) → le device-flow login ne peut plus aboutir.
+	PendingDeviceFlowAttempt string `json:"pending_device_flow_attempt,omitempty"`
 }
 
 // IsMeaningful indique si la session porte un état qui mérite d'être persisté sur
@@ -54,6 +61,7 @@ func (s *SessionData) IsMeaningful() bool {
 		s.Role != nil ||
 		s.OAuthState != "" ||
 		s.OAuthCodeVerifier != "" ||
+		s.PendingDeviceFlowAttempt != "" ||
 		s.LinkedHaloIdentity != nil ||
 		s.HaloTokens != nil ||
 		s.CurrentPlayerSlug != nil ||
