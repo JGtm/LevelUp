@@ -8,6 +8,12 @@
 //   - POST /run              : force un cycle synchrone et retourne le snapshot
 //   - GET  /probe?gamertag=X : teste pour un joueur la chaîne Discovery→Resolver
 //
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// /_diag/auto-sync (middleware LoopbackOnly hérité) et enregistre les 3 routes
+// via huma.*. Logique métier inchangée (scheduler + pool Discovery/Resolver),
+// seul le wrapping HTTP change. Les chemins relatifs sont identiques aux routes
+// chi d'origine (montées sous /_diag/auto-sync par server.go).
+//
 // Le probe passe par les abstractions pool.Discovery + pool.Resolver, donc
 // ne lit jamais directement os.Getenv ni sync_meta. Si une source produit un
 // access_token valide avec rotation, le RT rotaté est persisté via le
@@ -25,6 +31,10 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
@@ -49,22 +59,45 @@ func NewAdminAutoSyncHandler(s *scheduler.AutoSyncScheduler, cfg *config.AppConf
 	return &AdminAutoSyncHandler{scheduler: s, cfg: cfg, provider: provider}
 }
 
-// GetSnapshot retourne le snapshot mémorisé du dernier cycle.
-// GET /api/v1/_diag/auto-sync/snapshot
-func (h *AdminAutoSyncHandler) GetSnapshot(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, h.scheduler.Snapshot())
+// Mount enregistre les 3 routes via Huma sur le sous-routeur chi (préfixe
+// /_diag/auto-sync + middleware LoopbackOnly hérités de server.go).
+func (h *AdminAutoSyncHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/snapshot", h.handleGetSnapshot)
+	huma.Post(api, "/run", h.handleRunOnce)
+	huma.Get(api, "/probe", h.handleProbeTokens)
 }
 
-// RunOnce force un cycle synchrone et retourne le snapshot mis à jour.
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// autoSyncProbeInput : ?gamertag= (toléré vide → 400 missing_gamertag, parse maison).
+type autoSyncProbeInput struct {
+	Gamertag string `query:"gamertag"`
+}
+
+type autoSyncSnapshotOutput struct {
+	Body scheduler.SchedulerSnapshot
+}
+type autoSyncProbeOutput struct{ Body TokenProbeResult }
+
+// ─── Endpoints ───────────────────────────────────────────────────────────────
+
+// handleGetSnapshot retourne le snapshot mémorisé du dernier cycle.
+// GET /api/v1/_diag/auto-sync/snapshot
+func (h *AdminAutoSyncHandler) handleGetSnapshot(_ context.Context, _ *struct{}) (*autoSyncSnapshotOutput, error) {
+	return &autoSyncSnapshotOutput{Body: h.scheduler.Snapshot()}, nil
+}
+
+// handleRunOnce force un cycle synchrone et retourne le snapshot mis à jour.
 // POST /api/v1/_diag/auto-sync/run
 //
 // Bloquant : peut prendre plusieurs minutes (N joueurs * appel API Halo +
 // DB writes). Le scheduler est thread-safe, ce force-run n'interfère pas
 // avec les cycles automatiques (ils ne tournent pas en parallèle car
 // `Run()` séquence ses ticks via un ticker).
-func (h *AdminAutoSyncHandler) RunOnce(w http.ResponseWriter, r *http.Request) {
-	_ = h.scheduler.RunOnce(r.Context())
-	writeJSON(w, http.StatusOK, h.scheduler.Snapshot())
+func (h *AdminAutoSyncHandler) handleRunOnce(ctx context.Context, _ *struct{}) (*autoSyncSnapshotOutput, error) {
+	_ = h.scheduler.RunOnce(ctx)
+	return &autoSyncSnapshotOutput{Body: h.scheduler.Snapshot()}, nil
 }
 
 // TokenProbeResult décrit l'état des sources de refresh_token pour un joueur,
@@ -112,26 +145,24 @@ func fingerprintToken(s string) (sha string, head string, tail string) {
 	return
 }
 
-// ProbeTokens diagnostic complet pour un joueur via Discovery + Resolver.
+// handleProbeTokens diagnostic complet pour un joueur via Discovery + Resolver.
 // Le RT rotaté par Microsoft (si refresh OAuth réussit) est persisté dans
 // sync_meta.oauth_refresh_token de la player DB, comme en production.
 //
 // GET /api/v1/_diag/auto-sync/probe?gamertag=JGtm
-func (h *AdminAutoSyncHandler) ProbeTokens(w http.ResponseWriter, r *http.Request) {
-	gamertag := r.URL.Query().Get("gamertag")
+func (h *AdminAutoSyncHandler) handleProbeTokens(ctx context.Context, in *autoSyncProbeInput) (*autoSyncProbeOutput, error) {
+	gamertag := in.Gamertag
 	if gamertag == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_gamertag", "query param gamertag requis")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_gamertag", "query param gamertag requis")
 	}
 
 	res := TokenProbeResult{Gamertag: gamertag}
 
 	pr := titlePkg.NewPathResolver(h.cfg.RepoRoot)
 	discovery := pool.NewDiscovery(h.cfg, pr, titlePkg.DefaultSlug)
-	sources, err := discovery.Scan(r.Context())
+	sources, err := discovery.Scan(ctx)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "discovery_scan_failed", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "discovery_scan_failed", err.Error())
 	}
 
 	// Chercher la source correspondant à ce gamertag.
@@ -144,8 +175,7 @@ func (h *AdminAutoSyncHandler) ProbeTokens(w http.ResponseWriter, r *http.Reques
 	}
 	if src == nil {
 		// Joueur non découvert : pas de credential utilisable (ni env var ni sync_meta).
-		writeJSON(w, http.StatusOK, res)
-		return
+		return &autoSyncProbeOutput{Body: res}, nil
 	}
 
 	res.DiscoveredInPool = true
@@ -181,7 +211,7 @@ func (h *AdminAutoSyncHandler) ProbeTokens(w http.ResponseWriter, r *http.Reques
 	}
 
 	resolver := pool.NewResolver(h.provider, 0, onRotated)
-	resolved, rerr := resolver.Resolve(r.Context(), *src)
+	resolved, rerr := resolver.Resolve(ctx, *src)
 	if rerr != nil {
 		res.ResolveError = rerr.Error()
 	} else if resolved != nil && resolved.Tokens != nil {
@@ -190,5 +220,5 @@ func (h *AdminAutoSyncHandler) ProbeTokens(w http.ResponseWriter, r *http.Reques
 	}
 	res.RefreshTokenWasRotated = rotated
 
-	writeJSON(w, http.StatusOK, res)
+	return &autoSyncProbeOutput{Body: res}, nil
 }

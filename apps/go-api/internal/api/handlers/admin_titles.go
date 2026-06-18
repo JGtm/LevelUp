@@ -12,17 +12,26 @@
 //
 // Read-only. Monté sous le groupe /admin de server.go (RequireAuth + RequireAdmin).
 // Title-agnostic : aucune branche sur un slug littéral, tout découle du registre.
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// /admin (middleware RequireAuth+RequireAdmin+NoStore hérités) et enregistre les
+// 3 GET via huma.Get. Logique métier inchangée (registre titres + capabilities),
+// seul le wrapping HTTP change. Le draft TOML reste émis en text/plain via un
+// champ Body []byte (passthrough raw Huma) byte-pour-byte identique à l'origine.
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"sort"
 	"strings"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/mappings"
@@ -51,6 +60,32 @@ func NewAdminTitlesHandler(titles TitleLister, caps CapabilitiesRegistry, logger
 	return &AdminTitlesHandler{titles: titles, caps: caps, logger: logger}
 }
 
+// Mount enregistre les 3 routes via Huma sur le routeur chi `r` (le sous-routeur
+// /admin de server.go : middleware RequireAuth+RequireAdmin+NoStore hérités). Le
+// chemin relatif EXACT est repris tel quel (/titles, /titles/{slug},
+// /titles/{slug}/toml-draft).
+func (h *AdminTitlesHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/titles", h.handleList)
+	huma.Get(api, "/titles/{slug}", h.handleDetail)
+	huma.Get(api, "/titles/{slug}/toml-draft", h.handleTOMLDraft)
+}
+
+// adminTitleSlugInput : path param {slug} commun à Detail et TOMLDraft.
+type adminTitleSlugInput struct {
+	Slug string `path:"slug"`
+}
+
+type adminTitlesListOutput struct{ Body adminTitlesListResponse }
+type adminTitleDetailOutput struct{ Body adminTitleDetail }
+
+// adminTOMLDraftOutput émet le draft tel quel (Body []byte → passthrough raw
+// Huma, pas de re-marshal JSON) avec son Content-Type text/plain d'origine.
+type adminTOMLDraftOutput struct {
+	ContentType string `header:"Content-Type"`
+	Body        []byte
+}
+
 // adminTitleSummary = descripteur du titre + indicateur de mappings TOML chargés.
 type adminTitleSummary struct {
 	*titlePkg.TitleDescriptor
@@ -62,8 +97,8 @@ type adminTitlesListResponse struct {
 	Count  int                 `json:"count"`
 }
 
-// List répond GET /admin/titles : tous les titres enregistrés, triés par slug.
-func (h *AdminTitlesHandler) List(w http.ResponseWriter, r *http.Request) {
+// handleList répond GET /admin/titles : tous les titres enregistrés, triés par slug.
+func (h *AdminTitlesHandler) handleList(ctx context.Context, _ *struct{}) (*adminTitlesListOutput, error) {
 	descriptors := h.titles.All()
 	out := make([]adminTitleSummary, 0, len(descriptors))
 	for _, d := range descriptors {
@@ -72,8 +107,8 @@ func (h *AdminTitlesHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Slug < out[j].Slug })
 
-	writeJSON(w, http.StatusOK, adminTitlesListResponse{Titles: out, Count: len(out)})
-	h.logger.DebugContext(r.Context(), "admin_titles_list", "count", len(out))
+	h.logger.DebugContext(ctx, "admin_titles_list", "count", len(out))
+	return &adminTitlesListOutput{Body: adminTitlesListResponse{Titles: out, Count: len(out)}}, nil
 }
 
 // adminTitleDetail = descripteur + capabilities déclarées (TOML) + feature-matrix calculée.
@@ -85,17 +120,15 @@ type adminTitleDetail struct {
 	FeatureMatrix        map[string]string `json:"feature_matrix,omitempty"`        // cascade calculée : key → available|degraded|unavailable
 }
 
-// Detail répond GET /admin/titles/{slug}.
-func (h *AdminTitlesHandler) Detail(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "slug")
+// handleDetail répond GET /admin/titles/{slug}.
+func (h *AdminTitlesHandler) handleDetail(ctx context.Context, in *adminTitleSlugInput) (*adminTitleDetailOutput, error) {
+	slug := in.Slug
 	if slug == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_slug", "title slug requis")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_slug", "title slug requis")
 	}
 	desc := h.titles.Get(slug)
 	if desc == nil {
-		writeError(r.Context(), w, http.StatusNotFound, "title_not_found", "titre inconnu : "+slug)
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "title_not_found", "titre inconnu : "+slug)
 	}
 
 	detail := adminTitleDetail{TitleDescriptor: desc}
@@ -107,7 +140,7 @@ func (h *AdminTitlesHandler) Detail(w http.ResponseWriter, r *http.Request) {
 			// capabilities.toml déclare une capability hors vocabulaire produit →
 			// feature-matrix dégradée (omise), pas d'erreur 500 : l'admin voit
 			// quand même le titre + ses capabilities déclarées brutes.
-			h.logger.WarnContext(r.Context(), "admin_titles_feature_matrix_degraded", "title", slug, "err", err)
+			h.logger.WarnContext(ctx, "admin_titles_feature_matrix_degraded", "title", slug, "err", err)
 		} else {
 			matrix := games.ComputeFeatureMatrix(cm)
 			fm := make(map[string]string, len(matrix))
@@ -118,8 +151,8 @@ func (h *AdminTitlesHandler) Detail(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeJSON(w, http.StatusOK, detail)
-	h.logger.DebugContext(r.Context(), "admin_titles_detail", "title", slug, "has_mappings", detail.HasMappings)
+	h.logger.DebugContext(ctx, "admin_titles_detail", "title", slug, "has_mappings", detail.HasMappings)
+	return &adminTitleDetailOutput{Body: detail}, nil
 }
 
 // TOMLDraft répond GET /admin/titles/{slug}/toml-draft : un brouillon
@@ -130,15 +163,13 @@ func (h *AdminTitlesHandler) Detail(w http.ResponseWriter, r *http.Request) {
 // (text/plain) ; le front copie via navigator.clipboard. Ne jamais écrire sur
 // disque ici (garde-fou lint : aucune écriture fichier dans ce handler, cf.
 // admin_titles_test.go).
-func (h *AdminTitlesHandler) TOMLDraft(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "slug")
+func (h *AdminTitlesHandler) handleTOMLDraft(ctx context.Context, in *adminTitleSlugInput) (*adminTOMLDraftOutput, error) {
+	slug := in.Slug
 	if slug == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_slug", "title slug requis")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_slug", "title slug requis")
 	}
 	if h.titles.Get(slug) == nil {
-		writeError(r.Context(), w, http.StatusNotFound, "title_not_found", "titre inconnu : "+slug)
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "title_not_found", "titre inconnu : "+slug)
 	}
 
 	set, ok := h.caps.GetCapabilities(slug)
@@ -147,10 +178,11 @@ func (h *AdminTitlesHandler) TOMLDraft(w http.ResponseWriter, r *http.Request) {
 	}
 	draft := buildCapabilitiesDraft(slug, set)
 
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(draft))
-	h.logger.InfoContext(r.Context(), "admin_titles_toml_draft", "title", slug)
+	h.logger.InfoContext(ctx, "admin_titles_toml_draft", "title", slug)
+	return &adminTOMLDraftOutput{
+		ContentType: "text/plain; charset=utf-8",
+		Body:        []byte(draft),
+	}, nil
 }
 
 // buildCapabilitiesDraft génère un capabilities.toml brouillon pour `slug`.

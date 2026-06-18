@@ -805,7 +805,7 @@ func NewRouter(
 			// (Phase 4 du plan .ai/PLAN_SYNC_INVARIANTS_GATE.md). NoStore : le
 			// résultat reflète l'état courant des DBs, jamais de cache.
 			invariantsHandler := handlers.NewAdminInvariantsHandler(reg.RunDataInvariants)
-			r.With(middleware.NoStore).Get("/invariants", invariantsHandler.Get)
+			invariantsHandler.Mount(r.With(middleware.NoStore))
 			// Contention DB (B-swap shared) : compteurs de swap RO↔RW pendant le
 			// sync (cadence + lectures rejetées en 503). Lecture seule des
 			// métriques expvar du sharedprovider. NoStore : état courant.
@@ -814,7 +814,7 @@ func NewRouter(
 			// Santé des tokens auth (MSAL / XSTS / Refresh) par joueur. Lecture
 			// seule du MultiUserTokenStore (ADR 0023), sans refresh réseau.
 			tokenHealthHandler := handlers.NewAdminTokenHealthHandler(reg.TokenHealth)
-			r.With(middleware.NoStore).Get("/token-health", tokenHealthHandler.Get)
+			tokenHealthHandler.Mount(r.With(middleware.NoStore))
 			// Dashboard monitoring admin : overview/scheduler/convergence/jobs
 			// + actions correctives (data-health run, cycle auto-sync forcé).
 			// Cf. server_admin_monitoring.go.
@@ -824,10 +824,8 @@ func NewRouter(
 			// 1.7a/b sans recalcul). Read-only, admin-gated, NoStore (reflète l'état
 			// du registre des titres au boot).
 			adminTitlesHandler := handlers.NewAdminTitlesHandler(titleRegistry, fieldMappingsRegistry, slog.Default())
-			r.With(middleware.NoStore).Get("/titles", adminTitlesHandler.List)
-			r.With(middleware.NoStore).Get("/titles/{slug}", adminTitlesHandler.Detail)
-			// Draft capabilities.toml collable (décision D10 : ZÉRO écriture serveur).
-			r.With(middleware.NoStore).Get("/titles/{slug}/toml-draft", adminTitlesHandler.TOMLDraft)
+			// /titles, /titles/{slug}, /titles/{slug}/toml-draft (Huma, NoStore).
+			adminTitlesHandler.Mount(r.With(middleware.NoStore))
 			// Diagnostic santé d'un titre (PMT-14 volet A — productise Phase 1.8) :
 			// présence des mappings TOML + réalité DB (lignes des tables cœur),
 			// read-only via port.TableInspector.
@@ -847,9 +845,7 @@ func NewRouter(
 			autoSyncH := handlers.NewAdminAutoSyncHandler(autoSyncScheduler, cfg, tokenProvider)
 			r.Route("/_diag/auto-sync", func(r chi.Router) {
 				r.Use(middleware.LoopbackOnly)
-				r.Get("/snapshot", autoSyncH.GetSnapshot)
-				r.Post("/run", autoSyncH.RunOnce)
-				r.Get("/probe", autoSyncH.ProbeTokens)
+				autoSyncH.Mount(r) // /snapshot, /run, /probe (sous LoopbackOnly)
 			})
 		}
 
@@ -867,18 +863,11 @@ func NewRouter(
 			WithFriendsOrchestrator(friendsOrchestrator).
 			WithNotificationsEmitter(reg.NotificationsEmitter).
 			WithBackupScheduler(backupScheduler)
-		r.Get("/settings", settingsHandler.GetSettings)
-		r.Patch("/settings", settingsHandler.PatchSettings)
-		r.Post("/settings/media/reset-index", settingsHandler.PostMediaResetIndex)
-		r.Post("/settings/media/scan", settingsHandler.PostMediaScan)
-		r.Post("/settings/sessions/recalculate", settingsHandler.PostRecalculateSessions)
-		r.Get("/settings/backup/status", settingsHandler.GetBackupStatus)
-		r.Post("/settings/backup/run", settingsHandler.PostBackupRun)
+		settingsHandler.Mount(r) // /settings + /settings/{media,sessions,backup}/...
 
 		setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore,
 			service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot))
-		r.Post("/setup/players", setupHandler.CreatePlayer)
-		r.Post("/setup/smoke-test", setupHandler.SmokeTest)
+		setupHandler.Mount(r) // /setup/players, /setup/smoke-test
 
 		// Sprint 17 : Jobs longs persistants + sync initiale.
 		// GET /jobs/{job_id} migré vers Huma (Phase 3b, shape path-param).
@@ -924,7 +913,7 @@ func NewRouter(
 			// Audit ownership 2026-06-08 (PR-A) : backfill lit player_slug dans le BODY
 			// (hors chokepoint /players/{slug}) → opération lourde sur un joueur arbitraire.
 			// Aligné sur /sync/* : admin-gated (no-op en demo/single-user).
-			r.Post("/backfill/start", handlers.NewBackfillHandler(cfg, jobStore).StartBackfill)
+			handlers.NewBackfillHandler(cfg, jobStore).Mount(r) // POST /backfill/start
 		})
 
 		// OpenSpartan import (Sprint OpenSpartan PR 3.B + commit 15 sprint B1) :
@@ -1185,7 +1174,7 @@ func NewRouter(
 
 			// Match favoris (shared_social.duckdb)
 			fav := handlers.NewMatchFavoriteHandler(reg.Social)
-			r.Patch("/matches/{match_id}/favorite", fav.PatchMatchFavorite)
+			fav.Mount(r) // PATCH /matches/{match_id}/favorite
 
 			// Module Prestige — routes derrière feature flag PRESTIGE_ENABLED.
 			// Le bundle a été initialisé au boot ; si nil ou flag off, routes non montées.
@@ -1248,10 +1237,9 @@ func NewRouter(
 		r.Route("/watcher", func(r chi.Router) {
 			r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 			r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
-			r.Get("/status", watcherHandler.GetStatus)
+			// status/auth-status/subscriptions migrés vers Huma ; auth/start (device-flow) reste chi.
+			watcherHandler.Mount(r)
 			r.Post("/auth/start", watcherHandler.StartAuth)
-			r.Get("/auth/{attempt_id}", watcherHandler.GetAuthStatus)
-			r.Patch("/subscriptions", watcherHandler.PatchSubscriptions)
 		})
 	})
 

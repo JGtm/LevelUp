@@ -3,16 +3,29 @@
 // Endpoint :
 //
 //	PATCH /api/v1/players/{player_slug}/matches/{match_id}/favorite → MatchFavoriteResponse
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// (préfixe /players/{player_slug} + middleware ownership/title hérités, lit
+// {player_slug} parent) et enregistre le PATCH via huma.Patch. Logique métier
+// inchangée (SocialService), seul le wrapping HTTP change.
+//
+// Le corps est lu via RawBody (pas de Body typé) pour reproduire EXACTEMENT le
+// contrat de décodage d'origine : un JSON invalide renvoie 400 {invalid_body}
+// (parse maison) et non le 422 de validation Huma qu'un Body typé produirait.
 package handlers
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/port"
@@ -28,46 +41,65 @@ func NewMatchFavoriteHandler(newSvc ServiceFactory[port.SocialService]) *MatchFa
 	return &MatchFavoriteHandler{newSvc: newSvc}
 }
 
-// PatchMatchFavorite bascule l'état favori d'un match pour un joueur.
+// Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
+// /players/{player_slug} + middleware ownership/title hérités).
+func (h *MatchFavoriteHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Patch(api, "/matches/{match_id}/favorite", h.handlePatchFavorite)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// matchFavoriteInput : {player_slug} parent + {match_id} + corps brut décodé
+// maison. RawBody (pas Body typé) → préserve le contrat 400 {invalid_body} sur
+// JSON invalide (un Body typé renverrait le 422 de validation Huma).
+type matchFavoriteInput struct {
+	PlayerSlug string `path:"player_slug"`
+	MatchID    string `path:"match_id"`
+	RawBody    []byte
+}
+
+type matchFavoriteOutput struct{ Body domain.MatchFavoriteResponse }
+
+// ─── Endpoint ────────────────────────────────────────────────────────────────
+
+// handlePatchFavorite bascule l'état favori d'un match pour un joueur.
 // PATCH /api/v1/players/{player_slug}/matches/{match_id}/favorite
-func (h *MatchFavoriteHandler) PatchMatchFavorite(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	matchID := chi.URLParam(r, "match_id")
+func (h *MatchFavoriteHandler) handlePatchFavorite(ctx context.Context, in *matchFavoriteInput) (*matchFavoriteOutput, error) {
+	matchID := in.MatchID
+	slug := in.PlayerSlug
 
 	if matchID == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_match_id", "match_id requis")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_match_id", "match_id requis")
 	}
 
-	svc, err := h.newSvc(r.Context(), slug)
+	svc, err := h.newSvc(ctx, slug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
 
 	var req domain.MatchFavoriteRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "corps JSON invalide")
-		return
+	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "corps JSON invalide")
 	}
 	req.PlayerSlug = slug
 	req.MatchID = matchID
 
-	if err := svc.ToggleMatchFavorite(r.Context(), req); err != nil {
+	if err := svc.ToggleMatchFavorite(ctx, req); err != nil {
 		if errors.Is(err, dblease.ErrDBLocked) {
-			w.Header().Set("Retry-After", "5")
-			writeError(r.Context(), w, http.StatusServiceUnavailable, "db_busy",
-				"database is currently busy, please retry")
-			return
+			return nil, huma.ErrorWithHeaders(
+				humacore.NewError(http.StatusServiceUnavailable, "db_busy",
+					"database is currently busy, please retry"),
+				http.Header{"Retry-After": []string{"5"}},
+			)
 		}
-		slog.ErrorContext(r.Context(), "match_favorite: erreur bascule",
+		slog.ErrorContext(ctx, "match_favorite: erreur bascule",
 			"err", err, "match_id", matchID, "player", slug)
-		writeError(r.Context(), w, http.StatusInternalServerError, "favorite_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "favorite_error", err.Error())
 	}
 
-	slog.DebugContext(r.Context(), "match_favorite: bascule ok",
+	slog.DebugContext(ctx, "match_favorite: bascule ok",
 		"match_id", matchID, "player", slug, "favorited", req.Favorited)
 
-	writeJSON(w, http.StatusOK, domain.MatchFavoriteResponse(req))
+	return &matchFavoriteOutput{Body: domain.MatchFavoriteResponse(req)}, nil
 }

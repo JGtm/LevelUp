@@ -53,8 +53,7 @@ func newSetupRouter(t *testing.T, provisionEnabled bool, profileSvc *mockProfile
 
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(sessionStore, middleware.SecureCookiePolicy{}))
-	r.Post("/setup/players", h.CreatePlayer)
-	r.Post("/setup/smoke-test", h.SmokeTest)
+	h.Mount(r)
 	return r
 }
 
@@ -79,7 +78,7 @@ func TestSetupHandler_CreatePlayer_InstanceLocked(t *testing.T) {
 	h := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, &mockProfileService{playerKey: "x"})
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(sessionStore, middleware.SecureCookiePolicy{}))
-	r.Post("/setup/players", h.CreatePlayer)
+	h.Mount(r)
 
 	body := `{"gamertag": "TestPlayer", "profile_mode": "manual"}`
 	req := httptest.NewRequest(http.MethodPost, "/setup/players", bytes.NewReader([]byte(body)))

@@ -29,7 +29,7 @@ func TestAdminTitles_List(t *testing.T) {
 		"match.history": mappings.CapStatusSupported,
 	})
 	r := chi.NewRouter()
-	r.Get("/admin/titles", newAdminTitlesHandlerForTest(set).List)
+	r.Route("/admin", func(r chi.Router) { newAdminTitlesHandlerForTest(set).Mount(r) })
 
 	req := httptest.NewRequest("GET", "/admin/titles", nil)
 	w := httptest.NewRecorder()
@@ -69,7 +69,7 @@ func TestAdminTitles_Detail_OK(t *testing.T) {
 		"analytics.timeseries": mappings.CapStatusNotExposed,
 	})
 	r := chi.NewRouter()
-	r.Get("/admin/titles/{slug}", newAdminTitlesHandlerForTest(set).Detail)
+	r.Route("/admin", func(r chi.Router) { newAdminTitlesHandlerForTest(set).Mount(r) })
 
 	req := httptest.NewRequest("GET", "/admin/titles/"+titlePkg.DefaultSlug, nil)
 	w := httptest.NewRecorder()
@@ -97,7 +97,7 @@ func TestAdminTitles_Detail_OK(t *testing.T) {
 func TestAdminTitles_Detail_NotFound(t *testing.T) {
 	t.Parallel()
 	r := chi.NewRouter()
-	r.Get("/admin/titles/{slug}", newAdminTitlesHandlerForTest(nil).Detail)
+	r.Route("/admin", func(r chi.Router) { newAdminTitlesHandlerForTest(nil).Mount(r) })
 
 	req := httptest.NewRequest("GET", "/admin/titles/does_not_exist", nil)
 	w := httptest.NewRecorder()
@@ -116,7 +116,7 @@ func TestAdminTitles_TOMLDraft(t *testing.T) {
 	})
 	h := newAdminTitlesHandlerForTest(set)
 	r := chi.NewRouter()
-	r.Get("/admin/titles/{slug}/toml-draft", h.TOMLDraft)
+	r.Route("/admin", func(r chi.Router) { h.Mount(r) })
 
 	req := httptest.NewRequest("GET", "/admin/titles/"+titlePkg.DefaultSlug+"/toml-draft", nil)
 	w := httptest.NewRecorder()
@@ -166,7 +166,7 @@ func TestAdminTitles_Gating_401_403(t *testing.T) {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(false, "password"))
 		r.Use(middleware.RequireAdmin(false, "password"))
-		r.Get("/admin/titles", h.List)
+		r.Route("/admin", func(r chi.Router) { h.Mount(r) })
 	})
 
 	serve := func(sess *domain.SessionData) int {
@@ -213,7 +213,7 @@ func TestAdminTitles_SyntheticTitle_ListedWithDegradation(t *testing.T) {
 
 	// Liste : synthetic_title_b présent avec son Status coming_soon, has_mappings=false.
 	rl := chi.NewRouter()
-	rl.Get("/admin/titles", h.List)
+	rl.Route("/admin", func(r chi.Router) { h.Mount(r) })
 	reqL := httptest.NewRequest("GET", "/admin/titles", nil)
 	wL := httptest.NewRecorder()
 	rl.ServeHTTP(wL, reqL)
@@ -239,7 +239,7 @@ func TestAdminTitles_SyntheticTitle_ListedWithDegradation(t *testing.T) {
 
 	// Détail : dégradation propre (200, pas de panic, feature_matrix vide).
 	rd := chi.NewRouter()
-	rd.Get("/admin/titles/{slug}", h.Detail)
+	rd.Route("/admin", func(r chi.Router) { h.Mount(r) })
 	reqD := httptest.NewRequest("GET", "/admin/titles/synthetic_title_b", nil)
 	wD := httptest.NewRecorder()
 	rd.ServeHTTP(wD, reqD)
@@ -260,7 +260,7 @@ func TestAdminTitles_SyntheticTitle_ListedWithDegradation(t *testing.T) {
 func TestAdminTitles_Detail_NoMappings(t *testing.T) {
 	t.Parallel()
 	r := chi.NewRouter()
-	r.Get("/admin/titles/{slug}", newAdminTitlesHandlerForTest(nil).Detail)
+	r.Route("/admin", func(r chi.Router) { newAdminTitlesHandlerForTest(nil).Mount(r) })
 
 	req := httptest.NewRequest("GET", "/admin/titles/"+titlePkg.DefaultSlug, nil)
 	w := httptest.NewRecorder()

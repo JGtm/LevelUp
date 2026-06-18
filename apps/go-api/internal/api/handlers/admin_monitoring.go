@@ -2,12 +2,19 @@
 // monitoring admin (vue d'ensemble, scheduler + historique, convergence,
 // jobs récents).
 //
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// /admin (middleware RequireAuth/RequireAdmin/NoStore hérités) et enregistre les
+// 6 GET via huma.Get. Logique métier inchangée (runners injectés), seul le
+// wrapping HTTP change.
+//
 // Routes (montées sous /api/v1/admin/monitoring/, RequireAuth+RequireAdmin+
 // NoStore) :
-//   - GET /overview    : KPIs agrégés (zéro I/O DuckDB, polling 30 s ok)
-//   - GET /scheduler   : snapshot complet + historique des cycles (ring mémoire)
-//   - GET /convergence : backlog d'enrichissement par joueur (lectures seules)
-//   - GET /jobs        : jobs asynchrones récents (JobStore)
+//   - GET /monitoring/overview    : KPIs agrégés (zéro I/O DuckDB, polling 30 s ok)
+//   - GET /monitoring/scheduler   : snapshot complet + historique des cycles (ring mémoire)
+//   - GET /monitoring/convergence : backlog d'enrichissement par joueur (lectures seules)
+//   - GET /monitoring/jobs        : jobs asynchrones récents (JobStore)
+//   - GET /monitoring/perf        : agrégats de performance depuis le boot
+//   - GET /monitoring/errors      : logs WARN/ERROR agrégés depuis le boot
 package handlers
 
 import (
@@ -17,6 +24,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/jobs"
@@ -62,31 +73,44 @@ func NewAdminMonitoringHandler(
 	return &AdminMonitoringHandler{overview: overview, convergence: convergence, perf: perf, errors: errors, sched: sched, jobs: jobStore}
 }
 
-// GetErrors retourne les logs WARN/ERROR agrégés depuis le boot.
-// GET /admin/monitoring/errors.
-func (h *AdminMonitoringHandler) GetErrors(w http.ResponseWriter, r *http.Request) {
-	resp, err := h.errors(r.Context(), titleOrDefault(r))
-	if err != nil {
-		slog.ErrorContext(r.Context(), "admin_monitoring: errors failed", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "monitoring_errors_error",
-			"Impossible d'agréger les erreurs récentes.")
-		return
-	}
-	writeJSON(w, http.StatusOK, resp)
+// Mount enregistre les 6 routes via Huma sur le sous-routeur chi /admin
+// (middleware RequireAuth/RequireAdmin/NoStore hérités).
+func (h *AdminMonitoringHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/monitoring/overview", h.handleGetOverview)
+	huma.Get(api, "/monitoring/scheduler", h.handleGetScheduler)
+	huma.Get(api, "/monitoring/convergence", h.handleGetConvergence)
+	huma.Get(api, "/monitoring/jobs", h.handleGetJobs)
+	huma.Get(api, "/monitoring/perf", h.handleGetPerf)
+	huma.Get(api, "/monitoring/errors", h.handleGetErrors)
 }
 
-// GetPerf retourne les agrégats de performance depuis le boot.
-// GET /admin/monitoring/perf.
-func (h *AdminMonitoringHandler) GetPerf(w http.ResponseWriter, r *http.Request) {
-	resp, err := h.perf(r.Context(), titleOrDefault(r))
-	if err != nil {
-		slog.ErrorContext(r.Context(), "admin_monitoring: perf failed", "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "monitoring_perf_error",
-			"Impossible d'agréger les statistiques de performance.")
-		return
-	}
-	writeJSON(w, http.StatusOK, resp)
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// titleInput : ?title= optionnel (fallback titre par défaut via titleOrDefaultSlug).
+type titleInput struct {
+	Title string `query:"title"`
 }
+
+// jobsInput : ?limit= optionnel (défaut 20, max 50) — pris en STRING pour
+// reproduire le contrat d'origine (limit non numérique ou <=0 ignoré, défaut 20),
+// PAS le 422 de validation Huma qu'un `int` produirait.
+type jobsInput struct {
+	Limit string `query:"limit"`
+}
+
+type adminOverviewOutput struct {
+	Body domain.AdminMonitoringOverview
+}
+type adminConvergenceOutput struct {
+	Body domain.AdminConvergenceReport
+}
+type adminPerfOutput struct{ Body domain.AdminPerfStats }
+type adminErrorsOutput struct{ Body domain.AdminErrorStats }
+type adminSchedulerOutput struct {
+	Body AdminSchedulerStatusResponse
+}
+type adminJobsOutput struct{ Body AdminJobsResponse }
 
 // AdminSchedulerStatusResponse est la réponse de GET /monitoring/scheduler.
 // Réutilise les types JSON-contractés du package scheduler (déjà exposés par
@@ -109,31 +133,39 @@ type AdminJobsResponse struct {
 	Jobs        []*domain.AsyncJobStatus `json:"jobs"`
 }
 
-// titleOrDefault lit ?title= avec fallback sur le titre par défaut.
-func titleOrDefault(r *http.Request) string {
-	if t := r.URL.Query().Get("title"); t != "" {
-		return t
+// titleOrDefaultSlug lit ?title= avec fallback sur le titre par défaut.
+func titleOrDefaultSlug(title string) string {
+	if title != "" {
+		return title
 	}
 	return titlePkg.DefaultSlug
 }
 
-// GetOverview retourne les KPIs agrégés.
-// GET /admin/monitoring/overview?title={slug}.
-func (h *AdminMonitoringHandler) GetOverview(w http.ResponseWriter, r *http.Request) {
-	titleSlug := titleOrDefault(r)
-	resp, err := h.overview(r.Context(), titleSlug)
-	if err != nil {
-		slog.ErrorContext(r.Context(), "admin_monitoring: overview failed", "title", titleSlug, "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "monitoring_overview_error",
-			"Impossible d'agréger la vue d'ensemble monitoring.")
-		return
-	}
-	writeJSON(w, http.StatusOK, resp)
+// titleOrDefault lit ?title= avec fallback sur le titre par défaut (variante
+// *http.Request — encore consommée par les handlers admin non migrés vers Huma :
+// admin_data_quality, admin_actions_convergence, admin_actions_catalog_drain).
+func titleOrDefault(r *http.Request) string {
+	return titleOrDefaultSlug(r.URL.Query().Get("title"))
 }
 
-// GetScheduler retourne le snapshot scheduler + l'historique des cycles.
+// ─── Endpoints ───────────────────────────────────────────────────────────────
+
+// handleGetOverview retourne les KPIs agrégés.
+// GET /admin/monitoring/overview?title={slug}.
+func (h *AdminMonitoringHandler) handleGetOverview(ctx context.Context, in *titleInput) (*adminOverviewOutput, error) {
+	titleSlug := titleOrDefaultSlug(in.Title)
+	resp, err := h.overview(ctx, titleSlug)
+	if err != nil {
+		slog.ErrorContext(ctx, "admin_monitoring: overview failed", "title", titleSlug, "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "monitoring_overview_error",
+			"Impossible d'agréger la vue d'ensemble monitoring.")
+	}
+	return &adminOverviewOutput{Body: resp}, nil
+}
+
+// handleGetScheduler retourne le snapshot scheduler + l'historique des cycles.
 // GET /admin/monitoring/scheduler.
-func (h *AdminMonitoringHandler) GetScheduler(w http.ResponseWriter, r *http.Request) {
+func (h *AdminMonitoringHandler) handleGetScheduler(_ context.Context, _ *struct{}) (*adminSchedulerOutput, error) {
 	resp := AdminSchedulerStatusResponse{
 		History:                 []scheduler.CycleRecord{},
 		HistorySinceBoot:        true,
@@ -145,29 +177,28 @@ func (h *AdminMonitoringHandler) GetScheduler(w http.ResponseWriter, r *http.Req
 		resp.Snapshot = &snap
 		resp.History = h.sched.History()
 	}
-	writeJSON(w, http.StatusOK, resp)
+	return &adminSchedulerOutput{Body: resp}, nil
 }
 
-// GetConvergence retourne le backlog de convergence par joueur.
+// handleGetConvergence retourne le backlog de convergence par joueur.
 // GET /admin/monitoring/convergence?title={slug}.
-func (h *AdminMonitoringHandler) GetConvergence(w http.ResponseWriter, r *http.Request) {
-	titleSlug := titleOrDefault(r)
-	resp, err := h.convergence(r.Context(), titleSlug)
+func (h *AdminMonitoringHandler) handleGetConvergence(ctx context.Context, in *titleInput) (*adminConvergenceOutput, error) {
+	titleSlug := titleOrDefaultSlug(in.Title)
+	resp, err := h.convergence(ctx, titleSlug)
 	if err != nil {
-		slog.ErrorContext(r.Context(), "admin_monitoring: convergence failed", "title", titleSlug, "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "monitoring_convergence_error",
+		slog.ErrorContext(ctx, "admin_monitoring: convergence failed", "title", titleSlug, "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "monitoring_convergence_error",
 			"Impossible de calculer le backlog de convergence.")
-		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	return &adminConvergenceOutput{Body: resp}, nil
 }
 
-// GetJobs retourne les jobs asynchrones récents.
+// handleGetJobs retourne les jobs asynchrones récents.
 // GET /admin/monitoring/jobs?limit=20 (max 50).
-func (h *AdminMonitoringHandler) GetJobs(w http.ResponseWriter, r *http.Request) {
+func (h *AdminMonitoringHandler) handleGetJobs(_ context.Context, in *jobsInput) (*adminJobsOutput, error) {
 	limit := 20
-	if raw := r.URL.Query().Get("limit"); raw != "" {
-		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+	if in.Limit != "" {
+		if n, err := strconv.Atoi(in.Limit); err == nil && n > 0 {
 			limit = n
 		}
 	}
@@ -181,5 +212,29 @@ func (h *AdminMonitoringHandler) GetJobs(w http.ResponseWriter, r *http.Request)
 	if h.jobs != nil {
 		resp.Jobs = h.jobs.List(limit)
 	}
-	writeJSON(w, http.StatusOK, resp)
+	return &adminJobsOutput{Body: resp}, nil
+}
+
+// handleGetPerf retourne les agrégats de performance depuis le boot.
+// GET /admin/monitoring/perf.
+func (h *AdminMonitoringHandler) handleGetPerf(ctx context.Context, in *titleInput) (*adminPerfOutput, error) {
+	resp, err := h.perf(ctx, titleOrDefaultSlug(in.Title))
+	if err != nil {
+		slog.ErrorContext(ctx, "admin_monitoring: perf failed", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "monitoring_perf_error",
+			"Impossible d'agréger les statistiques de performance.")
+	}
+	return &adminPerfOutput{Body: resp}, nil
+}
+
+// handleGetErrors retourne les logs WARN/ERROR agrégés depuis le boot.
+// GET /admin/monitoring/errors.
+func (h *AdminMonitoringHandler) handleGetErrors(ctx context.Context, in *titleInput) (*adminErrorsOutput, error) {
+	resp, err := h.errors(ctx, titleOrDefaultSlug(in.Title))
+	if err != nil {
+		slog.ErrorContext(ctx, "admin_monitoring: errors failed", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "monitoring_errors_error",
+			"Impossible d'agréger les erreurs récentes.")
+	}
+	return &adminErrorsOutput{Body: resp}, nil
 }

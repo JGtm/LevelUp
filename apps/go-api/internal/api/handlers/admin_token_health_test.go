@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
+
 	"levelup/go-api/internal/domain"
 )
 
@@ -21,9 +23,11 @@ func TestAdminTokenHealthHandler_Get_OK(t *testing.T) {
 	h := NewAdminTokenHealthHandler(func(_ context.Context, _ string) (domain.TokenHealthResponse, error) {
 		return want, nil
 	})
+	r := chi.NewRouter()
+	r.Route("/admin", h.Mount)
 
 	rec := httptest.NewRecorder()
-	h.Get(rec, httptest.NewRequest(http.MethodGet, "/admin/token-health", nil))
+	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/admin/token-health", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -41,9 +45,11 @@ func TestAdminTokenHealthHandler_Get_Error(t *testing.T) {
 	h := NewAdminTokenHealthHandler(func(_ context.Context, _ string) (domain.TokenHealthResponse, error) {
 		return domain.TokenHealthResponse{}, errors.New("boom")
 	})
+	r := chi.NewRouter()
+	r.Route("/admin", h.Mount)
 
 	rec := httptest.NewRecorder()
-	h.Get(rec, httptest.NewRequest(http.MethodGet, "/admin/token-health", nil))
+	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/admin/token-health", nil))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", rec.Code)

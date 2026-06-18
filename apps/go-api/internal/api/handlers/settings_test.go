@@ -38,10 +38,7 @@ func newSettingsRouter(t *testing.T, demoMode bool) (*chi.Mux, *jobs.Store) {
 	h := handlers.NewSettingsHandlerWithIndexer(cfg, settingsStore, jobStore, &mockMediaIndexer{})
 
 	r := chi.NewRouter()
-	r.Get("/settings", h.GetSettings)
-	r.Patch("/settings", h.PatchSettings)
-	r.Post("/settings/media/reset-index", h.PostMediaResetIndex)
-	r.Post("/settings/sessions/recalculate", h.PostRecalculateSessions)
+	h.Mount(r)
 	return r, jobStore
 }
 

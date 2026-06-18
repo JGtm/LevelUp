@@ -1,3 +1,20 @@
+## [2026-06-18] Phase 3b — tail B : admin/ops (settings/setup/favorite/watcher/backfill/admin-monitoring…) — Complété
+
+**Statut** : Complété. Workflow `huma-tail-b-adminops` (10 agents). settings/setup/match_favorite/watcher(partiel)/backfill/admin_invariants/admin_token_health/admin_monitoring/admin_titles/admin_auto_sync convertis. Build/gofmt/vet OK, **goldens des 10 verts**, `internal/api` (contract) vert. 28 routes. Cumul = **147 routes**.
+
+**Nuances câblage** :
+- **watcher PARTIEL** : status/auth-status/subscriptions migrés (Mount) ; `POST /auth/start` (device-flow) reste chi inline.
+- **NoStore** (invariants/token-health/admin-titles/monitoring) : `h.Mount(r.With(middleware.NoStore))`.
+- **auto-sync** : `autoSyncH.Mount(r)` dans le groupe `_diag/auto-sync` (LoopbackOnly hérité).
+- **admin-titles** : Mount registre /titles + /titles/{slug} + /titles/{slug}/toml-draft ; le `/titles/{slug}/diagnostic` (handler SÉPARÉ adminTitleDiagHandler) reste chi.
+- **admin_monitoring** : l'agent (lisant le fichier) a correctement migré les 6 `/monitoring/*` de `AdminMonitoringHandler` (et NON db-contention que ma spec citait par erreur) → `monitoringH.Mount` dans `server_admin_monitoring.go`. db-contention (`AdminDBContentionHandler`, autre fichier) NON migré → resté chi (ma 1re tentative `contentionHandler.Mount` corrigée).
+
+**Statuts préservés** : settings POST = 202 (jobs) ; setup CreatePlayer 201 / SmokeTest 202 ; backfill 202 ; favorite 200 + 503 db_busy+Retry-After. RawBody pour 400 invalid_body ; bodies optionnels via MarkRequestBodyOptional (PATCH /settings, /subscriptions, etc.).
+
+**Reste (cluster final, NON migré — chi)** : admin-actions (actionsH/dqH/convH/drainH/logsH dans server_admin_monitoring : ~13 POST/GET), db-contention, admin-title-diag, /sync (×3, points de montage éparpillés), import/openspartan, media/feed-version (func nue), watcher auth/start. + needs_care/exclude définitifs (home cached, battlepass/challenges NoStore, media multipart/binaire, export CSV, redirections OAuth, device-flow, images assets, SPA).
+
+**Conclusion / prochaine étape** : 147 routes migrées (~87 % du contrat JSON). Reste un petit cluster admin-actions/sync + le needs_care/exclude définitif. Étape finale (après migration complète) : bascule openapi.yaml généré. Pas de PR.
+
 ## [2026-06-18] Phase 3b — tail A : health (racine) + session + diag + auth (7 handlers) — Complété
 
 **Statut** : Complété. Workflow `huma-tail-a` (7 agents). health/session_context/diag_csr/diag_progression/progression_backfill/health_home/user_auth convertis (Mount+Huma). Build/gofmt/vet OK, **goldens des 7 verts**, `internal/api` (contract) vert (paths /health, /_diag/*, /healthz/home, /session/context, /auth/* alignés openapi.yaml). 12 routes. Cumul = **119 routes**.

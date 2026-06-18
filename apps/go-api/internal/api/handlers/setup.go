@@ -2,15 +2,29 @@
 //
 // POST /setup/players    → crée un profil joueur dans db_profiles.json (201)
 // POST /setup/smoke-test → lance une vérification basique de l'environnement (202)
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le routeur chi
+// (mêmes points de montage /setup/players et /setup/smoke-test) et enregistre les
+// 2 POST via huma.Post. Logique métier inchangée (ProfileService + jobStore), seul
+// le wrapping HTTP change. Le corps de POST /setup/players est lu via RawBody +
+// json.Unmarshal maison (et marqué OPTIONNEL) pour reproduire EXACTEMENT le contrat
+// d'origine : un corps absent OU malformé renvoie 400 {invalid_body} (l'ancien
+// json.NewDecoder(r.Body).Decode renvoyait io.EOF sur corps vide → 400 invalid_body),
+// PAS le « request body is required » de Huma ni son 422 de validation.
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 	"os"
 	"strings"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
@@ -48,53 +62,82 @@ func NewSetupHandler(
 	}
 }
 
-// CreatePlayer crée un profil joueur dans db_profiles.json.
+// Mount enregistre les 2 routes via Huma sur le routeur chi (mêmes points de
+// montage que les routes chi d'origine). Le body POST /setup/players est marqué
+// OPTIONNEL (MarkRequestBodyOptional) : le décodage maison rend un corps absent
+// OU malformé en 400 {invalid_body}, contrat préservé.
+func (h *SetupHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Post(api, "/setup/players", h.handleCreatePlayer)
+	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/setup/players")
+	huma.Post(api, "/setup/smoke-test", h.handleSmokeTest)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// setupCreatePlayerInput : corps brut décodé maison (RawBody + body marqué
+// OPTIONNEL) → corps absent ou JSON malformé ⇒ 400 {invalid_body}.
+type setupCreatePlayerInput struct {
+	RawBody []byte
+}
+
+// setupCreatePlayerOutput : 201 CreatePlayerProfileResponse.
+type setupCreatePlayerOutput struct {
+	Status int
+	Body   domain.CreatePlayerProfileResponse
+}
+
+// setupSmokeTestOutput : 202 Accepted, corps = snapshot du job créé.
+type setupSmokeTestOutput struct {
+	Status int
+	Body   domain.AsyncJobStatus
+}
+
+// ─── Endpoints ───────────────────────────────────────────────────────────────
+
+// handleCreatePlayer crée un profil joueur dans db_profiles.json.
 // POST /setup/players → 201 CreatePlayerProfileResponse.
 //
 // Guards :
 //   - 403 si can_self_provision=false dans app_settings.json
+//   - 403 si instance verrouillée (env LEVELUP_INSTANCE_LOCKED ou app_settings)
 //   - 409 si profile_mode="xbox" mais aucune identité Halo liée en session
-//   - 409 si gamertag ne correspond pas à l'identité Halo liée
-func (h *SetupHandler) CreatePlayer(w http.ResponseWriter, r *http.Request) {
+//   - 409 si gamertag/XUID ne correspond pas à l'identité Halo liée
+func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePlayerInput) (*setupCreatePlayerOutput, error) {
 	// Guard : can_self_provision
 	appCfg, err := h.settingsStore.Load()
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
 	}
 	if !appCfg.CanSelfProvision {
-		writeError(r.Context(), w, http.StatusForbidden, "provisioning_disabled",
+		return nil, humacore.NewError(http.StatusForbidden, "provisioning_disabled",
 			"L'auto-provisioning est désactivé sur cette instance.")
-		return
 	}
 
 	// Guard : instance fermée (lockdown) — pas de nouvelle BDD joueur.
 	// Verrou effectif = env (LEVELUP_INSTANCE_LOCKED) OU app_settings.instance_locked.
 	if h.cfg.InstanceLocked || appCfg.InstanceLocked {
-		slog.WarnContext(r.Context(), "setup: création profil refusée — instance verrouillée",
+		slog.WarnContext(ctx, "setup: création profil refusée — instance verrouillée",
 			"env_locked", h.cfg.InstanceLocked, "settings_locked", appCfg.InstanceLocked)
-		writeError(r.Context(), w, http.StatusForbidden, "instance_locked",
+		return nil, humacore.NewError(http.StatusForbidden, "instance_locked",
 			"Cette instance est fermée : la création de nouveaux profils est désactivée.")
-		return
 	}
 
 	var req domain.CreatePlayerProfileRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
-		return
+	if err := json.Unmarshal(in.RawBody, &req); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
 	}
 
 	req.Gamertag = strings.TrimSpace(req.Gamertag)
 	if req.Gamertag == "" || len(req.Gamertag) > 50 {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_gamertag", "Le gamertag est vide ou trop long.")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_gamertag", "Le gamertag est vide ou trop long.")
 	}
 	if req.ProfileMode == "" {
 		req.ProfileMode = authModeXbox
 	}
 
 	// Sprint 44 : injecter le titre courant depuis le contexte.
-	titleSlug := ctxkeys.TitleSlug(r.Context())
+	titleSlug := ctxkeys.TitleSlug(ctx)
 	if titleSlug == "" {
 		titleSlug = title.DefaultSlug
 	}
@@ -102,24 +145,21 @@ func (h *SetupHandler) CreatePlayer(w http.ResponseWriter, r *http.Request) {
 
 	// Guard : identité Xbox liée (mode xbox uniquement)
 	if req.ProfileMode == "xbox" {
-		sess := middleware.GetSession(r.Context())
+		sess := middleware.GetSession(ctx)
 		if sess != nil && sess.LinkedHaloIdentity != nil {
 			linkedGT := strings.ToLower(sess.LinkedHaloIdentity.Gamertag)
 			reqGT := strings.ToLower(req.Gamertag)
 			if reqGT != linkedGT {
-				writeError(r.Context(), w, http.StatusConflict, "identity_mismatch",
+				return nil, humacore.NewError(http.StatusConflict, "identity_mismatch",
 					"Le gamertag ne correspond pas à votre compte Xbox connecté.")
-				return
 			}
 			if req.XUID != "" && sess.LinkedHaloIdentity.XUID != "" && req.XUID != sess.LinkedHaloIdentity.XUID {
-				writeError(r.Context(), w, http.StatusConflict, "identity_mismatch",
+				return nil, humacore.NewError(http.StatusConflict, "identity_mismatch",
 					"Le XUID ne correspond pas à votre compte Xbox connecté.")
-				return
 			}
 		} else if sess == nil || sess.LinkedHaloIdentity == nil {
-			writeError(r.Context(), w, http.StatusConflict, "no_halo_identity",
+			return nil, humacore.NewError(http.StatusConflict, "no_halo_identity",
 				"Vous devez d'abord vous connecter à Xbox via le Device Code Flow.")
-			return
 		}
 	}
 
@@ -127,13 +167,12 @@ func (h *SetupHandler) CreatePlayer(w http.ResponseWriter, r *http.Request) {
 	playerKey, warnings, err := h.profileSvc.CreatePlayer(req)
 	if err != nil {
 		slog.Error("setup.CreatePlayer: failed", "gamertag", req.Gamertag, "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "profile_create_error",
+		return nil, humacore.NewError(http.StatusInternalServerError, "profile_create_error",
 			"Impossible de créer le profil joueur.")
-		return
 	}
 
 	// Mettre à jour la session avec le joueur courant
-	if sess := middleware.GetSession(r.Context()); sess != nil {
+	if sess := middleware.GetSession(ctx); sess != nil {
 		slug := playerKey
 		sess.CurrentPlayerSlug = &slug
 		_ = h.sessionStore.Touch(sess)
@@ -151,16 +190,19 @@ func (h *SetupHandler) CreatePlayer(w http.ResponseWriter, r *http.Request) {
 		WaypointPlayer: req.Gamertag,
 	}
 
-	writeJSON(w, http.StatusCreated, domain.CreatePlayerProfileResponse{
-		Player:    player,
-		DBCreated: dbCreated,
-		Warnings:  warnings,
-	})
+	return &setupCreatePlayerOutput{
+		Status: http.StatusCreated,
+		Body: domain.CreatePlayerProfileResponse{
+			Player:    player,
+			DBCreated: dbCreated,
+			Warnings:  warnings,
+		},
+	}, nil
 }
 
-// SmokeTest lance un job de vérification basique de l'environnement.
+// handleSmokeTest lance un job de vérification basique de l'environnement.
 // POST /setup/smoke-test → 202 AsyncJobStatus.
-func (h *SetupHandler) SmokeTest(w http.ResponseWriter, r *http.Request) {
+func (h *SetupHandler) handleSmokeTest(_ context.Context, _ *struct{}) (*setupSmokeTestOutput, error) {
 	job := h.jobStore.Create(domain.JobTypeSetupSmokeTest, "")
 	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
 	jobSnapshot := *job
@@ -201,7 +243,7 @@ func (h *SetupHandler) SmokeTest(w http.ResponseWriter, r *http.Request) {
 		})
 	}()
 
-	writeJSON(w, http.StatusAccepted, &jobSnapshot)
+	return &setupSmokeTestOutput{Status: http.StatusAccepted, Body: jobSnapshot}, nil
 }
 
 // ---------------------------------------------------------------------------
