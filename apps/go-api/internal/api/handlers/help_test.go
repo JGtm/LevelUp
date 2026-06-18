@@ -74,7 +74,7 @@ func TestHelpHandler_EN_ReturnsWhatsNew(t *testing.T) {
 	dir := setupHelpRepo(t, sampleReadmeEN, sampleReadmeFR)
 	h := makeHelpHandler(t, dir)
 	r := chi.NewRouter()
-	r.Get("/help/release-notes", h.GetReleaseNotes)
+	h.Mount(r)
 
 	req := httptest.NewRequest(http.MethodGet, "/help/release-notes?lang=en", nil)
 	w := httptest.NewRecorder()
@@ -103,7 +103,7 @@ func TestHelpHandler_FR_ReturnsWhatsNew(t *testing.T) {
 	dir := setupHelpRepo(t, sampleReadmeEN, sampleReadmeFR)
 	h := makeHelpHandler(t, dir)
 	r := chi.NewRouter()
-	r.Get("/help/release-notes", h.GetReleaseNotes)
+	h.Mount(r)
 
 	req := httptest.NewRequest(http.MethodGet, "/help/release-notes?lang=fr", nil)
 	w := httptest.NewRecorder()
@@ -124,7 +124,7 @@ func TestHelpHandler_DefaultLangFR(t *testing.T) {
 	dir := setupHelpRepo(t, sampleReadmeEN, sampleReadmeFR)
 	h := makeHelpHandler(t, dir)
 	r := chi.NewRouter()
-	r.Get("/help/release-notes", h.GetReleaseNotes)
+	h.Mount(r)
 
 	// Pas de paramètre lang → défaut FR
 	req := httptest.NewRequest(http.MethodGet, "/help/release-notes", nil)
@@ -145,7 +145,7 @@ func TestHelpHandler_MissingReleaseNotes_Returns500(t *testing.T) {
 	dir := t.TempDir() // Pas de RELEASE_NOTES.md
 	h := makeHelpHandler(t, dir)
 	r := chi.NewRouter()
-	r.Get("/help/release-notes", h.GetReleaseNotes)
+	h.Mount(r)
 
 	req := httptest.NewRequest(http.MethodGet, "/help/release-notes?lang=en", nil)
 	w := httptest.NewRecorder()
@@ -160,7 +160,7 @@ func TestHelpHandler_CacheHit(t *testing.T) {
 	dir := setupHelpRepo(t, sampleReadmeEN, "")
 	h := makeHelpHandler(t, dir)
 	r := chi.NewRouter()
-	r.Get("/help/release-notes", h.GetReleaseNotes)
+	h.Mount(r)
 
 	w1 := httptest.NewRecorder()
 	r.ServeHTTP(w1, httptest.NewRequest(http.MethodGet, "/help/release-notes?lang=en", nil))
@@ -194,7 +194,7 @@ func TestHelpHandler_VersionOrder(t *testing.T) {
 	dir := setupHelpRepo(t, readme, "")
 	h := makeHelpHandler(t, dir)
 	r := chi.NewRouter()
-	r.Get("/help/release-notes", h.GetReleaseNotes)
+	h.Mount(r)
 
 	req := httptest.NewRequest(http.MethodGet, "/help/release-notes?lang=en", nil)
 	w := httptest.NewRecorder()
@@ -220,7 +220,7 @@ func TestHelpHandler_DiskCacheSurvivesRestart(t *testing.T) {
 	// Premier handler — construit le cache et l'écrit sur disque.
 	h1 := makeHelpHandler(t, dir)
 	r1 := chi.NewRouter()
-	r1.Get("/help/release-notes", h1.GetReleaseNotes)
+	h1.Mount(r1)
 	w1 := httptest.NewRecorder()
 	r1.ServeHTTP(w1, httptest.NewRequest(http.MethodGet, "/help/release-notes?lang=en", nil))
 	if w1.Code != http.StatusOK {
@@ -233,7 +233,7 @@ func TestHelpHandler_DiskCacheSurvivesRestart(t *testing.T) {
 	// Deuxième handler (simule un redémarrage) — mémoire vide, doit utiliser le disque.
 	h2 := makeHelpHandler(t, dir)
 	r2 := chi.NewRouter()
-	r2.Get("/help/release-notes", h2.GetReleaseNotes)
+	h2.Mount(r2)
 	w2 := httptest.NewRecorder()
 	r2.ServeHTTP(w2, httptest.NewRequest(http.MethodGet, "/help/release-notes?lang=en", nil))
 	if w2.Code != http.StatusOK {

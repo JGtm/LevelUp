@@ -7,16 +7,25 @@
 // GET    /admin/invites        → liste des invitations
 // POST   /admin/invites        → générer une invitation
 // DELETE /admin/invites/{code}  → révoquer une invitation
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// /admin (middleware RequireAuth/RequireAdmin hérités) et enregistre les 7 routes
+// via huma.*. Logique métier inchangée (userstore.Store + InviteStore), seul le
+// wrapping HTTP change. Les chemins relatifs sont identiques aux routes chi
+// d'origine (montées sous /admin par server.go).
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/userstore"
@@ -33,108 +42,151 @@ func NewAdminHandler(users *userstore.Store, invites *userstore.InviteStore) *Ad
 	return &AdminHandler{users: users, invites: invites}
 }
 
-// ListUsers retourne la liste des utilisateurs.
+// Mount enregistre les 7 routes via Huma sur le sous-routeur chi (préfixe /admin
+// + middleware RequireAuth/RequireAdmin hérités). Le body POST /invites est
+// OPTIONNEL (MarkRequestBodyOptional) — corps absent → défaut 7 jours.
+func (h *AdminHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/users", h.handleListUsers)
+	huma.Delete(api, "/users/{username}", h.handleDeleteUser)
+	huma.Patch(api, "/users/{username}/role", h.handleChangeRole)
+	huma.Patch(api, "/users/{username}/password", h.handleResetPassword)
+	huma.Get(api, "/invites", h.handleListInvites)
+	huma.Post(api, "/invites", h.handleGenerateInvite)
+	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/invites")
+	huma.Delete(api, "/invites/{code}", h.handleRevokeInvite)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// adminUsernameInput : path param {username}.
+type adminUsernameInput struct {
+	Username string `path:"username"`
+}
+
+// adminUsernameBodyInput : {username} + body brut (décodage maison → 400
+// invalid_body si JSON malformé, contrat préservé des PATCH role/password).
+type adminUsernameBodyInput struct {
+	Username string `path:"username"`
+	RawBody  []byte
+}
+
+// adminCodeInput : path param {code}.
+type adminCodeInput struct {
+	Code string `path:"code"`
+}
+
+// adminGenerateInviteInput : body OPTIONNEL (RawBody + MarkRequestBodyOptional)
+// — décodage best-effort, défaut 7 jours si absent ou malformé.
+type adminGenerateInviteInput struct {
+	RawBody []byte
+}
+
+type adminListUsersOutput struct {
+	Body []domain.AdminUserSummary
+}
+type adminListInvitesOutput struct {
+	Body []domain.AdminInviteSummary
+}
+type adminGenerateInviteOutput struct {
+	Status int
+	Body   *domain.InviteCode
+}
+
+// adminNoContent : réponse 204 sans corps.
+type adminNoContent struct {
+	Status int
+}
+
+// ─── Endpoints ───────────────────────────────────────────────────────────────
+
+// handleListUsers retourne la liste des utilisateurs.
 // GET /admin/users
-func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
+func (h *AdminHandler) handleListUsers(ctx context.Context, _ *struct{}) (*adminListUsersOutput, error) {
 	users, err := h.users.List()
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "list_error", "erreur de récupération")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "list_error", "erreur de récupération")
 	}
-	writeJSON(w, http.StatusOK, users)
+	return &adminListUsersOutput{Body: users}, nil
 }
 
-// DeleteUser supprime un utilisateur.
+// handleDeleteUser supprime un utilisateur.
 // DELETE /admin/users/{username}
-func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	username := chi.URLParam(r, "username")
-	if err := h.users.Delete(username); err != nil {
+func (h *AdminHandler) handleDeleteUser(ctx context.Context, in *adminUsernameInput) (*adminNoContent, error) {
+	if err := h.users.Delete(in.Username); err != nil {
 		if errors.Is(err, userstore.ErrUserNotFound) {
-			writeError(r.Context(), w, http.StatusNotFound, "not_found", "utilisateur introuvable")
-			return
+			return nil, humacore.NewError(http.StatusNotFound, "not_found", "utilisateur introuvable")
 		}
-		slog.Error("admin: erreur delete user", "target", username, "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "delete_error", "erreur de suppression")
-		return
+		slog.Error("admin: erreur delete user", "target", in.Username, "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "delete_error", "erreur de suppression")
 	}
-	slog.Info("admin: utilisateur supprimé", "target", username, "by", adminUsername(r))
-	w.WriteHeader(http.StatusNoContent)
+	slog.Info("admin: utilisateur supprimé", "target", in.Username, "by", adminUsername(ctx))
+	return &adminNoContent{Status: http.StatusNoContent}, nil
 }
 
-// ChangeRole modifie le rôle d'un utilisateur.
+// handleChangeRole modifie le rôle d'un utilisateur.
 // PATCH /admin/users/{username}/role
-func (h *AdminHandler) ChangeRole(w http.ResponseWriter, r *http.Request) {
-	username := chi.URLParam(r, "username")
+func (h *AdminHandler) handleChangeRole(ctx context.Context, in *adminUsernameBodyInput) (*adminNoContent, error) {
 	var body struct {
 		Role domain.UserRole `json:"role"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "corps de requête invalide")
-		return
+	if err := json.Unmarshal(in.RawBody, &body); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "corps de requête invalide")
 	}
 	if body.Role != domain.RoleAdmin && body.Role != domain.RoleUser {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_role", "rôle invalide (admin ou user)")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_role", "rôle invalide (admin ou user)")
 	}
-	if err := h.users.SetRole(username, body.Role); err != nil {
+	if err := h.users.SetRole(in.Username, body.Role); err != nil {
 		if errors.Is(err, userstore.ErrUserNotFound) {
-			writeError(r.Context(), w, http.StatusNotFound, "not_found", "utilisateur introuvable")
-			return
+			return nil, humacore.NewError(http.StatusNotFound, "not_found", "utilisateur introuvable")
 		}
-		slog.Error("admin: erreur change role", "target", username, "role", body.Role, "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "role_error", "erreur de modification")
-		return
+		slog.Error("admin: erreur change role", "target", in.Username, "role", body.Role, "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "role_error", "erreur de modification")
 	}
-	slog.Info("admin: rôle modifié", "target", username, "role", body.Role, "by", adminUsername(r))
-	w.WriteHeader(http.StatusNoContent)
+	slog.Info("admin: rôle modifié", "target", in.Username, "role", body.Role, "by", adminUsername(ctx))
+	return &adminNoContent{Status: http.StatusNoContent}, nil
 }
 
-// ResetPassword réinitialise le mot de passe d'un utilisateur.
+// handleResetPassword réinitialise le mot de passe d'un utilisateur.
 // PATCH /admin/users/{username}/password
-func (h *AdminHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
-	username := chi.URLParam(r, "username")
+func (h *AdminHandler) handleResetPassword(ctx context.Context, in *adminUsernameBodyInput) (*adminNoContent, error) {
 	var body struct {
 		NewPassword string `json:"new_password"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "corps de requête invalide")
-		return
+	if err := json.Unmarshal(in.RawBody, &body); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "corps de requête invalide")
 	}
-	if err := h.users.ResetPassword(username, body.NewPassword); err != nil {
+	if err := h.users.ResetPassword(in.Username, body.NewPassword); err != nil {
 		if errors.Is(err, userstore.ErrUserNotFound) {
-			writeError(r.Context(), w, http.StatusNotFound, "not_found", "utilisateur introuvable")
-			return
+			return nil, humacore.NewError(http.StatusNotFound, "not_found", "utilisateur introuvable")
 		}
 		if errors.Is(err, userstore.ErrPasswordTooShort) {
-			writeError(r.Context(), w, http.StatusBadRequest, "validation_error", err.Error())
-			return
+			return nil, humacore.NewError(http.StatusBadRequest, "validation_error", err.Error())
 		}
-		slog.Error("admin: erreur reset password", "target", username, "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "reset_error", "erreur de réinitialisation")
-		return
+		slog.Error("admin: erreur reset password", "target", in.Username, "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "reset_error", "erreur de réinitialisation")
 	}
-	slog.Info("admin: mot de passe réinitialisé", "target", username, "by", adminUsername(r))
-	w.WriteHeader(http.StatusNoContent)
+	slog.Info("admin: mot de passe réinitialisé", "target", in.Username, "by", adminUsername(ctx))
+	return &adminNoContent{Status: http.StatusNoContent}, nil
 }
 
-// ListInvites retourne la liste des invitations.
+// handleListInvites retourne la liste des invitations.
 // GET /admin/invites
-func (h *AdminHandler) ListInvites(w http.ResponseWriter, r *http.Request) {
+func (h *AdminHandler) handleListInvites(ctx context.Context, _ *struct{}) (*adminListInvitesOutput, error) {
 	invites, err := h.invites.List()
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "list_error", "erreur de récupération")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "list_error", "erreur de récupération")
 	}
-	writeJSON(w, http.StatusOK, invites)
+	return &adminListInvitesOutput{Body: invites}, nil
 }
 
-// GenerateInvite crée un nouveau code d'invitation.
-// POST /admin/invites
-func (h *AdminHandler) GenerateInvite(w http.ResponseWriter, r *http.Request) {
+// handleGenerateInvite crée un nouveau code d'invitation.
+// POST /admin/invites — body optionnel {expires_in_days?}.
+func (h *AdminHandler) handleGenerateInvite(ctx context.Context, in *adminGenerateInviteInput) (*adminGenerateInviteOutput, error) {
 	var body struct {
 		ExpiresInDays int `json:"expires_in_days"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := json.Unmarshal(in.RawBody, &body); err != nil {
 		// Body optionnel — défaut 7 jours.
 		body.ExpiresInDays = 7
 	}
@@ -143,7 +195,7 @@ func (h *AdminHandler) GenerateInvite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Récupérer le username de l'admin depuis la session.
-	sess := getSessionFromRequest(r)
+	sess := getSessionFromContext(ctx)
 	createdBy := "admin"
 	if sess != nil && sess.Username != nil {
 		createdBy = *sess.Username
@@ -152,38 +204,34 @@ func (h *AdminHandler) GenerateInvite(w http.ResponseWriter, r *http.Request) {
 	invite, err := h.invites.Generate(createdBy, body.ExpiresInDays)
 	if err != nil {
 		slog.Error("admin: erreur generate invite", "by", createdBy, "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "generate_error", "erreur de génération")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "generate_error", "erreur de génération")
 	}
 	slog.Info("admin: invitation générée", "code", invite.Code, "by", createdBy, "expires_in_days", body.ExpiresInDays)
-	writeJSON(w, http.StatusCreated, invite)
+	return &adminGenerateInviteOutput{Status: http.StatusCreated, Body: invite}, nil
 }
 
-// RevokeInvite révoque un code d'invitation.
+// handleRevokeInvite révoque un code d'invitation.
 // DELETE /admin/invites/{code}
-func (h *AdminHandler) RevokeInvite(w http.ResponseWriter, r *http.Request) {
-	code := chi.URLParam(r, "code")
-	if err := h.invites.Revoke(code); err != nil {
+func (h *AdminHandler) handleRevokeInvite(ctx context.Context, in *adminCodeInput) (*adminNoContent, error) {
+	if err := h.invites.Revoke(in.Code); err != nil {
 		if errors.Is(err, userstore.ErrInviteNotFound) {
-			writeError(r.Context(), w, http.StatusNotFound, "not_found", "invitation introuvable")
-			return
+			return nil, humacore.NewError(http.StatusNotFound, "not_found", "invitation introuvable")
 		}
-		slog.Error("admin: erreur revoke invite", "code", code, "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "revoke_error", "erreur de révocation")
-		return
+		slog.Error("admin: erreur revoke invite", "code", in.Code, "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "revoke_error", "erreur de révocation")
 	}
-	slog.Info("admin: invitation révoquée", "code", code, "by", adminUsername(r))
-	w.WriteHeader(http.StatusNoContent)
+	slog.Info("admin: invitation révoquée", "code", in.Code, "by", adminUsername(ctx))
+	return &adminNoContent{Status: http.StatusNoContent}, nil
 }
 
-// getSessionFromRequest est un helper pour accéder à la session depuis le contexte.
-func getSessionFromRequest(r *http.Request) *domain.SessionData {
-	return middleware.GetSession(r.Context())
+// getSessionFromContext est un helper pour accéder à la session depuis le contexte.
+func getSessionFromContext(ctx context.Context) *domain.SessionData {
+	return middleware.GetSession(ctx)
 }
 
-// adminUsername extrait le username admin depuis la session de la requête.
-func adminUsername(r *http.Request) string {
-	sess := getSessionFromRequest(r)
+// adminUsername extrait le username admin depuis la session du contexte.
+func adminUsername(ctx context.Context) string {
+	sess := getSessionFromContext(ctx)
 	if sess != nil && sess.Username != nil {
 		return *sess.Username
 	}

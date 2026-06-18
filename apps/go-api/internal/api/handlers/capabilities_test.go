@@ -33,7 +33,7 @@ func newCapsHandler() *CapabilitiesHandler {
 func TestCapabilitiesHandler_Success(t *testing.T) {
 	t.Parallel()
 	r := chi.NewRouter()
-	r.Get("/api/v1/titles/{slug}/capabilities", newCapsHandler().ServeHTTP)
+	r.Route("/api/v1", func(r chi.Router) { newCapsHandler().Mount(r) })
 
 	req := httptest.NewRequest("GET", "/api/v1/titles/test_title/capabilities", nil)
 	w := httptest.NewRecorder()
@@ -60,7 +60,7 @@ func TestCapabilitiesHandler_Success(t *testing.T) {
 func TestCapabilitiesHandler_NotFound(t *testing.T) {
 	t.Parallel()
 	r := chi.NewRouter()
-	r.Get("/api/v1/titles/{slug}/capabilities", newCapsHandler().ServeHTTP)
+	r.Route("/api/v1", func(r chi.Router) { newCapsHandler().Mount(r) })
 
 	req := httptest.NewRequest("GET", "/api/v1/titles/unknown/capabilities", nil)
 	w := httptest.NewRecorder()
@@ -74,7 +74,7 @@ func TestCapabilitiesHandler_NotFound(t *testing.T) {
 func TestCapabilitiesHandler_ETag304(t *testing.T) {
 	t.Parallel()
 	r := chi.NewRouter()
-	r.Get("/api/v1/titles/{slug}/capabilities", newCapsHandler().ServeHTTP)
+	r.Route("/api/v1", func(r chi.Router) { newCapsHandler().Mount(r) })
 
 	req := httptest.NewRequest("GET", "/api/v1/titles/test_title/capabilities", nil)
 	w := httptest.NewRecorder()

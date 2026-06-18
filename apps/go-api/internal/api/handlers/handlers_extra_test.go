@@ -292,7 +292,7 @@ func TestPlayersHandler_OK(t *testing.T) {
 	svc := service.NewBootstrapService(cfg, repo)
 	h := handlers.NewPlayersHandler(svc)
 	r := chi.NewRouter()
-	r.Get("/api/v1/players", h.ServeHTTP)
+	r.Route("/api/v1", func(r chi.Router) { h.Mount(r) })
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/players", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)

@@ -63,7 +63,7 @@ func TestFieldMappingsHandler_Success_FR(t *testing.T) {
 	h := newHandler(stub)
 
 	r := chi.NewRouter()
-	r.Get("/api/v1/titles/{slug}/field-mappings", h.ServeHTTP)
+	r.Route("/api/v1", func(sub chi.Router) { h.Mount(sub) })
 
 	req := httptest.NewRequest("GET", "/api/v1/titles/test_title/field-mappings?locale=fr", nil)
 	w := httptest.NewRecorder()
@@ -107,7 +107,7 @@ func TestFieldMappingsHandler_FallbackEN_OnUnknownLocale(t *testing.T) {
 	h := newHandler(stub)
 
 	r := chi.NewRouter()
-	r.Get("/api/v1/titles/{slug}/field-mappings", h.ServeHTTP)
+	r.Route("/api/v1", func(sub chi.Router) { h.Mount(sub) })
 
 	req := httptest.NewRequest("GET", "/api/v1/titles/test_title/field-mappings?locale=es", nil)
 	w := httptest.NewRecorder()
@@ -126,7 +126,7 @@ func TestFieldMappingsHandler_NotFound(t *testing.T) {
 	h := newHandler(stub)
 
 	r := chi.NewRouter()
-	r.Get("/api/v1/titles/{slug}/field-mappings", h.ServeHTTP)
+	r.Route("/api/v1", func(sub chi.Router) { h.Mount(sub) })
 
 	req := httptest.NewRequest("GET", "/api/v1/titles/unknown_title/field-mappings", nil)
 	w := httptest.NewRecorder()
@@ -143,7 +143,7 @@ func TestFieldMappingsHandler_ETag304(t *testing.T) {
 	h := newHandler(stub)
 
 	r := chi.NewRouter()
-	r.Get("/api/v1/titles/{slug}/field-mappings", h.ServeHTTP)
+	r.Route("/api/v1", func(sub chi.Router) { h.Mount(sub) })
 
 	req := httptest.NewRequest("GET", "/api/v1/titles/test_title/field-mappings", nil)
 	w := httptest.NewRecorder()
@@ -228,7 +228,7 @@ func TestFieldMappingsHandler_SeasonAssetIncludesDates(t *testing.T) {
 	h := newHandler(stub)
 
 	r := chi.NewRouter()
-	r.Get("/api/v1/titles/{slug}/field-mappings", h.ServeHTTP)
+	r.Route("/api/v1", func(sub chi.Router) { h.Mount(sub) })
 
 	req := httptest.NewRequest("GET", "/api/v1/titles/test_title/field-mappings?locale=fr", nil)
 	w := httptest.NewRecorder()
@@ -267,7 +267,7 @@ func TestFieldMappingsHandler_OtherKindsOmitDateFields(t *testing.T) {
 	h := newHandler(stub)
 
 	r := chi.NewRouter()
-	r.Get("/api/v1/titles/{slug}/field-mappings", h.ServeHTTP)
+	r.Route("/api/v1", func(sub chi.Router) { h.Mount(sub) })
 
 	req := httptest.NewRequest("GET", "/api/v1/titles/test_title/field-mappings", nil)
 	w := httptest.NewRecorder()
@@ -342,7 +342,7 @@ func TestFieldMappingsHandler_SeasonsCatalog_OverridesTOMLBucket(t *testing.T) {
 	h := newHandler(stub).WithSeasonsCatalog(catalog)
 
 	r := chi.NewRouter()
-	r.Get("/api/v1/titles/{slug}/field-mappings", h.ServeHTTP)
+	r.Route("/api/v1", func(sub chi.Router) { h.Mount(sub) })
 
 	req := httptest.NewRequest("GET", "/api/v1/titles/test_title/field-mappings", nil)
 	w := httptest.NewRecorder()
@@ -396,7 +396,7 @@ func TestFieldMappingsHandler_SeasonsCatalogEmpty_FallsBackToTOML(t *testing.T) 
 	h := newHandler(stub).WithSeasonsCatalog(catalog)
 
 	r := chi.NewRouter()
-	r.Get("/api/v1/titles/{slug}/field-mappings", h.ServeHTTP)
+	r.Route("/api/v1", func(sub chi.Router) { h.Mount(sub) })
 
 	req := httptest.NewRequest("GET", "/api/v1/titles/test_title/field-mappings?locale=fr", nil)
 	w := httptest.NewRecorder()

@@ -3,6 +3,13 @@
 // Phase A du plan multi-titres : endpoint d'exposition des libellés et
 // présentation des FieldKey canoniques par titre. Lit les TOML chargés au
 // boot par le FieldMappingRegistry.
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) et enregistre
+// l'unique GET via huma.Get. Le corps JSON est marshalé par le handler lui-même
+// puis émis tel quel via un champ Body []byte (passthrough raw de Huma) — ce qui
+// préserve byte-pour-byte le corps d'origine (json.Marshal HTML-escapé, sans
+// trailing newline) sur lequel l'ETag est calculé, ainsi que les chemins 304
+// (If-None-Match), Cache-Control et ETag.
 package handlers
 
 import (
@@ -18,8 +25,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/games/mappings"
 )
 
@@ -132,27 +141,55 @@ type fieldMappingsResponse struct {
 	Outcomes      map[string]outcomeMappingDTO          `json:"outcomes,omitempty"`
 }
 
-// ServeHTTP gère la requête.
-func (h *FieldMappingsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "slug")
+// Mount enregistre l'unique GET via Huma. NewAPI(r) peut recevoir le routeur
+// racine OU un sous-routeur ; le chemin relatif exact est repris tel quel.
+func (h *FieldMappingsHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/titles/{slug}/field-mappings", h.handleGet)
+}
+
+// fieldMappingsInput : {slug} path + ?locale= optionnel + If-None-Match (ETag
+// conditionnel). Le slug est validé côté handler pour reproduire le 400
+// missing_slug d'origine (chi route un slug vide rarement, mais le contrat le
+// couvrait explicitement).
+type fieldMappingsInput struct {
+	Slug        string `path:"slug"`
+	Locale      string `query:"locale"`
+	IfNoneMatch string `header:"If-None-Match"`
+}
+
+// fieldMappingsOutput émet le corps marshalé par le handler tel quel (Body
+// []byte → passthrough raw Huma, pas de re-marshal ni de trailing newline). Les
+// trois en-têtes (chaînes vides non émises côté Huma) restent vides sur le
+// chemin 304 pour reproduire l'absence d'en-têtes de l'ancien handler.
+type fieldMappingsOutput struct {
+	Status       int
+	ContentType  string `header:"Content-Type"`
+	CacheControl string `header:"Cache-Control"`
+	ETag         string `header:"ETag"`
+	Body         []byte
+}
+
+// handleGet gère la requête (logique métier inchangée : marshal maison, ETag,
+// 304 conditionnel).
+func (h *FieldMappingsHandler) handleGet(ctx context.Context, in *fieldMappingsInput) (*fieldMappingsOutput, error) {
+	slug := in.Slug
 	if slug == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_slug", "title slug requis")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_slug", "title slug requis")
 	}
 
 	// Locale inconnue → la fallback EN est gérée par FieldMapping.Label.
 	// On conserve la valeur d'origine dans la réponse pour que le frontend
 	// sache ce qu'il a demandé.
-	locale := r.URL.Query().Get("locale")
+	locale := in.Locale
 	if locale == "" {
 		locale = mappings.LocaleFR
 	}
 
 	set, ok := h.registry.Get(slug)
 	if !ok {
-		writeError(r.Context(), w, http.StatusNotFound, "title_not_found",
+		return nil, humacore.NewError(http.StatusNotFound, "title_not_found",
 			fmt.Sprintf("title %q n'a pas de field mappings chargés", slug))
-		return
 	}
 
 	resp := fieldMappingsResponse{
@@ -160,33 +197,33 @@ func (h *FieldMappingsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		SchemaVersion: set.SchemaVersion(),
 		Locale:        locale,
 		Fields:        h.buildFieldsDTO(set, locale),
-		Assets:        h.buildAssetsDTO(r.Context(), slug, locale),
+		Assets:        h.buildAssetsDTO(ctx, slug, locale),
 		Outcomes:      h.buildOutcomesDTO(slug, locale),
 	}
 
 	body, err := json.Marshal(resp)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "marshal_failed", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "marshal_failed", err.Error())
 	}
 
 	etag := h.etagFor(slug, locale, set.SchemaVersion(), body)
-	if match := r.Header.Get("If-None-Match"); match != "" && match == etag {
-		w.WriteHeader(http.StatusNotModified)
-		return
+	if in.IfNoneMatch != "" && in.IfNoneMatch == etag {
+		return &fieldMappingsOutput{Status: http.StatusNotModified}, nil
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "public, max-age=300")
-	w.Header().Set("ETag", etag)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(body)
 
 	h.logger.Debug("field_mappings_served",
 		"title_slug", slug,
 		"locale", locale,
 		"fields_count", len(resp.Fields),
 	)
+
+	return &fieldMappingsOutput{
+		Status:       http.StatusOK,
+		ContentType:  "application/json",
+		CacheControl: "public, max-age=300",
+		ETag:         etag,
+		Body:         body,
+	}, nil
 }
 
 // buildFieldsDTO projette les FieldMapping du set en DTO localisés.
