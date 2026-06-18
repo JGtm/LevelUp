@@ -85,6 +85,11 @@ func (h *AuthHandler) StartDeviceFlow(w http.ResponseWriter, r *http.Request) {
 
 	// Single-flight : si une tentative "pending" existe, la renvoyer.
 	attempt, isNew := h.attempts.GetOrCreate(sess.SessionID)
+	// Rend la session « significative » → un cookie stable est posé dès le start,
+	// pour que GetDeviceFlowStatus et le single-flight retrouvent la MÊME session
+	// (cf. domain.SessionData.PendingDeviceFlowAttempt). Sans ça, chaque requête
+	// repart sur une session anonyme distincte → attempt introuvable (404).
+	sess.PendingDeviceFlowAttempt = attempt.AttemptID
 	if !isNew {
 		writeJSON(w, http.StatusOK, deviceFlowStartResponse(attempt))
 		return
