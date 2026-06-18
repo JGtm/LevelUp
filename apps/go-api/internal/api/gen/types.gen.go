@@ -11,51 +11,21 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-// Defines values for AsyncJobStatusStatus.
-const (
-	AsyncJobStatusStatusCancelled   AsyncJobStatusStatus = "cancelled"
-	AsyncJobStatusStatusFailed      AsyncJobStatusStatus = "failed"
-	AsyncJobStatusStatusInterrupted AsyncJobStatusStatus = "interrupted"
-	AsyncJobStatusStatusQueued      AsyncJobStatusStatus = "queued"
-	AsyncJobStatusStatusRunning     AsyncJobStatusStatus = "running"
-	AsyncJobStatusStatusSucceeded   AsyncJobStatusStatus = "succeeded"
-)
-
-// Valid indicates whether the value is a known member of the AsyncJobStatusStatus enum.
-func (e AsyncJobStatusStatus) Valid() bool {
-	switch e {
-	case AsyncJobStatusStatusCancelled:
-		return true
-	case AsyncJobStatusStatusFailed:
-		return true
-	case AsyncJobStatusStatusInterrupted:
-		return true
-	case AsyncJobStatusStatusQueued:
-		return true
-	case AsyncJobStatusStatusRunning:
-		return true
-	case AsyncJobStatusStatusSucceeded:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for BootstrapResponseAuthMode.
 const (
-	BootstrapResponseAuthModeNone     BootstrapResponseAuthMode = "none"
-	BootstrapResponseAuthModePassword BootstrapResponseAuthMode = "password"
-	BootstrapResponseAuthModeXbox     BootstrapResponseAuthMode = "xbox"
+	None     BootstrapResponseAuthMode = "none"
+	Password BootstrapResponseAuthMode = "password"
+	Xbox     BootstrapResponseAuthMode = "xbox"
 )
 
 // Valid indicates whether the value is a known member of the BootstrapResponseAuthMode enum.
 func (e BootstrapResponseAuthMode) Valid() bool {
 	switch e {
-	case BootstrapResponseAuthModeNone:
+	case None:
 		return true
-	case BootstrapResponseAuthModePassword:
+	case Password:
 		return true
-	case BootstrapResponseAuthModeXbox:
+	case Xbox:
 		return true
 	default:
 		return false
@@ -128,66 +98,27 @@ func (e BootstrapResponseSetupState) Valid() bool {
 	}
 }
 
-// Defines values for CareerTopMatchVariant.
-const (
-	Best  CareerTopMatchVariant = "best"
-	Worst CareerTopMatchVariant = "worst"
-)
-
-// Valid indicates whether the value is a known member of the CareerTopMatchVariant enum.
-func (e CareerTopMatchVariant) Valid() bool {
-	switch e {
-	case Best:
-		return true
-	case Worst:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CompareMetricRowWinner.
-const (
-	A   CompareMetricRowWinner = "a"
-	B   CompareMetricRowWinner = "b"
-	Tie CompareMetricRowWinner = "tie"
-)
-
-// Valid indicates whether the value is a known member of the CompareMetricRowWinner enum.
-func (e CompareMetricRowWinner) Valid() bool {
-	switch e {
-	case A:
-		return true
-	case B:
-		return true
-	case Tie:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for DeviceFlowStatusResponseStatus.
 const (
-	DeviceFlowStatusResponseStatusAuthorized  DeviceFlowStatusResponseStatus = "authorized"
-	DeviceFlowStatusResponseStatusExpired     DeviceFlowStatusResponseStatus = "expired"
-	DeviceFlowStatusResponseStatusFailed      DeviceFlowStatusResponseStatus = "failed"
-	DeviceFlowStatusResponseStatusPending     DeviceFlowStatusResponseStatus = "pending"
-	DeviceFlowStatusResponseStatusProvisioned DeviceFlowStatusResponseStatus = "provisioned"
+	Authorized  DeviceFlowStatusResponseStatus = "authorized"
+	Expired     DeviceFlowStatusResponseStatus = "expired"
+	Failed      DeviceFlowStatusResponseStatus = "failed"
+	Pending     DeviceFlowStatusResponseStatus = "pending"
+	Provisioned DeviceFlowStatusResponseStatus = "provisioned"
 )
 
 // Valid indicates whether the value is a known member of the DeviceFlowStatusResponseStatus enum.
 func (e DeviceFlowStatusResponseStatus) Valid() bool {
 	switch e {
-	case DeviceFlowStatusResponseStatusAuthorized:
+	case Authorized:
 		return true
-	case DeviceFlowStatusResponseStatusExpired:
+	case Expired:
 		return true
-	case DeviceFlowStatusResponseStatusFailed:
+	case Failed:
 		return true
-	case DeviceFlowStatusResponseStatusPending:
+	case Pending:
 		return true
-	case DeviceFlowStatusResponseStatusProvisioned:
+	case Provisioned:
 		return true
 	default:
 		return false
@@ -209,24 +140,6 @@ func (e ExplorerMatchFiltersSquadScope) Valid() bool {
 	case ExplorerMatchFiltersSquadScopeSolo:
 		return true
 	case ExplorerMatchFiltersSquadScopeSquad:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for FilterContextInputFilterMode.
-const (
-	Period   FilterContextInputFilterMode = "period"
-	Sessions FilterContextInputFilterMode = "sessions"
-)
-
-// Valid indicates whether the value is a known member of the FilterContextInputFilterMode enum.
-func (e FilterContextInputFilterMode) Valid() bool {
-	switch e {
-	case Period:
-		return true
-	case Sessions:
 		return true
 	default:
 		return false
@@ -269,87 +182,6 @@ func (e FreshnessInfoSyncStatus) Valid() bool {
 	case Stale:
 		return true
 	case Unknown:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for HealthResponseStatus.
-const (
-	Degraded HealthResponseStatus = "degraded"
-	Down     HealthResponseStatus = "down"
-	Ok       HealthResponseStatus = "ok"
-)
-
-// Valid indicates whether the value is a known member of the HealthResponseStatus enum.
-func (e HealthResponseStatus) Valid() bool {
-	switch e {
-	case Degraded:
-		return true
-	case Down:
-		return true
-	case Ok:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for MatchPrivacyWarningLevel.
-const (
-	MatchPrivacyWarningLevelFull    MatchPrivacyWarningLevel = "full"
-	MatchPrivacyWarningLevelNone    MatchPrivacyWarningLevel = "none"
-	MatchPrivacyWarningLevelPartial MatchPrivacyWarningLevel = "partial"
-)
-
-// Valid indicates whether the value is a known member of the MatchPrivacyWarningLevel enum.
-func (e MatchPrivacyWarningLevel) Valid() bool {
-	switch e {
-	case MatchPrivacyWarningLevelFull:
-		return true
-	case MatchPrivacyWarningLevelNone:
-		return true
-	case MatchPrivacyWarningLevelPartial:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for MatchViewRankRatingType.
-const (
-	CSR  MatchViewRankRatingType = "CSR"
-	LUSR MatchViewRankRatingType = "LUSR"
-	None MatchViewRankRatingType = "none"
-)
-
-// Valid indicates whether the value is a known member of the MatchViewRankRatingType enum.
-func (e MatchViewRankRatingType) Valid() bool {
-	switch e {
-	case CSR:
-		return true
-	case LUSR:
-		return true
-	case None:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PlotlyFigurePayloadConfigKey.
-const (
-	Clean  PlotlyFigurePayloadConfigKey = "clean"
-	Static PlotlyFigurePayloadConfigKey = "static"
-)
-
-// Valid indicates whether the value is a known member of the PlotlyFigurePayloadConfigKey enum.
-func (e PlotlyFigurePayloadConfigKey) Valid() bool {
-	switch e {
-	case Clean:
-		return true
-	case Static:
 		return true
 	default:
 		return false
@@ -520,60 +352,39 @@ func (e GetTitleFieldMappingsParamsLocale) Valid() bool {
 
 // AchievementEntry defines model for AchievementEntry.
 type AchievementEntry struct {
-	AchievementId string `json:"achievement_id"`
-
-	// CurrentProgress Progression actuelle (présent uniquement si la définition expose un compteur).
-	CurrentProgress *int   `json:"current_progress,omitempty"`
-	DescriptionEn   string `json:"description_en"`
-	DescriptionFr   string `json:"description_fr"`
-	Gamerscore      int    `json:"gamerscore"`
-
-	// ImageUrl URL CDN Xbox de l'icône d'achievement (peut être absente).
-	ImageUrl *string `json:"image_url,omitempty"`
-	IsSecret bool    `json:"is_secret"`
-
-	// LockedDescEn Description visible quand verrouillé (peut être absente).
-	LockedDescEn *string `json:"locked_desc_en,omitempty"`
-	LockedDescFr *string `json:"locked_desc_fr,omitempty"`
-	NameEn       string  `json:"name_en"`
-	NameFr       string  `json:"name_fr"`
-
-	// RarityCategory ex: Common, Rare (peut être absent).
-	RarityCategory *string `json:"rarity_category,omitempty"`
-
-	// RarityPercent Pourcentage de joueurs ayant débloqué (peut être absent).
-	RarityPercent *float64 `json:"rarity_percent,omitempty"`
-
-	// TargetProgress Cible de progression.
-	TargetProgress *int `json:"target_progress,omitempty"`
-	Unlocked       bool `json:"unlocked"`
-
-	// UnlockedAt ISO 8601 — présent uniquement si unlocked=true.
-	UnlockedAt *time.Time `json:"unlocked_at,omitempty"`
+	AchievementId   string     `json:"achievement_id"`
+	Category        *string    `json:"category,omitempty"`
+	CurrentProgress *int64     `json:"current_progress,omitempty"`
+	DescriptionEn   string     `json:"description_en"`
+	DescriptionFr   string     `json:"description_fr"`
+	Gamerscore      int64      `json:"gamerscore"`
+	ImageUrl        *string    `json:"image_url,omitempty"`
+	IsSecret        bool       `json:"is_secret"`
+	LockedDescEn    *string    `json:"locked_desc_en,omitempty"`
+	LockedDescFr    *string    `json:"locked_desc_fr,omitempty"`
+	NameEn          string     `json:"name_en"`
+	NameFr          string     `json:"name_fr"`
+	RarityCategory  *string    `json:"rarity_category,omitempty"`
+	RarityPercent   *float64   `json:"rarity_percent,omitempty"`
+	TargetProgress  *int64     `json:"target_progress,omitempty"`
+	Unlocked        bool       `json:"unlocked"`
+	UnlockedAt      *time.Time `json:"unlocked_at,omitempty"`
+	XboxTitleId     *string    `json:"xbox_title_id,omitempty"`
 }
 
 // AchievementsPageResponse defines model for AchievementsPageResponse.
 type AchievementsPageResponse struct {
-	Achievements []AchievementEntry  `json:"achievements"`
+	Achievements *[]AchievementEntry `json:"achievements"`
 	Summary      AchievementsSummary `json:"summary"`
 }
 
 // AchievementsSummary defines model for AchievementsSummary.
 type AchievementsSummary struct {
-	// CompletionPct Pourcentage 0..100 arrondi à 0.1.
-	CompletionPct float64 `json:"completion_pct"`
-
-	// EarnedGamerscore Gamerscore acquis par le joueur (somme des unlocked).
-	EarnedGamerscore int `json:"earned_gamerscore"`
-
-	// TotalCount Nombre total d'achievements définis pour le titre.
-	TotalCount int `json:"total_count"`
-
-	// TotalGamerscore Gamerscore total possible (somme de tous les achievements).
-	TotalGamerscore int `json:"total_gamerscore"`
-
-	// UnlockedCount Nombre d'achievements débloqués par le joueur.
-	UnlockedCount int `json:"unlocked_count"`
+	CompletionPct    float64 `json:"completion_pct"`
+	EarnedGamerscore int64   `json:"earned_gamerscore"`
+	TotalCount       int64   `json:"total_count"`
+	TotalGamerscore  int64   `json:"total_gamerscore"`
+	UnlockedCount    int64   `json:"unlocked_count"`
 }
 
 // ApiErrorSchema defines model for ApiErrorSchema.
@@ -599,40 +410,35 @@ type ApiErrorSchema_Details struct {
 	union json.RawMessage
 }
 
-// AssociatedMediaItem defines model for AssociatedMediaItem.
-type AssociatedMediaItem struct {
-	CaptureTime     *time.Time `json:"capture_time,omitempty"`
-	DurationSeconds *float32   `json:"duration_seconds,omitempty"`
-	FileId          string     `json:"file_id"`
-	FileName        string     `json:"file_name"`
-	FilePath        string     `json:"file_path"`
-	Kind            string     `json:"kind"`
-	Liked           *bool      `json:"liked,omitempty"`
-	ThumbnailUrl    *string    `json:"thumbnail_url,omitempty"`
-}
-
-// AsyncJobStatus Statut d'un job asynchrone long
+// AsyncJobStatus defines model for AsyncJobStatus.
 type AsyncJobStatus struct {
-	CurrentStep *string                 `json:"current_step,omitempty"`
-	Error       *string                 `json:"error,omitempty"`
-	FinishedAt  *time.Time              `json:"finished_at,omitempty"`
-	JobId       string                  `json:"job_id"`
-	JobType     string                  `json:"job_type"`
-	ProgressPct *int                    `json:"progress_pct,omitempty"`
-	Result      *map[string]interface{} `json:"result,omitempty"`
-	StartedAt   *time.Time              `json:"started_at,omitempty"`
-	Status      AsyncJobStatusStatus    `json:"status"`
+	CurrentStep   *string                 `json:"current_step,omitempty"`
+	Error         *JobErrorDetail         `json:"error,omitempty"`
+	EtaSeconds    *int64                  `json:"eta_seconds,omitempty"`
+	FinishedAt    *time.Time              `json:"finished_at,omitempty"`
+	JobId         string                  `json:"job_id"`
+	JobType       string                  `json:"job_type"`
+	MatchesDone   *int64                  `json:"matches_done,omitempty"`
+	MatchesTotal  *int64                  `json:"matches_total,omitempty"`
+	Metadata      *JobMeta                `json:"metadata,omitempty"`
+	PhaseKey      *string                 `json:"phase_key,omitempty"`
+	PhaseLabel    *string                 `json:"phase_label,omitempty"`
+	PlayerSlug    *string                 `json:"player_slug,omitempty"`
+	ProgressPct   *int64                  `json:"progress_pct,omitempty"`
+	Result        *map[string]interface{} `json:"result,omitempty"`
+	StartedAt     *time.Time              `json:"started_at,omitempty"`
+	Status        string                  `json:"status"`
+	SubtasksDone  *int64                  `json:"subtasks_done,omitempty"`
+	SubtasksTotal *int64                  `json:"subtasks_total,omitempty"`
+	Warnings      *[]string               `json:"warnings,omitempty"`
 }
 
-// AsyncJobStatusStatus defines model for AsyncJobStatus.Status.
-type AsyncJobStatusStatus string
-
-// AvailableOptions defines model for AvailableOptions.
-type AvailableOptions struct {
-	ExperienceTypes *[]LabelValue `json:"experience_types,omitempty"`
-	Maps            *[]LabelValue `json:"maps,omitempty"`
-	Modes           *[]LabelValue `json:"modes,omitempty"`
-	Playlists       *[]LabelValue `json:"playlists,omitempty"`
+// AvailableFilterOptions defines model for AvailableFilterOptions.
+type AvailableFilterOptions struct {
+	ExperienceTypes *[]LabelValue `json:"experience_types"`
+	Maps            *[]LabelValue `json:"maps"`
+	Modes           *[]LabelValue `json:"modes"`
+	Playlists       *[]LabelValue `json:"playlists"`
 }
 
 // BackupRunResult defines model for BackupRunResult.
@@ -728,194 +534,192 @@ type BootstrapResponseRegistrationMode string
 // BootstrapResponseSetupState defines model for BootstrapResponse.SetupState.
 type BootstrapResponseSetupState string
 
-// CSRCoverage Couverture CSR pour un joueur — Phase 9 plan pipeline CSR.
-// Permet de vérifier que les snapshots Waypoint + les rows
-// match_skill_rank rating_type='CSR' sont complets, ou si un
-// backfill est nécessaire.
+// CSRCoverage defines model for CSRCoverage.
 type CSRCoverage struct {
-	// MatchSkillRankCsr Résumé match_skill_rank rating_type='CSR'.
-	MatchSkillRankCsr MSRCSRCoverage `json:"match_skill_rank_csr"`
-	NeedsBackfill     bool           `json:"needs_backfill"`
-	PlayerSlug        string         `json:"player_slug"`
-
-	// Snapshots Résumé player_csr_snapshots pour un joueur.
-	Snapshots CSRSnapshotsCoverage `json:"snapshots"`
-	Xuid      string               `json:"xuid"`
+	MatchSkillRankCsr MSRCSRCoverage       `json:"match_skill_rank_csr"`
+	NeedsBackfill     bool                 `json:"needs_backfill"`
+	PlayerSlug        string               `json:"player_slug"`
+	Snapshots         CSRSnapshotsCoverage `json:"snapshots"`
+	Xuid              string               `json:"xuid"`
 }
 
-// CSRSeasonOption Saison CSR sélectionnable dans le menu déroulant "Classements" (page
-// Carrière, colonne CSR). Une saison apparaît si le joueur y a des données
-// classées (snapshot CSR), plus la saison courante.
+// CSRSeasonCalendar defines model for CSRSeasonCalendar.
+type CSRSeasonCalendar struct {
+	ContentHash string     `json:"content_hash"`
+	EndDate     *time.Time `json:"end_date,omitempty"`
+	Etag        *string    `json:"etag,omitempty"`
+	FetchedAt   time.Time  `json:"fetched_at"`
+	Name        string     `json:"name"`
+	SeasonId    string     `json:"season_id"`
+	SourceUrl   *string    `json:"source_url,omitempty"`
+	StartDate   time.Time  `json:"start_date"`
+	TitleId     string     `json:"title_id"`
+	Version     string     `json:"version"`
+}
+
+// CSRSeasonOption defines model for CSRSeasonOption.
 type CSRSeasonOption struct {
-	// IsCurrent Saison active du jour (optionnel)
-	IsCurrent *bool `json:"is_current,omitempty"`
-
-	// Label Libellé court (ex. "Saison 13")
-	Label string `json:"label"`
-
-	// SeasonId Identifiant saison CSR (ex. "CsrSeason13-1")
-	SeasonId string `json:"season_id"`
+	IsCurrent *bool  `json:"is_current,omitempty"`
+	Label     string `json:"label"`
+	SeasonId  string `json:"season_id"`
 }
 
-// CSRSnapshotsCoverage Résumé player_csr_snapshots pour un joueur.
+// CSRSnapshotsCoverage defines model for CSRSnapshotsCoverage.
 type CSRSnapshotsCoverage struct {
-	Total                  int `json:"total"`
-	WithAlltimeValue       int `json:"with_alltime_value"`
-	WithPlacementRemaining int `json:"with_placement_remaining"`
+	Total                  int64 `json:"total"`
+	WithAlltimeValue       int64 `json:"with_alltime_value"`
+	WithPlacementRemaining int64 `json:"with_placement_remaining"`
 }
 
 // CapabilityMap defines model for CapabilityMap.
 type CapabilityMap struct {
-	CanManageInstance   *bool `json:"can_manage_instance,omitempty"`
-	CanManageSettings   bool  `json:"can_manage_settings"`
-	CanReadLocalData    bool  `json:"can_read_local_data"`
-	CanResetMediaIndex  bool  `json:"can_reset_media_index"`
-	CanRunSync          bool  `json:"can_run_sync"`
-	CanSelfProvision    *bool `json:"can_self_provision,omitempty"`
-	CanStartInitialSync *bool `json:"can_start_initial_sync,omitempty"`
-	CanUseLiveHalo      bool  `json:"can_use_live_halo"`
-	CanViewMedia        bool  `json:"can_view_media"`
+	CanManageInstance   bool `json:"can_manage_instance"`
+	CanManageSettings   bool `json:"can_manage_settings"`
+	CanReadLocalData    bool `json:"can_read_local_data"`
+	CanResetMediaIndex  bool `json:"can_reset_media_index"`
+	CanRunSync          bool `json:"can_run_sync"`
+	CanSelfProvision    bool `json:"can_self_provision"`
+	CanStartInitialSync bool `json:"can_start_initial_sync"`
+	CanUseLiveHalo      bool `json:"can_use_live_halo"`
+	CanViewMedia        bool `json:"can_view_media"`
 }
 
 // CareerCSRRank defines model for CareerCSRRank.
 type CareerCSRRank struct {
-	// BadgeImageUrl URL de l'image du badge (optionnel)
-	BadgeImageUrl *string `json:"badge_image_url,omitempty"`
-
-	// MeasurementMatchesRemaining Nombre de matchs restants avant placement final
-	MeasurementMatchesRemaining int `json:"measurement_matches_remaining"`
-
-	// PlacementTotal Seuil placement de la saison du snapshot (5 depuis S3, 10 historique).
-	// Toujours présent depuis Phase 6 du pipeline CSR.
-	PlacementTotal int `json:"placement_total"`
-
-	// SubTier Sous-tier 1..6 (0 pour Onyx)
-	SubTier int `json:"sub_tier"`
-
-	// Tier Tier Halo (Bronze / Silver / ... / Onyx)
-	Tier string `json:"tier"`
-
-	// Value CSR numérique (peut être négatif en mesure)
-	Value float32 `json:"value"`
-}
-
-// CareerEncounter defines model for CareerEncounter.
-type CareerEncounter struct {
-	CountMatches     int        `json:"count_matches"`
-	EncounterKey     string     `json:"encounter_key"`
-	LastSeenAt       *time.Time `json:"last_seen_at,omitempty"`
-	Losses           int        `json:"losses"`
-	OpponentGamertag string     `json:"opponent_gamertag"`
-	Wins             int        `json:"wins"`
+	BadgeImageUrl               *string `json:"badge_image_url,omitempty"`
+	MeasurementMatchesRemaining int64   `json:"measurement_matches_remaining"`
+	PlacementTotal              int64   `json:"placement_total"`
+	SubTier                     int64   `json:"sub_tier"`
+	Tier                        string  `json:"tier"`
+	Value                       float64 `json:"value"`
 }
 
 // CareerEncountersResponse defines model for CareerEncountersResponse.
 type CareerEncountersResponse struct {
-	Items []CareerEncounter `json:"items"`
-}
-
-// CareerHistoryPoint defines model for CareerHistoryPoint.
-type CareerHistoryPoint struct {
-	Rank       int       `json:"rank"`
-	RecordedAt time.Time `json:"recorded_at"`
-	XpTotal    int       `json:"xp_total"`
-}
-
-// CareerLusrCheckpoint defines model for CareerLusrCheckpoint.
-type CareerLusrCheckpoint struct {
-	PlaylistGroup string    `json:"playlist_group"`
-	RatingValue   float32   `json:"rating_value"`
-	RecordedAt    time.Time `json:"recorded_at"`
-}
-
-// CareerLusrSection defines model for CareerLusrSection.
-type CareerLusrSection struct {
-	Checkpoints          []CareerLusrCheckpoint `json:"checkpoints"`
-	CurrentPlaylistGroup *string                `json:"current_playlist_group,omitempty"`
-	CurrentRating        *float32               `json:"current_rating,omitempty"`
-	CurrentTierLabel     *string                `json:"current_tier_label,omitempty"`
-	TrendLabel           *string                `json:"trend_label,omitempty"`
+	Enemies   *[]EncounterDTO `json:"enemies"`
+	Teammates *[]EncounterDTO `json:"teammates"`
+	Total     int64           `json:"total"`
 }
 
 // CareerPageResponse defines model for CareerPageResponse.
 type CareerPageResponse struct {
-	EncountersPreview []CareerEncounter    `json:"encounters_preview"`
-	HeroProgress      *HeroProgress        `json:"hero_progress,omitempty"`
-	Lusr              *CareerLusrSection   `json:"lusr,omitempty"`
-	Projections       *CareerProjections   `json:"projections,omitempty"`
-	Summary           *CareerSummary       `json:"summary,omitempty"`
-	TopMatchesPreview []CareerTopMatch     `json:"top_matches_preview"`
-	XpHistory         []CareerHistoryPoint `json:"xp_history"`
+	CurrentSeason    *CurrentSeasonResult `json:"current_season,omitempty"`
+	FriendsXpHistory *[]FriendXPHistory   `json:"friends_xp_history,omitempty"`
+	HeroProgress     HeroProgress         `json:"hero_progress"`
+	Lusr             LUSRSummary          `json:"lusr"`
+	Projections      CareerProjections    `json:"projections"`
+	Summary          CareerRankSummary    `json:"summary"`
+	XpHistory        *[]XPHistoryPoint    `json:"xp_history"`
+}
+
+// CareerPlaylistCSR defines model for CareerPlaylistCSR.
+type CareerPlaylistCSR struct {
+	AllTime      CareerCSRRank `json:"all_time"`
+	Current      CareerCSRRank `json:"current"`
+	Input        string        `json:"input"`
+	PlaylistId   string        `json:"playlist_id"`
+	PlaylistName string        `json:"playlist_name"`
+	Queue        string        `json:"queue"`
+	Season       CareerCSRRank `json:"season"`
 }
 
 // CareerProjections defines model for CareerProjections.
 type CareerProjections struct {
-	EstimatedHeroDate    *openapi_types.Date `json:"estimated_hero_date,omitempty"`
-	EstimatedRankCapDate *openapi_types.Date `json:"estimated_rank_cap_date,omitempty"`
-	XpPerDayActive       float32             `json:"xp_per_day_active"`
-	XpPerDayFallback     float32             `json:"xp_per_day_fallback"`
+	EstimatedHeroDate    *string `json:"estimated_hero_date"`
+	EstimatedRankCapDate *string `json:"estimated_rank_cap_date"`
+	XpPerDayActive       float64 `json:"xp_per_day_active"`
+	XpPerDayFallback     float64 `json:"xp_per_day_fallback"`
 }
 
-// CareerSummary defines model for CareerSummary.
-type CareerSummary struct {
-	CurrentXp     int        `json:"current_xp"`
-	IsMaxRank     bool       `json:"is_max_rank"`
-	ProgressPct   float32    `json:"progress_pct"`
-	RankLabel     string     `json:"rank_label"`
-	RankNameRaw   string     `json:"rank_name_raw"`
-	RankNumber    int        `json:"rank_number"`
-	RankTier      string     `json:"rank_tier"`
-	RecordedAt    *time.Time `json:"recorded_at,omitempty"`
-	XpForNextRank int        `json:"xp_for_next_rank"`
-	XpTotal       int        `json:"xp_total"`
+// CareerRankSummary defines model for CareerRankSummary.
+type CareerRankSummary struct {
+	CurrentXp        int64      `json:"current_xp"`
+	IsMaxRank        bool       `json:"is_max_rank"`
+	NextRankImageUrl *string    `json:"next_rank_image_url,omitempty"`
+	NextRankNameEn   *string    `json:"next_rank_name_en,omitempty"`
+	NextRankNameFr   *string    `json:"next_rank_name_fr,omitempty"`
+	ProgressPct      float64    `json:"progress_pct"`
+	RankImageUrl     *string    `json:"rank_image_url,omitempty"`
+	RankLabel        string     `json:"rank_label"`
+	RankNameRaw      string     `json:"rank_name_raw"`
+	RankNumber       int64      `json:"rank_number"`
+	RankTier         string     `json:"rank_tier"`
+	RecordedAt       *time.Time `json:"recorded_at"`
+	XpForNextRank    int64      `json:"xp_for_next_rank"`
+	XpTotal          int64      `json:"xp_total"`
 }
-
-// CareerTopMatch defines model for CareerTopMatch.
-type CareerTopMatch struct {
-	Assists          *int                   `json:"assists,omitempty"`
-	BadgeType        *string                `json:"badge_type,omitempty"`
-	Deaths           *int                   `json:"deaths,omitempty"`
-	KdRatio          *float32               `json:"kd_ratio,omitempty"`
-	Kills            *int                   `json:"kills,omitempty"`
-	MapUi            *string                `json:"map_ui,omitempty"`
-	MatchId          openapi_types.UUID     `json:"match_id"`
-	ModeUi           *string                `json:"mode_ui,omitempty"`
-	OutcomeLabel     *string                `json:"outcome_label,omitempty"`
-	PerformanceScore *float32               `json:"performance_score,omitempty"`
-	PlaylistLabel    *string                `json:"playlist_label,omitempty"`
-	ScoreLabel       *string                `json:"score_label,omitempty"`
-	StartTime        *time.Time             `json:"start_time,omitempty"`
-	Variant          *CareerTopMatchVariant `json:"variant,omitempty"`
-}
-
-// CareerTopMatchVariant defines model for CareerTopMatch.Variant.
-type CareerTopMatchVariant string
 
 // CareerTopMatchesResponse defines model for CareerTopMatchesResponse.
 type CareerTopMatchesResponse struct {
-	Items []CareerTopMatch `json:"items"`
+	BestMatches  *[]TopMatchDTO `json:"best_matches"`
+	WorstMatches *[]TopMatchDTO `json:"worst_matches"`
 }
 
-// CascadeInput Listes vides = « tout coché » (pas de filtre restrictif)
-type CascadeInput struct {
-	ExperienceTypes *[]string `json:"experience_types,omitempty"`
-	Maps            *[]string `json:"maps,omitempty"`
-	Modes           *[]string `json:"modes,omitempty"`
-	Playlists       *[]string `json:"playlists,omitempty"`
+// CascadeFilter defines model for CascadeFilter.
+type CascadeFilter struct {
+	ExperienceTypes *[]string `json:"experience_types"`
+	Maps            *[]string `json:"maps"`
+	Modes           *[]string `json:"modes"`
+	Playlists       *[]string `json:"playlists"`
+}
+
+// ChartPointStacked defines model for ChartPointStacked.
+type ChartPointStacked struct {
+	Category   string             `json:"category"`
+	Components map[string]float64 `json:"components"`
+}
+
+// ChartSeriesChartPointStacked defines model for ChartSeriesChartPointStacked.
+type ChartSeriesChartPointStacked struct {
+	ColorToken *string                 `json:"color_token,omitempty"`
+	Datapoints *[]ChartPointStacked    `json:"datapoints"`
+	Key        string                  `json:"key"`
+	LabelKey   *string                 `json:"label_key,omitempty"`
+	Meta       *map[string]interface{} `json:"meta,omitempty"`
+}
+
+// CombatProfileBlock defines model for CombatProfileBlock.
+type CombatProfileBlock struct {
+	AvgDr           float64  `json:"avg_dr"`
+	AvgOc           float64  `json:"avg_oc"`
+	AvgResidualBrut *float64 `json:"avg_residual_brut,omitempty"`
+	DmgPerDeath     *float64 `json:"dmg_per_death,omitempty"`
+	DmgPerKill      *float64 `json:"dmg_per_kill,omitempty"`
+	MatchCount      int64    `json:"match_count"`
+	StyleActivity   *string  `json:"style_activity,omitempty"`
+	StyleDefensive  *string  `json:"style_defensive,omitempty"`
+	StyleOffensive  *string  `json:"style_offensive,omitempty"`
+}
+
+// CommonMatchRow defines model for CommonMatchRow.
+type CommonMatchRow struct {
+	Deaths        int64     `json:"deaths"`
+	Kda           float64   `json:"kda"`
+	Kills         int64     `json:"kills"`
+	MapUi         string    `json:"map_ui"`
+	MatchId       string    `json:"match_id"`
+	ModeUi        string    `json:"mode_ui"`
+	OutcomeLabel  string    `json:"outcome_label"`
+	PlayerOutcome int64     `json:"player_outcome"`
+	StartTime     time.Time `json:"start_time"`
+	WereTeammates bool      `json:"were_teammates"`
 }
 
 // CompareMetricRow defines model for CompareMetricRow.
 type CompareMetricRow struct {
-	Format *string                `json:"format,omitempty"`
-	Key    *string                `json:"key,omitempty"`
-	Label  string                 `json:"label"`
-	ValueA float32                `json:"value_a"`
-	ValueB float32                `json:"value_b"`
-	Winner CompareMetricRowWinner `json:"winner"`
+	Delta           float64 `json:"delta"`
+	DisplayA        *string `json:"display_a,omitempty"`
+	DisplayB        *string `json:"display_b,omitempty"`
+	LabelFr         string  `json:"label_fr"`
+	LessIsBetter    bool    `json:"less_is_better"`
+	Metric          string  `json:"metric"`
+	SampleSizeB     *int64  `json:"sample_size_b,omitempty"`
+	ValueA          float64 `json:"value_a"`
+	ValueAAvailable bool    `json:"value_a_available"`
+	ValueB          float64 `json:"value_b"`
+	ValueBAvailable bool    `json:"value_b_available"`
+	Winner          string  `json:"winner"`
 }
-
-// CompareMetricRowWinner defines model for CompareMetricRow.Winner.
-type CompareMetricRowWinner string
 
 // CompareRequest defines model for CompareRequest.
 type CompareRequest struct {
@@ -925,22 +729,25 @@ type CompareRequest struct {
 
 // CompareResponse defines model for CompareResponse.
 type CompareResponse struct {
-	// ErrorB Message d'erreur si le joueur B n'a pas pu être résolu.
-	ErrorB  *string            `json:"error_b,omitempty"`
-	Metrics []CompareMetricRow `json:"metrics"`
-
-	// PlayerA Stats normalisées d'un joueur pour la comparaison.
-	PlayerA NormalizedPlayerStats `json:"player_a"`
-
-	// PlayerB Stats normalisées d'un joueur pour la comparaison.
-	PlayerB NormalizedPlayerStats `json:"player_b"`
+	EncounterBadges *[]MatchEncounterBadge `json:"encounter_badges,omitempty"`
+	Metrics         *[]CompareMetricRow    `json:"metrics"`
+	PlayerA         NormalizedPlayerStats  `json:"player_a"`
+	PlayerB         NormalizedPlayerStats  `json:"player_b"`
+	TitleSlug       string                 `json:"title_slug"`
 }
 
-// CreatePlayerProfileResponse Réponse de POST /setup/players
+// CreatePlayerProfileResponse defines model for CreatePlayerProfileResponse.
 type CreatePlayerProfileResponse struct {
 	DbCreated bool          `json:"db_created"`
 	Player    PlayerSummary `json:"player"`
-	Warnings  []string      `json:"warnings"`
+	Warnings  *[]string     `json:"warnings,omitempty"`
+}
+
+// CurrentSeasonResult defines model for CurrentSeasonResult.
+type CurrentSeasonResult struct {
+	CSRSeason CSRSeasonCalendar `json:"CSRSeason"`
+	Season    SeasonCalendar    `json:"Season"`
+	Synthetic SeasonSynthetic   `json:"Synthetic"`
 }
 
 // DeviceFlowStartResponse Réponse de POST /auth/device-flow/start
@@ -969,15 +776,26 @@ type DeviceFlowStatusResponse struct {
 // DeviceFlowStatusResponseStatus defines model for DeviceFlowStatusResponse.Status.
 type DeviceFlowStatusResponseStatus string
 
-// ExplorerEncounterRow defines model for ExplorerEncounterRow.
-type ExplorerEncounterRow struct {
-	CountMatches int        `json:"count_matches"`
-	Gamertag     string     `json:"gamertag"`
-	LastSeenAt   *time.Time `json:"last_seen_at,omitempty"`
-	Losses       int        `json:"losses"`
-	SameTeam     *bool      `json:"same_team,omitempty"`
-	Wins         int        `json:"wins"`
-	Xuid         *string    `json:"xuid,omitempty"`
+// EncounterDTO defines model for EncounterDTO.
+type EncounterDTO struct {
+	AsEnemy    int64    `json:"as_enemy"`
+	AsTeammate int64    `json:"as_teammate"`
+	AvgKda     *float64 `json:"avg_kda"`
+	Gamertag   string   `json:"gamertag"`
+	MatchCount int64    `json:"match_count"`
+	Xuid       string   `json:"xuid"`
+}
+
+// ExplorerEncounterStats defines model for ExplorerEncounterStats.
+type ExplorerEncounterStats struct {
+	AllyCount      *int64     `json:"ally_count,omitempty"`
+	CountTogether  int64      `json:"count_together"`
+	DeathsSuffered *int64     `json:"deaths_suffered,omitempty"`
+	EnemyCount     *int64     `json:"enemy_count,omitempty"`
+	KillsDealt     *int64     `json:"kills_dealt,omitempty"`
+	LastSeenAt     *time.Time `json:"last_seen_at,omitempty"`
+	WinrateAsAlly  *float64   `json:"winrate_as_ally,omitempty"`
+	WinrateVsEnemy *float64   `json:"winrate_vs_enemy,omitempty"`
 }
 
 // ExplorerMatchFilters defines model for ExplorerMatchFilters.
@@ -994,26 +812,6 @@ type ExplorerMatchFilters struct {
 // ExplorerMatchFiltersSquadScope defines model for ExplorerMatchFilters.SquadScope.
 type ExplorerMatchFiltersSquadScope string
 
-// ExplorerMatchRow defines model for ExplorerMatchRow.
-type ExplorerMatchRow struct {
-	Deaths              *int    `json:"deaths,omitempty"`
-	ExperienceTypeLabel *string `json:"experience_type_label,omitempty"`
-
-	// HadBotTeammate Un coéquipier était un bot. Exposé uniquement sur les best_matches de la page carrière (les LOSS avec bot sont exclus côté backend pour isoler la responsabilité du joueur).
-	HadBotTeammate *bool              `json:"had_bot_teammate,omitempty"`
-	IsWithFriends  *bool              `json:"is_with_friends,omitempty"`
-	Kda            *float32           `json:"kda,omitempty"`
-	Kills          *int               `json:"kills,omitempty"`
-	MapUi          string             `json:"map_ui"`
-	MatchId        openapi_types.UUID `json:"match_id"`
-	ModeUi         string             `json:"mode_ui"`
-	OutcomeLabel   string             `json:"outcome_label"`
-	PlaylistLabel  string             `json:"playlist_label"`
-	ScoreLabel     string             `json:"score_label"`
-	StartTime      time.Time          `json:"start_time"`
-	StartTimeLabel string             `json:"start_time_label"`
-}
-
 // ExplorerMatchesQueryRequest defines model for ExplorerMatchesQueryRequest.
 type ExplorerMatchesQueryRequest struct {
 	Filters      *FilterContextInput   `json:"filters,omitempty"`
@@ -1023,14 +821,63 @@ type ExplorerMatchesQueryRequest struct {
 
 // ExplorerMatchesQueryResponse defines model for ExplorerMatchesQueryResponse.
 type ExplorerMatchesQueryResponse struct {
-	Summary ExplorerMatchesQuerySummary      `json:"summary"`
-	Table   PaginatedExplorerMatchesResponse `json:"table"`
+	ExportHint *ExportHint            `json:"export_hint,omitempty"`
+	Summary    ExplorerMatchesSummary `json:"summary"`
+	Table      ExplorerMatchesTable   `json:"table"`
 }
 
-// ExplorerMatchesQuerySummary defines model for ExplorerMatchesQuerySummary.
-type ExplorerMatchesQuerySummary struct {
-	SelectedMatchId *string `json:"selected_match_id,omitempty"`
-	TotalMatches    int     `json:"total_matches"`
+// ExplorerMatchesRow defines model for ExplorerMatchesRow.
+type ExplorerMatchesRow struct {
+	Assists             *int64    `json:"assists,omitempty"`
+	Deaths              *int64    `json:"deaths,omitempty"`
+	DeltaMmr            *float64  `json:"delta_mmr,omitempty"`
+	DeltaPerf           *int64    `json:"delta_perf,omitempty"`
+	DominanceFlag       *int64    `json:"dominance_flag,omitempty"`
+	DurationSeconds     *int64    `json:"duration_seconds,omitempty"`
+	EnemyMmr            *float64  `json:"enemy_mmr,omitempty"`
+	ExpectedWinProb     *float64  `json:"expected_win_prob,omitempty"`
+	ExperienceTypeLabel string    `json:"experience_type_label"`
+	HadBotTeammate      *bool     `json:"had_bot_teammate,omitempty"`
+	IsWithFriends       bool      `json:"is_with_friends"`
+	Kda                 *float64  `json:"kda,omitempty"`
+	Kills               *int64    `json:"kills,omitempty"`
+	MapUi               *string   `json:"map_ui"`
+	MatchId             string    `json:"match_id"`
+	MatchUrl            string    `json:"match_url"`
+	ModeUi              *string   `json:"mode_ui"`
+	OutcomeCode         int64     `json:"outcome_code"`
+	OutcomeLabel        string    `json:"outcome_label"`
+	PerfScore           *int64    `json:"perf_score,omitempty"`
+	PerfTier            *int64    `json:"perf_tier,omitempty"`
+	PlacementDone       *int64    `json:"placement_done,omitempty"`
+	PlacementTotal      *int64    `json:"placement_total,omitempty"`
+	PlaylistLabel       *string   `json:"playlist_label"`
+	RatingType          *string   `json:"rating_type,omitempty"`
+	ScoreLabel          string    `json:"score_label"`
+	SkillTierLabel      *string   `json:"skill_tier_label,omitempty"`
+	StartTime           time.Time `json:"start_time"`
+	StartTimeLabel      string    `json:"start_time_label"`
+	TeamMmr             *float64  `json:"team_mmr,omitempty"`
+}
+
+// ExplorerMatchesSummary defines model for ExplorerMatchesSummary.
+type ExplorerMatchesSummary struct {
+	AvailableExperienceTypes *[]string     `json:"available_experience_types,omitempty"`
+	AvailableMaps            *[]string     `json:"available_maps,omitempty"`
+	AvailableModes           *[]string     `json:"available_modes,omitempty"`
+	AvailableOutcomes        *[]LabelValue `json:"available_outcomes,omitempty"`
+	AvailablePerfTiers       *[]LabelValue `json:"available_perf_tiers,omitempty"`
+	AvailablePlaylists       *[]string     `json:"available_playlists,omitempty"`
+	AvailableRankedContexts  *[]LabelValue `json:"available_ranked_contexts,omitempty"`
+	AvailableSkillTiers      *[]LabelValue `json:"available_skill_tiers,omitempty"`
+	AvailableSquadScopes     *[]LabelValue `json:"available_squad_scopes,omitempty"`
+	TotalMatches             int64         `json:"total_matches"`
+}
+
+// ExplorerMatchesTable defines model for ExplorerMatchesTable.
+type ExplorerMatchesTable struct {
+	Items      *[]ExplorerMatchesRow `json:"items"`
+	Pagination PaginationMeta        `json:"pagination"`
 }
 
 // ExplorerPlayerQueryRequest defines model for ExplorerPlayerQueryRequest.
@@ -1041,41 +888,102 @@ type ExplorerPlayerQueryRequest struct {
 
 // ExplorerPlayerQueryResponse defines model for ExplorerPlayerQueryResponse.
 type ExplorerPlayerQueryResponse struct {
-	AlliesTable   []ExplorerEncounterRow `json:"allies_table"`
-	CommonMatches []ExplorerMatchRow     `json:"common_matches"`
-	EnemiesTable  []ExplorerEncounterRow `json:"enemies_table"`
-	Summary       ExplorerPlayerSummary  `json:"summary"`
-	Target        ExplorerPlayerTarget   `json:"target"`
+	ActivityHeatmap *[]TemporalHeatmapCell  `json:"activity_heatmap,omitempty"`
+	Badges          *[]MatchEncounterBadge  `json:"badges,omitempty"`
+	CommonMatches   *[]CommonMatchRow       `json:"common_matches"`
+	EncounterStats  *ExplorerEncounterStats `json:"encounter_stats,omitempty"`
+	LossesTogether  int64                   `json:"losses_together"`
+	Page            int64                   `json:"page"`
+	PageSize        int64                   `json:"page_size"`
+	TargetGamertag  string                  `json:"target_gamertag"`
+	TargetProfile   *ExplorerTargetProfile  `json:"target_profile,omitempty"`
+	TargetXuid      string                  `json:"target_xuid"`
+	Total           int64                   `json:"total"`
+	TotalCount      int64                   `json:"total_count"`
+	WinsTogether    int64                   `json:"wins_together"`
 }
 
-// ExplorerPlayerSummary defines model for ExplorerPlayerSummary.
-type ExplorerPlayerSummary struct {
-	LastSeenAt      *time.Time `json:"last_seen_at,omitempty"`
-	LossesTogether  int        `json:"losses_together"`
-	MatchesTogether int        `json:"matches_together"`
-	WinsTogether    int        `json:"wins_together"`
+// ExplorerTargetProfile defines model for ExplorerTargetProfile.
+type ExplorerTargetProfile struct {
+	AuthAvailable      bool                         `json:"auth_available"`
+	CareerStats        *NormalizedPlayerStats       `json:"career_stats,omitempty"`
+	CombatProfile      *[]ExplorerTargetRecentMatch `json:"combat_profile,omitempty"`
+	CombatProfileLocal *[]ExplorerTargetRecentMatch `json:"combat_profile_local,omitempty"`
+	Identity           *HomeSpartanIdentity         `json:"identity,omitempty"`
+	MatchesPerSeason   *[]SeasonMatchCount          `json:"matches_per_season,omitempty"`
+	PrivacyWarning     *MatchPrivacyWarning         `json:"privacy_warning,omitempty"`
+	SampleStats        *ExplorerTargetSampleStats   `json:"sample_stats,omitempty"`
+	SeasonCsrs         *[]CareerPlaylistCSR         `json:"season_csrs,omitempty"`
+	TopMedals          *[]MedalDigestItem           `json:"top_medals,omitempty"`
 }
 
-// ExplorerPlayerTarget defines model for ExplorerPlayerTarget.
-type ExplorerPlayerTarget struct {
-	Gamertag string  `json:"gamertag"`
-	Xuid     *string `json:"xuid,omitempty"`
+// ExplorerTargetRecentMatch defines model for ExplorerTargetRecentMatch.
+type ExplorerTargetRecentMatch struct {
+	Assists         int64     `json:"assists"`
+	DamageDealt     int64     `json:"damage_dealt"`
+	DamageTaken     int64     `json:"damage_taken"`
+	Deaths          int64     `json:"deaths"`
+	Kda             float64   `json:"kda"`
+	Kills           int64     `json:"kills"`
+	MapUi           string    `json:"map_ui"`
+	MatchId         string    `json:"match_id"`
+	MaxKillingSpree int64     `json:"max_killing_spree"`
+	ModeUi          string    `json:"mode_ui"`
+	Outcome         int64     `json:"outcome"`
+	PerfectKills    int64     `json:"perfect_kills"`
+	Rank            *int64    `json:"rank,omitempty"`
+	Score           int64     `json:"score"`
+	StartTime       time.Time `json:"start_time"`
+}
+
+// ExplorerTargetSampleStats defines model for ExplorerTargetSampleStats.
+type ExplorerTargetSampleStats struct {
+	Accuracy            *float64           `json:"accuracy,omitempty"`
+	Assists             int64              `json:"assists"`
+	AssistsPerMin       *float64           `json:"assists_per_min,omitempty"`
+	AvgPersonalScore    *float64           `json:"avg_personal_score,omitempty"`
+	DamageDealt         int64              `json:"damage_dealt"`
+	DamageTaken         int64              `json:"damage_taken"`
+	Deaths              int64              `json:"deaths"`
+	DeathsPerMin        *float64           `json:"deaths_per_min,omitempty"`
+	DefensiveResistance *float64           `json:"defensive_resistance,omitempty"`
+	Draws               int64              `json:"draws"`
+	GrenadeKills        int64              `json:"grenade_kills"`
+	HeadshotKills       int64              `json:"headshot_kills"`
+	HeadshotRate        *float64           `json:"headshot_rate,omitempty"`
+	Kda                 *float64           `json:"kda,omitempty"`
+	Kdr                 *float64           `json:"kdr,omitempty"`
+	Kills               int64              `json:"kills"`
+	KillsPerMin         *float64           `json:"kills_per_min,omitempty"`
+	Losses              int64              `json:"losses"`
+	MeleeKills          int64              `json:"melee_kills"`
+	OffensiveConversion *float64           `json:"offensive_conversion,omitempty"`
+	PerfectKills        int64              `json:"perfect_kills"`
+	PowerWeaponKills    int64              `json:"power_weapon_kills"`
+	SampleSize          int64              `json:"sample_size"`
+	ShotsFired          int64              `json:"shots_fired"`
+	ShotsHit            int64              `json:"shots_hit"`
+	TopWeapons          *[]WeaponHighlight `json:"top_weapons,omitempty"`
+	TotalMedals         int64              `json:"total_medals"`
+	UniqueMedals        int64              `json:"unique_medals"`
+	WinRate             *float64           `json:"win_rate,omitempty"`
+	Wins                int64              `json:"wins"`
 }
 
 // ExportHint defines model for ExportHint.
 type ExportHint struct {
-	EstimatedRows int     `json:"estimated_rows"`
+	EstimatedRows int64   `json:"estimated_rows"`
 	FileName      string  `json:"file_name"`
-	Token         *string `json:"token,omitempty"`
+	Token         *string `json:"token"`
 }
 
 // FeatureFlags defines model for FeatureFlags.
 type FeatureFlags struct {
-	DemoMode          *bool `json:"demo_mode,omitempty"`
-	DiscordConfigured *bool `json:"discord_configured,omitempty"`
-	MediaEnabled      *bool `json:"media_enabled,omitempty"`
-	TailscaleEnabled  *bool `json:"tailscale_enabled,omitempty"`
-	V7Enabled         *bool `json:"v7_enabled,omitempty"`
+	DemoMode          bool `json:"demo_mode"`
+	DiscordConfigured bool `json:"discord_configured"`
+	MediaEnabled      bool `json:"media_enabled"`
+	TailscaleEnabled  bool `json:"tailscale_enabled"`
+	V7Enabled         bool `json:"v7_enabled"`
 }
 
 // FieldErrorSchema defines model for FieldErrorSchema.
@@ -1097,28 +1005,27 @@ type FileTokenResponse struct {
 
 // FilterContextInput defines model for FilterContextInput.
 type FilterContextInput struct {
-	// Cascade Listes vides = « tout coché » (pas de filtre restrictif)
-	Cascade    *CascadeInput                 `json:"cascade,omitempty"`
-	FilterMode *FilterContextInputFilterMode `json:"filter_mode,omitempty"`
-	Period     *PeriodInput                  `json:"period,omitempty"`
-	Sessions   *SessionsInput                `json:"sessions,omitempty"`
+	Cascade      CascadeFilter  `json:"cascade"`
+	FilterMode   string         `json:"filter_mode"`
+	MatchContext *string        `json:"match_context,omitempty"`
+	Period       PeriodInput    `json:"period"`
+	Sessions     SessionsFilter `json:"sessions"`
 }
-
-// FilterContextInputFilterMode defines model for FilterContextInput.FilterMode.
-type FilterContextInputFilterMode string
 
 // FilterContextResolved defines model for FilterContextResolved.
 type FilterContextResolved struct {
-	AvailableOptions AvailableOptions   `json:"available_options"`
-	Counts           FilterCounts       `json:"counts"`
-	Effective        FilterContextInput `json:"effective"`
-	SessionOptions   SessionOptions     `json:"session_options"`
+	AvailableOptions AvailableFilterOptions `json:"available_options"`
+	Counts           FilterCounts           `json:"counts"`
+	Effective        FilterContextInput     `json:"effective"`
+	PeriodPresets    *[]PeriodPresetCount   `json:"period_presets"`
+	SeasonCounts     *[]SeasonCount         `json:"season_counts,omitempty"`
+	SessionOptions   SessionOptions         `json:"session_options"`
 }
 
 // FilterCounts defines model for FilterCounts.
 type FilterCounts struct {
-	TotalMatchesAfterFilters  int `json:"total_matches_after_filters"`
-	TotalMatchesBeforeFilters int `json:"total_matches_before_filters"`
+	TotalMatchesAfterFilters  int64 `json:"total_matches_after_filters"`
+	TotalMatchesBeforeFilters int64 `json:"total_matches_before_filters"`
 }
 
 // FreshnessInfo defines model for FreshnessInfo.
@@ -1134,18 +1041,24 @@ type FreshnessInfoSource string
 // FreshnessInfoSyncStatus defines model for FreshnessInfo.SyncStatus.
 type FreshnessInfoSyncStatus string
 
-// GamertagSearchResponse defines model for GamertagSearchResponse.
-type GamertagSearchResponse struct {
-	Items []GamertagSuggestion `json:"items"`
-	Query string               `json:"query"`
+// FriendXPHistory defines model for FriendXPHistory.
+type FriendXPHistory struct {
+	Gamertag string            `json:"gamertag"`
+	History  *[]XPHistoryPoint `json:"history"`
 }
 
-// GamertagSuggestion defines model for GamertagSuggestion.
-type GamertagSuggestion struct {
-	ExactMatch *bool    `json:"exact_match,omitempty"`
-	Gamertag   string   `json:"gamertag"`
-	Score      *float32 `json:"score,omitempty"`
-	Xuid       *string  `json:"xuid,omitempty"`
+// GamertagSearchResponse defines model for GamertagSearchResponse.
+type GamertagSearchResponse struct {
+	Items *[]GamertagSearchResult `json:"items"`
+	Query string                  `json:"query"`
+}
+
+// GamertagSearchResult defines model for GamertagSearchResult.
+type GamertagSearchResult struct {
+	ExactMatch bool    `json:"exact_match"`
+	Gamertag   string  `json:"gamertag"`
+	Score      float64 `json:"score"`
+	Xuid       string  `json:"xuid"`
 }
 
 // HaloIdentitySummary defines model for HaloIdentitySummary.
@@ -1156,26 +1069,59 @@ type HaloIdentitySummary struct {
 
 // HealthResponse defines model for HealthResponse.
 type HealthResponse struct {
-	// Checks Résultats individuels par dépendance
-	Checks *map[string]string `json:"checks,omitempty"`
-
-	// DbVersion Version DuckDB embarquée
-	DbVersion string `json:"db_version"`
-
-	// MatchCount Nombre de matchs dans shared_matches_v2
-	MatchCount int                  `json:"match_count"`
-	Status     HealthResponseStatus `json:"status"`
+	AppVersion  *string    `json:"app_version,omitempty"`
+	DbVersion   *string    `json:"db_version,omitempty"`
+	GoVersion   *string    `json:"go_version,omitempty"`
+	LastSyncAt  *time.Time `json:"last_sync_at,omitempty"`
+	MatchCount  int64      `json:"match_count"`
+	PlayerCount int64      `json:"player_count"`
+	Status      string     `json:"status"`
+	Uptime      *string    `json:"uptime,omitempty"`
 }
-
-// HealthResponseStatus defines model for HealthResponse.Status.
-type HealthResponseStatus string
 
 // HeroProgress defines model for HeroProgress.
 type HeroProgress struct {
-	CurrentRank     int     `json:"current_rank"`
-	Percentage      float32 `json:"percentage"`
-	XpRemaining     int     `json:"xp_remaining"`
-	XpTotalRequired int     `json:"xp_total_required"`
+	CurrentRank     int64   `json:"current_rank"`
+	Percentage      float64 `json:"percentage"`
+	TotalRanks      int64   `json:"total_ranks"`
+	XpRemaining     int64   `json:"xp_remaining"`
+	XpTotalRequired int64   `json:"xp_total_required"`
+}
+
+// HomeCareerRankSummary defines model for HomeCareerRankSummary.
+type HomeCareerRankSummary struct {
+	AdornmentImageUrl *string `json:"adornment_image_url,omitempty"`
+	CurrentXp         int64   `json:"current_xp"`
+	IsMaxRank         bool    `json:"is_max_rank"`
+	NextRankTitle     *string `json:"next_rank_title,omitempty"`
+	ProgressPct       float64 `json:"progress_pct"`
+	RankImageUrl      *string `json:"rank_image_url,omitempty"`
+	RankNumber        int64   `json:"rank_number"`
+	RankTitle         string  `json:"rank_title"`
+	TotalXp           int64   `json:"total_xp"`
+	XpForNextRank     int64   `json:"xp_for_next_rank"`
+}
+
+// HomeSkillPeakSummary defines model for HomeSkillPeakSummary.
+type HomeSkillPeakSummary struct {
+	BadgeImageUrl               *string  `json:"badge_image_url,omitempty"`
+	MeasurementMatchesRemaining *int64   `json:"measurement_matches_remaining,omitempty"`
+	NextTierLabel               *string  `json:"next_tier_label,omitempty"`
+	PlacementTotal              *int64   `json:"placement_total,omitempty"`
+	RatingValue                 float64  `json:"rating_value"`
+	TierLabel                   *string  `json:"tier_label,omitempty"`
+	TierProgressPct             *float64 `json:"tier_progress_pct,omitempty"`
+}
+
+// HomeSpartanIdentity defines model for HomeSpartanIdentity.
+type HomeSpartanIdentity struct {
+	BackdropImageUrl *string                `json:"backdrop_image_url,omitempty"`
+	BannerImageUrl   *string                `json:"banner_image_url,omitempty"`
+	CareerRank       *HomeCareerRankSummary `json:"career_rank,omitempty"`
+	EmblemImageUrl   *string                `json:"emblem_image_url,omitempty"`
+	HighestCsr       *HomeSkillPeakSummary  `json:"highest_csr,omitempty"`
+	HighestLusr      *HomeSkillPeakSummary  `json:"highest_lusr,omitempty"`
+	SpartanId        *string                `json:"spartan_id,omitempty"`
 }
 
 // IntegrityCheckResult defines model for IntegrityCheckResult.
@@ -1190,43 +1136,148 @@ type IntegrityCheckResult struct {
 	Ok *bool `json:"ok,omitempty"`
 }
 
+// JobErrorDetail defines model for JobErrorDetail.
+type JobErrorDetail struct {
+	Code      string `json:"code"`
+	Message   string `json:"message"`
+	Retryable bool   `json:"retryable"`
+}
+
+// JobMeta defines model for JobMeta.
+type JobMeta struct {
+	Extra     *map[string]interface{} `json:"extra,omitempty"`
+	TitleSlug *string                 `json:"title_slug,omitempty"`
+}
+
+// KPIStats defines model for KPIStats.
+type KPIStats struct {
+	AssistsPerGame         float64                `json:"assists_per_game"`
+	AssistsPerMinute       float64                `json:"assists_per_minute"`
+	AvgAccuracy            float64                `json:"avg_accuracy"`
+	AvgDefensiveResistance *float64               `json:"avg_defensive_resistance,omitempty"`
+	AvgLifeSeconds         float64                `json:"avg_life_seconds"`
+	AvgMatchSeconds        float64                `json:"avg_match_seconds"`
+	AvgOffensiveConversion *float64               `json:"avg_offensive_conversion,omitempty"`
+	CombatProfile          *CombatProfileBlock    `json:"combat_profile,omitempty"`
+	DeathsPerGame          float64                `json:"deaths_per_game"`
+	DeathsPerMinute        float64                `json:"deaths_per_minute"`
+	KillsPerGame           float64                `json:"kills_per_game"`
+	KillsPerMinute         float64                `json:"kills_per_minute"`
+	MatchesCount           int64                  `json:"matches_count"`
+	Outcomes               KPIStatsOutcomesStruct `json:"outcomes"`
+	PerformanceScore       *float64               `json:"performance_score,omitempty"`
+	RankDelta              *RankDelta             `json:"rank_delta,omitempty"`
+	TotalPlaySeconds       int64                  `json:"total_play_seconds"`
+}
+
+// KPIStatsOutcomesStruct defines model for KPIStatsOutcomesStruct.
+type KPIStatsOutcomesStruct struct {
+	Dnf    int64 `json:"dnf"`
+	Losses int64 `json:"losses"`
+	Ties   int64 `json:"ties"`
+	Wins   int64 `json:"wins"`
+}
+
+// LUSRCheckpointDTO defines model for LUSRCheckpointDTO.
+type LUSRCheckpointDTO struct {
+	BadgeImageUrl *string    `json:"badge_image_url,omitempty"`
+	PlaylistGroup *string    `json:"playlist_group"`
+	PlaylistName  string     `json:"playlist_name"`
+	RatingDelta   *float64   `json:"rating_delta,omitempty"`
+	RatingType    string     `json:"rating_type"`
+	RatingValue   float64    `json:"rating_value"`
+	RecordedAt    *time.Time `json:"recorded_at"`
+	TierLabel     *string    `json:"tier_label"`
+}
+
+// LUSRSummary defines model for LUSRSummary.
+type LUSRSummary struct {
+	Checkpoints          *[]LUSRCheckpointDTO `json:"checkpoints"`
+	CurrentPlaylistGroup *string              `json:"current_playlist_group"`
+	CurrentRating        *float64             `json:"current_rating"`
+	CurrentTierLabel     *string              `json:"current_tier_label"`
+	TrendLabel           *string              `json:"trend_label"`
+}
+
 // LabelValue defines model for LabelValue.
 type LabelValue struct {
-	Count    *int   `json:"count,omitempty"`
-	Disabled *bool  `json:"disabled,omitempty"`
-	Label    string `json:"label"`
-	Value    string `json:"value"`
+	Count  int64   `json:"count"`
+	Label  string  `json:"label"`
+	Parent *string `json:"parent,omitempty"`
+	Value  string  `json:"value"`
 }
 
 // LeaderboardEntry defines model for LeaderboardEntry.
 type LeaderboardEntry struct {
-	CsrValue  int     `json:"csr_value"`
-	Gamertag  string  `json:"gamertag"`
-	IsLocal   bool    `json:"is_local"`
-	Rank      int     `json:"rank"`
-	SubTier   int     `json:"sub_tier"`
-	Tier      string  `json:"tier"`
-	TitleSlug *string `json:"title_slug,omitempty"`
-	Xuid      *string `json:"xuid,omitempty"`
+	Accuracy             *float64 `json:"accuracy,omitempty"`
+	Assists              *int64   `json:"assists,omitempty"`
+	Category             *string  `json:"category,omitempty"`
+	CsrValue             int64    `json:"csr_value"`
+	CumulativeMatchCount *int64   `json:"cumulative_match_count,omitempty"`
+	DamageDealt          *int64   `json:"damage_dealt,omitempty"`
+	DamageTaken          *int64   `json:"damage_taken,omitempty"`
+	Deaths               *int64   `json:"deaths,omitempty"`
+	DnfCount             *int64   `json:"dnf_count,omitempty"`
+	Gamertag             string   `json:"gamertag"`
+	IsLocal              bool     `json:"is_local"`
+	Kda                  *float64 `json:"kda,omitempty"`
+	KdaTrend             *string  `json:"kda_trend,omitempty"`
+	Kills                *int64   `json:"kills,omitempty"`
+	KillsPerMin          *float64 `json:"kills_per_min,omitempty"`
+	LossCount            *int64   `json:"loss_count,omitempty"`
+	MatchCount           *int64   `json:"match_count,omitempty"`
+	MatchesPlayed        *int64   `json:"matches_played,omitempty"`
+	MedalCount           *int64   `json:"medal_count,omitempty"`
+	Playlist             *string  `json:"playlist,omitempty"`
+	PlaytimeSeconds      *int64   `json:"playtime_seconds,omitempty"`
+	PrevKda              *float64 `json:"prev_kda,omitempty"`
+	PrevSeasonId         *string  `json:"prev_season_id,omitempty"`
+	PrevWinRate          *float64 `json:"prev_win_rate,omitempty"`
+	Rank                 int64    `json:"rank"`
+	RankDelta            *int64   `json:"rank_delta,omitempty"`
+	Season               *string  `json:"season,omitempty"`
+	SubTier              int64    `json:"sub_tier"`
+	TieCount             *int64   `json:"tie_count,omitempty"`
+	Tier                 string   `json:"tier"`
+	TitleSlug            string   `json:"title_slug"`
+	Unit                 *string  `json:"unit,omitempty"`
+	Value                *float64 `json:"value,omitempty"`
+	ValueFormatted       *string  `json:"value_formatted,omitempty"`
+	WinCount             *int64   `json:"win_count,omitempty"`
+	WinRate              *float64 `json:"win_rate,omitempty"`
+	WinRateTrend         *string  `json:"win_rate_trend,omitempty"`
+	Xuid                 string   `json:"xuid"`
 }
 
 // LeaderboardResponse defines model for LeaderboardResponse.
 type LeaderboardResponse struct {
-	Entries    []LeaderboardEntry `json:"entries"`
-	PlaylistId *string            `json:"playlist_id"`
-	SeasonId   *string            `json:"season_id"`
-	TitleSlug  string             `json:"title_slug"`
-	Total      int                `json:"total"`
+	Category   string              `json:"category"`
+	Entries    *[]LeaderboardEntry `json:"entries"`
+	PlaylistId string              `json:"playlist_id"`
+	SeasonId   string              `json:"season_id"`
+	TitleSlug  string              `json:"title_slug"`
+	Total      int64               `json:"total"`
 }
 
-// MSRCSRCoverage Résumé match_skill_rank rating_type='CSR'.
+// MSRCSRCoverage defines model for MSRCSRCoverage.
 type MSRCSRCoverage struct {
-	// CoverageGap Matchs ranked sans row CSR — devrait être 0 après backfill.
-	CoverageGap             int `json:"coverage_gap"`
-	Matured                 int `json:"matured"`
-	Placement               int `json:"placement"`
-	RankedMatchesInRegistry int `json:"ranked_matches_in_registry"`
-	Total                   int `json:"total"`
+	CoverageGap             int64 `json:"coverage_gap"`
+	Matured                 int64 `json:"matured"`
+	Placement               int64 `json:"placement"`
+	RankedMatchesInRegistry int64 `json:"ranked_matches_in_registry"`
+	Total                   int64 `json:"total"`
+}
+
+// MatchAssociatedMedia defines model for MatchAssociatedMedia.
+type MatchAssociatedMedia struct {
+	CaptureTime     *string `json:"capture_time,omitempty"`
+	DurationSeconds *int64  `json:"duration_seconds,omitempty"`
+	FileId          string  `json:"file_id"`
+	FileName        string  `json:"file_name"`
+	FilePath        string  `json:"file_path"`
+	Kind            string  `json:"kind"`
+	Liked           bool    `json:"liked"`
+	ThumbnailUrl    *string `json:"thumbnail_url,omitempty"`
 }
 
 // MatchCitation defines model for MatchCitation.
@@ -1234,61 +1285,103 @@ type MatchCitation struct {
 	Color *string  `json:"color,omitempty"`
 	Key   string   `json:"key"`
 	Label string   `json:"label"`
-	Value *float32 `json:"value,omitempty"`
+	Value *float64 `json:"value,omitempty"`
+}
+
+// MatchCitationSnippet defines model for MatchCitationSnippet.
+type MatchCitationSnippet struct {
+	Cumulative      *int64  `json:"cumulative,omitempty"`
+	Delta           int64   `json:"delta"`
+	Description     *string `json:"description,omitempty"`
+	ImageUrl        *string `json:"image_url,omitempty"`
+	IsNewlyMastered *bool   `json:"is_newly_mastered,omitempty"`
+	Key             string  `json:"key"`
+	Name            string  `json:"name"`
+	NextTierTarget  *int64  `json:"next_tier_target,omitempty"`
+	ProgressPct     float64 `json:"progress_pct"`
+	TierCount       *int64  `json:"tier_count,omitempty"`
+	TierIndex       *int64  `json:"tier_index,omitempty"`
 }
 
 // MatchCitationsTab defines model for MatchCitationsTab.
 type MatchCitationsTab struct {
-	Commendations []MatchCitation `json:"commendations"`
-	Medals        []MatchMedal    `json:"medals"`
+	Commendations *[]MatchCitation `json:"commendations"`
+	Medals        *[]MatchMedal    `json:"medals"`
 }
 
 // MatchCombatTab defines model for MatchCombatTab.
 type MatchCombatTab struct {
-	Charts          []PlotlyFigurePayload `json:"charts"`
-	HighlightEvents []MatchHighlightEvent `json:"highlight_events"`
-	WeaponKills     []MatchWeaponKill     `json:"weapon_kills"`
+	Cadence         *ChartSeriesChartPointStacked `json:"cadence,omitempty"`
+	HighlightEvents *[]MatchHighlightEvent        `json:"highlight_events"`
+	ImpactBadges    *[]MatchImpactBadge           `json:"impact_badges"`
+	ImpactRoles     *[]MatchViewImpactRole        `json:"impact_roles,omitempty"`
+	KdTimeline      *[]MatchKDTimelinePoint       `json:"kd_timeline"`
+	KillerVictim    *[]MatchKillerVictimPair      `json:"killer_victim,omitempty"`
+	NemesisDuels    *[]MatchNemesisRow            `json:"nemesis_duels"`
+	TugOfWar        *[]MatchTugOfWarBin           `json:"tug_of_war"`
+	WeaponKills     *[]MatchWeaponKill            `json:"weapon_kills"`
+}
+
+// MatchEncounterBadge defines model for MatchEncounterBadge.
+type MatchEncounterBadge struct {
+	ColorToken string                  `json:"color_token"`
+	Detail     *map[string]interface{} `json:"detail,omitempty"`
+	Kind       string                  `json:"kind"`
+	LabelKey   string                  `json:"label_key"`
 }
 
 // MatchEncounterRow defines model for MatchEncounterRow.
 type MatchEncounterRow struct {
-	AllyCount      *int       `json:"ally_count,omitempty"`
-	CountTogether  int        `json:"count_together"`
-	DeathsSuffered *int       `json:"deaths_suffered,omitempty"`
-	EnemyCount     *int       `json:"enemy_count,omitempty"`
-	Gamertag       string     `json:"gamertag"`
-	IsAlly         bool       `json:"is_ally"`
-	KillsDealt     *int       `json:"kills_dealt,omitempty"`
-	LastSeenAt     *time.Time `json:"last_seen_at,omitempty"`
-	WinrateAsAlly  *float64   `json:"winrate_as_ally,omitempty"`
-	WinrateVsEnemy *float64   `json:"winrate_vs_enemy,omitempty"`
-	Xuid           string     `json:"xuid"`
+	AllyCount      *int64                 `json:"ally_count,omitempty"`
+	Badges         *[]MatchEncounterBadge `json:"badges,omitempty"`
+	CountTogether  int64                  `json:"count_together"`
+	DeathsSuffered *int64                 `json:"deaths_suffered,omitempty"`
+	EnemyCount     *int64                 `json:"enemy_count,omitempty"`
+	Gamertag       string                 `json:"gamertag"`
+	IsAlly         bool                   `json:"is_ally"`
+	IsBot          *bool                  `json:"is_bot,omitempty"`
+	KillsDealt     *int64                 `json:"kills_dealt,omitempty"`
+	LastSeenAt     *time.Time             `json:"last_seen_at,omitempty"`
+	WinrateAsAlly  *float64               `json:"winrate_as_ally,omitempty"`
+	WinrateVsEnemy *float64               `json:"winrate_vs_enemy,omitempty"`
+	Xuid           string                 `json:"xuid"`
 }
 
 // MatchExpectedStats defines model for MatchExpectedStats.
 type MatchExpectedStats struct {
-	ExpectedDeaths *float32 `json:"expected_deaths,omitempty"`
-	ExpectedKills  *float32 `json:"expected_kills,omitempty"`
+	ExpectedAssists      *float64 `json:"expected_assists,omitempty"`
+	ExpectedDeaths       *float64 `json:"expected_deaths,omitempty"`
+	ExpectedKills        *float64 `json:"expected_kills,omitempty"`
+	ExpectedWinProb      *float64 `json:"expected_win_prob,omitempty"`
+	HasHistAvg           bool     `json:"has_hist_avg"`
+	HistAvgAssists       *float64 `json:"hist_avg_assists,omitempty"`
+	HistAvgDeaths        *float64 `json:"hist_avg_deaths,omitempty"`
+	HistAvgHeadshotKills *float64 `json:"hist_avg_headshot_kills,omitempty"`
+	HistAvgKills         *float64 `json:"hist_avg_kills,omitempty"`
+	HistAvgPerfectKills  *float64 `json:"hist_avg_perfect_kills,omitempty"`
+	HistAvgSpree         *float64 `json:"hist_avg_spree,omitempty"`
+	HistMatchCount       *int64   `json:"hist_match_count,omitempty"`
+	HistModeCategory     *string  `json:"hist_mode_category,omitempty"`
 }
 
 // MatchHighlightEvent defines model for MatchHighlightEvent.
 type MatchHighlightEvent struct {
-	ActorXuid   *string `json:"actor_xuid,omitempty"`
-	EventTimeMs *int    `json:"event_time_ms,omitempty"`
-	EventType   string  `json:"event_type"`
-	TargetXuid  *string `json:"target_xuid,omitempty"`
-	WeaponId    *int    `json:"weapon_id,omitempty"`
+	ActorGamertag *string `json:"actor_gamertag,omitempty"`
+	ActorXuid     *string `json:"actor_xuid,omitempty"`
+	EventTimeMs   *int64  `json:"event_time_ms,omitempty"`
+	EventType     string  `json:"event_type"`
 }
 
 // MatchHistoryPageResponse defines model for MatchHistoryPageResponse.
 type MatchHistoryPageResponse struct {
-	AvailableSortFields []string    `json:"available_sort_fields"`
-	ExportHint          *ExportHint `json:"export_hint,omitempty"`
-
-	// PrivacyWarning Sprint 54-B : avertissement si les matchs du joueur sont privés.
-	PrivacyWarning *MatchPrivacyWarning          `json:"privacy_warning,omitempty"`
-	Summary        MatchHistoryQuerySummary      `json:"summary"`
-	Table          PaginatedMatchHistoryResponse `json:"table"`
+	AvailableColumns    *[]string                `json:"available_columns"`
+	AvailableSortFields *[]string                `json:"available_sort_fields"`
+	BriefingKpis        *KPIStats                `json:"briefing_kpis,omitempty"`
+	ExportHint          ExportHint               `json:"export_hint"`
+	PrivacyWarning      *MatchPrivacyWarning     `json:"privacy_warning,omitempty"`
+	SessionLabels       SessionLabelsList        `json:"session_labels"`
+	Summary             MatchHistoryQuerySummary `json:"summary"`
+	Table               MatchHistoryTable        `json:"table"`
 }
 
 // MatchHistoryQueryRequest defines model for MatchHistoryQueryRequest.
@@ -1301,189 +1394,312 @@ type MatchHistoryQueryRequest struct {
 
 // MatchHistoryQuerySummary defines model for MatchHistoryQuerySummary.
 type MatchHistoryQuerySummary struct {
-	ActiveFilterMode       string  `json:"active_filter_mode"`
-	PeriodLabel            *string `json:"period_label,omitempty"`
-	TotalMatchesScoped     int     `json:"total_matches_scoped"`
-	TotalMatchesUnfiltered int     `json:"total_matches_unfiltered"`
+	ActiveFilterMode         string        `json:"active_filter_mode"`
+	AvailableExperienceTypes *[]string     `json:"available_experience_types,omitempty"`
+	AvailableMaps            *[]string     `json:"available_maps,omitempty"`
+	AvailableModes           *[]string     `json:"available_modes,omitempty"`
+	AvailableOutcomes        *[]LabelValue `json:"available_outcomes,omitempty"`
+	AvailablePerfTiers       *[]LabelValue `json:"available_perf_tiers,omitempty"`
+	AvailablePlaylists       *[]string     `json:"available_playlists,omitempty"`
+	AvailableRankedContexts  *[]LabelValue `json:"available_ranked_contexts,omitempty"`
+	AvailableSkillTiers      *[]LabelValue `json:"available_skill_tiers,omitempty"`
+	AvailableSquadScopes     *[]LabelValue `json:"available_squad_scopes,omitempty"`
+	PeriodLabel              *string       `json:"period_label"`
+	TotalMatchesScoped       int64         `json:"total_matches_scoped"`
+	TotalMatchesUnfiltered   int64         `json:"total_matches_unfiltered"`
 }
 
 // MatchHistoryRow defines model for MatchHistoryRow.
 type MatchHistoryRow struct {
-	AverageLifeMmss          string             `json:"average_life_mmss"`
-	DeltaMmr                 *float32           `json:"delta_mmr,omitempty"`
-	EnemyMmr                 *float32           `json:"enemy_mmr,omitempty"`
-	MapUi                    string             `json:"map_ui"`
-	MatchId                  openapi_types.UUID `json:"match_id"`
-	MatchUrl                 string             `json:"match_url"`
-	ModeUi                   string             `json:"mode_ui"`
-	OutcomeCode              *int               `json:"outcome_code,omitempty"`
-	OutcomeLabel             string             `json:"outcome_label"`
-	PerformanceScoreRelative *int               `json:"performance_score_relative,omitempty"`
-	PlaylistLabel            string             `json:"playlist_label"`
-	ScoreLabel               string             `json:"score_label"`
-	StartTime                time.Time          `json:"start_time"`
-	StartTimeLabel           string             `json:"start_time_label"`
-	TeamMmr                  *float32           `json:"team_mmr,omitempty"`
-	WinRateHist              *float32           `json:"win_rate_hist,omitempty"`
-	WinRateHistTotal         *int               `json:"win_rate_hist_total,omitempty"`
+	Assists                  *int64    `json:"assists,omitempty"`
+	AverageLifeMmss          string    `json:"average_life_mmss"`
+	Deaths                   *int64    `json:"deaths,omitempty"`
+	DeltaMmr                 *float64  `json:"delta_mmr"`
+	DominanceFlag            *int64    `json:"dominance_flag,omitempty"`
+	DurationSeconds          *int64    `json:"duration_seconds,omitempty"`
+	EnemyMmr                 *float64  `json:"enemy_mmr"`
+	ExpectedWinProb          *float64  `json:"expected_win_prob,omitempty"`
+	ExperienceTypeLabel      *string   `json:"experience_type_label,omitempty"`
+	IsExcluded               bool      `json:"is_excluded"`
+	IsWithFriends            bool      `json:"is_with_friends"`
+	Kda                      *float64  `json:"kda,omitempty"`
+	Kills                    *int64    `json:"kills,omitempty"`
+	MapUi                    *string   `json:"map_ui"`
+	MatchId                  string    `json:"match_id"`
+	MatchUrl                 string    `json:"match_url"`
+	ModeUi                   *string   `json:"mode_ui"`
+	OutcomeCode              int64     `json:"outcome_code"`
+	OutcomeLabel             string    `json:"outcome_label"`
+	PerfTier                 *int64    `json:"perf_tier,omitempty"`
+	PerformanceScoreRelative *int64    `json:"performance_score_relative"`
+	PlacementDone            *int64    `json:"placement_done,omitempty"`
+	PlacementTotal           *int64    `json:"placement_total,omitempty"`
+	PlaylistLabel            *string   `json:"playlist_label"`
+	ScoreLabel               string    `json:"score_label"`
+	SkillRatingType          *string   `json:"skill_rating_type,omitempty"`
+	SkillTierLabel           *string   `json:"skill_tier_label,omitempty"`
+	StartTime                time.Time `json:"start_time"`
+	StartTimeLabel           string    `json:"start_time_label"`
+	TeamMmr                  *float64  `json:"team_mmr"`
+	WinRateHist              *float64  `json:"win_rate_hist"`
+	WinRateHistTotal         *int64    `json:"win_rate_hist_total"`
+}
+
+// MatchHistoryTable defines model for MatchHistoryTable.
+type MatchHistoryTable struct {
+	Freshness  *string            `json:"freshness"`
+	Items      *[]MatchHistoryRow `json:"items"`
+	Pagination PaginationMeta     `json:"pagination"`
+}
+
+// MatchImpactBadge defines model for MatchImpactBadge.
+type MatchImpactBadge struct {
+	Key        string  `json:"key"`
+	Label      string  `json:"label"`
+	PlayerXuid *string `json:"player_xuid,omitempty"`
+	TimeMs     *int64  `json:"time_ms,omitempty"`
+	Value      *string `json:"value,omitempty"`
+}
+
+// MatchKDTimelinePoint defines model for MatchKDTimelinePoint.
+type MatchKDTimelinePoint struct {
+	Deaths      int64 `json:"deaths"`
+	Kills       int64 `json:"kills"`
+	TimeSeconds int64 `json:"time_seconds"`
+}
+
+// MatchKillerVictimPair defines model for MatchKillerVictimPair.
+type MatchKillerVictimPair struct {
+	KillCount      int64  `json:"kill_count"`
+	KillerGamertag string `json:"killer_gamertag"`
+	KillerXuid     string `json:"killer_xuid"`
+	VictimGamertag string `json:"victim_gamertag"`
+	VictimXuid     string `json:"victim_xuid"`
 }
 
 // MatchMedal defines model for MatchMedal.
 type MatchMedal struct {
-	Count       int     `json:"count"`
+	Count       int64   `json:"count"`
 	Description *string `json:"description,omitempty"`
-	MedalNameId int     `json:"medal_name_id"`
+	Difficulty  *string `json:"difficulty,omitempty"`
+	ImageUrl    *string `json:"image_url,omitempty"`
+	MedalNameId int64   `json:"medal_name_id"`
 	Name        string  `json:"name"`
 }
 
 // MatchMediaTab defines model for MatchMediaTab.
 type MatchMediaTab struct {
-	MediaItems []AssociatedMediaItem `json:"media_items"`
+	MediaItems *[]MatchAssociatedMedia `json:"media_items"`
 }
 
 // MatchNemesisRow defines model for MatchNemesisRow.
 type MatchNemesisRow struct {
 	Gamertag string `json:"gamertag"`
-	IKilled  int    `json:"i_killed"`
-	KilledMe int    `json:"killed_me"`
+	IKilled  int64  `json:"i_killed"`
+	KilledMe int64  `json:"killed_me"`
 	Xuid     string `json:"xuid"`
 }
 
 // MatchPersonalResult defines model for MatchPersonalResult.
 type MatchPersonalResult struct {
-	OutcomeColor *string `json:"outcome_color,omitempty"`
-	OutcomeLabel *string `json:"outcome_label,omitempty"`
-	RankInTeam   *int    `json:"rank_in_team,omitempty"`
-	Score        *int    `json:"score,omitempty"`
+	OutcomeColor      string  `json:"outcome_color"`
+	OutcomeColorToken *string `json:"outcome_color_token,omitempty"`
+	OutcomeLabel      string  `json:"outcome_label"`
+	RankInTeam        *int64  `json:"rank_in_team,omitempty"`
+	Score             *int64  `json:"score,omitempty"`
 }
 
-// MatchPrivacyInfo Informations de confidentialité des matchs d'un joueur Halo.
+// MatchPrivacyInfo defines model for MatchPrivacyInfo.
 type MatchPrivacyInfo struct {
-	// Hint Message explicatif pour l'utilisateur.
-	Hint      *string `json:"hint,omitempty"`
-	IsPartial *bool   `json:"is_partial,omitempty"`
-	IsPrivate *bool   `json:"is_private,omitempty"`
+	Hint      string `json:"hint"`
+	IsPartial bool   `json:"is_partial"`
+	IsPrivate bool   `json:"is_private"`
 }
 
-// MatchPrivacyWarning Avertissement affiché dans l'UI quand le compte est privé.
+// MatchPrivacyWarning defines model for MatchPrivacyWarning.
 type MatchPrivacyWarning struct {
-	Level   MatchPrivacyWarningLevel `json:"level"`
-	Message string                   `json:"message"`
+	Level   string  `json:"level"`
+	Message *string `json:"message,omitempty"`
 }
-
-// MatchPrivacyWarningLevel defines model for MatchPrivacyWarning.Level.
-type MatchPrivacyWarningLevel string
 
 // MatchRosterRow defines model for MatchRosterRow.
 type MatchRosterRow struct {
-	Assists     *int     `json:"assists,omitempty"`
-	DamageDealt *float32 `json:"damage_dealt,omitempty"`
-	DamageTaken *float32 `json:"damage_taken,omitempty"`
-	Deaths      *int     `json:"deaths,omitempty"`
+	Assists     *int64   `json:"assists,omitempty"`
+	DamageDealt *float64 `json:"damage_dealt,omitempty"`
+	DamageTaken *float64 `json:"damage_taken,omitempty"`
+	Deaths      *int64   `json:"deaths,omitempty"`
 	Gamertag    string   `json:"gamertag"`
-	IsBot       *bool    `json:"is_bot,omitempty"`
-	IsMe        *bool    `json:"is_me,omitempty"`
-	Kda         *float32 `json:"kda,omitempty"`
-	Kills       *int     `json:"kills,omitempty"`
+	IsBot       bool     `json:"is_bot"`
+	IsMe        bool     `json:"is_me"`
+	Kda         *float64 `json:"kda,omitempty"`
+	Kills       *int64   `json:"kills,omitempty"`
 	TeamSide    *string  `json:"team_side,omitempty"`
 	Xuid        string   `json:"xuid"`
 }
 
 // MatchScoreboardRow defines model for MatchScoreboardRow.
 type MatchScoreboardRow struct {
-	Assists          *int     `json:"assists,omitempty"`
-	AverageLife      *string  `json:"average_life,omitempty"`
-	Betrayals        *int     `json:"betrayals,omitempty"`
-	DamageDealt      *float32 `json:"damage_dealt,omitempty"`
-	DamageEfficiency *float32 `json:"damage_efficiency,omitempty"`
-	DamageTaken      *float32 `json:"damage_taken,omitempty"`
-	Deaths           *int     `json:"deaths,omitempty"`
-	Gamertag         string   `json:"gamertag"`
-	HeadshotKills    *int     `json:"headshot_kills,omitempty"`
-	IsMe             *bool    `json:"is_me,omitempty"`
-	Kills            *int     `json:"kills,omitempty"`
-	MaxKillingSpree  *int     `json:"max_killing_spree,omitempty"`
-	MeleeKills       *int     `json:"melee_kills,omitempty"`
-	ObjectivesStolen *int     `json:"objectives_stolen,omitempty"`
-	OutcomeLabel     *string  `json:"outcome_label,omitempty"`
-	PerfectKills     *int     `json:"perfect_kills,omitempty"`
-	PowerWeaponKills *int     `json:"power_weapon_kills,omitempty"`
-	Rank             *int     `json:"rank,omitempty"`
-	ShotsAccuracy    *float32 `json:"shots_accuracy,omitempty"`
-	ShotsFired       *int     `json:"shots_fired,omitempty"`
-	ShotsHit         *int     `json:"shots_hit,omitempty"`
-	Suicides         *int     `json:"suicides,omitempty"`
-	TeamSide         *string  `json:"team_side,omitempty"`
-	Xuid             string   `json:"xuid"`
+	Accuracy            *float64                  `json:"accuracy,omitempty"`
+	Assists             *int64                    `json:"assists,omitempty"`
+	AvgLifeSeconds      *float64                  `json:"avg_life_seconds,omitempty"`
+	DamageDealt         *float64                  `json:"damage_dealt,omitempty"`
+	DamagePerDeath      *float64                  `json:"damage_per_death,omitempty"`
+	DamagePerKill       *float64                  `json:"damage_per_kill,omitempty"`
+	DamageTaken         *float64                  `json:"damage_taken,omitempty"`
+	Deaths              *int64                    `json:"deaths,omitempty"`
+	DeathsStddev        *float64                  `json:"deaths_stddev,omitempty"`
+	DefensiveResistance *float64                  `json:"defensive_resistance,omitempty"`
+	ExpectedAssists     *float64                  `json:"expected_assists,omitempty"`
+	ExpectedDeaths      *float64                  `json:"expected_deaths,omitempty"`
+	ExpectedKills       *float64                  `json:"expected_kills,omitempty"`
+	Gamertag            string                    `json:"gamertag"`
+	GrenadeKills        *int64                    `json:"grenade_kills,omitempty"`
+	HadBotTeammate      *bool                     `json:"had_bot_teammate,omitempty"`
+	HeadshotKills       *int64                    `json:"headshot_kills,omitempty"`
+	IsBot               *bool                     `json:"is_bot,omitempty"`
+	IsLvp               *bool                     `json:"is_lvp,omitempty"`
+	IsMe                bool                      `json:"is_me"`
+	IsMvp               *bool                     `json:"is_mvp,omitempty"`
+	Kda                 *float64                  `json:"kda,omitempty"`
+	Kills               *int64                    `json:"kills,omitempty"`
+	KillsStddev         *float64                  `json:"kills_stddev,omitempty"`
+	MaxKillingSpree     *int64                    `json:"max_killing_spree,omitempty"`
+	Medals              *[]PlayerMedalRow         `json:"medals,omitempty"`
+	MeleeKills          *int64                    `json:"melee_kills,omitempty"`
+	OffensiveConversion *float64                  `json:"offensive_conversion,omitempty"`
+	OutcomeLabel        string                    `json:"outcome_label"`
+	PerfectKills        *int64                    `json:"perfect_kills,omitempty"`
+	PerformanceScore    *float64                  `json:"performance_score,omitempty"`
+	PowerWeaponKills    *int64                    `json:"power_weapon_kills,omitempty"`
+	Rank                *int64                    `json:"rank,omitempty"`
+	Score               *int64                    `json:"score,omitempty"`
+	ShotsFired          *int64                    `json:"shots_fired,omitempty"`
+	ShotsHit            *int64                    `json:"shots_hit,omitempty"`
+	SkillRank           *MatchScoreboardSkillRank `json:"skill_rank,omitempty"`
+	TeamSide            *string                   `json:"team_side,omitempty"`
+	TopWeaponId         *int64                    `json:"top_weapon_id,omitempty"`
+	TopWeaponLabel      *string                   `json:"top_weapon_label,omitempty"`
+	WeaponKills         *[]PlayerWeaponKillRow    `json:"weapon_kills,omitempty"`
+	Xuid                string                    `json:"xuid"`
+}
+
+// MatchScoreboardSkillRank defines model for MatchScoreboardSkillRank.
+type MatchScoreboardSkillRank struct {
+	IconUrl     *string  `json:"icon_url,omitempty"`
+	RatingDelta *float64 `json:"rating_delta,omitempty"`
+	RatingType  string   `json:"rating_type"`
+	RatingValue *float64 `json:"rating_value,omitempty"`
+	TierLabel   *string  `json:"tier_label,omitempty"`
 }
 
 // MatchSummaryKpis defines model for MatchSummaryKpis.
 type MatchSummaryKpis struct {
-	Assists     *int     `json:"assists,omitempty"`
-	AverageLife *string  `json:"average_life,omitempty"`
-	DamageDealt *float32 `json:"damage_dealt,omitempty"`
-	Deaths      *int     `json:"deaths,omitempty"`
-	Kda         *float32 `json:"kda,omitempty"`
-	Kills       *int     `json:"kills,omitempty"`
+	Accuracy        *float64 `json:"accuracy,omitempty"`
+	Assists         *int64   `json:"assists,omitempty"`
+	AverageLife     *string  `json:"average_life,omitempty"`
+	DamageDealt     *float64 `json:"damage_dealt,omitempty"`
+	Deaths          *int64   `json:"deaths,omitempty"`
+	DeltaMmr        *float64 `json:"delta_mmr,omitempty"`
+	EnemyMmr        *float64 `json:"enemy_mmr,omitempty"`
+	HeadshotKills   *int64   `json:"headshot_kills,omitempty"`
+	Kda             *float64 `json:"kda,omitempty"`
+	Kills           *int64   `json:"kills,omitempty"`
+	MaxKillingSpree *int64   `json:"max_killing_spree,omitempty"`
+	PerfectKills    *int64   `json:"perfect_kills,omitempty"`
+	PersonalScore   *int64   `json:"personal_score,omitempty"`
+	TeamMmr         *float64 `json:"team_mmr,omitempty"`
 }
 
 // MatchSummaryTab defines model for MatchSummaryTab.
 type MatchSummaryTab struct {
-	Citations      []MatchCitation     `json:"citations"`
-	ExpectedStats  *MatchExpectedStats `json:"expected_stats,omitempty"`
-	Kpis           MatchSummaryKpis    `json:"kpis"`
-	Medals         []MatchMedal        `json:"medals"`
-	PersonalResult MatchPersonalResult `json:"personal_result"`
+	Citations      *[]MatchCitationSnippet `json:"citations"`
+	ExpectedStats  MatchExpectedStats      `json:"expected_stats"`
+	Kpis           MatchSummaryKpis        `json:"kpis"`
+	Medals         *[]MatchMedal           `json:"medals"`
+	PersonalResult MatchPersonalResult     `json:"personal_result"`
 }
 
 // MatchTeamTab defines model for MatchTeamTab.
 type MatchTeamTab struct {
-	Encounters []MatchEncounterRow  `json:"encounters"`
-	Nemesis    []MatchNemesisRow    `json:"nemesis"`
-	Roster     []MatchRosterRow     `json:"roster"`
-	Scoreboard []MatchScoreboardRow `json:"scoreboard"`
+	Encounters *[]MatchEncounterRow  `json:"encounters"`
+	Nemesis    *[]MatchNemesisRow    `json:"nemesis"`
+	Roster     *[]MatchRosterRow     `json:"roster"`
+	Scoreboard *[]MatchScoreboardRow `json:"scoreboard"`
+}
+
+// MatchTugOfWarBin defines model for MatchTugOfWarBin.
+type MatchTugOfWarBin struct {
+	BinEnd     int64 `json:"bin_end"`
+	BinStart   int64 `json:"bin_start"`
+	EnemyKills int64 `json:"enemy_kills"`
+	NetKills   int64 `json:"net_kills"`
+	TeamKills  int64 `json:"team_kills"`
+}
+
+// MatchViewDominanceBadge defines model for MatchViewDominanceBadge.
+type MatchViewDominanceBadge struct {
+	ColorToken string `json:"color_token"`
+	Flag       int64  `json:"flag"`
+	LabelKey   string `json:"label_key"`
 }
 
 // MatchViewHeader defines model for MatchViewHeader.
 type MatchViewHeader struct {
-	DominanceFlag      *bool              `json:"dominance_flag,omitempty"`
-	HadBotTeammate     *bool              `json:"had_bot_teammate,omitempty"`
-	MapId              *string            `json:"map_id,omitempty"`
-	MapUi              *string            `json:"map_ui,omitempty"`
-	MatchId            openapi_types.UUID `json:"match_id"`
-	ModeUi             *string            `json:"mode_ui,omitempty"`
-	OutcomeCode        *int               `json:"outcome_code,omitempty"`
-	OutcomeColor       *string            `json:"outcome_color,omitempty"`
-	OutcomeLabel       *string            `json:"outcome_label,omitempty"`
-	PerformanceColor   *string            `json:"performance_color,omitempty"`
-	PerformanceDisplay *string            `json:"performance_display,omitempty"`
-	PlaylistLabel      *string            `json:"playlist_label,omitempty"`
-	ScoreLabel         *string            `json:"score_label,omitempty"`
-	StartTime          *time.Time         `json:"start_time,omitempty"`
-	StartTimeLabel     *string            `json:"start_time_label,omitempty"`
+	DominanceBadge          *MatchViewDominanceBadge `json:"dominance_badge,omitempty"`
+	DominanceFlag           bool                     `json:"dominance_flag"`
+	HadBotTeammate          bool                     `json:"had_bot_teammate"`
+	IsExcluded              bool                     `json:"is_excluded"`
+	IsFavorite              bool                     `json:"is_favorite"`
+	IsRanked                bool                     `json:"is_ranked"`
+	MapId                   *string                  `json:"map_id,omitempty"`
+	MapImageUrl             *string                  `json:"map_image_url,omitempty"`
+	MapUi                   string                   `json:"map_ui"`
+	MatchId                 string                   `json:"match_id"`
+	ModeUi                  string                   `json:"mode_ui"`
+	OutcomeCode             *int64                   `json:"outcome_code,omitempty"`
+	OutcomeColor            string                   `json:"outcome_color"`
+	OutcomeColorToken       *string                  `json:"outcome_color_token,omitempty"`
+	OutcomeLabel            string                   `json:"outcome_label"`
+	PerformanceColor        *string                  `json:"performance_color,omitempty"`
+	PerformanceColorToken   *string                  `json:"performance_color_token,omitempty"`
+	PerformanceDisplay      string                   `json:"performance_display"`
+	PlayableDurationSeconds *int64                   `json:"playable_duration_seconds,omitempty"`
+	PlaylistLabel           string                   `json:"playlist_label"`
+	ScoreLabel              *string                  `json:"score_label,omitempty"`
+	StartTime               *time.Time               `json:"start_time,omitempty"`
+	StartTimeLabel          string                   `json:"start_time_label"`
+	WaypointUrl             *string                  `json:"waypoint_url,omitempty"`
+}
+
+// MatchViewImpactRole defines model for MatchViewImpactRole.
+type MatchViewImpactRole struct {
+	ColorToken string `json:"color_token"`
+	Inverted   *bool  `json:"inverted,omitempty"`
+	LabelKey   string `json:"label_key"`
+	RoleKey    string `json:"role_key"`
+	Xuid       string `json:"xuid"`
 }
 
 // MatchViewRank defines model for MatchViewRank.
 type MatchViewRank struct {
-	DeltaValue   *float32                 `json:"delta_value,omitempty"`
-	IconUrl      *string                  `json:"icon_url,omitempty"`
-	NumericValue *float32                 `json:"numeric_value,omitempty"`
-	RatingType   *MatchViewRankRatingType `json:"rating_type,omitempty"`
-	TierLabel    *string                  `json:"tier_label,omitempty"`
+	DeltaValue   *float64 `json:"delta_value,omitempty"`
+	IconUrl      *string  `json:"icon_url,omitempty"`
+	NumericValue *float64 `json:"numeric_value,omitempty"`
+	ProgressPct  *float64 `json:"progress_pct,omitempty"`
+	RatingType   string   `json:"rating_type"`
+	TierLabel    *string  `json:"tier_label,omitempty"`
 }
-
-// MatchViewRankRatingType defines model for MatchViewRank.RatingType.
-type MatchViewRankRatingType string
 
 // MatchViewResponse defines model for MatchViewResponse.
 type MatchViewResponse struct {
-	CitationsTab MatchCitationsTab `json:"citations_tab"`
-	CombatTab    MatchCombatTab    `json:"combat_tab"`
-	Header       MatchViewHeader   `json:"header"`
-	MediaTab     MatchMediaTab     `json:"media_tab"`
-
-	// PrivacyWarning Sprint 54-B : avertissement si les matchs du joueur sont privés.
+	CitationsTab   MatchCitationsTab    `json:"citations_tab"`
+	CombatTab      MatchCombatTab       `json:"combat_tab"`
+	Header         MatchViewHeader      `json:"header"`
+	IsPartial      *bool                `json:"is_partial,omitempty"`
+	MediaTab       MatchMediaTab        `json:"media_tab"`
+	PartialReasons *[]string            `json:"partial_reasons,omitempty"`
 	PrivacyWarning *MatchPrivacyWarning `json:"privacy_warning,omitempty"`
+	Radar          *[]interface{}       `json:"radar,omitempty"`
 	Rank           MatchViewRank        `json:"rank"`
 	SummaryTab     MatchSummaryTab      `json:"summary_tab"`
 	TeamTab        MatchTeamTab         `json:"team_tab"`
@@ -1491,10 +1707,22 @@ type MatchViewResponse struct {
 
 // MatchWeaponKill defines model for MatchWeaponKill.
 type MatchWeaponKill struct {
-	EffectiveWeaponId *int   `json:"effective_weapon_id,omitempty"`
-	KillCount         int    `json:"kill_count"`
-	WeaponId          int    `json:"weapon_id"`
-	WeaponLabel       string `json:"weapon_label"`
+	KillCount   int64  `json:"kill_count"`
+	WeaponId    int64  `json:"weapon_id"`
+	WeaponLabel string `json:"weapon_label"`
+}
+
+// MedalDigestItem defines model for MedalDigestItem.
+type MedalDigestItem struct {
+	Category      *string `json:"category,omitempty"`
+	Description   *string `json:"description,omitempty"`
+	Difficulty    *string `json:"difficulty,omitempty"`
+	ImageUrl      *string `json:"image_url,omitempty"`
+	Label         *string `json:"label,omitempty"`
+	MatchCount    int64   `json:"match_count"`
+	MedalId       int64   `json:"medal_id"`
+	PersonalScore *int64  `json:"personal_score,omitempty"`
+	TotalCount    int64   `json:"total_count"`
 }
 
 // MediaItemRow defines model for MediaItemRow.
@@ -1555,44 +1783,46 @@ type MediaPageResponse struct {
 	TotalUnassigned int            `json:"total_unassigned"`
 }
 
-// NormalizedPlayerStats Stats normalisées d'un joueur pour la comparaison.
+// NormalizedPlayerStats defines model for NormalizedPlayerStats.
 type NormalizedPlayerStats struct {
-	AvgAccuracy      *float32 `json:"avg_accuracy,omitempty"`
-	AvgAssists       *float32 `json:"avg_assists,omitempty"`
-	AvgDamageDealt   *float32 `json:"avg_damage_dealt,omitempty"`
-	AvgDamageTaken   *float32 `json:"avg_damage_taken,omitempty"`
-	AvgDeaths        *float32 `json:"avg_deaths,omitempty"`
-	AvgKills         *float32 `json:"avg_kills,omitempty"`
-	AvgMedals        *float32 `json:"avg_medals,omitempty"`
-	AvgScore         *float32 `json:"avg_score,omitempty"`
-	AvgTimePlayedSec *float32 `json:"avg_time_played_sec,omitempty"`
-	Gamertag         *string  `json:"gamertag,omitempty"`
-	IsLocal          *bool    `json:"is_local,omitempty"`
-	KdRatio          *float32 `json:"kd_ratio,omitempty"`
-	TotalMatches     *int     `json:"total_matches,omitempty"`
-	WinRate          *float32 `json:"win_rate,omitempty"`
-}
-
-// PaginatedExplorerMatchesResponse defines model for PaginatedExplorerMatchesResponse.
-type PaginatedExplorerMatchesResponse struct {
-	Items      []ExplorerMatchRow `json:"items"`
-	Pagination PaginationMeta     `json:"pagination"`
-}
-
-// PaginatedMatchHistoryResponse defines model for PaginatedMatchHistoryResponse.
-type PaginatedMatchHistoryResponse struct {
-	Freshness  *FreshnessInfo    `json:"freshness,omitempty"`
-	Items      []MatchHistoryRow `json:"items"`
-	Pagination PaginationMeta    `json:"pagination"`
+	Accuracy               float64                 `json:"accuracy"`
+	AssistsPerGame         float64                 `json:"assists_per_game"`
+	AvgLifeSecs            float64                 `json:"avg_life_secs"`
+	CareerRank             int64                   `json:"career_rank"`
+	CareerRankLabel        *string                 `json:"career_rank_label,omitempty"`
+	DamagePerGame          float64                 `json:"damage_per_game"`
+	DamageTakenPerGame     float64                 `json:"damage_taken_per_game"`
+	DeathsPerGame          float64                 `json:"deaths_per_game"`
+	Extended               *map[string]interface{} `json:"extended,omitempty"`
+	Gamertag               string                  `json:"gamertag"`
+	HeadshotKillsPerGame   float64                 `json:"headshot_kills_per_game"`
+	HighestCsr             float64                 `json:"highest_csr"`
+	HighestCsrAllTime      float64                 `json:"highest_csr_all_time"`
+	HighestCsrAllTimeLabel *string                 `json:"highest_csr_all_time_label,omitempty"`
+	HighestCsrLabel        *string                 `json:"highest_csr_label,omitempty"`
+	IsLocal                bool                    `json:"is_local"`
+	IsLocalSample          *bool                   `json:"is_local_sample,omitempty"`
+	Kda                    float64                 `json:"kda"`
+	Kdr                    float64                 `json:"kdr"`
+	KillsPerGame           float64                 `json:"kills_per_game"`
+	LusrAth                float64                 `json:"lusr_ath"`
+	Matches                int64                   `json:"matches"`
+	MaxKillingSpree        int64                   `json:"max_killing_spree"`
+	PerfAth                float64                 `json:"perf_ath"`
+	PerfectKillsPerGame    float64                 `json:"perfect_kills_per_game"`
+	TimePlayedSeconds      *int64                  `json:"time_played_seconds,omitempty"`
+	TitleSlug              string                  `json:"title_slug"`
+	WinRate                float64                 `json:"win_rate"`
+	Xuid                   string                  `json:"xuid"`
 }
 
 // PaginationMeta defines model for PaginationMeta.
 type PaginationMeta struct {
-	HasNext  bool `json:"has_next"`
-	HasPrev  bool `json:"has_prev"`
-	Page     int  `json:"page"`
-	PageSize int  `json:"page_size"`
-	Total    int  `json:"total"`
+	HasNext  bool  `json:"has_next"`
+	HasPrev  bool  `json:"has_prev"`
+	Page     int64 `json:"page"`
+	PageSize int64 `json:"page_size"`
+	Total    int64 `json:"total"`
 }
 
 // PaginationRequest defines model for PaginationRequest.
@@ -1603,61 +1833,105 @@ type PaginationRequest struct {
 
 // PeriodInput defines model for PeriodInput.
 type PeriodInput struct {
-	EndDate   *openapi_types.Date `json:"end_date,omitempty"`
-	StartDate *openapi_types.Date `json:"start_date,omitempty"`
+	EndDate   *time.Time `json:"end_date"`
+	StartDate *time.Time `json:"start_date"`
+}
+
+// PeriodPresetCount defines model for PeriodPresetCount.
+type PeriodPresetCount struct {
+	Count    int64  `json:"count"`
+	Days     int64  `json:"days"`
+	PresetId string `json:"preset_id"`
+}
+
+// PlayerMedalRow defines model for PlayerMedalRow.
+type PlayerMedalRow struct {
+	Count      int64   `json:"count"`
+	Difficulty *string `json:"difficulty,omitempty"`
+	ImageUrl   *string `json:"image_url,omitempty"`
+	Label      *string `json:"label,omitempty"`
+	MedalId    int64   `json:"medal_id"`
 }
 
 // PlayerSummary defines model for PlayerSummary.
 type PlayerSummary struct {
-	Gamertag       string `json:"gamertag"`
-	IsDemo         *bool  `json:"is_demo,omitempty"`
-	PlayerSlug     string `json:"player_slug"`
-	WaypointPlayer string `json:"waypoint_player"`
-	Xuid           string `json:"xuid"`
+	Gamertag       string  `json:"gamertag"`
+	IsDemo         bool    `json:"is_demo"`
+	PlayerSlug     string  `json:"player_slug"`
+	SteamId        *string `json:"steam_id,omitempty"`
+	TitleSlug      *string `json:"title_slug,omitempty"`
+	WaypointPlayer string  `json:"waypoint_player"`
+	Xuid           string  `json:"xuid"`
+}
+
+// PlayerWeaponKillRow defines model for PlayerWeaponKillRow.
+type PlayerWeaponKillRow struct {
+	ImageUrl *string `json:"image_url,omitempty"`
+	Kills    int64   `json:"kills"`
+	Label    *string `json:"label,omitempty"`
+	WeaponId int64   `json:"weapon_id"`
 }
 
 // PlayersListResponse defines model for PlayersListResponse.
 type PlayersListResponse struct {
-	DefaultPlayerSlug *string         `json:"default_player_slug,omitempty"`
-	Items             []PlayerSummary `json:"items"`
+	DefaultPlayerSlug *string          `json:"default_player_slug"`
+	Items             *[]PlayerSummary `json:"items"`
 }
 
-// PlotlyFigurePayload defines model for PlotlyFigurePayload.
-type PlotlyFigurePayload struct {
-	ConfigKey *PlotlyFigurePayloadConfigKey `json:"config_key,omitempty"`
-
-	// Figure fig.to_plotly_json() — data + layout + frames
-	Figure      map[string]interface{} `json:"figure"`
-	RevisionKey *string                `json:"revision_key,omitempty"`
-}
-
-// PlotlyFigurePayloadConfigKey defines model for PlotlyFigurePayload.ConfigKey.
-type PlotlyFigurePayloadConfigKey string
-
-// ProgressionDiag État des tables progression V2 (Ascension) pour un joueur — Phase 4
-// plan stabilisation 2026-05-22. Counts sur streak/player_records/
-// record_history/milestone_earned/milestone_catalog. Si tous les counts
-// joueur sont à 0 après plusieurs cycles auto-sync (15 min × N), le
-// pipeline V2 n'est pas câblé.
+// ProgressionDiag defines model for ProgressionDiag.
 type ProgressionDiag struct {
-	// MilestoneCatalogCount Catalogue référentiel des milestones (metadata.duckdb).
-	MilestoneCatalogCount int `json:"milestone_catalog_count"`
+	MilestoneCatalogCount int64   `json:"milestone_catalog_count"`
+	MilestoneEarnedCount  int64   `json:"milestone_earned_count"`
+	PipelineWiredAt       *string `json:"pipeline_wired_at,omitempty"`
+	PlayerRecordsCount    int64   `json:"player_records_count"`
+	PlayerSlug            string  `json:"player_slug"`
+	RecordHistoryCount    int64   `json:"record_history_count"`
+	StreakCount           int64   `json:"streak_count"`
+}
 
-	// MilestoneEarnedCount Milestones débloqués par le joueur.
-	MilestoneEarnedCount int `json:"milestone_earned_count"`
+// RankDelta defines model for RankDelta.
+type RankDelta struct {
+	Count int64   `json:"count"`
+	Kind  string  `json:"kind"`
+	Value float64 `json:"value"`
+}
 
-	// PipelineWiredAt Timestamp du dernier post-sync delta (sync_meta).
-	PipelineWiredAt *string `json:"pipeline_wired_at,omitempty"`
+// SeasonCalendar defines model for SeasonCalendar.
+type SeasonCalendar struct {
+	ContentHash string     `json:"content_hash"`
+	EndDate     *time.Time `json:"end_date,omitempty"`
+	Etag        *string    `json:"etag,omitempty"`
+	FetchedAt   time.Time  `json:"fetched_at"`
+	Name        string     `json:"name"`
+	SeasonId    string     `json:"season_id"`
+	SourceUrl   *string    `json:"source_url,omitempty"`
+	StartDate   time.Time  `json:"start_date"`
+	TitleId     string     `json:"title_id"`
+	Version     string     `json:"version"`
+}
 
-	// PlayerRecordsCount PB du joueur dans shared_social.player_records.
-	PlayerRecordsCount int    `json:"player_records_count"`
-	PlayerSlug         string `json:"player_slug"`
+// SeasonCount defines model for SeasonCount.
+type SeasonCount struct {
+	Count    int64  `json:"count"`
+	SeasonId string `json:"season_id"`
+}
 
-	// RecordHistoryCount Historique de records dans la player DB.
-	RecordHistoryCount int `json:"record_history_count"`
+// SeasonMatchCount defines model for SeasonMatchCount.
+type SeasonMatchCount struct {
+	CsrBadgeImageUrl *string `json:"csr_badge_image_url,omitempty"`
+	CsrSubTier       *int64  `json:"csr_sub_tier,omitempty"`
+	CsrTier          *string `json:"csr_tier,omitempty"`
+	Matches          int64   `json:"matches"`
+	SeasonId         string  `json:"season_id"`
+	SeasonName       string  `json:"season_name"`
+}
 
-	// StreakCount Rows dans la table streak (player DB).
-	StreakCount int `json:"streak_count"`
+// SeasonSynthetic defines model for SeasonSynthetic.
+type SeasonSynthetic struct {
+	IsFallback bool      `json:"is_fallback"`
+	Name       string    `json:"name"`
+	SeasonId   string    `json:"season_id"`
+	StartDate  time.Time `json:"start_date"`
 }
 
 // SessionContextRequest defines model for SessionContextRequest.
@@ -1673,45 +1947,62 @@ type SessionContextRequestLocale string
 
 // SessionContextResponse defines model for SessionContextResponse.
 type SessionContextResponse struct {
-	AuthReady         bool           `json:"auth_ready"`
-	AvailableTitles   []TitleSummary `json:"available_titles"`
-	CurrentPlayerSlug *string        `json:"current_player_slug,omitempty"`
-	CurrentTitleSlug  string         `json:"current_title_slug"`
-	HintsVisible      bool           `json:"hints_visible"`
-	Locale            string         `json:"locale"`
+	AuthReady         bool            `json:"auth_ready"`
+	AvailableTitles   *[]TitleSummary `json:"available_titles"`
+	CurrentPlayerSlug *string         `json:"current_player_slug,omitempty"`
+	CurrentTitleSlug  string          `json:"current_title_slug"`
+	HintsVisible      bool            `json:"hints_visible"`
+	Locale            string          `json:"locale"`
+}
+
+// SessionLabelEntry defines model for SessionLabelEntry.
+type SessionLabelEntry struct {
+	EndedAt     time.Time `json:"ended_at"`
+	Experiences *[]string `json:"experiences,omitempty"`
+	Label       string    `json:"label"`
+	Playlists   *[]string `json:"playlists,omitempty"`
+	StartedAt   time.Time `json:"started_at"`
+}
+
+// SessionLabelsList defines model for SessionLabelsList.
+type SessionLabelsList struct {
+	Solo  *[]SessionLabelEntry `json:"solo"`
+	Squad *[]SessionLabelEntry `json:"squad"`
 }
 
 // SessionOption defines model for SessionOption.
 type SessionOption struct {
-	IsSquad    bool   `json:"is_squad"`
-	Label      string `json:"label"`
-	MatchCount int    `json:"match_count"`
-	SessionId  string `json:"session_id"`
+	EndedAtUtc         time.Time `json:"ended_at_utc"`
+	IsSquad            bool      `json:"is_squad"`
+	Label              string    `json:"label"`
+	MatchCount         int64     `json:"match_count"`
+	MatchCountFiltered int64     `json:"match_count_filtered"`
+	SessionId          string    `json:"session_id"`
+	StartedAtUtc       time.Time `json:"started_at_utc"`
 }
 
 // SessionOptions defines model for SessionOptions.
 type SessionOptions struct {
-	AllSessions *[]SessionOption `json:"all_sessions,omitempty"`
-	SoloLabels  *[]string        `json:"solo_labels,omitempty"`
-	SquadLabels *[]string        `json:"squad_labels,omitempty"`
+	AllSessions *[]SessionOption `json:"all_sessions"`
+	SoloLabels  *[]string        `json:"solo_labels"`
+	SquadLabels *[]string        `json:"squad_labels"`
 }
 
-// SessionsInput defines model for SessionsInput.
-type SessionsInput struct {
-	// GapMinutes Invariant: toujours 120 dans le code actuel.
-	GapMinutes              *int      `json:"gap_minutes,omitempty"`
-	PickedSessionLabel      *string   `json:"picked_session_label,omitempty"`
-	PickedSessions          *[]string `json:"picked_sessions,omitempty"`
-	PickedSoloSessionLabel  *string   `json:"picked_solo_session_label,omitempty"`
-	PickedSquadSessionLabel *string   `json:"picked_squad_session_label,omitempty"`
+// SessionsFilter defines model for SessionsFilter.
+type SessionsFilter struct {
+	GapMinutes              int64     `json:"gap_minutes"`
+	PickedSessionLabel      *string   `json:"picked_session_label"`
+	PickedSessions          *[]string `json:"picked_sessions"`
+	PickedSoloSessionLabel  *string   `json:"picked_solo_session_label"`
+	PickedSquadSessionLabel *string   `json:"picked_squad_session_label"`
 }
 
 // SettingsExcerpt defines model for SettingsExcerpt.
 type SettingsExcerpt struct {
-	Lang                *string `json:"lang,omitempty"`
-	NormalizeModeLabels *bool   `json:"normalize_mode_labels,omitempty"`
-	ShowRecords         *bool   `json:"show_records,omitempty"`
-	UserTimezone        *string `json:"user_timezone,omitempty"`
+	Lang                string `json:"lang"`
+	NormalizeModeLabels bool   `json:"normalize_mode_labels"`
+	ShowRecords         bool   `json:"show_records"`
+	UserTimezone        string `json:"user_timezone"`
 }
 
 // SettingsResponse Configuration de l'application (GET/PATCH /settings)
@@ -1759,6 +2050,15 @@ type SettingsResponseDiscordLang string
 // SettingsResponseLang defines model for SettingsResponse.Lang.
 type SettingsResponseLang string
 
+// TemporalHeatmapCell defines model for TemporalHeatmapCell.
+type TemporalHeatmapCell struct {
+	Count   int64   `json:"count"`
+	Dow     int64   `json:"dow"`
+	Hour    int64   `json:"hour"`
+	WinRate float64 `json:"win_rate"`
+	Wins    int64   `json:"wins"`
+}
+
 // TitleSummary defines model for TitleSummary.
 type TitleSummary struct {
 	Capabilities []string           `json:"capabilities"`
@@ -1771,6 +2071,35 @@ type TitleSummary struct {
 
 // TitleSummaryStatus defines model for TitleSummary.Status.
 type TitleSummaryStatus string
+
+// TopMatchDTO defines model for TopMatchDTO.
+type TopMatchDTO struct {
+	Deaths           int64    `json:"deaths"`
+	Kda              *float64 `json:"kda"`
+	Kills            int64    `json:"kills"`
+	MapUi            *string  `json:"map_ui"`
+	MatchId          string   `json:"match_id"`
+	ModeUi           *string  `json:"mode_ui"`
+	OutcomeCode      int64    `json:"outcome_code"`
+	OutcomeLabel     string   `json:"outcome_label"`
+	PerformanceScore float64  `json:"performance_score"`
+}
+
+// WeaponHighlight defines model for WeaponHighlight.
+type WeaponHighlight struct {
+	Kills    int64  `json:"kills"`
+	LabelEn  string `json:"label_en"`
+	LabelFr  string `json:"label_fr"`
+	WeaponId int64  `json:"weapon_id"`
+}
+
+// XPHistoryPoint defines model for XPHistoryPoint.
+type XPHistoryPoint struct {
+	CurrentXp  int64     `json:"current_xp"`
+	Rank       int64     `json:"rank"`
+	RecordedAt time.Time `json:"recorded_at"`
+	XpTotal    int64     `json:"xp_total"`
+}
 
 // PlayerSlug defines model for PlayerSlug.
 type PlayerSlug = string
