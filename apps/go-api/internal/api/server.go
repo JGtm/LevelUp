@@ -186,15 +186,25 @@ func NewRouter(
 	r.Use(middleware.WithSession(sessionStore, cookiePolicy))
 
 	// Sprint 44 : TitleExtractor — injecte title_slug dans le contexte.
-	titleRegistry := titlePkg.NewRegistry()
+	// MT-16 / day-one 2e titre : registre PARTAGÉ piloté par config (built-in
+	// halo_infinite + titres additionnels découverts en config/titles). Posé par
+	// SetDefaultRegistry au boot ; retombe sur le built-in mono-titre en test/CLI.
+	titleRegistry := titlePkg.DefaultRegistry()
 	r.Use(middleware.TitleExtractor(titleRegistry))
 
 	// Phase A multi-titres : chargement des FieldMappingSet TOML par titre.
 	// Erreur de chargement → log mais ne bloque pas le boot (les autres titres
 	// restent disponibles). L'endpoint /field-mappings n'est exposé que si le
-	// flag MULTI_TITLE_API_ENABLED est activé.
+	// flag MULTI_TITLE_API_ENABLED est activé. Les slugs viennent du registre
+	// (non-archivés) → un 2e titre config charge automatiquement ses mappings.
 	fieldMappingsRegistry := mappings.NewRegistry()
-	multiTitleSlugs := []string{titlePkg.DefaultSlug}
+	multiTitleSlugs := make([]string, 0)
+	for _, td := range titleRegistry.NonArchived() {
+		multiTitleSlugs = append(multiTitleSlugs, td.Slug)
+	}
+	if len(multiTitleSlugs) == 0 {
+		multiTitleSlugs = []string{titlePkg.DefaultSlug}
+	}
 	for _, err := range fieldMappingsRegistry.LoadFromConfigDir(cfg.RepoRoot, multiTitleSlugs, slog.Default()) {
 		slog.Warn("field_mappings_load_warning", "err", err.Error())
 	}

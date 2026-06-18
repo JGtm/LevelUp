@@ -34,7 +34,7 @@ La re-vérification a déjà corrigé plusieurs erreurs de la passe d'audit init
 | Axe | Phase | Doc | Statut |
 |---|---|---|:-:|
 | FieldKey + `fields.toml` (stats canoniques) | Phase 1 | master | 🟡 |
-| DDL/schéma par titre | Phase 1.5 | master (+ [EXT-1.5](PLAN_MULTITITRE_PERIPHERY.md)) | ✅ |
+| DDL/schéma par titre | Phase 1.5 | master (+ [EXT-1.5](PLAN_MULTITITRE_PERIPHERY.md)) | ✅ + **registre piloté par config + provisioning boot 2026-06-18** (worktree `feat/multititre-peripherie`) : `title.toml` manifest (`config_loader.go`) + `LoadTitlesIntoRegistry`/`NewRegistryFromConfig` (déposer un dossier config/titles/<slug>/ → titre découvert, zéro recompil) ; `SetDefaultRegistry` registre PARTAGÉ posé au boot → server/bootstrap-switcher/session-context/scheduler sur `DefaultRegistry()` ; boot `provisionAdditionalActiveTitles` (loop `reg.Active()`, skip `IsDefault`) crée+migre `data/titles/<slug>/` via `RunForTitleDB`, PvE gaté `CapFirefight`. Byte-identique mono-titre, archlint vert. cf. thought_log 2026-06-18 |
 | Pool tokens clé `(titleSlug,gamertag)` | Phase 1.6 | master | ✅ |
 | `capabilities.toml` + loader + endpoint | Phase 1.7a | master | ✅ |
 | Feature-matrix 3 états + cascade | Phase 1.7b | master | ✅ |

@@ -417,10 +417,11 @@ func getStringSetting(settings map[string]interface{}, key, def string) string {
 	return def
 }
 
-// BuildAvailableTitles construit la liste des titres depuis le registre.
-// Sprint 49 : exportée pour réutilisation par le handler session_context.
+// BuildAvailableTitles construit la liste des titres depuis le registre PARTAGÉ
+// (MT-16 / day-one 2e titre : DefaultRegistry inclut les titres découverts en
+// config). Sprint 49 : exportée pour réutilisation par le handler session_context.
 func BuildAvailableTitles() []domain.TitleSummary {
-	return buildAvailableTitlesFrom(titlePkg.NewRegistry())
+	return buildAvailableTitlesFrom(titlePkg.DefaultRegistry())
 }
 
 // buildAvailableTitlesFrom projette les titres servables d'un registre donné.

@@ -80,8 +80,10 @@ func (h *SessionHandler) handlePostContext(ctx context.Context, in *sessionConte
 		sess.CurrentPlayerSlug = req.PlayerSlug
 	}
 	if req.TitleSlug != nil && *req.TitleSlug != "" {
-		// Sprint 44 : switch titre — valider que le slug est connu.
-		reg := titlePkg.NewRegistry()
+		// Sprint 44 : switch titre — valider que le slug est connu. MT-16 : le
+		// registre PARTAGÉ (DefaultRegistry) connaît les titres découverts en
+		// config → on peut switcher vers un 2e titre déclaré.
+		reg := titlePkg.DefaultRegistry()
 		if reg.Exists(*req.TitleSlug) {
 			sess.CurrentTitleSlug = *req.TitleSlug
 			// Invalider le joueur courant lors d'un switch de titre
