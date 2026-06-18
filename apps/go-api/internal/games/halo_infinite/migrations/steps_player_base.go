@@ -530,6 +530,31 @@ func playerBaseSteps() []migration.Migration {
 			},
 		},
 		{
+			Name:        "create_arc_titles_join",
+			TargetDB:    migration.TargetPlayer,
+			Description: "Table de jointure arc_titles(arc_id, title_slug) — socle cross-titre additif backend-ready (cf. PLAN_CROSS_TITLE_ARCS_BACKEND). Invariant : 1 ligne (arc.id, arc.title_slug) par arc existant.",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS arc_titles (
+						arc_id      VARCHAR NOT NULL,
+						title_slug  VARCHAR NOT NULL,
+						PRIMARY KEY (arc_id, title_slug)
+					);
+					CREATE INDEX IF NOT EXISTS idx_arc_titles_slug ON arc_titles(title_slug);
+				`)
+			},
+			ApplyBackfill: func(db *sql.DB) error {
+				// 1 ligne (arc.id, arc.title_slug) par arc existant : la voie arc_titles
+				// devient un sur-ensemble strict des lectures mono-titre actuelles. Idempotent
+				// (ON CONFLICT DO NOTHING) si le backfill est rejoué.
+				return migration.ExecScript(db, `
+					INSERT INTO arc_titles (arc_id, title_slug)
+					SELECT id, title_slug FROM arc
+					ON CONFLICT DO NOTHING;
+				`)
+			},
+		},
+		{
 			Name:        "create_improvement_campaign_schema",
 			TargetDB:    migration.TargetPlayer,
 			Description: "Table improvement_campaign + challenge.campaign_id (V1 PlayerProfile §4.5)",
