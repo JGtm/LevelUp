@@ -1,14 +1,16 @@
-## [2026-06-18] Switcher de titre livré + Lever A aire bootstrap + Lever B lancé — En cours
+## [2026-06-18] Switcher de titre + Lever A aire bootstrap + Lever B drift-detector — Complété (B = fondation, emit/merge en suite)
 
-**Statut** : switcher Complété ; Lever A aire 1 Complété ; Lever B (générateur openapi) en investigation.
+**Statut** : switcher Complété ; Lever A aire 1 Complété ; Lever B drift-detector Complété (outillage + pivot prouvé) ; emit/merge des 332 schémas = suite multi-sessions outillée.
 
 **Switcher (PMT-8/MT-22)** : `components/shell/TitleSwitcher.tsx` posé dans le menu Paramètres NavL1 (avant le toggle thème, placement demandé par l'utilisateur). NO-OP mono-titre (null si <2 titres) ; apparaît dès un 2e titre ; `coming_soon` listé désactivé « Bientôt disponible » (validé : montrer pour prouver UI+back). Branche la plomberie existante (`switchTitle`/`buildTitleSwitcherEntries`). i18n FR/EN (common.shell.nav_game + title_coming_soon, manifest régénéré). Test 5 cas. typecheck/eslint/vitest verts. Committé+poussé.
 
 **Lever A — aire bootstrap (migration types.ts→generated.ts)** : le schéma `openapi.yaml BootstrapResponse` était sous-spécifié vs `domain.BootstrapResponse` (réponse réelle). 12 champs ajoutés + `required` corrigé sur les tags JSON non-omitempty. Régénéré generated.ts + gen/types.gen.go ; `BootstrapResponse` shimé. **Oracle tsc -b VERT côté prod** (réconciliation exacte) ; seuls les fixtures de test complétés. Go build + contracttest verts. Committé.
 
-**Lever B — PIVOT découvert (vérifié grep)** : les handlers Huma migrés utilisent des **OUTPUTS TYPÉS** (ex `bootstrapOutput struct{ Body *domain.BootstrapResponse }`) → Huma **auto-dérive** le schéma OpenAPI du struct Go par réflexion (= exactement le schéma réconcilié à la main pour BootstrapResponse). Ratio **63 handlers typés / 24 RawBody**. Conséquence : **agréger les `Components.Schemas` des instances Huma reconstruit le contrat de types AUTOMATIQUEMENT** → rend la réconciliation manuelle de Lever A largement obsolète. L'investigation précédente (« re-archi complète ») se focalisait sur les PATHS (durs) ; la valeur pour les types front est dans les SCHÉMAS (auto-dérivables, faciles). Workflow de feasabilité + prototype lancé.
+**Lever B — drift-detector LIVRÉ (pivot validé en exécution)** : les handlers Huma utilisent des **OUTPUTS TYPÉS** (ex `bootstrapOutput struct{ Body *domain.BootstrapResponse }`) → Huma **auto-dérive** le schéma du struct Go. Workflow de feasabilité (5 agents, vérifié manuellement) → verdict `faire-agregation-schemas` : NE PAS régénérer les paths (déjà parité 0 + Huma n'a pas les 20 routes non-JSON) ; la valeur = agréger les `Components.Schemas` Huma et détecter la dérive vs le manuel.
+- **Outil livré** : hook `humacore.OnAPICreated` (nil prod, zéro impact) capture les instances Huma ; `openapi_schema_drift_test` (cgo) agrège via `buildTestRouter` (DemoMode, pas de DuckDB) puis diff vs `components.schemas` manuel.
+- **Résultat exécuté** : **Huma auto-dérive 401 schémas vs 113 manuels**. **MISSING=332** (réponses non documentées = le backlog Lever A entier, auto-découvert d'un coup), DIVERGENT=69 (bruit normalisation nullable/allOf + vraies dérives, dont BootstrapResponse côté représentation), EXTRA=44 (media.go/RawBody/legacy → restent manuels). Tests api (contract+huma+drift) verts, hook non-régressif.
 
-**Prochaine étape** : implémenter le générateur de schémas (Lever B) selon le design du workflow ; s'il marche, Lever A = régénérer + shimer (mécanique).
+**Prochaine étape (Lever B, S4-S6 du design)** : mode `-emit` des 332 schémas manquants + merge par lots dans openapi.yaml + regen types.gen.go/generated.ts + gate ratchet en CI. Le drift-detector transforme Lever A : de « chasser la dérive aire par aire » à « la liste exhaustive des 332 schémas manquants est fournie, émettre+merger par lots ». Multi-sessions mais désormais outillé, plus à la main.
 
 ## [2026-06-18] Audit UI multi-titre vérifié + gating Explorer/Timeseries — Complété (partiel : switcher reste)
 
