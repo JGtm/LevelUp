@@ -1,3 +1,55 @@
+## [2026-06-18] Arcs Prestige cross-titre — socle backend-ready (arc_titles) — Complété
+
+**Statut** : Complété. migrations + duckdb + prestige verts (default + `-tags integration`), vet/gofmt/archlint verts. Comportement mono-titre observable strictement inchangé.
+
+**But** : exécuter PLAN_CROSS_TITLE_ARCS_BACKEND (additif/réversible) — un arc pourra couvrir N titres sans rien casser ni exposer d'UX. Aucune feature cross-titre activée.
+
+**Livré (3 phases du plan)** :
+- **Phase 1 — schéma + backfill** : nouvelle migration `create_arc_titles_join` (TargetPlayer) dans `steps_player_base.go`, ajoutée à `migration.canonicalOrder` juste après `create_prestige_player_schema` (dépend de `arc`). `ApplySchema` = `CREATE TABLE arc_titles(arc_id, title_slug, PRIMARY KEY(arc_id,title_slug))` + index `title_slug`. `ApplyBackfill` = `INSERT ... SELECT id, title_slug FROM arc ON CONFLICT DO NOTHING` (1 ligne par arc existant, idempotent). `arcs.title_slug` JAMAIS supprimé (titre primaire).
+- **Phase 2 — accès repo** : interface `prestige.ArcTitlesRepo` (`ArcTitles(arcID)`, `ArcsByTitle(userID,slug)`), implémentée sur `PrestigeArcRepo`. `ArcsByTitle` = JOIN sur `arc_titles` (strictement ≡ `ListByUser` en mono-titre). `ArcTitles` lit la jointure avec **fallback `arc.title_slug`** si vide (garde-fou pré-backfill). `Create` insère désormais aussi la ligne `arc_titles` (maintient l'invariant 1 ligne/arc). Lectures existantes `WHERE title_slug = ?` inchangées (la nouvelle voie est un sur-ensemble).
+- **Phase 3 — point d'extension PP** : `prestige/cross_title.go` → `creditTitlesFor(c Challenge) []string` retourne `[c.TitleSlug]` (mono-titre). Câblé dans `creditCompletion` (boucle sur 1 slug aujourd'hui → 1 PrestigeEvent, identique à l'historique). La répartition PP d'un défi réellement cross-titre (chaque titre / primaire / prorata) = décision PRODUIT+UX **non tranchée**, surchargeable à un seul endroit.
+
+**Tests** : backfill 1-ligne/arc + idempotence (`arc_titles_test.go`, integration) ; repo Create-invariant + ArcTitles/ArcsByTitle ≡ ListByUser + fallback (`prestige_arc_titles_test.go`, integration) ; `creditTitlesFor` ≡ [TitleSlug] (`cross_title_test.go`, unit) ; `arc_titles` ajouté à l'oracle e2e `TestTitleStepsRunEndToEnd_Player`.
+
+**Piège résolu** : `at` est un mot réservé DuckDB (`AT TIME ZONE`) → alias `arc_titles at` = Parser Error. Renommé `act`.
+
+**Décision** : crédit PP de l'arc (bonus complétion) reste sur le titre primaire (pas routé par `creditTitlesFor`, qui opère sur Challenge) — cohérent avec « ne pas trancher la répartition ».
+
+**Conclusion** : socle cross-titre posé, zéro changement observable. Onboarding d'un vrai arc multi-titres = ajouter des lignes `arc_titles` + décider la politique PP dans `creditTitlesFor`. Reste WON'T-DO tant que le 2e titre réel n'est pas validé (garde-fou du plan).
+
+## [2026-06-18] Suppression des 12 flags backfill fantômes (SyncScope) — Complété
+
+**Statut** : Complété. build/vet/test sync verts, full build repo vert.
+
+**But** : retirer la fausse affordance vérifiée (cf. entrée consolidation) — des flags CLI promettant un backfill par-stat que le fetch ignore.
+
+**Supprimé** (zéro consommateur prod, `NewBackfillFlagSet` = tests only) :
+- 12 champs granulaires `SyncScope` (`TeamMMR`, `KillsExpected`, `DeathsExpected`, `Damage`, `AvgLife`, `GrenadeKills`, `MeleeKills`, `PowerWeaponKills`, `HeadshotKills`, `MaxSpree`, `KDARecalc`, `TimePlayed`) + leurs 12 variantes `Force*`.
+- 5 groupes alias (`MMR`, `Expected`, `Combat`, `KillsDetail`, `CoreStats`) + leurs `Force*` — leur seul effet réel passait par des flags **réels** (`Accuracy`, `Shots`, `EnemyMMR`) déjà activés DIRECTEMENT par `allDataFields` / les flags directs `--accuracy`/`--shots`/`--enemy-mmr`.
+- Les 34 flags CLI correspondants dans `NewBackfillFlagSet`, les entrées de `allDataFields`/`applyForceImplications`/`HasAnyOption`, les tests de groupe.
+
+**Byte-identique fetch prouvé** : `AllData` activait déjà `Accuracy`/`Shots`/`EnemyMMR` en direct (indépendamment des groupes) ; les flags supprimés n'étaient lus par aucun chemin de fetch. `--skill` conserve son seul effet réel : `EnemyMMR=true` (réduit de l'ancien `{TeamMMR,EnemyMMR,KillsExpected,DeathsExpected}`).
+
+**Conclusion** : la fausse promesse CLI est supprimée, aucune capacité réelle perdue (couverte par les flags directs). Clôt le NO-GO « Phase 4 FieldKey » par la suppression (pas le câblage ni le refactor).
+
+## [2026-06-18] Consolidation doc INDEX + verdict vérifié sur les 12 flags stats sync — Complété
+
+**Statut** : Complété. Documentation uniquement (aucun code touché).
+
+**But** : rendre le master plan multi-titre lisible d'un coup d'œil (« c'est fait / c'est pas fait ») et trancher si ne PAS avoir câblé les 12 flags stats granulaires était une erreur.
+
+**Livré** :
+- `.ai/PLAN_MULTITITRE_INDEX.md` : ajout d'un bloc unique en tête « STATUT CONSOLIDÉ — 2026-06-18 (LIRE CECI D'ABORD) » faisant foi en cas de divergence avec les tables registre (statuts datés en retard). 5 buckets : ✅ FAIT (PMT-1→14, phases infra, PMT-4/5/11 livrés ce jour, squelette `synthetic_title_b`) / 🟡 RESTE architectural (2 items à raison dure : génération auto openapi.yaml bloquée par l'archi Huma ; pool d'auth par titre inexerçable sans vrai 2e titre) / 📦 FEATURES distinctes (arcs Prestige cross-titre, famille d'armes, FieldKey Phase 1) / ⛔ WON'T-DO (refactor FieldKey sync).
+- Correction de 2 statuts périmés dans les tables : Phase 1.8 (Lab) `⬜→✅` (Lab monté+testé, l'ancien ⬜ datait d'avant la livraison) ; Phase 5 (gating front) `🟡→✅` (le reliquat « canonical-aware labels » était déjà en place via `useFieldLabel`).
+
+**Verdict vérifié sur les 12 flags stats granulaires** (`scope.TeamMMR`/`Damage`/`HeadshotKills`/`KillsExpected`/…) — investigation par grep, PAS via synthèse d'agent :
+- Les 12 flags sont DÉFINIS dans `NewBackfillFlagSet` (`--team-mmr`, `--damage`…) et écrits par `Resolve()`, MAIS aucun chemin de fetch ne les lit individuellement : le fetch est piloté au **niveau GROUPE** (`Skill`/`Combat`/`Expected`…), tout-ou-rien. → ce sont des **flags CLI fantômes / fausse affordance** (bug d'interface, pas un manque de feature).
+- **Inoffensif en prod** : `NewBackfillFlagSet` n'a AUCUN appelant prod (tests uniquement). Personne ne se fait piéger aujourd'hui.
+- **Les câbler est probablement impossible** : l'API Halo renvoie toutes les stats skill/combat en un seul appel — il n'existe pas de fetch « par stat » à activer.
+- **Donc ne pas les avoir câblés n'est PAS une erreur.** La vraie dette serait de SUPPRIMER les flags fantômes (pas les câbler, pas le refactor FieldKey) pour retirer la fausse promesse — mais c'est un détricotage soigneux (`Resolve()` + expansion de groupes + `requestedTypeMap` + bitmask) et c'est **non urgent** (zéro impact prod).
+
+**Conclusion** : le master plan a une source de statut unique. Reliquat réel = 2 items architecturaux (raison dure) + 3 features distinctes. Le câblage des 12 flags est écarté avec preuve. Prochaine étape possible : arcs Prestige cross-titre (additif/réversible) ou suppression des flags fantômes (cleanup non urgent), au choix de l'utilisateur.
+
 ## [2026-06-18] PMT-11 — câblage libellés Discord title-aware — Complété (PMT-11 = 100%)
 
 **Statut** : Complété. notify tests + vet + archlint verts. Byte-identique Halo.

@@ -1,9 +1,11 @@
 # Plan — Cross-titre arcs : préparation backend (backend-ready, sans UX)
 
 > **Créé le** : 2026-06-09
-> **Statut** : Proposé — **backend-ready uniquement**. UX/UI volontairement hors périmètre.
+> **Statut** : ✅ **LIVRÉ 2026-06-18** (backend-ready, sans UX, comme cadré). Phases 1+2+3 implémentées sur `feat/multititre-peripherie`. Comportement mono-titre observable strictement inchangé. cf. thought_log 2026-06-18.
 > **Priorité** : 🟢 Basse aujourd'hui, mais **à anticiper** : un nouveau titre arrive bientôt (intégration non encore planifiée).
 > **Origine backlog** : `[coach/prestige] V3 — Cross-titre arcs`
+
+> **Bilan livraison** : table `arc_titles(arc_id, title_slug)` + migration `create_arc_titles_join` (schéma + backfill 1-ligne/arc idempotent) ; `prestige.ArcTitlesRepo` (`ArcTitles`/`ArcsByTitle`, fallback `arc.title_slug`) + `Create` maintient l'invariant ; point d'extension unique `creditTitlesFor(challenge)` (= titre primaire aujourd'hui, câblé dans `creditCompletion`). Tests : backfill+idempotence, repo+invariant+fallback, extension point. **Reste hors périmètre (garde-fou)** : créer un arc réellement multi-titres + trancher la répartition PP (décision produit+UX, pending 2e titre réel).
 
 ## Objectif & cadrage
 
