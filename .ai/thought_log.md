@@ -1,3 +1,19 @@
+## [2026-06-18] Engagement : pace_team inclut le joueur + relabel 3 courbes — Complété (code) / re-backfill à lancer
+
+**Statut** : commit 3/5. Backend temporal + front relabel verts (`go test temporal/sync` ✓, `tsc`/`eslint` ✓, vitest EngagementCurve 4/4). **Re-backfill data à exécuter** (paces/coefs).
+
+**Déclencheur (user)** : « attendu juste au-dessus de l'équipe, comme un +1, étrange » → diagnostic : `pace_attendu = coef × pace_team`, coef gonflé car `pace_team` excluait le joueur du numérateur (`splitMatchEvents`/`LoadTeamXUIDs xuid<>target`) mais NTeam le comptait au dénominateur. User : « équipe alliée doit inclure le joueur » + « 3 courbes : joueur réel, joueur attendu, équipe réelle ».
+
+**Décision technique (backend)** : dans `ComputeEngagementScore`, construire `teamInclPlayer = TeamEvents ∪ PlayerEvents` et l'utiliser comme `TeamEvents` de la courbe ET comme dénominateur de l'attendu en mode équipe (`selectExpectedReference` prend désormais `teamInclPlayer`). FFA/1v1 inchangé (lobby inclut déjà le joueur). Effet : `pace_team` cohérent num/dénom (joueur inclus) → coef se recentre vers ~1.0 → « joueur attendu » reste au-dessus de « équipe réelle » pour un joueur au-dessus de la moyenne, coïncide pour un joueur moyen (honnête). Test `TestComputeEngagementScore_PaceTeamIncludesPlayer` (coéquipiers sans events + joueur actif → pace_team > 0).
+
+**Décision technique (front)** : relabel des 3 séries via le manifest `engagement.trace.*` (`team`→« Équipe réelle »/« Team (actual) », `expected`→« Joueur attendu »/« Player (expected) », `player`→« Joueur réel »/« Player (actual) »). `EngagementCurve` ne hardcode plus les noms : nouvelle prop `seriesLabels` (défaut FR), passée localisée par `EngagementMatchSection`.
+
+**Re-backfill requis** : `go run ./cmd/levelup engagement-coefs --all --with-scores --force` (recompute scores depuis highlight_events → nouvelles paces → coefs recentrés). Pré-requis : shared/player DB libres (pas de serveur/backfill-world tenant le lock). Re-validation `inspect_engagement` : coef_team_share attendu plus proche de 1 que 1.34/1.82.
+
+**Prochaine étape** : re-backfill, puis commits 2 (message honnête) + 4 (Escouade).
+
+---
+
 ## [2026-06-18] KPI bar Match View : Rendement/Résistance + police réduite + labels courts — Complété
 
 **Statut** : commit 2/5 du lot. `tsc` + `eslint` verts, vitest match-view 113/113. Branche `feat/rendement-engagement-matchview`.

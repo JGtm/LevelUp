@@ -75,6 +75,11 @@ export function EngagementMatchSection(props: EngagementMatchSectionProps) {
       points={points}
       granularity={granularity}
       hideAttendu={hideAttendu}
+      seriesLabels={{
+        team: formatMessage(engagementManifest, 'engagement.trace.team', locale),
+        expected: formatMessage(engagementManifest, 'engagement.trace.expected', locale),
+        player: formatMessage(engagementManifest, 'engagement.trace.player', locale),
+      }}
       state={
         query.isLoading
           ? 'loading'

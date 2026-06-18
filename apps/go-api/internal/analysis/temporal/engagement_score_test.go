@@ -108,6 +108,41 @@ func TestComputeEngagementScore_NoEvents(t *testing.T) {
 	}
 }
 
+// TestComputeEngagementScore_PaceTeamIncludesPlayer vérifie que la ligne
+// "Équipe réelle" (pace_team) inclut le joueur cible au numérateur (cohérence
+// avec NTeam qui le compte au dénominateur). Scénario : coéquipiers sans aucun
+// event, joueur actif → pace_team doit être > 0 (avec l'ancienne logique
+// "coéquipiers seuls" il serait 0 partout).
+func TestComputeEngagementScore_PaceTeamIncludesPlayer(t *testing.T) {
+	playerEvents := makeEvents(canonical.EventKill, 60_000, 120_000, 180_000, 240_000)
+	result, err := temporal.ComputeEngagementScore(temporal.EngagementScoreInput{
+		PlayerEvents:   playerEvents,
+		TeamEvents:     nil, // aucun coéquipier actif
+		LobbyEvents:    playerEvents,
+		NTeam:          2, // joueur + 1 coéquipier
+		NHumansLobby:   8,
+		MatchStartMS:   0,
+		MatchEndMS:     360_000,
+		CoefTeamShare:  1.0,
+		CoefLobbyShare: 1.0,
+		IsTeamMode:     true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.MeanPaceTeam <= 0 {
+		t.Errorf("MeanPaceTeam doit être > 0 (joueur inclus dans l'équipe), got %f", result.MeanPaceTeam)
+	}
+	// L'attendu (coef=1.0 × pace_team incl. joueur) doit aussi être > 0.
+	var sumAttendu float64
+	for _, p := range result.EngagementCurve {
+		sumAttendu += p.PaceAttendu
+	}
+	if sumAttendu <= 0 {
+		t.Errorf("PaceAttendu doit suivre pace_team (joueur inclus), somme=%f", sumAttendu)
+	}
+}
+
 // =============================================================================
 // Confidence vs taille de l'historique
 // =============================================================================

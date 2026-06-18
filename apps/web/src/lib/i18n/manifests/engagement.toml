@@ -9,16 +9,16 @@
 # ─── Trace labels (Mock 10 / Mock 11 / Mock 15 v2) ──────────────────────────
 
 [engagement.trace.team]
-fr = "Equipe alliee"
-en = "Team"
+fr = "Equipe reelle"
+en = "Team (actual)"
 
 [engagement.trace.expected]
-fr = "Attendu"
-en = "Expected"
+fr = "Joueur attendu"
+en = "Player (expected)"
 
 [engagement.trace.player]
-fr = "Joueur"
-en = "Player"
+fr = "Joueur reel"
+en = "Player (actual)"
 
 [engagement.trace.lobby]
 fr = "Lobby"
