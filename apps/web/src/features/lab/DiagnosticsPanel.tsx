@@ -82,7 +82,7 @@ export function DiagnosticsPanel({
           <CardContent>
             {data.parity_report ? (
               <div className="space-y-3">
-                {data.parity_report.results.map((item) => (
+                {(data.parity_report.results ?? []).map((item) => (
                   <div key={item.name} className="rounded-xl border border-border p-3">
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-sm font-semibold text-foreground">{item.name}</p>

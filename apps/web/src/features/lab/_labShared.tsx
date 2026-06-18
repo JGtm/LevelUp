@@ -193,7 +193,7 @@ export function RouteList({
             {items.map((item) => (
               <div key={item.path} className="rounded-xl border border-border p-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  {item.methods.map((method) => (
+                  {(item.methods ?? []).map((method) => (
                     <Badge key={`${item.path}-${method}`} variant="outline">
                       {method.toUpperCase()}
                     </Badge>
@@ -227,9 +227,9 @@ export function GuardRow({
         </Badge>
       </div>
       <p className="mt-2 text-sm text-muted-foreground">{result.reason}</p>
-      {result.details.length > 0 ? (
+      {(result.details ?? []).length > 0 ? (
         <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-          {result.details.slice(0, 5).map((detail) => (
+          {(result.details ?? []).slice(0, 5).map((detail) => (
             <p key={detail}>{detail}</p>
           ))}
         </div>
