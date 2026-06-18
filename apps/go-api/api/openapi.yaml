@@ -3302,10 +3302,25 @@ components:
         - setup_required
         - auth_state
         - setup_state
+        - current_player
         - available_players
+        - current_title_slug
+        - available_titles
+        - locale
+        - hints_visible_default
         - feature_flags
         - capabilities
         - settings_excerpt
+        - auth_mode
+        - registration_mode
+        - instance_locked
+        - reauth_required
+        - has_password
+        - is_admin
+        - current_username
+        - first_launch
+        - oauth_code_flow_enabled
+        - demo_mode
       properties:
         setup_required:
           type: boolean
@@ -3351,6 +3366,37 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/MatchPrivacyInfo"
+        current_title_slug:
+          type: string
+          description: "Sprint 44 : slug du titre courant de la session."
+        available_titles:
+          type: array
+          description: "Sprint 44 : titres disponibles (title switcher) — active + coming_soon."
+          items:
+            $ref: "#/components/schemas/TitleSummary"
+        auth_mode:
+          type: string
+          enum: [none, password, xbox]
+        registration_mode:
+          type: string
+          enum: [invite, open, closed]
+        instance_locked:
+          type: boolean
+        reauth_required:
+          type: boolean
+        has_password:
+          type: boolean
+        is_admin:
+          type: boolean
+        current_username:
+          type: string
+          nullable: true
+        first_launch:
+          type: boolean
+        oauth_code_flow_enabled:
+          type: boolean
+        demo_mode:
+          type: boolean
 
     PlayersListResponse:
       type: object

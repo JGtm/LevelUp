@@ -41,6 +41,27 @@ func (e AsyncJobStatusStatus) Valid() bool {
 	}
 }
 
+// Defines values for BootstrapResponseAuthMode.
+const (
+	BootstrapResponseAuthModeNone     BootstrapResponseAuthMode = "none"
+	BootstrapResponseAuthModePassword BootstrapResponseAuthMode = "password"
+	BootstrapResponseAuthModeXbox     BootstrapResponseAuthMode = "xbox"
+)
+
+// Valid indicates whether the value is a known member of the BootstrapResponseAuthMode enum.
+func (e BootstrapResponseAuthMode) Valid() bool {
+	switch e {
+	case BootstrapResponseAuthModeNone:
+		return true
+	case BootstrapResponseAuthModePassword:
+		return true
+	case BootstrapResponseAuthModeXbox:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for BootstrapResponseAuthState.
 const (
 	BootstrapResponseAuthStateMissing BootstrapResponseAuthState = "missing"
@@ -56,6 +77,27 @@ func (e BootstrapResponseAuthState) Valid() bool {
 	case BootstrapResponseAuthStatePartial:
 		return true
 	case BootstrapResponseAuthStateReady:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for BootstrapResponseRegistrationMode.
+const (
+	Closed BootstrapResponseRegistrationMode = "closed"
+	Invite BootstrapResponseRegistrationMode = "invite"
+	Open   BootstrapResponseRegistrationMode = "open"
+)
+
+// Valid indicates whether the value is a known member of the BootstrapResponseRegistrationMode enum.
+func (e BootstrapResponseRegistrationMode) Valid() bool {
+	switch e {
+	case Closed:
+		return true
+	case Invite:
+		return true
+	case Open:
 		return true
 	default:
 		return false
@@ -277,19 +319,19 @@ func (e MatchPrivacyWarningLevel) Valid() bool {
 
 // Defines values for MatchViewRankRatingType.
 const (
-	MatchViewRankRatingTypeCSR  MatchViewRankRatingType = "CSR"
-	MatchViewRankRatingTypeLUSR MatchViewRankRatingType = "LUSR"
-	MatchViewRankRatingTypeNone MatchViewRankRatingType = "none"
+	CSR  MatchViewRankRatingType = "CSR"
+	LUSR MatchViewRankRatingType = "LUSR"
+	None MatchViewRankRatingType = "none"
 )
 
 // Valid indicates whether the value is a known member of the MatchViewRankRatingType enum.
 func (e MatchViewRankRatingType) Valid() bool {
 	switch e {
-	case MatchViewRankRatingTypeCSR:
+	case CSR:
 		return true
-	case MatchViewRankRatingTypeLUSR:
+	case LUSR:
 		return true
-	case MatchViewRankRatingTypeNone:
+	case None:
 		return true
 	default:
 		return false
@@ -641,25 +683,47 @@ type BackupStatusResponse struct {
 
 // BootstrapResponse defines model for BootstrapResponse.
 type BootstrapResponse struct {
-	ActiveSyncJobId     *string                    `json:"active_sync_job_id,omitempty"`
-	AuthState           BootstrapResponseAuthState `json:"auth_state"`
-	AvailablePlayers    []PlayerSummary            `json:"available_players"`
-	Capabilities        CapabilityMap              `json:"capabilities"`
-	CurrentPlayer       *PlayerSummary             `json:"current_player,omitempty"`
-	FeatureFlags        FeatureFlags               `json:"feature_flags"`
-	HintsVisibleDefault *bool                      `json:"hints_visible_default,omitempty"`
-	LinkedHaloIdentity  *HaloIdentitySummary       `json:"linked_halo_identity,omitempty"`
-	Locale              *string                    `json:"locale,omitempty"`
+	ActiveSyncJobId  *string                    `json:"active_sync_job_id,omitempty"`
+	AuthMode         BootstrapResponseAuthMode  `json:"auth_mode"`
+	AuthState        BootstrapResponseAuthState `json:"auth_state"`
+	AvailablePlayers []PlayerSummary            `json:"available_players"`
+
+	// AvailableTitles Sprint 44 : titres disponibles (title switcher) — active + coming_soon.
+	AvailableTitles []TitleSummary `json:"available_titles"`
+	Capabilities    CapabilityMap  `json:"capabilities"`
+	CurrentPlayer   *PlayerSummary `json:"current_player"`
+
+	// CurrentTitleSlug Sprint 44 : slug du titre courant de la session.
+	CurrentTitleSlug     string               `json:"current_title_slug"`
+	CurrentUsername      *string              `json:"current_username"`
+	DemoMode             bool                 `json:"demo_mode"`
+	FeatureFlags         FeatureFlags         `json:"feature_flags"`
+	FirstLaunch          bool                 `json:"first_launch"`
+	HasPassword          bool                 `json:"has_password"`
+	HintsVisibleDefault  bool                 `json:"hints_visible_default"`
+	InstanceLocked       bool                 `json:"instance_locked"`
+	IsAdmin              bool                 `json:"is_admin"`
+	LinkedHaloIdentity   *HaloIdentitySummary `json:"linked_halo_identity,omitempty"`
+	Locale               string               `json:"locale"`
+	OauthCodeFlowEnabled bool                 `json:"oauth_code_flow_enabled"`
 
 	// Privacy Sprint 54-B : informations de confidentialité des matchs du joueur actif.
-	Privacy         *MatchPrivacyInfo           `json:"privacy,omitempty"`
-	SettingsExcerpt SettingsExcerpt             `json:"settings_excerpt"`
-	SetupRequired   bool                        `json:"setup_required"`
-	SetupState      BootstrapResponseSetupState `json:"setup_state"`
+	Privacy          *MatchPrivacyInfo                 `json:"privacy,omitempty"`
+	ReauthRequired   bool                              `json:"reauth_required"`
+	RegistrationMode BootstrapResponseRegistrationMode `json:"registration_mode"`
+	SettingsExcerpt  SettingsExcerpt                   `json:"settings_excerpt"`
+	SetupRequired    bool                              `json:"setup_required"`
+	SetupState       BootstrapResponseSetupState       `json:"setup_state"`
 }
+
+// BootstrapResponseAuthMode defines model for BootstrapResponse.AuthMode.
+type BootstrapResponseAuthMode string
 
 // BootstrapResponseAuthState defines model for BootstrapResponse.AuthState.
 type BootstrapResponseAuthState string
+
+// BootstrapResponseRegistrationMode defines model for BootstrapResponse.RegistrationMode.
+type BootstrapResponseRegistrationMode string
 
 // BootstrapResponseSetupState defines model for BootstrapResponse.SetupState.
 type BootstrapResponseSetupState string

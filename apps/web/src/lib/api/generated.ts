@@ -3179,7 +3179,7 @@ export interface components {
             auth_state: "missing" | "partial" | "ready";
             /** @enum {string} */
             setup_state: "no_halo_link" | "halo_linked_no_profile" | "profile_ready_no_sync" | "ready";
-            current_player?: components["schemas"]["PlayerSummary"] | null;
+            current_player: components["schemas"]["PlayerSummary"] | null;
             available_players: components["schemas"]["PlayerSummary"][];
             /** @default fr */
             locale: string;
@@ -3192,6 +3192,22 @@ export interface components {
             active_sync_job_id?: string | null;
             /** @description Sprint 54-B : informations de confidentialité des matchs du joueur actif. */
             privacy?: components["schemas"]["MatchPrivacyInfo"] | null;
+            /** @description Sprint 44 : slug du titre courant de la session. */
+            current_title_slug: string;
+            /** @description Sprint 44 : titres disponibles (title switcher) — active + coming_soon. */
+            available_titles: components["schemas"]["TitleSummary"][];
+            /** @enum {string} */
+            auth_mode: "none" | "password" | "xbox";
+            /** @enum {string} */
+            registration_mode: "invite" | "open" | "closed";
+            instance_locked: boolean;
+            reauth_required: boolean;
+            has_password: boolean;
+            is_admin: boolean;
+            current_username: string | null;
+            first_launch: boolean;
+            oauth_code_flow_enabled: boolean;
+            demo_mode: boolean;
         };
         PlayersListResponse: {
             items: components["schemas"]["PlayerSummary"][];

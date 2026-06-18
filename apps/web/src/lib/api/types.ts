@@ -29,52 +29,12 @@ export type HaloIdentitySummary = components['schemas']['HaloIdentitySummary']
 
 export type TitleSummary = components['schemas']['TitleSummary']
 
-// TODO(migration bucket B) : le schéma OpenAPI BootstrapResponse est INCOMPLET
-// vs la réponse réelle du backend Go — il manque auth_mode, first_launch,
-// current_username, current_title_slug, available_titles, registration_mode,
-// is_admin, oauth_code_flow_enabled (+ le schéma a current_player?/privacy? en
-// trop/optionnels). À réconcilier en complétant openapi.yaml puis régénérer,
-// après quoi ce type pourra être shimé. Reste manuel d'ici là.
-export interface BootstrapResponse {
-  setup_required: boolean
-  auth_state: 'missing' | 'partial' | 'ready'
-  setup_state: 'no_halo_link' | 'halo_linked_no_profile' | 'profile_ready_no_sync' | 'ready'
-  current_player: PlayerSummary | null
-  available_players: PlayerSummary[]
-  /** Sprint 44 : titre courant */
-  current_title_slug: string
-  /** Sprint 44 : titres disponibles */
-  available_titles: TitleSummary[]
-  locale: string
-  hints_visible_default: boolean
-  feature_flags: FeatureFlags
-  capabilities: CapabilityMap
-  settings_excerpt: SettingsExcerpt
-  /** Identité Halo liée (gamertag + xuid) — absente si auth non complétée. */
-  linked_halo_identity?: HaloIdentitySummary | null
-  /** ID du job de sync initial actif pour cette session (null si aucun). */
-  active_sync_job_id?: string | null
-  /** Auth locale : mode d'authentification ("none" | "password"). */
-  auth_mode: 'none' | 'password' | 'xbox'
-  /** Mode d'inscription ("invite" | "open" | "closed"). */
-  registration_mode: 'invite' | 'open' | 'closed'
-  /** Instance fermée : aucune nouvelle identité/BDD (register, SSO xuid inconnu, setup/players). */
-  instance_locked?: boolean
-  /** Joueur courant : refresh_token Microsoft mort → reconnexion Xbox requise (bannière). */
-  reauth_required?: boolean
-  /** Utilisateur connecté : a défini un mot de passe (opt-in re-login rapide). */
-  has_password?: boolean
-  /** True si l'utilisateur courant est admin. */
-  is_admin: boolean
-  /** Username connecté (si mode password et connecté). */
-  current_username?: string | null
-  /** True si aucun user n'est enregistré (premier lancement). */
-  first_launch: boolean
-  /** PR 4 — True si l'Authorization Code Flow OAuth est dispo (vraie UX redirect). */
-  oauth_code_flow_enabled?: boolean
-  /** Instance démo publique : settings figés, switch de langue client-side. */
-  demo_mode?: boolean
-}
+// Migré (réconciliation bucket B 2026-06-18) : openapi.yaml BootstrapResponse
+// complété pour matcher la réponse réelle du domaine Go (12 champs ajoutés :
+// current_title_slug, available_titles, auth_mode, registration_mode,
+// instance_locked, reauth_required, has_password, is_admin, current_username,
+// first_launch, oauth_code_flow_enabled, demo_mode). Source de vérité = contrat.
+export type BootstrapResponse = components['schemas']['BootstrapResponse']
 
 export type PlayersListResponse = components['schemas']['PlayersListResponse']
 
