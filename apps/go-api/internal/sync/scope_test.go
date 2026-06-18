@@ -21,36 +21,6 @@ func TestSyncScope_NewScopeAll(t *testing.T) {
 	}
 }
 
-func TestSyncScope_Resolve_MMRGroup(t *testing.T) {
-	s := &SyncScope{MMR: true}
-	s.Resolve()
-
-	if !s.TeamMMR {
-		t.Error("MMR group should set TeamMMR")
-	}
-	if !s.EnemyMMR {
-		t.Error("MMR group should set EnemyMMR")
-	}
-}
-
-func TestSyncScope_Resolve_ExpectedGroup(t *testing.T) {
-	s := &SyncScope{Expected: true}
-	s.Resolve()
-
-	if !s.KillsExpected || !s.DeathsExpected {
-		t.Error("Expected group should set KillsExpected, DeathsExpected")
-	}
-}
-
-func TestSyncScope_Resolve_CoreStatsGroup(t *testing.T) {
-	s := &SyncScope{CoreStats: true}
-	s.Resolve()
-
-	if !s.Accuracy {
-		t.Error("CoreStats should activate Accuracy (via Combat)")
-	}
-}
-
 func TestSyncScope_Resolve_ForceImpliesFetch(t *testing.T) {
 	s := &SyncScope{ForceMedals: true}
 	s.Resolve()
@@ -110,37 +80,6 @@ func TestSyncScope_Resolve_PVEStats(t *testing.T) {
 	}
 }
 
-func TestSyncScope_Resolve_CombatGroup(t *testing.T) {
-	s := &SyncScope{Combat: true}
-	s.Resolve()
-	if !s.Accuracy {
-		t.Error("Combat should set Accuracy")
-	}
-	if !s.Shots {
-		t.Error("Combat should set Shots")
-	}
-	if !s.Damage {
-		t.Error("Combat should set Damage")
-	}
-}
-
-func TestSyncScope_Resolve_KillsDetailGroup(t *testing.T) {
-	s := &SyncScope{KillsDetail: true}
-	s.Resolve()
-	if !s.GrenadeKills {
-		t.Error("KillsDetail should set GrenadeKills")
-	}
-	if !s.MeleeKills {
-		t.Error("KillsDetail should set MeleeKills")
-	}
-	if !s.PowerWeaponKills {
-		t.Error("KillsDetail should set PowerWeaponKills")
-	}
-	if !s.HeadshotKills {
-		t.Error("KillsDetail should set HeadshotKills")
-	}
-}
-
 func TestSyncScope_Resolve_SessionsGroup(t *testing.T) {
 	s := &SyncScope{Sessions: true}
 	s.Resolve()
@@ -174,20 +113,11 @@ func TestSyncScope_Resolve_ForceSkillRank(t *testing.T) {
 	}
 }
 
-func TestSyncScope_Resolve_SkillActivatesMMRAndExpected(t *testing.T) {
+func TestSyncScope_Resolve_SkillActivatesEnemyMMR(t *testing.T) {
 	s := &SyncScope{Skill: true}
 	s.Resolve()
-	if !s.TeamMMR {
-		t.Error("Skill should set TeamMMR")
-	}
 	if !s.EnemyMMR {
-		t.Error("Skill should set EnemyMMR")
-	}
-	if !s.KillsExpected {
-		t.Error("Skill should set KillsExpected")
-	}
-	if !s.DeathsExpected {
-		t.Error("Skill should set DeathsExpected")
+		t.Error("Skill should set EnemyMMR (fetch skill ⇒ fetch enemy MMR)")
 	}
 }
 
@@ -220,22 +150,6 @@ func TestSyncScope_Resolve_ForceSessions(t *testing.T) {
 	s.Resolve()
 	if !s.Sessions {
 		t.Error("ForceSessions should imply Sessions=true")
-	}
-}
-
-func TestSyncScope_Resolve_ForceDamage(t *testing.T) {
-	s := &SyncScope{ForceDamage: true}
-	s.Resolve()
-	if !s.Damage {
-		t.Error("ForceDamage should imply Damage=true")
-	}
-}
-
-func TestSyncScope_Resolve_ForceCombat(t *testing.T) {
-	s := &SyncScope{ForceCombat: true}
-	s.Resolve()
-	if !s.Combat {
-		t.Error("ForceCombat should imply Combat=true")
 	}
 }
 

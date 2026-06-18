@@ -41,31 +41,6 @@ type SyncScope struct {
 	ParticipantsEnrich  bool
 	TeammatesSig        bool
 
-	// ── Types granulaires v5.2 (nouveaux champs bitmask) ────────────────
-	// Skill / MMR — Halo Infinite n'expose pas Assists dans StatPerformances.
-	TeamMMR        bool
-	KillsExpected  bool
-	DeathsExpected bool
-	// Combat
-	Damage  bool
-	AvgLife bool
-	// Kills détaillés
-	GrenadeKills     bool
-	MeleeKills       bool
-	PowerWeaponKills bool
-	HeadshotKills    bool
-	MaxSpree         bool
-	// Divers
-	KDARecalc  bool
-	TimePlayed bool
-
-	// ── Groupes (alias résolus dans Resolve()) ──────────────────────────
-	MMR         bool // = TeamMMR + EnemyMMR
-	Expected    bool // = KillsExpected + DeathsExpected (Halo Infinite n'a pas d'Assists)
-	Combat      bool // = Accuracy + Shots + Damage
-	KillsDetail bool // = GrenadeKills + MeleeKills + PowerWeaponKills + HeadshotKills
-	CoreStats   bool // = Combat + AvgLife + KillsDetail + KDARecalc + TimePlayed
-
 	// ── Flags force ─────────────────────────────────────────────────────
 	ForceMedals              bool
 	ForceEvents              bool
@@ -86,25 +61,6 @@ type SyncScope struct {
 	ForceCitations           bool
 	ForceParticipantsEnrich  bool
 	ForceTeammatesSig        bool
-
-	// ── Flags force granulaires v5.2 ────────────────────────────────────
-	ForceTeamMMR          bool
-	ForceKillsExpected    bool
-	ForceDeathsExpected   bool
-	ForceAvgLife          bool
-	ForceDamage           bool
-	ForceGrenadeKills     bool
-	ForceMeleeKills       bool
-	ForcePowerWeaponKills bool
-	ForceHeadshotKills    bool
-	ForceMaxSpree         bool
-	ForceKDARecalc        bool
-	ForceTimePlayed       bool
-	ForceMMR              bool
-	ForceExpected         bool
-	ForceCombat           bool
-	ForceKillsDetail      bool
-	ForceCoreStats        bool
 
 	// ── PVE (Firefight) — v5.2 ──────────────────────────────────────────
 	PVEStats      bool
@@ -188,23 +144,6 @@ var allDataFields = []func(*SyncScope){
 	func(s *SyncScope) { s.Citations = true },
 	func(s *SyncScope) { s.ParticipantsEnrich = true },
 	func(s *SyncScope) { s.TeammatesSig = true },
-	func(s *SyncScope) { s.TeamMMR = true },
-	func(s *SyncScope) { s.KillsExpected = true },
-	func(s *SyncScope) { s.DeathsExpected = true },
-	func(s *SyncScope) { s.Damage = true },
-	func(s *SyncScope) { s.AvgLife = true },
-	func(s *SyncScope) { s.GrenadeKills = true },
-	func(s *SyncScope) { s.MeleeKills = true },
-	func(s *SyncScope) { s.PowerWeaponKills = true },
-	func(s *SyncScope) { s.HeadshotKills = true },
-	func(s *SyncScope) { s.MaxSpree = true },
-	func(s *SyncScope) { s.KDARecalc = true },
-	func(s *SyncScope) { s.TimePlayed = true },
-	func(s *SyncScope) { s.MMR = true },
-	func(s *SyncScope) { s.Expected = true },
-	func(s *SyncScope) { s.Combat = true },
-	func(s *SyncScope) { s.KillsDetail = true },
-	func(s *SyncScope) { s.CoreStats = true },
 	func(s *SyncScope) { s.PVEStats = true },
 	func(s *SyncScope) { s.Weapons = true },
 	func(s *SyncScope) { s.LUSR = true },
@@ -216,16 +155,9 @@ var allDataFields = []func(*SyncScope){
 	func(s *SyncScope) { s.AssistsModel = true },
 }
 
-// Resolve applique les implications : AllData → champs, groupes → sous-champs,
-// force_X → X. Doit être appelé une seule fois après construction.
-//
-// Ordre critique des groupes v5.2 (extérieur → intérieur) :
-//  1. CoreStats  → Combat, KillsDetail, AvgLife, KDARecalc, TimePlayed
-//  2. Combat     → Accuracy, Shots, Damage
-//  3. KillsDetail → GrenadeKills, MeleeKills, PowerWeaponKills, HeadshotKills
-//  4. MMR        → TeamMMR, EnemyMMR
-//  5. Expected   → KillsExpected, DeathsExpected (Halo Infinite n'expose pas Assists)
-//  6. forceMap   (toujours en dernier)
+// Resolve applique les implications : AllData → champs, Skill → EnemyMMR,
+// SkillRank → LUSR+CSR, force_X → X. Doit être appelé une seule fois après
+// construction. applyForceImplications est toujours appliqué en dernier.
 func (s *SyncScope) Resolve() {
 	// AllData active tous les champs data
 	if s.AllData {
@@ -234,46 +166,12 @@ func (s *SyncScope) Resolve() {
 		}
 	}
 
-	// ── 1. Groupes de haut niveau ──
-	if s.CoreStats {
-		s.Combat = true
-		s.AvgLife = true
-		s.KillsDetail = true
-		s.KDARecalc = true
-		s.TimePlayed = true
-	}
-
-	// ── 2. Groupes intermédiaires ──
-	if s.Combat {
-		s.Accuracy = true
-		s.Shots = true
-		s.Damage = true
-	}
-	if s.KillsDetail {
-		s.GrenadeKills = true
-		s.MeleeKills = true
-		s.PowerWeaponKills = true
-		s.HeadshotKills = true
-	}
-
-	// ── 3. Groupes skill ──
-	if s.MMR {
-		s.TeamMMR = true
-		s.EnemyMMR = true
-	}
-	if s.Expected {
-		s.KillsExpected = true
-		s.DeathsExpected = true
-	}
-	// --skill active aussi les champs granulaires (rétrocompatibilité)
+	// --skill active aussi le MMR adverse (fetch skill ⇒ fetch enemy MMR).
 	if s.Skill {
-		s.TeamMMR = true
 		s.EnemyMMR = true
-		s.KillsExpected = true
-		s.DeathsExpected = true
 	}
 
-	// ── 3b. SkillRank = LUSR + CSR ──
+	// ── SkillRank = LUSR + CSR ──
 	if s.SkillRank {
 		s.LUSR = true
 		s.CSR = true
@@ -283,7 +181,7 @@ func (s *SyncScope) Resolve() {
 		s.ForceCSR = true
 	}
 
-	// ── 4. force_X implique X (toujours en dernier) ──
+	// ── force_X implique X (toujours en dernier) ──
 	s.applyForceImplications()
 }
 
@@ -313,23 +211,6 @@ func (s *SyncScope) applyForceImplications() {
 	imply(&s.ForceCitations, &s.Citations)
 	imply(&s.ForceParticipantsEnrich, &s.ParticipantsEnrich)
 	imply(&s.ForceTeammatesSig, &s.TeammatesSig)
-	imply(&s.ForceTeamMMR, &s.TeamMMR)
-	imply(&s.ForceKillsExpected, &s.KillsExpected)
-	imply(&s.ForceDeathsExpected, &s.DeathsExpected)
-	imply(&s.ForceAvgLife, &s.AvgLife)
-	imply(&s.ForceDamage, &s.Damage)
-	imply(&s.ForceGrenadeKills, &s.GrenadeKills)
-	imply(&s.ForceMeleeKills, &s.MeleeKills)
-	imply(&s.ForcePowerWeaponKills, &s.PowerWeaponKills)
-	imply(&s.ForceHeadshotKills, &s.HeadshotKills)
-	imply(&s.ForceMaxSpree, &s.MaxSpree)
-	imply(&s.ForceKDARecalc, &s.KDARecalc)
-	imply(&s.ForceTimePlayed, &s.TimePlayed)
-	imply(&s.ForceMMR, &s.MMR)
-	imply(&s.ForceExpected, &s.Expected)
-	imply(&s.ForceCombat, &s.Combat)
-	imply(&s.ForceKillsDetail, &s.KillsDetail)
-	imply(&s.ForceCoreStats, &s.CoreStats)
 	imply(&s.ForcePVEStats, &s.PVEStats)
 	imply(&s.ForceWeapons, &s.Weapons)
 	imply(&s.ForceLUSR, &s.LUSR)
@@ -356,11 +237,7 @@ func (s *SyncScope) HasAnyOption() bool {
 		s.ParticipantsScores, s.ParticipantsKDA, s.ParticipantsShots,
 		s.ParticipantsDamage, s.ParticipantsAvgLife, s.KillerVictim,
 		s.EndTime, s.Sessions, s.Shots, s.Citations, s.ParticipantsEnrich,
-		s.TeammatesSig, s.TeamMMR, s.KillsExpected, s.DeathsExpected,
-		s.Damage, s.AvgLife, s.GrenadeKills, s.MeleeKills,
-		s.PowerWeaponKills, s.HeadshotKills, s.MaxSpree, s.KDARecalc,
-		s.TimePlayed, s.MMR, s.Expected, s.Combat, s.KillsDetail, s.CoreStats,
-		s.PVEStats, s.Weapons, s.LUSR, s.CSR, s.SkillRank,
+		s.TeammatesSig, s.PVEStats, s.Weapons, s.LUSR, s.CSR, s.SkillRank,
 		s.ComebackBadges, s.PlayableDuration, s.EngagementScores, s.AssistsModel,
 	}
 	for _, f := range flags {

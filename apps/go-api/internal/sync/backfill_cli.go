@@ -111,52 +111,6 @@ func NewBackfillFlagSet() (*flag.FlagSet, *BackfillCLI, *SyncScope) {
 	fs.BoolVar(&scope.ParticipantsEnrich, "participants-enrich", false, "Backfill colonnes étendues + MMR")
 	fs.BoolVar(&scope.ForceParticipantsEnrich, "force-participants-enrich", false, "Force backfill colonnes étendues")
 
-	// ── Granulaire MMR (v5.2) ──
-	fs.BoolVar(&scope.TeamMMR, "team-mmr", false, "Backfill team_mmr si NULL")
-	fs.BoolVar(&scope.ForceTeamMMR, "force-team-mmr", false, "Force rechargement team_mmr")
-	fs.BoolVar(&scope.MMR, "mmr", false, "= --team-mmr + --enemy-mmr")
-	fs.BoolVar(&scope.ForceMMR, "force-mmr", false, "= --force-team-mmr + --force-enemy-mmr")
-
-	// ── Granulaire Expected (v5.2) — Halo Infinite : pas d'Assists ──
-	fs.BoolVar(&scope.KillsExpected, "kills-expected", false, "Backfill kills_expected/stddev")
-	fs.BoolVar(&scope.DeathsExpected, "deaths-expected", false, "Backfill deaths_expected/stddev")
-	fs.BoolVar(&scope.Expected, "expected", false, "= --kills-expected + --deaths-expected")
-	fs.BoolVar(&scope.ForceKillsExpected, "force-kills-expected", false, "Force kills_expected")
-	fs.BoolVar(&scope.ForceDeathsExpected, "force-deaths-expected", false, "Force deaths_expected")
-	fs.BoolVar(&scope.ForceExpected, "force-expected", false, "Force toutes les expected values")
-
-	// ── Combat granulaire (v5.2) ──
-	fs.BoolVar(&scope.Damage, "damage", false, "Backfill damage_dealt/damage_taken")
-	fs.BoolVar(&scope.AvgLife, "avg-life", false, "Backfill avg_life_seconds")
-	fs.BoolVar(&scope.Combat, "combat", false, "= --accuracy + --shots + --damage")
-	fs.BoolVar(&scope.ForceDamage, "force-damage", false, "Force damage")
-	fs.BoolVar(&scope.ForceAvgLife, "force-avg-life", false, "Force avg_life")
-	fs.BoolVar(&scope.ForceCombat, "force-combat", false, "= --force-accuracy + --force-shots + --force-damage")
-
-	// ── Kills détaillés (v5.2) ──
-	fs.BoolVar(&scope.GrenadeKills, "grenade-kills", false, "Backfill grenade_kills")
-	fs.BoolVar(&scope.MeleeKills, "melee-kills", false, "Backfill melee_kills")
-	fs.BoolVar(&scope.PowerWeaponKills, "power-weapon-kills", false, "Backfill power_weapon_kills")
-	fs.BoolVar(&scope.HeadshotKills, "headshot-kills", false, "Backfill headshot_kills")
-	fs.BoolVar(&scope.MaxSpree, "max-spree", false, "Backfill max_killing_spree")
-	fs.BoolVar(&scope.KillsDetail, "kills-detail", false, "= grenade + melee + power_weapon + headshot kills")
-	fs.BoolVar(&scope.ForceGrenadeKills, "force-grenade-kills", false, "Force grenade_kills")
-	fs.BoolVar(&scope.ForceMeleeKills, "force-melee-kills", false, "Force melee_kills")
-	fs.BoolVar(&scope.ForcePowerWeaponKills, "force-power-weapon-kills", false, "Force power_weapon_kills")
-	fs.BoolVar(&scope.ForceHeadshotKills, "force-headshot-kills", false, "Force headshot_kills")
-	fs.BoolVar(&scope.ForceMaxSpree, "force-max-spree", false, "Force max_spree")
-	fs.BoolVar(&scope.ForceKillsDetail, "force-kills-detail", false, "Force tous les kills détaillés")
-
-	// ── Divers granulaires (v5.2) ──
-	fs.BoolVar(&scope.KDARecalc, "kda-recalc", false, "Recalcule kda si NULL")
-	fs.BoolVar(&scope.TimePlayed, "time-played", false, "Backfill time_played_seconds")
-	fs.BoolVar(&scope.ForceKDARecalc, "force-kda-recalc", false, "Force kda recalc")
-	fs.BoolVar(&scope.ForceTimePlayed, "force-time-played", false, "Force time_played")
-
-	// ── Core Stats (v5.2) ──
-	fs.BoolVar(&scope.CoreStats, "core-stats", false, "= accuracy + shots + damage + avg-life + kills-detail + kda + time-played")
-	fs.BoolVar(&scope.ForceCoreStats, "force-core-stats", false, "Force tous les core-stats")
-
 	// ── PVE / Firefight (v5.2) ──
 	fs.BoolVar(&scope.PVEStats, "pve-stats", false, "Backfill stats PVE (Firefight)")
 	fs.BoolVar(&scope.ForcePVEStats, "force-pve-stats", false, "Force backfill PVE")
