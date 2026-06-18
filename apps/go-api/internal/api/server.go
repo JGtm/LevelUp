@@ -1245,50 +1245,20 @@ func NewRouter(
 					}
 					return authz.CanAccessPlayer(true, authz.CurrentUser(sess, users), xuid, fam)
 				}
+				// Migré vers Huma (Phase 3b) : 26 routes (challenges/arcs/prestige/
+				// templates/squads/squad-challenges/pilot-mode) via ph.Mount.
 				ph := handlers.NewPrestigeHandler(lazy, appPlayers).WithActorGuard(squadActorGuard)
-				// Défis
-				r.Post("/challenges", ph.CreateChallenge)
-				r.Get("/challenges", ph.ListActiveChallenges)
-				r.Get("/challenges/{id}", ph.GetChallenge)
-				r.Patch("/challenges/{id}", ph.UpdateChallenge)
-				r.Delete("/challenges/{id}", ph.AbandonChallenge)
-				r.Post("/challenges/{id}/suggest-next", ph.SuggestNext)
-				// Arcs
-				r.Post("/arcs", ph.CreateArc)
-				r.Get("/arcs", ph.ListArcs)
-				r.Get("/arcs/presets", ph.ListArcPresets)
-				r.Post("/arcs/presets/{id}/adopt", ph.AdoptPresetArc)
-				r.Get("/arcs/{id}", ph.GetArc)
-				r.Delete("/arcs/{id}", ph.DeleteArc)
-				// Prestige (PP + niveau)
-				r.Get("/prestige/me", ph.GetMyPrestige)
-				r.Get("/templates/suggest", ph.SuggestTemplates)
-				// Squad challenges
-				r.Post("/squads/{squad_id}/challenges", ph.CreateSquadChallenge)
-				r.Get("/squads/{squad_id}/challenges", ph.ListSquadChallenges)
-				r.Post("/squads/{squad_id}/challenges/pool/refresh", ph.RefreshSquadPool)
-				r.Post("/squad-challenges/{id}/join", ph.JoinSquadChallenge)
-				// Squad CRUD (roster d'escouade, clé xuid)
-				r.Post("/squads", ph.CreateSquad)
-				r.Get("/squads", ph.ListMySquads)
-				r.Post("/squads/{squad_id}/members", ph.AddSquadMember)
-				r.Delete("/squads/{squad_id}/members/{xuid}", ph.RemoveSquadMember)
-				r.Post("/squad-challenges/{id}/evaluate", ph.EvaluateSquadChallenge)
-				r.Get("/squads/{squad_id}/orientation", ph.SquadOrientation)
-				// Mode pilote
-				r.Post("/pilot-mode/enable", ph.EnablePilotMode)
-				r.Post("/pilot-mode/disable", ph.DisablePilotMode)
-				slog.Info("prestige_routes_mounted", "endpoints_count", 22)
+				ph.Mount(r)
+				slog.Info("prestige_routes_mounted", "endpoints_count", 26)
 			}
 
 			// Sprint 54 : Compare joueur vs joueur
 			compare := handlers.NewCompareHandler(reg.Compare)
-			r.Post("/pages/compare", compare.PostComparePage)
+			compare.Mount(r)
 
 			// Sprint 54 : Classement CSR (Leaderboard)
 			leaderboard := handlers.NewLeaderboardHandler(reg.Leaderboard)
-			r.Get("/pages/leaderboard", leaderboard.GetLeaderboardPage)
-			r.Get("/pages/leaderboard/catalog", leaderboard.GetLeaderboardCatalog)
+			leaderboard.Mount(r)
 
 			// Sync delta par joueur
 			r.Post("/sync", syncH.StartDeltaSync)

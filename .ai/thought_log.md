@@ -1,3 +1,17 @@
+## [2026-06-18] Phase 3b — Prestige (26 routes) + compare + leaderboard — Complété + push branche
+
+**Statut** : Complété. Workflow `huma-inline-prestige` (3 agents). PrestigeHandler (26 routes : challenges/arcs/prestige/templates/squads/squad-challenges/pilot-mode) + compare + leaderboard convertis (Mount+Huma). server.go recâblé (bloc feature-flag `PRESTIGE_ENABLED` → `ph.Mount(r)`). Build/gofmt/vet OK, **goldens prestige_test + multititle_test (couvre compare+leaderboard) verts**, `internal/api` (contract) vert. 29 routes. Cumul = **86 routes**.
+
+**Prestige — fidélité** : statuts variés préservés (201 sur les 5 Create/Adopt, 204 sur les 4 DELETE + JoinSquadChallenge + DisablePilotMode, 200 sinon) ; gardes ActorGuard squad refactorées `(w,r,slug) bool` → `(ctx,slug) error` (403 player_forbidden) appelées au même endroit ; `serviceError` mappe not_found/invalid_input/forbidden/not_editable/already_terminal/cooldown_active(429)/db_busy(503+Retry-After)/internal_error à l'identique. RawBody pour préserver 400 invalid_body. `suggest-next` sans RawBody (pas de corps lu). Handler **cross-joueur** : pas de résolution player_slug (clé user_id/xuid en query + actor guard), donc aucun code player_not_found d'origine. Golden prestige_test + contract_test valident les 26 paths.
+
+**Correction intégration** : compare/leaderboard sont couverts par `multititle_test.go` (pas de _test.go dédié) ; l'agent leaderboard l'avait mis à jour (Mount), l'agent compare l'avait raté → corrigé (ligne 56 `r.Post(compare)` → `h.Mount`).
+
+**Push** : branche `feat/multititre-peripherie` poussée sur origin (`0a98e1d07`, 40 commits, hooks pre-push verts : govulncheck/knip/lint). Sauvegarde + revue possible. (Re-push prévu après les groupes infra.)
+
+**Reste (groupes hors player-group)** : top-level /api/v1 (bootstrap/players/asset-metadata/lab/help/session-context/auth login-logout-password), /admin (users/invites), /watcher (status/subscriptions/auth-status), health (racine), _diag, admin-actions (server_admin_monitoring), titles/* multi-title. + /sync (player, à évaluer). needs_care (home/battlepass/challenges/media/export) restent chi.
+
+**Conclusion / prochaine étape** : tout le player-group trivial est migré (sauf needs_care). Enchaîne les groupes infra (admin/watcher/top-level/health/diag/multi-title) via workflows, puis push final.
+
 ## [2026-06-18] Phase 3b — routes inline player-group DIRECTES batch 2b (7 handlers) + helper body optionnel — Complété
 
 **Statut** : Complété. Workflow `huma-inline-direct-2b` (7 agents) → explorer/citations/teammates/timeseries/session_compare/synthesis/match_history(query). server.go recâblé (Mount directs ; explorer 2 routes éparses fusionnées ; match_history `Export` CSV reste chi). Build/gofmt/vet OK, **goldens des 7 verts**, `internal/api`+humacore verts. 9 routes. Cumul = **57 routes**.
