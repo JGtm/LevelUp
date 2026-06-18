@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/sync"
@@ -154,6 +155,8 @@ func (s *FriendsOrchestratorService) emitFriendSyncCompleted(ctx context.Context
 	// §6.B Discord : webhook failsafe (no-op si webhook vide / NotifyFriends off).
 	if s.cfg != nil {
 		notifyCfg := notify.LoadNotifyConfig(s.cfg.AppSettingsPath)
+		// PMT-11 : libellés Discord du titre courant (ctx) ; failsafe Halo.
+		notifyCfg.Labels = notify.LabelsForSlug(ctxkeys.TitleSlug(ctx))
 		go notify.NotifyFriendSyncCompleted(notifyCfg, slug, promoted)
 	}
 }

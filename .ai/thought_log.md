@@ -1,3 +1,18 @@
+## [2026-06-18] PMT-11 — câblage libellés Discord title-aware — Complété (PMT-11 = 100%)
+
+**Statut** : Complété. notify tests + vet + archlint verts. Byte-identique Halo.
+
+**Constat** : le seam `NotifyLabels` (Outcome + TitleName, halo/semantic, oracle double) était livré MAIS `cfg.Labels` n'était JAMAIS injecté (toujours nil → HaloLabels). Footer/outcomes étaient « title-aware-capables » mais figés Halo.
+
+**Livré** :
+- `notify/labels_resolver.go` : resolver PARTAGÉ `SetDefaultLabelsResolver(func(slug) NotifyLabels)` + `LabelsForSlug(slug)` (failsafe HaloLabels si non câblé / nil).
+- `server.go` boot : `SetDefaultLabelsResolver` câblé via closure (`titleResolver.Semantic(slug)` = OutcomeSource + `titleRegistry.Get(slug).Name` → `LabelsFor`). Aucune comparaison de slug.
+- Injection `cfg.Labels = notify.LabelsForSlug(ctxkeys.TitleSlug(ctx))` aux call-sites SERVEUR : settings (friend-added) + friends_orchestrator. Les embeds (outcomes win/loss + footer « LevelUp · {titre} Stats ») suivent désormais le titre courant.
+- CLIs (cmd_notify, refresh-metadata) : resolver non câblé hors serveur → `LabelsForSlug` rend HaloLabels (byte-identique). Non touchés.
+- Test : failsafe (non câblé → Halo) + routage (slug → libellés du titre) + nil → Halo.
+
+**Conclusion** : PMT-11 = 100% (seam + câblage). Un 2e titre dont l'adapter sémantique est résolu voit ses outcomes + son nom dans les notifs Discord.
+
 ## [2026-06-18] PMT-4 PR-3c — GET/PATCH /settings overlay per-titre — Complété (PMT-4 = 100%)
 
 **Statut** : Complété. settings + handler tests verts, vet + archlint verts. Titre par défaut byte-identique.

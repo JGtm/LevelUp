@@ -333,6 +333,8 @@ func (h *SettingsHandler) emitFriendsAdded(ctx context.Context, added []string) 
 	}
 	// Charger NotifyConfig une fois pour la batch (évite N reads disk).
 	notifyCfg := notify.LoadNotifyConfig(h.cfg.AppSettingsPath)
+	// PMT-11 : libellés Discord du titre courant (outcomes + footer). Failsafe Halo.
+	notifyCfg.Labels = notify.LabelsForSlug(ctxkeys.TitleSlug(ctx))
 	for _, gt := range added {
 		if err := em.Emit(ctx, notifications.EmitInput{
 			Category: notifications.CategoryFriendAdded,
