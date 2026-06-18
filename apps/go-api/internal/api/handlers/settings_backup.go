@@ -4,33 +4,32 @@ import (
 	"context"
 	"net/http"
 	"time"
+
+	"levelup/go-api/internal/api/humacore"
 )
 
-// GetBackupStatus retourne l'état courant du scheduler de sauvegarde.
+// handleGetBackupStatus retourne l'état courant du scheduler de sauvegarde.
 // GET /settings/backup/status
-func (h *SettingsHandler) GetBackupStatus(w http.ResponseWriter, _ *http.Request) {
+func (h *SettingsHandler) handleGetBackupStatus(ctx context.Context, _ *struct{}) (*settingsJSONOutput, error) {
 	if h.backupSched == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"enabled": false, "available": false})
-		return
+		return &settingsJSONOutput{Body: map[string]any{"enabled": false, "available": false}}, nil
 	}
-	writeJSON(w, http.StatusOK, h.backupSched.Status())
+	return &settingsJSONOutput{Body: h.backupSched.Status()}, nil
 }
 
-// PostBackupRun déclenche un cycle de sauvegarde immédiat et attend son résultat.
+// handlePostBackupRun déclenche un cycle de sauvegarde immédiat et attend son résultat.
 // POST /settings/backup/run
 // Synchrone avec timeout de 10 minutes — adapté à un usage admin occasionnel.
-func (h *SettingsHandler) PostBackupRun(w http.ResponseWriter, r *http.Request) {
+func (h *SettingsHandler) handlePostBackupRun(ctx context.Context, _ *struct{}) (*settingsJSONOutput, error) {
 	if h.backupSched == nil {
-		writeError(r.Context(), w, http.StatusServiceUnavailable, "backup_scheduler_unavailable", "backup scheduler non initialisé")
-		return
+		return nil, humacore.NewError(http.StatusServiceUnavailable, "backup_scheduler_unavailable", "backup scheduler non initialisé")
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Minute)
+	runCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
-	result, err := h.backupSched.RunOnce(ctx)
+	result, err := h.backupSched.RunOnce(runCtx)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "backup_run_failed", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "backup_run_failed", err.Error())
 	}
-	writeJSON(w, http.StatusOK, result)
+	return &settingsJSONOutput{Body: result}, nil
 }

@@ -32,8 +32,7 @@ func newBackupRouter(t *testing.T, backupSched *duckdbbackup.Scheduler) *chi.Mux
 		h = h.WithBackupScheduler(backupSched)
 	}
 	r := chi.NewRouter()
-	r.Get("/settings/backup/status", h.GetBackupStatus)
-	r.Post("/settings/backup/run", h.PostBackupRun)
+	h.Mount(r)
 	return r
 }
 
