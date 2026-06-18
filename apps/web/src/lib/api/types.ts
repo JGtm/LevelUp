@@ -70,211 +70,29 @@ export interface HealthResponse {
 // Lab interne
 // ---------------------------------------------------------------------------
 
-export interface LabFileStatus {
-  path: string
-  exists: boolean
-  size_bytes: number
-  modified_at?: string | null
-}
-
-export interface LabSnapshotSummary {
-  resource_key: string
-  version: string
-  fetched_at: string
-  content_hash: string
-  etag?: string | null
-  source_url?: string | null
-  payload_size: number
-}
-
-export interface LabSnapshotDetail {
-  resource_key: string
-  version: string
-  fetched_at: string
-  content_hash: string
-  etag?: string | null
-  source_url?: string | null
-  payload: string
-}
-
-export interface LabAssetSummary {
-  asset_id: string
-  asset_type: string
-  version_id: string
-  name: string
-  fetched_at: string
-}
-
-export interface LabAssetDetail {
-  asset_id: string
-  asset_type: string
-  version_id: string
-  name: string
-  description: string
-  fetched_at: string
-  content_hash: string
-  raw_json: string
-}
-
-export interface LabAssetExplorer {
-  total: number
-  search?: string | null
-  items: LabAssetSummary[]
-  selected?: LabAssetDetail | null
-}
-
-export interface LabMedalSummary {
-  medal_id: number
-  name_id: string
-  description_id: string
-  medal_type: string
-  difficulty: string
-  sprite_index: number
-  fetched_at: string
-}
-
-export interface LabMedalDetail {
-  medal_id: number
-  name_id: string
-  description_id: string
-  medal_type: string
-  difficulty: string
-  sprite_index: number
-  personal_score: number
-  fetched_at: string
-  content_hash: string
-  raw_json: string
-}
-
-export interface LabMedalExplorer {
-  total: number
-  search?: string | null
-  items: LabMedalSummary[]
-  selected?: LabMedalDetail | null
-}
-
-export interface LabResourcesResponse {
-  title_slug: string
-  metadata_db_path: string
-  current_season?: {
-    title_id: string
-    season_id: string
-    version: string
-    name: string
-    start_date: string
-    end_date?: string | null
-    fetched_at: string
-    content_hash: string
-    etag?: string | null
-    source_url?: string | null
-  } | null
-  seasons: Array<{
-    title_id: string
-    season_id: string
-    version: string
-    name: string
-    start_date: string
-    end_date?: string | null
-    fetched_at: string
-    content_hash: string
-    etag?: string | null
-    source_url?: string | null
-  }>
-  csr_seasons: Array<{
-    title_id: string
-    season_id: string
-    version: string
-    name: string
-    start_date: string
-    end_date?: string | null
-    fetched_at: string
-    content_hash: string
-    etag?: string | null
-    source_url?: string | null
-  }>
-  snapshots: LabSnapshotSummary[]
-  selected_snapshot?: LabSnapshotDetail | null
-  assets: LabAssetExplorer
-  medals: LabMedalExplorer
-}
-
-export interface LabRouteMethods {
-  path: string
-  methods: string[]
-}
-
-export interface LabMethodMismatch {
-  fastapi_path: string
-  go_path: string
-  fastapi_methods: string[]
-  go_methods: string[]
-  missing_methods: string[]
-  extra_methods: string[]
-}
-
-export interface LabOpenAPISummary {
-  fastapi_route_count: number
-  go_route_count: number
-  missing_in_go: number
-  extra_in_go: number
-  method_mismatches: number
-  status: string
-}
-
-export interface LabContractsResponse {
-  go_openapi: LabFileStatus
-  fastapi_reference: LabFileStatus
-  summary: LabOpenAPISummary
-  missing_in_go: LabRouteMethods[]
-  extra_in_go: LabRouteMethods[]
-  method_mismatches: LabMethodMismatch[]
-}
-
-export interface LabGuardResult {
-  passed: boolean
-  reason: string
-  details: string[]
-}
-
-export interface LabMedalGuardsReport {
-  entry_count: number
-  cardinality: LabGuardResult
-  required_fields: LabGuardResult
-  images: LabGuardResult
-  overall: LabGuardResult
-}
-
-export interface LabParitySummary {
-  total: number
-  passed: number
-  failed: number
-  skipped: number
-}
-
-export interface LabParityResult {
-  name: string
-  status: string
-  http_status?: number | null
-  mode?: string | null
-  reason?: string | null
-  error?: string | null
-  diffs?: Array<Record<string, unknown>>
-}
-
-export interface LabParityReport {
-  generated_at: string
-  go_url: string
-  player: string
-  summary: LabParitySummary
-  results: LabParityResult[]
-}
-
-export interface LabDiagnosticsResponse {
-  title_slug: string
-  parity_report_file: LabFileStatus
-  parity_report?: LabParityReport | null
-  medal_guards?: LabMedalGuardsReport | null
-}
+// Aire Lab : shimée depuis le contrat (les schémas sont auto-dérivés des structs
+// Go via le drift-detector ; openapi.yaml complété 2026-06-18). Source de vérité
+// = contrat. Oracle de compatibilité = tsc -b sur les usages de la feature Lab.
+export type LabFileStatus = components['schemas']['LabFileStatus']
+export type LabSnapshotSummary = components['schemas']['LabSnapshotSummary']
+export type LabSnapshotDetail = components['schemas']['LabSnapshotDetail']
+export type LabAssetSummary = components['schemas']['LabAssetSummary']
+export type LabAssetDetail = components['schemas']['LabAssetDetail']
+export type LabAssetExplorer = components['schemas']['LabAssetExplorer']
+export type LabMedalSummary = components['schemas']['LabMedalSummary']
+export type LabMedalDetail = components['schemas']['LabMedalDetail']
+export type LabMedalExplorer = components['schemas']['LabMedalExplorer']
+export type LabResourcesResponse = components['schemas']['LabResourcesResponse']
+export type LabRouteMethods = components['schemas']['LabRouteMethods']
+export type LabMethodMismatch = components['schemas']['LabMethodMismatch']
+export type LabOpenAPISummary = components['schemas']['LabOpenAPISummary']
+export type LabContractsResponse = components['schemas']['LabContractsResponse']
+export type LabGuardResult = components['schemas']['LabGuardResult']
+export type LabMedalGuardsReport = components['schemas']['LabMedalGuardsReport']
+export type LabParitySummary = components['schemas']['LabParitySummary']
+export type LabParityResult = components['schemas']['LabParityResult']
+export type LabParityReport = components['schemas']['LabParityReport']
+export type LabDiagnosticsResponse = components['schemas']['LabDiagnosticsResponse']
 
 // ---------------------------------------------------------------------------
 // Filtres

@@ -64,13 +64,13 @@ export function ContractsPanel({ data, isLoading, isError, onRetry, locale, text
       <div className="grid gap-4 xl:grid-cols-2">
         <RouteList
           title={text.contracts.missingRoutesTitle}
-          items={data.missing_in_go}
+          items={data.missing_in_go ?? []}
           emptyTitle={text.contracts.missingRoutesEmptyTitle}
           emptyDescription={text.contracts.missingRoutesEmptyDescription}
         />
         <RouteList
           title={text.contracts.extraRoutesTitle}
-          items={data.extra_in_go}
+          items={data.extra_in_go ?? []}
           emptyTitle={text.contracts.extraRoutesEmptyTitle}
           emptyDescription={text.contracts.extraRoutesEmptyDescription}
         />
@@ -81,14 +81,14 @@ export function ContractsPanel({ data, isLoading, isError, onRetry, locale, text
           <CardTitle className="text-base">{text.contracts.mismatchTitle}</CardTitle>
         </CardHeader>
         <CardContent>
-          {data.method_mismatches.length === 0 ? (
+          {(data.method_mismatches ?? []).length === 0 ? (
             <EmptyStateNotice
               title={text.contracts.mismatchEmptyTitle}
               description={text.contracts.mismatchEmptyDescription}
             />
           ) : (
             <div className="space-y-3">
-              {data.method_mismatches.map((item) => (
+              {(data.method_mismatches ?? []).map((item) => (
                 <div key={item.fastapi_path} className="rounded-xl border border-border p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge status="DIVERGENCES" text={text} />
@@ -97,11 +97,11 @@ export function ContractsPanel({ data, isLoading, isError, onRetry, locale, text
                   <div className="mt-3 grid gap-3 text-sm text-muted-foreground md:grid-cols-2">
                     <div>
                       <p className="font-medium text-foreground">{text.contracts.fastapiLabel}</p>
-                      <p>{item.fastapi_methods.join(', ')}</p>
+                      <p>{(item.fastapi_methods ?? []).join(', ')}</p>
                     </div>
                     <div>
                       <p className="font-medium text-foreground">{text.contracts.goLabel}</p>
-                      <p>{item.go_methods.join(', ')}</p>
+                      <p>{(item.go_methods ?? []).join(', ')}</p>
                     </div>
                   </div>
                 </div>
