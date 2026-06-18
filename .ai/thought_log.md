@@ -1,3 +1,22 @@
+## [2026-06-18] Squelette 2e titre COMPLET (synthetic_title_b, coming_soon, niveau Halo) — Complété
+
+**Statut** : Complété. 5 tests squelette verts + tests title/synthetic/bootstrap/session inchangés. Le registre découvre `synthetic_title_b` en `coming_soon` (log `title_registered_from_config ... capabilities=11`).
+
+**But** : pré-câbler un 2e titre COMPLET (« même niveau d'information que Halo ») pour que l'onboarding d'un vrai 2e titre = remplir l'adapter, pas reconstruire la plomberie.
+
+**Livré** (config-complet, zéro code de prod modifié) :
+- `config/titles/synthetic_title_b/title.toml` : manifest, **status=coming_soon** (découvert + listé switcher, NON servi/provisionné en prod — sûr), **11 capabilities** (toutes, niveau Halo), xbox_title_id distinct.
+- `config/titles/synthetic_title_b/mappings/capabilities.toml` : 9 CapabilityKey fines toutes `supported`.
+- `config/titles/synthetic_title_b/constants.toml` : `[endpoints]` 8 hosts DISTINCTS (`*.synthetic.example.test`) → prouve que le resolver d'hosts route vraiment.
+- `config/titles/synthetic_title_b/auth.toml` : `[auth]` descripteur (audiences/SISU distincts d'Halo).
+- (déjà présents : adapter Data/Semantic/AssetURL + mappings fields/assets/outcomes + tests d'isolation.)
+
+**Validation** : `RequiredTOMLFor` (fields+capabilities+assets+outcomes, requis car CapAssetImages+CapMatchmaking) → les 4 présents → **zéro bruit de validation au boot**. PMT-12 ne fait fail-fast que sur titres ACTIFS ; coming_soon = loggé non-bloquant. Tests : manifest 11 caps + coming_soon, découverte registre (NonArchived/switcher, pas Active), capabilities/endpoints/auth chargent + routent distinct d'Halo.
+
+**Provisioning** : à l'activation (status→active), `provisionAdditionalTitle` crée les DB via `RunForTitleDB(slug)` → fallback set Halo (pas de migration set custom enregistré) = **schéma identique à Halo** (« même niveau d'information »).
+
+**Reste pour un VRAI 2e titre** (intrinsèquement title-spécifique, hors infra) : (1) status→active, (2) enregistrer le DataAdapter en prod (ServiceRegistry), (3) implémenter ses `Load*` contre la vraie source. Toute la plomberie title-agnostique (registre, provisioning, hosts, auth, gating front, outcomes) est en place + byte-identique Halo.
+
 ## [2026-06-18] PMT-5 — TOUS les repos SQL outcome migrés (100%) — Complété
 
 **Statut** : Complété. `go build` OK, `go vet` OK, archlint vert, **duckdb `-tags integration` (67s) vert** (les tests exécutent les vraies requêtes → valident l'ordre des args Sprintf des templates). Byte-identique Halo (le helper rend le littéral legacy).
