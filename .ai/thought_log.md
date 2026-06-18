@@ -1,3 +1,24 @@
+## [2026-06-18] Audit UI multi-titre vérifié + gating Explorer/Timeseries — Complété (partiel : switcher reste)
+
+**Statut** : Complété pour les 2 trous de gating. typecheck + eslint + vitest **1902 pass / 14 skip** (baseline inchangée). Switcher = design proposé, pas codé.
+
+**Déclencheur** : l'utilisateur a poussé sur « le front/Lab/admin sont vraiment adaptés ? ». Audit workflow (5 finders + 4 réfutateurs adversariaux), puis **re-vérification manuelle des claims lourds** (un agent comptait 66 instances `humacore.NewAPI` → faux, réel = **132** ; un autre signalait « 127 importeurs generated.ts » → faux, c'était `i18n/generated/*`).
+
+**Constat vérifié** : le front est multi-titre côté DONNÉES (capabilities + `X-LevelUp-Title`) mais :
+- **Aucun sélecteur de titre UI** (PMT-8/MT-22). Plomberie complète (`switchTitle`/`buildTitleSwitcherEntries`/`setApiTitleSlug`/backend `BuildAvailableTitles`) mais zéro composant ne la rend → code mort, utilisateur verrouillé sur halo_infinite dès >1 titre. **Bloquant-2e-titre.**
+- **Gating Phase 5 incomplet** : Explorer et Timeseries (charts rang) jamais gatés → afficheraient des blocs CSR/LUSR Halo vides pour un titre sans rang.
+
+**Fixé ce jour (gating)** :
+- `ExplorerTargetProfileCard` : bloc CSR saison sous `useCapability('ranked')` + reflow « Matchs par saison » pleine largeur si masqué.
+- `ExplorerPage.matchesMode` : filtre paliers skill-tier (CSR Halo Bronze→Onyx) masqué si !ranked (distinct du `disabled` existant lié au contexte playlist).
+- `TimeseriesPage.progression` : `TimeseriesSkillProgression` + `TimeseriesSkillRankPerformance` gatés `ranked||lusr` ; **RankScore gardé** (score + placement de match = générique, vérifié en lisant `TimeseriesFormCharts` : `personal_score` + `r.rank` placement, pas `skill_rating_value`). Hooks `useCapability` appelés inconditionnellement (règles des hooks).
+
+**Décision** : ne pas sur-gater — RankScore reste car générique. Pas de test de gating par-composant ajouté (convention du repo : gating testé au niveau lib `capabilities.test.tsx` + nav ; les features Home/Career gatées n'ont pas de test par-composant non plus ; charts ECharts en jsdom = fragiles). Wiring couvert par typecheck + suite complète verte.
+
+**Reste (tracé INDEX + TRACKER)** : (1) **switcher UI** = le vrai « minimum de travail pour un nouveau Halo », à poser (1 dropdown NavL1) ; (2) cosmétique : vocab Halo en dur non gaté (admin « API Halo »/« Watcher Xbox », Lab « Waypoint », HomeHeroBanner, motif `HINF-CSR`).
+
+**openapi (réponse à la question)** : 2 leviers, pas un choix exclusif. A = finir `types.ts`→`generated.ts` (pipeline `generate-types` existe déjà, 7/366 types branchés ; incrémental, peu risqué). B = auto-générer l'openapi.yaml depuis Huma (~132 instances chemins relatifs + re-câblage middleware ownership/auth par route → ~8-12 j-h, haut risque, faible valeur car YAML manuel contract-testé). Recommandation : A par lots, **pas** B.
+
 ## [2026-06-18] Arcs Prestige cross-titre — socle backend-ready (arc_titles) — Complété
 
 **Statut** : Complété. migrations + duckdb + prestige verts (default + `-tags integration`), vet/gofmt/archlint verts. Comportement mono-titre observable strictement inchangé.
