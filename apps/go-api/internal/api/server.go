@@ -568,9 +568,7 @@ func NewRouter(
 	//   - /healthz  : liveness — process vivant, 0 I/O DB, latence < 5ms.
 	//   - /readyz   : readiness — vérifie DuckDB + fs, retourne 503 si un check KO.
 	healthH := handlers.NewHealthHandlerWithVersion(bootRepo, cfg.AppVersion)
-	r.Get("/health", healthH.ServeHTTP)
-	r.Get("/healthz", healthH.Liveness)
-	r.Get("/readyz", healthH.Readiness)
+	healthH.Mount(r) // /health, /healthz, /readyz (racine, Huma)
 
 	// P8.3 (revue 2026-04-29, ADR 0009) : monitoring expvar minimal.
 	// Expose /debug/vars (stdlib) avec les compteurs LevelUp publiés sous la
@@ -630,29 +628,26 @@ func NewRouter(
 		// CSR/LUSR, playlists récentes, arme favorite) et renvoie 503 si une
 		// section est vide sans raison. Pensé pour CI post-backfill et alerte
 		// dev. Cf. handlers/health_home.go.
-		r.With(middleware.NoStore).Get("/healthz/home", handlers.NewHealthHomeHandler(reg.HomeCtxWithAuth).Check)
+		handlers.NewHealthHomeHandler(reg.HomeCtxWithAuth).Mount(r.With(middleware.NoStore))
 
 		// Phase 9 du plan pipeline CSR : diagnostic coverage CSR pour un joueur.
 		// Permet de vérifier en 1 ligne si le pipeline a bien capturé les CSR
 		// (matured + placement) ou s'il faut lancer un backfill.
-		r.With(middleware.NoStore).Get("/_diag/csr-coverage/{player_slug}",
-			handlers.NewDiagCSRHandler(reg.CSRCoverageProvider).GetCoverage)
+		handlers.NewDiagCSRHandler(reg.CSRCoverageProvider).Mount(r.With(middleware.NoStore))
 
 		// Phase 4 plan stabilisation 2026-05-22 : diagnostic progression V2
 		// (Ascension). Compte les rows dans streak/player_records/record_history/
 		// milestone_earned + milestone_catalog. Permet de vérifier que
 		// EvaluateProgressionAfterSync tourne bien sur l'auto-sync (avant Phase 4
 		// ces tables restaient vides — cf. AUDIT_ASCENSION_PIPELINE_DISCONNECTED).
-		r.With(middleware.NoStore).Get("/_diag/progression/{player_slug}",
-			handlers.NewDiagProgressionHandler(reg.ProgressionDiagProvider).GetDiag)
+		handlers.NewDiagProgressionHandler(reg.ProgressionDiagProvider).Mount(r.With(middleware.NoStore))
 
 		// Fix 2026-05-30 : backfill progression V2 in-process. Force une
 		// évaluation idempotente (streaks/records/milestones) pour un joueur
 		// dont l'historique existe mais dont le pipeline post-sync n'avait
 		// jamais abouti (incident timeout shared reader). Renvoie le diag
 		// post-exécution.
-		r.With(middleware.NoStore).Post("/_admin/progression/backfill/{player_slug}",
-			handlers.NewProgressionBackfillHandler(reg.ProgressionBackfillProvider).RunBackfill)
+		handlers.NewProgressionBackfillHandler(reg.ProgressionBackfillProvider).Mount(r.With(middleware.NoStore))
 
 		// Phase A multi-titres : exposition des field mappings TOML.
 		// Derrière MULTI_TITLE_API_ENABLED.
@@ -732,7 +727,7 @@ func NewRouter(
 
 		// Sprint 14 : contexte de session
 		sessionHandler := handlers.NewSessionHandler(sessionStore)
-		r.Post("/session/context", sessionHandler.PostContext)
+		sessionHandler.Mount(r)
 
 		// Verrou « instance fermée » (lockdown) : effectif = env (LEVELUP_INSTANCE_LOCKED,
 		// verrou forcé au boot) OU app_settings.instance_locked (mutable à chaud via
@@ -798,12 +793,7 @@ func NewRouter(
 		userAuthHandler := handlers.NewUserAuthHandler(users, invites, sessionStore, cfg.RegistrationMode).
 			WithAuthMode(cfg.AuthMode).
 			WithInstanceLock(instanceLockedFn)
-		r.Post("/auth/login", userAuthHandler.Login)
-		r.Post("/auth/register", userAuthHandler.Register)
-		r.Post("/auth/logout", userAuthHandler.Logout)
-		// PR-C : définition opt-in d'un mot de passe par l'utilisateur connecté
-		// (re-login rapide sans round-trip Microsoft). Self-gardé (401 si pas de session).
-		r.Post("/auth/password", userAuthHandler.SetPassword)
+		userAuthHandler.Mount(r) // login/register/logout/password migrés vers Huma (Phase 3b)
 
 		// Admin : gestion utilisateurs + invitations (protégé par RequireAuth + RequireAdmin).
 		adminHandler := handlers.NewAdminHandler(users, invites)

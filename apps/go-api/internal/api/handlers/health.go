@@ -1,11 +1,27 @@
-// Package handlers — handler GET /health.
+// Package handlers — handler GET /health, /healthz, /readyz.
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le routeur
+// racine (routes RACINE, sans préfixe /api/v1) et enregistre les 3 GET via
+// huma.Get. Logique métier inchangée (BootstrapRepository), seul le wrapping
+// HTTP change.
+//
+//   - /health  → ServeHTTP  : 200 {HealthResponse} ou 503 {db_unavailable}.
+//   - /healthz → Liveness   : 200 {status:alive} (aucun I/O DB).
+//   - /readyz  → Readiness  : 200 {status:ready} ou 503 {status:not_ready,checks}
+//     — le 503 PORTE un corps de checks (diagnostic), donc Output{Status, Body}
+//     et non une erreur Huma.
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"runtime"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -27,23 +43,52 @@ func NewHealthHandlerWithVersion(repo port.BootstrapRepository, version string) 
 	return &HealthHandler{repo: repo, appVersion: version, startedAt: time.Now()}
 }
 
-// ServeHTTP retourne le healthcheck enrichi (Sprint 41 T3).
+// Mount enregistre les 3 routes RACINE via Huma sur le routeur chi `r`
+// (montées sans préfixe /api/v1, à l'identique des routes chi d'origine).
+func (h *HealthHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/health", h.handleHealth)
+	huma.Get(api, "/healthz", h.handleLiveness)
+	huma.Get(api, "/readyz", h.handleReadiness)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// healthOutput : 200 {HealthResponse} (le 503 db_unavailable est une erreur Huma).
+type healthOutput struct {
+	Body domain.HealthResponse
+}
+
+// livenessOutput : 200 {status:alive, uptime}.
+type livenessOutput struct {
+	Body map[string]any
+}
+
+// readinessOutput : 200 OU 503 — le statut porte un corps de checks (diagnostic),
+// donc Output{Status, Body} et non une erreur Huma.
+type readinessOutput struct {
+	Status int
+	Body   map[string]any
+}
+
+// ─── Endpoints ───────────────────────────────────────────────────────────────
+
+// handleHealth retourne le healthcheck enrichi (Sprint 41 T3).
 //
 // Deprecated: utiliser /healthz pour la liveness ou /readyz pour la readiness.
 // /health garde la sémantique mixte (200 si DB OK) pour rétrocompat.
-func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	count, err := h.repo.GetMatchCount(r.Context())
+func (h *HealthHandler) handleHealth(ctx context.Context, _ *struct{}) (*healthOutput, error) {
+	count, err := h.repo.GetMatchCount(ctx)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusServiceUnavailable, "db_unavailable",
+		return nil, humacore.NewError(http.StatusServiceUnavailable, "db_unavailable",
 			"Impossible de lire shared_matches_v2: "+err.Error())
-		return
 	}
 
-	dbVersion, _ := h.repo.GetDBVersion(r.Context())
-	playerCount, _ := h.repo.GetPlayerCount(r.Context())
-	lastSync, _ := h.repo.GetLastSyncAt(r.Context())
+	dbVersion, _ := h.repo.GetDBVersion(ctx)
+	playerCount, _ := h.repo.GetPlayerCount(ctx)
+	lastSync, _ := h.repo.GetLastSyncAt(ctx)
 
-	writeJSON(w, http.StatusOK, domain.HealthResponse{
+	return &healthOutput{Body: domain.HealthResponse{
 		Status:      "ok",
 		MatchCount:  count,
 		DBVersion:   dbVersion,
@@ -52,35 +97,35 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		LastSyncAt:  lastSync,
 		Uptime:      time.Since(h.startedAt).Round(time.Second).String(),
 		GoVersion:   runtime.Version(),
-	})
+	}}, nil
 }
 
-// Liveness gère GET /healthz (P8.11).
+// handleLiveness gère GET /healthz (P8.11).
 //
 // Liveness probe : signale que le process Go est vivant et n'a pas paniqué.
 // **Aucun I/O DB**, aucune requête réseau — latence < 5ms garantie.
 // Si ce handler répond 200, l'orchestrateur (K8s/LB) NE doit PAS redémarrer
 // l'instance. Si la DB est en panne, c'est un problème de readiness, pas
 // de liveness — voir /readyz.
-func (h *HealthHandler) Liveness(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{
+func (h *HealthHandler) handleLiveness(ctx context.Context, _ *struct{}) (*livenessOutput, error) {
+	return &livenessOutput{Body: map[string]any{
 		jsonKeyStatus: "alive",
 		"uptime":      time.Since(h.startedAt).Round(time.Second).String(),
-	})
+	}}, nil
 }
 
-// Readiness gère GET /readyz (P8.11).
+// handleReadiness gère GET /readyz (P8.11).
 //
 // Readiness probe : signale que l'app est prête à accepter du trafic.
 // Vérifie : DuckDB metadata accessible (read), filesystem data/ accessible.
 // Si un check échoue → 503 + body JSON `{checks: {duckdb: "ok|err", fs: "ok|err"}}`.
 // Latence cible < 100ms.
-func (h *HealthHandler) Readiness(w http.ResponseWriter, r *http.Request) {
+func (h *HealthHandler) handleReadiness(ctx context.Context, _ *struct{}) (*readinessOutput, error) {
 	checks := map[string]string{}
 	allOK := true
 
 	// Check DB : tentative de lecture du compte de matchs (fail-fast).
-	if _, err := h.repo.GetMatchCount(r.Context()); err != nil {
+	if _, err := h.repo.GetMatchCount(ctx); err != nil {
 		checks["duckdb"] = "err: " + err.Error()
 		allOK = false
 	} else {
@@ -88,7 +133,7 @@ func (h *HealthHandler) Readiness(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check version DB : déjà couvert par GetMatchCount mais marqueur explicite.
-	if _, err := h.repo.GetDBVersion(r.Context()); err != nil {
+	if _, err := h.repo.GetDBVersion(ctx); err != nil {
 		checks["duckdb_version"] = "err: " + err.Error()
 		allOK = false
 	} else {
@@ -101,8 +146,8 @@ func (h *HealthHandler) Readiness(w http.ResponseWriter, r *http.Request) {
 		status = http.StatusServiceUnavailable
 		statusLabel = "not_ready"
 	}
-	writeJSON(w, status, map[string]any{
+	return &readinessOutput{Status: status, Body: map[string]any{
 		jsonKeyStatus: statusLabel,
 		"checks":      checks,
-	})
+	}}, nil
 }

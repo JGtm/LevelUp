@@ -25,7 +25,7 @@ func newSessionContextRouter(t *testing.T) *chi.Mux {
 	h := handlers.NewSessionHandler(store)
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(store, middleware.SecureCookiePolicy{}))
-	r.Post("/session/context", h.PostContext)
+	h.Mount(r)
 	return r
 }
 

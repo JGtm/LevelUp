@@ -4,6 +4,10 @@
 // rapidement la couverture CSR d'un joueur : snapshots Waypoint, MSR CSR
 // (matured + placement), gap vs match_registry.
 //
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) au point de
+// montage (préfixe /api/v1, middleware NoStore hérité) et enregistre le GET
+// via huma.Get. Logique métier inchangée, seul le wrapping HTTP change.
+//
 // Usage typique post-backfill :
 //
 //	curl -s http://127.0.0.1:8000/api/v1/_diag/csr-coverage/JGtm | jq
@@ -15,8 +19,10 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 )
 
@@ -39,22 +45,37 @@ func NewDiagCSRHandler(newProvider CSRCoverageFactory) *DiagCSRHandler {
 	return &DiagCSRHandler{newProvider: newProvider}
 }
 
+// Mount enregistre la route via Huma au point de montage chi `r` (préfixe
+// /api/v1 + middleware NoStore hérités). {player_slug} est lu dans le path de
+// la route via le champ Input `path:"player_slug"`.
+func (h *DiagCSRHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/_diag/csr-coverage/{player_slug}", h.GetCoverage)
+}
+
+// diagCSRInput : path param {player_slug} (présent dans le path de la route).
+type diagCSRInput struct {
+	PlayerSlug string `path:"player_slug"`
+}
+
+// diagCSROutput : payload coverage CSR sérialisé en 200.
+type diagCSROutput struct {
+	Body *domain.CSRCoverage
+}
+
 // GetCoverage : GET /api/v1/_diag/csr-coverage/{player_slug}.
-func (h *DiagCSRHandler) GetCoverage(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
+func (h *DiagCSRHandler) GetCoverage(ctx context.Context, in *diagCSRInput) (*diagCSROutput, error) {
+	slug := in.PlayerSlug
 	if slug == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_slug", "player_slug requis")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_slug", "player_slug requis")
 	}
-	provider, xuid, err := h.newProvider(r.Context(), slug)
+	provider, xuid, err := h.newProvider(ctx, slug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
-	cov, err := provider.GetCoverage(r.Context(), slug, xuid)
+	cov, err := provider.GetCoverage(ctx, slug, xuid)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "coverage_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "coverage_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, cov)
+	return &diagCSROutput{Body: cov}, nil
 }

@@ -7,6 +7,12 @@
 // But : transformer une régression silencieuse (UI affiche "—" ou "Aucune
 // partie classée" alors que la donnée existe) en alerte HTTP 503 visible.
 //
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) au point de montage
+// /api/v1 et enregistre le GET via huma.Get. Logique métier inchangée
+// (HomeAuthFactory + GetHomePage), seul le wrapping HTTP change. Le param
+// `player` reste un query param (pas un path param) ; le 503 « section vide »
+// est un corps de DIAGNOSTIC (Output{Status:503, Body}) et non une erreur Huma.
+//
 // Contrat :
 //   - GET /api/v1/healthz/home?player=<slug>
 //   - Le param `player` est obligatoire (pas de auto-pick : la home dépend
@@ -16,16 +22,17 @@
 //     plusieurs sections sont vides sans raison (= régression)
 //   - 404 si player_slug inconnu
 //   - 500 si GetHomePage panique
-//
-// Utilisation typique : appelé après chaque backfill, dans la CI smoke step,
-// et optionnellement consommé par le frontend pour afficher une bannière
-// d'alerte dev quand une section est vide.
 package handlers
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 )
 
@@ -41,36 +48,60 @@ func NewHealthHomeHandler(newSvc HomeAuthFactory) *HealthHomeHandler {
 	return &HealthHomeHandler{newSvc: newSvc}
 }
 
-// Check répond à GET /api/v1/healthz/home?player=<slug>.
+// Mount enregistre la route via Huma au point de montage chi (préfixe /api/v1 +
+// middleware racine hérités). Le chemin relatif /healthz/home est identique à la
+// route chi d'origine.
+func (h *HealthHomeHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/healthz/home", h.handleCheck)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// healthHomeInput : param `player` en QUERY (pas un path param) — la home dépend
+// du joueur, mais le chemin /healthz/home n'en porte pas le slug.
+type healthHomeInput struct {
+	Player string `query:"player"`
+}
+
+// healthHomeOutput : 200 OK (tout peuplé) OU 503 (sections vides / GetHomePage en
+// erreur). Le 503 est un corps de DIAGNOSTIC (pas une erreur Huma) → Status
+// explicite + Body map. Le 200 doit aussi fixer Status (le champ Status override
+// le défaut Huma, sinon une réponse sans Status renverrait 0/204).
+type healthHomeOutput struct {
+	Status int
+	Body   any
+}
+
+// ─── Endpoint ────────────────────────────────────────────────────────────────
+
+// handleCheck répond à GET /api/v1/healthz/home?player=<slug>.
 //
 //nolint:funlen // checklist explicite section-par-section pour lisibilité
-func (h *HealthHomeHandler) Check(w http.ResponseWriter, r *http.Request) {
-	slug := r.URL.Query().Get("player")
+func (h *HealthHomeHandler) handleCheck(ctx context.Context, in *healthHomeInput) (*healthHomeOutput, error) {
+	slug := in.Player
 	if slug == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_player",
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_player",
 			"Le paramètre 'player' est obligatoire. Exemple : /api/v1/healthz/home?player=jgtm")
-		return
 	}
 
-	svc, ctx, _, gamertag, err := h.newSvc(r.Context(), slug)
+	svc, svcCtx, _, gamertag, err := h.newSvc(ctx, slug)
 	if err != nil {
-		slog.WarnContext(r.Context(), "healthz/home: newSvc failed", "slug", slug, "err", err)
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found",
+		slog.WarnContext(ctx, "healthz/home: newSvc failed", "slug", slug, "err", err)
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found",
 			"Joueur introuvable dans db_profiles.json")
-		return
 	}
 
-	page, err := svc.GetHomePage(ctx, gamertag, "fr")
+	page, err := svc.GetHomePage(svcCtx, gamertag, "fr")
 	if err != nil {
-		slog.ErrorContext(ctx, "healthz/home: GetHomePage failed", "err", err, "gamertag", gamertag)
-		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+		slog.ErrorContext(svcCtx, "healthz/home: GetHomePage failed", "err", err, "gamertag", gamertag)
+		return &healthHomeOutput{Status: http.StatusServiceUnavailable, Body: map[string]any{
 			"ok":             false,
 			"player":         gamertag,
 			"error":          err.Error(),
 			"checks":         map[string]string{"home_page": "err: " + err.Error()},
 			"empty_sections": []string{"home_page"},
-		})
-		return
+		}}, nil
 	}
 
 	checks := map[string]string{}
@@ -120,12 +151,12 @@ func (h *HealthHomeHandler) Check(w http.ResponseWriter, r *http.Request) {
 	if len(emptySections) > 0 {
 		status = http.StatusServiceUnavailable
 	}
-	writeJSON(w, status, map[string]any{
+	return &healthHomeOutput{Status: status, Body: map[string]any{
 		"ok":             len(emptySections) == 0,
 		"player":         gamertag,
 		"checks":         checks,
 		"empty_sections": emptySections,
-	})
+	}}, nil
 }
 
 // describePeak retourne une chaîne courte décrivant l'état d'un peak.

@@ -35,8 +35,7 @@ func newUserAuthRouter(t *testing.T, authMode string) (*chi.Mux, *userstore.Stor
 
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(sessStore, middleware.SecureCookiePolicy{}))
-	r.Post("/auth/login", h.Login)
-	r.Post("/auth/register", h.Register)
+	h.Mount(r)
 	return r, users
 }
 
@@ -54,7 +53,7 @@ func newLockedUserAuthRouter(t *testing.T, authMode string) (*chi.Mux, *userstor
 
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(sessStore, middleware.SecureCookiePolicy{}))
-	r.Post("/auth/register", h.Register)
+	h.Mount(r)
 	return r, users
 }
 
@@ -143,13 +142,15 @@ func TestUserAuth_SetPassword_OptIn(t *testing.T) {
 	u, _ := users.CreateFromXbox("Spartan", "xuid-1") // compte SSO sans mot de passe
 
 	h := handlers.NewUserAuthHandler(users, invites, sessStore, "open").WithAuthMode("xbox")
+	r := chi.NewRouter()
+	h.Mount(r)
 
 	req := httptest.NewRequest(http.MethodPost, "/auth/password", bytes.NewReader([]byte(`{"password":"NewPass123"}`)))
 	req.Header.Set("Content-Type", "application/json")
 	sess := &domain.SessionData{Username: &u.Username}
 	req = req.WithContext(middleware.InjectSession(req.Context(), sess))
 	w := httptest.NewRecorder()
-	h.SetPassword(w, req)
+	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("SetPassword : status = %d, want 204. Body: %s", w.Code, w.Body.String())
@@ -168,6 +169,8 @@ func TestUserAuth_SetPassword_TooLong(t *testing.T) {
 	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
 	u, _ := users.CreateFromXbox("Spartan", "xuid-1")
 	h := handlers.NewUserAuthHandler(users, invites, sessStore, "open")
+	r := chi.NewRouter()
+	h.Mount(r)
 
 	long := make([]byte, 80)
 	for i := range long {
@@ -178,7 +181,7 @@ func TestUserAuth_SetPassword_TooLong(t *testing.T) {
 	sess := &domain.SessionData{Username: &u.Username}
 	req = req.WithContext(middleware.InjectSession(req.Context(), sess))
 	w := httptest.NewRecorder()
-	h.SetPassword(w, req)
+	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("SetPassword trop long : status = %d, want 400. Body: %s", w.Code, w.Body.String())
@@ -192,12 +195,14 @@ func TestUserAuth_SetPassword_NoSession(t *testing.T) {
 	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
 	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
 	h := handlers.NewUserAuthHandler(users, invites, sessStore, "open")
+	r := chi.NewRouter()
+	h.Mount(r)
 
 	req := httptest.NewRequest(http.MethodPost, "/auth/password", bytes.NewReader([]byte(`{"password":"NewPass123"}`)))
 	sess := &domain.SessionData{} // pas de Username
 	req = req.WithContext(middleware.InjectSession(req.Context(), sess))
 	w := httptest.NewRecorder()
-	h.SetPassword(w, req)
+	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("SetPassword sans session : status = %d, want 401", w.Code)
