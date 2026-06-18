@@ -1,9 +1,12 @@
 # Plan — Migration `types.ts` → `generated.ts` (front) + réconciliation du contrat OpenAPI
 
 > **Créé le** : 2026-05-29
-> **Statut** : Fondation posée (pipeline réparé + batch 1) — **chantier gros, multi-sessions, reporté**
-> **Branche d'origine** : `refactor/arch-port-abstractions` (Axe 4 du plan d'abstractions)
+> **Statut** : Fondation posée (pipeline + batch 1) ; **aire bootstrap réconciliée 2026-06-18** (BootstrapResponse, +12 champs, oracle tsc -b vert) ; **PIVOT Lever B découvert** (voir ci-dessous).
+> **Branche d'origine** : `refactor/arch-port-abstractions` (Axe 4) ; suite sur `feat/multititre-peripherie`.
 > **Priorité** : 🟡 Moyenne — non bloquant (le `types.ts` manuel fonctionne), mais c'est de la dette + un contrat OpenAPI non fiable.
+
+> **🔑 PIVOT 2026-06-18 (Lever B) — à exploiter avant de continuer la migration manuelle aire par aire** :
+> Les handlers Huma migrés utilisent des **outputs typés** (ex `bootstrapOutput struct{ Body *domain.BootstrapResponse }`) → Huma **auto-dérive** le schéma OpenAPI du struct Go par réflexion (= exactement ce qu'on réconcilie à la main). Ratio vérifié : **63 handlers typés / 24 RawBody**. Donc **agréger les `Components.Schemas` des instances Huma reconstruit le contrat de types AUTOMATIQUEMENT** → la réconciliation manuelle schéma par schéma de ce plan devient **largement obsolète** pour les routes typées. Plan : construire un générateur de schémas (cmd Go), régénérer `generated.ts`, puis la migration `types.ts`→`generated.ts` redevient un shim mécanique gardé par `tsc -b`. Les ~24 RawBody (multipart/binaire/OAuth/CSV) resteront décrites à la main. cf. thought_log 2026-06-18 + workflow openapi-gen-feasibility.
 
 ## But
 
