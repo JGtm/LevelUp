@@ -2,16 +2,16 @@ package migration
 
 import "sort"
 
-// order.go — ordre d'exécution EXPLICITE des migrations (Phase 1.5.0,
-// title-agnostic ADR 0025). AVANT : l'ordre dépendait de l'ordre des init()
-// (alphabétique par nom de fichier) + ordre des Register() — donc déplacer un
-// steps_*.go pouvait réordonner les migrations et casser le boot (une migration
-// avant sa dépendance). MAINTENANT : l'ordre est défini par canonicalOrder ;
-// RunForDB trie dessus. Déplacer/renommer un fichier ne change plus rien.
+// order.go â€” ordre d'exÃ©cution EXPLICITE des migrations (Phase 1.5.0,
+// title-agnostic ADR 0025). AVANT : l'ordre dÃ©pendait de l'ordre des init()
+// (alphabÃ©tique par nom de fichier) + ordre des Register() â€” donc dÃ©placer un
+// steps_*.go pouvait rÃ©ordonner les migrations et casser le boot (une migration
+// avant sa dÃ©pendance). MAINTENANT : l'ordre est dÃ©fini par canonicalOrder ;
+// RunForDB trie dessus. DÃ©placer/renommer un fichier ne change plus rien.
 //
-// canonicalOrder a été généré depuis l'ordre d'enregistrement courant
-// (2026-06-02) — la bascule est un no-op (cf. order_test.go). Toute NOUVELLE
-// migration doit être ajoutée à cette liste (order_test.go échoue sinon).
+// canonicalOrder a Ã©tÃ© gÃ©nÃ©rÃ© depuis l'ordre d'enregistrement courant
+// (2026-06-02) â€” la bascule est un no-op (cf. order_test.go). Toute NOUVELLE
+// migration doit Ãªtre ajoutÃ©e Ã  cette liste (order_test.go Ã©choue sinon).
 var canonicalOrder = []string{
 	"add_engagement_score_columns_to_player_match_enrichment", // player
 	"create_engagement_coefficients_table",                    // player
@@ -95,6 +95,7 @@ var canonicalOrder = []string{
 	"drop_idx_pn_xuid_unread",                                 // shared_social
 	"player_match_enrichment_performance_chain_v1",            // player
 	"create_prestige_player_schema",                           // player
+	"create_arc_titles_join",                                  // player (cross-titre arcs backend)
 	"create_improvement_campaign_schema",                      // player
 	"create_progression_player_schema",                        // player
 	"player_match_enrichment_psa_checked_v1",                  // player
@@ -145,11 +146,11 @@ var canonicalOrder = []string{
 	"add_pve_schema",                                          // shared_pve
 	"shared_pve_append_only_v1",                               // shared_pve
 	"rebuild_match_participants_defeat_art_corruption",        // shared
-	// Phase 1.5 b27 (reorder escaladé) : skill_v2 (créateur de lusr_hyperparams_v2)
+	// Phase 1.5 b27 (reorder escaladÃ©) : skill_v2 (crÃ©ateur de lusr_hyperparams_v2)
 	// AVANT le seed tier_boundaries (qui INSERT dedans). Corrige l'inversion 148/149
-	// historique. Sûr : les 2 sont title-owned → n'affecte pas l'ordre du registre global
-	// (TestSortByCanonicalIsNoOp). Name-keyed → no-op sur DB déjà migrées ; sur DB fraîche
-	// le seed réussit dès le 1er boot (au lieu de converger sur 2 boots via backfill swallowed).
+	// historique. SÃ»r : les 2 sont title-owned â†’ n'affecte pas l'ordre du registre global
+	// (TestSortByCanonicalIsNoOp). Name-keyed â†’ no-op sur DB dÃ©jÃ  migrÃ©es ; sur DB fraÃ®che
+	// le seed rÃ©ussit dÃ¨s le 1er boot (au lieu de converger sur 2 boots via backfill swallowed).
 	"shared_create_skill_v2_tables",               // shared
 	"shared_seed_tier_boundaries_v2",              // shared
 	"create_base_shared_social_schema",            // shared_social
@@ -180,17 +181,17 @@ var canonicalIndex = func() map[string]int {
 	return m
 }()
 
-// CanonicalOrder retourne une copie de l'ordre d'exécution canonique (noms).
-// Exposé pour l'audit de complétude inter-packages : les steps title-owned
+// CanonicalOrder retourne une copie de l'ordre d'exÃ©cution canonique (noms).
+// ExposÃ© pour l'audit de complÃ©tude inter-packages : les steps title-owned
 // (internal/games/{slug}/migrations) sont dans canonicalOrder mais PAS dans le
-// registre global All() — l'audit bidirectionnel (global + title) vit donc dans
+// registre global All() â€” l'audit bidirectionnel (global + title) vit donc dans
 // le package du titre (halo_infinite/migrations/order_audit_test.go).
 func CanonicalOrder() []string {
 	return append([]string(nil), canonicalOrder...)
 }
 
 // canonicalRank retourne la position de `name` dans canonicalOrder, ou la fin
-// (len) si absent — résilience runtime ; order_test.go garantit l'absence
+// (len) si absent â€” rÃ©silience runtime ; order_test.go garantit l'absence
 // d'inconnu en CI.
 func canonicalRank(name string) int {
 	if idx, ok := canonicalIndex[name]; ok {
@@ -199,17 +200,17 @@ func canonicalRank(name string) int {
 	return len(canonicalOrder)
 }
 
-// sortByCanonicalOrder réordonne les migrations selon canonicalOrder (tri
-// stable : les inconnus gardent leur ordre relatif d'entrée, en fin de liste).
-// Utilisé par le chemin par défaut (Halo) ; un titre non-défaut passe son propre
+// sortByCanonicalOrder rÃ©ordonne les migrations selon canonicalOrder (tri
+// stable : les inconnus gardent leur ordre relatif d'entrÃ©e, en fin de liste).
+// UtilisÃ© par le chemin par dÃ©faut (Halo) ; un titre non-dÃ©faut passe son propre
 // ordre via sortByOrder.
 func sortByCanonicalOrder(ms []Migration) {
 	sortByOrder(canonicalOrder, ms)
 }
 
-// sortByOrder réordonne ms selon l'ordre des noms dans `order` (tri stable ; les
-// inconnus vont en fin, ordre relatif préservé). Généralise sortByCanonicalOrder
-// pour permettre à un TitleMigrationSet d'imposer SON propre ordre (PMT-9).
+// sortByOrder rÃ©ordonne ms selon l'ordre des noms dans `order` (tri stable ; les
+// inconnus vont en fin, ordre relatif prÃ©servÃ©). GÃ©nÃ©ralise sortByCanonicalOrder
+// pour permettre Ã  un TitleMigrationSet d'imposer SON propre ordre (PMT-9).
 func sortByOrder(order []string, ms []Migration) {
 	rank := make(map[string]int, len(order))
 	for i, n := range order {

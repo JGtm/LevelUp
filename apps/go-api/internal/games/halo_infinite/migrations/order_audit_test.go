@@ -139,7 +139,7 @@ func TestTitleStepsRunEndToEnd_Player(t *testing.T) {
 	// Tables de base + prestige/progression (title-owned depuis b25) + colonnes additives.
 	for _, table := range []string{
 		"player_match_enrichment", "career_progression", "match_skill_rank", "sessions",
-		"match_citations", "arc", "challenge", "moment_card", "prestige_telemetry",
+		"match_citations", "arc", "arc_titles", "challenge", "moment_card", "prestige_telemetry",
 		"baseline_state", "improvement_campaign", "streak", "record_history", "milestone_earned",
 	} {
 		var n int
