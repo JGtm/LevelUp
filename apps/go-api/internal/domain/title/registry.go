@@ -89,23 +89,50 @@ type Registry struct {
 // DefaultSlug est le slug du titre par défaut (Halo Infinite).
 const DefaultSlug = "halo_infinite"
 
-// defaultRegistry : registre lazy partagé par les helpers package-level
-// (XboxTitleIDFor) qui n'ont pas d'instance de Registry sous la main. Les
-// descripteurs sont la source UNIQUE de vérité (plus de switch dupliqué).
+// defaultRegistry : registre PARTAGÉ par les helpers package-level (XboxTitleIDFor)
+// et les call-sites de service qui n'ont pas d'instance sous la main. Lazy par
+// défaut (built-in halo_infinite), mais REMPLAÇABLE au boot par un registre piloté
+// par config via SetDefaultRegistry (MT-16 / day-one 2e titre). Les descripteurs
+// sont la source UNIQUE de vérité.
 var (
-	defaultRegistryOnce sync.Once
+	defaultRegistryMu   sync.RWMutex
 	defaultRegistryInst *Registry
 )
 
 func defaultRegistry() *Registry {
-	defaultRegistryOnce.Do(func() { defaultRegistryInst = NewRegistry() })
+	defaultRegistryMu.RLock()
+	r := defaultRegistryInst
+	defaultRegistryMu.RUnlock()
+	if r != nil {
+		return r
+	}
+	defaultRegistryMu.Lock()
+	defer defaultRegistryMu.Unlock()
+	if defaultRegistryInst == nil {
+		defaultRegistryInst = NewRegistry()
+	}
 	return defaultRegistryInst
 }
 
-// DefaultRegistry expose le registre lazy par défaut (titres câblés en dur, ex.
-// halo_infinite) pour les call-sites qui n'ont pas d'instance de Registry sous la
-// main (PMT-4 : résolveurs settings/CSR). Transitionnel : un déploiement
-// multi-titre réel injectera un registre peuplé depuis config/titles/*.
+// SetDefaultRegistry remplace le registre partagé par défaut (appelé UNE fois au
+// boot avec le registre piloté par config : built-in halo_infinite + titres
+// additionnels découverts sous config/titles/*). Thread-safe. nil est ignoré
+// (garde défensive — on ne vide jamais le registre partagé).
+//
+// Après cet appel, tous les call-sites passant par DefaultRegistry() (front
+// switcher BuildAvailableTitles, résolution de titre, XboxTitleIDFor, etc.) voient
+// les titres additionnels. Doit être posé AVANT que le serveur n'accepte du trafic.
+func SetDefaultRegistry(reg *Registry) {
+	if reg == nil {
+		return
+	}
+	defaultRegistryMu.Lock()
+	defaultRegistryInst = reg
+	defaultRegistryMu.Unlock()
+}
+
+// DefaultRegistry expose le registre partagé. Avant SetDefaultRegistry, retombe
+// sur le built-in lazy (halo_infinite seul) — donc mono-titre sûr en test/CLI.
 func DefaultRegistry() *Registry { return defaultRegistry() }
 
 // XboxTitleIDFor retourne l'identifiant Xbox numérique (en string) pour un slug

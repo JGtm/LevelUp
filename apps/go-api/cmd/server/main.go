@@ -339,6 +339,14 @@ func main() {
 			"recommendation", "retirer LEVELUP_PERSIST_BATCH (ou le mettre à 1) hors situation de rollback ponctuel")
 	}
 
+	// --- Registre de titres PILOTÉ PAR CONFIG (MT-16 / day-one 2e titre) ---
+	// Built-in halo_infinite + titres additionnels découverts sous
+	// config/titles/<slug>/title.toml. Posé en registre partagé AVANT toute
+	// ouverture DB / démarrage serveur → tous les call-sites DefaultRegistry()
+	// (front switcher, résolution titre, XboxTitleIDFor) voient les titres
+	// additionnels. Mono-titre = byte-identique (seul halo_infinite, built-in).
+	title.SetDefaultRegistry(title.NewRegistryFromConfig(cfg.RepoRoot, slog.Default()))
+
 	// --- 3. Connexions DuckDB ---
 	pr := title.NewPathResolver(cfg.RepoRoot)
 	titleSlug := title.DefaultSlug
@@ -399,6 +407,16 @@ func main() {
 		slog.Debug("migrations ignorées (DB verrouillée), démarrage sans migration")
 	} else {
 		slog.Debug("migrations appliquées")
+	}
+
+	// --- 3a-bis. Provisionner les DB des titres ADDITIONNELS actifs (MT-16 /
+	// day-one 2e titre). No-op en mono-titre (seul halo_infinite actif, déjà
+	// provisionné ci-dessus). Un 2e titre déclaré en config (status="active") voit
+	// ici ses warehouses créées + migrées (RunForTitleDB → jeu de migrations du
+	// titre, fallback set Halo), isolées sous data/titles/<slug>/. Non-fatal : un
+	// titre additionnel cassé ne doit jamais empêcher Halo de démarrer.
+	if !cfg.DemoMode {
+		provisionAdditionalActiveTitles(pr, title.DefaultRegistry())
 	}
 
 	// --- 3b. Migrations player DB (TargetPlayer) ---
@@ -1459,6 +1477,64 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 	return nil
 }
 
+// provisionAdditionalActiveTitles crée + migre les warehouses des titres
+// ADDITIONNELS actifs (slug != DefaultSlug) découverts dans le registre piloté par
+// config (MT-16 / day-one 2e titre). Le titre par défaut (halo_infinite) est
+// provisionné séparément (chemin byte-identique). Chaque échec est loggé sans
+// interrompre le boot — un titre additionnel cassé ne bloque jamais Halo.
+func provisionAdditionalActiveTitles(pr *title.PathResolver, reg *title.Registry) {
+	for _, td := range reg.Active() {
+		// Le titre par défaut (built-in) est provisionné par le chemin Halo
+		// byte-identique ci-dessus → on saute son descripteur ici (flag sémantique,
+		// pas de comparaison de slug — archlint no_slug_comparison).
+		if td.IsDefault {
+			continue
+		}
+		if err := provisionAdditionalTitle(pr, td); err != nil {
+			slog.Error("provisioning titre additionnel échoué (non-fatal)", "title", td.Slug, "err", err.Error())
+			continue
+		}
+		slog.Info("titre additionnel provisionné", "title", td.Slug, "status", string(td.Status))
+	}
+}
+
+// provisionAdditionalTitle crée le warehouse + applique les migrations des DB
+// partagées d'un titre additionnel via RunForTitleDB (jeu de migrations du titre
+// si enregistré via RegisterMigrationSet, sinon set Halo en fallback). Toutes les
+// DB sont isolées par chemin sous data/titles/<slug>/. La DB PvE n'est provisionnée
+// que si le titre déclare la capability Firefight (gating par capability, jamais
+// par comparaison de slug — archlint no_slug_comparison).
+func provisionAdditionalTitle(pr *title.PathResolver, td *title.TitleDescriptor) error {
+	slug := td.Slug
+	if err := ensureWarehouseDir(pr, slug); err != nil {
+		return fmt.Errorf("warehouse dir: %w", err)
+	}
+	type target struct {
+		path string
+		kind migration.TargetDB
+	}
+	targets := []target{
+		{pr.MetadataDBPath(slug), migration.TargetMetadata},
+		{pr.SharedDBPath(slug), migration.TargetShared},
+		{pr.SharedSocialDBPath(slug), migration.TargetSharedSocial},
+	}
+	if td.HasCapability(title.CapFirefight) {
+		targets = append(targets, target{pr.SharedPVEDBPath(slug), migration.TargetSharedPvE})
+	}
+	for _, t := range targets {
+		db, err := duckdb.OpenReadWrite(t.path)
+		if err != nil {
+			return fmt.Errorf("open %s: %w", t.path, err)
+		}
+		if err := migration.RunForTitleDB(db.SQLDb(), slug, t.kind); err != nil {
+			db.Close()
+			return fmt.Errorf("migrate %s (%s): %w", t.kind, t.path, err)
+		}
+		db.Close()
+	}
+	return nil
+}
+
 // RunPlayerMigrations applique les migrations player pour une DB individuelle.
 // Appelé lors de l'ouverture d'une player DB.
 func RunPlayerMigrations(playerDBPath string) error {
@@ -1753,8 +1829,9 @@ func startWatcherDaemon(
 	playerSummaries := make([]domain.PlayerSummary, len(players))
 	copy(playerSummaries, players)
 
-	// Registre de titres
-	titleReg := title.NewRegistry()
+	// Registre de titres PARTAGÉ (MT-16 : scheduler/watcher voient les titres
+	// additionnels config → sync écrit dans leurs DB isolées via PMT-3).
+	titleReg := title.DefaultRegistry()
 
 	// Sync trigger (in-process). On câble explicitement l'engineFactory sur
 	// scheduler.BuildEngine — c'est ce qui garantit la parité runtime entre
