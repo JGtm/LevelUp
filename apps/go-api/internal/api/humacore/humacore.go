@@ -233,6 +233,15 @@ func MarkRequestBodyOptional(api huma.API, method, path string) {
 	}
 }
 
+// OnAPICreated, s'il est non-nil, est invoqué avec chaque huma.API créée par
+// NewAPI. Nil par défaut → ZÉRO impact prod (le serveur ne le branche jamais).
+// SEUL l'outil de drift-detection des schémas (test cgo, openapi_schema_drift_test)
+// le branche temporairement pour capturer les instances Huma : leurs registres de
+// schémas auto-dérivés (api.OpenAPI().Components.Schemas) sont autrement créés
+// localement dans chaque Mount() puis jetés. Le brancher en prod retiendrait des
+// références API → garder nil hors test.
+var OnAPICreated func(huma.API)
+
 // NewAPI crée une API Huma adossée au routeur chi `r` (qui peut être le routeur
 // racine OU un sous-routeur d'un r.Route/r.Group — les routes Huma héritent alors
 // du middleware du sous-groupe et lisent les path params parents, cf.
@@ -255,5 +264,9 @@ func NewAPI(r chi.Router) huma.API {
 	huma.NewError = func(status int, msg string, _ ...error) huma.StatusError {
 		return NewError(status, ErrorCodeForStatus(status), msg)
 	}
-	return humachi.New(r, config)
+	api := humachi.New(r, config)
+	if OnAPICreated != nil {
+		OnAPICreated(api)
+	}
+	return api
 }
