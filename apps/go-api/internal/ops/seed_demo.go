@@ -541,6 +541,16 @@ func extractSharedTables(
 		stmt := fmt.Sprintf(`CREATE TABLE %s AS SELECT %s FROM src.%s WHERE %s`,
 			t.name, extractSelectExpr(t.appendOnly), t.name, where)
 		if _, err := dst.ExecContext(ctx, stmt); err != nil {
+			// Table source absente (ex. match_csrs sur une DB sans données CSR, ou
+			// fixture de test minimal) : best-effort comme les corpus squad/ranked.
+			// Les tables append-only sont de toute façon (re)créées vides + vue
+			// _latest par les migrations canoniques (applyMigrationsOnPath) → on
+			// n'avorte pas le seed pour ça.
+			if strings.Contains(err.Error(), "does not exist") {
+				slog.WarnContext(ctx, "seed-demo: table source absente, ignorée", "table", t.name, "err", err)
+				counts[t.name] = 0
+				continue
+			}
 			return counts, fmt.Errorf("extract %s: %w", t.name, err)
 		}
 		var n int
