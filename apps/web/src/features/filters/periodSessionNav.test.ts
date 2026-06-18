@@ -32,6 +32,8 @@ function mkSession(id: string, label = id): SessionOption {
     match_count: 5,
     match_count_filtered: 5,
     is_squad: false,
+    started_at_utc: '2026-04-01T12:00:00Z',
+    ended_at_utc: '2026-04-01T13:30:00Z',
   }
 }
 

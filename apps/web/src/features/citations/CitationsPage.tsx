@@ -95,7 +95,7 @@ export function CitationsPage() {
       {bar}
       <div className="space-y-6 px-6 pb-6">
         <h2 className="text-sm font-semibold">
-          {formatMessage(citationsManifest, 'citations.section.mastery_title', locale, { completed: totalCompleted, total: data.citations.length })}
+          {formatMessage(citationsManifest, 'citations.section.mastery_title', locale, { completed: totalCompleted, total: (data.citations ?? []).length })}
         </h2>
 
         {byCategory.length === 0 ? (
@@ -104,23 +104,27 @@ export function CitationsPage() {
             description={t('citations.empty.no_data_description')}
           />
         ) : (
-          byCategory.map((group) => (
-            <div key={group.category} className="rounded-lg border border-border bg-card">
-              <div className="border-b border-border px-3 py-2 text-sm font-medium flex items-center justify-between">
-                <span>{group.category.charAt(0).toUpperCase() + group.category.slice(1)}</span>
-                <span className="text-xs font-normal text-muted-foreground">
-                  {group.completed} / {group.items.length} {t('citations.category.completed_suffix')}
-                </span>
-              </div>
-              <div className="p-3">
-                <div className="flex flex-wrap justify-center gap-x-5 gap-y-4">
-                  {group.items.map((c) => (
-                    <CitationCard key={c.name_norm} citation={c} />
-                  ))}
+          byCategory.map((group) => {
+            // Le contrat autorise `items` à être null (Go peut renvoyer null) → garde.
+            const items = group.items ?? []
+            return (
+              <div key={group.category} className="rounded-lg border border-border bg-card">
+                <div className="border-b border-border px-3 py-2 text-sm font-medium flex items-center justify-between">
+                  <span>{group.category.charAt(0).toUpperCase() + group.category.slice(1)}</span>
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {group.completed} / {items.length} {t('citations.category.completed_suffix')}
+                  </span>
+                </div>
+                <div className="p-3">
+                  <div className="flex flex-wrap justify-center gap-x-5 gap-y-4">
+                    {items.map((c) => (
+                      <CitationCard key={c.name_norm} citation={c} />
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            )
+          })
         )}
       </div>
     </div>

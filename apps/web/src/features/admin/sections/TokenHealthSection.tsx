@@ -104,9 +104,9 @@ export function TokenHealthSection() {
                     ) : (
                       <>
                         <CredentialSourceChip source={p.credential_source} t={t} />
-                        <TokenBadge kind={t('common.admin.token_refresh')} status={p.refresh} t={t} />
-                        <TokenBadge kind={t('common.admin.token_msal')} status={p.msal} t={t} />
-                        <TokenBadge kind={t('common.admin.token_xsts')} status={p.xsts} t={t} />
+                        <TokenBadge kind={t('common.admin.token_refresh')} status={p.refresh as TokenStatus} t={t} />
+                        <TokenBadge kind={t('common.admin.token_msal')} status={p.msal as TokenStatus} t={t} />
+                        <TokenBadge kind={t('common.admin.token_xsts')} status={p.xsts as TokenStatus} t={t} />
                       </>
                     )}
                   </div>

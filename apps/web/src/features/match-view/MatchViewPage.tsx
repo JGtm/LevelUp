@@ -23,7 +23,7 @@ import { MatchMediaTab } from './MatchMediaTab'
 import { MatchMedalsSection, MatchCitationsSection } from './MatchSummaryMedalsAndCitations'
 import { buildMatchHeadingStr } from './format'
 import { MATCH_VIEW_TEXT, type MatchViewText } from './i18n'
-import type { MatchWeaponKill, MatchScoreboardRow } from '@/lib/api/types'
+import type { MatchWeaponKill, MatchScoreboardRow, MatchViewRadarSeries } from '@/lib/api/types'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { PageUnavailable } from '@/components/ui/page-unavailable'
 import { apiErrorCode } from '@/lib/api/client'
@@ -215,6 +215,10 @@ export function MatchViewPage() {
   const meXUID = meRow?.xuid ?? null
   const weaponData: MatchWeaponKill[] =
     weaponKills.length > 0 ? weaponKills : killTypeFallback(meRow, t)
+  // `radar` est typé `unknown[]` dans le contrat (le générateur OpenAPI a perdu
+  // le type d'élément du slice Go `[]MatchViewRadarSeries`). On rétablit le type
+  // réel renvoyé par l'API au point de consommation, sans changer la donnée.
+  const radarSeries = (data.radar ?? undefined) as MatchViewRadarSeries[] | undefined
 
   return (
     <div className="flex flex-col">
@@ -315,7 +319,7 @@ export function MatchViewPage() {
                 t={t}
               />
               <MatchSummaryRadarChart
-                radar={data.radar}
+                radar={radarSeries}
                 meXUID={meXUID}
                 t={t}
               />
@@ -332,7 +336,7 @@ export function MatchViewPage() {
                 <div className="border-b border-border px-3 py-2 text-sm font-medium">{t.sectionMedia}</div>
                 <div className="p-3">
                   <MatchMediaTab
-                    items={media_tab.media_items}
+                    items={media_tab.media_items ?? []}
                     playerSlug={playerSlug}
                     matchId={matchId}
                     locale={locale === 'en' ? 'en' : 'fr'}

@@ -42,7 +42,7 @@ export function buildInvariantsSnapshot(data: AdminInvariantsResponse): Invarian
     snap[`${SHARED_SCOPE_KEY}|${v.key}`] = v.count
   }
   for (const r of data.reports ?? []) {
-    for (const v of r.violations) {
+    for (const v of r.violations ?? []) {
       snap[`${r.player_slug}|${v.key}`] = v.count
     }
   }

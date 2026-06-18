@@ -10,6 +10,22 @@ import { DEFAULT_GAP_MINUTES, DEFAULT_FILTER_CONTEXT } from '@/stores/createFilt
 import { isoDate } from '@/components/shell/_filter_pills/_hooks'
 import type { FilterContextResolved } from '@/lib/api/types'
 
+// Contexte effectif conforme au contrat (FilterContextInput API : champs requis,
+// nullable explicites). DEFAULT_FILTER_CONTEXT côté store est l'input front (optionnels)
+// et ne matche pas la forme résolue renvoyée par l'API.
+const DEFAULT_EFFECTIVE: FilterContextResolved['effective'] = {
+  filter_mode: 'period',
+  period: { start_date: null, end_date: null },
+  sessions: {
+    gap_minutes: DEFAULT_GAP_MINUTES,
+    picked_sessions: [],
+    picked_session_label: null,
+    picked_solo_session_label: null,
+    picked_squad_session_label: null,
+  },
+  cascade: { experience_types: [], playlists: [], modes: [], maps: [] },
+}
+
 describe('GlobalFilterStore', () => {
   beforeEach(() => {
     useGlobalFilterStore.getState().resetFilters()
@@ -206,7 +222,7 @@ describe('GlobalFilterStore', () => {
 
   it('ne persiste pas resolvedContext (toujours re-fetch)', () => {
     const resolved: FilterContextResolved = {
-      effective: DEFAULT_FILTER_CONTEXT,
+      effective: DEFAULT_EFFECTIVE,
       available_options: { experience_types: [], playlists: [], modes: [], maps: [] },
       session_options: { all_sessions: [], solo_labels: [], squad_labels: [] },
       counts: { total_matches_before_filters: 0, total_matches_after_filters: 0 },
@@ -232,7 +248,7 @@ describe('GlobalFilterStore', () => {
 
   function makeResolved(allSessions: Array<{ session_id: string; label: string }>): FilterContextResolved {
     return {
-      effective: DEFAULT_FILTER_CONTEXT,
+      effective: DEFAULT_EFFECTIVE,
       available_options: { experience_types: [], playlists: [], modes: [], maps: [] },
       session_options: {
         all_sessions: allSessions.map((s) => ({
@@ -241,6 +257,8 @@ describe('GlobalFilterStore', () => {
           match_count: 5,
           match_count_filtered: 5,
           is_squad: false,
+          started_at_utc: '2026-04-01T21:00:00Z',
+          ended_at_utc: '2026-04-01T22:30:00Z',
         })),
         solo_labels: [],
         squad_labels: [],
@@ -373,7 +391,13 @@ describe('GlobalFilterStore', () => {
       effective: {
         filter_mode: 'period',
         period: { start_date: null, end_date: null },
-        sessions: { picked_sessions: [], gap_minutes: DEFAULT_GAP_MINUTES },
+        sessions: {
+          picked_sessions: [],
+          gap_minutes: DEFAULT_GAP_MINUTES,
+          picked_session_label: null,
+          picked_solo_session_label: null,
+          picked_squad_session_label: null,
+        },
         cascade: { experience_types: [], playlists: [], modes: [], maps: [] },
       },
       available_options: {

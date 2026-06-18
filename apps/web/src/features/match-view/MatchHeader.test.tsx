@@ -66,7 +66,7 @@ vi.mock('sonner', () => ({
 
 const baseHeader: MatchViewHeader = {
   match_id: 'm1',
-  start_time: null,
+  start_time: undefined,
   start_time_label: 'Dim. 4 mai 2026 · 19h35',
   outcome_code: 2,
   outcome_label: 'Victoire',
@@ -76,11 +76,11 @@ const baseHeader: MatchViewHeader = {
   dominance_flag: false,
   had_bot_teammate: false,
   map_ui: 'Aquarius',
-  map_id: null,
+  map_id: undefined,
   mode_ui: 'Slayer',
   playlist_label: 'Classée',
   performance_display: '76',
-  performance_color: null,
+  performance_color: undefined,
   performance_color_token: 'perf-tier-2',
   is_excluded: false,
   is_ranked: false,
@@ -147,7 +147,7 @@ describe('MatchHeaderCard', () => {
   })
 
   it('affiche le fallback texte si map_image_url est null', () => {
-    const noImage: MatchViewHeader = { ...baseHeader, map_image_url: null }
+    const noImage: MatchViewHeader = { ...baseHeader, map_image_url: undefined }
     renderWithQueryClient(
       <MatchHeaderCard
         header={noImage}
@@ -183,10 +183,10 @@ describe('MatchHeaderCard', () => {
   it('rating_type=none : ne rend pas la section rang', () => {
     const noRank: MatchViewRank = {
       rating_type: 'none',
-      tier_label: null,
-      numeric_value: null,
-      delta_value: null,
-      icon_url: null,
+      tier_label: undefined,
+      numeric_value: undefined,
+      delta_value: undefined,
+      icon_url: undefined,
     }
     renderWithQueryClient(
       <MatchHeaderCard
@@ -313,7 +313,7 @@ describe('MatchHeaderCard — barre de progression du rang', () => {
       tier_label: 'Platinum 2',
       numeric_value: 1770,
       delta_value: 30,
-      icon_url: null,
+      icon_url: undefined,
     }
     renderWithQueryClient(
       <MatchHeaderCard
@@ -340,7 +340,7 @@ describe('MatchHeaderCard — barre de progression du rang', () => {
       tier_label: 'Platinum 2',
       numeric_value: 1710,
       delta_value: 30,
-      icon_url: null,
+      icon_url: undefined,
     }
     renderWithQueryClient(
       <MatchHeaderCard
@@ -362,7 +362,7 @@ describe('MatchHeaderCard — barre de progression du rang', () => {
       tier_label: 'Onyx 1600',
       numeric_value: 1600,
       delta_value: 12,
-      icon_url: null,
+      icon_url: undefined,
     }
     renderWithQueryClient(
       <MatchHeaderCard

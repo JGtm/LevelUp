@@ -59,7 +59,7 @@ export function ConvergencePlayersTable({ report }: { report: AdminConvergenceRe
           </tr>
         </thead>
         <tbody>
-          {report.players.map((p) => {
+          {(report.players ?? []).map((p) => {
             const total = p.missing_enrichment + p.missing_psa + p.missing_events + p.missing_weapons
             return (
               <tr key={p.xuid || p.gamertag} className="border-b align-top last:border-b-0 hover:bg-muted/30">

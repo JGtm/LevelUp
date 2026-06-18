@@ -21,10 +21,11 @@ const IDENTITY_FULL: HomeSpartanIdentity = {
     xp_for_next_rank: 50000,
     progress_pct: 95,
     is_max_rank: false,
+    total_xp: 47820,
     adornment_image_url: '/api/v1/assets/spartan/adornment/halo_infinite/x.png',
   },
-  highest_csr: null,
-  highest_lusr: null,
+  highest_csr: undefined,
+  highest_lusr: undefined,
 }
 
 function render(identity: HomeSpartanIdentity | null) {
@@ -58,7 +59,7 @@ describe('ExplorerTargetIdentityBanner', () => {
   it("n'affiche pas l'adornment quand career_rank n'en porte pas", () => {
     render({
       ...IDENTITY_FULL,
-      career_rank: { ...IDENTITY_FULL.career_rank!, adornment_image_url: null },
+      career_rank: { ...IDENTITY_FULL.career_rank!, adornment_image_url: undefined },
     })
 
     expect(screen.queryByTestId('explorer-target-adornment-image')).toBeNull()

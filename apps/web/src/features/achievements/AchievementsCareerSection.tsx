@@ -57,12 +57,13 @@ export function AchievementsCareerSection({ playerSlug, layout = 'carousel', fil
     )
   }
 
+  const achievements = data.achievements ?? []
   const baseList = filterXboxTitleId
-    ? data.achievements.filter((a) => !a.xbox_title_id || a.xbox_title_id === filterXboxTitleId)
-    : data.achievements
+    ? achievements.filter((a) => !a.xbox_title_id || a.xbox_title_id === filterXboxTitleId)
+    : achievements
 
   // Titre sans mapping de catégories (champ absent partout) → filtre masqué.
-  const hasCategories = data.achievements.some((a) => !!a.category)
+  const hasCategories = achievements.some((a) => !!a.category)
 
   const categoryFiltered =
     !hasCategories || categoryFilter === 'all'

@@ -25,7 +25,24 @@ import { SquadCombatProfileRow } from './components/SquadCombatProfileRow'
 import { WeaponsTable } from './components/WeaponsTable'
 import { MedalsGallery } from './components/MedalsGallery'
 import { useSquadV2 } from './queries'
-import type { SquadPeriod } from './types'
+import type { KPIStats as V2KPIStats, SquadPeriod } from './types'
+import type { KPIStats } from '@/lib/api/types'
+
+/**
+ * Le DTO local v2/types.ts::KPIStats déclare avg_offensive_conversion /
+ * avg_defensive_resistance / combat_profile en `T | null` (le Go peut renvoyer
+ * null), alors que le contrat OpenAPI (KPIStats) les expose en `T | undefined`.
+ * SessionBriefing consomme le type du contrat → on normalise null→undefined au
+ * passage (le consommateur traite déjà null et undefined comme « absent »).
+ */
+function toContractKpis(k: V2KPIStats): KPIStats {
+  return {
+    ...k,
+    avg_offensive_conversion: k.avg_offensive_conversion ?? undefined,
+    avg_defensive_resistance: k.avg_defensive_resistance ?? undefined,
+    combat_profile: k.combat_profile ?? undefined,
+  }
+}
 
 export interface SquadV2PageProps {
   playerSlug: string
@@ -97,8 +114,10 @@ export function SquadV2Page({ playerSlug, teammates, period, experienceTypes, pl
       ? {
           score: header.squad_score,
           players: header.player_cards,
-          kpisByXuid: header.kpis_by_xuid,
-          teamAvgKpis: header.team_avg_kpis,
+          kpisByXuid: Object.fromEntries(
+            Object.entries(header.kpis_by_xuid).map(([x, k]) => [x, toContractKpis(k)]),
+          ),
+          teamAvgKpis: toContractKpis(header.team_avg_kpis),
           activeXuid: mainXuid,
         }
       : undefined
@@ -107,7 +126,7 @@ export function SquadV2Page({ playerSlug, teammates, period, experienceTypes, pl
     <div className="flex flex-col gap-6 p-6" data-testid="squad-v2-page">
       {/* Briefing — KPIs + verdict squad + drill-down click */}
       {header?.solo_kpis && (
-        <SessionBriefing kpis={header.solo_kpis} squad={briefingSquad} />
+        <SessionBriefing kpis={toContractKpis(header.solo_kpis)} squad={briefingSquad} />
       )}
 
       {/* PLAN_COMBAT_PROFILE_WIRING Phase 2 — Profil de combat par joueur */}

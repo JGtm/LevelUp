@@ -56,9 +56,10 @@ const IDENTITY_FULL: ExplorerTargetProfile['identity'] = {
     xp_for_next_rank: 50000,
     progress_pct: 0.95,
     is_max_rank: false,
+    total_xp: 47820,
   },
-  highest_csr: null,
-  highest_lusr: null,
+  highest_csr: undefined,
+  highest_lusr: undefined,
 }
 
 const CAREER_FULL: ExplorerTargetProfile['career_stats'] = {
@@ -83,6 +84,8 @@ const CAREER_FULL: ExplorerTargetProfile['career_stats'] = {
   perf_ath: 0,
   lusr_ath: 0,
   career_rank: 76,
+  highest_csr: 1523,
+  highest_csr_all_time: 1600,
 }
 
 describe('ExplorerTargetProfileCard', () => {
@@ -163,7 +166,7 @@ describe('ExplorerTargetProfileCard', () => {
     // Même si l'API renvoyait une privacy (legacy), la carte ne la rend plus.
     const profile: ExplorerTargetProfile = {
       identity: IDENTITY_FULL,
-      career_stats: null,
+      career_stats: undefined,
       sample_stats: SAMPLE_FULL,
       privacy_warning: { level: 'full', message: 'Profil privé.' },
       auth_available: true,
@@ -179,9 +182,9 @@ describe('ExplorerTargetProfileCard', () => {
   it('affiche le hint no-auth quand auth_available=false et career absente', () => {
     const profile: ExplorerTargetProfile = {
       identity: IDENTITY_FULL,
-      career_stats: null,
+      career_stats: undefined,
       sample_stats: SAMPLE_FULL,
-      privacy_warning: null,
+      privacy_warning: undefined,
       auth_available: false,
     }
     renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="NoAuthPlayer" />)
@@ -199,7 +202,7 @@ describe('ExplorerTargetProfileCard', () => {
       identity: IDENTITY_FULL,
       career_stats: CAREER_FULL,
       sample_stats: { ...SAMPLE_FULL, sample_size: 0 },
-      privacy_warning: null,
+      privacy_warning: undefined,
       auth_available: true,
     }
     renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="TargetPlayer" />)
@@ -212,10 +215,10 @@ describe('ExplorerTargetProfileCard', () => {
 
   it('affiche le placeholder quand identity=null', () => {
     const profile: ExplorerTargetProfile = {
-      identity: null,
-      career_stats: null,
-      sample_stats: null,
-      privacy_warning: null,
+      identity: undefined,
+      career_stats: undefined,
+      sample_stats: undefined,
+      privacy_warning: undefined,
       auth_available: false,
     }
     renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="UnknownPlayer" />)

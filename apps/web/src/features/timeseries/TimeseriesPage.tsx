@@ -21,6 +21,7 @@ import { EmptyStateCard } from '@/components/ui/empty-state'
 import { useTimeseriesPage } from './queries'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useExplorerMatches } from '@/features/explorer/queries'
+import { normalizeExplorerTableRows } from '@/features/explorer/ExplorerPage.matchesMode'
 import { formatMessage } from '@/lib/i18n/format'
 import {
   timeseriesManifest,
@@ -188,7 +189,7 @@ export function TimeseriesPage() {
             fieldMappings={fieldMappings}
             soloFilterContext={soloFilterContext}
             filterContextHash={filterContextHash}
-            explorerMatchRows={explorerMatchesQuery.data?.table?.items}
+            explorerMatchRows={normalizeExplorerTableRows(explorerMatchesQuery.data?.table?.items ?? null)}
           />
         )}
       </div>

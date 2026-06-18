@@ -134,7 +134,8 @@ describe('SquadImpactScoreboard', () => {
   it('passager clandestin si score >= 0 sur le rang dernier', () => {
     const m = matrix()
     // Rends le dernier non-négatif en bumpant son score.
-    m.players[2].score = 1
+    // `players` est `T[] | null` au contrat mais toujours peuplé par la fixture.
+    m.players![2].score = 1
     renderWithProviders(<SquadImpactScoreboard matrix={m} />)
     expect(screen.getByText(/Passager/)).toBeInTheDocument()
   })

@@ -45,7 +45,8 @@ export function TimeseriesFirstEventDistribution({
 
 
   const option = useMemo<EChartsCoreOption | null>(() => {
-    if (data.buckets.length === 0) return null
+    const buckets = data.buckets ?? []
+    if (buckets.length === 0) return null
     const tc = getEChartsThemeColors()
     const colKills = resolveToken('outcome-win')
     const colDeaths = resolveToken('outcome-loss')
@@ -56,25 +57,25 @@ export function TimeseriesFirstEventDistribution({
       const s = Math.round(sec) % 60
       return `${m}m${String(s).padStart(2, '0')}s`
     }
-    const categories = data.buckets.map((b) => fmtMinSec(b.lower_seconds))
-    const kills = data.buckets.map((b) => b.first_kills)
+    const categories = buckets.map((b) => fmtMinSec(b.lower_seconds))
+    const kills = buckets.map((b) => b.first_kills)
     // Morts négativées → barres SOUS l'axe X (graphe divergent, même rendu que
     // le butterfly de la page escouade). Tooltip + axe réaffichent en abs.
-    const deaths = data.buckets.map((b) => -b.first_deaths)
+    const deaths = buckets.map((b) => -b.first_deaths)
 
     // Position markLine sur l'axe catégorie : index du bucket contenant la
     // moyenne (avec interpolation interne).
     const meanIdx = (mean: number | null | undefined): number | null => {
       if (mean == null || !Number.isFinite(mean)) return null
-      for (let i = 0; i < data.buckets.length; i++) {
-        const b = data.buckets[i]
+      for (let i = 0; i < buckets.length; i++) {
+        const b = buckets[i]
         if (mean >= b.lower_seconds && mean < b.upper_seconds) {
           const frac =
             (mean - b.lower_seconds) / (b.upper_seconds - b.lower_seconds)
           return i + frac
         }
       }
-      return data.buckets.length - 1
+      return buckets.length - 1
     }
     const meanKill = data.mean_first_kill_seconds ?? null
     const meanDeath = data.mean_first_death_seconds ?? null

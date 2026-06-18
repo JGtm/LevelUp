@@ -139,11 +139,11 @@ export function AdminLogsPage() {
       {/* Liste */}
       {tail.isError ? (
         <p className="text-sm text-destructive">{tA('admin.logs.unavailable')}</p>
-      ) : !tail.data || tail.data.entries.length === 0 ? (
+      ) : !tail.data || (tail.data.entries?.length ?? 0) === 0 ? (
         <EmptyStateNotice title={tA('admin.logs.empty_title')} description={tA('admin.logs.empty_desc')} />
       ) : (
         <>
-          <LogEntriesList entries={tail.data.entries} />
+          <LogEntriesList entries={tail.data.entries ?? []} />
           {tail.data.truncated && (
             <p className="text-xs" style={{ color: tokenCssVar('warning') }}>
               {tA('admin.logs.truncated')}

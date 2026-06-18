@@ -65,19 +65,21 @@ interface ImpactRow {
 
 function buildRows(matrix: SquadImpactMatrix): ImpactRow[] {
   const cellByPM = new Map<string, SquadImpactCell>()
-  for (const c of matrix.cells) {
+  for (const c of matrix.cells ?? []) {
     cellByPM.set(`${c.player}|${c.match_id}`, c)
   }
-  return matrix.players.map((p, idx) => {
+  const players = matrix.players ?? []
+  const matches = matrix.matches ?? []
+  return players.map((p, idx) => {
     const perMatch: Record<string, string[]> = {}
-    for (const m of matrix.matches) {
+    for (const m of matches) {
       perMatch[m.match_id] = cellByPM.get(`${p.player}|${m.match_id}`)?.badge_keys ?? []
     }
     const perBadge: Record<string, number> = {}
-    for (const b of p.counts) perBadge[b.badge_key] = b.count
+    for (const b of p.counts ?? []) perBadge[b.badge_key] = b.count
     const rank = idx + 1
-    const isLast = idx === matrix.players.length - 1
-    const lastScore = matrix.players[matrix.players.length - 1]?.score ?? 0
+    const isLast = idx === players.length - 1
+    const lastScore = players[players.length - 1]?.score ?? 0
     let badge: ImpactRow['badge'] = 'middle'
     if (rank === 1) badge = 'champion'
     else if (isLast && lastScore < 0) badge = 'maillon-faible'
@@ -90,7 +92,7 @@ function buildRows(matrix: SquadImpactMatrix): ImpactRow[] {
 function computeExtremes(players: SquadImpactPlayerSummary[]): Record<string, { min: number; max: number }> {
   const out: Record<string, { min: number; max: number }> = {}
   for (const p of players) {
-    for (const c of p.counts) {
+    for (const c of p.counts ?? []) {
       const v = c.count
       if (v <= 0) continue
       const cur = out[c.badge_key]
@@ -149,15 +151,21 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
   const t = getSquadText(locale)
   const i18n = t.impact
 
+  // Le contrat OpenAPI expose les tableaux en `T[] | null` (le Go peut renvoyer
+  // null). On dérive des vues non-null une fois, réutilisées partout.
+  const matrixPlayers = matrix.players ?? []
+  const matrixMatches = matrix.matches ?? []
+  const matrixBadgeOrd = matrix.badge_ord ?? []
+
   const rows = useMemo(() => buildRows(matrix), [matrix])
-  const extremes = useMemo(() => computeExtremes(matrix.players), [matrix.players])
+  const extremes = useMemo(() => computeExtremes(matrixPlayers), [matrixPlayers])
   const scoreExt = useMemo(() => {
-    const scores = matrix.players.map((p) => p.score)
+    const scores = matrixPlayers.map((p) => p.score)
     if (scores.length < 2) return undefined
     const min = Math.min(...scores)
     const max = Math.max(...scores)
     return min === max ? undefined : { min, max }
-  }, [matrix.players])
+  }, [matrixPlayers])
 
   const columns = useMemo<ColumnDef<ImpactRow>[]>(() => {
     const cols: ColumnDef<ImpactRow>[] = [
@@ -169,7 +177,7 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
           <span className="whitespace-nowrap font-medium">{ctx.row.original.player}</span>
         ),
       },
-      ...matrix.matches.map<ColumnDef<ImpactRow>>((m, idx) => ({
+      ...matrixMatches.map<ColumnDef<ImpactRow>>((m, idx) => ({
         id: `match-${m.match_id}`,
         header: () => (
           <div
@@ -208,7 +216,7 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
           )
         },
       })),
-      ...matrix.badge_ord.map<ColumnDef<ImpactRow>>((badgeKey) => ({
+      ...matrixBadgeOrd.map<ColumnDef<ImpactRow>>((badgeKey) => ({
         id: `agg-${badgeKey}`,
         header: () => (
           <Tooltip
@@ -280,7 +288,7 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
       },
     ]
     return cols
-  }, [matrix.matches, matrix.badge_ord, extremes, scoreExt, i18n])
+  }, [matrixMatches, matrixBadgeOrd, extremes, scoreExt, i18n])
 
   const table = useReactTable<ImpactRow>({
     data: rows,
@@ -288,7 +296,7 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
     getCoreRowModel: getCoreRowModel(),
   })
 
-  if (matrix.matches.length === 0 || matrix.players.length === 0) {
+  if (matrixMatches.length === 0 || matrixPlayers.length === 0) {
     // Bloc vide : on conserve le cadre bordé (même style que la table) avec un
     // message, au lieu de faire disparaître la section.
     return (

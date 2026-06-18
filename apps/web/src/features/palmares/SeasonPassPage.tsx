@@ -8,7 +8,7 @@ import { buildCompositeProgressEdgeLabels, clampCompositeProgress } from '@/comp
 import { DataFreshnessIndicator } from '@/components/ui/data-freshness-indicator'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
-import type { SeasonPassStatus, SeasonPassTrackSummary } from '@/lib/api/types'
+import type { SeasonPassTrackSummary } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { BattlePassRewardCarousel, buildTierGroups, type RewardCard } from './BattlePassRewardCarousel'
@@ -19,7 +19,10 @@ import { useSeasonPassPage } from './queries'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { isArmorItemType, rarityLabel, rarityStyle, type RarityTier } from './rarity'
 
-function statusVariant(status: SeasonPassStatus) {
+// Le contrat OpenAPI expose `status` en `string` (cf. SeasonPassTrackSummary).
+// On accepte donc `string` et on retombe sur la branche par défaut pour toute
+// valeur hors des statuts connus.
+function statusVariant(status: string) {
   switch (status) {
     case 'active': return 'default' as const
     case 'completed': return 'success' as const
@@ -558,18 +561,20 @@ export function SeasonPassPage() {
     )
   }
 
-  const completedCount = data.passes.filter((p) => p.status === 'completed').length
-  const inProgressCount = data.passes.filter((p) => p.status === 'in_progress').length
-  const remainingPasses = data.passes.filter((p) => p.status !== 'completed').length
-  const activePass = data.passes.find((p) => p.is_active) ?? null
+  // Le contrat autorise `passes` à être null (Go peut renvoyer null) → garde.
+  const passes = data.passes ?? []
+  const completedCount = passes.filter((p) => p.status === 'completed').length
+  const inProgressCount = passes.filter((p) => p.status === 'in_progress').length
+  const remainingPasses = passes.filter((p) => p.status !== 'completed').length
+  const activePass = passes.find((p) => p.is_active) ?? null
 
   // Agrégat collection (tous pass) pour la 2e rangée de cards.
-  const agg = aggregatePasses(data.passes)
+  const agg = aggregatePasses(passes)
   const compactNum = (n: number) => n.toLocaleString(text.intlLocale, { notation: 'compact', maximumFractionDigits: 2 })
   const selectedPass = (selectedPassPath
-    ? data.passes.find((p) => p.reward_track_path === selectedPassPath)
+    ? passes.find((p) => p.reward_track_path === selectedPassPath)
     : null) ?? activePass
-  const otherPasses = data.passes.filter((p) => p.reward_track_path !== selectedPass?.reward_track_path)
+  const otherPasses = passes.filter((p) => p.reward_track_path !== selectedPass?.reward_track_path)
   const isViewingActive = !selectedPass || selectedPass.is_active
 
   function selectPass(pass: SeasonPassTrackSummary) {
@@ -637,7 +642,7 @@ export function SeasonPassPage() {
             showcaseRef={showcaseRef}
           />
         </section>
-      ) : data.passes.length === 0 ? (
+      ) : passes.length === 0 ? (
         <EmptyStateCard title={text.seasonPass.noPassesTitle} description={text.seasonPass.noPassesDescription} />
       ) : null}
 

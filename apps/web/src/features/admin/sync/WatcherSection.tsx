@@ -68,7 +68,7 @@ export function WatcherSection() {
           </div>
           {!data.daemon_running ? (
             <p className="text-xs text-muted-foreground">{tA('admin.watcher.disabled')}</p>
-          ) : !data.players.length ? (
+          ) : !data.players?.length ? (
             <p className="text-xs text-muted-foreground">{tA('admin.watcher.no_players')}</p>
           ) : (
             <WatcherPlayersTable players={data.players} tA={tA} locale={locale} />

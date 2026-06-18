@@ -122,7 +122,7 @@ function evaluateOverviewRules(o: AdminMonitoringOverview, out: Verdict[]): void
       to: '/admin/data-quality',
     })
   }
-  const failedJobs = o.jobs.recent.filter((j) => j.status === 'failed').length
+  const failedJobs = (o.jobs.recent ?? []).filter((j) => j.status === 'failed').length
   if (failedJobs > 0) {
     out.push({
       level: 'warn',
@@ -155,7 +155,7 @@ function evaluateSchedulerRules(
   }
 
   // Corrélation indispo lectures : dernier cycle de l'historique.
-  const last = s.history[0]
+  const last = (s.history ?? [])[0]
   if (last && last.duration_ms > 0) {
     const blockedPct = Math.round((last.blocked_ms / last.duration_ms) * 100)
     if (last.blocked_ms >= DIAG_THRESHOLDS.blockedMsFloor && blockedPct >= DIAG_THRESHOLDS.blockedPctWarn) {
@@ -182,9 +182,9 @@ function evaluateSchedulerRules(
   }
 
   // Goulot d'étape post-sync (joueur le plus lent du dernier cycle).
-  for (const p of snap.players) {
+  for (const p of snap.players ?? []) {
     const dom = dominantStep(
-      p.post_sync?.step_timings,
+      p.post_sync?.step_timings ?? undefined,
       DIAG_THRESHOLDS.dominantStepPct,
       DIAG_THRESHOLDS.dominantStepMinTotalMs,
     )

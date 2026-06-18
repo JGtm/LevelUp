@@ -1,7 +1,9 @@
 # Plan — Migration `types.ts` → `generated.ts` (front) + réconciliation du contrat OpenAPI
 
 > **Créé le** : 2026-05-29
-> **Statut** : Fondation posée (pipeline + batch 1) ; **aire bootstrap réconciliée 2026-06-18** (BootstrapResponse, +12 champs, oracle tsc -b vert) ; **PIVOT Lever B découvert** (voir ci-dessous).
+> **Statut** : **Migration de masse LIVRÉE 2026-06-18** (Étape 3) — `types.ts` = **228 shims + 125 interfaces view-model** ; `typecheck`/`lint`/`vitest` verts. Reste = Phase D (déplacer les view-models dans `viewModels.ts`), non bloquant. Historique : Fondation posée (pipeline + batch 1) ; aire bootstrap réconciliée (BootstrapResponse, +12 champs) ; PIVOT Lever B ; contrat complété (MISSING 332→0) ; 69 DIVERGENT réconciliés (commit `9187d2c1e`).
+>
+> **✅ ÉTAPE 3 LIVRÉE 2026-06-18 (migration de masse + reverts view-models)** : shim large appliqué (`export type X = components['schemas']['X']`) là où contrat == usage front ; **8 conteneurs view-model gardés/revertis en interface manuelle** car ils agrègent des feuilles enrichies côté client (`CareerLusrSection`, `CareerHighlightMatchesResponse`, `MatchCombatTab`, `MatchTeamTab`, `MatchViewResponse`, `SchedulerSnapshot`, `AdminSchedulerStatusResponse`, `AdminJobsResponse`). Bilan **228 shims / 125 interfaces**. Oracle `tsc` adversarial → 0 erreur ; régression `PeriodSessionRail.test.tsx` corrigée (assertion alignée sur le contrat : timestamps requis → label formaté). cf. thought_log 2026-06-18.
 > **Branche d'origine** : `refactor/arch-port-abstractions` (Axe 4) ; suite sur `feat/multititre-peripherie`.
 > **Priorité** : 🟡 Moyenne — non bloquant (le `types.ts` manuel fonctionne), mais c'est de la dette + un contrat OpenAPI non fiable.
 

@@ -38,7 +38,7 @@ function asPlayer(gamertag: string, slug?: string): PlayerSummary {
 }
 
 function asTeammate(gamertag: string, encounter_count = 5): TeammateOption {
-  return { gamertag, xuid: `xuid-${gamertag}`, encounter_count, last_seen_at: null }
+  return { gamertag, xuid: `xuid-${gamertag}`, encounter_count, last_seen_at: undefined }
 }
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────

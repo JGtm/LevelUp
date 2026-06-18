@@ -78,7 +78,7 @@ export function AdminConvergencePage() {
         <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
           {tA('admin.convergence.players_section')}
         </h3>
-        {allGreen && data.players.every((p) => !p.check_error) ? (
+        {allGreen && (data.players ?? []).every((p) => !p.check_error) ? (
           <EmptyStateNotice
             title={tA('admin.convergence.all_green_title')}
             description={tA('admin.convergence.all_green_desc')}
@@ -169,7 +169,7 @@ function sumBacklog(data: AdminConvergenceReport) {
     eventsCapped: false,
     weaponsCapped: false,
   }
-  for (const p of data.players) {
+  for (const p of data.players ?? []) {
     totals.enrichment += p.missing_enrichment
     totals.psa += p.missing_psa
     totals.events += p.missing_events

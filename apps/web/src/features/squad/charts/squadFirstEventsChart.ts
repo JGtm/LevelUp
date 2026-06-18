@@ -42,21 +42,22 @@ export function buildSquadFirstEventsOption(
   data: SquadFirstEvents | null | undefined,
   opts: SquadFirstEventsOpts,
 ): EChartsCoreOption {
-  if (!data || data.bin_labels.length === 0 || data.rows.length === 0) {
+  const xLabels = data?.bin_labels ?? []
+  const rows = data?.rows ?? []
+  if (!data || xLabels.length === 0 || rows.length === 0) {
     return { backgroundColor: CHART_BG }
   }
 
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
 
-  const xLabels = data.bin_labels
   const series: Array<Record<string, unknown>> = []
   const hiddenPlayers = opts.hiddenPlayers ?? new Set<string>()
   const hiddenTypes = opts.hiddenTypes ?? new Set<'frag' | 'death'>()
   const empty = xLabels.map(() => 0)
 
-  for (let pi = 0; pi < data.rows.length; pi += 1) {
-    const row = data.rows[pi]
+  for (let pi = 0; pi < rows.length; pi += 1) {
+    const row = rows[pi]
     const color = opts.colorByPlayer[row.player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
     const negColor = hexComplement(color) // hue +180° — même convention que butterfly et stats/min
     const isFirst = pi === 0
@@ -70,7 +71,7 @@ export function buildSquadFirstEventsOption(
       stack: `frag-${row.player}`,
       barMaxWidth: 16,
       itemStyle: { color },
-      data: fragHidden ? empty : row.kill_counts,
+      data: fragHidden ? empty : (row.kill_counts ?? empty),
       // markLine sur la 1ère série uniquement → séparateurs verticaux entre les bins.
       ...(isFirst
         ? {
@@ -92,7 +93,7 @@ export function buildSquadFirstEventsOption(
       stack: `death-${row.player}`,
       barMaxWidth: 16,
       itemStyle: { color: negColor },
-      data: deathHidden ? empty : row.death_counts.map((v) => (v === 0 ? 0 : -v)),
+      data: deathHidden ? empty : (row.death_counts ?? empty).map((v) => (v === 0 ? 0 : -v)),
     })
   }
 

@@ -117,10 +117,10 @@ export function SessionDetailPage() {
   const compareScale = useMemo<CompareScale | undefined>(() => {
     if (!enableCompare || !data?.compare_session) return undefined
     return computeCompareScale(
-      data.matches,
+      data.matches ?? [],
       data.current_session,
       data.compare_matches ?? [],
-      data.compare_session,
+      data.compare_session ?? null,
     )
   }, [enableCompare, data])
 
@@ -199,10 +199,14 @@ export function SessionDetailPage() {
     )
   }
 
+  // Le contrat OpenAPI déclare ces collections nullable (le Go peut renvoyer null) ;
+  // on les normalise en tableaux pour les itérations et les passages aux sous-composants.
+  const availableSessions = data.available_sessions ?? []
+  const sessionMatches = data.matches ?? []
   const selectedSessionLabel = sessionLabel || data.current_session?.session_label || ''
   const selectedCompareSessionLabel =
     compareSessionLabel || data.compare_session?.session_label || data.suggested_compare?.session_label || ''
-  const hasSessions = data.available_sessions.length > 0
+  const hasSessions = availableSessions.length > 0
   const drawerOpen = enableCompare && hasSessions
   // Compare demande mais donnees pas encore arrivees (placeholder de la requete
   // precedente) : on affiche un spinner dans le panneau pendant qu'il glisse.
@@ -260,7 +264,7 @@ export function SessionDetailPage() {
                 </button>
               </div>
 
-              {!drawerOpen && data.available_sessions.length >= 2 && (
+              {!drawerOpen && availableSessions.length >= 2 && (
                 <Tooltip
                   content={
                     <div className="space-y-2">
@@ -296,7 +300,7 @@ export function SessionDetailPage() {
                 des deux côtés (seules les données diffèrent). */}
             <SessionColumnBody
               entry={data.current_session}
-              matches={data.matches}
+              matches={sessionMatches}
               playerSlug={playerSlug}
               compact={drawerOpen}
               scale={compareScale}
@@ -352,7 +356,7 @@ export function SessionDetailPage() {
                   className="min-w-0 max-w-[14rem] shrink rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
                 >
                   <option value="">{t('session.detail.smart_selection')}</option>
-                  {data.available_sessions
+                  {availableSessions
                     .filter((session) => session !== selectedSessionLabel)
                     .map((session) => (
                       <option key={session} value={session}>
@@ -363,7 +367,7 @@ export function SessionDetailPage() {
                 {/* Pills de la session comparée — clippées si la place manque (la ligne
                     reste à hauteur fixe, pas de wrap). */}
                 <div className="min-w-0 overflow-hidden">
-                  <SessionParamPills entry={data.compare_session} />
+                  <SessionParamPills entry={data.compare_session ?? null} />
                 </div>
                 <button
                   type="button"

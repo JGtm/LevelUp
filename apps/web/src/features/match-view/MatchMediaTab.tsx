@@ -40,9 +40,9 @@ function toMediaItemRow(item: AssociatedMediaItem, matchId: string): MediaItemRo
       : item.duration_seconds !== null
         ? 'clip'
         : 'screenshot',
-    thumbnail_path: item.thumbnail_url,
+    thumbnail_path: item.thumbnail_url ?? null,
     match_id: matchId,
-    capture_end_utc: item.capture_time,
+    capture_end_utc: item.capture_time ?? null,
     match_start_time: null,
     section: 'mine',
     owner_gamertag: null,

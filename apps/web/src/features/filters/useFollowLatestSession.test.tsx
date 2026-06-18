@@ -18,7 +18,15 @@ function makeStore(): FilterStore {
 }
 
 function session(p: Pick<SessionOption, 'session_id' | 'label' | 'is_squad'>): SessionOption {
-  return { session_id: p.session_id, label: p.label, match_count: 5, match_count_filtered: 5, is_squad: p.is_squad }
+  return {
+    session_id: p.session_id,
+    label: p.label,
+    match_count: 5,
+    match_count_filtered: 5,
+    is_squad: p.is_squad,
+    started_at_utc: '2026-04-01T21:00:00Z',
+    ended_at_utc: '2026-04-01T22:30:00Z',
+  }
 }
 
 function resolved(all: SessionOption[]): FilterContextResolved {
@@ -26,7 +34,13 @@ function resolved(all: SessionOption[]): FilterContextResolved {
     effective: {
       filter_mode: 'period',
       period: { start_date: null, end_date: null },
-      sessions: { picked_sessions: [], gap_minutes: 120 },
+      sessions: {
+        picked_sessions: [],
+        gap_minutes: 120,
+        picked_session_label: null,
+        picked_solo_session_label: null,
+        picked_squad_session_label: null,
+      },
       cascade: { experience_types: [], playlists: [], modes: [], maps: [] },
     },
     available_options: { experience_types: [], playlists: [], modes: [], maps: [] },

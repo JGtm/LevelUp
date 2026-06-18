@@ -28,11 +28,11 @@ export function PersistPhasesSection() {
       <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
         {tA('admin.persist.section')}
       </h3>
-      {!data || data.persist_phases.length === 0 ? (
+      {!data || (data.persist_phases?.length ?? 0) === 0 ? (
         <EmptyStateNotice title={tA('admin.persist.empty')} description="" />
       ) : (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {data.persist_phases.map((p) => (
+          {(data.persist_phases ?? []).map((p) => (
             <PhaseCell key={p.name} phase={p} label={labelFor(p, tA)} locale={locale} />
           ))}
         </div>
@@ -51,7 +51,7 @@ function PhaseCell({
   label,
   locale,
 }: {
-  phase: AdminPerfStats['persist_phases'][number]
+  phase: NonNullable<AdminPerfStats['persist_phases']>[number]
   label: string
   locale: 'fr' | 'en'
 }) {
