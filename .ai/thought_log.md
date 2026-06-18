@@ -1,3 +1,21 @@
+## [2026-06-18] Atelier — Explorateur d'API Waypoint (refonte Lab, Stage 1b) — Complété
+
+**Statut** : branche `refactor/lab-admin-atelier` (suite du commit 1a `81e9148bb`). Go `internal/api` + `internal/api/handlers` = ok (3 nouveaux tests handler : OK / segment invalide / explorateur indisponible) ; `tsc -b` = 0 ; vitest admin+lab 68/68 ; `eslint .` = 0 erreur ; `vite build` OK ; i18n régénéré (admin 278 clés, +19). Commit en attente d'autorisation.
+
+**Déclencheur (user)** : « vas y commit et enchaîne » après le Stage 1a. Stage 1b = cœur de la vocation du Lab : explorer en direct les endpoints Halo Waypoint.
+
+**Constat qui recadre** : pas besoin de re-câbler Discovery/Resolver ni d'un proxy arbitraire. `reg.AnyPlayerTokens(ctx)` (registry_auth.go:271) est le seam canonique pour un token Spartan (déjà utilisé par MapImageURLFetcher, server.go:375), et `halo.FetchAsset` couvre les 4 segments Discovery UGC (map/playlist/pair/game_variant). Restreint à ces segments connus (pas de path libre) = plus sûr.
+
+**Décision technique** :
+1. Backend : `GET /lab/waypoint?segment=&asset_id=&version_id=&lang=` (dans le groupe RequireAdmin). `LabService.ExploreWaypoint` découplé de halo/auth via une `WaypointExplorerFunc` injectée depuis server.go (closure : AnyPlayerTokens → `NewHaloProvider().WithTokens().FetchAsset`). Erreurs d'appel (404/auth/token absent) portées dans la réponse (`resolved_ok=false` + `error`), pas en erreur HTTP — le panneau affiche le détail. Validation (segment/asset_id/version_id) → 400 ; explorateur non câblé → 503.
+2. Front : sous-nav Atelier (Ressources / Explorateur d'API). Panneau `WaypointExplorerPanel` (form segment+id+version+langue → `useLabWaypoint` mutation → nom public/description/image/latence ou erreur). Type `LabWaypointResponse` (types.ts, écrit main). i18n : 19 clés `admin.atelier.*`.
+
+**Résultats observés** : tous les gates verts. Pas de test de rendu front (la feature admin n'a que des tests de logique pure ; couverture via tests handler backend + typecheck + build).
+
+**Conclusion / prochaine étape** : Stage 1b livré. Reste **Stage 1c** (actions diagnostics : relancer parité / probe tokens / lancer sync). Raw JSON brut possible en évolution (FetchAsset renvoie le décodé : nom/desc/image).
+
+---
+
 ## [2026-06-18] Lab → Admin « Atelier » (refonte Lab, Stage 1a : consolidation IA) — Complété
 
 **Statut** : branche `refactor/lab-admin-atelier` (depuis `main`). `tsc -b` = 0 ; `eslint .` = 0 erreur (69 warnings préexistants, aucun sur les fichiers touchés) ; vitest zones touchées 242/242 ; `vite build` OK (routeTree régénéré) ; Go `internal/api` = ok (compile CGO + tests Lab dont `lab_routes_mounted` + `TestLabHandler_Forbidden`). Commit en attente d'autorisation.

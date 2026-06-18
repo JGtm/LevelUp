@@ -205,3 +205,30 @@ type LabDiagnosticsResponse struct {
 	ParityReport     *LabParityReport      `json:"parity_report,omitempty"`
 	MedalGuards      *LabMedalGuardsReport `json:"medal_guards,omitempty"`
 }
+
+// LabWaypointQuery paramètre une exploration live de l'API Discovery UGC depuis
+// l'Atelier (segment = AssetType : map | playlist | pair | game_variant).
+type LabWaypointQuery struct {
+	Segment   string `json:"segment"`
+	AssetID   string `json:"asset_id"`
+	VersionID string `json:"version_id"`
+	Lang      string `json:"lang,omitempty"`
+}
+
+// LabWaypointResponse expose le résultat d'un appel Discovery UGC live (Atelier).
+// Les erreurs d'appel (404, auth, token indisponible) sont portées dans Error
+// avec ResolvedOK=false (réponse 200 côté HTTP : l'exploration a abouti, l'asset
+// non) — pas une erreur HTTP, pour que le panneau affiche le détail.
+type LabWaypointResponse struct {
+	Segment     string `json:"segment"`
+	Endpoint    string `json:"endpoint"`
+	AssetID     string `json:"asset_id"`
+	VersionID   string `json:"version_id"`
+	Lang        string `json:"lang"`
+	ResolvedOK  bool   `json:"resolved_ok"`
+	AssetName   string `json:"asset_name,omitempty"`
+	Description string `json:"description,omitempty"`
+	ImageURL    string `json:"image_url,omitempty"`
+	Error       string `json:"error,omitempty"`
+	LatencyMS   int64  `json:"latency_ms"`
+}

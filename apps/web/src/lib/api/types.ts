@@ -316,6 +316,20 @@ export interface LabDiagnosticsResponse {
   medal_guards?: LabMedalGuardsReport | null
 }
 
+export interface LabWaypointResponse {
+  segment: string
+  endpoint: string
+  asset_id: string
+  version_id: string
+  lang: string
+  resolved_ok: boolean
+  asset_name?: string
+  description?: string
+  image_url?: string
+  error?: string
+  latency_ms: number
+}
+
 // ---------------------------------------------------------------------------
 // Filtres
 // ---------------------------------------------------------------------------

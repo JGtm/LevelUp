@@ -55,6 +55,24 @@ func (h *LabHandler) GetDiagnostics(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, data)
 }
 
+// GetWaypoint exécute une exploration live de l'API Discovery UGC (Atelier).
+// GET /lab/waypoint?segment=map&asset_id=...&version_id=...&lang=fr-FR
+func (h *LabHandler) GetWaypoint(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	query := domain.LabWaypointQuery{
+		Segment:   q.Get("segment"),
+		AssetID:   q.Get("asset_id"),
+		VersionID: q.Get("version_id"),
+		Lang:      q.Get("lang"),
+	}
+	data, err := h.svc.ExploreWaypoint(r.Context(), query)
+	if err != nil {
+		writeLabError(r.Context(), w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, data)
+}
+
 func parseLabResourcesQuery(w http.ResponseWriter, r *http.Request) (domain.LabResourcesQuery, bool) {
 	q := r.URL.Query()
 	query := domain.LabResourcesQuery{
@@ -85,6 +103,14 @@ func parseLabResourcesQuery(w http.ResponseWriter, r *http.Request) (domain.LabR
 func writeLabError(ctx context.Context, w http.ResponseWriter, err error) {
 	if errors.Is(err, service.ErrLabForbidden) {
 		writeError(ctx, w, http.StatusForbidden, "instance_management_disabled", "Le Lab interne n'est pas autorisé sur cette instance.")
+		return
+	}
+	if errors.Is(err, service.ErrLabWaypointInvalid) {
+		writeError(ctx, w, http.StatusBadRequest, "invalid_waypoint_query", "Paramètres requis : segment (map|playlist|pair|game_variant), asset_id, version_id.")
+		return
+	}
+	if errors.Is(err, service.ErrLabWaypointUnavailable) {
+		writeError(ctx, w, http.StatusServiceUnavailable, "waypoint_explorer_unavailable", "L'explorateur d'API n'est pas disponible (aucune source de token Spartan).")
 		return
 	}
 	writeError(ctx, w, http.StatusInternalServerError, "lab_error", err.Error())
