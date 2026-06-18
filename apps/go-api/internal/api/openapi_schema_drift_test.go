@@ -119,23 +119,29 @@ func TestOpenAPISchemaDrift_AggregatesAndReports(t *testing.T) {
 	t.Logf("DRIFT — DIVERGENT (même nom, structure normalisée différente) : %d\n  %v", len(divergent), divergent)
 	t.Logf("DRIFT — EXTRA (manuel sans contrepartie Huma : media.go / inputs RawBody / legacy) : %d", len(extra))
 
-	// Mode -emit (gated par env, hors CI) : écrit les schémas MISSING (optionnellement
-	// filtrés par préfixe) en YAML prêt à coller sous components.schemas du openapi.yaml.
-	// Workflow : `OPENAPI_EMIT_OUT=/tmp/lab.yaml OPENAPI_EMIT_PREFIX=Lab go test ... -run Drift`.
+	// Mode -emit (gated par env, hors CI) : écrit des schémas Huma auto-dérivés en
+	// YAML indenté prêt à coller/remplacer sous components.schemas du openapi.yaml.
+	//  - OPENAPI_EMIT_OUT          : émet les MISSING (à appendre).
+	//  - OPENAPI_EMIT_DIVERGENT_OUT: émet les DIVERGENT (versions Huma fidèles aux
+	//    structs Go, pour remplacer les schémas manuels périmés).
+	//  - OPENAPI_EMIT_PREFIX       : filtre optionnel par préfixe de nom.
 	if out := os.Getenv("OPENAPI_EMIT_OUT"); out != "" {
-		emitMissingSchemas(t, huSchemas, missing, os.Getenv("OPENAPI_EMIT_PREFIX"), out)
+		emitSchemasYAML(t, huSchemas, missing, os.Getenv("OPENAPI_EMIT_PREFIX"), out)
+	}
+	if out := os.Getenv("OPENAPI_EMIT_DIVERGENT_OUT"); out != "" {
+		emitSchemasYAML(t, huSchemas, divergent, os.Getenv("OPENAPI_EMIT_PREFIX"), out)
 	}
 }
 
-// emitMissingSchemas écrit les schémas MISSING (filtrés par préfixe si fourni) en
-// YAML indenté à 4 espaces (niveau components.schemas), trié, prêt à appendre dans
-// api/openapi.yaml. Chaque schéma vient de la sérialisation OpenAPI auto-dérivée
-// par Huma du struct Go correspondant.
-func emitMissingSchemas(t *testing.T, huSchemas map[string]*huma.Schema, missing []string, prefix, outPath string) {
+// emitSchemasYAML écrit la liste `names` (filtrée par préfixe si fourni) en YAML
+// indenté à 4 espaces (niveau components.schemas), trié, prêt à appendre/remplacer
+// dans api/openapi.yaml. Chaque schéma vient de la sérialisation OpenAPI
+// auto-dérivée par Huma du struct Go correspondant (source de vérité).
+func emitSchemasYAML(t *testing.T, huSchemas map[string]*huma.Schema, names []string, prefix, outPath string) {
 	t.Helper()
 	var buf strings.Builder
 	n := 0
-	for _, name := range missing { // déjà trié
+	for _, name := range names { // déjà trié
 		if prefix != "" && !strings.HasPrefix(name, prefix) {
 			continue
 		}
@@ -148,7 +154,7 @@ func emitMissingSchemas(t *testing.T, huSchemas map[string]*huma.Schema, missing
 		if err := json.Unmarshal(b, &v); err != nil {
 			t.Fatalf("unmarshal schéma %q : %v", name, err)
 		}
-		y, err := yaml.Marshal(v)
+		y, err := yaml.Marshal(normalizeNullableTree(v))
 		if err != nil {
 			t.Fatalf("yaml schéma %q : %v", name, err)
 		}
@@ -178,7 +184,7 @@ func diffSchemas(huSchemas map[string]*huma.Schema, manual map[string]any) (miss
 			missing = append(missing, name)
 			continue
 		}
-		if canonHuma(sch) != canonAny(stripCosmetic(man)) {
+		if canonHuma(sch) != canonAny(stripCosmetic(normalizeNullableTree(man))) {
 			divergent = append(divergent, name)
 		}
 	}
@@ -202,7 +208,44 @@ func canonHuma(s *huma.Schema) string {
 	}
 	var v any
 	_ = json.Unmarshal(b, &v)
-	return canonAny(stripCosmetic(v))
+	return canonAny(stripCosmetic(normalizeNullableTree(v)))
+}
+
+// normalizeNullableTree convertit récursivement la nullable OpenAPI 3.1
+// (`type: [X, "null"]`) en 3.0 (`type: X` + `nullable: true`). Sert (a) à émettre
+// du 3.0 (oapi-codegen v2.6 ne gère pas le 3.1) et (b) à comparer Huma (émet 3.1)
+// et le manuel (3.0) de façon rep-agnostique dans le diff.
+func normalizeNullableTree(v any) any {
+	switch t := v.(type) {
+	case map[string]any:
+		if arr, ok := t["type"].([]any); ok && len(arr) == 2 {
+			var real any
+			nulls := 0
+			for _, e := range arr {
+				if e == "null" {
+					nulls++
+				} else {
+					real = e
+				}
+			}
+			if nulls == 1 && real != nil {
+				t["type"] = real
+				t["nullable"] = true
+			}
+		}
+		out := make(map[string]any, len(t))
+		for k, val := range t {
+			out[k] = normalizeNullableTree(val)
+		}
+		return out
+	case []any:
+		for i := range t {
+			t[i] = normalizeNullableTree(t[i])
+		}
+		return t
+	default:
+		return v
+	}
 }
 
 // canonAny : JSON déterministe (json.Marshal trie les clés des maps).

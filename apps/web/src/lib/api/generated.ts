@@ -3013,34 +3013,21 @@ export interface components {
             duration_ms?: number;
         };
         CareerCSRRank: {
-            /** @description CSR numérique (peut être négatif en mesure) */
-            value: number;
-            /** @description Tier Halo (Bronze / Silver / ... / Onyx) */
-            tier: string;
-            /** @description Sous-tier 1..6 (0 pour Onyx) */
-            sub_tier: number;
-            /** @description Nombre de matchs restants avant placement final */
+            badge_image_url?: string;
+            /** Format: int64 */
             measurement_matches_remaining: number;
-            /** @description URL de l'image du badge (optionnel) */
-            badge_image_url?: string | null;
-            /**
-             * @description Seuil placement de la saison du snapshot (5 depuis S3, 10 historique).
-             *     Toujours présent depuis Phase 6 du pipeline CSR.
-             */
+            /** Format: int64 */
             placement_total: number;
+            /** Format: int64 */
+            sub_tier: number;
+            tier: string;
+            /** Format: double */
+            value: number;
         };
-        /**
-         * @description Saison CSR sélectionnable dans le menu déroulant "Classements" (page
-         *     Carrière, colonne CSR). Une saison apparaît si le joueur y a des données
-         *     classées (snapshot CSR), plus la saison courante.
-         */
         CSRSeasonOption: {
-            /** @description Identifiant saison CSR (ex. "CsrSeason13-1") */
-            season_id: string;
-            /** @description Libellé court (ex. "Saison 13") */
-            label: string;
-            /** @description Saison active du jour (optionnel) */
             is_current?: boolean;
+            label: string;
+            season_id: string;
         };
         FieldErrorSchema: {
             field: string;
@@ -3061,47 +3048,44 @@ export interface components {
             field_errors?: components["schemas"]["FieldErrorSchema"][] | null;
         };
         HealthResponse: {
-            /** @enum {string} */
-            status: "ok" | "degraded" | "down";
-            /** @description Nombre de matchs dans shared_matches_v2 */
+            app_version?: string;
+            db_version?: string;
+            go_version?: string;
+            /** Format: date-time */
+            last_sync_at?: string;
+            /** Format: int64 */
             match_count: number;
-            /** @description Version DuckDB embarquée */
-            db_version: string;
-            /** @description Résultats individuels par dépendance */
-            checks?: {
-                [key: string]: string;
-            };
+            /** Format: int64 */
+            player_count: number;
+            status: string;
+            uptime?: string;
         };
         PlayerSummary: {
-            /** @example Chocoboflor */
-            player_slug: string;
-            /** @example Chocoboflor */
             gamertag: string;
-            /** @example 2535412781684883 */
-            xuid: string;
-            waypoint_player: string;
-            /** @default false */
             is_demo: boolean;
+            player_slug: string;
+            steam_id?: string;
+            title_slug?: string;
+            waypoint_player: string;
+            xuid: string;
         };
         CapabilityMap: {
-            can_read_local_data: boolean;
-            can_run_sync: boolean;
-            can_use_live_halo: boolean;
-            can_manage_settings: boolean;
-            can_reset_media_index: boolean;
-            can_view_media: boolean;
-            /** @default false */
-            can_self_provision: boolean;
-            /** @default false */
-            can_start_initial_sync: boolean;
-            /** @default false */
             can_manage_instance: boolean;
+            can_manage_settings: boolean;
+            can_read_local_data: boolean;
+            can_reset_media_index: boolean;
+            can_run_sync: boolean;
+            can_self_provision: boolean;
+            can_start_initial_sync: boolean;
+            can_use_live_halo: boolean;
+            can_view_media: boolean;
         };
         LabelValue: {
+            /** Format: int64 */
+            count: number;
             label: string;
+            parent?: string;
             value: string;
-            disabled?: boolean | null;
-            count?: number | null;
         };
         SortSpec: {
             field: string;
@@ -3118,11 +3102,14 @@ export interface components {
             page_size: number;
         };
         PaginationMeta: {
-            total: number;
-            page: number;
-            page_size: number;
             has_next: boolean;
             has_prev: boolean;
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            page_size: number;
+            /** Format: int64 */
+            total: number;
         };
         FreshnessInfo: {
             /**
@@ -3148,26 +3135,17 @@ export interface components {
             revision_key?: string | null;
         };
         FeatureFlags: {
-            /** @default true */
-            v7_enabled: boolean;
-            /** @default true */
-            media_enabled: boolean;
-            /** @default false */
             demo_mode: boolean;
-            /** @default false */
             discord_configured: boolean;
-            /** @default false */
+            media_enabled: boolean;
             tailscale_enabled: boolean;
+            v7_enabled: boolean;
         };
         SettingsExcerpt: {
-            /** @default fr */
             lang: string;
-            /** @default Europe/Paris */
-            user_timezone: string;
-            /** @default true */
-            show_records: boolean;
-            /** @default true */
             normalize_mode_labels: boolean;
+            show_records: boolean;
+            user_timezone: string;
         };
         HaloIdentitySummary: {
             gamertag: string;
@@ -3210,8 +3188,8 @@ export interface components {
             demo_mode: boolean;
         };
         PlayersListResponse: {
-            items: components["schemas"]["PlayerSummary"][];
-            default_player_slug?: string | null;
+            default_player_slug: string | null;
+            items: components["schemas"]["PlayerSummary"][] | null;
         };
         SessionContextRequest: {
             player_slug?: string | null;
@@ -3230,22 +3208,18 @@ export interface components {
             is_default: boolean;
         };
         SessionContextResponse: {
-            current_player_slug?: string | null;
-            /** @default halo_infinite */
-            current_title_slug: string;
-            available_titles: components["schemas"]["TitleSummary"][];
-            /** @default fr */
-            locale: string;
-            /** @default true */
-            hints_visible: boolean;
-            /** @default false */
             auth_ready: boolean;
+            available_titles: components["schemas"]["TitleSummary"][] | null;
+            current_player_slug?: string;
+            current_title_slug: string;
+            hints_visible: boolean;
+            locale: string;
         };
         PeriodInput: {
-            /** Format: date */
-            start_date?: string | null;
-            /** Format: date */
-            end_date?: string | null;
+            /** Format: date-time */
+            end_date: string | null;
+            /** Format: date-time */
+            start_date: string | null;
         };
         SessionsInput: {
             picked_session_label?: string | null;
@@ -3266,14 +3240,11 @@ export interface components {
             maps?: string[];
         };
         FilterContextInput: {
-            /**
-             * @default period
-             * @enum {string}
-             */
-            filter_mode: "period" | "sessions";
-            period?: components["schemas"]["PeriodInput"];
-            sessions?: components["schemas"]["SessionsInput"];
-            cascade?: components["schemas"]["CascadeInput"];
+            cascade: components["schemas"]["CascadeFilter"];
+            filter_mode: string;
+            match_context?: string;
+            period: components["schemas"]["PeriodInput"];
+            sessions: components["schemas"]["SessionsFilter"];
         };
         AvailableOptions: {
             experience_types?: components["schemas"]["LabelValue"][];
@@ -3282,25 +3253,36 @@ export interface components {
             maps?: components["schemas"]["LabelValue"][];
         };
         SessionOption: {
-            label: string;
-            session_id: string;
-            match_count: number;
+            /** Format: date-time */
+            ended_at_utc: string;
             is_squad: boolean;
+            label: string;
+            /** Format: int64 */
+            match_count: number;
+            /** Format: int64 */
+            match_count_filtered: number;
+            session_id: string;
+            /** Format: date-time */
+            started_at_utc: string;
         };
         SessionOptions: {
-            all_sessions?: components["schemas"]["SessionOption"][];
-            solo_labels?: string[];
-            squad_labels?: string[];
+            all_sessions: components["schemas"]["SessionOption"][] | null;
+            solo_labels: string[] | null;
+            squad_labels: string[] | null;
         };
         FilterCounts: {
-            total_matches_before_filters: number;
+            /** Format: int64 */
             total_matches_after_filters: number;
+            /** Format: int64 */
+            total_matches_before_filters: number;
         };
         FilterContextResolved: {
-            effective: components["schemas"]["FilterContextInput"];
-            available_options: components["schemas"]["AvailableOptions"];
-            session_options: components["schemas"]["SessionOptions"];
+            available_options: components["schemas"]["AvailableFilterOptions"];
             counts: components["schemas"]["FilterCounts"];
+            effective: components["schemas"]["FilterContextInput"];
+            period_presets: components["schemas"]["PeriodPresetCount"][] | null;
+            season_counts?: components["schemas"]["SeasonCount"][] | null;
+            session_options: components["schemas"]["SessionOptions"];
         };
         CareerSummary: {
             rank_number: number;
@@ -3317,21 +3299,24 @@ export interface components {
             recorded_at?: string | null;
         };
         HeroProgress: {
-            xp_total_required: number;
-            xp_remaining: number;
-            /** Format: float */
-            percentage: number;
+            /** Format: int64 */
             current_rank: number;
+            /** Format: double */
+            percentage: number;
+            /** Format: int64 */
+            total_ranks: number;
+            /** Format: int64 */
+            xp_remaining: number;
+            /** Format: int64 */
+            xp_total_required: number;
         };
         CareerProjections: {
-            /** Format: float */
+            estimated_hero_date: string | null;
+            estimated_rank_cap_date: string | null;
+            /** Format: double */
             xp_per_day_active: number;
-            /** Format: float */
+            /** Format: double */
             xp_per_day_fallback: number;
-            /** Format: date */
-            estimated_hero_date?: string | null;
-            /** Format: date */
-            estimated_rank_cap_date?: string | null;
         };
         CareerHistoryPoint: {
             /** Format: date-time */
@@ -3385,105 +3370,139 @@ export interface components {
             last_seen_at?: string | null;
         };
         CareerPageResponse: {
-            summary?: components["schemas"]["CareerSummary"] | null;
-            hero_progress?: components["schemas"]["HeroProgress"] | null;
-            projections?: components["schemas"]["CareerProjections"] | null;
-            xp_history: components["schemas"]["CareerHistoryPoint"][];
-            lusr?: components["schemas"]["CareerLusrSection"] | null;
-            top_matches_preview: components["schemas"]["CareerTopMatch"][];
-            encounters_preview: components["schemas"]["CareerEncounter"][];
+            current_season?: components["schemas"]["CurrentSeasonResult"];
+            friends_xp_history?: components["schemas"]["FriendXPHistory"][] | null;
+            hero_progress: components["schemas"]["HeroProgress"];
+            lusr: components["schemas"]["LUSRSummary"];
+            projections: components["schemas"]["CareerProjections"];
+            summary: components["schemas"]["CareerRankSummary"];
+            xp_history: components["schemas"]["XPHistoryPoint"][] | null;
         };
         CareerTopMatchesResponse: {
-            items: components["schemas"]["CareerTopMatch"][];
+            best_matches: components["schemas"]["TopMatchDTO"][] | null;
+            worst_matches: components["schemas"]["TopMatchDTO"][] | null;
         };
         CareerEncountersResponse: {
-            items: components["schemas"]["CareerEncounter"][];
+            enemies: components["schemas"]["EncounterDTO"][] | null;
+            teammates: components["schemas"]["EncounterDTO"][] | null;
+            /** Format: int64 */
+            total: number;
         };
         AchievementsSummary: {
-            /** @description Nombre total d'achievements définis pour le titre. */
-            total_count: number;
-            /** @description Nombre d'achievements débloqués par le joueur. */
-            unlocked_count: number;
-            /** @description Gamerscore total possible (somme de tous les achievements). */
-            total_gamerscore: number;
-            /** @description Gamerscore acquis par le joueur (somme des unlocked). */
-            earned_gamerscore: number;
-            /**
-             * Format: double
-             * @description Pourcentage 0..100 arrondi à 0.1.
-             */
+            /** Format: double */
             completion_pct: number;
+            /** Format: int64 */
+            earned_gamerscore: number;
+            /** Format: int64 */
+            total_count: number;
+            /** Format: int64 */
+            total_gamerscore: number;
+            /** Format: int64 */
+            unlocked_count: number;
         };
         AchievementEntry: {
             achievement_id: string;
-            name_en: string;
-            name_fr: string;
+            category?: string;
+            /** Format: int64 */
+            current_progress?: number;
             description_en: string;
             description_fr: string;
-            /** @description Description visible quand verrouillé (peut être absente). */
-            locked_desc_en?: string;
-            locked_desc_fr?: string;
+            /** Format: int64 */
             gamerscore: number;
-            /** @description URL CDN Xbox de l'icône d'achievement (peut être absente). */
             image_url?: string;
             is_secret: boolean;
-            /** @description ex: Common, Rare (peut être absent). */
+            locked_desc_en?: string;
+            locked_desc_fr?: string;
+            name_en: string;
+            name_fr: string;
             rarity_category?: string;
-            /**
-             * Format: double
-             * @description Pourcentage de joueurs ayant débloqué (peut être absent).
-             */
+            /** Format: double */
             rarity_percent?: number;
-            unlocked: boolean;
-            /**
-             * Format: date-time
-             * @description ISO 8601 — présent uniquement si unlocked=true.
-             */
-            unlocked_at?: string;
-            /** @description Progression actuelle (présent uniquement si la définition expose un compteur). */
-            current_progress?: number;
-            /** @description Cible de progression. */
+            /** Format: int64 */
             target_progress?: number;
+            unlocked: boolean;
+            /** Format: date-time */
+            unlocked_at?: string;
+            xbox_title_id?: string;
         };
         AchievementsPageResponse: {
+            achievements: components["schemas"]["AchievementEntry"][] | null;
             summary: components["schemas"]["AchievementsSummary"];
-            achievements: components["schemas"]["AchievementEntry"][];
         };
         MatchHistoryRow: {
-            /** Format: uuid */
+            /** Format: int64 */
+            assists?: number;
+            average_life_mmss: string;
+            /** Format: int64 */
+            deaths?: number;
+            /** Format: double */
+            delta_mmr: number | null;
+            /** Format: int64 */
+            dominance_flag?: number;
+            /** Format: int64 */
+            duration_seconds?: number;
+            /** Format: double */
+            enemy_mmr: number | null;
+            /** Format: double */
+            expected_win_prob?: number;
+            experience_type_label?: string;
+            is_excluded: boolean;
+            is_with_friends: boolean;
+            /** Format: double */
+            kda?: number;
+            /** Format: int64 */
+            kills?: number;
+            map_ui: string | null;
             match_id: string;
+            match_url: string;
+            mode_ui: string | null;
+            /** Format: int64 */
+            outcome_code: number;
+            outcome_label: string;
+            /** Format: int64 */
+            perf_tier?: number;
+            /** Format: int64 */
+            performance_score_relative: number | null;
+            /** Format: int64 */
+            placement_done?: number;
+            /** Format: int64 */
+            placement_total?: number;
+            playlist_label: string | null;
+            score_label: string;
+            skill_rating_type?: string;
+            skill_tier_label?: string;
             /** Format: date-time */
             start_time: string;
             start_time_label: string;
-            outcome_code?: number | null;
-            outcome_label: string;
-            score_label: string;
-            map_ui: string;
-            mode_ui: string;
-            playlist_label: string;
-            /** Format: float */
-            team_mmr?: number | null;
-            /** Format: float */
-            enemy_mmr?: number | null;
-            /** Format: float */
-            delta_mmr?: number | null;
-            /** Format: float */
-            win_rate_hist?: number | null;
-            win_rate_hist_total?: number | null;
-            performance_score_relative?: number | null;
-            average_life_mmss: string;
-            match_url: string;
+            /** Format: double */
+            team_mmr: number | null;
+            /** Format: double */
+            win_rate_hist: number | null;
+            /** Format: int64 */
+            win_rate_hist_total: number | null;
         };
         MatchHistoryQuerySummary: {
-            total_matches_scoped: number;
-            total_matches_unfiltered: number;
-            period_label?: string | null;
             active_filter_mode: string;
+            available_experience_types?: string[] | null;
+            available_maps?: string[] | null;
+            available_modes?: string[] | null;
+            available_outcomes?: components["schemas"]["LabelValue"][] | null;
+            available_perf_tiers?: components["schemas"]["LabelValue"][] | null;
+            available_playlists?: string[] | null;
+            available_ranked_contexts?: components["schemas"]["LabelValue"][] | null;
+            available_skill_tiers?: components["schemas"]["LabelValue"][] | null;
+            available_squad_scopes?: components["schemas"]["LabelValue"][] | null;
+            period_label: string | null;
+            /** Format: int64 */
+            total_matches_scoped: number;
+            /** Format: int64 */
+            total_matches_unfiltered: number;
         };
         ExportHint: {
-            file_name: string;
+            /** Format: int64 */
             estimated_rows: number;
-            token?: string | null;
+            file_name: string;
+            token: string | null;
         };
         PaginatedMatchHistoryResponse: {
             items: components["schemas"]["MatchHistoryRow"][];
@@ -3491,12 +3510,14 @@ export interface components {
             freshness?: components["schemas"]["FreshnessInfo"] | null;
         };
         MatchHistoryPageResponse: {
+            available_columns: string[] | null;
+            available_sort_fields: string[] | null;
+            briefing_kpis?: components["schemas"]["KPIStats"];
+            export_hint: components["schemas"]["ExportHint"];
+            privacy_warning?: components["schemas"]["MatchPrivacyWarning"];
+            session_labels: components["schemas"]["SessionLabelsList"];
             summary: components["schemas"]["MatchHistoryQuerySummary"];
-            table: components["schemas"]["PaginatedMatchHistoryResponse"];
-            available_sort_fields: string[];
-            export_hint?: components["schemas"]["ExportHint"] | null;
-            /** @description Sprint 54-B : avertissement si les matchs du joueur sont privés. */
-            privacy_warning?: components["schemas"]["MatchPrivacyWarning"] | null;
+            table: components["schemas"]["MatchHistoryTable"];
         };
         MatchHistoryQueryRequest: {
             filters?: components["schemas"]["FilterContextInput"];
@@ -3533,8 +3554,8 @@ export interface components {
             exact_match: boolean;
         };
         GamertagSearchResponse: {
+            items: components["schemas"]["GamertagSearchResult"][] | null;
             query: string;
-            items: components["schemas"]["GamertagSuggestion"][];
         };
         ExplorerMatchRow: {
             /** Format: uuid */
@@ -3615,201 +3636,316 @@ export interface components {
             pagination: components["schemas"]["PaginationMeta"];
         };
         ExplorerMatchesQueryResponse: {
-            summary: components["schemas"]["ExplorerMatchesQuerySummary"];
-            table: components["schemas"]["PaginatedExplorerMatchesResponse"];
+            export_hint?: components["schemas"]["ExportHint"];
+            summary: components["schemas"]["ExplorerMatchesSummary"];
+            table: components["schemas"]["ExplorerMatchesTable"];
         };
         ExplorerPlayerQueryRequest: {
             target_gamertag: string;
             filters?: components["schemas"]["FilterContextInput"] | null;
         };
         ExplorerPlayerQueryResponse: {
-            target: components["schemas"]["ExplorerPlayerTarget"];
-            summary: components["schemas"]["ExplorerPlayerSummary"];
-            allies_table: components["schemas"]["ExplorerEncounterRow"][];
-            enemies_table: components["schemas"]["ExplorerEncounterRow"][];
-            common_matches: components["schemas"]["ExplorerMatchRow"][];
+            activity_heatmap?: components["schemas"]["TemporalHeatmapCell"][] | null;
+            badges?: components["schemas"]["MatchEncounterBadge"][] | null;
+            common_matches: components["schemas"]["CommonMatchRow"][] | null;
+            encounter_stats?: components["schemas"]["ExplorerEncounterStats"];
+            /** Format: int64 */
+            losses_together: number;
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            page_size: number;
+            target_gamertag: string;
+            target_profile?: components["schemas"]["ExplorerTargetProfile"];
+            target_xuid: string;
+            /** Format: int64 */
+            total: number;
+            /** Format: int64 */
+            total_count: number;
+            /** Format: int64 */
+            wins_together: number;
         };
         MatchViewHeader: {
-            /** Format: uuid */
-            match_id: string;
-            /** Format: date-time */
-            start_time?: string | null;
-            /** @default  */
-            start_time_label: string;
-            outcome_code?: number | null;
-            /** @default - */
-            outcome_label: string;
-            /** @default #94a3b8 */
-            outcome_color: string;
-            /** @default  */
-            score_label: string;
-            /** @default false */
+            dominance_badge?: components["schemas"]["MatchViewDominanceBadge"];
             dominance_flag: boolean;
-            /** @default false */
             had_bot_teammate: boolean;
-            /** @default  */
+            is_excluded: boolean;
+            is_favorite: boolean;
+            is_ranked: boolean;
+            map_id?: string;
+            map_image_url?: string;
             map_ui: string;
-            map_id?: string | null;
-            /** @default  */
+            match_id: string;
             mode_ui: string;
-            /** @default  */
-            playlist_label: string;
-            /** @default - */
+            /** Format: int64 */
+            outcome_code?: number;
+            outcome_color: string;
+            outcome_color_token?: string;
+            outcome_label: string;
+            performance_color?: string;
+            performance_color_token?: string;
             performance_display: string;
-            performance_color?: string | null;
+            /** Format: int64 */
+            playable_duration_seconds?: number;
+            playlist_label: string;
+            score_label?: string;
+            /** Format: date-time */
+            start_time?: string;
+            start_time_label: string;
+            waypoint_url?: string;
         };
         MatchViewRank: {
-            /**
-             * @default none
-             * @enum {string}
-             */
-            rating_type: "CSR" | "LUSR" | "none";
-            tier_label?: string | null;
-            /** Format: float */
-            numeric_value?: number | null;
-            /** Format: float */
-            delta_value?: number | null;
-            icon_url?: string | null;
+            /** Format: double */
+            delta_value?: number;
+            icon_url?: string;
+            /** Format: double */
+            numeric_value?: number;
+            /** Format: double */
+            progress_pct?: number;
+            rating_type: string;
+            tier_label?: string;
         };
         MatchMedal: {
+            /** Format: int64 */
+            count: number;
+            description?: string;
+            difficulty?: string;
+            image_url?: string;
+            /** Format: int64 */
             medal_name_id: number;
             name: string;
-            count: number;
-            description?: string | null;
         };
         MatchCitation: {
+            color?: string;
             key: string;
             label: string;
-            color?: string | null;
-            /** Format: float */
-            value?: number | null;
+            /** Format: double */
+            value?: number;
         };
         MatchSummaryKpis: {
-            kills?: number | null;
-            deaths?: number | null;
-            assists?: number | null;
-            /** Format: float */
-            kda?: number | null;
-            /** Format: float */
-            damage_dealt?: number | null;
-            average_life?: string | null;
+            /** Format: double */
+            accuracy?: number;
+            /** Format: int64 */
+            assists?: number;
+            average_life?: string;
+            /** Format: double */
+            damage_dealt?: number;
+            /** Format: int64 */
+            deaths?: number;
+            /** Format: double */
+            delta_mmr?: number;
+            /** Format: double */
+            enemy_mmr?: number;
+            /** Format: int64 */
+            headshot_kills?: number;
+            /** Format: double */
+            kda?: number;
+            /** Format: int64 */
+            kills?: number;
+            /** Format: int64 */
+            max_killing_spree?: number;
+            /** Format: int64 */
+            perfect_kills?: number;
+            /** Format: int64 */
+            personal_score?: number;
+            /** Format: double */
+            team_mmr?: number;
         };
         MatchPersonalResult: {
-            /** @default - */
-            outcome_label: string;
-            /** @default #94a3b8 */
             outcome_color: string;
-            score?: number | null;
-            rank_in_team?: number | null;
+            outcome_color_token?: string;
+            outcome_label: string;
+            /** Format: int64 */
+            rank_in_team?: number;
+            /** Format: int64 */
+            score?: number;
         };
         MatchExpectedStats: {
-            /** Format: float */
-            expected_kills?: number | null;
-            /** Format: float */
-            expected_deaths?: number | null;
+            /** Format: double */
+            expected_assists?: number;
+            /** Format: double */
+            expected_deaths?: number;
+            /** Format: double */
+            expected_kills?: number;
+            /** Format: double */
+            expected_win_prob?: number;
+            has_hist_avg: boolean;
+            /** Format: double */
+            hist_avg_assists?: number;
+            /** Format: double */
+            hist_avg_deaths?: number;
+            /** Format: double */
+            hist_avg_headshot_kills?: number;
+            /** Format: double */
+            hist_avg_kills?: number;
+            /** Format: double */
+            hist_avg_perfect_kills?: number;
+            /** Format: double */
+            hist_avg_spree?: number;
+            /** Format: int64 */
+            hist_match_count?: number;
+            hist_mode_category?: string;
         };
         MatchSummaryTab: {
+            citations: components["schemas"]["MatchCitationSnippet"][] | null;
+            expected_stats: components["schemas"]["MatchExpectedStats"];
             kpis: components["schemas"]["MatchSummaryKpis"];
+            medals: components["schemas"]["MatchMedal"][] | null;
             personal_result: components["schemas"]["MatchPersonalResult"];
-            medals: components["schemas"]["MatchMedal"][];
-            citations: components["schemas"]["MatchCitation"][];
-            expected_stats?: components["schemas"]["MatchExpectedStats"];
         };
         MatchWeaponKill: {
+            /** Format: int64 */
+            kill_count: number;
+            /** Format: int64 */
             weapon_id: number;
             weapon_label: string;
-            effective_weapon_id?: number | null;
-            kill_count: number;
         };
         MatchHighlightEvent: {
-            event_time_ms?: number | null;
+            actor_gamertag?: string;
+            actor_xuid?: string;
+            /** Format: int64 */
+            event_time_ms?: number;
             event_type: string;
-            actor_xuid?: string | null;
-            target_xuid?: string | null;
-            weapon_id?: number | null;
         };
         MatchCombatTab: {
-            weapon_kills: components["schemas"]["MatchWeaponKill"][];
-            highlight_events: components["schemas"]["MatchHighlightEvent"][];
-            charts: components["schemas"]["PlotlyFigurePayload"][];
+            cadence?: components["schemas"]["ChartSeriesChartPointStacked"];
+            highlight_events: components["schemas"]["MatchHighlightEvent"][] | null;
+            impact_badges: components["schemas"]["MatchImpactBadge"][] | null;
+            impact_roles?: components["schemas"]["MatchViewImpactRole"][] | null;
+            kd_timeline: components["schemas"]["MatchKDTimelinePoint"][] | null;
+            killer_victim?: components["schemas"]["MatchKillerVictimPair"][] | null;
+            nemesis_duels: components["schemas"]["MatchNemesisRow"][] | null;
+            tug_of_war: components["schemas"]["MatchTugOfWarBin"][] | null;
+            weapon_kills: components["schemas"]["MatchWeaponKill"][] | null;
         };
         MatchRosterRow: {
-            xuid: string;
+            /** Format: int64 */
+            assists?: number;
+            /** Format: double */
+            damage_dealt?: number;
+            /** Format: double */
+            damage_taken?: number;
+            /** Format: int64 */
+            deaths?: number;
             gamertag: string;
-            team_side?: string | null;
-            /** @default false */
-            is_me: boolean;
-            /** @default false */
             is_bot: boolean;
-            kills?: number | null;
-            deaths?: number | null;
-            assists?: number | null;
-            /** Format: float */
-            kda?: number | null;
-            /** Format: float */
-            damage_dealt?: number | null;
-            /** Format: float */
-            damage_taken?: number | null;
+            is_me: boolean;
+            /** Format: double */
+            kda?: number;
+            /** Format: int64 */
+            kills?: number;
+            team_side?: string;
+            xuid: string;
         };
         MatchScoreboardRow: {
-            xuid: string;
+            /** Format: double */
+            accuracy?: number;
+            /** Format: int64 */
+            assists?: number;
+            /** Format: double */
+            avg_life_seconds?: number;
+            /** Format: double */
+            damage_dealt?: number;
+            /** Format: double */
+            damage_per_death?: number;
+            /** Format: double */
+            damage_per_kill?: number;
+            /** Format: double */
+            damage_taken?: number;
+            /** Format: int64 */
+            deaths?: number;
+            /** Format: double */
+            deaths_stddev?: number;
+            /** Format: double */
+            defensive_resistance?: number;
+            /** Format: double */
+            expected_assists?: number;
+            /** Format: double */
+            expected_deaths?: number;
+            /** Format: double */
+            expected_kills?: number;
             gamertag: string;
-            team_side?: string | null;
-            /** @default false */
+            /** Format: int64 */
+            grenade_kills?: number;
+            had_bot_teammate?: boolean;
+            /** Format: int64 */
+            headshot_kills?: number;
+            is_bot?: boolean;
+            is_lvp?: boolean;
             is_me: boolean;
-            rank?: number | null;
-            kills?: number | null;
-            deaths?: number | null;
-            assists?: number | null;
-            betrayals?: number | null;
-            suicides?: number | null;
-            shots_fired?: number | null;
-            shots_hit?: number | null;
-            /** Format: float */
-            shots_accuracy?: number | null;
-            /** Format: float */
-            damage_dealt?: number | null;
-            /** Format: float */
-            damage_taken?: number | null;
-            /** Format: float */
-            damage_efficiency?: number | null;
-            average_life?: string | null;
-            objectives_stolen?: number | null;
-            headshot_kills?: number | null;
-            max_killing_spree?: number | null;
-            perfect_kills?: number | null;
-            power_weapon_kills?: number | null;
-            melee_kills?: number | null;
-            /** @default - */
+            is_mvp?: boolean;
+            /** Format: double */
+            kda?: number;
+            /** Format: int64 */
+            kills?: number;
+            /** Format: double */
+            kills_stddev?: number;
+            /** Format: int64 */
+            max_killing_spree?: number;
+            medals?: components["schemas"]["PlayerMedalRow"][] | null;
+            /** Format: int64 */
+            melee_kills?: number;
+            /** Format: double */
+            offensive_conversion?: number;
             outcome_label: string;
+            /** Format: int64 */
+            perfect_kills?: number;
+            /** Format: double */
+            performance_score?: number;
+            /** Format: int64 */
+            power_weapon_kills?: number;
+            /** Format: int64 */
+            rank?: number;
+            /** Format: int64 */
+            score?: number;
+            /** Format: int64 */
+            shots_fired?: number;
+            /** Format: int64 */
+            shots_hit?: number;
+            skill_rank?: components["schemas"]["MatchScoreboardSkillRank"];
+            team_side?: string;
+            /** Format: int64 */
+            top_weapon_id?: number;
+            top_weapon_label?: string;
+            weapon_kills?: components["schemas"]["PlayerWeaponKillRow"][] | null;
+            xuid: string;
         };
         MatchNemesisRow: {
-            xuid: string;
             gamertag: string;
-            killed_me: number;
+            /** Format: int64 */
             i_killed: number;
+            /** Format: int64 */
+            killed_me: number;
+            xuid: string;
         };
         MatchEncounterRow: {
-            xuid: string;
-            gamertag: string;
+            /** Format: int64 */
+            ally_count?: number;
+            badges?: components["schemas"]["MatchEncounterBadge"][] | null;
+            /** Format: int64 */
             count_together: number;
+            /** Format: int64 */
+            deaths_suffered?: number;
+            /** Format: int64 */
+            enemy_count?: number;
+            gamertag: string;
             is_ally: boolean;
-            ally_count?: number | null;
-            enemy_count?: number | null;
-            /** Format: double */
-            winrate_as_ally?: number | null;
-            /** Format: double */
-            winrate_vs_enemy?: number | null;
-            kills_dealt?: number | null;
-            deaths_suffered?: number | null;
+            is_bot?: boolean;
+            /** Format: int64 */
+            kills_dealt?: number;
             /** Format: date-time */
-            last_seen_at?: string | null;
+            last_seen_at?: string;
+            /** Format: double */
+            winrate_as_ally?: number;
+            /** Format: double */
+            winrate_vs_enemy?: number;
+            xuid: string;
         };
         MatchTeamTab: {
-            roster: components["schemas"]["MatchRosterRow"][];
-            scoreboard: components["schemas"]["MatchScoreboardRow"][];
-            nemesis: components["schemas"]["MatchNemesisRow"][];
-            encounters: components["schemas"]["MatchEncounterRow"][];
+            encounters: components["schemas"]["MatchEncounterRow"][] | null;
+            nemesis: components["schemas"]["MatchNemesisRow"][] | null;
+            roster: components["schemas"]["MatchRosterRow"][] | null;
+            scoreboard: components["schemas"]["MatchScoreboardRow"][] | null;
         };
         AssociatedMediaItem: {
             file_id: string;
@@ -3876,22 +4012,24 @@ export interface components {
             like_count: number;
         };
         MatchMediaTab: {
-            media_items: components["schemas"]["AssociatedMediaItem"][];
+            media_items: components["schemas"]["MatchAssociatedMedia"][] | null;
         };
         MatchCitationsTab: {
-            commendations: components["schemas"]["MatchCitation"][];
-            medals: components["schemas"]["MatchMedal"][];
+            commendations: components["schemas"]["MatchCitation"][] | null;
+            medals: components["schemas"]["MatchMedal"][] | null;
         };
         MatchViewResponse: {
+            citations_tab: components["schemas"]["MatchCitationsTab"];
+            combat_tab: components["schemas"]["MatchCombatTab"];
             header: components["schemas"]["MatchViewHeader"];
+            is_partial?: boolean;
+            media_tab: components["schemas"]["MatchMediaTab"];
+            partial_reasons?: string[] | null;
+            privacy_warning?: components["schemas"]["MatchPrivacyWarning"];
+            radar?: unknown[] | null;
             rank: components["schemas"]["MatchViewRank"];
             summary_tab: components["schemas"]["MatchSummaryTab"];
-            combat_tab: components["schemas"]["MatchCombatTab"];
             team_tab: components["schemas"]["MatchTeamTab"];
-            media_tab: components["schemas"]["MatchMediaTab"];
-            citations_tab: components["schemas"]["MatchCitationsTab"];
-            /** @description Sprint 54-B : avertissement si les matchs du joueur sont privés. */
-            privacy_warning?: components["schemas"]["MatchPrivacyWarning"] | null;
         };
         /** @description Réponse de POST /auth/device-flow/start */
         DeviceFlowStartResponse: {
@@ -3916,22 +4054,36 @@ export interface components {
             xuid?: string | null;
             error?: components["schemas"]["ApiErrorSchema"];
         };
-        /** @description Statut d'un job asynchrone long */
         AsyncJobStatus: {
+            current_step?: string;
+            error?: components["schemas"]["JobErrorDetail"];
+            /** Format: int64 */
+            eta_seconds?: number;
+            /** Format: date-time */
+            finished_at?: string;
             job_id: string;
             job_type: string;
-            /** @enum {string} */
-            status: "queued" | "running" | "succeeded" | "failed" | "interrupted" | "cancelled";
-            progress_pct?: number | null;
-            current_step?: string | null;
-            /** Format: date-time */
-            started_at?: string | null;
-            /** Format: date-time */
-            finished_at?: string | null;
+            /** Format: int64 */
+            matches_done?: number;
+            /** Format: int64 */
+            matches_total?: number;
+            metadata?: components["schemas"]["JobMeta"];
+            phase_key?: string;
+            phase_label?: string;
+            player_slug?: string;
+            /** Format: int64 */
+            progress_pct?: number;
             result?: {
                 [key: string]: unknown;
-            } | null;
-            error?: string | null;
+            };
+            /** Format: date-time */
+            started_at?: string;
+            status: string;
+            /** Format: int64 */
+            subtasks_done?: number;
+            /** Format: int64 */
+            subtasks_total?: number;
+            warnings?: string[] | null;
         };
         /** @description Configuration de l'application (GET/PATCH /settings) */
         SettingsResponse: {
@@ -3972,50 +4124,90 @@ export interface components {
             /** @description Affichage du système Objectifs/Prestige (section Accueil + nav L1). */
             show_progression?: boolean;
         };
-        /** @description Réponse de POST /setup/players */
         CreatePlayerProfileResponse: {
-            player: components["schemas"]["PlayerSummary"];
             db_created: boolean;
-            warnings: string[];
+            player: components["schemas"]["PlayerSummary"];
+            warnings?: string[] | null;
         };
-        /** @description Informations de confidentialité des matchs d'un joueur Halo. */
         MatchPrivacyInfo: {
-            is_private?: boolean;
-            is_partial?: boolean;
-            /** @description Message explicatif pour l'utilisateur. */
-            hint?: string;
+            hint: string;
+            is_partial: boolean;
+            is_private: boolean;
         };
-        /** @description Avertissement affiché dans l'UI quand le compte est privé. */
         MatchPrivacyWarning: {
-            /** @enum {string} */
-            level: "none" | "partial" | "full";
-            message: string;
+            level: string;
+            message?: string;
         };
-        /** @description Stats normalisées d'un joueur pour la comparaison. */
         NormalizedPlayerStats: {
-            gamertag?: string;
-            total_matches?: number;
-            win_rate?: number;
-            kd_ratio?: number;
-            avg_kills?: number;
-            avg_deaths?: number;
-            avg_assists?: number;
-            avg_score?: number;
-            avg_accuracy?: number;
-            avg_damage_dealt?: number;
-            avg_damage_taken?: number;
-            avg_medals?: number;
-            avg_time_played_sec?: number;
-            is_local?: boolean;
+            /** Format: double */
+            accuracy: number;
+            /** Format: double */
+            assists_per_game: number;
+            /** Format: double */
+            avg_life_secs: number;
+            /** Format: int64 */
+            career_rank: number;
+            career_rank_label?: string;
+            /** Format: double */
+            damage_per_game: number;
+            /** Format: double */
+            damage_taken_per_game: number;
+            /** Format: double */
+            deaths_per_game: number;
+            extended?: {
+                [key: string]: unknown;
+            };
+            gamertag: string;
+            /** Format: double */
+            headshot_kills_per_game: number;
+            /** Format: double */
+            highest_csr: number;
+            /** Format: double */
+            highest_csr_all_time: number;
+            highest_csr_all_time_label?: string;
+            highest_csr_label?: string;
+            is_local: boolean;
+            is_local_sample?: boolean;
+            /** Format: double */
+            kda: number;
+            /** Format: double */
+            kdr: number;
+            /** Format: double */
+            kills_per_game: number;
+            /** Format: double */
+            lusr_ath: number;
+            /** Format: int64 */
+            matches: number;
+            /** Format: int64 */
+            max_killing_spree: number;
+            /** Format: double */
+            perf_ath: number;
+            /** Format: double */
+            perfect_kills_per_game: number;
+            /** Format: int64 */
+            time_played_seconds?: number;
+            title_slug: string;
+            /** Format: double */
+            win_rate: number;
+            xuid: string;
         };
         CompareMetricRow: {
-            label: string;
-            key?: string;
+            /** Format: double */
+            delta: number;
+            display_a?: string;
+            display_b?: string;
+            label_fr: string;
+            less_is_better: boolean;
+            metric: string;
+            /** Format: int64 */
+            sample_size_b?: number;
+            /** Format: double */
             value_a: number;
+            value_a_available: boolean;
+            /** Format: double */
             value_b: number;
-            /** @enum {string} */
-            winner: "a" | "b" | "tie";
-            format?: string;
+            value_b_available: boolean;
+            winner: string;
         };
         CompareRequest: {
             target_gamertag: string;
@@ -4023,94 +4215,138 @@ export interface components {
             title_slug: string;
         };
         CompareResponse: {
+            encounter_badges?: components["schemas"]["MatchEncounterBadge"][] | null;
+            metrics: components["schemas"]["CompareMetricRow"][] | null;
             player_a: components["schemas"]["NormalizedPlayerStats"];
             player_b: components["schemas"]["NormalizedPlayerStats"];
-            metrics: components["schemas"]["CompareMetricRow"][];
-            /** @description Message d'erreur si le joueur B n'a pas pu être résolu. */
-            error_b?: string | null;
+            title_slug: string;
         };
         LeaderboardEntry: {
-            rank: number;
-            title_slug?: string;
-            gamertag: string;
+            /** Format: double */
+            accuracy?: number;
+            /** Format: int64 */
+            assists?: number;
+            category?: string;
+            /** Format: int64 */
             csr_value: number;
-            tier: string;
-            sub_tier: number;
+            /** Format: int64 */
+            cumulative_match_count?: number;
+            /** Format: int64 */
+            damage_dealt?: number;
+            /** Format: int64 */
+            damage_taken?: number;
+            /** Format: int64 */
+            deaths?: number;
+            /** Format: int64 */
+            dnf_count?: number;
+            gamertag: string;
             is_local: boolean;
-            xuid?: string | null;
+            /** Format: double */
+            kda?: number;
+            kda_trend?: string;
+            /** Format: int64 */
+            kills?: number;
+            /** Format: double */
+            kills_per_min?: number;
+            /** Format: int64 */
+            loss_count?: number;
+            /** Format: int64 */
+            match_count?: number;
+            /** Format: int64 */
+            matches_played?: number;
+            /** Format: int64 */
+            medal_count?: number;
+            playlist?: string;
+            /** Format: int64 */
+            playtime_seconds?: number;
+            /** Format: double */
+            prev_kda?: number;
+            prev_season_id?: string;
+            /** Format: double */
+            prev_win_rate?: number;
+            /** Format: int64 */
+            rank: number;
+            /** Format: int64 */
+            rank_delta?: number;
+            season?: string;
+            /** Format: int64 */
+            sub_tier: number;
+            /** Format: int64 */
+            tie_count?: number;
+            tier: string;
+            title_slug: string;
+            unit?: string;
+            /** Format: double */
+            value?: number;
+            value_formatted?: string;
+            /** Format: int64 */
+            win_count?: number;
+            /** Format: double */
+            win_rate?: number;
+            win_rate_trend?: string;
+            xuid: string;
         };
         LeaderboardResponse: {
-            entries: components["schemas"]["LeaderboardEntry"][];
-            season_id: string | null;
-            playlist_id: string | null;
+            category: string;
+            entries: components["schemas"]["LeaderboardEntry"][] | null;
+            playlist_id: string;
+            season_id: string;
             title_slug: string;
+            /** Format: int64 */
             total: number;
         };
-        /** @description Saison Halo active résolue depuis metadata.duckdb. */
         CurrentSeasonResult: {
-            season_id?: string;
-            name?: string;
-            /** Format: date-time */
-            starts_at?: string | null;
-            /** Format: date-time */
-            ends_at?: string | null;
-            synthetic?: components["schemas"]["SeasonSynthetic"] | null;
+            CSRSeason: components["schemas"]["CSRSeasonCalendar"];
+            Season: components["schemas"]["SeasonCalendar"];
+            Synthetic: components["schemas"]["SeasonSynthetic"];
         };
-        /** @description Saison de substitution quand metadata.duckdb n'est pas disponible. */
         SeasonSynthetic: {
-            season_id: string;
-            name: string;
             is_fallback: boolean;
+            name: string;
+            season_id: string;
+            /** Format: date-time */
+            start_date: string;
         };
-        /**
-         * @description Couverture CSR pour un joueur — Phase 9 plan pipeline CSR.
-         *     Permet de vérifier que les snapshots Waypoint + les rows
-         *     match_skill_rank rating_type='CSR' sont complets, ou si un
-         *     backfill est nécessaire.
-         */
         CSRCoverage: {
-            player_slug: string;
-            xuid: string;
-            snapshots: components["schemas"]["CSRSnapshotsCoverage"];
             match_skill_rank_csr: components["schemas"]["MSRCSRCoverage"];
             needs_backfill: boolean;
+            player_slug: string;
+            snapshots: components["schemas"]["CSRSnapshotsCoverage"];
+            xuid: string;
         };
-        /** @description Résumé player_csr_snapshots pour un joueur. */
         CSRSnapshotsCoverage: {
+            /** Format: int64 */
             total: number;
+            /** Format: int64 */
             with_alltime_value: number;
+            /** Format: int64 */
             with_placement_remaining: number;
         };
-        /** @description Résumé match_skill_rank rating_type='CSR'. */
         MSRCSRCoverage: {
-            total: number;
-            matured: number;
-            placement: number;
-            ranked_matches_in_registry: number;
-            /** @description Matchs ranked sans row CSR — devrait être 0 après backfill. */
+            /** Format: int64 */
             coverage_gap: number;
+            /** Format: int64 */
+            matured: number;
+            /** Format: int64 */
+            placement: number;
+            /** Format: int64 */
+            ranked_matches_in_registry: number;
+            /** Format: int64 */
+            total: number;
         };
-        /**
-         * @description État des tables progression V2 (Ascension) pour un joueur — Phase 4
-         *     plan stabilisation 2026-05-22. Counts sur streak/player_records/
-         *     record_history/milestone_earned/milestone_catalog. Si tous les counts
-         *     joueur sont à 0 après plusieurs cycles auto-sync (15 min × N), le
-         *     pipeline V2 n'est pas câblé.
-         */
         ProgressionDiag: {
-            player_slug: string;
-            /** @description Rows dans la table streak (player DB). */
-            streak_count: number;
-            /** @description PB du joueur dans shared_social.player_records. */
-            player_records_count: number;
-            /** @description Historique de records dans la player DB. */
-            record_history_count: number;
-            /** @description Milestones débloqués par le joueur. */
-            milestone_earned_count: number;
-            /** @description Catalogue référentiel des milestones (metadata.duckdb). */
+            /** Format: int64 */
             milestone_catalog_count: number;
-            /** @description Timestamp du dernier post-sync delta (sync_meta). */
+            /** Format: int64 */
+            milestone_earned_count: number;
             pipeline_wired_at?: string;
+            /** Format: int64 */
+            player_records_count: number;
+            player_slug: string;
+            /** Format: int64 */
+            record_history_count: number;
+            /** Format: int64 */
+            streak_count: number;
         };
         AcceptResponse: {
             arc_id?: string;
