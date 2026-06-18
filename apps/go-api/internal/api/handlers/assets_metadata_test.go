@@ -35,8 +35,7 @@ func newAssetMetaRouter(svc *mockAssetService, capEnabled bool) *chi.Mux {
 		return capEnabled
 	})
 	r := chi.NewRouter()
-	r.Get("/assets/{title_id}/maps", h.ListMaps)
-	r.Get("/assets/{title_id}/weapons", h.ListWeapons)
+	h.Mount(r)
 	return r
 }
 
@@ -194,21 +193,17 @@ func TestAssetMetadataHandler_ListWeapons_EmptyResult_ReturnsArray(t *testing.T)
 }
 
 func TestAssetMetadataHandler_QueryParam_Forwarded(t *testing.T) {
-	var capturedSearch string
 	svc := &captureSearchService{}
 	h := handlers.NewAssetMetadataHandler(svc, func(_ string, _ titlePkg.Capability) bool { return true })
 	r := chi.NewRouter()
-	r.Get("/assets/{title_id}/maps", func(w http.ResponseWriter, req *http.Request) {
-		capturedSearch = req.URL.Query().Get("q")
-		h.ListMaps(w, req)
-	})
+	h.Mount(r)
 
 	req := httptest.NewRequest(http.MethodGet, "/assets/halo_infinite/maps?q=aqu", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if capturedSearch != "aqu" {
-		t.Errorf("q=%q, want aqu", capturedSearch)
+	if svc.capturedSearch != "aqu" {
+		t.Errorf("q=%q, want aqu", svc.capturedSearch)
 	}
 	if w.Code != http.StatusOK {
 		t.Errorf("attendu 200, obtenu %d", w.Code)

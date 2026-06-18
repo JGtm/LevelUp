@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/games/mappings"
@@ -24,7 +25,7 @@ func newFeatureMatrixHandler() *FeatureMatrixHandler {
 func TestFeatureMatrixHandler_Success(t *testing.T) {
 	t.Parallel()
 	r := chi.NewRouter()
-	r.Get("/api/v1/titles/{slug}/feature-matrix", newFeatureMatrixHandler().ServeHTTP)
+	r.Route("/api/v1", func(r chi.Router) { newFeatureMatrixHandler().Mount(r) })
 
 	req := httptest.NewRequest("GET", "/api/v1/titles/test_title/feature-matrix", nil)
 	w := httptest.NewRecorder()
@@ -67,7 +68,7 @@ func TestFeatureMatrixHandler_Success(t *testing.T) {
 func TestFeatureMatrixHandler_NotFound(t *testing.T) {
 	t.Parallel()
 	r := chi.NewRouter()
-	r.Get("/api/v1/titles/{slug}/feature-matrix", newFeatureMatrixHandler().ServeHTTP)
+	r.Route("/api/v1", func(r chi.Router) { newFeatureMatrixHandler().Mount(r) })
 
 	req := httptest.NewRequest("GET", "/api/v1/titles/unknown/feature-matrix", nil)
 	w := httptest.NewRecorder()
@@ -81,7 +82,7 @@ func TestFeatureMatrixHandler_NotFound(t *testing.T) {
 func TestFeatureMatrixHandler_ETag304(t *testing.T) {
 	t.Parallel()
 	r := chi.NewRouter()
-	r.Get("/api/v1/titles/{slug}/feature-matrix", newFeatureMatrixHandler().ServeHTTP)
+	r.Route("/api/v1", func(r chi.Router) { newFeatureMatrixHandler().Mount(r) })
 
 	req := httptest.NewRequest("GET", "/api/v1/titles/test_title/feature-matrix", nil)
 	w := httptest.NewRecorder()
@@ -100,19 +101,17 @@ func TestFeatureMatrixHandler_ETag304(t *testing.T) {
 	}
 }
 
-// TestFeatureMatrixHandler_EmptySlug appelle ServeHTTP directement avec un slug
+// TestFeatureMatrixHandler_EmptySlug appelle handleGet directement avec un slug
 // vide (le routeur ne matcherait pas) pour exercer le garde 400.
 func TestFeatureMatrixHandler_EmptySlug(t *testing.T) {
 	t.Parallel()
-	req := httptest.NewRequest("GET", "/api/v1/titles//feature-matrix", nil)
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("slug", "")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-
-	w := httptest.NewRecorder()
-	newFeatureMatrixHandler().ServeHTTP(w, req)
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", w.Code)
+	_, err := newFeatureMatrixHandler().handleGet(context.Background(), &featureMatrixInput{Slug: ""})
+	se, ok := err.(huma.StatusError)
+	if !ok {
+		t.Fatalf("erreur = %v, want huma.StatusError", err)
+	}
+	if se.GetStatus() != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", se.GetStatus())
 	}
 }
 
@@ -126,7 +125,7 @@ func TestFeatureMatrixHandler_InvalidCapabilities(t *testing.T) {
 	h := NewFeatureMatrixHandler(&stubCapabilitiesRegistry{set: set}, nil)
 
 	r := chi.NewRouter()
-	r.Get("/api/v1/titles/{slug}/feature-matrix", h.ServeHTTP)
+	r.Route("/api/v1", func(r chi.Router) { h.Mount(r) })
 	req := httptest.NewRequest("GET", "/api/v1/titles/bad_title/feature-matrix", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)

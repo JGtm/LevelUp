@@ -7,6 +7,11 @@
 //  2. Cache mémoire + disque (24h TTL).
 //  3. Appeler service.Build(lang) en cache miss.
 //  4. Sérialiser en JSON.
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) et enregistre le
+// GET /help/release-notes (route TOP-LEVEL sous /api/v1, sans path param).
+// Logique métier inchangée (cache mémoire + disque + ReleaseNotesBuilder), seul
+// le wrapping HTTP change.
 package handlers
 
 import (
@@ -18,6 +23,11 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
 )
 
 // helpDiskCache est la structure sérialisée sur disque.
@@ -58,20 +68,37 @@ func NewHelpHandler(builder ReleaseNotesBuilder, cacheDir string) *HelpHandler {
 	}
 }
 
-// GetReleaseNotes retourne le markdown des notes de version.
+// Mount enregistre GET /help/release-notes via Huma sur le routeur chi.
+func (h *HelpHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/help/release-notes", h.handleGetReleaseNotes)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// helpReleaseNotesInput : ?lang=fr|en optionnel (défaut fr, normalisé côté handler).
+type helpReleaseNotesInput struct {
+	Lang string `query:"lang"`
+}
+
+// helpReleaseNotesOutput : corps {"content": "..."} (byte-identique à writeJSON).
+type helpReleaseNotesOutput struct {
+	Body map[string]string
+}
+
+// handleGetReleaseNotes retourne le markdown des notes de version.
 // Query param : lang=fr|en (défaut : fr).
-func (h *HelpHandler) GetReleaseNotes(w http.ResponseWriter, r *http.Request) {
-	lang := r.URL.Query().Get("lang")
+func (h *HelpHandler) handleGetReleaseNotes(ctx context.Context, in *helpReleaseNotesInput) (*helpReleaseNotesOutput, error) {
+	lang := in.Lang
 	if lang != "en" {
 		lang = "fr"
 	}
 
-	content, err := h.loadCached(r.Context(), lang)
+	content, err := h.loadCached(ctx, lang)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "RELEASE_NOTES_ERROR", "Impossible de charger les notes de version")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "RELEASE_NOTES_ERROR", "Impossible de charger les notes de version")
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"content": content})
+	return &helpReleaseNotesOutput{Body: map[string]string{"content": content}}, nil
 }
 
 func (h *HelpHandler) loadCached(ctx context.Context, lang string) (string, error) {

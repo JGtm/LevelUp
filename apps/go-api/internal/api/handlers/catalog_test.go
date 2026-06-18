@@ -44,7 +44,7 @@ func TestCatalogHandler_Playlists(t *testing.T) {
 	h := NewCatalogHandler(repo)
 
 	r := chi.NewRouter()
-	r.Get("/api/v1/titles/{slug}/catalog/playlists", h.PlaylistsHandler)
+	r.Route("/api/v1", h.Mount)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/titles/halo_infinite/catalog/playlists?only_played=true", nil)
 	w := httptest.NewRecorder()
@@ -83,7 +83,7 @@ func TestCatalogHandler_Pairs(t *testing.T) {
 	h := NewCatalogHandler(repo)
 
 	r := chi.NewRouter()
-	r.Get("/api/v1/titles/{slug}/catalog/pairs", h.PairsHandler)
+	r.Route("/api/v1", h.Mount)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/titles/halo_infinite/catalog/pairs?playlist_asset_id=pl-1", nil)
 	w := httptest.NewRecorder()
@@ -118,7 +118,7 @@ func TestCatalogHandler_Maps(t *testing.T) {
 	h := NewCatalogHandler(repo)
 
 	r := chi.NewRouter()
-	r.Get("/api/v1/titles/{slug}/catalog/maps", h.MapsHandler)
+	r.Route("/api/v1", h.Mount)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/titles/halo_infinite/catalog/maps", nil)
 	w := httptest.NewRecorder()

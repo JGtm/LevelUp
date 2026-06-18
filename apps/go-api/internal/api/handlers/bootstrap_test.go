@@ -36,7 +36,7 @@ func TestBootstrapHandler_OK(t *testing.T) {
 	}
 	h := newBootstrapHandlerForTest(t, repo)
 	r := chi.NewRouter()
-	r.Get("/api/v1/bootstrap", h.ServeHTTP)
+	r.Route("/api/v1", func(r chi.Router) { h.Mount(r) })
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/bootstrap", nil)
 	w := httptest.NewRecorder()
@@ -66,7 +66,7 @@ func TestBootstrapHandler_DemoMode(t *testing.T) {
 	repo := &mockBootstrapRepo{matchCount: 100, dbVersion: "v1.4.4"}
 	h := newBootstrapHandlerForTest(t, repo)
 	r := chi.NewRouter()
-	r.Get("/api/v1/bootstrap", h.ServeHTTP)
+	r.Route("/api/v1", func(r chi.Router) { h.Mount(r) })
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/bootstrap", nil)
 	w := httptest.NewRecorder()
@@ -93,7 +93,7 @@ func TestBootstrapHandler_CurrentTitleSlug(t *testing.T) {
 	repo := &mockBootstrapRepo{matchCount: 50}
 	h := newBootstrapHandlerForTest(t, repo)
 	r := chi.NewRouter()
-	r.Get("/api/v1/bootstrap", h.ServeHTTP)
+	r.Route("/api/v1", func(r chi.Router) { h.Mount(r) })
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/bootstrap", nil)
 	w := httptest.NewRecorder()
@@ -118,7 +118,7 @@ func TestBootstrapHandler_AvailableTitles(t *testing.T) {
 	repo := &mockBootstrapRepo{matchCount: 10, dbVersion: "v1.4.4"}
 	h := newBootstrapHandlerForTest(t, repo)
 	r := chi.NewRouter()
-	r.Get("/api/v1/bootstrap", h.ServeHTTP)
+	r.Route("/api/v1", func(r chi.Router) { h.Mount(r) })
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/bootstrap", nil)
 	w := httptest.NewRecorder()

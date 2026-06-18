@@ -1,4 +1,10 @@
 // Package handlers — lab.go : endpoints du Lab interne / Instance Lab.
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le routeur chi
+// (les routes Lab sont TOP-LEVEL sous /api/v1, sans path param) et enregistre les
+// trois GET via huma.Get. Logique métier inchangée (LabService), seul le wrapping
+// HTTP change. Le titre courant est toujours lu depuis le contexte par le service
+// (ctxkeys.TitleSlug), pas via un path param.
 package handlers
 
 import (
@@ -7,6 +13,10 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/service"
 )
@@ -21,71 +31,104 @@ func NewLabHandler(svc *service.LabService) *LabHandler {
 	return &LabHandler{svc: svc}
 }
 
-// GetResources retourne les données de l'explorateur de ressources.
-func (h *LabHandler) GetResources(w http.ResponseWriter, r *http.Request) {
-	query, ok := parseLabResourcesQuery(w, r)
-	if !ok {
-		return
-	}
-	data, err := h.svc.GetResources(r.Context(), query)
-	if err != nil {
-		writeLabError(r.Context(), w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, data)
+// Mount enregistre les trois routes Lab via Huma sur le routeur chi.
+// Chemins RELATIFS au point de montage (sous /api/v1 dans server.go).
+func (h *LabHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/lab/resources", h.handleGetResources)
+	huma.Get(api, "/lab/contracts", h.handleGetContracts)
+	huma.Get(api, "/lab/diagnostics", h.handleGetDiagnostics)
 }
 
-// GetContracts retourne le diff OpenAPI calculé côté Go.
-func (h *LabHandler) GetContracts(w http.ResponseWriter, r *http.Request) {
-	data, err := h.svc.GetContracts(r.Context())
-	if err != nil {
-		writeLabError(r.Context(), w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, data)
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// labResourcesInput : query params de l'explorateur de ressources (tous tolérés
+// vides — le service applique les normalisations). limit / medal_id sont parsés
+// maison pour préserver le contrat d'erreur (400 invalid_limit / invalid_medal_id).
+type labResourcesInput struct {
+	SnapshotKey string `query:"snapshot_key"`
+	AssetID     string `query:"asset_id"`
+	AssetSearch string `query:"asset_search"`
+	MedalSearch string `query:"medal_search"`
+	Limit       string `query:"limit"`
+	MedalID     string `query:"medal_id"`
 }
 
-// GetDiagnostics retourne les diagnostics d'instance (parity + guards).
-func (h *LabHandler) GetDiagnostics(w http.ResponseWriter, r *http.Request) {
-	data, err := h.svc.GetDiagnostics(r.Context())
-	if err != nil {
-		writeLabError(r.Context(), w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, data)
+type labResourcesOutput struct {
+	Body *domain.LabResourcesResponse
+}
+type labContractsOutput struct {
+	Body *domain.LabContractsResponse
+}
+type labDiagnosticsOutput struct {
+	Body *domain.LabDiagnosticsResponse
 }
 
-func parseLabResourcesQuery(w http.ResponseWriter, r *http.Request) (domain.LabResourcesQuery, bool) {
-	q := r.URL.Query()
+// ─── Endpoints ───────────────────────────────────────────────────────────────
+
+// handleGetResources retourne les données de l'explorateur de ressources.
+func (h *LabHandler) handleGetResources(ctx context.Context, in *labResourcesInput) (*labResourcesOutput, error) {
+	query, err := parseLabResourcesQuery(in)
+	if err != nil {
+		return nil, err
+	}
+	data, err := h.svc.GetResources(ctx, query)
+	if err != nil {
+		return nil, labError(err)
+	}
+	return &labResourcesOutput{Body: data}, nil
+}
+
+// handleGetContracts retourne le diff OpenAPI calculé côté Go.
+func (h *LabHandler) handleGetContracts(ctx context.Context, _ *struct{}) (*labContractsOutput, error) {
+	data, err := h.svc.GetContracts(ctx)
+	if err != nil {
+		return nil, labError(err)
+	}
+	return &labContractsOutput{Body: data}, nil
+}
+
+// handleGetDiagnostics retourne les diagnostics d'instance (parity + guards).
+func (h *LabHandler) handleGetDiagnostics(ctx context.Context, _ *struct{}) (*labDiagnosticsOutput, error) {
+	data, err := h.svc.GetDiagnostics(ctx)
+	if err != nil {
+		return nil, labError(err)
+	}
+	return &labDiagnosticsOutput{Body: data}, nil
+}
+
+// parseLabResourcesQuery extrait les query params en domain.LabResourcesQuery.
+// limit / medal_id non numériques → 400 (invalid_limit / invalid_medal_id),
+// contrat identique à l'ancien parseLabResourcesQuery.
+func parseLabResourcesQuery(in *labResourcesInput) (domain.LabResourcesQuery, error) {
 	query := domain.LabResourcesQuery{
-		SnapshotKey: q.Get("snapshot_key"),
-		AssetID:     q.Get("asset_id"),
-		AssetSearch: q.Get("asset_search"),
-		MedalSearch: q.Get("medal_search"),
+		SnapshotKey: in.SnapshotKey,
+		AssetID:     in.AssetID,
+		AssetSearch: in.AssetSearch,
+		MedalSearch: in.MedalSearch,
 	}
-	if raw := q.Get("limit"); raw != "" {
-		limit, err := strconv.Atoi(raw)
+	if in.Limit != "" {
+		limit, err := strconv.Atoi(in.Limit)
 		if err != nil {
-			writeError(r.Context(), w, http.StatusBadRequest, "invalid_limit", "Le paramètre limit doit être un entier.")
-			return domain.LabResourcesQuery{}, false
+			return domain.LabResourcesQuery{}, humacore.NewError(http.StatusBadRequest, "invalid_limit", "Le paramètre limit doit être un entier.")
 		}
 		query.Limit = limit
 	}
-	if raw := q.Get("medal_id"); raw != "" {
-		medalID, err := strconv.ParseInt(raw, 10, 64)
+	if in.MedalID != "" {
+		medalID, err := strconv.ParseInt(in.MedalID, 10, 64)
 		if err != nil {
-			writeError(r.Context(), w, http.StatusBadRequest, "invalid_medal_id", "Le paramètre medal_id doit être un entier.")
-			return domain.LabResourcesQuery{}, false
+			return domain.LabResourcesQuery{}, humacore.NewError(http.StatusBadRequest, "invalid_medal_id", "Le paramètre medal_id doit être un entier.")
 		}
 		query.MedalID = medalID
 	}
-	return query, true
+	return query, nil
 }
 
-func writeLabError(ctx context.Context, w http.ResponseWriter, err error) {
+// labError mappe les erreurs du service Lab vers les erreurs Huma au contrat
+// d'origine : ErrLabForbidden → 403 instance_management_disabled, autres → 500.
+func labError(err error) error {
 	if errors.Is(err, service.ErrLabForbidden) {
-		writeError(ctx, w, http.StatusForbidden, "instance_management_disabled", "Le Lab interne n'est pas autorisé sur cette instance.")
-		return
+		return humacore.NewError(http.StatusForbidden, "instance_management_disabled", "Le Lab interne n'est pas autorisé sur cette instance.")
 	}
-	writeError(ctx, w, http.StatusInternalServerError, "lab_error", err.Error())
+	return humacore.NewError(http.StatusInternalServerError, "lab_error", err.Error())
 }

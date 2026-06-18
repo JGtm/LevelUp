@@ -65,7 +65,7 @@ func withTitle(req *http.Request) *http.Request {
 func TestLabHandler_GetResources_OK(t *testing.T) {
 	h := newLabHandlerForTest(t, &config.AppConfig{})
 	r := chi.NewRouter()
-	r.Get("/lab/resources", h.GetResources)
+	h.Mount(r)
 
 	req := withTitle(httptest.NewRequest(http.MethodGet, "/lab/resources?limit=5", nil))
 	w := httptest.NewRecorder()
@@ -79,7 +79,7 @@ func TestLabHandler_GetResources_OK(t *testing.T) {
 func TestLabHandler_GetResources_InvalidMedalID(t *testing.T) {
 	h := newLabHandlerForTest(t, &config.AppConfig{})
 	r := chi.NewRouter()
-	r.Get("/lab/resources", h.GetResources)
+	h.Mount(r)
 
 	req := withTitle(httptest.NewRequest(http.MethodGet, "/lab/resources?medal_id=oops", nil))
 	w := httptest.NewRecorder()
@@ -93,7 +93,7 @@ func TestLabHandler_GetResources_InvalidMedalID(t *testing.T) {
 func TestLabHandler_GetContracts_OK(t *testing.T) {
 	h := newLabHandlerForTest(t, &config.AppConfig{})
 	r := chi.NewRouter()
-	r.Get("/lab/contracts", h.GetContracts)
+	h.Mount(r)
 
 	req := withTitle(httptest.NewRequest(http.MethodGet, "/lab/contracts", nil))
 	w := httptest.NewRecorder()
@@ -107,7 +107,7 @@ func TestLabHandler_GetContracts_OK(t *testing.T) {
 func TestLabHandler_GetDiagnostics_OK(t *testing.T) {
 	h := newLabHandlerForTest(t, &config.AppConfig{})
 	r := chi.NewRouter()
-	r.Get("/lab/diagnostics", h.GetDiagnostics)
+	h.Mount(r)
 
 	req := withTitle(httptest.NewRequest(http.MethodGet, "/lab/diagnostics", nil))
 	w := httptest.NewRecorder()
@@ -126,7 +126,7 @@ func TestLabHandler_Forbidden(t *testing.T) {
 	}
 	h := newLabHandlerForTest(t, &config.AppConfig{AppSettingsPath: settingsPath})
 	r := chi.NewRouter()
-	r.Get("/lab/contracts", h.GetContracts)
+	h.Mount(r)
 
 	req := withTitle(httptest.NewRequest(http.MethodGet, "/lab/contracts", nil))
 	w := httptest.NewRecorder()

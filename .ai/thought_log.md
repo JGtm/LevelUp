@@ -1,3 +1,23 @@
+## [2026-06-18] Phase 3b — groupes infra top-level/admin/multi-title (10 handlers) — Complété + push final
+
+**Statut** : Complété. Workflow `huma-infra-toplevel` (10 agents). bootstrap/players/asset_metadata/lab/help/admin/field_mappings/capabilities/feature_matrix/catalog convertis (Mount+Huma). server.go recâblé (top-level /api/v1 + bloc `MultiTitleAPIEnabled` + groupe `/admin` + nil-guard asset-metadata préservé). Build/gofmt/vet OK, **goldens des 10 + lab_routes_mounted + multititle (field-mappings/capabilities/catalog) verts**, `internal/api` (contract) vert. 21 routes. Cumul = **107 routes**.
+
+**Shape cached/ETag — résolue proprement** : field_mappings/capabilities/feature_matrix ont leur PROPRE ETag/304 (pas writeJSONCached). Les agents l'ont préservé via le **passthrough `Body []byte` de Huma** (huma.go:1156-1159 court-circuite la sérialisation pour un Body []byte) : json.Marshal direct (mêmes octets que l'ancien ServeHTTP, ETag SHA-256 identique) + champs `header:"ETag"`/`Cache-Control` + 304 via `Status` field sur If-None-Match. Byte-identique. catalog : Cache-Control préservé idem.
+
+**admin** : 7 routes (DELETE 204, PATCH role/password 204, POST invites 201 body optionnel via MarkRequestBodyOptional, GET 200). asset_metadata : nil-guard `[]` préservé (server.go monte Mount si handler != nil, sinon fallback chi `[]`).
+
+**Écart mineur documenté (asset_metadata)** : les chemins d'ERREUR (404 capability / 500) passaient par `http.Error` (text/plain SANS code) → désormais JSON `{code,message,retryable}` (humacore). Status identiques ; Content-Type des erreurs change (text/plain → JSON), non couvert par tests. Le 200 reste byte-identique.
+
+**Push final** : branche `feat/multititre-peripherie` poussée (hooks pre-push verts).
+
+**Bilan migration Huma (Phase 3b)** : **107 routes migrées** sur ~169 (90 trivial + une partie needs_care). TOUT le player-group + infra top-level/admin/multi-title. 7 workflows lancés (1 inventaire + 6 codegen/migration). Socle `humacore` (factory + erreur writeError + format byte-identique + MarkRequestBodyOptional). Shapes prouvées : no-param/path/query GET, POST body (requis/optionnel), 204, PATCH/DELETE, 201, erreur+header (Retry-After), cached/ETag, nil-guard.
+
+**Reste (tail à nuances, NON migré — chi)** : session/context, watcher (status/subscriptions/auth-status ; auth/start=device-flow needs_care), health racine (/health,/healthz,/readyz — niveau routeur racine, pas /api/v1), _diag (csr-coverage/progression/healthz-home), auth login/logout/password (mutation session), admin-actions (server_admin_monitoring self-register), /sync (sensible). + needs_care définitifs chi : home (cached/ETag), battlepass/challenges (NoStore), media (multipart+binaire), match-history/export (CSV), OAuth redirects, asset images, SPA catch-all.
+
+**Écart de contrat global délibéré (rappel)** : corps de requête JSON malformé sur les routes à Body typé → 422 validation_error (au lieu de 400 invalid_body). Les routes critiques utilisent RawBody pour préserver le 400 exact.
+
+**Conclusion / prochaine étape** : gros de la migration Huma livré + poussé. La bascule openapi.yaml manuel → généré Huma reste l'étape finale (quand TOUTES les routes seront migrées, y compris le tail). Le tail + bascule = session(s) dédiée(s). Pas de PR avant autorisation.
+
 ## [2026-06-18] Phase 3b — Prestige (26 routes) + compare + leaderboard — Complété + push branche
 
 **Statut** : Complété. Workflow `huma-inline-prestige` (3 agents). PrestigeHandler (26 routes : challenges/arcs/prestige/templates/squads/squad-challenges/pilot-mode) + compare + leaderboard convertis (Mount+Huma). server.go recâblé (bloc feature-flag `PRESTIGE_ENABLED` → `ph.Mount(r)`). Build/gofmt/vet OK, **goldens prestige_test + multititle_test (couvre compare+leaderboard) verts**, `internal/api` (contract) vert. 29 routes. Cumul = **86 routes**.

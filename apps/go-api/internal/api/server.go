@@ -623,8 +623,8 @@ func NewRouter(
 		registerChangelogHuma(humaAPI, handlers.NewChangelogHandler(cfg.RepoRoot))
 
 		// Endpoints P0 : bootstrap + liste joueurs
-		r.Get("/bootstrap", handlers.NewBootstrapHandler(bootSvc).ServeHTTP)
-		r.Get("/players", handlers.NewPlayersHandler(bootSvc).ServeHTTP)
+		handlers.NewBootstrapHandler(bootSvc).Mount(r)
+		handlers.NewPlayersHandler(bootSvc).Mount(r)
 
 		// Smoke endpoint pour la home page : sonde le contenu (banner, peaks
 		// CSR/LUSR, playlists récentes, arme favorite) et renvoie 503 si une
@@ -669,15 +669,15 @@ func NewRouter(
 			if seasonsResolver := reg.SeasonsCatalogForHandler(); seasonsResolver != nil {
 				fieldMappingsHandler = fieldMappingsHandler.WithSeasonsCatalog(seasonsResolver)
 			}
-			r.Get("/titles/{slug}/field-mappings", fieldMappingsHandler.ServeHTTP)
+			fieldMappingsHandler.Mount(r) // GET /titles/{slug}/field-mappings (Huma, ETag préservé)
 
 			// Phase 1.7a — capabilities produit déclarées par le titre (TOML).
 			capabilitiesHandler := handlers.NewCapabilitiesHandler(fieldMappingsRegistry, slog.Default())
-			r.Get("/titles/{slug}/capabilities", capabilitiesHandler.ServeHTTP)
+			capabilitiesHandler.Mount(r)
 
 			// Phase 1.7b — matrice de features (cascade capabilities → 3 états).
 			featureMatrixHandler := handlers.NewFeatureMatrixHandler(fieldMappingsRegistry, slog.Default())
-			r.Get("/titles/{slug}/feature-matrix", featureMatrixHandler.ServeHTTP)
+			featureMatrixHandler.Mount(r)
 
 			// Phase H.bis — catalogue Playlists/Pairs/Maps (title-aware).
 			// OpenReadWriteShared pour compatibilité avec les connexions RW existantes
@@ -692,9 +692,7 @@ func NewRouter(
 				// sinon fuite de refCount metadata (cf. INCIDENT_2026-05-21).
 				reg.TrackMetadataHandle(catalogMetaDB)
 				catalogH := handlers.NewCatalogHandler(platform_duckdb.NewCatalogRepo(catalogMetaDB, nil))
-				r.Get("/titles/{slug}/catalog/playlists", catalogH.PlaylistsHandler)
-				r.Get("/titles/{slug}/catalog/pairs", catalogH.PairsHandler)
-				r.Get("/titles/{slug}/catalog/maps", catalogH.MapsHandler)
+				catalogH.Mount(r) // /titles/{slug}/catalog/{playlists,pairs,maps}
 			}
 
 			slog.Info("multi_title_api_enabled",
@@ -717,14 +715,10 @@ func NewRouter(
 		// tests chi-local du handler (aucun ne vérifiait l'intégration serveur).
 		// L'accès reste gardé au niveau service (requireAccess → can_manage_instance).
 		// Anti-régression : lab_routes_mounted_test.go (chi.Walk sur le vrai routeur).
-		labHandler := handlers.NewLabHandler(service.NewLabService(cfg, lab_platform.NewProvider(cfg)))
-		r.Get("/lab/resources", labHandler.GetResources)
 		// Contracts = diff OpenAPI Go ↔ FastAPI legacy : MARQUÉ POUR RETRAIT
-		// (PMT-14 volet C). Le cutover Go étant fait, ce panneau a une faible
-		// valeur résiduelle ; monté tel quel pour ne pas casser le front, à
-		// repurposer/retirer plutôt qu'à enrichir.
-		r.Get("/lab/contracts", labHandler.GetContracts)
-		r.Get("/lab/diagnostics", labHandler.GetDiagnostics)
+		// (PMT-14 volet C). Monté via Mount (resources + contracts + diagnostics).
+		labHandler := handlers.NewLabHandler(service.NewLabService(cfg, lab_platform.NewProvider(cfg)))
+		labHandler.Mount(r)
 
 		// Sprint 43 : changelog (markdown brut) — MIGRÉ vers Huma (Phase 3b),
 		// enregistré en tête de bloc via registerChangelogHuma.
@@ -734,7 +728,7 @@ func NewRouter(
 		// service.ReleaseNotesService ; le handler ne fait que cache + I/O HTTP.
 		releaseBuilder := service.NewReleaseNotesService(cfg.RepoRoot)
 		help := handlers.NewHelpHandler(releaseBuilder, filepath.Join(cfg.RepoRoot, "data", "cache"))
-		r.Get("/help/release-notes", help.GetReleaseNotes)
+		help.Mount(r)
 
 		// Sprint 14 : contexte de session
 		sessionHandler := handlers.NewSessionHandler(sessionStore)
@@ -816,13 +810,7 @@ func NewRouter(
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 			r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
-			r.Get("/users", adminHandler.ListUsers)
-			r.Delete("/users/{username}", adminHandler.DeleteUser)
-			r.Patch("/users/{username}/role", adminHandler.ChangeRole)
-			r.Patch("/users/{username}/password", adminHandler.ResetPassword)
-			r.Get("/invites", adminHandler.ListInvites)
-			r.Post("/invites", adminHandler.GenerateInvite)
-			r.Delete("/invites/{code}", adminHandler.RevokeInvite)
+			adminHandler.Mount(r) // users/invites (Huma, sous RequireAuth+RequireAdmin)
 			// Intégrité des données : invariants du pipeline sync par joueur
 			// (Phase 4 du plan .ai/PLAN_SYNC_INVARIANTS_GATE.md). NoStore : le
 			// résultat reflète l'état courant des DBs, jamais de cache.
@@ -983,22 +971,17 @@ func NewRouter(
 		r.Get("/assets/spartan/{image_type}/{title_id}/*", assetHandler.GetSpartanImage)
 
 		// Asset Drawer — toujours enregistré ; renvoie [] si metaDB indisponible (best-effort).
-		r.Get("/assets/{title_id}/maps", func(w http.ResponseWriter, r *http.Request) {
-			if assetMetaHandler == nil {
+		// Migré vers Huma (Phase 3b) quand le handler est câblé ; sinon fallback [].
+		if assetMetaHandler != nil {
+			assetMetaHandler.Mount(r) // GET /assets/{title_id}/{maps,weapons}
+		} else {
+			emptyAssetList := func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				_, _ = w.Write([]byte("[]"))
-				return
 			}
-			assetMetaHandler.ListMaps(w, r)
-		})
-		r.Get("/assets/{title_id}/weapons", func(w http.ResponseWriter, r *http.Request) {
-			if assetMetaHandler == nil {
-				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte("[]"))
-				return
-			}
-			assetMetaHandler.ListWeapons(w, r)
-		})
+			r.Get("/assets/{title_id}/maps", emptyAssetList)
+			r.Get("/assets/{title_id}/weapons", emptyAssetList)
+		}
 
 		// Endpoints P1 : pages par joueur (Sprint 37 — DI via ServiceRegistry)
 		r.Route("/players/{player_slug}", func(r chi.Router) {
