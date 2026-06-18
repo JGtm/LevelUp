@@ -1,3 +1,25 @@
+## [2026-06-18] Remise au vert CI post-merge Lab (4 jobs rouges) — Complété
+
+**Statut** : branche `refactor/lab-admin-atelier`. Les 4 jobs CI rouges sur le commit Lab (`b9fde414c`, déjà sur `main` + déployé) corrigés et revalidés localement. Commit en attente d'autorisation.
+
+**Déclencheur (user)** : « corrige toutes les erreurs jusqu'à ce que CI et deploy soient verts », « même si c'est préexistant tu t'en occupes », « si ça a marché un jour c'est que ce doit être fixable » (priorité aux vrais fixes, pas aux skips). SeedDemo : « finir à 100% ». Hors périmètre : Playwright.
+
+**Diagnostic (ground-truth via `gh run view --log-failed`, pas le résumé)** — 4 jobs :
+1. **Go Coverage** (`go test ./...`) : 2 vrais échecs de tests, AUCUN timeout.
+   - `internal/api/handlers` : `TestE2E_DeviceCodeFlow_{HappyPath,SingleFlight}`. **Vrai bug prod** : `StartDeviceFlow` ne rendait pas la session « significative » → pas de cookie stable → chaque requête repart sur une session anonyme → attempt introuvable (404). Fix = poser `sess.PendingDeviceFlowAttempt = attempt.AttemptID` (+ clause dans `IsMeaningful()`).
+   - `internal/ops` : `TestSeedDemoCLI_E2E` — seed-demo exit 1 (fixture obsolète : colonnes `is_with_friends`/`is_ranked` + table `match_csrs` absentes). Fix = fixture reconstruite via `migration.RunForDB` (schéma réel) + tolérance table source absente.
+2. **Go Lint** : `goconst "playlist" ×5` dans `lab_service.go` → `domain.LabSegment*` (vérifié `--new-from-rev=b9fde414c` = **0 issue**).
+3. **Go Baseline** : 9 tests baseline absents du run courant. Vérifié = suppressions **volontaires** (fonctions source disparues via refactors documentés : « reecriture seed media », « classement CSR mondial », etc.). Retrait chirurgical des 38 lignes JSONL correspondantes (delta asserté).
+4. **`verifyConfigsWritten` périmé** (cause réelle du « profile DEMO absent ») : la démo est passée mono-joueur → **multi-roster** ; `db_profiles.json` est keyé par gamertag (`DefaultDemoMainGamertag="DemoPlayer"`, pas le répertoire `"DEMO"`) et `waypoint_player` = gamertag démo (anti-fuite du gamertag source). Helper aligné + invariant anti-fuite ajouté.
+
+**Décision timeout (mesuré, pas band-aid)** : `internal/sync` = **80.9 s** en local (CI plus lent → risque de dépasser 120 s). Le script `check_test_baseline.sh` utilise déjà `-timeout=300s` pour la MÊME suite → `ci.yml` (120 s) était l'incohérent. Bump 120→300 s (2 sites).
+
+**Résultats locaux** : ops 4/4 + suite complète ✓ ; handlers DeviceCodeFlow 3/3 ✓ ; handlers/service/domain packages ✓ ; sync (full) ✓ ; lint 0 issue nouvelle ; baseline -38 lignes (delta exact 38).
+
+**Conclusion** : tout vert en local. Prochaine étape : commit (sur autorisation) → push branche → re-vérif CI verte → merge `main` (corrige le CI rouge de `main` + redéploie).
+
+---
+
 ## [2026-06-18] Refonte Lab — renommage « Atelier » → « Lab » (préférence user + cohérence) — Complété
 
 **Statut** : `tsc`=0, `eslint`=0 erreur, vitest admin+lab 71/71, `vite build` ok (routeTree régénéré → `/admin/lab`), i18n régénéré. Commit en attente.

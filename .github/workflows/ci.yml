@@ -204,7 +204,7 @@ jobs:
             -covermode=atomic \
             -coverpkg=./... \
             -tags=integration \
-            -timeout 120s \
+            -timeout 300s \
             -count=1 \
             ./...
         env:
@@ -258,7 +258,7 @@ jobs:
             -covermode=atomic \
             -coverpkg=./internal/sync/... \
             -tags=integration \
-            -timeout 120s \
+            -timeout 300s \
             -count=1 \
             ./internal/sync/...
         env:
