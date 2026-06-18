@@ -1,3 +1,17 @@
+## [2026-06-18] Day-one 2e titre — preuve provisioning E2E + CLIs ops title-aware — Complété (incrément 2)
+
+**Statut** : Complété. `go build` (CGO) OK les 2 CLIs ; test d'intégration provisioning VERT.
+
+**Preuve E2E (Phase D)** : [cmd/server/provision_title_test.go](../apps/go-api/cmd/server/provision_title_test.go) (`//go:build integration`) prouve que `provisionAdditionalTitle` crée les 4 warehouses d'un titre additionnel (metadata/shared/shared_social + PvE car CapFirefight), avec SON marqueur via `RunForTitleDB`, isolées sous `data/titles/<slug>/`, et ZÉRO DB Halo créée. + variante sans Firefight → PvE non provisionnée (gating par capability). Complète l'oracle migration existant (`synthetic_title_b/migration_isolation_test.go`) au niveau du boot glue.
+
+**Reliquat ops CLI (le seul vrai gap restant d'EXT-1.5)** : `--title-id` était déclaré mais IGNORÉ pour les chemins DB dans 2 CLIs → `--title-id X` fetchait les assets/saisons de X mais ÉCRIVAIT dans la metadata de Halo.
+- [cmd/populate-assets/main.go](../apps/go-api/cmd/populate-assets/main.go) : `MetadataDBPath`/`SharedDBPath(DefaultSlug)` → `(titleID)` (le flag était déjà threadé au fetch).
+- [cmd/refresh-metadata/main.go](../apps/go-api/cmd/refresh-metadata/main.go) : `openMetadataDB(cfg)` → `openMetadataDB(cfg, slug)` ; 4 commandes (seasons/csr-seasons/medals/assets) passent `*titleID`, `runStaging` passe `DefaultSlug`. Défaut du flag = `halo_infinite` → byte-identique mono-titre.
+
+**Note** : healthcheck + gate (MT-10) itèrent DÉJÀ `registry.All()` (livré, oracle `TestTitleDataChecks_PerTitleLabeling`) — l'agent de re-vérif les croyait hardcodés (non fiable, 3e erreur de cet agent). Reliquats restants NON bloquants pour day-one : PMT-1 privacy/servicerecord (2 const Halo-specific, décision doc), PMT-4 UX settings, PMT-5 contract outcome.
+
+**Conclusion** : la capacité « day-one 2e titre » est livrée ET prouvée end-to-end (registre config → switcher → provisioning DB isolé → ops CLIs title-aware). Un VRAI 2e titre = écrire son adapter data + ses TOML + déposer son `title.toml` (mécanique en place).
+
 ## [2026-06-18] Day-one 2e titre — registre piloté par config + provisioning DB au boot (EXT-1.5 / MT-16) — Complété (incrément 1)
 
 **Statut** : Complété (1er incrément de la capacité « ajouter un 2e titre day-one »). `go build` OK (CGO), `go vet` OK, archlint `no_slug_comparison` VERT, tests `domain/title` + `service` + `api/handlers` (hors device-flow E2E réseau pré-existant) verts. **Byte-identique mono-titre** (halo_infinite built-in inchangé).
