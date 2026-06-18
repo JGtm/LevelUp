@@ -29,6 +29,7 @@ import (
 	"levelup/go-api/internal/games"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/notify"
 
 	// Blank import : déclenche l'init() de observability qui publie le namespace
 	// expvar "levelup". Le handler /debug/vars (stdlib) découvre ces compteurs
@@ -346,6 +347,23 @@ func NewRouter(
 		"title_slug", hiAssetURL.TitleSlug(),
 		"kind", "asset_url",
 	)
+
+	// PMT-11 / MT-26 : câble le resolver de libellés Discord title-aware. Les embeds
+	// (outcomes win/loss + footer « LevelUp · {titre} Stats ») suivent le titre via
+	// son adapter sémantique (outcomes.toml) + son nom de registre. Titre/adapter
+	// absent → HaloLabels (byte-identique Halo). Les call-sites notify injectent
+	// `cfg.Labels = notify.LabelsForSlug(slug)`.
+	notify.SetDefaultLabelsResolver(func(slug string) notify.NotifyLabels {
+		sem, err := titleResolver.Semantic(slug)
+		if err != nil || sem == nil {
+			return nil
+		}
+		name := ""
+		if d := titleRegistry.Get(slug); d != nil {
+			name = d.Name
+		}
+		return notify.LabelsFor(sem, name)
+	})
 
 	// Sprint 40 T1 : validation de contrat (dev mode, no-op si LEVELUP_CONTRACT_VALIDATE != 1).
 	r.Use(middleware.ContractValidate)

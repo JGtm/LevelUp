@@ -169,7 +169,7 @@
 | PMT-8 | Cycle de vie du titre (Status) | MT-22 | major | ✅ | branche `feat/multititre-peripherie` (cf27ff85f) |
 | PMT-9 | Registre migrations + schema_version par titre | MT-23 | major | ⬜ | PMT-3 |
 | PMT-10 | Observabilité — dimension titre | MT-05 | major | ✅ | logs + 3 collecteurs + endpoints ?title= + émission sync + LogsDir (PR-1→4) |
-| PMT-11 | Discord notifications (contenu) | MT-26 | major | ⬜ | — |
+| PMT-11 | Discord notifications (contenu) | MT-26 | ✅ | **COMPLET 2026-06-18** : seam `NotifyLabels` (Outcome + TitleName, halo/semantic, oracle double 29 tests) + **câblage** : resolver partagé `notify.SetDefaultLabelsResolver`/`LabelsForSlug` (closure boot via adapter sémantique + nom registre, failsafe Halo) + injection `cfg.Labels = LabelsForSlug(ctx slug)` aux call-sites serveur (settings friend-added, friends_orchestrator). Embeds (outcomes + footer « LevelUp · {titre} Stats ») suivent le titre ; byte-identique Halo. CLIs = fallback Halo (resolver non câblé hors serveur) |
 | PMT-12 | Garde-fous & validateurs | MT-21, MT-09, MT-12 | major | ✅ | MT-21 ✅ + MT-09 ✅ (factory player-scoped, allowlist archlint vide) + lint MT-12 ✅ (warn) |
 | PMT-13 | Mineurs & bénins (décision documentée) | MT-24, MT-25, MT-20 | minor | ⬜ | — |
 | PMT-14 | Admin : gestion des titres (+ réhab. Lab cassé) | MT-22 (+1.7a/b, 1.8) | major | ✅ | vol.A ✅ ; vol.C ✅ (Lab monté 2026-06-14) ; vol.B = 0 dup (atoms feature-local corrects) |
