@@ -1,3 +1,24 @@
+## [2026-06-18] Reliquats multi-titre (PMT-1/4/5) — investigation + slice PMT-5 outcome resolver — Complété
+
+**Statut** : Complété. `go build` (CGO) OK, `go vet` OK, archlint vert, tests neufs verts (mappings SQLEqExpr + duckdb outcomeSQLEq + explorer inchangé). **Byte-identique halo_infinite** (golden : l'expression SQL reste `outcome = 2/3/1`).
+
+**Investigation (workflow 2 agents + greps directs)** — conclusion : la plupart des reliquats sont DÉJÀ faits ou des décisions actées.
+- **PMT-1 (privacy/servicerecord)** : **décision documentée** (privacy_provider.go:68-74) — 2 const Halo gardées exprès (router sous EndpointStats ajouterait un `:443` cosmétique non byte-identique ; ne mérite pas une 9e clé d endpoint ; trigger = un vrai 2e titre exposant cette surface). PAS de travail.
+- **PMT-4 (settings)** : **aucun reliquat actionnable sûr**. `readCoachProactiveMode` + `sessionComputeOptionsFor` (SessionGap/split/team-change) DÉJÀ migrés (`ResolveForTitle`) ; `FriendGamertags` = cross-titre global PAR DÉCISION (amis = personnes ≠ titre, ×3 sites documentés) ; `ShowProgression`/`OutcomeExclude*` = déférés PR-3c (nécessitent un middleware titre sur `/settings`, absent du routeur — toggles front-only, faible valeur). Rien à migrer.
+- **PMT-5 (outcome)** : le **Contract Go est COMPLET** (archlint `rawOutcomeAllowlist` VIDE, toutes les comparaisons Go migrées). Résidu = littéraux `outcome = 2/3/1` en SQL inline dans ~9 repos data-path (winrate/wins/losses) — `data_path_risk: high`, et le seam d issues n était PAS accessible aux repos (pas de resolver partagé). J ai livré **l infra + 1 site golden-protégé** (PR mince par axe) :
+  - `mappings/outcomes.go` : `SQLEqExpr(col, outcome)` généralise `SQLIsWinExpr` aux 4 issues.
+  - `games/outcomes.go` + `games/outcome_default.go` : port `OutcomeResolver` + `MappingsOutcomeResolver` + `SetDefaultOutcomeResolver`/`DefaultOutcomeResolver` (miroir EXACT du resolver d endpoints).
+  - `server.go` : câblage boot `SetDefaultOutcomeResolver(NewMappingsOutcomeResolver(fieldMappingsRegistry, DefaultSlug))`.
+  - `platform/duckdb/outcome_sql.go` : helper `outcomeSQLEq(ctx, col, o, legacy)` (miroir du `hostFor` d endpoints : resolver→ctx slug→expr, fallback littéral legacy byte-identique).
+  - `explorer_repo.go` : agrégats wins/losses/draws via le helper (au lieu de `outcome = 2/3/1`).
+  - Tests : `SQLEqExpr` byte-identique Halo (2/3/1/4) + routage codes distincts (5/6) + dégradation raw_code absent ; `outcomeSQLEq` fallback/routage/dégradation.
+
+**Sécurité data-path** : le golden prouve que l expression reste `outcome = 2` pour halo_infinite → SQL byte-identique → ZÉRO changement de résultat. Le fallback legacy (resolver nil OU titre sans raw_code) garantit le byte-identique même hors boot (CLI/tests).
+
+**Reste PMT-5 (suit le même pattern, golden-protégé, follow-up)** : ~8 autres repos (compare_repo:38/191/193, match_history_repo:256, queries_career_encounters, queries_match_detail, sql_fragments.go const `SQLIsWin`/`SQLWinRateExpr`). Chacun = remplacer `outcome = N` par `outcomeSQLEq(...)` + test. Non bloquant (Contract Go déjà complet ; ces SQL sont corrects pour Halo).
+
+**Conclusion** : reliquats traités — PMT-1/4 = décisions actées (rien à faire), PMT-5 = infra resolver + 1 repo livré golden-protégé, le reste documenté comme follow-up mécanique. Le master plan multi-titre est essentiellement complet (voir bilan).
+
 ## [2026-06-18] Day-one 2e titre — preuve provisioning E2E + CLIs ops title-aware — Complété (incrément 2)
 
 **Statut** : Complété. `go build` (CGO) OK les 2 CLIs ; test d'intégration provisioning VERT.

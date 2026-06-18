@@ -215,6 +215,11 @@ func NewRouter(
 	// Halo byte-identique pour halo_infinite).
 	games.SetDefaultEndpointResolver(games.NewMappingsEndpointResolver(fieldMappingsRegistry, titlePkg.DefaultSlug))
 
+	// PMT-5 / MT-06 : câble le resolver d'issues (outcome) title-aware partagé. Les
+	// repos platform/duckdb bâtissent leurs agrégats wins/losses/draws via
+	// [outcomes].raw_code (fallback littéral `outcome = N` byte-identique pour Halo).
+	games.SetDefaultOutcomeResolver(games.NewMappingsOutcomeResolver(fieldMappingsRegistry, titlePkg.DefaultSlug))
+
 	// PMT-12 / MT-21 : validateur boot des mappings TOML requis. Le required-set
 	// est dérivé des capabilities du titre (RequiredTOMLFor). Un titre ACTIF à
 	// moitié configuré fait fail-fast (os.Exit) ; un coming_soon/archived est

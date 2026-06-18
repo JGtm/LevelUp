@@ -87,12 +87,21 @@ func (s *OutcomeMappingSet) RawCode(o canonical.Outcome) (int, bool) {
 }
 
 // SQLIsWinExpr construit l'expression SQL title-aware « la colonne vaut le code
-// d'un win » (MT-06) — ex. `outcome = 2` pour Halo. Le repo ne connaît plus le
-// littéral. Retourne (_, false) si le titre n'a pas de raw_code pour win → le
-// caller dégrade (skip filtre ou fallback). `col` doit être un nom de colonne
-// de confiance (pas une entrée utilisateur) ; seul un entier est interpolé.
+// d'un win » (MT-06) — ex. `outcome = 2` pour Halo. Conservé pour rétrocompat ;
+// délègue à SQLEqExpr(col, OutcomeWin).
 func (s *OutcomeMappingSet) SQLIsWinExpr(col string) (string, bool) {
-	code, ok := s.RawCode(canonical.OutcomeWin)
+	return s.SQLEqExpr(col, canonical.OutcomeWin)
+}
+
+// SQLEqExpr construit l'expression SQL title-aware « la colonne vaut le code brut
+// de l'outcome `o` » (MT-06) — ex. `outcome = 3` pour un loss Halo. Généralise
+// SQLIsWinExpr aux 4 issues (win/loss/tie/dnf) pour migrer les agrégats SQL
+// wins/losses/draws des repos sans littéral codé en dur. Retourne (_, false) si le
+// titre n'a pas de raw_code pour cette issue → le caller dégrade (fallback au
+// littéral legacy, byte-identique pour Halo). `col` doit être un nom de colonne de
+// confiance (pas une entrée utilisateur) ; seul un entier est interpolé.
+func (s *OutcomeMappingSet) SQLEqExpr(col string, o canonical.Outcome) (string, bool) {
+	code, ok := s.RawCode(o)
 	if !ok {
 		return "", false
 	}
