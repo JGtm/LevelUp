@@ -7,15 +7,21 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
+
 	"levelup/go-api/internal/domain"
 )
 
 func TestAdminDBContentionHandler_Get(t *testing.T) {
 	want := domain.DBContentionResponse{State: "ro", Swaps: 3, AvgAcquireMs: 12, ReadsRejected: 1}
 	h := NewAdminDBContentionHandler(func(_ context.Context) domain.DBContentionResponse { return want })
+	r := chi.NewRouter()
+	r.Route("/admin", func(r chi.Router) {
+		h.Mount(r)
+	})
 
 	rec := httptest.NewRecorder()
-	h.Get(rec, httptest.NewRequest(http.MethodGet, "/admin/db-contention", nil))
+	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/admin/db-contention", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)

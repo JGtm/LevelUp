@@ -1,5 +1,9 @@
 // Package handlers — admin_data_quality_test.go : contrats HTTP des endpoints
 // qualité données (validation kind/inputs, 409 single-flight, payloads).
+//
+// MIGRÉ vers Huma : les requêtes passent par un routeur chi montant h.Mount sous
+// /admin (même point de montage que server_admin_monitoring.go). Bodies et
+// assertions inchangés.
 package handlers
 
 import (
@@ -11,10 +15,32 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
+
 	"levelup/go-api/internal/domain"
 )
 
 var errBusySentinel = errors.New("busy")
+
+// serveAdminDataQuality monte h sous /admin (point de montage de
+// server_admin_monitoring.go) et sert la requête via le routeur chi.
+func serveAdminDataQuality(h *AdminDataQualityHandler, req *http.Request) *httptest.ResponseRecorder {
+	r := chi.NewRouter()
+	r.Route("/admin", func(r chi.Router) {
+		h.Mount(r)
+	})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	return rec
+}
+
+// dqPostJSON construit un POST JSON (Content-Type requis par Huma pour peupler
+// RawBody depuis un corps présent).
+func dqPostJSON(path, body string) *http.Request {
+	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	return req
+}
 
 func newDQHandler(t *testing.T) *AdminDataQualityHandler {
 	t.Helper()
@@ -57,8 +83,7 @@ func newDQHandler(t *testing.T) *AdminDataQualityHandler {
 // TestAdminDQ_CatalogRefresh : 200 + compteurs.
 func TestAdminDQ_CatalogRefresh(t *testing.T) {
 	h := newDQHandler(t)
-	rec := httptest.NewRecorder()
-	h.RunCatalogRefresh(rec, httptest.NewRequest(http.MethodPost, "/x", nil))
+	rec := serveAdminDataQuality(h, httptest.NewRequest(http.MethodPost, "/admin/actions/catalog/refresh", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d (attendu 200)", rec.Code)
 	}
@@ -73,8 +98,7 @@ func TestAdminDQ_CatalogRefresh(t *testing.T) {
 func TestAdminDQ_LyingBitsReset_DryRunAndBusy(t *testing.T) {
 	h := newDQHandler(t)
 
-	rec := httptest.NewRecorder()
-	h.RunLyingBitsReset(rec, httptest.NewRequest(http.MethodPost, "/x", strings.NewReader(`{"dry_run":true}`)))
+	rec := serveAdminDataQuality(h, dqPostJSON("/admin/actions/lying-bits/reset", `{"dry_run":true}`))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("dry-run : status=%d (attendu 200)", rec.Code)
 	}
@@ -83,8 +107,7 @@ func TestAdminDQ_LyingBitsReset_DryRunAndBusy(t *testing.T) {
 		t.Fatalf("payload dry-run inattendu : %+v err=%v", got, err)
 	}
 
-	rec = httptest.NewRecorder()
-	h.RunLyingBitsReset(rec, httptest.NewRequest(http.MethodPost, "/x", nil)) // corps vide → run réel → busy
+	rec = serveAdminDataQuality(h, httptest.NewRequest(http.MethodPost, "/admin/actions/lying-bits/reset", nil)) // corps vide → run réel → busy
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("busy : status=%d (attendu 409)", rec.Code)
 	}
@@ -99,14 +122,12 @@ func TestAdminDQ_LyingBitsReset_DryRunAndBusy(t *testing.T) {
 func TestAdminDQ_GetIssues_KindValidation(t *testing.T) {
 	h := newDQHandler(t)
 
-	rec := httptest.NewRecorder()
-	h.GetIssues(rec, httptest.NewRequest(http.MethodGet, "/x/issues?kind=nimporte", nil))
+	rec := serveAdminDataQuality(h, httptest.NewRequest(http.MethodGet, "/admin/monitoring/data-quality/issues?kind=nimporte", nil))
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("kind invalide : status=%d (attendu 400)", rec.Code)
 	}
 
-	rec = httptest.NewRecorder()
-	h.GetIssues(rec, httptest.NewRequest(http.MethodGet, "/x/issues?kind=untranslated_modes&limit=9999", nil))
+	rec = serveAdminDataQuality(h, httptest.NewRequest(http.MethodGet, "/admin/monitoring/data-quality/issues?kind=untranslated_modes&limit=9999", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("kind valide : status=%d (attendu 200)", rec.Code)
 	}
@@ -121,9 +142,7 @@ func TestAdminDQ_GetIssues_KindValidation(t *testing.T) {
 func TestAdminDQ_RegistryNames_DryRunAndBusy(t *testing.T) {
 	h := newDQHandler(t)
 
-	rec := httptest.NewRecorder()
-	h.RunRegistryNamesBackfill(rec, httptest.NewRequest(http.MethodPost, "/x",
-		strings.NewReader(`{"dry_run": true}`)))
+	rec := serveAdminDataQuality(h, dqPostJSON("/admin/actions/registry-names/backfill", `{"dry_run": true}`))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("dry-run : status=%d (attendu 200) body=%s", rec.Code, rec.Body.String())
 	}
@@ -132,9 +151,7 @@ func TestAdminDQ_RegistryNames_DryRunAndBusy(t *testing.T) {
 		t.Fatalf("payload dry-run inattendu : %+v err=%v", res, err)
 	}
 
-	rec = httptest.NewRecorder()
-	h.RunRegistryNamesBackfill(rec, httptest.NewRequest(http.MethodPost, "/x",
-		strings.NewReader(`{"dry_run": false}`)))
+	rec = serveAdminDataQuality(h, dqPostJSON("/admin/actions/registry-names/backfill", `{"dry_run": false}`))
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("busy : status=%d (attendu 409)", rec.Code)
 	}
@@ -145,38 +162,33 @@ func TestAdminDQ_RegistryNames_DryRunAndBusy(t *testing.T) {
 func TestAdminDQ_Translations_Validation(t *testing.T) {
 	h := newDQHandler(t)
 
-	rec := httptest.NewRecorder()
-	h.ResolveModeTranslation(rec, httptest.NewRequest(http.MethodPost, "/x",
-		strings.NewReader(`{"mode_en": "", "name_fr": "Assassin"}`)))
+	rec := serveAdminDataQuality(h, dqPostJSON("/admin/actions/translations/mode",
+		`{"mode_en": "", "name_fr": "Assassin"}`))
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("mode_en vide : status=%d (attendu 400)", rec.Code)
 	}
 
 	long := strings.Repeat("x", 200)
-	rec = httptest.NewRecorder()
-	h.ResolveModeTranslation(rec, httptest.NewRequest(http.MethodPost, "/x",
-		strings.NewReader(`{"mode_en": "Slayer", "name_fr": "`+long+`"}`)))
+	rec = serveAdminDataQuality(h, dqPostJSON("/admin/actions/translations/mode",
+		`{"mode_en": "Slayer", "name_fr": "`+long+`"}`))
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("name_fr trop long : status=%d (attendu 400)", rec.Code)
 	}
 
-	rec = httptest.NewRecorder()
-	h.ResolveModeTranslation(rec, httptest.NewRequest(http.MethodPost, "/x",
-		strings.NewReader(`{"mode_en": "Slayer", "name_fr": "Assassin"}`)))
+	rec = serveAdminDataQuality(h, dqPostJSON("/admin/actions/translations/mode",
+		`{"mode_en": "Slayer", "name_fr": "Assassin"}`))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("valide : status=%d (attendu 200)", rec.Code)
 	}
 
 	// Asset : aucun nom fourni → 400.
-	rec = httptest.NewRecorder()
-	h.ResolveAssetTranslation(rec, httptest.NewRequest(http.MethodPost, "/x",
-		strings.NewReader(`{"asset_kind": "pair", "asset_id": "p-1"}`)))
+	rec = serveAdminDataQuality(h, dqPostJSON("/admin/actions/translations/asset",
+		`{"asset_kind": "pair", "asset_id": "p-1"}`))
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("asset sans nom : status=%d (attendu 400)", rec.Code)
 	}
-	rec = httptest.NewRecorder()
-	h.ResolveAssetTranslation(rec, httptest.NewRequest(http.MethodPost, "/x",
-		strings.NewReader(`{"asset_kind": "pair", "asset_id": "p-1", "name_fr": "Fiesta"}`)))
+	rec = serveAdminDataQuality(h, dqPostJSON("/admin/actions/translations/asset",
+		`{"asset_kind": "pair", "asset_id": "p-1", "name_fr": "Fiesta"}`))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("asset valide : status=%d (attendu 200)", rec.Code)
 	}

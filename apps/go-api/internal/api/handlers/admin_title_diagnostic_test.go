@@ -31,7 +31,9 @@ func TestAdminTitleDiagnostic_Get(t *testing.T) {
 		}},
 	}}, nil)
 	r := chi.NewRouter()
-	r.Get("/admin/titles/{slug}/diagnostic", h.Get)
+	r.Route("/admin", func(r chi.Router) {
+		h.Mount(r)
+	})
 
 	req := httptest.NewRequest("GET", "/admin/titles/halo_infinite/diagnostic", nil)
 	w := httptest.NewRecorder()

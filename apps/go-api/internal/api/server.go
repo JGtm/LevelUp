@@ -810,7 +810,7 @@ func NewRouter(
 			// sync (cadence + lectures rejetées en 503). Lecture seule des
 			// métriques expvar du sharedprovider. NoStore : état courant.
 			contentionHandler := handlers.NewAdminDBContentionHandler(reg.DBContention)
-			r.With(middleware.NoStore).Get("/db-contention", contentionHandler.Get)
+			contentionHandler.Mount(r.With(middleware.NoStore))
 			// Santé des tokens auth (MSAL / XSTS / Refresh) par joueur. Lecture
 			// seule du MultiUserTokenStore (ADR 0023), sans refresh réseau.
 			tokenHealthHandler := handlers.NewAdminTokenHealthHandler(reg.TokenHealth)
@@ -834,7 +834,7 @@ func NewRouter(
 					WithCapabilities(fieldMappingsRegistry),
 				slog.Default(),
 			)
-			r.With(middleware.NoStore).Get("/titles/{slug}/diagnostic", adminTitleDiagHandler.Get)
+			adminTitleDiagHandler.Mount(r.With(middleware.NoStore))
 		})
 
 		// Diagnostic — accessible en loopback (127.0.0.1) uniquement, sans auth.

@@ -3,6 +3,12 @@
 // forcé). Toutes in-process — JAMAIS de spawn de CLI (les CLIs ouvriraient
 // les mêmes DuckDB en RW concurrent du serveur).
 //
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// /admin (middleware RequireAuth/RequireAdmin hérités) et enregistre les 2 POST
+// via huma.Post. Logique métier inchangée (runner data health + scheduler +
+// JobStore), seul le wrapping HTTP change. Les chemins relatifs sont identiques
+// aux routes chi d'origine (montées sous /admin par server.go).
+//
 // Routes (montées sous /api/v1/admin/actions/, RequireAuth+RequireAdmin) :
 //   - POST /data-health/run : audit data health synchrone (~s, lectures RO)
 //   - POST /auto-sync/run   : cycle delta complet via JobStore (202 + job_id,
@@ -15,6 +21,10 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/jobs"
 	"levelup/go-api/internal/scheduler"
@@ -52,51 +62,77 @@ func NewAdminActionsHandler(
 	return &AdminActionsHandler{dataHealth: dataHealth, sched: sched, jobs: jobStore, bgCtx: bgCtx}
 }
 
-// RunDataHealth exécute l'audit data health et retourne ses compteurs.
-// POST /admin/actions/data-health/run.
-func (h *AdminActionsHandler) RunDataHealth(w http.ResponseWriter, r *http.Request) {
-	if h.dataHealth == nil {
-		writeError(r.Context(), w, http.StatusServiceUnavailable, "data_health_unavailable",
-			"Audit data health indisponible (scheduler non câblé).")
-		return
-	}
-	res, err := h.dataHealth(r.Context())
-	if err != nil {
-		slog.ErrorContext(r.Context(), "admin_actions: data health run failed", "err", err)
-		writeError(r.Context(), w, http.StatusServiceUnavailable, "data_health_unavailable",
-			"Audit data health indisponible.")
-		return
-	}
-	writeJSON(w, http.StatusOK, res)
+// Mount enregistre les 2 actions via Huma sur le sous-routeur chi (préfixe /admin
+// + middleware RequireAuth/RequireAdmin hérités). Aucun body de requête (POST
+// sans corps) — les deux actions sont déclenchées sans payload.
+func (h *AdminActionsHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Post(api, "/actions/data-health/run", h.handleRunDataHealth)
+	huma.Post(api, "/actions/auto-sync/run", h.handleRunSyncCycle)
 }
 
-// RunSyncCycle force un cycle auto-sync complet, suivi via le JobStore.
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// runDataHealthOutput : 200 + compteurs data health (byte-identique à
+// writeJSON(w, 200, *domain.MonitoringDataHealth)).
+type runDataHealthOutput struct {
+	Body *domain.MonitoringDataHealth
+}
+
+// runSyncCycleOutput : statut dynamique (202 job lancé / 409 déjà en cours).
+// Body any porte soit *domain.AsyncJobStatus (202), soit le map d'erreur 409
+// {code, message, retryable, details} — byte-identique à writeJSON d'origine.
+type runSyncCycleOutput struct {
+	Status int
+	Body   any
+}
+
+// ─── Endpoints ───────────────────────────────────────────────────────────────
+
+// handleRunDataHealth exécute l'audit data health et retourne ses compteurs.
+// POST /admin/actions/data-health/run.
+func (h *AdminActionsHandler) handleRunDataHealth(ctx context.Context, _ *struct{}) (*runDataHealthOutput, error) {
+	if h.dataHealth == nil {
+		return nil, humacore.NewError(http.StatusServiceUnavailable, "data_health_unavailable",
+			"Audit data health indisponible (scheduler non câblé).")
+	}
+	res, err := h.dataHealth(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "admin_actions: data health run failed", "err", err)
+		return nil, humacore.NewError(http.StatusServiceUnavailable, "data_health_unavailable",
+			"Audit data health indisponible.")
+	}
+	return &runDataHealthOutput{Body: res}, nil
+}
+
+// handleRunSyncCycle force un cycle auto-sync complet, suivi via le JobStore.
 // POST /admin/actions/auto-sync/run → 202 + AsyncJobStatus (409 si un cycle
 // forcé est déjà en vol).
-func (h *AdminActionsHandler) RunSyncCycle(w http.ResponseWriter, r *http.Request) {
+func (h *AdminActionsHandler) handleRunSyncCycle(ctx context.Context, _ *struct{}) (*runSyncCycleOutput, error) {
 	if h.sched == nil || h.jobs == nil {
-		writeError(r.Context(), w, http.StatusServiceUnavailable, "scheduler_unavailable",
+		return nil, humacore.NewError(http.StatusServiceUnavailable, "scheduler_unavailable",
 			"Scheduler auto-sync indisponible.")
-		return
 	}
 	if active := h.jobs.FindActiveJob(domain.JobTypeForcedSyncCycle, forcedSyncCycleSlug); active != nil {
 		// 409 en enveloppe d'erreur standard (le client front transforme tout
 		// non-2xx en ApiError{code, message, details}) — job_id dans details
 		// pour que le front suive directement l'exécution déjà en vol.
-		writeJSON(w, http.StatusConflict, map[string]any{
-			"code":      "already_running",
-			"message":   "Un cycle auto-sync forcé est déjà en cours.",
-			"retryable": false,
-			"details":   map[string]string{"job_id": active.JobID},
-		})
-		return
+		return &runSyncCycleOutput{
+			Status: http.StatusConflict,
+			Body: map[string]any{
+				"code":      "already_running",
+				"message":   "Un cycle auto-sync forcé est déjà en cours.",
+				"retryable": false,
+				"details":   map[string]string{"job_id": active.JobID},
+			},
+		}, nil
 	}
 	job := h.jobs.Create(domain.JobTypeForcedSyncCycle, forcedSyncCycleSlug)
 	step := "cycle auto-sync en cours"
 	h.jobs.SetStatus(job.JobID, domain.JobStatusRunning, &step)
 	go h.runForcedCycle(h.bgCtx, job.JobID)
-	slog.InfoContext(r.Context(), "admin_actions: cycle auto-sync forcé démarré", "job_id", job.JobID)
-	writeJSON(w, http.StatusAccepted, h.jobs.Get(job.JobID))
+	slog.InfoContext(ctx, "admin_actions: cycle auto-sync forcé démarré", "job_id", job.JobID)
+	return &runSyncCycleOutput{Status: http.StatusAccepted, Body: h.jobs.Get(job.JobID)}, nil
 }
 
 // runForcedCycle exécute le cycle dans une goroutine et reflète le résultat

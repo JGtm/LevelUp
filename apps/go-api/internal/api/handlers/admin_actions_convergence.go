@@ -5,6 +5,12 @@
 // La convergence = un RunDelta complet du joueur (le post-sync se déclenche
 // via hasConvergenceBacklog même à 0 insert). Le runner claim le SyncGate —
 // joueur déjà en sync → job failed avec raison explicite (re-tenter après).
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// /admin (middleware RequireAuth/RequireAdmin hérités) et enregistre le POST via
+// huma.Post. Logique métier inchangée (runner + JobStore injectés), seul le
+// wrapping HTTP change. Le chemin relatif est identique à la route chi d'origine
+// (montée sous /admin par server_admin_monitoring.go).
 package handlers
 
 import (
@@ -14,6 +20,10 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/jobs"
 )
@@ -42,38 +52,75 @@ func NewAdminConvergenceActionHandler(
 	return &AdminConvergenceActionHandler{run: run, jobs: jobStore, bgCtx: bgCtx, inFlightErr: inFlightErr}
 }
 
-// Run démarre la convergence d'un joueur.
+// Mount enregistre la route via Huma sur le sous-routeur chi /admin (middleware
+// RequireAuth/RequireAdmin hérités). Le body est REQUIS (décodage maison →
+// 400 invalid_input si JSON malformé OU player_slug absent, contrat préservé).
+func (h *AdminConvergenceActionHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Post(api, "/actions/convergence/run", h.handleRun)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// convergenceRunInput : ?title= optionnel (fallback titre par défaut) + corps
+// brut décodé maison. RawBody (pas Body typé) → préserve le contrat 400
+// {invalid_input} sur JSON malformé OU player_slug absent (un Body typé
+// renverrait le 422 de validation Huma).
+type convergenceRunInput struct {
+	Title   string `query:"title"`
+	RawBody []byte
+}
+
+// convergenceRunOutput : 202 Accepted + AsyncJobStatus (job async démarré).
+type convergenceRunOutput struct {
+	Status int
+	Body   *domain.AsyncJobStatus
+}
+
+// conflictWithJobError reproduit EXACTEMENT le corps 409 d'origine
+// (writeJSON 409 {code, message, retryable, details:{job_id}}) — humacore.NewError
+// ne porte pas de champ `details`, donc un type d'erreur dédié est nécessaire pour
+// préserver le job_id que le front consomme. Implémente huma.StatusError → Huma le
+// sérialise tel quel via le format byte-identique writeJSON.
+type conflictWithJobError struct {
+	Code      string            `json:"code"`
+	Message   string            `json:"message"`
+	Retryable bool              `json:"retryable"`
+	Details   map[string]string `json:"details"`
+}
+
+func (e *conflictWithJobError) Error() string  { return e.Message }
+func (e *conflictWithJobError) GetStatus() int { return http.StatusConflict }
+
+// handleRun démarre la convergence d'un joueur.
 // POST /admin/actions/convergence/run {player_slug} → 202 (409 si déjà en vol).
-func (h *AdminConvergenceActionHandler) Run(w http.ResponseWriter, r *http.Request) {
+func (h *AdminConvergenceActionHandler) handleRun(ctx context.Context, in *convergenceRunInput) (*convergenceRunOutput, error) {
 	if h.run == nil || h.jobs == nil {
-		writeError(r.Context(), w, http.StatusServiceUnavailable, "convergence_unavailable",
+		return nil, humacore.NewError(http.StatusServiceUnavailable, "convergence_unavailable",
 			"Convergence indisponible (scheduler non câblé).")
-		return
 	}
 	var req domain.PlayerConvergenceRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.PlayerSlug == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_input", "player_slug requis.")
-		return
+	if err := json.Unmarshal(in.RawBody, &req); err != nil || req.PlayerSlug == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_input", "player_slug requis.")
 	}
-	titleSlug := titleOrDefault(r)
+	titleSlug := titleOrDefaultSlug(in.Title)
 
 	if active := h.jobs.FindActiveJob(domain.JobTypePlayerConvergence, req.PlayerSlug); active != nil {
-		writeJSON(w, http.StatusConflict, map[string]any{
-			"code":      "already_running",
-			"message":   "Une convergence est déjà en cours pour ce joueur.",
-			"retryable": false,
-			"details":   map[string]string{"job_id": active.JobID},
-		})
-		return
+		return nil, &conflictWithJobError{
+			Code:      "already_running",
+			Message:   "Une convergence est déjà en cours pour ce joueur.",
+			Retryable: false,
+			Details:   map[string]string{"job_id": active.JobID},
+		}
 	}
 
 	job := h.jobs.Create(domain.JobTypePlayerConvergence, req.PlayerSlug)
 	step := "convergence en cours (sync delta + post-sync)"
 	h.jobs.SetStatus(job.JobID, domain.JobStatusRunning, &step)
 	go h.runConvergence(h.bgCtx, job.JobID, titleSlug, req.PlayerSlug)
-	slog.InfoContext(r.Context(), "admin_actions: convergence joueur démarrée",
+	slog.InfoContext(ctx, "admin_actions: convergence joueur démarrée",
 		"job_id", job.JobID, "player_slug", req.PlayerSlug, "title", titleSlug)
-	writeJSON(w, http.StatusAccepted, h.jobs.Get(job.JobID))
+	return &convergenceRunOutput{Status: http.StatusAccepted, Body: h.jobs.Get(job.JobID)}, nil
 }
 
 // runConvergence exécute la convergence dans la goroutine du job.
