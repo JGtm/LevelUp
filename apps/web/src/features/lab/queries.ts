@@ -73,7 +73,7 @@ export interface LabWaypointParams {
 }
 
 /**
- * useLabWaypoint — exploration live de l'API Discovery UGC (Atelier). Déclenchée
+ * useLabWaypoint — exploration live de l'API Discovery UGC (Lab). Déclenchée
  * à la demande (bouton), donc une mutation plutôt qu'une query auto-fetch.
  */
 export function useLabWaypoint() {

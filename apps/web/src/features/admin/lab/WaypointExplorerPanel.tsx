@@ -1,5 +1,5 @@
 /**
- * WaypointExplorerPanel — onglet « Explorateur d'API » de l'Atelier.
+ * WaypointExplorerPanel — sous-onglet « Explorateur d'API » du Lab.
  *
  * Interroge en direct l'API Discovery UGC de Halo Waypoint (résolution d'un
  * asset par segment / identifiant / version). Backend : GET /lab/waypoint
@@ -19,10 +19,10 @@ import { useLabWaypoint } from '@/features/lab/queries'
 import { useAdminT, type TAdmin } from '../useAdminText'
 
 const SEGMENTS: ReadonlyArray<{ value: string; labelKey: AdminManifestKey }> = [
-  { value: 'map', labelKey: 'admin.atelier.seg_map' },
-  { value: 'playlist', labelKey: 'admin.atelier.seg_playlist' },
-  { value: 'pair', labelKey: 'admin.atelier.seg_pair' },
-  { value: 'game_variant', labelKey: 'admin.atelier.seg_game_variant' },
+  { value: 'map', labelKey: 'admin.lab.seg_map' },
+  { value: 'playlist', labelKey: 'admin.lab.seg_playlist' },
+  { value: 'pair', labelKey: 'admin.lab.seg_pair' },
+  { value: 'game_variant', labelKey: 'admin.lab.seg_game_variant' },
 ]
 
 const INPUT_CLASS = 'w-full rounded-xl border border-input px-3 py-2 text-sm'
@@ -50,13 +50,13 @@ export function WaypointExplorerPanel() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">{tA('admin.atelier.tab_api')}</CardTitle>
-          <CardDescription>{tA('admin.atelier.api_intro')}</CardDescription>
+          <CardTitle className="text-base">{tA('admin.lab.tab_api')}</CardTitle>
+          <CardDescription>{tA('admin.lab.api_intro')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <label className="space-y-1">
-              <span className="text-xs text-muted-foreground">{tA('admin.atelier.api_segment')}</span>
+              <span className="text-xs text-muted-foreground">{tA('admin.lab.api_segment')}</span>
               <select value={segment} onChange={(e) => setSegment(e.target.value)} className={INPUT_CLASS}>
                 {SEGMENTS.map((s) => (
                   <option key={s.value} value={s.value}>
@@ -66,24 +66,24 @@ export function WaypointExplorerPanel() {
               </select>
             </label>
             <label className="space-y-1">
-              <span className="text-xs text-muted-foreground">{tA('admin.atelier.api_asset_id')}</span>
+              <span className="text-xs text-muted-foreground">{tA('admin.lab.api_asset_id')}</span>
               <input value={assetID} onChange={(e) => setAssetID(e.target.value)} className={INPUT_CLASS} />
             </label>
             <label className="space-y-1">
-              <span className="text-xs text-muted-foreground">{tA('admin.atelier.api_version_id')}</span>
+              <span className="text-xs text-muted-foreground">{tA('admin.lab.api_version_id')}</span>
               <input value={versionID} onChange={(e) => setVersionID(e.target.value)} className={INPUT_CLASS} />
             </label>
             <label className="space-y-1">
-              <span className="text-xs text-muted-foreground">{tA('admin.atelier.api_lang')}</span>
+              <span className="text-xs text-muted-foreground">{tA('admin.lab.api_lang')}</span>
               <input value={lang} onChange={(e) => setLang(e.target.value)} className={INPUT_CLASS} />
             </label>
           </div>
           <Button onClick={run} disabled={!canRun}>
-            {explore.isPending ? tA('admin.atelier.api_running') : tA('admin.atelier.api_run')}
+            {explore.isPending ? tA('admin.lab.api_running') : tA('admin.lab.api_run')}
           </Button>
           {explore.isError && (
             <p className="text-sm" style={{ color: tokenCssVar('destructive') }}>
-              {apiErrorMessage(explore.error) ?? tA('admin.atelier.api_failed')}
+              {apiErrorMessage(explore.error) ?? tA('admin.lab.api_failed')}
             </p>
           )}
         </CardContent>
@@ -96,7 +96,7 @@ export function WaypointExplorerPanel() {
 
 function WaypointResult({ result, tA }: { result: LabWaypointResponse; tA: TAdmin }) {
   const ok = result.resolved_ok
-  const statusLabel = ok ? tA('admin.atelier.api_resolved') : tA('admin.atelier.api_failed')
+  const statusLabel = ok ? tA('admin.lab.api_resolved') : tA('admin.lab.api_failed')
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -113,17 +113,17 @@ function WaypointResult({ result, tA }: { result: LabWaypointResponse; tA: TAdmi
         {ok ? (
           <div className="grid gap-2 md:grid-cols-2">
             <p>
-              {tA('admin.atelier.api_name')}: <span className="font-medium text-foreground">{result.asset_name}</span>
+              {tA('admin.lab.api_name')}: <span className="font-medium text-foreground">{result.asset_name}</span>
             </p>
             {result.description ? (
               <p>
-                {tA('admin.atelier.api_description')}:{' '}
+                {tA('admin.lab.api_description')}:{' '}
                 <span className="font-medium text-foreground">{result.description}</span>
               </p>
             ) : null}
             {result.image_url ? (
               <div className="md:col-span-2">
-                <p className="text-xs text-muted-foreground">{tA('admin.atelier.api_image')}</p>
+                <p className="text-xs text-muted-foreground">{tA('admin.lab.api_image')}</p>
                 <img
                   src={result.image_url}
                   alt={result.asset_name ?? ''}

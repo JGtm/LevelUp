@@ -55,7 +55,7 @@ func (h *LabHandler) GetDiagnostics(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, data)
 }
 
-// GetWaypoint exécute une exploration live de l'API Discovery UGC (Atelier).
+// GetWaypoint exécute une exploration live de l'API Discovery UGC (Lab).
 // GET /lab/waypoint?segment=map&asset_id=...&version_id=...&lang=fr-FR
 func (h *LabHandler) GetWaypoint(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()

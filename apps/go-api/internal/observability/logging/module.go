@@ -57,6 +57,11 @@ const (
 	// car le code vit dans scheduler/api/main qui ont chacun leur module par défaut —
 	// on veut un fichier logs/catalog.log unique pour diagnostiquer le cron.
 	ModuleCatalog = "catalog"
+	// ModuleLab : outil opérateur « Lab » — explorateur d'API
+	// Discovery UGC live. Tag explicite car le code vit dans api/server.go
+	// (module par défaut "http") ; on veut un fichier logs/lab.log dédié pour
+	// diagnostiquer les appels d'exploration Waypoint.
+	ModuleLab     = "lab"
 	ModuleGeneral = "general" // fallback pour logs non catégorisés
 )
 
