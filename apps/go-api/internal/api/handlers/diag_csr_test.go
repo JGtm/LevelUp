@@ -40,7 +40,9 @@ func serveDiag(t *testing.T, slug string, factory CSRCoverageFactory) *httptest.
 	t.Helper()
 	h := NewDiagCSRHandler(factory)
 	r := chi.NewRouter()
-	r.Get("/api/v1/_diag/csr-coverage/{player_slug}", h.GetCoverage)
+	r.Route("/api/v1", func(r chi.Router) {
+		h.Mount(r)
+	})
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/_diag/csr-coverage/"+slug, nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)

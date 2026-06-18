@@ -2,15 +2,30 @@
 //
 // POST /auth/login     → authentification par username/password
 // POST /auth/register  → inscription (premier user = admin)
-// POST /auth/logout    → déconnexion
+// POST /auth/logout     → déconnexion
+// POST /auth/password   → définition opt-in d'un mot de passe (compte SSO)
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) au même point de
+// montage que les routes chi d'origine (chemins /auth/* absolus) et enregistre
+// les 4 POST via huma.Post. Logique métier inchangée (userstore + session), seul
+// le wrapping HTTP change.
+//
+// Les corps sont lus via RawBody (pas de Body typé) + json.Unmarshal maison pour
+// reproduire EXACTEMENT le contrat de décodage d'origine : un JSON invalide renvoie
+// 400 {invalid_body} (et non le 422 de validation Huma qu'un Body typé produirait).
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/session"
@@ -65,25 +80,55 @@ func (h *UserAuthHandler) isInstanceLocked() bool {
 	return h.instanceLocked != nil && h.instanceLocked()
 }
 
-// Login authentifie un utilisateur par username/password.
+// Mount enregistre les 4 routes via Huma au même point de montage que les routes
+// chi d'origine (chemins /auth/* absolus). En mode xbox/lockdown la logique métier
+// (déléguée aux handlers) reste inchangée.
+func (h *UserAuthHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Post(api, "/auth/login", h.handleLogin)
+	huma.Post(api, "/auth/register", h.handleRegister)
+	huma.Post(api, "/auth/logout", h.handleLogout)
+	huma.Post(api, "/auth/password", h.handleSetPassword)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// authBodyInput : corps brut décodé maison → 400 {invalid_body} sur JSON malformé
+// (un Body typé renverrait le 422 de validation Huma).
+type authBodyInput struct {
+	RawBody []byte
+}
+
+type loginOutput struct{ Body domain.LoginResponse }
+
+type registerOutput struct {
+	Status int
+	Body   domain.RegisterResponse
+}
+
+// authNoContent : réponse 204 sans corps (Status override la valeur par défaut).
+type authNoContent struct {
+	Status int
+}
+
+// ─── Endpoints ───────────────────────────────────────────────────────────────
+
+// handleLogin authentifie un utilisateur par username/password.
 // POST /auth/login
-func (h *UserAuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+func (h *UserAuthHandler) handleLogin(ctx context.Context, in *authBodyInput) (*loginOutput, error) {
 	var req domain.LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "corps de requête invalide")
-		return
+	if err := json.Unmarshal(in.RawBody, &req); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "corps de requête invalide")
 	}
 
 	user, err := h.users.Authenticate(req.Username, req.Password)
 	if err != nil {
 		if errors.Is(err, userstore.ErrInvalidCredentials) {
-			slog.Warn("auth: login échoué", "username", req.Username, "ip", r.RemoteAddr)
-			writeError(r.Context(), w, http.StatusUnauthorized, "invalid_credentials", "identifiants incorrects")
-			return
+			slog.Warn("auth: login échoué", "username", req.Username)
+			return nil, humacore.NewError(http.StatusUnauthorized, "invalid_credentials", "identifiants incorrects")
 		}
 		slog.Error("auth: erreur authenticate", "username", req.Username, "err", err)
-		writeError(r.Context(), w, http.StatusInternalServerError, "auth_error", "erreur d'authentification")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "auth_error", "erreur d'authentification")
 	}
 
 	// PR-C : en mode xbox, le login password est autorisé pour tout utilisateur
@@ -97,10 +142,9 @@ func (h *UserAuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Stocker les infos dans la session.
-	sess := middleware.GetSession(r.Context())
+	sess := middleware.GetSession(ctx)
 	if sess == nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "no_session", "session non initialisée")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "no_session", "session non initialisée")
 	}
 	sess.Username = &user.Username
 	role := string(user.Role)
@@ -112,27 +156,25 @@ func (h *UserAuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("auth: login réussi", "username", user.Username, "role", user.Role)
 
-	writeJSON(w, http.StatusOK, domain.LoginResponse{
+	return &loginOutput{Body: domain.LoginResponse{
 		Username: user.Username,
 		Role:     user.Role,
 		Gamertag: user.Gamertag,
-	})
+	}}, nil
 }
 
-// Register inscrit un nouvel utilisateur.
+// handleRegister inscrit un nouvel utilisateur.
 // POST /auth/register
-func (h *UserAuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+func (h *UserAuthHandler) handleRegister(ctx context.Context, in *authBodyInput) (*registerOutput, error) {
 	var req domain.RegisterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "corps de requête invalide")
-		return
+	if err := json.Unmarshal(in.RawBody, &req); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "corps de requête invalide")
 	}
 
 	// Vérifier si c'est le premier utilisateur (auto-admin).
 	empty, err := h.users.IsEmpty()
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "store_error", "erreur interne")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "store_error", "erreur interne")
 	}
 
 	role := domain.RoleUser
@@ -145,31 +187,26 @@ func (h *UserAuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		// du premier admin (déjà exempté par la branche `empty` ci-dessus).
 		if h.isInstanceLocked() {
 			slog.Warn("auth: register refusé — instance verrouillée", "username", req.Username)
-			writeError(r.Context(), w, http.StatusForbidden, "instance_locked",
+			return nil, humacore.NewError(http.StatusForbidden, "instance_locked",
 				"Cette instance est fermée aux nouvelles inscriptions.")
-			return
 		}
 		// D3 cohabitation : en mode "xbox", register password réservé au bootstrap admin
 		// initial (users.json vide). Hors bootstrap, les comptes sont créés via le flow SSO.
 		if h.authMode == "xbox" {
 			slog.Warn("auth: register password bloqué en mode xbox", "username", req.Username)
-			writeError(r.Context(), w, http.StatusForbidden, "register_xbox_mode",
+			return nil, humacore.NewError(http.StatusForbidden, "register_xbox_mode",
 				"mode SSO Xbox actif : les nouveaux comptes sont créés via la connexion Xbox")
-			return
 		}
 		// Vérifier le mode d'inscription.
 		if h.regMode == "closed" {
-			writeError(r.Context(), w, http.StatusForbidden, "registration_closed", "les inscriptions sont fermées")
-			return
+			return nil, humacore.NewError(http.StatusForbidden, "registration_closed", "les inscriptions sont fermées")
 		}
 		if h.regMode == "invite" {
 			if req.InviteCode == "" {
-				writeError(r.Context(), w, http.StatusBadRequest, "invite_required", "code d'invitation requis")
-				return
+				return nil, humacore.NewError(http.StatusBadRequest, "invite_required", "code d'invitation requis")
 			}
 			if err := h.invites.Validate(req.InviteCode); err != nil {
-				writeError(r.Context(), w, http.StatusForbidden, "invalid_invite", "code d'invitation invalide ou expiré")
-				return
+				return nil, humacore.NewError(http.StatusForbidden, "invalid_invite", "code d'invitation invalide ou expiré")
 			}
 		}
 	}
@@ -178,15 +215,12 @@ func (h *UserAuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, userstore.ErrUserAlreadyExists) {
 			slog.Warn("auth: register username déjà pris", "username", req.Username)
-			writeError(r.Context(), w, http.StatusConflict, "user_exists", "nom d'utilisateur déjà pris")
-			return
+			return nil, humacore.NewError(http.StatusConflict, "user_exists", "nom d'utilisateur déjà pris")
 		}
 		if errors.Is(err, userstore.ErrInvalidUsername) || errors.Is(err, userstore.ErrPasswordTooShort) || errors.Is(err, userstore.ErrPasswordTooLong) {
-			writeError(r.Context(), w, http.StatusBadRequest, "validation_error", err.Error())
-			return
+			return nil, humacore.NewError(http.StatusBadRequest, "validation_error", err.Error())
 		}
-		writeError(r.Context(), w, http.StatusInternalServerError, "create_error", "erreur de création")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "create_error", "erreur de création")
 	}
 
 	// Consommer le code d'invitation si utilisé.
@@ -197,7 +231,7 @@ func (h *UserAuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Auto-login après inscription.
-	sess := middleware.GetSession(r.Context())
+	sess := middleware.GetSession(ctx)
 	if sess != nil {
 		sess.Username = &user.Username
 		roleStr := string(user.Role)
@@ -209,16 +243,16 @@ func (h *UserAuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("auth: inscription réussie", "username", user.Username, "role", user.Role)
 
-	writeJSON(w, http.StatusCreated, domain.RegisterResponse{
+	return &registerOutput{Status: http.StatusCreated, Body: domain.RegisterResponse{
 		Username: user.Username,
 		Role:     user.Role,
-	})
+	}}, nil
 }
 
-// Logout déconnecte l'utilisateur.
+// handleLogout déconnecte l'utilisateur.
 // POST /auth/logout
-func (h *UserAuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	sess := middleware.GetSession(r.Context())
+func (h *UserAuthHandler) handleLogout(ctx context.Context, _ *struct{}) (*authNoContent, error) {
+	sess := middleware.GetSession(ctx)
 	if sess != nil {
 		username := "<unknown>"
 		if sess.Username != nil {
@@ -231,40 +265,37 @@ func (h *UserAuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		}
 		slog.Info("auth: logout", "username", username)
 	}
-	w.WriteHeader(http.StatusNoContent)
+	return &authNoContent{Status: http.StatusNoContent}, nil
 }
 
-// SetPassword définit/change le mot de passe de l'utilisateur connecté (opt-in PR-C).
+// handleSetPassword définit/change le mot de passe de l'utilisateur connecté (opt-in PR-C).
 // POST /auth/password — permet à un compte SSO Xbox de se reconnecter ensuite par
 // mot de passe (re-login instantané, sans round-trip Microsoft).
-func (h *UserAuthHandler) SetPassword(w http.ResponseWriter, r *http.Request) {
-	sess := middleware.GetSession(r.Context())
+func (h *UserAuthHandler) handleSetPassword(ctx context.Context, in *authBodyInput) (*authNoContent, error) {
+	sess := middleware.GetSession(ctx)
 	if sess == nil || sess.Username == nil {
-		writeError(r.Context(), w, http.StatusUnauthorized, "auth_required", "authentification requise")
-		return
+		return nil, humacore.NewError(http.StatusUnauthorized, "auth_required", "authentification requise")
 	}
 
 	var req domain.SetPasswordRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "corps de requête invalide")
-		return
+	if err := json.Unmarshal(in.RawBody, &req); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "corps de requête invalide")
 	}
 
 	if err := h.users.ResetPassword(*sess.Username, req.Password); err != nil {
 		switch {
 		case errors.Is(err, userstore.ErrPasswordTooShort), errors.Is(err, userstore.ErrPasswordTooLong):
-			writeError(r.Context(), w, http.StatusBadRequest, "validation_error", err.Error())
+			return nil, humacore.NewError(http.StatusBadRequest, "validation_error", err.Error())
 		case errors.Is(err, userstore.ErrUserNotFound):
-			writeError(r.Context(), w, http.StatusNotFound, "user_not_found", "utilisateur introuvable")
+			return nil, humacore.NewError(http.StatusNotFound, "user_not_found", "utilisateur introuvable")
 		default:
 			slog.Error("auth: échec set password", "username", *sess.Username, "err", err)
-			writeError(r.Context(), w, http.StatusInternalServerError, "set_password_error", "erreur lors de la définition du mot de passe")
+			return nil, humacore.NewError(http.StatusInternalServerError, "set_password_error", "erreur lors de la définition du mot de passe")
 		}
-		return
 	}
 
 	slog.Info("auth: mot de passe défini (opt-in)", "username", *sess.Username)
-	w.WriteHeader(http.StatusNoContent)
+	return &authNoContent{Status: http.StatusNoContent}, nil
 }
 
 // autoSelectPlayer sélectionne automatiquement le joueur lié au gamertag de l'utilisateur.

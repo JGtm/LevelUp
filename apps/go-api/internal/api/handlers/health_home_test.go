@@ -14,6 +14,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
+
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -47,11 +49,22 @@ func buildFakeFactory(svc port.HomeService, factoryErr error) HomeAuthFactory {
 	}
 }
 
+// newHealthHomeRouter monte le handler via Huma (Mount) au même point que
+// server.go (/api/v1) pour que /api/v1/healthz/home résolve.
+func newHealthHomeRouter(h *HealthHomeHandler) *chi.Mux {
+	r := chi.NewRouter()
+	r.Route("/api/v1", func(r chi.Router) {
+		h.Mount(r)
+	})
+	return r
+}
+
 func TestHealthHome_MissingPlayerParam_Returns400(t *testing.T) {
 	h := NewHealthHomeHandler(buildFakeFactory(&fakeHomeService{}, nil))
+	r := newHealthHomeRouter(h)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/v1/healthz/home", nil)
-	h.Check(w, req)
+	r.ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400 (missing player param)", w.Code)
 	}
@@ -59,9 +72,10 @@ func TestHealthHome_MissingPlayerParam_Returns400(t *testing.T) {
 
 func TestHealthHome_UnknownPlayer_Returns404(t *testing.T) {
 	h := NewHealthHomeHandler(buildFakeFactory(nil, errors.New("player_not_found_in_db_profiles")))
+	r := newHealthHomeRouter(h)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/v1/healthz/home?player=ghost", nil)
-	h.Check(w, req)
+	r.ServeHTTP(w, req)
 	if w.Code != http.StatusNotFound {
 		t.Errorf("status = %d, want 404", w.Code)
 	}
@@ -83,9 +97,10 @@ func TestHealthHome_AllSectionsPopulated_Returns200(t *testing.T) {
 	}
 
 	h := NewHealthHomeHandler(buildFakeFactory(&fakeHomeService{resp: resp}, nil))
+	r := newHealthHomeRouter(h)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/v1/healthz/home?player=jgtm", nil)
-	h.Check(w, req)
+	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200, body=%s", w.Code, w.Body.String())
@@ -111,9 +126,10 @@ func TestHealthHome_EmptySections_Returns503WithList(t *testing.T) {
 	}
 
 	h := NewHealthHomeHandler(buildFakeFactory(&fakeHomeService{resp: resp}, nil))
+	r := newHealthHomeRouter(h)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/v1/healthz/home?player=jgtm", nil)
-	h.Check(w, req)
+	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503, body=%s", w.Code, w.Body.String())
@@ -161,9 +177,10 @@ func TestHealthHome_PlacementCounts_AsOK(t *testing.T) {
 	}
 
 	h := NewHealthHomeHandler(buildFakeFactory(&fakeHomeService{resp: resp}, nil))
+	r := newHealthHomeRouter(h)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/v1/healthz/home?player=jgtm", nil)
-	h.Check(w, req)
+	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200 (placement = OK), body=%s", w.Code, w.Body.String())

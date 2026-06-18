@@ -47,7 +47,7 @@ func TestHealthHandler_OK(t *testing.T) {
 	}
 	h := handlers.NewHealthHandlerWithVersion(repo, "1.0.0-test")
 	r := chi.NewRouter()
-	r.Get("/health", h.ServeHTTP)
+	h.Mount(r)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
@@ -76,7 +76,7 @@ func TestHealthHandler_DBUnavailable(t *testing.T) {
 	repo := &mockBootstrapRepo{matchErr: errors.New("connection refused")}
 	h := handlers.NewHealthHandler(repo)
 	r := chi.NewRouter()
-	r.Get("/health", h.ServeHTTP)
+	h.Mount(r)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
@@ -91,7 +91,7 @@ func TestHealthHandler_NoVersion(t *testing.T) {
 	repo := &mockBootstrapRepo{matchCount: 100, dbVersion: "v1.4.4"}
 	h := handlers.NewHealthHandler(repo)
 	r := chi.NewRouter()
-	r.Get("/health", h.ServeHTTP)
+	h.Mount(r)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
@@ -115,7 +115,7 @@ func TestLiveness_AlwaysOK_NoDBQuery(t *testing.T) {
 	repo := &mockBootstrapRepo{matchErr: errors.New("connection refused")}
 	h := handlers.NewHealthHandler(repo)
 	r := chi.NewRouter()
-	r.Get("/healthz", h.Liveness)
+	h.Mount(r)
 
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	w := httptest.NewRecorder()
@@ -137,7 +137,7 @@ func TestReadiness_OK_WhenDBHealthy(t *testing.T) {
 	repo := &mockBootstrapRepo{matchCount: 1500, dbVersion: "v1.4.4"}
 	h := handlers.NewHealthHandler(repo)
 	r := chi.NewRouter()
-	r.Get("/readyz", h.Readiness)
+	h.Mount(r)
 
 	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
 	w := httptest.NewRecorder()
@@ -164,7 +164,7 @@ func TestReadiness_503_WhenDBDown(t *testing.T) {
 	repo := &mockBootstrapRepo{matchErr: errors.New("connection refused")}
 	h := handlers.NewHealthHandler(repo)
 	r := chi.NewRouter()
-	r.Get("/readyz", h.Readiness)
+	h.Mount(r)
 
 	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
 	w := httptest.NewRecorder()

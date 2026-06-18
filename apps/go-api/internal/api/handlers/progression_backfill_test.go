@@ -35,7 +35,9 @@ func serveBackfill(t *testing.T, slug string, factory ProgressionBackfillFactory
 	t.Helper()
 	h := NewProgressionBackfillHandler(factory)
 	r := chi.NewRouter()
-	r.Post("/api/v1/_admin/progression/backfill/{player_slug}", h.RunBackfill)
+	r.Route("/api/v1", func(r chi.Router) {
+		h.Mount(r)
+	})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/_admin/progression/backfill/"+slug, nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -98,7 +100,9 @@ func TestProgressionBackfill_MissingSlug(t *testing.T) {
 	}
 	h := NewProgressionBackfillHandler(factory)
 	r := chi.NewRouter()
-	r.Post("/api/v1/_admin/progression/backfill/{player_slug}", h.RunBackfill)
+	r.Route("/api/v1", func(r chi.Router) {
+		h.Mount(r)
+	})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/_admin/progression/backfill/", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)

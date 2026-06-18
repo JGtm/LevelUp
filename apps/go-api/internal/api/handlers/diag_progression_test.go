@@ -38,7 +38,7 @@ func serveProgressionDiag(t *testing.T, slug string, factory ProgressionDiagFact
 	t.Helper()
 	h := NewDiagProgressionHandler(factory)
 	r := chi.NewRouter()
-	r.Get("/api/v1/_diag/progression/{player_slug}", h.GetDiag)
+	r.Route("/api/v1", func(r chi.Router) { h.Mount(r) })
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/_diag/progression/"+slug, nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -119,7 +119,7 @@ func TestDiagProgressionHandler_MissingSlug(t *testing.T) {
 	}
 	h := NewDiagProgressionHandler(factory)
 	r := chi.NewRouter()
-	r.Get("/api/v1/_diag/progression/{player_slug}", h.GetDiag)
+	r.Route("/api/v1", func(r chi.Router) { h.Mount(r) })
 
 	// Empty path segment → chi ne matche pas la route → 404
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/_diag/progression/", nil)

@@ -1,14 +1,29 @@
-// Package handlers — session.go : handler HTTP pour la gestion du contexte session.
+// Package handlers — session_context.go : handler HTTP pour la gestion du contexte session.
 //
 // Endpoints :
 //
 //	POST /session/context  → SessionContextResponse
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) au même point de
+// montage racine (pas de préfixe /players/{player_slug}) et enregistre le POST
+// via huma.Post. Logique métier inchangée (session store + registry titres),
+// seul le wrapping HTTP change.
+//
+// Le corps est lu via RawBody (pas de Body typé) pour reproduire EXACTEMENT le
+// contrat de décodage d'origine : un JSON invalide renvoie 400 {invalid_body}
+// (parse maison) et non le 422 de validation Huma qu'un Body typé produirait.
 package handlers
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -26,19 +41,39 @@ func NewSessionHandler(store *session.Store) *SessionHandler {
 	return &SessionHandler{store: store}
 }
 
-// PostContext met à jour le contexte de session (player_slug, locale).
+// Mount enregistre la route via Huma au même point de montage que le routeur
+// chi fourni (racine : POST /session/context, pas de path param parent).
+func (h *SessionHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Post(api, "/session/context", h.handlePostContext)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// sessionContextInput : corps brut décodé maison. RawBody (pas Body typé) →
+// préserve le contrat 400 {invalid_body} sur JSON invalide (un Body typé
+// renverrait le 422 de validation Huma).
+type sessionContextInput struct {
+	RawBody []byte
+}
+
+type sessionContextOutput struct{ Body domain.SessionContextResponse }
+
+// ─── Endpoint ────────────────────────────────────────────────────────────────
+
+// handlePostContext met à jour le contexte de session (player_slug, title_slug,
+// locale).
+//
 // POST /session/context
-func (h *SessionHandler) PostContext(w http.ResponseWriter, r *http.Request) {
-	sess := middleware.GetSession(r.Context())
+func (h *SessionHandler) handlePostContext(ctx context.Context, in *sessionContextInput) (*sessionContextOutput, error) {
+	sess := middleware.GetSession(ctx)
 	if sess == nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "no_session", "session non initialisée")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "no_session", "session non initialisée")
 	}
 
 	var req domain.SessionContextRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "corps JSON invalide")
-		return
+	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "corps JSON invalide")
 	}
 
 	if req.PlayerSlug != nil {
@@ -59,16 +94,15 @@ func (h *SessionHandler) PostContext(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.store.Save(sess); err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "session_save_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "session_save_error", err.Error())
 	}
 
-	writeJSON(w, http.StatusOK, domain.SessionContextResponse{
+	return &sessionContextOutput{Body: domain.SessionContextResponse{
 		CurrentPlayerSlug: sess.CurrentPlayerSlug,
 		CurrentTitleSlug:  sess.CurrentTitleSlug,
 		AvailableTitles:   service.BuildAvailableTitles(),
 		Locale:            sess.Locale,
 		HintsVisible:      sess.HintsVisible,
 		AuthReady:         sess.AuthReady,
-	})
+	}}, nil
 }

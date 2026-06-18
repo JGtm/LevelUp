@@ -14,14 +14,22 @@
 //
 // L'évaluation est idempotente (PB déjà persisté → pas de doublon) : ré-appeler
 // l'endpoint ne crée pas de données en double.
+//
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) au point de montage
+// /api/v1 et enregistre le POST via huma.Post. Le {player_slug} est PRÉSENT dans
+// le path de la route (path param). Le corps POST est OPTIONNEL et ignoré (le
+// backfill ne lit pas le body) : RawBody []byte + MarkRequestBodyOptional préserve
+// le 200 sur corps absent. Logique métier inchangée, seul le wrapping HTTP change.
 package handlers
 
 import (
 	"context"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 )
 
@@ -45,22 +53,42 @@ func NewProgressionBackfillHandler(newRunner ProgressionBackfillFactory) *Progre
 	return &ProgressionBackfillHandler{newRunner: newRunner}
 }
 
-// RunBackfill : POST /api/v1/_admin/progression/backfill/{player_slug}.
-func (h *ProgressionBackfillHandler) RunBackfill(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	if slug == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_slug", "player_slug requis")
-		return
+// Mount enregistre la route via Huma au point de montage /api/v1 (le path complet
+// /_admin/progression/backfill/{player_slug} est relatif à ce routeur). Le corps
+// POST est OPTIONNEL (MarkRequestBodyOptional) — il n'est pas lu par le backfill.
+func (h *ProgressionBackfillHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Post(api, "/_admin/progression/backfill/{player_slug}", h.handleRunBackfill)
+	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/_admin/progression/backfill/{player_slug}")
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// progressionBackfillInput : {player_slug} (présent dans le path de la route) +
+// corps OPTIONNEL ignoré (RawBody, rendu non requis via MarkRequestBodyOptional).
+type progressionBackfillInput struct {
+	PlayerSlug string `path:"player_slug"`
+	RawBody    []byte
+}
+
+type progressionBackfillOutput struct {
+	Body *domain.ProgressionDiag
+}
+
+// ─── Endpoint ────────────────────────────────────────────────────────────────
+
+// handleRunBackfill : POST /api/v1/_admin/progression/backfill/{player_slug}.
+func (h *ProgressionBackfillHandler) handleRunBackfill(ctx context.Context, in *progressionBackfillInput) (*progressionBackfillOutput, error) {
+	if in.PlayerSlug == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_slug", "player_slug requis")
 	}
-	runner, err := h.newRunner(r.Context(), slug)
+	runner, err := h.newRunner(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
-	diag, err := runner.BackfillProgression(r.Context(), slug)
+	diag, err := runner.BackfillProgression(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "backfill_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "backfill_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, diag)
+	return &progressionBackfillOutput{Body: diag}, nil
 }

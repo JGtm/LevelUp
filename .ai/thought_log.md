@@ -1,3 +1,16 @@
+## [2026-06-18] Phase 3b — tail A : health (racine) + session + diag + auth (7 handlers) — Complété
+
+**Statut** : Complété. Workflow `huma-tail-a` (7 agents). health/session_context/diag_csr/diag_progression/progression_backfill/health_home/user_auth convertis (Mount+Huma). Build/gofmt/vet OK, **goldens des 7 verts**, `internal/api` (contract) vert (paths /health, /_diag/*, /healthz/home, /session/context, /auth/* alignés openapi.yaml). 12 routes. Cumul = **119 routes**.
+
+**Nuances de câblage server.go résolues** :
+- **health racine** : `healthH.Mount(r)` sur le routeur RACINE (pas /api/v1) → /health, /healthz, /readyz. readyz/health renvoient 503 AVEC corps de checks → `Output{Status int; Body T}` (pas une erreur Huma) ; /health 503 db_unavailable = vraie erreur via humacore.NewError.
+- **NoStore** (diag_csr, diag_progression, progression_backfill, health_home) : `h.Mount(r.With(middleware.NoStore))` — `r.With(mw)` retourne un chi.Router porteur du middleware, sur lequel humacore.NewAPI enregistre → NoStore préservé sans bloc Group.
+- **session/auth** : mutation de session via `middleware.GetSession(ctx)` (fonctionne dans un handler Huma, ctx = ctx requête) + `sessionStore.Save`. user_auth : login 200, register **201**, logout/password **204** ; codes d'erreur préservés (invalid_credentials 401, etc.).
+
+**RawBody** pour session_context/user_auth (préserve 400 invalid_body) ; progression_backfill body optionnel via MarkRequestBodyOptional. {player_slug} des diag est dans le path PROPRE de la route (pas un parent) → Input `path:"player_slug"`.
+
+**Conclusion / prochaine étape** : reste tail B — watcher (status/subscriptions/auth-status ; auth/start device-flow reste chi), sync, admin-actions (server_admin_monitoring self-register). Puis bascule openapi.yaml généré (étape finale). Pas de PR.
+
 ## [2026-06-18] Phase 3b — groupes infra top-level/admin/multi-title (10 handlers) — Complété + push final
 
 **Statut** : Complété. Workflow `huma-infra-toplevel` (10 agents). bootstrap/players/asset_metadata/lab/help/admin/field_mappings/capabilities/feature_matrix/catalog convertis (Mount+Huma). server.go recâblé (top-level /api/v1 + bloc `MultiTitleAPIEnabled` + groupe `/admin` + nil-guard asset-metadata préservé). Build/gofmt/vet OK, **goldens des 10 + lab_routes_mounted + multititle (field-mappings/capabilities/catalog) verts**, `internal/api` (contract) vert. 21 routes. Cumul = **107 routes**.

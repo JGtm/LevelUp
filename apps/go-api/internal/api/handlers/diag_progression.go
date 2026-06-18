@@ -6,6 +6,10 @@
 // tourne bien sur l'auto-sync — avant ce fix, ces tables restaient vides
 // (cf. AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21).
 //
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) au point de
+// montage (préfixe /api/v1, middleware NoStore hérité) et enregistre le GET
+// via huma.Get. Logique métier inchangée, seul le wrapping HTTP change.
+//
 // Usage typique post-déploiement :
 //
 //	curl -s http://127.0.0.1:8000/api/v1/_diag/progression/JGtm | jq
@@ -19,8 +23,10 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 )
 
@@ -43,22 +49,36 @@ func NewDiagProgressionHandler(newProvider ProgressionDiagFactory) *DiagProgress
 	return &DiagProgressionHandler{newProvider: newProvider}
 }
 
-// GetDiag : GET /api/v1/_diag/progression/{player_slug}.
-func (h *DiagProgressionHandler) GetDiag(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	if slug == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_slug", "player_slug requis")
-		return
+// Mount enregistre la route via Huma au point de montage chi (préfixe /api/v1
+// + middleware NoStore hérité). Lit {player_slug} dans son propre path.
+func (h *DiagProgressionHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/_diag/progression/{player_slug}", h.handleGetDiag)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// diagProgressionInput : path param {player_slug} (présent dans le path de la route).
+type diagProgressionInput struct {
+	PlayerSlug string `path:"player_slug"`
+}
+
+type diagProgressionOutput struct{ Body *domain.ProgressionDiag }
+
+// ─── Endpoint ────────────────────────────────────────────────────────────────
+
+// handleGetDiag : GET /api/v1/_diag/progression/{player_slug}.
+func (h *DiagProgressionHandler) handleGetDiag(ctx context.Context, in *diagProgressionInput) (*diagProgressionOutput, error) {
+	if in.PlayerSlug == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_slug", "player_slug requis")
 	}
-	provider, err := h.newProvider(r.Context(), slug)
+	provider, err := h.newProvider(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
-	diag, err := provider.GetProgressionDiag(r.Context(), slug)
+	diag, err := provider.GetProgressionDiag(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "diag_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "diag_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, diag)
+	return &diagProgressionOutput{Body: diag}, nil
 }
