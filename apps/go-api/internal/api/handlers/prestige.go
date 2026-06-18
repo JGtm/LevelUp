@@ -1,16 +1,21 @@
 // Package handlers — handler HTTP du module Prestige (Phase 3).
 //
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le routeur chi
+// fourni et enregistre les 26 routes via huma.*. Logique métier inchangée
+// (prestige.Service), seul le wrapping HTTP change. Les routes sont relatives au
+// point de montage (le routeur racine dans server.go / un sous-routeur de test) —
+// aucun préfixe /players/{player_slug} ici, le module Prestige est cross-joueur.
+//
 // Couvre les endpoints REST :
 //
-//	POST   /api/v1/challenges           — créer un défi (avec quotas mode pilote)
-//	GET    /api/v1/challenges/{id}      — détail d'un défi
-//	GET    /api/v1/challenges           — liste filtrée
-//	PATCH  /api/v1/challenges/{id}      — édition (cible recalcule palier en mode libre)
-//	DELETE /api/v1/challenges/{id}      — abandon
-//	POST   /api/v1/challenges/{id}/suggest-next — alternatives palier supérieur
-//	GET    /api/v1/prestige/me          — total PP + niveau (par titre ou cross-titre)
-//	GET    /api/v1/prestige/leaderboard — classement amis
-//	GET    /api/v1/templates/suggest    — propositions catalogue
+//	POST   /challenges                 — créer un défi (avec quotas mode pilote)
+//	GET    /challenges/{id}            — détail d'un défi
+//	GET    /challenges                 — liste filtrée
+//	PATCH  /challenges/{id}            — édition (cible recalcule palier en mode libre)
+//	DELETE /challenges/{id}            — abandon
+//	POST   /challenges/{id}/suggest-next — alternatives palier supérieur
+//	GET    /prestige/me                — total PP + niveau (par titre ou cross-titre)
+//	GET    /templates/suggest          — propositions catalogue
 package handlers
 
 import (
@@ -21,8 +26,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/prestige"
@@ -62,15 +69,55 @@ func (h *PrestigeHandler) WithActorGuard(g ActorGuard) *PrestigeHandler {
 	return h
 }
 
-// authorizeActor renvoie true si l'appelant peut agir au nom de actorSlug (ou si
-// la garde n'est pas câblée). Sinon écrit 403 player_forbidden et renvoie false.
-func (h *PrestigeHandler) authorizeActor(w http.ResponseWriter, r *http.Request, actorSlug string) bool {
-	if h.actorGuard == nil || h.actorGuard(r.Context(), actorSlug) {
-		return true
+// Mount enregistre les 26 routes via Huma sur le routeur chi fourni.
+//
+// Les routes à corps REQUIS utilisent RawBody (décodage maison) pour préserver
+// le contrat 400 {invalid_body} sur JSON malformé (un Body typé renverrait le 422
+// de validation Huma). suggest-next ne lit pas de corps → input path seul.
+func (h *PrestigeHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+
+	huma.Post(api, "/challenges", h.CreateChallenge)
+	huma.Get(api, "/challenges", h.ListActiveChallenges)
+	huma.Get(api, "/challenges/{id}", h.GetChallenge)
+	huma.Patch(api, "/challenges/{id}", h.UpdateChallenge)
+	huma.Delete(api, "/challenges/{id}", h.AbandonChallenge)
+	huma.Post(api, "/challenges/{id}/suggest-next", h.SuggestNext)
+
+	huma.Post(api, "/arcs", h.CreateArc)
+	huma.Get(api, "/arcs", h.ListArcs)
+	huma.Get(api, "/arcs/presets", h.ListArcPresets)
+	huma.Post(api, "/arcs/presets/{id}/adopt", h.AdoptPresetArc)
+	huma.Get(api, "/arcs/{id}", h.GetArc)
+	huma.Delete(api, "/arcs/{id}", h.DeleteArc)
+
+	huma.Get(api, "/prestige/me", h.GetMyPrestige)
+	huma.Get(api, "/templates/suggest", h.SuggestTemplates)
+
+	huma.Post(api, "/squads/{squad_id}/challenges", h.CreateSquadChallenge)
+	huma.Get(api, "/squads/{squad_id}/challenges", h.ListSquadChallenges)
+	huma.Post(api, "/squads/{squad_id}/challenges/pool/refresh", h.RefreshSquadPool)
+	huma.Post(api, "/squad-challenges/{id}/join", h.JoinSquadChallenge)
+
+	huma.Post(api, "/squads", h.CreateSquad)
+	huma.Get(api, "/squads", h.ListMySquads)
+	huma.Post(api, "/squads/{squad_id}/members", h.AddSquadMember)
+	huma.Delete(api, "/squads/{squad_id}/members/{xuid}", h.RemoveSquadMember)
+	huma.Post(api, "/squad-challenges/{id}/evaluate", h.EvaluateSquadChallenge)
+	huma.Get(api, "/squads/{squad_id}/orientation", h.SquadOrientation)
+
+	huma.Post(api, "/pilot-mode/enable", h.EnablePilotMode)
+	huma.Post(api, "/pilot-mode/disable", h.DisablePilotMode)
+}
+
+// authorizeActor renvoie nil si l'appelant peut agir au nom de actorSlug (ou si
+// la garde n'est pas câblée). Sinon renvoie une erreur Huma 403 player_forbidden.
+func (h *PrestigeHandler) authorizeActor(ctx context.Context, actorSlug string) error {
+	if h.actorGuard == nil || h.actorGuard(ctx, actorSlug) {
+		return nil
 	}
-	writeError(r.Context(), w, http.StatusForbidden, "player_forbidden",
+	return humacore.NewError(http.StatusForbidden, "player_forbidden",
 		"Accès non autorisé à ce joueur.")
-	return false
 }
 
 // ─────────── DTOs requête/réponse ───────────
@@ -98,14 +145,61 @@ type updateChallengeBody struct {
 	Label  *string  `json:"label,omitempty"`
 }
 
+// ─────────── Inputs/Outputs Huma génériques ───────────
+
+// idInput : un seul path param {id} (challenges, arcs, squad-challenges).
+type idInput struct {
+	ID string `path:"id"`
+}
+
+// squadIDInput : un seul path param {squad_id}.
+type squadIDInput struct {
+	SquadID string `path:"squad_id"`
+}
+
+// noContentOutput : réponse 204 sans corps.
+type noContentOutput struct {
+	Status int
+}
+
+// challengeOutput : 200 — objet Challenge brut (contrat writeJSON inchangé).
+type challengeOutput struct{ Body prestige.Challenge }
+
+// challengeCreatedOutput : 201 — objet Challenge créé.
+type challengeCreatedOutput struct {
+	Status int
+	Body   prestige.Challenge
+}
+
+// mapOutput : 200 — corps map[string]any (préserve les enveloppes {challenges,count} etc.).
+type mapOutput struct{ Body map[string]any }
+
+// ─── Inputs à corps brut (RawBody → contrat 400 invalid_body sur JSON malformé) ──
+
+// rawBodyInput : corps REQUIS décodé maison, sans path param.
+type rawBodyInput struct {
+	RawBody []byte
+}
+
+// idBodyInput : path {id} + corps REQUIS décodé maison.
+type idBodyInput struct {
+	ID      string `path:"id"`
+	RawBody []byte
+}
+
+// squadIDBodyInput : path {squad_id} + corps REQUIS décodé maison.
+type squadIDBodyInput struct {
+	SquadID string `path:"squad_id"`
+	RawBody []byte
+}
+
 // ─────────── CreateChallenge ───────────
 
 // CreateChallenge gère POST /challenges.
-func (h *PrestigeHandler) CreateChallenge(w http.ResponseWriter, r *http.Request) {
+func (h *PrestigeHandler) CreateChallenge(ctx context.Context, in *rawBodyInput) (*challengeCreatedOutput, error) {
 	var body createChallengeBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := json.Unmarshal(in.RawBody, &body); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
 	req := prestige.CreateChallengeRequest{
 		UserID:          body.UserID,
@@ -124,144 +218,139 @@ func (h *PrestigeHandler) CreateChallenge(w http.ResponseWriter, r *http.Request
 		TargetPerMember: body.TargetPerMember,
 		Position:        body.Position,
 	}
-	c, err := h.svc.CreateChallenge(r.Context(), req)
+	c, err := h.svc.CreateChallenge(ctx, req)
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusCreated, c)
+	return &challengeCreatedOutput{Status: http.StatusCreated, Body: c}, nil
 }
 
 // ─────────── GetChallenge ───────────
 
-func (h *PrestigeHandler) GetChallenge(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "id requis")
-		return
+func (h *PrestigeHandler) GetChallenge(ctx context.Context, in *idInput) (*challengeOutput, error) {
+	if in.ID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_id", "id requis")
 	}
-	c, err := h.svc.GetChallenge(r.Context(), id)
+	c, err := h.svc.GetChallenge(ctx, in.ID)
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusOK, c)
+	return &challengeOutput{Body: c}, nil
 }
 
 // ─────────── ListActiveChallenges ───────────
 
-func (h *PrestigeHandler) ListActiveChallenges(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("user_id")
-	titleSlug := r.URL.Query().Get("title_slug")
-	if userID == "" || titleSlug == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
-		return
+type listActiveChallengesInput struct {
+	UserID    string `query:"user_id"`
+	TitleSlug string `query:"title_slug"`
+}
+
+func (h *PrestigeHandler) ListActiveChallenges(ctx context.Context, in *listActiveChallengesInput) (*mapOutput, error) {
+	if in.UserID == "" || in.TitleSlug == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
 	}
-	list, err := h.svc.ListActiveChallenges(r.Context(), userID, titleSlug)
+	list, err := h.svc.ListActiveChallenges(ctx, in.UserID, in.TitleSlug)
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"challenges": list, jsonKeyCount: len(list)})
+	return &mapOutput{Body: map[string]any{"challenges": list, jsonKeyCount: len(list)}}, nil
 }
 
 // ─────────── UpdateChallenge ───────────
 
-func (h *PrestigeHandler) UpdateChallenge(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "id requis")
-		return
+func (h *PrestigeHandler) UpdateChallenge(ctx context.Context, in *idBodyInput) (*challengeOutput, error) {
+	if in.ID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_id", "id requis")
 	}
 	var body updateChallengeBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := json.Unmarshal(in.RawBody, &body); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
-	c, err := h.svc.UpdateChallenge(r.Context(), id, prestige.UpdateChallengePatch{
+	c, err := h.svc.UpdateChallenge(ctx, in.ID, prestige.UpdateChallengePatch{
 		Target: body.Target,
 		Label:  body.Label,
 	})
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusOK, c)
+	return &challengeOutput{Body: c}, nil
 }
 
 // ─────────── AbandonChallenge ───────────
 
-func (h *PrestigeHandler) AbandonChallenge(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "id requis")
-		return
+func (h *PrestigeHandler) AbandonChallenge(ctx context.Context, in *idInput) (*noContentOutput, error) {
+	if in.ID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_id", "id requis")
 	}
-	if err := h.svc.AbandonChallenge(r.Context(), id); err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+	if err := h.svc.AbandonChallenge(ctx, in.ID); err != nil {
+		return nil, h.serviceError(ctx, err)
 	}
-	w.WriteHeader(http.StatusNoContent)
+	return &noContentOutput{Status: http.StatusNoContent}, nil
 }
 
 // ─────────── SuggestNext ───────────
 
-func (h *PrestigeHandler) SuggestNext(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "id requis")
-		return
+// SuggestNext gère POST /challenges/{id}/suggest-next. Ne lit pas de corps
+// (input path seul) → pas de RawBody (sinon Huma rendrait un corps requis).
+func (h *PrestigeHandler) SuggestNext(ctx context.Context, in *idInput) (*mapOutput, error) {
+	if in.ID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_id", "id requis")
 	}
-	templates, err := h.svc.SuggestNext(r.Context(), id)
+	templates, err := h.svc.SuggestNext(ctx, in.ID)
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"suggestions": templates})
+	return &mapOutput{Body: map[string]any{"suggestions": templates}}, nil
 }
 
 // ─────────── GetMyPrestige ───────────
+
+type getMyPrestigeInput struct {
+	UserID    string `query:"user_id"`
+	TitleSlug string `query:"title_slug"`
+}
+
+// userPrestigeOutput : 200 — objet UserPrestige brut.
+type userPrestigeOutput struct{ Body prestige.UserPrestige }
 
 // GetMyPrestige gère GET /prestige/me.
 //
 // Si title_slug est fourni → vue par titre.
 // Sinon → cross-titre (somme tous titres).
-func (h *PrestigeHandler) GetMyPrestige(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("user_id")
-	if userID == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_user_id", "user_id requis")
-		return
+func (h *PrestigeHandler) GetMyPrestige(ctx context.Context, in *getMyPrestigeInput) (*userPrestigeOutput, error) {
+	if in.UserID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_user_id", "user_id requis")
 	}
-	titleSlug := r.URL.Query().Get("title_slug")
-	up, err := h.svc.GetUserPrestige(r.Context(), userID, titleSlug)
+	up, err := h.svc.GetUserPrestige(ctx, in.UserID, in.TitleSlug)
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusOK, up)
+	return &userPrestigeOutput{Body: up}, nil
 }
 
 // ─────────── SuggestTemplates ───────────
 
-func (h *PrestigeHandler) SuggestTemplates(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("user_id")
-	titleSlug := r.URL.Query().Get("title_slug")
-	if userID == "" || titleSlug == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
-		return
+type suggestTemplatesInput struct {
+	UserID    string `query:"user_id"`
+	TitleSlug string `query:"title_slug"`
+	Count     string `query:"count"`
+}
+
+func (h *PrestigeHandler) SuggestTemplates(ctx context.Context, in *suggestTemplatesInput) (*mapOutput, error) {
+	if in.UserID == "" || in.TitleSlug == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
 	}
 	count := 3
-	if c := r.URL.Query().Get("count"); c != "" {
-		if n, err := strconv.Atoi(c); err == nil && n > 0 && n <= 10 {
+	if in.Count != "" {
+		if n, err := strconv.Atoi(in.Count); err == nil && n > 0 && n <= 10 {
 			count = n
 		}
 	}
-	templates, err := h.svc.SuggestTemplates(r.Context(), userID, titleSlug, count)
+	templates, err := h.svc.SuggestTemplates(ctx, in.UserID, in.TitleSlug, count)
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"templates": templates})
+	return &mapOutput{Body: map[string]any{"templates": templates}}, nil
 }
 
 // ─────────── Arcs ───────────
@@ -273,39 +362,49 @@ type createArcBody struct {
 	Description string `json:"description,omitempty"`
 }
 
+// arcOutput : 200 — objet Arc brut.
+type arcOutput struct{ Body prestige.Arc }
+
+// arcCreatedOutput : 201 — objet Arc créé.
+type arcCreatedOutput struct {
+	Status int
+	Body   prestige.Arc
+}
+
 // CreateArc gère POST /arcs.
-func (h *PrestigeHandler) CreateArc(w http.ResponseWriter, r *http.Request) {
+func (h *PrestigeHandler) CreateArc(ctx context.Context, in *rawBodyInput) (*arcCreatedOutput, error) {
 	var body createArcBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := json.Unmarshal(in.RawBody, &body); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
-	a, err := h.svc.CreateArc(r.Context(), prestige.CreateArcRequest{
+	a, err := h.svc.CreateArc(ctx, prestige.CreateArcRequest{
 		UserID:      body.UserID,
 		TitleSlug:   body.TitleSlug,
 		Title:       body.Title,
 		Description: body.Description,
 	})
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusCreated, a)
+	return &arcCreatedOutput{Status: http.StatusCreated, Body: a}, nil
 }
 
 // GetArc gère GET /arcs/{id}.
-func (h *PrestigeHandler) GetArc(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "id requis")
-		return
+func (h *PrestigeHandler) GetArc(ctx context.Context, in *idInput) (*arcOutput, error) {
+	if in.ID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_id", "id requis")
 	}
-	a, err := h.svc.GetArc(r.Context(), id)
+	a, err := h.svc.GetArc(ctx, in.ID)
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusOK, a)
+	return &arcOutput{Body: a}, nil
+}
+
+type deleteArcInput struct {
+	ID         string `path:"id"`
+	UserID     string `query:"user_id"`
+	Objectives string `query:"objectives"`
 }
 
 // DeleteArc gère DELETE /arcs/{id}?user_id=&objectives=delete|detach.
@@ -313,61 +412,51 @@ func (h *PrestigeHandler) GetArc(w http.ResponseWriter, r *http.Request) {
 //   - objectives=delete : supprime aussi les objectifs (abandon, ou hard delete
 //     si l'arc a moins d'1h → zéro cooldown).
 //   - objectives=detach : détache les objectifs (gardés, redeviennent libres).
-func (h *PrestigeHandler) DeleteArc(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "id requis")
-		return
+func (h *PrestigeHandler) DeleteArc(ctx context.Context, in *deleteArcInput) (*noContentOutput, error) {
+	if in.ID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_id", "id requis")
 	}
-	userID := r.URL.Query().Get("user_id")
-	if userID == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "user_id requis")
-		return
+	if in.UserID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id requis")
 	}
-	objectives := r.URL.Query().Get("objectives")
-	if objectives != "delete" && objectives != "detach" {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_input",
+	if in.Objectives != "delete" && in.Objectives != "detach" {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_input",
 			"objectives doit valoir 'delete' ou 'detach'")
-		return
 	}
-	opts := prestige.DeleteArcOptions{CascadeObjectives: objectives == "delete"}
-	if err := h.svc.DeleteArc(r.Context(), userID, id, opts); err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+	opts := prestige.DeleteArcOptions{CascadeObjectives: in.Objectives == "delete"}
+	if err := h.svc.DeleteArc(ctx, in.UserID, in.ID, opts); err != nil {
+		return nil, h.serviceError(ctx, err)
 	}
-	w.WriteHeader(http.StatusNoContent)
+	return &noContentOutput{Status: http.StatusNoContent}, nil
+}
+
+type listArcsInput struct {
+	UserID    string `query:"user_id"`
+	TitleSlug string `query:"title_slug"`
 }
 
 // ListArcs gère GET /arcs?user_id=&title_slug=.
-func (h *PrestigeHandler) ListArcs(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("user_id")
-	titleSlug := r.URL.Query().Get("title_slug")
-	if userID == "" || titleSlug == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
-		return
+func (h *PrestigeHandler) ListArcs(ctx context.Context, in *listArcsInput) (*mapOutput, error) {
+	if in.UserID == "" || in.TitleSlug == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
 	}
-	arcs, err := h.svc.ListArcs(r.Context(), userID, titleSlug)
+	arcs, err := h.svc.ListArcs(ctx, in.UserID, in.TitleSlug)
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"arcs": arcs, jsonKeyCount: len(arcs)})
+	return &mapOutput{Body: map[string]any{"arcs": arcs, jsonKeyCount: len(arcs)}}, nil
 }
 
 // ListArcPresets gère GET /arcs/presets?user_id=&title_slug=.
-func (h *PrestigeHandler) ListArcPresets(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("user_id")
-	titleSlug := r.URL.Query().Get("title_slug")
-	if userID == "" || titleSlug == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
-		return
+func (h *PrestigeHandler) ListArcPresets(ctx context.Context, in *listArcsInput) (*mapOutput, error) {
+	if in.UserID == "" || in.TitleSlug == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
 	}
-	presets, err := h.svc.ListArcPresets(r.Context(), userID, titleSlug)
+	presets, err := h.svc.ListArcPresets(ctx, in.UserID, in.TitleSlug)
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"presets": presets, jsonKeyCount: len(presets)})
+	return &mapOutput{Body: map[string]any{"presets": presets, jsonKeyCount: len(presets)}}, nil
 }
 
 type adoptPresetArcBody struct {
@@ -376,27 +465,22 @@ type adoptPresetArcBody struct {
 }
 
 // AdoptPresetArc gère POST /arcs/presets/{id}/adopt.
-func (h *PrestigeHandler) AdoptPresetArc(w http.ResponseWriter, r *http.Request) {
-	presetID := chi.URLParam(r, "id")
-	if presetID == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "id requis")
-		return
+func (h *PrestigeHandler) AdoptPresetArc(ctx context.Context, in *idBodyInput) (*arcCreatedOutput, error) {
+	if in.ID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_id", "id requis")
 	}
 	var body adoptPresetArcBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := json.Unmarshal(in.RawBody, &body); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
 	if body.UserID == "" || body.TitleSlug == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
 	}
-	arc, err := h.svc.AdoptPresetArc(r.Context(), body.UserID, body.TitleSlug, presetID)
+	arc, err := h.svc.AdoptPresetArc(ctx, body.UserID, body.TitleSlug, in.ID)
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusCreated, arc)
+	return &arcCreatedOutput{Status: http.StatusCreated, Body: arc}, nil
 }
 
 // ─────────── Squad challenges ───────────
@@ -413,20 +497,23 @@ type createSquadChallengeBody struct {
 	CreatedBy       string  `json:"created_by"`
 }
 
+// squadChallengeCreatedOutput : 201 — objet SquadChallenge créé.
+type squadChallengeCreatedOutput struct {
+	Status int
+	Body   prestige.SquadChallenge
+}
+
 // CreateSquadChallenge gère POST /squads/{squad_id}/challenges.
-func (h *PrestigeHandler) CreateSquadChallenge(w http.ResponseWriter, r *http.Request) {
-	squadID := chi.URLParam(r, "squad_id")
-	if squadID == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_squad_id", "squad_id requis")
-		return
+func (h *PrestigeHandler) CreateSquadChallenge(ctx context.Context, in *squadIDBodyInput) (*squadChallengeCreatedOutput, error) {
+	if in.SquadID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_squad_id", "squad_id requis")
 	}
 	var body createSquadChallengeBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := json.Unmarshal(in.RawBody, &body); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
-	body.SquadID = squadID
-	sc, err := h.svc.CreateSquadChallenge(r.Context(), prestige.CreateSquadChallengeRequest{
+	body.SquadID = in.SquadID
+	sc, err := h.svc.CreateSquadChallenge(ctx, prestige.CreateSquadChallengeRequest{
 		SquadID:         body.SquadID,
 		TemplateID:      body.TemplateID,
 		TitleSlug:       body.TitleSlug,
@@ -438,25 +525,21 @@ func (h *PrestigeHandler) CreateSquadChallenge(w http.ResponseWriter, r *http.Re
 		CreatedBy:       body.CreatedBy,
 	})
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusCreated, sc)
+	return &squadChallengeCreatedOutput{Status: http.StatusCreated, Body: sc}, nil
 }
 
 // ListSquadChallenges gère GET /squads/{squad_id}/challenges.
-func (h *PrestigeHandler) ListSquadChallenges(w http.ResponseWriter, r *http.Request) {
-	squadID := chi.URLParam(r, "squad_id")
-	if squadID == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_squad_id", "squad_id requis")
-		return
+func (h *PrestigeHandler) ListSquadChallenges(ctx context.Context, in *squadIDInput) (*mapOutput, error) {
+	if in.SquadID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_squad_id", "squad_id requis")
 	}
-	list, err := h.svc.ListSquadChallenges(r.Context(), squadID)
+	list, err := h.svc.ListSquadChallenges(ctx, in.SquadID)
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"squad_challenges": list, jsonKeyCount: len(list)})
+	return &mapOutput{Body: map[string]any{"squad_challenges": list, jsonKeyCount: len(list)}}, nil
 }
 
 type joinSquadChallengeBody struct {
@@ -466,22 +549,18 @@ type joinSquadChallengeBody struct {
 }
 
 // JoinSquadChallenge gère POST /squad-challenges/{id}/join.
-func (h *PrestigeHandler) JoinSquadChallenge(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "id requis")
-		return
+func (h *PrestigeHandler) JoinSquadChallenge(ctx context.Context, in *idBodyInput) (*noContentOutput, error) {
+	if in.ID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_id", "id requis")
 	}
 	var body joinSquadChallengeBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := json.Unmarshal(in.RawBody, &body); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
-	if err := h.svc.JoinSquadChallenge(r.Context(), id, body.UserID, prestige.Tier(body.ChosenTier), body.IsPrivate); err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+	if err := h.svc.JoinSquadChallenge(ctx, in.ID, body.UserID, prestige.Tier(body.ChosenTier), body.IsPrivate); err != nil {
+		return nil, h.serviceError(ctx, err)
 	}
-	w.WriteHeader(http.StatusNoContent)
+	return &noContentOutput{Status: http.StatusNoContent}, nil
 }
 
 // ─────────── Escouade — roster (CRUD) ───────────
@@ -507,6 +586,12 @@ type addSquadMemberBody struct {
 type squadWithMembers struct {
 	Squad   prestige.Squad         `json:"squad"`
 	Members []prestige.SquadMember `json:"members"`
+}
+
+// squadCreatedOutput : 201 — objet Squad créé.
+type squadCreatedOutput struct {
+	Status int
+	Body   prestige.Squad
 }
 
 // playerDirectory construit les maps xuid→slug et slug→xuid depuis l'annuaire
@@ -552,123 +637,112 @@ func buildSquadMembers(body createSquadBody, creatorXUID string, slugByXUID map[
 }
 
 // CreateSquad gère POST /squads.
-func (h *PrestigeHandler) CreateSquad(w http.ResponseWriter, r *http.Request) {
+func (h *PrestigeHandler) CreateSquad(ctx context.Context, in *rawBodyInput) (*squadCreatedOutput, error) {
 	var body createSquadBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := json.Unmarshal(in.RawBody, &body); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
 	if body.Name == "" || body.CreatedBy == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_fields", "name et created_by requis")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_fields", "name et created_by requis")
 	}
-	if !h.authorizeActor(w, r, body.CreatedBy) {
-		return
+	if err := h.authorizeActor(ctx, body.CreatedBy); err != nil {
+		return nil, err
 	}
-	slugByXUID, xuidBySlug, err := h.playerDirectory(r.Context())
+	slugByXUID, xuidBySlug, err := h.playerDirectory(ctx)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "directory_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "directory_error", err.Error())
 	}
 	creatorXUID := xuidBySlug[body.CreatedBy]
 	if creatorXUID == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "unknown_creator",
+		return nil, humacore.NewError(http.StatusBadRequest, "unknown_creator",
 			"created_by introuvable parmi les joueurs de l'app")
-		return
 	}
-	sc, err := h.svc.CreateSquad(r.Context(), prestige.CreateSquadRequest{
+	sc, err := h.svc.CreateSquad(ctx, prestige.CreateSquadRequest{
 		Name:      body.Name,
 		CreatedBy: body.CreatedBy,
 		Members:   buildSquadMembers(body, creatorXUID, slugByXUID),
 	})
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusCreated, sc)
+	return &squadCreatedOutput{Status: http.StatusCreated, Body: sc}, nil
+}
+
+type listMySquadsInput struct {
+	UserID string `query:"user_id"`
 }
 
 // ListMySquads gère GET /squads?user_id=slug — escouades dont user_id est
 // membre-user, roster embarqué.
-func (h *PrestigeHandler) ListMySquads(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("user_id")
-	if userID == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_user_id", "user_id requis")
-		return
+func (h *PrestigeHandler) ListMySquads(ctx context.Context, in *listMySquadsInput) (*mapOutput, error) {
+	if in.UserID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_user_id", "user_id requis")
 	}
-	if !h.authorizeActor(w, r, userID) {
-		return
+	if err := h.authorizeActor(ctx, in.UserID); err != nil {
+		return nil, err
 	}
-	squads, err := h.svc.ListSquadsForUser(r.Context(), userID)
+	squads, err := h.svc.ListSquadsForUser(ctx, in.UserID)
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
 	out := make([]squadWithMembers, 0, len(squads))
 	for _, sq := range squads {
-		members, mErr := h.svc.ListSquadMembers(r.Context(), sq.ID)
+		members, mErr := h.svc.ListSquadMembers(ctx, sq.ID)
 		if mErr != nil {
-			writeServiceError(r.Context(), w, mErr)
-			return
+			return nil, h.serviceError(ctx, mErr)
 		}
 		out = append(out, squadWithMembers{Squad: sq, Members: members})
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"squads": out, jsonKeyCount: len(out)})
+	return &mapOutput{Body: map[string]any{"squads": out, jsonKeyCount: len(out)}}, nil
 }
 
 // AddSquadMember gère POST /squads/{squad_id}/members.
-func (h *PrestigeHandler) AddSquadMember(w http.ResponseWriter, r *http.Request) {
-	squadID := chi.URLParam(r, "squad_id")
-	if squadID == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_squad_id", "squad_id requis")
-		return
+func (h *PrestigeHandler) AddSquadMember(ctx context.Context, in *squadIDBodyInput) (*noContentOutput, error) {
+	if in.SquadID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_squad_id", "squad_id requis")
 	}
 	var body addSquadMemberBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := json.Unmarshal(in.RawBody, &body); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
 	if body.XUID == "" || body.RequestedBy == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_fields", "xuid et requested_by requis")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_fields", "xuid et requested_by requis")
 	}
-	if !h.authorizeActor(w, r, body.RequestedBy) {
-		return
+	if err := h.authorizeActor(ctx, body.RequestedBy); err != nil {
+		return nil, err
 	}
-	slugByXUID, _, err := h.playerDirectory(r.Context())
+	slugByXUID, _, err := h.playerDirectory(ctx)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "directory_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "directory_error", err.Error())
 	}
 	member := prestige.SquadMember{Xuid: body.XUID, UserID: slugByXUID[body.XUID]}
-	if err := h.svc.AddSquadMember(r.Context(), squadID, member, body.RequestedBy); err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+	if err := h.svc.AddSquadMember(ctx, in.SquadID, member, body.RequestedBy); err != nil {
+		return nil, h.serviceError(ctx, err)
 	}
-	w.WriteHeader(http.StatusNoContent)
+	return &noContentOutput{Status: http.StatusNoContent}, nil
+}
+
+type removeSquadMemberInput struct {
+	SquadID     string `path:"squad_id"`
+	XUID        string `path:"xuid"`
+	RequestedBy string `query:"requested_by"`
 }
 
 // RemoveSquadMember gère DELETE /squads/{squad_id}/members/{xuid}?requested_by=slug.
-func (h *PrestigeHandler) RemoveSquadMember(w http.ResponseWriter, r *http.Request) {
-	squadID := chi.URLParam(r, "squad_id")
-	xuid := chi.URLParam(r, "xuid")
-	if squadID == "" || xuid == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_fields", "squad_id et xuid requis")
-		return
+func (h *PrestigeHandler) RemoveSquadMember(ctx context.Context, in *removeSquadMemberInput) (*noContentOutput, error) {
+	if in.SquadID == "" || in.XUID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_fields", "squad_id et xuid requis")
 	}
-	requestedBy := r.URL.Query().Get("requested_by")
-	if requestedBy == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_requested_by", "requested_by requis")
-		return
+	if in.RequestedBy == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_requested_by", "requested_by requis")
 	}
-	if !h.authorizeActor(w, r, requestedBy) {
-		return
+	if err := h.authorizeActor(ctx, in.RequestedBy); err != nil {
+		return nil, err
 	}
-	if err := h.svc.RemoveSquadMember(r.Context(), squadID, xuid, requestedBy); err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+	if err := h.svc.RemoveSquadMember(ctx, in.SquadID, in.XUID, in.RequestedBy); err != nil {
+		return nil, h.serviceError(ctx, err)
 	}
-	w.WriteHeader(http.StatusNoContent)
+	return &noContentOutput{Status: http.StatusNoContent}, nil
 }
 
 type evaluateSquadChallengeBody struct {
@@ -677,54 +751,49 @@ type evaluateSquadChallengeBody struct {
 
 // EvaluateSquadChallenge gère POST /squad-challenges/{id}/evaluate : recalcule
 // et persiste la progression du défi, et retourne la progression par membre.
-func (h *PrestigeHandler) EvaluateSquadChallenge(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "id requis")
-		return
+func (h *PrestigeHandler) EvaluateSquadChallenge(ctx context.Context, in *idBodyInput) (*mapOutput, error) {
+	if in.ID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_id", "id requis")
 	}
 	var body evaluateSquadChallengeBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := json.Unmarshal(in.RawBody, &body); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
 	if body.RequestedBy == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_requested_by", "requested_by requis")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_requested_by", "requested_by requis")
 	}
-	if !h.authorizeActor(w, r, body.RequestedBy) {
-		return
+	if err := h.authorizeActor(ctx, body.RequestedBy); err != nil {
+		return nil, err
 	}
-	progress, err := h.svc.EvaluateSquadChallenge(r.Context(), id, body.RequestedBy)
+	progress, err := h.svc.EvaluateSquadChallenge(ctx, in.ID, body.RequestedBy)
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"progress": progress})
+	return &mapOutput{Body: map[string]any{"progress": progress}}, nil
+}
+
+type squadOrientationInput struct {
+	SquadID     string `path:"squad_id"`
+	RequestedBy string `query:"requested_by"`
 }
 
 // SquadOrientation gère GET /squads/{squad_id}/orientation?requested_by=slug :
 // renvoie l'axe focal de l'escouade (orientation à renforcer), "" si indisponible.
-func (h *PrestigeHandler) SquadOrientation(w http.ResponseWriter, r *http.Request) {
-	squadID := chi.URLParam(r, "squad_id")
-	if squadID == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_squad_id", "squad_id requis")
-		return
+func (h *PrestigeHandler) SquadOrientation(ctx context.Context, in *squadOrientationInput) (*mapOutput, error) {
+	if in.SquadID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_squad_id", "squad_id requis")
 	}
-	requestedBy := r.URL.Query().Get("requested_by")
-	if requestedBy == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_requested_by", "requested_by requis")
-		return
+	if in.RequestedBy == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_requested_by", "requested_by requis")
 	}
-	if !h.authorizeActor(w, r, requestedBy) {
-		return
+	if err := h.authorizeActor(ctx, in.RequestedBy); err != nil {
+		return nil, err
 	}
-	axis, err := h.svc.SquadOrientation(r.Context(), squadID, requestedBy)
+	axis, err := h.svc.SquadOrientation(ctx, in.SquadID, in.RequestedBy)
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"axis": axis})
+	return &mapOutput{Body: map[string]any{"axis": axis}}, nil
 }
 
 // ─────────── Mode pilote ───────────
@@ -734,48 +803,45 @@ type pilotModeBody struct {
 	TitleSlug string `json:"title_slug"`
 }
 
+// pilotModeOutput : 200 — objet PilotModeAttribution.
+type pilotModeOutput struct{ Body prestige.PilotModeAttribution }
+
 // EnablePilotMode gère POST /pilot-mode/enable.
 //
 // Active le mode pilote pour un joueur : auto-attribue 1 quotidien + 1 hebdo
 // forcé + propose 3 hebdo au choix. Idempotent : si des défis pilote actifs
 // existent déjà sur ces cadences, ils sont conservés.
-func (h *PrestigeHandler) EnablePilotMode(w http.ResponseWriter, r *http.Request) {
+func (h *PrestigeHandler) EnablePilotMode(ctx context.Context, in *rawBodyInput) (*pilotModeOutput, error) {
 	var body pilotModeBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := json.Unmarshal(in.RawBody, &body); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
 	if body.UserID == "" || body.TitleSlug == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
 	}
-	out, err := h.svc.EnablePilotMode(r.Context(), body.UserID, body.TitleSlug)
+	out, err := h.svc.EnablePilotMode(ctx, body.UserID, body.TitleSlug)
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusOK, out)
+	return &pilotModeOutput{Body: out}, nil
 }
 
 // DisablePilotMode gère POST /pilot-mode/disable.
 //
 // Désactive le mode pilote. Les défis pilote en cours sont conservés (le
 // joueur peut les terminer), aucune nouvelle auto-attribution ne se fera.
-func (h *PrestigeHandler) DisablePilotMode(w http.ResponseWriter, r *http.Request) {
+func (h *PrestigeHandler) DisablePilotMode(ctx context.Context, in *rawBodyInput) (*noContentOutput, error) {
 	var body pilotModeBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := json.Unmarshal(in.RawBody, &body); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
 	if body.UserID == "" || body.TitleSlug == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
 	}
-	if err := h.svc.DisablePilotMode(r.Context(), body.UserID, body.TitleSlug); err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+	if err := h.svc.DisablePilotMode(ctx, body.UserID, body.TitleSlug); err != nil {
+		return nil, h.serviceError(ctx, err)
 	}
-	w.WriteHeader(http.StatusNoContent)
+	return &noContentOutput{Status: http.StatusNoContent}, nil
 }
 
 // ─────────── Pool collectif squad ───────────
@@ -790,65 +856,61 @@ type refreshSquadPoolBody struct {
 // Génère un pool de 6-9 templates thématiques pour l'escouade. Le membre
 // qui requête doit être dans l'escouade. Le pool est ensuite consommé par
 // les membres qui peuvent en proposer un défi à l'équipe.
-func (h *PrestigeHandler) RefreshSquadPool(w http.ResponseWriter, r *http.Request) {
-	squadID := chi.URLParam(r, "squad_id")
-	if squadID == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_squad_id", "squad_id requis")
-		return
+func (h *PrestigeHandler) RefreshSquadPool(ctx context.Context, in *squadIDBodyInput) (*mapOutput, error) {
+	if in.SquadID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_squad_id", "squad_id requis")
 	}
 	var body refreshSquadPoolBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := json.Unmarshal(in.RawBody, &body); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
 	if body.TitleSlug == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_title_slug", "title_slug requis")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_title_slug", "title_slug requis")
 	}
-	pool, err := h.svc.RefreshSquadPool(r.Context(), squadID, body.TitleSlug, body.RequestedBy)
+	pool, err := h.svc.RefreshSquadPool(ctx, in.SquadID, body.TitleSlug, body.RequestedBy)
 	if err != nil {
-		writeServiceError(r.Context(), w, err)
-		return
+		return nil, h.serviceError(ctx, err)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"pool": pool, jsonKeyCount: len(pool)})
+	return &mapOutput{Body: map[string]any{"pool": pool, jsonKeyCount: len(pool)}}, nil
 }
 
 // ─────────── Helper d'erreurs ───────────
 
-// writeServiceError mappe les erreurs du service vers des codes HTTP.
-//
-// Centralise la traduction pour éviter la duplication dans chaque handler.
-func writeServiceError(ctx context.Context, w http.ResponseWriter, err error) {
+// serviceError mappe les erreurs du service vers des erreurs Huma (status/code/
+// message identiques à l'ancien writeServiceError). ErrDBLocked → 503 + header
+// Retry-After:5 (huma.ErrorWithHeaders).
+func (h *PrestigeHandler) serviceError(ctx context.Context, err error) error {
 	switch {
 	case errors.Is(err, dblease.ErrDBLocked):
 		// Le sync engine ou un autre handler tient le lease — on demande au
 		// client de retry sous 5 s. Cf. plan db-concurrency commit 2.
-		w.Header().Set("Retry-After", "5")
-		writeError(ctx, w, http.StatusServiceUnavailable, "db_busy",
-			"database is currently busy, please retry")
+		return huma.ErrorWithHeaders(
+			humacore.NewError(http.StatusServiceUnavailable, "db_busy",
+				"database is currently busy, please retry"),
+			http.Header{"Retry-After": []string{"5"}},
+		)
 	case errors.Is(err, prestige.ErrChallengeNotFound),
 		errors.Is(err, prestige.ErrArcNotFound),
 		errors.Is(err, prestige.ErrUserNotFound):
-		writeError(ctx, w, http.StatusNotFound, "not_found", err.Error())
+		return humacore.NewError(http.StatusNotFound, "not_found", err.Error())
 	case errors.Is(err, prestige.ErrInvalidInput):
-		writeError(ctx, w, http.StatusBadRequest, "invalid_input", err.Error())
+		return humacore.NewError(http.StatusBadRequest, "invalid_input", err.Error())
 	case errors.Is(err, prestige.ErrForbidden):
-		writeError(ctx, w, http.StatusForbidden, "forbidden", err.Error())
+		return humacore.NewError(http.StatusForbidden, "forbidden", err.Error())
 	case errors.Is(err, prestige.ErrNotEditable):
-		writeError(ctx, w, http.StatusForbidden, "not_editable", err.Error())
+		return humacore.NewError(http.StatusForbidden, "not_editable", err.Error())
 	case errors.Is(err, prestige.ErrAlreadyTerminal):
-		writeError(ctx, w, http.StatusConflict, "already_terminal", err.Error())
+		return humacore.NewError(http.StatusConflict, "already_terminal", err.Error())
 	case errors.Is(err, prestige.ErrCooldownActive):
-		writeError(ctx, w, http.StatusTooManyRequests, "cooldown_active", err.Error())
+		return humacore.NewError(http.StatusTooManyRequests, "cooldown_active", err.Error())
 	default:
 		// Erreur masquée à l'extérieur — ne pas exposer les internals
 		// si la cause n'est pas explicitement une de nos sentinelles.
 		msg := err.Error()
 		if strings.Contains(msg, "stretch") {
 			// Cas particulier RejectTooEasy formaté avec stretch dans le message
-			writeError(ctx, w, http.StatusBadRequest, "challenge_too_easy", msg)
-			return
+			return humacore.NewError(http.StatusBadRequest, "challenge_too_easy", msg)
 		}
-		writeError(ctx, w, http.StatusInternalServerError, "internal_error", msg)
+		return humacore.NewError(http.StatusInternalServerError, "internal_error", msg)
 	}
 }

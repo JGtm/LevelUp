@@ -193,23 +193,7 @@ func testAppPlayers(_ context.Context) ([]domain.PlayerSummary, error) {
 func newRouter(svc prestige.Service) *chi.Mux {
 	h := NewPrestigeHandler(svc, testAppPlayers)
 	r := chi.NewRouter()
-	r.Post("/challenges", h.CreateChallenge)
-	r.Get("/challenges", h.ListActiveChallenges)
-	r.Get("/challenges/{id}", h.GetChallenge)
-	r.Patch("/challenges/{id}", h.UpdateChallenge)
-	r.Delete("/challenges/{id}", h.AbandonChallenge)
-	r.Post("/challenges/{id}/suggest-next", h.SuggestNext)
-	r.Delete("/arcs/{id}", h.DeleteArc)
-	r.Get("/arcs/presets", h.ListArcPresets)
-	r.Post("/arcs/presets/{id}/adopt", h.AdoptPresetArc)
-	r.Get("/prestige/me", h.GetMyPrestige)
-	r.Get("/templates/suggest", h.SuggestTemplates)
-	r.Post("/squads", h.CreateSquad)
-	r.Get("/squads", h.ListMySquads)
-	r.Post("/squads/{squad_id}/members", h.AddSquadMember)
-	r.Delete("/squads/{squad_id}/members/{xuid}", h.RemoveSquadMember)
-	r.Post("/squad-challenges/{id}/evaluate", h.EvaluateSquadChallenge)
-	r.Get("/squads/{squad_id}/orientation", h.SquadOrientation)
+	h.Mount(r)
 	return r
 }
 
@@ -361,12 +345,7 @@ func TestPrestigeHandler_ListMySquads_OK(t *testing.T) {
 func newRouterGuarded(svc prestige.Service, guard ActorGuard) *chi.Mux {
 	h := NewPrestigeHandler(svc, testAppPlayers).WithActorGuard(guard)
 	r := chi.NewRouter()
-	r.Post("/squads", h.CreateSquad)
-	r.Get("/squads", h.ListMySquads)
-	r.Post("/squads/{squad_id}/members", h.AddSquadMember)
-	r.Delete("/squads/{squad_id}/members/{xuid}", h.RemoveSquadMember)
-	r.Post("/squad-challenges/{id}/evaluate", h.EvaluateSquadChallenge)
-	r.Get("/squads/{squad_id}/orientation", h.SquadOrientation)
+	h.Mount(r)
 	return r
 }
 
@@ -914,8 +893,7 @@ func TestPrestigeHandler_NotFoundErrorsNotMistakenForDBLocked(t *testing.T) {
 func newSquadRouter(svc prestige.Service) *chi.Mux {
 	h := NewPrestigeHandler(svc, testAppPlayers)
 	r := chi.NewRouter()
-	r.Post("/squads/{squad_id}/challenges", h.CreateSquadChallenge)
-	r.Post("/squad-challenges/{id}/join", h.JoinSquadChallenge)
+	h.Mount(r)
 	return r
 }
 

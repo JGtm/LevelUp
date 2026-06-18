@@ -53,7 +53,7 @@ func newCompareMultiTitleRouter(svc *captureCompareService) *chi.Mux {
 	r.Use(middleware.TitleExtractor(registry))
 	h := handlers.NewCompareHandler(factory)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Post("/pages/compare", h.PostComparePage)
+		h.Mount(r)
 	})
 	return r
 }
@@ -172,7 +172,7 @@ func newLeaderboardMultiTitleRouter(svc *captureLeaderboardService) *chi.Mux {
 	r.Use(middleware.TitleExtractor(registry))
 	h := handlers.NewLeaderboardHandler(factory)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Get("/pages/leaderboard", h.GetLeaderboardPage)
+		h.Mount(r)
 	})
 	return r
 }
