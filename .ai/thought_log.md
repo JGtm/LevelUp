@@ -1,3 +1,19 @@
+## [2026-06-18] Auto-gen openapi : CONTRAT COMPLÉTÉ (332→0 schémas manquants) + gate — Complété
+
+**Statut** : Complété (sous-objectif 1 « contrat fiable »). make gen + generate-types + tsc -b + contracttest + full api verts.
+
+**But** : finir l'auto-gen (demande user) — rendre le contrat openapi.yaml complet/fiable plutôt que sous-spécifié vs les structs Go.
+
+**Livré** :
+- **Mode `-emit`** ajouté au drift-detector (gated env `OPENAPI_EMIT_OUT`/`OPENAPI_EMIT_PREFIX`) : sérialise les schémas MISSING en YAML indenté prêt à coller sous `components.schemas`.
+- **Piège résolu** : un emit filtré par préfixe (ex Lab) laisse des `$ref` cassés vers des schémas d'autres aires aussi manquants (Lab→CSRSeasonCalendar) → make gen échoue. Solution = **merge BULK de tous les manquants** (clôture transitive des refs garantie : tout schéma est soit manuel soit dans les 328 ajoutés).
+- **328 schémas auto-dérivés mergés** dans openapi.yaml (5418→14901 lignes, sous un marqueur « SCHÉMAS AUTO-DÉRIVÉS — ne pas éditer »). Régénéré generated.ts + (gen/types.gen.go inchangé : oapi-codegen ne génère que les types référencés par des opérations ; le front via openapi-typescript récupère tous les schémas).
+- **Drift : MISSING 332→0** (DIVERGENT=69, EXTRA=44 inchangés). **Gate de complétude** ajouté au test (échoue si MISSING>0) = anti-régression : tout nouveau handler Huma dont le schéma de réponse n'est pas documenté fait échouer la CI (miroir de `undocumentedThreshold` pour les paths).
+
+**Vérif** : openapi.yaml valide (generate-types + make gen exit 0), contract test (paths inchangés) vert, Go build vert, front tsc -b vert (les 328 nouveaux types sont présents mais non encore consommés → zéro régression).
+
+**Reste** : (a) **sous-objectif 2** = shimer `types.ts`→`generated.ts` (mécanique désormais, tsc -b oracle, le contrat est complet) ; (b) **DIVERGENT 69** = réconcilier les schémas manuels qui divèrent des structs Go (plus risqué, change l'existant) ; (c) **vocab Halo cosmétique**. cf. PLAN_WEB_API_TYPES.
+
 ## [2026-06-18] Switcher de titre + Lever A aire bootstrap + Lever B drift-detector — Complété (B = fondation, emit/merge en suite)
 
 **Statut** : switcher Complété ; Lever A aire 1 Complété ; Lever B drift-detector Complété (outillage + pivot prouvé) ; emit/merge des 332 schémas = suite multi-sessions outillée.

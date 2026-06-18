@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -103,9 +104,68 @@ func TestOpenAPISchemaDrift_AggregatesAndReports(t *testing.T) {
 
 	missing, divergent, extra := diffSchemas(huSchemas, manual)
 
+	// GATE de complétude (ratchet, miroir de undocumentedThreshold pour les paths) :
+	// tout schéma de réponse auto-dérivé par Huma DOIT être documenté dans
+	// openapi.yaml (sinon generated.ts est incomplet → type front écrit à la main →
+	// dérive). Baseline 2026-06-18 = 0 après merge des 328 schémas manquants.
+	if len(missing) > 0 {
+		t.Errorf("complétude contrat : %d schéma(s) de réponse Huma NON documenté(s) dans openapi.yaml.\n"+
+			"Régénérer : `OPENAPI_EMIT_OUT=/tmp/m.yaml CGO_ENABLED=1 go test ./internal/api/ -run TestOpenAPISchemaDrift`\n"+
+			"puis appendre /tmp/m.yaml sous components.schemas + `make gen` + `npm -w apps/web run generate-types`.\nManquants : %v",
+			len(missing), missing)
+	}
+
 	t.Logf("DRIFT — MISSING (schéma de réponse Huma NON documenté dans openapi.yaml) : %d\n  %v", len(missing), missing)
 	t.Logf("DRIFT — DIVERGENT (même nom, structure normalisée différente) : %d\n  %v", len(divergent), divergent)
 	t.Logf("DRIFT — EXTRA (manuel sans contrepartie Huma : media.go / inputs RawBody / legacy) : %d", len(extra))
+
+	// Mode -emit (gated par env, hors CI) : écrit les schémas MISSING (optionnellement
+	// filtrés par préfixe) en YAML prêt à coller sous components.schemas du openapi.yaml.
+	// Workflow : `OPENAPI_EMIT_OUT=/tmp/lab.yaml OPENAPI_EMIT_PREFIX=Lab go test ... -run Drift`.
+	if out := os.Getenv("OPENAPI_EMIT_OUT"); out != "" {
+		emitMissingSchemas(t, huSchemas, missing, os.Getenv("OPENAPI_EMIT_PREFIX"), out)
+	}
+}
+
+// emitMissingSchemas écrit les schémas MISSING (filtrés par préfixe si fourni) en
+// YAML indenté à 4 espaces (niveau components.schemas), trié, prêt à appendre dans
+// api/openapi.yaml. Chaque schéma vient de la sérialisation OpenAPI auto-dérivée
+// par Huma du struct Go correspondant.
+func emitMissingSchemas(t *testing.T, huSchemas map[string]*huma.Schema, missing []string, prefix, outPath string) {
+	t.Helper()
+	var buf strings.Builder
+	n := 0
+	for _, name := range missing { // déjà trié
+		if prefix != "" && !strings.HasPrefix(name, prefix) {
+			continue
+		}
+		sch := huSchemas[name]
+		b, err := json.Marshal(sch)
+		if err != nil {
+			t.Fatalf("marshal schéma %q : %v", name, err)
+		}
+		var v any
+		if err := json.Unmarshal(b, &v); err != nil {
+			t.Fatalf("unmarshal schéma %q : %v", name, err)
+		}
+		y, err := yaml.Marshal(v)
+		if err != nil {
+			t.Fatalf("yaml schéma %q : %v", name, err)
+		}
+		buf.WriteString("    " + name + ":\n")
+		for _, line := range strings.Split(strings.TrimRight(string(y), "\n"), "\n") {
+			if line == "" {
+				buf.WriteString("\n")
+			} else {
+				buf.WriteString("      " + line + "\n")
+			}
+		}
+		n++
+	}
+	if err := os.WriteFile(outPath, []byte(buf.String()), 0o644); err != nil {
+		t.Fatalf("écriture %q : %v", outPath, err)
+	}
+	t.Logf("EMIT : %d schémas (préfixe %q) → %s", n, prefix, outPath)
 }
 
 // diffSchemas classe les schémas en MISSING (Huma absent du manuel),
