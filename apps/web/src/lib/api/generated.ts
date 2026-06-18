@@ -4348,6 +4348,108 @@ export interface components {
             /** Format: int64 */
             streak_count: number;
         };
+        AssetMeta: {
+            id: string;
+            image_url: string;
+            name_en: string;
+            name_fr: string;
+        };
+        WatcherAuthStartResponse: {
+            attempt_id: string;
+            /** Format: int64 */
+            expires_in: number;
+            user_code: string;
+            verification_url: string;
+        };
+        BattlePassResponse: {
+            available: boolean;
+            error_hint?: string;
+            from_cache?: boolean;
+            /** Format: int64 */
+            progress?: number;
+            /** Format: int64 */
+            rank?: number;
+            reward_track?: string;
+            snapshot_at?: string;
+        };
+        MediaAssociateResponse: {
+            file_path: string;
+            map_name?: string;
+            match_id: string;
+            mode_name?: string;
+        };
+        MediaAuthor: {
+            gamertag: string;
+            is_self: boolean;
+            /** Format: int64 */
+            media_count: number;
+            player_slug: string;
+        };
+        MediaAuthorsResponse: {
+            authors: components["schemas"]["MediaAuthor"][] | null;
+        };
+        MediaFilterOptions: {
+            maps: components["schemas"]["LabelValue"][] | null;
+            modes: components["schemas"]["LabelValue"][] | null;
+            playlists: components["schemas"]["LabelValue"][] | null;
+        };
+        MediaItem: {
+            basename: string;
+            /** Format: date-time */
+            capture_end_utc?: string;
+            file_path: string;
+            kind: string;
+            /** Format: int64 */
+            like_count: number;
+            liked: boolean;
+            likers?: string[] | null;
+            map_name?: string;
+            match_id?: string;
+            /** Format: date-time */
+            match_start_time?: string;
+            mode_name?: string;
+            owner_gamertag?: string;
+            section: string;
+            thumbnail_path?: string;
+            /** Format: int64 */
+            total_likers: number;
+        };
+        MediaMatchCandidate: {
+            /** Format: int64 */
+            delta_seconds?: number;
+            /** Format: date-time */
+            end_time?: string;
+            /** Format: int64 */
+            enemy_score?: number;
+            is_current: boolean;
+            lobby?: components["schemas"]["MediaMatchLobbyEntry"][] | null;
+            map_image_url?: string;
+            map_name?: string;
+            match_id: string;
+            mode_name?: string;
+            /** Format: int64 */
+            outcome?: number;
+            /** Format: int64 */
+            own_score?: number;
+            playlist_name?: string;
+            /** Format: date-time */
+            start_time?: string;
+        };
+        MediaMatchCandidatesResponse: {
+            candidates: components["schemas"]["MediaMatchCandidate"][] | null;
+            /** Format: date-time */
+            capture_utc?: string;
+            file_path: string;
+            /** Format: int64 */
+            window_minutes: number;
+        };
+        MediaMatchLobbyEntry: {
+            gamertag: string;
+            is_bot: boolean;
+            is_self: boolean;
+            /** Format: int64 */
+            team_id?: number;
+        };
         AcceptResponse: {
             arc_id?: string;
             challenge_id?: string;

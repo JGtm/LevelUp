@@ -46,9 +46,7 @@ func newHomeRouter(factory handlers.HomeAuthFactory, settingsStore *settings_pla
 	r := chi.NewRouter()
 	h := handlers.NewHomeHandler(factory, settingsStore)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Get("/pages/home", h.GetHomePage)
-		r.Get("/battlepass", h.GetBattlePass)
-		r.Get("/challenges", h.GetChallenges)
+		h.Mount(r) // 3 routes migrées Huma (pages/home ETag, battlepass, challenges)
 	})
 	return r
 }

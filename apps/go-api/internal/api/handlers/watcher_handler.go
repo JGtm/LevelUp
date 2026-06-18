@@ -6,13 +6,10 @@
 // PATCH /api/v1/watcher/subscriptions  → met à jour les joueurs surveillés
 //
 // MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
-// /watcher (middleware RequireAuth/RequireAdmin hérités) et enregistre SEULEMENT
-// les 3 routes idempotentes (status, auth/{attempt_id}, subscriptions). Logique
-// métier inchangée, seul le wrapping HTTP change.
-//
-// POST /auth/start (Device Code Flow) reste un handler chi inline (StartAuth) :
-// il déclenche une goroutine de polling et n'est PAS migré ici (server.go l'enregistre
-// en chi). Mount ne le touche pas.
+// /watcher (middleware RequireAuth/RequireAdmin hérités) et enregistre les 4 routes
+// (status, auth/{attempt_id}, auth/start, subscriptions). Logique métier inchangée,
+// seul le wrapping HTTP change. POST /auth/start déclenche une goroutine de polling
+// MSAL ; son Input est vide (aucun corps lu).
 //
 // Tous les endpoints nécessitent RequireAuth + RequireAdmin.
 // Le daemon peut être nil (watcher désactivé) — géré proprement sans panic.
@@ -66,17 +63,16 @@ func NewWatcherHandler(
 	}
 }
 
-// Mount enregistre via Huma SEULEMENT les 3 routes idempotentes sur le sous-routeur
-// chi (préfixe /watcher + middleware RequireAuth/RequireAdmin hérités). Le body
+// Mount enregistre via Huma les 4 routes du watcher sur le sous-routeur chi
+// (préfixe /watcher + middleware RequireAuth/RequireAdmin hérités). Le body
 // PATCH /subscriptions est OPTIONNEL (MarkRequestBodyOptional) — corps absent →
-// défaut ["all"], comme l'inline d'origine.
-//
-// POST /auth/start (StartAuth) n'est PAS enregistré ici : il reste un handler chi
-// inline (Device Code Flow + goroutine de polling).
+// défaut ["all"], comme l'inline d'origine. POST /auth/start ne lit aucun corps
+// (Input *struct{}) → pas de MarkRequestBodyOptional (corps absent toléré).
 func (h *WatcherHandler) Mount(r chi.Router) {
 	api := humacore.NewAPI(r)
 	huma.Get(api, "/status", h.handleGetStatus)
 	huma.Get(api, "/auth/{attempt_id}", h.handleGetAuthStatus)
+	huma.Post(api, "/auth/start", h.handleStartAuth)
 	huma.Patch(api, "/subscriptions", h.handlePatchSubscriptions)
 	humacore.MarkRequestBodyOptional(api, http.MethodPatch, "/subscriptions")
 }
@@ -96,6 +92,7 @@ type watcherSubscriptionsInput struct {
 }
 
 type watcherStatusOutput struct{ Body watcherStatusResponse }
+type watcherAuthStartOutput struct{ Body watcherAuthStartResponse }
 type watcherAuthStatusOutput struct{ Body watcherAuthStatusResponse }
 type watcherSubscriptionsOutput struct {
 	Body struct {
@@ -177,30 +174,28 @@ func (h *WatcherHandler) handleGetStatus(ctx context.Context, _ *struct{}) (*wat
 	return &watcherStatusOutput{Body: resp}, nil
 }
 
-// StartAuth démarre un Device Code Flow Microsoft pour obtenir un token XSTS watcher.
-// POST /api/v1/watcher/auth/start
-func (h *WatcherHandler) StartAuth(w http.ResponseWriter, r *http.Request) {
+// handleStartAuth démarre un Device Code Flow Microsoft pour obtenir un token XSTS
+// watcher. POST /api/v1/watcher/auth/start (migré Huma — aucun corps lu, Input vide).
+func (h *WatcherHandler) handleStartAuth(ctx context.Context, _ *struct{}) (*watcherAuthStartOutput, error) {
 	slog.Info("watcher_handler: démarrage Device Code Flow watcher")
 	attempt, isNew := h.attempts.GetOrCreate()
 	if !isNew {
-		writeJSON(w, http.StatusOK, watcherAuthStartResponse{
+		return &watcherAuthStartOutput{Body: watcherAuthStartResponse{
 			AttemptID:       attempt.AttemptID,
 			UserCode:        attempt.UserCode,
 			VerificationURL: attempt.VerificationURI,
 			ExpiresIn:       attempt.ExpiresInSec,
-		})
-		return
+		}}, nil
 	}
 
-	flow, err := h.tokenProvider.InitDeviceFlow(r.Context())
+	flow, err := h.tokenProvider.InitDeviceFlow(ctx)
 	if err != nil {
 		h.attempts.Update(attempt.AttemptID, func(a *auth_platform.WatcherAttempt) {
 			a.Status = auth_platform.AttemptStatusFailed
 			a.ErrorCode = "msal_init_error"
 			a.ErrorDetail = err.Error()
 		})
-		writeError(r.Context(), w, http.StatusInternalServerError, "msal_init_error", "impossible de démarrer le Device Code Flow")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "msal_init_error", "impossible de démarrer le Device Code Flow")
 	}
 
 	h.attempts.Update(attempt.AttemptID, func(a *auth_platform.WatcherAttempt) {
@@ -210,16 +205,17 @@ func (h *WatcherHandler) StartAuth(w http.ResponseWriter, r *http.Request) {
 		a.DevFlow = flow
 	})
 
-	// Polling MSAL + acquisition XSTS en arrière-plan
-	go h.pollWatcherAuth(attempt.AttemptID, flow, r.Context())
+	// Polling MSAL + acquisition XSTS en arrière-plan. pollWatcherAuth ignore son
+	// parentCtx et crée son propre contexte avec timeout → passer ctx (Huma) est inerte.
+	go h.pollWatcherAuth(attempt.AttemptID, flow, ctx)
 
 	snap := h.attempts.Snapshot(attempt.AttemptID)
-	writeJSON(w, http.StatusOK, watcherAuthStartResponse{
+	return &watcherAuthStartOutput{Body: watcherAuthStartResponse{
 		AttemptID:       snap.AttemptID,
 		UserCode:        snap.UserCode,
 		VerificationURL: snap.VerificationURI,
 		ExpiresIn:       snap.ExpiresInSec,
-	})
+	}}, nil
 }
 
 // handleGetAuthStatus retourne l'état d'une tentative d'auth watcher.

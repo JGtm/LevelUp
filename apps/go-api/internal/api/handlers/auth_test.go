@@ -34,8 +34,7 @@ func newAuthRouterWithProvider(t *testing.T, demoMode bool, provider auth_platfo
 
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(sessStore, middleware.SecureCookiePolicy{}))
-	r.Post("/auth/device-flow/start", h.StartDeviceFlow)
-	r.Get("/auth/device-flow/{attempt_id}", h.GetDeviceFlowStatus)
+	h.MountDeviceFlow(r) // 2 routes device-flow migrées Huma
 	return r, sessStore
 }
 

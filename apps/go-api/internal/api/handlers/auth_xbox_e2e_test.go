@@ -125,8 +125,7 @@ func newE2ERig(t *testing.T) *e2eRig {
 
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(sessStore, middleware.SecureCookiePolicy{}))
-	r.Post("/auth/device-flow/start", authHandler.StartDeviceFlow)
-	r.Get("/auth/device-flow/{attempt_id}", authHandler.GetDeviceFlowStatus)
+	authHandler.MountDeviceFlow(r) // 2 routes device-flow migrées Huma
 
 	return &e2eRig{
 		router:       r,

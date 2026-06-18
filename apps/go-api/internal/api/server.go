@@ -802,8 +802,7 @@ func NewRouter(
 		} else {
 			authHandler.WithUserStore(users)
 		}
-		r.Post("/auth/device-flow/start", authHandler.StartDeviceFlow)
-		r.Get("/auth/device-flow/{attempt_id}", authHandler.GetDeviceFlowStatus)
+		authHandler.MountDeviceFlow(r) // POST /auth/device-flow/start + GET /auth/device-flow/{attempt_id} (Huma)
 
 		// PR 4 — Authorization Code Flow SSO Xbox (UX redirect, plus aboutie que
 		// le Device Code). Enregistré uniquement en mode "xbox" + redirect URI
@@ -982,16 +981,12 @@ func NewRouter(
 		r.Get("/assets/spartan/{image_type}/{title_id}/*", assetHandler.GetSpartanImage)
 
 		// Asset Drawer — toujours enregistré ; renvoie [] si metaDB indisponible (best-effort).
-		// Migré vers Huma (Phase 3b) quand le handler est câblé ; sinon fallback [].
+		// Les 2 branches sont sur Huma (Phase 3b) : handler réel gaté par capability, ou
+		// fallback vide. if/else mutuellement exclusif → pas de double-registration.
 		if assetMetaHandler != nil {
 			assetMetaHandler.Mount(r) // GET /assets/{title_id}/{maps,weapons}
 		} else {
-			emptyAssetList := func(w http.ResponseWriter, _ *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte("[]"))
-			}
-			r.Get("/assets/{title_id}/maps", emptyAssetList)
-			r.Get("/assets/{title_id}/weapons", emptyAssetList)
+			handlers.NewEmptyAssetMetadataHandler().Mount(r) // fallback Huma → []
 		}
 
 		// Endpoints P1 : pages par joueur (Sprint 37 — DI via ServiceRegistry)
@@ -1062,11 +1057,10 @@ func NewRouter(
 			stats := handlers.NewStatsHandler(reg.Stats)
 			stats.Mount(r)
 
-			// Sprint 11 : Accueil/Home + Battle Pass + Challenges
+			// Sprint 11 : Accueil/Home + Battle Pass + Challenges (migrés Huma ;
+			// en-têtes de cache ETag/max-age/no-store posés dans les Output).
 			home := handlers.NewHomeHandler(reg.HomeCtxWithAuth, settingsStore)
-			r.With(middleware.CacheMaxAge(30)).Get("/pages/home", home.GetHomePage)
-			r.With(middleware.NoStore).Get("/battlepass", home.GetBattlePass)
-			r.With(middleware.NoStore).Get("/challenges", home.GetChallenges)
+			home.Mount(r)
 
 			// Season Pass (palmares)
 			seasonPass := handlers.NewSeasonPassHandler(reg.SeasonPassCtxWithAuth)
@@ -1099,14 +1093,13 @@ func NewRouter(
 				WithMediaRecipientResolver(reg.MediaRecipientResolver(cfg))
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapMedia))
-				r.Post("/pages/media", media.GetMediaLibrary)
-				r.Patch("/media/likes", media.PatchMediaLike)
-				r.Post("/media/upload", media.PostUploadMedia)
+				// 5 routes JSON migrées vers Huma (pages/media, likes, match-candidates,
+				// associate, authors). humacore.NewAPI(r) hérite de CapMedia + ownership/title.
+				media.Mount(r)
 				// /media/reassociate supprimé en revue 2026-04-29 P0.2 Q6 (doublon non utilisé,
 				// le front consomme /media/associate seulement).
-				r.Get("/media/match-candidates", media.GetMediaMatchCandidates)
-				r.Post("/media/associate", media.PostMediaAssociate)
-				r.Get("/media/authors", media.GetMediaAuthors)
+				// upload (multipart) + files (serve binaire) restent chi — hors scope JSON.
+				r.Post("/media/upload", media.PostUploadMedia)
 				r.Get("/media/files/*", media.ServeMediaFile)
 			})
 
@@ -1269,9 +1262,8 @@ func NewRouter(
 		r.Route("/watcher", func(r chi.Router) {
 			r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 			r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
-			// status/auth-status/subscriptions migrés vers Huma ; auth/start (device-flow) reste chi.
+			// status/auth-status/subscriptions/auth-start migrés vers Huma (watcherHandler.Mount).
 			watcherHandler.Mount(r)
-			r.Post("/auth/start", watcherHandler.StartAuth)
 		})
 	})
 
