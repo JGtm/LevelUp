@@ -5,7 +5,7 @@
 // « le sync manuel = un déclencheur à la demande de l'auto-sync » :
 //   - EngineBuilder / newPooledEngine : MÊME moteur (PooledHaloClient du pool partagé)
 //     que l'auto-sync — l'auth ne dépend plus des HaloTokens de session.
-//   - cooldown : guardManualDeltaSync / tryManualSyncCooldown / writeCooldown.
+//   - cooldown : guardManualDeltaSync / tryManualSyncCooldown / cooldownError.
 //
 // Cf. ADR 0023 (MultiUserTokenStore = source unique des tokens) + thought_log 2026-06-14.
 package handlers
@@ -15,8 +15,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
+
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
 	go_sync "levelup/go-api/internal/sync"
@@ -65,20 +69,20 @@ func (h *SyncHandler) WithManualSyncCooldown(d time.Duration) *SyncHandler {
 //     Halo elle-même est déléguée au pool (cf. newPooledEngine), pas à la session.
 //  2. cooldown anti-spam par clé — sinon 429 + Retry-After.
 //
-// Retourne false si une réponse d'erreur a déjà été écrite (le caller doit return).
-// Centralise la logique partagée par les deux endpoints (DRY + handlers < 80 lignes).
-func (h *SyncHandler) guardManualDeltaSync(w http.ResponseWriter, r *http.Request, cooldownKey string) bool {
-	if sess := middleware.GetSession(r.Context()); sess == nil {
-		writeError(r.Context(), w, http.StatusUnauthorized, "auth_required", "Connexion requise.")
-		return false
+// Retourne nil si toutes les pré-conditions sont remplies, sinon une erreur Huma
+// au contrat préservé (401 auth_required / 429 sync_cooldown + Retry-After) que le
+// caller retourne tel quel. Centralise la logique partagée par les deux endpoints
+// (DRY + handlers < 80 lignes).
+func (h *SyncHandler) guardManualDeltaSync(ctx context.Context, key string) error {
+	if sess := middleware.GetSession(ctx); sess == nil {
+		return humacore.NewError(http.StatusUnauthorized, "auth_required", "Connexion requise.")
 	}
-	if retry, ok := h.tryManualSyncCooldown(cooldownKey); !ok {
-		slog.InfoContext(r.Context(), "sync_handler: sync manuel throttlé par cooldown",
-			"key", cooldownKey, "retry_after_s", int(retry.Seconds())+1)
-		h.writeCooldown(r.Context(), w, retry)
-		return false
+	if retry, ok := h.tryManualSyncCooldown(key); !ok {
+		slog.InfoContext(ctx, "sync_handler: sync manuel throttlé par cooldown",
+			"key", key, "retry_after_s", int(retry.Seconds())+1)
+		return cooldownError(retry)
 	}
-	return true
+	return nil
 }
 
 // tryManualSyncCooldown vérifie ET enregistre (atomiquement) le cooldown anti-spam
@@ -103,12 +107,16 @@ func (h *SyncHandler) tryManualSyncCooldown(key string) (time.Duration, bool) {
 	return 0, true
 }
 
-// writeCooldown répond 429 avec un header Retry-After (secondes, arrondi au plafond).
-func (h *SyncHandler) writeCooldown(ctx context.Context, w http.ResponseWriter, retry time.Duration) {
+// cooldownError construit une erreur Huma 429 sync_cooldown avec un header
+// Retry-After (secondes, arrondi au plafond) — contrat byte-identique à l'ancien
+// writeCooldown (même code, même message, même header).
+func cooldownError(retry time.Duration) error {
 	secs := int(retry.Seconds()) + 1
-	w.Header().Set("Retry-After", fmt.Sprintf("%d", secs))
-	writeError(ctx, w, http.StatusTooManyRequests, "sync_cooldown",
-		fmt.Sprintf("Synchronisation déjà déclenchée récemment — réessayez dans %d s.", secs))
+	return huma.ErrorWithHeaders(
+		humacore.NewError(http.StatusTooManyRequests, "sync_cooldown",
+			fmt.Sprintf("Synchronisation déjà déclenchée récemment — réessayez dans %d s.", secs)),
+		http.Header{"Retry-After": []string{strconv.Itoa(secs)}},
+	)
 }
 
 // newPooledEngine construit le moteur du sync manuel DELTA (StartSyncAll /

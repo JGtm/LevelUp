@@ -1,3 +1,19 @@
+## [2026-06-18] Phase 3b — reliquat sync + media-feed migrés ; import reste chi (multipart) — Complété + trackers
+
+**Statut** : Complété. Workflow `huma-tail-d-sync` (3 agents). SyncHandler (3 routes) + MediaFeedVersionHandler migrés ; OpenSpartanImport **non migré** (revert — voir ci-dessous). Build/gofmt/vet OK, **goldens sync (test+gate+align) + media-feed + settings verts**, `internal/api` (contract) vert. 4 routes. Cumul = **166 routes**.
+
+**Sync (le plus complexe)** : guard `guardManualDeltaSync(w,r,key) bool` refactoré → `(ctx,key) error` ; `writeCooldown` → `cooldownError(retry) error` (429 + Retry-After via `huma.ErrorWithHeaders`). 3 méthodes → `(ctx,*Input)(*Output,error)`, **goroutines préservées à l'identique**. 2 Mount : `MountInitialAndAll` (/sync/initial + /sync/all, groupe admin) + `MountDelta` (/sync, sous /players/{player_slug}). RawBody pour le 400 invalid_body du sync initial. Tests recâblés (Mount). Tout = 202 Accepted.
+
+**media-feed** : fonction nue `GetMediaFeedVersion` → `MediaFeedVersionHandler` + Mount ; ancienne func morte **supprimée** (+ import net/http orphelin) après bascule server.go.
+
+**import/openspartan = REVERTé (reste chi, justifié)** : l'agent avait produit un pont huma-context → `humachi.Unwrap` → `StartImport(w,r)` pour gérer le **multipart/form-data**. Trop hacky (double WriteHeader, middleware d'opération) pour un endpoint d'onboarding rare. Cohérent avec `media/upload` (multipart, laissé chi). Classé needs_care/exclude définitif.
+
+**Trackers mis à jour** : `PLAN_MULTITITRE_INDEX.md` (Phase 3b ✅ 166 routes) + `PLAN_TITLE_AGNOSTIC_TRACKER.md` (§Hors fenêtre → Phase 3b quasi-complète).
+
+**BILAN Phase 3b FINAL — 166 routes Huma**, reste sur chi par CONCEPTION (~20, needs_care/exclude) : multipart (media/upload, import/openspartan), binaire (media/files, images d'assets), redirections OAuth, device-flow (auth + watcher/start), CSV export, home cached/ETag (writeJSONCached), battlepass/challenges (NoStore home), SPA catch-all. Ces routes NON-JSON sont légitimement hors du modèle Huma.
+
+**Conclusion / prochaine étape** : migration Huma du contrat JSON terminée (166 routes, 12 workflows). Étape finale du plan (séparée, à planifier) : basculer `openapi.yaml` manuel → généré par Huma + régén `generated.ts` — implique de gérer les ~20 routes chi restantes dans le spec (Huma-register en mode raw/passthrough OU doc manuelle résiduelle) puis valider la parité. Pas de PR.
+
 ## [2026-06-18] Phase 3b — tail C : cluster admin-actions (7 handlers) — Complété + push
 
 **Statut** : Complété. Workflow `huma-tail-c-adminactions` (7 agents). admin_actions/admin_data_quality/admin_actions_convergence/admin_actions_catalog_drain/admin_logs/admin_db_contention/admin_title_diagnostic convertis. Build/gofmt/vet OK, **goldens (actions/data-quality/catalog-drain/db-contention/title-diag) verts** + vérif adversariale convergence/logs (sans golden) vs HEAD = fidèles. `internal/api` (contract) vert. 15 routes. Cumul = **162 routes**.

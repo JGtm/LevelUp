@@ -430,7 +430,7 @@ func TestUploadHandler_ServiceError(t *testing.T) {
 
 func TestGetMediaFeedVersion_ReturnsJSON(t *testing.T) {
 	r := chi.NewRouter()
-	r.Get("/media/feed-version", handlers.GetMediaFeedVersion)
+	handlers.NewMediaFeedVersionHandler().Mount(r)
 
 	req := httptest.NewRequest(http.MethodGet, "/media/feed-version", nil)
 	w := httptest.NewRecorder()
@@ -450,7 +450,7 @@ func TestGetMediaFeedVersion_ReturnsJSON(t *testing.T) {
 
 func TestBumpMediaFeedVersion_Increments(t *testing.T) {
 	r := chi.NewRouter()
-	r.Get("/media/feed-version", handlers.GetMediaFeedVersion)
+	handlers.NewMediaFeedVersionHandler().Mount(r)
 
 	getVersion := func() int64 {
 		req := httptest.NewRequest(http.MethodGet, "/media/feed-version", nil)
@@ -480,7 +480,7 @@ func TestMediaHandler_PatchLike_BumpsVersion(t *testing.T) {
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		r.Patch("/media/likes", h.PatchMediaLike)
 	})
-	r.Get("/media/feed-version", handlers.GetMediaFeedVersion)
+	handlers.NewMediaFeedVersionHandler().Mount(r)
 
 	versionNow := func() int64 {
 		req := httptest.NewRequest(http.MethodGet, "/media/feed-version", nil)

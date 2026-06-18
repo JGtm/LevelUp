@@ -18,6 +18,10 @@ import (
 	gosync "sync"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
@@ -262,65 +266,93 @@ func truncate(s string, max int) string {
 	return s[:max] + "…"
 }
 
+// ─── Montage Huma + types Input/Output ───────────────────────────────────────
+
+// syncJobOutput : 202 Accepted, corps = snapshot du job de sync créé (les 3
+// routes partagent ce contrat). Status override la valeur par défaut Huma.
+type syncJobOutput struct {
+	Status int
+	Body   *domain.AsyncJobStatus
+}
+
+// syncInitialInput : corps brut décodé maison. RawBody (pas Body typé) → préserve
+// le contrat 400 {invalid_body} sur JSON invalide (un Body typé renverrait le 422
+// de validation Huma).
+type syncInitialInput struct {
+	RawBody []byte
+}
+
+// syncDeltaInput : path param {player_slug} (l'original lisait r.PathValue).
+type syncDeltaInput struct {
+	PlayerSlug string `path:"player_slug"`
+}
+
+// MountInitialAndAll enregistre les routes admin /sync/initial et /sync/all via
+// Huma sur le routeur chi fourni (middleware RequireAuth/RequireAdmin hérités du
+// groupe admin où server.go le monte).
+func (h *SyncHandler) MountInitialAndAll(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Post(api, "/sync/initial", h.StartInitialSync)
+	huma.Post(api, "/sync/all", h.StartSyncAll)
+}
+
+// MountDelta enregistre la route /sync via Huma sur le sous-routeur chi (préfixe
+// /players/{player_slug} + middleware hérités — lit {player_slug} parent).
+func (h *SyncHandler) MountDelta(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Post(api, "/sync", h.StartDeltaSync)
+}
+
 // StartInitialSync lance la sync initiale pour un joueur.
 // POST /sync/initial -> 202 AsyncJobStatus.
-func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
+func (h *SyncHandler) StartInitialSync(ctx context.Context, in *syncInitialInput) (*syncJobOutput, error) {
 	appCfg, err := h.settingsStore.Load()
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
 	}
 	if !appCfg.CanStartInitialSync {
-		writeError(r.Context(), w, http.StatusForbidden, "initial_sync_disabled",
+		return nil, humacore.NewError(http.StatusForbidden, "initial_sync_disabled",
 			"Le lancement d'une sync initiale est désactivé sur cette instance.")
-		return
 	}
 
 	var req domain.InitialSyncStartRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "Corps de requete JSON invalide.")
-		return
+	if err := json.Unmarshal(in.RawBody, &req); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "Corps de requete JSON invalide.")
 	}
 
 	if req.PlayerSlug == "" || len(req.PlayerSlug) > 50 {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_player_slug", "player_slug vide ou trop long.")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_player_slug", "player_slug vide ou trop long.")
 	}
 
 	// Sprint B1 commit 17 : event_id pour tracer le sync initial. Log
-	// immédiat avec ctx local — ne PAS muter *r (data race avec middleware
-	// chi qui garde un pointeur vers le request). Le event_id reste un
-	// breadcrumb pour grep des logs HTTP, propagation aux goroutines async
-	// reportée à un follow-up (impose de passer ctx en arg aux helpers).
-	_, evID := logging.WithEvent(r.Context(), "http.sync.initial:"+req.PlayerSlug)
-	slog.InfoContext(r.Context(), "sync_handler: StartInitialSync démarré",
+	// immédiat avec ctx local — le event_id reste un breadcrumb pour grep des
+	// logs HTTP, propagation aux goroutines async reportée à un follow-up
+	// (impose de passer ctx en arg aux helpers).
+	_, evID := logging.WithEvent(ctx, "http.sync.initial:"+req.PlayerSlug)
+	slog.InfoContext(ctx, "sync_handler: StartInitialSync démarré",
 		"player_slug", req.PlayerSlug, "max_matches", req.MaxMatches, "event", evID)
 	if req.MaxMatches == 0 {
 		req.MaxMatches = 200
 	}
 	if req.MaxMatches < 1 || req.MaxMatches > 2000 {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_max_matches", "max_matches doit etre entre 1 et 2000.")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_max_matches", "max_matches doit etre entre 1 et 2000.")
 	}
 
 	if active := h.jobStore.FindActiveInitialSync(req.PlayerSlug); active != nil {
-		writeError(r.Context(), w, http.StatusConflict, "sync_already_active",
+		return nil, humacore.NewError(http.StatusConflict, "sync_already_active",
 			"Une sync initiale est deja en cours pour ce joueur.")
-		return
 	}
 
-	sess := middleware.GetSession(r.Context())
+	sess := middleware.GetSession(ctx)
 	if sess == nil || sess.HaloTokens == nil {
-		writeError(r.Context(), w, http.StatusUnauthorized, "auth_required",
+		return nil, humacore.NewError(http.StatusUnauthorized, "auth_required",
 			"Tokens Halo absents.")
-		return
 	}
 	tokens := sess.HaloTokens
 
 	players, err := h.cfg.LoadPlayers()
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "profiles_load_error", "Impossible de charger db_profiles.json.")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "profiles_load_error", "Impossible de charger db_profiles.json.")
 	}
 	var gamertag, xuid string
 	for _, p := range players {
@@ -331,9 +363,8 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if gamertag == "" {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found",
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found",
 			fmt.Sprintf("Joueur %q introuvable dans db_profiles.json.", req.PlayerSlug))
-		return
 	}
 
 	// Dédup cross-source : claim SYNCHRONE avant de créer le job. Si un sync de ce
@@ -342,11 +373,10 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 	// AVANT le retour du handler, son gateWG.Add a un happens-before avec le retour
 	// → il est garanti vu par WaitInFlight au shutdown (pas de goroutine détachée
 	// qui claim tardivement). release est passé à la goroutine (defer release()).
-	release, claimed := h.syncGate.TryClaimT(ctxkeys.TitleSlug(r.Context()), gamertag)
+	release, claimed := h.syncGate.TryClaimT(ctxkeys.TitleSlug(ctx), gamertag)
 	if !claimed {
-		writeError(r.Context(), w, http.StatusConflict, "sync_already_active",
+		return nil, humacore.NewError(http.StatusConflict, "sync_already_active",
 			"Une synchronisation de ce joueur est déjà en cours (watcher ou auto-sync).")
-		return
 	}
 
 	job := h.jobStore.Create(domain.JobTypeInitialSync, req.PlayerSlug)
@@ -382,40 +412,36 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	writeJSON(w, http.StatusAccepted, &jobSnapshot)
+	return &syncJobOutput{Status: http.StatusAccepted, Body: &jobSnapshot}, nil
 }
 
 // StartDeltaSync lance une synchronisation delta pour un joueur donné.
 // POST /api/v1/players/{player_slug}/sync → 202 AsyncJobStatus.
 // Contrairement à StartInitialSync, cette route n'est pas protégée par can_start_initial_sync.
-func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
-	playerSlug := r.PathValue("player_slug")
+func (h *SyncHandler) StartDeltaSync(ctx context.Context, in *syncDeltaInput) (*syncJobOutput, error) {
+	playerSlug := in.PlayerSlug
 	if playerSlug == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_player_slug", "player_slug manquant.")
-		return
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_player_slug", "player_slug manquant.")
 	}
 
 	// Session requise + cooldown anti-spam (clé = slug). Tokens Halo via le pool.
-	if !h.guardManualDeltaSync(w, r, "delta:"+playerSlug) {
-		return
+	if err := h.guardManualDeltaSync(ctx, "delta:"+playerSlug); err != nil {
+		return nil, err
 	}
 
 	if active := h.jobStore.FindActiveInitialSync(playerSlug); active != nil {
-		writeError(r.Context(), w, http.StatusConflict, "sync_already_active",
+		return nil, humacore.NewError(http.StatusConflict, "sync_already_active",
 			"Une synchronisation est déjà en cours pour ce joueur.")
-		return
 	}
 
 	// Sprint B1 commit 17 : event_id pour tracer le sync delta HTTP-triggered.
-	// Log immédiat sans muter *r (data race).
-	_, evID := logging.WithEvent(r.Context(), "http.sync.delta:"+playerSlug)
-	slog.InfoContext(r.Context(), "sync_handler: StartDeltaSync démarré",
+	_, evID := logging.WithEvent(ctx, "http.sync.delta:"+playerSlug)
+	slog.InfoContext(ctx, "sync_handler: StartDeltaSync démarré",
 		"player_slug", playerSlug, "event", evID)
 
 	players, err := h.cfg.LoadPlayers()
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "profiles_load_error", "Impossible de charger db_profiles.json.")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "profiles_load_error", "Impossible de charger db_profiles.json.")
 	}
 	var gamertag, xuid string
 	for _, p := range players {
@@ -426,17 +452,15 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if gamertag == "" {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found",
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found",
 			fmt.Sprintf("Joueur %q introuvable dans db_profiles.json.", playerSlug))
-		return
 	}
 
 	// Dédup cross-source (cf. StartInitialSync) : claim SYNCHRONE, 409 si déjà en vol.
-	release, claimed := h.syncGate.TryClaimT(ctxkeys.TitleSlug(r.Context()), gamertag)
+	release, claimed := h.syncGate.TryClaimT(ctxkeys.TitleSlug(ctx), gamertag)
 	if !claimed {
-		writeError(r.Context(), w, http.StatusConflict, "sync_already_active",
+		return nil, humacore.NewError(http.StatusConflict, "sync_already_active",
 			"Une synchronisation de ce joueur est déjà en cours (watcher ou auto-sync).")
-		return
 	}
 
 	job := h.jobStore.Create(domain.JobTypeInitialSync, playerSlug)
@@ -471,32 +495,29 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	writeJSON(w, http.StatusAccepted, &jobSnapshot2)
+	return &syncJobOutput{Status: http.StatusAccepted, Body: &jobSnapshot2}, nil
 }
 
 // StartSyncAll lance une synchronisation delta pour tous les joueurs configurés.
 // POST /api/v1/sync/all → 202 AsyncJobStatus.
-func (h *SyncHandler) StartSyncAll(w http.ResponseWriter, r *http.Request) {
+func (h *SyncHandler) StartSyncAll(ctx context.Context, _ *struct{}) (*syncJobOutput, error) {
 	// Session requise + cooldown anti-spam (clé "all"). Tokens Halo via le pool
 	// (même mécanique que l'auto-sync, ADR 0023), pas la session.
-	if !h.guardManualDeltaSync(w, r, "all") {
-		return
+	if err := h.guardManualDeltaSync(ctx, "all"); err != nil {
+		return nil, err
 	}
 
 	players, err := h.cfg.LoadPlayers()
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "profiles_load_error", "Impossible de charger db_profiles.json.")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "profiles_load_error", "Impossible de charger db_profiles.json.")
 	}
 	if len(players) == 0 {
-		writeError(r.Context(), w, http.StatusNotFound, "no_players", "Aucun joueur configuré dans db_profiles.json.")
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "no_players", "Aucun joueur configuré dans db_profiles.json.")
 	}
 
 	// Sprint B1 commit 17 : event_id pour tracer le sync de tous les joueurs.
-	// Log immédiat sans muter *r (data race).
-	_, evID := logging.WithEvent(r.Context(), "http.sync.all")
-	slog.InfoContext(r.Context(), "sync_handler: StartSyncAll démarré",
+	_, evID := logging.WithEvent(ctx, "http.sync.all")
+	slog.InfoContext(ctx, "sync_handler: StartSyncAll démarré",
 		"player_count", len(players), "event", evID)
 
 	job := h.jobStore.Create(domain.JobTypeDeltaSyncAll, "all")
@@ -557,5 +578,5 @@ func (h *SyncHandler) StartSyncAll(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	writeJSON(w, http.StatusAccepted, &jobSnapshot3)
+	return &syncJobOutput{Status: http.StatusAccepted, Body: &jobSnapshot3}, nil
 }
