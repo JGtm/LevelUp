@@ -7,6 +7,8 @@
 
 > **🔑 PIVOT 2026-06-18 (Lever B) — à exploiter avant de continuer la migration manuelle aire par aire** :
 > Les handlers Huma migrés utilisent des **outputs typés** (ex `bootstrapOutput struct{ Body *domain.BootstrapResponse }`) → Huma **auto-dérive** le schéma OpenAPI du struct Go par réflexion (= exactement ce qu'on réconcilie à la main). Ratio vérifié : **63 handlers typés / 24 RawBody**. Donc **agréger les `Components.Schemas` des instances Huma reconstruit le contrat de types AUTOMATIQUEMENT** → la réconciliation manuelle schéma par schéma de ce plan devient **largement obsolète** pour les routes typées. Plan : construire un générateur de schémas (cmd Go), régénérer `generated.ts`, puis la migration `types.ts`→`generated.ts` redevient un shim mécanique gardé par `tsc -b`. Les ~24 RawBody (multipart/binaire/OAuth/CSV) resteront décrites à la main. cf. thought_log 2026-06-18 + workflow openapi-gen-feasibility.
+>
+> **✅ Drift-detector LIVRÉ 2026-06-18** : `internal/api/openapi_schema_drift_test.go` (cgo) + hook `humacore.OnAPICreated`. Lancer : `CGO_ENABLED=1 go test ./internal/api/ -run TestOpenAPISchemaDrift -v`. Il agrège **401 schémas Huma auto-dérivés vs 113 manuels** et liste **MISSING=332** (le backlog de réconciliation, auto-découvert), DIVERGENT=69, EXTRA=44. **Suite (S4-S6)** : mode `-emit` des 332 manquants → merge par lots dans `api/openapi.yaml` → regen `types.gen.go` + `generated.ts` → gate ratchet CI (miroir de `undocumentedThreshold` pour les paths). La migration aire par aire devient « émettre + merger les schémas listés », plus « chasser la dérive à la main ».
 
 ## But
 
