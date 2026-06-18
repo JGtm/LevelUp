@@ -1,3 +1,17 @@
+## [2026-06-18] KPI bar Match View : Rendement/Résistance + police réduite + labels courts — Complété
+
+**Statut** : commit 2/5 du lot. `tsc` + `eslint` verts, vitest match-view 113/113. Branche `feat/rendement-engagement-matchview`.
+
+**Déclencheur (user)** : « Ajouter une représentation Rendement et Résistance sur la KPI bar de la page Général de match view. Réduire la taille de la police des KPI cards pour gagner de la place, possibilité de raccourcir certains labels (Assistances → Assist.) ».
+
+**Décision technique** : OC/DR déjà calculés backend par scoreboard row (match_view_converters) ; `MatchViewPage` expose déjà `meRow = scoreboard.find(is_me)`. Donc **zéro changement backend** : on passe `meRow.offensive_conversion/defensive_resistance` à `MatchSummaryCardsSection` (2 nouvelles cartes réutilisant `formatOffensiveConversion`/`formatDefensiveResistance`/`combatYieldToken` de `lib/formatters/combatYield`). Police réduite dans `MatchVsStatCard` + `MatchWinProbCard` (valeurs `text-2xl`→`text-lg`, label `text-xs`→`text-2xs`, padding `px-4 py-3`→`px-3 py-2.5`). Grille `lg:grid-cols-6`→`lg:grid-cols-4 xl:grid-cols-8` (8 cartes : 2×4 sur lg, 1×8 sur xl). Labels raccourcis dans le manifest `match_view.toml` (« Assistances vs attendues »→« Assist. », « MMR équipe vs adverse »→« MMR », « Frags vs attendus »→« Frags », « Morts vs attendues »→« Morts ») + nouvelles clés `cards.rendement`/`cards.resistance` ; manifest régénéré.
+
+**Résultats observés** : typecheck/eslint verts, 113 tests match-view OK. Les sous-labels (réel/attendu, allié/adverse) clarifient toujours les cartes raccourcies.
+
+**Prochaine étape** : commits 3 (engagement pace_team + relabel), 4 (Escouade), 2 (message honnête).
+
+---
+
 ## [2026-06-18] Toggle « rendement sans assistances » (réglage global) — Complété
 
 **Statut** : branche `feat/rendement-engagement-matchview` (depuis `main`). Commit 1/5 du lot rendement/engagement/match-view. `go build ./...` ✓, tests analysis+service+handlers ✓, front `tsc` + `eslint` ✓. Commit en attente d'autorisation.
