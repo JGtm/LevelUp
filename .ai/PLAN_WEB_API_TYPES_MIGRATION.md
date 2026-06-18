@@ -9,6 +9,16 @@
 > Les handlers Huma migrés utilisent des **outputs typés** (ex `bootstrapOutput struct{ Body *domain.BootstrapResponse }`) → Huma **auto-dérive** le schéma OpenAPI du struct Go par réflexion (= exactement ce qu'on réconcilie à la main). Ratio vérifié : **63 handlers typés / 24 RawBody**. Donc **agréger les `Components.Schemas` des instances Huma reconstruit le contrat de types AUTOMATIQUEMENT** → la réconciliation manuelle schéma par schéma de ce plan devient **largement obsolète** pour les routes typées. Plan : construire un générateur de schémas (cmd Go), régénérer `generated.ts`, puis la migration `types.ts`→`generated.ts` redevient un shim mécanique gardé par `tsc -b`. Les ~24 RawBody (multipart/binaire/OAuth/CSV) resteront décrites à la main. cf. thought_log 2026-06-18 + workflow openapi-gen-feasibility.
 >
 > **✅ Drift-detector LIVRÉ 2026-06-18** : `internal/api/openapi_schema_drift_test.go` (cgo) + hook `humacore.OnAPICreated`. Lancer : `CGO_ENABLED=1 go test ./internal/api/ -run TestOpenAPISchemaDrift -v`. Il agrège **401 schémas Huma auto-dérivés vs 113 manuels** et liste **MISSING=332** (le backlog de réconciliation, auto-découvert), DIVERGENT=69, EXTRA=44. **Suite (S4-S6)** : mode `-emit` des 332 manquants → merge par lots dans `api/openapi.yaml` → regen `types.gen.go` + `generated.ts` → gate ratchet CI (miroir de `undocumentedThreshold` pour les paths). La migration aire par aire devient « émettre + merger les schémas listés », plus « chasser la dérive à la main ».
+>
+> **✅ CONTRAT COMPLÉTÉ 2026-06-18 (MISSING 332→0)** : mode `-emit` ajouté au drift-test (`OPENAPI_EMIT_OUT=...` + `OPENAPI_EMIT_PREFIX=...`) ; **328 schémas auto-dérivés mergés en BULK** dans `api/openapi.yaml` (sous le marqueur « SCHÉMAS AUTO-DÉRIVÉS — ne pas éditer »). **Piège** : un emit filtré par préfixe casse les `$ref` cross-aires → toujours merger en BULK (clôture transitive). **Gate de complétude** actif (CI échoue si MISSING>0). `generated.ts` a désormais TOUS les types.
+>
+> **🔁 TEMPLATE de migration d'une aire (validé sur l'aire Lab, commit 77d4addcb)** :
+> 1. Remplacer les `interface X {...}` manuels de l'aire par `export type X = components['schemas']['X']` dans `types.ts`.
+> 2. `npm -w apps/web run typecheck` (oracle). **Attendu** : des erreurs là où le contrat (auto-dérivé des structs Go) type des slices Go en **nullable** alors que le manuel était optimiste (non-null).
+> 3. Ajouter les **garde-fous null** dans la feature consommatrice (`x.foo ?? []`, `x?.bar`) — le contrat est plus correct, le code devient plus robuste. NE PAS affaiblir le contrat.
+> 4. eslint + vitest de l'aire + commit. Aire suivante.
+>
+> **État migration** : Batch 1 (7 bootstrap) + **aire Lab (20 types)** faites. **Reste ~prochaines aires** (par taille MISSING) : match-view, squad, session, career, timeseries, synthesis, explorer, admin, notifications, prestige… (liste exacte = sortie MISSING avant complétion, ou `grep "export interface" types.ts`). **+ 69 DIVERGENT** à réconcilier (schémas manuels qui divergent des structs Go — remplacer le manuel, plus risqué car change l'existant).
 
 ## But
 
