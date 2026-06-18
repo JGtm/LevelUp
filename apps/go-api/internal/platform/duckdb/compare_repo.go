@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 )
 
 // CompareRepo implémente port.CompareRepository.
@@ -29,13 +30,15 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	// shared-only via SharedReader (root-level naming).
-	const q = `
+	// shared-only via SharedReader (root-level naming). PMT-5 : win_rate title-aware
+	// (fallback "mp.outcome = 2" byte-identique Halo).
+	winExpr := outcomeSQLEqSlug(titleSlug, "mp.outcome", canonical.OutcomeWin, "mp.outcome = 2")
+	q := `
 		SELECT
 			mp.xuid,
 			COALESCE(vg.gamertag, xa.gamertag, '') AS gamertag,
 			COUNT(*)                               AS matches,
-			AVG(CASE WHEN mp.outcome = 2 THEN 1.0 ELSE 0.0 END) AS win_rate,
+			AVG(CASE WHEN ` + winExpr + ` THEN 1.0 ELSE 0.0 END) AS win_rate,
 			AVG(COALESCE(mp.kills, 0) + 0.33 * COALESCE(mp.assists, 0)) /
 				NULLIF(AVG(COALESCE(mp.deaths, 0)), 0)            AS kda,
 			AVG(COALESCE(mp.kills, 0)) /
@@ -182,15 +185,17 @@ func (r *CompareRepo) GetEncounterStats(ctx context.Context, xuidA, xuidB string
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	// 2 queries shared-only via SharedReader.
-	const qMatches = `
+	// 2 queries shared-only via SharedReader. PMT-5 : winrate ally/enemy title-aware
+	// (fallback "a.outcome = 2" byte-identique Halo).
+	winExpr := outcomeSQLEq(ctx, "a.outcome", canonical.OutcomeWin, "a.outcome = 2")
+	qMatches := `
 		SELECT
 			COUNT(*) AS total,
 			COUNT(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id = b.team_id THEN 1 END) AS ally_count,
 			COUNT(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id != b.team_id THEN 1 END) AS enemy_count,
-			SUM(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id = b.team_id AND a.outcome = 2 THEN 1.0 ELSE 0.0 END) /
+			SUM(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id = b.team_id AND ` + winExpr + ` THEN 1.0 ELSE 0.0 END) /
 				NULLIF(COUNT(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id = b.team_id THEN 1 END), 0) AS winrate_as_ally,
-			SUM(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id != b.team_id AND a.outcome = 2 THEN 1.0 ELSE 0.0 END) /
+			SUM(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id != b.team_id AND ` + winExpr + ` THEN 1.0 ELSE 0.0 END) /
 				NULLIF(COUNT(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id != b.team_id THEN 1 END), 0) AS winrate_vs_enemy
 		FROM match_participants a
 		JOIN match_participants b ON b.match_id = a.match_id AND b.xuid = ?

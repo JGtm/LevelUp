@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 )
 
 // MatchHistoryRepo implémente port.MatchHistoryRepository.
@@ -251,9 +252,11 @@ func (r *MatchHistoryRepo) LoadMapWinRates(ctx context.Context) (map[string][2]i
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
+	// PMT-5 : win title-aware (fallback "p.outcome = 2" byte-identique Halo).
+	winExpr := outcomeSQLEq(ctx, "p.outcome", canonical.OutcomeWin, "p.outcome = 2")
 	q := `
 	SELECT r.map_name,
-	       SUM(CASE WHEN p.outcome = 2 THEN 1 ELSE 0 END) AS wins,
+	       SUM(CASE WHEN ` + winExpr + ` THEN 1 ELSE 0 END) AS wins,
 	       COUNT(*) AS total
 	FROM match_registry r
 	JOIN match_participants p ON r.match_id = p.match_id

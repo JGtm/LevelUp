@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 )
 
 // GetTopEncountersGlobal retourne les 10 joueurs les plus croisés au niveau
@@ -31,7 +32,11 @@ func (r *CareerRepo) GetTopEncountersGlobal(ctx context.Context, excludeXUIDs []
 			args = append(args, x)
 		}
 	}
-	sqlText := fmt.Sprintf(Q26CareerTopEncountersTpl, excludeClause)
+	// PMT-5 : exprs win/loss title-aware (fallback "e.my_outcome = 2/3" byte-identique
+	// Halo). Ordre des %s du template : win, loss, win, loss, puis excludeClause.
+	winExpr := outcomeSQLEq(ctx, "e.my_outcome", canonical.OutcomeWin, "e.my_outcome = 2")
+	lossExpr := outcomeSQLEq(ctx, "e.my_outcome", canonical.OutcomeLoss, "e.my_outcome = 3")
+	sqlText := fmt.Sprintf(Q26CareerTopEncountersTpl, winExpr, lossExpr, winExpr, lossExpr, excludeClause)
 
 	// migré vers SharedReader. La query est shared-only
 	// (match_participants, match_registry, killer_victim_pairs, v_gamertag_lookup)

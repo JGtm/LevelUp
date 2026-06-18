@@ -18,11 +18,18 @@ import (
 // `col` et `legacy` doivent être des littéraux de confiance (jamais d'entrée
 // utilisateur) ; le resolver n'interpole qu'un entier (raw_code) dans l'expression.
 func outcomeSQLEq(ctx context.Context, col string, o canonical.Outcome, legacy string) string {
+	return outcomeSQLEqSlug(ctxkeys.TitleSlug(ctx), col, o, legacy)
+}
+
+// outcomeSQLEqSlug est la variante à slug EXPLICITE, pour les repos qui reçoivent
+// déjà un titleSlug en paramètre (ex. CompareRepo.GetLocalStats) plutôt que via le
+// ctx. Même contrat byte-identique + fallback legacy que outcomeSQLEq.
+func outcomeSQLEqSlug(slug, col string, o canonical.Outcome, legacy string) string {
 	res := games.DefaultOutcomeResolver()
 	if res == nil {
 		return legacy
 	}
-	if expr, ok := res.SQLEq(ctxkeys.TitleSlug(ctx), col, o); ok {
+	if expr, ok := res.SQLEq(slug, col, o); ok {
 		return expr
 	}
 	return legacy

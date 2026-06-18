@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 )
 
 // GetMatchEvents retourne les events highlight du match (Q21).
@@ -132,7 +133,12 @@ func (r *MatchViewRepo) GetMatchEncounterStats(ctx context.Context, matchID, myX
 	}
 	defer release()
 
-	rows, err := sharedDB.QueryContext(ctx, Q23bMatchEncounterStats,
+	// PMT-5 : exprs win/loss title-aware (fallback "eh.me_outcome = 2/3" byte-identique
+	// Halo). Ordre des %s du template : win, loss, win, loss.
+	winExpr := outcomeSQLEq(ctx, "eh.me_outcome", canonical.OutcomeWin, "eh.me_outcome = 2")
+	lossExpr := outcomeSQLEq(ctx, "eh.me_outcome", canonical.OutcomeLoss, "eh.me_outcome = 3")
+	encounterStatsSQL := fmt.Sprintf(Q23bMatchEncounterStats, winExpr, lossExpr, winExpr, lossExpr)
+	rows, err := sharedDB.QueryContext(ctx, encounterStatsSQL,
 		matchID, myXUID, // this_match
 		matchID, myXUID, // my_team
 		myXUID,         // my_history

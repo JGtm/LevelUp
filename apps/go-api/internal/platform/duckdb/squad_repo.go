@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 )
 
 // SquadRepo implÃ©mente port.SquadRepository.
@@ -48,7 +49,10 @@ func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain
 	}
 	defer release()
 
-	query := fmt.Sprintf(Q29TopTeammatesSharedTpl, Placeholders(len(matchIDs)))
+	// PMT-5 : win/win_rate title-aware (fallback "p1.outcome = 2" byte-identique Halo).
+	// Ordre des %s du template : win (wins_together), win (win_rate), puis IN-list.
+	winExpr := outcomeSQLEq(ctx, "p1.outcome", canonical.OutcomeWin, "p1.outcome = 2")
+	query := fmt.Sprintf(Q29TopTeammatesSharedTpl, winExpr, winExpr, Placeholders(len(matchIDs)))
 	args := make([]any, 0, 2+len(matchIDs))
 	args = append(args, xuid)
 	args = append(args, ToAnySlice(matchIDs)...)
