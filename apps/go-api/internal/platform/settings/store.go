@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"levelup/go-api/internal/domain"
@@ -190,6 +191,42 @@ func (s *Store) ResolveForTitle(overlayPath string) (*AppSettings, error) {
 	out.raw = merged
 	applyAbsentDefaults(out, merged)
 	return out, nil
+}
+
+// SaveTitleOverlay fusionne `fields` (sparse, champ-présent-only — clés = noms JSON
+// d'AppSettings, ex. "show_progression") dans l'overlay du titre à overlayPath et
+// l'écrit (crée le dossier si besoin). N'affecte JAMAIS le global app_settings.json
+// : c'est le pendant écriture de ResolveForTitle (PMT-4 PR-3c). Un overlay vide
+// reste vide ; seules les clés fournies sont surchargées.
+func (s *Store) SaveTitleOverlay(overlayPath string, fields map[string]json.RawMessage) error {
+	if overlayPath == "" {
+		return fmt.Errorf("settings.SaveTitleOverlay: overlayPath vide")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	existing := map[string]json.RawMessage{}
+	if data, err := os.ReadFile(overlayPath); err == nil {
+		if err := json.Unmarshal(data, &existing); err != nil {
+			return fmt.Errorf("settings.SaveTitleOverlay read overlay: %w", err)
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("settings.SaveTitleOverlay stat overlay: %w", err)
+	}
+	for k, v := range fields {
+		existing[k] = v
+	}
+	out, err := json.MarshalIndent(existing, "", "  ")
+	if err != nil {
+		return fmt.Errorf("settings.SaveTitleOverlay marshal: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(overlayPath), 0o755); err != nil {
+		return fmt.Errorf("settings.SaveTitleOverlay mkdir: %w", err)
+	}
+	if err := os.WriteFile(overlayPath, out, 0o644); err != nil {
+		return fmt.Errorf("settings.SaveTitleOverlay write: %w", err)
+	}
+	return nil
 }
 
 // Save persiste app_settings.json en préservant les champs inconnus.
