@@ -87,10 +87,8 @@ func newWatcherRouter(t *testing.T, daemon watcher.DaemonController, provider au
 
 	r := chi.NewRouter()
 	r.Route("/watcher", func(r chi.Router) {
-		// 3 routes migrées vers Huma (status, auth/{attempt_id}, subscriptions).
+		// 4 routes migrées vers Huma (status, auth/{attempt_id}, auth/start, subscriptions).
 		h.Mount(r)
-		// POST /auth/start (StartAuth) reste un handler chi inline — non migré.
-		r.Post("/auth/start", h.StartAuth)
 	})
 	return r
 }

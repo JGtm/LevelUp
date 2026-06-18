@@ -144,8 +144,7 @@ func realMediaPipelineSetup(t *testing.T) (*chi.Mux, string) {
 	h := handlers.NewMediaHandler(factory, nil, "")
 	r := chi.NewRouter()
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Post("/pages/media", h.GetMediaLibrary)
-		r.Patch("/media/likes", h.PatchMediaLike)
+		h.Mount(r) // pages/media + likes (+ autres JSON) migrés Huma
 	})
 	return r, socialPath
 }

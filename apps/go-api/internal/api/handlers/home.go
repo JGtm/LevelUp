@@ -1,24 +1,40 @@
 // Package handlers — home.go : handlers HTTP pour la page d'accueil Mission Control.
 //
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// /players/{player_slug} (ownership/title hérités) et enregistre les 3 GET. Les
+// en-têtes de cache (anciens middlewares CacheMaxAge/NoStore) sont posés dans les
+// Output. /pages/home conserve son ETag/304 byte-exact via un Body []byte
+// passthrough (writeJSONCached n'ajoute pas de trailing newline, contrairement à
+// writeJSON) — même pattern que field_mappings.go.
+//
 // Endpoints :
 //
-//	GET /api/v1/players/{player_slug}/pages/home     → HomePageResponse
-//	GET /api/v1/players/{player_slug}/battlepass     → BattlePassResponse
-//	GET /api/v1/players/{player_slug}/challenges     → ChallengesResponse
+//	GET /api/v1/players/{player_slug}/pages/home     → HomePageResponse (ETag/304, max-age 30)
+//	GET /api/v1/players/{player_slug}/battlepass     → BattlePassResponse (no-store)
+//	GET /api/v1/players/{player_slug}/challenges     → ChallengesResponse (no-store)
 package handlers
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/domain"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 )
+
+// homeCacheControl reproduit l'en-tête de l'ancien middleware CacheMaxAge(30).
+const homeCacheControl = "public, max-age=30, stale-while-revalidate=15"
 
 // HomeAuthFactory est une factory qui retourne un HomeService + contexte enrichi avec HaloTokens.
 type HomeAuthFactory func(ctx context.Context, slug string) (svc port.HomeService, enrichedCtx context.Context, xuid, gamertag string, err error)
@@ -34,14 +50,56 @@ func NewHomeHandler(newSvc HomeAuthFactory, settingsStore *settings_platform.Sto
 	return &HomeHandler{newSvc: newSvc, settingsStore: settingsStore}
 }
 
-// resolveLocale détermine la locale à utiliser pour cette requête.
+// Mount enregistre les 3 GET via Huma sur le sous-routeur chi (préfixe
+// /players/{player_slug} + middleware ownership/title hérités).
+func (h *HomeHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/pages/home", h.handleGetHomePage)
+	huma.Get(api, "/battlepass", h.handleGetBattlePass)
+	huma.Get(api, "/challenges", h.handleGetChallenges)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// homePlayerInput : {player_slug} seul (battlepass, challenges).
+type homePlayerInput struct {
+	PlayerSlug string `path:"player_slug"`
+}
+
+// homePageInput : {player_slug} + X-LevelUp-Locale (résolution locale) + If-None-Match (ETag).
+type homePageInput struct {
+	PlayerSlug  string `path:"player_slug"`
+	Locale      string `header:"X-LevelUp-Locale"`
+	IfNoneMatch string `header:"If-None-Match"`
+}
+
+// homePageOutput émet le corps marshalé maison tel quel (Body []byte passthrough,
+// SANS trailing newline — byte-exact vs writeJSONCached). Status dynamique (200/304).
+type homePageOutput struct {
+	Status       int
+	ContentType  string `header:"Content-Type"`
+	CacheControl string `header:"Cache-Control"`
+	ETag         string `header:"ETag"`
+	Body         []byte
+}
+
+type homeBattlePassOutput struct {
+	CacheControl string `header:"Cache-Control"`
+	Body         domain.BattlePassResponse
+}
+type homeChallengesOutput struct {
+	CacheControl string `header:"Cache-Control"`
+	Body         domain.ChallengesResponse
+}
+
+// resolveLocaleFromHeader détermine la locale à utiliser pour cette requête.
 // Priorité : header X-LevelUp-Locale (envoyé par le frontend) → settings store
 // (app_settings.json:lang) → "fr" par défaut.
 //
 // Le header permet au frontend de basculer la locale en runtime sans dépendre
 // d'un re-bootstrap après modification de app_settings.json.
-func (h *HomeHandler) resolveLocale(r *http.Request) string {
-	if v := strings.ToLower(strings.TrimSpace(r.Header.Get("X-LevelUp-Locale"))); v != "" {
+func (h *HomeHandler) resolveLocaleFromHeader(localeHeader string) string {
+	if v := strings.ToLower(strings.TrimSpace(localeHeader)); v != "" {
 		if strings.HasPrefix(v, "en") {
 			return "en"
 		}
@@ -62,37 +120,56 @@ func (h *HomeHandler) resolveLocale(r *http.Request) string {
 	return "fr"
 }
 
-// GetHomePage retourne la page d'accueil agrégée.
+// handleGetHomePage retourne la page d'accueil agrégée (migré Huma).
 // GET /api/v1/players/{player_slug}/pages/home
-func (h *HomeHandler) GetHomePage(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, ctx, _, gamertag, err := h.newSvc(r.Context(), slug)
+func (h *HomeHandler) handleGetHomePage(ctx context.Context, in *homePageInput) (*homePageOutput, error) {
+	svc, sctx, _, gamertag, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		slog.ErrorContext(r.Context(), "home: newSvc error", "slug", slug, "err", err)
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", "joueur introuvable")
-		return
+		slog.ErrorContext(ctx, "home: newSvc error", "slug", in.PlayerSlug, "err", err)
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", "joueur introuvable")
 	}
 
-	page, err := svc.GetHomePage(ctx, gamertag, h.resolveLocale(r))
+	page, err := svc.GetHomePage(sctx, gamertag, h.resolveLocaleFromHeader(in.Locale))
 	if err != nil {
-		slog.ErrorContext(ctx, "home: GetHomePage error", "err", err, "gamertag", gamertag)
+		slog.ErrorContext(sctx, "home: GetHomePage error", "err", err, "gamertag", gamertag)
 		// Phase 5 ART : distinguer FATAL DB (recovery en cours, retry possible)
 		// d'une erreur métier permanente. Pour le scénario du crash home
 		// 2026-05-24 20:41:04 (player DB invalidée par crash ART sur autre table),
 		// le caller peut re-tenter quelques secondes plus tard une fois le
 		// Reopen() effectué côté provider.
 		if isHandleClosedOrInvalidated(err) {
-			w.Header().Set("Retry-After", "5")
-			writeError(r.Context(), w, http.StatusServiceUnavailable,
-				"home_page_db_recovering",
-				"page d'accueil temporairement indisponible — connexion DB en cours de récupération")
-			return
+			return nil, huma.ErrorWithHeaders(
+				humacore.NewError(http.StatusServiceUnavailable, "home_page_db_recovering",
+					"page d'accueil temporairement indisponible — connexion DB en cours de récupération"),
+				http.Header{"Retry-After": []string{"5"}},
+			)
 		}
-		writeError(r.Context(), w, http.StatusInternalServerError, "home_page_error", "erreur chargement page d'accueil")
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "home_page_error", "erreur chargement page d'accueil")
 	}
 
-	writeJSONCached(w, r, http.StatusOK, page)
+	// Sérialisation byte-exacte de writeJSONCached : sanitize → json.Marshal → ETag
+	// sha256[:8], SANS trailing newline (Body []byte passthrough, pas JSONFormat).
+	sanitized, nanPaths := humacore.SanitizeFloatsForJSON(page)
+	if len(nanPaths) > 0 {
+		// Parité avec writeJSONCached : tracer la neutralisation NaN/Inf (signal serveur).
+		slog.WarnContext(sctx, "home: NaN/Inf neutralized", "paths", nanPaths, "count", len(nanPaths))
+	}
+	body, merr := json.Marshal(sanitized)
+	if merr != nil {
+		return nil, humacore.NewError(http.StatusInternalServerError, "encode_error", "erreur de sérialisation")
+	}
+	sum := sha256.Sum256(body)
+	etag := fmt.Sprintf(`"%x"`, sum[:8])
+	if in.IfNoneMatch != "" && in.IfNoneMatch == etag {
+		return &homePageOutput{Status: http.StatusNotModified, CacheControl: homeCacheControl, ETag: etag}, nil
+	}
+	return &homePageOutput{
+		Status:       http.StatusOK,
+		ContentType:  "application/json",
+		CacheControl: homeCacheControl,
+		ETag:         etag,
+		Body:         body,
+	}, nil
 }
 
 // isHandleClosedOrInvalidated reconnaît les erreurs DuckDB qui justifient
@@ -111,30 +188,22 @@ func isHandleClosedOrInvalidated(err error) bool {
 	return strings.Contains(err.Error(), "database is closed")
 }
 
-// GetBattlePass retourne les informations Battle Pass (best-effort).
+// handleGetBattlePass retourne les informations Battle Pass (best-effort, migré Huma).
 // GET /api/v1/players/{player_slug}/battlepass
-func (h *HomeHandler) GetBattlePass(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, ctx, _, _, err := h.newSvc(r.Context(), slug)
+func (h *HomeHandler) handleGetBattlePass(ctx context.Context, in *homePlayerInput) (*homeBattlePassOutput, error) {
+	svc, sctx, _, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", "joueur introuvable")
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", "joueur introuvable")
 	}
-
-	resp := svc.GetBattlePass(ctx)
-	writeJSON(w, http.StatusOK, resp)
+	return &homeBattlePassOutput{CacheControl: "no-store", Body: svc.GetBattlePass(sctx)}, nil
 }
 
-// GetChallenges retourne les défis actifs (best-effort).
+// handleGetChallenges retourne les défis actifs (best-effort, migré Huma).
 // GET /api/v1/players/{player_slug}/challenges
-func (h *HomeHandler) GetChallenges(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, ctx, _, _, err := h.newSvc(r.Context(), slug)
+func (h *HomeHandler) handleGetChallenges(ctx context.Context, in *homePlayerInput) (*homeChallengesOutput, error) {
+	svc, sctx, _, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", "joueur introuvable")
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", "joueur introuvable")
 	}
-
-	resp := svc.GetChallenges(ctx)
-	writeJSON(w, http.StatusOK, resp)
+	return &homeChallengesOutput{CacheControl: "no-store", Body: svc.GetChallenges(sctx)}, nil
 }

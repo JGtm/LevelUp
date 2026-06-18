@@ -1,15 +1,24 @@
 // Package handlers — media.go : handler HTTP pour la galerie médias.
 //
+// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
+// chi (préfixe /players/{player_slug} + middleware ownership/title/CapMedia hérités,
+// lit {player_slug} parent) et enregistre les 5 routes JSON via huma.Post/Patch/Get.
+// PostUploadMedia (multipart) et ServeMediaFile (fichier binaire) restent chi —
+// hors scope JSON. Logique métier inchangée, seul le wrapping HTTP change.
+//
 // Endpoints :
 //
-//	POST /api/v1/players/{player_slug}/pages/media            → MediaPageResponse
-//	PATCH /api/v1/players/{player_slug}/media/likes            → MediaLikeResponse
-//	POST /api/v1/players/{player_slug}/media/upload            → UploadResult (multipart)
-//	POST /api/v1/players/{player_slug}/media/reassociate       → ReassociateResult
-//	GET  /api/v1/players/{player_slug}/media/files/*           → fichier servi depuis captures
+//	POST /api/v1/players/{player_slug}/pages/media            → MediaPageResponse (Huma, body optionnel)
+//	PATCH /api/v1/players/{player_slug}/media/likes            → MediaLikeResponse (Huma)
+//	GET  /api/v1/players/{player_slug}/media/match-candidates  → MediaMatchCandidatesResponse (Huma)
+//	POST /api/v1/players/{player_slug}/media/associate         → MediaAssociateResponse (Huma)
+//	GET  /api/v1/players/{player_slug}/media/authors           → MediaAuthorsResponse (Huma)
+//	POST /api/v1/players/{player_slug}/media/upload            → UploadResult (multipart, reste chi)
+//	GET  /api/v1/players/{player_slug}/media/files/*           → fichier servi depuis captures (reste chi)
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -21,8 +30,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/notifications"
@@ -30,6 +41,62 @@ import (
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 )
+
+// Mount enregistre les 5 routes JSON via Huma sur le sous-routeur chi (préfixe
+// /players/{player_slug} + middleware ownership/title/CapMedia hérités). Seul
+// /pages/media a un corps optionnel (MarkRequestBodyOptional). PostUploadMedia
+// (multipart) et ServeMediaFile (binaire) restent enregistrés en chi par server.go.
+func (h *MediaHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Post(api, "/pages/media", h.handleGetMediaLibrary)
+	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/pages/media")
+	huma.Patch(api, "/media/likes", h.handlePatchMediaLike)
+	huma.Get(api, "/media/match-candidates", h.handleGetMediaMatchCandidates)
+	huma.Post(api, "/media/associate", h.handlePostMediaAssociate)
+	huma.Get(api, "/media/authors", h.handleGetMediaAuthors)
+}
+
+// ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
+
+// mediaLibraryInput : {player_slug} parent + corps brut OPTIONNEL décodé maison.
+type mediaLibraryInput struct {
+	PlayerSlug string `path:"player_slug"`
+	RawBody    []byte
+}
+type mediaLibraryOutput struct{ Body *domain.MediaPageResponse }
+
+// mediaLikeInput : {player_slug} + corps REQUIS (RawBody, décodage maison → 400 invalid_body).
+type mediaLikeInput struct {
+	PlayerSlug string `path:"player_slug"`
+	RawBody    []byte
+}
+type mediaLikeOutput struct{ Body *domain.MediaLikeResponse }
+
+// mediaCandidatesInput : {player_slug} + query file_path (requis) + window_minutes
+// (string, parsé maison → fallback 15, jamais 422).
+type mediaCandidatesInput struct {
+	PlayerSlug    string `path:"player_slug"`
+	FilePath      string `query:"file_path"`
+	WindowMinutes string `query:"window_minutes"`
+}
+type mediaCandidatesOutput struct {
+	Body *domain.MediaMatchCandidatesResponse
+}
+
+// mediaAssociateInput : {player_slug} + corps REQUIS.
+type mediaAssociateInput struct {
+	PlayerSlug string `path:"player_slug"`
+	RawBody    []byte
+}
+type mediaAssociateOutput struct {
+	Body *domain.MediaAssociateResponse
+}
+
+// mediaAuthorsInput : {player_slug} seul (pas de corps, pas de query).
+type mediaAuthorsInput struct {
+	PlayerSlug string `path:"player_slug"`
+}
+type mediaAuthorsOutput struct{ Body domain.MediaAuthorsResponse }
 
 // maxUploadSize limite la taille totale d'un upload à 500 Mo.
 const maxUploadSize = 500 << 20
@@ -170,51 +237,44 @@ func (h *MediaHandler) emitMediaAdded(
 // GetMediaLibrary retourne la page paginée de la galerie médias.
 // POST /api/v1/players/{player_slug}/pages/media
 // Body (optionnel) : { "page": 1, "page_size": 24, "kind": "clip" }
-func (h *MediaHandler) GetMediaLibrary(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *MediaHandler) handleGetMediaLibrary(ctx context.Context, in *mediaLibraryInput) (*mediaLibraryOutput, error) {
+	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
 
 	req := domain.MediaPageRequest{Page: 1}
-	if r.ContentLength > 0 {
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-			return
+	if len(in.RawBody) > 0 {
+		if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
+			return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 		}
 	}
 	if req.Page < 1 {
 		req.Page = 1
 	}
 
-	resp, err := svc.GetMediaPage(r.Context(), req)
+	resp, err := svc.GetMediaPage(ctx, req)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "media_page_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "media_page_error", err.Error())
 	}
 
-	// Transformer les chemins absolus en URLs servables
-	h.transformMediaURLs(slug, resp.Items.Items)
+	// Transformer les chemins absolus en URLs servables (mutation in-place inchangée).
+	h.transformMediaURLs(in.PlayerSlug, resp.Items.Items)
 
-	writeJSON(w, http.StatusOK, resp)
+	return &mediaLibraryOutput{Body: resp}, nil
 }
 
 // PatchMediaLike persiste le like/unlike d'un média.
 // PATCH /api/v1/players/{player_slug}/media/likes
-func (h *MediaHandler) PatchMediaLike(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *MediaHandler) handlePatchMediaLike(ctx context.Context, in *mediaLikeInput) (*mediaLikeOutput, error) {
+	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
 
 	var req domain.MediaLikeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
 
 	// Le frontend reçoit les file_path déjà transformés en URL HTTP
@@ -222,52 +282,50 @@ func (h *MediaHandler) PatchMediaLike(w http.ResponseWriter, r *http.Request) {
 	// dans une mutation (like, réassociation), on doit reverser la transformation
 	// vers le chemin absolu de stockage tel que présent en DB.
 	rawPath := req.FilePath
-	req.FilePath = h.urlToFilePath(slug, req.FilePath)
-	slog.DebugContext(r.Context(), "media_like: path resolved",
-		"slug", slug, "raw", rawPath, "resolved", req.FilePath)
+	req.FilePath = h.urlToFilePath(in.PlayerSlug, req.FilePath)
+	slog.DebugContext(ctx, "media_like: path resolved",
+		"slug", in.PlayerSlug, "raw", rawPath, "resolved", req.FilePath)
 
 	// Auto-injecter le liker depuis la session si absent du body.
 	// Sans liker_slug, le service ne peuple pas media_likes (table partagée
 	// entre joueurs) → les badges "♥ Alice et Bob" ne s'affichent pas.
 	if req.LikerSlug == "" {
-		if sess := middleware.GetSession(r.Context()); sess != nil && sess.CurrentPlayerSlug != nil {
+		if sess := middleware.GetSession(ctx); sess != nil && sess.CurrentPlayerSlug != nil {
 			req.LikerSlug = *sess.CurrentPlayerSlug
 			if req.LikerGamertag == "" {
-				req.LikerGamertag = h.resolveLikerGamertag(r.Context(), *sess.CurrentPlayerSlug)
+				req.LikerGamertag = h.resolveLikerGamertag(ctx, *sess.CurrentPlayerSlug)
 			}
 		}
 	}
 
-	resp, err := svc.SetMediaLike(r.Context(), req)
+	resp, err := svc.SetMediaLike(ctx, req)
 	if err != nil {
 		if errors.Is(err, dblease.ErrDBLocked) {
-			w.Header().Set("Retry-After", "5")
-			writeError(r.Context(), w, http.StatusServiceUnavailable, "db_busy",
-				"database is currently busy, please retry")
-			return
+			return nil, huma.ErrorWithHeaders(
+				humacore.NewError(http.StatusServiceUnavailable, "db_busy", "database is currently busy, please retry"),
+				http.Header{"Retry-After": []string{"5"}},
+			)
 		}
 		var apiErr *domain.APIError
 		if errors.As(err, &apiErr) {
 			switch apiErr.Code {
 			case "bad_request":
-				writeError(r.Context(), w, http.StatusBadRequest, apiErr.Code, apiErr.Message)
-				return
+				return nil, humacore.NewError(http.StatusBadRequest, apiErr.Code, apiErr.Message)
 			case "not_found":
-				writeError(r.Context(), w, http.StatusNotFound, apiErr.Code, apiErr.Message)
-				return
+				return nil, humacore.NewError(http.StatusNotFound, apiErr.Code, apiErr.Message)
 			}
 		}
-		writeError(r.Context(), w, http.StatusInternalServerError, "media_like_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "media_like_error", err.Error())
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	out := &mediaLikeOutput{Body: resp}
 	BumpMediaFeedVersion()
 
 	// Notification au owner si quelqu'un d'autre a liké son média.
 	if req.Liked && req.LikerSlug != "" {
-		h.emitMediaLiked(r.Context(), req.FilePath, req.LikerSlug, req.LikerGamertag)
+		h.emitMediaLiked(ctx, req.FilePath, req.LikerSlug, req.LikerGamertag)
 	}
+	return out, nil
 }
 
 // emitMediaLiked notifie le owner d'un média quand quelqu'un d'autre le like.
@@ -325,53 +383,45 @@ func ownerSlugFromFilePath(filePath string) string {
 // PostUploadMedia reçoit des fichiers via multipart/form-data, les sauvegarde
 // dans le répertoire captures du joueur, puis déclenche l'indexation immédiate.
 // POST /api/v1/players/{player_slug}/media/upload
-func (h *MediaHandler) GetMediaMatchCandidates(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *MediaHandler) handleGetMediaMatchCandidates(ctx context.Context, in *mediaCandidatesInput) (*mediaCandidatesOutput, error) {
+	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
-	filePath := r.URL.Query().Get("file_path")
-	if filePath == "" {
-		writeError(r.Context(), w, http.StatusBadRequest, "missing_file_path", "file_path query param requis")
-		return
+	if in.FilePath == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_file_path", "file_path query param requis")
 	}
 	window := 15
-	if w := r.URL.Query().Get("window_minutes"); w != "" {
-		if n, err := strconv.Atoi(w); err == nil && n > 0 {
+	if in.WindowMinutes != "" {
+		if n, err := strconv.Atoi(in.WindowMinutes); err == nil && n > 0 {
 			window = n
 		}
 	}
-	resp, err := svc.GetMatchCandidates(r.Context(), filePath, window)
+	resp, err := svc.GetMatchCandidates(ctx, in.FilePath, window)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "candidates_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "candidates_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, resp)
+	return &mediaCandidatesOutput{Body: resp}, nil
 }
 
 // PostMediaAssociate force l'association d'un média à un match précis.
 // POST /api/v1/players/{player_slug}/media/associate { file_path, match_id }
-func (h *MediaHandler) PostMediaAssociate(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *MediaHandler) handlePostMediaAssociate(ctx context.Context, in *mediaAssociateInput) (*mediaAssociateOutput, error) {
+	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
 	var req domain.MediaAssociateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
-		return
+	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
-	resp, err := svc.AssociateMediaToMatch(r.Context(), req)
+	resp, err := svc.AssociateMediaToMatch(ctx, req)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "associate_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "associate_error", err.Error())
 	}
-	writeJSON(w, http.StatusOK, resp)
+	out := &mediaAssociateOutput{Body: resp}
 	BumpMediaFeedVersion()
+	return out, nil
 }
 
 // GetMediaAuthors retourne la liste des auteurs sélectionnables dans le filtre
@@ -384,23 +434,19 @@ func (h *MediaHandler) PostMediaAssociate(w http.ResponseWriter, r *http.Request
 // bug "Aucun auteur disponible" alors que la galerie affichait bien des médias. La
 // source est désormais la DB, strictement cohérente avec ce que la galerie peut afficher.
 // GET /api/v1/players/{player_slug}/media/authors
-func (h *MediaHandler) GetMediaAuthors(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-
-	svc, err := h.newSvc(r.Context(), slug)
+func (h *MediaHandler) handleGetMediaAuthors(ctx context.Context, in *mediaAuthorsInput) (*mediaAuthorsOutput, error) {
+	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
 	}
-	authors, err := svc.ListMediaAuthors(r.Context())
+	authors, err := svc.ListMediaAuthors(ctx)
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, "authors_query_error", err.Error())
-		return
+		return nil, humacore.NewError(http.StatusInternalServerError, "authors_query_error", err.Error())
 	}
 
 	// Enrichissement du gamertag d'affichage (best-effort) depuis db_profiles.json.
 	// Sans contexte profils câblé (WithAuthorsContext), on retombe sur le player_slug.
-	gamertagBySlug := h.authorGamertags(r.Context(), slug)
+	gamertagBySlug := h.authorGamertags(ctx, in.PlayerSlug)
 	for i := range authors {
 		if gt := gamertagBySlug[strings.ToLower(authors[i].PlayerSlug)]; gt != "" {
 			authors[i].Gamertag = gt
@@ -409,7 +455,7 @@ func (h *MediaHandler) GetMediaAuthors(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeJSON(w, http.StatusOK, domain.MediaAuthorsResponse{Authors: authors})
+	return &mediaAuthorsOutput{Body: domain.MediaAuthorsResponse{Authors: authors}}, nil
 }
 
 // authorGamertags retourne un index lower(slug|gamertag) → gamertag construit depuis

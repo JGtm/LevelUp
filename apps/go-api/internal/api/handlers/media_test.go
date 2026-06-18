@@ -87,9 +87,7 @@ func newMediaRouter(factory handlers.ServiceFactory[port.MediaService]) *chi.Mux
 	r := chi.NewRouter()
 	h := handlers.NewMediaHandler(factory, nil, "")
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Post("/pages/media", h.GetMediaLibrary)
-		r.Patch("/media/likes", h.PatchMediaLike)
-		r.Get("/media/authors", h.GetMediaAuthors)
+		h.Mount(r) // 5 routes JSON migrées Huma (pages/media, likes, match-candidates, associate, authors)
 	})
 	return r
 }
@@ -296,8 +294,8 @@ func newUploadRouter(
 	r := chi.NewRouter()
 	h := handlers.NewMediaHandler(svcFactory, uploadFactory, "")
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Post("/pages/media", h.GetMediaLibrary)
-		r.Post("/media/upload", h.PostUploadMedia)
+		h.Mount(r)                                 // pages/media (+ autres JSON) migrés Huma
+		r.Post("/media/upload", h.PostUploadMedia) // multipart reste chi
 	})
 	return r
 }
@@ -478,7 +476,7 @@ func TestMediaHandler_PatchLike_BumpsVersion(t *testing.T) {
 	r := chi.NewRouter()
 	h := handlers.NewMediaHandler(factory, nil, "")
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Patch("/media/likes", h.PatchMediaLike)
+		h.Mount(r) // likes (+ autres JSON) migrés Huma
 	})
 	handlers.NewMediaFeedVersionHandler().Mount(r)
 
@@ -677,7 +675,7 @@ func TestMediaHandler_PatchMediaLike_URLPath_CapturesBaseResolves(t *testing.T) 
 	r := chi.NewRouter()
 	h := handlers.NewMediaHandler(factory, nil, "").WithSettingsStore(store)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		r.Patch("/media/likes", h.PatchMediaLike)
+		h.Mount(r) // likes (+ autres JSON) migrés Huma
 	})
 
 	urlPath := "/api/v1/players/test-player/media/files/JGtm/clip.mp4"

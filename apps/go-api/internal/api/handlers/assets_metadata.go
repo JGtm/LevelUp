@@ -99,3 +99,32 @@ func (h *AssetMetadataHandler) ListWeapons(ctx context.Context, in *assetMetaInp
 	}
 	return &assetMetaOutput{Body: items}, nil
 }
+
+// EmptyAssetMetadataHandler est le fallback Huma de l'Asset Drawer quand la base
+// metadata est indisponible au boot (best-effort, filet de sécurité). Il renvoie
+// systématiquement une liste vide [] (200) sur les 2 mêmes paths que
+// AssetMetadataHandler, sans gate de capability ni erreur. Migré Huma (Phase 3b)
+// pour que TOUTE route JSON passe par Huma — corps `[]` sérialisé via
+// humacore.JSONFormat (slice non-nil → `[]`, jamais `null`).
+//
+// Note byte : l'ancien fallback chi écrivait `[]` (sans newline) ; la version Huma
+// émet `[]\n` (trailing newline de JSONFormat). Différence acceptée et VOULUE — elle
+// aligne le fallback sur le vrai handler ListMaps/ListWeapons (déjà `[]\n`). Aucun
+// test ni consommateur ne dépend de l'absence du newline.
+type EmptyAssetMetadataHandler struct{}
+
+// NewEmptyAssetMetadataHandler crée le fallback vide de l'Asset Drawer.
+func NewEmptyAssetMetadataHandler() *EmptyAssetMetadataHandler { return &EmptyAssetMetadataHandler{} }
+
+// Mount enregistre les 2 GET de fallback via Huma (mêmes paths que AssetMetadataHandler,
+// jamais montés en même temps — if/else mutuellement exclusif côté server.go).
+func (h *EmptyAssetMetadataHandler) Mount(r chi.Router) {
+	api := humacore.NewAPI(r)
+	huma.Get(api, "/assets/{title_id}/maps", h.listEmpty)
+	huma.Get(api, "/assets/{title_id}/weapons", h.listEmpty)
+}
+
+// listEmpty renvoie toujours une liste vide (slice non-nil → JSON []), inconditionnel.
+func (h *EmptyAssetMetadataHandler) listEmpty(_ context.Context, _ *assetMetaInput) (*assetMetaOutput, error) {
+	return &assetMetaOutput{Body: []canonical.AssetMeta{}}, nil
+}

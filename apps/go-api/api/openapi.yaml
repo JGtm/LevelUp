@@ -6132,6 +6132,259 @@ components:
     # régénérer après un changement de struct : voir le gate de complétude du test.
     # Au-dessus de ce marqueur = schémas historiquement maintenus à la main.
     # =========================================================================
+    AssetMeta:
+      additionalProperties: false
+      properties:
+          id:
+              type: string
+          image_url:
+              type: string
+          name_en:
+              type: string
+          name_fr:
+              type: string
+      required:
+          - id
+          - name_en
+          - name_fr
+          - image_url
+      type: object
+    WatcherAuthStartResponse:
+      additionalProperties: false
+      properties:
+          attempt_id:
+              type: string
+          expires_in:
+              format: int64
+              type: integer
+          user_code:
+              type: string
+          verification_url:
+              type: string
+      required:
+          - attempt_id
+          - user_code
+          - verification_url
+          - expires_in
+      type: object
+    BattlePassResponse:
+      additionalProperties: false
+      properties:
+          available:
+              type: boolean
+          error_hint:
+              type: string
+          from_cache:
+              type: boolean
+          progress:
+              format: int64
+              type: integer
+          rank:
+              format: int64
+              type: integer
+          reward_track:
+              type: string
+          snapshot_at:
+              type: string
+      required:
+          - available
+      type: object
+    MediaAssociateResponse:
+      additionalProperties: false
+      properties:
+          file_path:
+              type: string
+          map_name:
+              type: string
+          match_id:
+              type: string
+          mode_name:
+              type: string
+      required:
+          - file_path
+          - match_id
+      type: object
+    MediaAuthor:
+      additionalProperties: false
+      properties:
+          gamertag:
+              type: string
+          is_self:
+              type: boolean
+          media_count:
+              format: int64
+              type: integer
+          player_slug:
+              type: string
+      required:
+          - player_slug
+          - gamertag
+          - is_self
+          - media_count
+      type: object
+    MediaAuthorsResponse:
+      additionalProperties: false
+      properties:
+          authors:
+              items:
+                  $ref: '#/components/schemas/MediaAuthor'
+              nullable: true
+              type: array
+      required:
+          - authors
+      type: object
+    MediaFilterOptions:
+      additionalProperties: false
+      properties:
+          maps:
+              items:
+                  $ref: '#/components/schemas/LabelValue'
+              nullable: true
+              type: array
+          modes:
+              items:
+                  $ref: '#/components/schemas/LabelValue'
+              nullable: true
+              type: array
+          playlists:
+              items:
+                  $ref: '#/components/schemas/LabelValue'
+              nullable: true
+              type: array
+      required:
+          - playlists
+          - maps
+          - modes
+      type: object
+    MediaItem:
+      additionalProperties: false
+      properties:
+          basename:
+              type: string
+          capture_end_utc:
+              format: date-time
+              type: string
+          file_path:
+              type: string
+          kind:
+              type: string
+          like_count:
+              format: int64
+              type: integer
+          liked:
+              type: boolean
+          likers:
+              items:
+                  type: string
+              nullable: true
+              type: array
+          map_name:
+              type: string
+          match_id:
+              type: string
+          match_start_time:
+              format: date-time
+              type: string
+          mode_name:
+              type: string
+          owner_gamertag:
+              type: string
+          section:
+              type: string
+          thumbnail_path:
+              type: string
+          total_likers:
+              format: int64
+              type: integer
+      required:
+          - basename
+          - file_path
+          - kind
+          - section
+          - liked
+          - like_count
+          - total_likers
+      type: object
+    MediaMatchCandidate:
+      additionalProperties: false
+      properties:
+          delta_seconds:
+              format: int64
+              type: integer
+          end_time:
+              format: date-time
+              type: string
+          enemy_score:
+              format: int64
+              type: integer
+          is_current:
+              type: boolean
+          lobby:
+              items:
+                  $ref: '#/components/schemas/MediaMatchLobbyEntry'
+              nullable: true
+              type: array
+          map_image_url:
+              type: string
+          map_name:
+              type: string
+          match_id:
+              type: string
+          mode_name:
+              type: string
+          outcome:
+              format: int64
+              type: integer
+          own_score:
+              format: int64
+              type: integer
+          playlist_name:
+              type: string
+          start_time:
+              format: date-time
+              type: string
+      required:
+          - match_id
+          - is_current
+      type: object
+    MediaMatchCandidatesResponse:
+      additionalProperties: false
+      properties:
+          candidates:
+              items:
+                  $ref: '#/components/schemas/MediaMatchCandidate'
+              nullable: true
+              type: array
+          capture_utc:
+              format: date-time
+              type: string
+          file_path:
+              type: string
+          window_minutes:
+              format: int64
+              type: integer
+      required:
+          - file_path
+          - window_minutes
+          - candidates
+      type: object
+    MediaMatchLobbyEntry:
+      additionalProperties: false
+      properties:
+          gamertag:
+              type: string
+          is_bot:
+              type: boolean
+          is_self:
+              type: boolean
+          team_id:
+              format: int64
+              type: integer
+      required:
+          - gamertag
+          - is_self
+          - is_bot
+      type: object
     AcceptResponse:
       additionalProperties: false
       properties:
