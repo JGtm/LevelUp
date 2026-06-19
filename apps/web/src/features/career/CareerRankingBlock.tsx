@@ -28,9 +28,9 @@ interface Props {
 
 function csrTierLabel(rank: CareerCSRRank, placementLabel: string, unrankedLabel: string): string {
   if (!rank.tier) {
-    // Phase 6 : placement_total (5 ou 10) injecté par le backend selon la saison
-    // du snapshot. Fallback 10 si payload legacy.
-    const total = rank.placement_total > 0 ? rank.placement_total : 10
+    // placement_total (5 ou 10 selon la saison / le titre) est TOUJOURS fourni
+    // par le backend (Pass A : par-titre, type requis non-nullable).
+    const total = rank.placement_total
     const completed = Math.min(total - 1, Math.max(0, total - rank.measurement_matches_remaining))
     return completed === 0 ? unrankedLabel : `${placementLabel} (${completed}/${total})`
   }

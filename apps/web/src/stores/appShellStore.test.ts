@@ -14,6 +14,7 @@ const PLAYER = {
   xuid: '0000000000000001',
   waypoint_player: 'TestPlayer',
   is_demo: false,
+  sync_enabled: true,
 }
 
 const BOOTSTRAP_READY = {

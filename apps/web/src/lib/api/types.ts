@@ -200,6 +200,9 @@ export interface CreatePlayerProfileRequest {
   gamertag: string
   xuid?: string | null
   profile_mode?: 'xbox' | 'azure_manual'
+  // Multi-titre : cible le titre (prime sur le header) + nb de matchs initiaux.
+  title_slug?: string
+  initial_max_matches?: number
 }
 
 export type CreatePlayerProfileResponse = components['schemas']['CreatePlayerProfileResponse']
@@ -246,6 +249,8 @@ export interface AsyncJobStatus {
 export interface InitialSyncStartRequest {
   player_slug: string
   max_matches?: number
+  // Multi-titre : cible la bonne DB (un gamertag peut exister sous plusieurs titres).
+  title_slug?: string
 }
 
 // ---------------------------------------------------------------------------

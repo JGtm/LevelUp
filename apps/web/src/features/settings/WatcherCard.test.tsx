@@ -141,8 +141,8 @@ beforeEach(() => {
   useAppShellStore.setState({
     currentPlayer: null,
     availablePlayers: [
-      { player_slug: 'player1', gamertag: 'PlayerOne', xuid: '0001', is_demo: false, waypoint_player: 'PlayerOne' },
-      { player_slug: 'player2', gamertag: 'PlayerTwo', xuid: '0002', is_demo: false, waypoint_player: 'PlayerTwo' },
+      { player_slug: 'player1', gamertag: 'PlayerOne', xuid: '0001', is_demo: false, waypoint_player: 'PlayerOne', sync_enabled: true },
+      { player_slug: 'player2', gamertag: 'PlayerTwo', xuid: '0002', is_demo: false, waypoint_player: 'PlayerTwo', sync_enabled: true },
     ],
     currentTitleSlug: 'halo_infinite',
     availableTitles: [],
