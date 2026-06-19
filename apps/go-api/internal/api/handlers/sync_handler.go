@@ -161,7 +161,7 @@ type PrestigeHook func(ctx context.Context, playerSlug, titleSlug string)
 // newEngineFor instancie un SyncEngine pré-câblé avec le loader friends
 // (settings.FriendGamertags), pour que le hook auto-recompute is_with_friends
 // post-sync delta soit toujours actif sur les syncs déclenchés par cet handler.
-func (h *SyncHandler) newEngineFor(gamertag, xuid string, tokens *domain.HaloTokens) *go_sync.SyncEngine {
+func (h *SyncHandler) newEngineFor(titleSlug, gamertag, xuid string, tokens *domain.HaloTokens) *go_sync.SyncEngine {
 	loader := func() ([]string, error) {
 		s, err := h.settingsStore.Load()
 		if err != nil {
@@ -169,7 +169,9 @@ func (h *SyncHandler) newEngineFor(gamertag, xuid string, tokens *domain.HaloTok
 		}
 		return s.FriendGamertags, nil
 	}
-	engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens, h.provider).
+	// Title-aware (MT-11 / PMT-3) : le moteur écrit dans data/titles/{titleSlug}/...
+	// au lieu de halo_infinite systématique (corrige le sync initial multi-titre).
+	engine := go_sync.NewSyncEngineForTitle(h.cfg.RepoRoot, titleSlug, gamertag, xuid, tokens, h.provider).
 		WithFriendsLoader(loader).
 		WithCSRSeasonID(h.cfg.CurrentCSRSeasonID)
 	// Sprint B1 commit 11b : aligner le sync HTTP-triggered sur auto_sync — sans
@@ -324,13 +326,20 @@ func (h *SyncHandler) StartInitialSync(ctx context.Context, in *syncInitialInput
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_player_slug", "player_slug vide ou trop long.")
 	}
 
-	// Sprint B1 commit 17 : event_id pour tracer le sync initial. Log
-	// immédiat avec ctx local — le event_id reste un breadcrumb pour grep des
-	// logs HTTP, propagation aux goroutines async reportée à un follow-up
-	// (impose de passer ctx en arg aux helpers).
+	// Titre cible : explicite (req.TitleSlug) sinon titre du contexte (header/session).
+	titleSlug := req.TitleSlug
+	if titleSlug == "" {
+		titleSlug = ctxkeys.TitleSlug(ctx)
+	}
+	bodyMaxOmitted := req.MaxMatches == 0
+
+	// Sprint B1 commit 17 : event_id pour tracer le sync initial (breadcrumb logs HTTP).
 	_, evID := logging.WithEvent(ctx, "http.sync.initial:"+req.PlayerSlug)
 	slog.InfoContext(ctx, "sync_handler: StartInitialSync démarré",
-		"player_slug", req.PlayerSlug, "max_matches", req.MaxMatches, "event", evID)
+		"player_slug", req.PlayerSlug, "title_slug", titleSlug, "max_matches", req.MaxMatches, "event", evID)
+
+	// Bornage : un body explicite hors bornes est rejeté d'emblée. Le défaut du
+	// profil (initial_max_matches) est appliqué APRÈS résolution du profil.
 	if req.MaxMatches == 0 {
 		req.MaxMatches = 200
 	}
@@ -350,21 +359,34 @@ func (h *SyncHandler) StartInitialSync(ctx context.Context, in *syncInitialInput
 	}
 	tokens := sess.HaloTokens
 
-	players, err := h.cfg.LoadPlayers()
+	// Résoudre le couple (gamertag, xuid) + nb de matchs initiaux du profil POUR CE
+	// TITRE — lève l'ambiguïté quand un gamertag existe sous plusieurs titres.
+	players, err := h.cfg.LoadPlayers(titleSlug)
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "profiles_load_error", "Impossible de charger db_profiles.json.")
 	}
 	var gamertag, xuid string
+	var profileMaxMatches int
 	for _, p := range players {
 		if p.PlayerSlug == req.PlayerSlug {
 			gamertag = p.Gamertag
 			xuid = p.XUID
+			profileMaxMatches = p.InitialMaxMatches
 			break
 		}
 	}
 	if gamertag == "" {
 		return nil, humacore.NewError(http.StatusNotFound, "player_not_found",
-			fmt.Sprintf("Joueur %q introuvable dans db_profiles.json.", req.PlayerSlug))
+			fmt.Sprintf("Joueur %q introuvable pour le titre %q dans db_profiles.json.", req.PlayerSlug, titleSlug))
+	}
+
+	// Défaut profil : body omis + initial_max_matches du profil → l'utiliser
+	// (clampé 1..2000) plutôt que le 200 générique.
+	if bodyMaxOmitted && profileMaxMatches > 0 {
+		req.MaxMatches = profileMaxMatches
+		if req.MaxMatches > 2000 {
+			req.MaxMatches = 2000
+		}
 	}
 
 	// Dédup cross-source : claim SYNCHRONE avant de créer le job. Si un sync de ce
@@ -373,7 +395,7 @@ func (h *SyncHandler) StartInitialSync(ctx context.Context, in *syncInitialInput
 	// AVANT le retour du handler, son gateWG.Add a un happens-before avec le retour
 	// → il est garanti vu par WaitInFlight au shutdown (pas de goroutine détachée
 	// qui claim tardivement). release est passé à la goroutine (defer release()).
-	release, claimed := h.syncGate.TryClaimT(ctxkeys.TitleSlug(ctx), gamertag)
+	release, claimed := h.syncGate.TryClaimT(titleSlug, gamertag)
 	if !claimed {
 		return nil, humacore.NewError(http.StatusConflict, "sync_already_active",
 			"Une synchronisation de ce joueur est déjà en cours (watcher ou auto-sync).")
@@ -391,7 +413,7 @@ func (h *SyncHandler) StartInitialSync(ctx context.Context, in *syncInitialInput
 		if h.postSync != nil {
 			after = h.postSync(bgCtx, req.PlayerSlug)
 		}
-		engine := h.newEngineFor(gamertag, xuid, tokens)
+		engine := h.newEngineFor(titleSlug, gamertag, xuid, tokens)
 		opts := domain.DefaultSyncOptions()
 		opts.MaxMatches = req.MaxMatches
 

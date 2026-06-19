@@ -25,9 +25,11 @@ type mockProfileService struct {
 	playerKey string
 	warnings  []string
 	err       error
+	lastReq   domain.CreatePlayerProfileRequest // capture la dernière requête reçue
 }
 
-func (m *mockProfileService) CreatePlayer(_ domain.CreatePlayerProfileRequest) (string, []string, error) {
+func (m *mockProfileService) CreatePlayer(req domain.CreatePlayerProfileRequest) (string, []string, error) {
+	m.lastReq = req
 	return m.playerKey, m.warnings, m.err
 }
 
@@ -135,6 +137,29 @@ func TestSetupHandler_CreatePlayer_EmptyGamertag(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400 for empty gamertag, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+// Onboarding multi-titre : le title_slug du body prime sur le titre du contexte
+// et initial_max_matches est propagé au ProfileService.
+func TestSetupHandler_CreatePlayer_PrefersBodyTitleSlug(t *testing.T) {
+	svc := &mockProfileService{playerKey: "TestPlayer"}
+	r := newSetupRouter(t, true, svc)
+
+	body := `{"gamertag":"TestPlayer","profile_mode":"manual","title_slug":"halo_5","initial_max_matches":42}`
+	req := httptest.NewRequest(http.MethodPost, "/setup/players", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
+	}
+	if svc.lastReq.TitleSlug != "halo_5" {
+		t.Fatalf("title_slug du body devrait primer, reçu %q", svc.lastReq.TitleSlug)
+	}
+	if svc.lastReq.InitialMaxMatches != 42 {
+		t.Fatalf("initial_max_matches devrait être propagé, reçu %d", svc.lastReq.InitialMaxMatches)
 	}
 }
 

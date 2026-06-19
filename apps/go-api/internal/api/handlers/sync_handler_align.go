@@ -22,6 +22,7 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	go_sync "levelup/go-api/internal/sync"
 )
@@ -140,5 +141,5 @@ func (h *SyncHandler) newPooledEngine(ctx context.Context, gamertag, xuid string
 	// → l'auth échouera) — WARN pour le repérer dans logs/handlers.log.
 	slog.WarnContext(ctx, "sync_handler: EngineBuilder absent — fallback moteur legacy (tokens vides, auth probablement en échec)",
 		"gamertag", gamertag, "xuid", xuid)
-	return h.newEngineFor(gamertag, xuid, &domain.HaloTokens{})
+	return h.newEngineFor(ctxkeys.TitleSlug(ctx), gamertag, xuid, &domain.HaloTokens{})
 }

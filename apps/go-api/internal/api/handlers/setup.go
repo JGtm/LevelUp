@@ -136,8 +136,13 @@ func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePl
 		req.ProfileMode = authModeXbox
 	}
 
-	// Sprint 44 : injecter le titre courant depuis le contexte.
-	titleSlug := ctxkeys.TitleSlug(ctx)
+	// Titre cible : priorité au body (onboarding multi-titre — le front crée un
+	// profil par titre choisi, avec son initial_max_matches) sinon le titre du
+	// contexte (header/session), sinon le titre par défaut.
+	titleSlug := strings.TrimSpace(req.TitleSlug)
+	if titleSlug == "" {
+		titleSlug = ctxkeys.TitleSlug(ctx)
+	}
 	if titleSlug == "" {
 		titleSlug = title.DefaultSlug
 	}
@@ -184,10 +189,13 @@ func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePl
 	dbCreated := fileExists(dbPath)
 
 	player := domain.PlayerSummary{
-		PlayerSlug:     playerKey,
-		Gamertag:       req.Gamertag,
-		XUID:           req.XUID,
-		WaypointPlayer: req.Gamertag,
+		PlayerSlug:        playerKey,
+		Gamertag:          req.Gamertag,
+		XUID:              req.XUID,
+		WaypointPlayer:    req.Gamertag,
+		TitleSlug:         titleSlug,
+		SyncEnabled:       true,
+		InitialMaxMatches: req.InitialMaxMatches,
 	}
 
 	return &setupCreatePlayerOutput{
