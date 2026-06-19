@@ -308,6 +308,7 @@ function SuccessStage({
           </>
         )}
       </dl>
+      <p className="text-xs text-muted-foreground">{t('common.onboarding.combat_details_note')}</p>
       <Button variant="ghost" onClick={onReset}>
         {t('common.onboarding.import_another_file')}
       </Button>

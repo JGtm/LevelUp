@@ -233,6 +233,7 @@ export const commonManifest = {
   "common.notifications.deselect_all_aria": { fr: "Désélectionner tout", en: "Deselect all" },
   "common.notifications.selected_suffix": { fr: "sélectionnée(s)", en: "selected" },
   "common.onboarding.advanced_options": { fr: "Options avancées →", en: "Advanced options →" },
+  "common.onboarding.combat_details_note": { fr: "Les détails de combat (cadence, dominance, duels) sont récupérés en arrière-plan depuis les films Halo. Certains matchs trop anciens pourraient ne pas pouvoir être traités intégralement.", en: "Combat details (cadence, dominance, duels) are retrieved in the background from Halo films. Some matches that are too old may not be able to be fully processed." },
   "common.onboarding.drop_file_here": { fr: "Glisse-dépose ton fichier", en: "Drag and drop your" },
   "common.onboarding.drop_file_or_browse": { fr: "ici ou clique pour parcourir", en: "file here or click to browse" },
   "common.onboarding.errors_ignored": { fr: "Erreurs ignorées", en: "Ignored errors" },
