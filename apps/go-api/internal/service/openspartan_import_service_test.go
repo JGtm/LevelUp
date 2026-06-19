@@ -62,6 +62,7 @@ func buildMinimalFixtureDB(t *testing.T, dir, filename, ownerXUID string) string
 			"StartTime": start.Format(time.RFC3339Nano), "EndTime": end.Format(time.RFC3339Nano),
 			"Duration": "PT12M", "PlayableDuration": "PT12M",
 			"LifecycleMode": 3, "GameVariantCategory": 6,
+			"SeasonId":       "CsrSeason13-1", // match classé → CSR par-match (RankRecap)
 			"LevelId":        "level-1",
 			"MapVariant":     map[string]any{"AssetKind": 2, "AssetId": "map-1", "VersionId": "map-v1"},
 			"UgcGameVariant": map[string]any{"AssetKind": 6, "AssetId": "variant-1", "VersionId": "variant-v1"},
@@ -114,7 +115,14 @@ func buildMinimalFixtureDB(t *testing.T, dir, filename, ownerXUID string) string
 
 	pms := map[string]any{"Value": []any{map[string]any{
 		"Id": "xuid(" + ownerXUID + ")", "ResultCode": 0,
-		"Result": map[string]any{"TeamMmr": 1041.7},
+		"Result": map[string]any{
+			"TeamMmr": 1041.7,
+			// RankRecap : présent uniquement sur les matchs classés → source du CSR par-match.
+			"RankRecap": map[string]any{
+				"PreMatchCsr":  map[string]any{"Value": 1450, "Tier": "Gold", "SubTier": 4, "MeasurementMatchesRemaining": 0},
+				"PostMatchCsr": map[string]any{"Value": 1465, "Tier": "Gold", "SubTier": 5, "MeasurementMatchesRemaining": 0},
+			},
+		},
 	}}}
 	pmsBody, _ := json.Marshal(pms)
 	if _, err := db.Exec(`INSERT INTO PlayerMatchStats(ResponseBody, MatchId) VALUES (?, ?)`, string(pmsBody), matchID); err != nil {
@@ -208,6 +216,38 @@ func TestOpenSpartanImport_EndToEnd_WritesAllRowFamilies(t *testing.T) {
 	}
 	if result.InsertedHighlights != 1 {
 		t.Errorf("InsertedHighlights: want 1, got %d", result.InsertedHighlights)
+	}
+	if result.InsertedCSRs != 1 {
+		t.Errorf("InsertedCSRs: want 1 (owner RankRecap classé), got %d", result.InsertedCSRs)
+	}
+	// Le CSR par-match est écrit dans shared.match_csrs depuis RankRecap, avec le
+	// season_id du match (même quand reg.IsRanked n'est pas encore résolu à l'import).
+	var csrSeason, csrTier sql.NullString
+	var csrValue sql.NullFloat64
+	if err := sharedDB.QueryRow(
+		`SELECT season_id, tier, rating_value FROM match_csrs WHERE xuid = ?`, testOwnerXUID).
+		Scan(&csrSeason, &csrTier, &csrValue); err != nil {
+		t.Fatalf("query match_csrs: %v", err)
+	}
+	if csrSeason.String != "CsrSeason13-1" {
+		t.Errorf("match_csrs.season_id: want CsrSeason13-1, got %q", csrSeason.String)
+	}
+	if !csrValue.Valid || csrValue.Float64 != 1465 {
+		t.Errorf("match_csrs.rating_value: want 1465, got %v", csrValue)
+	}
+	if csrTier.String != "Gold" {
+		t.Errorf("match_csrs.tier: want Gold, got %q", csrTier.String)
+	}
+	// is_ranked corrigé à l'import via la présence du RankRecap (sinon faux car
+	// PlaylistName non résolu) → exclut correctement ce match du recompute LUSR.
+	var isRanked sql.NullBool
+	if err := sharedDB.QueryRow(
+		`SELECT is_ranked FROM match_registry WHERE match_id = ?`,
+		"11111111-aaaa-bbbb-cccc-000000000001").Scan(&isRanked); err != nil {
+		t.Fatalf("query registry is_ranked: %v", err)
+	}
+	if !isRanked.Valid || !isRanked.Bool {
+		t.Error("match_registry.is_ranked devrait être TRUE (RankRecap présent → classé)")
 	}
 	if result.InsertedAliases != 2 {
 		t.Errorf("InsertedAliases: want 2, got %d", result.InsertedAliases)
