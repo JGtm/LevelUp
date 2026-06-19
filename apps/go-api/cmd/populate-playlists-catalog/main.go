@@ -44,12 +44,10 @@ func main() {
 	metadataDBPath := flag.String("metadata-db", "data/titles/halo_infinite/warehouse/metadata.duckdb", "chemin metadata.duckdb")
 	sharedDBPath := flag.String("shared-db", "data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb", "chemin shared_matches_v2.duckdb")
 	rulesPath := flag.String("experience-rules", "config/titles/halo_infinite/catalog/experience_rules.toml", "chemin experience_rules.toml")
-	maxRetries := flag.Int("max-retries", 5, "nombre max de tentatives par asset avant skip")
 	dryRun := flag.Bool("dry-run", false, "ne fait que le seed de la queue, pas de fetch DiscoveryUGC")
 	rateLimit := flag.Int("rate-limit", 60, "requêtes max par minute vers Discovery UGC (défaut 60, use 300+ pour batch)")
 	authFile := flag.String("auth-file", "data/auth/watcher_tokens.json", "chemin tokens.json pour accès XSTS/OAuth")
 	playerDB := flag.String("player-db", "", "chemin stats.duckdb d'un joueur (lecture du oauth_refresh_token depuis sync_meta)")
-	resetAttempts := flag.Bool("reset-attempts", false, "remet attempts=0 sur toutes les entrées avant de drainer")
 	envFile := flag.String("env-file", ".env.local", "chemin .env.local (SPNKR_OAUTH_REFRESH_TOKEN_* et SPNKR_AZURE_CLIENT_ID)")
 	fromMatchRegistry := flag.Bool("from-match-registry", false, "peuple les tables catalog directement depuis match_registry (bypass Discovery UGC API)")
 	flag.Parse()
@@ -111,19 +109,6 @@ func main() {
 		return
 	}
 
-	// 1b. Reset attempts si demandé (après un run précédent avec erreurs 401).
-	if *resetAttempts {
-		res, err := metadataDB.ExecContext(ctx,
-			`UPDATE catalog_fetch_queue SET attempts = 0, last_error = NULL WHERE title_slug = ?`,
-			*titleSlug,
-		)
-		if err != nil {
-			fatal("reset attempts: %v", err)
-		}
-		n, _ := res.RowsAffected()
-		slog.InfoContext(ctx, "attempts reset", "rows", n)
-	}
-
 	// 2. Charger les tokens Halo (requis par Discovery UGC).
 	var haloTokens *domain.HaloTokens
 	haloTokens, err = loadHaloTokens(ctx, *authFile, *playerDB)
@@ -144,8 +129,8 @@ func main() {
 	resolver := games.NewStaticResolver(*titleSlug)
 	resolver.RegisterCatalog(adapter)
 
-	// 4. Lance le drain (loop jusqu'à queue vide ou tous skipped).
-	svc := service.NewCatalogFetcherService(metadataDB, resolver, *maxRetries)
+	// 4. Lance le drain (loop jusqu'à plus aucune nouvelle résolution).
+	svc := service.NewCatalogFetcherService(metadataDB, resolver)
 	t0 := time.Now()
 	totalPlaylists, totalPairs, totalMaps, totalGV, totalErrors := 0, 0, 0, 0, 0
 	for pass := 1; ; pass++ {
@@ -153,8 +138,8 @@ func main() {
 		if err != nil {
 			fatal("drain pass %d: %v", pass, err)
 		}
-		if res.Playlists+res.Pairs+res.Maps+res.GameVariants+res.Errors == 0 {
-			break // queue vide ou tous en max-retries
+		if res.Playlists+res.Pairs+res.Maps+res.GameVariants == 0 {
+			break // plus aucune nouvelle résolution (reste = non résolvables)
 		}
 		totalPlaylists += res.Playlists
 		totalPairs += res.Pairs

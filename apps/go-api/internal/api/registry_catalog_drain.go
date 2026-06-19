@@ -33,8 +33,6 @@ var catalogDrainMu gosync.Mutex
 const (
 	// catalogDrainRateLimit borne les requêtes vers Discovery UGC (req/min).
 	catalogDrainRateLimit = 60
-	// catalogDrainMaxRetries : tentatives par asset avant skip.
-	catalogDrainMaxRetries = 5
 	// catalogDrainMaxPasses : garde-fou de boucle (chaque passe vide ce qu'elle
 	// peut ; on s'arrête dès qu'une passe ne progresse plus).
 	catalogDrainMaxPasses = 10
@@ -83,7 +81,7 @@ func (r *ServiceRegistry) RunCatalogUGCDrain(ctx context.Context, titleSlug stri
 	resolver.RegisterCatalog(adapter)
 
 	// 4. Drain loop (s'arrête dès qu'une passe ne progresse plus, ou ctx annulé).
-	svc := service.NewCatalogFetcherService(metaSQL, resolver, catalogDrainMaxRetries)
+	svc := service.NewCatalogFetcherService(metaSQL, resolver)
 	for pass := 1; pass <= catalogDrainMaxPasses; pass++ {
 		if err := ctx.Err(); err != nil {
 			return res, err
@@ -92,8 +90,11 @@ func (r *ServiceRegistry) RunCatalogUGCDrain(ctx context.Context, titleSlug stri
 		if err != nil {
 			return res, fmt.Errorf("drain pass %d: %w", pass, err)
 		}
-		if d.Playlists+d.Pairs+d.Maps+d.GameVariants+d.Errors == 0 {
-			break // file vide ou tout en max-retries
+		if d.Playlists+d.Pairs+d.Maps+d.GameVariants == 0 {
+			// Aucune NOUVELLE résolution cette passe : file résolue, ou le reste est
+			// non résolvable (404 Discovery). Inutile de re-tenter dans ce run —
+			// append-only, les non-résolvables restent "pending" pour un drain futur.
+			break
 		}
 		res.Playlists += d.Playlists
 		res.Pairs += d.Pairs
