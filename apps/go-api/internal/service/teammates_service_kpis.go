@@ -54,7 +54,7 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 		}
 	}
 
-	// Ãƒâ€°tape 2 : fallback Ã¢â‚¬â€ rÃƒÂ©soudre via global.xuid_aliases pour les gamertags
+	// Ãƒâ€°tape 2 : fallback Ã¢â‚¬â€ rÃƒÂ©soudre via shared.xuid_aliases (LookupXUIDByGamertag) pour les gamertags
 	// hors top 50 (utilisateur qui a 50+ coÃƒÂ©quipiers rÃƒÂ©guliers OU saisie libre
 	// dans la combobox). encounterCount reste 0 Ã¢â‚¬â€ recalculÃƒÂ© depuis squadMatches
 	// plus bas si on charge effectivement les matchs.
