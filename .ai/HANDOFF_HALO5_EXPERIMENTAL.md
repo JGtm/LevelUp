@@ -6,6 +6,8 @@
 > **Branche** : `feat/multititre-peripherie`. **User de test** : **JGtm** (l'utilisateur).
 > Mémoire liée : `project_halo5_experimental_direction`.
 
+> **REPRISE 2026-06-19** : Phase 1a (adapter read-only) LIVRÉE + reviewée + active-ready. Avant activation, 2 pré-requis user (placement par titre = fait ; sélection par titre = à faire) + l'activation elle-même sont cadrés dans **`.ai/HANDOFF_MULTITITRE_ACTIVATION.md`** — c'est le handoff de reprise courant.
+
 ## 0. TL;DR pour reprendre
 
 Halo 5 = premier VRAI 2e titre, en mode **experimental**. **Toute l'infra d'accueil est déjà prête** (registre config, switcher câblé, provisioning DB au boot, gating capability, drift-detector de contrat). Ce qui reste = le **title-specific** : hosts + client + adapter de données + mappings + **feature-matrix** (déterminer quoi est affichable). **L'auth est quasi-gratuite** (réutilisation du SpartanToken v4 du pool Infinite, cf. §1).
