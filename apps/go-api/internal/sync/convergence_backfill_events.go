@@ -27,6 +27,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"os"
+	"strconv"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -37,6 +39,13 @@ const (
 	defaultConvergenceChunkSize     = 15
 	defaultConvergenceYieldInterval = 2 * time.Second
 )
+
+// convergenceClaimGate : sous-ensemble minimal de SyncGate/Coordinator pour la
+// cession au sync live. TryClaim(gamertag) → (release, ok=false si déjà en vol).
+// Passer nil quand le caller tient déjà le claim (ex. passe scheduler sous claim).
+type convergenceClaimGate interface {
+	TryClaim(gamertag string) (func(), bool)
+}
 
 // EventsConvergenceConfig regroupe les dépendances et réglages du backfill events.
 // AcquireShared est injecté (closure) plutôt que (provider, path) pour rester
@@ -50,8 +59,9 @@ type EventsConvergenceConfig struct {
 	AcquireShared func(ctx context.Context) (*sql.DB, func(), error)
 	// PlayerDB sert à la détection (FindMatchesMissingData prend player + shared).
 	PlayerDB *sql.DB
-	// Coord (optionnel) : cession au sync live via TryClaim. nil = pas de cession.
-	Coord    *Coordinator
+	// Coord (optionnel) : cession au sync live via TryClaim. nil = pas de cession
+	// (ex. le caller tient déjà le claim). *Coordinator et sync.SyncGate le satisfont.
+	Coord    convergenceClaimGate
 	Gamertag string
 	XUID     string
 
@@ -169,6 +179,46 @@ func (cfg EventsConvergenceConfig) computeDominance(ctx context.Context, matchID
 		return
 	}
 	res.DominanceUpdated = len(matchIDs)
+}
+
+// RunEventsConvergence lance une passe de backfill events pour le joueur de cet
+// engine, en réutilisant son client poolé + provider (B-swap). gate (optionnel)
+// permet la cession au sync live par lot — passer nil quand le caller tient déjà
+// le claim (passe scheduler). maxMatches borne la passe (0 = tous les incomplets).
+// No-op (erreur) si aucun client API n'est câblé (pool absent).
+func (e *SyncEngine) RunEventsConvergence(ctx context.Context, gate convergenceClaimGate, maxMatches int) (EventsConvergenceResult, error) {
+	if e.customClient == nil {
+		return EventsConvergenceResult{}, fmt.Errorf("RunEventsConvergence: client API absent (pool non câblé)")
+	}
+	playerHandle, err := OpenPlayerDB(e.playerDBPath)
+	if err != nil {
+		return EventsConvergenceResult{}, fmt.Errorf("RunEventsConvergence OpenPlayerDB: %w", err)
+	}
+	defer playerHandle.Close()
+	return RunEventsConvergenceBackfill(ctx, EventsConvergenceConfig{
+		Client:        e.customClient,
+		AcquireShared: e.acquireSharedWriter,
+		PlayerDB:      playerHandle.SQLDb(),
+		Coord:         gate,
+		Gamertag:      e.gamertag,
+		XUID:          e.xuid,
+		MaxMatches:    maxMatches,
+		// Réglages fins prod (0 → défauts de l'orchestrateur : 15 / 2s). L'env est
+		// lu ici (entrée prod) pour garder RunEventsConvergenceBackfill pur/testable.
+		ChunkSize:     convergenceEnvInt("LEVELUP_EVENTS_CONVERGENCE_CHUNK"),
+		YieldInterval: time.Duration(convergenceEnvInt("LEVELUP_EVENTS_CONVERGENCE_YIELD_MS")) * time.Millisecond,
+	})
+}
+
+// convergenceEnvInt lit un entier positif depuis l'env ; 0 si absent/invalide
+// (l'orchestrateur applique alors son défaut).
+func convergenceEnvInt(key string) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return 0
 }
 
 // detectIncomplete liste les matchs sans events (events_loaded=false), récent→vieux,
