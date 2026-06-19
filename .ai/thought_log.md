@@ -1,3 +1,17 @@
+## [2026-06-19] Escouade : résolution FR des noms de map via asset_translations — Complété
+
+**Statut** : DB libérée par le user. Diagnostic + fix livrés. `go build`/`go test duckdb` ✓ (2 nouveaux tests).
+
+**Diagnostic (diag_q sur shared + metadata)** : `match_registry.map_name_fr` est **NULL pour les 1762 matchs** → le `COALESCE(map_name_fr, map_name)` retombe toujours sur l'EN (et certains map_name sont des UUID bruts). Les noms FR existent bien dans `metadata.asset_translations` (123 maps en `fr-FR`, clé `asset_id` = `map_id`). Preuve : The Pit (648ae7aa) → FR « La fosse ».
+
+**Décision technique** : `LoadMatchEngagementContext` ([engagement_score_repo_queries.go]) sélectionne désormais aussi `mr.map_id` ; quand présent, on résout le nom FR via `metadata.asset_translations` (helper `resolveMapNameFR`, `QueryRecovered`, `asset_type='map' AND lang IN ('fr-FR','fr')`, priorité fr-FR). Best-effort : fallback EN si Metadata absent / pas de ligne FR. Bénéficie au squad (affichage maps) sans toucher le service ni l'interface port. `EngagementScoreRepo.pdb` (`*PlayerDB`) a déjà accès à `Metadata`.
+
+**Tests** : `TestResolveMapNameFR` (EN!=FR→FR, FR==EN, fallback 'fr', id inconnu→fallback, le bruit playlist ne matche pas) + `TestResolveMapNameFR_NilMetadata` (best-effort sans panic). Test interne (package duckdb) pour atteindre la méthode non exportée.
+
+**Prochaine étape** : re-backfill engagement (--with-scores --force) maintenant que la DB est libre.
+
+---
+
 ## [2026-06-18] Vérification finale lot rendement/engagement + logging + test 422 — Complété
 
 **Statut** : vérification go/no-go du lot (5 commits). Ajouts logging + 1 test. Tout vert.
