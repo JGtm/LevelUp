@@ -40,6 +40,10 @@ type PlayerSummary struct {
 	IsDemo         bool   `json:"is_demo"`
 	SteamID        string `json:"steam_id,omitempty"`   // Steam ID pour le poller de présence
 	TitleSlug      string `json:"title_slug,omitempty"` // Sprint 44 : titre associé
+	// AuthOnly : profil existant uniquement pour la gestion des tokens auth (pas
+	// un vrai joueur suivi). Exclu des listes front-facing (sélecteur L1, favoris
+	// gamertag) par le BootstrapService ; conservé pour les usages serveur.
+	AuthOnly bool `json:"auth_only,omitempty"`
 }
 
 // HaloIdentitySummary représente l'identité Halo résolue côté backend.
