@@ -21,6 +21,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -197,4 +198,116 @@ func UpsertCSRRow(ctx context.Context, playerDB *sql.DB, row *MatchCSRRow) error
 		return fmt.Errorf("UpsertCSRRow(%s): %w", row.MatchID, err)
 	}
 	return nil
+}
+
+// BackfillCSRFromShared projette le CSR par-match d'un joueur depuis
+// shared.match_csrs vers player.match_skill_rank (rating_type='CSR').
+//
+// Contexte : l'import OpenSpartan écrit le CSR par-match dans shared.match_csrs
+// (extrait de RankRecap, cf. ExtractAllSharedCSRRows), mais l'UI lit le rating
+// via player.match_skill_rank_latest. Cette fonction reprojette donc les lignes
+// shared du joueur vers sa player DB, en réutilisant le formatage tier_fr /
+// placement de la chaîne CSR. Pur local — aucun appel API.
+//
+// La shared row a déjà appliqué le formatage placement (tier="Placement",
+// rating_value NULL) ; on réplique ici l'invariant player (rating_value=0.0 en
+// placement pour la contrainte NOT NULL) et on dérive tier_fr.
+//
+// Idempotent : les matchs portant déjà une ligne CSR côté player DB sont skippés
+// (évite la prolifération de versions append-only au réimport). Retourne le
+// nombre de lignes écrites.
+func BackfillCSRFromShared(ctx context.Context, sharedDB, playerDB *sql.DB, xuid string) (int, error) {
+	if sharedDB == nil || playerDB == nil {
+		return 0, fmt.Errorf("BackfillCSRFromShared: nil DB")
+	}
+	if strings.TrimSpace(xuid) == "" {
+		return 0, fmt.Errorf("BackfillCSRFromShared: xuid vide")
+	}
+
+	existing, err := loadExistingCSRMatchIDs(ctx, playerDB)
+	if err != nil {
+		return 0, err
+	}
+
+	rows, err := sharedDB.QueryContext(ctx, `
+		SELECT c.match_id, c.rating_value, c.tier, c.sub_tier, c.tier_label,
+		       c.rating_delta, c.measurement_matches_remaining, r.start_time
+		FROM match_csrs_latest c
+		JOIN match_registry r ON r.match_id = c.match_id
+		WHERE c.xuid = ? AND c.rating_type = 'CSR'`, xuid)
+	if err != nil {
+		return 0, fmt.Errorf("BackfillCSRFromShared query: %w", err)
+	}
+	defer rows.Close()
+
+	written := 0
+	for rows.Next() {
+		var (
+			matchID   string
+			ratingVal sql.NullFloat64
+			tier      sql.NullString
+			subTier   sql.NullInt64
+			tierLabel sql.NullString
+			ratingDel sql.NullFloat64
+			measRem   sql.NullInt64
+			startTime sql.NullTime
+		)
+		if err := rows.Scan(&matchID, &ratingVal, &tier, &subTier, &tierLabel,
+			&ratingDel, &measRem, &startTime); err != nil {
+			return written, fmt.Errorf("BackfillCSRFromShared scan: %w", err)
+		}
+		if existing[matchID] {
+			continue
+		}
+		row := &MatchCSRRow{
+			MatchID:                     matchID,
+			Tier:                        tier.String,
+			TierFR:                      translateTierFR(tier.String),
+			SubTier:                     int(subTier.Int64),
+			TierLabel:                   tierLabel.String,
+			PlaylistGroup:               PerfChainRanked,
+			StartTime:                   startTime.Time,
+			MeasurementMatchesRemaining: int(measRem.Int64),
+		}
+		// Placement : rating_value=0.0 (NOT NULL côté player), pas de delta.
+		if ratingVal.Valid {
+			v := ratingVal.Float64
+			row.RatingValue = &v
+			if ratingDel.Valid {
+				d := ratingDel.Float64
+				row.RatingDelta = &d
+			}
+		} else {
+			zero := 0.0
+			row.RatingValue = &zero
+		}
+		if err := UpsertCSRRow(ctx, playerDB, row); err != nil {
+			return written, err
+		}
+		written++
+	}
+	if err := rows.Err(); err != nil {
+		return written, fmt.Errorf("BackfillCSRFromShared iterate: %w", err)
+	}
+	return written, nil
+}
+
+// loadExistingCSRMatchIDs retourne l'ensemble des match_id ayant déjà une ligne
+// CSR côté player DB (toutes versions append-only confondues).
+func loadExistingCSRMatchIDs(ctx context.Context, playerDB *sql.DB) (map[string]bool, error) {
+	rows, err := playerDB.QueryContext(ctx,
+		`SELECT DISTINCT match_id FROM match_skill_rank WHERE rating_type = 'CSR'`)
+	if err != nil {
+		return nil, fmt.Errorf("loadExistingCSRMatchIDs: %w", err)
+	}
+	defer rows.Close()
+	out := make(map[string]bool)
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("loadExistingCSRMatchIDs scan: %w", err)
+		}
+		out[id] = true
+	}
+	return out, rows.Err()
 }

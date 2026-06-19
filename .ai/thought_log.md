@@ -1,3 +1,18 @@
+## [2026-06-19] Import OpenSpartan — compléter CSR par-match + recompute LUSR au post-import (P1) — Complété
+
+**Contexte** : à l'onboarding avancé, l'import d'une base OpenSpartan ne ramenait que les stats de base. Vérifié sur le repo OpenSpartan (`openspartan-workshop`, `Queries/Bootstrap/*.sql`) : la base contient bien le CSR (RankRecap dans `PlayerMatchStats` + snapshots `PlaylistCSRSnapshots`) mais **PAS** les `highlight_events` (aucune table — décodés des films, absents). Le LUSR est une invention LevelUp (absent par construction). L'import LevelUp parsait `RankRecap` (`models.go:159`) sans le persister, et le post-import ne recalculait pas le LUSR.
+
+**Décisions** :
+- **CSR par-match** : `PlayerMatchStats.ResponseBody` (OpenSpartan) a la même forme que la réponse skill live → wrapper public `sync.ParseMatchSkillResponseJSON` (réutilise `transformMatchSkillResponse`). L'import écrit `shared.match_csrs` via `ExtractAllSharedCSRRows`+`UpsertSharedCSRs` ; le post-import projette vers `player.match_skill_rank` (lu par l'UI) via la nouvelle `sync.BackfillCSRFromShared` (idempotente). **Pas de backfill API** : le CSR est dans la base (correction d'une erreur de cadrage initiale).
+- **LUSR** : recompute au post-import via `sync.RecomputeLUSRCanonicalForPlayer` = reset watermark v2 du joueur + `RunLUSRV2ShadowOwnerOnly` (réutilise le chemin de prod, pattern de `cmd/lusr_v2_canonical_backfill`). **v1 écarté** (mort — v2 canonical par défaut) ; aucun mirror du branchement, `runSkillRatingSteps` non touché. Reset requis car les matchs importés (anciens) sont antérieurs au watermark → sautés sinon.
+- **Dominance flags** : différés à P2 (nécessitent les `highlight_events` des films ; les calculer maintenant figerait `NULL→0` sans recompute ultérieur).
+
+**Résultats** : build + vet verts (sync, service). Tests : `ParseMatchSkillResponseJSON` (unit) + `BackfillCSRFromShared` (intégration : rang stable, idempotence, placement→0.0) ; suite `sync` complète + service OpenSpartan sans régression.
+
+**Prochaine étape** : `PlaylistCSRSnapshots → player_csr_snapshots` **DIFFÉRÉ** (blocage `season_id NOT NULL` absent côté OpenSpartan + forme `ResponseBody` à confirmer sur une vraie base). Puis **P2** : backfill films non-bloquant (`highlight_events`) + dominance flags après events.
+
+---
+
 ## [2026-06-19] Profils auth-only — champ `auth_only` pour exclure des favoris gamertag — Complété
 
 **Problème** : `db_profiles.json` contient des profils qui n'existent que pour la gestion des tokens auth (pas de vrais joueurs, `db_path: ""`). Ils remontaient dans `available_players` (bootstrap) → polluaient les favoris suggérés des multiselects gamertag (sélecteur L1, page Escouade, page Explorer).
