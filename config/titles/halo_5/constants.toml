@@ -1,0 +1,21 @@
+# config/titles/halo_5/constants.toml
+#
+# Hosts d'ingestion API Halo 5 par axe, consommés par l'EndpointResolver (section
+# [endpoints]). PLACEHOLDERS distincts d'Infinite (Halo 5 = coming_soon, non servi
+# -> jamais appelés). En Phase 1, remplacer par les hosts internes RÉELS (autorités
+# cryptum : SpartanStats, HaloPlayer, ContentHacs, UGC) confirmés par la sonde live.
+# TLD .invalid = garantie qu'ils ne résolvent jamais accidentellement.
+
+[meta]
+title_slug = "halo_5"
+schema_version = 1
+
+[endpoints]
+stats         = "https://stats.h5.placeholder.invalid"
+gamecms       = "https://contenthacs.h5.placeholder.invalid"
+economy       = "https://economy.h5.placeholder.invalid"
+skill         = "https://skill.h5.placeholder.invalid"
+ugc_film      = "https://ugc.h5.placeholder.invalid"
+discovery_ugc = "https://discovery.h5.placeholder.invalid"
+challenges    = "https://challenges.h5.placeholder.invalid"
+nameplate     = "https://haloplayer.h5.placeholder.invalid"

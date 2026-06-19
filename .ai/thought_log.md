@@ -26436,3 +26436,19 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Livré** : handoff réécrit en profondeur (`HANDOFF_HALO5_EXPERIMENTAL.md`), en-tête capabilities.toml clarifié, mémoire `project_halo5_experimental_direction` + index MEMORY.md corrigés (purge de la fausse mention « données limitées »).
 
 **Conclusion / prochaine étape** : compréhension Halo 5 désormais fondée sur la source réelle. Step 2 (skeleton `config/titles/halo_5/`) à écrire sur la matrice optimiste. Commit (vocab+sémantique, puis handoff) en attente d'autorisation.
+
+## [2026-06-19] Halo 5 Phase 0 — Step 2 : skeleton config/titles/halo_5 (coming_soon) — Complété
+
+**Statut** : Complété. Skeleton complet livré + testé vert.
+
+**Décision technique** : `config/titles/halo_5/` complet calqué sur synthetic_title_b (le modèle de 2e titre) mais avec métadonnées Halo 5 RÉELLES :
+- `title.toml` : status `coming_soon`, xbox_title_id `219630713`, coarse caps `matchmaking/ranked/career/asset.images/achievements/engagement/lusr` (exclus firefight/forge/media/world.leaderboard).
+- `mappings/capabilities.toml` : matrice fine OPTIMISTE (history/detail.core/scoreboard.extra/career = supported ; skill.snapshot/timeseries/engagement = degraded ; citations/pve/battlepass/challenges = not_exposed) + note sémantique (pur-adapter → statuts = plafond réel).
+- `auth.toml` : MIRROIR Infinite (SpartanToken v4 réutilisé, mêmes audiences `urn:343:s3:services`, SISU Infinite) ; clearance vide (concept HINF) ; non exercé (coming_soon).
+- `constants.toml` : 8 hosts placeholders `.invalid` distincts d'Infinite (réels via cryptum Phase 1).
+- `mappings/{fields,assets,outcomes}.toml` : champs canoniques + modes Halo 5 réels (Slayer/CTF/Strongholds/Breakout/SWAT/FFA/Warzone/Warzone Firefight, ≠ catégories Infinite) + outcomes universels. Taxonomie définitive = Phase 1.
+- `internal/games/halo_5/doc.go` (réserve le namespace de l'adapter Phase 1, évite « no non-test files ») + `skeleton_test.go` (4 tests : manifest coming_soon/xbox_id/coarse caps, matrice fine + clés connues, mappings chargeables, découverte registre coming_soon ABSENT de Active()).
+
+**Résultats observés** : `go test ./internal/games/halo_5/...` vert (4 tests), `go build ./...` exit 0, `go vet` clean ; non-régression vérifiée sur `./internal/domain/title/...`, `./internal/games/...`, handlers admin-titles, `./cmd/server/...` (provisioning : coming_soon non provisionné, OK). Aucun test cassé par l'ajout du dossier config (aucun n'asserte le count de titres réels). Front tolérant (switcher gère coming_soon, capabilities `Record<string,string>`) → zéro changement web.
+
+**Conclusion / prochaine étape** : Phase 0 (skeleton) TERMINÉE — Halo 5 apparaîtra dans le switcher « Bientôt disponible » au prochain boot. Phase 1 (sonde live + auth reuse v4 + client + adapter + mapping events) = session dédiée (handoff à jour). Commit step 2 en attente d'autorisation.

@@ -1,0 +1,27 @@
+# config/titles/halo_5/mappings/capabilities.toml
+#
+# Capabilities fines Halo 5 (matrice OPTIMISTE, cf. handoff §2). Halo 5 est RICHE
+# (events/carnage/commendations natives) -> peu de not_exposed. SOUS RÉSERVE de la
+# sonde live Phase 1 (confirmer que 343 sert encore ces endpoints en 2026).
+#
+# SÉMANTIQUE : ces statuts = surface de l'adapter Halo 5 (servi UNIQUEMENT par
+# l'adapter, pas de chemin legacy) -> ils == le plafond RÉEL du titre (contrairement
+# à halo_infinite où not_exposed = legacy-served ; cf. handoff §2).
+# Valeurs : "supported" | "degraded" | "not_exposed".
+
+[meta]
+title_slug     = "halo_5"
+schema_version = 1
+
+[capabilities]
+"match.history"          = "supported"   # /players/{p}/matches
+"match.detail.core"      = "supported"   # carnage report par match
+"match.scoreboard.extra" = "supported"   # carnage report riche (par-joueur étendu)
+"match.skill.snapshot"   = "degraded"    # CSR pré/post natif (Arena) ; LUSR sans pondération temps-joué
+"career.progression"     = "supported"   # Spartan Rank via service record
+"analytics.timeseries"   = "degraded"    # buildable depuis l'historique
+"engagement.score"       = "degraded"    # events présents, coefficients à recalibrer Halo 5
+"citations.engine"       = "not_exposed" # commendations NATIVES mais clé = mécanisme -> bloqué par décision B (Phase 1)
+"pve.firefight_stats"    = "not_exposed" # Warzone Firefight existe mais modèle != FF HINF (coarse firefight exclu)
+"battlepass.progression" = "not_exposed" # pas de season pass (REQ packs à la place)
+"challenges.surface"     = "not_exposed" # pas de défis
