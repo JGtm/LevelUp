@@ -87,20 +87,19 @@ func TestSyncEngine_WithFriendsLoader_Nil(t *testing.T) {
 	}
 }
 
-// TestRecomputeIsWithFriends_EmptyFriendsList_SkipsLeases vérifie le early-return
-// du wrapper public : quand friendGamertags est vide, on ne doit toucher ni
-// leases ni DBs (court-circuit avant AcquireLeaseCtx).
-//
-// Validation : passe des paths volontairement invalides ; si le wrapper tentait
-// d'acquérir des leases sur ces paths inexistants, le test échouerait sur erreur.
-func TestRecomputeIsWithFriends_EmptyFriendsList_SkipsLeases(t *testing.T) {
+// TestRecomputeIsWithFriends_EmptyFriendsList_DemotesGracefully vérifie le
+// nouveau contrat CONVERGENT : une liste d'amis vide ne court-circuite plus mais
+// réconcilie (démotion de tout match TRUE). Sur des DBs fraîches (vides), c'est un
+// no-op gracieux : 0 promu, 0 démoté, pas d'erreur, leases acquises/libérées.
+func TestRecomputeIsWithFriends_EmptyFriendsList_DemotesGracefully(t *testing.T) {
+	tmpDir := t.TempDir()
 	res, err := RecomputeIsWithFriends(
 		context.Background(),
 		nil, // provider — mode legacy pour ce test
-		"/dev/null/does/not/matter/player.duckdb",
-		"/dev/null/does/not/matter/shared.duckdb",
+		filepath.Join(tmpDir, "player.duckdb"),
+		filepath.Join(tmpDir, "shared.duckdb"),
 		"test_xuid",
-		[]string{}, // empty → early-return avant lease
+		[]string{}, // empty → réconciliation (rien à démoter sur DB vide)
 	)
 	if err != nil {
 		t.Fatalf("expected nil error on empty friends list, got %v", err)
@@ -108,8 +107,8 @@ func TestRecomputeIsWithFriends_EmptyFriendsList_SkipsLeases(t *testing.T) {
 	if res.XUID != "test_xuid" {
 		t.Errorf("expected XUID preserved, got %q", res.XUID)
 	}
-	if res.MatchesPromoted != 0 {
-		t.Errorf("expected MatchesPromoted=0, got %d", res.MatchesPromoted)
+	if res.MatchesPromoted != 0 || res.MatchesDemoted != 0 {
+		t.Errorf("expected 0 promoted/demoted on empty DB, got promoted=%d demoted=%d", res.MatchesPromoted, res.MatchesDemoted)
 	}
 	if res.FriendXUIDsCount != 0 {
 		t.Errorf("expected FriendXUIDsCount=0, got %d", res.FriendXUIDsCount)

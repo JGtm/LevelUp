@@ -1,13 +1,21 @@
-## [2026-06-19] Groupes/familles multi-groupes — Phase 4 (quitter/retirer + dé-flag) — En cours
+## [2026-06-19] Groupes/familles multi-groupes — Phase 4 (quitter/retirer + dé-flag + Escouade) — Complété
 
-**Part A — quitter/retirer membre (Complété, commit séparé)** :
-- `GroupsHandler.LeaveGroup` (`DELETE /groups/{id}/members/me`) : self-leave ; propriétaire interdit → 409 (doit supprimer le groupe) ; idempotent si non-membre.
-- `GroupsHandler.RemoveMember` (`DELETE /groups/{id}/members/{xuid}`) : propriétaire only ; retrait du propriétaire interdit (ErrCannotRemoveOwner → 400). Routes chi (static `/me` prioritaire sur `/{xuid}`) + OpenAPI documentés. Tests : owner-leave 409, self-leave 204, retrait owner-only, étranger 403.
-- L'appartenance au groupe = ACCÈS (authz recalculé en live) → aucun recompute requis pour le retrait.
+**Part A — quitter/retirer membre (commit 4c52d974d)** :
+- `LeaveGroup` (`DELETE /groups/{id}/members/me`) : self-leave ; propriétaire interdit → 409 ; idempotent si non-membre.
+- `RemoveMember` (`DELETE /groups/{id}/members/{xuid}`) : propriétaire only ; retrait du propriétaire interdit (400). Routes chi (static `/me` prioritaire) + OpenAPI. Tests owner-leave 409 / self-leave 204 / owner-only / étranger 403.
+- Appartenance = ACCÈS (authz live) → aucun recompute requis.
 
-**Part B — dé-flag is_with_friends (à faire, décision : convergent dans Core)** : rendre `RecomputeIsWithFriendsCore` convergent (promote matchs avec ami courant + démote ceux sans ami restant), per-row/IN-batch ART-safe, sur tous les chemins (post-sync inclus) — aligne avec project_convergent_sync_direction. Concerne `friend_gamertags` (affichage Escouade), indépendant de l'appartenance au groupe.
+**Part B — dé-flag is_with_friends convergent (décision user : convergent dans Core)** :
+- `RecomputeIsWithFriendsCore` rendu CONVERGENT : calcule la cible (matchs avec ami courant), PROMEUT (FALSE→TRUE) + DÉMOTE (TRUE→FALSE) les matchs hors cible. Liste vide (dernier ami retiré) → démotion complète. Garde défensive playerDB nil (unit-test). `MatchesDemoted` ajouté au résultat. Helpers `demoteStaleIsWithFriends` (charge currentlyTrue, diff cible) + `demoteIsWithFriendsBatch` (IN-batch, même pattern que la promotion).
+- Suppression du court-circuit « liste vide » dans le wrapper public (sinon retrait du dernier ami ne démoterait pas). S'applique à tous les chemins (post-sync, ART rebuild, OnFriendsChanged) — aligne project_convergent_sync_direction.
+- Le retrait d'un ami via PATCH /settings → OnFriendsChanged → recompute convergent → démotion auto (pas de code orchestrateur supplémentaire).
+- ART : `player_match_enrichment` hors tables append-only protégées + pattern UPDATE...IN déjà établi → garde-fou `TestNoARTPatternsOnProtectedTables` vert, pas d'allowlist.
+- Tests : unitaire empty-list convergent (renommé), intégration `DemotesStaleMatches` (retrait ami → match démoté ; liste vide → tout démoté). `PromotesLegacyNull`/`PlayerInFriendList` inchangés (démote=0 quand rien n'était TRUE).
 
-**Part C — bouton Escouade « charger les membres du groupe »** (à faire) : peuple `selectedGts` sans toucher au mécanisme index→couleur des pills.
+**Part C — bouton Escouade « charger un groupe »** :
+- `SquadGroupLoader` (select compact) : sélectionner un groupe peuple `selectedGts` (membres hors joueur actif, tronqué à MAX_SELECTION=3). Monté uniquement si identité Halo liée (évite 401 /groups en démo). **NE touche PAS** au mécanisme index→couleur des pills (remplace juste le contenu de la sélection ordonnée).
+
+**Résultats** : Go build CGO + vet + sync (unit + integration) + handlers + contrat OpenAPI verts ; front tsc + eslint (0 err) + vitest 246/246 (squad+groups). Chantier multi-groupes complet (Phases 0→4).
 
 ---
 
