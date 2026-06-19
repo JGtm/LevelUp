@@ -1674,6 +1674,41 @@ paths:
         "403": { description: "Accès refusé (propriétaire/membre requis)" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /groups/{id}/members/me:
+    delete:
+      tags: [groups]
+      operationId: leaveGroup
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Quitter un groupe (self ; propriétaire interdit → 409)"
+      responses:
+        "204": { description: "Membre retiré" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { description: "Le propriétaire ne peut pas quitter" }
+
+  /groups/{id}/members/{xuid}:
+    delete:
+      tags: [groups]
+      operationId: removeGroupMember
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: xuid
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Retire un membre (propriétaire only)"
+      responses:
+        "204": { description: "Membre retiré" }
+        "400": { description: "Le propriétaire ne peut pas être retiré" }
+        "403": { description: "Accès refusé (propriétaire requis)" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   # Admin
   /admin/invites:
     get:

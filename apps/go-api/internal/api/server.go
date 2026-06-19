@@ -823,6 +823,8 @@ func NewRouter(
 			r.Patch("/groups/{id}", groupsHandler.RenameGroup)
 			r.Delete("/groups/{id}", groupsHandler.DeleteGroup)
 			r.Post("/groups/{id}/invites", groupsHandler.GenerateInvite)
+			r.Delete("/groups/{id}/members/me", groupsHandler.LeaveGroup)
+			r.Delete("/groups/{id}/members/{xuid}", groupsHandler.RemoveMember)
 		})
 
 		// Admin : gestion utilisateurs + invitations (protégé par RequireAuth + RequireAdmin).

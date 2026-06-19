@@ -1,3 +1,16 @@
+## [2026-06-19] Groupes/familles multi-groupes — Phase 4 (quitter/retirer + dé-flag) — En cours
+
+**Part A — quitter/retirer membre (Complété, commit séparé)** :
+- `GroupsHandler.LeaveGroup` (`DELETE /groups/{id}/members/me`) : self-leave ; propriétaire interdit → 409 (doit supprimer le groupe) ; idempotent si non-membre.
+- `GroupsHandler.RemoveMember` (`DELETE /groups/{id}/members/{xuid}`) : propriétaire only ; retrait du propriétaire interdit (ErrCannotRemoveOwner → 400). Routes chi (static `/me` prioritaire sur `/{xuid}`) + OpenAPI documentés. Tests : owner-leave 409, self-leave 204, retrait owner-only, étranger 403.
+- L'appartenance au groupe = ACCÈS (authz recalculé en live) → aucun recompute requis pour le retrait.
+
+**Part B — dé-flag is_with_friends (à faire, décision : convergent dans Core)** : rendre `RecomputeIsWithFriendsCore` convergent (promote matchs avec ami courant + démote ceux sans ami restant), per-row/IN-batch ART-safe, sur tous les chemins (post-sync inclus) — aligne avec project_convergent_sync_direction. Concerne `friend_gamertags` (affichage Escouade), indépendant de l'appartenance au groupe.
+
+**Part C — bouton Escouade « charger les membres du groupe »** (à faire) : peuple `selectedGts` sans toucher au mécanisme index→couleur des pills.
+
+---
+
 ## [2026-06-19] Groupes/familles multi-groupes — Phase 3 (UI groupes + JoinPage) — Complété (code, non commité)
 
 **Frontend du chantier groupes** (apps/web). Backend Phases 0-2 commité (c4e3e9c8a, 094a820d2).
