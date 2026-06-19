@@ -998,16 +998,8 @@ export interface HomePageResponse {
   recent_playlist_ranks?: HomePlaylistRank[]
 }
 
-export interface BattlePassResponse {
-  available: boolean
-  rank: number | null
-  reward_track: string | null
-  progress: number | null
-  from_cache?: boolean
-  /** RFC3339 — date du snapshot affiché (now en live, MAX(snapshot_at) en fallback cache). */
-  snapshot_at?: string | null
-  error_hint: string | null
-}
+// Phase D — re-shim : contrat OpenAPI (BattlePassResponse auto-dérivé, migration Huma home).
+export type BattlePassResponse = components['schemas']['BattlePassResponse']
 
 export type ChallengeItem = components['schemas']['ChallengeItem']
 
@@ -1371,58 +1363,21 @@ export interface MediaPageResponse {
   available_filters: MediaAvailableFilters
 }
 
-export interface MediaAuthor {
-  player_slug: string
-  gamertag: string
-  is_self: boolean
-  media_count: number
-}
-
-export interface MediaMatchLobbyEntry {
-  gamertag: string
-  team_id?: number | null
-  is_self: boolean
-  is_bot?: boolean
-}
-
-export interface MediaMatchCandidate {
-  match_id: string
-  start_time?: string | null
-  end_time?: string | null
-  map_name?: string | null
-  map_image_url?: string | null
-  mode_name?: string | null
-  playlist_name?: string | null
-  is_current: boolean
-  delta_seconds?: number | null
-  outcome?: number | null
-  own_score?: number | null
-  enemy_score?: number | null
-  lobby?: MediaMatchLobbyEntry[]
-}
-
-export interface MediaMatchCandidatesResponse {
-  file_path: string
-  capture_utc?: string | null
-  window_minutes: number
-  candidates: MediaMatchCandidate[]
-}
+// Phase D — re-shim : le contrat OpenAPI couvre désormais ces types média (schémas
+// auto-dérivés des structs Go au moment de la migration Huma /media/*). Données pures
+// (zéro champ calculé côté client) → ré-export direct du contrat.
+export type MediaAuthor = components['schemas']['MediaAuthor']
+export type MediaMatchLobbyEntry = components['schemas']['MediaMatchLobbyEntry']
+export type MediaMatchCandidate = components['schemas']['MediaMatchCandidate']
+export type MediaMatchCandidatesResponse = components['schemas']['MediaMatchCandidatesResponse']
 
 export interface MediaAssociateRequest {
   file_path: string
   match_id: string
 }
 
-export interface MediaAssociateResponse {
-  file_path: string
-  match_id: string
-  map_name?: string | null
-  mode_name?: string | null
-}
-
-export interface MediaAuthorsResponse {
-  authors: MediaAuthor[]
-}
+export type MediaAssociateResponse = components['schemas']['MediaAssociateResponse']
+export type MediaAuthorsResponse = components['schemas']['MediaAuthorsResponse']
 
 export interface MediaLikeRequest {
   file_path: string
@@ -1923,12 +1878,8 @@ export interface WatcherAuthStatus {
 // Asset Drawer (Phase 2)
 // ---------------------------------------------------------------------------
 
-export interface AssetMeta {
-  id: string
-  name_en: string
-  name_fr: string
-  image_url: string
-}
+// Phase D — re-shim : contrat OpenAPI (AssetMeta auto-dérivé, migration Huma assets).
+export type AssetMeta = components['schemas']['AssetMeta']
 
 // ---------------------------------------------------------------------------
 // Achievements Xbox (bilingues EN/FR)
