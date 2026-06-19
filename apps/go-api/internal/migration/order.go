@@ -49,6 +49,7 @@ var canonicalOrder = []string{
 	"drop_playlists_catalog_secondary_indexes",                // metadata
 	"create_milestone_catalog_metadata",                       // metadata
 	"create_prestige_metadata_schema",                         // metadata
+	"rebuild_catalog_fetch_queue_drop_art_indexes",            // metadata
 	"seed_ranked_playlists_catalog",                           // metadata
 	"challenge_template_add_source_column",                    // metadata
 	"add_template_tagging_columns",                            // metadata

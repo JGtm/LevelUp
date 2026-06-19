@@ -1,3 +1,19 @@
+## [2026-06-19] Fix RC-E catalog drain : catalog_fetch_queue ART-corrompt metadata.duckdb — Complété (code)
+
+**Déclencheur** : logs prod (post-deploy xuid_aliases) — `catalog drain: delete failed` + `database has been invalidated` (~60 lignes/boot) sur `metadata.duckdb`. Diagnostic : le cron `catalog_refresh` (hebdo + 1er tick à CHAQUE boot) draine `catalog_fetch_queue` ; `deleteFromQueue` (DELETE per-row) + `markError` (UPDATE attempts) opèrent sur une table portant **PRIMARY KEY (title_slug, asset_type, asset_id)** + index secondaire `idx_catalog_fetch_queue_drain` (incluant `attempts`). DELETE/UPDATE per-row sur index ART → bug DuckDB 1.5.x #23046 → metadata invalidé pour toute la vie du process → noms d'assets (maps/playlists/modes FR) cassés jusqu'au restart (qui re-casse au boot suivant). Le commentaire main.go « drain ART-safe » ne couvrait que l'UPSERT catalogue, pas la queue.
+
+**Décision** (pattern projet, calqué sur `drop_playlists_catalog_secondary_indexes` + rebuilds CTAS-swap) :
+- **Migration** `rebuild_catalog_fetch_queue_drop_art_indexes` (metadata) : DROP index secondaire + rebuild de la table SANS PRIMARY KEY (CTAS-swap, SELECT DISTINCT). Plus AUCUNE surface ART → DELETE/UPDATE deviennent des ops heap sûres. Ajoutée à `canonicalOrder` (rang 36, après create_prestige).
+- **Dédup d'enqueue** sans PK : `INSERT OR IGNORE` → `INSERT ... WHERE NOT EXISTS` (SELECT-then-INSERT) dans `ops/catalog_queue.go` + `sync/catalog_enqueue.go`.
+- **Garde-fou** `TestCatalogFetchQueue_NoArtIndexSurface` : 0 index, 0 PK, + séquence fonctionnelle INSERT/UPDATE/DELETE sans invalidation.
+- Commentaire main.go corrigé.
+
+**Résultats** : build/vet OK ; migration (order + guard) + ops + service + scheduler + sync verts. La queue est minuscule (drain hebdo) → scan complet instantané, PK/index sans gain.
+
+**Prochaine étape** : commit + deploy (la migration s'applique au boot prod → metadata cesse d'être corrompue). Restic ensuite (demande user).
+
+---
+
 ## [2026-06-19] Suppression du chemin d'ÉCRITURE vers le store global xbox_aliases — Complété (code)
 
 **Suite directe de la consolidation xuid_aliases** : après retrait des LECTEURs du global (commit 1) + confirmation de redondance (local `global ⊆ shared` = +0 ; prod `global = 0 lignes`), restait le writer. Le moteur de sync `UpsertXUIDAlias(ctx, globalDB, …)` écrivait encore dans le store mort à chaque match (4 call-sites : process_match, fetch, batch_path, highlight_events). Demande user : « aligner le code qui tape dans cette DB ».

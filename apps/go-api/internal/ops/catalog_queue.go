@@ -76,9 +76,18 @@ func seedQueueAsset(ctx context.Context, metadataDB, sharedDB *sql.DB, titleSlug
 		if err := rows.Scan(&id, &ver); err != nil {
 			return inserted, err
 		}
+		// Dédup SELECT-then-INSERT (NOT EXISTS) : catalog_fetch_queue n'a plus de
+		// PRIMARY KEY (retirée pour éliminer la surface ART du DELETE/UPDATE de
+		// drain, cf. migration rebuild_catalog_fetch_queue_drop_art_indexes) →
+		// INSERT OR IGNORE n'aurait plus rien sur quoi dédupliquer.
 		res, err := metadataDB.ExecContext(ctx,
-			`INSERT OR IGNORE INTO catalog_fetch_queue (title_slug, asset_type, asset_id, version_id) VALUES (?, ?, ?, ?)`,
-			titleSlug, assetType, id, ver)
+			`INSERT INTO catalog_fetch_queue (title_slug, asset_type, asset_id, version_id)
+			 SELECT ?, ?, ?, ?
+			 WHERE NOT EXISTS (
+			   SELECT 1 FROM catalog_fetch_queue
+			   WHERE title_slug = ? AND asset_type = ? AND asset_id = ?
+			 )`,
+			titleSlug, assetType, id, ver, titleSlug, assetType, id)
 		if err != nil {
 			slog.WarnContext(ctx, "seed_queue: insert échoué", "err", err, "asset_type", assetType, "asset_id", id)
 			continue
