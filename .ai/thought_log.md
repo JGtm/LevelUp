@@ -26472,3 +26472,19 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Addendum (feedback user)** : (1) Placeholder « vraie » correction — le bug « rien affiché » sur Synthèse venait du PARENT (`SynthesisPage.tsx:420` gateait `{topWeaponKills?.length && <Chart/>}` → composant jamais monté). Gate retiré (chart toujours monté `weapons={topWeaponKills ?? []}`) + composant durci (prop optionnelle + `?? []`). Contributions déjà conforme (rendu inconditionnel). Confirmé live : « Frags par arme » rend avec tous les noms d'armes (BR75, MK50 Sidekick, Corps à corps…), graphe « Engagement » rend aussi (cascade). (2) **Non-récurrence — nouveau garde-fou** `TestNoRawDeleteOnAppendOnlyTables` (no_art_patterns) : fail si un `DELETE FROM <table append-only>` (scopé au nom exact, zéro FP) apparaît dans le hot path serveur. A immédiatement trouvé un 2e cas latent : `compactMatchSkillRankSuperseded` (DELETE sur match_skill_rank) — JUSTIFIÉ (player DB single-writer, PK BIGINT ≠ VARCHAR, zéro concurrence ; blast radius 1 player DB ≠ metadata partagée) → allowlisté avec raison. UPDATE non scanné (SELECT-then-update légitime ; forme bulk gardée par TestNoBulkMultiRowUpdate).
 
 **Conclusion / prochaine étape** : régressions live résolues (racine ART append-only + Huma + placeholders parent-gate) + garde-fou anti-récurrence du DELETE-sur-append-only posé. Verts : Go build/vet/tests + no_art guards + front typecheck/lint/vitest. Commit(s) en attente d'autorisation. Reprise Halo 5 Phase 1 ensuite.
+
+## [2026-06-19] Audit multititre exhaustif (ultracode) + traitement des bloquants write-path — Complété (partiel, documenté)
+
+**Statut** : Complété pour les bloquants self-contained ; reste = chantier Phase 1/2 documenté (`.ai/AUDIT_MULTITITRE_COVERAGE.md`).
+
+**Audit** : workflow 8 agents (7 domaines + critique de complétude) auditant chaque surface/feature/page du worktree vs le code réel → `.ai/AUDIT_MULTITITRE_COVERAGE.md` (verdict ~65-70% multi-titre-ready ; socle découverte/lecture solide ; bloquants sur écriture+orchestration pour un 2e titre ACTIF). Commit `0f6cc76c0`.
+
+**Traité (commits verts, mono-titre byte-identique)** : 
+- `b2d959cff` — `CombinedPersister.playerDBPathFn` thread `batch.TitleSlug` (bloquant #1, perte/mauvaise direction de données pour un 2e titre).
+- `fef1680c0` — `PersistSink.TitleSlug` (battlepass/challenges n'écrivent plus `title_slug='halo_infinite'` en dur).
+
+**Discipline anti-confiance-aveugle** : spot-check de chaque « gap » → 2 FAUX POSITIFS écartés (ranked_playlists const = scopé pkg halo_infinite ; coach/achievements = fallbacks DefaultSlug corrects). Ne PAS churner (CLAUDE.md).
+
+**Reste = Phase 1/2 Halo 5** (refactors coordonnés non testables sans 2e titre actif, file:line dans l'audit doc) : préfixe `/hi/` externalisé, boucle boot `Active()` + sync par titre, front gating + queryClient invalidate, adapter Halo 5. Le handoff `HANDOFF_HALO5_EXPERIMENTAL.md` les couvre (Phase 1/2).
+
+**Conclusion / prochaine étape** : 2 bloquants write-path (les plus graves) levés ; audit exhaustif persisté = feuille de route Halo 5. Reprise = Halo 5 Phase 1 (sonde live + /hi/ + client + adapter) en session dédiée à contexte plein.

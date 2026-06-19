@@ -243,3 +243,24 @@ Recommandations transverses (urgence moyenne — affecte la confiance opération
 - BLOQUANT — orchestration boot + sync : le boot ne provisionne que `DefaultSlug` (pas de boucle `registry.Active()`) et le sync engine est mono-titre. Un titre `active` n'aurait ni DBs migrées ni sync. Ajouter la boucle de provisioning multi-titre et un orchestrateur de sync par titre actif.
 - BLOQUANT — chaîne HTTP/auth Halo-spécifique : préfixe `/hi/` hardcodé dans 8+ appels HTTP, scopes OAuth en var globales, 21 CLI batch sans descriptor, et 3 littéraux SQL bloquants (persist_sink battle pass, ranked_playlists seeding, coach_proposals défaut). À externaliser via `game_prefix`/descriptor avant Halo 5 Phase 1.
 - À FAIRE jour-1+ (non bloquant jour-0) : créer `internal/games/halo_5/` (adapter_data.go + adapter_semantic.go + CareerRepo H5) et compléter `config/titles/halo_5/` ; externaliser le vocab Halo front (Spartan/CSR/LUSR/225 HP/HINF-CSR/HomeHeroBanner) via field-mappings ; ajouter les gates front manquantes (matchview, prestige) + invalider le queryClient au switch ; câbler le seam `SetPrestigeBaselineProvider` et la config labels Discord par titre ; refactor `achievement_categories` en registry config-driven.
+
+## Suivi du traitement (session 2026-06-19)
+
+Traitement séquentiel autonome post-audit. Chaque correction = commit vert (mono-titre byte-identique). **Spot-check systématique** : 2 « gaps » de l'audit se sont révélés FAUX POSITIFS à la vérification — ne pas churner.
+
+### FAIT (vérifié + commité + poussé)
+- **Bloquant write-path persist (#1)** — `CombinedPersister.playerDBPathFn` : signature `func(gamertag)` → `func(titleSlug, gamertag)` appelée avec `batch.TitleSlug`. Un 2e titre route désormais vers SA player DB (avant : tous les batchs verrouillés sur le slug du boot). Commit `b2d959cff`.
+- **Bloquant write-path persist (#6)** — `PersistSink` : champ `TitleSlug` (param `NewPersistSink`) ; `writeBattlePass`/`writeChallenges` n'écrivent plus `title_slug='halo_infinite'` en dur dans `waypoint_assets_raw` ; callers passent `pdb.TitleSlug` / `watcherSlug`. Commit `fef1680c0`.
+
+### FAUX POSITIFS (vérifiés — PAS des gaps)
+- `ranked_playlists.go:26 const = "halo_infinite"` : **correctement scopé** (package `internal/games/halo_infinite/migrations`, title-specific par design ; un 2e titre a SON package). Corriger = régression conceptuelle.
+- `coach_proposals.go:50` + `achievements_service.go:119` : **fallbacks corrects** vers le `DefaultSlug` quand le slug n'est pas injecté (`if slug=="" { ... }`). Le contexte fournit le bon slug pour un 2e titre (TitleExtractor). Littéral cosmétique, zéro impact — churn interdit.
+
+### RESTE = chantier Phase 1/2 Halo 5 (non testable sans 2e titre ACTIF, cf. handoff)
+- **Préfixe `/hi/`** (8+ appels HTTP) : externaliser via `constants.toml [title] game_prefix` + fallback "hi". Prérequis Phase 1 (refactor multi-fichiers à mener d'un bloc, contexte plein).
+- **Boucle boot `registry.Active()`** + **orchestrateur sync par titre** : bloquant activation (Phase 2).
+- **Scopes OAuth globales** : NON bloquant Halo 5 (mêmes audiences qu'Infinite, handoff §1).
+- **Front** : gates matchview/prestige + invalidation queryClient au switch + vocab → field-mappings (Phase 1 front).
+- **Adapter Halo 5** + 7 stubs `Load*` HI (Phase C) = LE chantier Phase 1, pas un gap ponctuel.
+
+**État** : les 2 bloquants write-path (les plus graves, perte/mauvaise direction de données) sont levés et poussés. Le reste est faux-positif ou le chantier Phase 1/2 documenté file:line pour reprise en session dédiée.
