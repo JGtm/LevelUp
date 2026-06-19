@@ -1225,6 +1225,10 @@ en = "Performance scores"
 fr = "Erreurs ignorées"
 en = "Ignored errors"
 
+[common.onboarding.combat_details_note]
+fr = "Les détails de combat (cadence, dominance, duels) sont récupérés en arrière-plan depuis les films Halo. Certains matchs trop anciens pourraient ne pas pouvoir être traités intégralement."
+en = "Combat details (cadence, dominance, duels) are retrieved in the background from Halo films. Some matches that are too old may not be able to be fully processed."
+
 # ─── Notifications page ─────────────────────────────────────────────────
 
 [common.notifications.bulk_actions_aria]
