@@ -50,16 +50,32 @@ describe('MatchKillFeed', () => {
     expect(screen.getByText('1:05')).toBeTruthy() // 65000 ms
   })
 
-  it('masque la section entièrement sur erreur (503 titre sans timeline)', () => {
-    setResult({ data: undefined, isPending: false, isError: true })
+  it('503 capability_not_supported → message « indisponible pour ce titre »', () => {
+    setResult({
+      data: undefined,
+      isPending: false,
+      isError: true,
+      error: { code: 'capability_not_supported' },
+    })
+    renderFeed(null)
+    expect(screen.getByText(t.killFeedUnsupported)).toBeTruthy()
+  })
+
+  it('erreur réseau (autre code) → section masquée silencieusement', () => {
+    setResult({
+      data: undefined,
+      isPending: false,
+      isError: true,
+      error: { code: 'network_error' },
+    })
     const { container } = renderFeed(null)
     expect(container.firstChild).toBeNull()
   })
 
-  it('masque la section si aucun kill (pas de bloc vide titré)', () => {
+  it('aucun kill → état vide explicite (titre supporté, match sans event)', () => {
     setResult({ data: { match_id: 'm1', events: [], limitations: [] }, isPending: false, isError: false })
-    const { container } = renderFeed()
-    expect(container.firstChild).toBeNull()
+    renderFeed()
+    expect(screen.getByText(t.killFeedNoData)).toBeTruthy()
   })
 
   it('kill environnemental (killer absent) → libellé Environnement', () => {
@@ -101,5 +117,17 @@ describe('MatchKillFeed', () => {
     setResult({ data: undefined, isPending: true, isError: false })
     const { container } = renderFeed()
     expect(container.firstChild).toBeNull()
+  })
+
+  it('bilingue : message « indisponible » rendu en anglais (503)', () => {
+    setResult({
+      data: undefined,
+      isPending: false,
+      isError: true,
+      error: { code: 'capability_not_supported' },
+    })
+    const en = MATCH_VIEW_TEXT.en
+    render(<MatchKillFeed playerSlug="JGtm" matchId="m1" meXUID={null} t={en} />)
+    expect(screen.getByText(en.killFeedUnsupported)).toBeTruthy()
   })
 })

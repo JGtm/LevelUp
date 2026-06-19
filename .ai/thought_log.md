@@ -1,3 +1,22 @@
+## [2026-06-20] MatchEvents — déviations front finalisées + formalisation gap « damage model par titre » — Complété
+
+**Statut** : Complété. Front : `tsc -b` + eslint + vitest **8/8** verts (aucun Go touché ce tour). Docs : mini-plan + mémoire + MT-13 + handoff actualisés.
+
+**Déviations Phase 3b finies** :
+- Kill-feed : capability 503 (`capability_not_supported`) → message explicite « Timeline indisponible pour ce titre » (`killFeedUnsupported` FR/EN) ; titre supporté mais match sans kill → état vide explicite (`killFeedNoData`, qui était une string MORTE — maintenant utilisée) ; erreur réseau autre → masquage silencieux. Implémente la gate capability du plan §4 Phase 3 **au bon grain** (réagit à la réponse réelle de l'endpoint, pas un flag coarse `FeatureGate`) + distingue not_exposed vs no-data. Coquille `KillFeedShell` (DRY, 3 états).
+- Test i18n **bilingue** : assertion EN ajoutée (503 → message EN). 6→8 tests.
+- RefID générique / assist / champ Limitations : améliorations déjà documentées → no-action.
+
+**Formalisation « damage model par titre »** (gap révélé par l'user, hors plan events) :
+- `.ai/PLAN_DAMAGE_MODEL_PER_TITLE.md` : baseline « PV pour tuer » = `225` (Infinite) câblée **dupliquée** dans le COMPUTE (`combat_yield.go`, `squad_breakdown_canonical.go`, SQL `post_sync_progression_queries.go`) + P80 Infinite + front display/tooltip + copy d'aide. Halo 5 = `115` (bouclier 70 + armure 45, **à valider data**). Plan 4 phases (constante `[damage_model]` par titre → paramétrer fonctions pures → SQL bind param → P80/front title-aware).
+- MT-13 (`PLAN_MULTITITRE_INDEX.md`) annoté : ne capturait que le front client-side ; le BACKEND compute est plus impactant (c'est la donnée servie) ; trigger « 2e titre » ATTEINT (Halo 5).
+- `HANDOFF_MULTITITRE_ACTIVATION.md` : gate MatchEvents marqué **LEVÉ** (audit 4/4) ; damage-model ajouté en **pré-requis QUALITÉ** d'activation 1b (pas blocage dur) ; vérif live §5 enrichie (kill-feed natif + alerte échelle 225).
+- Mémoire `project_damage_model_per_title_225` + pointeur MEMORY.md.
+
+**Phase 4 (plan events)** : expliquée à l'user — stockage/volume = OPTIONNEL/POST par design (Halo 5 fetch live, Infinite réutilise highlight_events ; rien de cassé). En attente décision (différer vs faire).
+
+**Prochaine étape** : activation 1b (gate MatchEvents levé) + damage-model par titre, à séquencer ensemble.
+
 ## [2026-06-20] Canonical MatchEvents Phase 3b : front kill-feed lazy — Complété
 
 **Statut** : Complété. typecheck `tsc -b` + lint (0 erreur, règle couleurs OK) + vitest 6/6 verts. La chaîne MatchEvents est livrée bout-à-bout (back + front) ; reste l'activation 1b (titre Halo 5).
