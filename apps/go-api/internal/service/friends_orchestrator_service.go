@@ -19,6 +19,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/sync"
@@ -88,6 +89,8 @@ func (s *FriendsOrchestratorService) RecomputeAll(ctx context.Context) (FriendsO
 	if err != nil {
 		return res, fmt.Errorf("RecomputeAll LoadPlayers: %w", err)
 	}
+	// Recompute is_with_friends sur les joueurs ACTIFS uniquement (skip pauses).
+	players = domain.SyncablePlayers(players)
 
 	for _, p := range players {
 		if p.IsDemo {

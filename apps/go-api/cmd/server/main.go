@@ -1827,9 +1827,13 @@ func startWatcherDaemon(
 		return nil
 	}
 
-	// Convertir en domain.PlayerSummary
-	playerSummaries := make([]domain.PlayerSummary, len(players))
-	copy(playerSummaries, players)
+	// Exclure les couples (joueur, titre) en pause (sync_enabled=false) : pas de
+	// tracking live. Les données restent sur disque, réactivables via les réglages.
+	playerSummaries := domain.SyncablePlayers(players)
+	if len(playerSummaries) == 0 {
+		slog.Info("watcher: tous les joueurs en pause, daemon désactivé")
+		return nil
+	}
 
 	// Registre de titres PARTAGÉ (MT-16 : scheduler/watcher voient les titres
 	// additionnels config → sync écrit dans leurs DB isolées via PMT-3).

@@ -570,6 +570,10 @@ func (s *AutoSyncScheduler) RunOnceTrigger(ctx context.Context, trigger string) 
 		slog.ErrorContext(ctx, "auto_sync: chargement des joueurs échoué", "err", err)
 		return res
 	}
+	// Exclure les couples (joueur, titre) en pause (sync_enabled=false) : ils ne
+	// sont plus rafraîchis. Filtre à la SOURCE → couvre V1 (boucle syncPlayer) ET
+	// V2 (runOnceV2 reçoit la slice déjà filtrée).
+	players = domain.SyncablePlayers(players)
 	res.Total = len(players)
 
 	// Détection de claim fuité : le cycle auto-sync sert de heartbeat. Un claim
