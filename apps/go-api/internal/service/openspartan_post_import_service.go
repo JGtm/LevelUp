@@ -37,6 +37,8 @@ type OpenSpartanPostImportService struct {
 type PostImportResult struct {
 	SessionsTouched     int
 	PerfScoresTouched   int
+	CSRProjected        int // lignes CSR projetées shared.match_csrs → player.match_skill_rank
+	LUSRRecomputed      int // matchs LUSR recalculés (replay complet, inclut les matchs importés)
 	CitationsBackfilled bool
 	Errors              []PostImportError
 }
@@ -92,10 +94,59 @@ func (s *OpenSpartanPostImportService) Run(
 
 	var result PostImportResult
 	s.ensureEnrichmentRows(ctx, playerDB, matchIDs, &result)
+	s.recomputeCSR(ctx, playerDB, sharedDBPath, xuid, &result)
+	s.recomputeLUSR(ctx, playerDB, sharedDBPath, xuid, &result)
 	s.recomputeSessions(ctx, playerDBPath, sharedDBPath, xuid, opts, &result)
 	s.recomputePerfScores(ctx, playerDB, sharedDBPath, xuid, opts.ForcePerfScores, &result)
 	s.recomputeCitations(ctx, sharedDBPath, metadataDBPath, playerDB, xuid, matchIDs, &result)
 	return result, nil
+}
+
+// recomputeCSR projette le CSR par-match du joueur depuis shared.match_csrs
+// (écrit à l'import depuis RankRecap) vers player.match_skill_rank, que l'UI lit
+// pour afficher le rang par match. Pur local, aucun appel API.
+//
+// Sprint B1 commit 15 : acquisition du shared writer à la demande via Provider
+// (lecture seule ici, mais on réutilise le même helper que recomputePerfScores).
+func (s *OpenSpartanPostImportService) recomputeCSR(
+	ctx context.Context, playerDB *sql.DB, sharedDBPath, xuid string, result *PostImportResult,
+) {
+	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctx, s.cfg.SharedProvider, sharedDBPath)
+	if err != nil {
+		result.Errors = append(result.Errors, PostImportError{Stage: "csr_acquire", Err: err.Error()})
+		s.log.Warn("post_import_csr_acquire_failed", "xuid", xuid, "err", err)
+		return
+	}
+	defer releaseShared()
+	n, err := sync.BackfillCSRFromShared(ctx, sharedDB, playerDB, xuid)
+	if err != nil {
+		result.Errors = append(result.Errors, PostImportError{Stage: "csr", Err: err.Error()})
+		s.log.Warn("post_import_csr_failed", "xuid", xuid, "err", err)
+		return
+	}
+	result.CSRProjected = n
+}
+
+// recomputeLUSR rejoue le LUSR (v2) du joueur sur tout son historique pour
+// intégrer les matchs importés (anciens), que le chemin live incrémental
+// sauterait via le watermark. Pur local, aucun appel API. Best-effort.
+func (s *OpenSpartanPostImportService) recomputeLUSR(
+	ctx context.Context, playerDB *sql.DB, sharedDBPath, xuid string, result *PostImportResult,
+) {
+	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctx, s.cfg.SharedProvider, sharedDBPath)
+	if err != nil {
+		result.Errors = append(result.Errors, PostImportError{Stage: "lusr_acquire", Err: err.Error()})
+		s.log.Warn("post_import_lusr_acquire_failed", "xuid", xuid, "err", err)
+		return
+	}
+	defer releaseShared()
+	n, err := sync.RecomputeLUSRCanonicalForPlayer(ctx, playerDB, sharedDB, xuid)
+	if err != nil {
+		result.Errors = append(result.Errors, PostImportError{Stage: "lusr", Err: err.Error()})
+		s.log.Warn("post_import_lusr_failed", "xuid", xuid, "err", err)
+		return
+	}
+	result.LUSRRecomputed = n
 }
 
 // ensureEnrichmentRows primes player_match_enrichment with one placeholder
