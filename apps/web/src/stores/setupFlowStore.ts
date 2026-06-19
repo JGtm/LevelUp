@@ -53,12 +53,19 @@ interface SetupFlowState {
   /** job_id du job courant (smoke test ou initial sync) */
   currentJobId: string | null
 
+  /** Titres sélectionnés à l'onboarding (slugs cochés). Multi-titre. */
+  selectedTitleSlugs: string[]
+
+  /** Nb de matchs initiaux à synchroniser par titre (slug → nombre). */
+  maxMatchesByTitle: Record<string, number>
+
   // --- Actions ---
   setSelectedMode: (mode: SetupAuthMode) => void
   setCurrentAttemptId: (id: string | null) => void
   setDeviceFlowCodes: (userCode: string, verificationUri: string, expiresAt: number | null) => void
   setResolvedIdentity: (gamertag: string, xuid: string | null) => void
   setCurrentJobId: (id: string | null) => void
+  setSelectedTitles: (slugs: string[], maxByTitle: Record<string, number>) => void
   reset: () => void
 }
 
@@ -75,6 +82,8 @@ const INITIAL_STATE = {
   resolvedGamertag: null as string | null,
   resolvedXuid: null as string | null,
   currentJobId: null as string | null,
+  selectedTitleSlugs: [] as string[],
+  maxMatchesByTitle: {} as Record<string, number>,
 }
 
 // ---------------------------------------------------------------------------
@@ -95,6 +104,9 @@ export const useSetupFlowStore = create<SetupFlowState>((set) => ({
     set({ resolvedGamertag: gamertag, resolvedXuid: xuid }),
 
   setCurrentJobId: (id) => set({ currentJobId: id }),
+
+  setSelectedTitles: (slugs, maxByTitle) =>
+    set({ selectedTitleSlugs: slugs, maxMatchesByTitle: maxByTitle }),
 
   reset: () => set(INITIAL_STATE),
 }))

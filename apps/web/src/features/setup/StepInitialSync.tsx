@@ -3,7 +3,7 @@
  *
  * P8.4 (revue 2026-04-29) : extrait de SetupPage.tsx (~160L).
  */
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -20,21 +20,36 @@ interface StepInitialSyncProps {
 
 export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
   const activeSyncJobId = useAppShellStore((s) => s.activeSyncJobId)
+  const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const currentJobId = useSetupFlowStore((s) => s.currentJobId)
   const setCurrentJobId = useSetupFlowStore((s) => s.setCurrentJobId)
+  const selectedTitleSlugs = useSetupFlowStore((s) => s.selectedTitleSlugs)
   const startSync = useStartInitialSync()
   const queryClient = useQueryClient()
   const locale = useAppShellStore((s) => s.locale)
-  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+  const t = (key: CommonManifestKey, vars?: Record<string, string | number>) =>
+    formatMessage(commonManifest, key, locale, vars)
+
+  // Titres à synchroniser : la sélection d'onboarding, sinon le titre courant.
+  // La sync est SÉQUENTIELLE (un titre à la fois) car la garde back
+  // FindActiveInitialSync est keyée par gamertag seul → deux syncs parallèles du
+  // même gamertag (titres ≠) se bloqueraient en 409. Mono-titre = flux inchangé.
+  const titlesToSync = selectedTitleSlugs.length > 0 ? selectedTitleSlugs : [currentTitleSlug]
+  const [titleIndex, setTitleIndex] = useState(0)
+  const multiTitle = titlesToSync.length > 1
 
   // Reprendre depuis le job actif connu (session serveur) ou le job local du store
   const resolvedJobId = activeSyncJobId ?? currentJobId
 
   const { data: job } = useJobStatus(resolvedJobId ?? '', !!resolvedJobId)
 
-  function handleStart() {
+  function startTitle(index: number) {
+    const slug = titlesToSync[index]
+    if (!slug) return
+    // max_matches omis → le backend utilise l'initial_max_matches persisté à la
+    // création du profil (StepPlayer). title_slug cible la bonne DB.
     startSync.mutate(
-      { player_slug: playerSlug, max_matches: 200 },
+      { player_slug: playerSlug, title_slug: slug },
       {
         onSuccess: (j) => {
           setCurrentJobId(j.job_id)
@@ -44,12 +59,24 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
     )
   }
 
-  // Quand la sync réussit : invalider le bootstrap pour passer à "ready"
+  function handleStart() {
+    startTitle(titleIndex)
+  }
+
+  // À la réussite d'un titre : passer au suivant (chaînage séquentiel) ; au
+  // dernier, invalider le bootstrap → le wizard bascule en "ready".
   useEffect(() => {
-    if (job?.status === 'succeeded') {
+    if (job?.status !== 'succeeded') return
+    if (titleIndex < titlesToSync.length - 1) {
+      const next = titleIndex + 1
+      setTitleIndex(next)
+      setCurrentJobId(null)
+      startTitle(next)
+    } else {
       queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap })
     }
-  }, [job?.status, queryClient])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job?.status, titleIndex])
 
   const errorMessages: Record<string, string> = {
     sync_auth_expired: "Votre session Halo a expiré. Relancez pour renouveler l'authentification.",
@@ -72,6 +99,12 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
         </Link>{' '}
         {t('common.setup.after_sync_suffix')}
       </p>
+
+      {multiTitle && (
+        <p className="text-xs font-medium text-muted-foreground">
+          {t('common.setup.syncing_game_progress', { current: titleIndex + 1, total: titlesToSync.length })}
+        </p>
+      )}
 
       {!resolvedJobId && (
         <Button onClick={handleStart} disabled={startSync.isPending}>
