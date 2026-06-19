@@ -897,8 +897,13 @@ func NewRouter(
 			WithBackupScheduler(backupScheduler)
 		settingsHandler.Mount(r) // /settings + /settings/{media,sessions,backup}/...
 
-		setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore,
-			service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot))
+		// ProfileService PARTAGÉ : writer UNIQUE de db_profiles.json. Le store
+		// porte un verrou process par-instance → toutes les écritures (onboarding
+		// setup ET réglages titre B.5) DOIVENT passer par la MÊME instance, sinon
+		// deux read-modify-write concurrents pourraient s'écraser (lost update).
+		profileService := service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot).
+			WithDBEvictor(func(playerDBPath string) { platform_duckdb.EvictAndCloseCached(playerDBPath) })
+		setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, profileService)
 		setupHandler.Mount(r) // /setup/players, /setup/smoke-test
 
 		// Sprint 17 : Jobs longs persistants + sync initiale.
@@ -988,6 +993,18 @@ func NewRouter(
 		} else {
 			handlers.NewEmptyAssetMetadataHandler().Mount(r) // fallback Huma → []
 		}
+
+		// Sélection par titre (Pass B.5) : activer / mettre en pause / purger un
+		// titre d'un joueur. Owner-gated SANS RequireActiveTitle (doit fonctionner
+		// sur un titre coming_soon/archivé, ex. purger un jeu qu'on vient de
+		// désactiver). TitleSlugFromPath aligne le titre du ctx sur le titre CIBLÉ
+		// (param de path) afin que la garde d'ownership raisonne sur ce titre et
+		// non sur le header (anti-bypass).
+		r.Route("/profiles/{player_slug}/titles/{slug}", func(r chi.Router) {
+			r.Use(middleware.TitleSlugFromPath("slug"))
+			r.Use(middleware.RequirePlayerOwnership(cfg.DemoMode, cfg.AuthMode, playerOwnershipXUIDResolver(cfg), users, familyXUIDResolver(cfg, settingsStore)))
+			handlers.NewTitleSyncHandler(profileService).Mount(r)
+		})
 
 		// Endpoints P1 : pages par joueur (Sprint 37 — DI via ServiceRegistry)
 		r.Route("/players/{player_slug}", func(r chi.Router) {

@@ -19,11 +19,23 @@ import (
 type ProfileService struct {
 	store    *dbprofiles.Store
 	repoRoot string
+	// evictDB ferme les handles DuckDB cachés d'un chemin de player DB avant sa
+	// suppression (purge). Injecté par le caller pour garder ce package SANS
+	// dépendance directe à platform/duckdb (archlint no_duckdb_import). nil-safe.
+	evictDB func(playerDBPath string)
 }
 
 // NewProfileService crée un ProfileService.
 func NewProfileService(dbProfilesPath, repoRoot string) *ProfileService {
 	return &ProfileService{store: dbprofiles.NewStore(dbProfilesPath), repoRoot: repoRoot}
+}
+
+// WithDBEvictor injecte la fonction d'éviction des handles DuckDB cachés (appelée
+// avant la suppression disque lors d'une purge). Sans evictor, la purge tente
+// quand même la suppression (best-effort).
+func (s *ProfileService) WithDBEvictor(fn func(playerDBPath string)) *ProfileService {
+	s.evictDB = fn
+	return s
 }
 
 // CreatePlayer crée ou met à jour un profil (couple titre × gamertag) dans
@@ -70,6 +82,38 @@ func (s *ProfileService) CreatePlayer(req domain.CreatePlayerProfileRequest) (st
 		return finalKey, []string{"Dossier joueur non créé : " + err.Error()}, nil
 	}
 	return finalKey, nil, nil
+}
+
+// SetTitleSyncEnabled bascule l'état de sync (actif/pause) du couple
+// (titleSlug, gamertag). Délègue au store atomique. Erreurs sentinelles propagées :
+// dbprofiles.ErrEntryNotFound (couple inexistant), dbprofiles.ErrLastActiveTitle
+// (refus de mettre en pause le dernier titre actif du joueur).
+func (s *ProfileService) SetTitleSyncEnabled(titleSlug, gamertag string, enabled bool) error {
+	return s.store.SetSyncEnabled(titleSlug, gamertag, enabled)
+}
+
+// PurgeTitleData retire le couple (titleSlug, gamertag) de db_profiles.json puis
+// supprime les fichiers de données du joueur pour ce titre. L'entrée profil est
+// retirée d'abord (atomique) ; la suppression disque est best-effort.
+//
+// Retourne dataRemoved=false (sans erreur) si la suppression des fichiers a
+// échoué malgré le retrait du profil (ex. verrou Windows résiduel) : le titre
+// n'est de toute façon plus actif/visible, les fichiers orphelins sont inertes.
+// Erreurs sentinelles (ErrEntryNotFound / ErrLastActiveTitle) propagées telles
+// quelles par le store AVANT toute suppression disque.
+func (s *ProfileService) PurgeTitleData(titleSlug, gamertag string) (dataRemoved bool, err error) {
+	if rmErr := s.store.RemoveEntry(titleSlug, gamertag); rmErr != nil {
+		return false, rmErr
+	}
+	pr := title.NewPathResolver(s.repoRoot)
+	// Évincer les handles DuckDB cachés AVANT la suppression (verrou fichier Windows).
+	if s.evictDB != nil {
+		s.evictDB(pr.PlayerDBPath(titleSlug, gamertag))
+	}
+	if err := os.RemoveAll(pr.PlayerDir(titleSlug, gamertag)); err != nil {
+		return false, nil // profil retiré, fichiers non supprimés (best-effort)
+	}
+	return true, nil
 }
 
 // relPlayerDBPath calcule le chemin de la player DB relatif au repo root (comme
