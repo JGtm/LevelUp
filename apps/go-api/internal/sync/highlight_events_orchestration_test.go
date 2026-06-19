@@ -36,7 +36,7 @@ func makeBenignZlibChunk(t *testing.T) []byte {
 func TestInsertHighlightEventsFromData_EmptyData_NoWarning(t *testing.T) {
 	observability.Reset()
 	result := &domain.SyncResult{}
-	err := insertHighlightEventsFromData(context.Background(), nil, nil, "m1", nil, 41, result)
+	err := insertHighlightEventsFromData(context.Background(), nil, "m1", nil, 41, result)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestInsertHighlightEventsFromData_ZeroEventsFromNonEmptyChunk_FlagsAnomaly(
 	chunk := makeBenignZlibChunk(t)
 	result := &domain.SyncResult{}
 
-	err := insertHighlightEventsFromData(context.Background(), nil, nil, "match-test-id", chunk, 41, result)
+	err := insertHighlightEventsFromData(context.Background(), nil, "match-test-id", chunk, 41, result)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestProcessHighlightEvents_ZeroEventsFromNonEmptyChunk_FlagsAnomaly(t *test
 	// processHighlightEvents marque events_loaded en DB en cas de succès — on
 	// passe nil pour sharedDB et on s'attend à ce que la fonction return AVANT
 	// d'y toucher (puisque events==0).
-	err := ProcessHighlightEvents(context.Background(), mock, nil, nil, "match-test-id", result)
+	err := ProcessHighlightEvents(context.Background(), mock, nil, "match-test-id", result)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

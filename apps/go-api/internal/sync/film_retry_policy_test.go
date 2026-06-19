@@ -70,7 +70,7 @@ func TestNoFilm_RecentMatch_NotMarked(t *testing.T) {
 	db := newFilmRetrySharedDB(t, matchID, time.Now().Add(-1*time.Hour))
 	mock := &mockHaloClient{highlightChunkFound: false}
 
-	if err := ProcessHighlightEvents(context.Background(), mock, db, nil, matchID, &domain.SyncResult{}); err != nil {
+	if err := ProcessHighlightEvents(context.Background(), mock, db, matchID, &domain.SyncResult{}); err != nil {
 		t.Fatalf("ProcessHighlightEvents: %v", err)
 	}
 	if eventsLoaded(t, db, matchID) {
@@ -87,7 +87,7 @@ func TestNoFilm_OldMatch_Marked(t *testing.T) {
 	db := newFilmRetrySharedDB(t, matchID, time.Now().Add(-40*24*time.Hour))
 	mock := &mockHaloClient{highlightChunkFound: false}
 
-	if err := ProcessHighlightEvents(context.Background(), mock, db, nil, matchID, &domain.SyncResult{}); err != nil {
+	if err := ProcessHighlightEvents(context.Background(), mock, db, matchID, &domain.SyncResult{}); err != nil {
 		t.Fatalf("ProcessHighlightEvents: %v", err)
 	}
 	if !eventsLoaded(t, db, matchID) {
@@ -103,7 +103,7 @@ func TestNoFilm_UnknownStartTime_Marked(t *testing.T) {
 	db := newFilmRetrySharedDB(t, matchID, time.Time{})
 	mock := &mockHaloClient{highlightChunkFound: false}
 
-	if err := ProcessHighlightEvents(context.Background(), mock, db, nil, matchID, &domain.SyncResult{}); err != nil {
+	if err := ProcessHighlightEvents(context.Background(), mock, db, matchID, &domain.SyncResult{}); err != nil {
 		t.Fatalf("ProcessHighlightEvents: %v", err)
 	}
 	if !eventsLoaded(t, db, matchID) {

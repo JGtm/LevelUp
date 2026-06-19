@@ -120,8 +120,10 @@ func selectMatchesMissingPSA(ctx context.Context, playerDB *sql.DB) []string {
 // Convergence OPPORTUNISTE des alias (2026-06-10) : le JSON fetché contient le
 // gamertag de TOUS les participants — on upserte shared.xuid_aliases au
 // passage, à coût API nul. Résorbe le backlog d'alias des vieux matchs
-// (113 xuids absents de global ET shared au moment de l'audit ; le chemin
-// live écrit vers globalDB, handle souvent nil → fichier global figé).
+// (113 xuids absents au moment de l'audit). Depuis 2026-06-19, shared.xuid_aliases
+// est l'unique store (le store global xbox_aliases a été consolidé puis supprimé) :
+// ce chemin convergent en est l'alimentation principale, avec
+// match_participants/killer_victim_pairs (lus par v_gamertag_lookup).
 func convergePSA(ctx context.Context, playerDB, sharedDB *sql.DB, client HaloClient, xuid string, ids []string) int {
 	done := 0
 	aliases := 0
@@ -266,15 +268,14 @@ func countSharedMatchesMissingEnrichment(ctx context.Context, playerDB, sharedDB
 // IMPÉRATIF : router via ProcessHighlightEvents (qui ne touche pas le flag avant
 // écriture), JAMAIS via ReplayHighlightEventsForMatches (qui clear events_loaded
 // AVANT → combiné à l'INSERT OR IGNORE non-déduplicant en prod, dupliquerait les
-// highlight_events). globalDB=nil : l'upsert d'alias xbox est best-effort et
-// déjà fait au sync primaire.
+// highlight_events).
 func convergeEvents(ctx context.Context, sharedDB *sql.DB, client HaloClient, ids []string) int {
 	done := 0
 	for _, mid := range ids {
 		if ctx.Err() != nil {
 			break
 		}
-		if err := ProcessHighlightEvents(ctx, client, sharedDB, nil, mid, nil); err != nil {
+		if err := ProcessHighlightEvents(ctx, client, sharedDB, mid, nil); err != nil {
 			slog.WarnContext(ctx, "convergence: events échoué", "match_id", mid, "err", err)
 			continue
 		}

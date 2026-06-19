@@ -117,12 +117,11 @@ type ReplayProgressFn func(done, total int, matchID, status string)
 //
 // Idempotent : peut être ré-exécuté sans dommage. Cancellable via `ctx`.
 //
-// `progressFn` peut être nil. `globalDB` peut être nil (les xuid_aliases
-// globaux ne seront pas mis à jour, mais la shared DB l'est toujours).
+// `progressFn` peut être nil.
 func ReplayHighlightEventsForMatches(
 	ctx context.Context,
 	client HaloClient,
-	sharedDB, globalDB *sql.DB,
+	sharedDB *sql.DB,
 	matchIDs []string,
 	progressFn ReplayProgressFn,
 ) (ReplayResult, error) {
@@ -150,7 +149,7 @@ func ReplayHighlightEventsForMatches(
 		}
 
 		dummy := &domain.SyncResult{}
-		err := ProcessHighlightEvents(ctx, client, sharedDB, globalDB, matchID, dummy)
+		err := ProcessHighlightEvents(ctx, client, sharedDB, matchID, dummy)
 
 		var status string
 		switch {
@@ -276,9 +275,5 @@ func (e *SyncEngine) BackfillEventsForMatches(
 
 	client := NewHaloAPIClient(e.tokens.SpartanToken, e.tokens.ClearanceToken, 3)
 
-	// globalDB optionnel (alias upserts) — best-effort, non bloquant.
-	// On ne l'ouvre pas ici pour rester aligné avec BackfillWeaponKillsForMatches
-	// qui ne touche pas non plus à la global DB. Les xuid_aliases shared sont
-	// peuplés par ProcessHighlightEvents directement.
-	return ReplayHighlightEventsForMatches(ctx, client, sharedDB, nil, ids, progressFn)
+	return ReplayHighlightEventsForMatches(ctx, client, sharedDB, ids, progressFn)
 }
