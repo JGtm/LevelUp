@@ -156,10 +156,14 @@ func (p *StateProvider) IsPlayerActive(gamertag string) bool {
 	p.daemon.playersMu.RLock()
 	defer p.daemon.playersMu.RUnlock()
 
-	pw, ok := p.daemon.players[gamertag]
-	if !ok {
-		return false
+	// La map est keyée par playerKey(gamertag, titleSlug) composite. Le scheduler
+	// interroge par GAMERTAG : le joueur est « actif » s'il est watché sur AU MOINS
+	// un titre (le tick auto-sync cède alors, peu importe le titre). On itère donc
+	// et on matche sur pw.gamertag.
+	for _, pw := range p.daemon.players {
+		if pw.gamertag == gamertag && pw.FSM().State() != StateIdle {
+			return true
+		}
 	}
-
-	return pw.FSM().State() != StateIdle
+	return false
 }

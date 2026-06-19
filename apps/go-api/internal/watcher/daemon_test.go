@@ -54,10 +54,10 @@ func TestDaemon_InitPlayers(t *testing.T) {
 	if len(d.players) != 2 {
 		t.Errorf("players = %d, want 2 (skip demo + no-xuid)", len(d.players))
 	}
-	if _, ok := d.players["Player1"]; !ok {
+	if _, ok := d.players[playerKey("Player1", "")]; !ok {
 		t.Error("Player1 not found")
 	}
-	if _, ok := d.players["Player2"]; !ok {
+	if _, ok := d.players[playerKey("Player2", "")]; !ok {
 		t.Error("Player2 not found")
 	}
 }
@@ -262,7 +262,7 @@ func TestStateProvider_SubscribeError_ExposedInStatus(t *testing.T) {
 	d := NewDaemon(DaemonConfig{RepoRoot: "/repo"}, title.NewRegistry(), &mockDaemonSyncRunner{})
 	d.initPlayers(context.Background(), []domain.PlayerSummary{{Gamertag: "P1", XUID: "X1"}})
 
-	pw := d.players["P1"] // indexée par gamertag
+	pw := d.players[playerKey("P1", "")] // clé composite (gamertag|titre)
 	pw.SetSubscribeError(errors.New("rta: timeout"))
 
 	p := NewStateProvider(d)
@@ -330,7 +330,7 @@ func TestDaemon_AddPlayer_AddsToMap(t *testing.T) {
 
 	d.playersMu.RLock()
 	defer d.playersMu.RUnlock()
-	if _, ok := d.players["Alice"]; !ok {
+	if _, ok := d.players[playerKey("Alice", "")]; !ok {
 		t.Error("Alice devrait être dans le map players")
 	}
 }
