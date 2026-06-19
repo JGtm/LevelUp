@@ -1,3 +1,17 @@
+## [2026-06-19] Multi-titre Pass B.4 : onboarding ciblable par titre + sync initial title-aware — Complété (back)
+
+**Statut** : Complété (back). build `./...` + vet + gofmt OK ; contrat OpenAPI à parité ; tests handlers/api/service verts. Corrige un VRAI bug latent (le sync initial écrivait toujours dans halo_infinite).
+
+**Réalisations** :
+- **`StartInitialSync` title-aware** (corrige le bug) : `InitialSyncStartRequest` += `title_slug` ; le titre cible = body sinon ctx. `LoadPlayers(titleSlug)` lève l'ambiguïté (gamertag sous 2 titres). Moteur construit via `NewSyncEngineForTitle` (au lieu de `NewSyncEngine` = DefaultSlug en dur) → écrit dans `data/titles/{slug}/...`. Dédup `TryClaimT(titleSlug,...)` alignée. `newEngineFor` prend désormais titleSlug (2e call site `newPooledEngine` → `ctxkeys.TitleSlug(ctx)`).
+- **max_matches par titre** : défaut = `initial_max_matches` du profil (clampé 1..2000) si body omis, sinon 200. **Précédence des validations PRÉSERVÉE** (400 max_matches / 409 actif / 401 auth AVANT 404 profil) — un body explicite hors bornes reste rejeté d'emblée ; le défaut profil est appliqué après résolution.
+- **Onboarding ciblable** : `handleCreatePlayer` donne PRIORITÉ au `title_slug` du body (sinon ctx) → le front crée un profil par titre choisi avec son `initial_max_matches`. Réponse enrichie (title_slug/sync_enabled/initial_max_matches). Approche N-appels (pas de body `Titles[]`) — le front itère les titres sélectionnés.
+- **OpenAPI** : `PlayerSummary` réaligné (sync_enabled requis + initial_max_matches, version Huma exacte) ; request bodies de `/setup/players` + `/sync/initial` documentés (étaient absents) pour le type-gen front Pass C.
+
+**Tests** : setup (priorité body title_slug + propagation max), précédence StartInitialSync préservée (3 tests existants reverts au vert après réordonnancement).
+
+**Prochaine étape** : Pass B back TERMINÉ (sauf B.7 watcher, passe dédiée risquée). Suite = Pass C (front : step onboarding sélection titres + onglet réglages Jeux + nettoyage `?? 10`) puis activation 1b.
+
 ## [2026-06-19] Multi-titre Pass B.5 : endpoints réglages titre (toggle pause + purge, owner-gated) — Complété (back)
 
 **Statut** : Complété (back). build `./...` + vet + gofmt OK ; contrat OpenAPI à parité (routes + schémas documentés) ; +9 tests (service purge/min-1, middleware). Décision produit : owner-gated (pas admin-only), pause = garde données, purge = supprime.

@@ -978,6 +978,32 @@ paths:
       tags: [setup]
       operationId: postSetupPlayers
       summary: Créer un profil joueur
+      description: |
+        Crée (ou met à jour) le couple (joueur, titre) dans db_profiles.json.
+        Onboarding multi-titre : appeler une fois par titre choisi, avec son
+        title_slug et son initial_max_matches. title_slug du body prime sur le
+        titre du contexte (header X-LevelUp-Title).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [gamertag]
+              properties:
+                gamertag:
+                  type: string
+                xuid:
+                  type: string
+                profile_mode:
+                  type: string
+                  description: "xbox | azure_manual"
+                title_slug:
+                  type: string
+                  description: "Titre cible (défaut: titre du contexte puis halo_infinite)"
+                initial_max_matches:
+                  type: integer
+                  description: "Nb de matchs à synchroniser à l'onboarding (0 = défaut)"
       responses:
         "201":
           description: Profil créé
@@ -1017,6 +1043,27 @@ paths:
       tags: [sync]
       operationId: postSyncInitial
       summary: Lancer la synchronisation initiale
+      description: |
+        Sync initiale title-aware. title_slug cible la bonne DB (lève l'ambiguïté
+        d'un gamertag présent sous plusieurs titres) ; à défaut, le titre du
+        contexte. max_matches : 1-2000 ; 0 = défaut du profil (initial_max_matches)
+        puis 200.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [player_slug]
+              properties:
+                player_slug:
+                  type: string
+                max_matches:
+                  type: integer
+                  description: "1-2000 ; 0 = défaut profil puis 200"
+                title_slug:
+                  type: string
+                  description: "Titre cible (défaut: titre du contexte puis halo_infinite)"
       responses:
         "202":
           description: Sync démarrée
@@ -3206,12 +3253,17 @@ components:
       properties:
           gamertag:
               type: string
+          initial_max_matches:
+              format: int64
+              type: integer
           is_demo:
               type: boolean
           player_slug:
               type: string
           steam_id:
               type: string
+          sync_enabled:
+              type: boolean
           title_slug:
               type: string
           waypoint_player:
@@ -3224,6 +3276,7 @@ components:
           - xuid
           - waypoint_player
           - is_demo
+          - sync_enabled
       type: object
     CapabilityMap:
       additionalProperties: false

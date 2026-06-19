@@ -156,5 +156,9 @@ type CreatePlayerProfileResponse struct {
 // InitialSyncStartRequest est le corps de POST /sync/initial.
 type InitialSyncStartRequest struct {
 	PlayerSlug string `json:"player_slug"`
-	MaxMatches int    `json:"max_matches"` // 1-2000, default 200
+	MaxMatches int    `json:"max_matches"` // 1-2000 ; 0 = défaut profil (initial_max_matches) puis 200
+	// TitleSlug : titre cible (multi-titre). Vide → titre du contexte (header/
+	// session) puis halo_infinite. Lève l'ambiguïté quand un gamertag existe sous
+	// plusieurs titres et cible la bonne DB.
+	TitleSlug string `json:"title_slug,omitempty"`
 }
