@@ -160,6 +160,11 @@ func fallbackCapabilities() games.CapabilityMap {
 		games.CapEngagement:         games.CapSupported,
 		games.CapBattlePass:         games.CapSupported,
 		games.CapChallenges:         games.CapSupported,
+		// Canonical MatchEvents : not_exposed tant que l'unification depuis
+		// highlight_events (Phase 2) n'est pas câblée dans l'adapter canonique.
+		games.CapMatchEventsTimeline:  games.CapNotExposed,
+		games.CapMatchKillfeedPerKill: games.CapNotExposed,
+		games.CapMatchEventsSpatial:   games.CapNotExposed,
 	}
 }
 
@@ -583,6 +588,13 @@ func (a *DataAdapter) LoadMatchScoreboard(ctx context.Context, matchID string) (
 
 // LoadHighlightEvents n'est pas encore câblée (Phase B+).
 func (a *DataAdapter) LoadHighlightEvents(ctx context.Context, matchID string) ([]canonical.HighlightEvent, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+
+// LoadMatchEvents : timeline d'events. Stub Phase 0 — l'unification depuis
+// highlight_events (+ appariement killer/victim, T0) est la Phase 2 du plan
+// PLAN_CANONICAL_MATCH_EVENTS (arme-par-kill degraded, positions not_exposed).
+func (a *DataAdapter) LoadMatchEvents(ctx context.Context, matchID string, opts canonical.MatchEventOptions) (*canonical.MatchEventTimeline, error) {
 	return nil, games.ErrCapabilityNotSupported
 }
 

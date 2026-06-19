@@ -23,6 +23,9 @@ func AllCapabilityKeys() []CapabilityKey {
 		CapEngagement,
 		CapBattlePass,
 		CapChallenges,
+		CapMatchEventsTimeline,
+		CapMatchKillfeedPerKill,
+		CapMatchEventsSpatial,
 	}
 }
 
