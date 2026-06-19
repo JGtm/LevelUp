@@ -9,11 +9,18 @@ import { Card, CardContent } from '@/components/ui/card'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { RouteCapabilityGate } from '@/lib/capabilities/RouteCapabilityGate'
 
 export const Route = createFileRoute(
   '/players/$playerSlug/matches/$matchId/replay',
 )({
-  component: RejeuPage,
+  // Sous-route du détail match : sans capability `matchmaking`, le rejeu n'a pas
+  // de sens (le match n'existe pas pour ce titre). NO-OP halo_infinite.
+  component: () => (
+    <RouteCapabilityGate capability="matchmaking">
+      <RejeuPage />
+    </RouteCapabilityGate>
+  ),
 })
 
 function RejeuPage() {
