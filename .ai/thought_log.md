@@ -1,3 +1,19 @@
+## [2026-06-19] Import OpenSpartan — backfill events non-bloquant + câblage (P2/P3) — Complété
+
+**Contexte** : suite du P1 (CSR/LUSR). Les `highlight_events` (détails de combat : kills/morts horodatés → cadence, dominance, killer/victim) ne sont PAS dans OpenSpartan (décodés des films Halo, absents de la base). Il faut les rattraper SANS bloquer l'app (contrainte B-swap : RO+RW interdits sur le même fichier in-process).
+
+**Décisions** :
+- **Orchestrateur** `RunEventsConvergenceBackfill` ([convergence_backfill_events.go](../apps/go-api/internal/sync/convergence_backfill_events.go)) : détection bitmask récent→vieux (`FindMatchesMissingData` scope.Events), fetch films HORS lease, persist par lots courts (acquire → `persistCombatCompletion` → release), yield entre lots, cession au live (`TryClaim`), auto-bornant (404 sur vieux match → `MarkNoFilmDefinitive`), reprenable via `events_loaded`. 100% composé de l'existant (zéro logique dupliquée).
+- **Dominance** : `BackfillDominanceFlags` sur les matchs fraîchement pourvus d'events (best-effort).
+- **Câblage** : `SyncEngine.RunEventsConvergence` (réutilise client poolé + provider) ; passe scheduler après chaque `RunDelta` réussi (sous le claim tenu, gate=nil, bornée `LEVELUP_EVENTS_CONVERGENCE_MAX`=50) ; trigger immédiat post-import (goroutine, cède au live) via interface `ConvergenceTrigger` (wiring server.go). Kill-switch `LEVELUP_EVENTS_CONVERGENCE`.
+- **Reprise au boot** : inhérente (re-détection bitmask à chaque tick scheduler, pas de boot-storm).
+
+**Résultats** : full build + vet verts ; tests sync (+ intégration : 404 définitif/récent, erreur réseau, happy-path sur vrai chunk film v41 + convergence, dominance), service, scheduler, openspartan — tous verts. Commits `0ded62f7b` (P1), `c8f84cc67` (P2.1), `1a0de6bc6` (P2.2), `749e4ddf7` (P2.3+P3).
+
+**Prochaine étape / différés** : (1) `PlaylistCSRSnapshots → player_csr_snapshots` **ABANDONNÉ** — redondant avec le CSR par-match + les snapshots que le sync live capture déjà ; seuls les agrégats pic-saison/all-time s'y ajouteraient (faible valeur). (2) Message UX onboarding (backfill en cours / films expirés) optionnel, non fait. (3) Ce fichier est committé avec une entrée concurrente d'un autre agent (coût écriture RW DuckDB) présente dans l'arbre.
+
+---
+
 ## [2026-06-19] Import OpenSpartan — compléter CSR par-match + recompute LUSR au post-import (P1) — Complété
 
 **Contexte** : à l'onboarding avancé, l'import d'une base OpenSpartan ne ramenait que les stats de base. Vérifié sur le repo OpenSpartan (`openspartan-workshop`, `Queries/Bootstrap/*.sql`) : la base contient bien le CSR (RankRecap dans `PlayerMatchStats` + snapshots `PlaylistCSRSnapshots`) mais **PAS** les `highlight_events` (aucune table — décodés des films, absents). Le LUSR est une invention LevelUp (absent par construction). L'import LevelUp parsait `RankRecap` (`models.go:159`) sans le persister, et le post-import ne recalculait pas le LUSR.
@@ -24872,3 +24888,19 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Correctif design (retour user : "pourquoi un flag + un token dédié ? c'est débile")** — fondé : CLAUDE.md interdit les feature flags qui traînent + le "tout en double". Le flag `LEVELUP_WORLD_ENRICH` ET le token dédié `LEVELUP_WORLD_ENRICH_TOKEN` **SUPPRIMÉS** ([cmd/server/main.go:1101](../apps/go-api/cmd/server/main.go#L1101)) : l'enrichissement est désormais **toujours actif via le POOL multi-token** (`BuildEnricher` avec `TokenGamertag` vide → `BuildMultiHaloSource` = tous les comptes db_profiles round-robin, exactement le chemin auth store-first ADR 0023 du reste de l'app + du CLI `-all-tokens`). **Zéro variable d'env à poser.** Build lazy conservé (Eager:false → pas d'I/O token au boot). Pas de logique dupliquée : CLI et cron partagent le même `WorldStatsEnricher` (wiring.go) ; le CLI ne sert qu'aux backfills historiques one-shot. Vérifs : `go build ./cmd/server` OK, `go vet` OK, `go test ./internal/scheduler -run World` vert.
 
 **Conclusion / prochaine étape** : (1) le cron enrichit le top-100 de la saison courante au prochain cycle (snapshot > garde-fou 20h), via le pool — même auth que les syncs joueur du serveur (s'ils marchent, le cron marche, aucun override à ajouter côté serveur). (2) Fill immédiat optionnel du top-100 13-2 via backfill manuel (serveur arrêté) pour ne pas attendre ~1j. (3) Optionnel : purger le snapshot Legacy=2 stale. **⚠️ Commit** : `main.go` est partagé avec la refacto sync/asset-names concurrente (24 insert/9 del non-miennes) → committer de concert, PAS en pathspec isolé. `LeaderboardBlock.tsx` + thought_log sont séparables. En attente d'autorisation.
+
+## [2026-06-19] Investigation — temps de maintien RW DuckDB (~5 s / 15-20 matchs) — Complété (mesure)
+
+**Statut** : Investigation + mesure complétées. Aucun changement de prod (seul ajout : un test de mesure `integration`). Optimisations non implémentées (plan rédigé, en attente d'arbitrage utilisateur).
+
+**Décision technique / cartographie** :
+- Le lease RW est pris **PAR MATCH** (worker unique → `CombinedPersister.Persist` acquiert/relâche par batch), pas une fois par cycle. En mode B-swap, chaque acquisition = swap RO→RW→RO complet.
+- **Le coût d'un swap SCALE avec N joueurs actifs** : `pool_swap_hook.go` (`PrepareForSharedSwap`/`RestoreSharedAfterSwap`) ferme+rouvre la conn RO-shared de CHAQUE player DB du pool, synchrone sous le mutex provider au PreSwap.
+- Le pré-check RO d'idempotence existe ([engine_batch_path.go:122](../apps/go-api/internal/sync/engine_batch_path.go#L122)) mais le `Submit` est **inconditionnel** → un re-fetch delta déjà persisté paie quand même un swap (le pré-check ne sert qu'aux métriques).
+- La convergence n'utilise PAS la queue de persist (écritures directes). Aucun CHECKPOINT par match (différé 5 min).
+
+**Résultats mesurés (local, DB scratch disque, `TestWriteCost`)** :
+- **Écriture shared ~114 ms/match** (~180 lignes insérées ligne-par-ligne, ~0,6 ms/ligne) ; player ~4 ms ; swaps ~24-105 ms/match (logs/provider.log, `drain_ms`≈0 local).
+- **Le coût dominant est l'écriture ligne-par-ligne, PAS le swap.** Coût ~linéaire au nombre de lignes → overhead par-INSERT, pas un coût fixe.
+
+**Conclusion / prochaine étape** : nouvelle priorité = (1) écriture groupée / Appender DuckDB (plus gros coût, aide le cas 1-match dominant, auto-contenu) ; (2) coalescing des swaps (rafales, code délicat) ; (3) guard Submit + `json.Marshal`. Plan complet : `C:\Users\Guillaume\.claude\plans\un-coll-gue-vient-de-misty-rossum.md`. Garde-fous non-régression (test différentiel, garde ART, injection de fautes) à appliquer avant tout changement. Test de mesure conservé : [persist_writecost_bench_test.go](../apps/go-api/internal/persist/persist_writecost_bench_test.go) (tag `integration`, supprimable).
