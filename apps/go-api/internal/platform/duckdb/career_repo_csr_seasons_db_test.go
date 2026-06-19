@@ -62,6 +62,42 @@ func TestAvailableCSRSeasons_CurrentAlwaysIncluded(t *testing.T) {
 	}
 }
 
+// TestAvailableCSRSeasons_FromMatchCSRs : un joueur SANS snapshots mais avec du
+// CSR par-match (shared.match_csrs — cas import OpenSpartan) → la saison du match
+// apparaît dans le sélecteur via le branchement match_csrs (pas besoin d'importer
+// les snapshots Waypoint, le season_id est déjà sur le CSR par-match).
+func TestAvailableCSRSeasons_FromMatchCSRs(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	if _, err := pdb.Player.Exec(context.Background(),
+		`INSERT INTO shared.match_csrs
+			(id, match_id, xuid, rating_type, rating_value, tier, sub_tier, season_id)
+		 VALUES (1, 'm_hist', ?, 'CSR', 1500.0, 'Platinum', 2, 'CsrSeason10-1')`,
+		pdb.XUID); err != nil {
+		t.Fatalf("seed match_csrs: %v", err)
+	}
+	repo := NewCareerRepo(pdb).WithCSRThresholds(NewCSRThresholdsRepo(pdb.Metadata), "CsrSeason13-1")
+
+	seasons, err := repo.AvailableCSRSeasons(context.Background())
+	if err != nil {
+		t.Fatalf("AvailableCSRSeasons: %v", err)
+	}
+	var hasS10, hasS13 bool
+	for _, s := range seasons {
+		switch s.SeasonID {
+		case "CsrSeason10-1":
+			hasS10 = true
+		case "CsrSeason13-1":
+			hasS13 = true
+		}
+	}
+	if !hasS10 {
+		t.Errorf("saison 10 (depuis match_csrs) absente du sélecteur : %+v", seasons)
+	}
+	if !hasS13 {
+		t.Errorf("saison courante 13 absente : %+v", seasons)
+	}
+}
+
 // TestGetCSRSnapshots_SeasonFilter : 2 snapshots même playlist, saisons
 // différentes → le filtre saison ne renvoie que la saison demandée (pas de
 // supplantation par une saison passée).
