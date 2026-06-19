@@ -108,11 +108,21 @@ Ordonner par taille de bucket TS2339 observée au calibrage :
 
 ## Phase finale (après réconciliation)
 
-- **Phase D** : déplacer les 217 types frontend-only dans `apps/web/src/lib/api/viewModels.ts`
-  (séparation explicite contrat vs view models) ; `types.ts` ne contient alors plus que des
-  ré-exports.
-- **Garde-fou anti-régression** : ratchet/lint empêchant un nouveau type manuel qui doublonne un
-  schéma OpenAPI existant.
+- **Phase D — déplacement `viewModels.ts` : DESCOPÉ 2026-06-19** (judgment, validé utilisateur).
+  Les 125 interfaces manuelles sont interleavées avec les 228 shims **par aire fonctionnelle**
+  (un type à côté de ses shims voisins). Scinder par « contrat vs view-model » éclate ce
+  regroupement (navigation dégradée) + imports circulaires type-only, pour une distinction
+  **déjà visuellement explicite** (`export type X = components[...]` vs `export interface X`).
+  Valeur faible/négative → non fait.
+- **Phase D — re-shim post-Huma : FAIT 2026-06-19.** La migration Huma `/media/*` + assets +
+  battlepass a fait rattraper le contrat → **8 types pure-data re-shimés** (`AssetMeta`,
+  `BattlePassResponse`, `MediaAuthor`, `MediaAuthorsResponse`, `MediaMatchLobbyEntry`,
+  `MediaMatchCandidate`, `MediaMatchCandidatesResponse`, `MediaAssociateResponse`). 125 → 117
+  interfaces manuelles, `tsc` = 0.
+- **Garde-fou anti-régression : LIVRÉ 2026-06-19.** `tools/lint-contract-ratchet.mjs` (lefthook
+  pre-push) — échoue si une nouvelle interface manuelle doublonne un schéma OpenAPI hors baseline
+  (51 view-models/Inputs légitimes), ou si une entrée baseline devient obsolète. Force le shim ou
+  une justification explicite.
 
 ## Estimation
 

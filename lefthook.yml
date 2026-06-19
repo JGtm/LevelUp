@@ -62,6 +62,13 @@ pre-push:
       glob: "apps/web/src/**/*.{ts,tsx}"
       run: node tools/knip-ratchet.mjs
 
+    # Ratchet contrat ↔ view-model — échoue si un nouveau type manuel (types.ts)
+    # doublonne un schéma OpenAPI (generated.ts) hors baseline. Force le shim ou
+    # une justification explicite. Baseline dans tools/lint-contract-ratchet.mjs.
+    lint-contract-ratchet:
+      glob: "apps/web/src/lib/api/{types.ts,generated.ts}"
+      run: node tools/lint-contract-ratchet.mjs
+
     # ── Go — lint module entier + tests + vulns ────────────────────────────────
 
     # golangci-lint: retiré du pre-push (139 issues pré-existantes, couvert par CI)
