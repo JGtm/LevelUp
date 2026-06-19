@@ -1,3 +1,24 @@
+## [2026-06-19] Réparation corruption ART player_match_enrichment + re-backfill engagement propre — Complété (ZÉRO perte)
+
+**Statut** : 4 player DB réparées, re-backfill réussi, coefs recentrés. Backup pris. `go build`/`vet`/tests migration ✓.
+
+**Déclencheur** : le re-backfill `engagement-coefs --with-scores` crashait DuckDB (FATAL "Failed to append to PRIMARY_player_match_enrichment_0: duplicate key") sur Madina+JGtm — bug d'index ART (faux-positif : données sans doublon, COUNT==DISTINCT). User : « réparer proprement, aucune perte de données ».
+
+**Constat intégrité (read-only)** : ZÉRO perte. Toutes les lignes présentes, aucun doublon réel (Madina 1183=1183, JGtm 942=942, Choco 505, XxDaemon 32). 2 WAL résiduels (crash). Le crash est un faux-positif d'INDEX, pas de données.
+
+**Décisions techniques** :
+1. **Backup** des 4 stats.duckdb (+WAL) → `data/backups/pre_art_rebuild_20260619_114622/`.
+2. **Fix `RebuildPlayerMatchEnrichmentART`** (`steps_player_rebuild_match_enrichment.go`) : la version 2026-05-23 (a) DROP-ait les indexes secondaires sans les recréer (commentaire « pas d'indexes connus » périmé — la table a gagné idx_pme_engagement_history/_paces/_session après) et (b) n'était PAS transactionnelle. Corrigé : capture dynamique des CREATE INDEX (duckdb_indexes is_primary=false) → swap CTAS **en transaction** avec **garde anti-perte** (rebuilt==before sinon rollback) → recréation des indexes. Même sûreté que RebuildMatchParticipantsART. Test non-régression `…_RecreatesSecondaryIndexes` ajouté.
+3. **CLI `cmd/rebuild_pme_art`** : cible UNIQUEMENT player_match_enrichment + CHECKPOINT initial (rejoue le WAL de crash) et final (vide le WAL). Évite `force_rebuild_art --player-db` qui tente AUSSI de rebuild match_skill_rank — table devenue append-only (v5.3) qui ne peut plus porter de PK → échec + WAL non checkpointé (bug pré-existant de force_rebuild_art, hors scope).
+4. **Rebuild des 4 DB** : counts identiques au baseline (zéro perte), 3 indexes recréés (1 pour Choco), WAL nettoyés, RO open OK, match_skill_rank intact.
+5. **Re-backfill** `engagement-coefs --all --with-scores --force` : RÉUSSI sans crash (XxDaemon 31, Choco 487, JGtm 914, Madina 596 scores). **Coefs recentrés** : JGtm 1.345→**1.009**, Madina 1.819→**1.279** (+ PvP_ranked 1.45 désormais calculé) — confirme l'effet pace_team-inclut-le-joueur sur les données historiques.
+
+**Résultats** : zéro perte (vérifié counts == baseline avant/après), engagement recentré sur tout l'historique, build/tests verts.
+
+**Note** : bug pré-existant à part — `force_rebuild_art --player-db` casse sur l'étape match_skill_rank (append-only). Non corrigé ici (hors scope) ; utiliser `cmd/rebuild_pme_art` pour player_match_enrichment.
+
+---
+
 ## [2026-06-19] Escouade : résolution FR des noms de map via asset_translations — Complété
 
 **Statut** : DB libérée par le user. Diagnostic + fix livrés. `go build`/`go test duckdb` ✓ (2 nouveaux tests).
