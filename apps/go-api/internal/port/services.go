@@ -93,6 +93,22 @@ type MatchViewService interface {
 	GetMatchNeighborsFiltered(ctx context.Context, matchID string, spec *domain.MatchFilterSpec) (domain.MatchNeighbors, error)
 }
 
+// MatchEventsService construit la timeline canonique d'events d'un match
+// (kill-feed / timeline, chargée on-demand), avec résolution des gamertags via
+// le chokepoint canonique. Capability-gated : retourne games.ErrCapabilityNotSupported
+// si le titre n'expose pas de timeline d'events (le handler dégrade en 503).
+type MatchEventsService interface {
+	GetMatchEvents(ctx context.Context, matchID string, opts canonical.MatchEventOptions) (*canonical.MatchEventTimeline, error)
+}
+
+// GamertagResolver résout un set BORNÉ de xuid → gamertag via le chokepoint
+// canonique (v_gamertag_lookup). Les xuid non résolus (orphelins hors sources)
+// sont ABSENTS de la map — le caller laisse l'identité sans gamertag et le rendu
+// applique le masquage (front displayPlayerName). Implémenté par duckdb.GamertagRepo.
+type GamertagResolver interface {
+	ResolveGamertags(ctx context.Context, xuids []string) (map[string]string, error)
+}
+
 // MatchExclusionService gère le marquage et la liste des matchs non pertinents.
 type MatchExclusionService interface {
 	// SetExclusion marque ou démarque un match comme non pertinent.

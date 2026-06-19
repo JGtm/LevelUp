@@ -1,3 +1,21 @@
+## [2026-06-20] Canonical MatchEvents Phase 3a : surface back (service + handler Huma + OpenAPI) — Complété
+
+**Statut** : Complété. `go build ./...` + vet verts ; 7 tests service (fake adapter/resolver) + 5 tests handler (httptest Huma) + 2 intégration duckdb (ResolveGamertags, MatchEventsSource) + **gates contrat verts** (TestContractRoutesRegistered/Documented seuil 0 + TestOpenAPISchemaDrift 0 manquant + OpenAPI valide). L'endpoint sert la timeline d'events bout-à-bout pour le titre actif (Infinite). 3b = front.
+
+**Endpoint** : `GET /api/v1/players/{player_slug}/matches/{match_id}/events?types=...` (Huma, ownership+title hérités du groupe `/players/{player_slug}`). 200 `MatchEventTimeline` ; 503 `capability_not_supported` (titre sans timeline) ; 400 `invalid_event_type`/`missing_match_id`.
+
+**Livré** :
+- **`port/services.go`** : `MatchEventsService` (GetMatchEvents) + `GamertagResolver` (ResolveGamertags batch xuid→gamertag).
+- **`service/match_events_service.go`** : orchestration — appelle `adapter.LoadMatchEvents` (capability-gated, ErrCapabilityNotSupported propagée → 503), puis **enrichit les identités xuid-seules** via le chokepoint canonique (resolver). No-op si resolver nil (Halo 5 déjà gamertag-keyé) ou aucun xuid. Échec resolver = dégradation gracieuse (xuid masqué au rendu front). XUID conservé (le front a besoin des deux).
+- **`duckdb/gamertag_repo.go`** : `ResolveGamertags` via `v_gamertag_lookup` (bare, SharedReader — même chokepoint que Q12 scoreboard ; bots résolus, jamais de xuid brut ; orphelins absents de la map). + `dedupNonEmpty`.
+- **`handlers/match_events.go`** : `MatchEventsHandler` Huma (struct Output, jamais writeJSON) + `parseMatchEventOptions` (valide `?types`, 400 sur type inconnu).
+- **`registry_pages.go`** : factory `MatchEvents(ctx, slug)` (adapter via dataAdapterForPDB + resolver via SharedReader). **`server.go`** : mount sur le groupe player.
+- **OpenAPI** : path `getMatchEvents` + 3 schémas (`MatchEvent`/`MatchEventTimeline`/`Vec3`, auto-dérivés Huma via OPENAPI_EMIT_OUT) ajoutés à `openapi.yaml` + `make gen` (types.gen.go). PlayerIdentity/AssetReference/CapabilityGap réutilisés (déjà au contrat).
+
+**Décision** : ErrCapabilityNotSupported → **503** (précédent squad_v2), pas 200-vide. Pour Infinite (events toujours câblés au builder) l'endpoint répond 200 ; le 503 ne survient que pour un titre sans builder/events (le front masque la section sur erreur).
+
+**Prochaine étape** : Phase 3b (front) — hook `useMatchEvents` + composant kill-feed/timeline lazy dans la page Match (onglet ou section du détail) + `displayPlayerName` (chokepoint) + i18n FR/EN + `npm run generate-types` + vitest. Puis activation 1b.
+
 ## [2026-06-20] Canonical MatchEvents Phase 2 : unification Infinite (highlight_events → timeline T0) — Complété
 
 **Statut** : Complété. `go build ./...` + vet (duckdb/api/games) verts ; tests games/halo_infinite (10 nouveaux : mapper + adapter) + api + intégration duckdb `TestMatchEventsSource_LoadAndTimeline` verts. Infinite sert désormais une timeline canonique reconstruite — Phase 2 n'est PAS le gate d'activation (Phase 3 = surface l'est), mais elle ferme l'unification back.
