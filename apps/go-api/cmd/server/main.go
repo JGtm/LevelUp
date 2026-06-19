@@ -1893,7 +1893,7 @@ func startWatcherDaemon(
 		LiveRefreshFactory: func(gamertag, xuid string) watcher.LiveRefreshTrigger {
 			wMetaPath := watcherPR.MetadataDBPath(watcherSlug)
 			wPlayerPath := watcherPR.PlayerDBPath(watcherSlug, gamertag)
-			sink := duckdb.NewPersistSink(wMetaPath, wPlayerPath, xuid)
+			sink := duckdb.NewPersistSink(wMetaPath, wPlayerPath, xuid, watcherSlug)
 			// resolver nil : le watcher ne pré-chauffe pas les définitions BP.
 			// Les définitions sont chargées à la demande via l'endpoint HTTP (resolver HTTP).
 			refresher := watcher.NewPlayerLiveRefresher(gamertag, xuid, sink, nil).

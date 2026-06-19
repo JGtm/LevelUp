@@ -35,14 +35,16 @@ type PersistSink struct {
 	MetaPath   string // chemin vers metadata.duckdb
 	PlayerPath string // chemin vers stats.duckdb du joueur
 	XUID       string // xuid du joueur authentifié
+	TitleSlug  string // titre courant (waypoint_assets_raw.title_slug) — multi-titres
 }
 
 // NewPersistSink crée un PersistSink pour un joueur donné.
-func NewPersistSink(metaPath, playerPath, xuid string) *PersistSink {
+func NewPersistSink(metaPath, playerPath, xuid, titleSlug string) *PersistSink {
 	return &PersistSink{
 		MetaPath:   metaPath,
 		PlayerPath: playerPath,
 		XUID:       xuid,
+		TitleSlug:  titleSlug,
 	}
 }
 
@@ -109,7 +111,7 @@ func (s *PersistSink) writeBattlePass(ctx context.Context, _ string, body []byte
 
 	// 1. Sauvegarder le blob brut dans waypoint_assets_raw (archivage).
 	if err := upsertWaypointAsset(ctx, db,
-		"halo_infinite",
+		s.TitleSlug,
 		s.XUID+"/battlepass_operations",
 		"battlepass_operation",
 		hash,
@@ -560,7 +562,7 @@ func (s *PersistSink) writeChallenges(ctx context.Context, body []byte) error {
 			} else {
 				defer db.Close()
 				if err := upsertWaypointAsset(ctx, db,
-					"halo_infinite",
+					s.TitleSlug,
 					s.XUID+"/challenge_deck",
 					"challenge_deck",
 					hash,

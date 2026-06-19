@@ -32,7 +32,7 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 	if err != nil {
 		return nil, ctx, "", "", err
 	}
-	sink := duckdb.NewPersistSink(pdb.Metadata.Path(), pdb.Player.Path(), pdb.XUID)
+	sink := duckdb.NewPersistSink(pdb.Metadata.Path(), pdb.Player.Path(), pdb.XUID, pdb.TitleSlug)
 	homeRepo := r.newHomeRepo(pdb)
 	haloProvider := r.buildHaloProvider(pdb).WithTrackDefPersister(sink).WithItemDefPersister(sink)
 	svc := service.NewHomeService(homeRepo).
@@ -68,7 +68,7 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 		return nil, ctx, err
 	}
 	homeRepo := r.newHomeRepo(pdb)
-	sink := duckdb.NewPersistSink(pdb.Metadata.Path(), pdb.Player.Path(), pdb.XUID)
+	sink := duckdb.NewPersistSink(pdb.Metadata.Path(), pdb.Player.Path(), pdb.XUID, pdb.TitleSlug)
 	haloProvider := r.buildHaloProvider(pdb).WithTrackDefPersister(sink).WithItemDefPersister(sink)
 	homeSvc := service.NewHomeService(homeRepo).
 		WithPersistSink(sink).

@@ -62,7 +62,7 @@ func TestPersistSinkWriteBattlePass_PersistsAndDeduplicatesSnapshots(t *testing.
 	meta := openBattlePassTestDB(t, "metadata.duckdb", migration.TargetMetadata)
 	player := openBattlePassTestDB(t, "player.duckdb", migration.TargetPlayer)
 
-	sink := NewPersistSink(meta.Path(), player.Path(), "xuid-1")
+	sink := NewPersistSink(meta.Path(), player.Path(), "xuid-1", "halo_infinite")
 	if err := sink.writeBattlePass(ctx, "RewardTracks/TrackA", sampleBattlePassPayload()); err != nil {
 		t.Fatalf("writeBattlePass first call: %v", err)
 	}
