@@ -27,6 +27,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -38,9 +39,10 @@ import (
 const TitleSlug = "halo_5"
 
 const (
-	// Hosts internes confirmes (cf. config/titles/halo_5/constants.toml [endpoints]).
-	h5StatsHost  = "https://spartanstats.svc.halowaypoint.com"
-	h5PlayerHost = "https://haloplayer.svc.halowaypoint.com"
+	// Host interne confirme (cf. config/titles/halo_5/constants.toml [endpoints]).
+	// Le host haloplayer (profils/appearance) sera ajoute en Phase 2 avec les
+	// methodes profil correspondantes (YAGNI : pas de host non consomme).
+	h5StatsHost = "https://spartanstats.svc.halowaypoint.com"
 
 	h5UserAgent      = "cpprestsdk/2.4.0"
 	h5MaxRetries     = 4
@@ -61,11 +63,10 @@ func (e *HTTPError) Unwrap() error { return e.Err }
 
 // Client est le client HTTP stateless pour l'API interne Halo 5.
 type Client struct {
-	http          *http.Client
-	spartanToken  string
-	statsBaseURL  string // override d'instance (tests httptest) ; vide -> h5StatsHost
-	playerBaseURL string // override d'instance (tests) ; vide -> h5PlayerHost
-	limiter       *rate.Limiter
+	http         *http.Client
+	spartanToken string
+	statsBaseURL string // override d'instance (tests httptest) ; vide -> h5StatsHost
+	limiter      *rate.Limiter
 }
 
 // NewClient cree un client authentifie avec le SpartanToken v4 du joueur.
@@ -98,14 +99,11 @@ func (c *Client) WithLimiter(l *rate.Limiter) *Client {
 	return c
 }
 
-// WithBaseURLs override les hosts (tests httptest : rediriger vers srv.URL).
-// Valeurs vides ignorees. Chainable.
-func (c *Client) WithBaseURLs(statsURL, playerURL string) *Client {
+// WithStatsBaseURL override le host stats (tests httptest : rediriger vers srv.URL).
+// Vide ignore. Chainable.
+func (c *Client) WithStatsBaseURL(statsURL string) *Client {
 	if statsURL != "" {
 		c.statsBaseURL = statsURL
-	}
-	if playerURL != "" {
-		c.playerBaseURL = playerURL
 	}
 	return c
 }
@@ -115,13 +113,6 @@ func (c *Client) statsHost() string {
 		return c.statsBaseURL
 	}
 	return h5StatsHost
-}
-
-func (c *Client) playerHost() string {
-	if c.playerBaseURL != "" {
-		return c.playerBaseURL
-	}
-	return h5PlayerHost
 }
 
 // GetPlayerMatches recupere une page d'historique de matchs (tous modes confondus).
@@ -215,17 +206,18 @@ func (c *Client) doGet(ctx context.Context, rawURL string) ([]byte, error) {
 		resp, err := c.http.Do(req)
 		if err != nil {
 			lastErr = err
-			c.backoff(ctx, attempt)
+			c.waitRetry(ctx, attempt, 0)
 			continue
 		}
 		body, readErr := io.ReadAll(resp.Body)
+		retryAfter := parseRetryAfterSeconds(resp.Header.Get("Retry-After"))
 		resp.Body.Close()
 
 		switch {
 		case resp.StatusCode == http.StatusOK:
 			if readErr != nil {
 				lastErr = readErr
-				c.backoff(ctx, attempt)
+				c.waitRetry(ctx, attempt, 0)
 				continue
 			}
 			return body, nil
@@ -234,15 +226,22 @@ func (c *Client) doGet(ctx context.Context, rawURL string) ([]byte, error) {
 		case resp.StatusCode == http.StatusNotFound, resp.StatusCode == http.StatusGone:
 			return nil, &HTTPError{StatusCode: resp.StatusCode, URL: rawURL, Err: errors.New("ressource absente")}
 		default:
+			// 429/503 + Retry-After : respecter le delai demande par 343 (plancher =
+			// backoff exponentiel) pour ne pas re-cogner trop tot et se faire re-throttler.
 			lastErr = &HTTPError{StatusCode: resp.StatusCode, URL: rawURL, Err: fmt.Errorf("HTTP %d", resp.StatusCode)}
-			c.backoff(ctx, attempt)
+			c.waitRetry(ctx, attempt, retryAfter)
 		}
 	}
 	return nil, fmt.Errorf("doGet %s: %d tentatives echouees: %w", rawURL, h5MaxRetries, lastErr)
 }
 
-func (c *Client) backoff(ctx context.Context, attempt int) {
+// waitRetry attend max(backoff exponentiel, retryAfter), borne a h5MaxBackoff,
+// interruptible par ctx. retryAfter=0 -> backoff seul.
+func (c *Client) waitRetry(ctx context.Context, attempt int, retryAfter time.Duration) {
 	delay := h5RetryBaseDelay * time.Duration(1<<attempt)
+	if retryAfter > delay {
+		delay = retryAfter
+	}
 	if delay > h5MaxBackoff {
 		delay = h5MaxBackoff
 	}
@@ -250,4 +249,23 @@ func (c *Client) backoff(ctx context.Context, attempt int) {
 	case <-ctx.Done():
 	case <-time.After(delay):
 	}
+}
+
+// parseRetryAfterSeconds lit un header Retry-After en SECONDES (forme la plus
+// courante des services 343). Forme date HTTP non geree (rare ici) -> 0. Borne a
+// h5MaxBackoff. Valeur invalide/negative -> 0.
+func parseRetryAfterSeconds(h string) time.Duration {
+	h = strings.TrimSpace(h)
+	if h == "" {
+		return 0
+	}
+	secs, err := strconv.Atoi(h)
+	if err != nil || secs <= 0 {
+		return 0
+	}
+	d := time.Duration(secs) * time.Second
+	if d > h5MaxBackoff {
+		d = h5MaxBackoff
+	}
+	return d
 }

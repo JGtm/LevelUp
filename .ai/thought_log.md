@@ -1,3 +1,19 @@
+## [2026-06-19] Halo 5 Phase 1a : corrections review adversariale (workflow ultracode) — Complété
+
+**Statut** : Complété. Workflow de review adversariale (3 agents) → 14 findings (1 blocker, 4 major) ; 11 réels traités, 3 mineurs documentés/différés. build `./...` + vet + archlint + tests touchés verts.
+
+**Findings traités** :
+- **#1 BLOCKER (impédance d'activation)** : le DataAdapter capturait un client/token FIXE au constructeur, incompatible avec le wiring player-scoped (token = par-requête, dans ctx). Refactor en **SourceFactory `ctx -> source`** : chaque Load* résout le SpartanToken du contexte à l'appel via `NewSpartanTokenSource(ctx)` (lit `ctxkeys.HaloTokens`). L'adapter est désormais **active-ready** (plus du code mort).
+- **#3+#4 (honnêteté capabilities)** : `capabilities.toml` + `fallbackCapabilities` declaraient supported/degraded des surfaces dont la méthode est un stub → `Has()==true` menteur. Aligné sur la réalité Phase 1a (**seul `career.progression` supported**, reste `not_exposed`, remonte en Phase 2). + **dégradation runtime** : factory nil → toutes capabilities `not_exposed` (pattern HI). La matrice optimiste cible reste documentée dans le handoff §2.
+- **#5 (clearance optionnel, prérequis activation)** : `clearance_url=""` (Halo 5 sans 343-clearance, confirmé sonde) cassait `validate()` + la jambe d'échange. `clearance_url` retiré du required + `requestClearanceTokenWith("")` court-circuite proprement (byte-identique HI qui a un clearance). Test verrou `LoadAuthDescriptor(halo_5)`.
+- **Mapping** : #6 `IsTeamGame` gouverne l'outcome (évite faux Win depuis le rang individuel en 4v4) ; #8 CSR brut exposé QU'À Onyx (pas de valeur orpheline sous-Onyx/palier inconnu) ; #9 ISO duration borne 24h + `"PT"`→nil (anti-overflow) ; #13 layouts de dates défensifs.
+- **Client** : #10 401/403 (token expiré) → dégradation gracieuse (vide + warn, pas erreur dure) ; #11 Retry-After respecté sur 429/503 ; #14 suppression du code mort `playerHost` (YAGNI, ré-ajout Phase 2 avec méthodes profil).
+- **#12** : test du `GenericSemanticAdapter` ajouté (n'en avait aucun).
+
+**Différé (documenté)** : #7 ties dérivés des matchs (sous-comptés vs service record — Phase 2) ; migration de halo_infinite/synthetic_title_b vers `GenericSemanticAdapter` (suppression de la duplication — geste séparé, touche du code testé).
+
+**Conclusion / prochaine étape** : adapter Phase 1a durci + active-ready + honnête. Reste Phase 1b = activation délibérée (registration générique au boot + flip status=active + provisioning) — le geste outward-facing, à mener avec vérification lourde.
+
 ## [2026-06-19] Halo 5 Phase 1a : adapter read-only (client+mapping+DataAdapter) + GenericSemanticAdapter — Complété
 
 **Statut** : Complété (Phase 1a = code adapter + tests, ADDITIF/inerte). Build module complet vert ; suite halo_5 verte ; Halo byte-identique (aucun câblage boot).

@@ -34,8 +34,14 @@ func h5Identity(gamertag string) canonical.PlayerIdentity {
 // "PT5M41.7930011S" (heures/minutes/secondes ; jours rares en match h5, gérés).
 var iso8601DurationRe = regexp.MustCompile(`^P(?:(\d+)D)?T(?:(\d+)H)?(?:(\d+)M)?(?:([\d.]+)S)?$`)
 
-// parseISO8601DurationSeconds convertit "PT12M34.5S" en secondes (arrondi). Nil
-// si vide ou non-parsable (le canonique distingue "indisponible" de "0").
+// h5MaxDurationSeconds borne une durée de match plausible (24h). Une valeur au-delà
+// est rejetée (donnée corrompue / overflow regex) → nil, pour ne pas polluer les
+// stats ni produire un StartedAtUTC absurde via la soustraction fin−durée.
+const h5MaxDurationSeconds = 24 * 3600
+
+// parseISO8601DurationSeconds convertit "PT12M34.5S" en secondes (arrondi). Nil si
+// vide, non-parsable, sans aucune composante ("PT"), ou hors borne plausible (le
+// canonique distingue "indisponible" de "0").
 func parseISO8601DurationSeconds(s string) *int {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -43,6 +49,11 @@ func parseISO8601DurationSeconds(s string) *int {
 	}
 	m := iso8601DurationRe.FindStringSubmatch(s)
 	if m == nil {
+		return nil
+	}
+	// Exiger au moins une composante (rejette "PT" / "P" qui matchent la regex
+	// tout-optionnel et renverraient 0 au lieu de "indisponible").
+	if m[1] == "" && m[2] == "" && m[3] == "" && m[4] == "" {
 		return nil
 	}
 	var total float64
@@ -66,21 +77,39 @@ func parseISO8601DurationSeconds(s string) *int {
 			total += sec
 		}
 	}
+	// Garde-fou overflow/corruption : hors [0, 24h] → indisponible.
+	if total < 0 || total > h5MaxDurationSeconds {
+		return nil
+	}
 	out := int(math.Round(total))
 	return &out
 }
 
 // deriveOutcome derive l'issue d'un match pour le joueur a partir du Rang
 // (1 = vainqueur). Choix data-grounded (sonde : JGtm Rank 1 = victoire) plutot
-// que de deviner l'enum Result int. teamRank prioritaire (jeu d'equipe) ; sinon
-// playerRank (FFA). Les egalites ne sont pas distinguees en Phase 1 (rares ;
-// detection par egalite de score = Phase 2) -> rank != 1 => loss.
-func deriveOutcome(playerRank int, teamRank *int) canonical.Outcome {
-	rank := playerRank
-	if teamRank != nil {
-		rank = *teamRank
+// que de deviner l'enum Result int.
+//
+//   - Jeu d'EQUIPE : on utilise le Rang D'EQUIPE (teamRank). En 4v4, Player.Rank
+//     est un classement INDIVIDUEL au scoreboard (1er d'une equipe perdante = Rank 1)
+//     -> l'utiliser donnerait un faux Win. Si le rang d'equipe est introuvable
+//     (equipe absente de Teams), l'issue est INDETERMINEE -> OutcomeTie (degradation
+//     documentee, rare).
+//   - FFA (isTeamGame=false) : on utilise le rang INDIVIDUEL du joueur.
+//
+// Limitation Phase 1 (cf. review) : les vrais nuls ne sont pas distingues (pas de
+// detection d'egalite de score). Les Ties derives des matchs sont donc systematiquement
+// sous-comptes vs PlayerStats.Ties (issu du service record) — Phase 2.
+func deriveOutcome(playerRank int, teamRank *int, isTeamGame bool) canonical.Outcome {
+	if isTeamGame {
+		if teamRank == nil {
+			return canonical.OutcomeTie // indetermine : equipe absente de Teams
+		}
+		if *teamRank == 1 {
+			return canonical.OutcomeWin
+		}
+		return canonical.OutcomeLoss
 	}
-	if rank == 1 {
+	if playerRank == 1 {
 		return canonical.OutcomeWin
 	}
 	return canonical.OutcomeLoss
@@ -105,9 +134,12 @@ func mapOneMatchSummary(r *H5MatchResult, gamertag string) canonical.MatchSummar
 	started := startedFromEnd(end, dur)
 
 	self := selfPlayer(r, gamertag)
+	// self introuvable (casse/renommage/pagination cote API gamertag-keyee) -> issue
+	// INDETERMINEE (OutcomeTie par defaut, degradation documentee). Quand l'historique
+	// sera cable (Phase 2), l'adapter loguera ce cas (les mappers restent purs ici).
 	outcome := canonical.OutcomeTie
 	if self != nil {
-		outcome = deriveOutcome(self.Rank, teamRankFor(r, self.TeamId))
+		outcome = deriveOutcome(self.Rank, teamRankFor(r, self.TeamId), r.IsTeamGame)
 	}
 
 	return canonical.MatchSummary{
@@ -185,17 +217,23 @@ func assetRef(kind, id string) *canonical.AssetReference {
 	return &canonical.AssetReference{Kind: kind, ID: id}
 }
 
+// h5DateLayouts : la sonde montre toujours un suffixe 'Z' (RFC3339), mais par
+// cohérence défensive avec le reste du codebase Halo (qui tolère plusieurs
+// layouts), on accepte aussi le naïf sans offset plutôt que de renvoyer nil.
+var h5DateLayouts = []string{time.RFC3339Nano, time.RFC3339, "2006-01-02T15:04:05"}
+
 func parseISODate(s string) *time.Time {
 	s = strings.TrimSpace(s)
 	if s == "" {
 		return nil
 	}
-	t, err := time.Parse(time.RFC3339, s)
-	if err != nil {
-		return nil
+	for _, layout := range h5DateLayouts {
+		if t, err := time.Parse(layout, s); err == nil {
+			t = t.UTC()
+			return &t
+		}
 	}
-	t = t.UTC()
-	return &t
+	return nil
 }
 
 // startedFromEnd derive l'heure de debut = fin − duree (h5 ne donne que la fin).

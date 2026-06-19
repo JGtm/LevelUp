@@ -54,6 +54,10 @@ func TestParseISO8601DurationSeconds(t *testing.T) {
 		{"PT12M12.9155475S", ptrInt(733)},
 		{"PT1H2M3S", ptrInt(3723)},
 		{"PT9.35S", ptrInt(9)},
+		{"PT", nil},                      // #9 : aucune composante -> nil (pas 0)
+		{"P", nil},                       // idem
+		{"PT25H", nil},                   // #9 : > 24h plausible -> nil (corruption)
+		{"PT99999999999999999999S", nil}, // #9 : overflow regex -> nil (pas un negatif absurde)
 	}
 	for _, c := range cases {
 		got := parseISO8601DurationSeconds(c.in)
@@ -69,14 +73,28 @@ func TestParseISO8601DurationSeconds(t *testing.T) {
 func TestDeriveOutcome(t *testing.T) {
 	teamRank1 := 1
 	teamRank2 := 2
-	if got := deriveOutcome(1, &teamRank1); got != canonical.OutcomeWin {
+	// Jeu d'equipe : rang D'EQUIPE.
+	if got := deriveOutcome(1, &teamRank1, true); got != canonical.OutcomeWin {
 		t.Errorf("team rank 1 -> %q, want win", got)
 	}
-	if got := deriveOutcome(1, &teamRank2); got != canonical.OutcomeLoss {
+	if got := deriveOutcome(1, &teamRank2, true); got != canonical.OutcomeLoss {
 		t.Errorf("team rank 2 -> %q, want loss (rang d'equipe prioritaire)", got)
 	}
-	if got := deriveOutcome(1, nil); got != canonical.OutcomeWin {
+	// #6 : jeu d'equipe ou self.Rank=1 (1er au scoreboard) mais equipe PERDANTE
+	// (teamRank 2) -> loss, PAS un faux win depuis le rang individuel.
+	if got := deriveOutcome(1, &teamRank2, true); got != canonical.OutcomeLoss {
+		t.Errorf("1er scoreboard equipe perdante -> %q, want loss (pas de faux win)", got)
+	}
+	// Jeu d'equipe sans rang d'equipe (equipe absente de Teams) -> indetermine -> tie.
+	if got := deriveOutcome(1, nil, true); got != canonical.OutcomeTie {
+		t.Errorf("team game sans teamRank -> %q, want tie (indetermine)", got)
+	}
+	// FFA : rang INDIVIDUEL.
+	if got := deriveOutcome(1, nil, false); got != canonical.OutcomeWin {
 		t.Errorf("FFA player rank 1 -> %q, want win", got)
+	}
+	if got := deriveOutcome(3, nil, false); got != canonical.OutcomeLoss {
+		t.Errorf("FFA player rank 3 -> %q, want loss", got)
 	}
 }
 
@@ -173,6 +191,47 @@ func TestMapCareerSnapshot_CSRDesignation(t *testing.T) {
 	// Csr=0 (sous-Onyx) -> HighestCSR non expose (la valeur brute n'a de sens qu'a Onyx).
 	if snap.HighestCSR != nil {
 		t.Errorf("HighestCSR = %v, want nil (Csr brut 0 sous Onyx)", snap.HighestCSR)
+	}
+}
+
+func TestMapCareerSnapshot_OnyxVsSubOnyxCSR(t *testing.T) {
+	// #8 : la valeur CSR brute n'est exposee QU'A Onyx.
+	onyx := &H5ServiceRecordResponse{Results: []H5ServiceRecordResult{{
+		Id: "P", ResultCode: 0, Result: H5ServiceRecordBody{ArenaStats: &H5ArenaStats{
+			HighestCsrAttained: &H5Csr{DesignationId: 5, Tier: 0, Csr: 1632},
+		}},
+	}}}
+	snap := mapCareerSnapshot(onyx, "P")
+	if snap.HighestCSR == nil || *snap.HighestCSR != 1632 {
+		t.Errorf("Onyx Csr=1632 -> HighestCSR=1632, got %v", snap.HighestCSR)
+	}
+	if snap.RankTier == nil || *snap.RankTier != "Onyx" {
+		t.Errorf("RankTier = %v, want Onyx", snap.RankTier)
+	}
+
+	// Sous-Onyx (Gold) AVEC un Csr>0 : ne doit PAS exposer une valeur brute orpheline.
+	gold := &H5ServiceRecordResponse{Results: []H5ServiceRecordResult{{
+		Id: "P", ResultCode: 0, Result: H5ServiceRecordBody{ArenaStats: &H5ArenaStats{
+			HighestCsrAttained: &H5Csr{DesignationId: 2, Tier: 3, Csr: 850},
+		}},
+	}}}
+	snap = mapCareerSnapshot(gold, "P")
+	if snap.HighestCSR != nil {
+		t.Errorf("sous-Onyx -> HighestCSR doit etre nil meme si Csr>0, got %v", *snap.HighestCSR)
+	}
+	if snap.RankName == nil || *snap.RankName != "Or 3" {
+		t.Errorf("RankName = %v, want \"Or 3\"", snap.RankName)
+	}
+
+	// Designation hors borne : ni palier ni HighestCSR orphelin.
+	unknown := &H5ServiceRecordResponse{Results: []H5ServiceRecordResult{{
+		Id: "P", ResultCode: 0, Result: H5ServiceRecordBody{ArenaStats: &H5ArenaStats{
+			HighestCsrAttained: &H5Csr{DesignationId: 99, Tier: 1, Csr: 500},
+		}},
+	}}}
+	snap = mapCareerSnapshot(unknown, "P")
+	if snap.RankTier != nil || snap.HighestCSR != nil {
+		t.Errorf("designation inconnue -> pas de palier ni CSR orphelin, got tier=%v csr=%v", snap.RankTier, snap.HighestCSR)
 	}
 }
 

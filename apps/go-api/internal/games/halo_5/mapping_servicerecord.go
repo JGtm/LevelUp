@@ -116,9 +116,11 @@ func mapCareerSnapshot(resp *H5ServiceRecordResponse, gamertag string) *canonica
 		}
 		snap.RankName = &name
 	}
-	// La valeur CSR brute n'est significative que pour Onyx (sinon le palier est
-	// porte par Tier+pourcentage). On expose HighestCSR seulement si > 0.
-	if csr.Csr > 0 {
+	// La valeur CSR brute n'a de sens QU'A Onyx (sous-Onyx, le palier est porte par
+	// Tier+pourcentage, et Csr peut valoir 0 ou une valeur interne non affichable).
+	// On expose HighestCSR uniquement a Onyx (en=="onyx" garantit aussi un palier
+	// resolu) -> pas de valeur brute orpheline pour un palier inconnu/sous-Onyx.
+	if en == "onyx" && csr.Csr > 0 {
 		v := csr.Csr
 		snap.HighestCSR = &v
 	}

@@ -51,7 +51,9 @@ func TestHalo5_Manifest(t *testing.T) {
 }
 
 // TestHalo5_FineCapabilities : capabilities.toml charge, toutes les clés sont
-// connues (incl. battlepass/challenges), et la matrice optimiste est respectée.
+// connues, et la matrice reflète la surface RÉELLEMENT câblée en Phase 1a (seul
+// career.progression ; le reste = not_exposed tant que stub, remonte en Phase 2).
+// La matrice optimiste cible vit dans le handoff §2, pas dans ce fichier.
 func TestHalo5_FineCapabilities(t *testing.T) {
 	path := filepath.Join(repoRoot(t), "config", "titles", slug, "mappings", "capabilities.toml")
 	set, err := mappings.LoadCapabilitiesFromFile(path)
@@ -63,13 +65,13 @@ func TestHalo5_FineCapabilities(t *testing.T) {
 		t.Fatalf("CapabilityMapFromMappings (clé inconnue ?): %v", err)
 	}
 	want := map[games.CapabilityKey]games.CapabilityStatus{
-		games.CapMatchHistory:       games.CapSupported,
-		games.CapMatchDetailCore:    games.CapSupported,
-		games.CapScoreboardExtra:    games.CapSupported,
-		games.CapMatchSkillSnapshot: games.CapDegraded,
+		games.CapMatchHistory:       games.CapNotExposed,
+		games.CapMatchDetailCore:    games.CapNotExposed,
+		games.CapScoreboardExtra:    games.CapNotExposed,
+		games.CapMatchSkillSnapshot: games.CapNotExposed,
 		games.CapCareerProgression:  games.CapSupported,
-		games.CapTimeseries:         games.CapDegraded,
-		games.CapEngagement:         games.CapDegraded,
+		games.CapTimeseries:         games.CapNotExposed,
+		games.CapEngagement:         games.CapNotExposed,
 		games.CapCitationsEngine:    games.CapNotExposed,
 		games.CapPveFirefight:       games.CapNotExposed,
 		games.CapBattlePass:         games.CapNotExposed,

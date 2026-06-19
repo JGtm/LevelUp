@@ -142,11 +142,15 @@ func LoadAuthDescriptorFromBytes(path string, raw []byte) (*AuthDescriptor, erro
 // validate vérifie que les champs requis sont présents et bien formés.
 func (d AuthDescriptor) validate() []error {
 	var errs []error
+	// clearance_url est OPTIONNEL : le 343-clearance est Halo-Infinite-spécifique
+	// (flight configs). Un titre qui ne l'utilise pas (Halo 5, confirmé sonde :
+	// ClearanceAware:false) déclare clearance_url="" et saute la jambe clearance à
+	// l'échange (cf. requestClearanceTokenWith). La garde https ci-dessous tolère
+	// déjà la chaîne vide (`if key != ""`).
 	required := map[string]string{
 		"xsts_audience":     d.XSTSAudience,
 		"spartan_audience":  d.SpartanAudience,
 		"spartan_token_url": d.SpartanTokenURL,
-		"clearance_url":     d.ClearanceURL,
 		"sisu_app_id":       d.SISUAppID,
 		"sisu_title_id":     d.SISUTitleID,
 	}
