@@ -11,6 +11,7 @@
 import { create } from 'zustand'
 import type { BootstrapResponse, CapabilityMap, HaloIdentitySummary, PlayerSummary, TitleSummary } from '@/lib/api/types'
 import { api, setApiTitleSlug, setApiLocale } from '@/lib/api/client'
+import { queryClient } from '@/app/queryClient'
 
 interface AppShellState {
   // Joueur courant
@@ -169,6 +170,12 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
       get().hydrateFromBootstrap(bootstrap)
       // 5. Reset des données joueur en cache
       get().resetPlayerData()
+      // 6. Purger le cache TanStack Query : toutes les requêtes sont scopées par
+      // titre (header X-LevelUp-Title). Sans clear, matchview/timeseries/session
+      // du titre précédent fuiteraient jusqu'à expiration du staleTime. clear()
+      // > invalidateQueries ici : garantit qu'aucune donnée d'un autre titre
+      // n'est rendue, même brièvement, après le switch.
+      queryClient.clear()
     } catch {
       // Rollback silencieux : restaurer l'ancien titre
       setApiTitleSlug(current)
