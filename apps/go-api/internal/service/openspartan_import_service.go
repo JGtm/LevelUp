@@ -307,6 +307,14 @@ func (s *OpenSpartanImportService) writeOneMatch(
 		return
 	}
 	syncReg := toSyncRegistry(mm.Registry)
+	// CSR par-match (RankRecap) extrait AVANT l'insert registry : sa présence ⟹
+	// match classé. On corrige donc reg.IsRanked à l'import (le mapper le laisse
+	// souvent faux car PlaylistName n'est pas encore résolu) — crucial pour que le
+	// recompute LUSR EXCLUE bien ces matchs (LUSR = non classé) et pour les filtres.
+	csrs := s.extractMatchCSRRows(pm, &syncReg, result)
+	if len(csrs) > 0 {
+		syncReg.IsRanked = true
+	}
 	if err := sync.InsertRegistryIfNotExists(ctx, sharedDB, syncReg); err != nil {
 		result.Errors = append(result.Errors, ImportError{MatchID: pm.MatchID, Stage: "insert_registry", Err: err.Error()})
 		return
@@ -323,40 +331,36 @@ func (s *OpenSpartanImportService) writeOneMatch(
 	} else {
 		result.InsertedMedals += len(mm.Medals)
 	}
-	s.writeMatchCSR(ctx, sharedDB, pm, &syncReg, result)
+	if len(csrs) > 0 {
+		if err := sync.UpsertSharedCSRs(ctx, sharedDB, csrs); err != nil {
+			result.Errors = append(result.Errors, ImportError{MatchID: pm.MatchID, Stage: "insert_csr", Err: err.Error()})
+		} else {
+			result.InsertedCSRs += len(csrs)
+		}
+	}
 }
 
-// writeMatchCSR projette le CSR par-match vers shared.match_csrs. Le RankRecap
-// (CSR avant/après) est présent dans la table OpenSpartan PlayerMatchStats, dont
-// le ResponseBody a la même forme que la réponse skill live — on réutilise donc
-// l'extraction CSR de la chaîne de sync (ParseMatchSkillResponseJSON +
-// ExtractAllSharedCSRRows). Le post-import reprojette ensuite ces lignes vers
-// player.match_skill_rank (lu par l'UI). Best-effort : toute erreur est
-// accumulée sans interrompre l'import ; un match non classé produit 0 ligne.
-func (s *OpenSpartanImportService) writeMatchCSR(
-	ctx context.Context,
-	sharedDB *sql.DB,
-	pm *openspartan.ParsedMatch,
-	reg *sync.MatchRegistryRow,
-	result *ImportResult,
-) {
+// extractMatchCSRRows parse le payload skill OpenSpartan (table PlayerMatchStats,
+// même forme que la réponse skill live) et en extrait les lignes CSR par-match
+// pour shared.match_csrs. Le RankRecap (PostMatchCSR) n'existe QUE pour les matchs
+// classés → on force l'extraction (reg.IsRanked n'est pas fiable à l'import,
+// PlaylistName non résolu) ; un match non classé n'a pas de PostMatchCSR → 0 ligne.
+// Le post-import reprojette ensuite ces lignes vers player.match_skill_rank (lu par
+// l'UI). Best-effort : une erreur de parse est accumulée sans interrompre l'import.
+func (s *OpenSpartanImportService) extractMatchCSRRows(
+	pm *openspartan.ParsedMatch, reg *sync.MatchRegistryRow, result *ImportResult,
+) []sync.SharedMatchCSRRow {
 	if len(pm.RawPlayerStats) == 0 {
-		return
+		return nil
 	}
 	skillMap, err := sync.ParseMatchSkillResponseJSON(pm.RawPlayerStats)
 	if err != nil {
 		result.Errors = append(result.Errors, ImportError{MatchID: pm.MatchID, Stage: "parse_csr", Err: err.Error()})
-		return
+		return nil
 	}
-	csrs := sync.ExtractAllSharedCSRRows(reg, skillMap)
-	if len(csrs) == 0 {
-		return
-	}
-	if err := sync.UpsertSharedCSRs(ctx, sharedDB, csrs); err != nil {
-		result.Errors = append(result.Errors, ImportError{MatchID: pm.MatchID, Stage: "insert_csr", Err: err.Error()})
-		return
-	}
-	result.InsertedCSRs += len(csrs)
+	rankedReg := *reg
+	rankedReg.IsRanked = true
+	return sync.ExtractAllSharedCSRRows(&rankedReg, skillMap)
 }
 
 // importHighlights walks HighlightEvents and writes one event per row.
