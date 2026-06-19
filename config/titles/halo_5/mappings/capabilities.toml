@@ -1,27 +1,32 @@
 # config/titles/halo_5/mappings/capabilities.toml
 #
-# Capabilities fines Halo 5 (matrice OPTIMISTE, cf. handoff §2). Halo 5 est RICHE
-# (events/carnage/commendations natives) -> peu de not_exposed. SOUS RÉSERVE de la
-# sonde live Phase 1 (confirmer que 343 sert encore ces endpoints en 2026).
-#
-# SÉMANTIQUE : ces statuts = surface de l'adapter Halo 5 (servi UNIQUEMENT par
-# l'adapter, pas de chemin legacy) -> ils == le plafond RÉEL du titre (contrairement
-# à halo_infinite où not_exposed = legacy-served ; cf. handoff §2).
+# Capabilities fines Halo 5 = surface RÉELLEMENT servie par l'adapter (Halo 5 est
+# servi UNIQUEMENT par l'adapter, pas de chemin legacy) -> ces statuts gouvernent
+# CapabilityMap.Has(), donc l'appel des méthodes Load*. RÈGLE : une capability n'est
+# "supported"/"degraded" QUE si sa méthode Load* est réellement câblée — sinon
+# Has()==true mènerait à un appel qui échoue toujours (cf. review Phase 1a).
 # Valeurs : "supported" | "degraded" | "not_exposed".
+#
+# PHASE 1a (état courant) : seul career.progression est câblé (LoadCareerSnapshot,
+# CSR natif via service record). Le RESTE est encore stub -> not_exposed, et remonte
+# en Phase 2 à mesure du câblage (match.history via GetPlayerMatches, match.detail
+# via carnage, scoreboard, timeseries, engagement). La matrice OPTIMISTE cible (ce
+# que la DONNÉE h5 permet, confirmé par la sonde) vit dans le handoff §2, PAS ici :
+# ce fichier = ce qui est servable AUJOURD'HUI, pas l'intention.
 
 [meta]
 title_slug     = "halo_5"
 schema_version = 1
 
 [capabilities]
-"match.history"          = "supported"   # /players/{p}/matches
-"match.detail.core"      = "supported"   # carnage report par match
-"match.scoreboard.extra" = "supported"   # carnage report riche (par-joueur étendu)
-"match.skill.snapshot"   = "degraded"    # CSR pré/post natif (Arena) ; LUSR sans pondération temps-joué
-"career.progression"     = "supported"   # Spartan Rank via service record
-"analytics.timeseries"   = "degraded"    # buildable depuis l'historique
-"engagement.score"       = "degraded"    # events présents, coefficients à recalibrer Halo 5
-"citations.engine"       = "not_exposed" # commendations NATIVES mais clé = mécanisme -> bloqué par décision B (Phase 1)
-"pve.firefight_stats"    = "not_exposed" # Warzone Firefight existe mais modèle != FF HINF (coarse firefight exclu)
+"match.history"          = "not_exposed" # données OK (/matches) mais LoadMatchSummaries stub (Phase 2 : history page-based)
+"match.detail.core"      = "not_exposed" # carnage = 2e appel (Phase 2)
+"match.scoreboard.extra" = "not_exposed" # carnage étendu (Phase 2)
+"match.skill.snapshot"   = "not_exposed" # CSR pré/post par match = carnage Arena (Phase 2)
+"career.progression"     = "supported"   # CÂBLÉ : LoadCareerSnapshot (Spartan Rank/CSR via service record)
+"analytics.timeseries"   = "not_exposed" # buildable depuis l'historique (Phase 2)
+"engagement.score"       = "not_exposed" # events présents, coefficients à recalibrer (Phase 2)
+"citations.engine"       = "not_exposed" # commendations NATIVES mais clé = mécanisme -> décision B (Phase 2)
+"pve.firefight_stats"    = "not_exposed" # Warzone Firefight, modèle != FF HINF (Phase 2+)
 "battlepass.progression" = "not_exposed" # pas de season pass (REQ packs à la place)
 "challenges.surface"     = "not_exposed" # pas de défis

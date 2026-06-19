@@ -27,7 +27,7 @@ func TestClient_RequestRecipe(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClient(token, 0).WithBaseURLs(srv.URL, srv.URL)
+	c := NewClient(token, 0).WithStatsBaseURL(srv.URL)
 	resp, err := c.GetServiceRecords(context.Background(), "JGtm", "arena")
 	if err != nil {
 		t.Fatalf("GetServiceRecords: %v", err)
@@ -68,7 +68,7 @@ func TestClient_GzipTransparent(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClient("v4=x", 0).WithBaseURLs(srv.URL, srv.URL)
+	c := NewClient("v4=x", 0).WithStatsBaseURL(srv.URL)
 	resp, err := c.GetPlayerMatches(context.Background(), "JGtm", 0, 5)
 	if err != nil {
 		t.Fatalf("GetPlayerMatches (gzip): %v", err)
@@ -85,7 +85,7 @@ func TestClient_Unauthorized(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClient("v4=expired", 0).WithBaseURLs(srv.URL, srv.URL)
+	c := NewClient("v4=expired", 0).WithStatsBaseURL(srv.URL)
 	_, err := c.GetServiceRecords(context.Background(), "JGtm", "arena")
 	if err == nil {
 		t.Fatal("401 doit produire une erreur")

@@ -27,7 +27,9 @@ func TestCapabilitiesTOMLMatchesHardcoded(t *testing.T) {
 		t.Fatalf("CapabilityMapFromMappings: %v", err)
 	}
 
-	hardcoded := NewDataAdapter(nil, nil).Capabilities()
+	// Factory non-nil : on veut la map STATIQUE (la degradation runtime "factory nil
+	// -> tout not_exposed" est testee ailleurs ; ici on compare au TOML).
+	hardcoded := NewDataAdapter(srcFactory(&fakeSource{}), nil).Capabilities()
 
 	if len(fromTOML) != len(hardcoded) {
 		t.Fatalf("nombre de capabilities: TOML=%d, hardcoded=%d", len(fromTOML), len(hardcoded))

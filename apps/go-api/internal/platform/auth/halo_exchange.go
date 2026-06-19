@@ -228,7 +228,15 @@ func requestClearanceToken(ctx context.Context, client *http.Client, spartanToke
 }
 
 // requestClearanceTokenWith obtient le Clearance Token via un endpoint paramétré (MT-02).
+//
+// Titre SANS clearance (clearanceEndpoint vide, ex. Halo 5 : ClearanceAware:false
+// confirmé sonde) : on saute proprement la jambe clearance et on retourne un token
+// vide sans erreur — sinon http.NewRequestWithContext(GET, "") échouerait. Pour
+// Halo Infinite (URL non vide), comportement inchangé.
 func requestClearanceTokenWith(ctx context.Context, client *http.Client, spartanToken, clearanceEndpoint string) (string, error) {
+	if clearanceEndpoint == "" {
+		return "", nil
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, clearanceEndpoint, nil)
 	if err != nil {
 		return "", err
