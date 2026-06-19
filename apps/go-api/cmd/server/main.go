@@ -732,7 +732,9 @@ func main() {
 				func(workerCtx context.Context) (*sql.DB, func(), error) {
 					return syncpkg.AcquireSharedWriterStandalone(workerCtx, cfg.SharedProvider, sharedPath)
 				},
-				func(gamertag string) string { return pr.PlayerDBPath(titleSlug, gamertag) },
+				// titleSlug vient du batch (batch.TitleSlug) — chaque batch route vers
+				// la player DB de SON titre (multi-titres). En mono-titre = identique.
+				func(batchTitleSlug, gamertag string) string { return pr.PlayerDBPath(batchTitleSlug, gamertag) },
 			)
 			batchWorker := persist.NewWorker("combined", q, persist.TargetShared, combinedP)
 			workerWG.Add(1)
