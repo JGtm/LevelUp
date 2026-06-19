@@ -46,9 +46,12 @@ schema_version = 1
 "engagement.score"       = "supported"
 "battlepass.progression" = "supported"
 "challenges.surface"     = "supported"
-# Canonical MatchEvents (PLAN_CANONICAL_MATCH_EVENTS) — adapter pas encore câblé
-# (Phase 0 = contrat). Flip à "degraded"/"degraded"/"not_exposed" en Phase 2
-# (unification depuis highlight_events ; arme-par-kill degraded RE film).
-"match.events.timeline"  = "not_exposed"
-"match.killfeed.per_kill" = "not_exposed"
+# Canonical MatchEvents (PLAN_CANONICAL_MATCH_EVENTS) — Phase 2 câblée : la
+# timeline est reconstruite depuis highlight_events (+ appariement killer/victim,
+# T0) par l'adapter canonique. timeline=degraded (reconstruction lossy : doubles
+# simultanés possiblement omis, médailles sans id) ; killfeed.per_kill=degraded
+# (kills appariés mais arme/headshot/melee absents — RE film non câblé) ;
+# spatial=not_exposed (positions monde non extraites).
+"match.events.timeline"  = "degraded"
+"match.killfeed.per_kill" = "degraded"
 "match.events.spatial"   = "not_exposed"

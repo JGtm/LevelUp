@@ -397,6 +397,9 @@ func NewRouter(
 		a = a.WithRecentSource(explorerRepo).
 			WithParticipantSource(explorerRepo).
 			WithCrossPlayerSource(explorerRepo)
+		// Canonical MatchEvents (Phase 2) : timeline reconstruite depuis
+		// highlight_events + match_registry (T0) via la player DB courante.
+		a = a.WithEventsSource(platform_duckdb.NewMatchEventsSource(pdb))
 		return a
 	})
 
