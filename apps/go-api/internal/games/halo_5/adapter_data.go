@@ -139,6 +139,11 @@ func fallbackCapabilities() games.CapabilityMap {
 		games.CapPveFirefight:       games.CapNotExposed,
 		games.CapBattlePass:         games.CapNotExposed,
 		games.CapChallenges:         games.CapNotExposed,
+		// Canonical MatchEvents : natif côté API mais LoadMatchEvents stub (Phase 0)
+		// → not_exposed jusqu'au câblage de halo_5/events.go (Phase 1).
+		games.CapMatchEventsTimeline:  games.CapNotExposed,
+		games.CapMatchKillfeedPerKill: games.CapNotExposed,
+		games.CapMatchEventsSpatial:   games.CapNotExposed,
 	}
 }
 
@@ -271,6 +276,12 @@ func (a *DataAdapter) LoadMatchScoreboard(_ context.Context, _ string) ([]canoni
 }
 
 func (a *DataAdapter) LoadHighlightEvents(_ context.Context, _ string) ([]canonical.HighlightEvent, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+
+// LoadMatchEvents : timeline d'events (Phase 1 — adapter halo_5/events.go).
+// Stub Phase 0 (le contrat existe ; l'implémentation arrive avec le client /events).
+func (a *DataAdapter) LoadMatchEvents(_ context.Context, _ string, _ canonical.MatchEventOptions) (*canonical.MatchEventTimeline, error) {
 	return nil, games.ErrCapabilityNotSupported
 }
 

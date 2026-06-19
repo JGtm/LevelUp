@@ -47,6 +47,11 @@ const (
 	CapEngagement         CapabilityKey = "engagement.score"       // score + courbe + coefficients d'engagement
 	CapBattlePass         CapabilityKey = "battlepass.progression" // progression battle pass / season pass
 	CapChallenges         CapabilityKey = "challenges.surface"     // surface défis (hebdo/quotidiens)
+	// Timeline d'événements de match (canonical MatchEvents). Halo 5 natif ;
+	// Infinite reconstitué depuis highlight_events (cf. PLAN_CANONICAL_MATCH_EVENTS).
+	CapMatchEventsTimeline  CapabilityKey = "match.events.timeline"   // timeline horodatée (kills/médailles/armes/spawns)
+	CapMatchKillfeedPerKill CapabilityKey = "match.killfeed.per_kill" // arme PAR kill (Halo 5 natif ; Infinite degraded RE film)
+	CapMatchEventsSpatial   CapabilityKey = "match.events.spatial"    // positions monde x,y,z (Halo 5 ; Infinite not_exposed)
 )
 
 // CapabilityMap décrit l'état des capabilities produit d'un adapter à un instant T.
@@ -110,6 +115,12 @@ type TitleDataAdapter interface {
 	LoadMatchScoreboard(ctx context.Context, matchID string) ([]canonical.MatchParticipant, error)
 	LoadHighlightEvents(ctx context.Context, matchID string) ([]canonical.HighlightEvent, error)
 	LoadFriendsXUIDs(ctx context.Context, xuid string) ([]string, error)
+
+	// LoadMatchEvents : timeline d'événements BRUTE et complète d'un match
+	// (CapMatchEventsTimeline). Surface SÉPARÉE chargée on-demand (ne pas mettre
+	// dans LoadMatchDetail). ErrCapabilityNotSupported si le titre ne sert pas
+	// d'events. Cf. PLAN_CANONICAL_MATCH_EVENTS.
+	LoadMatchEvents(ctx context.Context, matchID string, opts canonical.MatchEventOptions) (*canonical.MatchEventTimeline, error)
 }
 
 // TitleSemanticAdapter expose les libellés et la présentation pour un titre.

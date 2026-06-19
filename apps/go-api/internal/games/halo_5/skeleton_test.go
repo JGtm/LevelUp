@@ -65,17 +65,20 @@ func TestHalo5_FineCapabilities(t *testing.T) {
 		t.Fatalf("CapabilityMapFromMappings (clé inconnue ?): %v", err)
 	}
 	want := map[games.CapabilityKey]games.CapabilityStatus{
-		games.CapMatchHistory:       games.CapNotExposed,
-		games.CapMatchDetailCore:    games.CapNotExposed,
-		games.CapScoreboardExtra:    games.CapNotExposed,
-		games.CapMatchSkillSnapshot: games.CapNotExposed,
-		games.CapCareerProgression:  games.CapSupported,
-		games.CapTimeseries:         games.CapNotExposed,
-		games.CapEngagement:         games.CapNotExposed,
-		games.CapCitationsEngine:    games.CapNotExposed,
-		games.CapPveFirefight:       games.CapNotExposed,
-		games.CapBattlePass:         games.CapNotExposed,
-		games.CapChallenges:         games.CapNotExposed,
+		games.CapMatchHistory:         games.CapNotExposed,
+		games.CapMatchDetailCore:      games.CapNotExposed,
+		games.CapScoreboardExtra:      games.CapNotExposed,
+		games.CapMatchSkillSnapshot:   games.CapNotExposed,
+		games.CapCareerProgression:    games.CapSupported,
+		games.CapTimeseries:           games.CapNotExposed,
+		games.CapEngagement:           games.CapNotExposed,
+		games.CapCitationsEngine:      games.CapNotExposed,
+		games.CapPveFirefight:         games.CapNotExposed,
+		games.CapBattlePass:           games.CapNotExposed,
+		games.CapChallenges:           games.CapNotExposed,
+		games.CapMatchEventsTimeline:  games.CapNotExposed,
+		games.CapMatchKillfeedPerKill: games.CapNotExposed,
+		games.CapMatchEventsSpatial:   games.CapNotExposed,
 	}
 	if len(cm) != len(want) {
 		t.Fatalf("capabilities = %d clés, want %d", len(cm), len(want))

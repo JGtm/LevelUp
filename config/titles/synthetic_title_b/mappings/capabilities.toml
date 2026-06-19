@@ -23,3 +23,7 @@ schema_version = 1
 "engagement.score"       = "supported"
 "battlepass.progression" = "supported"
 "challenges.surface"     = "supported"
+# Fixture « titre tout-supported » : les events aussi (cohérent avec sa posture).
+"match.events.timeline"  = "supported"
+"match.killfeed.per_kill" = "supported"
+"match.events.spatial"   = "supported"

@@ -46,3 +46,9 @@ schema_version = 1
 "engagement.score"       = "supported"
 "battlepass.progression" = "supported"
 "challenges.surface"     = "supported"
+# Canonical MatchEvents (PLAN_CANONICAL_MATCH_EVENTS) — adapter pas encore câblé
+# (Phase 0 = contrat). Flip à "degraded"/"degraded"/"not_exposed" en Phase 2
+# (unification depuis highlight_events ; arme-par-kill degraded RE film).
+"match.events.timeline"  = "not_exposed"
+"match.killfeed.per_kill" = "not_exposed"
+"match.events.spatial"   = "not_exposed"

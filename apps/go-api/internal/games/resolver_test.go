@@ -53,6 +53,9 @@ func (s *stubData) LoadMatchScoreboard(_ context.Context, _ string) ([]canonical
 func (s *stubData) LoadHighlightEvents(_ context.Context, _ string) ([]canonical.HighlightEvent, error) {
 	return nil, ErrCapabilityNotSupported
 }
+func (s *stubData) LoadMatchEvents(_ context.Context, _ string, _ canonical.MatchEventOptions) (*canonical.MatchEventTimeline, error) {
+	return nil, ErrCapabilityNotSupported
+}
 func (s *stubData) LoadFriendsXUIDs(_ context.Context, _ string) ([]string, error) {
 	return nil, ErrCapabilityNotSupported
 }

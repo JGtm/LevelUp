@@ -1,3 +1,19 @@
+## [2026-06-19] Canonical MatchEvents Phase 0 : contrat + interface + capabilities — Complété
+
+**Statut** : Complété (Phase 0 = contrat, inerte/additif). build `./...` + games/api/service verts ; Halo Infinite byte-identique. Piloté par 1 workflow de cartographie (4 agents) + 1 workflow de revue adversariale (2 agents).
+
+**Livré** :
+- **`canonical/events.go`** : `MatchEvent` (timeline brute, discriminée par Type) + `MatchEventTimeline` + `MatchEventOptions` (filtre par type) + enums `MatchEventType`/`KillKind` + `Vec3`. **9 types** (kill/assist/medal/impulse/weapon_pickup/weapon_drop/spawn/round_start/round_end). Identités = `*PlayerIdentity` (Halo 5 n'a pas de xuid → forcé). Kill = killer+victim+kind+headshot(orthogonal)+weapon(degraded Inf)+loc(not_exposed Inf).
+- **`TitleDataAdapter.LoadMatchEvents(ctx, matchID, opts)`** ajoutée + 4 stubs (`halo_5`, `halo_infinite`, `synthetic_title_b`, `resolver_test`) → `ErrCapabilityNotSupported`.
+- **3 capabilities fines** (`match.events.timeline`/`killfeed.per_kill`/`events.spatial`) câblées aux **5 points synchronisés** (const adapter.go + AllCapabilityKeys 11→14 + 3 TOML + 2 fallbackCapabilities + 2 tests de comptage). Statut Phase 0 = **not_exposed** partout (live titles) / supported (synthetic fixture) — flip par phase (halo_5 Phase 1, Infinite Phase 2).
+
+**Revue adversariale (2 agents) — findings intégrés** :
+- Ajout `MatchEventAssist` (Infinite a des rows assist → vrai superset).
+- Documenté : mapping `highlight_events.event_type`→MatchEventType (kill+death→1 kill par appariement 5 ms ; mode→impulse) ; sémantique `Killer=nil` (environnement/suicide vs appariement raté) ; **identité Infinite = seul XUID garanti, affichage via chokepoint canonique JAMAIS gamertag||xuid** ; wording nullable clarifié (refs *T nil vs enums "" / bool false).
+- **Champs additifs DIFFÉRÉS** (non bloquants, contrat extensible) : `VictimWeapon` (arme tenue par la victime, death-recap riche), `WeaponVariant`/attachments, `KillerAgent/VictimAgent` (PvE/Warzone). À ajouter au besoin produit (Phase 1+).
+
+**Prochaine étape** : Phase 1 (adapter `halo_5/events.go` : client `/events` + mapper pur JSON→canonical + test sur fixture réelle ; flip halo_5 caps → supported).
+
 ## [2026-06-19] Sonde Halo 5 events/carnage : timeline NATIVE confirmée — Exploration (pas de code prod)
 
 **Statut** : Exploration (sonde `cmd/probe-h5` étendue, live read-only JGtm). Découverte structurante.

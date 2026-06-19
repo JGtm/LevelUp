@@ -124,6 +124,10 @@ func (a *DataAdapter) LoadHighlightEvents(_ context.Context, _ string) ([]canoni
 	return nil, games.ErrCapabilityNotSupported
 }
 
+func (a *DataAdapter) LoadMatchEvents(_ context.Context, _ string, _ canonical.MatchEventOptions) (*canonical.MatchEventTimeline, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+
 func (a *DataAdapter) LoadFriendsXUIDs(_ context.Context, _ string) ([]string, error) {
 	return nil, games.ErrCapabilityNotSupported
 }
