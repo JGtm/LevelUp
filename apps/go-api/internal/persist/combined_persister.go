@@ -50,15 +50,18 @@ func observePersistPhase(phase string, start time.Time, ok bool) {
 // appel. Conçu pour être utilisé par un Worker goroutine unique.
 type CombinedPersister struct {
 	acquireShared  SharedWriterFn
-	playerDBPathFn func(gamertag string) string
+	playerDBPathFn func(titleSlug, gamertag string) string
 }
 
 // NewCombinedPersister construit un CombinedPersister.
 //
 //   - acquireShared  : fonction qui ouvre shared_matches_v2.duckdb en RW avec lease.
 //     Construire depuis main.go avec le Provider (B-swap) ou OpenSharedDB (legacy).
-//   - playerDBPathFn : retourne le chemin complet de stats.duckdb pour un gamertag.
-func NewCombinedPersister(acquireShared SharedWriterFn, playerDBPathFn func(gamertag string) string) *CombinedPersister {
+//   - playerDBPathFn : retourne le chemin complet de stats.duckdb pour un
+//     (titleSlug, gamertag). Le titleSlug vient du batch (batch.TitleSlug) — chaque
+//     batch route vers la player DB de SON titre (multi-titres : ne JAMAIS figer le
+//     slug au boot, sinon les batchs d'un 2e titre actif sont mal dirigés).
+func NewCombinedPersister(acquireShared SharedWriterFn, playerDBPathFn func(titleSlug, gamertag string) string) *CombinedPersister {
 	return &CombinedPersister{
 		acquireShared:  acquireShared,
 		playerDBPathFn: playerDBPathFn,
@@ -95,7 +98,7 @@ func (p *CombinedPersister) Persist(ctx context.Context, batch *MatchBatch) erro
 	}
 
 	// ── 2. Player DB ──────────────────────────────────────────────────────────
-	playerPath := p.playerDBPathFn(batch.Player)
+	playerPath := p.playerDBPathFn(batch.TitleSlug, batch.Player)
 	if playerPath == "" {
 		slog.WarnContext(ctx, "CombinedPersister: playerDBPath vide, skip player persist",
 			"batch_id", batch.BatchID, "player", batch.Player)

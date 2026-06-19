@@ -98,7 +98,7 @@ func TestCombinedPersister_NoConfigurationConflict(t *testing.T) {
 	// playerPath+"?access_mode=READ_WRITE" (DSN different) → Bug #1 se
 	// declenche : "different configuration".
 	acquireShared := noopSharedWriter(t)
-	cp := NewCombinedPersister(acquireShared, func(_ string) string { return playerPath })
+	cp := NewCombinedPersister(acquireShared, func(_, _ string) string { return playerPath })
 	batch := helperPlayerBatch("m_combined_001")
 	batch.Shared.Match = nil // shared no-op (focus sur player open conflict)
 
@@ -134,7 +134,7 @@ func TestCombinedPersister_PersistShared_NoPlayerPath_OK(t *testing.T) {
 	// playerDBPathFn retourne "" → CombinedPersister skip player persist,
 	// shared persist seul doit reussir.
 	acquireShared := noopSharedWriter(t)
-	cp := NewCombinedPersister(acquireShared, func(_ string) string { return "" })
+	cp := NewCombinedPersister(acquireShared, func(_, _ string) string { return "" })
 
 	batch := helperBuildSampleBatch("m_combined_002", "1111", "Alice")
 
@@ -144,7 +144,7 @@ func TestCombinedPersister_PersistShared_NoPlayerPath_OK(t *testing.T) {
 }
 
 func TestCombinedPersister_NilBatch_ReturnsError(t *testing.T) {
-	cp := NewCombinedPersister(noopSharedWriter(t), func(_ string) string { return "" })
+	cp := NewCombinedPersister(noopSharedWriter(t), func(_, _ string) string { return "" })
 	if err := cp.Persist(context.Background(), nil); err == nil {
 		t.Error("Persist(nil) doit retourner erreur")
 	}
@@ -155,7 +155,7 @@ func TestCombinedPersister_SharedFailureSkipsPlayer(t *testing.T) {
 	failingShared := func(ctx context.Context) (*sql.DB, func(), error) {
 		return nil, nil, sql.ErrConnDone
 	}
-	cp := NewCombinedPersister(failingShared, func(_ string) string {
+	cp := NewCombinedPersister(failingShared, func(_, _ string) string {
 		t.Error("playerDBPathFn appele alors que shared a fail — atomicity casse")
 		return ""
 	})
@@ -181,7 +181,7 @@ func TestCombinedPersister_OrderSharedFirst(t *testing.T) {
 
 	acquireShared := noopSharedWriter(t)
 	// Path invalide pour forcer un echec player apres shared OK.
-	cp := NewCombinedPersister(acquireShared, func(_ string) string {
+	cp := NewCombinedPersister(acquireShared, func(_, _ string) string {
 		return "/non/existent/path/that/cannot/be/created.duckdb"
 	})
 
