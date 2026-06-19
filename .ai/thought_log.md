@@ -26366,3 +26366,25 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Ratchet anti-doublon** : `tools/lint-contract-ratchet.mjs` (style des ratchets existants knip/lint-no-hardcoded-fields) — extrait les `export interface X` de `types.ts` + les clés `components.schemas` de `generated.ts`, échoue si une **nouvelle** collision (interface homonyme d'un schéma) apparaît hors `BASELINE_COLLISIONS` (les 51 view-models/Inputs légitimes), OU si une entrée baseline devient obsolète (collision disparue = à retirer). Force le shim ou une justification. Câblé lefthook pre-push (glob `types.ts`/`generated.ts`). **Choix d'implémentation** : `.mjs` node (pas un test vitest) — un test vitest dans `src/` aurait dû importer `node:fs`, et `/// <reference types="node" />` POLLUE le scope global (setTimeout→NodeJS.Timeout casse `CoverFlowModal.tsx`). Le `.mjs` hors `src/` évite cette pollution et suit le pattern projet.
 
 **Conclusion / prochaine étape** : dette « type manuel doublant le contrat » résorbée (8 re-shims) + verrou anti-régression posé. Le chantier auto-gen/types front est clos (contrat fiable + complet + drift gate + ratchet). Commit en attente d'autorisation.
+
+## [2026-06-19] Audit « que reste-t-il du master plan » + refresh trackers + disposition de la dette résiduelle — Complété
+
+**Statut** : Complété (doc-only). Trackers `PLAN_MULTITITRE_INDEX.md` + `PLAN_TITLE_AGNOSTIC_TRACKER.md` rafraîchis vs code réel.
+
+**Méthode** : 3 agents en parallèle (master title-agnostic / registre MT-PMT / reconciliation thought_log) PUIS re-vérification perso des faits porteurs (doctrine « carte datée ≠ vérité » + règle anti-synthèse-aveugle). Vérifié moi-même : `config/titles/` = 2 dossiers (halo_infinite + synthetic_title_b) ; `synthetic_title_b/adapter.go` = stub (`ErrCapabilityNotSupported` sur tous les `Load*`) ; `TitleSwitcher` rendu dans `NavL1.tsx:197` ; `synthetic_title_b` status `coming_soon`.
+
+**Constat** : l'infra multi-titre est COMPLÈTE (toutes phases 0→3b + 5 + switcher + registre config + provisioning boot). **Les trackers SOUS-estimaient l'avancement** (carte datée). Écarts corrigés :
+- Switcher décrit « NON câblé 🔴 bloquant / code mort » → **PÉRIMÉ**, il est câblé (NavL1).
+- `internal/migration/` « 53 steps_*.go restants ~72% » → **PÉRIMÉ** (relocation complète ; les restants = breadcrumbs + 2 helpers légitimes), contradisait la même ligne 28/63 ✅100%.
+- Phase 1.9 watcher, PMT-4, PMT-11 marqués partiels/todo → **100%/livrés**.
+- Item « Huma génération openapi / bascule types.ts » → **résolu** (JSON migré + garde-fou ; openapi complété MISSING 332→0 ; types.ts migré 228 shims + ratchet ; génération auto descopée = YAML manuel + drift-detector).
+- Phase 1.8 Lab diag « 0% » → amorce livrée (`admin_title_diagnostic.go`).
+
+**Disposition de la dette résiduelle (« finir de traiter » = décider, vérifié item par item)** :
+- **Phase 3a nullabilité** (`MatchExpectedStats`/`MatchScoreboardRow`) → **WON'T-DO/écarté**. Pointer-iser `HasHistAvg`/`HistMatchCount`/`HistModeCategory`/etc. = NO-OP front (lu `?? false`/truthy) + churn-sans-valeur, interdit CLAUDE.md. `HasExpectedData` déjà retiré (3a-B).
+- **Phase 1 SQL Perfect-medal `1512363953`** (~10 sites) → **scopé adapter Halo 5**. Le sortir proprement = résolution PAR TITRE via `constants.toml` (l'ID devient title-correct), exactement le travail de l'adapter du 2e titre. Un Go-const à mi-chemin = churn (reste Halo-spécifique) + hasard de désync ; les requêtes ont des `%`/LIKE (→ `fmt.Sprintf` non-sûr) et paramétrer = risque de position sur 10 sites. **NE PAS faire maintenant.**
+- **Vocabulaire Halo cosmétique** (admin « API Halo », Lab « Waypoint », `HINF-CSR`, HomeHeroBanner) → **YAGNI** jusqu'au 2e titre (abstraction sans consommateur tant qu'aucun adapter alterne ne fournit le vocab).
+
+**Décision clé** : AUCUN changement de code n'a été fait — après vérification, la « dette restante » du master plan est soit décidée WON'T-DO, soit intrinsèquement couplée à l'écriture de l'adapter Halo 5. Forcer un dé-magick/nullable maintenant serait précisément le « churn-sans-valeur » interdit par CLAUDE.md. Le traitement = résoudre la disposition dans les trackers (fait) pour que le handoff Halo 5 parte d'une base exacte.
+
+**Conclusion / prochaine étape** : le master plan multi-titre est, infra comprise, terminé ; le seul reste réel = embarquer un vrai 2e titre (adapter data, handoff Halo 5 prêt). Commit doc en attente d'autorisation.
