@@ -7,12 +7,14 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"path/filepath"
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 )
 
@@ -81,11 +83,21 @@ func (r *stubResolver) DefaultSlug() string                                   { 
 
 func setupCatalogTestDB(t *testing.T) *sql.DB {
 	t.Helper()
-	db, err := sql.Open("duckdb", ":memory:")
+	// DuckDB :memory: est par-CONNEXION (chaque conn du pool = base isolée) →
+	// "table does not exist" intermittent quand migration et requêtes tombent sur
+	// des conns différentes. Une base FICHIER temporaire est partagée par tout le
+	// pool → déterministe.
+	dbPath := filepath.Join(t.TempDir(), "metadata.duckdb")
+	db, err := sql.Open("duckdb", dbPath)
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { db.Close() })
+	// Branche le provider de steps title-owned (catalog_fetch_queue + tables
+	// catalogue vivent dans halomigrations.Steps()) — sinon RunForDB n'applique
+	// que les steps legacy et les tables catalogue n'existent pas (cf. boot
+	// cmd/server SetTitleStepsProvider).
+	migration.SetTitleStepsProvider(halomigrations.StepsFor)
 	if err := migration.RunForDB(db, migration.TargetMetadata); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
@@ -111,7 +123,7 @@ func TestCatalogFetcherService_Drain_PlaylistAndPair(t *testing.T) {
 			},
 		},
 	}
-	svc := NewCatalogFetcherService(db, &stubResolver{adapter: adapter}, 5)
+	svc := NewCatalogFetcherService(db, &stubResolver{adapter: adapter})
 
 	res, err := svc.Drain(ctx, "halo_infinite")
 	if err != nil {
@@ -157,7 +169,7 @@ func TestCatalogFetcherService_Drain_PlaylistAndPair(t *testing.T) {
 	}
 }
 
-func TestCatalogFetcherService_Drain_TransientError_RetryablePotrf(t *testing.T) {
+func TestCatalogFetcherService_Drain_TransientError_StaysPending(t *testing.T) {
 	ctx := context.Background()
 	db := setupCatalogTestDB(t)
 
@@ -168,7 +180,7 @@ func TestCatalogFetcherService_Drain_TransientError_RetryablePotrf(t *testing.T)
 			"playlist:pl-fail": errors.New("503 service unavailable"),
 		},
 	}
-	svc := NewCatalogFetcherService(db, &stubResolver{adapter: adapter}, 5)
+	svc := NewCatalogFetcherService(db, &stubResolver{adapter: adapter})
 
 	res, err := svc.Drain(ctx, "halo_infinite")
 	if err != nil {
@@ -178,50 +190,53 @@ func TestCatalogFetcherService_Drain_TransientError_RetryablePotrf(t *testing.T)
 		t.Errorf("Errors = %d, want 1", res.Errors)
 	}
 
-	// La ligne reste en queue avec attempts=1 et last_error renseigné.
-	var attempts int
-	var lastError sql.NullString
-	err = db.QueryRow(`SELECT attempts, last_error FROM catalog_fetch_queue WHERE asset_id = 'pl-fail'`).Scan(&attempts, &lastError)
-	if err != nil {
-		t.Fatalf("queue read: %v", err)
+	// Append-only : la file n'est JAMAIS mutée. L'entrée échouée reste présente
+	// (pas de DELETE) ET toujours "pending" (absente du catalogue) → re-tentée plus tard.
+	var n int
+	db.QueryRow(`SELECT COUNT(*) FROM catalog_fetch_queue WHERE asset_id = 'pl-fail'`).Scan(&n)
+	if n != 1 {
+		t.Errorf("entrée échouée: queue count = %d, want 1 (append-only, pas de DELETE)", n)
 	}
-	if attempts != 1 {
-		t.Errorf("attempts = %d, want 1", attempts)
-	}
-	if !lastError.Valid || lastError.String == "" {
-		t.Error("last_error not set")
+	db.QueryRow(`SELECT COUNT(*) FROM playlists_catalog WHERE playlist_asset_id = 'pl-fail'`).Scan(&n)
+	if n != 0 {
+		t.Errorf("entrée échouée ne doit pas être dans le catalogue (count=%d)", n)
 	}
 }
 
-func TestCatalogFetcherService_Drain_MaxRetriesReached_Skipped(t *testing.T) {
+func TestCatalogFetcherService_Drain_AlreadyInCatalog_Skipped(t *testing.T) {
 	ctx := context.Background()
 	db := setupCatalogTestDB(t)
 
-	db.Exec(`INSERT INTO catalog_fetch_queue (title_slug, asset_type, asset_id, attempts) VALUES ('halo_infinite', 'playlist', 'pl-x', 5)`)
+	// Asset DÉJÀ résolu (présent dans le catalogue) ET encore dans la file
+	// (append-only : jamais supprimé). Il ne doit PAS être re-traité.
+	db.Exec(`INSERT INTO catalog_fetch_queue (title_slug, asset_type, asset_id) VALUES ('halo_infinite', 'map', 'ma-done')`)
+	db.Exec(`INSERT INTO maps_catalog (title_slug, map_asset_id, current_version_id, name_canonical, image_url, last_fetched_at)
+	         VALUES ('halo_infinite', 'ma-done', 'v1', 'Bazaar', '', CURRENT_TIMESTAMP)`)
 
-	adapter := &stubCatalogAdapter{}
-	svc := NewCatalogFetcherService(db, &stubResolver{adapter: adapter}, 5)
+	// Adapter vide : FetchMap échouerait s'il était appelé. On prouve la
+	// déduplication par NOT EXISTS (l'entrée résolue est hors périmètre pending).
+	svc := NewCatalogFetcherService(db, &stubResolver{adapter: &stubCatalogAdapter{}})
 
 	res, err := svc.Drain(ctx, "halo_infinite")
 	if err != nil {
 		t.Fatalf("Drain: %v", err)
 	}
-	if res.Playlists != 0 || res.Errors != 0 {
-		t.Errorf("Drain doit ignorer attempts >= maxRetries (got Playlists=%d Errors=%d)", res.Playlists, res.Errors)
+	if res.Maps != 0 || res.Errors != 0 {
+		t.Errorf("entrée déjà au catalogue ne doit pas être re-traitée (got Maps=%d Errors=%d)", res.Maps, res.Errors)
 	}
 
-	// Toujours en queue, intacte.
+	// Toujours en file, intacte (append-only).
 	var n int
-	db.QueryRow(`SELECT COUNT(*) FROM catalog_fetch_queue WHERE asset_id = 'pl-x'`).Scan(&n)
+	db.QueryRow(`SELECT COUNT(*) FROM catalog_fetch_queue WHERE asset_id = 'ma-done'`).Scan(&n)
 	if n != 1 {
-		t.Errorf("queue count = %d, want 1 (max retries skip)", n)
+		t.Errorf("queue count = %d, want 1 (append-only, pas de DELETE)", n)
 	}
 }
 
 func TestCatalogFetcherService_Drain_EmptyQueue_NoError(t *testing.T) {
 	ctx := context.Background()
 	db := setupCatalogTestDB(t)
-	svc := NewCatalogFetcherService(db, &stubResolver{adapter: &stubCatalogAdapter{}}, 5)
+	svc := NewCatalogFetcherService(db, &stubResolver{adapter: &stubCatalogAdapter{}})
 	res, err := svc.Drain(ctx, "halo_infinite")
 	if err != nil {
 		t.Fatalf("Drain empty: %v", err)

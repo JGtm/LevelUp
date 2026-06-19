@@ -25,18 +25,13 @@ import (
 type CatalogFetcherService struct {
 	metadataDB *sql.DB
 	resolver   games.Resolver
-	maxRetries int
 }
 
 // NewCatalogFetcherService construit le service avec la DB metadata + resolver.
-func NewCatalogFetcherService(metadataDB *sql.DB, resolver games.Resolver, maxRetries int) *CatalogFetcherService {
-	if maxRetries <= 0 {
-		maxRetries = 5
-	}
+func NewCatalogFetcherService(metadataDB *sql.DB, resolver games.Resolver) *CatalogFetcherService {
 	return &CatalogFetcherService{
 		metadataDB: metadataDB,
 		resolver:   resolver,
-		maxRetries: maxRetries,
 	}
 }
 
@@ -47,15 +42,19 @@ type DrainResult struct {
 	Maps         int
 	GameVariants int
 	Errors       int
-	Skipped      int // attempts >= maxRetries
 }
 
-// Drain retire les entrées de catalog_fetch_queue, les hydrate via les adapters,
-// upsert dans les tables catalogue, et supprime la ligne sur succès.
+// Drain hydrate via les adapters les entrées de catalog_fetch_queue PAS ENCORE
+// présentes dans les tables catalogue, et upsert le résultat dans ces tables.
 //
-// Les entrées sont traitées par titleSlug (1 SELECT par titre). Les nouveaux
-// asset IDs découverts (pairs/maps/variants référencés par une playlist) sont
-// ré-enqueués pour drain ultérieur.
+// APPEND-ONLY (fix ART 2026-06-19) : la file n'est JAMAIS mutée (ni DELETE ni
+// UPDATE). Un DELETE/UPDATE sur cette table ART-indexée FATAL-invalide
+// metadata.duckdb (même bug que les UPSERT, cf. upsertRowNoConflict ci-dessous).
+// « Reste à résoudre » = entrée de la file absente de la table catalogue de son
+// type (NOT EXISTS) : un asset résolu en sort naturellement ; un asset non
+// résolvable (404 Discovery) y reste et sera re-tenté aux drains suivants
+// (acceptable, rate-limité). Les nouveaux IDs découverts sont ré-enqueués via
+// INSERT OR IGNORE (insert pur, sûr).
 func (s *CatalogFetcherService) Drain(ctx context.Context, titleSlug string) (DrainResult, error) {
 	if s.metadataDB == nil {
 		return DrainResult{}, errors.New("CatalogFetcherService: metadataDB nil")
@@ -69,24 +68,30 @@ func (s *CatalogFetcherService) Drain(ctx context.Context, titleSlug string) (Dr
 		return DrainResult{}, fmt.Errorf("resolve adapter: %w", err)
 	}
 
+	// Pending = entrée de la file dont l'asset n'est PAS déjà dans la table
+	// catalogue de son type (append-only : aucune mutation de la file).
 	rows, err := s.metadataDB.QueryContext(ctx,
-		`SELECT asset_type, asset_id, COALESCE(version_id, ''), attempts
-		 FROM catalog_fetch_queue
-		 WHERE title_slug = ? AND attempts < ?
-		 ORDER BY attempts ASC, enqueued_at ASC`,
-		titleSlug, s.maxRetries,
+		`SELECT q.asset_type, q.asset_id, COALESCE(q.version_id, '')
+		 FROM catalog_fetch_queue q
+		 WHERE q.title_slug = ?
+		   AND CASE q.asset_type
+		         WHEN 'playlist'     THEN NOT EXISTS (SELECT 1 FROM playlists_catalog c         WHERE c.title_slug = q.title_slug AND c.playlist_asset_id     = q.asset_id)
+		         WHEN 'pair'         THEN NOT EXISTS (SELECT 1 FROM map_mode_pair_definitions c WHERE c.title_slug = q.title_slug AND c.pair_asset_id         = q.asset_id)
+		         WHEN 'map'          THEN NOT EXISTS (SELECT 1 FROM maps_catalog c              WHERE c.title_slug = q.title_slug AND c.map_asset_id          = q.asset_id)
+		         WHEN 'game_variant' THEN NOT EXISTS (SELECT 1 FROM game_variants_catalog c     WHERE c.title_slug = q.title_slug AND c.game_variant_asset_id = q.asset_id)
+		         ELSE TRUE
+		       END
+		 ORDER BY q.enqueued_at ASC`,
+		titleSlug,
 	)
 	if err != nil {
 		return DrainResult{}, fmt.Errorf("select queue: %w", err)
 	}
-	type queueEntry struct {
-		assetType, assetID, versionID string
-		attempts                      int
-	}
+	type queueEntry struct{ assetType, assetID, versionID string }
 	var entries []queueEntry
 	for rows.Next() {
 		var e queueEntry
-		if err := rows.Scan(&e.assetType, &e.assetID, &e.versionID, &e.attempts); err != nil {
+		if err := rows.Scan(&e.assetType, &e.assetID, &e.versionID); err != nil {
 			rows.Close()
 			return DrainResult{}, fmt.Errorf("scan queue: %w", err)
 		}
@@ -97,11 +102,15 @@ func (s *CatalogFetcherService) Drain(ctx context.Context, titleSlug string) (Dr
 	var res DrainResult
 	for _, e := range entries {
 		if err := s.processEntry(ctx, adapter, titleSlug, e.assetType, e.assetID, e.versionID); err != nil {
-			s.markError(ctx, titleSlug, e.assetType, e.assetID, err)
+			// Append-only : pas de markError (UPDATE interdit sur table ART-indexée).
+			// L'entrée reste "pending" (absente du catalogue) → re-tentée au prochain drain.
+			slog.WarnContext(ctx, "catalog drain: process entry échoué (sera re-tenté)", "err", err,
+				"title_slug", titleSlug, "asset_type", e.assetType, "asset_id", e.assetID)
 			res.Errors++
 			continue
 		}
-		s.deleteFromQueue(ctx, titleSlug, e.assetType, e.assetID)
+		// Append-only : pas de deleteFromQueue (DELETE interdit). L'entrée sort du
+		// périmètre "pending" car elle est désormais présente dans la table catalogue.
 		switch e.assetType {
 		case games.AssetKindPlaylist:
 			res.Playlists++
@@ -302,29 +311,4 @@ func (s *CatalogFetcherService) upsertGameVariant(ctx context.Context, titleSlug
 		return fmt.Errorf("upsert game variant: %w", err)
 	}
 	return nil
-}
-
-// markError incrémente attempts et stocke last_error pour retry ultérieur.
-func (s *CatalogFetcherService) markError(ctx context.Context, titleSlug, assetType, assetID string, err error) {
-	_, dbErr := s.metadataDB.ExecContext(ctx,
-		`UPDATE catalog_fetch_queue SET attempts = attempts + 1, last_error = ?
-		 WHERE title_slug = ? AND asset_type = ? AND asset_id = ?`,
-		err.Error(), titleSlug, assetType, assetID,
-	)
-	if dbErr != nil {
-		slog.WarnContext(ctx, "catalog drain: markError failed", "err", dbErr,
-			"title_slug", titleSlug, "asset_type", assetType, "asset_id", assetID)
-	}
-}
-
-// deleteFromQueue supprime une ligne après upsert réussi.
-func (s *CatalogFetcherService) deleteFromQueue(ctx context.Context, titleSlug, assetType, assetID string) {
-	_, err := s.metadataDB.ExecContext(ctx,
-		`DELETE FROM catalog_fetch_queue WHERE title_slug = ? AND asset_type = ? AND asset_id = ?`,
-		titleSlug, assetType, assetID,
-	)
-	if err != nil {
-		slog.WarnContext(ctx, "catalog drain: delete failed", "err", err,
-			"title_slug", titleSlug, "asset_type", assetType, "asset_id", assetID)
-	}
 }

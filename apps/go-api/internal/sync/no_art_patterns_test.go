@@ -94,6 +94,12 @@ var tablesProtegees = []string{
 	"season_calendars",
 	"csr_season_calendars",
 	"waypoint_resource_snapshots",
+	// catalog_fetch_queue (fix ART 2026-06-19) : file de drain DiscoveryUGC migrée
+	// en append-only (catalog_fetcher_service.go : plus de DELETE/UPDATE, pending =
+	// NOT EXISTS catalogue). Un DELETE simple sur sa PK ART FATAL-invalidait
+	// metadata.duckdb → cascade (modes/playlists/maps/citations/succès Xbox en échec
+	// sur toute l'app — incident sonde live 2026-06-19).
+	"catalog_fetch_queue",
 }
 
 // allowlistArtPatterns : sites de prod où un pattern à risque reste
@@ -115,6 +121,19 @@ var allowlistArtPatterns = map[string]string{
 	// pas distinguer les deux statements. Le ON CONFLICT vise lusr_component_history,
 	// pas match_skill_rank.
 	"internal/sync/skill_rating_loaders.go": "ON CONFLICT sur lusr_component_history (non protégée) ; match_skill_rank y est écrit en append-only pur — FP file-level",
+}
+
+// allowlistRawDelete : DELETE bruts sur table append-only TOLÉRÉS, avec
+// justification (cf. TestNoRawDeleteOnAppendOnlyTables). Un raw DELETE reste à
+// risque ART — n'ajouter ici QU'AVEC une raison documentée prouvant l'absence de
+// déclencheur (player DB single-writer + zéro concurrence + PK BIGINT, pas VARCHAR).
+var allowlistRawDelete = map[string]string{
+	// compactMatchSkillRankSuperseded : DELETE de compaction (garde MAX(id) par
+	// match_id+rating_type). Sur PLAYER DB (lease KindPlayer, single-writer, jamais
+	// partagée → zéro concurrence) + PK BIGINT id (≠ VARCHAR, le déclencheur ART
+	// historique). Justifié in-code. Blast radius = 1 player DB, pas la metadata
+	// partagée (≠ incident catalog_fetch_queue).
+	"internal/sync/skill_rating_postsync_persist.go": "compactMatchSkillRankSuperseded : DELETE compaction player DB single-writer, PK BIGINT, zéro concurrence — justifié in-code",
 }
 
 // TestNoARTPatternsOnProtectedTables — guard-rail principal.
@@ -197,6 +216,68 @@ func TestNoARTPatternsOnProtectedTables(t *testing.T) {
 		t.Errorf("REGRESSION ART : %d violations détectées sur tables protégées :\n  - %s",
 			len(violations), strings.Join(violations, "\n  - "))
 		t.Logf("Si l'ajout est volontaire, l'auteur doit migrer la table en append-only OU justifier dans le commit.")
+	}
+}
+
+// TestNoRawDeleteOnAppendOnlyTables — un DELETE brut sur une table append-only
+// (tablesProtegees) est INTERDIT. Le bug ART DuckDB « Failed to delete all rows
+// from index » FATAL-invalide le handle metadata partagé pour tout le process
+// (incident catalog_fetch_queue 2026-06-19 — drain DiscoveryUGC autonome au boot).
+// Sur ces tables, seuls INSERT / INSERT OR IGNORE et SELECT-then-UPDATE single-row
+// sont permis. Le motif est SCOPÉ au nom exact de la table → zéro faux positif
+// (contrairement à patternsAtRisk qui est file-level). migrations/ops/cmd/scripts
+// exclus (rebuild one-shot, mono-processus).
+func TestNoRawDeleteOnAppendOnlyTables(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+
+	var violations []string
+	for _, table := range tablesProtegees {
+		delRegex := regexp.MustCompile(`(?i)\bDELETE\s+FROM\s+` + regexp.QuoteMeta(table) + `\b`)
+		err := filepath.Walk(repoRoot, func(path string, info os.FileInfo, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if info.IsDir() {
+				name := info.Name()
+				if name == "vendor" || name == ".git" || name == "node_modules" ||
+					name == "data" || name == "logs" || name == "dist" {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if !strings.HasSuffix(path, ".go") {
+				return nil
+			}
+			if strings.HasSuffix(path, "_test.go") ||
+				strings.Contains(path, "/migration/") || strings.Contains(path, "\\migration\\") ||
+				strings.Contains(path, "/migrations/") || strings.Contains(path, "\\migrations\\") ||
+				strings.Contains(path, "/ops/") || strings.Contains(path, "\\ops\\") ||
+				strings.Contains(path, "/cmd/") || strings.Contains(path, "\\cmd\\") ||
+				strings.Contains(path, "/scripts/") || strings.Contains(path, "\\scripts\\") {
+				return nil
+			}
+			content, readErr := os.ReadFile(path)
+			if readErr != nil {
+				return nil
+			}
+			if delRegex.MatchString(stripGoComments(string(content))) {
+				rel, _ := filepath.Rel(repoRoot, path)
+				relSlash := filepath.ToSlash(rel)
+				if _, allowed := allowlistRawDelete[relSlash]; allowed {
+					return nil
+				}
+				violations = append(violations, "table="+table+" DELETE brut file="+relSlash)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("walk: %v", err)
+		}
+	}
+
+	if len(violations) > 0 {
+		t.Errorf("DELETE brut sur table append-only (INTERDIT — bug ART, cf. incident catalog_fetch_queue) : %d :\n  - %s",
+			len(violations), strings.Join(violations, "\n  - "))
 	}
 }
 
