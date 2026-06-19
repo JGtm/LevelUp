@@ -20,6 +20,7 @@ import type { SettingsResponse } from '@/lib/api/types'
 import { GeneralTab } from './GeneralTab'
 import { AnalyseTab } from './AnalyseTab'
 import { BackupTab } from './BackupTab'
+import { TitlesTab } from './TitlesTab'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -61,6 +62,7 @@ export function SettingsPage() {
   const activeTab =
     (new URLSearchParams(routerState.location.search).get('tab') as
       | 'general'
+      | 'titles'
       | 'sync'
       | 'analyse'
       | 'lab'
@@ -70,7 +72,7 @@ export function SettingsPage() {
       | 'backup'
       | null) ?? 'general'
 
-  function setActiveTab(tab: 'general' | 'sync' | 'analyse' | 'lab' | 'users' | 'accessibility' | 'notifications' | 'backup') {
+  function setActiveTab(tab: 'general' | 'titles' | 'sync' | 'analyse' | 'lab' | 'users' | 'accessibility' | 'notifications' | 'backup') {
     navigate({ to: '/settings', search: { tab }, replace: true }).catch(() => {})
   }
 
@@ -136,6 +138,7 @@ export function SettingsPage() {
           {(
             [
               { id: 'general', label: t.tabGeneral },
+              { id: 'titles', label: t.tabTitles },
               { id: 'analyse', label: t.tabAnalyse },
               { id: 'accessibility', label: t.tabAccessibility },
               { id: 'notifications', label: locale === 'en' ? 'Notifications' : 'Notifications' },
@@ -143,7 +146,7 @@ export function SettingsPage() {
               ...(canManageInstance ? [{ id: 'lab', label: t.tabLab }] : []),
               // « Synchronisation » et « Utilisateurs » ont migré vers la page Admin
               // (Admin · Sync & Jobs / Accès). Cf. accès direct « Administration » dans le menu.
-            ] as { id: 'general' | 'sync' | 'analyse' | 'lab' | 'users' | 'accessibility' | 'notifications' | 'backup'; label: string }[]
+            ] as { id: 'general' | 'titles' | 'sync' | 'analyse' | 'lab' | 'users' | 'accessibility' | 'notifications' | 'backup'; label: string }[]
           ).map(({ id, label }) => (
             <button
               key={id}
@@ -172,6 +175,7 @@ export function SettingsPage() {
             <SetPasswordCard />
           </>
         )}
+        {activeTab === 'titles' && <TitlesTab t={t} frozen={demoMode} />}
         {activeTab === 'analyse' && (
           <AnalyseTab merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
         )}

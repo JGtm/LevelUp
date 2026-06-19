@@ -16,6 +16,18 @@ export interface SettingsText {
 
   // Onglets
   tabGeneral: string
+  // Onglet « Jeux » (sélection par titre)
+  tabTitles: string
+  titlesSectionTitle: string
+  titlesSectionDesc: string
+  titleStatusActive: string
+  titleStatusPaused: string
+  titleStatusNotTracked: string
+  titlePurgeButton: string
+  titlePurgeConfirm: string
+  titleLastActiveHint: string
+  titlePurgeResidualWarning: string
+  titleActionError: string
   tabSync: string
   tabAnalyse: string
   tabLab: string
@@ -263,6 +275,18 @@ const FR_TEXT: SettingsText = {
   loading: 'Chargement des paramètres…',
 
   tabGeneral: 'Général',
+  tabTitles: 'Jeux',
+  titlesSectionTitle: 'Jeux suivis',
+  titlesSectionDesc:
+    'Active ou met en pause la synchronisation par jeu. Mettre en pause conserve les données ; au moins un jeu doit rester actif.',
+  titleStatusActive: 'Actif',
+  titleStatusPaused: 'En pause',
+  titleStatusNotTracked: 'Non suivi',
+  titlePurgeButton: 'Purger',
+  titlePurgeConfirm: 'Supprimer définitivement les données de ce jeu pour ce joueur ?',
+  titleLastActiveHint: 'Au moins un jeu doit rester actif.',
+  titlePurgeResidualWarning: 'Jeu désactivé, mais certains fichiers de données n’ont pas pu être supprimés.',
+  titleActionError: 'L’opération a échoué. Réessaie.',
   tabSync: 'Synchronisation',
   tabAnalyse: 'Analyse',
   tabLab: 'Lab',
@@ -528,6 +552,18 @@ const EN_TEXT: SettingsText = {
   loading: 'Loading settings…',
 
   tabGeneral: 'General',
+  tabTitles: 'Games',
+  titlesSectionTitle: 'Tracked games',
+  titlesSectionDesc:
+    'Enable or pause syncing per game. Pausing keeps the data; at least one game must stay active.',
+  titleStatusActive: 'Active',
+  titleStatusPaused: 'Paused',
+  titleStatusNotTracked: 'Not tracked',
+  titlePurgeButton: 'Purge',
+  titlePurgeConfirm: 'Permanently delete this game’s data for this player?',
+  titleLastActiveHint: 'At least one game must stay active.',
+  titlePurgeResidualWarning: 'Game disabled, but some data files could not be removed.',
+  titleActionError: 'The operation failed. Please retry.',
   tabSync: 'Synchronisation',
   tabAnalyse: 'Analysis',
   tabLab: 'Lab',

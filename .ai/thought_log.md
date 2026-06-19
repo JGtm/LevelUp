@@ -1,3 +1,16 @@
+## [2026-06-19] Multi-titre Pass C (front) Lot 2 : onglet Réglages « Jeux » — Complété
+
+**Statut** : Complété. typecheck + lint (0 erreur sur les fichiers touchés) + vitest verts (74 existants + 3 nouveaux TitlesTab). Onglet user self-service pour gérer ses jeux suivis (toggle actif/pause + purge), invariant min-1.
+
+**Réalisations** :
+- **`TitlesTab.tsx`** (onglet autonome calqué sur BackupTab) : une ligne `ToggleRow` par jeu suivi (label=nom, badge Actif/En pause), bouton Purger. Le **dernier titre actif** a son toggle ET son bouton purge grisés (min-1) ; hint affiché ; filet serveur 409 `last_active_title` capté via `ApiError.code` → message. Confirmation `window.confirm` avant purge ; `data_removed=false` → warning fichiers résiduels. Figé en mode démo (`frozen`).
+- **Hooks** (`queries.ts`) : `usePlayerTitles` (Option B : itère `availableTitles` + `GET /players` par titre via header override, résilient par titre), `useSetTitleSync` (PATCH), `usePurgeTitleData` (DELETE) — invalident `playerTitles` + `bootstrap`.
+- **Câblage** : `'titles'` ajouté à `SETTINGS_TABS` (routes) + aux 3 unions inline de `SettingsPage` + entrée onglet + dispatch contenu. Query key `playerTitles`.
+- **i18n** : dico local `settings/i18n.ts` (FR+EN, parité forcée par TS) — `tabTitles` + libellés statut/purge/hint/erreur.
+- **Tests** : 3 tests TitlesTab (min-1 grise le dernier actif ; 2 actifs → togglables ; démo → tout grisé).
+
+**Prochaine étape** : Lot 3 (step onboarding sélection titres).
+
 ## [2026-06-19] Multi-titre Pass C (front) Lot 1 : types TS + régénération + nettoyage placement — Complété
 
 **Statut** : Complété (Lot 1). typecheck front vert. Cartographie front via workflow Ultracode (4 agents) : wizard onboarding, onglets réglages, pattern i18n (2 systèmes : manifest TOML pour `setup`, dico local pour `settings`), sites placement.

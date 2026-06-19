@@ -12,6 +12,9 @@ export const queryKeys = {
   sessionContext: ['session-context'] as const,
   health: ['health'] as const,
 
+  // Sélection par titre (réglages Jeux) — statut sync par titre du joueur courant.
+  playerTitles: (playerSlug: string) => ['player-titles', playerSlug] as const,
+
   // Setup & auth (Slice 1)
   // setupStatus supprimé (sprint 29) : GET /setup/status n'existe ni en FastAPI ni en Go
   deviceFlow: (attemptId: string) => ['device-flow', attemptId] as const,

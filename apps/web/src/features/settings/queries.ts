@@ -13,6 +13,7 @@ import type {
   BackfillStartRequest,
   BackupRunResult,
   BackupStatusResponse,
+  PlayersListResponse,
   SettingsResponse,
   UpdateSettingsRequest,
 } from '@/lib/api/types'
@@ -109,6 +110,96 @@ export function useRunBackup() {
     mutationFn: () => api.post<BackupRunResult>('/settings/backup/run', {}),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: [...queryKeys.settings, 'backup-status'] })
+    },
+  })
+}
+
+// ─── Sélection par titre (onglet « Jeux ») ───────────────────────────────────
+
+export interface PlayerTitleStatus {
+  slug: string
+  name: string
+  status: 'active' | 'coming_soon' | 'archived'
+  enrolled: boolean
+  syncEnabled: boolean
+}
+
+interface TitleSyncResult {
+  gamertag: string
+  title_slug: string
+  sync_enabled: boolean
+}
+
+interface TitlePurgeResult {
+  gamertag: string
+  title_slug: string
+  data_removed: boolean
+}
+
+/**
+ * usePlayerTitles agrège, pour le joueur courant, le statut sync par titre.
+ * Source : GET /players par titre (header X-LevelUp-Title override). GET /players
+ * filtre par titre courant, donc on itère les titres disponibles (Option B, N
+ * petit). Chaque appel est résilient : un titre en erreur → enrolled=false.
+ */
+export function usePlayerTitles() {
+  const availableTitles = useAppShellStore((s) => s.availableTitles)
+  const playerSlug = useAppShellStore((s) => s.currentPlayer?.player_slug ?? '')
+  return useQuery({
+    queryKey: queryKeys.playerTitles(playerSlug),
+    enabled: playerSlug !== '',
+    queryFn: async (): Promise<PlayerTitleStatus[]> => {
+      const titles = availableTitles.filter((t) => t.status !== 'archived')
+      return Promise.all(
+        titles.map(async (t): Promise<PlayerTitleStatus> => {
+          try {
+            const resp = await api.get<PlayersListResponse>('/players', { 'X-LevelUp-Title': t.slug })
+            const entry = (resp.items ?? []).find((p) => p.player_slug === playerSlug)
+            return {
+              slug: t.slug,
+              name: t.name,
+              status: t.status,
+              enrolled: entry != null,
+              syncEnabled: entry?.sync_enabled ?? false,
+            }
+          } catch {
+            return { slug: t.slug, name: t.name, status: t.status, enrolled: false, syncEnabled: false }
+          }
+        }),
+      )
+    },
+  })
+}
+
+/** useSetTitleSync bascule actif/pause d'un titre du joueur courant. */
+export function useSetTitleSync() {
+  const qc = useQueryClient()
+  const playerSlug = useAppShellStore((s) => s.currentPlayer?.player_slug ?? '')
+  return useMutation({
+    mutationFn: ({ slug, enabled }: { slug: string; enabled: boolean }) =>
+      api.patch<TitleSyncResult>(
+        `/profiles/${encodeURIComponent(playerSlug)}/titles/${encodeURIComponent(slug)}/sync`,
+        { enabled },
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.playerTitles(playerSlug) })
+      void qc.invalidateQueries({ queryKey: queryKeys.bootstrap })
+    },
+  })
+}
+
+/** usePurgeTitleData supprime le profil + les données d'un titre du joueur courant. */
+export function usePurgeTitleData() {
+  const qc = useQueryClient()
+  const playerSlug = useAppShellStore((s) => s.currentPlayer?.player_slug ?? '')
+  return useMutation({
+    mutationFn: ({ slug }: { slug: string }) =>
+      api.delete<TitlePurgeResult>(
+        `/profiles/${encodeURIComponent(playerSlug)}/titles/${encodeURIComponent(slug)}/data`,
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.playerTitles(playerSlug) })
+      void qc.invalidateQueries({ queryKey: queryKeys.bootstrap })
     },
   })
 }
