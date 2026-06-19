@@ -79,8 +79,14 @@ type MatchEventTimeline struct {
 - `match_events_service.go` (on-demand, gating) ; `GET .../matches/{match_id}/events` (Huma, OpenAPI + regen types) ; composant front timeline/kill-feed (lazy, gaté `FeatureGate`/`RouteCapabilityGate`).
 - Oracle : page kill-feed Halo 5 (données réelles) ; Infinite dégradé proprement (pas vide → « indisponible pour ce titre » si not_exposed).
 
-### Phase 4 — Stockage / volume (POST, décision documentée)
-- Décider : Halo 5 fetch-on-demand vs persist append-only dédié (modèle `highlight_events`). Cache. Pagination si une timeline dépasse un seuil. Recalibration engagement Halo 5 (events présents) — lien `project_halo5_experimental_direction`.
+### Phase 4a — DURABILITÉ : persister les events Halo 5 (à faire AVEC activation 1b)
+**Rationale (ÉLEVÉ 2026-06-20, point user — corrige le cadrage « optim » initial)** : les events Halo 5 ne viennent QUE de l'API cryptum (interne, fragile — 343/MS peut la fermer à tout moment, Halo 5 est un vieux titre). Fetch-live-seul ⇒ **si l'API meurt, le kill-feed / arme-par-kill / positions Halo 5 est PERDU à jamais** — et c'est IRREMPLAÇABLE (Infinite ne produit même pas l'arme-par-kill sans le RE film). Infinite est déjà à l'abri (`highlight_events` persisté au sync). Donc persister Halo 5 = **archiver l'irremplaçable depuis une source fragile**, PAS une optimisation. → ce n'est pas « différé sine die ».
+- **Capture-on-fetch append-only** : quand `LoadMatchEvents` Halo 5 fetch l'API, persister la timeline en write-through dans une table dédiée du warehouse Halo 5, **append-only** (doctrine `project_append_only_eradication_campaign` : zéro DELETE/UPDATE-indexé). Lecture ultérieure = table d'abord, API en refresh/fallback.
+- **Couplé à activation 1b** (le bon moment, pas « plus tard ») : Halo 5 n'a PAS de DuckDB tant que non activé (le provisioning 1b crée le warehouse) ; le write-path se conçoit/teste contre la vraie shape live. La construire AVANT activation = à l'aveugle, sans DB ni data.
+- Oracle : un match Halo 5 fetché une fois reste lisible après coupure simulée de l'API (la table sert la timeline).
+
+### Phase 4b — VOLUME / perf (POST, vraie décision différée)
+- Cache (déjà en place côté lecture TanStack/serveur). Pagination si une timeline dépasse un seuil (~700 events). Recalibration engagement Halo 5 (events présents maintenant) — `project_halo5_experimental_direction`. Décidable seulement avec du volume réel **post-activation**.
 
 ## 5. Tests (par couche — delivery-checklist)
 - `canonical/` : test de types/enums purs.
@@ -96,6 +102,7 @@ type MatchEventTimeline struct {
 - **Aucun blocage mutuel** : Phase 0/1/3 (canon + h5 + surface) livrables sans le RE Infinite.
 
 ## 7. Done definition / sequencing
-- **Gate activation** = Phase 0 + 1 + 3 vertes (canon + adapter h5 + surface) → Halo 5 peut s'activer AVEC ses events. Phase 2 (Infinite) partielle OK à l'activation, complétée ensuite.
+- **Gate activation** = Phase 0 + 1 + 3 vertes (canon + adapter h5 + surface) → Halo 5 peut s'activer AVEC ses events. ✅ **LIVRÉ 2026-06-20** (Phases 0→3b, audit 4/4). Phase 2 (Infinite) partielle OK à l'activation, complétée ensuite.
+- **Phase 4a (durabilité — persister les events Halo 5 append-only) = à faire AVEC l'activation 1b** : source cryptum fragile + irremplaçable (cf. §4a). Phase 4b (volume/perf) = POST.
 - Thought_log à chaque phase. Mémoire `project_halo5_experimental_direction` (events natifs) reste la référence direction.
 - Réfs : `HANDOFF_HALO5_EXPERIMENTAL.md` §0-quater (shape réelle), `reference_match_timeline_t0`, `reference_film_chunks_structure`, `reference_halo_hud_viewmodels`.

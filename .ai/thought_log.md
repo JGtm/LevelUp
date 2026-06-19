@@ -1,3 +1,15 @@
+## [2026-06-20] MatchEvents Phase 4 reframée : durabilité events Halo 5 (4a, avec activation 1b) — Décision
+
+**Statut** : Décision documentée (pas de code). Déclencheur : point user « pourquoi ne pas stocker en bdd, si l'API ferme on aura plus rien ».
+
+**Reframe** : mon cadrage initial « Phase 4 = optim différée » était trop faible. Split :
+- **Phase 4a — DURABILITÉ** (élevé) : les events Halo 5 viennent UNIQUEMENT de l'API cryptum (fragile ; 343/MS peut la fermer ; vieux titre). Fetch-live-seul = perte définitive si l'API meurt, et c'est IRREMPLAÇABLE (Infinite ne produit pas l'arme-par-kill sans RE film). Infinite déjà à l'abri (`highlight_events` persisté). → persister Halo 5 en **append-only capture-on-fetch** (doctrine `project_append_only_eradication_campaign`), **COUPLÉ à activation 1b** (Halo 5 n'a pas de DuckDB avant le provisioning ; write-path testable seulement sur data live). Pas « différé sine die ».
+- **Phase 4b — VOLUME/perf** (cache/pagination/recalibration engagement) : vraie décision POST (besoin de volume réel).
+
+**Formalisé** : `PLAN_CANONICAL_MATCH_EVENTS.md` §4a/4b + §7 ; `HANDOFF_MULTITITRE_ACTIVATION.md` §5 étape 6.
+
+**Prochaine étape** : activation 1b = registration + flip + provisioning + **persistence 4a** + vérif live, séquencé avec damage-model.
+
 ## [2026-06-20] MatchEvents — déviations front finalisées + formalisation gap « damage model par titre » — Complété
 
 **Statut** : Complété. Front : `tsc -b` + eslint + vitest **8/8** verts (aucun Go touché ce tour). Docs : mini-plan + mémoire + MT-13 + handoff actualisés.
