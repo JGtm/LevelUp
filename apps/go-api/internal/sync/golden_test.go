@@ -139,7 +139,7 @@ func TestGoldenFixture_HighlightEventsPipeline(t *testing.T) {
 	}
 
 	result := &domain.SyncResult{}
-	err := ProcessHighlightEvents(context.Background(), mock, db, nil, matchID, result)
+	err := ProcessHighlightEvents(context.Background(), mock, db, matchID, result)
 	if err != nil {
 		t.Fatalf("ProcessHighlightEvents: %v", err)
 	}
@@ -228,7 +228,7 @@ func TestGoldenFixture_NoFilm_CascadeRespected(t *testing.T) {
 
 	mock := &mockHaloClient{highlightChunkFound: false} // film 404
 	result := &domain.SyncResult{}
-	err := ProcessHighlightEvents(context.Background(), mock, db, nil, matchID, result)
+	err := ProcessHighlightEvents(context.Background(), mock, db, matchID, result)
 	if err != nil {
 		t.Fatalf("ProcessHighlightEvents: %v", err)
 	}
@@ -274,7 +274,7 @@ func TestGoldenFixture_ParseAnomaly_DoesNotMarkEventsLoaded(t *testing.T) {
 	}
 
 	result := &domain.SyncResult{}
-	err := ProcessHighlightEvents(context.Background(), mock, db, nil, matchID, result)
+	err := ProcessHighlightEvents(context.Background(), mock, db, matchID, result)
 	if err != nil {
 		t.Fatalf("ProcessHighlightEvents: %v", err)
 	}

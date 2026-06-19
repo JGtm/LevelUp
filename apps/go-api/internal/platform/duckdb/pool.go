@@ -23,15 +23,14 @@ import (
 
 // PlayerPoolConfig contient les chemins nécessaires pour ouvrir un PlayerDB.
 type PlayerPoolConfig struct {
-	Gamertag                string
-	XUID                    string
-	TitleSlug               string // Sprint 44 : namespace titre (ex: "halo_infinite")
-	PlayerDBPath            string
-	SharedDBPath            string
-	MetaDBPath              string
-	SharedSocialDBPath      string // shared_social.duckdb (médias, likes, favoris)
-	GlobalXuidAliasesDBPath string // P5.3 : data/global/xbox_aliases.duckdb (mapping xuid→gamertag global Microsoft)
-	UserTimezone            string // timezone IANA pour la lecture des TIMESTAMP (ex: "Europe/Paris")
+	Gamertag           string
+	XUID               string
+	TitleSlug          string // Sprint 44 : namespace titre (ex: "halo_infinite")
+	PlayerDBPath       string
+	SharedDBPath       string
+	MetaDBPath         string
+	SharedSocialDBPath string // shared_social.duckdb (médias, likes, favoris)
+	UserTimezone       string // timezone IANA pour la lecture des TIMESTAMP (ex: "Europe/Paris")
 
 	// SharedReader (sprint sharedprovider, commit 8a) : si non-nil, expose ce
 	// SharedReader dans PlayerDB.SharedReader. Sinon (mode legacy par défaut),
@@ -274,7 +273,8 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	// (refactor 2026-06-19, sous-commande `levelup consolidate-aliases`) : plus
 	// aucun ATTACH `global`. La résolution xuid→gamertag passe entièrement par
 	// shared (v_gamertag_lookup pour l'affichage, LookupXUIDByGamertag pour les
-	// coéquipiers, invariant I13). cfg.GlobalXuidAliasesDBPath n'est plus lu ici.
+	// coéquipiers, invariant I13). Le champ de config GlobalXuidAliasesDBPath a
+	// été retiré et le moteur de sync n'écrit plus dans ce store (2026-06-19).
 
 	// attachShared sur SharedSocial retiré aussi.
 	// media_repo passe désormais entièrement par SharedReader pour les queries

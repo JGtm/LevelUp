@@ -40,7 +40,6 @@ func NewSyncEngine(
 		titleSlug:      titlePkg.DefaultSlug,
 		playerDBPath:   pr.PlayerDBPath(titlePkg.DefaultSlug, gamertag),
 		sharedDBPath:   pr.SharedDBPath(titlePkg.DefaultSlug),
-		globalDBPath:   pr.GlobalXuidAliasesDBPath(),
 		metadataDBPath: pr.MetadataDBPath(titlePkg.DefaultSlug),
 		syncCacheDir:   pr.SyncCacheDir(),
 		tokens:         tokens,
