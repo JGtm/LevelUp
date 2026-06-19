@@ -1,3 +1,18 @@
+## [2026-06-19] Import OpenSpartan — saisons CSR depuis le CSR par-match + message UX (suite) — Complété
+
+**Contexte** : retour user sur le CSR. Clarification de ce que sert `PlaylistCSRSnapshots` (OpenSpartan) → 2 vues seulement : le badge « pic » de l'accueil ([home_repo_skill_peak.go](../apps/go-api/internal/platform/duckdb/home_repo_skill_peak.go)) et le sélecteur de saisons de la page Carrière ([career_repo_csr_seasons.go](../apps/go-api/internal/platform/duckdb/career_repo_csr_seasons.go)). Or pic + liste de saisons sont **déductibles du CSR par-match déjà importé** → import des snapshots **abandonné** (redondant), pas de season_id côté OpenSpartan de toute façon.
+
+**Décisions** :
+- Badge « pic » accueil : déjà couvert (fallback `match_skill_rank` CSR quand snapshots vides) — aucun changement.
+- Sélecteur saisons Carrière : `AvailableCSRSeasons` lisait seulement `player_csr_snapshots` → branché aussi sur `shared.match_csrs` (qui porte le season_id du CSR par-match importé). Best-effort (shared indispo = skip).
+- UX onboarding : note discrète sur la carte de succès (combat récupéré en arrière-plan ; matchs trop anciens potentiellement non traités intégralement). Clé i18n `common.onboarding.combat_details_note` (FR+EN, manifest TOML régénéré).
+
+**Résultats** : Go build + vet verts ; test `TestAvailableCSRSeasons_FromMatchCSRs` ; front typecheck + lint + vitest (OpenSpartanImportCard 8/8) verts. Commits `512e00039` (branchement), `61f7cf92e` (UX).
+
+**Prochaine étape** : aucune — feature OpenSpartan import-completion complète (CSR par-match, LUSR, backfill events non-bloquant, dominance, déclencheurs, saisons Carrière, message UX).
+
+---
+
 ## [2026-06-19] Import OpenSpartan — backfill events non-bloquant + câblage (P2/P3) — Complété
 
 **Contexte** : suite du P1 (CSR/LUSR). Les `highlight_events` (détails de combat : kills/morts horodatés → cadence, dominance, killer/victim) ne sont PAS dans OpenSpartan (décodés des films Halo, absents de la base). Il faut les rattraper SANS bloquer l'app (contrainte B-swap : RO+RW interdits sur le même fichier in-process).
