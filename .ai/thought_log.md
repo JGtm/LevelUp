@@ -26400,3 +26400,39 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Résultats observés** : nouveau test `TestComputeCadenceProfiles_SkipsCountdownFrags` (frag -3s exclu, total=2, pas de pli en phase_00). Verts : `./internal/analysis/narrative/...`, `./internal/service/...` (Cadence|Golden|T0|Narrative), suite `./internal/analysis/...`, `go vet` clean. Aucun test existant cassé (aucun n'utilisait de TimeMS négatif).
 
 **Conclusion / prochaine étape** : cohérence stricte cadence ↔ badges/evtList rétablie, sujet clos. Enchaînement = reprise du handoff Halo 5 (réponse watcher). Commit en attente d'autorisation.
+
+## [2026-06-19] Halo 5 Phase 0 — Step 1 : extension vocabulaire capabilities (battlepass + défis) — Complété
+
+**Statut** : Complété (step 1/2 du skeleton Halo 5). Préalable partagé à la décision A (clés explicites BP/défis).
+
+**Contexte** : préparation de l'embarquement Halo 5 (`HANDOFF_HALO5_EXPERIMENTAL`). Investigation parallèle (4 agents Explore, workflow `halo5-phase0-understand`) recoupée à la main. Faits porteurs établis :
+- **LUSR v2 = `degraded` pour Halo 5** (pas `not_exposed`). Cœur du rating (`skill_v2_service.go:UpdateTwoTeam`) ne consomme QUE outcomes + rosters + priors Mu/Sigma, zéro event/film. La pondération temps-joué dépend de `real_start_time` (calculé via `FirstJoinedTime` API, pas les events) ; absente → poids uniformes `wᵢ=1`, rating valide. Chemin de dégradation déjà en place, zéro code.
+- **Pattern « kinds » universel** (`internal/assetnames/resolver.go`, local→live discovery-infiniteugc→persist) déjà dans la branche (commit `3c8a005c4`), paramétré par titre via `EndpointResolver`. Halo 5 = `asset.images` supported, résolu à la demande, zéro bundle local.
+- **Spartan ID** : bannière/emblème/tag title-agnostic ; seul l'**adornment** (`metadata.career_ranks.adornment_icon_path`) potentiellement absent → le front dégrade déjà sous condition de non-null (`HomeSpartanIdentityBanner.tsx:80`).
+- **BP/défis = AUCUNE clé de capability** aujourd'hui → décision A (clés explicites) exige d'étendre le vocabulaire Go partagé.
+
+**Décision technique (step 1)** : ajout de 2 clés fines `CapBattlePass = "battlepass.progression"` + `CapChallenges = "challenges.surface"` (`internal/games/adapter.go`), inscrites dans `AllCapabilityKeys()` (`capabilities.go`), 2 `feature.Key` (`battlepass`/`challenges`) + cascade `featureDefinitions` (`internal/games/feature.go`, `domain/feature/feature.go`). Déclarées `supported` dans halo_infinite + synthetic_title_b + la `fallbackCapabilities()` hardcodée (parité `capabilities_parity_test.go`). Additif et low-risk : halo_infinite/synthetic gardent BP/défis disponibles ; les nouvelles clés deviennent gateable pour un titre qui les pose `not_exposed` (= Halo 5, step 2). **Enforcement** (gate front masquant réellement BP/défis) = Phase 1 quand Halo 5 sera servi.
+
+**Résultats observés** : tests mis à jour (count 9→11, 8→10, cascade +2 features) ; verts `./internal/games/...`, `./internal/domain/feature|title/...`, handlers + service (Title/Capabilit/Feature/Admin/Diagnostic) ; `go build ./...` exit 0 ; `go vet` clean. Front tolérant (`feature_matrix: Record<string,string>`, `CapabilityKey: string` dans le contrat) → aucun changement web.
+
+**Conclusion / prochaine étape** : vocabulaire prêt. Step 2 = `config/titles/halo_5/` complet en `coming_soon` (matrice finalisée : BP/défis/engagement/citations/scoreboard.extra/timeseries/pve = not_exposed ; skill = degraded ; history/detail.core/career = supported ; coarse matchmaking/ranked/career/asset.images/achievements/lusr) + test skeleton. Commit step 1 en attente d'autorisation.
+
+## [2026-06-19] Halo 5 — comparaison cryptum + correction de la prémisse du handoff (matrice révisée OPTIMISTE) — Complété (doc)
+
+**Statut** : Complété (doc/correction). Déclenché par challenge de l'user : « tes vérifs n'ont pas comparé à cryptum, sans ça elles ne sont pas pertinentes ». Il avait raison.
+
+**Méthode** : lecture du repo `Alexis-Bize/cryptum-halodotapi` (WebFetch tree + endpoints H5 + autorité SpartanStats) + recoupement doc communautaire `glitch100/Halo-API` + portail 343.
+
+**Découverte majeure** : la prémisse du handoff v1 (« Halo 5 = données limitées, RIEN au niveau events/films ») est **FAUSSE**. cryptum (autorité SpartanStats) expose : `/players/{p}/matches` (historique), `/{mode}/matches/{id}` (carnage complet, CSR Arena inclus), **`/{mode}/matches/{id}/events`** (events/timeline typés par match), `/servicerecords/{mode}` (agrégé, Spartan Rank), **`/players/{p}/commendations`** (citations NATIVES), appearance/emblem/service tag, UGC (variants/forge/**films**). Donc Halo 5 est RICHE ; sa divergence avec Infinite est **vocab/échelle/natif-vs-calculé**, pas un manque de données. Le **kill-feed Halo 5 est STRUCTURÉ** (death events JSON) → zéro travail film-decoder/dead-state (contrairement à Infinite).
+
+**Erreur corrigée côté méthode** : j'avais qualifié halo_infinite de « partiel » en lisant `mappings/capabilities.toml` comme le plafond de données du titre. FAUX — c'est la surface de l'**adapter canonique** (Phase 1.7a) ; l'app Infinite sert tout en LEGACY. Donc mirrorer halo_infinite pour Halo 5 était une mauvaise base : Halo 5 sera servi UNIQUEMENT par l'adapter → ses statuts = son plafond réel. Note sémantique ajoutée dans l'en-tête `halo_infinite/mappings/capabilities.toml` pour verrouiller contre la récidive.
+
+**Correction auth** : le handoff disait « SpartanToken Halo 5 ≠ Infinite (audience) = effort auth ». L'user corrige : **notre SpartanToken v4 (pool Infinite) fonctionne pour Halo 5** ; cryptum référence v2/v3 (obsolète). Donc auth ≈ réutilisation (à confirmer sonde live), pas d'audience séparée. Le vrai travail Phase 1 = hosts + client + adapter + mapping events.
+
+**Matrice révisée (validée user, optimiste, sous réserve sonde live Phase 1)** : history/detail.core/scoreboard.extra/skill.snapshot/career = supported ; timeseries/engagement = degraded ; citations = bloqué par décision B (natif) ; pve.firefight = degraded/à sonder ; battlepass/challenges = not_exposed. Caveat : l'API officielle est dégradée ; seul un appel interne live (SpartanToken v4, xuid JGtm) confirme que 343 sert encore Halo 5 en 2026 → **Phase 1 étape 0 = sonde live**.
+
+**Travail pas perdu** (note user) : la machinerie de dégradation fine reste pertinente — un futur titre (Halo 7) pourra réellement manquer d'events/highlights.
+
+**Livré** : handoff réécrit en profondeur (`HANDOFF_HALO5_EXPERIMENTAL.md`), en-tête capabilities.toml clarifié, mémoire `project_halo5_experimental_direction` + index MEMORY.md corrigés (purge de la fausse mention « données limitées »).
+
+**Conclusion / prochaine étape** : compréhension Halo 5 désormais fondée sur la source réelle. Step 2 (skeleton `config/titles/halo_5/`) à écrire sur la matrice optimiste. Commit (vocab+sémantique, puis handoff) en attente d'autorisation.

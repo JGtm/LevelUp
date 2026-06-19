@@ -17,6 +17,17 @@
 # runtime peut la rétrograder à not_exposed si aucune source carrière n'est
 # câblée (cf. adapter_data.go capCareer).
 #
+# SÉMANTIQUE — éviter le malentendu adapter-vs-données (cf. HANDOFF_HALO5 §2) :
+# Ces statuts décrivent ce que le NOUVEL ADAPTER CANONIQUE (adapter_data.go)
+# expose, PAS les features de l'app ni le plafond de données du titre.
+# Pour halo_infinite, certaines clés sont not_exposed/degraded parce que la
+# migration de l'adapter (Phase 1.7a/B/C) ne les a pas encore câblées — l'app
+# sert ces surfaces via les chemins LEGACY. Ce n'est PAS une absence de données
+# (ex. la page timeseries et les citations tournent en prod via le legacy).
+# Pour un titre servi UNIQUEMENT par l'adapter (ex. un 2e titre), ces statuts
+# == son plafond RÉEL : à régler d'après ce que SA source fournit, pas en
+# recopiant halo_infinite.
+#
 # Toute modification breaking incrémente schema_version.
 
 [meta]
@@ -33,3 +44,5 @@ schema_version = 1
 "match.scoreboard.extra" = "not_exposed"
 "citations.engine"       = "not_exposed"
 "engagement.score"       = "supported"
+"battlepass.progression" = "supported"
+"challenges.surface"     = "supported"
