@@ -1113,6 +1113,22 @@ en = "A local profile will be created for this account."
 fr = "Entrez votre Gamertag Xbox pour créer votre profil."
 en = "Enter your Xbox Gamertag to create your profile."
 
+[common.setup.select_titles_title]
+fr = "Jeux à suivre"
+en = "Games to track"
+
+[common.setup.select_titles_desc]
+fr = "Choisis les jeux à synchroniser et combien de matchs récupérer pour chacun (au moins un jeu)."
+en = "Choose which games to sync and how many matches to fetch for each (at least one game)."
+
+[common.setup.matches_to_sync]
+fr = "Matchs à synchroniser"
+en = "Matches to sync"
+
+[common.setup.syncing_game_progress]
+fr = "Jeu {current} sur {total}"
+en = "Game {current} of {total}"
+
 # ─── Auth Xbox login page ───────────────────────────────────────────────
 
 [common.auth.xbox_admin_login]

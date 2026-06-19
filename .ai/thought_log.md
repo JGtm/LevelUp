@@ -1,3 +1,17 @@
+## [2026-06-19] Multi-titre Pass C (front) Lot 3 : step onboarding sélection titres — Complété
+
+**Statut** : Complété. typecheck + lint (0 erreur) + suite vitest COMPLÈTE verte (215 fichiers, 1910 tests, 0 échec). Le mono-titre (réalité actuelle, 1 seul titre actif) = flux inchangé ; le multi-titre s'allume à l'activation d'un 2e titre.
+
+**Décision d'intégration** : la sélection de titres est intégrée dans **StepPlayer** (la création des profils EST le moment du choix), pas un step séparé — respecte la machine d'états pilotée par `setupState` serveur (aucun 5e état).
+
+**Réalisations** :
+- **`setupFlowStore`** : `selectedTitleSlugs` + `maxMatchesByTitle` + setter + reset.
+- **StepPlayer** : sélecteur de jeux actifs (case à cocher si >1 titre, sinon juste le volume) + input « matchs à synchroniser » par jeu (clampé 1..2000). Création **séquentielle** d'un profil par jeu coché (`createPlayer.mutateAsync` avec `title_slug`+`initial_max_matches`), bootstrap invalidé **une seule fois** après tous les profils (évite la race de re-render du wizard). Min-1 (bouton désactivé si rien coché).
+- **StepInitialSync** : sync **SÉQUENTIELLE** des titres sélectionnés (chaînage sur succès du job → titre suivant ; au dernier → ready). `max_matches` omis → le backend utilise l'`initial_max_matches` persisté. Indicateur « Jeu X/N » en multi-titre. **Raison du séquentiel** : la garde back `FindActiveInitialSync` est keyée par gamertag seul → un fire parallèle de 2 titres du même gamertag déclencherait un 409 (le claim `TryClaimT` est title-aware mais pas FindActiveInitialSync).
+- **i18n** : 4 clés TOML `[common.setup.*]` (select_titles_title/desc, matches_to_sync, syncing_game_progress avec ICU vars) + regen manifests.
+
+**Pass C TERMINÉ** (Lots 1-3). Test StepPlayer multi-create différé (harness wizard lourd, chemin forward-looking validable à l'activation d'un 2e titre). Reste : Activation 1b (back, hors Pass C).
+
 ## [2026-06-19] Multi-titre Pass C (front) Lot 2 : onglet Réglages « Jeux » — Complété
 
 **Statut** : Complété. typecheck + lint (0 erreur sur les fichiers touchés) + vitest verts (74 existants + 3 nouveaux TitlesTab). Onglet user self-service pour gérer ses jeux suivis (toggle actif/pause + purge), invariant min-1.
