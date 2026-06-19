@@ -1,3 +1,21 @@
+## [2026-06-19] Backups VPS via Restic (DuckDB + tokens + config) — Complété (ops, hors repo)
+
+**Demande user** : backups en cas de corruption pour pouvoir revenir en arrière ; OK pour les avoir « au même endroit » (même VPS) ; confiance dans la stabilité du VPS.
+
+**Décisions (validées via AskUserQuestion)** : périmètre = **DuckDB + config** (pas les 4,5 Go de médias — disque à 84%, et les DBs sont ce qui se corrompt) ; cohérence = **arrêt bref du service `levelup`** (fichiers DuckDB au repos = restaurables) plutôt qu'un snapshot à chaud (risque de fichier tronqué).
+
+**Mise en place (sur le VPS, pas dans le repo)** :
+- restic 0.14 installé (Debian 12). Repo local `/opt/levelup/restic-repo`, password `/opt/levelup/.restic-password` (root 600).
+- Script `/opt/levelup/scripts/restic-backup.sh` : trap de redémarrage garanti → `docker compose stop levelup` → `restic backup data/titles/halo_infinite data/auth db_profiles.json app_settings.json .env.local` → redémarrage ASAP → `forget --keep-daily 7 --keep-weekly 4 --prune`. Log `data/logs/restic-backup.log`.
+- Timer systemd `levelup-restic-backup.timer` quotidien **04:00 UTC** (Persistent=true), enabled.
+- **Vérifié** : 1er backup manuel OK (exit 0), service relancé healthy, `restic check` = no errors, **restore testé** (metadata.duckdb 45 Mo extrait intact ; snapshot contient tous les .duckdb + .wal + watcher_tokens des 4 joueurs + config).
+
+**Restauration** (serveur arrêté) : `RESTIC_REPOSITORY=/opt/levelup/restic-repo RESTIC_PASSWORD_FILE=/opt/levelup/.restic-password restic restore latest --target /opt/levelup` (les chemins `/data/...` se reconstruisent sous /opt/levelup).
+
+**Limite assumée** : repo sur le même disque que les données → si le VPS/disque est perdu, repo perdu aussi (accepté par le user). Le password doit être sauvegardé hors-VPS pour pouvoir restaurer une copie du repo. Script non versionné dans le repo (chemins VPS-spécifiques) — à porter dans `scripts/` si on veut le reproduire.
+
+---
+
 ## [2026-06-19] Fix RC-E catalog drain : catalog_fetch_queue ART-corrompt metadata.duckdb — Complété (code)
 
 **Déclencheur** : logs prod (post-deploy xuid_aliases) — `catalog drain: delete failed` + `database has been invalidated` (~60 lignes/boot) sur `metadata.duckdb`. Diagnostic : le cron `catalog_refresh` (hebdo + 1er tick à CHAQUE boot) draine `catalog_fetch_queue` ; `deleteFromQueue` (DELETE per-row) + `markError` (UPDATE attempts) opèrent sur une table portant **PRIMARY KEY (title_slug, asset_type, asset_id)** + index secondaire `idx_catalog_fetch_queue_drain` (incluant `attempts`). DELETE/UPDATE per-row sur index ART → bug DuckDB 1.5.x #23046 → metadata invalidé pour toute la vie du process → noms d'assets (maps/playlists/modes FR) cassés jusqu'au restart (qui re-casse au boot suivant). Le commentaire main.go « drain ART-safe » ne couvrait que l'UPSERT catalogue, pas la queue.

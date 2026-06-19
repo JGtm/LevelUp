@@ -175,6 +175,12 @@ data/warehouse/metadata.db
 data/titles/halo_infinite/warehouse/*.duckdb
 data/titles/halo_infinite/warehouse/*.wal
 data/titles/halo_infinite/players/
+# Tokens d'auth runtime (OAuth/MSAL par joueur) — JAMAIS versionner (secrets).
+data/titles/*/auth/
+data/auth/
+# Restic (repo de backup local + mot de passe) sur le VPS — JAMAIS versionner.
+restic-repo/
+.restic-password
 data/global/*.duckdb
 data/global/*.wal
 data/wal/
