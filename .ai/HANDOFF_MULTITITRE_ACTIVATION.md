@@ -98,6 +98,7 @@ L'adapter h5 est **active-ready** (`internal/games/halo_5/`) : `NewDataAdapter(N
 3. **Provisioning** : `provisionAdditionalActiveTitles` (`main.go:1487`) créera les DB warehouse h5 — vérifier qu'un titre **live-only** (adapter sans DuckDB) ne casse pas (migrations h5 vides OK, ou skip).
 4. **clearance** : déjà géré (`clearance_url=""` optionnel — fix commit `8438dfd81`).
 5. **Vérif LIVE (oracle)** : démarrer le serveur (`LEVELUP_REPO_ROOT=...LevelUp-go-migration`), créer un profil h5 pour JGtm (via onboarding Pass B), switcher sur h5, **confirmer la page Carrière = vrai rang CSR de JGtm** + **le kill-feed (onglet Détails d'un match) = events Halo 5 natifs (arme/positions, capabilities `supported`)** ; surfaces `not_exposed` masquées proprement. ⚠ Si des KPI rendement/résistance Halo 5 sont affichés, ils seront sur l'**échelle Infinite (`225`)** tant que `PLAN_DAMAGE_MODEL_PER_TITLE.md` n'est pas livré — c'est le moment où le mauvais cadrage devient visible (cf. ce plan).
+6. **DURABILITÉ events Halo 5 (Phase 4a, `PLAN_CANONICAL_MATCH_EVENTS.md` §4a) — à faire AVEC cette activation** : les events Halo 5 ne viennent QUE de l'API cryptum (fragile, irremplaçable) ; les **persister en append-only capture-on-fetch** dans le warehouse Halo 5 (créé à l'étape 3) au moment où `LoadMatchEvents` fetch — sinon une coupure API = perte définitive du kill-feed/arme-par-kill/positions. Lecture = table d'abord, API en refresh. (Infinite déjà à l'abri via `highlight_events`.) Doctrine append-only : `project_append_only_eradication_campaign`.
 
 ## 6. Pièges / rappels
 
