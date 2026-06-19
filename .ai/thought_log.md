@@ -1,3 +1,19 @@
+## [2026-06-19] Groupes/familles multi-groupes — Phases 0 & 1 (modèle + authz) — Complété (code, non commité)
+
+**Contexte** : refonte de la gestion des amis/invitations. Constat de départ (vérif bout-en-bout) : le code d'invitation était un portier d'inscription *mot de passe* déconnecté du groupe (doublon mort en mode Xbox, n'ajoutait personne au groupe). Décisions produit (AskUserQuestion) : multi-groupes **nommés** ; invitation = token de jonction à UN groupe via login Xbox SSO ; tout user authentifié peut inviter ; **séparer** "membre du foyer (accès mutuel)" de "coéquipier affiché (Escouade)" — les pills colorées de l'Escouade ne doivent PAS changer. Plan : `~/.claude/plans/quel-workflow-pour-la-wondrous-leaf.md`. Branche `feat/groups-membership` (depuis main).
+
+**Architecture pivot** : deux notions séparées. `friend_gamertags` (settings, inchangé) = AFFICHAGE Escouade + `is_with_friends`. Nouvelle entité **Groupe** (`data/auth/groups.json`) = ACCÈS mutuel (authz). Deux users ont accès mutuel s'ils partagent ≥1 groupe. → l'Escouade (pills index→couleur) n'est pas touchée.
+
+**Phase 0 (couche données)** : `domain/group.go` (Group, GroupMember, GroupRole) + `platform/groupstore/group_store.go` (calqué userstore/invite_store : RWMutex, write-temp+rename, versioning) — Create/Get/List/ListForXUID/**CoMemberXUIDs**/AddMember/RemoveMember(refuse owner)/Rename/Delete. `migrate.go` : `MigrateDefault` idempotent (no-op si groupes existent). Tests : 8 cas verts.
+
+**Phase 1 (authz groups-aware)** : `authz.CanAccessPlayer` simplifié — l'ensemble passé est désormais les **co-membres du user courant** (xuid inclus), donc tester `accessibleXUIDs[profileXUID]` suffit. `ResolveFamilyXUIDs` (résolution globale via friend_gamertags) **supprimée**. `familyXUIDResolver` (server.go) résout par-user depuis la session via `groupStore.CoMemberXUIDs`. `BootstrapService.WithCoMemberResolver` (remplace `friendGamertagsFromSettings`). `GroupStore` instancié dans main.go (1 instance partagée), injecté dans bootSvc + passé à `NewRouter` (nouveau param). Migration boot-time `migrateDefaultGroupAtBoot` (owner = admin db_profiles, membres = friend_gamertags résolus).
+
+**Résultats** : build complet CGO OK ; tests verts — groupstore, authz (TestResolveFamilyXUIDs retiré, TestCanAccessPlayer réécrit per-user), middleware ownership (FamilyMember/FamilyStranger réécrits per-user), service bootstrap, contract api, squad/prestige handlers. Title-agnostic (groupes par xuid).
+
+**Prochaine étape** : Phase 2 (invitation rejoindre un groupe via Xbox SSO : InviteCode.GroupID, session.PendingInviteCode, strategy bypass instance lock + AddMember + Consume, endpoint user `POST /groups/{id}/invites`). Commit en attente d'autorisation.
+
+---
+
 ## [2026-06-19] Backups VPS via Restic (DuckDB + tokens + config) — Complété (ops, hors repo)
 
 **Demande user** : backups en cas de corruption pour pouvoir revenir en arrière ; OK pour les avoir « au même endroit » (même VPS) ; confiance dans la stabilité du VPS.

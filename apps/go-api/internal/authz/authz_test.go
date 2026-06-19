@@ -36,15 +36,16 @@ func TestCanAccessPlayer(t *testing.T) {
 	unlinked := &domain.User{Username: "bob", Role: domain.RoleUser, XUID: ""}
 	stranger := &domain.User{Username: "eve", Role: domain.RoleUser, XUID: "777"}
 
-	// Famille : alice (222) et carol (333) appartiennent au même groupe.
-	family := map[string]bool{"222": true, "333": true}
+	// accessibleXUIDs = ensemble co-membres de groupe DU USER courant (xuid inclus).
+	// Pour owner (222), un groupe partagé avec carol (333) donne {222,333}.
+	ownerCoMembers := map[string]bool{"222": true, "333": true}
 
 	cases := []struct {
 		name        string
 		enforced    bool
 		user        *domain.User
 		profileXUID string
-		family      map[string]bool
+		accessible  map[string]bool
 		want        bool
 	}{
 		{"non enforced → ouvert même sans user", false, nil, "999", nil, true},
@@ -54,48 +55,21 @@ func TestCanAccessPlayer(t *testing.T) {
 		{"user non lié ne possède rien", true, unlinked, "999", nil, false},
 		{"user non lié refusé même si profil xuid vide", true, unlinked, "", nil, false},
 		{"nil user refusé quand enforced", true, nil, "222", nil, false},
-		// #21 Phase A : accès famille.
-		{"membre famille accède à un autre membre", true, owner, "333", family, true},
-		{"membre famille accède toujours à son xuid", true, owner, "222", family, true},
-		{"étranger refusé sur un profil famille", true, stranger, "333", family, false},
-		{"membre famille refusé hors famille", true, owner, "999", family, false},
-		{"famille nil → strict (refus autre xuid)", true, owner, "333", nil, false},
+		// Accès groupe : le set est calculé pour le user courant (co-membres).
+		{"membre groupe accède à un co-membre", true, owner, "333", ownerCoMembers, true},
+		{"membre groupe accède toujours à son xuid", true, owner, "222", ownerCoMembers, true},
+		{"étranger sans groupe commun refusé", true, stranger, "333", nil, false},
+		{"membre groupe refusé hors groupe", true, owner, "999", ownerCoMembers, false},
+		{"set nil → strict (refus autre xuid)", true, owner, "333", nil, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := CanAccessPlayer(tc.enforced, tc.user, tc.profileXUID, tc.family); got != tc.want {
+			if got := CanAccessPlayer(tc.enforced, tc.user, tc.profileXUID, tc.accessible); got != tc.want {
 				t.Fatalf("CanAccessPlayer(%v, %+v, %q, %v) = %v, want %v",
-					tc.enforced, tc.user, tc.profileXUID, tc.family, got, tc.want)
+					tc.enforced, tc.user, tc.profileXUID, tc.accessible, got, tc.want)
 			}
 		})
 	}
-}
-
-func TestResolveFamilyXUIDs(t *testing.T) {
-	players := []domain.PlayerSummary{
-		{Gamertag: "Alice", XUID: "222"},
-		{Gamertag: "Carol", XUID: "333"},
-		{Gamertag: "NoXuid", XUID: ""},
-	}
-
-	t.Run("aucun ami → nil (strict)", func(t *testing.T) {
-		if got := ResolveFamilyXUIDs(nil, players); got != nil {
-			t.Fatalf("ResolveFamilyXUIDs(nil, …) = %v, want nil", got)
-		}
-	})
-
-	t.Run("gamertags résolus insensibles à la casse", func(t *testing.T) {
-		got := ResolveFamilyXUIDs([]string{"alice", "CAROL"}, players)
-		if !got["222"] || !got["333"] || len(got) != 2 {
-			t.Fatalf("ResolveFamilyXUIDs = %v, want {222,333}", got)
-		}
-	})
-
-	t.Run("ami inconnu de db_profiles → ignoré (nil si aucun résolu)", func(t *testing.T) {
-		if got := ResolveFamilyXUIDs([]string{"ghost"}, players); got != nil {
-			t.Fatalf("ResolveFamilyXUIDs(ghost) = %v, want nil", got)
-		}
-	})
 }
 
 // fakeLookup implémente UserLookup pour les tests de CurrentUser.
