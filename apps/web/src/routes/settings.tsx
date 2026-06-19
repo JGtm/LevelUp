@@ -4,7 +4,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 
-const SETTINGS_TABS = ['general', 'sync', 'analyse', 'accessibility', 'notifications', 'lab', 'users', 'backup'] as const
+const SETTINGS_TABS = ['general', 'titles', 'sync', 'analyse', 'accessibility', 'notifications', 'lab', 'users', 'backup'] as const
 export type SettingsTab = (typeof SETTINGS_TABS)[number]
 
 export const Route = createFileRoute('/settings')({
