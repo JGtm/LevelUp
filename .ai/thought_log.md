@@ -1,3 +1,9 @@
+## [2026-06-19] Groupes/familles — i18n via manifest TOML (suppression des strings inline) — Complété
+
+Suite revue : les strings inline FR/EN des nouvelles pages (GroupsPage, JoinPage, SquadGroupLoader) migrées vers le manifest `lib/i18n/manifests/common.toml` (section `[common.groups.*]`, 20 clés FR+EN), régénéré via `scripts/build_i18n_manifests.mjs` → `generated/common.ts`. Composants refactorés en `formatMessage(commonManifest, 'common.groups.*', locale)`. Plus aucune string métier en dur dans ces 3 fichiers. tsc + eslint + vitest groups verts. Lève l'entorse i18n notée à la vérification finale.
+
+---
+
 ## [2026-06-19] Groupes/familles multi-groupes — Phase 4 (quitter/retirer + dé-flag + Escouade) — Complété
 
 **Part A — quitter/retirer membre (commit 4c52d974d)** :

@@ -10,6 +10,8 @@ import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import type { Group } from '@/lib/api/types'
 import {
   useMyGroups,
@@ -19,32 +21,11 @@ import {
   useCreateGroupInvite,
 } from './queries'
 
-function useGroupsText() {
-  const locale = useAppShellStore((s) => s.locale)
-  const en = locale === 'en'
-  return {
-    title: en ? 'My groups' : 'Mes groupes',
-    intro: en
-      ? 'Members of a group share mutual access to their data. Invite a friend: they sign in with Xbox and join your group.'
-      : 'Les membres d’un groupe partagent l’accès mutuel à leurs données. Invitez un ami : il se connecte avec Xbox et rejoint votre groupe.',
-    newPlaceholder: en ? 'New group name' : 'Nom du nouveau groupe',
-    create: en ? 'Create' : 'Créer',
-    empty: en ? 'You are not in any group yet.' : 'Vous n’êtes dans aucun groupe pour l’instant.',
-    members: en ? 'Members' : 'Membres',
-    owner: en ? 'owner' : 'propriétaire',
-    invite: en ? 'Invite a friend' : 'Inviter un ami',
-    copyLink: en ? 'Copy invite link' : 'Copier le lien d’invitation',
-    linkCopied: en ? 'Invite link copied' : 'Lien d’invitation copié',
-    rename: en ? 'Rename' : 'Renommer',
-    del: en ? 'Delete' : 'Supprimer',
-    confirmDelete: en ? 'Delete this group?' : 'Supprimer ce groupe ?',
-    loading: en ? 'Loading…' : 'Chargement…',
-    inviteError: en ? 'Could not generate the invitation.' : 'Impossible de générer l’invitation.',
-  }
-}
+type GroupsT = (key: CommonManifestKey) => string
 
 export function GroupsPage() {
-  const t = useGroupsText()
+  const locale = useAppShellStore((s) => s.locale)
+  const t: GroupsT = (key) => formatMessage(commonManifest, key, locale)
   const { data: groups, isLoading } = useMyGroups()
   const createGroup = useCreateGroup()
   const [newName, setNewName] = useState('')
@@ -61,8 +42,8 @@ export function GroupsPage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 p-6">
       <div>
-        <h1 className="text-xl font-semibold text-foreground">{t.title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t.intro}</p>
+        <h1 className="text-xl font-semibold text-foreground">{t('common.groups.title')}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t('common.groups.intro')}</p>
       </div>
 
       <Card>
@@ -71,20 +52,20 @@ export function GroupsPage() {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-            placeholder={t.newPlaceholder}
+            placeholder={t('common.groups.new_placeholder')}
             maxLength={60}
             className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
           <Button onClick={handleCreate} disabled={createGroup.isPending || !newName.trim()}>
-            {t.create}
+            {t('common.groups.create')}
           </Button>
         </CardContent>
       </Card>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">{t.loading}</p>
+        <p className="text-sm text-muted-foreground">{t('common.groups.loading')}</p>
       ) : !groups?.length ? (
-        <p className="text-sm text-muted-foreground">{t.empty}</p>
+        <p className="text-sm text-muted-foreground">{t('common.groups.empty')}</p>
       ) : (
         <div className="space-y-4">
           {groups.map((g) => (
@@ -96,7 +77,7 @@ export function GroupsPage() {
   )
 }
 
-function GroupCard({ group, t }: { group: Group; t: ReturnType<typeof useGroupsText> }) {
+function GroupCard({ group, t }: { group: Group; t: GroupsT }) {
   const renameGroup = useRenameGroup()
   const deleteGroup = useDeleteGroup()
   const createInvite = useCreateGroupInvite()
@@ -115,7 +96,7 @@ function GroupCard({ group, t }: { group: Group; t: ReturnType<typeof useGroupsT
   }
 
   function handleDelete() {
-    if (!window.confirm(t.confirmDelete)) return
+    if (!window.confirm(t('common.groups.confirm_delete'))) return
     deleteGroup.mutate(group.id)
   }
 
@@ -126,9 +107,9 @@ function GroupCard({ group, t }: { group: Group; t: ReturnType<typeof useGroupsT
         onSuccess: (invite) => {
           const link = `${window.location.origin}/join?invite=${invite.code}`
           void navigator.clipboard?.writeText(link)
-          toast.success(`${t.linkCopied} — ${invite.code}`)
+          toast.success(`${t('common.groups.link_copied')} — ${invite.code}`)
         },
-        onError: () => toast.error(t.inviteError),
+        onError: () => toast.error(t('common.groups.invite_error')),
       },
     )
   }
@@ -151,15 +132,15 @@ function GroupCard({ group, t }: { group: Group; t: ReturnType<typeof useGroupsT
         )}
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={handleInvite} disabled={createInvite.isPending}>
-            {t.invite}
+            {t('common.groups.invite')}
           </Button>
           {isOwner && (
             <>
               <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
-                {t.rename}
+                {t('common.groups.rename')}
               </Button>
               <Button size="sm" variant="outline" onClick={handleDelete}>
-                {t.del}
+                {t('common.groups.delete')}
               </Button>
             </>
           )}
@@ -167,14 +148,16 @@ function GroupCard({ group, t }: { group: Group; t: ReturnType<typeof useGroupsT
       </CardHeader>
       <CardContent>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {t.members} ({group.members.length})
+          {t('common.groups.members')} ({group.members.length})
         </p>
         <ul className="space-y-1">
           {group.members.map((m) => (
             <li key={m.xuid} className="flex items-center gap-2 text-sm text-foreground">
               <span>{m.gamertag || m.xuid}</span>
               {m.role === 'owner' && (
-                <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{t.owner}</span>
+                <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                  {t('common.groups.owner')}
+                </span>
               )}
             </li>
           ))}
