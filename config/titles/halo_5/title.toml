@@ -1,0 +1,37 @@
+# config/titles/halo_5/title.toml
+#
+# Manifest Halo 5: Guardians — 2e titre EXPERIMENTAL.
+# Handoff complet : .ai/HANDOFF_HALO5_EXPERIMENTAL.md (corrigé 2026-06-19 : Halo 5
+# est RICHE — events/carnage/commendations natives via endpoints internes cryptum).
+#
+# status = "coming_soon" : DÉCOUVERT + listé dans le switcher (« bientôt »), NON
+# servi (RequireActiveTitle -> 503) ni provisionné au boot. Pour activer :
+# (1) status="active", (2) adapter internal/games/halo_5 câblé (client interne +
+# mapping events JSON -> canonical), (3) sonde live confirmée (343 sert encore
+# Halo 5 en 2026, cf. handoff Phase 1).
+#
+# xbox_title_id 219630713 = présence watcher + achievements Xbox.
+
+[meta]
+title_slug = "halo_5"
+schema_version = 1
+
+[title]
+name = "Halo 5: Guardians"
+provider = "halo_5"
+status = "coming_soon"
+icon_url = ""
+xbox_title_id = "219630713"
+steam_app_id = ""
+# Coarse capabilities Halo 5 (cf. handoff §2). Données riches ; divergence =
+# vocab/échelle/natif. Exclus pour l'instant : firefight (Warzone FF, modèle != FF
+# HINF), forge/media (UGC HINF-shaped), world.leaderboard (scrape Waypoint HINF).
+capabilities = [
+  "matchmaking",
+  "ranked",
+  "career",
+  "asset.images",
+  "achievements",
+  "engagement",
+  "lusr",
+]

@@ -1,0 +1,23 @@
+# config/titles/halo_5/mappings/outcomes.toml
+#
+# Outcomes Halo 5 (universels : win/loss/tie/dnf). Color tokens sémantiques partagés.
+
+[meta]
+title_slug     = "halo_5"
+schema_version = 1
+
+[outcomes.win]
+labels = { en = "Victory", fr = "Victoire" }
+color_token = "outcome.positive"
+
+[outcomes.loss]
+labels = { en = "Defeat", fr = "Défaite" }
+color_token = "outcome.negative"
+
+[outcomes.tie]
+labels = { en = "Tie", fr = "Égalité" }
+color_token = "outcome.neutral"
+
+[outcomes.dnf]
+labels = { en = "DNF", fr = "Abandon" }
+color_token = "outcome.neutral"

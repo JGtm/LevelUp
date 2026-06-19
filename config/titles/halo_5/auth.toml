@@ -1,0 +1,25 @@
+# config/titles/halo_5/auth.toml
+#
+# Descripteur d'acquisition auth Halo 5. CORRECTION 2026-06-19 (handoff §1) :
+# notre SpartanToken v4 (pool Infinite) fonctionne pour Halo 5 -> on RÉUTILISE les
+# mêmes audiences que Halo Infinite (cryptum référençait du v2/v3 obsolète). Le
+# title-specific Halo 5 est dans constants.toml (hosts), PAS ici. Le SISU reste
+# celui d'Infinite (le token est dérivé du même flow). Non exercé tant que
+# status=coming_soon. À confirmer par la sonde live Phase 1.
+#
+# clearance_url vide : le concept de clearance (343-clearance / flight configs) est
+# Halo-Infinite-spécifique ; Halo 5 ne l'utilise vraisemblablement pas (à confirmer).
+
+[meta]
+title_slug     = "halo_5"
+schema_version = 1
+
+[auth]
+xsts_audience           = "https://prod.xsts.halowaypoint.com/"
+spartan_audience        = "urn:343:s3:services"
+spartan_token_url       = "https://settings.svc.halowaypoint.com/spartan-token"
+clearance_url           = ""
+sisu_app_id             = "000000004c20a908"
+sisu_title_id           = "144209987"
+xbox_live_relying_party = "http://xboxlive.com"
+oauth_scopes            = ["Xboxlive.signin", "Xboxlive.offline_access"]

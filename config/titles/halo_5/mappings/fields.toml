@@ -1,0 +1,49 @@
+# config/titles/halo_5/mappings/fields.toml
+#
+# Champs canoniques Halo 5 (squelette). Vocabulaire standard Halo. Les unités/format
+# RÉELS seront affinés au mapping de l'adapter (Phase 1) d'après les shapes de l'API
+# interne (carnage report). Provisoire pour le coming_soon.
+
+[meta]
+title_slug     = "halo_5"
+schema_version = 1
+
+[fields.kills]
+labels        = { en = "Kills", fr = "Éliminations" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 10
+group         = "combat"
+
+[fields.deaths]
+labels        = { en = "Deaths", fr = "Morts" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 20
+group         = "combat"
+
+[fields.assists]
+labels        = { en = "Assists", fr = "Assistances" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 30
+group         = "combat"
+
+[fields.accuracy]
+labels        = { en = "Accuracy", fr = "Précision" }
+storage_unit  = "ratio"
+display_unit  = "percent"
+format        = "percent_2"
+display_order = 40
+group         = "combat"
+
+[fields.duration_seconds]
+labels        = { en = "Match Length", fr = "Durée du match" }
+storage_unit  = "seconds"
+display_unit  = "seconds"
+format        = "duration_hms"
+display_order = 5
+group         = "match"
