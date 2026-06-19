@@ -26388,3 +26388,15 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Décision clé** : AUCUN changement de code n'a été fait — après vérification, la « dette restante » du master plan est soit décidée WON'T-DO, soit intrinsèquement couplée à l'écriture de l'adapter Halo 5. Forcer un dé-magick/nullable maintenant serait précisément le « churn-sans-valeur » interdit par CLAUDE.md. Le traitement = résoudre la disposition dans les trackers (fait) pour que le handoff Halo 5 parte d'une base exacte.
 
 **Conclusion / prochaine étape** : le master plan multi-titre est, infra comprise, terminé ; le seul reste réel = embarquer un vrai 2e titre (adapter data, handoff Halo 5 prêt). Commit doc en attente d'autorisation.
+
+## [2026-06-19] Résidu cadence/countdown — frag pré-T0 plié dans phase_00 → skip cohérent badges — Complété
+
+**Statut** : Complété. Fix livré dans `internal/analysis/narrative/cadence.go` (fonction partagée Match view + Escouade).
+
+**Décision technique** : Les 2 consommateurs de la cadence appliquent `timeline.CorrectEvents` en amont (`match_view_data_loaders.go:399`, `squad_service_v2.go:344`), donc un frag de countdown arrive avec `TimeMS < 0`. `ComputeCadenceProfiles` le repliait dans le bucket 0 (phase_00) via le clamp `if b < 0 { b = 0 }`, **divergeant de `first_events.go:98`** (badges « premier frag/mort ») qui skippe `TimeMS < 0`. Fix = `if ev.TimeMS < 0 { continue }` dans la boucle de collecte (pattern canonique « CorrectEvents + skip TimeMS<0 », cf. mémoire timeline T0) + suppression du clamp `b < 0` devenu mort (t ≥ 0 garanti) — respecte la règle anti-code-mort CLAUDE.md.
+
+**Révision de la reco antérieure** : j'avais classé ça « blast radius Escouade, laisser tel quel ». À froid : le changement est correct pour les DEUX consommateurs (un frag de countdown ne compte nulle part), donc le partage joue en notre faveur (aligne les 2 charts d'un coup), pas contre. Trade-off micro assumé : skipper retire le frag du `TotalKills` (au lieu de le garder en phase_00) — nul en pratique (pas de kill réel pendant le countdown pré-spawn).
+
+**Résultats observés** : nouveau test `TestComputeCadenceProfiles_SkipsCountdownFrags` (frag -3s exclu, total=2, pas de pli en phase_00). Verts : `./internal/analysis/narrative/...`, `./internal/service/...` (Cadence|Golden|T0|Narrative), suite `./internal/analysis/...`, `go vet` clean. Aucun test existant cassé (aucun n'utilisait de TimeMS négatif).
+
+**Conclusion / prochaine étape** : cohérence stricte cadence ↔ badges/evtList rétablie, sujet clos. Enchaînement = reprise du handoff Halo 5 (réponse watcher). Commit en attente d'autorisation.

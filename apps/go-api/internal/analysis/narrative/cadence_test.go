@@ -95,6 +95,36 @@ func TestComputeCadenceProfiles_MultiPlayerMultiMatch(t *testing.T) {
 	}
 }
 
+func TestComputeCadenceProfiles_SkipsCountdownFrags(t *testing.T) {
+	t.Parallel()
+	// Apres timeline.CorrectEvents, un frag de countdown (pre-T0) a un TimeMS
+	// negatif. Il ne doit PAS etre compte ni replie dans phase_00 — cohérent
+	// avec first_events.go (badges). m1 dure 120s : 1 frag countdown (-3s) +
+	// 2 frags gameplay (10s, 70s).
+	events := []canonical.HighlightEvent{
+		killEvtCadence("m1", "x_p1", -3_000), // countdown -> ignore
+		killEvtCadence("m1", "x_p1", 10_000), // bucket 0
+		killEvtCadence("m1", "x_p1", 70_000), // bucket 1
+	}
+	profiles := ComputeCadenceProfiles(events, []string{"x_p1"}, 60, nil)
+	if len(profiles) != 1 {
+		t.Fatalf("want 1 profile, got %d", len(profiles))
+	}
+	p := profiles[0]
+	if p.TotalKills != 2 {
+		t.Errorf("TotalKills want 2 (countdown frag exclu), got %d", p.TotalKills)
+	}
+	wantBuckets := []int{1, 1}
+	if len(p.Buckets) != len(wantBuckets) {
+		t.Fatalf("Buckets len want %d, got %d", len(wantBuckets), len(p.Buckets))
+	}
+	for i, want := range wantBuckets {
+		if p.Buckets[i] != want {
+			t.Errorf("Buckets[%d] want %d (pas de pli countdown en phase_00), got %d", i, want, p.Buckets[i])
+		}
+	}
+}
+
 func TestComputeCadenceProfiles_DefaultPhaseSeconds(t *testing.T) {
 	t.Parallel()
 	events := []canonical.HighlightEvent{
