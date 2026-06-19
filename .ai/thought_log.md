@@ -1,3 +1,15 @@
+## [2026-06-19] Plan durcissement ART player_match_enrichment + diagnostic version DuckDB — Complété (plan)
+
+**Statut** : plan `.ai/PLAN_PME_ART_HARDENING.md` écrit. Diagnostic version DuckDB fait.
+
+**Déclencheur (user)** : « pourquoi l'index se corrompt ? il y a une étape que je ne fais pas ? » → plan pour le step manquant + check d'une mise à jour DuckDB (potentiellement pour le VPS).
+
+**Finding DuckDB (important)** : driver `duckdb-go/v2 v2.10503.1` = **DuckDB 1.5.3**. La corruption ART est une **régression amont 1.5.0** documentée : [duckdb#23046](https://github.com/duckdb/duckdb/issues/23046) « ART index constraint enforcement corrupts the heap on file-backed » — **OUVERTE**, **non corrigée en 1.5.4**. Donc : pas une erreur d'usage, et **un simple upgrade ne suffit pas**. La version Python (1.4.4 LTS, pré-1.5.0) n'avait pas le bug → c'est l'adoption Go de 1.5.x qui l'a introduit. → la mitigation app-side (append-only / churn-reduction, cf. plan) est la voie robuste ; downgrade 1.4.x LTS bloqué par le risque format-fichier.
+
+**Décision** : plan phasé (filet auto-heal → réduction churn via persister batché → append-only + vue `_latest`), + suivi #23046. Branche cible `refactor/pme-append-only` à créer après merge de la PR courante.
+
+---
+
 ## [2026-06-19] Réparation corruption ART player_match_enrichment + re-backfill engagement propre — Complété (ZÉRO perte)
 
 **Statut** : 4 player DB réparées, re-backfill réussi, coefs recentrés. Backup pris. `go build`/`vet`/tests migration ✓.
