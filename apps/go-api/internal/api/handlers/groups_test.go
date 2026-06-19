@@ -41,6 +41,8 @@ func newGroupsRouter(t *testing.T) (*chi.Mux, *session.Store, *groupstore.GroupS
 		r.Patch("/{id}", h.RenameGroup)
 		r.Delete("/{id}", h.DeleteGroup)
 		r.Post("/{id}/invites", h.GenerateInvite)
+		r.Delete("/{id}/members/me", h.LeaveGroup)
+		r.Delete("/{id}/members/{xuid}", h.RemoveMember)
 	})
 	return r, sessStore, groups, invites
 }
@@ -174,5 +176,63 @@ func TestGroups_OwnerOnlyDelete(t *testing.T) {
 	r.ServeHTTP(ow, oreq)
 	if ow.Code != http.StatusNoContent {
 		t.Fatalf("owner delete status = %d, want 204", ow.Code)
+	}
+}
+
+func TestGroups_RemoveAndLeaveMember(t *testing.T) {
+	r, sessStore, groups, _ := newGroupsRouter(t)
+	owner := authCookie(t, sessStore, "alice-x", "Alice")
+	bob := authCookie(t, sessStore, "bob-x", "Bob")
+
+	// Alice crée un groupe, Bob en devient membre (ajout direct via le store).
+	creq := httptest.NewRequest(http.MethodPost, "/groups/", strings.NewReader(`{"name":"Fam"}`))
+	creq.AddCookie(owner)
+	cw := httptest.NewRecorder()
+	r.ServeHTTP(cw, creq)
+	var g domain.Group
+	_ = json.Unmarshal(cw.Body.Bytes(), &g)
+	if err := groups.AddMember(g.ID, "bob-x", "Bob"); err != nil {
+		t.Fatalf("AddMember: %v", err)
+	}
+
+	// Le propriétaire ne peut pas quitter → 409.
+	leaveOwner := httptest.NewRequest(http.MethodDelete, "/groups/"+g.ID+"/members/me", nil)
+	leaveOwner.AddCookie(owner)
+	low := httptest.NewRecorder()
+	r.ServeHTTP(low, leaveOwner)
+	if low.Code != http.StatusConflict {
+		t.Fatalf("owner leave status = %d, want 409", low.Code)
+	}
+
+	// Bob quitte (self) → 204.
+	leaveBob := httptest.NewRequest(http.MethodDelete, "/groups/"+g.ID+"/members/me", nil)
+	leaveBob.AddCookie(bob)
+	lbw := httptest.NewRecorder()
+	r.ServeHTTP(lbw, leaveBob)
+	if lbw.Code != http.StatusNoContent {
+		t.Fatalf("bob leave status = %d, want 204", lbw.Code)
+	}
+	if got, _ := groups.Get(g.ID); got.HasMember("bob-x") {
+		t.Fatal("bob aurait dû quitter le groupe")
+	}
+
+	// Ré-ajout de Bob, puis retrait par le propriétaire → 204.
+	_ = groups.AddMember(g.ID, "bob-x", "Bob")
+	rem := httptest.NewRequest(http.MethodDelete, "/groups/"+g.ID+"/members/bob-x", nil)
+	rem.AddCookie(owner)
+	rw := httptest.NewRecorder()
+	r.ServeHTTP(rw, rem)
+	if rw.Code != http.StatusNoContent {
+		t.Fatalf("owner remove member status = %d, want 204", rw.Code)
+	}
+
+	// Un étranger ne peut pas retirer (pas propriétaire) → 403.
+	_ = groups.AddMember(g.ID, "bob-x", "Bob")
+	stRem := httptest.NewRequest(http.MethodDelete, "/groups/"+g.ID+"/members/bob-x", nil)
+	stRem.AddCookie(bob) // bob = membre mais pas propriétaire
+	stw := httptest.NewRecorder()
+	r.ServeHTTP(stw, stRem)
+	if stw.Code != http.StatusForbidden {
+		t.Fatalf("non-owner remove status = %d, want 403", stw.Code)
 	}
 }

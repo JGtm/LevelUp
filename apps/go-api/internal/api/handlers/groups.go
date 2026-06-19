@@ -165,6 +165,62 @@ func (h *GroupsHandler) GenerateInvite(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, invite)
 }
 
+// LeaveGroup retire le user courant d'un groupe (self). Le propriétaire ne peut pas
+// quitter (il doit supprimer le groupe) → 409.
+// DELETE /groups/{id}/members/me
+func (h *GroupsHandler) LeaveGroup(w http.ResponseWriter, r *http.Request) {
+	user := h.currentUser(w, r)
+	if user == nil {
+		return
+	}
+	g := h.loadGroup(w, r)
+	if g == nil {
+		return
+	}
+	if !g.HasMember(user.XUID) {
+		// Déjà non-membre : idempotent.
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if g.IsOwner(user.XUID) {
+		writeError(r.Context(), w, http.StatusConflict, "owner_cannot_leave",
+			"Le propriétaire ne peut pas quitter le groupe ; supprimez-le à la place.")
+		return
+	}
+	if err := h.groups.RemoveMember(g.ID, user.XUID); err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "group_leave_error", "Impossible de quitter le groupe.")
+		return
+	}
+	slog.InfoContext(r.Context(), "groups: membre a quitté", "id", g.ID, "xuid", user.XUID)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// RemoveMember retire un membre d'un groupe (propriétaire only). Le propriétaire ne
+// peut pas se retirer lui-même (ErrCannotRemoveOwner → 400).
+// DELETE /groups/{id}/members/{xuid}
+func (h *GroupsHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
+	user := h.currentUser(w, r)
+	if user == nil {
+		return
+	}
+	g := h.requireOwnedGroup(w, r, user)
+	if g == nil {
+		return
+	}
+	targetXUID := chi.URLParam(r, "xuid")
+	if err := h.groups.RemoveMember(g.ID, targetXUID); err != nil {
+		if errors.Is(err, groupstore.ErrCannotRemoveOwner) {
+			writeError(r.Context(), w, http.StatusBadRequest, "cannot_remove_owner",
+				"Le propriétaire ne peut pas être retiré ; supprimez le groupe.")
+			return
+		}
+		writeError(r.Context(), w, http.StatusInternalServerError, "group_remove_error", "Impossible de retirer le membre.")
+		return
+	}
+	slog.InfoContext(r.Context(), "groups: membre retiré", "id", g.ID, "xuid", targetXUID, "by", user.Gamertag)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // requireOwnedGroup charge le groupe {id} et exige que le user en soit propriétaire.
 // Écrit 404/403 et retourne nil sinon.
 func (h *GroupsHandler) requireOwnedGroup(w http.ResponseWriter, r *http.Request, user *domain.User) *domain.Group {
