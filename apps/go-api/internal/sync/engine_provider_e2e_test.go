@@ -45,7 +45,6 @@ type e2eTestEnv struct {
 	sharedPath string
 	playerPath string
 	metaPath   string
-	globalPath string
 
 	provider sharedprovider.Provider
 	pool     *duckdb.PlayerDB
@@ -69,13 +68,11 @@ func newE2EEnv(t *testing.T) *e2eTestEnv {
 	sharedPath := pr.SharedDBPath(titleSlug)
 	playerPath := pr.PlayerDBPath(titleSlug, gamertag)
 	metaPath := pr.MetadataDBPath(titleSlug)
-	globalPath := pr.GlobalXuidAliasesDBPath()
 
 	for _, p := range []string{
 		filepath.Dir(sharedPath),
 		filepath.Dir(playerPath),
 		filepath.Dir(metaPath),
-		filepath.Dir(globalPath),
 	} {
 		if err := os.MkdirAll(p, 0o755); err != nil {
 			t.Fatalf("mkdir %s: %v", p, err)
@@ -109,14 +106,13 @@ func newE2EEnv(t *testing.T) *e2eTestEnv {
 	// pdb.Shared reste nil et toutes les queries shared passent par
 	// pdb.SharedReadDB().Get() qui délègue au Provider.
 	pdb, err := duckdb.GetOrOpen(context.Background(), duckdb.PlayerPoolConfig{
-		Gamertag:                gamertag,
-		XUID:                    xuid,
-		TitleSlug:               titleSlug,
-		PlayerDBPath:            playerPath,
-		SharedDBPath:            sharedPath,
-		MetaDBPath:              metaPath,
-		GlobalXuidAliasesDBPath: globalPath,
-		SharedReader:            provider, // ← mode B-swap actif
+		Gamertag:     gamertag,
+		XUID:         xuid,
+		TitleSlug:    titleSlug,
+		PlayerDBPath: playerPath,
+		SharedDBPath: sharedPath,
+		MetaDBPath:   metaPath,
+		SharedReader: provider, // ← mode B-swap actif
 	})
 	if err != nil {
 		t.Fatalf("Pool.GetOrOpen: %v", err)
@@ -143,7 +139,6 @@ func newE2EEnv(t *testing.T) *e2eTestEnv {
 		sharedPath: sharedPath,
 		playerPath: playerPath,
 		metaPath:   metaPath,
-		globalPath: globalPath,
 		provider:   provider,
 		pool:       pdb,
 		engine:     engine,

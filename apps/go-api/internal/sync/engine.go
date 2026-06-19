@@ -53,7 +53,6 @@ type SyncEngine struct {
 	titleSlug      string
 	playerDBPath   string
 	sharedDBPath   string
-	globalDBPath   string // P5.3 : data/global/xbox_aliases.duckdb (mapping xuid→gamertag global)
 	metadataDBPath string
 	syncCacheDir   string // Phase 2 refactor Collect→Persist : data/sync_cache/ root (cf. PathResolver.SyncCacheDir)
 	tokens         *domain.HaloTokens
@@ -264,16 +263,6 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	}
 	defer releaseShared()
 
-	// P5.3 : DB globale xbox_aliases (mapping xuid→gamertag global Microsoft).
-	globalDB, globalCleanup, err := openGlobalDB(ctx, e.globalDBPath)
-	if err != nil {
-		slog.WarnContext(ctx, "sync: ouverture global DB échouée — alias upsert désactivé",
-			"db", e.globalDBPath, "err", err)
-		globalDB = nil
-	} else {
-		defer globalCleanup()
-	}
-
 	// metaDB best-effort : utilisé par EnrichRegistryFromMetadata pour résoudre
 	// les UUIDs bruts en noms canoniques EN avant l'INSERT match_registry.
 	// Échec d'ouverture → enrichissement désactivé pour ce run, sync continue.
@@ -467,7 +456,7 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 					continue
 				}
 
-				if err := e.submitOrInsertMatch(ctx, sharedDB, playerDB, globalDB, &result, fm); err != nil {
+				if err := e.submitOrInsertMatch(ctx, sharedDB, playerDB, &result, fm); err != nil {
 					slog.WarnContext(ctx, "sync: submitOrInsertMatch échoué",
 						"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
 					)

@@ -112,7 +112,7 @@ func TestSubmitMatchAsBatch_SmokePath(t *testing.T) {
 	}
 
 	result := &domain.SyncResult{}
-	if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, nil, result, fm); err != nil {
+	if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, result, fm); err != nil {
 		t.Fatalf("submitOrInsertMatch: %v", err)
 	}
 
@@ -188,7 +188,7 @@ func TestSubmitOrInsertMatch_BatchModeFalse_RoutesToLegacy(t *testing.T) {
 	result := &domain.SyncResult{}
 	// Le legacy path peut écrire ou pas selon le schéma — on ne vérifie pas
 	// le résultat. On vérifie juste que submitOrInsertMatch ne panique pas.
-	_ = e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, nil, result, fm)
+	_ = e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, result, fm)
 }
 
 // ─── Test E2E Phase 2.4 : fetchMatchData → submitMatchAsBatch → DB ────────
@@ -256,7 +256,7 @@ func TestE2ECollectPersist_FetchThenBatchSubmit(t *testing.T) {
 		if fm == nil {
 			t.Fatalf("fetchMatchData retourne nil pour %s", id)
 		}
-		if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, nil, result, fm); err != nil {
+		if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, result, fm); err != nil {
 			t.Fatalf("submitOrInsertMatch(%s): %v", id, err)
 		}
 	}
@@ -330,7 +330,7 @@ func TestE2ECollectPersist_AsyncQueuePath_DrainBlocksUntilPersisted(t *testing.T
 		t.Fatal(err)
 	}
 	result := &domain.SyncResult{}
-	if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, nil, result, fm); err != nil {
+	if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, result, fm); err != nil {
 		t.Fatalf("submitOrInsertMatch async: %v", err)
 	}
 
@@ -392,7 +392,7 @@ func TestE2ECollectPersist_ReSubmitMatch_IdempotentNoOverwrite(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := &domain.SyncResult{}
-	if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, nil, result, fm1); err != nil {
+	if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, result, fm1); err != nil {
 		t.Fatal(err)
 	}
 
@@ -407,7 +407,7 @@ func TestE2ECollectPersist_ReSubmitMatch_IdempotentNoOverwrite(t *testing.T) {
 
 	// 2e submit du MÊME match (simule retry / re-sync)
 	fm2, _ := e.fetchMatchData(context.Background(), mock, id, opts)
-	if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, nil, result, fm2); err != nil {
+	if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, result, fm2); err != nil {
 		t.Fatalf("2e submitOrInsertMatch: %v", err)
 	}
 
