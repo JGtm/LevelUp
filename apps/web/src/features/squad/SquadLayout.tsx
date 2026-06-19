@@ -35,6 +35,7 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 import { log } from './_logger'
 import { SquadContext } from './SquadContext'
 import { SquadFocusStrip } from './SquadFocusStrip'
+import { SquadGroupLoader } from './SquadGroupLoader'
 import { getSquadTeammateColors } from './colors'
 import type { LabelValue, TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
@@ -95,6 +96,7 @@ export function SquadLayout() {
   // session squad du joueur principal (composition-agnostique → ajoutait un
   // coéquipier à une session qu'il n'avait pas jouée).
   const locale = useAppShellStore((s) => s.locale)
+  const hasLinkedIdentity = useAppShellStore((s) => !!s.linkedHaloIdentity)
   const t = getSquadText(locale)
   const tCommon = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const storageKey = `squad-teammates-${playerSlug}`
@@ -438,6 +440,14 @@ export function SquadLayout() {
             placeholder={t.selection.placeholder(availableOptions.length)}
             onAddAsFriend={setAddFriendGamertag}
           />
+
+          {/* Charger les membres d'un groupe dans la sélection (monté si identité liée). */}
+          {hasLinkedIdentity && (
+            <SquadGroupLoader
+              exclude={playerSlug}
+              onLoad={(gts) => setSelectedGts(gts.slice(0, MAX_SELECTION))}
+            />
+          )}
 
           {/* Séparateur */}
           <div className="mx-0.5 h-5 w-px shrink-0 bg-border" aria-hidden />

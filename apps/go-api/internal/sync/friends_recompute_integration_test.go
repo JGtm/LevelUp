@@ -247,6 +247,80 @@ func TestRecomputeIsWithFriendsCore_PromotesLegacyNull(t *testing.T) {
 	}
 }
 
+// TestRecomputeIsWithFriendsCore_DemotesStaleMatches vérifie la sémantique
+// CONVERGENTE : un match actuellement TRUE qui n'a plus d'ami courant est démoté
+// (TRUE→FALSE). Couvre le retrait d'ami et la suppression du dernier ami.
+func TestRecomputeIsWithFriendsCore_DemotesStaleMatches(t *testing.T) {
+	playerDB := openPlayerForFriendsRecompute(t)
+	sharedDB := openSharedForFriendsRecompute(t)
+
+	const (
+		playerXUID = "xuid_player_001"
+		friendXUID = "xuid_friend_001"
+		friendGT   = "FriendGamertag"
+		matchWith  = "m_with_friend" // ami présent → reste TRUE
+		matchStale = "m_stale"       // aucun ami → doit être démoté
+	)
+
+	if _, err := sharedDB.Exec(`INSERT INTO xuid_aliases VALUES (?, ?)`, friendXUID, friendGT); err != nil {
+		t.Fatalf("seed xuid_aliases: %v", err)
+	}
+	// matchWith : joueur + ami même équipe. matchStale : joueur seul.
+	if _, err := sharedDB.Exec(`
+		INSERT INTO match_participants VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?)`,
+		matchWith, playerXUID, 1,
+		matchWith, friendXUID, 1,
+		matchStale, playerXUID, 1,
+	); err != nil {
+		t.Fatalf("seed match_participants: %v", err)
+	}
+	// Les DEUX matchs sont actuellement flaggés TRUE (état hérité).
+	if _, err := playerDB.Exec(`
+		INSERT INTO player_match_enrichment (match_id, is_with_friends) VALUES (?, TRUE), (?, TRUE)`,
+		matchWith, matchStale,
+	); err != nil {
+		t.Fatalf("seed player_match_enrichment: %v", err)
+	}
+
+	// Recompute avec l'ami courant → matchStale doit être démoté, matchWith reste TRUE.
+	res, err := RecomputeIsWithFriendsCore(
+		context.Background(), playerDB, sharedDB, playerXUID, []string{friendGT}, false,
+	)
+	if err != nil {
+		t.Fatalf("RecomputeIsWithFriendsCore: %v", err)
+	}
+	if res.MatchesDemoted != 1 {
+		t.Errorf("expected 1 match demoted, got %d", res.MatchesDemoted)
+	}
+	assertIsWithFriends(t, playerDB, matchWith, true)
+	assertIsWithFriends(t, playerDB, matchStale, false)
+
+	// Recompute avec liste vide (dernier ami retiré) → matchWith démoté aussi.
+	res2, err := RecomputeIsWithFriendsCore(
+		context.Background(), playerDB, sharedDB, playerXUID, nil, false,
+	)
+	if err != nil {
+		t.Fatalf("RecomputeIsWithFriendsCore (empty): %v", err)
+	}
+	if res2.MatchesDemoted != 1 {
+		t.Errorf("expected 1 match demoted on empty friends, got %d", res2.MatchesDemoted)
+	}
+	assertIsWithFriends(t, playerDB, matchWith, false)
+}
+
+func assertIsWithFriends(t *testing.T, db *sql.DB, matchID string, want bool) {
+	t.Helper()
+	var v sql.NullBool
+	if err := db.QueryRow(
+		`SELECT is_with_friends FROM player_match_enrichment WHERE match_id = ?`, matchID,
+	).Scan(&v); err != nil {
+		t.Fatalf("SELECT %s: %v", matchID, err)
+	}
+	if !v.Valid || v.Bool != want {
+		t.Errorf("match %s: is_with_friends Valid=%v Bool=%v, want %v", matchID, v.Valid, v.Bool, want)
+	}
+}
+
 // TestRecomputeIsWithFriendsCore_PlayerInFriendList vérifie que si le joueur
 // principal est lui-même dans friendGamertags (setup multi-joueurs où tous les
 // membres du groupe sont trackés et listés comme amis), seuls les matchs où un
