@@ -8,6 +8,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -38,11 +39,28 @@ func (h *FiltersHandler) Mount(r chi.Router) {
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
 
-// filtersInput : {player_slug} parent + body domain.FilterContextInput (mêmes
-// tags json que l'original).
+// filtersInput : {player_slug} parent + corps BRUT décodé à la main.
+//
+// RawBody (et non un Body typé Huma) : le front envoie period.start_date/end_date
+// = null. Huma traite *time.Time comme optionnel mais PAS nullable et rejette le
+// null en 422 (validation_error). On décode donc manuellement via json.Unmarshal
+// (permissif : null → *time.Time nil), comme avant la migration Huma.
 type filtersInput struct {
 	PlayerSlug string `path:"player_slug"`
-	Body       domain.FilterContextInput
+	RawBody    []byte
+}
+
+// decodeFiltersBody décode le corps brut en FilterContextInput (json.Unmarshal
+// accepte les null que le schéma Huma rejetterait) puis applique la validation métier.
+func decodeFiltersBody(raw []byte) (domain.FilterContextInput, error) {
+	var body domain.FilterContextInput
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return body, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+	}
+	if err := body.Validate(); err != nil {
+		return body, humacore.NewError(http.StatusBadRequest, "invalid_filters", err.Error())
+	}
+	return body, nil
 }
 
 type filtersResolveOutput struct{ Body domain.FilterContextResolved }
@@ -57,11 +75,12 @@ func (h *FiltersHandler) Resolve(ctx context.Context, in *filtersInput) (*filter
 		return nil, err
 	}
 
-	if err := in.Body.Validate(); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_filters", err.Error())
+	body, err := decodeFiltersBody(in.RawBody)
+	if err != nil {
+		return nil, err
 	}
 
-	result, err := svc.Resolve(ctx, in.Body)
+	result, err := svc.Resolve(ctx, body)
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "filters_error", err.Error())
 	}
@@ -78,11 +97,12 @@ func (h *FiltersHandler) MatchIDs(ctx context.Context, in *filtersInput) (*filte
 		return nil, err
 	}
 
-	if err := in.Body.Validate(); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_filters", err.Error())
+	body, err := decodeFiltersBody(in.RawBody)
+	if err != nil {
+		return nil, err
 	}
 
-	ids, err := svc.ResolveMatchIDs(ctx, in.Body)
+	ids, err := svc.ResolveMatchIDs(ctx, body)
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "filters_error", err.Error())
 	}
