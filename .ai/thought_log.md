@@ -1,3 +1,20 @@
+## [2026-06-19] Profils auth-only — champ `auth_only` pour exclure des favoris gamertag — Complété
+
+**Problème** : `db_profiles.json` contient des profils qui n'existent que pour la gestion des tokens auth (pas de vrais joueurs, `db_path: ""`). Ils remontaient dans `available_players` (bootstrap) → polluaient les favoris suggérés des multiselects gamertag (sélecteur L1, page Escouade, page Explorer).
+
+**Décision** : champ explicite plutôt que de dériver de `db_path == ""` (un vrai joueur peut avoir un `db_path` vide en onboarding pré-sync). Ajout de `auth_only: true` sur les 5 profils token-only (Trimbutton, DankerGlue, QuiteSiren, UppedJoker, GeleJugefi). Vrais joueurs (JGtm, Chocoboflor, Madina97294, XxDaemonGamerxX) restent sans flag.
+
+**Implémentation** :
+- `dbProfileEntry.AuthOnly` + `domain.PlayerSummary.AuthOnly` (`json:"auth_only,omitempty"`), propagés dans `loadPlayersV2`/`loadPlayersV3`.
+- Filtrage **uniquement** dans les 2 constructeurs front-facing : `BootstrapService.Build` (helper `excludeAuthOnly` sur la liste qui alimente `available_players` + `current_player`, après calcul du setup_state qui reste sur la liste complète) et `BuildPlayersList` (`/players`).
+- `LoadPlayers` **non touché** : ~50 consommateurs serveur en dépendent (pool d'auth `discovery.go`, `token-capture`/`token-import`, `resolveXUIDForRotation`, `auth_migration`, token-health) — ils doivent continuer à voir ces profils.
+
+**Résultats** : `go build ./...` + `go vet` verts ; tests config + service OK (nouveaux : `TestLoadPlayersV3_AuthOnlyFlag`, `TestExcludeAuthOnly`). Aucun changement front nécessaire (exclusion côté serveur, le front ne reçoit plus ces profils).
+
+**Prochaine étape** : aucune — feature autonome. Si un nouveau profil token-only est ajouté, penser au flag `auth_only: true`.
+
+---
+
 ## [2026-06-19] Groupes/familles — i18n via manifest TOML (suppression des strings inline) — Complété
 
 Suite revue : les strings inline FR/EN des nouvelles pages (GroupsPage, JoinPage, SquadGroupLoader) migrées vers le manifest `lib/i18n/manifests/common.toml` (section `[common.groups.*]`, 20 clés FR+EN), régénéré via `scripts/build_i18n_manifests.mjs` → `generated/common.ts`. Composants refactorés en `formatMessage(commonManifest, 'common.groups.*', locale)`. Plus aucune string métier en dur dans ces 3 fichiers. tsc + eslint + vitest groups verts. Lève l'entorse i18n notée à la vérification finale.

@@ -166,6 +166,33 @@ func TestLoadPlayersV3_TitleFilter(t *testing.T) {
 	}
 }
 
+func TestLoadPlayersV3_AuthOnlyFlag(t *testing.T) {
+	cfg := &AppConfig{}
+	data := []byte(`{
+		"version": "3.0",
+		"profiles": {
+			"halo_infinite": {
+				"RealPlayer": {"xuid": "111", "db_path": "data/x/stats.duckdb"},
+				"TokenOnly": {"xuid": "222", "auth_only": true}
+			}
+		}
+	}`)
+	players, err := cfg.loadPlayersV3(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	got := map[string]bool{}
+	for _, p := range players {
+		got[p.Gamertag] = p.AuthOnly
+	}
+	if got["RealPlayer"] {
+		t.Errorf("RealPlayer should not be auth_only")
+	}
+	if !got["TokenOnly"] {
+		t.Errorf("TokenOnly should be auth_only=true")
+	}
+}
+
 func TestLoadPlayersV3_InvalidJSON(t *testing.T) {
 	cfg := &AppConfig{}
 	_, err := cfg.loadPlayersV3([]byte(`notjson`))

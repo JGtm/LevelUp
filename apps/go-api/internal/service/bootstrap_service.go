@@ -113,13 +113,18 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 
 	setupState := s.resolveSetupState(ctx, sess, players)
 
+	// Les profils auth-only (gestion des tokens, pas de vrais joueurs) sont exclus
+	// des listes front-facing : sélecteur L1 + favoris gamertag (Escouade/Explorer).
+	// Le setup_state ci-dessus reste calculé sur la liste complète (côté instance).
+	visiblePlayers := excludeAuthOnly(players)
+
 	// Couche A (ADR 0024) : available_players et le joueur courant sont restreints
 	// aux profils accessibles par l'utilisateur (les siens + ses co-membres de groupe).
 	familyXUIDs := s.resolveCoMembers(sess)
-	ownedPlayers := s.filterOwnedPlayers(sess, players, familyXUIDs)
-	if len(ownedPlayers) != len(players) {
+	ownedPlayers := s.filterOwnedPlayers(sess, visiblePlayers, familyXUIDs)
+	if len(ownedPlayers) != len(visiblePlayers) {
 		slog.DebugContext(ctx, "bootstrap: available_players filtré par ownership",
-			"owned", len(ownedPlayers), "total", len(players), "username", resolveUsername(sess))
+			"owned", len(ownedPlayers), "total", len(visiblePlayers), "username", resolveUsername(sess))
 	}
 
 	var currentPlayer *domain.PlayerSummary
@@ -285,6 +290,9 @@ func (s *BootstrapService) BuildPlayersList(ctx context.Context) (*domain.Player
 	if err != nil {
 		return nil, fmt.Errorf("BuildPlayersList: %w", err)
 	}
+	// Exclure les profils auth-only : cette liste alimente les mêmes surfaces
+	// front-facing que available_players (favoris gamertag, sélecteur joueur).
+	players = excludeAuthOnly(players)
 	var defaultSlug *string
 	if len(players) > 0 {
 		slug := players[0].PlayerSlug
@@ -297,6 +305,22 @@ func (s *BootstrapService) BuildPlayersList(ctx context.Context) (*domain.Player
 }
 
 // --- helpers ---
+
+// excludeAuthOnly retire les profils auth-only (existant uniquement pour la
+// gestion des tokens, sans suivi de stats) d'une liste destinée au front. Ces
+// profils ne doivent jamais apparaître dans le sélecteur L1 ni les favoris de
+// gamertag (Escouade/Explorer). La résolution token côté serveur continue de
+// les voir via cfg.LoadPlayers (non filtré).
+func excludeAuthOnly(players []domain.PlayerSummary) []domain.PlayerSummary {
+	out := make([]domain.PlayerSummary, 0, len(players))
+	for _, p := range players {
+		if p.AuthOnly {
+			continue
+		}
+		out = append(out, p)
+	}
+	return out
+}
 
 func buildCapabilities(cfg *config.AppConfig, settings map[string]interface{}) domain.CapabilityMap {
 	mediaEnabled := getBoolSetting(settings, "media_enabled", true)

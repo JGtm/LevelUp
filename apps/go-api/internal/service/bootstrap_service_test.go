@@ -24,6 +24,28 @@ func (m *mockBootRepo) GetLastSyncAt(context.Context) (*time.Time, error) {
 }
 
 // ---------------------------------------------------------------------------
+// excludeAuthOnly
+// ---------------------------------------------------------------------------
+
+func TestExcludeAuthOnly(t *testing.T) {
+	in := []domain.PlayerSummary{
+		{Gamertag: "Real1"},
+		{Gamertag: "Token1", AuthOnly: true},
+		{Gamertag: "Real2"},
+		{Gamertag: "Token2", AuthOnly: true},
+	}
+	out := excludeAuthOnly(in)
+	if len(out) != 2 {
+		t.Fatalf("expected 2 visible players, got %d", len(out))
+	}
+	for _, p := range out {
+		if p.AuthOnly {
+			t.Errorf("auth-only player %q leaked into visible list", p.Gamertag)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
 // getBoolSetting / getStringSetting
 // ---------------------------------------------------------------------------
 
