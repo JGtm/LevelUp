@@ -141,6 +141,9 @@ type CreatePlayerProfileRequest struct {
 	XUID        string `json:"xuid,omitempty"`
 	ProfileMode string `json:"profile_mode"`         // "xbox" | "azure_manual"
 	TitleSlug   string `json:"title_slug,omitempty"` // Sprint 44 : titre cible (défaut: "halo_infinite")
+	// InitialMaxMatches : nombre de matchs à synchroniser à l'onboarding pour ce
+	// (joueur, titre). 0 = défaut. Persisté dans db_profiles.json (Pass B).
+	InitialMaxMatches int `json:"initial_max_matches,omitempty"`
 }
 
 // CreatePlayerProfileResponse est la réponse de POST /setup/players (201).
