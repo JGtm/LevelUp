@@ -1,3 +1,17 @@
+## [2026-06-19] Import OpenSpartan — vérif finale : bug is_ranked à l'import + logs dédiés — Complété
+
+**Contexte** : vérification finale go/no-go avant merge. Suite Go complète `go test ./...` verte (tous packages `ok`), `go vet ./...` OK, intégration sync+duckdb OK, front typecheck+lint+vitest OK. Un échec d'intégration `TestCatalogFetcherService_Drain_PlaylistAndPair` PRÉ-EXISTANT (hors périmètre, fichier non touché par mes commits, baseline CI flaky cf. 65284b8fb).
+
+**Bug trouvé + corrigé** : à l'import OpenSpartan, `reg.IsRanked` est faux pour les matchs classés (le mapper le dérive du `PlaylistName`, non résolu à l'import). Conséquences : (1) `ExtractAllSharedCSRRows` court-circuitait (`!reg.IsRanked`) → **aucun CSR par-match importé** ; (2) `recomputeLUSR` (filtre `WHERE NOT is_ranked`) aurait **inclus** ces matchs classés → pollution du LUSR. **Fix** : la présence d'un `RankRecap`/`PostMatchCSR` EST le signal "classé" fiable → extraction CSR avant l'insert registry + `is_ranked=true` forcé si des lignes CSR existent. Corrige CSR ET LUSR à la source ([openspartan_import_service.go](../apps/go-api/internal/service/openspartan_import_service.go) `extractMatchCSRRows`). Commit `a8d41c6e0`.
+
+**Logging** : confirmé que tous mes logs routent vers `logs/` (par package : sync/scheduler/service/duckdb/handlers). En plus, tag `module=convergence` sur l'orchestrateur backfill → `logs/convergence.log` dédié (précédent ModuleCatalog/Lab). Commit `7b3342e36`. Zéro `fmt.Println`/`log.Printf`.
+
+**Tests ajoutés** : end-to-end import avec `RankRecap` (InsertedCSRs=1, match_csrs season_id/tier/value, is_ranked=TRUE, DryRun=0) ; `TestAvailableCSRSeasons_FromMatchCSRs`.
+
+**Prochaine étape** : merge dans main EN ATTENTE — main = **auto-deploy prod** (warn user requis).
+
+---
+
 ## [2026-06-19] Import OpenSpartan — saisons CSR depuis le CSR par-match + message UX (suite) — Complété
 
 **Contexte** : retour user sur le CSR. Clarification de ce que sert `PlaylistCSRSnapshots` (OpenSpartan) → 2 vues seulement : le badge « pic » de l'accueil ([home_repo_skill_peak.go](../apps/go-api/internal/platform/duckdb/home_repo_skill_peak.go)) et le sélecteur de saisons de la page Carrière ([career_repo_csr_seasons.go](../apps/go-api/internal/platform/duckdb/career_repo_csr_seasons.go)). Or pic + liste de saisons sont **déductibles du CSR par-match déjà importé** → import des snapshots **abandonné** (redondant), pas de season_id côté OpenSpartan de toute façon.
