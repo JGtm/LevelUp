@@ -1882,7 +1882,6 @@ func startWatcherDaemon(
 	// avant que NewDaemon retourne (pattern forward-reference via pointeur).
 	var daemon *watcher.Daemon
 	watcherPR := title.NewPathResolver(cfg.RepoRoot)
-	watcherSlug := title.DefaultSlug
 	daemon = watcher.NewDaemon(watcher.DaemonConfig{
 		RepoRoot:        cfg.RepoRoot,
 		SteamAPIKey:     os.Getenv("STEAM_API_KEY"),
@@ -1894,10 +1893,13 @@ func startWatcherDaemon(
 		// (incident 2026-05-27 — cf. ensure_enrichment_rows.go + thought_log).
 		// Désactivable via LEVELUP_WATCHER_BROADCAST=0.
 		BroadcastPresenceActive: os.Getenv("LEVELUP_WATCHER_BROADCAST") != "0",
-		LiveRefreshFactory: func(gamertag, xuid string) watcher.LiveRefreshTrigger {
-			wMetaPath := watcherPR.MetadataDBPath(watcherSlug)
-			wPlayerPath := watcherPR.PlayerDBPath(watcherSlug, gamertag)
-			sink := duckdb.NewPersistSink(wMetaPath, wPlayerPath, xuid, watcherSlug)
+		LiveRefreshFactory: func(gamertag, xuid, titleSlug string) watcher.LiveRefreshTrigger {
+			if titleSlug == "" {
+				titleSlug = title.DefaultSlug
+			}
+			wMetaPath := watcherPR.MetadataDBPath(titleSlug)
+			wPlayerPath := watcherPR.PlayerDBPath(titleSlug, gamertag)
+			sink := duckdb.NewPersistSink(wMetaPath, wPlayerPath, xuid, titleSlug)
 			// resolver nil : le watcher ne pré-chauffe pas les définitions BP.
 			// Les définitions sont chargées à la demande via l'endpoint HTTP (resolver HTTP).
 			refresher := watcher.NewPlayerLiveRefresher(gamertag, xuid, sink, nil).

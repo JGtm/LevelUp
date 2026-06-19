@@ -62,7 +62,9 @@ type DaemonConfig struct {
 
 	// LiveRefreshFactory est une factory optionnelle pour créer un LiveRefreshTrigger
 	// par joueur. Si nil, le rafraîchissement live BP/Challenges est désactivé.
-	LiveRefreshFactory func(gamertag, xuid string) LiveRefreshTrigger
+	// titleSlug cible la bonne arbo DB (data/titles/{slug}/...) : sans lui, le
+	// refresh live (BP/challenges) écrivait dans halo_infinite quel que soit le titre.
+	LiveRefreshFactory func(gamertag, xuid, titleSlug string) LiveRefreshTrigger
 
 	// MatchFetcher est partagé entre tous les PlayerWatcher pour le polling
 	// Halo API (/hi/players/xuid(N)/matches). Si nil, le MatchPoller est
@@ -110,7 +112,11 @@ type Daemon struct {
 	trackerRestClient *presence.PresenceClient
 
 	playersMu sync.RWMutex
-	players   map[string]*PlayerWatcher // gamertag → watcher
+	// players : clé composite playerKey(gamertag, titleSlug) → watcher. Un même
+	// gamertag suivi sur 2 titres a 2 watchers DISTINCTS (multi-titre). Les
+	// consommateurs orientés-gamertag (broadcast, IsPlayerActive, UpdateSubscriptions)
+	// itèrent et filtrent sur pw.gamertag plutôt que d'indexer par la clé.
+	players map[string]*PlayerWatcher
 	// playerCancels : CancelFunc du REST poller par joueur (W2). Sans elle, un
 	// joueur retiré via UpdateSubscriptions laissait tourner sa goroutine REST
 	// poller (annulable seulement globalement via d.cancel) → fuite + poll fantôme.
@@ -145,6 +151,17 @@ func NewDaemon(cfg DaemonConfig, titleReg *title.Registry, syncRunner syncpkg.Sy
 		players:       make(map[string]*PlayerWatcher),
 		playerCancels: make(map[string]context.CancelFunc),
 	}
+}
+
+// playerKey est la clé d'indexation des maps du daemon : un couple (gamertag,
+// titre) est tracké INDÉPENDAMMENT par titre (multi-titre live). Sans cette clé
+// composite, deux profils d'un même gamertag sous deux titres s'écraseraient (un
+// seul watcher survivant). titleSlug vide → DefaultSlug.
+func playerKey(gamertag, titleSlug string) string {
+	if titleSlug == "" {
+		titleSlug = title.DefaultSlug
+	}
+	return gamertag + "|" + titleSlug
 }
 
 // SyncGate expose le Coordinator comme point de déduplication cross-source des
@@ -275,18 +292,19 @@ func (d *Daemon) UpdateSubscriptions(gamertags []string) {
 	}
 
 	// Arrêter les joueurs non voulus (W2 : stopper réellement leurs goroutines,
-	// pas juste les retirer de la map).
-	for gt := range d.players {
-		if _, ok := wanted[gt]; !ok {
-			slog.Info("watcher_daemon: UpdateSubscriptions: joueur retiré", "gamertag", gt)
-			if cancel := d.playerCancels[gt]; cancel != nil {
+	// pas juste les retirer de la map). La souscription se fait par GAMERTAG :
+	// retirer un gamertag retire TOUS ses watchers de titres (la map est keyée par
+	// playerKey composite, on filtre sur pw.gamertag).
+	for key, pw := range d.players {
+		if _, ok := wanted[pw.gamertag]; !ok {
+			slog.Info("watcher_daemon: UpdateSubscriptions: joueur retiré",
+				"gamertag", pw.gamertag, "title_slug", pw.titleSlug)
+			if cancel := d.playerCancels[key]; cancel != nil {
 				cancel() // stoppe le REST poller du joueur
-				delete(d.playerCancels, gt)
+				delete(d.playerCancels, key)
 			}
-			if pw := d.players[gt]; pw != nil {
-				pw.stopPoller() // stoppe le MatchPoller (+ live_refresh lié à pollerCtx)
-			}
-			delete(d.players, gt)
+			pw.stopPoller() // stoppe le MatchPoller (+ live_refresh lié à pollerCtx)
+			delete(d.players, key)
 		}
 	}
 
@@ -315,11 +333,12 @@ func (d *Daemon) AddPlayer(ctx context.Context, p domain.PlayerSummary) error {
 	slog.InfoContext(ctx, "watcher_daemon: AddPlayer démarré",
 		"gamertag", p.Gamertag, "xuid", p.XUID, "event", evID)
 
+	key := playerKey(p.Gamertag, p.TitleSlug)
 	d.playersMu.Lock()
-	if _, exists := d.players[p.Gamertag]; exists {
+	if _, exists := d.players[key]; exists {
 		d.playersMu.Unlock()
 		slog.DebugContext(ctx, "watcher_daemon: AddPlayer no-op, déjà présent",
-			"gamertag", p.Gamertag, "xuid", p.XUID)
+			"gamertag", p.Gamertag, "xuid", p.XUID, "title_slug", p.TitleSlug)
 		return nil
 	}
 	pw := NewPlayerWatcher(p.Gamertag, p.XUID, d.cfg.MatchFetcher, &queueSyncTrigger{
@@ -329,9 +348,9 @@ func (d *Daemon) AddPlayer(ctx context.Context, p domain.PlayerSummary) error {
 	})
 	pw.SetTitleSlug(p.TitleSlug) // Phase 1.9 : titre configuré → ctx poller + write-path
 	if d.cfg.LiveRefreshFactory != nil {
-		pw = pw.WithLiveRefresh(d.cfg.LiveRefreshFactory(p.Gamertag, p.XUID))
+		pw = pw.WithLiveRefresh(d.cfg.LiveRefreshFactory(p.Gamertag, p.XUID, p.TitleSlug))
 	}
-	d.players[p.Gamertag] = pw
+	d.players[key] = pw
 
 	// W2 : ctx annulable PAR JOUEUR pour le REST poller (dérivé de rootCtx → le
 	// cancel global le coupe aussi, mais on peut désormais le couper seul à la
@@ -340,7 +359,7 @@ func (d *Daemon) AddPlayer(ctx context.Context, p domain.PlayerSummary) error {
 	if d.trackerRestClient != nil && d.rootCtx != nil {
 		var pollerCancel context.CancelFunc
 		pollerCtx, pollerCancel = context.WithCancel(d.rootCtx)
-		d.playerCancels[p.Gamertag] = pollerCancel
+		d.playerCancels[key] = pollerCancel
 	}
 	d.playersMu.Unlock()
 
@@ -380,13 +399,15 @@ func (d *Daemon) initPlayers(ctx context.Context, playerList []domain.PlayerSumm
 		})
 		pw.SetTitleSlug(p.TitleSlug) // Phase 1.9 : titre configuré → ctx poller + write-path
 		if d.cfg.LiveRefreshFactory != nil {
-			pw = pw.WithLiveRefresh(d.cfg.LiveRefreshFactory(p.Gamertag, p.XUID))
+			pw = pw.WithLiveRefresh(d.cfg.LiveRefreshFactory(p.Gamertag, p.XUID, p.TitleSlug))
 		}
-		d.players[p.Gamertag] = pw
+		key := playerKey(p.Gamertag, p.TitleSlug)
+		d.players[key] = pw
 
 		slog.InfoContext(ctx, "watcher_daemon: joueur initialisé",
 			"gamertag", p.Gamertag,
 			"xuid", p.XUID,
+			"title_slug", p.TitleSlug,
 		)
 
 		// REST poller par joueur — partage le client tracker (token JGtm).
@@ -397,7 +418,7 @@ func (d *Daemon) initPlayers(ctx context.Context, playerList []domain.PlayerSumm
 		if d.trackerRestClient != nil {
 			// W2 : ctx annulable par joueur (cf. AddPlayer).
 			pollerCtx, pollerCancel := context.WithCancel(d.rootCtx)
-			d.playerCancels[p.Gamertag] = pollerCancel
+			d.playerCancels[key] = pollerCancel
 			handler := d.makePresenceHandler(pollerCtx, pw)
 			poller := NewRESTPoller(p.XUID, p.Gamertag, d.trackerRestClient, handler)
 			d.wg.Add(1)
@@ -442,6 +463,21 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 		if event.PresenceDetail != nil {
 			td := d.titleReg.MatchPresence(event.PresenceDetail.TitleID)
 			if td != nil {
+				// Multi-titre : ce watcher ne suit QUE pw.titleSlug. Si le joueur
+				// lance un AUTRE titre tracké, ce n'est pas « son » jeu pour CE
+				// watcher → inactif ici (le watcher du même gamertag sur ce titre,
+				// s'il existe, prendra le relais). Évite de syncer dans le mauvais titre.
+				expectedSlug := pw.titleSlug
+				if expectedSlug == "" {
+					expectedSlug = title.DefaultSlug
+				}
+				if td.Slug != expectedSlug {
+					slog.InfoContext(evCtx, "watcher_daemon: titre tracké mais != titre du watcher → inactif",
+						"gamertag", pw.gamertag, "watcher_title", expectedSlug,
+						"detected_title", td.Slug, "event", evID)
+					pw.OnPresenceInactive(evCtx)
+					return
+				}
 				slog.InfoContext(evCtx, "watcher_daemon: présence détectée — titre tracké",
 					"gamertag", pw.gamertag,
 					"title", td.Name,
@@ -451,9 +487,9 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 				pw.OnPresenceActive(evCtx)
 				// Broadcast l'état Active aux autres PlayerWatcher si activé.
 				// Cf. DaemonConfig.BroadcastPresenceActive godoc — incident
-				// 2026-05-27 sessions de groupe non détectées.
+				// 2026-05-27 sessions de groupe non détectées. Scopé au MÊME titre.
 				if d.cfg.BroadcastPresenceActive {
-					d.broadcastPresenceActive(evCtx, pw.gamertag)
+					d.broadcastPresenceActive(evCtx, pw.gamertag, expectedSlug)
 				}
 				return
 			}
@@ -492,16 +528,25 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 // la FSM si déjà Watching, pas de cascade entre broadcasts simultanés.
 //
 // Le triggering player est exclu — il a déjà été activé par le handler.
-func (d *Daemon) broadcastPresenceActive(ctx context.Context, triggeringGamertag string) {
+func (d *Daemon) broadcastPresenceActive(ctx context.Context, triggeringGamertag, triggeringTitleSlug string) {
 	d.playersMu.RLock()
 	others := make([]*PlayerWatcher, 0, len(d.players))
 	otherNames := make([]string, 0, len(d.players))
-	for gt, pw := range d.players {
-		if gt == triggeringGamertag {
+	for _, pw := range d.players {
+		// Exclure le triggering player ET les watchers d'un AUTRE titre : la
+		// détection de session de groupe est par-titre (un squad halo_infinite ne
+		// doit pas réveiller un poller halo_5). La map est keyée composite, on
+		// filtre donc sur les champs du watcher (pas la clé). Normalisation
+		// vide→DefaultSlug des deux côtés (watchers sans titre explicite).
+		pwSlug := pw.titleSlug
+		if pwSlug == "" {
+			pwSlug = title.DefaultSlug
+		}
+		if pw.gamertag == triggeringGamertag || pwSlug != triggeringTitleSlug {
 			continue
 		}
 		others = append(others, pw)
-		otherNames = append(otherNames, gt)
+		otherNames = append(otherNames, pw.gamertag)
 	}
 	d.playersMu.RUnlock()
 

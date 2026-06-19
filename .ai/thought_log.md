@@ -1,3 +1,16 @@
+## [2026-06-19] Multi-titre Pass B.7 : fixes watcher LIVE multi-titre — Complété (back)
+
+**Statut** : Complété (back). build `./...` + vet + gofmt + suite watcher + scheduler verts. +4 tests dédiés. La passe « risquée » du handoff — menée avec contrat scheduler préservé.
+
+**3 changements livrés (le 4 — dédup MatchQueue — SKIP : match_id = UUID globalement uniques par jeu, collision impossible)** :
+- **Ch.2 (LOW) presence title-check** : `makePresenceHandler` vérifie `td.Slug == pw.titleSlug` (résolu) AVANT d'activer. Un joueur halo_infinite qui lance un autre titre tracké → inactif pour CE watcher (ne sync plus dans le mauvais titre). + broadcast scopé au même titre (un squad halo_infinite ne réveille pas un poller halo_5).
+- **Ch.3 (LOW) LiveRefresh title-aware** : `LiveRefreshFactory(gamertag, xuid, titleSlug)` ; retrait du `watcherSlug := DefaultSlug` hardcodé (main.go) qui écrivait BP/challenges de TOUS les joueurs dans halo_infinite. Écrit désormais dans `data/titles/{slug}/...`.
+- **Ch.1 (MED) re-key maps composite** : `players`/`playerCancels` keyées par `playerKey(gamertag, titleSlug)` au lieu de gamertag seul (2 profils d'un même gamertag ne s'écrasent plus → 2 watchers distincts). **Contrat scheduler PRÉSERVÉ** : `IsPlayerActive(gamertag)` itère et matche `pw.gamertag` → « actif sur AU MOINS un titre » (le tick auto-sync cède toujours correctement, pas de double-sync). Consommateurs orientés-gamertag (broadcast, UpdateSubscriptions, GetStatus) itèrent + filtrent sur `pw.gamertag` (pas la clé).
+
+**Risque matérialisé (annoncé)** : 4 lookups `d.players[gamertag]` dans les tests → adaptés en `playerKey(...)`. Capté immédiatement par la compilation/tests, zéro régression silencieuse. Le bug corrigé ne s'observe en LIVE qu'après activation (2 titres d'un gamertag watchés simultanément) — validé par tests unitaires (registre 2-titres synthétique).
+
+**Prochaine étape** : Pass B back 100% TERMINÉ. Suite = Pass C (front) puis activation 1b.
+
 ## [2026-06-19] Multi-titre Pass B.4 : onboarding ciblable par titre + sync initial title-aware — Complété (back)
 
 **Statut** : Complété (back). build `./...` + vet + gofmt OK ; contrat OpenAPI à parité ; tests handlers/api/service verts. Corrige un VRAI bug latent (le sync initial écrivait toujours dans halo_infinite).
