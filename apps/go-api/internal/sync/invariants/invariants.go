@@ -465,14 +465,12 @@ func checkPersonalScoreAwardsMissing(ctx context.Context, playerDB, _ *sql.DB, _
 // gamertag (sinon l'UI retombe sur le xuid brut — classe « GUID/XUID
 // partout »). Les bots (préfixe bid() sont exclus.
 //
-// Sources d'alias — UNION des deux : la DB GLOBALE (global.xuid_aliases,
-// attachée AS global sur la connexion player par le pool — l'attache shared a
-// été retirée de cette connexion, ADR 0016 commit 9c.5) ET la table
-// shared.xuid_aliases. Constat empirique 2026-06-10 : la globale est un
-// snapshot de migration (figée) tandis que le sync continue d'upserter dans
-// shared — chaque source manque des xuids que l'autre possède (113 vs 853).
-// Un xuid n'est en violation que s'il est absent des DEUX.
-func checkXuidAliasMissing(ctx context.Context, playerDB, sharedDB *sql.DB, _ string) (*Violation, error) {
+// Source : shared.xuid_aliases (table consolidée). Depuis le refactor
+// 2026-06-19, la DB globale xbox_aliases a été mergée dans shared (cf.
+// `levelup consolidate-aliases`) — plus de UNION global+shared, une seule
+// source de vérité. Un xuid humain de match_participants est en violation
+// s'il n'a pas d'alias dans shared.xuid_aliases.
+func checkXuidAliasMissing(ctx context.Context, _, sharedDB *sql.DB, _ string) (*Violation, error) {
 	participants, err := collectIDs(ctx, sharedDB, `
 		SELECT DISTINCT xuid || '' AS xid
 		FROM match_participants
@@ -482,26 +480,13 @@ func checkXuidAliasMissing(ctx context.Context, playerDB, sharedDB *sql.DB, _ st
 		return nil, fmt.Errorf("invariants/xuid_alias_missing: participants query: %w", err)
 	}
 
-	aliasSet := make(map[string]struct{}, 1024)
-	source := ""
-	if ids, gerr := collectIDs(ctx, playerDB, `SELECT xuid || '' FROM global.xuid_aliases`); gerr == nil {
-		source = "global"
-		for _, id := range ids {
-			aliasSet[id] = struct{}{}
-		}
+	aliasIDs, err := collectIDs(ctx, sharedDB, `SELECT xuid || '' FROM xuid_aliases`)
+	if err != nil {
+		return nil, fmt.Errorf("invariants/xuid_alias_missing: shared xuid_aliases query: %w", err)
 	}
-	if ids, serr := collectIDs(ctx, sharedDB, `SELECT xuid || '' FROM xuid_aliases`); serr == nil {
-		if source == "" {
-			source = "shared_legacy"
-		} else {
-			source = "global+shared"
-		}
-		for _, id := range ids {
-			aliasSet[id] = struct{}{}
-		}
-	}
-	if source == "" {
-		return nil, fmt.Errorf("invariants/xuid_alias_missing: aucune source d'alias accessible (global et shared)")
+	aliasSet := make(map[string]struct{}, len(aliasIDs))
+	for _, id := range aliasIDs {
+		aliasSet[id] = struct{}{}
 	}
 	var missing []string
 	for _, id := range participants {
@@ -517,7 +502,7 @@ func checkXuidAliasMissing(ctx context.Context, playerDB, sharedDB *sql.DB, _ st
 		Severity:    SeverityWarn,
 		Count:       len(missing),
 		Sample:      capSample(missing),
-		Description: "xuids humains de match_participants sans alias gamertag (source " + source + ")",
+		Description: "xuids humains de match_participants sans alias gamertag (source shared.xuid_aliases)",
 	}, nil
 }
 

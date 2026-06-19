@@ -51,12 +51,9 @@ func toPkgConfig(cfg config.BackupConfig) duckdbbackup.Config {
 // fichier détenu en RW par un autre handle in-process — c'est ce qui faisait
 // échouer le backup de metadata.duckdb et shared_social.duckdb.
 func discoverLevelUpDBs(pr *title.PathResolver) ([]duckdbbackup.Target, error) {
-	targets := []duckdbbackup.Target{
-		{Key: "xbox_aliases", Path: pr.GlobalXuidAliasesDBPath()},
-	}
-	if _, err := os.Stat(pr.GlobalXuidAliasesDBPath()); err != nil {
-		targets = targets[:0]
-	}
+	// xbox_aliases (DB globale) retiré du backup : consolidé dans
+	// shared.xuid_aliases (refactor 2026-06-19, `levelup consolidate-aliases`).
+	var targets []duckdbbackup.Target
 
 	titlesDir := filepath.Join(pr.RepoRoot(), "data", "titles")
 	titleEntries, err := os.ReadDir(titlesDir)
