@@ -177,6 +177,26 @@ func (c *Client) GetMatchDetail(ctx context.Context, matchID, mode string) (map[
 	return out, nil
 }
 
+// GetMatchEvents recupere la timeline d'events NATIVE d'un match (kill-feed +
+// arme-par-kill + medailles + positions monde, horodates). Path CONFIRME sonde :
+// /h5/matches/{id}/events — ⚠️ SANS segment de mode (le /h5/{mode}/matches/{id}/
+// events renvoie 404). Cf. HANDOFF_HALO5_EXPERIMENTAL §0-quater.
+func (c *Client) GetMatchEvents(ctx context.Context, matchID string) (*h5MatchEventsResponse, error) {
+	if strings.TrimSpace(matchID) == "" {
+		return nil, errors.New("GetMatchEvents: matchID vide")
+	}
+	endpoint := fmt.Sprintf("%s/h5/matches/%s/events", c.statsHost(), url.PathEscape(matchID))
+	body, err := c.doGet(ctx, endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("GetMatchEvents(%s): %w", matchID, err)
+	}
+	var resp h5MatchEventsResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("GetMatchEvents decode: %w", err)
+	}
+	return &resp, nil
+}
+
 // doGet execute un GET authentifie facon Halo 5 : header Spartan v4 + UA cpprestsdk,
 // query ?auth=st, gzip transparent, retry/backoff exponentiel borne. 401/403/404/410
 // sont terminaux (pas de retry). Renvoie le corps JSON brut.

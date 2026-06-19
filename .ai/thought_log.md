@@ -1,3 +1,17 @@
+## [2026-06-19] Canonical MatchEvents Phase 1 : adapter Halo 5 events (live + mapper) — Complété
+
+**Statut** : Complété. build `./...` + tous tests games verts (mapper sur fixture réelle + adapter + parité + skeleton). Halo 5 = premier titre à servir des events canoniques.
+
+**Livré** :
+- **`halo_5/client.go`** : `GetMatchEvents(ctx, matchID)` → `/h5/matches/{id}/events` (⚠️ SANS segment de mode ; doGet/retry/backoff réutilisés).
+- **`halo_5/events_dto.go`** : DTO de la timeline (GameEvents hétérogène, 1 struct discriminé par EventName).
+- **`halo_5/events.go`** : mapper PUR `mapH5Events` (JSON→canonical) + `parseISO8601DurationMs` (précision fractionnaire vs parseSeconds qui arrondit ; Halo 5 = temps déjà gameplay-relatif, pas de T0). Death→kill (killer/victim/kind/headshot/weapon StockId/positions x,y,z) ; Medal/Impulse→RefID ; pickup/drop→Weapon ; round→Round. EventName inconnu = skip robuste.
+- **`adapter_data.go`** : `LoadMatchEvents` câblé (resolveSource + degradeUnavailable 404/401→timeline vide + filtre opts) ; `h5Source` interface += GetMatchEvents ; fakeSource mock étendu.
+- **Caps halo_5 flippées → `supported`** (timeline/killfeed.per_kill/events.spatial) : TOML + fallbackCapabilities + skeleton_test want map. Halo 5 sert nativement les 3.
+- **Tests** : mapper (kill headshot arme/positions, melee, medal/impulse RefID, round, filtre par type, parse ms) sur **fixture RÉELLE** (shapes exactes sonde) + adapter (live/404 dégradé/nil factory).
+
+**Prochaine étape** : Phase 2 (unification Infinite : highlight_events + appariement killer/victim T0 → MatchEvent ; per_kill degraded, spatial not_exposed ; flip caps Infinite) puis Phase 3 (surface service+handler+front).
+
 ## [2026-06-19] Canonical MatchEvents Phase 0 : contrat + interface + capabilities — Complété
 
 **Statut** : Complété (Phase 0 = contrat, inerte/additif). build `./...` + games/api/service verts ; Halo Infinite byte-identique. Piloté par 1 workflow de cartographie (4 agents) + 1 workflow de revue adversariale (2 agents).

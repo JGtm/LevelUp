@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
@@ -34,6 +35,7 @@ import (
 type h5Source interface {
 	GetServiceRecords(ctx context.Context, gamertag, recordType string) (*H5ServiceRecordResponse, error)
 	GetPlayerMatches(ctx context.Context, gamertag string, start, count int) (*H5MatchesResponse, error)
+	GetMatchEvents(ctx context.Context, matchID string) (*h5MatchEventsResponse, error)
 }
 
 var _ h5Source = (*Client)(nil)
@@ -139,11 +141,10 @@ func fallbackCapabilities() games.CapabilityMap {
 		games.CapPveFirefight:       games.CapNotExposed,
 		games.CapBattlePass:         games.CapNotExposed,
 		games.CapChallenges:         games.CapNotExposed,
-		// Canonical MatchEvents : natif côté API mais LoadMatchEvents stub (Phase 0)
-		// → not_exposed jusqu'au câblage de halo_5/events.go (Phase 1).
-		games.CapMatchEventsTimeline:  games.CapNotExposed,
-		games.CapMatchKillfeedPerKill: games.CapNotExposed,
-		games.CapMatchEventsSpatial:   games.CapNotExposed,
+		// Canonical MatchEvents : CÂBLÉ Phase 1 (LoadMatchEvents → events.go).
+		games.CapMatchEventsTimeline:  games.CapSupported,
+		games.CapMatchKillfeedPerKill: games.CapSupported,
+		games.CapMatchEventsSpatial:   games.CapSupported,
 	}
 }
 
@@ -279,10 +280,30 @@ func (a *DataAdapter) LoadHighlightEvents(_ context.Context, _ string) ([]canoni
 	return nil, games.ErrCapabilityNotSupported
 }
 
-// LoadMatchEvents : timeline d'events (Phase 1 — adapter halo_5/events.go).
-// Stub Phase 0 (le contrat existe ; l'implémentation arrive avec le client /events).
-func (a *DataAdapter) LoadMatchEvents(_ context.Context, _ string, _ canonical.MatchEventOptions) (*canonical.MatchEventTimeline, error) {
-	return nil, games.ErrCapabilityNotSupported
+// LoadMatchEvents récupère la timeline d'events NATIVE Halo 5 (/h5/matches/{id}/
+// events) et la mappe en canonical (kill-feed + arme-par-kill + médailles +
+// positions). Surface on-demand. Token/404 indisponible → timeline vide (dégradé),
+// pas d'erreur dure (cf. degradeUnavailable). matchID vide / source absente →
+// ErrCapabilityNotSupported.
+func (a *DataAdapter) LoadMatchEvents(ctx context.Context, matchID string, opts canonical.MatchEventOptions) (*canonical.MatchEventTimeline, error) {
+	if strings.TrimSpace(matchID) == "" {
+		return nil, games.ErrCapabilityNotSupported
+	}
+	src, err := a.resolveSource(ctx)
+	if err != nil {
+		return nil, games.ErrCapabilityNotSupported
+	}
+	ctx, cancel := context.WithTimeout(ctx, h5RequestTimeout)
+	defer cancel()
+
+	resp, err := src.GetMatchEvents(ctx, matchID)
+	if err != nil {
+		if a.degradeUnavailable(ctx, err, matchID, "LoadMatchEvents") {
+			return &canonical.MatchEventTimeline{MatchID: matchID}, nil
+		}
+		return nil, fmt.Errorf("h5 LoadMatchEvents(%s): %w", matchID, err)
+	}
+	return &canonical.MatchEventTimeline{MatchID: matchID, Events: mapH5Events(resp, opts)}, nil
 }
 
 func (a *DataAdapter) LoadFriendsXUIDs(_ context.Context, _ string) ([]string, error) {

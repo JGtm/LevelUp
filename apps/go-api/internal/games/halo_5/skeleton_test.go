@@ -76,9 +76,9 @@ func TestHalo5_FineCapabilities(t *testing.T) {
 		games.CapPveFirefight:         games.CapNotExposed,
 		games.CapBattlePass:           games.CapNotExposed,
 		games.CapChallenges:           games.CapNotExposed,
-		games.CapMatchEventsTimeline:  games.CapNotExposed,
-		games.CapMatchKillfeedPerKill: games.CapNotExposed,
-		games.CapMatchEventsSpatial:   games.CapNotExposed,
+		games.CapMatchEventsTimeline:  games.CapSupported,
+		games.CapMatchKillfeedPerKill: games.CapSupported,
+		games.CapMatchEventsSpatial:   games.CapSupported,
 	}
 	if len(cm) != len(want) {
 		t.Fatalf("capabilities = %d clés, want %d", len(cm), len(want))
