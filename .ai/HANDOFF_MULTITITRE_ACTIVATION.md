@@ -9,12 +9,13 @@
 ## 0. TL;DR — état
 
 **Halo 5 Phase 1a (adapter read-only) = LIVRÉ + reviewé adversarialement + durci + active-ready.** Le caveat « 343 sert-il h5 ? » est levé (sonde live OK, SpartanToken v4 accepté). Avant d'ACTIVER Halo 5 (le servir live dans l'app), l'utilisateur a posé **2 pré-requis** :
-1. **Nombre de matchs de placement classés par titre** (HINF=5, Halo 5=10) → **FAIT côté back (Pass A, commit `930a3d8c3`)** ; reste le nettoyage front (Pass C).
-2. **Sélection par titre** : à l'onboarding (choisir les jeux + nb de matchs à sync par titre) ; dans les Réglages (activer tel jeu / tous, **min 1**) → **À FAIRE** (Pass B back + Pass C front).
+1. **Nombre de matchs de placement classés par titre** (HINF=5, Halo 5=10) → **FAIT** (Pass A back `930a3d8c3` + Pass C front nettoyage `f6d8b0b87`).
+2. **Sélection par titre** : onboarding (choisir jeux + nb matchs/titre) + Réglages (activer/pause, **min 1**) → **FAIT** (Pass B back `0adb4efaa`→`c42e4344d` ; Pass C front `f6d8b0b87`/`01c080c1f`/`882f6d7f9`).
+3. **🆕 GATE 2026-06-19 — Canonical MatchEvents** : la sonde Halo 5 a prouvé une **timeline d'events NATIVE** (kill-feed + arme-par-kill + médailles + positions, JSON propre — cf. `HANDOFF_HALO5_EXPERIMENTAL.md` §0-quater). Décision user : **canoniser ce modèle (depuis la shape Halo 5) AVANT d'activer**, pour que Halo 5 s'active avec sa richesse, pas une v1 dégradée. → **plan dédié `.ai/PLAN_CANONICAL_MATCH_EVENTS.md`** (gate = Phases 0+1+3). **À FAIRE.**
 
 Puis seulement : **activation 1b** (registration générique + flip `status=active` + vérif live).
 
-**Tout est vert** (build `./...` + vet + archlint + tests), **Halo Infinite byte-identique** (le code h5 est additif/inerte, non câblé au boot).
+**État** : Pass B back + Pass C front = COMPLETS et poussés (9 commits, `feat/multititre-peripherie`). **Reste avant activation : le chantier Canonical MatchEvents** (plan dédié). **Halo Infinite byte-identique** (tout le code multi-titre est additif/gaté).
 
 ## 1. Décisions produit (VERROUILLÉES — ne pas re-litiguer)
 
@@ -87,7 +88,9 @@ Bugs réels trouvés (n'impactent que le watch LIVE simultané de 2 titres pour 
   - `apps/web/src/features/career/CareerRankingBlock.tsx:33` (`rank.placement_total > 0 ? ... : 10`)
   - `ExplorerTargetSeasonCSR.tsx:80-88` est le plus en retard (état binaire « Non classé ») — afficher « X restants » si le DTO le porte.
 
-## 5. ACTIVATION 1b (APRÈS Pass B + C)
+## 5. ACTIVATION 1b (APRÈS Pass B + C + **Canonical MatchEvents**)
+
+> ⚠️ **GATE** : ne pas activer avant le chantier **Canonical MatchEvents** (Phases 0+1+3 du plan `.ai/PLAN_CANONICAL_MATCH_EVENTS.md`). Raison : la sonde a prouvé que Halo 5 sert une timeline d'events native (kill-feed/arme-par-kill/positions) — l'activer sans la canoniser servirait un Halo 5 dégradé à refaire. Le canon + l'adapter h5 events doivent exister pour activer « riche ».
 
 L'adapter h5 est **active-ready** (`internal/games/halo_5/`) : `NewDataAdapter(NewSpartanTokenSource, logger).WithCapabilities(caps).WithPlacementTotal(desc.PlacementMatches)`. `NewSpartanTokenSource(ctx)` lit le SpartanToken du ctx (`ctxkeys.HaloTokens`). Étapes :
 1. **Registration générique au boot** (`internal/api/server.go` ; bloc HI hardcodé `:257-345`) : boucle registry-driven sur `titleRegistry.NonArchived()` (PAS `if slug=="halo_5"` — archlint), enregistrer `RegisterSemantic(games.NewGenericSemanticAdapter(slug, fields, ranks, assets, outcomes))` + `RegisterData(...)` + `RegisterPlayerDataBuilder(slug, func(*PlayerDB) → halo_5.NewDataAdapter(...))` pour les titres ≠ DefaultSlug ayant un FieldMappingSet. **Inerte tant que coming_soon** (RequireActiveTitle `:999` → 503).

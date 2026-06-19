@@ -20,7 +20,7 @@ La v1 (2026-06-18) affirmait que Halo 5 n'a « RIEN au niveau des highlight even
 |---|---|---|
 | `/h5[platform]/players/{player}/matches` | historique de matchs | liste paginée, profondeur historique |
 | `/h5[platform]/{mode}/matches/{id}` | carnage report (scoreboard complet par joueur, dont CSR Arena) | **par match** |
-| `/h5[platform]/{mode}/matches/{id}/events` | **events / timeline typés** (death, medal, spawn, weapon, round…) | **par match, horodatés** |
+| `/h5/matches/{id}/events` (⚠️ **SANS segment de mode** — le `/h5/{mode}/matches/{id}/events` renvoie 404) | **events / timeline typés** (Death, Medal, PlayerSpawn, WeaponPickup/Drop, RoundStart/End) | **par match, horodatés** — CONFIRMÉ LIVE 2026-06-19 (§0-quater) |
 | `/h5/servicerecords/{mode}?players=` | service record agrégé (dont Spartan Rank) | agrégé par mode |
 | `/h5/players/{player}/commendations` | **citations natives** | agrégé (lifetime) |
 | `/h5/players/{player}/credits` | crédits / REQ | agrégé |
@@ -55,6 +55,19 @@ La v1 (2026-06-18) affirmait que Halo 5 n'a « RIEN au niveau des highlight even
 - **CREDITS** `{CurrentBalance}` ; **APPEARANCE** identité complète (ServiceTag, Company, emblème, armure, weapon skins) ; **SPARTAN** = PNG render.
 
 **Conclusion** : la **matrice optimiste §2 est CONFIRMÉE par la donnée réelle** (history/detail/scoreboard/skill/citations supported ; warzone=PvE-like ; films présents mais inutiles car kill-feed structuré dans carnage/events). On peut passer aux étapes 1-3 de la Phase 1 (auth reuse → client → adapter) sans risque de construire sur du vide. `cmd/probe-h5` est conservé comme outil de re-sonde.
+
+## 0-quater. SONDE EVENTS + CARNAGE — CONFIRMÉ 2026-06-19 (la timeline est SERVIE, riche)
+
+Sonde `cmd/probe-h5` étendue (carnage detail + variantes events + film) sur un vrai match arena de JGtm. **Résultat décisif** :
+
+- **`/h5/matches/{id}/events` → HTTP 200, 220 Ko** de `GameEvents` typés. **GOTCHA** : le chemin avec segment de mode (`/h5/arena/matches/{id}/events`) renvoie **404** ; le bon chemin est **SANS mode**. (Mon premier rapport « events 404 » était une erreur de chemin.)
+- **Types d'events (1 match arena)** : `Death`×107, `Medal`×126, `WeaponPickup`×269, `WeaponDrop`×305, `PlayerSpawn`×113, `RoundStart`/`RoundEnd`×1. Tous portent `TimeSinceStart` (ISO8601 PT..).
+- **Shape de l'event `Death` (= kill-feed + arme-par-kill NATIFS)** : `{IsHeadshot, IsMelee, IsGroundPound, IsShoulderBash, IsWeapon, Killer:{Gamertag}, KillerAgent, KillerWeaponStockId, KillerWeaponAttachmentIds[], KillerWorldLocation:{x,y,z}, Victim:{Gamertag}, VictimWorldLocation:{x,y,z}, TimeSinceStart, EventName:"Death"}`. → **tueur·victime·ARME·type·POSITION·instant**, en clair.
+- **Event `Medal`** : `{MedalId, Player:{Gamertag}, TimeSinceStart}` — timeline de médailles.
+- **Carnage detail `/h5/{mode}/matches/{id}` → 200, 37 Ko** : scoreboard par-joueur étendu + **matrice tueur↔victime agrégée** (`KilledOpponentDetails`/`KilledByOpponentDetails`) + `XpInfo` (Spartan Rank pré/post) + `CreditsEarned` + `ProgressiveCommendationDeltas` (par match) + `WeaponWithMostKills`. Les tableaux fins `EnemyKills`/`WeaponStats`/`Impulses` sont VIDES dans le carnage (le détail per-kill est dans `/events`, pas dans le carnage).
+- **Film manifest UGC** (`ugc.svc/h5/films/{id}?view=film-manifest`) → **403** (clearance/auth films ≠) — **non nécessaire** : `/events` donne déjà le per-kill propre.
+
+**Conséquence stratégique (validée par la donnée)** : Halo 5 expose NATIVEMENT, en JSON propre, exactement ce que le décodage film d'Infinite cherche à reconstruire (arme-par-kill, kill-feed) — **plus** les positions monde (qu'Infinite n'a pas). Direction adoptée (user 2026-06-19) : **canoniser le modèle d'events à partir de la shape Halo 5** (la plus propre/complète) et **faire converger Infinite dessus** (inverse de la décision citations). Caveat honnête : confirmé sur arena ; warzone non testé (aucun match non-arena dans les 25 derniers de JGtm) — à re-sonder le jour où on a un match warzone.
 
 ## 1. Source de données + AUTH (TRANCHÉ + CORRIGÉ)
 

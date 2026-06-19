@@ -1,3 +1,13 @@
+## [2026-06-19] Sonde Halo 5 events/carnage : timeline NATIVE confirmée — Exploration (pas de code prod)
+
+**Statut** : Exploration (sonde `cmd/probe-h5` étendue, live read-only JGtm). Découverte structurante.
+
+**Finding** : Halo 5 sert NATIVEMENT `/h5/matches/{id}/events` (⚠️ SANS segment de mode ; le `/h5/{mode}/matches/{id}/events` → 404 — gotcha) = 220 Ko de GameEvents typés/horodatés. Event `Death` = `{Killer, KillerWeaponStockId, KillerWeaponAttachmentIds, KillerWorldLocation{x,y,z}, Victim, VictimWorldLocation, IsHeadshot/Melee/GroundPound/ShoulderBash/Weapon, TimeSinceStart}`. Soit **tueur·victime·arme·type·position·instant en clair** — exactement ce que le chantier film-decoder/dead-state d'Infinite reconstruit à la main, + les positions monde qu'Infinite n'a pas. Aussi : 126 events Medal horodatés, WeaponPickup/Drop, carnage detail riche (matrice tueur↔victime agrégée, XpInfo Spartan Rank, CreditsEarned, ProgressiveCommendationDeltas). Détail complet : `HANDOFF_HALO5_EXPERIMENTAL.md` §0-quater.
+
+**Correction de record** : mon 1er rapport « events 404 » était une erreur de chemin (segment de mode en trop). La piste creusée (variantes de chemin) a vindiqué la claim §0-bis. Doctrine « sonder live avant de croire » confirmée DANS LES DEUX SENS (la doc cryptum disait events ; le 1er probe disait non ; la donnée réelle dit oui, à un autre chemin).
+
+**Direction produit (user)** : canoniser le modèle d'events depuis la shape Halo 5 (la plus propre) + faire converger Infinite dessus (inverse des citations). Principe d'ingénierie retenu : canoniser ce qu'AU MOINS un titre réel fournit (Halo 5 back tout : timeline/arme-par-kill/killfeed/medals/world-loc/xp/credits) — pas de champ fantôme sans source. Halo 7 forward-compat = bonus, pas la justification. = nouveau chantier « canonical MatchEvents + capabilities fines + adapter h5 events + cible canonique pour le RE Infinite » à cadrer (non démarré).
+
 ## [2026-06-19] Multi-titre Pass C (front) Lot 3 : step onboarding sélection titres — Complété
 
 **Statut** : Complété. typecheck + lint (0 erreur) + suite vitest COMPLÈTE verte (215 fichiers, 1910 tests, 0 échec). Le mono-titre (réalité actuelle, 1 seul titre actif) = flux inchangé ; le multi-titre s'allume à l'activation d'un 2e titre.
