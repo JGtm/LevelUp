@@ -40,6 +40,12 @@ const (
 	defaultConvergenceYieldInterval = 2 * time.Second
 )
 
+// ConvergenceLogModule route tous les logs du backfill events vers
+// logs/convergence.log (tag slog `module`). Sous-système background qui s'étale
+// sur sync (orchestrateur) + scheduler (passe/trigger) — un fichier unique le
+// rend diagnosticable d'un coup (même précédent que ModuleCatalog / ModuleLab).
+const ConvergenceLogModule = "convergence"
+
 // convergenceClaimGate : sous-ensemble minimal de SyncGate/Coordinator pour la
 // cession au sync live. TryClaim(gamertag) → (release, ok=false si déjà en vol).
 // Passer nil quand le caller tient déjà le claim (ex. passe scheduler sous claim).
@@ -71,6 +77,10 @@ type EventsConvergenceConfig struct {
 	// lots pour laisser l'app respirer (défaut 2s).
 	ChunkSize     int
 	YieldInterval time.Duration
+
+	// log : logger taggé module=convergence (→ logs/convergence.log), initialisé
+	// par RunEventsConvergenceBackfill. Interne (non fourni par le caller).
+	log *slog.Logger
 }
 
 // EventsConvergenceResult résume une passe de backfill.
@@ -100,6 +110,8 @@ func RunEventsConvergenceBackfill(ctx context.Context, cfg EventsConvergenceConf
 	if yield <= 0 {
 		yield = defaultConvergenceYieldInterval
 	}
+	// Logger taggé : tous les logs de la passe atterrissent dans logs/convergence.log.
+	cfg.log = slog.With("module", ConvergenceLogModule)
 
 	matchIDs, err := cfg.detectIncomplete(ctx)
 	if err != nil {
@@ -112,7 +124,7 @@ func RunEventsConvergenceBackfill(ctx context.Context, cfg EventsConvergenceConf
 	if len(matchIDs) == 0 {
 		return res, nil
 	}
-	slog.InfoContext(ctx, "convergence backfill events: démarrage",
+	cfg.log.InfoContext(ctx, "convergence backfill events: démarrage",
 		"gamertag", cfg.Gamertag, "detected", res.Detected, "chunk", chunkSize)
 
 	var eventMatchIDs []string // matchs ayant reçu des events → dominance ensuite
@@ -130,7 +142,7 @@ func RunEventsConvergenceBackfill(ctx context.Context, cfg EventsConvergenceConf
 		release, ok := cfg.tryClaim()
 		if !ok {
 			res.Ceded = true
-			slog.InfoContext(ctx, "convergence backfill events: cession au sync live",
+			cfg.log.InfoContext(ctx, "convergence backfill events: cession au sync live",
 				"gamertag", cfg.Gamertag, "remaining", len(matchIDs)-i)
 			break
 		}
@@ -151,7 +163,7 @@ func RunEventsConvergenceBackfill(ctx context.Context, cfg EventsConvergenceConf
 	// highlight_events). Réutilise BackfillDominanceFlags ; no-op sans player DB.
 	cfg.computeDominance(ctx, eventMatchIDs, &res)
 
-	slog.InfoContext(ctx, "convergence backfill events: passe terminée",
+	cfg.log.InfoContext(ctx, "convergence backfill events: passe terminée",
 		"gamertag", cfg.Gamertag, "events_written", res.EventsWritten,
 		"no_film_final", res.NoFilmFinal, "skipped", res.Skipped,
 		"dominance_updated", res.DominanceUpdated, "ceded", res.Ceded)
@@ -168,13 +180,13 @@ func (cfg EventsConvergenceConfig) computeDominance(ctx context.Context, matchID
 	}
 	sharedDB, release, err := cfg.AcquireShared(ctx)
 	if err != nil {
-		slog.WarnContext(ctx, "convergence backfill events: acquire shared pour dominance échoué",
+		cfg.log.WarnContext(ctx, "convergence backfill events: acquire shared pour dominance échoué",
 			"gamertag", cfg.Gamertag, "err", err)
 		return
 	}
 	defer release()
 	if err := BackfillDominanceFlags(ctx, sharedDB, cfg.PlayerDB, cfg.XUID, matchIDs); err != nil {
-		slog.WarnContext(ctx, "convergence backfill events: dominance flags échoué",
+		cfg.log.WarnContext(ctx, "convergence backfill events: dominance flags échoué",
 			"gamertag", cfg.Gamertag, "err", err, "count", len(matchIDs))
 		return
 	}
@@ -277,7 +289,7 @@ func (cfg EventsConvergenceConfig) processChunk(ctx context.Context, chunk []str
 	sharedDB, release, err := cfg.AcquireShared(ctx)
 	if err != nil {
 		res.Skipped += len(fetched)
-		slog.WarnContext(ctx, "convergence backfill events: acquire shared échoué (lot reporté)",
+		cfg.log.WarnContext(ctx, "convergence backfill events: acquire shared échoué (lot reporté)",
 			"gamertag", cfg.Gamertag, "err", err)
 		return
 	}
