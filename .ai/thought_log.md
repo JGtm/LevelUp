@@ -1,3 +1,20 @@
+## [2026-06-20] Canonical MatchEvents Phase 2 : unification Infinite (highlight_events → timeline T0) — Complété
+
+**Statut** : Complété. `go build ./...` + vet (duckdb/api/games) verts ; tests games/halo_infinite (10 nouveaux : mapper + adapter) + api + intégration duckdb `TestMatchEventsSource_LoadAndTimeline` verts. Infinite sert désormais une timeline canonique reconstruite — Phase 2 n'est PAS le gate d'activation (Phase 3 = surface l'est), mais elle ferme l'unification back.
+
+**Décision clé** : pas une copie de la timeline Halo 5 (native) — Infinite la **reconstitue** depuis `shared.highlight_events` (parser film, base réelle stockée = kill/death/medal/mode, cf. `analysis.inferEventType`). C'est honnête : `degraded`, pas `supported`.
+
+**Livré** :
+- **`halo_infinite/events.go`** (mapper PUR) : `mapInfiniteEvents(raw, MatchTimeline, opts)`. Kills = `analysis.ComputeKillerVictimPairs` (tolérance 5 ms, réutilise l'algo testé) → 1 MatchEventKill par paire ; medal→MatchEventMedal, mode→MatchEventImpulse (Player xuid). T0 via `tl.CorrectEventTime` + skip des events de countdown (corrigé < 0). Tri stable par TimeMs. Identité = **XUID-seul** (gamertag résolu au chokepoint, jamais `gamertag||xuid`). Dégradations zéro-value : Kind/Headshot inconnus, Weapon nil, positions nil. `infiniteEventLimitations()` = 3 CapabilityGap reportés dans `MatchEventTimeline.Limitations`.
+- **`platform/duckdb/match_events_source.go`** : `MatchEventsSource` (implémente `halo_infinite.EventsSource` structurellement). `LoadHighlightEvents` réutilise `HighlightEventsRepo` (filtre mono-match) ; `GetMatchTimeline` lit durée + T0 (CASE `real_start_time` − `start_time_utc`, identique à Q13) sur SharedReader ; match absent → timeline zéro-value (pas d'erreur).
+- **`halo_infinite/adapter_data.go`** : interface `EventsSource` + champ + `WithEventsSource` chaînable + `LoadMatchEvents` réel (nil source/matchID vide → ErrCapabilityNotSupported ; échec events = propagé ; échec T0 = dégradation gracieuse T0=0). Caps `fallbackCapabilities` flippées.
+- **Caps Infinite flippées** : `match.events.timeline=degraded` + `match.killfeed.per_kill=degraded` + `match.events.spatial=not_exposed`, sur les 2 points de parité (TOML + fallbackCapabilities ; le test de parité compare les deux → pas de count test cassé, seuls les *valeurs* changent).
+- **Wiring boot** (`server.go`) : le builder player-scopé HI câble `.WithEventsSource(NewMatchEventsSource(pdb))`. L'adapter global (events=nil) erre proprement (précédent : match.history déclaré supported mais stub global erre aussi).
+
+**Pourquoi pas de runtime-downgrade events** (contrairement à career) : le precedent dominant (match.history/detail.core) est « caps déclarées, stub global erre ». Le downgrade career est l'exception (career RÉELLEMENT câblée par ailleurs). Ajouter un downgrade events aurait cassé le test de parité (qui ne passe pas d'events stub). → valeurs statiques `degraded`, player-scopé toujours câblé.
+
+**Prochaine étape** : Phase 3 (gate activation) — service + handler Huma `GET /players/{slug}/matches/{id}/events?types=` + OpenAPI + regen types + front kill-feed/timeline (lazy, capability-gated). Puis activation 1b.
+
 ## [2026-06-19] Canonical MatchEvents Phase 1 : adapter Halo 5 events (live + mapper) — Complété
 
 **Statut** : Complété. build `./...` + tous tests games verts (mapper sur fixture réelle + adapter + parité + skeleton). Halo 5 = premier titre à servir des events canoniques.

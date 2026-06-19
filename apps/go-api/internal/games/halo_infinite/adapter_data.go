@@ -13,7 +13,9 @@ package halo_infinite
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -56,6 +58,16 @@ type CrossPlayerSource interface {
 	GetKillerVictimBetween(ctx context.Context, xuid1, xuid2 string) (domain.KillerVictimAggregate, error)
 }
 
+// EventsSource est la surface minimale de lecture des events filmés bruts d'un
+// match + sa timeline T0, pour reconstituer la timeline canonique (Canonical
+// MatchEvents, Phase 2). Implémentée par internal/platform/duckdb.MatchEventsSource
+// (highlight_events + match_registry). nil → LoadMatchEvents retourne
+// ErrCapabilityNotSupported.
+type EventsSource interface {
+	LoadHighlightEvents(ctx context.Context, matchID string) ([]canonical.HighlightEvent, error)
+	GetMatchTimeline(ctx context.Context, matchID string) (domain.MatchTimeline, error)
+}
+
 // DataAdapter est l'implémentation HI de games.TitleDataAdapter.
 //
 // Phase B : seules les méthodes nécessaires aux endpoints prévus en Phase C
@@ -66,6 +78,7 @@ type DataAdapter struct {
 	recent      RecentSource           // Explorer profil de combat (Phase 2 HIGH-B). nil → ErrCapabilityNotSupported.
 	participant ParticipantStatsSource // Explorer sample stats (HIGH-B). nil → ErrCapabilityNotSupported.
 	cross       CrossPlayerSource      // Explorer intersection 2-joueurs (HIGH-B). nil → ErrCapabilityNotSupported.
+	events      EventsSource           // Canonical MatchEvents (Phase 2). nil → ErrCapabilityNotSupported.
 	// staticCaps : CapabilityMap chargée depuis capabilities.toml (Phase 1.7a),
 	// injectée via WithCapabilities. nil → fallbackCapabilities (sécurité boot).
 	staticCaps games.CapabilityMap
@@ -109,6 +122,13 @@ func (a *DataAdapter) WithParticipantSource(src ParticipantStatsSource) *DataAda
 // nil → LoadPlayerIntersection retourne ErrCapabilityNotSupported. Chaînable.
 func (a *DataAdapter) WithCrossPlayerSource(src CrossPlayerSource) *DataAdapter {
 	a.cross = src
+	return a
+}
+
+// WithEventsSource câble la source de la timeline d'events (Canonical MatchEvents,
+// Phase 2). nil → LoadMatchEvents retourne ErrCapabilityNotSupported. Chaînable.
+func (a *DataAdapter) WithEventsSource(src EventsSource) *DataAdapter {
+	a.events = src
 	return a
 }
 
@@ -160,10 +180,11 @@ func fallbackCapabilities() games.CapabilityMap {
 		games.CapEngagement:         games.CapSupported,
 		games.CapBattlePass:         games.CapSupported,
 		games.CapChallenges:         games.CapSupported,
-		// Canonical MatchEvents : not_exposed tant que l'unification depuis
-		// highlight_events (Phase 2) n'est pas câblée dans l'adapter canonique.
-		games.CapMatchEventsTimeline:  games.CapNotExposed,
-		games.CapMatchKillfeedPerKill: games.CapNotExposed,
+		// Canonical MatchEvents (Phase 2 câblée) : timeline reconstruite depuis
+		// highlight_events (degraded) ; arme-par-kill best-effort/absente (degraded) ;
+		// positions monde non extraites (not_exposed). Cf. events.go + capabilities.toml.
+		games.CapMatchEventsTimeline:  games.CapDegraded,
+		games.CapMatchKillfeedPerKill: games.CapDegraded,
 		games.CapMatchEventsSpatial:   games.CapNotExposed,
 	}
 }
@@ -591,11 +612,51 @@ func (a *DataAdapter) LoadHighlightEvents(ctx context.Context, matchID string) (
 	return nil, games.ErrCapabilityNotSupported
 }
 
-// LoadMatchEvents : timeline d'events. Stub Phase 0 — l'unification depuis
-// highlight_events (+ appariement killer/victim, T0) est la Phase 2 du plan
-// PLAN_CANONICAL_MATCH_EVENTS (arme-par-kill degraded, positions not_exposed).
+// LoadMatchEvents reconstitue la timeline canonique d'events d'un match Infinite
+// depuis highlight_events (+ appariement killer/victim, correction T0). Phase 2 du
+// plan PLAN_CANONICAL_MATCH_EVENTS — arme-par-kill degraded, positions not_exposed
+// (cf. infiniteEventLimitations + mapInfiniteEvents).
+//
+// Comportement :
+//   - events source nil → ErrCapabilityNotSupported (adapter global non player-scopé) ;
+//   - matchID vide → ErrCapabilityNotSupported ;
+//   - échec lecture highlight_events → erreur propagée (problème DB) ;
+//   - T0 indisponible → dégradation gracieuse (timeline non corrigée, T0=0) ;
+//   - match sans events → timeline vide (Events=[]), pas d'erreur.
 func (a *DataAdapter) LoadMatchEvents(ctx context.Context, matchID string, opts canonical.MatchEventOptions) (*canonical.MatchEventTimeline, error) {
-	return nil, games.ErrCapabilityNotSupported
+	if a.events == nil {
+		a.logger.Warn("capability_not_supported",
+			"title_slug", a.TitleSlug(),
+			"capability", games.CapMatchEventsTimeline,
+		)
+		return nil, games.ErrCapabilityNotSupported
+	}
+	if strings.TrimSpace(matchID) == "" {
+		return nil, games.ErrCapabilityNotSupported
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	raw, err := a.events.LoadHighlightEvents(ctx, matchID)
+	if err != nil {
+		return nil, fmt.Errorf("hi LoadMatchEvents(%s): highlight events: %w", matchID, err)
+	}
+
+	tl, err := a.events.GetMatchTimeline(ctx, matchID)
+	if err != nil {
+		// T0 indisponible ne doit pas casser la timeline : on dégrade en T0=0
+		// (events non corrigés du countdown) plutôt que d'échouer durement.
+		a.logger.Warn("match_timeline_unavailable",
+			"title_slug", a.TitleSlug(), "match_id", matchID, "err", err.Error())
+		tl = domain.MatchTimeline{}
+	}
+
+	return &canonical.MatchEventTimeline{
+		MatchID:     matchID,
+		Events:      mapInfiniteEvents(raw, tl, opts),
+		Limitations: infiniteEventLimitations(),
+	}, nil
 }
 
 // LoadFriendsXUIDs n'est pas encore câblée (Phase B+).
