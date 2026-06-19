@@ -965,9 +965,14 @@ func main() {
 
 	// Cron catalogue (hebdomadaire) : rafraîchit le catalogue (playlists / couples
 	// map-mode / maps / modes) via le drain DiscoveryUGC testé (même chemin que l'action
-	// admin catalog/ugc-drain). TOUJOURS actif (autonome, plus de flag) : le drain est
-	// ART-safe (CatalogFetcherService.upsertRowNoConflict, SELECT-then-write). La
+	// admin catalog/ugc-drain). TOUJOURS actif (autonome, plus de flag). La
 	// régularité vient du ticker hebdo, PAS d'un redémarrage.
+	//
+	// ART-safety (2026-06-19) : l'UPSERT vers les tables catalogue est SELECT-then-write
+	// (upsertRowNoConflict), MAIS la queue catalog_fetch_queue était elle-même DELETE +
+	// UPDATE per-row sur index ART (PK + idx secondaire) → corrompait metadata.duckdb à
+	// chaque boot. Corrigé : la queue n'a plus aucune surface ART (cf. migration
+	// rebuild_catalog_fetch_queue_drop_art_indexes + dédup NOT EXISTS à l'enqueue).
 	catalogCron := scheduler.NewCatalogRefreshCron(func(cctx context.Context, ts string) (domain.CatalogUGCDrainResult, error) {
 		// V2 — découverte « A à Z » : avant le drain, lire la config de chaque
 		// playlist (discovery-infiniteugc) pour enfiler ses couples map-mode enfants

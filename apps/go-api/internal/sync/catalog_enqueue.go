@@ -66,10 +66,18 @@ func EnqueueCatalogAssets(ctx context.Context, metadataDB *sql.DB, titleSlug str
 		if c.versionID != nil {
 			versionID = *c.versionID
 		}
+		// Dédup SELECT-then-INSERT (NOT EXISTS) : catalog_fetch_queue n'a plus de
+		// PRIMARY KEY (cf. migration rebuild_catalog_fetch_queue_drop_art_indexes,
+		// surface ART du DELETE/UPDATE de drain) → INSERT OR IGNORE ne dédupliquerait
+		// plus. Le même asset peut être revu sur plusieurs matchs avant le drain.
 		if _, err := metadataDB.ExecContext(ctx,
-			`INSERT OR IGNORE INTO catalog_fetch_queue (title_slug, asset_type, asset_id, version_id)
-			 VALUES (?, ?, ?, ?)`,
-			titleSlug, c.assetType, *c.assetID, versionID,
+			`INSERT INTO catalog_fetch_queue (title_slug, asset_type, asset_id, version_id)
+			 SELECT ?, ?, ?, ?
+			 WHERE NOT EXISTS (
+			   SELECT 1 FROM catalog_fetch_queue
+			   WHERE title_slug = ? AND asset_type = ? AND asset_id = ?
+			 )`,
+			titleSlug, c.assetType, *c.assetID, versionID, titleSlug, c.assetType, *c.assetID,
 		); err != nil {
 			slog.WarnContext(ctx, "catalog enqueue: INSERT failed",
 				"err", err, "asset_type", c.assetType, "asset_id", *c.assetID, "title_slug", titleSlug)
