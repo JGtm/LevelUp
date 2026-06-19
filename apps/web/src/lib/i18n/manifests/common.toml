@@ -1464,3 +1464,84 @@ en = "No match found in this window. Broaden your search."
 [common.charts.efficiency_tooltip]
 fr = "Rendement = efficacité offensive : à quel point tu convertis tes dégâts en éliminations. Résistance = solidité défensive : combien de dégâts tu encaisses avant de mourir. Une vie équivaut à environ 225 points de dégâts. Chaque graphe trace sa propre ligne de référence indiquant un niveau « normal »."
 en = "Output = offensive efficiency: how well you turn your damage into kills. Resistance = defensive resilience: how much damage you absorb before dying. One life ≈ 225 points of damage. Each chart draws its own reference line marking a \"normal\" level."
+
+# ── Groupes / familles (accès mutuel aux données) ──────────────────────────────
+[common.groups.title]
+fr = "Mes groupes"
+en = "My groups"
+
+[common.groups.intro]
+fr = "Les membres d'un groupe partagent l'accès mutuel à leurs données. Invitez un ami : il se connecte avec Xbox et rejoint votre groupe."
+en = "Members of a group share mutual access to their data. Invite a friend: they sign in with Xbox and join your group."
+
+[common.groups.new_placeholder]
+fr = "Nom du nouveau groupe"
+en = "New group name"
+
+[common.groups.create]
+fr = "Créer"
+en = "Create"
+
+[common.groups.empty]
+fr = "Vous n'êtes dans aucun groupe pour l'instant."
+en = "You are not in any group yet."
+
+[common.groups.members]
+fr = "Membres"
+en = "Members"
+
+[common.groups.owner]
+fr = "propriétaire"
+en = "owner"
+
+[common.groups.invite]
+fr = "Inviter un ami"
+en = "Invite a friend"
+
+[common.groups.link_copied]
+fr = "Lien d'invitation copié"
+en = "Invite link copied"
+
+[common.groups.rename]
+fr = "Renommer"
+en = "Rename"
+
+[common.groups.delete]
+fr = "Supprimer"
+en = "Delete"
+
+[common.groups.confirm_delete]
+fr = "Supprimer ce groupe ?"
+en = "Delete this group?"
+
+[common.groups.loading]
+fr = "Chargement…"
+en = "Loading…"
+
+[common.groups.invite_error]
+fr = "Impossible de générer l'invitation."
+en = "Could not generate the invitation."
+
+[common.groups.join_title]
+fr = "Rejoindre un groupe"
+en = "Join a group"
+
+[common.groups.join_intro]
+fr = "Vous avez été invité à rejoindre un groupe. Connectez-vous avec Xbox pour rejoindre — votre compte est créé automatiquement."
+en = "You have been invited to join a group. Sign in with Xbox to join — your account is created automatically."
+
+[common.groups.invite_code_label]
+fr = "Code d'invitation"
+en = "Invitation code"
+
+[common.groups.continue_xbox]
+fr = "Continuer avec Xbox"
+en = "Continue with Xbox"
+
+[common.groups.load_group]
+fr = "Charger un groupe"
+en = "Load a group"
+
+[common.groups.load_group_option]
+fr = "Charger un groupe…"
+en = "Load a group…"

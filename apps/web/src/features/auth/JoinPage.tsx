@@ -11,12 +11,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { API_BASE_URL } from '@/lib/api/client'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { Route } from '@/routes/join'
 
 export function JoinPage() {
   const { invite } = Route.useSearch()
   const locale = useAppShellStore((s) => s.locale)
-  const en = locale === 'en'
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const [code, setCode] = useState(invite ?? '')
 
   const trimmed = code.trim().toUpperCase()
@@ -36,19 +38,13 @@ export function JoinPage() {
 
         <Card>
           <CardContent className="space-y-5 pt-6 text-center">
-            <h2 className="text-lg font-semibold">
-              {en ? 'Join a group' : 'Rejoindre un groupe'}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {en
-                ? 'You have been invited to join a group. Sign in with Xbox to join — your account is created automatically.'
-                : 'Vous avez été invité à rejoindre un groupe. Connectez-vous avec Xbox pour rejoindre — votre compte est créé automatiquement.'}
-            </p>
+            <h2 className="text-lg font-semibold">{t('common.groups.join_title')}</h2>
+            <p className="text-sm text-muted-foreground">{t('common.groups.join_intro')}</p>
 
             {!invite && (
               <div className="text-left">
                 <label htmlFor="invite-code" className="mb-1 block text-sm font-medium text-foreground">
-                  {en ? 'Invitation code' : 'Code d’invitation'}
+                  {t('common.groups.invite_code_label')}
                 </label>
                 <input
                   id="invite-code"
@@ -61,7 +57,7 @@ export function JoinPage() {
             )}
 
             <Button onClick={handleJoin} className="w-full" disabled={!trimmed}>
-              {en ? 'Continue with Xbox' : 'Continuer avec Xbox'}
+              {t('common.groups.continue_xbox')}
             </Button>
           </CardContent>
         </Card>

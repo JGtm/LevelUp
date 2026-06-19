@@ -8,6 +8,8 @@
  * répondrait 401).
  */
 import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { useMyGroups } from '@/features/groups/queries'
 
 interface SquadGroupLoaderProps {
@@ -19,12 +21,13 @@ interface SquadGroupLoaderProps {
 
 export function SquadGroupLoader({ onLoad, exclude }: SquadGroupLoaderProps) {
   const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const { data: groups } = useMyGroups()
   if (!groups?.length) return null
 
   return (
     <select
-      aria-label={locale === 'en' ? 'Load a group' : 'Charger un groupe'}
+      aria-label={t('common.groups.load_group')}
       value=""
       onChange={(e) => {
         const g = groups.find((x) => x.id === e.target.value)
@@ -36,7 +39,7 @@ export function SquadGroupLoader({ onLoad, exclude }: SquadGroupLoaderProps) {
       }}
       className="h-7 shrink-0 rounded-md border border-input bg-background px-2 text-xs text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
     >
-      <option value="">{locale === 'en' ? 'Load a group…' : 'Charger un groupe…'}</option>
+      <option value="">{t('common.groups.load_group_option')}</option>
       {groups.map((g) => (
         <option key={g.id} value={g.id}>
           {g.name}
