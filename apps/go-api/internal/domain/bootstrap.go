@@ -31,7 +31,7 @@ type CapabilityMap struct {
 	CanManageInstance   bool `json:"can_manage_instance"`
 }
 
-// PlayerSummary représente le résumé d'un profil joueur.
+// PlayerSummary représente le résumé d'un profil joueur (couple joueur × titre).
 type PlayerSummary struct {
 	PlayerSlug     string `json:"player_slug"`
 	Gamertag       string `json:"gamertag"`
@@ -40,6 +40,30 @@ type PlayerSummary struct {
 	IsDemo         bool   `json:"is_demo"`
 	SteamID        string `json:"steam_id,omitempty"`   // Steam ID pour le poller de présence
 	TitleSlug      string `json:"title_slug,omitempty"` // Sprint 44 : titre associé
+	// SyncEnabled : false = sync en PAUSE pour ce (joueur, titre) — les données
+	// restent sur disque mais ne sont plus rafraîchies. Résolu nil→true au chargement.
+	SyncEnabled bool `json:"sync_enabled"`
+	// InitialMaxMatches : nombre de matchs demandés à l'onboarding (0 = défaut).
+	InitialMaxMatches int `json:"initial_max_matches,omitempty"`
+}
+
+// SyncablePlayers retourne les couples (joueur, titre) dont le sync est ACTIF
+// (sync_enabled != false). C'est le filtre CANONIQUE des CHEMINS SYNC (scheduler,
+// watcher, fan-out, recompute amis) : un titre « en pause » ne doit plus être
+// rafraîchi, mais ses données restent sur disque.
+//
+// NE PAS l'appliquer aux chemins UI/LECTURE (bootstrap, liste /players,
+// résolution d'un joueur pour servir une page) : un titre en pause doit y rester
+// VISIBLE, sinon réactivation impossible (404 ErrPlayerNotFound) et disparition
+// des réglages.
+func SyncablePlayers(players []PlayerSummary) []PlayerSummary {
+	out := make([]PlayerSummary, 0, len(players))
+	for _, p := range players {
+		if p.SyncEnabled {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // HaloIdentitySummary représente l'identité Halo résolue côté backend.

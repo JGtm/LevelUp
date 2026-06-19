@@ -1,3 +1,22 @@
+## [2026-06-19] Multi-titre Pass B.1-B.3 : sélection par titre (back) — modèle + store atomique + filtre sync — Complété
+
+**Statut** : Complété (back, fondation). build `./...` + vet + gofmt OK ; +19 tests (store 13, helper/filtre 6) ; Halo Infinite byte-identique (additif). Reste B.4 (onboarding multi-titre + sync-initial title-aware) et B.5 (endpoints toggle/purge, owner-gated).
+
+**But** : substrat « activer/mettre en pause un titre par joueur » sur `db_profiles.json` v3. Décisions produit verrouillées : pause = garder les données + bouton purge séparé ; min 1 titre actif.
+
+**Décisions / réalisations** :
+- **B.1 modèle (additif)** : `sync_enabled *bool` (nil/true=actif, false=pause) + `initial_max_matches int` sur les structs `dbProfileEntry` (config + service) + `domain.PlayerSummary` (résolu nil→true au chargement). `InitialMaxMatches` ajouté à `CreatePlayerProfileRequest`.
+- **B.2 writer UNIQUE atomique** : nouveau `internal/platform/dbprofiles/Store` — écriture atomique (temp+rename), verrou process, migration v2→v3, invariant **« ≥1 titre actif »** (`SetSyncEnabled`/`RemoveEntry` → `ErrLastActiveTitle`). `ProfileService.CreatePlayer` migré dessus (fin du read-modify-write ad hoc).
+- **B.3 filtre sync** : helper canonique `domain.SyncablePlayers` appliqué aux **4 chemins SYNC seulement** (scheduler `RunOnceTrigger` à la source → couvre V1 ET V2 ; init watcher ; fan-out ; recompute amis). Discovery non filtré (credential découvrable = réactivation rapide).
+
+**Pilotage workflow Ultracode (6 agents map+review)** — 3 corrections de cap :
+- **Handoff infirmé** : NE PAS filtrer dans `loadPlayersV3` (chokepoint partagé avec l'UI : bootstrap, `/players`, `resolveRealPlayer`). Preuve décisive : un filtre y renverrait **404 ErrPlayerNotFound** sur toute page d'un joueur en pause → réactivation impossible. D'où le filtre sync-path-only.
+- **Bug données prod #1** : entrées `auth_only:true` (followers présence) auraient été **effacées** à chaque écriture (struct typé) → préservation des champs d'entrée inconnus (`Marshal/UnmarshalJSON` custom + test régression).
+- **Bug données prod #2** : `levelup add-title` (second writer, struct locale sans `admin`, `os.WriteFile` non atomique) **effaçait le champ `admin`** → routé sur le store unique.
+- Review adversariale du store : atomicité, round-trip (top-level + entrée), invariant min-1, absence de deadlock, équivalence `CreatePlayer` — tout confirmé sur build+tests réels (verdict RISKY = uniquement le second-writer cmd_title, corrigé).
+
+**Prochaine étape** : B.5 (toggle/purge owner-gated, primitives store déjà prêtes) puis B.4 (onboarding multi-titre + rendre `StartInitialSync` title-aware — corrige au passage un vrai bug : le sync initial écrit toujours dans halo_infinite quel que soit le titre).
+
 ## [2026-06-19] Multi-titre Pass A : nombre de matchs de placement configurable par titre — Complété (back)
 
 **Statut** : Complété (back). build `./...` + tests halo_5/title/canonical verts ; Halo Infinite byte-identique. Front (retrait fallbacks `?? 10`) reporté à la passe front.

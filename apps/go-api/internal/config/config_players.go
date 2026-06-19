@@ -27,6 +27,12 @@ type dbProfileEntry struct {
 	DBPath         string `json:"db_path"`
 	XUID           string `json:"xuid"`
 	WaypointPlayer string `json:"waypoint_player,omitempty"`
+	// SyncEnabled : nil ou true = titre actif pour ce joueur ; false = sync en PAUSE
+	// (les données restent sur disque, réactivable sans re-sync). Cf. Pass B.
+	SyncEnabled *bool `json:"sync_enabled,omitempty"`
+	// InitialMaxMatches : nombre de matchs à synchroniser à l'onboarding pour ce
+	// (joueur, titre). 0 = défaut (200, borné par le handler de sync initial).
+	InitialMaxMatches int `json:"initial_max_matches,omitempty"`
 }
 
 // LoadPlayers charge db_profiles.json et retourne la liste des joueurs.
@@ -53,13 +59,14 @@ func (c *AppConfig) LoadPlayers(titleFilter ...string) ([]domain.PlayerSummary, 
 				WaypointPlayer: d.Gamertag,
 				IsDemo:         true,
 				TitleSlug:      titleSlug,
+				SyncEnabled:    true,
 			})
 		}
 		if len(out) == 0 {
 			// Fallback (fixtures plates legacy) : au moins le main.
 			out = append(out, domain.PlayerSummary{
 				PlayerSlug: "demo-player", Gamertag: "DemoPlayer", XUID: DemoRoster[0].XUID,
-				WaypointPlayer: "DemoPlayer", IsDemo: true, TitleSlug: titleSlug,
+				WaypointPlayer: "DemoPlayer", IsDemo: true, TitleSlug: titleSlug, SyncEnabled: true,
 			})
 		}
 		return out, nil
@@ -130,6 +137,7 @@ func (c *AppConfig) loadPlayersV2(data []byte, titleFilter ...string) ([]domain.
 			WaypointPlayer: wp,
 			IsDemo:         false,
 			TitleSlug:      title.DefaultSlug,
+			SyncEnabled:    true, // v2.1 : pas de notion de pause → toujours actif
 		})
 	}
 	return players, nil
@@ -157,13 +165,17 @@ func (c *AppConfig) loadPlayersV3(data []byte, titleFilter ...string) ([]domain.
 			if wp == "" {
 				wp = gamertag
 			}
+			// nil/true = actif (rétrocompat : entrées existantes sans le champ).
+			syncEnabled := p.SyncEnabled == nil || *p.SyncEnabled
 			players = append(players, domain.PlayerSummary{
-				PlayerSlug:     gamertag,
-				Gamertag:       gamertag,
-				XUID:           p.XUID,
-				WaypointPlayer: wp,
-				IsDemo:         false,
-				TitleSlug:      titleSlug,
+				PlayerSlug:        gamertag,
+				Gamertag:          gamertag,
+				XUID:              p.XUID,
+				WaypointPlayer:    wp,
+				IsDemo:            false,
+				TitleSlug:         titleSlug,
+				SyncEnabled:       syncEnabled,
+				InitialMaxMatches: p.InitialMaxMatches,
 			})
 		}
 	}
