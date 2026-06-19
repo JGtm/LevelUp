@@ -46,25 +46,6 @@ func openMemDB(t *testing.T) *sql.DB {
 	return db
 }
 
-// newInMemoryGlobalDB ouvre une DB DuckDB in-memory avec le schéma xuid_aliases (P5.3).
-// Utilisé par les tests qui assertent sur xuid_aliases globalisés.
-func newInMemoryGlobalDB(t *testing.T) *sql.DB {
-	t.Helper()
-	db := openMemDB(t)
-	if _, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS xuid_aliases (
-			xuid VARCHAR PRIMARY KEY,
-			gamertag VARCHAR NOT NULL,
-			last_seen TIMESTAMP NOT NULL DEFAULT now(),
-			source VARCHAR DEFAULT 'sync',
-			updated_at TIMESTAMP DEFAULT now()
-		)
-	`); err != nil {
-		t.Fatalf("create global xuid_aliases: %v", err)
-	}
-	return db
-}
-
 func countRows(t *testing.T, db *sql.DB, table string) int {
 	t.Helper()
 	var n int
@@ -168,7 +149,6 @@ func newTestEngine(t *testing.T) (*SyncEngine, string) {
 
 func TestProcessMatch_FullPipeline(t *testing.T) {
 	playerDB, sharedDB := newInMemoryDBs(t)
-	globalDB := newInMemoryGlobalDB(t)
 
 	mock := &mockHaloClient{
 		statsBody: map[string]map[string]any{
@@ -180,7 +160,7 @@ func TestProcessMatch_FullPipeline(t *testing.T) {
 	result := domain.SyncResult{StartedAt: time.Now()}
 	opts := domain.DefaultSyncOptions()
 
-	err := e.processMatch(context.Background(), mock, sharedDB, playerDB, globalDB, &result, "match-001", opts)
+	err := e.processMatch(context.Background(), mock, sharedDB, playerDB, &result, "match-001", opts)
 	if err != nil {
 		t.Fatalf("processMatch: %v", err)
 	}
@@ -200,10 +180,9 @@ func TestProcessMatch_FullPipeline(t *testing.T) {
 		t.Error("medals_earned: attendu > 0")
 	}
 
-	// Verify xuid_aliases (P5.3 — globalized)
-	if n := countRows(t, globalDB, "xuid_aliases"); n != 4 {
-		t.Errorf("xuid_aliases (global): attendu 4, obtenu %d", n)
-	}
+	// Note : plus d'assertion sur un store global xuid_aliases (consolidé dans
+	// shared 2026-06-19). Les gamertags sont vérifiés via match_participants
+	// ci-dessus ; v_gamertag_lookup les résout sans store séparé.
 
 	// Verify player_match_enrichment
 	if n := countRows(t, playerDB, "player_match_enrichment"); n != 1 {
@@ -236,7 +215,7 @@ func TestProcessMatch_WithoutParticipants(t *testing.T) {
 	opts := domain.DefaultSyncOptions()
 	opts.WithParticipants = false
 
-	err := e.processMatch(context.Background(), mock, sharedDB, playerDB, nil, &result, "match-001", opts)
+	err := e.processMatch(context.Background(), mock, sharedDB, playerDB, &result, "match-001", opts)
 	if err != nil {
 		t.Fatalf("processMatch: %v", err)
 	}
@@ -263,7 +242,7 @@ func TestProcessMatch_WithoutMedals(t *testing.T) {
 	opts := domain.DefaultSyncOptions()
 	opts.WithMedals = false
 
-	err := e.processMatch(context.Background(), mock, sharedDB, playerDB, nil, &result, "match-001", opts)
+	err := e.processMatch(context.Background(), mock, sharedDB, playerDB, &result, "match-001", opts)
 	if err != nil {
 		t.Fatalf("processMatch: %v", err)
 	}
@@ -285,7 +264,7 @@ func TestProcessMatch_GetMatchStatsError(t *testing.T) {
 	result := domain.SyncResult{StartedAt: time.Now()}
 	opts := domain.DefaultSyncOptions()
 
-	err := e.processMatch(context.Background(), mock, sharedDB, playerDB, nil, &result, "match-001", opts)
+	err := e.processMatch(context.Background(), mock, sharedDB, playerDB, &result, "match-001", opts)
 	if err == nil {
 		t.Fatal("attendu une erreur pour GetMatchStats failure")
 	}
@@ -308,12 +287,12 @@ func TestProcessMatch_Idempotent(t *testing.T) {
 	opts := domain.DefaultSyncOptions()
 
 	result1 := domain.SyncResult{StartedAt: time.Now()}
-	if err := e.processMatch(context.Background(), mock, sharedDB, playerDB, nil, &result1, "match-001", opts); err != nil {
+	if err := e.processMatch(context.Background(), mock, sharedDB, playerDB, &result1, "match-001", opts); err != nil {
 		t.Fatalf("1st processMatch: %v", err)
 	}
 
 	result2 := domain.SyncResult{StartedAt: time.Now()}
-	if err := e.processMatch(context.Background(), mock, sharedDB, playerDB, nil, &result2, "match-001", opts); err != nil {
+	if err := e.processMatch(context.Background(), mock, sharedDB, playerDB, &result2, "match-001", opts); err != nil {
 		t.Fatalf("2nd processMatch: %v", err)
 	}
 
@@ -338,7 +317,7 @@ func TestProcessMatch_MultipleMatches(t *testing.T) {
 
 	for _, id := range matchIDs {
 		result := domain.SyncResult{StartedAt: time.Now()}
-		if err := e.processMatch(context.Background(), mock, sharedDB, playerDB, nil, &result, id, opts); err != nil {
+		if err := e.processMatch(context.Background(), mock, sharedDB, playerDB, &result, id, opts); err != nil {
 			t.Fatalf("processMatch(%s): %v", id, err)
 		}
 	}
@@ -443,7 +422,7 @@ func TestRunDelta_NewMatches(t *testing.T) {
 			t.Errorf("match %s ne devrait pas être connu", id)
 			continue
 		}
-		if err := engine.processMatch(context.Background(), mock, sharedDB.SQLDb(), playerDB.SQLDb(), nil, &result, id, opts); err != nil {
+		if err := engine.processMatch(context.Background(), mock, sharedDB.SQLDb(), playerDB.SQLDb(), &result, id, opts); err != nil {
 			t.Fatalf("processMatch(%s): %v", id, err)
 		}
 	}
@@ -495,7 +474,7 @@ func TestRunDelta_StopsAtKnownMatch(t *testing.T) {
 			result.MatchesSkipped++
 			break // delta mode: stop at first known
 		}
-		if err := e.processMatch(context.Background(), mock, sharedDB, playerDB, nil, &result, entry.MatchID, opts); err != nil {
+		if err := e.processMatch(context.Background(), mock, sharedDB, playerDB, &result, entry.MatchID, opts); err != nil {
 			t.Fatalf("processMatch(%s): %v", entry.MatchID, err)
 		}
 		processed++
@@ -544,7 +523,7 @@ func TestRunFull_ContinuesPastKnown(t *testing.T) {
 			result.MatchesSkipped++
 			continue // full mode: skip but continue
 		}
-		if err := e.processMatch(context.Background(), mock, sharedDB, playerDB, nil, &result, entry.MatchID, opts); err != nil {
+		if err := e.processMatch(context.Background(), mock, sharedDB, playerDB, &result, entry.MatchID, opts); err != nil {
 			t.Fatalf("processMatch(%s): %v", entry.MatchID, err)
 		}
 		processed++
@@ -584,7 +563,7 @@ func TestProcessMatch_EmptyPlayersArray(t *testing.T) {
 	result := domain.SyncResult{StartedAt: time.Now()}
 	opts := domain.DefaultSyncOptions()
 
-	err := e.processMatch(context.Background(), mock, sharedDB, playerDB, nil, &result, "match-empty", opts)
+	err := e.processMatch(context.Background(), mock, sharedDB, playerDB, &result, "match-empty", opts)
 	if err != nil {
 		t.Fatalf("processMatch: %v", err)
 	}
@@ -614,7 +593,7 @@ func TestProcessMatch_ContextCancelled(t *testing.T) {
 	result := domain.SyncResult{StartedAt: time.Now()}
 	opts := domain.DefaultSyncOptions()
 
-	err := e.processMatch(ctx, mock, sharedDB, playerDB, nil, &result, "match-001", opts)
+	err := e.processMatch(ctx, mock, sharedDB, playerDB, &result, "match-001", opts)
 	if err == nil {
 		t.Fatal("attendu une erreur pour context annulé")
 	}
@@ -670,7 +649,7 @@ func TestProcessMatch_APICallCounting(t *testing.T) {
 
 	for _, id := range matchIDs {
 		result := domain.SyncResult{StartedAt: time.Now()}
-		_ = e.processMatch(context.Background(), mock, sharedDB, playerDB, nil, &result, id, opts)
+		_ = e.processMatch(context.Background(), mock, sharedDB, playerDB, &result, id, opts)
 	}
 
 	// Each processMatch calls GetMatchStats once

@@ -1,3 +1,21 @@
+## [2026-06-19] Suppression du chemin d'ÉCRITURE vers le store global xbox_aliases — Complété (code)
+
+**Suite directe de la consolidation xuid_aliases** : après retrait des LECTEURs du global (commit 1) + confirmation de redondance (local `global ⊆ shared` = +0 ; prod `global = 0 lignes`), restait le writer. Le moteur de sync `UpsertXUIDAlias(ctx, globalDB, …)` écrivait encore dans le store mort à chaque match (4 call-sites : process_match, fetch, batch_path, highlight_events). Demande user : « aligner le code qui tape dans cette DB ».
+
+**Décision** : retrait COMPLET du plumbing `globalDB` (pas de neutralisation laissant du code mort — règle anti-dead-code) :
+- Param `globalDB *sql.DB` retiré de 7 fonctions (`processMatch`, `insertFetchedMatch`, `submitOrInsertMatch`, `submitMatchAsBatch`, `insertHighlightEventsFromData`, `ProcessHighlightEvents`, `ReplayHighlightEventsForMatches`).
+- `openGlobalDB` (schema.go) supprimée ; champ `globalDBPath` (engine.go) + assignation (engine_options.go) + champ `PlayerPoolConfig.GlobalXuidAliasesDBPath` (pool.go) + assignations (config/player_resolver.go) retirés.
+- Tests mis à jour (~30 call-sites) : helper `newInMemoryGlobalDB` supprimé, assertion `xuid_aliases (global)` retirée (vérif via match_participants), provider tests nettoyés.
+- `PathResolver.GlobalXuidAliasesDBPath()` CONSERVÉ : encore utilisé par `levelup consolidate-aliases` + cmd/restore + cmd/migrate-xuid-aliases-global.
+
+**Sûreté** : aucune régression d'affichage. Les gamertags restent résolus par `v_gamertag_lookup` (shared.xuid_aliases + match_participants + killer_victim_pairs) et le chemin convergent (`upsertAliasesFromMatchJSON` → shared.xuid_aliases) reste l'alimentation vivante.
+
+**Tests** : build/vet OK ; `go test ./internal/sync/... ./internal/config/... ./internal/platform/duckdb/` vert (sync 20s).
+
+**Prochaine étape** : commit 2 + deploy → suppression des fichiers `data/global/xbox_aliases.duckdb` (local + prod) une fois le writer parti.
+
+---
+
 ## [2026-06-19] Alignement données prod : in-place rebuild ART + backfill engagement — Complété (ZÉRO perte)
 
 **Résultat** : prod aligné sur les corrections locales, **sur ses propres données** (pas de copie). Maintenance via `ssh lvelup` : backup (`/opt/levelup/data/backups/pre_align_20260619_104239`) → `docker compose stop levelup` → `docker compose run --rm --entrypoint levelup levelup rebuild-pme-art --all` → `... engagement-coefs --all --with-scores --force` → restart (trap de sécurité). Serveur HTTP 200 healthy après.

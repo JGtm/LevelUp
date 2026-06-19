@@ -161,7 +161,7 @@ func fetchHighlightChunkResilient(
 // Helper utilisé par insertFetchedMatch pour injection de dépendance.
 func insertHighlightEventsFromData(
 	ctx context.Context,
-	sharedDB, globalDB *sql.DB,
+	sharedDB *sql.DB,
 	matchID string,
 	data []byte,
 	filmMajorVersion int,
@@ -199,14 +199,10 @@ func insertHighlightEventsFromData(
 	}
 	observability.IncCounter("highlight_events_parse_total_ok")
 
-	// Upsert XUID aliases from events (DB globale, hors TX shared).
-	if globalDB != nil {
-		for _, ev := range events {
-			if ev.XUID != 0 && ev.Gamertag != "" {
-				_ = UpsertXUIDAlias(ctx, globalDB, strconv.FormatUint(ev.XUID, 10), ev.Gamertag)
-			}
-		}
-	}
+	// Note alias : les xuid_aliases sont alimentés par le chemin convergent
+	// (convergePSA → upsertAliasesFromMatchJSON → shared.xuid_aliases) et par
+	// match_participants/killer_victim_pairs que lit v_gamertag_lookup. Le store
+	// global xbox_aliases a été consolidé dans shared (refactor 2026-06-19).
 
 	// Complétion combat atomique via persist (events + killer_victim + bits) sur
 	// le writer RW shared — voir persistCombatCompletion. Remplace les écritures
@@ -234,7 +230,7 @@ func insertHighlightEventsFromData(
 func ProcessHighlightEvents(
 	ctx context.Context,
 	client HaloClient,
-	sharedDB, globalDB *sql.DB,
+	sharedDB *sql.DB,
 	matchID string,
 	result *domain.SyncResult,
 ) error {
@@ -286,19 +282,9 @@ func ProcessHighlightEvents(
 	}
 	observability.IncCounter("highlight_events_parse_total_ok")
 
-	// Upsert les gamertags extraits depuis le film (source la plus fiable).
-	// P5.3 : ecriture dans la DB globale xbox_aliases. DB séparée du shared →
-	// reste hors de la TX de complétion (best-effort, inchangé).
-	aliasCount := 0
-	if globalDB != nil {
-		for _, ev := range events {
-			if ev.XUID != 0 && ev.Gamertag != "" {
-				if uErr := UpsertXUIDAlias(ctx, globalDB, strconv.FormatUint(ev.XUID, 10), ev.Gamertag); uErr == nil {
-					aliasCount++
-				}
-			}
-		}
-	}
+	// Note alias : plus d'upsert xbox_aliases ici. Les gamertags des films
+	// alimentent killer_victim_pairs (via persistCombatCompletion) que lit
+	// v_gamertag_lookup ; le store global a été consolidé dans shared (2026-06-19).
 
 	// Complétion combat via le persister orchestré (1 TX, writer RW). Remplace
 	// les écritures db.Exec directes legacy (InsertHighlightEvents +
@@ -323,7 +309,6 @@ func ProcessHighlightEvents(
 		"film_version", filmMajorVersion,
 		"events_parsed", len(events),
 		"events_inserted", n,
-		"aliases_upserted", aliasCount,
 	)
 	return nil
 }

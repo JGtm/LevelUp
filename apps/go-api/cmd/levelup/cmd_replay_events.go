@@ -103,7 +103,7 @@ func runReplayEvents(cfg *config.AppConfig, args []string) error {
 		fmt.Printf("[%d/%d] %s %s\n", done, total, matchID, status)
 	}
 
-	res, err := go_sync.ReplayHighlightEventsForMatches(ctx, client, sharedDB, nil, broken, progress)
+	res, err := go_sync.ReplayHighlightEventsForMatches(ctx, client, sharedDB, broken, progress)
 	if err != nil {
 		fmt.Printf("replay interrompu: %v\n", err)
 	}

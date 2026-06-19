@@ -26,7 +26,7 @@ import (
 func (e *SyncEngine) processMatch(
 	ctx context.Context,
 	client HaloClient,
-	sharedDB, playerDB, globalDB *sql.DB,
+	sharedDB, playerDB *sql.DB,
 	result *domain.SyncResult,
 	matchID string,
 	opts domain.SyncOptions,
@@ -113,18 +113,12 @@ func (e *SyncEngine) processMatch(
 		}
 		result.ParticipantsDone += len(participants)
 
-		aliased := 0
-		for _, p := range participants {
-			if p.Gamertag != nil && *p.Gamertag != "" {
-				// P5.3 : écriture dans la DB globale xbox_aliases.duckdb.
-				if globalDB != nil {
-					_ = UpsertXUIDAlias(ctx, globalDB, p.XUID, *p.Gamertag)
-				}
-				aliased++
-			}
-		}
+		// Alias xuid→gamertag : plus d'upsert vers le store global xbox_aliases
+		// (consolidé dans shared 2026-06-19). Les gamertags sont déjà en
+		// shared.match_participants (InsertParticipants ci-dessus) que lit
+		// v_gamertag_lookup, et le chemin convergent upserte shared.xuid_aliases.
 		slog.DebugContext(ctx, "processMatch: participants insérés",
-			"match_id", matchID, "participants", len(participants), "aliases_upserted", aliased,
+			"match_id", matchID, "participants", len(participants),
 		)
 	}
 
@@ -145,7 +139,7 @@ func (e *SyncEngine) processMatch(
 
 	// ─── highlight_events + killer_victim_pairs ──────────────────────────────────────
 	if opts.WithHighlightEvents {
-		if err := ProcessHighlightEvents(ctx, client, sharedDB, globalDB, matchID, result); err != nil {
+		if err := ProcessHighlightEvents(ctx, client, sharedDB, matchID, result); err != nil {
 			// Non-bloquant : on logge et on continue (pas de return).
 			slog.WarnContext(ctx, "processMatch: highlight_events non chargés",
 				"gamertag", e.gamertag, "match_id", matchID, "err", err,
