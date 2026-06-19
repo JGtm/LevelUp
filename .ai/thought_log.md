@@ -1,3 +1,22 @@
+## [2026-06-19] Halo 5 Phase 1a : adapter read-only (client+mapping+DataAdapter) + GenericSemanticAdapter — Complété
+
+**Statut** : Complété (Phase 1a = code adapter + tests, ADDITIF/inerte). Build module complet vert ; suite halo_5 verte ; Halo byte-identique (aucun câblage boot).
+
+**But** : implémenter l'adapter Halo 5 read-only (handoff §4 étapes 2-3) en mappant le JSON h5 RÉEL (sonde §0-ter) vers le canonique, indexé par gamertag.
+
+**Décisions techniques** :
+- **`internal/games/halo_5/`** : `client.go` (recette cryptum CONFIRMÉE : host spartanstats/haloplayer, header `X-343-Authorization-Spartan` v4, `User-Agent: cpprestsdk/2.4.0`, query `?auth=st`, PAS de clearance, gamertag brut, gzip transparent, retry/backoff) ; `dto.go` (shapes réels) ; `mapping.go`+`mapping_servicerecord.go` (mappers PURS) ; `adapter_data.go` (TitleDataAdapter, source live mockable).
+- **Identité gamertag-keyée** : `PlayerIdentity.XUID=""`, le param `xuid` des Load* = gamertag côté h5 (`Player.Xuid`=null en h5).
+- **Outcome data-grounded** : dérivé du **Rank d'équipe** (1=win), PAS de l'enum `Result` int deviné — la sonde montre JGtm `Result:3` AVEC son équipe `Rank:1` `Score` max = victoire (l'agent du workflow avait deviné "3=loss", démenti par la donnée).
+- **CSR natif** : `DesignationId`(0-5 Bronze→Onyx)+`Tier`(sous-palier) → `CareerSnapshot.RankTier/RankName` ; `HighestCSR` seulement si Onyx (Csr brut > 0).
+- **Phase 1a câble 2 méthodes live** : `LoadPlayerStats` (agrégat service record arena) + `LoadCareerSnapshot` (CSR). `LoadMatchSummaries`/carnage/etc. = stubs (`ErrCapabilityNotSupported`) ; `GetPlayerMatches`+`mapMatchSummaries` testés = fondation history Phase 2.
+- **RÉPONSE ARCHI (question user "pourquoi un adapter par jeu ?")** : le `SemanticAdapter` était du **boilerplate pur dupliqué** (halo_infinite + synthetic_title_b quasi-identiques, zéro logique title-specific). Créé **`games.GenericSemanticAdapter` partagé** (paramétré par slug) → Halo 5 l'utilise, **PAS de fichier h5 dédié**. Le `DataAdapter` reste par titre (anti-corruption layer : divergences irréductibles — gamertag vs xuid, live vs DuckDB, ISO duration, end-vs-start, CSR vs MMR).
+- **Tests** : recette client (httptest : headers + auth=st + pas de clearance + gzip + 401), mapping (fixtures sonde réelles : ISO duration, Rank→win, Diamant 5, agrégat), adapter (live/nil-source/404), parité `fallbackCapabilities`↔`capabilities.toml`.
+
+**Résultats** : suite halo_5 + games verte, vet clean, build `./...` vert. Zéro impact Halo (package neuf non référencé).
+
+**Conclusion / prochaine étape** : Phase 1b = wiring resolver (registration générique registry-driven) + assessment activation (piège `clearance_url=""` qui casse `validate()`, provisioning, token wiring) — le risqué/boot, en geste délibéré. Puis review adversarial.
+
 ## [2026-06-19] Halo 5 Phase 1 étape 0 : SONDE LIVE — 343 sert h5 en 2026 + v4 accepté — Complété
 
 **Statut** : Complété. `cmd/probe-h5` livré + lancé live (JGtm) ; les 2 inconnues critiques du handoff sont tranchées.

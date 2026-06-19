@@ -1,0 +1,211 @@
+// Package halo_5 — mapping.go : projection PURE des DTO Halo 5 vers le canonique.
+//
+// Fonctions stateless (zero IO, testables sans reseau) — c'est ici que vivent les
+// divergences Halo 5 vs Infinite documentees dans le handoff §0-ter :
+//   - identite GAMERTAG-keyee (Player.Xuid toujours null) ;
+//   - Outcome derive du Rank (1 = vainqueur), PAS de l'enum Result deviné ;
+//   - MatchDuration ISO8601 "PT..." a parser ;
+//   - MatchCompletedDate = FIN du match (StartedAtUTC = fin − duree) ;
+//   - CSR natif DesignationId (palier majeur) + Tier (sous-palier).
+package halo_5
+
+import (
+	"math"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
+	"levelup/go-api/internal/games/canonical"
+)
+
+// h5Identity construit l'identite canonique d'un joueur Halo 5. XUID vide
+// (jamais fourni par l'API h5) ; indexation locale par gamertag normalise.
+func h5Identity(gamertag string) canonical.PlayerIdentity {
+	return canonical.PlayerIdentity{
+		XUID:               "",
+		Gamertag:           gamertag,
+		GamertagNormalized: strings.ToLower(strings.TrimSpace(gamertag)),
+		IsBot:              false,
+	}
+}
+
+// iso8601DurationRe capture les composantes H/M/S d'une duree ISO8601 du type
+// "PT5M41.7930011S" (heures/minutes/secondes ; jours rares en match h5, gérés).
+var iso8601DurationRe = regexp.MustCompile(`^P(?:(\d+)D)?T(?:(\d+)H)?(?:(\d+)M)?(?:([\d.]+)S)?$`)
+
+// parseISO8601DurationSeconds convertit "PT12M34.5S" en secondes (arrondi). Nil
+// si vide ou non-parsable (le canonique distingue "indisponible" de "0").
+func parseISO8601DurationSeconds(s string) *int {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	m := iso8601DurationRe.FindStringSubmatch(s)
+	if m == nil {
+		return nil
+	}
+	var total float64
+	if m[1] != "" { // jours
+		if d, err := strconv.Atoi(m[1]); err == nil {
+			total += float64(d) * 86400
+		}
+	}
+	if m[2] != "" { // heures
+		if h, err := strconv.Atoi(m[2]); err == nil {
+			total += float64(h) * 3600
+		}
+	}
+	if m[3] != "" { // minutes
+		if mn, err := strconv.Atoi(m[3]); err == nil {
+			total += float64(mn) * 60
+		}
+	}
+	if m[4] != "" { // secondes (fractionnaires)
+		if sec, err := strconv.ParseFloat(m[4], 64); err == nil {
+			total += sec
+		}
+	}
+	out := int(math.Round(total))
+	return &out
+}
+
+// deriveOutcome derive l'issue d'un match pour le joueur a partir du Rang
+// (1 = vainqueur). Choix data-grounded (sonde : JGtm Rank 1 = victoire) plutot
+// que de deviner l'enum Result int. teamRank prioritaire (jeu d'equipe) ; sinon
+// playerRank (FFA). Les egalites ne sont pas distinguees en Phase 1 (rares ;
+// detection par egalite de score = Phase 2) -> rank != 1 => loss.
+func deriveOutcome(playerRank int, teamRank *int) canonical.Outcome {
+	rank := playerRank
+	if teamRank != nil {
+		rank = *teamRank
+	}
+	if rank == 1 {
+		return canonical.OutcomeWin
+	}
+	return canonical.OutcomeLoss
+}
+
+// mapMatchSummaries projette une page d'historique h5 vers []MatchSummary, du
+// point de vue du joueur requete (self = participant au gamertag donne).
+func mapMatchSummaries(resp *H5MatchesResponse, gamertag string) []canonical.MatchSummary {
+	if resp == nil {
+		return nil
+	}
+	out := make([]canonical.MatchSummary, 0, len(resp.Results))
+	for i := range resp.Results {
+		out = append(out, mapOneMatchSummary(&resp.Results[i], gamertag))
+	}
+	return out
+}
+
+func mapOneMatchSummary(r *H5MatchResult, gamertag string) canonical.MatchSummary {
+	dur := parseISO8601DurationSeconds(r.MatchDuration)
+	end := parseISODate(r.MatchCompletedDate.ISO8601Date)
+	started := startedFromEnd(end, dur)
+
+	self := selfPlayer(r, gamertag)
+	outcome := canonical.OutcomeTie
+	if self != nil {
+		outcome = deriveOutcome(self.Rank, teamRankFor(r, self.TeamId))
+	}
+
+	return canonical.MatchSummary{
+		MatchID:         r.Id.MatchId,
+		StartedAtUTC:    started,
+		DurationSeconds: dur,
+		MatchType:       h5MatchType(r.Id.GameMode),
+		Playlist:        assetRef("playlist", r.HopperId),
+		Map:             assetRef("map", r.MapId),
+		GameVariant:     assetRef("game_variant", r.GameBaseVariantId),
+		PairMode:        nil, // h5 n'a pas de pair_name (Phase 2)
+		IsRanked:        nil, // classification ranked = taxonomie HopperId (Phase 2)
+		IsPvE:           nil, // detection warzone = Phase 2
+		Outcome:         outcome,
+		Teams:           mapTeams(r.Teams),
+		T0Ms:            nil, // pas de countdown/real_start_time en h5
+	}
+}
+
+// selfPlayer retourne le participant correspondant au gamertag requete (compare
+// insensible a la casse, h5 etant gamertag-keye), ou nil.
+func selfPlayer(r *H5MatchResult, gamertag string) *H5MatchPlayer {
+	norm := strings.ToLower(strings.TrimSpace(gamertag))
+	for i := range r.Players {
+		if strings.ToLower(strings.TrimSpace(r.Players[i].Player.Gamertag)) == norm {
+			return &r.Players[i]
+		}
+	}
+	return nil
+}
+
+// teamRankFor retourne le Rank de l'equipe d'id teamID, ou nil si absente.
+func teamRankFor(r *H5MatchResult, teamID int) *int {
+	for i := range r.Teams {
+		if r.Teams[i].Id == teamID {
+			rank := r.Teams[i].Rank
+			return &rank
+		}
+	}
+	return nil
+}
+
+func mapTeams(teams []H5Team) []canonical.TeamSnapshot {
+	if len(teams) == 0 {
+		return nil
+	}
+	out := make([]canonical.TeamSnapshot, 0, len(teams))
+	for i := range teams {
+		score := teams[i].Score
+		out = append(out, canonical.TeamSnapshot{
+			TeamID: teams[i].Id,
+			Score:  &score,
+			// MMR + ParticipantsXUIDs : indisponibles en h5 (xuid null).
+		})
+	}
+	return out
+}
+
+// h5MatchType classe le mode h5. GameMode 1 = Arena (PvP). Faute de taxonomie
+// HopperId complete en Phase 1, arena -> social (la distinction ranked/social
+// exige le set de playlists classees h5, Phase 2).
+func h5MatchType(gameMode int) canonical.MatchType {
+	switch gameMode {
+	case 1:
+		return canonical.MatchTypeSocial
+	default:
+		return canonical.MatchTypeUnknownMT
+	}
+}
+
+func assetRef(kind, id string) *canonical.AssetReference {
+	if strings.TrimSpace(id) == "" {
+		return nil
+	}
+	return &canonical.AssetReference{Kind: kind, ID: id}
+}
+
+func parseISODate(s string) *time.Time {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return nil
+	}
+	t = t.UTC()
+	return &t
+}
+
+// startedFromEnd derive l'heure de debut = fin − duree (h5 ne donne que la fin).
+// Fallback : fin brute si la duree est inconnue ; zero si la fin est inconnue.
+func startedFromEnd(end *time.Time, durSeconds *int) time.Time {
+	if end == nil {
+		return time.Time{}
+	}
+	if durSeconds == nil {
+		return *end
+	}
+	return end.Add(-time.Duration(*durSeconds) * time.Second)
+}

@@ -5,10 +5,14 @@
 # mêmes audiences que Halo Infinite (cryptum référençait du v2/v3 obsolète). Le
 # title-specific Halo 5 est dans constants.toml (hosts), PAS ici. Le SISU reste
 # celui d'Infinite (le token est dérivé du même flow). Non exercé tant que
-# status=coming_soon. À confirmer par la sonde live Phase 1.
+# status=coming_soon.
 #
-# clearance_url vide : le concept de clearance (343-clearance / flight configs) est
-# Halo-Infinite-spécifique ; Halo 5 ne l'utilise vraisemblablement pas (à confirmer).
+# CONFIRMÉ par la sonde live 2026-06-19 (cmd/probe-h5, JGtm) : le SpartanToken v4
+# est accepté par les services Halo 5 (spartanstats/haloplayer), 200 partout, ZÉRO
+# audience séparée requise. Ces audiences (mirroir Infinite) sont les bonnes.
+#
+# clearance_url vide : le 343-clearance est Halo-Infinite-spécifique ; Halo 5 ne
+# l'utilise PAS — confirmé sonde live (réponses h5 portent ClearanceAware:false).
 
 [meta]
 title_slug     = "halo_5"
