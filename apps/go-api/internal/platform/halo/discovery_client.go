@@ -50,8 +50,8 @@ func (p *HaloProvider) FetchAsset(
 		return nil, fmt.Errorf("fetch asset %s/%s: version_id requis (discovery-infiniteugc 404 sans)", assetType, assetID)
 	}
 
-	rawURL := fmt.Sprintf("%s/hi/%s/%s/versions/%s",
-		p.hostFor(ctx, games.EndpointDiscoveryUGC, "", discoveryUGCHost), segment, neturl.PathEscape(assetID), neturl.PathEscape(versionID))
+	rawURL := fmt.Sprintf("%s/%s/%s/%s/versions/%s",
+		p.hostFor(ctx, games.EndpointDiscoveryUGC, "", discoveryUGCHost), p.gamePrefix(ctx), segment, neturl.PathEscape(assetID), neturl.PathEscape(versionID))
 
 	body, err := p.doGetWithLang(ctx, rawURL, lang)
 	if err != nil {
@@ -162,8 +162,8 @@ func (p *HaloProvider) FetchMatchStats(
 	const arbitraryXUID = "0"
 
 	url := fmt.Sprintf(
-		"https://halostats.svc.halowaypoint.com/hi/players/xuid(%s)/matches/%s/stats",
-		arbitraryXUID, matchID,
+		"https://halostats.svc.halowaypoint.com/%s/players/xuid(%s)/matches/%s/stats",
+		p.gamePrefix(ctx), arbitraryXUID, matchID,
 	)
 
 	body, err := p.doGet(ctx, url, tokens)

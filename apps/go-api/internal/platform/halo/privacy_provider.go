@@ -92,7 +92,7 @@ func (p *HaloProvider) GetMatchPrivacy(ctx context.Context, xuid string) (*domai
 		return &domain.MatchPrivacyInfo{Hint: errHintAuthRequired}, nil
 	}
 
-	url := fmt.Sprintf("%s/hi/players/xuid(%s)/matches-privacy", defaultStatsHost, xuid)
+	url := fmt.Sprintf("%s/%s/players/xuid(%s)/matches-privacy", defaultStatsHost, p.gamePrefix(ctx), xuid)
 	body, err := p.doGet(ctx, url, tokens)
 	if err != nil {
 		// Privacy non critique — fallback partiel sans mettre en cache l'erreur.

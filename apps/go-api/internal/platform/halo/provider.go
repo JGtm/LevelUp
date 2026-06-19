@@ -298,7 +298,7 @@ type battlePassTrack struct {
 // Retourne la réponse domaine, les bytes JSON bruts (pour persistance), et une erreur éventuelle.
 func (p *HaloProvider) fetchBattlePass(ctx context.Context, tokens *domain.HaloTokens, xuid string) (domain.BattlePassResponse, []byte, error) {
 	base := p.hostFor(ctx, games.EndpointEconomy, p.battlePassBaseURL, defaultEconomyHost)
-	url := fmt.Sprintf("%s/hi/players/xuid(%s)/rewardtracks/operations", base, xuid)
+	url := fmt.Sprintf("%s/%s/players/xuid(%s)/rewardtracks/operations", base, p.gamePrefix(ctx), xuid)
 
 	body, err := p.doGet(ctx, url, tokens)
 	if err != nil {
@@ -414,7 +414,7 @@ func (p *HaloProvider) challengesFetchKey(ctx context.Context, xuid string) stri
 // Retourne la réponse domaine, les bytes JSON bruts (pour persistance), et une erreur éventuelle.
 func (p *HaloProvider) fetchChallenges(ctx context.Context, tokens *domain.HaloTokens, xuid string) (domain.ChallengesResponse, []byte, error) {
 	base := p.hostFor(ctx, games.EndpointChallenges, p.challengesBaseURL, defaultChallengesHost)
-	url := fmt.Sprintf("%s/hi/players/xuid(%s)/decks", base, xuid)
+	url := fmt.Sprintf("%s/%s/players/xuid(%s)/decks", base, p.gamePrefix(ctx), xuid)
 
 	body, err := p.doGet(ctx, url, tokens)
 	if err != nil {

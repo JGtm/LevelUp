@@ -55,7 +55,9 @@ const (
 	// le nameplateCmsPath exact + textColor. Sans ce mapping, on prenait
 	// la 1ère cfg positive comme fallback → palette potentiellement
 	// inversée par rapport à celle équipée par le joueur.
-	emblemMappingPath = "/hi/Waypoint/file/images/emblems/mapping.json"
+	// emblemMappingPathSuffix : la partie post-préfixe de jeu de l'URL mapping
+	// (le segment /hi|/h5 est injecté à l'usage via gamePrefixForCtx, MT-01).
+	emblemMappingPathSuffix = "/Waypoint/file/images/emblems/mapping.json"
 	// emblemMappingTTL : la table change peu (nouveaux emblems quand Halo
 	// release un set). 6h est cohérent avec le TTL customization.
 	emblemMappingTTL = 6 * time.Hour
@@ -125,7 +127,8 @@ func seedEmblemMappingCacheForTest(data map[string]map[string]emblemMappingEntry
 func refreshEmblemMapping(ctx context.Context, spartanToken, clearanceToken string) {
 	reqCtx, cancel := context.WithTimeout(ctx, nameplateResolverTimeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(reqCtx, "GET", nameplateHostFor(ctx)+emblemMappingPath, nil)
+	mappingURL := nameplateHostFor(ctx) + "/" + gamePrefixForCtx(ctx) + emblemMappingPathSuffix
+	req, err := http.NewRequestWithContext(reqCtx, "GET", mappingURL, nil)
 	if err != nil {
 		return
 	}
@@ -194,8 +197,8 @@ func ResolveNameplateURL(
 	// joueurs (bug observé 2026-05-20 : "couleurs inversées" pour JGtm
 	// et autres).
 	if entry, ok := getEmblemMappingEntry(ctx, stem, cfg, spartanToken, clearanceToken); ok && entry.NameplateCmsPath != "" {
-		return fmt.Sprintf("%s/hi/Waypoint/file/%s",
-			nameplateHostFor(ctx), strings.TrimPrefix(entry.NameplateCmsPath, "/"))
+		return fmt.Sprintf("%s/%s/Waypoint/file/%s",
+			nameplateHostFor(ctx), gamePrefixForCtx(ctx), strings.TrimPrefix(entry.NameplateCmsPath, "/"))
 	}
 
 	// Fallback (mapping.json indisponible ou stem absent) : ancien comportement
@@ -210,8 +213,8 @@ func ResolveNameplateURL(
 			return ""
 		}
 	}
-	return fmt.Sprintf("%s/hi/Waypoint/file/images/nameplates/%s_%d.png",
-		nameplateHostFor(ctx), stem, resolvedCfg)
+	return fmt.Sprintf("%s/%s/Waypoint/file/images/nameplates/%s_%d.png",
+		nameplateHostFor(ctx), gamePrefixForCtx(ctx), stem, resolvedCfg)
 }
 
 // extractEmblemStem retourne `104-001-olympus-campa-2ddbe23b` depuis
@@ -241,8 +244,8 @@ func resolvePositiveEmblemCfg(
 	ctx context.Context,
 	emblemPath, spartanToken, clearanceToken string,
 ) int64 {
-	cmsURL := fmt.Sprintf("%s/hi/progression/file/%s",
-		nameplateHostFor(ctx), strings.TrimPrefix(emblemPath, "/"))
+	cmsURL := fmt.Sprintf("%s/%s/progression/file/%s",
+		nameplateHostFor(ctx), gamePrefixForCtx(ctx), strings.TrimPrefix(emblemPath, "/"))
 
 	reqCtx, cancel := context.WithTimeout(ctx, nameplateResolverTimeout)
 	defer cancel()

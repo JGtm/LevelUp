@@ -144,7 +144,7 @@ func (c *HaloAPIClient) GetMatchSkill(
 		return map[string]*MatchSkillData{}, nil
 	}
 
-	endpoint := fmt.Sprintf("%s/hi/matches/%s/skill", c.hostFor(ctx, games.EndpointSkill, haloSkillHost), url.PathEscape(matchID))
+	endpoint := fmt.Sprintf("%s/%s/matches/%s/skill", c.hostFor(ctx, games.EndpointSkill, haloSkillHost), c.gamePrefix(ctx), url.PathEscape(matchID))
 	params := url.Values{}
 	for _, x := range humans {
 		params.Add("players", "xuid("+x+")")
@@ -391,8 +391,9 @@ func (c *HaloAPIClient) GetPlayerCSRs(ctx context.Context, xuid, seasonID string
 	}
 
 	endpoint := fmt.Sprintf(
-		"%s/hi/players/xuid(%s)/csrs?Season=%s",
+		"%s/%s/players/xuid(%s)/csrs?Season=%s",
 		c.hostFor(ctx, games.EndpointSkill, haloSkillHost),
+		c.gamePrefix(ctx),
 		url.PathEscape(xuid),
 		url.QueryEscape(seasonID),
 	)

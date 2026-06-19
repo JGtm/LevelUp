@@ -9,6 +9,10 @@
 [meta]
 title_slug = "halo_5"
 schema_version = 1
+# game_prefix — segment d'URL de jeu Halo 5 (cryptum : /h5[platform]/players/...).
+# PLACEHOLDER "h5" (coming_soon, jamais appelé) ; confirmer/affiner à la sonde live
+# Phase 1 (variantes plateforme h5pc éventuelles). Consommé via games.GamePrefix(slug).
+game_prefix = "h5"
 
 [endpoints]
 stats         = "https://stats.h5.placeholder.invalid"

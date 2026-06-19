@@ -36,3 +36,10 @@ func (p *HaloProvider) hostFor(ctx context.Context, key games.EndpointKey, overr
 	slog.WarnContext(ctx, "endpoint_missing", "title", slug, "endpoint_key", string(key))
 	return legacy
 }
+
+// gamePrefix résout le segment d'URL de jeu du titre courant ("hi"/"h5") injecté
+// dans les chemins d'API du HaloProvider. Fallback games.DefaultGamePrefix ("hi")
+// → byte-identique pour Halo Infinite. Miroir de internal/sync.gamePrefix.
+func (p *HaloProvider) gamePrefix(ctx context.Context) string {
+	return games.GamePrefix(ctxkeys.TitleSlug(ctx))
+}

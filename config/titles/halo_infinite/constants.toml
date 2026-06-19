@@ -12,6 +12,11 @@
 [meta]
 title_slug = "halo_infinite"
 schema_version = 1
+# game_prefix — segment d'URL de jeu injecté dans les chemins d'API d'ingestion
+# (/hi/players/..., /hi/matches/{id}/stats, /hi/Progression/file/...). Externalisé
+# du code (était hardcodé "hi" dans sync/platform/halo/assets). Un 2e titre déclare
+# le sien (Halo 5 = "h5"). Consommé via games.GamePrefix(slug) ; fallback "hi".
+game_prefix = "hi"
 
 # ─── Hosts d'ingestion API (MT-01 / PMT-1) ──────────────────────────────────
 # Source de vérité title-agnostic des hosts consommés par platform/halo +

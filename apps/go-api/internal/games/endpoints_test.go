@@ -44,6 +44,7 @@ func syntheticConstantsTOML(slug string) string {
 [meta]
 title_slug = "` + slug + `"
 schema_version = 1
+game_prefix = "h5"
 
 [endpoints]
 stats = "https://stats.example.test"
@@ -91,6 +92,49 @@ func TestEndpointResolver_SyntheticRouting(t *testing.T) {
 	// skip + warn ; pas de fallback silencieux vers l'host Halo).
 	if h, ok := res.HostFor(slug, EndpointSkill); ok {
 		t.Errorf("HostFor(skill) devrait être ok=false, got %q", h)
+	}
+}
+
+// hostOnlyResolver implémente EndpointResolver SANS GamePrefixResolver : prouve
+// que GamePrefixFromResolver dégrade vers le défaut "hi" quand le resolver ne
+// supporte pas l'extension (resolver legacy / stub de test).
+type hostOnlyResolver struct{}
+
+func (hostOnlyResolver) HostFor(string, EndpointKey) (string, bool) { return "", false }
+
+// TestGamePrefixResolver_SyntheticRouting — oracle MT-01 : le game_prefix d'un
+// titre route VRAIMENT vers sa valeur déclarée (pas cosmétique). Le titre
+// synthétique déclare "h5" ; un titre sans préfixe / inconnu / resolver legacy /
+// resolver nil retombent sur DefaultGamePrefix ("hi", byte-identique Halo).
+func TestGamePrefixResolver_SyntheticRouting(t *testing.T) {
+	t.Parallel()
+	const slug = "synthetic_test_title"
+	reg := loadSyntheticRegistry(t, slug)
+	res := NewMappingsEndpointResolver(reg, "halo_infinite")
+
+	// (1) Le préfixe déclaré "h5" est rendu tel quel (route réelle, pas "hi").
+	if p, ok := res.GamePrefixFor(slug); !ok || p != "h5" {
+		t.Errorf("GamePrefixFor(%q) = %q ok=%v, want \"h5\" true", slug, p, ok)
+	}
+	if got := GamePrefixFromResolver(res, slug); got != "h5" {
+		t.Errorf("GamePrefixFromResolver(%q) = %q, want \"h5\"", slug, got)
+	}
+
+	// (2) Titre inconnu du registre (le défaut halo_infinite n'est pas chargé ici)
+	// → pas de préfixe déclaré → fallback "hi".
+	if _, ok := res.GamePrefixFor("never_loaded_title"); ok {
+		t.Errorf("GamePrefixFor(inconnu) devrait être ok=false")
+	}
+	if got := GamePrefixFromResolver(res, "never_loaded_title"); got != DefaultGamePrefix {
+		t.Errorf("GamePrefixFromResolver(inconnu) = %q, want %q", got, DefaultGamePrefix)
+	}
+
+	// (3) Resolver legacy (HostFor seulement) et resolver nil → fallback "hi".
+	if got := GamePrefixFromResolver(hostOnlyResolver{}, slug); got != DefaultGamePrefix {
+		t.Errorf("GamePrefixFromResolver(legacy) = %q, want %q", got, DefaultGamePrefix)
+	}
+	if got := GamePrefixFromResolver(nil, slug); got != DefaultGamePrefix {
+		t.Errorf("GamePrefixFromResolver(nil) = %q, want %q", got, DefaultGamePrefix)
 	}
 }
 

@@ -88,8 +88,8 @@ func (f *SpritesheetFallbackFetcher) Fetch(ctx context.Context, ref Ref) (Payloa
 	}
 	// Fallback : URL spritesheet (host gamecms title-aware, MT-01).
 	spritesheetURL := fmt.Sprintf(
-		"%s/hi/Progression/file/medals/sprites/%s.png",
-		gamecmsHostFor(ctx, f.baseURL), ref.TitleID,
+		"%s/%s/Progression/file/medals/sprites/%s.png",
+		gamecmsHostFor(ctx, f.baseURL), gamecmsPrefixFor(ctx), ref.TitleID,
 	)
 	return URLPayload{
 		URL:         spritesheetURL,

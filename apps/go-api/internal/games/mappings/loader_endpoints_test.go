@@ -75,6 +75,16 @@ func TestLoadEndpointsFromBytes_Errors(t *testing.T) {
 			doc:  "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[endpoints]\nstats = \"http://a.test\"\n",
 			want: "non-https",
 		},
+		{
+			name: "game_prefix invalide (majuscule)",
+			doc:  "[meta]\ntitle_slug=\"x\"\nschema_version=1\ngame_prefix=\"H5\"\n[endpoints]\nstats = \"https://a.test\"\n",
+			want: "game_prefix invalide",
+		},
+		{
+			name: "game_prefix invalide (slash)",
+			doc:  "[meta]\ntitle_slug=\"x\"\nschema_version=1\ngame_prefix=\"h5/pc\"\n[endpoints]\nstats = \"https://a.test\"\n",
+			want: "game_prefix invalide",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -86,6 +96,31 @@ func TestLoadEndpointsFromBytes_Errors(t *testing.T) {
 				t.Errorf("err = %q, want contains %q", err.Error(), tc.want)
 			}
 		})
+	}
+}
+
+// TestLoadEndpointsFromBytes_GamePrefix couvre la nouvelle clé [meta].game_prefix :
+// présente → GamePrefix() rend (valeur, true) ; absente → ("", false) pour que le
+// consommateur retombe sur le défaut "hi" (byte-identique Halo).
+func TestLoadEndpointsFromBytes_GamePrefix(t *testing.T) {
+	t.Parallel()
+
+	withPrefix := "[meta]\ntitle_slug=\"x\"\nschema_version=1\ngame_prefix=\"h5\"\n[endpoints]\nstats=\"https://a.test\"\n"
+	set, err := LoadEndpointsFromBytes("x.toml", []byte(withPrefix))
+	if err != nil {
+		t.Fatalf("LoadEndpointsFromBytes(avec prefix): %v", err)
+	}
+	if p, ok := set.GamePrefix(); !ok || p != "h5" {
+		t.Errorf("GamePrefix() = %q ok=%v, want \"h5\" true", p, ok)
+	}
+
+	noPrefix := "[meta]\ntitle_slug=\"x\"\nschema_version=1\n[endpoints]\nstats=\"https://a.test\"\n"
+	set, err = LoadEndpointsFromBytes("x.toml", []byte(noPrefix))
+	if err != nil {
+		t.Fatalf("LoadEndpointsFromBytes(sans prefix): %v", err)
+	}
+	if p, ok := set.GamePrefix(); ok || p != "" {
+		t.Errorf("GamePrefix() sans déclaration = %q ok=%v, want \"\" false", p, ok)
 	}
 }
 
@@ -104,6 +139,10 @@ func TestLoadHaloInfiniteEndpointsTOML(t *testing.T) {
 	}
 	if set.TitleSlug() != "halo_infinite" {
 		t.Errorf("TitleSlug = %q", set.TitleSlug())
+	}
+	// game_prefix Halo Infinite = "hi" (externalisé du code, byte-identique).
+	if p, ok := set.GamePrefix(); !ok || p != "hi" {
+		t.Errorf("GamePrefix() = %q ok=%v, want \"hi\" true", p, ok)
 	}
 
 	// Valeurs ATTENDUES = const Go actuels (cf. commentaires constants.toml).
