@@ -31,6 +31,11 @@ type CadenceProfile struct {
 // Les events sans EventKill ou KillerXUID nil sont ignores. Les events hors
 // squad (KillerXUID pas dans squad) sont aussi ignores.
 //
+// Les events au TimeMS negatif (frag de countdown pre-T0, apres
+// timeline.CorrectEvents) sont ignores — cohérent avec first_events.go (badges
+// "premier frag / premiere mort"). Sans ce garde, un frag de countdown serait
+// replie dans le bucket 0 (phase_00), divergeant des badges/evtList.
+//
 // Les profiles retournes sont tries par MatchID asc puis XUID asc (stabilite).
 //
 // gameplayDurationsMS (nil-safe) fournit la VRAIE durée de gameplay par match
@@ -68,6 +73,11 @@ func ComputeCadenceProfiles(
 		if ev.KillerXUID == nil || !squadSet[*ev.KillerXUID] {
 			continue
 		}
+		if ev.TimeMS < 0 {
+			// Frag de countdown (pre-T0 apres CorrectEvents) — ignore, cohérent
+			// avec first_events.go. Ne pas le replier dans phase_00.
+			continue
+		}
 		k := key{ev.MatchID, *ev.KillerXUID}
 		a, ok := groups[k]
 		if !ok {
@@ -97,12 +107,10 @@ func ComputeCadenceProfiles(
 		}
 		buckets := make([]int, bucketCount)
 		for _, t := range a.killTimes {
+			// t >= 0 garanti (frags pre-T0 ignores ci-dessus) → b >= 0.
 			b := int(t / phaseMS)
 			if b >= bucketCount {
 				b = bucketCount - 1
-			}
-			if b < 0 {
-				b = 0
 			}
 			buckets[b]++
 		}
