@@ -958,13 +958,20 @@ func NewRouter(
 		if !cfg.DemoMode {
 			osImportSvc := service.NewOpenSpartanImportService(cfg.SharedProvider, config.SharedDBPath(cfg, ""))
 			osPostImportSvc := service.NewOpenSpartanPostImportService(cfg)
-			osImportH := handlers.NewOpenSpartanImportHandler(handlers.OpenSpartanImportConfig{
+			osCfg := handlers.OpenSpartanImportConfig{
 				ImportService:     osImportSvc,
 				PostImportService: osPostImportSvc,
 				JobStore:          jobStore,
 				StashDir:          filepath.Join(cfg.RepoRoot, "data", "players"),
 				DemoMode:          cfg.DemoMode,
-			})
+			}
+			// Trigger de convergence events immédiat post-import (réutilise le pool
+			// d'auth du scheduler). Conditionnel : éviter un typed-nil dans l'interface
+			// si le scheduler n'est pas câblé. nil → backfill repris au prochain cycle.
+			if autoSyncScheduler != nil {
+				osCfg.Convergence = autoSyncScheduler
+			}
+			osImportH := handlers.NewOpenSpartanImportHandler(osCfg)
 			r.Post("/import/openspartan", osImportH.StartImport)
 		}
 

@@ -23,6 +23,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	gosync "sync"
 	"sync/atomic"
@@ -792,8 +793,76 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 			"duration_s", syncResult.DurationSeconds,
 			"status", syncResult.Status())
 	}
+
+	// Convergence backfill events (bornée) : rattrape les highlight_events
+	// manquants (matchs importés OpenSpartan, films retardés / 404 transitoires).
+	// S'exécute SOUS le claim déjà tenu (gate=nil → pas de re-claim) après la sync
+	// delta réussie. Best-effort : n'affecte jamais l'outcome du tick.
+	s.runEventsConvergencePass(ctx, p.Gamertag, p.XUID)
+
 	outcome = outcomeOK
 	return outcome
+}
+
+// convergencePerCycleMax borne le nombre de matchs traités par la passe de
+// convergence events à chaque tick (le reste est repris au tick suivant).
+// Override via LEVELUP_EVENTS_CONVERGENCE_MAX.
+const convergencePerCycleMax = 50
+
+// eventsConvergenceEnabled : kill-switch (défaut ON). LEVELUP_EVENTS_CONVERGENCE=0
+// désactive la passe scheduler ET le trigger immédiat.
+func eventsConvergenceEnabled() bool {
+	return os.Getenv("LEVELUP_EVENTS_CONVERGENCE") != "0"
+}
+
+func convergencePerCycleLimit() int {
+	if v := os.Getenv("LEVELUP_EVENTS_CONVERGENCE_MAX"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return convergencePerCycleMax
+}
+
+// runEventsConvergencePass lance une passe bornée de convergence events pour un
+// joueur, SOUS le claim déjà tenu par syncPlayer (gate=nil → pas de re-claim).
+// Gate sur le pool (tests sans pool → skip) + kill-switch. Best-effort.
+func (s *AutoSyncScheduler) runEventsConvergencePass(ctx context.Context, gamertag, xuid string) {
+	if s.pool == nil || !eventsConvergenceEnabled() {
+		return
+	}
+	engine := s.BuildEngine(ctx, gamertag, xuid)
+	res, err := engine.RunEventsConvergence(ctx, nil, convergencePerCycleLimit())
+	if err != nil {
+		slog.WarnContext(ctx, "auto_sync: convergence events échouée", "gamertag", gamertag, "err", err)
+		return
+	}
+	if res.EventsWritten > 0 || res.NoFilmFinal > 0 || res.Skipped > 0 {
+		slog.InfoContext(ctx, "auto_sync: convergence events",
+			"gamertag", gamertag, "detected", res.Detected,
+			"events_written", res.EventsWritten, "no_film_final", res.NoFilmFinal,
+			"skipped", res.Skipped, "dominance_updated", res.DominanceUpdated)
+	}
+}
+
+// TriggerEventsConvergence lance une passe de convergence events IMMÉDIATE pour un
+// joueur (ex. juste après un import OpenSpartan), en réutilisant le pool d'auth.
+// Cède au sync live par lot (gate=SyncGate). Conçue pour un appel en goroutine
+// (ne tient pas de claim externe). No-op si pool absent ou kill-switch off.
+func (s *AutoSyncScheduler) TriggerEventsConvergence(ctx context.Context, gamertag, xuid string) {
+	if s == nil || s.pool == nil || !eventsConvergenceEnabled() {
+		return
+	}
+	engine := s.BuildEngine(ctx, gamertag, xuid)
+	res, err := engine.RunEventsConvergence(ctx, s.SyncGate, 0) // tous les incomplets, cède au live
+	if err != nil {
+		slog.WarnContext(ctx, "trigger convergence events échouée", "gamertag", gamertag, "err", err)
+		return
+	}
+	slog.InfoContext(ctx, "trigger convergence events terminée",
+		"gamertag", gamertag, "detected", res.Detected,
+		"events_written", res.EventsWritten, "no_film_final", res.NoFilmFinal,
+		"skipped", res.Skipped, "ceded", res.Ceded)
 }
 
 // warnStaleGateClaims émet un WARN par claim du gate anormalement ancien

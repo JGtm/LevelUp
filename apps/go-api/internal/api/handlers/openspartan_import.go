@@ -40,10 +40,19 @@ const (
 	openSpartanFormFieldName = "db"
 )
 
+// EventsConvergenceTrigger lance un backfill events immédiat pour un joueur après
+// l'import (récupère les highlight_events depuis les films, réutilise le pool
+// d'auth). Optionnel : nil → la convergence se fera au prochain cycle du scheduler
+// (elle est reprise automatiquement). *scheduler.AutoSyncScheduler le satisfait.
+type EventsConvergenceTrigger interface {
+	TriggerEventsConvergence(ctx context.Context, gamertag, xuid string)
+}
+
 // OpenSpartanImportHandler wires the import service to the HTTP layer.
 type OpenSpartanImportHandler struct {
 	importSvc     *service.OpenSpartanImportService
 	postImportSvc *service.OpenSpartanPostImportService
+	convergence   EventsConvergenceTrigger
 	jobStore      *jobs.Store
 	tempDir       string
 	stashDir      string
@@ -57,7 +66,10 @@ type OpenSpartanImportConfig struct {
 	// raw import. Optional — when nil, the recompute stage is skipped and
 	// callers can run it out-of-band (e.g. via the sync engine).
 	PostImportService *service.OpenSpartanPostImportService
-	JobStore          *jobs.Store
+	// Convergence (optionnel) déclenche un backfill events immédiat après l'import.
+	// Nil → repris au prochain cycle scheduler.
+	Convergence EventsConvergenceTrigger
+	JobStore    *jobs.Store
 	// TempDir is where the uploaded `.db` is staged before opening.
 	// Defaults to os.TempDir() when empty.
 	TempDir string
@@ -81,6 +93,7 @@ func NewOpenSpartanImportHandler(cfg OpenSpartanImportConfig) *OpenSpartanImport
 	return &OpenSpartanImportHandler{
 		importSvc:     cfg.ImportService,
 		postImportSvc: cfg.PostImportService,
+		convergence:   cfg.Convergence,
 		jobStore:      cfg.JobStore,
 		tempDir:       tempDir,
 		stashDir:      stashDir,
@@ -196,6 +209,14 @@ func (h *OpenSpartanImportHandler) runImport(jobID, expectedXUID, gamertag, tmpP
 
 	post := h.runPostImport(ctx, jobID, expectedXUID, gamertag, result.InsertedMatchIDs)
 	h.recordSuccess(jobID, result, post)
+
+	// Backfill events immédiat (best-effort, tâche de fond) : récupère les
+	// highlight_events depuis les films pour les matchs importés (combat details,
+	// killer/victim, dominance). Non-bloquant pour l'onboarding (fetch hors-lease,
+	// lots courts, cède au sync live). nil → repris au prochain cycle scheduler.
+	if h.convergence != nil {
+		go h.convergence.TriggerEventsConvergence(context.Background(), gamertag, expectedXUID)
+	}
 }
 
 // runPostImport runs the recompute stages (sessions, perf_score, citations)
