@@ -49,6 +49,9 @@ func (s *FanoutService) BuildPlan(
 	if err != nil {
 		return nil, fmt.Errorf("fanout BuildPlan: %w", err)
 	}
+	// Cibles de fan-out = joueurs ACTIFS uniquement (un titre en pause ne reçoit
+	// plus d'écritures d'enrichissement dérivées).
+	players = domain.SyncablePlayers(players)
 
 	// Résoudre le joueur source via le port hexagonal.
 	sourceRepo, err := s.factory.OpenForPlayer(ctx, sourceGamertag, ctxkeys.TitleSlug(ctx))
