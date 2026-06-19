@@ -410,6 +410,16 @@ type ApiErrorSchema_Details struct {
 	union json.RawMessage
 }
 
+// AssetReference defines model for AssetReference.
+type AssetReference struct {
+	DefaultLabel string            `json:"DefaultLabel"`
+	ID           string            `json:"ID"`
+	IconURL      string            `json:"IconURL"`
+	Kind         string            `json:"Kind"`
+	Labels       map[string]string `json:"Labels"`
+	VersionID    string            `json:"VersionID"`
+}
+
 // AsyncJobStatus defines model for AsyncJobStatus.
 type AsyncJobStatus struct {
 	CurrentStep   *string                 `json:"current_step,omitempty"`
@@ -569,6 +579,15 @@ type CSRSnapshotsCoverage struct {
 	Total                  int64 `json:"total"`
 	WithAlltimeValue       int64 `json:"with_alltime_value"`
 	WithPlacementRemaining int64 `json:"with_placement_remaining"`
+}
+
+// CapabilityGap defines model for CapabilityGap.
+type CapabilityGap struct {
+	CapabilityKey string `json:"CapabilityKey"`
+	Message       string `json:"Message"`
+	ReasonCode    string `json:"ReasonCode"`
+	Retryable     bool   `json:"Retryable"`
+	Severity      string `json:"Severity"`
 }
 
 // CapabilityMap defines model for CapabilityMap.
@@ -1347,6 +1366,29 @@ type MatchEncounterRow struct {
 	Xuid           string                 `json:"xuid"`
 }
 
+// MatchEvent defines model for MatchEvent.
+type MatchEvent struct {
+	Headshot  *bool           `json:"headshot,omitempty"`
+	Killer    *PlayerIdentity `json:"killer,omitempty"`
+	KillerLoc *Vec3           `json:"killer_loc,omitempty"`
+	Kind      *string         `json:"kind,omitempty"`
+	Player    *PlayerIdentity `json:"player,omitempty"`
+	RefId     *string         `json:"ref_id,omitempty"`
+	Round     *int64          `json:"round,omitempty"`
+	TimeMs    int64           `json:"time_ms"`
+	Type      string          `json:"type"`
+	Victim    *PlayerIdentity `json:"victim,omitempty"`
+	VictimLoc *Vec3           `json:"victim_loc,omitempty"`
+	Weapon    *AssetReference `json:"weapon,omitempty"`
+}
+
+// MatchEventTimeline defines model for MatchEventTimeline.
+type MatchEventTimeline struct {
+	Events      *[]MatchEvent    `json:"events"`
+	Limitations *[]CapabilityGap `json:"limitations,omitempty"`
+	MatchId     string           `json:"match_id"`
+}
+
 // MatchExpectedStats defines model for MatchExpectedStats.
 type MatchExpectedStats struct {
 	ExpectedAssists      *float64 `json:"expected_assists,omitempty"`
@@ -1844,6 +1886,17 @@ type PeriodPresetCount struct {
 	PresetId string `json:"preset_id"`
 }
 
+// PlayerIdentity defines model for PlayerIdentity.
+type PlayerIdentity struct {
+	AvatarURL          string `json:"AvatarURL"`
+	EmblemURL          string `json:"EmblemURL"`
+	Gamertag           string `json:"Gamertag"`
+	GamertagNormalized string `json:"GamertagNormalized"`
+	IsBot              bool   `json:"IsBot"`
+	ServiceTag         string `json:"ServiceTag"`
+	XUID               string `json:"XUID"`
+}
+
 // PlayerMedalRow defines model for PlayerMedalRow.
 type PlayerMedalRow struct {
 	Count      int64   `json:"count"`
@@ -1855,13 +1908,15 @@ type PlayerMedalRow struct {
 
 // PlayerSummary defines model for PlayerSummary.
 type PlayerSummary struct {
-	Gamertag       string  `json:"gamertag"`
-	IsDemo         bool    `json:"is_demo"`
-	PlayerSlug     string  `json:"player_slug"`
-	SteamId        *string `json:"steam_id,omitempty"`
-	TitleSlug      *string `json:"title_slug,omitempty"`
-	WaypointPlayer string  `json:"waypoint_player"`
-	Xuid           string  `json:"xuid"`
+	Gamertag          string  `json:"gamertag"`
+	InitialMaxMatches *int64  `json:"initial_max_matches,omitempty"`
+	IsDemo            bool    `json:"is_demo"`
+	PlayerSlug        string  `json:"player_slug"`
+	SteamId           *string `json:"steam_id,omitempty"`
+	SyncEnabled       bool    `json:"sync_enabled"`
+	TitleSlug         *string `json:"title_slug,omitempty"`
+	WaypointPlayer    string  `json:"waypoint_player"`
+	Xuid              string  `json:"xuid"`
 }
 
 // PlayerWeaponKillRow defines model for PlayerWeaponKillRow.
@@ -2059,6 +2114,13 @@ type TemporalHeatmapCell struct {
 	Wins    int64   `json:"wins"`
 }
 
+// TitlePurgeOutputBody defines model for TitlePurgeOutputBody.
+type TitlePurgeOutputBody struct {
+	DataRemoved bool   `json:"data_removed"`
+	Gamertag    string `json:"gamertag"`
+	TitleSlug   string `json:"title_slug"`
+}
+
 // TitleSummary defines model for TitleSummary.
 type TitleSummary struct {
 	Capabilities []string           `json:"capabilities"`
@@ -2072,6 +2134,18 @@ type TitleSummary struct {
 // TitleSummaryStatus defines model for TitleSummary.Status.
 type TitleSummaryStatus string
 
+// TitleSyncInputBody defines model for TitleSyncInputBody.
+type TitleSyncInputBody struct {
+	Enabled bool `json:"enabled"`
+}
+
+// TitleSyncOutputBody defines model for TitleSyncOutputBody.
+type TitleSyncOutputBody struct {
+	Gamertag    string `json:"gamertag"`
+	SyncEnabled bool   `json:"sync_enabled"`
+	TitleSlug   string `json:"title_slug"`
+}
+
 // TopMatchDTO defines model for TopMatchDTO.
 type TopMatchDTO struct {
 	Deaths           int64    `json:"deaths"`
@@ -2083,6 +2157,13 @@ type TopMatchDTO struct {
 	OutcomeCode      int64    `json:"outcome_code"`
 	OutcomeLabel     string   `json:"outcome_label"`
 	PerformanceScore float64  `json:"performance_score"`
+}
+
+// Vec3 defines model for Vec3.
+type Vec3 struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+	Z float64 `json:"z"`
 }
 
 // WeaponHighlight defines model for WeaponHighlight.
@@ -2106,6 +2187,9 @@ type PlayerSlug = string
 
 // BadRequest defines model for BadRequest.
 type BadRequest = ApiErrorSchema
+
+// Conflict defines model for Conflict.
+type Conflict = ApiErrorSchema
 
 // InternalError defines model for InternalError.
 type InternalError = ApiErrorSchema
@@ -2195,6 +2279,12 @@ type PostEngagementTimeseriesJSONBody struct {
 	Limit   *int                    `json:"limit,omitempty"`
 }
 
+// GetMatchEventsParams defines parameters for GetMatchEvents.
+type GetMatchEventsParams struct {
+	// Types Filtre optionnel par type d'event (kill, medal, impulse, ...). Répétable ou CSV. Vide = tous.
+	Types *[]string `form:"types,omitempty" json:"types,omitempty"`
+}
+
 // SetMatchExclusionJSONBody defines parameters for SetMatchExclusion.
 type SetMatchExclusionJSONBody struct {
 	// Excluded true = ignorer ce match, false = réactiver
@@ -2248,6 +2338,31 @@ type ListProgressionRecordsParams struct {
 	HistoryLimit *int `form:"history_limit,omitempty" json:"history_limit,omitempty"`
 }
 
+// PostSetupPlayersJSONBody defines parameters for PostSetupPlayers.
+type PostSetupPlayersJSONBody struct {
+	Gamertag string `json:"gamertag"`
+
+	// InitialMaxMatches Nb de matchs à synchroniser à l'onboarding (0 = défaut)
+	InitialMaxMatches *int `json:"initial_max_matches,omitempty"`
+
+	// ProfileMode xbox | azure_manual
+	ProfileMode *string `json:"profile_mode,omitempty"`
+
+	// TitleSlug Titre cible (défaut: titre du contexte puis halo_infinite)
+	TitleSlug *string `json:"title_slug,omitempty"`
+	Xuid      *string `json:"xuid,omitempty"`
+}
+
+// PostSyncInitialJSONBody defines parameters for PostSyncInitial.
+type PostSyncInitialJSONBody struct {
+	// MaxMatches 1-2000 ; 0 = défaut profil puis 200
+	MaxMatches *int   `json:"max_matches,omitempty"`
+	PlayerSlug string `json:"player_slug"`
+
+	// TitleSlug Titre cible (défaut: titre du contexte puis halo_infinite)
+	TitleSlug *string `json:"title_slug,omitempty"`
+}
+
 // GetTitleFieldMappingsParams defines parameters for GetTitleFieldMappings.
 type GetTitleFieldMappingsParams struct {
 	Locale *GetTitleFieldMappingsParamsLocale `form:"locale,omitempty" json:"locale,omitempty"`
@@ -2289,8 +2404,17 @@ type PostMediaLibraryJSONRequestBody = MediaPageRequest
 // PostSessionDetailPageJSONRequestBody defines body for PostSessionDetailPage for application/json ContentType.
 type PostSessionDetailPageJSONRequestBody = PostSessionDetailPageJSONBody
 
+// SetTitleSyncJSONRequestBody defines body for SetTitleSync for application/json ContentType.
+type SetTitleSyncJSONRequestBody = TitleSyncInputBody
+
 // UpdateSessionContextJSONRequestBody defines body for UpdateSessionContext for application/json ContentType.
 type UpdateSessionContextJSONRequestBody = SessionContextRequest
+
+// PostSetupPlayersJSONRequestBody defines body for PostSetupPlayers for application/json ContentType.
+type PostSetupPlayersJSONRequestBody PostSetupPlayersJSONBody
+
+// PostSyncInitialJSONRequestBody defines body for PostSyncInitial for application/json ContentType.
+type PostSyncInitialJSONRequestBody PostSyncInitialJSONBody
 
 // AsApiErrorSchemaDetails0 returns the union data inside the ApiErrorSchema_Details as a ApiErrorSchemaDetails0
 func (t ApiErrorSchema_Details) AsApiErrorSchemaDetails0() (ApiErrorSchemaDetails0, error) {

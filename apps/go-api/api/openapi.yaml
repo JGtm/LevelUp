@@ -2384,6 +2384,32 @@ paths:
       responses:
         "200": { description: "Match neighbors" }
 
+  /players/{player_slug}/matches/{match_id}/events:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: match_id
+        in: path
+        required: true
+        schema: { type: string }
+      - name: types
+        in: query
+        required: false
+        description: "Filtre optionnel par type d'event (kill, medal, impulse, ...). Répétable ou CSV. Vide = tous."
+        schema:
+          type: array
+          items: { type: string }
+    get:
+      tags: [match-view]
+      operationId: getMatchEvents
+      summary: "Timeline canonique d'events d'un match (kill-feed / timeline)"
+      responses:
+        "200":
+          description: "Timeline d'events"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MatchEventTimeline" }
+        "503": { description: "Le titre n'expose pas de timeline d'events" }
+
   /players/{player_slug}/matches/{match_id}/favorite:
     parameters:
       - $ref: "#/components/parameters/PlayerSlug"
@@ -10418,6 +10444,77 @@ components:
           - kind
           - label_key
           - color_token
+      type: object
+    # Canonical MatchEvents (PLAN_CANONICAL_MATCH_EVENTS) — timeline d'events
+    # on-demand. Schémas auto-dérivés de canonical.MatchEventTimeline (Huma).
+    MatchEvent:
+      additionalProperties: false
+      properties:
+          headshot:
+              type: boolean
+          killer:
+              $ref: '#/components/schemas/PlayerIdentity'
+          killer_loc:
+              $ref: '#/components/schemas/Vec3'
+          kind:
+              type: string
+          player:
+              $ref: '#/components/schemas/PlayerIdentity'
+          ref_id:
+              type: string
+          round:
+              format: int64
+              type: integer
+          time_ms:
+              format: int64
+              type: integer
+          type:
+              type: string
+          victim:
+              $ref: '#/components/schemas/PlayerIdentity'
+          victim_loc:
+              $ref: '#/components/schemas/Vec3'
+          weapon:
+              $ref: '#/components/schemas/AssetReference'
+      required:
+          - type
+          - time_ms
+      type: object
+    MatchEventTimeline:
+      additionalProperties: false
+      properties:
+          events:
+              items:
+                  $ref: '#/components/schemas/MatchEvent'
+              nullable: true
+              type: array
+          limitations:
+              items:
+                  $ref: '#/components/schemas/CapabilityGap'
+              nullable: true
+              type: array
+          match_id:
+              type: string
+      required:
+          - match_id
+          - events
+      type: object
+    Vec3:
+      additionalProperties: false
+      properties:
+          x:
+              format: double
+              type: number
+          "y":
+              format: double
+              type: number
+          z:
+              format: double
+              type: number
+      required:
+          - x
+          - "y"
+          - z
       type: object
     MatchFavoriteResponse:
       additionalProperties: false

@@ -63,3 +63,65 @@ func (r *GamertagRepo) Search(ctx context.Context, query string) ([]domain.Gamer
 	}
 	return results, rows.Err()
 }
+
+// ResolveGamertags résout un set BORNÉ de xuid → gamertag via le chokepoint
+// canonique v_gamertag_lookup (mêmes garanties que Q12 scoreboard : bots résolus
+// en nom officiel, cascade xuid_aliases/match_participants/killer_victim_pairs,
+// jamais de xuid brut). Implémente port.GamertagResolver.
+//
+// Sémantique : un xuid SANS gamertag résolu (orphelin hors sources) est ABSENT de
+// la map retournée — le caller laisse l'identité sans gamertag et le rendu applique
+// le masquage (front displayPlayerName). xuids vide/dédupliqué-vide → map vide.
+func (r *GamertagRepo) ResolveGamertags(ctx context.Context, xuids []string) (map[string]string, error) {
+	uniq := dedupNonEmpty(xuids)
+	out := make(map[string]string, len(uniq))
+	if len(uniq) == 0 {
+		return out, nil
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	db, release, err := r.shared.Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("GamertagRepo.ResolveGamertags shared reader: %w", err)
+	}
+	defer release()
+
+	q := fmt.Sprintf(
+		"SELECT xuid, gamertag FROM v_gamertag_lookup WHERE gamertag IS NOT NULL AND xuid IN (%s)",
+		Placeholders(len(uniq)))
+	rows, err := db.QueryContext(ctx, q, ToAnySlice(uniq)...)
+	if err != nil {
+		return nil, fmt.Errorf("GamertagRepo.ResolveGamertags: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var xuid, gamertag string
+		if err := rows.Scan(&xuid, &gamertag); err != nil {
+			return nil, fmt.Errorf("GamertagRepo.ResolveGamertags scan: %w", err)
+		}
+		if gamertag != "" {
+			out[xuid] = gamertag
+		}
+	}
+	return out, rows.Err()
+}
+
+// dedupNonEmpty retourne les valeurs uniques non-vides en préservant l'ordre.
+func dedupNonEmpty(in []string) []string {
+	seen := make(map[string]struct{}, len(in))
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		if s == "" {
+			continue
+		}
+		if _, ok := seen[s]; ok {
+			continue
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	return out
+}

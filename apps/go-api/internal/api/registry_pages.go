@@ -82,6 +82,24 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 	return svc, nil
 }
 
+// MatchEvents retourne un MatchEventsService pour le joueur : timeline canonique
+// d'events (kill-feed / timeline) servie par l'adapter du titre, avec résolution
+// des gamertags via le chokepoint canonique (v_gamertag_lookup).
+//
+// Multi-titre : l'adapter vient du builder enregistré pour le titre du joueur
+// (dataAdapterForPDB). Titre sans builder → adapter nil → le service renvoie
+// ErrCapabilityNotSupported (handler 503). Le resolver gamertag est branché sur
+// le SharedReader du joueur (no-op pour un titre déjà gamertag-keyé comme Halo 5).
+func (r *ServiceRegistry) MatchEvents(ctx context.Context, slug string) (port.MatchEventsService, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	adapter := r.dataAdapterForPDB(pdb)
+	resolver := duckdb.NewGamertagRepo(pdb.SharedReadDB())
+	return service.NewMatchEventsService(adapter, resolver), nil
+}
+
 // buildFriendsExtrasResolver construit un loader d'extras per-friend pour le
 // panneau d'expander scoreboard (Match View). Lookup xuid → (titleSlug,
 // gamertag) depuis cfg.LoadPlayers, puis ouverture lazy de la player DB de

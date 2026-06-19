@@ -1053,6 +1053,10 @@ func NewRouter(
 				WithMediaURLs(settingsStore, cfg.RepoRoot)
 			mv.Mount(r)
 
+			// Canonical MatchEvents (Phase 3) : GET .../matches/{match_id}/events —
+			// timeline d'events on-demand (kill-feed/timeline), capability-gated.
+			handlers.NewMatchEventsHandler(reg.MatchEvents).Mount(r)
+
 			// Phase 4 plan engagement : score + courbe par match + profil + timeseries + squad
 			// + admin recompute. Toutes les routes sont gated par CapEngagement
 			// (titre doit declarer la capability — halo_infinite=oui, autres=non
