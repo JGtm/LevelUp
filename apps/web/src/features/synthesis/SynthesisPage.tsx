@@ -417,11 +417,12 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, com
                   )}
                 </div>
 
-                {topWeaponKills && topWeaponKills.length > 0 && (
-                  <div className="flex-1 min-w-0 flex flex-col">
-                    <SynthesisWeaponKillsChart weapons={topWeaponKills} fillHeight />
-                  </div>
-                )}
+                {/* Toujours monté (même sans données) : le composant rend un placeholder
+                    conformant via ChartCard plutôt que d'afficher RIEN — l'user doit
+                    pouvoir voir ce qui manque. */}
+                <div className="flex-1 min-w-0 flex flex-col">
+                  <SynthesisWeaponKillsChart weapons={topWeaponKills ?? []} fillHeight />
+                </div>
               </div>
             </div>
 
