@@ -13,7 +13,7 @@ func tempInviteStorePath(t *testing.T) string {
 func TestGenerate_And_Validate(t *testing.T) {
 	s := NewInviteStore(tempInviteStorePath(t))
 
-	invite, err := s.Generate("admin", 7)
+	invite, err := s.Generate("admin", 7, "")
 	if err != nil {
 		t.Fatalf("Generate: %v", err)
 	}
@@ -36,6 +36,31 @@ func TestGenerate_And_Validate(t *testing.T) {
 	}
 }
 
+func TestGenerate_WithGroupID(t *testing.T) {
+	s := NewInviteStore(tempInviteStorePath(t))
+
+	invite, err := s.Generate("alice", 7, "grp_abc")
+	if err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+	if invite.GroupID != "grp_abc" {
+		t.Errorf("GroupID = %q, want grp_abc", invite.GroupID)
+	}
+
+	// Get relit le GroupID persisté.
+	got, err := s.Get(invite.Code)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if got.GroupID != "grp_abc" {
+		t.Errorf("Get().GroupID = %q, want grp_abc", got.GroupID)
+	}
+
+	if _, err := s.Get("NOTEXIST"); err != ErrInviteNotFound {
+		t.Errorf("Get(absent) = %v, want ErrInviteNotFound", err)
+	}
+}
+
 func TestValidate_NotFound(t *testing.T) {
 	s := NewInviteStore(tempInviteStorePath(t))
 	err := s.Validate("NOTEXIST")
@@ -46,7 +71,7 @@ func TestValidate_NotFound(t *testing.T) {
 
 func TestConsume_And_DoubleUse(t *testing.T) {
 	s := NewInviteStore(tempInviteStorePath(t))
-	invite, _ := s.Generate("admin", 7)
+	invite, _ := s.Generate("admin", 7, "")
 
 	if err := s.Consume(invite.Code, "bob"); err != nil {
 		t.Fatalf("Consume: %v", err)
@@ -75,7 +100,7 @@ func TestConsume_NotFound(t *testing.T) {
 
 func TestRevoke(t *testing.T) {
 	s := NewInviteStore(tempInviteStorePath(t))
-	invite, _ := s.Generate("admin", 7)
+	invite, _ := s.Generate("admin", 7, "")
 
 	if err := s.Revoke(invite.Code); err != nil {
 		t.Fatalf("Revoke: %v", err)
@@ -96,8 +121,8 @@ func TestRevoke(t *testing.T) {
 
 func TestList_Invites(t *testing.T) {
 	s := NewInviteStore(tempInviteStorePath(t))
-	_, _ = s.Generate("admin", 7)
-	_, _ = s.Generate("admin", 14)
+	_, _ = s.Generate("admin", 7, "")
+	_, _ = s.Generate("admin", 14, "")
 
 	list, err := s.List()
 	if err != nil {
@@ -111,7 +136,7 @@ func TestList_Invites(t *testing.T) {
 func TestGenerate_DefaultExpiry(t *testing.T) {
 	s := NewInviteStore(tempInviteStorePath(t))
 	// expiresInDays <= 0 → défaut 7 jours.
-	invite, err := s.Generate("admin", 0)
+	invite, err := s.Generate("admin", 0, "")
 	if err != nil {
 		t.Fatalf("Generate(0): %v", err)
 	}
@@ -158,7 +183,7 @@ func TestGenerateCode_AlphabetOnly(t *testing.T) {
 func TestPersistence_Invites(t *testing.T) {
 	path := tempInviteStorePath(t)
 	s1 := NewInviteStore(path)
-	invite, _ := s1.Generate("admin", 7)
+	invite, _ := s1.Generate("admin", 7, "")
 
 	// Nouvel objet sur le même fichier.
 	s2 := NewInviteStore(path)

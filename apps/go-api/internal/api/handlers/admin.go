@@ -149,7 +149,8 @@ func (h *AdminHandler) GenerateInvite(w http.ResponseWriter, r *http.Request) {
 		createdBy = *sess.Username
 	}
 
-	invite, err := h.invites.Generate(createdBy, body.ExpiresInDays)
+	// Invitation admin legacy (inscription mot de passe) : pas de groupe associé.
+	invite, err := h.invites.Generate(createdBy, body.ExpiresInDays, "")
 	if err != nil {
 		slog.Error("admin: erreur generate invite", "by", createdBy, "err", err)
 		writeError(r.Context(), w, http.StatusInternalServerError, "generate_error", "erreur de génération")

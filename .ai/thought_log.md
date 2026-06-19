@@ -1,3 +1,21 @@
+## [2026-06-19] Groupes/familles multi-groupes — Phase 2 (invitation "rejoindre un groupe") — Complété (code, non commité)
+
+**Suite des Phases 0 & 1** (socle commité c4e3e9c8a). Objectif : redéfinir l'invitation comme un token de jonction à UN groupe, redeemé via le login Xbox SSO (plus de compte password parallèle).
+
+**Mécanique de jonction** :
+- `domain.InviteCode.GroupID` (optionnel ; vide = invitation password legacy). `InviteStore.Generate(createdBy, days, groupID)` + nouvelle méthode `Get(code)` (lit le GroupID). Admin endpoint passe `""`.
+- `domain.SessionData.PendingInviteCode` (+ IsMeaningful) : porte le code à travers l'aller-retour OAuth.
+- `XboxOAuthHandler.WithInviteStore` + `LoginRedirect` capte `?invite=` → valide (early, sinon ignore) → stocke en session.
+- `XboxSSOLinkStrategy.WithInviteStore(InviteResolver)` + `WithGroupStore(GroupJoiner)` (interfaces découplées). `OnAuthSuccess` : invitation valide en session → **bypass instance lock** (branche XUID inconnu) + après wiring session `AddMember(GroupID)` + `Consume` + vide PendingInviteCode. Best-effort (login non bloqué si l'ajout échoue).
+
+**Endpoints groupes** (`handlers/groups.go`, sous `r.Group`+RequireAuth, **pas** admin-gated) : `GET/POST /groups`, `PATCH/DELETE /groups/{id}` (propriétaire only), `POST /groups/{id}/invites` (membre only → tout user authentifié peut inviter). Garde d'identité : xuid lié requis (401 sinon). Documentés dans `api/openapi.yaml` (contrat routes = 0 non documentée).
+
+**Tests** : strategy (4 cas join : new+lock bypass, invalide+lock→refus, existant+invite, legacy-sans-groupe+lock→refus) ; invite_store (GroupID round-trip + Get) ; groups handler (create/list, 401 sans identité, invite membre/étranger 403, delete owner-only) ; LoginRedirect (invite valide stockée / invalide ignorée). Build CGO + vet + contrat OpenAPI verts.
+
+**Prochaine étape** : Phase 3 (UI : page Mes groupes + JoinPage `/join?invite=` + i18n ; retrait InvitesSection de l'Admin). Commit Phase 2 en attente d'autorisation.
+
+---
+
 ## [2026-06-19] Groupes/familles multi-groupes — Phases 0 & 1 (modèle + authz) — Complété (code, non commité)
 
 **Contexte** : refonte de la gestion des amis/invitations. Constat de départ (vérif bout-en-bout) : le code d'invitation était un portier d'inscription *mot de passe* déconnecté du groupe (doublon mort en mode Xbox, n'ajoutait personne au groupe). Décisions produit (AskUserQuestion) : multi-groupes **nommés** ; invitation = token de jonction à UN groupe via login Xbox SSO ; tout user authentifié peut inviter ; **séparer** "membre du foyer (accès mutuel)" de "coéquipier affiché (Escouade)" — les pills colorées de l'Escouade ne doivent PAS changer. Plan : `~/.claude/plans/quel-workflow-pour-la-wondrous-leaf.md`. Branche `feat/groups-membership` (depuis main).
