@@ -36,6 +36,8 @@ var featureDefinitions = map[feature.Key]featureDef{
 	feature.KeyTimeseries:   {primary: CapTimeseries},
 	feature.KeyCitations:    {primary: CapCitationsEngine},
 	feature.KeyEngagement:   {primary: CapEngagement},
+	feature.KeyBattlePass:   {primary: CapBattlePass},
+	feature.KeyChallenges:   {primary: CapChallenges},
 }
 
 // AllFeatureKeys retourne les features produit connues, triées (déterminisme).

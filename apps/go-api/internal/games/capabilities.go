@@ -21,6 +21,8 @@ func AllCapabilityKeys() []CapabilityKey {
 		CapScoreboardExtra,
 		CapCitationsEngine,
 		CapEngagement,
+		CapBattlePass,
+		CapChallenges,
 	}
 }
 

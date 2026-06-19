@@ -158,6 +158,8 @@ func fallbackCapabilities() games.CapabilityMap {
 		games.CapScoreboardExtra:    games.CapNotExposed,
 		games.CapCitationsEngine:    games.CapNotExposed,
 		games.CapEngagement:         games.CapSupported,
+		games.CapBattlePass:         games.CapSupported,
+		games.CapChallenges:         games.CapSupported,
 	}
 }
 

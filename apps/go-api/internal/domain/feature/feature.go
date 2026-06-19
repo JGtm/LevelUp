@@ -19,6 +19,8 @@ const (
 	KeyTimeseries   Key = "timeseries"
 	KeyCitations    Key = "citations"
 	KeyEngagement   Key = "engagement"
+	KeyBattlePass   Key = "battlepass"
+	KeyChallenges   Key = "challenges"
 )
 
 // Status reflète l'état d'une feature pour un titre donné (3 états, Phase 1.7b).

@@ -17,6 +17,8 @@ func TestComputeFeatureMatrix_Cascade(t *testing.T) {
 		CapTimeseries:         CapNotExposed, // primaire not_exposed → timeseries unavailable
 		CapCitationsEngine:    CapNotExposed,
 		CapEngagement:         CapSupported,
+		CapBattlePass:         CapSupported,
+		CapChallenges:         CapSupported,
 	}
 
 	m := ComputeFeatureMatrix(caps)
@@ -30,6 +32,8 @@ func TestComputeFeatureMatrix_Cascade(t *testing.T) {
 		feature.KeyTimeseries:   feature.StatusUnavailable, // primaire not_exposed
 		feature.KeyCitations:    feature.StatusUnavailable,
 		feature.KeyEngagement:   feature.StatusAvailable,
+		feature.KeyBattlePass:   feature.StatusAvailable,
+		feature.KeyChallenges:   feature.StatusAvailable,
 	}
 	if len(m) != len(want) {
 		t.Fatalf("matrice = %d features, want %d", len(m), len(want))
@@ -80,8 +84,8 @@ func TestComputeFeatureMatrix_EnhancementDegraded(t *testing.T) {
 
 func TestAllFeatureKeys_Sorted(t *testing.T) {
 	keys := AllFeatureKeys()
-	if len(keys) != 8 {
-		t.Errorf("AllFeatureKeys() = %d, want 8", len(keys))
+	if len(keys) != 10 {
+		t.Errorf("AllFeatureKeys() = %d, want 10", len(keys))
 	}
 	for i := 1; i < len(keys); i++ {
 		if keys[i-1] >= keys[i] {
