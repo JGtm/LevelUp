@@ -47,6 +47,11 @@ type SessionData struct {
 	// Sans ça, chaque requête repart sur une session anonyme distincte →
 	// attempt introuvable (404) → le device-flow login ne peut plus aboutir.
 	PendingDeviceFlowAttempt string `json:"pending_device_flow_attempt,omitempty"`
+	// PendingInviteCode : code d'invitation "rejoindre un groupe" capté par
+	// LoginRedirect (query ?invite=) et consommé par la LinkStrategy après login
+	// Xbox SSO réussi (bypass instance lock + AddMember au groupe + Consume).
+	// Voyage avec la session à travers l'aller-retour OAuth.
+	PendingInviteCode string `json:"pending_invite_code,omitempty"`
 }
 
 // IsMeaningful indique si la session porte un état qui mérite d'être persisté sur
@@ -62,6 +67,7 @@ func (s *SessionData) IsMeaningful() bool {
 		s.OAuthState != "" ||
 		s.OAuthCodeVerifier != "" ||
 		s.PendingDeviceFlowAttempt != "" ||
+		s.PendingInviteCode != "" ||
 		s.LinkedHaloIdentity != nil ||
 		s.HaloTokens != nil ||
 		s.CurrentPlayerSlug != nil ||

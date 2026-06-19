@@ -88,8 +88,10 @@ func (s *InviteStore) save(f *invitesFile) error {
 	return nil
 }
 
-// Generate crée un nouveau code d'invitation.
-func (s *InviteStore) Generate(createdBy string, expiresInDays int) (*domain.InviteCode, error) {
+// Generate crée un nouveau code d'invitation. groupID (optionnel) désigne le
+// groupe que l'invité rejoint via le flow "rejoindre un groupe" (login Xbox SSO) ;
+// vide = invitation d'inscription legacy (mode password, sans groupe).
+func (s *InviteStore) Generate(createdBy string, expiresInDays int, groupID string) (*domain.InviteCode, error) {
 	if expiresInDays <= 0 {
 		expiresInDays = 7
 	}
@@ -105,6 +107,7 @@ func (s *InviteStore) Generate(createdBy string, expiresInDays int) (*domain.Inv
 		CreatedBy: createdBy,
 		CreatedAt: now.Format(time.RFC3339),
 		ExpiresAt: now.Add(time.Duration(expiresInDays) * 24 * time.Hour).Format(time.RFC3339),
+		GroupID:   groupID,
 	}
 
 	s.mu.Lock()
@@ -143,6 +146,23 @@ func (s *InviteStore) Validate(code string) error {
 		return ErrInviteExpired
 	}
 	return nil
+}
+
+// Get retourne le code d'invitation (sans vérifier sa validité). Utile pour lire
+// le GroupID associé. ErrInviteNotFound si le code n'existe pas.
+func (s *InviteStore) Get(code string) (*domain.InviteCode, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	f, err := s.load()
+	if err != nil {
+		return nil, err
+	}
+	invite, exists := f.Invites[code]
+	if !exists {
+		return nil, ErrInviteNotFound
+	}
+	return &invite, nil
 }
 
 // Consume marque un code comme utilisé.

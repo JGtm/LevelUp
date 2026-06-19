@@ -40,6 +40,18 @@ type WatcherDaemon interface {
 // si le daemon n'est pas (encore) prêt.
 type WatcherDaemonGetter func() WatcherDaemon
 
+// InviteResolver lit et consomme un code d'invitation "rejoindre un groupe".
+// Satisfait par *userstore.InviteStore.
+type InviteResolver interface {
+	Get(code string) (*domain.InviteCode, error)
+	Consume(code, usedBy string) error
+}
+
+// GroupJoiner ajoute un membre à un groupe. Satisfait par *groupstore.GroupStore.
+type GroupJoiner interface {
+	AddMember(groupID, xuid, gamertag string) error
+}
+
 // XboxSSOLinkStrategy implémente auth.LinkStrategy pour le mode SSO Xbox.
 // L'user est créé (ou retrouvé) à partir du XUID validé par le flow MSAL.
 //
@@ -56,6 +68,11 @@ type XboxSSOLinkStrategy struct {
 	// INCONNU est refusé (pas de CreateFromXbox) ; un XUID connu se connecte
 	// normalement. nil → jamais verrouillé. Cf. WithInstanceLock.
 	instanceLocked func() bool
+	// invites + groups : flow "rejoindre un groupe". Si la session porte un
+	// PendingInviteCode valide, le login bypass le verrou d'instance et ajoute le
+	// joueur au groupe ciblé (puis consomme le code). nil → flow désactivé.
+	invites InviteResolver
+	groups  GroupJoiner
 }
 
 // NewXboxSSOLinkStrategy crée une XboxSSOLinkStrategy minimale (sans store ni daemon).
@@ -86,6 +103,18 @@ func (s *XboxSSOLinkStrategy) WithInstanceLock(fn func() bool) *XboxSSOLinkStrat
 	return s
 }
 
+// WithInviteStore injecte le résolveur d'invitations (flow "rejoindre un groupe").
+func (s *XboxSSOLinkStrategy) WithInviteStore(inv InviteResolver) *XboxSSOLinkStrategy {
+	s.invites = inv
+	return s
+}
+
+// WithGroupStore injecte le store de groupes (ajout du joueur au groupe après login).
+func (s *XboxSSOLinkStrategy) WithGroupStore(g GroupJoiner) *XboxSSOLinkStrategy {
+	s.groups = g
+	return s
+}
+
 // ErrInstanceLocked est retournée par OnAuthSuccess quand un XUID inconnu tente
 // de se connecter sur une instance fermée.
 var ErrInstanceLocked = errors.New("xbox_sso: instance fermée (nouvelle identité refusée)")
@@ -102,11 +131,16 @@ func (s *XboxSSOLinkStrategy) OnAuthSuccess(ctx context.Context, attempt *auth.A
 			attempt.XUID, attempt.Gamertag)
 	}
 
+	// Flow "rejoindre un groupe" : une invitation valide en session autorise le
+	// bypass du verrou d'instance et déclenche l'ajout au groupe après login.
+	pendingInvite := s.resolvePendingInvite(ctx, sess)
+
 	user, err := s.users.GetByXUID(attempt.XUID)
 	switch {
 	case errors.Is(err, userstore.ErrUserNotFound):
-		// Instance fermée : un XUID inconnu ne peut pas créer de compte.
-		if s.instanceLocked != nil && s.instanceLocked() {
+		// Instance fermée : un XUID inconnu ne peut pas créer de compte — sauf s'il
+		// présente une invitation valide (flow "rejoindre un groupe").
+		if s.instanceLocked != nil && s.instanceLocked() && pendingInvite == nil {
 			slog.WarnContext(ctx, "xbox_sso: nouvelle identité refusée — instance verrouillée",
 				"xuid", attempt.XUID, "gamertag", attempt.Gamertag)
 			return ErrInstanceLocked
@@ -147,6 +181,11 @@ func (s *XboxSSOLinkStrategy) OnAuthSuccess(ctx context.Context, attempt *auth.A
 		XUID:     attempt.XUID,
 	}
 
+	// Flow "rejoindre un groupe" : ajout au groupe + consommation du code.
+	if pendingInvite != nil {
+		s.redeemGroupInvite(ctx, pendingInvite, attempt, sess)
+	}
+
 	// PR 2.5a — Persistance tokens RTA (best-effort, non bloquant).
 	// Si tokenStore est nil (test ou config minimale), on saute simplement.
 	if s.tokenStore != nil {
@@ -162,6 +201,49 @@ func (s *XboxSSOLinkStrategy) OnAuthSuccess(ctx context.Context, attempt *auth.A
 		}
 	}
 	return nil
+}
+
+// resolvePendingInvite retourne l'invitation valide portée par la session (flow
+// "rejoindre un groupe"), ou nil. Une invitation expirée/consommée/introuvable, ou
+// sans store câblé, est traitée comme absente (login normal, soumis au verrou).
+func (s *XboxSSOLinkStrategy) resolvePendingInvite(ctx context.Context, sess *domain.SessionData) *domain.InviteCode {
+	if s.invites == nil || sess == nil || sess.PendingInviteCode == "" {
+		return nil
+	}
+	inv, err := s.invites.Get(sess.PendingInviteCode)
+	if err != nil || inv == nil {
+		slog.WarnContext(ctx, "xbox_sso: invitation en session introuvable", "code", sess.PendingInviteCode, "err", err)
+		return nil
+	}
+	if !inv.IsValid() {
+		slog.WarnContext(ctx, "xbox_sso: invitation en session invalide (expirée/consommée)", "code", inv.Code)
+		return nil
+	}
+	if inv.GroupID == "" {
+		// Invitation legacy (inscription password) — pas de groupe à rejoindre.
+		return nil
+	}
+	return inv
+}
+
+// redeemGroupInvite ajoute le joueur au groupe ciblé puis consomme le code.
+// Best-effort : un échec est loggé mais ne bloque pas le login (la session est déjà
+// câblée). Vide PendingInviteCode pour éviter une re-consommation.
+func (s *XboxSSOLinkStrategy) redeemGroupInvite(ctx context.Context, inv *domain.InviteCode, attempt *auth.Attempt, sess *domain.SessionData) {
+	if s.groups != nil {
+		if err := s.groups.AddMember(inv.GroupID, attempt.XUID, attempt.Gamertag); err != nil {
+			slog.ErrorContext(ctx, "xbox_sso: ajout au groupe échoué (non bloquant)",
+				"group_id", inv.GroupID, "xuid", attempt.XUID, "err", err)
+		} else {
+			slog.InfoContext(ctx, "xbox_sso: joueur ajouté au groupe via invitation",
+				"group_id", inv.GroupID, "gamertag", attempt.Gamertag)
+		}
+	}
+	if err := s.invites.Consume(inv.Code, attempt.Gamertag); err != nil {
+		slog.WarnContext(ctx, "xbox_sso: consommation invitation échouée (non bloquant)",
+			"code", inv.Code, "err", err)
+	}
+	sess.PendingInviteCode = ""
 }
 
 // notifyWatcher ajoute l'user au tracking du watcher daemon après login Xbox SSO.

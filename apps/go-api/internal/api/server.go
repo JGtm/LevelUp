@@ -772,7 +772,9 @@ func NewRouter(
 			xboxLinkStrategy = service.NewXboxSSOLinkStrategy(users).
 				WithTokenStore(multiUserTokens).
 				WithDaemonGetter(daemonGetter).
-				WithInstanceLock(instanceLockedFn)
+				WithInstanceLock(instanceLockedFn).
+				WithInviteStore(invites).
+				WithGroupStore(groupStore)
 			authHandler.WithLinkStrategy(xboxLinkStrategy)
 		} else {
 			authHandler.WithUserStore(users)
@@ -787,7 +789,8 @@ func NewRouter(
 		if cfg.AuthMode == "xbox" && cfg.OAuthRedirectURI != "" {
 			xboxOAuthHandler := handlers.NewXboxOAuthHandler(sessionStore, tokenProvider, cfg.DemoMode, cfg.OAuthRedirectURI).
 				WithLinkStrategy(xboxLinkStrategy).
-				WithAuthStore(authStore)
+				WithAuthStore(authStore).
+				WithInviteStore(invites)
 			// Lie les routes racine /auth/xbox/* déclarées avant ce groupe (cf. supra) :
 			// le redirect_uri Azure pointe sur le chemin racine, pas /api/v1.
 			xboxOAuthRoot = xboxOAuthHandler
@@ -807,6 +810,20 @@ func NewRouter(
 		// PR-C : définition opt-in d'un mot de passe par l'utilisateur connecté
 		// (re-login rapide sans round-trip Microsoft). Self-gardé (401 si pas de session).
 		r.Post("/auth/password", userAuthHandler.SetPassword)
+
+		// Groupes/familles : gestion end-user (tout user authentifié + lié à une
+		// identité Halo). Inviter à un groupe = générer un code "rejoindre le groupe"
+		// (consommé via le login Xbox SSO, cf. XboxSSOLinkStrategy). RequireAuth seul
+		// (pas RequireAdmin) : c'est de la fonction utilisateur, pas de l'ops.
+		groupsHandler := handlers.NewGroupsHandler(groupStore, invites, users)
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
+			r.Get("/groups", groupsHandler.ListMyGroups)
+			r.Post("/groups", groupsHandler.CreateGroup)
+			r.Patch("/groups/{id}", groupsHandler.RenameGroup)
+			r.Delete("/groups/{id}", groupsHandler.DeleteGroup)
+			r.Post("/groups/{id}/invites", groupsHandler.GenerateInvite)
+		})
 
 		// Admin : gestion utilisateurs + invitations (protégé par RequireAuth + RequireAdmin).
 		adminHandler := handlers.NewAdminHandler(users, invites)

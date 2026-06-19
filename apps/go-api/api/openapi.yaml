@@ -1612,6 +1612,68 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
+  # Groupes/familles (accès mutuel aux données — gestion end-user)
+  /groups:
+    get:
+      tags: [groups]
+      operationId: listMyGroups
+      summary: "Liste les groupes du user courant (auth + identité Halo requise)"
+      responses:
+        "200": { description: "Liste des groupes" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [groups]
+      operationId: createGroup
+      summary: "Crée un groupe (user courant = propriétaire)"
+      responses:
+        "201": { description: "Groupe créé" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /groups/{id}:
+    patch:
+      tags: [groups]
+      operationId: renameGroup
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Renomme un groupe (propriétaire only)"
+      responses:
+        "200": { description: "Groupe renommé" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { description: "Accès refusé (propriétaire/membre requis)" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [groups]
+      operationId: deleteGroup
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Supprime un groupe (propriétaire only)"
+      responses:
+        "204": { description: "Groupe supprimé" }
+        "403": { description: "Accès refusé (propriétaire/membre requis)" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /groups/{id}/invites:
+    post:
+      tags: [groups]
+      operationId: createGroupInvite
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Génère une invitation 'rejoindre le groupe' (membre only)"
+      responses:
+        "201": { description: "Invitation créée" }
+        "403": { description: "Accès refusé (propriétaire/membre requis)" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   # Admin
   /admin/invites:
     get:

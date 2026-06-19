@@ -10,6 +10,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/platform/userstore"
 	"levelup/go-api/internal/service"
 )
@@ -405,5 +406,97 @@ func TestXboxSSOLinkStrategy_CollisionWithPasswordUser_FallbackXbox(t *testing.T
 	// Session pointe vers le user xbox, pas le password.
 	if sess.Username == nil || *sess.Username != "alice_xbox" {
 		t.Errorf("session Username = %v, want alice_xbox", sess.Username)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Flow "rejoindre un groupe" : invitation portée par la session → bypass du
+// verrou d'instance + ajout au groupe + consommation du code.
+// ---------------------------------------------------------------------------
+
+// newGroupInviteRig monte une strategy avec invite + group stores câblés.
+func newGroupInviteRig(t *testing.T, locked bool) (*service.XboxSSOLinkStrategy, *userstore.Store, *userstore.InviteStore, *groupstore.GroupStore) {
+	t.Helper()
+	dir := t.TempDir()
+	users := userstore.NewStore(filepath.Join(dir, "users.json"))
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
+	groups := groupstore.NewGroupStore(filepath.Join(dir, "groups.json"))
+	s := service.NewXboxSSOLinkStrategy(users).
+		WithInstanceLock(func() bool { return locked }).
+		WithInviteStore(invites).
+		WithGroupStore(groups)
+	return s, users, invites, groups
+}
+
+// Invitation valide + XUID inconnu + instance verrouillée → bypass : user créé,
+// ajouté au groupe ciblé, code consommé, PendingInviteCode vidé.
+func TestXboxSSOLinkStrategy_InviteJoinsGroup_NewUser_BypassLock(t *testing.T) {
+	s, users, invites, groups := newGroupInviteRig(t, true)
+	g, _ := groups.Create("Fam", "owner-x", "Owner")
+	inv, _ := invites.Generate("Owner", 7, g.ID)
+
+	sess := &domain.SessionData{PendingInviteCode: inv.Code}
+	attempt := &auth.Attempt{XUID: "newcomer-x", Gamertag: "Newbie"}
+
+	if err := s.OnAuthSuccess(context.Background(), attempt, sess); err != nil {
+		t.Fatalf("OnAuthSuccess: %v", err)
+	}
+	if _, err := users.GetByXUID("newcomer-x"); err != nil {
+		t.Fatalf("user devrait être créé malgré le verrou : %v", err)
+	}
+	if got, _ := groups.Get(g.ID); !got.HasMember("newcomer-x") {
+		t.Fatalf("newcomer devrait être membre du groupe : %+v", got.Members)
+	}
+	if gotInv, _ := invites.Get(inv.Code); !gotInv.IsUsed() {
+		t.Fatal("l'invitation devrait être consommée")
+	}
+	if sess.PendingInviteCode != "" {
+		t.Fatal("PendingInviteCode devrait être vidé après consommation")
+	}
+}
+
+// Invitation introuvable + verrou → traitée comme absente → refus.
+func TestXboxSSOLinkStrategy_InvalidInvite_Locked_Rejected(t *testing.T) {
+	s, _, _, _ := newGroupInviteRig(t, true)
+	sess := &domain.SessionData{PendingInviteCode: "NOPE"}
+	attempt := &auth.Attempt{XUID: "x", Gamertag: "GT"}
+
+	if err := s.OnAuthSuccess(context.Background(), attempt, sess); !errors.Is(err, service.ErrInstanceLocked) {
+		t.Fatalf("attendu ErrInstanceLocked (invite invalide ignorée), got %v", err)
+	}
+}
+
+// User existant + invitation valide → ajouté au groupe (hors verrou).
+func TestXboxSSOLinkStrategy_ExistingUser_InviteAddsToGroup(t *testing.T) {
+	s, users, invites, groups := newGroupInviteRig(t, false)
+	if _, err := users.CreateFromXbox("Existing", "exist-x"); err != nil {
+		t.Fatalf("CreateFromXbox: %v", err)
+	}
+	g, _ := groups.Create("Fam", "owner-x", "Owner")
+	inv, _ := invites.Generate("Owner", 7, g.ID)
+
+	sess := &domain.SessionData{PendingInviteCode: inv.Code}
+	attempt := &auth.Attempt{XUID: "exist-x", Gamertag: "Existing"}
+
+	if err := s.OnAuthSuccess(context.Background(), attempt, sess); err != nil {
+		t.Fatalf("OnAuthSuccess: %v", err)
+	}
+	if got, _ := groups.Get(g.ID); !got.HasMember("exist-x") {
+		t.Fatalf("user existant devrait être ajouté au groupe : %+v", got.Members)
+	}
+	if gotInv, _ := invites.Get(inv.Code); !gotInv.IsUsed() {
+		t.Fatal("l'invitation devrait être consommée")
+	}
+}
+
+// Invitation legacy (sans groupe) + verrou → pas de groupe → bypass refusé.
+func TestXboxSSOLinkStrategy_LegacyInviteNoGroup_Locked_Rejected(t *testing.T) {
+	s, _, invites, _ := newGroupInviteRig(t, true)
+	inv, _ := invites.Generate("admin", 7, "") // GroupID vide
+	sess := &domain.SessionData{PendingInviteCode: inv.Code}
+	attempt := &auth.Attempt{XUID: "x", Gamertag: "GT"}
+
+	if err := s.OnAuthSuccess(context.Background(), attempt, sess); !errors.Is(err, service.ErrInstanceLocked) {
+		t.Fatalf("attendu ErrInstanceLocked (invite sans groupe), got %v", err)
 	}
 }
