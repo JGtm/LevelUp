@@ -54,6 +54,20 @@ export interface SquadPlayerEngagement {
   colorHex?: string
 }
 
+export interface SquadEngagementSeriesLabels {
+  lobby: string
+  /** Attendu de l'escouade (coef squad × lobby). */
+  expected: string
+  /** Rythme réel de l'escouade (per-player, joueur inclus). */
+  observed: string
+}
+
+const DEFAULT_SQUAD_LABELS: SquadEngagementSeriesLabels = {
+  lobby: 'Lobby',
+  expected: 'Escouade attendue',
+  observed: 'Escouade réelle',
+}
+
 export interface SquadEngagementViewProps {
   /** Donnees de la session ou periode. */
   session: SquadEngagementSession
@@ -61,6 +75,8 @@ export interface SquadEngagementViewProps {
   state?: 'loading' | 'error' | 'empty' | 'ready'
   /** Hauteur du chart. Default 280. */
   height?: number
+  /** Libellés localisés des 3 courbes (défaut FR). Fournis par le parent. */
+  seriesLabels?: SquadEngagementSeriesLabels
 }
 
 /**
@@ -68,7 +84,7 @@ export interface SquadEngagementViewProps {
  *   3 courbes team-level + boutons squad pour overlay 1 joueur a la fois.
  */
 export function SquadEngagementView(props: SquadEngagementViewProps) {
-  const { session, state = 'ready', height = 280 } = props
+  const { session, state = 'ready', height = 280, seriesLabels = DEFAULT_SQUAD_LABELS } = props
   const [selectedXUID, setSelectedXUID] = useState<string | null>(null)
 
   const overlayPlayer = useMemo(
@@ -77,8 +93,8 @@ export function SquadEngagementView(props: SquadEngagementViewProps) {
   )
 
   const buildOption = useCallback(
-    (): EChartsCoreOption => buildSquadEngagementOption(session, overlayPlayer),
-    [session, overlayPlayer],
+    (): EChartsCoreOption => buildSquadEngagementOption(session, overlayPlayer, seriesLabels),
+    [session, overlayPlayer, seriesLabels],
   )
 
   // Series virtuelle non vide (sinon ChartCard affiche emptyMessage).
@@ -133,7 +149,7 @@ export function SquadEngagementView(props: SquadEngagementViewProps) {
 // Builder ECharts
 // ---------------------------------------------------------------------------
 
-function truncateMapName(s: string, max = 9): string {
+function truncateMapName(s: string, max = 14): string {
   if (s.length <= max) return s
   const sepIdx = Math.min(
     ...[' ', '-'].map((c) => { const i = s.indexOf(c); return i > 0 ? i : Infinity }),
@@ -145,6 +161,7 @@ function truncateMapName(s: string, max = 9): string {
 function buildSquadEngagementOption(
   session: SquadEngagementSession,
   overlay: SquadPlayerEngagement | null,
+  labels: SquadEngagementSeriesLabels = DEFAULT_SQUAD_LABELS,
 ): EChartsCoreOption {
   if (session.labels.length === 0) {
     return {} as EChartsCoreOption
@@ -187,7 +204,7 @@ function buildSquadEngagementOption(
   }
   const series: SeriesItem[] = [
     {
-      name: 'Lobby',
+      name: labels.lobby,
       type: 'line',
       data: session.lobbyPerPlayer,
       smooth: false,
@@ -198,7 +215,7 @@ function buildSquadEngagementOption(
       z: 1,
     },
     {
-      name: 'Attendu equipe',
+      name: labels.expected,
       type: 'line',
       data: session.teamExpected,
       smooth: false,
@@ -209,7 +226,7 @@ function buildSquadEngagementOption(
       z: 2,
     },
     {
-      name: 'Equipe observee',
+      name: labels.observed,
       type: 'line',
       data: session.teamObserved,
       smooth: false,

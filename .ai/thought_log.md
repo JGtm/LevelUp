@@ -1,3 +1,146 @@
+## [2026-06-19] Plan durcissement ART player_match_enrichment + diagnostic version DuckDB — Complété (plan)
+
+**Statut** : plan `.ai/PLAN_PME_ART_HARDENING.md` écrit. Diagnostic version DuckDB fait.
+
+**Déclencheur (user)** : « pourquoi l'index se corrompt ? il y a une étape que je ne fais pas ? » → plan pour le step manquant + check d'une mise à jour DuckDB (potentiellement pour le VPS).
+
+**Finding DuckDB (important)** : driver `duckdb-go/v2 v2.10503.1` = **DuckDB 1.5.3**. La corruption ART est une **régression amont 1.5.0** documentée : [duckdb#23046](https://github.com/duckdb/duckdb/issues/23046) « ART index constraint enforcement corrupts the heap on file-backed » — **OUVERTE**, **non corrigée en 1.5.4**. Donc : pas une erreur d'usage, et **un simple upgrade ne suffit pas**. La version Python (1.4.4 LTS, pré-1.5.0) n'avait pas le bug → c'est l'adoption Go de 1.5.x qui l'a introduit. → la mitigation app-side (append-only / churn-reduction, cf. plan) est la voie robuste ; downgrade 1.4.x LTS bloqué par le risque format-fichier.
+
+**Décision** : plan phasé (filet auto-heal → réduction churn via persister batché → append-only + vue `_latest`), + suivi #23046. Branche cible `refactor/pme-append-only` à créer après merge de la PR courante.
+
+---
+
+## [2026-06-19] Réparation corruption ART player_match_enrichment + re-backfill engagement propre — Complété (ZÉRO perte)
+
+**Statut** : 4 player DB réparées, re-backfill réussi, coefs recentrés. Backup pris. `go build`/`vet`/tests migration ✓.
+
+**Déclencheur** : le re-backfill `engagement-coefs --with-scores` crashait DuckDB (FATAL "Failed to append to PRIMARY_player_match_enrichment_0: duplicate key") sur Madina+JGtm — bug d'index ART (faux-positif : données sans doublon, COUNT==DISTINCT). User : « réparer proprement, aucune perte de données ».
+
+**Constat intégrité (read-only)** : ZÉRO perte. Toutes les lignes présentes, aucun doublon réel (Madina 1183=1183, JGtm 942=942, Choco 505, XxDaemon 32). 2 WAL résiduels (crash). Le crash est un faux-positif d'INDEX, pas de données.
+
+**Décisions techniques** :
+1. **Backup** des 4 stats.duckdb (+WAL) → `data/backups/pre_art_rebuild_20260619_114622/`.
+2. **Fix `RebuildPlayerMatchEnrichmentART`** (`steps_player_rebuild_match_enrichment.go`) : la version 2026-05-23 (a) DROP-ait les indexes secondaires sans les recréer (commentaire « pas d'indexes connus » périmé — la table a gagné idx_pme_engagement_history/_paces/_session après) et (b) n'était PAS transactionnelle. Corrigé : capture dynamique des CREATE INDEX (duckdb_indexes is_primary=false) → swap CTAS **en transaction** avec **garde anti-perte** (rebuilt==before sinon rollback) → recréation des indexes. Même sûreté que RebuildMatchParticipantsART. Test non-régression `…_RecreatesSecondaryIndexes` ajouté.
+3. **CLI `cmd/rebuild_pme_art`** : cible UNIQUEMENT player_match_enrichment + CHECKPOINT initial (rejoue le WAL de crash) et final (vide le WAL). Évite `force_rebuild_art --player-db` qui tente AUSSI de rebuild match_skill_rank — table devenue append-only (v5.3) qui ne peut plus porter de PK → échec + WAL non checkpointé (bug pré-existant de force_rebuild_art, hors scope).
+4. **Rebuild des 4 DB** : counts identiques au baseline (zéro perte), 3 indexes recréés (1 pour Choco), WAL nettoyés, RO open OK, match_skill_rank intact.
+5. **Re-backfill** `engagement-coefs --all --with-scores --force` : RÉUSSI sans crash (XxDaemon 31, Choco 487, JGtm 914, Madina 596 scores). **Coefs recentrés** : JGtm 1.345→**1.009**, Madina 1.819→**1.279** (+ PvP_ranked 1.45 désormais calculé) — confirme l'effet pace_team-inclut-le-joueur sur les données historiques.
+
+**Résultats** : zéro perte (vérifié counts == baseline avant/après), engagement recentré sur tout l'historique, build/tests verts.
+
+**Note** : bug pré-existant à part — `force_rebuild_art --player-db` casse sur l'étape match_skill_rank (append-only). Non corrigé ici (hors scope) ; utiliser `cmd/rebuild_pme_art` pour player_match_enrichment.
+
+---
+
+## [2026-06-19] Escouade : résolution FR des noms de map via asset_translations — Complété
+
+**Statut** : DB libérée par le user. Diagnostic + fix livrés. `go build`/`go test duckdb` ✓ (2 nouveaux tests).
+
+**Diagnostic (diag_q sur shared + metadata)** : `match_registry.map_name_fr` est **NULL pour les 1762 matchs** → le `COALESCE(map_name_fr, map_name)` retombe toujours sur l'EN (et certains map_name sont des UUID bruts). Les noms FR existent bien dans `metadata.asset_translations` (123 maps en `fr-FR`, clé `asset_id` = `map_id`). Preuve : The Pit (648ae7aa) → FR « La fosse ».
+
+**Décision technique** : `LoadMatchEngagementContext` ([engagement_score_repo_queries.go]) sélectionne désormais aussi `mr.map_id` ; quand présent, on résout le nom FR via `metadata.asset_translations` (helper `resolveMapNameFR`, `QueryRecovered`, `asset_type='map' AND lang IN ('fr-FR','fr')`, priorité fr-FR). Best-effort : fallback EN si Metadata absent / pas de ligne FR. Bénéficie au squad (affichage maps) sans toucher le service ni l'interface port. `EngagementScoreRepo.pdb` (`*PlayerDB`) a déjà accès à `Metadata`.
+
+**Tests** : `TestResolveMapNameFR` (EN!=FR→FR, FR==EN, fallback 'fr', id inconnu→fallback, le bruit playlist ne matche pas) + `TestResolveMapNameFR_NilMetadata` (best-effort sans panic). Test interne (package duckdb) pour atteindre la méthode non exportée.
+
+**Prochaine étape** : re-backfill engagement (--with-scores --force) maintenant que la DB est libre.
+
+---
+
+## [2026-06-18] Vérification finale lot rendement/engagement + logging + test 422 — Complété
+
+**Statut** : vérification go/no-go du lot (5 commits). Ajouts logging + 1 test. Tout vert.
+
+**Déclencheur (user)** : « Vérification finale… bonne couverture de logging dans le dossier logs dédié et de tests aussi ».
+
+**Logging ajouté** (route vers `logs/{module}.log` via observability/context_handler.go) :
+- `GetMatchEngagement` : `slog.WarnContext` quand un match renvoie ErrEngagementInsufficient, avec `match_id`, `xuid`, `n_player_events`, `n_team_events`, `n_lobby_events`, `n_team`, `target_team_id`, `reason` → permet de pister en direct la cause racine (attribution xuid/team_id) quand le user recroise un match cassé.
+- PATCH /settings : `slog.InfoContext` quand `rendement_exclude_assists` change.
+- Boot : `slog.Info` si le toggle est actif au démarrage.
+
+**Test ajouté** : `TestEngagementHandler_GetMatchEngagement_Insufficient` (match < 3 min → 422 `engagement_insufficient`, pas 500/migration). + tests existants des commits : `excludeAssistsToggle`, `PaceTeamIncludesPlayer`.
+
+**Résultats vérif** : `go build ./...` ✓, `go vet` (packages touchés) ✓, `go test` analysis/temporal/service/handlers/settings ✓ (3 nouveaux tests verts). Front : `tsc` ✓, `eslint` **0 erreur** (20 warnings pré-existants hors fichiers touchés), **vitest 210 fichiers / 1877 pass / 14 skip** ✓. Tailles fichiers touchés < 500L, fonctions < 80L.
+
+**Reste BLOQUÉ** (backfill-world.exe PID 33736 tient la shared DB) : re-backfill `engagement-coefs --all --with-scores --force` + diagnostic résolution FR maps Escouade. À lancer dès DB libre.
+
+---
+
+## [2026-06-18] Escouade Engagement : relabel « équipe observée » → « Escouade réelle » (maps FR différé) — Complété (partiel)
+
+**Statut** : commit 5/5. `tsc`/`eslint`/vitest squad 242/242 ✓.
+
+**Déclencheur (user)** : « Revoir le graphe Engagement sur Escouade : c'est quoi "équipe observée" et les noms des maps pas résolu. Est-ce que le coef est bien calculé en post sync ? ».
+
+**Réponses / décisions** :
+- **« équipe observée »** = rythme réel moyen de l'escouade (per-player, joueur inclus depuis le commit pace_team). Relabel des 3 courbes via i18n (nouvelles clés `engagement.squad.trace.{lobby,expected,observed}`) : « Lobby / Escouade attendue / Escouade réelle » (FR), « Lobby / Squad (expected) / Squad (actual) » (EN). `SquadEngagementView` ne hardcode plus les noms (prop `seriesLabels`, passée localisée par `SquadEngagementSection`). Sous-titre manifest aligné.
+- **coef post-sync** : confirmé OK (diagnostic antérieur : JGtm/Madina ont bien leur coef PvP_unranked ; ranked vide = joueur ne joue pas classé, normal).
+- **noms de maps** : truncation front assouplie (9→14 car). **Résolution FR backend DIFFÉRÉE** : la requête `LoadMatchEngagementContext` fait `COALESCE(mr.map_name_fr, mr.map_name)` qui n'emprunte pas le pattern canonique `asset_translations` (cf. mémoire reference_asset_translations_fr + helper `applyMapFRTranslations` dans filters_repo.go). Diagnostic bloqué : shared/metadata DB tenue par `backfill-world.exe`. À faire quand DB libre : vérifier si `map_name_fr` est NULL (→ enrichir via asset_translations, mirroring applyMapFRTranslations) vs simple troncature.
+
+**Prochaine étape** : re-backfill engagement (--with-scores) + diagnostic maps quand `backfill-world.exe` relâche la shared DB.
+
+---
+
+## [2026-06-18] Engagement Match View : message honnête (fin du « migration en cours » trompeur) — Complété
+
+**Statut** : commit 4/5. `go build`+tests handlers/service ✓, `tsc`/`eslint`/vitest engagement ✓.
+
+**Déclencheur (user)** : « migration en cours » sur le graphe Engagement de matchs récents JGtm, alors que la migration est appliquée. Diagnostic (logs/general.log) : le endpoint renvoie HTTP 500 « insufficient event data » (ErrInsufficientData, branche `default` du handler) quand le split par xuid ne trouve aucun event joueur+coéquipiers ; le front affiche `engagement.error.unavailable` (= « migration en cours ») pour TOUTE erreur/courbe vide → message doublement faux.
+
+**Décision technique** : (1) backend — nouvelle sentinelle `service.ErrEngagementInsufficient` ; `GetMatchEngagement` traduit `temporal.ErrMatchTooShort`/`ErrInsufficientData` en cette sentinelle ; handler la mappe en **422 `engagement_insufficient`** (au lieu du 500 générique). (2) front — `EngagementMatchSection` n'affiche « migration en cours » QUE si `ApiError.code === 'engagement_unavailable'` (vrai 503 schéma manquant) ; sinon message neutre `engagement.error.match_unavailable` (« Engagement indisponible pour ce match… »).
+
+**Note diagnostic (non corrigé ici)** : la cause racine du `insufficient_event_data` sur des matchs où les events EXISTENT reste un mismatch d'attribution xuid/team_id par match (les 2 matchs loggés ont depuis des données complètes → transitoire au moment du sync, OU re-attribution par un rebuild highlight_events). Pas de match actuellement reproductible identifié ; le user fournira un match_id cassé live si recroisé. Le présent commit corrige le message (sûr, quelle que soit la cause) ; la cause data reste à confirmer.
+
+**Résultats** : backend+front verts. Message honnête livré.
+
+**Prochaine étape** : commit 5 (Escouade), re-backfill engagement (bloqué : backfill-world.exe tient la shared DB).
+
+---
+
+## [2026-06-18] Engagement : pace_team inclut le joueur + relabel 3 courbes — Complété (code) / re-backfill à lancer
+
+**Statut** : commit 3/5. Backend temporal + front relabel verts (`go test temporal/sync` ✓, `tsc`/`eslint` ✓, vitest EngagementCurve 4/4). **Re-backfill data à exécuter** (paces/coefs).
+
+**Déclencheur (user)** : « attendu juste au-dessus de l'équipe, comme un +1, étrange » → diagnostic : `pace_attendu = coef × pace_team`, coef gonflé car `pace_team` excluait le joueur du numérateur (`splitMatchEvents`/`LoadTeamXUIDs xuid<>target`) mais NTeam le comptait au dénominateur. User : « équipe alliée doit inclure le joueur » + « 3 courbes : joueur réel, joueur attendu, équipe réelle ».
+
+**Décision technique (backend)** : dans `ComputeEngagementScore`, construire `teamInclPlayer = TeamEvents ∪ PlayerEvents` et l'utiliser comme `TeamEvents` de la courbe ET comme dénominateur de l'attendu en mode équipe (`selectExpectedReference` prend désormais `teamInclPlayer`). FFA/1v1 inchangé (lobby inclut déjà le joueur). Effet : `pace_team` cohérent num/dénom (joueur inclus) → coef se recentre vers ~1.0 → « joueur attendu » reste au-dessus de « équipe réelle » pour un joueur au-dessus de la moyenne, coïncide pour un joueur moyen (honnête). Test `TestComputeEngagementScore_PaceTeamIncludesPlayer` (coéquipiers sans events + joueur actif → pace_team > 0).
+
+**Décision technique (front)** : relabel des 3 séries via le manifest `engagement.trace.*` (`team`→« Équipe réelle »/« Team (actual) », `expected`→« Joueur attendu »/« Player (expected) », `player`→« Joueur réel »/« Player (actual) »). `EngagementCurve` ne hardcode plus les noms : nouvelle prop `seriesLabels` (défaut FR), passée localisée par `EngagementMatchSection`.
+
+**Re-backfill requis** : `go run ./cmd/levelup engagement-coefs --all --with-scores --force` (recompute scores depuis highlight_events → nouvelles paces → coefs recentrés). Pré-requis : shared/player DB libres (pas de serveur/backfill-world tenant le lock). Re-validation `inspect_engagement` : coef_team_share attendu plus proche de 1 que 1.34/1.82.
+
+**Prochaine étape** : re-backfill, puis commits 2 (message honnête) + 4 (Escouade).
+
+---
+
+## [2026-06-18] KPI bar Match View : Rendement/Résistance + police réduite + labels courts — Complété
+
+**Statut** : commit 2/5 du lot. `tsc` + `eslint` verts, vitest match-view 113/113. Branche `feat/rendement-engagement-matchview`.
+
+**Déclencheur (user)** : « Ajouter une représentation Rendement et Résistance sur la KPI bar de la page Général de match view. Réduire la taille de la police des KPI cards pour gagner de la place, possibilité de raccourcir certains labels (Assistances → Assist.) ».
+
+**Décision technique** : OC/DR déjà calculés backend par scoreboard row (match_view_converters) ; `MatchViewPage` expose déjà `meRow = scoreboard.find(is_me)`. Donc **zéro changement backend** : on passe `meRow.offensive_conversion/defensive_resistance` à `MatchSummaryCardsSection` (2 nouvelles cartes réutilisant `formatOffensiveConversion`/`formatDefensiveResistance`/`combatYieldToken` de `lib/formatters/combatYield`). Police réduite dans `MatchVsStatCard` + `MatchWinProbCard` (valeurs `text-2xl`→`text-lg`, label `text-xs`→`text-2xs`, padding `px-4 py-3`→`px-3 py-2.5`). Grille `lg:grid-cols-6`→`lg:grid-cols-4 xl:grid-cols-8` (8 cartes : 2×4 sur lg, 1×8 sur xl). Labels raccourcis dans le manifest `match_view.toml` (« Assistances vs attendues »→« Assist. », « MMR équipe vs adverse »→« MMR », « Frags vs attendus »→« Frags », « Morts vs attendues »→« Morts ») + nouvelles clés `cards.rendement`/`cards.resistance` ; manifest régénéré.
+
+**Résultats observés** : typecheck/eslint verts, 113 tests match-view OK. Les sous-labels (réel/attendu, allié/adverse) clarifient toujours les cartes raccourcies.
+
+**Prochaine étape** : commits 3 (engagement pace_team + relabel), 4 (Escouade), 2 (message honnête).
+
+---
+
+## [2026-06-18] Toggle « rendement sans assistances » (réglage global) — Complété
+
+**Statut** : branche `feat/rendement-engagement-matchview` (depuis `main`). Commit 1/5 du lot rendement/engagement/match-view. `go build ./...` ✓, tests analysis+service+handlers ✓, front `tsc` + `eslint` ✓. Commit en attente d'autorisation.
+
+**Déclencheur (user)** : « option dans les settings pour que tous les composants rendement soient calculés sans tenir compte des assistances (désactivé par défaut) et forcément brancher cette option sur les composants ».
+
+**Décision technique** : le rendement = `OffensiveConversion` = `225×(kills + assists/3)/dégâts`, calculé backend dans `internal/analysis/combat_yield.go` et consommé par ~13 sites (analysis purs + services + patterns_repo). Plutôt que threader un bool à travers 13 agrégateurs + leurs appelants + tests (gros ripple, risque), j'ai porté le flag en **variable globale atomique** dans le package `analysis` (`excludeAssistsFromYield atomic.Bool`), lue dans `FragEquivalents`. Justification : c'est un réglage app **unique** (pas par-user), donc une valeur process-wide est sémantiquement correcte ; `atomic.Bool` la rend thread-safe + réactive à chaud. Zéro changement de signature aux call-sites → OffensiveConversion (et DamagePerFragEquivalent) respectent le toggle partout (Home, Timeseries, Sessions, Explorer, Escouade, Match view). Quand ON : OC = OffensiveFinishing (225×kills/dégâts). DefensiveResistance non touchée (n'utilise pas les assists).
+
+**Câblage** : `domain.Settings{Response,Request}` + `platform/settings` (AppSettings/Apply/ToResponse) + handler PATCH (`analysis.SetExcludeAssistsFromYield` après Save) + boot `cmd/server/main.go` (set depuis app_settings au démarrage). Front : type `SettingsResponse.rendement_exclude_assists`, carte « Rendement » dans `AnalyseTab.tsx` (ToggleRow), i18n FR/EN. Le PATCH invalide les queries → recompute query-time reflète le toggle sans redémarrage.
+
+**Résultats observés** : build Go vert ; `TestComputeCombatYield_excludeAssistsToggle` vert (OC==OffensiveFinishing quand exclu, retour défaut après reset) ; tests combat-yield existants non régressés (défaut false) ; typecheck/eslint front verts.
+
+**Prochaine étape** : commits 2-5 (engagement message honnête, pace_team inclut joueur + relabel 3 courbes, Escouade, KPI bar match-view).
+
+---
+
 ## [2026-06-18] Remise au vert CI post-merge Lab (4 jobs rouges) — Complété
 
 **Statut** : branche `refactor/lab-admin-atelier`. Les 4 jobs CI rouges sur le commit Lab (`b9fde414c`, déjà sur `main` + déployé) corrigés et revalidés localement. Commit en attente d'autorisation.

@@ -60,6 +60,9 @@ type AppSettings struct {
 	OutcomeExcludeBotMatchesFromRecords bool   `json:"outcome_exclude_bot_matches_from_records"`
 	OutcomeBadgeSensitivity             string `json:"outcome_badge_sensitivity"`
 
+	// RendementExcludeAssists — rendement combat sans assistances (défaut false).
+	RendementExcludeAssists bool `json:"rendement_exclude_assists"`
+
 	// ShowProgression — affichage du système Objectifs/Prestige (défaut : true).
 	ShowProgression bool `json:"show_progression"`
 
@@ -294,6 +297,9 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.OutcomeBadgeSensitivity != nil {
 		cfg.OutcomeBadgeSensitivity = *req.OutcomeBadgeSensitivity
 	}
+	if req.RendementExcludeAssists != nil {
+		cfg.RendementExcludeAssists = *req.RendementExcludeAssists
+	}
 	if req.ShowProgression != nil {
 		cfg.ShowProgression = *req.ShowProgression
 	}
@@ -350,6 +356,7 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		OutcomeExcludeBotMatchesFromBadges:  cfg.OutcomeExcludeBotMatchesFromBadges,
 		OutcomeExcludeBotMatchesFromRecords: cfg.OutcomeExcludeBotMatchesFromRecords,
 		OutcomeBadgeSensitivity:             cfg.OutcomeBadgeSensitivity,
+		RendementExcludeAssists:             cfg.RendementExcludeAssists,
 		ShowProgression:                     cfg.ShowProgression,
 		CoachProactiveMode:                  cfg.CoachProactiveMode,
 		AuthProvider:                        cfg.AuthProvider,

@@ -5,6 +5,41 @@ import (
 	"testing"
 )
 
+func TestComputeCombatYield_excludeAssistsToggle(t *testing.T) {
+	// Réglage global "rendement sans assistances" : OffensiveConversion doit
+	// ignorer les assists et égaler OffensiveFinishing (225*kills/damage).
+	SetExcludeAssistsFromYield(true)
+	defer SetExcludeAssistsFromYield(false) // restaure le défaut pour les autres tests
+
+	if !AssistsExcludedFromYield() {
+		t.Fatal("AssistsExcludedFromYield should be true after Set(true)")
+	}
+
+	cy := ComputeCombatYield(10, 6, 2000, 1800, 4)
+
+	// Sans assists : OC = 225 * 10 / 2000 = 1.125 (== OffensiveFinishing).
+	wantOC := 225.0 * 10.0 / 2000.0
+	if math.Abs(cy.OffensiveConversion-wantOC) > 1e-9 {
+		t.Errorf("OffensiveConversion (excl. assists) = %.6f, want %.6f", cy.OffensiveConversion, wantOC)
+	}
+	if math.Abs(cy.OffensiveConversion-cy.OffensiveFinishing) > 1e-9 {
+		t.Errorf("OC (%.6f) doit égaler OffensiveFinishing (%.6f) quand assists exclus",
+			cy.OffensiveConversion, cy.OffensiveFinishing)
+	}
+
+	// DamagePerFragEquivalent doit aussi ignorer les assists (= damage/kills).
+	if v := DamagePerFragEquivalent(2000, 10, 6); math.Abs(v-2000.0/10.0) > 1e-9 {
+		t.Errorf("DamagePerFragEquivalent (excl. assists) = %.6f, want %.6f", v, 2000.0/10.0)
+	}
+
+	// Après restauration, le comportement par défaut (assists/3) revient.
+	SetExcludeAssistsFromYield(false)
+	cy2 := ComputeCombatYield(10, 6, 2000, 1800, 4)
+	if math.Abs(cy2.OffensiveConversion-225.0*12.0/2000.0) > 1e-9 {
+		t.Errorf("OC (défaut) = %.6f, want %.6f", cy2.OffensiveConversion, 225.0*12.0/2000.0)
+	}
+}
+
 func TestComputeCombatYield_nominal(t *testing.T) {
 	// 10 kills, 6 assists, 2000 damage dealt, 1800 damage taken, 4 deaths
 	cy := ComputeCombatYield(10, 6, 2000, 1800, 4)

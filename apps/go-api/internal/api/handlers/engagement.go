@@ -74,6 +74,8 @@ func (h *EngagementHandler) GetMatchEngagement(w http.ResponseWriter, r *http.Re
 			writeError(r.Context(), w, http.StatusNotFound, "match_not_found", "match introuvable pour ce joueur : "+matchID)
 		case errors.Is(err, service.ErrEngagementPvENotSupported):
 			writeError(r.Context(), w, http.StatusUnprocessableEntity, "pve_not_supported", "engagement non couvert pour les matchs PvE en v1")
+		case errors.Is(err, service.ErrEngagementInsufficient):
+			writeError(r.Context(), w, http.StatusUnprocessableEntity, "engagement_insufficient", "engagement indisponible pour ce match (trop court ou peu d'action)")
 		case errors.Is(err, port.ErrEngagementUnavailable):
 			writeError(r.Context(), w, http.StatusServiceUnavailable, "engagement_unavailable", "migration EngagementScore non appliquee")
 		default:

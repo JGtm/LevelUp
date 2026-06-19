@@ -4,6 +4,10 @@
  * Visible uniquement quand une session est ouverte (currentUsername non nul).
  * Appelle POST /auth/logout puis force un rechargement complet (window.location)
  * pour que l'auth soit ré-évaluée côté serveur (redirection vers login).
+ *
+ * `variant` :
+ * - `icon` (défaut) : bouton carré autonome dans la barre de nav.
+ * - `menu` : entrée de menu (icône + libellé) pour le dropdown des réglages.
  */
 import { toast } from 'sonner'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -27,7 +31,7 @@ function LogoutIcon() {
   )
 }
 
-export function LogoutButton() {
+export function LogoutButton({ variant = 'icon' }: { variant?: 'icon' | 'menu' }) {
   const currentUsername = useAppShellStore((s) => s.currentUsername)
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
@@ -45,6 +49,22 @@ export function LogoutButton() {
         toast.error(msg)
       },
     })
+  }
+
+  if (variant === 'menu') {
+    return (
+      <button
+        type="button"
+        onClick={handleLogout}
+        disabled={logout.isPending}
+        role="menuitem"
+        aria-label={t('common.shell.logout')}
+        className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-sm text-popover-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50 whitespace-nowrap"
+      >
+        <LogoutIcon />
+        {t('common.shell.logout')}
+      </button>
+    )
   }
 
   return (

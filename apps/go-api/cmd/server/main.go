@@ -34,6 +34,7 @@ import (
 	"syscall"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/api"
 	"levelup/go-api/internal/assetnames"
 	"levelup/go-api/internal/config"
@@ -602,6 +603,14 @@ func main() {
 
 	// --- 6. Scheduler, watcher, puis routeur HTTP ---
 	settingsStore := settings.NewStore(cfg.AppSettingsPath)
+	// Propage le réglage global "rendement sans assistances" au package analysis
+	// dès le boot (sinon le défaut false s'applique jusqu'au premier PATCH).
+	if s, lerr := settingsStore.Load(); lerr == nil {
+		analysis.SetExcludeAssistsFromYield(s.RendementExcludeAssists)
+		if s.RendementExcludeAssists {
+			slog.Info("rendement combat : assistances EXCLUES (réglage rendement_exclude_assists actif)")
+		}
+	}
 	tokenProvider := buildTokenProvider(settingsStore)
 
 	// ADR 0023 Phase 2 — Migration boot-time des tokens legacy vers MultiUserTokenStore.

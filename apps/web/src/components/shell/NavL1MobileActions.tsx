@@ -221,7 +221,7 @@ function RowLabel({ children }: { children: ReactNode }) {
 }
 
 function Divider() {
-  return <div role="separator" className="my-2 h-px bg-border" />
+  return <div role="separator" className="my-2 h-px bg-foreground/20" />
 }
 
 function MenuButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {

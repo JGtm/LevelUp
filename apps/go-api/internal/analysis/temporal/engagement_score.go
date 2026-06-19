@@ -131,14 +131,23 @@ func ComputeEngagementScore(input EngagementScoreInput) (domain.EngagementScoreR
 
 	windowMS, samplingMS := resolveWindow(input)
 
+	// "Equipe reelle" = coequipiers + joueur cible. On inclut le joueur au
+	// numerateur pour rester coherent avec NTeam (qui le compte au denominateur) :
+	// pace_team = events de TOUTE l'equipe / NTeam. Sans ca, num = N-1 joueurs et
+	// denom = N -> ligne equipe sous-evaluee + coef gonfle (cf. thought_log
+	// 2026-06-18). En FFA/1v1 le denominateur reste le lobby (deja joueur inclus).
+	teamInclPlayer := make([]canonical.HighlightEvent, 0, len(input.TeamEvents)+len(input.PlayerEvents))
+	teamInclPlayer = append(teamInclPlayer, input.TeamEvents...)
+	teamInclPlayer = append(teamInclPlayer, input.PlayerEvents...)
+
 	// Choix du coefficient et du dénominateur "team" selon le mode.
 	// FFA / 1v1 : pas d'equipe -> attendu calcule via lobby (cf §3.4 et §6.6).
-	coefForExpected, denominatorEvents, denominatorN := selectExpectedReference(input)
+	coefForExpected, denominatorEvents, denominatorN := selectExpectedReference(input, teamInclPlayer)
 
 	// Construction de la courbe (fonction definie dans engagement_curve.go).
 	curve := buildEngagementCurve(buildCurveParams{
 		PlayerEvents:      input.PlayerEvents,
-		TeamEvents:        input.TeamEvents,
+		TeamEvents:        teamInclPlayer,
 		LobbyEvents:       input.LobbyEvents,
 		NTeam:             input.NTeam,
 		NHumansLobby:      input.NHumansLobby,
@@ -338,9 +347,12 @@ func resolveWindow(input EngagementScoreInput) (windowMS, samplingMS int64) {
 
 // selectExpectedReference choisit le coefficient et le denominateur "team"
 // selon le mode. Pour FFA / 1v1 (pas d'equipe), fallback sur lobby.
-func selectExpectedReference(input EngagementScoreInput) (coef float64, denomEvents []canonical.HighlightEvent, denomN int) {
+//
+// teamInclPlayer = coequipiers + joueur cible : utilise comme denominateur de
+// l'attendu en mode equipe (coherence num/denom avec pace_team, joueur inclus).
+func selectExpectedReference(input EngagementScoreInput, teamInclPlayer []canonical.HighlightEvent) (coef float64, denomEvents []canonical.HighlightEvent, denomN int) {
 	if input.IsTeamMode && input.NTeam > 0 {
-		return input.CoefTeamShare, input.TeamEvents, input.NTeam
+		return input.CoefTeamShare, teamInclPlayer, input.NTeam
 	}
 	// Fallback FFA/1v1 : pas d'equipe, utiliser lobby comme reference.
 	return input.CoefLobbyShare, input.LobbyEvents, input.NHumansLobby
