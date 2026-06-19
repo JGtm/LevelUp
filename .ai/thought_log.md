@@ -1,3 +1,18 @@
+## [2026-06-19] Alignement données prod : diagnostic divergence + sous-commande levelup rebuild-pme-art — En cours
+
+**Déclencheur (user)** : aligner les DB prod avec local (corrections engagement/ART faites en local). User préfère « copier les DB locales ».
+
+**Diagnostic (SSH lvelup + snapshot non-invasif des player DB prod, comparaison anti-join vs local)** :
+- Même roster 4 joueurs (pas d'autres users à protéger). `spnkr_auto_sync_enabled=true` sur prod.
+- **Prod est un SUPERSET de local** : JGtm prod=947 vs local=942 → **5 matchs prod absents en local** ; les 3 autres joueurs identiques (0/0). → **copier local→prod détruirait ces 5 matchs JGtm** = perte de données. Copie ÉCARTÉE.
+- Piège supplémentaire : player DB ⟷ shared DB couplées par match_id → copie partielle = désync.
+
+**Décision** : fix **in-place** sur prod (mêmes corrections qu'en local : rebuild ART + engagement backfill sur les données PROPRES de prod, préserve les 947). Pour ça : nouvelle sous-commande **`levelup rebuild-pme-art [--all|--gamertag]`** (le binaire `levelup` est déjà dans l'image Docker ; `rebuild_pme_art` non) → outil permanent sur prod (futur-proof, « plus à le faire à la main »). Wrappe `migration.RebuildPlayerMatchEnrichmentART` + CHECKPOINT + garde anti-perte.
+
+**Prochaine étape** : deploy (build image avec la sous-commande) → fenêtre de maintenance prod (backup → stop serveur → `rebuild-pme-art --all` → `engagement-coefs --all --with-scores --force` → restart → vérif coefs + JGtm toujours 947).
+
+---
+
 ## [2026-06-19] Plan durcissement ART player_match_enrichment + diagnostic version DuckDB — Complété (plan)
 
 **Statut** : plan `.ai/PLAN_PME_ART_HARDENING.md` écrit. Diagnostic version DuckDB fait.
