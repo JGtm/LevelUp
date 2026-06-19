@@ -1,3 +1,19 @@
+## [2026-06-19] Multi-titre Pass B.5 : endpoints réglages titre (toggle pause + purge, owner-gated) — Complété (back)
+
+**Statut** : Complété (back). build `./...` + vet + gofmt OK ; contrat OpenAPI à parité (routes + schémas documentés) ; +9 tests (service purge/min-1, middleware). Décision produit : owner-gated (pas admin-only), pause = garde données, purge = supprime.
+
+**Endpoints (Huma, owner-gated SANS RequireActiveTitle)** :
+- `PATCH /api/v1/profiles/{player_slug}/titles/{slug}/sync` body `{enabled}` → bascule sync_enabled. 409 si dernier titre actif.
+- `DELETE /api/v1/profiles/{player_slug}/titles/{slug}/data` → retire le profil + supprime les fichiers ; `data_removed=false` (best-effort) si verrou disque.
+
+**Décisions** :
+- **Gating** : nouveau groupe chi `/profiles/{player_slug}/titles/{slug}` avec `RequirePlayerOwnership` MAIS PAS `RequireActiveTitle` (doit agir sur un titre coming_soon/archivé). Nouveau middleware `TitleSlugFromPath("slug")` aligne `ctxkeys.TitleSlug` sur le titre CIBLÉ (path) → l'ownership résout le joueur contre le bon titre (anti-bypass : sinon header sur un titre où l'attaquant n'est pas propriétaire).
+- **Single-writer** : `ProfileService` HOISTÉ en instance PARTAGÉE (setup + réglages) — le mutex du store est par-instance, deux instances = lost-update. `SetTitleSyncEnabled`/`PurgeTitleData` ajoutées dessus.
+- **Purge Windows** : nouveau `duckdb.EvictAndCloseCached(path)` ferme les handles cachés (ro/rw) AVANT `os.RemoveAll` (sinon verrou fichier). Injecté dans `ProfileService` via `WithDBEvictor` (archlint `no_duckdb_import` : la couche service reste duckdb-free, câblage concret en server.go).
+- **OpenAPI manuel** : 2 paths + 3 schémas (`TitleSync{Input,Output}Body`, `TitlePurgeOutputBody`, émis via `OPENAPI_EMIT_OUT` pour correspondance exacte) + composant réponse `Conflict` (409). Garde-fous `TestContractRoutesDocumented` + `TestOpenAPISchemaDrift` reverts.
+
+**Prochaine étape** : B.4 (onboarding multi-titre + `StartInitialSync` title-aware — corrige le bug « sync initial écrit toujours dans halo_infinite »). Puis Pass C (front) + B.7 (watcher, passe dédiée).
+
 ## [2026-06-19] Multi-titre Pass B.1-B.3 : sélection par titre (back) — modèle + store atomique + filtre sync — Complété
 
 **Statut** : Complété (back, fondation). build `./...` + vet + gofmt OK ; +19 tests (store 13, helper/filtre 6) ; Halo Infinite byte-identique (additif). Reste B.4 (onboarding multi-titre + sync-initial title-aware) et B.5 (endpoints toggle/purge, owner-gated).

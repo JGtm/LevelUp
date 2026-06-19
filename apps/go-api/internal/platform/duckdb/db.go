@@ -126,6 +126,36 @@ func OpenReadForQuery(path string, timezone ...string) (*sql.DB, func(), error) 
 	return db.SQLDb(), func() { _ = db.Close() }, nil
 }
 
+// EvictAndCloseCached ferme et retire du cache process-wide les handles (RO et
+// RW) ouverts pour ce chemin de fichier, INDÉPENDAMMENT du refCount. À appeler
+// AVANT un os.RemoveAll de la base sur Windows : un handle ouvert verrouille le
+// fichier et ferait échouer la suppression.
+//
+// Action DESTRUCTIVE volontaire : tout détenteur d'un handle évincé verra ses
+// requêtes suivantes échouer — réservé à la PURGE délibérée d'une player DB
+// (l'utilisateur supprime les données de ce titre). Retourne le nombre de
+// handles effectivement fermés.
+func EvictAndCloseCached(path string) int {
+	openDBsMu.Lock()
+	defer openDBsMu.Unlock()
+	closed := 0
+	for _, key := range []string{"rw:" + path, "ro:" + path} {
+		cached, ok := openDBs[key]
+		if !ok || cached.db == nil {
+			continue
+		}
+		delete(openDBs, key)
+		if cached.db.closed.Swap(true) {
+			continue // déjà fermé par ailleurs
+		}
+		if sqlDB := cached.db.loadSQL(); sqlDB != nil {
+			_ = sqlDB.Close()
+		}
+		closed++
+	}
+	return closed
+}
+
 // sanitizeTimezone valide un nom de timezone IANA pour éviter les injections SQL.
 // Retourne "" si la valeur contient des caractères non autorisés.
 func sanitizeTimezone(tz string) string {

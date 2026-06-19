@@ -852,6 +852,79 @@ paths:
   # PATCH /players/{player_slug}/matches/{match_id}/exclusion reste disponible.
 
   # -------------------------------------------------------------------------
+  # Sélection par titre (Pass B.5) — activer / pause / purge un titre du joueur.
+  # Owner-gated, SANS RequireActiveTitle (agit sur un titre coming_soon/archivé).
+  # -------------------------------------------------------------------------
+  /profiles/{player_slug}/titles/{slug}/sync:
+    patch:
+      tags: [setup]
+      operationId: setTitleSync
+      summary: Activer ou mettre en pause un titre pour un joueur
+      description: |
+        Bascule sync_enabled du couple (joueur, titre) dans db_profiles.json.
+        Mettre en pause conserve les données sur disque (réactivable sans re-sync).
+        Refuse de mettre en pause le DERNIER titre actif du joueur (409).
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+        - name: slug
+          in: path
+          required: true
+          description: Slug du titre cible (ex. halo_infinite, halo_5)
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TitleSyncInputBody"
+      responses:
+        "200":
+          description: État de sync mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TitleSyncOutputBody"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /profiles/{player_slug}/titles/{slug}/data:
+    delete:
+      tags: [setup]
+      operationId: purgeTitleData
+      summary: Purger les données d'un titre pour un joueur
+      description: |
+        Retire le couple (joueur, titre) de db_profiles.json et supprime les
+        fichiers de données du joueur pour ce titre. Refuse de purger le DERNIER
+        titre actif du joueur (409). data_removed=false si les fichiers n'ont pas
+        pu être supprimés malgré le retrait du profil (verrou disque résiduel).
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+        - name: slug
+          in: path
+          required: true
+          description: Slug du titre cible
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Titre purgé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TitlePurgeOutputBody"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # -------------------------------------------------------------------------
   # Auth (Sprint 15) — ajoutés au contrat sprint 29
   # -------------------------------------------------------------------------
   /auth/device-flow/start:
@@ -2928,6 +3001,16 @@ components:
             code: internal_error
             message: "Erreur interne du serveur."
             retryable: true
+    Conflict:
+      description: Conflit avec l'état courant de la ressource
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorSchema"
+          example:
+            code: last_active_title
+            message: "Au moins un titre doit rester actif pour ce joueur."
+            retryable: false
 
   # -------------------------------------------------------------------------
   # Schemas
@@ -3471,6 +3554,43 @@ components:
             type: string
         is_default:
           type: boolean
+
+    TitleSyncInputBody:
+      additionalProperties: false
+      properties:
+          enabled:
+              type: boolean
+      required:
+          - enabled
+      type: object
+    TitleSyncOutputBody:
+      additionalProperties: false
+      properties:
+          gamertag:
+              type: string
+          sync_enabled:
+              type: boolean
+          title_slug:
+              type: string
+      required:
+          - gamertag
+          - title_slug
+          - sync_enabled
+      type: object
+    TitlePurgeOutputBody:
+      additionalProperties: false
+      properties:
+          data_removed:
+              type: boolean
+          gamertag:
+              type: string
+          title_slug:
+              type: string
+      required:
+          - gamertag
+          - title_slug
+          - data_removed
+      type: object
 
     SessionContextResponse:
       additionalProperties: false
