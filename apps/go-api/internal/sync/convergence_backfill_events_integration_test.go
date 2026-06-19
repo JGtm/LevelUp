@@ -46,6 +46,16 @@ func openEventsBackfillDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
 	}
 	pdb.SetMaxOpenConns(1)
 	t.Cleanup(func() { pdb.Close() })
+	// player_match_enrichment : cible des dominance_flag (seed + BatchUpdateColumn).
+	if err := execScript(t.Context(), pdb, `
+		CREATE TABLE player_match_enrichment (
+			match_id       VARCHAR PRIMARY KEY,
+			dominance_flag INTEGER,
+			updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+	`); err != nil {
+		t.Fatal(err)
+	}
 
 	sdb, err := sql.Open("duckdb", ":memory:")
 	if err != nil {
@@ -62,7 +72,15 @@ func openEventsBackfillDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
 		);
 		CREATE TABLE match_participants (
 			match_id VARCHAR,
-			xuid     VARCHAR
+			xuid     VARCHAR,
+			team_id  INTEGER,
+			outcome  INTEGER
+		);
+		CREATE TABLE medals_earned (
+			match_id      VARCHAR,
+			xuid          VARCHAR,
+			medal_name_id UBIGINT,
+			count         INTEGER
 		);
 		CREATE SEQUENCE he_seq START 1;
 		CREATE TABLE highlight_events (
@@ -93,7 +111,7 @@ func seedEventsBackfillMatch(t *testing.T, sdb *sql.DB, matchID, xuid string, st
 	if _, err := sdb.Exec(`INSERT INTO match_registry (match_id, start_time, events_loaded) VALUES (?, ?, FALSE)`, matchID, start); err != nil {
 		t.Fatalf("seed registry %s: %v", matchID, err)
 	}
-	if _, err := sdb.Exec(`INSERT INTO match_participants (match_id, xuid) VALUES (?, ?)`, matchID, xuid); err != nil {
+	if _, err := sdb.Exec(`INSERT INTO match_participants (match_id, xuid, team_id, outcome) VALUES (?, ?, 0, 2)`, matchID, xuid); err != nil {
 		t.Fatalf("seed participant %s: %v", matchID, err)
 	}
 }
@@ -205,6 +223,19 @@ func TestEventsConvergence_HappyPath_WritesEventsAndConverges(t *testing.T) {
 	}
 	if nEvents < 100 {
 		t.Errorf("highlight_events: want >= 100 (chunk 4v4), got %d", nEvents)
+	}
+
+	// Dominance calculée après events (non-slayer, sans steaktacular → flag 0,
+	// mais bien CALCULÉ et écrit en player_match_enrichment).
+	if res.EventsWritten == 1 && res.DominanceUpdated != 1 {
+		t.Errorf("DominanceUpdated: want 1 (calculée après events), got %d", res.DominanceUpdated)
+	}
+	var domFlag sql.NullInt64
+	if err := pdb.QueryRow(`SELECT dominance_flag FROM player_match_enrichment WHERE match_id = ?`, "m_film").Scan(&domFlag); err != nil {
+		t.Fatalf("read dominance_flag: %v", err)
+	}
+	if !domFlag.Valid {
+		t.Error("m_film: dominance_flag devrait être calculé (non NULL) après events")
 	}
 
 	// Passe 2 : convergence — plus rien à détecter.

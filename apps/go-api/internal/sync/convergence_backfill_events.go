@@ -65,11 +65,12 @@ type EventsConvergenceConfig struct {
 
 // EventsConvergenceResult résume une passe de backfill.
 type EventsConvergenceResult struct {
-	Detected      int  // matchs incomplets détectés (events_loaded=false)
-	EventsWritten int  // matchs ayant reçu des events (film présent)
-	NoFilmFinal   int  // matchs marqués no-film définitif (404 + trop vieux)
-	Skipped       int  // erreurs réseau/parse/anomalie → repris la passe suivante
-	Ceded         bool // a cédé à un sync live en cours de route
+	Detected         int  // matchs incomplets détectés (events_loaded=false)
+	EventsWritten    int  // matchs ayant reçu des events (film présent)
+	NoFilmFinal      int  // matchs marqués no-film définitif (404 + trop vieux)
+	Skipped          int  // erreurs réseau/parse/anomalie → repris la passe suivante
+	DominanceUpdated int  // matchs dont le dominance_flag a été (re)calculé après events
+	Ceded            bool // a cédé à un sync live en cours de route
 }
 
 // RunEventsConvergenceBackfill exécute UNE passe : détecte les matchs sans events
@@ -104,6 +105,7 @@ func RunEventsConvergenceBackfill(ctx context.Context, cfg EventsConvergenceConf
 	slog.InfoContext(ctx, "convergence backfill events: démarrage",
 		"gamertag", cfg.Gamertag, "detected", res.Detected, "chunk", chunkSize)
 
+	var eventMatchIDs []string // matchs ayant reçu des events → dominance ensuite
 	for i := 0; i < len(matchIDs); i += chunkSize {
 		if err := ctx.Err(); err != nil {
 			return res, err
@@ -113,15 +115,16 @@ func RunEventsConvergenceBackfill(ctx context.Context, cfg EventsConvergenceConf
 
 		// Cession au live : si un sync tient déjà le joueur, on cède (les matchs
 		// restants seront repris à la prochaine passe). Le watcher temps-réel
-		// (Submit) n'est jamais bloqué par ce claim.
+		// (Submit) n'est jamais bloqué par ce claim. On break (pas return) pour
+		// quand même calculer la dominance des matchs déjà traités.
 		release, ok := cfg.tryClaim()
 		if !ok {
 			res.Ceded = true
 			slog.InfoContext(ctx, "convergence backfill events: cession au sync live",
 				"gamertag", cfg.Gamertag, "remaining", len(matchIDs)-i)
-			return res, nil
+			break
 		}
-		cfg.processChunk(ctx, chunk, &res)
+		cfg.processChunk(ctx, chunk, &res, &eventMatchIDs)
 		release()
 
 		if end < len(matchIDs) {
@@ -132,10 +135,40 @@ func RunEventsConvergenceBackfill(ctx context.Context, cfg EventsConvergenceConf
 			}
 		}
 	}
+
+	// Dominance flags sur les matchs fraîchement pourvus d'events (REMONTADA,
+	// DÉBÂCLE, etc. — dépendent de la courbe de score reconstruite depuis
+	// highlight_events). Réutilise BackfillDominanceFlags ; no-op sans player DB.
+	cfg.computeDominance(ctx, eventMatchIDs, &res)
+
 	slog.InfoContext(ctx, "convergence backfill events: passe terminée",
 		"gamertag", cfg.Gamertag, "events_written", res.EventsWritten,
-		"no_film_final", res.NoFilmFinal, "skipped", res.Skipped)
+		"no_film_final", res.NoFilmFinal, "skipped", res.Skipped,
+		"dominance_updated", res.DominanceUpdated, "ceded", res.Ceded)
 	return res, nil
+}
+
+// computeDominance recalcule le dominance_flag des matchs qui viennent de recevoir
+// leurs events (la courbe de score nécessite highlight_events). Best-effort :
+// no-op si aucun match ou pas de player DB ; une erreur est loggée sans échouer
+// la passe.
+func (cfg EventsConvergenceConfig) computeDominance(ctx context.Context, matchIDs []string, res *EventsConvergenceResult) {
+	if len(matchIDs) == 0 || cfg.PlayerDB == nil {
+		return
+	}
+	sharedDB, release, err := cfg.AcquireShared(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "convergence backfill events: acquire shared pour dominance échoué",
+			"gamertag", cfg.Gamertag, "err", err)
+		return
+	}
+	defer release()
+	if err := BackfillDominanceFlags(ctx, sharedDB, cfg.PlayerDB, cfg.XUID, matchIDs); err != nil {
+		slog.WarnContext(ctx, "convergence backfill events: dominance flags échoué",
+			"gamertag", cfg.Gamertag, "err", err, "count", len(matchIDs))
+		return
+	}
+	res.DominanceUpdated = len(matchIDs)
 }
 
 // detectIncomplete liste les matchs sans events (events_loaded=false), récent→vieux,
@@ -168,8 +201,9 @@ type chunkFetch struct {
 }
 
 // processChunk fetche tout le lot HORS lease, puis persiste le lot en UNE fenêtre
-// RW courte. Met à jour res (compteurs). Best-effort par match.
-func (cfg EventsConvergenceConfig) processChunk(ctx context.Context, chunk []string, res *EventsConvergenceResult) {
+// RW courte. Met à jour res (compteurs) et accumule dans eventMatchIDs les matchs
+// ayant reçu des events (pour la dominance ensuite). Best-effort par match.
+func (cfg EventsConvergenceConfig) processChunk(ctx context.Context, chunk []string, res *EventsConvergenceResult, eventMatchIDs *[]string) {
 	// ── Fetch + parse HORS lease (réseau lent + CPU pur) ──
 	fetched := make([]chunkFetch, 0, len(chunk))
 	for _, mid := range chunk {
@@ -208,6 +242,7 @@ func (cfg EventsConvergenceConfig) processChunk(ctx context.Context, chunk []str
 				res.Skipped++
 			} else {
 				res.EventsWritten++
+				*eventMatchIDs = append(*eventMatchIDs, f.matchID)
 			}
 		case f.found:
 			res.Skipped++ // anomalie : chunk non-vide, 0 event parsé → repris
