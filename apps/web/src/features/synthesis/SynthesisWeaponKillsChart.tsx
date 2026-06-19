@@ -9,7 +9,7 @@ import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 interface Props {
-  weapons: SynthesisWeaponKillEntry[]
+  weapons?: SynthesisWeaponKillEntry[]
   height?: number
   fillHeight?: boolean
 }
@@ -61,19 +61,22 @@ function buildWeaponKillsOption(series: ChartSeries<WeaponPoint>[]): EChartsCore
 export function SynthesisWeaponKillsChart({ weapons, height, fillHeight }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   const title = formatMessage(synthesisManifest, 'synthesis.charts.weapon_kills_title', locale)
-  const series: ChartSeries<WeaponPoint>[] = [{
-    key: 'weapon-kills',
-    datapoints: weapons.map((w) => ({ label: w.label, kills: w.kills })),
-  }]
+  const emptyMessage = formatMessage(synthesisManifest, 'synthesis.empty.no_data', locale)
+  const list = weapons ?? []
+  // Série VIDE (et non datapoints vides dans une série) quand aucune arme → ChartCard
+  // détecte isEmpty (series.length === 0) et rend le placeholder + emptyMessage, au lieu
+  // de `return null` qui n'affichait RIEN (pas même un placeholder, cf. timeseries).
+  const series: ChartSeries<WeaponPoint>[] =
+    list.length > 0
+      ? [{ key: 'weapon-kills', datapoints: list.map((w) => ({ label: w.label, kills: w.kills })) }]
+      : []
 
   const buildOption = useCallback(
     (s: ChartSeries<WeaponPoint>[]) => buildWeaponKillsOption(s),
     []
   )
 
-  const computedHeight = height ?? Math.max(180, weapons.length * 28 + 16)
-
-  if (weapons.length === 0) return null
+  const computedHeight = height ?? Math.max(180, list.length * 28 + 16)
 
   return (
     <ChartCard
@@ -81,6 +84,7 @@ export function SynthesisWeaponKillsChart({ weapons, height, fillHeight }: Props
       series={series}
       buildOption={buildOption}
       height={computedHeight}
+      emptyMessage={emptyMessage}
       className={fillHeight ? 'flex-1' : ''}
     />
   )
