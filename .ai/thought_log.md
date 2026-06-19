@@ -1,4 +1,16 @@
-## [2026-06-19] Alignement données prod : diagnostic divergence + sous-commande levelup rebuild-pme-art — En cours
+## [2026-06-19] Alignement données prod : in-place rebuild ART + backfill engagement — Complété (ZÉRO perte)
+
+**Résultat** : prod aligné sur les corrections locales, **sur ses propres données** (pas de copie). Maintenance via `ssh lvelup` : backup (`/opt/levelup/data/backups/pre_align_20260619_104239`) → `docker compose stop levelup` → `docker compose run --rm --entrypoint levelup levelup rebuild-pme-art --all` → `... engagement-coefs --all --with-scores --force` → restart (trap de sécurité). Serveur HTTP 200 healthy après.
+- **Zéro perte** : Madina 1183, **JGtm 947** (les 5 matchs prod-only préservés), rebuild rows_before==after partout, indexes recréés.
+- **Coefs recentrés = local** : Madina PvP_unranked 1.279 (+ ranked 1.45), JGtm 1.009.
+- **metadata.duckdb prod** : déjà OK (123 maps fr-FR, The Pit→La fosse) — rien à aligner, la feature maps FR marche en prod.
+- Outil `levelup rebuild-pme-art` désormais permanent dans l'image → réparation/backfill futurs en une commande (« plus à le faire à la main »).
+
+**Décision (rappel)** : copie local→prod ÉCARTÉE car prod superset (JGtm +5) + couplage player⟷shared. In-place = la bonne voie.
+
+---
+
+## [2026-06-19] Alignement données prod : diagnostic divergence + sous-commande levelup rebuild-pme-art — sous-commande livrée
 
 **Déclencheur (user)** : aligner les DB prod avec local (corrections engagement/ART faites en local). User préfère « copier les DB locales ».
 
@@ -10,6 +22,23 @@
 **Décision** : fix **in-place** sur prod (mêmes corrections qu'en local : rebuild ART + engagement backfill sur les données PROPRES de prod, préserve les 947). Pour ça : nouvelle sous-commande **`levelup rebuild-pme-art [--all|--gamertag]`** (le binaire `levelup` est déjà dans l'image Docker ; `rebuild_pme_art` non) → outil permanent sur prod (futur-proof, « plus à le faire à la main »). Wrappe `migration.RebuildPlayerMatchEnrichmentART` + CHECKPOINT + garde anti-perte.
 
 **Prochaine étape** : deploy (build image avec la sous-commande) → fenêtre de maintenance prod (backup → stop serveur → `rebuild-pme-art --all` → `engagement-coefs --all --with-scores --force` → restart → vérif coefs + JGtm toujours 947).
+
+---
+
+## [2026-06-19] Consolidation xuid_aliases : suppression du store global redondant — Complété (code)
+
+**Déclencheur (user)** : « plutôt que deux endroits qui font la même chose, merge la DB globale xbox_aliases dans la table qu'on utilise vraiment + aligne le code. Attention aux doublons. »
+
+**Diagnostic** : `v_gamertag_lookup` (source unique d'affichage) + `LookupXUIDByGamertag` (coéquipiers) lisent déjà `shared.xuid_aliases`. Le store global `xbox_aliases.duckdb` (ATTACH `global`) n'était lu QUE par l'invariant I13 (UNION global+shared). Donc redondant + court-circuite la « source unique ».
+
+**Décision technique** :
+- **Données** : sous-commande `levelup consolidate-aliases` — `INSERT INTO shared.xuid_aliases SELECT ... FROM glb.xuid_aliases WHERE gamertag != '' ON CONFLICT (xuid) DO NOTHING`. Dédup STRICTE par xuid (PK), shared prioritaire (jamais écrasé). Enrichit aussi v_gamertag_lookup.
+- **Code** : I13 (`invariants.go`) lit shared-only ; retrait de l'ATTACH global + de toute la machinerie (`attachGlobalXuidAliases`/`initGlobalXuidAliasesSchema`/`attachGlobalState`, ~100L) dans `pool.go` ; retrait de l'entrée backup `xbox_aliases` ; suppression de `attach_global_test.go` (testait le code retiré) ; correction du commentaire périmé teammates.
+- **Réserve** (validée user) : multi-titre OK (jeux Xbox, XUID stables) → le store cross-titre global n'est pas nécessaire ; à recréer proprement si besoin futur.
+
+**Tests** : `TestConsolidateAliases_DedupByXuid` (aucun doublon, shared préservé, gamertag vide ignoré, idempotent). Build/vet/tests touchés verts.
+
+**Prochaine étape** : deploy → merge data (local + prod : scp global vers prod, `levelup consolidate-aliases`, serveur arrêté) → suppression de la DB globale.
 
 ---
 

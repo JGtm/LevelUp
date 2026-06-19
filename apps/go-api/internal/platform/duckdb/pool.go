@@ -14,8 +14,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
-	"path/filepath"
 	"sync"
 
 	"levelup/go-api/internal/migration"
@@ -272,17 +270,11 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	// applicatifs (media, post-sync, engagement, profile, career, explorer,
 	// sessions, stats, leaderboard, exclusions, match_view).
 
-	// P5.3 : ATTACH global xbox_aliases (mapping xuid→gamertag global Microsoft).
-	// Non-bloquant : si la DB globale n'existe pas encore (avant migration), les
-	// requêtes qui font `JOIN global.xuid_aliases` retomberont sur NULL.
-	if cfg.GlobalXuidAliasesDBPath != "" {
-		if err := attachGlobalXuidAliases(ctx, playerDB, cfg.GlobalXuidAliasesDBPath); err != nil {
-			// Non bloquant : si l'attach échoue, les queries `JOIN global.xuid_aliases`
-			// retomberont sur NULL (tolérance prévue côté query).
-			slog.WarnContext(ctx, "pool: ATTACH global xbox_aliases échoué (player conn)",
-				"path", cfg.GlobalXuidAliasesDBPath, "gamertag", cfg.Gamertag, "err", err)
-		}
-	}
+	// La DB globale xbox_aliases a été CONSOLIDÉE dans shared.xuid_aliases
+	// (refactor 2026-06-19, sous-commande `levelup consolidate-aliases`) : plus
+	// aucun ATTACH `global`. La résolution xuid→gamertag passe entièrement par
+	// shared (v_gamertag_lookup pour l'affichage, LookupXUIDByGamertag pour les
+	// coéquipiers, invariant I13). cfg.GlobalXuidAliasesDBPath n'est plus lu ici.
 
 	// attachShared sur SharedSocial retiré aussi.
 	// media_repo passe désormais entièrement par SharedReader pour les queries
@@ -359,105 +351,6 @@ func ensurePlayerDBMigrations(path string) error {
 		return fmt.Errorf("run migrations: %w", err)
 	}
 	return nil
-}
-
-// attachGlobalState : sync.Once-gated state for global xbox_aliases attach.
-// Phase 3 plan stabilisation 2026-05-22 : process-level idempotence.
-//
-// Contexte : avant ce fix, attachGlobalXuidAliases était appelé à chaque
-// ouverture player + social conn (4 joueurs × 2 conns = 8 appels). Toutes
-// les tentatives sauf la 1ère échouaient avec "Unique file handle conflict:
-// Cannot attach 'global' - the database file ... is already attached by
-// database 'global'" — cf. AUDIT_DUCKDB_ATTACH_2026-05-21.md §1.
-//
-// Cause racine : DuckDB instance partagée au niveau process. ATTACH sur un
-// fichier donné est process-wide, pas per-conn ni per-sql.DB.
-//
-// Fix : sync.Once par globalPath. Le 1er appel attache, les suivants
-// no-opent (le catalog DuckDB conserve l'alias process-wide ; toutes les
-// conns futures peuvent l'utiliser).
-type attachGlobalState struct {
-	once sync.Once
-	err  error // erreur du 1er appel (préservée pour les suivants)
-}
-
-var (
-	attachGlobalMu     sync.Mutex
-	attachGlobalByPath = map[string]*attachGlobalState{}
-)
-
-// resetGlobalAttachState efface l'état sync.Once par path. Utilisé par les
-// tests qui ouvrent/ferment des DBs globales successivement (sinon le 2e
-// test du run récupère l'état "already attached" du 1er).
-//
-//nolint:unused // WIP test helper Phase 3 — péremption 2026-06-22 (à câbler dans tests sync.Once ou supprimer).
-func resetGlobalAttachState() {
-	attachGlobalMu.Lock()
-	defer attachGlobalMu.Unlock()
-	attachGlobalByPath = map[string]*attachGlobalState{}
-}
-
-// attachGlobalXuidAliases attache la DB globale `xbox_aliases.duckdb` sous
-// l'alias `global` (P5.3). Tolère l'absence du fichier (avant migration) :
-// la table sera créée via init schema si nécessaire.
-//
-// Idempotent process-level via sync.Once : seul le 1er appel par path
-// déclenche l'ATTACH ; les suivants reprennent le résultat du 1er.
-func attachGlobalXuidAliases(ctx context.Context, db *DB, globalPath string) error {
-	// Récupérer (ou créer) l'état sync.Once pour ce path.
-	attachGlobalMu.Lock()
-	state, ok := attachGlobalByPath[globalPath]
-	if !ok {
-		state = &attachGlobalState{}
-		attachGlobalByPath[globalPath] = state
-	}
-	attachGlobalMu.Unlock()
-
-	state.once.Do(func() {
-		if _, err := os.Stat(globalPath); err != nil {
-			// Fichier absent — créer une DB globale vide avec le schéma minimal.
-			if err := initGlobalXuidAliasesSchema(globalPath); err != nil {
-				state.err = fmt.Errorf("init global db: %w", err)
-				return
-			}
-		}
-		if _, err := db.Exec(ctx,
-			fmt.Sprintf("ATTACH '%s' AS global", globalPath),
-		); err != nil {
-			// Vérifier accessibilité — peut-être déjà attaché par un autre process
-			// (concurrent CLI tool) ou par une lecture antérieure non passée par
-			// nous. Si oui, OK ; sinon erreur réelle.
-			var count int
-			if pingErr := db.QueryRow(ctx,
-				"SELECT COUNT(*) FROM global.xuid_aliases").Scan(&count); pingErr != nil {
-				state.err = fmt.Errorf("attach global: %w (attach err: %v)", pingErr, err)
-				return
-			}
-		}
-	})
-	return state.err
-}
-
-// initGlobalXuidAliasesSchema crée la DB globale et la table xuid_aliases si
-// absentes. Appelé par attachGlobalXuidAliases en pré-condition (avant la
-// première run du script de migration).
-func initGlobalXuidAliasesSchema(globalPath string) error {
-	if err := os.MkdirAll(filepath.Dir(globalPath), 0o755); err != nil {
-		return err
-	}
-	db, err := OpenReadWrite(globalPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-	_, err = db.SQLDb().ExecContext(context.Background(), `
-		CREATE TABLE IF NOT EXISTS xuid_aliases (
-			xuid VARCHAR PRIMARY KEY,
-			gamertag VARCHAR NOT NULL,
-			last_seen TIMESTAMP NOT NULL DEFAULT now()
-		)
-	`)
-	return err
 }
 
 // XUID du joueur depuis sync_meta (fallback si cfg.XUID vide).
