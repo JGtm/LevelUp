@@ -179,6 +179,21 @@ export function AnalyseTab({ merged, handleChange, t, frozen }: TabProps) {
         </CardContent>
       </Card>
 
+      {/* Card : Rendement combat (OffensiveConversion) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t.rendementTitle}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ToggleRow
+            label={t.rendementExcludeAssistsLabel}
+            value={merged.rendement_exclude_assists ?? false}
+            onChange={(v) => handleChange('rendement_exclude_assists', v)}
+          />
+          <p className="text-xs text-muted-foreground">{t.rendementExcludeAssistsHint}</p>
+        </CardContent>
+      </Card>
+
       {/* Card : Progression long-terme (Objectifs & Prestige) */}
       <Card>
         <CardHeader>

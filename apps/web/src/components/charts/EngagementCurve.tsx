@@ -66,6 +66,26 @@ export interface EngagementCurveProps {
    * qui est trompeur visuellement.
    */
   hideAttendu?: boolean
+  /**
+   * Libellés localisés des 3 courbes. Fournis par le parent (qui a la locale)
+   * via le manifest engagement.trace.*. Défaut FR si absent.
+   *   - team     : « Équipe réelle » (moyenne par joueur, joueur INCLUS)
+   *   - expected : « Joueur attendu » (coef × équipe réelle)
+   *   - player   : « Joueur réel » (rythme observé du joueur)
+   */
+  seriesLabels?: EngagementSeriesLabels
+}
+
+export interface EngagementSeriesLabels {
+  team: string
+  expected: string
+  player: string
+}
+
+const DEFAULT_SERIES_LABELS: EngagementSeriesLabels = {
+  team: 'Équipe réelle',
+  expected: 'Joueur attendu',
+  player: 'Joueur réel',
 }
 
 /**
@@ -82,14 +102,15 @@ export function EngagementCurve(props: EngagementCurveProps) {
     state = 'ready',
     height = 280,
     hideAttendu = false,
+    seriesLabels = DEFAULT_SERIES_LABELS,
   } = props
 
   const buildOption = useCallback(
     (series: ChartSeries<EngagementPoint>[]): EChartsCoreOption => {
       const pts = series[0]?.datapoints ?? points
-      return buildEngagementOption(pts, granularity, xFormatter, hideAttendu)
+      return buildEngagementOption(pts, granularity, xFormatter, hideAttendu, seriesLabels)
     },
-    [points, granularity, xFormatter, hideAttendu],
+    [points, granularity, xFormatter, hideAttendu, seriesLabels],
   )
 
   // Series typee pour ChartCard. On la laisse vide quand state='empty' OU
@@ -122,6 +143,7 @@ function buildEngagementOption(
   granularity: 'intra' | 'session',
   xFormatter?: (x: number) => string,
   hideAttendu = false,
+  labels: EngagementSeriesLabels = DEFAULT_SERIES_LABELS,
 ): EChartsCoreOption {
   if (points.length === 0) {
     return {} as EChartsCoreOption
@@ -189,9 +211,9 @@ function buildEngagementOption(
       nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
     },
     series: [
-      // Equipe alliee — fine effacee
+      // Equipe reelle (joueur INCLUS) — fine effacee
       {
-        name: 'Equipe alliée',
+        name: labels.team,
         type: 'line',
         data: points.map((p) => p.paceTeam),
         smooth,
@@ -201,11 +223,11 @@ function buildEngagementOption(
         itemStyle: { color: teamColor },
         z: 1,
       },
-      // Attendu — pointille fin (masque au cold-start : coef=1.0 => superposition avec Equipe alliee)
+      // Joueur attendu — pointille fin (masque au cold-start : coef=1.0 => superposition avec Equipe reelle)
       ...(!hideAttendu
         ? [
             {
-              name: 'Attendu',
+              name: labels.expected,
               type: 'line' as const,
               data: points.map((p) => p.paceAttendu),
               smooth,
@@ -217,9 +239,9 @@ function buildEngagementOption(
             },
           ]
         : []),
-      // Joueur — epais sature (hierarchie visuelle marquee §8.6)
+      // Joueur reel — epais sature (hierarchie visuelle marquee §8.6)
       {
-        name: 'Joueur',
+        name: labels.player,
         type: 'line',
         data: points.map((p) => p.paceJoueur),
         smooth,

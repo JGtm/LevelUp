@@ -6,7 +6,29 @@
 // offensive_finishing   = 225 * kills / damage_dealt  (diagnostic uniquement)
 package analysis
 
-import "levelup/go-api/internal/domain"
+import (
+	"sync/atomic"
+
+	"levelup/go-api/internal/domain"
+)
+
+// excludeAssistsFromYield : reglage global Settings (rendement_exclude_assists).
+// Quand true, OffensiveConversion = 225*kills/damage (assists ignores) sur TOUS
+// les composants rendement (Home, Timeseries, Sessions, Explorer, Escouade,
+// Match view). C'est un reglage app UNIQUE (pas par-user) ; on le porte donc en
+// variable globale atomique volontaire, mise a jour au boot et a chaque PATCH
+// /settings (cf. SetExcludeAssistsFromYield), pour eviter de threader le flag
+// dans ~13 agregateurs purs et leurs appelants. Ce n'est PAS un guard de
+// compatibilite. Defaut false (assists comptes a 1/3, convention Halo).
+var excludeAssistsFromYield atomic.Bool
+
+// SetExcludeAssistsFromYield met a jour le reglage global du rendement combat.
+// Appele au boot (depuis app_settings) et apres chaque PATCH /settings.
+func SetExcludeAssistsFromYield(v bool) { excludeAssistsFromYield.Store(v) }
+
+// AssistsExcludedFromYield retourne l'etat courant du reglage (lecture seule,
+// ex. pour adapter un libelle UI). Thread-safe.
+func AssistsExcludedFromYield() bool { return excludeAssistsFromYield.Load() }
 
 // CombatYield regroupe les métriques de rendement combat d'un joueur pour un match.
 type CombatYield struct {
@@ -30,7 +52,14 @@ const assistFragWeight = 3.0
 
 // FragEquivalents = frags + assists/3. Dénominateur commun au rendement offensif
 // (OffensiveConversion) et au dégâts par frag-équivalent affiché.
+//
+// Si le réglage global excludeAssistsFromYield est actif, les assists sont
+// ignorés (FragEquivalents = kills) → OffensiveConversion = OffensiveFinishing
+// sur tous les composants rendement, sans re-câblage par site.
 func FragEquivalents(kills, assists float64) float64 {
+	if excludeAssistsFromYield.Load() {
+		return kills
+	}
 	return kills + assists/assistFragWeight
 }
 

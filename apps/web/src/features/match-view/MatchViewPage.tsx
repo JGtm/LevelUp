@@ -301,7 +301,12 @@ export function MatchViewPage() {
       <div className="p-6 space-y-6">
         {activeTab === 'summary' ? (
           <div className="space-y-4">
-            <MatchSummaryCardsSection kpis={summary_tab.kpis} expectedStats={summary_tab.expected_stats} />
+            <MatchSummaryCardsSection
+              kpis={summary_tab.kpis}
+              expectedStats={summary_tab.expected_stats}
+              offensiveConversion={meRow?.offensive_conversion ?? null}
+              defensiveResistance={meRow?.defensive_resistance ?? null}
+            />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <MatchKdaExpectedChart
                 kpis={summary_tab.kpis}
