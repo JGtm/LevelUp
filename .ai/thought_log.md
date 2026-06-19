@@ -1,3 +1,18 @@
+## [2026-06-19] Halo 5 Phase 1 étape 0 : SONDE LIVE — 343 sert h5 en 2026 + v4 accepté — Complété
+
+**Statut** : Complété. `cmd/probe-h5` livré + lancé live (JGtm) ; les 2 inconnues critiques du handoff sont tranchées.
+
+**But** : avant d'investir dans le client/adapter Halo 5, confirmer (handoff §0-ter, « sonde live D'ABORD ») que (a) 343 sert encore les endpoints internes Halo 5 en 2026 et (b) le SpartanToken v4 du pool Infinite est accepté par ces services.
+
+**Décision technique** :
+- Sonde = nouveau `cmd/probe-h5` qui **réutilise les helpers auth testés** (`auth.RefreshHaloTokensViaStoreFirst` → SpartanToken v4 du store ; PAS de réinvention, PAS de clé haloapi.com) — conforme à la règle « CLI testée, pas de sonde throwaway ».
+- Hosts + recette de requête **extraits de cryptum** (`gh api` sur le repo : `src/modules/api/authorities` + `endpoints/H5` + `classes/Request`) : header `X-343-Authorization-Spartan` + `User-Agent: cpprestsdk/2.4.0` + query `?auth=st` + **pas de `343-clearance`** ; `{player}` = **gamertag brut** ; `h5[platform]` → `h5` (vide sauf PC).
+- Lancée avec `LEVELUP_REPO_ROOT` pointant le repo principal (le worktree n'a ni `data/` ni `db_profiles.json`).
+
+**Résultats observés** : **7/7 endpoints HTTP 200** avec données réelles. `spartan_preamble="v4="` accepté. Matches (dont un de 2023), servicerecords arena+warzone (CSR natif `HighestCsrAttained`, medals, weapon stats), commendations natives datées (2015-16), credits (`CurrentBalance:200711`), appearance (ServiceTag/Company/armure), spartan render PNG. **Divergence structurante** : identité **gamertag-keyée** (`Players[].Player.Xuid` = null) vs Infinite xuid-keyé. Films présents (`UgcFilmManifest`) mais inutiles (kill-feed structuré dans le carnage).
+
+**Conclusion / prochaine étape** : la **matrice optimiste §2 du handoff est CONFIRMÉE par la donnée réelle** ; le caveat bloquant est levé. Hosts réels gravés dans `config/titles/halo_5/constants.toml` (fin des placeholders `.invalid`). Suite Phase 1 = étapes 1-3 (auth reuse `auth.toml` → `internal/games/halo_5/client.go` → adapter data history+carnage → canonical), adapter **indexé par gamertag**. `cmd/probe-h5` conservé comme outil de re-sonde.
+
 ## [2026-06-19] Bloquant multi-titre #1 : préfixe de jeu `/hi/` externalisé en `game_prefix` (MT-01) — Complété
 
 **Statut** : Complété (commit à venir). Build + vet module complets verts ; parité Halo byte-identique (sync + platform/halo + assets) ; oracle multi-titre vert ; archlint `no_slug_comparison` vert.
