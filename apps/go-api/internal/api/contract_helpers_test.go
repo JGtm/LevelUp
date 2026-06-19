@@ -18,6 +18,7 @@ import (
 
 	"levelup/go-api/internal/api"
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/service"
 )
 
@@ -88,7 +89,8 @@ func buildTestRouter(t *testing.T) http.Handler {
 	bootRepo := &mockBootstrapRepo{}
 	bootSvc := service.NewBootstrapService(cfg, bootRepo)
 
-	router, _ := api.NewRouter(context.Background(), cfg, bootRepo, bootSvc, nil, nil, nil, nil)
+	gs := groupstore.NewGroupStore(filepath.Join(os.TempDir(), "levelup_contract_groups.json"))
+	router, _ := api.NewRouter(context.Background(), cfg, bootRepo, bootSvc, nil, nil, nil, nil, gs)
 	return router
 }
 

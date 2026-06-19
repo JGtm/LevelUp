@@ -37,6 +37,7 @@ import (
 	"levelup/go-api/internal/observability/logging"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/platform/halo"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
 	lab_platform "levelup/go-api/internal/platform/lab"
@@ -69,22 +70,22 @@ func playerOwnershipXUIDResolver(cfg *config.AppConfig) middleware.PlayerXUIDRes
 	}
 }
 
-// familyXUIDResolver résout le groupe famille (FriendGamertags des settings) en
-// ensemble de xuids pour le titre courant. Alimente RequirePlayerOwnership pour
-// autoriser le switch de BDD entre membres de la famille/amis (#21 Phase A).
-// Retourne nil (→ accès strict d'origine) si settings ou profils indisponibles,
-// ou si aucun ami n'est configuré.
-func familyXUIDResolver(cfg *config.AppConfig, settingsStore *settings_platform.Store) middleware.FamilyXUIDResolver {
+// familyXUIDResolver résout l'ensemble des xuids co-membres de groupe DU USER
+// courant (groups.json) pour autoriser le switch de BDD entre membres d'un même
+// groupe/famille (ADR 0024). Lit la session depuis le contexte → user → groupes.
+// Retourne nil (→ accès strict propriétaire-only) si pas de session, user non lié,
+// ou aucun groupe partagé. Title-agnostic : les groupes sont indexés par xuid.
+func familyXUIDResolver(groupStore *groupstore.GroupStore, users authz.UserLookup) middleware.FamilyXUIDResolver {
 	return func(ctx context.Context) map[string]bool {
-		appSettings, err := settingsStore.Load()
-		if err != nil || appSettings == nil {
+		user := authz.CurrentUser(middleware.GetSession(ctx), users)
+		if user == nil || user.XUID == "" {
 			return nil
 		}
-		players, err := cfg.LoadPlayers(ctxkeys.TitleSlug(ctx))
+		co, err := groupStore.CoMemberXUIDs(user.XUID)
 		if err != nil {
 			return nil
 		}
-		return authz.ResolveFamilyXUIDs(appSettings.FriendGamertags, players)
+		return co
 	}
 }
 
@@ -107,6 +108,7 @@ func NewRouter(
 	tokenProvider auth_platform.TokenProvider,
 	autoSyncScheduler *scheduler.AutoSyncScheduler,
 	backupScheduler *duckdbbackup.Scheduler,
+	groupStore *groupstore.GroupStore,
 ) (http.Handler, *ServiceRegistry) {
 	if tokenProvider == nil {
 		tokenProvider = auth_platform.NewMSALProvider()
@@ -982,7 +984,7 @@ func NewRouter(
 			// 403 player_forbidden si l'utilisateur courant ne possède pas le slug.
 			// Transparent en mode demo / auth non activée. Toute route player-scoped
 			// DOIT rester montée sous ce groupe pour être protégée.
-			r.Use(middleware.RequirePlayerOwnership(cfg.DemoMode, cfg.AuthMode, playerOwnershipXUIDResolver(cfg), users, familyXUIDResolver(cfg, settingsStore)))
+			r.Use(middleware.RequirePlayerOwnership(cfg.DemoMode, cfg.AuthMode, playerOwnershipXUIDResolver(cfg), users, familyXUIDResolver(groupStore, users)))
 
 			filters := handlers.NewFiltersHandler(reg.Filters)
 			r.Post("/filters/resolve", filters.Resolve)
@@ -1206,7 +1208,7 @@ func NewRouter(
 				// profil possédé par la session. Réutilise les primitives de
 				// RequirePlayerOwnership. Transparent en demo / auth désactivée.
 				squadXUIDResolve := playerOwnershipXUIDResolver(cfg)
-				squadFamilyResolve := familyXUIDResolver(cfg, settingsStore)
+				squadFamilyResolve := familyXUIDResolver(groupStore, users)
 				squadActorGuard := func(ctx context.Context, actorSlug string) bool {
 					if !authz.Enforced(cfg.DemoMode, cfg.AuthMode) {
 						return true
