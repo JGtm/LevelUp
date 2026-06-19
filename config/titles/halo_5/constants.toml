@@ -1,25 +1,32 @@
 # config/titles/halo_5/constants.toml
 #
-# Hosts d'ingestion API Halo 5 par axe, consommés par l'EndpointResolver (section
-# [endpoints]). PLACEHOLDERS distincts d'Infinite (Halo 5 = coming_soon, non servi
-# -> jamais appelés). En Phase 1, remplacer par les hosts internes RÉELS (autorités
-# cryptum : SpartanStats, HaloPlayer, ContentHacs, UGC) confirmés par la sonde live.
-# TLD .invalid = garantie qu'ils ne résolvent jamais accidentellement.
+# Hosts d'ingestion API Halo 5 par axe (autorités internes cryptum), consommés par
+# l'EndpointResolver (section [endpoints]). Hosts RÉELS confirmés LIVE le 2026-06-19
+# (sonde cmd/probe-h5, JGtm, HTTP 200 + données réelles avec le SpartanToken v4 du
+# pool Infinite). Halo 5 = coming_soon → ces hosts ne sont pas encore appelés au
+# runtime ; ils documentent la cible confirmée pour l'adapter Phase 1.
+#
+# Mapping EndpointKey→autorité PROVISOIRE : le vocabulaire de clés est celui
+# d'Infinite (stats/gamecms/economy/skill/ugc_film/discovery_ugc/challenges/
+# nameplate). Halo 5 a son propre découpage d'autorités (SpartanStats sert
+# matches+servicerecords+CSR+commendations+credits ; HaloPlayer sert profiles/
+# appearance/spartan-render ; ContentHacs = CMS ; UGC = films+variants ; Packs =
+# REQ). Le mapping fin est figé quand l'adapter h5 est écrit.
 
 [meta]
 title_slug = "halo_5"
 schema_version = 1
-# game_prefix — segment d'URL de jeu Halo 5 (cryptum : /h5[platform]/players/...).
-# PLACEHOLDER "h5" (coming_soon, jamais appelé) ; confirmer/affiner à la sonde live
-# Phase 1 (variantes plateforme h5pc éventuelles). Consommé via games.GamePrefix(slug).
+# game_prefix — segment d'URL de jeu Halo 5. CONFIRMÉ "h5" à la sonde live (Xbox :
+# /h5/players/...). cryptum note h5[platform] où [platform] est vide sauf PC ("pc").
+# Consommé via games.GamePrefix(slug).
 game_prefix = "h5"
 
 [endpoints]
-stats         = "https://stats.h5.placeholder.invalid"
-gamecms       = "https://contenthacs.h5.placeholder.invalid"
-economy       = "https://economy.h5.placeholder.invalid"
-skill         = "https://skill.h5.placeholder.invalid"
-ugc_film      = "https://ugc.h5.placeholder.invalid"
-discovery_ugc = "https://discovery.h5.placeholder.invalid"
-challenges    = "https://challenges.h5.placeholder.invalid"
-nameplate     = "https://haloplayer.h5.placeholder.invalid"
+stats         = "https://spartanstats.svc.halowaypoint.com"   # matches, servicerecords, commendations, credits
+gamecms       = "https://content-hacs.svc.halowaypoint.com"   # ContentHacs : metadata/CMS (REQ, Emblem, Hopper…)
+economy       = "https://packs.svc.halowaypoint.com"          # REQ packs/store/cards (économie Halo 5)
+skill         = "https://spartanstats.svc.halowaypoint.com"   # CSR natif (HighestCsrAttained dans servicerecords/carnage)
+ugc_film      = "https://ugc.svc.halowaypoint.com"            # films (UgcFilmManifest référencé dans /matches)
+discovery_ugc = "https://ugc.svc.halowaypoint.com"            # map/game variants, forge groups
+challenges    = "https://spartanstats.svc.halowaypoint.com"   # commendations natives (pas de "défis" Halo 5)
+nameplate     = "https://haloplayer.svc.halowaypoint.com"     # profiles/appearance/emblem/spartan render

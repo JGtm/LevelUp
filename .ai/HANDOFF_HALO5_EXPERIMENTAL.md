@@ -34,11 +34,31 @@ La v1 (2026-06-18) affirmait que Halo 5 n'a « RIEN au niveau des highlight even
 
 **LE caveat à lever en premier (Phase 1)** : l'API **officielle** `haloapi.com` est dégradée (sonde 2026-06-18 : Snip3down tout à zéro). cryptum **définit** la surface riche ci-dessus via les endpoints **internes** (SpartanToken), mais **est-ce que le backend Halo 5 de 343 sert encore tout ça en 2026** (surtout les events d'un jeu de 2015) ? Indéterminé tant qu'on n'a pas **sondé le endpoint interne live avec un vrai SpartanToken**. → **Phase 1, étape 0 = sonde live** avant de figer la matrice.
 
+## 0-ter. SONDE LIVE — CONFIRMÉ 2026-06-19 (le caveat est LEVÉ)
+
+`cmd/probe-h5` (réutilise `auth.RefreshHaloTokensViaStoreFirst` → SpartanToken v4 du pool Infinite ; hosts/headers calqués cryptum). Sondé JGtm sur 7 endpoints internes h5. **Résultat : tout HTTP 200, données réelles.** Les deux inconnues critiques sont tranchées :
+
+1. **343 sert ENCORE Halo 5 en 2026** — matches (dont un de 2023-04-05), servicerecords arena+warzone, commendations, credits, profiles : tous 200 avec du contenu réel. Pas un jeu mort côté backend.
+2. **Le SpartanToken v4 (pool Infinite) est ACCEPTÉ par Halo 5** — `spartan_preamble="v4="`, 200 partout. L'hypothèse §1 est **prouvée**. (cryptum valide `v[2-3]=` côté client, mais le **service** accepte v4.) L'auth Halo 5 ≈ réutilisation pure, **zéro audience séparée**.
+
+**Recette de requête Halo 5 confirmée** (≠ Infinite) :
+- Host : autorités cryptum **réelles** (gravées dans `config/titles/halo_5/constants.toml`) — `spartanstats.svc.halowaypoint.com` (matches/servicerecords/commendations/credits), `haloplayer.svc.halowaypoint.com` (profiles/appearance/spartan render), `content-hacs` (CMS), `ugc` (films/variants), `packs` (REQ).
+- Header auth : `X-343-Authorization-Spartan: <v4>` ; **`User-Agent: cpprestsdk/2.4.0`** ; **`?auth=st`** en query sur les hosts `*.svc.halowaypoint.com` ; **PAS de `343-clearance`** (les réponses portent `ClearanceAware:false`).
+- **Identité = GAMERTAG brut** (`/players/{gamertag}/…`), PAS `xuid(N)`. Confirmé : `Players[].Player.Xuid` = **null**, seul `Gamertag` est rempli. **Divergence structurante vs Infinite** (xuid-keyé) → l'adapter h5 doit indexer par gamertag.
+
+**Shapes réels capturés** (pour designer l'adapter) :
+- **MATCHES** `/h5/players/{gt}/matches` : `{Start,Count,Results:[{Id.MatchId, Id.GameMode(1=arena), HopperId(playlist), MapId, GameBaseVariantId, MatchDuration(ISO8601 PT..), MatchCompletedDate.ISO8601Date, Teams:[{Id,Score,Rank}], Players:[{Player.Gamertag, TeamId, Rank, Result(2=win?/3=loss), TotalKills/Deaths/Assists, Pre/PostMatchRatings(null en liste, CSR dans le carnage)}], IsTeamGame, Links.StatsMatchDetails(→carnage h5/{mode}/matches/{id}), Links.UgcFilmManifest(→film)}]}`.
+- **SERVICE_RECORDS** `/h5/servicerecords/{mode}?players={gt}` : CSR **natif** (`HighestCsrAttained:{Tier,DesignationId,Csr,PercentToNextTier}`), `ArenaPlaylistStats[]`/`WarzoneStat.ScenarioStats[]` avec kills/HS/deaths/assists/games, `MedalAwards:[{MedalId,Count}]`, `WeaponWithMostKills.WeaponId.StockId`, `TotalTimePlayed`.
+- **COMMENDATIONS** `/h5/players/{gt}/commendations` : `{ProgressiveCommendations:[{Id,Progress,CompletedLevels:[{Id,CompletedDateUtc.ISO8601Date}]}]}` — **citations natives** datées (décision B : exposables direct, le moteur local ne tourne pas mais la surface est plus riche).
+- **CREDITS** `{CurrentBalance}` ; **APPEARANCE** identité complète (ServiceTag, Company, emblème, armure, weapon skins) ; **SPARTAN** = PNG render.
+
+**Conclusion** : la **matrice optimiste §2 est CONFIRMÉE par la donnée réelle** (history/detail/scoreboard/skill/citations supported ; warzone=PvE-like ; films présents mais inutiles car kill-feed structuré dans carnage/events). On peut passer aux étapes 1-3 de la Phase 1 (auth reuse → client → adapter) sans risque de construire sur du vide. `cmd/probe-h5` est conservé comme outil de re-sonde.
+
 ## 1. Source de données + AUTH (TRANCHÉ + CORRIGÉ)
 
 **Source = endpoints internes façon `cryptum-halodotapi`, PAS l'API officielle** (officielle = dégradée). cryptum = doc des URLs/hosts/shapes par autorité (SpartanStats, HaloPlayer, ContentHacs, UGC, Packs, BanProcessor).
 
-**AUTH — CORRECTION 2026-06-19** : la v1 disait « SpartanToken Halo 5 ≠ Halo Infinite (audience) — c'est le point d'effort auth ». **Faux/sur-estimé.** D'après l'user : **le SpartanToken v4 qu'on utilise déjà pour Infinite fonctionne pour Halo 5** ; cryptum référence des tokens v2/v3 (plus anciens). Le SpartanToken est title-agnostique au niveau des services Xbox/343 ; la différence Halo 5 est dans les **hosts d'endpoints**, pas dans le token. → **`auth.toml` Halo 5 ≈ mirroir d'Infinite (mêmes audiences)** ; le vrai travail title-specific est `constants.toml [endpoints]` (hosts h5) + le client + l'adapter. **Auth ≈ réutilisation, à confirmer par la sonde live.**
+**AUTH — CORRECTION 2026-06-19** : la v1 disait « SpartanToken Halo 5 ≠ Halo Infinite (audience) — c'est le point d'effort auth ». **Faux/sur-estimé.** D'après l'user : **le SpartanToken v4 qu'on utilise déjà pour Infinite fonctionne pour Halo 5** ; cryptum référence des tokens v2/v3 (plus anciens). Le SpartanToken est title-agnostique au niveau des services Xbox/343 ; la différence Halo 5 est dans les **hosts d'endpoints**, pas dans le token. → **`auth.toml` Halo 5 ≈ mirroir d'Infinite (mêmes audiences)** ; le vrai travail title-specific est `constants.toml [endpoints]` (hosts h5) + le client + l'adapter. **Auth ≈ réutilisation — CONFIRMÉ par la sonde live 2026-06-19 (v4 accepté, 200 partout, cf. §0-ter).**
 
 **Clé API officielle** (subscription key haloapi.com) : fournie par l'user 2026-06-18, **en clair dans le chat → À RÉGÉNÉRER**. Inutile dans le chemin retenu (interne) ; si jamais utilisée en fallback : env/`.env.local` gitignoré, JAMAIS versionnée. Repo cryptum : https://github.com/Alexis-Bize/cryptum-halodotapi
 
