@@ -532,6 +532,51 @@ export interface paths {
         patch: operations["setMatchExclusion"];
         trace?: never;
     };
+    "/profiles/{player_slug}/titles/{slug}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Activer ou mettre en pause un titre pour un joueur
+         * @description Bascule sync_enabled du couple (joueur, titre) dans db_profiles.json.
+         *     Mettre en pause conserve les données sur disque (réactivable sans re-sync).
+         *     Refuse de mettre en pause le DERNIER titre actif du joueur (409).
+         */
+        patch: operations["setTitleSync"];
+        trace?: never;
+    };
+    "/profiles/{player_slug}/titles/{slug}/data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Purger les données d'un titre pour un joueur
+         * @description Retire le couple (joueur, titre) de db_profiles.json et supprime les
+         *     fichiers de données du joueur pour ce titre. Refuse de purger le DERNIER
+         *     titre actif du joueur (409). data_removed=false si les fichiers n'ont pas
+         *     pu être supprimés malgré le retrait du profil (verrou disque résiduel).
+         */
+        delete: operations["purgeTitleData"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/device-flow/start": {
         parameters: {
             query?: never;
@@ -579,7 +624,13 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Créer un profil joueur */
+        /**
+         * Créer un profil joueur
+         * @description Crée (ou met à jour) le couple (joueur, titre) dans db_profiles.json.
+         *     Onboarding multi-titre : appeler une fois par titre choisi, avec son
+         *     title_slug et son initial_max_matches. title_slug du body prime sur le
+         *     titre du contexte (header X-LevelUp-Title).
+         */
         post: operations["postSetupPlayers"];
         delete?: never;
         options?: never;
@@ -618,7 +669,13 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Lancer la synchronisation initiale */
+        /**
+         * Lancer la synchronisation initiale
+         * @description Sync initiale title-aware. title_slug cible la bonne DB (lève l'ambiguïté
+         *     d'un gamertag présent sous plusieurs titres) ; à défaut, le titre du
+         *     contexte. max_matches : 1-2000 ; 0 = défaut du profil (initial_max_matches)
+         *     puis 200.
+         */
         post: operations["postSyncInitial"];
         delete?: never;
         options?: never;
@@ -3062,9 +3119,12 @@ export interface components {
         };
         PlayerSummary: {
             gamertag: string;
+            /** Format: int64 */
+            initial_max_matches?: number;
             is_demo: boolean;
             player_slug: string;
             steam_id?: string;
+            sync_enabled: boolean;
             title_slug?: string;
             waypoint_player: string;
             xuid: string;
@@ -3206,6 +3266,19 @@ export interface components {
             status: "active" | "coming_soon" | "archived";
             capabilities: string[];
             is_default: boolean;
+        };
+        TitleSyncInputBody: {
+            enabled: boolean;
+        };
+        TitleSyncOutputBody: {
+            gamertag: string;
+            sync_enabled: boolean;
+            title_slug: string;
+        };
+        TitlePurgeOutputBody: {
+            data_removed: boolean;
+            gamertag: string;
+            title_slug: string;
         };
         SessionContextResponse: {
             auth_ready: boolean;
@@ -8180,6 +8253,22 @@ export interface components {
                 "application/json": components["schemas"]["ApiErrorSchema"];
             };
         };
+        /** @description Conflit avec l'état courant de la ressource */
+        Conflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "code": "last_active_title",
+                 *       "message": "Au moins un titre doit rester actif pour ce joueur.",
+                 *       "retryable": false
+                 *     }
+                 */
+                "application/json": components["schemas"]["ApiErrorSchema"];
+            };
+        };
     };
     parameters: {
         /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
@@ -8838,6 +8927,66 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
+    setTitleSync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                /** @description Slug du titre cible (ex. halo_infinite, halo_5) */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TitleSyncInputBody"];
+            };
+        };
+        responses: {
+            /** @description État de sync mis à jour */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TitleSyncOutputBody"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    purgeTitleData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                /** @description Slug du titre cible */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Titre purgé */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TitlePurgeOutputBody"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalError"];
+        };
+    };
     postAuthDeviceFlowStart: {
         parameters: {
             query?: never;
@@ -8891,7 +9040,20 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    gamertag: string;
+                    xuid?: string;
+                    /** @description xbox | azure_manual */
+                    profile_mode?: string;
+                    /** @description Titre cible (défaut: titre du contexte puis halo_infinite) */
+                    title_slug?: string;
+                    /** @description Nb de matchs à synchroniser à l'onboarding (0 = défaut) */
+                    initial_max_matches?: number;
+                };
+            };
+        };
         responses: {
             /** @description Profil créé */
             201: {
@@ -8934,7 +9096,17 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    player_slug: string;
+                    /** @description 1-2000 ; 0 = défaut profil puis 200 */
+                    max_matches?: number;
+                    /** @description Titre cible (défaut: titre du contexte puis halo_infinite) */
+                    title_slug?: string;
+                };
+            };
+        };
         responses: {
             /** @description Sync démarrée */
             202: {

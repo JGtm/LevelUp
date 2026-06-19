@@ -1,3 +1,16 @@
+## [2026-06-19] Multi-titre Pass C (front) Lot 1 : types TS + régénération + nettoyage placement — Complété
+
+**Statut** : Complété (Lot 1). typecheck front vert. Cartographie front via workflow Ultracode (4 agents) : wizard onboarding, onglets réglages, pattern i18n (2 systèmes : manifest TOML pour `setup`, dico local pour `settings`), sites placement.
+
+**Réalisations Lot 1** :
+- **`generated.ts` régénéré** depuis l'openapi.yaml mis à jour (B.4/B.5) : `PlayerSummary` gagne `sync_enabled` (requis) + `initial_max_matches` ; nouveaux schémas/paths Title*. 2 fixtures de test corrigées (`sync_enabled: true` requis).
+- **Types requêtes étendus** (`lib/api/types.ts`, interfaces manuelles) : `CreatePlayerProfileRequest` += `title_slug` + `initial_max_matches` ; `InitialSyncStartRequest` += `title_slug`.
+- **Nettoyage placement (sûr)** : `CareerRankingBlock.tsx` — retrait du `placement_total > 0 ? : 10` (type `CareerCSRRank` garantit la valeur, Pass A). `HomeSkillPeakCard` (`?? 10`) LAISSÉ : son type `HomeSkillPeakSummary` porte des `*int` omitempty (optionnels) ; le promouvoir = changement back semantique risqué, non fait. `ExplorerTargetSeasonCSR` : enhancement « X restants » différé.
+
+**Décision Lot 2 (source données réglages)** : Option B pur front (itérer `availableTitles` + `GET /players` par titre via header override) — `GET /players` filtre par titre courant, pas de listing multi-titre ; N minuscule, zéro changement back.
+
+**Prochaine étape** : Lot 2 (onglet Réglages Jeux) + Lot 3 (step onboarding sélection titres).
+
 ## [2026-06-19] Multi-titre Pass B.7 : fixes watcher LIVE multi-titre — Complété (back)
 
 **Statut** : Complété (back). build `./...` + vet + gofmt + suite watcher + scheduler verts. +4 tests dédiés. La passe « risquée » du handoff — menée avec contrat scheduler préservé.
