@@ -1415,6 +1415,14 @@ export type MatchViewHeader = components['schemas']['MatchViewHeader']
 
 export type MatchViewRank = components['schemas']['MatchViewRank']
 
+// Canonical MatchEvents (PLAN_CANONICAL_MATCH_EVENTS) — timeline d'events
+// on-demand (kill-feed / timeline). Schémas auto-dérivés (canonical.MatchEvent*).
+export type MatchEventTimeline = components['schemas']['MatchEventTimeline']
+
+export type MatchEvent = components['schemas']['MatchEvent']
+
+export type Vec3 = components['schemas']['Vec3']
+
 export type MatchMedal = components['schemas']['MatchMedal']
 
 export type MatchCitation = components['schemas']['MatchCitation']

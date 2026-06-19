@@ -1,3 +1,21 @@
+## [2026-06-20] Canonical MatchEvents Phase 3b : front kill-feed lazy — Complété
+
+**Statut** : Complété. typecheck `tsc -b` + lint (0 erreur, règle couleurs OK) + vitest 6/6 verts. La chaîne MatchEvents est livrée bout-à-bout (back + front) ; reste l'activation 1b (titre Halo 5).
+
+**Livré** :
+- **`generate-types`** : `MatchEventTimeline`/`MatchEvent`/`Vec3` régénérés dans generated.ts ; ré-exports dans `lib/api/types.ts`.
+- **`lib/query/keys.ts`** : clé `matchEvents(slug, matchId, typesKey)`. **`features/match-view/queries.ts`** : hook `useMatchEvents(slug, matchId, types?)` (filtre `?types=`, `retry:false`, lazy par montage).
+- **`features/match-view/MatchKillFeed.tsx`** : section AUTONOME (rend son propre titre) montée dans l'onglet Détails (donc lazy : fetch seulement à l'ouverture). Kill-feed chronologique `mm:ss · Killer → Victim` (+ HS/arme si dispo). Se masque ENTIÈREMENT sur 503/erreur/chargement/vide (pas de bloc vide titré). Note dégradée si `limitations`.
+- **i18n FR/EN** : sectionKillFeed / killFeedNoData / killFeedDegradedNote / killFeedEnvironment.
+- **6 tests vitest** : rendu killer→victim + mm:ss, masquage erreur/vide/chargement, kill environnemental, note dégradée.
+
+**Décisions** :
+- **Noms via `displayPlayerName` UNIQUEMENT** (chokepoint front) ; le back a déjà résolu les gamertags (v_gamertag_lookup), un xuid orphelin reste masqué. PlayerIdentity sérialise en **PascalCase** (canonical.PlayerIdentity sans json tags) → accès `.Gamertag`/`.XUID`.
+- **Pas de capability coarse front** : la section s'auto-masque (cohérent « pas de feature OFF partielle » — on tente toujours, on dégrade). Pas de prefetch loader (secondaire, on-demand).
+- **Couleurs** : tokens structurels seulement (foreground/muted-foreground/border) → 0 hex/classe couleur, lint vert. Flat hard-edge editorial (liste bordée + dividers, pas de pills).
+
+**Prochaine étape** : Activation 1b (registration générique au boot + flip `status=active` Halo 5 + provisioning + vérif live JGtm). MatchEvents (le gate) est désormais levé.
+
 ## [2026-06-20] Canonical MatchEvents Phase 3a : surface back (service + handler Huma + OpenAPI) — Complété
 
 **Statut** : Complété. `go build ./...` + vet verts ; 7 tests service (fake adapter/resolver) + 5 tests handler (httptest Huma) + 2 intégration duckdb (ResolveGamertags, MatchEventsSource) + **gates contrat verts** (TestContractRoutesRegistered/Documented seuil 0 + TestOpenAPISchemaDrift 0 manquant + OpenAPI valide). L'endpoint sert la timeline d'events bout-à-bout pour le titre actif (Infinite). 3b = front.

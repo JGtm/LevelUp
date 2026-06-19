@@ -15,6 +15,7 @@ import { MatchTugOfWarChart } from './MatchTugOfWarChart'
 import { MatchCadenceChart } from './MatchCadenceChart'
 import { MatchNemesisCards } from './MatchNemesisCards'
 import { MatchScoreboard } from './MatchScoreboard'
+import { MatchKillFeed } from './MatchKillFeed'
 import { MatchEncountersTable } from './MatchEncountersTable'
 import { MatchSummaryCardsSection } from './MatchStatCards'
 import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from './MatchSummaryCharts'
@@ -347,6 +348,10 @@ export function MatchViewPage() {
           </div>
         ) : (
           <>
+            {/* §0 — Kill-feed (timeline canonique d'events, on-demand). Section
+                autonome : se masque seule si la timeline est indisponible/vide. */}
+            <MatchKillFeed playerSlug={playerSlug} matchId={matchId} meXUID={meXUID} t={t} />
+
             {/* §1 — Déroulé du match (lecture chronologique) */}
             <DetailSection title={t.sectionFlow}>
               {/* Faits marquants | Frags cumulés */}

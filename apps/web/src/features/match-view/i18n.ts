@@ -112,6 +112,11 @@ export interface MatchViewText {
   sectionFlow: string
   sectionDuels: string
   sectionEncounters: string
+  // Kill-feed (timeline canonique d'events, PLAN_CANONICAL_MATCH_EVENTS)
+  sectionKillFeed: string
+  killFeedNoData: string
+  killFeedDegradedNote: string
+  killFeedEnvironment: string
   // Scoreboard team header (Eagle / Cobra avec couleur team-ally/enemy)
   scoreboardTitle: string
   scoreboardNoData: string
@@ -262,6 +267,10 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sectionFlow: 'Déroulé du match',
     sectionDuels: 'Duels & confrontations',
     sectionEncounters: 'Historique des rencontres',
+    sectionKillFeed: 'Kill-feed',
+    killFeedNoData: 'Aucun événement disponible pour ce match.',
+    killFeedDegradedNote: 'Reconstitué depuis les faits marquants : arme et positions non disponibles pour ce titre.',
+    killFeedEnvironment: 'Environnement',
     scoreboardTitle: 'Tableau des scores',
     scoreboardNoData: 'Aucune donnée de tableau des scores disponible pour ce match.',
     teamLabelFmt: (name) => `Équipe ${name}`,
@@ -405,6 +414,10 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sectionFlow: 'Match flow',
     sectionDuels: 'Duels & head-to-head',
     sectionEncounters: 'Encounter history',
+    sectionKillFeed: 'Kill feed',
+    killFeedNoData: 'No events available for this match.',
+    killFeedDegradedNote: 'Reconstructed from highlights: weapon and positions are unavailable for this title.',
+    killFeedEnvironment: 'Environment',
     scoreboardTitle: 'Scoreboard',
     scoreboardNoData: 'No scoreboard data available for this match.',
     teamLabelFmt: (name) => `Team ${name}`,

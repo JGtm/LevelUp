@@ -2093,6 +2093,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/matches/{match_id}/events": {
+        parameters: {
+            query?: {
+                /** @description Filtre optionnel par type d'event (kill, medal, impulse, ...). Répétable ou CSV. Vide = tous. */
+                types?: string[];
+            };
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        /** Timeline canonique d'events d'un match (kill-feed / timeline) */
+        get: operations["getMatchEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/matches/{match_id}/favorite": {
         parameters: {
             query?: never;
@@ -6074,6 +6098,35 @@ export interface components {
             };
             kind: string;
             label_key: string;
+        };
+        MatchEvent: {
+            headshot?: boolean;
+            killer?: components["schemas"]["PlayerIdentity"];
+            killer_loc?: components["schemas"]["Vec3"];
+            kind?: string;
+            player?: components["schemas"]["PlayerIdentity"];
+            ref_id?: string;
+            /** Format: int64 */
+            round?: number;
+            /** Format: int64 */
+            time_ms: number;
+            type: string;
+            victim?: components["schemas"]["PlayerIdentity"];
+            victim_loc?: components["schemas"]["Vec3"];
+            weapon?: components["schemas"]["AssetReference"];
+        };
+        MatchEventTimeline: {
+            events: components["schemas"]["MatchEvent"][] | null;
+            limitations?: components["schemas"]["CapabilityGap"][] | null;
+            match_id: string;
+        };
+        Vec3: {
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
+            /** Format: double */
+            z: number;
         };
         MatchFavoriteResponse: {
             favorited: boolean;
@@ -11132,6 +11185,40 @@ export interface operations {
         responses: {
             /** @description Match neighbors */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMatchEvents: {
+        parameters: {
+            query?: {
+                /** @description Filtre optionnel par type d'event (kill, medal, impulse, ...). Répétable ou CSV. Vide = tous. */
+                types?: string[];
+            };
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Timeline d'events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchEventTimeline"];
+                };
+            };
+            /** @description Le titre n'expose pas de timeline d'events */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
