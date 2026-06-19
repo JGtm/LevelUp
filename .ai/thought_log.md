@@ -1,3 +1,20 @@
+## [2026-06-19] Groupes/familles multi-groupes — Phase 3 (UI groupes + JoinPage) — Complété (code, non commité)
+
+**Frontend du chantier groupes** (apps/web). Backend Phases 0-2 commité (c4e3e9c8a, 094a820d2).
+
+- **Types** : `Group`/`GroupMember`/`GroupRole` + `InviteCode.group_id` (lib/api/types.ts) ; query key `groups`.
+- **Queries** `features/groups/queries.ts` : useMyGroups / useCreateGroup / useRenameGroup / useDeleteGroup / useCreateGroupInvite (api client `/groups*`).
+- **Page `GroupsPage`** (route `/groups`, end-user) : liste des groupes du user, création, renommage/suppression (propriétaire only via `linkedHaloIdentity.xuid` vs `owner_xuid`), liste des membres + badge propriétaire, **Inviter un ami** → génère le code + copie le lien `${origin}/join?invite=CODE`. i18n FR/EN inline (précédent SettingsPage). Retrait/quitter membre = Phase 4.
+- **`JoinPage`** (route `/join?invite=`) : lit le code, bouton « Continuer avec Xbox » → `${API_BASE_URL}/auth/xbox/login?invite=CODE` (redirect plein écran, calqué sur RedirectFlowPanel) + champ manuel de repli.
+- **Admin nettoyé** : `InvitesSection` retirée de AdminAccessPage **et supprimée** (plus aucun consommateur) ; l'Admin ne garde que `UsersSection` (gestion comptes = ops). Lien nav `/groups` ajouté (GLOBAL_SHELL_LINKS).
+- **Route-tree** régénéré via `vite build` (le plugin TanStack Router génère routeTree.gen.ts ; `tsr` du repo = ts-remove-unused, pas le générateur).
+
+**Résultats** : `vite build` OK, `tsc -b` OK, eslint OK sur les fichiers touchés, vitest `GroupsPage.test.tsx` 4/4 (rendu+membres+badge, liste vide, POST create, POST invite + copie lien). JoinPage (router-coupled) couvert par le walkthrough manuel.
+
+**Prochaine étape** : Phase 4 (quitter/retirer membre + endpoints + dé-flag is_with_friends FALSE-capable + liaison Escouade « charger les membres du groupe »). Commit Phase 3 en attente d'autorisation.
+
+---
+
 ## [2026-06-19] Groupes/familles multi-groupes — Phase 2 (invitation "rejoindre un groupe") — Complété (code, non commité)
 
 **Suite des Phases 0 & 1** (socle commité c4e3e9c8a). Objectif : redéfinir l'invitation comme un token de jonction à UN groupe, redeemé via le login Xbox SSO (plus de compte password parallèle).

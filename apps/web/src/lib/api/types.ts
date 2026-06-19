@@ -3536,6 +3536,29 @@ export interface InviteCode {
   created_by: string
   created_at: string
   expires_at: string
+  group_id?: string
+}
+
+// ---------------------------------------------------------------------------
+// Groupes / familles (accès mutuel aux données)
+// ---------------------------------------------------------------------------
+
+export type GroupRole = 'owner' | 'member'
+
+export interface GroupMember {
+  xuid: string
+  gamertag: string
+  role: GroupRole
+  joined_at: string
+}
+
+export interface Group {
+  id: string
+  name: string
+  owner_xuid: string
+  members: GroupMember[]
+  created_at: string
+  updated_at: string
 }
 
 // ---------------------------------------------------------------------------
