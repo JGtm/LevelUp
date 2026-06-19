@@ -23,6 +23,10 @@ status = "coming_soon"
 icon_url = ""
 xbox_title_id = "219630713"
 steam_app_id = ""
+# Matchs de placement des modes classés Halo 5 (CSR Arena). Valeur historique = 10
+# (la sonde montrait MeasurementMatchesLeft:7 sur 10). Configurable par titre (vs
+# Halo Infinite = 5 depuis Season 3). Consommé par l'adapter h5 pour l'état placement.
+placement_matches = 10
 # Coarse capabilities Halo 5 (cf. handoff §2). Données riches ; divergence =
 # vocab/échelle/natif. Exclus pour l'instant : firefight (Warzone FF, modèle != FF
 # HINF), forge/media (UGC HINF-shaped), world.leaderboard (scrape Waypoint HINF).

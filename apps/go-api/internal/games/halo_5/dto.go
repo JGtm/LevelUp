@@ -102,6 +102,13 @@ type H5ArenaPlaylistStat struct {
 	TotalGamesLost      int    `json:"TotalGamesLost"`
 	TotalGamesTied      int    `json:"TotalGamesTied"`
 	TotalTimePlayed     string `json:"TotalTimePlayed"` // ISO8601 "PT..."
+
+	// État placement par playlist (sonde : "MeasurementMatchesLeft":7, Csr/HighestCsr
+	// null pendant les matchs de mesure). MeasurementMatchesLeft > 0 = en placement.
+	// Nommage Halo 5 = "Left" (vs Halo Infinite "Remaining").
+	MeasurementMatchesLeft int    `json:"MeasurementMatchesLeft"`
+	Csr                    *H5Csr `json:"Csr"`        // null en placement
+	HighestCsr             *H5Csr `json:"HighestCsr"` // null en placement
 }
 
 // H5Csr — palier CSR natif Halo 5. DesignationId = palier majeur (0..5 :

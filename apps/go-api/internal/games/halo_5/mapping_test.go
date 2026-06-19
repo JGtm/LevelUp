@@ -178,7 +178,7 @@ func TestMapCareerSnapshot_CSRDesignation(t *testing.T) {
 	if err := json.Unmarshal([]byte(fixtureServiceRecord), &resp); err != nil {
 		t.Fatalf("unmarshal fixture: %v", err)
 	}
-	snap := mapCareerSnapshot(&resp, "JGtm")
+	snap := mapCareerSnapshot(&resp, "JGtm", 10)
 	if snap == nil {
 		t.Fatal("mapCareerSnapshot nil")
 	}
@@ -192,6 +192,43 @@ func TestMapCareerSnapshot_CSRDesignation(t *testing.T) {
 	if snap.HighestCSR != nil {
 		t.Errorf("HighestCSR = %v, want nil (Csr brut 0 sous Onyx)", snap.HighestCSR)
 	}
+	// Placement : titre = 10 ; joueur classe (Diamant) -> pas de matchs restants.
+	if snap.PlacementTotal == nil || *snap.PlacementTotal != 10 {
+		t.Errorf("PlacementTotal = %v, want 10 (titre)", snap.PlacementTotal)
+	}
+	if snap.MeasurementMatchesRemaining != nil {
+		t.Errorf("joueur classe -> pas de matchs de placement restants, got %v", *snap.MeasurementMatchesRemaining)
+	}
+}
+
+func TestMapCareerSnapshot_InPlacement(t *testing.T) {
+	// Joueur PAS encore classe (pas de HighestCsrAttained) + playlists en placement.
+	inPlacement := &H5ServiceRecordResponse{Results: []H5ServiceRecordResult{{
+		Id: "P", ResultCode: 0, Result: H5ServiceRecordBody{ArenaStats: &H5ArenaStats{
+			ArenaPlaylistStats: []H5ArenaPlaylistStat{
+				{PlaylistId: "a", MeasurementMatchesLeft: 7},
+				{PlaylistId: "b", MeasurementMatchesLeft: 3},
+			},
+			HighestCsrAttained: nil,
+		}},
+	}}}
+	snap := mapCareerSnapshot(inPlacement, "P", 10)
+	if snap == nil {
+		t.Fatal("snapshot nil alors qu'on a des stats arena")
+	}
+	if snap.MeasurementMatchesRemaining == nil || *snap.MeasurementMatchesRemaining != 7 {
+		t.Errorf("MeasurementMatchesRemaining = %v, want 7 (max sur playlists)", snap.MeasurementMatchesRemaining)
+	}
+	if snap.PlacementTotal == nil || *snap.PlacementTotal != 10 {
+		t.Errorf("PlacementTotal = %v, want 10", snap.PlacementTotal)
+	}
+	if snap.RankTier != nil {
+		t.Errorf("pas encore classe -> RankTier nil, got %v", *snap.RankTier)
+	}
+	// placementTotal <= 0 -> defaut h5DefaultPlacementMatches (10).
+	if d := mapCareerSnapshot(inPlacement, "P", 0); d.PlacementTotal == nil || *d.PlacementTotal != 10 {
+		t.Errorf("placementTotal 0 -> defaut 10, got %v", d.PlacementTotal)
+	}
 }
 
 func TestMapCareerSnapshot_OnyxVsSubOnyxCSR(t *testing.T) {
@@ -201,7 +238,7 @@ func TestMapCareerSnapshot_OnyxVsSubOnyxCSR(t *testing.T) {
 			HighestCsrAttained: &H5Csr{DesignationId: 5, Tier: 0, Csr: 1632},
 		}},
 	}}}
-	snap := mapCareerSnapshot(onyx, "P")
+	snap := mapCareerSnapshot(onyx, "P", 10)
 	if snap.HighestCSR == nil || *snap.HighestCSR != 1632 {
 		t.Errorf("Onyx Csr=1632 -> HighestCSR=1632, got %v", snap.HighestCSR)
 	}
@@ -215,7 +252,7 @@ func TestMapCareerSnapshot_OnyxVsSubOnyxCSR(t *testing.T) {
 			HighestCsrAttained: &H5Csr{DesignationId: 2, Tier: 3, Csr: 850},
 		}},
 	}}}
-	snap = mapCareerSnapshot(gold, "P")
+	snap = mapCareerSnapshot(gold, "P", 10)
 	if snap.HighestCSR != nil {
 		t.Errorf("sous-Onyx -> HighestCSR doit etre nil meme si Csr>0, got %v", *snap.HighestCSR)
 	}
@@ -229,7 +266,7 @@ func TestMapCareerSnapshot_OnyxVsSubOnyxCSR(t *testing.T) {
 			HighestCsrAttained: &H5Csr{DesignationId: 99, Tier: 1, Csr: 500},
 		}},
 	}}}
-	snap = mapCareerSnapshot(unknown, "P")
+	snap = mapCareerSnapshot(unknown, "P", 10)
 	if snap.RankTier != nil || snap.HighestCSR != nil {
 		t.Errorf("designation inconnue -> pas de palier ni CSR orphelin, got tier=%v csr=%v", snap.RankTier, snap.HighestCSR)
 	}

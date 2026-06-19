@@ -1,3 +1,17 @@
+## [2026-06-19] Multi-titre Pass A : nombre de matchs de placement configurable par titre — Complété (back)
+
+**Statut** : Complété (back). build `./...` + tests halo_5/title/canonical verts ; Halo Infinite byte-identique. Front (retrait fallbacks `?? 10`) reporté à la passe front.
+
+**But** : point d'attention user — le nombre de matchs de placement classés varie par jeu (Halo Infinite 5, Halo 5 = 10) ; ne pas le coder en dur.
+
+**Décisions** :
+- **`TitleDescriptor.PlacementMatches`** (registry.go) + champ `title.toml` (`config_loader.go`) : HINF=5 (built-in `NewRegistry`), halo_5=10 (`title.toml`). Halo Infinite garde sa table de seuils PAR SAISON (10→5) qui prime ; cette valeur est le défaut du titre (résolution HINF intacte = byte-identique).
+- **`canonical.CareerSnapshot`** += `MeasurementMatchesRemaining *int` + `PlacementTotal *int` (additif, title-agnostic) — pour que l'état placement d'un 2e titre remonte au même DTO que HINF.
+- **DTO Halo 5** : `H5ArenaPlaylistStat` capte `MeasurementMatchesLeft` (nommage h5 ≠ HINF `Remaining`) + CSR/HighestCsr par-playlist nullable (null en placement, vu sonde `MeasurementMatchesLeft:7`).
+- **Mapping h5** : `mapCareerSnapshot` expose `PlacementTotal` (toujours) + `MeasurementMatchesRemaining` (max sur playlists) si pas encore classé ; adapter `WithPlacementTotal` (défaut 10, override par TitleDescriptor au wiring 1b).
+
+**Prochaine étape** : Pass B (sélection par titre, back) puis Pass C (front, dont retrait des `?? 10`).
+
 ## [2026-06-19] Halo 5 Phase 1a : corrections review adversariale (workflow ultracode) — Complété
 
 **Statut** : Complété. Workflow de review adversariale (3 agents) → 14 findings (1 blocker, 4 major) ; 11 réels traités, 3 mineurs documentés/différés. build `./...` + vet + archlint + tests touchés verts.

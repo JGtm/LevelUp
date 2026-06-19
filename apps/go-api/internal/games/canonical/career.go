@@ -28,6 +28,16 @@ type CareerSnapshot struct {
 	RankName   *string
 	IsMaxRank  bool
 	RecordedAt *time.Time
+
+	// État « placement » (modes classés). Le nombre de matchs de placement varie
+	// par titre (Halo Infinite 5/10 par saison, Halo 5 = 10) : il est porté ici,
+	// title-agnostic. Champs additifs (politique d'évolution canonical).
+	//   - MeasurementMatchesRemaining : matchs de placement restants (> 0 = en cours
+	//     de placement, rating non encore stabilisé). Nil = pas en placement / inconnu.
+	//   - PlacementTotal : nombre total de matchs de placement du titre (5, 10…),
+	//     fourni par TitleDescriptor.PlacementMatches. Nil = inconnu.
+	MeasurementMatchesRemaining *int
+	PlacementTotal              *int
 }
 
 // CareerHistoryEntry est une entrée de progression carrière historisée.

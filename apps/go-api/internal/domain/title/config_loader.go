@@ -58,14 +58,15 @@ type titleManifestMeta struct {
 }
 
 type titleManifestSection struct {
-	Name         string   `toml:"name"`
-	Provider     string   `toml:"provider"`
-	IconURL      string   `toml:"icon_url"`
-	Status       string   `toml:"status"`
-	Capabilities []string `toml:"capabilities"`
-	IsDefault    bool     `toml:"is_default"`
-	XboxTitleID  string   `toml:"xbox_title_id"`
-	SteamAppID   string   `toml:"steam_app_id"`
+	Name             string   `toml:"name"`
+	Provider         string   `toml:"provider"`
+	IconURL          string   `toml:"icon_url"`
+	Status           string   `toml:"status"`
+	Capabilities     []string `toml:"capabilities"`
+	IsDefault        bool     `toml:"is_default"`
+	XboxTitleID      string   `toml:"xbox_title_id"`
+	SteamAppID       string   `toml:"steam_app_id"`
+	PlacementMatches int      `toml:"placement_matches"`
 }
 
 // LoadTitleManifest charge le descripteur d'un titre depuis
@@ -99,14 +100,15 @@ func LoadTitleManifestFromBytes(path, slug string, raw []byte) (*TitleDescriptor
 	}
 
 	desc := &TitleDescriptor{
-		Slug:        slug,
-		Name:        strings.TrimSpace(doc.Title.Name),
-		Provider:    strings.TrimSpace(doc.Title.Provider),
-		IconURL:     strings.TrimSpace(doc.Title.IconURL),
-		Status:      Status(strings.TrimSpace(doc.Title.Status)),
-		IsDefault:   doc.Title.IsDefault,
-		XboxTitleID: strings.TrimSpace(doc.Title.XboxTitleID),
-		SteamAppID:  strings.TrimSpace(doc.Title.SteamAppID),
+		Slug:             slug,
+		Name:             strings.TrimSpace(doc.Title.Name),
+		Provider:         strings.TrimSpace(doc.Title.Provider),
+		IconURL:          strings.TrimSpace(doc.Title.IconURL),
+		Status:           Status(strings.TrimSpace(doc.Title.Status)),
+		IsDefault:        doc.Title.IsDefault,
+		XboxTitleID:      strings.TrimSpace(doc.Title.XboxTitleID),
+		SteamAppID:       strings.TrimSpace(doc.Title.SteamAppID),
+		PlacementMatches: doc.Title.PlacementMatches,
 	}
 	if desc.Name == "" {
 		errs = append(errs, fmt.Errorf("[title].name manquant"))

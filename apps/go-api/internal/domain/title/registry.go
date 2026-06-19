@@ -57,6 +57,13 @@ type TitleDescriptor struct {
 	// Identifiants plateforme pour le matching de présence (watcher)
 	XboxTitleID string `json:"xbox_title_id"` // ex: "1144039928" pour Halo Infinite
 	SteamAppID  string `json:"steam_app_id"`  // ex: "1336960" pour Halo Infinite (Steam)
+
+	// PlacementMatches est le nombre de matchs de placement des modes classés du
+	// titre (Halo Infinite = 5 depuis Season 3 ; Halo 5 = 10). Externalisé du code
+	// (le « 5 »/« 10 » était hardcodé). 0 = non déclaré → le consommateur applique
+	// son défaut. NB : Halo Infinite a aussi une table de seuils PAR SAISON (10→5)
+	// qui prime ; cette valeur est le défaut du titre.
+	PlacementMatches int `json:"placement_matches"`
 }
 
 // HasCapability vérifie si le titre supporte une fonctionnalité.
@@ -176,9 +183,10 @@ func NewRegistry() *Registry {
 			CapMedia, CapRanked, CapCareer, CapAssetImages,
 			CapAchievements, CapEngagement, CapLUSR, CapWorldLeaderboard,
 		},
-		IsDefault:   true,
-		XboxTitleID: "2043073184",
-		SteamAppID:  "1336960",
+		IsDefault:        true,
+		XboxTitleID:      "2043073184",
+		SteamAppID:       "1336960",
+		PlacementMatches: 5, // défaut Halo Infinite depuis Season 3 (table par-saison prime)
 	})
 	return r
 }
