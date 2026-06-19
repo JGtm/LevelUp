@@ -2,7 +2,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -12,6 +11,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/platform/dbprofiles"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -153,43 +153,27 @@ func createTitleDirs(repoRoot, slug string) error {
 // Mise à jour db_profiles.json
 // ─────────────────────────────────────────────────────────────────────────────
 
-// dbProfilesV3 est une représentation locale pour la lecture/écriture.
-type dbProfilesV3 struct {
-	Version  string                                `json:"version"`
-	Profiles map[string]map[string]json.RawMessage `json:"profiles"`
-}
-
+// addTitleToProfiles ajoute une section titre vide dans db_profiles.json via le
+// store dédié (writer UNIQUE, atomique). Préserve le champ top-level "admin" et
+// les clés inconnues — l'ancienne version (struct locale + os.WriteFile) les
+// effaçait silencieusement. Migre v2.1 → v3.0 au passage si besoin.
 func addTitleToProfiles(profilesPath, slug string) error {
-	data, err := os.ReadFile(profilesPath)
+	store := dbprofiles.NewStore(profilesPath)
+	already := false
+	err := store.Mutate(func(f *dbprofiles.File) error {
+		if _, exists := f.Profiles[slug]; exists {
+			already = true
+			return nil
+		}
+		f.Profiles[slug] = map[string]dbprofiles.Entry{}
+		return nil
+	})
 	if err != nil {
-		return fmt.Errorf("lecture %s : %w", profilesPath, err)
+		return fmt.Errorf("mise à jour db_profiles.json : %w", err)
 	}
-
-	var file dbProfilesV3
-	if err := json.Unmarshal(data, &file); err != nil {
-		return fmt.Errorf("parsing db_profiles.json : %w", err)
-	}
-	if file.Version != "3.0" {
-		return fmt.Errorf("db_profiles.json version %q non supportée par add-title (attendu: 3.0)", file.Version)
-	}
-	if file.Profiles == nil {
-		file.Profiles = make(map[string]map[string]json.RawMessage)
-	}
-
-	if _, exists := file.Profiles[slug]; exists {
+	if already {
 		fmt.Printf("  [déjà présent] entrée %q dans db_profiles.json\n", slug)
 		return nil
-	}
-
-	file.Profiles[slug] = make(map[string]json.RawMessage)
-
-	out, err := json.MarshalIndent(file, "", "  ")
-	if err != nil {
-		return fmt.Errorf("sérialisation db_profiles.json : %w", err)
-	}
-	out = append(out, '\n')
-	if err := os.WriteFile(profilesPath, out, 0o644); err != nil {
-		return fmt.Errorf("écriture db_profiles.json : %w", err)
 	}
 	fmt.Printf("  [mis à jour] db_profiles.json — section %q ajoutée\n", slug)
 	return nil
