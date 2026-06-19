@@ -83,7 +83,7 @@ L'enjeu n'est pas « Halo 5 est pauvre » (faux), mais « chaque titre expose un
 
 ## 4. Plan staged
 
-### Phase 0 — Skeleton (≈30 min, faible risque) — EN COURS 2026-06-19
+### Phase 0 — Skeleton — FAIT 2026-06-19 (commit `fc989ca5c`, status `coming_soon`, skeleton_test vert)
 `config/titles/halo_5/` complet, **status `coming_soon`**, **xbox_title_id `219630713`**, matrice de capabilities §2 (intention optimiste), mappings calqués sur synthetic_title_b mais métadonnées Halo 5 réelles + vocabulaire propre (Spartan Rank, CSR Halo 5, modes/playlists Halo 5). Aucun adapter requis (pas servi).
 - **Pré-requis livré** : extension vocabulaire capabilities BP/défis (`battlepass.progression` + `challenges.surface`) + sémantique capabilities.toml clarifiée.
 - **Oracle** : `internal/games/halo_5/skeleton_test.go` (registre découvre coming_soon + capabilities + endpoints distincts) ; `go test ./internal/games/mappings/`.
@@ -107,6 +107,7 @@ Sync/ingestion DB, recalibration coefficients engagement Halo 5, REQ packs (surf
 - **Citations** : décision B est un BLOQUANT (natives, plus complètes qu'Infinite) — pas cosmétique.
 - **Ne JAMAIS comparer `slug == "halo_5"`** (archlint `no_slug_comparison`) — tout par capability.
 - **capabilities.toml** : statut = surface ADAPTER, pas plafond de données (cf. §2). Pour Halo 5 (pur-adapter) les deux coïncident ; pour halo_infinite non (legacy).
+- **Spartan ID** : bannière / emblème / service-tag **portables** (chemin metadata title-agnostic, persistance générique `career_progression`) ; seul l'**adornment** (overlay nameplate, `metadata.career_ranks.adornment_icon_path`) potentiellement absent pour Halo 5 — le front dégrade DÉJÀ sur null (`HomeSpartanIdentityBanner.tsx:80` rend l'img sous condition). Pas un bloquant.
 - **Vocab cosmétique** (admin « API Halo », Lab « Waypoint », `HINF-CSR`) : Halo 5 l'exerce (CSR ≠ HINF) → à neutraliser en Phase 1/2.
 - Réfs : `.ai/PLAN_MULTITITRE_INDEX.md`, `.ai/PLAN_TITLE_AGNOSTIC_TRACKER.md`, mémoire `project_halo5_experimental_direction`.
 - Sources cryptum : https://github.com/Alexis-Bize/cryptum-halodotapi · https://github.com/glitch100/Halo-API/blob/master/docs/Halo5.md · portail 343 developer.haloapi.com.
