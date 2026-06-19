@@ -11,7 +11,9 @@
  * jamais gamertag||xuid). Le backend a déjà résolu les gamertags (v_gamertag_lookup) ;
  * un xuid orphelin reste masqué proprement.
  */
+import type { ReactNode } from 'react'
 import { useMatchEvents } from './queries'
+import { apiErrorCode } from '@/lib/api/client'
 import { displayPlayerName } from '@/lib/players/displayName'
 import type { MatchEvent } from '@/lib/api/types'
 import type { MatchViewText } from './i18n'
@@ -31,21 +33,54 @@ interface MatchKillFeedProps {
   t: MatchViewText
 }
 
+// KillFeedShell — coquille de section commune (titre type-1) pour les 3 états
+// (indisponible / aucun event / liste), évite la duplication du markup.
+function KillFeedShell({ t, children }: { t: MatchViewText; children: ReactNode }) {
+  return (
+    <section className="space-y-4">
+      <h3 className="text-base font-semibold text-foreground">{t.sectionKillFeed}</h3>
+      {children}
+    </section>
+  )
+}
+
 export function MatchKillFeed({ playerSlug, matchId, meXUID, t }: MatchKillFeedProps) {
   // Kill-feed = uniquement les kills (les médailles ont leur propre section).
-  const { data, isPending, isError } = useMatchEvents(playerSlug, matchId, ['kill'])
+  const { data, isPending, isError, error } = useMatchEvents(playerSlug, matchId, ['kill'])
 
-  // Indisponible (503 titre sans timeline) / erreur / chargement / vide → masquer
-  // la section entière (titre compris) plutôt qu'un bloc vide.
-  if (isError || isPending) return null
+  // Chargement → rien (section secondaire, pas de squelette).
+  if (isPending) return null
+
+  // Erreur : on distingue le titre qui N'EXPOSE PAS la timeline (503
+  // capability_not_supported → message explicite « indisponible pour ce titre »,
+  // cf. PLAN_CANONICAL_MATCH_EVENTS §4 Phase 3) d'une erreur réseau transitoire
+  // (masquage silencieux pour ne pas polluer la page).
+  if (isError) {
+    if (apiErrorCode(error) === 'capability_not_supported') {
+      return (
+        <KillFeedShell t={t}>
+          <p className="text-sm text-muted-foreground">{t.killFeedUnsupported}</p>
+        </KillFeedShell>
+      )
+    }
+    return null
+  }
+
   const events = data?.events ?? []
-  if (events.length === 0) return null
+  // Titre supporté mais ce match n'a aucun kill exploitable → état vide explicite
+  // (distinct de « indisponible pour ce titre »).
+  if (events.length === 0) {
+    return (
+      <KillFeedShell t={t}>
+        <p className="text-sm text-muted-foreground">{t.killFeedNoData}</p>
+      </KillFeedShell>
+    )
+  }
 
   const degraded = (data?.limitations ?? []).length > 0
 
   return (
-    <section className="space-y-4">
-      <h3 className="text-base font-semibold text-foreground">{t.sectionKillFeed}</h3>
+    <KillFeedShell t={t}>
       <div className="space-y-2">
         <ol className="divide-y divide-border overflow-hidden rounded-md border border-border bg-card">
           {events.map((ev, i) => (
@@ -56,7 +91,7 @@ export function MatchKillFeed({ playerSlug, matchId, meXUID, t }: MatchKillFeedP
           <p className="text-xs text-muted-foreground">{t.killFeedDegradedNote}</p>
         )}
       </div>
-    </section>
+    </KillFeedShell>
   )
 }
 

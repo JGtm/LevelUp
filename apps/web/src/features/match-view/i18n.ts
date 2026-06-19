@@ -117,6 +117,7 @@ export interface MatchViewText {
   killFeedNoData: string
   killFeedDegradedNote: string
   killFeedEnvironment: string
+  killFeedUnsupported: string
   // Scoreboard team header (Eagle / Cobra avec couleur team-ally/enemy)
   scoreboardTitle: string
   scoreboardNoData: string
@@ -271,6 +272,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     killFeedNoData: 'Aucun événement disponible pour ce match.',
     killFeedDegradedNote: 'Reconstitué depuis les faits marquants : arme et positions non disponibles pour ce titre.',
     killFeedEnvironment: 'Environnement',
+    killFeedUnsupported: 'Timeline d\'events indisponible pour ce titre.',
     scoreboardTitle: 'Tableau des scores',
     scoreboardNoData: 'Aucune donnée de tableau des scores disponible pour ce match.',
     teamLabelFmt: (name) => `Équipe ${name}`,
@@ -418,6 +420,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     killFeedNoData: 'No events available for this match.',
     killFeedDegradedNote: 'Reconstructed from highlights: weapon and positions are unavailable for this title.',
     killFeedEnvironment: 'Environment',
+    killFeedUnsupported: 'Event timeline not available for this title.',
     scoreboardTitle: 'Scoreboard',
     scoreboardNoData: 'No scoreboard data available for this match.',
     teamLabelFmt: (name) => `Team ${name}`,
