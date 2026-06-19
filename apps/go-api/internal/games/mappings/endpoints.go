@@ -38,17 +38,21 @@ const (
 type EndpointSet struct {
 	titleSlug     string
 	schemaVersion int
+	gamePrefix    string
 	byKey         map[EndpointKey]string
 }
 
 // NewEndpointSet construit un EndpointSet (utilisé par le loader et les tests).
-func NewEndpointSet(titleSlug string, schemaVersion int, byKey map[EndpointKey]string) *EndpointSet {
+// gamePrefix est le segment d'URL de jeu ("hi"/"h5") ; vide = non déclaré (le
+// consommateur retombe sur le défaut).
+func NewEndpointSet(titleSlug string, schemaVersion int, gamePrefix string, byKey map[EndpointKey]string) *EndpointSet {
 	if byKey == nil {
 		byKey = make(map[EndpointKey]string)
 	}
 	return &EndpointSet{
 		titleSlug:     titleSlug,
 		schemaVersion: schemaVersion,
+		gamePrefix:    gamePrefix,
 		byKey:         byKey,
 	}
 }
@@ -58,6 +62,15 @@ func (s *EndpointSet) TitleSlug() string { return s.titleSlug }
 
 // SchemaVersion retourne la version du schéma TOML.
 func (s *EndpointSet) SchemaVersion() int { return s.schemaVersion }
+
+// GamePrefix retourne le segment d'URL de jeu du titre ("hi"/"h5") et true s'il
+// est déclaré. (_, false) si absent → le caller applique son défaut byte-identique.
+func (s *EndpointSet) GamePrefix() (string, bool) {
+	if s == nil || s.gamePrefix == "" {
+		return "", false
+	}
+	return s.gamePrefix, true
+}
 
 // Host retourne l'host pour une clé d'endpoint, ou (_, false) si absente.
 func (s *EndpointSet) Host(key EndpointKey) (string, bool) {

@@ -43,3 +43,21 @@ func (c *HaloAPIClient) hostFor(ctx context.Context, key games.EndpointKey, lega
 	slog.WarnContext(ctx, "endpoint_missing", "title", slug, "endpoint_key", string(key))
 	return legacy
 }
+
+// gamePrefix résout le segment d'URL de jeu du titre courant ("hi"/"h5") injecté
+// dans les chemins d'API d'ingestion. Fallback games.DefaultGamePrefix ("hi") →
+// byte-identique pour Halo Infinite. Même précédence que hostFor : resolver
+// d'instance (override de test) prioritaire, sinon resolver partagé de boot.
+func (c *HaloAPIClient) gamePrefix(ctx context.Context) string {
+	if c.endpoints != nil {
+		return games.GamePrefixFromResolver(c.endpoints, ctxkeys.TitleSlug(ctx))
+	}
+	return gamePrefixForCtx(ctx)
+}
+
+// gamePrefixForCtx est la variante free-function de gamePrefix (résolveurs hors
+// HaloAPIClient, ex. nameplate). Consulte le resolver partagé de boot, fallback
+// games.DefaultGamePrefix ("hi").
+func gamePrefixForCtx(ctx context.Context) string {
+	return games.GamePrefix(ctxkeys.TitleSlug(ctx))
+}

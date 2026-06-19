@@ -104,7 +104,7 @@ func (c *HaloAPIClient) fetchFilmManifest(ctx context.Context, matchID string) (
 	}
 
 	// 2. API Halo.
-	endpoint := fmt.Sprintf("%s/hi/films/matches/%s/spectate", c.hostFor(ctx, games.EndpointUGCFilm, haloUGCHost), url.PathEscape(matchID))
+	endpoint := fmt.Sprintf("%s/%s/films/matches/%s/spectate", c.hostFor(ctx, games.EndpointUGCFilm, haloUGCHost), c.gamePrefix(ctx), url.PathEscape(matchID))
 	body, err := c.doGet(ctx, endpoint)
 	if err != nil {
 		if isNotFoundErr(err) {

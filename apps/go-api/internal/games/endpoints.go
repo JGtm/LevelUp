@@ -60,3 +60,21 @@ func (r *MappingsEndpointResolver) HostFor(slug string, key EndpointKey) (string
 	}
 	return set.Host(key)
 }
+
+// GamePrefixFor résout le segment d'URL de jeu d'un titre (constants.toml
+// [meta].game_prefix). Implémente games.GamePrefixResolver (MT-01). Même
+// précédence de slug vide que HostFor. (_, false) si le titre est inconnu ou ne
+// déclare pas de préfixe → le caller applique son défaut "hi" byte-identique.
+func (r *MappingsEndpointResolver) GamePrefixFor(slug string) (string, bool) {
+	if r == nil || r.reg == nil {
+		return "", false
+	}
+	if slug == "" {
+		slug = r.defaultSlug
+	}
+	set, ok := r.reg.GetEndpoints(slug)
+	if !ok {
+		return "", false
+	}
+	return set.GamePrefix()
+}

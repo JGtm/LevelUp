@@ -20,6 +20,11 @@ type fieldsTOML struct {
 type metaSection struct {
 	TitleSlug     string `toml:"title_slug"`
 	SchemaVersion int    `toml:"schema_version"`
+	// GamePrefix est le segment d'URL de jeu ("hi" pour Halo Infinite, "h5" pour
+	// Halo 5) injecté dans les chemins d'API d'ingestion (/hi/players/..., etc.).
+	// Optionnel : lu seulement par le loader endpoints (constants.toml) ; absent
+	// des autres mappings TOML. Vide → le consommateur retombe sur le défaut "hi".
+	GamePrefix string `toml:"game_prefix"`
 }
 
 type fieldEntryTOML struct {

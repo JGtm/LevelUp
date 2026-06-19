@@ -226,7 +226,7 @@ func (c *HaloAPIClient) GetMatchHistory(
 	if count < 1 || count > matchCountMax {
 		return nil, fmt.Errorf("GetMatchHistory: count doit être entre 1 et %d (reçu %d)", matchCountMax, count)
 	}
-	endpoint := fmt.Sprintf("%s/hi/players/%s/matches", c.hostFor(ctx, games.EndpointStats, haloStatsHost), url.PathEscape(gamertag))
+	endpoint := fmt.Sprintf("%s/%s/players/%s/matches", c.hostFor(ctx, games.EndpointStats, haloStatsHost), c.gamePrefix(ctx), url.PathEscape(gamertag))
 	params := url.Values{
 		"start": {strconv.Itoa(start)},
 		"count": {strconv.Itoa(count)},
@@ -265,7 +265,7 @@ func (c *HaloAPIClient) GetMatchStats(ctx context.Context, matchID string) (map[
 	if !rexUUID.MatchString(matchID) {
 		return nil, fmt.Errorf("GetMatchStats: matchID n'est pas un UUID valide %q", matchID)
 	}
-	endpoint := fmt.Sprintf("%s/hi/matches/%s/stats", c.hostFor(ctx, games.EndpointStats, haloStatsHost), url.PathEscape(matchID))
+	endpoint := fmt.Sprintf("%s/%s/matches/%s/stats", c.hostFor(ctx, games.EndpointStats, haloStatsHost), c.gamePrefix(ctx), url.PathEscape(matchID))
 	body, err := c.doGet(ctx, endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("GetMatchStats(%s): %w", matchID, err)

@@ -3,6 +3,8 @@ package halo
 import (
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/games"
 )
 
 func TestBuildSeasonServiceRecordURL(t *testing.T) {
@@ -10,7 +12,8 @@ func TestBuildSeasonServiceRecordURL(t *testing.T) {
 	const expectedPrefix = defaultStatsHost + "/hi/players/JGtm/Matchmade/servicerecord?"
 
 	// Sans filtre ranked : seasonId encodé (slashes → %2F), pas de isRanked.
-	u := buildSeasonServiceRecordURL("JGtm", "Seasons/Season7.json", nil)
+	// game_prefix "hi" (DefaultGamePrefix) → URL byte-identique à l'avant-refactor.
+	u := buildSeasonServiceRecordURL(games.DefaultGamePrefix, "JGtm", "Seasons/Season7.json", nil)
 	if !strings.HasPrefix(u, expectedPrefix) {
 		t.Fatalf("préfixe inattendu: %s", u)
 	}
@@ -22,11 +25,11 @@ func TestBuildSeasonServiceRecordURL(t *testing.T) {
 	}
 
 	// Filtre classé.
-	if u := buildSeasonServiceRecordURL("JGtm", "Seasons/Season7.json", &tru); !strings.Contains(u, "isRanked=true") {
+	if u := buildSeasonServiceRecordURL(games.DefaultGamePrefix, "JGtm", "Seasons/Season7.json", &tru); !strings.Contains(u, "isRanked=true") {
 		t.Errorf("isRanked=true attendu: %s", u)
 	}
 	// Filtre non-classé.
-	if u := buildSeasonServiceRecordURL("JGtm", "Seasons/Season7.json", &fls); !strings.Contains(u, "isRanked=false") {
+	if u := buildSeasonServiceRecordURL(games.DefaultGamePrefix, "JGtm", "Seasons/Season7.json", &fls); !strings.Contains(u, "isRanked=false") {
 		t.Errorf("isRanked=false attendu: %s", u)
 	}
 }

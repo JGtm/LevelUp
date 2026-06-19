@@ -24,8 +24,9 @@ func (c *HaloAPIClient) GetCareerProgress(ctx context.Context, xuid string) (*Ca
 		return nil, errors.New("GetCareerProgress: xuid vide")
 	}
 	progressURL := fmt.Sprintf(
-		"%s/hi/careerranks/careerRank1?players=xuid(%s)",
+		"%s/%s/careerranks/careerRank1?players=xuid(%s)",
 		c.economyHost(ctx),
+		c.gamePrefix(ctx),
 		url.PathEscape(xuid),
 	)
 	progressBody, ok, err := c.doPlayerGatedGet(ctx, progressURL)
@@ -71,8 +72,9 @@ func (c *HaloAPIClient) GetSpartanCustomization(ctx context.Context, xuid string
 		return nil, errors.New("GetSpartanCustomization: xuid vide")
 	}
 	customizationURL := fmt.Sprintf(
-		"%s/hi/players/xuid(%s)/customization/appearance",
+		"%s/%s/players/xuid(%s)/customization/appearance",
 		c.economyHost(ctx),
+		c.gamePrefix(ctx),
 		url.PathEscape(xuid),
 	)
 	customizationBody, ok, err := c.doPlayerGatedGet(ctx, customizationURL)
@@ -86,8 +88,9 @@ func (c *HaloAPIClient) GetSpartanCustomization(ctx context.Context, xuid string
 		// (ServiceTag/Emblem/BackdropImagePath) pour n'importe quel joueur.
 		// Décodée par le même parseCustomizationAppearance (navigation Appearance.*).
 		publicURL := fmt.Sprintf(
-			"%s/hi/players/xuid(%s)/customization?view=public",
+			"%s/%s/players/xuid(%s)/customization?view=public",
 			c.economyHost(ctx),
+			c.gamePrefix(ctx),
 			url.PathEscape(xuid),
 		)
 		pubBody, pubOK, pubErr := c.doPlayerGatedGet(ctx, publicURL)
@@ -351,7 +354,7 @@ func (c *HaloAPIClient) resolveCustomizationImageURL(ctx context.Context, invent
 		return "", fmt.Errorf("resolveCustomizationImageURL: inventory path vide")
 	}
 
-	endpoint := fmt.Sprintf("%s/hi/progression/file/%s", c.gameCMSHost(ctx), trimmed)
+	endpoint := fmt.Sprintf("%s/%s/progression/file/%s", c.gameCMSHost(ctx), c.gamePrefix(ctx), trimmed)
 	body, err := c.doGet(ctx, endpoint)
 	if err != nil {
 		return "", err
@@ -366,7 +369,7 @@ func (c *HaloAPIClient) resolveCustomizationImageURL(ctx context.Context, invent
 	if mediaPath == "" {
 		return "", fmt.Errorf("resolveCustomizationImageURL: media path absent")
 	}
-	return buildCustomizationImageURL(c.gameCMSHost(ctx), mediaPath), nil
+	return buildCustomizationImageURL(c.gameCMSHost(ctx), c.gamePrefix(ctx), mediaPath), nil
 }
 
 func extractCustomizationMediaPath(payload map[string]any) string {
@@ -408,7 +411,7 @@ func nestedPayloadValue(payload map[string]any, keys ...string) any {
 	return current
 }
 
-func buildCustomizationImageURL(baseURL, mediaPath string) string {
+func buildCustomizationImageURL(baseURL, gamePrefix, mediaPath string) string {
 	trimmedBase := strings.TrimRight(strings.TrimSpace(baseURL), "/")
 	trimmedPath := strings.TrimSpace(mediaPath)
 	if trimmedBase == "" || trimmedPath == "" {
@@ -418,13 +421,14 @@ func buildCustomizationImageURL(baseURL, mediaPath string) string {
 		return trimmedPath
 	}
 	trimmedPath = strings.TrimLeft(trimmedPath, "/")
-	if strings.HasPrefix(strings.ToLower(trimmedPath), "hi/images/file/") {
+	prefix := strings.ToLower(gamePrefix)
+	if strings.HasPrefix(strings.ToLower(trimmedPath), prefix+"/images/file/") {
 		return trimmedBase + "/" + trimmedPath
 	}
 	if strings.HasPrefix(strings.ToLower(trimmedPath), "images/file/") {
-		return trimmedBase + "/hi/" + trimmedPath
+		return trimmedBase + "/" + gamePrefix + "/" + trimmedPath
 	}
-	return trimmedBase + "/hi/images/file/" + trimmedPath
+	return trimmedBase + "/" + gamePrefix + "/images/file/" + trimmedPath
 }
 
 // (2026-05-08) Les fonctions `fallbackCustomization{Emblem,Backdrop,Banner}URL`

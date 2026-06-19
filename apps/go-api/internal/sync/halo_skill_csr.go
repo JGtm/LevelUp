@@ -50,8 +50,8 @@ func (c *HaloAPIClient) GetPlaylistCsr(ctx context.Context, playlistID, xuid, se
 		return nil, fmt.Errorf("GetPlaylistCsr: xuid vide")
 	}
 
-	endpoint := fmt.Sprintf("%s/hi/playlist/%s/csrs?players=xuid(%s)",
-		c.hostFor(ctx, games.EndpointSkill, haloSkillHost), url.PathEscape(playlistID), url.PathEscape(xuid))
+	endpoint := fmt.Sprintf("%s/%s/playlist/%s/csrs?players=xuid(%s)",
+		c.hostFor(ctx, games.EndpointSkill, haloSkillHost), c.gamePrefix(ctx), url.PathEscape(playlistID), url.PathEscape(xuid))
 	if s := strings.TrimSpace(seasonID); s != "" {
 		endpoint += "&season=" + url.QueryEscape(s)
 	}

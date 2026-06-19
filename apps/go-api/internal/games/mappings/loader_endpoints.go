@@ -77,9 +77,26 @@ func LoadEndpointsFromBytes(path string, raw []byte) (*EndpointSet, error) {
 		byKey[key] = trimmed
 	}
 
+	gamePrefix := strings.TrimSpace(doc.Meta.GamePrefix)
+	if gamePrefix != "" && !isValidGamePrefix(gamePrefix) {
+		errs = append(errs, fmt.Errorf("[meta].game_prefix invalide %q (attendu : segment d'URL minuscule alphanumérique, ex. \"hi\", \"h5\")", gamePrefix))
+	}
+
 	if len(errs) > 0 {
 		return nil, fmt.Errorf("validation %s: %w", path, errors.Join(errs...))
 	}
 
-	return NewEndpointSet(doc.Meta.TitleSlug, doc.Meta.SchemaVersion, byKey), nil
+	return NewEndpointSet(doc.Meta.TitleSlug, doc.Meta.SchemaVersion, gamePrefix, byKey), nil
+}
+
+// isValidGamePrefix vérifie qu'un game_prefix est un segment d'URL sûr : une
+// suite de minuscules/chiffres (pas de slash, espace ou majuscule). Sert à
+// garantir que le préfixe injecté dans les chemins d'API ne casse pas l'URL.
+func isValidGamePrefix(p string) bool {
+	for _, r := range p {
+		if (r < 'a' || r > 'z') && (r < '0' || r > '9') {
+			return false
+		}
+	}
+	return true
 }

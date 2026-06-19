@@ -54,8 +54,8 @@ func (c *HaloAPIClient) GetPlaylistConfig(ctx context.Context, playlistID, versi
 	if versionID == "" {
 		return nil, fmt.Errorf("GetPlaylistConfig(%s): version_id requis", playlistID)
 	}
-	endpoint := fmt.Sprintf("%s/hi/playlists/%s/versions/%s",
-		c.hostFor(ctx, games.EndpointDiscoveryUGC, haloUGCHost), url.PathEscape(playlistID), url.PathEscape(versionID))
+	endpoint := fmt.Sprintf("%s/%s/playlists/%s/versions/%s",
+		c.hostFor(ctx, games.EndpointDiscoveryUGC, haloUGCHost), c.gamePrefix(ctx), url.PathEscape(playlistID), url.PathEscape(versionID))
 	body, err := c.doGet(ctx, endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("GetPlaylistConfig(%s): %w", playlistID, err)

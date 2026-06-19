@@ -17,9 +17,11 @@ import (
 )
 
 const (
-	defaultGameCMSHost    = "https://gamecms-hacs.svc.halowaypoint.com"
-	seasonCalendarPath    = "/hi/Progression/file/SeasonCalendar.json"
-	csrSeasonCalendarPath = "/hi/Progression/file/CsrSeasonCalendar.json"
+	defaultGameCMSHost = "https://gamecms-hacs.svc.halowaypoint.com"
+	// Suffixes post-préfixe de jeu : le segment /hi|/h5 est injecté à l'usage via
+	// p.gamePrefix(ctx) (MT-01), plus en dur dans le chemin.
+	seasonCalendarPathSuffix    = "/Progression/file/SeasonCalendar.json"
+	csrSeasonCalendarPathSuffix = "/Progression/file/CsrSeasonCalendar.json"
 )
 
 // seasonCalendarRaw est la structure brute du JSON SeasonCalendar.
@@ -48,7 +50,7 @@ func (p *HaloProvider) FetchSeasonCalendar(ctx context.Context, titleID string) 
 		return nil, nil, fmt.Errorf("FetchSeasonCalendar: tokens absents du contexte")
 	}
 
-	url := p.hostFor(ctx, games.EndpointGameCMS, p.gameCMSBaseURL, defaultGameCMSHost) + seasonCalendarPath
+	url := p.hostFor(ctx, games.EndpointGameCMS, p.gameCMSBaseURL, defaultGameCMSHost) + "/" + p.gamePrefix(ctx) + seasonCalendarPathSuffix
 	body, err := p.doGet(ctx, url, tokens)
 	if err != nil {
 		return nil, nil, fmt.Errorf("FetchSeasonCalendar: %w", err)
@@ -91,7 +93,7 @@ func (p *HaloProvider) FetchCSRSeasonCalendar(ctx context.Context, titleID strin
 		return nil, nil, fmt.Errorf("FetchCSRSeasonCalendar: tokens absents du contexte")
 	}
 
-	url := p.hostFor(ctx, games.EndpointGameCMS, p.gameCMSBaseURL, defaultGameCMSHost) + csrSeasonCalendarPath
+	url := p.hostFor(ctx, games.EndpointGameCMS, p.gameCMSBaseURL, defaultGameCMSHost) + "/" + p.gamePrefix(ctx) + csrSeasonCalendarPathSuffix
 	body, err := p.doGet(ctx, url, tokens)
 	if err != nil {
 		return nil, nil, fmt.Errorf("FetchCSRSeasonCalendar: %w", err)

@@ -1,3 +1,20 @@
+## [2026-06-19] Bloquant multi-titre #1 : préfixe de jeu `/hi/` externalisé en `game_prefix` (MT-01) — Complété
+
+**Statut** : Complété (commit à venir). Build + vet module complets verts ; parité Halo byte-identique (sync + platform/halo + assets) ; oracle multi-titre vert ; archlint `no_slug_comparison` vert.
+
+**But** : lever le bloquant #1 de l'audit (`AUDIT_MULTITITRE_COVERAGE.md`) — le segment d'URL de jeu `/hi/` était hardcodé sur ~30 sites HTTP runtime (bien plus que les « 8+ » estimés), aucun paramètre titre ne le dérivait → un 2e titre actif (Halo 5 = préfixe `h5`) tapait `/hi/` partout. Prérequis HTTP de toute la Phase 1 Halo 5.
+
+**Décision technique** :
+- **Source de vérité** : nouvelle clé `[meta].game_prefix` dans `config/titles/{slug}/constants.toml` (`"hi"` pour halo_infinite, `"h5"` pour halo_5). Portée par `mappings.EndpointSet.GamePrefix()`.
+- **Résolveur** : interface OPTIONNELLE `games.GamePrefixResolver` (type-assertion, non-breaking pour les implémentations/stubs existants d'`EndpointResolver`) + helper `games.GamePrefix(slug)` avec fallback const `games.DefaultGamePrefix = "hi"`. Implémentée par `*MappingsEndpointResolver`.
+- **Helpers par package** mirroir des `hostFor` existants : `c.gamePrefix(ctx)` (sync HaloAPIClient) + `gamePrefixForCtx(ctx)` (free, nameplate) ; `p.gamePrefix(ctx)` (platform/halo HaloProvider) ; `f.gamePrefix(ctx)`/`gamecmsPrefixFor(ctx)` (assets). Chaque littéral `/hi/` → `/` + préfixe résolu.
+- **Fonctions standalone** threadées par paramètre `gamePrefix`/`prefix` : `buildCustomizationImageURL`, `buildSeasonServiceRecordURL`, `buildGameCMSImageFetchURL` (+ leur logique de détection de préfixe-déjà-présent paramétrée).
+- **Scope** : runtime de service uniquement (`internal/sync` + `internal/platform/halo` + `internal/assets`). Les `cmd/`/`scripts/` (outils dev Halo-spécifiques) gardent `/hi/` en dur — flag `--title` ultérieur. Les hosts const legacy (compare/privacy `defaultStatsHost`) restent un axe séparé (audit « NON migré »).
+
+**Résultats** : fallback `"hi"` garantit le byte-identique Halo — TOUS les golden `/hi/...` existants (sync/platform/halo/assets) restent verts sans modification. Oracle `TestGamePrefixResolver_SyntheticRouting` prouve qu'un titre déclarant `h5` route réellement vers `/h5/` (pas cosmétique) + fallback `"hi"` sur resolver legacy/nil/titre inconnu. Validation `game_prefix` (minuscules alphanumériques) + cas d'erreur testés.
+
+**Conclusion / prochaine étape** : bloquant #1 levé. Reste Phase 1 : boucle boot `registry.Active()` + orchestrateur sync par titre ; gates front (matchview/prestige) + invalidation queryClient au switch ; et le vrai gate Halo 5 = **sonde live** (SpartanToken v4 → endpoints internes h5, en attente feu vert user car appel externe réel). Cf. `HANDOFF_HALO5_EXPERIMENTAL.md` §4.
+
 ## [2026-06-18] Migration types.ts : aire Lab shimée + finding mass-shim (reverté) — Complété (aire Lab) / Diagnostic (reste)
 
 **Statut** : aire Lab Complétée (commit 77d4addcb) ; mass-shim expérimenté + **reverté** (finding).

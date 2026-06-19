@@ -14,7 +14,9 @@ import (
 	"levelup/go-api/internal/metadata"
 )
 
-const medalsMetadataPath = "/hi/Progression/file/medals/metadata.json"
+// medalsMetadataPathSuffix : partie post-préfixe de jeu (segment /hi|/h5 injecté
+// à l'usage via p.gamePrefix(ctx), MT-01).
+const medalsMetadataPathSuffix = "/Progression/file/medals/metadata.json"
 
 // medalMetadataRaw est la structure brute du JSON Waypoint.
 type medalMetadataRaw struct {
@@ -37,7 +39,7 @@ func (p *HaloProvider) FetchMedalsMetadata(ctx context.Context, titleID string) 
 		return nil, nil, fmt.Errorf("FetchMedalsMetadata: tokens absents du contexte")
 	}
 
-	url := p.hostFor(ctx, games.EndpointGameCMS, p.gameCMSBaseURL, defaultGameCMSHost) + medalsMetadataPath
+	url := p.hostFor(ctx, games.EndpointGameCMS, p.gameCMSBaseURL, defaultGameCMSHost) + "/" + p.gamePrefix(ctx) + medalsMetadataPathSuffix
 	body, err := p.doGet(ctx, url, tokens)
 	if err != nil {
 		return nil, nil, fmt.Errorf("FetchMedalsMetadata: %w", err)

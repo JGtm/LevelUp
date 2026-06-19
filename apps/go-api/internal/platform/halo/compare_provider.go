@@ -76,8 +76,9 @@ func (p *HaloProvider) FetchServiceRecord(ctx context.Context, gamertag, titleSl
 	// /hi/players/{gamertag}/Matchmade/servicerecord — LifecycleMode "Matchmade"
 	// (PascalCase) ; pas de season marker → record cumulatif (lifetime).
 	url := fmt.Sprintf(
-		"%s/hi/players/%s/Matchmade/servicerecord",
+		"%s/%s/players/%s/Matchmade/servicerecord",
 		defaultStatsHost,
+		p.gamePrefix(ctx),
 		gamertag,
 	)
 	body, err := p.doGet(ctx, url, tokens)
@@ -147,7 +148,7 @@ func (p *HaloProvider) FetchSeasonServiceRecord(ctx context.Context, gamertag, s
 		return 0, fmt.Errorf("FetchSeasonServiceRecord: seasonID vide")
 	}
 
-	rawURL := buildSeasonServiceRecordURL(gamertag, seasonID, isRanked)
+	rawURL := buildSeasonServiceRecordURL(p.gamePrefix(ctx), gamertag, seasonID, isRanked)
 	body, err := p.doGet(ctx, rawURL, tokens)
 	if err != nil {
 		return 0, fmt.Errorf("FetchSeasonServiceRecord(%s, %s): %w", gamertag, seasonID, err)
@@ -164,13 +165,13 @@ func (p *HaloProvider) FetchSeasonServiceRecord(ctx context.Context, gamertag, s
 // saison (et optionnellement par isRanked). Helper pur (testable sans réseau) :
 // le seasonID contient des slashes ("Seasons/Season7.json") → encodés en query
 // par url.Values. Casing seasonId/isRanked aligné sur le wrapper Grunt.
-func buildSeasonServiceRecordURL(gamertag, seasonID string, isRanked *bool) string {
+func buildSeasonServiceRecordURL(gamePrefix, gamertag, seasonID string, isRanked *bool) string {
 	q := url.Values{}
 	q.Set("seasonId", seasonID)
 	if isRanked != nil {
 		q.Set("isRanked", strconv.FormatBool(*isRanked))
 	}
-	return fmt.Sprintf("%s/hi/players/%s/Matchmade/servicerecord?%s", defaultStatsHost, gamertag, q.Encode())
+	return fmt.Sprintf("%s/%s/players/%s/Matchmade/servicerecord?%s", defaultStatsHost, gamePrefix, gamertag, q.Encode())
 }
 
 // iso8601DurationRe capture les composantes jours/heures/minutes/secondes d'une

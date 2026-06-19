@@ -251,13 +251,14 @@ Traitement séquentiel autonome post-audit. Chaque correction = commit vert (mon
 ### FAIT (vérifié + commité + poussé)
 - **Bloquant write-path persist (#1)** — `CombinedPersister.playerDBPathFn` : signature `func(gamertag)` → `func(titleSlug, gamertag)` appelée avec `batch.TitleSlug`. Un 2e titre route désormais vers SA player DB (avant : tous les batchs verrouillés sur le slug du boot). Commit `b2d959cff`.
 - **Bloquant write-path persist (#6)** — `PersistSink` : champ `TitleSlug` (param `NewPersistSink`) ; `writeBattlePass`/`writeChallenges` n'écrivent plus `title_slug='halo_infinite'` en dur dans `waypoint_assets_raw` ; callers passent `pdb.TitleSlug` / `watcherSlug`. Commit `fef1680c0`.
+- **Bloquant chaîne HTTP — préfixe de jeu `/hi/` (2026-06-19)** — externalisé en `[meta].game_prefix` (`constants.toml`) résolu via `games.GamePrefix(slug)` (fallback const `"hi"`). ~30 sites runtime câblés (bien plus que les « 8+ » de l'audit) sur `internal/sync` (HaloAPIClient : match/skill/csr/film/playlist/career/customization/nameplate), `internal/platform/halo` (season/medal/compare/privacy/discovery/battlepass/challenges) et `internal/assets` (fetcher_gamecms ×8 + fetcher_chain). Byte-identique Halo (golden `/hi/` verts) + oracle `/h5/` (`TestGamePrefixResolver_SyntheticRouting`) + archlint `no_slug_comparison` vert. **Scope** : runtime de service ; `cmd/`/`scripts/` (outils dev) gardent `/hi/` en dur (flag `--title` ultérieur). Hosts const legacy compare/privacy = axe séparé non couvert ici. Commit à venir.
 
 ### FAUX POSITIFS (vérifiés — PAS des gaps)
 - `ranked_playlists.go:26 const = "halo_infinite"` : **correctement scopé** (package `internal/games/halo_infinite/migrations`, title-specific par design ; un 2e titre a SON package). Corriger = régression conceptuelle.
 - `coach_proposals.go:50` + `achievements_service.go:119` : **fallbacks corrects** vers le `DefaultSlug` quand le slug n'est pas injecté (`if slug=="" { ... }`). Le contexte fournit le bon slug pour un 2e titre (TitleExtractor). Littéral cosmétique, zéro impact — churn interdit.
 
 ### RESTE = chantier Phase 1/2 Halo 5 (non testable sans 2e titre ACTIF, cf. handoff)
-- **Préfixe `/hi/`** (8+ appels HTTP) : externaliser via `constants.toml [title] game_prefix` + fallback "hi". Prérequis Phase 1 (refactor multi-fichiers à mener d'un bloc, contexte plein).
+- ~~**Préfixe `/hi/`**~~ → **FAIT 2026-06-19** (cf. section FAIT ci-dessus).
 - **Boucle boot `registry.Active()`** + **orchestrateur sync par titre** : bloquant activation (Phase 2).
 - **Scopes OAuth globales** : NON bloquant Halo 5 (mêmes audiences qu'Infinite, handoff §1).
 - **Front** : gates matchview/prestige + invalidation queryClient au switch + vocab → field-mappings (Phase 1 front).
