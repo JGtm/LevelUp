@@ -15,6 +15,8 @@ import (
 type fakeSource struct {
 	sr    *H5ServiceRecordResponse
 	srErr error
+	ev    *h5MatchEventsResponse
+	evErr error
 }
 
 func (f *fakeSource) GetServiceRecords(_ context.Context, _, _ string) (*H5ServiceRecordResponse, error) {
@@ -23,6 +25,10 @@ func (f *fakeSource) GetServiceRecords(_ context.Context, _, _ string) (*H5Servi
 
 func (f *fakeSource) GetPlayerMatches(_ context.Context, _ string, _, _ int) (*H5MatchesResponse, error) {
 	return nil, errors.New("non utilise")
+}
+
+func (f *fakeSource) GetMatchEvents(_ context.Context, _ string) (*h5MatchEventsResponse, error) {
+	return f.ev, f.evErr
 }
 
 // srcFactory enveloppe une source fixe en SourceFactory (le token de prod vient du

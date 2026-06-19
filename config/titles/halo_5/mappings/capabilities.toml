@@ -30,9 +30,9 @@ schema_version = 1
 "pve.firefight_stats"    = "not_exposed" # Warzone Firefight, modèle != FF HINF (Phase 2+)
 "battlepass.progression" = "not_exposed" # pas de season pass (REQ packs à la place)
 "challenges.surface"     = "not_exposed" # pas de défis
-# Canonical MatchEvents : Halo 5 sert NATIVEMENT /events (timeline + arme-par-kill
-# + positions). Mais LoadMatchEvents pas encore câblé (Phase 0 = contrat). Flip à
-# "supported"/"supported"/"supported" en Phase 1 quand halo_5/events.go existe.
-"match.events.timeline"  = "not_exposed" # natif /h5/matches/{id}/events (Phase 1)
-"match.killfeed.per_kill" = "not_exposed" # KillerWeaponStockId par event (Phase 1)
-"match.events.spatial"   = "not_exposed" # KillerWorldLocation x,y,z (Phase 1)
+# Canonical MatchEvents : CÂBLÉ Phase 1 (LoadMatchEvents → halo_5/events.go).
+# Halo 5 sert NATIVEMENT la timeline complète (/h5/matches/{id}/events) avec
+# arme-par-kill (KillerWeaponStockId) et positions monde (KillerWorldLocation).
+"match.events.timeline"  = "supported" # natif /h5/matches/{id}/events
+"match.killfeed.per_kill" = "supported" # KillerWeaponStockId par event de kill
+"match.events.spatial"   = "supported" # KillerWorldLocation/VictimWorldLocation x,y,z
