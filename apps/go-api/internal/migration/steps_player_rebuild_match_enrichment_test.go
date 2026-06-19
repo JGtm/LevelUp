@@ -149,3 +149,47 @@ func TestRebuildPlayerMatchEnrichmentART_Idempotent(t *testing.T) {
 		t.Errorf("idempotence violée : n1=%d n2=%d", n1, n2)
 	}
 }
+
+// TestRebuildPlayerMatchEnrichmentART_RecreatesSecondaryIndexes : NON-REGRESSION
+// (fix 2026-06-19). La version initiale du rebuild DROP-ait la table puis ne
+// recréait PAS les indexes secondaires (idx_pme_engagement_history/_paces/
+// _session ajoutés après 2026-05) → indexes perdus. Le rebuild doit désormais
+// les capturer avant le swap et les rejouer après.
+func TestRebuildPlayerMatchEnrichmentART_RecreatesSecondaryIndexes(t *testing.T) {
+	db := openMemDB(t)
+	seedPlayerMatchEnrichmentForRebuild(t, db)
+	ctx := context.Background()
+
+	// Ajoute les colonnes + indexes engagement (comme la migration réelle).
+	for _, s := range []string{
+		`ALTER TABLE player_match_enrichment ADD COLUMN engagement_score_brut DOUBLE`,
+		`ALTER TABLE player_match_enrichment ADD COLUMN mode_category VARCHAR`,
+		`CREATE INDEX idx_pme_engagement_history ON player_match_enrichment(mode_category, engagement_score_brut)`,
+		`CREATE INDEX idx_pme_engagement_paces ON player_match_enrichment(mode_category)`,
+		`CREATE INDEX idx_pme_session ON player_match_enrichment(session_id)`,
+	} {
+		if _, err := db.Exec(s); err != nil {
+			t.Fatalf("seed index ddl %q: %v", s, err)
+		}
+	}
+
+	countIdx := func() int {
+		var n int
+		if err := db.QueryRow(
+			`SELECT COUNT(*) FROM duckdb_indexes() WHERE table_name='player_match_enrichment' AND is_primary=false`).Scan(&n); err != nil {
+			t.Fatalf("count indexes: %v", err)
+		}
+		return n
+	}
+	if got := countIdx(); got != 3 {
+		t.Fatalf("seed : %d indexes secondaires, want 3", got)
+	}
+
+	if err := RebuildPlayerMatchEnrichmentART(ctx, db); err != nil {
+		t.Fatalf("rebuild: %v", err)
+	}
+
+	if got := countIdx(); got != 3 {
+		t.Errorf("après rebuild : %d indexes secondaires, want 3 (recréés)", got)
+	}
+}
