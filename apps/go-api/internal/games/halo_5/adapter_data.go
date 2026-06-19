@@ -63,9 +63,10 @@ const h5RequestTimeout = 12 * time.Second
 
 // DataAdapter est l'implementation games.TitleDataAdapter d'Halo 5.
 type DataAdapter struct {
-	newSource  SourceFactory
-	staticCaps games.CapabilityMap
-	logger     *slog.Logger
+	newSource      SourceFactory
+	staticCaps     games.CapabilityMap
+	placementTotal int // TitleDescriptor.PlacementMatches (0 -> defaut h5DefaultPlacementMatches)
+	logger         *slog.Logger
 }
 
 var _ games.TitleDataAdapter = (*DataAdapter)(nil)
@@ -84,6 +85,14 @@ func NewDataAdapter(newSource SourceFactory, logger *slog.Logger) *DataAdapter {
 // nil -> fallbackCapabilities (filet de securite boot). Chainable.
 func (a *DataAdapter) WithCapabilities(caps games.CapabilityMap) *DataAdapter {
 	a.staticCaps = caps
+	return a
+}
+
+// WithPlacementTotal injecte le nombre de matchs de placement du titre
+// (TitleDescriptor.PlacementMatches). <= 0 -> defaut h5DefaultPlacementMatches au
+// mapping. Chainable.
+func (a *DataAdapter) WithPlacementTotal(n int) *DataAdapter {
+	a.placementTotal = n
 	return a
 }
 
@@ -187,7 +196,7 @@ func (a *DataAdapter) LoadCareerSnapshot(ctx context.Context, xuid string, _ can
 		}
 		return nil, fmt.Errorf("h5 LoadCareerSnapshot(%s): %w", gamertag, err)
 	}
-	if snap := mapCareerSnapshot(resp, gamertag); snap != nil {
+	if snap := mapCareerSnapshot(resp, gamertag, a.placementTotal); snap != nil {
 		return snap, nil
 	}
 	return &canonical.CareerSnapshot{Player: h5Identity(gamertag)}, nil

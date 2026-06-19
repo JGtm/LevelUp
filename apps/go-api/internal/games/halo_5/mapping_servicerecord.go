@@ -90,39 +90,67 @@ func aggregatePlayerStats(resp *H5ServiceRecordResponse, gamertag string) *canon
 	return stats
 }
 
-// mapCareerSnapshot projette le pic CSR natif (HighestCsrAttained) vers
-// CareerSnapshot. Halo 5 n'a PAS de progression XP facon rang carriere HINF :
-// seuls le palier CSR (RankTier/RankName) et la valeur CSR (Onyx) sont alimentes.
-// nil si pas de CSR atteint.
-func mapCareerSnapshot(resp *H5ServiceRecordResponse, gamertag string) *canonical.CareerSnapshot {
+// h5DefaultPlacementMatches : nombre de matchs de placement Halo 5 par defaut (valeur
+// historique). Override par TitleDescriptor.PlacementMatches via WithPlacementTotal.
+const h5DefaultPlacementMatches = 10
+
+// mapCareerSnapshot projette le service record arena vers CareerSnapshot. Halo 5
+// n'a PAS de progression XP facon rang carriere HINF : seuls le palier CSR
+// (RankTier/RankName, valeur Onyx) et l'etat PLACEMENT (matchs restants / total
+// du titre) sont alimentes. nil si pas de stats arena. placementTotal = nb de
+// matchs de placement du titre (TitleDescriptor.PlacementMatches).
+func mapCareerSnapshot(resp *H5ServiceRecordResponse, gamertag string, placementTotal int) *canonical.CareerSnapshot {
 	arena := firstArenaResult(resp)
-	if arena == nil || arena.HighestCsrAttained == nil {
+	if arena == nil {
 		return nil
 	}
-	csr := arena.HighestCsrAttained
-	en, fr := designationLabels(csr.DesignationId)
+	snap := &canonical.CareerSnapshot{Player: h5Identity(gamertag)}
 
-	snap := &canonical.CareerSnapshot{
-		Player: h5Identity(gamertag),
+	// Total de placement du titre : metadonnee toujours exposee si on a des stats arena.
+	pt := placementTotal
+	if pt <= 0 {
+		pt = h5DefaultPlacementMatches
 	}
-	if fr != "" {
-		tier := fr
-		snap.RankTier = &tier
-		// Nom de rang lisible : "Diamant 5" (palier + sous-palier) ; Onyx sans
-		// sous-palier ("Onyx").
-		name := fr
-		if en != "onyx" && csr.Tier > 0 {
-			name = fr + " " + strconv.Itoa(csr.Tier)
+	snap.PlacementTotal = &pt
+
+	// Pic CSR atteint (si le joueur a place quelque part).
+	if csr := arena.HighestCsrAttained; csr != nil {
+		en, fr := designationLabels(csr.DesignationId)
+		if fr != "" {
+			tier := fr
+			snap.RankTier = &tier
+			name := fr // "Diamant 5" (palier + sous-palier) ; Onyx sans sous-palier.
+			if en != "onyx" && csr.Tier > 0 {
+				name = fr + " " + strconv.Itoa(csr.Tier)
+			}
+			snap.RankName = &name
 		}
-		snap.RankName = &name
+		// Valeur CSR brute significative QU'A Onyx (cf. invariant #8 review).
+		if en == "onyx" && csr.Csr > 0 {
+			v := csr.Csr
+			snap.HighestCSR = &v
+		}
 	}
-	// La valeur CSR brute n'a de sens QU'A Onyx (sous-Onyx, le palier est porte par
-	// Tier+pourcentage, et Csr peut valoir 0 ou une valeur interne non affichable).
-	// On expose HighestCSR uniquement a Onyx (en=="onyx" garantit aussi un palier
-	// resolu) -> pas de valeur brute orpheline pour un palier inconnu/sous-Onyx.
-	if en == "onyx" && csr.Csr > 0 {
-		v := csr.Csr
-		snap.HighestCSR = &v
+
+	// Etat PLACEMENT : aucun palier resolu (pas encore classe) -> exposer les
+	// matchs de placement restants (max sur les playlists). Si un palier est
+	// resolu, le joueur est classe -> pas de "restants".
+	if snap.RankTier == nil {
+		if rem := maxMeasurementMatchesLeft(arena); rem > 0 {
+			snap.MeasurementMatchesRemaining = &rem
+		}
 	}
 	return snap
+}
+
+// maxMeasurementMatchesLeft retourne le maximum de MeasurementMatchesLeft sur les
+// playlists arena (0 si aucune en placement).
+func maxMeasurementMatchesLeft(arena *H5ArenaStats) int {
+	best := 0
+	for i := range arena.ArenaPlaylistStats {
+		if n := arena.ArenaPlaylistStats[i].MeasurementMatchesLeft; n > best {
+			best = n
+		}
+	}
+	return best
 }
