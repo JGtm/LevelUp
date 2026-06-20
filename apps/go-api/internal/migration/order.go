@@ -91,6 +91,8 @@ var canonicalOrder = []string{
 	"create_coach_proposal_player_schema",                      // player
 	"dedup_record_history_v1",                                  // player
 	"drop_challenge_mutated_art_indexes_v1",                    // player
+	"drop_coach_proposal_status_art_index_v1",                  // player
+	"drop_engagement_coefficients_xuid_art_index_v1",           // player
 	"fix_career_xp_total_default_zero",                         // player
 	"lusr_chain_rework_v1",                                     // player
 	"create_lusr_component_history",                            // player

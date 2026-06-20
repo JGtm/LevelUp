@@ -82,8 +82,6 @@ func init() {
 					last_updated     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 					PRIMARY KEY (xuid, mode_category)
 				);
-				CREATE INDEX IF NOT EXISTS idx_engagement_coefficients_xuid
-					ON engagement_coefficients(xuid);
 			`)
 		},
 	})
@@ -137,8 +135,6 @@ func init() {
 					) WHERE rn = 1;
 				DROP TABLE engagement_coefficients;
 				ALTER TABLE engagement_coefficients__pkfix RENAME TO engagement_coefficients;
-				CREATE INDEX IF NOT EXISTS idx_engagement_coefficients_xuid
-					ON engagement_coefficients(xuid);
 			`)
 		},
 	})
