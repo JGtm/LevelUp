@@ -265,6 +265,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/migration/steps_shared_social_media_assoc_append_only.go":                 "migration media_match_associations append-only (élimine DELETE manual-replace + reindex, surface ART shared_social)",
 	"internal/migration/steps_shared_social_notifications_append_only.go":               "migration player_notifications append-only (élimine DELETE×2 + UPDATE read_at, surface ART shared_social)",
 	"internal/migration/steps_shared_social_squad_challenge_participant_append_only.go": "migration squad_challenge_participant append-only (élimine ON CONFLICT + UPDATE, surface ART shared_social)",
+	"internal/migration/steps_shared_social_user_prestige_append_only.go":               "migration user_prestige append-only (élimine ON CONFLICT DO UPDATE accumulation/overwrite, surface ART shared_social)",
 	"internal/migration/steps_shared_social_records_append_only.go":                     "migrations records append-only",
 	"internal/migration/steps_shared_social_records_previous_cols.go":                   "migration previous_* sur player_records_history (fix 2026-05-30)",
 	"internal/migration/steps_shared_social_records_window.go":                          "migrations records window",

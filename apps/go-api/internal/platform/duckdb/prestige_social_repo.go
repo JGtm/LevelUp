@@ -66,13 +66,15 @@ func (r *PrestigeSocialRepo) EmitEvent(ctx context.Context, ev prestige.Prestige
 			_ = tx.Rollback()
 			return e
 		}
+		// APPEND-ONLY : INSERT d'un snapshot du nouveau total (accumulation carry-forward
+		// = total courant via _latest + delta), au lieu d'un ON CONFLICT DO UPDATE.
+		// current_level laissé à 0 (recalculé côté service via LevelFromPP).
 		if _, e := tx.ExecContext(ctx, `
-			INSERT INTO user_prestige (user_id, title_slug, total_pp, current_level, updated_at)
-			VALUES (?, ?, ?, 0, ?)
-			ON CONFLICT (user_id, title_slug) DO UPDATE SET
-				total_pp = user_prestige.total_pp + EXCLUDED.total_pp,
-				updated_at = EXCLUDED.updated_at
-		`, ev.UserID, ev.TitleSlug, ev.PPAmount, ev.CreatedAt); e != nil {
+			INSERT INTO user_prestige_history (user_id, title_slug, total_pp, current_level, updated_at, written_at)
+			SELECT ?, ?,
+			       COALESCE((SELECT total_pp FROM user_prestige_latest WHERE user_id = ? AND title_slug = ?), 0) + ?,
+			       0, ?, CURRENT_TIMESTAMP
+		`, ev.UserID, ev.TitleSlug, ev.UserID, ev.TitleSlug, ev.PPAmount, ev.CreatedAt); e != nil {
 			_ = tx.Rollback()
 			return e
 		}
@@ -91,7 +93,7 @@ func (r *PrestigeSocialRepo) GetUserPrestige(ctx context.Context, userID, titleS
 	var up prestige.UserPrestige
 	err := r.db.QueryRow(ctx, `
 		SELECT user_id, title_slug, total_pp, current_level, updated_at
-		FROM user_prestige WHERE user_id = ? AND title_slug = ?
+		FROM user_prestige_latest WHERE user_id = ? AND title_slug = ?
 	`, userID, titleSlug).Scan(&up.UserID, &up.TitleSlug, &up.TotalPP, &up.CurrentLevel, &up.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return prestige.UserPrestige{UserID: userID, TitleSlug: titleSlug}, nil
@@ -106,7 +108,7 @@ func (r *PrestigeSocialRepo) GetUserPrestigeCrossTitle(ctx context.Context, user
 	up.UserID = userID
 	err := r.db.QueryRow(ctx, `
 		SELECT COALESCE(SUM(total_pp), 0), MAX(updated_at)
-		FROM user_prestige WHERE user_id = ?
+		FROM user_prestige_latest WHERE user_id = ?
 	`, userID).Scan(&up.TotalPP, &up.UpdatedAt)
 	return up, err
 }
@@ -114,13 +116,10 @@ func (r *PrestigeSocialRepo) GetUserPrestigeCrossTitle(ctx context.Context, user
 func (r *PrestigeSocialRepo) UpsertUserPrestige(ctx context.Context, up prestige.UserPrestige) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+	// APPEND-ONLY : INSERT d'un snapshot complet (plus d'ON CONFLICT DO UPDATE).
 	return execCheckpointed(ctx, r.db, `
-		INSERT INTO user_prestige (user_id, title_slug, total_pp, current_level, updated_at)
-		VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT (user_id, title_slug) DO UPDATE SET
-			total_pp = EXCLUDED.total_pp,
-			current_level = EXCLUDED.current_level,
-			updated_at = EXCLUDED.updated_at
+		INSERT INTO user_prestige_history (user_id, title_slug, total_pp, current_level, updated_at, written_at)
+		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 	`, up.UserID, up.TitleSlug, up.TotalPP, up.CurrentLevel, up.UpdatedAt)
 }
 
@@ -176,7 +175,7 @@ func (r *PrestigeSocialRepo) GetLeaderboard(
 	if titleSlug != nil && *titleSlug != "" {
 		q = fmt.Sprintf(`
 			SELECT user_id, title_slug, total_pp
-			FROM user_prestige
+			FROM user_prestige_latest
 			WHERE user_id IN (%s) AND title_slug = ?
 			ORDER BY total_pp DESC
 		`, placeholders)
@@ -185,7 +184,7 @@ func (r *PrestigeSocialRepo) GetLeaderboard(
 		// Cross-titre : SUM par user
 		q = fmt.Sprintf(`
 			SELECT user_id, '' AS title_slug, COALESCE(SUM(total_pp), 0) AS total_pp
-			FROM user_prestige
+			FROM user_prestige_latest
 			WHERE user_id IN (%s)
 			GROUP BY user_id
 			ORDER BY total_pp DESC

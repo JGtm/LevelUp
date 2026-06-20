@@ -25069,3 +25069,16 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 - Build + vet + gofmt OK. INSERT OR IGNORE sur xuid_aliases (persist/shared_persister.go, DO NOTHING) laissé tel quel : pas de delete-from-index, déjà sûr.
 
 **Conclusion / prochaine étape** : 8/~20+. metadata.duckdb : plus aucun ON CONFLICT/REPLACE/DELETE hot-path résiduel sur les tables ref/cache. Suite : bloc prestige/player (player DB mono-writer lease + shared_social prestige), shared match DELETE (audit sérialisé), retrait pansements, go/no-go, deploy.
+
+## [2026-06-20] Campagne APPEND-ONLY — user_prestige (dernière table shared_social) — Complété (non déployé)
+
+**Statut** : `user_prestige` converti en append-only. **C'était la dernière table mutante de shared_social** → la DB au blast-radius MAX (handle RW partagé concurrent) est désormais 100% sans ON CONFLICT/DELETE/UPDATE-indexé hot-path. Tous tests verts (platform/duckdb, prestige, migration + integration, sync, api, service, vet).
+
+**Décision technique principale** : `user_prestige` (état total_pp/current_level par (user_id, title_slug)) était alimenté par 2 ON CONFLICT DO UPDATE — `EmitEvent` (accumulation `total_pp += delta`, en TX atomique avec le journal prestige_events) + `UpsertUserPrestige` (overwrite). Converti en event-log `user_prestige_history` (PK technique seq) :
+- `EmitEvent` = INSERT…SELECT carry-forward (`COALESCE((SELECT total_pp FROM user_prestige_latest …), 0) + delta`), current_level laissé à 0 (recalculé service via LevelFromPP) ;
+- `UpsertUserPrestige` = INSERT d'un snapshot complet.
+- État via vue `user_prestige_latest` (latest wins). Readers `GetUserPrestige`/`GetUserPrestigeCrossTitle`/`GetLeaderboard` (×2) reroutés. Le journal immuable prestige_events reste la source des gains. Pas de tombstone (aucun DELETE). Migration `shared_social_user_prestige_append_only_v1` idempotente + backfill.
+
+**Résultats observés** : test de rollback atomique (`TestPrestigeEmitEvent_Atomic_RollsBackOnBumpFailure`) adapté — il DROPpait `user_prestige` pour casser la 2e écriture ; désormais DROP la vue `user_prestige_latest` (EmitEvent fait INSERT…SELECT FROM _latest). Build + vet + gofmt OK. order.go no-op vert, garde-fous étendus.
+
+**Conclusion / prochaine étape** : 9/~20+. **shared_social 100% append-only** (notifs, prefs, favorites, likes, media_assoc, squad×2, user_prestige). Reste du bloc prestige/player = **player DB mono-writer (blast-radius 1 joueur)** : baseline_state, player_privacy_state, lusr_component_history (à confirmer pur-INSERT), preset_arc(_step) (ref metadata), + DELETEs reconcile player DB (challenge/arc/match_citations/personal_score_awards). Puis shared match DELETE, retrait pansements, go/no-go, deploy.
