@@ -87,7 +87,7 @@ func (f *fakeH5Source) GetMatchCarnage(_ context.Context, matchID, _ string) (*H
 	return &H5CarnageResponse{}, nil // pas de roster = pas de participants (toléré)
 }
 
-var _ h5CaptureSource = (*fakeH5Source)(nil)
+var _ CaptureSource = (*fakeH5Source)(nil)
 
 func jgtmViewer() canonical.PlayerIdentity {
 	return canonical.PlayerIdentity{Gamertag: "JGtm", XUID: "xJG"}
