@@ -10,6 +10,19 @@
 - **RESTE = `.ai/PLAN_ART_RESIDUAL_CENSUS_V2.md`** : ~40 sites ART résiduels, priorisés P0→P5, issus du census ultracode v2 (29 agents, vérifié adversarialement). **C'est LA work-list. Reprendre par là.**
 - Pansements (reopen/ExecRecovered/WithReopenOnInvalidated) GARDÉS volontairement : filet tant que P0→P5 ne sont pas faits. À retirer en clôture.
 
+### Avancement session 2026-06-20 (suite) — 3 commits livrés (tests verts, NON déployés)
+
+- **b7c312b87** — P1 DROP INDEX : `coach_proposal.status` (muté) + `engagement_coefficients.xuid` (redondant PK). + challenge drop migration VALIDÉE (garde-fou passant).
+- **f0fedd9ed** — P1 `lusr_component_history` → append-only (id-seq + vue `_latest`). Table sœur de match_skill_rank.
+- **7980c60c7** — P0 `media_files` drop UNIQUE(file_path) via **rebuild swap TRANSACTIONNEL** (blast MAX). Vérif adversariale workflow ultracode + 9 tests intégration CGO. Vraie source schéma = `ops/media_store.go::ensureMediaTables` (PAS create_base). 2 INSERT OR IGNORE convertis (media.go + persist batch). Garde-fou `TestNoMediaFilesFilePathUnique`.
+
+**Findings P2 (cartographiés ce cycle — pas de ré-investigation) :**
+- `personal_score_awards` (player, NO PK, idx_psa_match_xuid) : DELETE-then-INSERT `InsertPersonalScoreAwards` (writes.go:392), **vecteur ACTIF** (engine_process_match live + convergence + backfill) → append-only. **Reprise conseillée ICI.**
+- `weapon_kills` (shared, NO PK, idx_wk_match_xuid + vue v_weapon_kills) : `InsertWeaponKills` (writes.go:312), callers = backfill_weapons (basse fréq). Drop-index exclu (table grosse, scan) → append-only.
+- `match_citations` (player, A une PK) : deleteCitationForMatch (citations.go:546) + citations_backfill.go:275 → append-only/recompute.
+- `player_skill_state_v2` watermark : déjà append-only ; le DELETE WHERE xuid (lusr_full_recompute.go:34 + skill_v2_shadow.go:95) est le gap, **sémantique reset subtile** (comprendre le runner v2 avant de toucher). Basse fréq.
+- `writes.go` match_registry/match_participants ON CONFLICT (P0 plan) : **CONFIRMÉ off-default** (batch INSERT-only = défaut prod) → risque réel faible, dé-prioriser.
+
 ## 2. Cause racine + doctrine
 
 Bug DuckDB amont **#23046** (régression 1.5.0, NON corrigé 1.5.4 ; upgrade ne sauve pas) : l'enforcement de contrainte ART corrompt le heap sur DB **fichier**. Vecteurs CONFIRMÉS par crashs réels :

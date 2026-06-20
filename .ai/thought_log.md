@@ -25202,3 +25202,22 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Résultats** : verts — migration (full + integration), ops (media), persist, platform/duckdb (media + no_attach whitelist), api/handlers (media), sync (garde-fous), service, notify ; vet clean. La dédup file_path est désormais applicative (SELECT-then-INSERT sous indexLock) ; documenté que tout INSERT media_files doit passer par insertMediaFile/persistMediaFiles.
 
 **Prochaine étape** : P0 match_registry/match_participants ON CONFLICT (writes.go, chemin legacy off-default — batch persist INSERT-only par défaut). Puis P2 DELETEs reconcile.
+
+## [2026-06-20] Durcissement ART — session : P1 + media_files livrés, cartographie P2/P3/P4 (tier lourd) — Checkpoint
+
+**Livré ce cycle (3 commits, branche fix/metadata-art-battlepass-appendonly)** :
+- b7c312b87 : P1 DROP INDEX coach_proposal.status (muté) + engagement_coefficients.xuid (redondant PK). Challenge drop migration validée (garde-fou passant + boot-before-write).
+- f0fedd9ed : P1 lusr_component_history → append-only (id-seq PK + vue _latest), table sœur de match_skill_rank. 2 writers (loaders ON CONFLICT retiré + persister déjà pur), 2 readers → _latest.
+- 7980c60c7 : P0 media_files drop UNIQUE(file_path) via rebuild swap TRANSACTIONNEL (blast MAX). Vérif adversariale workflow ultracode (5 agents). 9 tests intégration CGO.
+
+**Cartographie P2 restants (tous tier lourd — pas de petit win propre)** :
+- **personal_score_awards** (player DB) : NO PK, seul idx_psa_match_xuid(match_id,xuid). DELETE-then-INSERT dans InsertPersonalScoreAwards (writes.go:392). Vecteur ACTIF : engine_process_match.go:162 (live/match) + engine_fetch.go:248 + convergence.go:142 + backfill_personal_scores. → append-only (id-seq + written_at + vue _latest par (match_id,xuid)).
+- **weapon_kills** (shared_matches_v2) : NO PK, seul idx_wk_match_xuid(match_id,xuid) + vue v_weapon_kills. DELETE-then-INSERT dans InsertWeaponKills (writes.go:312). Callers = backfill_weapons.go (basse fréquence, attribution v2/v3 différée). Table grosse (tous joueurs) → drop-index exclu (scan) → append-only. Blast mid (legacy concurrent writers).
+- **match_citations** (player DB) : A une PK (cf. steps_player_repair_pk match_citations__pkfix). deleteCitationForMatch (citations.go:546, DELETE WHERE match_id) + citations_backfill.go:275 (DELETE WHERE match_id,citation_name_norm). → append-only ou recompute sans DELETE per-row.
+- **player_skill_state_v2 watermark** : table DÉJÀ append-only (id-seq + vue _latest par (xuid,playlist_group)). DELETE WHERE xuid (lusr_full_recompute.go:34 + skill_v2_shadow.go:95 reset backfill) = le gap. SUBTIL : remplacer le DELETE par un « reset » append exige que _latest renvoie un état frais PAR (xuid,playlist_group) — soit append d'une row reset par group (énumérer les groups), soit colonne generation/reset_at + vue filtrée. Nécessite de comprendre la logique watermark du runner v2 (skill_v2_shadow.go) avant de toucher. Basse fréquence (recompute/rattrapage).
+
+**writes.go match_registry/match_participants ON CONFLICT (P0 plan)** : CONFIRMÉ off-default — le batch persist INSERT-only (LEVELUP_PERSIST_BATCH != "0") est le défaut prod ; writes.go = fallback legacy. Risque réel faible.
+
+**Reste (inchangé, tier lourd)** : P3 player_match_enrichment append-only merge-on-read (~120 readers, 4 index ART, multi-writers incrémentaux) ; P4 match_registry completion bit-ledger ; P5 CLI archive/restore. Garde-fou clôture : étendre TestNoBulkMultiRowUpdateOnCriticalTables à la forme UPDATE…IN(…).
+
+**Conclusion** : fix prod déployé+stable (inchangé). Les conversions restantes sont toutes des append-only multi-fichiers (writers+readers+vue+fixtures+garde-fou) à reprendre en sessions focalisées (qualité > grind en contexte dégradé). Findings ci-dessus = pas de ré-investigation nécessaire. Prochaine reprise conseillée : personal_score_awards (vecteur le plus actif) en append-only.
