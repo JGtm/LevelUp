@@ -1,3 +1,25 @@
+## [2026-06-20] Handoffs — substrat classif classé/non-classé h5 + audit damage-model — Complété
+
+**Statut** : `go build ./...` + `go vet` + `go test ./internal/games/...` + `./internal/archlint/...` verts (CGO ucrt64). HI byte-identique. Recon ultracode `wf_8f1a209a-176` (5 agents Explore) pour cartographier classification + damage-model avant d'implémenter.
+
+**Décision** : avancer les 2 handoffs (`HANDOFF_H5_RANKED_CLASSIFICATION`, `HANDOFF_MULTITITRE_ACTIVATION`) sur leur portion **offline-sûre**, sans pull-forward d'items activation-couplés.
+
+**Livré 1 — substrat de classification (le « rend Halo 7 gratuit » du §7) :**
+- Nouveau package LEAF `internal/games/classification/` (n'importe ni canonical ni titre → renvoie `*bool`, sémantique `MatchSummary.IsRanked/IsPvE`) :
+  - `RankedClassifier` (interface, contrat de sortie STABLE ; nil = indéterminé) ;
+  - `SetClassifier` (stratégie #1 set-membership : set vide → nil partout = conservateur « avant data » ; set peuplé réputé EXHAUSTIF → présent `&true`, absent `&false`) ;
+  - `LoadSetClassifier(path)` (TOML ; fichier absent → vide sans erreur ; parse/schema_version → erreur).
+- `config/titles/halo_5/catalog/ranked_hoppers.toml` (listes VIDES à dessein — bloqué sur la liste autoritative des HopperIds classés, handoff §4).
+- `halo_5/mapping.go` : `mapMatchSummaries(resp, gamertag, classifier)` pose `IsRanked`/`IsPvE` depuis le HopperId ; `h5MatchType` priorise les verdicts autoritatifs (ranked/firefight) sinon repli heuristique gameMode. **classifier nil/vide → byte-identique** (IsRanked/IsPvE nil, social).
+- Tests golden : `classification/*_test.go` (vide/peuplé/trim/nil-receiver/loader + config h5 versionnée) + `mapping_test.go::TestMapMatchSummaries_RankedClassifier` (classé→true+ranked, hors-set→false+social, PvE→true+firefight).
+- **NON fait (déféré activation, ~3L)** : option adapter `WithRankedClassifier` + chargement au boot + threading dans `LoadMatchSummaries` (Phase 2, sinon champ inutilisé tant que `ErrCapabilityNotSupported`). Même précédent que l'ingestion offline.
+
+**Livré 2 — audit damage-model (correction de portée) :** vérification code → le plan `PLAN_DAMAGE_MODEL_PER_TITLE.md` était **périmé**. Phases 0→2 + copy d'aide = **DÉJÀ FAIT** (compute paramétré `games.EffectiveHpToKill(slug)` sur tous les callers ; post-sync SQL idem ; `help/i18n` title-aware). Les `225.0` restants **ne sont pas des gaps** : Q23 `LoadStatsMatches` = chemin LEGACY retiré (`port/repository_sessions_home.go:21`), `sync/skill_rating.go` = LUSR Infinite-only, `cmd/diag_*` = outils offline. **Reste = 3 items activation-couplés** : valider `115` h5 (data live), P80 par titre (échantillon live), front `ONE_LIFE_DAMAGE` (charts escouade `not_exposed` h5 Phase 1). → ajouté §0 « état vérifié » au plan + corrigé la note du handoff activation (qui affirmait à tort « 225 câblé dans le compute »).
+
+**Handoffs mis à jour** : `HANDOFF_H5_RANKED_CLASSIFICATION` §0/§5/§6/§7 (substrat livré, reste data+câblage 3L) ; `HANDOFF_MULTITITRE_ACTIVATION` §5 (damage-model corrigé) ; `PLAN_DAMAGE_MODEL_PER_TITLE` §0.
+
+**Prochaine étape** : commit (en attente d'autorisation). Puis, à l'activation live : déposer les HopperIds classés dans `ranked_hoppers.toml` + câbler `WithRankedClassifier` ; valider 115 + P80 ; flip `status=active`.
+
 ## [2026-06-20] Gaps multi-titre — C2 (gap2) : media indexation title-aware — Complété
 
 **Statut** : `go build/vet ./internal/service/` + tests média + archlint verts. HI byte-identique.
