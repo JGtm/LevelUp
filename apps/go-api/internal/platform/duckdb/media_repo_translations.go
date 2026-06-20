@@ -115,7 +115,7 @@ func (r *MediaRepo) loadMapCatalogNames(ctx context.Context, ids []string) map[s
 	}
 	placeholders := make([]string, len(ids))
 	args := make([]any, 0, len(ids)+1)
-	args = append(args, mediaStaticTitleSlug)
+	args = append(args, resolveMediaTitleSlug(r.pdb.TitleSlug))
 	for i, id := range ids {
 		placeholders[i] = "?"
 		args = append(args, id)
@@ -342,7 +342,7 @@ func (r *MediaRepo) loadMapImageURLsByID(ctx context.Context, mapIDs []string) m
 	}
 	placeholders := make([]string, len(mapIDs))
 	args := make([]any, 0, len(mapIDs)+1)
-	args = append(args, mediaStaticTitleSlug)
+	args = append(args, resolveMediaTitleSlug(r.pdb.TitleSlug))
 	for i, id := range mapIDs {
 		placeholders[i] = "?"
 		args = append(args, id)
@@ -367,10 +367,20 @@ WHERE title_id = ?
 	return out
 }
 
-// mediaStaticTitleSlug est le slug de titre utilisé pour résoudre les URLs
-// statiques côté media. Halo Infinite uniquement pour le moment ; quand un
-// 2e titre arrivera, ce slug sera dérivé du contexte (cf. PathResolver).
+// mediaStaticTitleSlug est le slug de REPLI quand le PlayerDB courant n'a pas de
+// titre résolu (les tables de référence maps_catalog / map_images_registry sont
+// title-scopées par colonne). Le titre est désormais dérivé du PlayerDB via
+// resolveMediaTitleSlug — même pattern que career_repo_csr.go::loadRankedPlaylistsCatalog.
 const mediaStaticTitleSlug = "halo_infinite"
+
+// resolveMediaTitleSlug retourne le titre du PlayerDB courant (rend les requêtes
+// de traduction maps/modes title-aware), ou le repli Halo Infinite si vide.
+func resolveMediaTitleSlug(titleSlug string) string {
+	if s := strings.TrimSpace(titleSlug); s != "" {
+		return s
+	}
+	return mediaStaticTitleSlug
+}
 
 // loadModeNameTranslations lit les traductions FR depuis metadata.mode_name_tr,
 // keyed par mode_en (dÃ©jÃ  normalisÃ© via analysis.NormalizeModeLabel).
