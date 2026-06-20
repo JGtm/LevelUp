@@ -1,3 +1,11 @@
+## [2026-06-20] Gaps multi-titre — C2 (gap2) : media indexation title-aware — Complété
+
+**Statut** : `go build/vet ./internal/service/` + tests média + archlint verts. HI byte-identique.
+
+**Gap 2** : `media_index_service.go` hardcodait `titleSlug := titlePkg.DefaultSlug` dans `ResetAndReindex` (l66), `ScanAllMedia` (l169), `BuildMediaScanHook` (l276) → indexerait dans le `shared_social.duckdb` d'Halo Infinite même pour un autre titre.
+
+**Fix (plus simple que le plan)** : le `ctx` est DÉJÀ porteur du titre à ces 3 points — le coordinator sync le pose (`coordinator.go:337 WithTitleSlug`, propagé jusqu'à `e.mediaHook(ctx)` `engine_postsync.go:397`) et le middleware admin le pose sur la requête. Donc swap `titlePkg.DefaultSlug` → `ctxkeys.TitleSlug(ctx)` (repli `halo_infinite` intégré, `ctxkeys.go:47`). **Zéro changement d'interface, zéro caller touché** (le plan proposait param + 5 callers + investiguer `auto_sync` — évité). HI byte-identique : ctx absent → `halo_infinite` = comportement actuel.
+
 ## [2026-06-20] Gaps multi-titre — C1 (gap3) : media translations title-aware — Complété
 
 **Statut** : `go build/vet/test ./internal/platform/duckdb/` (TestResolveMediaTitleSlug) + archlint verts. HI byte-identique.
