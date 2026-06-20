@@ -1,3 +1,21 @@
+## [2026-06-20] Activation Halo 5 — pivot ingestion : revert 1b.2, h5 hérite du schéma shared HI — Complété (non commité)
+
+**Statut** : Code livré + vérifié, **commit autorisé en attente**. `go build ./cmd/server/ ./internal/games/halo_5/...` + oracle routage migration (isolation + héritage) **verts**.
+
+**Décision (user)** : l'ingestion h5 sera **normalisée + uniforme inter-titres** (réutiliser `SharedPersister` + readers à l'identique), pas un blob ni un persister divergent. Conséquence en cascade :
+- Le persist shared est **ancré sur `match_registry`** (`SharedPersister.Persist` no-op si `s.Match == nil`). Donc h5 doit avoir le **schéma shared de HI**.
+- Ce schéma est défini par les **migrations HI** (base + ALTERs + vues), pas une simple DDL → le copier = drift. Le système de migration le fait nativement : un titre **sans set** retombe sur les migrations HI (`RunForTitleDB` fallback).
+- → **Revert de 1b.2** : suppression du `TitleMigrationSet` h5 (package `internal/games/halo_5/migrations` + appel `Register()` dans main.go). h5 (quand actif) hérite du schéma shared HI à l'identique. **Vérifié sûr** : `RunForTitleDB(slug_sans_set, TargetShared)` applique 49 migrations HI (incl. backfills `rebuild_match_participants`, seeds `tier_boundaries_v2`) **sans erreur sur DB fraîche** (backfills no-op sur données vides).
+- Garde-rail déplacé : `synthetic_title_b/migration_isolation_test.go::TestAdditionalTitleInheritsHISharedSchema` (symétrique de l'isolation : un titre sans set hérite du schéma HI).
+
+**Décisions design verrouillées** : incrémental (médailles → kills → positions) ; grain **par-kill** (`killer_victim_pairs` a déjà `time_ms`+gamertags) ; médailles **double forme** comme HI (agrégat `medals_earned` + horodaté `highlight_events`) ; xuid **résolu** via `worldenrich.CachingResolver` (cache global `xbox_aliases` + round-robin anti-429) ; rencontres **déjà** title-scopées par chemin FS (non-sujet). Persist : `MatchBatch` (SetMatch + AddMedals + AddHighlightEvents) → `SharedPersister` sur le shared h5.
+
+**Flags ouverts** :
+- **metadata/social/pve** : le provisioning lance aussi ces targets → sans set, h5 hérite des **seeds metadata HI** (rangs/médailles propres à Infinite) = mauvais labels h5. N'impacte pas l'ingestion `medals_earned` (id brut) ; sujet d'**affichage**, à trancher au câblage labels / au flip.
+- **Naming** (soulevé user) : le « schéma shared HI » est de facto le **schéma canonique commun** ; le sortir de `halo_infinite/migrations` (extraire un shared-core title-agnostique) est la vraie propreté — refactor large sur le chemin critique des migrations, à scoper.
+
+**Reste** : B (collect/persist h5 réel : match summary→match_registry + timeline→medals/highlight_events, xuid résolu) → C (capture-on-fetch) → kills → positions → flip live.
+
 ## [2026-06-20] Activation Halo 5 — 1b.2 : isolation migrations halo_5 — Complété (non commité)
 
 **Statut** : Code livré + vérifié, **commit en attente d'autorisation**. `go build ./internal/games/halo_5/migrations/ ./cmd/server/` + `go vet` verts ; **test d'isolation (integration) PASSE** sur les 4 targets ; `go test ./internal/migration/` + archlint verts.

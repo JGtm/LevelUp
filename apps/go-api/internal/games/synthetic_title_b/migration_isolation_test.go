@@ -158,3 +158,33 @@ func TestSyntheticTitleB_EmptyTargetNoOp(t *testing.T) {
 		t.Errorf("metadata: %d steps tracés pour le titre B, want 0 (aucun step metadata)", nMig)
 	}
 }
+
+// TestAdditionalTitleInheritsHISharedSchema — contrepartie de l'isolation : un
+// titre additionnel qui n'enregistre AUCUN set retombe sur les migrations shared
+// de Halo Infinite et obtient le schéma uniforme (match_registry, medals_earned,
+// killer_victim_pairs, highlight_events, …) sans erreur de seed/backfill sur un
+// warehouse frais. C'est la garantie d'UNIFORMITÉ inter-titres (Halo 5 a choisi
+// d'hériter du schéma HI plutôt qu'un set propre) — symétrique du test
+// d'isolation ci-dessus (un titre AVEC set n'hérite jamais de Halo).
+func TestAdditionalTitleInheritsHISharedSchema(t *testing.T) {
+	migration.SetTitleStepsProvider(halomigrations.StepsFor)
+
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open duckdb: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	// Slug jamais enregistré dans migrationSets → fallback HI garanti.
+	if err := migration.RunForTitleDB(db, "test_inherit_title", migration.TargetShared); err != nil {
+		t.Fatalf("hériter du schéma shared HI (fallback): %v", err)
+	}
+	for _, tbl := range []string{
+		"match_registry", "match_participants", "medals_earned",
+		"highlight_events", "killer_victim_pairs", "weapon_kills", "xuid_aliases",
+	} {
+		if !tableExists(t, db, tbl) {
+			t.Errorf("table HI %q absente — héritage du schéma shared cassé", tbl)
+		}
+	}
+}
