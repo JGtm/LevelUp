@@ -1,3 +1,18 @@
+## [2026-06-20] Activation Halo 5 — ingestion médailles : collect PUR (mappers + assembly) — Complété (non commité)
+
+**Statut** : Code livré + vérifié, **commit autorisé en attente**. `go vet` + `go test ./internal/games/halo_5/ingest/` (5 tests) verts.
+
+**Périmètre** : la partie OFFLINE-codable de la tranche médailles (le câblage live — résolveur PeopleHub, lease shared h5, capture-on-fetch — est gardé pour la session du flip, serveur+tokens JGtm).
+
+**Livré** (`internal/games/halo_5/ingest/`, pur, `resolveXUID` injecté) :
+- `medals.go::MapMedalEvents` : events `medal` de la timeline → DEUX formes comme HI : agrégat `medals_earned` (count par (xuid, medal_name_id)) + horodaté `highlight_events` (1 ligne/médaille, `time_ms`, `type_hint`=medal id). xuid résolu injecté (fallback NULL, jamais bloquant) ; medal id non numérique ignoré.
+- `registry.go::MatchRegistryRowFromSummary` : résumé canonique → `match_registry` (l'ANCRE — SharedPersister no-op sans `s.Match`). Title-agnostique : remplit ce que le résumé fournit, nil ailleurs.
+- `collect.go::CollectMedalsBatch` : assemble le `MatchBatch` (SetMatch + AddMedals + AddHighlightEvents) → réutilise `SharedPersister` à 100% côté persist.
+
+**Découverte clé** : `persistHighlightEvents` écrit `(match_id, event_type, time_ms, xuid, type_hint)` — `type_hint` reçoit `DetailsJSON` ; `raw_json` n'est PAS rempli (ligne lean, pas un blob). h5 suit ce schéma à l'identique.
+
+**Reste tranche médailles (live, session flip)** : B2 résolveur (`worldenrich.CachingResolver` + seed `xbox_aliases` global + PeopleHub multi-token) ; B3 persist (acquérir writer shared h5 + lease + `SharedPersister.Persist`) ; C capture-on-fetch (décorer `LoadMatchEvents`) + reader table-first. Puis kills (killer_victim_pairs+arme) → positions → extract shared-core → flip.
+
 ## [2026-06-20] Activation Halo 5 — pivot ingestion : revert 1b.2, h5 hérite du schéma shared HI — Complété (non commité)
 
 **Statut** : Code livré + vérifié, **commit autorisé en attente**. `go build ./cmd/server/ ./internal/games/halo_5/...` + oracle routage migration (isolation + héritage) **verts**.
