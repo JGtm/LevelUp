@@ -28,7 +28,12 @@ func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 		CREATE TABLE IF NOT EXISTS media_files (
 			id INTEGER PRIMARY KEY DEFAULT nextval('media_files_id_seq'),
 			player_slug VARCHAR,
-			file_path VARCHAR UNIQUE,
+			-- file_path NON UNIQUE : file_path est MUTÉE par 3 UPDATE (conversion/HLS/
+			-- reconcile) → une contrainte UNIQUE (index ART) sur une colonne mutée
+			-- déclenche le bug DuckDB #23046 (FATAL invalidated, blast MAX shared_social).
+			-- La dédup file_path passe en applicatif (insertMediaFile SELECT-then-INSERT).
+			-- Migration media_files_drop_filepath_unique_v1 retire l'UNIQUE des DB existantes.
+			file_path VARCHAR,
 			file_name VARCHAR,
 			file_hash VARCHAR,
 			kind VARCHAR,

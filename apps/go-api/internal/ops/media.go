@@ -468,12 +468,26 @@ func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug str
 		return nil
 	}
 
-	// Nouvelle entrée : INSERT avec file_stem + file_ext + timestamps complets
-	// (capture_start_utc / capture_end_utc / duration_seconds). mtime n'est
-	// volontairement pas écrit (cf. commentaire plus haut).
-	// INSERT OR IGNORE évite les doublons par file_path UNIQUE (même contenus uploadé 2×).
+	// Nouvelle entrée. Dédup applicative file_path : l'ex-contrainte UNIQUE(file_path)
+	// a été retirée pour éradiquer le bug ART DuckDB #23046 (file_path est muté par
+	// conversion/HLS/reconcile → muter une colonne indexée ART = FATAL invalidated,
+	// blast MAX shared_social). On reproduit la dédup en applicatif (SELECT-then-INSERT) :
+	// skip si une ligne porte déjà ce file_path. Race-safe car insertMediaFile tourne sous
+	// indexLock(dbPath) (IndexMedia sérialisé par chemin DB). mtime non écrit (cf. supra).
+	var dup int
+	switch err := db.QueryRowContext(ctx,
+		`SELECT 1 FROM media_files WHERE file_path = ? LIMIT 1`, storedPath).Scan(&dup); err {
+	case nil:
+		slog.Debug("insertMediaFile: file_path déjà indexé, SKIP",
+			"player", playerSlug, "file_path", storedPath)
+		return nil
+	case sql.ErrNoRows:
+		// pas de doublon → INSERT ci-dessous
+	default:
+		return err
+	}
 	_, err = db.ExecContext(ctx, `
-		INSERT OR IGNORE INTO media_files (
+		INSERT INTO media_files (
 			player_slug, file_path, file_name, file_stem, file_ext, file_hash, kind,
 			capture_start_utc, capture_end_utc, duration_seconds
 		)

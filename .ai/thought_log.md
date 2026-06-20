@@ -25182,3 +25182,23 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Résultats** : go build ./internal/... OK ; verts : migration (no-op order + garde-fous ART), sync (append_only_state + no_art_patterns + allowlist), platform/duckdb (Campaign/LUSR/PlayerRepo), progression/profile (build_profile integration), persist (player_persister writer #2), api (Squad/Prestige/Profile) ; vet OK. Carte writers/readers exhaustive (2 writers, 2 readers, 0 manqué — re-grep complet).
 
 **Prochaine étape** : P0 media_files (rebuild drop UNIQUE(file_path), shared_social blast-MAX, test intégration CGO requis). Schéma réel sondé : legacy id INTEGER seq, PK(id) + UNIQUE(file_path) + idx_mf_player_stem.
+
+## [2026-06-20] Durcissement ART P0 — media_files : retrait UNIQUE(file_path) (rebuild swap transactionnel) — Complété
+
+**Contexte** : media_files (shared_social.duckdb = handle RW PARTAGÉ, blast MAX) ; file_path est UNIQUE (index ART) MUTÉE par 3 UPDATE (conversion media.go, finalizeMediaHLS, reconcile) → vecteur #23046. La vraie source de schéma = ops/media_store.go::ensureMediaTables (id INTEGER + media_files_id_seq, CREATE TABLE IF NOT EXISTS), PAS la migration create_base (id VARCHAR overridé par dropLegacyMediaFilesIfNeeded). DuckDB ne sait pas DROP une contrainte UNIQUE → rebuild CTAS-swap obligatoire.
+
+**Vérif adversariale ultracode (workflow media-files-drop-unique-verify, 5 agents, 541k tokens)** : verdict GO-WITH-FIXES, 2 BLOCKERS + plusieurs HIGH corrigés. Découverte : pattern de rebuild PROUVÉ EN PROD existant (swapMatchParticipantsTx) à calquer. Fixes intégrés :
+- Swap dans UNE transaction (atomique : crash → rollback, pas de DB cassée sur blast-MAX) + garde anti-perte row-count (rebuilt==before) + recoverOrphanMediaFiles en tête + DROP IF EXISTS __rebuild.
+- DEFAULT nextval('media_files_id_seq') sur id restauré DANS la tx (les writers INSERT omettent id → sans ça, NULL dans la PK = indexation cassée).
+- Resync séquence (CREATE SEQUENCE IF NOT EXISTS START max(id)+1, anti-collision si seq disparue).
+- Autres DEFAULTs restaurés (created_at/updated_at/liked/discord_notified/indexed_at/file_size), guardés par existence colonne.
+- 2 INSERT OR IGNORE → SELECT-then-INSERT (dédup applicative) : ops/media.go:476 ET persist/shared_social_persister_batch.go:97 (le 2e MANQUÉ par le design initial — chemin Persister live, race-safe car batch.MediaFiles non peuplé en prod + indexLock côté IndexMedia).
+- Guard durci : rebuild si hasUnique OU !hasPK (couvre l'état orphan-recovered sans PK).
+
+**Implémentation** : migration media_files_drop_filepath_unique_v1 (order.go après media_assoc, no-op test vert). Schéma fraîches corrigé (ensureMediaTables:31 + create_base:24 file_path sans UNIQUE ; create_base idx_mf_kind retiré — kind muté). Garde-fous : forbiddenIndexedColumns += media_files{kind,file_path} ; nouveau TestNoMediaFilesFilePathUnique (scanne ops/+migration/). Whitelist no_attach += la migration.
+
+**Test intégration CGO** (9 tests, //go:build integration) : UNIQUE retiré, PK + idx_mf_player_stem préservés, idx_mf_kind droppé, data préservée, DEFAULT id + séquence (INSERT sans id → auto > max), autres DEFAULTs, TIMESTAMPTZ préservé (pas de downcast), doublon file_path accepté, 3 UPDATE file_path OK, idempotence, orphan-recovery, no-op sans table.
+
+**Résultats** : verts — migration (full + integration), ops (media), persist, platform/duckdb (media + no_attach whitelist), api/handlers (media), sync (garde-fous), service, notify ; vet clean. La dédup file_path est désormais applicative (SELECT-then-INSERT sous indexLock) ; documenté que tout INSERT media_files doit passer par insertMediaFile/persistMediaFiles.
+
+**Prochaine étape** : P0 match_registry/match_participants ON CONFLICT (writes.go, chemin legacy off-default — batch persist INSERT-only par défaut). Puis P2 DELETEs reconcile.

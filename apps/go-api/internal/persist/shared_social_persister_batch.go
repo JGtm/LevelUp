@@ -93,8 +93,16 @@ func (p *SharedSocialPersister) persistMediaFiles(ctx context.Context, tx *sql.T
 	if len(rows) == 0 {
 		return nil
 	}
-	stmt, err := tx.PrepareContext(ctx, `
-		INSERT OR IGNORE INTO media_files (
+	// Dédup applicative file_path : l'ex-contrainte UNIQUE(file_path) a été retirée
+	// pour éradiquer le bug ART DuckDB #23046 (cf. media_files_drop_filepath_unique_v1).
+	// SELECT-then-INSERT — skip si le file_path est déjà indexé (re-upload même contenu).
+	sel, err := tx.PrepareContext(ctx, `SELECT 1 FROM media_files WHERE file_path = ? LIMIT 1`)
+	if err != nil {
+		return err
+	}
+	defer sel.Close()
+	ins, err := tx.PrepareContext(ctx, `
+		INSERT INTO media_files (
 			player_slug, file_path, file_name, file_stem, file_ext, file_hash, kind,
 			capture_start_utc, capture_end_utc, duration_seconds
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -102,9 +110,18 @@ func (p *SharedSocialPersister) persistMediaFiles(ctx context.Context, tx *sql.T
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer ins.Close()
 	for _, r := range rows {
-		if _, err := stmt.ExecContext(ctx,
+		var dup int
+		switch err := sel.QueryRowContext(ctx, r.FilePath).Scan(&dup); err {
+		case nil:
+			continue // file_path déjà indexé → skip
+		case sql.ErrNoRows:
+			// pas de doublon → INSERT
+		default:
+			return fmt.Errorf("media_file dedup %s: %w", r.FilePath, err)
+		}
+		if _, err := ins.ExecContext(ctx,
 			r.PlayerSlug, r.FilePath, r.FileName, r.FileStem, r.FileExt, r.FileHash, r.Kind,
 			r.CaptureStartUTC, r.CaptureEndUTC, r.DurationSeconds,
 		); err != nil {
