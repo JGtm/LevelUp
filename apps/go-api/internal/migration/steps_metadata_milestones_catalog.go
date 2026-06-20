@@ -16,6 +16,11 @@ func init() {
 		TargetDB:    TargetMetadata,
 		Description: "Table milestone_catalog (référentiel des milestones cross-titres, chargée du TOML)",
 		ApplySchema: func(db *sql.DB) error {
+			// PAS d'index secondaire : title_slug et metric sont MUTÉS par
+			// MilestoneCatalogRepo.Upsert (SELECT-then-write) → un index ART sur une
+			// colonne mutée FATAL-invalide metadata.duckdb. Table minuscule (TOML) →
+			// scan séquentiel instantané. Drop DBs existantes :
+			// drop_metadata_art_surface_indexes_v2.
 			return execScript(db, `
 				CREATE TABLE IF NOT EXISTS milestone_catalog (
 					id          VARCHAR PRIMARY KEY,
@@ -28,8 +33,6 @@ func init() {
 					condition   VARCHAR,
 					updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 				);
-				CREATE INDEX IF NOT EXISTS idx_ms_cat_title ON milestone_catalog(title_slug);
-				CREATE INDEX IF NOT EXISTS idx_ms_cat_metric ON milestone_catalog(metric);
 			`)
 		},
 	})

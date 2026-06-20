@@ -50,6 +50,8 @@ var forbiddenIndexedColumns = map[string][]string{
 	"player_notifications": {"read_at"},                              // MarkNotifications* SET read_at
 	"challenge":            {"status", "arc_id", "campaign_id"},      // UpdateStatus/DetachFromArc/campaign
 	"playlists_catalog":    {"experience", "is_active", "is_ranked"}, // seedPlaylistsCatalog
+	"milestone_catalog":    {"title_slug", "metric"},                 // MilestoneCatalogRepo.Upsert SET title_slug/metric
+	"map_images_registry":  {"fetched_at"},                           // UpsertMapImageCache SET fetched_at
 }
 
 var (

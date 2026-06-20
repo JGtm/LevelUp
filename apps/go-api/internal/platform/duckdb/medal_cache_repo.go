@@ -62,42 +62,43 @@ func (r *MetadataRepo) GetMedalImageCache(ctx context.Context, titleID string, m
 }
 
 // UpsertMedalImageCache insère ou met à jour une entrée dans medal_image_cache.
+//
+// ART-safe : SELECT-then-UPDATE-or-INSERT (pas d'ON CONFLICT). medal_image_cache
+// n'a aucun index secondaire (PK seule), l'UPDATE ne touche donc aucun index.
 func (r *MetadataRepo) UpsertMedalImageCache(ctx context.Context, e MedalImageEntry) error {
-	_, err := r.meta.Exec(ctx, `
-		INSERT INTO medal_image_cache (title_id, medal_id, image_url, local_path, fetched_at, content_hash)
-		VALUES (?, ?, ?, ?, ?, ?)
-		ON CONFLICT (title_id, medal_id) DO UPDATE SET
-			image_url    = excluded.image_url,
-			local_path   = excluded.local_path,
-			fetched_at   = excluded.fetched_at,
-			content_hash = excluded.content_hash`,
-		e.TitleID, e.MedalID, e.ImageURL, e.LocalPath, e.FetchedAt, e.ContentHash)
-	if err != nil {
+	if err := r.meta.UpsertNoConflict(ctx,
+		`SELECT 1 FROM medal_image_cache WHERE title_id = ? AND medal_id = ?`,
+		[]any{e.TitleID, e.MedalID},
+		`UPDATE medal_image_cache SET image_url = ?, local_path = ?, fetched_at = ?, content_hash = ?
+		 WHERE title_id = ? AND medal_id = ?`,
+		[]any{e.ImageURL, e.LocalPath, e.FetchedAt, e.ContentHash, e.TitleID, e.MedalID},
+		`INSERT INTO medal_image_cache (title_id, medal_id, image_url, local_path, fetched_at, content_hash)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		[]any{e.TitleID, e.MedalID, e.ImageURL, e.LocalPath, e.FetchedAt, e.ContentHash},
+	); err != nil {
 		return fmt.Errorf("UpsertMedalImageCache: %w", err)
 	}
 	return nil
 }
 
 // UpsertMedalsRaw insère ou met à jour les entrées dans waypoint_medals_raw.
+//
+// ART-safe : SELECT-then-UPDATE-or-INSERT par entrée (pas d'ON CONFLICT).
+// waypoint_medals_raw n'a aucun index secondaire (PK seule).
 func (r *MetadataRepo) UpsertMedalsRaw(ctx context.Context, entries []metadata.MedalEntry, contentHash string) error {
 	for _, e := range entries {
-		_, err := r.meta.Exec(ctx, `
-			INSERT INTO waypoint_medals_raw
+		if err := r.meta.UpsertNoConflict(ctx,
+			`SELECT 1 FROM waypoint_medals_raw WHERE title_id = ? AND medal_id = ?`,
+			[]any{e.TitleID, e.MedalID},
+			`UPDATE waypoint_medals_raw SET name_id = ?, description_id = ?, sprite_index = ?,
+			 difficulty = ?, medal_type = ?, personal_score = ?, raw_json = ?, fetched_at = now(), content_hash = ?
+			 WHERE title_id = ? AND medal_id = ?`,
+			[]any{e.Label, e.Description, e.SpriteIdx, e.Rarity, e.Category, 0, e.RawJSON, contentHash, e.TitleID, e.MedalID},
+			`INSERT INTO waypoint_medals_raw
 				(title_id, medal_id, name_id, description_id, sprite_index, difficulty, medal_type, personal_score, raw_json, fetched_at, content_hash)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, now(), ?)
-			ON CONFLICT (title_id, medal_id) DO UPDATE SET
-				name_id        = excluded.name_id,
-				description_id = excluded.description_id,
-				sprite_index   = excluded.sprite_index,
-				difficulty     = excluded.difficulty,
-				medal_type     = excluded.medal_type,
-				personal_score = excluded.personal_score,
-				raw_json       = excluded.raw_json,
-				fetched_at     = excluded.fetched_at,
-				content_hash   = excluded.content_hash`,
-			e.TitleID, e.MedalID, e.Label, e.Description, e.SpriteIdx,
-			e.Rarity, e.Category, 0, e.RawJSON, contentHash)
-		if err != nil {
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, now(), ?)`,
+			[]any{e.TitleID, e.MedalID, e.Label, e.Description, e.SpriteIdx, e.Rarity, e.Category, 0, e.RawJSON, contentHash},
+		); err != nil {
 			return fmt.Errorf("UpsertMedalsRaw medal_id=%d: %w", e.MedalID, err)
 		}
 	}

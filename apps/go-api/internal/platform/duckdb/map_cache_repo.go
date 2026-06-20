@@ -59,17 +59,21 @@ func (r *MetadataRepo) GetMapImageCache(ctx context.Context, titleID string, map
 }
 
 // UpsertMapImageCache insère ou met à jour une entrée dans map_images_registry.
+//
+// ART-safe : SELECT-then-UPDATE-or-INSERT (PAS d'ON CONFLICT, qui réécrit la ligne
+// via l'index ART de la PK et FATAL-invalide metadata.duckdb). L'index secondaire
+// sur fetched_at (muté ici) est droppé par drop_metadata_art_surface_indexes_v2.
 func (r *MetadataRepo) UpsertMapImageCache(ctx context.Context, e MapImageEntry) error {
-	_, err := r.meta.Exec(ctx, `
-		INSERT INTO map_images_registry (title_id, map_id, image_url, local_path, fetched_at, content_hash)
-		VALUES (?, ?, ?, ?, ?, ?)
-		ON CONFLICT (title_id, map_id) DO UPDATE SET
-			image_url    = excluded.image_url,
-			local_path   = excluded.local_path,
-			fetched_at   = excluded.fetched_at,
-			content_hash = excluded.content_hash`,
-		e.TitleID, e.MapID, e.ImageURL, e.LocalPath, e.FetchedAt, e.ContentHash)
-	if err != nil {
+	if err := r.meta.UpsertNoConflict(ctx,
+		`SELECT 1 FROM map_images_registry WHERE title_id = ? AND map_id = ?`,
+		[]any{e.TitleID, e.MapID},
+		`UPDATE map_images_registry SET image_url = ?, local_path = ?, fetched_at = ?, content_hash = ?
+		 WHERE title_id = ? AND map_id = ?`,
+		[]any{e.ImageURL, e.LocalPath, e.FetchedAt, e.ContentHash, e.TitleID, e.MapID},
+		`INSERT INTO map_images_registry (title_id, map_id, image_url, local_path, fetched_at, content_hash)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		[]any{e.TitleID, e.MapID, e.ImageURL, e.LocalPath, e.FetchedAt, e.ContentHash},
+	); err != nil {
 		return fmt.Errorf("UpsertMapImageCache: %w", err)
 	}
 	return nil

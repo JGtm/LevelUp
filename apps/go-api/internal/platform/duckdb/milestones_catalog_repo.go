@@ -37,24 +37,23 @@ func (r *MilestoneCatalogRepo) Upsert(ctx context.Context, e milestones.CatalogE
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `
-		INSERT INTO milestone_catalog (id, title_slug, metric, threshold, title_en, title_fr, icon, condition, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT (id) DO UPDATE SET
-			title_slug = excluded.title_slug,
-			metric     = excluded.metric,
-			threshold  = excluded.threshold,
-			title_en   = excluded.title_en,
-			title_fr   = excluded.title_fr,
-			icon       = excluded.icon,
-			condition  = excluded.condition,
-			updated_at = excluded.updated_at
-	`,
-		e.ID, e.TitleSlug, e.Metric, e.Threshold,
-		e.TitleEN, e.TitleFR, nullableStr(e.Icon), nullableStr(e.Condition),
-		time.Now().UTC(),
-	)
-	if err != nil {
+	now := time.Now().UTC()
+	// ART-safe : SELECT-then-UPDATE-or-INSERT (pas d'ON CONFLICT). L'UPDATE mute
+	// title_slug et metric, indexés (idx_ms_cat_title/idx_ms_cat_metric) → ces deux
+	// index sont droppés par drop_metadata_art_surface_indexes_v2 (table minuscule,
+	// scan instantané) pour éliminer la surface ART.
+	if err := r.db.UpsertNoConflict(ctx,
+		`SELECT 1 FROM milestone_catalog WHERE id = ?`,
+		[]any{e.ID},
+		`UPDATE milestone_catalog SET title_slug = ?, metric = ?, threshold = ?, title_en = ?,
+		 title_fr = ?, icon = ?, condition = ?, updated_at = ? WHERE id = ?`,
+		[]any{e.TitleSlug, e.Metric, e.Threshold, e.TitleEN, e.TitleFR,
+			nullableStr(e.Icon), nullableStr(e.Condition), now, e.ID},
+		`INSERT INTO milestone_catalog (id, title_slug, metric, threshold, title_en, title_fr, icon, condition, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		[]any{e.ID, e.TitleSlug, e.Metric, e.Threshold, e.TitleEN, e.TitleFR,
+			nullableStr(e.Icon), nullableStr(e.Condition), now},
+	); err != nil {
 		return fmt.Errorf("MilestoneCatalogRepo.Upsert: %w", err)
 	}
 	return nil

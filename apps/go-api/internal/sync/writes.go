@@ -8,6 +8,7 @@ package sync
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -213,17 +214,27 @@ func UpsertXUIDAlias(ctx context.Context, db *sql.DB, xuid, gamertag string) err
 		gamertag = analysis.BotDisplayName(xuid)
 	}
 	now := time.Now().UTC()
-	_, err := db.ExecContext(ctx, `
-		INSERT INTO xuid_aliases (xuid, gamertag, last_seen, source, updated_at)
-		VALUES (?, ?, ?, 'sync', ?)
-		ON CONFLICT (xuid) DO UPDATE SET
-			gamertag   = EXCLUDED.gamertag,
-			last_seen  = EXCLUDED.last_seen,
-			updated_at = EXCLUDED.updated_at`,
-		xuid, gamertag, now, now,
-	)
-	if err != nil {
-		return fmt.Errorf("UpsertXUIDAlias(%s): %w", xuid, err)
+	// ART-safe : SELECT-then-UPDATE-or-INSERT (pas d'ON CONFLICT DO UPDATE, qui
+	// réécrit la ligne via l'index ART de la PK xuid et peut FATAL-invalider la base
+	// partagée). xuid_aliases n'a aucun index secondaire → l'UPDATE n'en touche aucun.
+	var dummy int
+	err := db.QueryRowContext(ctx, `SELECT 1 FROM xuid_aliases WHERE xuid = ?`, xuid).Scan(&dummy)
+	switch {
+	case err == nil:
+		if _, execErr := db.ExecContext(ctx, `
+			UPDATE xuid_aliases SET gamertag = ?, last_seen = ?, updated_at = ? WHERE xuid = ?`,
+			gamertag, now, now, xuid); execErr != nil {
+			return fmt.Errorf("UpsertXUIDAlias(%s): %w", xuid, execErr)
+		}
+	case errors.Is(err, sql.ErrNoRows):
+		if _, execErr := db.ExecContext(ctx, `
+			INSERT INTO xuid_aliases (xuid, gamertag, last_seen, source, updated_at)
+			VALUES (?, ?, ?, 'sync', ?)`,
+			xuid, gamertag, now, now); execErr != nil {
+			return fmt.Errorf("UpsertXUIDAlias(%s): %w", xuid, execErr)
+		}
+	default:
+		return fmt.Errorf("UpsertXUIDAlias(%s) lookup: %w", xuid, err)
 	}
 	return nil
 }
