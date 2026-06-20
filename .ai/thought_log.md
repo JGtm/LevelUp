@@ -1,3 +1,17 @@
+## [2026-06-20] Activation Halo 5 + sync live (T1 capture, T2 participants) — En cours
+
+**Statut** : flip `status=active` posé (commit 67db50811) + oracle live `probe-h5 JGtm` VERT (service record arena 200, CSR **Diamant 5**, token v4 du pool OK, retry-sans-secret AADSTS90023). Sync live h5 par tranches : T1 (capture engine) + T2 (participants) livrés/verts ; T3 (DeltaRunner + resolver + bootstrap HTTP) + T4 (scheduler/watcher) à suivre en autonomie.
+
+**Activation minimale (1b)** : `config/titles/halo_5/title.toml` status=active → `registerAdditionalTitles` câble l'adapter live h5 (career + events `supported` ; historique/détail Phase 2). Infinite byte-identique (`td.IsDefault` skip). `skeleton_test` mis à jour (active). Carrière JGtm = Diamant 5 servie via adapter live (sans player DB). Piège auto-sync clarifié : `checkSyncPreconditions` saute h5 (pas de player DB) → déclarer le couple ne casse rien.
+
+**Sync live — décision archi** (recon ultracode `wf_dabfb368-ed9`, 5 agents) : côté ÉCRITURE déjà title-générique (PathResolver, prouvé byte-identique `engine_title_seam_test.go`) ; seul le FETCH est Infinite-spécifique ; les 2 chemins convergent sur `persist.MatchBatch`. → **DeltaRunner h5 SÉPARÉ** (fetch cryptum → canonical → `CollectMatchBatch` → SharedPersister sous lease `AcquireSharedWriterStandalone`), sélectionné au `BuildEngine`/`newEngineFor` par le registre (jamais `slug==`), ne touche JAMAIS `SyncEngine.run`. **Identité** : gamertags h5 → vrais xuid Xbox via `worldenrich.CachingResolver`/PeopleHub (title-agnostic) → lignes compatibles + cross-linkables avec Infinite.
+
+**T1 — capture engine** (`halo_5/capture.go`) : `CollectRecentMatches` fetch paginé matchs+events → mappers privés → `ingest.CollectMatchBatch` → `[]*persist.MatchBatch`, PUR (zéro DB), delta-stop, résilience events. **T2 — participants** : carnage = seule source du roster (matches list self-only) ; `dto_carnage.go` + client `GetMatchCarnage` + `mapCarnageParticipants` → `match_participants` (outcome team/FFA/DNF via `TeamStats`, comptes bruts) ; **KDA/Accuracy/DamageTaken nil, JAMAIS fabriqués**. `probe-h5` enrichi d'un dump carnage (shape réel : Chocoboflor/Madina97294/JGtm…).
+
+**INSIGHT KDA/FDA (user)** : KDA = **stat d'API**, jamais calculée pour Infinite (`transforms.go:342` lit le champ natif). Formule native (concepteur ranking h5) : `FDA = ((k+⅓a)−d)/games` — forme **NET/différence**, peut être négative → explique vraisemblablement les KDA négatifs + l'échec historique de reproduction locale du FDA Infinite (on faisait le ratio `(k+a/3)/d`). RÈGLE : calcul local du KDA = exception, JAMAIS pour Infinite ; h5 (API sans KDA) → nil. `assist_frag_weight` title-aware ne concerne QUE le rendement. Consigné `PLAN_DAMAGE_MODEL_PER_TITLE.md` §0.4.
+
+**Prochaine étape** : T3 (DeltaRunner h5 + `CachingResolver` + branche `newEngineFor` → `POST /sync/initial` capture JGtm), puis T4 (scheduler/watcher continu).
+
 ## [2026-06-20] Handoffs — substrat classif classé/non-classé h5 + audit damage-model — Complété
 
 **Statut** : `go build ./...` + `go vet` + `go test ./internal/games/...` + `./internal/archlint/...` verts (CGO ucrt64). HI byte-identique. Recon ultracode `wf_8f1a209a-176` (5 agents Explore) pour cartographier classification + damage-model avant d'implémenter.
