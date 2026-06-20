@@ -1,3 +1,15 @@
+## [2026-06-20] Activation Halo 5 — ingestion kills : collect PUR (killer_victim + arme) — Complété
+
+**Statut** : `go vet` + `go test ./internal/games/halo_5/ingest/` (7 tests) verts.
+
+**Livré** (`internal/games/halo_5/ingest/`, pur) :
+- `kills.go::MapKillEvents` : events `kill` → `killer_victim_pairs` (forme PAR-KILL, 1 row/kill, killer→victim + time_ms — le grain de référence) + `weapon_kills` (arme native, clé killer xuid + time_ms, confidence "native"). Réutilise les 2 tables HI EXISTANTES (zéro schéma). Contrairement à HI (`ComputeKillerVictimPairs` = appariement temporel), la timeline h5 porte killer+victim NATIVEMENT. Kills sans attaquant (env/suicide) ignorés ; arme non numérique ignorée.
+- `collect.go` : `CollectMedalsBatch` généralisé en `CollectMatchBatch` (médailles + kills dans UN SEUL batch — match_registry est l'ancre d'idempotence, un 2e batch serait skippé).
+
+**Découverte** : `KillerVictimInsert.WeaponID` existe sur le struct mais n'est PAS persisté (DDL killer_victim_pairs sans colonne weapon_id) → l'arme passe par `weapon_kills` (table per-kill dédiée), pas par la paire. Jointure kill↔arme = (match_id, killer_xuid, time_ms).
+
+**Reste** : positions (NOUVELLE table `kill_positions` dans le shared-core + persister + builder — seule tranche qui ajoute du schéma, h5 la remplit nativement, HI plus tard) ; puis câblage live (résolveur + lease + capture-on-fetch) + flip.
+
 ## [2026-06-20] Activation Halo 5 — ingestion médailles : collect PUR (mappers + assembly) — Complété (non commité)
 
 **Statut** : Code livré + vérifié, **commit autorisé en attente**. `go vet` + `go test ./internal/games/halo_5/ingest/` (5 tests) verts.
