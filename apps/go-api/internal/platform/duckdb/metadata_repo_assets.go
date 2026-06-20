@@ -368,14 +368,14 @@ func (r *MetadataRepo) UpsertMapImageRegistry(
 	ctx context.Context,
 	titleID, mapID, localPath string,
 ) error {
-	query := `
-		INSERT INTO map_images_registry (title_id, map_id, local_path, fetched_at)
-		VALUES (?, ?, ?, now())
-		ON CONFLICT (title_id, map_id) DO UPDATE SET
-			local_path = EXCLUDED.local_path,
-			fetched_at = now()
-	`
-
-	_, err := r.meta.Exec(ctx, query, titleID, mapID, localPath)
-	return err
+	// ART-safe : SELECT-then-UPDATE-or-INSERT (pas d'ON CONFLICT). Index fetched_at
+	// (muté) droppé par drop_metadata_art_surface_indexes_v2.
+	return r.meta.UpsertNoConflict(ctx,
+		`SELECT 1 FROM map_images_registry WHERE title_id = ? AND map_id = ?`,
+		[]any{titleID, mapID},
+		`UPDATE map_images_registry SET local_path = ?, fetched_at = now() WHERE title_id = ? AND map_id = ?`,
+		[]any{localPath, titleID, mapID},
+		`INSERT INTO map_images_registry (title_id, map_id, local_path, fetched_at) VALUES (?, ?, ?, now())`,
+		[]any{titleID, mapID, localPath},
+	)
 }

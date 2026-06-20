@@ -47,6 +47,7 @@ var canonicalOrder = []string{
 	"fix_citation_image_paths_double_encoded",                  // metadata
 	"add_csr_placement_thresholds",                             // metadata
 	"drop_metadata_art_surface_indexes_v1",                     // metadata
+	"drop_metadata_art_surface_indexes_v2",                     // metadata
 	"drop_playlists_catalog_secondary_indexes",                 // metadata
 	"create_milestone_catalog_metadata",                        // metadata
 	"create_prestige_metadata_schema",                          // metadata

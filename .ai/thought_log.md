@@ -25052,3 +25052,20 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 - **Régression antérieure trouvée + corrigée** : le commit média 9171f2875 avait laissé `TestMediaE2E_RealDB_GetMediaLibrary` ([media_e2e_realdb_test.go](../apps/go-api/internal/api/handlers/media_e2e_realdb_test.go)) rouge — fixture seedant `media_match_associations` (legacy) sans la vue `_latest` que le reader interroge désormais (sous-package `handlers` non lancé lors de la vérif média). Ajout du substrat `_history` + vue (avec `bool_or(is_manual)`) à la fixture → vert. Aucune autre fixture média sœur cassée (6 autres dans des packages déjà verts).
 
 **Conclusion / prochaine étape** : 7/~20+ tables. shared_social entièrement append-only (plus aucun site concurrent mutant). Suite : bloc metadata ref/cache (SELECT-then-write via UpsertNoConflict, blast-radius moindre), prestige/player, shared match DELETE (audit sérialisé lease), puis retrait pansements + `go test ./...` complet + merge main (= deploy).
+
+## [2026-06-20] Campagne APPEND-ONLY — bloc metadata ref/cache (SELECT-then-write) — Complété (non déployé)
+
+**Statut** : bloc tables de RÉFÉRENCE/cache metadata éradiqué (décision user #2 : PK-only + SELECT-then-write, PAS append-only strict). Tous tests verts (platform/duckdb, sync, ops, migration, service, api). NON déployé.
+
+**Décision technique principale** : conversion de tous les `INSERT … ON CONFLICT DO UPDATE` / `INSERT OR REPLACE` restants en SELECT-then-UPDATE-or-INSERT (pas de delete+insert interne ART) :
+- platform/duckdb via le helper `(*duckdb.DB).UpsertNoConflict` : `UpsertMapImageCache` + `UpsertMapImageRegistry` (map_images_registry), `UpsertMedalImageCache` (medal_image_cache), `UpsertMedalsRaw` (waypoint_medals_raw), `MilestoneCatalogRepo.Upsert` (milestone_catalog).
+- cross-package en SELECT-then-write inline (*sql.DB brut, pas de helper) : `UpsertXUIDAlias` (sync/writes.go, xuid_aliases dans shared) + `SeedRankTranslations` (ops/seed.go, career_rank_translations, ex-INSERT OR REPLACE).
+- **3 index ART mutés droppés** (migration `drop_metadata_art_surface_indexes_v2`, 2e vague après v1) : `idx_ms_cat_title`+`idx_ms_cat_metric` (milestone_catalog title_slug/metric, mutés par l'upsert) + `idx_map_images_registry_fetched` (fetched_at, muté à chaque refresh). CREATE INDEX retirés des migrations de création (DBs fraîches) ; garde-fou `metadata_art_surface_guard_test.go` forbiddenIndexedColumns étendu.
+- **xbox_achievement_definitions** : `upsertAchievementDefinitions` était déjà ART-safe (UPDATE-then-INSERT). Le DELETE `purgeStaleAchievementDefinitions` (nettoyage cross-titre historique pré-filtre SCID) **supprimé** sur décision user : vestigial (0 ligne en régime permanent, contamination impossible depuis le filtre SCID), DELETE per-row sur index PK ART retiré du hot path. Import `strings` retiré.
+
+**Résultats observés** :
+- medal_image_cache / waypoint_medals_raw / xuid_aliases : aucun index secondaire → UPDATE non-indexé déjà sûr (juste le delete+insert d'ON CONFLICT à éliminer). career_rank_translations : index = PK, non muté. milestone_catalog / map_images_registry : index sur colonne mutée → droppés.
+- Piège `execScript: empty query` re-rencontré : un commentaire SQL après le dernier `;` = statement vide → déplacé les commentaires AVANT le CREATE TABLE.
+- Build + vet + gofmt OK. INSERT OR IGNORE sur xuid_aliases (persist/shared_persister.go, DO NOTHING) laissé tel quel : pas de delete-from-index, déjà sûr.
+
+**Conclusion / prochaine étape** : 8/~20+. metadata.duckdb : plus aucun ON CONFLICT/REPLACE/DELETE hot-path résiduel sur les tables ref/cache. Suite : bloc prestige/player (player DB mono-writer lease + shared_social prestige), shared match DELETE (audit sérialisé), retrait pansements, go/no-go, deploy.

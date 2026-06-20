@@ -216,6 +216,10 @@ func init() {
 		TargetDB:    TargetMetadata,
 		Description: "Table map_images_registry : cache-aside des images de maps avec local_path optionnel",
 		ApplySchema: func(db *sql.DB) error {
+			// PAS d'index sur fetched_at : muté à chaque refresh du cache
+			// (UpsertMapImageCache, SELECT-then-write) → surface ART. Cache minuscule
+			// (images de maps par titre). Drop DBs existantes :
+			// drop_metadata_art_surface_indexes_v2.
 			return execScript(db, `
 				CREATE TABLE IF NOT EXISTS map_images_registry (
 					title_id     VARCHAR NOT NULL,
@@ -226,7 +230,6 @@ func init() {
 					content_hash VARCHAR NOT NULL DEFAULT '',
 					PRIMARY KEY (title_id, map_id)
 				);
-				CREATE INDEX IF NOT EXISTS idx_map_images_registry_fetched ON map_images_registry(fetched_at);
 			`)
 		},
 	})
