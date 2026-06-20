@@ -6,7 +6,7 @@
 
 ## 0. TL;DR
 
-La classification **classé/non-classé** (+ catégorie de mode, + PvE/Firefight) de Halo 5 est un **TODO Phase 2 documenté dans l'adapter h5**, **bloqué sur la donnée autoritative** (liste des playlists/HopperIds classés Halo 5). Ce n'est PAS un travail sur le chemin de sync Halo Infinite. Tant qu'on n'a pas la liste autoritative, `IsRanked` reste `nil` (conservateur, correct — ne mint jamais de faux CSR).
+La classification **classé/non-classé** (+ PvE/Firefight) de Halo 5 a son **substrat livré (2026-06-20)** : package réutilisable `internal/games/classification` (stratégie #1 set-membership) + TOML `ranked_hoppers.toml` (vide) + mapper h5 câblé + tests (cf. §5). Il **reste bloqué sur la donnée autoritative** (liste des HopperIds classés Halo 5) : tant qu'elle n'est pas déposée dans le TOML, `IsRanked` reste `nil` (conservateur, correct — ne mint jamais de faux CSR). À l'activation : remplir le TOML + ~3 lignes de câblage adapter. Ce n'est PAS un travail sur le chemin de sync Halo Infinite.
 
 ## 1. Correction de l'audit (IMPORTANT — ne pas refaire l'erreur)
 
@@ -46,15 +46,29 @@ Il faut la **liste autoritative des playlists/HopperIds CLASSÉS de Halo 5**. Pi
 - OU l'endpoint skill h5 (`GetPlaylistCsr` par playlist — la présence d'un CSR = playlist classée ; cf. la doctrine HI `GetPlaylistCsr`).
 - Le sondage live Halo 5 (Phase 1a, `cmd/probe-h5`) peut aider à récupérer les HopperIds réels rencontrés par JGtm, mais **ne pas dériver « classé » des parties** — il faut le set autoritatif.
 
-## 5. Implémentation recommandée (quand la data est là)
+## 5. Implémentation — SUBSTRAT LIVRÉ (2026-06-20), data + câblage live restants
 
-1. `config/titles/halo_5/catalog/ranked_hoppers.toml` (nouveau) : liste des HopperIds classés h5 (+ éventuellement warzone/firefight HopperIds pour `IsPvE`).
-2. Loader (générique si possible, calqué sur le loader experience_rules HI) → un set en mémoire dans l'adapter h5.
-3. `mapMatchSummaries` : poser `IsRanked = &(hopperId ∈ rankedSet)` ; `IsPvE = &(hopperId ∈ warzoneFirefightSet)` ; affiner `h5MatchType`/`PairMode` (catégorie de mode h5 : Slayer/CTF/Strongholds/Breakout/SWAT/FFA/Warzone — pas la taxo HI Assassin/Fiesta/BTB).
-4. **Tests** : golden `mapMatchSummaries` (HopperId classé → IsRanked=true ; non-classé → false ; inconnu → nil conservateur). Pur, offline-testable une fois le set défini.
-5. **Validation live** : passe de sync h5 sur JGtm → vérifier que les matchs classés portent `is_ranked=true` et alimentent le CSR (cf. `reference_lusr_target_levels` pour le sanity check).
+> **Le substrat de classification est construit cette session** (offline, test-couvert,
+> byte-identique tant que les sets sont vides). Il ne reste, à l'activation, qu'à
+> **(a) récupérer la liste autoritative** (§4), **(b) la déposer dans le TOML**, et
+> **(c) un câblage adapter de ~3 lignes**. ZÉRO refonte.
 
-Note : `canonical.MatchType` n'a PAS besoin d'être créé (les blueprints le proposaient à tort) — `canonical.Experience` existe déjà et est l'enum de référence.
+**FAIT (commit de cette session) :**
+1. ✅ `config/titles/halo_5/catalog/ranked_hoppers.toml` — **listes vides à dessein** (`ranked_hopper_ids = []`, `pve_hopper_ids = []`). Remplir = activer, zéro code.
+2. ✅ **Stratégie réutilisable** `internal/games/classification/` (LEAF, n'importe ni canonical ni titre) :
+   - `RankedClassifier` (interface, contrat de sortie STABLE `*bool` ; nil = indéterminé) ;
+   - `SetClassifier` (stratégie #1 set-membership : set vide → nil partout ; set peuplé réputé EXHAUSTIF → présent `&true`, absent `&false`) ;
+   - `LoadSetClassifier(path)` (fichier absent → vide sans erreur ; parse/schema_version → erreur).
+3. ✅ `mapMatchSummaries(resp, gamertag, classifier)` pose `IsRanked`/`IsPvE` depuis le HopperId ; `h5MatchType` priorise les verdicts autoritatifs (ranked/firefight) sinon repli heuristique. **classifier nil/vide → IsRanked/IsPvE nil = comportement conservateur byte-identique.**
+4. ✅ **Tests golden** : `classification/*_test.go` (set vide/peuplé/trim/nil-receiver/loader) + `halo_5/mapping_test.go::TestMapMatchSummaries_RankedClassifier` (classé→true+ranked, hors-set→false+social, PvE→true+firefight).
+
+**RESTE (à l'activation, quand la data §4 est là) :**
+- (a) **Remplir** `ranked_hopper_ids` / `pve_hopper_ids` avec la liste autoritative.
+- (c) **Câbler dans l'adapter h5** (~3 lignes) : option `WithRankedClassifier(classification.RankedClassifier)` + champ sur `DataAdapter` ; au boot (`registerHalo5Adapters`, `server_titles_additional.go`) charger `classification.LoadSetClassifier(PathResolver…/catalog/ranked_hoppers.toml)` et l'injecter ; quand `LoadMatchSummaries` sera implémenté (Phase 2), lui passer `a.classifier`. (NON fait cette session pour éviter un champ inutilisé tant que `LoadMatchSummaries` renvoie `ErrCapabilityNotSupported` — même précédent que l'ingestion offline.)
+- **Affiner** `h5MatchType`/mode-catégorie h5 (Slayer/CTF/Strongholds/Breakout/SWAT/FFA/Warzone — PAS la taxo HI) si on veut la granularité mode (optionnel, hors classé/PvE).
+- **Validation live** : passe de sync h5 sur JGtm → matchs classés `is_ranked=true` alimentant le CSR (`reference_lusr_target_levels` pour le sanity check).
+
+Note : `canonical.MatchType` n'a PAS été créé (les blueprints le proposaient à tort) — `canonical.MatchType`/`canonical.Experience` existaient déjà.
 
 ## 7. Extensibilité (Halo 7 et au-delà) — « sans tout recoder »
 
@@ -72,7 +86,7 @@ Le seam qui garantit ça :
 - même méthode que HI (rules) → réutilise le loader `experience_rules`, **0 code** ;
 - méthode inédite → 1 nouvelle stratégie (~30-50L) + l'adapter Halo 7 la sélectionne ; ingestion/CSR/LUSR/UI **inchangés** (ils lisent le canonique).
 
-**État actuel** : le seam de sortie (canonical) existe ✅ ; la librairie de stratégies n'est PAS encore factorisée (HI a son `experience_rules` semi-spécifique, h5 = Phase 2). → À l'activation, livrer la classif h5 **en factorisant la stratégie #1 comme composant réutilisable** (c'est l'investissement qui rend Halo 7 gratuit). Ne pas la coder en dur dans `halo_5/mapping.go`.
+**État actuel (2026-06-20)** : le seam de sortie (canonical `*bool`) existe ✅ ; **la stratégie #1 (set-membership) EST désormais factorisée comme composant réutilisable** `internal/games/classification` ✅ (l'investissement qui rend Halo 7 gratuit — un futur titre fournit son TOML d'ids → `classification.NewSetClassifier`, zéro code). HI garde son `experience_rules` (stratégie #2 rules-based, non lifté — éviter de toucher le chemin CSR HI). La stratégie #3 (flag natif) n'est pas écrite (pas de consommateur ; une impl `RankedClassifier` ad hoc suffira le jour venu). h5/mapping.go consomme l'interface, **PAS de classif codée en dur**.
 
 ## 6. État des « 4 gaps » de l'audit (à la fermeture)
 
@@ -81,4 +95,4 @@ Le seam qui garantit ça :
 | 2 — indexation média title-aware | ✅ FAIT — commit `8ced9f154` (`ctxkeys.TitleSlug(ctx)`, zéro caller touché) |
 | 3 — traductions maps title-aware | ✅ FAIT — commit `e5c83dbed` (`resolveMediaTitleSlug`) |
 | 1 — `ExtractRegistry` is_ranked title-aware | ❌ NON-PERTINENT (chemin HI ; voir §1) — abandonné sciemment |
-| 4 — classification ranked/mode h5 | ⏸ CE HANDOFF — Phase 2 adapter, bloqué data autoritative |
+| 4 — classification ranked/mode h5 | 🟡 SUBSTRAT LIVRÉ 2026-06-20 (§5 : package `classification` réutilisable + TOML vide + mapper câblé + tests). Reste = data autoritative + câblage adapter ~3L (à l'activation). |

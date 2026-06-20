@@ -5,6 +5,29 @@
 > **Axe registre** : extension/concrétisation de **MT-13** (`PLAN_MULTITITRE_INDEX.md`) — qui ne capturait que les tables Halo **client-side** et différait « au 2e titre ». Ce plan ajoute le **backend** (sous-scopé par MT-13) + la baseline Halo 5 + la recalibration P80. Le « 2e titre » = maintenant (Halo 5).
 > **Réfs** : `combat_yield.go` (`DAMAGE_EFFICIENCY_INTEGRATION.md`), mémoire `project_halo5_experimental_direction`.
 
+## 0. ÉTAT VÉRIFIÉ (2026-06-20, audit code) — PHASES 0→2 DÉJÀ LIVRÉES
+
+> ⚠ Le corps de ce plan (§2-§4) décrit l'état **avant** threading. Vérification code
+> ce jour : **le seam + la quasi-totalité du compute sont déjà title-aware** (commits
+> de cette journée). Ne PAS refaire ce travail à l'activation — ne reste que du
+> Phase 3 **activation-couplé**.
+
+**FAIT (vérifié) :**
+- **Phase 0** ✅ : `[damage_model] effective_hp_to_kill` dans `constants.toml` (Infinite implicite=`225` via `games.DefaultEffectiveHpToKill` ; Halo 5=`115`). Loader `internal/games/mappings/loader_endpoints.go`. Getters `games.EffectiveHpToKill(slug)` / `EffectiveHpToKillFromResolver` + test oracle `damage_model_test.go`.
+- **Phase 1** ✅ : `analysis/combat_yield.go` (`ComputeCombatYield(Float)`) prend `effectiveHpToKill` en **paramètre** (plus de littéral) ; **tous** les points d'entrée + callers service résolvent `games.EffectiveHpToKill(titleSlug)` : home (`home_kpis`/`home_recent`/`home_canonical_*`), `explorer_target_stats`, `kpi_stats`, `stats_canonical`, squad/synthesis, `compare_service`, match-view (`computeScoreboardRowCombatYield`/radar), `engagement_player_service`, `timeseries`, `teammates_*`, `patterns_repo`. Bootstrap expose `effective_hp_to_kill` par titre.
+- **Phase 2 (post-sync SQL)** ✅ : `post_sync_progression_queries.go` utilise `games.EffectiveHpToKill(pdb.TitleSlug)` (plus de `225.0` inline).
+- **Phase 3 front (copy)** ✅ : `help/i18n.ts` `withDamageBaseline` (token `{{HP}}`, title-aware via `effective_hp_to_kill`) ; `combat-yield-display`/`match-card` consomment les valeurs **calculées back** (déjà title-aware).
+
+**Littéraux `225.0` restants = NON des gaps (à NE PAS toucher) :**
+- `platform/duckdb/queries_career_encounters.go:172,177` (Q23 `LoadStatsMatches`) → **chemin LEGACY retiré** (`port/repository_sessions_home.go:21` : « LoadStatsMatches a été retiré, les services chargent canonical »). Les services live recalculent via `StatsMatchRowsFromCanonical(…, EffectiveHpToKill(slug))`. Le 225 SQL n'alimente plus rien de live.
+- `internal/sync/skill_rating.go:335,338` (composite LUSR) → **LUSR = Infinite-only** (Halo 5 a un CSR natif, ne passe pas par LUSR). 225 y est correct par nature.
+- `cmd/diag_lusr_player`, `cmd/lusr_v2_phase0` → outils **diag offline** (replay LUSR), hors chemin produit.
+
+**RESTE (Phase 3, activation-couplé — voir §7) :**
+1. **Valider `115` Halo 5** contre de vrais `Σdmg/Σkills` d'un match h5 (JGtm) — la valeur design peut ≠ l'unité de dégâts API. **Besoin data live.**
+2. **P80 par titre** (`OffensiveConversionP80=0.83`/`DefensiveResistanceP80=1.59` calibrés 4 joueurs Infinite, `combat_yield.go:25-29`) : recalibrer sur échantillon Halo 5 OU dégrader « non calibré ». **Besoin échantillon live.**
+3. **Front `ONE_LIFE_DAMAGE=225`** (`apps/web/src/lib/charts/oneLifeDamageGradient.ts:20`) — seul hardcode front restant ; pilote 2 **charts escouade** (`squadEfficiencyChart.ts`, `TimeseriesSquadAdapted.tsx`), **`not_exposed` pour Halo 5 en Phase 1** (escouade = xuid, h5 gamertag-keyé). Threading byte-identique Infinite (défaut 225) mais **différé avec l'activation** (h5-invisible + valeur non validée — pas de bénéfice à l'avancer).
+
 ## 1. Objectif + critère de succès
 
 **Objectif** : rendre la baseline « dégâts pour tuer un Spartan » (et tout KPI dégâts-normalisé : rendement offensif / résistance défensive) **paramétrable par titre**, au lieu de `225` (Halo Infinite) câblé en dur dans les calculs ET l'affichage.
