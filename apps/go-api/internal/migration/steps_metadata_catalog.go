@@ -57,7 +57,9 @@ func init() {
 					last_fetched_at         TIMESTAMP,
 					PRIMARY KEY (title_slug, game_variant_asset_id)
 				);
-				CREATE INDEX IF NOT EXISTS idx_game_variants_catalog_mode ON game_variants_catalog(title_slug, mode_canonical);
+				-- AUCUN index secondaire : upsertGameVariant UPDATE mode_canonical →
+				-- un index ART sur une colonne mutée corrompt metadata.duckdb (FATAL
+				-- invalidated). PK-only. Cf. drop_metadata_art_surface_indexes_v1.
 
 				-- 4. Pair = jonction map + game_variant + nom composite, par titre
 				CREATE TABLE IF NOT EXISTS map_mode_pair_definitions (
@@ -71,9 +73,9 @@ func init() {
 					last_fetched_at        TIMESTAMP,
 					PRIMARY KEY (title_slug, pair_asset_id)
 				);
-				CREATE INDEX IF NOT EXISTS idx_map_mode_pair_map ON map_mode_pair_definitions(title_slug, map_asset_id);
-				CREATE INDEX IF NOT EXISTS idx_map_mode_pair_variant ON map_mode_pair_definitions(title_slug, game_variant_asset_id);
-				CREATE INDEX IF NOT EXISTS idx_map_mode_pair_category ON map_mode_pair_definitions(title_slug, mode_category);
+				-- AUCUN index secondaire : upsertPair UPDATE map_asset_id /
+				-- game_variant_asset_id / mode_category (ex-colonnes indexées) →
+				-- surface ART corruptrice. PK-only. Cf. drop_metadata_art_surface_indexes_v1.
 
 				-- 5. Relation N-N playlist <-> pair, avec poids de tirage
 				CREATE TABLE IF NOT EXISTS playlist_pair_links (
@@ -96,7 +98,9 @@ func init() {
 					last_error    VARCHAR,
 					PRIMARY KEY (title_slug, asset_type, asset_id)
 				);
-				CREATE INDEX IF NOT EXISTS idx_catalog_fetch_queue_drain ON catalog_fetch_queue(title_slug, attempts, enqueued_at);
+				-- PAS d'index : catalog_fetch_queue est DELETE/UPDATE per-row par le drain
+				-- → toute surface ART la corrompt. Rebuild sans PK/index par
+				-- rebuild_catalog_fetch_queue_drop_art_indexes. PK-less + dédup SELECT-then-INSERT.
 
 				-- 7. Labels normalisés multi-langues (sortie NormalizeModeLabel par langue)
 				CREATE TABLE IF NOT EXISTS pair_mode_label_translations (

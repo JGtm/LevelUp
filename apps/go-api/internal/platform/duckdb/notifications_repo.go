@@ -495,7 +495,7 @@ func (r *NotificationsRepo) GetPreferences(ctx context.Context) ([]notifications
 	err := r.readDB().WithReopenOnInvalidated(func() error {
 		var qerr error
 		rows, qerr = r.readDB().Query(ctx,
-			`SELECT category, enabled, delivery FROM notification_preferences WHERE xuid = ? ORDER BY category`,
+			`SELECT category, enabled, delivery FROM notification_preferences_latest WHERE xuid = ? ORDER BY category`,
 			r.xuid,
 		)
 		return qerr
@@ -556,13 +556,10 @@ func (r *NotificationsRepo) UpsertPreferences(ctx context.Context, prefs []notif
 	for _, p := range prefs {
 		pref := p // capture pour la closure
 		err := rwDB.WithReopenOnInvalidated(func() error {
+			// APPEND-ONLY : INSERT d'une nouvelle version (plus d'ON CONFLICT DO UPDATE).
 			_, execErr := rwDB.Exec(ctx, `
-				INSERT INTO notification_preferences (xuid, category, enabled, delivery, updated_at)
+				INSERT INTO notification_preferences_history (xuid, category, enabled, delivery, updated_at)
 				VALUES (?, ?, ?, ?, ?)
-				ON CONFLICT (xuid, category) DO UPDATE SET
-					enabled    = EXCLUDED.enabled,
-					delivery   = EXCLUDED.delivery,
-					updated_at = EXCLUDED.updated_at
 			`, r.xuid, string(pref.Category), pref.Enabled, string(pref.Delivery), now)
 			return execErr
 		})

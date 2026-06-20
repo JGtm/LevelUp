@@ -60,8 +60,10 @@ func init() {
 					last_palier_recompute_at    TIMESTAMP,
 					is_private                  BOOLEAN DEFAULT FALSE
 				);
-				CREATE INDEX IF NOT EXISTS idx_ch_user_status ON challenge(user_id, status);
-				CREATE INDEX IF NOT EXISTS idx_ch_arc ON challenge(arc_id, position);
+				-- PAS d'index sur status ni arc_id : UpdateStatus mute status,
+				-- DetachFromArc mute arc_id → un index ART sur une colonne mutée corrompt
+				-- la player DB (cf. crash match_skill_rank mono-writer). Drop sur DB
+				-- existantes : drop_challenge_mutated_art_indexes_v1. metric jamais muté → OK.
 				CREATE INDEX IF NOT EXISTS idx_ch_metric ON challenge(metric);
 
 				CREATE TABLE IF NOT EXISTS moment_card (

@@ -52,8 +52,10 @@ func init() {
 				);
 				CREATE INDEX IF NOT EXISTS idx_campaign_user_title ON improvement_campaign(user_id, title_slug, status);
 
+				-- PAS d'index sur campaign_id : campaign_repo UPDATE challenge SET
+				-- campaign_id = … → index ART sur colonne mutée = corrupteur. Drop sur
+				-- DB existantes : drop_challenge_mutated_art_indexes_v1.
 				ALTER TABLE challenge ADD COLUMN IF NOT EXISTS campaign_id VARCHAR;
-				CREATE INDEX IF NOT EXISTS idx_challenge_campaign ON challenge(campaign_id);
 			`)
 		},
 	})

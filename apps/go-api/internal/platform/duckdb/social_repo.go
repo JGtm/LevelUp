@@ -47,23 +47,25 @@ func (r *SocialRepo) ToggleMatchFavorite(ctx context.Context, playerSlug, matchI
 		return r.pdb.SocialPersister.RemoveFavorite(ctx, playerSlug, matchID)
 	}
 
-	// Fallback legacy (tests sans wiring).
+	// Fallback legacy (tests sans wiring) — APPEND-ONLY : ajout comme retrait sont
+	// un INSERT pur d'event dans match_favorites_history (is_favorite TRUE/FALSE).
+	// Plus aucun DELETE/ON CONFLICT → surface ART éliminée (Exec simple suffit).
 	if favorited {
-		_, err := db.ExecRecovered(ctx, `
-			INSERT INTO match_favorites (player_slug, match_id, favorited_at)
-			VALUES (?, ?, CURRENT_TIMESTAMP)
-			ON CONFLICT (player_slug, match_id) DO NOTHING
+		_, err := db.Exec(ctx, `
+			INSERT INTO match_favorites_history (player_slug, match_id, is_favorite, favorited_at)
+			VALUES (?, ?, TRUE, CURRENT_TIMESTAMP)
 		`, playerSlug, matchID)
 		if err != nil {
-			return fmt.Errorf("ToggleMatchFavorite insert: %w", err)
+			return fmt.Errorf("ToggleMatchFavorite add event: %w", err)
 		}
 		return nil
 	}
-	_, err := db.ExecRecovered(ctx, `
-		DELETE FROM match_favorites WHERE player_slug = ? AND match_id = ?
+	_, err := db.Exec(ctx, `
+		INSERT INTO match_favorites_history (player_slug, match_id, is_favorite, favorited_at)
+		VALUES (?, ?, FALSE, NULL)
 	`, playerSlug, matchID)
 	if err != nil {
-		return fmt.Errorf("ToggleMatchFavorite delete: %w", err)
+		return fmt.Errorf("ToggleMatchFavorite remove event: %w", err)
 	}
 	return nil
 }
@@ -78,9 +80,12 @@ func (r *SocialRepo) IsMatchFavorite(ctx context.Context, playerSlug, matchID st
 		return false, nil
 	}
 
+	// Lecture de l'état courant via la vue append-only : dernier event par
+	// (player_slug, match_id), favori uniquement si is_favorite=TRUE.
 	var count int
 	err := db.QueryRow(ctx, `
-		SELECT COUNT(*) FROM match_favorites WHERE player_slug = ? AND match_id = ?
+		SELECT COUNT(*) FROM match_favorites_latest
+		WHERE player_slug = ? AND match_id = ? AND is_favorite = TRUE
 	`, playerSlug, matchID).Scan(&count)
 	return count > 0, err
 }
@@ -96,7 +101,9 @@ func (r *SocialRepo) GetFavoriteMatchIDs(ctx context.Context, playerSlug string)
 		return nil, nil
 	}
 
-	rows, err := db.QueryRecovered(ctx, `SELECT match_id FROM match_favorites WHERE player_slug = ?`, playerSlug)
+	rows, err := db.Query(ctx, `
+		SELECT match_id FROM match_favorites_latest
+		WHERE player_slug = ? AND is_favorite = TRUE`, playerSlug)
 	if err != nil {
 		return nil, fmt.Errorf("GetFavoriteMatchIDs: %w", err)
 	}

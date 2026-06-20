@@ -94,7 +94,9 @@ func init() {
 					last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, is_current BOOLEAN NOT NULL DEFAULT TRUE,
 					PRIMARY KEY (reward_track_path, content_hash)
 				);
-				CREATE INDEX IF NOT EXISTS idx_battlepass_track_definitions_lookup ON battlepass_track_definitions(reward_track_path, is_current);
+				-- PAS d'index sur (reward_track_path, is_current) : UpsertTrackDefinition
+				-- UPDATE is_current → surface ART corruptrice. PK-only. Cf.
+				-- drop_metadata_art_surface_indexes_v1.
 				CREATE TABLE IF NOT EXISTS battlepass_track_translations (
 					reward_track_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
 					lang VARCHAR NOT NULL, track_name VARCHAR,
@@ -109,7 +111,9 @@ func init() {
 					last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, is_current BOOLEAN NOT NULL DEFAULT TRUE,
 					PRIMARY KEY (inventory_item_path, content_hash)
 				);
-				CREATE INDEX IF NOT EXISTS idx_battlepass_item_definitions_lookup ON battlepass_item_definitions(inventory_item_path, is_current);
+				-- PAS d'index sur (inventory_item_path, is_current) : UpsertItemDefinition
+				-- UPDATE is_current → surface ART corruptrice. PK-only. Cf.
+				-- drop_metadata_art_surface_indexes_v1.
 				CREATE TABLE IF NOT EXISTS battlepass_item_translations (
 					inventory_item_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
 					lang VARCHAR NOT NULL, title VARCHAR, description VARCHAR,

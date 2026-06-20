@@ -92,9 +92,11 @@ func init() {
 				 WHERE category <> 'data_health_warning'`,
 				`DROP TABLE player_notifications`,
 				`ALTER TABLE player_notifications__purged RENAME TO player_notifications`,
-				// Recréer les 3 indexes secondaires (canonique cf.
-				// steps_player_notifications.go).
-				`CREATE INDEX IF NOT EXISTS idx_pn_xuid_unread       ON player_notifications(xuid, read_at)`,
+				// Recréer les indexes secondaires SÛRS uniquement (cf.
+				// steps_player_notifications.go). NE PAS recréer idx_pn_xuid_unread :
+				// read_at est muté par MarkNotifications* → index ART corrupteur
+				// (régression : il avait été droppé par drop_idx_pn_xuid_unread le
+				// 2026-05-15, ce rebuild le réarmait). created_at/category jamais mutés.
 				`CREATE INDEX IF NOT EXISTS idx_pn_xuid_created_desc ON player_notifications(xuid, created_at DESC)`,
 				`CREATE INDEX IF NOT EXISTS idx_pn_xuid_category     ON player_notifications(xuid, category)`,
 			}
