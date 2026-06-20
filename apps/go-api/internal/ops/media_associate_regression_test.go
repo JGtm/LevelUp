@@ -242,7 +242,7 @@ func TestAssociateMediaWithMatches_RestartCycle(t *testing.T) {
 	// Phase 5 : vérifier que les associations sont toujours là.
 	var count int
 	if err := socialDB2.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM media_match_associations WHERE match_id = ?`,
+		`SELECT COUNT(*) FROM media_match_associations_latest WHERE match_id = ?`,
 		"match-restart-cycle",
 	).Scan(&count); err != nil {
 		t.Fatalf("query après reopen: %v", err)

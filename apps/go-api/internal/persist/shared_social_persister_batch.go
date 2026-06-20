@@ -138,9 +138,13 @@ func (p *SharedSocialPersister) persistMediaAssociations(ctx context.Context, tx
 	if len(rows) == 0 {
 		return nil
 	}
+	// APPEND-ONLY : auto-association live sync = INSERT event (is_manual=FALSE) dans
+	// _history. Plus d'INSERT OR IGNORE sur la table legacy. La dédup est assurée par
+	// loadUnassociatedMedia (forward-only) + la vue _latest.
 	stmt, err := tx.PrepareContext(ctx, `
-		INSERT OR IGNORE INTO media_match_associations (media_file_id, match_id, delta_seconds)
-		VALUES (?, ?, ?)
+		INSERT INTO media_match_associations_history
+			(media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at)
+		VALUES (?, ?, ?, FALSE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 	`)
 	if err != nil {
 		return err

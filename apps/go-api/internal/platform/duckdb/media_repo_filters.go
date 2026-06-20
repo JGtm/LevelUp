@@ -199,7 +199,7 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 			COALESCE(mf.capture_start_utc, mf.capture_end_utc, mf.mtime) AS cap,
 			mma.match_id
 		FROM media_files mf
-		LEFT JOIN media_match_associations mma ON mma.media_file_id = mf.id
+		LEFT JOIN media_match_associations_latest mma ON mma.media_file_id = mf.id
 		WHERE mf.file_path = ? OR mf.file_name = ?
 		LIMIT 1
 	`, filePath, basename).Scan(&captureUTC, &currentMatchID)

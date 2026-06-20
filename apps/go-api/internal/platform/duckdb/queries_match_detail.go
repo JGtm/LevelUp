@@ -171,7 +171,7 @@ SELECT
     mf.capture_end_utc,
     COALESCE(mf.liked, FALSE) AS liked
 FROM media_files mf
-JOIN media_match_associations mma ON mf.id = mma.media_file_id
+JOIN media_match_associations_latest mma ON mf.id = mma.media_file_id
 WHERE mma.match_id = ?
 ORDER BY mf.capture_end_utc ASC NULLS LAST`
 

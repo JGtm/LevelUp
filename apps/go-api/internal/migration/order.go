@@ -161,6 +161,7 @@ var canonicalOrder = []string{
 	"drop_pn_unread_art_index_v2",                             // shared_social
 	"shared_social_favorites_append_only_v1",                  // shared_social
 	"shared_social_likes_append_only_v1",                      // shared_social
+	"shared_social_media_assoc_append_only_v1",                // shared_social
 	"shared_social_notif_prefs_append_only_v1",                // shared_social
 	"create_prestige_shared_social_schema",                    // shared_social
 	"purge_data_health_warning_notifs",                        // shared_social

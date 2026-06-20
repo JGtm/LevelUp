@@ -61,6 +61,25 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			delta_seconds INTEGER,
 			PRIMARY KEY (media_file_id, match_id)
 		)`,
+		// Append-only (cf. shared_social_media_assoc_append_only_v1).
+		`CREATE SEQUENCE IF NOT EXISTS media_match_associations_history_id_seq START 1`,
+		`CREATE TABLE media_match_associations_history (
+			id BIGINT PRIMARY KEY DEFAULT nextval('media_match_associations_history_id_seq'),
+			media_file_id BIGINT NOT NULL, match_id VARCHAR NOT NULL, delta_seconds INTEGER,
+			is_manual BOOLEAN NOT NULL DEFAULT FALSE, is_active BOOLEAN NOT NULL DEFAULT TRUE,
+			associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE OR REPLACE VIEW media_match_associations_latest AS
+			WITH lpp AS (
+				SELECT media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at,
+					ROW_NUMBER() OVER (PARTITION BY media_file_id, match_id ORDER BY written_at DESC, id DESC) AS rn
+				FROM media_match_associations_history),
+			act AS (SELECT * FROM lpp WHERE rn = 1 AND is_active = TRUE),
+			hm AS (SELECT media_file_id, bool_or(is_manual) AS has_manual FROM act GROUP BY media_file_id)
+			SELECT a.media_file_id, a.match_id, a.delta_seconds, a.is_manual, a.associated_at, a.written_at
+			FROM act a JOIN hm ON hm.media_file_id = a.media_file_id
+			WHERE a.is_manual = hm.has_manual`,
 		`CREATE TABLE media_likes (
 			media_path VARCHAR NOT NULL,
 			liker_slug VARCHAR NOT NULL,
@@ -536,15 +555,15 @@ func TestSharedSocialPersister_MediaAssociations_InsertOrIgnore(t *testing.T) {
 		t.Fatal(err)
 	}
 	var count int
-	_ = db.QueryRow(`SELECT COUNT(*) FROM media_match_associations`).Scan(&count)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM media_match_associations_latest`).Scan(&count)
 	if count != 2 {
-		t.Errorf("INSERT OR IGNORE associations: count=%d, want 2 (1 dup ignoré)", count)
+		t.Errorf("append-only associations: count=%d, want 2 (vue _latest dédup par (media,match))", count)
 	}
-	// Vérifier que la 1re wins (delta=30)
+	// Append-only : latest wins (le dernier event d'un (media,match) gagne via la vue).
 	var delta int
-	_ = db.QueryRow(`SELECT delta_seconds FROM media_match_associations WHERE media_file_id = 1`).Scan(&delta)
-	if delta != 30 {
-		t.Errorf("delta du 1er INSERT: got %d, want 30 (le doublon doit être ignoré)", delta)
+	_ = db.QueryRow(`SELECT delta_seconds FROM media_match_associations_latest WHERE media_file_id = 1`).Scan(&delta)
+	if delta != 99 {
+		t.Errorf("delta append-only: got %d, want 99 (latest wins via vue _latest)", delta)
 	}
 }
 
