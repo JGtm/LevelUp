@@ -403,6 +403,12 @@ func NewRouter(
 		return a
 	})
 
+	// Activation 1b multi-titre : enregistre les adapters des titres additionnels
+	// ACTIFS (≠ défaut), pilotée par le registre. NO-OP tant qu'aucun 2e titre
+	// n'est actif → Halo Infinite reste l'unique chemin (byte-identique). Cf.
+	// server_titles_additional.go (gating registry-driven, jamais par slug).
+	registerAdditionalTitles(titleRegistry, titleResolver, reg, fieldMappingsRegistry)
+
 	// Module Prestige — initialisation du bundle (best-effort, désactivable via flag).
 	// Charge tuning.toml + templates + preset arcs Halo, ouvre shared_social et metadata.
 	// Si le flag PRESTIGE_ENABLED est désactivé, les routes ne sont pas montées et
