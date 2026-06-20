@@ -1,193 +1,66 @@
-# HANDOFF — Campagne APPEND-ONLY (éradication définitive du bug ART DuckDB)
+# HANDOFF — Campagne éradication ART DuckDB (append-only / SELECT-then-write)
 
-> Document de reprise. Lire en entier avant de continuer. Dernière MAJ : 2026-06-20.
-> Branche : `fix/metadata-art-battlepass-appendonly`. Voir aussi `.ai/thought_log.md`
-> entrées `[2026-06-19]` et `[2026-06-20]`, et la mémoire projet
-> `project_append_only_eradication_campaign`.
+> Point d'entrée unique pour REPRENDRE. Dernière MAJ : 2026-06-20 (après déploiement du fix prod + census v2).
+> Branche : `fix/metadata-art-battlepass-appendonly`. Lire en entier avant de continuer.
 
-## 1. Le problème & la doctrine
+## 1. TL;DR — où on en est
 
-**Bug** : `Failed to delete all rows from index. Only deleted 0 out of N rows` →
-DuckDB met la base en FATAL `database has been invalidated` → **toute l'app tombe**
-jusqu'au restart (et re-casse au boot suivant). Réapparu ≥4 fois.
+- **Le crash prod d'origine est RÉSOLU et DÉPLOYÉ.** `origin/main` = `d434ed38c` (auto-deploy VPS vérifié : app healthy, `catalog_refresh_cron` propre, JGtm accessible, zéro FATAL post-deploy 2026-06-20 12:52). metadata.duckdb + shared_social.duckdb : surfaces ART hot-path catalogue/battlepass/ref-cache éradiquées.
+- **~17 conversions livrées** (commits b06a7c1ce → 3dd253831). Re-crash latent JGtm (compaction match_skill_rank) éliminé.
+- **RESTE = `.ai/PLAN_ART_RESIDUAL_CENSUS_V2.md`** : ~40 sites ART résiduels, priorisés P0→P5, issus du census ultracode v2 (29 agents, vérifié adversarialement). **C'est LA work-list. Reprendre par là.**
+- Pansements (reopen/ExecRecovered/WithReopenOnInvalidated) GARDÉS volontairement : filet tant que P0→P5 ne sont pas faits. À retirer en clôture.
 
-**Déclencheur de classe** : une écriture qui RETIRE/RELOCALISE une entrée d'index ART :
-- `UPDATE <t> SET col=…` où `col` est couverte par un index (PK ou secondaire), surtout NULL-bearing
-- `DELETE` per-row sur une table à index ART
-- `INSERT … ON CONFLICT DO UPDATE` / `INSERT OR REPLACE` (= delete+insert interne)
-- `INSERT` pur = SÛR.
+## 2. Cause racine + doctrine
 
-**Aggravé par** : handle DuckDB PARTAGÉ process-wide concurrent. `metadata.duckdb` et
-`shared_social.duckdb` sont ouverts 1× en RW partagé → 1 FATAL = app entière down (RISQUE MAX).
-`stats.duckdb` (player) = mono-writer sous lease (blast radius 1 joueur, mais `match_skill_rank`
-a prouvé qu'il peut crasher aussi). `shared_matches_v2` = surtout RO + écritures persist INSERT-only.
+Bug DuckDB amont **#23046** (régression 1.5.0, NON corrigé 1.5.4 ; upgrade ne sauve pas) : l'enforcement de contrainte ART corrompt le heap sur DB **fichier**. Vecteurs CONFIRMÉS par crashs réels :
+1. `INSERT … ON CONFLICT DO UPDATE` (= delete+insert interne sur index).
+2. `INSERT OR REPLACE`.
+3. `DELETE` per-row sur table à index ART (prouvé : compaction match_skill_rank → crash JGtm).
+4. `UPDATE SET <col>` où `<col>` est **indexée** (prouvé : PME engagement-coefs sur colonnes indexées sous pression).
+5. `INSERT` pur enforçant une PK/UNIQUE **métier** sous pression massive.
 
-**2 DÉCISIONS USER VERROUILLÉES** :
-1. **Tout append-only AVANT de déployer.** Prod reste KO pendant le refactor (assumé). Pas de
-   déploiement intermédiaire.
-2. **PK-only suffit pour les tables de RÉFÉRENCE** (catalogue, battlepass, cache metadata) :
-   elles restent en UPDATE-or-INSERT sur PK / SELECT-then-write, PAS d'append-only strict.
-   L'append-only strict (table sœur `_history` + vue `_latest`) ne vise QUE les tables d'ÉTAT
-   qui ont des DELETE / UPDATE-indexé / ON CONFLICT DO UPDATE.
+**`sérialisé/mono-writer` ≠ SÛR** (réfuté par match_skill_rank en mono-writer + PK BIGINT). **`shared_social`/`metadata` = handle RW PARTAGÉ concurrent → 1 FATAL = TOUTE l'app** (blast MAX). `player stats.duckdb` = mono-writer lease (blast 1 joueur) **mais crashe quand même** (#23046). `shared_matches_v2` = surtout RO + writers legacy concurrents.
 
-**Interdit** : se reposer sur l'auto-réparation (`reopenMetadataIfInvalidated`, `ExecRecovered`,
-`WithReopenOnInvalidated`) comme « solution » — ce sont des pansements à RETIRER en fin de campagne
-une fois les écritures rendues structurellement sûres.
+**Nuance (jugement, non prouvé)** : « tout UPDATE NU sur table à index ART = dangereux » est une EXTRAPOLATION des skeptiques. Les preuves directes ne couvrent QUE les 5 vecteurs ci-dessus. Un UPDATE nu sur colonne **non-indexée** (WHERE=PK, point-update, basse fréquence) = priorité moindre. Les UPDATE **bulk** (`…IN(500)`) et **haute pression** (PME) restent à convertir.
 
-## 2. État actuel (FAIT)
+## 3. Patterns de conversion (recette)
 
-Branche `fix/metadata-art-battlepass-appendonly`, **2 commits, tous tests verts, NON déployé** :
+- **Table d'ÉTAT (mutée/accumulée)** → **append-only** : table sœur `<t>_history` (PK technique `seq`/`id` BIGINT `nextval(seq)` + colonnes + flag d'état/tombstone `is_*` + `written_at`) ; vue `<t>_latest` (`QUALIFY ROW_NUMBER() OVER (PARTITION BY <clé> ORDER BY written_at DESC, seq DESC)=1` [+ `WHERE is_deleted=FALSE`]) ; writers = INSERT pur (create / carry-forward `INSERT…SELECT FROM _latest` pour mark/update / tombstone) ; readers → `_latest` (PIÈGE : re-grep TOUS les readers) ; backfill ; fixtures de test (ajouter `_history`+seq+vue) ; garde-fou `append_only_state_guard_test.go` (ajouter `<t>` + `<t>_history`). Migration calquée sur `steps_shared_social_notif_prefs_append_only.go` / `steps_shared_social_user_prestige_append_only.go`.
+- **Table de RÉFÉRENCE/cache (latest-value, basse fréquence)** → **SELECT-then-write** : `(*duckdb.DB).UpsertNoConflict(ctx, selectQ, selectArgs, updateQ, updateArgs, insertQ, insertArgs)` (méthode existante, db.go:432) ; ou inline pour `*sql.DB` brut (`SELECT 1 … ; switch err {case nil: UPDATE ; case ErrNoRows: INSERT}`). **⚠️ L'UPDATE ne doit toucher AUCUNE colonne indexée** → sinon DROP l'index aussi.
+- **Colonne indexée mutée** → **drop l'index** (migration `drop_*_art_surface_indexes_v*`) + RETIRER le `CREATE INDEX` d'origine (DBs fraîches) + étendre `forbiddenIndexedColumns` (metadata_art_surface_guard_test.go — couvre aussi les tables player). Précédents : v1→v4 metadata, drop_challenge_mutated_art_indexes_v1 (player).
+- **DELETE reconcile** → append-only tombstone OU recompute sans DELETE per-row OU (CLI) DROP+CREATE+INSERT structurel.
 
-- **`0a47c384e`** — Éradication des index ART (RESTAURE LA PROD à elle seule) + 4 tables append-only :
-  - Drop des index ART sur colonnes mutées (PK-only) : `game_variants_catalog(mode)`,
-    `map_mode_pair x3`, `battlepass_*_definitions(is_current)`, `idx_pn_xuid_unread`
-    (régression réarmée par le rebuild purge_data_health), `challenge(status/arc_id/campaign_id)`.
-  - `asset_translations` : ON CONFLICT DO UPDATE → SELECT-then-write (`UpsertNoConflict`).
-  - Garde-fou cross-DB colonne-aware : `internal/migration/metadata_art_surface_guard_test.go`
-    (`TestNoARTSurfaceIndexInMigrations`).
-  - 4 tables d'état → append-only : `match_favorites`, `media_likes`, `squad_member`,
-    `notification_preferences`.
-  - Garde-fou anti-DELETE : `internal/sync/append_only_state_guard_test.go`
-    (`TestNoMutationOnAppendOnlyStateTables`, liste `appendOnlyStateTables`).
-- **`9171f2875`** — `media_match_associations` + `media_files` reindex append-only (la table la
-  plus complexe, ~30 edits).
+## 4. Gotchas build/test/commit (IMPÉRATIF)
 
-**5 tables d'état converties** : match_favorites, media_likes, squad_member,
-notification_preferences, media_match_associations.
+- Toolchain CGO : `export CGO_ENABLED=1 && export PATH="/c/msys64/ucrt64/bin:/c/msys64/mingw64/bin:$PATH"`. Build/test/commit depuis `apps/go-api`.
+- **Commit AVEC l'env CGO** (sinon le hook lefthook `go-vet` échoue « build constraints exclude all Go files »). `gofmt -w` sur les .go modifiés avant commit. **Jamais `--no-verify`. Demander n'est plus requis** (user a accordé l'autonomie pour cette campagne ; il escalade seulement le DEPLOY).
+- `go test -race` INCOMPATIBLE driver DuckDB (checkptr) → ne pas l'utiliser.
+- **Piège `execScript: empty query`** : un commentaire SQL APRÈS le dernier `;` = statement vide → mettre les commentaires AVANT le CREATE (statement suivant) ou en `//` Go.
+- **Placement migration dans `order.go canonicalOrder`** (no-op strict `TestSortByCanonicalIsNoOpOnCurrentRegistry`) : position = ordre d'enregistrement = ordre ALPHABÉTIQUE du nom de FICHIER (init() global). Placer le nom de migration au bon slot ; vérifier avec le test no-op (échoue sinon, indique le décalage). En cas de doute : fichier temporaire `zz_dump_order_test.go` qui logge `All()` indexé.
+- Whitelist `internal/platform/duckdb/no_attach_on_social_test.go` : ajouter tout NOUVEAU fichier non-test mentionnant le littéral `shared_social`.
+- Tests verts à viser : `./internal/{migration,persist,sync,platform/duckdb,service,api/...,notify,ops,prestige}`. Go/no-go avant deploy = `go test ./...` + `go vet ./...` COMPLETS (env CGO).
 
-## 3. LA RECETTE (gabarit réutilisable — 8 points de contact)
+## 5. RESTE À FAIRE → voir `.ai/PLAN_ART_RESIDUAL_CENSUS_V2.md`
 
-Pour convertir une table d'état `T` en append-only (calqué sur `match_skill_rank` /
-`player_records_history`) :
+Ordre conseillé (blast-radius × confiance) :
+- **P0** (shared DBs MAX) : `media_files` UPDATE file_path(UNIQUE)+kind (ops/media.go:455, media_hls.go:106, media_reconcile.go:87) ; `match_registry` ON CONFLICT (writes.go:67, season_id indexé) ; `match_participants` ON CONFLICT (writes.go:132, team_id) + backfill_bits (writes.go:478).
+- **P1** (player, vecteurs certains) : `lusr_component_history` ON CONFLICT (skill_rating_loaders.go:347) → append-only ; `coach_proposal` status (coach_proposal_repo.go:152/161/171/180) → DROP idx_coach_proposal_user_status ; `engagement_coefficients` → DROP idx_engagement_coefficients_xuid (redondant avec PK) ; `challenge` status/arc_id/campaign_id → VALIDER que drop_challenge_mutated_art_indexes_v1 s'applique au boot avant tout write.
+- **P2** (player DELETEs) : match_citations (citations.go:546, citations_backfill.go:275), weapon_kills (writes.go:329), personal_score_awards (writes.go:399), challenge/arc (prestige_player_repo.go:173/243), player_skill_state_v2 watermark (lusr_full_recompute.go:34 → écrire ligne reset au lieu de DELETE).
+- **P3 LOURD** : `player_match_enrichment` (4 index ART ; ON CONFLICT writes.go:254 + match_exclusion:52 ; UPDATE convergence.go:148/enrichments.go:202/friends_recompute.go:245+319) → append-only merge-on-read. Cf `.ai/PLAN_PME_ART_HARDENING.md` (Option A). Palliatif bulk : N UPDATE row-by-row via `PostSyncEnrichmentPersister` (1 entrée ART/statement, ADR 0019).
+- **P4 LOURD** : `match_registry` completion bit-ledger (backfill_completed/events_loaded : writes.go:372/485/498, pve.go:306, events_replay.go:224, events_completion_persister.go:159/250) → bit-ledger append-only.
+- **P5 CLI** : archive.go:189 (DELETE match_participants), restore.go:223 (DELETE générique) → maintenance offline / DROP+CREATE+INSERT.
 
-1. **Migration** `steps_shared_social_<t>_append_only.go` (ou `steps_player_…`) :
-   `Register(Migration{Name:"…_v1", TargetDB: TargetSharedSocial/TargetPlayer})`.
-   Crée table sœur `T_history` : PK technique `id BIGINT DEFAULT nextval('seq')` + colonnes
-   métier + flag d'état (`is_active`/`is_favorite`/`is_member`…) + `written_at` (+ `associated_at`
-   immuable si récence métier). Index secondaires sur `(clé, written_at DESC)` — alimentés
-   uniquement par INSERT donc sûrs. Gardé idempotent par `tableExists("T_history")` → no-op.
-   **Backfill** depuis la table legacy `T` (gardé par `tableExists`/`columnExists`).
-   Ne PAS dropper la table legacy (vestige vide, conservé pour ne pas casser les fixtures).
-2. **Vue** `T_latest` : `QUALIFY ROW_NUMBER() OVER (PARTITION BY <clé> ORDER BY written_at DESC,
-   id DESC) = 1` (+ filtre d'état, ex `WHERE is_active=TRUE`). Pour cardinalité 1→N voir §6 media.
-3. **Writers** (Persister `internal/persist` + fallback repo `platform/duckdb`) → **INSERT pur**
-   d'event. Plus aucun DELETE/UPDATE-indexé/ON CONFLICT. `ExecRecovered` → `Exec` (le pansement
-   devient inutile).
-4. **Readers** → la vue `T_latest` (+ filtre d'état). **PIÈGE #1 (récurrent)** : oublier un reader
-   = feature invisible. Re-grep TOUS les `FROM T`/`JOIN T` (y compris cross-DB/cross-package).
-5. **Fixtures de test** : ajouter `T_history` + seq + vue à chaque setup (`setupSocialDB`,
-   `createSharedSocialSchemaForMediaTests`, fixtures duckdb/ops), et rebrancher les assertions
-   qui lisaient `T` vers `T_latest`.
-6. **order.go `canonicalOrder`** : insérer le nom de migration à sa position d'ENREGISTREMENT
-   (= ordre alphabétique du fichier ; `order_test.go::TestSortByCanonicalIsNoOpOnCurrentRegistry`
-   est un no-op STRICT). Méthode : créer un fichier temporaire `internal/migration/zz_dump_order_test.go`
-   avec `TestZZDumpAllOrder` qui logge `All()` indexé, le lancer, lire la position, placer, **supprimer
-   le fichier dump**. (Snippet dans le thought_log / réutilisable.)
-7. **Whitelist** `internal/platform/duckdb/no_attach_on_social_test.go` (`sharedSocialFilesWhitelist`)
-   : ajouter tout NOUVEAU fichier non-test mentionnant le littéral `shared_social` (migrations
-   `steps_shared_social_*`, et tout fichier où un commentaire référence le nom de migration).
-8. **Garde-fou** `internal/sync/append_only_state_guard_test.go` : ajouter `T` ET `T_history` à
-   `appendOnlyStateTables` (échoue si DELETE/ON CONFLICT/INSERT OR REPLACE réapparaît sur `T` dans
-   le hot path serveur — hors `_test`/`migration`/`ops`/`cmd`/`scripts`).
+## 6. Clôture (quand P0→P5 faits)
 
-**Si un `CREATE TABLE IF NOT EXISTS T` runtime existe** (ex `ensureMediaTables` dans
-`ops/media_store.go`, ré-exécuté à chaque IndexMedia) : il faut **aussi** y créer `T_history` + vue
-(réconciliation), sinon sur DB fraîche la vue n'existe pas quand un reader l'interroge.
+1. Étendre garde-fous : `TestNoBulkMultiRowUpdateOnCriticalTables` MANQUE la forme `UPDATE…WHERE…IN(…)` (gap exploité par friends_recompute, backfill_registry_names) — étendre la regex. Ajouter les nouveaux index droppés au guard.
+2. Re-lancer le census v2 (workflow `art-residual-census-v2`, scriptPath réutilisable) → confirmer ZÉRO résiduel.
+3. **Retirer les pansements** (reopen/ExecRecovered/WithReopenOnInvalidated) — code mort une fois les écritures sûres.
+4. Go/no-go COMPLET + merge `fix/...` → `origin/main` (fast-forward) = 2e auto-deploy. Sync `git branch -f main origin/main`. Vérifier VPS (`ssh lvelup` : containers healthy + zéro FATAL).
 
-## 4. Build / test / commit — gotchas
+## 7. Pointeurs + notes
 
-- **Toolchain CGO obligatoire** : `export CGO_ENABLED=1 && export PATH="/c/msys64/ucrt64/bin:/c/msys64/mingw64/bin:$PATH"`.
-  Builder/tester depuis `apps/go-api`.
-- **Hook pre-commit (lefthook)** : lancer `git commit` AVEC l'env CGO ci-dessus, sinon `go-vet`
-  exclut les packages cmd/ cgo (« build constraints exclude all Go files ») et le commit échoue.
-  Faire `gofmt -w` sur les fichiers Go modifiés avant commit (le hook `gofmt` bloque sinon).
-  **Jamais `--no-verify`.**
-- `go test -race` incompatible avec le driver DuckDB (checkptr) → ne pas l'utiliser tel quel.
-- Tests verts à viser par table : `go test ./internal/migration ./internal/persist ./internal/sync
-  ./internal/platform/duckdb ./internal/service ./internal/notify ./internal/api ./internal/ops`.
-- Demander l'autorisation user AVANT chaque `git commit` (règle projet).
-
-## 5. RESTE À FAIRE (registre census 2026-06-20)
-
-Périmètre réel restant : **~20 tables / ~57 sites mutants** hot-path. Ordre conseillé (blast-radius) :
-
-### A. shared_social (handle concurrent — priorité)
-- **`player_notifications`** : DELETE `DeleteNotification` (persister:383) + `CapAndSweepNotifications`
-  + UPDATE `read_at` (Mark*Read/Unread/AllRead, persister + `notifications_repo.go` fallback).
-  L'index `idx_pn_xuid_unread` est DÉJÀ droppé, mais c'est une table d'ÉTAT → append-only event log
-  (created/read/deleted). Readers nombreux (`notifications_repo` list/count/unread + `notifications`
-  package). MODÉRÉ-COMPLEXE — faire un design soigné (état read_at + tombstone delete + cap).
-- **`squad_challenge_participant`** : UPDATE indexé `UpdateParticipantProgress`
-  (`prestige_social_repo.go:388`) + `AddParticipant` ON CONFLICT DO NOTHING. **Design existant**
-  dans l'output du workflow `wmlnfefr9` (CTAS-swap id+written_at, vue _latest). **Review a flagué** :
-  re-join réinitialise la progression → faire SELECT-then-INSERT **carry-forward** (reporter
-  current_value/completed_at). Readers : `ListParticipants`, `CountActiveParticipants` → _latest.
-
-### B. metadata ref/cache (PLUS SIMPLE — SELECT-then-write, PAS append-only ; décision user #2)
-Convertir `INSERT … ON CONFLICT DO UPDATE` → `(*duckdb.DB).UpsertNoConflict` (helper déjà utilisé
-pour `asset_translations`, cf `metadata_repo_assets.go`). VÉRIFIER d'abord que l'UPDATE ne touche pas
-une colonne indexée (sinon dropper l'index aussi, cf garde-fou metadata).
-- `map_images_registry` (×2), `medal_image_cache`, `waypoint_medals_raw`, `milestone_catalog`,
-  `xuid_aliases`.
-- `career_rank_translations` : INSERT OR REPLACE → SELECT-then-write.
-- `xbox_achievement_definitions` : DELETE → vérifier le contexte (seed/refresh ? sérialisé ?).
-
-### C. prestige/player (mix shared_social + player DB)
-- ON CONFLICT DO UPDATE : `user_prestige`(×2), `preset_arc`/`preset_arc_step`, `baseline_state`,
-  `player_records` (NB : `player_records_history` existe déjà — vérifier si ce site est legacy/fallback),
-  `player_privacy_state`, `player_match_enrichment`(×2), `lusr_component_history`, `sync_meta`(×2).
-  → append-only (état) ou SELECT-then-write (cache) selon la table.
-- DELETE player DB (mono-writer lease) : `challenge` (DeleteByArc + autres), `arc`,
-  `match_citations`(×2), `personal_score_awards`.
-
-### D. shared match DELETE (rebuild/reconcile sync) — AUDITER d'abord
-`match_participants`, `killer_victim_pairs`, `weapon_kills`, `player_skill_state_v2`. Probablement
-des DELETE-then-reinsert sérialisés par lease (mono-writer) dans des chemins rebuild/reconcile.
-Décider : append-only via `persist` (INSERT-only) OU justifier comme sérialisé sûr (comme la
-compaction `match_skill_rank`). Cf `internal/sync/no_art_patterns_test.go` `criticalMatchTables`.
-
-### DÉJÀ SÛRS — NE PAS TOUCHER
-- `catalog_fetch_queue` : table SANS index (PK+idx droppés par `rebuild_catalog_fetch_queue_drop_art_indexes`)
-  → DELETE/UPDATE safe.
-- `match_skill_rank` : DELETE de compaction documenté, mono-writer player DB, PK BIGINT (cf
-  `compactMatchSkillRankSuperseded`).
-
-## 6. PIÈGES APPRIS (ne pas re-tomber dedans)
-
-- **Cardinalité 1→N (media)** : un média s'associe à N matchs (auto). Une vue `PARTITION BY <clé seule>`
-  collapse à 1 → FAUX. Vue media finale = `ROW_NUMBER PARTITION BY (media_file_id, match_id)` +
-  `bool_or(is_manual)` pour que le manuel masque l'auto et l'auto préserve le 1→N. **Toujours vérifier
-  la cardinalité réelle d'une table avant de choisir la PARTITION de la vue.**
-- **Les workflows de design se trompent** : sur media, 2 designs successifs (génération, puis partition
-  naïve) étaient bancals ; la revue adversariale en a écarté un, et j'ai corrigé la cardinalité du second
-  MOI-MÊME (la revue l'avait ratée). → Lire le code réel, ne pas appliquer un design de workflow à l'aveugle.
-  Garder le pattern : design → revue adversariale → vérif manuelle avant impl.
-- **Ordre des migrations** (`rekey_squad_member_xuid` DROP+recrée `squad_member`) : un backfill peut
-  tourner AVANT le rekey → garder le backfill par `columnExists`.
-- **resetPlayerMediaIndex** ciblait la player DB où les tables média sont DROPPÉES
-  (`drop_media_from_player_db`) → chemin orphelin/mort, DELETE retirés (no-op).
-
-## 7. CLÔTURE (quand toutes les tables sont faites)
-
-1. **Recensement final** : re-lancer le census (`grep -rniE "DELETE FROM|ON CONFLICT.*DO UPDATE|INSERT OR REPLACE"`
-   sur `internal` hors test/migration) → confirmer ZÉRO résiduel sur tables d'état.
-2. **Retirer les pansements** (code mort une fois les écritures sûres) : `reopenMetadataIfInvalidated`
-   (`internal/api/registry_catalog_drain.go`) + les `ExecRecovered`/`WithReopenOnInvalidated` devenus
-   inutiles. (Règle projet : pas de code mort.)
-3. **Go/no-go** : `go test ./...` COMPLET + `go vet ./...` (env CGO) ; front `npm run typecheck/lint`
-   si touché ; thought_log à jour (skill `delivery-checklist`).
-4. **Déploiement** : merge sur `main` = **auto-deploy prod** (`git reset --hard origin/main` sur le VPS
-   → deploy.sh). Synchroniser le main LOCAL après push (`git branch -f main origin/main`). Prévenir le
-   user (downtime/prod). Prod est KO depuis le début de la campagne → ce merge la restaure.
-
-## 8. Pointeurs
-
-- Outputs des workflows de design (réutilisables) : sous
-  `…/756bbf95-…/tasks/{wmlnfefr9,wweca9iz8,w9e1zteno}.output` (squad_challenge design dans wmlnfefr9 ;
-  media design final + verify writers/readers dans w9e1zteno).
-- Garde-fous : `internal/migration/metadata_art_surface_guard_test.go`,
-  `internal/sync/append_only_state_guard_test.go`, `internal/sync/no_art_patterns_test.go`,
-  `internal/platform/duckdb/no_attach_on_social_test.go`.
-- Précédents append-only à imiter : `steps_player_append_only_match_skill_rank.go`,
-  `create_player_records_history_append_only`, `create_streak_history_append_only`, et mes 5 migrations
-  `steps_shared_social_*_append_only.go`.
+- Work-list détaillée : `.ai/PLAN_ART_RESIDUAL_CENSUS_V2.md`. PME (Phase 3) : `.ai/PLAN_PME_ART_HARDENING.md`. Historique décisions : `.ai/thought_log.md` entrées `[2026-06-19]`/`[2026-06-20]`. Mémoire : `project_append_only_eradication_campaign`.
+- Census v2 output brut (réutilisable, scriptPath) : sous `…/756bbf95-…/tasks/wou349k7s.output` + le script workflow.
+- **Deploy** = merge `fix/...` sur `origin/main` (fast-forward) → GitHub Action « Deploy to VPS » (git reset --hard origin/main → deploy.sh, ~2min) + « Regen demo ». Le user ESCALADE le deploy (outward-facing) — ne pas déployer sans son OK.
+- **Note git** : un commit ART avait atterri par erreur sur `chore/i18n-playlist-to-selection` (petit travail i18n du user) → corrigé (cherry-pick sur fix/... + `git branch -f`). Toujours vérifier `git branch --show-current` avant de commiter ; rester sur `fix/...`.
+- Garde-fous existants : `internal/migration/metadata_art_surface_guard_test.go` (forbiddenIndexedColumns, couvre player aussi), `internal/sync/{append_only_state_guard_test,no_art_patterns_test}.go`, `internal/platform/duckdb/no_attach_on_social_test.go`.
