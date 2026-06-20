@@ -11,8 +11,11 @@ package migration
 //     Cleanup piloté par supersession + obsolescence sur completion.
 //
 // Index :
-//   - (user_id, title_slug, status) : query principale pour HTTP GET pending
 //   - (user_id, title_slug, source_metric, radar_axis) : query supersession
+//
+// NOTE ART : l'index (user_id, title_slug, status) a été RETIRÉ (status muté par
+// MarkAccepted/Dismissed/Superseded/Obsoleted = surface ART #23046). Voir
+// drop_coach_proposal_status_art_index_v1. La query GET pending scanne (table minuscule).
 
 import "database/sql"
 
@@ -48,8 +51,6 @@ func init() {
 					superseded_at         TIMESTAMP,
 					obsoleted_at          TIMESTAMP
 				);
-				CREATE INDEX IF NOT EXISTS idx_coach_proposal_user_status
-					ON coach_proposal(user_id, title_slug, status);
 				CREATE INDEX IF NOT EXISTS idx_coach_proposal_metric_axis
 					ON coach_proposal(user_id, title_slug, source_metric, radar_axis);
 			`)

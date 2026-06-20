@@ -43,12 +43,14 @@ var noSecondaryIndexTables = []string{
 	"catalog_fetch_queue",
 	"battlepass_track_definitions",
 	"battlepass_item_definitions",
+	"engagement_coefficients", // PK (xuid,mode_category) ; idx_xuid redondant retiré (surface ART)
 }
 
 // Règle 2 — colonnes mutées par un UPDATE qui ne doivent jamais être indexées.
 var forbiddenIndexedColumns = map[string][]string{
 	"player_notifications": {"read_at"},                              // MarkNotifications* SET read_at
 	"challenge":            {"status", "arc_id", "campaign_id"},      // UpdateStatus/DetachFromArc/campaign
+	"coach_proposal":       {"status"},                               // MarkAccepted/Dismissed/Superseded/Obsoleted SET status
 	"playlists_catalog":    {"experience", "is_active", "is_ranked"}, // seedPlaylistsCatalog
 	"milestone_catalog":    {"title_slug", "metric"},                 // MilestoneCatalogRepo.Upsert SET title_slug/metric
 	"map_images_registry":  {"fetched_at"},                           // UpsertMapImageCache SET fetched_at
