@@ -24,21 +24,37 @@ import (
 	"levelup/go-api/internal/persist"
 )
 
-// h5CaptureSource = source live enrichie pour la capture sync : ajoute le carnage
+// CaptureSource = source live enrichie pour la capture sync : ajoute le carnage
 // (roster complet match_participants — la liste de matchs ne porte que le self).
 // Séparée de h5Source (interface minimale de l'adapter read-only) pour ne pas
 // élargir l'interface de l'adapter. *Client l'implémente.
-type h5CaptureSource interface {
+type CaptureSource interface {
 	h5Source
 	GetMatchCarnage(ctx context.Context, matchID, mode string) (*H5CarnageResponse, error)
 }
 
-var _ h5CaptureSource = (*Client)(nil)
+var _ CaptureSource = (*Client)(nil)
+
+// NewCaptureSource construit une CaptureSource live depuis le SpartanToken du
+// contexte (par joueur+session, comme NewSpartanTokenSource). Erreur si pas de
+// token (le caller — runner de sync — dégrade en re-auth). Point d'entrée EXPORTE
+// pour le câblage live hors package (livesync runner).
+func NewCaptureSource(ctx context.Context) (CaptureSource, error) {
+	src, err := NewSpartanTokenSource(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cs, ok := src.(CaptureSource)
+	if !ok {
+		return nil, fmt.Errorf("h5: source live ne supporte pas la capture (GetMatchCarnage)")
+	}
+	return cs, nil
+}
 
 const (
 	h5CaptureDefaultPageSize   = 25
 	h5CaptureDefaultMaxMatches = 100
-	h5CaptureSourceLabel       = "h5_capture"
+	captureSourceLabel         = "h5_capture"
 )
 
 // CaptureOptions borne la collecte + porte la stratégie de classification ranked.
@@ -73,7 +89,7 @@ type CaptureStats struct {
 // persisté est no-opé par SharedPersister).
 func CollectRecentMatches(
 	ctx context.Context,
-	src h5CaptureSource,
+	src CaptureSource,
 	viewer canonical.PlayerIdentity,
 	resolveXUID func(gamertag string) string,
 	isKnown func(matchID string) bool,
@@ -89,7 +105,7 @@ func CollectRecentMatches(
 	}
 	source := opts.Source
 	if source == "" {
-		source = h5CaptureSourceLabel
+		source = captureSourceLabel
 	}
 	if resolveXUID == nil {
 		resolveXUID = func(string) string { return "" }
@@ -156,7 +172,7 @@ func captureMatchTimeline(ctx context.Context, src h5Source, matchID string, sta
 // (404/410, token expiré, decode) -> nil + CarnageFailed++ : le match est TOUT DE
 // MÊME collecté (sans match_participants) — squad/rencontres dégradent pour ce
 // match seul, et un futur passage le re-tentera (match_registry idempotent).
-func captureParticipants(ctx context.Context, src h5CaptureSource, matchID, mode string, resolveXUID func(string) string, stats *CaptureStats) []domain.MatchParticipantRow {
+func captureParticipants(ctx context.Context, src CaptureSource, matchID, mode string, resolveXUID func(string) string, stats *CaptureStats) []domain.MatchParticipantRow {
 	carnage, err := src.GetMatchCarnage(ctx, matchID, mode)
 	if err != nil {
 		stats.CarnageFailed++
