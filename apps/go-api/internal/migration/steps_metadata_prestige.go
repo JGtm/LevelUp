@@ -38,8 +38,9 @@ func init() {
 					schema_version      INTEGER NOT NULL DEFAULT 1,
 					updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 				);
-				CREATE INDEX IF NOT EXISTS idx_ctmpl_title_cadence ON challenge_template(title_slug, cadence);
-				CREATE INDEX IF NOT EXISTS idx_ctmpl_metric ON challenge_template(metric);
+				-- PAS d'index secondaire : title_slug/cadence/metric sont MUTÉS par
+				-- PrestigeChallengeTemplateRepo.Replace (SELECT-then-write) → surface ART.
+				-- Catalogue minuscule (TOML). Drop DBs existantes : drop_metadata_art_surface_indexes_v3.
 
 				CREATE TABLE IF NOT EXISTS preset_arc (
 					id              VARCHAR PRIMARY KEY,
@@ -51,7 +52,8 @@ func init() {
 					schema_version  INTEGER NOT NULL DEFAULT 1,
 					updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 				);
-				CREATE INDEX IF NOT EXISTS idx_parc_title ON preset_arc(title_slug);
+				-- PAS d'index sur title_slug : muté par PrestigePresetArcRepo.Replace
+				-- (SELECT-then-write) → surface ART. Drop : drop_metadata_art_surface_indexes_v3.
 
 				CREATE TABLE IF NOT EXISTS preset_arc_step (
 					preset_arc_id   VARCHAR NOT NULL,
