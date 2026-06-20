@@ -3,6 +3,7 @@ package persist
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -345,22 +346,40 @@ func (p *SharedSocialPersister) playerRecordsHistoryExists(ctx context.Context) 
 // persistPlayerRecordsLegacy : chemin de compatibilité tant que la migration
 // Phase 2 (append-only) n'est pas appliquée. Sera supprimé après Phase 2.
 func (p *SharedSocialPersister) persistPlayerRecordsLegacy(ctx context.Context, tx *sql.Tx, rows []PlayerRecordAppend) error {
-	stmt, err := tx.PrepareContext(ctx, `
-		INSERT INTO player_records (xuid, metric, value, achieved_at, achieved_match_id, updated_at)
-		VALUES (?, ?, ?, ?, ?, NOW())
-		ON CONFLICT (xuid, metric) DO UPDATE SET
-			value             = EXCLUDED.value,
-			achieved_at       = EXCLUDED.achieved_at,
-			achieved_match_id = EXCLUDED.achieved_match_id,
-			updated_at        = NOW()
-	`)
+	// ART-safe : SELECT-then-UPDATE-or-INSERT (plus d'ON CONFLICT DO UPDATE, qui
+	// réécrit via l'index ART de la PK sur shared_social). Chemin de compat sur
+	// player_records (legacy) — jamais atteint en prod (la migration _history tourne
+	// au boot). player_records sans index secondaire → UPDATE non-indexé sûr.
+	selStmt, err := tx.PrepareContext(ctx, `SELECT 1 FROM player_records WHERE xuid = ? AND metric = ?`)
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer selStmt.Close()
+	updStmt, err := tx.PrepareContext(ctx, `
+		UPDATE player_records SET value = ?, achieved_at = ?, achieved_match_id = ?, updated_at = NOW()
+		WHERE xuid = ? AND metric = ?`)
+	if err != nil {
+		return err
+	}
+	defer updStmt.Close()
+	insStmt, err := tx.PrepareContext(ctx, `
+		INSERT INTO player_records (xuid, metric, value, achieved_at, achieved_match_id, updated_at)
+		VALUES (?, ?, ?, ?, ?, NOW())`)
+	if err != nil {
+		return err
+	}
+	defer insStmt.Close()
 	for _, r := range rows {
-		if _, err := stmt.ExecContext(ctx, r.XUID, r.Metric, r.Value, r.AchievedAt, r.AchievedMatchID); err != nil {
-			return fmt.Errorf("player_record_legacy xuid=%s metric=%s: %w", r.XUID, r.Metric, err)
+		var dummy int
+		serr := selStmt.QueryRowContext(ctx, r.XUID, r.Metric).Scan(&dummy)
+		switch {
+		case serr == nil:
+			_, serr = updStmt.ExecContext(ctx, r.Value, r.AchievedAt, r.AchievedMatchID, r.XUID, r.Metric)
+		case errors.Is(serr, sql.ErrNoRows):
+			_, serr = insStmt.ExecContext(ctx, r.XUID, r.Metric, r.Value, r.AchievedAt, r.AchievedMatchID)
+		}
+		if serr != nil {
+			return fmt.Errorf("player_record_legacy xuid=%s metric=%s: %w", r.XUID, r.Metric, serr)
 		}
 	}
 	return nil

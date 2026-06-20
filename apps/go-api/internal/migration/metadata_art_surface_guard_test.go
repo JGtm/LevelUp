@@ -54,6 +54,7 @@ var forbiddenIndexedColumns = map[string][]string{
 	"map_images_registry":  {"fetched_at"},                           // UpsertMapImageCache SET fetched_at
 	"challenge_template":   {"title_slug", "metric", "cadence"},      // PrestigeChallengeTemplateRepo.Replace
 	"preset_arc":           {"title_slug"},                           // PrestigePresetArcRepo.Replace
+	"citation_mappings":    {"medal_id", "mapping_type"},             // SeedCitationMappings UPDATE
 }
 
 var (
