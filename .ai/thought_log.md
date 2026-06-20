@@ -1,3 +1,18 @@
+## [2026-06-20] Sync live Halo 5 — VALIDÉ LIVE (10 matchs JGtm persistés) + 3 bugs corrigés — Complété
+
+**Statut** : pipeline h5 sync VALIDÉ END-TO-END sur données réelles (`cmd/h5-sync JGtm`) : 10 matchs fetchés (cryptum) → collectés → PERSISTÉS dans le shared h5. Compteurs : `match_registry=10, match_participants=59` (rosters, xuid Xbox résolus via PeopleHub), `killer_victim_pairs=1005, medals_earned=493, weapon_kills=1005, kill_positions=1009`. **status=success**.
+
+**Outil ops** : `cmd/h5-sync` (équivalent CLI de `POST /sync/initial` title=halo_5) — réutilise `livesync.RunnerForTitle` (le câblage EXACT du HTTP) + `RefreshHaloTokensViaStoreFirst` (token store-first, comme probe-h5) + provisionne le shared h5 (`RunForTitleDB`, comme le boot). C'est l'outil qui a validé le pipeline + surfacé 3 bugs.
+
+**3 bugs corrigés (révélés par le 1er sync d'un titre FRAÎCHEMENT provisionné — cas jamais exercé)** :
+1. **match_csrs order** (`order.go`) : `shared_append_only_match_csrs_v1` était AVANT `add_shared_match_csrs` → sur DB fraîche le rebuild append-only no-opait (table absente), `match_csrs` restait en `created_at`, cassant l'index `written_at` d'EnsureSharedSchema. Reordered. Name-keyed → Infinite intact.
+2. **weapon_kills vestige** (`steps_shared_core.go` create_base) : une vieille forme agrégée 4-col (sans `time_ms`) gagnait sur DB fraîche (CREATE IF NOT EXISTS first-wins) sur la forme par-kill d'`add_weapon_kills`. Retiré le vestige. Infinite intact.
+3. **medal id > int32** (h5 ingest `medals.go`) : `type_hint` (cible de DetailsJSON côté SharedPersister) est INTEGER ; les medal id Halo 5 (uint32, ex. `3001183151`) débordent → conversion KO. Fit-check : hint posé seulement s'il rentre, sinon nil (l'id complet reste dans `medals_earned.medal_name_id` BIGINT).
+
+**Portée** : bugs 1+2 = pré-existants, latents — AUCUN titre fraîchement provisionné n'avait jamais été synchronisé (Infinite migré incrémentalement). Débloquent **TOUT 1er sync d'un nouveau titre**. Tests verts : migration, halo_infinite/migrations, synthetic_title_b, persist, cmd/server.
+
+**Reste** : T4 (sync continu : `defaultRunnerFactory` + pool-token-ctx + précondition player-DB `HandlesTitle` + watcher B.7). Le HTTP `/sync/initial` est live + validé ; le continu = T4. + lecture (`match.history`/`detail` = `not_exposed` → Phase 2 pour AFFICHER ces données dans l'UI).
+
 ## [2026-06-20] Sync live Halo 5 — T3 (runner + câblage HTTP) : /sync/initial branché live — En cours
 
 **Statut** : T3a (orchestration runner) + T3b (câblage persist/resolver/dispatch + branche HTTP) LIVRÉS/verts/committés (`c2db9f6f3`, `b111b5d33`, `b393baebe`). **`POST /sync/initial` est branché live pour Halo 5** (1er jalon live atteignable). Reste : T4 (scheduler/watcher continu) + le bootstrap live (couple db_profiles + lancer /sync/initial).
