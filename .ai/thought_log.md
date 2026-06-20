@@ -1,3 +1,25 @@
+## [2026-06-20] Renommage UI FR « Playlist » -> « Sélection » — COMPLÉTÉ
+
+**Contexte** : le user veut remplacer le mot affiché « Playlist » par « Sélection » partout dans l'app, côté français uniquement. Branche dédiée `chore/i18n-playlist-to-selection` (tâche indépendante de la campagne ART, ne pas mélanger).
+
+**Périmètre réel cartographié** : 3 couches. (1) manifests TOML `apps/web/src/lib/i18n/manifests/` (source de vérité, régénère `generated/*.ts`) ; (2) dictionnaires i18n par feature inline (`features/{squad,notifications}/i18n.ts`) ; (3) chaînes FR EN DUR hors i18n (anti-pattern relevé par le user). Backend Go : aucun libellé FR « Playlist » (que des noms de champs/structs) -> changement front-only.
+
+**Décisions user** : router les chaînes en dur dans l'i18n (propre), et tout faire en une passe (TOML + i18n.ts feature).
+
+**Fait** :
+- ~25 valeurs `fr =` migrées dans 11 manifests TOML (explorer, common, home, admin, media, profile, session, career, synthesis, citations, coaching_tips). `Playlist`->`Sélection`, `Playlists`->`Sélections`, minuscules idem ; EN inchangé. Placeholders ICU `{playlist}`/`{playlist_group}`, noms de tables (`metadata.playlists_catalog`) et clés/testids NON touchés.
+- Au passage (signalé par le user) : 2 « ranked » anglais résiduels dans des chaînes FR career.toml corrigés en « classée » / « en partie classée ».
+- `features/squad/i18n.ts` + `features/notifications/i18n.ts` : blocs FR seulement (EN gardé « Playlist »).
+- 4 chaînes EN DUR routées vers i18n : `HomeRecentPlaylistsCard` ('Playlist inconnue' -> nouvelle clé `common.home.unknown_playlist`), `HomeSessionCarousel` (tooltip -> clé orpheline existante `home.sessions.dominant_tooltip`, enfin utilisée), `FiltresPill` (titres `Playlists`/`Modes`/`Cartes` -> `t(common.filters.*_title)` — l'anti-pattern dépassait le seul mot Playlist).
+- Régénéré `generated/*.ts` via `node apps/web/scripts/build_i18n_manifests.mjs` (2133 clés OK).
+- Test `FilterOmnibar.test.tsx` : assertion `'Playlists'` -> `'Sélections'`.
+
+**Résultats** : `tsc -b` vert ; vitest 277/277 sur les suites concernées (FilterOmnibar, FiltresPill, HomeRecentPlaylistsCard, squad) ; eslint vert sur fichiers touchés.
+
+**Conclusion / prochaine étape** : prêt à commit (en attente autorisation user). Non déployé. Reprendre ensuite la campagne ART (entrée ci-dessous).
+
+---
+
 ## [2026-06-20] Campagne APPEND-ONLY (éradication définitive ART) — EN COURS (1/~12 tables), HANDOFF
 
 **Contexte** : suite à l'entrée 2026-06-19, le user veut l'éradication DÉFINITIVE de la classe ART, pas les pansements. Doctrine imposée : **append-only partout sur les tables d'ÉTAT** (zéro DELETE, zéro UPDATE sur colonne indexée, zéro ON CONFLICT DO UPDATE ; tout horodaté ; état lu via vue `<table>_latest`). Retirer les auto-réparations (`reopenMetadataIfInvalidated`, `ExecRecovered`) une fois les écritures sûres.
@@ -25092,3 +25114,18 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Résultats observés** : `lusr_component_history` confirmé **pur INSERT** (player_persister.go + skill_rating_loaders.go) — table `_history` append-only par design, aucune conversion nécessaire. Aucune fixture de test à changer (même table, pas de schéma modifié).
 
 **Conclusion / prochaine étape** : 10/~20+. Reste du bloc prestige/player : `preset_arc`/`preset_arc_step` (ref metadata, ON CONFLICT + idx_parc_title sur title_slug muté → drop index + writer migration-seed à traiter) + les 4 DELETEs reconcile player-DB (challenge DeleteByArc, arc Delete, match_citations ×2, personal_score_awards) qui demandent un design (tombstone append-only vs tolérance sérialisée, comme le purge achievements). Puis shared match DELETE, retrait pansements, go/no-go, deploy.
+
+## [2026-06-20] Campagne APPEND-ONLY — AUDIT ADVERSARIAL + gaps prestige catalog/sync_meta — Complété (non déployé)
+
+**Statut CRITIQUE** : un workflow d'audit adversarial (8 agents, census par package + synthèse + skeptiques) a **RÉFUTÉ mon affirmation "les 2 DBs critiques sont 100% durcies"**. Il a trouvé 10 sites ON CONFLICT/DELETE résiduels que j'avais MANQUÉS, dont sur metadata.duckdb et shared_social.duckdb (blast-radius MAX). Leçon : l'audit a fait son travail — ne pas se fier à un bilan non-vérifié.
+
+**Gaps trouvés (worklist vérifiée)** :
+- metadata : `challenge_template` (ON CONFLICT, title_slug/metric/cadence indexés), `preset_arc`/`preset_arc_step` (idx_parc_title), `citation_mappings` (medal_id/mapping_type indexés).
+- shared_social : `player_records` legacy fallback (persistPlayerRecordsLegacy ON CONFLICT).
+- shared_matches : `match_registry` + `match_participants` ON CONFLICT dans sync/writes.go — MAIS chemin LEGACY (le batch persist INSERT-only est le DÉFAUT via `LEVELUP_PERSIST_BATCH != "0"`, ART-safe) → pas le risque prod actif, mais latent + viole la règle no-flags.
+- player : `sync_meta` (notifications_boot, OpenReadWrite ad-hoc hors lease).
+- NEEDS_DESIGN CLI : archive.go (match_participants DELETE), restore.go (DELETE générique).
+
+**Fait dans ce batch** : `challenge_template` + `preset_arc` + `preset_arc_step` (PrestigeChallengeTemplateRepo/PrestigePresetArcRepo.Replace) → SELECT-then-write (UpsertNoConflict). Migration `drop_metadata_art_surface_indexes_v3` (drop idx_ctmpl_title_cadence/idx_ctmpl_metric/idx_parc_title) + retrait CREATE INDEX d'origine + garde-fou forbiddenIndexedColumns étendu. `sync_meta` (writeLastSeenAppVersion) → SELECT-then-write. Tous tests verts (duckdb, prestige, migration, api, vet, gofmt). Le writer migration-seed preset_arc (steps_metadata_prestige_seed.go) garde son ON CONFLICT (migration boot sérialisée, exclue des garde-fous, index PK désormais propre).
+
+**Conclusion / prochaine étape** : la campagne était MOINS finie que dit. Reste : citation_mappings (drop idx_medal/type sur 3 migr + 2 seed) + player_records legacy + match_registry/participants (convertir legacy ou retirer le flag, cf no-flags) + CLI DELETEs + DELETEs reconcile player-DB. Puis recensement final, retrait pansements, go/no-go, deploy.

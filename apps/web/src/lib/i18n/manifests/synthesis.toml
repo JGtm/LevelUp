@@ -103,7 +103,7 @@ fr = "Non classé"
 en = "Unranked"
 
 [synthesis.filters.playlists]
-fr = "Playlists"
+fr = "Sélections"
 en = "Playlists"
 
 [synthesis.filters.modes]
