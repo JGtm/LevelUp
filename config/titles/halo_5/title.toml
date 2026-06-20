@@ -19,7 +19,7 @@ schema_version = 1
 [title]
 name = "Halo 5: Guardians"
 provider = "halo_5"
-status = "coming_soon"
+status = "active"
 icon_url = ""
 xbox_title_id = "219630713"
 steam_app_id = ""
