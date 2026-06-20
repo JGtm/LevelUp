@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/classification"
 )
 
 // h5Identity construit l'identite canonique d'un joueur Halo 5. XUID vide
@@ -117,18 +118,23 @@ func deriveOutcome(playerRank int, teamRank *int, isTeamGame bool) canonical.Out
 
 // mapMatchSummaries projette une page d'historique h5 vers []MatchSummary, du
 // point de vue du joueur requete (self = participant au gamertag donne).
-func mapMatchSummaries(resp *H5MatchesResponse, gamertag string) []canonical.MatchSummary {
+//
+// classifier (stratégie #1 set-membership, cf. package classification) résout le
+// caractère classé/PvE depuis le HopperId. nil OU set vide → verdicts nil
+// (INDETERMINE) : comportement conservateur byte-identique tant que la liste
+// autoritative des HopperIds classés Halo 5 n'est pas publiée (handoff §4-5).
+func mapMatchSummaries(resp *H5MatchesResponse, gamertag string, classifier classification.RankedClassifier) []canonical.MatchSummary {
 	if resp == nil {
 		return nil
 	}
 	out := make([]canonical.MatchSummary, 0, len(resp.Results))
 	for i := range resp.Results {
-		out = append(out, mapOneMatchSummary(&resp.Results[i], gamertag))
+		out = append(out, mapOneMatchSummary(&resp.Results[i], gamertag, classifier))
 	}
 	return out
 }
 
-func mapOneMatchSummary(r *H5MatchResult, gamertag string) canonical.MatchSummary {
+func mapOneMatchSummary(r *H5MatchResult, gamertag string, classifier classification.RankedClassifier) canonical.MatchSummary {
 	dur := parseISO8601DurationSeconds(r.MatchDuration)
 	end := parseISODate(r.MatchCompletedDate.ISO8601Date)
 	started := startedFromEnd(end, dur)
@@ -142,21 +148,40 @@ func mapOneMatchSummary(r *H5MatchResult, gamertag string) canonical.MatchSummar
 		outcome = deriveOutcome(self.Rank, teamRankFor(r, self.TeamId), r.IsTeamGame)
 	}
 
+	isRanked := classifyRanked(classifier, r.HopperId)
+	isPvE := classifyPvE(classifier, r.HopperId)
+
 	return canonical.MatchSummary{
 		MatchID:         r.Id.MatchId,
 		StartedAtUTC:    started,
 		DurationSeconds: dur,
-		MatchType:       h5MatchType(r.Id.GameMode),
+		MatchType:       h5MatchType(r.Id.GameMode, isRanked, isPvE),
 		Playlist:        assetRef("playlist", r.HopperId),
 		Map:             assetRef("map", r.MapId),
 		GameVariant:     assetRef("game_variant", r.GameBaseVariantId),
 		PairMode:        nil, // h5 n'a pas de pair_name (Phase 2)
-		IsRanked:        nil, // classification ranked = taxonomie HopperId (Phase 2)
-		IsPvE:           nil, // detection warzone = Phase 2
+		IsRanked:        isRanked,
+		IsPvE:           isPvE,
 		Outcome:         outcome,
 		Teams:           mapTeams(r.Teams),
 		T0Ms:            nil, // pas de countdown/real_start_time en h5
 	}
+}
+
+// classifyRanked/classifyPvE nil-gardent l'interface classifier (nil = aucune
+// stratégie câblée → verdict indéterminé). Gardent les mappers purs.
+func classifyRanked(c classification.RankedClassifier, hopperID string) *bool {
+	if c == nil {
+		return nil
+	}
+	return c.IsRanked(hopperID)
+}
+
+func classifyPvE(c classification.RankedClassifier, hopperID string) *bool {
+	if c == nil {
+		return nil
+	}
+	return c.IsPvE(hopperID)
 }
 
 // selfPlayer retourne le participant correspondant au gamertag requete (compare
@@ -198,10 +223,24 @@ func mapTeams(teams []H5Team) []canonical.TeamSnapshot {
 	return out
 }
 
-// h5MatchType classe le mode h5. GameMode 1 = Arena (PvP). Faute de taxonomie
-// HopperId complete en Phase 1, arena -> social (la distinction ranked/social
-// exige le set de playlists classees h5, Phase 2).
-func h5MatchType(gameMode int) canonical.MatchType {
+// h5MatchType classe le mode h5. Priorité aux verdicts AUTORITATIFS du classifier
+// (set-membership HopperId) quand ils existent :
+//   - isPvE &true  -> firefight (Warzone FF) ;
+//   - isRanked &true -> ranked ; isRanked &false -> social.
+//
+// Verdicts nil (pas de liste autoritative publiée) -> repli heuristique Phase 1 :
+// GameMode 1 = Arena (PvP) -> social ; sinon unknown. Byte-identique au
+// comportement avant classifier tant que les sets sont vides.
+func h5MatchType(gameMode int, isRanked, isPvE *bool) canonical.MatchType {
+	if isPvE != nil && *isPvE {
+		return canonical.MatchTypeFirefight
+	}
+	if isRanked != nil {
+		if *isRanked {
+			return canonical.MatchTypeRanked
+		}
+		return canonical.MatchTypeSocial
+	}
 	switch gameMode {
 	case 1:
 		return canonical.MatchTypeSocial

@@ -1,0 +1,22 @@
+# config/titles/halo_5/catalog/ranked_hoppers.toml
+#
+# Stratégie #1 (set-membership) de classification classé/non-classé Halo 5.
+# Chargé par classification.LoadSetClassifier ; injecté dans l'adapter h5 à
+# l'activation (cf. .ai/HANDOFF_H5_RANKED_CLASSIFICATION.md §5).
+#
+# ⚠ LISTES VIDES À DESSEIN tant que la liste AUTORITATIVE des HopperIds classés
+# Halo 5 n'est pas récupérée (handoff §4 : source HaloDotAPI/Grunt OU endpoint
+# skill GetPlaylistCsr — JAMAIS dérivée des parties). Set vide → le classifier
+# renvoie « indéterminé » (nil) → MatchSummary.IsRanked reste nil (conservateur,
+# ne minte jamais un faux CSR). Remplir ces listes = activer la classif, ZERO code.
+#
+# Sémantique une fois peuplé (cf. classification.SetClassifier) : le set est réputé
+# EXHAUSTIF — un HopperId présent = classé (&true), absent = non-classé (&false).
+
+schema_version = 1
+
+# HopperIds des playlists CLASSEES (Arena ranked Halo 5). Pilote IsRanked.
+ranked_hopper_ids = []
+
+# HopperIds des expériences PvE/coopératives (Warzone Firefight). Pilote IsPvE.
+pve_hopper_ids = []

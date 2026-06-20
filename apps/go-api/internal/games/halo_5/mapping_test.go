@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/classification"
 )
 
 // fixtureMatches reproduit le shape REEL capture par la sonde live (cmd/probe-h5,
@@ -103,7 +104,8 @@ func TestMapMatchSummaries_RealShape(t *testing.T) {
 	if err := json.Unmarshal([]byte(fixtureMatches), &resp); err != nil {
 		t.Fatalf("unmarshal fixture: %v", err)
 	}
-	out := mapMatchSummaries(&resp, "JGtm")
+	// classifier nil → verdicts indéterminés (comportement conservateur préservé).
+	out := mapMatchSummaries(&resp, "JGtm", nil)
 	if len(out) != 1 {
 		t.Fatalf("len = %d, want 1", len(out))
 	}
@@ -138,6 +140,53 @@ func TestMapMatchSummaries_RealShape(t *testing.T) {
 	// Divergences h5 : pas de pair_mode, pas de T0.
 	if m.PairMode != nil || m.T0Ms != nil {
 		t.Errorf("PairMode/T0Ms devraient etre nil en h5")
+	}
+	// classifier nil → IsRanked / IsPvE indéterminés (nil), MatchType repli social.
+	if m.IsRanked != nil || m.IsPvE != nil {
+		t.Errorf("classifier nil → IsRanked/IsPvE doivent rester nil, got %v / %v", m.IsRanked, m.IsPvE)
+	}
+}
+
+// TestMapMatchSummaries_RankedClassifier vérifie le câblage du classifier
+// set-membership : un HopperId dans le set classé → IsRanked=true + MatchType
+// ranked ; un HopperId hors set (set peuplé, donc exhaustif) → IsRanked=false +
+// social ; un set PvE → IsPvE=true + firefight. Prouve la stratégie #1 bout-à-bout
+// au niveau du mapper pur (pré-câblage Phase 2 LoadMatchSummaries).
+func TestMapMatchSummaries_RankedClassifier(t *testing.T) {
+	const hopper = "f0c9ef9a-48bd-4b24-9db3-2c76b4e23450" // HopperId du fixture
+	var resp H5MatchesResponse
+	if err := json.Unmarshal([]byte(fixtureMatches), &resp); err != nil {
+		t.Fatalf("unmarshal fixture: %v", err)
+	}
+
+	// Cas classé : HopperId du match présent dans le set classé.
+	ranked := classification.NewSetClassifier([]string{hopper}, nil)
+	m := mapMatchSummaries(&resp, "JGtm", ranked)[0]
+	if m.IsRanked == nil || !*m.IsRanked {
+		t.Errorf("HopperId dans le set classé → IsRanked &true, got %v", m.IsRanked)
+	}
+	if m.MatchType != canonical.MatchTypeRanked {
+		t.Errorf("MatchType = %q, want ranked", m.MatchType)
+	}
+
+	// Cas non-classé : set peuplé mais SANS ce HopperId (set exhaustif → &false).
+	social := classification.NewSetClassifier([]string{"un-autre-hopper"}, nil)
+	m = mapMatchSummaries(&resp, "JGtm", social)[0]
+	if m.IsRanked == nil || *m.IsRanked {
+		t.Errorf("HopperId hors set exhaustif → IsRanked &false, got %v", m.IsRanked)
+	}
+	if m.MatchType != canonical.MatchTypeSocial {
+		t.Errorf("MatchType = %q, want social", m.MatchType)
+	}
+
+	// Cas PvE : HopperId dans le set PvE → IsPvE=true + firefight.
+	pve := classification.NewSetClassifier(nil, []string{hopper})
+	m = mapMatchSummaries(&resp, "JGtm", pve)[0]
+	if m.IsPvE == nil || !*m.IsPvE {
+		t.Errorf("HopperId dans le set PvE → IsPvE &true, got %v", m.IsPvE)
+	}
+	if m.MatchType != canonical.MatchTypeFirefight {
+		t.Errorf("MatchType = %q, want firefight", m.MatchType)
 	}
 }
 
