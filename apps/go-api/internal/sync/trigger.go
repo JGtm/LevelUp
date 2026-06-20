@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -18,6 +19,25 @@ import (
 type TokenProvider interface {
 	GetTokens(ctx context.Context) (*domain.HaloTokens, error)
 }
+
+// LiveTitleRunner exécute une sync delta pour un titre live-only (Halo 5+).
+// Implémenté par *livesync.Runner. Déclaré ici (et non importé de livesync) pour
+// éviter le cycle sync → livesync (livesync importe déjà sync).
+type LiveTitleRunner interface {
+	RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.SyncResult, error)
+}
+
+// LiveTitleRunnerFactory résout le runner d'un titre live-only pour (slug,
+// gamertag, xuid). Sémantique du retour :
+//   - handled == false                 → le slug N'EST PAS un titre live → path engine.
+//   - handled == true, err == nil      → runner prêt ; runCtx porte l'auth.
+//   - handled == true, err != nil      → titre live mais résolution échouée → le
+//     caller ABANDONNE le tick (JAMAIS de fallback engine : fetch Infinite dans un
+//     store h5 = corruption). release est toujours non-nil (no-op si rien à libérer).
+//
+// Câblée par cmd/server/main.go via livesync.HandlesTitle + livesync.AcquireRunner
+// (auth pinnée depuis le pool). Nil → le Trigger reste 100 % path engine (legacy).
+type LiveTitleRunnerFactory func(ctx context.Context, slug, gamertag, xuid string) (runner LiveTitleRunner, runCtx context.Context, release func(), handled bool, err error)
 
 // EngineFactory construit un *SyncEngine fully-configured pour un (gamertag,
 // xuid). C'est l'extension point qui permet au caller (cmd/server/main.go)
@@ -44,6 +64,10 @@ type Trigger struct {
 	// d'un sharedprovider.Manager global). À câbler en production via
 	// WithEngineFactory(autoScheduler.BuildEngine).
 	engineFactory EngineFactory
+	// liveRunnerFactory route les titres live-only (Halo 5+) vers leur pipeline
+	// dédié au lieu de l'engine Infinite. Nil → 100 % path engine. Câblée par
+	// main.go (cf. LiveTitleRunnerFactory).
+	liveRunnerFactory LiveTitleRunnerFactory
 }
 
 // NewTrigger crée un trigger de sync in-process.
@@ -72,16 +96,43 @@ func (t *Trigger) WithEngineFactory(f EngineFactory) *Trigger {
 	return t
 }
 
+// WithLiveRunnerFactory injecte la fabrique de runner des titres live-only
+// (Halo 5+). Sans elle, le Trigger route TOUS les titres vers l'engine Infinite —
+// ce qui corromprait un store h5 (fetch Infinite). Cf. LiveTitleRunnerFactory.
+// Retour = même Trigger pour le chaînage builder.
+func (t *Trigger) WithLiveRunnerFactory(f LiveTitleRunnerFactory) *Trigger {
+	t.liveRunnerFactory = f
+	return t
+}
+
 // RunSync implémente SyncRunner pour le Coordinator.
 // Crée un SyncEngine via engineFactory (ou NewSyncEngine direct en fallback)
 // et lance un RunDelta.
 func (t *Trigger) RunSync(ctx context.Context, gamertag, xuid string, matchIDs []string) error {
+	slug := ctxkeys.TitleSlug(ctx)
 	slog.InfoContext(ctx, "trigger: démarrage sync",
 		"gamertag", gamertag,
 		"xuid", xuid,
+		"title_slug", slug,
 		"match_ids_hint", len(matchIDs),
 		"engine_factory_wired", t.engineFactory != nil,
 	)
+
+	// Titres live-only (Halo 5+) : pipeline dédié, JAMAIS l'engine Infinite (qui
+	// fetcherait des matchs Infinite dans le store du titre). Branche registry-
+	// driven via la factory injectée ; auth pinnée depuis le pool (runCtx).
+	if t.liveRunnerFactory != nil {
+		runner, runCtx, release, handled, lerr := t.liveRunnerFactory(ctx, slug, gamertag, xuid)
+		if handled {
+			defer release()
+			if lerr != nil {
+				// Titre live mais résolution échouée → on abandonne (pas de fallback
+				// engine : corromprait le store). Re-tenté au prochain trigger.
+				return fmt.Errorf("trigger: runner live %s indisponible: %w", slug, lerr)
+			}
+			return t.runLiveDelta(runCtx, runner, gamertag, slug, matchIDs)
+		}
+	}
 
 	tokens, err := t.tokenProvider.GetTokens(ctx)
 	if err != nil {
@@ -130,5 +181,30 @@ func (t *Trigger) RunSync(ctx context.Context, gamertag, xuid string, matchIDs [
 		"medals_inserted", result.MedalsInserted,
 	)
 
+	return nil
+}
+
+// runLiveDelta exécute le RunDelta d'un titre live-only (Halo 5+). Même cadrage
+// de MaxMatches que le path engine (matchs détectés + marge) ; auth déjà posée
+// dans runCtx par la factory. Pas de tokenProvider ni d'engine ici : le runner
+// live fait son propre fetch authentifié via le ctx.
+func (t *Trigger) runLiveDelta(runCtx context.Context, runner LiveTitleRunner, gamertag, slug string, matchIDs []string) error {
+	opts := t.defaultOpts
+	if len(matchIDs) > 0 && opts.MaxMatches == 0 {
+		opts.MaxMatches = len(matchIDs) + 5
+	}
+	result, err := runner.RunDelta(runCtx, opts)
+	if err != nil {
+		slog.ErrorContext(runCtx, "trigger: sync live échoué",
+			"gamertag", gamertag, "title_slug", slug, "err", err)
+		return fmt.Errorf("trigger: sync live %s (%s): %w", gamertag, slug, err)
+	}
+	slog.InfoContext(runCtx, "trigger: sync live terminé",
+		"gamertag", gamertag,
+		"title_slug", slug,
+		"matches_inserted", result.MatchesInserted,
+		"participants_done", result.ParticipantsDone,
+		"medals_inserted", result.MedalsInserted,
+	)
 	return nil
 }

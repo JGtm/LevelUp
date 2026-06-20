@@ -34,6 +34,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_5/livesync"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
@@ -66,6 +67,15 @@ type DeltaRunner interface {
 // configuré avec un PooledHaloClient pinné sur (gamertag, xuid).
 // Tests : injecter une factory mock pour contrôler RunDelta sans réseau ni DB.
 type DeltaRunnerFactory func(ctx context.Context, gamertag, xuid string) DeltaRunner
+
+// liveTitleRunnerResolver résout le runner d'un titre live-only (Halo 5+) pour le
+// scheduler : pinne un token du pool sur le joueur, le pose dans le ctx (l'adapter
+// du titre lit ctxkeys.HaloTokens), et instancie le runner registry-driven
+// (livesync.RunnerForTitle). Le runCtx retourné porte l'auth ; release libère le
+// lease pool (à DIFFÉRER par le caller — le SpartanToken doit rester valide le
+// temps du RunDelta). En prod : s.acquireLiveTitleRunner. Tests : injecter pour
+// mocker sans pool ni réseau (parité avec RunnerFactory pour le path engine).
+type liveTitleRunnerResolver func(ctx context.Context, slug, gamertag, xuid string) (runner DeltaRunner, runCtx context.Context, release func(), err error)
 
 // RunOnceResult agrège les compteurs d'un cycle de sync.
 type RunOnceResult struct {
@@ -164,6 +174,12 @@ type AutoSyncScheduler struct {
 	// *sync.SyncEngine configuré avec un PooledHaloClient pinné.
 	RunnerFactory DeltaRunnerFactory
 
+	// liveRunner résout le runner des titres live-only (Halo 5+), branché
+	// registry-driven (livesync.HandlesTitle) — JAMAIS l'engine Infinite. Défaut :
+	// s.acquireLiveTitleRunner (lease pool → ctx auth → RunnerForTitle). Tests :
+	// injecter pour mocker. Cf. liveTitleRunnerResolver.
+	liveRunner liveTitleRunnerResolver
+
 	// postSyncRunner (Phase 4 plan stabilisation 2026-05-22) — runner injecté
 	// dans chaque SyncEngine créé par defaultRunnerFactory. Câblé depuis
 	// cmd/server/main.go via WithPostSyncRunner après création du
@@ -224,6 +240,7 @@ func New(
 		SyncGate: sync.NopSyncGate{},
 	}
 	s.RunnerFactory = s.defaultRunnerFactory
+	s.liveRunner = s.acquireLiveTitleRunner
 	return s
 }
 
@@ -344,6 +361,21 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 // (champ RunnerFactory, tests existants).
 func (s *AutoSyncScheduler) defaultRunnerFactory(ctx context.Context, gamertag, xuid string) DeltaRunner {
 	return s.BuildEngine(ctx, gamertag, xuid)
+}
+
+// acquireLiveTitleRunner est l'implémentation prod de liveTitleRunnerResolver pour
+// les titres live-only (Halo 5+). Délègue à livesync.AcquireRunner (source unique
+// pool→runner, partagée avec le path watcher) : le pool fournit le SpartanToken
+// (là où le path HTTP le tient de la session), posé dans le ctx pour que l'adapter
+// du titre le lise. Le lease est tenu jusqu'au release (différé par syncPlayer).
+func (s *AutoSyncScheduler) acquireLiveTitleRunner(ctx context.Context, slug, gamertag, xuid string) (DeltaRunner, context.Context, func(), error) {
+	// *Runner est nil-able : en cas d'erreur on retourne l'interface DeltaRunner
+	// explicitement nil (évite le piège du typed-nil).
+	r, runCtx, release, err := livesync.AcquireRunner(ctx, s.pool, s.cfg, slug, gamertag, xuid)
+	if err != nil {
+		return nil, ctx, release, err
+	}
+	return r, runCtx, release, nil
 }
 
 // resolveTitleSlug retourne le slug du profil joueur, avec fallback DefaultSlug
@@ -739,20 +771,39 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 	// MT-11 / PMT-3 : pose le titre du joueur dans le ctx AVANT la factory, pour
 	// que BuildEngine (→ NewSyncEngineForTitle) écrive dans les DB du bon titre
 	// et que les sous-modules/logs héritent du slug.
-	ctx = ctxkeys.WithTitleSlug(ctx, resolveTitleSlug(p))
-	slog.InfoContext(ctx, "auto_sync: démarrage sync delta", "gamertag", p.Gamertag)
+	slug := resolveTitleSlug(p)
+	ctx = ctxkeys.WithTitleSlug(ctx, slug)
+	slog.InfoContext(ctx, "auto_sync: démarrage sync delta", "gamertag", p.Gamertag, "title_slug", slug)
 
-	factory := s.RunnerFactory
-	if factory == nil {
-		factory = s.defaultRunnerFactory
-	}
-	runner := factory(ctx, p.Gamertag, p.XUID)
-	if runner == nil {
-		slog.ErrorContext(ctx, "auto_sync: RunnerFactory a retourné nil",
-			"gamertag", p.Gamertag)
-		detail.Reason = "RunnerFactory a retourné nil (pool absent ?)"
-		outcome = outcomeFailed
-		return outcome
+	// Sélection registry-driven (jamais slug==) du runner. Les titres live-only
+	// (Halo 5+) ont leur propre pipeline (fetch cryptum → persist shared) et leur
+	// auth transite par le ctx (pas de PooledHaloClient interne) → branche dédiée.
+	var runner DeltaRunner
+	if livesync.HandlesTitle(slug) {
+		r, runCtx, release, lerr := s.liveRunner(ctx, slug, p.Gamertag, p.XUID)
+		if lerr != nil {
+			slog.ErrorContext(ctx, "auto_sync: runner live indisponible",
+				"gamertag", p.Gamertag, "title_slug", slug, "err", lerr)
+			detail.Reason = "runner live indisponible: " + lerr.Error()
+			detail.FirstError = lerr.Error()
+			outcome = outcomeFailed
+			return outcome
+		}
+		defer release()
+		runner, ctx = r, runCtx
+	} else {
+		factory := s.RunnerFactory
+		if factory == nil {
+			factory = s.defaultRunnerFactory
+		}
+		runner = factory(ctx, p.Gamertag, p.XUID)
+		if runner == nil {
+			slog.ErrorContext(ctx, "auto_sync: RunnerFactory a retourné nil",
+				"gamertag", p.Gamertag)
+			detail.Reason = "RunnerFactory a retourné nil (pool absent ?)"
+			outcome = outcomeFailed
+			return outcome
+		}
 	}
 
 	syncResult, err := runner.RunDelta(ctx, domain.DefaultSyncOptions())
@@ -864,6 +915,13 @@ func (s *AutoSyncScheduler) checkSyncPreconditions(ctx context.Context, p domain
 	// syncPlayer pose le slug dans le ctx → BuildEngine construit via
 	// NewSyncEngineForTitle. La précondition os.Stat utilise le même helper.
 	slug := resolveTitleSlug(p)
+	// Les titres live-only (Halo 5+) écrivent en shared-only (pas de player DB ;
+	// le shared est provisionné au boot via provisionAdditionalActiveTitles). La
+	// précondition « player DB présente » ne s'applique donc pas — sinon ces
+	// joueurs seraient skippés à jamais (os.Stat échoue toujours).
+	if livesync.HandlesTitle(slug) {
+		return "", true
+	}
 	dbPath := titlePkg.NewPathResolver(s.cfg.RepoRoot).PlayerDBPath(slug, p.Gamertag)
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		slog.InfoContext(ctx, "auto_sync: DB joueur absente, joueur ignoré",

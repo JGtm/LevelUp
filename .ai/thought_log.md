@@ -1,3 +1,16 @@
+## [2026-06-20] Sync live Halo 5 — T4 : sync CONTINU (scheduler + watcher) — Complété
+
+**Statut** : les DEUX déclencheurs serveur routent désormais les titres live-only (Halo 5+) vers leur pipeline dédié, JAMAIS l'engine Infinite. Le HTTP `/sync/initial` (T3) faisait un one-shot ; T4 ajoute le périodique (scheduler) + le temps-réel (watcher). h5 est maintenant 100 % autonome côté ingestion (one-shot + continu + présence).
+
+**Architecture (sélection registry-driven, jamais `slug==`)** :
+- **Source unique pool→runner** : `livesync.AcquireRunner(ctx, pool, cfg, slug, gt, xuid)` — pinne un token du pool (`PolicyPinnedPlayer`), le pose dans le ctx (`ctxkeys.WithHaloAuth` ; l'adapter h5 lit `ctxkeys.HaloTokens`), instancie `RunnerForTitle`. `release` (lease) à différer → token valide tout le RunDelta. Partagée par les 2 chemins (anti-duplication).
+- **Scheduler** (`auto_sync.go`) : champ injectable `liveRunner` (défaut `acquireLiveTitleRunner` → `AcquireRunner`), parité avec `RunnerFactory`. `syncPlayer` branche `livesync.HandlesTitle(slug)` → runner live (defer release) sinon engine. `checkSyncPreconditions` **skip le `os.Stat` player-DB** pour les titres live (shared-only, provisionné au boot — sinon skip à vie). Erreur de résolution live = `outcomeFailed` (jamais de fallback engine = corruption).
+- **Watcher** (`sync/trigger.go`) : `sync` ne peut PAS importer `livesync` (cycle : livesync→sync). Seam = interface locale `LiveTitleRunner` + type `LiveTitleRunnerFactory` injecté par main.go (`WithLiveRunnerFactory`). `RunSync` lit le slug du ctx (posé par `player_watcher` ligne 471), appelle la factory ; sémantique : `handled=false`→engine, `handled=true,nil`→run, `handled=true,err`→ABANDON (pas de repli engine). Auth via pool (le `staticTokenProvider` mono-joueur du watcher est ignoré, comme pour l'engine).
+
+**Tests** : scheduler interne (`auto_sync_h5_test.go`, 3 cas : précondition skip player-DB + contrôle Infinite, routage liveRunner avec engine interdit, erreur→failed) ; watcher (`trigger_live_test.go`, 3 cas : route live sans toucher tokens/engine, err→pas de fallback, non-live→fall-through engine). Tous verts + go vet + archlint (no_slug_comparison) + suites complètes scheduler/sync/halo_5/cmd/server.
+
+**Reste** : Phase 2 LECTURE — `match.history`/`match.detail` h5 = `not_exposed` ; câbler la surface produit pour AFFICHER ces données dans l'UI (les données sont en base, pas encore lues). + bootstrap user : déclarer le couple `(halo_5, JGtm)` dans `db_profiles.json` pour activer le continu sur ce joueur.
+
 ## [2026-06-20] Sync live Halo 5 — VALIDÉ LIVE (10 matchs JGtm persistés) + 3 bugs corrigés — Complété
 
 **Statut** : pipeline h5 sync VALIDÉ END-TO-END sur données réelles (`cmd/h5-sync JGtm`) : 10 matchs fetchés (cryptum) → collectés → PERSISTÉS dans le shared h5. Compteurs : `match_registry=10, match_participants=59` (rosters, xuid Xbox résolus via PeopleHub), `killer_victim_pairs=1005, medals_earned=493, weapon_kills=1005, kill_positions=1009`. **status=success**.

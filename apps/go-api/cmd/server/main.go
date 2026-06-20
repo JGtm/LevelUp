@@ -39,6 +39,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_5/livesync"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/halo_infinite/skillchain"
 	"levelup/go-api/internal/migration"
@@ -1861,7 +1862,21 @@ func startWatcherDaemon(
 		// sur tous les matchs depuis. Cf. .ai/thought_log 2026-06-04.
 		WithHighlightEvents: true,
 		RequestsPerSecond:   5,
-	}).WithEngineFactory(autoScheduler.BuildEngine)
+	}).WithEngineFactory(autoScheduler.BuildEngine).
+		// Titres live-only (Halo 5+) : router le watcher vers leur pipeline dédié,
+		// auth pinnée depuis le pool auto-sync. Sans ça, un joueur h5 détecté en
+		// présence ferait fetcher des matchs Infinite dans le store h5 (corruption).
+		// handled=false → le slug n'est pas live → path engine (Infinite) inchangé.
+		WithLiveRunnerFactory(func(fctx context.Context, slug, gamertag, xuid string) (syncpkg.LiveTitleRunner, context.Context, func(), bool, error) {
+			if !livesync.HandlesTitle(slug) {
+				return nil, fctx, func() {}, false, nil
+			}
+			r, runCtx, release, err := livesync.AcquireRunner(fctx, haloPool, cfg, slug, gamertag, xuid)
+			if err != nil {
+				return nil, fctx, func() {}, true, err
+			}
+			return r, runCtx, release, true, nil
+		})
 
 	// MatchFetcher pour le polling Halo API (/hi/players/xuid(N)/matches) du
 	// MatchPoller. Réutilise le pool de tokens auto-sync : endpoint public
