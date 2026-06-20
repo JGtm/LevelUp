@@ -124,13 +124,11 @@ func sharedCoreSteps() []migration.Migration {
 						source VARCHAR DEFAULT 'sync',
 						updated_at TIMESTAMP
 					);
-					CREATE TABLE IF NOT EXISTS weapon_kills (
-						match_id VARCHAR,
-						xuid VARCHAR,
-						weapon_id UBIGINT,
-						kills INTEGER DEFAULT 0,
-						PRIMARY KEY (match_id, xuid, weapon_id)
-					);
+					-- weapon_kills : créé par la migration add_weapon_kills (forme PAR-KILL
+					-- avec time_ms/confidence/...), PAS ici. L'ancienne forme agrégée 4-col
+					-- (vestige) gagnait sur DB FRAÎCHE (CREATE IF NOT EXISTS first-wins) et
+					-- cassait l'INSERT par-kill du SharedPersister (h5 1er sync, 2026-06-20).
+					-- Retiré : name-keyed → Infinite intact (table déjà créée par add_weapon_kills).
 					CREATE TABLE IF NOT EXISTS killer_victim_pairs (
 						match_id        VARCHAR NOT NULL,
 						killer_xuid     VARCHAR NOT NULL,

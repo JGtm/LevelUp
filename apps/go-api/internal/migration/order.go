@@ -139,13 +139,19 @@ var canonicalOrder = []string{
 	"shared_add_participation_info_booleans",                  // shared
 	"shared_add_participation_timestamps",                     // shared
 	"shared_add_t0_quality",                                   // shared
-	"shared_append_only_match_csrs_v1",                        // shared
 	"shared_backfill_is_ranked_and_season",                    // shared
 	"shared_create_player_squad_offset",                       // shared
 	"add_shared_match_csrs",                                   // shared
-	"add_pve_schema",                                          // shared_pve
-	"shared_pve_append_only_v1",                               // shared_pve
-	"rebuild_match_participants_defeat_art_corruption",        // shared
+	// Fix fresh-provision (Halo 5 = 1er titre fraîchement sync, 2026-06-20) : la
+	// conversion append-only de match_csrs DOIT suivre la création de la table
+	// (add_shared_match_csrs) — sinon sur DB FRAÎCHE le rebuild no-ope (table absente)
+	// et match_csrs reste en created_at, cassant l'index written_at d'EnsureSharedSchema
+	// au 1er OpenSharedDB. Name-keyed → no-op sur DB déjà migrées (Infinite intact).
+	// Même pattern documenté que le reorder skill_v2 ci-dessous.
+	"shared_append_only_match_csrs_v1",                 // shared
+	"add_pve_schema",                                   // shared_pve
+	"shared_pve_append_only_v1",                        // shared_pve
+	"rebuild_match_participants_defeat_art_corruption", // shared
 	// Phase 1.5 b27 (reorder escaladÃ©) : skill_v2 (crÃ©ateur de lusr_hyperparams_v2)
 	// AVANT le seed tier_boundaries (qui INSERT dedans). Corrige l'inversion 148/149
 	// historique. SÃ»r : les 2 sont title-owned â†’ n'affecte pas l'ordre du registre global
