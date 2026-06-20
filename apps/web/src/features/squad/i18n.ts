@@ -249,9 +249,9 @@ const FR_TEXT: SquadText = {
   },
   filter: {
     experience: 'Expérience',
-    playlist: 'Playlist',
+    playlist: 'Sélection',
     allExperiences: 'Toutes les expériences',
-    allPlaylists: 'Toutes les playlists',
+    allPlaylists: 'Toutes les sélections',
     analyse: 'Analyser',
   },
   session: {
@@ -318,7 +318,7 @@ const FR_TEXT: SquadText = {
     description: 'Tous les matchs partagés sur les filtres actifs.',
     date: 'Date',
     map: 'Carte',
-    playlist: 'Playlist',
+    playlist: 'Sélection',
     mode: 'Mode',
     outcome: 'Résultat',
     score: 'Score',
