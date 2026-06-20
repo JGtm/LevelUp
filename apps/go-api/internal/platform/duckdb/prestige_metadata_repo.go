@@ -115,42 +115,30 @@ func (r *PrestigeTemplateRepo) Replace(ctx context.Context, titleSlug string, te
 		if source == "" {
 			source = "catalog"
 		}
-		if _, err := r.db.Exec(ctx, `
-			INSERT INTO challenge_template (
+		// ART-safe : SELECT-then-UPDATE-or-INSERT (pas d'ON CONFLICT, qui réécrit via
+		// les index ART de la PK + secondaires). L'UPDATE mute title_slug/metric/cadence,
+		// indexés (idx_ctmpl_title_cadence, idx_ctmpl_metric) → ces index sont droppés
+		// par drop_metadata_art_surface_indexes_v3.
+		if err := r.db.UpsertNoConflict(ctx,
+			`SELECT 1 FROM challenge_template WHERE id = ?`,
+			[]any{t.ID},
+			`UPDATE challenge_template SET title_slug = ?, metric = ?, window_type = ?, window_value = ?,
+			 cadence = ?, eval_type = ?, mode_filter = ?, label_en = ?, label_fr = ?, description_en = ?,
+			 description_fr = ?, normal_target = ?, heroic_target = ?, legendary_target = ?, mythic_target = ?,
+			 lusr_components = ?, radar_axes = ?, is_long_term = ?, source = ?, schema_version = ?, updated_at = ?
+			 WHERE id = ?`,
+			[]any{t.TitleSlug, t.Metric, string(t.WindowType), t.WindowValue, string(t.Cadence), string(t.EvalType),
+				t.ModeFilter, t.LabelEN, t.LabelFR, t.DescriptionEN, t.DescriptionFR, t.NormalTarget, t.HeroicTarget,
+				t.LegendaryTarget, t.MythicTarget, lusrJSON, radarJSON, t.IsLongTerm, source, t.SchemaVersion, t.UpdatedAt, t.ID},
+			`INSERT INTO challenge_template (
 				id, title_slug, metric, window_type, window_value, cadence, eval_type,
 				mode_filter, label_en, label_fr, description_en, description_fr,
 				normal_target, heroic_target, legendary_target, mythic_target,
-				lusr_components, radar_axes, is_long_term, source,
-				schema_version, updated_at
-			) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-			ON CONFLICT (id) DO UPDATE SET
-				title_slug       = excluded.title_slug,
-				metric           = excluded.metric,
-				window_type      = excluded.window_type,
-				window_value     = excluded.window_value,
-				cadence          = excluded.cadence,
-				eval_type        = excluded.eval_type,
-				mode_filter      = excluded.mode_filter,
-				label_en         = excluded.label_en,
-				label_fr         = excluded.label_fr,
-				description_en   = excluded.description_en,
-				description_fr   = excluded.description_fr,
-				normal_target    = excluded.normal_target,
-				heroic_target    = excluded.heroic_target,
-				legendary_target = excluded.legendary_target,
-				mythic_target    = excluded.mythic_target,
-				lusr_components  = excluded.lusr_components,
-				radar_axes       = excluded.radar_axes,
-				is_long_term     = excluded.is_long_term,
-				source           = excluded.source,
-				schema_version   = excluded.schema_version,
-				updated_at       = excluded.updated_at`,
-			t.ID, t.TitleSlug, t.Metric, string(t.WindowType), t.WindowValue,
-			string(t.Cadence), string(t.EvalType), t.ModeFilter,
-			t.LabelEN, t.LabelFR, t.DescriptionEN, t.DescriptionFR,
-			t.NormalTarget, t.HeroicTarget, t.LegendaryTarget, t.MythicTarget,
-			lusrJSON, radarJSON, t.IsLongTerm, source,
-			t.SchemaVersion, t.UpdatedAt,
+				lusr_components, radar_axes, is_long_term, source, schema_version, updated_at
+			) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			[]any{t.ID, t.TitleSlug, t.Metric, string(t.WindowType), t.WindowValue, string(t.Cadence), string(t.EvalType),
+				t.ModeFilter, t.LabelEN, t.LabelFR, t.DescriptionEN, t.DescriptionFR, t.NormalTarget, t.HeroicTarget,
+				t.LegendaryTarget, t.MythicTarget, lusrJSON, radarJSON, t.IsLongTerm, source, t.SchemaVersion, t.UpdatedAt},
 		); err != nil {
 			return fmt.Errorf("upsert %s: %w", t.ID, err)
 		}
@@ -292,34 +280,31 @@ func (r *PrestigePresetArcRepo) Replace(ctx context.Context, titleSlug string, a
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// UPSERT par ligne — jamais de DELETE/TRUNCATE pour éviter le bug ART index DuckDB.
+	// ART-safe : SELECT-then-UPDATE-or-INSERT par ligne (jamais d'ON CONFLICT ni
+	// DELETE/TRUNCATE). preset_arc.title_slug (muté) est indexé (idx_parc_title) →
+	// droppé par drop_metadata_art_surface_indexes_v3. preset_arc_step = PK-only.
 	for _, a := range arcs {
-		if _, err := r.db.Exec(ctx, `
-			INSERT INTO preset_arc (id, title_slug, title_en, title_fr,
-			                       description_en, description_fr, schema_version, updated_at)
-			VALUES (?,?,?,?,?,?,?,?)
-			ON CONFLICT (id) DO UPDATE SET
-				title_slug     = excluded.title_slug,
-				title_en       = excluded.title_en,
-				title_fr       = excluded.title_fr,
-				description_en = excluded.description_en,
-				description_fr = excluded.description_fr,
-				schema_version = excluded.schema_version,
-				updated_at     = excluded.updated_at`,
-			a.ID, a.TitleSlug, a.TitleEN, a.TitleFR, a.DescriptionEN, a.DescriptionFR,
-			a.SchemaVersion, a.UpdatedAt,
+		if err := r.db.UpsertNoConflict(ctx,
+			`SELECT 1 FROM preset_arc WHERE id = ?`,
+			[]any{a.ID},
+			`UPDATE preset_arc SET title_slug = ?, title_en = ?, title_fr = ?, description_en = ?,
+			 description_fr = ?, schema_version = ?, updated_at = ? WHERE id = ?`,
+			[]any{a.TitleSlug, a.TitleEN, a.TitleFR, a.DescriptionEN, a.DescriptionFR, a.SchemaVersion, a.UpdatedAt, a.ID},
+			`INSERT INTO preset_arc (id, title_slug, title_en, title_fr, description_en, description_fr, schema_version, updated_at)
+			 VALUES (?,?,?,?,?,?,?,?)`,
+			[]any{a.ID, a.TitleSlug, a.TitleEN, a.TitleFR, a.DescriptionEN, a.DescriptionFR, a.SchemaVersion, a.UpdatedAt},
 		); err != nil {
 			return fmt.Errorf("upsert arc %s: %w", a.ID, err)
 		}
 	}
 	for _, s := range steps {
-		if _, err := r.db.Exec(ctx, `
-			INSERT INTO preset_arc_step (preset_arc_id, position, template_id, target_tier)
-			VALUES (?, ?, ?, ?)
-			ON CONFLICT (preset_arc_id, position) DO UPDATE SET
-				template_id = excluded.template_id,
-				target_tier = excluded.target_tier`,
-			s.PresetArcID, s.Position, s.TemplateID, string(s.TargetTier),
+		if err := r.db.UpsertNoConflict(ctx,
+			`SELECT 1 FROM preset_arc_step WHERE preset_arc_id = ? AND position = ?`,
+			[]any{s.PresetArcID, s.Position},
+			`UPDATE preset_arc_step SET template_id = ?, target_tier = ? WHERE preset_arc_id = ? AND position = ?`,
+			[]any{s.TemplateID, string(s.TargetTier), s.PresetArcID, s.Position},
+			`INSERT INTO preset_arc_step (preset_arc_id, position, template_id, target_tier) VALUES (?, ?, ?, ?)`,
+			[]any{s.PresetArcID, s.Position, s.TemplateID, string(s.TargetTier)},
 		); err != nil {
 			return fmt.Errorf("upsert step arc=%s pos=%d: %w", s.PresetArcID, s.Position, err)
 		}
