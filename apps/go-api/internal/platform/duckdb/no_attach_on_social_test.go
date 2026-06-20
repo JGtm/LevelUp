@@ -263,6 +263,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/migration/steps_shared_social_squad_member_append_only.go":                "migration squad_member append-only (élimine DELETE + ON CONFLICT, surface ART shared_social)",
 	"internal/migration/steps_shared_social_notif_prefs_append_only.go":                 "migration notification_preferences append-only (élimine ON CONFLICT DO UPDATE, surface ART shared_social)",
 	"internal/migration/steps_shared_social_media_assoc_append_only.go":                 "migration media_match_associations append-only (élimine DELETE manual-replace + reindex, surface ART shared_social)",
+	"internal/migration/steps_shared_social_media_files_drop_filepath_unique.go":        "migration media_files rebuild sans contrainte UNIQUE sur file_path — élimine surface ART (UPDATE file_path conversion/HLS/reconcile, blast MAX shared_social)",
 	"internal/migration/steps_shared_social_notifications_append_only.go":               "migration player_notifications append-only (élimine DELETE×2 + UPDATE read_at, surface ART shared_social)",
 	"internal/migration/steps_shared_social_squad_challenge_participant_append_only.go": "migration squad_challenge_participant append-only (élimine ON CONFLICT + UPDATE, surface ART shared_social)",
 	"internal/migration/steps_shared_social_user_prestige_append_only.go":               "migration user_prestige append-only (élimine ON CONFLICT DO UPDATE accumulation/overwrite, surface ART shared_social)",

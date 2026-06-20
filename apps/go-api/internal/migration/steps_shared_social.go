@@ -21,7 +21,10 @@ func init() {
 				CREATE TABLE IF NOT EXISTS media_files (
 					id                   VARCHAR PRIMARY KEY,
 					player_slug          VARCHAR NOT NULL,
-					file_path            VARCHAR NOT NULL UNIQUE,
+					-- file_path NON UNIQUE : colonne mutée (conversion/HLS/reconcile) → un
+					-- index ART UNIQUE dessus déclenche le bug DuckDB #23046. Dédup applicative.
+					-- (Schéma fallback : la VRAIE source prod est ops/media_store.go ensureMediaTables.)
+					file_path            VARCHAR NOT NULL,
 					file_name            VARCHAR NOT NULL,
 					kind                 VARCHAR NOT NULL DEFAULT 'video',
 					file_hash            VARCHAR,
@@ -35,7 +38,7 @@ func init() {
 					updated_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 				);
 				CREATE INDEX IF NOT EXISTS idx_mf_player_slug ON media_files(player_slug);
-				CREATE INDEX IF NOT EXISTS idx_mf_kind ON media_files(kind);
+				-- PAS d'idx_mf_kind : kind est muté (insertMediaFile conversion) → surface ART.
 				CREATE INDEX IF NOT EXISTS idx_mf_created ON media_files(created_at);
 
 				CREATE TABLE IF NOT EXISTS media_match_associations (

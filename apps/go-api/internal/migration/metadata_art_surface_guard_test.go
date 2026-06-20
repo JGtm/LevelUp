@@ -57,6 +57,7 @@ var forbiddenIndexedColumns = map[string][]string{
 	"challenge_template":   {"title_slug", "metric", "cadence"},      // PrestigeChallengeTemplateRepo.Replace
 	"preset_arc":           {"title_slug"},                           // PrestigePresetArcRepo.Replace
 	"citation_mappings":    {"medal_id", "mapping_type"},             // SeedCitationMappings UPDATE
+	"media_files":          {"kind", "file_path"},                    // insertMediaFile mute kind + file_path (conversion/HLS/reconcile)
 }
 
 var (
@@ -144,5 +145,59 @@ func TestNoARTSurfaceIndexInMigrations(t *testing.T) {
 		t.Errorf("RÉGRESSION ART : %d index sur surface mutée (UPDATE/DELETE per-row sur "+
 			"colonne/table indexée corrompt DuckDB → FATAL invalidated). PK-only obligatoire :\n  - %s",
 			len(violations), strings.Join(violations, "\n  - "))
+	}
+}
+
+// reMediaFilesUnique détecte une contrainte UNIQUE sur media_files.file_path, sous ses
+// deux formes : colonne inline (`file_path VARCHAR ... UNIQUE`) et contrainte de table
+// (`UNIQUE(file_path)`). file_path est MUTÉE par 3 UPDATE (conversion/HLS/reconcile) →
+// un index ART UNIQUE dessus = bug #23046 (FATAL, blast MAX shared_social). La dédup
+// passe en applicatif (insertMediaFile SELECT-then-INSERT).
+var (
+	reMediaFilesUniqueInline = regexp.MustCompile(`(?is)\bfile_path\b[^,\n;]*\bVARCHAR\b[^,\n;]*\bUNIQUE\b`)
+	reMediaFilesUniqueTable  = regexp.MustCompile(`(?is)\bUNIQUE\s*\(\s*file_path\s*\)`)
+)
+
+// TestNoMediaFilesFilePathUnique échoue si un fichier source (hors test) sous
+// apps/go-api/internal réintroduit UNIQUE(file_path) sur media_files. Scanne ops/ ET
+// migration/ (les 2 sources de schéma : ensureMediaTables + create_base) — contrairement
+// au scan no_art_patterns qui les exclut.
+func TestNoMediaFilesFilePathUnique(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	internalDir := filepath.Dir(cwd) // apps/go-api/internal/migration -> apps/go-api/internal
+
+	var violations []string
+	walkErr := filepath.Walk(internalDir, func(path string, info os.FileInfo, werr error) error {
+		if werr != nil {
+			return werr
+		}
+		if info.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		content, rerr := os.ReadFile(path)
+		if rerr != nil {
+			return nil
+		}
+		text := stripAllComments(string(content))
+		if !strings.Contains(text, "media_files") {
+			return nil
+		}
+		if reMediaFilesUniqueInline.MatchString(text) || reMediaFilesUniqueTable.MatchString(text) {
+			rel, _ := filepath.Rel(internalDir, path)
+			violations = append(violations, filepath.ToSlash(rel))
+		}
+		return nil
+	})
+	if walkErr != nil {
+		t.Fatalf("walk: %v", walkErr)
+	}
+	if len(violations) > 0 {
+		t.Errorf("RÉGRESSION ART : UNIQUE(file_path) réintroduit sur media_files (colonne mutée → "+
+			"bug DuckDB #23046, FATAL invalidated, blast MAX). Retirer la contrainte ; la dédup file_path "+
+			"est applicative (insertMediaFile/persistMediaFiles SELECT-then-INSERT) :\n  - %s",
+			strings.Join(violations, "\n  - "))
 	}
 }
