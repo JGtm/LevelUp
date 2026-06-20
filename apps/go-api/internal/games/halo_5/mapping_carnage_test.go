@@ -20,8 +20,11 @@ func TestMapCarnageParticipants_TeamOutcomeAndNoFabrication(t *testing.T) {
 		},
 	}
 	rows := mapCarnageParticipants("m1", c, func(gt string) string {
-		if gt == "Win" {
+		switch gt {
+		case "Win":
 			return "xW"
+		case "Lose":
+			return "xL"
 		}
 		return ""
 	})
@@ -57,8 +60,32 @@ func TestMapCarnageParticipants_TeamOutcomeAndNoFabrication(t *testing.T) {
 	if l.Outcome == nil || *l.Outcome != domain.OutcomeLoss {
 		t.Errorf("Lose outcome = %v, want loss(3)", l.Outcome)
 	}
-	if l.XUID != "" {
-		t.Errorf("Lose xuid non résolu → \"\" attendu, got %q", l.XUID)
+	if l.XUID != "xL" {
+		t.Errorf("Lose xuid = %q, want xL", l.XUID)
+	}
+}
+
+func TestMapCarnageParticipants_ResolveOrSkip(t *testing.T) {
+	c := &H5CarnageResponse{
+		IsTeamGame: false,
+		PlayerStats: []H5CarnagePlayer{
+			{Player: H5PlayerRef{Gamertag: "Known"}, Rank: 1},
+			{Player: H5PlayerRef{Gamertag: "Unresolved"}, Rank: 2},
+		},
+	}
+	rows := mapCarnageParticipants("m1", c, func(gt string) string {
+		if gt == "Known" {
+			return "xK"
+		}
+		return "" // non résolu → DOIT être sauté (sinon collision PK xuid="")
+	})
+	if len(rows) != 1 || rows[0].XUID != "xK" {
+		t.Fatalf("resolve-or-skip : rows=%d (want 1, seul Known), xuid0=%q", len(rows), func() string {
+			if len(rows) > 0 {
+				return rows[0].XUID
+			}
+			return ""
+		}())
 	}
 }
 
@@ -71,7 +98,10 @@ func TestMapCarnageParticipants_FFAandDNF(t *testing.T) {
 			{Player: H5PlayerRef{Gamertag: "Quitter"}, Rank: 8, DNF: true},
 		},
 	}
-	rows := mapCarnageParticipants("m1", c, func(string) string { return "" })
+	rows := mapCarnageParticipants("m1", c, func(gt string) string { return "x_" + gt }) // tous résolus
+	if len(rows) != 3 {
+		t.Fatalf("rows = %d, want 3 (tous résolus)", len(rows))
+	}
 	if rows[0].Outcome == nil || *rows[0].Outcome != domain.OutcomeWin {
 		t.Errorf("FFA rank1 → win")
 	}

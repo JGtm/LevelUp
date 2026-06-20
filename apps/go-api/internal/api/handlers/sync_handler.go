@@ -26,6 +26,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_5/livesync"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/observability/logging"
 	auth_platform "levelup/go-api/internal/platform/auth"
@@ -210,6 +211,24 @@ func (h *SyncHandler) newEngineFor(titleSlug, gamertag, xuid string, tokens *dom
 		engine = engine.WithBatchPersistMode(true)
 	}
 	return engine
+}
+
+// deltaRunner = surface commune *go_sync.SyncEngine / *livesync.Runner (RunDelta).
+// Permet de brancher un runner live-sync DÉDIÉ (Halo 5) à l'entonnoir HTTP de sync
+// sans toucher le chemin Infinite (SyncEngine reste byte-identique).
+type deltaRunner interface {
+	RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.SyncResult, error)
+}
+
+// runnerFor sélectionne (REGISTRY-DRIVEN, jamais slug==) le runner d'un sync + le
+// ctx d'exécution. Titre live-only (Halo 5) → runner dédié livesync + ctx portant le
+// SpartanToken (l'adapter h5 le lit du ctx, là où Infinite reçoit les tokens en
+// argument explicite). Sinon → SyncEngine Infinite + ctx inchangé.
+func (h *SyncHandler) runnerFor(ctx context.Context, titleSlug, gamertag, xuid string, tokens *domain.HaloTokens) (deltaRunner, context.Context) {
+	if r := livesync.RunnerForTitle(titleSlug, h.cfg, gamertag, xuid); r != nil {
+		return r, ctxkeys.WithHaloAuth(ctx, tokens, xuid)
+	}
+	return h.newEngineFor(titleSlug, gamertag, xuid, tokens), ctx
 }
 
 func (h *SyncHandler) WithPrestigeHook(_ PrestigeHook) *SyncHandler {
@@ -413,11 +432,12 @@ func (h *SyncHandler) StartInitialSync(ctx context.Context, in *syncInitialInput
 		if h.postSync != nil {
 			after = h.postSync(bgCtx, req.PlayerSlug)
 		}
-		engine := h.newEngineFor(titleSlug, gamertag, xuid, tokens)
 		opts := domain.DefaultSyncOptions()
 		opts.MaxMatches = req.MaxMatches
 
-		result, err := engine.RunDelta(bgCtx, opts)
+		// Sélection registry-driven : Halo 5 (live-only) → runner dédié, sinon Infinite.
+		runner, runCtx := h.runnerFor(bgCtx, titleSlug, gamertag, xuid, tokens)
+		result, err := runner.RunDelta(runCtx, opts)
 		if err != nil {
 			errMsg := syncErrorMessage(err)
 			h.jobStore.SetStatus(job.JobID, domain.JobStatusFailed, &errMsg)
