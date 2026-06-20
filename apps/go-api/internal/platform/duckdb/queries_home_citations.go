@@ -428,7 +428,7 @@ SELECT
     mma.match_id,
     NULL::TIMESTAMP AS match_start_time
 FROM media_files mf
-LEFT JOIN media_match_associations mma ON mma.media_file_id = mf.id
+LEFT JOIN media_match_associations_latest mma ON mma.media_file_id = mf.id
 WHERE mf.status = 'active'
 ORDER BY mf.mtime DESC
 LIMIT ?`

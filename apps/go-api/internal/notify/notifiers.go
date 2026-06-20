@@ -147,7 +147,7 @@ func queryUnnotifiedMedia(ctx context.Context, db *sql.DB) ([]mediaRow, error) {
 			mf.kind,
 			COALESCE(mma.match_id, '') AS match_id
 		FROM media_files mf
-		LEFT JOIN media_match_associations mma
+		LEFT JOIN media_match_associations_latest mma
 			ON mma.media_file_id = mf.id
 		WHERE mf.discord_notified_at IS NULL
 		ORDER BY mf.indexed_at DESC

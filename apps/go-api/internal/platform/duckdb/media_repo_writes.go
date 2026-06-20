@@ -38,14 +38,13 @@ func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matc
 			return nil, nil, fmt.Errorf("SetMediaMatchAssociation persister: %w", err)
 		}
 	} else {
-		// Fallback legacy : DELETE + INSERT séquentiels + CHECKPOINT.
-		// is_manual = TRUE : marque la correction utilisateur pour qu'un
-		// reassociate global ultérieur ne l'écrase pas.
-		if _, err := r.socialDB().ExecRecovered(ctx, `DELETE FROM media_match_associations WHERE media_file_id = ?`, mediaID); err != nil {
-			return nil, nil, fmt.Errorf("delete old assoc: %w", err)
-		}
-		if _, err := r.socialDB().ExecRecovered(ctx, `INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds, is_manual) VALUES (?, ?, 0, TRUE)`, mediaID, matchID); err != nil {
-			return nil, nil, fmt.Errorf("insert new assoc: %w", err)
+		// Fallback legacy APPEND-ONLY : 1 INSERT d'event manuel dans _history (plus de
+		// DELETE → ExecRecovered inutile, Exec simple suffit). is_manual=TRUE : la vue
+		// donne priorité à la correction utilisateur sur l'auto.
+		if _, err := r.socialDB().Exec(ctx, `INSERT INTO media_match_associations_history
+			(media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at)
+			VALUES (?, ?, 0, TRUE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, mediaID, matchID); err != nil {
+			return nil, nil, fmt.Errorf("insert manual assoc event: %w", err)
 		}
 		_ = CheckpointSharedSocial(ctx, r.socialDB())
 	}

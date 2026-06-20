@@ -471,18 +471,17 @@ func (p *SharedSocialPersister) SetMediaMatchAssociation(ctx context.Context, me
 		}
 	}
 
+	// APPEND-ONLY : le replace manuel = UN SEUL INSERT d'event (is_manual=TRUE).
+	// La vue media_match_associations_latest masque l'ancienne assoc du même
+	// media_file_id (priorité is_manual DESC, written_at DESC). Plus de DELETE.
 	if _, err := tx.ExecContext(ctx,
-		`DELETE FROM media_match_associations WHERE media_file_id = ?`, mediaFileID,
-	); err != nil {
-		rollback()
-		return fmt.Errorf("shared_social SetMediaMatchAssociation: delete: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds, is_manual) VALUES (?, ?, 0, TRUE)`,
+		`INSERT INTO media_match_associations_history
+			(media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at)
+		 VALUES (?, ?, 0, TRUE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
 		mediaFileID, matchID,
 	); err != nil {
 		rollback()
-		return fmt.Errorf("shared_social SetMediaMatchAssociation: insert: %w", err)
+		return fmt.Errorf("shared_social SetMediaMatchAssociation: insert event: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("shared_social SetMediaMatchAssociation: commit: %w", err)
