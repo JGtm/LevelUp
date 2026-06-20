@@ -39,7 +39,6 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
-	h5migrations "levelup/go-api/internal/games/halo_5/migrations"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/halo_infinite/skillchain"
 	"levelup/go-api/internal/migration"
@@ -1418,11 +1417,6 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 	// Infinite) auprès du runner, avant tout RunForDB. Vide tant qu'aucun step
 	// n'a été déplacé hors du package migration (no-op) ; se remplit en b3.
 	migration.SetTitleStepsProvider(halomigrations.StepsFor)
-	// Activation 1b — isolation des migrations du 2e titre : enregistrer un set
-	// (vide en Phase 1a live-only) pour halo_5 empêche RunForTitleDB de retomber
-	// sur les migrations Halo Infinite → warehouse h5 vierge (pas de tables
-	// parasites). Inerte tant que halo_5 n'est pas provisionné (status != active).
-	h5migrations.Register()
 	// MT-07 : source title-owned des libellés de rangs de carrière (seed offline).
 	migration.SetCareerRankTranslationsProvider(halomigrations.CareerRankTranslations)
 	// MT-15 : classifier LUSR title-owned (pair_name → chaîne TrueSkill). GetLUSRChain
