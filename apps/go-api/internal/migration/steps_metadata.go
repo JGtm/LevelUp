@@ -259,7 +259,6 @@ func init() {
 					enabled               BOOLEAN NOT NULL DEFAULT TRUE
 				);
 				CREATE INDEX IF NOT EXISTS idx_citation_mappings_norm ON citation_mappings(citation_name_norm);
-				CREATE INDEX IF NOT EXISTS idx_citation_mappings_medal ON citation_mappings(medal_id);
 			`)
 		},
 	})
@@ -283,7 +282,6 @@ func init() {
 				ALTER TABLE citation_mappings_v2 RENAME TO citation_mappings;
 				ALTER TABLE citation_mappings ADD PRIMARY KEY (citation_name_norm);
 				CREATE INDEX IF NOT EXISTS idx_citation_mappings_norm ON citation_mappings(citation_name_norm);
-				CREATE INDEX IF NOT EXISTS idx_citation_mappings_medal ON citation_mappings(medal_id);
 			`)
 		},
 	})
@@ -301,7 +299,6 @@ func init() {
 				ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS custom_function    VARCHAR;
 				ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS composite_children VARCHAR;
 				ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS subcategory        VARCHAR;
-				CREATE INDEX IF NOT EXISTS idx_citation_mappings_type ON citation_mappings(mapping_type);
 			`)
 		},
 	})
