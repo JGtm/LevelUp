@@ -25082,3 +25082,13 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Résultats observés** : test de rollback atomique (`TestPrestigeEmitEvent_Atomic_RollsBackOnBumpFailure`) adapté — il DROPpait `user_prestige` pour casser la 2e écriture ; désormais DROP la vue `user_prestige_latest` (EmitEvent fait INSERT…SELECT FROM _latest). Build + vet + gofmt OK. order.go no-op vert, garde-fous étendus.
 
 **Conclusion / prochaine étape** : 9/~20+. **shared_social 100% append-only** (notifs, prefs, favorites, likes, media_assoc, squad×2, user_prestige). Reste du bloc prestige/player = **player DB mono-writer (blast-radius 1 joueur)** : baseline_state, player_privacy_state, lusr_component_history (à confirmer pur-INSERT), preset_arc(_step) (ref metadata), + DELETEs reconcile player DB (challenge/arc/match_citations/personal_score_awards). Puis shared match DELETE, retrait pansements, go/no-go, deploy.
+
+## [2026-06-20] Campagne APPEND-ONLY — caches d'état player-DB (baseline_state, player_privacy_state) — Complété (non déployé)
+
+**Statut** : 2 tables d'état "dernière valeur observée" du player DB converties ON CONFLICT → SELECT-then-write. Tous tests verts (platform/duckdb, prestige, service, sync, vet, gofmt). NON déployé.
+
+**Décision technique principale** : `baseline_state` (PrestigeBaselineStateRepo.Upsert, PK (user_id, title_slug, metric)) et `player_privacy_state` (PrivacyStateRepo.UpsertPrivacyState, PK xuid) sont des caches d'état "dernière valeur" (pas d'accumulation, pas besoin d'historique) → traitement SELECT-then-write (`(*duckdb.DB).UpsertNoConflict`), PAS append-only strict. Aucun index secondaire sur ces tables (vérifié) → l'UPDATE ne touche que des colonnes non-indexées → ART-safe. Player DB = mono-writer sous lease (blast-radius 1 joueur). `player_privacy_state` reste sous lease KindPlayer.
+
+**Résultats observés** : `lusr_component_history` confirmé **pur INSERT** (player_persister.go + skill_rating_loaders.go) — table `_history` append-only par design, aucune conversion nécessaire. Aucune fixture de test à changer (même table, pas de schéma modifié).
+
+**Conclusion / prochaine étape** : 10/~20+. Reste du bloc prestige/player : `preset_arc`/`preset_arc_step` (ref metadata, ON CONFLICT + idx_parc_title sur title_slug muté → drop index + writer migration-seed à traiter) + les 4 DELETEs reconcile player-DB (challenge DeleteByArc, arc Delete, match_citations ×2, personal_score_awards) qui demandent un design (tombstone append-only vs tolérance sérialisée, comme le purge achievements). Puis shared match DELETE, retrait pansements, go/no-go, deploy.
