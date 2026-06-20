@@ -7,6 +7,7 @@
 package ingest
 
 import (
+	"math"
 	"strconv"
 
 	"levelup/go-api/internal/domain"
@@ -58,13 +59,21 @@ func MapMedalEvents(
 			x := xuid
 			xuidPtr = &x
 		}
-		detail := *ev.RefID // medal id en string → coercé en type_hint INTEGER côté DDL
+		// type_hint (cible de DetailsJSON côté SharedPersister) est INTEGER (int32) ;
+		// les medal id Halo 5 dépassent souvent int32 (uint32, ex. 3001183151). On ne
+		// pose le hint que s'il rentre ; sinon nil — l'id COMPLET reste dans
+		// medals_earned.medal_name_id (BIGINT), seule la timeline perd le hint.
+		var detail *string
+		if medalID >= math.MinInt32 && medalID <= math.MaxInt32 {
+			d := *ev.RefID
+			detail = &d
+		}
 		timeline = append(timeline, persist.HighlightEventInsert{
 			MatchID:     matchID,
 			XUID:        xuidPtr,
 			EventType:   eventType,
 			TimeMS:      ev.TimeMs,
-			DetailsJSON: &detail,
+			DetailsJSON: detail,
 		})
 	}
 
