@@ -358,7 +358,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// personal_score_awards — toutes les colonnes nécessaires sont déjà dans
 	// match_participants. L'axe Objective reste neutre (threshold=0).
 	modeFamily := matchModeFamilyFromMeta(meta)
-	radarSeries := BuildMatchRadarFromScoreboard(d.scoreboard, s.xuid, d.objectiveScore, modeFamily)
+	radarSeries := BuildMatchRadarFromScoreboard(d.scoreboard, s.xuid, d.objectiveScore, modeFamily, games.EffectiveHpToKill(s.titleSlug))
 	radar := make([]any, 0, len(radarSeries))
 	for _, rs := range radarSeries {
 		radar = append(radar, rs)

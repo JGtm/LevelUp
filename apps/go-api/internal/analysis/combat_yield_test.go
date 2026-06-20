@@ -7,7 +7,7 @@ import (
 
 func TestComputeCombatYield_nominal(t *testing.T) {
 	// 10 kills, 6 assists, 2000 damage dealt, 1800 damage taken, 4 deaths
-	cy := ComputeCombatYield(10, 6, 2000, 1800, 4)
+	cy := ComputeCombatYield(10, 6, 2000, 1800, 4, 225)
 
 	// offensive_conversion = 225 * (10 + 6/3) / 2000 = 225 * 12 / 2000 = 1.35
 	wantOC := 225.0 * 12.0 / 2000.0
@@ -29,7 +29,7 @@ func TestComputeCombatYield_nominal(t *testing.T) {
 }
 
 func TestComputeCombatYield_zeroDamageDealt(t *testing.T) {
-	cy := ComputeCombatYield(5, 2, 0, 1000, 3)
+	cy := ComputeCombatYield(5, 2, 0, 1000, 3, 225)
 	if cy.OffensiveConversion != 0 {
 		t.Errorf("OffensiveConversion should be 0 when damage_dealt=0, got %f", cy.OffensiveConversion)
 	}
@@ -39,14 +39,14 @@ func TestComputeCombatYield_zeroDamageDealt(t *testing.T) {
 }
 
 func TestComputeCombatYield_zeroDeaths(t *testing.T) {
-	cy := ComputeCombatYield(5, 2, 1000, 500, 0)
+	cy := ComputeCombatYield(5, 2, 1000, 500, 0, 225)
 	if cy.DefensiveResistance != 0 {
 		t.Errorf("DefensiveResistance should be 0 when deaths=0, got %f", cy.DefensiveResistance)
 	}
 }
 
 func TestComputeCombatYield_zeroDamageTaken(t *testing.T) {
-	cy := ComputeCombatYield(5, 2, 1000, 0, 3)
+	cy := ComputeCombatYield(5, 2, 1000, 0, 3, 225)
 	if cy.DefensiveResistance != 0 {
 		t.Errorf("DefensiveResistance should be 0 when damage_taken=0, got %f", cy.DefensiveResistance)
 	}
@@ -54,7 +54,7 @@ func TestComputeCombatYield_zeroDamageTaken(t *testing.T) {
 
 func TestComputeCombatYield_zeroKillsWithAssists(t *testing.T) {
 	// 0 kills, 9 assists → offensive_conversion > 0 (profil teamshot)
-	cy := ComputeCombatYield(0, 9, 1000, 800, 2)
+	cy := ComputeCombatYield(0, 9, 1000, 800, 2, 225)
 	wantOC := 225.0 * 3.0 / 1000.0 // 225 * (0 + 9/3) / 1000
 	if math.Abs(cy.OffensiveConversion-wantOC) > 1e-9 {
 		t.Errorf("OffensiveConversion = %.6f, want %.6f (assists-only profile)", cy.OffensiveConversion, wantOC)
@@ -65,7 +65,7 @@ func TestComputeCombatYield_zeroKillsWithAssists(t *testing.T) {
 }
 
 func TestComputeCombatYield_allZero(t *testing.T) {
-	cy := ComputeCombatYield(0, 0, 0, 0, 0)
+	cy := ComputeCombatYield(0, 0, 0, 0, 0, 225)
 	if cy.OffensiveConversion != 0 || cy.DefensiveResistance != 0 || cy.OffensiveFinishing != 0 {
 		t.Errorf("all-zero input should produce all-zero output, got %+v", cy)
 	}
@@ -73,7 +73,7 @@ func TestComputeCombatYield_allZero(t *testing.T) {
 
 func TestComputeCombatYield_assistCoefficient(t *testing.T) {
 	// Vérification que le coefficient exact est 1/3 (convention Halo Infinite)
-	cy := ComputeCombatYield(0, 3, 225, 0, 0)
+	cy := ComputeCombatYield(0, 3, 225, 0, 0, 225)
 	// offensive_conversion = 225 * 1 / 225 = 1.0
 	if math.Abs(cy.OffensiveConversion-1.0) > 1e-9 {
 		t.Errorf("1/3 assist coefficient: OffensiveConversion = %.9f, want 1.0", cy.OffensiveConversion)
@@ -95,7 +95,7 @@ func TestDamagePerFragEquivalent_isInverseOfOC(t *testing.T) {
 		t.Errorf("DamagePerFragEquivalent = %f, want %f", dpfe, want)
 	}
 	// Invariant clé : OffensiveConversion == 225 / DamagePerFragEquivalent.
-	cy := ComputeCombatYield(10, 6, 2000, 1800, 4)
+	cy := ComputeCombatYield(10, 6, 2000, 1800, 4, 225)
 	if math.Abs(cy.OffensiveConversion-225.0/dpfe) > 1e-9 {
 		t.Errorf("OC (%f) != 225/dmgPerFragEq (%f)", cy.OffensiveConversion, 225.0/dpfe)
 	}

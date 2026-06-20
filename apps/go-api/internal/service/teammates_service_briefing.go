@@ -38,7 +38,7 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 		if len(mainFiltered) == 0 {
 			return nil
 		}
-		kpis := analysis.ComputeKPIStats(mainFiltered)
+		kpis := analysis.ComputeKPIStats(mainFiltered, games.EffectiveHpToKill(s.titleSlug))
 		return &domain.SquadHeader{SoloKPIs: &kpis}
 	}
 
@@ -51,7 +51,7 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 		if len(mainFiltered) == 0 {
 			return nil
 		}
-		kpis := analysis.ComputeKPIStats(mainFiltered)
+		kpis := analysis.ComputeKPIStats(mainFiltered, games.EffectiveHpToKill(s.titleSlug))
 		return &domain.SquadHeader{SoloKPIs: &kpis}
 	}
 
@@ -83,7 +83,7 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 	// Mode degrade : si aucun match partage, le briefing repasse en mode solo
 	// pour rester utile (sinon SoloKPIs serait nil et la section disparaitrait).
 	if header.SoloKPIs == nil && len(mainFiltered) > 0 {
-		kpis := analysis.ComputeKPIStats(mainFiltered)
+		kpis := analysis.ComputeKPIStats(mainFiltered, games.EffectiveHpToKill(s.titleSlug))
 		header.SoloKPIs = &kpis
 	}
 	return header

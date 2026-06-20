@@ -10,6 +10,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
@@ -320,15 +321,18 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 		slog.WarnContext(ctx, "home: EnrichCanonicalAssetTranslations failed", "err", err)
 	}
 
+	// Baseline modèle de dégâts du titre courant (PV pour tuer) — injectée dans
+	// les calculs de rendement/résistance. 225 Infinite (byte-identique), per-titre sinon.
+	hp := games.EffectiveHpToKill(ctxkeys.TitleSlug(ctx))
 	hasRankedHistory, hasUnrankedHistory := analysis.InferHomeSkillHistoryFromCanonical(d.canonicalRows)
-	hero := analysis.BuildHeroCardFromCanonical(d.canonicalRows, gamertag, d.totalMatches, locale)
+	hero := analysis.BuildHeroCardFromCanonical(d.canonicalRows, gamertag, d.totalMatches, locale, hp)
 	highlights := analysis.BuildHighlightsFromCanonical(d.canonicalRows)
-	recentMatches := analysis.BuildRecentMatchesWithFavoritesFromCanonical(d.canonicalRows, len(d.canonicalRows), d.favoriteIDs, locale)
-	favoriteMatches := buildFavoriteMatchListCanonical(d.canonicalRows, d.favoriteIDs, locale)
-	soloSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, false, locale)
-	squadSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, true, locale)
-	soloSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, false, 20, locale)
-	squadSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, true, 20, locale)
+	recentMatches := analysis.BuildRecentMatchesWithFavoritesFromCanonical(d.canonicalRows, len(d.canonicalRows), d.favoriteIDs, locale, hp)
+	favoriteMatches := buildFavoriteMatchListCanonical(d.canonicalRows, d.favoriteIDs, locale, hp)
+	soloSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, false, locale, hp)
+	squadSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, true, locale, hp)
+	soloSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, false, 20, locale, hp)
+	squadSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, true, 20, locale, hp)
 
 	if d.favWeaponName != "" {
 		hero.KPIs.FavoriteWeaponName = d.favWeaponName

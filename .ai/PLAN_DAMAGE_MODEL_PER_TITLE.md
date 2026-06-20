@@ -47,9 +47,18 @@
 - `[damage_model]` dans `constants.toml` Infinite (`225`) + Halo 5 (`115` provisoire) + loader + getter. **Valider `115` Halo 5** sur un vrai match (JGtm) : `Σdmg/Σkills` ≈ ? Ajuster la valeur réelle.
 - Oracle : Infinite lit `225` depuis config = byte-identique ; getter testé.
 
-### Phase 1 — Paramétrer les fonctions pures (compute)
-- `ComputeCombatYield*` + `squad_breakdown_canonical` prennent `effectiveHpToKill` ; callers (service/sync) injectent la valeur du titre. Supprime les 3 littéraux compute → 1 source.
-- Oracle : tests combat_yield avec baseline 225 → valeurs actuelles inchangées ; avec 115 → échelle Halo 5.
+### Phase 1 — Paramétrer les fonctions pures (compute) — ⚠ CASCADE MESURÉE 2026-06-20
+- `ComputeCombatYield(Float)` + `ComputeSynthesisKPIsFromCanonical`/`extKPIAcc.applyTo` prennent `effectiveHpToKill` (param, restent pures) ; le caller résout `games.EffectiveHpToKill(pdb.TitleSlug)` et l'injecte.
+- **Cascade réelle (compiler-driven)** : combat-yield est calculé dans **9 points d'entrée analysis**, chacun appelé par un service qui a le slug → threading du param à chaque niveau :
+  - `combat_yield.go` (ComputeCombatYield / ComputeCombatYieldFloat) — cœur.
+  - `squad_breakdown_canonical.go` (ComputeSynthesisKPIsFromCanonical + applyTo, inline 225).
+  - `home_kpis.go:62`, `home_recent.go:128`, `home_canonical_kpis.go:101`, `home_canonical_recent.go:144` (page Home, 4 sites).
+  - `explorer_target_stats.go:84` (profil combat Explorer).
+  - `kpi_stats.go:143` ; `stats_canonical.go:91`.
+  - **Callers service** (résolvent le slug) : home, explorer, stats, synthesis/squad, compare (`combatYieldOf`), match-view (`computeScoreboardRowCombatYield`), sync (`performance_helpers`).
+  - **Tests** à mettre à jour (passent `225` = byte-identique) : `combat_yield_test.go` (8 appels), `synthesis_canonical_test.go`, etc.
+  - **Total ~30-40 sites**, mécanique, interdépendant (fonctions analysis partagées → threading séquentiel, pas parallélisable sans casser l'invariant).
+- Oracle byte-identique : TOUS les tests combat/stats existants verts en passant `225` (Infinite inchangé) ; Halo 5 = échelle 115.
 
 ### Phase 2 — SQL inline
 - `post_sync_progression_queries.go` : baseline en bind param ou remontée Go. **Ne pas régresser** le post-sync Infinite.

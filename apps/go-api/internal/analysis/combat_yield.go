@@ -1,9 +1,14 @@
 // Package analysis — combat_yield.go : calcul du rendement combat (S56).
 //
 // Portage des formules définies dans DAMAGE_EFFICIENCY_INTEGRATION.md.
-// offensive_conversion = 225 * (kills + assists/3) / damage_dealt
-// defensive_resistance = damage_taken / (225 * deaths)
-// offensive_finishing   = 225 * kills / damage_dealt  (diagnostic uniquement)
+// offensive_conversion = effectiveHpToKill * (kills + assists/3) / damage_dealt
+// defensive_resistance = damage_taken / (effectiveHpToKill * deaths)
+// offensive_finishing   = effectiveHpToKill * kills / damage_dealt  (diagnostic uniquement)
+//
+// effectiveHpToKill = PV effectifs pour tuer un joueur (baseline title-spécifique,
+// 225 Halo Infinite). PARAMÈTRE : la fonction reste pure ; le caller résout la
+// valeur du titre via games.EffectiveHpToKill(slug) et l'injecte (cf.
+// PLAN_DAMAGE_MODEL_PER_TITLE.md). Externalise le littéral 225 câblé.
 package analysis
 
 import "levelup/go-api/internal/domain"
@@ -35,7 +40,7 @@ func FragEquivalents(kills, assists float64) float64 {
 }
 
 // DamagePerFragEquivalent = dégâts / (frags + assists/3). C'est l'inverse exact du
-// rendement offensif normalisé : OffensiveConversion = 225 / DamagePerFragEquivalent.
+// rendement offensif normalisé : OffensiveConversion = effectiveHpToKill / DamagePerFragEquivalent.
 // Retourne 0 si le dénominateur est nul ou négatif.
 func DamagePerFragEquivalent(damageDealt, kills, assists float64) float64 {
 	fe := FragEquivalents(kills, assists)
@@ -47,23 +52,26 @@ func DamagePerFragEquivalent(damageDealt, kills, assists float64) float64 {
 
 // ComputeCombatYield calcule le rendement combat depuis les stats brutes d'un match.
 //
-// Cas limites : retourne 0 si les dénominateurs sont nuls ou négatifs.
-// Le coefficient 1/3 pour les assists est la convention officielle Halo Infinite.
-func ComputeCombatYield(kills, assists int, damageDlt, damageTkn float64, deaths int) CombatYield {
-	return ComputeCombatYieldFloat(float64(kills), float64(assists), damageDlt, damageTkn, float64(deaths))
+// effectiveHpToKill = PV effectifs pour tuer (baseline title-spécifique, 225 Infinite ;
+// le caller résout via games.EffectiveHpToKill(slug)). Cas limites : retourne 0 si les
+// dénominateurs sont nuls ou négatifs. Le coefficient 1/3 pour les assists est la
+// convention officielle Halo Infinite.
+func ComputeCombatYield(kills, assists int, damageDlt, damageTkn float64, deaths int, effectiveHpToKill float64) CombatYield {
+	return ComputeCombatYieldFloat(float64(kills), float64(assists), damageDlt, damageTkn, float64(deaths), effectiveHpToKill)
 }
 
 // ComputeCombatYieldFloat est la variante en flottants des mêmes formules, pour
 // des entrées déjà agrégées (ex. moyennes par partie d'un service record / des
-// stats normalisées). Mêmes garde-fous : dénominateurs nuls/négatifs → 0.
-func ComputeCombatYieldFloat(kills, assists, damageDlt, damageTkn, deaths float64) CombatYield {
+// stats normalisées). effectiveHpToKill = baseline title-spécifique (225 Infinite).
+// Mêmes garde-fous : dénominateurs nuls/négatifs → 0.
+func ComputeCombatYieldFloat(kills, assists, damageDlt, damageTkn, deaths, effectiveHpToKill float64) CombatYield {
 	var cy CombatYield
 	if damageDlt > 0 {
-		cy.OffensiveConversion = 225.0 * FragEquivalents(kills, assists) / damageDlt
-		cy.OffensiveFinishing = 225.0 * kills / damageDlt
+		cy.OffensiveConversion = effectiveHpToKill * FragEquivalents(kills, assists) / damageDlt
+		cy.OffensiveFinishing = effectiveHpToKill * kills / damageDlt
 	}
 	if damageTkn > 0 && deaths > 0 {
-		cy.DefensiveResistance = damageTkn / (225.0 * deaths)
+		cy.DefensiveResistance = damageTkn / (effectiveHpToKill * deaths)
 	}
 	return cy
 }

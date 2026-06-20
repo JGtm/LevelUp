@@ -10,6 +10,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
@@ -72,7 +73,8 @@ func (s *SessionPageService) GetPage(
 	if err != nil {
 		return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService.GetPage: %w", err)
 	}
-	rows := analysis.StatsMatchRowsFromCanonical(canonicalRows)
+	hp := games.EffectiveHpToKill(s.titleSlug)
+	rows := analysis.StatsMatchRowsFromCanonical(canonicalRows, hp)
 	// Placement X/Y : calculé sur TOUS les matchs (le LUSR a besoin de l'ordre global
 	// par chaîne) ; appliqué ensuite par match dans buildSessionDetailRows.
 	placements := s.computeSessionPlacements(ctx, rows)
@@ -108,7 +110,7 @@ func (s *SessionPageService) GetPage(
 
 	currentLabel := lastOrNil(labels, req.SessionLabel)
 	currentMatches := filterBySession(filtered, currentLabel)
-	currentEntry := buildCompareEntryWithObjectives(currentMatches, currentLabel, s.objectiveScores(ctx, currentMatches))
+	currentEntry := buildCompareEntryWithObjectives(currentMatches, currentLabel, s.objectiveScores(ctx, currentMatches), hp)
 	if currentEntry == nil {
 		slog.WarnContext(ctx, "session page: current session not found after filtering",
 			"requested_session", derefString(req.SessionLabel),
@@ -152,7 +154,7 @@ func (s *SessionPageService) GetPage(
 		// hors du filtre resserré ait bien ses matchs (sinon filterBySession sur le
 		// périmètre resserré renverrait vide).
 		compareMatches := filterBySession(compareScope, compareLabel)
-		resp.CompareSession = buildCompareEntryWithObjectives(compareMatches, compareLabel, s.objectiveScores(ctx, compareMatches))
+		resp.CompareSession = buildCompareEntryWithObjectives(compareMatches, compareLabel, s.objectiveScores(ctx, compareMatches), hp)
 		if resp.CompareSession != nil {
 			resp.CompareMetrics = buildCompareMetrics(currentMatches, compareMatches)
 			resp.CompareMatches = buildSessionDetailRows(compareMatches, resp.CompareSession.DominantCategory, req.Locale)

@@ -11,6 +11,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
 
@@ -28,23 +29,23 @@ func synergyRadarThresholds(nShared int) narrative.ParticipationThresholds {
 
 // synergyOffensiveConversion calcule le rendement offensif agrégé sur l'ensemble
 // des matchs : 225 × (ΣK + ΣA/3) / ΣDD. Retourne 0 si aucun dégât infligé.
-func synergyOffensiveConversion(totalKills, totalAssists int, totalDamageDlt float64) float64 {
+func synergyOffensiveConversion(totalKills, totalAssists int, totalDamageDlt float64, effectiveHpToKill float64) float64 {
 	if totalDamageDlt <= 0 {
 		return 0
 	}
-	return 225.0 * (float64(totalKills) + float64(totalAssists)/3.0) / totalDamageDlt
+	return effectiveHpToKill * (float64(totalKills) + float64(totalAssists)/3.0) / totalDamageDlt
 }
 
 // synergyDefensiveResistance calcule la résistance défensive agrégée :
 // ΣDT / (225 × ΣD). Zéro mort avec damage positif → score parfait (au-delà du P80).
-func synergyDefensiveResistance(totalDamageTkn float64, totalDeaths int) float64 {
+func synergyDefensiveResistance(totalDamageTkn float64, totalDeaths int, effectiveHpToKill float64) float64 {
 	if totalDeaths == 0 {
 		if totalDamageTkn > 0 {
 			return analysis.DefensiveResistanceP80 * analysis.CombatYieldClipFactor
 		}
 		return 0
 	}
-	return totalDamageTkn / (225.0 * float64(totalDeaths))
+	return totalDamageTkn / (effectiveHpToKill * float64(totalDeaths))
 }
 
 // synergyMainFallbackAxes calcule combat et support depuis SquadMatchRow
@@ -128,8 +129,9 @@ func (s *TeammatesService) loadSynergyMateAxes(
 		totalPS += float64(ps)
 	}
 
-	raw[narrative.AxisImpact] = synergyOffensiveConversion(totalKills, totalAssists, totalDamageDlt)
-	raw[narrative.AxisSurvival] = synergyDefensiveResistance(totalDamageTkn, totalDeaths)
+	hp := games.EffectiveHpToKill(s.titleSlug)
+	raw[narrative.AxisImpact] = synergyOffensiveConversion(totalKills, totalAssists, totalDamageDlt, hp)
+	raw[narrative.AxisSurvival] = synergyDefensiveResistance(totalDamageTkn, totalDeaths, hp)
 
 	// Objective via PSA — dégradation silencieuse si absent.
 	var objTotal float64

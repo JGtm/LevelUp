@@ -304,14 +304,14 @@ func TestDetermineWinner_B(t *testing.T) {
 }
 
 func TestBuildCompareEntry_Empty(t *testing.T) {
-	result := buildCompareEntry(nil, "S1")
+	result := buildCompareEntry(nil, "S1", 225)
 	if result != nil {
 		t.Error("expected nil for empty matches")
 	}
 }
 
 func TestBuildCompareEntry_EmptyLabel(t *testing.T) {
-	result := buildCompareEntry([]legacymatch.StatsMatchRow{{Kills: 10}}, "")
+	result := buildCompareEntry([]legacymatch.StatsMatchRow{{Kills: 10}}, "", 225)
 	if result != nil {
 		t.Error("expected nil for empty label")
 	}
@@ -324,7 +324,7 @@ func TestBuildCompareEntry_WithData(t *testing.T) {
 		{Kills: 10, Deaths: 5, Outcome: &win, StartTime: now},
 		{Kills: 8, Deaths: 3, Outcome: &win, StartTime: now.Add(time.Hour)},
 	}
-	result := buildCompareEntry(matches, "S1")
+	result := buildCompareEntry(matches, "S1", 225)
 	if result == nil {
 		t.Fatal("expected non-nil")
 	}

@@ -51,7 +51,7 @@ func (a *extKPIAcc) add(r canonical.PlayerMatchRow) {
 	}
 }
 
-func (a *extKPIAcc) applyTo(kpis *domain.SynthesisKPIs, nMatches int, sumTimeSecs float64) {
+func (a *extKPIAcc) applyTo(kpis *domain.SynthesisKPIs, nMatches int, sumTimeSecs float64, effectiveHpToKill float64) {
 	hpm := math.Round(a.sumHeadshots/float64(nMatches)*100) / 100
 	kpis.HeadshotsPerMatch = &hpm
 	pkpm := math.Round(a.sumPerfectKills/float64(nMatches)*100) / 100
@@ -74,20 +74,20 @@ func (a *extKPIAcc) applyTo(kpis *domain.SynthesisKPIs, nMatches int, sumTimeSec
 		v := math.Round(a.sumDmgTaken / float64(a.nDmgTaken))
 		kpis.AvgDamageTaken = &v
 	}
-	// Rendement offensif agrégé : 225 × (kills + assists/3) / total_damage_dealt.
+	// Rendement offensif agrégé : effectiveHpToKill × (kills + assists/3) / total_damage_dealt.
 	if a.sumDmgDealt > 0 {
-		oc := math.Round((225.0*(a.sumKills+a.sumAssists/3.0)/a.sumDmgDealt)*1000) / 1000
+		oc := math.Round((effectiveHpToKill*(a.sumKills+a.sumAssists/3.0)/a.sumDmgDealt)*1000) / 1000
 		kpis.AvgOffensiveConversion = &oc
 	}
-	// Résistance défensive agrégée : total_damage_taken / (225 × deaths).
+	// Résistance défensive agrégée : total_damage_taken / (effectiveHpToKill × deaths).
 	if a.sumDeaths > 0 && a.sumDmgTaken > 0 {
-		dr := math.Round((a.sumDmgTaken/(225.0*a.sumDeaths))*1000) / 1000
+		dr := math.Round((a.sumDmgTaken/(effectiveHpToKill*a.sumDeaths))*1000) / 1000
 		kpis.AvgDefensiveResistance = &dr
 	}
 	kpis.RankedMatchCount = a.nRanked
 }
 
-func ComputeSynthesisKPIsFromCanonical(rows []canonical.PlayerMatchRow, isSquad bool) domain.SynthesisKPIs {
+func ComputeSynthesisKPIsFromCanonical(rows []canonical.PlayerMatchRow, isSquad bool, effectiveHpToKill float64) domain.SynthesisKPIs {
 	var kpis domain.SynthesisKPIs
 	var totalWL, wins, nKDA, nAcc, nPerf, nTime, nLife int
 	var sumKDA, sumAcc, sumPerf, sumKills, sumTimePlayed, sumLife float64
@@ -163,7 +163,7 @@ func ComputeSynthesisKPIsFromCanonical(rows []canonical.PlayerMatchRow, isSquad 
 		}
 	}
 	kpis.TotalTimePlayedSeconds = int(sumTimePlayed)
-	ext.applyTo(&kpis, kpis.MatchCount, sumTimePlayed)
+	ext.applyTo(&kpis, kpis.MatchCount, sumTimePlayed, effectiveHpToKill)
 	return kpis
 }
 

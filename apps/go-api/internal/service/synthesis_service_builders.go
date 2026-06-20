@@ -185,7 +185,7 @@ func buildTopWeaponKills(rows []port.WeaponKillRow, n int) []domain.SynthesisWea
 // buildCombatProfileFromCanonical agrège OC + DR depuis les rows canoniques filtrés
 // et construit le CombatProfileBlock (descripteurs gérés par ClassifyCombatProfile).
 // Retourne nil si aucun row valide (matchCount == 0).
-func buildCombatProfileFromCanonical(rows []canonical.PlayerMatchRow) *domain.CombatProfileBlock {
+func buildCombatProfileFromCanonical(rows []canonical.PlayerMatchRow, effectiveHpToKill float64) *domain.CombatProfileBlock {
 	if len(rows) == 0 {
 		return nil
 	}
@@ -215,7 +215,7 @@ func buildCombatProfileFromCanonical(rows []canonical.PlayerMatchRow) *domain.Co
 			residualCount++
 		}
 	}
-	cy := analysis.ComputeCombatYieldFloat(float64(totalKills), float64(totalAssists), totalDmgDealt, totalDmgTaken, float64(totalDeaths))
+	cy := analysis.ComputeCombatYieldFloat(float64(totalKills), float64(totalAssists), totalDmgDealt, totalDmgTaken, float64(totalDeaths), effectiveHpToKill)
 	avgOC := cy.OffensiveConversion
 	avgDR := cy.DefensiveResistance
 	var avgResidualBrut *float64

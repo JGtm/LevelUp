@@ -22,6 +22,7 @@ func BuildSampleStats(
 	agg *domain.ParticipantStatsAggregate,
 	medals *domain.MedalCountsAggregate,
 	sampleSize int,
+	effectiveHpToKill float64,
 ) *domain.ExplorerTargetSampleStats {
 	if agg == nil || sampleSize <= 0 {
 		return nil
@@ -81,7 +82,7 @@ func BuildSampleStats(
 	}
 
 	// Rendement combat : réutilise la formule canonique.
-	yield := ComputeCombatYield(agg.Kills, agg.Assists, agg.DamageDealt, agg.DamageTaken, agg.Deaths)
+	yield := ComputeCombatYield(agg.Kills, agg.Assists, agg.DamageDealt, agg.DamageTaken, agg.Deaths, effectiveHpToKill)
 	if yield.OffensiveConversion > 0 {
 		oc := yield.OffensiveConversion
 		stats.OffensiveConversion = &oc

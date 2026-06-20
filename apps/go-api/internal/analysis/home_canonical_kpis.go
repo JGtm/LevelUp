@@ -10,7 +10,7 @@ import (
 
 // ComputeKPIsFromCanonical est la variante canonical-aware de ComputeKPIs
 // (P4.3 finale). Logique strictement identique ; lit depuis Self/Enrichment.
-func ComputeKPIsFromCanonical(rows []canonical.PlayerMatchRow, totalMatches int, locale string) domain.HeroKPIs {
+func ComputeKPIsFromCanonical(rows []canonical.PlayerMatchRow, totalMatches int, locale string, effectiveHpToKill float64) domain.HeroKPIs {
 	if len(rows) == 0 {
 		return domain.HeroKPIs{}
 	}
@@ -98,7 +98,7 @@ func ComputeKPIsFromCanonical(rows []canonical.PlayerMatchRow, totalMatches int,
 	// moyenne des ratios par match (qui sur-pondérait les matchs à faible volume et
 	// décrochait du dégâts/frag affiché). OC garde le crédit assists (frag-équivalent).
 	if hasCombatYield {
-		cy := ComputeCombatYieldFloat(float64(totalKills), float64(totalAssists), totalDmgDealt, totalDmgTaken, float64(totalDeaths))
+		cy := ComputeCombatYieldFloat(float64(totalKills), float64(totalAssists), totalDmgDealt, totalDmgTaken, float64(totalDeaths), effectiveHpToKill)
 		if cy.OffensiveConversion > 0 {
 			v := round2(cy.OffensiveConversion)
 			kpis.AvgOffensiveConversion = &v
@@ -204,8 +204,8 @@ func winRateCanonical(rows []canonical.PlayerMatchRow) float64 {
 }
 
 // BuildHeroCardFromCanonical : entiÃ¨rement canonical (P4.3 finale).
-func BuildHeroCardFromCanonical(rows []canonical.PlayerMatchRow, gamertag string, totalMatches int, locale string) domain.HomeHeroCard {
-	kpis := ComputeKPIsFromCanonical(rows, totalMatches, locale)
+func BuildHeroCardFromCanonical(rows []canonical.PlayerMatchRow, gamertag string, totalMatches int, locale string, effectiveHpToKill float64) domain.HomeHeroCard {
+	kpis := ComputeKPIsFromCanonical(rows, totalMatches, locale, effectiveHpToKill)
 	trend := ComputeTrendFromCanonical(rows, 5)
 	return domain.HomeHeroCard{PlayerName: gamertag, KPIs: kpis, Trend: trend}
 }

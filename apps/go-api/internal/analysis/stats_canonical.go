@@ -40,7 +40,7 @@ import (
 //   - IsFirefight : depuis Summary.IsPvE.
 //   - MedalExploitScore / OffensiveConversion / DefensiveResistance : dÃ©rivÃ©s
 //     LevelUp non couverts par canonical (cf. P4_GAP_ANALYSIS.md), restent nil.
-func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.StatsMatchRow {
+func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow, effectiveHpToKill float64) legacymatch.StatsMatchRow {
 	out := legacymatch.StatsMatchRow{
 		MatchID:           r.Summary.MatchID,
 		StartTime:         r.Summary.StartedAtUTC,
@@ -88,7 +88,7 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.StatsMat
 		if out.DamageTaken != nil {
 			dt = *out.DamageTaken
 		}
-		cy := ComputeCombatYield(out.Kills, out.Assists, dd, dt, out.Deaths)
+		cy := ComputeCombatYield(out.Kills, out.Assists, dd, dt, out.Deaths, effectiveHpToKill)
 		if cy.OffensiveConversion > 0 {
 			v := cy.OffensiveConversion
 			out.OffensiveConversion = &v
@@ -167,10 +167,10 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.StatsMat
 
 // StatsMatchRowsFromCanonical : version slice partagÃ©e par les 4 services
 // consommant StatsMatchRow.
-func StatsMatchRowsFromCanonical(rows []canonical.PlayerMatchRow) []legacymatch.StatsMatchRow {
+func StatsMatchRowsFromCanonical(rows []canonical.PlayerMatchRow, effectiveHpToKill float64) []legacymatch.StatsMatchRow {
 	out := make([]legacymatch.StatsMatchRow, len(rows))
 	for i, r := range rows {
-		out[i] = StatsMatchRowFromCanonical(r)
+		out[i] = StatsMatchRowFromCanonical(r, effectiveHpToKill)
 	}
 	return out
 }
@@ -192,8 +192,8 @@ func StatsMatchRowsFromCanonical(rows []canonical.PlayerMatchRow) []legacymatch.
 
 // ComputePerformanceSeriesFromCanonical : entry-point canonical pour
 // ComputePerformanceSeries.
-func ComputePerformanceSeriesFromCanonical(rows []canonical.PlayerMatchRow) []*float64 {
-	return ComputePerformanceSeries(StatsMatchRowsFromCanonical(rows))
+func ComputePerformanceSeriesFromCanonical(rows []canonical.PlayerMatchRow, effectiveHpToKill float64) []*float64 {
+	return ComputePerformanceSeries(StatsMatchRowsFromCanonical(rows, effectiveHpToKill))
 }
 
 // =============================================================================

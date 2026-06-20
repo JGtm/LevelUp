@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"time"
 
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/progression/milestones"
 	"levelup/go-api/internal/progression/records"
@@ -123,7 +124,7 @@ func loadProgressionMatches(ctx context.Context, pdb *duckdb.PlayerDB, lookbackD
 		return nil, nil, err
 	}
 
-	activities, inputs := assembleProgressionResults(loaded, perfByMatch)
+	activities, inputs := assembleProgressionResults(loaded, perfByMatch, games.EffectiveHpToKill(pdb.TitleSlug))
 	return activities, inputs, nil
 }
 
@@ -214,7 +215,7 @@ func loadProgressionPerfScores(ctx context.Context, pdb *duckdb.PlayerDB, matchI
 }
 
 // assembleProgressionResults compose les 2 vues (activities + inputs) à partir des rows + perf scores.
-func assembleProgressionResults(loaded []progressionMatchRow, perfByMatch map[string]float64) ([]streaks.MatchActivity, []records.MatchInput) {
+func assembleProgressionResults(loaded []progressionMatchRow, perfByMatch map[string]float64, effectiveHpToKill float64) ([]streaks.MatchActivity, []records.MatchInput) {
 	activities := make([]streaks.MatchActivity, 0, len(loaded))
 	inputs := make([]records.MatchInput, 0, len(loaded))
 	for _, r := range loaded {
@@ -228,13 +229,13 @@ func assembleProgressionResults(loaded []progressionMatchRow, perfByMatch map[st
 		}
 		matchStats := map[string]float64{"kda": r.kda}
 		if r.dmgDealt > 0 {
-			// offensive_conversion = 225 * (kills + assists/3) / damage_dealt
-			oc := 225.0 * (r.kills + r.assists/3.0) / r.dmgDealt
+			// offensive_conversion = effectiveHpToKill * (kills + assists/3) / damage_dealt
+			oc := effectiveHpToKill * (r.kills + r.assists/3.0) / r.dmgDealt
 			matchStats["oc"] = oc
 		}
 		if r.dmgTaken > 0 && r.deaths > 0 {
-			// defensive_resistance = damage_taken / (225 * deaths)
-			dr := r.dmgTaken / (225.0 * r.deaths)
+			// defensive_resistance = damage_taken / (effectiveHpToKill * deaths)
+			dr := r.dmgTaken / (effectiveHpToKill * r.deaths)
 			matchStats["dr"] = dr
 		}
 		activities = append(activities, streaks.MatchActivity{
@@ -330,19 +331,25 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 	// combat_excellence_matches : matchs avec OC >= 0.83 ET DR >= 1.59.
 	const ocP80 = 0.83
 	const drP80 = 1.59
-	var precisionMatches, enduranceMatches, excellenceMatches int64
-	if err := sharedDB.QueryRowContext(ctx, `
+	// effectiveHpToKill = baseline PV-pour-tuer du titre (225 Infinite ; 115 Halo 5).
+	// Float de confiance issu de la config → injecté via Sprintf (%g), pas une
+	// entrée utilisateur. Les seuils P80 restent en bind params (?).
+	hp := games.EffectiveHpToKill(pdb.TitleSlug)
+	combatMetricsQuery := fmt.Sprintf(`
 		SELECT
 			COUNT(CASE WHEN damage_dealt > 0
-				AND 225.0 * (COALESCE(kills,0) + COALESCE(assists,0)/3.0) / damage_dealt >= ? THEN 1 END),
+				AND %[1]g * (COALESCE(kills,0) + COALESCE(assists,0)/3.0) / damage_dealt >= ? THEN 1 END),
 			COUNT(CASE WHEN damage_taken > 0 AND COALESCE(deaths,0) > 0
-				AND damage_taken / (225.0 * deaths) >= ? THEN 1 END),
+				AND damage_taken / (%[1]g * deaths) >= ? THEN 1 END),
 			COUNT(CASE WHEN damage_dealt > 0 AND damage_taken > 0 AND COALESCE(deaths,0) > 0
-				AND 225.0 * (COALESCE(kills,0) + COALESCE(assists,0)/3.0) / damage_dealt >= ?
-				AND damage_taken / (225.0 * deaths) >= ? THEN 1 END)
+				AND %[1]g * (COALESCE(kills,0) + COALESCE(assists,0)/3.0) / damage_dealt >= ?
+				AND damage_taken / (%[1]g * deaths) >= ? THEN 1 END)
 		FROM match_participants
 		WHERE xuid = ?
-	`, ocP80, drP80, ocP80, drP80, pdb.XUID).Scan(&precisionMatches, &enduranceMatches, &excellenceMatches); err != nil {
+	`, hp)
+	var precisionMatches, enduranceMatches, excellenceMatches int64
+	if err := sharedDB.QueryRowContext(ctx, combatMetricsQuery,
+		ocP80, drP80, ocP80, drP80, pdb.XUID).Scan(&precisionMatches, &enduranceMatches, &excellenceMatches); err != nil {
 		return out, fmt.Errorf("aggregate combat metrics: %w", err)
 	}
 	out.Metrics["combat_precision_matches"] = float64(precisionMatches)

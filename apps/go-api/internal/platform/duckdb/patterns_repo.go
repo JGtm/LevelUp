@@ -20,6 +20,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/patterns"
+	"levelup/go-api/internal/games"
 )
 
 // patternsLoadTimeout borne le chargement des données de patterns (3 queries
@@ -69,7 +70,7 @@ func (r *PatternsRepo) LoadRows(ctx context.Context, limit int) ([]patterns.Matc
 		return nil, fmt.Errorf("loadPatternRows skill_ranks: %w", err)
 	}
 
-	rows := mergePatternRows(shared, enrichMap, skillMap)
+	rows := mergePatternRows(shared, enrichMap, skillMap, games.EffectiveHpToKill(r.pdb.TitleSlug))
 	computePatternSkillDeltas(rows)
 	return rows, nil
 }
@@ -268,10 +269,10 @@ WHERE match_id IN (%s)`, ph)
 }
 
 // mergePatternRows assemble les résultats des 3 phases en []patterns.MatchRow.
-func mergePatternRows(shared []patternSharedRow, enrichMap map[string]patternEnrichmentRow, skillMap map[string]patternSkillRankRow) []patterns.MatchRow {
+func mergePatternRows(shared []patternSharedRow, enrichMap map[string]patternEnrichmentRow, skillMap map[string]patternSkillRankRow, effectiveHpToKill float64) []patterns.MatchRow {
 	out := make([]patterns.MatchRow, 0, len(shared))
 	for _, s := range shared {
-		cy := analysis.ComputeCombatYield(s.Kills, s.Assists, s.DamageDlt, s.DamageTkn, s.Deaths)
+		cy := analysis.ComputeCombatYield(s.Kills, s.Assists, s.DamageDlt, s.DamageTkn, s.Deaths, effectiveHpToKill)
 		hsRate := 0.0
 		if s.Kills > 0 {
 			hsRate = float64(s.HeadshotKills) / float64(s.Kills)

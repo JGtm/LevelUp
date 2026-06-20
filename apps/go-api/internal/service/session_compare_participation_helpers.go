@@ -78,6 +78,7 @@ func avgMMR(matches []legacymatch.StatsMatchRow) (*float64, *float64) {
 func buildSessionParticipationProfile(
 	matches []legacymatch.StatsMatchRow,
 	objScores map[string]int,
+	effectiveHpToKill float64,
 ) []domain.SessionParticipationAxis {
 	n := len(matches)
 	if n == 0 {
@@ -117,8 +118,8 @@ func buildSessionParticipationProfile(
 			objTotal += float64(objScores[m.MatchID])
 		}
 	}
-	rawByAxis[narrative.AxisImpact] = synergyOffensiveConversion(totalKills, totalAssists, totalDD)
-	rawByAxis[narrative.AxisSurvival] = synergyDefensiveResistance(totalDT, totalDeaths)
+	rawByAxis[narrative.AxisImpact] = synergyOffensiveConversion(totalKills, totalAssists, totalDD, effectiveHpToKill)
+	rawByAxis[narrative.AxisSurvival] = synergyDefensiveResistance(totalDT, totalDeaths, effectiveHpToKill)
 	rawByAxis[narrative.AxisObjective] = objTotal
 	// Score = résiduel PS après kills×100 + assists×50 + objectif (medals/streaks).
 	residual := totalPS - float64(totalKills)*100.0 - float64(totalAssists)*50.0 - objTotal

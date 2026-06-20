@@ -17,11 +17,12 @@ func buildFavoriteMatchListCanonical(
 	rows []canonical.PlayerMatchRow,
 	favoriteIDs map[string]bool,
 	locale string,
+	effectiveHpToKill float64,
 ) []domain.RecentMatchItem {
 	if len(favoriteIDs) == 0 {
 		return nil
 	}
-	allItems := analysis.BuildRecentMatchesWithFavoritesFromCanonical(rows, len(rows), favoriteIDs, locale)
+	allItems := analysis.BuildRecentMatchesWithFavoritesFromCanonical(rows, len(rows), favoriteIDs, locale, effectiveHpToKill)
 	var favorites []domain.RecentMatchItem
 	for _, item := range allItems {
 		if item.IsFavorite {

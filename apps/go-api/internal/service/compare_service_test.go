@@ -135,7 +135,7 @@ func TestBuildMetrics_AvailabilityRemoteB(t *testing.T) {
 		DamagePerGame: 2200,
 	}
 
-	rows := buildMetrics(a, b)
+	rows := buildMetrics(a, b, 225)
 	byKey := make(map[string]domain.CompareMetricRow, len(rows))
 	for _, r := range rows {
 		byKey[r.Metric] = r
@@ -194,7 +194,7 @@ func TestBuildMetrics_CareerRankLiveRemoteB(t *testing.T) {
 	a := domain.NormalizedPlayerStats{IsLocal: true, Matches: 100, CareerRank: 200, KillsPerGame: 10, DeathsPerGame: 8}
 	b := domain.NormalizedPlayerStats{IsLocal: false, Matches: 50, CareerRank: 152, KillsPerGame: 9, DeathsPerGame: 9}
 
-	rows := buildMetrics(a, b)
+	rows := buildMetrics(a, b, 225)
 	var cr *domain.CompareMetricRow
 	for i := range rows {
 		if rows[i].Metric == compareMetricCareerRank {
@@ -305,7 +305,7 @@ func TestBuildMetrics_CSRRow(t *testing.T) {
 	// A et B classés → ligne visible, display = tier, vainqueur par valeur.
 	a := domain.NormalizedPlayerStats{IsLocal: true, Matches: 100, HighestCSR: 1600, HighestCSRLabel: "Onyx", KillsPerGame: 10, DeathsPerGame: 8}
 	b := domain.NormalizedPlayerStats{IsLocal: false, Matches: 50, HighestCSR: 1450, HighestCSRLabel: "Diamant II", KillsPerGame: 9, DeathsPerGame: 9}
-	csr := byKey(buildMetrics(a, b))[compareMetricCSR]
+	csr := byKey(buildMetrics(a, b, 225))[compareMetricCSR]
 	if csr.Metric != compareMetricCSR {
 		t.Fatal("ligne csr absente alors que A et B sont classés")
 	}
@@ -321,14 +321,14 @@ func TestBuildMetrics_CSRRow(t *testing.T) {
 
 	// B "Non classé" (récupéré, value 0, label set) → disponible et affiché (pas N/A).
 	bUnranked := domain.NormalizedPlayerStats{IsLocal: false, Matches: 50, HighestCSR: 0, HighestCSRLabel: csrUnrankedLabel}
-	r := byKey(buildMetrics(a, bUnranked))[compareMetricCSR]
+	r := byKey(buildMetrics(a, bUnranked, 225))[compareMetricCSR]
 	if !r.ValueBAvailable || r.DisplayB != csrUnrankedLabel {
 		t.Errorf("csr B 'Non classé' doit être disponible et affiché, got avail=%v disp=%q", r.ValueBAvailable, r.DisplayB)
 	}
 
 	// B non récupéré (label vide) → N/A (indisponible).
 	bNA := domain.NormalizedPlayerStats{IsLocal: false, Matches: 50, HighestCSR: 0, HighestCSRLabel: ""}
-	if rr := byKey(buildMetrics(a, bNA))[compareMetricCSR]; rr.ValueBAvailable {
+	if rr := byKey(buildMetrics(a, bNA, 225))[compareMetricCSR]; rr.ValueBAvailable {
 		t.Error("csr B sans libellé (non récupéré) doit être N/A")
 	}
 }
@@ -348,14 +348,14 @@ func TestBuildMetrics_OCDRAlignedWithCombatYield(t *testing.T) {
 		DamagePerGame: 2600, DamageTakenPerGame: 1800,
 	}
 
-	rows := buildMetrics(a, b)
+	rows := buildMetrics(a, b, 225)
 	byKey := make(map[string]domain.CompareMetricRow, len(rows))
 	for _, r := range rows {
 		byKey[r.Metric] = r
 	}
 
-	wantA := analysis.ComputeCombatYieldFloat(12, 3, 2400, 2100, 6)
-	wantB := analysis.ComputeCombatYieldFloat(8, 2, 2600, 1800, 9)
+	wantA := analysis.ComputeCombatYieldFloat(12, 3, 2400, 2100, 6, 225)
+	wantB := analysis.ComputeCombatYieldFloat(8, 2, 2600, 1800, 9, 225)
 
 	rend, ok := byKey["rendement"]
 	if !ok {
@@ -397,7 +397,7 @@ func TestBuildMetrics_AvailabilityATHZero(t *testing.T) {
 		PerfATH: 50, LusrATH: 1200, CareerRank: 100,
 	}
 
-	rows := buildMetrics(a, b)
+	rows := buildMetrics(a, b, 225)
 	byKey := make(map[string]domain.CompareMetricRow, len(rows))
 	for _, r := range rows {
 		byKey[r.Metric] = r
@@ -439,7 +439,7 @@ func TestBuildMetrics_IsLocalSample(t *testing.T) {
 		MaxKillingSpree: 8, AvgLifeSecs: 25, PerfectKillsPerGame: 0.1, HeadshotKillsPerGame: 2.5,
 	}
 
-	rows := buildMetrics(a, b)
+	rows := buildMetrics(a, b, 225)
 	byKey := make(map[string]domain.CompareMetricRow, len(rows))
 	for _, r := range rows {
 		byKey[r.Metric] = r

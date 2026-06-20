@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
@@ -367,7 +368,7 @@ func (s *PlayerEngagementService) resolveFilteredRowsDesc(
 	if err != nil {
 		return nil, nil, fmt.Errorf("PlayerEngagementService.resolveFilteredRowsDesc: %w", err)
 	}
-	allRows := analysis.StatsMatchRowsFromCanonical(canonicalRows)
+	allRows := analysis.StatsMatchRowsFromCanonical(canonicalRows, games.EffectiveHpToKill(s.titleSlug))
 	filtered := filterStatsMatchRows(allRows, filters)
 	pvp := make([]legacymatch.StatsMatchRow, 0, len(filtered))
 	for _, m := range filtered {

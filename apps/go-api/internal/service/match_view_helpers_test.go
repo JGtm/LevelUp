@@ -57,7 +57,7 @@ func TestIndexBulkWeaponsByXUID_GroupsByXUID(t *testing.T) {
 
 func TestComputeScoreboardRowCombatYield_NoDamageData_ReturnsNilPointers(t *testing.T) {
 	s := domain.ScoreboardRaw{Kills: 5, Deaths: 3, Assists: 2}
-	oc, dr, dpk, dpd := computeScoreboardRowCombatYield(s)
+	oc, dr, dpk, dpd := computeScoreboardRowCombatYield(s, 225)
 	if oc != nil || dr != nil || dpk != nil || dpd != nil {
 		t.Errorf("Tous les pointeurs doivent etre nil sans damage data : oc=%v dr=%v dpk=%v dpd=%v", oc, dr, dpk, dpd)
 	}
@@ -71,7 +71,7 @@ func TestComputeScoreboardRowCombatYield_FullData_AllPointersSet(t *testing.T) {
 		DamageDealt: &dd,
 		DamageTaken: &dt,
 	}
-	oc, dr, dpk, dpd := computeScoreboardRowCombatYield(s)
+	oc, dr, dpk, dpd := computeScoreboardRowCombatYield(s, 225)
 	if oc == nil || dr == nil || dpk == nil || dpd == nil {
 		t.Fatalf("Tous les pointeurs doivent etre non-nil : oc=%v dr=%v dpk=%v dpd=%v", oc, dr, dpk, dpd)
 	}
@@ -91,7 +91,7 @@ func TestComputeScoreboardRowCombatYield_ZeroDeaths_NoDPD(t *testing.T) {
 		DamageDealt: &dd,
 		DamageTaken: &dt,
 	}
-	_, _, dpk, dpd := computeScoreboardRowCombatYield(s)
+	_, _, dpk, dpd := computeScoreboardRowCombatYield(s, 225)
 	if dpk == nil {
 		t.Error("DamagePerKill doit etre defini (kills=4 > 0)")
 	}

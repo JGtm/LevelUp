@@ -24,7 +24,7 @@ import (
 //
 // Outcomes compte uniquement les outcomes connus (Win/Loss/Tie/DNF). Les
 // outcomes vides ou inconnus ne sont pas comptes.
-func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
+func ComputeKPIStats(rows []canonical.PlayerMatchRow, effectiveHpToKill float64) domain.KPIStats {
 	stats := domain.KPIStats{}
 	if len(rows) == 0 {
 		return stats
@@ -140,7 +140,7 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 	// MÊMES totaux que DmgPerKill ci-dessous → % = 225 / DmgPerKill exactement.
 	avgOC := 0.0
 	avgDR := 0.0
-	cy := ComputeCombatYieldFloat(float64(totalKills), float64(totalAssists), totalDmgDealt, totalDmgTaken, float64(totalDeaths))
+	cy := ComputeCombatYieldFloat(float64(totalKills), float64(totalAssists), totalDmgDealt, totalDmgTaken, float64(totalDeaths), effectiveHpToKill)
 	if cy.OffensiveConversion > 0 {
 		avgOC = math.Round(cy.OffensiveConversion*100) / 100
 		stats.AvgOffensiveConversion = &avgOC

@@ -1,3 +1,15 @@
+## [2026-06-20] Damage-model par titre Phases 1+2 : rewire compute backend (title-aware) — Complété
+
+**Statut** : Complété. `go build ./...` + `go vet ./internal/...` verts (tous tests compilent) ; **analysis + service + api tests PASSENT** (byte-identique avec 225). **Zéro littéral `225` ne reste dans un chemin de calcul backend** (grep vide). Le rendement/résistance est désormais title-aware de bout en bout côté Go.
+
+**Ampleur réelle** : cascade ~90 sites (bien plus que l'estimation 30-40). Threadé `effectiveHpToKill` (param, fonctions pures) depuis le caller qui résout `games.EffectiveHpToKill(slug)` :
+- **analysis** (Phase 1) : `combat_yield.go` + `squad_breakdown_canonical.go` (cœur) + 9 points d'entrée (home×7 fonctions imbriquées : ComputeKPIs/BuildHeroCard/BuildRecentMatches*/BuildSessionSumm*, explorer BuildSampleStats, kpi_stats, stats_canonical StatsMatchRow*/PerformanceSeries) → ~20 fonctions analysis + ~60 sites de tests (passent `225`, byte-identique ; script paren-balancé + stragglers multi-lignes à la main).
+- **service** (Phase 1d) : home/explorer/stats/synthesis/compare/match-view/session-page/session-compare/teammates/squad/timeseries. Slug via `s.titleSlug` (méthodes) ou `ctxkeys.TitleSlug(ctx)` (free fns avec ctx). Free functions threadées en param (combatYieldOf, buildMetrics, computeScoreboardRowCombatYield, buildCompareEntry(WithObjectives), buildCombatProfileFromCanonical, **synergyOffensive/DefensiveResistance** (inline 225 hors ComputeCombatYield !), computeMatchRadarRawAxes, BuildMatchRadarFromScoreboard, buildSessionParticipationProfile).
+- **duckdb** : `patterns_repo.go` mergePatternRows.
+- **api** (Phase 2) : `post_sync_progression_queries.go` — Go (assembleProgressionResults param) + **SQL inline** (loadPlayerStats : baseline injectée via `fmt.Sprintf %[1]g`, float de config trusted, seuils P80 restent en bind `?`).
+
+**Restant** : Phase 3 front (display inverse + tooltip + copy d'aide « convention Halo Infinite ») + P80 par titre (les seuils 0.83/1.59 restent Infinite — recalibration Halo 5 = data live). Le NOMBRE Halo 5 (115) reste provisoire (à valider data à l'activation).
+
 ## [2026-06-20] Damage-model par titre Phase 0 : config seam (effective_hp_to_kill) — Complété
 
 **Statut** : Complété. `go build ./internal/games/...` + `go test ./internal/games/ ./internal/games/mappings/` verts. Seam INERTE (aucun consommateur encore — Phase 1 les câble) mais testé bout-à-bout, Infinite byte-identique (défaut 225).

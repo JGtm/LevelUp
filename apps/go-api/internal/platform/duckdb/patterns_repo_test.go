@@ -37,7 +37,7 @@ func TestMergePatternRows_FieldsAndRatingRouting(t *testing.T) {
 		"m2": {RatingValue: ptrF(1200), RatingType: "CSR"},
 	}
 
-	out := mergePatternRows(shared, enrichMap, skillMap)
+	out := mergePatternRows(shared, enrichMap, skillMap, 225)
 	if len(out) != 2 {
 		t.Fatalf("len(out) = %d, want 2", len(out))
 	}

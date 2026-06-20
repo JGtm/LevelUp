@@ -18,7 +18,7 @@ import (
 
 // ComputeKPIs calcule les KPIs globaux depuis les matchs chargÃ©s.
 // totalMatches est le nombre rÃ©el de matchs du joueur (pas limitÃ© par le LIMIT SQL).
-func ComputeKPIs(matches []legacymatch.HomeMatchRow, totalMatches int) domain.HeroKPIs {
+func ComputeKPIs(matches []legacymatch.HomeMatchRow, totalMatches int, effectiveHpToKill float64) domain.HeroKPIs {
 	if len(matches) == 0 {
 		return domain.HeroKPIs{}
 	}
@@ -59,7 +59,7 @@ func ComputeKPIs(matches []legacymatch.HomeMatchRow, totalMatches int) domain.He
 			totalPlaytime += *m.TimePlayedSecs
 		}
 		if m.DamageDealt != nil && m.DamageTaken != nil {
-			cy := ComputeCombatYield(m.Kills, m.Assists, *m.DamageDealt, *m.DamageTaken, m.Deaths)
+			cy := ComputeCombatYield(m.Kills, m.Assists, *m.DamageDealt, *m.DamageTaken, m.Deaths, effectiveHpToKill)
 			if cy.OffensiveConversion > 0 {
 				offSum += cy.OffensiveConversion
 				offCount++
@@ -170,8 +170,8 @@ func ComputeTrend(matches []legacymatch.HomeMatchRow, window int) *domain.HeroTr
 
 // BuildHeroCard construit le hero card pour un joueur.
 // totalMatches est le nombre rÃ©el de matchs (sans LIMIT SQL).
-func BuildHeroCard(matches []legacymatch.HomeMatchRow, gamertag string, totalMatches int) domain.HomeHeroCard {
-	kpis := ComputeKPIs(matches, totalMatches)
+func BuildHeroCard(matches []legacymatch.HomeMatchRow, gamertag string, totalMatches int, effectiveHpToKill float64) domain.HomeHeroCard {
+	kpis := ComputeKPIs(matches, totalMatches, effectiveHpToKill)
 	trend := ComputeTrend(matches, 5)
 	return domain.HomeHeroCard{PlayerName: gamertag, KPIs: kpis, Trend: trend}
 }
