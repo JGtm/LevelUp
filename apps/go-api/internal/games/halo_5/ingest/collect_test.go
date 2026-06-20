@@ -46,7 +46,7 @@ func TestMatchRegistryRowFromSummary(t *testing.T) {
 	}
 }
 
-func TestCollectMedalsBatch_EndToEnd(t *testing.T) {
+func TestCollectMatchBatch_EndToEnd(t *testing.T) {
 	s := canonical.MatchSummary{
 		MatchID:      "m1",
 		StartedAtUTC: time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC),
@@ -56,12 +56,13 @@ func TestCollectMedalsBatch_EndToEnd(t *testing.T) {
 		medal("Madina97294", "100", 5000),
 		medal("Madina97294", "100", 9000),
 		medal("JGtm", "200", 3000),
-		{Type: canonical.MatchEventKill, TimeMs: 1000}, // ignoré (tranche médailles)
+		kill("Madina97294", "JGtm", "12345", 6000),
+		kill("JGtm", "Madina97294", "", 8000),
 	}
 	resolve := fakeResolver(map[string]string{"Madina97294": "xA", "JGtm": "xB"})
 	viewer := canonical.PlayerIdentity{Gamertag: "Madina97294", XUID: "xA"}
 
-	batch := CollectMedalsBatch("halo_5", "h5_capture", viewer, s, timeline, resolve)
+	batch := CollectMatchBatch("halo_5", "h5_capture", viewer, s, timeline, resolve)
 
 	if batch.TitleSlug != "halo_5" || batch.Player != "Madina97294" || batch.XUID != "xA" {
 		t.Fatalf("métadonnées batch: slug=%q player=%q xuid=%q", batch.TitleSlug, batch.Player, batch.XUID)
@@ -70,11 +71,18 @@ func TestCollectMedalsBatch_EndToEnd(t *testing.T) {
 	if batch.Shared.Match == nil || batch.Shared.Match.MatchID != "m1" {
 		t.Fatalf("match_registry (ancre) absent du batch: %+v", batch.Shared.Match)
 	}
-	// 2 lignes agrégat (Madina/100=2, JGtm/200=1) + 3 events horodatés.
+	// Médailles : 2 agrégats (Madina/100=2, JGtm/200=1) + 3 events horodatés.
 	if len(batch.Shared.Medals) != 2 {
 		t.Errorf("medals agrégat: %d, attendu 2 — %+v", len(batch.Shared.Medals), batch.Shared.Medals)
 	}
 	if len(batch.Shared.HighlightEvents) != 3 {
 		t.Errorf("highlight_events: %d, attendu 3", len(batch.Shared.HighlightEvents))
+	}
+	// Kills : 2 paires par-kill + 1 arme (1er kill seulement).
+	if len(batch.Shared.KillerVictim) != 2 {
+		t.Errorf("killer_victim_pairs: %d, attendu 2 — %+v", len(batch.Shared.KillerVictim), batch.Shared.KillerVictim)
+	}
+	if len(batch.Shared.WeaponKills) != 1 {
+		t.Errorf("weapon_kills: %d, attendu 1", len(batch.Shared.WeaponKills))
 	}
 }
