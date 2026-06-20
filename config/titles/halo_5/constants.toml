@@ -30,3 +30,12 @@ ugc_film      = "https://ugc.svc.halowaypoint.com"            # films (UgcFilmMa
 discovery_ugc = "https://ugc.svc.halowaypoint.com"            # map/game variants, forge groups
 challenges    = "https://spartanstats.svc.halowaypoint.com"   # commendations natives (pas de "défis" Halo 5)
 nameplate     = "https://haloplayer.svc.halowaypoint.com"     # profiles/appearance/emblem/spartan render
+
+# ─── Modèle de dégâts (baseline rendement / résistance) ─────────────────────
+# effective_hp_to_kill Halo 5 = 115 (bouclier 70 + armure 45). ⚠ PROVISOIRE :
+# valeur DESIGN (PV en jeu) — à VALIDER contre les vrais damage_dealt/kills d'un
+# match Halo 5 (l'unité de dégâts de l'API cryptum peut ≠ PV affichés, comme le
+# 225 Infinite empirique). Cf. PLAN_DAMAGE_MODEL_PER_TITLE.md Phase 0 (valider à
+# l'activation 1b). Tant que non validé, rendement/résistance Halo 5 = approximatifs.
+[damage_model]
+effective_hp_to_kill = 115

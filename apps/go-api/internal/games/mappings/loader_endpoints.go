@@ -9,10 +9,18 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-// endpointsTOML est la projection brute de constants.toml (section [endpoints]).
+// endpointsTOML est la projection brute de constants.toml (sections [endpoints]
+// + [damage_model]).
 type endpointsTOML struct {
-	Meta      metaSection       `toml:"meta"`
-	Endpoints map[string]string `toml:"endpoints"`
+	Meta        metaSection       `toml:"meta"`
+	Endpoints   map[string]string `toml:"endpoints"`
+	DamageModel damageModelTOML   `toml:"damage_model"`
+}
+
+// damageModelTOML projette la section [damage_model] (constantes de gameplay,
+// title-spécifiques). Optionnelle : absente → modèle de dégâts non déclaré.
+type damageModelTOML struct {
+	EffectiveHpToKill float64 `toml:"effective_hp_to_kill"`
 }
 
 // allowedEndpointKeys est la liste exhaustive des clés d'endpoint admises (MT-01).
@@ -82,11 +90,18 @@ func LoadEndpointsFromBytes(path string, raw []byte) (*EndpointSet, error) {
 		errs = append(errs, fmt.Errorf("[meta].game_prefix invalide %q (attendu : segment d'URL minuscule alphanumérique, ex. \"hi\", \"h5\")", gamePrefix))
 	}
 
+	// [damage_model] optionnel. effective_hp_to_kill : 0 (ou absent) = non déclaré
+	// (le caller applique son défaut) ; < 0 = invalide (PV négatifs absurdes).
+	if doc.DamageModel.EffectiveHpToKill < 0 {
+		errs = append(errs, fmt.Errorf("[damage_model].effective_hp_to_kill doit être > 0 (reçu %v)", doc.DamageModel.EffectiveHpToKill))
+	}
+
 	if len(errs) > 0 {
 		return nil, fmt.Errorf("validation %s: %w", path, errors.Join(errs...))
 	}
 
-	return NewEndpointSet(doc.Meta.TitleSlug, doc.Meta.SchemaVersion, gamePrefix, byKey), nil
+	dm := DamageModelConstants{EffectiveHpToKill: doc.DamageModel.EffectiveHpToKill}
+	return NewEndpointSet(doc.Meta.TitleSlug, doc.Meta.SchemaVersion, gamePrefix, byKey).withDamageModel(dm), nil
 }
 
 // isValidGamePrefix vérifie qu'un game_prefix est un segment d'URL sûr : une
