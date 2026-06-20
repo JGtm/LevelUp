@@ -146,22 +146,16 @@ func batchComputeLUSR(ctx context.Context, playerDB, sharedDB *sql.DB, xuid stri
 		return n, err
 	}
 
-	// 8. Compaction (force uniquement). Le mode force ré-INSÈRE une version
-	//    append-only de TOUS les matchs à chaque appel ; sans compaction
-	//    match_skill_rank croît sans borne (toggle exclusion répété, rebuilds ART
-	//    successifs). On collapse l'historique à la version la plus récente par
-	//    (match_id, rating_type). Non bloquant : la lecture (vue latest) reste
-	//    correcte même si la compaction échoue. Le mode incrémental n'en a pas
-	//    besoin (1 version ajoutée par nouveau match).
-	if force {
-		if deleted, cErr := compactMatchSkillRankSuperseded(ctx, playerDB); cErr != nil {
-			slog.WarnContext(ctx, "batchComputeLUSR: compaction match_skill_rank échouée (non bloquant)",
-				"xuid", xuid, "err", cErr)
-		} else if deleted > 0 {
-			slog.DebugContext(ctx, "batchComputeLUSR: compaction match_skill_rank",
-				"xuid", xuid, "rows_purged", deleted)
-		}
-	}
+	// 8. PAS de compaction des versions superseded. Le DELETE per-row sur
+	//    match_skill_rank (id NOT IN MAX(id)…) déclenche le bug ART DuckDB amont
+	//    #23046 — il a FAIT CRASHER JGtm (2026-06-20) malgré mono-writer + PK BIGINT :
+	//    l'hypothèse historique « sérialisé + PK BIGINT = sûr » est FAUSSE (#23046
+	//    corrompt le heap file-backed sous churn, pas seulement sous concurrence).
+	//    La table reste append-only PUR (INSERT seul) ; la vue match_skill_rank_latest
+	//    (MAX(id)) reste correcte avec les versions superseded présentes. Croissance
+	//    bornée en pratique (force-recompute rare) ; compaction éventuelle = job
+	//    offline (serveur arrêté), jamais en runtime.
+	_ = force
 	return n, nil
 }
 
