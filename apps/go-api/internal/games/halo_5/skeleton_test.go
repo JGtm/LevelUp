@@ -20,15 +20,15 @@ func repoRoot(t *testing.T) string {
 	return filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..", "..")
 }
 
-// TestHalo5_Manifest : title.toml = coming_soon, xbox_title_id réel, coarse
-// capabilities attendues (et absence des coarse non déclarées).
+// TestHalo5_Manifest : title.toml = active (activation 2026-06-20), xbox_title_id
+// réel, coarse capabilities attendues (et absence des coarse non déclarées).
 func TestHalo5_Manifest(t *testing.T) {
 	desc, err := title.LoadTitleManifest(repoRoot(t), slug)
 	if err != nil {
 		t.Fatalf("LoadTitleManifest(%s): %v", slug, err)
 	}
-	if desc.Status != title.StatusComingSoon {
-		t.Errorf("status = %q, want coming_soon", desc.Status)
+	if desc.Status != title.StatusActive {
+		t.Errorf("status = %q, want active", desc.Status)
 	}
 	if desc.XboxTitleID != "219630713" {
 		t.Errorf("xbox_title_id = %q, want 219630713", desc.XboxTitleID)
@@ -107,20 +107,24 @@ func TestHalo5_MappingsLoad(t *testing.T) {
 	}
 }
 
-// TestHalo5_RegistryDiscovery : le registre config découvre Halo 5 en coming_soon
-// (donc PAS provisionné -> absent de Active()).
+// TestHalo5_RegistryDiscovery : le registre config découvre Halo 5 ACTIF
+// (activation 2026-06-20 -> provisionné -> présent dans Active()).
 func TestHalo5_RegistryDiscovery(t *testing.T) {
 	reg := title.NewRegistryFromConfig(repoRoot(t), nil)
 	desc := reg.Get(slug)
 	if desc == nil {
 		t.Fatal("halo_5 non découvert par NewRegistryFromConfig")
 	}
-	if desc.IsActive() {
-		t.Error("halo_5 ne doit pas être actif (coming_soon)")
+	if !desc.IsActive() {
+		t.Error("halo_5 doit être actif (status=active)")
 	}
+	found := false
 	for _, a := range reg.Active() {
 		if a.Slug == slug {
-			t.Error("halo_5 (coming_soon) ne doit PAS être dans Active()")
+			found = true
 		}
+	}
+	if !found {
+		t.Error("halo_5 (active) doit être présent dans Active()")
 	}
 }
