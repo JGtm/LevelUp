@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -51,9 +52,11 @@ func killEvents() *h5MatchEventsResponse {
 
 // fakeH5Source — source live mockée (par page de matchs + par timeline de match).
 type fakeH5Source struct {
-	pages     map[int]*H5MatchesResponse        // start -> page
-	events    map[string]*h5MatchEventsResponse // matchID -> timeline
-	eventsErr map[string]error                  // matchID -> erreur fetch events
+	pages      map[int]*H5MatchesResponse        // start -> page
+	events     map[string]*h5MatchEventsResponse // matchID -> timeline
+	eventsErr  map[string]error                  // matchID -> erreur fetch events
+	carnage    map[string]*H5CarnageResponse     // matchID -> carnage (roster)
+	carnageErr map[string]error                  // matchID -> erreur fetch carnage
 }
 
 func (f *fakeH5Source) GetServiceRecords(context.Context, string, string) (*H5ServiceRecordResponse, error) {
@@ -74,8 +77,17 @@ func (f *fakeH5Source) GetMatchEvents(_ context.Context, matchID string) (*h5Mat
 	}
 	return &h5MatchEventsResponse{}, nil
 }
+func (f *fakeH5Source) GetMatchCarnage(_ context.Context, matchID, _ string) (*H5CarnageResponse, error) {
+	if err := f.carnageErr[matchID]; err != nil {
+		return nil, err
+	}
+	if r, ok := f.carnage[matchID]; ok {
+		return r, nil
+	}
+	return &H5CarnageResponse{}, nil // pas de roster = pas de participants (toléré)
+}
 
-var _ h5Source = (*fakeH5Source)(nil)
+var _ h5CaptureSource = (*fakeH5Source)(nil)
 
 func jgtmViewer() canonical.PlayerIdentity {
 	return canonical.PlayerIdentity{Gamertag: "JGtm", XUID: "xJG"}
@@ -187,4 +199,82 @@ type errSource struct{ fakeH5Source }
 
 func (errSource) GetPlayerMatches(context.Context, string, int, int) (*H5MatchesResponse, error) {
 	return nil, errors.New("réseau KO")
+}
+
+// roster2 : carnage d'équipe 2 joueurs (JGtm équipe gagnante Rank 1, Foe perdante).
+func roster2() *H5CarnageResponse {
+	return &H5CarnageResponse{
+		IsTeamGame: true,
+		TeamStats:  []H5CarnageTeam{{TeamId: 0, Rank: 2}, {TeamId: 1, Rank: 1}},
+		PlayerStats: []H5CarnagePlayer{
+			{Player: H5PlayerRef{Gamertag: "JGtm"}, TeamId: 1, Rank: 1,
+				TotalKills: 10, TotalDeaths: 14, TotalAssists: 11,
+				TotalTimePlayed: "PT5M0S", AvgLifeTimeOfPlayer: "PT16S"},
+			{Player: H5PlayerRef{Gamertag: "Foe"}, TeamId: 0, Rank: 5,
+				TotalKills: 8, TotalDeaths: 13, TotalAssists: 6},
+		},
+	}
+}
+
+func TestCollectRecentMatches_Participants(t *testing.T) {
+	src := &fakeH5Source{
+		pages:   map[int]*H5MatchesResponse{0: mustMatches(t, "m1")},
+		carnage: map[string]*H5CarnageResponse{"m1": roster2()},
+	}
+	batches, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, nil,
+		CaptureOptions{PageSize: 25})
+	if err != nil {
+		t.Fatalf("CollectRecentMatches: %v", err)
+	}
+	if len(batches) != 1 {
+		t.Fatalf("batches = %d, want 1", len(batches))
+	}
+	parts := batches[0].Shared.Participants
+	if len(parts) != 2 {
+		t.Fatalf("participants = %d, want 2 (roster carnage)", len(parts))
+	}
+	var jg *domain.MatchParticipantRow
+	for i := range parts {
+		if parts[i].XUID == "xJG" {
+			jg = &parts[i]
+		}
+	}
+	if jg == nil {
+		t.Fatal("JGtm (xuid résolu xJG) absent du roster")
+	}
+	// Équipe gagnante (Rank 1) → Win ; comptes bruts repris ; KDA JAMAIS fabriqué.
+	if jg.Outcome == nil || *jg.Outcome != domain.OutcomeWin {
+		t.Errorf("outcome JGtm = %v, want win(2)", jg.Outcome)
+	}
+	if jg.Kills == nil || *jg.Kills != 10 {
+		t.Errorf("kills JGtm = %v, want 10", jg.Kills)
+	}
+	if jg.KDA != nil {
+		t.Errorf("KDA h5 doit rester nil (jamais fabriqué), got %v", *jg.KDA)
+	}
+	if jg.DamageTaken != nil {
+		t.Errorf("DamageTaken h5 doit rester nil (absent de l'API), got %v", *jg.DamageTaken)
+	}
+	if stats.CarnageFailed != 0 {
+		t.Errorf("CarnageFailed = %d, want 0", stats.CarnageFailed)
+	}
+}
+
+func TestCollectRecentMatches_CarnageFailureStillCollects(t *testing.T) {
+	src := &fakeH5Source{
+		pages:      map[int]*H5MatchesResponse{0: mustMatches(t, "m1")},
+		carnageErr: map[string]error{"m1": errors.New("403 token expiré")},
+	}
+	batches, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, nil,
+		CaptureOptions{PageSize: 25})
+	if err != nil {
+		t.Fatalf("CollectRecentMatches: %v", err)
+	}
+	// carnage KO → match collecté sans participants + CarnageFailed compté.
+	if len(batches) != 1 || stats.CarnageFailed != 1 {
+		t.Errorf("len=%d carnageFailed=%d, want 1 + 1", len(batches), stats.CarnageFailed)
+	}
+	if len(batches[0].Shared.Participants) != 0 {
+		t.Errorf("carnage KO → 0 participants, got %d", len(batches[0].Shared.Participants))
+	}
 }

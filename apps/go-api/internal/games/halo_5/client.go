@@ -177,6 +177,26 @@ func (c *Client) GetMatchDetail(ctx context.Context, matchID, mode string) (map[
 	return out, nil
 }
 
+// GetMatchCarnage recupere le carnage report TYPE d'un match (roster complet +
+// scoreboard etendu). mode = "arena"|"warzone"|... (cf. Links.StatsMatchDetails).
+// Variante typee de GetMatchDetail, consommee par l'ingestion participants.
+func (c *Client) GetMatchCarnage(ctx context.Context, matchID, mode string) (*H5CarnageResponse, error) {
+	if strings.TrimSpace(matchID) == "" || strings.TrimSpace(mode) == "" {
+		return nil, errors.New("GetMatchCarnage: matchID/mode vide")
+	}
+	endpoint := fmt.Sprintf("%s/h5/%s/matches/%s",
+		c.statsHost(), url.PathEscape(mode), url.PathEscape(matchID))
+	body, err := c.doGet(ctx, endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("GetMatchCarnage(%s): %w", matchID, err)
+	}
+	var resp H5CarnageResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("GetMatchCarnage decode: %w", err)
+	}
+	return &resp, nil
+}
+
 // GetMatchEvents recupere la timeline d'events NATIVE d'un match (kill-feed +
 // arme-par-kill + medailles + positions monde, horodates). Path CONFIRME sonde :
 // /h5/matches/{id}/events — ⚠️ SANS segment de mode (le /h5/{mode}/matches/{id}/

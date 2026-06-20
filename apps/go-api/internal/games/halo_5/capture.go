@@ -17,16 +17,28 @@ import (
 	"fmt"
 	"log/slog"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/classification"
 	"levelup/go-api/internal/games/halo_5/ingest"
 	"levelup/go-api/internal/persist"
 )
 
+// h5CaptureSource = source live enrichie pour la capture sync : ajoute le carnage
+// (roster complet match_participants — la liste de matchs ne porte que le self).
+// Séparée de h5Source (interface minimale de l'adapter read-only) pour ne pas
+// élargir l'interface de l'adapter. *Client l'implémente.
+type h5CaptureSource interface {
+	h5Source
+	GetMatchCarnage(ctx context.Context, matchID, mode string) (*H5CarnageResponse, error)
+}
+
+var _ h5CaptureSource = (*Client)(nil)
+
 const (
 	h5CaptureDefaultPageSize   = 25
 	h5CaptureDefaultMaxMatches = 100
-	h5CaptureSource            = "h5_capture"
+	h5CaptureSourceLabel       = "h5_capture"
 )
 
 // CaptureOptions borne la collecte + porte la stratégie de classification ranked.
@@ -43,6 +55,7 @@ type CaptureStats struct {
 	MatchesCollected int  // batches produits (matchs nouveaux)
 	StoppedOnKnown   bool // delta-stop atteint (1er match déjà connu)
 	EventsFailed     int  // matchs dont la timeline n'a pu être fetchée (batch registry-only)
+	CarnageFailed    int  // matchs dont le carnage n'a pu être fetché (batch sans participants)
 }
 
 // CollectRecentMatches récupère les matchs h5 récents du viewer et retourne UN
@@ -60,7 +73,7 @@ type CaptureStats struct {
 // persisté est no-opé par SharedPersister).
 func CollectRecentMatches(
 	ctx context.Context,
-	src h5Source,
+	src h5CaptureSource,
 	viewer canonical.PlayerIdentity,
 	resolveXUID func(gamertag string) string,
 	isKnown func(matchID string) bool,
@@ -76,7 +89,7 @@ func CollectRecentMatches(
 	}
 	source := opts.Source
 	if source == "" {
-		source = h5CaptureSource
+		source = h5CaptureSourceLabel
 	}
 	if resolveXUID == nil {
 		resolveXUID = func(string) string { return "" }
@@ -111,7 +124,8 @@ func CollectRecentMatches(
 				return batches, stats, nil // delta-stop
 			}
 			timeline := captureMatchTimeline(ctx, src, s.MatchID, &stats)
-			batches = append(batches, ingest.CollectMatchBatch(TitleSlug, source, viewer, s, timeline, resolveXUID))
+			participants := captureParticipants(ctx, src, s.MatchID, h5GameModeSegment(resp.Results[i].Id.GameMode), resolveXUID, &stats)
+			batches = append(batches, ingest.CollectMatchBatch(TitleSlug, source, viewer, s, timeline, participants, resolveXUID))
 			stats.MatchesCollected++
 			if stats.MatchesCollected >= maxMatches {
 				return batches, stats, nil
@@ -136,4 +150,18 @@ func captureMatchTimeline(ctx context.Context, src h5Source, matchID string, sta
 		return nil
 	}
 	return mapH5Events(resp, canonical.MatchEventOptions{}) // Types vide = tous les events
+}
+
+// captureParticipants fetch le carnage + mappe le roster complet. Indisponibilité
+// (404/410, token expiré, decode) -> nil + CarnageFailed++ : le match est TOUT DE
+// MÊME collecté (sans match_participants) — squad/rencontres dégradent pour ce
+// match seul, et un futur passage le re-tentera (match_registry idempotent).
+func captureParticipants(ctx context.Context, src h5CaptureSource, matchID, mode string, resolveXUID func(string) string, stats *CaptureStats) []domain.MatchParticipantRow {
+	carnage, err := src.GetMatchCarnage(ctx, matchID, mode)
+	if err != nil {
+		stats.CarnageFailed++
+		slog.WarnContext(ctx, "h5 capture: carnage indisponible (sans participants)", "match_id", matchID, "err", err)
+		return nil
+	}
+	return mapCarnageParticipants(matchID, carnage, resolveXUID)
 }

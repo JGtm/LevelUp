@@ -247,6 +247,11 @@ func probeOneMatch(ctx context.Context, client *http.Client, spartan string, m m
 			_ = os.WriteFile(os.TempDir()+"/h5_events.json", []byte(body), 0o644)
 			fmt.Printf("   [dump] %s/h5_events.json\n", os.TempDir())
 		}
+		// Dump complet du carnage pour le mapping participants (shape PlayerStats).
+		if t.label == "CARNAGE_DETAIL" && status == http.StatusOK {
+			_ = os.WriteFile(os.TempDir()+"/h5_carnage.json", []byte(body), 0o644)
+			fmt.Printf("   [dump] %s/h5_carnage.json\n", os.TempDir())
+		}
 		preview := strings.TrimSpace(body)
 		limit := 1500
 		if t.label == "UGC_FILM_MANIFEST" {
