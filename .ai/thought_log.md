@@ -1,3 +1,21 @@
+## [2026-06-20] Activation Halo 5 — 1b.1 : boucle registration adapters titres additionnels — Complété (non commité)
+
+**Statut** : Code livré + vérifié, **commit en attente d'autorisation**. `go build ./internal/api/...` + `go vet` verts ; **suite api complète PASSE (9,7s)** → Halo Infinite **byte-identique** ; 3 tests dédiés verts ; **archlint no_slug_comparison vert**.
+
+**Méthode** : passe de cartographie multi-agents (workflow `wxls2v65t`, 7 lecteurs + critique) avant de toucher `server.go`. **Le critique a démenti un point des findings** : la phrase « HI passe par le même chemin générique → byte-identique » est FAUSSE. Le builder HI (server.go:389-404) injecte des repos DuckDB (`NewCareerRepo`/`NewExplorerRepo`/`NewMatchEventsSource`) ; le builder H5 serait live (`SourceFactory NewSpartanTokenSource`, ignore la player DB). Corps structurellement différents → **garder HI intact, APPEND une boucle pour les titres additionnels** (recommandation critique, validée par le commentaire existant server.go:385-388 « Un 2e titre enregistrerait ICI son propre builder »).
+
+**Livré** :
+- `internal/api/server_titles_additional.go` : `registerAdditionalTitles(registry, resolver, reg, fm)` boucle `titleRegistry.Active()`, saute `td.IsDefault`, dispatch par **map slug→registrar** (`additionalTitleRegistrars{halo5.TitleSlug: registerHalo5Adapters}`) — clé = const de package, **jamais** `slug == "..."` (archlint OK ; le regex ne matche que `halo_infinite`/`DefaultSlug`). `registerHalo5Adapters` enregistre semantic (`games.NewGenericSemanticAdapter`, ranks nil = CSR natif) + data live + builder player-scoped (ignore la *PlayerDB, titre live-only).
+- `server.go` : 1 appel `registerAdditionalTitles(...)` après le builder HI (titleResolver + reg en scope). Bloc HI **non modifié** → byte-identique par construction.
+- `server_titles_additional_test.go` : 3 oracles — no-op sans titre actif (byte-identique), câble Halo 5 quand actif (semantic+data résolus, mappings réels chargés du worktree), skip propre d'un titre actif sans registrar.
+
+**Inertie** : `Active()` exclut `coming_soon` → tant que halo_5 reste `coming_soon`, la boucle est un NO-OP total. Le câblage ne s'active qu'au flip `status=active`.
+
+**Reste activation 1b** (cluster couplé, à faire AVEC le flip live) :
+1. **Isolation migrations** (obligatoire avant flip) : `RegisterMigrationSet(halo_5)` — sinon `RunForTitleDB` retombe sur les migrations HI → tables `match_registry`/etc. parasites dans le warehouse h5. Pas de `RegisterMigrationSet` en prod aujourd'hui (h5 = 1er). Contenu (vide live-only vs avec `highlight_events`) **dépend de la décision 4a**.
+2. **Flip** `status=active` (title.toml) — **HORS-LIGNE IMPOSSIBLE** : provisioning réel + sonde live cryptum exigent serveur + tokens JGtm.
+3. **4a durabilité events** : décision design ouverte — events h5 = gamertag-keyed (XUID nil) ; `highlight_events` HI = xuid-centré → persistance nécessite colonne gamertag ou résolution amont (vrai travail design, pas câblage).
+
 ## [2026-06-20] Damage-model par titre Phase 3 front : copy d'aide combat title-aware — Complété
 
 **Statut** : Complété. `npm run typecheck` + `npm run lint` (0 erreur, 75 warnings pré-existants hors mes fichiers) + vitest (4 fichiers fixtures touchés 37 tests + nouveau `help/i18n.test.ts` 4 tests) **verts** (hors sandbox, cf. mémoire). Le glossaire d'aide affiche désormais le barème PV-pour-tuer du **titre courant** (225 Infinite / 115 Halo 5), résolu de bout en bout backend→front.
