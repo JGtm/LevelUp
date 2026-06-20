@@ -1,3 +1,18 @@
+## [2026-06-20] Activation Halo 5 — 1b.2 : isolation migrations halo_5 — Complété (non commité)
+
+**Statut** : Code livré + vérifié, **commit en attente d'autorisation**. `go build ./internal/games/halo_5/migrations/ ./cmd/server/` + `go vet` verts ; **test d'isolation (integration) PASSE** sur les 4 targets ; `go test ./internal/migration/` + archlint verts.
+
+**Problème (flag critique du critique de cartographie)** : si halo_5 est flippé `status=active` SANS `RegisterMigrationSet`, `RunForTitleDB(halo_5, target)` retombe sur le fallback legacy = les migrations Halo Infinite → tables `match_registry`/`match_participants`/etc. **parasites** (jamais peuplées, sync h5 live-only) tracées sous `title_slug=halo_5`. Aucun `RegisterMigrationSet` en prod aujourd'hui (h5 = 1er titre additionnel).
+
+**Livré** (décision user : set VIDE live-only, durabilité 4a différée) :
+- `internal/games/halo_5/migrations/migrations.go` : package `migrations` exposant `Set()` (TitleMigrationSet vide — `Steps` retourne nil pour tout target, `CanonicalOrder` nil) + `Register()`. Slug = `halo5.TitleSlug` (source unique).
+- `cmd/server/main.go` : `h5migrations.Register()` appelé dans `runMigrations` juste après `SetTitleStepsProvider` (donc avant `provisionAdditionalActiveTitles`). Inerte tant que h5 non provisionné (peupler la map des sets = zéro effet de bord sans `RunForTitleDB(halo_5)`).
+- `migration_isolation_test.go` (//go:build integration) : RunForTitleDB(halo_5, {metadata,shared,shared_social,shared_pve}) = no-op propre (`applied=0`), ZÉRO artefact Halo (`match_registry`/`v_gamertag_lookup`/`asset_translations`/etc.) dans le warehouse h5.
+
+**4a durabilité events (différé)** : quand tranché (events h5 gamertag-keyed vs `highlight_events` xuid-centré), ajouter la migration `highlight_events` au `Set()` de ce package — additif, le reste du câblage est en place.
+
+**Reste activation 1b** : **flip `status=active`** (title.toml) — HORS-LIGNE IMPOSSIBLE (serveur + tokens JGtm) + **vérif live** (carrière CSR + kill-feed JGtm) + **4a durabilité**. À faire ensemble en session live.
+
 ## [2026-06-20] Activation Halo 5 — 1b.1 : boucle registration adapters titres additionnels — Complété (non commité)
 
 **Statut** : Code livré + vérifié, **commit en attente d'autorisation**. `go build ./internal/api/...` + `go vet` verts ; **suite api complète PASSE (9,7s)** → Halo Infinite **byte-identique** ; 3 tests dédiés verts ; **archlint no_slug_comparison vert**.
