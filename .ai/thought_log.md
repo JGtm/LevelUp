@@ -25241,3 +25241,18 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Reste (inchangé, tier lourd)** : P3 player_match_enrichment append-only merge-on-read (~120 readers, 4 index ART, multi-writers incrémentaux) ; P4 match_registry completion bit-ledger ; P5 CLI archive/restore. Garde-fou clôture : étendre TestNoBulkMultiRowUpdateOnCriticalTables à la forme UPDATE…IN(…).
 
 **Conclusion** : fix prod déployé+stable (inchangé). Les conversions restantes sont toutes des append-only multi-fichiers (writers+readers+vue+fixtures+garde-fou) à reprendre en sessions focalisées (qualité > grind en contexte dégradé). Findings ci-dessus = pas de ré-investigation nécessaire. Prochaine reprise conseillée : personal_score_awards (vecteur le plus actif) en append-only.
+
+## [2026-06-20] P3 player_match_enrichment — design append-only VÉRIFIÉ (workflow ultracode 7 agents) — Spec turnkey
+
+**Contexte** : après deploy prod (P1+media_files), reprise sur le plus lourd. Branche refactor/art-pme-appendonly (depuis main, correctif combat-profile inclus). PME = table la plus écrite, 4 index ART, écritures partielles incrémentales par étape, ~43 sites read (pas 120).
+
+**Workflow census/design/vérif** (pme-appendonly-census-design, 7 agents, 728k tokens) : schéma + 13 writers (map colonne→étape) + ~43 readers catégorisés + design merge-on-read + 2 red-teams adversariaux. Verdicts = GO-WITH-FIXES, POC-first, 2 PRs. ~16 défauts dont :
+- **Correction design critique** : last_value(IGNORE NULLS) PAR COLONNE est FAUX (engagement_score=NULL légitime = insufficient_history se fige). → merge PAR GROUPE de colonnes co-écrites via discriminateur `stage` + pivot par match_id (dernier INSERT du groupe fait foi, NULL inclus).
+- **BLOCKER migration** : le template skill_rank n'est PAS transactionnel → perte totale au boot (SIGTERM deploy) sur une table NON re-dérivable → calquer RebuildPlayerMatchEnrichmentART / media_files (TX + garde row-count + orphan-recovery).
+- **BLOCKER réparateur** : RebuildPlayerMatchEnrichmentART re-pose PK(match_id) + index ART → ré-introduit le vecteur → adapter en mode append-only (ADD PK(id)).
+- **BLOCKERS readers** : tous les delta-filters/idempotence + JOIN agrégats + convergence psa_checked_at IS NULL (re-fetch infini) + invariants COUNT==DISTINCT → DOIVENT lire la vue _latest, sinon volume explosif + agrégats faussés silencieusement (fan-out).
+- 2 sources de schéma à patcher (schema.go + steps_player.go create_base oublié).
+
+**Décision** : analyse 728k tokens distillée en spec turnkey dans .ai/PLAN_PME_ART_HARDENING.md (design vérifié + 16 fixes + roadmap POC-first incrément engagement + 2 PRs + garde-rails + tests + critère de succès engagement-coefs --with-scores ×3). Implémentation POC à exécuter en session fraîche (qualité > grid : refonte multi-PR de la pièce la plus délicate + raffinement merge-par-groupe à éprouver). Question ouverte pour le POC : syntaxe DuckDB exacte du pivot par-groupe (any_value/arg_max FILTER pour préserver NULL).
+
+**Prochaine étape** : POC incrément 1 (migration transactionnelle + vue merge-par-groupe + cluster engagement converti) ; valider EXPLAIN + engagement-coefs ×3 sur copie Madina/JGtm.
