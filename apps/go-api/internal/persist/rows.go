@@ -99,6 +99,22 @@ type KillerVictimInsert struct {
 	WeaponID       *uint64 `json:"weapon_id,omitempty"`
 }
 
+// KillPositionInsert — row pour shared.kill_positions (positions monde tueur/
+// victime par kill, jointes au kill par (match_id, killer_xuid, time_ms)).
+// Coordonnées nullables : un kill peut n'avoir que la position du tueur. Halo 5
+// les fournit nativement ; Infinite les laisse nil jusqu'au câblage monde du film.
+type KillPositionInsert struct {
+	MatchID    string   `json:"match_id"`
+	KillerXUID string   `json:"killer_xuid"`
+	TimeMS     int      `json:"time_ms"`
+	KillerX    *float64 `json:"killer_x,omitempty"`
+	KillerY    *float64 `json:"killer_y,omitempty"`
+	KillerZ    *float64 `json:"killer_z,omitempty"`
+	VictimX    *float64 `json:"victim_x,omitempty"`
+	VictimY    *float64 `json:"victim_y,omitempty"`
+	VictimZ    *float64 `json:"victim_z,omitempty"`
+}
+
 // XUIDAliasInsert — row pour shared.xuid_aliases.
 type XUIDAliasInsert struct {
 	XUID     string    `json:"xuid"`

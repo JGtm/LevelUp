@@ -27,6 +27,7 @@ func CollectMatchBatch(
 	registry := MatchRegistryRowFromSummary(summary, viewer.Gamertag)
 	medals, medalEvents := MapMedalEvents(summary.MatchID, timeline, resolveXUID)
 	pairs, weapons := MapKillEvents(summary.MatchID, timeline, resolveXUID)
+	positions := MapKillPositions(summary.MatchID, timeline, resolveXUID)
 
 	return persist.NewBatchBuilder(titleSlug, viewer.Gamertag, viewer.XUID, source).
 		SetMatch(&registry).
@@ -34,5 +35,6 @@ func CollectMatchBatch(
 		AddHighlightEvents(medalEvents).
 		AddKillerVictim(pairs).
 		AddWeaponKills(weapons).
+		AddKillPositions(positions).
 		Build()
 }

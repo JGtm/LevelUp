@@ -81,6 +81,12 @@ func (b *BatchBuilder) AddKillerVictim(rows []KillerVictimInsert) *BatchBuilder 
 	return b
 }
 
+// AddKillPositions ajoute les rows kill_positions (positions monde par kill).
+func (b *BatchBuilder) AddKillPositions(rows []KillPositionInsert) *BatchBuilder {
+	b.batch.Shared.KillPositions = append(b.batch.Shared.KillPositions, rows...)
+	return b
+}
+
 // AddXUIDAliases ajoute les rows xuid_aliases.
 func (b *BatchBuilder) AddXUIDAliases(rows []XUIDAliasInsert) *BatchBuilder {
 	b.batch.Shared.XUIDAliases = append(b.batch.Shared.XUIDAliases, rows...)

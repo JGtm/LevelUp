@@ -109,6 +109,9 @@ func (p *SharedPersister) Persist(ctx context.Context, batch *MatchBatch) error 
 	if err := persistKillerVictim(ctx, tx, s.KillerVictim); err != nil {
 		return err
 	}
+	if err := persistKillPositions(ctx, tx, s.KillPositions); err != nil {
+		return err
+	}
 	if err := persistHighlightEvents(ctx, tx, s.HighlightEvents); err != nil {
 		return err
 	}
@@ -294,6 +297,28 @@ func persistKillerVictim(ctx context.Context, tx *sql.Tx, rows []KillerVictimIns
 		if err != nil {
 			return fmt.Errorf("persist: INSERT killer_victim_pairs %s/%s→%s: %w",
 				p.MatchID, p.KillerXUID, p.VictimXUID, err)
+		}
+	}
+	return nil
+}
+
+func persistKillPositions(ctx context.Context, tx *sql.Tx, rows []KillPositionInsert) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	for _, r := range rows {
+		// INSERT pur — table append-only (positions par kill, jamais ré-écrites).
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO kill_positions (
+				match_id, killer_xuid, time_ms,
+				killer_x, killer_y, killer_z, victim_x, victim_y, victim_z
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			r.MatchID, r.KillerXUID, r.TimeMS,
+			r.KillerX, r.KillerY, r.KillerZ, r.VictimX, r.VictimY, r.VictimZ,
+		)
+		if err != nil {
+			return fmt.Errorf("persist: INSERT kill_positions %s/%s/%d: %w",
+				r.MatchID, r.KillerXUID, r.TimeMS, err)
 		}
 	}
 	return nil

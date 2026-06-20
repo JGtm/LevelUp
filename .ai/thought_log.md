@@ -1,3 +1,18 @@
+## [2026-06-20] Activation Halo 5 — ingestion positions : kill_positions (schéma + persist + mapper) — Complété
+
+**Statut** : `go build ./...` + vet + `go test` (migration, halo_infinite/migrations order audits, persist, ingest) verts ; oracle d'héritage (synthetic_title_b, integration) crée `kill_positions`.
+
+**Seule tranche qui AJOUTE du schéma** (recette `persist/doc.go` "nouvelle table shared", 6 étapes). La table `kill_positions` vit dans le **shared-core HI** (positions monde tueur/victime par kill, jointes par (match_id, killer_xuid, time_ms)) → h5 hérite + remplit NATIVEMENT (KillerLoc/VictimLoc), Infinite la laisse vide jusqu'au décodeur film. Schéma de référence inter-titres réalisé.
+
+**Livré** :
+- migration : `halo_infinite/migrations/steps_shared_kill_positions.go` (sharedKillPositionsSteps) + append dans `Steps()` + `internal/migration/order.go` (canonicalOrder, en fin). Order audits + dependency verts.
+- persist core : `KillPositionInsert` (rows.go, coords *float64 nullables) + `SharedBatch.KillPositions` (batch.go) + `AddKillPositions` (builder.go) + `persistKillPositions` INSERT-only (shared_persister.go) + appel dans `Persist`.
+- ingest : `positions.go::MapKillPositions` (kill events avec Vec3 → rows, position absente = nil) + câblé dans `CollectMatchBatch`.
+
+**Découverte (pré-existant, hors scope)** : les tests `persist/shared_persister_test.go` (//go:build integration) sont CASSÉS localement — `openSharedTestDB` utilise `migration.RunForDB(TargetShared)` (registre global) qui n'applique qu'1 step depuis le move Phase 1.5 des steps shared vers title-owned (`StepsFor`, non posé dans ce helper) → `weapon_kills`/etc. absents, le patch échoue. Le test KillerVictim pré-existant échoue à l'identique. **Pas une régression de cette tranche** ; à corriger séparément (poser `SetTitleStepsProvider` dans le helper). Mon INSERT kill_positions est vérifié par inspection (9 cols = 9 vals, DDL alignée) + identique au pattern `persistKillerVictim` testé.
+
+**Reste** : câblage LIVE (résolveur PeopleHub + lease shared h5 + capture-on-fetch + reader table-first) — session du flip ; puis extract shared-core title-agnostique + flip status=active + vérif JGtm.
+
 ## [2026-06-20] Activation Halo 5 — ingestion kills : collect PUR (killer_victim + arme) — Complété
 
 **Statut** : `go vet` + `go test ./internal/games/halo_5/ingest/` (7 tests) verts.

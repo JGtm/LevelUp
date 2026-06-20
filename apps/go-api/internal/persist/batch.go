@@ -81,6 +81,10 @@ type SharedBatch struct {
 	// KillerVictim : agrégats killer→victim pour le match.
 	KillerVictim []KillerVictimInsert `json:"killer_victim,omitempty"`
 
+	// KillPositions : positions monde tueur/victime par kill (Halo 5 natif,
+	// Infinite plus tard). Jointes au kill par (match_id, killer_xuid, time_ms).
+	KillPositions []KillPositionInsert `json:"kill_positions,omitempty"`
+
 	// XUIDAliases : nouveaux mappings xuid→gamertag observés dans le match.
 	XUIDAliases []XUIDAliasInsert `json:"xuid_aliases,omitempty"`
 
