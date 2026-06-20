@@ -327,8 +327,13 @@ func upsertLUSRRatingsLegacy(
 }
 
 // writeLUSRComponentHistory persiste les 8 composantes d'un match dans
-// lusr_component_history. ON CONFLICT update — idempotent, supporte le mode
-// force (recalcul depuis zéro).
+// lusr_component_history en append-only (INSERT pur, jamais d'ON CONFLICT).
+//
+// La table est append-only (phase ART #23046) : N versions par
+// (match_id, component_name) ; la lecture courante passe par la vue
+// lusr_component_history_latest. Le mode force (recalcul) écrit simplement une
+// nouvelle version plus récente (computed_at) — la vue la priorise. L'ancien
+// ON CONFLICT DO UPDATE (delete+insert interne sur l'index ART) est éliminé.
 //
 // Best-effort : un échec sur 1 composante ne stoppe pas les autres.
 func writeLUSRComponentHistory(
@@ -344,10 +349,6 @@ func writeLUSRComponentHistory(
 		_, err := playerDB.ExecContext(ctx, `
 			INSERT INTO lusr_component_history (match_id, component_name, value, weight, computed_at)
 			VALUES (?, ?, ?, ?, ?)
-			ON CONFLICT (match_id, component_name) DO UPDATE SET
-				value       = excluded.value,
-				weight      = excluded.weight,
-				computed_at = excluded.computed_at
 		`, matchID, name, value, weight, now)
 		if err != nil {
 			return fmt.Errorf("insert %s/%s: %w", matchID, name, err)

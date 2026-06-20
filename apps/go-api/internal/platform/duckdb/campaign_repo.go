@@ -282,7 +282,7 @@ func (p *CampaignSampleProvider) LoadAxisSamples(
 //
 //	Étape 1 (SharedReader) : SELECT match_id, start_time FROM match_registry
 //	  WHERE start_time IN window [AND playlist_id = ?]
-//	Étape 2 (pdb.Player) : SELECT match_id, value FROM lusr_component_history
+//	Étape 2 (pdb.Player) : SELECT match_id, value FROM lusr_component_history_latest
 //	  WHERE component_name = ? AND match_id IN (...)
 //	Étape 3 (Go) : merge en respectant l'ordre chronologique de l'étape 1.
 //
@@ -369,7 +369,7 @@ func (p *CampaignSampleProvider) loadLUSRValuesByMatch(
 ) (map[string]float64, error) {
 	playerQ := fmt.Sprintf(`
 		SELECT match_id, value
-		FROM lusr_component_history
+		FROM lusr_component_history_latest
 		WHERE component_name = ? AND match_id IN (%s)`, Placeholders(len(matchIDs)))
 	args := make([]any, 0, 1+len(matchIDs))
 	args = append(args, component)

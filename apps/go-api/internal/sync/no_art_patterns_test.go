@@ -108,13 +108,6 @@ var allowlistArtPatterns = map[string]string{
 	// Documentation interne du package persist : mentionne les patterns
 	// à risque par nature (c'est sa raison d'être).
 	"internal/persist/doc.go": "Documentation : mentionne explicitement les patterns à risque dans son rôle d'expliquer le refactor anti-ART",
-	// Faux positif file-level (cf. LIMITATION sur patternsAtRisk) : ce fichier
-	// écrit match_skill_rank (protégé) en append-only PUR, mais contient aussi un
-	// ON CONFLICT (match_id, component_name) DO UPDATE sur lusr_component_history
-	// (table NON protégée, basse fréquence player DB). Le scan file-level ne sait
-	// pas distinguer les deux statements. Le ON CONFLICT vise lusr_component_history,
-	// pas match_skill_rank.
-	"internal/sync/skill_rating_loaders.go": "ON CONFLICT sur lusr_component_history (non protégée) ; match_skill_rank y est écrit en append-only pur — FP file-level",
 }
 
 // TestNoARTPatternsOnProtectedTables — guard-rail principal.

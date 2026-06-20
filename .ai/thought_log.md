@@ -25167,3 +25167,18 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Résultats** : `go build ./internal/migration` OK ; suite `go test ./internal/migration` verte (garde-fou ART + no-op order + pkfix engagement) ; `go test ./internal/platform/duckdb -run Coach|Engagement|Coef` vert. Aucun code/test n'assertait l'existence de ces index (grep = seulement les 2 migrations de drop). Schéma media_files réel sondé (legacy : id INTEGER seq, PK(id) + UNIQUE(file_path) + idx_mf_player_stem ; idx_mf_kind/_player_slug/_created absents de la live).
 
 **Prochaine étape** : P1 lusr_component_history (ON CONFLICT → append-only/SELECT-then-INSERT), puis P0 media_files (rebuild drop UNIQUE(file_path), lourd, blast-MAX, test intégration requis).
+
+## [2026-06-20] Durcissement ART P1 — lusr_component_history → append-only — Complété
+
+**Décision** : conversion append-only de lusr_component_history (player DB, V2 §1), table SŒUR de match_skill_rank (même pipeline LUSR, déjà append-only). L'ancien schéma PK (match_id, component_name) forçait writeLUSRComponentHistory en INSERT ... ON CONFLICT DO UPDATE = vecteur ART #1 (#23046). Choix append-only (vs SELECT-then-write) car : (1) cohérence avec la table sœur, (2) le writer #2 (persist/player_persister.go) est DÉJÀ un INSERT pur — append-only le rend correct par construction (sur l'ancien PK il aurait planté en violation PK sur re-persist), (3) les readers avaient besoin d'un _latest de toute façon.
+
+**Implémentation** :
+- Migration `player_append_only_lusr_component_history_v1` (calquée sur le template msr) : CTAS id BIGINT seq lch_seq + colonnes préservées (dont computed_at = horloge), PK(id), DEFAULT computed_at restauré (writer persister omet la colonne), idx_lch_component/idx_lch_match recréés (INSERT-only = pas de delete-from-index = sûrs), vue lusr_component_history_latest (QUALIFY ROW_NUMBER PARTITION BY match_id, component_name ORDER BY computed_at DESC, id DESC). Placement fichier `steps_player_lusr_components_append_only.go` = enregistrement juste APRÈS create_lusr_component_history → rebuild appliqué dès le 1er boot (plus propre que le "2e boot" du template msr). order.go placé, no-op test vert.
+- Writer #1 (skill_rating_loaders.go writeLUSRComponentHistory) : ON CONFLICT retiré → INSERT pur. Writer #2 (persist) inchangé (déjà pur).
+- Readers (2) → vue _latest : progression/profile/queries.go (loadLUSRComponentsBreakdown), platform/duckdb/campaign_repo.go (loadLUSRValuesByMatch).
+- Garde-fous : `lusr_component_history` ajouté à appendOnlyStateTables (append_only_state_guard, statement-bounded = pas de FP) ; allowlist no_art_patterns skill_rating_loaders.go RETIRÉE (le fichier n'a plus aucun ON CONFLICT — match_skill_rank y est déjà INSERT pur). Pas ajouté à tablesProtegees (file-level → FP sur player_persister.go qui a d'autres ON CONFLICT).
+- Fixtures : player_repos_test.go (DDL manuel, partagé campaign_repo_test) + vue _latest ; build_profile_integration_test applique les migrations → vue auto.
+
+**Résultats** : go build ./internal/... OK ; verts : migration (no-op order + garde-fous ART), sync (append_only_state + no_art_patterns + allowlist), platform/duckdb (Campaign/LUSR/PlayerRepo), progression/profile (build_profile integration), persist (player_persister writer #2), api (Squad/Prestige/Profile) ; vet OK. Carte writers/readers exhaustive (2 writers, 2 readers, 0 manqué — re-grep complet).
+
+**Prochaine étape** : P0 media_files (rebuild drop UNIQUE(file_path), shared_social blast-MAX, test intégration CGO requis). Schéma réel sondé : legacy id INTEGER seq, PK(id) + UNIQUE(file_path) + idx_mf_player_stem.

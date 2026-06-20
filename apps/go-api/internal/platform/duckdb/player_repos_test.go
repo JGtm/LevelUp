@@ -289,6 +289,12 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			weight DOUBLE NOT NULL DEFAULT 1.0,
 			computed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (match_id, component_name))`,
+		// Vue _latest (append-only ART) : les readers lisent désormais
+		// lusr_component_history_latest. Le fixture seed 1 ligne par
+		// (match_id, component_name) → dedup pass-through.
+		`CREATE VIEW lusr_component_history_latest AS
+			SELECT * FROM lusr_component_history
+			QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, component_name ORDER BY computed_at DESC) = 1`,
 	}
 	for _, q := range ddl {
 		if _, err := db.Exec(ctx, q); err != nil {
