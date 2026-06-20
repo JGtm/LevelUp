@@ -30,8 +30,12 @@ func h5GameModeSegment(gameMode int) string {
 }
 
 // mapCarnageParticipants projette PlayerStats → []domain.MatchParticipantRow.
-// resolveXUID(gamertag) → xuid Xbox résolu ("" toléré, l'identité reste dans le
-// gamertag). Outcome dérivé du rang d'ÉQUIPE (jeu d'équipe) ou individuel (FFA).
+// resolveXUID(gamertag) → xuid Xbox résolu. RESOLVE-OR-SKIP : un joueur dont l'xuid
+// ne résout pas ("") est SAUTÉ — la PK match_participants (match_id, xuid) ferait
+// collisionner ≥2 joueurs non résolus sur xuid="" (fusion/violation). Le kill-feed
+// (killer_victim_pairs, sans PK) garde lui le gamertag. Best-effort : joueur rare
+// absent du roster d'un match (le viewer, seedé, résout toujours).
+// Outcome dérivé du rang d'ÉQUIPE (jeu d'équipe) ou individuel (FFA).
 func mapCarnageParticipants(matchID string, carnage *H5CarnageResponse, resolveXUID func(gamertag string) string) []domain.MatchParticipantRow {
 	if carnage == nil || len(carnage.PlayerStats) == 0 {
 		return nil
@@ -40,9 +44,13 @@ func mapCarnageParticipants(matchID string, carnage *H5CarnageResponse, resolveX
 	out := make([]domain.MatchParticipantRow, 0, len(carnage.PlayerStats))
 	for i := range carnage.PlayerStats {
 		p := &carnage.PlayerStats[i]
+		xuid := resolveXUID(p.Player.Gamertag)
+		if xuid == "" {
+			continue // resolve-or-skip (cf. godoc : PK xuid="" collisionnerait)
+		}
 		out = append(out, domain.MatchParticipantRow{
 			MatchID:           matchID,
-			XUID:              resolveXUID(p.Player.Gamertag),
+			XUID:              xuid,
 			Gamertag:          strPtrH5(p.Player.Gamertag),
 			TeamID:            intPtrH5(p.TeamId),
 			Rank:              intPtrH5(p.Rank),

@@ -230,17 +230,13 @@ func TestCollectRecentMatches_Participants(t *testing.T) {
 		t.Fatalf("batches = %d, want 1", len(batches))
 	}
 	parts := batches[0].Shared.Participants
-	if len(parts) != 2 {
-		t.Fatalf("participants = %d, want 2 (roster carnage)", len(parts))
+	// Foe (xuid "" via idResolver) est SAUTÉ (resolve-or-skip) → seul JGtm (xJG).
+	if len(parts) != 1 {
+		t.Fatalf("participants = %d, want 1 (Foe non résolu → skip)", len(parts))
 	}
-	var jg *domain.MatchParticipantRow
-	for i := range parts {
-		if parts[i].XUID == "xJG" {
-			jg = &parts[i]
-		}
-	}
-	if jg == nil {
-		t.Fatal("JGtm (xuid résolu xJG) absent du roster")
+	jg := &parts[0]
+	if jg.XUID != "xJG" {
+		t.Fatalf("participant = %q, want JGtm (xJG)", jg.XUID)
 	}
 	// Équipe gagnante (Rank 1) → Win ; comptes bruts repris ; KDA JAMAIS fabriqué.
 	if jg.Outcome == nil || *jg.Outcome != domain.OutcomeWin {
