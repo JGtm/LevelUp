@@ -14,6 +14,7 @@ import { OutcomeBar } from '@/components/ui/outcome-bar'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { homeManifest } from '@/lib/i18n/generated/home'
 
 function ChevronUpIcon() {
   return (
@@ -102,6 +103,7 @@ export function HomeSessionCarousel({
   const cleanupRef = useRef<(() => void) | null>(null)
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+  const dominantTooltip = formatMessage(homeManifest, 'home.sessions.dominant_tooltip', locale)
 
   // Nettoyage si le composant est démonté en cours d'animation
   useEffect(() => () => { cleanupRef.current?.() }, [])
@@ -267,7 +269,7 @@ export function HomeSessionCarousel({
               {(session.dominant_playlist || session.dominant_mode) && (
                 <span className="ml-1 inline-flex">
                   <InfoTooltip
-                    content="Playlist et mode les plus joués lors de cette session"
+                    content={dominantTooltip}
                     iconClass="w-3 h-3"
                   />
                 </span>

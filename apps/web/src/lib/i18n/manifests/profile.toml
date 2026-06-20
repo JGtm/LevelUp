@@ -373,11 +373,11 @@ fr = "Démarrée le {date} · {n, plural, =1 {1 match} other {# matchs}} sur {pl
 en = "Started {date} · {n, plural, =1 {1 match} other {# matches}} on {playlist}"
 
 [campaign.tracker.playlist_all]
-fr = "toutes playlists"
+fr = "toutes sélections"
 en = "all playlists"
 
 [campaign.tracker.insufficient]
-fr = "Joue encore {missing, plural, =1 {1 match} other {# matchs}} sur ta playlist cible pour voir ta tendance."
+fr = "Joue encore {missing, plural, =1 {1 match} other {# matchs}} sur ta sélection cible pour voir ta tendance."
 en = "Play {missing, plural, =1 {1 more match} other {# more matches}} on your target playlist to see your trend."
 
 [campaign.tracker.linked_none]
@@ -483,11 +483,11 @@ fr = "On t'aide à voir ta trajectoire — pas à la garantir. La progression vi
 en = "We help you see your trajectory — not guarantee it. The progress comes from you."
 
 [campaign.modal.playlist_label]
-fr = "Playlist cible"
+fr = "Sélection cible"
 en = "Target playlist"
 
 [campaign.modal.playlist_help]
-fr = "Pour mesurer la campagne uniquement sur ces matchs. Tu peux laisser « toutes playlists » si tu joues varié."
+fr = "Pour mesurer la campagne uniquement sur ces matchs. Tu peux laisser « toutes sélections » si tu joues varié."
 en = "To measure the campaign only on these matches. Leave \"all playlists\" if you play varied."
 
 [campaign.modal.skip]
@@ -505,7 +505,7 @@ en = "Start"
 # Playlist options (mini-modale).
 
 [campaign.playlist.all]
-fr = "Toutes playlists"
+fr = "Toutes sélections"
 en = "All playlists"
 
 [campaign.playlist.arena_slayer]

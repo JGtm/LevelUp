@@ -242,7 +242,7 @@ en = "The shell keeps the current section when possible, otherwise it falls back
 # ─── Filter pill experience type ────────────────────────────────────────
 
 [common.filters.playlists_title]
-fr = "Playlists"
+fr = "Sélections"
 en = "Playlists"
 
 [common.filters.modes_title]
@@ -666,7 +666,7 @@ fr = "Catégorie"
 en = "Category"
 
 [common.leaderboard.playlist_label]
-fr = "Playlist"
+fr = "Sélection"
 en = "Playlist"
 
 [common.leaderboard.season_label]
@@ -674,7 +674,7 @@ fr = "Saison"
 en = "Season"
 
 [common.leaderboard.world_hint]
-fr = "Top mondial par playlist et saison classée (source Halo Waypoint)."
+fr = "Top mondial par sélection et saison classée (source Halo Waypoint)."
 en = "World top by ranked playlist and season (source: Halo Waypoint)."
 
 [common.leaderboard.stats_hint]
@@ -1436,7 +1436,7 @@ en = "No entry available."
 # ─── Home (Recent playlists, Session carousel) ──────────────────────────
 
 [common.home.recent_playlists]
-fr = "Playlists récentes"
+fr = "Sélections récentes"
 en = "Recent playlists"
 
 [common.home.unranked]
@@ -1444,8 +1444,12 @@ fr = "Sans classement"
 en = "Unranked"
 
 [common.home.no_recent_playlist]
-fr = "Aucune playlist récente disponible."
+fr = "Aucune sélection récente disponible."
 en = "No recent playlist available."
+
+[common.home.unknown_playlist]
+fr = "Sélection inconnue"
+en = "Unknown playlist"
 
 [common.home.newer_session_aria]
 fr = "Session plus récente"

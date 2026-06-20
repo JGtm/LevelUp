@@ -111,7 +111,7 @@ fr = "Carte"
 en = "Map"
 
 [admin.lab.seg_playlist]
-fr = "Playlist"
+fr = "Sélection"
 en = "Playlist"
 
 [admin.lab.seg_pair]
@@ -477,7 +477,7 @@ fr = "Modes sans traduction FR"
 en = "Modes without FR translation"
 
 [admin.dq.kpi_orphan_playlists]
-fr = "Playlists hors catalogue"
+fr = "Sélections hors catalogue"
 en = "Playlists outside catalog"
 
 [admin.dq.kpi_orphan_xuids]
@@ -533,11 +533,11 @@ fr = "Rafraîchir le catalogue"
 en = "Refresh catalog"
 
 [admin.dq.run_catalog_refresh_confirm]
-fr = "Seeder les catalogues playlists/maps/paires/variantes depuis match_registry ? Zéro appel réseau, quelques secondes."
+fr = "Seeder les catalogues sélections/maps/paires/variantes depuis match_registry ? Zéro appel réseau, quelques secondes."
 en = "Seed the playlists/maps/pairs/variants catalogs from match_registry? Zero network calls, a few seconds."
 
 [admin.dq.run_catalog_refresh_help]
-fr = "Inscrit dans les tables catalogue les playlists/maps/paires/variantes vues en matchs. Résout les « Playlists hors catalogue ». Sans réseau, quelques secondes."
+fr = "Inscrit dans les tables catalogue les sélections/maps/paires/variantes vues en matchs. Résout les « Sélections hors catalogue ». Sans réseau, quelques secondes."
 en = "Registers the playlists/maps/pairs/variants seen in matches into the catalog tables. Resolves “Out-of-catalog playlists”. No network, a few seconds."
 
 [admin.dq.catalog_refresh_result]
@@ -617,15 +617,15 @@ fr = "Renseigne la traduction d'un asset puis relance « Résoudre les noms regi
 en = "Fill in an asset translation then re-run \"Resolve registry names\" to propagate to match_registry."
 
 [admin.dq.orphan_playlists_section]
-fr = "Playlists hors catalogue"
+fr = "Sélections hors catalogue"
 en = "Playlists outside catalog"
 
 [admin.dq.orphan_playlists_empty_title]
-fr = "Catalogue playlists complet"
+fr = "Catalogue sélections complet"
 en = "Playlist catalog complete"
 
 [admin.dq.orphan_playlists_empty_desc]
-fr = "Toutes les playlists jouées sont présentes dans metadata.playlists_catalog."
+fr = "Toutes les sélections jouées sont présentes dans metadata.playlists_catalog."
 en = "All played playlists exist in metadata.playlists_catalog."
 
 [admin.dq.orphan_xuids_section]
