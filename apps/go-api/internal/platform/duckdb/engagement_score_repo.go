@@ -234,32 +234,24 @@ func (r *EngagementScoreRepo) SaveEngagementCoefficient(
 	}
 	defer w.Release()
 
-	// DuckDB supporte INSERT OR REPLACE via "ON CONFLICT DO UPDATE".
-	const q = `
-		INSERT INTO engagement_coefficients (
-			xuid, mode_category, coef_team_share, coef_lobby_share,
-			n_matches, last_updated
-		) VALUES (?, ?, ?, ?, ?, ?)
-		ON CONFLICT (xuid, mode_category) DO UPDATE SET
-			coef_team_share = EXCLUDED.coef_team_share,
-			coef_lobby_share = EXCLUDED.coef_lobby_share,
-			n_matches = EXCLUDED.n_matches,
-			last_updated = EXCLUDED.last_updated
-	`
 	updated := coef.LastUpdated
 	if updated.IsZero() {
 		updated = time.Now().UTC()
 	}
 
-	_, err = r.pdb.Player.Exec(ctx, q,
-		coef.XUID,
-		coef.ModeCategory,
-		coef.CoefTeamShare,
-		coef.CoefLobbyShare,
-		coef.NMatches,
-		updated,
-	)
-	if err != nil {
+	// ART-safe : SELECT-then-UPDATE-or-INSERT (pas d'ON CONFLICT, qui réécrit via
+	// l'index ART de la PK). engagement_coefficients : PK (xuid, mode_category), pas
+	// d'index secondaire muté. Sous lease KindPlayer (sérialisé), basse fréquence.
+	if err = r.pdb.Player.UpsertNoConflict(ctx,
+		`SELECT 1 FROM engagement_coefficients WHERE xuid = ? AND mode_category = ?`,
+		[]any{coef.XUID, coef.ModeCategory},
+		`UPDATE engagement_coefficients SET coef_team_share = ?, coef_lobby_share = ?, n_matches = ?, last_updated = ?
+		 WHERE xuid = ? AND mode_category = ?`,
+		[]any{coef.CoefTeamShare, coef.CoefLobbyShare, coef.NMatches, updated, coef.XUID, coef.ModeCategory},
+		`INSERT INTO engagement_coefficients (xuid, mode_category, coef_team_share, coef_lobby_share, n_matches, last_updated)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		[]any{coef.XUID, coef.ModeCategory, coef.CoefTeamShare, coef.CoefLobbyShare, coef.NMatches, updated},
+	); err != nil {
 		return fmt.Errorf("EngagementScoreRepo.SaveEngagementCoefficient: %w", err)
 	}
 	return nil

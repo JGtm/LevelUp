@@ -266,11 +266,15 @@ func UpsertPlayerEnrichment(ctx context.Context, db *sql.DB, matchID, teammatesS
 // Portage de _update_sync_meta() (Python engine.py).
 func SetSyncMeta(ctx context.Context, db *sql.DB, key, value string) error {
 	now := time.Now().UTC()
-	_, err := db.ExecContext(ctx, `
-		INSERT INTO sync_meta (key, value, updated_at) VALUES (?, ?, ?)
-		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at`,
-		key, value, now,
-	)
+	// ART-safe : SELECT-then-UPDATE-or-INSERT (pas d'ON CONFLICT sur la PK key).
+	var dummy int
+	err := db.QueryRowContext(ctx, `SELECT 1 FROM sync_meta WHERE key = ?`, key).Scan(&dummy)
+	switch {
+	case err == nil:
+		_, err = db.ExecContext(ctx, `UPDATE sync_meta SET value = ?, updated_at = ? WHERE key = ?`, value, now, key)
+	case errors.Is(err, sql.ErrNoRows):
+		_, err = db.ExecContext(ctx, `INSERT INTO sync_meta (key, value, updated_at) VALUES (?, ?, ?)`, key, value, now)
+	}
 	if err != nil {
 		return fmt.Errorf("SetSyncMeta(%s): %w", key, err)
 	}
