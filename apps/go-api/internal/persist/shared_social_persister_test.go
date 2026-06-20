@@ -137,6 +137,30 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			read_at TIMESTAMP,
 			PRIMARY KEY (xuid, id)
 		)`,
+		// Append-only (cf. shared_social_notifications_append_only_v1) : les writers
+		// notifs écrivent ici (event-log), l'état courant se lit via _latest.
+		`CREATE SEQUENCE IF NOT EXISTS player_notifications_history_seq START 1`,
+		`CREATE TABLE player_notifications_history (
+			seq BIGINT PRIMARY KEY DEFAULT nextval('player_notifications_history_seq'),
+			xuid VARCHAR NOT NULL, id BIGINT NOT NULL,
+			category VARCHAR NOT NULL, severity VARCHAR NOT NULL DEFAULT 'info',
+			title_key VARCHAR NOT NULL, body_key VARCHAR, params VARCHAR,
+			target_route VARCHAR, target_search VARCHAR,
+			actor_xuid VARCHAR, actor_name VARCHAR, source VARCHAR NOT NULL,
+			created_at TIMESTAMP NOT NULL, read_at TIMESTAMP,
+			is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE OR REPLACE VIEW player_notifications_latest AS
+			SELECT xuid, id, category, severity, title_key, body_key, params,
+			       target_route, target_search, actor_xuid, actor_name, source,
+			       created_at, read_at, written_at
+			FROM (
+				SELECT *, ROW_NUMBER() OVER (PARTITION BY xuid, id
+					ORDER BY written_at DESC, seq DESC) AS rn
+				FROM player_notifications_history
+			) ranked
+			WHERE rn = 1 AND is_deleted = FALSE`,
 		`CREATE TABLE notification_preferences (
 			xuid VARCHAR NOT NULL,
 			category VARCHAR NOT NULL,
@@ -349,7 +373,7 @@ func TestSharedSocialPersister_FullBatch_PersistsAllTables(t *testing.T) {
 		{"media_files", "SELECT COUNT(*) FROM media_files WHERE file_path = '/cap/clip.mp4'", 1},
 		{"media_likes", "SELECT COUNT(*) FROM media_likes_latest WHERE liker_slug = 'friend1' AND is_liked = TRUE", 1},
 		{"match_favorites", "SELECT COUNT(*) FROM match_favorites_latest WHERE player_slug = 'spartan' AND is_favorite = TRUE", 1},
-		{"player_notifications", "SELECT COUNT(*) FROM player_notifications WHERE xuid = 'xuid-123'", 1},
+		{"player_notifications", "SELECT COUNT(*) FROM player_notifications_latest WHERE xuid = 'xuid-123'", 1},
 		{"player_records", "SELECT COUNT(*) FROM player_records WHERE xuid = 'xuid-123' AND metric = 'kda_best'", 1},
 	}
 	for _, e := range expectations {
@@ -407,9 +431,15 @@ func TestSharedSocialPersister_Atomicity_RollbackOnFailure(t *testing.T) {
 	p := NewSharedSocialPersister(db)
 	ctx := context.Background()
 
-	// Batch valide en partie 1 (media_files OK) + invalide en partie 2
-	// (PK collision sur player_notifications : 2 fois la même row exacte).
-	// La 2e insert sur notifications va FAIL avec PK constraint → rollback.
+	// Depuis l'append-only, plus aucune collision PK exploitable sur les tables
+	// d'état (toutes en INSERT pur + seq auto). On force donc l'échec en fin de
+	// batch : persistPlayerRecords est le DERNIER helper — on droppe player_records
+	// avant le Persist → l'INSERT legacy lève "table does not exist" → la TX doit
+	// rollback INTÉGRALEMENT, y compris media_files (partie 1) et la notification.
+	if _, err := db.Exec(`DROP TABLE player_records`); err != nil {
+		t.Fatalf("drop player_records: %v", err)
+	}
+
 	now := time.Now().UTC()
 	batch := &SharedSocialBatch{
 		BatchID: "rollback-test",
@@ -419,13 +449,15 @@ func TestSharedSocialPersister_Atomicity_RollbackOnFailure(t *testing.T) {
 		},
 		Notifications: []NotificationInsert{
 			{XUID: "x1", ID: 100, Category: "c", Severity: "info", TitleKey: "t", Source: "s", CreatedAt: now},
-			{XUID: "x1", ID: 100, Category: "c", Severity: "info", TitleKey: "t", Source: "s", CreatedAt: now}, // PK duplicate
+		},
+		PlayerRecordsAppend: []PlayerRecordAppend{
+			{XUID: "x1", Metric: "kda_best", Value: 4.2, WrittenAt: now},
 		},
 	}
 
 	err := p.Persist(ctx, batch)
 	if err == nil {
-		t.Fatal("Persist doit échouer (PK duplicate sur notification)")
+		t.Fatal("Persist doit échouer (player_records droppé en cours de batch)")
 	}
 
 	// Vérifier que la media_file n'a PAS été persistée (rollback complet).
@@ -436,8 +468,8 @@ func TestSharedSocialPersister_Atomicity_RollbackOnFailure(t *testing.T) {
 	if count != 0 {
 		t.Errorf("media_file persistée malgré rollback (count=%d, want 0)", count)
 	}
-	// Vérifier que la 1re notif n'a PAS été persistée non plus.
-	if err := db.QueryRow("SELECT COUNT(*) FROM player_notifications WHERE xuid = 'x1' AND id = 100").Scan(&count); err != nil {
+	// Vérifier que la notif (event _history) n'a PAS été persistée non plus.
+	if err := db.QueryRow("SELECT COUNT(*) FROM player_notifications_history WHERE xuid = 'x1' AND id = 100").Scan(&count); err != nil {
 		t.Fatal(err)
 	}
 	if count != 0 {
@@ -619,7 +651,7 @@ func TestSharedSocialPersister_NotificationRead_UpdatesReadAt(t *testing.T) {
 		t.Fatal(err)
 	}
 	var read sql.NullTime
-	_ = db.QueryRow(`SELECT read_at FROM player_notifications WHERE xuid = 'x' AND id = 1`).Scan(&read)
+	_ = db.QueryRow(`SELECT read_at FROM player_notifications_latest WHERE xuid = 'x' AND id = 1`).Scan(&read)
 	if !read.Valid {
 		t.Error("read_at non mis à jour")
 	}
@@ -661,12 +693,17 @@ func TestSharedSocialPersister_ToggleLike_AddThenRemove(t *testing.T) {
 // MarkAll, Delete, CapAndSweep, UpsertPreferences) — ADR 0022 fermeture du gap.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// seedNotif insère une notification minimale pour les tests de mutations.
+// seedNotif insère une notification minimale (event create) pour les tests de
+// mutations. APPEND-ONLY : on écrit dans player_notifications_history, written_at
+// = CURRENT_TIMESTAMP (même référentiel TZ que la prod → les events de mutation,
+// CURRENT_TIMESTAMP aussi, sont toujours ≥ ce seed ; le tie-break seq DESC règle
+// les égalités). L'état courant se lit via player_notifications_latest.
 func seedNotif(t *testing.T, db *sql.DB, xuid string, id int64, category string, createdAt time.Time) {
 	t.Helper()
 	if _, err := db.Exec(`
-		INSERT INTO player_notifications (xuid, id, category, severity, title_key, source, created_at)
-		VALUES (?, ?, ?, 'info', 'k', 's', ?)`,
+		INSERT INTO player_notifications_history
+			(xuid, id, category, severity, title_key, source, created_at, read_at, is_deleted, written_at)
+		VALUES (?, ?, ?, 'info', 'k', 's', ?, NULL, FALSE, CURRENT_TIMESTAMP)`,
 		xuid, id, category, createdAt); err != nil {
 		t.Fatalf("seed notif id=%d: %v", id, err)
 	}
@@ -688,7 +725,7 @@ func TestSharedSocialPersister_MarkNotificationsRead_Batch(t *testing.T) {
 		t.Errorf("n=%d want 2", n)
 	}
 	var unread int
-	_ = db.QueryRow(`SELECT COUNT(*) FROM player_notifications WHERE xuid='x' AND read_at IS NULL`).Scan(&unread)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM player_notifications_latest WHERE xuid='x' AND read_at IS NULL`).Scan(&unread)
 	if unread != 1 {
 		t.Errorf("unread=%d want 1", unread)
 	}
@@ -716,7 +753,7 @@ func TestSharedSocialPersister_MarkNotificationUnread(t *testing.T) {
 		t.Errorf("n=%d want 1", n)
 	}
 	var read sql.NullTime
-	_ = db.QueryRow(`SELECT read_at FROM player_notifications WHERE xuid='x' AND id=1`).Scan(&read)
+	_ = db.QueryRow(`SELECT read_at FROM player_notifications_latest WHERE xuid='x' AND id=1`).Scan(&read)
 	if read.Valid {
 		t.Error("read_at devrait être NULL après MarkNotificationUnread")
 	}
@@ -759,7 +796,7 @@ func TestSharedSocialPersister_DeleteNotification(t *testing.T) {
 		t.Errorf("n=%d want 1", n)
 	}
 	var cnt int
-	_ = db.QueryRow(`SELECT COUNT(*) FROM player_notifications WHERE xuid='x' AND id=1`).Scan(&cnt)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM player_notifications_latest WHERE xuid='x' AND id=1`).Scan(&cnt)
 	if cnt != 0 {
 		t.Errorf("cnt=%d want 0", cnt)
 	}
@@ -780,13 +817,13 @@ func TestSharedSocialPersister_CapAndSweepNotifications(t *testing.T) {
 		t.Fatalf("CapAndSweep: %v", err)
 	}
 	var cnt int
-	_ = db.QueryRow(`SELECT COUNT(*) FROM player_notifications WHERE xuid='x'`).Scan(&cnt)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM player_notifications_latest WHERE xuid='x'`).Scan(&cnt)
 	if cnt != 3 {
 		t.Errorf("cnt=%d want 3", cnt)
 	}
 	// Les 3 plus récentes (ids 3,4,5) restent → MIN(id)=3.
 	var minID int64
-	_ = db.QueryRow(`SELECT MIN(id) FROM player_notifications WHERE xuid='x'`).Scan(&minID)
+	_ = db.QueryRow(`SELECT MIN(id) FROM player_notifications_latest WHERE xuid='x'`).Scan(&minID)
 	if minID != 3 {
 		t.Errorf("minID=%d want 3 (plus récentes gardées)", minID)
 	}

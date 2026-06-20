@@ -347,8 +347,20 @@ func (p *SharedSocialPersister) MarkNotificationsRead(ctx context.Context, xuid 
 		placeholders[i] = "?"
 		args = append(args, id)
 	}
-	q := fmt.Sprintf(
-		`UPDATE player_notifications SET read_at = ? WHERE xuid = ? AND read_at IS NULL AND id IN (%s)`,
+	// APPEND-ONLY : INSERT…SELECT carry-forward du payload depuis _latest avec
+	// read_at positionné (plus d'UPDATE). Ne cible que les non-lues (read_at IS
+	// NULL) → RowsAffected = nb réellement marqué (idempotent).
+	q := fmt.Sprintf(`
+		INSERT INTO player_notifications_history (
+			xuid, id, category, severity, title_key, body_key, params,
+			target_route, target_search, actor_xuid, actor_name, source,
+			created_at, read_at, is_deleted, written_at
+		)
+		SELECT xuid, id, category, severity, title_key, body_key, params,
+		       target_route, target_search, actor_xuid, actor_name, source,
+		       created_at, ?, FALSE, CURRENT_TIMESTAMP
+		FROM player_notifications_latest
+		WHERE xuid = ? AND read_at IS NULL AND id IN (%s)`,
 		strings.Join(placeholders, ","),
 	)
 	return p.execNotifWriteCheckpointed(ctx, "notif-mark-read", true, q, args...)
@@ -357,29 +369,60 @@ func (p *SharedSocialPersister) MarkNotificationsRead(ctx context.Context, xuid 
 // MarkNotificationUnread remet read_at = NULL (+ CHECKPOINT). Renvoie le nb de
 // lignes affectées (0 = id inconnu, le caller traduit en ErrNotFound).
 func (p *SharedSocialPersister) MarkNotificationUnread(ctx context.Context, xuid string, id int64) (int64, error) {
+	// APPEND-ONLY : INSERT d'un event read_at=NULL (carry-forward payload depuis
+	// _latest). RowsAffected = 1 si la notif existe (visible), 0 sinon → ErrNotFound.
 	return p.execNotifWriteCheckpointed(ctx, "notif-mark-unread", true,
-		`UPDATE player_notifications SET read_at = NULL WHERE xuid = ? AND id = ?`,
+		`INSERT INTO player_notifications_history (
+			xuid, id, category, severity, title_key, body_key, params,
+			target_route, target_search, actor_xuid, actor_name, source,
+			created_at, read_at, is_deleted, written_at
+		)
+		SELECT xuid, id, category, severity, title_key, body_key, params,
+		       target_route, target_search, actor_xuid, actor_name, source,
+		       created_at, NULL, FALSE, CURRENT_TIMESTAMP
+		FROM player_notifications_latest
+		WHERE xuid = ? AND id = ?`,
 		xuid, id)
 }
 
 // MarkAllNotificationsRead applique read_at à toutes les non-lues du joueur
 // (filtré par category si non vide) + CHECKPOINT immédiat.
 func (p *SharedSocialPersister) MarkAllNotificationsRead(ctx context.Context, xuid, category string, readAt time.Time) (int64, error) {
+	// APPEND-ONLY : un event read par notif non-lue (INSERT…SELECT depuis _latest).
+	base := `
+		INSERT INTO player_notifications_history (
+			xuid, id, category, severity, title_key, body_key, params,
+			target_route, target_search, actor_xuid, actor_name, source,
+			created_at, read_at, is_deleted, written_at
+		)
+		SELECT xuid, id, category, severity, title_key, body_key, params,
+		       target_route, target_search, actor_xuid, actor_name, source,
+		       created_at, ?, FALSE, CURRENT_TIMESTAMP
+		FROM player_notifications_latest
+		WHERE xuid = ? AND read_at IS NULL`
 	if category == "" {
-		return p.execNotifWriteCheckpointed(ctx, "notif-mark-all-read", true,
-			`UPDATE player_notifications SET read_at = ? WHERE xuid = ? AND read_at IS NULL`,
-			readAt, xuid)
+		return p.execNotifWriteCheckpointed(ctx, "notif-mark-all-read", true, base, readAt, xuid)
 	}
 	return p.execNotifWriteCheckpointed(ctx, "notif-mark-all-read", true,
-		`UPDATE player_notifications SET read_at = ? WHERE xuid = ? AND read_at IS NULL AND category = ?`,
-		readAt, xuid, category)
+		base+` AND category = ?`, readAt, xuid, category)
 }
 
 // DeleteNotification supprime une notif (+ CHECKPOINT). Renvoie le nb de lignes
 // affectées (0 = id inconnu, le caller traduit en ErrNotFound).
 func (p *SharedSocialPersister) DeleteNotification(ctx context.Context, xuid string, id int64) (int64, error) {
+	// APPEND-ONLY : INSERT d'un event tombstone (is_deleted=TRUE) au lieu d'un DELETE.
+	// La vue _latest masque ensuite la notif. RowsAffected = 1 si visible, 0 sinon.
 	return p.execNotifWriteCheckpointed(ctx, "notif-delete", true,
-		`DELETE FROM player_notifications WHERE xuid = ? AND id = ?`,
+		`INSERT INTO player_notifications_history (
+			xuid, id, category, severity, title_key, body_key, params,
+			target_route, target_search, actor_xuid, actor_name, source,
+			created_at, read_at, is_deleted, written_at
+		)
+		SELECT xuid, id, category, severity, title_key, body_key, params,
+		       target_route, target_search, actor_xuid, actor_name, source,
+		       created_at, read_at, TRUE, CURRENT_TIMESTAMP
+		FROM player_notifications_latest
+		WHERE xuid = ? AND id = ?`,
 		xuid, id)
 }
 
@@ -391,10 +434,20 @@ func (p *SharedSocialPersister) CapAndSweepNotifications(ctx context.Context, xu
 	if max <= 0 {
 		return nil
 	}
+	// APPEND-ONLY : tombstone (is_deleted=TRUE) les notifs au-delà du cap, au lieu
+	// d'un DELETE. Masquées ensuite par _latest → jamais re-balayées (déjà hors vue).
 	_, err := p.execNotifWriteCheckpointed(ctx, "notif-cap-sweep", false, `
-		DELETE FROM player_notifications
+		INSERT INTO player_notifications_history (
+			xuid, id, category, severity, title_key, body_key, params,
+			target_route, target_search, actor_xuid, actor_name, source,
+			created_at, read_at, is_deleted, written_at
+		)
+		SELECT xuid, id, category, severity, title_key, body_key, params,
+		       target_route, target_search, actor_xuid, actor_name, source,
+		       created_at, read_at, TRUE, CURRENT_TIMESTAMP
+		FROM player_notifications_latest
 		WHERE xuid = ? AND id NOT IN (
-			SELECT id FROM player_notifications
+			SELECT id FROM player_notifications_latest
 			WHERE xuid = ?
 			ORDER BY created_at DESC
 			LIMIT ?
