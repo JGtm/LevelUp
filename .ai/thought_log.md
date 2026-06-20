@@ -1,3 +1,17 @@
+## [2026-06-20] Damage-model par titre Phase 0 : config seam (effective_hp_to_kill) — Complété
+
+**Statut** : Complété. `go build ./internal/games/...` + `go test ./internal/games/ ./internal/games/mappings/` verts. Seam INERTE (aucun consommateur encore — Phase 1 les câble) mais testé bout-à-bout, Infinite byte-identique (défaut 225).
+
+**Livré** :
+- `constants.toml [damage_model] effective_hp_to_kill` : Infinite=225, Halo 5=115 (⚠ PROVISOIRE design, à valider data à l'activation), synthetic_title_b=100 (oracle b).
+- `mappings` : `DamageModelConstants` + `EndpointSet.damageModel` + `DamageModel()` accessor (ok=false si <= 0) + loader parse `[damage_model]` (validation >= 0).
+- `games` : `MappingsEndpointResolver.DamageModelFor(slug)` + `damage_model.go` (`DefaultEffectiveHpToKill=225`, `EffectiveHpToKill(slug)` via DefaultEndpointResolver, fallback 225 ; mirroir exact du pattern game_prefix).
+- Tests : oracle title-aware (115 route réel) + fallback (inconnu/legacy/nil → 225) + section absente.
+
+**Pattern** : pure functions resteront PURES (param `effectiveHpToKill`), le caller résout `games.EffectiveHpToKill(pdb.TitleSlug)` (pas de threading de resolver — DefaultEndpointResolver process-wide).
+
+**Prochaine étape** : Phase 1 (paramétrer combat_yield.go + squad_breakdown_canonical.go + ~5 callers, byte-identique via tests existants 225) → Phase 2 (SQL bind param) → Phase 3 (P80 + front + copy d'aide).
+
 ## [2026-06-20] MatchEvents Phase 4 reframée : durabilité events Halo 5 (4a, avec activation 1b) — Décision
 
 **Statut** : Décision documentée (pas de code). Déclencheur : point user « pourquoi ne pas stocker en bdd, si l'API ferme on aura plus rien ».

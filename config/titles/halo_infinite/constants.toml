@@ -45,6 +45,16 @@ nameplate = "https://gamecms-hacs.svc.halowaypoint.com"       # sync/spartan_nam
 [medals]
 perfect_kill = 1512363953  # médaille "Perfect" → exposée en "frags parfaits"
 
+# ─── Modèle de dégâts (baseline rendement / résistance) ─────────────────────
+# effective_hp_to_kill = PV effectifs pour tuer un Spartan (bouclier + armure),
+# sur l'échelle de dégâts de l'API. Baseline de offensive_conversion (= PV ×
+# (frags + assists/3) / dégâts_infligés) et defensive_resistance (= dégâts_subis /
+# (PV × morts)). Infinite = 225 (90 vie + 135 bouclier, convention officielle).
+# Externalise le littéral `225` câblé en dur (combat_yield.go, squad_breakdown_canonical.go,
+# SQL post_sync_progression_queries.go) — cf. PLAN_DAMAGE_MODEL_PER_TITLE.md.
+[damage_model]
+effective_hp_to_kill = 225
+
 # ─── Préfixes de mode (normalisation pair_name) ─────────────────────────────
 # Réservé : les préfixes Assassin/Fiesta/BTB/Firefight/Ranked sont aujourd'hui
 # dans internal/games/halo_infinite/mode_category.go (constantes PerfChain*).

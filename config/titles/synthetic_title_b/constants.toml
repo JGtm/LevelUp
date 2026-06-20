@@ -21,3 +21,8 @@ ugc_film      = "https://ugc.synthetic.example.test"
 discovery_ugc = "https://discovery.synthetic.example.test"
 challenges    = "https://challenges.synthetic.example.test"
 nameplate     = "https://nameplate.synthetic.example.test"
+
+# Modèle de dégâts — valeur DISTINCTE d'Halo (oracle b : prouve que le seam route
+# une baseline title-spécifique, pas le 225 Infinite).
+[damage_model]
+effective_hp_to_kill = 100

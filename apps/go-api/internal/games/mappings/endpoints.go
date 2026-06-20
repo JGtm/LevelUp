@@ -40,6 +40,15 @@ type EndpointSet struct {
 	schemaVersion int
 	gamePrefix    string
 	byKey         map[EndpointKey]string
+	damageModel   DamageModelConstants
+}
+
+// DamageModelConstants porte les constantes de modèle de dégâts d'un titre
+// (constants.toml [damage_model]). EffectiveHpToKill = PV effectifs pour tuer un
+// joueur (bouclier + armure, échelle de dégâts de l'API), baseline des KPI
+// rendement/résistance. Zéro-value (0) = non déclaré → le caller applique son défaut.
+type DamageModelConstants struct {
+	EffectiveHpToKill float64
 }
 
 // NewEndpointSet construit un EndpointSet (utilisé par le loader et les tests).
@@ -70,6 +79,25 @@ func (s *EndpointSet) GamePrefix() (string, bool) {
 		return "", false
 	}
 	return s.gamePrefix, true
+}
+
+// DamageModel retourne les constantes de modèle de dégâts du titre et true si
+// effective_hp_to_kill est déclaré (> 0). (_, false) si absent → le caller
+// applique son défaut byte-identique (cf. games.DefaultEffectiveHpToKill).
+func (s *EndpointSet) DamageModel() (DamageModelConstants, bool) {
+	if s == nil || s.damageModel.EffectiveHpToKill <= 0 {
+		return DamageModelConstants{}, false
+	}
+	return s.damageModel, true
+}
+
+// withDamageModel attache les constantes de modèle de dégâts (appelé par le
+// loader après construction ; même package). Chaînable.
+func (s *EndpointSet) withDamageModel(dm DamageModelConstants) *EndpointSet {
+	if s != nil {
+		s.damageModel = dm
+	}
+	return s
 }
 
 // Host retourne l'host pour une clé d'endpoint, ou (_, false) si absente.

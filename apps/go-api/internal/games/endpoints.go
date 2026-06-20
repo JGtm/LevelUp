@@ -78,3 +78,21 @@ func (r *MappingsEndpointResolver) GamePrefixFor(slug string) (string, bool) {
 	}
 	return set.GamePrefix()
 }
+
+// DamageModelFor résout les constantes de modèle de dégâts d'un titre
+// (constants.toml [damage_model]). Implémente games.DamageModelResolver. Même
+// précédence de slug vide que HostFor. (_, false) si le titre est inconnu ou ne
+// déclare pas son modèle → le caller applique son défaut byte-identique.
+func (r *MappingsEndpointResolver) DamageModelFor(slug string) (mappings.DamageModelConstants, bool) {
+	if r == nil || r.reg == nil {
+		return mappings.DamageModelConstants{}, false
+	}
+	if slug == "" {
+		slug = r.defaultSlug
+	}
+	set, ok := r.reg.GetEndpoints(slug)
+	if !ok {
+		return mappings.DamageModelConstants{}, false
+	}
+	return set.DamageModel()
+}
