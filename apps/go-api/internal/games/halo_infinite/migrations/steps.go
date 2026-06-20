@@ -1239,6 +1239,9 @@ func Steps() []migration.Migration {
 	steps = append(steps, metadataRootSteps()...)
 	// God-file shared (34 steps, RACINE shared_matches_v2 : match_registry/participants/…) → b23.
 	steps = append(steps, sharedCoreSteps()...)
+	// Schéma de référence inter-titres : positions monde par kill (Halo 5 natif,
+	// Infinite plus tard). Cf. steps_shared_kill_positions.go.
+	steps = append(steps, sharedKillPositionsSteps()...)
 	// Steps social CONSOMMATEURS (media ALTERs, records family, purge, rekey) → b19.
 	steps = append(steps, sharedSocialSteps()...)
 	// Racines du tier social (schémas de base media/notifications/prestige) → b24.

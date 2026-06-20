@@ -182,6 +182,7 @@ func TestAdditionalTitleInheritsHISharedSchema(t *testing.T) {
 	for _, tbl := range []string{
 		"match_registry", "match_participants", "medals_earned",
 		"highlight_events", "killer_victim_pairs", "weapon_kills", "xuid_aliases",
+		"kill_positions", // schéma de référence inter-titres (Halo 5 natif)
 	} {
 		if !tableExists(t, db, tbl) {
 			t.Errorf("table HI %q absente — héritage du schéma shared cassé", tbl)
