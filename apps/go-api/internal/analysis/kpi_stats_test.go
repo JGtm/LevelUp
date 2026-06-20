@@ -450,34 +450,34 @@ func TestComputeKPIStats_CombatProfile_NilStylesBelow15Matches(t *testing.T) {
 	}
 }
 
-func TestComputeKPIStats_CombatProfile_EngagementScoreBrut_WiresStyleActivity(t *testing.T) {
+func TestComputeKPIStats_CombatProfile_PaceRatio_WiresStyleActivity(t *testing.T) {
 	t.Parallel()
-	// Phase 4 : EngagementScoreBrut > +5 → StyleActivity = "actif" (≥ 15 matchs + damage).
-	residual := 10.0
+	// pace_ratio ∈ [1.08, 1.25[ → StyleActivity = "actif" (≥ 15 matchs + damage).
+	ratio := 1.10
 	rows := make([]canonical.PlayerMatchRow, 20)
 	for i := range rows {
 		r := mkRowWithDamage(10, 0, 5, 2000, 1800)
-		r.Enrichment.EngagementScoreBrut = &residual
+		r.Enrichment.EngagementPaceRatio = &ratio
 		rows[i] = r
 	}
 	got := ComputeKPIStats(rows)
 	if got.CombatProfile == nil {
 		t.Fatal("CombatProfile: want non-nil")
 	}
-	if got.CombatProfile.AvgResidualBrut == nil {
-		t.Fatal("AvgResidualBrut: want non-nil when EngagementScoreBrut set on rows")
+	if got.CombatProfile.AvgPaceRatio == nil {
+		t.Fatal("AvgPaceRatio: want non-nil when EngagementPaceRatio set on rows")
 	}
-	if *got.CombatProfile.AvgResidualBrut != residual {
-		t.Errorf("AvgResidualBrut = %.2f, want %.2f", *got.CombatProfile.AvgResidualBrut, residual)
+	if *got.CombatProfile.AvgPaceRatio != ratio {
+		t.Errorf("AvgPaceRatio = %.2f, want %.2f", *got.CombatProfile.AvgPaceRatio, ratio)
 	}
 	if got.CombatProfile.StyleActivity == nil || *got.CombatProfile.StyleActivity != domain.CombatStyleActivityActif {
-		t.Errorf("StyleActivity: want %q (residual=10), got %v", domain.CombatStyleActivityActif, got.CombatProfile.StyleActivity)
+		t.Errorf("StyleActivity: want %q (ratio=1.10), got %v", domain.CombatStyleActivityActif, got.CombatProfile.StyleActivity)
 	}
 }
 
-func TestComputeKPIStats_CombatProfile_NilResidual_NilStyleActivity(t *testing.T) {
+func TestComputeKPIStats_CombatProfile_NilPaceRatio_NilStyleActivity(t *testing.T) {
 	t.Parallel()
-	// Pas de EngagementScoreBrut → AvgResidualBrut nil → StyleActivity nil.
+	// Pas de EngagementPaceRatio → AvgPaceRatio nil → StyleActivity nil.
 	rows := make([]canonical.PlayerMatchRow, 20)
 	for i := range rows {
 		rows[i] = mkRowWithDamage(10, 0, 5, 2000, 1800)
@@ -486,10 +486,10 @@ func TestComputeKPIStats_CombatProfile_NilResidual_NilStyleActivity(t *testing.T
 	if got.CombatProfile == nil {
 		t.Fatal("CombatProfile: want non-nil with damage")
 	}
-	if got.CombatProfile.AvgResidualBrut != nil {
-		t.Errorf("AvgResidualBrut: want nil when no EngagementScoreBrut, got %v", *got.CombatProfile.AvgResidualBrut)
+	if got.CombatProfile.AvgPaceRatio != nil {
+		t.Errorf("AvgPaceRatio: want nil when no EngagementPaceRatio, got %v", *got.CombatProfile.AvgPaceRatio)
 	}
 	if got.CombatProfile.StyleActivity != nil {
-		t.Errorf("StyleActivity: want nil when AvgResidualBrut nil, got %v", *got.CombatProfile.StyleActivity)
+		t.Errorf("StyleActivity: want nil when AvgPaceRatio nil, got %v", *got.CombatProfile.StyleActivity)
 	}
 }

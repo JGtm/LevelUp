@@ -9,33 +9,41 @@ package domain
 type CombatStyle string
 
 const (
-	// Axe offensif (avg_oc vs OffensiveConversionP80).
-	CombatStyleOffensivePrecis    CombatStyle = "precis"    // finisseur : converti bien ses dégâts en kills
-	CombatStyleOffensiveEquilibre CombatStyle = "equilibre" // profil mixte
-	CombatStyleOffensiveGenereux  CombatStyle = "genereux"  // setup : dégâts qui servent les coéquipiers
+	// Axe offensif (avg_oc) — conversion dégâts→kill, du plus dispersé au plus létal.
+	// Bornes : <0.78 / 0.78 / 0.81 / 0.85 / >0.90 (cf. analysis/combat_yield.go).
+	CombatStyleOffensiveDisperse    CombatStyle = "disperse"    // dégâts dispersés, convertit peu
+	CombatStyleOffensiveIrregulier  CombatStyle = "irregulier"  // finish irrégulier
+	CombatStyleOffensiveEquilibre   CombatStyle = "equilibre"   // profil mixte
+	CombatStyleOffensivePrecis      CombatStyle = "precis"      // finisseur : convertit bien
+	CombatStyleOffensiveChirurgical CombatStyle = "chirurgical" // létal, gaspille très peu
 
-	// Axe défensif (avg_dr vs DefensiveResistanceP80).
-	CombatStyleDefensiveResistant CombatStyle = "resistant" // encaisse beaucoup avant de tomber
-	CombatStyleDefensiveSolide    CombatStyle = "solide"    // profil moyen
-	CombatStyleDefensiveFragile   CombatStyle = "fragile"   // meurt vite
+	// Axe défensif (avg_dr) — survie, du plus fragile au plus encaissant.
+	// Bornes : <1.20 / 1.20 / 1.35 / 1.50 / >1.65.
+	CombatStyleDefensiveFragile      CombatStyle = "fragile"      // meurt vite
+	CombatStyleDefensiveExpose       CombatStyle = "expose"       // encaisse peu avant de tomber
+	CombatStyleDefensiveSolide       CombatStyle = "solide"       // profil moyen
+	CombatStyleDefensiveResistant    CombatStyle = "resistant"    // encaisse beaucoup
+	CombatStyleDefensiveInebranlable CombatStyle = "inebranlable" // survie de très haut niveau
 
-	// Axe activité (avg_residual_brut vs lobby).
-	// Nil tant que engagement_score_brut n'est pas exposé dans canonical (Phase 4).
-	CombatStyleActivityActif   CombatStyle = "actif"   // au-dessus du rythme du lobby
-	CombatStyleActivityModere  CombatStyle = "modere"  // dans la moyenne du lobby
-	CombatStyleActivityDiscret CombatStyle = "discret" // en retrait
+	// Axe activité (avg_pace_ratio = pace_joueur/pace_lobby) — engagement absolu.
+	// Bornes : <0.80 / 0.80 / 0.92 / 1.08 / >1.25. Nil si paces indisponibles.
+	CombatStyleActivityPassif   CombatStyle = "passif"   // nettement sous le rythme du lobby
+	CombatStyleActivityDiscret  CombatStyle = "discret"  // en retrait
+	CombatStyleActivityMesure   CombatStyle = "mesure"   // au rythme du lobby
+	CombatStyleActivityActif    CombatStyle = "actif"    // au-dessus du rythme du lobby
+	CombatStyleActivityAgressif CombatStyle = "agressif" // nettement au-dessus
 )
 
-// CombatProfileBlock agrège OC, DR, ResidualBrut et les descripteurs de style.
+// CombatProfileBlock agrège OC, DR, PaceRatio et les descripteurs de style.
 // Renvoyé dans SynthesisPageV2Response et KPIStats (par joueur dans Squad).
 type CombatProfileBlock struct {
 	AvgOC      float64 `json:"avg_oc"`
 	AvgDR      float64 `json:"avg_dr"`
 	MatchCount int     `json:"match_count"`
 
-	// AvgResidualBrut est nil si engagement_score_brut n'est pas disponible
-	// (Phase 4 non encore livrée — canonical.PlayerMatchEnrichment ne l'expose pas).
-	AvgResidualBrut *float64 `json:"avg_residual_brut,omitempty"`
+	// AvgPaceRatio = engagement absolu (pace_joueur / pace_lobby moyen ; 1.0 = au
+	// rythme du lobby). Nil si les paces d'engagement ne sont pas disponibles.
+	AvgPaceRatio *float64 `json:"avg_pace_ratio,omitempty"`
 
 	// DmgPerKill / DmgPerDeath : dégâts moyens par frag / par mort, agrégés
 	// (Σ damage_dealt / Σ kills, Σ damage_taken / Σ deaths) sur la fenêtre. Nil
@@ -47,6 +55,6 @@ type CombatProfileBlock struct {
 	// Descripteurs textuels — nil si MatchCount < minMatchesForCombatStyle (15).
 	StyleOffensive *CombatStyle `json:"style_offensive,omitempty"`
 	StyleDefensive *CombatStyle `json:"style_defensive,omitempty"`
-	// StyleActivity nil si AvgResidualBrut nil.
+	// StyleActivity nil si AvgPaceRatio nil.
 	StyleActivity *CombatStyle `json:"style_activity,omitempty"`
 }

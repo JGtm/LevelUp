@@ -2200,15 +2200,15 @@ export interface SynthesisDetailedStats {
 }
 
 // PLAN_COMBAT_PROFILE_WIRING — types profil combat 3 axes.
-export type CombatStyleOffensive = 'precis' | 'equilibre' | 'genereux'
-export type CombatStyleDefensive = 'resistant' | 'solide' | 'fragile'
-export type CombatStyleActivity = 'actif' | 'modere' | 'discret'
+export type CombatStyleOffensive = 'disperse' | 'irregulier' | 'equilibre' | 'precis' | 'chirurgical'
+export type CombatStyleDefensive = 'fragile' | 'expose' | 'solide' | 'resistant' | 'inebranlable'
+export type CombatStyleActivity = 'passif' | 'discret' | 'mesure' | 'actif' | 'agressif'
 
 export interface CombatProfileBlock {
   avg_oc: number
   avg_dr: number
   match_count: number
-  avg_residual_brut?: number | null
+  avg_pace_ratio?: number | null
   /** Dégâts moyens par frag / par mort (agrégés). Nil si dénominateur nul. */
   dmg_per_kill?: number | null
   dmg_per_death?: number | null
@@ -3197,8 +3197,8 @@ export interface SessionCompareEntry {
   /** Dégâts moyens par frag / par mort sur la session. Nil si dénominateur nul. */
   dmg_per_kill?: number | null
   dmg_per_death?: number | null
-  // PLAN_COMBAT_PROFILE_WIRING Phase 4
-  avg_residual_brut?: number | null
+  // Engagement absolu moyen (pace_joueur/pace_lobby ; 1.0 = rythme lobby).
+  avg_pace_ratio?: number | null
   /** Série de points par match pour les charts de progression. */
   match_series?: SessionMatchPoint[]
   /** Dernier skill rating de la session (LUSR ou CSR). */

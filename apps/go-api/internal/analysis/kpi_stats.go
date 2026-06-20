@@ -40,8 +40,8 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 	var perfSum float64
 	var perfCount int
 	var totalDmgDealt, totalDmgTaken float64
-	var residualSum float64
-	var residualCount int
+	var paceRatioSum float64
+	var paceRatioCount int
 	// Buckets par RatingType pour le delta de rang. On accumule les deltas
 	// pour chaque type rencontre puis on retient le type majoritaire en
 	// sortie (cf. RankDelta.Kind — exclusivite metier au sein d'un scope coherent).
@@ -80,9 +80,9 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 			totalDmgDealt += float64(*r.Self.DamageDealt)
 			totalDmgTaken += float64(*r.Self.DamageTaken)
 		}
-		if r.Enrichment.EngagementScoreBrut != nil {
-			residualSum += *r.Enrichment.EngagementScoreBrut
-			residualCount++
+		if r.Enrichment.EngagementPaceRatio != nil {
+			paceRatioSum += *r.Enrichment.EngagementPaceRatio
+			paceRatioCount++
 		}
 		if snap := r.Enrichment.SkillSnapshot; snap != nil && snap.Delta != nil && snap.RatingType != "" {
 			b, ok := rankBuckets[snap.RatingType]
@@ -150,12 +150,12 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 		stats.AvgDefensiveResistance = &avgDR
 	}
 	if avgOC > 0 || avgDR > 0 {
-		var avgResidualBrut *float64
-		if residualCount > 0 {
-			v := residualSum / float64(residualCount)
-			avgResidualBrut = &v
+		var avgPaceRatio *float64
+		if paceRatioCount > 0 {
+			v := paceRatioSum / float64(paceRatioCount)
+			avgPaceRatio = &v
 		}
-		block := ClassifyCombatProfile(avgOC, avgDR, avgResidualBrut, stats.MatchesCount)
+		block := ClassifyCombatProfile(avgOC, avgDR, avgPaceRatio, stats.MatchesCount)
 		// Dégâts par frag-équivalent (frags + assists/3) : aligné sur OC. DmgPerDeath brut.
 		if v := DamagePerFragEquivalent(totalDmgDealt, float64(totalKills), float64(totalAssists)); v > 0 {
 			block.DmgPerKill = &v
