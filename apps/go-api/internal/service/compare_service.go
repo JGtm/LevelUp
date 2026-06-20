@@ -17,6 +17,7 @@ import (
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
 
@@ -182,7 +183,7 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 	// Titre du rang carrière A (résolu après le merge ATH, comme le profil de combat).
 	statsA.CareerRankLabel = s.careerRankTitle(ctx, statsA.CareerRank)
 
-	metrics := buildMetrics(*statsA, *statsB)
+	metrics := buildMetrics(*statsA, *statsB, games.EffectiveHpToKill(s.titleSlug))
 	resp := domain.CompareResponse{
 		PlayerA:   *statsA,
 		PlayerB:   *statsB,
@@ -427,12 +428,12 @@ func metricAvailability(key string, value float64, isLocal, isLocalSample bool) 
 }
 
 // buildMetrics construit les CompareMetricRows à partir des deux stats normalisées.
-func buildMetrics(a, b domain.NormalizedPlayerStats) []domain.CompareMetricRow {
+func buildMetrics(a, b domain.NormalizedPlayerStats, effectiveHpToKill float64) []domain.CompareMetricRow {
 	// Rendement (OC) / Résistance (DR) : MÊMES formules que la KPI bar home
 	// (analysis.ComputeCombatYield) pour que le Face à face affiche les mêmes
 	// chiffres. OC = 225*(kills+assists/3)/dégâts (plus haut = mieux) ;
 	// DR = dégâts_subis/(225*morts), baseline 1.0 (plus haut = mieux).
-	cyA, cyB := combatYieldOf(a), combatYieldOf(b)
+	cyA, cyB := combatYieldOf(a, effectiveHpToKill), combatYieldOf(b, effectiveHpToKill)
 	rendementA, rendementB := cyA.OffensiveConversion, cyB.OffensiveConversion
 	resistanceA, resistanceB := cyA.DefensiveResistance, cyB.DefensiveResistance
 
@@ -550,8 +551,8 @@ func computeWinner(va, vb float64, lessIsBetter bool) string {
 // combatYieldOf calcule l'OC/DR d'un joueur depuis ses moyennes par partie, via
 // la formule canonique partagée avec la home (analysis.ComputeCombatYieldFloat).
 // Les moyennes par partie suffisent : le facteur 1/matches se simplifie.
-func combatYieldOf(s domain.NormalizedPlayerStats) analysis.CombatYield {
+func combatYieldOf(s domain.NormalizedPlayerStats, effectiveHpToKill float64) analysis.CombatYield {
 	return analysis.ComputeCombatYieldFloat(
-		s.KillsPerGame, s.AssistsPerGame, s.DamagePerGame, s.DamageTakenPerGame, s.DeathsPerGame,
+		s.KillsPerGame, s.AssistsPerGame, s.DamagePerGame, s.DamageTakenPerGame, s.DeathsPerGame, effectiveHpToKill,
 	)
 }

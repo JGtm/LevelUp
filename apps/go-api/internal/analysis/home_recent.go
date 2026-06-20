@@ -17,24 +17,24 @@ import (
 // ---------------------------------------------------------------------------
 
 // BuildRecentMatches construit la liste des derniers matchs pour la timeline.
-func BuildRecentMatches(matches []legacymatch.HomeMatchRow, limit int) []domain.RecentMatchItem {
-	return BuildRecentMatchesForLocale(matches, limit, "fr")
+func BuildRecentMatches(matches []legacymatch.HomeMatchRow, limit int, effectiveHpToKill float64) []domain.RecentMatchItem {
+	return BuildRecentMatchesForLocale(matches, limit, "fr", effectiveHpToKill)
 }
 
 // BuildRecentMatchesForLocale construit la liste des derniers matchs pour la locale demandÃ©e.
-func BuildRecentMatchesForLocale(matches []legacymatch.HomeMatchRow, limit int, locale string) []domain.RecentMatchItem {
-	return BuildRecentMatchesWithFavoritesForLocale(matches, limit, nil, locale)
+func BuildRecentMatchesForLocale(matches []legacymatch.HomeMatchRow, limit int, locale string, effectiveHpToKill float64) []domain.RecentMatchItem {
+	return BuildRecentMatchesWithFavoritesForLocale(matches, limit, nil, locale, effectiveHpToKill)
 }
 
 // BuildRecentMatchesWithFavorites construit la liste des derniers matchs avec le flag favori.
 // favoriteIDs est un set de match_id favoris (nil = social repo indisponible).
-func BuildRecentMatchesWithFavorites(matches []legacymatch.HomeMatchRow, limit int, favoriteIDs map[string]bool) []domain.RecentMatchItem {
-	return BuildRecentMatchesWithFavoritesForLocale(matches, limit, favoriteIDs, "fr")
+func BuildRecentMatchesWithFavorites(matches []legacymatch.HomeMatchRow, limit int, favoriteIDs map[string]bool, effectiveHpToKill float64) []domain.RecentMatchItem {
+	return BuildRecentMatchesWithFavoritesForLocale(matches, limit, favoriteIDs, "fr", effectiveHpToKill)
 }
 
 // BuildRecentMatchesWithFavoritesForLocale construit la liste des derniers matchs avec le flag favori
 // en choisissant les labels selon la langue active de l'interface.
-func BuildRecentMatchesWithFavoritesForLocale(matches []legacymatch.HomeMatchRow, limit int, favoriteIDs map[string]bool, locale string) []domain.RecentMatchItem {
+func BuildRecentMatchesWithFavoritesForLocale(matches []legacymatch.HomeMatchRow, limit int, favoriteIDs map[string]bool, locale string, effectiveHpToKill float64) []domain.RecentMatchItem {
 	if len(matches) == 0 {
 		return nil
 	}
@@ -125,7 +125,7 @@ func BuildRecentMatchesWithFavoritesForLocale(matches []legacymatch.HomeMatchRow
 		dd := float64PtrVal(m.DamageDealt)
 		dt := float64PtrVal(m.DamageTaken)
 		if dd > 0 || dt > 0 {
-			cy := ComputeCombatYield(m.Kills, m.Assists, dd, dt, m.Deaths)
+			cy := ComputeCombatYield(m.Kills, m.Assists, dd, dt, m.Deaths, effectiveHpToKill)
 			if dd > 0 {
 				offConv = &cy.OffensiveConversion
 			}

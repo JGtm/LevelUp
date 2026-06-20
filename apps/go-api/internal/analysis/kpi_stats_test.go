@@ -43,7 +43,7 @@ func mkRowWithSkill(ratingType canonical.RatingType, delta *float64) canonical.P
 
 func TestComputeKPIStats_Empty(t *testing.T) {
 	t.Parallel()
-	got := ComputeKPIStats(nil)
+	got := ComputeKPIStats(nil, 225)
 	if got.MatchesCount != 0 {
 		t.Errorf("empty: want 0 matches, got %d", got.MatchesCount)
 	}
@@ -56,7 +56,7 @@ func TestComputeKPIStats_BasicAggregation(t *testing.T) {
 		mkRow(8, 7, 1, 400, canonical.OutcomeLoss, float64PtrKPI(50.0), float64PtrKPI(20.0)),
 		mkRow(4, 3, 5, 500, canonical.OutcomeTie, nil, nil),
 	}
-	got := ComputeKPIStats(rows)
+	got := ComputeKPIStats(rows, 225)
 
 	if got.MatchesCount != 3 {
 		t.Errorf("MatchesCount: want 3, got %d", got.MatchesCount)
@@ -101,7 +101,7 @@ func TestComputeKPIStats_AllNilFieldsTolere(t *testing.T) {
 	row := canonical.PlayerMatchRow{
 		Self: canonical.MatchParticipant{Outcome: canonical.OutcomeWin},
 	}
-	got := ComputeKPIStats([]canonical.PlayerMatchRow{row})
+	got := ComputeKPIStats([]canonical.PlayerMatchRow{row}, 225)
 	if got.MatchesCount != 1 {
 		t.Errorf("MatchesCount: want 1, got %d", got.MatchesCount)
 	}
@@ -124,7 +124,7 @@ func TestComputeKPIStats_OutcomeBreakdown(t *testing.T) {
 		mkRow(0, 1, 0, 60, canonical.OutcomeDNF, nil, nil),
 		mkRow(0, 0, 0, 0, canonical.Outcome(""), nil, nil), // outcome vide ignore
 	}
-	got := ComputeKPIStats(rows)
+	got := ComputeKPIStats(rows, 225)
 	if got.Outcomes.Wins != 2 || got.Outcomes.Losses != 1 || got.Outcomes.Ties != 1 || got.Outcomes.DNF != 1 {
 		t.Errorf("outcomes: want W2/L1/T1/DNF1, got %+v", got.Outcomes)
 	}
@@ -141,7 +141,7 @@ func TestComputeKPIStats_RankDelta_CSR_SumsSignedDeltas(t *testing.T) {
 		mkRowWithSkill(canonical.RatingTypeCSR, float64PtrKPI(-8.0)),
 		mkRowWithSkill(canonical.RatingTypeCSR, float64PtrKPI(20.0)),
 	}
-	got := ComputeKPIStats(rows)
+	got := ComputeKPIStats(rows, 225)
 	if got.RankDelta == nil {
 		t.Fatal("RankDelta: got nil, want CSR delta")
 	}
@@ -162,7 +162,7 @@ func TestComputeKPIStats_RankDelta_LUSR(t *testing.T) {
 		mkRowWithSkill(canonical.RatingTypeLUSR, float64PtrKPI(0.05)),
 		mkRowWithSkill(canonical.RatingTypeLUSR, float64PtrKPI(-0.02)),
 	}
-	got := ComputeKPIStats(rows)
+	got := ComputeKPIStats(rows, 225)
 	if got.RankDelta == nil {
 		t.Fatal("RankDelta: got nil, want LUSR delta")
 	}
@@ -185,7 +185,7 @@ func TestComputeKPIStats_RankDelta_NilWhenNoRatedMatches(t *testing.T) {
 		mkRowWithSkill("", nil),                      // aucun snapshot
 		mkRowWithSkill(canonical.RatingTypeCSR, nil), // snapshot sans delta
 	}
-	got := ComputeKPIStats(rows)
+	got := ComputeKPIStats(rows, 225)
 	if got.RankDelta != nil {
 		t.Errorf("RankDelta: want nil, got %+v", got.RankDelta)
 	}
@@ -201,7 +201,7 @@ func TestComputeKPIStats_RankDelta_MixedScopeKeepsDominantKind(t *testing.T) {
 		mkRowWithSkill(canonical.RatingTypeCSR, float64PtrKPI(-5.0)),
 		mkRowWithSkill(canonical.RatingTypeLUSR, float64PtrKPI(0.1)),
 	}
-	got := ComputeKPIStats(rows)
+	got := ComputeKPIStats(rows, 225)
 	if got.RankDelta == nil || got.RankDelta.Kind != "csr" {
 		t.Fatalf("want csr (majority), got %+v", got.RankDelta)
 	}
@@ -221,7 +221,7 @@ func TestComputeKPIStats_RankDelta_TieBrokenByCSR(t *testing.T) {
 		mkRowWithSkill(canonical.RatingTypeLUSR, float64PtrKPI(0.5)),
 		mkRowWithSkill(canonical.RatingTypeCSR, float64PtrKPI(7.0)),
 	}
-	got := ComputeKPIStats(rows)
+	got := ComputeKPIStats(rows, 225)
 	if got.RankDelta == nil || got.RankDelta.Kind != "csr" {
 		t.Fatalf("tie broken by CSR: want csr, got %+v", got.RankDelta)
 	}
@@ -236,7 +236,7 @@ func TestComputeKPIStats_ZeroPlaySecondsNoPanicOnPerMin(t *testing.T) {
 	rows := []canonical.PlayerMatchRow{
 		mkRow(10, 5, 0, 0, canonical.OutcomeWin, nil, nil),
 	}
-	got := ComputeKPIStats(rows)
+	got := ComputeKPIStats(rows, 225)
 	if got.KillsPerMinute != 0 || got.DeathsPerMinute != 0 || got.AssistsPerMinute != 0 {
 		t.Errorf("zero play seconds: per-min should be 0, got %+v",
 			[]float64{got.KillsPerMinute, got.DeathsPerMinute, got.AssistsPerMinute})
@@ -368,7 +368,7 @@ func TestComputeKPIStats_CombatProfile_SetWhenDamagePresent(t *testing.T) {
 	for i := range rows {
 		rows[i] = mkRowWithDamage(10, 0, 5, 2000, 1800)
 	}
-	got := ComputeKPIStats(rows)
+	got := ComputeKPIStats(rows, 225)
 	if got.CombatProfile == nil {
 		t.Fatal("CombatProfile: want non-nil with 20 rows of damage data")
 	}
@@ -396,7 +396,7 @@ func TestComputeKPIStats_OC_IsAggregate_NotMeanOfRatios(t *testing.T) {
 		mkRowWithDamage(30, 0, 5, 4000, 2000), // gros volume
 		mkRowWithDamage(1, 0, 1, 50, 1000),    // petit pic d'efficacité (OC/match = 4.5)
 	}
-	got := ComputeKPIStats(rows)
+	got := ComputeKPIStats(rows, 225)
 	// Agrégat : 225 × Σ(frags+assists/3) / Σdégâts = 225 × 31 / 4050 ≈ 1.72.
 	// Moyenne des ratios donnerait (1.6875 + 4.5)/2 ≈ 3.09 → bug.
 	if got.AvgOffensiveConversion == nil {
@@ -427,7 +427,7 @@ func TestComputeKPIStats_CombatProfile_NilWhenNoDamageData(t *testing.T) {
 		mkRow(10, 5, 2, 600, canonical.OutcomeWin, nil, nil),
 		mkRow(8, 7, 1, 400, canonical.OutcomeLoss, nil, nil),
 	}
-	got := ComputeKPIStats(rows)
+	got := ComputeKPIStats(rows, 225)
 	if got.CombatProfile != nil {
 		t.Errorf("CombatProfile: want nil without damage data, got %+v", got.CombatProfile)
 	}
@@ -440,7 +440,7 @@ func TestComputeKPIStats_CombatProfile_NilStylesBelow15Matches(t *testing.T) {
 	for i := range rows {
 		rows[i] = mkRowWithDamage(10, 0, 5, 2000, 1800)
 	}
-	got := ComputeKPIStats(rows)
+	got := ComputeKPIStats(rows, 225)
 	if got.CombatProfile == nil {
 		t.Fatal("CombatProfile: want non-nil with damage data (even < 15 matchs)")
 	}
@@ -460,7 +460,7 @@ func TestComputeKPIStats_CombatProfile_EngagementScoreBrut_WiresStyleActivity(t 
 		r.Enrichment.EngagementScoreBrut = &residual
 		rows[i] = r
 	}
-	got := ComputeKPIStats(rows)
+	got := ComputeKPIStats(rows, 225)
 	if got.CombatProfile == nil {
 		t.Fatal("CombatProfile: want non-nil")
 	}
@@ -482,7 +482,7 @@ func TestComputeKPIStats_CombatProfile_NilResidual_NilStyleActivity(t *testing.T
 	for i := range rows {
 		rows[i] = mkRowWithDamage(10, 0, 5, 2000, 1800)
 	}
-	got := ComputeKPIStats(rows)
+	got := ComputeKPIStats(rows, 225)
 	if got.CombatProfile == nil {
 		t.Fatal("CombatProfile: want non-nil with damage")
 	}

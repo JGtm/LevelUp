@@ -23,6 +23,7 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 	limit int,
 	favoriteIDs map[string]bool,
 	locale string,
+	effectiveHpToKill float64,
 ) []domain.RecentMatchItem {
 	if len(rows) == 0 {
 		return nil
@@ -141,7 +142,7 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 		dd := float64PtrVal(dmgDealtPtr)
 		dt := float64PtrVal(dmgTakenPtr)
 		if dd > 0 || dt > 0 {
-			cy := ComputeCombatYield(kills, assists, dd, dt, deaths)
+			cy := ComputeCombatYield(kills, assists, dd, dt, deaths, effectiveHpToKill)
 			if dd > 0 {
 				offConv = &cy.OffensiveConversion
 			}

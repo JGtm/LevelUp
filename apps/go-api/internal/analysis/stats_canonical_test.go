@@ -64,7 +64,7 @@ func TestStatsMatchRowFromCanonical_RoundtripFields(t *testing.T) {
 		},
 	}
 
-	out := StatsMatchRowFromCanonical(canonicalRow)
+	out := StatsMatchRowFromCanonical(canonicalRow, 225)
 
 	if out.MatchID != "m-stats-1" {
 		t.Errorf("MatchID: got %q", out.MatchID)
@@ -104,7 +104,7 @@ func TestStatsMatchRowFromCanonical_CombatYieldDerived(t *testing.T) {
 			DamageDealt: &dd, DamageTaken: &dt,
 		},
 	}
-	out := StatsMatchRowFromCanonical(row)
+	out := StatsMatchRowFromCanonical(row, 225)
 	// OC = 225*(10 + 6/3)/2000 = 225*12/2000 = 1.35
 	if out.OffensiveConversion == nil || *out.OffensiveConversion < 1.349 || *out.OffensiveConversion > 1.351 {
 		t.Fatalf("OffensiveConversion: want ~1.35, got %v", out.OffensiveConversion)
@@ -121,7 +121,7 @@ func TestStatsMatchRowFromCanonical_NoDamageNoCombatYield(t *testing.T) {
 	row := canonical.PlayerMatchRow{
 		Self: canonical.MatchParticipant{Kills: &kills, Deaths: &deaths},
 	}
-	out := StatsMatchRowFromCanonical(row)
+	out := StatsMatchRowFromCanonical(row, 225)
 	if out.OffensiveConversion != nil || out.DefensiveResistance != nil {
 		t.Fatalf("expected nil OC/DR without damage, got oc=%v dr=%v", out.OffensiveConversion, out.DefensiveResistance)
 	}
@@ -142,7 +142,7 @@ func TestStatsMatchRowFromCanonical_Outcomes(t *testing.T) {
 		row := canonical.PlayerMatchRow{
 			Self: canonical.MatchParticipant{Outcome: c.canonical},
 		}
-		out := StatsMatchRowFromCanonical(row)
+		out := StatsMatchRowFromCanonical(row, 225)
 		if out.Outcome == nil {
 			t.Errorf("Outcome %v: got nil, want %d", c.canonical, c.domain)
 			continue

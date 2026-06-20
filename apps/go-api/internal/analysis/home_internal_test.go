@@ -209,7 +209,7 @@ func TestComputeKPIs_Full(t *testing.T) {
 		{Outcome: homeOutcomeWin, Ratio: &r1, Accuracy: &a1},
 		{Outcome: homeOutcomeLoss, Ratio: &r2, Accuracy: &a2},
 	}
-	kpis := ComputeKPIs(matches, len(matches))
+	kpis := ComputeKPIs(matches, len(matches), 225)
 	if kpis.TotalMatches != 2 {
 		t.Errorf("TotalMatches = %d, want 2", kpis.TotalMatches)
 	}
@@ -229,7 +229,7 @@ func TestBuildHeroCard(t *testing.T) {
 	matches := []legacymatch.HomeMatchRow{
 		{Outcome: homeOutcomeWin, Ratio: &r, StartTime: time.Now()},
 	}
-	card := BuildHeroCard(matches, "TestPlayer", len(matches))
+	card := BuildHeroCard(matches, "TestPlayer", len(matches), 225)
 	if card.PlayerName != "TestPlayer" {
 		t.Errorf("PlayerName = %q", card.PlayerName)
 	}

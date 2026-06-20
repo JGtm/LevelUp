@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
 
@@ -265,14 +266,14 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 				dd := *r.Self.DamageDealt
 				pt.DamageDealt = &dd // brut, pour le chart dégâts/frag
 				if dd > 0 {
-					v := round2(synergyOffensiveConversion(pt.Kills, pt.Assists, float64(dd)))
+					v := round2(synergyOffensiveConversion(pt.Kills, pt.Assists, float64(dd), games.EffectiveHpToKill(s.titleSlug)))
 					pt.RendementOffensif = &v
 				}
 			}
 			if r.Self.DamageTaken != nil {
 				dt := *r.Self.DamageTaken
 				pt.DamageTaken = &dt // brut, pour le chart dégâts/mort
-				v := round2(synergyDefensiveResistance(float64(dt), pt.Deaths))
+				v := round2(synergyDefensiveResistance(float64(dt), pt.Deaths, games.EffectiveHpToKill(s.titleSlug)))
 				pt.ResistanceDefensive = &v
 			}
 			if r.Enrichment.TeamMMR != nil {

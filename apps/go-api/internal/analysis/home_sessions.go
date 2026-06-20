@@ -21,6 +21,7 @@ func BuildSessionSummaries(
 	sessions []legacymatch.HomeSessionRow,
 	squadMode bool,
 	limit int,
+	effectiveHpToKill float64,
 ) []domain.SessionSummaryItem {
 	if len(sessions) == 0 || len(matches) == 0 {
 		return nil
@@ -191,7 +192,7 @@ func BuildSessionSummaries(
 			}
 		}
 
-		kpis := ComputeKPIs(sessionMatches, len(sessionMatches))
+		kpis := ComputeKPIs(sessionMatches, len(sessionMatches), effectiveHpToKill)
 		item := domain.SessionSummaryItem{
 			SessionLabel:         lbl,
 			MatchCount:           len(sessionMatches),
@@ -252,6 +253,7 @@ func BuildSessionSummary(
 	matches []legacymatch.HomeMatchRow,
 	sessions []legacymatch.HomeSessionRow,
 	squadMode bool,
+	effectiveHpToKill float64,
 ) *domain.SessionSummaryItem {
 	if len(sessions) == 0 || len(matches) == 0 {
 		return nil
@@ -296,7 +298,7 @@ func BuildSessionSummary(
 		return nil
 	}
 
-	kpis := ComputeKPIs(sessionMatches, len(sessionMatches))
+	kpis := ComputeKPIs(sessionMatches, len(sessionMatches), effectiveHpToKill)
 	item := &domain.SessionSummaryItem{
 		SessionLabel: latestLabel,
 		MatchCount:   len(sessionMatches),

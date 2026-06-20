@@ -28,7 +28,7 @@ func TestBuildSampleStats_StandardCase(t *testing.T) {
 	}
 	medals := &domain.MedalCountsAggregate{Total: 142, Unique: 12, PerfectKills: 8}
 
-	got := BuildSampleStats(agg, medals, 10)
+	got := BuildSampleStats(agg, medals, 10, 225)
 	if got == nil {
 		t.Fatal("BuildSampleStats attendu non-nil")
 	}
@@ -92,7 +92,7 @@ func TestBuildSampleStats_TimePlayedZero(t *testing.T) {
 		Kills: 10, Deaths: 5, Assists: 3,
 		TimePlayedSeconds: 0,
 	}
-	got := BuildSampleStats(agg, nil, 2)
+	got := BuildSampleStats(agg, nil, 2, 225)
 	if got == nil {
 		t.Fatal("BuildSampleStats attendu non-nil")
 	}
@@ -109,7 +109,7 @@ func TestBuildSampleStats_DeathsZero(t *testing.T) {
 		DamageDealt: 1500, DamageTaken: 0,
 		HeadshotKills: 5,
 	}
-	got := BuildSampleStats(agg, nil, 2)
+	got := BuildSampleStats(agg, nil, 2, 225)
 	if got == nil {
 		t.Fatal("BuildSampleStats attendu non-nil")
 	}
@@ -131,7 +131,7 @@ func TestBuildSampleStats_ShotsZero(t *testing.T) {
 		Kills: 10, Deaths: 5,
 		ShotsFired: 0, ShotsHit: 0,
 	}
-	got := BuildSampleStats(agg, nil, 1)
+	got := BuildSampleStats(agg, nil, 1, 225)
 	if got == nil {
 		t.Fatal("BuildSampleStats attendu non-nil")
 	}
@@ -145,7 +145,7 @@ func TestBuildSampleStats_KillsZero(t *testing.T) {
 		Kills: 0, Deaths: 5,
 		HeadshotKills: 0,
 	}
-	got := BuildSampleStats(agg, nil, 1)
+	got := BuildSampleStats(agg, nil, 1, 225)
 	if got == nil {
 		t.Fatal("BuildSampleStats attendu non-nil")
 	}
@@ -161,19 +161,19 @@ func TestBuildSampleStats_KillsZero(t *testing.T) {
 
 func TestBuildSampleStats_NilOrZeroSample(t *testing.T) {
 	t.Run("agg nil", func(t *testing.T) {
-		if got := BuildSampleStats(nil, nil, 5); got != nil {
+		if got := BuildSampleStats(nil, nil, 5, 225); got != nil {
 			t.Errorf("agg nil → attendu nil, got %+v", got)
 		}
 	})
 	t.Run("sampleSize 0", func(t *testing.T) {
 		agg := &domain.ParticipantStatsAggregate{Kills: 10, Deaths: 5}
-		if got := BuildSampleStats(agg, nil, 0); got != nil {
+		if got := BuildSampleStats(agg, nil, 0, 225); got != nil {
 			t.Errorf("sampleSize=0 → attendu nil, got %+v", got)
 		}
 	})
 	t.Run("sampleSize négatif", func(t *testing.T) {
 		agg := &domain.ParticipantStatsAggregate{Kills: 10, Deaths: 5}
-		if got := BuildSampleStats(agg, nil, -1); got != nil {
+		if got := BuildSampleStats(agg, nil, -1, 225); got != nil {
 			t.Errorf("sampleSize<0 → attendu nil, got %+v", got)
 		}
 	})
@@ -181,7 +181,7 @@ func TestBuildSampleStats_NilOrZeroSample(t *testing.T) {
 
 func TestBuildSampleStats_MedalsNil(t *testing.T) {
 	agg := &domain.ParticipantStatsAggregate{Kills: 10, Deaths: 5}
-	got := BuildSampleStats(agg, nil, 1)
+	got := BuildSampleStats(agg, nil, 1, 225)
 	if got == nil {
 		t.Fatal("BuildSampleStats attendu non-nil")
 	}
@@ -196,7 +196,7 @@ func TestBuildSampleStats_WinRateDNFExclu(t *testing.T) {
 		Kills: 1, Deaths: 1,
 		Wins: 3, Losses: 1, Draws: 0,
 	}
-	got := BuildSampleStats(agg, nil, 5) // 5 matchs au total mais seulement 4 jouables
+	got := BuildSampleStats(agg, nil, 5, 225) // 5 matchs au total mais seulement 4 jouables
 	if got == nil {
 		t.Fatal("BuildSampleStats attendu non-nil")
 	}

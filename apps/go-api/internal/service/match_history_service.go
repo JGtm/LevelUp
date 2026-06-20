@@ -260,7 +260,7 @@ func (s *MatchHistoryService) loadBriefingKPIs(
 	if len(scoped) == 0 {
 		return nil
 	}
-	kpis := analysis.ComputeKPIStats(scoped)
+	kpis := analysis.ComputeKPIStats(scoped, games.EffectiveHpToKill(s.titleSlug))
 	return &kpis
 }
 

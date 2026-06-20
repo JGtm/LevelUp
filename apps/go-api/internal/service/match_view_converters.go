@@ -72,9 +72,9 @@ func convertKDPointsToDomain(points []analysis.KDTimelinePoint) []domain.MatchKD
 // scoreboard row (offensive_conversion, defensive_resistance, damage_per_kill,
 // damage_per_death). Retourne nil pour les pointeurs dont les données source
 // (DamageDealt/Taken) sont absentes — semantically "non calculable".
-func computeScoreboardRowCombatYield(s domain.ScoreboardRaw) (oc, dr, dpk, dpd *float64) {
+func computeScoreboardRowCombatYield(s domain.ScoreboardRaw, effectiveHpToKill float64) (oc, dr, dpk, dpd *float64) {
 	if s.DamageDealt != nil && s.DamageTaken != nil {
-		cy := analysis.ComputeCombatYield(s.Kills, s.Assists, *s.DamageDealt, *s.DamageTaken, s.Deaths)
+		cy := analysis.ComputeCombatYield(s.Kills, s.Assists, *s.DamageDealt, *s.DamageTaken, s.Deaths, effectiveHpToKill)
 		oc = &cy.OffensiveConversion
 		if s.Deaths == 0 {
 			inf := -1.0 // sentinel ∞ — jamais de valeur négative réelle

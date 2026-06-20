@@ -19,6 +19,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
@@ -71,7 +72,8 @@ func (s *SessionCompareService) Compare(
 		slog.ErrorContext(ctx, "session_compare: échec chargement canonical", "gamertag", s.gamertag, "err", err)
 		return domain.SessionCompareResponse{}, fmt.Errorf("SessionCompare: %w", err)
 	}
-	matches := filterStatsMatchRows(analysis.StatsMatchRowsFromCanonical(canonicalRows), req.Filters)
+	hp := games.EffectiveHpToKill(s.titleSlug)
+	matches := filterStatsMatchRows(analysis.StatsMatchRowsFromCanonical(canonicalRows, hp), req.Filters)
 	slog.DebugContext(ctx, "session_compare: rows chargés", "gamertag", s.gamertag, "canonical", len(canonicalRows), "filtered", len(matches))
 
 	// 2. Identifier les sessions disponibles.
@@ -102,8 +104,8 @@ func (s *SessionCompareService) Compare(
 	matchesB := filterBySession(matches, labelB)
 
 	// 4. Calculer les entries et métriques.
-	entryA := buildCompareEntry(matchesA, labelA)
-	entryB := buildCompareEntry(matchesB, labelB)
+	entryA := buildCompareEntry(matchesA, labelA, hp)
+	entryB := buildCompareEntry(matchesB, labelB, hp)
 	metrics := buildCompareMetrics(matchesA, matchesB)
 
 	slog.InfoContext(ctx, "session_compare: comparaison terminée",
@@ -202,8 +204,8 @@ func filterBySession(matches []legacymatch.StatsMatchRow, label string) []legacy
 
 // buildCompareEntry : variante sans scores PSA (axe Objective à 0). Conservée pour
 // les callers sans accès au loader PSA (SessionCompare, tests).
-func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string) *domain.SessionCompareEntry {
-	return buildCompareEntryWithObjectives(matches, label, nil)
+func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string, effectiveHpToKill float64) *domain.SessionCompareEntry {
+	return buildCompareEntryWithObjectives(matches, label, nil, effectiveHpToKill)
 }
 
 // buildCompareEntryWithObjectives construit l'entry en alimentant les axes Objective
@@ -213,6 +215,7 @@ func buildCompareEntryWithObjectives(
 	matches []legacymatch.StatsMatchRow,
 	label string,
 	objScores map[string]int,
+	effectiveHpToKill float64,
 ) *domain.SessionCompareEntry {
 	if len(matches) == 0 || label == "" {
 		return nil
@@ -273,7 +276,7 @@ func buildCompareEntryWithObjectives(
 	// (pas une moyenne des OC par match). OC garde les assists (frag-équivalent),
 	// calculé sur les mêmes totaux que dmgPerKill → % = 225 / dmgPerKill.
 	var avgOC, avgDR *float64
-	cy := analysis.ComputeCombatYieldFloat(float64(totalKills), float64(totalAssists), totalDmgDealt, totalDmgTaken, float64(totalDeaths))
+	cy := analysis.ComputeCombatYieldFloat(float64(totalKills), float64(totalAssists), totalDmgDealt, totalDmgTaken, float64(totalDeaths), effectiveHpToKill)
 	if cy.OffensiveConversion > 0 {
 		v := math.Round(cy.OffensiveConversion*100) / 100
 		avgOC = &v
@@ -309,7 +312,7 @@ func buildCompareEntryWithObjectives(
 	dominantCat := dominantSessionCategoryPtr(matches)
 	lastRating, ratingType, ratingDelta := lastSkillRating(matches)
 	avgTeamMMR, avgEnemyMMR := avgMMR(matches)
-	participation := buildSessionParticipationProfile(matches, objScores)
+	participation := buildSessionParticipationProfile(matches, objScores, effectiveHpToKill)
 	// entry.Matches en FR par défaut (le tableau visible passe par resp.Matches,
 	// déjà locale-aware via GetPage).
 	matchRows := buildSessionDetailRows(matches, dominantCat, "fr")

@@ -48,7 +48,7 @@ func sp(v string) *string   { return &v }
 // ---------------------------------------------------------------------------
 
 func TestComputeKPIs_Empty(t *testing.T) {
-	kpis := analysis.ComputeKPIs(nil, 0)
+	kpis := analysis.ComputeKPIs(nil, 0, 225)
 	if kpis.TotalMatches != 0 || kpis.WinRate != 0 {
 		t.Errorf("empty: got %+v", kpis)
 	}
@@ -60,7 +60,7 @@ func TestComputeKPIs_WithMatches(t *testing.T) {
 		makeHomeMatch("m2", 3, fp(0.5), fp(30.0), false), // loss
 		makeHomeMatch("m3", 2, fp(1.5), nil, false),      // win, no accuracy
 	}
-	kpis := analysis.ComputeKPIs(matches, len(matches))
+	kpis := analysis.ComputeKPIs(matches, len(matches), 225)
 	if kpis.TotalMatches != 3 {
 		t.Errorf("TotalMatches: want 3, got %d", kpis.TotalMatches)
 	}
@@ -131,7 +131,7 @@ func TestComputeTrend_WithData(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestBuildRecentMatches_Empty(t *testing.T) {
-	items := analysis.BuildRecentMatches(nil, 6)
+	items := analysis.BuildRecentMatches(nil, 6, 225)
 	if len(items) != 0 {
 		t.Errorf("want empty, got %d", len(items))
 	}
@@ -142,7 +142,7 @@ func TestBuildRecentMatches_Limit(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		matches = append(matches, makeHomeMatch("m"+string(rune('a'+i)), 2, fp(1.0), fp(55.0), false))
 	}
-	items := analysis.BuildRecentMatches(matches, 6)
+	items := analysis.BuildRecentMatches(matches, 6, 225)
 	if len(items) != 6 {
 		t.Errorf("want 6, got %d", len(items))
 	}
@@ -165,7 +165,7 @@ func TestBuildRecentMatches_NormalizesModeLabel(t *testing.T) {
 		PairNameFR:   "Slayer sur Aquarius",
 		PlaylistName: "Ranked Arena",
 		Outcome:      2,
-	}}, 6)
+	}}, 6, 225)
 
 	if len(items) != 1 {
 		t.Fatalf("want 1 item, got %d", len(items))
@@ -197,7 +197,7 @@ func TestBuildRecentMatchesForLocale_UsesRequestedLanguage(t *testing.T) {
 		Outcome:           2,
 	}
 
-	itemsFR := analysis.BuildRecentMatchesForLocale([]legacymatch.HomeMatchRow{match}, 6, "fr")
+	itemsFR := analysis.BuildRecentMatchesForLocale([]legacymatch.HomeMatchRow{match}, 6, "fr", 225)
 	if itemsFR[0].ModeUI == nil || *itemsFR[0].ModeUI != "Slayer en Ã©quipe" {
 		t.Fatalf("FR ModeUI: want Slayer en Ã©quipe, got %v", itemsFR[0].ModeUI)
 	}
@@ -208,7 +208,7 @@ func TestBuildRecentMatchesForLocale_UsesRequestedLanguage(t *testing.T) {
 		t.Fatalf("FR OutcomeLabel: want Victoire, got %q", itemsFR[0].OutcomeLabel)
 	}
 
-	itemsEN := analysis.BuildRecentMatchesForLocale([]legacymatch.HomeMatchRow{match}, 6, "en")
+	itemsEN := analysis.BuildRecentMatchesForLocale([]legacymatch.HomeMatchRow{match}, 6, "en", 225)
 	if itemsEN[0].ModeUI == nil || *itemsEN[0].ModeUI != "Team Slayer" {
 		t.Fatalf("EN ModeUI: want Team Slayer, got %v", itemsEN[0].ModeUI)
 	}
@@ -237,7 +237,7 @@ func TestBuildRecentMatches_PassesThroughPreResolvedMapImageURL(t *testing.T) {
 		Team1Score:    3,
 		DominanceFlag: 3,
 		Outcome:       3,
-	}}, 6)
+	}}, 6, 225)
 
 	if len(items) != 1 {
 		t.Fatalf("want 1 item, got %d", len(items))
@@ -266,7 +266,7 @@ func TestBuildRecentMatches_NoMapImageURLWhenRegistryEmpty(t *testing.T) {
 		MapID:     "3e1e4cec-4f2c-44c6-b8d2-96b85c66c702",
 		MapName:   "Bazaar",
 		Outcome:   2,
-	}}, 6)
+	}}, 6, 225)
 
 	if len(items) != 1 {
 		t.Fatalf("want 1 item, got %d", len(items))
@@ -289,7 +289,7 @@ func TestBuildRecentMatches_MapsDominanceBadge(t *testing.T) {
 		Team0Score:    50,
 		Team1Score:    13,
 		DominanceFlag: 1,
-	}}, 6)
+	}}, 6, 225)
 
 	if len(items) != 1 {
 		t.Fatalf("want 1 item, got %d", len(items))
@@ -495,7 +495,7 @@ func TestBuildSessionSummaries_RetourneNSessionsTrieesDesc(t *testing.T) {
 		homeMatchAt("m3", 2, fp(2.0), t3),
 	}
 
-	result := analysis.BuildSessionSummaries(matches, sessions, false, 10)
+	result := analysis.BuildSessionSummaries(matches, sessions, false, 10, 225)
 	if len(result) != 3 {
 		t.Fatalf("want 3 sessions, got %d", len(result))
 	}
@@ -524,7 +524,7 @@ func TestBuildSessionSummaries_LimitRespectee(t *testing.T) {
 		homeMatchAt("m3", 2, fp(2.0), t3),
 	}
 
-	result := analysis.BuildSessionSummaries(matches, sessions, false, 2)
+	result := analysis.BuildSessionSummaries(matches, sessions, false, 2, 225)
 	if len(result) != 2 {
 		t.Fatalf("limit 2: want 2, got %d", len(result))
 	}
@@ -544,8 +544,8 @@ func TestBuildSessionSummaries_FiltreEscouade(t *testing.T) {
 		homeMatchAt("m2", 3, fp(0.5), now),
 	}
 
-	soloResult := analysis.BuildSessionSummaries(matches, sessions, false, 5)
-	squadResult := analysis.BuildSessionSummaries(matches, sessions, true, 5)
+	soloResult := analysis.BuildSessionSummaries(matches, sessions, false, 5, 225)
+	squadResult := analysis.BuildSessionSummaries(matches, sessions, true, 5, 225)
 
 	if len(soloResult) != 1 || soloResult[0].SessionLabel != soloLabel {
 		t.Errorf("solo: want [%s], got %v", soloLabel, soloResult)
@@ -556,7 +556,7 @@ func TestBuildSessionSummaries_FiltreEscouade(t *testing.T) {
 }
 
 func TestBuildSessionSummaries_Vide(t *testing.T) {
-	result := analysis.BuildSessionSummaries(nil, nil, false, 5)
+	result := analysis.BuildSessionSummaries(nil, nil, false, 5, 225)
 	if result != nil {
 		t.Errorf("want nil, got %v", result)
 	}
@@ -582,7 +582,7 @@ func TestBuildSessionSummary_Solo(t *testing.T) {
 		homeMatchAt("m3", 2, fp(1.5), before),
 	}
 
-	summary := analysis.BuildSessionSummary(matches, sessions, false)
+	summary := analysis.BuildSessionSummary(matches, sessions, false, 225)
 	if summary == nil {
 		t.Fatal("want non-nil summary")
 	}
@@ -612,8 +612,8 @@ func TestBuildSessionSummary_SquadModeFiltering(t *testing.T) {
 		homeMatchAt("m2", 3, fp(0.5), now),
 	}
 
-	solo := analysis.BuildSessionSummary(matches, sessions, false)
-	squad := analysis.BuildSessionSummary(matches, sessions, true)
+	solo := analysis.BuildSessionSummary(matches, sessions, false, 225)
+	squad := analysis.BuildSessionSummary(matches, sessions, true, 225)
 
 	if solo == nil {
 		t.Fatal("solo summary: want non-nil")

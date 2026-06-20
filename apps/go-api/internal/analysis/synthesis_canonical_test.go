@@ -96,7 +96,7 @@ func TestComputeSynthesisKPIsFromCanonical_ParityWithDomain(t *testing.T) {
 	}
 
 	domainKPIs := ComputeSynthesisKPIs(domainRows, true)
-	canonicalKPIs := ComputeSynthesisKPIsFromCanonical(canonicalRows, true)
+	canonicalKPIs := ComputeSynthesisKPIsFromCanonical(canonicalRows, true, 225)
 
 	// Comparaison : les KPIs doivent Ãªtre bit-identiques.
 	if domainKPIs.MatchCount != canonicalKPIs.MatchCount {
@@ -126,7 +126,7 @@ func TestComputeSynthesisKPIsFromCanonical_ParityWithDomain(t *testing.T) {
 }
 
 func TestComputeSynthesisKPIsFromCanonical_EmptyRows(t *testing.T) {
-	got := ComputeSynthesisKPIsFromCanonical(nil, false)
+	got := ComputeSynthesisKPIsFromCanonical(nil, false, 225)
 	if got.MatchCount != 0 {
 		t.Errorf("MatchCount = %d, want 0 sur dataset vide", got.MatchCount)
 	}
@@ -142,14 +142,14 @@ func TestComputeSynthesisKPIsFromCanonical_FilterIsSquad(t *testing.T) {
 	domainRows := []legacymatch.SynthesisMatchRow{d1, d2}
 
 	// isSquad=true â†’ seul c1 compte.
-	gotSquad := ComputeSynthesisKPIsFromCanonical(canonicalRows, true)
+	gotSquad := ComputeSynthesisKPIsFromCanonical(canonicalRows, true, 225)
 	wantSquad := ComputeSynthesisKPIs(domainRows, true)
 	if gotSquad.MatchCount != wantSquad.MatchCount {
 		t.Errorf("isSquad=true: got %d matches, want %d", gotSquad.MatchCount, wantSquad.MatchCount)
 	}
 
 	// isSquad=false â†’ seul c2 compte.
-	gotSolo := ComputeSynthesisKPIsFromCanonical(canonicalRows, false)
+	gotSolo := ComputeSynthesisKPIsFromCanonical(canonicalRows, false, 225)
 	wantSolo := ComputeSynthesisKPIs(domainRows, false)
 	if gotSolo.MatchCount != wantSolo.MatchCount {
 		t.Errorf("isSquad=false: got %d matches, want %d", gotSolo.MatchCount, wantSolo.MatchCount)

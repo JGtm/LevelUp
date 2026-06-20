@@ -13,7 +13,7 @@ import (
 // BuildSessionSummaryFromCanonical : full canonical (P4.3 finale).
 // Filtre par IsWithFriends (squadMode), trouve la session la plus rÃ©cente
 // par StartedAtUTC, agrÃ¨ge ses matchs en KPIs.
-func BuildSessionSummaryFromCanonical(rows []canonical.PlayerMatchRow, squadMode bool, locale string) *domain.SessionSummaryItem {
+func BuildSessionSummaryFromCanonical(rows []canonical.PlayerMatchRow, squadMode bool, locale string, effectiveHpToKill float64) *domain.SessionSummaryItem {
 	if len(rows) == 0 {
 		return nil
 	}
@@ -46,7 +46,7 @@ func BuildSessionSummaryFromCanonical(rows []canonical.PlayerMatchRow, squadMode
 		return nil
 	}
 
-	kpis := ComputeKPIsFromCanonical(sessionRows, len(sessionRows), locale)
+	kpis := ComputeKPIsFromCanonical(sessionRows, len(sessionRows), locale, effectiveHpToKill)
 	item := &domain.SessionSummaryItem{
 		SessionLabel: latestLabel,
 		MatchCount:   len(sessionRows),
@@ -92,7 +92,7 @@ func earliestStartTimeCanonical(rows []canonical.PlayerMatchRow) *time.Time {
 // Note ADR 0011 : legacymatch.HomeMatchRow.PairNameFR (composite Halo-only)
 // n'a pas d'Ã©quivalent canonical. dominantMode est dÃ©rivÃ© de
 // Summary.GameVariant.Labels["fr"] || DefaultLabel comme proxy.
-func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMode bool, limit int, locale string) []domain.SessionSummaryItem {
+func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMode bool, limit int, locale string, effectiveHpToKill float64) []domain.SessionSummaryItem {
 	if len(rows) == 0 {
 		return nil
 	}
@@ -228,7 +228,7 @@ func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMo
 			return assetLabels(r.Summary.Playlist)
 		})
 
-		kpis := ComputeKPIsFromCanonical(sessionRows, len(sessionRows), locale)
+		kpis := ComputeKPIsFromCanonical(sessionRows, len(sessionRows), locale, effectiveHpToKill)
 		item := domain.SessionSummaryItem{
 			SessionLabel:         lbl,
 			MatchCount:           len(sessionRows),

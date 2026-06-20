@@ -87,7 +87,7 @@ func TestFilterBySession_NoLabel(t *testing.T) {
 }
 
 func TestBuildCompareEntry_Nil(t *testing.T) {
-	entry := buildCompareEntry(nil, "S1")
+	entry := buildCompareEntry(nil, "S1", 225)
 	if entry != nil {
 		t.Fatal("expected nil for empty matches")
 	}
@@ -101,7 +101,7 @@ func TestBuildCompareEntry_WithMatches(t *testing.T) {
 		makeMatch("S1", 10, 8, &loss),
 		makeMatch("S1", 20, 3, &win),
 	}
-	entry := buildCompareEntry(matches, "S1")
+	entry := buildCompareEntry(matches, "S1", 225)
 	if entry == nil {
 		t.Fatal("expected non-nil")
 	}
@@ -123,7 +123,7 @@ func TestBuildCompareEntry_AvgAccuracy(t *testing.T) {
 	m2.Accuracy = acc(60.0)
 	m3 := makeMatch("S1", 20, 3, nil) // pas de précision → ignoré dans la moyenne
 
-	entry := buildCompareEntry([]legacymatch.StatsMatchRow{m1, m2, m3}, "S1")
+	entry := buildCompareEntry([]legacymatch.StatsMatchRow{m1, m2, m3}, "S1", 225)
 	if entry == nil || entry.AvgAccuracy == nil {
 		t.Fatalf("AvgAccuracy attendu non-nil, got %+v", entry)
 	}
@@ -132,7 +132,7 @@ func TestBuildCompareEntry_AvgAccuracy(t *testing.T) {
 	}
 
 	// Aucune précision → nil (pas de KPI à afficher).
-	noAcc := buildCompareEntry([]legacymatch.StatsMatchRow{makeMatch("S1", 10, 5, nil)}, "S1")
+	noAcc := buildCompareEntry([]legacymatch.StatsMatchRow{makeMatch("S1", 10, 5, nil)}, "S1", 225)
 	if noAcc.AvgAccuracy != nil {
 		t.Errorf("AvgAccuracy attendu nil sans données précision, got %v", *noAcc.AvgAccuracy)
 	}
@@ -263,7 +263,7 @@ func TestBuildCompareEntry_DerivedMetrics(t *testing.T) {
 		makeMatch("S1", 10, 5, &win),
 		makeMatch("S1", 6, 5, &loss),
 	}
-	entry := buildCompareEntry(matches, "S1")
+	entry := buildCompareEntry(matches, "S1", 225)
 	if entry == nil {
 		t.Fatal("expected non-nil entry")
 	}
@@ -287,7 +287,7 @@ func TestBuildCompareEntry_FragAggregates(t *testing.T) {
 		{SessionLabel: ptr("S1"), StartTime: time.Now(), MaxKillingSpree: spree(9), HeadshotKills: spree(4), PerfectKills: spree(1)},
 		{SessionLabel: ptr("S1"), StartTime: time.Now(), MaxKillingSpree: spree(3), HeadshotKills: spree(1), PerfectKills: spree(2)},
 	}
-	entry := buildCompareEntry(rows, "S1")
+	entry := buildCompareEntry(rows, "S1", 225)
 	if entry == nil {
 		t.Fatal("expected non-nil entry")
 	}
@@ -310,7 +310,7 @@ func TestBuildCompareEntry_AvgLifeSeconds(t *testing.T) {
 		{SessionLabel: ptr("S1"), StartTime: time.Now(), AvgLifeSeconds: &l1},
 		{SessionLabel: ptr("S1"), StartTime: time.Now(), AvgLifeSeconds: &l2},
 	}
-	entry := buildCompareEntry(rows, "S1")
+	entry := buildCompareEntry(rows, "S1", 225)
 	if entry == nil || entry.AvgLifeSeconds == nil {
 		t.Fatal("expected non-nil AvgLifeSeconds")
 	}
@@ -337,12 +337,12 @@ func TestBuildSessionParticipationProfile_ObjectiveAndScore(t *testing.T) {
 		return -1
 	}
 	// Sans scores PSA → Objective à 0 (dégradation gracieuse).
-	without := buildSessionParticipationProfile(rows, nil)
+	without := buildSessionParticipationProfile(rows, nil, 225)
 	if v := axisVal(without, "objective"); v != 0 {
 		t.Fatalf("Objective sans PSA: want 0, got %v", v)
 	}
 	// Avec PSA → Objective > 0 et Score (résiduel 2000−1000−200−500 = 300) > 0.
-	with := buildSessionParticipationProfile(rows, map[string]int{"m1": 500})
+	with := buildSessionParticipationProfile(rows, map[string]int{"m1": 500}, 225)
 	if v := axisVal(with, "objective"); v <= 0 {
 		t.Fatalf("Objective avec PSA: want > 0, got %v", v)
 	}
@@ -356,7 +356,7 @@ func TestBuildSessionParticipationProfile_ObjectiveAndScore(t *testing.T) {
 func TestBuildCompareEntry_FragAggregates_AllNil(t *testing.T) {
 	entry := buildCompareEntry([]legacymatch.StatsMatchRow{
 		{SessionLabel: ptr("S1"), StartTime: time.Now(), Kills: 5, Deaths: 3},
-	}, "S1")
+	}, "S1", 225)
 	if entry == nil {
 		t.Fatal("expected non-nil entry")
 	}

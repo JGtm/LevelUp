@@ -7,7 +7,9 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -25,11 +27,12 @@ func buildSquadHeader(
 
 	// Carte par joueur : agreger les rows partages depuis SharedMatches.
 	rowsByPlayer := projectSharedRows(shared)
+	hp := games.EffectiveHpToKill(ctxkeys.TitleSlug(ctx))
 
 	// SoloKPIs : KPIs du joueur principal sur les matchs partages uniquement.
 	// Le briefing reflete ainsi le scope escouade, pas l'historique solo.
 	if mainRows, ok := rowsByPlayer[mainGT]; ok && len(mainRows) > 0 {
-		soloKPIs := analysis.ComputeKPIStats(mainRows)
+		soloKPIs := analysis.ComputeKPIStats(mainRows, hp)
 		header.SoloKPIs = &soloKPIs
 	}
 
@@ -47,7 +50,7 @@ func buildSquadHeader(
 		if xuid == "" {
 			continue
 		}
-		kpis := analysis.ComputeKPIStats(rows)
+		kpis := analysis.ComputeKPIStats(rows, hp)
 		kpisByXUID[xuid] = &kpis
 	}
 	if len(kpisByXUID) > 0 {

@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
@@ -85,7 +86,7 @@ func (s *StatsService) GetPage(
 	}
 	slog.DebugContext(ctx, "stats: loaded canonical",
 		"rows", len(canonicalRows), "title_slug", s.titleSlug)
-	matches := analysis.StatsMatchRowsFromCanonical(canonicalRows)
+	matches := analysis.StatsMatchRowsFromCanonical(canonicalRows, games.EffectiveHpToKill(s.titleSlug))
 
 	bucketInfo := computeBucketInfoFromMatches(matches)
 	resp := domain.StatsPageResponse{

@@ -51,7 +51,7 @@ func buildTeamTabFull(
 
 	rows := make([]domain.MatchScoreboardRow, 0, len(scoreboard))
 	for _, s := range scoreboard {
-		oc, dr, dpk, dpd := computeScoreboardRowCombatYield(s)
+		oc, dr, dpk, dpd := computeScoreboardRowCombatYield(s, games.EffectiveHpToKill(titleSlug))
 
 		row := domain.MatchScoreboardRow{
 			XUID:                s.XUID,

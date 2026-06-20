@@ -147,8 +147,9 @@ func (s *SynthesisService) GetSynthesisPage(
 	c := req.Filters.Cascade
 	filteredCanon = filterRowsByCascade(filteredCanon, c.ExperienceTypes, c.Playlists, c.Maps, c.Modes)
 
-	soloKPIs := analysis.ComputeSynthesisKPIsFromCanonical(filteredCanon, false)
-	squadKPIs := analysis.ComputeSynthesisKPIsFromCanonical(filteredCanon, true)
+	hp := games.EffectiveHpToKill(s.titleSlug)
+	soloKPIs := analysis.ComputeSynthesisKPIsFromCanonical(filteredCanon, false, hp)
+	squadKPIs := analysis.ComputeSynthesisKPIsFromCanonical(filteredCanon, true, hp)
 	topWeeks := analysis.ComputeSynthesisTopWeeksFromCanonical(filteredCanon)
 	heatmap := analysis.ComputeTemporalHeatmapFromCanonical(filteredCanon)
 	overview := buildSynthesisOverviewCanonical(filteredCanon, soloKPIs)
@@ -192,7 +193,7 @@ func (s *SynthesisService) GetSynthesisPage(
 		ComputedAt:     time.Now().UTC(),
 	}
 
-	combatProfile := buildCombatProfileFromCanonical(filteredCanon)
+	combatProfile := buildCombatProfileFromCanonical(filteredCanon, hp)
 	if combatProfile != nil {
 		slog.DebugContext(ctx, "synthesis: combat profile computed",
 			"matches", combatProfile.MatchCount,

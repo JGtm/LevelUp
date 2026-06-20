@@ -321,7 +321,7 @@ func (s *ExplorerService) computeTargetSampleStats(ctx context.Context, targetXU
 		slog.WarnContext(ctx, "explorer_target_medals_failed", "xuid", targetXUID, "err", mErr)
 		// medals est nil → BuildSampleStats l'ignorera, ce n'est pas bloquant.
 	}
-	sample := analysis.BuildSampleStats(agg, medals, len(matchIDs))
+	sample := analysis.BuildSampleStats(agg, medals, len(matchIDs), games.EffectiveHpToKill(ctxkeys.TitleSlug(ctx)))
 	if sample != nil {
 		// Top 3 armes (par kills) sur les matchs communs — best-effort.
 		weapons, wErr := s.repo.GetTopWeaponsForMatches(ctx, targetXUID, matchIDs, 3)

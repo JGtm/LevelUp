@@ -101,8 +101,8 @@ func TestComputeKPIsFromCanonical_RendementAlignedAndDistinct(t *testing.T) {
 		mkRowWithDamage(25, 8, 7, 6000, 3500),
 		mkRowWithDamage(12, 4, 5, 3000, 2500),
 	}
-	kpiA := ComputeKPIsFromCanonical(playerA, len(playerA), "fr")
-	kpiB := ComputeKPIsFromCanonical(playerB, len(playerB), "fr")
+	kpiA := ComputeKPIsFromCanonical(playerA, len(playerA), "fr", 225)
+	kpiB := ComputeKPIsFromCanonical(playerB, len(playerB), "fr", 225)
 
 	for name, k := range map[string]domain.HeroKPIs{"A": kpiA, "B": kpiB} {
 		if k.AvgOffensiveConversion == nil || k.DmgPerKill == nil {
@@ -190,7 +190,7 @@ func TestBuildSessionSummariesFromCanonical_NormalizesDominantMode(t *testing.T)
 		mkRow("m3", "Streets", "Arena:CTF on Streets", 2*time.Minute),
 	}
 
-	got := BuildSessionSummariesFromCanonical(rows, false, 5, "fr")
+	got := BuildSessionSummariesFromCanonical(rows, false, 5, "fr", 225)
 	if len(got) != 1 {
 		t.Fatalf("len(sessions) = %d, want 1", len(got))
 	}
@@ -238,7 +238,7 @@ func TestBuildSessionSummariesFromCanonical_PreservesPlaylistIdentity(t *testing
 		mkRow("m2", "Streets", "Super Fiesta:CTF on Streets", 10*time.Minute),
 	}
 
-	got := BuildSessionSummariesFromCanonical(rows, false, 5, "fr")
+	got := BuildSessionSummariesFromCanonical(rows, false, 5, "fr", 225)
 	if len(got) != 1 || got[0].DominantMode == nil {
 		t.Fatalf("DominantMode missing: got=%+v", got)
 	}

@@ -139,7 +139,7 @@ func (s *TimeseriesService) GetPage(
 	}
 	slog.DebugContext(ctx, "timeseries: loaded canonical",
 		"rows", len(canonicalRows), "title_slug", s.titleSlug)
-	allMatches := analysis.StatsMatchRowsFromCanonical(canonicalRows)
+	allMatches := analysis.StatsMatchRowsFromCanonical(canonicalRows, games.EffectiveHpToKill(s.titleSlug))
 
 	matches := filterStatsMatchRows(allMatches, req.Filters)
 	// Tri chronologique ASC (plus ancien -> plus récent). LoadPlayerMatches
@@ -222,7 +222,7 @@ func (s *TimeseriesService) GetPage(
 	// matches). Alimente le composant <SessionBriefing> en mode solo. Reutilise
 	// ComputeKPIStats sans re-filtrer les filtres metier.
 	if filtered := filterCanonicalByMatchIDs(canonicalRows, matches); len(filtered) > 0 {
-		briefingKPIs := analysis.ComputeKPIStats(filtered)
+		briefingKPIs := analysis.ComputeKPIStats(filtered, games.EffectiveHpToKill(s.titleSlug))
 		resp.BriefingKPIs = &briefingKPIs
 	}
 
