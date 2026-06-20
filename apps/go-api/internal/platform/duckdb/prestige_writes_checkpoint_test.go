@@ -87,12 +87,13 @@ func TestSetPrestigeEvent_PersistsAfterReopen(t *testing.T) {
 }
 
 // TestPrestigeEmitEvent_Atomic_RollsBackOnBumpFailure : si la 2e écriture
-// (UPSERT user_prestige) échoue, l'INSERT prestige_events doit être rollback
-// (transaction atomique). On casse la 2e écriture en supprimant user_prestige.
+// (snapshot user_prestige_history) échoue, l'INSERT prestige_events doit être
+// rollback (transaction atomique). APPEND-ONLY : EmitEvent fait INSERT…SELECT FROM
+// user_prestige_latest → on casse la 2e écriture en supprimant la vue _latest.
 func TestPrestigeEmitEvent_Atomic_RollsBackOnBumpFailure(t *testing.T) {
 	db := newPrestigeSocialDB(t)
-	if _, err := db.SQLDb().Exec("DROP TABLE user_prestige"); err != nil {
-		t.Fatalf("drop user_prestige: %v", err)
+	if _, err := db.SQLDb().Exec("DROP VIEW user_prestige_latest"); err != nil {
+		t.Fatalf("drop user_prestige_latest: %v", err)
 	}
 	repo := duckdb.NewPrestigeSocialRepo(db)
 	ctx := context.Background()

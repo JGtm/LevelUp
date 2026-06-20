@@ -173,6 +173,7 @@ var canonicalOrder = []string{
 	"shared_social_squad_challenge_participant_append_only_v1", // shared_social
 	"shared_social_squad_member_append_only_v1",                // shared_social
 	"rekey_squad_member_xuid",                                  // shared_social
+	"shared_social_user_prestige_append_only_v1",               // shared_social
 	"create_world_player_season_stats",                         // shared
 	"create_world_csr_leaderboard_snapshots",                   // shared
 	"world_csr_leaderboard_latest_by_batch",                    // shared
