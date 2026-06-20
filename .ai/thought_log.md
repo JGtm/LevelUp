@@ -1,3 +1,11 @@
+## [2026-06-20] Gaps multi-titre — C1 (gap3) : media translations title-aware — Complété
+
+**Statut** : `go build/vet/test ./internal/platform/duckdb/` (TestResolveMediaTitleSlug) + archlint verts. HI byte-identique.
+
+**Contexte** : audit multi-titre (workflow `wdpdwir92`) a relevé 4 gaps. Plan d'implémentation (workflow `wupaqbr8i`, fact-checké — ⚠ le synthétiseur a re-vérifié contre le repo PRINCIPAL, pas le worktree ; je valide chaque file:line contre le worktree). Ordre : média (C1/C2, faible risque) → gap1 sync en 2 temps → gap4 h5.
+
+**C1 (gap3)** : `media_repo_translations.go` — `mediaStaticTitleSlug = "halo_infinite"` hardcodé dans les WHERE title_slug des traductions maps (`loadMapCatalogNames` + `loadMapImageURLsByID`) → maps Halo 5 jamais résolues. Fix : helper `resolveMediaTitleSlug(titleSlug)` (titre du PlayerDB courant, repli HI si vide — précédent `career_repo_csr.go:173`), appelé avec `r.pdb.TitleSlug`. Le const reste comme REPLI (archlint OK : assignation, pas comparaison).
+
 ## [2026-06-20] Activation Halo 5 — ingestion positions : kill_positions (schéma + persist + mapper) — Complété
 
 **Statut** : `go build ./...` + vet + `go test` (migration, halo_infinite/migrations order audits, persist, ingest) verts ; oracle d'héritage (synthetic_title_b, integration) crée `kill_positions`.
