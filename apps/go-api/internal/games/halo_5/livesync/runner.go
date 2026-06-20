@@ -44,12 +44,12 @@ type CaptureFunc func(
 //   - PersistAll  : persiste les batches sous UN lease (acquis APRÈS le fetch) et
 //     retourne les batches réellement écrits + les erreurs.
 type Deps struct {
-	NewSource   func(ctx context.Context) (halo5.CaptureSource, error)
-	Capture     CaptureFunc
-	Viewer      canonical.PlayerIdentity
-	ResolveXUID func(gamertag string) string
-	LoadKnown   func(ctx context.Context) (map[string]bool, error)
-	PersistAll  func(ctx context.Context, batches []*persist.MatchBatch) (done []*persist.MatchBatch, errs []string)
+	NewSource  func(ctx context.Context) (halo5.CaptureSource, error)
+	Capture    CaptureFunc
+	Viewer     canonical.PlayerIdentity
+	Resolver   func(ctx context.Context) XUIDResolver // LAZY (PeopleHub fait de l'auth) ; nil → tout ""
+	LoadKnown  func(ctx context.Context) (map[string]bool, error)
+	PersistAll func(ctx context.Context, batches []*persist.MatchBatch) (done []*persist.MatchBatch, errs []string)
 }
 
 // Runner implémente scheduler.DeltaRunner (RunDelta) pour Halo 5.
@@ -96,7 +96,14 @@ func (r *Runner) RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.
 		}
 	}
 
-	batches, stats, err := r.deps.Capture(ctx, src, r.deps.Viewer, r.deps.ResolveXUID,
+	// Resolver bâti LAZY ici (auth PeopleHub) — pas au câblage (hot path). nil-safe.
+	var resolver XUIDResolver
+	if r.deps.Resolver != nil {
+		resolver = r.deps.Resolver(ctx)
+	}
+	resolveXUID := ResolveXUIDClosure(ctx, resolver, r.logger)
+
+	batches, stats, err := r.deps.Capture(ctx, src, r.deps.Viewer, resolveXUID,
 		mapContains(known), halo5.CaptureOptions{MaxMatches: opts.MaxMatches})
 	if err != nil {
 		res.AddError("h5 collect: " + err.Error())
