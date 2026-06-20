@@ -36,6 +36,8 @@ var appendOnlyStateTables = []string{
 	"media_match_associations_history",
 	"player_notifications",
 	"player_notifications_history",
+	"squad_challenge_participant",
+	"squad_challenge_participant_history",
 }
 
 func TestNoMutationOnAppendOnlyStateTables(t *testing.T) {
