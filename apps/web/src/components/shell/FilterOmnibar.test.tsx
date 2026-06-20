@@ -136,7 +136,7 @@ describe('FilterOmnibar', () => {
   it('click sur pill Filtres ouvre le popover avec 4 groupes', () => {
     renderWithProviders(<FilterOmnibar />)
     fireEvent.click(screen.getByRole('button', { name: /^filtres/i }))
-    expect(screen.getByText('Playlists')).toBeInTheDocument()
+    expect(screen.getByText('Sélections')).toBeInTheDocument()
     expect(screen.getByText('Modes')).toBeInTheDocument()
     expect(screen.getByText('Cartes')).toBeInTheDocument()
     expect(screen.getByText(/Type d'expérience/i)).toBeInTheDocument()

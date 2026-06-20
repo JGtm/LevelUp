@@ -18,7 +18,7 @@ export const synthesisManifest = {
   "synthesis.filters.experience_ranked": { fr: "Classé", en: "Ranked" },
   "synthesis.filters.experience_unranked": { fr: "Non classé", en: "Unranked" },
   "synthesis.filters.modes": { fr: "Modes", en: "Modes" },
-  "synthesis.filters.playlists": { fr: "Playlists", en: "Playlists" },
+  "synthesis.filters.playlists": { fr: "Sélections", en: "Playlists" },
   "synthesis.filters.reset": { fr: "Réinitialiser", en: "Reset" },
   "synthesis.highlights.best_matches": { fr: "Meilleurs matchs", en: "Best matches" },
   "synthesis.highlights.no_remarkable_match": { fr: "Aucun match remarquable", en: "No remarkable match" },

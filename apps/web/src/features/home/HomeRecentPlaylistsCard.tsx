@@ -130,7 +130,7 @@ export function HomeRecentPlaylistsCard({
                         data-testid="home-recent-playlist-name"
                         className="truncate text-2xs font-medium uppercase tracking-label-md text-muted-foreground"
                       >
-                        {item.playlist_name || 'Playlist inconnue'}
+                        {item.playlist_name || t('common.home.unknown_playlist')}
                       </p>
                       {showTierLabel ? (
                         <p

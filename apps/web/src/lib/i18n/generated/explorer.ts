@@ -53,7 +53,7 @@ export const explorerManifest = {
   "explorer.filters.perf_tier_faible": { fr: "Faible", en: "Poor" },
   "explorer.filters.perf_tier_label": { fr: "Performance", en: "Performance" },
   "explorer.filters.perf_tier_mauvais": { fr: "Mauvais", en: "Bad" },
-  "explorer.filters.playlist": { fr: "Playlist", en: "Playlist" },
+  "explorer.filters.playlist": { fr: "Sélection", en: "Playlist" },
   "explorer.filters.reset": { fr: "Réinitialiser les filtres", en: "Reset filters" },
   "explorer.filters.selected_count": { fr: "{n} sél.", en: "{n} sel." },
   "explorer.filters.skill_tier_bronze": { fr: "Bronze", en: "Bronze" },

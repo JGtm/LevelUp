@@ -136,7 +136,7 @@ fr = "Durée de la session"
 en = "Session duration"
 
 [home.sessions.dominant_tooltip]
-fr = "Playlist et mode les plus joués lors de cette session"
+fr = "Sélection et mode les plus joués lors de cette session"
 en = "Most played playlist and mode in this session"
 
 [home.sessions.detail_aria]
@@ -210,7 +210,7 @@ fr = "Temps"
 en = "Time"
 
 [home.kpi.favorite_playlist]
-fr = "Playlist favorite"
+fr = "Sélection favorite"
 en = "Favorite playlist"
 
 [home.kpi.off_def]
@@ -335,7 +335,7 @@ fr = "Faits marquants"
 en = "Highlights"
 
 [home.highlights.section_tooltip]
-fr = "Chiffres calculés sur ta dernière session et jusqu'à 4 sessions récentes avec la même composition (solo/escouade) et la même playlist dominante."
+fr = "Chiffres calculés sur ta dernière session et jusqu'à 4 sessions récentes avec la même composition (solo/escouade) et la même sélection dominante."
 en = "Figures computed from your last session and up to 4 recent sessions with the same party (solo/squad) and dominant playlist."
 
 # ─── Highlights — titres tuiles (backend keys highlight.title.*) ──────────
