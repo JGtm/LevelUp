@@ -25037,3 +25037,18 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 - Fixtures de test adaptées : `seedNotif`/`seedFlushedNotif` écrivent dans `_history` (written_at = CURRENT_TIMESTAMP, même référentiel TZ que la prod ; tie-break `seq DESC`), assertions reroutées vers `_latest`. Test de rollback réécrit (la collision PK `(xuid,id)` n'existe plus → échec forcé via drop de `player_records`, dernier helper du batch). Test négatif WAL converti en INSERT event non-checkpointé.
 
 **Conclusion / prochaine étape** : 6/~20+ tables faites. Suite (ordre handoff) : `squad_challenge_participant` (shared_social, dernier site concurrent), puis bloc metadata ref/cache (SELECT-then-write), prestige/player, shared match DELETE (audit sérialisé), puis retrait pansements + `go test ./...` complet + merge main (= deploy, restaure la prod).
+
+## [2026-06-20] Campagne APPEND-ONLY — squad_challenge_participant converti (+ fix régression fixture media) — Complété (non déployé)
+
+**Statut** : 7e table d'état convertie en append-only sur `fix/metadata-art-battlepass-appendonly`. Dernier site mutant concurrent de `shared_social`. Tous tests verts (duckdb, prestige, migration + integration, sync, persist, api/handlers, service). NON déployé.
+
+**Décision technique principale** : `squad_challenge_participant` (table d'ÉTAT, PK `(squad_challenge_id, user_id)`) avait `AddParticipant` (INSERT ON CONFLICT DO NOTHING) + `UpdateParticipantProgress` (UPDATE current_value/completed_at) — surface ART sur le handle RW partagé. Conversion en event-log `squad_challenge_participant_history` (PK technique `seq`) :
+- **join** (`AddParticipant`) = INSERT idempotent `WHERE NOT EXISTS (SELECT 1 FROM _latest …)` → un re-join NE réinitialise PAS la progression (point flaggé par la revue du design workflow wmlnfefr9) ;
+- **progress** (`UpdateParticipantProgress`) = INSERT…SELECT carry-forward des champs immuables (chosen_tier, data_tier, is_private, joined_at) depuis `_latest`, current_value/completed_at mis à jour ; no-op (0 ligne) si participant absent, comme l'UPDATE.
+- État courant via vue `squad_challenge_participant_latest` (latest wins, pas de tombstone car aucun DELETE). Readers `ListParticipants`/`CountActiveParticipants` reroutés. Migration idempotente `shared_social_squad_challenge_participant_append_only_v1` ; `rekey_squad_member_xuid` ne touche QUE `squad_member` (pas de risque d'ordre). Table prouvablement vide en prod (aucun endpoint de création d'escouade livré).
+
+**Résultats observés** :
+- Build + `go vet` + `gofmt` OK (env CGO). Garde-fous étendus (`squad_challenge_participant`(+_history) dans `appendOnlyStateTables`, fichier migration whitelisté), `order.go` no-op vert.
+- **Régression antérieure trouvée + corrigée** : le commit média 9171f2875 avait laissé `TestMediaE2E_RealDB_GetMediaLibrary` ([media_e2e_realdb_test.go](../apps/go-api/internal/api/handlers/media_e2e_realdb_test.go)) rouge — fixture seedant `media_match_associations` (legacy) sans la vue `_latest` que le reader interroge désormais (sous-package `handlers` non lancé lors de la vérif média). Ajout du substrat `_history` + vue (avec `bool_or(is_manual)`) à la fixture → vert. Aucune autre fixture média sœur cassée (6 autres dans des packages déjà verts).
+
+**Conclusion / prochaine étape** : 7/~20+ tables. shared_social entièrement append-only (plus aucun site concurrent mutant). Suite : bloc metadata ref/cache (SELECT-then-write via UpsertNoConflict, blast-radius moindre), prestige/player, shared match DELETE (audit sérialisé lease), puis retrait pansements + `go test ./...` complet + merge main (= deploy).
