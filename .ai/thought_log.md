@@ -25020,3 +25020,20 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 - **Le coût dominant est l'écriture ligne-par-ligne, PAS le swap.** Coût ~linéaire au nombre de lignes → overhead par-INSERT, pas un coût fixe.
 
 **Conclusion / prochaine étape** : nouvelle priorité = (1) écriture groupée / Appender DuckDB (plus gros coût, aide le cas 1-match dominant, auto-contenu) ; (2) coalescing des swaps (rafales, code délicat) ; (3) guard Submit + `json.Marshal`. Plan complet : `C:\Users\Guillaume\.claude\plans\un-coll-gue-vient-de-misty-rossum.md`. Garde-fous non-régression (test différentiel, garde ART, injection de fautes) à appliquer avant tout changement. Test de mesure conservé : [persist_writecost_bench_test.go](../apps/go-api/internal/persist/persist_writecost_bench_test.go) (tag `integration`, supprimable).
+
+## [2026-06-20] Campagne APPEND-ONLY (éradication ART) — player_notifications converti — Complété (non déployé)
+
+**Statut** : 6e table d'état convertie en append-only sur la branche `fix/metadata-art-battlepass-appendonly`. Tous tests verts (persist, duckdb, migration + integration, sync, api, service, notify, ops). NON déployé (décision user : tout append-only d'abord, déploiement à la fin). Handoff complet : `.ai/HANDOFF_APPEND_ONLY_ART_CAMPAIGN.md`.
+
+**Décision technique principale** : `player_notifications` était une table d'ÉTAT mutée en place sur `shared_social.duckdb` (handle RW partagé concurrent → 1 FATAL = app entière down) : DELETE per-row (`Delete` + `CapAndSweep`) qui retire des entrées de la PK ART `(xuid, id)` = exactement le déclencheur du bug `Failed to delete all rows from index`, + UPDATE `read_at` (Mark*). Conversion en event-log immuable `player_notifications_history` (PK technique `seq` BIGINT séquence, jamais retiré) :
+- **create** = INSERT pur (read_at NULL, is_deleted FALSE) ;
+- **mark-read / mark-unread / mark-all** = INSERT…SELECT carry-forward du payload depuis `player_notifications_latest`, read_at positionné/NULL (plus d'UPDATE) ;
+- **delete / cap-sweep** = INSERT d'un event tombstone `is_deleted=TRUE` (plus de DELETE).
+- État courant = vue `player_notifications_latest` (`ROW_NUMBER PARTITION BY (xuid, id)` filtré `rn=1 AND is_deleted=FALSE`, forme sous-requête car le filtre tombstone doit s'appliquer APRÈS le ranking). Migration `shared_social_notifications_append_only_v1` (table sœur + vue + backfill, idempotente). Tous les writers (persister checkpointed + batch + fallback repo) et readers (`buildListQuery`, `UnreadCount`) reroutés.
+
+**Résultats observés** :
+- Build + `go vet` OK (env CGO). Garde-fous étendus : `player_notifications`(+_history) ajoutés à `appendOnlyStateTables` ([append_only_state_guard_test.go](../apps/go-api/internal/sync/append_only_state_guard_test.go)) ; fichier migration whitelisté ([no_attach_on_social_test.go](../apps/go-api/internal/platform/duckdb/no_attach_on_social_test.go)).
+- `order.go` canonicalOrder : migration insérée à sa position d'enregistrement (no-op `TestSortByCanonicalIsNoOpOnCurrentRegistry` vert).
+- Fixtures de test adaptées : `seedNotif`/`seedFlushedNotif` écrivent dans `_history` (written_at = CURRENT_TIMESTAMP, même référentiel TZ que la prod ; tie-break `seq DESC`), assertions reroutées vers `_latest`. Test de rollback réécrit (la collision PK `(xuid,id)` n'existe plus → échec forcé via drop de `player_records`, dernier helper du batch). Test négatif WAL converti en INSERT event non-checkpointé.
+
+**Conclusion / prochaine étape** : 6/~20+ tables faites. Suite (ordre handoff) : `squad_challenge_participant` (shared_social, dernier site concurrent), puis bloc metadata ref/cache (SELECT-then-write), prestige/player, shared match DELETE (audit sérialisé), puis retrait pansements + `go test ./...` complet + merge main (= deploy, restaure la prod).

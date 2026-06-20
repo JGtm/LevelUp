@@ -79,7 +79,7 @@ func buildListQuery(xuid string, f notifications.ListFilter) (string, []any) {
 		SELECT id, category, severity, title_key, body_key, params,
 		       target_route, target_search, actor_xuid, actor_name,
 		       source, created_at, read_at
-		FROM player_notifications
+		FROM player_notifications_latest
 		%s
 		ORDER BY created_at DESC, id DESC
 		LIMIT %d
@@ -87,7 +87,8 @@ func buildListQuery(xuid string, f notifications.ListFilter) (string, []any) {
 	return q, args
 }
 
-// buildMarkReadQuery construit l'UPDATE pour MarkRead scopé par xuid + clause IN dynamique sur les ids.
+// buildMarkReadQuery construit l'INSERT…SELECT carry-forward pour MarkRead
+// (APPEND-ONLY : plus d'UPDATE in-place), scopé par xuid + clause IN dynamique.
 func buildMarkReadQuery(xuid string, ids []int64) (string, []any) {
 	placeholders := make([]string, len(ids))
 	args := make([]any, 0, len(ids)+2)
@@ -97,8 +98,15 @@ func buildMarkReadQuery(xuid string, ids []int64) (string, []any) {
 		args = append(args, id)
 	}
 	q := fmt.Sprintf(`
-		UPDATE player_notifications
-		SET read_at = ?
+		INSERT INTO player_notifications_history (
+			xuid, id, category, severity, title_key, body_key, params,
+			target_route, target_search, actor_xuid, actor_name, source,
+			created_at, read_at, is_deleted, written_at
+		)
+		SELECT xuid, id, category, severity, title_key, body_key, params,
+		       target_route, target_search, actor_xuid, actor_name, source,
+		       created_at, ?, FALSE, CURRENT_TIMESTAMP
+		FROM player_notifications_latest
 		WHERE xuid = ? AND read_at IS NULL AND id IN (%s)
 	`, strings.Join(placeholders, ","))
 	return q, args

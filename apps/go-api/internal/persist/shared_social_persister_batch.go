@@ -212,11 +212,14 @@ func (p *SharedSocialPersister) persistFavorites(ctx context.Context, tx *sql.Tx
 
 func (p *SharedSocialPersister) persistNotifications(ctx context.Context, tx *sql.Tx, adds []NotificationInsert, reads []NotificationReadUpdate) error {
 	if len(adds) > 0 {
+		// APPEND-ONLY : INSERT pur d'un event create (read_at NULL, is_deleted FALSE)
+		// dans player_notifications_history. La vue _latest expose l'état courant.
 		stmt, err := tx.PrepareContext(ctx, `
-			INSERT INTO player_notifications (
+			INSERT INTO player_notifications_history (
 				xuid, id, category, severity, title_key, body_key, params,
-				target_route, target_search, actor_xuid, actor_name, source, created_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				target_route, target_search, actor_xuid, actor_name, source,
+				created_at, read_at, is_deleted, written_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, FALSE, CURRENT_TIMESTAMP)
 		`)
 		if err != nil {
 			return err
@@ -233,8 +236,19 @@ func (p *SharedSocialPersister) persistNotifications(ctx context.Context, tx *sq
 		stmt.Close()
 	}
 	if len(reads) > 0 {
+		// APPEND-ONLY : event read = INSERT…SELECT carry-forward du payload depuis
+		// _latest avec read_at positionné (plus d'UPDATE in-place).
 		stmt, err := tx.PrepareContext(ctx, `
-			UPDATE player_notifications SET read_at = ? WHERE xuid = ? AND id = ?
+			INSERT INTO player_notifications_history (
+				xuid, id, category, severity, title_key, body_key, params,
+				target_route, target_search, actor_xuid, actor_name, source,
+				created_at, read_at, is_deleted, written_at
+			)
+			SELECT xuid, id, category, severity, title_key, body_key, params,
+			       target_route, target_search, actor_xuid, actor_name, source,
+			       created_at, ?, FALSE, CURRENT_TIMESTAMP
+			FROM player_notifications_latest
+			WHERE xuid = ? AND id = ?
 		`)
 		if err != nil {
 			return err
