@@ -144,7 +144,7 @@ describe('NavL1', () => {
     useAppShellStore.setState({
       currentTitleSlug: 'partial',
       availableTitles: [
-        { slug: 'partial', name: 'Partial', status: 'active', capabilities, is_default: false },
+        { slug: 'partial', name: 'Partial', status: 'active', capabilities, is_default: false, effective_hp_to_kill: 225 },
       ] as unknown as ReturnType<typeof useAppShellStore.getState>['availableTitles'],
     })
   }

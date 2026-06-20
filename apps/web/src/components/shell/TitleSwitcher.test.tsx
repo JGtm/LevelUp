@@ -10,6 +10,7 @@ const HALO = {
   status: 'active' as const,
   capabilities: [],
   is_default: true,
+  effective_hp_to_kill: 225,
 }
 const SOON = {
   slug: 'halo_mcc',
@@ -17,6 +18,7 @@ const SOON = {
   status: 'coming_soon' as const,
   capabilities: [],
   is_default: false,
+  effective_hp_to_kill: 225,
 }
 const OTHER = {
   slug: 'halo_3',
@@ -24,6 +26,7 @@ const OTHER = {
   status: 'active' as const,
   capabilities: [],
   is_default: false,
+  effective_hp_to_kill: 225,
 }
 
 describe('TitleSwitcher (PMT-8 / MT-22)', () => {

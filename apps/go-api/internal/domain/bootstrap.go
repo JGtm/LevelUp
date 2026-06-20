@@ -80,6 +80,10 @@ type TitleSummary struct {
 	Status       string   `json:"status"` // "active" | "coming_soon" | "archived"
 	Capabilities []string `json:"capabilities"`
 	IsDefault    bool     `json:"is_default"`
+	// EffectiveHpToKill : PV effectifs pour tuer un joueur (baseline rendement/
+	// résistance), title-spécifique (225 Infinite, 115 Halo 5). Permet au front de
+	// rendre le copy d'aide combat title-aware sans dupliquer la constante.
+	EffectiveHpToKill float64 `json:"effective_hp_to_kill"`
 }
 
 // BootstrapResponse est la réponse de GET /api/v1/bootstrap.

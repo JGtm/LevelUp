@@ -25,7 +25,7 @@ const BOOTSTRAP_READY = {
   available_players: [PLAYER],
   current_title_slug: 'halo_infinite',
   available_titles: [
-    { slug: 'halo_infinite', name: 'Halo Infinite', status: 'active' as const, capabilities: ['matchmaking'], is_default: true },
+    { slug: 'halo_infinite', name: 'Halo Infinite', status: 'active' as const, capabilities: ['matchmaking'], is_default: true, effective_hp_to_kill: 225 },
   ],
   locale: 'fr',
   hints_visible_default: true,
@@ -148,9 +148,9 @@ describe('AppShellStore', () => {
 
 describe('buildTitleSwitcherEntries (MT-22 / PMT-8)', () => {
   const TITLES = [
-    { slug: 'halo_infinite', name: 'Halo Infinite', status: 'active' as const, capabilities: [], is_default: true },
-    { slug: 'halo_mcc', name: 'Halo MCC', status: 'coming_soon' as const, capabilities: [], is_default: false },
-    { slug: 'halo_5', name: 'Halo 5', status: 'archived' as const, capabilities: [], is_default: false },
+    { slug: 'halo_infinite', name: 'Halo Infinite', status: 'active' as const, capabilities: [], is_default: true, effective_hp_to_kill: 225 },
+    { slug: 'halo_mcc', name: 'Halo MCC', status: 'coming_soon' as const, capabilities: [], is_default: false, effective_hp_to_kill: 225 },
+    { slug: 'halo_5', name: 'Halo 5', status: 'archived' as const, capabilities: [], is_default: false, effective_hp_to_kill: 115 },
   ]
 
   it('garde active + coming_soon, exclut archived', () => {

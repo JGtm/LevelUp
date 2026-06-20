@@ -116,7 +116,8 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
 
   const hasDamageBar = m.offensive_conversion != null || m.defensive_resistance != null
   // Dégâts par frag-équivalent (frags + assists/3) : aligné sur offensive_conversion
-  // (% = 225 / dmgPerKill). Dégâts/mort restent bruts (pas d'assists en défense).
+  // (% = effective_hp_to_kill / dmgPerKill, baseline title-aware côté back). Dégâts/mort
+  // restent bruts (pas d'assists en défense).
   const dmgPerKill = effectiveDmgPerFrag(m.damage_dealt, kills, assists)
   const dmgPerDeath = m.damage_taken != null && deaths > 0 ? m.damage_taken / deaths : null
 
