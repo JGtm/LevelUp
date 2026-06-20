@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -61,8 +62,12 @@ func TestCollectMatchBatch_EndToEnd(t *testing.T) {
 	}
 	resolve := fakeResolver(map[string]string{"Madina97294": "xA", "JGtm": "xB"})
 	viewer := canonical.PlayerIdentity{Gamertag: "Madina97294", XUID: "xA"}
+	participants := []domain.MatchParticipantRow{
+		{MatchID: "m1", XUID: "xA"},
+		{MatchID: "m1", XUID: "xB"},
+	}
 
-	batch := CollectMatchBatch("halo_5", "h5_capture", viewer, s, timeline, resolve)
+	batch := CollectMatchBatch("halo_5", "h5_capture", viewer, s, timeline, participants, resolve)
 
 	if batch.TitleSlug != "halo_5" || batch.Player != "Madina97294" || batch.XUID != "xA" {
 		t.Fatalf("métadonnées batch: slug=%q player=%q xuid=%q", batch.TitleSlug, batch.Player, batch.XUID)
@@ -70,6 +75,10 @@ func TestCollectMatchBatch_EndToEnd(t *testing.T) {
 	// match_registry présent → SharedPersister ne no-op pas.
 	if batch.Shared.Match == nil || batch.Shared.Match.MatchID != "m1" {
 		t.Fatalf("match_registry (ancre) absent du batch: %+v", batch.Shared.Match)
+	}
+	// match_participants : roster transmis tel quel.
+	if len(batch.Shared.Participants) != 2 {
+		t.Errorf("participants: %d, attendu 2", len(batch.Shared.Participants))
 	}
 	// Médailles : 2 agrégats (Madina/100=2, JGtm/200=1) + 3 events horodatés.
 	if len(batch.Shared.Medals) != 2 {
