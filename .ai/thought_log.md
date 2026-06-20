@@ -1,3 +1,17 @@
+## [2026-06-20] Sync live Halo 5 — T3 (runner + câblage HTTP) : /sync/initial branché live — En cours
+
+**Statut** : T3a (orchestration runner) + T3b (câblage persist/resolver/dispatch + branche HTTP) LIVRÉS/verts/committés (`c2db9f6f3`, `b111b5d33`, `b393baebe`). **`POST /sync/initial` est branché live pour Halo 5** (1er jalon live atteignable). Reste : T4 (scheduler/watcher continu) + le bootstrap live (couple db_profiles + lancer /sync/initial).
+
+**Archi (recon ultracode `wf_01cdd208-9c2`)** : sélection au `defaultRunnerFactory` (scheduler) + `StartInitialSync` (HTTP), registry-driven (`livesync.RunnerForTitle`, map keyée `halo5.TitleSlug`, jamais slug==). Le runner h5 ne satisfait que `DeltaRunner` → branche à cette frontière, jamais `*SyncEngine`. Persist h5 = `AcquireSharedWriterStandalone(provider=nil)` (legacy, lease path-keyé, sûr : aucun pool ne tient le shared h5 RO). Le provisioning crée déjà le shared h5 (schéma HI). Identité : `viewer.XUID` = xuid db_profiles (self autoritatif, pas de PeopleHub) ; roster via `CachingResolver`/PeopleHub LAZY seedé self ; **resolve-or-skip** participants (pas de collision PK `xuid=""`).
+
+**Livré** : package `livesync` (runner.go orchestration + persist.go lease/known-set + resolver.go closure + wire.go dispatch) ; `sync_handler.go` `runnerFor` (interface `deltaRunner` commune, `WithHaloAuth` injecte le token ctx) ; resolve-or-skip mapper. Tests à chaque niveau. Module build OK (pas de cycle handlers→livesync).
+
+**T4 (reste)** : (a) `defaultRunnerFactory` branche via `RunnerForTitle` ; (b) injecter le SpartanToken du POOL dans le ctx (le scheduler n'utilise pas le ctx-token, contrairement au HTTP) ; (c) `checkSyncPreconditions` : sauter l'`os.Stat` player-DB pour `HandlesTitle(slug)` (h5 n'a pas de player DB) ; (d) watcher B.7 (xuid résolu lève la garde XUID-required).
+
+**Bootstrap live (user)** : couple `(halo_5, JGtm)` dans `db_profiles.json` (xuid réel) + `POST /sync/initial {title_slug:"halo_5", max_matches:N}` → matchs h5 persistés dans le shared h5 → Carrière + escouade/rencontres se peuplent. = VALIDATION du pipeline complet (fetch cryptum → collect → persist).
+
+**Prochaine étape** : test live HTTP (bootstrap), puis T4 (scheduler continu).
+
 ## [2026-06-20] Activation Halo 5 + sync live (T1 capture, T2 participants) — En cours
 
 **Statut** : flip `status=active` posé (commit 67db50811) + oracle live `probe-h5 JGtm` VERT (service record arena 200, CSR **Diamant 5**, token v4 du pool OK, retry-sans-secret AADSTS90023). Sync live h5 par tranches : T1 (capture engine) + T2 (participants) livrés/verts ; T3 (DeltaRunner + resolver + bootstrap HTTP) + T4 (scheduler/watcher) à suivre en autonomie.
