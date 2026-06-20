@@ -3290,6 +3290,8 @@ export interface components {
             status: "active" | "coming_soon" | "archived";
             capabilities: string[];
             is_default: boolean;
+            /** Format: double */
+            effective_hp_to_kill: number;
         };
         TitleSyncInputBody: {
             enabled: boolean;

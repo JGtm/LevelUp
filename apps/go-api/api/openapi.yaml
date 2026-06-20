@@ -3616,7 +3616,7 @@ components:
 
     TitleSummary:
       type: object
-      required: [slug, name, status, capabilities, is_default]
+      required: [slug, name, status, capabilities, is_default, effective_hp_to_kill]
       properties:
         slug:
           type: string
@@ -3633,6 +3633,9 @@ components:
             type: string
         is_default:
           type: boolean
+        effective_hp_to_kill:
+          type: number
+          format: double
 
     TitleSyncInputBody:
       additionalProperties: false

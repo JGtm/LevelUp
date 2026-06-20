@@ -14,6 +14,20 @@ export interface GlossarySection {
   entries: GlossaryEntry[]
 }
 
+/**
+ * Baseline PV-pour-tuer par défaut (Halo Infinite : 90 vie + 135 bouclier).
+ * Utilisé comme repli quand le titre courant n'expose pas son barème. Doit rester
+ * aligné avec `games.DefaultEffectiveHpToKill` côté backend.
+ */
+export const DEFAULT_EFFECTIVE_HP_TO_KILL = 225
+
+/**
+ * Jeton remplacé par le barème PV-pour-tuer du titre courant dans le copy combat
+ * (rendement / résistance). Toutes les valeurs réelles sont à 3 chiffres (115–225),
+ * ce qui préserve l'alignement des tableaux ASCII après substitution.
+ */
+const HP_TOKEN = '{{HP}}'
+
 export interface HelpText {
   tabs: {
     glossary: string
@@ -72,7 +86,7 @@ const FR_TEXT: HelpText = {
             definition:
               "Indice de compétence fondé sur TrueSkill 2 (Microsoft Research), adapté à Halo Infinite. C'est l'équivalent du CSR (rang classé officiel) pour les modes non classés : là où le CSR est attribué par Halo pour les listes de jeu compétitives, le LUSR est calculé localement par LevelUp sur tous les autres modes (arène, grande équipe, Firefight, parties personnalisées…), en appliquant la même logique TrueSkill.\n\nChaque joueur est représenté par deux nombres : sa moyenne estimée μ (talent supposé) et son incertitude σ (à quel point on est sûr de cette estimation). L'affichage public est μ − 3σ : on retire volontairement l'incertitude pour éviter de gonfler le rang d'un joueur dont on connaît mal le niveau.\n\nLe calcul est séparé par famille de listes de jeu (compétitif, arène, grande équipe, Firefight, parties personnalisées). Une famille = un état μ/σ indépendant, pour qu'une mauvaise série en social ne pollue pas votre niveau classé.\n\nÀ chaque match, LevelUp calcule un score composite [0 ; 1] qui mesure votre performance « objective », puis l'injecte dans la formule TrueSkill pour mettre à jour μ et σ. Le score composite agrège 8 mesures (voir le tableau dans la formule) avec deux particularités importantes :\n\n• Cinq de ces mesures (précision, efficacité de dégâts, exploit médailles, conversion offensive, résistance défensive) sont comparées à votre **propre moyenne glissante sur les 50 derniers matchs** — et non à une référence absolue. Le score s'ajuste donc à votre niveau actuel : progresser devient plus difficile à mesure que vous progressez.\n\n• Le niveau adverse est estimé via le ratio des « kills attendus » (mesure de niveau retournée par l'API Halo) entre les deux équipes, plafonné dans [0,5 × ; 2,0 ×] votre μ. Battre une équipe plus forte vous fait monter davantage qu'écraser une équipe faible.\n\nRésultats pris en compte : Victoire (poids 1,0), Égalité (0,5), Défaite (0,0). Les abandons comptent faiblement (0,15) pour ne pas vous pénaliser sur une déconnexion subie sans pour autant les ignorer totalement.\n\nDérive d'inactivité : au-delà d'une journée sans jouer dans la famille concernée, σ remonte d'1 point par jour (plafonné à 14 jours). Conséquence : le match suivant a plus d'impact sur μ (positif comme négatif), pour rattraper l'éventuelle évolution de votre vrai niveau pendant la pause.",
             formula:
-              'LUSR affiché = μ − 3σ\n\nConstantes du moteur TrueSkill :\n• μ initial : 1 500 · σ initial : 350\n• σ minimum : 60 · σ maximum : 350\n• β (variabilité par match) : 200 · τ (dynamique du talent) : 25\n• K (Elo) : 32 · probabilité d\'égalité : 0,06\n• Dérive d\'inactivité : 1 point/jour au-delà d\'1 jour, plafonné à 14 jours\n• Force adverse : μ adversaire = μ × clamp(KE_adverse / KE_équipe, 0,5 ; 2,0)\n  (KE = kills attendus, mesure de niveau renvoyée par l\'API Halo)\n• σ adversaire : 150 (constant)\n\nScore composite = Σ (composante × poids) / Σ (poids actifs), borné [0 ; 1]\nSi une composante est absente sur le match, son poids est exclu du dénominateur.\n\nTableau des 8 composantes (somme = 1,02, renormalisée automatiquement) :\n\nPoids  Composante                Calcul                              Référence\n─────  ────────────────────────  ──────────────────────────────────  ─────────────────────\n0,27   Frags vs attendus         frags / kills_expected (API)        sigmoïde autour de 1\n0,24   Morts vs attendues        deaths_expected (API) / morts       sigmoïde autour de 1\n0,16   Conversion offensive      225 × (frags + ass/3) / dégâts      moyenne 50 matchs (P80=0,83)\n0,10   Efficacité de dégâts      dégâts infligés / total dégâts      moyenne 50 matchs\n0,10   Écart de précision        précision − moyenne 50 matchs      0,5 + delta × 2, borné [0;1]\n0,06   Résistance défensive      dégâts reçus / (225 × morts)        moyenne 50 matchs (P80=1,59)\n0,05   Facteur de victoire       Victoire 1,0 · Égalité 0,5 ·        — (valeur fixe)\n                                 Défaite 0,0 · Abandon 0,15\n0,04   Exploit médailles         score d\'exploit pondéré            moyenne 50 matchs (défaut 5,0)\n\nMise à jour TrueSkill (post-calcul du composite) :\nΔμ = K × (composite − 0,5)\nΔσ ajustée selon la formule TrueSkill (atténuation v(t), w(t) avec marge d\'égalité)\npuis σ recombinée avec τ pour réinjecter une part de dynamique.\n\nFamilles de listes de jeu (états μ/σ séparés) :\nranked · ranked challenge · big_team_battle · firefight · custom · arena (défaut)',
+              'LUSR affiché = μ − 3σ\n\nConstantes du moteur TrueSkill :\n• μ initial : 1 500 · σ initial : 350\n• σ minimum : 60 · σ maximum : 350\n• β (variabilité par match) : 200 · τ (dynamique du talent) : 25\n• K (Elo) : 32 · probabilité d\'égalité : 0,06\n• Dérive d\'inactivité : 1 point/jour au-delà d\'1 jour, plafonné à 14 jours\n• Force adverse : μ adversaire = μ × clamp(KE_adverse / KE_équipe, 0,5 ; 2,0)\n  (KE = kills attendus, mesure de niveau renvoyée par l\'API Halo)\n• σ adversaire : 150 (constant)\n\nScore composite = Σ (composante × poids) / Σ (poids actifs), borné [0 ; 1]\nSi une composante est absente sur le match, son poids est exclu du dénominateur.\n\nTableau des 8 composantes (somme = 1,02, renormalisée automatiquement) :\n\nPoids  Composante                Calcul                              Référence\n─────  ────────────────────────  ──────────────────────────────────  ─────────────────────\n0,27   Frags vs attendus         frags / kills_expected (API)        sigmoïde autour de 1\n0,24   Morts vs attendues        deaths_expected (API) / morts       sigmoïde autour de 1\n0,16   Conversion offensive      {{HP}} × (frags + ass/3) / dégâts      moyenne 50 matchs (P80=0,83)\n0,10   Efficacité de dégâts      dégâts infligés / total dégâts      moyenne 50 matchs\n0,10   Écart de précision        précision − moyenne 50 matchs      0,5 + delta × 2, borné [0;1]\n0,06   Résistance défensive      dégâts reçus / ({{HP}} × morts)        moyenne 50 matchs (P80=1,59)\n0,05   Facteur de victoire       Victoire 1,0 · Égalité 0,5 ·        — (valeur fixe)\n                                 Défaite 0,0 · Abandon 0,15\n0,04   Exploit médailles         score d\'exploit pondéré            moyenne 50 matchs (défaut 5,0)\n\nMise à jour TrueSkill (post-calcul du composite) :\nΔμ = K × (composite − 0,5)\nΔσ ajustée selon la formule TrueSkill (atténuation v(t), w(t) avec marge d\'égalité)\npuis σ recombinée avec τ pour réinjecter une part de dynamique.\n\nFamilles de listes de jeu (états μ/σ séparés) :\nranked · ranked challenge · big_team_battle · firefight · custom · arena (défaut)',
             example:
               "Un joueur avec μ = 1 700 et σ = 80 affiche un LUSR de 1 460 (= 1 700 − 3 × 80).\n\nAprès deux semaines sans jouer, σ remonte d'environ 13 points (1 point par jour, plafonné à 14 jours) pour atteindre 93. Le LUSR affiché tombe alors à 1 421 (= 1 700 − 3 × 93) sans qu'aucun match n'ait été joué — l'incertitude grimpe parce que LevelUp ne sait plus aussi bien où se situe le joueur.\n\nLe match de retour aura plus d'impact qu'un match habituel (positif comme négatif), pour recaler μ vers son nouveau niveau réel.",
           },
@@ -88,20 +102,20 @@ const FR_TEXT: HelpText = {
           {
             term: 'Rendement offensif',
             definition:
-              "Efficacité offensive : mesure la quantité de dégâts nécessaire pour convertir une élimination. Le coefficient 225 repose sur le postulat qu'un Spartan possède 225 points de vie au total (90 de vie de base et 135 de bouclier), convention officielle de Halo Infinite.\n\nAu-dessus de 1,0 : vous éliminez avec moins de dégâts qu'attendu (précision, tirs à la tête qui ignorent le bouclier).\nEn dessous de 1,0 : vous gaspillez des dégâts (assistances non converties, suivi insuffisant).",
+              "Efficacité offensive : mesure la quantité de dégâts nécessaire pour convertir une élimination. Le coefficient {{HP}} correspond aux points de vie totaux d'un Spartan dans le titre courant et s'ajuste automatiquement selon le jeu sélectionné (sur Halo Infinite : 90 de vie de base + 135 de bouclier = 225).\n\nAu-dessus de 1,0 : vous éliminez avec moins de dégâts qu'attendu (précision, tirs à la tête qui ignorent le bouclier).\nEn dessous de 1,0 : vous gaspillez des dégâts (assistances non converties, suivi insuffisant).",
             formula:
-              'Rendement offensif = 225 × (éliminations + assistances/3) / dégâts infligés\n\nP80 de référence (données réelles) : 0,83\n(soit 83 % des matchs ont un rendement ≤ 0,83)',
+              'Rendement offensif = {{HP}} × (éliminations + assistances/3) / dégâts infligés\n\nP80 de référence (Halo Infinite, données réelles) : 0,83\n(soit 83 % des matchs ont un rendement ≤ 0,83)',
             example:
-              "10 éliminations, 6 assistances, 2 800 dégâts → 225 × (10 + 2) / 2 800 ≈ 0,96 : au-dessus du P80, vous convertissez efficacement.\n6 éliminations, 2 assistances, 2 800 dégâts → 225 × (6 + 0,67) / 2 800 ≈ 0,54 : beaucoup de dégâts pour peu d'éliminations.",
+              "Avec le barème {{HP}} PV : beaucoup d'éliminations pour peu de dégâts donne un rendement élevé (> 1,0) ; beaucoup de dégâts pour peu d'éliminations, un rendement faible (< 1,0).\n\nExemple chiffré (Halo Infinite, 225 PV) : 10 éliminations, 6 assistances, 2 800 dégâts → 225 × (10 + 2) / 2 800 ≈ 0,96, au-dessus du P80 (0,83).",
           },
           {
             term: 'Résistance défensive',
             definition:
-              "Mesure la quantité de dégâts que vous absorbez par mort. Repose sur le même postulat : un Spartan possède 225 points de vie (90 de base et 135 de bouclier).\n\nAu-dessus de 1,0 : vous mourez après avoir encaissé plus qu'une vie de Spartan (bonne résistance, vous obligez les adversaires à vider leur chargeur).\nEn dessous de 1,0 : vous mourez rapidement, souvent surpris ou mal positionnés.",
+              "Mesure la quantité de dégâts que vous absorbez par mort. Repose sur le même barème : {{HP}} points de vie pour abattre un Spartan dans le titre courant (sur Halo Infinite : 90 de base + 135 de bouclier = 225).\n\nAu-dessus de 1,0 : vous mourez après avoir encaissé plus qu'une vie de Spartan (bonne résistance, vous obligez les adversaires à vider leur chargeur).\nEn dessous de 1,0 : vous mourez rapidement, souvent surpris ou mal positionnés.",
             formula:
-              'Résistance défensive = dégâts reçus / (225 × morts)\n\nP80 de référence (données réelles) : 1,59',
+              'Résistance défensive = dégâts reçus / ({{HP}} × morts)\n\nP80 de référence (Halo Infinite, données réelles) : 1,59',
             example:
-              "5 morts, 1 400 dégâts reçus → 1 400 / (225 × 5) ≈ 1,24 : au-dessus de 1,0, vous absorbez en moyenne 1,24 fois la vie d'un Spartan avant de mourir.\n5 morts, 750 dégâts reçus → 750 / 1 125 ≈ 0,67 : vous mourez tôt dans les échanges.",
+              "Avec le barème {{HP}} PV : encaisser plus d'une vie de Spartan avant de mourir donne une résistance > 1,0 ; mourir tôt dans les échanges, une résistance < 1,0.\n\nExemple chiffré (Halo Infinite, 225 PV) : 5 morts, 1 400 dégâts reçus → 1 400 / (225 × 5) ≈ 1,24, soit 1,24 fois la vie d'un Spartan absorbée par mort.",
           },
           {
             term: 'Ratio FDA',
@@ -146,9 +160,9 @@ const FR_TEXT: HelpText = {
           {
             term: 'Impact',
             definition:
-              'Rendement offensif normalisé sur les matchs partagés avec l\'escouade. Mesure l\'efficacité offensive : combien de dégâts sont nécessaires pour convertir une élimination. Le coefficient 225 correspond aux points de vie totaux d\'un Spartan (90 base + 135 bouclier). Au-dessus de 0,83 (P80) : conversion efficace. En dessous : dégâts gaspillés ou assistances non conclues.',
-            formula: 'Impact = 225 × (frags + assists/3) / dégâts infligés\nP80 de référence (données réelles) : 0,83',
-            example: '10 frags, 6 assists, 2 800 dégâts → 225 × 12 / 2 800 ≈ 0,96 : au-dessus du P80.',
+              'Rendement offensif normalisé sur les matchs partagés avec l\'escouade. Mesure l\'efficacité offensive : combien de dégâts sont nécessaires pour convertir une élimination. Le coefficient {{HP}} correspond aux points de vie totaux d\'un Spartan dans le titre courant (sur Halo Infinite : 90 base + 135 bouclier = 225). Au-dessus de 0,83 (P80 Halo Infinite) : conversion efficace. En dessous : dégâts gaspillés ou assistances non conclues.',
+            formula: 'Impact = {{HP}} × (frags + assists/3) / dégâts infligés\nP80 de référence (Halo Infinite, données réelles) : 0,83',
+            example: 'Exemple chiffré (Halo Infinite, 225 PV) : 10 frags, 6 assists, 2 800 dégâts → 225 × 12 / 2 800 ≈ 0,96, au-dessus du P80.',
           },
           {
             term: 'Combat',
@@ -160,8 +174,8 @@ const FR_TEXT: HelpText = {
           {
             term: 'Survie',
             definition:
-              'Résistance défensive normalisée sur les matchs partagés. Mesure la capacité à encaisser des dégâts avant de mourir. Repose sur le même postulat que l\'Impact : un Spartan possède 225 points de vie. Au-dessus de 1,59 (P80) : vous survivez aux échanges bien au-delà d\'une vie complète. En dessous de 1,0 : vous mourez tôt dans les engagements.',
-            formula: 'Survie = dégâts reçus / (225 × morts)\nP80 de référence (données réelles) : 1,59',
+              'Résistance défensive normalisée sur les matchs partagés. Mesure la capacité à encaisser des dégâts avant de mourir. Repose sur le même barème que l\'Impact : {{HP}} points de vie pour abattre un Spartan dans le titre courant (225 sur Halo Infinite). Au-dessus de 1,59 (P80 Halo Infinite) : vous survivez aux échanges bien au-delà d\'une vie complète. En dessous de 1,0 : vous mourez tôt dans les engagements.',
+            formula: 'Survie = dégâts reçus / ({{HP}} × morts)\nP80 de référence (Halo Infinite, données réelles) : 1,59',
             example: '5 morts, 1 800 dégâts reçus → 1 800 / 1 125 ≈ 1,60 : légèrement au-dessus du P80.',
           },
           {
@@ -481,20 +495,20 @@ const EN_TEXT: HelpText = {
           {
             term: 'Offensive Conversion',
             definition:
-              'Offensive efficiency: measures how much damage you need to convert a kill. The 225 coefficient is based on the assumption that a Spartan has 225 total health points (90 base HP + 135 shields), the official Halo Infinite convention. Above 1.0 = you finish kills with less damage than a full Spartan\'s health (accuracy, headshots that skip the shield). Below = you waste damage (unconverted assists, poor follow-up).',
+              'Offensive efficiency: measures how much damage you need to convert a kill. The {{HP}} coefficient is the total health needed to down a Spartan in the current title and adjusts automatically to the selected game (on Halo Infinite: 90 base HP + 135 shields = 225). Above 1.0 = you finish kills with less damage than a full Spartan\'s health (accuracy, headshots that skip the shield). Below = you waste damage (unconverted assists, poor follow-up).',
             formula:
-              'Offensive conversion = 225 × (kills + assists/3) / damage_dealt\n\nP80 reference (real data): 0.83\n(= 83 % of matches have conversion ≤ 0.83)',
+              'Offensive conversion = {{HP}} × (kills + assists/3) / damage_dealt\n\nP80 reference (Halo Infinite, real data): 0.83\n(= 83 % of matches have conversion ≤ 0.83)',
             example:
-              '10 kills, 6 assists, 2 800 damage → 225 × (10 + 2) / 2 800 ≈ 0.96: above P80, efficient conversion.\n6 kills, 2 assists, 2 800 damage → 225 × (6 + 0.67) / 2 800 ≈ 0.54: lots of damage for few kills.',
+              'With the {{HP}} HP baseline: many kills for little damage gives a high conversion (> 1.0); lots of damage for few kills, a low one (< 1.0).\n\nWorked example (Halo Infinite, 225 HP): 10 kills, 6 assists, 2 800 damage → 225 × (10 + 2) / 2 800 ≈ 0.96, above the P80 (0.83).',
           },
           {
             term: 'Defensive Resistance',
             definition:
-              'Measures how much damage you absorb per death. Uses the same assumption: a Spartan has 225 total health (90 base HP + 135 shields). Above 1.0 = you die after absorbing more than a full Spartan\'s health (good resilience, forces enemies to commit a full magazine). Below = you die early in engagements, often surprised or poorly positioned.',
+              'Measures how much damage you absorb per death. Uses the same baseline: {{HP}} total health to down a Spartan in the current title (on Halo Infinite: 90 base HP + 135 shields = 225). Above 1.0 = you die after absorbing more than a full Spartan\'s health (good resilience, forces enemies to commit a full magazine). Below = you die early in engagements, often surprised or poorly positioned.',
             formula:
-              'Defensive resistance = damage_taken / (225 × deaths)\n\nP80 reference (real data): 1.59',
+              'Defensive resistance = damage_taken / ({{HP}} × deaths)\n\nP80 reference (Halo Infinite, real data): 1.59',
             example:
-              '5 deaths, 1 400 damage taken → 1 400 / (225 × 5) ≈ 1.24: above 1.0, you absorb 1.24× a Spartan\'s health before dying.\n5 deaths, 750 damage taken → 750 / 1 125 ≈ 0.67: you die early in most engagements.',
+              'With the {{HP}} HP baseline: absorbing more than one Spartan\'s health before dying gives a resistance > 1.0; dying early, a resistance < 1.0.\n\nWorked example (Halo Infinite, 225 HP): 5 deaths, 1 400 damage taken → 1 400 / (225 × 5) ≈ 1.24, i.e. 1.24× a Spartan\'s health absorbed per death.',
           },
           {
             term: 'KDA',
@@ -512,9 +526,9 @@ const EN_TEXT: HelpText = {
           {
             term: 'Impact',
             definition:
-              'Normalised offensive conversion on shared squad matches. Measures offensive efficiency: how much damage is needed to convert a kill. The 225 coefficient represents total Spartan health (90 base HP + 135 shields). Above 0.83 (P80): efficient conversion. Below: wasted damage or unconverted assists.',
-            formula: 'Impact = 225 × (kills + assists/3) / damage dealt\nReference P80 (real data): 0.83',
-            example: '10 kills, 6 assists, 2 800 damage → 225 × 12 / 2 800 ≈ 0.96: above P80.',
+              'Normalised offensive conversion on shared squad matches. Measures offensive efficiency: how much damage is needed to convert a kill. The {{HP}} coefficient represents total Spartan health in the current title (on Halo Infinite: 90 base HP + 135 shields = 225). Above 0.83 (Halo Infinite P80): efficient conversion. Below: wasted damage or unconverted assists.',
+            formula: 'Impact = {{HP}} × (kills + assists/3) / damage dealt\nReference P80 (Halo Infinite, real data): 0.83',
+            example: 'Worked example (Halo Infinite, 225 HP): 10 kills, 6 assists, 2 800 damage → 225 × 12 / 2 800 ≈ 0.96, above P80.',
           },
           {
             term: 'Combat',
@@ -526,8 +540,8 @@ const EN_TEXT: HelpText = {
           {
             term: 'Survival',
             definition:
-              'Normalised defensive resistance on shared matches. Measures ability to absorb damage before dying. Uses the same assumption as Impact: a Spartan has 225 total health. Above 1.59 (P80): you survive engagements well beyond a full life. Below 1.0: you die early in most exchanges.',
-            formula: 'Survival = damage taken / (225 × deaths)\nReference P80 (real data): 1.59',
+              'Normalised defensive resistance on shared matches. Measures ability to absorb damage before dying. Uses the same baseline as Impact: {{HP}} total health to down a Spartan in the current title (225 on Halo Infinite). Above 1.59 (Halo Infinite P80): you survive engagements well beyond a full life. Below 1.0: you die early in most exchanges.',
+            formula: 'Survival = damage taken / ({{HP}} × deaths)\nReference P80 (Halo Infinite, real data): 1.59',
             example: '5 deaths, 1 800 damage taken → 1 800 / 1 125 ≈ 1.60: just above P80.',
           },
           {
@@ -798,6 +812,41 @@ export function normalizeHelpLocale(locale?: string | null): HelpLocale {
   return locale === 'en' ? 'en' : 'fr'
 }
 
-export function getHelpText(locale?: string | null): HelpText {
-  return TEXT[normalizeHelpLocale(locale)]
+/**
+ * Injecte le barème PV-pour-tuer du titre courant dans le copy combat. Le copy
+ * source porte le jeton `{{HP}}` partout où la constante est title-aware (rendement,
+ * résistance, et leurs déclinaisons escouade) ; on le remplace par la valeur résolue
+ * côté backend (`TitleSummary.effective_hp_to_kill`). Les seuils P80 restent calibrés
+ * Halo Infinite (recalibration par titre différée) et ne sont pas tokenisés.
+ */
+function withDamageBaseline(text: HelpText, effectiveHpToKill: number): HelpText {
+  const hp = String(Math.round(effectiveHpToKill))
+  const sub = (s: string): string => s.split(HP_TOKEN).join(hp)
+  return {
+    ...text,
+    glossary: {
+      ...text.glossary,
+      sections: text.glossary.sections.map((section) => ({
+        ...section,
+        entries: section.entries.map((entry) => ({
+          ...entry,
+          definition: sub(entry.definition),
+          formula: entry.formula != null ? sub(entry.formula) : entry.formula,
+          example: entry.example != null ? sub(entry.example) : entry.example,
+        })),
+      })),
+    },
+  }
+}
+
+/**
+ * Retourne le glossaire localisé. `effectiveHpToKill` (PV-pour-tuer du titre courant,
+ * résolu depuis le bootstrap) rend le copy combat title-aware ; à défaut, repli sur
+ * le barème Halo Infinite.
+ */
+export function getHelpText(
+  locale?: string | null,
+  effectiveHpToKill: number = DEFAULT_EFFECTIVE_HP_TO_KILL,
+): HelpText {
+  return withDamageBaseline(TEXT[normalizeHelpLocale(locale)], effectiveHpToKill)
 }

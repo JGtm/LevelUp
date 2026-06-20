@@ -2123,12 +2123,13 @@ type TitlePurgeOutputBody struct {
 
 // TitleSummary defines model for TitleSummary.
 type TitleSummary struct {
-	Capabilities []string           `json:"capabilities"`
-	IconUrl      *string            `json:"icon_url,omitempty"`
-	IsDefault    bool               `json:"is_default"`
-	Name         string             `json:"name"`
-	Slug         string             `json:"slug"`
-	Status       TitleSummaryStatus `json:"status"`
+	Capabilities      []string           `json:"capabilities"`
+	EffectiveHpToKill float64            `json:"effective_hp_to_kill"`
+	IconUrl           *string            `json:"icon_url,omitempty"`
+	IsDefault         bool               `json:"is_default"`
+	Name              string             `json:"name"`
+	Slug              string             `json:"slug"`
+	Status            TitleSummaryStatus `json:"status"`
 }
 
 // TitleSummaryStatus defines model for TitleSummary.Status.

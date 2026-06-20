@@ -1,3 +1,19 @@
+## [2026-06-20] Damage-model par titre Phase 3 front : copy d'aide combat title-aware — Complété
+
+**Statut** : Complété. `npm run typecheck` + `npm run lint` (0 erreur, 75 warnings pré-existants hors mes fichiers) + vitest (4 fichiers fixtures touchés 37 tests + nouveau `help/i18n.test.ts` 4 tests) **verts** (hors sandbox, cf. mémoire). Le glossaire d'aide affiche désormais le barème PV-pour-tuer du **titre courant** (225 Infinite / 115 Halo 5), résolu de bout en bout backend→front.
+
+**Exposition backend** (préalable) : `domain.TitleSummary.EffectiveHpToKill` (`games.EffectiveHpToKill(t.Slug)` dans `bootstrap_service.go`) → `openapi.yaml` (required + property) → `make gen` + `npm run generate-types` (`generated.ts` : `effective_hp_to_kill: number`). `TestContractRoutes`/`TestOpenAPISchemaDrift` verts. Le store hydratait déjà `availableTitles` depuis `bootstrap.available_titles`.
+
+**Front** (`features/help/i18n.ts`) :
+- Jeton `{{HP}}` posé partout où la constante combat est title-aware : entrées **Rendement offensif** / **Résistance défensive** (def+formule+exemple, FR+EN), déclinaisons escouade **Impact** / **Survie** (Profil de participation, FR+EN), et les 2 cellules du tableau composite LUSR. Toutes les valeurs réelles étant à 3 chiffres (115–225), la substitution préserve l'alignement des tableaux ASCII (sur Infinite : rendu byte-identique à l'ancien).
+- `getHelpText(locale, effectiveHpToKill = DEFAULT_EFFECTIVE_HP_TO_KILL)` → `withDamageBaseline()` remplace `{{HP}}` dans `glossary.sections`. `HelpPage` résout le barème depuis `availableTitles.find(slug===currentTitleSlug)?.effective_hp_to_kill ?? 225`.
+- Assertion fausse « convention officielle de Halo Infinite » supprimée : le copy dit désormais « PV totaux d'un Spartan **dans le titre courant** (sur Halo Infinite : 90+135=225) ». Exemples chiffrés re-cadrés « (Halo Infinite, 225 PV) » (la valeur 0,96 / P80 0,83 ne valent qu'à 225).
+- **P80 NON tokenisés** (0,83 / 1,59) : restent calibrés Halo Infinite, étiquetés « (Halo Infinite, données réelles) » — recalibration par titre différée (= data live Halo 5).
+
+**Fixtures** : `effective_hp_to_kill` ajouté aux `TitleSummary` inline de 4 tests (appShellStore, capabilities, NavL1, TitleSwitcher).
+
+**Restant damage-model** (différé activation 1b) : valeur Halo 5 (115) provisoire à valider sur data réelle ; P80 par titre à recalibrer. Le compute backend + l'affichage front sont déjà title-aware ; seuls les seuils de comparaison et le nombre 115 attendent la donnée live.
+
 ## [2026-06-20] Damage-model par titre Phases 1+2 : rewire compute backend (title-aware) — Complété
 
 **Statut** : Complété. `go build ./...` + `go vet ./internal/...` verts (tous tests compilent) ; **analysis + service + api tests PASSENT** (byte-identique avec 225). **Zéro littéral `225` ne reste dans un chemin de calcul backend** (grep vide). Le rendement/résistance est désormais title-aware de bout en bout côté Go.

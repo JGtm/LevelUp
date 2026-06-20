@@ -12,6 +12,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
 
@@ -439,12 +440,13 @@ func buildAvailableTitlesFrom(reg *titlePkg.Registry) []domain.TitleSummary {
 			caps[i] = string(c)
 		}
 		out = append(out, domain.TitleSummary{
-			Slug:         t.Slug,
-			Name:         t.Name,
-			IconURL:      t.IconURL,
-			Status:       string(t.Status),
-			Capabilities: caps,
-			IsDefault:    t.IsDefault,
+			Slug:              t.Slug,
+			Name:              t.Name,
+			IconURL:           t.IconURL,
+			Status:            string(t.Status),
+			Capabilities:      caps,
+			IsDefault:         t.IsDefault,
+			EffectiveHpToKill: games.EffectiveHpToKill(t.Slug),
 		})
 	}
 	return out
