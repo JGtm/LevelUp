@@ -40,6 +40,10 @@ var appendOnlyStateTables = []string{
 	"squad_challenge_participant_history",
 	"user_prestige",
 	"user_prestige_history",
+	// Pattern in-place (id PK + vue _latest, comme match_skill_rank) : la table
+	// garde son nom, pas de table _history séparée. Lecture via
+	// lusr_component_history_latest. Writers (loaders + persister) = INSERT pur.
+	"lusr_component_history",
 }
 
 func TestNoMutationOnAppendOnlyStateTables(t *testing.T) {

@@ -96,6 +96,7 @@ var canonicalOrder = []string{
 	"fix_career_xp_total_default_zero",                         // player
 	"lusr_chain_rework_v1",                                     // player
 	"create_lusr_component_history",                            // player
+	"player_append_only_lusr_component_history_v1",             // player
 	"player_msr_view_lusr_over_v2_v1",                          // player
 	"player_msr_view_priority_csr_v1",                          // player
 	"create_notifications_in_shared_social",                    // shared_social
