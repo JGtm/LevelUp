@@ -13,6 +13,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/ops"
@@ -63,7 +64,7 @@ func (d *DirMediaIndexer) ResetAndReindex(
 	jobID string,
 ) error {
 	pr := titlePkg.NewPathResolver(repoRoot)
-	titleSlug := titlePkg.DefaultSlug
+	titleSlug := ctxkeys.TitleSlug(ctx) // titre courant (sync/admin) ; repli halo_infinite si absent
 	capturesBaseDir = effectiveMediaBase(ctx, pr, capturesBaseDir)
 	playersDir := filepath.Join(pr.TitleDataDir(titleSlug), "players")
 
@@ -166,7 +167,7 @@ func (d *DirMediaIndexer) ScanAllMedia(
 	jobID string,
 ) error {
 	pr := titlePkg.NewPathResolver(repoRoot)
-	titleSlug := titlePkg.DefaultSlug
+	titleSlug := ctxkeys.TitleSlug(ctx) // titre courant (sync/admin) ; repli halo_infinite si absent
 	capturesBaseDir = effectiveMediaBase(ctx, pr, capturesBaseDir)
 	playersDir := filepath.Join(pr.TitleDataDir(titleSlug), "players")
 
@@ -273,7 +274,7 @@ func BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn, timezoneFn
 			timezone = timezoneFn()
 		}
 		pr := titlePkg.NewPathResolver(repoRoot)
-		titleSlug := titlePkg.DefaultSlug
+		titleSlug := ctxkeys.TitleSlug(ctx) // titre courant (sync/admin) ; repli halo_infinite si absent
 		capturesBaseDir = effectiveMediaBase(ctx, pr, capturesBaseDir)
 		capturesDir := pr.ResolveCapturesDir(titleSlug, gamertag, capturesBaseDir)
 		if _, err := os.Stat(capturesDir); err != nil {
