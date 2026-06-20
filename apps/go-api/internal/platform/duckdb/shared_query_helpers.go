@@ -97,6 +97,7 @@ type MatchEnrichment struct {
 	DominanceFlag       int
 	HadBotTeammate      bool
 	EngagementScoreBrut sql.NullFloat64
+	EngagementPaceRatio sql.NullFloat64
 }
 
 // LoadPlayerMatchEnrichments retourne les 7 colonnes player_match_enrichment
@@ -130,7 +131,8 @@ func LoadPlayerMatchEnrichments(ctx context.Context, playerDB *DB, matchIDs []st
 		       performance_score,
 		       COALESCE(dominance_flag, 0),
 		       COALESCE(had_bot_teammate, FALSE),
-		       engagement_score_brut
+		       engagement_score_brut,
+		       engagement_pace_player / NULLIF(engagement_pace_lobby, 0)
 		FROM player_match_enrichment
 		WHERE match_id IN (%s)`, Placeholders(len(matchIDs)))
 
@@ -152,7 +154,8 @@ func LoadPlayerMatchEnrichments(ctx context.Context, playerDB *DB, matchIDs []st
 		)
 		if err := rows.Scan(&mid, &e.SessionID, &e.SessionLabel,
 			&e.IsWithFriends, &e.IsExcluded, &e.PerformanceScore,
-			&e.DominanceFlag, &e.HadBotTeammate, &e.EngagementScoreBrut); err != nil {
+			&e.DominanceFlag, &e.HadBotTeammate, &e.EngagementScoreBrut,
+			&e.EngagementPaceRatio); err != nil {
 			return nil, fmt.Errorf("LoadPlayerMatchEnrichments scan: %w", err)
 		}
 		out[mid] = e

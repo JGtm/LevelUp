@@ -1,3 +1,23 @@
+## [2026-06-20] Recalibration profil de combat (3 axes × 5 bandes + engagement absolu) — COMPLÉTÉ
+
+**Contexte** : les 4 joueurs avec DB affichaient tous le même profil (« Offensif précis / Défensif solide / Engagement modéré »). Investigation data (scripts jetables RO + table world_player_season_stats) : (1) seuils de classification calés sur l'élite mondiale (DR 1.59 = p90 des world leaders) → tout le monde « solide » ; (2) l'axe Engagement utilisait `residual_brut`, métrique AUTO-RÉFÉRENCÉE (écart à sa propre norme via coef_team_share) → ~0 pour tout joueur constant (JGtm -0.06, jugé « impossible » par le user). Cf. .ai/PLAN_COMBAT_PROFILE_RECALIBRATION.md + mémoire reference_combat_profile_grille_trop_grossiere.
+
+**Décisions user (verrouillées)** :
+- 5 bandes par axe (vs 3), vocabulaire FPS : Offensif Dispersé→Chirurgical, Défensif Fragile→Inébranlable, Activité Passif→Agressif.
+- Axe Activité basculé de residual_brut vers l'engagement ABSOLU `pace_joueur / pace_lobby` (déjà persisté). residual_brut CONSERVÉ pour le coaching + patterns (behavioral_engagement) — non touché.
+- SessionCompare basculé aussi sur pace_ratio (header A vs B).
+- Barres OC/DR (Lot 2) recalées sur repère « frontière élite mondiale » OC 0.90 / DR 1.65 (ex-0.83/1.59).
+
+**Décision technique principale** : bandes de classification DÉCOUPLÉES des constantes P80 de normalisation des barres (deux usages distincts). pace_ratio calculé par match en SQL (`engagement_pace_player / NULLIF(engagement_pace_lobby,0)`) dans LoadPlayerMatchEnrichments → 1 champ canonical `EngagementPaceRatio` propagé (scan → projection → canonical → legacymatch.StatsMatchRow) ; les 3 agrégats accumulent une simple moyenne (comme l'ancien résidu).
+
+**Fait** : backend (combat_yield.go bandes via slices bandThreshold+classifyBand, combat_profile.go 15 CombatStyle + AvgPaceRatio, câblage canonical+legacymatch, kpi_stats/synthesis/session_compare, domain/session_compare) ; front (module features/_shared/combatProfileLabels.ts source unique, SynthesisPage + SquadCombatProfileRow dé-dupliqués, types.ts unions 5 valeurs + avg_pace_ratio, SessionCompareEngagement, Lot 2 sur les 3 répliques de barres) ; glossaire help/i18n.ts FR+EN (entrée « Profil de combat » + repères 0.90/1.65) ; tests (combat_yield_test table-driven 5 bandes + pace_ratio, kpi_stats_test, combat-yield-bar.test + TimeseriesCombatYield.test markline 0.90/0.65).
+
+**Résultats** : Go build ./... + vet OK ; go test analysis/domain/service/platform-duckdb tous verts. Front tsc -b vert, eslint 0 erreur, vitest barres 13/13. Attendu sur les 4 joueurs (enfin différenciés) : JGtm Précis/Exposé/Mesuré · Madina Équilibré/Solide/Agressif · Chocoboflor Équilibré/Solide/Discret · XxDaemonGamerxX Dispersé/Fragile/Passif.
+
+**Conclusion / prochaine étape** : prêt à commit (en attente autorisation user). Non déployé. Aucun backfill requis (pace déjà en base, profil calculé à la lecture). Branche `feat/combat-profile-recalibration` (depuis main, distincte de la campagne ART sur fix/metadata-art-battlepass-appendonly).
+
+---
+
 ## [2026-06-20] Renommage UI FR « Playlist » -> « Sélection » — COMPLÉTÉ
 
 **Contexte** : le user veut remplacer le mot affiché « Playlist » par « Sélection » partout dans l'app, côté français uniquement. Branche dédiée `chore/i18n-playlist-to-selection` (tâche indépendante de la campagne ART, ne pas mélanger).

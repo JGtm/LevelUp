@@ -90,18 +90,27 @@ const FR_TEXT: HelpText = {
             definition:
               "Efficacité offensive : mesure la quantité de dégâts nécessaire pour convertir une élimination. Le coefficient 225 repose sur le postulat qu'un Spartan possède 225 points de vie au total (90 de vie de base et 135 de bouclier), convention officielle de Halo Infinite.\n\nAu-dessus de 1,0 : vous éliminez avec moins de dégâts qu'attendu (précision, tirs à la tête qui ignorent le bouclier).\nEn dessous de 1,0 : vous gaspillez des dégâts (assistances non converties, suivi insuffisant).",
             formula:
-              'Rendement offensif = 225 × (éliminations + assistances/3) / dégâts infligés\n\nP80 de référence (données réelles) : 0,83\n(soit 83 % des matchs ont un rendement ≤ 0,83)',
+              'Rendement offensif = 225 × (éliminations + assistances/3) / dégâts infligés\n\nRepère élite mondiale (jauge) : 0,90',
             example:
-              "10 éliminations, 6 assistances, 2 800 dégâts → 225 × (10 + 2) / 2 800 ≈ 0,96 : au-dessus du P80, vous convertissez efficacement.\n6 éliminations, 2 assistances, 2 800 dégâts → 225 × (6 + 0,67) / 2 800 ≈ 0,54 : beaucoup de dégâts pour peu d'éliminations.",
+              "10 éliminations, 6 assistances, 2 800 dégâts → 225 × (10 + 2) / 2 800 ≈ 0,96 : au-dessus du repère, vous convertissez efficacement.\n6 éliminations, 2 assistances, 2 800 dégâts → 225 × (6 + 0,67) / 2 800 ≈ 0,54 : beaucoup de dégâts pour peu d'éliminations.",
           },
           {
             term: 'Résistance défensive',
             definition:
               "Mesure la quantité de dégâts que vous absorbez par mort. Repose sur le même postulat : un Spartan possède 225 points de vie (90 de base et 135 de bouclier).\n\nAu-dessus de 1,0 : vous mourez après avoir encaissé plus qu'une vie de Spartan (bonne résistance, vous obligez les adversaires à vider leur chargeur).\nEn dessous de 1,0 : vous mourez rapidement, souvent surpris ou mal positionnés.",
             formula:
-              'Résistance défensive = dégâts reçus / (225 × morts)\n\nP80 de référence (données réelles) : 1,59',
+              'Résistance défensive = dégâts reçus / (225 × morts)\n\nRepère élite mondiale (jauge) : 1,65',
             example:
               "5 morts, 1 400 dégâts reçus → 1 400 / (225 × 5) ≈ 1,24 : au-dessus de 1,0, vous absorbez en moyenne 1,24 fois la vie d'un Spartan avant de mourir.\n5 morts, 750 dégâts reçus → 750 / 1 125 ≈ 0,67 : vous mourez tôt dans les échanges.",
+          },
+          {
+            term: 'Profil de combat',
+            definition:
+              "Trois descripteurs indépendants résumant ton style, calibrés sur la distribution des meilleurs joueurs mondiaux.\n\n• Offensif (conversion dégâts→élimination) : Dispersé · Irrégulier · Équilibré · Précis · Chirurgical.\n• Défensif (dégâts encaissés par mort) : Fragile · Exposé · Solide · Résistant · Inébranlable.\n• Activité (engagement absolu) : Passif · Discret · Mesuré · Actif · Agressif.\n\nL'Activité compare ton rythme d'événements à celui du joueur moyen de ton lobby — c'est un engagement ABSOLU, à ne pas confondre avec le Score d'engagement qui te compare à ta propre norme. Les bandes Résistant/Inébranlable et Chirurgical correspondent au niveau des meilleurs mondiaux : il est normal de ne pas y être. Affiché à partir de 15 matchs avec données.",
+            formula:
+              "Offensif (avg_oc) — bornes 0,78 / 0,81 / 0,85 / 0,90.\nDéfensif (avg_dr) — bornes 1,20 / 1,35 / 1,50 / 1,65.\nActivité — moyenne(pace_joueur / pace_lobby), bornes 0,80 / 0,92 / 1,08 / 1,25 (1,0 = au rythme du lobby).",
+            example:
+              "OC 0,87 → Précis · DR 1,29 → Exposé · ratio 0,99 → Mesuré : un finisseur précis qui meurt un peu vite et s'engage dans la moyenne du lobby.",
           },
           {
             term: 'Ratio FDA',
@@ -146,9 +155,9 @@ const FR_TEXT: HelpText = {
           {
             term: 'Impact',
             definition:
-              'Rendement offensif normalisé sur les matchs partagés avec l\'escouade. Mesure l\'efficacité offensive : combien de dégâts sont nécessaires pour convertir une élimination. Le coefficient 225 correspond aux points de vie totaux d\'un Spartan (90 base + 135 bouclier). Au-dessus de 0,83 (P80) : conversion efficace. En dessous : dégâts gaspillés ou assistances non conclues.',
-            formula: 'Impact = 225 × (frags + assists/3) / dégâts infligés\nP80 de référence (données réelles) : 0,83',
-            example: '10 frags, 6 assists, 2 800 dégâts → 225 × 12 / 2 800 ≈ 0,96 : au-dessus du P80.',
+              'Rendement offensif normalisé sur les matchs partagés avec l\'escouade. Mesure l\'efficacité offensive : combien de dégâts sont nécessaires pour convertir une élimination. Le coefficient 225 correspond aux points de vie totaux d\'un Spartan (90 base + 135 bouclier). Au-dessus de 0,90 (repère élite) : conversion efficace. En dessous : dégâts gaspillés ou assistances non conclues.',
+            formula: 'Impact = 225 × (frags + assists/3) / dégâts infligés\nRepère élite mondiale : 0,90',
+            example: '10 frags, 6 assists, 2 800 dégâts → 225 × 12 / 2 800 ≈ 0,96 : au-dessus du repère.',
           },
           {
             term: 'Combat',
@@ -160,9 +169,9 @@ const FR_TEXT: HelpText = {
           {
             term: 'Survie',
             definition:
-              'Résistance défensive normalisée sur les matchs partagés. Mesure la capacité à encaisser des dégâts avant de mourir. Repose sur le même postulat que l\'Impact : un Spartan possède 225 points de vie. Au-dessus de 1,59 (P80) : vous survivez aux échanges bien au-delà d\'une vie complète. En dessous de 1,0 : vous mourez tôt dans les engagements.',
-            formula: 'Survie = dégâts reçus / (225 × morts)\nP80 de référence (données réelles) : 1,59',
-            example: '5 morts, 1 800 dégâts reçus → 1 800 / 1 125 ≈ 1,60 : légèrement au-dessus du P80.',
+              'Résistance défensive normalisée sur les matchs partagés. Mesure la capacité à encaisser des dégâts avant de mourir. Repose sur le même postulat que l\'Impact : un Spartan possède 225 points de vie. Au-dessus de 1,65 (repère élite) : vous encaissez bien plus d\'une vie complète. En dessous de 1,0 : vous mourez tôt dans les engagements.',
+            formula: 'Survie = dégâts reçus / (225 × morts)\nRepère élite mondiale : 1,65',
+            example: '5 morts, 1 800 dégâts reçus → 1 800 / 1 125 ≈ 1,60 : proche du repère élite (1,65).',
           },
           {
             term: 'Support',
@@ -483,18 +492,27 @@ const EN_TEXT: HelpText = {
             definition:
               'Offensive efficiency: measures how much damage you need to convert a kill. The 225 coefficient is based on the assumption that a Spartan has 225 total health points (90 base HP + 135 shields), the official Halo Infinite convention. Above 1.0 = you finish kills with less damage than a full Spartan\'s health (accuracy, headshots that skip the shield). Below = you waste damage (unconverted assists, poor follow-up).',
             formula:
-              'Offensive conversion = 225 × (kills + assists/3) / damage_dealt\n\nP80 reference (real data): 0.83\n(= 83 % of matches have conversion ≤ 0.83)',
+              'Offensive conversion = 225 × (kills + assists/3) / damage_dealt\n\nElite reference (gauge): 0.90',
             example:
-              '10 kills, 6 assists, 2 800 damage → 225 × (10 + 2) / 2 800 ≈ 0.96: above P80, efficient conversion.\n6 kills, 2 assists, 2 800 damage → 225 × (6 + 0.67) / 2 800 ≈ 0.54: lots of damage for few kills.',
+              '10 kills, 6 assists, 2 800 damage → 225 × (10 + 2) / 2 800 ≈ 0.96: above the elite reference, efficient conversion.\n6 kills, 2 assists, 2 800 damage → 225 × (6 + 0.67) / 2 800 ≈ 0.54: lots of damage for few kills.',
           },
           {
             term: 'Defensive Resistance',
             definition:
               'Measures how much damage you absorb per death. Uses the same assumption: a Spartan has 225 total health (90 base HP + 135 shields). Above 1.0 = you die after absorbing more than a full Spartan\'s health (good resilience, forces enemies to commit a full magazine). Below = you die early in engagements, often surprised or poorly positioned.',
             formula:
-              'Defensive resistance = damage_taken / (225 × deaths)\n\nP80 reference (real data): 1.59',
+              'Defensive resistance = damage_taken / (225 × deaths)\n\nElite reference (gauge): 1.65',
             example:
               '5 deaths, 1 400 damage taken → 1 400 / (225 × 5) ≈ 1.24: above 1.0, you absorb 1.24× a Spartan\'s health before dying.\n5 deaths, 750 damage taken → 750 / 1 125 ≈ 0.67: you die early in most engagements.',
+          },
+          {
+            term: 'Combat profile',
+            definition:
+              "Three independent descriptors summarising your style (labels shown in French), calibrated on the distribution of the world's best players.\n\n• Offensive (damage→kill conversion): from Dispersé (dispersed) to Chirurgical (surgical).\n• Defensive (damage absorbed per death): from Fragile to Inébranlable (unshakable).\n• Activity (absolute engagement): from Passif (passive) to Agressif (aggressive).\n\nActivity compares your event pace to your lobby's average player — an ABSOLUTE engagement, unlike the Engagement Score which compares you to your own norm. The top bands match world-leader level: it's normal not to reach them. Shown from 15 matches with data.",
+            formula:
+              "Offensive (avg_oc) — thresholds 0.78 / 0.81 / 0.85 / 0.90.\nDefensive (avg_dr) — thresholds 1.20 / 1.35 / 1.50 / 1.65.\nActivity — mean(player_pace / lobby_pace), thresholds 0.80 / 0.92 / 1.08 / 1.25 (1.0 = lobby pace).",
+            example:
+              "OC 0.87 → Précis (precise) · DR 1.29 → Exposé (exposed) · ratio 0.99 → Mesuré (measured): a precise finisher who dies a bit fast and engages at the lobby average.",
           },
           {
             term: 'KDA',
@@ -512,9 +530,9 @@ const EN_TEXT: HelpText = {
           {
             term: 'Impact',
             definition:
-              'Normalised offensive conversion on shared squad matches. Measures offensive efficiency: how much damage is needed to convert a kill. The 225 coefficient represents total Spartan health (90 base HP + 135 shields). Above 0.83 (P80): efficient conversion. Below: wasted damage or unconverted assists.',
-            formula: 'Impact = 225 × (kills + assists/3) / damage dealt\nReference P80 (real data): 0.83',
-            example: '10 kills, 6 assists, 2 800 damage → 225 × 12 / 2 800 ≈ 0.96: above P80.',
+              'Normalised offensive conversion on shared squad matches. Measures offensive efficiency: how much damage is needed to convert a kill. The 225 coefficient represents total Spartan health (90 base HP + 135 shields). Above 0.90 (elite reference): efficient conversion. Below: wasted damage or unconverted assists.',
+            formula: 'Impact = 225 × (kills + assists/3) / damage dealt\nElite reference: 0.90',
+            example: '10 kills, 6 assists, 2 800 damage → 225 × 12 / 2 800 ≈ 0.96: above the elite reference.',
           },
           {
             term: 'Combat',
@@ -526,9 +544,9 @@ const EN_TEXT: HelpText = {
           {
             term: 'Survival',
             definition:
-              'Normalised defensive resistance on shared matches. Measures ability to absorb damage before dying. Uses the same assumption as Impact: a Spartan has 225 total health. Above 1.59 (P80): you survive engagements well beyond a full life. Below 1.0: you die early in most exchanges.',
-            formula: 'Survival = damage taken / (225 × deaths)\nReference P80 (real data): 1.59',
-            example: '5 deaths, 1 800 damage taken → 1 800 / 1 125 ≈ 1.60: just above P80.',
+              'Normalised defensive resistance on shared matches. Measures ability to absorb damage before dying. Uses the same assumption as Impact: a Spartan has 225 total health. Above 1.65 (elite reference): you survive engagements well beyond a full life. Below 1.0: you die early in most exchanges.',
+            formula: 'Survival = damage taken / (225 × deaths)\nElite reference: 1.65',
+            example: '5 deaths, 1 800 damage taken → 1 800 / 1 125 ≈ 1.60: close to the elite reference (1.65).',
           },
           {
             term: 'Support',

@@ -37,12 +37,13 @@ type CombatYield struct {
 	OffensiveFinishing  float64 // variante stricte kills-only (diagnostic)
 }
 
-// P80 observés sur les données réelles (avril 2026, 4 joueurs, hors bots).
-// Utilisés pour la normalisation de CombatYieldBar.
+// Repère de normalisation des barres OC/DR — frontière élite mondiale (cf.
+// .ai/PLAN_COMBAT_PROFILE_RECALIBRATION.md). Sert UNIQUEMENT à NormalizeForBar
+// (échelle visuelle des jauges) ; distinct des bandes de classification.
 const (
-	OffensiveConversionP80 = 0.83
-	DefensiveResistanceP80 = 1.59
-	CombatYieldClipFactor  = 1.5 // clippage à 1.5× p80
+	OffensiveConversionP80 = 0.90
+	DefensiveResistanceP80 = 1.65
+	CombatYieldClipFactor  = 1.5 // clippage à 1.5× le repère
 )
 
 // assistFragWeight : convention officielle Halo Infinite — 1 assist = 1/3 de frag.
@@ -125,17 +126,65 @@ func TooltipDamagePer(damage float64, count int) float64 {
 // minMatchesForCombatStyle : nombre minimum de matchs pour afficher les descripteurs.
 const minMatchesForCombatStyle = 15
 
+// bandThreshold associe une borne basse (incluse) à un style. Les bandes sont
+// triées par borne décroissante ; classifyBand retient la première satisfaite.
+type bandThreshold struct {
+	min   float64
+	style domain.CombatStyle
+}
+
+// Bornes de classification — 5 bandes par axe, calibrées sur la distribution des
+// world leaders (top-100 mondial, table world_player_season_stats) + validation
+// terrain (cf. .ai/PLAN_COMBAT_PROFILE_RECALIBRATION.md). DISTINCTES des
+// constantes P80 ci-dessus, qui ne servent qu'à la normalisation visuelle des
+// barres (NormalizeForBar).
+var (
+	offensiveBands = []bandThreshold{
+		{0.90, domain.CombatStyleOffensiveChirurgical},
+		{0.85, domain.CombatStyleOffensivePrecis},
+		{0.81, domain.CombatStyleOffensiveEquilibre},
+		{0.78, domain.CombatStyleOffensiveIrregulier},
+		{0, domain.CombatStyleOffensiveDisperse},
+	}
+	defensiveBands = []bandThreshold{
+		{1.65, domain.CombatStyleDefensiveInebranlable},
+		{1.50, domain.CombatStyleDefensiveResistant},
+		{1.35, domain.CombatStyleDefensiveSolide},
+		{1.20, domain.CombatStyleDefensiveExpose},
+		{0, domain.CombatStyleDefensiveFragile},
+	}
+	// Activité = engagement absolu pace_joueur/pace_lobby (1.0 = au rythme du lobby).
+	activityBands = []bandThreshold{
+		{1.25, domain.CombatStyleActivityAgressif},
+		{1.08, domain.CombatStyleActivityActif},
+		{0.92, domain.CombatStyleActivityMesure},
+		{0.80, domain.CombatStyleActivityDiscret},
+		{0, domain.CombatStyleActivityPassif},
+	}
+)
+
+// classifyBand retourne le style de la première bande dont la borne basse est
+// atteinte (bandes triées décroissant). Fallback : la bande la plus basse.
+func classifyBand(v float64, bands []bandThreshold) domain.CombatStyle {
+	for _, b := range bands {
+		if v >= b.min {
+			return b.style
+		}
+	}
+	return bands[len(bands)-1].style
+}
+
 // ClassifyCombatProfile construit un CombatProfileBlock depuis des métriques agrégées.
 //
-// avgResidualBrut est nil si engagement_score_brut n'est pas disponible
-// (Phase 4 du plan PLAN_COMBAT_PROFILE_WIRING.md non encore livrée).
-// Dans ce cas StyleActivity est toujours nil.
-func ClassifyCombatProfile(avgOC, avgDR float64, avgResidualBrut *float64, matchCount int) domain.CombatProfileBlock {
+// avgPaceRatio = engagement absolu (pace_joueur / pace_lobby moyen ; 1.0 = au
+// rythme du lobby). Nil si les paces d'engagement ne sont pas disponibles →
+// StyleActivity reste nil (dégradation gracieuse, ex. titre sans events).
+func ClassifyCombatProfile(avgOC, avgDR float64, avgPaceRatio *float64, matchCount int) domain.CombatProfileBlock {
 	block := domain.CombatProfileBlock{
-		AvgOC:           avgOC,
-		AvgDR:           avgDR,
-		AvgResidualBrut: avgResidualBrut,
-		MatchCount:      matchCount,
+		AvgOC:        avgOC,
+		AvgDR:        avgDR,
+		AvgPaceRatio: avgPaceRatio,
+		MatchCount:   matchCount,
 	}
 	if matchCount < minMatchesForCombatStyle {
 		return block
@@ -144,44 +193,16 @@ func ClassifyCombatProfile(avgOC, avgDR float64, avgResidualBrut *float64, match
 	block.StyleOffensive = &off
 	def := classifyDefensive(avgDR)
 	block.StyleDefensive = &def
-	if avgResidualBrut != nil {
-		act := classifyActivity(*avgResidualBrut)
+	if avgPaceRatio != nil {
+		act := classifyActivity(*avgPaceRatio)
 		block.StyleActivity = &act
 	}
 	return block
 }
 
-// classifyOffensive retourne le style offensif selon avgOC vs OffensiveConversionP80.
-func classifyOffensive(avgOC float64) domain.CombatStyle {
-	if avgOC >= OffensiveConversionP80 {
-		return domain.CombatStyleOffensivePrecis
-	}
-	if avgOC >= OffensiveConversionP80*0.70 {
-		return domain.CombatStyleOffensiveEquilibre
-	}
-	return domain.CombatStyleOffensiveGenereux
-}
-
-// classifyDefensive retourne le style défensif selon avgDR vs DefensiveResistanceP80.
-func classifyDefensive(avgDR float64) domain.CombatStyle {
-	if avgDR >= DefensiveResistanceP80 {
-		return domain.CombatStyleDefensiveResistant
-	}
-	if avgDR >= DefensiveResistanceP80*0.70 {
-		return domain.CombatStyleDefensiveSolide
-	}
-	return domain.CombatStyleDefensiveFragile
-}
-
-// classifyActivity retourne le style activité depuis engagement_score_brut.
-// ResidualBrut > 0 = au-dessus du rythme lobby, < 0 = en retrait.
-// Seuil ±5 basé sur la distribution typique (calibrable).
-func classifyActivity(avgResidualBrut float64) domain.CombatStyle {
-	if avgResidualBrut > 5 {
-		return domain.CombatStyleActivityActif
-	}
-	if avgResidualBrut >= -5 {
-		return domain.CombatStyleActivityModere
-	}
-	return domain.CombatStyleActivityDiscret
+// classifyOffensive / classifyDefensive / classifyActivity — 5 bandes chacune.
+func classifyOffensive(avgOC float64) domain.CombatStyle { return classifyBand(avgOC, offensiveBands) }
+func classifyDefensive(avgDR float64) domain.CombatStyle { return classifyBand(avgDR, defensiveBands) }
+func classifyActivity(avgPaceRatio float64) domain.CombatStyle {
+	return classifyBand(avgPaceRatio, activityBands)
 }

@@ -221,8 +221,8 @@ func buildCompareEntryWithObjectives(
 	totalKills, totalAssists, totalDeaths := 0, 0, 0
 	var minTime, maxTime time.Time
 	var totalDmgDealt, totalDmgTaken float64
-	var residualSum float64
-	var residualCount int
+	var paceRatioSum float64
+	var paceRatioCount int
 	var lifeSum float64
 	var lifeCount int
 	for i, m := range matches {
@@ -253,9 +253,9 @@ func buildCompareEntryWithObjectives(
 		if m.DamageTaken != nil {
 			totalDmgTaken += *m.DamageTaken
 		}
-		if m.EngagementScoreBrut != nil {
-			residualSum += *m.EngagementScoreBrut
-			residualCount++
+		if m.EngagementPaceRatio != nil {
+			paceRatioSum += *m.EngagementPaceRatio
+			paceRatioCount++
 		}
 		if m.AvgLifeSeconds != nil {
 			lifeSum += *m.AvgLifeSeconds
@@ -282,10 +282,10 @@ func buildCompareEntryWithObjectives(
 		v := math.Round(cy.DefensiveResistance*100) / 100
 		avgDR = &v
 	}
-	var avgResidualBrut *float64
-	if residualCount > 0 {
-		v := math.Round(residualSum/float64(residualCount)*100) / 100
-		avgResidualBrut = &v
+	var avgPaceRatio *float64
+	if paceRatioCount > 0 {
+		v := math.Round(paceRatioSum/float64(paceRatioCount)*100) / 100
+		avgPaceRatio = &v
 	}
 	// Dégâts par frag-équivalent (frags + assists/3) aligné sur OC ; dmgPerDeath brut.
 	var dmgPerKill, dmgPerDeath *float64
@@ -372,7 +372,7 @@ func buildCompareEntryWithObjectives(
 		AvgDR:              avgDR,
 		DmgPerKill:         dmgPerKill,
 		DmgPerDeath:        dmgPerDeath,
-		AvgResidualBrut:    avgResidualBrut,
+		AvgPaceRatio:       avgPaceRatio,
 		MatchSeries:        buildCompareMatchSeries(matches),
 		LastSkillRating:    lastRating,
 		SkillRatingType:    ratingType,
