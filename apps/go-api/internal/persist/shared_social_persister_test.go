@@ -68,12 +68,39 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			liked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (media_path, liker_slug)
 		)`,
+		// Append-only (cf. shared_social_likes_append_only_v1).
+		`CREATE SEQUENCE IF NOT EXISTS media_likes_history_id_seq START 1`,
+		`CREATE TABLE media_likes_history (
+			id BIGINT PRIMARY KEY DEFAULT nextval('media_likes_history_id_seq'),
+			media_path VARCHAR NOT NULL, liker_slug VARCHAR NOT NULL, liker_gamertag VARCHAR,
+			is_liked BOOLEAN NOT NULL, liked_at TIMESTAMP,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE OR REPLACE VIEW media_likes_latest AS
+			SELECT id, media_path, liker_slug, liker_gamertag, is_liked, liked_at, written_at
+			FROM media_likes_history
+			QUALIFY ROW_NUMBER() OVER (PARTITION BY media_path, liker_slug
+				ORDER BY written_at DESC, id DESC) = 1`,
 		`CREATE TABLE match_favorites (
 			player_slug VARCHAR NOT NULL,
 			match_id VARCHAR NOT NULL,
 			favorited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (player_slug, match_id)
 		)`,
+		// Append-only (cf. shared_social_favorites_append_only_v1) : persistFavorites
+		// écrit ici, l'état courant se lit via match_favorites_latest.
+		`CREATE SEQUENCE IF NOT EXISTS match_favorites_history_id_seq START 1`,
+		`CREATE TABLE match_favorites_history (
+			id BIGINT PRIMARY KEY DEFAULT nextval('match_favorites_history_id_seq'),
+			player_slug VARCHAR NOT NULL, match_id VARCHAR NOT NULL,
+			is_favorite BOOLEAN NOT NULL, favorited_at TIMESTAMP,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE OR REPLACE VIEW match_favorites_latest AS
+			SELECT id, player_slug, match_id, is_favorite, favorited_at, written_at
+			FROM match_favorites_history
+			QUALIFY ROW_NUMBER() OVER (PARTITION BY player_slug, match_id
+				ORDER BY written_at DESC, id DESC) = 1`,
 		`CREATE TABLE player_notifications (
 			xuid VARCHAR NOT NULL,
 			id BIGINT NOT NULL,
@@ -99,6 +126,20 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (xuid, category)
 		)`,
+		// Append-only (cf. shared_social_notif_prefs_append_only_v1).
+		`CREATE SEQUENCE IF NOT EXISTS notification_preferences_history_id_seq START 1`,
+		`CREATE TABLE notification_preferences_history (
+			id BIGINT PRIMARY KEY DEFAULT nextval('notification_preferences_history_id_seq'),
+			xuid VARCHAR NOT NULL, category VARCHAR NOT NULL,
+			enabled BOOLEAN NOT NULL DEFAULT TRUE, delivery VARCHAR NOT NULL DEFAULT 'both',
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE OR REPLACE VIEW notification_preferences_latest AS
+			SELECT id, xuid, category, enabled, delivery, updated_at, written_at
+			FROM notification_preferences_history
+			QUALIFY ROW_NUMBER() OVER (PARTITION BY xuid, category
+				ORDER BY written_at DESC, id DESC) = 1`,
 		// Pour le test, on utilise la table _legacy player_records (sans _history)
 		// pour valider le fallback. La migration Phase 2 introduira _history.
 		`CREATE TABLE player_records (
@@ -287,8 +328,8 @@ func TestSharedSocialPersister_FullBatch_PersistsAllTables(t *testing.T) {
 		want  int
 	}{
 		{"media_files", "SELECT COUNT(*) FROM media_files WHERE file_path = '/cap/clip.mp4'", 1},
-		{"media_likes", "SELECT COUNT(*) FROM media_likes WHERE liker_slug = 'friend1'", 1},
-		{"match_favorites", "SELECT COUNT(*) FROM match_favorites WHERE player_slug = 'spartan'", 1},
+		{"media_likes", "SELECT COUNT(*) FROM media_likes_latest WHERE liker_slug = 'friend1' AND is_liked = TRUE", 1},
+		{"match_favorites", "SELECT COUNT(*) FROM match_favorites_latest WHERE player_slug = 'spartan' AND is_favorite = TRUE", 1},
 		{"player_notifications", "SELECT COUNT(*) FROM player_notifications WHERE xuid = 'xuid-123'", 1},
 		{"player_records", "SELECT COUNT(*) FROM player_records WHERE xuid = 'xuid-123' AND metric = 'kda_best'", 1},
 	}
@@ -410,9 +451,9 @@ func TestSharedSocialPersister_InsertOrIgnore_NoErrorOnDuplicate(t *testing.T) {
 		t.Fatalf("2nd Persist (duplicate): %v", err)
 	}
 	var count int
-	_ = db.QueryRow("SELECT COUNT(*) FROM media_likes WHERE media_path = '/dup.mp4'").Scan(&count)
+	_ = db.QueryRow("SELECT COUNT(*) FROM media_likes_latest WHERE media_path = '/dup.mp4' AND is_liked = TRUE").Scan(&count)
 	if count != 1 {
-		t.Errorf("dedup raté : count=%d, want 1", count)
+		t.Errorf("dedup raté : count=%d, want 1 (2 events TRUE → vue _latest = 1)", count)
 	}
 }
 
@@ -531,9 +572,9 @@ func TestSharedSocialPersister_Favorites_AddAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 	var count int
-	_ = db.QueryRow(`SELECT COUNT(*) FROM match_favorites WHERE player_slug = 'u1'`).Scan(&count)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM match_favorites_latest WHERE player_slug = 'u1' AND is_favorite = TRUE`).Scan(&count)
 	if count != 1 {
-		t.Errorf("favorites: count=%d, want 1 (1 ajouté + 1 ajouté - 1 retiré)", count)
+		t.Errorf("favorites: count=%d, want 1 (m1+m2 ajoutés, m1 retiré → seul m2 favori)", count)
 	}
 }
 
@@ -590,9 +631,9 @@ func TestSharedSocialPersister_ToggleLike_AddThenRemove(t *testing.T) {
 	}
 
 	var count int
-	_ = db.QueryRow("SELECT COUNT(*) FROM media_likes WHERE media_path = '/t.mp4'").Scan(&count)
+	_ = db.QueryRow("SELECT COUNT(*) FROM media_likes_latest WHERE media_path = '/t.mp4' AND is_liked = TRUE").Scan(&count)
 	if count != 0 {
-		t.Errorf("toggle remove KO: count=%d", count)
+		t.Errorf("toggle remove KO: count=%d (add TRUE + remove FALSE → 0 like actif)", count)
 	}
 }
 
@@ -742,7 +783,7 @@ func TestSharedSocialPersister_UpsertNotificationPreferences(t *testing.T) {
 		t.Fatalf("upsert insert: %v", err)
 	}
 	var cnt int
-	_ = db.QueryRow(`SELECT COUNT(*) FROM notification_preferences WHERE xuid='x'`).Scan(&cnt)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM notification_preferences_latest WHERE xuid='x'`).Scan(&cnt)
 	if cnt != 2 {
 		t.Errorf("cnt=%d want 2", cnt)
 	}
@@ -753,11 +794,11 @@ func TestSharedSocialPersister_UpsertNotificationPreferences(t *testing.T) {
 	}
 	var enabled bool
 	var delivery string
-	_ = db.QueryRow(`SELECT enabled, delivery FROM notification_preferences WHERE xuid='x' AND category='A'`).Scan(&enabled, &delivery)
+	_ = db.QueryRow(`SELECT enabled, delivery FROM notification_preferences_latest WHERE xuid='x' AND category='A'`).Scan(&enabled, &delivery)
 	if enabled || delivery != "inapp" {
 		t.Errorf("A enabled=%v delivery=%s want false/inapp", enabled, delivery)
 	}
-	_ = db.QueryRow(`SELECT COUNT(*) FROM notification_preferences WHERE xuid='x'`).Scan(&cnt)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM notification_preferences_latest WHERE xuid='x'`).Scan(&cnt)
 	if cnt != 2 {
 		t.Errorf("après update cnt=%d want 2 (pas de doublon)", cnt)
 	}

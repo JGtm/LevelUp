@@ -238,24 +238,28 @@ func (r *PrestigeSquadRepo) Get(ctx context.Context, id string) (prestige.Squad,
 func (r *PrestigeSquadRepo) AddMember(ctx context.Context, m prestige.SquadMember) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+	// APPEND-ONLY : join = INSERT event is_member=TRUE dans squad_member_history.
 	return execCheckpointed(ctx, r.db,
-		`INSERT INTO squad_member (squad_id, xuid, user_id, joined_at) VALUES (?, ?, ?, ?)
-		 ON CONFLICT (squad_id, xuid) DO NOTHING`,
+		`INSERT INTO squad_member_history (squad_id, xuid, user_id, is_member, joined_at)
+		 VALUES (?, ?, ?, TRUE, ?)`,
 		m.SquadID, m.Xuid, m.UserID, m.JoinedAt)
 }
 
 func (r *PrestigeSquadRepo) RemoveMember(ctx context.Context, squadID, xuid string) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+	// APPEND-ONLY : leave = INSERT event is_member=FALSE (plus de DELETE).
 	return execCheckpointed(ctx, r.db,
-		`DELETE FROM squad_member WHERE squad_id = ? AND xuid = ?`, squadID, xuid)
+		`INSERT INTO squad_member_history (squad_id, xuid, is_member, joined_at)
+		 VALUES (?, ?, FALSE, NULL)`, squadID, xuid)
 }
 
 func (r *PrestigeSquadRepo) ListMembers(ctx context.Context, squadID string) ([]prestige.SquadMember, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	rows, err := r.db.QueryRecovered(ctx,
-		`SELECT squad_id, xuid, COALESCE(user_id, ''), joined_at FROM squad_member WHERE squad_id = ?`, squadID)
+		`SELECT squad_id, xuid, COALESCE(user_id, ''), joined_at FROM squad_member_latest
+		 WHERE squad_id = ? AND is_member = TRUE`, squadID)
 	if err != nil {
 		return nil, err
 	}
@@ -276,8 +280,8 @@ func (r *PrestigeSquadRepo) ListSquadsForUser(ctx context.Context, userID string
 	defer cancel()
 	rows, err := r.db.QueryRecovered(ctx, `
 		SELECT s.id, s.name, s.created_by, s.created_at
-		FROM squad s JOIN squad_member sm ON sm.squad_id = s.id
-		WHERE sm.user_id = ?
+		FROM squad s JOIN squad_member_latest sm ON sm.squad_id = s.id
+		WHERE sm.user_id = ? AND sm.is_member = TRUE
 		ORDER BY s.created_at DESC
 	`, userID)
 	if err != nil {

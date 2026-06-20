@@ -41,7 +41,7 @@ type dbExecutor interface {
 func isCategoryEnabledOn(ctx context.Context, db dbExecutor, xuid string, c notifications.Category) (bool, error) {
 	var enabled sql.NullBool
 	err := db.QueryRow(ctx,
-		`SELECT enabled FROM notification_preferences WHERE xuid = ? AND category = ?`,
+		`SELECT enabled FROM notification_preferences_latest WHERE xuid = ? AND category = ?`,
 		xuid, string(c),
 	).Scan(&enabled)
 	switch err {

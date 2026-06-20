@@ -23,6 +23,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/service"
 )
@@ -106,7 +107,42 @@ func (r *ServiceRegistry) RunCatalogUGCDrain(ctx context.Context, titleSlug stri
 		"title", titleSlug, "seeded", res.Seeded, "playlists", res.Playlists,
 		"pairs", res.Pairs, "maps", res.Maps, "game_variants", res.GameVariants, "errors", res.Errors)
 	observability.IncCounter("admin_action_catalog_ugc_drain_total")
+
+	// Auto-réparation (défense en profondeur) : si une écriture du drain a malgré
+	// tout FATAL-invalidé le handle metadata partagé (bug ART résiduel — les
+	// erreurs per-row de markError sont loggées, pas remontées par Drain), on le
+	// détecte par un ping et on Reopen IN-PLACE. Comme metadata est un handle
+	// process-wide (OpenReadWriteShared), ce Reopen ressuscite la base pour TOUS
+	// les lecteurs (season pass, modes, playlists, home…) sans redémarrage — au
+	// lieu de laisser l'app cassée jusqu'au prochain restart (qui re-cassait au
+	// boot). Cf. drop_metadata_art_surface_indexes_v1 qui supprime la surface ART
+	// en amont ; ceci est le filet si une nouvelle surface réapparaît.
+	r.reopenMetadataIfInvalidated(ctx, titleSlug)
 	return res, nil
+}
+
+// reopenMetadataIfInvalidated ping le handle metadata partagé ; s'il est invalidé
+// (FATAL ART), le Reopen in-place pour rétablir toute l'app sans restart.
+// Best-effort : emprunt non-possédant du cache (pas de Close).
+func (r *ServiceRegistry) reopenMetadataIfInvalidated(ctx context.Context, titleSlug string) {
+	pr := titlePkg.NewPathResolver(r.cfg.RepoRoot)
+	metaPath := pr.MetadataDBPath(titleSlug)
+	wrapper, ok := duckdb.LookupCachedDB(metaPath)
+	if !ok || wrapper == nil {
+		return
+	}
+	if err := wrapper.SQLDb().PingContext(ctx); err == nil {
+		return // sain
+	} else if !duckdb.IsInvalidatedError(err) {
+		return // erreur transitoire non liée à l'invalidation ART
+	}
+	if rerr := wrapper.Reopen(); rerr != nil {
+		monitoringLog.ErrorContext(ctx, "catalog drain: metadata invalidée, Reopen échoué (restart requis)",
+			"title", titleSlug, "err", rerr)
+		return
+	}
+	monitoringLog.WarnContext(ctx, "catalog drain: metadata invalidée → Reopen in-place réussi (app rétablie sans restart)",
+		"title", titleSlug)
 }
 
 // haloTokensForDrain charge des tokens Halo via le MultiUserTokenStore (premier

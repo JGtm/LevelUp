@@ -154,72 +154,54 @@ func (p *SharedSocialPersister) persistMediaAssociations(ctx context.Context, tx
 	return nil
 }
 
+// persistLikes — APPEND-ONLY : ajout/retrait = INSERT pur dans media_likes_history
+// (is_liked TRUE/FALSE). Plus aucun DELETE ni ON CONFLICT (surface ART éliminée).
+// État courant lu via media_likes_latest.
 func (p *SharedSocialPersister) persistLikes(ctx context.Context, tx *sql.Tx, adds []LikeInsert, removes []LikeRemove) error {
-	if len(adds) > 0 {
-		stmt, err := tx.PrepareContext(ctx, `
-			INSERT OR IGNORE INTO media_likes (media_path, liker_slug, liker_gamertag, liked_at)
-			VALUES (?, ?, ?, ?)
-		`)
-		if err != nil {
-			return err
-		}
-		for _, r := range adds {
-			if _, err := stmt.ExecContext(ctx, r.MediaPath, r.LikerSlug, r.LikerGamertag, r.LikedAt); err != nil {
-				stmt.Close()
-				return fmt.Errorf("like add %s/%s: %w", r.MediaPath, r.LikerSlug, err)
-			}
-		}
-		stmt.Close()
+	stmt, err := tx.PrepareContext(ctx, `
+		INSERT INTO media_likes_history (media_path, liker_slug, liker_gamertag, is_liked, liked_at)
+		VALUES (?, ?, ?, ?, ?)
+	`)
+	if err != nil {
+		return err
 	}
-	if len(removes) > 0 {
-		stmt, err := tx.PrepareContext(ctx, `
-			DELETE FROM media_likes WHERE media_path = ? AND liker_slug = ?
-		`)
-		if err != nil {
-			return err
+	defer stmt.Close()
+	for _, r := range adds {
+		if _, err := stmt.ExecContext(ctx, r.MediaPath, r.LikerSlug, r.LikerGamertag, true, r.LikedAt); err != nil {
+			return fmt.Errorf("like add %s/%s: %w", r.MediaPath, r.LikerSlug, err)
 		}
-		for _, r := range removes {
-			if _, err := stmt.ExecContext(ctx, r.MediaPath, r.LikerSlug); err != nil {
-				stmt.Close()
-				return fmt.Errorf("like remove %s/%s: %w", r.MediaPath, r.LikerSlug, err)
-			}
+	}
+	for _, r := range removes {
+		// Event de retrait : is_liked=FALSE, gamertag/liked_at NULL.
+		if _, err := stmt.ExecContext(ctx, r.MediaPath, r.LikerSlug, nil, false, nil); err != nil {
+			return fmt.Errorf("like remove %s/%s: %w", r.MediaPath, r.LikerSlug, err)
 		}
-		stmt.Close()
 	}
 	return nil
 }
 
+// persistFavorites — APPEND-ONLY : chaque ajout/retrait = un INSERT pur dans
+// match_favorites_history (is_favorite TRUE/FALSE). Plus AUCUN DELETE (surface ART
+// éliminée sur shared_social). L'état courant se lit via la vue match_favorites_latest.
 func (p *SharedSocialPersister) persistFavorites(ctx context.Context, tx *sql.Tx, adds []FavoriteInsert, removes []FavoriteRemove) error {
-	if len(adds) > 0 {
-		stmt, err := tx.PrepareContext(ctx, `
-			INSERT OR IGNORE INTO match_favorites (player_slug, match_id, favorited_at)
-			VALUES (?, ?, ?)
-		`)
-		if err != nil {
-			return err
-		}
-		for _, r := range adds {
-			if _, err := stmt.ExecContext(ctx, r.PlayerSlug, r.MatchID, r.FavoritedAt); err != nil {
-				stmt.Close()
-				return fmt.Errorf("favorite add %s/%s: %w", r.PlayerSlug, r.MatchID, err)
-			}
-		}
-		stmt.Close()
+	stmt, err := tx.PrepareContext(ctx, `
+		INSERT INTO match_favorites_history (player_slug, match_id, is_favorite, favorited_at)
+		VALUES (?, ?, ?, ?)
+	`)
+	if err != nil {
+		return err
 	}
-	if len(removes) > 0 {
-		stmt, err := tx.PrepareContext(ctx, `
-			DELETE FROM match_favorites WHERE player_slug = ? AND match_id = ?
-		`)
-		if err != nil {
-			return err
+	defer stmt.Close()
+	for _, r := range adds {
+		if _, err := stmt.ExecContext(ctx, r.PlayerSlug, r.MatchID, true, r.FavoritedAt); err != nil {
+			return fmt.Errorf("favorite add %s/%s: %w", r.PlayerSlug, r.MatchID, err)
 		}
-		for _, r := range removes {
-			if _, err := stmt.ExecContext(ctx, r.PlayerSlug, r.MatchID); err != nil {
-				stmt.Close()
-				return fmt.Errorf("favorite remove %s/%s: %w", r.PlayerSlug, r.MatchID, err)
-			}
+	}
+	for _, r := range removes {
+		// Event de retrait : is_favorite=FALSE, favorited_at NULL.
+		if _, err := stmt.ExecContext(ctx, r.PlayerSlug, r.MatchID, false, nil); err != nil {
+			return fmt.Errorf("favorite remove %s/%s: %w", r.PlayerSlug, r.MatchID, err)
 		}
-		stmt.Close()
 	}
 	return nil
 }

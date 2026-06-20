@@ -46,6 +46,7 @@ var canonicalOrder = []string{
 	"add_catalog_playlists",                                   // metadata
 	"fix_citation_image_paths_double_encoded",                 // metadata
 	"add_csr_placement_thresholds",                            // metadata
+	"drop_metadata_art_surface_indexes_v1",                    // metadata
 	"drop_playlists_catalog_secondary_indexes",                // metadata
 	"create_milestone_catalog_metadata",                       // metadata
 	"create_prestige_metadata_schema",                         // metadata
@@ -86,6 +87,7 @@ var canonicalOrder = []string{
 	"add_player_assists_model",                                // player
 	"create_coach_proposal_player_schema",                     // player
 	"dedup_record_history_v1",                                 // player
+	"drop_challenge_mutated_art_indexes_v1",                   // player
 	"fix_career_xp_total_default_zero",                        // player
 	"lusr_chain_rework_v1",                                    // player
 	"create_lusr_component_history",                           // player
@@ -156,11 +158,16 @@ var canonicalOrder = []string{
 	"add_is_manual_to_media_match_associations",               // shared_social
 	"add_file_stem_ext_to_media_files",                        // shared_social
 	"align_media_files_legacy_schema",                         // shared_social
+	"drop_pn_unread_art_index_v2",                             // shared_social
+	"shared_social_favorites_append_only_v1",                  // shared_social
+	"shared_social_likes_append_only_v1",                      // shared_social
+	"shared_social_notif_prefs_append_only_v1",                // shared_social
 	"create_prestige_shared_social_schema",                    // shared_social
 	"purge_data_health_warning_notifs",                        // shared_social
 	"create_player_records_history_append_only",               // shared_social
 	"player_records_history_previous_cols_v1",                 // shared_social
 	"extend_player_records_with_window",                       // shared_social
+	"shared_social_squad_member_append_only_v1",               // shared_social
 	"rekey_squad_member_xuid",                                 // shared_social
 	"create_world_player_season_stats",                        // shared
 	"create_world_csr_leaderboard_snapshots",                  // shared

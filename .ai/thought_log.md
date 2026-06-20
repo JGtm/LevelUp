@@ -1,3 +1,81 @@
+## [2026-06-20] Campagne APPEND-ONLY (éradication définitive ART) — EN COURS (1/~12 tables), HANDOFF
+
+**Contexte** : suite à l'entrée 2026-06-19, le user veut l'éradication DÉFINITIVE de la classe ART, pas les pansements. Doctrine imposée : **append-only partout sur les tables d'ÉTAT** (zéro DELETE, zéro UPDATE sur colonne indexée, zéro ON CONFLICT DO UPDATE ; tout horodaté ; état lu via vue `<table>_latest`). Retirer les auto-réparations (`reopenMetadataIfInvalidated`, `ExecRecovered`) une fois les écritures sûres.
+
+**2 décisions user (verrouillées)** :
+1. **Tout append-only d'abord, déployer à la fin** (prod reste KO le temps de faire ; pas de déploiement intermédiaire).
+2. **PK-only suffit pour les tables de RÉFÉRENCE** (catalogue modes/maps/playlists, battlepass def) — déjà couvertes par les drops d'index du 2026-06-19. L'append-only strict ne vise QUE les tables d'ÉTAT qui ont des DELETE/UPDATE-indexé.
+
+**Recette validée (gabarit réutilisable, 8 points de contact)** — calquée sur `player_records_history` / `match_skill_rank` :
+1. Migration table sœur `_history` (id séquence + `written_at` + flag/colonnes d'état), zéro DROP/CTAS destructif quand possible (sinon CTAS-swap idempotent comme `steps_player_append_only_match_skill_rank.go`).
+2. Vue `_latest` via `QUALIFY ROW_NUMBER() OVER (PARTITION BY <clé> ORDER BY written_at DESC, id DESC)=1`.
+3. Writers (Persister `internal/persist` + fallback repo) → INSERT pur (event), plus aucun DELETE.
+4. Readers → vue `_latest` (+ filtre d'état, ex `is_favorite=TRUE`) — PIÈGE : oublier un reader rend la feature invisible.
+5. Fixtures de test + assertions rebranchées sur la vue.
+6. `order.go` canonicalOrder (position = ordre d'enregistrement alphabétique du fichier ; vérifier via un dump `TestZZDumpAllOrder` temporaire, `order_test.go` est un no-op strict).
+7. Whitelist `no_attach_on_social_test.go` (tout nouveau fichier mentionnant `shared_social`).
+8. Garde-fou `internal/sync/append_only_state_guard_test.go` (`appendOnlyStateTables`) — interdit DELETE/ON CONFLICT sur les tables converties (comble le trou de `no_art_patterns_test`).
+
+**FAIT (4/~12)** :
+- `match_favorites` → append-only (migration `shared_social_favorites_append_only_v1`, vue `match_favorites_latest`).
+- `media_likes` (+`media_files.liked` gardé : UPDATE colonne non indexée = safe) → append-only (`shared_social_likes_append_only_v1`, vue `media_likes_latest`, 3 writers + reader `GetMediaLikers`).
+- `squad_member` → append-only (`shared_social_squad_member_append_only_v1`, vue `squad_member_latest`, AddMember/RemoveMember = events, readers ListMembers + ListSquadsForUser JOIN ; backfill gardé `columnExists(xuid)` car rekey DROP/recrée).
+- `notification_preferences` → append-only (`shared_social_notif_prefs_append_only_v1`, vue `notification_preferences_latest`, 2 writers ON CONFLICT→INSERT version, readers GetPreferences + isCategoryEnabledOn ; latest-wins, table de version).
+- Garde-fou `appendOnlyStateTables` (internal/sync) += les 8 tables/_history. Whitelist no_attach += 4 fichiers migration. Tout build+vet+migration+persist+duckdb+notifications : verts.
+
+**DESIGN PRÊT pour media_match_associations (XL, workflow wweca9iz8)** — modèle GÉNÉRATION (pas tombstone pur) :
+- Nouvelle table de contrôle `mma_generation(scope, gen, reset_at, created_at)` + `media_match_associations_history(id, media_file_id, match_id, delta_seconds, source['auto'|'manual'|'reset'], is_active, gen, written_at)`. Vue `_latest` = manuels actifs (masquent l'auto du même média) UNION auto de gen MAX.
+- Writers : AUTO INSERT (persister_batch:142, media_associate:239) = INSERT source=auto gen=G. MANUEL (persister:464-488 SetMediaMatchAssociation, media_repo_writes:44) = SUPPRIMER le DELETE WHERE media_file_id → 1 INSERT source=manual is_active=TRUE. REINDEX auto-only (media_service:374-394) = SUPPRIMER CTAS backup + DELETE WHERE NOT is_manual → bump génération (INSERT mma_generation gen=G+1) puis re-INSERT auto sous G+1 (manuels préservés). RESET full (media_index_service:384, PLAYER DB pas shared_social) = bump gen + reset_at.
+- ~8 READERS à rebrancher sur `_latest` (dont CROSS-DB/CROSS-SCHÉMA) : Q24 queries_match_detail:174, registry_notifications:134 (DISTINCT match_id, created_at→written_at), notify/notifiers:150, Q28 queries_home_citations:431, media_repo_filters:202, media_repo_q37_pipeline:179/182 (2 schémas legacy+shared), media_associate:115 (NOT IN loadUnassociated), seed_demo_media:172.
+- 1 BLOCKER de revue à lire dans le .output avant d'implémenter. C'est la conversion la plus risquée (régression d'affichage media/match) → tests E2E media obligatoires.
+
+**ATTENTION media_match_associations (NEXT, plus complexe)** : table de REBUILD reindex (pas toggle). 4 sites DELETE de sémantiques DIFFÉRENTES : `SetMediaMatchAssociation` (persister:477 DELETE old+INSERT new manuel), reindex auto-only `media_service.go:391` (DELETE WHERE NOT is_manual + backup table avant), reset full `media_index_service.go:384` (DELETE all), `media_repo_writes.go:44`. + `persistAssoc` INSERT OR IGNORE (batch:142). Readers CROSS-DB : `registry_notifications.go:134` (DISTINCT match_id), `notify/notifiers.go:150` (LEFT JOIN), match_view Q24, + CLI. Design append-only requis : génération/supersession + `is_active` + préserver `is_manual`, PAS un simple flag. ~15 edits + refonte reindex + bascule readers. À faire à tête reposée.
+
+**RESTE (todo)** — tables d'état, ordre par blast-radius (shared_social concurrent d'abord) :
+- `media_likes` + `media_files.liked` (COUPLÉS : état liké dans 2 tables ; 4 write sites : `persistLikes` batch:160/176, `SetMediaLikeAtomic` media_repo_writes:162/175, `ToggleSharedLike` :207/220 ; reader count :247).
+- `media_match_associations` (DELETE ; soft-delete `is_active` + vue).
+- `media_files` (DELETE full-table au reindex media_index_service:384-387 ; rebuild sans DELETE).
+- `squad_member` (DELETE leave).
+- `squad_challenge_participant` (UPDATE indexé `UpdateParticipantProgress` prestige_social_repo:388 ; CTAS-swap + SELECT-then-INSERT carry-forward ; design produit par le workflow, voir review).
+- `player_notifications` (DELETE `DeleteNotification`/`CapAndSweep` + l'UPDATE `read_at` — l'index est déjà droppé mais c'est une table d'état → events).
+- `notification_preferences` (ON CONFLICT DO UPDATE).
+- Player DB : `challenge` (DELETE+UPDATEs, rich entity = le plus dur), `arc`, `match_citations`, `personal_score_awards`, `sync_meta`…
+- Final : retirer pansements (`reopenMetadataIfInvalidated` registry_catalog_drain + `ExecRecovered` devenus inutiles) + recensement résiduel + go test ./... complet + commit/merge/deploy.
+
+**Note workflow** : la cartographie multi-agents (run wf_f6c80fd4) a recensé 386 écritures / 49 candidates mais la phase design a été MASSIVEMENT rate-limitée (seuls `match_favorites` + `squad_challenge_participant` ont un design complet, dans le .output). Reprendre par implémentation directe (pattern prouvé), pas par re-run de gros fan-out.
+
+**Prochaine étape** : `media_match_associations` (cluster reindex, voir note ATTENTION ci-dessus) puis `media_files` reindex, `squad_member`, `squad_challenge_participant`, `player_notifications`, `notification_preferences`, puis player DB. Branche `fix/metadata-art-battlepass-appendonly`. Tout non commité (working tree).
+
+---
+
+## [2026-06-19] Éradication de CLASSE du bug ART metadata (3e récurrence) — Complété (code), déploiement EN ATTENTE
+
+**Incident prod** : `metadata.duckdb` FATAL `database has been invalidated` → toute l'app KO (season pass, JGtm inaccessible). Cause directe : `Failed to delete all rows from index` sur `game_variants_catalog`. Re-déclenché ~7 min après chaque restart (drain catalogue au boot) → un restart ne tient pas. Prod = `37625cea` = HEAD local (le fix queue d'aujourd'hui était déployé mais **incomplet**).
+
+**Root cause de CLASSE** (3e récurrence : playlists 06-01, queue 06-19, game_variants 06-19) : un `UPDATE … SET <col>` sur une colonne couverte par un **index ART** (PK ou secondaire), OU un `DELETE` per-row sur une table ART-indexée, corrompt l'index → FATAL. La doctrine historique « éviter ON CONFLICT suffit » est **fausse** : ici aucun ON CONFLICT, juste des UPDATE/DELETE nus. `no_art_patterns_test` ne scanne que ON CONFLICT/INSERT OR REPLACE → aveugle à ce déclencheur.
+
+**Fix (éradication, pas rustine)** :
+1. Migration `drop_metadata_art_surface_indexes_v1` : drop des 6 index secondaires dont une colonne est mutée par UPDATE — `idx_game_variants_catalog_mode`, `idx_map_mode_pair_map/_variant/_category`, `idx_battlepass_track_definitions_lookup`, `idx_battlepass_item_definitions_lookup` (ce dernier = aussi le bug season-pass `is_current`). Tourne au boot → nettoie la corruption disque en prod. PK gardée (jamais mutée → index sain).
+2. Suppression des `CREATE INDEX` correspondants dans les migrations sources (DB neuves PK-only).
+3. Garde-fou `metadata_art_surface_guard_test.go` : échoue si un `CREATE INDEX` réapparaît sur ces tables mutées (comble le trou de no_art_patterns_test). A trouvé + fait corriger 1 résidu (`idx_catalog_fetch_queue_drain`).
+4. Auto-réparation `reopenMetadataIfInvalidated` (registry_catalog_drain) : ping + `Reopen` in-place du handle metadata partagé après le drain → si un FATAL résiduel survenait, l'app se soigne seule sans restart.
+
+**Audit DELETE** (question user) : seul DELETE per-row sur metadata = `catalog_fetch_queue` (queue éphémère, désormais sans index → sûr). `DELETE FROM match_skill_rank` (sync) = **compaction** documentée d'une table append-only (garde MAX(id), player DB mono-writer) — exception légitime, pas une perte d'événements datés. Aucun DELETE sur table de définitions/événements datés.
+
+**Audit multi-agents (ultracode, 3 workflows : complétude + red-team contradiction + double-vérif indépendante)** : ~40 agents (couche vérification partiellement rate-limitée). Convergence HIGH : le fix metadata est CORRECT pour le crash réel (chunk 8-col = clé d'index secondaire idx_game_variants_catalog_mode ; PK gardée saine car jamais mutée ni DELETE per-row). Mais 3 surfaces ART SUPPLÉMENTAIRES trouvées et VÉRIFIÉES par moi, hors battlepass/catalogue → corrigées dans le même lot :
+- **player_notifications (shared_social, handle partagé concurrent)** — RÉGRESSION : `idx_pn_xuid_unread(xuid, read_at)` droppé le 2026-05-15 puis RECRÉÉ par le rebuild-swap de `purge_data_health_warning_notifs` → `UPDATE ... SET read_at` (mark lu/non-lu) re-corrompt. Fix : source ne recrée plus + migration `drop_pn_unread_art_index_v2`.
+- **challenge (player DB, Prestige)** — `idx_ch_user_status`/`idx_ch_arc`/`idx_challenge_campaign` sur colonnes mutées (status/arc_id/campaign_id). match_skill_rank a prouvé qu'une player DB mono-writer peut crasher. Fix : migration `drop_challenge_mutated_art_indexes_v1` + sources.
+- **asset_translations (metadata)** — `ON CONFLICT DO UPDATE` (writer CLI `populate-assets` uniquement ; le hot path utilise déjà `ops.UpsertAssetTranslation` SELECT-then-write). Landmine convertie en `UpsertNoConflict`.
+- **Garde-fou renforcé** : `metadata_art_surface_guard_test.go` → cross-DB + colonne-aware (interdit d'indexer une colonne mutée : read_at, status/arc_id/campaign_id, etc.) — c'est le mécanisme qui aurait attrapé les 3 régressions. no_art_patterns_test (sync) ne voyait que ON CONFLICT.
+
+**Résidu documenté (NON bloquant, mitigé par auto-réparation)** : DELETE per-row sur tables encore indexées (player_notifications PK+2idx, challenge PK, media_*, match_*) — sérialisés par dblease, basse fréquence ; conversion append-only = chantier séparé. L'auto-réparation Reopen couvre le cas résiduel.
+
+**Validation** : `go build ./...` OK ; `go vet ./...` OK ; tests migration (ordre + garde-fou cross-DB + catalog + battlepass + notif + prestige) OK ; duckdb complet OK ; sync NoART|NoBulk|Allowlist OK ; api OK ; persist OK.
+
+**Prochaine étape** : merge main + déploiement prod (auto-deploy) — autorisation user requise. Branche `fix/metadata-art-battlepass-appendonly`.
+
+---
+
 ## [2026-06-19] Import OpenSpartan — vérif finale : bug is_ranked à l'import + logs dédiés — Complété
 
 **Contexte** : vérification finale go/no-go avant merge. Suite Go complète `go test ./...` verte (tous packages `ok`), `go vet ./...` OK, intégration sync+duckdb OK, front typecheck+lint+vitest OK. Un échec d'intégration `TestCatalogFetcherService_Drain_PlaylistAndPair` PRÉ-EXISTANT (hors périmètre, fichier non touché par mes commits, baseline CI flaky cf. 65284b8fb).

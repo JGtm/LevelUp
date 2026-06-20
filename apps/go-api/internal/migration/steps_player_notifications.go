@@ -47,7 +47,10 @@ func init() {
 					read_at       TIMESTAMP,
 					PRIMARY KEY (xuid, id)
 				);
-				CREATE INDEX IF NOT EXISTS idx_pn_xuid_unread       ON player_notifications(xuid, read_at);
+				-- PAS d'index sur read_at : MarkNotifications(Read|Unread|AllRead) UPDATE
+				-- read_at → un index ART sur cette colonne mutée corrompt shared_social
+				-- (bug DuckDB "Failed to delete all rows from index"). Drop historique
+				-- drop_idx_pn_xuid_unread + drop_pn_unread_art_index_v2. Garde-fou cross-DB.
 				CREATE INDEX IF NOT EXISTS idx_pn_xuid_created_desc ON player_notifications(xuid, created_at DESC);
 				CREATE INDEX IF NOT EXISTS idx_pn_xuid_category     ON player_notifications(xuid, category);
 

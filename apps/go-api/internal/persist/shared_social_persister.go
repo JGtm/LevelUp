@@ -424,13 +424,11 @@ func (p *SharedSocialPersister) UpsertNotificationPreferences(ctx context.Contex
 			slog.WarnContext(ctx, "shared_social notif-prefs: rollback failed (non-fatal)", "err", rbErr)
 		}
 	}
+	// APPEND-ONLY : chaque préférence = INSERT d'une nouvelle version dans
+	// notification_preferences_history (plus d'ON CONFLICT DO UPDATE). Latest wins via vue.
 	stmt, err := tx.PrepareContext(ctx, `
-		INSERT INTO notification_preferences (xuid, category, enabled, delivery, updated_at)
+		INSERT INTO notification_preferences_history (xuid, category, enabled, delivery, updated_at)
 		VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT (xuid, category) DO UPDATE SET
-			enabled    = EXCLUDED.enabled,
-			delivery   = EXCLUDED.delivery,
-			updated_at = EXCLUDED.updated_at
 	`)
 	if err != nil {
 		rollback()
