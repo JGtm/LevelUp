@@ -414,7 +414,7 @@ func eventActor(e canonical.HighlightEvent) string {
 func loadHistoryForCategory(ctx context.Context, playerDB *sql.DB, modeCategory, excludeMatchID string) []domain.HistoricalEngagementBrut {
 	const q = `
 		SELECT match_id, engagement_score_brut
-		FROM player_match_enrichment
+		FROM player_match_enrichment_latest
 		WHERE mode_category = ?
 		  AND engagement_score_brut IS NOT NULL
 		  AND match_id <> ?
@@ -438,12 +438,19 @@ func loadHistoryForCategory(ctx context.Context, playerDB *sql.DB, modeCategory,
 	return out
 }
 
-// loadExistingEngagementScores retourne un set de match_id qui ont deja un
-// score persiste. Permet de skip rapidement sans force.
+// loadExistingEngagementScores retourne le set des match_id dont l'engagement a
+// déjà été TENTÉ (présence d'une row stage='engagement'), pour skip en non-force.
+//
+// Append-only #23046 — IDEMPOTENCE : on lit la présence du stage, PAS
+// engagement_score IS NOT NULL. Un match insufficient_history (score NULL LÉGITIME
+// et PERMANENT — les ~10 premiers matchs d'une catégorie n'auront jamais assez
+// d'historique) serait sinon ré-INSÉRÉ à CHAQUE post-sync → croissance non bornée
+// sur la table la plus écrite. Lecture physique (la vue n'expose pas `stage`) :
+// marqueur d'idempotence writer-side, comme l'ancre stage='live' du persister.
+// Le re-score à maturité de l'historique passe par le chemin force=true.
 func loadExistingEngagementScores(ctx context.Context, playerDB *sql.DB) map[string]bool {
 	rows, err := playerDB.QueryContext(ctx, `
-		SELECT match_id FROM player_match_enrichment
-		WHERE engagement_score IS NOT NULL
+		SELECT match_id FROM player_match_enrichment WHERE stage = 'engagement'
 	`)
 	if err != nil {
 		return map[string]bool{}

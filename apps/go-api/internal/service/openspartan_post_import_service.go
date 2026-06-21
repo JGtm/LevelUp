@@ -149,21 +149,36 @@ func (s *OpenSpartanPostImportService) recomputeLUSR(
 	result.LUSRRecomputed = n
 }
 
-// ensureEnrichmentRows primes player_match_enrichment with one placeholder
-// row per imported match_id. Required because the recompute stages (sessions,
-// performance_score) update those rows in place — without a prior INSERT
-// they would silently no-op.
+// ensureEnrichmentRows primes player_match_enrichment with one baseline row
+// (stage='live') per imported match_id. Required because the recompute stages
+// (sessions, performance_score) source their work-list from PME rows.
 //
-// Idempotent via ON CONFLICT DO NOTHING — a no-op for matches already
-// enriched by a previous sync.
+// Append-only #23046 : pure INSERT (no ON CONFLICT — match_id n'est plus une PK).
+// Idempotence via pré-filtre delta : seuls les matchs sans aucune row PME reçoivent
+// la baseline (évite les doublons stage='live' sur ré-import).
 func (s *OpenSpartanPostImportService) ensureEnrichmentRows(
 	ctx context.Context, playerDB *sql.DB, matchIDs []string, result *PostImportResult,
 ) {
 	if len(matchIDs) == 0 {
 		return
 	}
+	existing := make(map[string]struct{}, len(matchIDs))
+	rows, err := playerDB.QueryContext(ctx, `SELECT match_id FROM player_match_enrichment_latest`)
+	if err != nil {
+		result.Errors = append(result.Errors, PostImportError{Stage: "prime_enrichment", Err: err.Error()})
+		s.log.Warn("post_import_prime_enrichment_load_failed", "err", err)
+		return
+	}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err == nil {
+			existing[id] = struct{}{}
+		}
+	}
+	_ = rows.Close()
+
 	stmt, err := playerDB.PrepareContext(ctx,
-		`INSERT INTO player_match_enrichment (match_id) VALUES (?) ON CONFLICT (match_id) DO NOTHING`)
+		`INSERT INTO player_match_enrichment (match_id, stage) VALUES (?, 'live')`)
 	if err != nil {
 		result.Errors = append(result.Errors, PostImportError{Stage: "prime_enrichment", Err: err.Error()})
 		s.log.Warn("post_import_prime_enrichment_prepare_failed", "err", err)
@@ -171,6 +186,9 @@ func (s *OpenSpartanPostImportService) ensureEnrichmentRows(
 	}
 	defer stmt.Close()
 	for _, id := range matchIDs {
+		if _, ok := existing[id]; ok {
+			continue
+		}
 		if _, err := stmt.ExecContext(ctx, id); err != nil {
 			result.Errors = append(result.Errors, PostImportError{Stage: "prime_enrichment", MatchID: id, Err: err.Error()})
 			s.log.Warn("post_import_prime_enrichment_exec_failed", "match_id", id, "err", err)

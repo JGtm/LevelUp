@@ -284,8 +284,11 @@ func TestPlayerPersister_AtomicityOnFailure_RollsBackAll(t *testing.T) {
 	db := openPlayerTestDB(t)
 	p := NewPlayerPersister(db)
 
-	// Batch avec 2 LUSR components ayant la MEME PK (match_id, component_name)
-	// → PK conflict sur le 2e → ROLLBACK
+	// Append-only #23046 : lusr_component_history est désormais append-only (plus de PK
+	// match_id+component_name → plus de conflit). On injecte l'échec mid-batch via
+	// match_citations qui GARDE sa PK (match_id, citation_name_norm) : 2 citations
+	// identiques → conflit sur le 2e → toute la TX doit rollback (enrichment + skill_rank
+	// + lusr inclus, écrits AVANT les citations dans l'ordre de Persist).
 	float64Ptr := func(v float64) *float64 { return &v }
 
 	builder := NewBatchBuilder("halo_infinite", "Alice", "1111", "test")
@@ -298,18 +301,23 @@ func TestPlayerPersister_AtomicityOnFailure_RollsBackAll(t *testing.T) {
 	})
 	builder.AddLUSRComponents([]LUSRComponentInsert{
 		{MatchID: "pm_atomic_001", ComponentName: "X", Value: 0.5, Weight: 0.5},
-		{MatchID: "pm_atomic_001", ComponentName: "X", Value: 0.6, Weight: 0.5}, // PK conflict
+		{MatchID: "pm_atomic_001", ComponentName: "Y", Value: 0.6, Weight: 0.5}, // OK (append-only)
+	})
+	builder.AddCitations([]CitationInsert{
+		{MatchID: "pm_atomic_001", CitationNameNorm: "dup", Value: 0.5},
+		{MatchID: "pm_atomic_001", CitationNameNorm: "dup", Value: 0.6}, // PK conflict → rollback
 	})
 
 	err := p.Persist(context.Background(), builder.Build())
 	if err == nil {
-		t.Fatal("Persist devrait échouer sur PK conflict LUSR components")
+		t.Fatal("Persist devrait échouer sur PK conflict match_citations")
 	}
 
 	tables := []string{
 		"player_match_enrichment",
 		"match_skill_rank",
 		"lusr_component_history",
+		"match_citations",
 	}
 	for _, tbl := range tables {
 		var n int

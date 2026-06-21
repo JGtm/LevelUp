@@ -94,11 +94,11 @@ func (e *SyncEngine) RunBackfillCitations(ctx context.Context, force bool) (int,
 func selectMatchesForCitations(ctx context.Context, playerDB *sql.DB, force bool) ([]string, error) {
 	var q string
 	if force {
-		q = `SELECT match_id FROM player_match_enrichment ORDER BY match_id`
+		q = `SELECT match_id FROM player_match_enrichment_latest ORDER BY match_id`
 	} else {
 		q = `
 SELECT pme.match_id
-FROM player_match_enrichment pme
+FROM player_match_enrichment_latest pme
 LEFT JOIN (SELECT DISTINCT match_id FROM match_citations) mc
   ON mc.match_id = pme.match_id
 WHERE mc.match_id IS NULL

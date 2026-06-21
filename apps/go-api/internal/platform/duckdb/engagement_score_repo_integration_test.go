@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/migration"
 	ddb "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 )
@@ -61,6 +62,12 @@ func setupEngagementDB(t *testing.T) *ddb.PlayerDB {
 		if _, err := db.Exec(ctx, s); err != nil {
 			t.Fatalf("setup ddl %q: %v", s, err)
 		}
+	}
+
+	// Append-only #23046 : convertit player_match_enrichment (id PK + stage +
+	// written_at) et crée la vue player_match_enrichment_latest (lue par le repo).
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db.SQLDb()); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
 
 	return &ddb.PlayerDB{Player: db, XUID: "xuid-test"}

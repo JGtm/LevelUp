@@ -7,6 +7,8 @@ import (
 	"database/sql"
 	"testing"
 
+	"levelup/go-api/internal/migration"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -30,6 +32,9 @@ func openEnrichmentTestDB(t *testing.T) *sql.DB {
 		)
 	`); err != nil {
 		t.Fatalf("create: %v", err)
+	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
 	for _, mid := range []string{"m1", "m2", "m3"} {
 		if _, err := db.Exec(`INSERT INTO player_match_enrichment (match_id) VALUES (?)`, mid); err != nil {
@@ -60,7 +65,7 @@ func TestPostSyncEnrichmentPersister_BatchUpdateColumn_UpdatesAllRows(t *testing
 		want int
 	}{{"m1", 1}, {"m2", 3}, {"m3", 5}} {
 		var got int
-		_ = db.QueryRow(`SELECT dominance_flag FROM player_match_enrichment WHERE match_id = ?`, tc.mid).Scan(&got)
+		_ = db.QueryRow(`SELECT dominance_flag FROM player_match_enrichment_latest WHERE match_id = ?`, tc.mid).Scan(&got)
 		if got != tc.want {
 			t.Errorf("%s dominance_flag = %d, want %d", tc.mid, got, tc.want)
 		}
@@ -109,7 +114,7 @@ func TestPostSyncEnrichmentPersister_BatchUpdateColumn_PreservesOtherColumns(t *
 
 	var dom int
 	var perf sql.NullFloat64
-	_ = db.QueryRow(`SELECT dominance_flag, performance_score FROM player_match_enrichment WHERE match_id = 'm1'`).Scan(&dom, &perf)
+	_ = db.QueryRow(`SELECT dominance_flag, performance_score FROM player_match_enrichment_latest WHERE match_id = 'm1'`).Scan(&dom, &perf)
 	if dom != 2 {
 		t.Errorf("dominance_flag = %d, want 2", dom)
 	}
@@ -122,10 +127,14 @@ func TestPostSyncEnrichmentPersister_BatchUpdateMulti_UpdatesMultiCols(t *testin
 	db := openEnrichmentTestDB(t)
 	p := NewPostSyncEnrichmentPersister(db)
 
+	// Append-only #23046 : BatchUpdateMulti écrit plusieurs colonnes d'UN SEUL stage
+	// par INSERT partiel (un INSERT = un stage). On teste perf={score, chain} — ce que
+	// fait le vrai caller (performance.go). Mélanger des stages (dominance+perf) est
+	// désormais rejeté par deriveEnrichmentStage (cf. test dédié ci-dessous).
 	rows := []EnrichmentMultiColumnUpdate{
-		{MatchID: "m1", Fields: map[string]any{"dominance_flag": 1, "performance_score": 75.0}},
-		{MatchID: "m2", Fields: map[string]any{"dominance_flag": 3, "performance_score": 82.5}},
-		{MatchID: "m3", Fields: map[string]any{"dominance_flag": 5, "performance_score": 91.2}},
+		{MatchID: "m1", Fields: map[string]any{"performance_score": 75.0, "performance_chain": "WWL"}},
+		{MatchID: "m2", Fields: map[string]any{"performance_score": 82.5, "performance_chain": "LWW"}},
+		{MatchID: "m3", Fields: map[string]any{"performance_score": 91.2, "performance_chain": "WWW"}},
 	}
 	n, err := p.BatchUpdateMulti(context.Background(), rows)
 	if err != nil {
@@ -136,15 +145,15 @@ func TestPostSyncEnrichmentPersister_BatchUpdateMulti_UpdatesMultiCols(t *testin
 	}
 
 	for _, tc := range []struct {
-		mid  string
-		flag int
-		perf float64
-	}{{"m1", 1, 75.0}, {"m2", 3, 82.5}, {"m3", 5, 91.2}} {
-		var flag int
+		mid   string
+		perf  float64
+		chain string
+	}{{"m1", 75.0, "WWL"}, {"m2", 82.5, "LWW"}, {"m3", 91.2, "WWW"}} {
 		var perf float64
-		_ = db.QueryRow(`SELECT dominance_flag, performance_score FROM player_match_enrichment WHERE match_id = ?`, tc.mid).Scan(&flag, &perf)
-		if flag != tc.flag || perf != tc.perf {
-			t.Errorf("%s: flag=%d perf=%f, want flag=%d perf=%f", tc.mid, flag, perf, tc.flag, tc.perf)
+		var chain string
+		_ = db.QueryRow(`SELECT performance_score, performance_chain FROM player_match_enrichment_latest WHERE match_id = ?`, tc.mid).Scan(&perf, &chain)
+		if perf != tc.perf || chain != tc.chain {
+			t.Errorf("%s: perf=%f chain=%q, want perf=%f chain=%q", tc.mid, perf, chain, tc.perf, tc.chain)
 		}
 	}
 }
@@ -178,7 +187,7 @@ func TestPostSyncEnrichmentPersister_BatchUpdateColumn_HandlesNilValue(t *testin
 	}
 
 	var dom sql.NullInt64
-	_ = db.QueryRow(`SELECT dominance_flag FROM player_match_enrichment WHERE match_id = 'm1'`).Scan(&dom)
+	_ = db.QueryRow(`SELECT dominance_flag FROM player_match_enrichment_latest WHERE match_id = 'm1'`).Scan(&dom)
 	if dom.Valid {
 		t.Errorf("dominance_flag = %+v, want NULL", dom)
 	}

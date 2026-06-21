@@ -233,6 +233,60 @@ func TestMatchEnrichmentAppendOnly_LegacyOverride(t *testing.T) {
 	}
 }
 
+// TestMatchEnrichmentAppendOnly_LiveBaseline — le collect live écrit UNE row
+// multi-colonnes stage='live' (baseline pour les matchs collectés après migration).
+// La vue lit cette baseline pour toute colonne sans owner-stage ; un writer owner-stage
+// override SA colonne sans toucher les autres (qui restent au live). live > legacy.
+func TestMatchEnrichmentAppendOnly_LiveBaseline(t *testing.T) {
+	db := setupLegacyMatchEnrichment(t, nil)
+	if err := applyAppendOnlyMatchEnrichment(db); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	// Collect live : 1 row stage='live' portant perf + session + teammates.
+	if _, err := db.Exec(`INSERT INTO player_match_enrichment (match_id, performance_score, session_id, session_label, teammates_signature, stage, written_at) VALUES ('mLive', 3.0, 'sessLive', 'Live Session', 'sigLive', 'live', TIMESTAMP '2026-02-01 10:00:00')`); err != nil {
+		t.Fatalf("live insert: %v", err)
+	}
+	// La vue lit la baseline live pour les 3 colonnes.
+	var perf float64
+	var sess, sig string
+	if err := db.QueryRow(`SELECT performance_score, session_id, teammates_signature FROM player_match_enrichment_latest WHERE match_id='mLive'`).Scan(&perf, &sess, &sig); err != nil {
+		t.Fatalf("query live baseline: %v", err)
+	}
+	if perf != 3.0 || sess != "sessLive" || sig != "sigLive" {
+		t.Errorf("baseline live = (%v, %q, %q), want (3.0, sessLive, sigLive)", perf, sess, sig)
+	}
+
+	// Owner-stage perf override (plus récent) : perf change, session/teammates restent live.
+	if _, err := db.Exec(`INSERT INTO player_match_enrichment (match_id, performance_score, stage, written_at) VALUES ('mLive', 9.5, 'perf', TIMESTAMP '2026-02-01 11:00:00')`); err != nil {
+		t.Fatalf("perf override: %v", err)
+	}
+	if err := db.QueryRow(`SELECT performance_score, session_id, teammates_signature FROM player_match_enrichment_latest WHERE match_id='mLive'`).Scan(&perf, &sess, &sig); err != nil {
+		t.Fatalf("query after override: %v", err)
+	}
+	if perf != 9.5 {
+		t.Errorf("performance_score = %v, want 9.5 (owner-stage perf override)", perf)
+	}
+	if sess != "sessLive" || sig != "sigLive" {
+		t.Errorf("session/teammates = (%q, %q), want (sessLive, sigLive) (live non touché)", sess, sig)
+	}
+
+	// live > legacy : un match avec legacy ET live → live gagne sur la baseline.
+	if _, err := db.Exec(`INSERT INTO player_match_enrichment (match_id, performance_score, session_id) VALUES ('mBoth', 1.0, 'oldLegacy')`); err != nil {
+		t.Fatalf("legacy seed: %v", err)
+	}
+	// La row ci-dessus est stage='legacy' par DEFAULT. Ajoute une row live plus complète.
+	if _, err := db.Exec(`INSERT INTO player_match_enrichment (match_id, session_id, stage, written_at) VALUES ('mBoth', 'newLive', 'live', TIMESTAMP '2026-02-01 12:00:00')`); err != nil {
+		t.Fatalf("live over legacy: %v", err)
+	}
+	var sessBoth string
+	if err := db.QueryRow(`SELECT session_id FROM player_match_enrichment_latest WHERE match_id='mBoth'`).Scan(&sessBoth); err != nil {
+		t.Fatalf("query mBoth: %v", err)
+	}
+	if sessBoth != "newLive" {
+		t.Errorf("session_id = %q, want newLive (live > legacy)", sessBoth)
+	}
+}
+
 // TestMatchEnrichmentAppendOnly_Idempotent — 2e apply = no-op, rows préservées, vue OK.
 func TestMatchEnrichmentAppendOnly_Idempotent(t *testing.T) {
 	db := setupLegacyMatchEnrichment(t, func(db *sql.DB) {

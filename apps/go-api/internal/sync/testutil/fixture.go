@@ -7,6 +7,8 @@ import (
 	"database/sql"
 	"testing"
 
+	"levelup/go-api/internal/migration"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -163,6 +165,8 @@ func NewInMemoryPlayer(t *testing.T) *sql.DB {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
+	// DDL legacy de bootstrap (PK match_id) ; la migration ci-dessous la convertit
+	// en append-only (#23046 : id PK + stage + written_at + vue player_match_enrichment_latest).
 	stmts := []string{
 		`CREATE TABLE player_match_enrichment (
 			match_id VARCHAR PRIMARY KEY,
@@ -195,17 +199,16 @@ func NewInMemoryPlayer(t *testing.T) *sql.DB {
 			backdrop_image_url VARCHAR DEFAULT '',
 			recorded_at TIMESTAMP
 		)`,
-		`CREATE TABLE schema_migrations (
-			name VARCHAR PRIMARY KEY,
-			applied_at TIMESTAMP,
-			schema_done BOOLEAN DEFAULT FALSE,
-			backfill_done BOOLEAN DEFAULT FALSE
-		)`,
 	}
 	for _, stmt := range stmts {
 		if _, err := db.Exec(stmt); err != nil {
 			t.Fatalf("create table: %v", err)
 		}
+	}
+	// Applique les migrations player : convertit player_match_enrichment en append-only
+	// + crée la vue _latest (+ schema_migrations + tables/colonnes manquantes).
+	if err := migration.RunForDB(db, migration.TargetPlayer); err != nil {
+		t.Fatalf("RunForDB(TargetPlayer): %v", err)
 	}
 	return db
 }

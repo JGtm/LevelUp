@@ -53,10 +53,11 @@ import (
 //
 // Retourne le nombre de rows créées + erreur si la query DB échoue.
 //
-// La sémantique est volontairement narrow : on INSERT UNIQUEMENT le PK
-// match_id, laissant tous les autres champs à NULL/DEFAULT. C'est le
-// post-sync qui peuplera ensuite performance_score/session_id/etc. via
-// ses UPDATE existants.
+// Append-only #23046 : on INSERT une row baseline stage='live' (match_id seul,
+// autres champs NULL/DEFAULT). Le post-sync (INSERT-pur taggé par stage) peuplera
+// ensuite performance_score/session_id/etc., reconstitués par la vue merge-on-read.
+// Ce réparateur reste nécessaire pour les matchs orphelins cross-watcher (cf. incident
+// 2026-05-27) : sans row baseline, ils seraient absents des work-lists post-sync.
 func ensurePlayerEnrichmentRows(
 	ctx context.Context,
 	playerDB *sql.DB,
@@ -100,7 +101,7 @@ func ensurePlayerEnrichmentRows(
 
 	// Lire les match_ids déjà présents côté player.
 	existing := make(map[string]struct{}, len(sharedMatchIDs))
-	pmeRows, err := playerDB.QueryContext(ctx, `SELECT match_id FROM player_match_enrichment`)
+	pmeRows, err := playerDB.QueryContext(ctx, `SELECT match_id FROM player_match_enrichment_latest`)
 	if err != nil {
 		return 0, fmt.Errorf("ensurePlayerEnrichmentRows: query player_match_enrichment: %w", err)
 	}
@@ -138,13 +139,11 @@ func ensurePlayerEnrichmentRows(
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	// INSERT OR IGNORE : idempotent si la row existe déjà. Aligné sur les sites
-	// frères (comeback_postsync_persist, fanout_repo). NB : un `continue` sur
-	// erreur serait inopérant ici — un statement en erreur invalide la TX DuckDB
-	// (les Exec suivants + le Commit échoueraient) ; OR IGNORE évite justement le
-	// seul cas "normal" (PK déjà présente), donc toute erreur restante est réelle
-	// → on abort la TX.
-	const insertSQL = `INSERT OR IGNORE INTO player_match_enrichment (match_id) VALUES (?)`
+	// Append-only #23046 : INSERT pur d'une row baseline stage='live' pour chaque
+	// match orphelin (le delta `missing` exclut déjà les matchs ayant une row PME,
+	// donc aucun conflit — plus d'INSERT OR IGNORE). Le post-sync (INSERT-pur taggé)
+	// override ensuite par stage via la vue merge-on-read.
+	const insertSQL = `INSERT INTO player_match_enrichment (match_id, stage) VALUES (?, 'live')`
 	stmt, err := tx.PrepareContext(ctx, insertSQL)
 	if err != nil {
 		return 0, fmt.Errorf("ensurePlayerEnrichmentRows: Prepare: %w", err)

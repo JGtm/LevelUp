@@ -268,7 +268,7 @@ SELECT
     COALESCE(pme.is_with_friends, FALSE) AS is_with_friends,
     COALESCE(pme.is_excluded, FALSE)     AS is_excluded,
     COALESCE(pme.dominance_flag, 0)      AS dominance_flag
-FROM player_match_enrichment pme
+FROM player_match_enrichment_latest pme
 WHERE pme.match_id = ?`
 
 // Q19 : Matchs communs entre 2 joueurs.

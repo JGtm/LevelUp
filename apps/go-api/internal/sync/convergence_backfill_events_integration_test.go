@@ -15,6 +15,8 @@ import (
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/migration"
 )
 
 // mockHLChunkFetcher implémente highlightChunkFetcher avec des réponses canned.
@@ -54,6 +56,11 @@ func openEventsBackfillDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
 			updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);
 	`); err != nil {
+		t.Fatal(err)
+	}
+	// Append-only #23046 : convertit player_match_enrichment (id+stage) + vue _latest
+	// (backfillDominanceFlagsBatch INSÈRE stage='dominance' ; les readers lisent _latest).
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(pdb); err != nil {
 		t.Fatal(err)
 	}
 

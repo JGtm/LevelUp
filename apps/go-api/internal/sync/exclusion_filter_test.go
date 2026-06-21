@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/migration"
 )
 
 func openExclusionDB(t *testing.T) *sql.DB {
@@ -26,6 +28,9 @@ func openExclusionDB(t *testing.T) *sql.DB {
 			performance_chain VARCHAR
 		);
 	`); err != nil {
+		t.Fatal(err)
+	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db); err != nil {
 		t.Fatal(err)
 	}
 	return db

@@ -58,6 +58,10 @@ var forbiddenIndexedColumns = map[string][]string{
 	"preset_arc":           {"title_slug"},                           // PrestigePresetArcRepo.Replace
 	"citation_mappings":    {"medal_id", "mapping_type"},             // SeedCitationMappings UPDATE
 	"media_files":          {"kind", "file_path"},                    // insertMediaFile mute kind + file_path (conversion/HLS/reconcile)
+	// player_match_enrichment (append-only #23046) : les 3 ex-index ART sur colonnes
+	// taggées par stage ne doivent JAMAIS revenir. Seul idx_pme_match_lookup(match_id,
+	// written_at) est toléré (d'où PAS de noSecondaryIndexTables ici).
+	"player_match_enrichment": {"session_id", "mode_category", "engagement_score_brut"},
 }
 
 var (

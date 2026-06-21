@@ -136,7 +136,7 @@ func CheckShared(ctx context.Context, playerDB, sharedDB *sql.DB) (Report, error
 // convergence DOIT créer la row enrichment du joueur courant.
 // Incidents : 2026-05-27 (Madina/Choco/XxDaemon), 2026-06-10 (session du 09/06).
 func checkEnrichmentMissing(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (*Violation, error) {
-	enriched, err := collectIDs(ctx, playerDB, `SELECT match_id FROM player_match_enrichment`)
+	enriched, err := collectIDs(ctx, playerDB, `SELECT match_id FROM player_match_enrichment_latest`)
 	if err != nil {
 		return nil, fmt.Errorf("invariants/enrichment_missing: player query: %w", err)
 	}
@@ -199,7 +199,7 @@ func checkParticipantsWithoutRegistry(ctx context.Context, _ *sql.DB, sharedDB *
 // l'étape sessions du même pipeline si celui-ci est interrompu.
 func checkSessionMissing(ctx context.Context, playerDB, _ *sql.DB, _ string) (*Violation, error) {
 	ids, err := collectIDs(ctx, playerDB,
-		`SELECT match_id FROM player_match_enrichment WHERE session_id IS NULL`)
+		`SELECT match_id FROM player_match_enrichment_latest WHERE session_id IS NULL`)
 	if err != nil {
 		return nil, fmt.Errorf("invariants/session_missing: %w", err)
 	}
@@ -223,7 +223,7 @@ func checkSessionMissing(ctx context.Context, playerDB, _ *sql.DB, _ string) (*V
 // au fil des cycles signale en revanche un batch qui ne converge plus.
 func checkPerformanceScoreMissing(ctx context.Context, playerDB, _ *sql.DB, _ string) (*Violation, error) {
 	ids, err := collectIDs(ctx, playerDB,
-		`SELECT match_id FROM player_match_enrichment WHERE performance_score IS NULL`)
+		`SELECT match_id FROM player_match_enrichment_latest WHERE performance_score IS NULL`)
 	if err != nil {
 		return nil, fmt.Errorf("invariants/performance_score_missing: %w", err)
 	}
@@ -429,7 +429,7 @@ func checkCitationsMissing(ctx context.Context, playerDB, sharedDB *sql.DB, xuid
 // (écrits par le traitement per-match — PAS convergés après delta-skip à date,
 // cf. audit Phase 3 du plan). Alimente l'axe « objectif » du radar synergie.
 func checkPersonalScoreAwardsMissing(ctx context.Context, playerDB, _ *sql.DB, _ string) (*Violation, error) {
-	enriched, err := collectIDs(ctx, playerDB, `SELECT match_id FROM player_match_enrichment`)
+	enriched, err := collectIDs(ctx, playerDB, `SELECT match_id FROM player_match_enrichment_latest`)
 	if err != nil {
 		return nil, fmt.Errorf("invariants/psa_missing: enrichment query: %w", err)
 	}

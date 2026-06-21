@@ -243,18 +243,17 @@ func UpsertXUIDAlias(ctx context.Context, db *sql.DB, xuid, gamertag string) err
 // Player DB writes
 // ──────────────────────────────────────────────────────────────────────────────
 
-// UpsertPlayerEnrichment insère/met à jour une ligne dans player_match_enrichment.
-// Portage de _insert_enrichment_row() (Python _engine_writes.py).
+// UpsertPlayerEnrichment écrit la row baseline stage='live' d'un match collecté
+// (chemin legacy non-batch : engine_fetch / engine_process_match). Append-only #23046 :
+// INSERT pur (plus d'ON CONFLICT). teammates_signature écrit si fourni (sinon NULL —
+// un stage 'teammates' ultérieur ou la baseline fournira la valeur via la vue merge).
+// Marque le match comme collecté pour le known-set (loadKnownMatchIDs). L'idempotence
+// est assurée en amont par le delta de découverte (match déjà connu = non re-traité).
 func UpsertPlayerEnrichment(ctx context.Context, db *sql.DB, matchID, teammatesSig string) error {
-	now := time.Now().UTC()
 	_, err := db.ExecContext(ctx, `
-		INSERT INTO player_match_enrichment
-			(match_id, teammates_signature, created_at, updated_at)
-		VALUES (?, ?, ?, ?)
-		ON CONFLICT (match_id) DO UPDATE SET
-			teammates_signature = COALESCE(EXCLUDED.teammates_signature, player_match_enrichment.teammates_signature),
-			updated_at          = EXCLUDED.updated_at`,
-		matchID, nullStr(teammatesSig), now, now,
+		INSERT INTO player_match_enrichment (match_id, teammates_signature, stage)
+		VALUES (?, ?, 'live')`,
+		matchID, nullStr(teammatesSig),
 	)
 	if err != nil {
 		return fmt.Errorf("UpsertPlayerEnrichment(%s): %w", matchID, err)

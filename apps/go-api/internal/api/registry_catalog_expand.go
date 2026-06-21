@@ -83,9 +83,20 @@ func (r *ServiceRegistry) ExpandPlaylistChildren(ctx context.Context, titleSlug 
 			if e.MapModePairAssetID == "" {
 				continue
 			}
+			// ART-safe / PK-less (#23046) : catalog_fetch_queue n'a plus de PK
+			// (rebuild_catalog_fetch_queue_drop_art_indexes) → INSERT OR IGNORE
+			// échouait EN DUR ("no UNIQUE/PRIMARY KEY ... specify ON CONFLICT columns")
+			// → expansion playlists morte. SELECT-then-INSERT (NOT EXISTS), comme
+			// ops/catalog_queue.go + enqueueCatalogChild.
 			if _, eerr := metaSQL.ExecContext(ctx,
-				`INSERT OR IGNORE INTO catalog_fetch_queue (title_slug, asset_type, asset_id, version_id) VALUES (?, 'pair', ?, ?)`,
+				`INSERT INTO catalog_fetch_queue (title_slug, asset_type, asset_id, version_id)
+				 SELECT ?, 'pair', ?, ?
+				 WHERE NOT EXISTS (
+				   SELECT 1 FROM catalog_fetch_queue
+				   WHERE title_slug = ? AND asset_type = 'pair' AND asset_id = ?
+				 )`,
 				titleSlug, e.MapModePairAssetID, e.VersionID,
+				titleSlug, e.MapModePairAssetID,
 			); eerr != nil {
 				slog.WarnContext(ctx, "catalog_expand: enqueue enfant échoué",
 					"module", logging.ModuleCatalog, "pair", e.MapModePairAssetID, "err", eerr)

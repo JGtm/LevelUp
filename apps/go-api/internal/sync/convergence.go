@@ -85,7 +85,10 @@ func selectMatchesMissingPSA(ctx context.Context, playerDB *sql.DB) []string {
 	// les matchs récents d'abord, aligné sur le contrat convergenceHorizon.
 	rows, err := playerDB.QueryContext(ctx, `
 		SELECT e.match_id
-		FROM player_match_enrichment e
+		-- Append-only #23046 : _latest. psa_checked_at vit sur le stage 'psa' ; sur la
+		-- table brute les rows des autres stages ont psa_checked_at NULL → ce filtre
+		-- retournerait TOUS les matchs même déjà checkés → re-fetch PSA infini.
+		FROM player_match_enrichment_latest e
 		WHERE e.psa_checked_at IS NULL
 		  AND e.match_id NOT IN (
 		      SELECT DISTINCT match_id FROM personal_score_awards WHERE match_id IS NOT NULL)
@@ -144,8 +147,10 @@ func convergePSA(ctx context.Context, playerDB, sharedDB *sql.DB, client HaloCli
 				continue
 			}
 		}
+		// Append-only #23046 : INSERT pur stage='psa' (marqueur terminal). La vue
+		// merge expose psa_checked_at par match ; selectMatchesMissingPSA lit _latest.
 		if _, err := playerDB.ExecContext(ctx,
-			`UPDATE player_match_enrichment SET psa_checked_at = now() WHERE match_id = ?`, mid); err != nil {
+			`INSERT INTO player_match_enrichment (match_id, psa_checked_at, stage) VALUES (?, now(), 'psa')`, mid); err != nil {
 			slog.WarnContext(ctx, "convergence: PSA stamp échoué", "match_id", mid, "err", err)
 			continue
 		}
@@ -210,7 +215,7 @@ func countSharedMatchesMissingEnrichment(ctx context.Context, playerDB, sharedDB
 		return 0
 	}
 	known := make(map[string]struct{}, 512)
-	rows, err := playerDB.QueryContext(ctx, `SELECT match_id FROM player_match_enrichment`)
+	rows, err := playerDB.QueryContext(ctx, `SELECT match_id FROM player_match_enrichment_latest`)
 	if err != nil {
 		slog.WarnContext(ctx, "convergence: lecture player_match_enrichment échouée", "xuid", xuid, "err", err)
 		return 0

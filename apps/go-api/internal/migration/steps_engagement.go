@@ -59,10 +59,11 @@ func init() {
 					return err
 				}
 			}
-			return createIndexSafe(db, `
-				CREATE INDEX IF NOT EXISTS idx_pme_engagement_history
-					ON player_match_enrichment(mode_category, engagement_score_brut)
-			`)
+			// Append-only #23046 (2026-06-21) : PLUS d'index ART idx_pme_engagement_history
+			// sur (mode_category, engagement_score_brut) — colonnes mutées par l'étage
+			// engagement (INSERT pur taggé). Lecture via player_match_enrichment_latest.
+			// Le swap append-only le supprime sur les DB existantes.
+			return nil
 		},
 	})
 
@@ -166,12 +167,11 @@ func init() {
 					return err
 				}
 			}
-			// Index partiel sur les rows ayant des paces non-null. Optimise les
-			// scans de LoadRatioSamples qui filtrent toujours sur cette condition.
-			return createIndexSafe(db, `
-				CREATE INDEX IF NOT EXISTS idx_pme_engagement_paces
-					ON player_match_enrichment(mode_category)
-			`)
+			// Append-only #23046 (2026-06-21) : PLUS d'index ART idx_pme_engagement_paces
+			// sur (mode_category) — colonne mutée par l'étage engagement. LoadRatioSamples
+			// lit player_match_enrichment_latest. Le swap append-only le supprime sur
+			// les DB existantes.
+			return nil
 		},
 	})
 

@@ -12,7 +12,12 @@
 //   C'est tout. Pas de SQL à modifier (INSERT dynamique sur fields non-nil).
 //
 // Architecture identique à SharedPersister : 1 transaction par batch, INSERT-only,
-// idempotence par EXISTS(player_match_enrichment WHERE match_id = ?).
+// idempotence par EXISTS(player_match_enrichment WHERE match_id = ? AND stage='live').
+//
+// Append-only #23046 : player_match_enrichment est append-only (id PK + stage).
+// Le collect live écrit UNE row stage='live' (baseline merge-on-read) ; l'ancre
+// d'idempotence est donc ciblée stage='live' (pas match_id seul, sinon une row
+// d'un autre stage — engagement/session post-sync — ferait skip tout le sous-batch).
 
 package persist
 
@@ -42,10 +47,12 @@ func NewPlayerPersister(db txBeginner) *PlayerPersister {
 //
 //   - batch == nil                            → error.
 //   - batch.PlayerData.Enrichment == nil      → no-op.
-//   - match_id existe déjà dans player_match_enrichment → skip (idempotent ACK).
+//   - row stage='live' existe déjà pour ce match_id → skip (idempotent ACK).
 //
-// L'enrichment est l'ancre d'idempotence : si la row existe déjà pour ce
-// match_id, tout le sous-batch est considéré déjà persisté.
+// L'enrichment 'live' est l'ancre d'idempotence : si la row baseline existe déjà
+// pour ce match_id, tout le sous-batch (skill_rank/lusr/citations/psa/career) est
+// considéré déjà persisté. Cible stage='live' car la table est append-only et
+// porte N rows par match (1 par stage post-sync).
 func (p *PlayerPersister) Persist(ctx context.Context, batch *MatchBatch) error {
 	if batch == nil {
 		return errors.New("persist: PlayerPersister.Persist: batch nil")
@@ -63,7 +70,7 @@ func (p *PlayerPersister) Persist(ctx context.Context, batch *MatchBatch) error 
 
 	var exists bool
 	if err := tx.QueryRowContext(ctx,
-		`SELECT EXISTS(SELECT 1 FROM player_match_enrichment WHERE match_id = ?)`,
+		`SELECT EXISTS(SELECT 1 FROM player_match_enrichment WHERE match_id = ? AND stage = 'live')`,
 		pb.Enrichment.MatchID,
 	).Scan(&exists); err != nil {
 		return fmt.Errorf("persist: check enrichment exists %s: %w", pb.Enrichment.MatchID, err)
@@ -175,6 +182,10 @@ func persistEnrichment(ctx context.Context, tx *sql.Tx, row *EnrichmentRow) erro
 		return nil
 	}
 	fields := enrichmentFields(row)
+	// Append-only #23046 : le collect live écrit UNE row baseline stage='live'
+	// (multi-colonnes). Les writers post-sync owner-stage l'overrident par colonne
+	// via la vue merge-on-read. Pas de split par stage ici (cf. décision design #1).
+	fields = append(fields, fieldEntry{"stage", "live"})
 	cols := make([]string, len(fields))
 	placeholders := make([]string, len(fields))
 	args := make([]any, len(fields))

@@ -11,6 +11,8 @@ import (
 	"database/sql"
 	"testing"
 
+	"levelup/go-api/internal/migration"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -48,6 +50,11 @@ func openMemForAggregates(t *testing.T) *sql.DB {
 		t.Fatalf("CREATE match_skill_rank: %v", err)
 	}
 
+	// Append-only #23046 : convertit player_match_enrichment (id PK + stage) + crée
+	// la vue player_match_enrichment_latest (refreshAggregates / mv_player_matches la lit).
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
 	return db
 }
 
@@ -71,7 +78,7 @@ func TestRefreshAggregates_WithData(t *testing.T) {
 	db := openMemForAggregates(t)
 
 	// Seed
-	_, _ = db.Exec(`INSERT INTO player_match_enrichment VALUES ('m1', 75.0, 's1', 'S1', true)`)
+	_, _ = db.Exec(`INSERT INTO player_match_enrichment (match_id, performance_score, session_id, session_label, is_with_friends) VALUES ('m1', 75.0, 's1', 'S1', true)`)
 	_, _ = db.Exec(`INSERT INTO match_skill_rank VALUES ('m1', 'LUSR', 1500.0, 'Ranked Slayer')`)
 
 	count, _, err := refreshAggregates(t.Context(), db)
@@ -93,7 +100,7 @@ func TestRefreshAggregates_WithData(t *testing.T) {
 // TestRefreshAggregates_Idempotent vérifie que 3 passes donnent le même résultat.
 func TestRefreshAggregates_Idempotent(t *testing.T) {
 	db := openMemForAggregates(t)
-	_, _ = db.Exec(`INSERT INTO player_match_enrichment VALUES ('m1', 80.0, 's1', 'Session1', false)`)
+	_, _ = db.Exec(`INSERT INTO player_match_enrichment (match_id, performance_score, session_id, session_label, is_with_friends) VALUES ('m1', 80.0, 's1', 'Session1', false)`)
 
 	for i := 1; i <= 3; i++ {
 		_, _, err := refreshAggregates(t.Context(), db)

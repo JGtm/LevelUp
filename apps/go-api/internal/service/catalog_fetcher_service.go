@@ -207,17 +207,47 @@ func (s *CatalogFetcherService) upsertPlaylist(ctx context.Context, titleSlug st
 	}
 	// Re-enqueue les pairs liés s'ils ne sont pas dans le catalogue.
 	for _, link := range pl.PairLinks {
+		// ART-safe (metadata.duckdb, #23046) : playlist_pair_links GARDE sa PK
+		// (title_slug, playlist_asset_id, pair_asset_id) → un INSERT OR IGNORE
+		// sonderait/maintiendrait l'index ART de la PK au conflit (vecteur). SELECT-then-
+		// INSERT (NOT EXISTS) : pas de résolution de conflit. Comportement OR IGNORE
+		// préservé (pas d'update du weight si la ligne existe).
 		_, _ = s.metadataDB.ExecContext(ctx,
-			`INSERT OR IGNORE INTO playlist_pair_links (title_slug, playlist_asset_id, pair_asset_id, weight)
-			 VALUES (?, ?, ?, ?)`,
+			`INSERT INTO playlist_pair_links (title_slug, playlist_asset_id, pair_asset_id, weight)
+			 SELECT ?, ?, ?, ?
+			 WHERE NOT EXISTS (
+			   SELECT 1 FROM playlist_pair_links
+			   WHERE title_slug = ? AND playlist_asset_id = ? AND pair_asset_id = ?
+			 )`,
 			titleSlug, pl.AssetID, link.PairAssetID, link.Weight,
+			titleSlug, pl.AssetID, link.PairAssetID,
 		)
-		_, _ = s.metadataDB.ExecContext(ctx,
-			`INSERT OR IGNORE INTO catalog_fetch_queue (title_slug, asset_type, asset_id) VALUES (?, 'pair', ?)`,
-			titleSlug, link.PairAssetID,
-		)
+		s.enqueueCatalogChild(ctx, titleSlug, "pair", link.PairAssetID)
 	}
 	return nil
+}
+
+// enqueueCatalogChild ajoute un asset enfant à catalog_fetch_queue s'il n'y est pas
+// déjà. ART-safe : INSERT … SELECT … WHERE NOT EXISTS (catalog_fetch_queue n'a plus de
+// PK depuis rebuild_catalog_fetch_queue_drop_art_indexes → INSERT OR IGNORE ne
+// dédupliquerait plus ET échouait silencieusement sur la colonne version_id NOT NULL).
+// version_id=” : le drain le résoudra. Best-effort (erreur loggée en debug).
+func (s *CatalogFetcherService) enqueueCatalogChild(ctx context.Context, titleSlug, assetType, assetID string) {
+	if assetID == "" {
+		return
+	}
+	if _, err := s.metadataDB.ExecContext(ctx,
+		`INSERT INTO catalog_fetch_queue (title_slug, asset_type, asset_id, version_id)
+		 SELECT ?, ?, ?, ''
+		 WHERE NOT EXISTS (
+		   SELECT 1 FROM catalog_fetch_queue
+		   WHERE title_slug = ? AND asset_type = ? AND asset_id = ?
+		 )`,
+		titleSlug, assetType, assetID, titleSlug, assetType, assetID,
+	); err != nil {
+		slog.DebugContext(ctx, "catalog re-enqueue: INSERT échoué",
+			"asset_type", assetType, "asset_id", assetID, "err", err)
+	}
 }
 
 func (s *CatalogFetcherService) upsertPair(ctx context.Context, titleSlug string, p canonical.CanonicalPair) error {
@@ -249,19 +279,9 @@ func (s *CatalogFetcherService) upsertPair(ctx context.Context, titleSlug string
 			[]any{titleSlug, p.AssetID, lang, label},
 		)
 	}
-	// Re-enqueue map et game_variant si inconnus.
-	if p.MapAssetID != "" {
-		_, _ = s.metadataDB.ExecContext(ctx,
-			`INSERT OR IGNORE INTO catalog_fetch_queue (title_slug, asset_type, asset_id) VALUES (?, 'map', ?)`,
-			titleSlug, p.MapAssetID,
-		)
-	}
-	if p.GameVariantAssetID != "" {
-		_, _ = s.metadataDB.ExecContext(ctx,
-			`INSERT OR IGNORE INTO catalog_fetch_queue (title_slug, asset_type, asset_id) VALUES (?, 'game_variant', ?)`,
-			titleSlug, p.GameVariantAssetID,
-		)
-	}
+	// Re-enqueue map et game_variant si inconnus (ART-safe via enqueueCatalogChild).
+	s.enqueueCatalogChild(ctx, titleSlug, "map", p.MapAssetID)
+	s.enqueueCatalogChild(ctx, titleSlug, "game_variant", p.GameVariantAssetID)
 	return nil
 }
 

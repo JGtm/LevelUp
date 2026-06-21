@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/migration"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
@@ -34,26 +35,51 @@ CREATE INDEX IF NOT EXISTS idx_psa_match    ON personal_score_awards(match_id);
 CREATE INDEX IF NOT EXISTS idx_psa_xuid     ON personal_score_awards(xuid);
 CREATE INDEX IF NOT EXISTS idx_psa_category ON personal_score_awards(award_category);
 
+-- player_match_enrichment : APPEND-ONLY (campagne ART #23046, 2026-06-21). La
+-- table la PLUS écrite du projet (écritures incrémentales partielles perf/engagement/
+-- session/friends/bot/exclusion/psa) ne peut plus naître avec PK(match_id) + index
+-- ART mutés. PK technique id (séquence pme_seq) + colonne stage discriminant
+-- l'étape d'écriture + written_at. Chaque writer INSÈRE une row partielle taguée
+-- (perf/session/engagement/friends/bot/exclusion/psa/dominance/teammates/live).
+-- Lecture via la vue player_match_enrichment_latest (merge-on-read par-groupe),
+-- créée/rafraîchie par la migration player_append_only_match_enrichment_v1 (source
+-- unique = buildPMELatestViewSQL). Aucun PK(match_id), aucun index ART muté.
+CREATE SEQUENCE IF NOT EXISTS pme_seq START 1;
 CREATE TABLE IF NOT EXISTS player_match_enrichment (
-    match_id               VARCHAR   PRIMARY KEY,
-    performance_score      FLOAT,
-    performance_chain      VARCHAR,
-    session_id             VARCHAR,
-    session_label          VARCHAR,
-    is_with_friends        BOOLEAN   DEFAULT FALSE,
-    teammates_signature    VARCHAR,
-    known_teammates_count  SMALLINT,
-    friends_xuids          VARCHAR,
-    had_bot_teammate       BOOLEAN,
-    is_excluded            BOOLEAN   DEFAULT FALSE,
+    id                          BIGINT  DEFAULT nextval('pme_seq') PRIMARY KEY,
+    match_id                    VARCHAR NOT NULL,
+    performance_score           FLOAT,
+    performance_chain           VARCHAR,
+    dominance_flag              TINYINT,
+    session_id                  VARCHAR,
+    session_label               VARCHAR,
+    is_with_friends             BOOLEAN   DEFAULT FALSE,
+    teammates_signature         VARCHAR,
+    known_teammates_count       SMALLINT,
+    friends_xuids               VARCHAR,
+    had_bot_teammate            BOOLEAN,
+    is_excluded                 BOOLEAN   DEFAULT FALSE,
     -- Marqueur terminal de la convergence PSA (cf. convergePSA). NULL = jamais
     -- tente. Non-NULL = JSON match fetche et extraction tentee (meme si 0 award).
     -- Empeche le re-fetch infini des matchs sans PersonalScores extractibles.
-    psa_checked_at         TIMESTAMP,
-    created_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    psa_checked_at              TIMESTAMP,
+    engagement_score            DOUBLE,
+    engagement_score_brut       DOUBLE,
+    engagement_score_confidence VARCHAR,
+    mode_category               VARCHAR,
+    engagement_pace_player      DOUBLE,
+    engagement_pace_team        DOUBLE,
+    engagement_pace_lobby       DOUBLE,
+    engagement_player_activity  INTEGER,
+    stage                       VARCHAR   DEFAULT 'legacy',
+    written_at                  TIMESTAMP NOT NULL DEFAULT now(),
+    created_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_pme_session ON player_match_enrichment(session_id);
+-- idx_pme_match_lookup(match_id, written_at) est créé par la migration append-only
+-- (player_append_only_match_enrichment_v1), PAS ici : sur une DB legacy pré-existante,
+-- CREATE TABLE IF NOT EXISTS no-ope et written_at n'existe pas encore → CREATE INDEX
+-- échouerait. La migration le pose après le swap (written_at garanti).
 
 CREATE TABLE IF NOT EXISTS sync_meta (
     key        VARCHAR PRIMARY KEY,
@@ -370,6 +396,15 @@ func OpenPlayerDB(path string) (*duckdbpkg.DB, error) {
 	if err := EnsurePlayerSchema(context.Background(), handle.SQLDb()); err != nil {
 		handle.Close()
 		return nil, fmt.Errorf("OpenPlayerDB schema %s: %w", path, err)
+	}
+	// Append-only #23046 : garantir la vue player_match_enrichment_latest + la
+	// conversion append-only de la table. EnsurePlayerSchema crée la TABLE mais PAS
+	// la vue (créée par la migration player_append_only_match_enrichment_v1). Sans
+	// cela, une player DB NEUVE ouverte hors du pool (1er sync) aurait la table mais
+	// pas la vue → tous les readers post-sync (_latest) échoueraient. Idempotent.
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(handle.SQLDb()); err != nil {
+		handle.Close()
+		return nil, fmt.Errorf("OpenPlayerDB append-only pme %s: %w", path, err)
 	}
 	return handle, nil
 }

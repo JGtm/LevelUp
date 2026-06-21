@@ -12,6 +12,8 @@ import (
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/migration"
 )
 
 func openMemDB(t *testing.T, ddl string) *sql.DB {
@@ -24,6 +26,11 @@ func openMemDB(t *testing.T, ddl string) *sql.DB {
 	if _, err := db.Exec(ddl); err != nil {
 		t.Fatalf("ddl: %v", err)
 	}
+	// No-op si player_match_enrichment absent (shared DDL) ; convertit en
+	// append-only + crée la vue _latest pour les DDL player.
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
 	return db
 }
 
@@ -35,7 +42,7 @@ CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR);
 `
 
 const playerDDL = `
-CREATE TABLE player_match_enrichment (match_id VARCHAR, session_id VARCHAR, performance_score FLOAT, psa_checked_at TIMESTAMP);
+CREATE TABLE player_match_enrichment (match_id VARCHAR, session_id VARCHAR, session_label VARCHAR, is_with_friends BOOLEAN DEFAULT FALSE, teammates_signature VARCHAR, performance_score FLOAT, psa_checked_at TIMESTAMP);
 CREATE TABLE match_skill_rank (match_id VARCHAR, rating_type VARCHAR);
 CREATE TABLE match_citations (match_id VARCHAR, citation_name_norm VARCHAR);
 CREATE TABLE personal_score_awards (match_id VARCHAR, xuid VARCHAR);

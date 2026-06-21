@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/persist"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	syncpkg "levelup/go-api/internal/sync"
@@ -59,8 +60,21 @@ func setupE2EEnv(t *testing.T, gamertags []string) *e2eEnv {
 			t.Fatalf("open player %s: %v", gt, err)
 		}
 		t.Cleanup(func() { _ = db.Close() })
-		if _, err := db.SQLDb().Exec(`CREATE TABLE player_match_enrichment (match_id VARCHAR PRIMARY KEY)`); err != nil {
+		// match_id + colonnes de base référencées par la vue _latest (la migration
+		// append-only suppose les colonnes de base préexistantes, créées en prod
+		// par create_base_player_schema).
+		if _, err := db.SQLDb().Exec(`CREATE TABLE player_match_enrichment (
+			match_id VARCHAR PRIMARY KEY,
+			performance_score FLOAT,
+			session_id VARCHAR,
+			session_label VARCHAR,
+			is_with_friends BOOLEAN DEFAULT FALSE,
+			teammates_signature VARCHAR
+		)`); err != nil {
 			t.Fatalf("create player_match_enrichment %s: %v", gt, err)
+		}
+		if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db.SQLDb()); err != nil {
+			t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly %s: %v", gt, err)
 		}
 		playerDBs[gt] = db
 	}

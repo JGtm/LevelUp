@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"testing"
 
+	"levelup/go-api/internal/migration"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -99,6 +101,9 @@ func openRecomputeDB(t *testing.T) *sql.DB {
 	`
 	if err := execScript(t.Context(), db, ddl); err != nil {
 		t.Fatal(err)
+	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
 	return db
 }
@@ -208,7 +213,7 @@ func TestRecomputeAfterARTRebuild_ProducesAllCascadeOutputs(t *testing.T) {
 
 	var perfCount int
 	if err := db.QueryRow(
-		`SELECT COUNT(*) FROM player_match_enrichment WHERE performance_score IS NOT NULL`,
+		`SELECT COUNT(*) FROM player_match_enrichment_latest WHERE performance_score IS NOT NULL`,
 	).Scan(&perfCount); err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +223,7 @@ func TestRecomputeAfterARTRebuild_ProducesAllCascadeOutputs(t *testing.T) {
 
 	var domCount int
 	if err := db.QueryRow(
-		`SELECT COUNT(*) FROM player_match_enrichment WHERE dominance_flag IS NOT NULL`,
+		`SELECT COUNT(*) FROM player_match_enrichment_latest WHERE dominance_flag IS NOT NULL`,
 	).Scan(&domCount); err != nil {
 		t.Fatal(err)
 	}
@@ -270,7 +275,7 @@ func TestRecomputeAfterARTRebuild_Idempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := db.QueryRow(
-		`SELECT COUNT(*) FROM player_match_enrichment WHERE performance_score IS NOT NULL`,
+		`SELECT COUNT(*) FROM player_match_enrichment_latest WHERE performance_score IS NOT NULL`,
 	).Scan(&perf1); err != nil {
 		t.Fatal(err)
 	}
@@ -293,7 +298,7 @@ func TestRecomputeAfterARTRebuild_Idempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := db.QueryRow(
-		`SELECT COUNT(*) FROM player_match_enrichment WHERE performance_score IS NOT NULL`,
+		`SELECT COUNT(*) FROM player_match_enrichment_latest WHERE performance_score IS NOT NULL`,
 	).Scan(&perf2); err != nil {
 		t.Fatal(err)
 	}

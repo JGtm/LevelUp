@@ -186,33 +186,90 @@ func scanMatchIDs(rows *sql.Rows) ([]string, error) {
 	return ids, rows.Err()
 }
 
-// setHadBotFlag UPDATE player_match_enrichment.had_bot_teammate pour les
-// match_ids donnés. Filtre "current != value" pour garder l'idempotence
-// (un 2e run consécutif renvoie 0 row affectée).
+// setHadBotFlag INSÈRE had_bot_teammate (stage='bot', valeur explicite) pour les
+// matchs dont la valeur mergée courante diffère. Append-only #23046 — bidirectionnel
+// (appelé avec value=false pour effacer), jamais NULL.
 func setHadBotFlag(ctx context.Context, playerDB *sql.DB, matchIDs []string, value bool) (int, error) {
+	return insertEnrichmentBoolFlagDelta(ctx, playerDB, matchIDs, "had_bot_teammate", "bot", value)
+}
+
+// insertEnrichmentBoolFlagDelta INSÈRE une row partielle (colonne booléenne `col`,
+// `stage`) avec la valeur EXPLICITE `value` pour chaque match dont la valeur mergée
+// courante (vue player_match_enrichment_latest) DIFFÈRE — append-only #23046,
+// idempotence + croissance bornée. Les matchs sans aucune row PME sont ignorés
+// (parité avec l'ancien UPDATE no-op-on-absent). Retourne le nombre de rows insérées.
+func insertEnrichmentBoolFlagDelta(ctx context.Context, playerDB *sql.DB, matchIDs []string, col, stage string, value bool) (int, error) {
 	if len(matchIDs) == 0 {
 		return 0, nil
 	}
-	placeholders := strings.TrimRight(strings.Repeat("?,", len(matchIDs)), ",")
-	currentClause := "COALESCE(had_bot_teammate, FALSE) = FALSE"
-	if !value {
-		currentClause = "COALESCE(had_bot_teammate, FALSE) = TRUE"
-	}
-	q := fmt.Sprintf(`
-		UPDATE player_match_enrichment
-		SET had_bot_teammate = ?
-		WHERE match_id IN (%s)
-		  AND %s
-	`, placeholders, currentClause)
-	args := make([]any, 0, 1+len(matchIDs))
-	args = append(args, value)
-	for _, id := range matchIDs {
-		args = append(args, id)
-	}
-	res, err := playerDB.ExecContext(ctx, q, args...)
+	current, err := loadCurrentBoolFlags(ctx, playerDB, matchIDs, col)
 	if err != nil {
 		return 0, err
 	}
-	n, _ := res.RowsAffected()
-	return int(n), nil
+	var toWrite []string
+	for _, id := range matchIDs {
+		if cur, ok := current[id]; ok && cur != value {
+			toWrite = append(toWrite, id)
+		}
+	}
+	if len(toWrite) == 0 {
+		return 0, nil
+	}
+	q := fmt.Sprintf(`INSERT INTO player_match_enrichment (match_id, %s, stage) VALUES (?, ?, ?)`, col)
+	tx, err := playerDB.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	for _, id := range toWrite {
+		if _, err := tx.ExecContext(ctx, q, id, value, stage); err != nil {
+			return 0, fmt.Errorf("insert %s (match_id=%s): %w", col, id, err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return len(toWrite), nil
+}
+
+// loadCurrentBoolFlags lit la valeur mergée (vue _latest, COALESCE FALSE) d'une colonne
+// booléenne pour un set de matchs. Seuls les matchs ayant une row PME sont retournés.
+// Chunké par 500 (limite placeholders DuckDB sur gros volume).
+func loadCurrentBoolFlags(ctx context.Context, playerDB *sql.DB, matchIDs []string, col string) (map[string]bool, error) {
+	const chunk = 500
+	out := make(map[string]bool, len(matchIDs))
+	for start := 0; start < len(matchIDs); start += chunk {
+		end := start + chunk
+		if end > len(matchIDs) {
+			end = len(matchIDs)
+		}
+		batch := matchIDs[start:end]
+		placeholders := strings.TrimRight(strings.Repeat("?,", len(batch)), ",")
+		q := fmt.Sprintf(
+			`SELECT match_id, COALESCE(%s, FALSE) FROM player_match_enrichment_latest WHERE match_id IN (%s)`,
+			col, placeholders)
+		args := make([]any, len(batch))
+		for i, id := range batch {
+			args[i] = id
+		}
+		rows, err := playerDB.QueryContext(ctx, q, args...)
+		if err != nil {
+			return nil, err
+		}
+		for rows.Next() {
+			var id string
+			var v bool
+			if err := rows.Scan(&id, &v); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			out[id] = v
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		rows.Close()
+	}
+	return out, nil
 }
