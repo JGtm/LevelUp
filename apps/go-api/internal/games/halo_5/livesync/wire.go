@@ -68,16 +68,45 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 // Échec d'auth → nil (xuid roster "" ; le câblage participants resolve-or-skip).
 func halo5ResolverFactory(cfg *config.AppConfig, viewerGamertag, viewerXUID string, logger *slog.Logger) func(ctx context.Context) XUIDResolver {
 	return func(ctx context.Context) XUIDResolver {
-		base, err := worldenrich.BuildResolver(cfg, viewerGamertag)
-		if err != nil {
-			logger.WarnContext(ctx, "h5 sync: resolver PeopleHub indisponible (xuid roster non résolus)",
-				"viewer", viewerGamertag, "err", err)
-			return nil
+		// MULTI-COMPTE (anti rate-limit) : la limite PeopleHub est PAR COMPTE, donc
+		// répartir les résolutions en round-robin sur tous les comptes tokenisés
+		// multiplie le quota effectif (le storm 429 venait d'un seul compte saturé).
+		// BuildMultiResolver ignore les comptes sans token → fallback single si aucun.
+		resolvers, _, err := worldenrich.BuildMultiResolver(cfg, allResolverGamertags(cfg, viewerGamertag))
+		if err != nil || len(resolvers) == 0 {
+			base, berr := worldenrich.BuildResolver(cfg, viewerGamertag)
+			if berr != nil {
+				logger.WarnContext(ctx, "h5 sync: resolver PeopleHub indisponible (xuid roster non résolus)",
+					"viewer", viewerGamertag, "err", berr)
+				return nil
+			}
+			resolvers = []*auth.PeopleHubResolver{base}
 		}
-		return worldenrich.NewCachingResolver(
-			[]*auth.PeopleHubResolver{base},
-			map[string]string{viewerGamertag: viewerXUID}, // self autoritatif
-			nil,
-		)
+		// Graine = mapping déjà connu (shared.xuid_aliases, écrit par les runs
+		// précédents) → on NE re-résout PAS les joueurs déjà vus via PeopleHub.
+		// Le self (xuid db_profiles) prime. La persistance des NOUVELLES résolutions
+		// passe par l'ingest (AddXUIDAliases → shared.xuid_aliases), d'où persist=nil.
+		sharedPath := titlePkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(halo5.TitleSlug)
+		seed := loadXUIDAliasesSeed(ctx, sharedPath)
+		seed[viewerGamertag] = viewerXUID
+		return worldenrich.NewCachingResolver(resolvers, seed, nil)
 	}
+}
+
+// allResolverGamertags énumère les comptes (gamertags) utilisables pour la
+// résolution xuid round-robin : le viewer + tous les joueurs déclarés (db_profiles).
+// BuildMultiResolver écarte ceux sans token. Dédup, viewer en tête.
+func allResolverGamertags(cfg *config.AppConfig, viewerGamertag string) []string {
+	out := []string{viewerGamertag}
+	seen := map[string]bool{viewerGamertag: true}
+	if players, err := cfg.LoadPlayers(""); err == nil {
+		for i := range players {
+			gt := players[i].Gamertag
+			if gt != "" && !seen[gt] {
+				seen[gt] = true
+				out = append(out, gt)
+			}
+		}
+	}
+	return out
 }

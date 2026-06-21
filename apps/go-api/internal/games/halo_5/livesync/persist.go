@@ -36,6 +36,32 @@ func loadKnownMatchIDs(ctx context.Context, sharedDBPath string) (map[string]boo
 	return known, rows.Err()
 }
 
+// loadXUIDAliasesSeed lit le mapping gamertag→xuid déjà connu (shared.xuid_aliases,
+// alimenté par les runs précédents) pour AMORCER le CachingResolver : un joueur déjà
+// résolu n'est PAS re-résolu via PeopleHub → anti rate-limit (le storm 429 venait de
+// re-résoudre tout le roster à chaque run). Best-effort : toute erreur → graine vide.
+func loadXUIDAliasesSeed(ctx context.Context, sharedDBPath string) map[string]string {
+	seed := make(map[string]string, 1024)
+	db, release, err := syncpkg.AcquireSharedWriterStandalone(ctx, nil, sharedDBPath)
+	if err != nil {
+		return seed
+	}
+	defer release()
+	rows, err := db.QueryContext(ctx,
+		"SELECT gamertag, xuid FROM xuid_aliases WHERE gamertag IS NOT NULL AND xuid IS NOT NULL")
+	if err != nil {
+		return seed
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var gt, xuid string
+		if rows.Scan(&gt, &xuid) == nil && gt != "" && xuid != "" {
+			seed[gt] = xuid
+		}
+	}
+	return seed
+}
+
 // persistBatches écrit les batches sur le shared d'un titre sous UN lease RW (acquis
 // APRÈS le fetch — on ne tient jamais le write-lease pendant l'I/O réseau).
 // Idempotence : SharedPersister no-op un match_id déjà présent (INSERT-only, ART-safe).
