@@ -8,10 +8,12 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -159,6 +161,39 @@ func loadTitleAssetDrawerData(pr *titlePkg.PathResolver, slug string) (maps, wea
 		_ = rows.Close()
 	}
 	return maps, weapons, medals
+}
+
+// loadCSRBadgeResolver construit un résolveur d'insignes CSR pour un titre
+// additionnel depuis sa metadata (csr_designations → icon_url par designation+tier,
+// URLs CDN officielles). Retourne nil si la DB est absente / vide ; le résolveur ne
+// répond QUE pour `slug` (autres titres → "" → chemin HINF inchangé).
+func loadCSRBadgeResolver(pr *titlePkg.PathResolver, slug string) func(string, string, int) string {
+	metaDB, err := platform_duckdb.OpenReadWriteShared(pr.MetadataDBPath(slug))
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = metaDB.Close() }()
+	m := map[string]string{}
+	if rows, qerr := metaDB.Query(context.Background(),
+		`SELECT designation_name, tier_id, COALESCE(icon_url, '') FROM csr_designations`); qerr == nil {
+		for rows.Next() {
+			var name, url string
+			var tier int
+			if rows.Scan(&name, &tier, &url) == nil && url != "" {
+				m[fmt.Sprintf("%s|%d", strings.ToLower(name), tier)] = url
+			}
+		}
+		_ = rows.Close()
+	}
+	if len(m) == 0 {
+		return nil
+	}
+	return func(titleSlug, designation string, subTier int) string {
+		if titleSlug != slug {
+			return ""
+		}
+		return m[fmt.Sprintf("%s|%d", strings.ToLower(designation), subTier)]
+	}
 }
 
 //nolint:gocyclo // Routeur central : mount de ~80 endpoints avec feature flags
@@ -657,6 +692,12 @@ func NewRouter(
 			break
 		}
 	}
+
+	// Insignes CSR des titres additionnels (Halo 5 : table csr_designations, URLs
+	// officielles) — rend l'image de rang CSR title-aware dans le builder de badge
+	// (buildHomeSkillPeakBadgeURL). nil si pas de seed → HINF strictement inchangé.
+	platform_duckdb.SetCSRBadgeResolver(loadCSRBadgeResolver(
+		titlePkg.NewPathResolver(cfg.RepoRoot), halo5.TitleSlug))
 
 	// Fichiers statiques (images maps, médailles, armes…)
 	staticDir := filepath.Join(cfg.RepoRoot, "static")
