@@ -18,11 +18,16 @@ import "levelup/go-api/internal/domain"
 //
 // Retourne nil quand sampleSize ≤ 0 ou agg == nil — l'encart masque alors la
 // section "Sur N matchs joués ensemble".
+// computeKDA gate l'agrégat KDA façon Infinite ((k+a/3)/d). Faux pour les titres
+// sans KDA natif (Halo 5 : forme native = FDA NET) — on laisse alors KDA nil
+// plutôt que d'appliquer une formule étrangère. Résolu par le caller via
+// games.ProvidesNativeKDA(slug). KDR (k/d, non ambigu) reste toujours calculé.
 func BuildSampleStats(
 	agg *domain.ParticipantStatsAggregate,
 	medals *domain.MedalCountsAggregate,
 	sampleSize int,
 	effectiveHpToKill float64,
+	computeKDA bool,
 ) *domain.ExplorerTargetSampleStats {
 	if agg == nil || sampleSize <= 0 {
 		return nil
@@ -52,13 +57,16 @@ func BuildSampleStats(
 		stats.PerfectKills = medals.PerfectKills
 	}
 
-	// KDA = (kills + assists/3) / deaths.
-	// KDR = kills / deaths.
+	// KDR = kills / deaths (non ambigu, toujours calculé).
+	// KDA = (kills + assists/3) / deaths — UNIQUEMENT pour les titres à KDA natif
+	// (computeKDA) ; pour Halo 5 (forme native FDA NET) on laisse KDA nil.
 	if agg.Deaths > 0 {
-		kda := (float64(agg.Kills) + float64(agg.Assists)/3.0) / float64(agg.Deaths)
 		kdr := float64(agg.Kills) / float64(agg.Deaths)
-		stats.KDA = &kda
 		stats.KDR = &kdr
+		if computeKDA {
+			kda := (float64(agg.Kills) + float64(agg.Assists)/3.0) / float64(agg.Deaths)
+			stats.KDA = &kda
+		}
 	}
 
 	// WinRate = wins / (wins + losses + draws). On exclut les DNF du

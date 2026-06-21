@@ -1,3 +1,26 @@
+## [2026-06-21] Halo 5 lecture — sémantique KDA + baseline dégâts title-aware — Complété (lot back)
+
+**Statut** : durcissement BACKEND de la surface de lecture h5 (phase « câbler la lecture »). Honore la règle ABSOLUE « KDA JAMAIS calculé pour h5 » sur TOUS les sites d'AFFICHAGE qui le fabriquaient, + rend la baseline dégâts title-aware là où elle était câblée 225.
+
+**Audit préalable** (workflow understand : 8 lecteurs // + synthèse) : la plupart des surfaces produit (match history, home, career, sessions, weapons, squad, match detail) sont DÉJÀ title-aware (lisent le shared h5 via PathResolver une fois le joueur déclaré ; MatchHistoryService.GetPage → repo.LoadAll, l'adapter Load* n'est PAS sur ce chemin). Le front gate l'affichage sur les capabilities COARSE de `title.toml` (h5 a matchmaking/ranked/career/…). Donc « afficher h5 » = DÉCLARER le joueur, pas flipper les capabilities fines.
+
+**Fixes livrés (tous testés, `go build ./...` vert)** :
+- **KDA jamais fabriqué** : retiré les 3 sites de fabrication AFFICHÉE pour h5 — `mapping_servicerecord` (identité/carrière), `explorer_target_stats.BuildSampleStats` (panneau cible, via param `computeKDA`), `compare_repo` (vue Compare, `kdaExpr`→NULL). Gate config-driven `games.ProvidesNativeKDA(slug)` (flag `no_native_kda` dans constants.toml `[damage_model]`, défaut true=Infinite). KDR (k/d non ambigu) conservé.
+- **Baseline dégâts title-aware** : `match_view_repo` map-image (`halo_infinite.TitleSlug`→`r.pdb.TitleSlug`, import retiré) ; `Q23StatsMatchesShared` `225.0`→`?` lié à `EffectiveHpToKill(pdb.TitleSlug)`.
+- **Tests** : ProvidesNativeKDA (h5=false / défaut=true / resolver nil-legacy=true), BuildSampleStats no-native-KDA, servicerecord KDA nil, +10 callers MAJ.
+
+**Latent / différé (hors chemin d'affichage h5 OU interne)** :
+- D (`performance_score`) + E2 (`skill_rating` LUSR) : KDA/baseline INTERNES au perf-score/LUSR, jamais calculés sur le chemin livesync h5 (pas de post-sync runner). À gater si h5 calcule un jour perf-score/LUSR.
+- `patterns_repo` KDA : entrée interne détection tilt/fatigue (pas un KDA affiché).
+- `explorer.go` KDA float64 (l.36/158) : LECTURE de `match_participants.kda` (NULL pour h5), pas une fabrication.
+
+**Reste (checkpoint — runtime/produit/front)** :
+- Déclarer `(halo_5, JGtm)` dans `db_profiles.json` → allume l'affichage (runtime : scheduler/watcher syncent h5 ; valider sur le bon clone).
+- `title.toml` coarse cap `"lusr"` pour h5 sans pipeline LUSR (CSR natif) → bloc LUSR vide/trompeur ; retirer `"lusr"` ou confirmer dégradation front (décision produit).
+- compare/explorer KDA = float64 non-nullable → h5 affiche 0 au lieu de « — » ; passer en `*float64` (ripple domain+front) = suivi affichage.
+
+**Process** : le workflow de review avait un bug de cwd (agents sur le clone *main*, branche `refactor/art-pme-appendonly` SANS le package halo_5) → verdict « fictif » ERRONÉ ; findings réels re-vérifiés direct sur le worktree (compare/patterns confirmés). Leçon : faire `cd` les agents vers le worktree.
+
 ## [2026-06-20] Sync live Halo 5 — T4 : sync CONTINU (scheduler + watcher) — Complété
 
 **Statut** : les DEUX déclencheurs serveur routent désormais les titres live-only (Halo 5+) vers leur pipeline dédié, JAMAIS l'engine Infinite. Le HTTP `/sync/initial` (T3) faisait un one-shot ; T4 ajoute le périodique (scheduler) + le temps-réel (watcher). h5 est maintenant 100 % autonome côté ingestion (one-shot + continu + présence).

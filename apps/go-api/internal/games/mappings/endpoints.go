@@ -49,6 +49,9 @@ type EndpointSet struct {
 // rendement/résistance. Zéro-value (0) = non déclaré → le caller applique son défaut.
 type DamageModelConstants struct {
 	EffectiveHpToKill float64
+	// NoNativeKDA = true → le titre ne fournit pas de KDA per-match via son API
+	// (Halo 5 ; forme native = FDA NET). Défaut false (KDA natif, Infinite).
+	NoNativeKDA bool
 }
 
 // NewEndpointSet construit un EndpointSet (utilisé par le loader et les tests).

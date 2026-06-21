@@ -39,3 +39,7 @@ nameplate     = "https://haloplayer.svc.halowaypoint.com"     # profiles/appeara
 # l'activation 1b). Tant que non validé, rendement/résistance Halo 5 = approximatifs.
 [damage_model]
 effective_hp_to_kill = 115
+# no_native_kda = true → Halo 5 ne renvoie PAS de KDA per-match via l'API ; sa forme
+# native est un FDA NET ((k+a/3)−d)/games. On ne fabrique JAMAIS de KDA façon Infinite
+# pour h5 (valeur fausse) : les surfaces le laissent nil. Cf. games.ProvidesNativeKDA.
+no_native_kda = true

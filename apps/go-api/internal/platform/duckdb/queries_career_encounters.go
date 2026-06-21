@@ -169,12 +169,12 @@ SELECT
     mp.team_id,
     CASE
         WHEN COALESCE(mp.damage_dealt, 0) > 0 THEN
-            225.0 * (COALESCE(mp.kills, 0) + COALESCE(mp.assists, 0) / 3.0) / mp.damage_dealt
+            ? * (COALESCE(mp.kills, 0) + COALESCE(mp.assists, 0) / 3.0) / mp.damage_dealt
         ELSE 0.0
     END AS offensive_conversion,
     CASE
         WHEN COALESCE(mp.damage_taken, 0) > 0 AND COALESCE(mp.deaths, 0) > 0 THEN
-            mp.damage_taken / (225.0 * mp.deaths)
+            mp.damage_taken / (? * mp.deaths)
         ELSE 0.0
     END AS defensive_resistance
 FROM match_participants mp

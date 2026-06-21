@@ -21,6 +21,10 @@ type endpointsTOML struct {
 // title-spécifiques). Optionnelle : absente → modèle de dégâts non déclaré.
 type damageModelTOML struct {
 	EffectiveHpToKill float64 `toml:"effective_hp_to_kill"`
+	// no_native_kda = true → le titre ne fournit PAS de KDA per-match via son API
+	// (ex. Halo 5 : forme native = FDA NET, pas le quotient KDA). Défaut false =
+	// KDA natif disponible (Infinite). Consommé via games.ProvidesNativeKDA(slug).
+	NoNativeKDA bool `toml:"no_native_kda"`
 }
 
 // allowedEndpointKeys est la liste exhaustive des clés d'endpoint admises (MT-01).
@@ -100,7 +104,10 @@ func LoadEndpointsFromBytes(path string, raw []byte) (*EndpointSet, error) {
 		return nil, fmt.Errorf("validation %s: %w", path, errors.Join(errs...))
 	}
 
-	dm := DamageModelConstants{EffectiveHpToKill: doc.DamageModel.EffectiveHpToKill}
+	dm := DamageModelConstants{
+		EffectiveHpToKill: doc.DamageModel.EffectiveHpToKill,
+		NoNativeKDA:       doc.DamageModel.NoNativeKDA,
+	}
 	return NewEndpointSet(doc.Meta.TitleSlug, doc.Meta.SchemaVersion, gamePrefix, byKey).withDamageModel(dm), nil
 }
 

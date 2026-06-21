@@ -23,7 +23,6 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite"
 )
 
 // MatchViewRepo implémente port.MatchViewRepository.
@@ -87,7 +86,7 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 		if (row.MapImageURL == nil || *row.MapImageURL == "") &&
 			row.MapVersionID != nil && *row.MapVersionID != "" {
 			u := fmt.Sprintf("/api/v1/assets/maps/%s/%s/image?v=%s",
-				halo_infinite.TitleSlug, *row.MapAssetID, *row.MapVersionID)
+				r.pdb.TitleSlug, *row.MapAssetID, *row.MapVersionID)
 			row.MapImageURL = &u
 		}
 	}
@@ -190,7 +189,7 @@ func (r *MatchViewRepo) lookupMapImageURL(ctx context.Context, mapAssetID string
 		WHERE title_id = ? AND map_id = ?
 		  AND TRIM(local_path) != ''
 		LIMIT 1`
-	rows, err := r.pdb.Metadata.Query(ctx, q, halo_infinite.TitleSlug, mapAssetID)
+	rows, err := r.pdb.Metadata.Query(ctx, q, r.pdb.TitleSlug, mapAssetID)
 	if err != nil {
 		return nil
 	}

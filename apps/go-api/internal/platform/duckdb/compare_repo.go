@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -33,14 +34,21 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 	// shared-only via SharedReader (root-level naming). PMT-5 : win_rate title-aware
 	// (fallback "mp.outcome = 2" byte-identique Halo).
 	winExpr := outcomeSQLEqSlug(titleSlug, "mp.outcome", canonical.OutcomeWin, "mp.outcome = 2")
+	// KDA façon Infinite ((k + a/3)/d) — UNIQUEMENT pour les titres à KDA natif.
+	// Halo 5 (pas de KDA natif) → NULL : on ne fabrique JAMAIS le quotient (règle
+	// absolue). kda.Valid devient false → s.KDA reste 0 (le passage à un champ
+	// nullable pour afficher "—" côté Compare est un suivi front). KDR reste calculé.
+	kdaExpr := "NULL"
+	if games.ProvidesNativeKDA(titleSlug) {
+		kdaExpr = "AVG(COALESCE(mp.kills, 0) + 0.33 * COALESCE(mp.assists, 0)) / NULLIF(AVG(COALESCE(mp.deaths, 0)), 0)"
+	}
 	q := `
 		SELECT
 			mp.xuid,
 			COALESCE(vg.gamertag, xa.gamertag, '') AS gamertag,
 			COUNT(*)                               AS matches,
 			AVG(CASE WHEN ` + winExpr + ` THEN 1.0 ELSE 0.0 END) AS win_rate,
-			AVG(COALESCE(mp.kills, 0) + 0.33 * COALESCE(mp.assists, 0)) /
-				NULLIF(AVG(COALESCE(mp.deaths, 0)), 0)            AS kda,
+			` + kdaExpr + `            AS kda,
 			AVG(COALESCE(mp.kills, 0)) /
 				NULLIF(AVG(COALESCE(mp.deaths, 0)), 0)            AS kdr,
 			AVG(COALESCE(mp.kills, 0))                            AS kills_per_game,
