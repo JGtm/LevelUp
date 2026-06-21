@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -129,7 +130,11 @@ func (e *SyncEngine) runSkillRatingSteps(ctx context.Context, playerDB, sharedDB
 		// (couplage cross-joueur). Owner-only rend chaque sync AUTONOME : un joueur
 		// obtient ses lignes complètes seul, sans dépendre d'un backfill ni du sync
 		// d'un autre. Même chemin que le backfill recovery, déjà validé.
-		if n, err := RunLUSRV2ShadowOwnerOnly(ctx, playerDB, sharedDB, e.xuid); err != nil {
+		// Porte le titre de l'engine dans le ctx pour le seam LUSR title-aware
+		// (GetLUSRChainForTitle). Infinite → classifier défaut ; titres dédiés (h5)
+		// → leur classifier. Idempotent si le ctx le porte déjà.
+		scoringCtx := ctxkeys.WithTitleSlug(ctx, e.titleSlug)
+		if n, err := RunLUSRV2ShadowOwnerOnly(scoringCtx, playerDB, sharedDB, e.xuid); err != nil {
 			slog.WarnContext(ctx, "post-sync: LUSR v2 shadow échoué",
 				"gamertag", e.gamertag, "err", err)
 		} else if n > 0 {

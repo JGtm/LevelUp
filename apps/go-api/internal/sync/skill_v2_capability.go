@@ -17,24 +17,18 @@ import (
 	"levelup/go-api/internal/domain/title"
 )
 
-// lusrCapRegistry : registre par défaut, source de vérité des capabilities par
-// titre. halo_infinite déclare CapLUSR (cf. title.NewRegistry) ; un futur titre
-// qui ne la déclare pas → LUSR no-op pour ce titre, sans toucher ce code.
-//
-// On instancie un registre dédié plutôt que d'en injecter un dans le SyncEngine :
-// les capabilities sont statiques (déclarées en dur dans NewRegistry), donc une
-// copie locale est cohérente avec le registre du serveur et évite de threader
-// une dépendance à travers toute la chaîne sync. Si un jour les capabilities
-// deviennent dynamiques (par DB/config), il faudra injecter le registre runtime.
-var lusrCapRegistry = title.NewRegistry()
-
 // slugHasLUSR retourne true si le slug (défaut halo_infinite si vide) déclare
-// CapLUSR. Slug inconnu → false (le LUSR ne tourne pas pour ce titre).
+// CapLUSR dans le registre PARTAGÉ runtime (title.DefaultRegistry), peuplé au boot
+// depuis la config via SetDefaultRegistry. C'est désormais title-aware pour TOUS
+// les titres actifs : Halo 5 déclare la coarse cap "lusr" (title.toml), donc le
+// LUSR v2 (données basiques) tourne pour lui. Auparavant on consultait une copie
+// STATIQUE Infinite-only (NewRegistry) → tout titre non-Infinite était skippé même
+// avec CapLUSR. Slug inconnu → false (le LUSR ne tourne pas pour ce titre).
 func slugHasLUSR(slug string) bool {
 	if slug == "" {
 		slug = title.DefaultSlug
 	}
-	desc := lusrCapRegistry.Get(slug)
+	desc := title.DefaultRegistry().Get(slug)
 	return desc != nil && desc.HasCapability(title.CapLUSR)
 }
 

@@ -1,3 +1,16 @@
+## [2026-06-21] LUSR v2 title-generic → branché pour Halo 5 — Complété (core, testé)
+
+**Statut** : la v2 LUSR (TrueSkill2, données BASIQUES sans MMR) tourne désormais pour Halo 5 — et pour tout titre déclarant la cap `lusr`. Validé par test unitaire déterministe (`TestRunLUSRV2Shadow_Halo5_TitleAwareChain` : match h5-shaped → processed=1, état écrit sous la chaîne `h5_arena`, μ/σ valides).
+
+**Constat scoping** : la v2 ne lit que kills/deaths/assists/outcome/team_id/time_played (pas de MMR/CSR) — tout ce que h5 peuple via la carnage. Donc calculable tel quel. 3 blocages réels (pas le MMR) :
+1. **Classifier pair_name** : h5 n'a pas de pair_name → le classifier Infinite (`ClassifyLUSRChain`) collapse TOUS les modes h5 dans `arena_slayer`. Fix : seam **title-aware** (`SetLUSRChainClassifierForTitle` + `GetLUSRChainForTitle`, lu via `ctxkeys.TitleSlug(ctx)` dans `processOneShadowMatch`) + classifier h5 dédié (`halo_5/lusr_chain.go` → chaîne unique `h5_arena` ; Warzone/FFA écartés par le filtre 2-équipes, Ranked/FF par le SQL). Posé au boot (`SetLUSRChainClassifierForTitle(halo5.TitleSlug, …)`). Infinite inchangé (classifier défaut).
+2. **start_time legacy NULL** : h5 renseigne `start_time_utc` (canonique) et laisse `start_time` (legacy) NULL → les loaders LUSR filtraient `start_time IS NOT NULL` → 0 match. Fix title-generic : `COALESCE(start_time_utc, start_time) IS NOT NULL` (v1 `skill_rating_loaders.go` + v2 `skill_v2_shadow.go`, + ORDER BY).
+3. **Cap registry Infinite-only** : `slugHasLUSR` consultait une COPIE statique `NewRegistry()` (Infinite seul) → h5 skippé même avec CapLUSR. Fix : consulter `title.DefaultRegistry()` (registre runtime peuplé au boot depuis la config ; h5 a la coarse cap `lusr`). C'est exactement la dynamisation que le commentaire du code prévoyait.
+
+**Engine** : `engine_postsync_scoring` pose désormais `ctxkeys.WithTitleSlug(ctx, e.titleSlug)` avant `RunLUSRV2ShadowOwnerOnly` → le seam route le bon classifier.
+
+**Reste LUSR (pour rendre VISIBLE)** : (a) re-sync d'un échantillon h5 (le fetch 200 a été tué — storm peoplehub 429 sur résolution des rosters : 24 joueurs/match Warzone × 200 = throttle ; limite de scalabilité à optimiser, cache xuid) ; (b) backfill CANONICAL (player DB → `match_skill_rank` lu par l'UI) ; (c) hook post-sync live dans le runner h5 (shadow-only état, canonical = player DB). Le 225 de `computeCombatYield` (v1) reste à paramétrer (E2) mais v2 ne l'utilise pas. Outil : `cmd/h5-lusr-smoke`.
+
 ## [2026-06-21] Halo 5 lecture — VALIDÉ LIVE sur vraies données + bug fresh-provision corrigé
 
 **Statut** : surface de lecture h5 VALIDÉE end-to-end sur les 10 matchs JGtm réellement synchronisés (smoke read-only `cmd/h5-read-smoke` : copie isolée du shared, ZÉRO écriture deploy, ZÉRO token).

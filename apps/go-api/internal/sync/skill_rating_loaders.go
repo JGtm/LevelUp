@@ -73,9 +73,10 @@ func loadLUSRMatchData(ctx context.Context, sharedDB *sql.DB, xuid string) ([]lu
 		WHERE mp.xuid = ?
 		  AND COALESCE(mr.is_ranked, FALSE) = FALSE
 		  AND COALESCE(mr.is_firefight, FALSE) = FALSE
-		  AND mr.start_time IS NOT NULL
+		  -- title-generic : titres canoniques (Halo 5) → start_time_utc, start_time NULL.
+		  AND COALESCE(mr.start_time_utc, mr.start_time) IS NOT NULL
 		  AND (mr.duration_seconds IS NULL OR mr.duration_seconds >= 30)
-		ORDER BY mr.start_time ASC`, xuid)
+		ORDER BY COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') ASC`, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("loadLUSRMatchData: %w", err)
 	}

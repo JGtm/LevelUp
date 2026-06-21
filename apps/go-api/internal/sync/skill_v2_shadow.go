@@ -19,6 +19,7 @@ import (
 	"time"
 
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
@@ -231,7 +232,10 @@ type shadowRunStats struct {
 // Tout skip est compté dans `s` ; les erreurs non-bloquantes sont loggées
 // mais n'arrêtent pas la boucle parente.
 func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatch, s *shadowRunStats, heldGroups map[string]bool) {
-	group := GetLUSRChain(m.pairName)
+	// Title-aware (MT-15+) : la chaîne LUSR est résolue selon le titre porté par le
+	// ctx. Halo 5 (pas de pair_name) a un classifier dédié ; ctx sans titre / titre
+	// sans classifier dédié → classifier Infinite par défaut (comportement inchangé).
+	group := GetLUSRChainForTitle(ctxkeys.TitleSlug(ctx), m.pairName)
 	if group == "" {
 		s.skippedChain++
 		return
@@ -465,7 +469,9 @@ func loadShadowMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]sh
 		WHERE mp.xuid = ?
 		  AND COALESCE(mr.is_ranked, FALSE) = FALSE
 		  AND COALESCE(mr.is_firefight, FALSE) = FALSE
-		  AND mr.start_time IS NOT NULL
+		  -- title-generic : les titres canoniques (Halo 5) renseignent start_time_utc
+		  -- et laissent start_time (legacy) NULL ; filtrer sur le COALESCE comme le SELECT.
+		  AND COALESCE(mr.start_time_utc, mr.start_time) IS NOT NULL
 		  AND (mr.duration_seconds IS NULL OR mr.duration_seconds >= 30)
 		ORDER BY ts ASC`, xuid)
 	if err != nil {
