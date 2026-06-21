@@ -923,6 +923,12 @@ export interface RecentMatchMedal {
   description?: string | null
   image_url: string
   difficulty?: string | null
+  // Champs sprite (médailles Halo 5). Absents pour Halo Infinite (PNG image_url).
+  sprite_sheet?: string
+  sprite_left?: number
+  sprite_top?: number
+  sprite_width?: number
+  sprite_height?: number
 }
 
 export interface SessionSummaryItem {
@@ -1185,7 +1191,16 @@ export type SquadImpactMatrix = components['schemas']['SquadImpactMatrix']
  */
 export type SquadMatchHistoryRow = components['schemas']['SquadMatchHistoryRow']
 
-export type MedalDigestItem = components['schemas']['MedalDigestItem']
+// Champs sprite (médailles Halo 5) ajoutés à la main en attendant la régénération
+// OpenAPI (le Go porte déjà les tags json sprite_*). Optionnels : Halo Infinite
+// sert un PNG via image_url et n'a pas de sprite. Cf. AssetMeta (même shim).
+export type MedalDigestItem = components['schemas']['MedalDigestItem'] & {
+  sprite_sheet?: string
+  sprite_left?: number
+  sprite_top?: number
+  sprite_width?: number
+  sprite_height?: number
+}
 
 export type MedalDigestEntry = components['schemas']['MedalDigestEntry']
 
@@ -1423,7 +1438,14 @@ export type MatchEvent = components['schemas']['MatchEvent']
 
 export type Vec3 = components['schemas']['Vec3']
 
-export type MatchMedal = components['schemas']['MatchMedal']
+// Champs sprite (médailles Halo 5) — shim manuel comme AssetMeta / MedalDigestItem.
+export type MatchMedal = components['schemas']['MatchMedal'] & {
+  sprite_sheet?: string
+  sprite_left?: number
+  sprite_top?: number
+  sprite_width?: number
+  sprite_height?: number
+}
 
 export type MatchCitation = components['schemas']['MatchCitation']
 

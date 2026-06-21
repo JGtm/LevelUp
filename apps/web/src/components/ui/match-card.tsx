@@ -12,6 +12,7 @@ import { getPerfColor } from '@/lib/perf-color'
 import { getMatchCardOutcomeStyle, getMatchNarrativeBadgeMeta } from './match-card-presentation'
 import { CitationProgressRing } from './citation-progress-ring'
 import { CombatYieldDisplay } from './combat-yield-display'
+import { MedalIcon } from './MedalIcon'
 import { skillDeltaScale, kdScale, mmrDeltaScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
@@ -464,12 +465,17 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                     {(() => {
                       const glow = dropShadowForDifficulty(medal.difficulty ?? undefined)
                       return (
-                        <img
-                          src={medal.image_url}
-                          alt={medal.name ?? String(medal.medal_id)}
-                          className="w-8 h-8 object-contain"
+                        <MedalIcon
+                          imageUrl={medal.image_url}
+                          spriteSheet={medal.sprite_sheet}
+                          spriteLeft={medal.sprite_left}
+                          spriteTop={medal.sprite_top}
+                          spriteWidth={medal.sprite_width}
+                          spriteHeight={medal.sprite_height}
+                          label={medal.name ?? String(medal.medal_id)}
+                          size={32}
+                          className="object-contain"
                           style={glow ? { filter: glow } : undefined}
-                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
                         />
                       )
                     })()}

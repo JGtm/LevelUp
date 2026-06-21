@@ -13,6 +13,7 @@
 import { useState } from 'react'
 import { tokenCssVar } from '@/lib/accessibility'
 import { dropShadowForDifficulty, boxShadowForDifficulty } from '@/lib/medalDifficulty'
+import { MedalIcon } from '@/components/ui/MedalIcon'
 import type { MedalDigestEntry, MedalDigestItem } from '@/lib/api/types'
 import {
   SQUAD_MAIN_PLAYER_TOKEN,
@@ -68,11 +69,17 @@ function MedalChip({ item }: { item: MedalDigestItem }) {
       className="relative inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-xs"
       title={tip}
     >
-      {item.image_url ? (
-        <img
-          src={item.image_url}
-          alt={item.label || String(item.medal_id)}
-          className="h-5 w-5 object-contain"
+      {item.image_url || item.sprite_sheet ? (
+        <MedalIcon
+          imageUrl={item.image_url}
+          spriteSheet={item.sprite_sheet}
+          spriteLeft={item.sprite_left}
+          spriteTop={item.sprite_top}
+          spriteWidth={item.sprite_width}
+          spriteHeight={item.sprite_height}
+          label={item.label || String(item.medal_id)}
+          size={20}
+          className="object-contain"
         />
       ) : (
         <span className="h-5 w-5 flex items-center justify-center rounded-full bg-muted-foreground/20 text-2xs font-bold uppercase">
@@ -102,11 +109,17 @@ function MedalIconTile({ item }: { item: MedalDigestItem }) {
   const boxGlow = boxShadowForDifficulty(item.difficulty)
   return (
     <span className="relative flex flex-col items-center gap-0.5" title={tip}>
-      {item.image_url ? (
-        <img
-          src={item.image_url}
-          alt={item.label || String(item.medal_id)}
-          className="h-10 w-10 object-contain"
+      {item.image_url || item.sprite_sheet ? (
+        <MedalIcon
+          imageUrl={item.image_url}
+          spriteSheet={item.sprite_sheet}
+          spriteLeft={item.sprite_left}
+          spriteTop={item.sprite_top}
+          spriteWidth={item.sprite_width}
+          spriteHeight={item.sprite_height}
+          label={item.label || String(item.medal_id)}
+          size={40}
+          className="object-contain"
           style={dropGlow ? { filter: dropGlow } : undefined}
         />
       ) : (

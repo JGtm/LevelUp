@@ -1,3 +1,42 @@
+## [2026-06-21] G2 / F.1 FRONT — rendu sprite médaille hors Asset Drawer (MedalIcon) — Complété
+
+Lot FRONT du contrat médaille title-agnostic (backend livré ci-dessous). Les 4
+surfaces qui rendaient une médaille hors Asset Drawer faisaient un `<img src=image_url>`
+nu → l'icône Halo 5 (sprite) ne s'affichait pas. Centralisé le rendu dans un composant
+unique `MedalIcon` réutilisé partout (DRY), title-agnostic (bascule sur `spriteSheet`
+présent, AUCUN `if title === ...`).
+
+- **`apps/web/src/components/ui/MedalIcon.tsx`** (nouveau) : props
+  `{ imageUrl?, spriteSheet?, spriteLeft?, spriteTop?, spriteWidth?, spriteHeight?,
+  label, size=40, className?, style? }`. Si `spriteSheet` → `<div role="img">` avec
+  cellule interne à taille native (background-image + background-position, comme
+  `AssetCard.tsx`) ; scaling = `transform: scale(size / nativeWidth)` + `transformOrigin
+  top left`, conteneur `overflow:hidden` à `size×(nativeH*scale)` (remplit `size` px
+  sans déformation, ratio natif préservé). Sinon `<img src=imageUrl onError=hide>` —
+  comportement HINF byte-identique (masquage onError des 404 préservé). Retourne `null`
+  si ni sprite ni imageUrl.
+- **4 surfaces câblées** (rendu `<img>` → `<MedalIcon>`, champs sprite passés depuis la
+  donnée API) : `features/match-view/MatchSummaryMedalsAndCitations.tsx` (MatchMedal,
+  size 50), `features/squad/MedalDigest.tsx` (MedalDigestItem — MedalChip size 20 +
+  MedalIconTile size 40), `components/ui/match-card.tsx` (RecentMatchMedal, size 32),
+  `features/explorer/ExplorerTargetMedals.tsx` (MedalDigestItem, size 32). Garde
+  `image_url || sprite_sheet` comme condition de rendu (fallback initiale sinon).
+- **Types TS étendus** (`lib/api/types.ts`) — 5 champs optionnels `sprite_sheet?`,
+  `sprite_left?`, `sprite_top?`, `sprite_width?`, `sprite_height?` ajoutés à
+  `RecentMatchMedal` (interface manuelle), `MedalDigestItem` et `MatchMedal`
+  (intersection `& {…}` sur le type généré OpenAPI, miroir du shim `AssetMeta` existant).
+- **Test** `components/ui/MedalIcon.test.tsx` : sprite (background-image + position),
+  img (src), masquage onError, rendu vide sans source.
+- **Vérifs** : `tsc -b` 0 erreur ; `eslint` 0 erreur (warnings pré-existants hors fichiers
+  touchés) ; vitest `MedalIcon match-card ExplorerTargetMedals MedalDigest` = 4 files /
+  21 tests verts (HORS sandbox). HINF inchangé confirmé.
+
+Conclusion : 1 seul `MedalIcon` rend désormais sprite OU img sur les 5 sites (drawer
+inclus restant sur AssetCard, même logique). Prochaine étape : régén OpenAPI absorbera
+les shims sprite manuels quand le contrat sera publié.
+
+---
+
 ## [2026-06-21] G2 / G7 / D.1 — contrat image médaille title-agnostic (sprite h5) — Complété
 
 Les icônes de médaille s'affichaient via `/static/medals/{slug}/{id}.png` (1 PNG par

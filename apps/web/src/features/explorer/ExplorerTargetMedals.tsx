@@ -11,6 +11,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
+import { MedalIcon } from '@/components/ui/MedalIcon'
 import type { MedalDigestItem } from '@/lib/api/types'
 
 const TOP_COUNT = 18
@@ -47,14 +48,17 @@ export function ExplorerTargetMedals({ medals }: ExplorerTargetMedalsProps) {
                 className="flex items-center gap-1.5 rounded-md border border-border bg-muted/20 px-1.5 py-1.5"
                 title={m.description || undefined}
               >
-                {m.image_url ? (
-                  <img
-                    src={m.image_url}
-                    alt=""
-                    aria-hidden="true"
-                    className="h-8 w-8 flex-shrink-0 object-contain"
-                    loading="lazy"
-                    decoding="async"
+                {m.image_url || m.sprite_sheet ? (
+                  <MedalIcon
+                    imageUrl={m.image_url}
+                    spriteSheet={m.sprite_sheet}
+                    spriteLeft={m.sprite_left}
+                    spriteTop={m.sprite_top}
+                    spriteWidth={m.sprite_width}
+                    spriteHeight={m.sprite_height}
+                    label={m.label || `#${m.medal_id}`}
+                    size={32}
+                    className="flex-shrink-0 object-contain"
                     style={glow ? { filter: glow } : undefined}
                   />
                 ) : (
