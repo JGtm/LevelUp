@@ -112,13 +112,12 @@ func init() {
 					source VARCHAR DEFAULT 'sync',
 					updated_at TIMESTAMP
 				);
-				CREATE TABLE IF NOT EXISTS weapon_kills (
-					match_id VARCHAR,
-					xuid VARCHAR,
-					weapon_id UBIGINT,
-					kills INTEGER DEFAULT 0,
-					PRIMARY KEY (match_id, xuid, weapon_id)
-				);
+				-- weapon_kills : créée par la migration add_weapon_kills (schéma
+				-- PER-KILL, 1 row par kill, colonne time_ms, pas de PK). NE PAS la
+				-- recréer ici : un CREATE IF NOT EXISTS au schéma agrégé (ancien v5 :
+				-- 1 row par arme + colonne kills + PK) gagnerait la course sur une DB
+				-- shared NEUVE et casserait les writers per-kill (finding 2026-06-21,
+				-- cf ADR 0026).
 				-- killer_victim_pairs : un row par kill event (pas par paire
 				-- agrégée), donc pas de PRIMARY KEY (les analytics font
 				-- SUM(kill_count)). Schéma aligné sur la prod historique.
