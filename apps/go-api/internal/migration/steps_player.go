@@ -329,7 +329,7 @@ func init() {
 		// player_match_enrichment_latest. Le swap append-only le supprime aussi.
 		Description: "Drop idx_pme_session sur player_match_enrichment (ex-index ART, append-only)",
 		ApplySchema: func(db *sql.DB) error {
-			_, err := db.Exec("DROP INDEX IF EXISTS idx_pme_session")
+			_, err := db.ExecContext(bootCtx(), "DROP INDEX IF EXISTS idx_pme_session")
 			return err
 		},
 	})
