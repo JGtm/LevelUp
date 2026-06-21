@@ -1,0 +1,122 @@
+# Plan — Assets Halo 5 (médailles, cartes, rangs CSR, rangs XP/SR, armes)
+
+> Roadmap issue du workflow de scoping `h5-assets-scope` (6 agents recherche + synthèse,
+> halopedia.org + wiki.halo.fr + den.dev + lecture codebase) du 2026-06-21. Branche
+> `feat/multititre-peripherie`. Prérequis posé : **ROOT FIX isolation metadata h5** (commit
+> `d19f340a0`) — la metadata.duckdb h5 a ses propres tables référentielles VIDES, isolées
+> d'Infinite, prêtes à peupler.
+
+## Constat clé (ce que le scoping a révélé)
+
+Le « minimum prod » (médailles / cartes / rang CSR / rang XP / armes) se décompose en
+**ce qui est déjà fait**, **ce qui est statique/débloqué**, et **ce qui est bloqué sur du live CMS**.
+
+| Catégorie | Labels (texte) | Images | Bloquant |
+|---|---|---|---|
+| **CSR (rang classé)** | ✅ DÉJÀ FAIT (`mapping_servicerecord.go::h5Designations`, FR composé "Diamant 5") | ❌ pas de PNG sources + câblage badge hardcodé HINF | images sources + refactor câblage |
+| **SR (rang XP 1-152)** | référentiel statique prêt (SR{n}) + **XP réels 152 niveaux** (`.ai/refs/h5_spartan_rank_xp.csv`, vérifié) | aucune image **by design** (le SR s'affiche en chiffre) | **le niveau SR du joueur n'est PAS dans la donnée récupérée** → fetch live requis |
+| **Médailles** | noms FR connus (WikiHalo) | spritesheet CMS | **medal_name_id numériques = live CMS** |
+| **Armes** | ~31 noms EN/FR prêts | bundle ou CDN | **weapon_id (StockId) = live (ingestion matchs)** |
+| **Cartes** | ~15 noms Arena (name_fr=name_en) | CDN UGC | **map_asset_id GUID + image_url = live UGC** |
+
+**Conclusion** : CSR texte = fait. Tout le reste exige soit une **sonde CMS live** (IDs/shapes/URLs),
+soit des **images sources**, soit un **refactor de câblage badge**. Aucun gros « seed statique »
+n'a de consommateur immédiat (cf. SR ci-dessous) → ne PAS créer de schéma mort.
+
+## Pré-requis transverse : câblage badge title-aware (BLOQUANT visuel)
+
+Le builder du badge CSR du Home (`internal/platform/duckdb/home_repo_skill_peak.go:436`) et le header
+de match (`internal/service/match_view_builders_header.go:230-233`) instancient
+`halo_infinite.NewAssetURLAdapter()` **EN DUR**. Tant que ce n'est pas résolu via le
+`games.Resolver` (adapter par slug du titre courant, fallback HINF), enregistrer un adapter
+h5 ne fait **rien** sur le badge. C'est le vrai travail de câblage, à faire avant tout affichage
+d'image de rang h5. Risque : touche le chemin HINF (à tester sans régression).
+
+## Track B — référentiels STATIQUES (zéro réseau)
+
+- **B-CSR labels** : ✅ FAIT (rien à faire côté texte).
+- **B-CSR designations TOML** (optionnel) : `config/titles/halo_5/mappings/assets.toml` kind
+  `csr_designation` (Bronze..Onyx, designation_id 0..5 ; PAS de Champion = position leaderboard).
+  *Faible valeur tant qu'aucun consommateur ne lit `Assets()` pour ce kind — différer.*
+- **B-SR référentiel** : tables `career_ranks` + `career_rank_translations` dans la metadata h5
+  (`internal/games/halo_5/migrations/metadata.go`, miroir DDL HINF) + seed 152 lignes
+  (`SR{n}` EN / `SR {n}` FR) + `xp_required` depuis `.ai/refs/h5_spartan_rank_xp.csv` (colonne
+  `xp_to_next`). Le loader `duckdb/halo_ranks_loader.go::LoadRankCatalog` est title-agnostique
+  (à brancher : `server_titles_additional.go:82` passe `ranks=nil` → charger depuis la metaDB h5).
+  **⚠ Pas de consommateur tant que le niveau SR du joueur n'est pas fetché** (le service record
+  arena ne le contient pas). → **NE PAS livrer seul** ; le faire AVEC le fetch SR (Track A).
+  Recommandation synthèse : seed direct en INSERT dans `ApplySchema` (évite le seam global
+  mono-titre `SetCareerRankTranslationsProvider`, écrasé au boot par HINF).
+- **B-armes noms** : `internal/games/halo_5/migrations/weapon_labels.go` (miroir HINF, quirk
+  littéral décimal UBIGINT bit63) + CLI `cmd/seed-h5-weapon-labels`. Table de noms livrable,
+  mais **`weapon_id` reste vide jusqu'à collecte des StockId** (Track A) → seed effectif différé.
+
+## Track A — fetchers LIVE (après une sonde de confirmation)
+
+**A1 — Sonde `cmd/probe-h5` étendue (PRÉ-REQUIS de tout A)** : réutiliser `halo_5/client.go`
+(auth déjà résolue, SpartanToken v4, `X-343-Authorization-Spartan` + UA `cpprestsdk/2.4.0` +
+`?auth=st`, PAS de 343-clearance). Confirmer host+path+shape JSON de :
+- `csr-designations` (→ `iconImageUrl` des insignes CSR, champ exact à confirmer)
+- `SpartanRankManifest` (`content-hacs.svc.halowaypoint.com/contents/SpartanRankManifest`,
+  `View.SpartanRankManifest.SpartanRanks[].View.SpartanRank.StartXP` — déjà dumpé dans le CSV ref ;
+  confirmer l'auth + le niveau SR **du joueur** via un endpoint profil/account)
+- médailles `{gameCMSHost}/h5/Progression/file/medals/metadata.json` (host `gamecms-hacs` vs
+  `content-hacs` à trancher ; clés `NameId/SpriteIndex` vs `Id/SpriteLocation`)
+- maps UGC `ugc.svc.halowaypoint.com` (préfixe h5 ; pattern GUID→nom,image)
+
+**A2 — Fetcher médailles** : plomberie déjà là (`medal_definitions`/`medal_translations` vides,
+`platform/halo/medal_provider.go` title-agnostique, CLI `refresh-metadata medals --title-id
+halo_5 --promote`). Icônes = spritesheet (`assets/wire.go::NewSpritesheetFallbackFetcher`).
+Seed `medal_translations` fr-FR depuis WikiHalo si le CMS ne renvoie pas le FR.
+
+**A3 — StockId armes** : joindre les StockId réels des events (`KillerWeaponStockId`/
+`WeaponStockId`) + servicerecord (`WeaponWithMostKills.WeaponId.StockId`) aux noms statiques B,
+puis remplir `weapon_id`.
+
+**A4 — Catalogue maps** : créer `internal/games/halo_5/catalog_adapter.go`
+(implémente `games.TitleCatalogAdapter`, miroir HINF) + `RunCatalogUGCDrain(titleSlug="halo_5")`
++ 2e `CatalogRefreshCron`. Sans cet adapter, `maps_catalog` h5 reste vide. `name_fr = name_en`.
+
+**A5 — SR du joueur (débloque B-SR)** : confirmer l'endpoint exposant le niveau SR du compte,
+le mapper dans `mapCareerSnapshot` (CurrentRank=rank_id SR, CurrentXP), ce qui donne enfin un
+consommateur au référentiel B-SR. Affichage = « SR 152 » en **texte** (pas d'image, by design).
+
+## Images de rang (CSR badges) — pipeline statique-bundle
+
+Pattern HINF confirmé : PNG **committés** sous `apps/go-api/static/ranks/halo_infinite/120px-HINF-CSR_{Tier}{SubTier}.png`
+(Bronze1..6 … Onyx, 37 fichiers). Couche pure title-agnostique `internal/assets/static/` déjà
+h5-ready (slug paramétré). Pour h5 :
+1. Obtenir les **PNG sources** des insignes CSR h5 (extraction jeu / wiki / CDN via `iconImageUrl`
+   du JSON `csr-designations`) → committer sous `static/ranks/halo_5/H5-CSR_{Tier}{SubTier}.png`
+   (format figé EN, ex. `H5-CSR_Diamond5`, `H5-CSR_Onyx` — distinct du format HINF).
+2. Écrire `internal/games/halo_5/adapter_asset_urls.go` (miroir HINF, implémente
+   `games.TitleAssetURLAdapter`) + enregistrer via `titleResolver.RegisterAssetURL` dans
+   `server.go` (après ligne 345).
+3. Faire le **refactor câblage badge title-aware** (cf. pré-requis transverse) — sinon (1)+(2)
+   n'affichent rien.
+
+## Décisions produit en attente
+
+- **D1** CSR designations : TOML `assets.toml` (recommandé) vs table metadata. Image via static-bundle.
+- **D2** SR seam : seed statique direct dans la migration (recommandé) vs refactor provider par titre.
+- **D3** Nom de fichier badge CSR h5 : figer `H5-CSR_{Tier}{SubTier}` EN.
+- **D4** SR = texte « SR {n} » (recommandé, pas d'image by design).
+- **D5** Champion ≠ designation (position leaderboard) — couche d'affichage au-dessus d'Onyx, pas un référentiel.
+- **D6** Périmètre maps (Arena seules vs + Forge) — différable à A4.
+- **D7** static-bundle (committer PNG) pour CSR/SR ; cache-aside live pour maps.
+
+## Ordre recommandé d'exécution
+
+1. **A1 sonde live** (débloque tout : shapes, IDs, URLs, auth SR/manifest). ← prochaine action.
+2. **A2 médailles** (plomberie prête) + **A5 SR joueur** → qui débloque **B-SR** (seed + wiring).
+3. **Refactor câblage badge** + adapter URL h5 + **PNG sources CSR** → badge CSR visible.
+4. **A3 armes StockId** → remplit `weapon_id` du seed B-armes.
+5. **A4 maps** (effort élevé, adapter catalogue + drain).
+
+## Références
+
+- Données SR XP vérifiées : `.ai/refs/h5_spartan_rank_xp.csv` (152 niveaux).
+- Manifest SR : `https://content-hacs.svc.halowaypoint.com/contents/SpartanRankManifest`
+  (`View.SpartanRankManifest.SpartanRanks[].View.SpartanRank.StartXP`).
+- Pattern assets HINF à mirroir : `internal/assets/static/`, `internal/games/halo_infinite/adapter_asset_urls.go`,
+  `internal/games/halo_infinite/migrations/weapon_labels.go`, `internal/platform/halo/medal_provider.go`.
