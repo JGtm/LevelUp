@@ -176,7 +176,7 @@ func TestConvergePSA_ErrorPaths(t *testing.T) {
 	}
 	var awards int
 	if err := player.QueryRow(
-		`SELECT COUNT(*) FROM personal_score_awards WHERE match_id = 'psa-empty'`).Scan(&awards); err != nil {
+		`SELECT COUNT(*) FROM personal_score_awards_latest WHERE match_id = 'psa-empty'`).Scan(&awards); err != nil {
 		t.Fatalf("count awards: %v", err)
 	}
 	if awards != 0 {
@@ -207,7 +207,7 @@ func TestConvergePSA_ErrorPaths(t *testing.T) {
 		t.Fatalf("convergePSA avec PSA : done = %d, want 1", done)
 	}
 	if err := player.QueryRow(
-		`SELECT COUNT(*) FROM personal_score_awards WHERE match_id = 'psa-full' AND xuid = ?`, xuid).Scan(&awards); err != nil {
+		`SELECT COUNT(*) FROM personal_score_awards_latest WHERE match_id = 'psa-full' AND xuid = ?`, xuid).Scan(&awards); err != nil {
 		t.Fatalf("count awards full: %v", err)
 	}
 	if awards != 1 {
