@@ -98,6 +98,34 @@ disponibles SANS appel supplémentaire. **Plus aucun blocage live pour le SR.**
 (pas dans cryptum ; den.dev n'a documenté que le SR). Pistes : énumérer les contenus content-hacs,
 ou les noms FR/IDs via les `MedalStatCounts` de la carnage (IDs) + manifest à localiser.
 
+## DÉCOUVERTE MAJEURE (2026-06-21) — source des métadonnées = API officielle Halo 5
+
+Sondes content-hacs (SpartanToken) + cryptum confirment : les **référentiels canoniques
+(médailles, cartes, armes, csr-designations, spartan-ranks) ne sont PAS sur les endpoints
+internes SpartanToken** — c'est pourquoi cryptum n'a aucune métadonnée et que mes sondes content-hacs
+ont renvoyé 403. Ils ne vivent que sur l'**API Metadata OFFICIELLE** :
+
+`https://www.haloapi.com/metadata/h5/metadata/{type}` — **VIVANTE en 2026** (401 = clé manquante,
+pas 404). Types : `medals`, `maps`, `weapons`, `csr-designations`, `spartan-ranks`,
+`game-base-variants`, `game-variants`, `playlists`, `vehicles`, `requisitions`, `commendations`,
+`enemies`, `impulses`, `team-colors`, `flexible-stats`, `campaign-missions`, `map-variants`.
+Auth : header `Ocp-Apim-Subscription-Key: {clé}` (≠ SpartanToken). API référencée
+`developer.haloapi.com api=58ace18c21091812784ce8c5` (API Metadata Halo 5).
+
+**BLOQUANT** : aucune clé d'abonnement dans le projet. Inscription gratuite sur
+`developer.haloapi.com` requise (compte 343/Azure APIM) — non automatisable par l'agent.
+**Une fois la clé fournie** : un fetcher unique (mirror de `medal_provider.go`, host+auth = clé)
+peuple medals/maps/weapons/csr-designations/spartan-ranks dans la metadata h5 → débloque
+TOUTES les catégories min-prod restantes d'un coup. C'est le chemin propre + autoritatif.
+
+**Buildable SANS clé (content-hacs, SpartanToken, déjà 200)** : **modes** (`/contents/GameBaseVariant`,
+22, nom+icône) + **playlists** (`/contents/Hopper`, 73, nom). Le match porte `GameBaseVariantId`
++ `HopperId` (GUIDs) → résolus en noms via ces contenus. Fetcher + seed `asset_translations`
+(asset_type game_variant/playlist) + read.
+
+**Images de rang CSR/SR** : l'API officielle `csr-designations` + `spartan-ranks` portent
+probablement les `iconImageUrl` (à confirmer avec la clé) → résout aussi le gap images CSR.
+
 ## Track A — fetchers LIVE (après une sonde de confirmation)
 
 **A1 — Sonde `cmd/probe-h5` étendue (PRÉ-REQUIS de tout A)** : réutiliser `halo_5/client.go`

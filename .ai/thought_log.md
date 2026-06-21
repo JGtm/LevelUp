@@ -1,3 +1,14 @@
+## [2026-06-21] Halo 5 assets — metadata officielle fetchée (médailles + cartes + CSR) — Complété (seed)
+
+**Déblocage majeur** : les référentiels canoniques h5 (médailles/cartes/armes/CSR/SR) ne sont PAS sur les endpoints internes SpartanToken — uniquement sur l'**API Metadata OFFICIELLE** `www.haloapi.com/metadata/h5/metadata/{type}` (clé d'abonnement Azure APIM, fournie par l'user). C'est pourquoi cryptum n'a aucune métadonnée + sondes content-hacs 403. Cf. mémoire `reference_h5_metadata_official_api`.
+
+- **Outil** `cmd/h5-metadata-fetch` : clé via env `LEVELUP_HALOAPI_KEY` (JAMAIS committée), seed idempotent (INSERT OR REPLACE) dans la metadata.duckdb h5 isolée. Provisionne le schéma (set h5) avant seed.
+- **Schéma étendu** (`migrations/metadata.go`) : colonnes sprite sur medal_definitions (icône h5 = spritesheet+offset, pas PNG/médaille) + nouvelle table `csr_designations` (designation_name, tier_id, icon_url, banner_url).
+- **Seedé** (clone deploy) : **médailles 215/215** (nom EN + classification + difficulté brute + sprite), **maps 49/49** (MapId GUID = id du match → nom + image_url), **CSR 42 tiers** (8 désignations Unranked..Champion → iconImageUrl = images de rang CSR). `?language=fr` renvoie EN → FR via WikiHalo plus tard.
+- Piège résolu : `difficulty` h5 va à 245 (≠ enum 0-3 HINF) → débordait TINYINT ; stocké brut en VARCHAR.
+
+**Reste** : (a) **read-wiring** — afficher ces données (résoudre MapId→nom/image, medal_id→nom/sprite, CSR designation+tier→icône dans les chemins de lecture h5) ; (b) **armes** (le StockId du match ≠ id officiel des weapons → mapping à établir) ; (c) FR ; (d) pour la prod, lancer le fetcher sur le serveur avec la clé. SR déjà livré.
+
 ## [2026-06-21] Halo 5 assets — rang XP (SR) livré end-to-end — Complété
 
 **1er asset « minimum prod » livré.** Le rang XP Halo 5 (Spartan Rank 1..152) s'affiche désormais (texte « SR 111 ») dans le CareerSnapshot, sans aucun blocage live.

@@ -42,6 +42,7 @@ func metadataStepNames() []string {
 		"h5_add_weapon_labels",
 		"h5_add_maps_catalog",
 		"h5_add_map_images_registry",
+		"h5_add_csr_designations",
 	}
 }
 
@@ -93,8 +94,22 @@ func MetadataSteps() []migration.Migration {
 						type_index       TINYINT DEFAULT 0,
 						difficulty       VARCHAR,
 						medal_type       VARCHAR,
-						personal_score   INTEGER DEFAULT 0
+						personal_score   INTEGER DEFAULT 0,
+						-- Icône h5 = sprite (feuille + offset), pas une PNG par médaille
+						-- (API Metadata officielle Halo 5 : spriteLocation).
+						sprite_sheet_url VARCHAR,
+						sprite_left      INTEGER,
+						sprite_top       INTEGER,
+						sprite_width     INTEGER,
+						sprite_height    INTEGER
 					);
+					-- Robustesse : si la table préexistait (provisioning antérieur sans
+					-- les colonnes sprite), les ajoute (idempotent).
+					ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS sprite_sheet_url VARCHAR;
+					ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS sprite_left INTEGER;
+					ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS sprite_top INTEGER;
+					ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS sprite_width INTEGER;
+					ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS sprite_height INTEGER;
 				`)
 			},
 		},
@@ -146,6 +161,22 @@ func MetadataSteps() []migration.Migration {
 						PRIMARY KEY (title_id, map_id)
 					);
 					CREATE INDEX IF NOT EXISTS idx_map_images_registry_fetched ON map_images_registry(fetched_at);
+				`)
+			},
+		},
+		{
+			Name:        "h5_add_csr_designations",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Halo 5 — csr_designations (palier CSR + sous-palier → image d'insigne ; API Metadata officielle, vide → fetcher h5-metadata-fetch)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS csr_designations (
+						designation_name VARCHAR NOT NULL,
+						tier_id          INTEGER NOT NULL,
+						icon_url         VARCHAR,
+						banner_url       VARCHAR,
+						PRIMARY KEY (designation_name, tier_id)
+					);
 				`)
 			},
 		},
