@@ -1,3 +1,13 @@
+## [2026-06-21] Halo 5 — résolution xuid optimisée (anti-storm PeopleHub) + xuid↔gamertag stockés ensemble — Complété
+
+**Directive user** : optimiser PeopleHub + xuid et gamertags stockés au même endroit. Cause du storm 429 (200 matchs) : on RE-résolvait TOUT le roster à chaque run, sur UN SEUL compte, sans persistance. 4 leviers :
+1. **Stockage canonique** (`ingest/collect.go`) : le roster résolu (xuid↔gamertag) est écrit dans `shared.xuid_aliases` (`AddXUIDAliases`) — source UNIQUE du mapping (xuid ET gamertag ensemble).
+2. **Graine cross-run** (`livesync/persist.go` `loadXUIDAliasesSeed` + `wire.go`) : le resolver est amorcé depuis `xuid_aliases` → un joueur déjà vu n'est JAMAIS re-résolu via PeopleHub.
+3. **Multi-compte round-robin** (`wire.go` → `BuildMultiResolver` sur tous les comptes déclarés) : la limite PeopleHub est PAR COMPTE → N comptes = ~N× le quota (le storm venait d'un seul compte saturé). Fallback single si aucun token.
+4. **Exclusion Warzone** (commit précédent) : 8 joueurs/match (Arena) au lieu de 24.
+
+Le mapping persiste via l'ingest (`AddXUIDAliases`), d'où `persist=nil` sur le CachingResolver. Tests halo_5 verts. + `cmd/h5-lusr-backfill` (ops, backfill LUSR canonical UI-visible). Reste : valider live (re-sync Arena + backfill) + assets.
+
 ## [2026-06-21] Halo 5 — KDA calculé à l'INGESTION (FDA NET) + exclusion Warzone — Complété
 
 **Correction de cap (directive user)** : Halo 5 est le SEUL titre où l'on CALCULE le KDA — mais **à l'ingestion**, jamais en lecture. L'API h5 ne fournit pas de KDA ; sa forme native est le **FDA NET `(k + a/3) − d`** (peut être négatif). Mon précédent choix « laisser nil + gater en lecture » était à côté : on calcule + STOCKE à l'ingestion, et la lecture lit la valeur stockée.

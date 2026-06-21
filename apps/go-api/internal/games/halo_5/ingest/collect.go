@@ -1,6 +1,8 @@
 package ingest
 
 import (
+	"time"
+
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/persist"
@@ -36,10 +38,28 @@ func CollectMatchBatch(
 	return persist.NewBatchBuilder(titleSlug, viewer.Gamertag, viewer.XUID, source).
 		SetMatch(&registry).
 		AddParticipants(participants).
+		// xuid↔gamertag du roster → shared.xuid_aliases : source canonique UNIQUE du
+		// mapping (xuid ET gamertag au même endroit) ET graine du resolver PeopleHub
+		// (évite de re-résoudre un joueur déjà vu aux runs suivants → anti rate-limit).
+		AddXUIDAliases(xuidAliasesFromParticipants(participants, summary.StartedAtUTC)).
 		AddMedals(medals).
 		AddHighlightEvents(medalEvents).
 		AddKillerVictim(pairs).
 		AddWeaponKills(weapons).
 		AddKillPositions(positions).
 		Build()
+}
+
+// xuidAliasesFromParticipants extrait le mapping xuid↔gamertag du roster résolu
+// pour le persister dans shared.xuid_aliases (INSERT OR IGNORE côté persister).
+func xuidAliasesFromParticipants(participants []domain.MatchParticipantRow, seen time.Time) []persist.XUIDAliasInsert {
+	out := make([]persist.XUIDAliasInsert, 0, len(participants))
+	for i := range participants {
+		p := participants[i]
+		if p.XUID == "" || p.Gamertag == nil || *p.Gamertag == "" {
+			continue
+		}
+		out = append(out, persist.XUIDAliasInsert{XUID: p.XUID, Gamertag: *p.Gamertag, LastSeen: seen})
+	}
+	return out
 }
