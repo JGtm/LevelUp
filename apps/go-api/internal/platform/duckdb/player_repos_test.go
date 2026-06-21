@@ -12,6 +12,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	titlepkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/migration"
 )
 
 const (
@@ -301,6 +302,11 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			t.Fatalf("seedPlayerSchema DDL: %v\nSQL: %s", err, q)
 		}
 	}
+	// Append-only #23046 : convertit player_match_enrichment (id PK + stage + written_at)
+	// et crée la vue player_match_enrichment_latest (lue par tous les readers du package).
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db.SQLDb()); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
 	type row struct {
 		q    string
 		args []interface{}
@@ -386,6 +392,31 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 			is_manual BOOLEAN DEFAULT FALSE,
 			created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 		)`,
+		// Append-only média (campagne shared_social) : la prod lit la vue
+		// media_match_associations_latest (sur la table sœur _history). Le fixture la
+		// crée pour aligner les readers. media_file_id VARCHAR (compat fixture ; prod = BIGINT).
+		`CREATE SEQUENCE IF NOT EXISTS media_match_associations_history_id_seq START 1`,
+		`CREATE TABLE IF NOT EXISTS media_match_associations_history (
+			id BIGINT PRIMARY KEY DEFAULT nextval('media_match_associations_history_id_seq'),
+			media_file_id VARCHAR NOT NULL,
+			match_id VARCHAR NOT NULL,
+			delta_seconds INTEGER,
+			is_manual BOOLEAN NOT NULL DEFAULT FALSE,
+			is_active BOOLEAN NOT NULL DEFAULT TRUE,
+			associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE OR REPLACE VIEW media_match_associations_latest AS
+			WITH lpp AS (
+				SELECT media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at,
+					ROW_NUMBER() OVER (PARTITION BY media_file_id, match_id ORDER BY written_at DESC, id DESC) AS rn
+				FROM media_match_associations_history
+			),
+			act AS (SELECT * FROM lpp WHERE rn = 1 AND is_active = TRUE),
+			hm AS (SELECT media_file_id, bool_or(is_manual) AS has_manual FROM act GROUP BY media_file_id)
+			SELECT a.media_file_id, a.match_id, a.delta_seconds, a.is_manual, a.associated_at, a.written_at
+			FROM act a JOIN hm ON hm.media_file_id = a.media_file_id
+			WHERE a.is_manual = hm.has_manual`,
 	}
 	for _, q := range ddl {
 		if _, err := db.Exec(ctx, q); err != nil {
@@ -403,7 +434,7 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 		t.Fatalf("seedSharedSocialSchema insert media_files failed: %v", err)
 	}
 	if _, err := db.Exec(ctx, `
-		INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds)
+		INSERT INTO media_match_associations_history (media_file_id, match_id, delta_seconds)
 		VALUES ('media-1', 'm1', 12)
 	`); err != nil {
 		t.Fatalf("seedSharedSocialSchema insert associations failed: %v", err)
