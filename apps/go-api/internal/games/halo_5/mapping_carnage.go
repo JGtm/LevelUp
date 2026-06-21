@@ -12,9 +12,11 @@ package halo_5
 //
 // KDA — EXCEPTION DOCUMENTÉE : Halo 5 est le SEUL titre où le KDA est CALCULÉ À
 // L'INGESTION (l'API h5 ne le fournit pas), puis STOCKÉ dans match_participants.kda
-// pour alimenter les BDD — JAMAIS recalculé en lecture. La forme native h5 est le
-// FDA NET (k + a/3) − d (par match), distinct du quotient KDA d'Infinite, et peut
-// être NÉGATIF. Infinite garde son KDA d'API (jamais calculé).
+// pour alimenter les BDD — JAMAIS recalculé en lecture. La métrique canonique h5
+// est le FDA NET ((k + a/3) − d) / games (forme native h5, peut être NÉGATIVE,
+// distincte du quotient KDA d'Infinite). Par MATCH (games=1) on stocke donc le
+// NUMÉRATEUR (k + a/3) − d ; les lecteurs agrégés le moyennent (AVG / Σ÷games =
+// la métrique /games). Infinite garde son KDA d'API (jamais calculé).
 
 import "levelup/go-api/internal/domain"
 

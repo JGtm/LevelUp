@@ -1,3 +1,17 @@
+## [2026-06-21] Halo 5 assets — scoping (workflow) + KDA vérifié + données SR préservées — Complété (scoping)
+
+**KDA (correction demandée user)** : vérifié — le code implémente DÉJÀ `((k+a/3)−d)/games` aux 4 sites (carrière `mapping_servicerecord.go:88` divise par games ; per-match `mapping_carnage.go` stocke le numérateur games=1 ; `compare_repo` `AVG(mp.kda)` ; `explorer` `Σ/sampleSize`). Aucun bug. Commentaire de `mapping_carnage.go` aligné pour énoncer la formule canonique explicitement.
+
+**Scoping assets (workflow `h5-assets-scope`, 6 agents recherche + synthèse, 802k tokens, sources halopedia/wiki.halo.fr/den.dev + codebase)** : produit le plan complet (`.ai/PLAN_H5_ASSETS.md`). Constat majeur — le « minimum prod » est en grande partie BLOQUÉ, pas un simple seed statique :
+- **CSR labels** : DÉJÀ faits (`h5Designations`, FR composé).
+- **SR (rang XP)** : référentiel statique prêt + **table XP réelle des 152 niveaux extraite de den.dev et VÉRIFIÉE** vs jalons (`.ai/refs/h5_spartan_rank_xp.csv`). MAIS le service record arena ne contient PAS le niveau SR du joueur (`adapter_data.go:187`) → aucun consommateur tant qu'un fetch live SR n'est pas câblé. Donc NON livré seul (règle anti-code-mort).
+- **Médailles / armes / maps** : bloqués sur IDs numériques (medal_name_id, weapon StockId, map GUID) = live CMS uniquement.
+- **Images CSR** : pas de PNG sources + câblage badge **hardcodé HINF** (`home_repo_skill_peak.go:436`, `match_view_builders_header.go:230`) → refactor title-aware requis avant tout affichage.
+
+**Décision** : ne PAS fabriquer de schéma mort (seed SR sans lecteur). Préservé le plan + les données SR vérifiées. Prochaine action débloquante = sonde live `cmd/probe-h5` étendue (confirmer hosts/shapes/IDs/URLs/auth SR+manifest) — entre dans une phase LIVE (auth user), à cadrer avec l'utilisateur.
+
+**Reste** : (a) sonde live A1 ; (b) puis médailles (A2, plomberie prête) + SR joueur (A5→débloque B-SR) ; (c) refactor câblage badge + adapter URL h5 + PNG sources CSR ; (d) armes StockId ; (e) maps. Détail ordonné dans `.ai/PLAN_H5_ASSETS.md`.
+
 ## [2026-06-21] Halo 5 assets — ROOT FIX : isolation metadata (anti-pollution Infinite) — Complété
 
 **Contexte** : prérequis du sous-projet assets h5 (médailles/cartes/rangs CSR/rangs XP/armes). h5 est `status="active"` → provisionné au boot. Sans set de migrations enregistré, `RunForTitleDB(halo_5, …)` retombe sur le registre global d'Infinite pour TOUS les targets. Pour shared/player/… c'est VOULU (uniformité). Mais pour `metadata`, cela injecte les référentiels HINF (career_rank_translations 272 rangs, citation_mappings, prestige, battlepass, playlists_catalog, weapon_labels aux IDs HINF, mode_name_tr) dans la metadata.duckdb d'h5 = **pollution active au boot**.
