@@ -532,6 +532,16 @@ func (r *ServiceRegistry) newExplorerLocalBannerPool(titleSlug string) func(ctx 
 	}
 }
 
+// skillBadgeResolverFor construit le résolveur d'URL de badge CSR title-aware
+// pour un slug de titre donné. C'est le pont entre le package analysis (pur,
+// title-agnostic) et la résolution title-aware de duckdb.TitleSkillBadgeURL
+// (csr_designations pour Halo 5, sinon static HINF). subTier : 0 pour Onyx, 1..6 sinon.
+func skillBadgeResolverFor(slug string) func(tierEN string, subTier int) string {
+	return func(tierEN string, subTier int) string {
+		return duckdb.TitleSkillBadgeURL(slug, tierEN, subTier)
+	}
+}
+
 // HomeCtx retourne un HomeService + identifiants joueur.
 func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeService, string, string, error) {
 	pdb, err := r.resolve(ctx, slug)
@@ -546,6 +556,7 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 		WithMatchesCache(r.homeMatchesCache, pdb.XUID).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithCareerLive(r.newCareerLiveService(pdb, homeRepo)).
+		WithSkillBadgeResolver(skillBadgeResolverFor(pdb.TitleSlug)).
 		WithDemoMode(r.cfg.DemoMode)
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }

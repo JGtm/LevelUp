@@ -4,7 +4,9 @@
 package analysis
 
 import (
+	"fmt"
 	"math"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
@@ -12,28 +14,41 @@ import (
 
 // ─── buildCanonicalSkillBadge ──────────────────────────────────────────────
 
+// hinfStubResolver reproduit l'ancien template HINF figé (déplacé hors du package
+// analysis) sous forme de résolveur INJECTÉ, pour vérifier que l'injection pilote
+// bien l'URL. subTier == 0 → Onyx (palier unique). Sert à préserver les
+// assertions d'URL HINF historiques sans réintroduire de littéral dans analysis.
+const hinfOnyxBadge = "/static/ranks/halo_infinite/120px-HINF-CSR_Onyx.png"
+
+func hinfStubResolver(tierEN string, subTier int) string {
+	if strings.EqualFold(tierEN, "onyx") || subTier == 0 {
+		return hinfOnyxBadge
+	}
+	return fmt.Sprintf("/static/ranks/halo_infinite/120px-HINF-CSR_%s%d.png", tierEN, subTier)
+}
+
 func TestBuildCanonicalSkillBadge_OnyxIgnoresSubTier(t *testing.T) {
 	t.Parallel()
 	// Onyx n'a pas de sub-tier ; même avec subTier != nil l'URL doit pointer
-	// vers le badge Onyx fixe.
+	// vers le badge Onyx fixe (résolveur appelé avec subTier=0).
 	sub := 3
-	label, url := buildCanonicalSkillBadge("Onyx", "onyx", &sub)
+	label, url := buildCanonicalSkillBadge("Onyx", "onyx", &sub, hinfStubResolver)
 	if label == nil || *label != "Onyx" {
 		t.Errorf("label = %v, want Onyx", label)
 	}
-	if url == nil || *url != csrRankImageOnyxURL {
-		t.Errorf("url = %v, want %q", url, csrRankImageOnyxURL)
+	if url == nil || *url != hinfOnyxBadge {
+		t.Errorf("url = %v, want %q", url, hinfOnyxBadge)
 	}
 }
 
 func TestBuildCanonicalSkillBadge_OnyxCaseInsensitive(t *testing.T) {
 	t.Parallel()
 	// La comparaison Onyx doit être case-insensitive (EqualFold) côté tierEN.
-	label, url := buildCanonicalSkillBadge("ONYX", "ONYX", nil)
+	label, url := buildCanonicalSkillBadge("ONYX", "ONYX", nil, hinfStubResolver)
 	if label == nil || *label != "ONYX" {
 		t.Errorf("label = %v, want ONYX", label)
 	}
-	if url == nil || *url != csrRankImageOnyxURL {
+	if url == nil || *url != hinfOnyxBadge {
 		t.Errorf("url = %v, want Onyx URL", url)
 	}
 }
@@ -41,7 +56,7 @@ func TestBuildCanonicalSkillBadge_OnyxCaseInsensitive(t *testing.T) {
 func TestBuildCanonicalSkillBadge_GoldWithSubTier(t *testing.T) {
 	t.Parallel()
 	sub := 3
-	label, url := buildCanonicalSkillBadge("Or", "gold", &sub)
+	label, url := buildCanonicalSkillBadge("Or", "gold", &sub, hinfStubResolver)
 	if label == nil || *label != "Or III" {
 		t.Errorf("label = %q, want Or III", derefStr(label))
 	}
@@ -55,12 +70,62 @@ func TestBuildCanonicalSkillBadge_DiamondLocalizedDisplay(t *testing.T) {
 	t.Parallel()
 	// Le tier code EN est utilisé pour l'URL (Diamond), display pour le label (Diamant).
 	sub := 1
-	label, url := buildCanonicalSkillBadge("diamant", "diamond", &sub)
+	label, url := buildCanonicalSkillBadge("diamant", "diamond", &sub, hinfStubResolver)
 	if label == nil || *label != "Diamant I" {
 		t.Errorf("label = %q, want Diamant I", derefStr(label))
 	}
 	if url == nil || *url != "/static/ranks/halo_infinite/120px-HINF-CSR_Diamond1.png" {
 		t.Errorf("url = %q", derefStr(url))
+	}
+}
+
+// TestBuildCanonicalSkillBadge_InjectedResolverDrivesURL prouve que le hardcoding
+// HINF a disparu : un résolveur injecté qui renvoie une URL CDN h5 factice est
+// utilisé tel quel (aucun template HINF figé dans le package analysis).
+func TestBuildCanonicalSkillBadge_InjectedResolverDrivesURL(t *testing.T) {
+	t.Parallel()
+	const h5URL = "https://cdn.svc.halowaypoint.com/csr/diamond3.png"
+	three := 3
+	resolver := func(tierEN string, subTier int) string {
+		if tierEN == "Diamond" && subTier == 3 {
+			return h5URL
+		}
+		return ""
+	}
+	label, url := buildCanonicalSkillBadge("Diamant", "diamond", &three, resolver)
+	if label == nil || *label != "Diamant III" {
+		t.Errorf("label = %q, want Diamant III", derefStr(label))
+	}
+	if url == nil || *url != h5URL {
+		t.Errorf("url = %q, want %q (injection doit piloter l'URL)", derefStr(url), h5URL)
+	}
+}
+
+// TestBuildCanonicalSkillBadge_NilResolverNoURL : sans résolveur, le label reste
+// construit mais l'URL est nil (plus aucun template HINF en dur dans analysis).
+func TestBuildCanonicalSkillBadge_NilResolverNoURL(t *testing.T) {
+	t.Parallel()
+	sub := 4
+	label, url := buildCanonicalSkillBadge("Or", "gold", &sub, nil)
+	if label == nil || *label != "Or IV" {
+		t.Errorf("label = %q, want Or IV", derefStr(label))
+	}
+	if url != nil {
+		t.Errorf("url = %q, want nil quand résolveur nil", derefStr(url))
+	}
+}
+
+// TestBuildCanonicalSkillBadge_EmptyResolverResultNoURL : résolveur présent mais
+// renvoyant "" → URL nil, label conservé (dégradation gracieuse).
+func TestBuildCanonicalSkillBadge_EmptyResolverResultNoURL(t *testing.T) {
+	t.Parallel()
+	sub := 2
+	label, url := buildCanonicalSkillBadge("Argent", "silver", &sub, func(string, int) string { return "" })
+	if label == nil || *label != "Argent II" {
+		t.Errorf("label = %q, want Argent II", derefStr(label))
+	}
+	if url != nil {
+		t.Errorf("url = %q, want nil quand résolveur renvoie vide", derefStr(url))
 	}
 }
 
@@ -77,7 +142,7 @@ func TestBuildCanonicalSkillBadge_EmptyTierCodeReturnsNil(t *testing.T) {
 	t.Parallel()
 	// Sans tier code EN → impossible de construire l'URL → (nil, nil).
 	sub := 3
-	label, url := buildCanonicalSkillBadge("Or", "", &sub)
+	label, url := buildCanonicalSkillBadge("Or", "", &sub, hinfStubResolver)
 	if label != nil || url != nil {
 		t.Errorf("(label, url) = (%v, %v), want (nil, nil) when tierEN empty", label, url)
 	}
@@ -86,7 +151,7 @@ func TestBuildCanonicalSkillBadge_EmptyTierCodeReturnsNil(t *testing.T) {
 func TestBuildCanonicalSkillBadge_WhitespaceTierCodeReturnsNil(t *testing.T) {
 	t.Parallel()
 	sub := 3
-	label, url := buildCanonicalSkillBadge("Or", "   ", &sub)
+	label, url := buildCanonicalSkillBadge("Or", "   ", &sub, hinfStubResolver)
 	if label != nil || url != nil {
 		t.Errorf("(label, url) = (%v, %v), want (nil, nil)", label, url)
 	}
@@ -95,7 +160,7 @@ func TestBuildCanonicalSkillBadge_WhitespaceTierCodeReturnsNil(t *testing.T) {
 func TestBuildCanonicalSkillBadge_NilSubTierNonOnyx(t *testing.T) {
 	t.Parallel()
 	// Non-Onyx sans subTier → st = 0 → en-dehors de [1..6] → (nil, nil).
-	label, url := buildCanonicalSkillBadge("Or", "gold", nil)
+	label, url := buildCanonicalSkillBadge("Or", "gold", nil, hinfStubResolver)
 	if label != nil || url != nil {
 		t.Errorf("(label, url) = (%v, %v), want (nil, nil)", label, url)
 	}
@@ -106,7 +171,7 @@ func TestBuildCanonicalSkillBadge_SubTierOutOfRange(t *testing.T) {
 	// SubTier hors [1..6] doit retourner (nil, nil).
 	for _, st := range []int{0, -1, 7, 100} {
 		stCopy := st
-		label, url := buildCanonicalSkillBadge("Or", "gold", &stCopy)
+		label, url := buildCanonicalSkillBadge("Or", "gold", &stCopy, hinfStubResolver)
 		if label != nil || url != nil {
 			t.Errorf("subTier=%d: (label, url) = (%v, %v), want (nil, nil)", st, label, url)
 		}
@@ -117,7 +182,7 @@ func TestBuildCanonicalSkillBadge_EmptyDisplayUsesTierENCap(t *testing.T) {
 	t.Parallel()
 	// Si display vide → fallback sur tierEN capitalisé.
 	sub := 5
-	label, url := buildCanonicalSkillBadge("", "platinum", &sub)
+	label, url := buildCanonicalSkillBadge("", "platinum", &sub, hinfStubResolver)
 	if label == nil || *label != "Platinum V" {
 		t.Errorf("label = %q, want Platinum V", derefStr(label))
 	}
@@ -130,7 +195,7 @@ func TestBuildCanonicalSkillBadge_WhitespaceDisplayUsesFallback(t *testing.T) {
 	t.Parallel()
 	// Display avec whitespace seulement → trim → fallback sur tierEN capitalisé.
 	sub := 2
-	label, url := buildCanonicalSkillBadge("   ", "bronze", &sub)
+	label, url := buildCanonicalSkillBadge("   ", "bronze", &sub, hinfStubResolver)
 	if label == nil || *label != "Bronze II" {
 		t.Errorf("label = %q, want Bronze II", derefStr(label))
 	}
@@ -143,7 +208,7 @@ func TestBuildCanonicalSkillBadge_SubTier6Allowed(t *testing.T) {
 	t.Parallel()
 	// La borne supérieure inclusive est 6.
 	sub := 6
-	label, url := buildCanonicalSkillBadge("Argent", "silver", &sub)
+	label, url := buildCanonicalSkillBadge("Argent", "silver", &sub, hinfStubResolver)
 	if label == nil || *label != "Argent VI" {
 		t.Errorf("label = %q, want Argent VI", derefStr(label))
 	}

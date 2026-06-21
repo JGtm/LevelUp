@@ -57,6 +57,12 @@ type HomeService struct {
 	// live + cache TTL 24h) sont servies depuis des fixtures embarquées au lieu de
 	// renvoyer vide. Cf. home_service_demo.go.
 	demoMode bool
+	// skillBadgeResolver (optionnel, multi-titres) : résout l'URL du badge CSR
+	// title-aware (csr_designations h5 sinon static HINF). Injecté au boot avec le
+	// slug du titre du joueur. Nil → SkillRankImageURL laissé vide côté tuiles de
+	// match (dégradation gracieuse, le label suffit). Signature (tierEN capitalisé,
+	// subTier 0..6 ; 0 = Onyx) → URL. Garde le package analysis title-agnostic.
+	skillBadgeResolver func(tierEN string, subTier int) string
 }
 
 // NewHomeService crÃ©e un HomeService avec le repository et le provider Halo.
@@ -71,6 +77,16 @@ func NewHomeService(repo port.HomeRepository) *HomeService {
 // lecture quand aucune source réelle n'existe en démo. Retourne le service (chaînage).
 func (s *HomeService) WithDemoMode(demo bool) *HomeService {
 	s.demoMode = demo
+	return s
+}
+
+// WithSkillBadgeResolver injecte le résolveur d'URL de badge CSR title-aware
+// (csr_designations pour les titres additionnels, sinon static HINF). Câblé au
+// boot avec le slug du titre du joueur. Dégradation gracieuse si nil (badge vide
+// sur les tuiles de match — le label de palier reste affiché). Retourne le service
+// pour permettre le chaînage.
+func (s *HomeService) WithSkillBadgeResolver(f func(tierEN string, subTier int) string) *HomeService {
+	s.skillBadgeResolver = f
 	return s
 }
 
@@ -327,8 +343,8 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 	hasRankedHistory, hasUnrankedHistory := analysis.InferHomeSkillHistoryFromCanonical(d.canonicalRows)
 	hero := analysis.BuildHeroCardFromCanonical(d.canonicalRows, gamertag, d.totalMatches, locale, hp)
 	highlights := analysis.BuildHighlightsFromCanonical(d.canonicalRows)
-	recentMatches := analysis.BuildRecentMatchesWithFavoritesFromCanonical(d.canonicalRows, len(d.canonicalRows), d.favoriteIDs, locale, hp)
-	favoriteMatches := buildFavoriteMatchListCanonical(d.canonicalRows, d.favoriteIDs, locale, hp)
+	recentMatches := analysis.BuildRecentMatchesWithFavoritesFromCanonical(d.canonicalRows, len(d.canonicalRows), d.favoriteIDs, locale, hp, s.skillBadgeResolver)
+	favoriteMatches := buildFavoriteMatchListCanonical(d.canonicalRows, d.favoriteIDs, locale, hp, s.skillBadgeResolver)
 	soloSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, false, locale, hp)
 	squadSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, true, locale, hp)
 	soloSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, false, 20, locale, hp)

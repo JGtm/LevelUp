@@ -16,14 +16,17 @@ import (
 //
 // Lit Map/Playlist/GameVariant labels via Summary.AssetReference.Labels.
 // PairName (composite Halo-only) substituÃ© par GameVariant FR/Default.
-// SkillTierLabel/SkillRankImageURL : laissÃ©s vides (TODO ADR 0011 â€” cÃ¢blage
-// TitleSemanticAdapter / TitleAssetURLAdapter au boot du service).
+// skillBadgeURL : résolveur d'URL de badge CSR INJECTÉ (title-aware ; résolu par
+// la couche boot/service qui connaît le titre). Signature (tierEN capitalisé,
+// subTier 0..6 ; 0 = Onyx) → URL ; nil ou "" → SkillRankImageURL laissé vide
+// (dégradation gracieuse : le front a déjà le label). Aucun template HINF figé ici.
 func BuildRecentMatchesWithFavoritesFromCanonical(
 	rows []canonical.PlayerMatchRow,
 	limit int,
 	favoriteIDs map[string]bool,
 	locale string,
 	effectiveHpToKill float64,
+	skillBadgeURL func(tierEN string, subTier int) string,
 ) []domain.RecentMatchItem {
 	if len(rows) == 0 {
 		return nil
@@ -124,7 +127,7 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 				if locale == "fr" && ss.TierCodeFR != nil && *ss.TierCodeFR != "" {
 					tierForLabel = *ss.TierCodeFR
 				}
-				skillTierLabelVal, skillBadgeURLVal = buildCanonicalSkillBadge(tierForLabel, *ss.TierCode, ss.SubTier)
+				skillTierLabelVal, skillBadgeURLVal = buildCanonicalSkillBadge(tierForLabel, *ss.TierCode, ss.SubTier, skillBadgeURL)
 			}
 		}
 
