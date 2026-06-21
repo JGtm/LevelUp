@@ -5,7 +5,7 @@ import { AssetCard } from './AssetCard'
 interface AssetGridProps {
   items: AssetMeta[]
   locale: ManifestLocale
-  kind: 'maps' | 'weapons'
+  kind: 'maps' | 'weapons' | 'medals'
   emptyMessage: string
   isLoading: boolean
   isError: boolean

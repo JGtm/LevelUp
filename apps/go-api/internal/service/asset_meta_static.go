@@ -11,10 +11,11 @@ import (
 // Compile-time check : StaticAssetMetaRepo implémente port.AssetMetaRepository.
 var _ port.AssetMetaRepository = (*StaticAssetMetaRepo)(nil)
 
-// assetSet regroupe les maps + armes d'un titre (snapshot in-memory).
+// assetSet regroupe les maps + armes + médailles d'un titre (snapshot in-memory).
 type assetSet struct {
 	maps    []canonical.AssetMeta
 	weapons []canonical.AssetMeta
+	medals  []canonical.AssetMeta
 }
 
 // StaticAssetMetaRepo est une implémentation in-memory de port.AssetMetaRepository.
@@ -39,11 +40,11 @@ func NewStaticAssetMetaRepo(maps, weapons []canonical.AssetMeta) *StaticAssetMet
 }
 
 // WithTitle ajoute (ou remplace) le jeu d'assets d'un titre spécifique. Chainable.
-func (r *StaticAssetMetaRepo) WithTitle(titleID string, maps, weapons []canonical.AssetMeta) *StaticAssetMetaRepo {
+func (r *StaticAssetMetaRepo) WithTitle(titleID string, maps, weapons, medals []canonical.AssetMeta) *StaticAssetMetaRepo {
 	if r.byTitle == nil {
 		r.byTitle = map[string]assetSet{}
 	}
-	r.byTitle[titleID] = assetSet{maps: maps, weapons: weapons}
+	r.byTitle[titleID] = assetSet{maps: maps, weapons: weapons, medals: medals}
 	return r
 }
 
@@ -63,6 +64,11 @@ func (r *StaticAssetMetaRepo) ListMapsByTitle(_ context.Context, titleID string,
 // ListWeaponsByTitle retourne les armes du titre, filtrées par search (LIKE case-insensitive).
 func (r *StaticAssetMetaRepo) ListWeaponsByTitle(_ context.Context, titleID string, search string) ([]canonical.AssetMeta, error) {
 	return filterAssets(r.setFor(titleID).weapons, search), nil
+}
+
+// ListMedalsByTitle retourne les médailles du titre, filtrées par search (LIKE case-insensitive).
+func (r *StaticAssetMetaRepo) ListMedalsByTitle(_ context.Context, titleID string, search string) ([]canonical.AssetMeta, error) {
+	return filterAssets(r.setFor(titleID).medals, search), nil
 }
 
 func filterAssets(items []canonical.AssetMeta, search string) []canonical.AssetMeta {

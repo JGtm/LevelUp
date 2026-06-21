@@ -28,3 +28,15 @@ export function useAssetWeapons(titleSlug: string, search: string) {
     staleTime: STALE_MS,
   })
 }
+
+export function useAssetMedals(titleSlug: string, search: string) {
+  return useQuery({
+    queryKey: queryKeys.assetMedals(titleSlug, search),
+    queryFn: () => {
+      const params = search ? `?q=${encodeURIComponent(search)}` : ''
+      return api.get<AssetMeta[]>(`/assets/${titleSlug}/medals${params}`)
+    },
+    enabled: !!titleSlug,
+    staleTime: STALE_MS,
+  })
+}

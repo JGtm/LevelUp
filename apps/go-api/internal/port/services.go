@@ -245,6 +245,9 @@ type AssetService interface {
 
 	// ListWeapons retourne les armes d'un titre avec image_url, filtrées par search.
 	ListWeapons(ctx context.Context, titleID, search string) ([]canonical.AssetMeta, error)
+
+	// ListMedals retourne les médailles d'un titre (icône sprite), filtrées par search.
+	ListMedals(ctx context.Context, titleID, search string) ([]canonical.AssetMeta, error)
 }
 
 // ─── Sprint 54 : Compare, Leaderboard ────────────────────────────────────────

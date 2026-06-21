@@ -1,3 +1,12 @@
+## [2026-06-21] Halo 5 référentiel — onglet MÉDAILLES (sprite) end-to-end — Complété
+
+Ajout d'un 3e onglet « Médailles » à l'Asset Drawer (à côté de Cartes + Armes), affichant les 215 médailles h5. Icône = SPRITE (feuille + offset, API Metadata officielle) → rendu front via background-image/background-position.
+
+- **Backend** : `canonical.AssetMeta` + champs Sprite* (omitempty) ; `port.AssetMetaRepository.ListMedalsByTitle` + `port.AssetService.ListMedals` ; `StaticAssetMetaRepo` title-keyé étendu aux médailles (`WithTitle` 4 args) ; `MetadataRepo.ListMedalsByTitle` (sans sprite, sûr HINF) ; `loadTitleAssetDrawerData` charge medal_definitions (sprite) au boot ; handler `/assets/{title_id}/medals`. Tests + mocks MAJ, build+vet+tests verts.
+- **Front** : onglet Médailles (store AssetTab += 'medals') ; hook `useAssetMedals` ; `AssetCard` rendu sprite (background-position) ; `AssetMeta` étendu (champs sprite, intersection) ; queryKey `assetMedals` ; i18n tab/empty.medals (régénéré). typecheck + eslint (0 erreur) verts.
+
+Résultat : référentiel h5 = **Cartes 49 + Armes 68 + Médailles 215** affichées. Reste : image rang CSR (chemin per-playlist CSR), FR (WikiHalo), prod (fetcher serveur).
+
 ## [2026-06-21] Halo 5 référentiel (maps + armes) AFFICHÉ — Complété
 
 Le tab référentiel (Asset Drawer) affiche maintenant les **maps + armes h5** (avec images officielles). Le handler `/assets/{title_id}/maps|weapons` était DÉJÀ title-aware (gate `asset.images` que h5 a ; front `useAssetDrawer` passe le slug courant). Seul manquait le `StaticAssetMetaRepo` HINF-only :

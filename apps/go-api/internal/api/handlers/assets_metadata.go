@@ -41,6 +41,7 @@ func (h *AssetMetadataHandler) Mount(r chi.Router) {
 	api := humacore.NewAPI(r)
 	huma.Get(api, "/assets/{title_id}/maps", h.ListMaps)
 	huma.Get(api, "/assets/{title_id}/weapons", h.ListWeapons)
+	huma.Get(api, "/assets/{title_id}/medals", h.ListMedals)
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -100,6 +101,27 @@ func (h *AssetMetadataHandler) ListWeapons(ctx context.Context, in *assetMetaInp
 	return &assetMetaOutput{Body: items}, nil
 }
 
+// ListMedals liste les médailles d'un titre pour l'Asset Drawer (icône sprite).
+// GET /api/v1/assets/{title_id}/medals?q=
+func (h *AssetMetadataHandler) ListMedals(ctx context.Context, in *assetMetaInput) (*assetMetaOutput, error) {
+	if !h.hasCapability(in.TitleID, titlePkg.CapAssetImages) {
+		return nil, humacore.NewError(http.StatusNotFound, "asset_capability_unavailable",
+			"capability asset.images non supportée pour ce titre")
+	}
+
+	items, err := h.svc.ListMedals(ctx, in.TitleID, in.Search)
+	if err != nil {
+		slog.ErrorContext(ctx, "ListMedals failed", "err", err, "title", in.TitleID)
+		return nil, humacore.NewError(http.StatusInternalServerError, "internal_error", "erreur interne")
+	}
+
+	slog.DebugContext(ctx, "ListMedals", "title", in.TitleID, "q", in.Search, "n", len(items))
+	if items == nil {
+		items = []canonical.AssetMeta{}
+	}
+	return &assetMetaOutput{Body: items}, nil
+}
+
 // EmptyAssetMetadataHandler est le fallback Huma de l'Asset Drawer quand la base
 // metadata est indisponible au boot (best-effort, filet de sécurité). Il renvoie
 // systématiquement une liste vide [] (200) sur les 2 mêmes paths que
@@ -122,6 +144,7 @@ func (h *EmptyAssetMetadataHandler) Mount(r chi.Router) {
 	api := humacore.NewAPI(r)
 	huma.Get(api, "/assets/{title_id}/maps", h.listEmpty)
 	huma.Get(api, "/assets/{title_id}/weapons", h.listEmpty)
+	huma.Get(api, "/assets/{title_id}/medals", h.listEmpty)
 }
 
 // listEmpty renvoie toujours une liste vide (slice non-nil → JSON []), inconditionnel.
