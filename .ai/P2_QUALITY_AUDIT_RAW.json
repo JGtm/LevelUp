@@ -1,0 +1,291 @@
+{
+  "summary": "Audit qualité/maintenabilité de la campagne ART append-only (#23046) : complétude, DRY/factorisation, archi/couches, élégance, tests",
+  "agentCount": 13,
+  "logs": [],
+  "result": {
+    "dimension_summaries": [
+      {
+        "dimension": "completeness",
+        "summary": "La campagne d'éradication ART #23046 est substantiellement COMPLÈTE et bien gardée. Toutes les tables d'état à index/PK sous churn concurrent (PME, PSA, match_skill_rank, match_csrs, player_csr_snapshots, pve_match_stats, weapon_kills, match_citations, lusr_component_history, player_skill_state_v2 watermark, + 8 tables shared_social favorites/likes/squad/notif/user_prestige) sont converties en append-only ou SELECT-then-write ; chaque migration est enregistrée dans order.go et 4 garde-fous (append_only_state_guard_test, no_art_patterns_test, metadata_art_surface_guard_test, shared_write_guard_test) couvrent l'ensemble — tous VERTS à l'exécution. Aucun vecteur ART résiduel ACTIF sous churn n'a été trouvé. Les hits DELETE/ON CONFLICT restants tombent dans 4 catégories tolérées : (1) tables sans index/PK (killer_victim_pairs, catalog_fetch_queue rebuildée PK-less), (2) chemin legacy gardé derrière flag LEVELUP_PERSIST_BATCH=0 (défaut ON=safe), (3) sites HTTP basse-fréquence single-writer (prestige), (4) code mort / fallbacks de transition. Une seule vraie scorie : un writer oublié (citations_repo.go) porte un ON CONFLICT incompatible avec la table désormais append-only, mais il est DEAD CODE (zéro caller) donc latent, pas un vecteur runtime.",
+        "n_findings": 8
+      },
+      {
+        "dimension": "dry",
+        "summary": "La campagne ART append-only est massivement copy-paste : le boilerplate de swap CTAS transactionnel (BeginTx + count-before/after + CTAS __appendonly + DROP/RENAME/ADD PK/ALTER DEFAULT + index + vue) est dupliqué quasi à l'identique dans 8 migrations, sans aucun helper partagé, et seules 3 d'entre elles ont la garde anti-perte (recoverOrphan + rebuilt==before) — divergence dangereuse, pas seulement esthétique. Le DDL de vue _latest (ROW_NUMBER/DENSE_RANK OVER PARTITION) est réécrit à la main ~26 fois. Le métadata colonne→stage de PME est défini 3 fois (la 3e avec un commentaire « à unifier en single source »). L'allocation generation_id est copiée dans 6 writers. Les sentinelles de « génération vide » (is_tombstone / '_processed' / is_reset) sont 3 mécanismes ad-hoc divergents pour le même besoin. La factorisation rapporterait gros ET corrigerait une asymétrie de sûreté (swaps non-transactionnels sans rollback).",
+        "n_findings": 6
+      },
+      {
+        "dimension": "architecture",
+        "summary": "La campagne ART respecte globalement bien les couches : les writers append-only batch vivent en persist/, les writers live routent via l'interface SocialPersister, les readers _latest sont majoritairement en platform/duckdb/, et les migrations sont du DDL+backfill pur (aucun calcul métier détourné). Le placement physique fichier↔TargetDB est correct partout (zéro mismatch préfixe/TargetDB sur toute la migration/). Deux défauts transverses subsistent : (1) la connaissance métier « quelle colonne appartient à quel stage » de player_match_enrichment est dupliquée dans 3 couches (migration vue + persist map + repos hardcodés) sans source unique — déjà annotée TODO dans le code ; (2) les vues _latest sont redéfinies en dur dans les fixtures de test, certaines ayant divergé de la définition de production (stub sans dedup). Naming des fichiers append-only incohérent (infix vs suffix) mais sans impact fonctionnel.",
+        "n_findings": 5
+      },
+      {
+        "dimension": "elegance",
+        "summary": "Les solutions append-only sont individuellement solides (swap transactionnel à garde anti-perte, vues _latest, idempotence par columnExists, crash-test sur données réelles Madina/JGtm) et la sémantique de chaque mécanisme (generation_id = replace-par-batch, stage = merge-par-colonne, written_at = append pur, is_reset = sentinelle) est correcte. Mais la cohérence transverse est faible : trois mécanismes de discrimination, trois mécanismes de vue (ROW_NUMBER/DENSE_RANK/JOIN-MAX), et surtout deux niveaux de robustesse migration (transactionnel+recoverOrphan pour PME/PSA/citations vs DDL direct sans transaction pour msr/lch) — cette dernière divergence a DÉJÀ produit un bug de swap partiel (written_at DEFAULT NULL) nécessitant une migration de réparation dédiée. Aucune doc centrale ne justifie ces choix : le « pourquoi 3 mécanismes » est dispersé en en-têtes de fichiers, jamais consolidé.",
+        "n_findings": 9
+      },
+      {
+        "dimension": "tests",
+        "summary": "Les invariants append-only sont SOLIDEMENT verrouillés pour player_match_enrichment (test merge-on-read complet) et pour le watermark player_skill_state_v2 (sentinelle is_reset). Les garde-fous regex (append_only_state_guard_test + no_art_patterns_test) sont robustes : j'ai vérifié empiriquement que le boundary `[^;`]*` matche bien les `INSERT INTO <table> ... ON CONFLICT (cols) DO UPDATE` dans une raw-string Go ET ne bridge PAS vers une autre string du même fichier (le bug historique est corrigé). MAIS l'invariant de cardinalité (« table physique grossit, _latest stable, zéro fan-out ») n'est testé QUE pour PME : weapon_kills, personal_score_awards et match_citations n'ont AUCUN test qui prouve la supersession générationnelle (physique croît / _latest stable). Pire : un test d'idempotence citations a une assertion affaiblie (n==0 au lieu de run1==run2), les tests PSA lisent la table physique au lieu de _latest, le fixture central buildPipelineFixture ne convertit pas du tout PSA en append-only (schéma legacy divergent), et la migration weapon_kills n'a aucun test au niveau migration. Plusieurs trous laisseraient passer une régression vers DELETE+INSERT.",
+        "n_findings": 10
+      }
+    ],
+    "confirmed_high_blocker": [
+      {
+        "dimension": "dry",
+        "title": "Swap CTAS append-only : 8 copies quasi-identiques, zéro helper partagé + asymétrie de sûreté (3 transactionnels / 5 non)",
+        "severity": "high",
+        "evidence": "Le bloc « CREATE SEQUENCE / DROP __appendonly / CTAS SELECT nextval(seq) AS id, <cols>, CURRENT_TIMESTAMP AS written_at / DROP table / RENAME __appendonly / ADD PRIMARY KEY(id) / ALTER id SET DEFAULT nextval / ALTER written_at SET DEFAULT now() / CREATE INDEX / CREATE VIEW _latest » est recopié à la main dans 8 migrations :\n- swapPSAAppendOnlyTx (steps_player_append_only_personal_score_awards.go:132-223)\n- swapMatchCitationsAppendOnlyTx (steps_player_append_only_match_citations.go:120-191)\n- swapMatchEnrichmentAppendOnlyTx (steps_player_append_only_match_enrichment.go:244-309)\n- applyAppendOnlyMatchSkillRank stmts[] (steps_player_append_only_match_skill_rank.go:87-119)\n- applyAppendOnlyLUSRComponentHistory stmts[] (steps_player_lusr_components_append_only.go:84-114)\n- applyAppendOnlyMatchCSRs stmts[] (steps_shared_append_only_match_csrs.go:75-104)\n- applyAppendOnlyPlayerCSRSnapshots stmts[] (steps_player_append_only_csr_snapshots.go:58-84)\n- applyAppendOnlyPveMatchStats stmts[] (steps_shared_pve_append_only.go:60-87)\nAsymétrie GRAVE : seules PSA/citations/PME font BeginTx + garde anti-perte (ex. steps_player_append_only_personal_score_awards.go:162-197 `rebuilt != before` → rollback). msr/lch/csr_snapshots/match_csrs/pve exécutent DROP TABLE + CTAS HORS transaction (db.ExecContext direct, ex. steps_shared_append_only_match_csrs.go:99-104) : un crash entre `DROP TABLE match_csrs` et `RENAME __appendonly` = perte irrécupérable, et AUCUN recoverOrphan pour ces 5-là.",
+        "recommendation": "Extraire dans helpers.go un seul `rebuildAppendOnlyTx(ctx, db, spec)` où spec = struct{Table, Seq string; ExtraCols []ctas; PartitionBy []string; OrderBy string; Indexes []string; LegacyTombstoneFlag/Stage string}. Le helper fait : recoverOrphan générique (basé sur `<table>__appendonly`) → count before → BeginTx → CREATE SEQUENCE/CTAS/swap/ADD PK/DEFAULTs → garde rebuilt==before → indexes → CREATE VIEW <table>_latest générée → Commit. Les 8 migrations deviennent ~10 lignes de spec chacune. Bénéfice double : ~600 lignes en moins ET la garde transactionnelle + recoverOrphan deviennent automatiques pour les 5 swaps actuellement non protégés.",
+        "effort": "large"
+      },
+      {
+        "dimension": "dry",
+        "title": "Métadata colonne→stage de PME défini 3 fois (smell déjà documenté dans le code : « à unifier en single source »)",
+        "severity": "high",
+        "evidence": "La même liste colonne→stage est redéfinie 3 fois, dont 2 avec un type/forme différents :\n1. pmeColumnStage []struct{col,stage} (migration/steps_player_append_only_match_enrichment.go:53-72) — pilote la vue.\n2. ensurePMEColumns cols []struct{name,typ} (même fichier:183-206) — RE-LISTE les 22 colonnes avec leur type, sans le stage.\n3. enrichmentColumnStage map[string]string (persist/post_sync_enrichment_persister.go:58-75) — pilote l'INSERT du writer + sert de whitelist anti-injection.\nLe code admet explicitement la dette : post_sync_enrichment_persister.go:51-55 « Doit rester aligné avec pmeColumnStage … ce mapping duplique pmeColumnStage (migration) — à unifier en single source ». Risque réel : (1) et (3) divergent déjà — `is_excluded`/`psa`/`dominance` (présents dans la migration:62-63) ne sont PAS dans enrichmentColumnStage → une colonne réellement écrite côté migration mais absente de la whitelist persist, ou inversement, échoue silencieusement à l'alignement vue/writer.",
+        "recommendation": "Source unique dans un package partagé (ex. internal/domain/pme_schema.go) : `var PMEColumns = []struct{Col, Stage, SQLType string; CoalesceFalse bool}`. La migration en dérive pmeColumnStage + ensurePMEColumns + pmeBooleanFalseDefault ; le persister en dérive enrichmentColumnStage. Un test de couverture (toutes les colonnes whitelistées writer ⊆ colonnes vue) devient trivial. Élimine les 3 redéfinitions et le commentaire de dette.",
+        "effort": "medium"
+      },
+      {
+        "dimension": "architecture",
+        "title": "Mapping colonne→stage de PME dupliqué sur 3 couches sans source unique (couplage migration↔persist↔repos)",
+        "severity": "high",
+        "evidence": "La définition canonique vit dans la migration : apps/go-api/internal/migration/steps_player_append_only_match_enrichment.go:53-72 (var pmeColumnStage construit la vue player_match_enrichment_latest). Elle est RE-déclarée à l'identique dans le writer : apps/go-api/internal/persist/post_sync_enrichment_persister.go:58-75 (var enrichmentColumnStage), avec un commentaire d'aveu lignes 50-55 : « Doit rester aligné avec pmeColumnStage de la migration [...] NOTE factorisation : ce mapping duplique pmeColumnStage (migration) — à unifier en single source ». Et un 3e site hardcode le stage en dur hors des deux maps : apps/go-api/internal/platform/duckdb/match_exclusion_repo.go:53-54 (`INSERT INTO player_match_enrichment (match_id, is_excluded, stage) VALUES (?, ?, 'exclusion')`). Conséquence concrète du drift : la colonne is_excluded/stage='exclusion' est dans pmeColumnStage (migration) mais ABSENTE de enrichmentColumnStage (persist) — la cohérence n'est tenue que parce que ce stage passe par un repo séparé. Si la vue (migration) et la map writer (persist) divergent, un writer peut taguer une row d'un stage que la vue ne lit jamais → écriture silencieusement perdue, sans erreur de compilation.",
+        "recommendation": "Extraire le mapping colonne→stage (et la liste des stages) dans un package neutre partagé (ex. internal/domain/enrichment ou internal/persist/enrichmentschema) consommé à la fois par la migration (pour générer buildPMELatestViewSQL), par PostSyncEnrichmentPersister et par les repos (match_exclusion_repo). La migration peut importer ce package (les migrations importent déjà domain). Au minimum : ajouter un test cross-package qui asserte pmeColumnStage == enrichmentColumnStage ∪ {exclusion-via-repo} pour transformer le drift silencieux en échec CI.",
+        "effort": "medium"
+      },
+      {
+        "dimension": "elegance",
+        "title": "Incohérence de robustesse migration : msr/lch en DDL direct (non transactionnel, sans recoverOrphan) vs PME/PSA/citations transactionnels — a déjà causé un bug de swap partiel",
+        "severity": "high",
+        "evidence": "steps_player_append_only_match_skill_rank.go:87-119 et steps_player_lusr_components_append_only.go:84-114 exécutent DROP TABLE / RENAME / ALTER directement sur db.ExecContext (pas de db.BeginTx), sans fonction recoverOrphan*. À l'opposé, swapMatchEnrichmentAppendOnlyTx (steps_player_append_only_match_enrichment.go:259-300) et swapPSAAppendOnlyTx (steps_player_append_only_personal_score_awards.go:162-217) encapsulent tout en BeginTx + garde rebuilt==before + recoverOrphan*. Le commentaire de steps_player_append_only_match_skill_rank_repair.go:8-17 prouve que cette non-transactionnalité a déjà cassé en prod : « si le ALTER ... SET DEFAULT now() (l.106) n'a pas abouti (interruption, ordre), la base reste à written_at DEFAULT NULL — et comme id existe, la migration d'origine ne re-tente JAMAIS » → 3685 rows written_at NULL chez Chocoboflor, delta LUSR +75 faux, migration de réparation entière à créer.",
+        "recommendation": "Refactoriser msr et lch sur le même squelette transactionnel : extraire un helper swapToAppendOnlyTx(ctx, db, table, seq, extraCols, viewSQL) partagé par les 5 tables (PME/PSA/citations/msr/lch), avec BeginTx + garde rebuilt==before + recoverOrphan<Table>. Cela élimine par construction le mode d'échec « id posé mais written_at/PK/DEFAULT non appliqué » et rend la migration msr_written_at_default_now_repair_v1 inutile pour les futures bases.",
+        "effort": "medium"
+      },
+      {
+        "dimension": "elegance",
+        "title": "msr/lch n'ont pas de recoverOrphan* : un crash entre DROP TABLE et RENAME laisse la table __appendonly orpheline sans réparation au reboot",
+        "severity": "high",
+        "evidence": "steps_player_append_only_match_skill_rank.go:102-103 fait `DROP TABLE match_skill_rank` puis `ALTER TABLE match_skill_rank__appendonly RENAME` hors transaction. Un crash entre les deux → table principale absente + __appendonly présente, état dont AUCUN code ne sait sortir (pas de recoverOrphanMatchSkillRank). PME/PSA/citations gèrent ce cas exact via recoverOrphanMatchEnrichment/PSA/MatchCitations (ex. steps_player_append_only_match_citations.go:93-115). Donnée msr/lch perdue au boot suivant.",
+        "recommendation": "Ajouter recoverOrphanMatchSkillRank / recoverOrphanLUSRComponentHistory (calqués sur recoverOrphanPSA) appelés en tête de applyAppendOnlyMatchSkillRank / applyAppendOnlyLUSRComponentHistory ; ou mieux, l'inclure dans le helper transactionnel partagé recommandé ci-dessus (la transaction rend l'orphelin impossible, le recover devient une ceinture-bretelle).",
+        "effort": "small"
+      },
+      {
+        "dimension": "tests",
+        "title": "personal_score_awards : aucun test de ré-extraction (génération MAX) ni du tombstone-clear ; les tests lisent la table physique au lieu de _latest",
+        "severity": "high",
+        "evidence": "internal/sync/convergence_test.go:178-179 et 209-210 — TestConvergePSA_ErrorPaths fait `SELECT COUNT(*) FROM personal_score_awards` (table PHYSIQUE, pas personal_score_awards_latest). Sur une 1re écriture gen0/gen1 physique==latest, donc ça passe, mais : (1) aucune assertion via _latest (le vrai reader, citations.go:374) ; (2) AUCUN test ne ré-écrit PSA sur le même (match,xuid) pour vérifier que _latest ne garde que la génération MAX ; (3) le chemin TOMBSTONE (InsertPersonalScoreAwards(...,nil) → is_tombstone=TRUE → _latest retourne 0 row, writes.go:398-399) n'est testé NULLE PART (grep is_tombstone/tombstone = 0 hit dans les tests).",
+        "recommendation": "Ajouter un test : 2 InsertPersonalScoreAwards successifs sur le même (match,xuid) avec des award sets différents → assert personal_score_awards (physique) grossit ET personal_score_awards_latest ne renvoie QUE le dernier set. Plus un test du clear : InsertPersonalScoreAwards(...,nil) → _latest renvoie 0 row pour ce (match,xuid) mais la table physique conserve l'historique + le tombstone.",
+        "effort": "small"
+      },
+      {
+        "dimension": "tests",
+        "title": "Test d'idempotence citations affaibli : n'assert que n==0, ne compare jamais run1 vs run2 (la prose promet le contraire)",
+        "severity": "high",
+        "evidence": "internal/sync/sync_pipeline_fixture_test.go:889-911 — TestPipelineFixture_Citations_Idempotent appelle runCitations() deux fois puis : commentaire ligne 907 « le COUNT doit être identique au premier appel », mais le code ne capture jamais le COUNT du 1er appel ; l'unique assertion est `if n == 0 { Fatal }` (ligne 908). Une régression où le 2e BackfillMatchCitations doublerait les rows de match_citations_latest (génération cassée, DENSE_RANK rendant 2 générations) ne serait PAS détectée.",
+        "recommendation": "Capturer n1 après le 1er run, n2 après le 2e, et assert `n2 == n1`. Ajouter une assertion que la table physique match_citations a grossi entre les deux runs (preuve d'append-only) tandis que _latest est stable.",
+        "effort": "trivial"
+      }
+    ],
+    "rejected_by_skeptic": [
+      "weapon_kills : aucune assertion sur le fan-out physique après ré-insertion (invariant cardinalité non testé)"
+    ],
+    "medium_low_findings": [
+      {
+        "dimension": "dry",
+        "title": "recoverOrphanXxx : 3 copies identiques au mot près (+ 2 jumelles hors campagne) au lieu d'un helper paramétré par nom de table",
+        "severity": "medium",
+        "evidence": "recoverOrphanPSA (steps_player_append_only_personal_score_awards.go:105-127), recoverOrphanMatchCitations (steps_player_append_only_match_citations.go:93-115) et recoverOrphanMatchEnrichment (steps_player_append_only_match_enrichment.go:217-239) sont byte-pour-byte identiques modulo le nom de table : même séquence `tableExists(main)? return / tableExists(__appendonly)? / WarnContext / ALTER RENAME`. Deux jumelles supplémentaires existent déjà dans le package (recoverOrphanMatchParticipants steps_shared_rebuild_match_participants.go:202, recoverOrphanMediaFiles steps_shared_social_media_files_drop_filepath_unique.go:116) → le pattern est copié 5 fois au total.",
+        "recommendation": "Helper unique `func recoverOrphanRebuild(ctx, db *sql.DB, table string) error` dans helpers.go (RENAME `<table>__appendonly` -> `<table>` si la principale manque). Appelé par les 5 sites + automatiquement par le `rebuildAppendOnlyTx` du finding précédent. Supprime ~115 lignes.",
+        "effort": "small"
+      },
+      {
+        "dimension": "dry",
+        "title": "DDL de vue _latest (ROW_NUMBER/DENSE_RANK OVER PARTITION) copié-collé ~26 fois au lieu d'être généré",
+        "severity": "medium",
+        "evidence": "Le squelette `CREATE OR REPLACE VIEW <t>_latest AS SELECT ... QUALIFY ROW_NUMBER() OVER (PARTITION BY <keys> ORDER BY written_at DESC, id DESC) = 1` (ou la variante DENSE_RANK pour PSA/citations/weapon_kills) est écrit à la main dans ~26 endroits (grep QUALIFY/DENSE_RANK/DISTINCT ON = 26 occurrences / 25 fichiers). Exemples cœur de campagne : steps_player_append_only_match_skill_rank.go:110, steps_shared_append_only_match_csrs.go:95, steps_player_append_only_csr_snapshots.go:75, steps_shared_pve_append_only.go:78, steps_player_lusr_components_append_only.go:105, steps_shared_social_favorites_append_only.go:60, steps_shared_social_likes_append_only.go:58 (favorites/likes identiques modulo noms de colonnes). Le seul cas factorisé est PME (buildPMELatestViewSQL, steps_player_append_only_match_enrichment.go:88).",
+        "recommendation": "Helper `latestViewDDL(table string, partitionBy []string, orderClock string, mode {RowNumber|DenseRank}, extraWhere string) string`. Couvre 24/26 cas (PME garde son builder spécial merge-on-read). Centralise aussi le tie-breaker `id DESC` (aujourd'hui parfois oublié/incohérent selon les fichiers).",
+        "effort": "medium"
+      },
+      {
+        "dimension": "dry",
+        "title": "Trois mécanismes ad-hoc divergents pour le même besoin « génération/état vide » : is_tombstone vs '_processed' vs is_reset",
+        "severity": "medium",
+        "evidence": "Le besoin « la dernière génération signifie EFFACÉ » est résolu 3 fois différemment :\n- PSA : colonne is_tombstone BOOLEAN, vue filtre `AND NOT is_tombstone` (steps_player_append_only_personal_score_awards.go:59) ; writer insère une row '' tombstone (sync/writes.go:414-423).\n- citations : row sentinelle de DONNÉE `citation_name_norm='_processed'` (magic string), aucune colonne dédiée, la vue NE filtre PAS (steps_player_append_only_match_citations.go:44-49) — le filtrage est délégué aux readers de valeurs (writeCitations sync/citations.go:457-459).\n- watermark v2 : colonne is_reset BOOLEAN, vue filtre `WHERE NOT COALESCE(is_reset,FALSE)` (steps_shared_skill_v2_reset_marker.go:31,44).\nMême sémantique (sentinelle de génération vide), 3 noms de colonnes/conventions + 1 magic string non centralisée → coût cognitif et risque qu'un nouveau reader de citations oublie de filtrer '_processed'.",
+        "recommendation": "Converger sur UNE convention : colonne booléenne `is_tombstone` (ou `is_cleared`) systématique + filtrage DANS la vue _latest (intégrable au générateur latestViewDDL via extraWhere). Remplacer la sentinelle de donnée '_processed' de citations par cette colonne (ou au minimum hisser '_processed' en constante partagée citationProcessedSentinel et la filtrer dans match_citations_latest plutôt que dans chaque reader). Aligne les 3 tables sur un seul mécanisme auditable.",
+        "effort": "medium"
+      },
+      {
+        "dimension": "architecture",
+        "title": "Vues _latest redéfinies en dur dans les fixtures de test, avec divergence vs la définition de production",
+        "severity": "medium",
+        "evidence": "Les définitions canoniques des vues _latest vivent dans les migrations (ex. steps_player_append_only_match_skill_rank.go:110-112 : `match_skill_rank_latest AS SELECT * FROM match_skill_rank QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, rating_type ORDER BY written_at DESC, id DESC) = 1`). Mais les fixtures de test les ré-écrivent inline : apps/go-api/internal/platform/duckdb/player_repos_test.go:245 définit `CREATE OR REPLACE VIEW match_skill_rank_latest AS SELECT * FROM match_skill_rank` — SANS le QUALIFY de dedup, donc une vue stub qui retourne TOUTES les versions (la prod en retourne 1). De même player_repos_test.go:269/280/421 et apps/go-api/internal/persist/shared_social_persister_test.go:73/98/118/154/181/223 redéfinissent media_match_associations_latest / media_likes_latest / match_favorites_latest / player_notifications_latest / etc. à la main. Un test qui s'appuie sur match_skill_rank_latest pour valider un reader passera avec N rows/match là où la prod en collapse 1 → masque précisément les bugs de fan-out que l'append-only introduit. NB additionnel : shared_social_persister_test.go:41 garde `file_path VARCHAR UNIQUE` alors que la campagne a justement supprimé cette contrainte (drop_filepath_unique_v1) — la fixture diverge du schéma prod.",
+        "recommendation": "Reproduire pour les autres tables le pattern déjà appliqué à PME : exporter la fonction Apply de chaque migration (cf. migration.EnsurePlayerMatchEnrichmentAppendOnly, déjà réutilisée en player_repos_test.go:319) et faire appeler ces helpers exportés par les fixtures, au lieu de redéfinir les vues en SQL inline. Cela élimine le drift par construction (single source = la migration). Corriger au passage le stub non-dedupé de match_skill_rank_latest et l'UNIQUE(file_path) résiduel dans la fixture.",
+        "effort": "medium"
+      },
+      {
+        "dimension": "elegance",
+        "title": "Choix de vue (ROW_NUMBER vs DENSE_RANK vs JOIN-MAX) cohérent par sémantique mais non documenté collectivement — risque de copie arbitraire à la prochaine table",
+        "severity": "medium",
+        "evidence": "3 mécanismes coexistent : ROW_NUMBER (msr steps_player_append_only_match_skill_rank.go:110-112, lch :105-107, PME :93) pour « 1 row par clé » ; DENSE_RANK (PSA :52-59, citations :44-49, weapon_kills steps_shared_append_only_weapon_kills.go:53-60) pour « tout le groupe de la génération MAX » ; JOIN sur MAX(written_at) (player_skill_state_v2 steps_shared_skill_v2_reset_marker.go:32-44). Le choix est justifié (DENSE_RANK quand on veut N rows/génération vs ROW_NUMBER pour 1 row/clé), mais cette règle de décision n'est écrite nulle part — chaque fichier ré-explique localement. Un futur contributeur peut copier le mauvais pattern (ex. DENSE_RANK sur une table par-clé → fan-out si written_at ex-aequo).",
+        "recommendation": "Documenter la règle de décision unique dans un doc.go du package migration (ou .ai/) : « par-clé unique → ROW_NUMBER(... ORDER BY clock DESC, id DESC)=1 ; par-batch/génération (N rows à garder ensemble) → DENSE_RANK(... ORDER BY generation_id DESC)=1 ; cas legacy written_at sans tie-break id → JOIN MAX ». Référencer ce doc en 1 ligne dans chaque en-tête de migration plutôt que de ré-argumenter.",
+        "effort": "small"
+      },
+      {
+        "dimension": "elegance",
+        "title": "player_skill_state_v2_latest en JOIN-MAX(written_at) sans tie-break id : non-déterministe si deux rows partagent written_at (collision de la précision timestamp)",
+        "severity": "medium",
+        "evidence": "steps_shared_skill_v2_reset_marker.go:36-43 joint sur MAX(written_at) GROUP BY (xuid, playlist_group) sans départage par id. Si deux INSERT (ou un INSERT état + un INSERT sentinelle is_reset) tombent sur le même written_at (now() peut se répéter à la microseconde près sous charge), le JOIN remonte LES DEUX rows → duplication de l'état dans la vue, ou pire : la row d'état et la row reset coexistent et le WHERE NOT is_reset (l.44) ne filtre que l'une → état fantôme. Les autres vues (msr/lch/PME) ajoutent toutes `, id DESC` comme tie-break précisément pour ça.",
+        "recommendation": "Aligner sur le pattern QUALIFY ROW_NUMBER() OVER (PARTITION BY xuid, playlist_group ORDER BY written_at DESC, id DESC)=1 (la table a déjà une PK id, cf. SELECT s.id l.33) puis WHERE NOT COALESCE(is_reset,FALSE). Supprime le JOIN, ajoute le tie-break déterministe, et homogénéise avec les 3 autres vues par-clé.",
+        "effort": "small"
+      },
+      {
+        "dimension": "tests",
+        "title": "Fixture buildPipelineFixture ne convertit PAS personal_score_awards en append-only : schéma legacy divergent de la prod dans le fixture central",
+        "severity": "medium",
+        "evidence": "internal/sync/sync_pipeline_fixture_test.go:228-237 crée personal_score_awards en forme LEGACY (id PK simple, SANS generation_id/is_tombstone/vue _latest). Les lignes 63-69 appellent EnsurePlayerMatchEnrichmentAppendOnly + EnsureMatchCitationsAppendOnly mais JAMAIS EnsurePersonalScoreAwardsAppendOnly. Donc dans tout test bâti sur ce fixture, PSA n'est pas append-only et personal_score_awards_latest n'existe pas — un test PSA y vert ne prouve rien sur le comportement prod (DENSE_RANK/tombstone).",
+        "recommendation": "Appeler migration.EnsurePersonalScoreAwardsAppendOnly(player) dans buildPipelineFixture (juste après EnsureMatchCitationsAppendOnly), pour que le fixture reflète le schéma prod. Idéalement remplacer le DDL inline PSA/citations/v_weapon_kills par les fonctions de migration prod afin d'éliminer toute divergence de définition de vue.",
+        "effort": "small"
+      },
+      {
+        "dimension": "tests",
+        "title": "Vues _latest dupliquées en dur dans les fixtures (v_weapon_kills) — divergence silencieuse possible avec la prod",
+        "severity": "medium",
+        "evidence": "internal/sync/testutil/fixture.go:148-153 ET internal/sync/sync_pipeline_fixture_test.go:201-206 redéfinissent v_weapon_kills à la main (CREATE VIEW ... DENSE_RANK ...). La définition prod vit dans steps_shared_append_only_weapon_kills.go:53-60. Aujourd'hui identiques, mais rien n'empêche un futur changement prod (ex. ajout d'un filtre tombstone ou changement de COALESCE) de laisser les fixtures sur l'ancienne définition → tests verts sur une vue fausse. Aucun test ne compare les deux SQL.",
+        "recommendation": "Faire créer v_weapon_kills par la migration prod (applyAppendOnlyWeaponKills / Ensure...) dans les fixtures shared plutôt que par DDL inline. À défaut, ajouter un test de parité qui compare le SQL de la vue fixture à celui de la migration.",
+        "effort": "small"
+      },
+      {
+        "dimension": "tests",
+        "title": "Migration weapon_kills append-only (applyAppendOnlyWeaponKills) sans aucun test au niveau migration",
+        "severity": "medium",
+        "evidence": "grep `applyAppendOnlyWeaponKills` dans internal/ ne renvoie QUE steps_shared_append_only_weapon_kills.go (zéro _test.go). La migration ALTER ADD COLUMN generation_id DEFAULT 0 + crée v_weapon_kills + séquence ; son idempotence, son comportement sur table préexistante non vide (toutes les rows legacy deviennent gen 0), et le no-op sans table ne sont pas couverts. Contraste avec PME (steps_player_append_only_match_enrichment_test.go, 9 tests dont Idempotent/OrphanRecovery/NoTable) et PSA/citations (legacy_swap_test).",
+        "recommendation": "Ajouter un test integration : seed weapon_kills legacy (sans generation_id) + N rows, applyAppendOnlyWeaponKills, assert colonne generation_id présente (DEFAULT 0 sur l'existant), v_weapon_kills renvoie toutes les rows legacy, re-apply = no-op, et table absente = no-op.",
+        "effort": "small"
+      },
+      {
+        "dimension": "tests",
+        "title": "Legacy-swap réaliste (no id/no created_at) non couvert pour weapon_kills ni PME",
+        "severity": "medium",
+        "evidence": "internal/migration/steps_player_append_only_legacy_swap_test.go ne teste que PSA (l.21) et match_citations (l.78) sur le legacy réel sans id/created_at — précisément le cas qui n'apparaissait pas en :memory: et a mordu en prod (Madina/JGtm). Mais : (1) PME — setupLegacyMatchEnrichment (steps_player_append_only_match_enrichment_test.go:28-43) inclut TOUJOURS created_at DEFAULT CURRENT_TIMESTAMP, donc le cas legacy-sans-created_at (que la migration gère via ensurePMEColumns + MIN(created_at)) n'est jamais exercé ; (2) weapon_kills n'a aucun test de migration du tout.",
+        "recommendation": "Ajouter au legacy_swap_test un cas PME sur table sans created_at (et idéalement sans id si un tel schéma existe en prod) ; ajouter un cas weapon_kills legacy. Vérifier zéro perte (rebuilt==before) et vue opérationnelle.",
+        "effort": "small"
+      },
+      {
+        "dimension": "completeness",
+        "title": "Writer oublié citations_repo.go : ON CONFLICT sur PK composite supprimée par la conversion append-only de match_citations (dead code, piège latent)",
+        "severity": "low",
+        "evidence": "apps/go-api/internal/platform/duckdb/citations_repo.go:348-351 — `INSERT INTO match_citations (...) VALUES (...) ON CONFLICT (match_id, citation_name_norm) DO NOTHING`. Or steps_player_append_only_match_citations.go:170-174 DROP la PK composite et la remplace par `PRIMARY KEY (id)` technique. Après migration, le target de conflit (match_id, citation_name_norm) n'existe plus → ce statement échouerait à l'exécution (\"no UNIQUE/PRIMARY KEY ... specify ON CONFLICT columns\"). MAIS `grep '.WriteCitationsForMatch('` = 0 call site (seulement défini dans l'interface port/repository_data.go:107 + impl + noop + mock). Le vrai writer citations (sync/citations.go writeCitations, append-only génération) est ailleurs. Note : le guard append_only_state_guard_test ne l'attrape pas car il ne matche que DO UPDATE / OR REPLACE / OR IGNORE, pas DO NOTHING.",
+        "recommendation": "Supprimer WriteCitationsForMatch (méthode CitationsRepo + entrée interface CitationsRepository + noop + mock) — c'est du code mort post-conversion. À défaut, le réécrire en INSERT pur taggé generation_id pour cohérence. Optionnel : étendre le regex du guard pour aussi flagger `ON CONFLICT (...) DO NOTHING` sur les appendOnlyStateTables (statement-level), ce qui aurait capturé ce résidu automatiquement.",
+        "effort": "trivial"
+      },
+      {
+        "dimension": "completeness",
+        "title": "Chemin d'écriture legacy ART-unsafe encore présent derrière le flag LEVELUP_PERSIST_BATCH=0 (ON CONFLICT DO UPDATE sur match_registry + match_participants)",
+        "severity": "low",
+        "evidence": "apps/go-api/internal/sync/writes.go:67 `ON CONFLICT (match_id) DO UPDATE SET ...` et :132 `ON CONFLICT (match_id, xuid) DO UPDATE SET ...` sur match_registry/match_participants (tables shared critiques). Atteints par engine_process_match.go:63/108 + engine_fetch.go:165/177. Le batch path (INSERT-only via persist) est ON par défaut (scheduler/auto_sync.go:310 `!= \"0\"`, cmd/server/main.go:321 logue un WARN explicite si =0). Sanctionné comme dette dans shared_write_guard_test.go:54/61 (\"à supprimer avec le chemin legacy\"). Va à l'encontre de la doctrine projet 'pas de flag qui laisse un chemin ART-unsafe' (feedback_no_flags_partial_features).",
+        "recommendation": "Planifier la suppression du chemin legacy writes.go + du flag LEVELUP_PERSIST_BATCH=0 (et des branches `!= \"0\"` dans auto_sync/sync_handler/cmd_sync/server) une fois le batch path stabilisé en prod, conformément aux TODO déjà inscrits dans l'allowlist du guard. Non bloquant tant que le défaut reste batch=ON.",
+        "effort": "medium"
+      },
+      {
+        "dimension": "completeness",
+        "title": "Importeur OpenSpartan appelle InsertRegistryIfNotExists/InsertParticipants (ON CONFLICT DO UPDATE) inconditionnellement, hors flag batch",
+        "severity": "low",
+        "evidence": "apps/go-api/internal/service/openspartan_import_service.go:318 `sync.InsertRegistryIfNotExists(...)` et :324 `sync.InsertParticipants(...)` — ces fonctions portent les ON CONFLICT DO UPDATE de writes.go et sont appelées sans garde de flag. C'est un import one-shot CLI/batch single-process (writeOneMatch séquentiel) → pas de pression concurrente, donc l'ART ne se déclenche pas en pratique (la doctrine cible le churn concurrent multi-writer). Reste un usage du pattern à-risque hors du chemin persist orchestré.",
+        "recommendation": "Acceptable en l'état (single-writer, pas de churn). Si l'import devient parallélisé par-match, router via internal/persist comme le sync live. Documenter explicitement le caractère mono-process dans openspartan_import_service.go.",
+        "effort": "small"
+      },
+      {
+        "dimension": "dry",
+        "title": "Allocation generation_id (nextval séquence partagé par appel) recopiée dans 6 writers",
+        "severity": "low",
+        "evidence": "Le micro-bloc `var gen int64; tx.QueryRowContext(ctx, \"SELECT nextval('<seq>')\").Scan(&gen)` (+ wrap d'erreur) est répété dans 6 writers : sync/writes.go:333 (weapon_kills) et :411 (psa), sync/citations.go:453, persist/shared_persister.go:261 (weapon_kills), persist/player_persister.go:254 (citations) et :280 (psa). Les couples table↔séquence sont aussi dupliqués entre sync/* et persist/* (weapon_kills_generation_seq, psa_generation_seq, match_citations_generation_seq apparaissent chacun 2 fois).",
+        "recommendation": "Helper partagé `func nextGeneration(ctx, q queryer, seq string) (int64, error)` (queryer = interface QueryRowContext, compatible *sql.Tx et *sql.DB). Centraliser les noms de séquences en constantes (seqWeaponKillsGen, seqPSAGen, seqMatchCitationsGen) à côté des migrations pour qu'écriture et schéma partagent le littéral. Faible effort, supprime la divergence sync/persist.",
+        "effort": "small"
+      },
+      {
+        "dimension": "architecture",
+        "title": "Convention de nommage append-only incohérente (infix vs suffix) entre packages de DB",
+        "severity": "low",
+        "evidence": "Deux conventions coexistent pour la même classe de migration : INFIX `append_only_<table>` pour player et shared (steps_player_append_only_csr_snapshots.go, steps_player_append_only_match_skill_rank.go, steps_shared_append_only_match_csrs.go, steps_shared_append_only_weapon_kills.go) vs SUFFIX `<table>_append_only` pour shared_social et pve (steps_shared_social_favorites_append_only.go, steps_shared_social_likes_append_only.go, steps_shared_pve_append_only.go, ...). Pire, un fichier player casse même la convention player : steps_player_lusr_components_append_only.go utilise le suffixe alors que ses 7 frères TargetPlayer utilisent l'infixe. Aucun mismatch TargetDB↔préfixe par contre (vérifié sur tout migration/ : tous les steps_metadata_* sont TargetMetadata, tous les steps_shared_social_* sont TargetSharedSocial, etc.).",
+        "recommendation": "Choisir une seule convention (le suffixe `<sujet>_append_only.go` est le plus lisible et déjà majoritaire en shared_social) et renommer les fichiers divergents pour homogénéiser — au minimum aligner steps_player_lusr_components_append_only.go sur ses frères player, ou inversement. Renommage pur (l'ordre d'exécution dépend de canonicalOrder dans order.go, pas du nom de fichier — cf. order.go:5-14), donc zéro risque fonctionnel.",
+        "effort": "trivial"
+      },
+      {
+        "dimension": "architecture",
+        "title": "Lecture SQL brute d'une vue _latest dans le package api (hors platform/duckdb) — pré-existant, étendu par la campagne",
+        "severity": "low",
+        "evidence": "apps/go-api/internal/api/registry_notifications.go:127-138 (loadRecentMediaMatchIDs) ouvre sa propre connexion DuckDB (duckdb.OpenReadWriteShared) et exécute `SELECT DISTINCT match_id FROM media_match_associations_latest WHERE associated_at >= ? LIMIT 50` directement dans le package api, sans passer par un repo de platform/duckdb/. La campagne ART a modifié cette requête (commentaire ligne 134-135 : « APPEND-ONLY : lire la vue _latest [...] pas created_at sur la table legacy ») — donc elle a touché ce site sans le rapatrier vers la couche repo. Le pattern « SQL brut dans internal/api » est pré-existant (issu du split god-file post_sync_deltas, cf. aussi post_sync_deltas_snapshot.go) et n'est pas propre aux handlers HTTP (internal/api/handlers/), donc l'impact est limité, mais il étend une fuite de responsabilité readers↔api.",
+        "recommendation": "Déplacer loadRecentMediaMatchIDs (et les autres SELECT _latest de internal/api/post_sync_*) vers un reader dédié dans platform/duckdb/ (ex. MediaAssociationRepo.RecentMatchIDsSince) consommé via port. Non bloquant pour la campagne ; à traiter dans le nettoyage de dette du package api, pas en urgence ART.",
+        "effort": "small"
+      },
+      {
+        "dimension": "elegance",
+        "title": "Les 4 index idx_psa_* recréés à l'identique sont précisément ceux désignés comme « vecteur ART » dans l'en-tête du même fichier",
+        "severity": "low",
+        "evidence": "steps_player_append_only_personal_score_awards.go:8-10 décrit le bug : « Le DELETE retire N lignes des 4 index ART (idx_psa_match/xuid/category/match_xuid) ». Puis l.205-208 recrée EXACTEMENT ces 4 index sur la nouvelle table. C'est sûr (append-only = INSERT pur, jamais de delete-from-index), mais aucun commentaire sur place ne le rappelle — un lecteur voit « on recrée les index qu'on vient de blâmer » sans la justification. lch documente bien ce point (steps_player_lusr_components_append_only.go:18-20 : « append-only = INSERT pur, jamais de delete-from-index → ces index ne sont pas une surface ART »), PSA non.",
+        "recommendation": "Ajouter au-dessus du bloc CREATE INDEX de PSA (et idéalement vérifier que tous les readers PSA passent par personal_score_awards_latest — confirmé pour loadAwards citations.go:374) un commentaire identique à celui de lch : « index conservés : append-only=INSERT pur, pas de delete-from-index → pas surface ART ». Pure cohérence documentaire.",
+        "effort": "trivial"
+      },
+      {
+        "dimension": "elegance",
+        "title": "API d'exposition incohérente : wrappers Ensure*AppendOnly pour PME/PSA/citations mais absents pour msr/lch",
+        "severity": "low",
+        "evidence": "EnsurePlayerMatchEnrichmentAppendOnly (steps_player_append_only_match_enrichment.go:123), EnsurePersonalScoreAwardsAppendOnly (:64), EnsureMatchCitationsAppendOnly (steps_player_append_only_match_citations.go:54) sont exposés pour les fixtures/OpenPlayerDB. Aucun EnsureMatchSkillRankAppendOnly ni EnsureLUSRComponentHistoryAppendOnly (grep: 0 résultat). Les fixtures de test msr/lch doivent donc reconstruire le schéma append-only à la main (ex. lusr_append_only_persister_test.go:47 fait CREATE SEQUENCE msr_seq manuellement) → duplication du schéma, dérive possible vue/table entre prod et tests.",
+        "recommendation": "Pour cohérence, exposer EnsureMatchSkillRankAppendOnly/EnsureLUSRComponentHistoryAppendOnly (one-liner retournant applyAppendOnly*). Bénéfice secondaire : les fixtures appellent le vrai code de migration au lieu de re-déclarer le schéma, supprimant le risque de divergence.",
+        "effort": "small"
+      },
+      {
+        "dimension": "elegance",
+        "title": "ADD PRIMARY KEY (id) sur PSA suppose un id legacy unique s'il préexiste — non garanti par le crash-test (qui ne couvre que le cas id ABSENT)",
+        "severity": "low",
+        "evidence": "steps_player_append_only_personal_score_awards.go:145-155 : si la colonne id préexiste, selectList=colList (id conservé tel quel) ; puis l.201 ADD PRIMARY KEY (id). Si le legacy id contient des doublons ou des NULL (table sans contrainte, cf. mémoire « Player DB legacy sans contraintes »), le ADD PRIMARY KEY échoue et abort le swap (rollback propre, donc pas de perte — mais boot bloqué en boucle d'échec). Le test TestPSAAppendOnly_LegacySwap_NoIdNoCreatedAt (steps_player_append_only_legacy_swap_test.go:21) ne couvre QUE le cas id absent ; le cas id présent-mais-non-unique n'est pas testé.",
+        "recommendation": "Soit toujours régénérer un id frais via la séquence (ignorer l'id legacy : SELECT nextval(...) AS id, <cols sauf id>) pour garantir l'unicité — plus simple et robuste ; soit ajouter un test du cas id legacy présent. La régénération systématique est préférable (l'id n'a pas de sémantique métier, c'est une PK technique).",
+        "effort": "small"
+      },
+      {
+        "dimension": "elegance",
+        "title": "Piège « ; dans un commentaire SQL casse execScript » non protégé contre récidive : splitSQL reste un splitter naïf, et reset_marker/weapon_kills l'utilisent",
+        "severity": "low",
+        "evidence": "splitSQL (helpers.go:120-138) découpe char-par-char sur ';' sans aucune conscience des commentaires SQL (--, /* */) ni des littéraux chaîne. steps_shared_skill_v2_reset_marker.go:30 et steps_shared_append_only_weapon_kills.go:50 passent par execScript→splitSQL. Aujourd'hui leurs scripts n'ont pas de ';' en commentaire (vérifié), mais rien n'empêche un futur ajout de commentaire `-- foo; bar` de casser silencieusement le split (statement tronqué). Aucun commentaire d'avertissement sur splitSQL ni test garde-fou, alors que le pitfall est listé comme « déjà rencontré 2× ».",
+        "recommendation": "Au minimum documenter le danger sur splitSQL (« NE PAS mettre de ';' dans un commentaire SQL passé à execScript : splitSQL ne strippe pas les commentaires »). Mieux : ajouter un test unitaire splitSQL sur un script avec commentaire `--` contenant ';' (assert le bon nombre de statements) pour figer le contrat, ou faire stripper les commentaires `--`/`/* */` avant le split.",
+        "effort": "small"
+      },
+      {
+        "dimension": "elegance",
+        "title": "Le « pourquoi 3 mécanismes de discrimination » (generation_id / written_at / stage) n'est consolidé nulle part — chaque en-tête ré-explique localement",
+        "severity": "low",
+        "evidence": "generation_id (PSA/citations/weapon_kills : replace-par-batch), written_at (msr/lch/pssv2 : append pur avec dernière version par clé), stage (PME : merge par-colonne) sont chacun justifiés dans leur propre en-tête de fichier (ex. PME steps_player_append_only_match_enrichment.go:11-24 vs PSA :13-26). La sémantique est correcte et NON arbitraire — mais un mainteneur doit ouvrir 7 fichiers pour comprendre la taxonomie. Le test garde-fou append_only_state_guard_test.go:24-76 liste bien les tables mais sans la grille de décision « quand generation vs stage vs written_at ».",
+        "recommendation": "Ajouter une section dans .ai/thought_log.md (ou un doc.go migration) avec le tableau de décision : append pur multi-versions/clé → written_at+ROW_NUMBER ; remplacement atomique d'un lot → generation_id+DENSE_RANK ; merge incrémental par-colonne (writers owner-stage) → stage. Cela transforme 7 explications locales en 1 référence canonique et oriente la prochaine conversion.",
+        "effort": "trivial"
+      },
+      {
+        "dimension": "tests",
+        "title": "Commentaire d'en-tête no_art_patterns_test.go obsolète : déclare weapon_kills comme NON append-only",
+        "severity": "low",
+        "evidence": "internal/sync/no_art_patterns_test.go:19-24 affirme « Les tables de match-of-record (... weapon_kills) ne sont PAS dans tablesProtegees : elles ne sont pas append-only ». Or la campagne (steps_shared_append_only_weapon_kills.go, 2026-06-21) a converti weapon_kills en append-only générationnel. weapon_kills figure désormais en criticalMatchTables (l.249) mais pas en tablesProtegees, et le commentaire le justifie par un argument faux (« pas append-only »). Risque : un futur mainteneur conclut à tort qu'aucune protection ON CONFLICT n'est requise sur weapon_kills (elle l'est, via le state guard).",
+        "recommendation": "Mettre à jour le commentaire : weapon_kills EST append-only (generation_id + v_weapon_kills) ; il est gardé par append_only_state_guard_test.go (DELETE/ON CONFLICT statement-level) et reste dans criticalMatchTables pour la forme bulk-UPDATE. Le retirer ne change pas le code mais évite une mauvaise décision future.",
+        "effort": "trivial"
+      },
+      {
+        "dimension": "tests",
+        "title": "Doc-comment de InsertWeaponKills toujours descriptif de l'ancien DELETE+INSERT (incohérence pouvant induire un test/refactor erroné)",
+        "severity": "low",
+        "evidence": "internal/sync/writes.go:303-304 — la doc de la fonction dit encore « remplace les entrées weapon_kills existantes ... Opération atomique : DELETE + INSERT batch », alors que le corps (l.328-351) est désormais append-only générationnel (zéro DELETE). Un test écrit d'après cette doc affirmerait à tort que le physique reste constant.",
+        "recommendation": "Réaligner le doc-comment de InsertWeaponKills sur la sémantique append-only (allocation d'une génération + INSERT pur ; supersession via v_weapon_kills). Sans impact runtime mais évite des assertions de test fondées sur l'ancien contrat.",
+        "effort": "trivial"
+      },
+      {
+        "dimension": "tests",
+        "title": "Garde-fou metadata_art_surface_guard ne référence pas les nouvelles tables append-only de cette campagne (couverture index-ART partielle)",
+        "severity": "low",
+        "evidence": "internal/migration/metadata_art_surface_guard_test.go — forbiddenIndexedColumns couvre player_match_enrichment (l.64) mais PAS personal_score_awards, match_citations ni weapon_kills. Or ces 3 tables conservent des index secondaires recréés par la migration (ex. idx_psa_match/xuid/category/match_xuid dans steps_player_append_only_personal_score_awards.go:205-208). Append-only rend ces index sûrs (INSERT pur, pas de DELETE indexé) tant qu'aucun UPDATE/DELETE ne réapparaît — protégé par le state guard, mais ce test-ci ne verrouille pas que ces tables restent PK/append-only côté schéma.",
+        "recommendation": "Optionnel mais cohérent : documenter dans ce test pourquoi PSA/citations/weapon_kills sont OK avec index secondaires (append-only → INSERT pur), ou ajouter une règle interdisant un index sur une colonne mutée si jamais un UPDATE revenait. Au minimum, croiser avec le state guard pour éviter qu'un futur index sur une colonne re-mutée passe inaperçu.",
+        "effort": "trivial"
+      }
+    ],
+    "nits": 6,
+    "total_findings": 38
+  }
+}
