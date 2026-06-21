@@ -13,10 +13,14 @@ import (
 
 // fakeSource implemente h5Source sans reseau (injecte des reponses / erreurs).
 type fakeSource struct {
-	sr    *H5ServiceRecordResponse
-	srErr error
-	ev    *h5MatchEventsResponse
-	evErr error
+	sr         *H5ServiceRecordResponse
+	srErr      error
+	ev         *h5MatchEventsResponse
+	evErr      error
+	matches    *H5MatchesResponse
+	matchesErr error
+	carnage    *H5CarnageResponse
+	carnageErr error
 }
 
 func (f *fakeSource) GetServiceRecords(_ context.Context, _, _ string) (*H5ServiceRecordResponse, error) {
@@ -24,7 +28,11 @@ func (f *fakeSource) GetServiceRecords(_ context.Context, _, _ string) (*H5Servi
 }
 
 func (f *fakeSource) GetPlayerMatches(_ context.Context, _ string, _, _ int) (*H5MatchesResponse, error) {
-	return nil, errors.New("non utilise")
+	return f.matches, f.matchesErr
+}
+
+func (f *fakeSource) GetMatchCarnage(_ context.Context, _, _ string) (*H5CarnageResponse, error) {
+	return f.carnage, f.carnageErr
 }
 
 func (f *fakeSource) GetMatchEvents(_ context.Context, _ string) (*h5MatchEventsResponse, error) {

@@ -43,4 +43,15 @@ type H5CarnagePlayer struct {
 	TotalPowerWeaponKills int         `json:"TotalPowerWeaponKills"`
 	AvgLifeTimeOfPlayer   string      `json:"AvgLifeTimeOfPlayer"` // ISO8601 "PT..S"
 	TotalTimePlayed       string      `json:"TotalTimePlayed"`     // ISO8601 "PT..S"
+	// XpInfo : progression SR (rang XP de compte) du joueur. SEULE source du SR —
+	// ni la liste de matchs ni le service record ne le portent (cf. PLAN_H5_ASSETS).
+	XpInfo *H5XpInfo `json:"XpInfo"`
+}
+
+// H5XpInfo — progression SR Halo 5 du joueur dans le match. SpartanRank = niveau SR
+// courant (1..152, 152 = MAX) ; TotalXP = XP de compte cumulé. Lu dans la carnage
+// (PlayerStats[].XpInfo) pour alimenter le rang XP de la page Carrière.
+type H5XpInfo struct {
+	SpartanRank int `json:"SpartanRank"`
+	TotalXP     int `json:"TotalXP"`
 }

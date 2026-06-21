@@ -1,3 +1,14 @@
+## [2026-06-21] Halo 5 assets — rang XP (SR) livré end-to-end — Complété
+
+**1er asset « minimum prod » livré.** Le rang XP Halo 5 (Spartan Rank 1..152) s'affiche désormais (texte « SR 111 ») dans le CareerSnapshot, sans aucun blocage live.
+
+- **Référentiel** (`career_sr.go`) : `h5SRStartXP[152]` (seuils XP, dump den.dev VÉRIFIÉ) — array Go statique (Halo 5 figé), pas de DB ni de schéma mort. SR152 = MAX (pas un seuil « 0 » — clarif user).
+- **Source du niveau** : `XpInfo.SpartanRank/TotalXP` lu dans la carnage (DTO `H5XpInfo` ajouté ; seule source — ni liste de matchs ni service record). `enrichSpartanRank` (adapter) lit la carnage du DERNIER match (best-effort : indispo → CSR seul, pas d'erreur). Interface `h5Source` + `GetMatchCarnage` ; mock test MAJ.
+- **Projection** (`applySpartanRank`) : pose CurrentRank/RankNumber/CurrentXP/XPTotal/XPForNextRank/NextRank/IsMaxRank. DEUX AXES : le SR (rang XP) coexiste avec le CSR (compétence classée, RankTier/RankName/HighestCSR) — le CSR n'est PAS écrasé.
+- **Tests** : SR (rang milieu réel JGtm SR111, SR152 max, hors-borne, chemin complet LoadCareerSnapshot) + CSR existants verts (non-régression). build consommateurs (games/service/api/server) + vet OK.
+
+**Reste** : (a) vérifier que le front rend bien le SR pour h5 (CurrentRank/RankNumber/XP désormais peuplés — title-agnostic = devrait suivre) ; (b) médailles (nom de contenu CMS toujours introuvable) ; (c) armes StockId, maps, images CSR.
+
 ## [2026-06-21] Halo 5 assets — sonde A1 (CMS) title-agnostic + résultats — Complété (sonde)
 
 **Directive user** : « rendre les choses title-agnostic le plus possible » (→ mémoire `feedback_prefer_title_agnostic`). Appliqué à la sonde : `cmd/probe-h5` ÉTENDUE (Phase 3 CMS assets) résout l'host via `games.EndpointResolver` (constants.toml), PAS de host hardcodé ; réutilise le helper `probe()` existant (pas de recette d'auth dupliquée). Token réutilisé (`RefreshHaloTokensViaStoreFirst`).
