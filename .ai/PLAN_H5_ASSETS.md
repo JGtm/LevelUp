@@ -170,6 +170,29 @@ h5-ready (slug paramétré). Pour h5 :
 3. Faire le **refactor câblage badge title-aware** (cf. pré-requis transverse) — sinon (1)+(2)
    n'affichent rien.
 
+## État final assets (2026-06-21) + reste précis
+
+**LIVRÉ end-to-end** : rang XP (SR, texte) ; **référentiel (Asset Drawer) maps 49 + armes 68**
+(noms + images/icônes officielles, title-aware front→back→DB). Données seedées : médailles 215,
+maps 49, armes 68, CSR 42 tiers (`cmd/h5-metadata-fetch`).
+
+**Reste (surfaces distinctes / efforts ciblés)** :
+- **FR** : l'API Metadata officielle NE localise PAS (`?language=fr`/`lang`/`locale`/`Accept-Language`
+  → tous EN). Noms maps (noms propres) + armes restent EN. CSR FR déjà en code (`h5Designations`).
+  Médailles FR = seed WikiHalo (scraping ~215 noms, chantier à part).
+- **Médailles dans leur surface** : médailles = icône SPRITE (spriteSheetUri + left/top/width/height,
+  seedés dans medal_definitions). Affichage = soit un onglet médailles dans l'Asset Drawer (DTO
+  enrichi sprite + tab front + CSS background-position), soit dans le détail de match (mais
+  `match.detail` h5 = `not_exposed` → nécessite l'expansion de cette surface de lecture).
+- **Image de rang CSR (carrière/home)** : `csr_designations(designation_name, tier_id) → icon_url`
+  seedé. Câblage = (a) ajouter un champ badge CSR au `CareerSnapshot` canonical ; (b) injecter un
+  résolveur csr_designations dans l'adapter h5 (mapCareerSnapshot ; mapping DesignationId→nom EN
+  officiel + Tier→tier_id) ; (c) de-hardcoder le builder badge (`home_repo_skill_peak.go:436`
+  instancie `halo_infinite.NewAssetURLAdapter()` EN DUR) ; (d) rendu front. Effort multi-couches.
+- **PROD** : le fetcher seede la metadata h5 du clone deploy LOCAL. Pour la prod (VPS), lancer
+  `LEVELUP_HALOAPI_KEY=<clé> cmd/h5-metadata-fetch` sur le serveur (la clé en env, jamais committée),
+  après provisioning. À intégrer comme étape de déploiement (cf. RUNBOOK).
+
 ## Décisions produit en attente
 
 - **D1** CSR designations : TOML `assets.toml` (recommandé) vs table metadata. Image via static-bundle.
