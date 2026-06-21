@@ -21,6 +21,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
+	halo5migrations "levelup/go-api/internal/games/halo_5/migrations"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/halo_infinite/skillchain"
 	"levelup/go-api/internal/migration"
@@ -80,6 +81,7 @@ func main() {
 
 	// Provisionne la player DB h5 (TargetPlayer) — elle n'existe pas (sync shared-only).
 	migration.SetTitleStepsProvider(halomigrations.StepsFor)
+	halo5migrations.Register() // metadata h5 isolée ; player = fallback HINF (OwnsTarget).
 	playerDB := openDB(playerPath)
 	defer playerDB.Close()
 	if err := migration.RunForTitleDB(playerDB, halo5.TitleSlug, migration.TargetPlayer); err != nil {
