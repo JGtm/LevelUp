@@ -12,7 +12,9 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -992,6 +994,84 @@ func TestRunLUSRV2Shadow_Phase4_ExplicitlyOff(t *testing.T) {
 
 // seedCanonical2v2 insère un match social 2v2 (owner+teammate vs opp1+opp2)
 // dans le sharedDB de test. Utilisé par les tests Sprint 1.A.
+// seedH5Match : match 2v2 façon Halo 5 — start_time_utc renseigné, start_time
+// (legacy) NULL, pair_name VIDE (h5 n'en a pas). Vérifie le chemin title-generic.
+func seedH5Match(t *testing.T, sharedDB *sql.DB, matchID string, start time.Time) {
+	t.Helper()
+	if _, err := sharedDB.Exec(`INSERT INTO match_registry
+		(match_id, start_time, start_time_utc, pair_name, is_ranked, is_firefight, duration_seconds)
+		VALUES (?, NULL, ?, '', FALSE, FALSE, 600)`, matchID, start); err != nil {
+		t.Fatalf("insert match_registry h5: %v", err)
+	}
+	for _, q := range []struct {
+		xuid          string
+		team, outcome int
+		kills, deaths int
+	}{
+		{"owner", 0, 2, 18, 6}, {"teammate", 0, 2, 12, 9},
+		{"opp1", 1, 3, 7, 14}, {"opp2", 1, 3, 8, 14},
+	} {
+		if _, err := sharedDB.Exec(`INSERT INTO match_participants
+			(match_id, xuid, team_id, outcome, kills, deaths) VALUES (?, ?, ?, ?, ?, ?)`,
+			matchID, q.xuid, q.team, q.outcome, q.kills, q.deaths); err != nil {
+			t.Fatalf("insert participant h5: %v", err)
+		}
+	}
+}
+
+// TestRunLUSRV2Shadow_Halo5_TitleAwareChain — LUSR v2 pour Halo 5 : un match
+// canonique (start_time_utc renseigné, start_time legacy NULL, pas de pair_name)
+// DOIT être traité (filtres start_time title-generic) et l'état écrit sous la
+// chaîne du classifier TITLE-AWARE (h5_arena), PAS le bucket Infinite arena_slayer.
+// Prouve que la v2 (k/d/a/outcome, sans MMR) tourne pour h5.
+func TestRunLUSRV2Shadow_Halo5_TitleAwareChain(t *testing.T) {
+	origEnabled := os.Getenv(lusrV2EnvFlag)
+	t.Cleanup(func() { _ = os.Setenv(lusrV2EnvFlag, origEnabled) })
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+
+	// Classifier h5 dédié (chaîne unique). Nettoyé après le test (test interne →
+	// accès direct à la map du seam).
+	SetLUSRChainClassifierForTitle("halo_5", func(string) string { return "h5_arena" })
+	t.Cleanup(func() { delete(lusrChainClassifiersByTitle, "halo_5") })
+
+	// Le registre runtime par défaut ne connaît qu'Infinite hors boot : on
+	// l'enrichit d'un descripteur h5 (CapLUSR) pour le test (swap + restore).
+	oldReg := title.DefaultRegistry()
+	reg := title.NewRegistry()
+	reg.Register(&title.TitleDescriptor{
+		Slug: "halo_5", Name: "Halo 5", Status: title.StatusActive,
+		Capabilities: []title.Capability{title.CapLUSR},
+	})
+	title.SetDefaultRegistry(reg)
+	t.Cleanup(func() { title.SetDefaultRegistry(oldReg) })
+
+	sharedDB := openShadowTestDB(t)
+	seedH5Match(t, sharedDB, "h5_m1", time.Date(2025, 11, 1, 14, 0, 0, 0, time.UTC))
+
+	ctx := ctxkeys.WithTitleSlug(context.Background(), "halo_5")
+	processed, err := RunLUSRV2ShadowOwnerOnly(ctx, nil, sharedDB, "owner")
+	if err != nil {
+		t.Fatalf("RunLUSRV2ShadowOwnerOnly: %v", err)
+	}
+	if processed != 1 {
+		t.Fatalf("processed = %d, want 1 (le match h5 doit passer les filtres start_time_utc)", processed)
+	}
+
+	var group string
+	var mu, sigma float64
+	if err := sharedDB.QueryRow(
+		`SELECT playlist_group, mu, sigma FROM player_skill_state_v2_latest WHERE xuid = 'owner'`,
+	).Scan(&group, &mu, &sigma); err != nil {
+		t.Fatalf("read state: %v", err)
+	}
+	if group != "h5_arena" {
+		t.Errorf("playlist_group = %q, want h5_arena (classifier title-aware, pas le bucket Infinite)", group)
+	}
+	if mu <= 0 || sigma <= 0 {
+		t.Errorf("μ=%v σ=%v, attendu un rating valide", mu, sigma)
+	}
+}
+
 func seedCanonical2v2(t *testing.T, sharedDB *sql.DB, matchID string, start time.Time) {
 	t.Helper()
 	if _, err := sharedDB.Exec(`INSERT INTO match_registry

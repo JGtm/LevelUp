@@ -19,18 +19,44 @@ package sync
 // diag_lusr_player, lusr_v2_phase0, lusr_v2_squad_estimate, lusr_v2_ttt_batch) +
 // les TestMain des packages dont les tests atteignent GetLUSRChain (sync, service).
 
-// lusrChainClassifier est la source title-owned de classification LUSR. nil tant
-// que SetLUSRChainClassifier n'a pas été appelé (→ panic à l'appel de GetLUSRChain).
+// lusrChainClassifier est le classifier PAR DÉFAUT (Halo Infinite + titres sans
+// classifier dédié). nil tant que SetLUSRChainClassifier n'a pas été appelé
+// (→ panic à l'appel de GetLUSRChain).
 var lusrChainClassifier func(pairName string) string
 
-// SetLUSRChainClassifier enregistre le classifier title-owned. À appeler au boot,
-// avant tout scoring/backfill LUSR. Idempotent (dernier gagne).
+// lusrChainClassifiersByTitle : classifiers SPÉCIFIQUES par titre, posés au boot
+// pour les titres dont la classification LUSR diffère du pattern pair_name Infinite
+// (ex. Halo 5 : pas de pair_name → chaîne dérivée autrement). Vide → tous les titres
+// utilisent le classifier par défaut. Key = title slug.
+var lusrChainClassifiersByTitle = map[string]func(pairName string) string{}
+
+// SetLUSRChainClassifier enregistre le classifier PAR DÉFAUT (title-owned). À appeler
+// au boot, avant tout scoring/backfill LUSR. Idempotent (dernier gagne).
 func SetLUSRChainClassifier(f func(pairName string) string) { lusrChainClassifier = f }
 
+// SetLUSRChainClassifierForTitle enregistre un classifier SPÉCIFIQUE à un titre,
+// consommé par GetLUSRChainForTitle. Pour les titres dont la partition LUSR ne
+// dérive pas du pair_name (Halo 5). Idempotent. N'affecte pas le classifier défaut.
+func SetLUSRChainClassifierForTitle(titleSlug string, f func(pairName string) string) {
+	lusrChainClassifiersByTitle[titleSlug] = f
+}
+
 // GetLUSRChain détermine la chaîne TrueSkill LUSR depuis le pair_name d'un match
-// (délègue au classifier title-owned). Retourne "" si le match est exclu du LUSR
-// (Ranked → CSR, Firefight → PvE). Panique si le classifier n'est pas câblé.
+// via le classifier PAR DÉFAUT (Infinite). Conservé pour les callers Infinite-only.
+// Retourne "" si le match est exclu du LUSR. Panique si non câblé.
 func GetLUSRChain(pairName string) string {
+	return GetLUSRChainForTitle("", pairName)
+}
+
+// GetLUSRChainForTitle détermine la chaîne LUSR de façon TITLE-AWARE : si le titre
+// a un classifier dédié (Halo 5+), il prime ; sinon délègue au classifier défaut
+// (Infinite). Le seam title-aware permet à la v2 LUSR (calcul sur données basiques)
+// de tourner pour tout titre sans collapser les modes h5 dans arena_slayer.
+// Retourne "" si le match est exclu (Ranked/Firefight). Panique si aucun classifier.
+func GetLUSRChainForTitle(titleSlug, pairName string) string {
+	if f, ok := lusrChainClassifiersByTitle[titleSlug]; ok {
+		return f(pairName)
+	}
 	if lusrChainClassifier == nil {
 		panic("sync: classifier LUSR non câblé — appeler sync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain) au boot")
 	}

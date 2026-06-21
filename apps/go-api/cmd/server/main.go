@@ -39,6 +39,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_5/livesync"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/halo_infinite/skillchain"
@@ -1423,6 +1424,11 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 	// MT-15 : classifier LUSR title-owned (pair_name → chaîne TrueSkill). GetLUSRChain
 	// panique si non posé (fail-loud) — protège le chemin de scoring live.
 	syncpkg.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
+	// MT-15+ : classifier LUSR title-aware pour Halo 5 (pas de pair_name → chaîne
+	// unique h5_arena). Le seam GetLUSRChainForTitle route h5 vers ce classifier ;
+	// les autres titres gardent le défaut Infinite. Sans ça, h5 collapserait tous
+	// ses modes dans arena_slayer (classifier Infinite sur pair_name vide).
+	syncpkg.SetLUSRChainClassifierForTitle(halo5.TitleSlug, halo5.ClassifyLUSRChain)
 
 	// 1. metadata.duckdb
 	metaDB, err := duckdb.OpenReadWrite(metaPath)
