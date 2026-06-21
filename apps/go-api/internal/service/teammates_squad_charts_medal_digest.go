@@ -5,12 +5,12 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"sort"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/timeline"
+	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -226,21 +226,26 @@ func assembleMedalDigest(
 		total := 0
 		for medalID, ma := range byMedal {
 			def := defs[medalID]
-			imageURL := ""
-			if titleSlug != "" {
-				imageURL = fmt.Sprintf("/static/medals/%s/%d.png", titleSlug, medalID)
-			}
-			items = append(items, domain.MedalDigestItem{
+			item := domain.MedalDigestItem{
 				MedalID:       medalID,
 				Label:         def.Label,
 				Description:   def.Description,
-				ImageURL:      imageURL,
 				TotalCount:    ma.totalCount,
 				MatchCount:    ma.matchCount,
 				Category:      def.MedalType,
 				Difficulty:    def.Difficulty,
 				PersonalScore: def.PersonalScore,
-			})
+			}
+			if titleSlug != "" {
+				png, sp := static.MedalImage(titleSlug, medalID)
+				if sp != nil {
+					item.SpriteSheet, item.SpriteLeft, item.SpriteTop, item.SpriteWidth, item.SpriteHeight =
+						sp.SheetURL, sp.Left, sp.Top, sp.Width, sp.Height
+				} else {
+					item.ImageURL = png
+				}
+			}
+			items = append(items, item)
 			total += ma.totalCount
 		}
 		sort.SliceStable(items, func(i, j int) bool {

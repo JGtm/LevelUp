@@ -341,6 +341,9 @@ type SessionLabelsList struct {
 
 // MedalDigestItem est une médaille agrégée sur tous les matchs partagés
 // pour un joueur donné.
+//
+// Icône title-aware : ImageURL (PNG, HINF) OU les champs Sprite* (feuille + offset,
+// Halo 5). Mutuellement exclusifs ; mêmes tags JSON que l'Asset Drawer (AssetMeta).
 type MedalDigestItem struct {
 	MedalID       int64  `json:"medal_id"`
 	Label         string `json:"label,omitempty"`
@@ -351,6 +354,11 @@ type MedalDigestItem struct {
 	Category      string `json:"category,omitempty"`       // multikill | spree | skill | style | mode | proficiency
 	Difficulty    string `json:"difficulty,omitempty"`     // Normal | Heroic | Legendary | Mythic
 	PersonalScore int    `json:"personal_score,omitempty"` // XP de carrière par médaille (0 si absent)
+	SpriteSheet   string `json:"sprite_sheet,omitempty"`
+	SpriteLeft    int    `json:"sprite_left,omitempty"`
+	SpriteTop     int    `json:"sprite_top,omitempty"`
+	SpriteWidth   int    `json:"sprite_width,omitempty"`
+	SpriteHeight  int    `json:"sprite_height,omitempty"`
 }
 
 // MedalDigestEntry est le résumé médailles d'un joueur sur les matchs partagés.

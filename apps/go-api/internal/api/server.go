@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -707,7 +708,7 @@ func NewRouter(
 	// les URLs CDN officielles (maps/armes) et le résolveur CSR sont injectés depuis
 	// la metadata h5 DÉJÀ chargée (aucun accès DB dans l'adapter).
 	{
-		h5Maps, h5Weapons, _ := loadTitleAssetDrawerData(
+		h5Maps, h5Weapons, h5Medals := loadTitleAssetDrawerData(
 			titlePkg.NewPathResolver(cfg.RepoRoot), halo5.TitleSlug)
 		if h5CSRResolver != nil || len(h5Maps) > 0 || len(h5Weapons) > 0 {
 			h5AssetURL := halo5.NewAssetURLAdapter().
@@ -726,6 +727,45 @@ func NewRouter(
 				"maps", len(h5Maps),
 				"weapons", len(h5Weapons),
 				"csr", h5CSRResolver != nil,
+			)
+		}
+
+		// G2/G7/D.1 : sprite médaille title-aware. Les médailles Halo 5 sont des
+		// SPRITES (feuille + offset, medal_definitions) — aucun PNG par médaille
+		// n'existe → <img> /static/medals/halo_5/{id}.png 404 partout hors Asset
+		// Drawer. On câble un résolveur sprite title-keyé (miroir csrBadgeResolver)
+		// peuplé depuis h5Medals DÉJÀ chargé. nil/vide → pas de câblage → HINF sert
+		// les PNG strictement inchangé.
+		h5MedalSprites := make(map[int64]static.MedalSprite, len(h5Medals))
+		for _, m := range h5Medals {
+			if m.SpriteSheet == "" {
+				continue
+			}
+			id, perr := strconv.ParseInt(m.ID, 10, 64)
+			if perr != nil {
+				continue
+			}
+			h5MedalSprites[id] = static.MedalSprite{
+				SheetURL: m.SpriteSheet,
+				Left:     m.SpriteLeft,
+				Top:      m.SpriteTop,
+				Width:    m.SpriteWidth,
+				Height:   m.SpriteHeight,
+			}
+		}
+		if len(h5MedalSprites) > 0 {
+			static.SetMedalSpriteResolver(func(titleSlug string, medalID int64) *static.MedalSprite {
+				if titleSlug != halo5.TitleSlug {
+					return nil
+				}
+				if sp, ok := h5MedalSprites[medalID]; ok {
+					return &sp
+				}
+				return nil
+			})
+			slog.Info("medal_sprite_resolver_ready",
+				"title_slug", halo5.TitleSlug,
+				"sprites", len(h5MedalSprites),
 			)
 		}
 	}

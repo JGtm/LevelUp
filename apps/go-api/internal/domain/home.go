@@ -279,13 +279,22 @@ type RecentMatchItem struct {
 }
 
 // RecentMatchMedal est une médaille compacte pour l'affichage dans MatchCard.
+//
+// Icône title-aware : ImageURL (PNG, HINF) OU les champs Sprite* (feuille + offset,
+// Halo 5). Mutuellement exclusifs ; mêmes tags JSON que l'Asset Drawer (AssetMeta)
+// pour réutiliser le rendu front (background-image + background-position).
 type RecentMatchMedal struct {
-	MedalID     int64  `json:"medal_id"`
-	Name        string `json:"name"`
-	Count       int    `json:"count"`
-	Description string `json:"description,omitempty"`
-	ImageURL    string `json:"image_url"`
-	Difficulty  string `json:"difficulty,omitempty"`
+	MedalID      int64  `json:"medal_id"`
+	Name         string `json:"name"`
+	Count        int    `json:"count"`
+	Description  string `json:"description,omitempty"`
+	ImageURL     string `json:"image_url"`
+	Difficulty   string `json:"difficulty,omitempty"`
+	SpriteSheet  string `json:"sprite_sheet,omitempty"`
+	SpriteLeft   int    `json:"sprite_left,omitempty"`
+	SpriteTop    int    `json:"sprite_top,omitempty"`
+	SpriteWidth  int    `json:"sprite_width,omitempty"`
+	SpriteHeight int    `json:"sprite_height,omitempty"`
 }
 
 // MatchCitationSnippet est une citation progressée dans un match, pour l'affichage MatchCard.
