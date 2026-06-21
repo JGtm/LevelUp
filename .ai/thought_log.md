@@ -1,3 +1,19 @@
+## [2026-06-21] Campagne ART #23046 — DÉPLOYÉE EN PROD (Phase 1 + Phase 2) — COMPLÉTÉE
+
+**Action** : merge `refactor/art-pme-appendonly` → main local (ba3cb4608, merge commit) → push origin/main (fast-forward 125042306..ba3cb4608) → auto-deploy VPS.
+
+**Incident git résolu avant deploy** : un `git pull` accidentel sur la branche (qui track origin/main) avait tenté de merger `125042306` (le revert prod-safety qui avait retiré la migration PME de main) → conflit sur order.go + 2 fichiers PME "deleted by them" (séquelle aussi d'une corruption d'index racy-stat Windows antérieure). Abort du pull, puis merge délibéré branche→main en résolvant les 3 conflits en faveur de la branche (la campagne ré-introduit ces migrations à la racine). Vérif : arbre mergé IDENTIQUE à la branche.
+
+**Crash-test étendu pré-deploy** : migrations validées sur les 4 player DBs locales (Madina/JGtm/Chocoboflor/XxDaemon) + shared via apply_shared_migrations — zéro erreur (schémas legacy variables 23-24 cols PME / 7-8 PSA, tous gérés par les migrations robustes).
+
+**Deploy vérifié** : GitHub Actions tous verts (Deploy Pre-Check 4m59s + ADR 0021 Gate + Deploy to VPS 2m30s + Regen demo). Conteneur `levelup-levelup-1` Up healthy. **Preuve DIRECTE sur les vraies DBs prod (modifiées au boot 17:27)** : Madina player DB porte generation_id + personal_score_awards_latest + match_citations_latest + player_match_enrichment_latest ; shared DB porte is_reset + weapon_kills_generation_seq + player_skill_state_v2_latest. **Zéro erreur ART/FATAL/migration/reader** dans les logs. `pool: migrate player db` (OpenPlayerDB = lance les ensures append-only) a réussi pour tous les joueurs AVEC db.
+
+**WARN prod pré-existants (NON liés à l'ART, à NE PAS confondre)** : OAuth invalid_grant (AADSTS70000, tokens à re-capturer pour Madina/Choco/XxDaemon) ; « No such file » pour QuiteSiren/UppedJoker/GeleJugefi/Trimbutton/DankerGlue (profils db_profiles.json sans DB synchronisée) ; restic absent ; catalog playlist 404 best-effort.
+
+**Conclusion** : **le bug ART DuckDB #23046 est ÉRADIQUÉ en prod** sur toutes les tables d'état (Phase 1 PME + Phase 2 PSA/watermark/citations/weapon_kills). Serveur sain, DBs converties, zéro perte. Campagne TERMINÉE. (CI run encore en cours post-deploy — ne gate pas ; rerun si flake DuckDB connu.)
+
+---
+
 ## [2026-06-21] Phase 2 ART (#23046) — 4 cibles converties append-only + crash-test RÉEL (2 bugs trouvés) — COMPLÈTE & VERTE (non commitée)
 
 **Contexte** : suite de la Phase 1 (PME). Décision user : « tout P2 puis un seul commit » + watermark « la version la plus propre/solide/pérenne ». P2 = les 4 vecteurs ART re-confirmés par le critique de complétude. Census préalable (workflow 4 agents, `.ai/P2_ART_CENSUS_RAW.json`).
