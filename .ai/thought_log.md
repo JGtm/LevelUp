@@ -1,3 +1,11 @@
+## [2026-06-21] Halo 5 assets — sonde A1 (CMS) title-agnostic + résultats — Complété (sonde)
+
+**Directive user** : « rendre les choses title-agnostic le plus possible » (→ mémoire `feedback_prefer_title_agnostic`). Appliqué à la sonde : `cmd/probe-h5` ÉTENDUE (Phase 3 CMS assets) résout l'host via `games.EndpointResolver` (constants.toml), PAS de host hardcodé ; réutilise le helper `probe()` existant (pas de recette d'auth dupliquée). Token réutilisé (`RefreshHaloTokensViaStoreFirst`).
+
+**Résultats live (JGtm)** : ✅ **SR_MANIFEST 200** (`content-hacs.svc/contents/SpartanRankManifest`, wrapper `ContentItems[]`) — mais données SR DÉJÀ en main (CSV den.dev vérifié), fetch live non requis. ❌ médailles (3 paths) / CSR-designations (3 paths) / commendations = **403** (mauvais noms de contenu) ; UGC maps = **404** (path). Le mécanisme `content-hacs/contents/{Name}` marche (SR ok) mais les NOMS médailles/CSR/commendations sont à récupérer de la réf cryptum/HaloDotAPI. Détail dans `.ai/PLAN_H5_ASSETS.md` (§ Résultats sonde A1).
+
+**Reste** : récupérer les noms de contenu content-hacs H5 (médailles/CSR) + l'endpoint du **niveau SR du joueur** (consommateur manquant de B-SR) via cryptum ; puis fetchers (A2) + seed B-SR.
+
 ## [2026-06-21] Halo 5 assets — scoping (workflow) + KDA vérifié + données SR préservées — Complété (scoping)
 
 **KDA (correction demandée user)** : vérifié — le code implémente DÉJÀ `((k+a/3)−d)/games` aux 4 sites (carrière `mapping_servicerecord.go:88` divise par games ; per-match `mapping_carnage.go` stocke le numérateur games=1 ; `compare_repo` `AVG(mp.kda)` ; `explorer` `Σ/sampleSize`). Aucun bug. Commentaire de `mapping_carnage.go` aligné pour énoncer la formule canonique explicitement.

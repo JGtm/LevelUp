@@ -30,6 +30,9 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games"
+	halo5 "levelup/go-api/internal/games/halo_5"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/platform/auth"
 )
 
@@ -53,6 +56,16 @@ func main() {
 	ownerGT := "JGtm"
 	if len(os.Args) > 1 {
 		ownerGT = os.Args[1]
+	}
+	// Racine portant config/titles/<slug> (constants.toml) pour l'EndpointResolver
+	// title-agnostic de la Phase 3 (CMS assets). Défaut = worktree.
+	configRoot := "c:/Users/Guillaume/Downloads/Scripts/levelup-multititre"
+	if len(os.Args) > 2 {
+		configRoot = os.Args[2]
+	}
+	slug := halo5.TitleSlug
+	if len(os.Args) > 3 {
+		slug = os.Args[3]
 	}
 
 	ctx := context.Background()
@@ -124,6 +137,68 @@ func main() {
 	// expose nativement ce qu'Infinite n'a qu'au prix du decodage film.
 	fmt.Println("══════ Phase 2 : carnage detail + match events ══════")
 	probeMatchDetails(ctx, client, spartan, gt)
+
+	// ── Phase 3 : surfaces CMS ASSETS (rangs SR, médailles, designations CSR, maps).
+	// Host résolu TITLE-AGNOSTIC via l'EndpointResolver (constants.toml), pas hardcodé.
+	// But : confirmer hosts/paths/shapes avant d'écrire les fetchers (Track A du plan).
+	fmt.Printf("\n══════ Phase 3 : CMS assets (slug=%s, host via EndpointResolver) ══════\n", slug)
+	probeAssetCMS(ctx, client, spartan, slug, configRoot)
+}
+
+// probeAssetCMS sonde les surfaces CMS d'assets d'un titre. L'host (gamecms/ugc) et
+// le game_prefix sont résolus par l'EndpointResolver depuis constants.toml (zéro
+// host hardcodé — title-agnostic). Les PATHS restent h5-spécifiques (c'est l'objet
+// de la sonde : confirmer lesquels répondent 200). SR-manifest = confirmé den.dev ;
+// le reste = hypothèses à valider.
+func probeAssetCMS(ctx context.Context, client *http.Client, spartan, slug, configRoot string) {
+	reg := mappings.NewRegistry()
+	if errs := reg.LoadFromConfigDir(configRoot, []string{slug, "halo_infinite"}, nil); len(errs) != 0 {
+		fmt.Printf("   load mappings (%s) échoué: %v\n", configRoot, errs)
+		return
+	}
+	resolver := games.NewMappingsEndpointResolver(reg, "halo_infinite")
+	gamecms, ok := resolver.HostFor(slug, games.EndpointGameCMS)
+	if !ok {
+		fmt.Printf("   host gamecms non résolu pour %q (constants.toml [endpoints].gamecms ?)\n", slug)
+		return
+	}
+	ugc, _ := resolver.HostFor(slug, games.EndpointDiscoveryUGC)
+	prefix, _ := resolver.GamePrefixFor(slug)
+	fmt.Printf("   gamecms=%s  ugc=%s  prefix=%s\n\n", gamecms, ugc, prefix)
+
+	targets := []probeTarget{
+		{"SR_MANIFEST", fmt.Sprintf("%s/contents/SpartanRankManifest?auth=st", gamecms)},
+		{"MEDALS_progression", fmt.Sprintf("%s/%s/Progression/file/medals/metadata.json?auth=st", gamecms, prefix)},
+		{"MEDALS_contents", fmt.Sprintf("%s/contents/Medals?auth=st", gamecms)},
+		{"MEDALS_metadata", fmt.Sprintf("%s/%s/metadata/medals?auth=st", gamecms, prefix)},
+		{"CSR_DESIG_prefixmeta", fmt.Sprintf("%s/%s/metadata/csr-designations?auth=st", gamecms, prefix)},
+		{"CSR_DESIG_metaprefix", fmt.Sprintf("%s/metadata/%s/metadata/csr-designations?auth=st", gamecms, prefix)},
+		{"CSR_DESIG_contents", fmt.Sprintf("%s/contents/CsrDesignationManifest?auth=st", gamecms)},
+		{"COMMENDATIONS_manifest", fmt.Sprintf("%s/contents/CommendationManifest?auth=st", gamecms)},
+	}
+	if ugc != "" {
+		targets = append(targets, probeTarget{"UGC_MAPS", fmt.Sprintf("%s/%s/maps?auth=st", ugc, prefix)})
+	}
+
+	for _, t := range targets {
+		status, ctype, body, derr := probe(ctx, client, t.url, spartan)
+		fmt.Printf("── %s\n   %s\n", t.label, t.url)
+		if derr != "" {
+			fmt.Printf("   ERREUR transport : %s\n\n", derr)
+			continue
+		}
+		// Dump complet des manifests 200 pour analyse hors-ligne (parsing du shape).
+		if status == http.StatusOK {
+			dump := fmt.Sprintf("%s/h5_asset_%s.json", os.TempDir(), strings.ToLower(t.label))
+			_ = os.WriteFile(dump, []byte(body), 0o644)
+			fmt.Printf("   [dump] %s\n", dump)
+		}
+		preview := strings.TrimSpace(body)
+		if len(preview) > 700 {
+			preview = preview[:700] + " …[tronque]"
+		}
+		fmt.Printf("   HTTP %d · %s · %d bytes\n   %s\n\n", status, ctype, len(body), preview)
+	}
 }
 
 // matchesResp — projection minimale de /h5/players/{gt}/matches pour extraire un
