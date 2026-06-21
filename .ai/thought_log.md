@@ -1,3 +1,16 @@
+## [2026-06-22] FONDATION — provider shared PAR TITRE (Option A/C, B-swap) — Complété
+
+Bug : en B-swap (défaut prod), le `SharedReader` injecté dans chaque PlayerDB = `cfg.SharedProvider`, provider UNIQUE du shared **Halo Infinite**. Un joueur d'un autre titre lisait donc le shared HINF (mauvais fichier) → tuiles home / Match View h5 vides en prod malgré le sync qui stocke. C'est la cause réelle du « h5 paraît live ».
+
+Design TRANCHÉ (Option A/C, le seul sûr) : lecture ET écriture d'un même shared passent par le MÊME provider per-titre (sinon RO+RW non coordonnés sur le fichier h5 → DuckDB « different configuration »).
+- **Lecture** : `config.sharedReaderForTitle(titleSlug)` → `cfg.SharedManager.For(SharedDBPath(slug))`. HINF (DefaultSlug) → MÊME provider boot (cache par path) → byte-identique. Fallbacks : Manager nil (kill-switch) / démo → `cfg.SharedProvider`. Injecté aux 2 points (`player_resolver.go` resolveDemoPlayer + buildPoolConfig).
+- **Écriture h5** : `livesync.sharedProviderForPath(cfg, path)` route le writer (`AcquireSharedWriterStandalone(provider, …)`) par le provider du path h5 → `provider.AcquireWriter` (PreSwap : ferme RO, ouvre RW, rouvre RO). nil → legacy (kill-switch / fichier inexistant au 1er run).
+- `config.AppConfig.SharedManager` (additif) câblé au boot (`main.go`, fermé par `closeShared`).
+- Tests : #1 HINF byte-identique (identité de pointeur), #2 sélection per-titre, #3 coordination read+write (zéro « different configuration »), #4 lifecycle, + write-side `TestSharedProviderForPath_ReadEqualsWrite` (read==write instance). Build `./...` + tests api/service/duckdb verts.
+- **Vérif adversariale** : SÛR à commiter (cf. `.ai/HANDOFF_H5_MULTITITRE.md` § résidus : risque transitoire 1er run auto-résorbant ; `newEngineFor` HINF-provider à corriger pour un 3e titre via SyncEngine).
+
+Effet : dès qu'un joueur h5 (JGtm enregistré dans db_profiles) est synchronisé, h5 lit SON shared stocké (tuiles home, Match View via le repo, plus de live permanent). Reste : valider E2E sur données JGtm réelles.
+
 ## [2026-06-21] G8 — groupes LUSR front title-aware (Halo 5 h5_arena) — Complété
 
 Le front itérait `LUSR_KNOWN_GROUPS` HINF figés (arena_slayer/objectif/btb/chaos) → la chaîne unique LUSR de Halo 5 (`h5_arena`) ne s'affichait nulle part + 3-4 lignes HINF « Non classé » parasites. Backend INCHANGÉ : les checkpoints h5 remontent déjà via le fallback `repo.GetLUSRHistory` (title-agnostic, lit `match_skill_rank.playlist_group = h5_arena`) ; capability `lusr` héritée → colonne affichée.

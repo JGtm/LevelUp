@@ -106,6 +106,17 @@ mais le chemin de LECTURE shared n'est pas par-titre.
 - **FIX = provider shared PAR TITRE** : `Manager.For(SharedDBPath(titleSlug))` sélectionné selon `pdb.TitleSlug` (boot/`buildPoolConfig`/`player_resolver`). C'est LA fondation pour « h5 lit le stocké ». Prudence : machinerie B-swap délicate (mono-writer DuckDB, RO↔RW).
 - Note : `player_csr_snapshots` (G4) est une table **player DB** (pas shared) → la lecture CSR n'est PAS bloquée par ce gap SI h5 a une player DB. À confirmer.
 
+## FONDATION provider per-titre — LIVRÉE (Option A/C, vérif adversariale 2026-06-22)
+Provider shared sélectionné PAR TITRE pour lecture ET écriture (le seul design sûr B-swap) :
+- Lecture : `config.sharedReaderForTitle(titleSlug)` → `SharedManager.For(SharedDBPath(slug))` (player_resolver.go). HINF → même provider (byte-identique).
+- Écriture h5 : `livesync.sharedProviderForPath` route le writer par le MÊME provider (PreSwap coordonne RO↔RW). Évite le « different configuration ».
+- Vérif adversariale : propriété clé (read==write instance) SÛRE (cache par path, path identique, 1 Manager), HINF byte-identique, cycle de vie/concurrence SÛRS. Tests : #1 byte-identique, #2 sélection per-titre, #3 coordination read+write, #4 lifecycle.
+
+### Résidus (non bloquants, à garder en tête)
+- **Premier run h5** (shared inexistant) : `For` échoue → writer legacy crée le fichier ; un read concurrent retombe sur HINF (loggué, transitoire, auto-résorbant dès que le fichier existe). Pas de corruption. Mitigation propre éventuelle : provisionner le shared h5 vide au boot.
+- **`newEngineFor` (sync_handler.go:175,184)** injecte `cfg.SharedProvider` (HINF) : inoffensif (h5 passe par LiveRunner, pas SyncEngine) mais un 3e titre routé via SyncEngine hériterait du provider HINF → à corriger à l'activation 1b.
+- Fallback lecture `sharedReaderForTitle` sur erreur = `cfg.SharedProvider` (HINF) : sémantiquement « lit le mauvais titre » plutôt que vide ; transitoire uniquement.
+
 ## VÉRIFS — RÉSULTAT (agent vérif, 2026-06-21)
 - **10 commits = PROPRES** : zéro régression title-agnostic (slug figé supprimé, résolveurs injectés), zéro régression HINF, G9 bien conçu (repo-first/live-fallback, HINF jamais en fallback).
 - **G9 lit le stocké ?** NON en prod, à cause du provider HINF-only ci-dessus (PAS un défaut de mes commits — le routage est bon, c'est la lecture shared qui n'est pas par-titre).
