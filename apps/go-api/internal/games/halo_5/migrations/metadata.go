@@ -43,6 +43,7 @@ func metadataStepNames() []string {
 		"h5_add_maps_catalog",
 		"h5_add_map_images_registry",
 		"h5_add_csr_designations",
+		"h5_weapon_labels_add_icon",
 	}
 }
 
@@ -177,6 +178,17 @@ func MetadataSteps() []migration.Migration {
 						banner_url       VARCHAR,
 						PRIMARY KEY (designation_name, tier_id)
 					);
+				`)
+			},
+		},
+		{
+			Name:        "h5_weapon_labels_add_icon",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Halo 5 — weapon_labels : colonnes icon_url + weapon_type (API Metadata officielle largeIconImageUrl/type). Step séparé pour s'appliquer aux DB déjà provisionnées.",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE weapon_labels ADD COLUMN IF NOT EXISTS icon_url VARCHAR;
+					ALTER TABLE weapon_labels ADD COLUMN IF NOT EXISTS weapon_type VARCHAR;
 				`)
 			},
 		},
