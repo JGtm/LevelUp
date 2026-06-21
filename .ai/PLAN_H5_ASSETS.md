@@ -51,6 +51,26 @@ d'image de rang h5. Risque : touche le chemin HINF (à tester sans régression).
   littéral décimal UBIGINT bit63) + CLI `cmd/seed-h5-weapon-labels`. Table de noms livrable,
   mais **`weapon_id` reste vide jusqu'à collecte des StockId** (Track A) → seed effectif différé.
 
+## Résultats sonde A1 (2026-06-21, `cmd/probe-h5` Phase 3, host title-agnostic)
+
+Live JGtm, host résolu via EndpointResolver (`gamecms=content-hacs.svc`, `prefix=h5`) :
+- ✅ **SR_MANIFEST : HTTP 200** — `content-hacs.svc/contents/SpartanRankManifest`. Shape =
+  wrapper `{Paging, ContentItems[{Id,Type,View:{...,SpartanRankManifest:{SpartanRanks[]}}}]}`
+  (le 1er ContentItem est un dummy vide ; le réel suit). **Données déjà en main** (CSV den.dev
+  vérifié) → le fetch live n'est pas nécessaire pour le référentiel SR.
+- ❌ **Médailles** (`/h5/Progression/file/medals/metadata.json`, `/contents/Medals`,
+  `/h5/metadata/medals`) : **403** → mauvais noms/paths (content-hacs renvoie 403 sur contenu
+  inconnu, pas 404).
+- ❌ **CSR-designations** (3 variantes) + **commendations** (`/contents/CommendationManifest`) :
+  **403** → idem, noms de contenu à trouver.
+- ❌ **UGC maps** (`ugc.svc/h5/maps`) : **404** → path à corriger.
+
+**Conclusion A1** : le mécanisme `content-hacs/contents/{Name}` fonctionne (SR=200) mais les
+NOMS de contenu médailles/CSR/commendations sont à récupérer de la **référence cryptum/HaloDotAPI**
+(ou des posts den.dev équivalents au SR manifest). Le path UGC maps n'est pas `/h5/maps`.
+Prochaine recherche = lister les noms de contenu content-hacs H5 (cryptum
+`modules/api/endpoints/H5/ContentHacs`) + l'endpoint du **niveau SR du joueur** (consommateur B-SR).
+
 ## Track A — fetchers LIVE (après une sonde de confirmation)
 
 **A1 — Sonde `cmd/probe-h5` étendue (PRÉ-REQUIS de tout A)** : réutiliser `halo_5/client.go`
