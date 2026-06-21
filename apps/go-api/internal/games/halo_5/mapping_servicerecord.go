@@ -80,9 +80,11 @@ func aggregatePlayerStats(resp *H5ServiceRecordResponse, gamertag string) *canon
 	if deaths > 0 {
 		kdr := float64(kills) / float64(deaths)
 		stats.KDR = &kdr
-		kda := (float64(kills) + float64(assists)/3.0) / float64(deaths)
-		stats.KDA = &kda
 	}
+	// KDA volontairement laissé nil : Halo 5 ne le renvoie PAS via l'API et le KDA
+	// ne se calcule JAMAIS localement (règle absolue, jamais d'exception Infinite).
+	// La forme native h5 est un FDA NET ((k+a/3)-d)/games — distinct du quotient KDA ;
+	// le fabriquer ici produirait une valeur fausse. Cf. mapping_carnage.go (conforme).
 	if shotsFired > 0 {
 		acc := float64(shotsLanded) / float64(shotsFired)
 		stats.Accuracy = &acc

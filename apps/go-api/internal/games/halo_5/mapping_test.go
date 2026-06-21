@@ -214,8 +214,10 @@ func TestAggregatePlayerStats_RealShape(t *testing.T) {
 	if s.KDR == nil || !approxEq(*s.KDR, 20.0/39.0) {
 		t.Errorf("KDR = %v, want %.4f", s.KDR, 20.0/39.0)
 	}
-	if s.KDA == nil || !approxEq(*s.KDA, (20.0+5.0/3.0)/39.0) {
-		t.Errorf("KDA = %v", s.KDA)
+	// INVARIANT (règle absolue) : KDA n'est JAMAIS fabriqué — Halo 5 ne le renvoie
+	// pas via l'API, on le laisse nil (cf. mapping_carnage_test.go même invariant).
+	if s.KDA != nil {
+		t.Errorf("KDA h5 doit rester nil (jamais calculé), got %v", *s.KDA)
 	}
 	if s.Accuracy == nil || !approxEq(*s.Accuracy, 35.0/90.0) {
 		t.Errorf("Accuracy = %v, want %.4f", s.Accuracy, 35.0/90.0)

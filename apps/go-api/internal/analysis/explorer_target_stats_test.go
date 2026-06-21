@@ -28,7 +28,7 @@ func TestBuildSampleStats_StandardCase(t *testing.T) {
 	}
 	medals := &domain.MedalCountsAggregate{Total: 142, Unique: 12, PerfectKills: 8}
 
-	got := BuildSampleStats(agg, medals, 10, 225)
+	got := BuildSampleStats(agg, medals, 10, 225, true)
 	if got == nil {
 		t.Fatal("BuildSampleStats attendu non-nil")
 	}
@@ -92,7 +92,7 @@ func TestBuildSampleStats_TimePlayedZero(t *testing.T) {
 		Kills: 10, Deaths: 5, Assists: 3,
 		TimePlayedSeconds: 0,
 	}
-	got := BuildSampleStats(agg, nil, 2, 225)
+	got := BuildSampleStats(agg, nil, 2, 225, true)
 	if got == nil {
 		t.Fatal("BuildSampleStats attendu non-nil")
 	}
@@ -109,7 +109,7 @@ func TestBuildSampleStats_DeathsZero(t *testing.T) {
 		DamageDealt: 1500, DamageTaken: 0,
 		HeadshotKills: 5,
 	}
-	got := BuildSampleStats(agg, nil, 2, 225)
+	got := BuildSampleStats(agg, nil, 2, 225, true)
 	if got == nil {
 		t.Fatal("BuildSampleStats attendu non-nil")
 	}
@@ -126,12 +126,32 @@ func TestBuildSampleStats_DeathsZero(t *testing.T) {
 	}
 }
 
+// computeKDA=false (titre sans KDA natif, ex. Halo 5) → KDA laissé nil, jamais
+// fabriqué façon Infinite. KDR (non ambigu) reste calculé.
+func TestBuildSampleStats_NoNativeKDA_SkipsKDA(t *testing.T) {
+	agg := &domain.ParticipantStatsAggregate{
+		Kills: 100, Deaths: 50, Assists: 30,
+		Wins: 7, Losses: 2, Draws: 1,
+		ShotsFired: 800, ShotsHit: 400,
+	}
+	got := BuildSampleStats(agg, nil, 10, 115, false)
+	if got == nil {
+		t.Fatal("BuildSampleStats attendu non-nil")
+	}
+	if got.KDA != nil {
+		t.Errorf("KDA doit rester nil quand computeKDA=false (h5), got %v", *got.KDA)
+	}
+	if got.KDR == nil || *got.KDR != 2.0 {
+		t.Errorf("KDR (non ambigu) doit rester calculé = 2.0, got %v", got.KDR)
+	}
+}
+
 func TestBuildSampleStats_ShotsZero(t *testing.T) {
 	agg := &domain.ParticipantStatsAggregate{
 		Kills: 10, Deaths: 5,
 		ShotsFired: 0, ShotsHit: 0,
 	}
-	got := BuildSampleStats(agg, nil, 1, 225)
+	got := BuildSampleStats(agg, nil, 1, 225, true)
 	if got == nil {
 		t.Fatal("BuildSampleStats attendu non-nil")
 	}
@@ -145,7 +165,7 @@ func TestBuildSampleStats_KillsZero(t *testing.T) {
 		Kills: 0, Deaths: 5,
 		HeadshotKills: 0,
 	}
-	got := BuildSampleStats(agg, nil, 1, 225)
+	got := BuildSampleStats(agg, nil, 1, 225, true)
 	if got == nil {
 		t.Fatal("BuildSampleStats attendu non-nil")
 	}
@@ -161,19 +181,19 @@ func TestBuildSampleStats_KillsZero(t *testing.T) {
 
 func TestBuildSampleStats_NilOrZeroSample(t *testing.T) {
 	t.Run("agg nil", func(t *testing.T) {
-		if got := BuildSampleStats(nil, nil, 5, 225); got != nil {
+		if got := BuildSampleStats(nil, nil, 5, 225, true); got != nil {
 			t.Errorf("agg nil → attendu nil, got %+v", got)
 		}
 	})
 	t.Run("sampleSize 0", func(t *testing.T) {
 		agg := &domain.ParticipantStatsAggregate{Kills: 10, Deaths: 5}
-		if got := BuildSampleStats(agg, nil, 0, 225); got != nil {
+		if got := BuildSampleStats(agg, nil, 0, 225, true); got != nil {
 			t.Errorf("sampleSize=0 → attendu nil, got %+v", got)
 		}
 	})
 	t.Run("sampleSize négatif", func(t *testing.T) {
 		agg := &domain.ParticipantStatsAggregate{Kills: 10, Deaths: 5}
-		if got := BuildSampleStats(agg, nil, -1, 225); got != nil {
+		if got := BuildSampleStats(agg, nil, -1, 225, true); got != nil {
 			t.Errorf("sampleSize<0 → attendu nil, got %+v", got)
 		}
 	})
@@ -181,7 +201,7 @@ func TestBuildSampleStats_NilOrZeroSample(t *testing.T) {
 
 func TestBuildSampleStats_MedalsNil(t *testing.T) {
 	agg := &domain.ParticipantStatsAggregate{Kills: 10, Deaths: 5}
-	got := BuildSampleStats(agg, nil, 1, 225)
+	got := BuildSampleStats(agg, nil, 1, 225, true)
 	if got == nil {
 		t.Fatal("BuildSampleStats attendu non-nil")
 	}
@@ -196,7 +216,7 @@ func TestBuildSampleStats_WinRateDNFExclu(t *testing.T) {
 		Kills: 1, Deaths: 1,
 		Wins: 3, Losses: 1, Draws: 0,
 	}
-	got := BuildSampleStats(agg, nil, 5, 225) // 5 matchs au total mais seulement 4 jouables
+	got := BuildSampleStats(agg, nil, 5, 225, true) // 5 matchs au total mais seulement 4 jouables
 	if got == nil {
 		t.Fatal("BuildSampleStats attendu non-nil")
 	}

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -36,7 +37,10 @@ func (r *StatsRepo) LoadStatsMatches(ctx context.Context) ([]legacymatch.StatsMa
 		return nil, fmt.Errorf("StatsRepo.LoadStatsMatches: shared reader: %w", err)
 	}
 	defer release()
-	rows, err := sharedDB.QueryContext(ctx, Q23StatsMatchesShared, r.pdb.XUID)
+	// Baseline rendement/résistance title-aware (225 Infinite, 115 h5) — liée 2×
+	// (offensive_conversion + defensive_resistance) AVANT le xuid de la clause WHERE.
+	hp := games.EffectiveHpToKill(r.pdb.TitleSlug)
+	rows, err := sharedDB.QueryContext(ctx, Q23StatsMatchesShared, hp, hp, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("StatsRepo.LoadStatsMatches: %w", err)
 	}

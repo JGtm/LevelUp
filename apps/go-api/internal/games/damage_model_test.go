@@ -75,3 +75,45 @@ func TestDamageModel_AbsentSection(t *testing.T) {
 		t.Errorf("sans section = %v, want %v (défaut)", got, DefaultEffectiveHpToKill)
 	}
 }
+
+// TestProvidesNativeKDA — un titre déclarant no_native_kda=true (Halo 5) route
+// false ; un titre sans le flag / inconnu / resolver legacy / resolver nil retombe
+// sur true (défaut Infinite). Garantit qu'on ne fabrique jamais de KDA pour un
+// titre qui n'en fournit pas via son API (règle absolue).
+func TestProvidesNativeKDA(t *testing.T) {
+	t.Parallel()
+	const slug = "synthetic_nokda_title"
+
+	tmp := t.TempDir()
+	writeFile(t, filepath.Join(tmp, "config", "titles", slug, "mappings"), "fields.toml", minimalFieldsTOML(slug))
+	writeFile(t, filepath.Join(tmp, "config", "titles", slug), "constants.toml", `
+[meta]
+title_slug = "`+slug+`"
+schema_version = 1
+
+[endpoints]
+stats = "https://stats.example.test"
+
+[damage_model]
+effective_hp_to_kill = 115
+no_native_kda = true
+`)
+	reg := mappings.NewRegistry()
+	if errs := reg.LoadFromConfigDir(tmp, []string{slug}, nil); len(errs) != 0 {
+		t.Fatalf("LoadFromConfigDir errs: %v", errs)
+	}
+	res := NewMappingsEndpointResolver(reg, "halo_infinite")
+
+	if ProvidesNativeKDAFromResolver(res, slug) {
+		t.Errorf("ProvidesNativeKDA(%q) = true, want false (no_native_kda=true)", slug)
+	}
+	if !ProvidesNativeKDAFromResolver(res, "never_loaded") {
+		t.Error("titre inconnu : ProvidesNativeKDA devrait être true (défaut)")
+	}
+	if !ProvidesNativeKDAFromResolver(hostOnlyResolver{}, slug) {
+		t.Error("resolver legacy : ProvidesNativeKDA devrait être true (défaut)")
+	}
+	if !ProvidesNativeKDAFromResolver(nil, slug) {
+		t.Error("resolver nil : ProvidesNativeKDA devrait être true (défaut)")
+	}
+}

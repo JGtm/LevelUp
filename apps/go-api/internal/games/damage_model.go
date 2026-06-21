@@ -43,3 +43,29 @@ func EffectiveHpToKillFromResolver(res EndpointResolver, slug string) float64 {
 func EffectiveHpToKill(slug string) float64 {
 	return EffectiveHpToKillFromResolver(DefaultEndpointResolver(), slug)
 }
+
+// ProvidesNativeKDA indique si le titre fournit un KDA per-match via son API (donc
+// utilisable/affichable tel quel). Faux pour les titres qui n'en renvoient pas —
+// Halo 5 : forme native = FDA NET ((k+a/3)−d)/games, distincte du quotient KDA ;
+// fabriquer un KDA façon Infinite pour eux produirait une valeur fausse. Ces titres
+// déclarent no_native_kda = true dans constants.toml [damage_model]. Défaut true
+// (byte-identique Infinite). Source = config, JAMAIS de slug== (règle title-agnostic).
+//
+// RÈGLE ABSOLUE associée : on ne CALCULE jamais le KDA d'un titre qui le fournit
+// (on lit l'API) ; pour un titre qui ne le fournit pas, on le laisse nil plutôt que
+// d'appliquer une formule étrangère.
+func ProvidesNativeKDA(slug string) bool {
+	return ProvidesNativeKDAFromResolver(DefaultEndpointResolver(), slug)
+}
+
+// ProvidesNativeKDAFromResolver est la forme testable de ProvidesNativeKDA (point
+// d'injection du resolver). Défaut true si le resolver est nil / ne supporte pas
+// l'extension / le titre ne déclare pas son [damage_model].
+func ProvidesNativeKDAFromResolver(res EndpointResolver, slug string) bool {
+	if dmr, ok := res.(DamageModelResolver); ok {
+		if dm, found := dmr.DamageModelFor(slug); found {
+			return !dm.NoNativeKDA
+		}
+	}
+	return true
+}
