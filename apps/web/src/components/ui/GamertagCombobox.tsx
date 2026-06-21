@@ -166,6 +166,7 @@ export function GamertagCombobox({
           return (
             <span
               key={gt}
+              title={gt}
               className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-sm font-medium"
               style={
                 color
@@ -176,11 +177,11 @@ export function GamertagCombobox({
             >
               {!color && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-0.5 text-sm text-foreground">
-                  {gt}
+                  <span className="max-w-[7rem] truncate">{gt}</span>
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); remove(gt) }}
-                    className="ml-0.5 text-muted-foreground hover:text-foreground leading-none"
+                    className="ml-0.5 shrink-0 text-muted-foreground hover:text-foreground leading-none"
                     aria-label={`Retirer ${gt}`}
                   >
                     ×
@@ -189,11 +190,11 @@ export function GamertagCombobox({
               )}
               {color && (
                 <>
-                  {gt}
+                  <span className="max-w-[7rem] truncate">{gt}</span>
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); remove(gt) }}
-                    className="ml-0.5 opacity-80 hover:opacity-100 leading-none"
+                    className="ml-0.5 shrink-0 opacity-80 hover:opacity-100 leading-none"
                     aria-label={`Retirer ${gt}`}
                   >
                     ×

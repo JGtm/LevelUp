@@ -1,3 +1,15 @@
+## [2026-06-22] Pills coéquipiers (barre L2 Escouade) — troncature pour préserver le one-line — COMPLÉTÉ (non commité, branche fix/home-session-cards-nav)
+
+**Contexte** : sur la page Escouade, la barre de filtres sticky « L2 » (remplace NavL2, `SquadLayout`) affiche la pill colorée du joueur actif + les pills des coéquipiers sélectionnés (`GamertagCombobox` mode compact). Avec le **max de joueurs (1 actif + 3 coéquipiers = 4)** à noms longs, les pills coéquipiers grossissaient → combobox en `flex-wrap` sur une 2ᵉ ligne et/ou poussée des filtres + actions vers la droite (« ça décale tout »). User veut conserver le **one-line** + la stabilité du contenu central. La pill active était déjà bornée (`max-w-[7rem] truncate`, `SquadLayout.tsx:458`) mais **pas** les pills coéquipiers (ni largeur max, ni troncature, ni shrink).
+
+**Décision technique principale** : borner + tronquer le texte du gamertag dans les **2 variantes** de pill (colorée si `colors` fourni = cas barre L2 ; neutre sinon) de `GamertagCombobox` — réutilisation exacte du pattern de la pill active : texte enveloppé dans `<span className="max-w-[7rem] truncate">{gt}</span>` + `title={gt}` (survol = nom complet) + `shrink-0` sur le bouton `×`. Le `flex-wrap` du conteneur compact est **conservé** (repli gracieux sur écran étroit ; la troncature suffit au one-line en usage normal). Un seul fichier touché ; **aucune modif `SquadLayout`** (pill active déjà correcte) ; zéro couleur ajoutée (classes de layout uniquement → règle color-tokens §20 respectée). Composant partagé : amélioration neutre pour les call sites non-compact (`SyncTab`, `ComparePage`, `SquadV2RouteHost`), dropdown inchangé.
+
+**Résultats (vérif finale)** : typecheck OK ; lint **0 erreur** (69 warnings pré-existants hors scope, aucun sur `GamertagCombobox.tsx`) ; `GamertagCombobox.test.tsx` **4/4 vert** (assertions sur items du dropdown + état input → envelopper `{gt}` dans un span conserve `getByText`).
+
+**Prochaine étape** : vérif visuelle dans l'app tournante (Escouade → sélectionner 3 coéquipiers à noms longs ≥12 car. : barre L2 sur **une ligne**, pills tronquées « … » + survol nom complet, filtres/compteur/Analyser non décalés), puis commit après autorisation. Réf : [[reference_squad_page_legacy_service_composition]].
+
+---
+
 ## [2026-06-22] Couleur dédiée "Bonus" (assistances) — distincte des 8 couleurs squad — COMPLÉTÉ (non commité, branche fix/home-session-cards-nav)
 
 **Contexte** : sur la page Escouade, le segment **Bonus** (assistances, `assists/3`) empilé dans les charts utilisait le token `chart-series-7`. En **palette par défaut** ce token vaut `#F59E0B` (ambre) — exactement `perf-tier-3` (`#F59E0B`), la couleur du **3ᵉ joueur** → bonus indiscernable. Le bonus apparaît dans le stack de chaque joueur (chart butterfly), à côté des frags (couleur joueur) et des morts (`hexComplement`, hue+180°). Contrainte user : éviter les **8 couleurs verrouillées** = 4 joueurs + leurs 4 opposés colorimétriques, et bien se démarquer.
