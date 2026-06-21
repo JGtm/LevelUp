@@ -13,46 +13,51 @@ import "sort"
 // (2026-06-02) â€” la bascule est un no-op (cf. order_test.go). Toute NOUVELLE
 // migration doit Ãªtre ajoutÃ©e Ã  cette liste (order_test.go Ã©choue sinon).
 var canonicalOrder = []string{
+	"add_match_intensity_to_match_registry",                 // shared
+	"add_asset_translations",                                // metadata
+	"add_battlepass_asset_refs",                             // metadata
+	"add_battlepass_metadata",                               // metadata
+	"add_challenge_metadata",                                // metadata
+	"add_medal_definitions",                                 // metadata
+	"add_weapon_labels",                                     // metadata
+	"drop_legacy_translation_tables",                        // metadata
+	"add_waypoint_assets_raw",                               // metadata
+	"add_map_images_registry",                               // metadata
+	"add_mode_name_tr",                                      // metadata
+	"add_citation_mappings",                                 // metadata
+	"add_citation_mappings_pk",                              // metadata
+	"add_citation_mappings_v2_fields",                       // metadata
+	"add_xbox_achievement_definitions",                      // metadata
+	"add_career_rank_translations",                          // metadata
+	"medal_definitions_add_indices",                         // metadata
+	"enrich_medal_definitions_v2",                           // metadata
+	"medal_definitions_add_personal_score",                  // metadata
+	"fix_super_fiesta_fr_label",                             // metadata
+	"seed_playlist_fr_translations",                         // metadata
+	"add_title_id_to_xbox_achievement_definitions",          // metadata
+	"cleanup_xbox_achievement_definitions_unknown_title",    // metadata
+	"add_xbox_title_id_to_xbox_achievement_definitions",     // metadata
+	"add_service_config_id_to_xbox_achievement_definitions", // metadata
+	"add_assists_model_coefs",                               // metadata
+	"add_catalog_playlists",                                 // metadata
+	"fix_citation_image_paths_double_encoded",               // metadata
+	"add_csr_placement_thresholds",                          // metadata
+	"drop_playlists_catalog_secondary_indexes",              // metadata
+	"create_milestone_catalog_metadata",                     // metadata
+	"create_prestige_metadata_schema",                       // metadata
+	"seed_ranked_playlists_catalog",                         // metadata
+	"challenge_template_add_source_column",                  // metadata
+	"add_template_tagging_columns",                          // metadata
+	"create_base_player_schema",                             // player
+	// Les ALTER d'enrichissement DOIVENT suivre create_base_player_schema : sur une
+	// DB fraîche (1er provisioning d'un titre, ex. Halo 5) elles étaient ordonnées
+	// AVANT la création de player_match_enrichment → l'ALTER no-opait (table absente)
+	// et engagement_score_brut/pace n'étaient jamais ajoutées (bug match history h5).
+	// Name-keyed → Infinite (déjà migré incrémentalement) intact.
 	"add_engagement_score_columns_to_player_match_enrichment", // player
 	"create_engagement_coefficients_table",                    // player
 	"repair_engagement_coefficients_primary_key",              // player
 	"add_engagement_pace_columns_to_player_match_enrichment",  // player
-	"add_match_intensity_to_match_registry",                   // shared
-	"add_asset_translations",                                  // metadata
-	"add_battlepass_asset_refs",                               // metadata
-	"add_battlepass_metadata",                                 // metadata
-	"add_challenge_metadata",                                  // metadata
-	"add_medal_definitions",                                   // metadata
-	"add_weapon_labels",                                       // metadata
-	"drop_legacy_translation_tables",                          // metadata
-	"add_waypoint_assets_raw",                                 // metadata
-	"add_map_images_registry",                                 // metadata
-	"add_mode_name_tr",                                        // metadata
-	"add_citation_mappings",                                   // metadata
-	"add_citation_mappings_pk",                                // metadata
-	"add_citation_mappings_v2_fields",                         // metadata
-	"add_xbox_achievement_definitions",                        // metadata
-	"add_career_rank_translations",                            // metadata
-	"medal_definitions_add_indices",                           // metadata
-	"enrich_medal_definitions_v2",                             // metadata
-	"medal_definitions_add_personal_score",                    // metadata
-	"fix_super_fiesta_fr_label",                               // metadata
-	"seed_playlist_fr_translations",                           // metadata
-	"add_title_id_to_xbox_achievement_definitions",            // metadata
-	"cleanup_xbox_achievement_definitions_unknown_title",      // metadata
-	"add_xbox_title_id_to_xbox_achievement_definitions",       // metadata
-	"add_service_config_id_to_xbox_achievement_definitions",   // metadata
-	"add_assists_model_coefs",                                 // metadata
-	"add_catalog_playlists",                                   // metadata
-	"fix_citation_image_paths_double_encoded",                 // metadata
-	"add_csr_placement_thresholds",                            // metadata
-	"drop_playlists_catalog_secondary_indexes",                // metadata
-	"create_milestone_catalog_metadata",                       // metadata
-	"create_prestige_metadata_schema",                         // metadata
-	"seed_ranked_playlists_catalog",                           // metadata
-	"challenge_template_add_source_column",                    // metadata
-	"add_template_tagging_columns",                            // metadata
-	"create_base_player_schema",                               // player
 	"add_bot_teammate_column",                                 // player
 	"add_career_progression_sequence",                         // player
 	"add_career_identity_assets",                              // player

@@ -1,3 +1,17 @@
+## [2026-06-21] Halo 5 lecture — VALIDÉ LIVE sur vraies données + bug fresh-provision corrigé
+
+**Statut** : surface de lecture h5 VALIDÉE end-to-end sur les 10 matchs JGtm réellement synchronisés (smoke read-only `cmd/h5-read-smoke` : copie isolée du shared, ZÉRO écriture deploy, ZÉRO token).
+- RESOLVER : `ProvidesNativeKDA(h5)=false`, `EffectiveHpToKill(h5)=115` ✓
+- MATCH HISTORY : **10 matchs servis** (chemin produit title-aware) ✓
+- COMPARE : `KDA=0` (gaté, jamais fabriqué), `KDR=0.769`, winrate=0.40 ✓
+- STATS : `KDA nil 10/10` ✓
+
+**Bug fresh-provision corrigé (3e du genre)** : `add_engagement_score_columns` + `add_engagement_pace_columns` (ALTER `player_match_enrichment`) étaient ordonnées AVANT `create_base_player_schema` dans `canonicalOrder` → sur une player DB FRAÎCHE (1er titre, h5), l'ALTER no-opait (table absente) → `engagement_score_brut` jamais ajoutée → `MatchHistoryRepo.LoadAll` plantait (Binder Error). Bloc enrichment déplacé APRÈS `create_base_player_schema`. Name-keyed → Infinite intact. (Pattern identique à match_csrs/weapon_kills.)
+
+**Outil** : `cmd/h5-read-smoke` (ops) — ouvre une player DB temp attachée à une copie du shared h5, exécute les repos de lecture RÉELS, imprime les preuves. Sûr + autonome (pas de serveur/front/clone deploy). Tests verts : migration, synthetic_title_b, duckdb, cmd/server.
+
+**Reste (front/produit, hors backend)** : déclarer `(halo_5,JGtm)` dans le clone qui FAIT TOURNER l'app pour la validation full UI (split 2-clones : code+config = worktree ; data+tokens = main/deploy) ; `title.toml` cap `"lusr"` (bloc vide) ; compare/explorer KDA `float64`→`*float64` pour afficher « — ».
+
 ## [2026-06-21] Halo 5 lecture — sémantique KDA + baseline dégâts title-aware — Complété (lot back)
 
 **Statut** : durcissement BACKEND de la surface de lecture h5 (phase « câbler la lecture »). Honore la règle ABSOLUE « KDA JAMAIS calculé pour h5 » sur TOUS les sites d'AFFICHAGE qui le fabriquaient, + rend la baseline dégâts title-aware là où elle était câblée 225.
