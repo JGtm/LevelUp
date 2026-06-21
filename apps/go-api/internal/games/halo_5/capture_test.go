@@ -245,8 +245,14 @@ func TestCollectRecentMatches_Participants(t *testing.T) {
 	if jg.Kills == nil || *jg.Kills != 10 {
 		t.Errorf("kills JGtm = %v, want 10", jg.Kills)
 	}
-	if jg.KDA != nil {
-		t.Errorf("KDA h5 doit rester nil (jamais fabriqué), got %v", *jg.KDA)
+	// KDA : calculé à l'ingestion (FDA NET h5), stocké — non nil.
+	if jg.KDA == nil {
+		t.Error("KDA h5 doit être calculé à l'ingestion (FDA NET), got nil")
+	} else if jg.Kills != nil && jg.Assists != nil && jg.Deaths != nil {
+		want := float64(*jg.Kills) + float64(*jg.Assists)/3.0 - float64(*jg.Deaths)
+		if *jg.KDA != want {
+			t.Errorf("KDA h5 = %v, want FDA NET %v", *jg.KDA, want)
+		}
 	}
 	if jg.DamageTaken != nil {
 		t.Errorf("DamageTaken h5 doit rester nil (absent de l'API), got %v", *jg.DamageTaken)
