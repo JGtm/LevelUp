@@ -28,6 +28,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/classification"
 )
 
 // h5Source est la surface live minimale consommee par l'adapter (interface ->
@@ -70,6 +71,11 @@ type DataAdapter struct {
 	staticCaps     games.CapabilityMap
 	placementTotal int // TitleDescriptor.PlacementMatches (0 -> defaut h5DefaultPlacementMatches)
 	logger         *slog.Logger
+	// classifier (optionnel) — résout le caractère classé/PvE d'un match depuis le
+	// HopperId (set-membership). Quand nil, les refs IsRanked/IsPvE du header
+	// MatchDetail restent INDETERMINEES (nil) — comportement conservateur identique
+	// à mapMatchSummaries(nil). Injecté via WithRankedClassifier au boot/wiring.
+	classifier classification.RankedClassifier
 }
 
 var _ games.TitleDataAdapter = (*DataAdapter)(nil)
@@ -96,6 +102,15 @@ func (a *DataAdapter) WithCapabilities(caps games.CapabilityMap) *DataAdapter {
 // mapping. Chainable.
 func (a *DataAdapter) WithPlacementTotal(n int) *DataAdapter {
 	a.placementTotal = n
+	return a
+}
+
+// WithRankedClassifier injecte le classifier ranked/PvE (set-membership HopperId)
+// utilisé pour renseigner IsRanked/IsPvE des refs header de LoadMatchDetail. nil
+// (défaut) -> verdicts INDETERMINES (header sans isRanked), comme l'historique
+// sans classifier. Chainable.
+func (a *DataAdapter) WithRankedClassifier(c classification.RankedClassifier) *DataAdapter {
+	a.classifier = c
 	return a
 }
 
@@ -266,9 +281,101 @@ func (a *DataAdapter) LoadMatchSummaries(_ context.Context, _ []string) ([]canon
 	return nil, games.ErrCapabilityNotSupported
 }
 
-// LoadMatchDetail : carnage report (2e appel) = Phase 2. match.detail.core = not_exposed.
-func (a *DataAdapter) LoadMatchDetail(_ context.Context, _ string) (*canonical.MatchDetail, error) {
-	return nil, games.ErrCapabilityNotSupported
+// h5MatchDetailMaxPages borne la recherche du matchID dans l'historique du viewer
+// (GetPlayerMatches est player+page-based, pas ID-based). 8 pages × 25 = 200 matchs
+// récents couverts ; au-delà, on dégrade (un match très ancien n'est de toute façon
+// pas une cible Match View live réaliste).
+const (
+	h5MatchDetailMaxPages = 8
+	h5MatchDetailPageSize = 25
+)
+
+// LoadMatchDetail assemble un canonical.MatchDetail d'un match Halo 5 depuis la
+// donnée LIVE (best-effort). Flux :
+//  1. résoudre le GAMERTAG du viewer depuis le contexte (ctxkeys.ViewerGamertag) —
+//     Halo 5 est gamertag-keyé et la carnage exige le MODE + les refs header issus
+//     de l'entrée d'historique du joueur (GetPlayerMatches) ;
+//  2. paginer GetPlayerMatches(gamertag) pour retrouver l'entrée du matchID
+//     (→ mode du carnage + refs header via le mapper summary réutilisé) ;
+//  3. fetch GetMatchCarnage(matchID, mode) (roster complet) ;
+//  4. projeter carnage + header → MatchDetail (mappers parallèles à l'ingestion).
+//
+// DEGRADATION (→ nil, ErrCapabilityNotSupported, le service Part B retombe sur le
+// repo) : viewer gamertag absent du contexte, source/token indisponible, matchID
+// introuvable dans l'historique récent, carnage 404/vide. Toute indisponibilité
+// gracieuse (token expiré, 404) est loguée, pas propagée en erreur dure.
+func (a *DataAdapter) LoadMatchDetail(ctx context.Context, matchID string) (*canonical.MatchDetail, error) {
+	matchID = strings.TrimSpace(matchID)
+	if matchID == "" {
+		return nil, games.ErrCapabilityNotSupported
+	}
+	gamertag := strings.TrimSpace(ctxkeys.ViewerGamertag(ctx))
+	if gamertag == "" {
+		// Sans viewer, ni le MODE de la carnage ni les refs header ne sont
+		// résolvables (Player.Xuid null, pas d'historique). Dégradation propre.
+		a.logger.DebugContext(ctx, "h5 LoadMatchDetail: viewer gamertag absent du contexte (dégradation)",
+			"match_id", matchID)
+		return nil, games.ErrCapabilityNotSupported
+	}
+	src, err := a.resolveSource(ctx)
+	if err != nil {
+		return nil, games.ErrCapabilityNotSupported
+	}
+	ctx, cancel := context.WithTimeout(ctx, h5RequestTimeout)
+	defer cancel()
+
+	header, gameMode, found := a.findMatchInHistory(ctx, src, gamertag, matchID)
+	if !found {
+		a.logger.DebugContext(ctx, "h5 LoadMatchDetail: match introuvable dans l'historique récent (dégradation)",
+			"player", gamertag, "match_id", matchID)
+		return nil, games.ErrCapabilityNotSupported
+	}
+
+	carnage, err := src.GetMatchCarnage(ctx, matchID, h5GameModeSegment(gameMode))
+	if err != nil {
+		if a.degradeUnavailable(ctx, err, gamertag, "LoadMatchDetail") {
+			return nil, games.ErrCapabilityNotSupported
+		}
+		return nil, fmt.Errorf("h5 LoadMatchDetail(%s): %w", matchID, err)
+	}
+	detail := mapCarnageToCanonicalDetail(matchID, header, carnage)
+	if detail == nil {
+		a.logger.DebugContext(ctx, "h5 LoadMatchDetail: carnage vide (dégradation)",
+			"player", gamertag, "match_id", matchID)
+		return nil, games.ErrCapabilityNotSupported
+	}
+	return detail, nil
+}
+
+// findMatchInHistory pagine l'historique du viewer pour retrouver l'entrée du
+// matchID. Retourne le header canonique (refs map/playlist/variant + dates +
+// isRanked, via le mapper summary réutilisé) + le GameMode (carnage) + found.
+// Best-effort : toute erreur de page (token/404/réseau) arrête la pagination et
+// renvoie found=false (le caller dégrade).
+func (a *DataAdapter) findMatchInHistory(ctx context.Context, src h5Source, gamertag, matchID string) (*canonical.MatchSummary, int, bool) {
+	seen := make(map[string]struct{}) // garde anti-boucle si l'API n'honore pas `start`
+	for page := 0; page < h5MatchDetailMaxPages; page++ {
+		resp, err := src.GetPlayerMatches(ctx, gamertag, page*h5MatchDetailPageSize, h5MatchDetailPageSize)
+		if err != nil {
+			a.degradeUnavailable(ctx, err, gamertag, "LoadMatchDetail.history")
+			return nil, 0, false
+		}
+		if resp == nil || len(resp.Results) == 0 {
+			return nil, 0, false // fin de l'historique
+		}
+		for i := range resp.Results {
+			r := &resp.Results[i]
+			if _, dup := seen[r.Id.MatchId]; dup {
+				return nil, 0, false // pagination non avançante -> stop défensif
+			}
+			seen[r.Id.MatchId] = struct{}{}
+			if h5HeaderMatchID(r.Id.MatchId, matchID) {
+				summary := mapOneMatchSummary(r, gamertag, a.classifier)
+				return &summary, r.Id.GameMode, true
+			}
+		}
+	}
+	return nil, 0, false
 }
 
 func (a *DataAdapter) LoadEncounters(_ context.Context, _ string) ([]canonical.EncounterRow, error) {

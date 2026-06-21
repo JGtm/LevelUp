@@ -1,3 +1,61 @@
+## [2026-06-21] G9 Part A — h5 DataAdapter.LoadMatchDetail (carnage → canonical.MatchDetail) — Complété
+
+PART A du plan `.ai/PLAN_H5_MATCH_VIEW.md` : implémentation du stub
+`halo_5.DataAdapter.LoadMatchDetail` (fondation du payload Match View h5, PURE
+feature — pas de service ni de capability flippée dans ce lot). NE touche PAS au
+`MatchViewService` ni à `capabilities.toml` (Part B).
+
+**Point de design résolu — résolution du viewer (gamertag)** : la signature
+canonique `LoadMatchDetail(ctx, matchID)` ne porte pas de viewer, et le ctx ne
+portait que `ctxkeys.HaloXUID` (Halo 5 est gamertag-keyé, `Player.Xuid` null). Or
+le MODE de la carnage + les refs header (map/playlist/startTime/isRanked) EXIGENT
+l'entrée d'historique du joueur (`GetPlayerMatches(gamertag)`). Voie retenue
+(option (a) du plan, la plus propre) : nouveau couple `ctxkeys.WithViewerGamertag`
+/ `ViewerGamertag`. `LoadMatchDetail` le lit et **dégrade proprement en
+`ErrCapabilityNotSupported` si absent**. **Part B devra poser
+`ctxkeys.WithViewerGamertag(ctx, pdb.Gamertag)`** dans la factory `MatchView`
+(registry_pages.go) au moment de construire le service — exactement comme le
+SpartanToken/`HaloXUID`. Title-agnostic : un titre xuid-keyé (HINF) ignore la clé.
+
+**Mappers carnage→canonical ajoutés** (`mapping_carnage_detail.go`, parallèle à
+`mapping_carnage.go` qui produit du `domain.MatchParticipantRow` pour l'ingestion) :
+- `mapCarnageToCanonicalDetail(matchID, header, carnage)` : assemble le `MatchDetail`.
+- `mapCarnageToCanonicalParticipants` : `PlayerStats` → `[]canonical.MatchParticipant`
+  (identité `h5Identity` gamertag-keyée ; NE saute PAS les joueurs — pas de PK
+  xuid="" en in-memory, tout le roster s'affiche). Réutilise `intPtrH5`/`floatPtrH5`,
+  `h5NetFDA` (KDA = FDA NET calculé), `parseISO8601DurationSeconds`,
+  `iso8601DurationSecondsFloat`. Accuracy/DamageTaken → nil (non fournis h5).
+- `carnageParticipantOutcome` réutilise `deriveOutcome` (mapping.go) : rang d'ÉQUIPE
+  prioritaire (un Rank individuel 1 dans une équipe perdante ne devient pas un faux Win).
+- `mapCarnageTeams`, `endedAtFromSummary` (fin = début + durée), `damageDealtIntPtr`,
+  `h5MatchDetailLimitations` (3 gaps : accuracy/damage_taken/skill).
+- Refs header : réutilisent `mapOneMatchSummary` (mapping.go) → parité de projection
+  stricte avec l'historique canonique.
+
+**Flux `LoadMatchDetail`** : (1) `matchID`/viewer trim+gardes → `ViewerGamertag(ctx)` ;
+(2) `resolveSource(ctx)` (token) ; (3) `findMatchInHistory` pagine
+`GetPlayerMatches(gamertag)` (8 pages × 25, garde anti-boucle) → header (mapper
+summary + classifier) + GameMode ; (4) `GetMatchCarnage(matchID, mode)` ;
+(5) `mapCarnageToCanonicalDetail`. Dégradation best-effort partout →
+`ErrCapabilityNotSupported` (viewer absent / source-token / 404 carnage / matchID
+introuvable / carnage vide). Borné par `h5RequestTimeout`, logs slog sur dégradations.
+
+**Classifier** : ajout d'un wither optionnel `WithRankedClassifier` sur le
+`DataAdapter` (set-membership HopperId) → renseigne `IsRanked`/`IsPvE` du header.
+nil = indéterminé (comportement conservateur identique à `mapMatchSummaries(nil)`).
+
+`Skill` = nil (CSR pré/post par match = phase ultérieure). `EndedAtUTC` best-effort
+(nil si durée/début inconnu).
+
+**Fichiers** :
+- `internal/ctxkeys/ctxkeys.go` : + `viewerGamertagKey`, `WithViewerGamertag`, `ViewerGamertag`.
+- `internal/games/halo_5/mapping_carnage_detail.go` (nouveau) : mappers carnage→canonical.
+- `internal/games/halo_5/adapter_data.go` : `LoadMatchDetail` implémenté + `findMatchInHistory` + champ `classifier` + `WithRankedClassifier`.
+- `internal/games/halo_5/adapter_data_test.go` : `TestAdapter_LoadMatchDetail_Live` (payload complet) + `_Degradations` (5 cas) + `_CarnageHTTPErrorDegrades`.
+
+Build/vet/test halo_5 verts ; `go build ./...` (module entier) vert ; tests
+`./internal/games/...` + `./internal/ctxkeys/...` verts.
+
 ## [2026-06-21] V9 / D.2 — images de rang carrière PAR TITRE — Complété
 
 Les images de rang carrière (`rankImageURLs`, map `rank_number -> URL`) étaient chargées une fois au boot avec le slug par défaut (HINF) puis injectées dans CHAQUE `CareerService`. Bug h5 : la map HINF est keyée par les numéros de rang HINF (1..272) ; pour Halo 5, `RankNumber` = Spartan Rank (1..152) → `s.rankImageURLs[SR]` renvoyait une IMAGE DE RANG HINF pour un SR h5 (carte résumé Carrière). h5 n'a aucune image de rang par niveau (SR en chiffre).
