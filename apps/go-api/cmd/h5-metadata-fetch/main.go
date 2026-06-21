@@ -16,10 +16,12 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+	"github.com/pelletier/go-toml/v2"
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -30,6 +32,47 @@ import (
 )
 
 const officialMetaBase = "https://www.haloapi.com/metadata/h5/metadata/"
+
+// defaultConfigRoot : racine portant config/titles/<slug>/mappings (worktree, où
+// vivent les TOML versionnés — distinct de cfg.RepoRoot = clone runtime de données).
+const defaultConfigRoot = "c:/Users/Guillaume/Downloads/Scripts/levelup-multititre"
+
+// frLabels — overrides de noms FR (localisation officielle Halo 5), versionnés dans
+// config/titles/halo_5/mappings/asset_labels_fr.toml. Clé = nom EN exact de l'API.
+type frLabels struct {
+	Weapons map[string]string `toml:"weapons"`
+	Medals  map[string]string `toml:"medals"`
+	Maps    map[string]string `toml:"maps"`
+}
+
+// loadFRLabels lit les overrides FR. Fichier absent / illisible → maps vides
+// (name_fr = name_en, dégradation propre). Best-effort.
+func loadFRLabels(path string) frLabels {
+	fr := frLabels{Weapons: map[string]string{}, Medals: map[string]string{}, Maps: map[string]string{}}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return fr
+	}
+	_ = toml.Unmarshal(b, &fr)
+	if fr.Weapons == nil {
+		fr.Weapons = map[string]string{}
+	}
+	if fr.Medals == nil {
+		fr.Medals = map[string]string{}
+	}
+	if fr.Maps == nil {
+		fr.Maps = map[string]string{}
+	}
+	return fr
+}
+
+// frOr retourne la traduction FR si présente, sinon l'EN (fallback).
+func frOr(m map[string]string, en string) string {
+	if v, ok := m[en]; ok && v != "" {
+		return v
+	}
+	return en
+}
 
 func main() {
 	key := os.Getenv("LEVELUP_HALOAPI_KEY")
@@ -56,9 +99,17 @@ func main() {
 	}
 	fmt.Printf("metadata h5: %s\n", metaPath)
 
-	seedMedals(db, key)
+	// Overrides FR (versionnés worktree). Arg1 = config root (défaut worktree).
+	configRoot := defaultConfigRoot
+	if len(os.Args) > 1 {
+		configRoot = os.Args[1]
+	}
+	fr := loadFRLabels(filepath.Join(configRoot, "config", "titles", halo5.TitleSlug, "mappings", "asset_labels_fr.toml"))
+	fmt.Printf("FR overrides: %d armes, %d médailles, %d maps\n", len(fr.Weapons), len(fr.Medals), len(fr.Maps))
+
+	seedMedals(db, key, fr.Medals)
 	seedMaps(db, key)
-	seedWeapons(db, key)
+	seedWeapons(db, key, fr.Weapons)
 	seedCSRDesignations(db, key)
 }
 
@@ -98,7 +149,7 @@ type apiMedal struct {
 	} `json:"spriteLocation"`
 }
 
-func seedMedals(db *sql.DB, key string) {
+func seedMedals(db *sql.DB, key string, fr map[string]string) {
 	body, err := fetchMeta(key, "medals")
 	if err != nil {
 		fmt.Printf("medals: SKIP (%v)\n", err)
@@ -123,7 +174,7 @@ func seedMedals(db *sql.DB, key string) {
 			 difficulty_index, difficulty, medal_type,
 			 sprite_sheet_url, sprite_left, sprite_top, sprite_width, sprite_height)
 			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-			id, m.Name, m.Name, m.Description, m.Description,
+			id, m.Name, frOr(fr, m.Name), m.Description, m.Description,
 			0, strconv.Itoa(m.Difficulty), m.Classification,
 			m.SpriteLocation.SpriteSheetURI, m.SpriteLocation.Left, m.SpriteLocation.Top,
 			m.SpriteLocation.Width, m.SpriteLocation.Height)
@@ -189,7 +240,7 @@ type apiWeapon struct {
 	ID                string `json:"id"`
 }
 
-func seedWeapons(db *sql.DB, key string) {
+func seedWeapons(db *sql.DB, key string, fr map[string]string) {
 	body, err := fetchMeta(key, "weapons")
 	if err != nil {
 		fmt.Printf("weapons: SKIP (%v)\n", err)
@@ -209,7 +260,7 @@ func seedWeapons(db *sql.DB, key string) {
 		}
 		_, err := db.Exec(`INSERT OR REPLACE INTO weapon_labels
 			(weapon_id, name_en, name_fr, icon_url, weapon_type) VALUES (?,?,?,?,?)`,
-			id, w.Name, w.Name, w.LargeIconImageURL, w.Type)
+			id, w.Name, frOr(fr, w.Name), w.LargeIconImageURL, w.Type)
 		if err != nil {
 			fmt.Printf("weapons: insert %s: %v\n", w.ID, err)
 			continue
