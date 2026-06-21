@@ -1,3 +1,59 @@
+## [2026-06-21] Vérif adversariale PME (2 workflows) + 6 bugs ART corrigés + P2 RE-CONFIRMÉ — Phase 1 COMPLÈTE & VERTE (non commitée)
+
+**Contexte** : suite directe de la conversion atomique PME (entrée ci-dessous). Demande user : (a) lancer des workflows multiples pour VÉRIFIER adversarialement tout le travail de `refactor/art-pme-appendonly` + `fix/metadata-art-battlepass-appendonly` ; (b) corriger les tests pré-existants même hors scope PME.
+
+**Méthode** : 2 workflows ultracode. (1) Audit adversarial 19 agents (1.66M tokens) sur les 2 campagnes → verdict GO_WITH_FIXES, **6 bugs RÉELS**. (2) Vérif ciblée des 6 fixes (4 agents : 3 sceptiques + 1 critique de complétude) → **0 réfutation** (confidence high ×3, dont sonde Go compilée+exécutée pour le CTAS LUSR) + le critique a **re-confirmé indépendamment le backlog P2**.
+
+**6 bugs corrigés (tous reverifiés verts)** :
+1. **(BLOCKER PME)** `engagement.go` loadExistingEngagementScores lisait `engagement_score IS NOT NULL` → matchs *insufficient_history* (score NULL légitime mais TENTÉS) ré-INSÉRÉS chaque cycle → croissance non bornée. Fix : marqueur physique `WHERE stage='engagement'`. Mécanisme vérifié : ComputeEngagementScore renvoie (nil,"insufficient_history",err=nil) → pendingUpdate accumulé inconditionnellement → row stage='engagement' posée. Test `n2==0` + cardinalité stable verrouillé.
+2. **(PME)** `engine_backfills.go` loadFlaggedMatchIDs avec `dominance_flag > 0` → matchs non-dominants (flag=0 = majorité) ré-INSÉRÉS. Fix : `IS NOT NULL` (aligné per-sync `engine_postsync_csr.go` WHERE flag IS NULL = jamais calculé). Test comeback mis à jour (flag=0 = état terminal calculé, exclu).
+3. **(PVE antérieure)** `pve_persister.go` INSERT OR IGNORE sur table sans contrainte → doublon par retry. Fix : SELECT EXISTS-then-INSERT. Test = oracle cardinalité COUNT==1 + lecture via `pve_match_stats_latest`.
+4. **(LUSR antérieure)** `steps_player_lusr_chain_rework.go` `DELETE FROM match_skill_rank WHERE rating_type='LUSR'` sur table append-only → vecteur ART. Fix : CTAS rebuild (lusrChainRework : tableExists+COUNT==0 no-op, CTAS non-LUSR, restore PK/seq/3 index, vue priorité CSR>LUSR). Sonde Go : préservation exacte 2 CSR + 1 v2, 2 LUSR purgés, priorité respectée.
+5. **(catalog antérieure)** `catalog_fetcher_service.go:211` playlist_pair_links INSERT OR IGNORE (PK=vecteur). Fix : NOT EXISTS.
+6. **(catalog antérieure)** `registry_catalog_expand.go:87` INSERT OR IGNORE. Fix : NOT EXISTS.
+
+**+ durcissement garde-fou** : détection `INSERT OR IGNORE` au niveau STATEMENT dans `append_only_state_guard` (pas file-level → évite FP shared_persister medals/xuid_aliases). Regex `INSERT (OR (REPLACE|IGNORE) )?INTO <table>`.
+
+**Tests pré-existants corrigés (demande user)** : (a) média — `seedSharedSocialSchema`/fixtures migrés vers `media_match_associations_history` + vue `_latest` (gap campagne média antérieure) ; (b) `steps_metadata_catalog_test.go:95` faisait son propre INSERT OR IGNORE sur catalog_fetch_queue désormais PK-less → converti NOT EXISTS. platform/duckdb (87s, média inclus) + migration → VERTS.
+
+**Résultat passe finale exhaustive (14 packages)** : `internal/sync` (101s) + sync/v2 + sync/invariants + sync/halotest + migration + persist + service + api + api/handlers + api/middleware + platform/duckdb (87s) + platform/duckdb/sharedprovider + ops + ops/migrate → **TOUS VERTS, ZÉRO FAIL**. Garde-fous append-only/ART/metadata re-vérifiés verts.
+
+**P2 RE-CONFIRMÉ par le critique de complétude (3 vecteurs réels, déjà scopés Phase 2, NON corrigés ici)** :
+- **BLOCKER** `personal_score_awards` : `writes.go:398` InsertPersonalScoreAwards DELETE WHERE (match_id,xuid)+INSERT en TX, sur table à PK(id seq) + 4 index (idx_psa_match/xuid/category/match_xuid). Chemin **LIVE** (engine_fetch:248, engine_process_match:162) + convergence autonome (convergePSA:145) + backfill. ~10 readers. Jumeau direct du DELETE LUSR corrigé. → append-only à faire.
+- **HIGH** `weapon_kills` : `writes.go:328` même pattern DELETE+INSERT, index idx_wk_match_xuid, DB shared (multi-writer), chemin backfill --weapons.
+- **HIGH** `match_citations` : `citations.go:546` deleteCitationForMatch DELETE WHERE match_id avant réécriture, PK composite. **Note critique** : l'INSERT writeCitations est déjà ON CONFLICT DO NOTHING → le DELETE pourrait être supprimé SI le recompute n'enlève jamais de citation (à vérifier) ; sinon append-only.
+- **MEDIUM** `player_skill_state_v2` : `lusr_full_recompute.go:34` DELETE WHERE xuid (reset watermark), index idx_psk_v2, post-import sérialisé.
+- False-positives correctement jugés : challenge (dé-indexé par ce sprint + garde-fou), killer_victim_pairs (aucun index), xuid_aliases/medals_earned/highlight_events (INSERT OR IGNORE = insert-only sans DELETE/UPDATE → pas le bug ART), match_registry/match_participants (ON CONFLICT DO UPDATE allowlistés + sérialisés dblease).
+
+**CRASH-TEST ART ORIGINEL — PASSÉ (GO sans réserve, 2026-06-21)** : `engagement-coefs --all --with-scores --force` ×3 sur COPIES réelles Madina97294 + JGtm (sandbox LEVELUP_REPO_ROOT, 427M, non destructif). Reproduit le scénario exact qui crashait la prod : la migration `OpenPlayerDB`→`EnsurePlayerMatchEnrichmentAppendOnly` convertit la VRAIE table PME legacy (38-39M, PK(match_id) + 3 index ART, données réelles) en append-only, puis ~1500 INSERTs engagement la churnent ×3. Résultats : **3 rounds EXIT=0, ZÉRO signature ART** (grep `Failed to delete all rows from index`/FATAL/invalidated/panic = vide), JGtm 914 + Madina 596 scores/round, 0 failed. Schéma converti confirmé (id BIGINT + stage + written_at). **Invariant merge-on-read PARFAIT sur données réelles** : `_latest` rows == match_id distincts (Madina 1183==1183, JGtm 942==942), **0 doublon** (zéro fan-out), physical >> latest (2971/3684 vs 1183/942 = append-only accumule), scores sains (0/100, avg ~50). Sandbox + artefacts supprimés, working tree propre.
+
+**Conclusion / prochaine étape** : **Phase 1 = COMPLÈTE, VERTE, vérifiée adversarialement (0 réfutation), crash-test ART PASSÉ, non commitée** (95 fichiers working tree sur `refactor/art-pme-appendonly`, attente autorisation user pour commit GROUPÉ — ne pas laisser de commit partiel atteindre main=auto-deploy). Décisions user (2026-06-21) : crash-test PUIS commit (crash-test fait → re-demande commit) ; **P2 = phase suivante distincte** (PSA append-only blocker live + weapon_kills + citations + watermark), sur sa propre branche/commits APRÈS atterrissage Phase 1, avant le deploy final de la campagne ("déployer à la fin").
+
+---
+
+## [2026-06-21] PME append-only (éradication ART #23046, la table la PLUS écrite) — CONVERSION ATOMIQUE COMPLÉTÉE (tests verts, non commitée)
+
+**Contexte** : `player_match_enrichment` (player DB) = table la plus écrite, écrite par étapes incrémentales partielles (perf/engagement/session/friends/bot/exclusion/psa/dominance/teammates) via UPDATE/ON CONFLICT sur PK(match_id) + 3 index ART mutés → vecteur DuckDB #23046 (crash prod `engagement-coefs --with-scores`). Reprise depuis le handoff `.ai/HANDOFF_APPEND_ONLY_ART_CAMPAIGN.md` (§1bis) + recette `.ai/PLAN_PME_ART_HARDENING.md`. Branche `refactor/art-pme-appendonly`.
+
+**Méthode** : census exhaustif + **vérif adversariale** par 2 workflows ultracode (5 agents recensement = GAPS_FOUND rattrapés ; 6 agents conversion fixtures). Liste d'édition consolidée : `.ai/PME_APPENDONLY_EDIT_LIST.md`. Le workflow adversarial a été décisif : il a rattrapé un **bug de PROD** (OpenPlayerDB) et signalé précisément les tests à sémantique changée.
+
+**3 décisions design (tranchées sur pièce)** :
+1. **Stage `'live'` baseline** : le collect live (player_persister.persistEnrichment) écrit UNE row `stage='live'` (pas de split par stage). La vue merge = `owner-stage → COALESCE(live, legacy)`. Évite le split multi-stage du persister live tout en préservant le reset-NULL par owner-stage.
+2. **Ancre idempotence sous-batch** = `EXISTS(... WHERE match_id=? AND stage='live')` (pas match_id seul — sinon une row d'un autre stage ferait skip tout le sous-batch skill_rank/lusr/citations/psa/career).
+3. **mode_category** reste engagement-owned ; `SaveEngagementScore` (HTTP, sans caller prod) le porte via scalar-subquery `_latest`.
+
+**Fait (PME-A→I)** : (A) vue merge par-groupe + stage 'live' + 10 tests intégration ; (B) naissance append-only (schema.go + create_base) ; (C) 3 migrations index ART neutralisées ; (D) 16 writers → INSERT pur taggé stage, 4 stubs convertis en baseline 'live' (ensure_enrichment_rows/fanout/openspartan GARDÉS — 2e rôle légitime de seed orphelin cross-watcher) ; (E) ~40 readers hot-path → `player_match_enrichment_latest` ; (F) RebuildPlayerMatchEnrichmentART/repair_pk délèguent à l'append-only (ne re-posent plus PK match_id ni index ART) ; (G) 4 garde-fous (no_art tablesProtegees, append_only_state + nouveau garde UPDATE/FROM-brut, metadata_art_surface, invariants ×4) ; (H) cascade ~30 fixtures (helpers centraux testutil/seedPlayerSchema/buildPlayerDDL + workflow + résidus sémantiques) ; (I) build + tests.
+
+**2 corrections critiques hors recette** : (a) **bug PROD `OpenPlayerDB`** ne créait QUE la table (pas la vue, créée seulement par la migration) → tout reader post-sync `_latest` aurait échoué sur une player DB neuve (1er sync, ~13 callers : engine_backfills, post-sync CSR, friends, sessions, citations…). Fix : OpenPlayerDB appelle `EnsurePlayerMatchEnrichmentAppendOnly` (idempotent). (b) **durcissement `ensurePMEColumns`** : ajoute désormais TOUTES les colonnes de la vue (perf/session/paces/…) → conversion robuste sur n'importe quelle table legacy/minimale.
+
+**Résultats** : `go build ./...` + `go vet` verts. **`internal/sync` (102s), `sync/v2`, `sync/invariants`, `migration` TOUS VERTS** (60→0 FAIL après convergence). platform/duckdb(hors média)/persist/service/api/ops : verts (confirmation en cours). **Sémantiques de tests ajustées** (idempotence LOGIQUE via `_latest`, scénario dégradation paces préservé, assertions session/dominance/exclusion → `_latest`, processMatch-2× = croissance physique mais vue stable).
+
+**Pré-existant signalé (HORS scope PME, non corrigé)** : ~25 tests média de `platform/duckdb` (`media_repo_filters`, `match_view_repo_media`, `LoadMediaFiles`) échouent sur `media_match_associations_latest does not exist` — gap de la campagne média ANTÉRIEURE (reader prod migré vers `_latest` lisant la table sœur `media_match_associations_history`, mais `seedSharedSocialSchema` jamais mis à jour). Confirmé indépendant de PME (diff isolé à seedPlayerSchema, aucun fichier média touché). Présent sur la baseline `b763df91e`.
+
+**Conclusion / prochaine étape** : conversion ATOMIQUE complète et verte sur les tests PME-affectés. **NON commitée** (attente autorisation user). ⚠️ Livraison GROUPÉE migration+writers+readers+fixtures (ne pas laisser de commit partiel atteindre main = auto-deploy). go/no-go restant : `engagement-coefs --all --with-scores --force` ×3 sur copies Madina/JGtm. Puis P2 (PSA/weapon_kills/citations/watermark) + clôture. À traiter à part : fixtures média (campagne antérieure) + catalog_expand ON CONFLICT.
+
+---
+
 ## [2026-06-20] Recalibration profil de combat (3 axes × 5 bandes + engagement absolu) — COMPLÉTÉ
 
 **Contexte** : les 4 joueurs avec DB affichaient tous le même profil (« Offensif précis / Défensif solide / Engagement modéré »). Investigation data (scripts jetables RO + table world_player_season_stats) : (1) seuils de classification calés sur l'élite mondiale (DR 1.59 = p90 des world leaders) → tout le monde « solide » ; (2) l'axe Engagement utilisait `residual_brut`, métrique AUTO-RÉFÉRENCÉE (écart à sa propre norme via coef_team_share) → ~0 pour tout joueur constant (JGtm -0.06, jugé « impossible » par le user). Cf. .ai/PLAN_COMBAT_PROFILE_RECALIBRATION.md + mémoire reference_combat_profile_grille_trop_grossiere.
