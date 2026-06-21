@@ -124,7 +124,7 @@ func (r *HomeRepo) loadHomeMapImageURLs(ctx context.Context, mapIDs []string) (m
 		  AND map_id IN (%s)
 	`, placeholders)
 	args := make([]any, 0, len(mapIDs)+1)
-	args = append(args, homeStaticTitleSlug)
+	args = append(args, r.titleSlug())
 	for _, id := range mapIDs {
 		args = append(args, id)
 	}

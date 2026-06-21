@@ -17,8 +17,9 @@ import (
 )
 
 // homeMedalIconURL retourne l'URL d'une icône de médaille à partir de son ID.
-func homeMedalIconURL(medalID int64) string {
-	return static.URL(static.KindMedal, homeStaticTitleSlug, strconv.FormatInt(medalID, 10), ".png")
+// slug est le slug du titre du joueur (cf. HomeRepo.titleSlug()).
+func homeMedalIconURL(slug string, medalID int64) string {
+	return static.URL(static.KindMedal, slug, strconv.FormatInt(medalID, 10), ".png")
 }
 
 // LoadFavoriteWeapon retourne le nom localisé et le nombre de kills de l'arme la plus
@@ -142,7 +143,7 @@ func (r *HomeRepo) LoadMatchMedals(ctx context.Context, matchIDs []string) (map[
 			Name:        meta.label,
 			Count:       rr.count,
 			Description: meta.description,
-			ImageURL:    homeMedalIconURL(rr.medalID),
+			ImageURL:    homeMedalIconURL(r.titleSlug(), rr.medalID),
 			Difficulty:  meta.difficulty,
 		})
 	}

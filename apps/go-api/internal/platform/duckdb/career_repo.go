@@ -17,9 +17,11 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
+	titlepkg "levelup/go-api/internal/domain/title"
 )
 
 // careerEncountersTimeout : limite hard pour Q26 (encounters scope global,
@@ -51,6 +53,20 @@ func (r *CareerRepo) csrThreshold(seasonID string) int {
 		return CSRPlacementThresholdDefault
 	}
 	return r.thresholdsRepo.Get(context.Background(), seasonID)
+}
+
+// titleSlug retourne le slug du titre du joueur (mirroir exact de
+// HomeRepo.titleSlug) : trim de pdb.TitleSlug, fallback titlepkg.DefaultSlug
+// si vide. Source du slug pour la résolution d'URL d'assets (badges CSR/LUSR).
+func (r *CareerRepo) titleSlug() string {
+	if r == nil || r.pdb == nil {
+		return titlepkg.DefaultSlug
+	}
+	trimmed := strings.TrimSpace(r.pdb.TitleSlug)
+	if trimmed == "" {
+		return titlepkg.DefaultSlug
+	}
+	return trimmed
 }
 
 // NewCareerRepo crée un CareerRepo depuis un PlayerDB.

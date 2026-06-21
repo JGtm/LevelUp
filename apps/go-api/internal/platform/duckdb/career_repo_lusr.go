@@ -57,7 +57,7 @@ func (r *CareerRepo) GetLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpoin
 		return nil, err
 	}
 
-	results := assembleLUSRResults(playerRows, registryByMatch)
+	results := assembleLUSRResults(r.titleSlug(), playerRows, registryByMatch)
 	sortLUSRResultsByRecordedAt(results)
 	computeLUSRRatingDeltas(results)
 
@@ -121,7 +121,8 @@ func (r *CareerRepo) loadLUSRRegistryInfo(ctx context.Context, matchIDs []string
 }
 
 // assembleLUSRResults compose les DTOs en croisant phases A et B.
-func assembleLUSRResults(playerRows []lusrPlayerRow, registryByMatch map[string]lusrRegistryInfo) []domain.LUSRCheckpointDTO {
+// slug est le slug du titre du joueur (cf. CareerRepo.titleSlug()).
+func assembleLUSRResults(slug string, playerRows []lusrPlayerRow, registryByMatch map[string]lusrRegistryInfo) []domain.LUSRCheckpointDTO {
 	results := make([]domain.LUSRCheckpointDTO, 0, len(playerRows))
 	for _, p := range playerRows {
 		cp := domain.LUSRCheckpointDTO{
@@ -144,7 +145,7 @@ func assembleLUSRResults(playerRows []lusrPlayerRow, registryByMatch map[string]
 			optionalNullStringValue(p.Tier),
 			tierLabel,
 			optionalNullInt16Value(p.SubTier),
-			homeStaticTitleSlug,
+			slug,
 			0,
 		)
 		results = append(results, cp)
