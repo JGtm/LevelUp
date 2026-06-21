@@ -94,6 +94,74 @@ func TestAbsRoot(t *testing.T) {
 	}
 }
 
+func TestMedalImage(t *testing.T) {
+	// Sans résolveur câblé : URL PNG, comportement HINF inchangé.
+	t.Run("no resolver → png url", func(t *testing.T) {
+		SetMedalSpriteResolver(nil)
+		png, sp := MedalImage("halo_infinite", 12345)
+		if png != "/static/medals/halo_infinite/12345.png" {
+			t.Errorf("pngURL = %q, want /static/medals/halo_infinite/12345.png", png)
+		}
+		if sp != nil {
+			t.Errorf("sprite = %+v, want nil", sp)
+		}
+	})
+
+	// Résolveur renvoyant un sprite pour halo_5 : pngURL vide + sprite rempli.
+	t.Run("resolver returns sprite → png empty", func(t *testing.T) {
+		SetMedalSpriteResolver(func(titleSlug string, medalID int64) *MedalSprite {
+			if titleSlug == "halo_5" && medalID == 999 {
+				return &MedalSprite{SheetURL: "https://cdn/sheet.png", Left: 10, Top: 20, Width: 74, Height: 74}
+			}
+			return nil
+		})
+		defer SetMedalSpriteResolver(nil)
+		png, sp := MedalImage("halo_5", 999)
+		if png != "" {
+			t.Errorf("pngURL = %q, want empty when sprite returned", png)
+		}
+		if sp == nil {
+			t.Fatalf("sprite = nil, want filled")
+		}
+		if sp.SheetURL != "https://cdn/sheet.png" || sp.Left != 10 || sp.Top != 20 || sp.Width != 74 || sp.Height != 74 {
+			t.Errorf("sprite = %+v, want {sheet,10,20,74,74}", sp)
+		}
+	})
+
+	// Titre non couvert par le résolveur (résolveur renvoie nil) : retombe sur PNG.
+	t.Run("resolver returns nil for title → png url", func(t *testing.T) {
+		SetMedalSpriteResolver(func(titleSlug string, medalID int64) *MedalSprite {
+			if titleSlug == "halo_5" {
+				return &MedalSprite{SheetURL: "https://cdn/sheet.png"}
+			}
+			return nil
+		})
+		defer SetMedalSpriteResolver(nil)
+		png, sp := MedalImage("halo_infinite", 42)
+		if png != "/static/medals/halo_infinite/42.png" {
+			t.Errorf("pngURL = %q, want /static/medals/halo_infinite/42.png", png)
+		}
+		if sp != nil {
+			t.Errorf("sprite = %+v, want nil for uncovered title", sp)
+		}
+	})
+
+	// Résolveur renvoyant un sprite à SheetURL vide : ignoré → retombe sur PNG.
+	t.Run("resolver returns empty-sheet sprite → png url", func(t *testing.T) {
+		SetMedalSpriteResolver(func(titleSlug string, medalID int64) *MedalSprite {
+			return &MedalSprite{SheetURL: ""}
+		})
+		defer SetMedalSpriteResolver(nil)
+		png, sp := MedalImage("halo_5", 7)
+		if png != "/static/medals/halo_5/7.png" {
+			t.Errorf("pngURL = %q, want /static/medals/halo_5/7.png", png)
+		}
+		if sp != nil {
+			t.Errorf("sprite = %+v, want nil when SheetURL empty", sp)
+		}
+	})
+}
+
 func TestAbsKindRoot(t *testing.T) {
 	cases := []struct {
 		name      string

@@ -9,18 +9,11 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"strconv"
 	"strings"
 
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain"
 )
-
-// homeMedalIconURL retourne l'URL d'une icône de médaille à partir de son ID.
-// slug est le slug du titre du joueur (cf. HomeRepo.titleSlug()).
-func homeMedalIconURL(slug string, medalID int64) string {
-	return static.URL(static.KindMedal, slug, strconv.FormatInt(medalID, 10), ".png")
-}
 
 // LoadFavoriteWeapon retourne le nom localisé et le nombre de kills de l'arme la plus
 // utilisée par le joueur sur l'ensemble de ses matchs (Q26k).
@@ -136,16 +129,24 @@ func (r *HomeRepo) LoadMatchMedals(ctx context.Context, matchIDs []string) (map[
 
 	metaMap := resolveMedalLabels(ctx, r.pdb.Metadata, medalIDsList)
 
+	slug := r.titleSlug()
 	for _, rr := range rawRows {
 		meta := metaMap[rr.medalID]
-		result[rr.matchID] = append(result[rr.matchID], domain.RecentMatchMedal{
+		png, sp := static.MedalImage(slug, rr.medalID)
+		m := domain.RecentMatchMedal{
 			MedalID:     rr.medalID,
 			Name:        meta.label,
 			Count:       rr.count,
 			Description: meta.description,
-			ImageURL:    homeMedalIconURL(r.titleSlug(), rr.medalID),
 			Difficulty:  meta.difficulty,
-		})
+		}
+		if sp != nil {
+			m.SpriteSheet, m.SpriteLeft, m.SpriteTop, m.SpriteWidth, m.SpriteHeight =
+				sp.SheetURL, sp.Left, sp.Top, sp.Width, sp.Height
+		} else {
+			m.ImageURL = png
+		}
+		result[rr.matchID] = append(result[rr.matchID], m)
 	}
 	return result, nil
 }

@@ -6,7 +6,6 @@ package service
 import (
 	"context"
 	"math"
-	"strconv"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/assets/static"
@@ -221,20 +220,26 @@ func convertMedals(raw []domain.MedalRaw, titleSlug string) []domain.MatchMedal 
 	}
 	medals := make([]domain.MatchMedal, 0, len(raw))
 	for _, r := range raw {
-		imgURL := static.URL(static.KindMedal, titleSlug, strconv.FormatInt(r.MedalID, 10), ".png")
+		png, sp := static.MedalImage(titleSlug, r.MedalID)
 		var desc *string
 		if r.Description != "" {
 			d := r.Description
 			desc = &d
 		}
-		medals = append(medals, domain.MatchMedal{
+		m := domain.MatchMedal{
 			MedalNameID: r.MedalID,
 			Name:        r.Label,
 			Count:       r.Count,
 			Description: desc,
-			ImageURL:    imgURL,
 			Difficulty:  r.Difficulty,
-		})
+		}
+		if sp != nil {
+			m.SpriteSheet, m.SpriteLeft, m.SpriteTop, m.SpriteWidth, m.SpriteHeight =
+				sp.SheetURL, sp.Left, sp.Top, sp.Width, sp.Height
+		} else {
+			m.ImageURL = png
+		}
+		medals = append(medals, m)
 	}
 	return medals
 }

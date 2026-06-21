@@ -1,3 +1,48 @@
+## [2026-06-21] G2 / G7 / D.1 — contrat image médaille title-agnostic (sprite h5) — Complété
+
+Les icônes de médaille s'affichaient via `/static/medals/{slug}/{id}.png` (1 PNG par
+médaille = modèle HINF). Pour Halo 5 l'icône est un SPRITE (feuille + offset, table
+`medal_definitions`) → aucun PNG par médaille → `<img>` 404 partout SAUF l'Asset
+Drawer. Porté un contrat image médaille TITLE-AGNOSTIC transportant SOIT une URL PNG
+(HINF) SOIT un sprite (h5), via un résolveur unique injecté au boot (miroir EXACT du
+`csrBadgeResolver`).
+
+- **`internal/assets/static/medal_sprite.go`** (nouveau) : type `MedalSprite`
+  (SheetURL + Left/Top/Width/Height), hook `medalSpriteResolver func(titleSlug, medalID
+  int64) *MedalSprite` + `SetMedalSpriteResolver` (posé une fois au boot, lu RO), et
+  `MedalImage(titleSlug, medalID) (pngURL string, sprite *MedalSprite)` : sprite si le
+  titre en fournit un (SheetURL non vide), sinon `URL(KindMedal, slug, id, ".png")` —
+  HINF byte-identique sans résolveur câblé.
+- **DTO sprite additifs (omitempty)** sur `domain.RecentMatchMedal` (home.go),
+  `domain.MatchMedal` (match_view.go), `domain.MedalDigestItem` (teammates.go). Tags
+  JSON `sprite_sheet`/`sprite_left`/`sprite_top`/`sprite_width`/`sprite_height` —
+  IDENTIQUES à ceux consommés par le drawer (`canonical.AssetMeta`) et le front
+  (`AssetCard.tsx` + `lib/api/types.ts`). NB : le prompt suggérait `sprite_sheet_url`
+  (= nom de COLONNE DB), corrigé en `sprite_sheet` pour matcher le rendu front existant.
+- **4 sites routés via `static.MedalImage(slug, id)`** : `service/match_view_builders_summary.go`
+  (`convertMedals`, slug en param), `platform/duckdb/home_repo_medals_citations.go`
+  (`LoadMatchMedals`, slug via `r.titleSlug()` ; helper mort `homeMedalIconURL` +
+  import `strconv` supprimés), `service/explorer_target_medals.go` (slug en param ;
+  `fmt` retiré), `service/teammates_squad_charts_medal_digest.go` (slug en param ;
+  `fmt` retiré). Chaque site : `png, sp := static.MedalImage(...)` → si `sp != nil`
+  remplit les 5 Sprite* (ImageURL vide), sinon `ImageURL = png`.
+- **Boot (`api/server.go`)** : dans le bloc qui charge déjà `loadTitleAssetDrawerData(halo_5)`
+  (capture `h5Medals` au lieu de `_`), construit `map[int64]static.MedalSprite` depuis
+  `h5Medals` (parse `ID` via strconv) et câble `static.SetMedalSpriteResolver` (closure
+  `titleSlug != halo5.TitleSlug → nil`). Log `medal_sprite_resolver_ready`. Aucun
+  rechargement metadata. Vide → pas de câblage.
+- **HINF byte-identique** : sans résolveur (ou titre != halo_5), `MedalImage` retourne
+  l'URL PNG exactement comme avant ; les 5 Sprite* restent à zéro → omitempty → JSON
+  inchangé. Seul `== halo5.TitleSlug` autorisé = clé d'identité dans la closure de boot.
+- **Test** : `static_test.go::TestMedalImage` (sans résolveur → PNG ; sprite renvoyé →
+  pngURL=="" + sprite rempli ; titre non couvert → PNG ; SheetURL vide → PNG).
+  Build `./...` + vet (assets/service/duckdb/api) + `go test ./internal/assets/...
+  ./internal/service/ ./internal/platform/duckdb/` verts (CGO ucrt64).
+
+Effet : G2/G7/D.1 fermé — icônes médaille h5 (sprites) remontent sur tuiles de match
+(Home), Match View, Explorer cible et Squad Medal Digest ; HINF strictement inchangé.
+Reste (lot front séparé) : câbler le rendu sprite côté `apps/web` sur ces 4 surfaces.
+
 ## [2026-06-21] G5 / V3 — badge CSR canonical tuiles de match (title-agnostic) — Complété
 
 `analysis/home_canonical_skill.go::buildCanonicalSkillBadge` forgeait l'URL du badge

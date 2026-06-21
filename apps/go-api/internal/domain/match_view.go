@@ -166,13 +166,21 @@ type MatchExpectedStats struct {
 }
 
 // MatchMedal : une médaille gagnée dans le match.
+//
+// Icône title-aware : ImageURL (PNG, HINF) OU les champs Sprite* (feuille + offset,
+// Halo 5). Mutuellement exclusifs ; mêmes tags JSON que l'Asset Drawer (AssetMeta).
 type MatchMedal struct {
-	MedalNameID int64   `json:"medal_name_id"`
-	Name        string  `json:"name"`
-	Count       int     `json:"count"`
-	Description *string `json:"description,omitempty"`
-	ImageURL    string  `json:"image_url,omitempty"`
-	Difficulty  string  `json:"difficulty,omitempty"`
+	MedalNameID  int64   `json:"medal_name_id"`
+	Name         string  `json:"name"`
+	Count        int     `json:"count"`
+	Description  *string `json:"description,omitempty"`
+	ImageURL     string  `json:"image_url,omitempty"`
+	Difficulty   string  `json:"difficulty,omitempty"`
+	SpriteSheet  string  `json:"sprite_sheet,omitempty"`
+	SpriteLeft   int     `json:"sprite_left,omitempty"`
+	SpriteTop    int     `json:"sprite_top,omitempty"`
+	SpriteWidth  int     `json:"sprite_width,omitempty"`
+	SpriteHeight int     `json:"sprite_height,omitempty"`
 }
 
 // MatchCitation : badge de citation associé au match.
