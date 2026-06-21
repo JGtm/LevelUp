@@ -27,6 +27,8 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/canonical"
+	halo5 "levelup/go-api/internal/games/halo_5"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/notify"
@@ -106,7 +108,46 @@ func familyXUIDResolver(cfg *config.AppConfig, settingsStore *settings_platform.
 // conditionnels (MULTI_TITLE_API_ENABLED, PRESTIGE_ENABLED, etc.). Complexité
 // reflète la surface API, pas un défaut de conception.
 //
+// loadTitleAssetDrawerData charge les maps + armes (avec leurs URLs d'image) d'un
+// titre additionnel depuis sa metadata.duckdb ISOLÉE, pour l'Asset Drawer
+// (référentiel). Peuplé par cmd/h5-metadata-fetch (API Metadata officielle :
+// maps_catalog.image_url + weapon_labels.icon_url). Best-effort : DB absente / tables
+// vides → slices nil (le titre n'apparaît simplement pas dans le drawer).
+//
 //nolint:gocyclo // Routeur central : mount de ~80 endpoints avec feature flags
+func loadTitleAssetDrawerData(pr *titlePkg.PathResolver, slug string) (maps, weapons []canonical.AssetMeta) {
+	metaDB, err := platform_duckdb.OpenReadWriteShared(pr.MetadataDBPath(slug))
+	if err != nil {
+		return nil, nil
+	}
+	defer func() { _ = metaDB.Close() }()
+	ctx := context.Background()
+
+	if rows, qerr := metaDB.Query(ctx,
+		`SELECT map_asset_id, COALESCE(name_canonical, ''), COALESCE(image_url, '')
+		 FROM maps_catalog WHERE title_slug = ? ORDER BY name_canonical`, slug); qerr == nil {
+		for rows.Next() {
+			var m canonical.AssetMeta
+			if rows.Scan(&m.ID, &m.NameEN, &m.ImageURL) == nil && m.NameEN != "" {
+				maps = append(maps, m)
+			}
+		}
+		_ = rows.Close()
+	}
+	if rows, qerr := metaDB.Query(ctx,
+		`SELECT weapon_id::VARCHAR, name_en, COALESCE(icon_url, '')
+		 FROM weapon_labels ORDER BY name_en`); qerr == nil {
+		for rows.Next() {
+			var w canonical.AssetMeta
+			if rows.Scan(&w.ID, &w.NameEN, &w.ImageURL) == nil && w.NameEN != "" {
+				weapons = append(weapons, w)
+			}
+		}
+		_ = rows.Close()
+	}
+	return maps, weapons
+}
+
 func NewRouter(
 	serverCtx context.Context,
 	cfg *config.AppConfig,
@@ -572,8 +613,16 @@ func NewRouter(
 				slog.Warn("asset_metadata_load_failed", "err_maps", errM, "err_weapons", errW)
 				continue
 			}
+			// Titres additionnels (ex. Halo 5) : maps/armes + URLs d'image viennent de
+			// leur metadata.duckdb isolée (seedée par cmd/h5-metadata-fetch depuis l'API
+			// Metadata officielle). Title-aware via WithTitle ; les URLs DB priment sur
+			// les builders HINF (cf. AssetService : ImageURL non vide conservée).
+			h5Maps, h5Weapons := loadTitleAssetDrawerData(
+				titlePkg.NewPathResolver(cfg.RepoRoot), halo5.TitleSlug)
 			assetMetaHandler = handlers.NewAssetMetadataHandler(
-				service.NewAssetService(service.NewStaticAssetMetaRepo(maps, weapons)).
+				service.NewAssetService(
+					service.NewStaticAssetMetaRepo(maps, weapons).
+						WithTitle(halo5.TitleSlug, h5Maps, h5Weapons)).
 					WithMapImageURL(func(_ string, nameEN string) string {
 						return hiAssetURL.MapImageURL(nameEN)
 					}).

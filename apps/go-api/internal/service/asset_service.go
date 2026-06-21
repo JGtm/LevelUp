@@ -45,12 +45,15 @@ func (s *AssetService) ListMaps(ctx context.Context, titleID, search string) ([]
 	// testutil.RequireNoNilSlicesWithoutOmitempty.
 	out := make([]canonical.AssetMeta, 0, len(items))
 	for i := range items {
-		if s.mapImageURL != nil {
+		switch {
+		case items[i].ImageURL != "":
+			// Déjà résolue depuis la DB (ex. h5 : image_url officielle) → conserver.
+		case s.mapImageURL != nil:
 			items[i].ImageURL = s.mapImageURL(titleID, items[i].NameEN)
 			if items[i].ImageURL == "" {
 				continue // variante mode+map sans image : exclure du drawer
 			}
-		} else {
+		default:
 			items[i].ImageURL = fmt.Sprintf("/api/v1/assets/maps/%s/%s/image", titleID, items[i].ID)
 		}
 		out = append(out, items[i])
@@ -64,8 +67,9 @@ func (s *AssetService) ListWeapons(ctx context.Context, titleID, search string) 
 	if err != nil {
 		return nil, fmt.Errorf("AssetService.ListWeapons: %w", err)
 	}
-	if s.weaponImageURL != nil {
-		for i := range items {
+	for i := range items {
+		// Conserver l'ImageURL déjà résolue depuis la DB (ex. h5 : icon_url officielle).
+		if items[i].ImageURL == "" && s.weaponImageURL != nil {
 			items[i].ImageURL = s.weaponImageURL(titleID, items[i].NameEN)
 		}
 	}

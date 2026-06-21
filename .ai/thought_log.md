@@ -1,3 +1,13 @@
+## [2026-06-21] Halo 5 référentiel (maps + armes) AFFICHÉ — Complété
+
+Le tab référentiel (Asset Drawer) affiche maintenant les **maps + armes h5** (avec images officielles). Le handler `/assets/{title_id}/maps|weapons` était DÉJÀ title-aware (gate `asset.images` que h5 a ; front `useAssetDrawer` passe le slug courant). Seul manquait le `StaticAssetMetaRepo` HINF-only :
+
+- `service/asset_meta_static.go` : repo title-keyé (fallback HINF + override par titre via `WithTitle`) — rétro-compatible.
+- `service/asset_service.go` : conserve l'`ImageURL` déjà résolue depuis la DB (h5 : URLs officielles) au lieu de l'écraser par le builder HINF.
+- `api/server.go` : `loadTitleAssetDrawerData(pr, slug)` charge maps_catalog.image_url + weapon_labels.icon_url de la metadata h5 isolée au boot → `.WithTitle(halo5.TitleSlug, …)`.
+
+Résultat : `/assets/halo_5/maps` → 49 maps (nom+image), `/assets/halo_5/weapons` → 68 armes (nom+icône). Build+vet+tests verts. **Maps + armes = livrés end-to-end pour le référentiel.** Reste : médailles/CSR dans leurs surfaces (détail match / badge carrière), FR, prod (fetcher sur serveur).
+
 ## [2026-06-21] Halo 5 assets — metadata officielle fetchée (médailles + cartes + CSR) — Complété (seed)
 
 **Déblocage majeur** : les référentiels canoniques h5 (médailles/cartes/armes/CSR/SR) ne sont PAS sur les endpoints internes SpartanToken — uniquement sur l'**API Metadata OFFICIELLE** `www.haloapi.com/metadata/h5/metadata/{type}` (clé d'abonnement Azure APIM, fournie par l'user). C'est pourquoi cryptum n'a aucune métadonnée + sondes content-hacs 403. Cf. mémoire `reference_h5_metadata_official_api`.
