@@ -29,9 +29,6 @@ package migration
 
 import (
 	"database/sql"
-	"fmt"
-	"log/slog"
-	"strings"
 )
 
 func init() {
@@ -43,86 +40,22 @@ func init() {
 	})
 }
 
+// applyAppendOnlyLUSRComponentHistory délègue au helper commun (cf. append_only_rebuild.go).
+// Particularité : pas de written_at synthétique — `computed_at` (préservé tel quel
+// par le CTAS) sert d'horloge. Le PostSwap restaure son DEFAULT (perdu par le CTAS),
+// sur lequel le writer persister compte.
 func applyAppendOnlyLUSRComponentHistory(db *sql.DB) error {
-	ctx := bootCtx()
-
-	hasTable, err := tableExists(db, "lusr_component_history")
-	if err != nil {
-		return fmt.Errorf("append-only lch: check table: %w", err)
-	}
-	if !hasTable {
-		// Table pas encore créée (player DB neuve, ordre create-then-migrate).
-		// No-op : create_lusr_component_history la crée, et comme ce fichier
-		// s'enregistre juste après, le rebuild s'applique dans la même passe.
-		return nil
-	}
-
-	// Idempotence : si la colonne `id` existe déjà, on a déjà migré.
-	hasIDCol, err := columnExists(db, "lusr_component_history", "id")
-	if err != nil {
-		return fmt.Errorf("append-only lch: check id column: %w", err)
-	}
-	if hasIDCol {
-		return nil
-	}
-
-	cols, err := loadTableColumns(ctx, db, "lusr_component_history")
-	if err != nil {
-		return fmt.Errorf("append-only lch: enumerate columns: %w", err)
-	}
-	if len(cols) == 0 {
-		return nil
-	}
-	colList := strings.Join(cols, ", ")
-
-	var before int
-	if err := db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM lusr_component_history`).Scan(&before); err != nil {
-		return fmt.Errorf("append-only lch: count before: %w", err)
-	}
-
-	stmts := []string{
-		`CREATE SEQUENCE IF NOT EXISTS lch_seq START 1`,
-		`DROP TABLE IF EXISTS lusr_component_history__appendonly`,
-		// CTAS : id généré + colonnes existantes (dont computed_at, préservé tel
-		// quel pour les rows existantes — leur horloge réelle est conservée).
-		fmt.Sprintf(`
-			CREATE TABLE lusr_component_history__appendonly AS
-			SELECT
-				nextval('lch_seq') AS id,
-				%s
-			FROM lusr_component_history
-		`, colList),
-		`DROP TABLE lusr_component_history`,
-		`ALTER TABLE lusr_component_history__appendonly RENAME TO lusr_component_history`,
-		`ALTER TABLE lusr_component_history ADD PRIMARY KEY (id)`,
-		`ALTER TABLE lusr_component_history ALTER COLUMN id SET DEFAULT nextval('lch_seq')`,
-		// Restaure le DEFAULT de computed_at (perdu par CTAS) : le writer persister
-		// (player_persister.go) omet computed_at et compte sur ce DEFAULT.
-		`ALTER TABLE lusr_component_history ALTER COLUMN computed_at SET DEFAULT now()`,
-		`CREATE INDEX IF NOT EXISTS idx_lch_component ON lusr_component_history(component_name)`,
-		`CREATE INDEX IF NOT EXISTS idx_lch_match ON lusr_component_history(match_id)`,
-		`CREATE OR REPLACE VIEW lusr_component_history_latest AS
+	return applyAppendOnlyRebuild(db, appendOnlyRebuild{
+		Table: "lusr_component_history",
+		IDSeq: "lch_seq",
+		// SyntheticCols vide : computed_at d'origine préservé, pas de written_at.
+		PostSwap: []string{
+			`ALTER TABLE lusr_component_history ALTER COLUMN computed_at SET DEFAULT now()`,
+			`CREATE INDEX IF NOT EXISTS idx_lch_component ON lusr_component_history(component_name)`,
+			`CREATE INDEX IF NOT EXISTS idx_lch_match ON lusr_component_history(match_id)`,
+		},
+		ViewSQL: `CREATE OR REPLACE VIEW lusr_component_history_latest AS
 			SELECT * FROM lusr_component_history
 			QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, component_name ORDER BY computed_at DESC, id DESC) = 1`,
-	}
-	for _, sqlStmt := range stmts {
-		if _, err := db.ExecContext(ctx, sqlStmt); err != nil {
-			return fmt.Errorf("append-only lch: step (%s): %w",
-				firstWords(sqlStmt, 3), err)
-		}
-	}
-
-	var after int
-	if err := db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM lusr_component_history`).Scan(&after); err != nil {
-		return fmt.Errorf("append-only lch: count after: %w", err)
-	}
-
-	slog.InfoContext(ctx, "append-only lusr_component_history: migration appliquée (ART eradication)",
-		"rows_before", before,
-		"rows_after", after,
-		"columns_preserved", len(cols),
-	)
-	return nil
+	})
 }
