@@ -255,7 +255,7 @@ export function buildKillsDeathsButterflyOption(
   const hiddenPlayers = opts.hiddenPlayers ?? new Set<string>()
   const hiddenTypes = opts.hiddenTypes ?? new Set<string>()
   const showBonus = !hiddenTypes.has('Bonus')
-  const bonusColor = resolveToken('chart-series-7') // bonus assistances — ambre, distinct du bleu frags / rouge morts
+  const bonusColor = resolveToken('bonus') // bonus assistances — violet, distinct des couleurs joueurs + opposés (morts)
   const emptyData = new Array<number | null>(n).fill(null)
   const seriesPerPlayer: Array<Record<string, unknown>> = []
   for (const player of players) {

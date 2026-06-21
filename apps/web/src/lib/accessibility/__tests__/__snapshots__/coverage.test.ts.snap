@@ -2,6 +2,7 @@
 
 exports[`palette "cividis" > snapshot stable — toute modification doit être intentionnelle 1`] = `
 {
+  "bonus": "#B6A855",
   "chart-series-1": "#00224E",
   "chart-series-2": "#FEE838",
   "chart-series-3": "#3F4A6B",
@@ -54,6 +55,7 @@ exports[`palette "cividis" > snapshot stable — toute modification doit être i
 
 exports[`palette "default" > snapshot stable — toute modification doit être intentionnelle 1`] = `
 {
+  "bonus": "#A855F7",
   "chart-series-1": "#93C5FD",
   "chart-series-2": "#6366F1",
   "chart-series-3": "#4F46E5",
@@ -106,6 +108,7 @@ exports[`palette "default" > snapshot stable — toute modification doit être i
 
 exports[`palette "okabe-ito" > snapshot stable — toute modification doit être intentionnelle 1`] = `
 {
+  "bonus": "#CC79A7",
   "chart-series-1": "#0072B2",
   "chart-series-2": "#E69F00",
   "chart-series-3": "#56B4E9",
@@ -158,6 +161,7 @@ exports[`palette "okabe-ito" > snapshot stable — toute modification doit être
 
 exports[`palette "tol-bright" > snapshot stable — toute modification doit être intentionnelle 1`] = `
 {
+  "bonus": "#AA3377",
   "chart-series-1": "#4477AA",
   "chart-series-2": "#EE6677",
   "chart-series-3": "#228833",

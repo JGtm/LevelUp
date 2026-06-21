@@ -49,6 +49,11 @@ export type SemanticToken =
   | 'chart-series-7'
   | 'chart-series-8'
 
+  // ── Bonus (1) — segment "assistances" empilé dans les charts squad/timeseries ─
+  // Couleur dédiée et distincte des 8 couleurs verrouillées de l'escouade
+  // (4 joueurs + leurs opposés colorimétriques) — cf. squadPerformanceLineCharts.
+  | 'bonus'
+
   // ── Badges narratifs — fond (5) ────────────────────────────────────────────
   | 'narrative-dominant'
   | 'narrative-humiliation'
@@ -103,6 +108,7 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'compare-a', 'compare-b', 'compare-c',
   'chart-series-1', 'chart-series-2', 'chart-series-3', 'chart-series-4',
   'chart-series-5', 'chart-series-6', 'chart-series-7', 'chart-series-8',
+  'bonus',
   'narrative-dominant', 'narrative-humiliation', 'narrative-remontada',
   'narrative-debacle', 'narrative-contre-remontada',
   'narrative-dominant-text', 'narrative-humiliation-text', 'narrative-remontada-text',
