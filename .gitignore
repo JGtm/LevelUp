@@ -175,6 +175,7 @@ data/warehouse/metadata.db
 data/titles/halo_infinite/warehouse/*.duckdb
 data/titles/halo_infinite/warehouse/*.wal
 data/titles/halo_infinite/players/
+data/titles/halo_5/warehouse/*.duckdb
 # Tokens d'auth runtime (OAuth/MSAL par joueur) — JAMAIS versionner (secrets).
 data/titles/*/auth/
 data/auth/
