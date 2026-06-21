@@ -84,7 +84,6 @@ var canonicalOrder = []string{
 	"add_msr_measurement_matches_remaining",                    // player
 	"player_add_expected_win_prob",                             // player
 	"player_append_only_csr_snapshots_v1",                      // player
-	"player_append_only_match_enrichment_v1",                   // player
 	"player_append_only_match_skill_rank_v1",                   // player
 	"msr_written_at_default_now_repair_v1",                     // player
 	"create_streak_history_append_only",                        // player
