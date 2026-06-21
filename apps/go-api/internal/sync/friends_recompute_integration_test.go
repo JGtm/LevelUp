@@ -16,6 +16,8 @@ import (
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/migration"
 )
 
 func openPlayerForFriendsRecompute(t *testing.T) *sql.DB {
@@ -35,6 +37,9 @@ func openPlayerForFriendsRecompute(t *testing.T) *sql.DB {
 		)
 	`); err != nil {
 		t.Fatalf("create player_match_enrichment: %v", err)
+	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
 	return db
 }
@@ -68,7 +73,7 @@ func TestUpdateIsWithFriendsBatch_PromotesNullAndFalse(t *testing.T) {
 
 	rows, err := db.Query(`
 		SELECT match_id, is_with_friends
-		FROM player_match_enrichment
+		FROM player_match_enrichment_latest
 		ORDER BY match_id
 	`)
 	if err != nil {
@@ -87,10 +92,10 @@ func TestUpdateIsWithFriendsBatch_PromotesNullAndFalse(t *testing.T) {
 	}
 
 	cases := map[string]sql.NullBool{
-		"m_null":  {Bool: true, Valid: true},   // NULL → TRUE (le fix)
-		"m_false": {Bool: true, Valid: true},   // FALSE → TRUE (comportement existant)
-		"m_true":  {Bool: true, Valid: true},   // TRUE → TRUE (garde idempotente)
-		"m_other": {Bool: false, Valid: false}, // NULL → NULL (pas dans batch)
+		"m_null":  {Bool: true, Valid: true},  // NULL → TRUE (le fix)
+		"m_false": {Bool: true, Valid: true},  // FALSE → TRUE (comportement existant)
+		"m_true":  {Bool: true, Valid: true},  // TRUE → TRUE (garde idempotente)
+		"m_other": {Bool: false, Valid: true}, // pas dans batch : reste legacy NULL, lu FALSE via _latest (COALESCE)
 	}
 	for mid, want := range cases {
 		g := got[mid]
@@ -238,7 +243,7 @@ func TestRecomputeIsWithFriendsCore_PromotesLegacyNull(t *testing.T) {
 
 	var v sql.NullBool
 	if err := playerDB.QueryRow(
-		`SELECT is_with_friends FROM player_match_enrichment WHERE match_id = ?`, matchID,
+		`SELECT is_with_friends FROM player_match_enrichment_latest WHERE match_id = ?`, matchID,
 	).Scan(&v); err != nil {
 		t.Fatalf("SELECT: %v", err)
 	}
@@ -312,7 +317,7 @@ func assertIsWithFriends(t *testing.T, db *sql.DB, matchID string, want bool) {
 	t.Helper()
 	var v sql.NullBool
 	if err := db.QueryRow(
-		`SELECT is_with_friends FROM player_match_enrichment WHERE match_id = ?`, matchID,
+		`SELECT is_with_friends FROM player_match_enrichment_latest WHERE match_id = ?`, matchID,
 	).Scan(&v); err != nil {
 		t.Fatalf("SELECT %s: %v", matchID, err)
 	}
@@ -381,6 +386,10 @@ func TestRecomputeIsWithFriendsCore_PlayerInFriendList(t *testing.T) {
 	}
 
 	// Match solo doit rester NULL (pas promu).
+	// Lecture brute (PAS _latest) : la vue applique COALESCE(is_with_friends, FALSE)
+	// donc une row legacy NULL y apparaît FALSE — ce test vérifie spécifiquement que
+	// le match solo n'a JAMAIS été écrit (reste NULL). Le solo n'est ni promu ni démoté
+	// → 1 seule row (legacy) en table brute, lecture sûre.
 	var soloV sql.NullBool
 	if err := playerDB.QueryRow(
 		`SELECT is_with_friends FROM player_match_enrichment WHERE match_id = ?`, soloMatchID,
@@ -394,7 +403,7 @@ func TestRecomputeIsWithFriendsCore_PlayerInFriendList(t *testing.T) {
 	// Match escouade doit être TRUE.
 	var squadV sql.NullBool
 	if err := playerDB.QueryRow(
-		`SELECT is_with_friends FROM player_match_enrichment WHERE match_id = ?`, squadMatchID,
+		`SELECT is_with_friends FROM player_match_enrichment_latest WHERE match_id = ?`, squadMatchID,
 	).Scan(&squadV); err != nil {
 		t.Fatalf("SELECT squad: %v", err)
 	}
@@ -426,6 +435,9 @@ func TestRecomputeIsWithFriendsCore_FriendNotResolved(t *testing.T) {
 		t.Errorf("expected 0 promoted when friend unresolved, got %d", res.MatchesPromoted)
 	}
 
+	// Lecture brute (PAS _latest) : la vue COALESCE(is_with_friends, FALSE) masquerait
+	// le NULL en FALSE. Ce test vérifie qu'aucune écriture n'a eu lieu (row legacy NULL
+	// intacte) : ami non résolu → aucun stage écrit → 1 seule row brute, lecture sûre.
 	var v sql.NullBool
 	if err := playerDB.QueryRow(
 		`SELECT is_with_friends FROM player_match_enrichment WHERE match_id = 'm1'`,

@@ -78,28 +78,15 @@ func main() {
 		newFlag = 0
 	}
 
-	res, err := player.Exec(
-		`UPDATE player_match_enrichment SET dominance_flag = ? WHERE match_id = ?`,
-		newFlag, matchID,
+	// Append-only #23046 : INSERT pur stage='dominance' (plus d'UPDATE/ON CONFLICT —
+	// match_id n'est plus une PK). La vue merge-on-read expose la dernière valeur.
+	_, err = player.Exec(
+		`INSERT INTO player_match_enrichment (match_id, dominance_flag, stage) VALUES (?, ?, 'dominance')`,
+		matchID, newFlag,
 	)
 	if err != nil {
-		fmt.Println("Erreur UPDATE:", err)
+		fmt.Println("Erreur INSERT:", err)
 		os.Exit(1)
-	}
-
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		// La ligne n'existe pas encore dans player_match_enrichment → INSERT
-		_, err = player.Exec(
-			`INSERT INTO player_match_enrichment (match_id, dominance_flag) VALUES (?, ?)
-			 ON CONFLICT (match_id) DO UPDATE SET dominance_flag = excluded.dominance_flag`,
-			matchID, newFlag,
-		)
-		if err != nil {
-			fmt.Println("Erreur INSERT:", err)
-			os.Exit(1)
-		}
-		fmt.Println("(ligne créée par INSERT)")
 	}
 
 	if *deleteMode {

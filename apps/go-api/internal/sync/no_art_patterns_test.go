@@ -16,9 +16,9 @@
 //     déclencheur ART qui touche N entrées d'index en 1 statement — est,
 //     elle, gardée par TestNoBulkMultiRowUpdateOnCriticalTables (ci-dessous).
 //   - Les tables de "match-of-record" (match_registry, match_participants,
-//     medals_earned, killer_victim_pairs, weapon_kills, player_match_enrichment)
-//     ne sont PAS dans tablesProtegees : elles ne sont pas append-only et leurs
-//     UPDATE bitmask / row-by-row sérialisés par dblease sont sûrs. Elles sont
+//     medals_earned, killer_victim_pairs, weapon_kills) ne sont PAS dans
+//     tablesProtegees : elles ne sont pas append-only et leurs UPDATE bitmask /
+//     row-by-row sérialisés par dblease sont sûrs. Elles sont
 //     protégées AUTREMENT : INSERT-only par construction via le package persist
 //     (chemin batch par défaut) + combat_write_guard_test.go (killer_victim +
 //     highlight_events) + le tripwire bulk-UPDATE ci-dessous.
@@ -56,6 +56,9 @@ var patternsAtRisk = []*regexp.Regexp{
 	// waypoint_assets_raw) qui ont FATAL-invalidé metadata.duckdb (thought_log 2026-05-30).
 	regexp.MustCompile(`(?i)\bON\s+CONFLICT\s*\([^)]*\)\s*DO\s+UPDATE\b`),
 	regexp.MustCompile(`(?i)\bINSERT\s+OR\s+REPLACE\b`),
+	// NB : INSERT OR IGNORE n'est PAS scanné ici (file-level → faux positifs : un fichier
+	// écrivant une table protégée + un INSERT OR IGNORE légitime sur medals_earned/xuid_aliases).
+	// Il est gardé STATEMENT-LEVEL par append_only_state_guard_test.go (cible la table exacte).
 }
 
 // tablesProtegees : tables que ce PR a migrées en append-only. Toute
@@ -94,6 +97,11 @@ var tablesProtegees = []string{
 	"season_calendars",
 	"csr_season_calendars",
 	"waypoint_resource_snapshots",
+	// player_match_enrichment (append-only #23046, 2026-06-21) : la table la PLUS
+	// écrite, migrée append-only (id PK + stage + vue _latest). Tous les writers
+	// sont des INSERT purs taggés ; zéro ON CONFLICT/DELETE/UPDATE. Le durcissement
+	// complémentaire (interdire UPDATE + FROM brut) vit dans append_only_state_guard_test.go.
+	"player_match_enrichment",
 }
 
 // allowlistArtPatterns : sites de prod où un pattern à risque reste
@@ -108,6 +116,13 @@ var allowlistArtPatterns = map[string]string{
 	// Documentation interne du package persist : mentionne les patterns
 	// à risque par nature (c'est sa raison d'être).
 	"internal/persist/doc.go": "Documentation : mentionne explicitement les patterns à risque dans son rôle d'expliquer le refactor anti-ART",
+	// FAUX POSITIF file-level (append-only #23046) : writes.go co-localise
+	// UpsertPlayerEnrichment (player_match_enrichment, INSERT pur append-only) avec
+	// les ON CONFLICT LÉGITIMES sur match_registry/match_participants (NON append-only,
+	// UPSERT sérialisé par dblease — absents de tablesProtegees). La protection PRÉCISE
+	// (statement-level) de player_match_enrichment vit dans append_only_state_guard_test.go
+	// (TestNoMutationOnAppendOnlyStateTables + TestPlayerMatchEnrichmentAppendOnlyAccess).
+	"internal/sync/writes.go": "Faux positif file-level : ON CONFLICT sur match_registry/match_participants (non append-only), pas sur player_match_enrichment (INSERT pur)",
 }
 
 // TestNoARTPatternsOnProtectedTables — guard-rail principal.
@@ -232,7 +247,6 @@ var criticalMatchTables = []string{
 	"medals_earned",
 	"killer_victim_pairs",
 	"weapon_kills",
-	"player_match_enrichment",
 	"match_skill_rank",
 	"match_csrs",
 	"player_csr_snapshots",

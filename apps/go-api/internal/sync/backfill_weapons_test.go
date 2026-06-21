@@ -38,14 +38,21 @@ func openWeaponDB(t *testing.T) *sql.DB {
 			match_id VARCHAR PRIMARY KEY,
 			backfill_completed INTEGER DEFAULT 0
 		);
+		CREATE SEQUENCE IF NOT EXISTS weapon_kills_generation_seq START 1;
 		CREATE TABLE weapon_kills (
 			match_id VARCHAR, xuid VARCHAR,
 			time_ms INTEGER, weapon_id UBIGINT,
 			reconciled_as UBIGINT, delta_ms INTEGER,
 			confidence VARCHAR, attribution_path VARCHAR,
 			swap_detected BOOLEAN, delayed_damage BOOLEAN,
-			player_index INTEGER
+			player_index INTEGER, generation_id BIGINT DEFAULT 0
 		);
+		CREATE VIEW v_weapon_kills AS
+		SELECT * EXCLUDE (rk) FROM (
+			SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id,
+			       DENSE_RANK() OVER (PARTITION BY match_id, xuid ORDER BY generation_id DESC) AS rk
+			FROM weapon_kills)
+		WHERE rk = 1;
 	`
 	if err := execScript(t.Context(), db, ddl); err != nil {
 		t.Fatal(err)

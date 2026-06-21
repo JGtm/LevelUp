@@ -7,6 +7,8 @@ import (
 	"database/sql"
 	"testing"
 
+	"levelup/go-api/internal/migration"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -120,6 +122,9 @@ func NewInMemoryShared(t *testing.T) *sql.DB {
 			source VARCHAR DEFAULT 'sync',
 			updated_at TIMESTAMP
 		)`,
+		`CREATE SEQUENCE IF NOT EXISTS weapon_kills_generation_seq START 1`,
+		// Append-only #23046 (Phase 2) : PAS de PK composite (comme prod) — sinon
+		// re-insérer le même weapon_id dans une nouvelle génération conflitrait.
 		`CREATE TABLE weapon_kills (
 			match_id VARCHAR,
 			xuid VARCHAR,
@@ -138,8 +143,14 @@ func NewInMemoryShared(t *testing.T) *sql.DB {
 			shots_fired INTEGER DEFAULT 0,
 			shots_hit INTEGER DEFAULT 0,
 			source VARCHAR DEFAULT 'unknown',
-			PRIMARY KEY (match_id, xuid, weapon_id)
+			generation_id BIGINT DEFAULT 0
 		)`,
+		`CREATE VIEW v_weapon_kills AS
+			SELECT * EXCLUDE (rk) FROM (
+				SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id,
+				       DENSE_RANK() OVER (PARTITION BY match_id, xuid ORDER BY generation_id DESC) AS rk
+				FROM weapon_kills)
+			WHERE rk = 1`,
 		`CREATE TABLE sync_meta (
 			key VARCHAR PRIMARY KEY,
 			value VARCHAR,
@@ -163,6 +174,8 @@ func NewInMemoryPlayer(t *testing.T) *sql.DB {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
+	// DDL legacy de bootstrap (PK match_id) ; la migration ci-dessous la convertit
+	// en append-only (#23046 : id PK + stage + written_at + vue player_match_enrichment_latest).
 	stmts := []string{
 		`CREATE TABLE player_match_enrichment (
 			match_id VARCHAR PRIMARY KEY,
@@ -195,17 +208,16 @@ func NewInMemoryPlayer(t *testing.T) *sql.DB {
 			backdrop_image_url VARCHAR DEFAULT '',
 			recorded_at TIMESTAMP
 		)`,
-		`CREATE TABLE schema_migrations (
-			name VARCHAR PRIMARY KEY,
-			applied_at TIMESTAMP,
-			schema_done BOOLEAN DEFAULT FALSE,
-			backfill_done BOOLEAN DEFAULT FALSE
-		)`,
 	}
 	for _, stmt := range stmts {
 		if _, err := db.Exec(stmt); err != nil {
 			t.Fatalf("create table: %v", err)
 		}
+	}
+	// Applique les migrations player : convertit player_match_enrichment en append-only
+	// + crée la vue _latest (+ schema_migrations + tables/colonnes manquantes).
+	if err := migration.RunForDB(db, migration.TargetPlayer); err != nil {
+		t.Fatalf("RunForDB(TargetPlayer): %v", err)
 	}
 	return db
 }

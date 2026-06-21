@@ -144,7 +144,7 @@ func (e *SyncEngine) RunAchievementsOnly(ctx context.Context) bool {
 // résultat valide et non re-traité.
 func selectMatchesMissingDominanceFlags(ctx context.Context, playerDB *sql.DB) ([]string, error) {
 	rows, err := playerDB.QueryContext(ctx,
-		`SELECT match_id FROM player_match_enrichment WHERE dominance_flag IS NULL`)
+		`SELECT match_id FROM player_match_enrichment_latest WHERE dominance_flag IS NULL`)
 	if err != nil {
 		return nil, err
 	}

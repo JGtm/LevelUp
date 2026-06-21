@@ -20,6 +20,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/migration"
 )
 
 // ── constantes de la fixture ─────────────────────────────────────────────────
@@ -58,6 +59,15 @@ func buildPipelineFixture(t *testing.T) *pipelineFixture {
 
 	shared := openFixtureDB(t, buildSharedDDL())
 	player := openFixtureDB(t, buildPlayerDDL())
+	// Append-only #23046 : convertit player_match_enrichment + crée la vue _latest.
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(player); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
+	// Append-only #23046 (Phase 2) : convertit match_citations (generation_id) +
+	// crée la vue match_citations_latest + les séquences.
+	if err := migration.EnsureMatchCitationsAppendOnly(player); err != nil {
+		t.Fatalf("EnsureMatchCitationsAppendOnly: %v", err)
+	}
 	metadata := openFixtureDB(t, buildMetadataDDL())
 
 	f := &pipelineFixture{shared: shared, player: player, metadata: metadata}
@@ -172,6 +182,7 @@ CREATE TABLE killer_victim_pairs (
     time_ms         INTEGER
 );
 
+CREATE SEQUENCE IF NOT EXISTS weapon_kills_generation_seq START 1;
 CREATE TABLE weapon_kills (
     match_id        VARCHAR NOT NULL,
     xuid            VARCHAR NOT NULL,
@@ -183,12 +194,16 @@ CREATE TABLE weapon_kills (
     attribution_path VARCHAR DEFAULT 'none',
     swap_detected   BOOLEAN DEFAULT FALSE,
     delayed_damage  BOOLEAN DEFAULT FALSE,
-    player_index    INTEGER
+    player_index    INTEGER,
+    generation_id   BIGINT DEFAULT 0
 );
 
 CREATE VIEW v_weapon_kills AS
-SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
-FROM weapon_kills;
+SELECT * EXCLUDE (rk) FROM (
+    SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id,
+           DENSE_RANK() OVER (PARTITION BY match_id, xuid ORDER BY generation_id DESC) AS rk
+    FROM weapon_kills)
+WHERE rk = 1;
 `
 }
 
@@ -225,6 +240,7 @@ CREATE TABLE match_citations (
     match_id            VARCHAR NOT NULL,
     citation_name_norm  VARCHAR NOT NULL,
     value               INTEGER DEFAULT 1,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (match_id, citation_name_norm)
 );
 
@@ -657,14 +673,15 @@ func TestPipelineFixture_WeaponKills_IdempotentRerun(t *testing.T) {
 
 	// weapon_kills doit contenir exactement le même nombre de rows après 2 runs
 	var count1, count2 int
-	// Première exécution déjà faite → count après run 1 == count après run 2
-	// (INSERT avec DELETE préalable par participant → idempotent)
-	f.shared.QueryRow("SELECT COUNT(*) FROM weapon_kills WHERE match_id=?", fixM1).Scan(&count1)
+	// Append-only #23046 (Phase 2) : idempotence LOGIQUE via v_weapon_kills (dernière
+	// génération). Le physique croît à chaque run (nouvelle génération), mais la vue
+	// reste stable → count1 == count2.
+	f.shared.QueryRow("SELECT COUNT(*) FROM v_weapon_kills WHERE match_id=?", fixM1).Scan(&count1)
 	BackfillWeaponKillsForMatchAll(context.Background(), client, f.shared, fixM1)
-	f.shared.QueryRow("SELECT COUNT(*) FROM weapon_kills WHERE match_id=?", fixM1).Scan(&count2)
+	f.shared.QueryRow("SELECT COUNT(*) FROM v_weapon_kills WHERE match_id=?", fixM1).Scan(&count2)
 
 	if count1 != count2 {
-		t.Fatalf("doublons détectés : %d → %d rows après re-run", count1, count2)
+		t.Fatalf("doublons logiques détectés (v_weapon_kills) : %d → %d rows après re-run", count1, count2)
 	}
 }
 
@@ -788,9 +805,9 @@ func TestPipelineFixture_SessionGrouping(t *testing.T) {
 
 	// m1 et m2 doivent être dans la même session
 	var sid1, sid2, sid3 sql.NullString
-	f.player.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id=?", fixM1).Scan(&sid1)
-	f.player.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id=?", fixM2).Scan(&sid2)
-	f.player.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id=?", fixM3).Scan(&sid3)
+	f.player.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id=?", fixM1).Scan(&sid1)
+	f.player.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id=?", fixM2).Scan(&sid2)
+	f.player.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id=?", fixM3).Scan(&sid3)
 
 	if !sid1.Valid || !sid2.Valid || !sid3.Valid {
 		t.Fatalf("session_id NULL — m1=%v, m2=%v, m3=%v", sid1, sid2, sid3)
@@ -823,9 +840,9 @@ func TestPipelineFixture_SessionGrouping_WithFriends(t *testing.T) {
 	}
 
 	var sid1, sid2, sid3 sql.NullString
-	f.player.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id=?", fixM1).Scan(&sid1)
-	f.player.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id=?", fixM2).Scan(&sid2)
-	f.player.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id=?", fixM3).Scan(&sid3)
+	f.player.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id=?", fixM1).Scan(&sid1)
+	f.player.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id=?", fixM2).Scan(&sid2)
+	f.player.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id=?", fixM3).Scan(&sid3)
 
 	if sid1.String != sid2.String {
 		t.Fatalf("m1/m2 devraient être dans la même session avec friends mode (m1=%s m2=%s)", sid1.String, sid2.String)
@@ -852,7 +869,7 @@ func TestPipelineFixture_Citations(t *testing.T) {
 
 	var n int
 	f.player.QueryRow(
-		"SELECT COUNT(*) FROM match_citations WHERE match_id=?", fixM1,
+		"SELECT COUNT(*) FROM match_citations_latest WHERE match_id=?", fixM1,
 	).Scan(&n)
 	if n == 0 {
 		t.Fatal("aucune citation générée pour m1 malgré les médailles")
@@ -861,7 +878,7 @@ func TestPipelineFixture_Citations(t *testing.T) {
 	// Vérifier que bulltrue est présent (medal_id 12345, count 2)
 	var bulltrue int
 	f.player.QueryRow(
-		"SELECT value FROM match_citations WHERE match_id=? AND citation_name_norm='bulltrue'",
+		"SELECT value FROM match_citations_latest WHERE match_id=? AND citation_name_norm='bulltrue'",
 		fixM1,
 	).Scan(&bulltrue)
 	if bulltrue == 0 {
@@ -886,7 +903,7 @@ func TestPipelineFixture_Citations_Idempotent(t *testing.T) {
 	runCitations()
 
 	var n int
-	f.player.QueryRow("SELECT COUNT(*) FROM match_citations WHERE match_id=?", fixM1).Scan(&n)
+	f.player.QueryRow("SELECT COUNT(*) FROM match_citations_latest WHERE match_id=?", fixM1).Scan(&n)
 	// Pas de doublons — le COUNT doit être identique au premier appel
 	if n == 0 {
 		t.Fatal("aucune citation après double appel")
@@ -914,7 +931,7 @@ func TestPipelineFixture_Citations_NoMedals(t *testing.T) {
 	// de médailles → 0 citations réelles attendues (le sentinel marque juste
 	// le match comme traité pour éviter une re-évaluation).
 	f.player.QueryRow(
-		"SELECT COUNT(*) FROM match_citations WHERE match_id=? AND citation_name_norm <> '_processed'",
+		"SELECT COUNT(*) FROM match_citations_latest WHERE match_id=? AND citation_name_norm <> '_processed'",
 		fixM3,
 	).Scan(&n)
 	if n != 0 {
@@ -976,17 +993,25 @@ func TestPipelineFixture_EngagementScore_Idempotent(t *testing.T) {
 	if n1 == 0 {
 		t.Fatal("premier run sans résultat")
 	}
+	// Cardinalité physique après le 1er run (append-only : 1 row stage='engagement'/match traité).
+	var rows1 int
+	f.player.QueryRow(`SELECT COUNT(*) FROM player_match_enrichment WHERE stage = 'engagement'`).Scan(&rows1)
 
-	// Après le premier run, m2 et m3 ont engagement_score non-NULL.
-	// Le second run (force=false) doit les skiper → n2 == 0 pour les unranked.
-	// m1 (ranked, score=NULL) sera re-traité → acceptable (historique insuffisant).
+	// Append-only #23046 — IDEMPOTENCE STRICTE : le 2e run (force=false) doit skiper
+	// TOUS les matchs déjà tentés, Y COMPRIS m1 (ranked, score=NULL insufficient_history).
+	// Sans cela, m1 serait ré-INSÉRÉ à chaque cycle → croissance non bornée (bug audit
+	// 2026-06-21). n2 == 0 ET la table ne grossit PAS.
 	n2, err := batchComputeEngagementScores(context.Background(), f.player, f.shared, fixXUID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Au minimum, m2 et m3 ne doivent plus être re-traités
-	if n2 >= n1 {
-		t.Fatalf("second run (force=false) a re-traité %d matchs comme le premier (%d), attendu < %d", n2, n1, n1)
+	if n2 != 0 {
+		t.Fatalf("second run (force=false) a re-traité %d matchs, attendu 0 (idempotence : tout déjà tenté)", n2)
+	}
+	var rows2 int
+	f.player.QueryRow(`SELECT COUNT(*) FROM player_match_enrichment WHERE stage = 'engagement'`).Scan(&rows2)
+	if rows2 != rows1 {
+		t.Fatalf("croissance non bornée : rows stage='engagement' %d -> %d (insufficient_history ré-INSÉRÉ)", rows1, rows2)
 	}
 }
 
@@ -1113,15 +1138,15 @@ func TestPipelineFixture_FullSequence(t *testing.T) {
 
 	// sessions : m1 et m2 dans la même session
 	var sid1, sid2 sql.NullString
-	f.player.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id=?", fixM1).Scan(&sid1)
-	f.player.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id=?", fixM2).Scan(&sid2)
+	f.player.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id=?", fixM1).Scan(&sid1)
+	f.player.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id=?", fixM2).Scan(&sid2)
 	if sid1.String == "" || sid1.String != sid2.String {
 		t.Errorf("[full] m1/m2 doivent partager la même session (m1=%q m2=%q)", sid1.String, sid2.String)
 	}
 
 	// citations : m1 doit avoir au moins une citation
 	var nCit int
-	f.player.QueryRow("SELECT COUNT(*) FROM match_citations WHERE match_id=?", fixM1).Scan(&nCit)
+	f.player.QueryRow("SELECT COUNT(*) FROM match_citations_latest WHERE match_id=?", fixM1).Scan(&nCit)
 	if nCit == 0 {
 		t.Error("[full] aucune citation pour m1")
 	}

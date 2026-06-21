@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/migration"
 )
 
 // ── FanoutRepo ───────────────────────────────────────────────────────────────
@@ -25,6 +26,11 @@ func seedPlayerEnrichment(t *testing.T, db *DB) {
 	)`
 	if _, err := db.Exec(ctx, ddl); err != nil {
 		t.Fatalf("seedPlayerEnrichment: %v", err)
+	}
+	// Append-only #23046 : convertit player_match_enrichment (id PK + stage +
+	// written_at) et crée la vue player_match_enrichment_latest (lue par les repos).
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db.SQLDb()); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
 }
 
@@ -88,16 +94,18 @@ func TestFanoutRepo_InsertStubEnrichments_Idempotent(t *testing.T) {
 		t.Errorf("2e insert count = %d, want 3 (loop count, pas affected rows)", second)
 	}
 
-	// Vraie vérification de l'idempotence : 3 rows distinctes au total
-	// dans la DB (m1, m2, m3), pas 5 (qui prouverait que INSERT OR IGNORE
-	// crée des doublons). C'est l'invariance critique du nom du test.
+	// Vraie vérification de l'idempotence : 3 lignes logiques au total
+	// (m1, m2, m3), pas 5 (qui prouverait des doublons logiques). Append-only
+	// #23046 : la table brute accumule désormais 1 row par INSERT stage='live'
+	// (5 rows physiques) ; l'invariant « 1 ligne logique par match » se lit sur
+	// la vue merge-on-read player_match_enrichment_latest.
 	var count int
 	if err := db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM player_match_enrichment WHERE match_id IN ('m1','m2','m3')`).Scan(&count); err != nil {
+		`SELECT COUNT(*) FROM player_match_enrichment_latest WHERE match_id IN ('m1','m2','m3')`).Scan(&count); err != nil {
 		t.Fatalf("count rows: %v", err)
 	}
 	if count != 3 {
-		t.Errorf("rows distinctes = %d, want 3 (idempotence cassée)", count)
+		t.Errorf("lignes logiques = %d, want 3 (idempotence cassée)", count)
 	}
 }
 

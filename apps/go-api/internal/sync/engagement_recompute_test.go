@@ -26,6 +26,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability"
 )
 
@@ -66,6 +67,16 @@ func openPlayerForRecompute(t *testing.T, withPaces, withCoefsTable bool) *sql.D
 	pmeDDL += `);`
 	if _, err := db.Exec(pmeDDL); err != nil {
 		t.Fatalf("CREATE player_match_enrichment: %v", err)
+	}
+	// Append-only #23046 : convertit player_match_enrichment + crée la vue _latest
+	// (loadRatioSamples lit player_match_enrichment_latest) — UNIQUEMENT si withPaces.
+	// Les tests withPaces=false veulent justement des colonnes paces ABSENTES pour
+	// exercer le skip 'unavailable' (batchRecomputeCoefficients court-circuite sur
+	// pacesColumnsExist AVANT de lire la vue ; la conversion ajouterait les paces).
+	if withPaces {
+		if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db); err != nil {
+			t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+		}
 	}
 
 	if withCoefsTable {

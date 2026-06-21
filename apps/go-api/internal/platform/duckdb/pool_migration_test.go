@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/migration"
 	duckdb "levelup/go-api/internal/platform/duckdb"
 )
 
@@ -194,6 +195,9 @@ func seedLegacyPlayerDB(t *testing.T, path string) {
 			t.Fatalf("seedLegacyPlayerDB stmt failed: %v\nSQL: %s", err, stmt)
 		}
 	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db.SQLDb()); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
 }
 
 func seedLegacyPlayerDBWithoutSessionLabel(t *testing.T, path string) {
@@ -235,6 +239,9 @@ func seedLegacyPlayerDBWithoutSessionLabel(t *testing.T, path string) {
 		if _, err := db.Exec(ctx, stmt); err != nil {
 			t.Fatalf("seedLegacyPlayerDBWithoutSessionLabel stmt failed: %v\nSQL: %s", err, stmt)
 		}
+	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db.SQLDb()); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
 }
 

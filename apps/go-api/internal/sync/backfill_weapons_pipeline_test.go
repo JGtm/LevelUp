@@ -237,10 +237,13 @@ func TestBackfillWeaponKillsForMatchAll_Idempotent(t *testing.T) {
 		}
 	}
 
+	// Append-only #23046 (Phase 2) : idempotence LOGIQUE via v_weapon_kills (dernière
+	// génération). La table physique croît (chaque run = nouvelle génération), la vue
+	// ne retourne que la génération MAX → 2 rows stables.
 	var count int
-	db.QueryRow("SELECT COUNT(*) FROM weapon_kills WHERE match_id='m1' AND xuid='xuid1'").Scan(&count)
+	db.QueryRow("SELECT COUNT(*) FROM v_weapon_kills WHERE match_id='m1' AND xuid='xuid1'").Scan(&count)
 	if count != 2 {
-		t.Errorf("expected 2 rows after 2 idempotent runs, got %d", count)
+		t.Errorf("expected 2 rows (v_weapon_kills dernière génération) after 2 idempotent runs, got %d", count)
 	}
 }
 

@@ -1,22 +1,26 @@
 # HANDOFF — Campagne éradication ART DuckDB (append-only / SELECT-then-write)
 
-> Point d'entrée unique pour REPRENDRE. Dernière MAJ : 2026-06-20 (après déploiement du fix prod + census v2).
-> Branche : `fix/metadata-art-battlepass-appendonly`. Lire en entier avant de continuer.
+> Point d'entrée unique pour REPRENDRE. Dernière MAJ : 2026-06-21 (post-incident PME : substrat retiré de main).
+> **Branche courante : `refactor/art-pme-appendonly`** (origin, push à jour). Lire en entier.
 
 ## 1. TL;DR — où on en est
 
-- **Le crash prod d'origine est RÉSOLU et DÉPLOYÉ.** `origin/main` = `d434ed38c` (auto-deploy VPS vérifié : app healthy, `catalog_refresh_cron` propre, JGtm accessible, zéro FATAL post-deploy 2026-06-20 12:52). metadata.duckdb + shared_social.duckdb : surfaces ART hot-path catalogue/battlepass/ref-cache éradiquées.
-- **~17 conversions livrées** (commits b06a7c1ce → 3dd253831). Re-crash latent JGtm (compaction match_skill_rank) éliminé.
-- **RESTE = `.ai/PLAN_ART_RESIDUAL_CENSUS_V2.md`** : ~40 sites ART résiduels, priorisés P0→P5, issus du census ultracode v2 (29 agents, vérifié adversarialement). **C'est LA work-list. Reprendre par là.**
-- Pansements (reopen/ExecRecovered/WithReopenOnInvalidated) GARDÉS volontairement : filet tant que P0→P5 ne sont pas faits. À retirer en clôture.
+- **DÉPLOYÉ EN PROD (sain)** : `origin/main` = `125042306`. Contenu = fix prod d'origine (catalogue/battlepass) + retrait compaction match_skill_rank + **P1** (coach_proposal/engagement_coefficients/lusr_component_history) + **P0 media_files** (drop UNIQUE file_path) + correctif user `e1f021cbb` (combat-profile). Conteneurs Up (healthy), **zéro FATAL**. ⚠️ **Le substrat PME a été déployé par erreur (11:04) puis RETIRÉ (commit `125042306`, 11:32) — ZÉRO dégât** (aucune DB joueur migrée, aucun sync dans la fenêtre ; cf. thought_log [2026-06-21] incident). main ne contient PLUS la migration PME.
+- **EN COURS, NON sur main — branche `refactor/art-pme-appendonly` (origin, `29c4df6eb`)** : **P3 player_match_enrichment** (le plus lourd). Substrat append-only LIVRÉ + validé (voir §1bis). ⚠️ **NE PAS laisser les commits de cette branche atteindre main** tant que la conversion writers n'est pas faite : main AUTO-DÉPLOIE, et le substrat seul (PME append-only + writers encore ON CONFLICT/UPDATE match_id) casse la prod. Migration + writers + readers = **un seul bloc** (re-livraison groupée).
+- **RESTE** : finir PME PR1 (conversion atomique writers/readers, **turnkey** dans `.ai/PLAN_PME_ART_HARDENING.md`), puis `.ai/PLAN_ART_RESIDUAL_CENSUS_V2.md` P2/P4/P5 + clôture.
+- Pansements (reopen/ExecRecovered/WithReopenOnInvalidated) GARDÉS : filet tant que la campagne n'est pas close.
+- **À investiguer (pré-existant, non bloquant)** : WARN `catalog_expand: enqueue enfant échoué` (catalog_fetch_queue ON CONFLICT sans PK après rebuild_catalog_fetch_queue_drop_art_indexes) — antérieur à la campagne PME, dégradation catalogue silencieuse.
 
-### Avancement session 2026-06-20 (suite) — 3 commits livrés (tests verts, NON déployés)
+### 1bis. P3 player_match_enrichment — état (branche `refactor/art-pme-appendonly` @ `29c4df6eb`)
 
-- **b7c312b87** — P1 DROP INDEX : `coach_proposal.status` (muté) + `engagement_coefficients.xuid` (redondant PK). + challenge drop migration VALIDÉE (garde-fou passant).
-- **f0fedd9ed** — P1 `lusr_component_history` → append-only (id-seq + vue `_latest`). Table sœur de match_skill_rank.
-- **7980c60c7** — P0 `media_files` drop UNIQUE(file_path) via **rebuild swap TRANSACTIONNEL** (blast MAX). Vérif adversariale workflow ultracode + 9 tests intégration CGO. Vraie source schéma = `ops/media_store.go::ensureMediaTables` (PAS create_base). 2 INSERT OR IGNORE convertis (media.go + persist batch). Garde-fou `TestNoMediaFilesFilePathUnique`.
+Commits PME (UNIQUEMENT sur la branche, PAS sur main) : `a836dcc53` (spec vérifiée workflow 7 agents) · `882aad112` (**substrat** : migration append-only transactionnelle + vue merge-on-read **par-groupe**, 8 tests CGO verts — merge partiel/NULL-reset/toggle booléen/legacy/idempotence/orphan) · `e5e23bed4` (recette turnkey + finding) · `d404b0080` (handoff) · `29c4df6eb` (note incident).
 
-**Findings P2 (cartographiés ce cycle — pas de ré-investigation) :**
+- **Le design merge-on-read est PROUVÉ** (le `buildPMELatestViewSQL()` de la migration est la référence : dédup par (match_id,stage) puis `CASE WHEN has_stage THEN valeur_stage ELSE legacy`). Le piège `last_value IGNORE NULLS` (figerait engagement_score=NULL) est ÉVITÉ.
+- **Finding ATOMICITÉ** : la conversion writers/readers ne peut PAS se faire en chunks verts (convertir le persister seul casse ~7 tests sync : les ~12 fixtures créent PME sans colonne `stage`). → migration + TOUS les writers + readers→`_latest` + TOUTES les fixtures = **1 bloc cohérent** (PR1 atomique).
+- **INCIDENT 2026-06-21 (résolu, zéro dégât)** : le substrat (`882aad112`) avait fui sur main → auto-deploy → migration PME live ~28 min SANS jamais s'exécuter (aucun sync) → retirée de main (`125042306`) avant déclenchement. **LEÇON : ne pas pousser/merger les commits de cette branche sur main avant la conversion writers complète** (main auto-déploie ; la migration PME est destructrice tant que les writers font ON CONFLICT/UPDATE match_id).
+- **Reprise** : suivre l'ANNEXE IMPLÉMENTATION de `.ai/PLAN_PME_ART_HARDENING.md` (pattern persister-dérive-stage *prouvé*, stage par writer, readers→`_latest`, fixtures à patcher, RebuildPlayerMatchEnrichmentART à adapter en ADD PK(id), garde-fous). Validation finale = `go test ./...` + `engagement-coefs --all --with-scores --force` ×3 sur copie Madina/JGtm + go/no-go, PUIS livraison groupée sur main (migration+writers+readers ensemble).
+
+### Findings P2 (cartographiés — pas de ré-investigation ; après PME) :
 - `personal_score_awards` (player, NO PK, idx_psa_match_xuid) : DELETE-then-INSERT `InsertPersonalScoreAwards` (writes.go:392), **vecteur ACTIF** (engine_process_match live + convergence + backfill) → append-only. **Reprise conseillée ICI.**
 - `weapon_kills` (shared, NO PK, idx_wk_match_xuid + vue v_weapon_kills) : `InsertWeaponKills` (writes.go:312), callers = backfill_weapons (basse fréq). Drop-index exclu (table grosse, scan) → append-only.
 - `match_citations` (player, A une PK) : deleteCitationForMatch (citations.go:546) + citations_backfill.go:275 → append-only/recompute.

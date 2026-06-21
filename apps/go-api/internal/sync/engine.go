@@ -729,7 +729,7 @@ func loadKnownMatchIDs(ctx context.Context, playerDB, sharedDB *sql.DB, xuid str
 	known := make(map[string]bool, 512)
 
 	// Source 1 : player_match_enrichment (per-player).
-	if rows, err := playerDB.QueryContext(ctx, "SELECT match_id FROM player_match_enrichment"); err == nil {
+	if rows, err := playerDB.QueryContext(ctx, "SELECT match_id FROM player_match_enrichment_latest"); err == nil {
 		for rows.Next() {
 			var id string
 			if scanErr := rows.Scan(&id); scanErr == nil {

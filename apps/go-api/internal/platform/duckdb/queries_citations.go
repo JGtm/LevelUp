@@ -25,7 +25,7 @@ const Q35CitationTotals = `
 SELECT
     citation_name_norm,
     SUM(value) AS total
-FROM match_citations
+FROM match_citations_latest
 WHERE citation_name_norm NOT LIKE '\_%%' ESCAPE '\'
 GROUP BY citation_name_norm
 ORDER BY total DESC`
@@ -78,7 +78,7 @@ const Q38MatchViewCitationsPlayer = `
 SELECT
     citation_name_norm,
     value
-FROM match_citations
+FROM match_citations_latest
 WHERE match_id = ?
   AND citation_name_norm IS NOT NULL
   AND value > 0
@@ -212,10 +212,10 @@ SELECT
     mc.citation_name_norm,
     mc.value                AS match_delta,
     cum.total               AS cumulative_total
-FROM match_citations mc
+FROM match_citations_latest mc
 JOIN (
     SELECT citation_name_norm, SUM(value) AS total
-    FROM match_citations
+    FROM match_citations_latest
     GROUP BY citation_name_norm
 ) cum ON cum.citation_name_norm = mc.citation_name_norm
 WHERE mc.match_id = ?

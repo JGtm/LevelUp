@@ -29,13 +29,21 @@ func init() {
 					experience      INTEGER NOT NULL DEFAULT 0,
 					last_match_id   VARCHAR,
 					last_match_at   TIMESTAMP,
-					written_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+					written_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					is_reset        BOOLEAN NOT NULL DEFAULT FALSE
 				);
 				CREATE INDEX IF NOT EXISTS idx_pssv2_xuid_group_written
 					ON player_skill_state_v2(xuid, playlist_group, written_at DESC);
 
+				-- Append-only #23046 (Phase 2) : le reset watermark (recompute LUSR v2
+				-- post-import) n INSERE plus de DELETE WHERE xuid (vecteur ART sur PK +
+				-- index). Il INSERE une row sentinelle is_reset=TRUE par groupe, et la vue
+				-- _latest exclut la derniere generation si c est un reset, donc LoadState
+				-- renvoie nil et le replay re-seed depuis les priors. Le replay INSERE
+				-- ensuite des etats frais (written_at posterieur) qui re-apparaissent.
 				CREATE OR REPLACE VIEW player_skill_state_v2_latest AS
-				SELECT s.*
+				SELECT s.id, s.xuid, s.playlist_group, s.mu, s.sigma, s.experience,
+				       s.last_match_id, s.last_match_at, s.written_at
 				FROM player_skill_state_v2 s
 				JOIN (
 					SELECT xuid, playlist_group, MAX(written_at) AS max_written_at
@@ -44,7 +52,8 @@ func init() {
 				) m
 					ON s.xuid = m.xuid
 					AND s.playlist_group = m.playlist_group
-					AND s.written_at = m.max_written_at;
+					AND s.written_at = m.max_written_at
+				WHERE NOT COALESCE(s.is_reset, FALSE);
 
 				CREATE SEQUENCE IF NOT EXISTS lusr_hyperparams_v2_seq START 1;
 				CREATE TABLE IF NOT EXISTS lusr_hyperparams_v2 (
