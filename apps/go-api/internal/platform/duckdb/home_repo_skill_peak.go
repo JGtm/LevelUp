@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain"
+	titlepkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite"
 )
 
@@ -251,12 +252,12 @@ func (r *HomeRepo) assemblePeak(playerRows []peakRow, registryByMatch map[string
 	totalCopy := threshold
 	peak.PlacementTotal = &totalCopy
 	if remaining > 0 {
-		peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold("", "", 0, homeStaticTitleSlug, remaining, threshold)
+		peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold("", "", 0, r.titleSlug(), remaining, threshold)
 		remCopy := remaining
 		peak.MeasurementMatchesRemaining = &remCopy
 		return peak
 	}
-	peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(chosen.row.tier, chosen.row.tierLabel, chosen.row.subTier, homeStaticTitleSlug, 0, threshold)
+	peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(chosen.row.tier, chosen.row.tierLabel, chosen.row.subTier, r.titleSlug(), 0, threshold)
 	// Tier+subTier bruts conservés pour la bande ordinale (analysis.SkillTierBand).
 	peak.Tier = chosen.row.tier
 	peak.SubTier = chosen.row.subTier
@@ -322,7 +323,7 @@ func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeak
 		// Tier+subTier bruts conservés pour la bande ordinale (analysis.SkillTierBand).
 		peak.Tier = tierStr
 		peak.SubTier = subTierInt
-		peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(tierStr, "", subTierInt, homeStaticTitleSlug, 0, threshold)
+		peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(tierStr, "", subTierInt, r.titleSlug(), 0, threshold)
 		// Palier all-time CSR : libellé FR + sous-palier romain ("Diamant III"),
 		// au lieu du tier brut anglais sans sous-palier. FR-first comme tous les
 		// libellés CSR (sync.formatCSRTierLabel). Partagé Home + Explorer.
@@ -364,7 +365,7 @@ func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeak
 	}
 	remaining := int(minRemaining.Int32)
 	peak := &domain.HomeSkillPeakRow{RatingValue: 0}
-	peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold("", "", 0, homeStaticTitleSlug, remaining, threshold)
+	peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold("", "", 0, r.titleSlug(), remaining, threshold)
 	peak.MeasurementMatchesRemaining = &remaining
 	totalCopy := threshold
 	peak.PlacementTotal = &totalCopy
@@ -404,7 +405,7 @@ func unrankedBadgeURLForThreshold(placementsCompleted, threshold int, titleSlug 
 	}
 	slug := titleSlug
 	if slug == "" {
-		slug = homeStaticTitleSlug
+		slug = titlepkg.DefaultSlug
 	}
 	url := static.URL(static.KindCSRRank, slug, fmt.Sprintf("unranked_%d", n), ".png")
 	return &url

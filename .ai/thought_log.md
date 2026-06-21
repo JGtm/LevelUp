@@ -1,3 +1,11 @@
+## [2026-06-21] Audit câblage assets + S.1 slug-figé éliminé (title-agnostic) — En cours
+
+Audit 7 agents (run `w5jqyzrsk`, plan durable `.ai/PLAN_H5_ASSET_WIRING.md`) : les assets h5 (médailles/maps/CSR) NE s'affichent PAS hors Asset Drawer. 9 gaps (G1-G9) + 11 violations title-agnostic (V1-V11). Cause racine #1 = `const homeStaticTitleSlug = "halo_infinite"` figé dans le data-path + aucun `RegisterAssetURL("halo_5")`.
+
+**S.1 livré (V1+V5)** : éradication du slug littéral `homeStaticTitleSlug` du package `platform/duckdb`. Tous les sites passent désormais le slug RÉEL du titre du joueur (`r.titleSlug()` en méthode ; param `slug` threadé dans les fonctions libres `homeMedalIconURL`, `assembleLUSRResults`, `newPlacementPlaylistCSR`, cluster playlist). Ajout du helper `CareerRepo.titleSlug()` (miroir de HomeRepo). Const supprimée. Fallback (slug vide → `titlepkg.DefaultSlug`) préservé. Build+vet+test verts (`ok duckdb 19.4s`).
+
+Effet : `map_images_registry` se matche enfin pour h5 (G6 — images map tuiles Home) ; les badges CSR/LUSR carrière reçoivent le bon slug (pré-requis G4/G5). Reste : C0 (adapter h5 `RegisterAssetURL` + `csrBadgeResolver` registry par titre, G1), S.3 (badge canonical), S.7 (bornes Héros G3), D.1/F.1 (contrat sprite médaille G2/G7), G9 (payload Match View). Prochaine étape : C0.1/C0.2 (adapter h5 + enregistrement).
+
 ## [2026-06-21] Halo 5 référentiel — onglet MÉDAILLES (sprite) end-to-end — Complété
 
 Ajout d'un 3e onglet « Médailles » à l'Asset Drawer (à côté de Cartes + Armes), affichant les 215 médailles h5. Icône = SPRITE (feuille + offset, API Metadata officielle) → rendu front via background-image/background-position.

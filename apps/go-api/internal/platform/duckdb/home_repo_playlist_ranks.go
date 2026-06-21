@@ -87,7 +87,7 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 		raws = append(raws, playlistRawItem{
 			playlistID:   p.playlistID,
 			playlistName: p.playlistName,
-			item:         buildPlaylistRankItem(p, msrByMatch, snapshotByPlaylist, threshold, frPreferred),
+			item:         buildPlaylistRankItem(r.titleSlug(), p, msrByMatch, snapshotByPlaylist, threshold, frPreferred),
 		})
 	}
 
@@ -122,6 +122,7 @@ type playlistRawItem struct {
 //
 //nolint:unused // WIP refacto Phase B home_repo playlist ranks — péremption 2026-06-22 (à câbler ou supprimer).
 func buildHomePlaylistRankItem(
+	slug string,
 	p playlistPhaseBRow,
 	msrByMatch map[string]playlistMSRRow,
 	snapshotByPlaylist map[string]int,
@@ -131,11 +132,11 @@ func buildHomePlaylistRankItem(
 		IsRanked:     p.isRanked,
 	}
 	if msr, ok := msrByMatch[p.lastMatchID]; ok {
-		fillRankedMSRItem(&item, p.isRanked, msr)
+		fillRankedMSRItem(slug, &item, p.isRanked, msr)
 		return item
 	}
 	if p.isRanked {
-		fillPlacementItem(&item, p.playlistID, snapshotByPlaylist)
+		fillPlacementItem(slug, &item, p.playlistID, snapshotByPlaylist)
 	}
 	return item
 }
@@ -144,7 +145,7 @@ func buildHomePlaylistRankItem(
 // depuis un MSR connu (ranked LUSR/CSR).
 //
 //nolint:unused // WIP refacto Phase B home_repo playlist ranks — péremption 2026-06-22 (à câbler ou supprimer).
-func fillRankedMSRItem(item *domain.HomePlaylistRank, isRanked bool, msr playlistMSRRow) {
+func fillRankedMSRItem(slug string, item *domain.HomePlaylistRank, isRanked bool, msr playlistMSRRow) {
 	ratingType := ratingTypeLUSR
 	if isRanked {
 		ratingType = ratingTypeCSR
@@ -155,14 +156,14 @@ func fillRankedMSRItem(item *domain.HomePlaylistRank, isRanked bool, msr playlis
 	if msr.tierLabel != "" {
 		item.TierLabel = stringPtr(msr.tierLabel)
 	}
-	item.BadgeImageURL = buildHomeSkillPeakBadgeURL(msr.tier, msr.tierLabel, msr.subTier, homeStaticTitleSlug, 0)
+	item.BadgeImageURL = buildHomeSkillPeakBadgeURL(msr.tier, msr.tierLabel, msr.subTier, slug, 0)
 }
 
 // fillPlacementItem renseigne BadgeImageURL (unranked) + MeasurementMatchesRemaining
 // pour le mode placement (10 matchs avant rang).
 //
 //nolint:unused // WIP refacto Phase B home_repo playlist ranks — péremption 2026-06-22 (à câbler ou supprimer).
-func fillPlacementItem(item *domain.HomePlaylistRank, playlistID string, snapshotByPlaylist map[string]int) {
+func fillPlacementItem(slug string, item *domain.HomePlaylistRank, playlistID string, snapshotByPlaylist map[string]int) {
 	completed := 0
 	if rem, ok := snapshotByPlaylist[playlistID]; ok && rem > 0 {
 		completed = 10 - rem
@@ -173,7 +174,7 @@ func fillPlacementItem(item *domain.HomePlaylistRank, playlistID string, snapsho
 	if completed > 9 {
 		completed = 9
 	}
-	item.BadgeImageURL = unrankedBadgeURL(completed, homeStaticTitleSlug)
+	item.BadgeImageURL = unrankedBadgeURL(completed, slug)
 	if rem, ok := snapshotByPlaylist[playlistID]; ok {
 		remCopy := rem
 		item.MeasurementMatchesRemaining = &remCopy
@@ -314,6 +315,7 @@ func (r *HomeRepo) loadPlaylistPhaseASnapshot(ctx context.Context, playlistIDs [
 //
 //nolint:gocyclo // branches multiples par état métier, splitter perd la cohésion.
 func buildPlaylistRankItem(
+	slug string,
 	p playlistPhaseBRow,
 	msrByMatch map[string]playlistMSRRow,
 	snapshotByPlaylist map[string]int,
@@ -352,7 +354,7 @@ func buildPlaylistRankItem(
 		if completed >= threshold {
 			completed = threshold - 1
 		}
-		item.BadgeImageURL = unrankedBadgeURLForThreshold(completed, threshold, homeStaticTitleSlug)
+		item.BadgeImageURL = unrankedBadgeURLForThreshold(completed, threshold, slug)
 		remCopy := remaining
 		item.MeasurementMatchesRemaining = &remCopy
 		totalCopy := threshold
@@ -372,7 +374,7 @@ func buildPlaylistRankItem(
 		if msr.tierLabel != "" {
 			item.TierLabel = stringPtr(msr.tierLabel)
 		}
-		item.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(msr.tier, msr.tierLabel, msr.subTier, homeStaticTitleSlug, 0, threshold)
+		item.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(msr.tier, msr.tierLabel, msr.subTier, slug, 0, threshold)
 		// Bande de progression ORDINALE (extrémité droite du palier) + sous-palier
 		// suivant — même calcul que le skill peak (analysis.SkillTierBand /
 		// NextSubTierLabel), indépendant de l'échelle CSR vs LUSR ; Onyx → barre

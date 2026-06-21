@@ -23,8 +23,6 @@ import (
 	titlepkg "levelup/go-api/internal/domain/title"
 )
 
-const homeStaticTitleSlug = "halo_infinite"
-
 // HomeRepo fournit les données de la page d'accueil depuis DuckDB.
 //
 // Optionnellement, un `TitleAssetURLAdapter` peut être injecté via

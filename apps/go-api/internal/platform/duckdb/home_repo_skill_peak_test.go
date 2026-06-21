@@ -8,6 +8,8 @@ import (
 	"database/sql"
 	"testing"
 	"time"
+
+	titlepkg "levelup/go-api/internal/domain/title"
 )
 
 // TestBuildHomeSkillPeakBadgeURL_CSRResolverTitleAware : le résolveur CSR title-aware
@@ -197,9 +199,9 @@ func TestUnrankedBadgeURL_BasicHaloSlug(t *testing.T) {
 
 func TestUnrankedBadgeURL_EmptySlugFallback(t *testing.T) {
 	t.Parallel()
-	// titleSlug == "" → fallback sur homeStaticTitleSlug.
+	// titleSlug == "" → fallback sur titlepkg.DefaultSlug.
 	got := unrankedBadgeURL(3, "")
-	want := "/static/ranks/" + homeStaticTitleSlug + "/unranked_3.png"
+	want := "/static/ranks/" + titlepkg.DefaultSlug + "/unranked_3.png"
 	if got == nil || *got != want {
 		t.Errorf("unrankedBadgeURL(3, empty) = %v, want %q", got, want)
 	}

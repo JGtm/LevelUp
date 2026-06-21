@@ -61,7 +61,7 @@ func (r *CareerRepo) GetCSRSnapshots(ctx context.Context, seasonID string) ([]do
 			out = append(out, snap)
 		} else {
 			threshold := r.csrThreshold(effectiveSeason)
-			out = append(out, newPlacementPlaylistCSR(c.playlistID, c.name, threshold))
+			out = append(out, newPlacementPlaylistCSR(r.titleSlug(), c.playlistID, c.name, threshold))
 		}
 	}
 
@@ -142,15 +142,16 @@ func (r *CareerRepo) loadCSRSnapshotRows(ctx context.Context, seasonID string) (
 		p.Current.PlacementTotal = threshold
 		p.Season.PlacementTotal = threshold
 		p.AllTime.PlacementTotal = threshold
+		slug := r.titleSlug()
 		p.Current.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(
-			p.Current.Tier, "", p.Current.SubTier, homeStaticTitleSlug,
+			p.Current.Tier, "", p.Current.SubTier, slug,
 			p.Current.MeasurementMatchesRemaining, threshold,
 		)
 		p.Season.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(
-			p.Season.Tier, "", p.Season.SubTier, homeStaticTitleSlug, 0, threshold,
+			p.Season.Tier, "", p.Season.SubTier, slug, 0, threshold,
 		)
 		p.AllTime.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(
-			p.AllTime.Tier, "", p.AllTime.SubTier, homeStaticTitleSlug, 0, threshold,
+			p.AllTime.Tier, "", p.AllTime.SubTier, slug, 0, threshold,
 		)
 		out = append(out, p)
 	}
@@ -170,10 +171,7 @@ func (r *CareerRepo) loadRankedPlaylistsCatalog(ctx context.Context) []rankedCat
 	if r.pdb == nil || r.pdb.Metadata == nil {
 		return nil
 	}
-	titleSlug := strings.TrimSpace(r.pdb.TitleSlug)
-	if titleSlug == "" {
-		titleSlug = homeStaticTitleSlug
-	}
+	titleSlug := r.titleSlug()
 	rows, err := r.pdb.Metadata.Query(ctx, QPlaylistsCatalogRanked, titleSlug)
 	if err != nil {
 		slog.WarnContext(ctx, "loadRankedPlaylistsCatalog: query failed (dégradation)", "err", err, "titleSlug", titleSlug)
@@ -194,7 +192,8 @@ func (r *CareerRepo) loadRankedPlaylistsCatalog(ctx context.Context) []rankedCat
 // newPlacementPlaylistCSR construit une ligne synthétique pour une playlist
 // ranked du catalogue jamais jouée (0 match de placement effectué). threshold
 // est le seuil placement de la saison courante (5 depuis S3, 10 historique).
-func newPlacementPlaylistCSR(playlistID, name string, threshold int) domain.CareerPlaylistCSR {
+// slug est le slug du titre du joueur (cf. CareerRepo.titleSlug()).
+func newPlacementPlaylistCSR(slug, playlistID, name string, threshold int) domain.CareerPlaylistCSR {
 	if threshold <= 0 {
 		threshold = CSRPlacementThresholdDefault
 	}
@@ -206,6 +205,6 @@ func newPlacementPlaylistCSR(playlistID, name string, threshold int) domain.Care
 	p.Current.PlacementTotal = threshold
 	p.Season.PlacementTotal = threshold
 	p.AllTime.PlacementTotal = threshold
-	p.Current.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold("", "", 0, homeStaticTitleSlug, threshold, threshold)
+	p.Current.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold("", "", 0, slug, threshold, threshold)
 	return p
 }

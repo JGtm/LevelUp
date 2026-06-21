@@ -66,7 +66,7 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]legacymatch.HomeMatch
 		if row.SkillTierLabel != nil {
 			tierLabel = *row.SkillTierLabel
 		}
-		row.SkillRankImageURL = buildHomeSkillPeakBadgeURL(tier, tierLabel, row.SkillSubTier, homeStaticTitleSlug, 0)
+		row.SkillRankImageURL = buildHomeSkillPeakBadgeURL(tier, tierLabel, row.SkillSubTier, r.titleSlug(), 0)
 	}
 
 	r.enrichHomeMatchTranslations(ctx, result)
