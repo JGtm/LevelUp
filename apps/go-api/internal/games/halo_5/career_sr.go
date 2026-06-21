@@ -71,6 +71,12 @@ func applySpartanRank(snap *canonical.CareerSnapshot, spartanRank, totalXP int) 
 	}
 	snap.RankNumber = spartanRank
 	snap.CurrentRank = h5SRAssetRef(spartanRank)
+	// Bornes de progression « Héros » Halo 5 (title-agnostic : le service les lit
+	// au lieu des constantes HINF). RankMax = SR152 ; XPMax = XP cumulé au SR152.
+	rankMax := h5MaxSpartanRank
+	xpMax := h5SRStartXP[h5MaxSpartanRank-1]
+	snap.RankMax = &rankMax
+	snap.XPMax = &xpMax
 	if totalXP > 0 {
 		xt := totalXP
 		snap.XPTotal = &xt

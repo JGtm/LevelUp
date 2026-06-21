@@ -144,7 +144,7 @@ func TestSummaryXPTotal_WithValue(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestBuildHeroProgress_Zero(t *testing.T) {
-	hp := buildHeroProgress(0, 0)
+	hp := buildHeroProgress(0, 0, 0, 0)
 	if hp.Percentage != 0 {
 		t.Errorf("expected 0%%, got %f", hp.Percentage)
 	}
@@ -157,7 +157,7 @@ func TestBuildHeroProgress_Zero(t *testing.T) {
 }
 
 func TestBuildHeroProgress_Complete(t *testing.T) {
-	hp := buildHeroProgress(xpHeroTotal+1000, rankMax)
+	hp := buildHeroProgress(xpHeroTotal+1000, rankMax, 0, 0)
 	if hp.Percentage != 100.0 {
 		t.Errorf("expected 100%%, got %f", hp.Percentage)
 	}
@@ -166,6 +166,24 @@ func TestBuildHeroProgress_Complete(t *testing.T) {
 	}
 	if hp.CurrentRank != rankMax {
 		t.Errorf("expected CurrentRank=%d, got %d", rankMax, hp.CurrentRank)
+	}
+}
+
+// TestBuildHeroProgress_PerTitleBounds vérifie que des bornes fournies par le
+// titre (ex. Halo 5 : 50 000 000 XP / 152 SR) priment sur les constantes HINF —
+// sinon le compteur/jauge Héros est numériquement faux pour un titre non-HINF.
+func TestBuildHeroProgress_PerTitleBounds(t *testing.T) {
+	const h5XPMax = 50_000_000
+	const h5RankMax = 152
+	hp := buildHeroProgress(h5XPMax/2, 76, h5XPMax, h5RankMax)
+	if hp.XPTotalRequired != h5XPMax {
+		t.Errorf("expected XPTotalRequired=%d, got %d", h5XPMax, hp.XPTotalRequired)
+	}
+	if hp.TotalRanks != h5RankMax {
+		t.Errorf("expected TotalRanks=%d, got %d", h5RankMax, hp.TotalRanks)
+	}
+	if hp.Percentage != 50.0 {
+		t.Errorf("expected 50%%, got %v", hp.Percentage)
 	}
 }
 
@@ -352,7 +370,7 @@ func TestBuildCareerSummary_WithData(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestBuildProjections_TooFewPoints(t *testing.T) {
-	p := buildProjections(nil, 5000)
+	p := buildProjections(nil, 5000, 0)
 	if p.XPPerDayActive != 0 {
 		t.Error("expected 0 for empty history")
 	}
@@ -364,7 +382,7 @@ func TestBuildProjections_Normal(t *testing.T) {
 		{RecordedAt: now.Add(-10 * 24 * time.Hour), XPTotal: 1000},
 		{RecordedAt: now, XPTotal: 2000},
 	}
-	p := buildProjections(history, 2000)
+	p := buildProjections(history, 2000, 0)
 	if p.XPPerDayActive <= 0 {
 		t.Errorf("expected positive XPPerDayActive, got %f", p.XPPerDayActive)
 	}
@@ -400,7 +418,7 @@ func TestBuildProjections_RegressiveHistory(t *testing.T) {
 		{RecordedAt: now.Add(-10 * 24 * time.Hour), XPTotal: 5_000_000},
 		{RecordedAt: now, XPTotal: 300_000},
 	}
-	p := buildProjections(history, 300_000)
+	p := buildProjections(history, 300_000, 0)
 	if p.XPPerDayActive != 0 {
 		t.Errorf("expected XPPerDayActive=0 for regression, got %f", p.XPPerDayActive)
 	}
@@ -418,7 +436,7 @@ func TestBuildProjections_MadinaScenarioPostFix(t *testing.T) {
 		{RecordedAt: now.Add(-30 * 24 * time.Hour), XPTotal: 3_000_000},
 		{RecordedAt: now, XPTotal: 5_000_000},
 	}
-	p := buildProjections(history, 5_000_000)
+	p := buildProjections(history, 5_000_000, 0)
 	if p.XPPerDayActive <= 0 {
 		t.Errorf("expected XPPerDayActive > 0, got %f", p.XPPerDayActive)
 	}
