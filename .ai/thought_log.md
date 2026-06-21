@@ -1,3 +1,15 @@
+## [2026-06-21] Halo 5 assets — ROOT FIX : isolation metadata (anti-pollution Infinite) — Complété
+
+**Contexte** : prérequis du sous-projet assets h5 (médailles/cartes/rangs CSR/rangs XP/armes). h5 est `status="active"` → provisionné au boot. Sans set de migrations enregistré, `RunForTitleDB(halo_5, …)` retombe sur le registre global d'Infinite pour TOUS les targets. Pour shared/player/… c'est VOULU (uniformité). Mais pour `metadata`, cela injecte les référentiels HINF (career_rank_translations 272 rangs, citation_mappings, prestige, battlepass, playlists_catalog, weapon_labels aux IDs HINF, mode_name_tr) dans la metadata.duckdb d'h5 = **pollution active au boot**.
+
+**Décision technique** : isolation PARTIELLE par target. Ajout d'un champ optionnel `TitleMigrationSet.OwnsTarget func(TargetDB) bool` (nil = possède tout, rétro-compatible) + `RunForTitleDB` route le target vers le set SI le set le possède, sinon vers le fallback HINF complet. Le set h5 (`internal/games/halo_5/migrations`) ne possède QUE `metadata` (schéma référentiel propre : asset_translations/medal_translations, medal_definitions, weapon_labels, maps_catalog, map_images_registry — VIDES, formes alignées HINF) ; shared/player/sharedsocial/pve passent par le fallback → uniformité préservée. Enregistré au boot (`main.go`, avant `provisionAdditionalTitle`) + `cmd/h5-lusr-backfill`.
+
+**Pourquoi `OwnsTarget` (vs déléguer à `StepsFor`)** : `stepsForTarget = combineSteps(registre global, titleStepsProvider)` est un SUPERSET de `halomigrations.StepsFor` (steps HINF encore globaux : rebuild_match_participants + seeds dynamiques prestige/milestones). Déléguer à `StepsFor` aurait produit un schéma shared/player INCOMPLET. `OwnsTarget=false` route vers le fallback COMPLET → zéro régression.
+
+**Résultats** : `go build` vert ; tests verts — `TestHalo5Metadata_IsolatedFromInfinite` (tables h5 présentes+vides, 9 référentiels HINF absents), `TestHalo5Shared_InheritsInfiniteSchema` (match_registry/participants/medals_earned/… hérités), framework `migration` + `synthetic_title_b` (integration) + `cmd/server` provision inchangés. `go vet` clean.
+
+**Reste assets (le gros morceau, sous-projet)** : fetchers CMS Halo 5 pour PEUPLER ces tables — médailles+icônes (`content-hacs.svc`), maps+images (`ugc.svc`), armes (`halo5api.svc/weapons`) ; rangs CSR/XP = piste TOML `RankCatalog` (semantic) côté `config/titles/halo_5/mappings` (assets.toml ne couvre que les modes aujourd'hui). Catalogues d'IDs observés sur Halowaypoint : `halo5api.svc/fr-fr/{medals,weapons,spartan-ranks,csr-designations,maps,game-variants}`.
+
 ## [2026-06-21] Halo 5 — résolution xuid optimisée (anti-storm PeopleHub) + xuid↔gamertag stockés ensemble — Complété
 
 **Directive user** : optimiser PeopleHub + xuid et gamertags stockés au même endroit. Cause du storm 429 (200 matchs) : on RE-résolvait TOUT le roster à chaque run, sur UN SEUL compte, sans persistance. 4 leviers :

@@ -167,9 +167,11 @@ func RunForDB(db *sql.DB, target TargetDB) error {
 // totale, zéro step Halo) ; sinon retombe sur le chemin legacy (registre global +
 // titleStepsProvider, ordonné par canonicalOrder) — byte-identique au défaut Halo.
 func RunForTitleDB(db *sql.DB, slug string, target TargetDB) error {
-	if set, ok := migrationSetFor(slug); ok {
+	if set, ok := migrationSetFor(slug); ok && set.ownsTarget(target) {
 		return runSteps(db, slug, target, set.Steps(target), set.CanonicalOrder)
 	}
+	// Pas de set, OU le set n'isole PAS ce target (OwnsTarget==false) → fallback
+	// complet (registre global Halo + titleStepsProvider), héritage uniforme.
 	return runSteps(db, slug, target, stepsForTarget(target), canonicalOrder)
 }
 

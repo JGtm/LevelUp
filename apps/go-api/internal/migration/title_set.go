@@ -26,10 +26,25 @@ const DefaultSlug = "halo_infinite"
 // (noms, imposé au tri d'exécution) et ses steps par target. Couche domain-pure
 // (zéro DuckDB). Pour un titre non-défaut, Steps ne doit retourner QUE les steps
 // du titre (pas le registre global Halo) — c'est ce qui garantit l'isolation.
+//
+// OwnsTarget (optionnel) permet l'ISOLATION PARTIELLE : un titre peut posséder
+// SON propre schéma pour certains targets (ex. metadata) et HÉRITER du fallback
+// Halo Infinite (registre global complet) pour les autres (shared/player/…). Si
+// OwnsTarget est nil → le set possède TOUS les targets (comportement historique :
+// Steps fait foi pour chaque target). Si OwnsTarget(target)==false → le runner
+// ignore le set pour ce target et applique le chemin fallback complet
+// (stepsForTarget + canonicalOrder), garantissant l'uniformité inter-titres là où
+// le titre n'a pas besoin d'isolation. Cf. ROOT FIX assets Halo 5 (metadata seule).
 type TitleMigrationSet struct {
 	Slug           string
 	CanonicalOrder []string
 	Steps          func(TargetDB) []Migration
+	OwnsTarget     func(TargetDB) bool
+}
+
+// ownsTarget indique si le set possède (override) ce target. nil → possède tout.
+func (s TitleMigrationSet) ownsTarget(target TargetDB) bool {
+	return s.OwnsTarget == nil || s.OwnsTarget(target)
 }
 
 // migrationSets : jeux enregistrés par slug (titres non-défaut). Le défaut Halo
