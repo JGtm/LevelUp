@@ -28,7 +28,7 @@ func applyAppendOnlyPveMatchStats(db *sql.DB) error {
 	return applyAppendOnlyRebuild(db, appendOnlyRebuild{
 		Table:         "pve_match_stats",
 		IDSeq:         "pve_seq",
-		SyntheticCols: "CURRENT_TIMESTAMP AS written_at",
+		SyntheticCols: synthWrittenAt,
 		PostSwap: []string{
 			`ALTER TABLE pve_match_stats ALTER COLUMN written_at SET DEFAULT now()`,
 			`CREATE INDEX IF NOT EXISTS idx_pve_lookup ON pve_match_stats(match_id, xuid, written_at)`,

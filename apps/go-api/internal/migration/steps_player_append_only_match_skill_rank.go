@@ -44,7 +44,7 @@ func applyAppendOnlyMatchSkillRank(db *sql.DB) error {
 	return applyAppendOnlyRebuild(db, appendOnlyRebuild{
 		Table:         "match_skill_rank",
 		IDSeq:         "msr_seq",
-		SyntheticCols: "CURRENT_TIMESTAMP AS written_at",
+		SyntheticCols: synthWrittenAt,
 		PostSwap: []string{
 			`ALTER TABLE match_skill_rank ALTER COLUMN written_at SET DEFAULT now()`,
 			`CREATE INDEX IF NOT EXISTS idx_msr_match_lookup ON match_skill_rank(match_id, rating_type, written_at)`,

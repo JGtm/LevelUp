@@ -14,7 +14,9 @@
 
 **Chunk 4 — doc** : `docs/adr/0026-append-only-art-eradication.md` (problème ART + 2 familles de tables + **3 mécanismes** written_at/generation_id/stage merge-on-read + le helper + exception PME + recette d'ajout + pièges `;`-en-commentaire/lecture-brute) + listé dans CLAUDE.md.
 
-**Conclusion** : campagne ART confirmée complète + correcte ; duplication éliminée (8→1 helper) ; asymétrie de sûreté résolue (5 swaps non-tx → transactionnels) ; doc pérenne livrée. **Reste** : commit (en attente feu vert user) + push + CI ; optionnel restant (tests cardinalité weapon_kills, source unique métadata PME) à arbitrer.
+**Conclusion** : campagne ART confirmée complète + correcte ; duplication éliminée (8→1 helper) ; asymétrie de sûreté résolue (5 swaps non-tx → transactionnels) ; doc pérenne livrée. Commits : `aad2e4957` (helper + ADR), précédé de `b4a5e8cd2` (Chunk 1) + `8dcb4e711` (fix baseline).
+
+**Suivi (post-commit helper)** : fix CI Lint de aad2e4957 (goconst `CURRENT_TIMESTAMP AS written_at` 6× → const `synthWrittenAt` ; prealloc `stmts`). Tests cardinalité **weapon_kills** ajoutés (GenerationSupersedes / EffectiveWeaponID / Idempotent) — recommandés car zéro risque + verrouillent la vue v_weapon_kills DENSE_RANK. **Finding séparé remonté (hors scope, non corrigé)** : sur une DB shared NEUVE, le bootstrap crée weapon_kills au schéma AGRÉGÉ (PK match_id,xuid,weapon_id + colonne `kills`, ligne 115 steps_shared.go) au lieu du schéma per-kill (time_ms) que les writers utilisent — conflit de 2 `CREATE TABLE IF NOT EXISTS` concurrents. Pré-existant, prod non affectée (DBs déjà per-kill), latent pour fresh install — à investiguer séparément. **NON retenu** : source unique métadata `stage` PME (refactor de code déployé critique pour DRY cosmétique, risque > bénéfice).
 
 ---
 

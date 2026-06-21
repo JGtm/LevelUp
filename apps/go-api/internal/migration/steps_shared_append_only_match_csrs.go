@@ -41,7 +41,7 @@ func applyAppendOnlyMatchCSRs(db *sql.DB) error {
 	return applyAppendOnlyRebuild(db, appendOnlyRebuild{
 		Table:         "match_csrs",
 		IDSeq:         "mcsrs_seq",
-		SyntheticCols: "CURRENT_TIMESTAMP AS written_at",
+		SyntheticCols: synthWrittenAt,
 		PostSwap: []string{
 			`ALTER TABLE match_csrs ALTER COLUMN written_at SET DEFAULT now()`,
 			`CREATE INDEX IF NOT EXISTS idx_match_csrs_lookup ON match_csrs(match_id, xuid, written_at)`,
