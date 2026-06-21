@@ -1,3 +1,30 @@
+## [2026-06-21] G3 / V8 — bornes Héros Carrière par titre (title-agnostic) — Complété
+
+La carte « Héros » de la page Carrière utilisait des constantes de package
+`xpHeroTotal = 9 319 350` / `rankMax = 272` (barème Halo Infinite) pour TOUS les
+titres → compteur + jauge numériquement faux pour Halo 5 (SR max 152, XP max
+50 000 000) : pourcentage = XP_h5 / 9.3M (aberrant) et « current/272 » au lieu de
+« /152 ».
+
+- **`canonical.CareerSnapshot`** : champs additifs `XPMax *int` / `RankMax *int`
+  (bornes du rang max PAR TITRE). L'adapter du titre (qui connaît son système de
+  rangs) les renseigne ; nil → le service retombe sur les constantes par défaut.
+- **`halo_5/career_sr.go applySpartanRank`** : fixe `RankMax = 152` et
+  `XPMax = h5SRStartXP[151] = 50 000 000` (XP cumulé au SR152).
+- **`domain.CareerRankData`** : `XPHeroTotal *int` / `RankMax *int` ; portés par
+  `rankDataFromCanonical` depuis le snapshot.
+- **`career_service_summary.go`** : `buildHeroProgress` + `buildProjections`
+  paramétrés par les bornes ; helpers `heroXPTotal(rank)` / `heroRankMax(rank)`
+  (valeur du titre si > 0, sinon const HINF). Aucun slug comparé.
+- **HINF byte-identique** : l'adapter HINF ne fixe pas ces champs → nil → consts
+  (source unique = les constantes du service, pas de duplication divergente).
+- **Tests** : appels MAJ (signatures élargies, bornes par défaut via 0) +
+  `TestBuildHeroProgress_PerTitleBounds` (bornes h5 priment : 50M/152, 50%).
+  Build + `go test ./internal/service/ ./internal/games/halo_5/...` verts.
+
+Effet : G3 fermé — carte Héros correcte pour Halo 5. Reste : G5 badge CSR canonical
+(tuiles + Match View), G4 CSR carrière, G2/G7 sprite médaille, G9 payload Match View.
+
 ## [2026-06-21] C0 / G1 — TitleAssetURLAdapter Halo 5 (RegisterAssetURL) — Complété
 
 `titleResolver.AssetURL("halo_5")` renvoyait `ErrTitleNotResolved` (aucun adapter h5 enregistré) → `assetURL==nil` sur la Match View → image de map + badge CSR absents. Livré l'adapter h5 + son câblage.

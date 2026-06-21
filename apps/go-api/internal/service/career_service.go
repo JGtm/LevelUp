@@ -211,8 +211,9 @@ func (s *CareerService) GetCareerPage(ctx context.Context) (domain.CareerPageRes
 
 	summary := s.buildCareerSummaryEnriched(rank)
 	xpTotal := summaryXPTotal(rank)
-	hero := buildHeroProgress(xpTotal, rankIDFromData(rank))
-	projs := buildProjections(xpHistory, xpTotal)
+	xpHeroMax := heroXPTotal(rank)
+	hero := buildHeroProgress(xpTotal, rankIDFromData(rank), xpHeroMax, heroRankMax(rank))
+	projs := buildProjections(xpHistory, xpTotal, xpHeroMax)
 	lusr := buildLUSRSummary(lusrHistory)
 
 	currentSeason := s.resolveCurrentSeason(ctx)
@@ -295,6 +296,14 @@ func rankDataFromCanonical(snap *canonical.CareerSnapshot) *domain.CareerRankDat
 	if snap.CurrentRank != nil && snap.CurrentRank.ID != "" {
 		v := snap.CurrentRank.ID
 		row.RankLabel = &v
+	}
+	if snap.XPMax != nil {
+		v := *snap.XPMax
+		row.XPHeroTotal = &v
+	}
+	if snap.RankMax != nil {
+		v := *snap.RankMax
+		row.RankMax = &v
 	}
 	return row
 }

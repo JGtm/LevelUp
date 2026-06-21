@@ -8,6 +8,12 @@ import "time"
 // ---------------------------------------------------------------------------
 
 // CareerRankData est le type de transfert brut pour la progression de rang.
+//
+// XPHeroTotal / RankMax (optionnels) portent les bornes de progression « Héros »
+// PAR TITRE (HINF : 9 319 350 XP / 272 rangs ; Halo 5 : 50 000 000 XP / 152 SR).
+// Nil = non fourni par la source → le service retombe sur les constantes par
+// défaut (Halo Infinite). Title-agnostic : aucune valeur de jeu en dur dans le
+// chemin de calcul du service.
 type CareerRankData struct {
 	RankNumber    int
 	CurrentXP     int
@@ -18,6 +24,8 @@ type CareerRankData struct {
 	XPForNextRank *int
 	XPTotal       *int
 	IsMaxRank     bool
+	XPHeroTotal   *int
+	RankMax       *int
 }
 
 // TopMatchRawRow est le type de transfert brut pour les top matches.
@@ -168,7 +176,7 @@ type CareerPlaylistCSR struct {
 // données classées (snapshot CSR), plus la saison courante.
 type CSRSeasonOption struct {
 	SeasonID  string `json:"season_id"`            // ex: "CsrSeason13-1"
-	Label     string `json:"label"`               // ex: "Saison 13" (FR)
+	Label     string `json:"label"`                // ex: "Saison 13" (FR)
 	IsCurrent bool   `json:"is_current,omitempty"` // saison active du jour
 }
 

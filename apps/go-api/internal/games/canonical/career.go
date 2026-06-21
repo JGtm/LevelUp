@@ -20,6 +20,15 @@ type CareerSnapshot struct {
 	HighestLUSR     *float64
 	HighestRatingAt *time.Time
 
+	// Bornes de progression « Héros » (carte Carrière) PAR TITRE. XPMax = XP de
+	// compte cumulé au rang MAX ; RankMax = numéro du rang max. Title-agnostic :
+	// l'adapter du titre (qui connaît son système de rangs) les renseigne. Nil =
+	// le service retombe sur les bornes par défaut (Halo Infinite). HINF laisse
+	// nil (source unique = les constantes du service), Halo 5 les fixe (152 SR /
+	// 50 000 000 XP) car son barème diffère.
+	XPMax   *int
+	RankMax *int
+
 	// Bloc Rank* enrichi (utile pour la page Carrière complète, pas seulement
 	// pour la home preview). Ces champs sont peuplés à partir du provider
 	// quand disponibles, sinon laissés à zéro.

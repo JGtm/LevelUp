@@ -146,37 +146,65 @@ func summaryXPTotal(rank *domain.CareerRankData) int {
 	return *rank.XPTotal
 }
 
-func buildHeroProgress(xpTotal, currentRank int) domain.HeroProgress {
-	remaining := xpHeroTotal - xpTotal
+// heroXPTotal résout la borne XP « Héros » : la valeur portée par le titre
+// (CareerRankData.XPHeroTotal) si fournie et > 0, sinon la constante par défaut
+// (Halo Infinite). Title-agnostic — pas de slug comparé.
+func heroXPTotal(rank *domain.CareerRankData) int {
+	if rank != nil && rank.XPHeroTotal != nil && *rank.XPHeroTotal > 0 {
+		return *rank.XPHeroTotal
+	}
+	return xpHeroTotal
+}
+
+// heroRankMax résout le nombre total de rangs : la valeur portée par le titre
+// (CareerRankData.RankMax) si fournie et > 0, sinon la constante par défaut.
+func heroRankMax(rank *domain.CareerRankData) int {
+	if rank != nil && rank.RankMax != nil && *rank.RankMax > 0 {
+		return *rank.RankMax
+	}
+	return rankMax
+}
+
+func buildHeroProgress(xpTotal, currentRank, xpHeroMax, totalRanks int) domain.HeroProgress {
+	if xpHeroMax <= 0 {
+		xpHeroMax = xpHeroTotal
+	}
+	if totalRanks <= 0 {
+		totalRanks = rankMax
+	}
+	remaining := xpHeroMax - xpTotal
 	if remaining < 0 {
 		remaining = 0
 	}
-	pct := float64(xpTotal) / float64(xpHeroTotal) * 100.0
+	pct := float64(xpTotal) / float64(xpHeroMax) * 100.0
 	pct = math.Round(pct*100) / 100
 	if pct > 100.0 {
 		pct = 100.0
 	}
 	return domain.HeroProgress{
-		XPTotalRequired: xpHeroTotal,
+		XPTotalRequired: xpHeroMax,
 		XPRemaining:     remaining,
 		Percentage:      pct,
 		CurrentRank:     currentRank,
-		TotalRanks:      rankMax,
+		TotalRanks:      totalRanks,
 	}
 }
 
-func buildProjections(history []domain.XPHistoryPoint, xpTotal int) domain.CareerProjections {
+func buildProjections(history []domain.XPHistoryPoint, xpTotal, xpHeroMax int) domain.CareerProjections {
 	if len(history) < 2 {
 		return domain.CareerProjections{}
+	}
+	if xpHeroMax <= 0 {
+		xpHeroMax = xpHeroTotal
 	}
 	xpPerActive := computeActiveXPPerDay(history)
 	firstDate := history[0].RecordedAt
 	xpPerFallback := computeFallbackXPPerDay(xpTotal, firstDate)
 
 	var heroDateStr *string
-	if xpTotal < xpHeroTotal && xpPerActive > 0 {
+	if xpTotal < xpHeroMax && xpPerActive > 0 {
 		lastDate := history[len(history)-1].RecordedAt
-		daysNeeded := float64(xpHeroTotal-xpTotal) / xpPerActive
+		daysNeeded := float64(xpHeroMax-xpTotal) / xpPerActive
 		heroTime := lastDate.Add(time.Duration(daysNeeded * float64(24*time.Hour)))
 		s := heroTime.Format("2006-01-02")
 		heroDateStr = &s
