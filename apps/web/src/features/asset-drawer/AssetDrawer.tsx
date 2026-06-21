@@ -3,7 +3,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { assetDrawerManifest } from '@/lib/i18n/generated/asset_drawer'
 import { useAssetDrawerStore } from './assetDrawer.store'
-import { useAssetMaps, useAssetWeapons } from './useAssetDrawer'
+import { useAssetMaps, useAssetWeapons, useAssetMedals } from './useAssetDrawer'
 import { AssetSearch } from './AssetSearch'
 import { AssetGrid } from './AssetGrid'
 
@@ -18,6 +18,7 @@ export function AssetDrawer() {
 
   const mapsQuery = useAssetMaps(titleSlug, activeTab === 'maps' ? search : '')
   const weaponsQuery = useAssetWeapons(titleSlug, activeTab === 'weapons' ? search : '')
+  const medalsQuery = useAssetMedals(titleSlug, activeTab === 'medals' ? search : '')
 
   // Phase 3 — fermeture au clavier Escape
   useEffect(() => {
@@ -29,9 +30,15 @@ export function AssetDrawer() {
     return () => document.removeEventListener('keydown', onKey)
   }, [isOpen, close])
 
-  const currentQuery = activeTab === 'maps' ? mapsQuery : weaponsQuery
+  const currentQuery =
+    activeTab === 'maps' ? mapsQuery : activeTab === 'weapons' ? weaponsQuery : medalsQuery
   const items = currentQuery.data ?? []
-  const emptyKey = activeTab === 'maps' ? 'asset_drawer.empty.maps' : 'asset_drawer.empty.weapons'
+  const emptyKey =
+    activeTab === 'maps'
+      ? 'asset_drawer.empty.maps'
+      : activeTab === 'weapons'
+        ? 'asset_drawer.empty.weapons'
+        : 'asset_drawer.empty.medals'
 
   return (
     <>
@@ -75,6 +82,11 @@ export function AssetDrawer() {
               active={activeTab === 'weapons'}
               onClick={() => setTab('weapons')}
               label={t('asset_drawer.tab.weapons')}
+            />
+            <TabButton
+              active={activeTab === 'medals'}
+              onClick={() => setTab('medals')}
+              label={t('asset_drawer.tab.medals')}
             />
           </div>
           <button

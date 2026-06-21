@@ -23,6 +23,10 @@ func (m *mockAssetMetaRepo) ListWeaponsByTitle(_ context.Context, _, _ string) (
 	return m.weapons, m.err
 }
 
+func (m *mockAssetMetaRepo) ListMedalsByTitle(_ context.Context, _, _ string) ([]canonical.AssetMeta, error) {
+	return nil, m.err
+}
+
 func TestAssetService_ListMaps_EnrichesImageURL(t *testing.T) {
 	repo := &mockAssetMetaRepo{
 		maps: []canonical.AssetMeta{

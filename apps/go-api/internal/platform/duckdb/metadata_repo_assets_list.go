@@ -97,3 +97,38 @@ func (r *MetadataRepo) ListWeaponsByTitle(
 	}
 	return out, rows.Err()
 }
+
+// ListMedalsByTitle retourne les médailles (nom seul — le sprite h5 est chargé à
+// part par le boot loader de l'Asset Drawer). Sans colonnes sprite ici → sûr pour
+// TOUTE metadata.duckdb (HINF n'a pas ces colonnes). search filtre par nom EN/FR.
+func (r *MetadataRepo) ListMedalsByTitle(
+	ctx context.Context,
+	_ string,
+	search string,
+) ([]canonical.AssetMeta, error) {
+	query := `
+		SELECT medal_name_id::VARCHAR AS id,
+		       name_en,
+		       COALESCE(name_fr, '')  AS name_fr
+		FROM medal_definitions
+		WHERE ? = ''
+		   OR lower(name_en)               LIKE lower('%' || ? || '%')
+		   OR lower(COALESCE(name_fr, '')) LIKE lower('%' || ? || '%')
+		ORDER BY name_en
+	`
+	rows, err := r.meta.Query(ctx, query, search, search, search)
+	if err != nil {
+		return nil, fmt.Errorf("ListMedalsByTitle: %w", err)
+	}
+	defer rows.Close()
+
+	var out []canonical.AssetMeta
+	for rows.Next() {
+		var m canonical.AssetMeta
+		if err := rows.Scan(&m.ID, &m.NameEN, &m.NameFR); err != nil {
+			return nil, fmt.Errorf("ListMedalsByTitle scan: %w", err)
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}

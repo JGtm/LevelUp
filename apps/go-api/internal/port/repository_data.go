@@ -273,6 +273,10 @@ type AssetMetaRepository interface {
 	// ListWeaponsByTitle retourne les armes filtrées par search (LIKE, vide = tout).
 	// titleID est accepté pour l'interface mais weapon_labels n'est pas segmenté par titre en V1.
 	ListWeaponsByTitle(ctx context.Context, titleID, search string) ([]canonical.AssetMeta, error)
+
+	// ListMedalsByTitle retourne les médailles d'un titre filtrées par search.
+	// Implémentation in-memory (StaticAssetMetaRepo) ; vide pour les titres sans seed médailles.
+	ListMedalsByTitle(ctx context.Context, titleID, search string) ([]canonical.AssetMeta, error)
 }
 
 var _ AssetMetaRepository = (*noopAssetMetaRepo)(nil)
@@ -283,6 +287,9 @@ func (n *noopAssetMetaRepo) ListMapsByTitle(_ context.Context, _, _ string) ([]c
 	return nil, nil
 }
 func (n *noopAssetMetaRepo) ListWeaponsByTitle(_ context.Context, _, _ string) ([]canonical.AssetMeta, error) {
+	return nil, nil
+}
+func (n *noopAssetMetaRepo) ListMedalsByTitle(_ context.Context, _, _ string) ([]canonical.AssetMeta, error) {
 	return nil, nil
 }
 

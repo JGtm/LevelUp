@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type AssetTab = 'maps' | 'weapons'
+export type AssetTab = 'maps' | 'weapons' | 'medals'
 
 interface AssetDrawerState {
   isOpen: boolean

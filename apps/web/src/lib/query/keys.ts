@@ -170,6 +170,7 @@ export const queryKeys = {
   // Asset Drawer (Phase 2)
   assetMaps: (titleSlug: string, q: string) => ['assets', titleSlug, 'maps', q] as const,
   assetWeapons: (titleSlug: string, q: string) => ['assets', titleSlug, 'weapons', q] as const,
+  assetMedals: (titleSlug: string, q: string) => ['assets', titleSlug, 'medals', q] as const,
 
   // Progression V2 (Ascension) — cf. PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1
   progressionStreaks: (playerSlug: string) =>

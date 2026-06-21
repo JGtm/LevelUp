@@ -113,12 +113,10 @@ func familyXUIDResolver(cfg *config.AppConfig, settingsStore *settings_platform.
 // (référentiel). Peuplé par cmd/h5-metadata-fetch (API Metadata officielle :
 // maps_catalog.image_url + weapon_labels.icon_url). Best-effort : DB absente / tables
 // vides → slices nil (le titre n'apparaît simplement pas dans le drawer).
-//
-//nolint:gocyclo // Routeur central : mount de ~80 endpoints avec feature flags
-func loadTitleAssetDrawerData(pr *titlePkg.PathResolver, slug string) (maps, weapons []canonical.AssetMeta) {
+func loadTitleAssetDrawerData(pr *titlePkg.PathResolver, slug string) (maps, weapons, medals []canonical.AssetMeta) {
 	metaDB, err := platform_duckdb.OpenReadWriteShared(pr.MetadataDBPath(slug))
 	if err != nil {
-		return nil, nil
+		return nil, nil, nil
 	}
 	defer func() { _ = metaDB.Close() }()
 	ctx := context.Background()
@@ -145,9 +143,25 @@ func loadTitleAssetDrawerData(pr *titlePkg.PathResolver, slug string) (maps, wea
 		}
 		_ = rows.Close()
 	}
-	return maps, weapons
+	// Médailles : icône SPRITE (feuille + offset) depuis medal_definitions.
+	if rows, qerr := metaDB.Query(ctx,
+		`SELECT medal_name_id::VARCHAR, name_en, COALESCE(sprite_sheet_url, ''),
+		        COALESCE(sprite_left, 0), COALESCE(sprite_top, 0),
+		        COALESCE(sprite_width, 0), COALESCE(sprite_height, 0)
+		 FROM medal_definitions ORDER BY name_en`); qerr == nil {
+		for rows.Next() {
+			var m canonical.AssetMeta
+			if rows.Scan(&m.ID, &m.NameEN, &m.SpriteSheet,
+				&m.SpriteLeft, &m.SpriteTop, &m.SpriteWidth, &m.SpriteHeight) == nil && m.NameEN != "" {
+				medals = append(medals, m)
+			}
+		}
+		_ = rows.Close()
+	}
+	return maps, weapons, medals
 }
 
+//nolint:gocyclo // Routeur central : mount de ~80 endpoints avec feature flags
 func NewRouter(
 	serverCtx context.Context,
 	cfg *config.AppConfig,
@@ -617,12 +631,12 @@ func NewRouter(
 			// leur metadata.duckdb isolée (seedée par cmd/h5-metadata-fetch depuis l'API
 			// Metadata officielle). Title-aware via WithTitle ; les URLs DB priment sur
 			// les builders HINF (cf. AssetService : ImageURL non vide conservée).
-			h5Maps, h5Weapons := loadTitleAssetDrawerData(
+			h5Maps, h5Weapons, h5Medals := loadTitleAssetDrawerData(
 				titlePkg.NewPathResolver(cfg.RepoRoot), halo5.TitleSlug)
 			assetMetaHandler = handlers.NewAssetMetadataHandler(
 				service.NewAssetService(
 					service.NewStaticAssetMetaRepo(maps, weapons).
-						WithTitle(halo5.TitleSlug, h5Maps, h5Weapons)).
+						WithTitle(halo5.TitleSlug, h5Maps, h5Weapons, h5Medals)).
 					WithMapImageURL(func(_ string, nameEN string) string {
 						return hiAssetURL.MapImageURL(nameEN)
 					}).

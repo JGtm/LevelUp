@@ -30,6 +30,10 @@ func (m *mockAssetService) ListWeapons(_ context.Context, _, _ string) ([]canoni
 	return m.weapons, m.err
 }
 
+func (m *mockAssetService) ListMedals(_ context.Context, _, _ string) ([]canonical.AssetMeta, error) {
+	return m.maps, m.err
+}
+
 func newAssetMetaRouter(svc *mockAssetService, capEnabled bool) *chi.Mux {
 	h := handlers.NewAssetMetadataHandler(svc, func(_ string, _ titlePkg.Capability) bool {
 		return capEnabled
@@ -221,5 +225,9 @@ func (c *captureSearchService) ListMaps(_ context.Context, _, search string) ([]
 }
 
 func (c *captureSearchService) ListWeapons(_ context.Context, _, _ string) ([]canonical.AssetMeta, error) {
+	return nil, nil
+}
+
+func (c *captureSearchService) ListMedals(_ context.Context, _, _ string) ([]canonical.AssetMeta, error) {
 	return nil, nil
 }

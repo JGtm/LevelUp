@@ -18,6 +18,10 @@ en = "Maps"
 fr = "Armes"
 en = "Weapons"
 
+[asset_drawer.tab.medals]
+fr = "Médailles"
+en = "Medals"
+
 [asset_drawer.search.placeholder]
 fr = "Rechercher…"
 en = "Search…"
@@ -29,6 +33,10 @@ en = "No map found."
 [asset_drawer.empty.weapons]
 fr = "Aucune arme trouvée."
 en = "No weapon found."
+
+[asset_drawer.empty.medals]
+fr = "Aucune médaille trouvée."
+en = "No medal found."
 
 [asset_drawer.empty.loading]
 fr = "Chargement…"

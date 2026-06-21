@@ -79,3 +79,17 @@ func (s *AssetService) ListWeapons(ctx context.Context, titleID, search string) 
 	}
 	return items, nil
 }
+
+// ListMedals retourne les médailles d'un titre. L'icône est un SPRITE (feuille +
+// offset, champs Sprite* déjà résolus en amont depuis medal_definitions) — pas de
+// mapImageURL/weaponImageURL. ImageURL reste vide (le front rend le sprite).
+func (s *AssetService) ListMedals(ctx context.Context, titleID, search string) ([]canonical.AssetMeta, error) {
+	items, err := s.repo.ListMedalsByTitle(ctx, titleID, search)
+	if err != nil {
+		return nil, fmt.Errorf("AssetService.ListMedals: %w", err)
+	}
+	if items == nil {
+		items = []canonical.AssetMeta{}
+	}
+	return items, nil
+}
