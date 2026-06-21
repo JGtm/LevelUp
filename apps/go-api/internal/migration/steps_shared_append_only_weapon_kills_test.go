@@ -6,11 +6,11 @@ package migration
 // Verrouille la sémantique « dernière génération par (match_id, xuid) » (DENSE_RANK)
 // et la colonne dérivée effective_weapon_id = COALESCE(reconciled_as, weapon_id).
 //
-// Note : on construit ici le schéma weapon_kills PER-KILL (celui que cible la
-// migration append-only en prod : add_weapon_kills + reconciled_as, sans PK) et on
-// appelle applyAppendOnlyWeaponKills directement. RunForDB(TargetShared) n'est PAS
-// utilisé car le bootstrap shared porte une définition agrégée concurrente (PK
-// match_id,xuid,weapon_id, colonne `kills`) incompatible avec le modèle générationnel.
+// Le setup passe par RunForDB(TargetShared) (chaîne de migration shared réelle) :
+// depuis le fix 2026-06-21, une DB shared neuve obtient bien le schéma PER-KILL
+// (add_weapon_kills, time_ms, sans PK), plus l'ancien schéma agrégé. Ces tests
+// servent donc AUSSI de garde anti-régression : si le CREATE agrégé revenait dans
+// create_base_shared_schema, les INSERT per-kill (time_ms) échoueraient ici.
 
 import (
 	"database/sql"
@@ -19,31 +19,38 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
-// setupPerKillWeaponKills crée le schéma per-kill (équivalent add_weapon_kills +
-// add_weapon_kills_reconciled_as) puis applique l'append-only.
+// setupPerKillWeaponKills monte une DB shared via la chaîne de migration réelle
+// (weapon_kills per-kill + reconciled_as + append-only generation_id/written_at + vue).
 func setupPerKillWeaponKills(t *testing.T) *sql.DB {
 	t.Helper()
 	db := openTmpDB(t) // défini dans append_only_rebuild_test.go (même tag cgo)
-	if _, err := db.Exec(`
-		CREATE TABLE weapon_kills (
-			match_id       VARCHAR NOT NULL,
-			xuid           VARCHAR NOT NULL,
-			time_ms        INTEGER NOT NULL,
-			weapon_id      UBIGINT,
-			delta_ms       INTEGER,
-			confidence     VARCHAR NOT NULL DEFAULT 'none',
-			swap_detected  BOOLEAN NOT NULL DEFAULT FALSE,
-			delayed_damage BOOLEAN NOT NULL DEFAULT FALSE,
-			reconciled_as  UBIGINT,
-			attribution_path VARCHAR DEFAULT 'none',
-			player_index   INTEGER
-		)`); err != nil {
-		t.Fatalf("create per-kill weapon_kills: %v", err)
-	}
-	if err := applyAppendOnlyWeaponKills(db); err != nil {
-		t.Fatalf("applyAppendOnlyWeaponKills: %v", err)
+	if err := RunForDB(db, TargetShared); err != nil {
+		t.Fatalf("RunForDB(TargetShared): %v", err)
 	}
 	return db
+}
+
+// TestWeaponKills_FreshSharedDB_IsPerKill — garde anti-régression du finding
+// 2026-06-21 : une DB shared NEUVE doit produire le schéma PER-KILL (time_ms,
+// generation_id, pas de colonne agrégée `kills`), pas l'ancien schéma agrégé.
+func TestWeaponKills_FreshSharedDB_IsPerKill(t *testing.T) {
+	db := setupPerKillWeaponKills(t)
+
+	for _, col := range []string{"time_ms", "generation_id", "written_at"} {
+		if has, _ := columnExists(db, "weapon_kills", col); !has {
+			t.Fatalf("weapon_kills.%s absente — DB neuve au schéma agrégé (régression)", col)
+		}
+	}
+	// Colonne agrégée `kills` ABSENTE (sinon = ancien schéma v5 ressorti).
+	if has, _ := columnExists(db, "weapon_kills", "kills"); has {
+		t.Fatal("weapon_kills.kills présente — schéma agrégé v5 ressorti (régression du fix)")
+	}
+	// Pas de PK fonctionnelle bloquant 2 kills même arme : INSERT per-kill OK.
+	wkInsert(t, db, "m1", "x1", 1000, 100, 0)
+	wkInsert(t, db, "m1", "x1", 2000, 100, 0) // même (match,xuid,weapon) → doit passer
+	if got := wkCount(t, db, `SELECT COUNT(*) FROM weapon_kills`); got != 2 {
+		t.Fatalf("weapon_kills = %d, attendu 2 (per-kill, pas de PK agrégée)", got)
+	}
 }
 
 func wkInsert(t *testing.T, db *sql.DB, match, xuid string, timeMs int, weaponID uint64, gen int) {
