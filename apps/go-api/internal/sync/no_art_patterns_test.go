@@ -16,7 +16,7 @@
 //     déclencheur ART qui touche N entrées d'index en 1 statement — est,
 //     elle, gardée par TestNoBulkMultiRowUpdateOnCriticalTables (ci-dessous).
 //   - Les tables de "match-of-record" (match_registry, match_participants,
-//     medals_earned, killer_victim_pairs, weapon_kills) ne sont PAS dans
+//     medals_earned, killer_victim_pairs) ne sont PAS dans
 //     tablesProtegees : elles ne sont pas append-only et leurs UPDATE bitmask /
 //     row-by-row sérialisés par dblease sont sûrs. Elles sont
 //     protégées AUTREMENT : INSERT-only par construction via le package persist

@@ -899,14 +899,35 @@ func TestPipelineFixture_Citations_Idempotent(t *testing.T) {
 			t.Fatalf("BackfillMatchCitations: %v", err)
 		}
 	}
-	runCitations()
-	runCitations()
+	latestCount := func() int {
+		var n int
+		f.player.QueryRow("SELECT COUNT(*) FROM match_citations_latest WHERE match_id=?", fixM1).Scan(&n)
+		return n
+	}
+	physCount := func() int {
+		var n int
+		f.player.QueryRow("SELECT COUNT(*) FROM match_citations WHERE match_id=?", fixM1).Scan(&n)
+		return n
+	}
 
-	var n int
-	f.player.QueryRow("SELECT COUNT(*) FROM match_citations_latest WHERE match_id=?", fixM1).Scan(&n)
-	// Pas de doublons — le COUNT doit être identique au premier appel
-	if n == 0 {
-		t.Fatal("aucune citation après double appel")
+	runCitations()
+	n1, phys1 := latestCount(), physCount()
+	if n1 == 0 {
+		t.Fatal("aucune citation après le 1er appel")
+	}
+	runCitations()
+	n2, phys2 := latestCount(), physCount()
+
+	// Append-only #23046 — idempotence LOGIQUE : match_citations_latest stable
+	// (zéro doublon visible) entre les deux runs.
+	if n2 != n1 {
+		t.Fatalf("doublon logique (match_citations_latest) : run1=%d run2=%d", n1, n2)
+	}
+	// Supersession GÉNÉRATIONNELLE : la table physique CROÎT (2e run = nouvelle
+	// génération), preuve que ce n'est pas un DELETE+INSERT masqué mais bien de
+	// l'append-only avec lecture par-génération.
+	if phys2 <= phys1 {
+		t.Fatalf("la table physique devrait croître (append-only) : run1=%d run2=%d", phys1, phys2)
 	}
 }
 
