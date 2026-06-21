@@ -88,13 +88,14 @@ func openWeaponDBForBench(b *testing.B) *sql.DB {
 			match_id VARCHAR PRIMARY KEY,
 			backfill_completed INTEGER DEFAULT 0
 		);
+		CREATE SEQUENCE IF NOT EXISTS weapon_kills_generation_seq START 1;
 		CREATE TABLE weapon_kills (
 			match_id VARCHAR, xuid VARCHAR,
 			time_ms INTEGER, weapon_id UBIGINT,
 			reconciled_as UBIGINT, delta_ms INTEGER,
 			confidence VARCHAR, attribution_path VARCHAR,
 			swap_detected BOOLEAN, delayed_damage BOOLEAN,
-			player_index INTEGER
+			player_index INTEGER, generation_id BIGINT DEFAULT 0
 		);
 	`
 	if err := execScript(context.Background(), db, ddl); err != nil {

@@ -106,7 +106,7 @@ SELECT
     psa.match_id,
     psa.award_name,
     COALESCE(SUM(psa.award_count), 0)::INTEGER AS total
-FROM personal_score_awards psa
+FROM personal_score_awards_latest psa
 WHERE psa.match_id IN (`)
 	sb.WriteString(matchPH)
 	sb.WriteString(`)

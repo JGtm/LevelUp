@@ -358,16 +358,17 @@ func TestInsertWeaponKills(t *testing.T) {
 		t.Errorf("expected 2 weapon_kills, got %d", count)
 	}
 
-	// Re-insert should replace (DELETE + INSERT)
+	// Append-only #23046 (Phase 2) : la ré-insertion ne DELETE plus ; elle alloue une
+	// nouvelle génération qui supersède via v_weapon_kills (dernière génération) → 1 row.
 	attrs2 := []intsync.WeaponKillRow{
 		{TimeMS: 3000, WeaponID: &wid1, Confidence: "low", AttributionPath: "swap"},
 	}
 	if err := intsync.InsertWeaponKills(t.Context(), db, "m1", "x1", attrs2); err != nil {
 		t.Fatalf("InsertWeaponKills replace: %v", err)
 	}
-	_ = db.QueryRow("SELECT COUNT(*) FROM weapon_kills WHERE match_id = 'm1' AND xuid = 'x1'").Scan(&count)
+	_ = db.QueryRow("SELECT COUNT(*) FROM v_weapon_kills WHERE match_id = 'm1' AND xuid = 'x1'").Scan(&count)
 	if count != 1 {
-		t.Errorf("expected 1 weapon_kill after replace, got %d", count)
+		t.Errorf("expected 1 weapon_kill (v_weapon_kills dernière génération) after replace, got %d", count)
 	}
 }
 

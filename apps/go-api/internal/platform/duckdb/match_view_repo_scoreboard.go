@@ -135,7 +135,7 @@ func (r *MatchViewRepo) GetMatchObjectiveScore(ctx context.Context, xuid, matchI
 	var total int
 	err := r.pdb.ReadDB().QueryRow(ctx, `
 		SELECT COALESCE(SUM(award_score), 0)::INTEGER
-		FROM personal_score_awards
+		FROM personal_score_awards_latest
 		WHERE award_category = 'objective'
 		  AND xuid = ?
 		  AND match_id = ?

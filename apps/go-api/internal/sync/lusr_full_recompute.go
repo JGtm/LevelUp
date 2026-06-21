@@ -30,8 +30,17 @@ func RecomputeLUSRCanonicalForPlayer(ctx context.Context, playerDB, sharedDB *sq
 	if strings.TrimSpace(xuid) == "" {
 		return 0, fmt.Errorf("RecomputeLUSRCanonicalForPlayer: xuid vide")
 	}
-	if _, err := sharedDB.ExecContext(ctx,
-		`DELETE FROM player_skill_state_v2 WHERE xuid = ?`, xuid); err != nil {
+	// Append-only #23046 (Phase 2) : plus de DELETE WHERE xuid (vecteur ART sur
+	// PK + idx_pssv2). On INSÈRE une row sentinelle is_reset=TRUE par (xuid,
+	// playlist_group) existant ; la vue player_skill_state_v2_latest (WHERE NOT
+	// is_reset) masque alors le groupe → LoadState renvoie nil → le replay
+	// re-seed depuis les priors. now() garantit written_at postérieur aux états
+	// précédents. Si le joueur n'a aucun état, le SELECT est vide (no-op correct).
+	if _, err := sharedDB.ExecContext(ctx, `
+		INSERT INTO player_skill_state_v2
+			(xuid, playlist_group, mu, sigma, experience, written_at, is_reset)
+		SELECT xuid, playlist_group, 0, 0, 0, now(), TRUE
+		FROM player_skill_state_v2_latest WHERE xuid = ?`, xuid); err != nil {
 		return 0, fmt.Errorf("RecomputeLUSRCanonicalForPlayer reset watermark: %w", err)
 	}
 	n, err := RunLUSRV2ShadowOwnerOnly(ctx, playerDB, sharedDB, xuid)

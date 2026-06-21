@@ -325,8 +325,13 @@ func InsertWeaponKills(ctx context.Context, db *sql.DB, matchID, xuid string, at
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	if _, err := tx.ExecContext(ctx, `DELETE FROM weapon_kills WHERE match_id = ? AND xuid = ?`, matchID, xuid); err != nil {
-		return fmt.Errorf("InsertWeaponKills delete: %w", err)
+	// Append-only #23046 (Phase 2) : plus de DELETE WHERE (match_id,xuid) sur idx_wk
+	// (vecteur ART, DB shared multi-writer). Chaque write alloue UNE génération
+	// (weapon_kills_generation_seq) partagée par tous les kills du (match,xuid) ; la
+	// vue v_weapon_kills ne lit que la génération MAX → supersède l'ancienne.
+	var gen int64
+	if err := tx.QueryRowContext(ctx, `SELECT nextval('weapon_kills_generation_seq')`).Scan(&gen); err != nil {
+		return fmt.Errorf("InsertWeaponKills gen(%s,%s): %w", matchID, xuid, err)
 	}
 
 	for _, r := range attrs {
@@ -334,11 +339,11 @@ func InsertWeaponKills(ctx context.Context, db *sql.DB, matchID, xuid string, at
 			INSERT INTO weapon_kills (
 				match_id, xuid, time_ms, weapon_id, reconciled_as,
 				delta_ms, confidence, attribution_path,
-				swap_detected, delayed_damage, player_index
-			) VALUES (?, ?, ?, CAST(? AS UBIGINT), CAST(? AS UBIGINT), ?, ?, ?, ?, ?, ?)`,
+				swap_detected, delayed_damage, player_index, generation_id
+			) VALUES (?, ?, ?, CAST(? AS UBIGINT), CAST(? AS UBIGINT), ?, ?, ?, ?, ?, ?, ?)`,
 			matchID, xuid, r.TimeMS, ubigintArg(r.WeaponID), ubigintArg(r.ReconciledAs),
 			r.DeltaMS, r.Confidence, r.AttributionPath,
-			r.SwapDetected, r.DelayedDamage, r.PlayerIndex,
+			r.SwapDetected, r.DelayedDamage, r.PlayerIndex, gen,
 		); err != nil {
 			return fmt.Errorf("InsertWeaponKills insert: %w", err)
 		}
@@ -382,12 +387,19 @@ func MarkWeaponKillsDone(ctx context.Context, db *sql.DB, matchID string, noFilm
 // Personal score awards writes
 // ──────────────────────────────────────────────────────────────────────────────
 
-// InsertPersonalScoreAwards remplace atomiquement les awards existants pour
-// (matchID, xuid) dans player.personal_score_awards. Pattern identique à
-// InsertWeaponKills : DELETE puis INSERT batch dans une transaction.
+// InsertPersonalScoreAwards remplace l'ENSEMBLE des awards d'un (matchID, xuid)
+// par la nouvelle extraction, en APPEND-ONLY (#23046, Phase 2 — plus de
+// DELETE+INSERT, vecteur ART sur les 4 index idx_psa_*).
 //
-// Idempotent : ré-exécuter pour le même (matchID, xuid) écrase les rows
-// précédentes, ce qui est attendu pour réparer une extraction défaillante.
+// Sémantique REPLACE préservée sans mutation : chaque appel alloue UN
+// generation_id (séquence psa_generation_seq, partagé par tout le batch) et
+// INSÈRE pur. La vue personal_score_awards_latest ne lit que la génération MAX
+// par (match_id,xuid) — donc cette extraction supersède la précédente.
+// Extraction vide (clear) : on INSÈRE un TOMBSTONE (is_tombstone=TRUE) ; la vue
+// (filtre NOT is_tombstone) ne retourne alors rien pour ce (match,xuid).
+//
+// Idempotent au sens lecture : ré-exécuter alloue une nouvelle génération
+// identique ; la table physique grossit (append-only) mais _latest est stable.
 func InsertPersonalScoreAwards(ctx context.Context, db *sql.DB, matchID, xuid string, rows []PersonalScoreAwardRow) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -395,15 +407,27 @@ func InsertPersonalScoreAwards(ctx context.Context, db *sql.DB, matchID, xuid st
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	if _, err := tx.ExecContext(ctx, `DELETE FROM personal_score_awards WHERE match_id = ? AND xuid = ?`, matchID, xuid); err != nil {
-		return fmt.Errorf("InsertPersonalScoreAwards delete(%s,%s): %w", matchID, xuid, err)
+	var gen int64
+	if err := tx.QueryRowContext(ctx, `SELECT nextval('psa_generation_seq')`).Scan(&gen); err != nil {
+		return fmt.Errorf("InsertPersonalScoreAwards gen(%s,%s): %w", matchID, xuid, err)
+	}
+	if len(rows) == 0 {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO personal_score_awards
+				(match_id, xuid, award_name, generation_id, is_tombstone)
+			VALUES (?, ?, '', ?, TRUE)`,
+			matchID, xuid, gen,
+		); err != nil {
+			return fmt.Errorf("InsertPersonalScoreAwards tombstone(%s,%s): %w", matchID, xuid, err)
+		}
+		return tx.Commit()
 	}
 	for _, r := range rows {
 		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO personal_score_awards
-				(match_id, xuid, award_name, award_category, award_count, award_score)
-			VALUES (?, ?, ?, ?, ?, ?)`,
-			r.MatchID, r.XUID, r.AwardName, r.AwardCategory, r.AwardCount, r.AwardScore,
+				(match_id, xuid, award_name, award_category, award_count, award_score, generation_id)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			r.MatchID, r.XUID, r.AwardName, r.AwardCategory, r.AwardCount, r.AwardScore, gen,
 		); err != nil {
 			return fmt.Errorf("InsertPersonalScoreAwards insert(%s,%s): %w", matchID, xuid, err)
 		}

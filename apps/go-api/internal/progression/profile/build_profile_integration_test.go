@@ -65,6 +65,8 @@ func setupProfileEnv(t *testing.T) *duckdb.PlayerDB {
 	// schema géré par sync.EnsurePlayerSchema). On le crée à la main pour les
 	// tests qui consomment ce qui sera la source des axes radar enrichis
 	// par awards.toml (V2 §2).
+	// Append-only #23046 (Phase 2) : born append-only (generation_id + is_tombstone) ;
+	// les readers (applyAwardsRadarAxes) lisent la vue personal_score_awards_latest.
 	if _, err := player.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS personal_score_awards (
 			id             INTEGER,
@@ -73,10 +75,19 @@ func setupProfileEnv(t *testing.T) *duckdb.PlayerDB {
 			award_name     VARCHAR NOT NULL,
 			award_category VARCHAR,
 			award_count    INTEGER DEFAULT 1,
-			award_score    INTEGER DEFAULT 0
+			award_score    INTEGER DEFAULT 0,
+			generation_id  BIGINT NOT NULL DEFAULT 0,
+			is_tombstone   BOOLEAN DEFAULT FALSE
 		)
 	`); err != nil {
 		t.Fatalf("create personal_score_awards: %v", err)
+	}
+	if _, err := player.Exec(ctx, `CREATE OR REPLACE VIEW personal_score_awards_latest AS
+		SELECT * EXCLUDE (rk) FROM (
+			SELECT *, DENSE_RANK() OVER (PARTITION BY match_id, xuid ORDER BY generation_id DESC) AS rk
+			FROM personal_score_awards)
+		WHERE rk = 1 AND NOT is_tombstone`); err != nil {
+		t.Fatalf("create personal_score_awards_latest view: %v", err)
 	}
 
 	pdb := &duckdb.PlayerDB{

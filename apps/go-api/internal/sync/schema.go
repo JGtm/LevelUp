@@ -21,6 +21,7 @@ import (
 // Portage de SYNC_SCHEMA_DDL (_engine_schema.py).
 const playerSchemaSQL = `
 CREATE SEQUENCE IF NOT EXISTS personal_score_awards_id_seq;
+CREATE SEQUENCE IF NOT EXISTS psa_generation_seq START 1;
 CREATE TABLE IF NOT EXISTS personal_score_awards (
     id         INTEGER   PRIMARY KEY DEFAULT nextval('personal_score_awards_id_seq'),
     match_id   VARCHAR   NOT NULL,
@@ -29,11 +30,20 @@ CREATE TABLE IF NOT EXISTS personal_score_awards (
     award_category VARCHAR,
     award_count INTEGER  DEFAULT 1,
     award_score INTEGER  DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- APPEND-ONLY (campagne ART #23046, Phase 2). Plus de DELETE+INSERT sur les 4
+    -- index ART. Chaque ecriture INSERE pur avec UN generation_id (sequence
+    -- psa_generation_seq, partage par le batch) + written_at + is_tombstone.
+    -- Lecture via personal_score_awards_latest (DENSE_RANK, generation MAX,
+    -- tombstones exclus). Detail dans steps_player_append_only_personal_score_awards.go
+    generation_id BIGINT NOT NULL DEFAULT 0,
+    written_at TIMESTAMP DEFAULT now(),
+    is_tombstone BOOLEAN DEFAULT FALSE
 );
 CREATE INDEX IF NOT EXISTS idx_psa_match    ON personal_score_awards(match_id);
 CREATE INDEX IF NOT EXISTS idx_psa_xuid     ON personal_score_awards(xuid);
 CREATE INDEX IF NOT EXISTS idx_psa_category ON personal_score_awards(award_category);
+CREATE INDEX IF NOT EXISTS idx_psa_gen      ON personal_score_awards(match_id, xuid, generation_id);
 
 -- player_match_enrichment : APPEND-ONLY (campagne ART #23046, 2026-06-21). La
 -- table la PLUS écrite du projet (écritures incrémentales partielles perf/engagement/
@@ -405,6 +415,19 @@ func OpenPlayerDB(path string) (*duckdbpkg.DB, error) {
 	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(handle.SQLDb()); err != nil {
 		handle.Close()
 		return nil, fmt.Errorf("OpenPlayerDB append-only pme %s: %w", path, err)
+	}
+	// Append-only #23046 (Phase 2) : idem pour personal_score_awards — garantir la
+	// vue personal_score_awards_latest + la conversion generation_id. Sans cela un
+	// reader _latest casserait sur une player DB neuve. Idempotent.
+	if err := migration.EnsurePersonalScoreAwardsAppendOnly(handle.SQLDb()); err != nil {
+		handle.Close()
+		return nil, fmt.Errorf("OpenPlayerDB append-only psa %s: %w", path, err)
+	}
+	// Append-only #23046 (Phase 2) : idem pour match_citations — garantir la vue
+	// match_citations_latest + la conversion generation_id. Idempotent.
+	if err := migration.EnsureMatchCitationsAppendOnly(handle.SQLDb()); err != nil {
+		handle.Close()
+		return nil, fmt.Errorf("OpenPlayerDB append-only mc %s: %w", path, err)
 	}
 	return handle, nil
 }

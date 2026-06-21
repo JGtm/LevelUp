@@ -247,11 +247,18 @@ func persistCitations(ctx context.Context, tx *sql.Tx, rows []CitationInsert) er
 	if len(rows) == 0 {
 		return nil
 	}
+	// Append-only #23046 (Phase 2) : alloue UNE génération partagée par le batch
+	// (match_citations_generation_seq) ; la vue match_citations_latest ne lit que
+	// la génération MAX par match_id. Plus de PK composite ni ON CONFLICT.
+	var gen int64
+	if err := tx.QueryRowContext(ctx, `SELECT nextval('match_citations_generation_seq')`).Scan(&gen); err != nil {
+		return fmt.Errorf("persist: match_citations generation: %w", err)
+	}
 	for _, c := range rows {
 		_, err := tx.ExecContext(ctx, `
-			INSERT INTO match_citations (match_id, citation_name_norm, value)
-			VALUES (?, ?, ?)`,
-			c.MatchID, c.CitationNameNorm, c.Value,
+			INSERT INTO match_citations (match_id, citation_name_norm, value, generation_id)
+			VALUES (?, ?, ?, ?)`,
+			c.MatchID, c.CitationNameNorm, c.Value, gen,
 		)
 		if err != nil {
 			return fmt.Errorf("persist: INSERT match_citations %s/%s: %w",
@@ -265,12 +272,20 @@ func persistPersonalScoreAwards(ctx context.Context, tx *sql.Tx, rows []Personal
 	if len(rows) == 0 {
 		return nil
 	}
+	// Append-only #23046 (Phase 2) : alloue UNE génération partagée par le batch
+	// (psa_generation_seq) ; la vue personal_score_awards_latest ne lit que la
+	// génération MAX par (match_id,xuid). Sans ce marqueur, re-soumettre le même
+	// match dupliquerait les awards (le persister fait déjà un INSERT pur).
+	var gen int64
+	if err := tx.QueryRowContext(ctx, `SELECT nextval('psa_generation_seq')`).Scan(&gen); err != nil {
+		return fmt.Errorf("persist: psa generation: %w", err)
+	}
 	for _, a := range rows {
 		_, err := tx.ExecContext(ctx, `
 			INSERT INTO personal_score_awards
-				(match_id, xuid, award_name, award_category, award_count, award_score)
-			VALUES (?, ?, ?, ?, ?, ?)`,
-			a.MatchID, a.XUID, a.AwardName, a.AwardCategory, a.AwardCount, a.AwardScore,
+				(match_id, xuid, award_name, award_category, award_count, award_score, generation_id)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			a.MatchID, a.XUID, a.AwardName, a.AwardCategory, a.AwardCount, a.AwardScore, gen,
 		)
 		if err != nil {
 			return fmt.Errorf("persist: INSERT personal_score_awards %s/%s/%s: %w",

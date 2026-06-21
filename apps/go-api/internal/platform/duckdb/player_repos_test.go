@@ -269,7 +269,19 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 		`CREATE OR REPLACE VIEW player_csr_snapshots_latest AS
 			SELECT * FROM player_csr_snapshots
 			QUALIFY ROW_NUMBER() OVER (PARTITION BY playlist_id, season_id ORDER BY written_at DESC, id DESC) = 1`,
-		`CREATE TABLE match_citations (match_id VARCHAR, citation_name_norm VARCHAR, value INTEGER)`,
+		// match_citations : append-only GÉNÉRATION (#23046 Phase 2) — generation_id
+		// + vue _latest (DENSE_RANK par match_id). Pas de colonne id en fixture pour
+		// préserver les INSERT positionnels VALUES (match_id, citation_name_norm,
+		// value). Les readers (queries_citations, home_citations) lisent _latest.
+		`CREATE SEQUENCE IF NOT EXISTS match_citations_generation_seq START 1`,
+		`CREATE TABLE match_citations (
+			match_id VARCHAR, citation_name_norm VARCHAR, value INTEGER,
+			generation_id BIGINT NOT NULL DEFAULT 0, written_at TIMESTAMP DEFAULT now())`,
+		`CREATE OR REPLACE VIEW match_citations_latest AS
+			SELECT * EXCLUDE (rk) FROM (
+				SELECT *, DENSE_RANK() OVER (PARTITION BY match_id ORDER BY generation_id DESC) AS rk
+				FROM match_citations)
+			WHERE rk = 1`,
 		`CREATE TABLE media_files (
 			file_path VARCHAR PRIMARY KEY, file_name VARCHAR, kind VARCHAR,
 			thumbnail_path VARCHAR,
@@ -342,7 +354,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			[]interface{}{"m1", "CSR", 1250.5, 50.0, "Gold", "Or", 3, "Gold 3", nil, "ranked", nil, "2025-01-10 14:00:00+00", "2025-01-10 14:00:00+00", "2025-01-10 14:00:00+00"}},
 		{`INSERT INTO match_skill_rank VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			[]interface{}{"m2", "LUSR", 1750.0, 40.0, "Platinum", "Platine", 5, "Platinum V", 15.0, "social", nil, "2025-01-11 14:00:00+00", "2025-01-11 14:00:00+00", "2025-01-11 14:00:00+00"}},
-		{`INSERT INTO match_citations VALUES (?,?,?)`,
+		{`INSERT INTO match_citations (match_id, citation_name_norm, value) VALUES (?,?,?)`,
 			[]interface{}{"m1", "killing_spree", 3}},
 		{`INSERT INTO media_files (file_path,file_name,kind,mtime,status) VALUES (?,?,?,?,?)`,
 			[]interface{}{"/clips/g1.mp4", "g1.mp4", "clip", "2025-01-10 15:01:00+00", "active"}},
