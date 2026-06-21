@@ -1,5 +1,13 @@
 # PLAN — Match View Halo 5 (G9 / S.8)
 
+> STATUT (2026-06-21) : **LIVRÉ**. Part A (`LoadMatchDetail` carnage→canonical,
+> commit 57ced69b7) + Part B (voie canonique service + routage repo-first +
+> capability `match.detail.core=supported` + câblage viewer, commit 10ebc92c1).
+> La page vue-match est fonctionnelle pour h5 (header + scoreboard + summary,
+> `IsPartial` pour les onglets riches). HINF byte-identique (voie repo conservée).
+> V11 (WaypointURL HINF figée) devient MOOT pour h5 : la voie canonique ne pose
+> pas de WaypointURL (pas de page Waypoint match h5) ; seule la voie repo HINF la pose.
+
 > Rend la page vue-match fonctionnelle pour h5. Aujourd'hui `match.detail.core =
 > not_exposed` (capabilities.toml h5) + `MatchViewService` lit le repo DuckDB
 > (vide pour h5 live-only) → page vide. Stratégie : payload CORE depuis la carnage
