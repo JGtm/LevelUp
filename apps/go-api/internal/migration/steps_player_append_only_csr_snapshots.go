@@ -26,7 +26,7 @@ func applyAppendOnlyPlayerCSRSnapshots(db *sql.DB) error {
 	return applyAppendOnlyRebuild(db, appendOnlyRebuild{
 		Table:         "player_csr_snapshots",
 		IDSeq:         "pcs_seq",
-		SyntheticCols: "CURRENT_TIMESTAMP AS written_at",
+		SyntheticCols: synthWrittenAt,
 		PostSwap: []string{
 			`ALTER TABLE player_csr_snapshots ALTER COLUMN written_at SET DEFAULT now()`,
 			`CREATE INDEX IF NOT EXISTS idx_pcs_lookup ON player_csr_snapshots(playlist_id, season_id, written_at)`,

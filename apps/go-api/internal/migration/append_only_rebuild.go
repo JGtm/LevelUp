@@ -36,6 +36,10 @@ import (
 	"strings"
 )
 
+// synthWrittenAt — colonne synthétique d'horloge commune aux conversions « simples »
+// (mécanisme written_at). Figée au moment de la migration pour les rows existantes.
+const synthWrittenAt = "CURRENT_TIMESTAMP AS written_at"
+
 // appendOnlyRebuild décrit la conversion append-only d'une table par swap CTAS.
 // Le SQL spécifique à chaque table (colonnes synthétiques, defaults, index, vue)
 // est passé verbatim ; la mécanique (TX, garde, recoverOrphan, PK) est commune.
@@ -212,12 +216,13 @@ func rebuildAppendOnlyTx(ctx context.Context, db *sql.DB, spec appendOnlyRebuild
 			spec.Table, rebuilt, before)
 	}
 
-	stmts := []string{
+	stmts := make([]string, 0, 4+len(spec.PostSwap))
+	stmts = append(stmts,
 		fmt.Sprintf(`DROP TABLE %s`, spec.Table),
 		fmt.Sprintf(`ALTER TABLE %s__appendonly RENAME TO %s`, spec.Table, spec.Table),
 		fmt.Sprintf(`ALTER TABLE %s ADD PRIMARY KEY (id)`, spec.Table),
 		fmt.Sprintf(`ALTER TABLE %s ALTER COLUMN id SET DEFAULT nextval('%s')`, spec.Table, spec.IDSeq),
-	}
+	)
 	stmts = append(stmts, spec.PostSwap...)
 	for _, stmt := range stmts {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
