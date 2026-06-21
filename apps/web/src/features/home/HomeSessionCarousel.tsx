@@ -87,7 +87,10 @@ interface HomeSessionCarouselProps {
   onIdxChange: (idx: number) => void
   variant: 'solo' | 'squad'
   playerSlug: string
-  onNavigate: (sessionLabel: string) => void
+  /** Navigue vers la page de stats du contexte (solo → Timeseries, squad → /squad).
+   *  `teammates` = coéquipiers de la session (ignoré côté solo, utilisé côté squad
+   *  pour pré-sélectionner la composition). */
+  onNavigate: (sessionLabel: string, teammates: string[]) => void
 }
 
 export function HomeSessionCarousel({
@@ -183,8 +186,8 @@ export function HomeSessionCarousel({
         {session ? (
           <button
             type="button"
-            className={`${cardClass} w-full cursor-pointer text-left hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
-            onClick={() => onNavigate(session.session_label)}
+            className={`${cardClass} w-full cursor-pointer text-left border border-transparent transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+            onClick={() => onNavigate(session.session_label, session.teammates ?? [])}
             aria-label={`Voir le détail de la session ${session.session_label}`}
           >
             {/* Scores de performance */}

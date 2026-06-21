@@ -58,6 +58,15 @@ type HomeService struct {
 	// live + cache TTL 24h) sont servies depuis des fixtures embarquées au lieu de
 	// renvoyer vide. Cf. home_service_demo.go.
 	demoMode bool
+	// sessionTeammatesLoader (optionnel) : charge les coéquipiers (même équipe que
+	// le joueur principal) sur une liste de matchs, pour renseigner
+	// SessionSummaryItem.Teammates des sessions escouade (deep-link card → /squad).
+	// Implémenté par *duckdb.SquadRepo. nil → Teammates restent vides (dégradation).
+	// Cf. home_squad_session_teammates.go.
+	sessionTeammatesLoader mainTeamParticipantsLoader
+	// sessionFriendsResolver (optionnel) : restreint les coéquipiers de session aux
+	// amis configurés (settings.friend_gamertags). nil → tous les coéquipiers alliés.
+	sessionFriendsResolver FriendGamertagsResolver
 }
 
 // NewHomeService crÃ©e un HomeService avec le repository et le provider Halo.
@@ -331,6 +340,9 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 	squadSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, true, locale)
 	soloSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, false, 20, locale)
 	squadSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, true, 20, locale)
+	// Coéquipiers des sessions escouade (best-effort) : alimente le deep-link
+	// card escouade → /squad (pré-sélection de la composition). No-op si non câblé.
+	s.enrichSquadSessionsTeammates(ctx, squadSessions, d.canonicalRows)
 
 	if d.favWeaponName != "" {
 		hero.KPIs.FavoriteWeaponName = d.favWeaponName
