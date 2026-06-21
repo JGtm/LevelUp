@@ -20,7 +20,7 @@ schema_version = 1
 
 [capabilities]
 "match.history"          = "not_exposed" # données OK (/matches) mais LoadMatchSummaries stub (Phase 2 : history page-based)
-"match.detail.core"      = "not_exposed" # carnage = 2e appel (Phase 2)
+"match.detail.core"      = "supported"   # CÂBLÉ : LoadMatchDetail (carnage → canonical.MatchDetail), voie canonique Match View
 "match.scoreboard.extra" = "not_exposed" # carnage étendu (Phase 2)
 "match.skill.snapshot"   = "not_exposed" # CSR pré/post par match = carnage Arena (Phase 2)
 "career.progression"     = "supported"   # CÂBLÉ : LoadCareerSnapshot (Spartan Rank/CSR via service record)

@@ -68,6 +68,22 @@ function translatePartialReason(code: string, locale: string): string {
       return isEN
         ? 'Medals and commendations are unavailable'
         : "Les médailles et citations ne sont pas disponibles"
+    case 'combat_narrative_unavailable':
+      return isEN
+        ? 'Combat charts (Cadence, Dominance, Frag diff) are not available for this match'
+        : "Les graphes de combat (Cadence, Dominance, Frags différentiel) ne sont pas disponibles pour ce match"
+    case 'citations_unavailable':
+      return isEN
+        ? 'Citations are not available for this match'
+        : "Les citations ne sont pas disponibles pour ce match"
+    case 'media_unavailable':
+      return isEN
+        ? 'Media (captures, clips) are not available for this match'
+        : "Les médias (captures, clips) ne sont pas disponibles pour ce match"
+    case 'accuracy_damage_taken_native_unavailable':
+      return isEN
+        ? 'Accuracy and damage taken are not provided for this match'
+        : "La précision et les dégâts subis ne sont pas fournis pour ce match"
     default:
       return code
   }

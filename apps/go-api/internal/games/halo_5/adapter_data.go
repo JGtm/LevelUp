@@ -140,14 +140,15 @@ func (a *DataAdapter) Capabilities() games.CapabilityMap {
 
 // fallbackCapabilities est la CapabilityMap par defaut (filet boot si capabilities.toml
 // n'a pas pu etre injecte). HONNETE Phase 1a : seules les methodes REELLEMENT cablees
-// sur le client live sont exposees. career.progression = supported (LoadCareerSnapshot).
-// Tout le reste = not_exposed tant que la methode est un stub (remonte en Phase 2 a
-// mesure du cablage : match.history, match.detail.core, scoreboard, timeseries...).
+// sur le client live sont exposees. career.progression = supported (LoadCareerSnapshot) ;
+// match.detail.core = supported (LoadMatchDetail, carnage → canonical, voie canonique
+// Match View G9). Le reste = not_exposed tant que la methode est un stub (remonte a
+// mesure du cablage : match.history, scoreboard, timeseries...).
 // Parite avec config/titles/halo_5/mappings/capabilities.toml (capabilities_parity_test).
 func fallbackCapabilities() games.CapabilityMap {
 	return games.CapabilityMap{
 		games.CapMatchHistory:       games.CapNotExposed,
-		games.CapMatchDetailCore:    games.CapNotExposed,
+		games.CapMatchDetailCore:    games.CapSupported, // CÂBLÉ : LoadMatchDetail (carnage → canonical.MatchDetail)
 		games.CapScoreboardExtra:    games.CapNotExposed,
 		games.CapMatchSkillSnapshot: games.CapNotExposed,
 		games.CapCareerProgression:  games.CapSupported,

@@ -63,7 +63,11 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 	}
 	svc := service.NewMatchViewService(duckdb.NewMatchViewRepo(pdb, pdb.XUID), pdb.XUID)
 	if a := r.dataAdapterForPDB(pdb); a != nil {
-		svc = svc.WithDataAdapter(a)
+		// Voie canonique (repo-first / adapter-fallback) : le viewer gamertag est
+		// requis par LoadMatchDetail des titres GAMERTAG-keyés (Halo 5, Player.Xuid
+		// null). Posé sur le service → injecté dans le ctx avant l'appel adapter.
+		// No-op pour un titre xuid-keyé (HINF n'emprunte pas la voie canonique).
+		svc = svc.WithDataAdapter(a).WithViewerGamertag(pdb.Gamertag)
 	}
 	svc = svc.WithCitationsRepo(duckdb.NewCitationsRepo(pdb)).
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
