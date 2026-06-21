@@ -6,6 +6,8 @@
 
 **Reste** : récupérer les noms de contenu content-hacs H5 (médailles/CSR) + l'endpoint du **niveau SR du joueur** (consommateur manquant de B-SR) via cryptum ; puis fetchers (A2) + seed B-SR.
 
+**MAJ (réf cryptum Alexis-Bize/cryptum-halodotapi + re-sonde)** : cryptum H5 ContentHacs n'expose AUCUN endpoint médaille/CSR/SR-joueur (`/contents/{type}` arbitraire ; `HALO_PLAYER.SPARTAN`=PNG). ⭐ MAIS le **niveau SR du joueur est DÉJÀ dans la carnage** : `CARNAGE_DETAIL.PlayerStats[].XpInfo = {SpartanRank, TotalXP, SpartanRankMatchXPScalar, ...}` par match (JGtm SR=111, TotalXP=3.9M). ⇒ **B-SR débloqué end-to-end** (référentiel CSV en main + niveau joueur dans la carnage déjà fetchée + affichage texte « SR n »), zéro blocage live restant. Médailles toujours bloquées (nom de contenu introuvable). Plan d'implémentation B-SR détaillé dans `.ai/PLAN_H5_ASSETS.md`.
+
 ## [2026-06-21] Halo 5 assets — scoping (workflow) + KDA vérifié + données SR préservées — Complété (scoping)
 
 **KDA (correction demandée user)** : vérifié — le code implémente DÉJÀ `((k+a/3)−d)/games` aux 4 sites (carrière `mapping_servicerecord.go:88` divise par games ; per-match `mapping_carnage.go` stocke le numérateur games=1 ; `compare_repo` `AVG(mp.kda)` ; `explorer` `Σ/sampleSize`). Aucun bug. Commentaire de `mapping_carnage.go` aligné pour énoncer la formule canonique explicitement.

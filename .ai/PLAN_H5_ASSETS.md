@@ -68,8 +68,35 @@ Live JGtm, host résolu via EndpointResolver (`gamecms=content-hacs.svc`, `prefi
 **Conclusion A1** : le mécanisme `content-hacs/contents/{Name}` fonctionne (SR=200) mais les
 NOMS de contenu médailles/CSR/commendations sont à récupérer de la **référence cryptum/HaloDotAPI**
 (ou des posts den.dev équivalents au SR manifest). Le path UGC maps n'est pas `/h5/maps`.
-Prochaine recherche = lister les noms de contenu content-hacs H5 (cryptum
-`modules/api/endpoints/H5/ContentHacs`) + l'endpoint du **niveau SR du joueur** (consommateur B-SR).
+
+## DÉCOUVERTE (réf cryptum Alexis-Bize/cryptum-halodotapi + re-sonde, 2026-06-21)
+
+**cryptum H5 ContentHacs** n'expose que REQ/Emblem/Hopper/WeaponSkin/GameVariantDefinition/
+GameBaseVariant/MOTD via `/contents/{type}` (+ `CUSTOM_TYPE` = type arbitraire). **AUCUN endpoint
+médaille/CSR/SR-joueur** dans cryptum. `HALO_PLAYER.SPARTAN` (`/h5/profiles/{p}/spartan`) = un
+**PNG** (rendu spartan), pas le SR.
+
+**⭐ B-SR DÉBLOQUÉ — le niveau SR du joueur est DÉJÀ dans la carnage** : `CARNAGE_DETAIL`
+`PlayerStats[].XpInfo` porte, PAR MATCH et PAR JOUEUR :
+`{PrevSpartanRank, SpartanRank, PrevTotalXP, TotalXP, SpartanRankMatchXPScalar, ...}`
+(ex. JGtm : SpartanRank=111, TotalXP=3 908 120). La carnage est DÉJÀ fetchée à l'ingestion.
+⇒ le SR du joueur (niveau courant = XpInfo du match le plus récent) + son XP cumulé sont
+disponibles SANS appel supplémentaire. **Plus aucun blocage live pour le SR.**
+
+**Implémentation B-SR (end-to-end, statique + données déjà fetchées)** :
+1. Référentiel : seed `career_ranks`(rank_id, xp_required) + `career_rank_translations`(SR{n}
+   EN/FR) dans la migration metadata h5, XP depuis `.ai/refs/h5_spartan_rank_xp.csv`.
+2. Ingestion : extraire `XpInfo.SpartanRank` + `TotalXP` du joueur (viewer) depuis la carnage
+   (`mapping_carnage`) → stocker (player_match_enrichment ou match_participants).
+3. Lecture carrière : exposer le SR courant (TotalXP le plus récent → SpartanRank) dans
+   `CareerSnapshot` (CurrentRank=rank_id, CurrentXP=TotalXP, NextRank+XPForNextRank via le
+   RankCatalog) + brancher le RankCatalog h5 (`server_titles_additional.go:82`, charger depuis
+   la metaDB h5 au lieu de `ranks=nil`).
+4. Affichage : « SR 111 » en texte (pas d'image, by design).
+
+**Médailles** : toujours bloqué — le nom de contenu content-hacs médailles H5 reste introuvable
+(pas dans cryptum ; den.dev n'a documenté que le SR). Pistes : énumérer les contenus content-hacs,
+ou les noms FR/IDs via les `MedalStatCounts` de la carnage (IDs) + manifest à localiser.
 
 ## Track A — fetchers LIVE (après une sonde de confirmation)
 
