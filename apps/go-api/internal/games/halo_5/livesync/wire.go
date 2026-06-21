@@ -47,7 +47,9 @@ func RunnerForTitle(slug string, cfg *config.AppConfig, gamertag, xuid string) *
 // = xuid db_profiles (self autoritatif, pas de PeopleHub) ; persist/known-set sur le
 // shared h5 (provider nil — legacy, sûr).
 func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
-	sharedPath := titlePkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(halo5.TitleSlug)
+	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	sharedPath := pr.SharedDBPath(halo5.TitleSlug)
+	playerPath := pr.PlayerDBPath(halo5.TitleSlug, gamertag)
 	logger := slog.Default()
 	return NewRunner(Deps{
 		NewSource: halo5.NewCaptureSource,
@@ -58,6 +60,11 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 		},
 		PersistAll: func(ctx context.Context, batches []*persist.MatchBatch) ([]*persist.MatchBatch, []string) {
 			return persistBatches(ctx, sharedPath, batches)
+		},
+		// Hook CSR post-sync (G4 Phase 1) : persiste le CSR arena par playlist dans
+		// la player DB h5 (créée à la volée). Réutilise la source live du runner.
+		PersistCSR: func(ctx context.Context, src halo5.CaptureSource) (int, error) {
+			return persistArenaCSR(ctx, src, playerPath, gamertag)
 		},
 	}, logger)
 }

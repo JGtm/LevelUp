@@ -27,6 +27,11 @@ steam_app_id = ""
 # (la sonde montrait MeasurementMatchesLeft:7 sur 10). Configurable par titre (vs
 # Halo Infinite = 5 depuis Season 3). Consommé par l'adapter h5 pour l'état placement.
 placement_matches = 10
+# Saison CSR FIXE (G4 Phase 1). Le service record arena Halo 5 est un agrégat
+# LIFETIME sans saison → une seule « saison » virtuelle. Aligne LECTURE
+# (CSRSeasonIDForTitle → GetCSRSnapshots WHERE season_id) et ÉCRITURE (sync h5
+# persiste player_csr_snapshots.season_id = "h5-lifetime"). Saisons réelles = Phase 2.
+csr_season_id = "h5-lifetime"
 # Coarse capabilities Halo 5 (cf. handoff §2). Données riches ; divergence =
 # vocab/échelle/natif. Exclus pour l'instant : firefight (Warzone FF, modèle != FF
 # HINF), forge/media (UGC HINF-shaped), world.leaderboard (scrape Waypoint HINF).

@@ -67,6 +67,7 @@ type titleManifestSection struct {
 	XboxTitleID      string   `toml:"xbox_title_id"`
 	SteamAppID       string   `toml:"steam_app_id"`
 	PlacementMatches int      `toml:"placement_matches"`
+	CSRSeasonID      string   `toml:"csr_season_id"`
 }
 
 // LoadTitleManifest charge le descripteur d'un titre depuis
@@ -109,6 +110,7 @@ func LoadTitleManifestFromBytes(path, slug string, raw []byte) (*TitleDescriptor
 		XboxTitleID:      strings.TrimSpace(doc.Title.XboxTitleID),
 		SteamAppID:       strings.TrimSpace(doc.Title.SteamAppID),
 		PlacementMatches: doc.Title.PlacementMatches,
+		CSRSeasonID:      strings.TrimSpace(doc.Title.CSRSeasonID),
 	}
 	if desc.Name == "" {
 		errs = append(errs, fmt.Errorf("[title].name manquant"))
