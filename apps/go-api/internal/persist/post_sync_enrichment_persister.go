@@ -50,6 +50,11 @@ func NewPostSyncEnrichmentPersister(db txBeginner) *PostSyncEnrichmentPersister 
 // propriétaire (append-only #23046). Sert AUSSI de whitelist anti SQL injection
 // (les noms sont concaténés dans la query). Doit rester aligné avec pmeColumnStage
 // de la migration (internal/migration/steps_player_append_only_match_enrichment.go).
+// stageEngagement : stage le plus fréquent (colonnes engagement). Constante pour
+// éviter la répétition du littéral (goconst). NOTE factorisation : ce mapping
+// duplique pmeColumnStage (migration) — à unifier en single source.
+const stageEngagement = "engagement"
+
 var enrichmentColumnStage = map[string]string{
 	"dominance_flag":              "dominance",
 	"performance_score":           "perf",
@@ -59,14 +64,14 @@ var enrichmentColumnStage = map[string]string{
 	"is_with_friends":             "friends",
 	"had_bot_teammate":            "bot",
 	"teammates_signature":         "teammates",
-	"engagement_score":            "engagement",
-	"engagement_score_brut":       "engagement",
-	"engagement_score_confidence": "engagement",
-	"engagement_pace_player":      "engagement",
-	"engagement_pace_team":        "engagement",
-	"engagement_pace_lobby":       "engagement",
-	"engagement_player_activity":  "engagement",
-	"mode_category":               "engagement",
+	"engagement_score":            stageEngagement,
+	"engagement_score_brut":       stageEngagement,
+	"engagement_score_confidence": stageEngagement,
+	"engagement_pace_player":      stageEngagement,
+	"engagement_pace_team":        stageEngagement,
+	"engagement_pace_lobby":       stageEngagement,
+	"engagement_player_activity":  stageEngagement,
+	"mode_category":               stageEngagement,
 }
 
 // deriveEnrichmentStage résout le `stage` commun d'un ensemble de colonnes.

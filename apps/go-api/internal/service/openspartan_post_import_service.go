@@ -149,6 +149,10 @@ func (s *OpenSpartanPostImportService) recomputeLUSR(
 	result.LUSRRecomputed = n
 }
 
+// stagePrimeEnrichment : libellé de l'étape « prime enrichment » dans les
+// PostImportError (constante pour éviter la répétition du littéral — goconst).
+const stagePrimeEnrichment = "prime_enrichment"
+
 // ensureEnrichmentRows primes player_match_enrichment with one baseline row
 // (stage='live') per imported match_id. Required because the recompute stages
 // (sessions, performance_score) source their work-list from PME rows.
@@ -165,7 +169,7 @@ func (s *OpenSpartanPostImportService) ensureEnrichmentRows(
 	existing := make(map[string]struct{}, len(matchIDs))
 	rows, err := playerDB.QueryContext(ctx, `SELECT match_id FROM player_match_enrichment_latest`)
 	if err != nil {
-		result.Errors = append(result.Errors, PostImportError{Stage: "prime_enrichment", Err: err.Error()})
+		result.Errors = append(result.Errors, PostImportError{Stage: stagePrimeEnrichment, Err: err.Error()})
 		s.log.Warn("post_import_prime_enrichment_load_failed", "err", err)
 		return
 	}
@@ -180,7 +184,7 @@ func (s *OpenSpartanPostImportService) ensureEnrichmentRows(
 	stmt, err := playerDB.PrepareContext(ctx,
 		`INSERT INTO player_match_enrichment (match_id, stage) VALUES (?, 'live')`)
 	if err != nil {
-		result.Errors = append(result.Errors, PostImportError{Stage: "prime_enrichment", Err: err.Error()})
+		result.Errors = append(result.Errors, PostImportError{Stage: stagePrimeEnrichment, Err: err.Error()})
 		s.log.Warn("post_import_prime_enrichment_prepare_failed", "err", err)
 		return
 	}
@@ -190,7 +194,7 @@ func (s *OpenSpartanPostImportService) ensureEnrichmentRows(
 			continue
 		}
 		if _, err := stmt.ExecContext(ctx, id); err != nil {
-			result.Errors = append(result.Errors, PostImportError{Stage: "prime_enrichment", MatchID: id, Err: err.Error()})
+			result.Errors = append(result.Errors, PostImportError{Stage: stagePrimeEnrichment, MatchID: id, Err: err.Error()})
 			s.log.Warn("post_import_prime_enrichment_exec_failed", "match_id", id, "err", err)
 			return
 		}

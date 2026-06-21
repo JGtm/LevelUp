@@ -11,11 +11,14 @@ import (
 // Centralisés ici pour réduire la duplication des littéraux dans les
 // migrations additives (cf. lint goconst).
 const (
-	colDouble   = "DOUBLE"
-	colFloat    = "FLOAT"
-	colInteger  = "INTEGER"
-	colSmallInt = "SMALLINT"
-	colVarchar  = "VARCHAR"
+	colDouble    = "DOUBLE"
+	colFloat     = "FLOAT"
+	colInteger   = "INTEGER"
+	colSmallInt  = "SMALLINT"
+	colVarchar   = "VARCHAR"
+	colTimestamp = "TIMESTAMP"
+	colTinyint   = "TINYINT"
+	colBoolean   = "BOOLEAN"
 )
 
 // bootCtx retourne le contexte racine utilise par les migrations DDL boot-time.
