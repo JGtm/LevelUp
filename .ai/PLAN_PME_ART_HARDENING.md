@@ -111,3 +111,54 @@ Le template `steps_player_append_only_match_skill_rank.go` fait DROP/RENAME/ADD 
 ## Pointeurs
 - Census/design/vérif brut (728k tokens, réutilisable) : workflow `pme-appendonly-census-design` (run wf_34f9440b-264), output sous `…/tasks/wkjz80ya6.output`.
 - Précédents à calquer : `steps_player_lusr_components_append_only.go`, `steps_shared_social_media_files_drop_filepath_unique.go` (migration transactionnelle + test, livrés ce cycle), `steps_player_rebuild_match_enrichment.go` (swap transactionnel).
+
+---
+
+## ANNEXE IMPLÉMENTATION (2026-06-21) — substrat LIVRÉ + recette writers turnkey
+
+### Substrat livré (commit `882aad112`, branche refactor/art-pme-appendonly) — ⚠️ NE PAS DÉPLOYER SEUL
+- Migration `player_append_only_match_enrichment_v1` (steps_player_append_only_match_enrichment.go) + vue `player_match_enrichment_latest` merge-on-read **par-groupe** PROUVÉE par 8 tests d'intégration CGO (merge partiel, NULL-reset, toggle booléen, fallback/override legacy, idempotence, orphan-recovery). Le design merge est VALIDÉ — le `buildPMELatestViewSQL()` du fichier est la référence (dédup par (match_id,stage) puis `CASE WHEN has_stage THEN valeur_stage ELSE legacy`).
+
+### ⚠️ La conversion writers/readers est ATOMIQUE (pas de chunks verts incrémentaux)
+Dès que le persister INSÈRE avec `stage`, les ~12 fixtures de test qui créent player_match_enrichment en DDL MANUEL (PK match_id, sans colonne `stage`) cassent (« no column stage ») — vérifié : convertir le seul persister casse ~7 tests sync (comeback/dominance). Donc migration + TOUS les writers + readers→_latest + TOUTES les fixtures doivent livrer en UN SEUL bloc cohérent. Lister les fixtures via `grep -rn "CREATE TABLE.*player_match_enrichment" --include=*_test.go` et les passer au schéma append-only (id + stage + written_at + colonnes) OU leur faire appliquer la migration (RunForDB TargetPlayer).
+
+### Recette persister (validée, prête à recoller) — minimise le ripple
+Dans `post_sync_enrichment_persister.go` : ajouter le map colonne→stage + dériver le stage (interface caller INCHANGÉE), puis BatchUpdateColumn/Multi → INSERT :
+```go
+var enrichmentColumnStage = map[string]string{
+  "performance_score":"perf","performance_chain":"perf","dominance_flag":"dominance",
+  "session_id":"session","session_label":"session","is_with_friends":"friends",
+  "had_bot_teammate":"bot","teammates_signature":"teammates",
+  "engagement_score":"engagement","engagement_score_brut":"engagement",
+  "engagement_score_confidence":"engagement","engagement_pace_player":"engagement",
+  "engagement_pace_team":"engagement","engagement_pace_lobby":"engagement",
+  "engagement_player_activity":"engagement","mode_category":"engagement",
+}
+// deriveEnrichmentStage(columns) → stage commun (erreur si mixte/inconnu).
+// BatchUpdateColumn : INSERT INTO pme (match_id, <col>, stage) VALUES (?,?,?)
+// BatchUpdateMulti  : INSERT INTO pme (match_id, <cols...>, stage) VALUES (?,...,?)
+// (id/written_at/created_at/updated_at via DEFAULT ; totalAffected = len(rows))
+```
+Les callers BatchUpdateMulti écrivent déjà des colonnes mono-stage (perf={score,chain}, session={id,label}, engagement={engagement_*}) → deriveEnrichmentStage OK sans toucher les callers.
+
+### Stage par writer (à appliquer dans le même bloc)
+- writes.go UpsertPlayerEnrichment (ON CONFLICT) → INSERT (match_id, teammates_signature, ...) stage='teammates'.
+- player_persister.go persistEnrichment (live, subset DYNAMIQUE) : décomposer en 1 INSERT par groupe présent dans EnrichmentRow (perf/engagement/session/teammates...), chacun avec son stage ; retirer la garde EXISTS(match_id). POINT DUR — vérifier ce que le caller live (engine_process_match/engine_fetch) peuple réellement.
+- engagement_score_repo.go SaveEngagementScore (UPDATE×2) → INSERT stage='engagement' (supprimer skip RowsAffected==0).
+- friends_recompute.go (UPDATE IN) → INSERT stage='friends' (valeur explicite TRUE/FALSE) ; delta lu sur _latest.
+- enrichments.go setHadBotFlag (UPDATE IN) → INSERT stage='bot' (valeur explicite) ; delta sur _latest.
+- convergence.go convergePSA (UPDATE) → INSERT stage='psa' ; le SELECT `psa_checked_at IS NULL` (convergence.go:88) → _latest (sinon re-fetch infini).
+- match_exclusion_repo.go ExcludeMatch (ON CONFLICT) → INSERT stage='exclusion' (explicite) ; loadExcludedPMERows → _latest.
+- comeback_postsync_persist.go : dominance via persister (stage='dominance') ; SUPPRIMER le seed INSERT OR IGNORE.
+- Supprimer stubs : ensure_enrichment_rows.go, fanout_repo.go InsertStubEnrichments, openspartan_post_import_service.go ensureEnrichmentRows (ON CONFLICT match_id casse).
+
+### Readers → vue _latest (BLOCKERS fan-out, cf. red-team)
+Tout `FROM/JOIN player_match_enrichment` qui attend 1 ligne/match → `player_match_enrichment_latest` : queries_career.go:35/66, queries_squad.go:102/342, queries_match.go:265/271, patterns_repo.go:188, shared_query_helpers.go:127 (hub), compare_repo.go, match_exclusion_repo.go:154, engagement_score_repo.go (3), invariants.go (×4 : COUNT==DISTINCT → _latest), deltaSessionAssignments (sessions_postsync_persist.go:76). Garde-fou : interdire `FROM/JOIN player_match_enrichment\b` (brut) hors writers+vue.
+
+### Réparateur + schémas + garde-fous
+- RebuildPlayerMatchEnrichmentART : si columnExists('id') → ADD PK(id) (pas match_id), recréer SEULEMENT idx_pme_match_lookup + la vue (sinon ré-introduit l'ART).
+- Patcher schema.go playerSchemaSQL + steps_player.go create_base_player_schema pour naître append-only (id+stage+written_at, pas de PK match_id).
+- no_art_patterns_test.go : player_match_enrichment → tablesProtegees (retirer de criticalMatchTables) + nouveau garde interdisant UPDATE/FROM brut.
+
+### Validation finale
+go test ./... vert + critère `engagement-coefs --all --with-scores --force` ×3 sans crash sur copie Madina/JGtm + EXPLAIN de la vue.
