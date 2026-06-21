@@ -19,7 +19,7 @@ import { staticAssetURL } from '@/lib/staticAssets'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { useCareerCSRs } from './queries'
-import { lusrChainLabel, LUSR_KNOWN_GROUPS } from './lusr-chains'
+import { lusrChainLabel, resolveLusrGroupsForDisplay } from './lusr-chains'
 
 interface Props {
   playerSlug: string
@@ -74,6 +74,7 @@ function deriveLatestLUSRByGroup(
 
 export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const t = (key: keyof typeof careerManifest) => careerManifest[key][locale]
   // Gating multi-titre (Phase 5) : colonne CSR ⇒ `ranked`, colonne LUSR ⇒ `lusr`.
   // NO-OP pour halo_infinite (déclare les deux). Si AUCUNE des deux capabilities,
@@ -88,6 +89,10 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
   const availableSeasons = csrData?.available_seasons ?? []
   const selectedSeason = season ?? csrData?.season_id ?? ''
   const lusrByGroup = lusrData ? deriveLatestLUSRByGroup(lusrData.checkpoints) : new Map<string, LusrCheckpoint>()
+  // Groupes affichés = UNION (connus du titre, ordre déclaré) + (groupes présents
+  // dans la donnée mais non connus, triés). HINF : ses 4 connus, inchangé. h5 :
+  // aucun connu → uniquement `h5_arena` (issu des checkpoints).
+  const lusrGroups = resolveLusrGroupsForDisplay(titleSlug, lusrByGroup.keys())
 
   if (!hasRanked && !hasLusr) return null
 
@@ -167,7 +172,7 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
               </p>
             </div>
             <ul className="space-y-2">
-              {LUSR_KNOWN_GROUPS.map((group) => {
+              {lusrGroups.map((group) => {
                 const cp = lusrByGroup.get(group)
                 return (
                   <li key={group} className="flex items-center gap-2">

@@ -1,3 +1,12 @@
+## [2026-06-21] G8 — groupes LUSR front title-aware (Halo 5 h5_arena) — Complété
+
+Le front itérait `LUSR_KNOWN_GROUPS` HINF figés (arena_slayer/objectif/btb/chaos) → la chaîne unique LUSR de Halo 5 (`h5_arena`) ne s'affichait nulle part + 3-4 lignes HINF « Non classé » parasites. Backend INCHANGÉ : les checkpoints h5 remontent déjà via le fallback `repo.GetLUSRHistory` (title-agnostic, lit `match_skill_rank.playlist_group = h5_arena`) ; capability `lusr` héritée → colonne affichée.
+
+- **`lusr-chains.ts`** : `LUSR_KNOWN_GROUPS_BY_TITLE` (map slug → groupes connus, seule clé `halo_infinite`) + `resolveLusrGroupsForDisplay(slug, dataGroups)` = UNION (connus du titre dans l'ordre, puis groupes présents dans la donnée triés). Titre absent de la map (h5) → connus=[] → affiche QUE les groupes data (`h5_arena`). `LUSR_KNOWN_GROUPS` conservé en alias (graphes/séries). Token `h5_arena: compare-a`.
+- **`CareerRankingBlock.tsx`** : itère `resolveLusrGroupsForDisplay(currentTitleSlug, lusrByGroup.keys())` ; slug via `useAppShellStore`.
+- **i18n** : `career.lusr.chain.h5_arena` (« Arène »/« Arena »), manifeste régénéré.
+- HINF byte-identique (test : 4 groupes connus + « Non classé » inchangés). typecheck/lint/vitest verts (26/26 career).
+
 ## [2026-06-21] G4 Phase 1 — CSR par playlist Halo 5 persisté au sync (player DB) — Complété
 
 Halo 5 a un CSR PAR PLAYLIST (`H5ArenaStats.ArenaPlaylistStats[]`) DISPONIBLE mais non persisté → colonne CSR carrière vide. Correction title-agnostic : persister le CSR pendant le sync h5 dans la player DB du titre (même topologie qu'Infinite, ADR 0008 — pas une nouvelle base ; la player DB h5 existe déjà, le backfill LUSR y écrit).

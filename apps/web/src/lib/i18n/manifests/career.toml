@@ -360,6 +360,10 @@ en = "Big Team Battle"
 fr = "Chaos"
 en = "Chaos"
 
+[career.lusr.chain.h5_arena]
+fr = "Arène"
+en = "Arena"
+
 # ─── Progression tab ──────────────────────────────────────────────────────
 
 [career.empty.progression_unavailable]
