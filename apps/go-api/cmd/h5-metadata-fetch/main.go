@@ -58,6 +58,7 @@ func main() {
 
 	seedMedals(db, key)
 	seedMaps(db, key)
+	seedWeapons(db, key)
 	seedCSRDesignations(db, key)
 }
 
@@ -179,6 +180,43 @@ type apiCSRDesignation struct {
 		IconImageURL string `json:"iconImageUrl"`
 		ID           string `json:"id"`
 	} `json:"tiers"`
+}
+
+type apiWeapon struct {
+	Name              string `json:"name"`
+	Type              string `json:"type"`
+	LargeIconImageURL string `json:"largeIconImageUrl"`
+	ID                string `json:"id"`
+}
+
+func seedWeapons(db *sql.DB, key string) {
+	body, err := fetchMeta(key, "weapons")
+	if err != nil {
+		fmt.Printf("weapons: SKIP (%v)\n", err)
+		return
+	}
+	var weapons []apiWeapon
+	if err := json.Unmarshal(body, &weapons); err != nil {
+		fmt.Printf("weapons: parse %v\n", err)
+		return
+	}
+	n := 0
+	for _, w := range weapons {
+		// id officiel = numérique (tient dans weapon_labels.weapon_id UBIGINT).
+		id, perr := strconv.ParseInt(w.ID, 10, 64)
+		if perr != nil {
+			continue
+		}
+		_, err := db.Exec(`INSERT OR REPLACE INTO weapon_labels
+			(weapon_id, name_en, name_fr, icon_url, weapon_type) VALUES (?,?,?,?,?)`,
+			id, w.Name, w.Name, w.LargeIconImageURL, w.Type)
+		if err != nil {
+			fmt.Printf("weapons: insert %s: %v\n", w.ID, err)
+			continue
+		}
+		n++
+	}
+	fmt.Printf("weapons: %d seedées (sur %d)\n", n, len(weapons))
 }
 
 func seedCSRDesignations(db *sql.DB, key string) {
