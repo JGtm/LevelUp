@@ -63,6 +63,11 @@ func buildPipelineFixture(t *testing.T) *pipelineFixture {
 	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(player); err != nil {
 		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
+	// Append-only #23046 (Phase 2) : convertit match_citations (generation_id) +
+	// crée la vue match_citations_latest + les séquences.
+	if err := migration.EnsureMatchCitationsAppendOnly(player); err != nil {
+		t.Fatalf("EnsureMatchCitationsAppendOnly: %v", err)
+	}
 	metadata := openFixtureDB(t, buildMetadataDDL())
 
 	f := &pipelineFixture{shared: shared, player: player, metadata: metadata}
@@ -177,6 +182,7 @@ CREATE TABLE killer_victim_pairs (
     time_ms         INTEGER
 );
 
+CREATE SEQUENCE IF NOT EXISTS weapon_kills_generation_seq START 1;
 CREATE TABLE weapon_kills (
     match_id        VARCHAR NOT NULL,
     xuid            VARCHAR NOT NULL,
@@ -188,12 +194,16 @@ CREATE TABLE weapon_kills (
     attribution_path VARCHAR DEFAULT 'none',
     swap_detected   BOOLEAN DEFAULT FALSE,
     delayed_damage  BOOLEAN DEFAULT FALSE,
-    player_index    INTEGER
+    player_index    INTEGER,
+    generation_id   BIGINT DEFAULT 0
 );
 
 CREATE VIEW v_weapon_kills AS
-SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
-FROM weapon_kills;
+SELECT * EXCLUDE (rk) FROM (
+    SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id,
+           DENSE_RANK() OVER (PARTITION BY match_id, xuid ORDER BY generation_id DESC) AS rk
+    FROM weapon_kills)
+WHERE rk = 1;
 `
 }
 
@@ -230,6 +240,7 @@ CREATE TABLE match_citations (
     match_id            VARCHAR NOT NULL,
     citation_name_norm  VARCHAR NOT NULL,
     value               INTEGER DEFAULT 1,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (match_id, citation_name_norm)
 );
 
@@ -662,14 +673,15 @@ func TestPipelineFixture_WeaponKills_IdempotentRerun(t *testing.T) {
 
 	// weapon_kills doit contenir exactement le même nombre de rows après 2 runs
 	var count1, count2 int
-	// Première exécution déjà faite → count après run 1 == count après run 2
-	// (INSERT avec DELETE préalable par participant → idempotent)
-	f.shared.QueryRow("SELECT COUNT(*) FROM weapon_kills WHERE match_id=?", fixM1).Scan(&count1)
+	// Append-only #23046 (Phase 2) : idempotence LOGIQUE via v_weapon_kills (dernière
+	// génération). Le physique croît à chaque run (nouvelle génération), mais la vue
+	// reste stable → count1 == count2.
+	f.shared.QueryRow("SELECT COUNT(*) FROM v_weapon_kills WHERE match_id=?", fixM1).Scan(&count1)
 	BackfillWeaponKillsForMatchAll(context.Background(), client, f.shared, fixM1)
-	f.shared.QueryRow("SELECT COUNT(*) FROM weapon_kills WHERE match_id=?", fixM1).Scan(&count2)
+	f.shared.QueryRow("SELECT COUNT(*) FROM v_weapon_kills WHERE match_id=?", fixM1).Scan(&count2)
 
 	if count1 != count2 {
-		t.Fatalf("doublons détectés : %d → %d rows après re-run", count1, count2)
+		t.Fatalf("doublons logiques détectés (v_weapon_kills) : %d → %d rows après re-run", count1, count2)
 	}
 }
 
@@ -857,7 +869,7 @@ func TestPipelineFixture_Citations(t *testing.T) {
 
 	var n int
 	f.player.QueryRow(
-		"SELECT COUNT(*) FROM match_citations WHERE match_id=?", fixM1,
+		"SELECT COUNT(*) FROM match_citations_latest WHERE match_id=?", fixM1,
 	).Scan(&n)
 	if n == 0 {
 		t.Fatal("aucune citation générée pour m1 malgré les médailles")
@@ -866,7 +878,7 @@ func TestPipelineFixture_Citations(t *testing.T) {
 	// Vérifier que bulltrue est présent (medal_id 12345, count 2)
 	var bulltrue int
 	f.player.QueryRow(
-		"SELECT value FROM match_citations WHERE match_id=? AND citation_name_norm='bulltrue'",
+		"SELECT value FROM match_citations_latest WHERE match_id=? AND citation_name_norm='bulltrue'",
 		fixM1,
 	).Scan(&bulltrue)
 	if bulltrue == 0 {
@@ -891,7 +903,7 @@ func TestPipelineFixture_Citations_Idempotent(t *testing.T) {
 	runCitations()
 
 	var n int
-	f.player.QueryRow("SELECT COUNT(*) FROM match_citations WHERE match_id=?", fixM1).Scan(&n)
+	f.player.QueryRow("SELECT COUNT(*) FROM match_citations_latest WHERE match_id=?", fixM1).Scan(&n)
 	// Pas de doublons — le COUNT doit être identique au premier appel
 	if n == 0 {
 		t.Fatal("aucune citation après double appel")
@@ -919,7 +931,7 @@ func TestPipelineFixture_Citations_NoMedals(t *testing.T) {
 	// de médailles → 0 citations réelles attendues (le sentinel marque juste
 	// le match comme traité pour éviter une re-évaluation).
 	f.player.QueryRow(
-		"SELECT COUNT(*) FROM match_citations WHERE match_id=? AND citation_name_norm <> '_processed'",
+		"SELECT COUNT(*) FROM match_citations_latest WHERE match_id=? AND citation_name_norm <> '_processed'",
 		fixM3,
 	).Scan(&n)
 	if n != 0 {
@@ -1134,7 +1146,7 @@ func TestPipelineFixture_FullSequence(t *testing.T) {
 
 	// citations : m1 doit avoir au moins une citation
 	var nCit int
-	f.player.QueryRow("SELECT COUNT(*) FROM match_citations WHERE match_id=?", fixM1).Scan(&nCit)
+	f.player.QueryRow("SELECT COUNT(*) FROM match_citations_latest WHERE match_id=?", fixM1).Scan(&nCit)
 	if nCit == 0 {
 		t.Error("[full] aucune citation pour m1")
 	}

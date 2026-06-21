@@ -91,7 +91,7 @@ func (e *SyncEngine) RunCitationPostComputeChecks(ctx context.Context) ([]Citati
 func checkV1NoZeroValues(ctx context.Context, db *sql.DB) *CitationCheckViolation {
 	var count int
 	if err := db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM match_citations WHERE value <= 0 AND citation_name_norm != '_processed'`,
+		`SELECT COUNT(*) FROM match_citations_latest WHERE value <= 0 AND citation_name_norm != '_processed'`,
 	).Scan(&count); err != nil || count == 0 {
 		return nil
 	}
@@ -196,7 +196,7 @@ func checkV4CompositePerMatch(
 // loadAllCumulTotals charge SUM(value) par citation_name_norm depuis match_citations.
 func loadAllCumulTotals(ctx context.Context, db *sql.DB) (map[string]int, error) {
 	rows, err := db.QueryContext(ctx,
-		`SELECT citation_name_norm, SUM(value) FROM match_citations GROUP BY citation_name_norm`)
+		`SELECT citation_name_norm, SUM(value) FROM match_citations_latest GROUP BY citation_name_norm`)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +216,7 @@ func loadAllCumulTotals(ctx context.Context, db *sql.DB) (map[string]int, error)
 // loadAllPerMatchValues charge toutes les (match_id, citation_name_norm, value) depuis match_citations.
 func loadAllPerMatchValues(ctx context.Context, db *sql.DB) (map[string]map[string]int, error) {
 	rows, err := db.QueryContext(ctx,
-		`SELECT match_id, citation_name_norm, value FROM match_citations`)
+		`SELECT match_id, citation_name_norm, value FROM match_citations_latest`)
 	if err != nil {
 		return nil, err
 	}

@@ -122,6 +122,9 @@ func NewInMemoryShared(t *testing.T) *sql.DB {
 			source VARCHAR DEFAULT 'sync',
 			updated_at TIMESTAMP
 		)`,
+		`CREATE SEQUENCE IF NOT EXISTS weapon_kills_generation_seq START 1`,
+		// Append-only #23046 (Phase 2) : PAS de PK composite (comme prod) — sinon
+		// re-insérer le même weapon_id dans une nouvelle génération conflitrait.
 		`CREATE TABLE weapon_kills (
 			match_id VARCHAR,
 			xuid VARCHAR,
@@ -140,8 +143,14 @@ func NewInMemoryShared(t *testing.T) *sql.DB {
 			shots_fired INTEGER DEFAULT 0,
 			shots_hit INTEGER DEFAULT 0,
 			source VARCHAR DEFAULT 'unknown',
-			PRIMARY KEY (match_id, xuid, weapon_id)
+			generation_id BIGINT DEFAULT 0
 		)`,
+		`CREATE VIEW v_weapon_kills AS
+			SELECT * EXCLUDE (rk) FROM (
+				SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id,
+				       DENSE_RANK() OVER (PARTITION BY match_id, xuid ORDER BY generation_id DESC) AS rk
+				FROM weapon_kills)
+			WHERE rk = 1`,
 		`CREATE TABLE sync_meta (
 			key VARCHAR PRIMARY KEY,
 			value VARCHAR,

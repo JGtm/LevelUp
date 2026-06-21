@@ -82,13 +82,23 @@ func init() {
 					match_count INTEGER DEFAULT 0,
 					created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 				);
+				CREATE SEQUENCE IF NOT EXISTS match_citations_id_seq START 1;
+				CREATE SEQUENCE IF NOT EXISTS match_citations_generation_seq START 1;
 				CREATE TABLE IF NOT EXISTS match_citations (
+					id                 BIGINT DEFAULT nextval('match_citations_id_seq') PRIMARY KEY,
 					match_id           VARCHAR NOT NULL,
 					citation_name_norm VARCHAR NOT NULL,
 					value              INTEGER NOT NULL DEFAULT 1,
 					created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-					PRIMARY KEY (match_id, citation_name_norm)
+					-- APPEND-ONLY (campagne ART #23046, Phase 2) : plus de PK composite
+					-- (match_id, citation_name_norm) ni DELETE+reecriture. Chaque
+					-- recompute d un match alloue UN generation_id (sequence
+					-- match_citations_generation_seq) et INSERE pur. Lecture via
+					-- match_citations_latest (DENSE_RANK, generation MAX par match_id).
+					generation_id      BIGINT NOT NULL DEFAULT 0,
+					written_at         TIMESTAMP DEFAULT now()
 				);
+				CREATE INDEX IF NOT EXISTS idx_mc_match_gen ON match_citations(match_id, generation_id);
 				CREATE TABLE IF NOT EXISTS media_files (
 					id VARCHAR PRIMARY KEY,
 					filename VARCHAR NOT NULL,

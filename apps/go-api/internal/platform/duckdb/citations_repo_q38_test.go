@@ -53,7 +53,7 @@ func TestLoadMatchCitationsForView_TopCitationsEnriched(t *testing.T) {
 	}
 	for _, c := range inserts {
 		if _, err := pdb.Player.Exec(ctx,
-			`INSERT INTO match_citations VALUES (?,?,?)`,
+			`INSERT INTO match_citations (match_id, citation_name_norm, value) VALUES (?,?,?)`,
 			matchID, c.norm, c.value); err != nil {
 			t.Fatalf("seed match_citations: %v", err)
 		}
@@ -153,7 +153,7 @@ func TestLoadMatchCitationsForView_NoMappingsAtAll(t *testing.T) {
 
 	const matchID = "m_no_mappings"
 	if _, err := pdb.Player.Exec(ctx,
-		`INSERT INTO match_citations VALUES (?,?,?)`,
+		`INSERT INTO match_citations (match_id, citation_name_norm, value) VALUES (?,?,?)`,
 		matchID, "some_norm", 50); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
@@ -193,7 +193,7 @@ func TestLoadMatchCitationsForView_FiltersZeroAndNullValues(t *testing.T) {
 	}
 	for _, c := range inserts {
 		if _, err := pdb.Player.Exec(ctx,
-			`INSERT INTO match_citations VALUES (?,?,?)`,
+			`INSERT INTO match_citations (match_id, citation_name_norm, value) VALUES (?,?,?)`,
 			matchID, c.norm, c.value); err != nil {
 			t.Fatalf("seed: %v", err)
 		}

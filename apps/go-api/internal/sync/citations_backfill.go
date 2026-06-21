@@ -237,21 +237,22 @@ func (e *SyncEngine) RunBackfillCompositeOnlyCitations(ctx context.Context) (int
 
 		compositeDeltas := analysis.ComputeCompositeTransitions(cumulPre, cumulPost, tierMax, mappings)
 
-		// Supprimer les anciens composites pour ce match, réécrire les nouveaux.
-		if err := deleteCompositeCitationsForMatch(ctx, playerHandle.SQLDb(), matchID, compositeNames); err != nil {
-			slog.WarnContext(ctx, "composite-only: delete", "match_id", matchID, "err", err)
-		}
-
+		// Append-only #23046 (Phase 2) : plus de DELETE composites + write partiel.
+		// On écrit une génération COMPLÈTE (feuilles préservées à l'identique +
+		// composites recalculés) ; writeCitations alloue une nouvelle génération qui
+		// supersède l'ancienne via match_citations_latest. Si l'ensemble est vide, la
+		// sentinelle '_processed' (writeCitations) marque le match.
 		var deltas []domain.CitationMatchDelta
+		for norm, v := range leafDeltas {
+			deltas = append(deltas, domain.CitationMatchDelta{NameNorm: norm, Value: v})
+		}
 		for norm, v := range compositeDeltas {
 			deltas = append(deltas, domain.CitationMatchDelta{NameNorm: norm, Value: v})
 		}
-		if len(deltas) > 0 {
-			if err := writeCitations(ctx, playerHandle.SQLDb(), matchID, deltas); err != nil {
-				return written, fmt.Errorf("composite-only write %s: %w", matchID, err)
-			}
-			written++
+		if err := writeCitations(ctx, playerHandle.SQLDb(), matchID, deltas); err != nil {
+			return written, fmt.Errorf("composite-only write %s: %w", matchID, err)
 		}
+		written++
 
 		// Mise à jour cumulPre pour le match suivant.
 		for k, v := range leafDeltas {
@@ -265,20 +266,6 @@ func (e *SyncEngine) RunBackfillCompositeOnlyCitations(ctx context.Context) (int
 	slog.InfoContext(ctx, "composite-only: terminé",
 		"player", e.gamertag, "matches_updated", written)
 	return written, nil
-}
-
-// deleteCompositeCitationsForMatch supprime les citations composites d'un match
-// avant réécriture (rescue tool — on ne touche pas les feuilles déjà correctes).
-func deleteCompositeCitationsForMatch(ctx context.Context, db *sql.DB, matchID string, compositeNames map[string]struct{}) error {
-	for norm := range compositeNames {
-		if _, err := db.ExecContext(ctx,
-			`DELETE FROM match_citations WHERE match_id = ? AND citation_name_norm = ?`,
-			matchID, norm,
-		); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // buildCompositeNameSet retourne l'ensemble des citation_name_norm de type composite.
@@ -299,7 +286,7 @@ func buildCompositeNameSet(mappings []domain.CitationFullMapping) map[string]str
 func loadNonCompositeCitationsByMatch(ctx context.Context, db *sql.DB, compositeNames map[string]struct{}) (map[string]map[string]int, error) {
 	rows, err := db.QueryContext(ctx, `
 SELECT match_id, citation_name_norm, value
-FROM match_citations
+FROM match_citations_latest
 WHERE value > 0`)
 	if err != nil {
 		return nil, err

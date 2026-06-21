@@ -41,11 +41,11 @@ WITH me_perfect AS (
 top_weapons AS (
     SELECT xuid, wid AS top_weapon_id
     FROM (
-        SELECT xuid, COALESCE(reconciled_as, weapon_id) AS wid, COUNT(*) AS wk,
+        SELECT xuid, effective_weapon_id AS wid, COUNT(*) AS wk,
                ROW_NUMBER() OVER (PARTITION BY xuid ORDER BY COUNT(*) DESC) AS rn
-        FROM weapon_kills
-        WHERE match_id = ? AND COALESCE(reconciled_as, weapon_id) NOT IN (0, 1, 2)
-        GROUP BY xuid, COALESCE(reconciled_as, weapon_id)
+        FROM v_weapon_kills
+        WHERE match_id = ? AND effective_weapon_id NOT IN (0, 1, 2)
+        GROUP BY xuid, effective_weapon_id
     ) t WHERE rn = 1
 )
 SELECT

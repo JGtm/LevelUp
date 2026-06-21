@@ -143,10 +143,10 @@ SELECT
     mc.citation_name_norm,
     mc.value                AS match_delta,
     cum.total               AS cumulative_total
-FROM match_citations mc
+FROM match_citations_latest mc
 JOIN (
     SELECT citation_name_norm, SUM(value) AS total
-    FROM match_citations
+    FROM match_citations_latest
     GROUP BY citation_name_norm
 ) cum ON cum.citation_name_norm = mc.citation_name_norm
 WHERE mc.match_id IN (%s)

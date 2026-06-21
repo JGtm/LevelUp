@@ -81,6 +81,13 @@ func repairMatchCitationsPK(db *sql.DB) error {
 	if !exists {
 		return nil
 	}
+	// Append-only #23046 (Phase 2) : si match_citations est en append-only
+	// (generation_id présent), la PK composite (match_id, citation_name_norm) n'a
+	// plus de sens (multiples générations par clé) — no-op. La PK technique id est
+	// déjà posée par la conversion append-only.
+	if hasGen, _ := columnExists(db, "match_citations", "generation_id"); hasGen {
+		return nil
+	}
 	hasPK, err := hasPrimaryKey(db, "match_citations")
 	if err != nil {
 		return fmt.Errorf("repair citations PK: check PK: %w", err)

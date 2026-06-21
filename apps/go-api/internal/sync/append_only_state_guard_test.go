@@ -52,6 +52,27 @@ var appendOnlyStateTables = []string{
 	// L'écriture passe par un guard SELECT-then-INSERT idempotent (pve_persister.go) ;
 	// l'ancien INSERT OR IGNORE est interdit (audit adversarial 2026-06-21).
 	"pve_match_stats",
+	// personal_score_awards : append-only GÉNÉRATION (Phase 2, 2026-06-21). L'ancien
+	// DELETE+INSERT (replace-semantics, vecteur ART sur 4 index idx_psa_*) est remplacé
+	// par INSERT pur taggé generation_id (séquence psa_generation_seq, partagée par
+	// appel) + tombstone pour le clear. Lecture via personal_score_awards_latest
+	// (DENSE_RANK, génération MAX, tombstones exclus). Zéro DELETE/ON CONFLICT.
+	"personal_score_awards",
+	// player_skill_state_v2 : append-only (written_at + vue _latest). Le reset
+	// watermark (RecomputeLUSRCanonicalForPlayer) n'utilise plus DELETE WHERE xuid
+	// (vecteur ART sur PK + idx_pssv2) mais une row sentinelle is_reset=TRUE
+	// (Phase 2, 2026-06-21). Lecture via player_skill_state_v2_latest.
+	"player_skill_state_v2",
+	// match_citations : append-only GÉNÉRATION (Phase 2, 2026-06-21). L'ancien
+	// DELETE+réécriture (recompute SOUSTRACTIF, PK composite) est remplacé par
+	// INSERT pur taggé generation_id (par match) ; la sentinelle '_processed' gère
+	// le cas 0 citation. Lecture via match_citations_latest (DENSE_RANK par match_id).
+	"match_citations",
+	// weapon_kills : append-only GÉNÉRATION (Phase 2, 2026-06-21). L'ancien
+	// DELETE+INSERT (idx_wk_match_xuid, DB shared multi-writer) est remplacé par
+	// INSERT pur taggé generation_id (par (match,xuid)). Lecture via la vue
+	// v_weapon_kills (DENSE_RANK génération MAX). Pas de PK → simple ALTER ADD COLUMN.
+	"weapon_kills",
 }
 
 // rawPMEReadAllowlist : accès BRUTS intentionnels à player_match_enrichment (hors
@@ -146,7 +167,10 @@ func TestNoMutationOnAppendOnlyStateTables(t *testing.T) {
 		// INSERT ... ON CONFLICT/REPLACE/IGNORE visant cette table : on borne au statement
 		// commençant par INSERT [OR REPLACE|IGNORE] INTO <table> (statement-level → pas de
 		// faux positif file-level vs un INSERT OR IGNORE sur une AUTRE table du même fichier).
-		reInsertTable := regexp.MustCompile(`(?is)\bINSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO\s+` + regexp.QuoteMeta(table) + `\b[^;]*`)
+		// Borne = `;` OU backtick (fin de la string SQL Go) : sans le backtick, [^;]* ferait
+		// le pont jusqu'au ON CONFLICT d'une AUTRE table plus loin dans le MÊME fichier (les
+		// strings SQL Go n'ont pas de `;` final) — faux positif observé sur shared_persister.go.
+		reInsertTable := regexp.MustCompile(`(?is)\bINSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO\s+` + regexp.QuoteMeta(table) + "\\b[^;`]*")
 
 		err := filepath.Walk(repoRoot, func(path string, info os.FileInfo, walkErr error) error {
 			if walkErr != nil {

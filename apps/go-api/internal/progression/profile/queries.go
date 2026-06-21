@@ -191,7 +191,7 @@ func (s *Service) applyAwardsRadarAxes(
 	}
 	rows, err := s.db.Query(ctx, `
 		SELECT psa.award_name, SUM(psa.award_count)
-		FROM personal_score_awards psa
+		FROM personal_score_awards_latest psa
 		WHERE psa.xuid = ?
 		  AND psa.match_id IN (`+strings.Join(placeholders, ",")+`)
 		GROUP BY psa.award_name

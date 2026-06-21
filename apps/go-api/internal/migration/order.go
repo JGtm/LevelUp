@@ -84,9 +84,11 @@ var canonicalOrder = []string{
 	"add_msr_measurement_matches_remaining",                    // player
 	"player_add_expected_win_prob",                             // player
 	"player_append_only_csr_snapshots_v1",                      // player
+	"player_append_only_match_citations_v1",                    // player
 	"player_append_only_match_enrichment_v1",                   // player
 	"player_append_only_match_skill_rank_v1",                   // player
 	"msr_written_at_default_now_repair_v1",                     // player
+	"player_append_only_personal_score_awards_v1",              // player
 	"create_streak_history_append_only",                        // player
 	"add_player_assists_model",                                 // player
 	"create_coach_proposal_player_schema",                      // player
@@ -149,6 +151,7 @@ var canonicalOrder = []string{
 	"shared_add_participation_timestamps",                      // shared
 	"shared_add_t0_quality",                                    // shared
 	"shared_append_only_match_csrs_v1",                         // shared
+	"shared_append_only_weapon_kills_v1",                       // shared
 	"shared_backfill_is_ranked_and_season",                     // shared
 	"shared_create_player_squad_offset",                        // shared
 	"add_shared_match_csrs",                                    // shared
@@ -157,6 +160,7 @@ var canonicalOrder = []string{
 	"rebuild_match_participants_defeat_art_corruption",         // shared
 	"shared_seed_tier_boundaries_v2",                           // shared
 	"shared_create_skill_v2_tables",                            // shared
+	"player_skill_state_v2_reset_marker_v1",                    // shared
 	"create_base_shared_social_schema",                         // shared_social
 	"add_player_slug_to_media_files",                           // shared_social
 	"add_file_name_to_media_files",                             // shared_social
