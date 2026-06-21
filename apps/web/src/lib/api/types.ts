@@ -1540,6 +1540,10 @@ export interface SessionSummaryItem {
   avg_kda: number | null
   dominant_playlist: string | null
   dominant_mode: string | null
+  /** Sessions escouade : gamertags des coéquipiers les plus présents (amis
+   *  configurés, top 3). Sert au deep-link card escouade → /squad. Absent/[] pour
+   *  les sessions solo ou si la donnée n'est pas disponible. */
+  teammates?: string[]
 }
 
 export interface RecentMediaItem {

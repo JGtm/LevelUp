@@ -18,7 +18,7 @@
  * Routes enfants : /squad/synergies · /squad/contributions
  */
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Outlet, useParams, Link, useMatchRoute } from '@tanstack/react-router'
+import { Outlet, useParams, Link, useMatchRoute, useSearch } from '@tanstack/react-router'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useTeammates } from './queries'
@@ -79,6 +79,21 @@ function formatError(err: unknown): string {
 
 export function SquadLayout() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
+  // Deep-link depuis l'accueil (card session escouade) : capturé UNE fois au montage
+  // via un ref-initializer, AVANT le redirect index → /squad/synergies qui drop la
+  // query. Consommé plus bas (compose = amis de la session + session pinnée).
+  const squadDeepLink = useSearch({ strict: false }) as { session?: string; teammates?: string }
+  const deepLinkRef = useRef<{ session: string; teammates: string[] } | null>(
+    squadDeepLink.session
+      ? {
+          session: squadDeepLink.session,
+          teammates: (squadDeepLink.teammates ?? '')
+            .split(',')
+            .map((g) => g.trim())
+            .filter(Boolean),
+        }
+      : null,
+  )
   const {
     filterContext,
     filterContextHash,
@@ -182,6 +197,18 @@ export function SquadLayout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterContext.sessions?.picked_sessions])
 
+  // ── Deep-link accueil (card session escouade) ────────────────────────────
+  // Une seule fois au montage : pose la composition = amis de la session puis pin
+  // la session. Le suffixe « (N) » volatil est réconcilié par l'effet dédié ;
+  // l'init-coéquipiers depuis settings est neutralisée (cf. deepLinkRef plus bas).
+  useEffect(() => {
+    const dl = deepLinkRef.current
+    if (!dl) return
+    setSelectedGts(dl.teammates)
+    applySessionLabels([dl.session])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // ── Filtres global pending (période + cascade) — commités via Analyser ──
   const [pending, setPending] = useState(() => filterContext)
   const lastSyncedHash = useRef(filterContextHash)
@@ -271,7 +298,10 @@ export function SquadLayout() {
   const seasonCounts = previewResolve?.season_counts ?? resolvedContext?.season_counts
 
   // ── Init coéquipiers depuis settings ────────────────────────────────────
+  // Neutralisée en arrivée par deep-link (card session escouade) : la composition
+  // est alors imposée par la session, pas par les amis configurés par défaut.
   useEffect(() => {
+    if (deepLinkRef.current) return
     if (settings?.friend_gamertags?.length && selectedGts.length === 0) {
       setSelectedGts(settings.friend_gamertags.slice(0, MAX_SELECTION))
     }

@@ -339,6 +339,11 @@ type SessionSummaryItem struct {
 	AvgKDA               *float64   `json:"avg_kda,omitempty"`
 	DominantPlaylist     *string    `json:"dominant_playlist,omitempty"`
 	DominantMode         *string    `json:"dominant_mode,omitempty"`
+	// Teammates (sessions escouade) : gamertags des coéquipiers les plus présents
+	// dans la session (amis configurés, top 3 = MAX_SELECTION page Escouade). Sert
+	// au deep-link card escouade → /squad (pré-sélection de la composition).
+	// Vide pour les sessions solo ou si la donnée n'est pas disponible.
+	Teammates []string `json:"teammates,omitempty"`
 }
 
 // ---------------------------------------------------------------------------

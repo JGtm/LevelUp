@@ -1,3 +1,22 @@
+## [2026-06-21] Cards "Sessions récentes" (accueil) → bonne page de stats + session + amis + hover — COMPLÉTÉ (non commité, branche fix/home-session-cards-nav)
+
+**Contexte** : 2 problèmes signalés. (1) Toggle Solo/Escouade/Mixte « sur Timeseries » → **faux positif** : le code le gate déjà à la page Sessions (`contextSelectable={isSessionsPage}` NavL2, commit faa0a7f9f) ; vu sur prod = build/cache navigateur obsolète → **ignoré sur demande user**. (2) Vrai bug : cliquer une card de session de l'accueil envoyait TOUT vers `/stats/sessions?session=…` (page détail/compare, mauvaise cible) avec contexte `'solo'` par défaut + scope partagé `soloFilterStore` auto-snappé → backend `session_not_found` → page « Indisponible » (URL témoin `…/stats/sessions?session=10/06/2026 19:52–20:14 (3)`).
+
+**Direction (corrigée par le user en cours de plan)** : la page de stats SOLO c'est **Timeseries**, pas Sessions. Card escouade → page **/squad**. Et une session escouade est par définition jouée avec des amis → l'ouvrir AVEC les amis de la session pré-sélectionnés.
+
+**Décision technique principale** :
+- Card **solo** → `soloFilterStore.setSessions({picked_sessions:[label]})` (= épingle, même mécanisme que la pill Session) + nav `/stats/timeseries`. Vérifié : `useFollowLatestSession` ne re-snappe pas (`followLatest=false` dès `picked.length>0`).
+- Card **escouade** → nav `/squad?session=…&teammates=a,b,c` (teammates **string joint par virgule**, pas array — un array casse les utilitaires `Record<string,string>` des pages Help/Settings). `SquadLayout` consomme au montage via un **ref-initializer capturé AVANT le redirect index→synergies** (qui drop la query) : `setSelectedGts(teammates)` + `applySessionLabels([session])` ; l'init-coéquipiers settings est neutralisée tant que `deepLinkRef` est posé ; le suffixe `(N)` volatil est absorbé par `reconcileSquadSessionLabels` existant.
+- **Backend** : `SessionSummaryItem.Teammates []string` (omitempty), calculé best-effort dans `HomeService.enrichSquadSessionsTeammates` (nouveau `home_squad_session_teammates.go`) via `LoadMainTeamParticipants(xuid, matchsDeLaSession)` (1 appel batché). **Règle = intersection** (`sessionCoreTeammates`) : coéquipiers présents dans TOUS les matchs de la session, restreints aux amis configurés (`friendGamertagsResolver`), cappés à 3 (= MAX_SELECTION /squad). **Pourquoi intersection et pas top-fréquence** : `decideCompositionReanchor` (squadPending.ts:103) ne conserve la session épinglée que si elle est dans la composition EXACTE des coéquipiers ; top-3-par-fréquence peut sélectionner des amis jamais ensemble dans la session → composition vide → ré-ancrage qui REMPLACE la session. L'intersection garantit que la session reste dans la composition (ou, si amis tournants → vide → chemin hasTeammates=false qui conserve aussi la session). Wiring `HomeCtxWithAuth` + `HomeCtx`. nil-safe.
+- **Hover** : `border border-transparent transition-colors hover:border-primary` sur la card (token sémantique → s'adapte clair/sombre, zéro hex).
+- **Logging** (dossier `logs/`, via MultiModuleHandler routé par package appelant) : `slog.WarnContext` sur échec loader (toujours en fichier) + `slog.DebugContext` résumé enrichissement (sessions, sessions_with_teammates, matches_scanned).
+
+**Résultats (vérif finale)** : Go — `go vet` service+domain+api clean ; **8 tests teammate** verts (intersection/cap/restriction-amis/rotating→nil/none/assign-core/no-op-loader/**erreur-loader-dégrade**, WARN observée) ; service suite complète verte ; api home/contract/shape/huma/drift verts ; build CGO OK. Front — typecheck OK, lint **0 erreur** ; **8 nouveaux tests** (HomeSessionCarousel ×3 + HomePage.nav ×3 + SquadLayout.deeplink ×2) ; suites home (34) + squad pages (16) vertes. `routeTree.gen.ts` non modifié, pas de drift openapi (home auto-dérivé Huma).
+
+**Prochaine étape** : vérif end-to-end manuelle dans l'app tournante (card solo → Timeseries scopé ; card escouade → /squad avec amis ; hover bordure clair+sombre), puis commit après autorisation. Réf : [[reference_home_session_cards_nav]].
+
+---
+
 ## [2026-06-21] Qualité/maintenabilité post-campagne ART — helper unique `append_only_rebuild` + ADR 0026 — COMPLÈTE & VERTE (non commitée)
 
 **Contexte** : après le deploy de la campagne ART, demande user de vérifier que la campagne est complète, propre, pérenne ET bien factorisée (pas de duplication, séparation des responsabilités), axe qualité/maintenabilité. 3 scopes retenus (sûreté+tests / DRY / doc).
