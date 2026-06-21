@@ -35,6 +35,7 @@ import (
 type h5Source interface {
 	GetServiceRecords(ctx context.Context, gamertag, recordType string) (*H5ServiceRecordResponse, error)
 	GetPlayerMatches(ctx context.Context, gamertag string, start, count int) (*H5MatchesResponse, error)
+	GetMatchCarnage(ctx context.Context, matchID, mode string) (*H5CarnageResponse, error)
 	GetMatchEvents(ctx context.Context, matchID string) (*h5MatchEventsResponse, error)
 }
 
@@ -203,9 +204,36 @@ func (a *DataAdapter) LoadCareerSnapshot(ctx context.Context, xuid string, _ can
 		return nil, fmt.Errorf("h5 LoadCareerSnapshot(%s): %w", gamertag, err)
 	}
 	if snap := mapCareerSnapshot(resp, gamertag, a.placementTotal); snap != nil {
+		a.enrichSpartanRank(ctx, src, gamertag, snap) // best-effort (rang XP/SR)
 		return snap, nil
 	}
 	return &canonical.CareerSnapshot{Player: h5Identity(gamertag)}, nil
+}
+
+// enrichSpartanRank ajoute le rang XP (SR) au CareerSnapshot, lu dans la carnage du
+// DERNIER match (XpInfo.SpartanRank/TotalXP — seule source du SR : ni la liste de
+// matchs ni le service record ne le portent). BEST-EFFORT : toute indisponibilité
+// (token/404/absence/match introuvable) laisse le snapshot CSR intact, sans erreur.
+func (a *DataAdapter) enrichSpartanRank(ctx context.Context, src h5Source, gamertag string, snap *canonical.CareerSnapshot) {
+	matches, err := src.GetPlayerMatches(ctx, gamertag, 0, 1)
+	if err != nil || matches == nil || len(matches.Results) == 0 {
+		return
+	}
+	m := matches.Results[0]
+	if m.Id.MatchId == "" {
+		return
+	}
+	carnage, err := src.GetMatchCarnage(ctx, m.Id.MatchId, h5GameModeSegment(m.Id.GameMode))
+	if err != nil || carnage == nil {
+		return
+	}
+	for i := range carnage.PlayerStats {
+		p := &carnage.PlayerStats[i]
+		if p.XpInfo != nil && strings.EqualFold(p.Player.Gamertag, gamertag) {
+			applySpartanRank(snap, p.XpInfo.SpartanRank, p.XpInfo.TotalXP)
+			return
+		}
+	}
 }
 
 // degradeUnavailable retourne true (et logue) si l'erreur est une indisponibilite
