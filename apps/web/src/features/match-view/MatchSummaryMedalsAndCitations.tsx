@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { MatchMedal, MatchCitationSnippet } from '@/lib/api/types'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
 import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
+import { MedalIcon } from '@/components/ui/MedalIcon'
 import type { MatchViewText } from './i18n'
 
 const CARD_HEIGHT = 280
@@ -67,13 +68,18 @@ export function MatchMedalsSection({ medals, t }: MatchMedalsSectionProps) {
             title={tooltip}
             className="flex flex-col items-center gap-1 cursor-default w-[74px]"
           >
-            {medal.image_url ? (
-              <img
-                src={medal.image_url}
-                alt={medal.name}
-                className="w-[50px] h-[50px] object-contain"
+            {medal.image_url || medal.sprite_sheet ? (
+              <MedalIcon
+                imageUrl={medal.image_url}
+                spriteSheet={medal.sprite_sheet}
+                spriteLeft={medal.sprite_left}
+                spriteTop={medal.sprite_top}
+                spriteWidth={medal.sprite_width}
+                spriteHeight={medal.sprite_height}
+                label={medal.name}
+                size={50}
+                className="object-contain"
                 style={glow ? { filter: glow } : undefined}
-                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
               />
             ) : (
               <div className="w-[50px] h-[50px] rounded bg-muted flex items-center justify-center">
