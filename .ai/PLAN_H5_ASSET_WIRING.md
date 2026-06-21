@@ -1,5 +1,42 @@
 # PLAN — Câblage assets title-agnostic (audit 2026-06-20)
 
+## STATUT (2026-06-21) — 7 incréments livrés + poussés sur `feat/multititre-peripherie`
+
+| Réf | Gap/Violation | Commit | État |
+|-----|---------------|--------|------|
+| S.1 | V1/V5 slug figé `homeStaticTitleSlug` → `r.titleSlug()` | 7274d92c9 | OK |
+| C0 | G1 adapter `halo_5.AssetURLAdapter` + `RegisterAssetURL` (+ openapi /medals) | 89799ce9e | OK |
+| G3 | V8 bornes Héros par titre (XPMax/RankMax via CareerSnapshot) | 102af277e | OK |
+| G5 | V3 badge CSR canonical tuiles title-aware (résolveur injecté) | f02925ed1 | OK |
+| G2/G7/D.1 | contrat sprite médaille BACKEND (`static.MedalImage` + DTO + 4 sites) | 915b65f64 | OK |
+| F.1 | rendu sprite médaille FRONT (`MedalIcon` partagé, 4 surfaces) | b2ed57f36 | OK |
+| V9/D.2 | images de rang carrière PAR TITRE (h5 = map vide, plus d'image HINF erronée) | daaef9bcc | OK |
+
+**Effet** : maps (tuiles home + vue match), badges CSR (tuiles + vue match), médailles
+(end-to-end : référentiel + vue match + tuiles + explorer + digest escouade), carte Héros
+carrière, images de rang carrière — tous title-aware. HINF byte-identique partout
+(nil/résolveur absent → comportement HINF inchangé).
+
+### RESTANT (chacun avec une dépendance / décision / périmètre à clarifier)
+- **G4/S.6 — CSR carrière h5** : `GetCareerCSRs` lit `player_csr_snapshots` (vide pour h5) →
+  colonne « Non classé ». Le CSR h5 vit dans `CareerSnapshot` (RankTier/RankName, CSR UNIQUE).
+  Bloquant : **décision produit** (h5 = 1 CSR courant vs structure per-playlist HINF) + méthode
+  adapter CSR per-playlist (inexistante). Non-trivial, pas un simple câblage.
+- **G9/S.8 — payload Match View h5** : `match.detail.core = not_exposed` → page vue-match VIDE
+  pour h5. C'est une **FEATURE** (exposer `LoadMatchDetail` via carnage → participants/teams/skill),
+  pas un câblage d'asset. Plus gros chantier restant ; **pré-requis de V11** (lien Waypoint).
+- **G8/V10/F.2 — groupes LUSR front HINF-only** : front itère `LUSR_KNOWN_GROUPS` (HINF) dès
+  capability `lusr`. h5 déclare `lusr` (backfill `cmd/h5-lusr-backfill` EN COURS) → 4 groupes HINF
+  « Non classé ». Fix = dériver les groupes de la donnée résolue SANS régresser HINF (qui affiche
+  ses 4 groupes même non classés). **Différé** pending clarté sur l'état LUSR h5.
+- **V4 — `halo_infinite.NewAssetURLAdapter()` figé** (`registry_pages.go:415,425,442`,
+  `home_repo_skill_peak.go:460`) : hygiène sur le chemin CSR **sync HINF-only** (sync_pkg = données
+  HINF) ; AUCUN impact fonctionnel h5. Re-typer sur l'interface `games.TitleAssetURLAdapter`. Basse prio.
+- **V11 — WaypointURL `halo-infinite/` figée** (`match_view_builders_header.go:59`) : lien externe.
+  **Dépend de G9** (vue-match vide pour h5 tant que le payload n'est pas exposé). Fix propre =
+  `adapter.ExternalMatchURL(matchID)` (interface, HINF → URL ; h5 → "" pas de page Waypoint h5).
+
+
 > Source : workflow d'audit 7 agents (run `w5jqyzrsk`). Cartographie tous les sites
 > front+back affichant médailles/armes/maps/CSR/rang XP. Objectif : un seul chemin
 > générique `slug → static.URL(kind, slug, …) → titleResolver.AssetURL(slug) →
