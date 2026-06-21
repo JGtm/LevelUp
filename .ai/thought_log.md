@@ -1,3 +1,16 @@
+## [2026-06-21] G4 Phase 1 — CSR par playlist Halo 5 persisté au sync (player DB) — Complété
+
+Halo 5 a un CSR PAR PLAYLIST (`H5ArenaStats.ArenaPlaylistStats[]`) DISPONIBLE mais non persisté → colonne CSR carrière vide. Correction title-agnostic : persister le CSR pendant le sync h5 dans la player DB du titre (même topologie qu'Infinite, ADR 0008 — pas une nouvelle base ; la player DB h5 existe déjà, le backfill LUSR y écrit).
+
+- **`livesync/csr_mapper.go`** (PUR) : `mapH5ArenaToPlaylistCSRs` → `[]sync.PlayerPlaylistCSR` ; Current=`Csr` (placement si nil + `MeasurementMatchesLeft`), AllTime=`HighestCsr` ; `DesignationId 0-5` → Bronze..Onyx, sous-palier=`Tier` (0 pour Onyx). Champion (#N) = TODO Phase 2 (pas dans le DTO confirmé).
+- **`livesync/csr_persist.go`** : hook post-sync `persistArenaCSR` — fetch service record arena (source DÉJÀ construite, pas de 2e auth) → `OpenPlayerDB` (idempotent, crée `player_csr_snapshots` + vue `_latest` via EnsurePlayerSchema) → `sync.SaveCSRSnapshots` (append-only). Best-effort : n'avorte JAMAIS le cycle de sync.
+- **`runner.go`/`wire.go`** : `Deps.PersistCSR` optionnel, câblé avec le path player DB h5.
+- **Saison « lifetime »** : `h5LifetimeSeasonID = "h5-lifetime"` ; nouveau champ `TitleDescriptor.CSRSeasonID` (lu de `title.toml` h5) résolu par `CSRSeasonIDForTitle` → l'écriture et la lecture (`GetCSRSnapshots WHERE season_id=?`) matchent. HINF non affecté (descripteur vide → fallback global). Saisons réelles = Phase 2.
+- **`sync.SaveCSRSnapshots`** exporté (était `saveCSRSnapshots`) pour réutilisation par le hook. Lecture côté Carrière inchangée.
+- Tests : mapper + round-trip persist→read. Build+vet+test verts (1 test PRÉ-EXISTANT cassé sans rapport : `start_time_utc` LUSR force-mode).
+
+Player DB ≠ shared → la lecture CSR n'est PAS bloquée par le gap « provider shared HINF-only » (cf. HANDOFF_H5_MULTITITRE). Reste Phase 2 : saisons réelles (seasonId), noms de playlists (seed metadata), Champion #N.
+
 ## [2026-06-21] G9 Part B — MatchViewService voie canonique + routage + capability h5 — Complété
 
 PART B du plan `.ai/PLAN_H5_MATCH_VIEW.md` : la page vue-match devient

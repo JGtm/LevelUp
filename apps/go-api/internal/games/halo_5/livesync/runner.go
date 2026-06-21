@@ -43,6 +43,11 @@ type CaptureFunc func(
 //     le fetch réseau. nil → pas de delta (collecte complète, idempotente).
 //   - PersistAll  : persiste les batches sous UN lease (acquis APRÈS le fetch) et
 //     retourne les batches réellement écrits + les erreurs.
+//   - PersistCSR  : hook OPTIONNEL post-sync (G4 Phase 1) — fetch le service record
+//     arena via la source DÉJÀ construite (pas de 2e auth) → persiste le CSR par
+//     playlist dans la player DB h5 (player_csr_snapshots, saison lifetime). nil →
+//     pas de persistance CSR (runner unit-testable sans player DB). Best-effort :
+//     une erreur n'avorte JAMAIS le cycle (remontée dans le SyncResult).
 type Deps struct {
 	NewSource  func(ctx context.Context) (halo5.CaptureSource, error)
 	Capture    CaptureFunc
@@ -50,6 +55,7 @@ type Deps struct {
 	Resolver   func(ctx context.Context) XUIDResolver // LAZY (PeopleHub fait de l'auth) ; nil → tout ""
 	LoadKnown  func(ctx context.Context) (map[string]bool, error)
 	PersistAll func(ctx context.Context, batches []*persist.MatchBatch) (done []*persist.MatchBatch, errs []string)
+	PersistCSR func(ctx context.Context, src halo5.CaptureSource) (int, error)
 }
 
 // Runner implémente scheduler.DeltaRunner (RunDelta) pour Halo 5.
@@ -112,6 +118,20 @@ func (r *Runner) RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.
 	done, errs := r.deps.PersistAll(ctx, batches)
 	res.Errors = append(res.Errors, errs...)
 	tallyResult(&res, done, stats)
+
+	// Hook CSR post-sync (G4 Phase 1) : persiste le CSR arena par playlist dans la
+	// player DB h5. RÉUTILISE la source live déjà construite (zéro 2e auth).
+	// Best-effort : une erreur n'avorte pas le cycle.
+	if r.deps.PersistCSR != nil {
+		if n, cerr := r.deps.PersistCSR(ctx, src); cerr != nil {
+			r.logger.WarnContext(ctx, "h5 sync: persistance CSR échouée (non bloquant)",
+				"gamertag", r.deps.Viewer.Gamertag, "err", cerr)
+			res.AddError("h5 csr: " + cerr.Error())
+		} else if n > 0 {
+			r.logger.InfoContext(ctx, "h5 sync: CSR arena persisté",
+				"gamertag", r.deps.Viewer.Gamertag, "playlists", n)
+		}
+	}
 
 	r.logger.InfoContext(ctx, "h5 sync: cycle terminé",
 		"gamertag", r.deps.Viewer.Gamertag,

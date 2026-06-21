@@ -41,7 +41,7 @@ func BackfillCSRHistory(ctx context.Context, client HaloClient, playerDB *sql.DB
 			slog.InfoContext(ctx, "backfill CSR: saison sans classement, ignorée", "season", season, "xuid", xuid)
 			continue
 		}
-		n, err := saveCSRSnapshots(ctx, playerDB, csrs, season)
+		n, err := SaveCSRSnapshots(ctx, playerDB, csrs, season)
 		if err != nil {
 			slog.WarnContext(ctx, "backfill CSR: persistance saison échouée", "season", season, "err", err)
 			continue

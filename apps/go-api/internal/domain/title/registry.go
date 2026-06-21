@@ -64,6 +64,14 @@ type TitleDescriptor struct {
 	// son défaut. NB : Halo Infinite a aussi une table de seuils PAR SAISON (10→5)
 	// qui prime ; cette valeur est le défaut du titre.
 	PlacementMatches int `json:"placement_matches"`
+
+	// CSRSeasonID est l'identifiant de saison CSR FIXE du titre (overlay descripteur,
+	// PMT-4). Pour Halo 5, le service record arena est un agrégat LIFETIME sans
+	// saison → "h5-lifetime" (déclaré dans title.toml). Consommé par
+	// CSRSeasonIDForTitle (précédence : env > overlay fichier > CE champ > global) :
+	// aligne la LECTURE (GetCSRSnapshots WHERE season_id) sur l'ÉCRITURE (sync h5).
+	// "" = non déclaré → fallback global (CurrentCSRSeasonID), comportement Infinite.
+	CSRSeasonID string `json:"csr_season_id"`
 }
 
 // HasCapability vérifie si le titre supporte une fonctionnalité.

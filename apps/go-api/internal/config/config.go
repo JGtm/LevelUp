@@ -349,7 +349,11 @@ func (c *AppConfig) CSRSeasonIDForTitle(ctx context.Context, slug string, reg *t
 	}
 	pr := titlePkg.NewPathResolver(c.RepoRoot, reg)
 	if id := readCSRSeasonIDFromFile(pr.TitleSettingsPath(slug)); id != "" {
-		return id // overlay du titre
+		return id // overlay fichier du titre (data/titles/<slug>/settings.json)
+	}
+	if id := strings.TrimSpace(desc.CSRSeasonID); id != "" {
+		return id // saison CSR FIXE déclarée dans le descripteur (title.toml).
+		// Halo 5 = "h5-lifetime" (service record arena = agrégat sans saison).
 	}
 	return c.CurrentCSRSeasonID // fallback global
 }

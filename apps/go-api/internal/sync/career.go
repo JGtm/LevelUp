@@ -215,7 +215,7 @@ func syncPlayerCSRs(
 	if len(csrs) == 0 {
 		return nil, nil
 	}
-	if _, err := saveCSRSnapshots(ctx, db, csrs, seasonID); err != nil {
+	if _, err := SaveCSRSnapshots(ctx, db, csrs, seasonID); err != nil {
 		return nil, err
 	}
 	return csrs, nil
@@ -321,10 +321,11 @@ func isUUIDLike(s string) bool {
 	return len(s) == 36 && strings.Count(s, "-") == 4
 }
 
-// saveCSRSnapshots insère des snapshots CSR dans player_csr_snapshots
+// SaveCSRSnapshots insère des snapshots CSR dans player_csr_snapshots
 // (INSERT pur, append-only — Phase 2.G du refactor ART). La lecture
-// courante passe par la vue player_csr_snapshots_latest.
-func saveCSRSnapshots(ctx context.Context, db *sql.DB, csrs []PlayerPlaylistCSR, seasonID string) (int, error) {
+// courante passe par la vue player_csr_snapshots_latest. Exporté : réutilisé par
+// le hook CSR Halo 5 (livesync) qui persiste les classements arena par playlist.
+func SaveCSRSnapshots(ctx context.Context, db *sql.DB, csrs []PlayerPlaylistCSR, seasonID string) (int, error) {
 	now := time.Now().UTC()
 	var inserted int
 	for _, c := range csrs {
@@ -346,7 +347,7 @@ func saveCSRSnapshots(ctx context.Context, db *sql.DB, csrs []PlayerPlaylistCSR,
 			now,
 		)
 		if err != nil {
-			return inserted, fmt.Errorf("saveCSRSnapshots insert %s: %w", c.PlaylistID, err)
+			return inserted, fmt.Errorf("SaveCSRSnapshots insert %s: %w", c.PlaylistID, err)
 		}
 		inserted++
 	}
