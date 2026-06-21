@@ -1,3 +1,23 @@
+## [2026-06-21] Qualité/maintenabilité post-campagne ART — helper unique `append_only_rebuild` + ADR 0026 — COMPLÈTE & VERTE (non commitée)
+
+**Contexte** : après le deploy de la campagne ART, demande user de vérifier que la campagne est complète, propre, pérenne ET bien factorisée (pas de duplication, séparation des responsabilités), axe qualité/maintenabilité. 3 scopes retenus (sûreté+tests / DRY / doc).
+
+**Audit (13 agents, `.ai/P2_QUALITY_AUDIT_RAW.json`)** : ZÉRO blocker, campagne complète. Findings maintenabilité : swap CTAS dupliqué 8×, dont **5 NON transactionnels sans recoverOrphan ni garde réelle** (DROP de l'ancienne table AVANT toute vérif, sans rollback → perte possible sur crash mid-swap) ; vue `_latest` DDL 26× ; pas de doc centrale.
+
+**Chunk 1 (commité b4a5e8cd2)** : dead code `WriteCitationsForMatch` supprimé (interface + 3 impls, ON CONFLICT incompatible append-only, zéro caller) ; `TestPipelineFixture_Citations_Idempotent` renforcé (run1==run2 logique + table physique croît = preuve supersession) ; convergence_test PSA → `_latest` ; fix fixture notify (vue `media_match_associations_latest`).
+
+**Fix CI Baseline (8dcb4e711)** : le gate Go Baseline était rouge (recalibration profil de combat e1f021cbb avait renommé des tests, baseline figée 18/06). Erreur intermédiaire : régénération **locale Windows** → 3 sous-tests OS-dépendants (`TestFilePathToURL_SinglePlayerCapturesBase/{clip,clip_thumb,screenshot}`, séparateurs de chemin) absents du run Linux CI → gate rouge dans l'autre sens. **Bonne méthode** : repartir de la baseline Linux d'origine + retirer chirurgicalement les **11 noms renommés** (8 `TestClassifyCombatProfile_*` + 2 `TestComputeKPIStats_CombatProfile_*` + 1 `TestRecomputeIsWithFriends_*_SkipsLeases→DemotesGracefully`), tous avec remplaçant présent. Validé : 0 nom top-level baseline absent des `func Test*`. CI **entièrement verte**.
+
+**Chunk 3 — helper unique `internal/migration/append_only_rebuild.go`** (décision technique principale) : `rebuildAppendOnlyTx(ctx, db, spec)` + `applyAppendOnlyRebuild` + `recoverOrphanAppendOnly` génériques. Le `spec` (struct `appendOnlyRebuild`) ne porte que la variance (table, séquences, colonnes synthétiques, marqueur idempotence, PostSwap verbatim, ViewSQL). **7 migrations migrées** : 5 « simples » written_at (match_skill_rank, player_csr_snapshots, match_csrs, pve_match_stats, lusr_component_history) — qui **GAGNENT** le swap transactionnel + garde `rebuilt==before` AVANT DROP + recoverOrphan — et 2 générationnelles (personal_score_awards, match_citations). **Exception documentée** : player_match_enrichment reste bespoke (vue merge-on-read par `stage`, genuinely unique). Net **−569 lignes** de swap dupliqué.
+
+**Validation** : suite migration verte (26.9s) ; 7 packages dépendants verts (sync 116s, duckdb 98s, persist, sharedprovider…) ; **crash-test sur 6 VRAIES player DBs** (4 backups pre-ART legacy + 2 live) — le helper a exécuté le swap réel sur gros volumes (citations 6302, PSA 3341, lch 954, PME 942) sans erreur, pass2 `applied=0` (idempotence stricte), toutes les vues `_latest` lisibles. Tests permanents `append_only_rebuild_test.go` : HappyPath, LatestDedupsBySupersession (table physique croît, vue dédup), **RollbackPreservesTable** (la sûreté que les 5 simples n'avaient pas), RecoverOrphan, BuildSelectList.
+
+**Chunk 4 — doc** : `docs/adr/0026-append-only-art-eradication.md` (problème ART + 2 familles de tables + **3 mécanismes** written_at/generation_id/stage merge-on-read + le helper + exception PME + recette d'ajout + pièges `;`-en-commentaire/lecture-brute) + listé dans CLAUDE.md.
+
+**Conclusion** : campagne ART confirmée complète + correcte ; duplication éliminée (8→1 helper) ; asymétrie de sûreté résolue (5 swaps non-tx → transactionnels) ; doc pérenne livrée. **Reste** : commit (en attente feu vert user) + push + CI ; optionnel restant (tests cardinalité weapon_kills, source unique métadata PME) à arbitrer.
+
+---
+
 ## [2026-06-21] Campagne ART #23046 — DÉPLOYÉE EN PROD (Phase 1 + Phase 2) — COMPLÉTÉE
 
 **Action** : merge `refactor/art-pme-appendonly` → main local (ba3cb4608, merge commit) → push origin/main (fast-forward 125042306..ba3cb4608) → auto-deploy VPS.
