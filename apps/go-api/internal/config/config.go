@@ -50,10 +50,18 @@ type AppConfig struct {
 	Lang            string
 	AppVersion      string
 	// SharedProvider (commit 8g, retypé 8i) — injecté au boot par main.go en
-	// mode B-swap (LEVELUP_USE_SHARED_PROVIDER=1). Passé aux PlayerPoolConfig
-	// (satisfait duckdb.SharedReader structurellement) et au SyncEngine
-	// via WithSharedProvider. nil en mode legacy.
+	// mode B-swap (LEVELUP_USE_SHARED_PROVIDER=1). Provider du shared Halo
+	// Infinite (DefaultSlug), source unique des writes Infinite + recherche
+	// gamertag. Passé aux PlayerPoolConfig (satisfait duckdb.SharedReader
+	// structurellement) et au SyncEngine via WithSharedProvider. nil en mode legacy.
 	SharedProvider sharedprovider.Provider
+	// SharedManager (multi-titre) — le Manager qui déduplique les Provider par
+	// chemin. Injecté au boot par main.go en même temps que SharedProvider (mode
+	// B-swap). Permet de résoudre le provider du shared d'un AUTRE titre (Halo 5+)
+	// par son path — la lecture per-titre passe par For(SharedDBPath(slug)). Pour
+	// DefaultSlug, For() retourne le provider boot (caché par path) → byte-identique
+	// à SharedProvider. nil en mode legacy/kill-switch → fallback SharedProvider.
+	SharedManager *sharedprovider.Manager
 	// Sprint 40 T2 : Discord webhook URL pour alerting 500 + taux d'erreur.
 	// Lit LEVELUP_DISCORD_WEBHOOK_URL ; fallback sur discord_webhook_url dans app_settings.json.
 	DiscordWebhookURL string

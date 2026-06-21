@@ -10,6 +10,7 @@ import (
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/worldenrich"
 )
 
@@ -51,15 +52,24 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 	sharedPath := pr.SharedDBPath(halo5.TitleSlug)
 	playerPath := pr.PlayerDBPath(halo5.TitleSlug, gamertag)
 	logger := slog.Default()
+	// Provider per-titre du shared h5 : MÊME provider que la lecture (pool joueur
+	// h5 via player_resolver.sharedReaderForTitle). En B-swap, lire ET écrire un
+	// fichier par le même provider est OBLIGATOIRE — sinon RO (pool) + RW (ce
+	// writer) non coordonnés sur le même fichier h5 → DuckDB "different
+	// configuration". Le provider draine/ferme le handle RO avant d'ouvrir RW.
+	// nil (Manager absent / kill-switch) → AcquireSharedWriterStandalone repasse
+	// en legacy (dblease + OpenSharedDB direct) : sûr tant qu'aucun pool ne tient
+	// le shared h5 en RO concurremment.
+	sharedProvider := sharedProviderForPath(cfg, sharedPath)
 	return NewRunner(Deps{
 		NewSource: halo5.NewCaptureSource,
 		Viewer:    canonical.PlayerIdentity{Gamertag: gamertag, XUID: xuid},
 		Resolver:  halo5ResolverFactory(cfg, gamertag, xuid, logger),
 		LoadKnown: func(ctx context.Context) (map[string]bool, error) {
-			return loadKnownMatchIDs(ctx, sharedPath)
+			return loadKnownMatchIDs(ctx, sharedProvider, sharedPath)
 		},
 		PersistAll: func(ctx context.Context, batches []*persist.MatchBatch) ([]*persist.MatchBatch, []string) {
-			return persistBatches(ctx, sharedPath, batches)
+			return persistBatches(ctx, sharedProvider, sharedPath, batches)
 		},
 		// Hook CSR post-sync (G4 Phase 1) : persiste le CSR arena par playlist dans
 		// la player DB h5 (créée à la volée). Réutilise la source live du runner.
@@ -94,10 +104,29 @@ func halo5ResolverFactory(cfg *config.AppConfig, viewerGamertag, viewerXUID stri
 		// Le self (xuid db_profiles) prime. La persistance des NOUVELLES résolutions
 		// passe par l'ingest (AddXUIDAliases → shared.xuid_aliases), d'où persist=nil.
 		sharedPath := titlePkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(halo5.TitleSlug)
-		seed := loadXUIDAliasesSeed(ctx, sharedPath)
+		seed := loadXUIDAliasesSeed(ctx, sharedProviderForPath(cfg, sharedPath), sharedPath)
 		seed[viewerGamertag] = viewerXUID
 		return worldenrich.NewCachingResolver(resolvers, seed, nil)
 	}
+}
+
+// sharedProviderForPath résout le provider per-titre du shared d'un path via le
+// Manager injecté dans cfg (B-swap). nil si le Manager est absent (mode legacy /
+// kill-switch LEVELUP_USE_SHARED_PROVIDER=0) OU si l'ouverture échoue (fichier
+// shared du titre pas encore créé) → AcquireSharedWriterStandalone repassera en
+// legacy. Pour un titre dont le shared n'existe pas encore (premier run h5), le
+// provider échoue ; le legacy crée le fichier au premier OpenSharedDB RW.
+func sharedProviderForPath(cfg *config.AppConfig, sharedPath string) sharedprovider.Provider {
+	if cfg.SharedManager == nil {
+		return nil
+	}
+	p, err := cfg.SharedManager.For(sharedPath, cfg.UserTimezone)
+	if err != nil {
+		slog.Warn("livesync: provider per-titre indisponible, fallback legacy",
+			"path", sharedPath, "err", err)
+		return nil
+	}
+	return p
 }
 
 // allResolverGamertags énumère les comptes (gamertags) utilisables pour la

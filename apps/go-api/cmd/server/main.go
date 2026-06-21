@@ -525,6 +525,12 @@ func main() {
 		// Config) reçoivent SharedReader → mode B-swap actif au niveau pool.
 		// + le SyncEngine via WithSharedProvider (auto_sync.go, sync_handler.go).
 		cfg.SharedProvider = provider
+		// Injecter aussi le Manager : la lecture per-titre (player_resolver) et
+		// l'écriture per-titre (livesync Halo 5+) résolvent le provider du shared
+		// d'un titre via For(SharedDBPath(slug)). Pour DefaultSlug, For() retourne
+		// CE provider (caché par path) → byte-identique. closeShared ferme TOUS
+		// les providers via sharedMgr.Close().
+		cfg.SharedManager = sharedMgr
 
 		closeShared = func() error {
 			if unsubscribeSwap != nil {

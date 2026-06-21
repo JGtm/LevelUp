@@ -5,16 +5,21 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
 // loadKnownMatchIDs lit les match_id déjà persistés du shared d'un titre (delta-stop).
-// Lease RW COURT, path-keyé (relâché AVANT le fetch réseau). Halo 5 → provider nil
-// (chemin legacy AcquireSharedWriterStandalone) : VÉRIFIÉ sûr — aucun pool ne tient
-// le shared h5 en RO en Phase 1, donc pas de conflit RO+RW mono-process (cf. recon
-// T3b + mémoire bswap). Le lease est indépendant du shared Infinite (clé = chemin).
-func loadKnownMatchIDs(ctx context.Context, sharedDBPath string) (map[string]bool, error) {
-	db, release, err := syncpkg.AcquireSharedWriterStandalone(ctx, nil, sharedDBPath)
+// Lease RW COURT, path-keyé (relâché AVANT le fetch réseau).
+//
+// provider : provider per-titre du shared h5 (résolu via le Manager au câblage).
+// Quand non-nil, AcquireSharedWriterStandalone route par provider.AcquireWriter
+// (PreSwap → drain RO → RW → reopen RO au release) : c'est ce qui rend le B-swap
+// sûr dès qu'un pool joueur lit AUSSI le shared h5 en RO (sinon RO+RW non
+// coordonnés → "different configuration"). provider == nil → fallback legacy
+// (mode kill-switch / Manager absent).
+func loadKnownMatchIDs(ctx context.Context, provider sharedprovider.Provider, sharedDBPath string) (map[string]bool, error) {
+	db, release, err := syncpkg.AcquireSharedWriterStandalone(ctx, provider, sharedDBPath)
 	if err != nil {
 		return nil, fmt.Errorf("h5 known-set: acquire shared: %w", err)
 	}
@@ -40,9 +45,9 @@ func loadKnownMatchIDs(ctx context.Context, sharedDBPath string) (map[string]boo
 // alimenté par les runs précédents) pour AMORCER le CachingResolver : un joueur déjà
 // résolu n'est PAS re-résolu via PeopleHub → anti rate-limit (le storm 429 venait de
 // re-résoudre tout le roster à chaque run). Best-effort : toute erreur → graine vide.
-func loadXUIDAliasesSeed(ctx context.Context, sharedDBPath string) map[string]string {
+func loadXUIDAliasesSeed(ctx context.Context, provider sharedprovider.Provider, sharedDBPath string) map[string]string {
 	seed := make(map[string]string, 1024)
-	db, release, err := syncpkg.AcquireSharedWriterStandalone(ctx, nil, sharedDBPath)
+	db, release, err := syncpkg.AcquireSharedWriterStandalone(ctx, provider, sharedDBPath)
 	if err != nil {
 		return seed
 	}
@@ -66,11 +71,11 @@ func loadXUIDAliasesSeed(ctx context.Context, sharedDBPath string) map[string]st
 // APRÈS le fetch — on ne tient jamais le write-lease pendant l'I/O réseau).
 // Idempotence : SharedPersister no-op un match_id déjà présent (INSERT-only, ART-safe).
 // Retourne les batches RÉELLEMENT persistés (sans erreur) + les messages d'erreur.
-func persistBatches(ctx context.Context, sharedDBPath string, batches []*persist.MatchBatch) ([]*persist.MatchBatch, []string) {
+func persistBatches(ctx context.Context, provider sharedprovider.Provider, sharedDBPath string, batches []*persist.MatchBatch) ([]*persist.MatchBatch, []string) {
 	if len(batches) == 0 {
 		return nil, nil
 	}
-	db, release, err := syncpkg.AcquireSharedWriterStandalone(ctx, nil, sharedDBPath)
+	db, release, err := syncpkg.AcquireSharedWriterStandalone(ctx, provider, sharedDBPath)
 	if err != nil {
 		return nil, []string{fmt.Sprintf("h5 persist: acquire shared: %v", err)}
 	}

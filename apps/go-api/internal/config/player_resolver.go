@@ -4,6 +4,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +16,44 @@ import (
 
 // ErrPlayerNotFound est retourné quand le slug ne correspond à aucun joueur configuré.
 var ErrPlayerNotFound = fmt.Errorf("joueur introuvable")
+
+// sharedReaderForTitle résout le SharedReader (provider RO B-swap) du shared
+// d'un titre donné, pour injection dans un PlayerPoolConfig.
+//
+// Pourquoi per-titre : en B-swap, cfg.SharedProvider est le provider du shared
+// Halo Infinite (DefaultSlug) UNIQUEMENT. Un joueur d'un autre titre (Halo 5+)
+// doit lire SON propre shared, sinon il lit le mauvais fichier. On résout donc
+// le provider du path per-titre via le Manager (caché par path absolu).
+//
+// Garanties :
+//   - DefaultSlug : SharedDBPath(DefaultSlug) == le path passé au boot →
+//     Manager.For() retourne le MÊME provider que cfg.SharedProvider
+//     (byte-identique, aucune nouvelle conn DuckDB ouverte).
+//   - Mode legacy / kill-switch (SharedManager == nil) : fallback direct sur
+//     cfg.SharedProvider (nil-safe — le pool repasse alors en mode legacy).
+//   - Mode démo : le shared démo est mono-titre (HINF) et déjà ouvert par le
+//     provider boot ; on conserve cfg.SharedProvider (le path démo réécrit au
+//     boot ne correspond pas toujours à SharedDBPath title-aware).
+//   - Échec d'ouverture per-titre (fichier shared du titre absent) : fallback
+//     cfg.SharedProvider + warn. Le pool tolère un SharedReader pointant le
+//     mauvais titre mieux qu'un crash de résolution (lecture vide vs panique).
+func (cfg *AppConfig) sharedReaderForTitle(titleSlug string) duckdb.SharedReader {
+	// Mode legacy/kill-switch ou démo : pas de routage per-titre.
+	if cfg.SharedManager == nil || cfg.DemoMode {
+		return cfg.SharedProvider
+	}
+	if titleSlug == "" {
+		titleSlug = title.DefaultSlug
+	}
+	path := title.NewPathResolver(cfg.RepoRoot).SharedDBPath(titleSlug)
+	provider, err := cfg.SharedManager.For(path, cfg.UserTimezone)
+	if err != nil {
+		slog.Warn("sharedReaderForTitle: ouverture provider per-titre échouée, fallback Infinite",
+			"title", titleSlug, "path", path, "err", err)
+		return cfg.SharedProvider
+	}
+	return provider
+}
 
 // ResolvePlayer traduit un slug joueur en PlayerDB prêt à l'emploi.
 // titleSlug est le titre courant (ex: "halo_infinite"). Si vide, DefaultSlug est utilisé.
@@ -120,7 +159,7 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug stri
 		SharedSocialDBPath:      sharedSocialPath,
 		GlobalXuidAliasesDBPath: pr.GlobalXuidAliasesDBPath(),
 		UserTimezone:            cfg.UserTimezone,
-		SharedReader:            cfg.SharedProvider,
+		SharedReader:            cfg.sharedReaderForTitle(titleSlug),
 	}
 	return duckdb.GetOrOpen(ctx, pcfg)
 }
@@ -161,7 +200,9 @@ func buildPoolConfig(cfg *AppConfig, p *domain.PlayerSummary, titleSlug string) 
 		SharedSocialDBPath:      pr.SharedSocialDBPath(titleSlug),
 		GlobalXuidAliasesDBPath: pr.GlobalXuidAliasesDBPath(),
 		UserTimezone:            cfg.UserTimezone,
-		SharedReader:            cfg.SharedProvider, // Provider satisfait SharedReader ; mode B-swap si non-nil
+		// Per-titre (B-swap multi-titre) : provider du shared du TITRE courant.
+		// DefaultSlug → byte-identique à cfg.SharedProvider (caché par path).
+		SharedReader: cfg.sharedReaderForTitle(titleSlug),
 	}
 }
 
