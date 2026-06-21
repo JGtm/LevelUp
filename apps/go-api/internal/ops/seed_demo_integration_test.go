@@ -429,11 +429,26 @@ func TestLoadVideoRealMaps(t *testing.T) {
 		t.Fatal(err)
 	}
 	mustExec(t, ss, `CREATE TABLE media_files (id VARCHAR, file_name VARCHAR, file_stem VARCHAR)`)
-	mustExec(t, ss, `CREATE TABLE media_match_associations (media_file_id VARCHAR, match_id VARCHAR)`)
+	// Append-only média : le reader lit la vue media_match_associations_latest (sur _history).
+	mustExec(t, ss, `CREATE SEQUENCE media_match_associations_history_id_seq START 1`)
+	mustExec(t, ss, `CREATE TABLE media_match_associations_history (
+		id BIGINT PRIMARY KEY DEFAULT nextval('media_match_associations_history_id_seq'),
+		media_file_id VARCHAR NOT NULL, match_id VARCHAR NOT NULL, delta_seconds INTEGER,
+		is_manual BOOLEAN NOT NULL DEFAULT FALSE, is_active BOOLEAN NOT NULL DEFAULT TRUE,
+		associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)`)
+	mustExec(t, ss, `CREATE OR REPLACE VIEW media_match_associations_latest AS
+		WITH lpp AS (SELECT media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at,
+			ROW_NUMBER() OVER (PARTITION BY media_file_id, match_id ORDER BY written_at DESC, id DESC) AS rn
+			FROM media_match_associations_history),
+		act AS (SELECT * FROM lpp WHERE rn = 1 AND is_active = TRUE),
+		hm AS (SELECT media_file_id, bool_or(is_manual) AS has_manual FROM act GROUP BY media_file_id)
+		SELECT a.media_file_id, a.match_id, a.delta_seconds, a.is_manual, a.associated_at, a.written_at
+		FROM act a JOIN hm ON hm.media_file_id = a.media_file_id WHERE a.is_manual = hm.has_manual`)
 	mustExec(t, ss, `INSERT INTO media_files VALUES
 		('a','Halo Infinite 2026-02-18 17-37-18.mkv','Halo Infinite 2026-02-18 17-37-18'),
 		('b','Replay clip.mp4','Replay clip')`)
-	mustExec(t, ss, `INSERT INTO media_match_associations VALUES ('a','m1'), ('b','m2')`)
+	mustExec(t, ss, `INSERT INTO media_match_associations_history (media_file_id, match_id) VALUES ('a','m1'), ('b','m2')`)
 	ss.Close()
 
 	got, err := loadVideoRealMaps(ctx, ssPath, smPath)

@@ -133,7 +133,7 @@ func LoadPlayerMatchEnrichments(ctx context.Context, playerDB *DB, matchIDs []st
 		       COALESCE(had_bot_teammate, FALSE),
 		       engagement_score_brut,
 		       engagement_pace_player / NULLIF(engagement_pace_lobby, 0)
-		FROM player_match_enrichment
+		FROM player_match_enrichment_latest
 		WHERE match_id IN (%s)`, Placeholders(len(matchIDs)))
 
 	// QueryRecovered (Phase 5 du refactor ART) : si la handle a été

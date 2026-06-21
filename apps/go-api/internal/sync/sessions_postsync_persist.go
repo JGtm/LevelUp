@@ -78,7 +78,7 @@ func deltaSessionAssignments(ctx context.Context, db *sql.DB, newAssignments []d
 		SELECT match_id,
 		       COALESCE(CAST(session_id AS VARCHAR), ''),
 		       COALESCE(session_label, '')
-		FROM player_match_enrichment
+		FROM player_match_enrichment_latest
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("deltaSessionAssignments: query: %w", err)

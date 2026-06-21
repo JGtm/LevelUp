@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/migration"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
@@ -26,13 +27,24 @@ func setupTestPlayerDB(t *testing.T, matchIDs []string) (*duckdbpkg.DB, string) 
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	// Schéma minimal pour player_match_enrichment (seulement match_id requis).
+	// Schéma minimal pour player_match_enrichment : match_id + les colonnes de
+	// base référencées par la vue _latest (la migration append-only ajoute les
+	// colonnes engagement/psa mais suppose les colonnes de base préexistantes,
+	// créées en prod par create_base_player_schema).
 	if _, err := db.SQLDb().Exec(`
 		CREATE TABLE player_match_enrichment (
-			match_id VARCHAR PRIMARY KEY
+			match_id VARCHAR PRIMARY KEY,
+			performance_score FLOAT,
+			session_id VARCHAR,
+			session_label VARCHAR,
+			is_with_friends BOOLEAN DEFAULT FALSE,
+			teammates_signature VARCHAR
 		)
 	`); err != nil {
 		t.Fatalf("create table player_match_enrichment: %v", err)
+	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db.SQLDb()); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
 	for _, mID := range matchIDs {
 		if _, err := db.SQLDb().Exec("INSERT INTO player_match_enrichment (match_id) VALUES (?)", mID); err != nil {

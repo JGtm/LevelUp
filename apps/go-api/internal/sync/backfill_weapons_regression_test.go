@@ -393,10 +393,12 @@ func TestInsertWeaponKills_Idempotent(t *testing.T) {
 		t.Fatalf("idempotent second insert: %v", err)
 	}
 
+	// Append-only #23046 (Phase 2) : idempotence LOGIQUE via v_weapon_kills (dernière
+	// génération) ; le physique croît, la vue reste à 2 rows.
 	var count int
-	db.QueryRow("SELECT COUNT(*) FROM weapon_kills WHERE match_id='m1' AND xuid='xuid1'").Scan(&count)
+	db.QueryRow("SELECT COUNT(*) FROM v_weapon_kills WHERE match_id='m1' AND xuid='xuid1'").Scan(&count)
 	if count != 2 {
-		t.Fatalf("expected 2 rows after idempotent re-insert, got %d", count)
+		t.Fatalf("expected 2 rows (v_weapon_kills) after idempotent re-insert, got %d", count)
 	}
 }
 

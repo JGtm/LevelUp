@@ -86,12 +86,10 @@ func BackfillMatchCitations(
 			CumulPre: cumulPre,
 		}, mappings)
 
-		// Idempotence : suppression avant réécriture.
-		if err := deleteCitationForMatch(ctx, playerDB, matchID); err != nil {
-			slog.Warn("BackfillMatchCitations: delete", "match_id", matchID, "err", err)
-			skipped++
-			continue
-		}
+		// Append-only #23046 (Phase 2) : plus de DELETE avant réécriture. La
+		// réécriture (writeCitations) alloue une nouvelle génération qui supersède
+		// la précédente via la vue match_citations_latest (recompute soustractif
+		// préservé : la nouvelle génération porte EXACTEMENT le nouvel ensemble).
 
 		// Phase 4 (fix recompute citations) : NE PAS poser le sentinel "_processed"
 		// si 0 delta provient d'events pas encore chargés (film retardé). Sinon le
@@ -373,7 +371,7 @@ GROUP BY effective_weapon_id`
 func loadAwards(ctx context.Context, db *sql.DB, matchID, xuid string) (map[string]int, error) {
 	const q = `
 SELECT award_name, COALESCE(SUM(award_count), 0) AS total
-FROM personal_score_awards
+FROM personal_score_awards_latest
 WHERE match_id = ? AND xuid = ?
 GROUP BY award_name`
 
@@ -446,17 +444,22 @@ func isEventsLoaded(ctx context.Context, sharedDB *sql.DB, matchID string) bool 
 // NB Phase 4 : ce sentinel n'est posé (cas 0 delta) que si les events sont
 // chargés — décision prise par le caller BackfillMatchCitations via isEventsLoaded.
 func writeCitations(ctx context.Context, db *sql.DB, matchID string, deltas []domain.CitationMatchDelta) error {
-	const q = `
-INSERT INTO match_citations (match_id, citation_name_norm, value)
-VALUES (?, ?, ?)
-ON CONFLICT (match_id, citation_name_norm) DO NOTHING`
-
+	// Append-only #23046 (Phase 2) : plus de PK composite ni ON CONFLICT ni DELETE
+	// préalable. Chaque réécriture d'un match alloue UNE génération
+	// (match_citations_generation_seq), partagée par toutes ses rows ; la vue
+	// match_citations_latest ne lit que la génération MAX par match_id. La
+	// sentinelle '_processed' (0 citation active) fait partie de la génération.
+	var gen int64
+	if err := db.QueryRowContext(ctx, `SELECT nextval('match_citations_generation_seq')`).Scan(&gen); err != nil {
+		return fmt.Errorf("writeCitations gen %s: %w", matchID, err)
+	}
+	const q = `INSERT INTO match_citations (match_id, citation_name_norm, value, generation_id) VALUES (?, ?, ?, ?)`
 	if len(deltas) == 0 {
-		_, err := db.ExecContext(ctx, q, matchID, "_processed", 0)
+		_, err := db.ExecContext(ctx, q, matchID, "_processed", 0, gen)
 		return err
 	}
 	for _, d := range deltas {
-		if _, err := db.ExecContext(ctx, q, matchID, d.NameNorm, d.Value); err != nil {
+		if _, err := db.ExecContext(ctx, q, matchID, d.NameNorm, d.Value, gen); err != nil {
 			return fmt.Errorf("writeCitations %s/%s: %w", matchID, d.NameNorm, err)
 		}
 	}
@@ -513,7 +516,7 @@ func loadCumulExcluding(ctx context.Context, db *sql.DB, matchIDs []string) (map
 		args []any
 	)
 	if len(matchIDs) == 0 {
-		q = `SELECT citation_name_norm, COALESCE(SUM(value), 0) FROM match_citations GROUP BY citation_name_norm`
+		q = `SELECT citation_name_norm, COALESCE(SUM(value), 0) FROM match_citations_latest GROUP BY citation_name_norm`
 	} else {
 		placeholders := make([]string, len(matchIDs))
 		args = make([]any, len(matchIDs))
@@ -521,7 +524,7 @@ func loadCumulExcluding(ctx context.Context, db *sql.DB, matchIDs []string) (map
 			placeholders[i] = "?"
 			args[i] = id
 		}
-		q = `SELECT citation_name_norm, COALESCE(SUM(value), 0) FROM match_citations WHERE match_id NOT IN (` +
+		q = `SELECT citation_name_norm, COALESCE(SUM(value), 0) FROM match_citations_latest WHERE match_id NOT IN (` +
 			strings.Join(placeholders, ",") + `) GROUP BY citation_name_norm`
 	}
 	rows, err := db.QueryContext(ctx, q, args...)
@@ -539,10 +542,4 @@ func loadCumulExcluding(ctx context.Context, db *sql.DB, matchIDs []string) (map
 		result[name] = total
 	}
 	return result, rows.Err()
-}
-
-// deleteCitationForMatch supprime les citations d'un match avant réécriture (idempotence).
-func deleteCitationForMatch(ctx context.Context, db *sql.DB, matchID string) error {
-	_, err := db.ExecContext(ctx, `DELETE FROM match_citations WHERE match_id = ?`, matchID)
-	return err
 }

@@ -176,7 +176,7 @@ func loadRatioSamples(
 			COALESCE(engagement_pace_team, 0),
 			COALESCE(engagement_pace_lobby, 0),
 			COALESCE(engagement_player_activity, 0)
-		FROM player_match_enrichment
+		FROM player_match_enrichment_latest
 		WHERE mode_category = ?
 		  AND engagement_pace_team IS NOT NULL
 		ORDER BY match_id DESC

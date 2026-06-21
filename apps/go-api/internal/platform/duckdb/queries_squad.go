@@ -99,7 +99,7 @@ JOIN shared.match_participants p2
     ON p2.match_id = p1.match_id
     AND p2.team_id  = p1.team_id
     AND p2.xuid     = ?
-LEFT JOIN player_match_enrichment pme ON pme.match_id = p1.match_id
+LEFT JOIN player_match_enrichment_latest pme ON pme.match_id = p1.match_id
 WHERE p1.xuid = ?
 ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 
@@ -343,7 +343,7 @@ SELECT COALESCE(r.map_id, '')                            AS map_id,
 FROM shared.match_participants mp
 JOIN shared.match_registry r       ON r.match_id = mp.match_id
 JOIN squad_matches sm              ON sm.match_id = mp.match_id
-LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id
+LEFT JOIN player_match_enrichment_latest pme ON pme.match_id = mp.match_id
 WHERE mp.xuid = ?
   AND COALESCE(r.map_id, '') <> ''
 GROUP BY r.map_id`

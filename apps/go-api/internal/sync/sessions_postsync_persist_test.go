@@ -177,7 +177,7 @@ func TestWriteSessionAssignmentsBatch_SubsequentChange(t *testing.T) {
 	// Verif que la valeur est bien ecrite
 	var sid sql.NullInt64
 	var label sql.NullString
-	if err := db.QueryRow("SELECT session_id, session_label FROM player_match_enrichment WHERE match_id = 'm1'").Scan(&sid, &label); err != nil {
+	if err := db.QueryRow("SELECT session_id, session_label FROM player_match_enrichment_latest WHERE match_id = 'm1'").Scan(&sid, &label); err != nil {
 		t.Fatalf("query: %v", err)
 	}
 	if !sid.Valid || sid.Int64 != 1 {
@@ -200,7 +200,7 @@ func TestWriteSessionAssignmentsBatch_SubsequentChange(t *testing.T) {
 	}
 
 	// Verif valeur mise a jour
-	if err := db.QueryRow("SELECT session_id, session_label FROM player_match_enrichment WHERE match_id = 'm1'").Scan(&sid, &label); err != nil {
+	if err := db.QueryRow("SELECT session_id, session_label FROM player_match_enrichment_latest WHERE match_id = 'm1'").Scan(&sid, &label); err != nil {
 		t.Fatalf("query 2: %v", err)
 	}
 	if !sid.Valid || sid.Int64 != 2 {
@@ -236,7 +236,7 @@ func TestWriteSessionAssignmentsBatch_OnlyNewRows_SkipsExisting(t *testing.T) {
 
 	// m1 inchangé
 	var sid1 int
-	if err := db.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id = 'm1'").Scan(&sid1); err != nil {
+	if err := db.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id = 'm1'").Scan(&sid1); err != nil {
 		t.Fatalf("query m1: %v", err)
 	}
 	if sid1 != 1 {
@@ -245,7 +245,7 @@ func TestWriteSessionAssignmentsBatch_OnlyNewRows_SkipsExisting(t *testing.T) {
 
 	// m2 assigné
 	var sid2 int
-	if err := db.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id = 'm2'").Scan(&sid2); err != nil {
+	if err := db.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id = 'm2'").Scan(&sid2); err != nil {
 		t.Fatalf("query m2: %v", err)
 	}
 	if sid2 != 2 {

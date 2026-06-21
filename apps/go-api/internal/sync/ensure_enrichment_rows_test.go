@@ -14,6 +14,8 @@ import (
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/migration"
 )
 
 // setupTwoDBs ouvre 2 DuckDB in-memory (player + shared) avec le schéma
@@ -35,6 +37,9 @@ func setupTwoDBs(t *testing.T) (player, shared *sql.DB) {
 			created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`); err != nil {
 		t.Fatalf("create player_match_enrichment: %v", err)
+	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(playerDB); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
 
 	sharedDB, err := sql.Open("duckdb", ":memory:")

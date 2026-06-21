@@ -297,7 +297,7 @@ func (a *SquadV2LoaderAdapter) LoadObjectiveScores(
 		args = append(args, id)
 	}
 	q := `SELECT match_id, COALESCE(SUM(award_score), 0)::INTEGER AS total
-		  FROM personal_score_awards
+		  FROM personal_score_awards_latest
 		  WHERE award_category = 'objective'
 		    AND xuid = ?
 		    AND match_id IN (` + ph + `)

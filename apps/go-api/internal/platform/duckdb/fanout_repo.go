@@ -57,7 +57,7 @@ func (r *FanoutRepo) LoadExistingEnrichments(
 	}
 	query := `
 		SELECT match_id
-		FROM player_match_enrichment
+		FROM player_match_enrichment_latest
 		WHERE match_id IN (SELECT UNNEST(?::VARCHAR[]))
 	`
 	// QueryRecovered (Phase 5 ART) : retry après Reopen si la handle est invalidée.
@@ -77,8 +77,10 @@ func (r *FanoutRepo) LoadExistingEnrichments(
 	return result, rows.Err()
 }
 
-// InsertStubEnrichments insère des enregistrements stub dans player_match_enrichment
-// pour les matchs manquants. Le performance_score sera recalculé plus tard.
+// InsertStubEnrichments insère une row baseline stage='live' dans player_match_enrichment
+// pour les matchs manquants d'un coéquipier (matchs vus seulement via shared — même motif
+// que ensurePlayerEnrichmentRows). Append-only #23046 : INSERT pur (le caller pré-filtre
+// déjà via LoadExistingEnrichments → aucun conflit). Le post-sync taggé peuple ensuite.
 func (r *FanoutRepo) InsertStubEnrichments(
 	ctx context.Context,
 	xuid string,
@@ -89,7 +91,7 @@ func (r *FanoutRepo) InsertStubEnrichments(
 	inserted := 0
 	for _, mid := range matchIDs {
 		_, err := r.pdb.Player.Exec(ctx,
-			`INSERT OR IGNORE INTO player_match_enrichment (match_id) VALUES (?)`,
+			`INSERT INTO player_match_enrichment (match_id, stage) VALUES (?, 'live')`,
 			mid,
 		)
 		if err != nil {

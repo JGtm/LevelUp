@@ -89,8 +89,10 @@ func TestContract_NoDuplicateRows_V1(t *testing.T) {
 	if d := dupCount(t, sharedDB, "match_participants", "match_id, xuid"); d != 0 {
 		t.Errorf("match_participants: %d (match_id,xuid) dupliqués", d)
 	}
-	if d := dupCount(t, playerDB, "player_match_enrichment", "match_id"); d != 0 {
-		t.Errorf("player_match_enrichment: %d match_id dupliqués", d)
+	// Append-only #23046 : player_match_enrichment porte N rows/match (1 par stage,
+	// PAR DESIGN). L'invariant "1 row logique par match" se vérifie sur la vue merge.
+	if d := dupCount(t, playerDB, "player_match_enrichment_latest", "match_id"); d != 0 {
+		t.Errorf("player_match_enrichment_latest: %d match_id dupliqués", d)
 	}
 	if n := countRows(t, sharedDB, "match_registry"); n != 2 {
 		t.Errorf("match_registry: attendu 2 (PVP+PVE), obtenu %d", n)
@@ -115,11 +117,15 @@ func TestContract_CycleIdempotent_V1(t *testing.T) {
 	run(1)
 	reg1 := countRows(t, sharedDB, "match_registry")
 	part1 := countRows(t, sharedDB, "match_participants")
-	enr1 := countRows(t, playerDB, "player_match_enrichment")
+	// Append-only #23046 : processMatch appelé 2× directement (bypass loadKnownMatchIDs)
+	// INSÈRE 2 rows 'live' physiques — l'idempotence LOGIQUE (ce que voient les readers)
+	// est garantie par la vue merge (1 ligne/match, stable). En prod, l'idempotence
+	// vient de loadKnownMatchIDs au niveau cycle, pas de processMatch.
+	enr1 := countRows(t, playerDB, "player_match_enrichment_latest")
 	run(2) // rejoue à l'identique
 	if reg2, part2, enr2 := countRows(t, sharedDB, "match_registry"),
 		countRows(t, sharedDB, "match_participants"),
-		countRows(t, playerDB, "player_match_enrichment"); reg2 != reg1 || part2 != part1 || enr2 != enr1 {
+		countRows(t, playerDB, "player_match_enrichment_latest"); reg2 != reg1 || part2 != part1 || enr2 != enr1 {
 		t.Errorf("cycle non-idempotent: registry %d→%d, participants %d→%d, enrichment %d→%d",
 			reg1, reg2, part1, part2, enr1, enr2)
 	}
