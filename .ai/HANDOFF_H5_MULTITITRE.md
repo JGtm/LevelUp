@@ -113,7 +113,7 @@ Provider shared sélectionné PAR TITRE pour lecture ET écriture (le seul desig
 - Vérif adversariale : propriété clé (read==write instance) SÛRE (cache par path, path identique, 1 Manager), HINF byte-identique, cycle de vie/concurrence SÛRS. Tests : #1 byte-identique, #2 sélection per-titre, #3 coordination read+write, #4 lifecycle.
 
 ### Résidus (non bloquants, à garder en tête)
-- **Premier run h5** (shared inexistant) : `For` échoue → writer legacy crée le fichier ; un read concurrent retombe sur HINF (loggué, transitoire, auto-résorbant dès que le fichier existe). Pas de corruption. Mitigation propre éventuelle : provisionner le shared h5 vide au boot.
+- **Premier run h5** (shared inexistant) : **déjà mitigé** — `provisionAdditionalActiveTitles` (main.go:422→1505) provisionne le shared DB (vide + schéma via `migration.TargetShared`) de CHAQUE titre additionnel actif AU BOOT (avant `sharedMgr`/toute lecture). Donc `Manager.For(h5_path)` réussit (fichier existe) → lecture vide (pas de fallback HINF) tant que le sync n'a pas tourné. Le risque transitoire identifié par la vérif adversariale ne se présente PAS pour un titre actif (l'agent vérif ne connaissait pas ce provisioning). Réserve : un titre NON-`Active()` lu quand même n'aurait pas son shared → fallback HINF (mais les chemins excluent déjà les titres en pause).
 - **`newEngineFor` (sync_handler.go:175,184)** injecte `cfg.SharedProvider` (HINF) : inoffensif (h5 passe par LiveRunner, pas SyncEngine) mais un 3e titre routé via SyncEngine hériterait du provider HINF → à corriger à l'activation 1b.
 - Fallback lecture `sharedReaderForTitle` sur erreur = `cfg.SharedProvider` (HINF) : sémantiquement « lit le mauvais titre » plutôt que vide ; transitoire uniquement.
 
