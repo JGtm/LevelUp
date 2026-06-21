@@ -51,8 +51,9 @@ func TestHalo5_Manifest(t *testing.T) {
 }
 
 // TestHalo5_FineCapabilities : capabilities.toml charge, toutes les clés sont
-// connues, et la matrice reflète la surface RÉELLEMENT câblée en Phase 1a (seul
-// career.progression ; le reste = not_exposed tant que stub, remonte en Phase 2).
+// connues, et la matrice reflète la surface RÉELLEMENT câblée (career.progression
+// + match.events.* + match.detail.core via LoadMatchDetail/voie canonique Match
+// View ; le reste = not_exposed tant que stub).
 // La matrice optimiste cible vit dans le handoff §2, pas dans ce fichier.
 func TestHalo5_FineCapabilities(t *testing.T) {
 	path := filepath.Join(repoRoot(t), "config", "titles", slug, "mappings", "capabilities.toml")
@@ -66,7 +67,7 @@ func TestHalo5_FineCapabilities(t *testing.T) {
 	}
 	want := map[games.CapabilityKey]games.CapabilityStatus{
 		games.CapMatchHistory:         games.CapNotExposed,
-		games.CapMatchDetailCore:      games.CapNotExposed,
+		games.CapMatchDetailCore:      games.CapSupported, // LoadMatchDetail (carnage → canonical)
 		games.CapScoreboardExtra:      games.CapNotExposed,
 		games.CapMatchSkillSnapshot:   games.CapNotExposed,
 		games.CapCareerProgression:    games.CapSupported,

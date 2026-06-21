@@ -1,0 +1,291 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/canonical"
+)
+
+// errSentinel : erreur repo générique simulant "match introuvable" (le repo ne
+// sait pas servir → routage vers la voie canonique).
+var errSentinel = errors.New("repo: no rows")
+
+// --- helpers ---
+// ptrFloat est déclaré dans match_history_explorer_options_test.go (même package).
+
+func ptrInt(v int) *int      { return &v }
+func ptrBoolMV(v bool) *bool { return &v }
+
+// fakeDetailAdapter implémente games.TitleDataAdapter mais ne sert QUE
+// LoadMatchDetail (le reste dégrade en ErrCapabilityNotSupported). Suffit pour
+// tester le routage repo-first / adapter-fallback de GetMatchView.
+type fakeDetailAdapter struct {
+	detail *canonical.MatchDetail
+	err    error
+}
+
+func (f *fakeDetailAdapter) TitleSlug() string                 { return "halo_5" }
+func (f *fakeDetailAdapter) Capabilities() games.CapabilityMap { return games.CapabilityMap{} }
+func (f *fakeDetailAdapter) LoadMatchDetail(_ context.Context, _ string) (*canonical.MatchDetail, error) {
+	return f.detail, f.err
+}
+func (f *fakeDetailAdapter) LoadPlayerStats(_ context.Context, _ string, _ canonical.StatsScope) (*canonical.PlayerStats, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+func (f *fakeDetailAdapter) LoadCareerSnapshot(_ context.Context, _ string, _ canonical.CareerOptions) (*canonical.CareerSnapshot, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+func (f *fakeDetailAdapter) LoadMatchSummaries(_ context.Context, _ []string) ([]canonical.MatchSummary, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+func (f *fakeDetailAdapter) LoadEncounters(_ context.Context, _ string) ([]canonical.EncounterRow, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+func (f *fakeDetailAdapter) LoadLUSRHistory(_ context.Context, _ string) ([]canonical.LUSRCheckpoint, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+func (f *fakeDetailAdapter) LoadTopMatches(_ context.Context, _ string) ([]canonical.CareerTopMatch, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+func (f *fakeDetailAdapter) LoadTargetRecentMatches(_ context.Context, _ string, _ int) ([]canonical.RecentMatchRow, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+func (f *fakeDetailAdapter) LoadParticipantStats(_ context.Context, _ string, _ []string) (*canonical.PlayerMatchSetStats, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+func (f *fakeDetailAdapter) LoadPlayerIntersection(_ context.Context, _, _ string) (*canonical.PlayerIntersection, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+func (f *fakeDetailAdapter) LoadTimeseries(_ context.Context, _ string, _ canonical.TimeseriesQuery) (*canonical.MetricSeries, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+func (f *fakeDetailAdapter) LoadMatchScoreboard(_ context.Context, _ string) ([]canonical.MatchParticipant, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+func (f *fakeDetailAdapter) LoadHighlightEvents(_ context.Context, _ string) ([]canonical.HighlightEvent, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+func (f *fakeDetailAdapter) LoadMatchEvents(_ context.Context, _ string, _ canonical.MatchEventOptions) (*canonical.MatchEventTimeline, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+func (f *fakeDetailAdapter) LoadFriendsXUIDs(_ context.Context, _ string) ([]string, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+
+// sampleH5Detail construit un MatchDetail h5-like (gamertag-keyé, xuid vide).
+func sampleH5Detail() *canonical.MatchDetail {
+	isRanked := true
+	start := time.Date(2026, 6, 20, 18, 0, 0, 0, time.UTC)
+	end := start.Add(7 * time.Minute)
+	return &canonical.MatchDetail{
+		MatchID:      "h5-match-1",
+		StartedAtUTC: start,
+		EndedAtUTC:   &end,
+		Map:          &canonical.AssetReference{Kind: "map", ID: "map-guid-1", DefaultLabel: "Truth", Labels: map[string]string{"fr": "Vérité"}},
+		Playlist:     &canonical.AssetReference{Kind: "playlist", ID: "pl-1", DefaultLabel: "Team Arena"},
+		GameVariant:  &canonical.AssetReference{Kind: "game_variant", ID: "gv-1", DefaultLabel: "Slayer"},
+		IsRanked:     &isRanked,
+		MatchType:    canonical.MatchTypeRanked,
+		Participants: []canonical.MatchParticipant{
+			{
+				Identity:      canonical.PlayerIdentity{Gamertag: "JGtm"},
+				TeamID:        ptrInt(0),
+				RankInMatch:   ptrInt(1),
+				Outcome:       canonical.OutcomeWin,
+				Score:         ptrInt(2500),
+				PersonalScore: ptrInt(2500),
+				Kills:         ptrInt(20),
+				Deaths:        ptrInt(8),
+				Assists:       ptrInt(5),
+				HeadshotKills: ptrInt(7),
+				KDA:           ptrFloat(13.6),
+				DamageDealt:   ptrInt(3200),
+				PerfectKills:  ptrInt(2),
+			},
+			{
+				Identity:    canonical.PlayerIdentity{Gamertag: "Rival"},
+				TeamID:      ptrInt(1),
+				RankInMatch: ptrInt(5),
+				Outcome:     canonical.OutcomeLoss,
+				Kills:       ptrInt(10),
+				Deaths:      ptrInt(18),
+				Assists:     ptrInt(2),
+				IsBot:       ptrBoolMV(false),
+			},
+		},
+		Teams: []canonical.TeamSnapshot{
+			{TeamID: 0, Score: ptrInt(50)},
+			{TeamID: 1, Score: ptrInt(42)},
+		},
+	}
+}
+
+// TestBuildMatchViewFromCanonical_HeaderOutcomeScoreMap : un MatchDetail h5 factice
+// → header outcome/score/map corrects, scoreboard complet, is_partial=true.
+func TestBuildMatchViewFromCanonical_HeaderOutcomeScoreMap(t *testing.T) {
+	svc := NewMatchViewService(nil, "")
+	ctx := ctxkeys.WithViewerGamertag(context.Background(), "JGtm")
+	resp := svc.buildMatchViewFromCanonical(ctx, sampleH5Detail())
+
+	// Header : match id + map (FR prioritaire) + mode (game variant) + ranked.
+	if resp.Header.MatchID != "h5-match-1" {
+		t.Errorf("MatchID = %q, want h5-match-1", resp.Header.MatchID)
+	}
+	if resp.Header.MapUI != "Vérité" {
+		t.Errorf("MapUI = %q, want 'Vérité' (label FR)", resp.Header.MapUI)
+	}
+	if resp.Header.MapID != "map-guid-1" {
+		t.Errorf("MapID = %q, want map-guid-1", resp.Header.MapID)
+	}
+	if resp.Header.ModeUI != "Slayer" {
+		t.Errorf("ModeUI = %q, want 'Slayer' (game variant)", resp.Header.ModeUI)
+	}
+	if resp.Header.PlaylistLabel != "Team Arena" {
+		t.Errorf("PlaylistLabel = %q, want 'Team Arena'", resp.Header.PlaylistLabel)
+	}
+	if !resp.Header.IsRanked {
+		t.Error("IsRanked = false, want true")
+	}
+	// Outcome du self (JGtm = Win = code 2).
+	if resp.Header.OutcomeCode == nil || *resp.Header.OutcomeCode != domain.OutcomeWin {
+		t.Errorf("OutcomeCode = %v, want %d (win)", resp.Header.OutcomeCode, domain.OutcomeWin)
+	}
+	if resp.Header.OutcomeColorToken != "outcome-win" {
+		t.Errorf("OutcomeColorToken = %q, want 'outcome-win'", resp.Header.OutcomeColorToken)
+	}
+	// ScoreLabel : équipe du self (team 0, score 50) en premier.
+	if resp.Header.ScoreLabel != "50 - 42" {
+		t.Errorf("ScoreLabel = %q, want '50 - 42'", resp.Header.ScoreLabel)
+	}
+	// Durée jouable = 7 min = 420s.
+	if resp.Header.PlayableDurationSeconds == nil || *resp.Header.PlayableDurationSeconds != 420 {
+		t.Errorf("PlayableDurationSeconds = %v, want 420", resp.Header.PlayableDurationSeconds)
+	}
+
+	// IsPartial + raisons.
+	if !resp.IsPartial {
+		t.Error("IsPartial = false, want true")
+	}
+	if len(resp.PartialReasons) == 0 {
+		t.Error("PartialReasons vide, attendu les raisons live")
+	}
+
+	// Scoreboard : 2 participants, is_me sur JGtm.
+	if len(resp.TeamTab.Scoreboard) != 2 {
+		t.Fatalf("scoreboard count = %d, want 2", len(resp.TeamTab.Scoreboard))
+	}
+	var meFound bool
+	for _, row := range resp.TeamTab.Scoreboard {
+		if row.Gamertag == "JGtm" {
+			meFound = row.IsMe
+			if row.Kills == nil || *row.Kills != 20 {
+				t.Errorf("JGtm kills = %v, want 20", row.Kills)
+			}
+			if row.TeamSide == nil || *row.TeamSide != "t0" {
+				t.Errorf("JGtm team_side = %v, want t0", row.TeamSide)
+			}
+		}
+	}
+	if !meFound {
+		t.Error("aucune ligne scoreboard marquée is_me pour le viewer JGtm")
+	}
+
+	// Summary self KPIs.
+	if resp.SummaryTab.KPIs.Kills == nil || *resp.SummaryTab.KPIs.Kills != 20 {
+		t.Errorf("summary kills = %v, want 20", resp.SummaryTab.KPIs.Kills)
+	}
+	if resp.SummaryTab.PersonalResult.OutcomeColorToken != "outcome-win" {
+		t.Errorf("summary outcome token = %q, want 'outcome-win'", resp.SummaryTab.PersonalResult.OutcomeColorToken)
+	}
+
+	// Rank dégradé (Skill nil).
+	if resp.Rank.RatingType != "none" {
+		t.Errorf("Rank.RatingType = %q, want 'none' (Skill nil)", resp.Rank.RatingType)
+	}
+}
+
+// TestBuildMatchViewFromCanonical_NoViewer_DegradesSelfKeepsScoreboard : sans viewer
+// dans le ctx, le self n'est pas identifiable → header/summary outcome dégradent,
+// mais le scoreboard reste complet (toutes les lignes).
+func TestBuildMatchViewFromCanonical_NoViewer_DegradesSelfKeepsScoreboard(t *testing.T) {
+	svc := NewMatchViewService(nil, "")
+	resp := svc.buildMatchViewFromCanonical(context.Background(), sampleH5Detail())
+
+	if resp.Header.OutcomeCode != nil {
+		t.Errorf("OutcomeCode = %v, want nil (self introuvable)", resp.Header.OutcomeCode)
+	}
+	if len(resp.TeamTab.Scoreboard) != 2 {
+		t.Errorf("scoreboard count = %d, want 2 (complet malgré self absent)", len(resp.TeamTab.Scoreboard))
+	}
+	for _, row := range resp.TeamTab.Scoreboard {
+		if row.IsMe {
+			t.Errorf("ligne %q marquée is_me alors qu'aucun viewer", row.Gamertag)
+		}
+	}
+	// ScoreLabel reste calculable depuis les équipes (ordre brut).
+	if resp.Header.ScoreLabel == "" {
+		t.Error("ScoreLabel vide alors que 2 équipes scorées")
+	}
+}
+
+// TestBuildMatchViewFromCanonical_NilFields_NoPanic : participants vides, Skill nil,
+// Map nil → aucune panique, dégradation en chaînes/pointeurs vides.
+func TestBuildMatchViewFromCanonical_NilFields_NoPanic(t *testing.T) {
+	svc := NewMatchViewService(nil, "")
+	detail := &canonical.MatchDetail{MatchID: "empty"}
+	resp := svc.buildMatchViewFromCanonical(context.Background(), detail)
+
+	if resp.Header.MatchID != "empty" {
+		t.Errorf("MatchID = %q, want empty", resp.Header.MatchID)
+	}
+	if resp.Header.MapUI != "" {
+		t.Errorf("MapUI = %q, want empty (Map nil)", resp.Header.MapUI)
+	}
+	if len(resp.TeamTab.Scoreboard) != 0 {
+		t.Errorf("scoreboard count = %d, want 0", len(resp.TeamTab.Scoreboard))
+	}
+	if !resp.IsPartial {
+		t.Error("IsPartial = false, want true")
+	}
+}
+
+// TestGetMatchView_RoutesToCanonical_WhenRepoCannotServe : meta en erreur (repo ne
+// sert pas le match) + adapter câblé → la voie canonique prend le relais.
+func TestGetMatchView_RoutesToCanonical_WhenRepoCannotServe(t *testing.T) {
+	repo := &mockMatchViewRepo{metaErr: errSentinel}
+	svc := NewMatchViewService(repo, "").
+		WithDataAdapter(&fakeDetailAdapter{detail: sampleH5Detail()}).
+		WithViewerGamertag("JGtm")
+
+	resp, err := svc.GetMatchView(context.Background(), "h5-match-1")
+	if err != nil {
+		t.Fatalf("attendu succès via voie canonique, erreur: %v", err)
+	}
+	if resp.Header.MatchID != "h5-match-1" {
+		t.Errorf("MatchID = %q, want h5-match-1 (voie canonique)", resp.Header.MatchID)
+	}
+	if !resp.IsPartial {
+		t.Error("IsPartial = false, want true (voie canonique)")
+	}
+}
+
+// TestGetMatchView_NoRegression_WhenAdapterDegrades : meta en erreur + adapter qui
+// dégrade (ErrCapabilityNotSupported) → l'erreur repo d'origine est remontée
+// (comportement HINF / pré-canonique inchangé).
+func TestGetMatchView_NoRegression_WhenAdapterDegrades(t *testing.T) {
+	repo := &mockMatchViewRepo{metaErr: errSentinel}
+	svc := NewMatchViewService(repo, "").
+		WithDataAdapter(&fakeDetailAdapter{err: games.ErrCapabilityNotSupported}).
+		WithViewerGamertag("JGtm")
+
+	_, err := svc.GetMatchView(context.Background(), "x")
+	if err == nil {
+		t.Fatal("attendu l'erreur repo d'origine quand l'adapter dégrade")
+	}
+}

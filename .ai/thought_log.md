@@ -1,3 +1,74 @@
+## [2026-06-21] G9 Part B — MatchViewService voie canonique + routage + capability h5 — Complété
+
+PART B du plan `.ai/PLAN_H5_MATCH_VIEW.md` : la page vue-match devient
+fonctionnelle pour h5 (live-only, pas de substrat DuckDB). Câble la voie canonique
+au-dessus du `LoadMatchDetail` livré en Part A, sans régresser HINF.
+
+**Routage repo-first / adapter-fallback (title-agnostic, AUCUN slug)** dans
+`GetMatchView` (`match_view_service.go`) : `s.repo.GetMatchMeta` d'abord. Si meta
+OK (HINF : substrat présent) → voie repo ACTUELLE strictement inchangée
+(byte-identique, aucun chemin nouveau atteint). Si meta en ERREUR (h5 live-only :
+`GetMatchMeta` renvoie "no rows") ET `s.dataAdapter != nil` → `tryCanonicalMatchView`
+tente `LoadMatchDetail` ; succès → `buildMatchViewFromCanonical`. Si l'adapter
+dégrade (`ErrCapabilityNotSupported`/nil/err) → on remonte l'erreur repo d'origine
+(404/500, comportement actuel). Le routage est piloté UNIQUEMENT par « le repo
+peut-il servir ce match ».
+
+**`buildMatchViewFromCanonical`** (nouveau `match_view_canonical.go`) :
+- **Header** : MatchID, StartTime (StartedAtUTC + label FR long), Map (label FR
+  prioritaire + ID GUID), Mode (GameVariant→Playlist), Playlist, IsRanked,
+  PlayableDurationSeconds (Ended−Started), MapImageURL via `s.assetURL.MapImageURL`
+  (clé = Map.ID GUID pour h5, fallback label), Outcome* + ScoreLabel "X - Y"
+  (équipe du self en premier). PerfDisplay "-"/Dominance neutres (pas de perf live).
+- **Rank** : Skill nil (h5 ne charge pas le CSR par match) → `RatingType:"none"`.
+- **SummaryTab** : KPIs du self (kills/deaths/assists/kda/damage/headshots/spree/
+  perfect/accuracy/personal_score) + PersonalResult outcome.
+- **TeamTab** : scoreboard = TOUS les participants (mêmes champs JSON que
+  `buildTeamTabFull` pour cohérence front), `is_me` sur le self ; Roster/Nemesis/
+  Encounters vides (non calculables live).
+- **CombatTab/MediaTab/CitationsTab** : vides (kill-feed h5 servi par l'endpoint
+  events séparé, supported).
+- **IsPartial=true** + **PartialReasons** : `combat_narrative_unavailable`,
+  `citations_unavailable`, `media_unavailable`,
+  `accuracy_damage_taken_native_unavailable`.
+
+**Participant SELF gamertag-keyé** : matché par `ctxkeys.ViewerGamertag(ctx)`
+(case-insensitive), PAS par `s.xuid` (carnage h5 = Identity.XUID vide). Self
+introuvable → header/summary dégradent (outcome inconnu), scoreboard reste complet.
+Aucune panique sur champs nil (Participants/Skill/Map nil → chaînes/pointeurs vides).
+
+**Câblage viewer gamertag** : `MatchViewService.WithViewerGamertag(gamertag)`
+(nouveau setter + champ) ; posé dans le ctx via `ctxkeys.WithViewerGamertag` au
+début de `tryCanonicalMatchView` (seulement si non-vide). Injecté dans la factory
+`registry_pages.go:MatchView` (`svc.WithDataAdapter(a).WithViewerGamertag(pdb.Gamertag)`)
+uniquement quand un adapter est présent. No-op pour HINF (n'emprunte pas la voie
+canonique).
+
+**Capability** : `config/titles/halo_5/mappings/capabilities.toml`
+`match.detail.core` → `supported` + parité miroir dans `fallbackCapabilities()`
+(adapter_data.go `CapMatchDetailCore: CapSupported`). Tests de parité adaptés
+honnêtement : `capabilities_parity_test.go` passe (compare TOML↔fallback) ;
+`skeleton_test.go::TestHalo5_FineCapabilities` mis à jour (was `not_exposed`).
+
+**Front** : `MatchViewPage.tsx` dégrade déjà sur `is_partial` (bandeau « sync
+incomplet » existant + tous les accès tableau gardés `?? []`, kill-feed
+auto-masquant). Seul ajout minimal : 4 cases dans `translatePartialReason` pour
+traduire les nouveaux codes (sinon code brut affiché à l'utilisateur, pas un crash).
+
+**Tests** : `match_view_canonical_test.go` (4 cas) — header outcome/score/map +
+scoreboard count + is_partial ; self absent → dégrade mais scoreboard complet ;
+champs nil → no panic ; routage GetMatchView (canonical quand repo échoue ;
+non-régression quand l'adapter dégrade → erreur repo remontée). Build + vet +
+`./internal/service ./internal/api ./internal/games/...` verts ; front typecheck +
+121 tests vitest match-view verts. (NB : un FAIL flake transitoire de
+`api/handlers` en run combiné — non reproductible en isolé, package non touché,
+flake DuckDB reopen connu.)
+
+**Garde-fous respectés** : HINF byte-identique (voie repo = défaut, jamais atteint
+la voie canonique car son meta est OK) ; aucun slug dans le service ; pas de panique
+sur nil. **Prochaine étape** : activation 1b (sélection-par-titre back/front) pour
+router réellement un joueur h5 vers cette page en prod.
+
 ## [2026-06-21] G9 Part A — h5 DataAdapter.LoadMatchDetail (carnage → canonical.MatchDetail) — Complété
 
 PART A du plan `.ai/PLAN_H5_MATCH_VIEW.md` : implémentation du stub
