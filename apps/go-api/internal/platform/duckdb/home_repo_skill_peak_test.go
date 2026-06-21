@@ -10,6 +10,27 @@ import (
 	"time"
 )
 
+// TestBuildHomeSkillPeakBadgeURL_CSRResolverTitleAware : le résolveur CSR title-aware
+// override l'insigne pour un titre additionnel (Halo 5) et laisse HINF intact.
+func TestBuildHomeSkillPeakBadgeURL_CSRResolverTitleAware(t *testing.T) {
+	SetCSRBadgeResolver(func(titleSlug, tier string, subTier int) string {
+		if titleSlug == "halo_5" && tier == "Diamond" && subTier == 5 {
+			return "https://cdn/h5-diamond5.png"
+		}
+		return ""
+	})
+	defer SetCSRBadgeResolver(nil) // ne pas polluer les autres tests
+
+	// Halo 5 → URL officielle du résolveur.
+	if got := buildHomeSkillPeakBadgeURLForThreshold("Diamond", "", 5, "halo_5", 0, 10); got == nil || *got != "https://cdn/h5-diamond5.png" {
+		t.Errorf("badge h5 = %v, want l'URL du résolveur", got)
+	}
+	// Halo Infinite → résolveur renvoie "" → chemin static HINF (jamais l'URL h5).
+	if got := buildHomeSkillPeakBadgeURLForThreshold("Diamond", "", 5, "halo_infinite", 0, 10); got == nil || *got == "https://cdn/h5-diamond5.png" {
+		t.Errorf("badge HINF ne doit PAS passer par le résolveur h5, got %v", got)
+	}
+}
+
 // ─── canonicalHomeSkillTierName ─────────────────────────────────────────
 
 func TestCanonicalHomeSkillTierName_AllKnown(t *testing.T) {

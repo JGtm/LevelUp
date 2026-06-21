@@ -410,6 +410,18 @@ func unrankedBadgeURLForThreshold(placementsCompleted, threshold int, titleSlug 
 	return &url
 }
 
+// csrBadgeResolver (optionnel, posé au boot) résout l'URL d'insigne CSR d'un titre
+// ADDITIONNEL par (titleSlug, tier EN « Diamond/Onyx… », sous-palier 1-6) depuis sa
+// metadata (table csr_designations, URLs CDN officielles). Retourne "" pour le titre
+// par défaut (Halo Infinite) → le chemin static HINF reste la source. Mécanisme
+// global (zéro changement de signature des 4 call-sites du builder).
+var csrBadgeResolver func(titleSlug, tier string, subTier int) string
+
+// SetCSRBadgeResolver pose le résolveur d'insignes CSR par titre. Idempotent (boot).
+func SetCSRBadgeResolver(f func(titleSlug, tier string, subTier int) string) {
+	csrBadgeResolver = f
+}
+
 // buildHomeSkillPeakBadgeURL construit l'URL du badge de rang (compat seuil 10).
 // Wrapper de buildHomeSkillPeakBadgeURLForThreshold. Préfèrer la version
 // "ForThreshold" pour les nouveaux callers conscients du seuil dynamique.
@@ -430,6 +442,18 @@ func buildHomeSkillPeakBadgeURLForThreshold(tier string, tierLabel string, subTi
 			return unrankedBadgeURLForThreshold(completed, threshold, titleSlug)
 		}
 		return nil
+	}
+	// Titres additionnels (ex. Halo 5) : insigne CSR depuis leur metadata
+	// (csr_designations, URLs CDN officielles). Additif — le résolveur renvoie "" pour
+	// le titre par défaut (HINF) → chemin static HINF ci-dessous strictement inchangé.
+	if csrBadgeResolver != nil {
+		sub := normalizedSubTier
+		if strings.EqualFold(normalizedTier, "Onyx") {
+			sub = 1 // Onyx = palier unique (csr_designations tier_id=1)
+		}
+		if u := csrBadgeResolver(titleSlug, normalizedTier, sub); u != "" {
+			return &u
+		}
 	}
 	// P5.4 (gap #9, ADR 0012) : déléguer à halo_infinite.AssetURLAdapter pour
 	// le format `120px-HINF-CSR_*` (Halo-only). Évite la duplication du format.
