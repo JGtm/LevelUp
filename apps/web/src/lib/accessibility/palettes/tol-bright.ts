@@ -87,6 +87,10 @@ export const tolBrightPalette: Palette = {
   'chart-series-7': TOL_GREY,
   'chart-series-8': TOL_BLACK,
 
+  // ── Bonus (assistances) — pourpre Tol, standout cohérent avec le défaut,
+  //     distinct des joueurs squad (bleu/vert/bleu-clair).
+  'bonus': TOL_PURPLE, // #AA3377
+
   // ── Badges narratifs ────────────────────────────────────────────────────────
   // Texte calculé pour contraste WCAG AA (test automatique Phase C)
   'narrative-dominant':              TOL_GREEN,  // vert UI — statut positif

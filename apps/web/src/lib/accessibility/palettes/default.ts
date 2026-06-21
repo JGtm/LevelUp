@@ -50,6 +50,10 @@ export const defaultPalette: Palette = {
   'chart-series-7': '#F59E0B', // amber   — 7e série
   'chart-series-8': '#EC4899', // pink    — 8e série
 
+  // ── Bonus (assistances) — violet, distinct des 8 couleurs squad verrouillées ─
+  // (joueurs + opposés). N'utilise PAS chart-series-7 (== perf-tier-3 ambre = joueur 3).
+  'bonus': '#A855F7', // violet-500 (teinte 271°)
+
   // ── Badges narratifs (source : match-card-presentation.ts) ─────────────────
   // Couleurs ajustées pour atteindre WCAG AA (≥ 4.5:1) — cf. wcagContrast.test.ts
   'narrative-dominant':             '#00DC82',
