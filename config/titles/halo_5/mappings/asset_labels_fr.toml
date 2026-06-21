@@ -1,0 +1,51 @@
+# config/titles/halo_5/mappings/asset_labels_fr.toml
+#
+# Overrides de noms FRANÇAIS (localisation officielle Halo 5: Guardians) pour le
+# référentiel d'assets. Clé = nom EN EXACT de l'API Metadata officielle ; valeur =
+# nom FR officiel. Lu par cmd/h5-metadata-fetch → seed name_fr (fallback EN si absent).
+#
+# Source : wiki.halo.fr (pages dédiées par arme/médaille), recherche convergente.
+# RÈGLE : uniquement les correspondances CONFIRMÉES. Les noms non listés gardent
+# l'EN (aucune traduction inventée). Identiques EN/FR volontairement omis (DMR,
+# Magnum, Needler, Railgun, SAW, Hydra…).
+
+[weapons]
+"Assault Rifle" = "Fusil d'assaut"
+"Battle Rifle" = "Fusil de combat"
+"SMG" = "Mitraillette"
+"Shotgun" = "Fusil à pompe"
+"Sniper Rifle" = "Fusil de sniper"
+"Rocket Launcher" = "Lance-roquettes"
+"Spartan Laser" = "Laser Spartan"
+"Grenade Launcher" = "Lance-grenades"
+"Frag Grenade" = "Grenade à fragmentation"
+"Carbine" = "Carabine covenante"
+"Energy Sword" = "Épée à énergie"
+"Plasma Pistol" = "Pistolet à plasma"
+"Brute Plasma Rifle" = "Fusil à plasma brute"
+"Fuel Rod Cannon" = "Canon à combustible"
+"Storm Rifle" = "Fusil Storm"
+"Beam Rifle" = "Fusil de sniper covenant"
+"Plasma Caster" = "Grenadier-plasma"
+"Plasma Grenade" = "Grenade à plasma"
+"Gravity Hammer" = "Marteau antigravité"
+"Light Rifle" = "Fusil léger"
+"Binary Rifle" = "Fusil binaire"
+"Boltshot" = "Pistolet à particules"
+"Suppressor" = "Éradicateur"
+"Scattershot" = "Répercuteur"
+"Incineration Cannon" = "Canon incendiaire"
+"Sentinel Beam" = "Laser de Sentinelle"
+
+[medals]
+"Double Kill" = "Double frag"
+"Triple Kill" = "Triple frag"
+"Overkill" = "À la chaîne"
+"Headshot" = "Tir à la tête"
+"Beat Down" = "Tabassage"
+"Assassination" = "Assassinat"
+"Splatter" = "Écrasement"
+"Grenade Kill" = "Frag par grenade"
+"Perfection" = "Perfection"
+"Invincible" = "Invincible"
+"Flag Capture" = "Capture du drapeau"
