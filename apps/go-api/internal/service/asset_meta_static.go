@@ -11,28 +11,58 @@ import (
 // Compile-time check : StaticAssetMetaRepo implémente port.AssetMetaRepository.
 var _ port.AssetMetaRepository = (*StaticAssetMetaRepo)(nil)
 
-// StaticAssetMetaRepo est une implémentation in-memory de port.AssetMetaRepository.
-// Les données sont chargées une fois au démarrage depuis la DB, puis servies depuis la RAM.
-// Avantage : aucune connexion DB persistante → pas de lock fichier Windows (Air hot-reload).
-type StaticAssetMetaRepo struct {
+// assetSet regroupe les maps + armes d'un titre (snapshot in-memory).
+type assetSet struct {
 	maps    []canonical.AssetMeta
 	weapons []canonical.AssetMeta
 }
 
-// NewStaticAssetMetaRepo crée un repo in-memory à partir de slices pré-chargées.
+// StaticAssetMetaRepo est une implémentation in-memory de port.AssetMetaRepository.
+// Les données sont chargées une fois au démarrage depuis la DB, puis servies depuis la RAM.
+// Avantage : aucune connexion DB persistante → pas de lock fichier Windows (Air hot-reload).
+//
+// Title-aware : `byTitle` porte les overrides par titre (ex. halo_5, dont les
+// maps/armes + URLs viennent de l'API Metadata officielle) ; `fallback` sert les
+// titres sans override (rétro-compatible — comportement historique mono-titre).
+type StaticAssetMetaRepo struct {
+	fallback assetSet
+	byTitle  map[string]assetSet
+}
+
+// NewStaticAssetMetaRepo crée un repo in-memory à partir de slices pré-chargées
+// (titre par défaut / fallback). Ajouter des titres via WithTitle.
 func NewStaticAssetMetaRepo(maps, weapons []canonical.AssetMeta) *StaticAssetMetaRepo {
-	return &StaticAssetMetaRepo{maps: maps, weapons: weapons}
+	return &StaticAssetMetaRepo{
+		fallback: assetSet{maps: maps, weapons: weapons},
+		byTitle:  map[string]assetSet{},
+	}
 }
 
-// ListMapsByTitle retourne les maps filtrées par search (LIKE case-insensitive sur NameEN ou NameFR).
-// titleID est ignoré — les maps sont globales (asset_translations n'a pas de colonne title_id).
-func (r *StaticAssetMetaRepo) ListMapsByTitle(_ context.Context, _ string, search string) ([]canonical.AssetMeta, error) {
-	return filterAssets(r.maps, search), nil
+// WithTitle ajoute (ou remplace) le jeu d'assets d'un titre spécifique. Chainable.
+func (r *StaticAssetMetaRepo) WithTitle(titleID string, maps, weapons []canonical.AssetMeta) *StaticAssetMetaRepo {
+	if r.byTitle == nil {
+		r.byTitle = map[string]assetSet{}
+	}
+	r.byTitle[titleID] = assetSet{maps: maps, weapons: weapons}
+	return r
 }
 
-// ListWeaponsByTitle retourne les armes filtrées par search (LIKE case-insensitive sur NameEN ou NameFR).
-func (r *StaticAssetMetaRepo) ListWeaponsByTitle(_ context.Context, _ string, search string) ([]canonical.AssetMeta, error) {
-	return filterAssets(r.weapons, search), nil
+// setFor retourne le jeu d'assets d'un titre (override si présent, sinon fallback).
+func (r *StaticAssetMetaRepo) setFor(titleID string) assetSet {
+	if s, ok := r.byTitle[titleID]; ok {
+		return s
+	}
+	return r.fallback
+}
+
+// ListMapsByTitle retourne les maps du titre, filtrées par search (LIKE case-insensitive).
+func (r *StaticAssetMetaRepo) ListMapsByTitle(_ context.Context, titleID string, search string) ([]canonical.AssetMeta, error) {
+	return filterAssets(r.setFor(titleID).maps, search), nil
+}
+
+// ListWeaponsByTitle retourne les armes du titre, filtrées par search (LIKE case-insensitive).
+func (r *StaticAssetMetaRepo) ListWeaponsByTitle(_ context.Context, titleID string, search string) ([]canonical.AssetMeta, error) {
+	return filterAssets(r.setFor(titleID).weapons, search), nil
 }
 
 func filterAssets(items []canonical.AssetMeta, search string) []canonical.AssetMeta {
