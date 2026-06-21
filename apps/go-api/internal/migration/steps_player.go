@@ -18,16 +18,41 @@ func init() {
 		Description: "Tables de base stats.duckdb (idempotent IF NOT EXISTS)",
 		ApplySchema: func(db *sql.DB) error {
 			return execScript(db, `
+				-- APPEND-ONLY (campagne ART #23046, 2026-06-21) : naît directement
+				-- avec PK technique id + stage + written_at (cf. sync/schema.go).
+				-- Aucun PK(match_id), aucun index ART muté. ensurePMEColumns de la
+				-- migration append-only ajoute toute colonne manquante (découplage ordre).
+				CREATE SEQUENCE IF NOT EXISTS pme_seq START 1;
 				CREATE TABLE IF NOT EXISTS player_match_enrichment (
-					match_id VARCHAR PRIMARY KEY,
-					performance_score DOUBLE,
-					session_id VARCHAR,
-					session_label VARCHAR,
-					is_with_friends BOOLEAN DEFAULT FALSE,
-					teammates_signature VARCHAR,
+					id                          BIGINT  DEFAULT nextval('pme_seq') PRIMARY KEY,
+					match_id                    VARCHAR NOT NULL,
+					performance_score           FLOAT,
+					performance_chain           VARCHAR,
+					dominance_flag              TINYINT,
+					session_id                  VARCHAR,
+					session_label               VARCHAR,
+					is_with_friends             BOOLEAN   DEFAULT FALSE,
+					teammates_signature         VARCHAR,
+					known_teammates_count       SMALLINT,
+					friends_xuids               VARCHAR,
+					had_bot_teammate            BOOLEAN,
+					is_excluded                 BOOLEAN   DEFAULT FALSE,
+					psa_checked_at              TIMESTAMP,
+					engagement_score            DOUBLE,
+					engagement_score_brut       DOUBLE,
+					engagement_score_confidence VARCHAR,
+					mode_category               VARCHAR,
+					engagement_pace_player      DOUBLE,
+					engagement_pace_team        DOUBLE,
+					engagement_pace_lobby       DOUBLE,
+					engagement_player_activity  INTEGER,
+					stage                       VARCHAR   DEFAULT 'legacy',
+					written_at                  TIMESTAMP NOT NULL DEFAULT now(),
 					created_at TIMESTAMP,
 					updated_at TIMESTAMP
 				);
+				-- idx_pme_match_lookup posé par la migration append-only (après swap garantissant
+				-- written_at) — pas ici (legacy pré-existant + CREATE TABLE IF NOT EXISTS).
 				CREATE TABLE IF NOT EXISTS sync_meta (
 					key VARCHAR PRIMARY KEY,
 					value VARCHAR,
@@ -286,11 +311,16 @@ func init() {
 	})
 
 	Register(Migration{
-		Name:        "add_pme_session_index",
-		TargetDB:    TargetPlayer,
-		Description: "Index idx_pme_session sur player_match_enrichment(session_id)",
+		Name:     "add_pme_session_index",
+		TargetDB: TargetPlayer,
+		// Append-only #23046 (2026-06-21) : idx_pme_session(session_id) est un index
+		// ART sur une colonne mutée par l'étage session → vecteur. La migration ne
+		// crée PLUS l'index ; elle le DROP (no-op si absent). Lecture via
+		// player_match_enrichment_latest. Le swap append-only le supprime aussi.
+		Description: "Drop idx_pme_session sur player_match_enrichment (ex-index ART, append-only)",
 		ApplySchema: func(db *sql.DB) error {
-			return createIndexSafe(db, "CREATE INDEX IF NOT EXISTS idx_pme_session ON player_match_enrichment(session_id)")
+			_, err := db.Exec("DROP INDEX IF EXISTS idx_pme_session")
+			return err
 		},
 	})
 

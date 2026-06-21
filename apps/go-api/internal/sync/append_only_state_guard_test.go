@@ -44,6 +44,93 @@ var appendOnlyStateTables = []string{
 	// garde son nom, pas de table _history séparée. Lecture via
 	// lusr_component_history_latest. Writers (loaders + persister) = INSERT pur.
 	"lusr_component_history",
+	// player_match_enrichment : la table la PLUS écrite, migrée append-only
+	// (#23046, 2026-06-21) — id PK + colonne stage + written_at, lecture via
+	// player_match_enrichment_latest (merge-on-read par-groupe). INSERT pur taggé.
+	"player_match_enrichment",
+	// pve_match_stats : append-only in-place (id PK + vue pve_match_stats_latest).
+	// L'écriture passe par un guard SELECT-then-INSERT idempotent (pve_persister.go) ;
+	// l'ancien INSERT OR IGNORE est interdit (audit adversarial 2026-06-21).
+	"pve_match_stats",
+}
+
+// rawPMEReadAllowlist : accès BRUTS intentionnels à player_match_enrichment (hors
+// vue _latest) tolérés dans le hot path — retirés du texte avant le scan raw-read.
+var rawPMEReadAllowlist = []string{
+	// player_persister.go : ancre d'idempotence du sous-batch live (vérifie la
+	// présence d'une row stage='live' sur la table physique). Pas un reader UI.
+	"FROM player_match_enrichment WHERE match_id = ? AND stage = 'live'",
+	// engagement.go loadExistingEngagementScores : marqueur d'idempotence writer-side
+	// (engagement déjà TENTÉ — borne la croissance des matchs insufficient_history).
+	// La vue n'expose pas `stage` → lecture physique nécessaire.
+	"FROM player_match_enrichment WHERE stage = 'engagement'",
+}
+
+// TestPlayerMatchEnrichmentAppendOnlyAccess durcit la doctrine append-only sur
+// player_match_enrichment au-delà du test ON CONFLICT/DELETE ci-dessus :
+//   - AUCUN `UPDATE player_match_enrichment` (append-only = INSERT pur),
+//   - AUCUNE lecture brute `FROM/JOIN player_match_enrichment` (hors _latest) dans
+//     le hot path serveur → doit passer par player_match_enrichment_latest (sinon
+//     fan-out N rows/match : agrégats faussés, JOIN dupliqués, delta-filters en boucle).
+//
+// Exclut migration (table physique), ops/cmd/scripts (outils), validation (parité
+// Go-vs-Python legacy : la py DB n'a pas la vue). Allowlist = ancre EXISTS du persister.
+func TestPlayerMatchEnrichmentAppendOnlyAccess(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+	reUpdate := regexp.MustCompile(`(?i)\bUPDATE\s+player_match_enrichment\b`)
+	reRawRead := regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+player_match_enrichment(\w*)`)
+
+	var violations []string
+	err := filepath.Walk(repoRoot, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if info.IsDir() {
+			name := info.Name()
+			if name == "vendor" || name == ".git" || name == "node_modules" ||
+				name == "data" || name == "logs" || name == "dist" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		if strings.Contains(path, "/migration/") || strings.Contains(path, "\\migration\\") ||
+			strings.Contains(path, "/ops/") || strings.Contains(path, "\\ops\\") ||
+			strings.Contains(path, "/cmd/") || strings.Contains(path, "\\cmd\\") ||
+			strings.Contains(path, "/validation/") || strings.Contains(path, "\\validation\\") ||
+			strings.Contains(path, "/scripts/") || strings.Contains(path, "\\scripts\\") {
+			return nil
+		}
+		content, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return nil
+		}
+		text := stripGoComments(string(content))
+		for _, allowed := range rawPMEReadAllowlist {
+			text = strings.ReplaceAll(text, allowed, "")
+		}
+		rel, _ := filepath.Rel(repoRoot, path)
+		rel = filepath.ToSlash(rel)
+		if reUpdate.MatchString(text) {
+			violations = append(violations, "UPDATE player_match_enrichment dans "+rel)
+		}
+		for _, m := range reRawRead.FindAllStringSubmatch(text, -1) {
+			if m[1] == "" { // suffixe vide = table brute (ni _latest ni __appendonly/__rebuilt)
+				violations = append(violations, "FROM/JOIN player_match_enrichment brut (hors _latest) dans "+rel)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk: %v", err)
+	}
+	if len(violations) > 0 {
+		t.Errorf("RÉGRESSION append-only PME : %d accès interdit(s) "+
+			"(lecture via player_match_enrichment_latest ; écriture = INSERT pur taggé stage) :\n  - %s",
+			len(violations), strings.Join(violations, "\n  - "))
+	}
 }
 
 func TestNoMutationOnAppendOnlyStateTables(t *testing.T) {
@@ -51,13 +138,15 @@ func TestNoMutationOnAppendOnlyStateTables(t *testing.T) {
 
 	reOnConflictDoUpdate := regexp.MustCompile(`(?is)\bON\s+CONFLICT\b[^;]*\bDO\s+UPDATE\b`)
 	reInsertOrReplace := regexp.MustCompile(`(?i)\bINSERT\s+OR\s+REPLACE\b`)
+	reInsertOrIgnore := regexp.MustCompile(`(?i)\bINSERT\s+OR\s+IGNORE\b`)
 
 	var violations []string
 	for _, table := range appendOnlyStateTables {
 		reDelete := regexp.MustCompile(`(?i)\bDELETE\s+FROM\s+` + regexp.QuoteMeta(table) + `\b`)
-		// INSERT ... ON CONFLICT/REPLACE visant cette table : on borne au statement
-		// commençant par INSERT INTO <table>.
-		reInsertTable := regexp.MustCompile(`(?is)\bINSERT\s+(?:OR\s+REPLACE\s+)?INTO\s+` + regexp.QuoteMeta(table) + `\b[^;]*`)
+		// INSERT ... ON CONFLICT/REPLACE/IGNORE visant cette table : on borne au statement
+		// commençant par INSERT [OR REPLACE|IGNORE] INTO <table> (statement-level → pas de
+		// faux positif file-level vs un INSERT OR IGNORE sur une AUTRE table du même fichier).
+		reInsertTable := regexp.MustCompile(`(?is)\bINSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO\s+` + regexp.QuoteMeta(table) + `\b[^;]*`)
 
 		err := filepath.Walk(repoRoot, func(path string, info os.FileInfo, walkErr error) error {
 			if walkErr != nil {
@@ -91,8 +180,8 @@ func TestNoMutationOnAppendOnlyStateTables(t *testing.T) {
 				violations = append(violations, "DELETE FROM "+table+" dans "+rel)
 			}
 			for _, stmt := range reInsertTable.FindAllString(text, -1) {
-				if reOnConflictDoUpdate.MatchString(stmt) || reInsertOrReplace.MatchString(stmt) {
-					violations = append(violations, "INSERT ON CONFLICT/REPLACE sur "+table+" dans "+rel)
+				if reOnConflictDoUpdate.MatchString(stmt) || reInsertOrReplace.MatchString(stmt) || reInsertOrIgnore.MatchString(stmt) {
+					violations = append(violations, "INSERT ON CONFLICT/REPLACE/IGNORE sur "+table+" dans "+rel)
 				}
 			}
 			return nil

@@ -187,7 +187,7 @@ ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') ASC`
 // Phase A. Le template %s reçoit les placeholders IN ?... .
 const Q23StatsMatchesPlayerEnrichTpl = `
 SELECT match_id, performance_score, session_id, session_label
-FROM player_match_enrichment
+FROM player_match_enrichment_latest
 WHERE match_id IN (%s)`
 
 // Q24 : LUSR — chargement du rating par match depuis match_skill_rank.

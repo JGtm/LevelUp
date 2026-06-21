@@ -74,6 +74,16 @@ var pmeColumnStage = []struct{ col, stage string }{
 // pmeBooleanFalseDefault : colonnes booléennes à transition bidirectionnelle, COALESCE FALSE.
 var pmeBooleanFalseDefault = map[string]bool{"is_with_friends": true, "is_excluded": true}
 
+// pmeBaselineFallback retourne l'expression SQL « valeur de baseline » d'une colonne :
+// la row 'live' (collect après migration) gagne, sinon la row 'legacy' (socle pré-migration).
+// Le collect live (player_persister.persistEnrichment) écrit UNE row multi-colonnes
+// stage='live' ; les writers post-sync owner-stage l'overrident par colonne.
+func pmeBaselineFallback(col string) string {
+	return fmt.Sprintf(
+		"COALESCE(MAX(CASE WHEN stage='live' THEN %[1]s END), MAX(CASE WHEN stage='legacy' THEN %[1]s END))",
+		col)
+}
+
 // buildPMELatestViewSQL génère la vue merge-on-read par-groupe.
 func buildPMELatestViewSQL() string {
 	var sb strings.Builder
@@ -83,24 +93,35 @@ func buildPMELatestViewSQL() string {
 	sb.WriteString("  QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, stage ORDER BY written_at DESC, id DESC) = 1\n")
 	sb.WriteString(")\nSELECT\n  match_id")
 	for _, cs := range pmeColumnStage {
-		// SI l'étape propriétaire a une row → sa valeur (NULL préservé) ; SINON legacy.
+		// SI l'étape propriétaire a une row → sa valeur (NULL préservé = reset
+		// légitime) ; SINON baseline (live > legacy).
 		expr := fmt.Sprintf(
 			"CASE WHEN MAX(CASE WHEN stage='%[2]s' THEN 1 ELSE 0 END)=1 "+
 				"THEN MAX(CASE WHEN stage='%[2]s' THEN %[1]s END) "+
-				"ELSE MAX(CASE WHEN stage='legacy' THEN %[1]s END) END",
-			cs.col, cs.stage)
+				"ELSE %[3]s END",
+			cs.col, cs.stage, pmeBaselineFallback(cs.col))
 		if pmeBooleanFalseDefault[cs.col] {
 			expr = "COALESCE(" + expr + ", FALSE)"
 		}
 		sb.WriteString(",\n  " + expr + " AS " + cs.col)
 	}
-	// known_teammates_count / friends_xuids : socle legacy uniquement (colonnes mortes).
-	sb.WriteString(",\n  MAX(CASE WHEN stage='legacy' THEN known_teammates_count END) AS known_teammates_count")
-	sb.WriteString(",\n  MAX(CASE WHEN stage='legacy' THEN friends_xuids END) AS friends_xuids")
+	// known_teammates_count / friends_xuids : baseline uniquement (colonnes mortes,
+	// aucun writer owner-stage).
+	sb.WriteString(",\n  " + pmeBaselineFallback("known_teammates_count") + " AS known_teammates_count")
+	sb.WriteString(",\n  " + pmeBaselineFallback("friends_xuids") + " AS friends_xuids")
 	sb.WriteString(",\n  MIN(created_at) AS created_at")
 	sb.WriteString(",\n  MAX(updated_at) AS updated_at")
 	sb.WriteString("\nFROM ls\nGROUP BY match_id")
 	return sb.String()
+}
+
+// EnsurePlayerMatchEnrichmentAppendOnly convertit player_match_enrichment en
+// append-only (id PK + stage + written_at) et (re)crée la vue _latest + l'index
+// lookup. Idempotent. Exposé pour les fixtures de test qui construisent une player
+// DB à la main (sans RunForDB) : un seul appel après la DDL legacy suffit —
+// ensurePMEColumns ajoute toutes les colonnes manquantes référencées par la vue.
+func EnsurePlayerMatchEnrichmentAppendOnly(db *sql.DB) error {
+	return applyAppendOnlyMatchEnrichment(db)
 }
 
 func applyAppendOnlyMatchEnrichment(db *sql.DB) error {
@@ -153,9 +174,19 @@ func applyAppendOnlyMatchEnrichment(db *sql.DB) error {
 // ensurePMEColumns ajoute (si manquantes) les colonnes additives référencées par la vue,
 // pour découpler la création de la vue de l'ordre des migrations engagement/dominance/psa.
 func ensurePMEColumns(db *sql.DB) error {
+	// TOUTES les colonnes référencées par buildPMELatestViewSQL doivent exister avant
+	// de créer la vue — y compris les colonnes « de base » (session_label, etc.) qu'une
+	// table legacy MINIMALE (certaines fixtures de test, ou un vieux schéma partiel)
+	// pourrait ne pas avoir. addColumnIfMissing est un no-op si la colonne existe déjà
+	// (et ne change pas le type — ex. session_id INTEGER d'une fixture est préservé).
 	cols := []struct{ name, typ string }{
+		{"performance_score", "FLOAT"},
 		{"performance_chain", "VARCHAR"},
 		{"dominance_flag", "TINYINT"},
+		{"session_id", "VARCHAR"},
+		{"session_label", "VARCHAR"},
+		{"is_with_friends", "BOOLEAN DEFAULT FALSE"},
+		{"teammates_signature", "VARCHAR"},
 		{"had_bot_teammate", "BOOLEAN"},
 		{"is_excluded", "BOOLEAN DEFAULT FALSE"},
 		{"psa_checked_at", "TIMESTAMP"},
@@ -169,6 +200,8 @@ func ensurePMEColumns(db *sql.DB) error {
 		{"engagement_player_activity", "INTEGER"},
 		{"known_teammates_count", "SMALLINT"},
 		{"friends_xuids", "VARCHAR"},
+		{"created_at", "TIMESTAMP"},
+		{"updated_at", "TIMESTAMP"},
 	}
 	for _, c := range cols {
 		if err := addColumnIfMissing(db, "player_match_enrichment", c.name, c.typ); err != nil {

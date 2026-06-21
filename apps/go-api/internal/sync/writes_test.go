@@ -309,7 +309,7 @@ func TestUpsertPlayerEnrichment(t *testing.T) {
 	}
 
 	var sig string
-	_ = db.QueryRow("SELECT teammates_signature FROM player_match_enrichment WHERE match_id = 'm1'").Scan(&sig)
+	_ = db.QueryRow("SELECT teammates_signature FROM player_match_enrichment_latest WHERE match_id = 'm1'").Scan(&sig)
 	if sig != "sig-abc" {
 		t.Errorf("expected sig-abc, got %s", sig)
 	}
@@ -318,7 +318,7 @@ func TestUpsertPlayerEnrichment(t *testing.T) {
 	if err := intsync.UpsertPlayerEnrichment(t.Context(), db, "m1", "sig-def"); err != nil {
 		t.Fatalf("UpsertPlayerEnrichment update: %v", err)
 	}
-	_ = db.QueryRow("SELECT teammates_signature FROM player_match_enrichment WHERE match_id = 'm1'").Scan(&sig)
+	_ = db.QueryRow("SELECT teammates_signature FROM player_match_enrichment_latest WHERE match_id = 'm1'").Scan(&sig)
 	if sig != "sig-def" {
 		t.Errorf("expected sig-def after upsert, got %s", sig)
 	}
@@ -327,7 +327,7 @@ func TestUpsertPlayerEnrichment(t *testing.T) {
 	if err := intsync.UpsertPlayerEnrichment(t.Context(), db, "m1", ""); err != nil {
 		t.Fatalf("UpsertPlayerEnrichment empty: %v", err)
 	}
-	_ = db.QueryRow("SELECT teammates_signature FROM player_match_enrichment WHERE match_id = 'm1'").Scan(&sig)
+	_ = db.QueryRow("SELECT teammates_signature FROM player_match_enrichment_latest WHERE match_id = 'm1'").Scan(&sig)
 	if sig != "sig-def" {
 		t.Errorf("expected sig-def preserved after empty upsert, got %s", sig)
 	}
@@ -433,11 +433,11 @@ func TestWriteSessionAssignments_UpdatesRows(t *testing.T) {
 
 	// Vérifier les valeurs écrites.
 	var sid, slabel string
-	_ = db.QueryRow("SELECT session_id, session_label FROM player_match_enrichment WHERE match_id = 'm1'").Scan(&sid, &slabel)
+	_ = db.QueryRow("SELECT session_id, session_label FROM player_match_enrichment_latest WHERE match_id = 'm1'").Scan(&sid, &slabel)
 	if sid != "1" || slabel != "Session 1" {
 		t.Errorf("m1: got session_id=%q session_label=%q, want 1 / 'Session 1'", sid, slabel)
 	}
-	_ = db.QueryRow("SELECT session_id, session_label FROM player_match_enrichment WHERE match_id = 'm3'").Scan(&sid, &slabel)
+	_ = db.QueryRow("SELECT session_id, session_label FROM player_match_enrichment_latest WHERE match_id = 'm3'").Scan(&sid, &slabel)
 	if sid != "2" || slabel != "Session 2" {
 		t.Errorf("m3: got session_id=%q session_label=%q, want 2 / 'Session 2'", sid, slabel)
 	}
@@ -454,18 +454,30 @@ func TestWriteSessionAssignments_EmptySlice(t *testing.T) {
 	}
 }
 
-func TestWriteSessionAssignments_MissingMatchID_Zero(t *testing.T) {
+// TestWriteSessionAssignments_NewMatchInsertsRow : append-only #23046 — un match
+// sans row pré-existante reçoit désormais sa row session-stage (INSERT pur, plus
+// d'UPDATE no-op). Le writer retourne 1 et la session est lisible via la vue merge.
+func TestWriteSessionAssignments_NewMatchInsertsRow(t *testing.T) {
 	db := testutil.NewInMemoryPlayer(t)
 
-	// Aucune ligne dans la table — l'UPDATE ne doit pas échouer, juste 0 lignes affectées.
 	assignments := []domain.SessionAssignment{
-		{MatchID: "nonexistent", SessionID: 1, SessionLabel: "S1"},
+		{MatchID: "newmatch", SessionID: 1, SessionLabel: "S1"},
 	}
 	n, err := intsync.WriteSessionAssignments(t.Context(), db, assignments)
 	if err != nil {
 		t.Fatalf("WriteSessionAssignments: %v", err)
 	}
-	if n != 0 {
-		t.Errorf("expected 0 rows updated for missing match_id, got %d", n)
+	if n != 1 {
+		t.Errorf("expected 1 row inserted (append-only), got %d", n)
+	}
+	var sid int
+	var label string
+	if err := db.QueryRow(
+		`SELECT CAST(session_id AS INT), session_label FROM player_match_enrichment_latest WHERE match_id='newmatch'`,
+	).Scan(&sid, &label); err != nil {
+		t.Fatalf("read _latest: %v", err)
+	}
+	if sid != 1 || label != "S1" {
+		t.Errorf("session merge = (%d,%q), want (1,S1)", sid, label)
 	}
 }

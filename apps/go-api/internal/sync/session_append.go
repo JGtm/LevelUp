@@ -156,7 +156,7 @@ func loadAssignedSessionsMap(ctx context.Context, db *sql.DB) (map[string]assign
 		SELECT match_id,
 		       CAST(session_id AS INT),
 		       COALESCE(session_label, '')
-		FROM player_match_enrichment
+		FROM player_match_enrichment_latest
 		WHERE session_id IS NOT NULL
 	`)
 	if err != nil {

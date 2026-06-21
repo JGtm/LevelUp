@@ -67,8 +67,10 @@ func seedSteaktacularMedal(t *testing.T, sharedDB *sql.DB, matchID, xuid string)
 func readDominanceFlag(t *testing.T, playerDB *sql.DB, matchID string) int {
 	t.Helper()
 	var flag sql.NullInt64
+	// Append-only #23046 : lire la vue merge (dominance vit sur le stage 'dominance' ;
+	// une row legacy/live peut coexister).
 	row := playerDB.QueryRowContext(context.Background(),
-		`SELECT dominance_flag FROM player_match_enrichment WHERE match_id = ?`, matchID)
+		`SELECT dominance_flag FROM player_match_enrichment_latest WHERE match_id = ?`, matchID)
 	if err := row.Scan(&flag); err != nil {
 		t.Fatalf("read dominance_flag for %s: %v", matchID, err)
 	}
@@ -224,12 +226,17 @@ func TestSelectMatchesForComebackBadges_DefaultExcludesAlreadyFlagged(t *testing
 	for _, id := range []string{"m1", "m2", "m3"} {
 		seedComebackMatch(t, sharedDB, id, "Slayer", myXUID, 0, 2, 1)
 	}
-	// m1 deja flagge (flag > 0)
+	// m1 deja flagge dominant (flag > 0)
 	if _, err := playerDB.ExecContext(context.Background(),
 		`INSERT INTO player_match_enrichment (match_id, dominance_flag) VALUES ('m1', 1)`); err != nil {
 		t.Fatalf("pre-insert: %v", err)
 	}
-	// m2 a une row mais flag=0 (jamais traite) -> doit etre re-traite
+	// m2 : flag=0 = dominance CALCULÉE, résultat non-dominant (état terminal, pas un
+	// défaut). Append-only #23046 — le re-traiter le ferait ré-INSÉRER stage='dominance'
+	// à chaque backfill → croissance non bornée. Aligné sur le chemin per-sync
+	// (engine_postsync_csr.go : WHERE dominance_flag IS NULL = jamais calculé). flag=0
+	// est DÉJÀ traité → exclu. Seul m3 (aucune row → NULL) reste à calculer. Le re-calcul
+	// volontaire de m1/m2 passe par forceAll=true (cf. test ForceAllReturnsAll).
 	if _, err := playerDB.ExecContext(context.Background(),
 		`INSERT INTO player_match_enrichment (match_id, dominance_flag) VALUES ('m2', 0)`); err != nil {
 		t.Fatalf("pre-insert m2: %v", err)
@@ -239,12 +246,7 @@ func TestSelectMatchesForComebackBadges_DefaultExcludesAlreadyFlagged(t *testing
 	if err != nil {
 		t.Fatalf("select: %v", err)
 	}
-	if len(got) != 2 {
-		t.Errorf("expected m2 + m3, got %d: %v", len(got), got)
-	}
-	for _, id := range got {
-		if id == "m1" {
-			t.Errorf("m1 deja flagge ne devrait pas etre selectionne (got %v)", got)
-		}
+	if len(got) != 1 || got[0] != "m3" {
+		t.Errorf("expected [m3] uniquement (m1 dominant + m2 non-dominant déjà calculés), got %d: %v", len(got), got)
 	}
 }

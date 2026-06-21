@@ -219,51 +219,23 @@ func loadMatchesWithFriends(
 	return ids, rows.Err()
 }
 
-// updateIsWithFriendsBatch fait passer is_with_friends de FALSE à TRUE pour
-// les matchs fournis, batch par batch (pour rester sous la limite des
-// placeholders DuckDB en cas de très gros volume).
+// updateIsWithFriendsBatch fait passer is_with_friends à TRUE pour les matchs fournis.
+// Append-only #23046 : INSERT pur stage='friends' valeur TRUE EXPLICITE (le bug NULL
+// historique — badge "Solo" persistant, cf. thought_log 2026-05-08 — disparaît
+// nativement). Pré-filtre delta via _latest (ne réécrit que les matchs réellement FALSE).
 func updateIsWithFriendsBatch(ctx context.Context, playerDB *sql.DB, matchIDs []string) (int64, error) {
-	const batchSize = 500
-	var totalAffected int64
-	for start := 0; start < len(matchIDs); start += batchSize {
-		end := start + batchSize
-		if end > len(matchIDs) {
-			end = len(matchIDs)
-		}
-		batch := matchIDs[start:end]
-		placeholders := make([]string, len(batch))
-		args := make([]any, len(batch))
-		for i, id := range batch {
-			placeholders[i] = "?"
-			args[i] = id
-		}
-		// COALESCE pour couvrir les lignes héritées où is_with_friends est NULL :
-		// sans DEFAULT au schéma initial, les inserts du sync écrivaient NULL et
-		// `WHERE is_with_friends = FALSE` ne matchait pas (logique 3-valeurs SQL),
-		// donc le badge "Solo" persistait après ajout d'un ami. Cf. thought_log 2026-05-08.
-		q := fmt.Sprintf(`
-			UPDATE player_match_enrichment
-			SET    is_with_friends = TRUE,
-			       updated_at      = CURRENT_TIMESTAMP
-			WHERE  COALESCE(is_with_friends, FALSE) = FALSE
-			  AND  match_id IN (%s)
-		`, strings.Join(placeholders, ","))
-		result, err := playerDB.ExecContext(ctx, q, args...)
-		if err != nil {
-			return totalAffected, fmt.Errorf("updateIsWithFriendsBatch batch %d-%d: %w", start, end, err)
-		}
-		n, _ := result.RowsAffected()
-		totalAffected += n
-	}
-	return totalAffected, nil
+	n, err := insertEnrichmentBoolFlagDelta(ctx, playerDB, matchIDs, "is_with_friends", "friends", true)
+	return int64(n), err
 }
 
 // demoteStaleIsWithFriends remet is_with_friends à FALSE pour les matchs
 // actuellement TRUE qui ne figurent PLUS dans targetIDs (ami retiré / dernier ami
 // supprimé → targetIDs vide → démotion complète). Convergent.
 func demoteStaleIsWithFriends(ctx context.Context, playerDB *sql.DB, targetIDs []string) (int64, error) {
+	// Append-only #23046 : lire la valeur mergée (vue _latest) — sinon de vieilles
+	// rows TRUE + nouvelles FALSE coexistent et la démotion opère sur un état faux.
 	rows, err := playerDB.QueryContext(ctx,
-		`SELECT match_id FROM player_match_enrichment WHERE COALESCE(is_with_friends, FALSE) = TRUE`)
+		`SELECT match_id FROM player_match_enrichment_latest WHERE COALESCE(is_with_friends, FALSE) = TRUE`)
 	if err != nil {
 		return 0, fmt.Errorf("demoteStale load current TRUE: %w", err)
 	}
@@ -299,36 +271,9 @@ func demoteStaleIsWithFriends(ctx context.Context, playerDB *sql.DB, targetIDs [
 	return demoteIsWithFriendsBatch(ctx, playerDB, demote)
 }
 
-// demoteIsWithFriendsBatch fait passer is_with_friends de TRUE à FALSE pour les
-// matchs fournis, batch par batch. Même pattern IN(...) que la promotion.
+// demoteIsWithFriendsBatch fait passer is_with_friends à FALSE pour les matchs fournis.
+// Append-only #23046 : INSERT pur stage='friends' valeur FALSE EXPLICITE (jamais NULL).
 func demoteIsWithFriendsBatch(ctx context.Context, playerDB *sql.DB, matchIDs []string) (int64, error) {
-	const batchSize = 500
-	var total int64
-	for start := 0; start < len(matchIDs); start += batchSize {
-		end := start + batchSize
-		if end > len(matchIDs) {
-			end = len(matchIDs)
-		}
-		batch := matchIDs[start:end]
-		placeholders := make([]string, len(batch))
-		args := make([]any, len(batch))
-		for i, id := range batch {
-			placeholders[i] = "?"
-			args[i] = id
-		}
-		q := fmt.Sprintf(`
-			UPDATE player_match_enrichment
-			SET    is_with_friends = FALSE,
-			       updated_at      = CURRENT_TIMESTAMP
-			WHERE  COALESCE(is_with_friends, FALSE) = TRUE
-			  AND  match_id IN (%s)
-		`, strings.Join(placeholders, ","))
-		result, err := playerDB.ExecContext(ctx, q, args...)
-		if err != nil {
-			return total, fmt.Errorf("demoteIsWithFriendsBatch batch %d-%d: %w", start, end, err)
-		}
-		n, _ := result.RowsAffected()
-		total += n
-	}
-	return total, nil
+	n, err := insertEnrichmentBoolFlagDelta(ctx, playerDB, matchIDs, "is_with_friends", "friends", false)
+	return int64(n), err
 }

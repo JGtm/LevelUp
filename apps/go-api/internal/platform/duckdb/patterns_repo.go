@@ -188,7 +188,7 @@ func (r *PatternsRepo) loadEnrichments(ctx context.Context, matchIDs []string) (
 	q := fmt.Sprintf(`
 SELECT match_id, performance_score, session_id, is_with_friends,
        engagement_score, engagement_score_brut AS residual_brut
-FROM player_match_enrichment
+FROM player_match_enrichment_latest
 WHERE match_id IN (%s)`, ph)
 
 	sqlRows, err := r.pdb.Player.Query(ctx, q, ToAnySlice(matchIDs)...)

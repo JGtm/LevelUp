@@ -93,7 +93,7 @@ SELECT
     msr.tier_label,
     msr.rating_delta,
     msr.playlist_group
-FROM player_match_enrichment pme
+FROM player_match_enrichment_latest pme
 LEFT JOIN match_skill_rank msr ON msr.match_id = pme.match_id
 WHERE pme.match_id IN (%s)`
 
@@ -109,7 +109,7 @@ SELECT
     pme.session_id,
     pme.session_label,
     COALESCE(pme.is_with_friends, FALSE) AS is_with_friends
-FROM player_match_enrichment pme
+FROM player_match_enrichment_latest pme
 WHERE pme.session_label IS NOT NULL`
 
 // Q27HomeSessionsSharedStartTimesTpl : Phase B de Q27 — start_time pour

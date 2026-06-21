@@ -33,7 +33,7 @@ func init() {
 	Register(Migration{
 		Name:        "repair_player_match_enrichment_primary_key",
 		TargetDB:    TargetPlayer,
-		Description: "Reconstruit player_match_enrichment avec PRIMARY KEY (match_id) quand elle manque (player DB legacy CREATE TABLE IF NOT EXISTS)",
+		Description: "Garantit player_match_enrichment append-only (id PK + vue) sur player DB legacy (no-op si déjà id ; jamais de PK match_id — append-only #23046)",
 		ApplySchema: repairPlayerMatchEnrichmentPK,
 	})
 
@@ -45,8 +45,11 @@ func init() {
 	})
 }
 
-// repairPlayerMatchEnrichmentPK pose la PK (match_id) si absente, en réutilisant
-// le rebuild CTAS dynamique existant (préserve les colonnes additives).
+// repairPlayerMatchEnrichmentPK garantit que player_match_enrichment est
+// append-only. Append-only #23046 : on ne pose JAMAIS de PK(match_id). Si la
+// table porte déjà la PK technique `id`, elle est append-only → no-op. Sinon
+// (legacy sans schéma append-only), on délègue à la conversion idempotente
+// (RebuildPlayerMatchEnrichmentART → applyAppendOnlyMatchEnrichment).
 func repairPlayerMatchEnrichmentPK(db *sql.DB) error {
 	exists, err := tableExists(db, "player_match_enrichment")
 	if err != nil {
@@ -55,12 +58,12 @@ func repairPlayerMatchEnrichmentPK(db *sql.DB) error {
 	if !exists {
 		return nil
 	}
-	hasPK, err := hasPrimaryKey(db, "player_match_enrichment")
+	hasID, err := columnExists(db, "player_match_enrichment", "id")
 	if err != nil {
-		return fmt.Errorf("repair pme PK: check PK: %w", err)
+		return fmt.Errorf("repair pme PK: check id: %w", err)
 	}
-	if hasPK {
-		return nil
+	if hasID {
+		return nil // déjà append-only — rien à réparer (surtout pas de PK match_id)
 	}
 	return RebuildPlayerMatchEnrichmentART(bootCtx(), db)
 }

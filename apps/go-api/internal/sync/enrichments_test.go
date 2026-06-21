@@ -121,7 +121,7 @@ func insertPMEHadBot(t *testing.T, db *sql.DB, matchID string) {
 func getHadBot(t *testing.T, db *sql.DB, matchID string) bool {
 	t.Helper()
 	var v sql.NullBool
-	if err := db.QueryRow("SELECT had_bot_teammate FROM player_match_enrichment WHERE match_id = ?", matchID).Scan(&v); err != nil {
+	if err := db.QueryRow("SELECT had_bot_teammate FROM player_match_enrichment_latest WHERE match_id = ?", matchID).Scan(&v); err != nil {
 		t.Fatalf("query had_bot %s: %v", matchID, err)
 	}
 	return v.Valid && v.Bool

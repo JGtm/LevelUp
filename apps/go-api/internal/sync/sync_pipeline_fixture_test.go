@@ -20,6 +20,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/migration"
 )
 
 // ── constantes de la fixture ─────────────────────────────────────────────────
@@ -58,6 +59,10 @@ func buildPipelineFixture(t *testing.T) *pipelineFixture {
 
 	shared := openFixtureDB(t, buildSharedDDL())
 	player := openFixtureDB(t, buildPlayerDDL())
+	// Append-only #23046 : convertit player_match_enrichment + crée la vue _latest.
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(player); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
 	metadata := openFixtureDB(t, buildMetadataDDL())
 
 	f := &pipelineFixture{shared: shared, player: player, metadata: metadata}
@@ -788,9 +793,9 @@ func TestPipelineFixture_SessionGrouping(t *testing.T) {
 
 	// m1 et m2 doivent être dans la même session
 	var sid1, sid2, sid3 sql.NullString
-	f.player.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id=?", fixM1).Scan(&sid1)
-	f.player.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id=?", fixM2).Scan(&sid2)
-	f.player.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id=?", fixM3).Scan(&sid3)
+	f.player.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id=?", fixM1).Scan(&sid1)
+	f.player.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id=?", fixM2).Scan(&sid2)
+	f.player.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id=?", fixM3).Scan(&sid3)
 
 	if !sid1.Valid || !sid2.Valid || !sid3.Valid {
 		t.Fatalf("session_id NULL — m1=%v, m2=%v, m3=%v", sid1, sid2, sid3)
@@ -823,9 +828,9 @@ func TestPipelineFixture_SessionGrouping_WithFriends(t *testing.T) {
 	}
 
 	var sid1, sid2, sid3 sql.NullString
-	f.player.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id=?", fixM1).Scan(&sid1)
-	f.player.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id=?", fixM2).Scan(&sid2)
-	f.player.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id=?", fixM3).Scan(&sid3)
+	f.player.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id=?", fixM1).Scan(&sid1)
+	f.player.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id=?", fixM2).Scan(&sid2)
+	f.player.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id=?", fixM3).Scan(&sid3)
 
 	if sid1.String != sid2.String {
 		t.Fatalf("m1/m2 devraient être dans la même session avec friends mode (m1=%s m2=%s)", sid1.String, sid2.String)
@@ -976,17 +981,25 @@ func TestPipelineFixture_EngagementScore_Idempotent(t *testing.T) {
 	if n1 == 0 {
 		t.Fatal("premier run sans résultat")
 	}
+	// Cardinalité physique après le 1er run (append-only : 1 row stage='engagement'/match traité).
+	var rows1 int
+	f.player.QueryRow(`SELECT COUNT(*) FROM player_match_enrichment WHERE stage = 'engagement'`).Scan(&rows1)
 
-	// Après le premier run, m2 et m3 ont engagement_score non-NULL.
-	// Le second run (force=false) doit les skiper → n2 == 0 pour les unranked.
-	// m1 (ranked, score=NULL) sera re-traité → acceptable (historique insuffisant).
+	// Append-only #23046 — IDEMPOTENCE STRICTE : le 2e run (force=false) doit skiper
+	// TOUS les matchs déjà tentés, Y COMPRIS m1 (ranked, score=NULL insufficient_history).
+	// Sans cela, m1 serait ré-INSÉRÉ à chaque cycle → croissance non bornée (bug audit
+	// 2026-06-21). n2 == 0 ET la table ne grossit PAS.
 	n2, err := batchComputeEngagementScores(context.Background(), f.player, f.shared, fixXUID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Au minimum, m2 et m3 ne doivent plus être re-traités
-	if n2 >= n1 {
-		t.Fatalf("second run (force=false) a re-traité %d matchs comme le premier (%d), attendu < %d", n2, n1, n1)
+	if n2 != 0 {
+		t.Fatalf("second run (force=false) a re-traité %d matchs, attendu 0 (idempotence : tout déjà tenté)", n2)
+	}
+	var rows2 int
+	f.player.QueryRow(`SELECT COUNT(*) FROM player_match_enrichment WHERE stage = 'engagement'`).Scan(&rows2)
+	if rows2 != rows1 {
+		t.Fatalf("croissance non bornée : rows stage='engagement' %d -> %d (insufficient_history ré-INSÉRÉ)", rows1, rows2)
 	}
 }
 
@@ -1113,8 +1126,8 @@ func TestPipelineFixture_FullSequence(t *testing.T) {
 
 	// sessions : m1 et m2 dans la même session
 	var sid1, sid2 sql.NullString
-	f.player.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id=?", fixM1).Scan(&sid1)
-	f.player.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id=?", fixM2).Scan(&sid2)
+	f.player.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id=?", fixM1).Scan(&sid1)
+	f.player.QueryRow("SELECT session_id FROM player_match_enrichment_latest WHERE match_id=?", fixM2).Scan(&sid2)
 	if sid1.String == "" || sid1.String != sid2.String {
 		t.Errorf("[full] m1/m2 doivent partager la même session (m1=%q m2=%q)", sid1.String, sid2.String)
 	}

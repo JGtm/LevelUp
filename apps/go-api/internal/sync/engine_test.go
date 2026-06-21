@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/migration"
 )
 
 // ── Tests loadKnownMatchIDs ──────────────────────────────────────────────────
@@ -21,15 +23,15 @@ func TestLoadKnownMatchIDs_EmptyTable(t *testing.T) {
 	}
 	defer db.Close()
 
-	_, err = db.Exec(`CREATE TABLE player_match_enrichment (
-		match_id VARCHAR,
-		performance_score FLOAT,
-		session_id VARCHAR,
-		session_label VARCHAR,
-		is_with_friends BOOLEAN
-	)`)
-	if err != nil {
-		t.Fatalf("CREATE: %v", err)
+	// Append-only #23046 : loadKnownMatchIDs lit la vue player_match_enrichment_latest.
+	// La vue référence TOUTES les colonnes métier de la table → schéma complet
+	// (EnsurePlayerSchema) requis avant la création de la vue (un CREATE TABLE
+	// minimal manuel casse le binder de la vue).
+	if err := EnsurePlayerSchema(t.Context(), db); err != nil {
+		t.Fatalf("EnsurePlayerSchema: %v", err)
+	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
 
 	known, err := loadKnownMatchIDs(t.Context(), db, nil, "")
@@ -48,13 +50,14 @@ func TestLoadKnownMatchIDs_WithMatches(t *testing.T) {
 	}
 	defer db.Close()
 
-	_, _ = db.Exec(`CREATE TABLE player_match_enrichment (
-		match_id VARCHAR,
-		performance_score FLOAT,
-		session_id VARCHAR,
-		session_label VARCHAR,
-		is_with_friends BOOLEAN
-	)`)
+	// Append-only #23046 : schéma complet requis avant la vue _latest (lue par
+	// loadKnownMatchIDs) — un CREATE TABLE minimal casse le binder de la vue.
+	if err := EnsurePlayerSchema(t.Context(), db); err != nil {
+		t.Fatalf("EnsurePlayerSchema: %v", err)
+	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
 	_, _ = db.Exec(`INSERT INTO player_match_enrichment (match_id) VALUES ('aabbccdd-0000-0000-0000-000000000001')`)
 	_, _ = db.Exec(`INSERT INTO player_match_enrichment (match_id) VALUES ('aabbccdd-0000-0000-0000-000000000002')`)
 
@@ -105,8 +108,14 @@ func TestLoadKnownMatchIDs_UnionWithSharedParticipants(t *testing.T) {
 	defer sharedDB.Close()
 
 	// Player DB : 1 enrichment row (match "self-1") déjà connu localement.
-	_, _ = playerDB.Exec(`CREATE TABLE player_match_enrichment (match_id VARCHAR)`)
-	_, _ = playerDB.Exec(`INSERT INTO player_match_enrichment VALUES ('self-1')`)
+	// Append-only #23046 : schéma complet + vue _latest (lue par loadKnownMatchIDs).
+	if err := EnsurePlayerSchema(t.Context(), playerDB); err != nil {
+		t.Fatalf("EnsurePlayerSchema: %v", err)
+	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(playerDB); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
+	_, _ = playerDB.Exec(`INSERT INTO player_match_enrichment (match_id) VALUES ('self-1')`)
 
 	// Shared DB : 3 participants rows pour notre xuid (match "shared-1/2/3")
 	// + 1 row pour un AUTRE xuid (match "other-1") qui ne doit PAS être inclus.
@@ -145,8 +154,14 @@ func TestLoadKnownMatchIDs_NilSharedFallsBackToPlayer(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	defer playerDB.Close()
-	_, _ = playerDB.Exec(`CREATE TABLE player_match_enrichment (match_id VARCHAR)`)
-	_, _ = playerDB.Exec(`INSERT INTO player_match_enrichment VALUES ('only-self')`)
+	// Append-only #23046 : schéma complet + vue _latest (lue par loadKnownMatchIDs).
+	if err := EnsurePlayerSchema(t.Context(), playerDB); err != nil {
+		t.Fatalf("EnsurePlayerSchema: %v", err)
+	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(playerDB); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
+	_, _ = playerDB.Exec(`INSERT INTO player_match_enrichment (match_id) VALUES ('only-self')`)
 
 	known, err := loadKnownMatchIDs(t.Context(), playerDB, nil, "2533274823110022")
 	if err != nil {

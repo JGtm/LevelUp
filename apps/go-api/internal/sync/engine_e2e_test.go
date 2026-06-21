@@ -18,6 +18,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/migration"
 )
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -28,6 +29,11 @@ func newInMemoryDBs(t *testing.T) (*sql.DB, *sql.DB) {
 	playerDB := openMemDB(t)
 	if err := EnsurePlayerSchema(t.Context(), playerDB); err != nil {
 		t.Fatalf("EnsurePlayerSchema: %v", err)
+	}
+	// Append-only #23046 : EnsurePlayerSchema crée la table append-only (id+stage) ;
+	// cet appel crée la vue player_match_enrichment_latest (lue par le post-sync).
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(playerDB); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
 	sharedDB := openMemDB(t)
 	if err := EnsureSharedSchema(t.Context(), sharedDB); err != nil {
@@ -339,6 +345,9 @@ func TestLoadKnownMatchIDs_Deduplication(t *testing.T) {
 	playerDB := openMemDB(t)
 	if err := EnsurePlayerSchema(t.Context(), playerDB); err != nil {
 		t.Fatalf("schema: %v", err)
+	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(playerDB); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
 
 	// Insert some known matches
@@ -665,6 +674,9 @@ func TestSetSyncMeta_ReadBack(t *testing.T) {
 	if err := EnsurePlayerSchema(t.Context(), playerDB); err != nil {
 		t.Fatalf("schema: %v", err)
 	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(playerDB); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	if err := SetSyncMeta(t.Context(), playerDB, "last_delta_sync", now); err != nil {
@@ -685,6 +697,9 @@ func TestSetSyncMeta_Overwrite(t *testing.T) {
 	playerDB := openMemDB(t)
 	if err := EnsurePlayerSchema(t.Context(), playerDB); err != nil {
 		t.Fatalf("schema: %v", err)
+	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(playerDB); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
 
 	_ = SetSyncMeta(t.Context(), playerDB, "test_key", "value1")
