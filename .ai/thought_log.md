@@ -1,3 +1,12 @@
+## [2026-06-21] V9 / D.2 — images de rang carrière PAR TITRE — Complété
+
+Les images de rang carrière (`rankImageURLs`, map `rank_number -> URL`) étaient chargées une fois au boot avec le slug par défaut (HINF) puis injectées dans CHAQUE `CareerService`. Bug h5 : la map HINF est keyée par les numéros de rang HINF (1..272) ; pour Halo 5, `RankNumber` = Spartan Rank (1..152) → `s.rankImageURLs[SR]` renvoyait une IMAGE DE RANG HINF pour un SR h5 (carte résumé Carrière). h5 n'a aucune image de rang par niveau (SR en chiffre).
+
+- **`ServiceRegistry`** : `rankImageURLs map[int]*string` → `rankImageURLsByTitle map[string]map[int]*string` ; setter `WithRankImageURLsByTitle`.
+- **Boot (`server.go`)** : HINF inchangé (`rankImageURLsByTitle[DefaultSlug]`) + helper `loadTitleRankImageURLs(pr, slug)` (best-effort, calqué sur loadCSRBadgeResolver) + boucle sur `titleRegistry.Active()` non-défaut → charge via `LoadCareerRankImageURLs(metaDB, slug)` (déjà paramétré). h5 → map vide.
+- **`registry_career.go`** : injecte `r.rankImageURLsByTitle[pdb.TitleSlug]` (nil-safe → pas d'injection → SR en chiffre).
+- HINF byte-identique ; build+vet+test (api+service) verts.
+
 ## [2026-06-21] G2 / F.1 FRONT — rendu sprite médaille hors Asset Drawer (MedalIcon) — Complété
 
 Lot FRONT du contrat médaille title-agnostic (backend livré ci-dessous). Les 4
