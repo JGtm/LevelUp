@@ -59,7 +59,7 @@ func newTestPlayerDBForMediaScenario(t *testing.T) *PlayerDB {
 		t.Fatalf("wipe shared.match_registry: %v", err)
 	}
 	for _, q := range []string{
-		`DELETE FROM media_match_associations`,
+		`DELETE FROM media_match_associations_history`,
 		`DELETE FROM media_files`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
@@ -117,7 +117,7 @@ func newTestPlayerDBForMediaScenario(t *testing.T) *PlayerDB {
 	}
 	for _, a := range assocInserts {
 		if _, err := social.Exec(ctx,
-			`INSERT INTO media_match_associations (media_file_id, match_id) VALUES (?, ?)`,
+			`INSERT INTO media_match_associations_history (media_file_id, match_id) VALUES (?, ?)`,
 			a.mediaID, a.matchID,
 		); err != nil {
 			t.Fatalf("insert assoc %s->%s: %v", a.mediaID, a.matchID, err)
@@ -577,7 +577,7 @@ func newTestPlayerDBMapModeOverlap(t *testing.T) *PlayerDB {
 		t.Fatalf("wipe shared: %v", err)
 	}
 	for _, q := range []string{
-		`DELETE FROM media_match_associations`,
+		`DELETE FROM media_match_associations_history`,
 		`DELETE FROM media_files`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
@@ -619,7 +619,7 @@ func newTestPlayerDBMapModeOverlap(t *testing.T) *PlayerDB {
 			t.Fatalf("insert media: %v", err)
 		}
 		if _, err := social.Exec(ctx,
-			`INSERT INTO media_match_associations (media_file_id, match_id) VALUES (?, ?)`,
+			`INSERT INTO media_match_associations_history (media_file_id, match_id) VALUES (?, ?)`,
 			m.id, m.matchID,
 		); err != nil {
 			t.Fatalf("insert assoc: %v", err)
@@ -696,7 +696,7 @@ func newTestPlayerDBVariants(t *testing.T) *PlayerDB {
 		t.Fatalf("wipe shared: %v", err)
 	}
 	for _, q := range []string{
-		`DELETE FROM media_match_associations`,
+		`DELETE FROM media_match_associations_history`,
 		`DELETE FROM media_files`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
@@ -734,7 +734,7 @@ func newTestPlayerDBVariants(t *testing.T) *PlayerDB {
 			t.Fatalf("insert media: %v", err)
 		}
 		if _, err := social.Exec(ctx,
-			`INSERT INTO media_match_associations (media_file_id, match_id) VALUES (?, ?)`,
+			`INSERT INTO media_match_associations_history (media_file_id, match_id) VALUES (?, ?)`,
 			m.id, m.matchID,
 		); err != nil {
 			t.Fatalf("insert assoc: %v", err)
@@ -912,7 +912,7 @@ func newTestPlayerDBForUserScenario(t *testing.T) *PlayerDB {
 		t.Fatalf("wipe shared: %v", err)
 	}
 	for _, q := range []string{
-		`DELETE FROM media_match_associations`,
+		`DELETE FROM media_match_associations_history`,
 		`DELETE FROM media_files`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
@@ -960,7 +960,7 @@ func newTestPlayerDBForUserScenario(t *testing.T) *PlayerDB {
 			t.Fatalf("insert media %s: %v", m.id, err)
 		}
 		if _, err := social.Exec(ctx,
-			`INSERT INTO media_match_associations (media_file_id, match_id) VALUES (?, ?)`,
+			`INSERT INTO media_match_associations_history (media_file_id, match_id) VALUES (?, ?)`,
 			m.id, m.matchID,
 		); err != nil {
 			t.Fatalf("insert assoc: %v", err)
@@ -1002,7 +1002,7 @@ func newTestPlayerDBMultiAssoc(t *testing.T) *PlayerDB {
 		t.Fatalf("wipe shared: %v", err)
 	}
 	for _, q := range []string{
-		`DELETE FROM media_match_associations`,
+		`DELETE FROM media_match_associations_history`,
 		`DELETE FROM media_files`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
@@ -1047,7 +1047,7 @@ func newTestPlayerDBMultiAssoc(t *testing.T) *PlayerDB {
 	}
 	for _, a := range assocs {
 		if _, err := social.Exec(ctx,
-			`INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds) VALUES ('med-multi', ?, ?)`,
+			`INSERT INTO media_match_associations_history (media_file_id, match_id, delta_seconds) VALUES ('med-multi', ?, ?)`,
 			a.matchID, a.delta,
 		); err != nil {
 			t.Fatalf("insert assoc: %v", err)
@@ -1139,7 +1139,7 @@ func newTestPlayerDBForStabilityScenario(t *testing.T) *PlayerDB {
 		t.Fatalf("wipe shared: %v", err)
 	}
 	for _, q := range []string{
-		`DELETE FROM media_match_associations`,
+		`DELETE FROM media_match_associations_history`,
 		`DELETE FROM media_files`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
@@ -1214,7 +1214,7 @@ func TestMediaFilters_Sort_PrefersCaptureStartUtc(t *testing.T) {
 		t.Fatalf("wipe shared: %v", err)
 	}
 	for _, q := range []string{
-		`DELETE FROM media_match_associations`,
+		`DELETE FROM media_match_associations_history`,
 		`DELETE FROM media_files`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
