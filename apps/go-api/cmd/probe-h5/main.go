@@ -166,18 +166,20 @@ func probeAssetCMS(ctx context.Context, client *http.Client, spartan, slug, conf
 	prefix, _ := resolver.GamePrefixFor(slug)
 	fmt.Printf("   gamecms=%s  ugc=%s  prefix=%s\n\n", gamecms, ugc, prefix)
 
+	// Noms de contenu CONFIRMÉS par cryptum (Alexis-Bize/cryptum-halodotapi
+	// ContentHacs) — pas des devinettes : doivent répondre 200. Cible = les noms de
+	// maps/modes/playlists que les GUIDs du match (MapId/HopperId/GameBaseVariantId)
+	// résolvent. Le param Count borne la taille (les contenus catalogue sont paginés).
 	targets := []probeTarget{
 		{"SR_MANIFEST", fmt.Sprintf("%s/contents/SpartanRankManifest?auth=st", gamecms)},
-		{"MEDALS_progression", fmt.Sprintf("%s/%s/Progression/file/medals/metadata.json?auth=st", gamecms, prefix)},
-		{"MEDALS_contents", fmt.Sprintf("%s/contents/Medals?auth=st", gamecms)},
-		{"MEDALS_metadata", fmt.Sprintf("%s/%s/metadata/medals?auth=st", gamecms, prefix)},
-		{"CSR_DESIG_prefixmeta", fmt.Sprintf("%s/%s/metadata/csr-designations?auth=st", gamecms, prefix)},
-		{"CSR_DESIG_metaprefix", fmt.Sprintf("%s/metadata/%s/metadata/csr-designations?auth=st", gamecms, prefix)},
-		{"CSR_DESIG_contents", fmt.Sprintf("%s/contents/CsrDesignationManifest?auth=st", gamecms)},
-		{"COMMENDATIONS_manifest", fmt.Sprintf("%s/contents/CommendationManifest?auth=st", gamecms)},
+		{"HOPPER", fmt.Sprintf("%s/contents/Hopper?StartAt=0&Count=3&auth=st", gamecms)},
+		{"GAME_BASE_VARIANT", fmt.Sprintf("%s/contents/GameBaseVariant?StartAt=0&Count=3&auth=st", gamecms)},
+		{"GAME_VARIANT_DEFINITION", fmt.Sprintf("%s/contents/GameVariantDefinition?StartAt=0&Count=3&auth=st", gamecms)},
+		{"EMBLEM", fmt.Sprintf("%s/contents/Emblem?StartAt=0&Count=2&auth=st", gamecms)},
+		{"REQ", fmt.Sprintf("%s/contents/REQ?StartAt=0&Count=2&auth=st", gamecms)},
 	}
 	if ugc != "" {
-		targets = append(targets, probeTarget{"UGC_MAPS", fmt.Sprintf("%s/%s/maps?auth=st", ugc, prefix)})
+		targets = append(targets, probeTarget{"UGC_MAP_VARIANTS", fmt.Sprintf("%s/%s/players/JGtm/mapvariants?auth=st", ugc, prefix)})
 	}
 
 	for _, t := range targets {
