@@ -18,16 +18,17 @@ import "levelup/go-api/internal/domain"
 //
 // Retourne nil quand sampleSize ≤ 0 ou agg == nil — l'encart masque alors la
 // section "Sur N matchs joués ensemble".
-// computeKDA gate l'agrégat KDA façon Infinite ((k+a/3)/d). Faux pour les titres
-// sans KDA natif (Halo 5 : forme native = FDA NET) — on laisse alors KDA nil
-// plutôt que d'appliquer une formule étrangère. Résolu par le caller via
-// games.ProvidesNativeKDA(slug). KDR (k/d, non ambigu) reste toujours calculé.
+// nativeQuotientKDA indique si le titre expose un KDA d'API en QUOTIENT (Infinite :
+// agrégat (k+a/3)/d sur les sommes). Sinon (Halo 5) le KDA est le FDA NET figé à
+// l'ingestion : l'agrégat est la MOYENNE ((k+a/3)−d)/N — identique à la moyenne des
+// kda par match stockés, peut être négatif — JAMAIS le quotient Infinite. Résolu par
+// le caller via games.ProvidesNativeKDA(slug). KDR (k/d) reste toujours calculé.
 func BuildSampleStats(
 	agg *domain.ParticipantStatsAggregate,
 	medals *domain.MedalCountsAggregate,
 	sampleSize int,
 	effectiveHpToKill float64,
-	computeKDA bool,
+	nativeQuotientKDA bool,
 ) *domain.ExplorerTargetSampleStats {
 	if agg == nil || sampleSize <= 0 {
 		return nil
@@ -58,15 +59,21 @@ func BuildSampleStats(
 	}
 
 	// KDR = kills / deaths (non ambigu, toujours calculé).
-	// KDA = (kills + assists/3) / deaths — UNIQUEMENT pour les titres à KDA natif
-	// (computeKDA) ; pour Halo 5 (forme native FDA NET) on laisse KDA nil.
 	if agg.Deaths > 0 {
 		kdr := float64(agg.Kills) / float64(agg.Deaths)
 		stats.KDR = &kdr
-		if computeKDA {
-			kda := (float64(agg.Kills) + float64(agg.Assists)/3.0) / float64(agg.Deaths)
-			stats.KDA = &kda
-		}
+	}
+	// KDA agrégé title-aware (le KDA par match est figé à l'ingestion ; on agrège,
+	// on ne refabrique pas la forme par match).
+	switch {
+	case nativeQuotientKDA && agg.Deaths > 0:
+		// Infinite : quotient (k + a/3)/d sur les sommes.
+		kda := (float64(agg.Kills) + float64(agg.Assists)/3.0) / float64(agg.Deaths)
+		stats.KDA = &kda
+	case !nativeQuotientKDA:
+		// Halo 5 : FDA NET moyen ((k + a/3) − d)/N (sampleSize > 0 garanti ci-dessus).
+		kda := (float64(agg.Kills) + float64(agg.Assists)/3.0 - float64(agg.Deaths)) / float64(sampleSize)
+		stats.KDA = &kda
 	}
 
 	// WinRate = wins / (wins + losses + draws). On exclut les DNF du

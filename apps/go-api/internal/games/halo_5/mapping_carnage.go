@@ -7,10 +7,14 @@ package halo_5
 // halo_5 (cycle), et le mapper réutilise les parseurs de durée privés + produit
 // directement le type domain consommé par ingest.CollectMatchBatch.AddParticipants.
 //
-// ⚠ KDA / Accuracy / DamageTaken NE SONT PAS fournis par l'API h5 (carnage = K/D/A
-// bruts + dégâts INFLIGÉS) → laissés nil, JAMAIS fabriqués. Le KDA est une stat
-// d'API (cf. règle : on ne calcule jamais le KDA) ; l'absence de dégâts subis
-// dégrade la résistance proprement, sans valeur inventée.
+// ⚠ Accuracy / DamageTaken NE SONT PAS fournis par l'API h5 (carnage = K/D/A bruts
+// + dégâts INFLIGÉS) → laissés nil, jamais fabriqués.
+//
+// KDA — EXCEPTION DOCUMENTÉE : Halo 5 est le SEUL titre où le KDA est CALCULÉ À
+// L'INGESTION (l'API h5 ne le fournit pas), puis STOCKÉ dans match_participants.kda
+// pour alimenter les BDD — JAMAIS recalculé en lecture. La forme native h5 est le
+// FDA NET (k + a/3) − d (par match), distinct du quotient KDA d'Infinite, et peut
+// être NÉGATIF. Infinite garde son KDA d'API (jamais calculé).
 
 import "levelup/go-api/internal/domain"
 
@@ -69,7 +73,9 @@ func mapCarnageParticipants(matchID string, carnage *H5CarnageResponse, resolveX
 			TimePlayedSeconds: parseISO8601DurationSeconds(p.TotalTimePlayed),
 			AvgLifeSeconds:    iso8601DurationSecondsFloat(p.AvgLifeTimeOfPlayer),
 			Outcome:           participantOutcome(carnage.IsTeamGame, p.TeamId, p.Rank, winTeam, p.DNF),
-			// KDA / Accuracy / DamageTaken : non fournis par l'API h5 → nil (jamais fabriqués).
+			// KDA : FDA NET h5 calculé À L'INGESTION (cf. godoc) → stocké, lu tel quel.
+			KDA: h5NetFDA(p.TotalKills, p.TotalAssists, p.TotalDeaths),
+			// Accuracy / DamageTaken : non fournis par l'API h5 → nil (jamais fabriqués).
 		})
 	}
 	return out
@@ -120,6 +126,14 @@ func iso8601DurationSecondsFloat(s string) *float64 {
 	}
 	f := float64(ms) / 1000.0
 	return &f
+}
+
+// h5NetFDA calcule le FDA NET Halo 5 d'un match : (kills + assists/3) − deaths.
+// Forme native h5 (l'API ne renvoie pas de KDA) ; peut être négatif. Calculé À
+// L'INGESTION et stocké dans match_participants.kda — jamais recalculé en lecture.
+func h5NetFDA(kills, assists, deaths int) *float64 {
+	v := float64(kills) + float64(assists)/3.0 - float64(deaths)
+	return &v
 }
 
 func strPtrH5(s string) *string     { return &s }

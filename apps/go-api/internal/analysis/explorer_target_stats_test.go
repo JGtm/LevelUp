@@ -126,9 +126,9 @@ func TestBuildSampleStats_DeathsZero(t *testing.T) {
 	}
 }
 
-// computeKDA=false (titre sans KDA natif, ex. Halo 5) → KDA laissé nil, jamais
-// fabriqué façon Infinite. KDR (non ambigu) reste calculé.
-func TestBuildSampleStats_NoNativeKDA_SkipsKDA(t *testing.T) {
+// nativeQuotientKDA=false (Halo 5) → KDA = FDA NET moyen ((k+a/3)−d)/N, JAMAIS le
+// quotient Infinite. Ici ((100 + 30/3) − 50)/10 = 6.0. KDR reste calculé.
+func TestBuildSampleStats_NetFDA_ForNonQuotientTitle(t *testing.T) {
 	agg := &domain.ParticipantStatsAggregate{
 		Kills: 100, Deaths: 50, Assists: 30,
 		Wins: 7, Losses: 2, Draws: 1,
@@ -138,8 +138,9 @@ func TestBuildSampleStats_NoNativeKDA_SkipsKDA(t *testing.T) {
 	if got == nil {
 		t.Fatal("BuildSampleStats attendu non-nil")
 	}
-	if got.KDA != nil {
-		t.Errorf("KDA doit rester nil quand computeKDA=false (h5), got %v", *got.KDA)
+	wantKDA := (100.0 + 30.0/3.0 - 50.0) / 10.0 // 6.0
+	if got.KDA == nil || *got.KDA != wantKDA {
+		t.Errorf("KDA h5 = %v, want FDA NET moyen %v", got.KDA, wantKDA)
 	}
 	if got.KDR == nil || *got.KDR != 2.0 {
 		t.Errorf("KDR (non ambigu) doit rester calculé = 2.0, got %v", got.KDR)

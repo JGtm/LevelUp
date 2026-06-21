@@ -72,6 +72,17 @@ type CaptureStats struct {
 	StoppedOnKnown   bool // delta-stop atteint (1er match déjà connu)
 	EventsFailed     int  // matchs dont la timeline n'a pu être fetchée (batch registry-only)
 	CarnageFailed    int  // matchs dont le carnage n'a pu être fetché (batch sans participants)
+	ExcludedWarzone  int  // matchs Warzone écartés à la collecte (cf. isExcludedH5GameMode)
+}
+
+// h5GameModeWarzone est le GameMode des matchs Warzone Halo 5 (rosters 24 joueurs).
+const h5GameModeWarzone = 4
+
+// isExcludedH5GameMode : modes Halo 5 NON ingérés. Warzone (GameMode 4) est exclu —
+// décision produit (pas géré côté app) ET il évite de marteler PeopleHub à la
+// résolution de rosters géants (24 joueurs/match). Arena (2-équipes) reste collecté.
+func isExcludedH5GameMode(gameMode int) bool {
+	return gameMode == h5GameModeWarzone
 }
 
 // CollectRecentMatches récupère les matchs h5 récents du viewer et retourne UN
@@ -138,6 +149,12 @@ func CollectRecentMatches(
 			if isKnown(s.MatchID) {
 				stats.StoppedOnKnown = true
 				return batches, stats, nil // delta-stop
+			}
+			// Warzone exclu de la collecte (produit + anti-storm PeopleHub) : on saute
+			// AVANT carnage/events/rosters — aucun appel coûteux pour ces matchs.
+			if isExcludedH5GameMode(resp.Results[i].Id.GameMode) {
+				stats.ExcludedWarzone++
+				continue
 			}
 			timeline := captureMatchTimeline(ctx, src, s.MatchID, &stats)
 			participants := captureParticipants(ctx, src, s.MatchID, h5GameModeSegment(resp.Results[i].Id.GameMode), resolveXUID, &stats)

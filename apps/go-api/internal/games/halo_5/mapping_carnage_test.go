@@ -50,9 +50,18 @@ func TestMapCarnageParticipants_TeamOutcomeAndNoFabrication(t *testing.T) {
 	if w.AvgLifeSeconds == nil || *w.AvgLifeSeconds < 16.4 || *w.AvgLifeSeconds > 16.6 {
 		t.Errorf("AvgLifeSeconds = %v, want ~16.5", w.AvgLifeSeconds)
 	}
-	// INVARIANT : h5 ne FABRIQUE jamais KDA / Accuracy / DamageTaken (absents de l'API).
-	if w.KDA != nil || w.Accuracy != nil || w.DamageTaken != nil {
-		t.Errorf("h5 ne doit fabriquer ni KDA/Accuracy/DamageTaken: kda=%v acc=%v dt=%v", w.KDA, w.Accuracy, w.DamageTaken)
+	// KDA : EXCEPTION h5 — calculé À L'INGESTION (FDA NET (k+a/3)−d, stocké). Accuracy
+	// / DamageTaken restent nil (absents de l'API, jamais fabriqués).
+	if w.KDA == nil {
+		t.Error("KDA h5 doit être calculé à l'ingestion (FDA NET), got nil")
+	} else if w.Kills != nil && w.Assists != nil && w.Deaths != nil {
+		want := float64(*w.Kills) + float64(*w.Assists)/3.0 - float64(*w.Deaths)
+		if *w.KDA != want {
+			t.Errorf("KDA h5 = %v, want FDA NET %v", *w.KDA, want)
+		}
+	}
+	if w.Accuracy != nil || w.DamageTaken != nil {
+		t.Errorf("h5 ne doit pas fabriquer Accuracy/DamageTaken: acc=%v dt=%v", w.Accuracy, w.DamageTaken)
 	}
 
 	l := rows[1]

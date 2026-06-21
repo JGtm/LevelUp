@@ -1,3 +1,14 @@
+## [2026-06-21] Halo 5 — KDA calculé à l'INGESTION (FDA NET) + exclusion Warzone — Complété
+
+**Correction de cap (directive user)** : Halo 5 est le SEUL titre où l'on CALCULE le KDA — mais **à l'ingestion**, jamais en lecture. L'API h5 ne fournit pas de KDA ; sa forme native est le **FDA NET `(k + a/3) − d`** (peut être négatif). Mon précédent choix « laisser nil + gater en lecture » était à côté : on calcule + STOCKE à l'ingestion, et la lecture lit la valeur stockée.
+- **Ingestion** : `mapping_carnage` calcule le FDA NET par match → `match_participants.kda`. `mapping_servicerecord` calcule le FDA NET carrière `((k+a/3)−d)/games`.
+- **Lecture (plus de recalcul de la forme par match)** : `compare_repo` h5 = `AVG(mp.kda)` (moyenne des FDA NET stockés), Infinite = quotient historique. `BuildSampleStats` h5 = FDA NET moyen `((k+a/3)−d)/N`, Infinite = quotient. Gate par `games.ProvidesNativeKDA(slug)` (true=quotient API Infinite, false=FDA NET stocké h5). Per-match readers lisent déjà `match_participants.kda` → FDA NET pour h5.
+- Tests MAJ (carnage/servicerecord/explorer : FDA NET au lieu de nil). Infinite inchangé.
+
+**Exclusion Warzone (directive user)** : `capture.isExcludedH5GameMode` saute les matchs Warzone (GameMode 4) AVANT carnage/events/rosters. Double bénéfice : (1) produit — Warzone pas géré côté app ; (2) **anti-storm PeopleHub** — Warzone = rosters 24 joueurs ⇒ résolution gamertag→xuid qui explosait le quota PeopleHub (30/300s) au-delà de ~10 matchs. Arena (2-équipes) reste collecté. Compteur `CaptureStats.ExcludedWarzone`.
+
+**Reste** : (a) optimiser la résolution PeopleHub (rate-limit calé sur le quota + cache cross-match ; stocker xuid↔gamertag ensemble) — pour « tout récupérer » ; (b) re-sync Arena-only + backfill LUSR canonical (`cmd/h5-lusr-backfill`) → LUSR + stats h5 visibles ; (c) assets (médailles/cartes/rangs CSR/rangs XP/armes — minimum prod).
+
 ## [2026-06-21] LUSR v2 title-generic → branché pour Halo 5 — Complété (core, testé)
 
 **Statut** : la v2 LUSR (TrueSkill2, données BASIQUES sans MMR) tourne désormais pour Halo 5 — et pour tout titre déclarant la cap `lusr`. Validé par test unitaire déterministe (`TestRunLUSRV2Shadow_Halo5_TitleAwareChain` : match h5-shaped → processed=1, état écrit sous la chaîne `h5_arena`, μ/σ valides).

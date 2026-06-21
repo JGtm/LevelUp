@@ -34,11 +34,12 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 	// shared-only via SharedReader (root-level naming). PMT-5 : win_rate title-aware
 	// (fallback "mp.outcome = 2" byte-identique Halo).
 	winExpr := outcomeSQLEqSlug(titleSlug, "mp.outcome", canonical.OutcomeWin, "mp.outcome = 2")
-	// KDA façon Infinite ((k + a/3)/d) — UNIQUEMENT pour les titres à KDA natif.
-	// Halo 5 (pas de KDA natif) → NULL : on ne fabrique JAMAIS le quotient (règle
-	// absolue). kda.Valid devient false → s.KDA reste 0 (le passage à un champ
-	// nullable pour afficher "—" côté Compare est un suivi front). KDR reste calculé.
-	kdaExpr := "NULL"
+	// KDA title-aware, SANS recalcul de la forme par match (règle : le KDA par match
+	// est figé à l'ingestion). Titres à KDA natif d'API (Infinite) : quotient agrégé
+	// historique (k + a/3)/d sur les sommes. Halo 5 : KDA = FDA NET stocké à
+	// l'ingestion → moyenne des valeurs par match (= FDA NET carrière, peut être
+	// négatif), AUCUNE refabrication du quotient.
+	kdaExpr := "AVG(mp.kda)"
 	if games.ProvidesNativeKDA(titleSlug) {
 		kdaExpr = "AVG(COALESCE(mp.kills, 0) + 0.33 * COALESCE(mp.assists, 0)) / NULLIF(AVG(COALESCE(mp.deaths, 0)), 0)"
 	}
