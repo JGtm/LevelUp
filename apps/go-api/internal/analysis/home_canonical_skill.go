@@ -40,16 +40,10 @@ func InferHomeSkillHistoryFromCanonical(rows []canonical.PlayerMatchRow) (bool, 
 //   - tierDisplay : nom du tier dans la locale cible (ex: "Or", "gold") — pour le label
 //   - tierCodeEN  : nom du tier en anglais lowercase (ex: "gold") — pour l'URL de badge
 //   - subTier     : 1..6, nil pour Onyx
-//
-// URL templates pour les badges CSR (rank images statiques).
-// Format : /static/ranks/halo_infinite/120px-HINF-CSR_{Tier}{SubTier}.png
-// (même format que halo_infinite.AssetURLAdapter.CSRRankImageURL, sans import
-// cyclique — duplication intentionnelle, alignée par convention).
-const (
-	csrRankImageBasePath = "/static/ranks/halo_infinite/"
-	csrRankImageOnyxURL  = csrRankImageBasePath + "120px-HINF-CSR_Onyx.png"
-	csrRankImageTemplate = csrRankImageBasePath + "120px-HINF-CSR_%s%d.png"
-)
+//   - urlResolver : résolveur d'URL de badge INJECTÉ (title-aware). Signature
+//     (tierEN capitalisé, subTier 0..6 ; 0 = Onyx) → URL ; "" → pas d'URL.
+//     nil → aucune URL (le package analysis reste pur, sans template HINF figé).
+//     Le câblage HINF/Halo 5 vit dans la couche service/boot qui connaît le titre.
 
 var csrSubTierRoman = [7]string{"", "I", "II", "III", "IV", "V", "VI"}
 
@@ -66,7 +60,8 @@ func BuildSkillTierLabel(tierCode, tierCodeFR *string, subTier *int, frPreferred
 	if frPreferred && tierCodeFR != nil && *tierCodeFR != "" {
 		tierDisplay = *tierCodeFR
 	}
-	label, _ := buildCanonicalSkillBadge(tierDisplay, *tierCode, subTier)
+	// Label-only : pas besoin de l'URL → résolveur nil.
+	label, _ := buildCanonicalSkillBadge(tierDisplay, *tierCode, subTier, nil)
 	return label
 }
 
@@ -100,7 +95,7 @@ func BuildCSRTierLabelFromEN(tierEN string, subTier *int, frPreferred bool) *str
 	return BuildSkillTierLabel(&t, frPtr, subTier, frPreferred)
 }
 
-func buildCanonicalSkillBadge(tierDisplay, tierCodeEN string, subTier *int) (*string, *string) {
+func buildCanonicalSkillBadge(tierDisplay, tierCodeEN string, subTier *int, urlResolver func(tierEN string, subTier int) string) (*string, *string) {
 	tierEN := strings.ToLower(strings.TrimSpace(tierCodeEN))
 	if tierEN == "" {
 		return nil, nil
@@ -117,13 +112,13 @@ func buildCanonicalSkillBadge(tierDisplay, tierCodeEN string, subTier *int) (*st
 	}
 
 	var label string
-	var urlStr string
+	// st : sous-palier normalisé pour le résolveur (0 = Onyx, 1..6 sinon).
+	var st int
 
 	if strings.EqualFold(tierEN, "onyx") {
 		label = display
-		urlStr = csrRankImageOnyxURL
+		st = 0
 	} else {
-		st := 0
 		if subTier != nil {
 			st = *subTier
 		}
@@ -131,9 +126,17 @@ func buildCanonicalSkillBadge(tierDisplay, tierCodeEN string, subTier *int) (*st
 			return nil, nil
 		}
 		label = fmt.Sprintf("%s %s", display, csrSubTierRoman[st])
-		urlStr = fmt.Sprintf(csrRankImageTemplate, tierENcap, st)
 	}
 
+	// URL : déléguée au résolveur injecté (title-aware). Aucun template HINF
+	// figé dans ce package — analysis reste pur et title-agnostic.
+	if urlResolver == nil {
+		return &label, nil
+	}
+	urlStr := urlResolver(tierENcap, st)
+	if urlStr == "" {
+		return &label, nil
+	}
 	return &label, &urlStr
 }
 

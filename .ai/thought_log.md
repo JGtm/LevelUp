@@ -1,3 +1,43 @@
+## [2026-06-21] G5 / V3 — badge CSR canonical tuiles de match (title-agnostic) — Complété
+
+`analysis/home_canonical_skill.go::buildCanonicalSkillBadge` forgeait l'URL du badge
+CSR via un template HINF FIGÉ (`/static/ranks/halo_infinite/120px-HINF-CSR_*.png`),
+sans paramètre titre → tuiles de match d'un titre non-HINF (Halo 5) recevaient un
+badge HINF erroné. L'URL h5 est une URL CDN officielle (csr_designations) résolue
+par `csrBadgeResolver` qui vit dans `platform/duckdb`, inaccessible au package
+`analysis` (pur). Solution : INJECTER un résolveur d'URL depuis la couche qui
+connaît le titre (boot/registry → service → analysis), RETIRER tout hardcoding HINF.
+
+- **`analysis/home_canonical_skill.go`** : suppression des consts
+  `csrRankImageBasePath/OnyxURL/Template`. `buildCanonicalSkillBadge` gagne un
+  param `urlResolver func(tierEN string, subTier int) string` (subTier 0=Onyx,
+  1..6 sinon). Label inchangé ; URL = `urlResolver(tierENcap, st)` (nil/"" → URL nil,
+  dégradation gracieuse). `BuildSkillTierLabel` (label-only) passe `nil`.
+- **`analysis/home_canonical_recent.go`** : `BuildRecentMatchesWithFavoritesFromCanonical`
+  gagne un dernier param `skillBadgeURL func(tierEN string, subTier int) string`,
+  threadé jusqu'à l'appel `buildCanonicalSkillBadge`.
+- **`platform/duckdb/home_repo_skill_peak.go`** : nouvelle fonction EXPORTÉE
+  `TitleSkillBadgeURL(slug, tierEN string, subTier int) string` enveloppant
+  `buildHomeSkillPeakBadgeURL(tierEN, "", subTier, slug, 0)` (csr_designations h5
+  via csrBadgeResolver, sinon static HINF). SEUL endroit où le slug pilote l'URL.
+- **`service/home_service.go`** : champ `skillBadgeResolver` + builder
+  `WithSkillBadgeResolver`. Les 2 call-sites (recentMatches + buildFavoriteMatchListCanonical
+  dans `home_service_enrichment.go`) passent `s.skillBadgeResolver`.
+- **`api/registry_pages.go` + `registry_auth.go`** : helper `skillBadgeResolverFor(slug)`
+  (pont analysis pur ↔ duckdb.TitleSkillBadgeURL), câblé via `.WithSkillBadgeResolver(...)`
+  aux 2 constructions de HomeService (HomeCtx + HomeCtxWithAuth) avec `pdb.TitleSlug`.
+- **Tests** : `home_canonical_skill_test.go` — appels MAJ avec un `hinfStubResolver`
+  (préserve les assertions d'URL HINF historiques) ; 3 nouveaux tests (injection
+  pilote l'URL h5 factice ; résolveur nil → URL nil ; résolveur vide → URL nil).
+- **HINF byte-identique** : le résolveur injecté retombe sur le chemin static HINF
+  via buildHomeSkillPeakBadgeURL → comportement inchangé pour Infinite. Zéro
+  littéral `halo_infinite`/HINF restant dans le code prod analysis (comments only).
+  Build + vet + `go test ./internal/analysis/ ./internal/service/ ./internal/api/
+  ./internal/platform/duckdb/(Badge|CSR)` verts.
+
+Effet : G5/V3 fermé — badge CSR correct par titre sur les tuiles de match. Reste :
+G4 CSR carrière, G2/G7 sprite médaille, G9 payload Match View.
+
 ## [2026-06-21] G3 / V8 — bornes Héros Carrière par titre (title-agnostic) — Complété
 
 La carte « Héros » de la page Carrière utilisait des constantes de package

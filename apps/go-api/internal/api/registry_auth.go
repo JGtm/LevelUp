@@ -45,6 +45,7 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 		WithMatchesCache(r.homeMatchesCache, pdb.XUID).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithCareerLive(r.newCareerLiveService(pdb, homeRepo)).
+		WithSkillBadgeResolver(skillBadgeResolverFor(pdb.TitleSlug)).
 		WithDemoMode(r.cfg.DemoMode)
 	r.notifiers.Store(pdb.XUID, port.SessionNotifier(svc))
 	enriched := r.enrichWithHaloTokens(ctx, pdb)

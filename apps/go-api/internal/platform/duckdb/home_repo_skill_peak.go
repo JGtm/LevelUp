@@ -430,6 +430,23 @@ func buildHomeSkillPeakBadgeURL(tier string, tierLabel string, subTier int, titl
 	return buildHomeSkillPeakBadgeURLForThreshold(tier, tierLabel, subTier, titleSlug, measurementMatchesRemaining, 10)
 }
 
+// TitleSkillBadgeURL résout l'URL du badge CSR de façon title-aware : pour un
+// titre additionnel (ex. Halo 5), l'URL CDN officielle issue de csr_designations
+// via csrBadgeResolver ; sinon le chemin static HINF (titre par défaut). C'est le
+// SEUL endroit où le slug pilote l'URL — injecté dans le package analysis (pur)
+// par la couche boot/service qui connaît le titre.
+//
+// tierEN : tier capitalisé ("Bronze".."Diamond","Onyx"). subTier : 0 pour Onyx,
+// 1..6 sinon. Retourne "" si aucune URL constructible (analysis → SkillRankImageURL
+// laissé vide, dégradation gracieuse).
+func TitleSkillBadgeURL(slug, tierEN string, subTier int) string {
+	u := buildHomeSkillPeakBadgeURL(tierEN, "", subTier, slug, 0)
+	if u == nil {
+		return ""
+	}
+	return *u
+}
+
 // buildHomeSkillPeakBadgeURLForThreshold construit l'URL du badge avec seuil
 // dynamique pour le calcul de l'image placement. Phase 6 du plan pipeline CSR.
 func buildHomeSkillPeakBadgeURLForThreshold(tier string, tierLabel string, subTier int, titleSlug string, measurementMatchesRemaining, threshold int) *string {
