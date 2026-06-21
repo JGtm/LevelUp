@@ -1,3 +1,13 @@
+## [2026-06-21] C0 / G1 — TitleAssetURLAdapter Halo 5 (RegisterAssetURL) — Complété
+
+`titleResolver.AssetURL("halo_5")` renvoyait `ErrTitleNotResolved` (aucun adapter h5 enregistré) → `assetURL==nil` sur la Match View → image de map + badge CSR absents. Livré l'adapter h5 + son câblage.
+
+- **`internal/games/halo_5/adapter_asset_urls.go`** (nouveau) : `AssetURLAdapter` impl de `games.TitleAssetURLAdapter`, PUR (couche 3, aucun accès DB ; importe uniquement `games/canonical` — leaf, pas de cycle). Maps internes injectées via builders `WithMaps`/`WithWeapons`/`WithCSRResolver`. `MapImageURL` tente `mapURLByID` (GUID) PUIS `mapURLByName` (nom canonique) — robuste car le header Match View passe le GUID brut (`meta.MapName`) quand `MapNameEN` n'est pas résolu par asset_translations (cas h5). `MedalImageURL` retourne "" (icône h5 = SPRITE, chantier G2/D.1 distinct). `CSRRankImageURL(designation, tier_id)` / `CSRRankImageURLOnyx()` (Onyx subTier=0) délèguent au résolveur csr_designations ; nil-safe.
+- **`server.go`** (~ligne 700) : `loadCSRBadgeResolver` appelé UNE fois (`h5CSRResolver`), réutilisé pour `SetCSRBadgeResolver` ET l'adapter (wrapper fixant `titleSlug=halo_5`, nil-safe). Adapter construit depuis `loadTitleAssetDrawerData(halo_5)` (h5Maps/h5Weapons déjà chargés) + enregistré via `titleResolver.RegisterAssetURL`. Log `adapter_loaded kind=asset_url`. Wiring HINF (ligne 433-435) intact.
+- **Test** : `adapter_asset_urls_test.go` (assertion d'interface + MapImageURL par ID/nom/inconnu/espaces, WeaponImageURL, MedalImageURL=="", CSR via stub + Onyx, nil-résolveur). Build+vet (games/halo_5 + api) + `go test ./internal/games/...` verts. Échec `TestContractRoutesDocumented` (route `/medals` non documentée openapi) PRÉEXISTANT, sans rapport (aucune route HTTP ajoutée).
+
+Effet : G1 fermé — l'image de map + le badge CSR h5 remontent désormais sur la Match View. Reste (cf. entrée S.1) : S.3 badge canonical, D.1/F.1 contrat sprite médaille (G2/G7), G9 payload Match View.
+
 ## [2026-06-21] Audit câblage assets + S.1 slug-figé éliminé (title-agnostic) — En cours
 
 Audit 7 agents (run `w5jqyzrsk`, plan durable `.ai/PLAN_H5_ASSET_WIRING.md`) : les assets h5 (médailles/maps/CSR) NE s'affichent PAS hors Asset Drawer. 9 gaps (G1-G9) + 11 violations title-agnostic (V1-V11). Cause racine #1 = `const homeStaticTitleSlug = "halo_infinite"` figé dans le data-path + aucun `RegisterAssetURL("halo_5")`.

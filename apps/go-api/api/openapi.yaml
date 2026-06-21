@@ -2181,6 +2181,20 @@ paths:
         "200": { description: "Liste des armes" }
         "503": { description: "Asset metadata DB indisponible" }
 
+  /assets/{title_id}/medals:
+    get:
+      tags: [assets]
+      operationId: listMedalsMetadata
+      parameters:
+        - name: title_id
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Liste les médailles du catalogue avec leurs traductions (icône sprite pour Halo 5)"
+      responses:
+        "200": { description: "Liste des médailles" }
+        "503": { description: "Asset metadata DB indisponible" }
+
   /assets/maps/{title_id}/{map_id}/image:
     get:
       tags: [assets]

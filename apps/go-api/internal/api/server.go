@@ -696,8 +696,39 @@ func NewRouter(
 	// Insignes CSR des titres additionnels (Halo 5 : table csr_designations, URLs
 	// officielles) — rend l'image de rang CSR title-aware dans le builder de badge
 	// (buildHomeSkillPeakBadgeURL). nil si pas de seed → HINF strictement inchangé.
-	platform_duckdb.SetCSRBadgeResolver(loadCSRBadgeResolver(
-		titlePkg.NewPathResolver(cfg.RepoRoot), halo5.TitleSlug))
+	// Chargé UNE fois et réutilisé par l'adapter TitleAssetURLAdapter h5 ci-dessous.
+	h5CSRResolver := loadCSRBadgeResolver(
+		titlePkg.NewPathResolver(cfg.RepoRoot), halo5.TitleSlug)
+	platform_duckdb.SetCSRBadgeResolver(h5CSRResolver)
+
+	// C0 / G1 : TitleAssetURLAdapter pour Halo 5. Sans lui,
+	// titleResolver.AssetURL("halo_5") renvoie ErrTitleNotResolved → assetURL==nil
+	// sur la Match View → image de map + badge CSR absents. Adapter PUR (couche 3) :
+	// les URLs CDN officielles (maps/armes) et le résolveur CSR sont injectés depuis
+	// la metadata h5 DÉJÀ chargée (aucun accès DB dans l'adapter).
+	{
+		h5Maps, h5Weapons, _ := loadTitleAssetDrawerData(
+			titlePkg.NewPathResolver(cfg.RepoRoot), halo5.TitleSlug)
+		if h5CSRResolver != nil || len(h5Maps) > 0 || len(h5Weapons) > 0 {
+			h5AssetURL := halo5.NewAssetURLAdapter().
+				WithMaps(h5Maps).
+				WithWeapons(h5Weapons)
+			if h5CSRResolver != nil {
+				h5AssetURL = h5AssetURL.WithCSRResolver(
+					func(designation string, subTier int) string {
+						return h5CSRResolver(halo5.TitleSlug, designation, subTier)
+					})
+			}
+			titleResolver.RegisterAssetURL(h5AssetURL)
+			slog.Info("adapter_loaded",
+				"title_slug", h5AssetURL.TitleSlug(),
+				"kind", "asset_url",
+				"maps", len(h5Maps),
+				"weapons", len(h5Weapons),
+				"csr", h5CSRResolver != nil,
+			)
+		}
+	}
 
 	// Fichiers statiques (images maps, médailles, armes…)
 	staticDir := filepath.Join(cfg.RepoRoot, "static")
