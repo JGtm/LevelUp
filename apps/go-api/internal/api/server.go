@@ -197,6 +197,26 @@ func loadCSRBadgeResolver(pr *titlePkg.PathResolver, slug string) func(string, s
 	}
 }
 
+// loadTitleRankImageURLs charge les images de rang carrière d'un titre additionnel
+// depuis sa metadata.duckdb ISOLÉE (career_ranks.large_icon_path/icon_path). Pattern
+// best-effort calqué sur loadTitleAssetDrawerData : DB absente / table vide / erreur
+// → map vide (jamais fatal). Le titre du joueur reçoit SA map (keyée par ses propres
+// numéros de rang) ; un titre sans image de rang par niveau (Halo 5, SR en chiffre)
+// obtient simplement une map vide. Title-agnostic : le slug est un paramètre, jamais
+// une comparaison littérale dans le data-path.
+func loadTitleRankImageURLs(pr *titlePkg.PathResolver, slug string) map[int]*string {
+	metaDB, err := platform_duckdb.OpenReadWriteShared(pr.MetadataDBPath(slug))
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = metaDB.Close() }()
+	imgs, err := platform_duckdb.LoadCareerRankImageURLs(context.Background(), metaDB, slug)
+	if err != nil {
+		return nil
+	}
+	return imgs
+}
+
 //nolint:gocyclo // Routeur central : mount de ~80 endpoints avec feature flags
 func NewRouter(
 	serverCtx context.Context,
@@ -344,7 +364,12 @@ func NewRouter(
 	// couche canonique.
 	titleResolver := games.NewStaticResolver(titlePkg.DefaultSlug)
 	var hiRanks *mappings.RankCatalog
-	var hiRankImageURLs map[int]*string
+	// Title-agnostic (D.2) : images de rang carrière PAR TITRE (slug → rank_id →
+	// imageURL). La map HINF est keyée par numéros de rang HINF (1..272) ; l'injecter
+	// telle quelle dans le CareerService d'un joueur Halo 5 (RankNumber = SR 1..152)
+	// renvoyait une image de rang HINF pour un SR. On charge donc une map par titre et
+	// on n'injecte que celle du titre du joueur (Halo 5 → vide, le SR s'affiche en chiffre).
+	rankImageURLsByTitle := make(map[string]map[int]*string)
 	if hiFields, ok := fieldMappingsRegistry.Get(titlePkg.DefaultSlug); ok {
 		// Charger le catalog des rangs HI depuis metadata.duckdb (career_rank_translations).
 		// OpenReadWriteShared est cached par path → réutilise le pool existant ouvert dans
@@ -368,7 +393,7 @@ func NewRouter(
 				slog.Warn("rank_catalog_load_failed", "err", err.Error())
 			}
 			if imgs, err := platform_duckdb.LoadCareerRankImageURLs(context.Background(), metaDB, titlePkg.DefaultSlug); err == nil {
-				hiRankImageURLs = imgs
+				rankImageURLsByTitle[titlePkg.DefaultSlug] = imgs
 				slog.Info("rank_image_urls_loaded", "title_slug", titlePkg.DefaultSlug, "images", len(imgs))
 			} else {
 				slog.Warn("rank_image_urls_load_failed", "err", err.Error())
@@ -398,6 +423,23 @@ func NewRouter(
 				"kind", "semantic",
 				"reason", "fields_mapping_set_nil",
 			)
+		}
+	}
+	// Title-agnostic (D.2) : images de rang carrière des TITRES ADDITIONNELS actifs.
+	// Itère le registre (clé de map, jamais de comparaison littérale dans le data-path)
+	// et charge la metadata ISOLÉE de chaque titre non-défaut depuis son chemin propre.
+	// Best-effort comme loadTitleAssetDrawerData : DB absente / table vide → map vide
+	// (Halo 5 attendu vide : aucune image de rang SR → le SR s'affiche en chiffre, plus
+	// d'image de rang HINF erronée). En démo on saute (metadata title = coquille vide).
+	if !cfg.DemoMode {
+		rankImgPathResolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+		for _, td := range titleRegistry.Active() {
+			if td.Slug == titlePkg.DefaultSlug {
+				continue // HINF déjà chargé ci-dessus (byte-identique)
+			}
+			imgs := loadTitleRankImageURLs(rankImgPathResolver, td.Slug)
+			rankImageURLsByTitle[td.Slug] = imgs // map vide acceptée (titre sans image de rang)
+			slog.Info("rank_image_urls_loaded", "title_slug", td.Slug, "images", len(imgs))
 		}
 	}
 	// Phase 1.7a : capabilities chargées depuis capabilities.toml (source nominale,
@@ -471,7 +513,7 @@ func NewRouter(
 		WithCapabilities(hiCaps).
 		WithSettingsStore(settingsStore).
 		WithRankCatalog(hiRanks).
-		WithRankImageURLs(hiRankImageURLs)
+		WithRankImageURLsByTitle(rankImageURLsByTitle)
 
 	// MT-09 (PMT-12) : factory player-scoped de Halo enregistrée par SLUG (clé de
 	// map, pas de comparaison littérale). Le builder lit reg.hiCapabilities à la

@@ -71,23 +71,23 @@ type ServiceRegistry struct {
 	// map (lookup title-agnostic), jamais une comparaison littérale — un 2e titre
 	// enregistre son builder au boot, sans toucher aux factories. Remplace les
 	// 2 cutoffs `pdb.TitleSlug != DefaultSlug` (allowlist archlint vidée).
-	playerDataBuilders map[string]func(*duckdb.PlayerDB) games.TitleDataAdapter
-	homeMatchesCache   *service.HomeMatchesCache            // cache TTL process-level matches+sessions
-	careerLiveCache    *service.CareerLiveCache             // cache TTL process-level XP (5 min) + customisation (6 h)
-	remoteStats        *service.CachedStatsProvider         // cache TTL process-level stats carrière remote (5 min), partagé Explorer/Compare
-	recentMatches      *service.CachedRecentMatchesProvider // cache TTL process-level 20 derniers matchs live (20 min), partagé Explorer/Compare (cibles non-locales)
-	settingsStore      *settings_platform.Store             // nil → services qui dépendent des settings (TeammatesService friend filter) tournent en mode legacy
-	seasonsCatalog     *service.SeasonsCatalog              // nil → FiltersService.Resolve ne renvoie pas SeasonCounts (dégradation gracieuse)
-	rankCatalog        *mappings.RankCatalog                // nil → CareerService.next_rank_name reste vide
-	rankImageURLs      map[int]*string                      // nil → CareerService.rank_image_url et next_rank_image_url restent absents
-	prestigeBundle     *PrestigeBundle                      // nil si feature désactivée ; possède 2 *DB (sharedSocial + metadata) à fermer au shutdown
-	advisorBundle      *CoachAdvisorBundle                  // nil → coach_advisor désactivé (ADR 0020 Phase 8)
-	authStore          auth.UserTokenStore                  // ADR 0023 : source unique tokens auth (nil → fallback legacy DuckDB+env)
-	jobStore           *jobs_platform.Store                 // nil → transcoding HLS désactivé (médias servis via remux WebM live)
-	autoSyncScheduler  *scheduler.AutoSyncScheduler         // dashboard monitoring : snapshot scheduler agrégé dans l'overview (nil → section indisponible)
-	healthScheduler    *scheduler.HealthScheduler           // dashboard monitoring : dernier audit data health + action run (nil → section indisponible)
-	startedAt          time.Time                            // boot du process (uptime overview — posé par NewServiceRegistry)
-	metaHandles        []*duckdb.DB                         // handles RW "annexes" sur metadata.duckdb (seasons/playlists catalog, ouverts hors pool joueur dans NewRouter) fermés au shutdown via Close() — sinon fuite de refCount sur le cache duckdb.openDBs (cf. INCIDENT_2026-05-21)
+	playerDataBuilders   map[string]func(*duckdb.PlayerDB) games.TitleDataAdapter
+	homeMatchesCache     *service.HomeMatchesCache            // cache TTL process-level matches+sessions
+	careerLiveCache      *service.CareerLiveCache             // cache TTL process-level XP (5 min) + customisation (6 h)
+	remoteStats          *service.CachedStatsProvider         // cache TTL process-level stats carrière remote (5 min), partagé Explorer/Compare
+	recentMatches        *service.CachedRecentMatchesProvider // cache TTL process-level 20 derniers matchs live (20 min), partagé Explorer/Compare (cibles non-locales)
+	settingsStore        *settings_platform.Store             // nil → services qui dépendent des settings (TeammatesService friend filter) tournent en mode legacy
+	seasonsCatalog       *service.SeasonsCatalog              // nil → FiltersService.Resolve ne renvoie pas SeasonCounts (dégradation gracieuse)
+	rankCatalog          *mappings.RankCatalog                // nil → CareerService.next_rank_name reste vide
+	rankImageURLsByTitle map[string]map[int]*string           // PAR TITRE (slug → rank_id → imageURL) ; map manquante/nil → CareerService.rank_image_url et next_rank_image_url absents pour ce titre. Title-agnostic : les images HINF (keyées 1..272) ne fuient plus sur un SR Halo 5 (D.2)
+	prestigeBundle       *PrestigeBundle                      // nil si feature désactivée ; possède 2 *DB (sharedSocial + metadata) à fermer au shutdown
+	advisorBundle        *CoachAdvisorBundle                  // nil → coach_advisor désactivé (ADR 0020 Phase 8)
+	authStore            auth.UserTokenStore                  // ADR 0023 : source unique tokens auth (nil → fallback legacy DuckDB+env)
+	jobStore             *jobs_platform.Store                 // nil → transcoding HLS désactivé (médias servis via remux WebM live)
+	autoSyncScheduler    *scheduler.AutoSyncScheduler         // dashboard monitoring : snapshot scheduler agrégé dans l'overview (nil → section indisponible)
+	healthScheduler      *scheduler.HealthScheduler           // dashboard monitoring : dernier audit data health + action run (nil → section indisponible)
+	startedAt            time.Time                            // boot du process (uptime overview — posé par NewServiceRegistry)
+	metaHandles          []*duckdb.DB                         // handles RW "annexes" sur metadata.duckdb (seasons/playlists catalog, ouverts hors pool joueur dans NewRouter) fermés au shutdown via Close() — sinon fuite de refCount sur le cache duckdb.openDBs (cf. INCIDENT_2026-05-21)
 }
 
 // WithJobStore attache le JobStore au registry — porte le cycle de vie des jobs
@@ -305,11 +305,15 @@ func (r *ServiceRegistry) WithRankCatalog(catalog *mappings.RankCatalog) *Servic
 	return r
 }
 
-// WithRankImageURLs attache la map rank_id → imageURL chargée au démarrage
-// depuis career_ranks (metadata.duckdb). Consommée par CareerService pour
-// rank_image_url et next_rank_image_url. Si nil, ces champs sont absents.
-func (r *ServiceRegistry) WithRankImageURLs(imgs map[int]*string) *ServiceRegistry {
-	r.rankImageURLs = imgs
+// WithRankImageURLsByTitle attache les maps rank_id → imageURL chargées au
+// démarrage depuis career_ranks (metadata.duckdb), INDEXÉES PAR SLUG DE TITRE.
+// Consommée par CareerService (via registry_career.Career) pour rank_image_url
+// et next_rank_image_url. Le slug est une clé de map (lookup title-agnostic) :
+// un joueur Halo 5 reçoit la map de son titre (vide → pas d'image, le SR
+// s'affiche en chiffre) au lieu des images de rang HINF erronées (D.2).
+// nil/clé absente → ces champs sont absents pour ce titre (dégradation gracieuse).
+func (r *ServiceRegistry) WithRankImageURLsByTitle(byTitle map[string]map[int]*string) *ServiceRegistry {
+	r.rankImageURLsByTitle = byTitle
 	return r
 }
 

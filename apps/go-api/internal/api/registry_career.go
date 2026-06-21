@@ -51,8 +51,13 @@ func (r *ServiceRegistry) Career(ctx context.Context, slug string) (port.CareerS
 	if r.rankCatalog != nil {
 		svc = svc.WithRankCatalog(r.rankCatalog)
 	}
-	if r.rankImageURLs != nil {
-		svc = svc.WithRankImageURLs(r.rankImageURLs)
+	// Title-agnostic (D.2) : injecter la map d'images de rang DU TITRE du joueur.
+	// Les images HINF sont keyées par numéro de rang HINF (1..272) ; pour Halo 5
+	// le RankNumber est le Spartan Rank (1..152) et le titre n'a aucune image de
+	// rang par niveau → sa map est vide/absente, donc on n'injecte rien et le SR
+	// s'affiche en chiffre (au lieu d'une image de rang HINF erronée).
+	if imgs := r.rankImageURLsByTitle[pdb.TitleSlug]; imgs != nil {
+		svc = svc.WithRankImageURLs(imgs)
 	}
 	// Wiring des amis — utilisé par GetTopEncounters pour le tableau "joueurs
 	// les plus croisés (hors amis)". Si le settingsStore n'est pas attaché ou
