@@ -40,15 +40,16 @@ const defaultConfigRoot = "c:/Users/Guillaume/Downloads/Scripts/levelup-multitit
 // frLabels — overrides de noms FR (localisation officielle Halo 5), versionnés dans
 // config/titles/halo_5/mappings/asset_labels_fr.toml. Clé = nom EN exact de l'API.
 type frLabels struct {
-	Weapons map[string]string `toml:"weapons"`
-	Medals  map[string]string `toml:"medals"`
-	Maps    map[string]string `toml:"maps"`
+	Weapons           map[string]string `toml:"weapons"`
+	Medals            map[string]string `toml:"medals"`
+	Maps              map[string]string `toml:"maps"`
+	MedalDescriptions map[string]string `toml:"medal_descriptions"`
 }
 
 // loadFRLabels lit les overrides FR. Fichier absent / illisible → maps vides
 // (name_fr = name_en, dégradation propre). Best-effort.
 func loadFRLabels(path string) frLabels {
-	fr := frLabels{Weapons: map[string]string{}, Medals: map[string]string{}, Maps: map[string]string{}}
+	fr := frLabels{Weapons: map[string]string{}, Medals: map[string]string{}, Maps: map[string]string{}, MedalDescriptions: map[string]string{}}
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return fr
@@ -63,15 +64,24 @@ func loadFRLabels(path string) frLabels {
 	if fr.Maps == nil {
 		fr.Maps = map[string]string{}
 	}
+	if fr.MedalDescriptions == nil {
+		fr.MedalDescriptions = map[string]string{}
+	}
 	return fr
 }
 
-// frOr retourne la traduction FR si présente, sinon l'EN (fallback).
+// frOr retourne la traduction FR si présente, sinon l'EN (fallback = la clé).
 func frOr(m map[string]string, en string) string {
-	if v, ok := m[en]; ok && v != "" {
+	return lookupOr(m, en, en)
+}
+
+// lookupOr retourne m[key] si non vide, sinon fallback (ex. description_fr : FR si
+// dispo, sinon la description EN officielle — pas le nom).
+func lookupOr(m map[string]string, key, fallback string) string {
+	if v, ok := m[key]; ok && v != "" {
 		return v
 	}
-	return en
+	return fallback
 }
 
 func main() {
@@ -107,7 +117,7 @@ func main() {
 	fr := loadFRLabels(filepath.Join(configRoot, "config", "titles", halo5.TitleSlug, "mappings", "asset_labels_fr.toml"))
 	fmt.Printf("FR overrides: %d armes, %d médailles, %d maps\n", len(fr.Weapons), len(fr.Medals), len(fr.Maps))
 
-	seedMedals(db, key, fr.Medals)
+	seedMedals(db, key, fr.Medals, fr.MedalDescriptions)
 	seedMaps(db, key)
 	seedWeapons(db, key, fr.Weapons)
 	seedCSRDesignations(db, key)
@@ -149,7 +159,7 @@ type apiMedal struct {
 	} `json:"spriteLocation"`
 }
 
-func seedMedals(db *sql.DB, key string, fr map[string]string) {
+func seedMedals(db *sql.DB, key string, fr, descFR map[string]string) {
 	body, err := fetchMeta(key, "medals")
 	if err != nil {
 		fmt.Printf("medals: SKIP (%v)\n", err)
@@ -174,7 +184,7 @@ func seedMedals(db *sql.DB, key string, fr map[string]string) {
 			 difficulty_index, difficulty, medal_type,
 			 sprite_sheet_url, sprite_left, sprite_top, sprite_width, sprite_height)
 			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-			id, m.Name, frOr(fr, m.Name), m.Description, m.Description,
+			id, m.Name, frOr(fr, m.Name), m.Description, lookupOr(descFR, m.Name, m.Description),
 			0, strconv.Itoa(m.Difficulty), m.Classification,
 			m.SpriteLocation.SpriteSheetURI, m.SpriteLocation.Left, m.SpriteLocation.Top,
 			m.SpriteLocation.Width, m.SpriteLocation.Height)
