@@ -59,17 +59,19 @@ const (
 
 // CaptureOptions borne la collecte + porte la stratégie de classification ranked.
 type CaptureOptions struct {
-	MaxMatches int                             // borne dure du nb de matchs collectés (<=0 -> défaut 100)
-	PageSize   int                             // taille de page GetPlayerMatches (<=0 -> défaut 25)
-	Source     string                          // libellé source du batch ("" -> "h5_capture")
-	Classifier classification.RankedClassifier // verdicts ranked/PvE depuis le HopperId (peut être nil)
+	MaxMatches  int                             // borne dure du nb de matchs collectés (<=0 -> défaut 100)
+	PageSize    int                             // taille de page GetPlayerMatches (<=0 -> défaut 25)
+	Source      string                          // libellé source du batch ("" -> "h5_capture")
+	Classifier  classification.RankedClassifier // verdicts ranked/PvE depuis le HopperId (peut être nil)
+	StopOnKnown bool                            // delta-stop au 1er match connu (sync live) ; false = skip-known SANS stop (backfill profond)
 }
 
 // CaptureStats résume une passe de collecte (alimente le domain.SyncResult downstream + logs).
 type CaptureStats struct {
 	MatchesSeen      int  // résumés parcourus
 	MatchesCollected int  // batches produits (matchs nouveaux)
-	StoppedOnKnown   bool // delta-stop atteint (1er match déjà connu)
+	MatchesSkipped   int  // matchs déjà connus sautés (backfill : skip-known SANS stop)
+	StoppedOnKnown   bool // delta-stop atteint (1er match déjà connu, mode StopOnKnown)
 	EventsFailed     int  // matchs dont la timeline n'a pu être fetchée (batch registry-only)
 	CarnageFailed    int  // matchs dont le carnage n'a pu être fetché (batch sans participants)
 	ExcludedWarzone  int  // matchs Warzone écartés à la collecte (cf. isExcludedH5GameMode)
@@ -114,16 +116,10 @@ func CollectRecentMatches(
 	if maxMatches <= 0 {
 		maxMatches = h5CaptureDefaultMaxMatches
 	}
-	source := opts.Source
-	if source == "" {
-		source = captureSourceLabel
-	}
-	if resolveXUID == nil {
-		resolveXUID = func(string) string { return "" }
-	}
-	if isKnown == nil {
-		isKnown = func(string) bool { return false }
-	}
+	// Sync live = delta-stop au 1er connu (préserve le comportement historique).
+	opts.StopOnKnown = true
+	resolveXUID = resolveXUIDOrEmpty(resolveXUID)
+	isKnown = isKnownOrFalse(isKnown)
 
 	var (
 		batches []*persist.MatchBatch
@@ -131,44 +127,129 @@ func CollectRecentMatches(
 	)
 	seen := make(map[string]struct{}) // garde anti-boucle si l'API n'honore pas `start`
 	for start := 0; stats.MatchesCollected < maxMatches; start += pageSize {
-		resp, err := src.GetPlayerMatches(ctx, viewer.Gamertag, start, pageSize)
-		if err != nil {
-			return batches, stats, fmt.Errorf("h5 capture: GetPlayerMatches(%s, start=%d): %w", viewer.Gamertag, start, err)
-		}
-		summaries := mapMatchSummaries(resp, viewer.Gamertag, opts.Classifier)
-		if len(summaries) == 0 {
-			break // fin de l'historique
-		}
-		for i := range summaries {
-			s := summaries[i]
-			if _, dup := seen[s.MatchID]; dup {
-				return batches, stats, nil // pagination non avançante -> stop défensif
-			}
-			seen[s.MatchID] = struct{}{}
-			stats.MatchesSeen++
-			if isKnown(s.MatchID) {
-				stats.StoppedOnKnown = true
-				return batches, stats, nil // delta-stop
-			}
-			// Warzone exclu de la collecte (produit + anti-storm PeopleHub) : on saute
-			// AVANT carnage/events/rosters — aucun appel coûteux pour ces matchs.
-			if isExcludedH5GameMode(resp.Results[i].Id.GameMode) {
-				stats.ExcludedWarzone++
-				continue
-			}
-			timeline := captureMatchTimeline(ctx, src, s.MatchID, &stats)
-			participants, commendations := captureParticipants(ctx, src, s.MatchID, h5GameModeSegment(resp.Results[i].Id.GameMode), resolveXUID, &stats)
-			batches = append(batches, ingest.CollectMatchBatch(TitleSlug, source, viewer, s, timeline, participants, commendations, resolveXUID))
-			stats.MatchesCollected++
-			if stats.MatchesCollected >= maxMatches {
-				return batches, stats, nil
-			}
-		}
-		if len(summaries) < pageSize {
-			break // dernière page (page incomplète)
+		pageBatches, hasMore, err := capturePage(ctx, src, viewer, resolveXUID, isKnown, opts, start, pageSize, maxMatches, seen, &stats)
+		batches = append(batches, pageBatches...)
+		if err != nil || !hasMore {
+			return batches, stats, err
 		}
 	}
 	return batches, stats, nil
+}
+
+// CapturePageAt capture UNE page de l'historique h5 à un offset donné (backfill
+// incrémental/résumable). Contrairement à CollectRecentMatches (delta-stop au 1er
+// connu), cette fonction SAUTE les matchs déjà connus (isKnown == true) mais
+// continue à les parcourir — le caller paginne en profondeur sur tout l'historique.
+//
+//   - start    : offset GetPlayerMatches (0, pageSize, 2*pageSize, ...).
+//   - pageSize : taille de page (<=0 -> défaut 25).
+//   - isKnown  : matchID -> déjà persisté (sauté, stats.MatchesSkipped++). nil -> rien de connu.
+//
+// Retourne les batches NOUVEAUX de la page + hasMore (false = fin d'historique : page
+// vide OU page incomplète) + stats cumulées (le caller passe le MÊME *CaptureStats sur
+// toutes les pages). seen est l'anti-boucle PARTAGÉ entre pages (un match revu →
+// hasMore=false, stop défensif). opts.MaxMatches/StopOnKnown sont ignorés ici (pas de
+// borne dure, pas de delta-stop : le backfill veut TOUT l'historique).
+func CapturePageAt(
+	ctx context.Context,
+	src CaptureSource,
+	viewer canonical.PlayerIdentity,
+	resolveXUID func(gamertag string) string,
+	isKnown func(matchID string) bool,
+	opts CaptureOptions,
+	start, pageSize int,
+	seen map[string]struct{},
+	stats *CaptureStats,
+) (batches []*persist.MatchBatch, hasMore bool, err error) {
+	if pageSize <= 0 {
+		pageSize = h5CaptureDefaultPageSize
+	}
+	opts.StopOnKnown = false // backfill : skip-known SANS delta-stop
+	resolveXUID = resolveXUIDOrEmpty(resolveXUID)
+	isKnown = isKnownOrFalse(isKnown)
+	if seen == nil {
+		seen = make(map[string]struct{})
+	}
+	// maxMatches = 0 → pas de cap dur (le backfill borne par pages, pas par matchs).
+	return capturePage(ctx, src, viewer, resolveXUID, isKnown, opts, start, pageSize, 0, seen, stats)
+}
+
+// capturePage fetch + traite UNE page de l'historique à l'offset start. Cœur partagé
+// par CollectRecentMatches (live, StopOnKnown) et CapturePageAt (backfill, skip-known).
+// Met à jour stats + seen en place. hasMore=false signale l'arrêt (fin d'historique,
+// delta-stop, cap MaxMatches atteint, ou pagination non avançante).
+func capturePage(
+	ctx context.Context,
+	src CaptureSource,
+	viewer canonical.PlayerIdentity,
+	resolveXUID func(gamertag string) string,
+	isKnown func(matchID string) bool,
+	opts CaptureOptions,
+	start, pageSize, maxMatches int,
+	seen map[string]struct{},
+	stats *CaptureStats,
+) (batches []*persist.MatchBatch, hasMore bool, err error) {
+	source := opts.Source
+	if source == "" {
+		source = captureSourceLabel
+	}
+	resp, err := src.GetPlayerMatches(ctx, viewer.Gamertag, start, pageSize)
+	if err != nil {
+		return nil, false, fmt.Errorf("h5 capture: GetPlayerMatches(%s, start=%d): %w", viewer.Gamertag, start, err)
+	}
+	summaries := mapMatchSummaries(resp, viewer.Gamertag, opts.Classifier)
+	if len(summaries) == 0 {
+		return nil, false, nil // fin de l'historique
+	}
+	for i := range summaries {
+		s := summaries[i]
+		if _, dup := seen[s.MatchID]; dup {
+			return batches, false, nil // pagination non avançante -> stop défensif
+		}
+		seen[s.MatchID] = struct{}{}
+		stats.MatchesSeen++
+		if isKnown(s.MatchID) {
+			if opts.StopOnKnown {
+				stats.StoppedOnKnown = true
+				return batches, false, nil // delta-stop (live)
+			}
+			stats.MatchesSkipped++
+			continue // backfill : sauter le connu, mais continuer à paginer plus profond
+		}
+		// Warzone exclu de la collecte (produit + anti-storm PeopleHub) : on saute
+		// AVANT carnage/events/rosters — aucun appel coûteux pour ces matchs.
+		if isExcludedH5GameMode(resp.Results[i].Id.GameMode) {
+			stats.ExcludedWarzone++
+			continue
+		}
+		timeline := captureMatchTimeline(ctx, src, s.MatchID, stats)
+		participants, commendations := captureParticipants(ctx, src, s.MatchID, h5GameModeSegment(resp.Results[i].Id.GameMode), resolveXUID, stats)
+		batches = append(batches, ingest.CollectMatchBatch(TitleSlug, source, viewer, s, timeline, participants, commendations, resolveXUID))
+		stats.MatchesCollected++
+		if maxMatches > 0 && stats.MatchesCollected >= maxMatches {
+			return batches, false, nil // cap MaxMatches (live)
+		}
+	}
+	if len(summaries) < pageSize {
+		return batches, false, nil // dernière page (page incomplète)
+	}
+	return batches, true, nil // page pleine -> il reste probablement des pages
+}
+
+// resolveXUIDOrEmpty garantit un resolver non-nil (tout "" si nil).
+func resolveXUIDOrEmpty(f func(string) string) func(string) string {
+	if f == nil {
+		return func(string) string { return "" }
+	}
+	return f
+}
+
+// isKnownOrFalse garantit un prédicat isKnown non-nil (rien de connu si nil).
+func isKnownOrFalse(f func(string) bool) func(string) bool {
+	if f == nil {
+		return func(string) bool { return false }
+	}
+	return f
 }
 
 // captureMatchTimeline fetch + mappe la timeline d'un match. Indisponibilité

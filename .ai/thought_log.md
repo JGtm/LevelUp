@@ -28675,3 +28675,26 @@ non-évidents, état des 6 axes, commandes ops) + mémoire `project_h5_prodgate_
 livrée sur integration/h5-x-livefetch : fix `include-times` (heures matchs précises), axes A
 (match.history lit DB locale), B-core (commendations natives per-match), C (career SR), F (rien),
 + gate career.rank_catalog.
+
+## [2026-06-22] Backfill h5 incrémental résumable (anti tout-ou-rien) — Complété
+
+**Statut** : Complété (non committé au moment de l'écriture). Le runner h5 (`RunDelta`) est
+ALL-OR-NOTHING (capture tout en mémoire → `PersistAll` à la fin) : un full run a tourné 2h sans
+rien persister, fragile + lourd pour le full historique JGtm (2016→2023).
+
+**Décision** : nouvel outil `cmd/h5-backfill` (le delta `cmd/h5-sync` reste intact) +
+`livesync/RunBackfill` (`backfill.go`). Pagination par offset croissant, **persistance par page**
+(lease RW court → incrémental + résumable), skip-known SANS delta-stop (paginate-deeper), arrêt sur
+page vide (borne 2000), log de progression par page. Réutilise les briques du runner (loadKnown,
+persistBatches ART-safe, resolver PeopleHub, B-swap provider) — zéro réinvention.
+
+**Point dur résolu** : `CollectRecentMatches` (live) avait un delta-stop intégré → inutilisable
+pour un backfill profond. Factorisé : `capturePage` partagé + 2 entrées — `CollectRecentMatches`
+(`StopOnKnown=true`, live, byte-équivalent, tests existants verts) et `CapturePageAt`
+(`StopOnKnown=false`, backfill). Ajout `CaptureOptions.StopOnKnown` + `CaptureStats.MatchesSkipped`.
+
+**Résultats observés** : build + vet verts ; tests `internal/games/halo_5/...` + `internal/sync/...`
++ `internal/sync/v2` verts (live sync NON régressé par le refactor capture) ; tests backfill
+(pagination 3 pages puis stop ; skip-known + paginate-deeper). ART-safe (INSERT-only via
+SharedPersister). **Prochaine étape** : lancer le full backfill JGtm (2016-2019) pour couvrir
+toutes les captures media.
