@@ -108,7 +108,13 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
+      # fetch-depth: 0 requis par golangci-lint-action avec only-new-issues :
+      # sans l'historique complet, le diff vs la base échoue sur un push de
+      # branche neuve ("failed to fetch push patch ... Not Found") et le job
+      # remonte alors toute la dette gelée au lieu des seules issues nouvelles.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v6
