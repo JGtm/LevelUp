@@ -330,6 +330,49 @@ func TestBuildHLS_Integration(t *testing.T) {
 	assertSegmentCodec(t, filepath.Join(outDir, "init_0.mp4"), "video", "h264")
 }
 
+// TestVerifyHLSPlayable_Integration valide la garde anti-perte de données :
+// un arbre HLS réel est démultiplexable (nil), un master absent ou un arbre
+// amputé de ses segments/sous-playlists est rejeté (erreur). Gate sur ffmpeg.
+func TestVerifyHLSPlayable_Integration(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg absent du PATH — test VerifyHLSPlayable ignoré")
+	}
+	if _, err := exec.LookPath("ffprobe"); err != nil {
+		t.Skip("ffprobe absent du PATH — test VerifyHLSPlayable ignoré")
+	}
+
+	dir := t.TempDir()
+	src := generateTestMKV(t, dir)
+	outDir := filepath.Join(dir, "hls")
+	res, err := BuildHLS(context.Background(), src, outDir, HLSOptions{SegmentDuration: 1})
+	if err != nil {
+		t.Fatalf("BuildHLS: %v", err)
+	}
+
+	// Arbre HLS réel et complet → démultiplexable.
+	if err := VerifyHLSPlayable(context.Background(), res.MasterPath); err != nil {
+		t.Errorf("VerifyHLSPlayable(arbre valide) = %v, want nil", err)
+	}
+
+	// Master inexistant → erreur (ffprobe échoue à ouvrir).
+	if err := VerifyHLSPlayable(context.Background(), filepath.Join(dir, "absent.m3u8")); err == nil {
+		t.Error("VerifyHLSPlayable(master absent): erreur attendue")
+	}
+
+	// Master présent mais segments + sous-playlists supprimés → le master
+	// référence des fichiers absents → illisible. C'est le cas que la garde doit
+	// attraper AVANT la suppression du source (faux-succès BuildHLS).
+	entries, _ := os.ReadDir(outDir)
+	for _, e := range entries {
+		if e.Name() != "master.m3u8" {
+			_ = os.Remove(filepath.Join(outDir, e.Name()))
+		}
+	}
+	if err := VerifyHLSPlayable(context.Background(), res.MasterPath); err == nil {
+		t.Error("VerifyHLSPlayable(arbre amputé): erreur attendue")
+	}
+}
+
 // generateTestMKV produit un MKV synthétique H.264 + 2 pistes Opus (Game/Mic).
 func generateTestMKV(t *testing.T, dir string) string {
 	t.Helper()

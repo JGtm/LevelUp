@@ -3,6 +3,7 @@
 package ops
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 )
 
 func GenerateThumbnails(ctx context.Context, videosDir, thumbsDir string) (int, []string) {
+	log := slog.With("module", logModuleMedia)
 	os.MkdirAll(thumbsDir, 0o755) //nolint:errcheck
 	generated := 0
 	var errs []string
@@ -43,6 +45,11 @@ func GenerateThumbnails(ctx context.Context, videosDir, thumbsDir string) (int, 
 		}
 		srcPath := filepath.Join(videosDir, e.Name())
 		if err := generateAnimatedThumbnail(ctx, srcPath, thumbPath); err != nil {
+			// Échec rendu visible (ffmpeg absent, codec illisible, fichier
+			// tronqué…) — sinon l'erreur ne remontait que dans result.Errors,
+			// jamais loguée → miniature manquante en silence.
+			log.WarnContext(ctx, "GenerateThumbnails: miniature échouée",
+				"file", e.Name(), "err", err)
 			errs = append(errs, fmt.Sprintf("%s: %v", e.Name(), err))
 			continue
 		}
@@ -167,9 +174,16 @@ func generateAnimatedThumbnail(ctx context.Context, videoPath, webpPath string) 
 		"-preset", "picture",
 		webpPath,
 	)
+	// On capture stderr pour remonter la cause réelle de l'échec (codec, fichier
+	// tronqué, ffmpeg absent) au lieu de l'avaler — diagnostic des miniatures
+	// manquantes côté prod.
+	stderr := &bytes.Buffer{}
 	cmd.Stdout = nil
-	cmd.Stderr = nil
-	return cmd.Run()
+	cmd.Stderr = stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("ffmpeg thumbnail: %w (stderr: %s)", err, strings.TrimSpace(stderr.String()))
+	}
+	return nil
 }
 
 // BackfillThumbnailPaths met à jour thumbnail_path en DB pour toutes les vidéos
@@ -180,6 +194,7 @@ func generateAnimatedThumbnail(ctx context.Context, videoPath, webpPath string) 
 // ({owner_slug}/thumbs/{filename}) qui sera stocké en DB. Si store est en mode
 // legacy (CapturesBase vide), on stocke le path absolu — comportement pré-refactor.
 func BackfillThumbnailPaths(ctx context.Context, db *sql.DB, videosDir, thumbsDir, ownerSlug string, store MediaPathStore) (int, error) {
+	log := slog.With("module", logModuleMedia)
 	entries, err := os.ReadDir(thumbsDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -222,14 +237,14 @@ func BackfillThumbnailPaths(ctx context.Context, db *sql.DB, videosDir, thumbsDi
 			  AND file_name LIKE ?
 		`, thumbStored, videoBase+".%")
 		if err != nil {
-			slog.Warn("BackfillThumbnailPaths: update échoué",
+			log.WarnContext(ctx, "BackfillThumbnailPaths: update échoué",
 				"base", base, "err", err)
 			continue
 		}
 		n, _ := res.RowsAffected()
 		updated += int(n)
 	}
-	slog.Info("BackfillThumbnailPaths: terminé", "updated", updated)
+	log.InfoContext(ctx, "BackfillThumbnailPaths: terminé", "updated", updated)
 	return updated, nil
 }
 

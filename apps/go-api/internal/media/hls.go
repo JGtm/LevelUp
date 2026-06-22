@@ -343,6 +343,26 @@ func ProbeStreamsDetailed(ctx context.Context, absPath string) ([]AVStreamDetail
 	return streams, nil
 }
 
+// VerifyHLSPlayable confirme qu'un master.m3u8 produit est réellement
+// démultiplexable par ffprobe (pas seulement présent sur disque) et expose au
+// moins une piste vidéo. ffprobe suit la playlist : un manifest mal formé, des
+// init/segments manquants ou des segments corrompus le font échouer.
+//
+// Utilisé comme garde AVANT la suppression irréversible du fichier source : tant
+// que la lecture HLS n'est pas prouvée, on conserve le source (fallback remux).
+func VerifyHLSPlayable(ctx context.Context, masterPath string) error {
+	streams, err := ProbeStreamsDetailed(ctx, masterPath)
+	if err != nil {
+		return fmt.Errorf("ffprobe master HLS %q: %w", masterPath, err)
+	}
+	for _, s := range streams {
+		if s.CodecType == "video" {
+			return nil
+		}
+	}
+	return fmt.Errorf("master HLS sans piste vidéo lisible: %s", masterPath)
+}
+
 // BuildHLS transcode srcPath en arbre HLS-fMP4 dans outDir (master.m3u8 +
 // sous-playlists + segments). Copy par défaut, réencode ciblé selon planHLS.
 // Réécrit les NAME du master avec les titres de piste, puis valide la sortie.
