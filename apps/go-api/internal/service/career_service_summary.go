@@ -54,9 +54,19 @@ func buildCareerSummary(rank *domain.CareerRankData) domain.CareerRankSummary {
 
 // buildCareerSummaryEnriched enrichit le résumé avec les images et noms de rang
 // depuis rankCatalog et rankImageURLs injectés dans le service.
+//
+// Title-aware (AXE C) : le catalogue de rangs et la map d'images sont ceux DU
+// joueur. Pour un titre dont le catalogue HINF ne s'applique pas (ex. Halo 5, dont
+// RankNumber est un Spartan Rank 1..152 et le libellé est « SR N » porté par le
+// snapshot), `rankCatalogApplies` est false : on NE consulte ni le catalogue ni les
+// images, sinon on écraserait « SR N » par un career rank HINF (et collerait une
+// image de rang HINF erronée). Le SR s'affiche alors en texte seul (by design h5).
 func (s *CareerService) buildCareerSummaryEnriched(rank *domain.CareerRankData) domain.CareerRankSummary {
 	summary := buildCareerSummary(rank)
 	if rank == nil {
+		return summary
+	}
+	if !s.rankCatalogApplies() {
 		return summary
 	}
 	if img, ok := s.rankImageURLs[rank.RankNumber]; ok {
@@ -79,6 +89,19 @@ func (s *CareerService) buildCareerSummaryEnriched(rank *domain.CareerRankData) 
 		}
 	}
 	return summary
+}
+
+// rankCatalogApplies indique si le catalogue de rangs (et la map d'images) injectés
+// correspondent au titre courant du service. Le wiring injecte le catalogue HINF
+// pour TOUS les titres (source unique) ; pour un titre non-HINF (Halo 5), son
+// RankNumber n'est pas un rank_id HINF et le catalogue ne doit pas être consulté.
+// Si titleSlug n'est pas configuré (legacy/tests sans WithTitleSlug), on conserve
+// le comportement historique (catalogue appliqué).
+func (s *CareerService) rankCatalogApplies() bool {
+	if s.titleSlug == "" || s.rankCatalog == nil {
+		return true
+	}
+	return s.rankCatalog.TitleSlug() == s.titleSlug
 }
 
 // rankIDFromData retourne RankNumber depuis CareerRankData, ou 0 si nil.

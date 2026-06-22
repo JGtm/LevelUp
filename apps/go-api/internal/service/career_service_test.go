@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/games/mappings"
 )
 
 // --- mock ---
@@ -139,6 +141,88 @@ func TestCareerService_GetCareerPage_RepoError(t *testing.T) {
 				t.Error("expected error, got nil")
 			}
 		})
+	}
+}
+
+// h5CareerStubAdapter : TitleDataAdapter h5-like qui ne sert QUE LoadCareerSnapshot
+// (le reste dégrade via fakeDetailAdapter embarqué, défini dans
+// match_view_canonical_test.go). Permet de tester la propagation career h5 → service
+// sans dépendre du package halo_5 (évite un import croisé).
+type h5CareerStubAdapter struct {
+	fakeDetailAdapter
+	snap *canonical.CareerSnapshot
+}
+
+func (s *h5CareerStubAdapter) LoadCareerSnapshot(_ context.Context, _ string, _ canonical.CareerOptions) (*canonical.CareerSnapshot, error) {
+	return s.snap, nil
+}
+
+// TestCareerService_GetCareerPage_H5TotalRanks152 (AXE C4) : un snapshot career h5
+// (RankMax=152 via l'adapter, label « SR N ») produit HeroProgress.TotalRanks=152
+// — PAS le fallback HINF 272 — et le label SR n'est PAS écrasé par le catalogue
+// HINF injecté au wiring (titre ≠ catalogue → catalogue neutralisé title-side).
+func TestCareerService_GetCareerPage_H5TotalRanks152(t *testing.T) {
+	t.Parallel()
+
+	rankMax152 := 152
+	xpMax := 50_000_000
+	snap := &canonical.CareerSnapshot{
+		Player:      canonical.PlayerIdentity{Gamertag: "JGtm"},
+		RankNumber:  111,
+		CurrentRank: &canonical.AssetReference{Kind: "spartan_rank", ID: "SR 111", DefaultLabel: "SR 111"},
+		RankMax:     &rankMax152,
+		XPMax:       &xpMax,
+	}
+	adapter := &h5CareerStubAdapter{snap: snap}
+
+	// Catalogue HINF (DefaultSlug) injecté comme au wiring réel : il NE doit PAS
+	// s'appliquer à un service titre halo_5. On y met un rank_id 111 avec un libellé
+	// HINF distinct pour prouver l'absence d'écrasement.
+	hinfCatalog := mappings.NewRankCatalog("halo_infinite", []mappings.RankEntry{
+		{ID: 111, Title: map[string]string{"fr": "Cavalier HINF", "en": "HINF Rider"}},
+	})
+
+	svc := NewCareerService(&mockCareerRepo{}).
+		WithTitleSlug("halo_5").
+		WithDataAdapter(adapter).
+		WithRankCatalog(hinfCatalog)
+
+	resp, err := svc.GetCareerPage(context.Background())
+	if err != nil {
+		t.Fatalf("GetCareerPage: %v", err)
+	}
+	if resp.HeroProgress.TotalRanks != 152 {
+		t.Errorf("TotalRanks = %d, want 152 (pas le fallback HINF 272)", resp.HeroProgress.TotalRanks)
+	}
+	if resp.Summary.RankNumber != 111 {
+		t.Errorf("RankNumber = %d, want 111", resp.Summary.RankNumber)
+	}
+	// Le label SR doit survivre : le catalogue HINF (titre ≠) ne l'écrase pas.
+	if resp.Summary.RankLabel != "SR 111" {
+		t.Errorf("RankLabel = %q, want \"SR 111\" (catalogue HINF ne doit PAS écraser le label SR h5)", resp.Summary.RankLabel)
+	}
+}
+
+// TestCareerService_GetCareerPage_HINFCatalogAppliesSameTitle : garde-fou de
+// non-régression — quand le catalogue correspond au titre du service (halo_infinite),
+// il s'applique normalement (RankLabel enrichi depuis le catalogue).
+func TestCareerService_GetCareerPage_HINFCatalogAppliesSameTitle(t *testing.T) {
+	t.Parallel()
+
+	rankData := &domain.CareerRankData{RankNumber: 111, RecordedAt: time.Now()}
+	hinfCatalog := mappings.NewRankCatalog("halo_infinite", []mappings.RankEntry{
+		{ID: 111, Title: map[string]string{"fr": "Cavalier HINF", "en": "HINF Rider"}},
+	})
+	svc := NewCareerService(&mockCareerRepo{rank: rankData}).
+		WithTitleSlug("halo_infinite").
+		WithRankCatalog(hinfCatalog)
+
+	resp, err := svc.GetCareerPage(context.Background())
+	if err != nil {
+		t.Fatalf("GetCareerPage: %v", err)
+	}
+	if resp.Summary.RankLabel != "Cavalier HINF" {
+		t.Errorf("RankLabel = %q, want \"Cavalier HINF\" (catalogue même titre doit s'appliquer)", resp.Summary.RankLabel)
 	}
 }
 
