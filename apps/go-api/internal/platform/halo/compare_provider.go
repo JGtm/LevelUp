@@ -67,7 +67,14 @@ func (p *HaloProvider) FetchRemoteStats(ctx context.Context, gamertag, titleSlug
 // FetchServiceRecord fetch le service record matchmade (lifetime) d'un joueur et
 // retourne stats normalisées (incl. TimePlayedSeconds) + médailles agrégées.
 // Un seul appel réseau. Les tokens sont lus depuis le contexte via ctxkeys.
+// Enrobé du filet 401 (defense-in-depth) : re-mint + retry unique sur révocation.
 func (p *HaloProvider) FetchServiceRecord(ctx context.Context, gamertag, titleSlug string) (*domain.RemoteServiceRecord, error) {
+	return retryOnAuth(ctx, func(c context.Context) (*domain.RemoteServiceRecord, error) {
+		return p.fetchServiceRecordOnce(c, gamertag, titleSlug)
+	})
+}
+
+func (p *HaloProvider) fetchServiceRecordOnce(ctx context.Context, gamertag, titleSlug string) (*domain.RemoteServiceRecord, error) {
 	tokens := ctxkeys.HaloTokens(ctx)
 	if tokens == nil {
 		return nil, fmt.Errorf("FetchServiceRecord: tokens absents du contexte")
@@ -139,6 +146,12 @@ func (p *HaloProvider) FetchServiceRecord(ctx context.Context, gamertag, titleSl
 // isRanked. Fonctionne pour un xuid/gamertag arbitraire. isRanked=nil → total
 // de la saison (pas de filtre). Retourne (0, nil) si la saison n'a pas de donnée.
 func (p *HaloProvider) FetchSeasonServiceRecord(ctx context.Context, gamertag, seasonID string, isRanked *bool) (int, error) {
+	return retryOnAuth(ctx, func(c context.Context) (int, error) {
+		return p.fetchSeasonServiceRecordOnce(c, gamertag, seasonID, isRanked)
+	})
+}
+
+func (p *HaloProvider) fetchSeasonServiceRecordOnce(ctx context.Context, gamertag, seasonID string, isRanked *bool) (int, error) {
 	tokens := ctxkeys.HaloTokens(ctx)
 	if tokens == nil {
 		return 0, fmt.Errorf("FetchSeasonServiceRecord: tokens absents du contexte")
