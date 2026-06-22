@@ -96,14 +96,17 @@ func TestLoadMediaFiles_RealTopology_NoCrossDBSQL(t *testing.T) {
 	if _, err := social.Exec(ctx, `
 		INSERT INTO media_files
 			(id, player_slug, file_path, file_name, file_stem, file_ext, kind, capture_end_utc, liked, status)
-		VALUES ('e2e-med-1', 'TestPlayer', '/e2e_test.mp4', 'e2e_test.mp4', 'e2e_test', '.mp4', 'video',
+		VALUES ('1', 'TestPlayer', '/e2e_test.mp4', 'e2e_test.mp4', 'e2e_test', '.mp4', 'video',
 		        ?, FALSE, 'active')
 	`, time.Date(2026, 5, 20, 14, 30, 0, 0, time.UTC)); err != nil {
 		t.Fatalf("insert media: %v", err)
 	}
+	// Append-only média : l'association EFFECTIVE passe par la table _history + vue
+	// media_match_associations_latest (le reader lit la vue). media_file_id numérique
+	// '1' (history = BIGINT en schéma migré ; coercition DuckDB avec media_files.id).
 	if _, err := social.Exec(ctx, `
-		INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds)
-		VALUES ('e2e-med-1', 'e2e_m1', 1800)
+		INSERT INTO media_match_associations_history (media_file_id, match_id, delta_seconds)
+		VALUES ('1', 'e2e_m1', 1800)
 	`); err != nil {
 		t.Fatalf("insert assoc: %v", err)
 	}

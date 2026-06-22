@@ -45,6 +45,10 @@ type PlayerSummary struct {
 	SyncEnabled bool `json:"sync_enabled"`
 	// InitialMaxMatches : nombre de matchs demandés à l'onboarding (0 = défaut).
 	InitialMaxMatches int `json:"initial_max_matches,omitempty"`
+	// AuthOnly : profil existant uniquement pour la gestion des tokens auth (pas
+	// un vrai joueur suivi). Exclu des listes front-facing (sélecteur L1, favoris
+	// gamertag) par le BootstrapService ; conservé pour les usages serveur.
+	AuthOnly bool `json:"auth_only,omitempty"`
 }
 
 // SyncablePlayers retourne les couples (joueur, titre) dont le sync est ACTIF

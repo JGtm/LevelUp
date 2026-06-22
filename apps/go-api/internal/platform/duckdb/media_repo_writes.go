@@ -38,14 +38,13 @@ func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matc
 			return nil, nil, fmt.Errorf("SetMediaMatchAssociation persister: %w", err)
 		}
 	} else {
-		// Fallback legacy : DELETE + INSERT séquentiels + CHECKPOINT.
-		// is_manual = TRUE : marque la correction utilisateur pour qu'un
-		// reassociate global ultérieur ne l'écrase pas.
-		if _, err := r.socialDB().ExecRecovered(ctx, `DELETE FROM media_match_associations WHERE media_file_id = ?`, mediaID); err != nil {
-			return nil, nil, fmt.Errorf("delete old assoc: %w", err)
-		}
-		if _, err := r.socialDB().ExecRecovered(ctx, `INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds, is_manual) VALUES (?, ?, 0, TRUE)`, mediaID, matchID); err != nil {
-			return nil, nil, fmt.Errorf("insert new assoc: %w", err)
+		// Fallback legacy APPEND-ONLY : 1 INSERT d'event manuel dans _history (plus de
+		// DELETE → ExecRecovered inutile, Exec simple suffit). is_manual=TRUE : la vue
+		// donne priorité à la correction utilisateur sur l'auto.
+		if _, err := r.socialDB().Exec(ctx, `INSERT INTO media_match_associations_history
+			(media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at)
+			VALUES (?, ?, 0, TRUE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, mediaID, matchID); err != nil {
+			return nil, nil, fmt.Errorf("insert manual assoc event: %w", err)
 		}
 		_ = CheckpointSharedSocial(ctx, r.socialDB())
 	}
@@ -157,25 +156,24 @@ func (r *MediaRepo) SetMediaLikeAtomic(
 		return true, nil
 	}
 
+	// APPEND-ONLY : like/unlike = INSERT pur d'event dans media_likes_history.
 	if liked {
 		_, err := exec.ExecContext(ctx, `
-			INSERT INTO media_likes (media_path, liker_slug, liker_gamertag, liked_at)
-			VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-			ON CONFLICT (media_path, liker_slug) DO UPDATE SET
-				liker_gamertag = EXCLUDED.liker_gamertag,
-				liked_at = EXCLUDED.liked_at
+			INSERT INTO media_likes_history (media_path, liker_slug, liker_gamertag, is_liked, liked_at)
+			VALUES (?, ?, ?, TRUE, CURRENT_TIMESTAMP)
 		`, filePath, likerSlug, likerGamertag)
 		if err != nil {
-			return true, fmt.Errorf("SetMediaLikeAtomic insert media_likes: %w", err)
+			return true, fmt.Errorf("SetMediaLikeAtomic add event media_likes_history: %w", err)
 		}
 		return true, nil
 	}
 
 	_, err = exec.ExecContext(ctx, `
-		DELETE FROM media_likes WHERE media_path = ? AND liker_slug = ?
+		INSERT INTO media_likes_history (media_path, liker_slug, liker_gamertag, is_liked, liked_at)
+		VALUES (?, ?, NULL, FALSE, NULL)
 	`, filePath, likerSlug)
 	if err != nil {
-		return true, fmt.Errorf("SetMediaLikeAtomic delete media_likes: %w", err)
+		return true, fmt.Errorf("SetMediaLikeAtomic remove event media_likes_history: %w", err)
 	}
 	return true, nil
 }
@@ -199,16 +197,13 @@ func (r *MediaRepo) ToggleSharedLike(ctx context.Context, mediaPath, likerSlug, 
 
 	// Fallback legacy (tests sans wiring). CHECKPOINT immédiat post-write
 	// (ADR 0021 Phase 3.2) pour ne pas laisser de WAL non-flushé.
+	// APPEND-ONLY : like/unlike = INSERT pur d'event (is_liked TRUE/FALSE) dans
+	// media_likes_history. Plus de DELETE ni ON CONFLICT → surface ART éliminée
+	// (Exec simple suffit). CHECKPOINT conservé (durabilité, ADR 0021 Phase 3.2).
 	if liked {
-		// Note : `liked_at = CURRENT_TIMESTAMP` dans le ON CONFLICT casse le binder
-		// DuckDB qui interprète CURRENT_TIMESTAMP comme un nom de colonne.
-		// On utilise EXCLUDED.liked_at qui prend la valeur du VALUES (= CURRENT_TIMESTAMP).
-		_, err := r.socialDB().ExecRecovered(ctx, `
-			INSERT INTO media_likes (media_path, liker_slug, liker_gamertag, liked_at)
-			VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-			ON CONFLICT (media_path, liker_slug) DO UPDATE SET
-				liker_gamertag = EXCLUDED.liker_gamertag,
-				liked_at = EXCLUDED.liked_at
+		_, err := r.socialDB().Exec(ctx, `
+			INSERT INTO media_likes_history (media_path, liker_slug, liker_gamertag, is_liked, liked_at)
+			VALUES (?, ?, ?, TRUE, CURRENT_TIMESTAMP)
 		`, mediaPath, likerSlug, likerGamertag)
 		if err != nil {
 			return err
@@ -216,8 +211,9 @@ func (r *MediaRepo) ToggleSharedLike(ctx context.Context, mediaPath, likerSlug, 
 		_ = CheckpointSharedSocial(ctx, r.socialDB())
 		return nil
 	}
-	_, err := r.socialDB().ExecRecovered(ctx, `
-		DELETE FROM media_likes WHERE media_path = ? AND liker_slug = ?
+	_, err := r.socialDB().Exec(ctx, `
+		INSERT INTO media_likes_history (media_path, liker_slug, liker_gamertag, is_liked, liked_at)
+		VALUES (?, ?, NULL, FALSE, NULL)
 	`, mediaPath, likerSlug)
 	if err != nil {
 		return err
@@ -242,10 +238,12 @@ func (r *MediaRepo) GetMediaLikers(ctx context.Context, mediaPaths []string) (ma
 		args[i] = p
 	}
 
+	// Lecture de l'état courant via la vue append-only (dernier event par
+	// (media_path, liker_slug)), likers actifs uniquement (is_liked=TRUE).
 	q := `SELECT media_path, liker_gamertag, ROW_NUMBER() OVER (PARTITION BY media_path ORDER BY liked_at) AS rn,
 		COUNT(*) OVER (PARTITION BY media_path) AS total
-	FROM media_likes
-	WHERE media_path IN (` + joinStrings(placeholders) + `)
+	FROM media_likes_latest
+	WHERE is_liked = TRUE AND media_path IN (` + joinStrings(placeholders) + `)
 	ORDER BY media_path, liked_at`
 
 	rows, err := r.socialDB().QueryRecovered(ctx, q, args...)

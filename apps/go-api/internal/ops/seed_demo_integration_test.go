@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/migration"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -50,47 +52,33 @@ func seedSourceDBs(t *testing.T) (tmpDir, srcPlayer, srcShared, srcMeta string) 
 		t.Fatal(err)
 	}
 	defer sharedDB.Close()
-	mustExec(t, sharedDB, `
-		CREATE TABLE match_registry (
-			match_id VARCHAR PRIMARY KEY,
-			start_time TIMESTAMP,
-			map_name VARCHAR,
-			playlist_name VARCHAR,
-			pair_name VARCHAR
-		)`)
-	mustExec(t, sharedDB, `
-		CREATE TABLE match_participants (
-			match_id VARCHAR,
-			xuid VARCHAR,
-			gamertag VARCHAR,
-			kills INTEGER,
-			deaths INTEGER
-		)`)
-	mustExec(t, sharedDB, `CREATE TABLE medals_earned (match_id VARCHAR, xuid VARCHAR, medal_name_id BIGINT)`)
-	mustExec(t, sharedDB, `CREATE TABLE highlight_events (match_id VARCHAR, event_type VARCHAR, xuid VARCHAR, time_ms INTEGER)`)
-	mustExec(t, sharedDB, `CREATE TABLE weapon_kills (match_id VARCHAR, xuid VARCHAR, weapon_id UBIGINT, reconciled_as UBIGINT)`)
-	mustExec(t, sharedDB, `CREATE TABLE killer_victim_pairs (match_id VARCHAR, killer_xuid VARCHAR, victim_xuid VARCHAR)`)
-	mustExec(t, sharedDB, `CREATE TABLE xuid_aliases (xuid VARCHAR PRIMARY KEY, gamertag VARCHAR)`)
+	// Schéma complet via migrations canoniques : un fixture minimal fait main
+	// dérive vite du schéma réel et casse la chaîne de migrations relancée par
+	// seed-demo (vues matérialisées, colonnes append-only…). On crée donc la DB
+	// source au schéma courant, puis on insère les données (colonnes explicites).
+	if err := migration.RunForDB(sharedDB, migration.TargetShared); err != nil {
+		t.Fatalf("migrations shared (fixture): %v", err)
+	}
 
 	// 3 matchs : m1 (le plus récent), m2 (milieu), m3 (le plus ancien).
 	mustExec(t, sharedDB, `
-		INSERT INTO match_registry VALUES
+		INSERT INTO match_registry (match_id, start_time, map_name, playlist_name, pair_name) VALUES
 		('m1', TIMESTAMP '2026-05-22 18:00:00', 'Aquarius', 'Ranked Slayer', 'Ranked:Slayer'),
 		('m2', TIMESTAMP '2026-05-21 18:00:00', 'Bazaar', 'Open Crossplay', 'Open:CTF'),
-		('m3', TIMESTAMP '2026-05-20 18:00:00', 'Live Fire', 'Ranked Slayer', 'Ranked:Slayer')`)
+		('m3', TIMESTAMP '2026-05-20 18:00:00', 'Live Fire', 'Open Crossplay', 'Open:Slayer')`)
 	mustExec(t, sharedDB, `
-		INSERT INTO match_participants VALUES
+		INSERT INTO match_participants (match_id, xuid, gamertag, kills, deaths) VALUES
 		('m1', '`+sourceXUID+`', 'JGtm', 15, 8),
 		('m1', '2222222222222222', 'Other', 10, 12),
 		('m2', '`+sourceXUID+`', 'JGtm', 8, 10),
 		('m3', '`+sourceXUID+`', 'JGtm', 20, 5)`)
 	mustExec(t, sharedDB, `
-		INSERT INTO medals_earned VALUES
+		INSERT INTO medals_earned (match_id, xuid, medal_name_id) VALUES
 		('m1', '`+sourceXUID+`', 100),
 		('m2', '`+sourceXUID+`', 200),
 		('m3', '`+sourceXUID+`', 100)`)
 	mustExec(t, sharedDB, `
-		INSERT INTO xuid_aliases VALUES
+		INSERT INTO xuid_aliases (xuid, gamertag) VALUES
 		('`+sourceXUID+`', 'JGtm'),
 		('2222222222222222', 'Other')`)
 
@@ -104,38 +92,20 @@ func seedSourceDBs(t *testing.T) (tmpDir, srcPlayer, srcShared, srcMeta string) 
 	// - player_match_enrichment : PAS de colonne xuid (player DB mono-joueur)
 	// - match_skill_rank : PAS de colonne xuid (idem)
 	// - career_progression : A une colonne xuid (anonymisée)
-	mustExec(t, playerDB, `
-		CREATE TABLE player_match_enrichment (
-			match_id VARCHAR PRIMARY KEY,
-			session_id VARCHAR,
-			performance_score DOUBLE
-		)`)
-	mustExec(t, playerDB, `
-		CREATE TABLE match_citations (match_id VARCHAR, citation_name_norm VARCHAR, value INTEGER)`)
-	mustExec(t, playerDB, `CREATE TABLE sessions (session_id VARCHAR, label VARCHAR)`)
-	mustExec(t, playerDB, `
-		CREATE TABLE career_progression (
-			xuid VARCHAR NOT NULL,
-			rank INTEGER,
-			recorded_at TIMESTAMP
-		)`)
-	mustExec(t, playerDB, `CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR)`)
-	mustExec(t, playerDB, `
-		CREATE TABLE match_skill_rank (
-			match_id VARCHAR PRIMARY KEY,
-			rating_value DOUBLE
-		)`)
+	if err := migration.RunForDB(playerDB, migration.TargetPlayer); err != nil {
+		t.Fatalf("migrations player (fixture): %v", err)
+	}
 
 	mustExec(t, playerDB, `
-		INSERT INTO player_match_enrichment VALUES
+		INSERT INTO player_match_enrichment (match_id, session_id, performance_score) VALUES
 		('m1', 'sess1', 78.5),
 		('m2', 'sess1', 65.0),
 		('m3', 'sess2', 82.3)`)
-	mustExec(t, playerDB, `INSERT INTO match_citations VALUES ('m1', 'kills', 15), ('m2', 'kills', 8)`)
-	mustExec(t, playerDB, `INSERT INTO sessions VALUES ('sess1', 'Session 1'), ('sess2', 'Session 2')`)
-	mustExec(t, playerDB, `INSERT INTO career_progression VALUES ('`+sourceXUID+`', 10, TIMESTAMP '2026-05-22 18:00:00')`)
-	mustExec(t, playerDB, `INSERT INTO sync_meta VALUES ('xuid', '`+sourceXUID+`'), ('msal_token_cache', 'SECRET_DO_NOT_LEAK')`)
-	mustExec(t, playerDB, `INSERT INTO match_skill_rank VALUES ('m1', 1200.5)`)
+	mustExec(t, playerDB, `INSERT INTO match_citations (match_id, citation_name_norm, value) VALUES ('m1', 'kills', 15), ('m2', 'kills', 8)`)
+	mustExec(t, playerDB, `INSERT INTO sessions (session_id, label) VALUES (1, 'Session 1'), (2, 'Session 2')`)
+	mustExec(t, playerDB, `INSERT INTO career_progression (xuid, rank, recorded_at) VALUES ('`+sourceXUID+`', 10, TIMESTAMP '2026-05-22 18:00:00')`)
+	mustExec(t, playerDB, `INSERT INTO sync_meta (key, value) VALUES ('xuid', '`+sourceXUID+`'), ('msal_token_cache', 'SECRET_DO_NOT_LEAK')`)
+	mustExec(t, playerDB, `INSERT INTO match_skill_rank (match_id, rating_type, rating_value) VALUES ('m1', 'csr', 1200.5)`)
 
 	return tmpDir, srcPlayer, srcShared, srcMeta
 }
@@ -389,15 +359,23 @@ func verifyConfigsWritten(t *testing.T, outDir, sourceGamertag, serviceTag strin
 	if err := json.Unmarshal(data, &profiles); err != nil {
 		t.Fatalf("parse profiles: %v", err)
 	}
-	demoProfile, _ := profiles["profiles"].(map[string]any)[DefaultDemoGamertag].(map[string]any)
+	// Profils démo keyés par GAMERTAG (multi-roster) : le main = DefaultDemoMainGamertag
+	// ("DemoPlayer"), distinct du répertoire DB "DEMO" (cf. demoDirForIndex / DemoRoster[0]).
+	demoProfile, _ := profiles["profiles"].(map[string]any)[DefaultDemoMainGamertag].(map[string]any)
 	if demoProfile == nil {
-		t.Fatal("profile DEMO absent")
+		t.Fatalf("profile %q absent", DefaultDemoMainGamertag)
 	}
 	if v, _ := demoProfile["xuid"].(string); v != DefaultDemoXUID {
-		t.Errorf("DEMO.xuid = %q", v)
+		t.Errorf("%s.xuid = %q, want %q", DefaultDemoMainGamertag, v, DefaultDemoXUID)
 	}
-	if v, _ := demoProfile["waypoint_player"].(string); v != sourceGamertag {
-		t.Errorf("DEMO.waypoint_player = %q, want %q", v, sourceGamertag)
+	// waypoint_player = gamertag démo (jamais le gamertag source réel : anti-fuite).
+	if v, _ := demoProfile["waypoint_player"].(string); v != DefaultDemoMainGamertag {
+		t.Errorf("%s.waypoint_player = %q, want %q (gamertag démo, pas la source)",
+			DefaultDemoMainGamertag, v, DefaultDemoMainGamertag)
+	}
+	// Invariant anti-fuite : le gamertag source réel ne doit apparaître nulle part.
+	if contains(string(data), sourceGamertag) {
+		t.Errorf("gamertag source %q fuit dans db_profiles.json", sourceGamertag)
 	}
 
 	settingsPath := filepath.Join(outDir, "app_settings.json")
@@ -451,11 +429,26 @@ func TestLoadVideoRealMaps(t *testing.T) {
 		t.Fatal(err)
 	}
 	mustExec(t, ss, `CREATE TABLE media_files (id VARCHAR, file_name VARCHAR, file_stem VARCHAR)`)
-	mustExec(t, ss, `CREATE TABLE media_match_associations (media_file_id VARCHAR, match_id VARCHAR)`)
+	// Append-only média : le reader lit la vue media_match_associations_latest (sur _history).
+	mustExec(t, ss, `CREATE SEQUENCE media_match_associations_history_id_seq START 1`)
+	mustExec(t, ss, `CREATE TABLE media_match_associations_history (
+		id BIGINT PRIMARY KEY DEFAULT nextval('media_match_associations_history_id_seq'),
+		media_file_id VARCHAR NOT NULL, match_id VARCHAR NOT NULL, delta_seconds INTEGER,
+		is_manual BOOLEAN NOT NULL DEFAULT FALSE, is_active BOOLEAN NOT NULL DEFAULT TRUE,
+		associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)`)
+	mustExec(t, ss, `CREATE OR REPLACE VIEW media_match_associations_latest AS
+		WITH lpp AS (SELECT media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at,
+			ROW_NUMBER() OVER (PARTITION BY media_file_id, match_id ORDER BY written_at DESC, id DESC) AS rn
+			FROM media_match_associations_history),
+		act AS (SELECT * FROM lpp WHERE rn = 1 AND is_active = TRUE),
+		hm AS (SELECT media_file_id, bool_or(is_manual) AS has_manual FROM act GROUP BY media_file_id)
+		SELECT a.media_file_id, a.match_id, a.delta_seconds, a.is_manual, a.associated_at, a.written_at
+		FROM act a JOIN hm ON hm.media_file_id = a.media_file_id WHERE a.is_manual = hm.has_manual`)
 	mustExec(t, ss, `INSERT INTO media_files VALUES
 		('a','Halo Infinite 2026-02-18 17-37-18.mkv','Halo Infinite 2026-02-18 17-37-18'),
 		('b','Replay clip.mp4','Replay clip')`)
-	mustExec(t, ss, `INSERT INTO media_match_associations VALUES ('a','m1'), ('b','m2')`)
+	mustExec(t, ss, `INSERT INTO media_match_associations_history (media_file_id, match_id) VALUES ('a','m1'), ('b','m2')`)
 	ss.Close()
 
 	got, err := loadVideoRealMaps(ctx, ssPath, smPath)

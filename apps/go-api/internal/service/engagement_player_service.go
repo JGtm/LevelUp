@@ -94,6 +94,21 @@ func (s *PlayerEngagementService) GetMatchEngagement(
 	input := s.buildInputForMatch(ctx, mctx, events, teamXUIDs, matchID)
 	result, err := temporal.ComputeEngagementScore(input)
 	if err != nil {
+		// Indisponibilite PAR MATCH (trop court / pas d'event exploitable pour le
+		// joueur+coequipiers) -> sentinelle dediee mappee en 422 cote handler, et
+		// non un 500 generique affiche "migration en cours" cote front.
+		if errors.Is(err, temporal.ErrMatchTooShort) || errors.Is(err, temporal.ErrInsufficientData) {
+			// Log diagnostic : compteurs d'events par segment pour pister la cause
+			// racine (attribution xuid/team_id) quand un match parait pourtant peuple.
+			slog.WarnContext(ctx, "engagement: courbe non calculable pour ce match",
+				"match_id", matchID, "xuid", s.xuid,
+				"n_player_events", len(input.PlayerEvents),
+				"n_team_events", len(input.TeamEvents),
+				"n_lobby_events", len(input.LobbyEvents),
+				"n_team", mctx.NTeam, "target_team_id", mctx.TargetTeamID,
+				"reason", err.Error())
+			return nil, ErrEngagementInsufficient
+		}
 		return nil, fmt.Errorf("PlayerEngagementService: compute: %w", err)
 	}
 	return &result, nil
@@ -471,3 +486,11 @@ var ErrEngagementMatchNotFound = errors.New("engagement: match not found for thi
 // ErrEngagementPvENotSupported signale qu'on tente de calculer sur un match PvE
 // (non couvert v1, cf doc reflexion §3.4 perimetre).
 var ErrEngagementPvENotSupported = errors.New("engagement: PvE not supported in v1")
+
+// ErrEngagementInsufficient signale que la courbe n'a pas pu etre calculee pour
+// ce match precis (match trop court, ou aucun event exploitable pour le joueur
+// et ses coequipiers). Distinct de ErrEngagementUnavailable (migration absente) :
+// c'est une indisponibilite PAR MATCH, pas un probleme de schema -> 422, pas 503.
+// Le front affiche un message neutre ("indisponible pour ce match"), jamais
+// "migration en cours".
+var ErrEngagementInsufficient = errors.New("engagement: insufficient data for this match")

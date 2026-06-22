@@ -26,6 +26,7 @@ func (r *PlayerMatchesRepo) mergePlayerMatchRows(
 			shared[i].hadBotTeammate = e.HadBotTeammate
 			shared[i].isWithFriends = e.IsWithFriends
 			shared[i].engagementScoreBrut = e.EngagementScoreBrut
+			shared[i].engagementPaceRatio = e.EngagementPaceRatio
 		}
 		if s, ok := skillRanks[shared[i].matchID]; ok {
 			shared[i].skillRatingType = s.ratingType
@@ -176,6 +177,7 @@ type playerMatchScanResult struct {
 	isRanked, isFirefight, hadBotTeammate       bool
 	isWithFriends                               bool
 	engagementScoreBrut                         sql.NullFloat64
+	engagementPaceRatio                         sql.NullFloat64
 	kda, accuracy, teamMMR, enemyMMR            sql.NullFloat64
 	avgLifeSeconds                              sql.NullFloat64
 	damageDealt, damageTaken                    sql.NullFloat64

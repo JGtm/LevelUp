@@ -257,18 +257,25 @@ func persistWeaponKills(ctx context.Context, tx *sql.Tx, rows []WeaponKillInsert
 	if len(rows) == 0 {
 		return nil
 	}
+	// Append-only #23046 (Phase 2) : alloue UNE génération partagée par le batch
+	// (weapon_kills_generation_seq) ; la vue v_weapon_kills ne lit que la génération
+	// MAX par (match_id,xuid). Plus de DELETE préalable (vecteur ART sur idx_wk).
+	var gen int64
+	if err := tx.QueryRowContext(ctx, `SELECT nextval('weapon_kills_generation_seq')`).Scan(&gen); err != nil {
+		return fmt.Errorf("persist: weapon_kills generation: %w", err)
+	}
 	for _, r := range rows {
 		_, err := tx.ExecContext(ctx, `
 			INSERT INTO weapon_kills (
 				match_id, xuid, time_ms,
 				weapon_id, reconciled_as,
 				delta_ms, confidence, attribution_path,
-				swap_detected, delayed_damage, player_index
-			) VALUES (?, ?, ?, CAST(? AS UBIGINT), CAST(? AS UBIGINT), ?, ?, ?, ?, ?, ?)`,
+				swap_detected, delayed_damage, player_index, generation_id
+			) VALUES (?, ?, ?, CAST(? AS UBIGINT), CAST(? AS UBIGINT), ?, ?, ?, ?, ?, ?, ?)`,
 			r.MatchID, r.XUID, r.TimeMS,
 			ubigintArg(r.WeaponID), ubigintArg(r.ReconciledAs),
 			r.DeltaMS, r.Confidence, r.AttributionPath,
-			r.SwapDetected, r.DelayedDamage, r.PlayerIndex,
+			r.SwapDetected, r.DelayedDamage, r.PlayerIndex, gen,
 		)
 		if err != nil {
 			return fmt.Errorf("persist: INSERT weapon_kills %s/%s/%d: %w",

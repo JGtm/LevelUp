@@ -1,6 +1,10 @@
 package port
 
-import "context"
+import (
+	"context"
+
+	"levelup/go-api/internal/domain"
+)
 
 // HomePersistSink est le sink de persistance fire-and-forget consommé par
 // HomeService lors du fetch BattlePass/Challenges (écriture best-effort des
@@ -11,6 +15,7 @@ import "context"
 type HomePersistSink interface {
 	// PersistBattlePassSync persiste le snapshot BattlePass d'un reward track.
 	PersistBattlePassSync(ctx context.Context, trackPath string, rawBody []byte) error
-	// PersistChallengesSync persiste le snapshot des défis.
-	PersistChallengesSync(ctx context.Context, rawBody []byte) error
+	// PersistChallengesSync persiste le snapshot des défis (raw + items rendus
+	// pour le cache de rendu, cf. travail live-fetch token-gated).
+	PersistChallengesSync(ctx context.Context, rawBody []byte, items []domain.ChallengeItem) error
 }

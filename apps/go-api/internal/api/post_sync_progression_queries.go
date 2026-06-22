@@ -196,7 +196,7 @@ func loadProgressionPerfScores(ctx context.Context, pdb *duckdb.PlayerDB, matchI
 	}
 	pmeRows, err := pdb.Player.Query(ctx, `
 		SELECT match_id, COALESCE(performance_score, 0)
-		FROM player_match_enrichment
+		FROM player_match_enrichment_latest
 		WHERE match_id IN (`+joinProgressionPlaceholders(placeholders)+`)
 	`, args...)
 	if err != nil {

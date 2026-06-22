@@ -35,7 +35,7 @@ describe('CombatYieldBar', () => {
   })
 
   it('clips to max 120px when value exceeds 1.5×p80', () => {
-    // OC = 10.0 dépasse largement 0.83 × 1.5 = 1.245 → doit clipper à 120px
+    // OC = 10.0 dépasse largement 0.90 × 1.5 = 1.35 → doit clipper à 120px
     const { container } = render(
       <CombatYieldBar offensiveConversion={10} defensiveResistance={10} />,
     )

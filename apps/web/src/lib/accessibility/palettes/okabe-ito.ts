@@ -69,6 +69,10 @@ export const okabePalette: Palette = {
   'chart-series-7': '#CC79A7', // Reddish Purple
   'chart-series-8': '#BBBBBB', // Gris clair (substitut de Black)
 
+  // ── Bonus (assistances) — Reddish Purple : distinct du perf-tier-3 jaune et
+  //     des joueurs squad (bleu/vert). Pas de collision en Okabe-Ito.
+  'bonus': '#CC79A7', // Reddish Purple
+
   // ── Badges narratifs ────────────────────────────────────────────────────────
   // Texte calculé pour contraste WCAG AA sur le fond correspondant
   'narrative-dominant':              '#009E73', // Bluish Green

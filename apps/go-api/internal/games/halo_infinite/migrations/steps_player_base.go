@@ -147,6 +147,21 @@ func playerBaseSteps() []migration.Migration {
 			},
 		},
 		{
+			Name:        "add_challenge_snapshots_render_columns",
+			TargetDB:    migration.TargetPlayer,
+			Description: "Colonnes de rendu (title/description/image_url) pour reconstruire des cartes de défis depuis le cache (live indisponible)",
+			ApplySchema: func(db *sql.DB) error {
+				// Append-compatible : nouvelles colonnes = faits additionnels, aucun
+				// UPDATE/DELETE. Permet à buildChallengesResponseFromSnapshots de servir
+				// de vraies cartes hors-ligne au lieu de « Défis indisponibles ».
+				return migration.ExecScript(db, `
+					ALTER TABLE challenge_snapshots ADD COLUMN IF NOT EXISTS title VARCHAR;
+					ALTER TABLE challenge_snapshots ADD COLUMN IF NOT EXISTS description VARCHAR;
+					ALTER TABLE challenge_snapshots ADD COLUMN IF NOT EXISTS image_url VARCHAR;
+				`)
+			},
+		},
+		{
 			Name:        "add_battlepass_snapshots",
 			TargetDB:    migration.TargetPlayer,
 			Description: "Table battlepass_snapshots pour historiser la progression battle pass joueur",
@@ -276,11 +291,17 @@ func playerBaseSteps() []migration.Migration {
 			},
 		},
 		{
-			Name:        "add_pme_session_index",
-			TargetDB:    migration.TargetPlayer,
-			Description: "Index idx_pme_session sur player_match_enrichment(session_id)",
+			Name:     "add_pme_session_index",
+			TargetDB: migration.TargetPlayer,
+			// Append-only #23046 (2026-06-21) : idx_pme_session(session_id) est un index
+			// ART sur une colonne mutée par l'étage session → vecteur. La migration ne
+			// crée PLUS l'index ; elle le DROP (no-op si absent). Lecture via
+			// player_match_enrichment_latest. player_append_only_match_enrichment_v1 le
+			// supprime aussi sur les DB existantes.
+			Description: "Drop idx_pme_session sur player_match_enrichment (ex-index ART, append-only)",
 			ApplySchema: func(db *sql.DB) error {
-				return migration.CreateIndexSafe(db, "CREATE INDEX IF NOT EXISTS idx_pme_session ON player_match_enrichment(session_id)")
+				_, err := db.ExecContext(migration.BootCtx(), "DROP INDEX IF EXISTS idx_pme_session")
+				return err
 			},
 		},
 		{
@@ -486,8 +507,10 @@ func playerBaseSteps() []migration.Migration {
 						last_palier_recompute_at    TIMESTAMP,
 						is_private                  BOOLEAN DEFAULT FALSE
 					);
-					CREATE INDEX IF NOT EXISTS idx_ch_user_status ON challenge(user_id, status);
-					CREATE INDEX IF NOT EXISTS idx_ch_arc ON challenge(arc_id, position);
+					-- PAS d'index sur status ni arc_id : UpdateStatus mute status,
+					-- DetachFromArc mute arc_id → un index ART sur une colonne mutée corrompt
+					-- la player DB (cf. crash match_skill_rank mono-writer). Drop sur DB
+					-- existantes : drop_challenge_mutated_art_indexes_v1. metric jamais muté → OK.
 					CREATE INDEX IF NOT EXISTS idx_ch_metric ON challenge(metric);
 
 					CREATE TABLE IF NOT EXISTS moment_card (
@@ -583,8 +606,10 @@ func playerBaseSteps() []migration.Migration {
 					);
 					CREATE INDEX IF NOT EXISTS idx_campaign_user_title ON improvement_campaign(user_id, title_slug, status);
 
+					-- PAS d'index sur campaign_id : campaign_repo UPDATE challenge SET
+					-- campaign_id = … → index ART sur colonne mutée = corrupteur (#23046).
+					-- Drop sur DB existantes : drop_challenge_mutated_art_indexes_v1.
 					ALTER TABLE challenge ADD COLUMN IF NOT EXISTS campaign_id VARCHAR;
-					CREATE INDEX IF NOT EXISTS idx_challenge_campaign ON challenge(campaign_id);
 				`)
 			},
 		},

@@ -162,6 +162,7 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow, effectiveHpToKill fl
 	}
 	out.IsWithFriends = r.Enrichment.IsWithFriends
 	out.EngagementScoreBrut = r.Enrichment.EngagementScoreBrut
+	out.EngagementPaceRatio = r.Enrichment.EngagementPaceRatio
 	return out
 }
 

@@ -57,12 +57,10 @@ func newMultiUserEnv(t *testing.T, nUsers int) *multiUserEnv {
 	pr := titlePkg.NewPathResolver(repoRoot)
 	sharedPath := pr.SharedDBPath(titleSlug)
 	metaPath := pr.MetadataDBPath(titleSlug)
-	globalPath := pr.GlobalXuidAliasesDBPath()
 
 	for _, p := range []string{
 		filepath.Dir(sharedPath),
 		filepath.Dir(metaPath),
-		filepath.Dir(globalPath),
 	} {
 		if err := os.MkdirAll(p, 0o755); err != nil {
 			t.Fatalf("mkdir %s: %v", p, err)
@@ -102,14 +100,13 @@ func newMultiUserEnv(t *testing.T, nUsers int) *multiUserEnv {
 		_ = playerInit.Close()
 
 		pdb, err := duckdb.GetOrOpen(context.Background(), duckdb.PlayerPoolConfig{
-			Gamertag:                gamertag,
-			XUID:                    xuid,
-			TitleSlug:               titleSlug,
-			PlayerDBPath:            playerPath,
-			SharedDBPath:            sharedPath,
-			MetaDBPath:              metaPath,
-			GlobalXuidAliasesDBPath: globalPath,
-			SharedReader:            provider,
+			Gamertag:     gamertag,
+			XUID:         xuid,
+			TitleSlug:    titleSlug,
+			PlayerDBPath: playerPath,
+			SharedDBPath: sharedPath,
+			MetaDBPath:   metaPath,
+			SharedReader: provider,
 		})
 		if err != nil {
 			t.Fatalf("GetOrOpen user %d: %v", i, err)

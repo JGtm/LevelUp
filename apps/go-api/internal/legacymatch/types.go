@@ -142,6 +142,7 @@ type StatsMatchRow struct {
 	SkillTierCodeFR     *string  // libellé FR du tier (ex: "Or", "Diamant") depuis match_skill_rank.tier_fr
 	SkillSubTier        *int     // 1..6, nil pour Onyx
 	EngagementScoreBrut *float64 // résidu brut engagement, nil si non calculé
+	EngagementPaceRatio *float64 // engagement absolu = pace_joueur/pace_lobby, nil si indispo
 }
 
 // SynthesisMatchRow est une ligne brute chargée depuis Q33b.

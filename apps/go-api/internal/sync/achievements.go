@@ -12,7 +12,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
 	"levelup/go-api/internal/assets"
@@ -72,12 +71,13 @@ func SyncAchievements(
 	merged := mergeAchievements(enRaw, frRaw)
 	slog.InfoContext(ctx, "achievements: fusion terminée", "xuid", xuid, "count", len(merged))
 
-	// Étape 4 : upserts + purge des périmés.
+	// Étape 4 : upserts (UPDATE-then-INSERT, ART-safe). Pas de purge des périmés :
+	// le filtre SCID empêche toute nouvelle contamination cross-titre, et l'ancien
+	// purgeStaleAchievementDefinitions (DELETE per-row sur l'index PK ART) était un
+	// nettoyage historique vestigial (0 ligne en régime permanent) — retiré pour
+	// éliminer cette surface ART du hot path (campagne append-only 2026-06-20).
 	if err := upsertAchievementDefinitions(ctx, metadataDB, merged, titleID); err != nil {
 		return fmt.Errorf("achievements: upsert definitions: %w", err)
-	}
-	if err := purgeStaleAchievementDefinitions(ctx, metadataDB, merged, titleID); err != nil {
-		return fmt.Errorf("achievements: purge stale definitions: %w", err)
 	}
 	if err := upsertPlayerAchievements(ctx, playerDB, merged); err != nil {
 		return fmt.Errorf("achievements: upsert player progress: %w", err)
@@ -126,34 +126,6 @@ func mergeAchievements(en, fr []PlayerAchievementRaw) []PlayerAchievement {
 		result = append(result, pa)
 	}
 	return result
-}
-
-// purgeStaleAchievementDefinitions supprime de metadata les achievements du titre
-// qui ne font plus partie de la liste synchronisée (ex: achievements d'autres jeux
-// Halo qui auraient été insérés avant l'introduction du filtre SCID).
-func purgeStaleAchievementDefinitions(ctx context.Context, db *sql.DB, achievements []PlayerAchievement, titleID string) error {
-	if len(achievements) == 0 {
-		return nil
-	}
-	placeholders := make([]string, len(achievements))
-	args := make([]any, len(achievements)+1)
-	args[0] = titleID
-	for i, a := range achievements {
-		placeholders[i] = "?"
-		args[i+1] = a.AchievementID
-	}
-	q := fmt.Sprintf(
-		"DELETE FROM xbox_achievement_definitions WHERE title_id = ? AND achievement_id NOT IN (%s)",
-		strings.Join(placeholders, ","),
-	)
-	res, err := db.ExecContext(ctx, q, args...)
-	if err != nil {
-		return err
-	}
-	if n, _ := res.RowsAffected(); n > 0 {
-		slog.InfoContext(ctx, "achievements: périmés supprimés", "title_id", titleID, "deleted", n)
-	}
-	return nil
 }
 
 // upsertAchievementDefinitions écrit les définitions dans metadata.xbox_achievement_definitions.

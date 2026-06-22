@@ -146,13 +146,25 @@ func TestPVEPersister_Persist_DuplicatePK_Idempotent(t *testing.T) {
 		t.Fatalf("2e Persist (idempotent attendu): %v", err)
 	}
 
+	// Append-only #23046 : VRAI oracle d'idempotence = cardinalité. Le guard
+	// SELECT-then-INSERT skippe le 2e Persist → 1 SEULE row physique (sinon croissance
+	// non bornée sur retry, masquée par un Scan mono-ligne).
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM pve_match_stats WHERE match_id = ? AND xuid = ?`,
+		"pve_dup", "1111").Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("COUNT(*) = %d, want 1 (idempotence retry : pas de doublon physique)", n)
+	}
+	// La valeur reste celle de la 1ʳᵉ écriture (first-write-wins), lue via la vue _latest.
 	var got int
-	if err := db.QueryRow(`SELECT total_kills FROM pve_match_stats WHERE match_id = ? AND xuid = ?`,
+	if err := db.QueryRow(`SELECT total_kills FROM pve_match_stats_latest WHERE match_id = ? AND xuid = ?`,
 		"pve_dup", "1111").Scan(&got); err != nil {
 		t.Fatal(err)
 	}
 	if got != 43 {
-		t.Errorf("total_kills = %d, want 43 (INSERT OR IGNORE)", got)
+		t.Errorf("total_kills = %d, want 43 (first-write-wins)", got)
 	}
 }
 

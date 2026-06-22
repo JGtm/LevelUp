@@ -302,7 +302,7 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 	if !force {
 		existRows, queryErr := playerDB.QueryContext(ctx,
 			`SELECT match_id, performance_chain
-			   FROM player_match_enrichment
+			   FROM player_match_enrichment_latest
 			  WHERE performance_score IS NOT NULL`)
 		if queryErr != nil {
 			// Non bloquant : on continue en recompute-tout, mais on signale.

@@ -11,6 +11,7 @@ import { useMemo } from 'react'
 
 import { EngagementCurve, type EngagementPoint } from '@/components/charts/EngagementCurve'
 import { useMatchEngagement } from '@/features/engagement/queries'
+import type { ApiError } from '@/lib/api/client'
 import type { EngagementPointAPI, EngagementScoreResultAPI } from '@/lib/api/types'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { engagementManifest } from '@/lib/i18n/generated/engagement'
@@ -63,18 +64,31 @@ export function EngagementMatchSection(props: EngagementMatchSectionProps) {
   // pace_attendu = pace_team => courbes superposées => masquer Attendu.
   const hideAttendu = query.data?.confidence === 'insufficient_history'
 
+  // Message d'indisponibilité : « migration en cours » UNIQUEMENT sur un vrai
+  // 503 (code engagement_unavailable = schéma manquant). Pour une courbe vide,
+  // un 422 (match trop court / peu d'action) ou tout autre échec, message
+  // neutre — ne plus accuser la migration à tort (cf. thought_log 2026-06-18).
+  const errorCode = (query.error as unknown as ApiError | null)?.code
+  const unavailableMessage =
+    errorCode === 'engagement_unavailable'
+      ? formatMessage(engagementManifest, 'engagement.error.unavailable', locale)
+      : (emptyMessage ?? formatMessage(engagementManifest, 'engagement.error.match_unavailable', locale))
+
   return (
     <EngagementCurve
       title={title ?? formatMessage(engagementManifest, 'engagement.match_view.section_title', locale)}
       subtitle={
         subtitle ??
-        (isEmpty || query.isError
-          ? (emptyMessage ?? formatMessage(engagementManifest, 'engagement.error.unavailable', locale))
-          : buildSubtitle(query.data, locale))
+        (isEmpty || query.isError ? unavailableMessage : buildSubtitle(query.data, locale))
       }
       points={points}
       granularity={granularity}
       hideAttendu={hideAttendu}
+      seriesLabels={{
+        team: formatMessage(engagementManifest, 'engagement.trace.team', locale),
+        expected: formatMessage(engagementManifest, 'engagement.trace.expected', locale),
+        player: formatMessage(engagementManifest, 'engagement.trace.player', locale),
+      }}
       state={
         query.isLoading
           ? 'loading'

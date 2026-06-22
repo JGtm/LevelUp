@@ -299,20 +299,28 @@ fr = "K/D vs nemesis"
 en = "K/D vs nemesis"
 
 [match_view.cards.mmr_team_vs_enemy]
-fr = "MMR équipe vs adverse"
-en = "Team vs enemy MMR"
+fr = "MMR"
+en = "MMR"
 
 [match_view.cards.frags_vs_expected]
-fr = "Frags vs attendus"
-en = "Kills vs expected"
+fr = "Frags"
+en = "Kills"
 
 [match_view.cards.deaths_vs_expected]
-fr = "Morts vs attendues"
-en = "Deaths vs expected"
+fr = "Morts"
+en = "Deaths"
 
 [match_view.cards.assists_vs_expected]
-fr = "Assistances vs attendues"
-en = "Assists vs expected"
+fr = "Assist."
+en = "Assists"
+
+[match_view.cards.rendement]
+fr = "Rendement"
+en = "Yield"
+
+[match_view.cards.resistance]
+fr = "Résistance"
+en = "Resistance"
 
 [match_view.cards.avg_life]
 fr = "Vie moy."

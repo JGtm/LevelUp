@@ -542,6 +542,16 @@ func extractSharedTables(
 		stmt := fmt.Sprintf(`CREATE TABLE %s AS SELECT %s FROM src.%s WHERE %s`,
 			t.name, extractSelectExpr(t.appendOnly), t.name, where)
 		if _, err := dst.ExecContext(ctx, stmt); err != nil {
+			// Table source absente (ex. match_csrs sur une DB sans données CSR, ou
+			// fixture de test minimal) : best-effort comme les corpus squad/ranked.
+			// Les tables append-only sont de toute façon (re)créées vides + vue
+			// _latest par les migrations canoniques (applyMigrationsOnPath) → on
+			// n'avorte pas le seed pour ça.
+			if strings.Contains(err.Error(), "does not exist") {
+				slog.WarnContext(ctx, "seed-demo: table source absente, ignorée", "table", t.name, "err", err)
+				counts[t.name] = 0
+				continue
+			}
 			return counts, fmt.Errorf("extract %s: %w", t.name, err)
 		}
 		var n int
@@ -661,11 +671,16 @@ func recreateSharedViews(ctx context.Context, db *sql.DB) error {
 		CREATE OR REPLACE VIEW v_match_full AS SELECT mr.* FROM match_registry mr`); err != nil {
 		return fmt.Errorf("v_match_full: %w", err)
 	}
-	// v_weapon_kills : tolère table absente.
+	// v_weapon_kills : tolère table absente. Append-only #23046 (Phase 2) : la vue
+	// ne retourne que la dernière génération par (match_id,xuid) — comme la migration
+	// shared_append_only_weapon_kills_v1 (le demo copie prod qui porte generation_id).
 	_, _ = db.ExecContext(ctx, `
 		CREATE OR REPLACE VIEW v_weapon_kills AS
-		SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
-		FROM weapon_kills`)
+		SELECT * EXCLUDE (rk) FROM (
+			SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id,
+			       DENSE_RANK() OVER (PARTITION BY match_id, xuid ORDER BY generation_id DESC) AS rk
+			FROM weapon_kills)
+		WHERE rk = 1`)
 	return nil
 }
 

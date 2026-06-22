@@ -439,16 +439,17 @@ func (r *PrestigeBaselineStateRepo) Get(ctx context.Context, userID, titleSlug, 
 func (r *PrestigeBaselineStateRepo) Upsert(ctx context.Context, st prestige.BaselineState) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `
-		INSERT INTO baseline_state (user_id, title_slug, metric, last_match_at,
-		                            is_stale, recovery_matches_remaining, updated_at)
-		VALUES (?,?,?,?,?,?,?)
-		ON CONFLICT (user_id, title_slug, metric) DO UPDATE SET
-			last_match_at = EXCLUDED.last_match_at,
-			is_stale = EXCLUDED.is_stale,
-			recovery_matches_remaining = EXCLUDED.recovery_matches_remaining,
-			updated_at = EXCLUDED.updated_at
-	`, st.UserID, st.TitleSlug, st.Metric, st.LastMatchAt,
-		st.IsStale, st.RecoveryMatchesRemaining, st.UpdatedAt)
-	return err
+	// ART-safe : SELECT-then-UPDATE-or-INSERT (pas d'ON CONFLICT, qui réécrit via
+	// l'index ART de la PK). État "dernière valeur observée" sans index secondaire →
+	// l'UPDATE ne touche aucune colonne indexée.
+	return r.db.UpsertNoConflict(ctx,
+		`SELECT 1 FROM baseline_state WHERE user_id = ? AND title_slug = ? AND metric = ?`,
+		[]any{st.UserID, st.TitleSlug, st.Metric},
+		`UPDATE baseline_state SET last_match_at = ?, is_stale = ?, recovery_matches_remaining = ?, updated_at = ?
+		 WHERE user_id = ? AND title_slug = ? AND metric = ?`,
+		[]any{st.LastMatchAt, st.IsStale, st.RecoveryMatchesRemaining, st.UpdatedAt, st.UserID, st.TitleSlug, st.Metric},
+		`INSERT INTO baseline_state (user_id, title_slug, metric, last_match_at, is_stale, recovery_matches_remaining, updated_at)
+		 VALUES (?,?,?,?,?,?,?)`,
+		[]any{st.UserID, st.TitleSlug, st.Metric, st.LastMatchAt, st.IsStale, st.RecoveryMatchesRemaining, st.UpdatedAt},
+	)
 }

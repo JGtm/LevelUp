@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"path/filepath"
 	"strings"
-	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
@@ -370,32 +369,15 @@ func (s *MediaService) ReassociateMedia(ctx context.Context, req domain.Reassoci
 		}
 	}
 
-	// 1 — Backup : snapshot horodaté avant suppression.
-	backupTable := fmt.Sprintf("media_match_associations_bak_%s",
-		time.Now().UTC().Format("20060102T150405Z"))
-	createBackupSQL := fmt.Sprintf(
-		`CREATE TABLE %s AS SELECT * FROM media_match_associations`, backupTable)
-	if _, err := db.ExecContext(ctx, createBackupSQL); err != nil {
-		return nil, fmt.Errorf("backup table: %w", err)
-	}
-	result.BackupTable = backupTable
-	slog.InfoContext(ctx, "ReassociateMedia: backup créé", "table", backupTable)
+	// APPEND-ONLY : plus de DELETE des associations auto ni de backup CTAS. Le reindex
+	// est purement ADDITIF — ops.AssociateMediaWithMatches → loadUnassociatedMedia
+	// (forward-only : exclut les médias déjà associés via la vue _latest) → INSERT event
+	// auto dans media_match_associations_history. Les corrections manuelles (is_manual)
+	// sont préservées par construction (la vue _latest les priorise). Zéro surface ART
+	// (plus de DELETE WHERE NOT is_manual, plus de table _bak_ proliférante).
+	result.DeletedAssoc = 0
 
-	// 2 — Compter puis supprimer les anciennes associations AUTO.
-	// IMPORTANT : on préserve les associations is_manual=TRUE (corrections
-	// utilisateur) sinon un reassociate global écraserait toutes les corrections.
-	var oldCount int
-	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM media_match_associations WHERE NOT COALESCE(is_manual, FALSE)").Scan(&oldCount); err != nil {
-		slog.WarnContext(ctx, "ReassociateMedia: COUNT avant suppression échoué", "err", err)
-	}
-	if _, err := db.ExecContext(ctx, "DELETE FROM media_match_associations WHERE NOT COALESCE(is_manual, FALSE)"); err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("DELETE: %v", err))
-		return result, fmt.Errorf("supprimer associations: %w", err)
-	}
-	result.DeletedAssoc = oldCount
-	slog.InfoContext(ctx, "ReassociateMedia: associations auto supprimées (manuelles préservées)", "count", oldCount)
-
-	// 3 — Re-créer les associations.
+	// Re-créer les associations manquantes (additif).
 	newAssoc, err := ops.AssociateMediaWithMatches(ctx, db, req.SharedMatchesDBPath, bufferMin, s.timezone)
 	if err != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("association: %v", err))
@@ -414,9 +396,7 @@ func (s *MediaService) ReassociateMedia(ctx context.Context, req domain.Reassoci
 		}
 	}
 
-	slog.InfoContext(ctx, "ReassociateMedia: terminé",
-		"backup_table", backupTable,
-		"deleted", result.DeletedAssoc,
+	slog.InfoContext(ctx, "ReassociateMedia: terminé (additif append-only)",
 		"new_assoc", newAssoc,
 		"errors", len(result.Errors))
 

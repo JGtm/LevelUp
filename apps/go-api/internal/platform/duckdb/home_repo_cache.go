@@ -58,11 +58,19 @@ func (r *HomeRepo) LoadCachedBattlePass(ctx context.Context, ttl time.Duration) 
 }
 
 // challengeSnapshotRow est une ligne agrégée pour la reconstruction ChallengesResponse.
+// Les champs title/description/image_url (présents sur les défis ACTIFS rendus) servent
+// à reconstruire de vraies cartes hors-ligne quand le live est indisponible.
 type challengeSnapshotRow struct {
-	status     string
-	xpReward   int
-	expiresAt  sql.NullTime
-	snapshotAt time.Time
+	challengePath   string
+	status          string
+	xpReward        int
+	progressCurrent sql.NullInt64
+	progressTarget  sql.NullInt64
+	expiresAt       sql.NullTime
+	snapshotAt      time.Time
+	title           sql.NullString
+	description     sql.NullString
+	imageURL        sql.NullString
 }
 
 // LoadCachedChallenges retourne un résumé des snapshots récents depuis challenge_snapshots
@@ -84,9 +92,11 @@ func (r *HomeRepo) LoadCachedChallenges(ctx context.Context, ttl time.Duration) 
 func (r *HomeRepo) queryRecentChallengeSnapshots(ctx context.Context, ttl time.Duration) ([]challengeSnapshotRow, error) {
 	secs := int64(ttl.Seconds())
 	query := fmt.Sprintf(`
-		SELECT status, xp_reward, expires_at, snapshot_at
+		SELECT challenge_path, status, xp_reward, progress_current, progress_target,
+		       expires_at, snapshot_at, title, description, image_url
 		FROM (
-			SELECT status, xp_reward, expires_at, snapshot_at,
+			SELECT challenge_path, status, xp_reward, progress_current, progress_target,
+			       expires_at, snapshot_at, title, description, image_url,
 			       ROW_NUMBER() OVER (PARTITION BY challenge_path ORDER BY snapshot_at DESC) AS rn
 			FROM challenge_snapshots
 			WHERE xuid = ?
@@ -106,7 +116,8 @@ func (r *HomeRepo) queryRecentChallengeSnapshots(ctx context.Context, ttl time.D
 	var snapshots []challengeSnapshotRow
 	for rows.Next() {
 		var s challengeSnapshotRow
-		if err := rows.Scan(&s.status, &s.xpReward, &s.expiresAt, &s.snapshotAt); err != nil {
+		if err := rows.Scan(&s.challengePath, &s.status, &s.xpReward, &s.progressCurrent,
+			&s.progressTarget, &s.expiresAt, &s.snapshotAt, &s.title, &s.description, &s.imageURL); err != nil {
 			return nil, fmt.Errorf("home_repo: cache challenges scan: %w", err)
 		}
 		snapshots = append(snapshots, s)
@@ -118,18 +129,24 @@ func (r *HomeRepo) queryRecentChallengeSnapshots(ctx context.Context, ttl time.D
 }
 
 // buildChallengesResponseFromSnapshots agrège un slice de snapshots en ChallengesResponse.
+// Reconstruit les Items (cartes) à partir des défis ACTIFS porteurs d'un titre rendu —
+// ce qui rend le cache « renderable » et évite « Défis indisponibles » quand le live tombe.
 func buildChallengesResponseFromSnapshots(snapshots []challengeSnapshotRow) *domain.ChallengesResponse {
 	total := len(snapshots)
 	completed := 0
 	xpAvailable := 0
 	var earliestExpiry *time.Time
 	var latestSnapshot time.Time
+	items := make([]domain.ChallengeItem, 0, len(snapshots))
 
 	for _, s := range snapshots {
 		if strings.EqualFold(s.status, "Completed") {
 			completed++
 		} else {
 			xpAvailable += s.xpReward
+			if item, ok := challengeItemFromSnapshot(s); ok {
+				items = append(items, item)
+			}
 		}
 		if s.expiresAt.Valid {
 			t := s.expiresAt.Time
@@ -148,6 +165,9 @@ func buildChallengesResponseFromSnapshots(snapshots []challengeSnapshotRow) *dom
 		Completed: &completed,
 		FromCache: true,
 	}
+	if len(items) > 0 {
+		resp.Items = items
+	}
 	if xpAvailable > 0 {
 		resp.XPAvailable = &xpAvailable
 	}
@@ -160,4 +180,49 @@ func buildChallengesResponseFromSnapshots(snapshots []challengeSnapshotRow) *dom
 		resp.SnapshotAt = &s
 	}
 	return resp
+}
+
+// challengeItemFromSnapshot reconstruit une carte de défi depuis une ligne de cache.
+// Retourne ok=false si la ligne n'a pas de titre rendu (snapshot legacy d'avant la
+// migration render-columns, ou état non encore re-snapshotté) → on l'omet plutôt que
+// d'afficher une carte vide.
+func challengeItemFromSnapshot(s challengeSnapshotRow) (domain.ChallengeItem, bool) {
+	if !s.title.Valid || s.title.String == "" {
+		return domain.ChallengeItem{}, false
+	}
+	item := domain.ChallengeItem{
+		ChallengePath: s.challengePath,
+		Title:         s.title.String,
+	}
+	if s.description.Valid && s.description.String != "" {
+		d := s.description.String
+		item.Description = &d
+	}
+	if s.imageURL.Valid && s.imageURL.String != "" {
+		u := s.imageURL.String
+		item.ImageURL = &u
+	}
+	if s.xpReward > 0 {
+		xp := s.xpReward
+		item.XPReward = &xp
+	}
+	if s.progressCurrent.Valid {
+		c := int(s.progressCurrent.Int64)
+		item.ProgressCurrent = &c
+	}
+	if s.progressTarget.Valid {
+		t := int(s.progressTarget.Int64)
+		item.ProgressTarget = &t
+	}
+	if item.ProgressCurrent != nil && item.ProgressTarget != nil && *item.ProgressTarget > 0 {
+		pct := float64(*item.ProgressCurrent) / float64(*item.ProgressTarget) * 100.0
+		if pct < 0 {
+			pct = 0
+		}
+		if pct > 100 {
+			pct = 100
+		}
+		item.ProgressPercent = &pct
+	}
+	return item, true
 }

@@ -9,6 +9,7 @@ package duckdb
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strconv"
 	"strings"
@@ -21,6 +22,16 @@ const qDistinctCSRSeasons = `
 SELECT DISTINCT COALESCE(season_id, '')
 FROM player_csr_snapshots_latest
 WHERE season_id IS NOT NULL AND TRIM(season_id) != ''`
+
+// qDistinctMatchCSRSeasons : season_id distincts présents dans le CSR par-match
+// (shared.match_csrs). Couvre les joueurs importés (OpenSpartan) qui ont le CSR
+// par-match — avec season_id — mais pas (encore) de snapshots Waypoint.
+// Sur la table de base (pas la vue latest) : le DISTINCT season_id est identique
+// et c'est portable (test + prod exposent match_csrs).
+const qDistinctMatchCSRSeasons = `
+SELECT DISTINCT season_id
+FROM match_csrs
+WHERE xuid = ? AND season_id IS NOT NULL AND TRIM(season_id) != ''`
 
 // AvailableCSRSeasons retourne les saisons CSR sélectionnables, triées récentes
 // d'abord. Inclut toujours la saison courante (même sans snapshot). Best-effort :
@@ -49,6 +60,10 @@ func (r *CareerRepo) AvailableCSRSeasons(ctx context.Context) ([]domain.CSRSeaso
 		}
 	}
 
+	// CSR par-match (shared.match_csrs) : couvre les joueurs importés (OpenSpartan)
+	// sans snapshots Waypoint mais dont le CSR par-match porte un season_id.
+	r.collectSeasonsFromMatchCSRs(ctx, seen)
+
 	// La saison courante est toujours proposable, même sans snapshot encore.
 	if cur := strings.TrimSpace(r.currentCSRSID); cur != "" {
 		seen[cur] = struct{}{}
@@ -67,6 +82,42 @@ func (r *CareerRepo) AvailableCSRSeasons(ctx context.Context) ([]domain.CSRSeaso
 	}
 	sortCSRSeasonsDesc(out)
 	return out, nil
+}
+
+// collectSeasonsFromMatchCSRs ajoute à `seen` les season_id présents dans le CSR
+// par-match (shared.match_csrs) du joueur. Best-effort : toute indisponibilité
+// shared est loggée et ignorée (les snapshots + la saison courante restent
+// proposés). Source du fix « joueur importé OpenSpartan » : le CSR par-match a
+// déjà le season_id, inutile d'importer les snapshots Waypoint.
+func (r *CareerRepo) collectSeasonsFromMatchCSRs(ctx context.Context, seen map[string]struct{}) {
+	if r.pdb == nil || r.pdb.SharedReader == nil {
+		return
+	}
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "AvailableCSRSeasons: shared indisponible pour match_csrs (skip)",
+			"xuid", r.pdb.XUID, "err", err)
+		return
+	}
+	defer release()
+	rows, err := db.QueryContext(ctx, qDistinctMatchCSRSeasons, r.pdb.XUID)
+	if err != nil {
+		slog.WarnContext(ctx, "AvailableCSRSeasons: query match_csrs seasons échouée (skip)",
+			"xuid", r.pdb.XUID, "err", err)
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var sid string
+		if err := rows.Scan(&sid); err != nil {
+			slog.WarnContext(ctx, "AvailableCSRSeasons: scan match_csrs season échoué (skip)",
+				"xuid", r.pdb.XUID, "err", err)
+			return
+		}
+		if sid = strings.TrimSpace(sid); sid != "" {
+			seen[sid] = struct{}{}
+		}
+	}
 }
 
 // sortCSRSeasonsDesc trie les saisons de la plus récente à la plus ancienne via

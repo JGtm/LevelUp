@@ -30,7 +30,7 @@ var playerMaterializedViews = []MaterializedView{
 			pme.session_id,
 			pme.session_label,
 			pme.is_with_friends
-		FROM player_match_enrichment pme
+		FROM player_match_enrichment_latest pme
 		WHERE pme.performance_score IS NOT NULL`,
 	},
 	{

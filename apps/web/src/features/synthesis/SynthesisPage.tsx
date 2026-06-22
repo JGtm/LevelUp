@@ -20,6 +20,7 @@ import { SynthesisHeatmapChart } from './SynthesisHeatmapChart'
 import { SynthesisBipolaireChart } from './SynthesisBipolaireChart'
 import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
 import { Badge } from '@/components/ui/badge'
+import { offensiveLabel, defensiveLabel, activityLabel } from '@/features/_shared/combatProfileLabels'
 import { PeriodePill, SaisonPill, DEFAULT_PERIOD } from '@/components/shell/FilterOmnibar'
 import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
 import { MultiSelectFilter, type MultiSelectOption } from '@/features/explorer/MultiSelectFilter'
@@ -79,21 +80,7 @@ function SectionSubtitle({ children }: { children: ReactNode }) {
 
 // ─── Bloc 1 — Vue d'ensemble (D4) ─────────────────────────────────────────────
 
-const STYLE_OFFENSIVE_LABELS: Record<string, string> = {
-  precis: 'Offensif précis',
-  equilibre: 'Offensif équilibré',
-  genereux: 'Offensif généreux',
-}
-const STYLE_DEFENSIVE_LABELS: Record<string, string> = {
-  resistant: 'Défensif résistant',
-  solide: 'Défensif solide',
-  fragile: 'Défensif fragile',
-}
-const STYLE_ACTIVITY_LABELS: Record<string, string> = {
-  actif: 'Engagement actif',
-  modere: 'Engagement modéré',
-  discret: 'Engagement discret',
-}
+// Libellés des descripteurs : source unique @/features/_shared/combatProfileLabels.
 
 function CombatProfileInlineRow({ combatProfile }: { combatProfile: CombatProfileBlock }) {
   const hasStyles =
@@ -107,17 +94,17 @@ function CombatProfileInlineRow({ combatProfile }: { combatProfile: CombatProfil
         <>
           {combatProfile.style_offensive && (
             <Badge variant="outline" className="text-xs">
-              {STYLE_OFFENSIVE_LABELS[combatProfile.style_offensive] ?? combatProfile.style_offensive}
+              {offensiveLabel(combatProfile.style_offensive)}
             </Badge>
           )}
           {combatProfile.style_defensive && (
             <Badge variant="outline" className="text-xs">
-              {STYLE_DEFENSIVE_LABELS[combatProfile.style_defensive] ?? combatProfile.style_defensive}
+              {defensiveLabel(combatProfile.style_defensive)}
             </Badge>
           )}
           {combatProfile.style_activity && (
             <Badge variant="secondary" className="text-xs">
-              {STYLE_ACTIVITY_LABELS[combatProfile.style_activity] ?? combatProfile.style_activity}
+              {activityLabel(combatProfile.style_activity)}
             </Badge>
           )}
         </>

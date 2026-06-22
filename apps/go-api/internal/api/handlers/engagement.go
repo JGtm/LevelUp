@@ -139,6 +139,8 @@ func (h *EngagementHandler) handleMatchEngagement(ctx context.Context, in *engMa
 			return nil, humacore.NewError(http.StatusNotFound, "match_not_found", "match introuvable pour ce joueur : "+in.MatchID)
 		case errors.Is(err, service.ErrEngagementPvENotSupported):
 			return nil, humacore.NewError(http.StatusUnprocessableEntity, "pve_not_supported", "engagement non couvert pour les matchs PvE en v1")
+		case errors.Is(err, service.ErrEngagementInsufficient):
+			return nil, humacore.NewError(http.StatusUnprocessableEntity, "engagement_insufficient", "engagement indisponible pour ce match (trop court ou peu d'action)")
 		case errors.Is(err, port.ErrEngagementUnavailable):
 			return nil, humacore.NewError(http.StatusServiceUnavailable, "engagement_unavailable", "migration EngagementScore non appliquee")
 		default:

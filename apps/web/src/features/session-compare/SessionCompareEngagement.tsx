@@ -1,5 +1,5 @@
 /**
- * SessionCompareEngagement — engagement moyen (avg_residual_brut) A vs B
+ * SessionCompareEngagement — engagement moyen (avg_pace_ratio) A vs B
  * + progression par match (engagement_score depuis match_series).
  */
 import { useMemo, useCallback } from 'react'
@@ -24,7 +24,7 @@ export interface SessionCompareEngagementProps {
 }
 
 function fmt(v: number | null | undefined): string {
-  return v != null ? v.toFixed(1) : '—'
+  return v != null ? v.toFixed(2) : '—'
 }
 
 function winnerClass(
@@ -46,9 +46,9 @@ export function SessionCompareEngagement({
   height = 240,
 }: SessionCompareEngagementProps) {
   const hasAvgData =
-    sessionA?.avg_residual_brut != null || sessionB?.avg_residual_brut != null
+    sessionA?.avg_pace_ratio != null || sessionB?.avg_pace_ratio != null
 
-  const avgColors = winnerClass(sessionA?.avg_residual_brut, sessionB?.avg_residual_brut)
+  const avgColors = winnerClass(sessionA?.avg_pace_ratio, sessionB?.avg_pace_ratio)
 
   const series = useMemo<ChartSeries<ChartPoint2D>[]>(() => {
     const result: ChartSeries<ChartPoint2D>[] = []
@@ -129,10 +129,10 @@ export function SessionCompareEngagement({
             <tr>
               <td className="py-2 pr-4 text-muted-foreground">{labels.title}</td>
               <td className={`py-2 pr-4 text-right tabular-nums ${avgColors.a}`}>
-                {fmt(sessionA?.avg_residual_brut)}
+                {fmt(sessionA?.avg_pace_ratio)}
               </td>
               <td className={`py-2 text-right tabular-nums ${avgColors.b}`}>
-                {fmt(sessionB?.avg_residual_brut)}
+                {fmt(sessionB?.avg_pace_ratio)}
               </td>
             </tr>
           </tbody>

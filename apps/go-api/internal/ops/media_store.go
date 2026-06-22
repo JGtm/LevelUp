@@ -28,7 +28,12 @@ func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 		CREATE TABLE IF NOT EXISTS media_files (
 			id INTEGER PRIMARY KEY DEFAULT nextval('media_files_id_seq'),
 			player_slug VARCHAR,
-			file_path VARCHAR UNIQUE,
+			-- file_path NON UNIQUE : file_path est MUTÉE par 3 UPDATE (conversion/HLS/
+			-- reconcile) → une contrainte UNIQUE (index ART) sur une colonne mutée
+			-- déclenche le bug DuckDB #23046 (FATAL invalidated, blast MAX shared_social).
+			-- La dédup file_path passe en applicatif (insertMediaFile SELECT-then-INSERT).
+			-- Migration media_files_drop_filepath_unique_v1 retire l'UNIQUE des DB existantes.
+			file_path VARCHAR,
 			file_name VARCHAR,
 			file_hash VARCHAR,
 			kind VARCHAR,
@@ -77,13 +82,46 @@ func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("ensureMediaTables: ajout colonne %s: %w", col.name, err)
 		}
 	}
-	_, err = db.ExecContext(ctx, `
+	if _, err = db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS media_match_associations (
 			media_file_id INTEGER,
 			match_id VARCHAR,
 			delta_seconds INTEGER,
 			PRIMARY KEY (media_file_id, match_id)
 		)
+	`); err != nil {
+		return err
+	}
+	// Substrat APPEND-ONLY (media_match_associations_history + vue _latest) — réconcilié
+	// ici car ensureMediaTables peut gagner la course aux migrations au 1er IndexMedia sur
+	// une DB fraîche : on garantit que _history + la vue existent TOUJOURS. La table legacy
+	// ci-dessus est conservée vide (vestige) ; tous les writers/readers passent par
+	// _history/_latest. Cf. migration shared_social_media_assoc_append_only_v1.
+	_, err = db.ExecContext(ctx, `
+		CREATE SEQUENCE IF NOT EXISTS media_match_associations_history_id_seq START 1;
+		CREATE TABLE IF NOT EXISTS media_match_associations_history (
+			id            BIGINT PRIMARY KEY DEFAULT nextval('media_match_associations_history_id_seq'),
+			media_file_id BIGINT NOT NULL,
+			match_id      VARCHAR NOT NULL,
+			delta_seconds INTEGER,
+			is_manual     BOOLEAN NOT NULL DEFAULT FALSE,
+			is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+			associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			written_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE INDEX IF NOT EXISTS idx_mmah_lookup ON media_match_associations_history(media_file_id, written_at DESC);
+		CREATE INDEX IF NOT EXISTS idx_mmah_match  ON media_match_associations_history(match_id);
+		CREATE OR REPLACE VIEW media_match_associations_latest AS
+			WITH lpp AS (
+				SELECT media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at,
+					ROW_NUMBER() OVER (PARTITION BY media_file_id, match_id ORDER BY written_at DESC, id DESC) AS rn
+				FROM media_match_associations_history
+			),
+			act AS (SELECT * FROM lpp WHERE rn = 1 AND is_active = TRUE),
+			hm AS (SELECT media_file_id, bool_or(is_manual) AS has_manual FROM act GROUP BY media_file_id)
+			SELECT a.media_file_id, a.match_id, a.delta_seconds, a.is_manual, a.associated_at, a.written_at
+			FROM act a JOIN hm ON hm.media_file_id = a.media_file_id
+			WHERE a.is_manual = hm.has_manual;
 	`)
 	return err
 }

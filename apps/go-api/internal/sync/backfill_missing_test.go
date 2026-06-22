@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/migration"
 )
 
 // openSharedForAll crée un shared DB avec toutes les colonnes utilisées
@@ -75,9 +77,16 @@ func openPlayerForAll(t *testing.T) *sql.DB {
 	db.Exec(`CREATE TABLE player_match_enrichment (
 		match_id VARCHAR PRIMARY KEY,
 		performance_score DOUBLE,
+		session_id VARCHAR,
+		session_label VARCHAR,
+		is_with_friends BOOLEAN DEFAULT FALSE,
+		teammates_signature VARCHAR,
 		is_excluded BOOLEAN DEFAULT FALSE,
 		updated_at TIMESTAMPTZ
 	)`)
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
 	db.Exec(`CREATE TABLE personal_score_awards (match_id VARCHAR PRIMARY KEY)`)
 	return db
 }

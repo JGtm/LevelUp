@@ -9,8 +9,6 @@
 package authz
 
 import (
-	"strings"
-
 	"levelup/go-api/internal/domain"
 )
 
@@ -44,14 +42,14 @@ func Enforced(demoMode bool, authMode string) bool {
 // Règles (de la plus permissive à la plus stricte) :
 //   - admin → accès à tout ;
 //   - propriétaire → son propre xuid ;
-//   - membre de la famille → accès aux autres profils de la famille (switch BDD
-//     entre amis/famille). `familyXUIDs` est l'ensemble des xuids du groupe
-//     famille (FriendGamertags résolus). L'accès famille exige que l'utilisateur
-//     ET le profil demandé en fassent partie — un étranger (xuid hors famille)
+//   - membre de groupe → accès aux profils partageant ≥1 groupe avec lui.
+//     `accessibleXUIDs` est l'ensemble des xuids co-membres de groupe du user
+//     courant (xuid du user inclus, cf. groupstore.CoMemberXUIDs). L'accès exige
+//     que le profil demandé en fasse partie — un étranger (xuid hors groupes)
 //     ne peut donc pas consulter le parc.
 //
-// familyXUIDs nil/vide → comportement strict d'origine (propriétaire only).
-func CanAccessPlayer(enforced bool, user *domain.User, profileXUID string, familyXUIDs map[string]bool) bool {
+// accessibleXUIDs nil/vide → comportement strict d'origine (propriétaire only).
+func CanAccessPlayer(enforced bool, user *domain.User, profileXUID string, accessibleXUIDs map[string]bool) bool {
 	if !enforced {
 		return true
 	}
@@ -67,35 +65,9 @@ func CanAccessPlayer(enforced bool, user *domain.User, profileXUID string, famil
 	if user.XUID == profileXUID {
 		return true
 	}
-	// Accès famille : les deux parties appartiennent au même groupe.
-	return familyXUIDs[user.XUID] && familyXUIDs[profileXUID]
-}
-
-// ResolveFamilyXUIDs construit l'ensemble des xuids du groupe famille à partir
-// des gamertags amis (FriendGamertags, settings) et de la liste des profils
-// connus (db_profiles.json). La correspondance gamertag→xuid est insensible à
-// la casse. Retourne nil si aucun ami n'est configuré → CanAccessPlayer retombe
-// alors sur le comportement strict (propriétaire only).
-func ResolveFamilyXUIDs(friendGamertags []string, players []domain.PlayerSummary) map[string]bool {
-	if len(friendGamertags) == 0 {
-		return nil
-	}
-	wanted := make(map[string]bool, len(friendGamertags))
-	for _, gt := range friendGamertags {
-		if gt != "" {
-			wanted[strings.ToLower(gt)] = true
-		}
-	}
-	out := make(map[string]bool, len(wanted))
-	for _, p := range players {
-		if p.XUID != "" && wanted[strings.ToLower(p.Gamertag)] {
-			out[p.XUID] = true
-		}
-	}
-	if len(out) == 0 {
-		return nil
-	}
-	return out
+	// Accès groupe : le user et le profil partagent au moins un groupe. Comme
+	// l'ensemble co-membres inclut le xuid du user lui-même, tester le profil suffit.
+	return accessibleXUIDs[profileXUID]
 }
 
 // CurrentUser résout l'utilisateur authentifié derrière une session, ou nil si

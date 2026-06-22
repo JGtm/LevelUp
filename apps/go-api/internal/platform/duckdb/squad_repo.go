@@ -91,7 +91,7 @@ func (r *SquadRepo) loadWithFriendsMatchIDs(ctx context.Context) ([]string, erro
 	defer cancel()
 
 	rows, err := r.pdb.Player.Query(ctx2,
-		`SELECT match_id FROM player_match_enrichment WHERE is_with_friends = TRUE`)
+		`SELECT match_id FROM player_match_enrichment_latest WHERE is_with_friends = TRUE`)
 	if err != nil {
 		return nil, fmt.Errorf("loadWithFriendsMatchIDs: %w", err)
 	}

@@ -94,6 +94,20 @@ export type LabParityResult = components['schemas']['LabParityResult']
 export type LabParityReport = components['schemas']['LabParityReport']
 export type LabDiagnosticsResponse = components['schemas']['LabDiagnosticsResponse']
 
+export interface LabWaypointResponse {
+  segment: string
+  endpoint: string
+  asset_id: string
+  version_id: string
+  lang: string
+  resolved_ok: boolean
+  asset_name?: string
+  description?: string
+  image_url?: string
+  error?: string
+  latency_ms: number
+}
+
 // ---------------------------------------------------------------------------
 // Filtres
 // ---------------------------------------------------------------------------
@@ -411,6 +425,8 @@ export interface SettingsResponse {
   outcome_exclude_bot_matches_from_badges: boolean
   outcome_exclude_bot_matches_from_records: boolean
   outcome_badge_sensitivity: 'relaxed' | 'standard' | 'strict'
+  // --- Rendement combat (OffensiveConversion) ---
+  rendement_exclude_assists: boolean
   // --- Affichage Objectifs/Prestige ---
   show_progression: boolean
   // --- Coach proactif (pont coach → Prestige, cf. ADR 0020) ---
@@ -947,6 +963,10 @@ export interface SessionSummaryItem {
   avg_kda: number | null
   dominant_playlist: string | null
   dominant_mode: string | null
+  /** Sessions escouade : gamertags des coéquipiers les plus présents (amis
+   *  configurés, top 3). Sert au deep-link card escouade → /squad. Absent/[] pour
+   *  les sessions solo ou si la donnée n'est pas disponible. */
+  teammates?: string[]
 }
 
 export interface RecentMediaItem {
@@ -1277,11 +1297,28 @@ export interface TopWeekItem {
 export type SynthesisDetailedStats = components['schemas']['SynthesisDetailedStats']
 
 // PLAN_COMBAT_PROFILE_WIRING — types profil combat 3 axes.
-export type CombatStyleOffensive = 'precis' | 'equilibre' | 'genereux'
-export type CombatStyleDefensive = 'resistant' | 'solide' | 'fragile'
-export type CombatStyleActivity = 'actif' | 'modere' | 'discret'
+export type CombatStyleOffensive = 'disperse' | 'irregulier' | 'equilibre' | 'precis' | 'chirurgical'
+export type CombatStyleDefensive = 'fragile' | 'expose' | 'solide' | 'resistant' | 'inebranlable'
+export type CombatStyleActivity = 'passif' | 'discret' | 'mesure' | 'actif' | 'agressif'
 
-export type CombatProfileBlock = components['schemas']['CombatProfileBlock']
+// Base = schéma OpenAPI généré (source unique). On raffine les 3 styles en unions
+// typées (PLAN_COMBAT_PROFILE_WIRING) et on conserve avg_pace_ratio (engagement
+// absolu, live-fetch) tant que l'OpenAPI ne l'a pas régénéré.
+//
+// Les 3 styles restent `?` (optionnels) SANS `| null` : le DTO Go les émet en
+// `*string,omitempty` (jamais sérialisés à null — omitempty droppe nil), donc le
+// contrat est `string | undefined`. Garder `| null` ici rendait ce type non
+// assignable au KPIStats généré (style_*: string), et les consommateurs testent
+// déjà l'absence via `!= null` (couvre null ET undefined).
+export type CombatProfileBlock = Omit<
+  components['schemas']['CombatProfileBlock'],
+  'style_offensive' | 'style_defensive' | 'style_activity'
+> & {
+  avg_pace_ratio?: number | null
+  style_offensive?: CombatStyleOffensive
+  style_defensive?: CombatStyleDefensive
+  style_activity?: CombatStyleActivity
+}
 
 export interface SynthesisPageResponse {
   period: string
@@ -1727,7 +1764,13 @@ export type SessionCompareModeRow = components['schemas']['SessionCompareModeRow
 /** Axe du profil de participation 6 axes, normalisé 0..100. */
 export type SessionParticipationAxis = components['schemas']['SessionParticipationAxis']
 
-export type SessionCompareEntry = components['schemas']['SessionCompareEntry']
+// Base = schéma OpenAPI généré (source unique). On conserve avg_pace_ratio
+// (engagement absolu moyen, pace_joueur/pace_lobby ; 1.0 = rythme lobby) ajouté par
+// live-fetch et consommé par SessionCompareEngagement, tant que l'OpenAPI ne l'a pas
+// régénéré (le généré porte encore avg_residual_brut).
+export type SessionCompareEntry = components['schemas']['SessionCompareEntry'] & {
+  avg_pace_ratio?: number | null
+}
 
 export type SessionCompareMetricRow = components['schemas']['SessionCompareMetricRow']
 
@@ -1860,7 +1903,35 @@ export type AdminUserSummary = components['schemas']['AdminUserSummary']
 
 export type AdminInviteSummary = components['schemas']['AdminInviteSummary']
 
-export type InviteCode = components['schemas']['InviteCode']
+// Base = schéma OpenAPI généré (source unique : code/created_by/created_at/
+// expires_at/used_at/used_by). On ajoute group_id (rattachement à un groupe,
+// live-fetch) tant que l'OpenAPI ne l'a pas régénéré.
+export type InviteCode = components['schemas']['InviteCode'] & {
+  group_id?: string
+}
+
+// ---------------------------------------------------------------------------
+// Groupes / familles (accès mutuel aux données)
+// ---------------------------------------------------------------------------
+// Types non encore exposés par l'OpenAPI généré ; consommés par features/groups/.
+
+export type GroupRole = 'owner' | 'member'
+
+export interface GroupMember {
+  xuid: string
+  gamertag: string
+  role: GroupRole
+  joined_at: string
+}
+
+export interface Group {
+  id: string
+  name: string
+  owner_xuid: string
+  members: GroupMember[]
+  created_at: string
+  updated_at: string
+}
 
 // ---------------------------------------------------------------------------
 // Watcher présence Xbox RTA

@@ -57,3 +57,29 @@ func LoadTableColumns(ctx context.Context, db *sql.DB, tableName string) ([]stri
 // pour les migrations title-owned qui en ont besoin (purge/rebuilds, Phase 1.5
 // b13). Les appelants in-package gardent la forme privée firstWords.
 func FirstWords(s string, n int) string { return firstWords(s, n) }
+
+// ApplyAppendOnlyWeaponKills applique la migration append-only weapon_kills
+// (generation_id + written_at + vue v_weapon_kills dernière génération). La
+// migration globale shared_append_only_weapon_kills_v1 délègue à elle. Exposé pour
+// le test de cardinalité/idempotence relocalisé dans le package title-owned (la
+// table weapon_kills est créée title-owned, donc le test vit là où le provider
+// StepsFor est câblable). No-op si la table weapon_kills est absente.
+func ApplyAppendOnlyWeaponKills(db *sql.DB) error { return applyAppendOnlyWeaponKills(db) }
+
+// AppendOnlyRebuild décrit la conversion append-only d'une table d'état par swap
+// CTAS TRANSACTIONNEL (cf. append_only_rebuild.go) : PK technique `id` + horloge,
+// garde anti-perte rebuilt==before AVANT le DROP, recoverOrphan, idempotence.
+// Alias exporté pour que les migrations title-owned (internal/games/{slug}/migrations)
+// convertissent LEURS tables sans réimplémenter — ni dégrader — la mécanique de swap.
+type AppendOnlyRebuild = appendOnlyRebuild
+
+// SynthWrittenAt — expression de colonne synthétique written_at (mécanisme
+// « dernière version par written_at »), commune aux conversions simples.
+const SynthWrittenAt = synthWrittenAt
+
+// ApplyAppendOnlyRebuild : point d'entrée idempotent d'une conversion append-only
+// (recoverOrphan → no-op si table absente → no-op si déjà migrée → swap CTAS
+// transactionnel + vue _latest). Exposé pour les migrations title-owned. Délègue 1:1.
+func ApplyAppendOnlyRebuild(db *sql.DB, spec AppendOnlyRebuild) error {
+	return applyAppendOnlyRebuild(db, spec)
+}

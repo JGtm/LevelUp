@@ -99,6 +99,10 @@ func main() {
 		exitErr = runResetBitmasks(cfg, args)
 	case "engagement-coefs":
 		exitErr = runEngagementCoefs(cfg, args)
+	case "rebuild-pme-art":
+		exitErr = runRebuildPME(cfg, args)
+	case "consolidate-aliases":
+		exitErr = runConsolidateAliases(cfg, args)
 	case "recompute-friends":
 		exitErr = runRecomputeFriends(cfg, args)
 	case "migrate":
@@ -148,6 +152,8 @@ Commandes:
   replay-events   Re-parse highlight events sur les matchs cassés (parser bit-aligné fix mai 2026)
   reset-bitmasks  Reset rétroactif skill/participants/PVE bits (Phase 4 PLAN_BITMASKS_AUDIT_FIX)
   engagement-coefs Recompute des coefficients d'engagement (--with-scores pour rejouer aussi les scores) — bypasse les migrations
+  rebuild-pme-art  Reconstruit l'index ART de player_match_enrichment (--all|--gamertag) — anti-corruption DuckDB 1.5.x, serveur arrêté
+  consolidate-aliases  Merge la DB globale xbox_aliases dans shared.xuid_aliases (dédup par xuid) — serveur arrêté
   recompute-friends Recompute is_with_friends sur toutes les player DBs (idempotent, --dry-run dispo)
   migrate         Migrer les donnees vers le namespace multi-titres
   restore-csr     Restaurer les CSR historiques depuis un backup DuckDB legacy (--gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite])

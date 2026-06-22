@@ -8,24 +8,7 @@ import { CombatYieldBar } from '@/components/ui/combat-yield-bar'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { PlayerScoreCard, KPIStats } from '../types'
-
-const STYLE_OFFENSIVE_LABELS: Record<string, string> = {
-  precis: 'Offensif précis',
-  equilibre: 'Équilibré',
-  genereux: 'Offensif généreux',
-}
-
-const STYLE_DEFENSIVE_LABELS: Record<string, string> = {
-  resistant: 'Défensif résistant',
-  solide: 'Solide',
-  fragile: 'Fragile',
-}
-
-const STYLE_ACTIVITY_LABELS: Record<string, string> = {
-  actif: 'Engagement actif',
-  modere: 'Engagement modéré',
-  discret: 'Engagement discret',
-}
+import { offensiveLabel, defensiveLabel, activityLabel } from '@/features/_shared/combatProfileLabels'
 
 export interface SquadCombatProfileRowProps {
   playerCards: PlayerScoreCard[]
@@ -63,17 +46,17 @@ export function SquadCombatProfileRow({ playerCards, kpisByXuid }: SquadCombatPr
                 <div className="flex flex-wrap gap-1">
                   {profile.style_offensive && (
                     <Badge variant="outline" className="text-xs">
-                      {STYLE_OFFENSIVE_LABELS[profile.style_offensive] ?? profile.style_offensive}
+                      {offensiveLabel(profile.style_offensive)}
                     </Badge>
                   )}
                   {profile.style_defensive && (
                     <Badge variant="outline" className="text-xs">
-                      {STYLE_DEFENSIVE_LABELS[profile.style_defensive] ?? profile.style_defensive}
+                      {defensiveLabel(profile.style_defensive)}
                     </Badge>
                   )}
                   {profile.style_activity && (
                     <Badge variant="secondary" className="text-xs">
-                      {STYLE_ACTIVITY_LABELS[profile.style_activity] ?? profile.style_activity}
+                      {activityLabel(profile.style_activity)}
                     </Badge>
                   )}
                 </div>

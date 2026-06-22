@@ -44,7 +44,7 @@ const persistTimeout = 30 * time.Second
 // Appelé depuis la boucle d'insertion de SyncEngine.run().
 func (e *SyncEngine) submitOrInsertMatch(
 	ctx context.Context,
-	sharedDB, playerDB, globalDB *sql.DB,
+	sharedDB, playerDB *sql.DB,
 	result *domain.SyncResult,
 	fm *fetchedMatch,
 ) error {
@@ -64,9 +64,9 @@ func (e *SyncEngine) submitOrInsertMatch(
 		}
 	}
 	if e.batchMode {
-		return e.submitMatchAsBatch(ctx, sharedDB, playerDB, globalDB, result, fm)
+		return e.submitMatchAsBatch(ctx, sharedDB, playerDB, result, fm)
 	}
-	return e.insertFetchedMatch(ctx, sharedDB, playerDB, globalDB, result, fm)
+	return e.insertFetchedMatch(ctx, sharedDB, playerDB, result, fm)
 }
 
 // submitMatchAsBatch est le chemin Phase 2.3 INSERT-only.
@@ -75,9 +75,7 @@ func (e *SyncEngine) submitOrInsertMatch(
 //  1. buildBatchFromFetchedMatch → *persist.MatchBatch
 //  2. SharedPersister.Persist (1 TX INSERT-only sur sharedDB)
 //  3. PlayerPersister.Persist (1 TX INSERT-only sur playerDB)
-//  4. UpsertXUIDAlias dans globalDB (legacy, hors batch — la global DB
-//     n'est pas couverte par les Persisters pour l'instant)
-//  5. Met à jour result.MatchesInserted + InsertedMatchIDs identique au legacy.
+//  4. Met à jour result.MatchesInserted + InsertedMatchIDs identique au legacy.
 //
 // PVE/Metadata hors scope Phase 2.3 (le live sync ne les écrit pas) :
 // le batch contient les rows si fetchedMatch les a remplies, mais elles
@@ -85,7 +83,7 @@ func (e *SyncEngine) submitOrInsertMatch(
 // Metadata avec leurs propres connexions DB.
 func (e *SyncEngine) submitMatchAsBatch(
 	ctx context.Context,
-	sharedDB, playerDB, globalDB *sql.DB,
+	sharedDB, playerDB *sql.DB,
 	result *domain.SyncResult,
 	fm *fetchedMatch,
 ) error {
@@ -180,16 +178,10 @@ func (e *SyncEngine) submitMatchAsBatch(
 		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "persist_player_total_ok")
 	}
 
-	// xuid_aliases global DB — non couvert par les Persisters (DB séparée).
-	// Comportement identique au legacy : best-effort upsert pour chaque
-	// participant ayant un gamertag.
-	if globalDB != nil {
-		for _, p := range fm.Participants {
-			if p.Gamertag != nil && *p.Gamertag != "" {
-				_ = UpsertXUIDAlias(ctx, globalDB, p.XUID, *p.Gamertag)
-			}
-		}
-	}
+	// Alias xuid→gamertag : plus d'écriture vers le store global xbox_aliases
+	// (consolidé dans shared 2026-06-19). Les gamertags des participants sont
+	// persistés en shared.match_participants par le SharedPersister ci-dessus
+	// (lus par v_gamertag_lookup) ; le chemin convergent upserte shared.xuid_aliases.
 
 	// Métriques : aligne avec le legacy pour ne pas casser les compteurs.
 	// Phase 5 : MatchesInserted ne compte que les matchs REELLEMENT nouveaux

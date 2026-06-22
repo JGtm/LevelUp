@@ -25,6 +25,12 @@ import (
 	"levelup/go-api/internal/platform/session"
 )
 
+// InviteValidator valide un code d'invitation (flow "rejoindre un groupe").
+// Satisfait par *userstore.InviteStore.
+type InviteValidator interface {
+	Validate(code string) error
+}
+
 // XboxOAuthHandler gère le Authorization Code Flow SSO Xbox.
 type XboxOAuthHandler struct {
 	sessionStore *session.Store
@@ -34,6 +40,7 @@ type XboxOAuthHandler struct {
 	linkStrategy auth_platform.LinkStrategy   // post-flow : login user
 	postLoginURL string                       // où rediriger après succès (typiquement "/")
 	authStore    auth_platform.UserTokenStore // ADR 0023 : persister le RT post-SSO
+	invites      InviteValidator              // optionnel : flow "rejoindre un groupe"
 }
 
 // NewXboxOAuthHandler crée un XboxOAuthHandler.
@@ -77,6 +84,14 @@ func (h *XboxOAuthHandler) WithPostLoginURL(url string) *XboxOAuthHandler {
 	return h
 }
 
+// WithInviteStore injecte le validateur d'invitations (flow "rejoindre un groupe").
+// Quand présent, LoginRedirect valide le code ?invite= et le stocke en session pour
+// que la LinkStrategy l'applique après login (bypass instance lock + ajout au groupe).
+func (h *XboxOAuthHandler) WithInviteStore(inv InviteValidator) *XboxOAuthHandler {
+	h.invites = inv
+	return h
+}
+
 // LoginRedirect démarre le Authorization Code Flow.
 // GET /auth/xbox/login
 func (h *XboxOAuthHandler) LoginRedirect(w http.ResponseWriter, r *http.Request) {
@@ -112,6 +127,21 @@ func (h *XboxOAuthHandler) LoginRedirect(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	sess.OAuthCodeVerifier = verifier
+
+	// Flow "rejoindre un groupe" : capter le code ?invite= et le porter en session
+	// jusqu'au callback. Un code invalide est ignoré (login normal) plutôt que de
+	// casser la redirection plein écran vers Microsoft.
+	if code := r.URL.Query().Get("invite"); code != "" {
+		if h.invites != nil {
+			if verr := h.invites.Validate(code); verr != nil {
+				slog.WarnContext(r.Context(), "auth_xbox_oauth: invitation ?invite= invalide, ignorée", "err", verr)
+			} else {
+				sess.PendingInviteCode = code
+			}
+		} else {
+			sess.PendingInviteCode = code
+		}
+	}
 
 	if err := h.sessionStore.Save(sess); err != nil {
 		slog.ErrorContext(r.Context(), "auth_xbox_oauth: save session échec", "err", err)
@@ -291,6 +321,7 @@ func buildXboxOAuthAttempt(
 		Status:               auth_platform.AttemptStatusAuthorized,
 		SpartanToken:         exchangeResult.Tokens.SpartanToken,
 		ClearanceToken:       exchangeResult.Tokens.ClearanceToken,
+		SpartanExpiresAt:     exchangeResult.Tokens.SpartanExpiresAt,
 		Gamertag:             exchangeResult.Gamertag,
 		XUID:                 exchangeResult.XUID,
 		MicrosoftAccessToken: tokenResult.AccessToken,
@@ -329,8 +360,9 @@ func (h *XboxOAuthHandler) persistSessionAfterOAuth(
 ) {
 	sess.AuthReady = true
 	sess.HaloTokens = &domain.HaloTokens{
-		SpartanToken:   exchangeResult.Tokens.SpartanToken,
-		ClearanceToken: exchangeResult.Tokens.ClearanceToken,
+		SpartanToken:     exchangeResult.Tokens.SpartanToken,
+		ClearanceToken:   exchangeResult.Tokens.ClearanceToken,
+		SpartanExpiresAt: exchangeResult.Tokens.SpartanExpiresAt,
 	}
 	if exchangeResult.Gamertag != "" {
 		sess.LinkedHaloIdentity = &domain.HaloIdentity{

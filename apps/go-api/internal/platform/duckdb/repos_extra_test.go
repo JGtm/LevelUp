@@ -5,6 +5,8 @@ package duckdb
 import (
 	"context"
 	"testing"
+
+	"levelup/go-api/internal/migration"
 )
 
 // ── CompareRepo ──────────────────────────────────────────────────────────────
@@ -226,6 +228,11 @@ func TestCompareRepo_GetPlayerATH(t *testing.T) {
 		if _, err := db.Exec(ctx, q); err != nil {
 			t.Fatalf("DDL: %v\nSQL: %s", err, q)
 		}
+	}
+	// Append-only #23046 : convertit player_match_enrichment (id PK + stage +
+	// written_at) et crée la vue player_match_enrichment_latest (lue par le repo).
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db.SQLDb()); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
 
 	inserts := []string{
@@ -474,6 +481,9 @@ func TestFanoutRepo_LoadExistingEnrichments_Empty(t *testing.T) {
 	if _, err := db.Exec(ctx, `CREATE TABLE player_match_enrichment (match_id VARCHAR PRIMARY KEY)`); err != nil {
 		t.Fatal(err)
 	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db.SQLDb()); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
 
 	pdb := &PlayerDB{Player: db, Shared: db}
 	repo := NewFanoutRepo(pdb)
@@ -493,7 +503,10 @@ func TestFanoutRepo_LoadExistingEnrichments(t *testing.T) {
 	if _, err := db.Exec(ctx, `CREATE TABLE player_match_enrichment (match_id VARCHAR PRIMARY KEY)`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec(ctx, `INSERT INTO player_match_enrichment VALUES ('m1'), ('m3')`); err != nil {
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db.SQLDb()); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
+	if _, err := db.Exec(ctx, `INSERT INTO player_match_enrichment (match_id) VALUES ('m1'), ('m3')`); err != nil {
 		t.Fatal(err)
 	}
 
@@ -528,6 +541,9 @@ func TestMatchExclusionRepo_ListExcluded_Empty(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db.SQLDb()); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
 
 	pdb := &PlayerDB{Player: db, Shared: db}
 	repo := NewMatchExclusionRepo(pdb)
@@ -556,10 +572,13 @@ func TestMatchExclusionRepo_ListExcluded(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db.SQLDb()); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
 	inserts := []string{
 		`INSERT INTO shared.match_registry VALUES ('m1', '2025-01-10 14:00:00', '2025-01-10 14:00:00+00', 'Arena', 'Slayer')`,
-		`INSERT INTO player_match_enrichment VALUES ('m1', TRUE, '2025-06-01 00:00:00+00')`,
-		`INSERT INTO player_match_enrichment VALUES ('m2', FALSE, '2025-06-01 00:00:00+00')`,
+		`INSERT INTO player_match_enrichment (match_id, is_excluded, updated_at) VALUES ('m1', TRUE, '2025-06-01 00:00:00+00')`,
+		`INSERT INTO player_match_enrichment (match_id, is_excluded, updated_at) VALUES ('m2', FALSE, '2025-06-01 00:00:00+00')`,
 	}
 	for _, q := range inserts {
 		if _, err := db.Exec(ctx, q); err != nil {

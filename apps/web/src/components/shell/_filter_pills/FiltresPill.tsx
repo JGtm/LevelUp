@@ -153,21 +153,21 @@ export function FiltresPill({
             disableCollapse
           />
           <CheckboxGroup
-            title="Playlists"
+            title={t('common.filters.playlists_title')}
             options={available.playlists}
             selected={(cascade.playlists ?? []) as string[]}
             onToggle={(v) => toggleValue('playlists', v)}
             zombies={zombies.playlists}
           />
           <CheckboxGroup
-            title="Modes"
+            title={t('common.filters.modes_title')}
             options={available.modes}
             selected={(cascade.modes ?? []) as string[]}
             onToggle={(v) => toggleValue('modes', v)}
             zombies={zombies.modes}
           />
           <CheckboxGroup
-            title="Cartes"
+            title={t('common.filters.maps_title')}
             options={available.maps}
             selected={(cascade.maps ?? []) as string[]}
             onToggle={(v) => toggleValue('maps', v)}

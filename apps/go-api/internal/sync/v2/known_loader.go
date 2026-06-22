@@ -66,7 +66,7 @@ func (l *knownLoaderV2) LoadKnown(ctx context.Context, p PlayerProfile) (map[str
 	}
 	defer release()
 
-	rows, err := playerDB.QueryContext(ctx, "SELECT match_id FROM player_match_enrichment")
+	rows, err := playerDB.QueryContext(ctx, "SELECT match_id FROM player_match_enrichment_latest")
 	if err == nil {
 		for rows.Next() {
 			var id string

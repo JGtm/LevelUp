@@ -100,7 +100,7 @@ JOIN shared.match_participants p2
     ON p2.match_id = p1.match_id
     AND p2.team_id  = p1.team_id
     AND p2.xuid     = ?
-LEFT JOIN player_match_enrichment pme ON pme.match_id = p1.match_id
+LEFT JOIN player_match_enrichment_latest pme ON pme.match_id = p1.match_id
 WHERE p1.xuid = ?
 ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 

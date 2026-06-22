@@ -140,12 +140,13 @@ func (r *NotificationsRepo) Insert(ctx context.Context, n *notifications.Notific
 	}
 
 	err = rwDB.WithReopenOnInvalidated(func() error {
+		// APPEND-ONLY : INSERT pur d'un event create dans _history.
 		_, execErr := rwDB.Exec(ctx, `
-			INSERT INTO player_notifications
+			INSERT INTO player_notifications_history
 				(xuid, id, category, severity, title_key, body_key, params,
 				 target_route, target_search, actor_xuid, actor_name,
-				 source, created_at, read_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+				 source, created_at, read_at, is_deleted, written_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, FALSE, CURRENT_TIMESTAMP)
 		`,
 			r.xuid, n.ID, string(n.Category), string(n.Severity), n.TitleKey,
 			nullableString(n.BodyKey),
@@ -230,7 +231,7 @@ func (r *NotificationsRepo) UnreadCount(ctx context.Context) (notifications.Unre
 		var qerr error
 		rows, qerr = r.readDB().Query(ctx, `
 			SELECT category, COUNT(*) AS n
-			FROM player_notifications
+			FROM player_notifications_latest
 			WHERE xuid = ? AND read_at IS NULL
 			GROUP BY category
 		`, r.xuid)
@@ -328,7 +329,14 @@ func (r *NotificationsRepo) MarkUnread(ctx context.Context, id int64) error {
 	err = rwDB.WithReopenOnInvalidated(func() error {
 		var execErr error
 		res, execErr = rwDB.Exec(ctx,
-			`UPDATE player_notifications SET read_at = NULL WHERE xuid = ? AND id = ?`,
+			`INSERT INTO player_notifications_history (
+				xuid, id, category, severity, title_key, body_key, params,
+				target_route, target_search, actor_xuid, actor_name, source,
+				created_at, read_at, is_deleted, written_at)
+			 SELECT xuid, id, category, severity, title_key, body_key, params,
+			        target_route, target_search, actor_xuid, actor_name, source,
+			        created_at, NULL, FALSE, CURRENT_TIMESTAMP
+			 FROM player_notifications_latest WHERE xuid = ? AND id = ?`,
 			r.xuid, id,
 		)
 		return execErr
@@ -369,14 +377,20 @@ func (r *NotificationsRepo) MarkAllRead(ctx context.Context, category notificati
 	var res sql.Result
 	err = rwDB.WithReopenOnInvalidated(func() error {
 		var execErr error
+		base := `
+			INSERT INTO player_notifications_history (
+				xuid, id, category, severity, title_key, body_key, params,
+				target_route, target_search, actor_xuid, actor_name, source,
+				created_at, read_at, is_deleted, written_at)
+			SELECT xuid, id, category, severity, title_key, body_key, params,
+			       target_route, target_search, actor_xuid, actor_name, source,
+			       created_at, ?, FALSE, CURRENT_TIMESTAMP
+			FROM player_notifications_latest
+			WHERE xuid = ? AND read_at IS NULL`
 		if category == "" {
-			res, execErr = rwDB.Exec(ctx,
-				`UPDATE player_notifications SET read_at = ? WHERE xuid = ? AND read_at IS NULL`,
-				now, r.xuid)
+			res, execErr = rwDB.Exec(ctx, base, now, r.xuid)
 		} else {
-			res, execErr = rwDB.Exec(ctx,
-				`UPDATE player_notifications SET read_at = ? WHERE xuid = ? AND read_at IS NULL AND category = ?`,
-				now, r.xuid, string(category))
+			res, execErr = rwDB.Exec(ctx, base+` AND category = ?`, now, r.xuid, string(category))
 		}
 		return execErr
 	})
@@ -420,7 +434,14 @@ func (r *NotificationsRepo) Delete(ctx context.Context, id int64) error {
 	err = rwDB.WithReopenOnInvalidated(func() error {
 		var execErr error
 		res, execErr = rwDB.Exec(ctx,
-			`DELETE FROM player_notifications WHERE xuid = ? AND id = ?`,
+			`INSERT INTO player_notifications_history (
+				xuid, id, category, severity, title_key, body_key, params,
+				target_route, target_search, actor_xuid, actor_name, source,
+				created_at, read_at, is_deleted, written_at)
+			 SELECT xuid, id, category, severity, title_key, body_key, params,
+			        target_route, target_search, actor_xuid, actor_name, source,
+			        created_at, read_at, TRUE, CURRENT_TIMESTAMP
+			 FROM player_notifications_latest WHERE xuid = ? AND id = ?`,
 			r.xuid, id,
 		)
 		return execErr
@@ -467,9 +488,16 @@ func (r *NotificationsRepo) CapAndSweep(ctx context.Context, max int) error {
 
 	err = rwDB.WithReopenOnInvalidated(func() error {
 		_, execErr := rwDB.Exec(ctx, `
-			DELETE FROM player_notifications
+			INSERT INTO player_notifications_history (
+				xuid, id, category, severity, title_key, body_key, params,
+				target_route, target_search, actor_xuid, actor_name, source,
+				created_at, read_at, is_deleted, written_at)
+			SELECT xuid, id, category, severity, title_key, body_key, params,
+			       target_route, target_search, actor_xuid, actor_name, source,
+			       created_at, read_at, TRUE, CURRENT_TIMESTAMP
+			FROM player_notifications_latest
 			WHERE xuid = ? AND id NOT IN (
-				SELECT id FROM player_notifications
+				SELECT id FROM player_notifications_latest
 				WHERE xuid = ?
 				ORDER BY created_at DESC
 				LIMIT ?
@@ -495,7 +523,7 @@ func (r *NotificationsRepo) GetPreferences(ctx context.Context) ([]notifications
 	err := r.readDB().WithReopenOnInvalidated(func() error {
 		var qerr error
 		rows, qerr = r.readDB().Query(ctx,
-			`SELECT category, enabled, delivery FROM notification_preferences WHERE xuid = ? ORDER BY category`,
+			`SELECT category, enabled, delivery FROM notification_preferences_latest WHERE xuid = ? ORDER BY category`,
 			r.xuid,
 		)
 		return qerr
@@ -556,13 +584,10 @@ func (r *NotificationsRepo) UpsertPreferences(ctx context.Context, prefs []notif
 	for _, p := range prefs {
 		pref := p // capture pour la closure
 		err := rwDB.WithReopenOnInvalidated(func() error {
+			// APPEND-ONLY : INSERT d'une nouvelle version (plus d'ON CONFLICT DO UPDATE).
 			_, execErr := rwDB.Exec(ctx, `
-				INSERT INTO notification_preferences (xuid, category, enabled, delivery, updated_at)
+				INSERT INTO notification_preferences_history (xuid, category, enabled, delivery, updated_at)
 				VALUES (?, ?, ?, ?, ?)
-				ON CONFLICT (xuid, category) DO UPDATE SET
-					enabled    = EXCLUDED.enabled,
-					delivery   = EXCLUDED.delivery,
-					updated_at = EXCLUDED.updated_at
 			`, r.xuid, string(pref.Category), pref.Enabled, string(pref.Delivery), now)
 			return execErr
 		})

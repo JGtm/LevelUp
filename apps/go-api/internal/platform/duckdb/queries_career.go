@@ -32,7 +32,7 @@ FROM (
     JOIN shared.match_participants p ON r.match_id = p.match_id
     WHERE p.xuid = ?
 ) ms
-LEFT JOIN player_match_enrichment pme ON ms.match_id = pme.match_id
+LEFT JOIN player_match_enrichment_latest pme ON ms.match_id = pme.match_id
 ORDER BY ms.start_time DESC`
 
 // Q4MV : Filtres — variante avec mv_player_matches (vue matérialisée optimisée).
@@ -63,7 +63,7 @@ FROM (
     FROM shared.mv_player_matches
     WHERE xuid = ?
 ) ms
-LEFT JOIN player_match_enrichment pme ON ms.match_id = pme.match_id
+LEFT JOIN player_match_enrichment_latest pme ON ms.match_id = pme.match_id
 ORDER BY ms.start_time DESC`
 
 // Q4Shared : (ADR 0016) — partie shared du split LoadMatchesForFilters.
@@ -273,7 +273,7 @@ WHERE match_id IN (%s)`
 // coéquipier (responsabilité du joueur non isolable d'un déséquilibre 4v3).
 const Q9TopMatchesPlayer = `
 SELECT match_id, performance_score, COALESCE(dominance_flag, 0), COALESCE(had_bot_teammate, FALSE)
-FROM player_match_enrichment
+FROM player_match_enrichment_latest
 WHERE performance_score IS NOT NULL`
 
 // Q9TopMatchesShared : Phase B de Q9 — partie shared (mp + r) avec filtres

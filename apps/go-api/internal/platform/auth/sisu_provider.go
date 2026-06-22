@@ -199,9 +199,9 @@ func (p *SISUProvider) Exchange(ctx context.Context, accessToken string) (*Excha
 		return nil, fmt.Errorf("sisu_provider: CompleteSISUFlow: %w", err)
 	}
 
-	// XSTS Xbox Live → Spartan Token + Clearance Token
+	// XSTS Xbox Live → Spartan Token (+ expiry réel) + Clearance Token
 	client := &http.Client{Timeout: 20 * time.Second}
-	spartanToken, err := requestSpartanToken(ctx, client, xstsResult.Token)
+	spartanToken, spartanExpiry, err := requestSpartanToken(ctx, client, xstsResult.Token)
 	if err != nil {
 		return nil, fmt.Errorf("sisu_provider: requestSpartanToken: %w", err)
 	}
@@ -217,8 +217,9 @@ func (p *SISUProvider) Exchange(ctx context.Context, accessToken string) (*Excha
 	)
 	return &ExchangeResult{
 		Tokens: &domain.HaloTokens{
-			SpartanToken:   spartanToken,
-			ClearanceToken: clearanceToken,
+			SpartanToken:     spartanToken,
+			ClearanceToken:   clearanceToken,
+			SpartanExpiresAt: spartanExpiry,
 		},
 		Gamertag: xstsResult.Gamertag,
 		XUID:     xstsResult.XUID,

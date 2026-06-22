@@ -32,6 +32,11 @@ func openMediaNotifyDB(t *testing.T) *sql.DB {
 			media_file_id INTEGER,
 			match_id VARCHAR
 		);
+		-- Campagne média append-only : queryUnnotifiedMedia lit la vue _latest
+		-- (notifiers.go). Sans elle, la query erreure et est avalée (return nil,nil)
+		-- → 0 résultat silencieux. Vue passthrough (le test n'exerce pas les associations).
+		CREATE VIEW media_match_associations_latest AS
+			SELECT * FROM media_match_associations;
 	`
 	if _, err := db.Exec(ddl); err != nil {
 		t.Fatal(err)

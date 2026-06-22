@@ -59,7 +59,7 @@ func selectSquadSessionCorpus(ctx context.Context, sourcePlayerDBPath string, nS
 	rows, err := db.QueryContext(ctx, `
 		WITH squad AS (
 			SELECT DISTINCT session_id
-			FROM player_match_enrichment
+			FROM player_match_enrichment_latest
 			WHERE is_with_friends = TRUE AND session_id IS NOT NULL
 		),
 		recent AS (
@@ -69,7 +69,7 @@ func selectSquadSessionCorpus(ctx context.Context, sourcePlayerDBPath string, nS
 			LIMIT ?
 		)
 		SELECT pme.match_id
-		FROM player_match_enrichment pme
+		FROM player_match_enrichment_latest pme
 		WHERE pme.session_id IN (SELECT session_id FROM recent)`, nSessions)
 	if err != nil {
 		return nil, fmt.Errorf("query squad corpus: %w", err)

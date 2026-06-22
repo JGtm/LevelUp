@@ -191,7 +191,7 @@ func (s *Service) applyAwardsRadarAxes(
 	}
 	rows, err := s.db.Query(ctx, `
 		SELECT psa.award_name, SUM(psa.award_count)
-		FROM personal_score_awards psa
+		FROM personal_score_awards_latest psa
 		WHERE psa.xuid = ?
 		  AND psa.match_id IN (`+strings.Join(placeholders, ",")+`)
 		GROUP BY psa.award_name
@@ -364,7 +364,7 @@ func (s *Service) loadLUSRComponentsBreakdown(ctx context.Context, _userID strin
 				ROW_NUMBER() OVER (PARTITION BY component_name ORDER BY computed_at DESC) AS rk_desc,
 				ROW_NUMBER() OVER (PARTITION BY component_name ORDER BY computed_at ASC)  AS rk_asc,
 				COUNT(*)    OVER (PARTITION BY component_name)                            AS n
-			FROM lusr_component_history
+			FROM lusr_component_history_latest
 		)
 		SELECT
 			component_name,

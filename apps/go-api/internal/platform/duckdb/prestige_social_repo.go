@@ -66,13 +66,15 @@ func (r *PrestigeSocialRepo) EmitEvent(ctx context.Context, ev prestige.Prestige
 			_ = tx.Rollback()
 			return e
 		}
+		// APPEND-ONLY : INSERT d'un snapshot du nouveau total (accumulation carry-forward
+		// = total courant via _latest + delta), au lieu d'un ON CONFLICT DO UPDATE.
+		// current_level laissé à 0 (recalculé côté service via LevelFromPP).
 		if _, e := tx.ExecContext(ctx, `
-			INSERT INTO user_prestige (user_id, title_slug, total_pp, current_level, updated_at)
-			VALUES (?, ?, ?, 0, ?)
-			ON CONFLICT (user_id, title_slug) DO UPDATE SET
-				total_pp = user_prestige.total_pp + EXCLUDED.total_pp,
-				updated_at = EXCLUDED.updated_at
-		`, ev.UserID, ev.TitleSlug, ev.PPAmount, ev.CreatedAt); e != nil {
+			INSERT INTO user_prestige_history (user_id, title_slug, total_pp, current_level, updated_at, written_at)
+			SELECT ?, ?,
+			       COALESCE((SELECT total_pp FROM user_prestige_latest WHERE user_id = ? AND title_slug = ?), 0) + ?,
+			       0, ?, CURRENT_TIMESTAMP
+		`, ev.UserID, ev.TitleSlug, ev.UserID, ev.TitleSlug, ev.PPAmount, ev.CreatedAt); e != nil {
 			_ = tx.Rollback()
 			return e
 		}
@@ -91,7 +93,7 @@ func (r *PrestigeSocialRepo) GetUserPrestige(ctx context.Context, userID, titleS
 	var up prestige.UserPrestige
 	err := r.db.QueryRow(ctx, `
 		SELECT user_id, title_slug, total_pp, current_level, updated_at
-		FROM user_prestige WHERE user_id = ? AND title_slug = ?
+		FROM user_prestige_latest WHERE user_id = ? AND title_slug = ?
 	`, userID, titleSlug).Scan(&up.UserID, &up.TitleSlug, &up.TotalPP, &up.CurrentLevel, &up.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return prestige.UserPrestige{UserID: userID, TitleSlug: titleSlug}, nil
@@ -106,7 +108,7 @@ func (r *PrestigeSocialRepo) GetUserPrestigeCrossTitle(ctx context.Context, user
 	up.UserID = userID
 	err := r.db.QueryRow(ctx, `
 		SELECT COALESCE(SUM(total_pp), 0), MAX(updated_at)
-		FROM user_prestige WHERE user_id = ?
+		FROM user_prestige_latest WHERE user_id = ?
 	`, userID).Scan(&up.TotalPP, &up.UpdatedAt)
 	return up, err
 }
@@ -114,13 +116,10 @@ func (r *PrestigeSocialRepo) GetUserPrestigeCrossTitle(ctx context.Context, user
 func (r *PrestigeSocialRepo) UpsertUserPrestige(ctx context.Context, up prestige.UserPrestige) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+	// APPEND-ONLY : INSERT d'un snapshot complet (plus d'ON CONFLICT DO UPDATE).
 	return execCheckpointed(ctx, r.db, `
-		INSERT INTO user_prestige (user_id, title_slug, total_pp, current_level, updated_at)
-		VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT (user_id, title_slug) DO UPDATE SET
-			total_pp = EXCLUDED.total_pp,
-			current_level = EXCLUDED.current_level,
-			updated_at = EXCLUDED.updated_at
+		INSERT INTO user_prestige_history (user_id, title_slug, total_pp, current_level, updated_at, written_at)
+		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 	`, up.UserID, up.TitleSlug, up.TotalPP, up.CurrentLevel, up.UpdatedAt)
 }
 
@@ -176,7 +175,7 @@ func (r *PrestigeSocialRepo) GetLeaderboard(
 	if titleSlug != nil && *titleSlug != "" {
 		q = fmt.Sprintf(`
 			SELECT user_id, title_slug, total_pp
-			FROM user_prestige
+			FROM user_prestige_latest
 			WHERE user_id IN (%s) AND title_slug = ?
 			ORDER BY total_pp DESC
 		`, placeholders)
@@ -185,7 +184,7 @@ func (r *PrestigeSocialRepo) GetLeaderboard(
 		// Cross-titre : SUM par user
 		q = fmt.Sprintf(`
 			SELECT user_id, '' AS title_slug, COALESCE(SUM(total_pp), 0) AS total_pp
-			FROM user_prestige
+			FROM user_prestige_latest
 			WHERE user_id IN (%s)
 			GROUP BY user_id
 			ORDER BY total_pp DESC
@@ -238,24 +237,28 @@ func (r *PrestigeSquadRepo) Get(ctx context.Context, id string) (prestige.Squad,
 func (r *PrestigeSquadRepo) AddMember(ctx context.Context, m prestige.SquadMember) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+	// APPEND-ONLY : join = INSERT event is_member=TRUE dans squad_member_history.
 	return execCheckpointed(ctx, r.db,
-		`INSERT INTO squad_member (squad_id, xuid, user_id, joined_at) VALUES (?, ?, ?, ?)
-		 ON CONFLICT (squad_id, xuid) DO NOTHING`,
+		`INSERT INTO squad_member_history (squad_id, xuid, user_id, is_member, joined_at)
+		 VALUES (?, ?, ?, TRUE, ?)`,
 		m.SquadID, m.Xuid, m.UserID, m.JoinedAt)
 }
 
 func (r *PrestigeSquadRepo) RemoveMember(ctx context.Context, squadID, xuid string) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+	// APPEND-ONLY : leave = INSERT event is_member=FALSE (plus de DELETE).
 	return execCheckpointed(ctx, r.db,
-		`DELETE FROM squad_member WHERE squad_id = ? AND xuid = ?`, squadID, xuid)
+		`INSERT INTO squad_member_history (squad_id, xuid, is_member, joined_at)
+		 VALUES (?, ?, FALSE, NULL)`, squadID, xuid)
 }
 
 func (r *PrestigeSquadRepo) ListMembers(ctx context.Context, squadID string) ([]prestige.SquadMember, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	rows, err := r.db.QueryRecovered(ctx,
-		`SELECT squad_id, xuid, COALESCE(user_id, ''), joined_at FROM squad_member WHERE squad_id = ?`, squadID)
+		`SELECT squad_id, xuid, COALESCE(user_id, ''), joined_at FROM squad_member_latest
+		 WHERE squad_id = ? AND is_member = TRUE`, squadID)
 	if err != nil {
 		return nil, err
 	}
@@ -276,8 +279,8 @@ func (r *PrestigeSquadRepo) ListSquadsForUser(ctx context.Context, userID string
 	defer cancel()
 	rows, err := r.db.QueryRecovered(ctx, `
 		SELECT s.id, s.name, s.created_by, s.created_at
-		FROM squad s JOIN squad_member sm ON sm.squad_id = s.id
-		WHERE sm.user_id = ?
+		FROM squad s JOIN squad_member_latest sm ON sm.squad_id = s.id
+		WHERE sm.user_id = ? AND sm.is_member = TRUE
 		ORDER BY s.created_at DESC
 	`, userID)
 	if err != nil {
@@ -375,14 +378,22 @@ func (r *PrestigeSquadChallengeRepo) ListBySquad(ctx context.Context, squadID st
 func (r *PrestigeSquadChallengeRepo) AddParticipant(ctx context.Context, p prestige.SquadChallengeParticipant) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+	// APPEND-ONLY : INSERT event idempotent. Si le participant existe déjà dans
+	// _latest, on n'insère PAS (équivalent ON CONFLICT DO NOTHING) → un re-join ne
+	// réinitialise pas la progression carry-forward.
 	return execCheckpointed(ctx, r.db, `
-		INSERT INTO squad_challenge_participant (
+		INSERT INTO squad_challenge_participant_history (
 			squad_challenge_id, user_id, chosen_tier, data_tier,
-			current_value, completed_at, is_private, joined_at
-		) VALUES (?,?,?,?,?,?,?,?)
-		ON CONFLICT (squad_challenge_id, user_id) DO NOTHING
+			current_value, completed_at, is_private, joined_at, written_at
+		)
+		SELECT ?,?,?,?,?,?,?,?, CURRENT_TIMESTAMP
+		WHERE NOT EXISTS (
+			SELECT 1 FROM squad_challenge_participant_latest
+			WHERE squad_challenge_id = ? AND user_id = ?
+		)
 	`, p.SquadChallengeID, p.UserID, nullableStr(string(p.ChosenTier)), string(p.DataTier),
-		p.CurrentValue, p.CompletedAt, p.IsPrivate, p.JoinedAt)
+		p.CurrentValue, p.CompletedAt, p.IsPrivate, p.JoinedAt,
+		p.SquadChallengeID, p.UserID)
 }
 
 func (r *PrestigeSquadChallengeRepo) UpdateParticipantProgress(
@@ -393,9 +404,17 @@ func (r *PrestigeSquadChallengeRepo) UpdateParticipantProgress(
 ) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+	// APPEND-ONLY : INSERT…SELECT carry-forward des champs immuables (chosen_tier,
+	// data_tier, is_private, joined_at) depuis _latest, current_value/completed_at
+	// mis à jour. No-op si le participant n'existe pas (0 ligne) — comme l'UPDATE.
 	return execCheckpointed(ctx, r.db, `
-		UPDATE squad_challenge_participant
-		SET current_value = ?, completed_at = ?
+		INSERT INTO squad_challenge_participant_history (
+			squad_challenge_id, user_id, chosen_tier, data_tier,
+			current_value, completed_at, is_private, joined_at, written_at
+		)
+		SELECT squad_challenge_id, user_id, chosen_tier, data_tier,
+		       ?, ?, is_private, joined_at, CURRENT_TIMESTAMP
+		FROM squad_challenge_participant_latest
 		WHERE squad_challenge_id = ? AND user_id = ?
 	`, value, completedAt, challengeID, userID)
 }
@@ -406,7 +425,7 @@ func (r *PrestigeSquadChallengeRepo) ListParticipants(ctx context.Context, chall
 	rows, err := r.db.QueryRecovered(ctx, `
 		SELECT squad_challenge_id, user_id, COALESCE(chosen_tier, ''), data_tier,
 		       current_value, completed_at, is_private, joined_at
-		FROM squad_challenge_participant WHERE squad_challenge_id = ?
+		FROM squad_challenge_participant_latest WHERE squad_challenge_id = ?
 	`, challengeID)
 	if err != nil {
 		return nil, err
@@ -432,7 +451,7 @@ func (r *PrestigeSquadChallengeRepo) CountActiveParticipants(ctx context.Context
 	defer cancel()
 	var n int
 	err := r.db.QueryRow(ctx, `
-		SELECT COUNT(*) FROM squad_challenge_participant
+		SELECT COUNT(*) FROM squad_challenge_participant_latest
 		WHERE squad_challenge_id = ? AND completed_at IS NULL
 	`, challengeID).Scan(&n)
 	return n, err

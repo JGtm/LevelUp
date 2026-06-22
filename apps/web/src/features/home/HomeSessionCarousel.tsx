@@ -14,6 +14,7 @@ import { OutcomeBar } from '@/components/ui/outcome-bar'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { homeManifest } from '@/lib/i18n/generated/home'
 
 function ChevronUpIcon() {
   return (
@@ -86,7 +87,10 @@ interface HomeSessionCarouselProps {
   onIdxChange: (idx: number) => void
   variant: 'solo' | 'squad'
   playerSlug: string
-  onNavigate: (sessionLabel: string) => void
+  /** Navigue vers la page de stats du contexte (solo → Timeseries, squad → /squad).
+   *  `teammates` = coéquipiers de la session (ignoré côté solo, utilisé côté squad
+   *  pour pré-sélectionner la composition). */
+  onNavigate: (sessionLabel: string, teammates: string[]) => void
 }
 
 export function HomeSessionCarousel({
@@ -102,6 +106,7 @@ export function HomeSessionCarousel({
   const cleanupRef = useRef<(() => void) | null>(null)
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+  const dominantTooltip = formatMessage(homeManifest, 'home.sessions.dominant_tooltip', locale)
 
   // Nettoyage si le composant est démonté en cours d'animation
   useEffect(() => () => { cleanupRef.current?.() }, [])
@@ -181,8 +186,8 @@ export function HomeSessionCarousel({
         {session ? (
           <button
             type="button"
-            className={`${cardClass} w-full cursor-pointer text-left hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
-            onClick={() => onNavigate(session.session_label)}
+            className={`${cardClass} w-full cursor-pointer text-left border border-transparent transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+            onClick={() => onNavigate(session.session_label, session.teammates ?? [])}
             aria-label={`Voir le détail de la session ${session.session_label}`}
           >
             {/* Scores de performance */}
@@ -267,7 +272,7 @@ export function HomeSessionCarousel({
               {(session.dominant_playlist || session.dominant_mode) && (
                 <span className="ml-1 inline-flex">
                   <InfoTooltip
-                    content="Playlist et mode les plus joués lors de cette session"
+                    content={dominantTooltip}
                     iconClass="w-3 h-3"
                   />
                 </span>

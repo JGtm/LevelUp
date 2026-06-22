@@ -382,11 +382,12 @@ func resetPlayerMediaIndex(ctx context.Context, dbPath string) error {
 	defer handle.Close()
 	db := handle.SQLDb()
 
-	if _, err := db.ExecContext(ctx, `DELETE FROM media_match_associations`); err != nil {
-		return fmt.Errorf("DELETE media_match_associations: %w", err)
-	}
-	if _, err := db.ExecContext(ctx, `DELETE FROM media_files`); err != nil {
-		return fmt.Errorf("DELETE media_files: %w", err)
-	}
+	// APPEND-ONLY / topologie migrée : plus aucun DELETE. media_files +
+	// media_match_associations ont été déplacées de la player DB vers shared_social
+	// (migration drop_media_from_player_db) → ces DELETE frappaient des tables absentes
+	// (chemin mort, WARN non-fatal). Les associations shared_social sont désormais
+	// append-only ; le reindex (IndexMedia) est ADDITIF et idempotent (loadUnassociatedMedia
+	// forward-only), aucun reset destructif n'est nécessaire.
+	_ = db
 	return nil
 }

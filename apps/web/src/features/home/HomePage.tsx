@@ -29,6 +29,8 @@ import { useHomePage, useSeasonPassPreview } from './queries'
 import { useSettings } from '@/features/settings/queries'
 import { useSetMatchFavorite } from '@/features/match-history/queries'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
+import { useSoloFilterStore } from '@/stores/soloFilterStore'
+import { DEFAULT_GAP_MINUTES } from '@/stores/filterDefaults'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
@@ -77,11 +79,33 @@ export function HomePage() {
     })
   }
 
-  function goToSession(sessionLabel: string) {
+  // Card SOLO → Timeseries (la page de stats solo), scopée sur la session. On
+  // épingle la session dans le store solo (même mécanisme que la pill Session) ;
+  // Timeseries lit ce store et useFollowLatestSession ne re-snappe pas une session
+  // épinglée (followLatest=false dès que picked_sessions est non vide).
+  function goToSoloSession(sessionLabel: string) {
+    const { filterContext, setSessions } = useSoloFilterStore.getState()
+    setSessions({
+      picked_sessions: [sessionLabel],
+      gap_minutes: filterContext.sessions?.gap_minutes ?? DEFAULT_GAP_MINUTES,
+    })
     void navigate({
-      to: '/players/$playerSlug/stats/sessions',
+      to: '/players/$playerSlug/stats/timeseries',
       params: { playerSlug },
-      search: { session: sessionLabel },
+    })
+  }
+
+  // Card ESCOUADE → page /squad, scopée sur la session AVEC ses coéquipiers
+  // pré-sélectionnés. SquadLayout consomme ces search params au montage.
+  function goToSquadSession(sessionLabel: string, teammates: string[]) {
+    void navigate({
+      to: '/players/$playerSlug/squad',
+      params: { playerSlug },
+      search: {
+        session: sessionLabel,
+        // Gamertags joints par virgule (aucun gamertag Xbox n'en contient).
+        teammates: teammates.length > 0 ? teammates.join(',') : undefined,
+      },
     })
   }
 
@@ -303,7 +327,7 @@ export function HomePage() {
                       onIdxChange={setSoloIdx}
                       variant="solo"
                       playerSlug={playerSlug}
-                      onNavigate={goToSession}
+                      onNavigate={goToSoloSession}
                     />
                   )}
                   {squadSessions.length > 0 && (
@@ -313,7 +337,7 @@ export function HomePage() {
                       onIdxChange={setSquadIdx}
                       variant="squad"
                       playerSlug={playerSlug}
-                      onNavigate={goToSession}
+                      onNavigate={goToSquadSession}
                     />
                   )}
                 </div>

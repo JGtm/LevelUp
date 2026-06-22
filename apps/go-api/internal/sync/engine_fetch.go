@@ -157,7 +157,7 @@ func (e *SyncEngine) fetchMatchData(
 // insertFetchedMatch insère les données fetchées d'un match (séquentiel, order-preserving).
 func (e *SyncEngine) insertFetchedMatch(
 	ctx context.Context,
-	sharedDB, playerDB, globalDB *sql.DB,
+	sharedDB, playerDB *sql.DB,
 	result *domain.SyncResult,
 	fm *fetchedMatch,
 ) error {
@@ -200,18 +200,11 @@ func (e *SyncEngine) insertFetchedMatch(
 			}
 		}
 
-		// Upsert XUID aliases.
-		aliased := 0
-		for _, p := range fm.Participants {
-			if p.Gamertag != nil && *p.Gamertag != "" {
-				if globalDB != nil {
-					_ = UpsertXUIDAlias(ctx, globalDB, p.XUID, *p.Gamertag)
-				}
-				aliased++
-			}
-		}
+		// Alias xuid→gamertag : plus d'upsert vers le store global xbox_aliases
+		// (consolidé dans shared 2026-06-19). Gamertags déjà en
+		// shared.match_participants ; chemin convergent upserte shared.xuid_aliases.
 		slog.DebugContext(ctx, "sync: participants insérés",
-			"match_id", fm.MatchID, "participants", len(fm.Participants), "aliases_upserted", aliased,
+			"match_id", fm.MatchID, "participants", len(fm.Participants),
 		)
 	}
 
@@ -231,7 +224,7 @@ func (e *SyncEngine) insertFetchedMatch(
 
 	// Highlight events.
 	if fm.HasHighlights && fm.HighlightData != nil {
-		if err := insertHighlightEventsFromData(ctx, sharedDB, globalDB, fm.MatchID, fm.HighlightData, fm.FilmMajorVer, result); err != nil {
+		if err := insertHighlightEventsFromData(ctx, sharedDB, fm.MatchID, fm.HighlightData, fm.FilmMajorVer, result); err != nil {
 			slog.WarnContext(ctx, "sync: highlight_events insertion échouée",
 				"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
 			)

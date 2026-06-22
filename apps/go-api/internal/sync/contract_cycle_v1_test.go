@@ -63,7 +63,6 @@ func (c *failingStatsClient) GetMatchStats(ctx context.Context, matchID string) 
 // directe du pattern ART (ON CONFLICT DO UPDATE / ré-INSERT, ADR 0019).
 func TestContract_NoDuplicateRows_V1(t *testing.T) {
 	playerDB, sharedDB := newInMemoryDBs(t)
-	globalDB := newInMemoryGlobalDB(t)
 	e := &SyncEngine{gamertag: "P0", xuid: "0000000000000000"}
 	opts := domain.DefaultSyncOptions()
 
@@ -78,7 +77,7 @@ func TestContract_NoDuplicateRows_V1(t *testing.T) {
 	for cycle := 0; cycle < 2; cycle++ {
 		for _, mid := range []string{pvp, pve} {
 			res := domain.SyncResult{StartedAt: time.Now()}
-			if err := e.processMatch(context.Background(), mock, sharedDB, playerDB, globalDB, &res, mid, opts); err != nil {
+			if err := e.processMatch(context.Background(), mock, sharedDB, playerDB, &res, mid, opts); err != nil {
 				t.Fatalf("processMatch(%s) cycle %d: %v", mid, cycle, err)
 			}
 		}
@@ -90,8 +89,10 @@ func TestContract_NoDuplicateRows_V1(t *testing.T) {
 	if d := dupCount(t, sharedDB, "match_participants", "match_id, xuid"); d != 0 {
 		t.Errorf("match_participants: %d (match_id,xuid) dupliqués", d)
 	}
-	if d := dupCount(t, playerDB, "player_match_enrichment", "match_id"); d != 0 {
-		t.Errorf("player_match_enrichment: %d match_id dupliqués", d)
+	// Append-only #23046 : player_match_enrichment porte N rows/match (1 par stage,
+	// PAR DESIGN). L'invariant "1 row logique par match" se vérifie sur la vue merge.
+	if d := dupCount(t, playerDB, "player_match_enrichment_latest", "match_id"); d != 0 {
+		t.Errorf("player_match_enrichment_latest: %d match_id dupliqués", d)
 	}
 	if n := countRows(t, sharedDB, "match_registry"); n != 2 {
 		t.Errorf("match_registry: attendu 2 (PVP+PVE), obtenu %d", n)
@@ -102,7 +103,6 @@ func TestContract_NoDuplicateRows_V1(t *testing.T) {
 // le même état DB (aucune ligne en plus, aucune erreur PK).
 func TestContract_CycleIdempotent_V1(t *testing.T) {
 	playerDB, sharedDB := newInMemoryDBs(t)
-	globalDB := newInMemoryGlobalDB(t)
 	e := &SyncEngine{gamertag: "P0", xuid: "0000000000000000"}
 	opts := domain.DefaultSyncOptions()
 	mid := "aabbccdd-0000-4000-8000-000000000010"
@@ -110,18 +110,22 @@ func TestContract_CycleIdempotent_V1(t *testing.T) {
 
 	run := func(pass int) {
 		res := domain.SyncResult{StartedAt: time.Now()}
-		if err := e.processMatch(context.Background(), mock, sharedDB, playerDB, globalDB, &res, mid, opts); err != nil {
+		if err := e.processMatch(context.Background(), mock, sharedDB, playerDB, &res, mid, opts); err != nil {
 			t.Fatalf("processMatch pass %d: %v", pass, err)
 		}
 	}
 	run(1)
 	reg1 := countRows(t, sharedDB, "match_registry")
 	part1 := countRows(t, sharedDB, "match_participants")
-	enr1 := countRows(t, playerDB, "player_match_enrichment")
+	// Append-only #23046 : processMatch appelé 2× directement (bypass loadKnownMatchIDs)
+	// INSÈRE 2 rows 'live' physiques — l'idempotence LOGIQUE (ce que voient les readers)
+	// est garantie par la vue merge (1 ligne/match, stable). En prod, l'idempotence
+	// vient de loadKnownMatchIDs au niveau cycle, pas de processMatch.
+	enr1 := countRows(t, playerDB, "player_match_enrichment_latest")
 	run(2) // rejoue à l'identique
 	if reg2, part2, enr2 := countRows(t, sharedDB, "match_registry"),
 		countRows(t, sharedDB, "match_participants"),
-		countRows(t, playerDB, "player_match_enrichment"); reg2 != reg1 || part2 != part1 || enr2 != enr1 {
+		countRows(t, playerDB, "player_match_enrichment_latest"); reg2 != reg1 || part2 != part1 || enr2 != enr1 {
 		t.Errorf("cycle non-idempotent: registry %d→%d, participants %d→%d, enrichment %d→%d",
 			reg1, reg2, part1, part2, enr1, enr2)
 	}
@@ -145,14 +149,13 @@ func TestContract_CrossPlayerDedup_V1(t *testing.T) {
 			t.Fatalf("EnsurePlayerSchema: %v", err)
 		}
 	}
-	globalDB := newInMemoryGlobalDB(t)
 
 	e := &SyncEngine{gamertag: "P0", xuid: "0000000000000000"}
 	opts := domain.DefaultSyncOptions()
 	mid := "aabbccdd-0000-4000-8000-000000000020"
 	mock := &mockHaloClient{statsBody: map[string]map[string]any{mid: makeMatchJSON(mid, 2)}}
 	res := domain.SyncResult{StartedAt: time.Now()}
-	if err := e.processMatch(ctx, mock, sharedDB, playerDB0, globalDB, &res, mid, opts); err != nil {
+	if err := e.processMatch(ctx, mock, sharedDB, playerDB0, &res, mid, opts); err != nil {
 		t.Fatalf("processMatch P0: %v", err)
 	}
 
@@ -175,7 +178,6 @@ func TestContract_CrossPlayerDedup_V1(t *testing.T) {
 // match valide suivant.
 func TestContract_PartialFailureIsolation_V1(t *testing.T) {
 	playerDB, sharedDB := newInMemoryDBs(t)
-	globalDB := newInMemoryGlobalDB(t)
 	e := &SyncEngine{gamertag: "P0", xuid: "0000000000000000"}
 	opts := domain.DefaultSyncOptions()
 
@@ -185,7 +187,7 @@ func TestContract_PartialFailureIsolation_V1(t *testing.T) {
 	client := &failingStatsClient{mockHaloClient: mock, failMatch: bad}
 
 	resBad := domain.SyncResult{StartedAt: time.Now()}
-	if err := e.processMatch(context.Background(), client, sharedDB, playerDB, globalDB, &resBad, bad, opts); err == nil {
+	if err := e.processMatch(context.Background(), client, sharedDB, playerDB, &resBad, bad, opts); err == nil {
 		t.Fatal("attendu une erreur pour le match en échec (fetch API 500)")
 	}
 	if n := countRows(t, sharedDB, "match_registry"); n != 0 {
@@ -193,7 +195,7 @@ func TestContract_PartialFailureIsolation_V1(t *testing.T) {
 	}
 
 	resGood := domain.SyncResult{StartedAt: time.Now()}
-	if err := e.processMatch(context.Background(), client, sharedDB, playerDB, globalDB, &resGood, good, opts); err != nil {
+	if err := e.processMatch(context.Background(), client, sharedDB, playerDB, &resGood, good, opts); err != nil {
 		t.Fatalf("le match valide doit réussir malgré l'échec précédent (isolation): %v", err)
 	}
 	if n := countRows(t, sharedDB, "match_registry"); n != 1 {

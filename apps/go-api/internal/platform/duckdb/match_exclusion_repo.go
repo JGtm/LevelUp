@@ -46,12 +46,12 @@ func (r *MatchExclusionRepo) SetExclusion(ctx context.Context, matchID string, e
 	}
 	defer rwDB.Close()
 
+	// Append-only #23046 : INSERT pur stage='exclusion', valeur booléenne EXPLICITE
+	// (is_excluded bidirectionnel, jamais NULL). Le merge-on-read prend la dernière
+	// row du stage 'exclusion' ; loadExcludedPMERows lit player_match_enrichment_latest.
 	_, err = rwDB.Exec(ctx, `
-		INSERT INTO player_match_enrichment (match_id, is_excluded, updated_at)
-		VALUES (?, ?, NOW())
-		ON CONFLICT (match_id) DO UPDATE SET
-			is_excluded = EXCLUDED.is_excluded,
-			updated_at  = NOW()
+		INSERT INTO player_match_enrichment (match_id, is_excluded, stage)
+		VALUES (?, ?, 'exclusion')
 	`, matchID, excluded)
 	if err != nil {
 		return fmt.Errorf("MatchExclusionRepo.SetExclusion exec: %w", err)
@@ -151,9 +151,11 @@ func (r *MatchExclusionRepo) ListExcluded(ctx context.Context) ([]domain.Exclude
 
 // loadExcludedPMERows charge les match_id exclus depuis player_match_enrichment.
 func (r *MatchExclusionRepo) loadExcludedPMERows(ctx context.Context) ([]excludedPMERow, []string, error) {
+	// Append-only #23046 : lire la vue _latest — sinon un match exclu puis ré-inclus
+	// (row FALSE plus récente) resterait listé si une vieille row TRUE subsiste.
 	rows, err := r.pdb.Player.Query(ctx, `
 		SELECT match_id, updated_at
-		FROM player_match_enrichment
+		FROM player_match_enrichment_latest
 		WHERE is_excluded = TRUE`)
 	if err != nil {
 		return nil, nil, fmt.Errorf("MatchExclusionRepo.ListExcluded: phase A: %w", err)

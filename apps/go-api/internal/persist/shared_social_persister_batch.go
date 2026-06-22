@@ -3,6 +3,7 @@ package persist
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -92,8 +93,16 @@ func (p *SharedSocialPersister) persistMediaFiles(ctx context.Context, tx *sql.T
 	if len(rows) == 0 {
 		return nil
 	}
-	stmt, err := tx.PrepareContext(ctx, `
-		INSERT OR IGNORE INTO media_files (
+	// Dédup applicative file_path : l'ex-contrainte UNIQUE(file_path) a été retirée
+	// pour éradiquer le bug ART DuckDB #23046 (cf. media_files_drop_filepath_unique_v1).
+	// SELECT-then-INSERT — skip si le file_path est déjà indexé (re-upload même contenu).
+	sel, err := tx.PrepareContext(ctx, `SELECT 1 FROM media_files WHERE file_path = ? LIMIT 1`)
+	if err != nil {
+		return err
+	}
+	defer sel.Close()
+	ins, err := tx.PrepareContext(ctx, `
+		INSERT INTO media_files (
 			player_slug, file_path, file_name, file_stem, file_ext, file_hash, kind,
 			capture_start_utc, capture_end_utc, duration_seconds
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -101,9 +110,18 @@ func (p *SharedSocialPersister) persistMediaFiles(ctx context.Context, tx *sql.T
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer ins.Close()
 	for _, r := range rows {
-		if _, err := stmt.ExecContext(ctx,
+		var dup int
+		switch err := sel.QueryRowContext(ctx, r.FilePath).Scan(&dup); err {
+		case nil:
+			continue // file_path déjà indexé → skip
+		case sql.ErrNoRows:
+			// pas de doublon → INSERT
+		default:
+			return fmt.Errorf("media_file dedup %s: %w", r.FilePath, err)
+		}
+		if _, err := ins.ExecContext(ctx,
 			r.PlayerSlug, r.FilePath, r.FileName, r.FileStem, r.FileExt, r.FileHash, r.Kind,
 			r.CaptureStartUTC, r.CaptureEndUTC, r.DurationSeconds,
 		); err != nil {
@@ -138,9 +156,13 @@ func (p *SharedSocialPersister) persistMediaAssociations(ctx context.Context, tx
 	if len(rows) == 0 {
 		return nil
 	}
+	// APPEND-ONLY : auto-association live sync = INSERT event (is_manual=FALSE) dans
+	// _history. Plus d'INSERT OR IGNORE sur la table legacy. La dédup est assurée par
+	// loadUnassociatedMedia (forward-only) + la vue _latest.
 	stmt, err := tx.PrepareContext(ctx, `
-		INSERT OR IGNORE INTO media_match_associations (media_file_id, match_id, delta_seconds)
-		VALUES (?, ?, ?)
+		INSERT INTO media_match_associations_history
+			(media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at)
+		VALUES (?, ?, ?, FALSE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 	`)
 	if err != nil {
 		return err
@@ -154,83 +176,68 @@ func (p *SharedSocialPersister) persistMediaAssociations(ctx context.Context, tx
 	return nil
 }
 
+// persistLikes — APPEND-ONLY : ajout/retrait = INSERT pur dans media_likes_history
+// (is_liked TRUE/FALSE). Plus aucun DELETE ni ON CONFLICT (surface ART éliminée).
+// État courant lu via media_likes_latest.
 func (p *SharedSocialPersister) persistLikes(ctx context.Context, tx *sql.Tx, adds []LikeInsert, removes []LikeRemove) error {
-	if len(adds) > 0 {
-		stmt, err := tx.PrepareContext(ctx, `
-			INSERT OR IGNORE INTO media_likes (media_path, liker_slug, liker_gamertag, liked_at)
-			VALUES (?, ?, ?, ?)
-		`)
-		if err != nil {
-			return err
-		}
-		for _, r := range adds {
-			if _, err := stmt.ExecContext(ctx, r.MediaPath, r.LikerSlug, r.LikerGamertag, r.LikedAt); err != nil {
-				stmt.Close()
-				return fmt.Errorf("like add %s/%s: %w", r.MediaPath, r.LikerSlug, err)
-			}
-		}
-		stmt.Close()
+	stmt, err := tx.PrepareContext(ctx, `
+		INSERT INTO media_likes_history (media_path, liker_slug, liker_gamertag, is_liked, liked_at)
+		VALUES (?, ?, ?, ?, ?)
+	`)
+	if err != nil {
+		return err
 	}
-	if len(removes) > 0 {
-		stmt, err := tx.PrepareContext(ctx, `
-			DELETE FROM media_likes WHERE media_path = ? AND liker_slug = ?
-		`)
-		if err != nil {
-			return err
+	defer stmt.Close()
+	for _, r := range adds {
+		if _, err := stmt.ExecContext(ctx, r.MediaPath, r.LikerSlug, r.LikerGamertag, true, r.LikedAt); err != nil {
+			return fmt.Errorf("like add %s/%s: %w", r.MediaPath, r.LikerSlug, err)
 		}
-		for _, r := range removes {
-			if _, err := stmt.ExecContext(ctx, r.MediaPath, r.LikerSlug); err != nil {
-				stmt.Close()
-				return fmt.Errorf("like remove %s/%s: %w", r.MediaPath, r.LikerSlug, err)
-			}
+	}
+	for _, r := range removes {
+		// Event de retrait : is_liked=FALSE, gamertag/liked_at NULL.
+		if _, err := stmt.ExecContext(ctx, r.MediaPath, r.LikerSlug, nil, false, nil); err != nil {
+			return fmt.Errorf("like remove %s/%s: %w", r.MediaPath, r.LikerSlug, err)
 		}
-		stmt.Close()
 	}
 	return nil
 }
 
+// persistFavorites — APPEND-ONLY : chaque ajout/retrait = un INSERT pur dans
+// match_favorites_history (is_favorite TRUE/FALSE). Plus AUCUN DELETE (surface ART
+// éliminée sur shared_social). L'état courant se lit via la vue match_favorites_latest.
 func (p *SharedSocialPersister) persistFavorites(ctx context.Context, tx *sql.Tx, adds []FavoriteInsert, removes []FavoriteRemove) error {
-	if len(adds) > 0 {
-		stmt, err := tx.PrepareContext(ctx, `
-			INSERT OR IGNORE INTO match_favorites (player_slug, match_id, favorited_at)
-			VALUES (?, ?, ?)
-		`)
-		if err != nil {
-			return err
-		}
-		for _, r := range adds {
-			if _, err := stmt.ExecContext(ctx, r.PlayerSlug, r.MatchID, r.FavoritedAt); err != nil {
-				stmt.Close()
-				return fmt.Errorf("favorite add %s/%s: %w", r.PlayerSlug, r.MatchID, err)
-			}
-		}
-		stmt.Close()
+	stmt, err := tx.PrepareContext(ctx, `
+		INSERT INTO match_favorites_history (player_slug, match_id, is_favorite, favorited_at)
+		VALUES (?, ?, ?, ?)
+	`)
+	if err != nil {
+		return err
 	}
-	if len(removes) > 0 {
-		stmt, err := tx.PrepareContext(ctx, `
-			DELETE FROM match_favorites WHERE player_slug = ? AND match_id = ?
-		`)
-		if err != nil {
-			return err
+	defer stmt.Close()
+	for _, r := range adds {
+		if _, err := stmt.ExecContext(ctx, r.PlayerSlug, r.MatchID, true, r.FavoritedAt); err != nil {
+			return fmt.Errorf("favorite add %s/%s: %w", r.PlayerSlug, r.MatchID, err)
 		}
-		for _, r := range removes {
-			if _, err := stmt.ExecContext(ctx, r.PlayerSlug, r.MatchID); err != nil {
-				stmt.Close()
-				return fmt.Errorf("favorite remove %s/%s: %w", r.PlayerSlug, r.MatchID, err)
-			}
+	}
+	for _, r := range removes {
+		// Event de retrait : is_favorite=FALSE, favorited_at NULL.
+		if _, err := stmt.ExecContext(ctx, r.PlayerSlug, r.MatchID, false, nil); err != nil {
+			return fmt.Errorf("favorite remove %s/%s: %w", r.PlayerSlug, r.MatchID, err)
 		}
-		stmt.Close()
 	}
 	return nil
 }
 
 func (p *SharedSocialPersister) persistNotifications(ctx context.Context, tx *sql.Tx, adds []NotificationInsert, reads []NotificationReadUpdate) error {
 	if len(adds) > 0 {
+		// APPEND-ONLY : INSERT pur d'un event create (read_at NULL, is_deleted FALSE)
+		// dans player_notifications_history. La vue _latest expose l'état courant.
 		stmt, err := tx.PrepareContext(ctx, `
-			INSERT INTO player_notifications (
+			INSERT INTO player_notifications_history (
 				xuid, id, category, severity, title_key, body_key, params,
-				target_route, target_search, actor_xuid, actor_name, source, created_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				target_route, target_search, actor_xuid, actor_name, source,
+				created_at, read_at, is_deleted, written_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, FALSE, CURRENT_TIMESTAMP)
 		`)
 		if err != nil {
 			return err
@@ -247,8 +254,19 @@ func (p *SharedSocialPersister) persistNotifications(ctx context.Context, tx *sq
 		stmt.Close()
 	}
 	if len(reads) > 0 {
+		// APPEND-ONLY : event read = INSERT…SELECT carry-forward du payload depuis
+		// _latest avec read_at positionné (plus d'UPDATE in-place).
 		stmt, err := tx.PrepareContext(ctx, `
-			UPDATE player_notifications SET read_at = ? WHERE xuid = ? AND id = ?
+			INSERT INTO player_notifications_history (
+				xuid, id, category, severity, title_key, body_key, params,
+				target_route, target_search, actor_xuid, actor_name, source,
+				created_at, read_at, is_deleted, written_at
+			)
+			SELECT xuid, id, category, severity, title_key, body_key, params,
+			       target_route, target_search, actor_xuid, actor_name, source,
+			       created_at, ?, FALSE, CURRENT_TIMESTAMP
+			FROM player_notifications_latest
+			WHERE xuid = ? AND id = ?
 		`)
 		if err != nil {
 			return err
@@ -345,22 +363,40 @@ func (p *SharedSocialPersister) playerRecordsHistoryExists(ctx context.Context) 
 // persistPlayerRecordsLegacy : chemin de compatibilité tant que la migration
 // Phase 2 (append-only) n'est pas appliquée. Sera supprimé après Phase 2.
 func (p *SharedSocialPersister) persistPlayerRecordsLegacy(ctx context.Context, tx *sql.Tx, rows []PlayerRecordAppend) error {
-	stmt, err := tx.PrepareContext(ctx, `
-		INSERT INTO player_records (xuid, metric, value, achieved_at, achieved_match_id, updated_at)
-		VALUES (?, ?, ?, ?, ?, NOW())
-		ON CONFLICT (xuid, metric) DO UPDATE SET
-			value             = EXCLUDED.value,
-			achieved_at       = EXCLUDED.achieved_at,
-			achieved_match_id = EXCLUDED.achieved_match_id,
-			updated_at        = NOW()
-	`)
+	// ART-safe : SELECT-then-UPDATE-or-INSERT (plus d'ON CONFLICT DO UPDATE, qui
+	// réécrit via l'index ART de la PK sur shared_social). Chemin de compat sur
+	// player_records (legacy) — jamais atteint en prod (la migration _history tourne
+	// au boot). player_records sans index secondaire → UPDATE non-indexé sûr.
+	selStmt, err := tx.PrepareContext(ctx, `SELECT 1 FROM player_records WHERE xuid = ? AND metric = ?`)
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer selStmt.Close()
+	updStmt, err := tx.PrepareContext(ctx, `
+		UPDATE player_records SET value = ?, achieved_at = ?, achieved_match_id = ?, updated_at = NOW()
+		WHERE xuid = ? AND metric = ?`)
+	if err != nil {
+		return err
+	}
+	defer updStmt.Close()
+	insStmt, err := tx.PrepareContext(ctx, `
+		INSERT INTO player_records (xuid, metric, value, achieved_at, achieved_match_id, updated_at)
+		VALUES (?, ?, ?, ?, ?, NOW())`)
+	if err != nil {
+		return err
+	}
+	defer insStmt.Close()
 	for _, r := range rows {
-		if _, err := stmt.ExecContext(ctx, r.XUID, r.Metric, r.Value, r.AchievedAt, r.AchievedMatchID); err != nil {
-			return fmt.Errorf("player_record_legacy xuid=%s metric=%s: %w", r.XUID, r.Metric, err)
+		var dummy int
+		serr := selStmt.QueryRowContext(ctx, r.XUID, r.Metric).Scan(&dummy)
+		switch {
+		case serr == nil:
+			_, serr = updStmt.ExecContext(ctx, r.Value, r.AchievedAt, r.AchievedMatchID, r.XUID, r.Metric)
+		case errors.Is(serr, sql.ErrNoRows):
+			_, serr = insStmt.ExecContext(ctx, r.XUID, r.Metric, r.Value, r.AchievedAt, r.AchievedMatchID)
+		}
+		if serr != nil {
+			return fmt.Errorf("player_record_legacy xuid=%s metric=%s: %w", r.XUID, r.Metric, serr)
 		}
 	}
 	return nil

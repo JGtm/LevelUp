@@ -126,7 +126,7 @@ fr = "Désactive flou de mouvement, secousses d'écran et lignes de vitesse. Ces
 en = "Disable motion blur, screen shake, and speed lines. These cosmetic effects hide enemies during explosions and can be confused with incoming fire. Max out reticle outline thickness and opacity — clearly seeing your crosshair beats immersion."
 
 [coaching_tips.combat.routine.1]
-fr = "Avant chaque session, fais quelques minutes des drills d'armes de l'Académie, ou un Match personnalisé contre des bots difficulté Spartan avec une seule arme imposée. La playlist Bot Bootcamp n'existe plus, mais l'entraînement reste possible via ces deux modes."
+fr = "Avant chaque session, fais quelques minutes des drills d'armes de l'Académie, ou un Match personnalisé contre des bots difficulté Spartan avec une seule arme imposée. La sélection Bot Bootcamp n'existe plus, mais l'entraînement reste possible via ces deux modes."
 en = "Before each session, do a few minutes of Academy weapon drills, or a Custom Game vs Spartan-difficulty bots with one forced weapon. The Bot Bootcamp playlist is gone, but both these modes still allow training."
 
 [coaching_tips.combat.routine.2]

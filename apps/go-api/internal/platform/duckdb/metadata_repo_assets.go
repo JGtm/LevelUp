@@ -105,17 +105,21 @@ func (r *MetadataRepo) UpsertAssetTranslation(
 	name string,
 	description string,
 ) error {
-	query := `
-		INSERT INTO asset_translations (asset_id, asset_type, lang, name, description, fetched_at)
-		VALUES (?, ?, ?, ?, ?, now())
-		ON CONFLICT (asset_id, asset_type, lang) DO UPDATE SET
-			name = EXCLUDED.name,
-			description = EXCLUDED.description,
-			fetched_at = now()
-	`
-
-	_, err := r.meta.Exec(ctx, query, assetID, assetType, lang, name, description)
-	if err != nil {
+	// ART-safe : SELECT-then-UPDATE-or-INSERT via UpsertNoConflict (+ auto-reopen),
+	// PAS d'ON CONFLICT DO UPDATE — celui-ci réécrit la ligne à travers TOUS les index
+	// (dont idx_asset_tr_id_type) → surface ART qui FATAL-invalide metadata.duckdb. Ici
+	// l'UPDATE ne touche que des colonnes NON indexées (name/description/fetched_at).
+	// Aligné sur ops.UpsertAssetTranslation (déjà SELECT-then-write côté hot path).
+	if err := r.meta.UpsertNoConflict(ctx,
+		`SELECT 1 FROM asset_translations WHERE asset_id = ? AND asset_type = ? AND lang = ?`,
+		[]any{assetID, assetType, lang},
+		`UPDATE asset_translations SET name = ?, description = ?, fetched_at = now()
+		 WHERE asset_id = ? AND asset_type = ? AND lang = ?`,
+		[]any{name, description, assetID, assetType, lang},
+		`INSERT INTO asset_translations (asset_id, asset_type, lang, name, description, fetched_at)
+		 VALUES (?, ?, ?, ?, ?, now())`,
+		[]any{assetID, assetType, lang, name, description},
+	); err != nil {
 		return fmt.Errorf("UpsertAssetTranslation(%s, %s, %s): %w", assetType, assetID, lang, err)
 	}
 	return nil
@@ -364,14 +368,14 @@ func (r *MetadataRepo) UpsertMapImageRegistry(
 	ctx context.Context,
 	titleID, mapID, localPath string,
 ) error {
-	query := `
-		INSERT INTO map_images_registry (title_id, map_id, local_path, fetched_at)
-		VALUES (?, ?, ?, now())
-		ON CONFLICT (title_id, map_id) DO UPDATE SET
-			local_path = EXCLUDED.local_path,
-			fetched_at = now()
-	`
-
-	_, err := r.meta.Exec(ctx, query, titleID, mapID, localPath)
-	return err
+	// ART-safe : SELECT-then-UPDATE-or-INSERT (pas d'ON CONFLICT). Index fetched_at
+	// (muté) droppé par drop_metadata_art_surface_indexes_v2.
+	return r.meta.UpsertNoConflict(ctx,
+		`SELECT 1 FROM map_images_registry WHERE title_id = ? AND map_id = ?`,
+		[]any{titleID, mapID},
+		`UPDATE map_images_registry SET local_path = ?, fetched_at = now() WHERE title_id = ? AND map_id = ?`,
+		[]any{localPath, titleID, mapID},
+		`INSERT INTO map_images_registry (title_id, map_id, local_path, fetched_at) VALUES (?, ?, ?, now())`,
+		[]any{titleID, mapID, localPath},
+	)
 }

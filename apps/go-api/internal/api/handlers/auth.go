@@ -111,9 +111,14 @@ func (h *AuthHandler) handleStartDeviceFlow(ctx context.Context, _ *struct{}) (*
 	// Single-flight : si une tentative "pending" existe, la renvoyer.
 	attempt, isNew := h.attempts.GetOrCreate(sess.SessionID)
 	// CRUCIAL : lier la session à la tentative → IsMeaningful → la session anonyme
-	// est PERSISTÉE (sinon le SessionID n'est jamais sauvé et le poll de statut,
-	// clé = SessionID, retourne 404 indéfiniment / le single-flight se casse).
+	// est PERSISTÉE et un cookie stable est posé dès le start. Sans ça, le SessionID
+	// n'est jamais sauvé / chaque requête repart sur une session anonyme distincte →
+	// GetDeviceFlowStatus et le single-flight (clé = SessionID) ne retrouvent jamais
+	// la tentative → 404 indéfini, login device-flow cassé.
+	// On pose les DEUX champs : le domaine en expose deux (DeviceFlowAttemptID pointeur
+	// + PendingDeviceFlowAttempt string), tous deux pris en compte par IsMeaningful.
 	sess.DeviceFlowAttemptID = &attempt.AttemptID
+	sess.PendingDeviceFlowAttempt = attempt.AttemptID
 	if !isNew {
 		return &deviceFlowStartOutput{Body: deviceFlowStartResponse(attempt)}, nil
 	}
@@ -169,8 +174,9 @@ func (h *AuthHandler) handleGetDeviceFlowStatus(ctx context.Context, in *deviceF
 		// Stocker les tokens Halo dans la session (jamais exposés au navigateur).
 		if snapshot.SpartanToken != "" {
 			sess.HaloTokens = &domain.HaloTokens{
-				SpartanToken:   snapshot.SpartanToken,
-				ClearanceToken: snapshot.ClearanceToken,
+				SpartanToken:     snapshot.SpartanToken,
+				ClearanceToken:   snapshot.ClearanceToken,
+				SpartanExpiresAt: snapshot.SpartanExpiresAt,
 			}
 		}
 		// LinkStrategy gère le post-flow (password : LinkIdentity ; xbox SSO : login direct).
@@ -243,6 +249,7 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 		a.Status = auth_platform.AttemptStatusAuthorized
 		a.SpartanToken = result.Tokens.SpartanToken
 		a.ClearanceToken = result.Tokens.ClearanceToken
+		a.SpartanExpiresAt = result.Tokens.SpartanExpiresAt
 		a.Gamertag = result.Gamertag
 		a.XUID = result.XUID
 

@@ -6,10 +6,8 @@
  * dans _settingsShared.tsx. Ce fichier ne porte plus que l'orchestrateur.
  */
 import { useState, useEffect, useRef } from 'react'
-import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
+import { useNavigate, useRouterState } from '@tanstack/react-router'
 
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSettings, useUpdateSettings } from '@/features/settings/queries'
 import { getSettingsText, normalizeSettingsLocale } from '@/features/settings/i18n'
@@ -24,30 +22,11 @@ import { TitlesTab } from './TitlesTab'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
-// ─── Onglet Lab ──────────────────────────────────────────────────────────────
-
-function LabTab({ t }: { t: ReturnType<typeof getSettingsText> }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{t.instanceTitle}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <p className="text-sm text-muted-foreground">{t.instanceDescription}</p>
-        <Link to="/lab">
-          <Button>{t.openLabButton}</Button>
-        </Link>
-      </CardContent>
-    </Card>
-  )
-}
-
 // ─── Page principale ──────────────────────────────────────────────────────────
 
 export function SettingsPage() {
   const { data: settings, isLoading } = useSettings()
   const mutation = useUpdateSettings()
-  const canManageInstance = useAppShellStore((s) => s.capabilities?.can_manage_instance ?? false)
   const demoMode = useAppShellStore((s) => s.demoMode)
   const locale = normalizeSettingsLocale(useAppShellStore((s) => s.locale))
   const t = getSettingsText(locale)
@@ -143,7 +122,6 @@ export function SettingsPage() {
               { id: 'accessibility', label: t.tabAccessibility },
               { id: 'notifications', label: locale === 'en' ? 'Notifications' : 'Notifications' },
               { id: 'backup', label: t.tabBackup },
-              ...(canManageInstance ? [{ id: 'lab', label: t.tabLab }] : []),
               // « Synchronisation » et « Utilisateurs » ont migré vers la page Admin
               // (Admin · Sync & Jobs / Accès). Cf. accès direct « Administration » dans le menu.
             ] as { id: 'general' | 'titles' | 'sync' | 'analyse' | 'lab' | 'users' | 'accessibility' | 'notifications' | 'backup'; label: string }[]
@@ -179,7 +157,6 @@ export function SettingsPage() {
         {activeTab === 'analyse' && (
           <AnalyseTab merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
         )}
-        {activeTab === 'lab' && <LabTab t={t} />}
         {activeTab === 'accessibility' && <AccessibilityTab t={t} locale={locale} />}
         {activeTab === 'notifications' && <NotificationsSettingsTab />}
         {activeTab === 'backup' && <BackupTab t={t} frozen={demoMode} />}

@@ -130,30 +130,31 @@ func TestRequirePlayerOwnership_Admin_200(t *testing.T) {
 }
 
 func TestRequirePlayerOwnership_FamilyMember_200(t *testing.T) {
-	// #21 Phase A : alice (222) et bob (999) sont dans la même famille → alice
-	// accède au slug bob (qui serait 403 en mode strict, cf. ForeignSlug_403).
-	family := func(context.Context) map[string]bool {
+	// Multi-groupes : le resolver retourne les co-membres DU USER courant (alice).
+	// alice partage un groupe avec bob → son set inclut 999 → accès au slug bob
+	// (qui serait 403 en mode strict, cf. ForeignSlug_403).
+	coMembers := func(context.Context) map[string]bool {
 		return map[string]bool{"222": true, "999": true}
 	}
-	mw := RequirePlayerOwnership(false, "password", ownershipProfiles, ownershipUsers, family)
+	mw := RequirePlayerOwnership(false, "password", ownershipProfiles, ownershipUsers, coMembers)
 	rr := httptest.NewRecorder()
 	mw(okHandler).ServeHTTP(rr, ownershipRequest("bob", userSession("alice")))
 	if rr.Code != http.StatusOK {
-		t.Errorf("membre famille: status = %d, want 200", rr.Code)
+		t.Errorf("co-membre de groupe: status = %d, want 200", rr.Code)
 	}
 }
 
 func TestRequirePlayerOwnership_FamilyStranger_403(t *testing.T) {
-	// La famille ne couvre que bob (999) ; alice (222) n'en fait pas partie →
-	// même avec un resolver famille actif, alice reste bloquée sur bob.
-	family := func(context.Context) map[string]bool {
-		return map[string]bool{"999": true}
+	// Multi-groupes : le set co-membres d'alice ne contient qu'elle-même (aucun
+	// groupe partagé avec bob) → alice reste bloquée sur le slug bob.
+	coMembers := func(context.Context) map[string]bool {
+		return map[string]bool{"222": true}
 	}
-	mw := RequirePlayerOwnership(false, "password", ownershipProfiles, ownershipUsers, family)
+	mw := RequirePlayerOwnership(false, "password", ownershipProfiles, ownershipUsers, coMembers)
 	rr := httptest.NewRecorder()
 	mw(okHandler).ServeHTTP(rr, ownershipRequest("bob", userSession("alice")))
 	if rr.Code != http.StatusForbidden {
-		t.Errorf("famille partielle (user hors groupe): status = %d, want 403", rr.Code)
+		t.Errorf("aucun groupe commun avec bob: status = %d, want 403", rr.Code)
 	}
 }
 

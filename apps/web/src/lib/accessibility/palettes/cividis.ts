@@ -76,6 +76,11 @@ export const cividisPalette: Palette = {
   'chart-series-7': CIVIDIS_T10,      // t=0.10
   'chart-series-8': CIVIDIS_T90,      // t=0.90
 
+  // ── Bonus (assistances) — ocre Cividis : meilleur compromis distinct du set
+  //     joueurs {navy, jaune, gris, bleu} et non-vermillon (≠ morts). Ramp
+  //     séquentielle bleu→jaune : pas de pourpre possible (limite CVD assumée).
+  'bonus': CIVIDIS_T75, // #B6A855 (ocre)
+
   // ── Badges narratifs ────────────────────────────────────────────────────────
   // Texte calculé pour contraste WCAG AA (test automatique Phase C)
   'narrative-dominant':              CIVIDIS_LIGHTEST, // jaune clair

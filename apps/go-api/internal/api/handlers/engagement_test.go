@@ -12,6 +12,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -166,6 +167,34 @@ func TestEngagementHandler_GetMatchEngagement_PvENotSupported(t *testing.T) {
 	newEngagementRouter(factory).ServeHTTP(w, req)
 	if w.Code != http.StatusUnprocessableEntity {
 		t.Errorf("expected 422 (pve_not_supported), got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+// Match trop court (< 3 min) -> ErrMatchTooShort -> ErrEngagementInsufficient :
+// doit renvoyer 422 engagement_insufficient (et NON 500/migration), pour que le
+// front affiche un message neutre plutot que "migration en cours".
+func TestEngagementHandler_GetMatchEngagement_Insufficient(t *testing.T) {
+	repo := &engagementMockRepo{
+		matchCtx: &port.MatchEngagementContext{
+			MatchID:      "short",
+			StartTimeMS:  0,
+			EndTimeMS:    60_000, // 1 min < MinMatchDurationMS (3 min)
+			NTeam:        4,
+			NHumansLobby: 8,
+			IsTeamMode:   true,
+		},
+	}
+	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester"), nil
+	}
+	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/short/engagement", nil)
+	w := httptest.NewRecorder()
+	newEngagementRouter(factory).ServeHTTP(w, req)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422 (engagement_insufficient), got %d: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "engagement_insufficient") {
+		t.Errorf("expected body code engagement_insufficient, got: %s", w.Body.String())
 	}
 }
 

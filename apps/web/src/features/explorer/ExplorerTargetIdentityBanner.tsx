@@ -86,27 +86,30 @@ export function ExplorerTargetIdentityBanner({
     >
       <div
         data-testid="explorer-target-banner-image"
-        className="relative overflow-hidden rounded-2xl border border-border bg-card bg-cover bg-center shadow-sm"
+        className="overflow-hidden rounded-2xl border border-border bg-card bg-cover bg-center shadow-sm"
         style={bannerUrl ? { backgroundImage: `url('${bannerUrl}')` } : undefined}
       >
-        {bannerUrl && (
-          <div
-            className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/30 via-background/10 to-background/50"
-            aria-hidden="true"
-          />
-        )}
+        {/* Wrapper hero interne (parité HomeSpartanIdentityBanner) : fournit un
+            contexte de clip RECTANGULAIRE pour les enfants absolus (gradient +
+            adornment), tandis que le background-image vit sur l'outer div ARRONDI.
+            Sans ce wrapper, les couches absolues étaient clippées par les coins
+            arrondis de l'outer → liseré/trou à gauche sur certaines nameplates
+            (régression récurrente du fork dégradé du banner Home). */}
+        <div className="relative overflow-hidden">
+          {bannerUrl && (
+            <div
+              className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/30 via-background/10 to-background/50"
+              aria-hidden="true"
+            />
+          )}
 
-        <div
-          className={`relative flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center ${
-            careerAdornmentUrl ? 'pr-24 sm:pr-28' : ''
-          }`}
-        >
           {/* Adornment carrière (parité Home) : couche décorative à droite,
-              derrière l'identité (z-[1] vs z-[2]), bornée à la zone hero pour ne
-              pas chevaucher la barre XP. Le drop-shadow rgba(...) est une couleur
-              structurelle (tolérée, règle 20 CLAUDE.md) — recopié du banner Home. */}
+              derrière l'identité (z-[1] vs z-[2]), bornée à la zone hero (sibling du
+              shell dans le wrapper interne) pour ne pas chevaucher la barre XP. Le
+              drop-shadow rgba(...) est une couleur structurelle (tolérée, règle 20
+              CLAUDE.md) — recopié du banner Home. */}
           {careerAdornmentUrl && (
-            <div className="pointer-events-none absolute bottom-0 right-2 top-0 z-[1] flex items-start">
+            <div className="pointer-events-none absolute right-2 top-0 z-[1] flex h-full items-start">
               <img
                 data-testid="explorer-target-adornment-image"
                 src={careerAdornmentUrl}
@@ -118,48 +121,55 @@ export function ExplorerTargetIdentityBanner({
               />
             </div>
           )}
-          {/* Emblem */}
-          <div className="relative z-[2] flex-shrink-0">
-            {emblemUrl ? (
-              <img
-                data-testid="explorer-target-emblem"
-                src={emblemUrl}
-                alt=""
-                aria-hidden="true"
-                className="h-16 w-16 rounded-full border-2 border-border bg-background object-cover sm:h-20 sm:w-20"
-                loading="lazy"
-                decoding="async"
-              />
-            ) : (
-              <div
-                className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-border bg-background text-2xl font-bold sm:h-20 sm:w-20 sm:text-3xl"
-                aria-hidden="true"
-              >
-                {monogram}
+
+          <div
+            className={`relative z-[2] flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center ${
+              careerAdornmentUrl ? 'pr-24 sm:pr-28' : ''
+            } lg:min-h-[9rem]`}
+          >
+            {/* Emblem */}
+            <div className="relative z-[2] flex-shrink-0">
+              {emblemUrl ? (
+                <img
+                  data-testid="explorer-target-emblem"
+                  src={emblemUrl}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-16 w-16 rounded-full border-2 border-border bg-background object-cover sm:h-20 sm:w-20"
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : (
+                <div
+                  className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-border bg-background text-2xl font-bold sm:h-20 sm:w-20 sm:text-3xl"
+                  aria-hidden="true"
+                >
+                  {monogram}
+                </div>
+              )}
+            </div>
+
+            {/* Identité */}
+            <div className="relative z-[2] flex min-w-0 flex-1 flex-col gap-1">
+              <h2 className="truncate text-2xl font-bold text-foreground sm:text-3xl">
+                {gamertag}
+              </h2>
+              {spartanID && (
+                <p className="font-mono text-sm italic text-muted-foreground sm:text-base">
+                  {spartanID}
+                </p>
+              )}
+            </div>
+
+            {/* Grade carrière dans un bloc semi-transparent (parité Home). */}
+            {careerRank?.rank_title && (
+              <div className="relative z-[2] shrink-0 self-start rounded-xl bg-background/40 px-3 py-2 text-right backdrop-blur-sm">
+                <p className="text-sm font-semibold text-foreground sm:text-base">
+                  {careerRank.rank_title}
+                </p>
               </div>
             )}
           </div>
-
-          {/* Identité */}
-          <div className="relative z-[2] flex min-w-0 flex-1 flex-col gap-1">
-            <h2 className="truncate text-2xl font-bold text-foreground sm:text-3xl">
-              {gamertag}
-            </h2>
-            {spartanID && (
-              <p className="font-mono text-sm italic text-muted-foreground sm:text-base">
-                {spartanID}
-              </p>
-            )}
-          </div>
-
-          {/* Grade carrière dans un bloc semi-transparent (parité Home). */}
-          {careerRank?.rank_title && (
-            <div className="relative z-[2] shrink-0 self-start rounded-xl bg-background/40 px-3 py-2 text-right backdrop-blur-sm">
-              <p className="text-sm font-semibold text-foreground sm:text-base">
-                {careerRank.rank_title}
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Progression rang carrière — calquée sur le Home (HomeSpartanIdentityBanner) :

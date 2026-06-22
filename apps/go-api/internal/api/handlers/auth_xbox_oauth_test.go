@@ -18,8 +18,10 @@ import (
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/api/middleware"
+	"levelup/go-api/internal/domain"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/session"
+	"levelup/go-api/internal/platform/userstore"
 )
 
 func newXboxOAuthRouter(t *testing.T, demoMode bool, redirectURI string) (*chi.Mux, *session.Store) {
@@ -185,6 +187,78 @@ func TestXboxOAuth_Callback_StateMatches_AttemptsExchange(t *testing.T) {
 		// Tolérant : si Microsoft retournait un 400 par exemple, c'est aussi OK.
 		t.Logf("Callback status = %d (attendu 500 code_exchange_failed) : %s", cbW.Code, cbW.Body.String())
 	}
+}
+
+// loadSessionFromResponse charge la session pointée par le cookie de la réponse.
+func loadSessionFromResponse(t *testing.T, sessStore *session.Store, w *httptest.ResponseRecorder) *domain.SessionData {
+	t.Helper()
+	for _, c := range w.Result().Cookies() {
+		if c.Name == session.CookieName {
+			id := sessStore.UnsignCookie(c.Value)
+			if id == "" {
+				t.Fatalf("cookie session invalide: %s", c.Value)
+			}
+			return sessStore.Load(id)
+		}
+	}
+	t.Fatal("aucun cookie de session dans la réponse")
+	return nil
+}
+
+// Flow "rejoindre un groupe" : ?invite=CODE valide → stocké en PendingInviteCode.
+func TestXboxOAuth_LoginRedirect_ValidInviteStored(t *testing.T) {
+	dir := t.TempDir()
+	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
+	inv, _ := invites.Generate("Owner", 7, "grp_test")
+
+	h := handlers.NewXboxOAuthHandler(sessStore, &stubTokenProvider{}, false, "http://localhost:8000/cb").
+		WithInviteStore(invites)
+	r := chi.NewRouter()
+	r.Use(middleware.WithSession(sessStore, middleware.SecureCookiePolicy{}))
+	r.Get("/auth/xbox/login", h.LoginRedirect)
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/xbox/login?invite="+inv.Code, nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusFound {
+		t.Fatalf("status = %d, want 302", w.Code)
+	}
+	sess := loadSessionFromResponse(t, sessStore, w)
+	if sess == nil || sess.PendingInviteCode != inv.Code {
+		t.Fatalf("PendingInviteCode = %q, want %q", sessPendingCode(sess), inv.Code)
+	}
+}
+
+// ?invite=CODE invalide → ignoré (redirection normale, pas de PendingInviteCode).
+func TestXboxOAuth_LoginRedirect_InvalidInviteIgnored(t *testing.T) {
+	dir := t.TempDir()
+	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
+	invites := userstore.NewInviteStore(filepath.Join(dir, "invites.json"))
+
+	h := handlers.NewXboxOAuthHandler(sessStore, &stubTokenProvider{}, false, "http://localhost:8000/cb").
+		WithInviteStore(invites)
+	r := chi.NewRouter()
+	r.Use(middleware.WithSession(sessStore, middleware.SecureCookiePolicy{}))
+	r.Get("/auth/xbox/login", h.LoginRedirect)
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/xbox/login?invite=NOPE", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusFound {
+		t.Fatalf("status = %d, want 302 (invite invalide ignorée)", w.Code)
+	}
+	sess := loadSessionFromResponse(t, sessStore, w)
+	if sess != nil && sess.PendingInviteCode != "" {
+		t.Fatalf("PendingInviteCode = %q, want vide", sess.PendingInviteCode)
+	}
+}
+
+func sessPendingCode(s *domain.SessionData) string {
+	if s == nil {
+		return "<nil session>"
+	}
+	return s.PendingInviteCode
 }
 
 // var unused — supprime warning si ExchangeAuthorizationCode pas appelé directement.

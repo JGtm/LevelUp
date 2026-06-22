@@ -126,7 +126,7 @@ func (r *SquadRepo) loadMatchPerformanceScores(ctx context.Context, matchIDs []s
 	}
 	query := fmt.Sprintf(`
 		SELECT match_id, performance_score
-		FROM player_match_enrichment
+		FROM player_match_enrichment_latest
 		WHERE match_id IN (%s) AND performance_score IS NOT NULL`,
 		Placeholders(len(matchIDs)))
 	rows, err := r.pdb.Player.Query(ctx, query, ToAnySlice(matchIDs)...)

@@ -87,6 +87,7 @@ const WHITELIST_PATTERNS = [
   /\/lib\/medalDifficulty\.ts$/,            // dict difficulty médailles Halo (Normal/Heroic/Legendary/Mythic — valeurs API)
   /\/lib\/skillTiers\.ts$/,                 // constantes paliers skill CSR/LUSR (Bronze/Silver/Gold… — valeurs API)
   /\/lib\/formatters\/rating\.ts$/,         // normalisation du libellé de méthode de note (LUSR/CSR — valeurs API, identiques FR/EN, non traduisibles)
+  /\/features\/_shared\/combatProfileLabels\.ts$/, // dict descripteurs profil de combat (5 bandes canoniques, pas des FieldKey)
   /\/lib\/i18n\/manifests\//,                // sources TOML i18n (whitelistees a la racine du linter mais le walker filtre .ts uniquement)
   /\/lib\/i18n\/generated\//,                // modules generes par scripts/build_i18n_manifests.mjs
   /\/lib\/i18n\/format\.tsx?$/,              // wrapper runtime ICU MessageFormat (fallback strings techniques uniquement)

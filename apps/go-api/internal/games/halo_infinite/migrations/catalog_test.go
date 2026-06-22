@@ -83,25 +83,35 @@ func TestRunForDB_Catalog_TitleSlugIsolation(t *testing.T) {
 func TestRunForDB_Catalog_QueueAndPrefixCandidates(t *testing.T) {
 	db := openMetadataDB(t)
 
-	// catalog_fetch_queue — INSERT OR IGNORE supporté.
-	if _, err := db.Exec(
-		`INSERT OR IGNORE INTO catalog_fetch_queue (title_slug, asset_type, asset_id) VALUES (?, ?, ?)`,
-		"halo_infinite", "playlist", "uuid-1",
-	); err != nil {
-		t.Fatalf("INSERT OR IGNORE queue: %v", err)
+	// catalog_fetch_queue — dédup via SELECT-then-INSERT (NOT EXISTS). La table n'a
+	// plus de PK depuis rebuild_catalog_fetch_queue_drop_art_indexes (surface ART du
+	// drain) → INSERT OR IGNORE échoue en dur (« no UNIQUE/PRIMARY KEY constraints »).
+	// C'est le pattern réel des writers (catalog_queue.go / enqueueCatalogChild /
+	// registry_catalog_expand). On le teste à l'identique.
+	enqueue := func() error {
+		_, err := db.Exec(
+			`INSERT INTO catalog_fetch_queue (title_slug, asset_type, asset_id)
+			 SELECT ?, ?, ?
+			 WHERE NOT EXISTS (
+			   SELECT 1 FROM catalog_fetch_queue WHERE title_slug = ? AND asset_type = ? AND asset_id = ?
+			 )`,
+			"halo_infinite", "playlist", "uuid-1",
+			"halo_infinite", "playlist", "uuid-1",
+		)
+		return err
 	}
-	if _, err := db.Exec(
-		`INSERT OR IGNORE INTO catalog_fetch_queue (title_slug, asset_type, asset_id) VALUES (?, ?, ?)`,
-		"halo_infinite", "playlist", "uuid-1", // doublon — doit être ignoré
-	); err != nil {
-		t.Fatalf("INSERT OR IGNORE queue (dup): %v", err)
+	if err := enqueue(); err != nil {
+		t.Fatalf("enqueue queue: %v", err)
+	}
+	if err := enqueue(); err != nil { // doublon — NOT EXISTS doit le sauter
+		t.Fatalf("enqueue queue (dup): %v", err)
 	}
 	var n int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM catalog_fetch_queue`).Scan(&n); err != nil {
 		t.Fatalf("count queue: %v", err)
 	}
 	if n != 1 {
-		t.Errorf("INSERT OR IGNORE doublon : %d lignes attendues 1", n)
+		t.Errorf("dédup NOT EXISTS : %d lignes attendues 1", n)
 	}
 
 	// unknown_prefix_candidates — pair_examples VARCHAR[] supporté.

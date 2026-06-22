@@ -46,7 +46,7 @@ func TestRequestSpartanTokenWith_GoldenAndRouting(t *testing.T) {
 		rt := &recordingRT{resp: `{"SpartanToken":"sp"}`}
 		client := &http.Client{Transport: rt}
 		d := title.DefaultHaloAuthDescriptor()
-		if _, err := requestSpartanTokenWith(ctx, client, "XSTS_TOK", d.SpartanAudience, d.SpartanTokenURL); err != nil {
+		if _, _, err := requestSpartanTokenWith(ctx, client, "XSTS_TOK", d.SpartanAudience, d.SpartanTokenURL); err != nil {
 			t.Fatalf("requestSpartanTokenWith: %v", err)
 		}
 		if got := rt.req.URL.String(); got != "https://settings.svc.halowaypoint.com/spartan-token" {
@@ -65,7 +65,7 @@ func TestRequestSpartanTokenWith_GoldenAndRouting(t *testing.T) {
 	t.Run("descripteur synthétique route", func(t *testing.T) {
 		rt := &recordingRT{resp: `{"SpartanToken":"sp"}`}
 		client := &http.Client{Transport: rt}
-		if _, err := requestSpartanTokenWith(ctx, client, "X", "urn:example:services", "https://settings.example.test/spartan-token"); err != nil {
+		if _, _, err := requestSpartanTokenWith(ctx, client, "X", "urn:example:services", "https://settings.example.test/spartan-token"); err != nil {
 			t.Fatalf("requestSpartanTokenWith: %v", err)
 		}
 		if got := rt.req.URL.String(); got != "https://settings.example.test/spartan-token" {
