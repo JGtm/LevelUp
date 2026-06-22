@@ -11,7 +11,9 @@
 
 **Résultats (vérif finale)** : `go build ./...` + `go vet ./...` **clean sur tout le module** ; tests verts sur halo, auth, duckdb, service, migration, watcher, api/handlers/middleware (suite complète `go test ./...` en cours). B-front (indicateur « données en cache ») = **couvert par l'existant** (`DataFreshnessIndicator`, conçu pour ce cas, déjà wiré sur Défis) + backend — aucun fichier frontend touché, forme API inchangée (`Items`/`FromCache` déjà présents). Le symptôme « indisponible » disparaît par le backend seul.
 
-**Prochaine étape** : confirmer la suite `go test ./...` verte, puis commit (après autorisation user). Follow-ups documentés : (1) filet 401 sur le client sync (career live Explorer/appearance) ; (2) wording explicite « données en cache » + hint toggle Explorer (finition). Réf : [[reference_killfeed_deadstate_fields]] (non lié) ; voir plan `c-est-bizarre-j-ai-tout-agile-popcorn.md`. Mémoire : [[reference_live_fetch_expiry_aware_token_cache]].
+**Résultats — suite finale + follow-ups (commités)** : `go test ./...` **entièrement vert** ; 7 commits (A1, A2, A3, B-back, docs). **Follow-ups TRAITÉS** : (1) filet 401 étendu au **client sync** — `halo.RetryWithFreshTokens` exporté (predicate pluggable) + `sync.IsAuthError` ; enrobé sur career identité/customisation (le 403 appearance du handoff), CSR Explorer (`GetPlayerCSRs`), recent-matches (décorateur registry) ; `newExplorerSeasonCSRProvider` non enrobé (avale déjà ses erreurs) — commit `feat(auth): étend le filet 401 au client sync`. (2) wording honnête **« Données en cache (live indisponible) »** sur les Défis (clé i18n `home.freshness.from_cache` FR+EN, manifest régénéré, `HomePage.tsx`) — toggle Explorer débloqué par A2 — commit `feat(home): wording honnête`. Vérif front : typecheck OK, eslint clean (HomePage.tsx), 34/34 vitest home verts.
+
+**Prochaine étape** : push + déploiement (migration `add_challenge_snapshots_render_columns` au boot, idempotente non destructive). Mémoire : [[reference_live_fetch_expiry_aware_token_cache]].
 
 ---
 
