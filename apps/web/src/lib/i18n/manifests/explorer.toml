@@ -149,7 +149,7 @@ fr = "Type d'expérience"
 en = "Experience type"
 
 [explorer.filters.playlist]
-fr = "Playlist"
+fr = "Sélection"
 en = "Playlist"
 
 [explorer.filters.mode]

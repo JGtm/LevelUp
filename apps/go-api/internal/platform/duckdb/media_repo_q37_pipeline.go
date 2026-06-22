@@ -179,7 +179,7 @@ const (
 LEFT JOIN media_match_associations mma ON mf.file_path = mma.media_path`
 
 	mediaCandidatesSharedSocialFromClause = `FROM media_files mf
-LEFT JOIN media_match_associations mma ON mf.id = mma.media_file_id`
+LEFT JOIN media_match_associations_latest mma ON mf.id = mma.media_file_id`
 )
 
 // buildMediaLocalWhere construit la clause WHERE avec UNIQUEMENT les filtres

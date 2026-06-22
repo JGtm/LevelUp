@@ -26,8 +26,13 @@ func migByName(t *testing.T, name string) *migration.Migration {
 	return nil
 }
 
-func TestRepairPMEPrimaryKey_OnLegacyDB(t *testing.T) {
+// TestRepairPME_ConvertsLegacyToAppendOnly : append-only #23046 — sur une table
+// legacy SANS colonne id, la migration repair convertit en append-only (id PK + stage
+// + written_at + vue _latest) et PRÉSERVE les données. Plus de PK(match_id) : la
+// migration ne pose JAMAIS de PK match_id (qui rouvrirait le vecteur ART).
+func TestRepairPME_ConvertsLegacyToAppendOnly(t *testing.T) {
 	db := openEngMemDB(t)
+	// Legacy : pas de schéma append-only (id absent) + une colonne additive.
 	if _, err := db.Exec(`CREATE TABLE player_match_enrichment (
 		match_id VARCHAR, performance_score DOUBLE, session_id VARCHAR,
 		engagement_score DOUBLE)`); err != nil {
@@ -38,36 +43,31 @@ func TestRepairPMEPrimaryKey_OnLegacyDB(t *testing.T) {
 		VALUES ('m1', 42.0, 7.5), ('m2', 13.0, 1.0)`); err != nil {
 		t.Fatalf("insert seed: %v", err)
 	}
-
-	if hasPK, _ := migration.HasPrimaryKey(db, "player_match_enrichment"); hasPK {
-		t.Fatal("seed invalide : PME ne devrait pas avoir de PK")
-	}
-	if _, err := db.Exec(`INSERT OR IGNORE INTO player_match_enrichment (match_id) VALUES ('m1')`); err == nil {
-		t.Fatal("INSERT OR IGNORE devrait échouer AVANT la migration (PK manquante)")
+	if hasID, _ := migration.ColumnExists(db, "player_match_enrichment", "id"); hasID {
+		t.Fatal("seed invalide : PME legacy ne devrait pas avoir de colonne id")
 	}
 
 	if err := migByName(t, "repair_player_match_enrichment_primary_key").ApplySchema(db); err != nil {
 		t.Fatalf("ApplySchema repair PME: %v", err)
 	}
 
-	if hasPK, err := migration.HasPrimaryKey(db, "player_match_enrichment"); err != nil || !hasPK {
-		t.Fatalf("PK absente après migration (hasPK=%v err=%v)", hasPK, err)
+	// Append-only : id présent + vue _latest queryable.
+	if hasID, _ := migration.ColumnExists(db, "player_match_enrichment", "id"); !hasID {
+		t.Fatal("colonne id absente après migration (append-only attendu)")
 	}
+	// Données préservées (socle stage='legacy', lues via la vue merge).
 	var score, eng float64
 	if err := db.QueryRow(`SELECT performance_score, engagement_score
-		FROM player_match_enrichment WHERE match_id='m1'`).Scan(&score, &eng); err != nil {
+		FROM player_match_enrichment_latest WHERE match_id='m1'`).Scan(&score, &eng); err != nil {
 		t.Fatalf("donnée perdue après migration: %v", err)
 	}
 	if score != 42.0 || eng != 7.5 {
 		t.Errorf("donnée altérée: score=%v eng=%v (want 42 / 7.5)", score, eng)
 	}
-	if _, err := db.Exec(`INSERT OR IGNORE INTO player_match_enrichment (match_id) VALUES ('m1')`); err != nil {
-		t.Fatalf("INSERT OR IGNORE doit fonctionner APRÈS la migration: %v", err)
-	}
-	var n int
-	_ = db.QueryRow(`SELECT COUNT(*) FROM player_match_enrichment`).Scan(&n)
-	if n != 2 {
-		t.Errorf("INSERT OR IGNORE a dupliqué m1 (count=%d, want 2)", n)
+	// PLUS de PK(match_id) : un INSERT du même match_id (stage distinct) doit réussir.
+	if _, err := db.Exec(
+		`INSERT INTO player_match_enrichment (match_id, dominance_flag, stage) VALUES ('m1', 1, 'dominance')`); err != nil {
+		t.Errorf("append-only : INSERT match_id dupliqué (stage distinct) devrait réussir: %v", err)
 	}
 }
 

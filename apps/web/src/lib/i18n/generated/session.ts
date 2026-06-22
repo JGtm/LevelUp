@@ -206,7 +206,7 @@ export const sessionManifest = {
   "session.filters.experience_ranked": { fr: "Classé", en: "Ranked" },
   "session.filters.experience_unranked": { fr: "Non classé", en: "Unranked" },
   "session.filters.modes": { fr: "Modes", en: "Modes" },
-  "session.filters.playlists": { fr: "Playlists", en: "Playlists" },
+  "session.filters.playlists": { fr: "Sélections", en: "Playlists" },
   "session.filters.reset": { fr: "Réinitialiser", en: "Reset" },
 } as const
 

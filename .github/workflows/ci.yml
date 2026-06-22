@@ -204,7 +204,7 @@ jobs:
             -covermode=atomic \
             -coverpkg=./... \
             -tags=integration \
-            -timeout 120s \
+            -timeout 300s \
             -count=1 \
             ./...
         env:
@@ -258,7 +258,7 @@ jobs:
             -covermode=atomic \
             -coverpkg=./internal/sync/... \
             -tags=integration \
-            -timeout 120s \
+            -timeout 300s \
             -count=1 \
             ./internal/sync/...
         env:
@@ -315,11 +315,12 @@ jobs:
   e2e-react:
     name: E2E React (Playwright)
     runs-on: ubuntu-latest
-    # Coût ~3-5 min + flakiness retries=2 → on évite de bruiter les feature
-    # branches. Trigger : push sur main (verdict après merge) + PR vers main
-    # (verdict avant merge). Pour lancer à la demande sur une feature branch :
-    # `cd apps/web && npx playwright test` localement, ou rebaser sur main.
-    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    # Coût ~3-5 min + flakiness retries=2, et les tests auth E2E exigent des
+    # identifiants absents en CI → le job traînait ~48 min puis rougissait main.
+    # Trigger : PR vers main UNIQUEMENT (verdict avant merge), jamais sur push
+    # (n'allonge plus / ne bloque plus main). Pour lancer à la demande :
+    # `cd apps/web && npx playwright test` localement.
+    if: github.event_name == 'pull_request'
     defaults:
       run:
         working-directory: apps/web

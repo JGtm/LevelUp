@@ -38,6 +38,7 @@ func (h *LabHandler) Mount(r chi.Router) {
 	huma.Get(api, "/lab/resources", h.handleGetResources)
 	huma.Get(api, "/lab/contracts", h.handleGetContracts)
 	huma.Get(api, "/lab/diagnostics", h.handleGetDiagnostics)
+	huma.Get(api, "/lab/waypoint", h.handleGetWaypoint)
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -62,6 +63,18 @@ type labContractsOutput struct {
 }
 type labDiagnosticsOutput struct {
 	Body *domain.LabDiagnosticsResponse
+}
+
+// labWaypointInput : query params de l'exploration live Discovery UGC (Lab).
+type labWaypointInput struct {
+	Segment   string `query:"segment"`
+	AssetID   string `query:"asset_id"`
+	VersionID string `query:"version_id"`
+	Lang      string `query:"lang"`
+}
+
+type labWaypointOutput struct {
+	Body *domain.LabWaypointResponse
 }
 
 // ─── Endpoints ───────────────────────────────────────────────────────────────
@@ -97,6 +110,22 @@ func (h *LabHandler) handleGetDiagnostics(ctx context.Context, _ *struct{}) (*la
 	return &labDiagnosticsOutput{Body: data}, nil
 }
 
+// handleGetWaypoint exécute une exploration live de l'API Discovery UGC (Lab).
+// GET /lab/waypoint?segment=map&asset_id=...&version_id=...&lang=fr-FR
+func (h *LabHandler) handleGetWaypoint(ctx context.Context, in *labWaypointInput) (*labWaypointOutput, error) {
+	query := domain.LabWaypointQuery{
+		Segment:   in.Segment,
+		AssetID:   in.AssetID,
+		VersionID: in.VersionID,
+		Lang:      in.Lang,
+	}
+	data, err := h.svc.ExploreWaypoint(ctx, query)
+	if err != nil {
+		return nil, labError(err)
+	}
+	return &labWaypointOutput{Body: data}, nil
+}
+
 // parseLabResourcesQuery extrait les query params en domain.LabResourcesQuery.
 // limit / medal_id non numériques → 400 (invalid_limit / invalid_medal_id),
 // contrat identique à l'ancien parseLabResourcesQuery.
@@ -129,6 +158,12 @@ func parseLabResourcesQuery(in *labResourcesInput) (domain.LabResourcesQuery, er
 func labError(err error) error {
 	if errors.Is(err, service.ErrLabForbidden) {
 		return humacore.NewError(http.StatusForbidden, "instance_management_disabled", "Le Lab interne n'est pas autorisé sur cette instance.")
+	}
+	if errors.Is(err, service.ErrLabWaypointInvalid) {
+		return humacore.NewError(http.StatusBadRequest, "invalid_waypoint_query", "Paramètres requis : segment (map|playlist|pair|game_variant), asset_id, version_id.")
+	}
+	if errors.Is(err, service.ErrLabWaypointUnavailable) {
+		return humacore.NewError(http.StatusServiceUnavailable, "waypoint_explorer_unavailable", "L'explorateur d'API n'est pas disponible (aucune source de token Spartan).")
 	}
 	return humacore.NewError(http.StatusInternalServerError, "lab_error", err.Error())
 }

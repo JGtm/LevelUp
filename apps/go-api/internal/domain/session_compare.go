@@ -58,8 +58,8 @@ type SessionCompareEntry struct {
 	// nul. Affichés à côté du rendement/résistance (parité bande Synthesis).
 	DmgPerKill  *float64 `json:"dmg_per_kill,omitempty"`
 	DmgPerDeath *float64 `json:"dmg_per_death,omitempty"`
-	// AvgResidualBrut : résidu d'engagement moyen (player - attendu) — Phase 4.
-	AvgResidualBrut *float64 `json:"avg_residual_brut,omitempty"`
+	// AvgPaceRatio : engagement absolu moyen (pace_joueur/pace_lobby ; 1.0 = rythme lobby).
+	AvgPaceRatio *float64 `json:"avg_pace_ratio,omitempty"`
 	// MatchSeries : données par match pour les charts de progression (K/D, cumul, précision).
 	MatchSeries []SessionMatchPoint `json:"match_series"`
 	// Skill rating (LUSR ou CSR) — dernier match de la session.

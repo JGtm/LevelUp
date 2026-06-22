@@ -40,8 +40,10 @@ import (
 	// expvar "levelup". Le handler /debug/vars (stdlib) découvre ces compteurs
 	// automatiquement via http.DefaultServeMux (P8.3, ADR 0009).
 	_ "levelup/go-api/internal/observability"
+	"levelup/go-api/internal/observability/logging"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/platform/halo"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
 	lab_platform "levelup/go-api/internal/platform/lab"
@@ -74,31 +76,30 @@ func playerOwnershipXUIDResolver(cfg *config.AppConfig) middleware.PlayerXUIDRes
 	}
 }
 
-// familyXUIDResolver résout le groupe famille (FriendGamertags des settings) en
-// ensemble de xuids pour le titre courant. Alimente RequirePlayerOwnership pour
-// autoriser le switch de BDD entre membres de la famille/amis (#21 Phase A).
-// Retourne nil (→ accès strict d'origine) si settings ou profils indisponibles,
-// ou si aucun ami n'est configuré.
+// familyXUIDResolver résout l'ensemble des xuids co-membres de groupe DU USER
+// courant (groups.json) pour autoriser le switch de BDD entre membres d'un même
+// groupe/famille (ADR 0024). Lit la session depuis le contexte → user → groupes.
+// Retourne nil (→ accès strict propriétaire-only) si pas de session, user non lié,
+// ou aucun groupe partagé. Title-agnostic : les groupes sont indexés par xuid.
 //
-// PMT-4 — DÉCISION : FriendGamertags est cross_title_global, JAMAIS résolu par
-// overlay titre (Load(), pas ResolveForTitle). Les amis sont des PERSONNES
-// transverses aux titres, et cette liste se résout en grant d'accès cross-player
-// (ownership famille) : un overlay per-titre serait un footgun authz (cercle de
-// confiance qui rétrécirait/élargirait silencieusement par jeu). Même logique
-// pour tous les sites is_with_friends (loaders engine V1/V2/auto_sync, CLI
-// recompute-friends). Seuls les settings UX (sessions/coach/progression/outcomes)
-// passent par l'overlay. (Décision PMT-4, 2026-06-17.)
-func familyXUIDResolver(cfg *config.AppConfig, settingsStore *settings_platform.Store) middleware.FamilyXUIDResolver {
+// PMT-4 — DÉCISION : ce cercle de confiance est cross_title_global (les groupes
+// sont des PERSONNES transverses aux titres), JAMAIS résolu par overlay titre. Le
+// grant d'accès cross-player (ownership famille) ne doit pas rétrécir/élargir
+// silencieusement par jeu : un overlay per-titre serait un footgun authz. Même
+// logique pour tous les sites is_with_friends (loaders engine V1/V2/auto_sync,
+// CLI recompute-friends). Seuls les settings UX (sessions/coach/progression/
+// outcomes) passent par l'overlay. (Décision PMT-4, 2026-06-17.)
+func familyXUIDResolver(groupStore *groupstore.GroupStore, users authz.UserLookup) middleware.FamilyXUIDResolver {
 	return func(ctx context.Context) map[string]bool {
-		appSettings, err := settingsStore.Load()
-		if err != nil || appSettings == nil {
+		user := authz.CurrentUser(middleware.GetSession(ctx), users)
+		if user == nil || user.XUID == "" {
 			return nil
 		}
-		players, err := cfg.LoadPlayers(ctxkeys.TitleSlug(ctx))
+		co, err := groupStore.CoMemberXUIDs(user.XUID)
 		if err != nil {
 			return nil
 		}
-		return authz.ResolveFamilyXUIDs(appSettings.FriendGamertags, players)
+		return co
 	}
 }
 
@@ -227,6 +228,7 @@ func NewRouter(
 	tokenProvider auth_platform.TokenProvider,
 	autoSyncScheduler *scheduler.AutoSyncScheduler,
 	backupScheduler *duckdbbackup.Scheduler,
+	groupStore *groupstore.GroupStore,
 ) (http.Handler, *ServiceRegistry) {
 	if tokenProvider == nil {
 		tokenProvider = auth_platform.NewMSALProvider()
@@ -970,9 +972,74 @@ func NewRouter(
 		// L'accès reste gardé au niveau service (requireAccess → can_manage_instance).
 		// Anti-régression : lab_routes_mounted_test.go (chi.Walk sur le vrai routeur).
 		// Contracts = diff OpenAPI Go ↔ FastAPI legacy : MARQUÉ POUR RETRAIT
-		// (PMT-14 volet C). Monté via Mount (resources + contracts + diagnostics).
-		labHandler := handlers.NewLabHandler(service.NewLabService(cfg, lab_platform.NewProvider(cfg)))
-		labHandler.Mount(r)
+		// (PMT-14 volet C). Monté via Mount (resources + contracts + diagnostics
+		// + waypoint, tous Huma).
+		//
+		// Explorateur d'API live (Lab, Stage 1b) : résout un token Spartan via
+		// reg.AnyPlayerTokens (seam canonique) puis FetchAsset sur Discovery UGC.
+		// Réutilise le pattern MapImageURLFetcher (supra). Injecté dans le service
+		// pour le garder découplé de halo/auth + testable. Les erreurs d'appel
+		// (404/auth/token absent) sont portées dans la réponse (ResolvedOK=false),
+		// pas en erreur HTTP — le panneau affiche le détail.
+		waypointExplore := func(ctx context.Context, q domain.LabWaypointQuery) (*domain.LabWaypointResponse, error) {
+			assetType := halo.AssetType(q.Segment)
+			lang := q.Lang
+			if lang == "" {
+				lang = "en-US"
+			}
+			titleSlug := ctxkeys.TitleSlug(ctx)
+			resp := &domain.LabWaypointResponse{
+				Segment:   q.Segment,
+				Endpoint:  halo.AssetTypeToEndpoint[assetType],
+				AssetID:   q.AssetID,
+				VersionID: q.VersionID,
+				Lang:      lang,
+			}
+			start := time.Now()
+			tokens, terr := reg.AnyPlayerTokens(ctx)
+			if terr != nil {
+				resp.Error = "aucun token Spartan disponible : " + terr.Error()
+				resp.LatencyMS = time.Since(start).Milliseconds()
+				slog.WarnContext(ctx, "lab waypoint: token Spartan indisponible",
+					"module", logging.ModuleLab, "segment", q.Segment, "asset_id", q.AssetID,
+					"titleSlug", titleSlug, "err", terr)
+				return resp, nil
+			}
+			asset, ferr := halo.NewHaloProvider().WithTokens(tokens).FetchAsset(
+				ctx, assetType, titleSlug, q.AssetID, q.VersionID, lang)
+			resp.LatencyMS = time.Since(start).Milliseconds()
+			if ferr != nil {
+				resp.Error = ferr.Error()
+				slog.WarnContext(ctx, "lab waypoint: fetch échoué",
+					"module", logging.ModuleLab, "segment", q.Segment, "asset_id", q.AssetID,
+					"version_id", q.VersionID, "titleSlug", titleSlug,
+					"duration_ms", resp.LatencyMS, "err", ferr)
+				return resp, nil
+			}
+			if asset != nil {
+				resp.ResolvedOK = true
+				resp.AssetName = asset.PublicName
+				resp.Description = asset.Description
+				resp.ImageURL = asset.ImageURL
+			}
+			slog.InfoContext(ctx, "lab waypoint: exploration",
+				"module", logging.ModuleLab, "segment", q.Segment, "asset_id", q.AssetID,
+				"version_id", q.VersionID, "titleSlug", titleSlug,
+				"resolved", resp.ResolvedOK, "duration_ms", resp.LatencyMS)
+			return resp, nil
+		}
+		labHandler := handlers.NewLabHandler(
+			service.NewLabService(cfg, lab_platform.NewProvider(cfg)).WithWaypointExplorer(waypointExplore))
+		// Durcissement (2026-06-18) : le Lab (désormais sous l'Admin) est
+		// un outil opérateur → gardé RequireAuth+RequireAdmin comme /admin/*. Auparavant
+		// /lab/* n'était filtré qu'au niveau service (can_manage_instance, hardcodé true
+		// au bootstrap → de fait ouvert à tout utilisateur connecté). Le gate service
+		// subsiste comme kill-switch d'instance. Routes montées via Huma (Mount).
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
+			r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+			labHandler.Mount(r)
+		})
 
 		// Sprint 43 : changelog (markdown brut) — MIGRÉ vers Huma (Phase 3b),
 		// enregistré en tête de bloc via registerChangelogHuma.
@@ -1023,7 +1090,9 @@ func NewRouter(
 			xboxLinkStrategy = service.NewXboxSSOLinkStrategy(users).
 				WithTokenStore(multiUserTokens).
 				WithDaemonGetter(daemonGetter).
-				WithInstanceLock(instanceLockedFn)
+				WithInstanceLock(instanceLockedFn).
+				WithInviteStore(invites).
+				WithGroupStore(groupStore)
 			authHandler.WithLinkStrategy(xboxLinkStrategy)
 		} else {
 			authHandler.WithUserStore(users)
@@ -1037,7 +1106,8 @@ func NewRouter(
 		if cfg.AuthMode == "xbox" && cfg.OAuthRedirectURI != "" {
 			xboxOAuthHandler := handlers.NewXboxOAuthHandler(sessionStore, tokenProvider, cfg.DemoMode, cfg.OAuthRedirectURI).
 				WithLinkStrategy(xboxLinkStrategy).
-				WithAuthStore(authStore)
+				WithAuthStore(authStore).
+				WithInviteStore(invites)
 			// Lie les routes racine /auth/xbox/* déclarées avant ce groupe (cf. supra) :
 			// le redirect_uri Azure pointe sur le chemin racine, pas /api/v1.
 			xboxOAuthRoot = xboxOAuthHandler
@@ -1052,6 +1122,22 @@ func NewRouter(
 			WithAuthMode(cfg.AuthMode).
 			WithInstanceLock(instanceLockedFn)
 		userAuthHandler.Mount(r) // login/register/logout/password migrés vers Huma (Phase 3b)
+
+		// Groupes/familles : gestion end-user (tout user authentifié + lié à une
+		// identité Halo). Inviter à un groupe = générer un code "rejoindre le groupe"
+		// (consommé via le login Xbox SSO, cf. XboxSSOLinkStrategy). RequireAuth seul
+		// (pas RequireAdmin) : c'est de la fonction utilisateur, pas de l'ops.
+		groupsHandler := handlers.NewGroupsHandler(groupStore, invites, users)
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
+			r.Get("/groups", groupsHandler.ListMyGroups)
+			r.Post("/groups", groupsHandler.CreateGroup)
+			r.Patch("/groups/{id}", groupsHandler.RenameGroup)
+			r.Delete("/groups/{id}", groupsHandler.DeleteGroup)
+			r.Post("/groups/{id}/invites", groupsHandler.GenerateInvite)
+			r.Delete("/groups/{id}/members/me", groupsHandler.LeaveGroup)
+			r.Delete("/groups/{id}/members/{xuid}", groupsHandler.RemoveMember)
+		})
 
 		// Admin : gestion utilisateurs + invitations (protégé par RequireAuth + RequireAdmin).
 		adminHandler := handlers.NewAdminHandler(users, invites)
@@ -1190,13 +1276,20 @@ func NewRouter(
 		if !cfg.DemoMode {
 			osImportSvc := service.NewOpenSpartanImportService(cfg.SharedProvider, config.SharedDBPath(cfg, ""))
 			osPostImportSvc := service.NewOpenSpartanPostImportService(cfg)
-			osImportH := handlers.NewOpenSpartanImportHandler(handlers.OpenSpartanImportConfig{
+			osCfg := handlers.OpenSpartanImportConfig{
 				ImportService:     osImportSvc,
 				PostImportService: osPostImportSvc,
 				JobStore:          jobStore,
 				StashDir:          filepath.Join(cfg.RepoRoot, "data", "players"),
 				DemoMode:          cfg.DemoMode,
-			})
+			}
+			// Trigger de convergence events immédiat post-import (réutilise le pool
+			// d'auth du scheduler). Conditionnel : éviter un typed-nil dans l'interface
+			// si le scheduler n'est pas câblé. nil → backfill repris au prochain cycle.
+			if autoSyncScheduler != nil {
+				osCfg.Convergence = autoSyncScheduler
+			}
+			osImportH := handlers.NewOpenSpartanImportHandler(osCfg)
 			r.Post("/import/openspartan", osImportH.StartImport)
 		}
 
@@ -1228,7 +1321,7 @@ func NewRouter(
 		// non sur le header (anti-bypass).
 		r.Route("/profiles/{player_slug}/titles/{slug}", func(r chi.Router) {
 			r.Use(middleware.TitleSlugFromPath("slug"))
-			r.Use(middleware.RequirePlayerOwnership(cfg.DemoMode, cfg.AuthMode, playerOwnershipXUIDResolver(cfg), users, familyXUIDResolver(cfg, settingsStore)))
+			r.Use(middleware.RequirePlayerOwnership(cfg.DemoMode, cfg.AuthMode, playerOwnershipXUIDResolver(cfg), users, familyXUIDResolver(groupStore, users)))
 			handlers.NewTitleSyncHandler(profileService).Mount(r)
 		})
 
@@ -1245,7 +1338,7 @@ func NewRouter(
 			// 403 player_forbidden si l'utilisateur courant ne possède pas le slug.
 			// Transparent en mode demo / auth non activée. Toute route player-scoped
 			// DOIT rester montée sous ce groupe pour être protégée.
-			r.Use(middleware.RequirePlayerOwnership(cfg.DemoMode, cfg.AuthMode, playerOwnershipXUIDResolver(cfg), users, familyXUIDResolver(cfg, settingsStore)))
+			r.Use(middleware.RequirePlayerOwnership(cfg.DemoMode, cfg.AuthMode, playerOwnershipXUIDResolver(cfg), users, familyXUIDResolver(groupStore, users)))
 
 			filters := handlers.NewFiltersHandler(reg.Filters)
 			filters.Mount(r)
@@ -1460,7 +1553,7 @@ func NewRouter(
 				// profil possédé par la session. Réutilise les primitives de
 				// RequirePlayerOwnership. Transparent en demo / auth désactivée.
 				squadXUIDResolve := playerOwnershipXUIDResolver(cfg)
-				squadFamilyResolve := familyXUIDResolver(cfg, settingsStore)
+				squadFamilyResolve := familyXUIDResolver(groupStore, users)
 				squadActorGuard := func(ctx context.Context, actorSlug string) bool {
 					if !authz.Enforced(cfg.DemoMode, cfg.AuthMode) {
 						return true

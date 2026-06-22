@@ -12,6 +12,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	titlepkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/migration"
 )
 
 const (
@@ -268,7 +269,19 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 		`CREATE OR REPLACE VIEW player_csr_snapshots_latest AS
 			SELECT * FROM player_csr_snapshots
 			QUALIFY ROW_NUMBER() OVER (PARTITION BY playlist_id, season_id ORDER BY written_at DESC, id DESC) = 1`,
-		`CREATE TABLE match_citations (match_id VARCHAR, citation_name_norm VARCHAR, value INTEGER)`,
+		// match_citations : append-only GÉNÉRATION (#23046 Phase 2) — generation_id
+		// + vue _latest (DENSE_RANK par match_id). Pas de colonne id en fixture pour
+		// préserver les INSERT positionnels VALUES (match_id, citation_name_norm,
+		// value). Les readers (queries_citations, home_citations) lisent _latest.
+		`CREATE SEQUENCE IF NOT EXISTS match_citations_generation_seq START 1`,
+		`CREATE TABLE match_citations (
+			match_id VARCHAR, citation_name_norm VARCHAR, value INTEGER,
+			generation_id BIGINT NOT NULL DEFAULT 0, written_at TIMESTAMP DEFAULT now())`,
+		`CREATE OR REPLACE VIEW match_citations_latest AS
+			SELECT * EXCLUDE (rk) FROM (
+				SELECT *, DENSE_RANK() OVER (PARTITION BY match_id ORDER BY generation_id DESC) AS rk
+				FROM match_citations)
+			WHERE rk = 1`,
 		`CREATE TABLE media_files (
 			file_path VARCHAR PRIMARY KEY, file_name VARCHAR, kind VARCHAR,
 			thumbnail_path VARCHAR,
@@ -289,11 +302,22 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			weight DOUBLE NOT NULL DEFAULT 1.0,
 			computed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (match_id, component_name))`,
+		// Vue _latest (append-only ART) : les readers lisent désormais
+		// lusr_component_history_latest. Le fixture seed 1 ligne par
+		// (match_id, component_name) → dedup pass-through.
+		`CREATE VIEW lusr_component_history_latest AS
+			SELECT * FROM lusr_component_history
+			QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, component_name ORDER BY computed_at DESC) = 1`,
 	}
 	for _, q := range ddl {
 		if _, err := db.Exec(ctx, q); err != nil {
 			t.Fatalf("seedPlayerSchema DDL: %v\nSQL: %s", err, q)
 		}
+	}
+	// Append-only #23046 : convertit player_match_enrichment (id PK + stage + written_at)
+	// et crée la vue player_match_enrichment_latest (lue par tous les readers du package).
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db.SQLDb()); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
 	type row struct {
 		q    string
@@ -330,7 +354,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			[]interface{}{"m1", "CSR", 1250.5, 50.0, "Gold", "Or", 3, "Gold 3", nil, "ranked", nil, "2025-01-10 14:00:00+00", "2025-01-10 14:00:00+00", "2025-01-10 14:00:00+00"}},
 		{`INSERT INTO match_skill_rank VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			[]interface{}{"m2", "LUSR", 1750.0, 40.0, "Platinum", "Platine", 5, "Platinum V", 15.0, "social", nil, "2025-01-11 14:00:00+00", "2025-01-11 14:00:00+00", "2025-01-11 14:00:00+00"}},
-		{`INSERT INTO match_citations VALUES (?,?,?)`,
+		{`INSERT INTO match_citations (match_id, citation_name_norm, value) VALUES (?,?,?)`,
 			[]interface{}{"m1", "killing_spree", 3}},
 		{`INSERT INTO media_files (file_path,file_name,kind,mtime,status) VALUES (?,?,?,?,?)`,
 			[]interface{}{"/clips/g1.mp4", "g1.mp4", "clip", "2025-01-10 15:01:00+00", "active"}},
@@ -380,6 +404,31 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 			is_manual BOOLEAN DEFAULT FALSE,
 			created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 		)`,
+		// Append-only média (campagne shared_social) : la prod lit la vue
+		// media_match_associations_latest (sur la table sœur _history). Le fixture la
+		// crée pour aligner les readers. media_file_id VARCHAR (compat fixture ; prod = BIGINT).
+		`CREATE SEQUENCE IF NOT EXISTS media_match_associations_history_id_seq START 1`,
+		`CREATE TABLE IF NOT EXISTS media_match_associations_history (
+			id BIGINT PRIMARY KEY DEFAULT nextval('media_match_associations_history_id_seq'),
+			media_file_id VARCHAR NOT NULL,
+			match_id VARCHAR NOT NULL,
+			delta_seconds INTEGER,
+			is_manual BOOLEAN NOT NULL DEFAULT FALSE,
+			is_active BOOLEAN NOT NULL DEFAULT TRUE,
+			associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE OR REPLACE VIEW media_match_associations_latest AS
+			WITH lpp AS (
+				SELECT media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at,
+					ROW_NUMBER() OVER (PARTITION BY media_file_id, match_id ORDER BY written_at DESC, id DESC) AS rn
+				FROM media_match_associations_history
+			),
+			act AS (SELECT * FROM lpp WHERE rn = 1 AND is_active = TRUE),
+			hm AS (SELECT media_file_id, bool_or(is_manual) AS has_manual FROM act GROUP BY media_file_id)
+			SELECT a.media_file_id, a.match_id, a.delta_seconds, a.is_manual, a.associated_at, a.written_at
+			FROM act a JOIN hm ON hm.media_file_id = a.media_file_id
+			WHERE a.is_manual = hm.has_manual`,
 	}
 	for _, q := range ddl {
 		if _, err := db.Exec(ctx, q); err != nil {
@@ -397,7 +446,7 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 		t.Fatalf("seedSharedSocialSchema insert media_files failed: %v", err)
 	}
 	if _, err := db.Exec(ctx, `
-		INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds)
+		INSERT INTO media_match_associations_history (media_file_id, match_id, delta_seconds)
 		VALUES ('media-1', 'm1', 12)
 	`); err != nil {
 		t.Fatalf("seedSharedSocialSchema insert associations failed: %v", err)

@@ -6,7 +6,7 @@ export interface ShellNavItem {
 }
 
 export interface ShellUtilityLink {
-  to: '/settings' | '/changelog'
+  to: '/settings' | '/changelog' | '/groups'
   label: string
 }
 
@@ -65,6 +65,7 @@ export const PLAYER_SECONDARY_NAV_ITEMS: ShellNavItem[] = [
 ]
 
 export const GLOBAL_SHELL_LINKS: ShellUtilityLink[] = [
+  { to: '/groups', label: 'Groupes' },
   { to: '/settings', label: 'Paramètres' },
   { to: '/changelog', label: 'Changelog' },
 ]

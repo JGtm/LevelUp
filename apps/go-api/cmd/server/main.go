@@ -34,6 +34,7 @@ import (
 	"syscall"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/api"
 	"levelup/go-api/internal/assetnames"
 	"levelup/go-api/internal/config"
@@ -55,6 +56,7 @@ import (
 	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
@@ -643,6 +645,14 @@ func main() {
 		}
 	}
 
+	// Groupes/familles (accès mutuel aux données, ADR 0024 multi-groupes). Le set
+	// co-membres pilote le filtrage ownership (available_players) et le switch de BDD.
+	groupStore := groupstore.NewGroupStore(filepath.Join(cfg.AuthDir, "groups.json"))
+	bootSvc = bootSvc.WithCoMemberResolver(func(xuid string) map[string]bool {
+		co, _ := groupStore.CoMemberXUIDs(xuid)
+		return co
+	})
+
 	// PR-B : expose reauth_required (refresh_token mort) du joueur courant au front.
 	// Lecture par-xuid dans le MultiUserTokenStore (data/titles/halo_infinite/auth/watcher_tokens/{xuid}.json).
 	reauthStore := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
@@ -660,7 +670,19 @@ func main() {
 
 	// --- 6. Scheduler, watcher, puis routeur HTTP ---
 	settingsStore := settings.NewStore(cfg.AppSettingsPath)
+	// Propage le réglage global "rendement sans assistances" au package analysis
+	// dès le boot (sinon le défaut false s'applique jusqu'au premier PATCH).
+	if s, lerr := settingsStore.Load(); lerr == nil {
+		analysis.SetExcludeAssistsFromYield(s.RendementExcludeAssists)
+		if s.RendementExcludeAssists {
+			slog.Info("rendement combat : assistances EXCLUES (réglage rendement_exclude_assists actif)")
+		}
+	}
 	tokenProvider := buildTokenProvider(settingsStore, title.DefaultHaloAuthDescriptor())
+
+	// Migration boot-time : crée un groupe par défaut "Mon foyer" depuis l'ancienne
+	// liste friend_gamertags (continuité d'accès au passage multi-groupes). Idempotent.
+	migrateDefaultGroupAtBoot(ctx, cfg, settingsStore, groupStore)
 
 	// ADR 0023 Phase 2 — Migration boot-time des tokens legacy vers MultiUserTokenStore.
 	// Copie SPNKR_OAUTH_REFRESH_TOKEN_<GT> (env) + sync_meta.oauth_refresh_token (DuckDB)
@@ -1006,7 +1028,12 @@ func main() {
 		routerCtx = schedulerCtx
 	}
 	var router http.Handler
-	router, reg = api.NewRouter(routerCtx, cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider, autoScheduler, backupSched)
+	router, reg = api.NewRouter(routerCtx, cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider, autoScheduler, backupSched, groupStore)
+
+	// Câble le hook global de re-dérivation des tokens per-player : le cache
+	// expiry-aware (halo.ResolveFreshPlayerTokens) re-minte via le registry quand un
+	// token est périmé. Sans ce câblage, le re-mint singleflighté est inopérant.
+	reg.WireGlobalTokenRefresher()
 
 	// Dashboard monitoring admin — câblage du HealthScheduler (créé plus haut,
 	// avant NewRouter). Les runners monitoring le lisent lazily à chaque
@@ -1016,9 +1043,14 @@ func main() {
 
 	// Cron catalogue (hebdomadaire) : rafraîchit le catalogue (playlists / couples
 	// map-mode / maps / modes) via le drain DiscoveryUGC testé (même chemin que l'action
-	// admin catalog/ugc-drain). TOUJOURS actif (autonome, plus de flag) : le drain est
-	// ART-safe (CatalogFetcherService.upsertRowNoConflict, SELECT-then-write). La
+	// admin catalog/ugc-drain). TOUJOURS actif (autonome, plus de flag). La
 	// régularité vient du ticker hebdo, PAS d'un redémarrage.
+	//
+	// ART-safety (2026-06-19) : l'UPSERT vers les tables catalogue est SELECT-then-write
+	// (upsertRowNoConflict), MAIS la queue catalog_fetch_queue était elle-même DELETE +
+	// UPDATE per-row sur index ART (PK + idx secondaire) → corrompait metadata.duckdb à
+	// chaque boot. Corrigé : la queue n'a plus aucune surface ART (cf. migration
+	// rebuild_catalog_fetch_queue_drop_art_indexes + dédup NOT EXISTS à l'enqueue).
 	catalogCron := scheduler.NewCatalogRefreshCron(func(cctx context.Context, ts string) (domain.CatalogUGCDrainResult, error) {
 		// V2 — découverte « A à Z » : avant le drain, lire la config de chaque
 		// playlist (discovery-infiniteugc) pour enfiler ses couples map-mode enfants
@@ -2059,6 +2091,54 @@ func resolveXUIDForRotation(ctx context.Context, cfg *config.AppConfig, store *a
 // auth.EnvRefreshTokenForGamertag (env) + duckdb.OpenReadOnly + Read*JSON.
 // La fonction pure de migration vit dans internal/platform/auth/migration.go
 // (testable sans dépendance DuckDB).
+// migrateDefaultGroupAtBoot crée un groupe par défaut "Mon foyer" depuis l'ancienne
+// liste globale friend_gamertags, pour préserver la continuité d'accès au passage au
+// modèle multi-groupes. Best-effort + idempotent (no-op si un groupe existe déjà).
+// Le propriétaire est l'admin de db_profiles.json ; les amis résolus en xuid via les
+// profils connus deviennent membres.
+func migrateDefaultGroupAtBoot(ctx context.Context, cfg *config.AppConfig, settingsStore *settings.Store, gs *groupstore.GroupStore) {
+	adminGT := cfg.AdminPlayer()
+	if adminGT == "" {
+		return // aucun admin désigné → migration impossible
+	}
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		return
+	}
+	byGamertag := make(map[string]string, len(players))
+	for _, p := range players {
+		if p.XUID != "" {
+			byGamertag[strings.ToLower(p.Gamertag)] = p.XUID
+		}
+	}
+	ownerXUID := byGamertag[strings.ToLower(adminGT)]
+	if ownerXUID == "" {
+		slog.WarnContext(ctx, "groups: migration ignorée — xuid admin introuvable dans db_profiles", "admin", adminGT)
+		return
+	}
+
+	s, err := settingsStore.Load()
+	if err != nil || s == nil {
+		return
+	}
+	var members []domain.GroupMember
+	for _, gt := range s.FriendGamertags {
+		if xuid := byGamertag[strings.ToLower(gt)]; xuid != "" {
+			members = append(members, domain.GroupMember{XUID: xuid, Gamertag: gt})
+		}
+	}
+
+	created, err := gs.MigrateDefault("Mon foyer", ownerXUID, adminGT, members)
+	if err != nil {
+		slog.WarnContext(ctx, "groups: migration groupe par défaut échouée (non bloquant)", "err", err)
+		return
+	}
+	if created {
+		slog.InfoContext(ctx, "groups: groupe par défaut créé depuis friend_gamertags",
+			"owner", adminGT, "members", len(members)+1)
+	}
+}
+
 func migrateLegacyAuthTokensAtBoot(ctx context.Context, cfg *config.AppConfig) {
 	pr := title.NewPathResolver(cfg.RepoRoot)
 	store := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())

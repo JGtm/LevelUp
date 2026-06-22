@@ -96,7 +96,7 @@ func (s *HomeService) GetChallenges(ctx context.Context) domain.ChallengesRespon
 			// GetBattlePass — pour qu'elle se termine avant que srv.Shutdown ne
 			// rende la main (donc avant duckdb.CloseAll()). Plus de goroutine
 			// détachée en context.Background() (handle orphelin / WAL au shutdown).
-			if err := s.sink.PersistChallengesSync(ctx, raw); err != nil {
+			if err := s.sink.PersistChallengesSync(ctx, raw, resp.Items); err != nil {
 				slog.WarnContext(ctx, "home: Challenges persist failed", "err", err)
 			}
 		}
@@ -106,33 +106,23 @@ func (s *HomeService) GetChallenges(ctx context.Context) domain.ChallengesRespon
 		}
 		return resp
 	}
-	// Live indisponible â†’ fallback cache DB.
+	// Live indisponible → fallback cache DB. PARITÉ avec le Battle Pass : on rend le
+	// cache dès qu'il existe (le frontend affiche un indicateur « données en cache »).
+	// L'ancien garde cacheChallengesAreRenderable jetait le cache quand total>completed
+	// + Items vides → « Défis indisponibles » alors que le BP, lui, s'affichait. C'est
+	// CETTE asymétrie qui est supprimée : un cache frais ne doit jamais être masqué.
 	if s.cacheRepo != nil {
-		if cached, hit, err := s.cacheRepo.LoadCachedChallenges(ctx, battlePassCacheTTLFallback); err == nil && hit {
-			if cacheChallengesAreRenderable(cached) {
-				slog.DebugContext(ctx, "home: Challenges live indisponibles - fallback cache DB",
-					"snapshot_at", snapshotAtValue(cached.SnapshotAt),
-					"age_hours", snapshotAgeHours(cached.SnapshotAt),
-				)
-				return *cached
-			}
+		if cached, hit, err := s.cacheRepo.LoadCachedChallenges(ctx, battlePassCacheTTLFallback); err == nil && hit && cached != nil {
+			slog.DebugContext(ctx, "home: Challenges live indisponibles - fallback cache DB",
+				"snapshot_at", snapshotAtValue(cached.SnapshotAt),
+				"age_hours", snapshotAgeHours(cached.SnapshotAt),
+				"items", len(cached.Items),
+			)
+			return *cached
 		}
 	}
 	slog.DebugContext(ctx, "home: Challenges live indisponibles, aucun cache disponible")
 	return resp
-}
-
-func cacheChallengesAreRenderable(resp *domain.ChallengesResponse) bool {
-	if resp == nil {
-		return false
-	}
-	if len(resp.Items) > 0 {
-		return true
-	}
-	if resp.Total != nil && resp.Completed != nil && *resp.Total > *resp.Completed {
-		return false
-	}
-	return true
 }
 
 // =============================================================================

@@ -170,9 +170,19 @@ func TestPlayerMatchesRepo_ObjectiveScores(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
 	// Table PSA optionnelle : créée ici pour rendre le test self-contained.
+	// Append-only #23046 (Phase 2) : born append-only (generation_id + is_tombstone) +
+	// la lecture ObjectiveScores passe par la vue personal_score_awards_latest.
 	if _, err := pdb.Player.Exec(ctx, `CREATE TABLE IF NOT EXISTS personal_score_awards
-		(match_id VARCHAR, xuid VARCHAR, award_category VARCHAR, award_score INTEGER)`); err != nil {
+		(match_id VARCHAR, xuid VARCHAR, award_category VARCHAR, award_score INTEGER,
+		 generation_id BIGINT DEFAULT 0, is_tombstone BOOLEAN DEFAULT FALSE)`); err != nil {
 		t.Fatalf("create personal_score_awards: %v", err)
+	}
+	if _, err := pdb.Player.Exec(ctx, `CREATE OR REPLACE VIEW personal_score_awards_latest AS
+		SELECT * EXCLUDE (rk) FROM (
+			SELECT *, DENSE_RANK() OVER (PARTITION BY match_id, xuid ORDER BY generation_id DESC) AS rk
+			FROM personal_score_awards)
+		WHERE rk = 1 AND NOT is_tombstone`); err != nil {
+		t.Fatalf("create personal_score_awards_latest view: %v", err)
 	}
 	if _, err := pdb.Player.Exec(ctx, "DELETE FROM personal_score_awards"); err != nil {
 		t.Fatalf("reset psa: %v", err)

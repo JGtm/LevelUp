@@ -8,6 +8,8 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+
+	"levelup/go-api/internal/migration"
 )
 
 // newPatternsTestPDB construit un PlayerDB minimal câblé sur deux DuckDB
@@ -53,8 +55,14 @@ func newPatternsTestPDB(t *testing.T) *PlayerDB {
 	mustExec(t, playerSQL, `CREATE TABLE player_match_enrichment (
 		match_id VARCHAR, performance_score DOUBLE, session_id VARCHAR,
 		is_with_friends BOOLEAN, engagement_score DOUBLE, engagement_score_brut DOUBLE)`)
-	mustExec(t, playerSQL, `INSERT INTO player_match_enrichment VALUES
-		('m1', 0.8, 's1', TRUE, 0.6, 0.1)`)
+	// Append-only #23046 : convertit player_match_enrichment (id PK + stage +
+	// written_at) et crée la vue player_match_enrichment_latest (lue par le repo).
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(playerSQL); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
+	mustExec(t, playerSQL, `INSERT INTO player_match_enrichment
+		(match_id, performance_score, session_id, is_with_friends, engagement_score, engagement_score_brut)
+		VALUES ('m1', 0.8, 's1', TRUE, 0.6, 0.1)`)
 
 	mustExec(t, playerSQL, `CREATE TABLE match_skill_rank (
 		match_id VARCHAR, rating_value DOUBLE, rating_type VARCHAR)`)

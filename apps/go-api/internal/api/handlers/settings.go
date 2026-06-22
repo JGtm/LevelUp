@@ -24,6 +24,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/authz"
@@ -262,6 +263,15 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 	if err := h.settingsStore.Save(cfg); err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_save_error", "Impossible de sauvegarder la configuration.")
 	}
+
+	// Le rendement combat (OffensiveConversion) est un réglage global process :
+	// propager immédiatement pour que les recomputes au query-time reflètent le
+	// toggle sans redémarrage. Idempotent.
+	if req.RendementExcludeAssists != nil {
+		slog.InfoContext(ctx, "settings: rendement_exclude_assists modifié",
+			"value", cfg.RendementExcludeAssists)
+	}
+	analysis.SetExcludeAssistsFromYield(cfg.RendementExcludeAssists)
 
 	// §4 plan Squad/Sessions overhaul : si friend_gamertags a changé,
 	// déclencher async le recompute is_with_friends sur toutes les player DBs.

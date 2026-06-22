@@ -201,7 +201,8 @@ func (h *AdminHandler) handleGenerateInvite(ctx context.Context, in *adminGenera
 		createdBy = *sess.Username
 	}
 
-	invite, err := h.invites.Generate(createdBy, body.ExpiresInDays)
+	// Invitation admin legacy (inscription mot de passe) : pas de groupe associé.
+	invite, err := h.invites.Generate(createdBy, body.ExpiresInDays, "")
 	if err != nil {
 		slog.Error("admin: erreur generate invite", "by", createdBy, "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "generate_error", "erreur de génération")

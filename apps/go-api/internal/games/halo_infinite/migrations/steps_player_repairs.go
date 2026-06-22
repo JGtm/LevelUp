@@ -28,7 +28,7 @@ func playerRepairSteps() []migration.Migration {
 		{
 			Name:        "repair_player_match_enrichment_primary_key",
 			TargetDB:    migration.TargetPlayer,
-			Description: "Reconstruit player_match_enrichment avec PRIMARY KEY (match_id) quand elle manque (player DB legacy CREATE TABLE IF NOT EXISTS)",
+			Description: "Garantit player_match_enrichment append-only (id PK + vue) sur player DB legacy (no-op si déjà id ; jamais de PK match_id — append-only #23046)",
 			ApplySchema: repairPlayerMatchEnrichmentPK,
 		},
 		{
@@ -46,8 +46,11 @@ func playerRepairSteps() []migration.Migration {
 	}
 }
 
-// repairPlayerMatchEnrichmentPK pose la PK (match_id) si absente, via le rebuild CTAS
-// dynamique exporté du package migration (préserve les colonnes additives).
+// repairPlayerMatchEnrichmentPK garantit que player_match_enrichment est
+// append-only. Append-only #23046 : on ne pose JAMAIS de PK(match_id). Si la
+// table porte déjà la PK technique `id`, elle est append-only → no-op. Sinon
+// (legacy sans schéma append-only), on délègue à la conversion idempotente
+// (RebuildPlayerMatchEnrichmentART → applyAppendOnlyMatchEnrichment).
 func repairPlayerMatchEnrichmentPK(db *sql.DB) error {
 	exists, err := migration.TableExists(db, "player_match_enrichment")
 	if err != nil {
@@ -56,12 +59,12 @@ func repairPlayerMatchEnrichmentPK(db *sql.DB) error {
 	if !exists {
 		return nil
 	}
-	hasPK, err := migration.HasPrimaryKey(db, "player_match_enrichment")
+	hasID, err := migration.ColumnExists(db, "player_match_enrichment", "id")
 	if err != nil {
-		return fmt.Errorf("repair pme PK: check PK: %w", err)
+		return fmt.Errorf("repair pme PK: check id: %w", err)
 	}
-	if hasPK {
-		return nil
+	if hasID {
+		return nil // déjà append-only — rien à réparer (surtout pas de PK match_id)
 	}
 	return migration.RebuildPlayerMatchEnrichmentART(migration.BootCtx(), db)
 }
@@ -73,6 +76,13 @@ func repairMatchCitationsPK(db *sql.DB) error {
 		return fmt.Errorf("repair citations PK: check table: %w", err)
 	}
 	if !exists {
+		return nil
+	}
+	// Append-only #23046 (Phase 2) : si match_citations est en append-only
+	// (generation_id présent), la PK composite (match_id, citation_name_norm) n'a
+	// plus de sens (multiples générations par clé) — no-op. La PK technique id est
+	// déjà posée par la conversion append-only.
+	if hasGen, _ := migration.ColumnExists(db, "match_citations", "generation_id"); hasGen {
 		return nil
 	}
 	hasPK, err := migration.HasPrimaryKey(db, "match_citations")

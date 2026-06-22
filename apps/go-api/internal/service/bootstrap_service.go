@@ -29,11 +29,12 @@ const (
 type BootstrapService struct {
 	cfg              *config.AppConfig
 	bootRepo         port.BootstrapRepository
-	privacyProvider  port.PrivacyProvider        // optionnel — nil = pas de check privacy
-	privacyStateRepo port.PrivacyStateRepository // optionnel — nil = pas de fallback persisté
-	userStoreEmpty   func() (bool, error)        // optionnel — nil = first_launch toujours false
-	userLookup       authz.UserLookup            // optionnel — nil = pas de filtrage ownership (ADR 0024)
-	reauthCheck      func(xuid string) bool      // optionnel — nil = reauth_required toujours false (PR-B)
+	privacyProvider  port.PrivacyProvider              // optionnel — nil = pas de check privacy
+	privacyStateRepo port.PrivacyStateRepository       // optionnel — nil = pas de fallback persisté
+	userStoreEmpty   func() (bool, error)              // optionnel — nil = first_launch toujours false
+	userLookup       authz.UserLookup                  // optionnel — nil = pas de filtrage ownership (ADR 0024)
+	reauthCheck      func(xuid string) bool            // optionnel — nil = reauth_required toujours false (PR-B)
+	coMembers        func(xuid string) map[string]bool // optionnel — co-membres de groupe du user (nil = strict owner-only)
 }
 
 // NewBootstrapService crée un BootstrapService.
@@ -74,6 +75,14 @@ func (s *BootstrapService) WithUserLookup(lookup authz.UserLookup) *BootstrapSer
 	return s
 }
 
+// WithCoMemberResolver injecte le résolveur des xuids co-membres de groupe du
+// user courant (groupstore.CoMemberXUIDs). Pilote le filtrage ownership famille
+// (available_players). Sans lui, l'accès retombe sur propriétaire-only strict.
+func (s *BootstrapService) WithCoMemberResolver(fn func(xuid string) map[string]bool) *BootstrapService {
+	s.coMembers = fn
+	return s
+}
+
 // Build construit la réponse bootstrap complète.
 // sess peut être nil si la session n'est pas encore initialisée.
 func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) (*domain.BootstrapResponse, error) {
@@ -105,13 +114,18 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 
 	setupState := s.resolveSetupState(ctx, sess, players)
 
+	// Les profils auth-only (gestion des tokens, pas de vrais joueurs) sont exclus
+	// des listes front-facing : sélecteur L1 + favoris gamertag (Escouade/Explorer).
+	// Le setup_state ci-dessus reste calculé sur la liste complète (côté instance).
+	visiblePlayers := excludeAuthOnly(players)
+
 	// Couche A (ADR 0024) : available_players et le joueur courant sont restreints
-	// aux profils accessibles par l'utilisateur (les siens + la famille, #21).
-	familyXUIDs := authz.ResolveFamilyXUIDs(friendGamertagsFromSettings(appSettings), players)
-	ownedPlayers := s.filterOwnedPlayers(sess, players, familyXUIDs)
-	if len(ownedPlayers) != len(players) {
+	// aux profils accessibles par l'utilisateur (les siens + ses co-membres de groupe).
+	familyXUIDs := s.resolveCoMembers(sess)
+	ownedPlayers := s.filterOwnedPlayers(sess, visiblePlayers, familyXUIDs)
+	if len(ownedPlayers) != len(visiblePlayers) {
 		slog.DebugContext(ctx, "bootstrap: available_players filtré par ownership",
-			"owned", len(ownedPlayers), "total", len(players), "username", resolveUsername(sess))
+			"owned", len(ownedPlayers), "total", len(visiblePlayers), "username", resolveUsername(sess))
 	}
 
 	var currentPlayer *domain.PlayerSummary
@@ -227,20 +241,18 @@ func (s *BootstrapService) filterOwnedPlayers(sess *domain.SessionData, players 
 	return out
 }
 
-// friendGamertagsFromSettings extrait friend_gamertags de la map app_settings
-// (LoadAppSettings retourne une map non typée → JSON décode en []interface{}).
-func friendGamertagsFromSettings(appSettings map[string]interface{}) []string {
-	raw, ok := appSettings["friend_gamertags"].([]interface{})
-	if !ok {
+// resolveCoMembers retourne l'ensemble des xuids accessibles par le user courant
+// via partage de groupe (co-membres). Nil si pas de résolveur câblé, pas d'user
+// lié, ou aucun groupe → CanAccessPlayer retombe sur propriétaire-only strict.
+func (s *BootstrapService) resolveCoMembers(sess *domain.SessionData) map[string]bool {
+	if s.coMembers == nil || s.userLookup == nil {
 		return nil
 	}
-	out := make([]string, 0, len(raw))
-	for _, v := range raw {
-		if gt, ok := v.(string); ok && gt != "" {
-			out = append(out, gt)
-		}
+	user := authz.CurrentUser(sess, s.userLookup)
+	if user == nil || user.XUID == "" {
+		return nil
 	}
-	return out
+	return s.coMembers(user.XUID)
 }
 
 // fetchPrivacyNonBlocking fetche la privacy avec un timeout court (2 s).
@@ -279,6 +291,9 @@ func (s *BootstrapService) BuildPlayersList(ctx context.Context) (*domain.Player
 	if err != nil {
 		return nil, fmt.Errorf("BuildPlayersList: %w", err)
 	}
+	// Exclure les profils auth-only : cette liste alimente les mêmes surfaces
+	// front-facing que available_players (favoris gamertag, sélecteur joueur).
+	players = excludeAuthOnly(players)
 	var defaultSlug *string
 	if len(players) > 0 {
 		slug := players[0].PlayerSlug
@@ -291,6 +306,22 @@ func (s *BootstrapService) BuildPlayersList(ctx context.Context) (*domain.Player
 }
 
 // --- helpers ---
+
+// excludeAuthOnly retire les profils auth-only (existant uniquement pour la
+// gestion des tokens, sans suivi de stats) d'une liste destinée au front. Ces
+// profils ne doivent jamais apparaître dans le sélecteur L1 ni les favoris de
+// gamertag (Escouade/Explorer). La résolution token côté serveur continue de
+// les voir via cfg.LoadPlayers (non filtré).
+func excludeAuthOnly(players []domain.PlayerSummary) []domain.PlayerSummary {
+	out := make([]domain.PlayerSummary, 0, len(players))
+	for _, p := range players {
+		if p.AuthOnly {
+			continue
+		}
+		out = append(out, p)
+	}
+	return out
+}
 
 func buildCapabilities(cfg *config.AppConfig, settings map[string]interface{}) domain.CapabilityMap {
 	mediaEnabled := getBoolSetting(settings, "media_enabled", true)

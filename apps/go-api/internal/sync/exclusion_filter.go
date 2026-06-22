@@ -27,7 +27,7 @@ import (
 func loadExcludedMatchIDs(ctx context.Context, playerDB *sql.DB) (map[string]bool, error) {
 	result := make(map[string]bool)
 	rows, err := playerDB.QueryContext(ctx,
-		`SELECT match_id FROM player_match_enrichment WHERE COALESCE(is_excluded, FALSE) = TRUE`)
+		`SELECT match_id FROM player_match_enrichment_latest WHERE COALESCE(is_excluded, FALSE) = TRUE`)
 	if err != nil {
 		if isSchemaMissingErr(err) {
 			slog.Debug("loadExcludedMatchIDs: schéma absent — aucun match exclu pris en compte",

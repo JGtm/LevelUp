@@ -21,7 +21,9 @@ func TestNewSyncEngineForTitle_HaloParity(t *testing.T) {
 	if seam.titleSlug != titlePkg.DefaultSlug {
 		t.Errorf("titleSlug = %q, want %q", seam.titleSlug, titlePkg.DefaultSlug)
 	}
-	// Byte-identique sur les 4 chemins + le slug.
+	// Byte-identique sur les 3 chemins title-scoped + le slug.
+	// (le store global xbox_aliases a été supprimé le 2026-06-19 — consolidé
+	// dans shared.xuid_aliases, cf. schema.go OpenSharedDB note.)
 	cases := []struct {
 		name        string
 		got, expect string
@@ -29,7 +31,6 @@ func TestNewSyncEngineForTitle_HaloParity(t *testing.T) {
 		{"player", seam.playerDBPath, legacy.playerDBPath},
 		{"shared", seam.sharedDBPath, legacy.sharedDBPath},
 		{"metadata", seam.metadataDBPath, legacy.metadataDBPath},
-		{"global", seam.globalDBPath, legacy.globalDBPath},
 	}
 	for _, c := range cases {
 		if c.got != c.expect {
@@ -59,10 +60,6 @@ func TestNewSyncEngineForTitle_SyntheticRouting(t *testing.T) {
 	}
 	if syn.sharedDBPath == halo.sharedDBPath {
 		t.Errorf("sharedDBPath synthetic == halo : routing non effectif")
-	}
-	// globalDBPath (xuid_aliases) est volontairement global (pas title-scoped).
-	if syn.globalDBPath != halo.globalDBPath {
-		t.Errorf("globalDBPath devrait rester partagé : %q vs %q", syn.globalDBPath, halo.globalDBPath)
 	}
 }
 

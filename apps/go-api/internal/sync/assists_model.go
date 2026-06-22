@@ -14,6 +14,7 @@ package sync
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -224,39 +225,46 @@ func upsertAssistsModels(ctx context.Context, playerDB *sql.DB, models []assists
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	const upsert = `
-		INSERT INTO player_assists_model (
-			game_variant_name,
-			coef_intercept, coef_kills, coef_deaths,
-			coef_damage_dealt, coef_damage_taken, coef_mmr_delta,
-			r2, n_samples, computed_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT (game_variant_name) DO UPDATE SET
-			coef_intercept    = excluded.coef_intercept,
-			coef_kills        = excluded.coef_kills,
-			coef_deaths       = excluded.coef_deaths,
-			coef_damage_dealt = excluded.coef_damage_dealt,
-			coef_damage_taken = excluded.coef_damage_taken,
-			coef_mmr_delta    = excluded.coef_mmr_delta,
-			r2                = excluded.r2,
-			n_samples         = excluded.n_samples,
-			computed_at       = excluded.computed_at
-	`
-	stmt, err := tx.PrepareContext(ctx, upsert)
+	// ART-safe : SELECT-then-UPDATE-or-INSERT par modèle (pas d'ON CONFLICT, qui
+	// réécrit via l'index ART de la PK). player_assists_model : PK game_variant_name,
+	// pas d'index secondaire muté. Sérialisé (tx mono-writer), basse fréquence.
+	selStmt, err := tx.PrepareContext(ctx, `SELECT 1 FROM player_assists_model WHERE game_variant_name = ?`)
 	if err != nil {
-		return fmt.Errorf("upsertAssistsModels prepare: %w", err)
+		return fmt.Errorf("upsertAssistsModels prepare select: %w", err)
 	}
-	defer stmt.Close()
+	defer selStmt.Close()
+	updStmt, err := tx.PrepareContext(ctx, `
+		UPDATE player_assists_model SET coef_intercept = ?, coef_kills = ?, coef_deaths = ?,
+			coef_damage_dealt = ?, coef_damage_taken = ?, coef_mmr_delta = ?, r2 = ?, n_samples = ?, computed_at = ?
+		WHERE game_variant_name = ?`)
+	if err != nil {
+		return fmt.Errorf("upsertAssistsModels prepare update: %w", err)
+	}
+	defer updStmt.Close()
+	insStmt, err := tx.PrepareContext(ctx, `
+		INSERT INTO player_assists_model (
+			game_variant_name, coef_intercept, coef_kills, coef_deaths,
+			coef_damage_dealt, coef_damage_taken, coef_mmr_delta, r2, n_samples, computed_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return fmt.Errorf("upsertAssistsModels prepare insert: %w", err)
+	}
+	defer insStmt.Close()
 
 	now := time.Now().UTC()
 	for _, m := range models {
-		if _, err := stmt.ExecContext(ctx,
-			m.gameVariantName,
-			m.intercept, m.coefKills, m.coefDeaths,
-			m.coefDamageDealt, m.coefDamageTaken, m.coefMMRDelta,
-			m.r2, m.n, now,
-		); err != nil {
-			return fmt.Errorf("upsertAssistsModels exec (%s): %w", m.gameVariantName, err)
+		var dummy int
+		serr := selStmt.QueryRowContext(ctx, m.gameVariantName).Scan(&dummy)
+		switch {
+		case serr == nil:
+			_, serr = updStmt.ExecContext(ctx, m.intercept, m.coefKills, m.coefDeaths,
+				m.coefDamageDealt, m.coefDamageTaken, m.coefMMRDelta, m.r2, m.n, now, m.gameVariantName)
+		case errors.Is(serr, sql.ErrNoRows):
+			_, serr = insStmt.ExecContext(ctx, m.gameVariantName, m.intercept, m.coefKills, m.coefDeaths,
+				m.coefDamageDealt, m.coefDamageTaken, m.coefMMRDelta, m.r2, m.n, now)
+		}
+		if serr != nil {
+			return fmt.Errorf("upsertAssistsModels exec (%s): %w", m.gameVariantName, serr)
 		}
 	}
 	return tx.Commit()

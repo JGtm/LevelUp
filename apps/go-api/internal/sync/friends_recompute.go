@@ -4,10 +4,13 @@
 // acquisition de leases sur les deux DBs, ouverture séparée, résolution des
 // XUIDs amis depuis xuid_aliases, UPDATE atomique, refresh aggregates.
 //
-// Sémantique additive : SET is_with_friends = TRUE WHERE FALSE AND match_id IN (matchs avec amis).
-// Idempotent (la garde FALSE rend le retry safe). Ne démote PAS les anciennes
-// sessions squad si un ami est retiré — c'est intentionnel (un match resté
-// historiquement squad le reste).
+// Sémantique CONVERGENTE (2026-06-19, project_convergent_sync_direction) :
+// réconcilie is_with_friends vers l'état cible — TRUE pour les matchs où un ami
+// COURANT a joué dans la même équipe, FALSE pour les matchs qui n'en ont plus
+// (démotion). Idempotent : un 2e passage sans changement de friends → 0 ligne.
+// Retirer un ami (y compris le dernier → liste vide) dé-flague rétroactivement
+// les matchs concernés. ART-safe : UPDATE par batch IN(...) (pattern établi ici ;
+// player_match_enrichment hors tables append-only protégées).
 package sync
 
 import (
@@ -26,7 +29,8 @@ import (
 type FriendsRecomputeResult struct {
 	XUID                string
 	FriendXUIDsCount    int
-	MatchesPromoted     int64 // nombre de lignes player_match_enrichment passées de FALSE à TRUE
+	MatchesPromoted     int64 // lignes player_match_enrichment passées de FALSE à TRUE
+	MatchesDemoted      int64 // lignes passées de TRUE à FALSE (ami retiré — convergent)
 	AggregatesRefreshed bool
 	Duration            time.Duration
 }
@@ -52,11 +56,9 @@ func RecomputeIsWithFriends(
 	playerDBPath, sharedDBPath, playerXUID string,
 	friendGamertags []string,
 ) (FriendsRecomputeResult, error) {
-	if len(friendGamertags) == 0 {
-		slog.InfoContext(ctx, "friends recompute skipped (no friends)", "player_xuid", playerXUID)
-		return FriendsRecomputeResult{XUID: playerXUID}, nil
-	}
-
+	// Sémantique convergente : on NE court-circuite PLUS sur liste vide — une liste
+	// vide signifie « plus aucun ami », donc tous les matchs TRUE doivent être
+	// démotés. On acquiert les leases et on laisse Core réconcilier.
 	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, playerDBPath, dblease.KindPlayer)
 	if err != nil {
 		return FriendsRecomputeResult{XUID: playerXUID}, fmt.Errorf("RecomputeIsWithFriends lease player: %w", err)
@@ -97,44 +99,55 @@ func RecomputeIsWithFriendsCore(
 	start := time.Now()
 	res := FriendsRecomputeResult{XUID: playerXUID}
 
-	if len(friendGamertags) == 0 {
+	// Garde défensive : sans player DB on ne peut rien réconcilier (cas unit-test /
+	// config minimale).
+	if playerDB == nil {
 		return res, nil
 	}
 
-	// Résoudre les gamertags amis → XUIDs via xuid_aliases.
-	friendXUIDs := LookupFriendXUIDs(ctx, sharedDB, friendGamertags)
-	res.FriendXUIDsCount = len(friendXUIDs)
-	if len(friendXUIDs) == 0 {
-		slog.WarnContext(ctx, "friends recompute: no xuid resolved",
-			"player_xuid", playerXUID, "gamertags_provided", len(friendGamertags))
-		return res, nil
-	}
-	if len(friendXUIDs) < len(friendGamertags) {
-		slog.WarnContext(ctx, "friends recompute: some xuids unresolved",
-			"player_xuid", playerXUID,
-			"gamertags_provided", len(friendGamertags),
-			"xuids_resolved", len(friendXUIDs),
-		)
+	// Calculer l'ensemble CIBLE : matchs où un ami COURANT a joué dans la même
+	// équipe. Liste vide → cible vide → tout sera démoté (ami retiré / dernier ami).
+	var targetIDs []string
+	if len(friendGamertags) > 0 {
+		if sharedDB == nil {
+			// Impossible de résoudre la cible sans la shared DB : on s'abstient
+			// (ne pas démoter à tort).
+			return res, nil
+		}
+		friendXUIDs := LookupFriendXUIDs(ctx, sharedDB, friendGamertags)
+		res.FriendXUIDsCount = len(friendXUIDs)
+		if len(friendXUIDs) < len(friendGamertags) {
+			slog.WarnContext(ctx, "friends recompute: some xuids unresolved",
+				"player_xuid", playerXUID,
+				"gamertags_provided", len(friendGamertags),
+				"xuids_resolved", len(friendXUIDs),
+			)
+		}
+		if len(friendXUIDs) > 0 {
+			ids, err := loadMatchesWithFriends(ctx, sharedDB, playerXUID, friendXUIDs)
+			if err != nil {
+				return res, fmt.Errorf("RecomputeIsWithFriendsCore loadMatches: %w", err)
+			}
+			targetIDs = ids
+		}
 	}
 
-	// Charger les match_ids où au moins un ami a participé dans la même équipe que le joueur.
-	matchIDs, err := loadMatchesWithFriends(ctx, sharedDB, playerXUID, friendXUIDs)
+	// Promotion : FALSE → TRUE pour la cible (no-op si cible vide).
+	promoted, err := updateIsWithFriendsBatch(ctx, playerDB, targetIDs)
 	if err != nil {
-		return res, fmt.Errorf("RecomputeIsWithFriendsCore loadMatches: %w", err)
+		return res, fmt.Errorf("RecomputeIsWithFriendsCore promote: %w", err)
 	}
-	if len(matchIDs) == 0 {
-		res.Duration = time.Since(start)
-		return res, nil
-	}
+	res.MatchesPromoted = promoted
 
-	// UPDATE batché : SET is_with_friends = TRUE WHERE FALSE AND match_id IN (...).
-	rowsAffected, err := updateIsWithFriendsBatch(ctx, playerDB, matchIDs)
+	// Démotion : TRUE → FALSE pour les matchs actuellement TRUE qui ne sont plus
+	// dans la cible (ami retiré). Convergent.
+	demoted, err := demoteStaleIsWithFriends(ctx, playerDB, targetIDs)
 	if err != nil {
-		return res, fmt.Errorf("RecomputeIsWithFriendsCore update: %w", err)
+		return res, fmt.Errorf("RecomputeIsWithFriendsCore demote: %w", err)
 	}
-	res.MatchesPromoted = rowsAffected
+	res.MatchesDemoted = demoted
 
-	if rowsAffected > 0 && refreshAggregates {
+	if (promoted > 0 || demoted > 0) && refreshAggregates {
 		if _, failed, err := RefreshAggregates(ctx, playerDB); err != nil {
 			slog.WarnContext(ctx, "friends recompute: refresh aggregates failed",
 				"player_xuid", playerXUID, "views_failed", failed, "err", err)
@@ -146,9 +159,10 @@ func RecomputeIsWithFriendsCore(
 	res.Duration = time.Since(start)
 	slog.InfoContext(ctx, "friends recompute done",
 		"player_xuid", playerXUID,
-		"friend_xuids", len(friendXUIDs),
-		"matches_in_shared", len(matchIDs),
-		"matches_promoted", rowsAffected,
+		"friend_xuids", res.FriendXUIDsCount,
+		"target_matches", len(targetIDs),
+		"matches_promoted", promoted,
+		"matches_demoted", demoted,
 		"aggregates_refreshed", res.AggregatesRefreshed,
 		"duration_ms", res.Duration.Milliseconds(),
 	)
@@ -205,41 +219,61 @@ func loadMatchesWithFriends(
 	return ids, rows.Err()
 }
 
-// updateIsWithFriendsBatch fait passer is_with_friends de FALSE à TRUE pour
-// les matchs fournis, batch par batch (pour rester sous la limite des
-// placeholders DuckDB en cas de très gros volume).
+// updateIsWithFriendsBatch fait passer is_with_friends à TRUE pour les matchs fournis.
+// Append-only #23046 : INSERT pur stage='friends' valeur TRUE EXPLICITE (le bug NULL
+// historique — badge "Solo" persistant, cf. thought_log 2026-05-08 — disparaît
+// nativement). Pré-filtre delta via _latest (ne réécrit que les matchs réellement FALSE).
 func updateIsWithFriendsBatch(ctx context.Context, playerDB *sql.DB, matchIDs []string) (int64, error) {
-	const batchSize = 500
-	var totalAffected int64
-	for start := 0; start < len(matchIDs); start += batchSize {
-		end := start + batchSize
-		if end > len(matchIDs) {
-			end = len(matchIDs)
-		}
-		batch := matchIDs[start:end]
-		placeholders := make([]string, len(batch))
-		args := make([]any, len(batch))
-		for i, id := range batch {
-			placeholders[i] = "?"
-			args[i] = id
-		}
-		// COALESCE pour couvrir les lignes héritées où is_with_friends est NULL :
-		// sans DEFAULT au schéma initial, les inserts du sync écrivaient NULL et
-		// `WHERE is_with_friends = FALSE` ne matchait pas (logique 3-valeurs SQL),
-		// donc le badge "Solo" persistait après ajout d'un ami. Cf. thought_log 2026-05-08.
-		q := fmt.Sprintf(`
-			UPDATE player_match_enrichment
-			SET    is_with_friends = TRUE,
-			       updated_at      = CURRENT_TIMESTAMP
-			WHERE  COALESCE(is_with_friends, FALSE) = FALSE
-			  AND  match_id IN (%s)
-		`, strings.Join(placeholders, ","))
-		result, err := playerDB.ExecContext(ctx, q, args...)
-		if err != nil {
-			return totalAffected, fmt.Errorf("updateIsWithFriendsBatch batch %d-%d: %w", start, end, err)
-		}
-		n, _ := result.RowsAffected()
-		totalAffected += n
+	n, err := insertEnrichmentBoolFlagDelta(ctx, playerDB, matchIDs, "is_with_friends", "friends", true)
+	return int64(n), err
+}
+
+// demoteStaleIsWithFriends remet is_with_friends à FALSE pour les matchs
+// actuellement TRUE qui ne figurent PLUS dans targetIDs (ami retiré / dernier ami
+// supprimé → targetIDs vide → démotion complète). Convergent.
+func demoteStaleIsWithFriends(ctx context.Context, playerDB *sql.DB, targetIDs []string) (int64, error) {
+	// Append-only #23046 : lire la valeur mergée (vue _latest) — sinon de vieilles
+	// rows TRUE + nouvelles FALSE coexistent et la démotion opère sur un état faux.
+	rows, err := playerDB.QueryContext(ctx,
+		`SELECT match_id FROM player_match_enrichment_latest WHERE COALESCE(is_with_friends, FALSE) = TRUE`)
+	if err != nil {
+		return 0, fmt.Errorf("demoteStale load current TRUE: %w", err)
 	}
-	return totalAffected, nil
+	defer rows.Close()
+	var currentTrue []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return 0, fmt.Errorf("demoteStale scan: %w", err)
+		}
+		currentTrue = append(currentTrue, id)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	if len(currentTrue) == 0 {
+		return 0, nil
+	}
+
+	target := make(map[string]struct{}, len(targetIDs))
+	for _, id := range targetIDs {
+		target[id] = struct{}{}
+	}
+	var demote []string
+	for _, id := range currentTrue {
+		if _, ok := target[id]; !ok {
+			demote = append(demote, id)
+		}
+	}
+	if len(demote) == 0 {
+		return 0, nil
+	}
+	return demoteIsWithFriendsBatch(ctx, playerDB, demote)
+}
+
+// demoteIsWithFriendsBatch fait passer is_with_friends à FALSE pour les matchs fournis.
+// Append-only #23046 : INSERT pur stage='friends' valeur FALSE EXPLICITE (jamais NULL).
+func demoteIsWithFriendsBatch(ctx context.Context, playerDB *sql.DB, matchIDs []string) (int64, error) {
+	n, err := insertEnrichmentBoolFlagDelta(ctx, playerDB, matchIDs, "is_with_friends", "friends", false)
+	return int64(n), err
 }

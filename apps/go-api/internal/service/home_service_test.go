@@ -577,7 +577,10 @@ func TestHomeService_GetChallenges_CacheHit(t *testing.T) {
 	}
 }
 
-func TestHomeService_GetChallenges_CacheHitWithoutItems_FallsBackLive(t *testing.T) {
+// Parité avec le Battle Pass (fix asymétrie « Défis indisponibles ») : un cache hit
+// SANS items (counts seuls) doit quand même être rendu — jamais masqué en « indisponible ».
+// Le frontend affiche les compteurs + un indicateur « données en cache ».
+func TestHomeService_GetChallenges_CacheHitWithoutItems_StillReturnsCache(t *testing.T) {
 	total := 9
 	completed := 2
 	cacheRepo := &mockBattlePassCacheRepo{
@@ -593,8 +596,14 @@ func TestHomeService_GetChallenges_CacheHitWithoutItems_FallsBackLive(t *testing
 	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
 	resp := svc.GetChallenges(context.Background())
 
-	if resp.FromCache {
-		t.Error("expected FromCache=false when cache lacks active challenge items")
+	if !resp.Available {
+		t.Error("expected Available=true from cache (no silent 'indisponible')")
+	}
+	if !resp.FromCache {
+		t.Error("expected FromCache=true: a cache hit is always rendered now")
+	}
+	if resp.Total == nil || *resp.Total != total {
+		t.Errorf("expected total %d preserved, got %v", total, resp.Total)
 	}
 	if cacheRepo.chCalls != 1 {
 		t.Errorf("expected 1 cache call, got %d", cacheRepo.chCalls)
@@ -757,7 +766,7 @@ func TestGetBattlePass_FallsBackToCache_WhenLiveUnavailable(t *testing.T) {
 }
 
 func TestGetChallenges_FallsBackToCache_WhenLiveUnavailable(t *testing.T) {
-	// ChallengesResponse avec items â†’ cacheChallengesAreRenderable retourne true.
+	// ChallengesResponse depuis le cache → toujours rendu (parité Battle Pass).
 	cached := &domain.ChallengesResponse{Available: true, Items: []domain.ChallengeItem{{}}}
 	cacheRepo := &mockBattlePassCacheRepo{chResp: cached, chHit: true}
 	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)

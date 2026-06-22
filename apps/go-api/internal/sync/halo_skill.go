@@ -166,6 +166,25 @@ func (c *HaloAPIClient) GetMatchSkill(
 	return transformMatchSkillResponse(resp), nil
 }
 
+// ParseMatchSkillResponseJSON décode un corps brut de réponse skill Halo en map
+// xuid → MatchSkillData (TeamMmr, StatPerformances, et snapshots CSR RankRecap).
+//
+// OpenSpartan stocke ce payload verbatim dans sa table PlayerMatchStats
+// (ResponseBody) — même forme que la réponse live /hi/matches/{id}/skill. L'import
+// OpenSpartan réutilise donc cette fonction pour récupérer le CSR par-match hors
+// ligne, avec exactement le même décodage (et le même traitement RankRecap) que
+// le chemin live GetMatchSkill. Corps vide → map vide (pas d'erreur).
+func ParseMatchSkillResponseJSON(body []byte) (map[string]*MatchSkillData, error) {
+	if len(body) == 0 {
+		return map[string]*MatchSkillData{}, nil
+	}
+	var resp matchSkillResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("ParseMatchSkillResponseJSON: %w", err)
+	}
+	return transformMatchSkillResponse(resp), nil
+}
+
 // transformMatchSkillResponse convertit le payload skill Halo décodé en map
 // xuid → MatchSkillData. Extrait en helper pur (sans IO) pour faciliter les
 // tests unitaires du parser, notamment du champ RankRecap (CSR pré/post-match).

@@ -199,7 +199,7 @@ func (s *SynthesisService) GetSynthesisPage(
 			"matches", combatProfile.MatchCount,
 			"avg_oc", combatProfile.AvgOC,
 			"avg_dr", combatProfile.AvgDR,
-			"has_residual", combatProfile.AvgResidualBrut != nil,
+			"has_pace_ratio", combatProfile.AvgPaceRatio != nil,
 			"style_activity", combatProfile.StyleActivity)
 	}
 

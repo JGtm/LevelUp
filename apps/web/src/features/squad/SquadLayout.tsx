@@ -18,7 +18,7 @@
  * Routes enfants : /squad/synergies · /squad/contributions
  */
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Outlet, useParams, Link, useMatchRoute } from '@tanstack/react-router'
+import { Outlet, useParams, Link, useMatchRoute, useSearch } from '@tanstack/react-router'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useTeammates } from './queries'
@@ -35,6 +35,7 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 import { log } from './_logger'
 import { SquadContext } from './SquadContext'
 import { SquadFocusStrip } from './SquadFocusStrip'
+import { SquadGroupLoader } from './SquadGroupLoader'
 import { getSquadTeammateColors } from './colors'
 import type { KPIStats, LabelValue, TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
 import type { KPIStats as V2KPIStats } from './v2/types'
@@ -95,6 +96,21 @@ function formatError(err: unknown): string {
 
 export function SquadLayout() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
+  // Deep-link depuis l'accueil (card session escouade) : capturé UNE fois au montage
+  // via un ref-initializer, AVANT le redirect index → /squad/synergies qui drop la
+  // query. Consommé plus bas (compose = amis de la session + session pinnée).
+  const squadDeepLink = useSearch({ strict: false }) as { session?: string; teammates?: string }
+  const deepLinkRef = useRef<{ session: string; teammates: string[] } | null>(
+    squadDeepLink.session
+      ? {
+          session: squadDeepLink.session,
+          teammates: (squadDeepLink.teammates ?? '')
+            .split(',')
+            .map((g) => g.trim())
+            .filter(Boolean),
+        }
+      : null,
+  )
   const {
     filterContext,
     filterContextHash,
@@ -112,6 +128,7 @@ export function SquadLayout() {
   // session squad du joueur principal (composition-agnostique → ajoutait un
   // coéquipier à une session qu'il n'avait pas jouée).
   const locale = useAppShellStore((s) => s.locale)
+  const hasLinkedIdentity = useAppShellStore((s) => !!s.linkedHaloIdentity)
   const t = getSquadText(locale)
   const tCommon = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const storageKey = `squad-teammates-${playerSlug}`
@@ -196,6 +213,18 @@ export function SquadLayout() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterContext.sessions?.picked_sessions])
+
+  // ── Deep-link accueil (card session escouade) ────────────────────────────
+  // Une seule fois au montage : pose la composition = amis de la session puis pin
+  // la session. Le suffixe « (N) » volatil est réconcilié par l'effet dédié ;
+  // l'init-coéquipiers depuis settings est neutralisée (cf. deepLinkRef plus bas).
+  useEffect(() => {
+    const dl = deepLinkRef.current
+    if (!dl) return
+    setSelectedGts(dl.teammates)
+    applySessionLabels([dl.session])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── Filtres global pending (période + cascade) — commités via Analyser ──
   const [pending, setPending] = useState(() => filterContext)
@@ -286,7 +315,10 @@ export function SquadLayout() {
   const seasonCounts = previewResolve?.season_counts ?? resolvedContext?.season_counts
 
   // ── Init coéquipiers depuis settings ────────────────────────────────────
+  // Neutralisée en arrivée par deep-link (card session escouade) : la composition
+  // est alors imposée par la session, pas par les amis configurés par défaut.
   useEffect(() => {
+    if (deepLinkRef.current) return
     if (settings?.friend_gamertags?.length && selectedGts.length === 0) {
       setSelectedGts(settings.friend_gamertags.slice(0, MAX_SELECTION))
     }
@@ -455,6 +487,14 @@ export function SquadLayout() {
             placeholder={t.selection.placeholder(availableOptions.length)}
             onAddAsFriend={setAddFriendGamertag}
           />
+
+          {/* Charger les membres d'un groupe dans la sélection (monté si identité liée). */}
+          {hasLinkedIdentity && (
+            <SquadGroupLoader
+              exclude={playerSlug}
+              onLoad={(gts) => setSelectedGts(gts.slice(0, MAX_SELECTION))}
+            />
+          )}
 
           {/* Séparateur */}
           <div className="mx-0.5 h-5 w-px shrink-0 bg-border" aria-hidden />

@@ -11,11 +11,14 @@ import (
 // Centralisés ici pour réduire la duplication des littéraux dans les
 // migrations additives (cf. lint goconst).
 const (
-	colDouble   = "DOUBLE"
-	colFloat    = "FLOAT"
-	colInteger  = "INTEGER"
-	colSmallInt = "SMALLINT"
-	colVarchar  = "VARCHAR"
+	colDouble    = "DOUBLE"
+	colFloat     = "FLOAT"
+	colInteger   = "INTEGER"
+	colSmallInt  = "SMALLINT"
+	colVarchar   = "VARCHAR"
+	colTimestamp = "TIMESTAMP"
+	colTinyint   = "TINYINT"
+	colBoolean   = "BOOLEAN"
 )
 
 // bootCtx retourne le contexte racine utilise par les migrations DDL boot-time.
@@ -113,23 +116,52 @@ func execScript(db *sql.DB, script string) error {
 	return nil
 }
 
-// splitSQL decoupe un script SQL en instructions individuelles.
+// splitSQL decoupe un script SQL en instructions individuelles. Le découpage est
+// CONSCIENT des commentaires de ligne `--` : un `;` situé À L'INTÉRIEUR d'un
+// commentaire `--` (jusqu'au saut de ligne) n'est PAS un séparateur d'instruction
+// (sinon une note de doc contenant un `;` casserait le statement en deux moitiés
+// dont l'une devient du SQL invalide). De plus, les fragments qui ne contiennent
+// que des commentaires `--` et/ou des espaces (typiquement la note qui suit le
+// dernier `;` d'un CREATE) sont ignorés : un commentaire-seul n'est pas une
+// instruction exécutable (DuckDB la rejette en "empty query").
 func splitSQL(script string) []string {
 	var stmts []string
 	var cur strings.Builder
+	inLineComment := false
+	flush := func() {
+		if s := strings.TrimSpace(cur.String()); s != "" && !isCommentOnly(s) {
+			stmts = append(stmts, s)
+		}
+		cur.Reset()
+	}
 	for i := 0; i < len(script); i++ {
-		if script[i] == ';' {
-			s := strings.TrimSpace(cur.String())
-			if s != "" {
-				stmts = append(stmts, s)
-			}
-			cur.Reset()
-		} else {
-			cur.WriteByte(script[i])
+		c := script[i]
+		switch {
+		case c == '\n':
+			inLineComment = false
+			cur.WriteByte(c)
+		case !inLineComment && c == '-' && i+1 < len(script) && script[i+1] == '-':
+			inLineComment = true
+			cur.WriteByte(c)
+		case c == ';' && !inLineComment:
+			flush()
+		default:
+			cur.WriteByte(c)
 		}
 	}
-	if s := strings.TrimSpace(cur.String()); s != "" {
-		stmts = append(stmts, s)
-	}
+	flush()
 	return stmts
+}
+
+// isCommentOnly indique si un fragment SQL ne contient que des lignes de
+// commentaire `--` et/ou des lignes vides (rien d'exécutable).
+func isCommentOnly(fragment string) bool {
+	for _, line := range strings.Split(fragment, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "--") {
+			continue
+		}
+		return false
+	}
+	return true
 }

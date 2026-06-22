@@ -131,7 +131,9 @@ func loadRecentMediaMatchIDs(ctx context.Context, sharedSocialDBPath string, sin
 	}
 	defer db.Close()
 	rows, err := db.Query(ctx,
-		`SELECT DISTINCT match_id FROM media_match_associations WHERE created_at >= ? LIMIT 50`,
+		// APPEND-ONLY : lire la vue _latest + associated_at (immuable) — pas created_at
+		// sur la table legacy. Préserve la fenêtre de récence d'upload sans faux positifs.
+		`SELECT DISTINCT match_id FROM media_match_associations_latest WHERE associated_at >= ? LIMIT 50`,
 		since,
 	)
 	if err != nil {

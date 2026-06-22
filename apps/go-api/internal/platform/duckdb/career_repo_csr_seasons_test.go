@@ -8,7 +8,7 @@ import (
 
 func TestParseCSRSeasonNumber(t *testing.T) {
 	cases := []struct {
-		id          string
+		id           string
 		major, minor int
 	}{
 		{"CsrSeason13-1", 13, 1},

@@ -161,7 +161,6 @@ func MetadataSteps() []migration.Migration {
 						content_hash VARCHAR NOT NULL DEFAULT '',
 						PRIMARY KEY (title_id, map_id)
 					);
-					CREATE INDEX IF NOT EXISTS idx_map_images_registry_fetched ON map_images_registry(fetched_at);
 				`)
 			},
 		},

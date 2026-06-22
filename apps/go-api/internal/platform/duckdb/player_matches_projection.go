@@ -162,6 +162,7 @@ func projectEnrichment(s playerMatchScanResult, skillSnap *canonical.SkillSnapsh
 		EnemyMMR:            nullFloatPtr(s.enemyMMR),
 		SkillSnapshot:       skillSnap,
 		EngagementScoreBrut: nullFloatPtr(s.engagementScoreBrut),
+		EngagementPaceRatio: nullFloatPtr(s.engagementPaceRatio),
 	}
 }
 

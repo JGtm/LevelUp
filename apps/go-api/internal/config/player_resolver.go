@@ -140,7 +140,6 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug stri
 		)
 	}
 
-	pr := title.NewPathResolver(cfg.RepoRoot)
 	// SharedSocial démo : seed-demo produit data/demo/warehouse/shared_social.duckdb
 	// au schéma canonique (migrations TargetSharedSocial). Le pipeline média EXIGE un
 	// SharedSocial non-nil (sinon 0 média, pas de fallback Player DB — cf.
@@ -150,16 +149,17 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug stri
 		sharedSocialPath = ""
 	}
 	pcfg := duckdb.PlayerPoolConfig{
-		Gamertag:                gamertag,
-		XUID:                    xuidBytes,
-		TitleSlug:               titleSlug,
-		PlayerDBPath:            statsPath,
-		SharedDBPath:            sharedPath,
-		MetaDBPath:              metaPath,
-		SharedSocialDBPath:      sharedSocialPath,
-		GlobalXuidAliasesDBPath: pr.GlobalXuidAliasesDBPath(),
-		UserTimezone:            cfg.UserTimezone,
-		SharedReader:            cfg.sharedReaderForTitle(titleSlug),
+		Gamertag:           gamertag,
+		XUID:               xuidBytes,
+		TitleSlug:          titleSlug,
+		PlayerDBPath:       statsPath,
+		SharedDBPath:       sharedPath,
+		MetaDBPath:         metaPath,
+		SharedSocialDBPath: sharedSocialPath,
+		UserTimezone:       cfg.UserTimezone,
+		// Per-titre (B-swap multi-titre) : provider du shared du TITRE courant.
+		// DefaultSlug → byte-identique à cfg.SharedProvider (caché par path).
+		SharedReader: cfg.sharedReaderForTitle(titleSlug),
 	}
 	return duckdb.GetOrOpen(ctx, pcfg)
 }
@@ -191,15 +191,14 @@ func resolveRealPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug stri
 func buildPoolConfig(cfg *AppConfig, p *domain.PlayerSummary, titleSlug string) duckdb.PlayerPoolConfig {
 	pr := title.NewPathResolver(cfg.RepoRoot)
 	return duckdb.PlayerPoolConfig{
-		Gamertag:                p.Gamertag,
-		XUID:                    p.XUID,
-		TitleSlug:               titleSlug,
-		PlayerDBPath:            pr.PlayerDBPath(titleSlug, p.Gamertag),
-		SharedDBPath:            pr.SharedDBPath(titleSlug),
-		MetaDBPath:              pr.MetadataDBPath(titleSlug),
-		SharedSocialDBPath:      pr.SharedSocialDBPath(titleSlug),
-		GlobalXuidAliasesDBPath: pr.GlobalXuidAliasesDBPath(),
-		UserTimezone:            cfg.UserTimezone,
+		Gamertag:           p.Gamertag,
+		XUID:               p.XUID,
+		TitleSlug:          titleSlug,
+		PlayerDBPath:       pr.PlayerDBPath(titleSlug, p.Gamertag),
+		SharedDBPath:       pr.SharedDBPath(titleSlug),
+		MetaDBPath:         pr.MetadataDBPath(titleSlug),
+		SharedSocialDBPath: pr.SharedSocialDBPath(titleSlug),
+		UserTimezone:       cfg.UserTimezone,
 		// Per-titre (B-swap multi-titre) : provider du shared du TITRE courant.
 		// DefaultSlug → byte-identique à cfg.SharedProvider (caché par path).
 		SharedReader: cfg.sharedReaderForTitle(titleSlug),

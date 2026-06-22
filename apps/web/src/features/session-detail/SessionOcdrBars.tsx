@@ -2,10 +2,10 @@
  * SessionOcdrBars — Rendement offensif (OC) et Résistance défensive (DR) par match.
  *
  * Barres groupées par match (X = #N + carte), normalisées en % de P80 :
- *   OC_norm  = OC / 0.83 × 100    (P80 = 0.83)
- *   DR_norm  = max(0, (DR − 1.0) / 0.59 × 100)  (P80_excess = 0.59)
+ *   OC_norm  = OC / 0.90 × 100    (repère = 0.90)
+ *   DR_norm  = max(0, (DR − 1.0) / 0.65 × 100)  (repère_excess = 0.65)
  *
- * 100% sur l'axe Y = exactement au niveau P80 de référence (ligne pointillée).
+ * 100% sur l'axe Y = exactement au niveau du repère élite (ligne pointillée).
  * markLine de moyenne pour chaque métrique. Couleurs : divergent-pos (OC),
  * divergent-neutral (DR), cohérentes avec CombatYieldBar et la KPI session.
  */
@@ -19,10 +19,10 @@ import type { SessionDetailMatchRow } from '@/lib/api/types'
 
 import { sessionMatchAxisLabel, useSessionT } from './_shared'
 
-/** Miroir des constantes Go combat_yield.go. */
-const OC_P80 = 0.83
-const DR_P80 = 1.59
-const DR_P80_EXCESS = DR_P80 - 1.0 // 0.59
+/** Repère barre (frontière élite mondiale) — miroir des constantes Go combat_yield.go. */
+const OC_P80 = 0.90
+const DR_P80 = 1.65
+const DR_P80_EXCESS = DR_P80 - 1.0 // 0.65
 
 interface OcdrPoint {
   label: string

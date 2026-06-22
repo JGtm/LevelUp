@@ -37,6 +37,8 @@ type OpenSpartanPostImportService struct {
 type PostImportResult struct {
 	SessionsTouched     int
 	PerfScoresTouched   int
+	CSRProjected        int // lignes CSR projetées shared.match_csrs → player.match_skill_rank
+	LUSRRecomputed      int // matchs LUSR recalculés (replay complet, inclut les matchs importés)
 	CitationsBackfilled bool
 	Errors              []PostImportError
 }
@@ -92,36 +94,107 @@ func (s *OpenSpartanPostImportService) Run(
 
 	var result PostImportResult
 	s.ensureEnrichmentRows(ctx, playerDB, matchIDs, &result)
+	s.recomputeCSR(ctx, playerDB, sharedDBPath, xuid, &result)
+	s.recomputeLUSR(ctx, playerDB, sharedDBPath, xuid, &result)
 	s.recomputeSessions(ctx, playerDBPath, sharedDBPath, xuid, opts, &result)
 	s.recomputePerfScores(ctx, playerDB, sharedDBPath, xuid, opts.ForcePerfScores, &result)
 	s.recomputeCitations(ctx, sharedDBPath, metadataDBPath, playerDB, xuid, matchIDs, &result)
 	return result, nil
 }
 
-// ensureEnrichmentRows primes player_match_enrichment with one placeholder
-// row per imported match_id. Required because the recompute stages (sessions,
-// performance_score) update those rows in place — without a prior INSERT
-// they would silently no-op.
+// recomputeCSR projette le CSR par-match du joueur depuis shared.match_csrs
+// (écrit à l'import depuis RankRecap) vers player.match_skill_rank, que l'UI lit
+// pour afficher le rang par match. Pur local, aucun appel API.
 //
-// Idempotent via ON CONFLICT DO NOTHING — a no-op for matches already
-// enriched by a previous sync.
+// Sprint B1 commit 15 : acquisition du shared writer à la demande via Provider
+// (lecture seule ici, mais on réutilise le même helper que recomputePerfScores).
+func (s *OpenSpartanPostImportService) recomputeCSR(
+	ctx context.Context, playerDB *sql.DB, sharedDBPath, xuid string, result *PostImportResult,
+) {
+	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctx, s.cfg.SharedProvider, sharedDBPath)
+	if err != nil {
+		result.Errors = append(result.Errors, PostImportError{Stage: "csr_acquire", Err: err.Error()})
+		s.log.Warn("post_import_csr_acquire_failed", "xuid", xuid, "err", err)
+		return
+	}
+	defer releaseShared()
+	n, err := sync.BackfillCSRFromShared(ctx, sharedDB, playerDB, xuid)
+	if err != nil {
+		result.Errors = append(result.Errors, PostImportError{Stage: "csr", Err: err.Error()})
+		s.log.Warn("post_import_csr_failed", "xuid", xuid, "err", err)
+		return
+	}
+	result.CSRProjected = n
+}
+
+// recomputeLUSR rejoue le LUSR (v2) du joueur sur tout son historique pour
+// intégrer les matchs importés (anciens), que le chemin live incrémental
+// sauterait via le watermark. Pur local, aucun appel API. Best-effort.
+func (s *OpenSpartanPostImportService) recomputeLUSR(
+	ctx context.Context, playerDB *sql.DB, sharedDBPath, xuid string, result *PostImportResult,
+) {
+	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctx, s.cfg.SharedProvider, sharedDBPath)
+	if err != nil {
+		result.Errors = append(result.Errors, PostImportError{Stage: "lusr_acquire", Err: err.Error()})
+		s.log.Warn("post_import_lusr_acquire_failed", "xuid", xuid, "err", err)
+		return
+	}
+	defer releaseShared()
+	n, err := sync.RecomputeLUSRCanonicalForPlayer(ctx, playerDB, sharedDB, xuid)
+	if err != nil {
+		result.Errors = append(result.Errors, PostImportError{Stage: "lusr", Err: err.Error()})
+		s.log.Warn("post_import_lusr_failed", "xuid", xuid, "err", err)
+		return
+	}
+	result.LUSRRecomputed = n
+}
+
+// stagePrimeEnrichment : libellé de l'étape « prime enrichment » dans les
+// PostImportError (constante pour éviter la répétition du littéral — goconst).
+const stagePrimeEnrichment = "prime_enrichment"
+
+// ensureEnrichmentRows primes player_match_enrichment with one baseline row
+// (stage='live') per imported match_id. Required because the recompute stages
+// (sessions, performance_score) source their work-list from PME rows.
+//
+// Append-only #23046 : pure INSERT (no ON CONFLICT — match_id n'est plus une PK).
+// Idempotence via pré-filtre delta : seuls les matchs sans aucune row PME reçoivent
+// la baseline (évite les doublons stage='live' sur ré-import).
 func (s *OpenSpartanPostImportService) ensureEnrichmentRows(
 	ctx context.Context, playerDB *sql.DB, matchIDs []string, result *PostImportResult,
 ) {
 	if len(matchIDs) == 0 {
 		return
 	}
-	stmt, err := playerDB.PrepareContext(ctx,
-		`INSERT INTO player_match_enrichment (match_id) VALUES (?) ON CONFLICT (match_id) DO NOTHING`)
+	existing := make(map[string]struct{}, len(matchIDs))
+	rows, err := playerDB.QueryContext(ctx, `SELECT match_id FROM player_match_enrichment_latest`)
 	if err != nil {
-		result.Errors = append(result.Errors, PostImportError{Stage: "prime_enrichment", Err: err.Error()})
+		result.Errors = append(result.Errors, PostImportError{Stage: stagePrimeEnrichment, Err: err.Error()})
+		s.log.Warn("post_import_prime_enrichment_load_failed", "err", err)
+		return
+	}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err == nil {
+			existing[id] = struct{}{}
+		}
+	}
+	_ = rows.Close()
+
+	stmt, err := playerDB.PrepareContext(ctx,
+		`INSERT INTO player_match_enrichment (match_id, stage) VALUES (?, 'live')`)
+	if err != nil {
+		result.Errors = append(result.Errors, PostImportError{Stage: stagePrimeEnrichment, Err: err.Error()})
 		s.log.Warn("post_import_prime_enrichment_prepare_failed", "err", err)
 		return
 	}
 	defer stmt.Close()
 	for _, id := range matchIDs {
+		if _, ok := existing[id]; ok {
+			continue
+		}
 		if _, err := stmt.ExecContext(ctx, id); err != nil {
-			result.Errors = append(result.Errors, PostImportError{Stage: "prime_enrichment", MatchID: id, Err: err.Error()})
+			result.Errors = append(result.Errors, PostImportError{Stage: stagePrimeEnrichment, MatchID: id, Err: err.Error()})
 			s.log.Warn("post_import_prime_enrichment_exec_failed", "match_id", id, "err", err)
 			return
 		}

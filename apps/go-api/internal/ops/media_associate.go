@@ -112,7 +112,7 @@ func loadUnassociatedMedia(ctx context.Context, db *sql.DB) ([]unassocMediaRow, 
 		SELECT mf.id, mf.capture_start_utc
 		FROM media_files mf
 		WHERE mf.capture_start_utc IS NOT NULL
-		  AND mf.id NOT IN (SELECT media_file_id FROM media_match_associations)
+		  AND mf.id NOT IN (SELECT media_file_id FROM media_match_associations_latest)
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("query media_files candidates: %w", err)
@@ -235,9 +235,12 @@ func bulkInsertAssociations(ctx context.Context, db *sql.DB, assocs []mediaMatch
 		return 0, fmt.Errorf("begin tx: %w", err)
 	}
 
+	// APPEND-ONLY : INSERT event auto dans _history (plus d'INSERT OR IGNORE legacy).
+	// Dédup garantie par loadUnassociatedMedia (forward-only via la vue _latest).
 	stmt, err := tx.PrepareContext(ctx, `
-		INSERT OR IGNORE INTO media_match_associations (media_file_id, match_id, delta_seconds)
-		VALUES (?, ?, ?)
+		INSERT INTO media_match_associations_history
+			(media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at)
+		VALUES (?, ?, ?, FALSE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 	`)
 	if err != nil {
 		_ = tx.Rollback()

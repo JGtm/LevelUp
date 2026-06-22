@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"testing"
 
+	"levelup/go-api/internal/migration"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -48,6 +50,9 @@ func openPerfDB(t *testing.T) *sql.DB {
 	`
 	if err := execScript(t.Context(), db, ddl); err != nil {
 		t.Fatal(err)
+	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
 	return db
 }
@@ -212,7 +217,7 @@ func TestBatchComputePerformanceScores_PartitionsByChain(t *testing.T) {
 	// Tous les scores stockés doivent être dans la chaîne arena_slayer.
 	rows, err := db.Query(`
 		SELECT match_id, performance_chain
-		FROM player_match_enrichment
+		FROM player_match_enrichment_latest
 		WHERE performance_score IS NOT NULL
 		ORDER BY match_id`)
 	if err != nil {
@@ -244,11 +249,11 @@ func TestBatchComputePerformanceScores_PartitionsByChain(t *testing.T) {
 	// que d'autres matchs aient été scorés ailleurs.
 	var btbScored, rankedScored int
 	db.QueryRow(`
-		SELECT COUNT(*) FROM player_match_enrichment pme
+		SELECT COUNT(*) FROM player_match_enrichment_latest pme
 		JOIN match_registry mr ON pme.match_id = mr.match_id
 		WHERE pme.performance_score IS NOT NULL AND mr.pair_name = 'BTB:Slayer'`).Scan(&btbScored)
 	db.QueryRow(`
-		SELECT COUNT(*) FROM player_match_enrichment pme
+		SELECT COUNT(*) FROM player_match_enrichment_latest pme
 		JOIN match_registry mr ON pme.match_id = mr.match_id
 		WHERE pme.performance_score IS NOT NULL AND mr.is_ranked = TRUE`).Scan(&rankedScored)
 	if btbScored != 0 {

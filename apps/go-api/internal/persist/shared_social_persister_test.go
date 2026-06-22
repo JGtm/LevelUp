@@ -61,6 +61,25 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			delta_seconds INTEGER,
 			PRIMARY KEY (media_file_id, match_id)
 		)`,
+		// Append-only (cf. shared_social_media_assoc_append_only_v1).
+		`CREATE SEQUENCE IF NOT EXISTS media_match_associations_history_id_seq START 1`,
+		`CREATE TABLE media_match_associations_history (
+			id BIGINT PRIMARY KEY DEFAULT nextval('media_match_associations_history_id_seq'),
+			media_file_id BIGINT NOT NULL, match_id VARCHAR NOT NULL, delta_seconds INTEGER,
+			is_manual BOOLEAN NOT NULL DEFAULT FALSE, is_active BOOLEAN NOT NULL DEFAULT TRUE,
+			associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE OR REPLACE VIEW media_match_associations_latest AS
+			WITH lpp AS (
+				SELECT media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at,
+					ROW_NUMBER() OVER (PARTITION BY media_file_id, match_id ORDER BY written_at DESC, id DESC) AS rn
+				FROM media_match_associations_history),
+			act AS (SELECT * FROM lpp WHERE rn = 1 AND is_active = TRUE),
+			hm AS (SELECT media_file_id, bool_or(is_manual) AS has_manual FROM act GROUP BY media_file_id)
+			SELECT a.media_file_id, a.match_id, a.delta_seconds, a.is_manual, a.associated_at, a.written_at
+			FROM act a JOIN hm ON hm.media_file_id = a.media_file_id
+			WHERE a.is_manual = hm.has_manual`,
 		`CREATE TABLE media_likes (
 			media_path VARCHAR NOT NULL,
 			liker_slug VARCHAR NOT NULL,
@@ -68,12 +87,39 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			liked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (media_path, liker_slug)
 		)`,
+		// Append-only (cf. shared_social_likes_append_only_v1).
+		`CREATE SEQUENCE IF NOT EXISTS media_likes_history_id_seq START 1`,
+		`CREATE TABLE media_likes_history (
+			id BIGINT PRIMARY KEY DEFAULT nextval('media_likes_history_id_seq'),
+			media_path VARCHAR NOT NULL, liker_slug VARCHAR NOT NULL, liker_gamertag VARCHAR,
+			is_liked BOOLEAN NOT NULL, liked_at TIMESTAMP,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE OR REPLACE VIEW media_likes_latest AS
+			SELECT id, media_path, liker_slug, liker_gamertag, is_liked, liked_at, written_at
+			FROM media_likes_history
+			QUALIFY ROW_NUMBER() OVER (PARTITION BY media_path, liker_slug
+				ORDER BY written_at DESC, id DESC) = 1`,
 		`CREATE TABLE match_favorites (
 			player_slug VARCHAR NOT NULL,
 			match_id VARCHAR NOT NULL,
 			favorited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (player_slug, match_id)
 		)`,
+		// Append-only (cf. shared_social_favorites_append_only_v1) : persistFavorites
+		// écrit ici, l'état courant se lit via match_favorites_latest.
+		`CREATE SEQUENCE IF NOT EXISTS match_favorites_history_id_seq START 1`,
+		`CREATE TABLE match_favorites_history (
+			id BIGINT PRIMARY KEY DEFAULT nextval('match_favorites_history_id_seq'),
+			player_slug VARCHAR NOT NULL, match_id VARCHAR NOT NULL,
+			is_favorite BOOLEAN NOT NULL, favorited_at TIMESTAMP,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE OR REPLACE VIEW match_favorites_latest AS
+			SELECT id, player_slug, match_id, is_favorite, favorited_at, written_at
+			FROM match_favorites_history
+			QUALIFY ROW_NUMBER() OVER (PARTITION BY player_slug, match_id
+				ORDER BY written_at DESC, id DESC) = 1`,
 		`CREATE TABLE player_notifications (
 			xuid VARCHAR NOT NULL,
 			id BIGINT NOT NULL,
@@ -91,6 +137,30 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			read_at TIMESTAMP,
 			PRIMARY KEY (xuid, id)
 		)`,
+		// Append-only (cf. shared_social_notifications_append_only_v1) : les writers
+		// notifs écrivent ici (event-log), l'état courant se lit via _latest.
+		`CREATE SEQUENCE IF NOT EXISTS player_notifications_history_seq START 1`,
+		`CREATE TABLE player_notifications_history (
+			seq BIGINT PRIMARY KEY DEFAULT nextval('player_notifications_history_seq'),
+			xuid VARCHAR NOT NULL, id BIGINT NOT NULL,
+			category VARCHAR NOT NULL, severity VARCHAR NOT NULL DEFAULT 'info',
+			title_key VARCHAR NOT NULL, body_key VARCHAR, params VARCHAR,
+			target_route VARCHAR, target_search VARCHAR,
+			actor_xuid VARCHAR, actor_name VARCHAR, source VARCHAR NOT NULL,
+			created_at TIMESTAMP NOT NULL, read_at TIMESTAMP,
+			is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE OR REPLACE VIEW player_notifications_latest AS
+			SELECT xuid, id, category, severity, title_key, body_key, params,
+			       target_route, target_search, actor_xuid, actor_name, source,
+			       created_at, read_at, written_at
+			FROM (
+				SELECT *, ROW_NUMBER() OVER (PARTITION BY xuid, id
+					ORDER BY written_at DESC, seq DESC) AS rn
+				FROM player_notifications_history
+			) ranked
+			WHERE rn = 1 AND is_deleted = FALSE`,
 		`CREATE TABLE notification_preferences (
 			xuid VARCHAR NOT NULL,
 			category VARCHAR NOT NULL,
@@ -99,6 +169,20 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (xuid, category)
 		)`,
+		// Append-only (cf. shared_social_notif_prefs_append_only_v1).
+		`CREATE SEQUENCE IF NOT EXISTS notification_preferences_history_id_seq START 1`,
+		`CREATE TABLE notification_preferences_history (
+			id BIGINT PRIMARY KEY DEFAULT nextval('notification_preferences_history_id_seq'),
+			xuid VARCHAR NOT NULL, category VARCHAR NOT NULL,
+			enabled BOOLEAN NOT NULL DEFAULT TRUE, delivery VARCHAR NOT NULL DEFAULT 'both',
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE OR REPLACE VIEW notification_preferences_latest AS
+			SELECT id, xuid, category, enabled, delivery, updated_at, written_at
+			FROM notification_preferences_history
+			QUALIFY ROW_NUMBER() OVER (PARTITION BY xuid, category
+				ORDER BY written_at DESC, id DESC) = 1`,
 		// Pour le test, on utilise la table _legacy player_records (sans _history)
 		// pour valider le fallback. La migration Phase 2 introduira _history.
 		`CREATE TABLE player_records (
@@ -287,9 +371,9 @@ func TestSharedSocialPersister_FullBatch_PersistsAllTables(t *testing.T) {
 		want  int
 	}{
 		{"media_files", "SELECT COUNT(*) FROM media_files WHERE file_path = '/cap/clip.mp4'", 1},
-		{"media_likes", "SELECT COUNT(*) FROM media_likes WHERE liker_slug = 'friend1'", 1},
-		{"match_favorites", "SELECT COUNT(*) FROM match_favorites WHERE player_slug = 'spartan'", 1},
-		{"player_notifications", "SELECT COUNT(*) FROM player_notifications WHERE xuid = 'xuid-123'", 1},
+		{"media_likes", "SELECT COUNT(*) FROM media_likes_latest WHERE liker_slug = 'friend1' AND is_liked = TRUE", 1},
+		{"match_favorites", "SELECT COUNT(*) FROM match_favorites_latest WHERE player_slug = 'spartan' AND is_favorite = TRUE", 1},
+		{"player_notifications", "SELECT COUNT(*) FROM player_notifications_latest WHERE xuid = 'xuid-123'", 1},
 		{"player_records", "SELECT COUNT(*) FROM player_records WHERE xuid = 'xuid-123' AND metric = 'kda_best'", 1},
 	}
 	for _, e := range expectations {
@@ -347,9 +431,15 @@ func TestSharedSocialPersister_Atomicity_RollbackOnFailure(t *testing.T) {
 	p := NewSharedSocialPersister(db)
 	ctx := context.Background()
 
-	// Batch valide en partie 1 (media_files OK) + invalide en partie 2
-	// (PK collision sur player_notifications : 2 fois la même row exacte).
-	// La 2e insert sur notifications va FAIL avec PK constraint → rollback.
+	// Depuis l'append-only, plus aucune collision PK exploitable sur les tables
+	// d'état (toutes en INSERT pur + seq auto). On force donc l'échec en fin de
+	// batch : persistPlayerRecords est le DERNIER helper — on droppe player_records
+	// avant le Persist → l'INSERT legacy lève "table does not exist" → la TX doit
+	// rollback INTÉGRALEMENT, y compris media_files (partie 1) et la notification.
+	if _, err := db.Exec(`DROP TABLE player_records`); err != nil {
+		t.Fatalf("drop player_records: %v", err)
+	}
+
 	now := time.Now().UTC()
 	batch := &SharedSocialBatch{
 		BatchID: "rollback-test",
@@ -359,13 +449,15 @@ func TestSharedSocialPersister_Atomicity_RollbackOnFailure(t *testing.T) {
 		},
 		Notifications: []NotificationInsert{
 			{XUID: "x1", ID: 100, Category: "c", Severity: "info", TitleKey: "t", Source: "s", CreatedAt: now},
-			{XUID: "x1", ID: 100, Category: "c", Severity: "info", TitleKey: "t", Source: "s", CreatedAt: now}, // PK duplicate
+		},
+		PlayerRecordsAppend: []PlayerRecordAppend{
+			{XUID: "x1", Metric: "kda_best", Value: 4.2, WrittenAt: now},
 		},
 	}
 
 	err := p.Persist(ctx, batch)
 	if err == nil {
-		t.Fatal("Persist doit échouer (PK duplicate sur notification)")
+		t.Fatal("Persist doit échouer (player_records droppé en cours de batch)")
 	}
 
 	// Vérifier que la media_file n'a PAS été persistée (rollback complet).
@@ -376,8 +468,8 @@ func TestSharedSocialPersister_Atomicity_RollbackOnFailure(t *testing.T) {
 	if count != 0 {
 		t.Errorf("media_file persistée malgré rollback (count=%d, want 0)", count)
 	}
-	// Vérifier que la 1re notif n'a PAS été persistée non plus.
-	if err := db.QueryRow("SELECT COUNT(*) FROM player_notifications WHERE xuid = 'x1' AND id = 100").Scan(&count); err != nil {
+	// Vérifier que la notif (event _history) n'a PAS été persistée non plus.
+	if err := db.QueryRow("SELECT COUNT(*) FROM player_notifications_history WHERE xuid = 'x1' AND id = 100").Scan(&count); err != nil {
 		t.Fatal(err)
 	}
 	if count != 0 {
@@ -410,9 +502,9 @@ func TestSharedSocialPersister_InsertOrIgnore_NoErrorOnDuplicate(t *testing.T) {
 		t.Fatalf("2nd Persist (duplicate): %v", err)
 	}
 	var count int
-	_ = db.QueryRow("SELECT COUNT(*) FROM media_likes WHERE media_path = '/dup.mp4'").Scan(&count)
+	_ = db.QueryRow("SELECT COUNT(*) FROM media_likes_latest WHERE media_path = '/dup.mp4' AND is_liked = TRUE").Scan(&count)
 	if count != 1 {
-		t.Errorf("dedup raté : count=%d, want 1", count)
+		t.Errorf("dedup raté : count=%d, want 1 (2 events TRUE → vue _latest = 1)", count)
 	}
 }
 
@@ -495,15 +587,15 @@ func TestSharedSocialPersister_MediaAssociations_InsertOrIgnore(t *testing.T) {
 		t.Fatal(err)
 	}
 	var count int
-	_ = db.QueryRow(`SELECT COUNT(*) FROM media_match_associations`).Scan(&count)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM media_match_associations_latest`).Scan(&count)
 	if count != 2 {
-		t.Errorf("INSERT OR IGNORE associations: count=%d, want 2 (1 dup ignoré)", count)
+		t.Errorf("append-only associations: count=%d, want 2 (vue _latest dédup par (media,match))", count)
 	}
-	// Vérifier que la 1re wins (delta=30)
+	// Append-only : latest wins (le dernier event d'un (media,match) gagne via la vue).
 	var delta int
-	_ = db.QueryRow(`SELECT delta_seconds FROM media_match_associations WHERE media_file_id = 1`).Scan(&delta)
-	if delta != 30 {
-		t.Errorf("delta du 1er INSERT: got %d, want 30 (le doublon doit être ignoré)", delta)
+	_ = db.QueryRow(`SELECT delta_seconds FROM media_match_associations_latest WHERE media_file_id = 1`).Scan(&delta)
+	if delta != 99 {
+		t.Errorf("delta append-only: got %d, want 99 (latest wins via vue _latest)", delta)
 	}
 }
 
@@ -531,9 +623,9 @@ func TestSharedSocialPersister_Favorites_AddAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 	var count int
-	_ = db.QueryRow(`SELECT COUNT(*) FROM match_favorites WHERE player_slug = 'u1'`).Scan(&count)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM match_favorites_latest WHERE player_slug = 'u1' AND is_favorite = TRUE`).Scan(&count)
 	if count != 1 {
-		t.Errorf("favorites: count=%d, want 1 (1 ajouté + 1 ajouté - 1 retiré)", count)
+		t.Errorf("favorites: count=%d, want 1 (m1+m2 ajoutés, m1 retiré → seul m2 favori)", count)
 	}
 }
 
@@ -559,7 +651,7 @@ func TestSharedSocialPersister_NotificationRead_UpdatesReadAt(t *testing.T) {
 		t.Fatal(err)
 	}
 	var read sql.NullTime
-	_ = db.QueryRow(`SELECT read_at FROM player_notifications WHERE xuid = 'x' AND id = 1`).Scan(&read)
+	_ = db.QueryRow(`SELECT read_at FROM player_notifications_latest WHERE xuid = 'x' AND id = 1`).Scan(&read)
 	if !read.Valid {
 		t.Error("read_at non mis à jour")
 	}
@@ -590,9 +682,9 @@ func TestSharedSocialPersister_ToggleLike_AddThenRemove(t *testing.T) {
 	}
 
 	var count int
-	_ = db.QueryRow("SELECT COUNT(*) FROM media_likes WHERE media_path = '/t.mp4'").Scan(&count)
+	_ = db.QueryRow("SELECT COUNT(*) FROM media_likes_latest WHERE media_path = '/t.mp4' AND is_liked = TRUE").Scan(&count)
 	if count != 0 {
-		t.Errorf("toggle remove KO: count=%d", count)
+		t.Errorf("toggle remove KO: count=%d (add TRUE + remove FALSE → 0 like actif)", count)
 	}
 }
 
@@ -601,12 +693,17 @@ func TestSharedSocialPersister_ToggleLike_AddThenRemove(t *testing.T) {
 // MarkAll, Delete, CapAndSweep, UpsertPreferences) — ADR 0022 fermeture du gap.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// seedNotif insère une notification minimale pour les tests de mutations.
+// seedNotif insère une notification minimale (event create) pour les tests de
+// mutations. APPEND-ONLY : on écrit dans player_notifications_history, written_at
+// = CURRENT_TIMESTAMP (même référentiel TZ que la prod → les events de mutation,
+// CURRENT_TIMESTAMP aussi, sont toujours ≥ ce seed ; le tie-break seq DESC règle
+// les égalités). L'état courant se lit via player_notifications_latest.
 func seedNotif(t *testing.T, db *sql.DB, xuid string, id int64, category string, createdAt time.Time) {
 	t.Helper()
 	if _, err := db.Exec(`
-		INSERT INTO player_notifications (xuid, id, category, severity, title_key, source, created_at)
-		VALUES (?, ?, ?, 'info', 'k', 's', ?)`,
+		INSERT INTO player_notifications_history
+			(xuid, id, category, severity, title_key, source, created_at, read_at, is_deleted, written_at)
+		VALUES (?, ?, ?, 'info', 'k', 's', ?, NULL, FALSE, CURRENT_TIMESTAMP)`,
 		xuid, id, category, createdAt); err != nil {
 		t.Fatalf("seed notif id=%d: %v", id, err)
 	}
@@ -628,7 +725,7 @@ func TestSharedSocialPersister_MarkNotificationsRead_Batch(t *testing.T) {
 		t.Errorf("n=%d want 2", n)
 	}
 	var unread int
-	_ = db.QueryRow(`SELECT COUNT(*) FROM player_notifications WHERE xuid='x' AND read_at IS NULL`).Scan(&unread)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM player_notifications_latest WHERE xuid='x' AND read_at IS NULL`).Scan(&unread)
 	if unread != 1 {
 		t.Errorf("unread=%d want 1", unread)
 	}
@@ -656,7 +753,7 @@ func TestSharedSocialPersister_MarkNotificationUnread(t *testing.T) {
 		t.Errorf("n=%d want 1", n)
 	}
 	var read sql.NullTime
-	_ = db.QueryRow(`SELECT read_at FROM player_notifications WHERE xuid='x' AND id=1`).Scan(&read)
+	_ = db.QueryRow(`SELECT read_at FROM player_notifications_latest WHERE xuid='x' AND id=1`).Scan(&read)
 	if read.Valid {
 		t.Error("read_at devrait être NULL après MarkNotificationUnread")
 	}
@@ -699,7 +796,7 @@ func TestSharedSocialPersister_DeleteNotification(t *testing.T) {
 		t.Errorf("n=%d want 1", n)
 	}
 	var cnt int
-	_ = db.QueryRow(`SELECT COUNT(*) FROM player_notifications WHERE xuid='x' AND id=1`).Scan(&cnt)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM player_notifications_latest WHERE xuid='x' AND id=1`).Scan(&cnt)
 	if cnt != 0 {
 		t.Errorf("cnt=%d want 0", cnt)
 	}
@@ -720,13 +817,13 @@ func TestSharedSocialPersister_CapAndSweepNotifications(t *testing.T) {
 		t.Fatalf("CapAndSweep: %v", err)
 	}
 	var cnt int
-	_ = db.QueryRow(`SELECT COUNT(*) FROM player_notifications WHERE xuid='x'`).Scan(&cnt)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM player_notifications_latest WHERE xuid='x'`).Scan(&cnt)
 	if cnt != 3 {
 		t.Errorf("cnt=%d want 3", cnt)
 	}
 	// Les 3 plus récentes (ids 3,4,5) restent → MIN(id)=3.
 	var minID int64
-	_ = db.QueryRow(`SELECT MIN(id) FROM player_notifications WHERE xuid='x'`).Scan(&minID)
+	_ = db.QueryRow(`SELECT MIN(id) FROM player_notifications_latest WHERE xuid='x'`).Scan(&minID)
 	if minID != 3 {
 		t.Errorf("minID=%d want 3 (plus récentes gardées)", minID)
 	}
@@ -742,7 +839,7 @@ func TestSharedSocialPersister_UpsertNotificationPreferences(t *testing.T) {
 		t.Fatalf("upsert insert: %v", err)
 	}
 	var cnt int
-	_ = db.QueryRow(`SELECT COUNT(*) FROM notification_preferences WHERE xuid='x'`).Scan(&cnt)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM notification_preferences_latest WHERE xuid='x'`).Scan(&cnt)
 	if cnt != 2 {
 		t.Errorf("cnt=%d want 2", cnt)
 	}
@@ -753,11 +850,11 @@ func TestSharedSocialPersister_UpsertNotificationPreferences(t *testing.T) {
 	}
 	var enabled bool
 	var delivery string
-	_ = db.QueryRow(`SELECT enabled, delivery FROM notification_preferences WHERE xuid='x' AND category='A'`).Scan(&enabled, &delivery)
+	_ = db.QueryRow(`SELECT enabled, delivery FROM notification_preferences_latest WHERE xuid='x' AND category='A'`).Scan(&enabled, &delivery)
 	if enabled || delivery != "inapp" {
 		t.Errorf("A enabled=%v delivery=%s want false/inapp", enabled, delivery)
 	}
-	_ = db.QueryRow(`SELECT COUNT(*) FROM notification_preferences WHERE xuid='x'`).Scan(&cnt)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM notification_preferences_latest WHERE xuid='x'`).Scan(&cnt)
 	if cnt != 2 {
 		t.Errorf("après update cnt=%d want 2 (pas de doublon)", cnt)
 	}

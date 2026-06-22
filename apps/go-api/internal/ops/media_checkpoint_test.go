@@ -146,7 +146,7 @@ func TestIndexMedia_ReopenAfterRun_NoWALReplayCrash(t *testing.T) {
 
 	var assocCount int
 	if err := db2.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM media_match_associations WHERE match_id = ?", "match-reopen").Scan(&assocCount); err != nil {
+		"SELECT COUNT(*) FROM media_match_associations_latest WHERE match_id = ?", "match-reopen").Scan(&assocCount); err != nil {
 		t.Fatalf("query associations: %v", err)
 	}
 	if assocCount != 1 {

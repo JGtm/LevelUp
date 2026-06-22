@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/migration"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
@@ -20,6 +21,7 @@ import (
 // Portage de SYNC_SCHEMA_DDL (_engine_schema.py).
 const playerSchemaSQL = `
 CREATE SEQUENCE IF NOT EXISTS personal_score_awards_id_seq;
+CREATE SEQUENCE IF NOT EXISTS psa_generation_seq START 1;
 CREATE TABLE IF NOT EXISTS personal_score_awards (
     id         INTEGER   PRIMARY KEY DEFAULT nextval('personal_score_awards_id_seq'),
     match_id   VARCHAR   NOT NULL,
@@ -28,32 +30,66 @@ CREATE TABLE IF NOT EXISTS personal_score_awards (
     award_category VARCHAR,
     award_count INTEGER  DEFAULT 1,
     award_score INTEGER  DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- APPEND-ONLY (campagne ART #23046, Phase 2). Plus de DELETE+INSERT sur les 4
+    -- index ART. Chaque ecriture INSERE pur avec UN generation_id (sequence
+    -- psa_generation_seq, partage par le batch) + written_at + is_tombstone.
+    -- Lecture via personal_score_awards_latest (DENSE_RANK, generation MAX,
+    -- tombstones exclus). Detail dans steps_player_append_only_personal_score_awards.go
+    generation_id BIGINT NOT NULL DEFAULT 0,
+    written_at TIMESTAMP DEFAULT now(),
+    is_tombstone BOOLEAN DEFAULT FALSE
 );
 CREATE INDEX IF NOT EXISTS idx_psa_match    ON personal_score_awards(match_id);
 CREATE INDEX IF NOT EXISTS idx_psa_xuid     ON personal_score_awards(xuid);
 CREATE INDEX IF NOT EXISTS idx_psa_category ON personal_score_awards(award_category);
+CREATE INDEX IF NOT EXISTS idx_psa_gen      ON personal_score_awards(match_id, xuid, generation_id);
 
+-- player_match_enrichment : APPEND-ONLY (campagne ART #23046, 2026-06-21). La
+-- table la PLUS écrite du projet (écritures incrémentales partielles perf/engagement/
+-- session/friends/bot/exclusion/psa) ne peut plus naître avec PK(match_id) + index
+-- ART mutés. PK technique id (séquence pme_seq) + colonne stage discriminant
+-- l'étape d'écriture + written_at. Chaque writer INSÈRE une row partielle taguée
+-- (perf/session/engagement/friends/bot/exclusion/psa/dominance/teammates/live).
+-- Lecture via la vue player_match_enrichment_latest (merge-on-read par-groupe),
+-- créée/rafraîchie par la migration player_append_only_match_enrichment_v1 (source
+-- unique = buildPMELatestViewSQL). Aucun PK(match_id), aucun index ART muté.
+CREATE SEQUENCE IF NOT EXISTS pme_seq START 1;
 CREATE TABLE IF NOT EXISTS player_match_enrichment (
-    match_id               VARCHAR   PRIMARY KEY,
-    performance_score      FLOAT,
-    performance_chain      VARCHAR,
-    session_id             VARCHAR,
-    session_label          VARCHAR,
-    is_with_friends        BOOLEAN   DEFAULT FALSE,
-    teammates_signature    VARCHAR,
-    known_teammates_count  SMALLINT,
-    friends_xuids          VARCHAR,
-    had_bot_teammate       BOOLEAN,
-    is_excluded            BOOLEAN   DEFAULT FALSE,
+    id                          BIGINT  DEFAULT nextval('pme_seq') PRIMARY KEY,
+    match_id                    VARCHAR NOT NULL,
+    performance_score           FLOAT,
+    performance_chain           VARCHAR,
+    dominance_flag              TINYINT,
+    session_id                  VARCHAR,
+    session_label               VARCHAR,
+    is_with_friends             BOOLEAN   DEFAULT FALSE,
+    teammates_signature         VARCHAR,
+    known_teammates_count       SMALLINT,
+    friends_xuids               VARCHAR,
+    had_bot_teammate            BOOLEAN,
+    is_excluded                 BOOLEAN   DEFAULT FALSE,
     -- Marqueur terminal de la convergence PSA (cf. convergePSA). NULL = jamais
     -- tente. Non-NULL = JSON match fetche et extraction tentee (meme si 0 award).
     -- Empeche le re-fetch infini des matchs sans PersonalScores extractibles.
-    psa_checked_at         TIMESTAMP,
-    created_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    psa_checked_at              TIMESTAMP,
+    engagement_score            DOUBLE,
+    engagement_score_brut       DOUBLE,
+    engagement_score_confidence VARCHAR,
+    mode_category               VARCHAR,
+    engagement_pace_player      DOUBLE,
+    engagement_pace_team        DOUBLE,
+    engagement_pace_lobby       DOUBLE,
+    engagement_player_activity  INTEGER,
+    stage                       VARCHAR   DEFAULT 'legacy',
+    written_at                  TIMESTAMP NOT NULL DEFAULT now(),
+    created_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_pme_session ON player_match_enrichment(session_id);
+-- idx_pme_match_lookup(match_id, written_at) est créé par la migration append-only
+-- (player_append_only_match_enrichment_v1), PAS ici : sur une DB legacy pré-existante,
+-- CREATE TABLE IF NOT EXISTS no-ope et written_at n'existe pas encore → CREATE INDEX
+-- échouerait. La migration le pose après le swap (written_at garanti).
 
 CREATE TABLE IF NOT EXISTS sync_meta (
     key        VARCHAR PRIMARY KEY,
@@ -371,44 +407,38 @@ func OpenPlayerDB(path string) (*duckdbpkg.DB, error) {
 		handle.Close()
 		return nil, fmt.Errorf("OpenPlayerDB schema %s: %w", path, err)
 	}
+	// Append-only #23046 : garantir la vue player_match_enrichment_latest + la
+	// conversion append-only de la table. EnsurePlayerSchema crée la TABLE mais PAS
+	// la vue (créée par la migration player_append_only_match_enrichment_v1). Sans
+	// cela, une player DB NEUVE ouverte hors du pool (1er sync) aurait la table mais
+	// pas la vue → tous les readers post-sync (_latest) échoueraient. Idempotent.
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(handle.SQLDb()); err != nil {
+		handle.Close()
+		return nil, fmt.Errorf("OpenPlayerDB append-only pme %s: %w", path, err)
+	}
+	// Append-only #23046 (Phase 2) : idem pour personal_score_awards — garantir la
+	// vue personal_score_awards_latest + la conversion generation_id. Sans cela un
+	// reader _latest casserait sur une player DB neuve. Idempotent.
+	if err := migration.EnsurePersonalScoreAwardsAppendOnly(handle.SQLDb()); err != nil {
+		handle.Close()
+		return nil, fmt.Errorf("OpenPlayerDB append-only psa %s: %w", path, err)
+	}
+	// Append-only #23046 (Phase 2) : idem pour match_citations — garantir la vue
+	// match_citations_latest + la conversion generation_id. Idempotent.
+	if err := migration.EnsureMatchCitationsAppendOnly(handle.SQLDb()); err != nil {
+		handle.Close()
+		return nil, fmt.Errorf("OpenPlayerDB append-only mc %s: %w", path, err)
+	}
 	return handle, nil
 }
 
-// OpenSharedDB ouvre shared_matches_v2.duckdb en lecture/écriture via le cache process-level.
-// openGlobalDB ouvre la DB globale xbox_aliases.duckdb (P5.3) en RW. Crée le
-// fichier + la table xuid_aliases si absents (idempotent).
-//
-// Retourne (*sql.DB, cleanup, error). Le cleanup ferme la connexion ; le
-// caller l'appelle via defer.
-func openGlobalDB(ctx context.Context, path string) (*sql.DB, func(), error) {
-	if path == "" {
-		return nil, nil, fmt.Errorf("openGlobalDB: empty path")
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return nil, nil, fmt.Errorf("openGlobalDB mkdir %s: %w", path, err)
-	}
-	handle, err := duckdbpkg.OpenReadWrite(path)
-	if err != nil {
-		return nil, nil, fmt.Errorf("openGlobalDB open %s: %w", path, err)
-	}
-	db := handle.SQLDb()
-	if _, err := db.ExecContext(ctx, `
-		CREATE TABLE IF NOT EXISTS xuid_aliases (
-			xuid VARCHAR PRIMARY KEY,
-			gamertag VARCHAR NOT NULL,
-			last_seen TIMESTAMP NOT NULL DEFAULT now(),
-			source VARCHAR DEFAULT 'sync',
-			updated_at TIMESTAMP DEFAULT now()
-		)
-	`); err != nil {
-		handle.Close()
-		return nil, nil, fmt.Errorf("openGlobalDB schema: %w", err)
-	}
-	return db, func() { _ = handle.Close() }, nil
-}
-
-// Applique le schéma shared si absent.
+// OpenSharedDB ouvre shared_matches_v2.duckdb en lecture/écriture via le cache
+// process-level. Applique le schéma shared si absent.
 // Retourne un *duckdbpkg.DB ref-compté ; appeler .Close() quand terminé.
+//
+// Note : le store global xbox_aliases (openGlobalDB) a été supprimé le
+// 2026-06-19 — consolidé dans shared.xuid_aliases (plus aucun lecteur ni
+// écrivain). Cf. v_gamertag_lookup + chemin convergent upsertAliasesFromMatchJSON.
 func OpenSharedDB(path string) (*duckdbpkg.DB, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, fmt.Errorf("OpenSharedDB mkdir %s: %w", path, err)

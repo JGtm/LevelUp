@@ -115,12 +115,14 @@ func writeLastSeenAppVersion(ctx context.Context, pdb *duckdb.PlayerDB, version 
 	}
 	defer rwDB.Close()
 
-	_, err = rwDB.Exec(ctx, `
-		INSERT INTO sync_meta (key, value, updated_at)
-		VALUES (?, ?, NOW())
-		ON CONFLICT (key) DO UPDATE SET
-			value      = EXCLUDED.value,
-			updated_at = NOW()
-	`, lastSeenAppVersionKey, version)
-	return err
+	// ART-safe : SELECT-then-UPDATE-or-INSERT (pas d'ON CONFLICT sur la PK key, qui
+	// réécrit via l'index ART). sync_meta = clé/valeur sans index secondaire.
+	return rwDB.UpsertNoConflict(ctx,
+		`SELECT 1 FROM sync_meta WHERE key = ?`,
+		[]any{lastSeenAppVersionKey},
+		`UPDATE sync_meta SET value = ?, updated_at = NOW() WHERE key = ?`,
+		[]any{version, lastSeenAppVersionKey},
+		`INSERT INTO sync_meta (key, value, updated_at) VALUES (?, ?, NOW())`,
+		[]any{lastSeenAppVersionKey, version},
+	)
 }

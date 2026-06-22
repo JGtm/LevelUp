@@ -25,7 +25,7 @@ export const citationsManifest = {
   "citations.filters.experience_ranked": { fr: "Classé", en: "Ranked" },
   "citations.filters.experience_unranked": { fr: "Non classé", en: "Unranked" },
   "citations.filters.modes": { fr: "Modes", en: "Modes" },
-  "citations.filters.playlists": { fr: "Playlists", en: "Playlists" },
+  "citations.filters.playlists": { fr: "Sélections", en: "Playlists" },
   "citations.filters.reset": { fr: "Réinitialiser", en: "Reset" },
   "citations.kpi.categories": { fr: "Catégories", en: "Categories" },
   "citations.kpi.complete": { fr: "Citations complètes", en: "Completed citations" },

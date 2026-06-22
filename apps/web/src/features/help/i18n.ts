@@ -104,18 +104,27 @@ const FR_TEXT: HelpText = {
             definition:
               "Efficacité offensive : mesure la quantité de dégâts nécessaire pour convertir une élimination. Le coefficient {{HP}} correspond aux points de vie totaux d'un Spartan dans le titre courant et s'ajuste automatiquement selon le jeu sélectionné (sur Halo Infinite : 90 de vie de base + 135 de bouclier = 225).\n\nAu-dessus de 1,0 : vous éliminez avec moins de dégâts qu'attendu (précision, tirs à la tête qui ignorent le bouclier).\nEn dessous de 1,0 : vous gaspillez des dégâts (assistances non converties, suivi insuffisant).",
             formula:
-              'Rendement offensif = {{HP}} × (éliminations + assistances/3) / dégâts infligés\n\nP80 de référence (Halo Infinite, données réelles) : 0,83\n(soit 83 % des matchs ont un rendement ≤ 0,83)',
+              'Rendement offensif = {{HP}} × (éliminations + assistances/3) / dégâts infligés\n\nRepère élite mondiale (jauge) : 0,90',
             example:
-              "Avec le barème {{HP}} PV : beaucoup d'éliminations pour peu de dégâts donne un rendement élevé (> 1,0) ; beaucoup de dégâts pour peu d'éliminations, un rendement faible (< 1,0).\n\nExemple chiffré (Halo Infinite, 225 PV) : 10 éliminations, 6 assistances, 2 800 dégâts → 225 × (10 + 2) / 2 800 ≈ 0,96, au-dessus du P80 (0,83).",
+              "Avec le barème {{HP}} PV : beaucoup d'éliminations pour peu de dégâts donne un rendement élevé (> 1,0) ; beaucoup de dégâts pour peu d'éliminations, un rendement faible (< 1,0).\n\nExemple chiffré (Halo Infinite, 225 PV) : 10 éliminations, 6 assistances, 2 800 dégâts → 225 × (10 + 2) / 2 800 ≈ 0,96, au-dessus du repère élite (0,90).",
           },
           {
             term: 'Résistance défensive',
             definition:
               "Mesure la quantité de dégâts que vous absorbez par mort. Repose sur le même barème : {{HP}} points de vie pour abattre un Spartan dans le titre courant (sur Halo Infinite : 90 de base + 135 de bouclier = 225).\n\nAu-dessus de 1,0 : vous mourez après avoir encaissé plus qu'une vie de Spartan (bonne résistance, vous obligez les adversaires à vider leur chargeur).\nEn dessous de 1,0 : vous mourez rapidement, souvent surpris ou mal positionnés.",
             formula:
-              'Résistance défensive = dégâts reçus / ({{HP}} × morts)\n\nP80 de référence (Halo Infinite, données réelles) : 1,59',
+              'Résistance défensive = dégâts reçus / ({{HP}} × morts)\n\nRepère élite mondiale (jauge) : 1,65',
             example:
               "Avec le barème {{HP}} PV : encaisser plus d'une vie de Spartan avant de mourir donne une résistance > 1,0 ; mourir tôt dans les échanges, une résistance < 1,0.\n\nExemple chiffré (Halo Infinite, 225 PV) : 5 morts, 1 400 dégâts reçus → 1 400 / (225 × 5) ≈ 1,24, soit 1,24 fois la vie d'un Spartan absorbée par mort.",
+          },
+          {
+            term: 'Profil de combat',
+            definition:
+              "Trois descripteurs indépendants résumant ton style, calibrés sur la distribution des meilleurs joueurs mondiaux.\n\n• Offensif (conversion dégâts→élimination) : Dispersé · Irrégulier · Équilibré · Précis · Chirurgical.\n• Défensif (dégâts encaissés par mort) : Fragile · Exposé · Solide · Résistant · Inébranlable.\n• Activité (engagement absolu) : Passif · Discret · Mesuré · Actif · Agressif.\n\nL'Activité compare ton rythme d'événements à celui du joueur moyen de ton lobby — c'est un engagement ABSOLU, à ne pas confondre avec le Score d'engagement qui te compare à ta propre norme. Les bandes Résistant/Inébranlable et Chirurgical correspondent au niveau des meilleurs mondiaux : il est normal de ne pas y être. Affiché à partir de 15 matchs avec données.",
+            formula:
+              "Offensif (avg_oc) — bornes 0,78 / 0,81 / 0,85 / 0,90.\nDéfensif (avg_dr) — bornes 1,20 / 1,35 / 1,50 / 1,65.\nActivité — moyenne(pace_joueur / pace_lobby), bornes 0,80 / 0,92 / 1,08 / 1,25 (1,0 = au rythme du lobby).",
+            example:
+              "OC 0,87 → Précis · DR 1,29 → Exposé · ratio 0,99 → Mesuré : un finisseur précis qui meurt un peu vite et s'engage dans la moyenne du lobby.",
           },
           {
             term: 'Ratio FDA',
@@ -160,9 +169,9 @@ const FR_TEXT: HelpText = {
           {
             term: 'Impact',
             definition:
-              'Rendement offensif normalisé sur les matchs partagés avec l\'escouade. Mesure l\'efficacité offensive : combien de dégâts sont nécessaires pour convertir une élimination. Le coefficient {{HP}} correspond aux points de vie totaux d\'un Spartan dans le titre courant (sur Halo Infinite : 90 base + 135 bouclier = 225). Au-dessus de 0,83 (P80 Halo Infinite) : conversion efficace. En dessous : dégâts gaspillés ou assistances non conclues.',
-            formula: 'Impact = {{HP}} × (frags + assists/3) / dégâts infligés\nP80 de référence (Halo Infinite, données réelles) : 0,83',
-            example: 'Exemple chiffré (Halo Infinite, 225 PV) : 10 frags, 6 assists, 2 800 dégâts → 225 × 12 / 2 800 ≈ 0,96, au-dessus du P80.',
+              'Rendement offensif normalisé sur les matchs partagés avec l\'escouade. Mesure l\'efficacité offensive : combien de dégâts sont nécessaires pour convertir une élimination. Le coefficient {{HP}} correspond aux points de vie totaux d\'un Spartan dans le titre courant (sur Halo Infinite : 90 base + 135 bouclier = 225). Au-dessus de 0,90 (repère élite) : conversion efficace. En dessous : dégâts gaspillés ou assistances non conclues.',
+            formula: 'Impact = {{HP}} × (frags + assists/3) / dégâts infligés\nRepère élite mondiale : 0,90',
+            example: 'Exemple chiffré (Halo Infinite, 225 PV) : 10 frags, 6 assists, 2 800 dégâts → 225 × 12 / 2 800 ≈ 0,96, au-dessus du repère.',
           },
           {
             term: 'Combat',
@@ -174,9 +183,9 @@ const FR_TEXT: HelpText = {
           {
             term: 'Survie',
             definition:
-              'Résistance défensive normalisée sur les matchs partagés. Mesure la capacité à encaisser des dégâts avant de mourir. Repose sur le même barème que l\'Impact : {{HP}} points de vie pour abattre un Spartan dans le titre courant (225 sur Halo Infinite). Au-dessus de 1,59 (P80 Halo Infinite) : vous survivez aux échanges bien au-delà d\'une vie complète. En dessous de 1,0 : vous mourez tôt dans les engagements.',
-            formula: 'Survie = dégâts reçus / ({{HP}} × morts)\nP80 de référence (Halo Infinite, données réelles) : 1,59',
-            example: '5 morts, 1 800 dégâts reçus → 1 800 / 1 125 ≈ 1,60 : légèrement au-dessus du P80.',
+              'Résistance défensive normalisée sur les matchs partagés. Mesure la capacité à encaisser des dégâts avant de mourir. Repose sur le même barème que l\'Impact : {{HP}} points de vie pour abattre un Spartan dans le titre courant (225 sur Halo Infinite). Au-dessus de 1,65 (repère élite) : vous encaissez bien plus d\'une vie complète. En dessous de 1,0 : vous mourez tôt dans les engagements.',
+            formula: 'Survie = dégâts reçus / ({{HP}} × morts)\nRepère élite mondiale : 1,65',
+            example: '5 morts, 1 800 dégâts reçus → 1 800 / 1 125 ≈ 1,60 : proche du repère élite (1,65).',
           },
           {
             term: 'Support',
@@ -497,18 +506,27 @@ const EN_TEXT: HelpText = {
             definition:
               'Offensive efficiency: measures how much damage you need to convert a kill. The {{HP}} coefficient is the total health needed to down a Spartan in the current title and adjusts automatically to the selected game (on Halo Infinite: 90 base HP + 135 shields = 225). Above 1.0 = you finish kills with less damage than a full Spartan\'s health (accuracy, headshots that skip the shield). Below = you waste damage (unconverted assists, poor follow-up).',
             formula:
-              'Offensive conversion = {{HP}} × (kills + assists/3) / damage_dealt\n\nP80 reference (Halo Infinite, real data): 0.83\n(= 83 % of matches have conversion ≤ 0.83)',
+              'Offensive conversion = {{HP}} × (kills + assists/3) / damage_dealt\n\nElite reference (gauge): 0.90',
             example:
-              'With the {{HP}} HP baseline: many kills for little damage gives a high conversion (> 1.0); lots of damage for few kills, a low one (< 1.0).\n\nWorked example (Halo Infinite, 225 HP): 10 kills, 6 assists, 2 800 damage → 225 × (10 + 2) / 2 800 ≈ 0.96, above the P80 (0.83).',
+              'With the {{HP}} HP baseline: many kills for little damage gives a high conversion (> 1.0); lots of damage for few kills, a low one (< 1.0).\n\nWorked example (Halo Infinite, 225 HP): 10 kills, 6 assists, 2 800 damage → 225 × (10 + 2) / 2 800 ≈ 0.96, above the elite reference (0.90).',
           },
           {
             term: 'Defensive Resistance',
             definition:
               'Measures how much damage you absorb per death. Uses the same baseline: {{HP}} total health to down a Spartan in the current title (on Halo Infinite: 90 base HP + 135 shields = 225). Above 1.0 = you die after absorbing more than a full Spartan\'s health (good resilience, forces enemies to commit a full magazine). Below = you die early in engagements, often surprised or poorly positioned.',
             formula:
-              'Defensive resistance = damage_taken / ({{HP}} × deaths)\n\nP80 reference (Halo Infinite, real data): 1.59',
+              'Defensive resistance = damage_taken / ({{HP}} × deaths)\n\nElite reference (gauge): 1.65',
             example:
               'With the {{HP}} HP baseline: absorbing more than one Spartan\'s health before dying gives a resistance > 1.0; dying early, a resistance < 1.0.\n\nWorked example (Halo Infinite, 225 HP): 5 deaths, 1 400 damage taken → 1 400 / (225 × 5) ≈ 1.24, i.e. 1.24× a Spartan\'s health absorbed per death.',
+          },
+          {
+            term: 'Combat profile',
+            definition:
+              "Three independent descriptors summarising your style (labels shown in French), calibrated on the distribution of the world's best players.\n\n• Offensive (damage→kill conversion): from Dispersé (dispersed) to Chirurgical (surgical).\n• Defensive (damage absorbed per death): from Fragile to Inébranlable (unshakable).\n• Activity (absolute engagement): from Passif (passive) to Agressif (aggressive).\n\nActivity compares your event pace to your lobby's average player — an ABSOLUTE engagement, unlike the Engagement Score which compares you to your own norm. The top bands match world-leader level: it's normal not to reach them. Shown from 15 matches with data.",
+            formula:
+              "Offensive (avg_oc) — thresholds 0.78 / 0.81 / 0.85 / 0.90.\nDefensive (avg_dr) — thresholds 1.20 / 1.35 / 1.50 / 1.65.\nActivity — mean(player_pace / lobby_pace), thresholds 0.80 / 0.92 / 1.08 / 1.25 (1.0 = lobby pace).",
+            example:
+              "OC 0.87 → Précis (precise) · DR 1.29 → Exposé (exposed) · ratio 0.99 → Mesuré (measured): a precise finisher who dies a bit fast and engages at the lobby average.",
           },
           {
             term: 'KDA',
@@ -526,9 +544,9 @@ const EN_TEXT: HelpText = {
           {
             term: 'Impact',
             definition:
-              'Normalised offensive conversion on shared squad matches. Measures offensive efficiency: how much damage is needed to convert a kill. The {{HP}} coefficient represents total Spartan health in the current title (on Halo Infinite: 90 base HP + 135 shields = 225). Above 0.83 (Halo Infinite P80): efficient conversion. Below: wasted damage or unconverted assists.',
-            formula: 'Impact = {{HP}} × (kills + assists/3) / damage dealt\nReference P80 (Halo Infinite, real data): 0.83',
-            example: 'Worked example (Halo Infinite, 225 HP): 10 kills, 6 assists, 2 800 damage → 225 × 12 / 2 800 ≈ 0.96, above P80.',
+              'Normalised offensive conversion on shared squad matches. Measures offensive efficiency: how much damage is needed to convert a kill. The {{HP}} coefficient represents total Spartan health in the current title (on Halo Infinite: 90 base HP + 135 shields = 225). Above 0.90 (elite reference): efficient conversion. Below: wasted damage or unconverted assists.',
+            formula: 'Impact = {{HP}} × (kills + assists/3) / damage dealt\nElite reference: 0.90',
+            example: 'Worked example (Halo Infinite, 225 HP): 10 kills, 6 assists, 2 800 damage → 225 × 12 / 2 800 ≈ 0.96, above the elite reference.',
           },
           {
             term: 'Combat',
@@ -540,9 +558,9 @@ const EN_TEXT: HelpText = {
           {
             term: 'Survival',
             definition:
-              'Normalised defensive resistance on shared matches. Measures ability to absorb damage before dying. Uses the same baseline as Impact: {{HP}} total health to down a Spartan in the current title (225 on Halo Infinite). Above 1.59 (Halo Infinite P80): you survive engagements well beyond a full life. Below 1.0: you die early in most exchanges.',
-            formula: 'Survival = damage taken / ({{HP}} × deaths)\nReference P80 (Halo Infinite, real data): 1.59',
-            example: '5 deaths, 1 800 damage taken → 1 800 / 1 125 ≈ 1.60: just above P80.',
+              'Normalised defensive resistance on shared matches. Measures ability to absorb damage before dying. Uses the same baseline as Impact: {{HP}} total health to down a Spartan in the current title (225 on Halo Infinite). Above 1.65 (elite reference): you survive engagements well beyond a full life. Below 1.0: you die early in most exchanges.',
+            formula: 'Survival = damage taken / ({{HP}} × deaths)\nElite reference: 1.65',
+            example: '5 deaths, 1 800 damage taken → 1 800 / 1 125 ≈ 1.60: close to the elite reference (1.65).',
           },
           {
             term: 'Support',
@@ -816,8 +834,9 @@ export function normalizeHelpLocale(locale?: string | null): HelpLocale {
  * Injecte le barème PV-pour-tuer du titre courant dans le copy combat. Le copy
  * source porte le jeton `{{HP}}` partout où la constante est title-aware (rendement,
  * résistance, et leurs déclinaisons escouade) ; on le remplace par la valeur résolue
- * côté backend (`TitleSummary.effective_hp_to_kill`). Les seuils P80 restent calibrés
- * Halo Infinite (recalibration par titre différée) et ne sont pas tokenisés.
+ * côté backend (`TitleSummary.effective_hp_to_kill`). Les repères élite mondiale
+ * (0,90 / 1,65) restent calibrés Halo Infinite (recalibration par titre différée) et
+ * ne sont pas tokenisés.
  */
 function withDamageBaseline(text: HelpText, effectiveHpToKill: number): HelpText {
   const hp = String(Math.round(effectiveHpToKill))

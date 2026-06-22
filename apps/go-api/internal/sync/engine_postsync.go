@@ -106,7 +106,7 @@ func hasMatchesNeedingScoreRefresh(ctx context.Context, playerDB, sharedDB *sql.
 	_ = xuid
 	var n int
 	err := playerDB.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM player_match_enrichment
+		SELECT COUNT(*) FROM player_match_enrichment_latest
 		WHERE engagement_score IS NULL OR performance_score IS NULL
 		LIMIT 1
 	`).Scan(&n)

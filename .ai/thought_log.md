@@ -2764,6 +2764,820 @@ Les 3 fichiers `career_live_{service,merge,partial}.go` faisaient transiter les 
 
 ---
 
+## [2026-06-22] Fetch live token-gated qui casse en silence (Accueil Défis/XP + Explorer) — fix racine expiry-aware + filet 401 + cache Défis renderable + garde-fous testés — COMPLÉTÉ backend (branche fix/live-fetch-token-expiry-aware, depuis main)
+
+**Contexte** : symptôme récurrent « Défis indisponibles » en permanence sur l'accueil (+ barre XP impactée, Explorer encart pauvre / profil de combat vide / toggle bloqué « Local »), pendant que le BP « semble » OK. Diagnostic vérifié + contre-vérifié par workflow ultracode (14 agents : verify + réfutation adverse + design + critique). **Preuve prod** (logs `/opt/levelup/data/logs`, JGtm xuid 2533274823110022) : BP **et** Défis échouent **ensemble en HTTP 401**, même horodatage (19:20→21:48 le 21/06), pendant que le **sync reste vert** (post-sync 22:14) → credentials valides, **zéro re-capture**. Le 401 était confiné à une seule vie de process (nettoyé par restart 22:19). ART **réfuté** (dernière erreur 10:49 pré-déploiement campagne PME) ; clearance **réfutée** (les deux endpoints font 401, pas 403) ; Explorer = **même** token owner dégradé (pas une privacy de cible).
+
+**Décision technique principale** : la racine n'est PAS un pansement « retry-on-401 » mais un **défaut de conception** — `requestSpartanToken` (halo_exchange.go) lisait `SpartanToken` et **jetait l'expiry réel** (`ExpiresUtc`) ; le cache process appliquait un **50 min en dur** et servait le token à l'aveugle. Le sync, lui, suit la fraîcheur (pool resolver `ExpiresAt`) → ne tombe pas. Fix en 3 volets :
+- **A1** capturer `ExpiresUtc` → `domain.HaloTokens.SpartanExpiresAt`, propagé (exchange, SISU, session OAuth + device-flow + Attempt).
+- **A2** `player_token_cache` **expiry-aware** : ne sert un token QUE si `now < expiry - marge(5min)` (sinon nil → re-mint), expiry réel au lieu du TTL deviné ; `ResolveFreshPlayerTokens` = cache + **re-mint dédupliqué par xuid (singleflight)** ; hook global nil-safe `SetPlayerTokenRefresher` câblé au boot (`WireGlobalTokenRefresher`) sur `mintFreshTokensForXUID`. `enrichWithHaloTokens` ne réutilise plus un token de **session** périmé (`TokensFresh`, Gap 5).
+- **A3** **filet 401 secondaire** (defense-in-depth, PAS le mécanisme) : sentinel `errHaloAuthFailure` wrappé dans `doGet`, helper `retryOnAuth` (invalide + re-mint + **retry exactement 1×**) sur `GetBattlePassWithRaw`/`GetChallengesWithRaw`/`FetchServiceRecord`/`FetchSeasonServiceRecord`. Career live = péremption déjà couverte par A2 (follow-up pour le filet 401 dédié, client sync).
+- **B-back** asymétrie d'affichage supprimée : colonnes `title/description/image_url` sur `challenge_snapshots` (migration `add_challenge_snapshots_render_columns`, append-only ADD COLUMN), persist des items rendus (sink `PersistChallengesSync(…, items)` + matching par TrackingID), reconstruction des `Items` dans `buildChallengesResponseFromSnapshots`, suppression du garde `cacheChallengesAreRenderable` (parité BP : cache rendu sur tout hit → plus jamais « indisponible » tant qu'un cache existe).
+- **C** garde-fous testés : `TestPlayerTokenCache_HonorsRealSpartanExpiry`/`TokensFresh` (expiry-aware), `TestResolveFreshPlayerTokens_SingleflightOneMint` (anti thundering-herd), `auth_retry_test.go` (401→re-mint→200 ; 401→401 = exactement 2 hits, pas de boucle ; sans refresher = pas de retry), `auth_retry_guard_test.go` (**statique, build rouge** si une entrée live per-player contourne `retryOnAuth` + doGet wrappe le sentinel), `home_repo_cache_challenges_test.go` (reconstruction Items), `TestParseSpartanExpiry`.
+
+**Résultats (vérif finale)** : `go build ./...` + `go vet ./...` **clean sur tout le module** ; tests verts sur halo, auth, duckdb, service, migration, watcher, api/handlers/middleware (suite complète `go test ./...` en cours). B-front (indicateur « données en cache ») = **couvert par l'existant** (`DataFreshnessIndicator`, conçu pour ce cas, déjà wiré sur Défis) + backend — aucun fichier frontend touché, forme API inchangée (`Items`/`FromCache` déjà présents). Le symptôme « indisponible » disparaît par le backend seul.
+
+**Prochaine étape** : confirmer la suite `go test ./...` verte, puis commit (après autorisation user). Follow-ups documentés : (1) filet 401 sur le client sync (career live Explorer/appearance) ; (2) wording explicite « données en cache » + hint toggle Explorer (finition). Réf : [[reference_killfeed_deadstate_fields]] (non lié) ; voir plan `c-est-bizarre-j-ai-tout-agile-popcorn.md`. Mémoire : [[reference_live_fetch_expiry_aware_token_cache]].
+
+---
+
+## [2026-06-22] Explorer — trou à gauche du banner Spartan ID (fix) + handoff fetch live cassé — COMPLÉTÉ (branche fix/explorer-banner-gap, depuis main)
+
+**Contexte** : 2 problèmes signalés sur la page Explorer. (1) Le banner Spartan ID laisse un **trou à gauche** pour certaines nameplates — même bug que celui déjà réglé sur l'accueil ; le banner étant servi aléatoirement (pool de nameplates de repli par xuid), plus de nameplates l'exposent. (2) La **récup live ne marche plus** : le bloc Spartan ID est pauvre (pas de rang carrière/emblème/skill peaks live), les graphes profil de combat sont vides, le toggle « En direct/Local » est bloqué sur « Local » ; connexe : barre XP accueil + défis KO, mais **BP OK en live** (tokens valides — confirmé user, ce n'est PAS du cache).
+
+**Décision technique principale** : *(trou)* le fix `ead48c4a4` (background-image sur l'outer div) était déjà présent, mais le banner Explorer restait un **fork dégradé** de `HomeSpartanIdentityBanner` — il lui manquait le **wrapper interne `relative overflow-hidden`** qui donne un contexte de clip RECTANGULAIRE aux couches absolues (gradient + adornment), pendant que le `background-image` vit sur l'outer ARRONDI. Sans lui, gradient/adornment étaient clippés par les coins arrondis → liseré/trou à gauche. Recalage sur l'accueil : ajout du wrapper interne, adornment passé en sibling du shell (`absolute right-2 top-0 h-full`), `lg:min-h-[9rem]` sur le shell. 1 seul fichier : `ExplorerTargetIdentityBanner.tsx`. Testids + contenu préservés. *(live)* diagnostic : tout le live Explorer est hard-gated sur `hasAuth` (`explorer_service_target.go`) ; comme le BP marche en live, écarter « pas de tokens ». Indice logs : **403 récurrents sur `economy.svc/.../customization/appearance`**. Cause racine partagée avec barre XP accueil/défis (même `enrichWithHaloTokens(owner xuid)`). Non corrigé ici (hors scope visuel + chevauche un autre agent) → consigné dans un handoff.
+
+**Résultats (vérif finale)** : typecheck OK ; eslint **0 erreur** sur le fichier ; `ExplorerTargetIdentityBanner.test.tsx` **6/6 vert** (testids/textes inchangés). Handoff écrit : `.ai/HANDOFF_EXPLORER_LIVE_FETCH.md` (symptôme, fait cadrant BP-valide, indice 403 appearance, chemin de code, H1 hasAuth-false vs H2 endpoint-403, repro recommandée).
+
+**Prochaine étape** : vérif visuelle dans l'app (Explorer → plusieurs joueurs pour varier la nameplate aléatoire : plus de trou à gauche, parité avec le banner accueil ; responsive sm/lg ; avec/sans adornment), puis commit après autorisation. Le fetch live cassé est traité via le handoff (autre agent déjà sur le sujet connexe). Réf : [[reference_explorer_banner_forks_home]].
+
+---
+
+## [2026-06-22] Pills coéquipiers (barre L2 Escouade) — troncature pour préserver le one-line — COMPLÉTÉ (non commité, branche fix/home-session-cards-nav)
+
+**Contexte** : sur la page Escouade, la barre de filtres sticky « L2 » (remplace NavL2, `SquadLayout`) affiche la pill colorée du joueur actif + les pills des coéquipiers sélectionnés (`GamertagCombobox` mode compact). Avec le **max de joueurs (1 actif + 3 coéquipiers = 4)** à noms longs, les pills coéquipiers grossissaient → combobox en `flex-wrap` sur une 2ᵉ ligne et/ou poussée des filtres + actions vers la droite (« ça décale tout »). User veut conserver le **one-line** + la stabilité du contenu central. La pill active était déjà bornée (`max-w-[7rem] truncate`, `SquadLayout.tsx:458`) mais **pas** les pills coéquipiers (ni largeur max, ni troncature, ni shrink).
+
+**Décision technique principale** : borner + tronquer le texte du gamertag dans les **2 variantes** de pill (colorée si `colors` fourni = cas barre L2 ; neutre sinon) de `GamertagCombobox` — réutilisation exacte du pattern de la pill active : texte enveloppé dans `<span className="max-w-[7rem] truncate">{gt}</span>` + `title={gt}` (survol = nom complet) + `shrink-0` sur le bouton `×`. Le `flex-wrap` du conteneur compact est **conservé** (repli gracieux sur écran étroit ; la troncature suffit au one-line en usage normal). Un seul fichier touché ; **aucune modif `SquadLayout`** (pill active déjà correcte) ; zéro couleur ajoutée (classes de layout uniquement → règle color-tokens §20 respectée). Composant partagé : amélioration neutre pour les call sites non-compact (`SyncTab`, `ComparePage`, `SquadV2RouteHost`), dropdown inchangé.
+
+**Résultats (vérif finale)** : typecheck OK ; lint **0 erreur** (69 warnings pré-existants hors scope, aucun sur `GamertagCombobox.tsx`) ; `GamertagCombobox.test.tsx` **4/4 vert** (assertions sur items du dropdown + état input → envelopper `{gt}` dans un span conserve `getByText`).
+
+**Prochaine étape** : vérif visuelle dans l'app tournante (Escouade → sélectionner 3 coéquipiers à noms longs ≥12 car. : barre L2 sur **une ligne**, pills tronquées « … » + survol nom complet, filtres/compteur/Analyser non décalés), puis commit après autorisation. Réf : [[reference_squad_page_legacy_service_composition]].
+
+---
+
+## [2026-06-22] Couleur dédiée "Bonus" (assistances) — distincte des 8 couleurs squad — COMPLÉTÉ (non commité, branche fix/home-session-cards-nav)
+
+**Contexte** : sur la page Escouade, le segment **Bonus** (assistances, `assists/3`) empilé dans les charts utilisait le token `chart-series-7`. En **palette par défaut** ce token vaut `#F59E0B` (ambre) — exactement `perf-tier-3` (`#F59E0B`), la couleur du **3ᵉ joueur** → bonus indiscernable. Le bonus apparaît dans le stack de chaque joueur (chart butterfly), à côté des frags (couleur joueur) et des morts (`hexComplement`, hue+180°). Contrainte user : éviter les **8 couleurs verrouillées** = 4 joueurs + leurs 4 opposés colorimétriques, et bien se démarquer.
+
+**Décision technique principale** : **nouveau token sémantique `bonus`** plutôt que remapper `chart-series-7` (qui a d'autres consommateurs : ligne MMR `TimeseriesSquadAdapted`, donuts grenades `SynthesisKillTypesDonut`/`ExplorerTargetSampleStats`, perf `TimeseriesFormCharts`). Bug **spécifique à la palette défaut** (en okabe/cividis/tol-bright, `chart-series-7` ≠ `perf-tier-3` déjà). Valeurs par palette : default `#A855F7` (violet-500, **choix validé user**, teinte 271°, écart ≥37° aux 8 interdites + bleu-frags + rouge-morts) ; okabe-ito `#CC79A7` (Reddish Purple, inchangé = aucune régression) ; tol-bright `#AA3377` (TOL_PURPLE, standout cohérent) ; cividis `#B6A855` (ocre T75, best-effort — ramp séquentielle bleu→jaune sans pourpre possible, limite CVD assumée). Ajout `--ac-bonus` au fallback `:root` de globals.css. Repointé **uniquement** les 2 sites bonus : `TimeseriesKdaTrend.tsx` + `squadPerformanceLineCharts.ts` (butterfly). `applyPalette()` boucle déjà sur `ALL_TOKENS` → `resolveToken('bonus')` câblé sans autre changement.
+
+**Résultats (vérif finale)** : typecheck OK (le `Palette = Record<SemanticToken,string>` force les 4 palettes à définir `bonus`) ; lint **0 erreur** (warnings pré-existants hors scope, aucun sur les fichiers touchés) ; snapshot `coverage.test.ts` régénéré (4 palettes, valeurs bonus présentes) ; **test de non-régression** `apps/web/src/features/squad/bonusColor.test.ts` (bonus ∉ {hex joueurs ∪ hexComplement}, set des 8 distinct ; bonus ≠ chart-series-7) — fichier séparé car `colors.test.ts` mocke tout le barrel accessibilité. **Suite web complète verte** : 215 fichiers, 1891 tests, 14 skipped.
+
+**Prochaine étape** : vérif visuelle dans l'app tournante (page Escouade → toggle **Bonus** du butterfly = violet, distinct du joueur 3 ambre et de chaque barre morts ; chart « Évolution Frags/Morts » timeseries → toggle Bonus = violet distinct du bleu frags / rouge morts), puis commit après autorisation. Réf système couleurs : skill `color-tokens` + `apps/web/src/lib/accessibility/`.
+
+---
+
+## [2026-06-21] Cards "Sessions récentes" (accueil) → bonne page de stats + session + amis + hover — COMPLÉTÉ (non commité, branche fix/home-session-cards-nav)
+
+**Contexte** : 2 problèmes signalés. (1) Toggle Solo/Escouade/Mixte « sur Timeseries » → **faux positif** : le code le gate déjà à la page Sessions (`contextSelectable={isSessionsPage}` NavL2, commit faa0a7f9f) ; vu sur prod = build/cache navigateur obsolète → **ignoré sur demande user**. (2) Vrai bug : cliquer une card de session de l'accueil envoyait TOUT vers `/stats/sessions?session=…` (page détail/compare, mauvaise cible) avec contexte `'solo'` par défaut + scope partagé `soloFilterStore` auto-snappé → backend `session_not_found` → page « Indisponible » (URL témoin `…/stats/sessions?session=10/06/2026 19:52–20:14 (3)`).
+
+**Direction (corrigée par le user en cours de plan)** : la page de stats SOLO c'est **Timeseries**, pas Sessions. Card escouade → page **/squad**. Et une session escouade est par définition jouée avec des amis → l'ouvrir AVEC les amis de la session pré-sélectionnés.
+
+**Décision technique principale** :
+- Card **solo** → `soloFilterStore.setSessions({picked_sessions:[label]})` (= épingle, même mécanisme que la pill Session) + nav `/stats/timeseries`. Vérifié : `useFollowLatestSession` ne re-snappe pas (`followLatest=false` dès `picked.length>0`).
+- Card **escouade** → nav `/squad?session=…&teammates=a,b,c` (teammates **string joint par virgule**, pas array — un array casse les utilitaires `Record<string,string>` des pages Help/Settings). `SquadLayout` consomme au montage via un **ref-initializer capturé AVANT le redirect index→synergies** (qui drop la query) : `setSelectedGts(teammates)` + `applySessionLabels([session])` ; l'init-coéquipiers settings est neutralisée tant que `deepLinkRef` est posé ; le suffixe `(N)` volatil est absorbé par `reconcileSquadSessionLabels` existant.
+- **Backend** : `SessionSummaryItem.Teammates []string` (omitempty), calculé best-effort dans `HomeService.enrichSquadSessionsTeammates` (nouveau `home_squad_session_teammates.go`) via `LoadMainTeamParticipants(xuid, matchsDeLaSession)` (1 appel batché). **Règle = intersection** (`sessionCoreTeammates`) : coéquipiers présents dans TOUS les matchs de la session, restreints aux amis configurés (`friendGamertagsResolver`), cappés à 3 (= MAX_SELECTION /squad). **Pourquoi intersection et pas top-fréquence** : `decideCompositionReanchor` (squadPending.ts:103) ne conserve la session épinglée que si elle est dans la composition EXACTE des coéquipiers ; top-3-par-fréquence peut sélectionner des amis jamais ensemble dans la session → composition vide → ré-ancrage qui REMPLACE la session. L'intersection garantit que la session reste dans la composition (ou, si amis tournants → vide → chemin hasTeammates=false qui conserve aussi la session). Wiring `HomeCtxWithAuth` + `HomeCtx`. nil-safe.
+- **Hover** : `border border-transparent transition-colors hover:border-primary` sur la card (token sémantique → s'adapte clair/sombre, zéro hex).
+- **Logging** (dossier `logs/`, via MultiModuleHandler routé par package appelant) : `slog.WarnContext` sur échec loader (toujours en fichier) + `slog.DebugContext` résumé enrichissement (sessions, sessions_with_teammates, matches_scanned).
+
+**Résultats (vérif finale)** : Go — `go vet` service+domain+api clean ; **8 tests teammate** verts (intersection/cap/restriction-amis/rotating→nil/none/assign-core/no-op-loader/**erreur-loader-dégrade**, WARN observée) ; service suite complète verte ; api home/contract/shape/huma/drift verts ; build CGO OK. Front — typecheck OK, lint **0 erreur** ; **8 nouveaux tests** (HomeSessionCarousel ×3 + HomePage.nav ×3 + SquadLayout.deeplink ×2) ; suites home (34) + squad pages (16) vertes. `routeTree.gen.ts` non modifié, pas de drift openapi (home auto-dérivé Huma).
+
+**Prochaine étape** : vérif end-to-end manuelle dans l'app tournante (card solo → Timeseries scopé ; card escouade → /squad avec amis ; hover bordure clair+sombre), puis commit après autorisation. Réf : [[reference_home_session_cards_nav]].
+
+---
+
+## [2026-06-21] Qualité/maintenabilité post-campagne ART — helper unique `append_only_rebuild` + ADR 0026 — COMPLÈTE & VERTE (non commitée)
+
+**Contexte** : après le deploy de la campagne ART, demande user de vérifier que la campagne est complète, propre, pérenne ET bien factorisée (pas de duplication, séparation des responsabilités), axe qualité/maintenabilité. 3 scopes retenus (sûreté+tests / DRY / doc).
+
+**Audit (13 agents, `.ai/P2_QUALITY_AUDIT_RAW.json`)** : ZÉRO blocker, campagne complète. Findings maintenabilité : swap CTAS dupliqué 8×, dont **5 NON transactionnels sans recoverOrphan ni garde réelle** (DROP de l'ancienne table AVANT toute vérif, sans rollback → perte possible sur crash mid-swap) ; vue `_latest` DDL 26× ; pas de doc centrale.
+
+**Chunk 1 (commité b4a5e8cd2)** : dead code `WriteCitationsForMatch` supprimé (interface + 3 impls, ON CONFLICT incompatible append-only, zéro caller) ; `TestPipelineFixture_Citations_Idempotent` renforcé (run1==run2 logique + table physique croît = preuve supersession) ; convergence_test PSA → `_latest` ; fix fixture notify (vue `media_match_associations_latest`).
+
+**Fix CI Baseline (8dcb4e711)** : le gate Go Baseline était rouge (recalibration profil de combat e1f021cbb avait renommé des tests, baseline figée 18/06). Erreur intermédiaire : régénération **locale Windows** → 3 sous-tests OS-dépendants (`TestFilePathToURL_SinglePlayerCapturesBase/{clip,clip_thumb,screenshot}`, séparateurs de chemin) absents du run Linux CI → gate rouge dans l'autre sens. **Bonne méthode** : repartir de la baseline Linux d'origine + retirer chirurgicalement les **11 noms renommés** (8 `TestClassifyCombatProfile_*` + 2 `TestComputeKPIStats_CombatProfile_*` + 1 `TestRecomputeIsWithFriends_*_SkipsLeases→DemotesGracefully`), tous avec remplaçant présent. Validé : 0 nom top-level baseline absent des `func Test*`. CI **entièrement verte**.
+
+**Chunk 3 — helper unique `internal/migration/append_only_rebuild.go`** (décision technique principale) : `rebuildAppendOnlyTx(ctx, db, spec)` + `applyAppendOnlyRebuild` + `recoverOrphanAppendOnly` génériques. Le `spec` (struct `appendOnlyRebuild`) ne porte que la variance (table, séquences, colonnes synthétiques, marqueur idempotence, PostSwap verbatim, ViewSQL). **7 migrations migrées** : 5 « simples » written_at (match_skill_rank, player_csr_snapshots, match_csrs, pve_match_stats, lusr_component_history) — qui **GAGNENT** le swap transactionnel + garde `rebuilt==before` AVANT DROP + recoverOrphan — et 2 générationnelles (personal_score_awards, match_citations). **Exception documentée** : player_match_enrichment reste bespoke (vue merge-on-read par `stage`, genuinely unique). Net **−569 lignes** de swap dupliqué.
+
+**Validation** : suite migration verte (26.9s) ; 7 packages dépendants verts (sync 116s, duckdb 98s, persist, sharedprovider…) ; **crash-test sur 6 VRAIES player DBs** (4 backups pre-ART legacy + 2 live) — le helper a exécuté le swap réel sur gros volumes (citations 6302, PSA 3341, lch 954, PME 942) sans erreur, pass2 `applied=0` (idempotence stricte), toutes les vues `_latest` lisibles. Tests permanents `append_only_rebuild_test.go` : HappyPath, LatestDedupsBySupersession (table physique croît, vue dédup), **RollbackPreservesTable** (la sûreté que les 5 simples n'avaient pas), RecoverOrphan, BuildSelectList.
+
+**Chunk 4 — doc** : `docs/adr/0026-append-only-art-eradication.md` (problème ART + 2 familles de tables + **3 mécanismes** written_at/generation_id/stage merge-on-read + le helper + exception PME + recette d'ajout + pièges `;`-en-commentaire/lecture-brute) + listé dans CLAUDE.md.
+
+**Conclusion** : campagne ART confirmée complète + correcte ; duplication éliminée (8→1 helper) ; asymétrie de sûreté résolue (5 swaps non-tx → transactionnels) ; doc pérenne livrée. Commits : `aad2e4957` (helper + ADR), précédé de `b4a5e8cd2` (Chunk 1) + `8dcb4e711` (fix baseline).
+
+**Suivi (post-commit helper)** : fix CI Lint de aad2e4957 (goconst `CURRENT_TIMESTAMP AS written_at` 6× → const `synthWrittenAt` ; prealloc `stmts`). Tests cardinalité **weapon_kills** ajoutés (GenerationSupersedes / EffectiveWeaponID / Idempotent) — recommandés car zéro risque + verrouillent la vue v_weapon_kills DENSE_RANK. **Finding séparé remonté (hors scope, non corrigé)** : sur une DB shared NEUVE, le bootstrap crée weapon_kills au schéma AGRÉGÉ (PK match_id,xuid,weapon_id + colonne `kills`, ligne 115 steps_shared.go) au lieu du schéma per-kill (time_ms) que les writers utilisent — conflit de 2 `CREATE TABLE IF NOT EXISTS` concurrents. Pré-existant, prod non affectée (DBs déjà per-kill), latent pour fresh install — à investiguer séparément. **NON retenu** : source unique métadata `stage` PME (refactor de code déployé critique pour DRY cosmétique, risque > bénéfice).
+
+**FINDING weapon_kills RÉSOLU (2026-06-21, sur demande user)** : sweep adversarial (Explore) → **0 lecteur** de la colonne agrégée `weapon_kills.kills` (tous font `COUNT(*) AS kills` sur les rows per-kill), 2 writers per-kill, lecteurs via `v_weapon_kills`, `migrate_weapon_kills_to_ubigint` = no-op pur. **Option B** retenue (la plus propre, zéro duplication) : retrait du `CREATE TABLE weapon_kills` agrégé de `create_base_shared_schema` (remplacé par un commentaire breadcrumb SANS `;` pour le splitter execScript) → `add_weapon_kills` (per-kill) devient le créateur unique. Sûr pour les DBs existantes (migration trackée, déjà appliquée ; même re-run = IF NOT EXISTS no-op). Garde anti-régression `TestWeaponKills_FreshSharedDB_IsPerKill` (DB neuve → time_ms/generation_id présents, `kills` absent, INSERT 2 kills même arme OK) + les 3 tests cardinalité re-câblés sur `RunForDB(TargetShared)`. Validé : suite migration + sync + duckdb verts. Compte particulièrement dans le contexte multi-titre (chaque nouveau titre = nouvelle DB shared).
+
+---
+
+## [2026-06-21] Campagne ART #23046 — DÉPLOYÉE EN PROD (Phase 1 + Phase 2) — COMPLÉTÉE
+
+**Action** : merge `refactor/art-pme-appendonly` → main local (ba3cb4608, merge commit) → push origin/main (fast-forward 125042306..ba3cb4608) → auto-deploy VPS.
+
+**Incident git résolu avant deploy** : un `git pull` accidentel sur la branche (qui track origin/main) avait tenté de merger `125042306` (le revert prod-safety qui avait retiré la migration PME de main) → conflit sur order.go + 2 fichiers PME "deleted by them" (séquelle aussi d'une corruption d'index racy-stat Windows antérieure). Abort du pull, puis merge délibéré branche→main en résolvant les 3 conflits en faveur de la branche (la campagne ré-introduit ces migrations à la racine). Vérif : arbre mergé IDENTIQUE à la branche.
+
+**Crash-test étendu pré-deploy** : migrations validées sur les 4 player DBs locales (Madina/JGtm/Chocoboflor/XxDaemon) + shared via apply_shared_migrations — zéro erreur (schémas legacy variables 23-24 cols PME / 7-8 PSA, tous gérés par les migrations robustes).
+
+**Deploy vérifié** : GitHub Actions tous verts (Deploy Pre-Check 4m59s + ADR 0021 Gate + Deploy to VPS 2m30s + Regen demo). Conteneur `levelup-levelup-1` Up healthy. **Preuve DIRECTE sur les vraies DBs prod (modifiées au boot 17:27)** : Madina player DB porte generation_id + personal_score_awards_latest + match_citations_latest + player_match_enrichment_latest ; shared DB porte is_reset + weapon_kills_generation_seq + player_skill_state_v2_latest. **Zéro erreur ART/FATAL/migration/reader** dans les logs. `pool: migrate player db` (OpenPlayerDB = lance les ensures append-only) a réussi pour tous les joueurs AVEC db.
+
+**WARN prod pré-existants (NON liés à l'ART, à NE PAS confondre)** : OAuth invalid_grant (AADSTS70000, tokens à re-capturer pour Madina/Choco/XxDaemon) ; « No such file » pour QuiteSiren/UppedJoker/GeleJugefi/Trimbutton/DankerGlue (profils db_profiles.json sans DB synchronisée) ; restic absent ; catalog playlist 404 best-effort.
+
+**Conclusion** : **le bug ART DuckDB #23046 est ÉRADIQUÉ en prod** sur toutes les tables d'état (Phase 1 PME + Phase 2 PSA/watermark/citations/weapon_kills). Serveur sain, DBs converties, zéro perte. Campagne TERMINÉE. (CI run encore en cours post-deploy — ne gate pas ; rerun si flake DuckDB connu.)
+
+---
+
+## [2026-06-21] Phase 2 ART (#23046) — 4 cibles converties append-only + crash-test RÉEL (2 bugs trouvés) — COMPLÈTE & VERTE (non commitée)
+
+**Contexte** : suite de la Phase 1 (PME). Décision user : « tout P2 puis un seul commit » + watermark « la version la plus propre/solide/pérenne ». P2 = les 4 vecteurs ART re-confirmés par le critique de complétude. Census préalable (workflow 4 agents, `.ai/P2_ART_CENSUS_RAW.json`).
+
+**4 cibles converties** :
+1. **personal_score_awards** (BLOCKER, chemin sync LIVE) — append-only GÉNÉRATION : `generation_id` (séquence partagée par appel d'écriture) + `written_at` + `is_tombstone` (gère le clear `InsertPersonalScoreAwards(nil)`). Vue `personal_score_awards_latest` (DENSE_RANK par (match_id,xuid), génération MAX, tombstones exclus). 2 writers (writes.go + player_persister.go) → INSERT pur taggé génération ; 7 readers → `_latest` ; 2 DISTINCT (gate) gardés raw. Migration swap transactionnel.
+2. **player_skill_state_v2** (watermark, MEDIUM) — **sentinel append-only** (la version pérenne, pas le de-index du census qui régressait le hot-path LoadState) : colonne `is_reset` + vue `_latest` filtrée `WHERE NOT COALESCE(is_reset,FALSE)`. Le reset (RecomputeLUSRCanonicalForPlayer) INSÈRE une sentinelle par groupe au lieu de `DELETE WHERE xuid` → LoadState→nil→re-seed. Garde l'index idx_pssv2. Test dédié.
+3. **match_citations** (HIGH, recompute SOUSTRACTIF confirmé → DELETE load-bearing) — append-only GÉNÉRATION : drop PK composite (match_id, citation_name_norm) → id technique + `generation_id` (par match) + vue `match_citations_latest` (DENSE_RANK par match_id). Le sentinel `_processed` existant gère le cas 0 citation (pas de is_tombstone). 2 writers + retrait de 2 DELETE (deleteCitationForMatch + rescue composite-only converti en écriture de génération complète). ~7 readers value → `_latest`, 2 DISTINCT raw. repair_pk no-op si append-only.
+4. **weapon_kills** (HIGH, shared, PAS de PK) — append-only GÉNÉRATION SANS swap (ALTER ADD COLUMN generation_id + written_at). La vue **v_weapon_kills** (déjà le point de lecture canonique ADR 0016) devient « dernière génération » (DENSE_RANK par (match,xuid)) → tous ses readers couverts sans changement. 2 writers (InsertWeaponKills + persistWeaponKills) → INSERT pur taggé ; 2 readers raw value (queries_match/Q28) → v_weapon_kills via `effective_weapon_id` ; readers NOT EXISTS gardés raw.
+
+**Garde-fous + corrections transverses** : 4 tables ajoutées à appendOnlyStateTables. **Durcissement regex garde-fou** (borné au backtick : `[^;\`]*`) — un faux positif weapon_kills/shared_persister (le `[^;]*` faisait le pont jusqu'au INSERT OR IGNORE medals/xuid_aliases du même fichier, les strings SQL Go n'ayant pas de `;` final). **Test atomicité persist** : tout étant append-only (PK techniques séquentielles), plus aucun conflit de PK exploitable → injection de panne via conversion NaN→INTEGER. order.go : 4 migrations insérées au rang d'enregistrement (TestSortByCanonicalIsNoOp). **Bug Phase 1 rattrapé** : le working tree order.go avait perdu `player_append_only_match_enrichment_v1` (anomalie git racy-stat Windows masquant la diff) → restauré depuis HEAD (le commit Phase 1 est sain).
+
+**CRASH-TEST RÉEL — décisif, 2 VRAIS BUGS TROUVÉS** : `apply_shared_migrations` + `engagement-coefs --all --with-scores --force` ×3 sur COPIES réelles Madina97294 + JGtm + shared (sandbox 427M). Les fixtures `:memory:` avaient `id` + `created_at` ; les **vraies** tables legacy (ancien schéma/pipeline Python) ne les ont PAS. Bugs : (a) CTAS citations/PSA faisait `COALESCE(created_at, …)` → colonne absente → fix `CURRENT_TIMESTAMP AS written_at` ; (b) PSA swap assumait `id` → absent → fix ajout conditionnel via séquence. Après fix : **migrations appliquées OK** (citations 6889 rows, PSA 3341+id, weapon_kills shared, PME 942 ; zéro signature ART), cardinalité validée (vues `_latest` = match distincts, zéro fan-out/collision id ; 496 « dups » PSA JGtm = doublons LEGACY pré-existants, sommés comme avant, nettoyés à la ré-écriture), **engagement-coefs ×3 EXIT=0 zéro ART** sur DBs converties. Test de non-régression `:memory:` legacy-swap (sans id/created_at) ajouté.
+
+**Résultats tests** : **18 packages intégration TOUS VERTS, zéro FAIL** (migration, sync(+v2,invariants,halotest), persist, platform/duckdb, api(+handlers,middleware), progression/*, ops). Cascade fixtures corrigée (seedPlayerSchema + fixtures sync/persist : born-append-only + vues + séquences ; INSERT positionnels → nommés ; assertions idempotence raw→`_latest`/v_weapon_kills).
+
+**Conclusion / prochaine étape** : **P2 COMPLÈTE, VERTE, crash-test RÉEL PASSÉ, non commitée** (sur `refactor/art-pme-appendonly`, par-dessus Phase 1 commitée). Décision user : commit groupé P2 (attente autorisation). Campagne ART quasi terminée — après commit P2 : crash-test final + **déployer la campagne complète** (Phase 1 + Phase 2) en une fois (« déployer à la fin »).
+
+---
+
+## [2026-06-21] Vérif adversariale PME (2 workflows) + 6 bugs ART corrigés + P2 RE-CONFIRMÉ — Phase 1 COMPLÈTE & VERTE (non commitée)
+
+**Contexte** : suite directe de la conversion atomique PME (entrée ci-dessous). Demande user : (a) lancer des workflows multiples pour VÉRIFIER adversarialement tout le travail de `refactor/art-pme-appendonly` + `fix/metadata-art-battlepass-appendonly` ; (b) corriger les tests pré-existants même hors scope PME.
+
+**Méthode** : 2 workflows ultracode. (1) Audit adversarial 19 agents (1.66M tokens) sur les 2 campagnes → verdict GO_WITH_FIXES, **6 bugs RÉELS**. (2) Vérif ciblée des 6 fixes (4 agents : 3 sceptiques + 1 critique de complétude) → **0 réfutation** (confidence high ×3, dont sonde Go compilée+exécutée pour le CTAS LUSR) + le critique a **re-confirmé indépendamment le backlog P2**.
+
+**6 bugs corrigés (tous reverifiés verts)** :
+1. **(BLOCKER PME)** `engagement.go` loadExistingEngagementScores lisait `engagement_score IS NOT NULL` → matchs *insufficient_history* (score NULL légitime mais TENTÉS) ré-INSÉRÉS chaque cycle → croissance non bornée. Fix : marqueur physique `WHERE stage='engagement'`. Mécanisme vérifié : ComputeEngagementScore renvoie (nil,"insufficient_history",err=nil) → pendingUpdate accumulé inconditionnellement → row stage='engagement' posée. Test `n2==0` + cardinalité stable verrouillé.
+2. **(PME)** `engine_backfills.go` loadFlaggedMatchIDs avec `dominance_flag > 0` → matchs non-dominants (flag=0 = majorité) ré-INSÉRÉS. Fix : `IS NOT NULL` (aligné per-sync `engine_postsync_csr.go` WHERE flag IS NULL = jamais calculé). Test comeback mis à jour (flag=0 = état terminal calculé, exclu).
+3. **(PVE antérieure)** `pve_persister.go` INSERT OR IGNORE sur table sans contrainte → doublon par retry. Fix : SELECT EXISTS-then-INSERT. Test = oracle cardinalité COUNT==1 + lecture via `pve_match_stats_latest`.
+4. **(LUSR antérieure)** `steps_player_lusr_chain_rework.go` `DELETE FROM match_skill_rank WHERE rating_type='LUSR'` sur table append-only → vecteur ART. Fix : CTAS rebuild (lusrChainRework : tableExists+COUNT==0 no-op, CTAS non-LUSR, restore PK/seq/3 index, vue priorité CSR>LUSR). Sonde Go : préservation exacte 2 CSR + 1 v2, 2 LUSR purgés, priorité respectée.
+5. **(catalog antérieure)** `catalog_fetcher_service.go:211` playlist_pair_links INSERT OR IGNORE (PK=vecteur). Fix : NOT EXISTS.
+6. **(catalog antérieure)** `registry_catalog_expand.go:87` INSERT OR IGNORE. Fix : NOT EXISTS.
+
+**+ durcissement garde-fou** : détection `INSERT OR IGNORE` au niveau STATEMENT dans `append_only_state_guard` (pas file-level → évite FP shared_persister medals/xuid_aliases). Regex `INSERT (OR (REPLACE|IGNORE) )?INTO <table>`.
+
+**Tests pré-existants corrigés (demande user)** : (a) média — `seedSharedSocialSchema`/fixtures migrés vers `media_match_associations_history` + vue `_latest` (gap campagne média antérieure) ; (b) `steps_metadata_catalog_test.go:95` faisait son propre INSERT OR IGNORE sur catalog_fetch_queue désormais PK-less → converti NOT EXISTS. platform/duckdb (87s, média inclus) + migration → VERTS.
+
+**Résultat passe finale exhaustive (14 packages)** : `internal/sync` (101s) + sync/v2 + sync/invariants + sync/halotest + migration + persist + service + api + api/handlers + api/middleware + platform/duckdb (87s) + platform/duckdb/sharedprovider + ops + ops/migrate → **TOUS VERTS, ZÉRO FAIL**. Garde-fous append-only/ART/metadata re-vérifiés verts.
+
+**P2 RE-CONFIRMÉ par le critique de complétude (3 vecteurs réels, déjà scopés Phase 2, NON corrigés ici)** :
+- **BLOCKER** `personal_score_awards` : `writes.go:398` InsertPersonalScoreAwards DELETE WHERE (match_id,xuid)+INSERT en TX, sur table à PK(id seq) + 4 index (idx_psa_match/xuid/category/match_xuid). Chemin **LIVE** (engine_fetch:248, engine_process_match:162) + convergence autonome (convergePSA:145) + backfill. ~10 readers. Jumeau direct du DELETE LUSR corrigé. → append-only à faire.
+- **HIGH** `weapon_kills` : `writes.go:328` même pattern DELETE+INSERT, index idx_wk_match_xuid, DB shared (multi-writer), chemin backfill --weapons.
+- **HIGH** `match_citations` : `citations.go:546` deleteCitationForMatch DELETE WHERE match_id avant réécriture, PK composite. **Note critique** : l'INSERT writeCitations est déjà ON CONFLICT DO NOTHING → le DELETE pourrait être supprimé SI le recompute n'enlève jamais de citation (à vérifier) ; sinon append-only.
+- **MEDIUM** `player_skill_state_v2` : `lusr_full_recompute.go:34` DELETE WHERE xuid (reset watermark), index idx_psk_v2, post-import sérialisé.
+- False-positives correctement jugés : challenge (dé-indexé par ce sprint + garde-fou), killer_victim_pairs (aucun index), xuid_aliases/medals_earned/highlight_events (INSERT OR IGNORE = insert-only sans DELETE/UPDATE → pas le bug ART), match_registry/match_participants (ON CONFLICT DO UPDATE allowlistés + sérialisés dblease).
+
+**CRASH-TEST ART ORIGINEL — PASSÉ (GO sans réserve, 2026-06-21)** : `engagement-coefs --all --with-scores --force` ×3 sur COPIES réelles Madina97294 + JGtm (sandbox LEVELUP_REPO_ROOT, 427M, non destructif). Reproduit le scénario exact qui crashait la prod : la migration `OpenPlayerDB`→`EnsurePlayerMatchEnrichmentAppendOnly` convertit la VRAIE table PME legacy (38-39M, PK(match_id) + 3 index ART, données réelles) en append-only, puis ~1500 INSERTs engagement la churnent ×3. Résultats : **3 rounds EXIT=0, ZÉRO signature ART** (grep `Failed to delete all rows from index`/FATAL/invalidated/panic = vide), JGtm 914 + Madina 596 scores/round, 0 failed. Schéma converti confirmé (id BIGINT + stage + written_at). **Invariant merge-on-read PARFAIT sur données réelles** : `_latest` rows == match_id distincts (Madina 1183==1183, JGtm 942==942), **0 doublon** (zéro fan-out), physical >> latest (2971/3684 vs 1183/942 = append-only accumule), scores sains (0/100, avg ~50). Sandbox + artefacts supprimés, working tree propre.
+
+**Conclusion / prochaine étape** : **Phase 1 = COMPLÈTE, VERTE, vérifiée adversarialement (0 réfutation), crash-test ART PASSÉ, non commitée** (95 fichiers working tree sur `refactor/art-pme-appendonly`, attente autorisation user pour commit GROUPÉ — ne pas laisser de commit partiel atteindre main=auto-deploy). Décisions user (2026-06-21) : crash-test PUIS commit (crash-test fait → re-demande commit) ; **P2 = phase suivante distincte** (PSA append-only blocker live + weapon_kills + citations + watermark), sur sa propre branche/commits APRÈS atterrissage Phase 1, avant le deploy final de la campagne ("déployer à la fin").
+
+---
+
+## [2026-06-21] PME append-only (éradication ART #23046, la table la PLUS écrite) — CONVERSION ATOMIQUE COMPLÉTÉE (tests verts, non commitée)
+
+**Contexte** : `player_match_enrichment` (player DB) = table la plus écrite, écrite par étapes incrémentales partielles (perf/engagement/session/friends/bot/exclusion/psa/dominance/teammates) via UPDATE/ON CONFLICT sur PK(match_id) + 3 index ART mutés → vecteur DuckDB #23046 (crash prod `engagement-coefs --with-scores`). Reprise depuis le handoff `.ai/HANDOFF_APPEND_ONLY_ART_CAMPAIGN.md` (§1bis) + recette `.ai/PLAN_PME_ART_HARDENING.md`. Branche `refactor/art-pme-appendonly`.
+
+**Méthode** : census exhaustif + **vérif adversariale** par 2 workflows ultracode (5 agents recensement = GAPS_FOUND rattrapés ; 6 agents conversion fixtures). Liste d'édition consolidée : `.ai/PME_APPENDONLY_EDIT_LIST.md`. Le workflow adversarial a été décisif : il a rattrapé un **bug de PROD** (OpenPlayerDB) et signalé précisément les tests à sémantique changée.
+
+**3 décisions design (tranchées sur pièce)** :
+1. **Stage `'live'` baseline** : le collect live (player_persister.persistEnrichment) écrit UNE row `stage='live'` (pas de split par stage). La vue merge = `owner-stage → COALESCE(live, legacy)`. Évite le split multi-stage du persister live tout en préservant le reset-NULL par owner-stage.
+2. **Ancre idempotence sous-batch** = `EXISTS(... WHERE match_id=? AND stage='live')` (pas match_id seul — sinon une row d'un autre stage ferait skip tout le sous-batch skill_rank/lusr/citations/psa/career).
+3. **mode_category** reste engagement-owned ; `SaveEngagementScore` (HTTP, sans caller prod) le porte via scalar-subquery `_latest`.
+
+**Fait (PME-A→I)** : (A) vue merge par-groupe + stage 'live' + 10 tests intégration ; (B) naissance append-only (schema.go + create_base) ; (C) 3 migrations index ART neutralisées ; (D) 16 writers → INSERT pur taggé stage, 4 stubs convertis en baseline 'live' (ensure_enrichment_rows/fanout/openspartan GARDÉS — 2e rôle légitime de seed orphelin cross-watcher) ; (E) ~40 readers hot-path → `player_match_enrichment_latest` ; (F) RebuildPlayerMatchEnrichmentART/repair_pk délèguent à l'append-only (ne re-posent plus PK match_id ni index ART) ; (G) 4 garde-fous (no_art tablesProtegees, append_only_state + nouveau garde UPDATE/FROM-brut, metadata_art_surface, invariants ×4) ; (H) cascade ~30 fixtures (helpers centraux testutil/seedPlayerSchema/buildPlayerDDL + workflow + résidus sémantiques) ; (I) build + tests.
+
+**2 corrections critiques hors recette** : (a) **bug PROD `OpenPlayerDB`** ne créait QUE la table (pas la vue, créée seulement par la migration) → tout reader post-sync `_latest` aurait échoué sur une player DB neuve (1er sync, ~13 callers : engine_backfills, post-sync CSR, friends, sessions, citations…). Fix : OpenPlayerDB appelle `EnsurePlayerMatchEnrichmentAppendOnly` (idempotent). (b) **durcissement `ensurePMEColumns`** : ajoute désormais TOUTES les colonnes de la vue (perf/session/paces/…) → conversion robuste sur n'importe quelle table legacy/minimale.
+
+**Résultats** : `go build ./...` + `go vet` verts. **`internal/sync` (102s), `sync/v2`, `sync/invariants`, `migration` TOUS VERTS** (60→0 FAIL après convergence). platform/duckdb(hors média)/persist/service/api/ops : verts (confirmation en cours). **Sémantiques de tests ajustées** (idempotence LOGIQUE via `_latest`, scénario dégradation paces préservé, assertions session/dominance/exclusion → `_latest`, processMatch-2× = croissance physique mais vue stable).
+
+**Pré-existant signalé (HORS scope PME, non corrigé)** : ~25 tests média de `platform/duckdb` (`media_repo_filters`, `match_view_repo_media`, `LoadMediaFiles`) échouent sur `media_match_associations_latest does not exist` — gap de la campagne média ANTÉRIEURE (reader prod migré vers `_latest` lisant la table sœur `media_match_associations_history`, mais `seedSharedSocialSchema` jamais mis à jour). Confirmé indépendant de PME (diff isolé à seedPlayerSchema, aucun fichier média touché). Présent sur la baseline `b763df91e`.
+
+**Conclusion / prochaine étape** : conversion ATOMIQUE complète et verte sur les tests PME-affectés. **NON commitée** (attente autorisation user). ⚠️ Livraison GROUPÉE migration+writers+readers+fixtures (ne pas laisser de commit partiel atteindre main = auto-deploy). go/no-go restant : `engagement-coefs --all --with-scores --force` ×3 sur copies Madina/JGtm. Puis P2 (PSA/weapon_kills/citations/watermark) + clôture. À traiter à part : fixtures média (campagne antérieure) + catalog_expand ON CONFLICT.
+
+---
+
+## [2026-06-20] Recalibration profil de combat (3 axes × 5 bandes + engagement absolu) — COMPLÉTÉ
+
+**Contexte** : les 4 joueurs avec DB affichaient tous le même profil (« Offensif précis / Défensif solide / Engagement modéré »). Investigation data (scripts jetables RO + table world_player_season_stats) : (1) seuils de classification calés sur l'élite mondiale (DR 1.59 = p90 des world leaders) → tout le monde « solide » ; (2) l'axe Engagement utilisait `residual_brut`, métrique AUTO-RÉFÉRENCÉE (écart à sa propre norme via coef_team_share) → ~0 pour tout joueur constant (JGtm -0.06, jugé « impossible » par le user). Cf. .ai/PLAN_COMBAT_PROFILE_RECALIBRATION.md + mémoire reference_combat_profile_grille_trop_grossiere.
+
+**Décisions user (verrouillées)** :
+- 5 bandes par axe (vs 3), vocabulaire FPS : Offensif Dispersé→Chirurgical, Défensif Fragile→Inébranlable, Activité Passif→Agressif.
+- Axe Activité basculé de residual_brut vers l'engagement ABSOLU `pace_joueur / pace_lobby` (déjà persisté). residual_brut CONSERVÉ pour le coaching + patterns (behavioral_engagement) — non touché.
+- SessionCompare basculé aussi sur pace_ratio (header A vs B).
+- Barres OC/DR (Lot 2) recalées sur repère « frontière élite mondiale » OC 0.90 / DR 1.65 (ex-0.83/1.59).
+
+**Décision technique principale** : bandes de classification DÉCOUPLÉES des constantes P80 de normalisation des barres (deux usages distincts). pace_ratio calculé par match en SQL (`engagement_pace_player / NULLIF(engagement_pace_lobby,0)`) dans LoadPlayerMatchEnrichments → 1 champ canonical `EngagementPaceRatio` propagé (scan → projection → canonical → legacymatch.StatsMatchRow) ; les 3 agrégats accumulent une simple moyenne (comme l'ancien résidu).
+
+**Fait** : backend (combat_yield.go bandes via slices bandThreshold+classifyBand, combat_profile.go 15 CombatStyle + AvgPaceRatio, câblage canonical+legacymatch, kpi_stats/synthesis/session_compare, domain/session_compare) ; front (module features/_shared/combatProfileLabels.ts source unique, SynthesisPage + SquadCombatProfileRow dé-dupliqués, types.ts unions 5 valeurs + avg_pace_ratio, SessionCompareEngagement, Lot 2 sur les 3 répliques de barres) ; glossaire help/i18n.ts FR+EN (entrée « Profil de combat » + repères 0.90/1.65) ; tests (combat_yield_test table-driven 5 bandes + pace_ratio, kpi_stats_test, combat-yield-bar.test + TimeseriesCombatYield.test markline 0.90/0.65).
+
+**Résultats** : Go build ./... + vet OK ; go test analysis/domain/service/platform-duckdb tous verts. Front tsc -b vert, eslint 0 erreur, vitest barres 13/13. Attendu sur les 4 joueurs (enfin différenciés) : JGtm Précis/Exposé/Mesuré · Madina Équilibré/Solide/Agressif · Chocoboflor Équilibré/Solide/Discret · XxDaemonGamerxX Dispersé/Fragile/Passif.
+
+**Conclusion / prochaine étape** : prêt à commit (en attente autorisation user). Non déployé. Aucun backfill requis (pace déjà en base, profil calculé à la lecture). Branche `feat/combat-profile-recalibration` (depuis main, distincte de la campagne ART sur fix/metadata-art-battlepass-appendonly).
+
+---
+
+## [2026-06-20] Renommage UI FR « Playlist » -> « Sélection » — COMPLÉTÉ
+
+**Contexte** : le user veut remplacer le mot affiché « Playlist » par « Sélection » partout dans l'app, côté français uniquement. Branche dédiée `chore/i18n-playlist-to-selection` (tâche indépendante de la campagne ART, ne pas mélanger).
+
+**Périmètre réel cartographié** : 3 couches. (1) manifests TOML `apps/web/src/lib/i18n/manifests/` (source de vérité, régénère `generated/*.ts`) ; (2) dictionnaires i18n par feature inline (`features/{squad,notifications}/i18n.ts`) ; (3) chaînes FR EN DUR hors i18n (anti-pattern relevé par le user). Backend Go : aucun libellé FR « Playlist » (que des noms de champs/structs) -> changement front-only.
+
+**Décisions user** : router les chaînes en dur dans l'i18n (propre), et tout faire en une passe (TOML + i18n.ts feature).
+
+**Fait** :
+- ~25 valeurs `fr =` migrées dans 11 manifests TOML (explorer, common, home, admin, media, profile, session, career, synthesis, citations, coaching_tips). `Playlist`->`Sélection`, `Playlists`->`Sélections`, minuscules idem ; EN inchangé. Placeholders ICU `{playlist}`/`{playlist_group}`, noms de tables (`metadata.playlists_catalog`) et clés/testids NON touchés.
+- Au passage (signalé par le user) : 2 « ranked » anglais résiduels dans des chaînes FR career.toml corrigés en « classée » / « en partie classée ».
+- `features/squad/i18n.ts` + `features/notifications/i18n.ts` : blocs FR seulement (EN gardé « Playlist »).
+- 4 chaînes EN DUR routées vers i18n : `HomeRecentPlaylistsCard` ('Playlist inconnue' -> nouvelle clé `common.home.unknown_playlist`), `HomeSessionCarousel` (tooltip -> clé orpheline existante `home.sessions.dominant_tooltip`, enfin utilisée), `FiltresPill` (titres `Playlists`/`Modes`/`Cartes` -> `t(common.filters.*_title)` — l'anti-pattern dépassait le seul mot Playlist).
+- Régénéré `generated/*.ts` via `node apps/web/scripts/build_i18n_manifests.mjs` (2133 clés OK).
+- Test `FilterOmnibar.test.tsx` : assertion `'Playlists'` -> `'Sélections'`.
+
+**Résultats** : `tsc -b` vert ; vitest 277/277 sur les suites concernées (FilterOmnibar, FiltresPill, HomeRecentPlaylistsCard, squad) ; eslint vert sur fichiers touchés.
+
+**Conclusion / prochaine étape** : prêt à commit (en attente autorisation user). Non déployé. Reprendre ensuite la campagne ART (entrée ci-dessous).
+
+---
+
+## [2026-06-20] Campagne APPEND-ONLY (éradication définitive ART) — EN COURS (1/~12 tables), HANDOFF
+
+**Contexte** : suite à l'entrée 2026-06-19, le user veut l'éradication DÉFINITIVE de la classe ART, pas les pansements. Doctrine imposée : **append-only partout sur les tables d'ÉTAT** (zéro DELETE, zéro UPDATE sur colonne indexée, zéro ON CONFLICT DO UPDATE ; tout horodaté ; état lu via vue `<table>_latest`). Retirer les auto-réparations (`reopenMetadataIfInvalidated`, `ExecRecovered`) une fois les écritures sûres.
+
+**2 décisions user (verrouillées)** :
+1. **Tout append-only d'abord, déployer à la fin** (prod reste KO le temps de faire ; pas de déploiement intermédiaire).
+2. **PK-only suffit pour les tables de RÉFÉRENCE** (catalogue modes/maps/playlists, battlepass def) — déjà couvertes par les drops d'index du 2026-06-19. L'append-only strict ne vise QUE les tables d'ÉTAT qui ont des DELETE/UPDATE-indexé.
+
+**Recette validée (gabarit réutilisable, 8 points de contact)** — calquée sur `player_records_history` / `match_skill_rank` :
+1. Migration table sœur `_history` (id séquence + `written_at` + flag/colonnes d'état), zéro DROP/CTAS destructif quand possible (sinon CTAS-swap idempotent comme `steps_player_append_only_match_skill_rank.go`).
+2. Vue `_latest` via `QUALIFY ROW_NUMBER() OVER (PARTITION BY <clé> ORDER BY written_at DESC, id DESC)=1`.
+3. Writers (Persister `internal/persist` + fallback repo) → INSERT pur (event), plus aucun DELETE.
+4. Readers → vue `_latest` (+ filtre d'état, ex `is_favorite=TRUE`) — PIÈGE : oublier un reader rend la feature invisible.
+5. Fixtures de test + assertions rebranchées sur la vue.
+6. `order.go` canonicalOrder (position = ordre d'enregistrement alphabétique du fichier ; vérifier via un dump `TestZZDumpAllOrder` temporaire, `order_test.go` est un no-op strict).
+7. Whitelist `no_attach_on_social_test.go` (tout nouveau fichier mentionnant `shared_social`).
+8. Garde-fou `internal/sync/append_only_state_guard_test.go` (`appendOnlyStateTables`) — interdit DELETE/ON CONFLICT sur les tables converties (comble le trou de `no_art_patterns_test`).
+
+**FAIT (4/~12)** :
+- `match_favorites` → append-only (migration `shared_social_favorites_append_only_v1`, vue `match_favorites_latest`).
+- `media_likes` (+`media_files.liked` gardé : UPDATE colonne non indexée = safe) → append-only (`shared_social_likes_append_only_v1`, vue `media_likes_latest`, 3 writers + reader `GetMediaLikers`).
+- `squad_member` → append-only (`shared_social_squad_member_append_only_v1`, vue `squad_member_latest`, AddMember/RemoveMember = events, readers ListMembers + ListSquadsForUser JOIN ; backfill gardé `columnExists(xuid)` car rekey DROP/recrée).
+- `notification_preferences` → append-only (`shared_social_notif_prefs_append_only_v1`, vue `notification_preferences_latest`, 2 writers ON CONFLICT→INSERT version, readers GetPreferences + isCategoryEnabledOn ; latest-wins, table de version).
+- Garde-fou `appendOnlyStateTables` (internal/sync) += les 8 tables/_history. Whitelist no_attach += 4 fichiers migration. Tout build+vet+migration+persist+duckdb+notifications : verts.
+
+**FAIT 2026-06-20 (suite) — `media_match_associations` + `media_files` reindex LIVRÉS + testés** (XL, ~30 edits, le plus risqué). Modèle `soft_delete is_active` (PAS génération — 2 workflows de design successifs + mes revues ont écarté génération). migration `shared_social_media_assoc_append_only_v1` + vue `media_match_associations_latest`. **VUE CORRIGÉE par moi** : le design workflow partitionnait `BY media_file_id` (1 match/média) → FAUX, un média s'associe à N matchs (auto) ; vue finale = `ROW_NUMBER PARTITION BY (media_file_id, match_id)` + `bool_or(is_manual)` pour que le manuel masque l'auto, l'auto préserve le 1→N. Writers : SetMediaMatchAssociation (persister+fallback) = INSERT event manuel ; ReassociateMedia = DELETE+backup CTAS SUPPRIMÉS (reindex additif, loadUnassociatedMedia forward-only) ; persistMediaAssociations/bulkInsertAssociations/seed_demo = INSERT _history auto. 7 readers → `_latest` (filters/Q24/Q28/q37/notifiers/seed_demo + registry_notifications sur `associated_at` immuable). `resetPlayerMediaIndex` DELETE retirés (orphelin player DB). ensureMediaTables crée le substrat _history+vue (réconciliation). ~6 fixtures de test rebranchées. Commit suivant. **Reste 5/6 tables** : player_notifications, squad_challenge_participant, metadata ref/cache, prestige/player, shared match DELETE.
+
+**(archive) design GÉNÉRATION écarté (workflow wweca9iz8)** :
+- Nouvelle table de contrôle `mma_generation(scope, gen, reset_at, created_at)` + `media_match_associations_history(id, media_file_id, match_id, delta_seconds, source['auto'|'manual'|'reset'], is_active, gen, written_at)`. Vue `_latest` = manuels actifs (masquent l'auto du même média) UNION auto de gen MAX.
+- Writers : AUTO INSERT (persister_batch:142, media_associate:239) = INSERT source=auto gen=G. MANUEL (persister:464-488 SetMediaMatchAssociation, media_repo_writes:44) = SUPPRIMER le DELETE WHERE media_file_id → 1 INSERT source=manual is_active=TRUE. REINDEX auto-only (media_service:374-394) = SUPPRIMER CTAS backup + DELETE WHERE NOT is_manual → bump génération (INSERT mma_generation gen=G+1) puis re-INSERT auto sous G+1 (manuels préservés). RESET full (media_index_service:384, PLAYER DB pas shared_social) = bump gen + reset_at.
+- ~8 READERS à rebrancher sur `_latest` (dont CROSS-DB/CROSS-SCHÉMA) : Q24 queries_match_detail:174, registry_notifications:134 (DISTINCT match_id, created_at→written_at), notify/notifiers:150, Q28 queries_home_citations:431, media_repo_filters:202, media_repo_q37_pipeline:179/182 (2 schémas legacy+shared), media_associate:115 (NOT IN loadUnassociated), seed_demo_media:172.
+- 1 BLOCKER de revue à lire dans le .output avant d'implémenter. C'est la conversion la plus risquée (régression d'affichage media/match) → tests E2E media obligatoires.
+
+**ATTENTION media_match_associations (NEXT, plus complexe)** : table de REBUILD reindex (pas toggle). 4 sites DELETE de sémantiques DIFFÉRENTES : `SetMediaMatchAssociation` (persister:477 DELETE old+INSERT new manuel), reindex auto-only `media_service.go:391` (DELETE WHERE NOT is_manual + backup table avant), reset full `media_index_service.go:384` (DELETE all), `media_repo_writes.go:44`. + `persistAssoc` INSERT OR IGNORE (batch:142). Readers CROSS-DB : `registry_notifications.go:134` (DISTINCT match_id), `notify/notifiers.go:150` (LEFT JOIN), match_view Q24, + CLI. Design append-only requis : génération/supersession + `is_active` + préserver `is_manual`, PAS un simple flag. ~15 edits + refonte reindex + bascule readers. À faire à tête reposée.
+
+**RESTE (todo)** — tables d'état, ordre par blast-radius (shared_social concurrent d'abord) :
+- `media_likes` + `media_files.liked` (COUPLÉS : état liké dans 2 tables ; 4 write sites : `persistLikes` batch:160/176, `SetMediaLikeAtomic` media_repo_writes:162/175, `ToggleSharedLike` :207/220 ; reader count :247).
+- `media_match_associations` (DELETE ; soft-delete `is_active` + vue).
+- `media_files` (DELETE full-table au reindex media_index_service:384-387 ; rebuild sans DELETE).
+- `squad_member` (DELETE leave).
+- `squad_challenge_participant` (UPDATE indexé `UpdateParticipantProgress` prestige_social_repo:388 ; CTAS-swap + SELECT-then-INSERT carry-forward ; design produit par le workflow, voir review).
+- `player_notifications` (DELETE `DeleteNotification`/`CapAndSweep` + l'UPDATE `read_at` — l'index est déjà droppé mais c'est une table d'état → events).
+- `notification_preferences` (ON CONFLICT DO UPDATE).
+- Player DB : `challenge` (DELETE+UPDATEs, rich entity = le plus dur), `arc`, `match_citations`, `personal_score_awards`, `sync_meta`…
+- Final : retirer pansements (`reopenMetadataIfInvalidated` registry_catalog_drain + `ExecRecovered` devenus inutiles) + recensement résiduel + go test ./... complet + commit/merge/deploy.
+
+**Note workflow** : la cartographie multi-agents (run wf_f6c80fd4) a recensé 386 écritures / 49 candidates mais la phase design a été MASSIVEMENT rate-limitée (seuls `match_favorites` + `squad_challenge_participant` ont un design complet, dans le .output). Reprendre par implémentation directe (pattern prouvé), pas par re-run de gros fan-out.
+
+**REGISTRE CENSUS (2026-06-20) — périmètre RÉEL restant (~25 tables / ~57 sites mutants hot-path)** :
+- shared_social STATE à append-only : `player_notifications` (DELETE×4 + read_at), `media_match_associations` (DELETE×4 — cluster reindex, design final workflow w9e1zteno), `media_files` (DELETE×1 reindex), `squad_challenge_participant` (UPDATE indexé, CTAS), `player_records` (ON CONFLICT — vérifier vs player_records_history déjà fait).
+- metadata ref/cache ON CONFLICT→SELECT-then-write : `map_images_registry`×2, `medal_image_cache`, `waypoint_medals_raw`, `milestone_catalog`, `xuid_aliases` ; INSERT OR REPLACE `career_rank_translations` ; DELETE `xbox_achievement_definitions`.
+- prestige/player ON CONFLICT : `user_prestige`×2, `preset_arc`/`preset_arc_step`, `baseline_state`, `player_privacy_state`, `player_match_enrichment`×2, `lusr_component_history`, `sync_meta`×2 ; DELETE player : `challenge`, `arc`, `match_citations`×2, `personal_score_awards`.
+- shared match DELETE (rebuild/reconcile sync — auditer si sérialisé lease, peut-être OK) : `match_participants`, `killer_victim_pairs`, `weapon_kills`, `player_skill_state_v2`.
+- DÉJÀ SÛRS (ne pas toucher) : `catalog_fetch_queue` (table sans index → DELETE safe), `match_skill_rank` (compaction documentée mono-writer BIGINT PK).
+
+**Prochaine étape** : cluster reindex media (design final w9e1zteno en cours) puis player_notifications, squad_challenge_participant, metadata ref/cache, prestige/player. Commit `0a47c384e` = 4 tables + éradication index ART. Branche `fix/metadata-art-battlepass-appendonly`.
+
+---
+
+## [2026-06-19] Éradication de CLASSE du bug ART metadata (3e récurrence) — Complété (code), déploiement EN ATTENTE
+
+**Incident prod** : `metadata.duckdb` FATAL `database has been invalidated` → toute l'app KO (season pass, JGtm inaccessible). Cause directe : `Failed to delete all rows from index` sur `game_variants_catalog`. Re-déclenché ~7 min après chaque restart (drain catalogue au boot) → un restart ne tient pas. Prod = `37625cea` = HEAD local (le fix queue d'aujourd'hui était déployé mais **incomplet**).
+
+**Root cause de CLASSE** (3e récurrence : playlists 06-01, queue 06-19, game_variants 06-19) : un `UPDATE … SET <col>` sur une colonne couverte par un **index ART** (PK ou secondaire), OU un `DELETE` per-row sur une table ART-indexée, corrompt l'index → FATAL. La doctrine historique « éviter ON CONFLICT suffit » est **fausse** : ici aucun ON CONFLICT, juste des UPDATE/DELETE nus. `no_art_patterns_test` ne scanne que ON CONFLICT/INSERT OR REPLACE → aveugle à ce déclencheur.
+
+**Fix (éradication, pas rustine)** :
+1. Migration `drop_metadata_art_surface_indexes_v1` : drop des 6 index secondaires dont une colonne est mutée par UPDATE — `idx_game_variants_catalog_mode`, `idx_map_mode_pair_map/_variant/_category`, `idx_battlepass_track_definitions_lookup`, `idx_battlepass_item_definitions_lookup` (ce dernier = aussi le bug season-pass `is_current`). Tourne au boot → nettoie la corruption disque en prod. PK gardée (jamais mutée → index sain).
+2. Suppression des `CREATE INDEX` correspondants dans les migrations sources (DB neuves PK-only).
+3. Garde-fou `metadata_art_surface_guard_test.go` : échoue si un `CREATE INDEX` réapparaît sur ces tables mutées (comble le trou de no_art_patterns_test). A trouvé + fait corriger 1 résidu (`idx_catalog_fetch_queue_drain`).
+4. Auto-réparation `reopenMetadataIfInvalidated` (registry_catalog_drain) : ping + `Reopen` in-place du handle metadata partagé après le drain → si un FATAL résiduel survenait, l'app se soigne seule sans restart.
+
+**Audit DELETE** (question user) : seul DELETE per-row sur metadata = `catalog_fetch_queue` (queue éphémère, désormais sans index → sûr). `DELETE FROM match_skill_rank` (sync) = **compaction** documentée d'une table append-only (garde MAX(id), player DB mono-writer) — exception légitime, pas une perte d'événements datés. Aucun DELETE sur table de définitions/événements datés.
+
+**Audit multi-agents (ultracode, 3 workflows : complétude + red-team contradiction + double-vérif indépendante)** : ~40 agents (couche vérification partiellement rate-limitée). Convergence HIGH : le fix metadata est CORRECT pour le crash réel (chunk 8-col = clé d'index secondaire idx_game_variants_catalog_mode ; PK gardée saine car jamais mutée ni DELETE per-row). Mais 3 surfaces ART SUPPLÉMENTAIRES trouvées et VÉRIFIÉES par moi, hors battlepass/catalogue → corrigées dans le même lot :
+- **player_notifications (shared_social, handle partagé concurrent)** — RÉGRESSION : `idx_pn_xuid_unread(xuid, read_at)` droppé le 2026-05-15 puis RECRÉÉ par le rebuild-swap de `purge_data_health_warning_notifs` → `UPDATE ... SET read_at` (mark lu/non-lu) re-corrompt. Fix : source ne recrée plus + migration `drop_pn_unread_art_index_v2`.
+- **challenge (player DB, Prestige)** — `idx_ch_user_status`/`idx_ch_arc`/`idx_challenge_campaign` sur colonnes mutées (status/arc_id/campaign_id). match_skill_rank a prouvé qu'une player DB mono-writer peut crasher. Fix : migration `drop_challenge_mutated_art_indexes_v1` + sources.
+- **asset_translations (metadata)** — `ON CONFLICT DO UPDATE` (writer CLI `populate-assets` uniquement ; le hot path utilise déjà `ops.UpsertAssetTranslation` SELECT-then-write). Landmine convertie en `UpsertNoConflict`.
+- **Garde-fou renforcé** : `metadata_art_surface_guard_test.go` → cross-DB + colonne-aware (interdit d'indexer une colonne mutée : read_at, status/arc_id/campaign_id, etc.) — c'est le mécanisme qui aurait attrapé les 3 régressions. no_art_patterns_test (sync) ne voyait que ON CONFLICT.
+
+**Résidu documenté (NON bloquant, mitigé par auto-réparation)** : DELETE per-row sur tables encore indexées (player_notifications PK+2idx, challenge PK, media_*, match_*) — sérialisés par dblease, basse fréquence ; conversion append-only = chantier séparé. L'auto-réparation Reopen couvre le cas résiduel.
+
+**Validation** : `go build ./...` OK ; `go vet ./...` OK ; tests migration (ordre + garde-fou cross-DB + catalog + battlepass + notif + prestige) OK ; duckdb complet OK ; sync NoART|NoBulk|Allowlist OK ; api OK ; persist OK.
+
+**Prochaine étape** : merge main + déploiement prod (auto-deploy) — autorisation user requise. Branche `fix/metadata-art-battlepass-appendonly`.
+
+---
+
+## [2026-06-19] Import OpenSpartan — vérif finale : bug is_ranked à l'import + logs dédiés — Complété
+
+**Contexte** : vérification finale go/no-go avant merge. Suite Go complète `go test ./...` verte (tous packages `ok`), `go vet ./...` OK, intégration sync+duckdb OK, front typecheck+lint+vitest OK. Un échec d'intégration `TestCatalogFetcherService_Drain_PlaylistAndPair` PRÉ-EXISTANT (hors périmètre, fichier non touché par mes commits, baseline CI flaky cf. 65284b8fb).
+
+**Bug trouvé + corrigé** : à l'import OpenSpartan, `reg.IsRanked` est faux pour les matchs classés (le mapper le dérive du `PlaylistName`, non résolu à l'import). Conséquences : (1) `ExtractAllSharedCSRRows` court-circuitait (`!reg.IsRanked`) → **aucun CSR par-match importé** ; (2) `recomputeLUSR` (filtre `WHERE NOT is_ranked`) aurait **inclus** ces matchs classés → pollution du LUSR. **Fix** : la présence d'un `RankRecap`/`PostMatchCSR` EST le signal "classé" fiable → extraction CSR avant l'insert registry + `is_ranked=true` forcé si des lignes CSR existent. Corrige CSR ET LUSR à la source ([openspartan_import_service.go](../apps/go-api/internal/service/openspartan_import_service.go) `extractMatchCSRRows`). Commit `a8d41c6e0`.
+
+**Logging** : confirmé que tous mes logs routent vers `logs/` (par package : sync/scheduler/service/duckdb/handlers). En plus, tag `module=convergence` sur l'orchestrateur backfill → `logs/convergence.log` dédié (précédent ModuleCatalog/Lab). Commit `7b3342e36`. Zéro `fmt.Println`/`log.Printf`.
+
+**Tests ajoutés** : end-to-end import avec `RankRecap` (InsertedCSRs=1, match_csrs season_id/tier/value, is_ranked=TRUE, DryRun=0) ; `TestAvailableCSRSeasons_FromMatchCSRs`.
+
+**Prochaine étape** : merge dans main EN ATTENTE — main = **auto-deploy prod** (warn user requis).
+
+---
+
+## [2026-06-19] Import OpenSpartan — saisons CSR depuis le CSR par-match + message UX (suite) — Complété
+
+**Contexte** : retour user sur le CSR. Clarification de ce que sert `PlaylistCSRSnapshots` (OpenSpartan) → 2 vues seulement : le badge « pic » de l'accueil ([home_repo_skill_peak.go](../apps/go-api/internal/platform/duckdb/home_repo_skill_peak.go)) et le sélecteur de saisons de la page Carrière ([career_repo_csr_seasons.go](../apps/go-api/internal/platform/duckdb/career_repo_csr_seasons.go)). Or pic + liste de saisons sont **déductibles du CSR par-match déjà importé** → import des snapshots **abandonné** (redondant), pas de season_id côté OpenSpartan de toute façon.
+
+**Décisions** :
+- Badge « pic » accueil : déjà couvert (fallback `match_skill_rank` CSR quand snapshots vides) — aucun changement.
+- Sélecteur saisons Carrière : `AvailableCSRSeasons` lisait seulement `player_csr_snapshots` → branché aussi sur `shared.match_csrs` (qui porte le season_id du CSR par-match importé). Best-effort (shared indispo = skip).
+- UX onboarding : note discrète sur la carte de succès (combat récupéré en arrière-plan ; matchs trop anciens potentiellement non traités intégralement). Clé i18n `common.onboarding.combat_details_note` (FR+EN, manifest TOML régénéré).
+
+**Résultats** : Go build + vet verts ; test `TestAvailableCSRSeasons_FromMatchCSRs` ; front typecheck + lint + vitest (OpenSpartanImportCard 8/8) verts. Commits `512e00039` (branchement), `61f7cf92e` (UX).
+
+**Prochaine étape** : aucune — feature OpenSpartan import-completion complète (CSR par-match, LUSR, backfill events non-bloquant, dominance, déclencheurs, saisons Carrière, message UX).
+
+---
+
+## [2026-06-19] Import OpenSpartan — backfill events non-bloquant + câblage (P2/P3) — Complété
+
+**Contexte** : suite du P1 (CSR/LUSR). Les `highlight_events` (détails de combat : kills/morts horodatés → cadence, dominance, killer/victim) ne sont PAS dans OpenSpartan (décodés des films Halo, absents de la base). Il faut les rattraper SANS bloquer l'app (contrainte B-swap : RO+RW interdits sur le même fichier in-process).
+
+**Décisions** :
+- **Orchestrateur** `RunEventsConvergenceBackfill` ([convergence_backfill_events.go](../apps/go-api/internal/sync/convergence_backfill_events.go)) : détection bitmask récent→vieux (`FindMatchesMissingData` scope.Events), fetch films HORS lease, persist par lots courts (acquire → `persistCombatCompletion` → release), yield entre lots, cession au live (`TryClaim`), auto-bornant (404 sur vieux match → `MarkNoFilmDefinitive`), reprenable via `events_loaded`. 100% composé de l'existant (zéro logique dupliquée).
+- **Dominance** : `BackfillDominanceFlags` sur les matchs fraîchement pourvus d'events (best-effort).
+- **Câblage** : `SyncEngine.RunEventsConvergence` (réutilise client poolé + provider) ; passe scheduler après chaque `RunDelta` réussi (sous le claim tenu, gate=nil, bornée `LEVELUP_EVENTS_CONVERGENCE_MAX`=50) ; trigger immédiat post-import (goroutine, cède au live) via interface `ConvergenceTrigger` (wiring server.go). Kill-switch `LEVELUP_EVENTS_CONVERGENCE`.
+- **Reprise au boot** : inhérente (re-détection bitmask à chaque tick scheduler, pas de boot-storm).
+
+**Résultats** : full build + vet verts ; tests sync (+ intégration : 404 définitif/récent, erreur réseau, happy-path sur vrai chunk film v41 + convergence, dominance), service, scheduler, openspartan — tous verts. Commits `0ded62f7b` (P1), `c8f84cc67` (P2.1), `1a0de6bc6` (P2.2), `749e4ddf7` (P2.3+P3).
+
+**Prochaine étape / différés** : (1) `PlaylistCSRSnapshots → player_csr_snapshots` **ABANDONNÉ** — redondant avec le CSR par-match + les snapshots que le sync live capture déjà ; seuls les agrégats pic-saison/all-time s'y ajouteraient (faible valeur). (2) Message UX onboarding (backfill en cours / films expirés) optionnel, non fait. (3) Ce fichier est committé avec une entrée concurrente d'un autre agent (coût écriture RW DuckDB) présente dans l'arbre.
+
+---
+
+## [2026-06-19] Import OpenSpartan — compléter CSR par-match + recompute LUSR au post-import (P1) — Complété
+
+**Contexte** : à l'onboarding avancé, l'import d'une base OpenSpartan ne ramenait que les stats de base. Vérifié sur le repo OpenSpartan (`openspartan-workshop`, `Queries/Bootstrap/*.sql`) : la base contient bien le CSR (RankRecap dans `PlayerMatchStats` + snapshots `PlaylistCSRSnapshots`) mais **PAS** les `highlight_events` (aucune table — décodés des films, absents). Le LUSR est une invention LevelUp (absent par construction). L'import LevelUp parsait `RankRecap` (`models.go:159`) sans le persister, et le post-import ne recalculait pas le LUSR.
+
+**Décisions** :
+- **CSR par-match** : `PlayerMatchStats.ResponseBody` (OpenSpartan) a la même forme que la réponse skill live → wrapper public `sync.ParseMatchSkillResponseJSON` (réutilise `transformMatchSkillResponse`). L'import écrit `shared.match_csrs` via `ExtractAllSharedCSRRows`+`UpsertSharedCSRs` ; le post-import projette vers `player.match_skill_rank` (lu par l'UI) via la nouvelle `sync.BackfillCSRFromShared` (idempotente). **Pas de backfill API** : le CSR est dans la base (correction d'une erreur de cadrage initiale).
+- **LUSR** : recompute au post-import via `sync.RecomputeLUSRCanonicalForPlayer` = reset watermark v2 du joueur + `RunLUSRV2ShadowOwnerOnly` (réutilise le chemin de prod, pattern de `cmd/lusr_v2_canonical_backfill`). **v1 écarté** (mort — v2 canonical par défaut) ; aucun mirror du branchement, `runSkillRatingSteps` non touché. Reset requis car les matchs importés (anciens) sont antérieurs au watermark → sautés sinon.
+- **Dominance flags** : différés à P2 (nécessitent les `highlight_events` des films ; les calculer maintenant figerait `NULL→0` sans recompute ultérieur).
+
+**Résultats** : build + vet verts (sync, service). Tests : `ParseMatchSkillResponseJSON` (unit) + `BackfillCSRFromShared` (intégration : rang stable, idempotence, placement→0.0) ; suite `sync` complète + service OpenSpartan sans régression.
+
+**Prochaine étape** : `PlaylistCSRSnapshots → player_csr_snapshots` **DIFFÉRÉ** (blocage `season_id NOT NULL` absent côté OpenSpartan + forme `ResponseBody` à confirmer sur une vraie base). Puis **P2** : backfill films non-bloquant (`highlight_events`) + dominance flags après events.
+
+---
+
+## [2026-06-19] Profils auth-only — champ `auth_only` pour exclure des favoris gamertag — Complété
+
+**Problème** : `db_profiles.json` contient des profils qui n'existent que pour la gestion des tokens auth (pas de vrais joueurs, `db_path: ""`). Ils remontaient dans `available_players` (bootstrap) → polluaient les favoris suggérés des multiselects gamertag (sélecteur L1, page Escouade, page Explorer).
+
+**Décision** : champ explicite plutôt que de dériver de `db_path == ""` (un vrai joueur peut avoir un `db_path` vide en onboarding pré-sync). Ajout de `auth_only: true` sur les 5 profils token-only (Trimbutton, DankerGlue, QuiteSiren, UppedJoker, GeleJugefi). Vrais joueurs (JGtm, Chocoboflor, Madina97294, XxDaemonGamerxX) restent sans flag.
+
+**Implémentation** :
+- `dbProfileEntry.AuthOnly` + `domain.PlayerSummary.AuthOnly` (`json:"auth_only,omitempty"`), propagés dans `loadPlayersV2`/`loadPlayersV3`.
+- Filtrage **uniquement** dans les 2 constructeurs front-facing : `BootstrapService.Build` (helper `excludeAuthOnly` sur la liste qui alimente `available_players` + `current_player`, après calcul du setup_state qui reste sur la liste complète) et `BuildPlayersList` (`/players`).
+- `LoadPlayers` **non touché** : ~50 consommateurs serveur en dépendent (pool d'auth `discovery.go`, `token-capture`/`token-import`, `resolveXUIDForRotation`, `auth_migration`, token-health) — ils doivent continuer à voir ces profils.
+
+**Résultats** : `go build ./...` + `go vet` verts ; tests config + service OK (nouveaux : `TestLoadPlayersV3_AuthOnlyFlag`, `TestExcludeAuthOnly`). Aucun changement front nécessaire (exclusion côté serveur, le front ne reçoit plus ces profils).
+
+**Prochaine étape** : aucune — feature autonome. Si un nouveau profil token-only est ajouté, penser au flag `auth_only: true`.
+
+---
+
+## [2026-06-19] Groupes/familles — i18n via manifest TOML (suppression des strings inline) — Complété
+
+Suite revue : les strings inline FR/EN des nouvelles pages (GroupsPage, JoinPage, SquadGroupLoader) migrées vers le manifest `lib/i18n/manifests/common.toml` (section `[common.groups.*]`, 20 clés FR+EN), régénéré via `scripts/build_i18n_manifests.mjs` → `generated/common.ts`. Composants refactorés en `formatMessage(commonManifest, 'common.groups.*', locale)`. Plus aucune string métier en dur dans ces 3 fichiers. tsc + eslint + vitest groups verts. Lève l'entorse i18n notée à la vérification finale.
+
+---
+
+## [2026-06-19] Groupes/familles multi-groupes — Phase 4 (quitter/retirer + dé-flag + Escouade) — Complété
+
+**Part A — quitter/retirer membre (commit 4c52d974d)** :
+- `LeaveGroup` (`DELETE /groups/{id}/members/me`) : self-leave ; propriétaire interdit → 409 ; idempotent si non-membre.
+- `RemoveMember` (`DELETE /groups/{id}/members/{xuid}`) : propriétaire only ; retrait du propriétaire interdit (400). Routes chi (static `/me` prioritaire) + OpenAPI. Tests owner-leave 409 / self-leave 204 / owner-only / étranger 403.
+- Appartenance = ACCÈS (authz live) → aucun recompute requis.
+
+**Part B — dé-flag is_with_friends convergent (décision user : convergent dans Core)** :
+- `RecomputeIsWithFriendsCore` rendu CONVERGENT : calcule la cible (matchs avec ami courant), PROMEUT (FALSE→TRUE) + DÉMOTE (TRUE→FALSE) les matchs hors cible. Liste vide (dernier ami retiré) → démotion complète. Garde défensive playerDB nil (unit-test). `MatchesDemoted` ajouté au résultat. Helpers `demoteStaleIsWithFriends` (charge currentlyTrue, diff cible) + `demoteIsWithFriendsBatch` (IN-batch, même pattern que la promotion).
+- Suppression du court-circuit « liste vide » dans le wrapper public (sinon retrait du dernier ami ne démoterait pas). S'applique à tous les chemins (post-sync, ART rebuild, OnFriendsChanged) — aligne project_convergent_sync_direction.
+- Le retrait d'un ami via PATCH /settings → OnFriendsChanged → recompute convergent → démotion auto (pas de code orchestrateur supplémentaire).
+- ART : `player_match_enrichment` hors tables append-only protégées + pattern UPDATE...IN déjà établi → garde-fou `TestNoARTPatternsOnProtectedTables` vert, pas d'allowlist.
+- Tests : unitaire empty-list convergent (renommé), intégration `DemotesStaleMatches` (retrait ami → match démoté ; liste vide → tout démoté). `PromotesLegacyNull`/`PlayerInFriendList` inchangés (démote=0 quand rien n'était TRUE).
+
+**Part C — bouton Escouade « charger un groupe »** :
+- `SquadGroupLoader` (select compact) : sélectionner un groupe peuple `selectedGts` (membres hors joueur actif, tronqué à MAX_SELECTION=3). Monté uniquement si identité Halo liée (évite 401 /groups en démo). **NE touche PAS** au mécanisme index→couleur des pills (remplace juste le contenu de la sélection ordonnée).
+
+**Résultats** : Go build CGO + vet + sync (unit + integration) + handlers + contrat OpenAPI verts ; front tsc + eslint (0 err) + vitest 246/246 (squad+groups). Chantier multi-groupes complet (Phases 0→4).
+
+---
+
+## [2026-06-19] Groupes/familles multi-groupes — Phase 3 (UI groupes + JoinPage) — Complété (code, non commité)
+
+**Frontend du chantier groupes** (apps/web). Backend Phases 0-2 commité (c4e3e9c8a, 094a820d2).
+
+- **Types** : `Group`/`GroupMember`/`GroupRole` + `InviteCode.group_id` (lib/api/types.ts) ; query key `groups`.
+- **Queries** `features/groups/queries.ts` : useMyGroups / useCreateGroup / useRenameGroup / useDeleteGroup / useCreateGroupInvite (api client `/groups*`).
+- **Page `GroupsPage`** (route `/groups`, end-user) : liste des groupes du user, création, renommage/suppression (propriétaire only via `linkedHaloIdentity.xuid` vs `owner_xuid`), liste des membres + badge propriétaire, **Inviter un ami** → génère le code + copie le lien `${origin}/join?invite=CODE`. i18n FR/EN inline (précédent SettingsPage). Retrait/quitter membre = Phase 4.
+- **`JoinPage`** (route `/join?invite=`) : lit le code, bouton « Continuer avec Xbox » → `${API_BASE_URL}/auth/xbox/login?invite=CODE` (redirect plein écran, calqué sur RedirectFlowPanel) + champ manuel de repli.
+- **Admin nettoyé** : `InvitesSection` retirée de AdminAccessPage **et supprimée** (plus aucun consommateur) ; l'Admin ne garde que `UsersSection` (gestion comptes = ops). Lien nav `/groups` ajouté (GLOBAL_SHELL_LINKS).
+- **Route-tree** régénéré via `vite build` (le plugin TanStack Router génère routeTree.gen.ts ; `tsr` du repo = ts-remove-unused, pas le générateur).
+
+**Résultats** : `vite build` OK, `tsc -b` OK, eslint OK sur les fichiers touchés, vitest `GroupsPage.test.tsx` 4/4 (rendu+membres+badge, liste vide, POST create, POST invite + copie lien). JoinPage (router-coupled) couvert par le walkthrough manuel.
+
+**Prochaine étape** : Phase 4 (quitter/retirer membre + endpoints + dé-flag is_with_friends FALSE-capable + liaison Escouade « charger les membres du groupe »). Commit Phase 3 en attente d'autorisation.
+
+---
+
+## [2026-06-19] Groupes/familles multi-groupes — Phase 2 (invitation "rejoindre un groupe") — Complété (code, non commité)
+
+**Suite des Phases 0 & 1** (socle commité c4e3e9c8a). Objectif : redéfinir l'invitation comme un token de jonction à UN groupe, redeemé via le login Xbox SSO (plus de compte password parallèle).
+
+**Mécanique de jonction** :
+- `domain.InviteCode.GroupID` (optionnel ; vide = invitation password legacy). `InviteStore.Generate(createdBy, days, groupID)` + nouvelle méthode `Get(code)` (lit le GroupID). Admin endpoint passe `""`.
+- `domain.SessionData.PendingInviteCode` (+ IsMeaningful) : porte le code à travers l'aller-retour OAuth.
+- `XboxOAuthHandler.WithInviteStore` + `LoginRedirect` capte `?invite=` → valide (early, sinon ignore) → stocke en session.
+- `XboxSSOLinkStrategy.WithInviteStore(InviteResolver)` + `WithGroupStore(GroupJoiner)` (interfaces découplées). `OnAuthSuccess` : invitation valide en session → **bypass instance lock** (branche XUID inconnu) + après wiring session `AddMember(GroupID)` + `Consume` + vide PendingInviteCode. Best-effort (login non bloqué si l'ajout échoue).
+
+**Endpoints groupes** (`handlers/groups.go`, sous `r.Group`+RequireAuth, **pas** admin-gated) : `GET/POST /groups`, `PATCH/DELETE /groups/{id}` (propriétaire only), `POST /groups/{id}/invites` (membre only → tout user authentifié peut inviter). Garde d'identité : xuid lié requis (401 sinon). Documentés dans `api/openapi.yaml` (contrat routes = 0 non documentée).
+
+**Tests** : strategy (4 cas join : new+lock bypass, invalide+lock→refus, existant+invite, legacy-sans-groupe+lock→refus) ; invite_store (GroupID round-trip + Get) ; groups handler (create/list, 401 sans identité, invite membre/étranger 403, delete owner-only) ; LoginRedirect (invite valide stockée / invalide ignorée). Build CGO + vet + contrat OpenAPI verts.
+
+**Prochaine étape** : Phase 3 (UI : page Mes groupes + JoinPage `/join?invite=` + i18n ; retrait InvitesSection de l'Admin). Commit Phase 2 en attente d'autorisation.
+
+---
+
+## [2026-06-19] Groupes/familles multi-groupes — Phases 0 & 1 (modèle + authz) — Complété (code, non commité)
+
+**Contexte** : refonte de la gestion des amis/invitations. Constat de départ (vérif bout-en-bout) : le code d'invitation était un portier d'inscription *mot de passe* déconnecté du groupe (doublon mort en mode Xbox, n'ajoutait personne au groupe). Décisions produit (AskUserQuestion) : multi-groupes **nommés** ; invitation = token de jonction à UN groupe via login Xbox SSO ; tout user authentifié peut inviter ; **séparer** "membre du foyer (accès mutuel)" de "coéquipier affiché (Escouade)" — les pills colorées de l'Escouade ne doivent PAS changer. Plan : `~/.claude/plans/quel-workflow-pour-la-wondrous-leaf.md`. Branche `feat/groups-membership` (depuis main).
+
+**Architecture pivot** : deux notions séparées. `friend_gamertags` (settings, inchangé) = AFFICHAGE Escouade + `is_with_friends`. Nouvelle entité **Groupe** (`data/auth/groups.json`) = ACCÈS mutuel (authz). Deux users ont accès mutuel s'ils partagent ≥1 groupe. → l'Escouade (pills index→couleur) n'est pas touchée.
+
+**Phase 0 (couche données)** : `domain/group.go` (Group, GroupMember, GroupRole) + `platform/groupstore/group_store.go` (calqué userstore/invite_store : RWMutex, write-temp+rename, versioning) — Create/Get/List/ListForXUID/**CoMemberXUIDs**/AddMember/RemoveMember(refuse owner)/Rename/Delete. `migrate.go` : `MigrateDefault` idempotent (no-op si groupes existent). Tests : 8 cas verts.
+
+**Phase 1 (authz groups-aware)** : `authz.CanAccessPlayer` simplifié — l'ensemble passé est désormais les **co-membres du user courant** (xuid inclus), donc tester `accessibleXUIDs[profileXUID]` suffit. `ResolveFamilyXUIDs` (résolution globale via friend_gamertags) **supprimée**. `familyXUIDResolver` (server.go) résout par-user depuis la session via `groupStore.CoMemberXUIDs`. `BootstrapService.WithCoMemberResolver` (remplace `friendGamertagsFromSettings`). `GroupStore` instancié dans main.go (1 instance partagée), injecté dans bootSvc + passé à `NewRouter` (nouveau param). Migration boot-time `migrateDefaultGroupAtBoot` (owner = admin db_profiles, membres = friend_gamertags résolus).
+
+**Résultats** : build complet CGO OK ; tests verts — groupstore, authz (TestResolveFamilyXUIDs retiré, TestCanAccessPlayer réécrit per-user), middleware ownership (FamilyMember/FamilyStranger réécrits per-user), service bootstrap, contract api, squad/prestige handlers. Title-agnostic (groupes par xuid).
+
+**Prochaine étape** : Phase 2 (invitation rejoindre un groupe via Xbox SSO : InviteCode.GroupID, session.PendingInviteCode, strategy bypass instance lock + AddMember + Consume, endpoint user `POST /groups/{id}/invites`). Commit en attente d'autorisation.
+
+---
+
+## [2026-06-19] Backups VPS via Restic (DuckDB + tokens + config) — Complété (ops, hors repo)
+
+**Demande user** : backups en cas de corruption pour pouvoir revenir en arrière ; OK pour les avoir « au même endroit » (même VPS) ; confiance dans la stabilité du VPS.
+
+**Décisions (validées via AskUserQuestion)** : périmètre = **DuckDB + config** (pas les 4,5 Go de médias — disque à 84%, et les DBs sont ce qui se corrompt) ; cohérence = **arrêt bref du service `levelup`** (fichiers DuckDB au repos = restaurables) plutôt qu'un snapshot à chaud (risque de fichier tronqué).
+
+**Mise en place (sur le VPS, pas dans le repo)** :
+- restic 0.14 installé (Debian 12). Repo local `/opt/levelup/restic-repo`, password `/opt/levelup/.restic-password` (root 600).
+- Script `/opt/levelup/scripts/restic-backup.sh` : trap de redémarrage garanti → `docker compose stop levelup` → `restic backup data/titles/halo_infinite data/auth db_profiles.json app_settings.json .env.local` → redémarrage ASAP → `forget --keep-daily 7 --keep-weekly 4 --prune`. Log `data/logs/restic-backup.log`.
+- Timer systemd `levelup-restic-backup.timer` quotidien **04:00 UTC** (Persistent=true), enabled.
+- **Vérifié** : 1er backup manuel OK (exit 0), service relancé healthy, `restic check` = no errors, **restore testé** (metadata.duckdb 45 Mo extrait intact ; snapshot contient tous les .duckdb + .wal + watcher_tokens des 4 joueurs + config).
+
+**Restauration** (serveur arrêté) : `RESTIC_REPOSITORY=/opt/levelup/restic-repo RESTIC_PASSWORD_FILE=/opt/levelup/.restic-password restic restore latest --target /opt/levelup` (les chemins `/data/...` se reconstruisent sous /opt/levelup).
+
+**Limite assumée** : repo sur le même disque que les données → si le VPS/disque est perdu, repo perdu aussi (accepté par le user). Le password doit être sauvegardé hors-VPS pour pouvoir restaurer une copie du repo. Script non versionné dans le repo (chemins VPS-spécifiques) — à porter dans `scripts/` si on veut le reproduire.
+
+---
+
+## [2026-06-19] Fix RC-E catalog drain : catalog_fetch_queue ART-corrompt metadata.duckdb — Complété (code)
+
+**Déclencheur** : logs prod (post-deploy xuid_aliases) — `catalog drain: delete failed` + `database has been invalidated` (~60 lignes/boot) sur `metadata.duckdb`. Diagnostic : le cron `catalog_refresh` (hebdo + 1er tick à CHAQUE boot) draine `catalog_fetch_queue` ; `deleteFromQueue` (DELETE per-row) + `markError` (UPDATE attempts) opèrent sur une table portant **PRIMARY KEY (title_slug, asset_type, asset_id)** + index secondaire `idx_catalog_fetch_queue_drain` (incluant `attempts`). DELETE/UPDATE per-row sur index ART → bug DuckDB 1.5.x #23046 → metadata invalidé pour toute la vie du process → noms d'assets (maps/playlists/modes FR) cassés jusqu'au restart (qui re-casse au boot suivant). Le commentaire main.go « drain ART-safe » ne couvrait que l'UPSERT catalogue, pas la queue.
+
+**Décision** (pattern projet, calqué sur `drop_playlists_catalog_secondary_indexes` + rebuilds CTAS-swap) :
+- **Migration** `rebuild_catalog_fetch_queue_drop_art_indexes` (metadata) : DROP index secondaire + rebuild de la table SANS PRIMARY KEY (CTAS-swap, SELECT DISTINCT). Plus AUCUNE surface ART → DELETE/UPDATE deviennent des ops heap sûres. Ajoutée à `canonicalOrder` (rang 36, après create_prestige).
+- **Dédup d'enqueue** sans PK : `INSERT OR IGNORE` → `INSERT ... WHERE NOT EXISTS` (SELECT-then-INSERT) dans `ops/catalog_queue.go` + `sync/catalog_enqueue.go`.
+- **Garde-fou** `TestCatalogFetchQueue_NoArtIndexSurface` : 0 index, 0 PK, + séquence fonctionnelle INSERT/UPDATE/DELETE sans invalidation.
+- Commentaire main.go corrigé.
+
+**Résultats** : build/vet OK ; migration (order + guard) + ops + service + scheduler + sync verts. La queue est minuscule (drain hebdo) → scan complet instantané, PK/index sans gain.
+
+**Prochaine étape** : commit + deploy (la migration s'applique au boot prod → metadata cesse d'être corrompue). Restic ensuite (demande user).
+
+---
+
+## [2026-06-19] Suppression du chemin d'ÉCRITURE vers le store global xbox_aliases — Complété (code)
+
+**Suite directe de la consolidation xuid_aliases** : après retrait des LECTEURs du global (commit 1) + confirmation de redondance (local `global ⊆ shared` = +0 ; prod `global = 0 lignes`), restait le writer. Le moteur de sync `UpsertXUIDAlias(ctx, globalDB, …)` écrivait encore dans le store mort à chaque match (4 call-sites : process_match, fetch, batch_path, highlight_events). Demande user : « aligner le code qui tape dans cette DB ».
+
+**Décision** : retrait COMPLET du plumbing `globalDB` (pas de neutralisation laissant du code mort — règle anti-dead-code) :
+- Param `globalDB *sql.DB` retiré de 7 fonctions (`processMatch`, `insertFetchedMatch`, `submitOrInsertMatch`, `submitMatchAsBatch`, `insertHighlightEventsFromData`, `ProcessHighlightEvents`, `ReplayHighlightEventsForMatches`).
+- `openGlobalDB` (schema.go) supprimée ; champ `globalDBPath` (engine.go) + assignation (engine_options.go) + champ `PlayerPoolConfig.GlobalXuidAliasesDBPath` (pool.go) + assignations (config/player_resolver.go) retirés.
+- Tests mis à jour (~30 call-sites) : helper `newInMemoryGlobalDB` supprimé, assertion `xuid_aliases (global)` retirée (vérif via match_participants), provider tests nettoyés.
+- `PathResolver.GlobalXuidAliasesDBPath()` CONSERVÉ : encore utilisé par `levelup consolidate-aliases` + cmd/restore + cmd/migrate-xuid-aliases-global.
+
+**Sûreté** : aucune régression d'affichage. Les gamertags restent résolus par `v_gamertag_lookup` (shared.xuid_aliases + match_participants + killer_victim_pairs) et le chemin convergent (`upsertAliasesFromMatchJSON` → shared.xuid_aliases) reste l'alimentation vivante.
+
+**Tests** : build/vet OK ; `go test ./internal/sync/... ./internal/config/... ./internal/platform/duckdb/` vert (sync 20s).
+
+**Prochaine étape** : commit 2 + deploy → suppression des fichiers `data/global/xbox_aliases.duckdb` (local + prod) une fois le writer parti.
+
+---
+
+## [2026-06-19] Alignement données prod : in-place rebuild ART + backfill engagement — Complété (ZÉRO perte)
+
+**Résultat** : prod aligné sur les corrections locales, **sur ses propres données** (pas de copie). Maintenance via `ssh lvelup` : backup (`/opt/levelup/data/backups/pre_align_20260619_104239`) → `docker compose stop levelup` → `docker compose run --rm --entrypoint levelup levelup rebuild-pme-art --all` → `... engagement-coefs --all --with-scores --force` → restart (trap de sécurité). Serveur HTTP 200 healthy après.
+- **Zéro perte** : Madina 1183, **JGtm 947** (les 5 matchs prod-only préservés), rebuild rows_before==after partout, indexes recréés.
+- **Coefs recentrés = local** : Madina PvP_unranked 1.279 (+ ranked 1.45), JGtm 1.009.
+- **metadata.duckdb prod** : déjà OK (123 maps fr-FR, The Pit→La fosse) — rien à aligner, la feature maps FR marche en prod.
+- Outil `levelup rebuild-pme-art` désormais permanent dans l'image → réparation/backfill futurs en une commande (« plus à le faire à la main »).
+
+**Décision (rappel)** : copie local→prod ÉCARTÉE car prod superset (JGtm +5) + couplage player⟷shared. In-place = la bonne voie.
+
+---
+
+## [2026-06-19] Alignement données prod : diagnostic divergence + sous-commande levelup rebuild-pme-art — sous-commande livrée
+
+**Déclencheur (user)** : aligner les DB prod avec local (corrections engagement/ART faites en local). User préfère « copier les DB locales ».
+
+**Diagnostic (SSH lvelup + snapshot non-invasif des player DB prod, comparaison anti-join vs local)** :
+- Même roster 4 joueurs (pas d'autres users à protéger). `spnkr_auto_sync_enabled=true` sur prod.
+- **Prod est un SUPERSET de local** : JGtm prod=947 vs local=942 → **5 matchs prod absents en local** ; les 3 autres joueurs identiques (0/0). → **copier local→prod détruirait ces 5 matchs JGtm** = perte de données. Copie ÉCARTÉE.
+- Piège supplémentaire : player DB ⟷ shared DB couplées par match_id → copie partielle = désync.
+
+**Décision** : fix **in-place** sur prod (mêmes corrections qu'en local : rebuild ART + engagement backfill sur les données PROPRES de prod, préserve les 947). Pour ça : nouvelle sous-commande **`levelup rebuild-pme-art [--all|--gamertag]`** (le binaire `levelup` est déjà dans l'image Docker ; `rebuild_pme_art` non) → outil permanent sur prod (futur-proof, « plus à le faire à la main »). Wrappe `migration.RebuildPlayerMatchEnrichmentART` + CHECKPOINT + garde anti-perte.
+
+**Prochaine étape** : deploy (build image avec la sous-commande) → fenêtre de maintenance prod (backup → stop serveur → `rebuild-pme-art --all` → `engagement-coefs --all --with-scores --force` → restart → vérif coefs + JGtm toujours 947).
+
+---
+
+## [2026-06-19] Consolidation xuid_aliases : suppression du store global redondant — Complété (code)
+
+**Déclencheur (user)** : « plutôt que deux endroits qui font la même chose, merge la DB globale xbox_aliases dans la table qu'on utilise vraiment + aligne le code. Attention aux doublons. »
+
+**Diagnostic** : `v_gamertag_lookup` (source unique d'affichage) + `LookupXUIDByGamertag` (coéquipiers) lisent déjà `shared.xuid_aliases`. Le store global `xbox_aliases.duckdb` (ATTACH `global`) n'était lu QUE par l'invariant I13 (UNION global+shared). Donc redondant + court-circuite la « source unique ».
+
+**Décision technique** :
+- **Données** : sous-commande `levelup consolidate-aliases` — `INSERT INTO shared.xuid_aliases SELECT ... FROM glb.xuid_aliases WHERE gamertag != '' ON CONFLICT (xuid) DO NOTHING`. Dédup STRICTE par xuid (PK), shared prioritaire (jamais écrasé). Enrichit aussi v_gamertag_lookup.
+- **Code** : I13 (`invariants.go`) lit shared-only ; retrait de l'ATTACH global + de toute la machinerie (`attachGlobalXuidAliases`/`initGlobalXuidAliasesSchema`/`attachGlobalState`, ~100L) dans `pool.go` ; retrait de l'entrée backup `xbox_aliases` ; suppression de `attach_global_test.go` (testait le code retiré) ; correction du commentaire périmé teammates.
+- **Réserve** (validée user) : multi-titre OK (jeux Xbox, XUID stables) → le store cross-titre global n'est pas nécessaire ; à recréer proprement si besoin futur.
+
+**Tests** : `TestConsolidateAliases_DedupByXuid` (aucun doublon, shared préservé, gamertag vide ignoré, idempotent). Build/vet/tests touchés verts.
+
+**Prochaine étape** : deploy → merge data (local + prod : scp global vers prod, `levelup consolidate-aliases`, serveur arrêté) → suppression de la DB globale.
+
+---
+
+## [2026-06-19] Plan durcissement ART player_match_enrichment + diagnostic version DuckDB — Complété (plan)
+
+**Statut** : plan `.ai/PLAN_PME_ART_HARDENING.md` écrit. Diagnostic version DuckDB fait.
+
+**Déclencheur (user)** : « pourquoi l'index se corrompt ? il y a une étape que je ne fais pas ? » → plan pour le step manquant + check d'une mise à jour DuckDB (potentiellement pour le VPS).
+
+**Finding DuckDB (important)** : driver `duckdb-go/v2 v2.10503.1` = **DuckDB 1.5.3**. La corruption ART est une **régression amont 1.5.0** documentée : [duckdb#23046](https://github.com/duckdb/duckdb/issues/23046) « ART index constraint enforcement corrupts the heap on file-backed » — **OUVERTE**, **non corrigée en 1.5.4**. Donc : pas une erreur d'usage, et **un simple upgrade ne suffit pas**. La version Python (1.4.4 LTS, pré-1.5.0) n'avait pas le bug → c'est l'adoption Go de 1.5.x qui l'a introduit. → la mitigation app-side (append-only / churn-reduction, cf. plan) est la voie robuste ; downgrade 1.4.x LTS bloqué par le risque format-fichier.
+
+**Décision** : plan phasé (filet auto-heal → réduction churn via persister batché → append-only + vue `_latest`), + suivi #23046. Branche cible `refactor/pme-append-only` à créer après merge de la PR courante.
+
+---
+
+## [2026-06-19] Réparation corruption ART player_match_enrichment + re-backfill engagement propre — Complété (ZÉRO perte)
+
+**Statut** : 4 player DB réparées, re-backfill réussi, coefs recentrés. Backup pris. `go build`/`vet`/tests migration ✓.
+
+**Déclencheur** : le re-backfill `engagement-coefs --with-scores` crashait DuckDB (FATAL "Failed to append to PRIMARY_player_match_enrichment_0: duplicate key") sur Madina+JGtm — bug d'index ART (faux-positif : données sans doublon, COUNT==DISTINCT). User : « réparer proprement, aucune perte de données ».
+
+**Constat intégrité (read-only)** : ZÉRO perte. Toutes les lignes présentes, aucun doublon réel (Madina 1183=1183, JGtm 942=942, Choco 505, XxDaemon 32). 2 WAL résiduels (crash). Le crash est un faux-positif d'INDEX, pas de données.
+
+**Décisions techniques** :
+1. **Backup** des 4 stats.duckdb (+WAL) → `data/backups/pre_art_rebuild_20260619_114622/`.
+2. **Fix `RebuildPlayerMatchEnrichmentART`** (`steps_player_rebuild_match_enrichment.go`) : la version 2026-05-23 (a) DROP-ait les indexes secondaires sans les recréer (commentaire « pas d'indexes connus » périmé — la table a gagné idx_pme_engagement_history/_paces/_session après) et (b) n'était PAS transactionnelle. Corrigé : capture dynamique des CREATE INDEX (duckdb_indexes is_primary=false) → swap CTAS **en transaction** avec **garde anti-perte** (rebuilt==before sinon rollback) → recréation des indexes. Même sûreté que RebuildMatchParticipantsART. Test non-régression `…_RecreatesSecondaryIndexes` ajouté.
+3. **CLI `cmd/rebuild_pme_art`** : cible UNIQUEMENT player_match_enrichment + CHECKPOINT initial (rejoue le WAL de crash) et final (vide le WAL). Évite `force_rebuild_art --player-db` qui tente AUSSI de rebuild match_skill_rank — table devenue append-only (v5.3) qui ne peut plus porter de PK → échec + WAL non checkpointé (bug pré-existant de force_rebuild_art, hors scope).
+4. **Rebuild des 4 DB** : counts identiques au baseline (zéro perte), 3 indexes recréés (1 pour Choco), WAL nettoyés, RO open OK, match_skill_rank intact.
+5. **Re-backfill** `engagement-coefs --all --with-scores --force` : RÉUSSI sans crash (XxDaemon 31, Choco 487, JGtm 914, Madina 596 scores). **Coefs recentrés** : JGtm 1.345→**1.009**, Madina 1.819→**1.279** (+ PvP_ranked 1.45 désormais calculé) — confirme l'effet pace_team-inclut-le-joueur sur les données historiques.
+
+**Résultats** : zéro perte (vérifié counts == baseline avant/après), engagement recentré sur tout l'historique, build/tests verts.
+
+**Note** : bug pré-existant à part — `force_rebuild_art --player-db` casse sur l'étape match_skill_rank (append-only). Non corrigé ici (hors scope) ; utiliser `cmd/rebuild_pme_art` pour player_match_enrichment.
+
+---
+
+## [2026-06-19] Escouade : résolution FR des noms de map via asset_translations — Complété
+
+**Statut** : DB libérée par le user. Diagnostic + fix livrés. `go build`/`go test duckdb` ✓ (2 nouveaux tests).
+
+**Diagnostic (diag_q sur shared + metadata)** : `match_registry.map_name_fr` est **NULL pour les 1762 matchs** → le `COALESCE(map_name_fr, map_name)` retombe toujours sur l'EN (et certains map_name sont des UUID bruts). Les noms FR existent bien dans `metadata.asset_translations` (123 maps en `fr-FR`, clé `asset_id` = `map_id`). Preuve : The Pit (648ae7aa) → FR « La fosse ».
+
+**Décision technique** : `LoadMatchEngagementContext` ([engagement_score_repo_queries.go]) sélectionne désormais aussi `mr.map_id` ; quand présent, on résout le nom FR via `metadata.asset_translations` (helper `resolveMapNameFR`, `QueryRecovered`, `asset_type='map' AND lang IN ('fr-FR','fr')`, priorité fr-FR). Best-effort : fallback EN si Metadata absent / pas de ligne FR. Bénéficie au squad (affichage maps) sans toucher le service ni l'interface port. `EngagementScoreRepo.pdb` (`*PlayerDB`) a déjà accès à `Metadata`.
+
+**Tests** : `TestResolveMapNameFR` (EN!=FR→FR, FR==EN, fallback 'fr', id inconnu→fallback, le bruit playlist ne matche pas) + `TestResolveMapNameFR_NilMetadata` (best-effort sans panic). Test interne (package duckdb) pour atteindre la méthode non exportée.
+
+**Prochaine étape** : re-backfill engagement (--with-scores --force) maintenant que la DB est libre.
+
+---
+
+## [2026-06-18] Vérification finale lot rendement/engagement + logging + test 422 — Complété
+
+**Statut** : vérification go/no-go du lot (5 commits). Ajouts logging + 1 test. Tout vert.
+
+**Déclencheur (user)** : « Vérification finale… bonne couverture de logging dans le dossier logs dédié et de tests aussi ».
+
+**Logging ajouté** (route vers `logs/{module}.log` via observability/context_handler.go) :
+- `GetMatchEngagement` : `slog.WarnContext` quand un match renvoie ErrEngagementInsufficient, avec `match_id`, `xuid`, `n_player_events`, `n_team_events`, `n_lobby_events`, `n_team`, `target_team_id`, `reason` → permet de pister en direct la cause racine (attribution xuid/team_id) quand le user recroise un match cassé.
+- PATCH /settings : `slog.InfoContext` quand `rendement_exclude_assists` change.
+- Boot : `slog.Info` si le toggle est actif au démarrage.
+
+**Test ajouté** : `TestEngagementHandler_GetMatchEngagement_Insufficient` (match < 3 min → 422 `engagement_insufficient`, pas 500/migration). + tests existants des commits : `excludeAssistsToggle`, `PaceTeamIncludesPlayer`.
+
+**Résultats vérif** : `go build ./...` ✓, `go vet` (packages touchés) ✓, `go test` analysis/temporal/service/handlers/settings ✓ (3 nouveaux tests verts). Front : `tsc` ✓, `eslint` **0 erreur** (20 warnings pré-existants hors fichiers touchés), **vitest 210 fichiers / 1877 pass / 14 skip** ✓. Tailles fichiers touchés < 500L, fonctions < 80L.
+
+**Reste BLOQUÉ** (backfill-world.exe PID 33736 tient la shared DB) : re-backfill `engagement-coefs --all --with-scores --force` + diagnostic résolution FR maps Escouade. À lancer dès DB libre.
+
+---
+
+## [2026-06-18] Escouade Engagement : relabel « équipe observée » → « Escouade réelle » (maps FR différé) — Complété (partiel)
+
+**Statut** : commit 5/5. `tsc`/`eslint`/vitest squad 242/242 ✓.
+
+**Déclencheur (user)** : « Revoir le graphe Engagement sur Escouade : c'est quoi "équipe observée" et les noms des maps pas résolu. Est-ce que le coef est bien calculé en post sync ? ».
+
+**Réponses / décisions** :
+- **« équipe observée »** = rythme réel moyen de l'escouade (per-player, joueur inclus depuis le commit pace_team). Relabel des 3 courbes via i18n (nouvelles clés `engagement.squad.trace.{lobby,expected,observed}`) : « Lobby / Escouade attendue / Escouade réelle » (FR), « Lobby / Squad (expected) / Squad (actual) » (EN). `SquadEngagementView` ne hardcode plus les noms (prop `seriesLabels`, passée localisée par `SquadEngagementSection`). Sous-titre manifest aligné.
+- **coef post-sync** : confirmé OK (diagnostic antérieur : JGtm/Madina ont bien leur coef PvP_unranked ; ranked vide = joueur ne joue pas classé, normal).
+- **noms de maps** : truncation front assouplie (9→14 car). **Résolution FR backend DIFFÉRÉE** : la requête `LoadMatchEngagementContext` fait `COALESCE(mr.map_name_fr, mr.map_name)` qui n'emprunte pas le pattern canonique `asset_translations` (cf. mémoire reference_asset_translations_fr + helper `applyMapFRTranslations` dans filters_repo.go). Diagnostic bloqué : shared/metadata DB tenue par `backfill-world.exe`. À faire quand DB libre : vérifier si `map_name_fr` est NULL (→ enrichir via asset_translations, mirroring applyMapFRTranslations) vs simple troncature.
+
+**Prochaine étape** : re-backfill engagement (--with-scores) + diagnostic maps quand `backfill-world.exe` relâche la shared DB.
+
+---
+
+## [2026-06-18] Engagement Match View : message honnête (fin du « migration en cours » trompeur) — Complété
+
+**Statut** : commit 4/5. `go build`+tests handlers/service ✓, `tsc`/`eslint`/vitest engagement ✓.
+
+**Déclencheur (user)** : « migration en cours » sur le graphe Engagement de matchs récents JGtm, alors que la migration est appliquée. Diagnostic (logs/general.log) : le endpoint renvoie HTTP 500 « insufficient event data » (ErrInsufficientData, branche `default` du handler) quand le split par xuid ne trouve aucun event joueur+coéquipiers ; le front affiche `engagement.error.unavailable` (= « migration en cours ») pour TOUTE erreur/courbe vide → message doublement faux.
+
+**Décision technique** : (1) backend — nouvelle sentinelle `service.ErrEngagementInsufficient` ; `GetMatchEngagement` traduit `temporal.ErrMatchTooShort`/`ErrInsufficientData` en cette sentinelle ; handler la mappe en **422 `engagement_insufficient`** (au lieu du 500 générique). (2) front — `EngagementMatchSection` n'affiche « migration en cours » QUE si `ApiError.code === 'engagement_unavailable'` (vrai 503 schéma manquant) ; sinon message neutre `engagement.error.match_unavailable` (« Engagement indisponible pour ce match… »).
+
+**Note diagnostic (non corrigé ici)** : la cause racine du `insufficient_event_data` sur des matchs où les events EXISTENT reste un mismatch d'attribution xuid/team_id par match (les 2 matchs loggés ont depuis des données complètes → transitoire au moment du sync, OU re-attribution par un rebuild highlight_events). Pas de match actuellement reproductible identifié ; le user fournira un match_id cassé live si recroisé. Le présent commit corrige le message (sûr, quelle que soit la cause) ; la cause data reste à confirmer.
+
+**Résultats** : backend+front verts. Message honnête livré.
+
+**Prochaine étape** : commit 5 (Escouade), re-backfill engagement (bloqué : backfill-world.exe tient la shared DB).
+
+---
+
+## [2026-06-18] Engagement : pace_team inclut le joueur + relabel 3 courbes — Complété (code) / re-backfill à lancer
+
+**Statut** : commit 3/5. Backend temporal + front relabel verts (`go test temporal/sync` ✓, `tsc`/`eslint` ✓, vitest EngagementCurve 4/4). **Re-backfill data à exécuter** (paces/coefs).
+
+**Déclencheur (user)** : « attendu juste au-dessus de l'équipe, comme un +1, étrange » → diagnostic : `pace_attendu = coef × pace_team`, coef gonflé car `pace_team` excluait le joueur du numérateur (`splitMatchEvents`/`LoadTeamXUIDs xuid<>target`) mais NTeam le comptait au dénominateur. User : « équipe alliée doit inclure le joueur » + « 3 courbes : joueur réel, joueur attendu, équipe réelle ».
+
+**Décision technique (backend)** : dans `ComputeEngagementScore`, construire `teamInclPlayer = TeamEvents ∪ PlayerEvents` et l'utiliser comme `TeamEvents` de la courbe ET comme dénominateur de l'attendu en mode équipe (`selectExpectedReference` prend désormais `teamInclPlayer`). FFA/1v1 inchangé (lobby inclut déjà le joueur). Effet : `pace_team` cohérent num/dénom (joueur inclus) → coef se recentre vers ~1.0 → « joueur attendu » reste au-dessus de « équipe réelle » pour un joueur au-dessus de la moyenne, coïncide pour un joueur moyen (honnête). Test `TestComputeEngagementScore_PaceTeamIncludesPlayer` (coéquipiers sans events + joueur actif → pace_team > 0).
+
+**Décision technique (front)** : relabel des 3 séries via le manifest `engagement.trace.*` (`team`→« Équipe réelle »/« Team (actual) », `expected`→« Joueur attendu »/« Player (expected) », `player`→« Joueur réel »/« Player (actual) »). `EngagementCurve` ne hardcode plus les noms : nouvelle prop `seriesLabels` (défaut FR), passée localisée par `EngagementMatchSection`.
+
+**Re-backfill requis** : `go run ./cmd/levelup engagement-coefs --all --with-scores --force` (recompute scores depuis highlight_events → nouvelles paces → coefs recentrés). Pré-requis : shared/player DB libres (pas de serveur/backfill-world tenant le lock). Re-validation `inspect_engagement` : coef_team_share attendu plus proche de 1 que 1.34/1.82.
+
+**Prochaine étape** : re-backfill, puis commits 2 (message honnête) + 4 (Escouade).
+
+---
+
+## [2026-06-18] KPI bar Match View : Rendement/Résistance + police réduite + labels courts — Complété
+
+**Statut** : commit 2/5 du lot. `tsc` + `eslint` verts, vitest match-view 113/113. Branche `feat/rendement-engagement-matchview`.
+
+**Déclencheur (user)** : « Ajouter une représentation Rendement et Résistance sur la KPI bar de la page Général de match view. Réduire la taille de la police des KPI cards pour gagner de la place, possibilité de raccourcir certains labels (Assistances → Assist.) ».
+
+**Décision technique** : OC/DR déjà calculés backend par scoreboard row (match_view_converters) ; `MatchViewPage` expose déjà `meRow = scoreboard.find(is_me)`. Donc **zéro changement backend** : on passe `meRow.offensive_conversion/defensive_resistance` à `MatchSummaryCardsSection` (2 nouvelles cartes réutilisant `formatOffensiveConversion`/`formatDefensiveResistance`/`combatYieldToken` de `lib/formatters/combatYield`). Police réduite dans `MatchVsStatCard` + `MatchWinProbCard` (valeurs `text-2xl`→`text-lg`, label `text-xs`→`text-2xs`, padding `px-4 py-3`→`px-3 py-2.5`). Grille `lg:grid-cols-6`→`lg:grid-cols-4 xl:grid-cols-8` (8 cartes : 2×4 sur lg, 1×8 sur xl). Labels raccourcis dans le manifest `match_view.toml` (« Assistances vs attendues »→« Assist. », « MMR équipe vs adverse »→« MMR », « Frags vs attendus »→« Frags », « Morts vs attendues »→« Morts ») + nouvelles clés `cards.rendement`/`cards.resistance` ; manifest régénéré.
+
+**Résultats observés** : typecheck/eslint verts, 113 tests match-view OK. Les sous-labels (réel/attendu, allié/adverse) clarifient toujours les cartes raccourcies.
+
+**Prochaine étape** : commits 3 (engagement pace_team + relabel), 4 (Escouade), 2 (message honnête).
+
+---
+
+## [2026-06-18] Toggle « rendement sans assistances » (réglage global) — Complété
+
+**Statut** : branche `feat/rendement-engagement-matchview` (depuis `main`). Commit 1/5 du lot rendement/engagement/match-view. `go build ./...` ✓, tests analysis+service+handlers ✓, front `tsc` + `eslint` ✓. Commit en attente d'autorisation.
+
+**Déclencheur (user)** : « option dans les settings pour que tous les composants rendement soient calculés sans tenir compte des assistances (désactivé par défaut) et forcément brancher cette option sur les composants ».
+
+**Décision technique** : le rendement = `OffensiveConversion` = `225×(kills + assists/3)/dégâts`, calculé backend dans `internal/analysis/combat_yield.go` et consommé par ~13 sites (analysis purs + services + patterns_repo). Plutôt que threader un bool à travers 13 agrégateurs + leurs appelants + tests (gros ripple, risque), j'ai porté le flag en **variable globale atomique** dans le package `analysis` (`excludeAssistsFromYield atomic.Bool`), lue dans `FragEquivalents`. Justification : c'est un réglage app **unique** (pas par-user), donc une valeur process-wide est sémantiquement correcte ; `atomic.Bool` la rend thread-safe + réactive à chaud. Zéro changement de signature aux call-sites → OffensiveConversion (et DamagePerFragEquivalent) respectent le toggle partout (Home, Timeseries, Sessions, Explorer, Escouade, Match view). Quand ON : OC = OffensiveFinishing (225×kills/dégâts). DefensiveResistance non touchée (n'utilise pas les assists).
+
+**Câblage** : `domain.Settings{Response,Request}` + `platform/settings` (AppSettings/Apply/ToResponse) + handler PATCH (`analysis.SetExcludeAssistsFromYield` après Save) + boot `cmd/server/main.go` (set depuis app_settings au démarrage). Front : type `SettingsResponse.rendement_exclude_assists`, carte « Rendement » dans `AnalyseTab.tsx` (ToggleRow), i18n FR/EN. Le PATCH invalide les queries → recompute query-time reflète le toggle sans redémarrage.
+
+**Résultats observés** : build Go vert ; `TestComputeCombatYield_excludeAssistsToggle` vert (OC==OffensiveFinishing quand exclu, retour défaut après reset) ; tests combat-yield existants non régressés (défaut false) ; typecheck/eslint front verts.
+
+**Prochaine étape** : commits 2-5 (engagement message honnête, pace_team inclut joueur + relabel 3 courbes, Escouade, KPI bar match-view).
+
+---
+
+## [2026-06-18] Remise au vert CI post-merge Lab (4 jobs rouges) — Complété
+
+**Statut** : branche `refactor/lab-admin-atelier`. Les 4 jobs CI rouges sur le commit Lab (`b9fde414c`, déjà sur `main` + déployé) corrigés et revalidés localement. Commit en attente d'autorisation.
+
+**Déclencheur (user)** : « corrige toutes les erreurs jusqu'à ce que CI et deploy soient verts », « même si c'est préexistant tu t'en occupes », « si ça a marché un jour c'est que ce doit être fixable » (priorité aux vrais fixes, pas aux skips). SeedDemo : « finir à 100% ». Hors périmètre : Playwright.
+
+**Diagnostic (ground-truth via `gh run view --log-failed`, pas le résumé)** — 4 jobs :
+1. **Go Coverage** (`go test ./...`) : 2 vrais échecs de tests, AUCUN timeout.
+   - `internal/api/handlers` : `TestE2E_DeviceCodeFlow_{HappyPath,SingleFlight}`. **Vrai bug prod** : `StartDeviceFlow` ne rendait pas la session « significative » → pas de cookie stable → chaque requête repart sur une session anonyme → attempt introuvable (404). Fix = poser `sess.PendingDeviceFlowAttempt = attempt.AttemptID` (+ clause dans `IsMeaningful()`).
+   - `internal/ops` : `TestSeedDemoCLI_E2E` — seed-demo exit 1 (fixture obsolète : colonnes `is_with_friends`/`is_ranked` + table `match_csrs` absentes). Fix = fixture reconstruite via `migration.RunForDB` (schéma réel) + tolérance table source absente.
+2. **Go Lint** : `goconst "playlist" ×5` dans `lab_service.go` → `domain.LabSegment*` (vérifié `--new-from-rev=b9fde414c` = **0 issue**).
+3. **Go Baseline** : 9 tests baseline absents du run courant. Vérifié = suppressions **volontaires** (fonctions source disparues via refactors documentés : « reecriture seed media », « classement CSR mondial », etc.). Retrait chirurgical des 38 lignes JSONL correspondantes (delta asserté).
+4. **`verifyConfigsWritten` périmé** (cause réelle du « profile DEMO absent ») : la démo est passée mono-joueur → **multi-roster** ; `db_profiles.json` est keyé par gamertag (`DefaultDemoMainGamertag="DemoPlayer"`, pas le répertoire `"DEMO"`) et `waypoint_player` = gamertag démo (anti-fuite du gamertag source). Helper aligné + invariant anti-fuite ajouté.
+
+**Décision timeout (mesuré, pas band-aid)** : `internal/sync` = **80.9 s** en local (CI plus lent → risque de dépasser 120 s). Le script `check_test_baseline.sh` utilise déjà `-timeout=300s` pour la MÊME suite → `ci.yml` (120 s) était l'incohérent. Bump 120→300 s (2 sites).
+
+**Résultats locaux** : ops 4/4 + suite complète ✓ ; handlers DeviceCodeFlow 3/3 ✓ ; handlers/service/domain packages ✓ ; sync (full) ✓ ; lint 0 issue nouvelle ; baseline -38 lignes (delta exact 38).
+
+**Conclusion** : tout vert en local. Prochaine étape : commit (sur autorisation) → push branche → re-vérif CI verte → merge `main` (corrige le CI rouge de `main` + redéploie).
+
+---
+
+## [2026-06-18] Refonte Lab — renommage « Atelier » → « Lab » (préférence user + cohérence) — Complété
+
+**Statut** : `tsc`=0, `eslint`=0 erreur, vitest admin+lab 71/71, `vite build` ok (routeTree régénéré → `/admin/lab`), i18n régénéré. Commit en attente.
+
+**Déclencheur (user)** : « j'aimais bien le nom de Lab ». J'avais renommé l'onglet en « Atelier » sans raison forte — concédé. « Lab » est en fait plus cohérent : backend déjà en `/lab/*`, logs `logs/lab.log`, dossier `features/lab/`. Mon « Atelier » créait une dérive front/back.
+
+**Décision technique** : rename complet côté front — route `/admin/atelier` → `/admin/lab` ; dossier `features/admin/atelier/` → `features/admin/lab/` (`AdminLabPage`) ; clés `admin.atelier.*` → `admin.lab.*` ; libellé nav « Lab » (fr/en). Backend inchangé (déjà `/lab/*`).
+
+---
+
+## [2026-06-18] Refonte Lab — vérification finale + logging dédié + doc OpenAPI — Complété
+
+**Statut** : branche `refactor/lab-admin-atelier`. Go : `internal/api` (contrat + lab_routes_mounted) ok, `internal/api/handlers` Lab 8/8 ok, `service` + `observability/logging` ok, `go vet ./internal/...` ok. Front : vitest **1877 passed / 14 skip / 0 fail** (210 fichiers), `tsc -b`=0, `eslint .`=0 erreur, `vite build` ok. Commit en attente d'autorisation.
+
+**Demande user** : vérification finale (complétude + fonctionnement) + bonne couverture de logging (dossier logs dédié) + tests.
+
+**Régression attrapée par la vérif complète** (le hook pre-commit ne lance que go-vet, pas go test) : `TestContractRoutesDocumented` (ratchet OpenAPI à 0) échouait — `GET /lab/waypoint` non documentée + une route **pré-existante** `POST /players/{slug}/filters/match-ids` (pas la mienne, dette `main`). Les deux ajoutées à `api/openapi.yaml` → ratchet revenu à 0.
+
+**Logging** : closure Waypoint instrumentée — `slog.InfoContext` (succès : segment / asset_id / version_id / titleSlug / resolved / duration_ms) + `slog.WarnContext` (token Spartan absent, fetch échoué) routés vers `logs/lab.log` via `module="lab"` (nouvelle constante `logging.ModuleLab`, pattern `ModuleCatalog`). Passage `titlePkg.DefaultSlug` → `ctxkeys.TitleSlug(ctx)` (correction multi-titre).
+
+**Tests ajoutés** : backend `TestLabHandler_GetWaypoint_{OK,InvalidSegment,Unavailable}` ; front `WaypointExplorerPanel.test.tsx` (rendu / bouton désactivé / résultat résolu) + mock MSW `/lab/waypoint` ; `lab_routes_mounted_test` étendu à `/lab/waypoint`.
+
+**Échecs pré-existants (hors périmètre, confirmés)** : `TestE2E_DeviceCodeFlow_{HappyPath,SingleFlight}` (auth device-flow, échouent en isolation ; 0 fichier auth dans le diff vs main) + flakiness DuckDB ART sous tests handlers parallèles. À traiter séparément.
+
+**Conclusion** : refonte Lab complète et vérifiée. Prochaine étape : push branche + PR (sur autorisation).
+
+---
+
+## [2026-06-18] Atelier — clôture refonte Lab (Stage 1c : bouton Rafraîchir diagnostics) — Complété
+
+**Statut** : branche `refactor/lab-admin-atelier` (commits 1a `81e9148bb`, 1b `c27de5654`). `tsc -b`=0, `eslint .`=0 erreur, vitest admin 68/68, i18n régénéré (+1 clé). Commit en attente d'autorisation.
+
+**Constat qui recadre (1c)** : les actions diagnostics du plan initial sont redondantes ou non exposables — « lancer sync » + « audit data » existent déjà (`AdminQuickActions` → `/admin/actions/auto-sync/run`, `data-health/run`) ; la probe tokens est **loopback-only** par sécurité (`admin_auto_sync`) ; le rapport de parité est produit par l'outillage Python (pas d'endpoint Go). Surtout, le Stage 1a a déjà **colocalisé** Diagnostics avec ses actions de remédiation dans « Qualité données ». Construire des boutons sync/probe aurait dupliqué l'existant ou régressé la sécurité.
+
+**Décision technique** : seule action safe et non-redondante retenue (choix user) — bouton « Rafraîchir » sur la section Diagnostics de `AdminDataQualityPage` (re-fetch `useLabDiagnostics`, `isFetching` → busy ; zéro nouveau backend). i18n `admin.dq.diagnostics_refresh`.
+
+**Conclusion** : refonte Lab terminée (1a consolidation IA + 1b explorateur d'API + 1c clôture). Horizon 2 (cockpit onboarding titre) reste différé, gated par le chantier multi-titre (PMT-1/2/3). Prochaine étape : push branche + PR (sur autorisation).
+
+---
+
+## [2026-06-18] Atelier — Explorateur d'API Waypoint (refonte Lab, Stage 1b) — Complété
+
+**Statut** : branche `refactor/lab-admin-atelier` (suite du commit 1a `81e9148bb`). Go `internal/api` + `internal/api/handlers` = ok (3 nouveaux tests handler : OK / segment invalide / explorateur indisponible) ; `tsc -b` = 0 ; vitest admin+lab 68/68 ; `eslint .` = 0 erreur ; `vite build` OK ; i18n régénéré (admin 278 clés, +19). Commit en attente d'autorisation.
+
+**Déclencheur (user)** : « vas y commit et enchaîne » après le Stage 1a. Stage 1b = cœur de la vocation du Lab : explorer en direct les endpoints Halo Waypoint.
+
+**Constat qui recadre** : pas besoin de re-câbler Discovery/Resolver ni d'un proxy arbitraire. `reg.AnyPlayerTokens(ctx)` (registry_auth.go:271) est le seam canonique pour un token Spartan (déjà utilisé par MapImageURLFetcher, server.go:375), et `halo.FetchAsset` couvre les 4 segments Discovery UGC (map/playlist/pair/game_variant). Restreint à ces segments connus (pas de path libre) = plus sûr.
+
+**Décision technique** :
+1. Backend : `GET /lab/waypoint?segment=&asset_id=&version_id=&lang=` (dans le groupe RequireAdmin). `LabService.ExploreWaypoint` découplé de halo/auth via une `WaypointExplorerFunc` injectée depuis server.go (closure : AnyPlayerTokens → `NewHaloProvider().WithTokens().FetchAsset`). Erreurs d'appel (404/auth/token absent) portées dans la réponse (`resolved_ok=false` + `error`), pas en erreur HTTP — le panneau affiche le détail. Validation (segment/asset_id/version_id) → 400 ; explorateur non câblé → 503.
+2. Front : sous-nav Atelier (Ressources / Explorateur d'API). Panneau `WaypointExplorerPanel` (form segment+id+version+langue → `useLabWaypoint` mutation → nom public/description/image/latence ou erreur). Type `LabWaypointResponse` (types.ts, écrit main). i18n : 19 clés `admin.atelier.*`.
+
+**Résultats observés** : tous les gates verts. Pas de test de rendu front (la feature admin n'a que des tests de logique pure ; couverture via tests handler backend + typecheck + build).
+
+**Conclusion / prochaine étape** : Stage 1b livré. Reste **Stage 1c** (actions diagnostics : relancer parité / probe tokens / lancer sync). Raw JSON brut possible en évolution (FetchAsset renvoie le décodé : nom/desc/image).
+
+---
+
+## [2026-06-18] Lab → Admin « Atelier » (refonte Lab, Stage 1a : consolidation IA) — Complété
+
+**Statut** : branche `refactor/lab-admin-atelier` (depuis `main`). `tsc -b` = 0 ; `eslint .` = 0 erreur (69 warnings préexistants, aucun sur les fichiers touchés) ; vitest zones touchées 242/242 ; `vite build` OK (routeTree régénéré) ; Go `internal/api` = ok (compile CGO + tests Lab dont `lab_routes_mounted` + `TestLabHandler_Forbidden`). Commit en attente d'autorisation.
+
+**Déclencheur (user)** : revue UX du Lab — « dans cette page j'ai des infos sans savoir quoi en faire ». Plan approuvé : rapatrier le Lab dans l'Admin, rôle opérateur unique. Question en cours de route : « le Lab ne devrait-il pas être dans l'Admin ? » → oui.
+
+**Constat qui recadre** :
+- Lab = console **lecture seule** (Explorateur / Contrats / Diagnostics) enfouie sous Paramètres → onglet Lab → « Ouvrir le Lab » (triple indirection).
+- Onglet **Contrats API** (diff Go↔FastAPI) = scaffolding de migration périmé (cutover Go fait).
+- Les **actions** visées (catalog refresh, backfill noms, résolution traductions) **existent déjà** dans l'onglet Admin « Qualité données » (`data-quality/mutations.ts`) → consolidation, pas re-câblage.
+- `buildCapabilities` renvoyait `CanManageInstance: true` **en dur** → Lab non gardé par-utilisateur (ouvert à tout user connecté) ; vrai gate par-user = `isAdmin`.
+
+**Décision technique** :
+1. Backend : `/lab/*` enveloppé `RequireAuth+RequireAdmin` (server.go) — admin-only, cohérent avec `/admin/*`. Gate service `can_manage_instance` conservé en kill-switch d'instance.
+2. Front : onglet Admin **« Atelier »** (`/admin/atelier`, `AdminAtelierPage`) réutilisant `ResourcesPanel` + i18n Lab local (zéro réécriture). **Diagnostics** (parité + guards) fusionné dans `AdminDataQualityPage` via `useLabDiagnostics`. **Contrats** retiré. `LabPage`/`routes/lab.tsx`/`ContractsPanel`/`useLabContracts` supprimés ; entrée Lab retirée des Paramètres (`LabTab`) et du menu NavL1.
+3. i18n : `admin.nav.atelier` + `admin.dq.diagnostics_section` (manifeste régénéré). routeTree régénéré via `vite build`.
+
+**Résultats observés** : tous les gates verts (cf. Statut). `/lab/charts` (galerie ECharts dev-sandbox) laissée intacte, hors périmètre.
+
+**Conclusion / prochaine étape** : Stage 1a (consolidation IA) livré. Restent **Stage 1b** (handler passthrough Waypoint ~50 LOC + panneau « Explorateur d'API ») et **Stage 1c** (actions diagnostics : relancer parité / probe tokens / sync). Plan : `C:\Users\Guillaume\.claude\plans\agile-noodling-key.md`.
+
+---
+
 ## [2026-06-15] Bonus assistances — couleur ambre plus distincte (Solo + Escouade) — Complété
 
 **Statut** : 2 edits (1 ligne chacun). `tsc -b` = 0 ; `eslint .` = 0 erreur (69 warnings préexistants, aucun sur les fichiers touchés) ; vitest `squadPerformanceLineCharts` 9/9. Branche `fix/bonus-assist-color` (créée depuis `main` — la session était passée sur main).
@@ -27534,3 +28348,264 @@ Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=728588627
 **Reste = Phase 1/2 Halo 5** (refactors coordonnés non testables sans 2e titre actif, file:line dans l'audit doc) : préfixe `/hi/` externalisé, boucle boot `Active()` + sync par titre, front gating + queryClient invalidate, adapter Halo 5. Le handoff `HANDOFF_HALO5_EXPERIMENTAL.md` les couvre (Phase 1/2).
 
 **Conclusion / prochaine étape** : 2 bloquants write-path (les plus graves) levés ; audit exhaustif persisté = feuille de route Halo 5. Reprise = Halo 5 Phase 1 (sonde live + /hi/ + client + adapter) en session dédiée à contexte plein.
+
+## [2026-06-19] Investigation — temps de maintien RW DuckDB (~5 s / 15-20 matchs) — Complété (mesure)
+
+**Statut** : Investigation + mesure complétées. Aucun changement de prod (seul ajout : un test de mesure `integration`). Optimisations non implémentées (plan rédigé, en attente d'arbitrage utilisateur).
+
+**Décision technique / cartographie** :
+- Le lease RW est pris **PAR MATCH** (worker unique → `CombinedPersister.Persist` acquiert/relâche par batch), pas une fois par cycle. En mode B-swap, chaque acquisition = swap RO→RW→RO complet.
+- **Le coût d'un swap SCALE avec N joueurs actifs** : `pool_swap_hook.go` (`PrepareForSharedSwap`/`RestoreSharedAfterSwap`) ferme+rouvre la conn RO-shared de CHAQUE player DB du pool, synchrone sous le mutex provider au PreSwap.
+- Le pré-check RO d'idempotence existe ([engine_batch_path.go:122](../apps/go-api/internal/sync/engine_batch_path.go#L122)) mais le `Submit` est **inconditionnel** → un re-fetch delta déjà persisté paie quand même un swap (le pré-check ne sert qu'aux métriques).
+- La convergence n'utilise PAS la queue de persist (écritures directes). Aucun CHECKPOINT par match (différé 5 min).
+
+**Résultats mesurés (local, DB scratch disque, `TestWriteCost`)** :
+- **Écriture shared ~114 ms/match** (~180 lignes insérées ligne-par-ligne, ~0,6 ms/ligne) ; player ~4 ms ; swaps ~24-105 ms/match (logs/provider.log, `drain_ms`≈0 local).
+- **Le coût dominant est l'écriture ligne-par-ligne, PAS le swap.** Coût ~linéaire au nombre de lignes → overhead par-INSERT, pas un coût fixe.
+
+**Conclusion / prochaine étape** : nouvelle priorité = (1) écriture groupée / Appender DuckDB (plus gros coût, aide le cas 1-match dominant, auto-contenu) ; (2) coalescing des swaps (rafales, code délicat) ; (3) guard Submit + `json.Marshal`. Plan complet : `C:\Users\Guillaume\.claude\plans\un-coll-gue-vient-de-misty-rossum.md`. Garde-fous non-régression (test différentiel, garde ART, injection de fautes) à appliquer avant tout changement. Test de mesure conservé : [persist_writecost_bench_test.go](../apps/go-api/internal/persist/persist_writecost_bench_test.go) (tag `integration`, supprimable).
+
+## [2026-06-20] Campagne APPEND-ONLY (éradication ART) — player_notifications converti — Complété (non déployé)
+
+**Statut** : 6e table d'état convertie en append-only sur la branche `fix/metadata-art-battlepass-appendonly`. Tous tests verts (persist, duckdb, migration + integration, sync, api, service, notify, ops). NON déployé (décision user : tout append-only d'abord, déploiement à la fin). Handoff complet : `.ai/HANDOFF_APPEND_ONLY_ART_CAMPAIGN.md`.
+
+**Décision technique principale** : `player_notifications` était une table d'ÉTAT mutée en place sur `shared_social.duckdb` (handle RW partagé concurrent → 1 FATAL = app entière down) : DELETE per-row (`Delete` + `CapAndSweep`) qui retire des entrées de la PK ART `(xuid, id)` = exactement le déclencheur du bug `Failed to delete all rows from index`, + UPDATE `read_at` (Mark*). Conversion en event-log immuable `player_notifications_history` (PK technique `seq` BIGINT séquence, jamais retiré) :
+- **create** = INSERT pur (read_at NULL, is_deleted FALSE) ;
+- **mark-read / mark-unread / mark-all** = INSERT…SELECT carry-forward du payload depuis `player_notifications_latest`, read_at positionné/NULL (plus d'UPDATE) ;
+- **delete / cap-sweep** = INSERT d'un event tombstone `is_deleted=TRUE` (plus de DELETE).
+- État courant = vue `player_notifications_latest` (`ROW_NUMBER PARTITION BY (xuid, id)` filtré `rn=1 AND is_deleted=FALSE`, forme sous-requête car le filtre tombstone doit s'appliquer APRÈS le ranking). Migration `shared_social_notifications_append_only_v1` (table sœur + vue + backfill, idempotente). Tous les writers (persister checkpointed + batch + fallback repo) et readers (`buildListQuery`, `UnreadCount`) reroutés.
+
+**Résultats observés** :
+- Build + `go vet` OK (env CGO). Garde-fous étendus : `player_notifications`(+_history) ajoutés à `appendOnlyStateTables` ([append_only_state_guard_test.go](../apps/go-api/internal/sync/append_only_state_guard_test.go)) ; fichier migration whitelisté ([no_attach_on_social_test.go](../apps/go-api/internal/platform/duckdb/no_attach_on_social_test.go)).
+- `order.go` canonicalOrder : migration insérée à sa position d'enregistrement (no-op `TestSortByCanonicalIsNoOpOnCurrentRegistry` vert).
+- Fixtures de test adaptées : `seedNotif`/`seedFlushedNotif` écrivent dans `_history` (written_at = CURRENT_TIMESTAMP, même référentiel TZ que la prod ; tie-break `seq DESC`), assertions reroutées vers `_latest`. Test de rollback réécrit (la collision PK `(xuid,id)` n'existe plus → échec forcé via drop de `player_records`, dernier helper du batch). Test négatif WAL converti en INSERT event non-checkpointé.
+
+**Conclusion / prochaine étape** : 6/~20+ tables faites. Suite (ordre handoff) : `squad_challenge_participant` (shared_social, dernier site concurrent), puis bloc metadata ref/cache (SELECT-then-write), prestige/player, shared match DELETE (audit sérialisé), puis retrait pansements + `go test ./...` complet + merge main (= deploy, restaure la prod).
+
+## [2026-06-20] Campagne APPEND-ONLY — squad_challenge_participant converti (+ fix régression fixture media) — Complété (non déployé)
+
+**Statut** : 7e table d'état convertie en append-only sur `fix/metadata-art-battlepass-appendonly`. Dernier site mutant concurrent de `shared_social`. Tous tests verts (duckdb, prestige, migration + integration, sync, persist, api/handlers, service). NON déployé.
+
+**Décision technique principale** : `squad_challenge_participant` (table d'ÉTAT, PK `(squad_challenge_id, user_id)`) avait `AddParticipant` (INSERT ON CONFLICT DO NOTHING) + `UpdateParticipantProgress` (UPDATE current_value/completed_at) — surface ART sur le handle RW partagé. Conversion en event-log `squad_challenge_participant_history` (PK technique `seq`) :
+- **join** (`AddParticipant`) = INSERT idempotent `WHERE NOT EXISTS (SELECT 1 FROM _latest …)` → un re-join NE réinitialise PAS la progression (point flaggé par la revue du design workflow wmlnfefr9) ;
+- **progress** (`UpdateParticipantProgress`) = INSERT…SELECT carry-forward des champs immuables (chosen_tier, data_tier, is_private, joined_at) depuis `_latest`, current_value/completed_at mis à jour ; no-op (0 ligne) si participant absent, comme l'UPDATE.
+- État courant via vue `squad_challenge_participant_latest` (latest wins, pas de tombstone car aucun DELETE). Readers `ListParticipants`/`CountActiveParticipants` reroutés. Migration idempotente `shared_social_squad_challenge_participant_append_only_v1` ; `rekey_squad_member_xuid` ne touche QUE `squad_member` (pas de risque d'ordre). Table prouvablement vide en prod (aucun endpoint de création d'escouade livré).
+
+**Résultats observés** :
+- Build + `go vet` + `gofmt` OK (env CGO). Garde-fous étendus (`squad_challenge_participant`(+_history) dans `appendOnlyStateTables`, fichier migration whitelisté), `order.go` no-op vert.
+- **Régression antérieure trouvée + corrigée** : le commit média 9171f2875 avait laissé `TestMediaE2E_RealDB_GetMediaLibrary` ([media_e2e_realdb_test.go](../apps/go-api/internal/api/handlers/media_e2e_realdb_test.go)) rouge — fixture seedant `media_match_associations` (legacy) sans la vue `_latest` que le reader interroge désormais (sous-package `handlers` non lancé lors de la vérif média). Ajout du substrat `_history` + vue (avec `bool_or(is_manual)`) à la fixture → vert. Aucune autre fixture média sœur cassée (6 autres dans des packages déjà verts).
+
+**Conclusion / prochaine étape** : 7/~20+ tables. shared_social entièrement append-only (plus aucun site concurrent mutant). Suite : bloc metadata ref/cache (SELECT-then-write via UpsertNoConflict, blast-radius moindre), prestige/player, shared match DELETE (audit sérialisé lease), puis retrait pansements + `go test ./...` complet + merge main (= deploy).
+
+## [2026-06-20] Campagne APPEND-ONLY — bloc metadata ref/cache (SELECT-then-write) — Complété (non déployé)
+
+**Statut** : bloc tables de RÉFÉRENCE/cache metadata éradiqué (décision user #2 : PK-only + SELECT-then-write, PAS append-only strict). Tous tests verts (platform/duckdb, sync, ops, migration, service, api). NON déployé.
+
+**Décision technique principale** : conversion de tous les `INSERT … ON CONFLICT DO UPDATE` / `INSERT OR REPLACE` restants en SELECT-then-UPDATE-or-INSERT (pas de delete+insert interne ART) :
+- platform/duckdb via le helper `(*duckdb.DB).UpsertNoConflict` : `UpsertMapImageCache` + `UpsertMapImageRegistry` (map_images_registry), `UpsertMedalImageCache` (medal_image_cache), `UpsertMedalsRaw` (waypoint_medals_raw), `MilestoneCatalogRepo.Upsert` (milestone_catalog).
+- cross-package en SELECT-then-write inline (*sql.DB brut, pas de helper) : `UpsertXUIDAlias` (sync/writes.go, xuid_aliases dans shared) + `SeedRankTranslations` (ops/seed.go, career_rank_translations, ex-INSERT OR REPLACE).
+- **3 index ART mutés droppés** (migration `drop_metadata_art_surface_indexes_v2`, 2e vague après v1) : `idx_ms_cat_title`+`idx_ms_cat_metric` (milestone_catalog title_slug/metric, mutés par l'upsert) + `idx_map_images_registry_fetched` (fetched_at, muté à chaque refresh). CREATE INDEX retirés des migrations de création (DBs fraîches) ; garde-fou `metadata_art_surface_guard_test.go` forbiddenIndexedColumns étendu.
+- **xbox_achievement_definitions** : `upsertAchievementDefinitions` était déjà ART-safe (UPDATE-then-INSERT). Le DELETE `purgeStaleAchievementDefinitions` (nettoyage cross-titre historique pré-filtre SCID) **supprimé** sur décision user : vestigial (0 ligne en régime permanent, contamination impossible depuis le filtre SCID), DELETE per-row sur index PK ART retiré du hot path. Import `strings` retiré.
+
+**Résultats observés** :
+- medal_image_cache / waypoint_medals_raw / xuid_aliases : aucun index secondaire → UPDATE non-indexé déjà sûr (juste le delete+insert d'ON CONFLICT à éliminer). career_rank_translations : index = PK, non muté. milestone_catalog / map_images_registry : index sur colonne mutée → droppés.
+- Piège `execScript: empty query` re-rencontré : un commentaire SQL après le dernier `;` = statement vide → déplacé les commentaires AVANT le CREATE TABLE.
+- Build + vet + gofmt OK. INSERT OR IGNORE sur xuid_aliases (persist/shared_persister.go, DO NOTHING) laissé tel quel : pas de delete-from-index, déjà sûr.
+
+**Conclusion / prochaine étape** : 8/~20+. metadata.duckdb : plus aucun ON CONFLICT/REPLACE/DELETE hot-path résiduel sur les tables ref/cache. Suite : bloc prestige/player (player DB mono-writer lease + shared_social prestige), shared match DELETE (audit sérialisé), retrait pansements, go/no-go, deploy.
+
+## [2026-06-20] Campagne APPEND-ONLY — user_prestige (dernière table shared_social) — Complété (non déployé)
+
+**Statut** : `user_prestige` converti en append-only. **C'était la dernière table mutante de shared_social** → la DB au blast-radius MAX (handle RW partagé concurrent) est désormais 100% sans ON CONFLICT/DELETE/UPDATE-indexé hot-path. Tous tests verts (platform/duckdb, prestige, migration + integration, sync, api, service, vet).
+
+**Décision technique principale** : `user_prestige` (état total_pp/current_level par (user_id, title_slug)) était alimenté par 2 ON CONFLICT DO UPDATE — `EmitEvent` (accumulation `total_pp += delta`, en TX atomique avec le journal prestige_events) + `UpsertUserPrestige` (overwrite). Converti en event-log `user_prestige_history` (PK technique seq) :
+- `EmitEvent` = INSERT…SELECT carry-forward (`COALESCE((SELECT total_pp FROM user_prestige_latest …), 0) + delta`), current_level laissé à 0 (recalculé service via LevelFromPP) ;
+- `UpsertUserPrestige` = INSERT d'un snapshot complet.
+- État via vue `user_prestige_latest` (latest wins). Readers `GetUserPrestige`/`GetUserPrestigeCrossTitle`/`GetLeaderboard` (×2) reroutés. Le journal immuable prestige_events reste la source des gains. Pas de tombstone (aucun DELETE). Migration `shared_social_user_prestige_append_only_v1` idempotente + backfill.
+
+**Résultats observés** : test de rollback atomique (`TestPrestigeEmitEvent_Atomic_RollsBackOnBumpFailure`) adapté — il DROPpait `user_prestige` pour casser la 2e écriture ; désormais DROP la vue `user_prestige_latest` (EmitEvent fait INSERT…SELECT FROM _latest). Build + vet + gofmt OK. order.go no-op vert, garde-fous étendus.
+
+**Conclusion / prochaine étape** : 9/~20+. **shared_social 100% append-only** (notifs, prefs, favorites, likes, media_assoc, squad×2, user_prestige). Reste du bloc prestige/player = **player DB mono-writer (blast-radius 1 joueur)** : baseline_state, player_privacy_state, lusr_component_history (à confirmer pur-INSERT), preset_arc(_step) (ref metadata), + DELETEs reconcile player DB (challenge/arc/match_citations/personal_score_awards). Puis shared match DELETE, retrait pansements, go/no-go, deploy.
+
+## [2026-06-20] Campagne APPEND-ONLY — caches d'état player-DB (baseline_state, player_privacy_state) — Complété (non déployé)
+
+**Statut** : 2 tables d'état "dernière valeur observée" du player DB converties ON CONFLICT → SELECT-then-write. Tous tests verts (platform/duckdb, prestige, service, sync, vet, gofmt). NON déployé.
+
+**Décision technique principale** : `baseline_state` (PrestigeBaselineStateRepo.Upsert, PK (user_id, title_slug, metric)) et `player_privacy_state` (PrivacyStateRepo.UpsertPrivacyState, PK xuid) sont des caches d'état "dernière valeur" (pas d'accumulation, pas besoin d'historique) → traitement SELECT-then-write (`(*duckdb.DB).UpsertNoConflict`), PAS append-only strict. Aucun index secondaire sur ces tables (vérifié) → l'UPDATE ne touche que des colonnes non-indexées → ART-safe. Player DB = mono-writer sous lease (blast-radius 1 joueur). `player_privacy_state` reste sous lease KindPlayer.
+
+**Résultats observés** : `lusr_component_history` confirmé **pur INSERT** (player_persister.go + skill_rating_loaders.go) — table `_history` append-only par design, aucune conversion nécessaire. Aucune fixture de test à changer (même table, pas de schéma modifié).
+
+**Conclusion / prochaine étape** : 10/~20+. Reste du bloc prestige/player : `preset_arc`/`preset_arc_step` (ref metadata, ON CONFLICT + idx_parc_title sur title_slug muté → drop index + writer migration-seed à traiter) + les 4 DELETEs reconcile player-DB (challenge DeleteByArc, arc Delete, match_citations ×2, personal_score_awards) qui demandent un design (tombstone append-only vs tolérance sérialisée, comme le purge achievements). Puis shared match DELETE, retrait pansements, go/no-go, deploy.
+
+## [2026-06-20] Campagne APPEND-ONLY — AUDIT ADVERSARIAL + gaps prestige catalog/sync_meta — Complété (non déployé)
+
+**Statut CRITIQUE** : un workflow d'audit adversarial (8 agents, census par package + synthèse + skeptiques) a **RÉFUTÉ mon affirmation "les 2 DBs critiques sont 100% durcies"**. Il a trouvé 10 sites ON CONFLICT/DELETE résiduels que j'avais MANQUÉS, dont sur metadata.duckdb et shared_social.duckdb (blast-radius MAX). Leçon : l'audit a fait son travail — ne pas se fier à un bilan non-vérifié.
+
+**Gaps trouvés (worklist vérifiée)** :
+- metadata : `challenge_template` (ON CONFLICT, title_slug/metric/cadence indexés), `preset_arc`/`preset_arc_step` (idx_parc_title), `citation_mappings` (medal_id/mapping_type indexés).
+- shared_social : `player_records` legacy fallback (persistPlayerRecordsLegacy ON CONFLICT).
+- shared_matches : `match_registry` + `match_participants` ON CONFLICT dans sync/writes.go — MAIS chemin LEGACY (le batch persist INSERT-only est le DÉFAUT via `LEVELUP_PERSIST_BATCH != "0"`, ART-safe) → pas le risque prod actif, mais latent + viole la règle no-flags.
+- player : `sync_meta` (notifications_boot, OpenReadWrite ad-hoc hors lease).
+- NEEDS_DESIGN CLI : archive.go (match_participants DELETE), restore.go (DELETE générique).
+
+**Fait dans ce batch** : `challenge_template` + `preset_arc` + `preset_arc_step` (PrestigeChallengeTemplateRepo/PrestigePresetArcRepo.Replace) → SELECT-then-write (UpsertNoConflict). Migration `drop_metadata_art_surface_indexes_v3` (drop idx_ctmpl_title_cadence/idx_ctmpl_metric/idx_parc_title) + retrait CREATE INDEX d'origine + garde-fou forbiddenIndexedColumns étendu. `sync_meta` (writeLastSeenAppVersion) → SELECT-then-write. Tous tests verts (duckdb, prestige, migration, api, vet, gofmt). Le writer migration-seed preset_arc (steps_metadata_prestige_seed.go) garde son ON CONFLICT (migration boot sérialisée, exclue des garde-fous, index PK désormais propre).
+
+**Conclusion / prochaine étape** : la campagne était MOINS finie que dit. Reste : citation_mappings (drop idx_medal/type sur 3 migr + 2 seed) + player_records legacy + match_registry/participants (convertir legacy ou retirer le flag, cf no-flags) + CLI DELETEs + DELETEs reconcile player-DB. Puis recensement final, retrait pansements, go/no-go, deploy.
+
+**Suite (gaps audit, lot 2)** : `citation_mappings` (SeedCitationMappings) → SELECT-then-INSERT-or-UPDATE via la map `existing` + migration `drop_metadata_art_surface_indexes_v4` (drop idx_citation_mappings_medal/type) + retrait CREATE INDEX (3 sites migration + 2 sites seed) + garde-fou. `player_records` legacy fallback (persistPlayerRecordsLegacy) → SELECT-then-write par prepared stmts dans la TX (plus d'ON CONFLICT ; chemin dead en prod car migration _history tourne au boot, mais exercé par setupSocialDB sans _history). Tests verts (persist, ops, sync, migration). **Incident git** : un commit ART a atterri par erreur sur `chore/i18n-playlist-to-selection` (petit travail i18n de l'user) → corrigé par cherry-pick sur `fix/metadata-art-battlepass-appendonly` (31f058d4f) + `git branch -f chore/i18n a3007580d`. Reste : match_registry/participants (legacy writes.go), CLI DELETEs (archive/restore), DELETEs reconcile player-DB, recensement final, pansements, deploy.
+
+## [2026-06-20] Campagne APPEND-ONLY — DÉPLOIEMENT du fix prod + finding match_skill_rank — Déployé
+
+**Statut** : décision user "déployer le fix prod maintenant, durcir le reste après". Go/no-go COMPLET vert (`go test ./...` + `go vet ./...` entiers, working tree clean). Merge fast-forward `fix/metadata-art-battlepass-appendonly` → `origin/main` (HEAD `d434ed38c`, 11 commits, 0 derrière, origin/main ancêtre). Auto-deploy VPS réussi (gh run watch ✓ "Deploy lvelup.info in 2m3s"). main local resynchronisé (`git branch -f main origin/main`), resté sur `fix/...`.
+
+**Vérification prod (ssh lvelup)** : 2 conteneurs `Up (healthy)`. **Crash d'origine RÉSOLU** : `catalog_refresh_cron` (le cycle qui FATAL-ait sur game_variants_catalog/Assassin) tourne propre post-deploy 12:52 ("cycle démarré" → "playlists expansées", zéro FATAL). Dernier FATAL `has been invalidated` = 12:23:15, AVANT le deploy → le restart a effacé l'état invalidé in-memory, **JGtm de nouveau accessible**. Migrations cyclées proprement (applied=0 sur metadata = prebuilt déjà au bon schéma / no-op idempotent ; aucune erreur).
+
+**FINDING URGENT** : le FATAL JGtm de 12:23 (pré-deploy) était un **DELETE sur match_skill_rank** (chunk 23 col : match_id/rating_value/rating_type/PvP_ranked) = la compaction `compactMatchSkillRankSuperseded`, classée « DÉJÀ SÛRE » (sérialisée, PK BIGINT) — **elle a quand même crashé**. Confirme la doctrine user : un DELETE sérialisé sur index ART N'EST PAS sûr. → JGtm re-crashera à la prochaine sync (compaction). À convertir append-only/tombstone en PRIORITÉ dans le durcissement player-DB (avec les ON CONFLICT engagement_coefficients/match_exclusions/lusr_component_history(skill loader)/player_match_enrichment/sync_meta(SetSyncMeta)/assists_model + les DELETEs reconcile).
+
+**Conclusion / prochaine étape** : fix prod LIVRÉ et vérifié. Reste le durcissement player-DB (blast-radius 1 joueur) — priorité = match_skill_rank compaction DELETE (re-crash JGtm). Pansements gardés en filet jusqu'à clôture.
+
+## [2026-06-20] match_skill_rank — retrait de la compaction DELETE (crash JGtm #23046) — Complété
+
+**Décision** : suppression de `compactMatchSkillRankSuperseded` (DELETE id NOT IN MAX(id)…) + son appel (skill_rating.go, force-only) + son test. Cause : ce DELETE a FATAL-invalidé la player DB de JGtm (2026-06-20 12:23) — il était documenté « SÛRETÉ ART : mono-writer + PK BIGINT = sûr », hypothèse RÉFUTÉE par le bug amont DuckDB #23046 (régression 1.5.0 : l'ART corrompt le heap file-backed sous churn, pas seulement sous concurrence ; non corrigé en 1.5.4 ; cf .ai/PLAN_PME_ART_HARDENING.md). match_skill_rank reste append-only PUR (INSERT seul, PK technique id auto) ; la vue _latest (MAX(id)) reste correcte avec les versions superseded présentes. Croissance bornée (force-recompute rare) ; compaction éventuelle = job offline serveur arrêté. Tests sync verts. Lié au plan PME : SELECT-then-write suffit aux tables player basse-fréquence, mais player_match_enrichment (écrit en masse) exigera l'append-only complet (Phase 3).
+
+## [2026-06-20] CENSUS v2 ultracode — carte exhaustive vérifiée des surfaces ART résiduelles — Complété (analyse)
+
+**Statut** : workflow `art-residual-census-v2` (29 agents, 143 sites, 95 tables indexées, skeptiques adversariaux agressifs). A trouvé ~40 sites ART résiduels — BIEN plus que mes estimations manuelles répétées. Carte préservée dans `.ai/PLAN_ART_RESIDUAL_CENSUS_V2.md` (P0→P5).
+
+**Enseignement clé** : les skeptiques ont prouvé que mes conversions SELECT-then-write ne suffisent pas partout (ex engagement_coefficients a un idx secondaire idx_xuid → l'UPDATE re-touche un index ART). Et que de nombreux UPDATE sur colonnes INDEXÉES restaient (media_files file_path UNIQUE + kind ; coach_proposal status ; match_participants team_id/backfill_bits ; match_registry season_id). + DELETEs reconcile (match_citations, weapon_kills, personal_score_awards, challenge, arc, player_skill_state_v2 watermark) + player_match_enrichment (4 index ART, multi-writers = PME Phase 3 lourde) + match_registry completion bit-ledger (lourd). **Nuance technique (jugement)** : « tout UPDATE nu sur table à index ART = dangereux » est une EXTRAPOLATION des skeptiques (preuves directes = ON CONFLICT / DELETE / UPDATE-colonne-indexée / INSERT massif ; le UPDATE nu basse-fréquence non-indexé n'a pas de preuve de crash). Priorisation dans le plan en conséquence.
+
+**Décision** : prod FIXÉE et stable (déployée), JGtm sauvé. Le durcissement restant (P0→P5, dont 2 refactors lourds PME + bit-ledger) est documenté et se reprend en sessions focalisées (qualité > grind en contexte dégradé). Garde-fous à étendre : TestNoBulkMultiRowUpdateOnCriticalTables manque la forme `UPDATE…WHERE…IN(…)` (friends_recompute, backfill_registry_names).
+
+## [2026-06-20] Durcissement ART P1 quick-wins — DROP INDEX coach_proposal + engagement_coefficients — Complété
+
+**Décision** : retrait de 2 index secondaires ART sur player DB (vecteur #4 = UPDATE sur colonne indexée, ou index redondant superflu), sans toucher aux PK :
+- `idx_coach_proposal_user_status(user_id, title_slug, status)` : `status` muté par MarkAccepted/Dismissed/Superseded/Obsoleted → surface ART certaine. Migration `drop_coach_proposal_status_art_index_v1` + retrait du CREATE dans create_coach_proposal_player_schema. L'autre index (metric_axis) reste (source_metric/radar_axis jamais mutés). Table minuscule → scan instantané.
+- `idx_engagement_coefficients_xuid(xuid)` : REDONDANT avec la PK (xuid, mode_category) dont xuid est le préfixe → zéro valeur, surface ART re-touchée par saveCoefficient (SELECT-then-write). Migration `drop_engagement_coefficients_xuid_art_index_v1` + retrait des 2 CREATE (create_engagement_coefficients_table + repair_engagement_coefficients_primary_key). PK gardée (conflict target, jamais mutée).
+
+**Garde-fous** : `coach_proposal:{status}` ajouté à forbiddenIndexedColumns ; `engagement_coefficients` ajouté à noSecondaryIndexTables (PK-only). order.go : 2 noms placés après drop_challenge (registration filename-alpha, no-op test vert).
+
+**Validation challenge (P1 item)** : `drop_challenge_mutated_art_indexes_v1` déjà en place ; le garde-fou ART passant prouve qu'aucune migration ne recrée idx_ch_status/arc_id/campaign_id, et les migrations tournent au boot (EnsureSchema) avant tout write HTTP Prestige → boot-before-write structurellement garanti. Validé, rien à changer.
+
+**Résultats** : `go build ./internal/migration` OK ; suite `go test ./internal/migration` verte (garde-fou ART + no-op order + pkfix engagement) ; `go test ./internal/platform/duckdb -run Coach|Engagement|Coef` vert. Aucun code/test n'assertait l'existence de ces index (grep = seulement les 2 migrations de drop). Schéma media_files réel sondé (legacy : id INTEGER seq, PK(id) + UNIQUE(file_path) + idx_mf_player_stem ; idx_mf_kind/_player_slug/_created absents de la live).
+
+**Prochaine étape** : P1 lusr_component_history (ON CONFLICT → append-only/SELECT-then-INSERT), puis P0 media_files (rebuild drop UNIQUE(file_path), lourd, blast-MAX, test intégration requis).
+
+## [2026-06-20] Durcissement ART P1 — lusr_component_history → append-only — Complété
+
+**Décision** : conversion append-only de lusr_component_history (player DB, V2 §1), table SŒUR de match_skill_rank (même pipeline LUSR, déjà append-only). L'ancien schéma PK (match_id, component_name) forçait writeLUSRComponentHistory en INSERT ... ON CONFLICT DO UPDATE = vecteur ART #1 (#23046). Choix append-only (vs SELECT-then-write) car : (1) cohérence avec la table sœur, (2) le writer #2 (persist/player_persister.go) est DÉJÀ un INSERT pur — append-only le rend correct par construction (sur l'ancien PK il aurait planté en violation PK sur re-persist), (3) les readers avaient besoin d'un _latest de toute façon.
+
+**Implémentation** :
+- Migration `player_append_only_lusr_component_history_v1` (calquée sur le template msr) : CTAS id BIGINT seq lch_seq + colonnes préservées (dont computed_at = horloge), PK(id), DEFAULT computed_at restauré (writer persister omet la colonne), idx_lch_component/idx_lch_match recréés (INSERT-only = pas de delete-from-index = sûrs), vue lusr_component_history_latest (QUALIFY ROW_NUMBER PARTITION BY match_id, component_name ORDER BY computed_at DESC, id DESC). Placement fichier `steps_player_lusr_components_append_only.go` = enregistrement juste APRÈS create_lusr_component_history → rebuild appliqué dès le 1er boot (plus propre que le "2e boot" du template msr). order.go placé, no-op test vert.
+- Writer #1 (skill_rating_loaders.go writeLUSRComponentHistory) : ON CONFLICT retiré → INSERT pur. Writer #2 (persist) inchangé (déjà pur).
+- Readers (2) → vue _latest : progression/profile/queries.go (loadLUSRComponentsBreakdown), platform/duckdb/campaign_repo.go (loadLUSRValuesByMatch).
+- Garde-fous : `lusr_component_history` ajouté à appendOnlyStateTables (append_only_state_guard, statement-bounded = pas de FP) ; allowlist no_art_patterns skill_rating_loaders.go RETIRÉE (le fichier n'a plus aucun ON CONFLICT — match_skill_rank y est déjà INSERT pur). Pas ajouté à tablesProtegees (file-level → FP sur player_persister.go qui a d'autres ON CONFLICT).
+- Fixtures : player_repos_test.go (DDL manuel, partagé campaign_repo_test) + vue _latest ; build_profile_integration_test applique les migrations → vue auto.
+
+**Résultats** : go build ./internal/... OK ; verts : migration (no-op order + garde-fous ART), sync (append_only_state + no_art_patterns + allowlist), platform/duckdb (Campaign/LUSR/PlayerRepo), progression/profile (build_profile integration), persist (player_persister writer #2), api (Squad/Prestige/Profile) ; vet OK. Carte writers/readers exhaustive (2 writers, 2 readers, 0 manqué — re-grep complet).
+
+**Prochaine étape** : P0 media_files (rebuild drop UNIQUE(file_path), shared_social blast-MAX, test intégration CGO requis). Schéma réel sondé : legacy id INTEGER seq, PK(id) + UNIQUE(file_path) + idx_mf_player_stem.
+
+## [2026-06-20] Durcissement ART P0 — media_files : retrait UNIQUE(file_path) (rebuild swap transactionnel) — Complété
+
+**Contexte** : media_files (shared_social.duckdb = handle RW PARTAGÉ, blast MAX) ; file_path est UNIQUE (index ART) MUTÉE par 3 UPDATE (conversion media.go, finalizeMediaHLS, reconcile) → vecteur #23046. La vraie source de schéma = ops/media_store.go::ensureMediaTables (id INTEGER + media_files_id_seq, CREATE TABLE IF NOT EXISTS), PAS la migration create_base (id VARCHAR overridé par dropLegacyMediaFilesIfNeeded). DuckDB ne sait pas DROP une contrainte UNIQUE → rebuild CTAS-swap obligatoire.
+
+**Vérif adversariale ultracode (workflow media-files-drop-unique-verify, 5 agents, 541k tokens)** : verdict GO-WITH-FIXES, 2 BLOCKERS + plusieurs HIGH corrigés. Découverte : pattern de rebuild PROUVÉ EN PROD existant (swapMatchParticipantsTx) à calquer. Fixes intégrés :
+- Swap dans UNE transaction (atomique : crash → rollback, pas de DB cassée sur blast-MAX) + garde anti-perte row-count (rebuilt==before) + recoverOrphanMediaFiles en tête + DROP IF EXISTS __rebuild.
+- DEFAULT nextval('media_files_id_seq') sur id restauré DANS la tx (les writers INSERT omettent id → sans ça, NULL dans la PK = indexation cassée).
+- Resync séquence (CREATE SEQUENCE IF NOT EXISTS START max(id)+1, anti-collision si seq disparue).
+- Autres DEFAULTs restaurés (created_at/updated_at/liked/discord_notified/indexed_at/file_size), guardés par existence colonne.
+- 2 INSERT OR IGNORE → SELECT-then-INSERT (dédup applicative) : ops/media.go:476 ET persist/shared_social_persister_batch.go:97 (le 2e MANQUÉ par le design initial — chemin Persister live, race-safe car batch.MediaFiles non peuplé en prod + indexLock côté IndexMedia).
+- Guard durci : rebuild si hasUnique OU !hasPK (couvre l'état orphan-recovered sans PK).
+
+**Implémentation** : migration media_files_drop_filepath_unique_v1 (order.go après media_assoc, no-op test vert). Schéma fraîches corrigé (ensureMediaTables:31 + create_base:24 file_path sans UNIQUE ; create_base idx_mf_kind retiré — kind muté). Garde-fous : forbiddenIndexedColumns += media_files{kind,file_path} ; nouveau TestNoMediaFilesFilePathUnique (scanne ops/+migration/). Whitelist no_attach += la migration.
+
+**Test intégration CGO** (9 tests, //go:build integration) : UNIQUE retiré, PK + idx_mf_player_stem préservés, idx_mf_kind droppé, data préservée, DEFAULT id + séquence (INSERT sans id → auto > max), autres DEFAULTs, TIMESTAMPTZ préservé (pas de downcast), doublon file_path accepté, 3 UPDATE file_path OK, idempotence, orphan-recovery, no-op sans table.
+
+**Résultats** : verts — migration (full + integration), ops (media), persist, platform/duckdb (media + no_attach whitelist), api/handlers (media), sync (garde-fous), service, notify ; vet clean. La dédup file_path est désormais applicative (SELECT-then-INSERT sous indexLock) ; documenté que tout INSERT media_files doit passer par insertMediaFile/persistMediaFiles.
+
+**Prochaine étape** : P0 match_registry/match_participants ON CONFLICT (writes.go, chemin legacy off-default — batch persist INSERT-only par défaut). Puis P2 DELETEs reconcile.
+
+## [2026-06-20] Durcissement ART — session : P1 + media_files livrés, cartographie P2/P3/P4 (tier lourd) — Checkpoint
+
+**Livré ce cycle (3 commits, branche fix/metadata-art-battlepass-appendonly)** :
+- b7c312b87 : P1 DROP INDEX coach_proposal.status (muté) + engagement_coefficients.xuid (redondant PK). Challenge drop migration validée (garde-fou passant + boot-before-write).
+- f0fedd9ed : P1 lusr_component_history → append-only (id-seq PK + vue _latest), table sœur de match_skill_rank. 2 writers (loaders ON CONFLICT retiré + persister déjà pur), 2 readers → _latest.
+- 7980c60c7 : P0 media_files drop UNIQUE(file_path) via rebuild swap TRANSACTIONNEL (blast MAX). Vérif adversariale workflow ultracode (5 agents). 9 tests intégration CGO.
+
+**Cartographie P2 restants (tous tier lourd — pas de petit win propre)** :
+- **personal_score_awards** (player DB) : NO PK, seul idx_psa_match_xuid(match_id,xuid). DELETE-then-INSERT dans InsertPersonalScoreAwards (writes.go:392). Vecteur ACTIF : engine_process_match.go:162 (live/match) + engine_fetch.go:248 + convergence.go:142 + backfill_personal_scores. → append-only (id-seq + written_at + vue _latest par (match_id,xuid)).
+- **weapon_kills** (shared_matches_v2) : NO PK, seul idx_wk_match_xuid(match_id,xuid) + vue v_weapon_kills. DELETE-then-INSERT dans InsertWeaponKills (writes.go:312). Callers = backfill_weapons.go (basse fréquence, attribution v2/v3 différée). Table grosse (tous joueurs) → drop-index exclu (scan) → append-only. Blast mid (legacy concurrent writers).
+- **match_citations** (player DB) : A une PK (cf. steps_player_repair_pk match_citations__pkfix). deleteCitationForMatch (citations.go:546, DELETE WHERE match_id) + citations_backfill.go:275 (DELETE WHERE match_id,citation_name_norm). → append-only ou recompute sans DELETE per-row.
+- **player_skill_state_v2 watermark** : table DÉJÀ append-only (id-seq + vue _latest par (xuid,playlist_group)). DELETE WHERE xuid (lusr_full_recompute.go:34 + skill_v2_shadow.go:95 reset backfill) = le gap. SUBTIL : remplacer le DELETE par un « reset » append exige que _latest renvoie un état frais PAR (xuid,playlist_group) — soit append d'une row reset par group (énumérer les groups), soit colonne generation/reset_at + vue filtrée. Nécessite de comprendre la logique watermark du runner v2 (skill_v2_shadow.go) avant de toucher. Basse fréquence (recompute/rattrapage).
+
+**writes.go match_registry/match_participants ON CONFLICT (P0 plan)** : CONFIRMÉ off-default — le batch persist INSERT-only (LEVELUP_PERSIST_BATCH != "0") est le défaut prod ; writes.go = fallback legacy. Risque réel faible.
+
+**Reste (inchangé, tier lourd)** : P3 player_match_enrichment append-only merge-on-read (~120 readers, 4 index ART, multi-writers incrémentaux) ; P4 match_registry completion bit-ledger ; P5 CLI archive/restore. Garde-fou clôture : étendre TestNoBulkMultiRowUpdateOnCriticalTables à la forme UPDATE…IN(…).
+
+**Conclusion** : fix prod déployé+stable (inchangé). Les conversions restantes sont toutes des append-only multi-fichiers (writers+readers+vue+fixtures+garde-fou) à reprendre en sessions focalisées (qualité > grind en contexte dégradé). Findings ci-dessus = pas de ré-investigation nécessaire. Prochaine reprise conseillée : personal_score_awards (vecteur le plus actif) en append-only.
+
+## [2026-06-20] P3 player_match_enrichment — design append-only VÉRIFIÉ (workflow ultracode 7 agents) — Spec turnkey
+
+**Contexte** : après deploy prod (P1+media_files), reprise sur le plus lourd. Branche refactor/art-pme-appendonly (depuis main, correctif combat-profile inclus). PME = table la plus écrite, 4 index ART, écritures partielles incrémentales par étape, ~43 sites read (pas 120).
+
+**Workflow census/design/vérif** (pme-appendonly-census-design, 7 agents, 728k tokens) : schéma + 13 writers (map colonne→étape) + ~43 readers catégorisés + design merge-on-read + 2 red-teams adversariaux. Verdicts = GO-WITH-FIXES, POC-first, 2 PRs. ~16 défauts dont :
+- **Correction design critique** : last_value(IGNORE NULLS) PAR COLONNE est FAUX (engagement_score=NULL légitime = insufficient_history se fige). → merge PAR GROUPE de colonnes co-écrites via discriminateur `stage` + pivot par match_id (dernier INSERT du groupe fait foi, NULL inclus).
+- **BLOCKER migration** : le template skill_rank n'est PAS transactionnel → perte totale au boot (SIGTERM deploy) sur une table NON re-dérivable → calquer RebuildPlayerMatchEnrichmentART / media_files (TX + garde row-count + orphan-recovery).
+- **BLOCKER réparateur** : RebuildPlayerMatchEnrichmentART re-pose PK(match_id) + index ART → ré-introduit le vecteur → adapter en mode append-only (ADD PK(id)).
+- **BLOCKERS readers** : tous les delta-filters/idempotence + JOIN agrégats + convergence psa_checked_at IS NULL (re-fetch infini) + invariants COUNT==DISTINCT → DOIVENT lire la vue _latest, sinon volume explosif + agrégats faussés silencieusement (fan-out).
+- 2 sources de schéma à patcher (schema.go + steps_player.go create_base oublié).
+
+**Décision** : analyse 728k tokens distillée en spec turnkey dans .ai/PLAN_PME_ART_HARDENING.md (design vérifié + 16 fixes + roadmap POC-first incrément engagement + 2 PRs + garde-rails + tests + critère de succès engagement-coefs --with-scores ×3). Implémentation POC à exécuter en session fraîche (qualité > grid : refonte multi-PR de la pièce la plus délicate + raffinement merge-par-groupe à éprouver). Question ouverte pour le POC : syntaxe DuckDB exacte du pivot par-groupe (any_value/arg_max FILTER pour préserver NULL).
+
+**Prochaine étape** : POC incrément 1 (migration transactionnelle + vue merge-par-groupe + cluster engagement converti) ; valider EXPLAIN + engagement-coefs ×3 sur copie Madina/JGtm.
+
+## [2026-06-21] P3 PME — substrat append-only + vue merge-on-read VALIDÉ (POC) — En cours
+
+**Livré (substrat, branche refactor/art-pme-appendonly)** : migration `player_append_only_match_enrichment_v1` (swap CTAS TRANSACTIONNEL calqué media_files : BeginTx + garde rebuilt==before + recoverOrphan ; ajoute id BIGINT seq pme_seq + written_at + colonne `stage` ; rows existantes = socle stage='legacy' ; drop PK(match_id) + 3 index ART ; garde idx_pme_match_lookup ; ensurePMEColumns découple de l'ordre des migrations engagement/dominance/psa). Vue `player_match_enrichment_latest` = **merge-on-read PAR GROUPE** : dédup par (match_id, stage) puis par colonne `CASE WHEN has_stage THEN valeur_stage ELSE legacy` → préserve le NULL-reset légitime (le piège du last_value IGNORE NULLS, écarté).
+
+**POC validé** : 8 tests d'intégration CGO verts dont le test central (3 écritures partielles perf/session/engagement reconstituées), le NULL-reset (engagement_score→NULL insufficient_history préservé = défaut #1 red-team RÉSOLU), le toggle booléen (is_excluded TRUE→FALSE), le fallback+override legacy, idempotence, orphan-recovery. Suite complète verte (migration/persist/platform-duckdb/sync).
+
+**⚠️ Prod-safety** : la suite est verte car aucun test n'exerce (PME migrée + writer ON CONFLICT match_id) ensemble. Mais en PROD, la migration rend PME append-only → les writers actuels (ON CONFLICT match_id, UPDATE WHERE match_id) casseraient. **NE PAS DÉPLOYER ce substrat seul** : migration + writers + readers→_latest doivent livrer dans le même deploy.
+
+**Reste (PR1, même deploy)** : convertir ~13 writers en INSERT partiel + `stage` (UpsertPlayerEnrichment ON CONFLICT, post_sync_enrichment_persister UPDATE, engagement_score_repo, friends_recompute, enrichments had_bot, convergence psa, match_exclusion, comeback dominance, supprimer stubs ensure/fanout/openspartan) ; ~30 readers + delta-filters → vue _latest ; adapter RebuildPlayerMatchEnrichmentART (re-pose PK match_id) ; patcher schema.go + steps_player.go create_base ; garde-fous (tablesProtegees + interdire UPDATE/FROM brut). Détails : .ai/PLAN_PME_ART_HARDENING.md. Point dur résiduel : stage du writer live persistEnrichment (écriture dynamique multi-groupes → décomposer en INSERT par groupe).
+
+**Prochaine étape** : conversion des writers (commencer par UpsertPlayerEnrichment + post_sync_enrichment_persister + engagement_score_repo — les vecteurs ON CONFLICT/UPDATE).
+
+## [2026-06-21] P3 PME — finding atomicité + recette writers turnkey (substrat reste le livrable)
+
+**Finding** : la conversion des writers est ATOMIQUE. Tentative de convertir le persister post-sync seul (UPDATE→INSERT+stage) : ça casse ~7 tests sync (comeback/dominance) car les ~12 fixtures créent player_match_enrichment en DDL manuel sans colonne `stage`. Donc migration + tous les writers + readers→_latest + toutes les fixtures = un seul bloc cohérent, pas de chunk vert incrémental. Changement reverté pour garder le working tree propre au substrat validé (882aad112).
+
+**Décision** : le substrat (migration + vue merge-on-read par-groupe, 8 tests CGO verts) est le livrable de cette passe — c'est la partie la plus dure et risquée, faite et VALIDÉE solo. La conversion writers/readers/fixtures (volumineuse, atomique, sur la table la plus écrite) est reportée à une session fraîche pour préserver la qualité (directive user « qualité > grind en contexte dégradé »). Recette turnkey capturée en annexe de .ai/PLAN_PME_ART_HARDENING.md (pattern persister-dérive-stage prouvé, stage par writer, liste readers→_latest, fixtures à patcher, garde-fous). Rien à ré-investiguer.
+
+## [2026-06-21] INCIDENT évité — substrat PME déployé par erreur sur main, retiré avant déclenchement
+
+**Cause** : les commits de la branche refactor/art-pme-appendonly (a836dcc53/882aad112/e5e23bed4) ont été poussés sur origin/main (depuis un autre checkout) → auto-deploy 11:04. Le commit 882aad112 contient la migration PME append-only (player_match_enrichment) marquée « ne pas déployer seul » : elle rend la table append-only au 1er sync/ouverture d'une DB joueur, alors que les writers font encore ON CONFLICT/UPDATE match_id → casserait l'enrichment prod.
+
+**Détection** : user signale « main local en retard sur origin ». Investigation → origin/main = e5e23bed4 (inclut le substrat PME) + deploy 11:04 réussi. Vérif prod : conteneurs healthy, AUCUN log « migration appliquée », zéro erreur PME, zéro FATAL, aucun sync depuis le deploy → la migration n'a PAS encore tourné sur les DB joueur (migration TargetPlayer = lazy par DB à l'ouverture/sync). Landmine armée mais non déclenchée.
+
+**Correctif** : force-push main→e1f021cbb REJETÉ (branch protection). → revert non-destructif : retrait des 2 fichiers de migration PME + entrée order.go via commit forward 125042306 (« revert(art): retire la migration PME append-only de main »). Push origin main → auto-deploy 11:32 success. Re-vérif : conteneurs healthy, AUCUNE migration PME tournée, zéro erreur, zéro FATAL. Travail PME PRÉSERVÉ sur origin/refactor/art-pme-appendonly (d404b0080).
+
+**Leçon** : les commits d'une branche feature NE DOIVENT PAS atteindre main tant que la feature n'est pas complète (main auto-déploie). Le substrat PME ne se re-livre qu'avec la conversion atomique writers+readers (cf. .ai/PLAN_PME_ART_HARDENING.md). État prod net = e1f021cbb-équivalent (fix origine + P1 + media_files + combat-profile, tous sûrs), SANS la migration PME.
+
+## [2026-06-22] MERGE integration/h5-x-livefetch — feat/multititre-peripherie (h5) x fix/live-fetch-token-expiry-aware — Complété (intégration, non déployé)
+
+**Statut** : Complété — build + vet + suite Go complète + typecheck front TOUS verts ; merge prêt à committer (résolutions dans l'arbre de travail, non encore committées).
+
+**Contexte** : deux gros chantiers parallèles à fusionner — la périphérie multi-titre (h5 production-ready : assets, vue match, CSR par playlist, LUSR, fondation provider, perfect-kills agrégés, duration_utils ; +256 commits) ET le travail de fond live-fetch/auth/ART (token-expiry-aware, campagne append-only #23046, recalibration combat-profile ; +97 commits, local-only). 46 conflits matérialisés sur branche d'intégration.
+
+**Décision technique principale** : résolution combinant les DEUX intentions (jamais « ours/theirs » brut), pilotée par workflow ultracode + agents minutieux. Points durs :
+- **order.go** = union des 179 migrations (0 manquante, 0 dupliquée) ; corrections ART live-fetch portées dans les copies title-owned relocalisées par feat (voie B).
+- **Ownership migrations réconcilié** : les migrations append-only globales (live-fetch) opérant sur des tables dont le créateur a été relocalisé title-owned (feat) échouaient dans le binaire de test global-only (provider title-owned nil). Fix systématique : garde d'existence de table (modèle reset_marker) sur `rebuild_catalog_fetch_queue_drop_art_indexes` ; tests append-only (weapon_kills, catalog_fetch_queue) RELOCALISÉS vers `games/halo_infinite/migrations` (où `SetTitleStepsProvider` est câblable). En prod, provider câblé → tout tourne.
+- **2 vraies régressions de merge corrigées** (pas des artefacts de test) : (a) `media_files file_path VARCHAR NOT NULL UNIQUE` réintroduit côté créateur title-owned (surface ART #23046 éradiquée par live-fetch) → UNIQUE retiré (garde-fou `TestNoMediaFilesFilePathUnique`) ; (b) `splitSQL` ne gérait pas les commentaires `--` (un `;` dans un commentaire cassait le statement) → rendu commentaire-aware.
+- **Build/contrat** : `home_persist_sink.go` PersistChallengesSync 3 args (domain.ChallengeItem) ; `groups.go` `getSessionFromRequest` (disparu migration Huma) → `getSessionFromContext(r.Context())` ; combat_yield_test 6e arg 225 (damage model per-title) ; CombatProfileBlock front aligné (retrait `| null` sur les 3 styles, le DTO Go émet omitempty non-null) ; openapi.yaml clé dupliquée filters/match-ids + schéma LabWaypointResponse ; lab_test waypoint passés Huma ; groups.go allowlisté json_huma_coverage (migration Huma à planifier hors merge).
+
+**Résultats observés** : `go build ./...` exit 0 ; `go vet ./...` exit 0 ; `go test ./...` aucun FAIL ; `tsc -b` exit 0 ; aucun marqueur de conflit résiduel (code + docs).
+
+**Revue adversariale (8 agents, méthode 3-stage `:2:` h5 vs `:3:` live-fetch vs résolu)** : 45 fichiers, 41 PRESERVED, **0 INTENT_LOST**, 4 NEEDS_REVIEW — tous traités :
+- **#1 garde ART metadata** : 5 index ART (que live-fetch supprimait inline) survivaient dans les créateurs title-owned (steps.go halo_infinite) ; runtime OK (drop_metadata_art_surface_indexes_v1/v2/v4 les retirent au boot) mais le garde `TestNoARTSurfaceIndexInMigrations` ne scannait que `internal/migration/`. Fix : retrait inline des 6 CREATE INDEX (battlepass track/item + map_images_registry + citation_mappings medal×2/type) + **extension du garde à `internal/games/{slug}/migrations`**. Le garde étendu a immédiatement attrapé une violation BONUS : `games/halo_5/migrations/metadata.go` recréait le même `idx_map_images_registry_fetched` (copié par l'adapter h5) → corrigé aussi. Preuve par construction restaurée et future-proof (halo_5/halo_7).
+- **#2/#3 helper unique (ADR 0026)** : les copies inline title-owned de match_csrs/pve_match_stats/**player_csr_snapshots** (steps_appendonly_misc.go) étaient le pattern PRÉ-helper NON transactionnel (DROP avant vérif cardinalité, pas de recoverOrphan) → **régression de sûreté** vs le refactor live-fetch (perte de données possible sur crash mid-swap). Fix : export de `migration.ApplyAppendOnlyRebuild`/`AppendOnlyRebuild`/`SynthWrittenAt` + re-délégation des 3 conversions (specs portées verbatim depuis `:3:` : mêmes séquences/index/vues). ART éradiqué identique + sûreté transactionnelle (rollback, garde rebuilt==before) restaurée.
+- **#4 ContractsPanel.tsx** : supprimé délibérément par live-fetch (onglet Lab Contracts remplacé par features/admin/lab/AdminLabPage.tsx) ; tweak h5 caduc, types nullable préservés dans types.ts. Confirmé : zéro référence vivante (typecheck vert), résolution = suppression correcte.
+
+Re-vérif post-durcissement : build + vet + `go test ./...` (2 packages migration + halo_5 + sync) + gardes ART → tous verts.
+
+**Prochaine étape** : committer le merge (sur autorisation), puis E2E h5 sur le runtime intégré (RepoRoot sur la branche fusionnée, db_profiles halo_5/JGtm). NE PAS déployer tant que l'E2E n'est pas validé. Reste backlog qualité non bloquant : dédup mappers carnage, ranked_hoppers wiring, migration Huma groups.go.

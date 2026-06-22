@@ -40,7 +40,7 @@ fr = "Non classé"
 en = "Unranked"
 
 [session.filters.playlists]
-fr = "Playlists"
+fr = "Sélections"
 en = "Playlists"
 
 [session.filters.modes]

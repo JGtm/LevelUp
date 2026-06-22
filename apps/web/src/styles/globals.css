@@ -226,6 +226,8 @@
   --ac-chart-series-6: #10B981;
   --ac-chart-series-7: #F59E0B;
   --ac-chart-series-8: #EC4899;
+  /* Bonus (assistances) — violet, distinct des couleurs joueurs squad */
+  --ac-bonus: #A855F7;
   /* Badges narratifs */
   --ac-narrative-dominant:               #00DC82;
   --ac-narrative-dominant-text:          #052E16;

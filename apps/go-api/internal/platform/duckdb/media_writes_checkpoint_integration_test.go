@@ -66,6 +66,24 @@ func createSharedSocialSchemaForMediaTests(t *testing.T) *DB {
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (media_file_id, match_id)
 		);
+		CREATE SEQUENCE IF NOT EXISTS media_match_associations_history_id_seq START 1;
+		CREATE TABLE IF NOT EXISTS media_match_associations_history (
+			id BIGINT PRIMARY KEY DEFAULT nextval('media_match_associations_history_id_seq'),
+			media_file_id BIGINT NOT NULL, match_id VARCHAR NOT NULL, delta_seconds INTEGER,
+			is_manual BOOLEAN NOT NULL DEFAULT FALSE, is_active BOOLEAN NOT NULL DEFAULT TRUE,
+			associated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE OR REPLACE VIEW media_match_associations_latest AS
+			WITH lpp AS (
+				SELECT media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at,
+					ROW_NUMBER() OVER (PARTITION BY media_file_id, match_id ORDER BY written_at DESC, id DESC) AS rn
+				FROM media_match_associations_history),
+			act AS (SELECT * FROM lpp WHERE rn = 1 AND is_active = TRUE),
+			hm AS (SELECT media_file_id, bool_or(is_manual) AS has_manual FROM act GROUP BY media_file_id)
+			SELECT a.media_file_id, a.match_id, a.delta_seconds, a.is_manual, a.associated_at, a.written_at
+			FROM act a JOIN hm ON hm.media_file_id = a.media_file_id
+			WHERE a.is_manual = hm.has_manual;
 		CREATE TABLE IF NOT EXISTS media_likes (
 			media_path VARCHAR NOT NULL,
 			liker_slug VARCHAR NOT NULL,
@@ -73,6 +91,18 @@ func createSharedSocialSchemaForMediaTests(t *testing.T) *DB {
 			liked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (media_path, liker_slug)
 		);
+		CREATE SEQUENCE IF NOT EXISTS media_likes_history_id_seq START 1;
+		CREATE TABLE IF NOT EXISTS media_likes_history (
+			id BIGINT PRIMARY KEY DEFAULT nextval('media_likes_history_id_seq'),
+			media_path VARCHAR NOT NULL, liker_slug VARCHAR NOT NULL, liker_gamertag VARCHAR,
+			is_liked BOOLEAN NOT NULL, liked_at TIMESTAMP,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE OR REPLACE VIEW media_likes_latest AS
+			SELECT id, media_path, liker_slug, liker_gamertag, is_liked, liked_at, written_at
+			FROM media_likes_history
+			QUALIFY ROW_NUMBER() OVER (PARTITION BY media_path, liker_slug
+				ORDER BY written_at DESC, id DESC) = 1;
 		CREATE TABLE IF NOT EXISTS match_favorites (
 			player_slug VARCHAR NOT NULL,
 			match_id VARCHAR NOT NULL,
@@ -201,7 +231,7 @@ func TestSetMediaMatchAssociation_PersistsAfterCheckpoint(t *testing.T) {
 
 	// Reopen RO — si CHECKPOINT a marché, l'association est sur disque.
 	got := reopenAndCount(t, socialDB,
-		`SELECT COUNT(*) FROM media_match_associations WHERE match_id = ?`,
+		`SELECT COUNT(*) FROM media_match_associations_latest WHERE match_id = ?`,
 		"match-abc-123",
 	)
 	if got != 1 {
@@ -260,7 +290,7 @@ func TestToggleSharedLike_FallbackPath_PersistsAfterCheckpoint(t *testing.T) {
 	}
 
 	got := reopenAndCount(t, socialDB,
-		`SELECT COUNT(*) FROM media_likes WHERE media_path = ? AND liker_slug = ?`,
+		`SELECT COUNT(*) FROM media_likes_latest WHERE media_path = ? AND liker_slug = ? AND is_liked = TRUE`,
 		"/test/media.mp4", "bob",
 	)
 	if got != 1 {

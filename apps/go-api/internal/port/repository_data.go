@@ -102,9 +102,6 @@ type CitationsRepository interface {
 	// LoadMatchCitationsRich charge les citations riches d'un match (Q41) : delta + cumul + tiers.
 	// Utilisé par le Summary tab pour les progress rings et le filtrage mastery.
 	LoadMatchCitationsRich(ctx context.Context, matchID string) ([]domain.HomeMatchCitationRaw, error)
-
-	// WriteCitationsForMatch écrit les deltas calculés dans match_citations.
-	WriteCitationsForMatch(ctx context.Context, matchID string, deltas []domain.CitationMatchDelta) error
 }
 
 // MatchExclusionRepository gère le flag is_excluded dans player_match_enrichment.
@@ -241,9 +238,6 @@ func (n *noopCitationsRepo) LoadMatchCitationsForView(_ context.Context, _ strin
 }
 func (n *noopCitationsRepo) LoadMatchCitationsRich(_ context.Context, _ string) ([]domain.HomeMatchCitationRaw, error) {
 	return nil, nil
-}
-func (n *noopCitationsRepo) WriteCitationsForMatch(_ context.Context, _ string, _ []domain.CitationMatchDelta) error {
-	return nil
 }
 
 // noopMediaRepo — impl nulle pour le check de compilation uniquement.

@@ -55,8 +55,9 @@ type Attempt struct {
 
 	// HaloTokens contient les tokens Halo obtenus après ExchangeAccessToken.
 	// Transférés en session lors du prochain GetDeviceFlowStatus.
-	SpartanToken   string
-	ClearanceToken string
+	SpartanToken     string
+	ClearanceToken   string
+	SpartanExpiresAt time.Time // expiry réel du Spartan (ExpiresUtc), 0 = inconnu
 
 	// --- PR 2.5a — SSO Xbox : capture pour persistance par-XUID ---
 	// Ces champs ne sont JAMAIS exposés via la réponse HTTP (deviceFlowStatusResponse).

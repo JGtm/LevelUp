@@ -13,6 +13,11 @@ import type { MatchViewRank, MatchExpectedStats, MatchNemesisRow, MatchSummaryKp
 import { skillDeltaScale, kdScale } from '@/lib/accessibility/scales'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { formatRankDelta } from '@/lib/formatters'
+import {
+  formatOffensiveConversion,
+  formatDefensiveResistance,
+  combatYieldToken,
+} from '@/lib/formatters/combatYield'
 import { KpiCard } from '@/components/cards/KpiCard'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { formatMessage } from '@/lib/i18n/format'
@@ -259,20 +264,20 @@ export function MatchVsStatCard({
 
   return (
     <KpiCard accent={accent} className="h-full">
-      <div className="px-4 py-3">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">{label}</p>
-        <div className="flex items-baseline gap-2">
+      <div className="px-3 py-2.5">
+        <p className="text-2xs text-muted-foreground uppercase tracking-wide mb-1.5">{label}</p>
+        <div className="flex items-baseline gap-1.5">
           <div>
-            <span className="text-2xl font-bold text-foreground leading-none">{fmt(primary)}</span>
+            <span className="text-lg font-bold text-foreground leading-none">{fmt(primary)}</span>
             {primaryLabel && (
               <p className="text-2xs text-muted-foreground mt-0.5">{primaryLabel}</p>
             )}
           </div>
           {secondary != null && (
             <>
-              <span className="text-muted-foreground text-sm font-light">vs</span>
+              <span className="text-muted-foreground text-xs font-light">vs</span>
               <div>
-                <span className="text-2xl font-bold text-foreground leading-none">{fmt(secondary)}</span>
+                <span className="text-lg font-bold text-foreground leading-none">{fmt(secondary)}</span>
                 {secondaryLabel && (
                   <p className="text-2xs text-muted-foreground mt-0.5">{secondaryLabel}</p>
                 )}
@@ -280,7 +285,7 @@ export function MatchVsStatCard({
             </>
           )}
           {delta != null && (
-            <span className="ml-auto text-sm font-semibold" style={deltaStyle}>
+            <span className="ml-auto text-xs font-semibold" style={deltaStyle}>
               {delta > 0 ? '+' : ''}{fmt(delta)}
             </span>
           )}
@@ -332,13 +337,13 @@ export function MatchWinProbCard({ winProb }: MatchWinProbCardProps) {
 
   return (
     <KpiCard accent={accent} className={hasData ? 'h-full' : 'h-full opacity-50'}>
-      <div className="px-4 py-3">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+      <div className="px-3 py-2.5">
+        <p className="text-2xs text-muted-foreground uppercase tracking-wide mb-1.5">
           {t('match_view.cards.expected_result')}
         </p>
         <div className="flex items-baseline gap-2">
           <span
-            className="text-2xl font-bold text-foreground leading-none"
+            className="text-lg font-bold text-foreground leading-none"
             style={valueColor ? { color: valueColor } : undefined}
           >
             {pct != null ? `${pct} %` : '—'}
@@ -360,9 +365,18 @@ export function MatchWinProbCard({ winProb }: MatchWinProbCardProps) {
 interface MatchSummaryCardsSectionProps {
   kpis: MatchSummaryKpis
   expectedStats: MatchExpectedStats
+  /** Rendement (OffensiveConversion) du joueur — ligne is_me du scoreboard. */
+  offensiveConversion?: number | null
+  /** Résistance (DefensiveResistance) du joueur — ligne is_me du scoreboard. */
+  defensiveResistance?: number | null
 }
 
-export function MatchSummaryCardsSection({ kpis, expectedStats }: MatchSummaryCardsSectionProps) {
+export function MatchSummaryCardsSection({
+  kpis,
+  expectedStats,
+  offensiveConversion,
+  defensiveResistance,
+}: MatchSummaryCardsSectionProps) {
   const { expected_kills, expected_deaths, expected_assists, expected_win_prob } = expectedStats
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: MatchViewManifestKey) => formatMessage(matchViewManifest, key, locale)
@@ -377,7 +391,7 @@ export function MatchSummaryCardsSection({ kpis, expectedStats }: MatchSummaryCa
     kpis.assists != null && expected_assists != null ? kpis.assists - expected_assists : null
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8">
       <MatchVsStatCard
         label={t('match_view.cards.mmr_team_vs_enemy')}
         primary={kpis.team_mmr ?? null}
@@ -423,6 +437,16 @@ export function MatchSummaryCardsSection({ kpis, expectedStats }: MatchSummaryCa
         label={t('match_view.cards.avg_life')}
         primary={kpis.average_life ?? null}
         fixedAccent="divergent-neutral"
+      />
+      <MatchVsStatCard
+        label={t('match_view.cards.rendement')}
+        primary={formatOffensiveConversion(offensiveConversion)}
+        fixedAccent={combatYieldToken(offensiveConversion, null)}
+      />
+      <MatchVsStatCard
+        label={t('match_view.cards.resistance')}
+        primary={formatDefensiveResistance(defensiveResistance)}
+        fixedAccent={combatYieldToken(null, defensiveResistance)}
       />
     </div>
   )

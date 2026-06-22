@@ -89,7 +89,7 @@ func SnapshotPlayerState(
 	// Awards : count total
 	var awardCount sql.NullInt64
 	if err := pdb.ReadDB().QueryRow(ctx,
-		`SELECT COUNT(*) FROM personal_score_awards`,
+		`SELECT COUNT(*) FROM personal_score_awards_latest`,
 	).Scan(&awardCount); err != nil {
 		slog.DebugContext(ctx, "snapshot: psa count", "err", err)
 	}
@@ -100,7 +100,7 @@ func SnapshotPlayerState(
 	// Citations : count total (pour challenges_completed)
 	var citationsCount sql.NullInt64
 	if err := pdb.ReadDB().QueryRow(ctx,
-		`SELECT COUNT(*) FROM match_citations`,
+		`SELECT COUNT(*) FROM match_citations_latest`,
 	).Scan(&citationsCount); err != nil {
 		slog.DebugContext(ctx, "snapshot: citations count", "err", err)
 	}

@@ -36,7 +36,12 @@ func sharedSocialRootSteps() []migration.Migration {
 					CREATE TABLE IF NOT EXISTS media_files (
 						id                   VARCHAR PRIMARY KEY,
 						player_slug          VARCHAR NOT NULL,
-						file_path            VARCHAR NOT NULL UNIQUE,
+						-- PAS de UNIQUE(file_path) : file_path est MUTÉE (insertMediaFile
+						-- conversion/HLS/reconcile) → un index ART UNIQUE = bug #23046
+						-- (FATAL invalidated, blast MAX shared_social). La dédup file_path
+						-- est applicative (SELECT-then-INSERT dans insertMediaFile /
+						-- persistMediaFiles). Sur DB existantes : media_files_drop_filepath_unique_v1.
+						file_path            VARCHAR NOT NULL,
 						file_name            VARCHAR NOT NULL,
 						kind                 VARCHAR NOT NULL DEFAULT 'video',
 						file_hash            VARCHAR,
@@ -50,7 +55,8 @@ func sharedSocialRootSteps() []migration.Migration {
 						updated_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 					);
 					CREATE INDEX IF NOT EXISTS idx_mf_player_slug ON media_files(player_slug);
-					CREATE INDEX IF NOT EXISTS idx_mf_kind ON media_files(kind);
+					-- PAS d'idx_mf_kind : kind est muté (insertMediaFile conversion/HLS/reconcile)
+					-- → surface ART #23046. Drop sur DB existantes : media_files_drop_filepath_unique_v1.
 					CREATE INDEX IF NOT EXISTS idx_mf_created ON media_files(created_at);
 
 					CREATE TABLE IF NOT EXISTS media_match_associations (
@@ -104,7 +110,10 @@ func sharedSocialRootSteps() []migration.Migration {
 						read_at       TIMESTAMP,
 						PRIMARY KEY (xuid, id)
 					);
-					CREATE INDEX IF NOT EXISTS idx_pn_xuid_unread       ON player_notifications(xuid, read_at);
+					-- PAS d'index sur read_at : MarkNotifications(Read|Unread|AllRead) UPDATE
+					-- read_at → un index ART sur cette colonne mutée corrompt shared_social
+					-- (bug DuckDB "Failed to delete all rows from index"). Drop historique
+					-- drop_idx_pn_xuid_unread + drop_pn_unread_art_index_v2. Garde-fou cross-DB.
 					CREATE INDEX IF NOT EXISTS idx_pn_xuid_created_desc ON player_notifications(xuid, created_at DESC);
 					CREATE INDEX IF NOT EXISTS idx_pn_xuid_category     ON player_notifications(xuid, category);
 
@@ -542,7 +551,10 @@ func sharedSocialSteps() []migration.Migration {
 					 WHERE category <> 'data_health_warning'`,
 					`DROP TABLE player_notifications`,
 					`ALTER TABLE player_notifications__purged RENAME TO player_notifications`,
-					`CREATE INDEX IF NOT EXISTS idx_pn_xuid_unread       ON player_notifications(xuid, read_at)`,
+					// NE PAS recréer idx_pn_xuid_unread : read_at est muté par
+					// MarkNotifications* → index ART corrupteur (régression : il avait été
+					// droppé par drop_idx_pn_xuid_unread, ce rebuild le réarmait — re-cassé
+					// jusqu'au 2026-06-19). created_at/category jamais mutés → sûrs.
 					`CREATE INDEX IF NOT EXISTS idx_pn_xuid_created_desc ON player_notifications(xuid, created_at DESC)`,
 					`CREATE INDEX IF NOT EXISTS idx_pn_xuid_category     ON player_notifications(xuid, category)`,
 				}

@@ -62,12 +62,24 @@ func persistPVEStats(ctx context.Context, tx *sql.Tx, row *PVEMatchStatsInsert) 
 	if row == nil {
 		return nil
 	}
-	// INSERT OR IGNORE car la PK (match_id, xuid) peut pré-exister sur
-	// retry après crash entre COMMIT et ACK. Aucune mise à jour : la 1ʳᵉ
-	// écriture est la source de vérité (Collect→Persist garantit que tous
-	// les enrichments PVE sont déjà résolus à la collecte).
+	// Append-only #23046 : pve_match_stats est append-only (PK technique id, vue
+	// pve_match_stats_latest). L'ancien INSERT OR IGNORE n'a PLUS de contrainte
+	// (match_id, xuid) sur quoi dédupliquer → il INSÉRAIT un doublon à chaque retry
+	// (crash entre COMMIT et ACK) → croissance non bornée. Guard SELECT-then-INSERT
+	// idempotent (first-write-wins, la 1ʳᵉ écriture = source de vérité) : skip si la
+	// paire (match_id, xuid) existe déjà. ART-safe (pas de contrainte enforced).
+	var exists bool
+	if err := tx.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM pve_match_stats WHERE match_id = ? AND xuid = ?)`,
+		row.MatchID, row.XUID,
+	).Scan(&exists); err != nil {
+		return fmt.Errorf("persist: check pve_match_stats %s/%s: %w", row.MatchID, row.XUID, err)
+	}
+	if exists {
+		return nil
+	}
 	_, err := tx.ExecContext(ctx, `
-		INSERT OR IGNORE INTO pve_match_stats (
+		INSERT INTO pve_match_stats (
 			match_id, xuid,
 			waves_completed, boss_kills,
 			grunt_kills, elite_kills, jackal_kills, brute_kills,

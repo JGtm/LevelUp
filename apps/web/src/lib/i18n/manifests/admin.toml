@@ -169,6 +169,88 @@ en = "Register a 2nd title"
 fr = "Procédure (aucune écriture via l'interface) : lancer « levelup add-title », déclarer le titre dans internal/domain/title/registry.go, puis « make build ». Le brouillon capabilities.toml ci-dessus sert de point de départ (à copier dans config/titles/{slug}/mappings/)."
 en = "Procedure (no write via the UI): run \"levelup add-title\", declare the title in internal/domain/title/registry.go, then \"make build\". The capabilities.toml draft above is a starting point (copy it to config/titles/{slug}/mappings/)."
 
+[admin.nav.lab]
+fr = "Lab"
+en = "Lab"
+
+# ─── Lab (explorateur d'API Waypoint) ───────────────────────────────────
+
+[admin.lab.tab_resources]
+fr = "Ressources"
+en = "Resources"
+
+[admin.lab.tab_api]
+fr = "Explorateur d'API"
+en = "API explorer"
+
+[admin.lab.api_intro]
+fr = "Interroge en direct l'API Discovery UGC de Halo Waypoint : résolution d'un asset par identifiant et version. Utile pour la maintenance et la préparation d'un nouveau titre."
+en = "Query Halo Waypoint's Discovery UGC API live: resolve an asset by id and version. Useful for maintenance and preparing a new title."
+
+[admin.lab.api_segment]
+fr = "Type d'asset"
+en = "Asset type"
+
+[admin.lab.api_asset_id]
+fr = "Identifiant d'asset"
+en = "Asset ID"
+
+[admin.lab.api_version_id]
+fr = "Identifiant de version"
+en = "Version ID"
+
+[admin.lab.api_lang]
+fr = "Langue"
+en = "Language"
+
+[admin.lab.api_run]
+fr = "Interroger"
+en = "Query"
+
+[admin.lab.api_running]
+fr = "Appel en cours…"
+en = "Calling…"
+
+[admin.lab.api_resolved]
+fr = "Résolu"
+en = "Resolved"
+
+[admin.lab.api_failed]
+fr = "Échec"
+en = "Failed"
+
+[admin.lab.api_name]
+fr = "Nom public"
+en = "Public name"
+
+[admin.lab.api_description]
+fr = "Description"
+en = "Description"
+
+[admin.lab.api_latency]
+fr = "Latence"
+en = "Latency"
+
+[admin.lab.api_image]
+fr = "Image"
+en = "Image"
+
+[admin.lab.seg_map]
+fr = "Carte"
+en = "Map"
+
+[admin.lab.seg_playlist]
+fr = "Sélection"
+en = "Playlist"
+
+[admin.lab.seg_pair]
+fr = "Paire carte/mode"
+en = "Map-mode pair"
+
+[admin.lab.seg_game_variant]
+fr = "Variante de jeu"
+en = "Game variant"
+
 # ─── Page Logs ─────────────────────────────────────────────────────────────
 
 [admin.logs.module]
@@ -524,7 +606,7 @@ fr = "Modes sans traduction FR"
 en = "Modes without FR translation"
 
 [admin.dq.kpi_orphan_playlists]
-fr = "Playlists hors catalogue"
+fr = "Sélections hors catalogue"
 en = "Playlists outside catalog"
 
 [admin.dq.kpi_orphan_xuids]
@@ -542,6 +624,14 @@ en = "Data quality counters unavailable."
 [admin.dq.actions_section]
 fr = "Actions globales"
 en = "Global actions"
+
+[admin.dq.diagnostics_section]
+fr = "Diagnostics d'instance"
+en = "Instance diagnostics"
+
+[admin.dq.diagnostics_refresh]
+fr = "Rafraîchir"
+en = "Refresh"
 
 [admin.dq.run_registry_names]
 fr = "Résoudre les noms registry"
@@ -572,11 +662,11 @@ fr = "Rafraîchir le catalogue"
 en = "Refresh catalog"
 
 [admin.dq.run_catalog_refresh_confirm]
-fr = "Seeder les catalogues playlists/maps/paires/variantes depuis match_registry ? Zéro appel réseau, quelques secondes."
+fr = "Seeder les catalogues sélections/maps/paires/variantes depuis match_registry ? Zéro appel réseau, quelques secondes."
 en = "Seed the playlists/maps/pairs/variants catalogs from match_registry? Zero network calls, a few seconds."
 
 [admin.dq.run_catalog_refresh_help]
-fr = "Inscrit dans les tables catalogue les playlists/maps/paires/variantes vues en matchs. Résout les « Playlists hors catalogue ». Sans réseau, quelques secondes."
+fr = "Inscrit dans les tables catalogue les sélections/maps/paires/variantes vues en matchs. Résout les « Sélections hors catalogue ». Sans réseau, quelques secondes."
 en = "Registers the playlists/maps/pairs/variants seen in matches into the catalog tables. Resolves “Out-of-catalog playlists”. No network, a few seconds."
 
 [admin.dq.catalog_refresh_result]
@@ -656,15 +746,15 @@ fr = "Renseigne la traduction d'un asset puis relance « Résoudre les noms regi
 en = "Fill in an asset translation then re-run \"Resolve registry names\" to propagate to match_registry."
 
 [admin.dq.orphan_playlists_section]
-fr = "Playlists hors catalogue"
+fr = "Sélections hors catalogue"
 en = "Playlists outside catalog"
 
 [admin.dq.orphan_playlists_empty_title]
-fr = "Catalogue playlists complet"
+fr = "Catalogue sélections complet"
 en = "Playlist catalog complete"
 
 [admin.dq.orphan_playlists_empty_desc]
-fr = "Toutes les playlists jouées sont présentes dans metadata.playlists_catalog."
+fr = "Toutes les sélections jouées sont présentes dans metadata.playlists_catalog."
 en = "All played playlists exist in metadata.playlists_catalog."
 
 [admin.dq.orphan_xuids_section]

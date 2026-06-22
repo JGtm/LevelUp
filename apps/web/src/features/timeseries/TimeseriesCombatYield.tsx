@@ -5,8 +5,8 @@
  * Phase 3 P3.F : remplace l'ancien wrapper Plotly `CombatYieldTimeseries`.
  * Construit côté client depuis les données MatchHistoryRow.
  *
- * Lignes de référence p80 OC=0.83 / DR=1.59 — miroir des constantes Go
- * `combat_yield.go`. Pointillé fin coloré comme la série de référence.
+ * Lignes de référence (frontière élite) OC=0.90 / DR=1.65 — miroir des constantes
+ * Go `combat_yield.go`. Pointillé fin coloré comme la série de référence.
  */
 import { useCallback, useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
@@ -23,10 +23,10 @@ import {
 } from '@/components/charts/_utils'
 import type { MatchHistoryRow } from '@/lib/api/types'
 
-/** p80 references — miroir des constantes Go combat_yield.go. */
-const OC_P80 = 0.83
-const DR_P80 = 1.59
-/** DR affiché normalisé depuis 1.0 : (DR_P80 - 1.0) = 0.59 */
+/** Repère barre (frontière élite mondiale) — miroir des constantes Go combat_yield.go. */
+const OC_P80 = 0.90
+const DR_P80 = 1.65
+/** DR affiché normalisé depuis 1.0 : (DR_P80 - 1.0) = 0.65 */
 const DR_DISPLAY_P80 = DR_P80 - 1.0
 
 interface CombatYieldPoint {

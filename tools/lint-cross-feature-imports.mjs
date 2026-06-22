@@ -54,6 +54,11 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // Le dashboard monitoring (WatcherSection) réutilise le hook useWatcherStatus
   // de settings/watcher-queries plutôt que de le dupliquer — dépendance durable.
   'admin=>settings',
+  // L'onglet Admin « Lab » (AdminLabPage + WaypointExplorerPanel) et la section
+  // Diagnostics de « Qualité données » réutilisent les panneaux / queries / i18n
+  // de la feature lab (ResourcesPanel, DiagnosticsPanel, useLab*) — réutilisation
+  // voulue (zéro réécriture), dépendance durable.
+  'admin=>lab',
   // Compare consommé par carrière + explorer + palmarès (tiroir latéral)
   'career=>compare',
   'explorer=>compare',

@@ -80,7 +80,7 @@ fr = "Type de média"
 en = "Media type"
 
 [media.toolbar.playlist_aria]
-fr = "Playlist de la galerie"
+fr = "Sélection de la galerie"
 en = "Media playlist"
 
 [media.toolbar.map_aria]
@@ -146,7 +146,7 @@ en = "Clips"
 # ─── Toolbar - Filter "all" options ────────────────────────────────────────
 
 [media.toolbar.all_playlists]
-fr = "Toutes playlists"
+fr = "Toutes sélections"
 en = "All playlists"
 
 [media.toolbar.all_maps]

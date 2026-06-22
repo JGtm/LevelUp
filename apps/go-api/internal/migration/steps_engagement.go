@@ -9,3 +9,9 @@ package migration
 // Tous consommateurs/self-contained (ALTER player_match_enrichment / match_registry —
 // racines globales ; engagement_coefficients create+repair = paire atomique). Les noms
 // restent dans internal/migration/order.go (canonicalOrder).
+//
+// Éradication ART (#23046) alignée sur la campagne append-only : les index ART sur
+// player_match_enrichment (idx_pme_engagement_history/_paces, colonnes mutées par l'étage
+// engagement) et engagement_coefficients (idx_xuid redondant) ne sont PLUS créés par les
+// migrations title-owned ; ils sont retirés des DB existantes par
+// player_append_only_match_enrichment_v1 + drop_engagement_coefficients_xuid_art_index_v1.

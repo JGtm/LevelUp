@@ -727,7 +727,7 @@ func TestIndexMedia_E2E_WithTimezone_AssociatesOBSReplayToMatch(t *testing.T) {
 
 	var assocCount int
 	if err := dbSocial.QueryRow(
-		`SELECT COUNT(*) FROM media_match_associations WHERE match_id = 'match-e2e-tz'`,
+		`SELECT COUNT(*) FROM media_match_associations_latest WHERE match_id = 'match-e2e-tz'`,
 	).Scan(&assocCount); err != nil {
 		t.Fatalf("query assoc: %v", err)
 	}

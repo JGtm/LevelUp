@@ -10,8 +10,6 @@ import type {
   RegisterRequest,
   RegisterResponse,
   AdminUserSummary,
-  AdminInviteSummary,
-  InviteCode,
 } from '@/lib/api/types'
 
 // ---------------------------------------------------------------------------
@@ -60,7 +58,6 @@ export function useSetPassword() {
 /** Clés admin centralisées — définition ET invalidation (cf. AdminPage). */
 export const adminKeys = {
   users: ['admin', 'users'] as const,
-  invites: ['admin', 'invites'] as const,
 }
 
 export function useAdminUsers() {
@@ -91,27 +88,6 @@ export function useResetPassword() {
   })
 }
 
-// ---------------------------------------------------------------------------
-// Admin : invitations
-// ---------------------------------------------------------------------------
-
-export function useAdminInvites() {
-  return useQuery({
-    queryKey: adminKeys.invites,
-    queryFn: () => api.get<AdminInviteSummary[]>('/admin/invites'),
-  })
-}
-
-export function useGenerateInvite() {
-  return useMutation({
-    mutationFn: (expiresInDays?: number) =>
-      api.post<InviteCode>('/admin/invites', { expires_in_days: expiresInDays ?? 7 }),
-  })
-}
-
-export function useRevokeInvite() {
-  return useMutation({
-    mutationFn: (code: string) =>
-      api.delete<void>(`/admin/invites/${encodeURIComponent(code)}`),
-  })
-}
+// NB : les invitations ne sont plus gérées côté Admin — elles ont migré vers la
+// page end-user /groups (invitation "rejoindre un groupe", cf. features/groups/queries.ts).
+// Les endpoints /admin/invites subsistent côté serveur pour le flow password legacy.

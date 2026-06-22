@@ -222,7 +222,7 @@ func TestReplayHighlightEventsForMatches_HealedNoFilmAnomaly(t *testing.T) {
 	}
 
 	res, err := ReplayHighlightEventsForMatches(context.Background(),
-		mock, db, nil, []string{"healed", "nofilm", "anomaly"}, nil)
+		mock, db, []string{"healed", "nofilm", "anomaly"}, nil)
 	if err != nil {
 		t.Fatalf("ReplayHighlightEventsForMatches: %v", err)
 	}
@@ -293,7 +293,7 @@ func TestReplayHighlightEventsForMatches_ProgressCallback(t *testing.T) {
 	}
 
 	res, err := ReplayHighlightEventsForMatches(context.Background(),
-		mock, db, nil, []string{"a", "b", "c"}, progress)
+		mock, db, []string{"a", "b", "c"}, progress)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -331,7 +331,7 @@ func TestReplayHighlightEventsForMatches_ContextCancelled(t *testing.T) {
 		}
 	}
 
-	res, err := ReplayHighlightEventsForMatches(ctx, mock, db, nil,
+	res, err := ReplayHighlightEventsForMatches(ctx, mock, db,
 		[]string{"a", "b", "c", "d"}, progress)
 	if err == nil {
 		t.Fatal("expected ctx cancelled error, got nil")
@@ -345,11 +345,11 @@ func TestReplayHighlightEventsForMatches_ContextCancelled(t *testing.T) {
 }
 
 func TestReplayHighlightEventsForMatches_NilArgs(t *testing.T) {
-	if _, err := ReplayHighlightEventsForMatches(context.Background(), nil, nil, nil, nil, nil); err == nil {
+	if _, err := ReplayHighlightEventsForMatches(context.Background(), nil, nil, nil, nil); err == nil {
 		t.Error("expected error on nil sharedDB + nil client")
 	}
 	db := openReplayShared(t)
-	if _, err := ReplayHighlightEventsForMatches(context.Background(), nil, db, nil, nil, nil); err == nil {
+	if _, err := ReplayHighlightEventsForMatches(context.Background(), nil, db, nil, nil); err == nil {
 		t.Error("expected error on nil client")
 	}
 }

@@ -290,7 +290,7 @@ func TestPostImport_Run_EnsuresPlayerEnrichmentRowsAreCreated(t *testing.T) {
 	for _, mid := range matchIDs {
 		var n int
 		if err := playerDB.QueryRow(
-			`SELECT COUNT(*) FROM player_match_enrichment WHERE match_id = ?`, mid,
+			`SELECT COUNT(*) FROM player_match_enrichment_latest WHERE match_id = ?`, mid,
 		).Scan(&n); err != nil {
 			t.Fatalf("scan: %v", err)
 		}
@@ -327,7 +327,7 @@ func TestPostImport_Run_EnsurePrimerIdempotent(t *testing.T) {
 	playerDB, _ := sql.Open("duckdb", playerPath+"?access_mode=read_only")
 	defer playerDB.Close()
 	var n int
-	playerDB.QueryRow(`SELECT COUNT(*) FROM player_match_enrichment WHERE match_id IN ('idem-m1', 'idem-m2')`).Scan(&n)
+	playerDB.QueryRow(`SELECT COUNT(*) FROM player_match_enrichment_latest WHERE match_id IN ('idem-m1', 'idem-m2')`).Scan(&n)
 	if n != 2 {
 		t.Errorf("expected 2 enrichment rows after 2 idempotent primers, got %d", n)
 	}

@@ -1,14 +1,15 @@
 // Package persist — post_sync_enrichment_persister.go : helper pour
-// batch-update des colonnes de player_match_enrichment.
+// persister des colonnes de player_match_enrichment.
 //
-// Stratégie anti-ART (cf. ADR 0019) : N UPDATE row-by-row dans 1 seule
-// transaction. Chaque statement ne touche qu'1 entrée ART → évite le bug
-// "Failed to delete all rows from index" que déclenchait la syntaxe
-// UPDATE FROM (VALUES ...) multi-row (bulk ART delete sur N entrées).
+// APPEND-ONLY (#23046, 2026-06-21) : player_match_enrichment est append-only.
+// BatchUpdateColumn/BatchUpdateMulti n'UPDATENT plus — ils INSÈRENT une row
+// partielle taguée du `stage` propriétaire de la/des colonne(s). La lecture
+// courante passe par la vue player_match_enrichment_latest (merge-on-read
+// par-groupe). Plus aucun UPDATE/ON CONFLICT → vecteur ART éliminé.
 //
-// Les callers de BatchUpdateMulti / BatchUpdateColumn doivent pré-filtrer
-// via delta pour minimiser le nombre de rows réellement écrites
-// (cf. deltaSessionAssignments dans sessions_postsync_persist.go).
+// Les callers DOIVENT pré-filtrer via delta (sur player_match_enrichment_latest)
+// pour ne pas ré-INSÉRER des rows inchangées (croissance non bornée) —
+// cf. deltaSessionAssignments dans sessions_postsync_persist.go.
 
 package persist
 
@@ -45,44 +46,75 @@ func NewPostSyncEnrichmentPersister(db txBeginner) *PostSyncEnrichmentPersister 
 	return &PostSyncEnrichmentPersister{db: db}
 }
 
-// allowedEnrichmentColumns liste les colonnes que ce persister peut updater.
-// Garde-fou anti SQL injection : les noms sont concaténés dans la query.
-var allowedEnrichmentColumns = map[string]bool{
-	"dominance_flag":              true,
-	"performance_score":           true,
-	"performance_chain":           true,
-	"session_id":                  true,
-	"session_label":               true,
-	"is_with_friends":             true,
-	"had_bot_teammate":            true,
-	"teammates_signature":         true,
-	"engagement_score":            true,
-	"engagement_score_brut":       true,
-	"engagement_score_confidence": true,
-	"engagement_pace_player":      true,
-	"engagement_pace_team":        true,
-	"engagement_pace_lobby":       true,
-	"engagement_player_activity":  true,
-	"mode_category":               true,
+// enrichmentColumnStage mappe chaque colonne persistable vers son `stage`
+// propriétaire (append-only #23046). Sert AUSSI de whitelist anti SQL injection
+// (les noms sont concaténés dans la query). Doit rester aligné avec pmeColumnStage
+// de la migration (internal/migration/steps_player_append_only_match_enrichment.go).
+// stageEngagement : stage le plus fréquent (colonnes engagement). Constante pour
+// éviter la répétition du littéral (goconst). NOTE factorisation : ce mapping
+// duplique pmeColumnStage (migration) — à unifier en single source.
+const stageEngagement = "engagement"
+
+var enrichmentColumnStage = map[string]string{
+	"dominance_flag":              "dominance",
+	"performance_score":           "perf",
+	"performance_chain":           "perf",
+	"session_id":                  "session",
+	"session_label":               "session",
+	"is_with_friends":             "friends",
+	"had_bot_teammate":            "bot",
+	"teammates_signature":         "teammates",
+	"engagement_score":            stageEngagement,
+	"engagement_score_brut":       stageEngagement,
+	"engagement_score_confidence": stageEngagement,
+	"engagement_pace_player":      stageEngagement,
+	"engagement_pace_team":        stageEngagement,
+	"engagement_pace_lobby":       stageEngagement,
+	"engagement_player_activity":  stageEngagement,
+	"mode_category":               stageEngagement,
 }
 
-// BatchUpdateColumn exécute N UPDATE row-by-row dans 1 transaction.
-// Chaque UPDATE ne touche qu'1 entrée ART → évite le bug DuckDB ART
-// "Failed to delete all rows from index" (cf. ADR 0019).
-// Atomique : 1 TX. Si une row échoue, rollback total.
-// No-op si rows est vide.
+// deriveEnrichmentStage résout le `stage` commun d'un ensemble de colonnes.
+// Erreur si une colonne est inconnue (non whitelistée) ou si les colonnes
+// appartiennent à des stages différents (un INSERT partiel = un seul stage).
+func deriveEnrichmentStage(columns []string) (string, error) {
+	stage := ""
+	for _, col := range columns {
+		s, ok := enrichmentColumnStage[col]
+		if !ok {
+			return "", fmt.Errorf("persist: colonne %q non whitelistée", col)
+		}
+		if stage == "" {
+			stage = s
+		} else if stage != s {
+			return "", fmt.Errorf("persist: colonnes de stages mixtes (%s vs %s) dans un même INSERT partiel", stage, s)
+		}
+	}
+	if stage == "" {
+		return "", errors.New("persist: aucune colonne à persister")
+	}
+	return stage, nil
+}
+
+// BatchUpdateColumn INSÈRE N rows partielles (1 colonne) taguées du `stage`
+// propriétaire de la colonne, dans 1 transaction (append-only #23046).
+// La lecture courante passe par player_match_enrichment_latest.
+// Atomique : 1 TX. Si une row échoue, rollback total. No-op si rows est vide.
+//
+// Pour les colonnes booléennes (is_with_friends/had_bot_teammate/is_excluded),
+// le caller DOIT fournir la valeur EXPLICITE (TRUE/FALSE), jamais NULL.
 func (p *PostSyncEnrichmentPersister) BatchUpdateColumn(ctx context.Context, upd EnrichmentColumnUpdate) error {
 	if len(upd.Rows) == 0 {
 		return nil
 	}
-	if !allowedEnrichmentColumns[upd.Column] {
+	stage, ok := enrichmentColumnStage[upd.Column]
+	if !ok {
 		return fmt.Errorf("persist: colonne %q non whitelistée", upd.Column)
 	}
 
-	q := fmt.Sprintf(`
-		UPDATE player_match_enrichment
-		SET %s = ?, updated_at = CURRENT_TIMESTAMP
-		WHERE match_id = ?`, upd.Column)
+	q := fmt.Sprintf(
+		`INSERT INTO player_match_enrichment (match_id, %s, stage) VALUES (?, ?, ?)`,
+		upd.Column)
 
 	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -94,8 +126,8 @@ func (p *PostSyncEnrichmentPersister) BatchUpdateColumn(ctx context.Context, upd
 		if r.MatchID == "" {
 			return errors.New("persist: EnrichmentColumnRow.MatchID vide")
 		}
-		if _, err := tx.ExecContext(ctx, q, r.Value, r.MatchID); err != nil {
-			return fmt.Errorf("persist: UPDATE %s (match_id=%s): %w", upd.Column, r.MatchID, err)
+		if _, err := tx.ExecContext(ctx, q, r.MatchID, r.Value, stage); err != nil {
+			return fmt.Errorf("persist: INSERT %s (match_id=%s): %w", upd.Column, r.MatchID, err)
 		}
 	}
 
@@ -112,15 +144,14 @@ type EnrichmentMultiColumnUpdate struct {
 	Fields  map[string]any // {colonne: valeur} — toutes whitelistées
 }
 
-// BatchUpdateMulti exécute N UPDATE row-by-row dans 1 transaction.
-// Chaque UPDATE ne touche qu'1 entrée ART → évite le bug DuckDB ART
-// "Failed to delete all rows from index" (cf. ADR 0019).
-// Toutes les rows doivent avoir le même set de fields (homogénéité).
+// BatchUpdateMulti INSÈRE N rows partielles (plusieurs colonnes du MÊME stage)
+// dans 1 transaction (append-only #23046). Toutes les rows doivent avoir le même
+// set de fields (homogénéité) ET ces colonnes doivent appartenir à un seul stage.
 // Atomique : 1 TX. No-op si rows est vide.
 //
-// Retourne le nombre total de rows réellement affectées (sum RowsAffected)
-// — ce qui peut différer de len(rows) si certains match_ids n'existent pas
-// dans player_match_enrichment (l'UPDATE est alors un no-op silencieux).
+// Retourne len(rows) (chaque INSERT crée 1 row). Contrairement à l'ancien UPDATE,
+// il n'y a plus de no-op silencieux : un match sans row pré-existante reçoit
+// désormais sa row partielle (c'est le comportement voulu en append-only).
 func (p *PostSyncEnrichmentPersister) BatchUpdateMulti(ctx context.Context, rows []EnrichmentMultiColumnUpdate) (int64, error) {
 	if len(rows) == 0 {
 		return 0, nil
@@ -129,12 +160,14 @@ func (p *PostSyncEnrichmentPersister) BatchUpdateMulti(ctx context.Context, rows
 	first := rows[0]
 	columns := make([]string, 0, len(first.Fields))
 	for col := range first.Fields {
-		if !allowedEnrichmentColumns[col] {
-			return 0, fmt.Errorf("persist: colonne %q non whitelistée", col)
-		}
 		columns = append(columns, col)
 	}
 	sort.Strings(columns) // déterminisme pour debug + tests
+
+	stage, err := deriveEnrichmentStage(columns)
+	if err != nil {
+		return 0, err
+	}
 
 	for i, r := range rows {
 		if r.MatchID == "" {
@@ -150,14 +183,13 @@ func (p *PostSyncEnrichmentPersister) BatchUpdateMulti(ctx context.Context, rows
 		}
 	}
 
-	setClauses := make([]string, len(columns))
-	for i, col := range columns {
-		setClauses[i] = col + " = ?"
+	placeholders := make([]string, len(columns))
+	for i := range columns {
+		placeholders[i] = "?"
 	}
-	q := fmt.Sprintf(`
-		UPDATE player_match_enrichment
-		SET %s, updated_at = CURRENT_TIMESTAMP
-		WHERE match_id = ?`, strings.Join(setClauses, ", "))
+	q := fmt.Sprintf(
+		`INSERT INTO player_match_enrichment (match_id, %s, stage) VALUES (?, %s, ?)`,
+		strings.Join(columns, ", "), strings.Join(placeholders, ", "))
 
 	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -165,25 +197,23 @@ func (p *PostSyncEnrichmentPersister) BatchUpdateMulti(ctx context.Context, rows
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	var totalAffected int64
+	var totalInserted int64
 	for _, r := range rows {
-		args := make([]any, 0, len(columns)+1)
+		args := make([]any, 0, len(columns)+2)
+		args = append(args, r.MatchID)
 		for _, col := range columns {
 			args = append(args, r.Fields[col])
 		}
-		args = append(args, r.MatchID)
-		res, err := tx.ExecContext(ctx, q, args...)
-		if err != nil {
-			return 0, fmt.Errorf("persist: UPDATE multi-col %s (match_id=%s): %w",
+		args = append(args, stage)
+		if _, err := tx.ExecContext(ctx, q, args...); err != nil {
+			return 0, fmt.Errorf("persist: INSERT multi-col %s (match_id=%s): %w",
 				strings.Join(columns, "+"), r.MatchID, err)
 		}
-		if n, err := res.RowsAffected(); err == nil {
-			totalAffected += n
-		}
+		totalInserted++
 	}
 
 	if err := tx.Commit(); err != nil {
 		return 0, fmt.Errorf("persist: Commit multi-col: %w", err)
 	}
-	return totalAffected, nil
+	return totalInserted, nil
 }

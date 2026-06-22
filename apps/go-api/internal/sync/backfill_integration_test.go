@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/migration"
 )
 
 func openBackfillTestDB(t *testing.T) *sql.DB {
@@ -61,7 +63,9 @@ func seedBackfillShared(t *testing.T, db *sql.DB) {
 func seedBackfillPlayer(t *testing.T, db *sql.DB) {
 	t.Helper()
 	ddls := []string{
-		`CREATE TABLE player_match_enrichment (match_id VARCHAR PRIMARY KEY, performance_score DOUBLE)`,
+		`CREATE TABLE player_match_enrichment (match_id VARCHAR PRIMARY KEY, performance_score DOUBLE,
+			session_id VARCHAR, session_label VARCHAR, is_with_friends BOOLEAN DEFAULT FALSE,
+			teammates_signature VARCHAR)`,
 		`CREATE TABLE personal_score_awards (id INTEGER, match_id VARCHAR, xuid VARCHAR)`,
 		`CREATE TABLE match_skill_rank (match_id VARCHAR PRIMARY KEY)`,
 	}
@@ -69,6 +73,9 @@ func seedBackfillPlayer(t *testing.T, db *sql.DB) {
 		if _, err := db.Exec(q); err != nil {
 			t.Fatalf("DDL: %v\nSQL: %s", err, q)
 		}
+	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
 }
 
@@ -123,8 +130,12 @@ func TestHasBackfillCompletedColumn_False(t *testing.T) {
 
 func TestPlayerDoneGuard_Empty(t *testing.T) {
 	db := openBackfillTestDB(t)
-	if _, err := db.Exec(`CREATE TABLE player_match_enrichment (match_id VARCHAR PRIMARY KEY, performance_score DOUBLE)`); err != nil {
+	if _, err := db.Exec(`CREATE TABLE player_match_enrichment (match_id VARCHAR PRIMARY KEY, performance_score DOUBLE,
+		session_id VARCHAR, session_label VARCHAR, is_with_friends BOOLEAN DEFAULT FALSE, teammates_signature VARCHAR)`); err != nil {
 		t.Fatal(err)
+	}
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
 	}
 
 	guard := playerDoneGuard(t.Context(), db, "player_match_enrichment", "performance_score")
@@ -135,10 +146,14 @@ func TestPlayerDoneGuard_Empty(t *testing.T) {
 
 func TestPlayerDoneGuard_WithData(t *testing.T) {
 	db := openBackfillTestDB(t)
-	if _, err := db.Exec(`CREATE TABLE player_match_enrichment (match_id VARCHAR PRIMARY KEY, performance_score DOUBLE)`); err != nil {
+	if _, err := db.Exec(`CREATE TABLE player_match_enrichment (match_id VARCHAR PRIMARY KEY, performance_score DOUBLE,
+		session_id VARCHAR, session_label VARCHAR, is_with_friends BOOLEAN DEFAULT FALSE, teammates_signature VARCHAR)`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec(`INSERT INTO player_match_enrichment VALUES ('abcdef01-2345-6789-abcd-ef0123456789', 42.0)`); err != nil {
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO player_match_enrichment (match_id, performance_score) VALUES ('abcdef01-2345-6789-abcd-ef0123456789', 42.0)`); err != nil {
 		t.Fatal(err)
 	}
 

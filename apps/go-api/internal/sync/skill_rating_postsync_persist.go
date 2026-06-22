@@ -19,7 +19,6 @@ package sync
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log/slog"
 	"math"
 	"time"
@@ -27,34 +26,11 @@ import (
 	"levelup/go-api/internal/persist"
 )
 
-// compactMatchSkillRankSuperseded supprime les versions superseded de
-// match_skill_rank : pour chaque (match_id, rating_type), ne conserve que la row
-// la plus récente (MAX(id) ; id est une séquence monotone alignée sur l'ordre
-// d'insertion et sur le tiebreak `id DESC` de la vue match_skill_rank_latest).
-//
-// Pourquoi : le recompute force (toggle exclusion via MatchRecomputer, rebuild
-// ART) ré-INSÈRE une nouvelle version append-only de TOUS les matchs à CHAQUE
-// appel. Sans compaction, la table croît sans borne (N appels = N versions/match).
-//
-// SÛRETÉ ART : ce DELETE s'exécute sur la player DB (stats.duckdb), mono-writer
-// (lease KindPlayer tenu par le caller) et jamais partagée entre process. Le bug
-// ART DuckDB se déclenche sous CONCURRENCE d'écritures ; ici aucune. De plus la PK
-// est un id BIGINT (pas un VARCHAR, qui était le déclencheur historique). La
-// lecture reste correcte : la vue conserve toujours la version gardée (MAX(id)).
-//
-// Retourne le nombre de versions superseded supprimées.
-func compactMatchSkillRankSuperseded(ctx context.Context, playerDB *sql.DB) (int64, error) {
-	res, err := playerDB.ExecContext(ctx, `
-		DELETE FROM match_skill_rank
-		WHERE id NOT IN (
-			SELECT MAX(id) FROM match_skill_rank GROUP BY match_id, rating_type
-		)`)
-	if err != nil {
-		return 0, fmt.Errorf("compactMatchSkillRankSuperseded: %w", err)
-	}
-	n, _ := res.RowsAffected()
-	return n, nil
-}
+// NB : la compaction des versions superseded de match_skill_rank (ancien
+// compactMatchSkillRankSuperseded : DELETE id NOT IN MAX(id)…) a été SUPPRIMÉE —
+// elle déclenchait le bug ART DuckDB amont #23046 (crash JGtm 2026-06-20) malgré
+// mono-writer + PK BIGINT. La table reste append-only pur ; la vue
+// match_skill_rank_latest (MAX(id)) reste correcte avec les versions superseded.
 
 // upsertLUSRRatingsBatch est la variante INSERT-only de upsertLUSRRatings.
 // Sémantique identique : skip CSR, skip LUSR existant, calcul delta clipped,

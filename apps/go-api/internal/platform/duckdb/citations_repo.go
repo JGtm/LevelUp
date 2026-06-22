@@ -329,31 +329,7 @@ func (r *CitationsRepo) loadCitationMappingMeta(ctx context.Context, norms []str
 	return result
 }
 
-// WriteCitationsForMatch écrit les deltas de citations calculés dans match_citations.
-// Utilise un UPSERT — si la ligne existe déjà, on n'écrase pas (idempotent).
-func (r *CitationsRepo) WriteCitationsForMatch(ctx context.Context, matchID string, deltas []domain.CitationMatchDelta) error {
-	if len(deltas) == 0 {
-		return nil
-	}
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
-
-	rwDB, err := OpenReadWrite(r.pdb.Player.Path())
-	if err != nil {
-		return fmt.Errorf("WriteCitationsForMatch: open rw: %w", err)
-	}
-	defer rwDB.Close()
-
-	for _, d := range deltas {
-		_, err := rwDB.Exec(ctx, `
-			INSERT INTO match_citations (match_id, citation_name_norm, value)
-			VALUES (?, ?, ?)
-			ON CONFLICT (match_id, citation_name_norm) DO NOTHING`,
-			matchID, d.NameNorm, d.Value,
-		)
-		if err != nil {
-			return fmt.Errorf("WriteCitationsForMatch insert %s: %w", d.NameNorm, err)
-		}
-	}
-	return nil
-}
+// NOTE (campagne ART #23046) : WriteCitationsForMatch a été SUPPRIMÉ — c'était du
+// dead code (aucun caller) portant un ON CONFLICT (match_id, citation_name_norm)
+// désormais incompatible avec match_citations append-only (PK composite retirée).
+// Le seul chemin d'écriture des citations est sync.writeCitations (génération).

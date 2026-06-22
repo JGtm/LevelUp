@@ -78,15 +78,13 @@ describe('SettingsPage', () => {
     })
   })
 
-  it('affiche le CTA vers le Lab quand la capacité instance est active', async () => {
+  it('ne propose plus le Lab dans les Paramètres (déplacé vers Admin · Lab)', () => {
     vi.mocked(useRouterState).mockReturnValue({
       location: { pathname: '/settings', search: '?tab=lab' },
     } as ReturnType<typeof useRouterState>)
     renderWithProviders(<SettingsPage />)
-    await waitFor(() => {
-      expect(screen.getByText(/Lab interne/i)).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: /Ouvrir le Lab/i })).toHaveAttribute('href', '/lab')
-    })
+    expect(screen.queryByText(/Lab interne/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Ouvrir le Lab/i })).not.toBeInTheDocument()
   })
 
   it("n'affiche pas les boutons Annuler / Enregistrer (auto-save)", async () => {

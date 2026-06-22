@@ -13,6 +13,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -194,10 +195,25 @@ func SeedRankTranslations(ctx context.Context, opts SeedOptions) (SeedResult, er
 	rows := migration.CareerRankTranslationRows()
 	inserted := 0
 	for _, t := range rows {
-		if _, err := db.ExecContext(ctx, `INSERT OR REPLACE INTO career_rank_translations
-			(rank_id, lang, title, subtitle, tier, fetched_at)
-			VALUES (?,?,?,'',?,CURRENT_TIMESTAMP)`,
-			t.RankID, t.Lang, t.Title, t.Tier); err != nil {
+		// ART-safe : SELECT-then-UPDATE-or-INSERT (pas d'INSERT OR REPLACE, =
+		// ON CONFLICT DO UPDATE toutes colonnes → réécrit via l'index ART de la PK
+		// et FATAL-invalide metadata.duckdb). L'index lookup est sur la PK (rank_id,
+		// lang), non mutée par l'UPDATE.
+		var dummy int
+		err := db.QueryRowContext(ctx,
+			`SELECT 1 FROM career_rank_translations WHERE rank_id = ? AND lang = ?`,
+			t.RankID, t.Lang).Scan(&dummy)
+		switch {
+		case err == nil:
+			_, err = db.ExecContext(ctx, `UPDATE career_rank_translations
+				SET title = ?, subtitle = '', tier = ?, fetched_at = CURRENT_TIMESTAMP
+				WHERE rank_id = ? AND lang = ?`, t.Title, t.Tier, t.RankID, t.Lang)
+		case errors.Is(err, sql.ErrNoRows):
+			_, err = db.ExecContext(ctx, `INSERT INTO career_rank_translations
+				(rank_id, lang, title, subtitle, tier, fetched_at)
+				VALUES (?,?,?,'',?,CURRENT_TIMESTAMP)`, t.RankID, t.Lang, t.Title, t.Tier)
+		}
+		if err != nil {
 			return SeedResult{Component: componentRankTranslations},
 				fmt.Errorf("upsert rank %d lang %s: %w", t.RankID, t.Lang, err)
 		}
@@ -272,9 +288,9 @@ func SeedCitationMappings(ctx context.Context, opts SeedOptions) (SeedResult, er
 			tier_targets          VARCHAR,
 			subcategory           VARCHAR
 		);
+		-- PAS d'index sur medal_id/mapping_type : mutés par SeedCitationMappings
+		-- (SELECT-then-write) → surface ART. Drop DBs existantes : drop_metadata_art_surface_indexes_v4.
 		CREATE INDEX IF NOT EXISTS idx_citation_mappings_norm ON citation_mappings(citation_name_norm);
-		CREATE INDEX IF NOT EXISTS idx_citation_mappings_medal ON citation_mappings(medal_id);
-		CREATE INDEX IF NOT EXISTS idx_citation_mappings_type ON citation_mappings(mapping_type);
 	`); err != nil {
 		return SeedResult{Component: componentCitationMappings}, fmt.Errorf("create schema: %w", err)
 	}
@@ -294,29 +310,25 @@ func SeedCitationMappings(ctx context.Context, opts SeedOptions) (SeedResult, er
 	}
 	rows.Close()
 
-	const upsert = `
+	// ART-safe : SELECT-then-INSERT-or-UPDATE (pas d'ON CONFLICT, qui réécrit via les
+	// index ART). La map `existing` (déjà construite ci-dessus) donne la décision
+	// insert/update sans SELECT par ligne. L'UPDATE mute medal_id/mapping_type, indexés
+	// (idx_citation_mappings_medal/type) → ces index sont droppés par
+	// drop_metadata_art_surface_indexes_v4. metadata.duckdb = blast-radius MAX même au seed.
+	const insertQ = `
 		INSERT INTO citation_mappings (
 			citation_name_norm, citation_name_display, mapping_type,
 			medal_id, medal_ids, stat_name, award_name, award_category,
 			custom_function, composite_children, enabled,
 			image_path, category, description, tier_targets, subcategory
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT (citation_name_norm) DO UPDATE SET
-			citation_name_display = EXCLUDED.citation_name_display,
-			mapping_type          = EXCLUDED.mapping_type,
-			medal_id              = EXCLUDED.medal_id,
-			medal_ids             = EXCLUDED.medal_ids,
-			stat_name             = EXCLUDED.stat_name,
-			award_name            = EXCLUDED.award_name,
-			award_category        = EXCLUDED.award_category,
-			custom_function       = EXCLUDED.custom_function,
-			composite_children    = EXCLUDED.composite_children,
-			enabled               = EXCLUDED.enabled,
-			image_path            = EXCLUDED.image_path,
-			category              = EXCLUDED.category,
-			description           = EXCLUDED.description,
-			tier_targets          = EXCLUDED.tier_targets,
-			subcategory           = EXCLUDED.subcategory`
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	const updateQ = `
+		UPDATE citation_mappings SET
+			citation_name_display = ?, mapping_type = ?, medal_id = ?, medal_ids = ?,
+			stat_name = ?, award_name = ?, award_category = ?, custom_function = ?,
+			composite_children = ?, enabled = ?, image_path = ?, category = ?,
+			description = ?, tier_targets = ?, subcategory = ?
+		WHERE citation_name_norm = ?`
 
 	mappings := defaultCitationMappings()
 	inserted, skipped := 0, 0
@@ -325,17 +337,28 @@ func SeedCitationMappings(ctx context.Context, opts SeedOptions) (SeedResult, er
 		if m.MedalID > 0 {
 			medalArg = uint64(m.MedalID) //nolint:gosec
 		}
-		if _, err := db.ExecContext(ctx, upsert,
-			m.Norm, m.Display, m.MappingType,
-			medalArg, nullStr(m.MedalIDs), nullStr(m.StatName),
-			nullStr(m.AwardName), nullStr(m.AwardCategory),
-			nullStr(m.CustomFunction), nullStr(m.CompositeChildren), m.Enabled,
-			nullStr(m.ImagePath), m.Category, m.Description,
-			nullStr(m.TierTargets), nullStr(m.Subcategory),
-		); err != nil {
-			return SeedResult{Component: componentCitationMappings}, fmt.Errorf("upsert %s: %w", m.Norm, err)
+		_, present := existing[m.Norm]
+		var execErr error
+		if present {
+			_, execErr = db.ExecContext(ctx, updateQ,
+				m.Display, m.MappingType, medalArg, nullStr(m.MedalIDs),
+				nullStr(m.StatName), nullStr(m.AwardName), nullStr(m.AwardCategory),
+				nullStr(m.CustomFunction), nullStr(m.CompositeChildren), m.Enabled,
+				nullStr(m.ImagePath), m.Category, m.Description,
+				nullStr(m.TierTargets), nullStr(m.Subcategory), m.Norm)
+		} else {
+			_, execErr = db.ExecContext(ctx, insertQ,
+				m.Norm, m.Display, m.MappingType,
+				medalArg, nullStr(m.MedalIDs), nullStr(m.StatName),
+				nullStr(m.AwardName), nullStr(m.AwardCategory),
+				nullStr(m.CustomFunction), nullStr(m.CompositeChildren), m.Enabled,
+				nullStr(m.ImagePath), m.Category, m.Description,
+				nullStr(m.TierTargets), nullStr(m.Subcategory))
 		}
-		if _, present := existing[m.Norm]; present {
+		if execErr != nil {
+			return SeedResult{Component: componentCitationMappings}, fmt.Errorf("upsert %s: %w", m.Norm, execErr)
+		}
+		if present {
 			skipped++
 		} else {
 			inserted++

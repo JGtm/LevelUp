@@ -62,6 +62,9 @@ type InviteCode struct {
 	UsedBy    *string `json:"used_by"`
 	UsedAt    *string `json:"used_at"`
 	ExpiresAt string  `json:"expires_at"`
+	// GroupID : groupe que l'invité rejoint après login Xbox SSO (flow "rejoindre
+	// un groupe"). Vide = invitation d'inscription legacy (mode password, sans groupe).
+	GroupID string `json:"group_id,omitempty"`
 }
 
 // IsExpired retourne true si le code a dépassé sa date d'expiration.

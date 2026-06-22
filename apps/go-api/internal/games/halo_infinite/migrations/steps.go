@@ -73,7 +73,6 @@ func Steps() []migration.Migration {
 						content_hash VARCHAR NOT NULL DEFAULT '',
 						PRIMARY KEY (title_id, map_id)
 					);
-					CREATE INDEX IF NOT EXISTS idx_map_images_registry_fetched ON map_images_registry(fetched_at);
 				`)
 			},
 		},
@@ -126,8 +125,9 @@ func Steps() []migration.Migration {
 						schema_version      INTEGER NOT NULL DEFAULT 1,
 						updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 					);
-					CREATE INDEX IF NOT EXISTS idx_ctmpl_title_cadence ON challenge_template(title_slug, cadence);
-					CREATE INDEX IF NOT EXISTS idx_ctmpl_metric ON challenge_template(metric);
+					-- PAS d'index secondaire : title_slug/cadence/metric sont MUTÉS par
+					-- PrestigeChallengeTemplateRepo.Replace (SELECT-then-write) → surface ART.
+					-- Catalogue minuscule (TOML). Drop DBs existantes : drop_metadata_art_surface_indexes_v3.
 
 					CREATE TABLE IF NOT EXISTS preset_arc (
 						id              VARCHAR PRIMARY KEY,
@@ -139,7 +139,8 @@ func Steps() []migration.Migration {
 						schema_version  INTEGER NOT NULL DEFAULT 1,
 						updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 					);
-					CREATE INDEX IF NOT EXISTS idx_parc_title ON preset_arc(title_slug);
+					-- PAS d'index sur title_slug : muté par PrestigePresetArcRepo.Replace
+					-- (SELECT-then-write) → surface ART. Drop : drop_metadata_art_surface_indexes_v3.
 
 					CREATE TABLE IF NOT EXISTS preset_arc_step (
 						preset_arc_id   VARCHAR NOT NULL,
@@ -247,8 +248,11 @@ func Steps() []migration.Migration {
 						condition   VARCHAR,
 						updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 					);
-					CREATE INDEX IF NOT EXISTS idx_ms_cat_title ON milestone_catalog(title_slug);
-					CREATE INDEX IF NOT EXISTS idx_ms_cat_metric ON milestone_catalog(metric);
+					-- PAS d'index secondaire : title_slug et metric sont MUTÉS par
+					-- MilestoneCatalogRepo.Upsert (SELECT-then-write) → un index ART sur une
+					-- colonne mutée FATAL-invalide metadata.duckdb. Table minuscule (TOML) →
+					-- scan séquentiel instantané. Drop DBs existantes :
+					-- drop_metadata_art_surface_indexes_v2.
 				`)
 			},
 		},
@@ -303,7 +307,9 @@ func Steps() []migration.Migration {
 						last_fetched_at         TIMESTAMP,
 						PRIMARY KEY (title_slug, game_variant_asset_id)
 					);
-					CREATE INDEX IF NOT EXISTS idx_game_variants_catalog_mode ON game_variants_catalog(title_slug, mode_canonical);
+					-- AUCUN index secondaire : upsertGameVariant UPDATE mode_canonical →
+					-- un index ART sur une colonne mutée corrompt metadata.duckdb (FATAL
+					-- invalidated). PK-only. Cf. drop_metadata_art_surface_indexes_v1.
 
 					-- 4. Pair = jonction map + game_variant + nom composite, par titre
 					CREATE TABLE IF NOT EXISTS map_mode_pair_definitions (
@@ -317,9 +323,9 @@ func Steps() []migration.Migration {
 						last_fetched_at        TIMESTAMP,
 						PRIMARY KEY (title_slug, pair_asset_id)
 					);
-					CREATE INDEX IF NOT EXISTS idx_map_mode_pair_map ON map_mode_pair_definitions(title_slug, map_asset_id);
-					CREATE INDEX IF NOT EXISTS idx_map_mode_pair_variant ON map_mode_pair_definitions(title_slug, game_variant_asset_id);
-					CREATE INDEX IF NOT EXISTS idx_map_mode_pair_category ON map_mode_pair_definitions(title_slug, mode_category);
+					-- AUCUN index secondaire : upsertPair UPDATE map_asset_id /
+					-- game_variant_asset_id / mode_category (ex-colonnes indexées) →
+					-- surface ART corruptrice. PK-only. Cf. drop_metadata_art_surface_indexes_v1.
 
 					-- 5. Relation N-N playlist <-> pair, avec poids de tirage
 					CREATE TABLE IF NOT EXISTS playlist_pair_links (
@@ -342,7 +348,9 @@ func Steps() []migration.Migration {
 						last_error    VARCHAR,
 						PRIMARY KEY (title_slug, asset_type, asset_id)
 					);
-					CREATE INDEX IF NOT EXISTS idx_catalog_fetch_queue_drain ON catalog_fetch_queue(title_slug, attempts, enqueued_at);
+					-- PAS d'index secondaire : catalog_fetch_queue est DELETE/UPDATE per-row
+					-- par le drain → toute surface ART la corrompt. La PK elle-même est retirée
+					-- par rebuild_catalog_fetch_queue_drop_art_indexes (rebuild sans PK).
 
 					-- 7. Labels normalisés multi-langues (sortie NormalizeModeLabel par langue)
 					CREATE TABLE IF NOT EXISTS pair_mode_label_translations (
@@ -550,7 +558,6 @@ func Steps() []migration.Migration {
 						last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, is_current BOOLEAN NOT NULL DEFAULT TRUE,
 						PRIMARY KEY (reward_track_path, content_hash)
 					);
-					CREATE INDEX IF NOT EXISTS idx_battlepass_track_definitions_lookup ON battlepass_track_definitions(reward_track_path, is_current);
 					CREATE TABLE IF NOT EXISTS battlepass_track_translations (
 						reward_track_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
 						lang VARCHAR NOT NULL, track_name VARCHAR,
@@ -565,7 +572,6 @@ func Steps() []migration.Migration {
 						last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, is_current BOOLEAN NOT NULL DEFAULT TRUE,
 						PRIMARY KEY (inventory_item_path, content_hash)
 					);
-					CREATE INDEX IF NOT EXISTS idx_battlepass_item_definitions_lookup ON battlepass_item_definitions(inventory_item_path, is_current);
 					CREATE TABLE IF NOT EXISTS battlepass_item_translations (
 						inventory_item_path VARCHAR NOT NULL, content_hash VARCHAR NOT NULL,
 						lang VARCHAR NOT NULL, title VARCHAR, description VARCHAR,
@@ -651,7 +657,6 @@ func Steps() []migration.Migration {
 						enabled               BOOLEAN NOT NULL DEFAULT TRUE
 					);
 					CREATE INDEX IF NOT EXISTS idx_citation_mappings_norm ON citation_mappings(citation_name_norm);
-					CREATE INDEX IF NOT EXISTS idx_citation_mappings_medal ON citation_mappings(medal_id);
 				`)
 			},
 		},
@@ -674,7 +679,6 @@ func Steps() []migration.Migration {
 					ALTER TABLE citation_mappings_v2 RENAME TO citation_mappings;
 					ALTER TABLE citation_mappings ADD PRIMARY KEY (citation_name_norm);
 					CREATE INDEX IF NOT EXISTS idx_citation_mappings_norm ON citation_mappings(citation_name_norm);
-					CREATE INDEX IF NOT EXISTS idx_citation_mappings_medal ON citation_mappings(medal_id);
 				`)
 			},
 		},
@@ -691,7 +695,6 @@ func Steps() []migration.Migration {
 					ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS custom_function    VARCHAR;
 					ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS composite_children VARCHAR;
 					ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS subcategory        VARCHAR;
-					CREATE INDEX IF NOT EXISTS idx_citation_mappings_type ON citation_mappings(mapping_type);
 				`)
 			},
 		},
@@ -1216,8 +1219,10 @@ func Steps() []migration.Migration {
 						superseded_at         TIMESTAMP,
 						obsoleted_at          TIMESTAMP
 					);
-					CREATE INDEX IF NOT EXISTS idx_coach_proposal_user_status
-						ON coach_proposal(user_id, title_slug, status);
+					-- PAS d'index sur (user_id, title_slug, status) : status est muté par
+					-- MarkAccepted/Dismissed/Superseded/Obsoleted → surface ART #23046 sur la
+					-- player DB. La query GET pending scanne (table minuscule). Drop sur DB
+					-- existantes : drop_coach_proposal_status_art_index_v1.
 					CREATE INDEX IF NOT EXISTS idx_coach_proposal_metric_axis
 						ON coach_proposal(user_id, title_slug, source_metric, radar_axis);
 				`)

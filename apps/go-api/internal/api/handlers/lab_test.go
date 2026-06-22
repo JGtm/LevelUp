@@ -118,6 +118,59 @@ func TestLabHandler_GetDiagnostics_OK(t *testing.T) {
 	}
 }
 
+func TestLabHandler_GetWaypoint_OK(t *testing.T) {
+	explore := func(_ context.Context, q domain.LabWaypointQuery) (*domain.LabWaypointResponse, error) {
+		return &domain.LabWaypointResponse{
+			Segment: q.Segment, AssetID: q.AssetID, VersionID: q.VersionID,
+			ResolvedOK: true, AssetName: "Live Fire",
+		}, nil
+	}
+	// Routes Lab montées via Huma (h.Mount), comme les autres tests Lab post-migration
+	// Phase 3b — l'ancien r.Get(h.GetWaypoint) chi-style n'existe plus.
+	h := handlers.NewLabHandler(
+		service.NewLabService(&config.AppConfig{}, &stubLabProvider{}).WithWaypointExplorer(explore))
+	r := chi.NewRouter()
+	h.Mount(r)
+
+	req := withTitle(httptest.NewRequest(http.MethodGet, "/lab/waypoint?segment=map&asset_id=abc&version_id=1", nil))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestLabHandler_GetWaypoint_InvalidSegment(t *testing.T) {
+	h := newLabHandlerForTest(t, &config.AppConfig{})
+	r := chi.NewRouter()
+	h.Mount(r)
+
+	req := withTitle(httptest.NewRequest(http.MethodGet, "/lab/waypoint?segment=bogus&asset_id=abc&version_id=1", nil))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestLabHandler_GetWaypoint_Unavailable(t *testing.T) {
+	// Requête valide mais explorateur non câblé (newLabHandlerForTest n'injecte
+	// pas WithWaypointExplorer) → 503.
+	h := newLabHandlerForTest(t, &config.AppConfig{})
+	r := chi.NewRouter()
+	h.Mount(r)
+
+	req := withTitle(httptest.NewRequest(http.MethodGet, "/lab/waypoint?segment=map&asset_id=abc&version_id=1", nil))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d", w.Code)
+	}
+}
+
 func TestLabHandler_Forbidden(t *testing.T) {
 	dir := t.TempDir()
 	settingsPath := filepath.Join(dir, "app_settings.json")

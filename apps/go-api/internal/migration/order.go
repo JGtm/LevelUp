@@ -2,16 +2,16 @@ package migration
 
 import "sort"
 
-// order.go â€” ordre d'exÃ©cution EXPLICITE des migrations (Phase 1.5.0,
-// title-agnostic ADR 0025). AVANT : l'ordre dÃ©pendait de l'ordre des init()
-// (alphabÃ©tique par nom de fichier) + ordre des Register() â€” donc dÃ©placer un
-// steps_*.go pouvait rÃ©ordonner les migrations et casser le boot (une migration
-// avant sa dÃ©pendance). MAINTENANT : l'ordre est dÃ©fini par canonicalOrder ;
-// RunForDB trie dessus. DÃ©placer/renommer un fichier ne change plus rien.
+// order.go — ordre d'exécution EXPLICITE des migrations (Phase 1.5.0,
+// title-agnostic ADR 0025). AVANT : l'ordre dépendait de l'ordre des init()
+// (alphabétique par nom de fichier) + ordre des Register() — donc déplacer un
+// steps_*.go pouvait réordonner les migrations et casser le boot (une migration
+// avant sa dépendance). MAINTENANT : l'ordre est défini par canonicalOrder ;
+// RunForDB trie dessus. Déplacer/renommer un fichier ne change plus rien.
 //
-// canonicalOrder a Ã©tÃ© gÃ©nÃ©rÃ© depuis l'ordre d'enregistrement courant
-// (2026-06-02) â€” la bascule est un no-op (cf. order_test.go). Toute NOUVELLE
-// migration doit Ãªtre ajoutÃ©e Ã  cette liste (order_test.go Ã©choue sinon).
+// canonicalOrder a été généré depuis l'ordre d'enregistrement courant
+// (2026-06-02) — la bascule est un no-op (cf. order_test.go). Toute NOUVELLE
+// migration doit être ajoutée à cette liste (order_test.go échoue sinon).
 var canonicalOrder = []string{
 	"add_match_intensity_to_match_registry",                 // shared
 	"add_asset_translations",                                // metadata
@@ -42,9 +42,14 @@ var canonicalOrder = []string{
 	"add_catalog_playlists",                                 // metadata
 	"fix_citation_image_paths_double_encoded",               // metadata
 	"add_csr_placement_thresholds",                          // metadata
+	"drop_metadata_art_surface_indexes_v1",                  // metadata
+	"drop_metadata_art_surface_indexes_v2",                  // metadata
+	"drop_metadata_art_surface_indexes_v3",                  // metadata
+	"drop_metadata_art_surface_indexes_v4",                  // metadata
 	"drop_playlists_catalog_secondary_indexes",              // metadata
 	"create_milestone_catalog_metadata",                     // metadata
 	"create_prestige_metadata_schema",                       // metadata
+	"rebuild_catalog_fetch_queue_drop_art_indexes",          // metadata
 	"seed_ranked_playlists_catalog",                         // metadata
 	"challenge_template_add_source_column",                  // metadata
 	"add_template_tagging_columns",                          // metadata
@@ -64,6 +69,7 @@ var canonicalOrder = []string{
 	"add_career_banner_image",                                 // player
 	"add_career_last_fetch_status",                            // player
 	"add_challenge_snapshots",                                 // player
+	"add_challenge_snapshots_render_columns",                  // player
 	"add_battlepass_snapshots",                                // player
 	"add_dominance_flag_column",                               // player
 	"add_media_discord_notified",                              // player
@@ -84,15 +90,22 @@ var canonicalOrder = []string{
 	"add_msr_measurement_matches_remaining",                   // player
 	"player_add_expected_win_prob",                            // player
 	"player_append_only_csr_snapshots_v1",                     // player
+	"player_append_only_match_citations_v1",                   // player
+	"player_append_only_match_enrichment_v1",                  // player
 	"player_append_only_match_skill_rank_v1",                  // player
 	"msr_written_at_default_now_repair_v1",                    // player
+	"player_append_only_personal_score_awards_v1",             // player
 	"create_streak_history_append_only",                       // player
 	"add_player_assists_model",                                // player
 	"create_coach_proposal_player_schema",                     // player
 	"dedup_record_history_v1",                                 // player
+	"drop_challenge_mutated_art_indexes_v1",                   // player
+	"drop_coach_proposal_status_art_index_v1",                 // player
+	"drop_engagement_coefficients_xuid_art_index_v1",          // player
 	"fix_career_xp_total_default_zero",                        // player
 	"lusr_chain_rework_v1",                                    // player
 	"create_lusr_component_history",                           // player
+	"player_append_only_lusr_component_history_v1",            // player
 	"player_msr_view_lusr_over_v2_v1",                         // player
 	"player_msr_view_priority_csr_v1",                         // player
 	"create_notifications_in_shared_social",                   // shared_social
@@ -128,25 +141,29 @@ var canonicalOrder = []string{
 	"fix_mv_player_matches_scores",                            // shared
 	"add_mv_player_matches_pair_id",                           // shared
 	"migrate_weapon_kills_to_ubigint",                         // shared
-	"add_media_likes",                                         // shared
-	"drop_media_likes_from_shared",                            // shared
-	"add_match_registry_i18n_columns",                         // shared
-	"add_match_registry_version_ids",                          // shared
-	"add_start_time_utc_to_match_registry",                    // shared
-	"add_perf_indexes_shared",                                 // shared
-	"fix_mv_player_matches_i18n_cols",                         // shared
-	"add_mv_player_matches_utc_cols",                          // shared
-	"fix_start_time_utc_via_session_tz",                       // shared
-	"drop_assists_expected_halo_infinite",                     // shared
-	"upgrade_v_gamertag_lookup_bots_and_raw_fallback",         // shared
-	"repair_v_gamertag_lookup_bots_2026_05_16",                // shared
-	"repair_v_gamertag_lookup_bots_2026_05_30",                // shared
-	"shared_add_participation_info_booleans",                  // shared
-	"shared_add_participation_timestamps",                     // shared
-	"shared_add_t0_quality",                                   // shared
-	"shared_backfill_is_ranked_and_season",                    // shared
-	"shared_create_player_squad_offset",                       // shared
-	"add_shared_match_csrs",                                   // shared
+	// L'éradication ART append-only de weapon_kills DOIT suivre la migration UBIGINT
+	// (donc la création/ALTER de weapon_kills) — sinon sur DB FRAÎCHE le rebuild
+	// no-ope (table absente). Name-keyed → no-op sur DB déjà migrées.
+	"shared_append_only_weapon_kills_v1",              // shared
+	"add_media_likes",                                 // shared
+	"drop_media_likes_from_shared",                    // shared
+	"add_match_registry_i18n_columns",                 // shared
+	"add_match_registry_version_ids",                  // shared
+	"add_start_time_utc_to_match_registry",            // shared
+	"add_perf_indexes_shared",                         // shared
+	"fix_mv_player_matches_i18n_cols",                 // shared
+	"add_mv_player_matches_utc_cols",                  // shared
+	"fix_start_time_utc_via_session_tz",               // shared
+	"drop_assists_expected_halo_infinite",             // shared
+	"upgrade_v_gamertag_lookup_bots_and_raw_fallback", // shared
+	"repair_v_gamertag_lookup_bots_2026_05_16",        // shared
+	"repair_v_gamertag_lookup_bots_2026_05_30",        // shared
+	"shared_add_participation_info_booleans",          // shared
+	"shared_add_participation_timestamps",             // shared
+	"shared_add_t0_quality",                           // shared
+	"shared_backfill_is_ranked_and_season",            // shared
+	"shared_create_player_squad_offset",               // shared
+	"add_shared_match_csrs",                           // shared
 	// Fix fresh-provision (Halo 5 = 1er titre fraîchement sync, 2026-06-20) : la
 	// conversion append-only de match_csrs DOIT suivre la création de la table
 	// (add_shared_match_csrs) — sinon sur DB FRAÎCHE le rebuild no-ope (table absente)
@@ -157,32 +174,43 @@ var canonicalOrder = []string{
 	"add_pve_schema",                                   // shared_pve
 	"shared_pve_append_only_v1",                        // shared_pve
 	"rebuild_match_participants_defeat_art_corruption", // shared
-	// Phase 1.5 b27 (reorder escaladÃ©) : skill_v2 (crÃ©ateur de lusr_hyperparams_v2)
+	// Phase 1.5 b27 (reorder escaladé) : skill_v2 (créateur de lusr_hyperparams_v2)
 	// AVANT le seed tier_boundaries (qui INSERT dedans). Corrige l'inversion 148/149
-	// historique. SÃ»r : les 2 sont title-owned â†’ n'affecte pas l'ordre du registre global
-	// (TestSortByCanonicalIsNoOp). Name-keyed â†’ no-op sur DB dÃ©jÃ  migrÃ©es ; sur DB fraÃ®che
-	// le seed rÃ©ussit dÃ¨s le 1er boot (au lieu de converger sur 2 boots via backfill swallowed).
-	"shared_create_skill_v2_tables",               // shared
-	"shared_seed_tier_boundaries_v2",              // shared
-	"create_base_shared_social_schema",            // shared_social
-	"add_player_slug_to_media_files",              // shared_social
-	"add_file_name_to_media_files",                // shared_social
-	"add_missing_columns_to_media_files",          // shared_social
-	"add_capture_start_indexed_at_to_media_files", // shared_social
-	"add_is_manual_to_media_match_associations",   // shared_social
-	"add_file_stem_ext_to_media_files",            // shared_social
-	"align_media_files_legacy_schema",             // shared_social
-	"create_prestige_shared_social_schema",        // shared_social
-	"purge_data_health_warning_notifs",            // shared_social
-	"create_player_records_history_append_only",   // shared_social
-	"player_records_history_previous_cols_v1",     // shared_social
-	"extend_player_records_with_window",           // shared_social
-	"rekey_squad_member_xuid",                     // shared_social
-	"create_world_player_season_stats",            // shared
-	"create_world_csr_leaderboard_snapshots",      // shared
-	"world_csr_leaderboard_latest_by_batch",       // shared
-	"add_title_slug_to_world_csr_leaderboard",     // shared (PMT-7)
-	"shared_create_kill_positions",                // shared (positions monde par kill, ref inter-titres)
+	// historique. Sûr : les 2 sont title-owned → n'affecte pas l'ordre du registre global
+	// (TestSortByCanonicalIsNoOp). Name-keyed → no-op sur DB déjà migrées ; sur DB fraîche
+	// le seed réussit dès le 1er boot (au lieu de converger sur 2 boots via backfill swallowed).
+	"shared_create_skill_v2_tables",                            // shared
+	"shared_seed_tier_boundaries_v2",                           // shared
+	"player_skill_state_v2_reset_marker_v1",                    // shared
+	"create_base_shared_social_schema",                         // shared_social
+	"add_player_slug_to_media_files",                           // shared_social
+	"add_file_name_to_media_files",                             // shared_social
+	"add_missing_columns_to_media_files",                       // shared_social
+	"add_capture_start_indexed_at_to_media_files",              // shared_social
+	"add_is_manual_to_media_match_associations",                // shared_social
+	"add_file_stem_ext_to_media_files",                         // shared_social
+	"align_media_files_legacy_schema",                          // shared_social
+	"drop_pn_unread_art_index_v2",                              // shared_social
+	"shared_social_favorites_append_only_v1",                   // shared_social
+	"shared_social_likes_append_only_v1",                       // shared_social
+	"shared_social_media_assoc_append_only_v1",                 // shared_social
+	"media_files_drop_filepath_unique_v1",                      // shared_social
+	"shared_social_notif_prefs_append_only_v1",                 // shared_social
+	"shared_social_notifications_append_only_v1",               // shared_social
+	"create_prestige_shared_social_schema",                     // shared_social
+	"purge_data_health_warning_notifs",                         // shared_social
+	"create_player_records_history_append_only",                // shared_social
+	"player_records_history_previous_cols_v1",                  // shared_social
+	"extend_player_records_with_window",                        // shared_social
+	"shared_social_squad_challenge_participant_append_only_v1", // shared_social
+	"shared_social_squad_member_append_only_v1",                // shared_social
+	"rekey_squad_member_xuid",                                  // shared_social
+	"shared_social_user_prestige_append_only_v1",               // shared_social
+	"create_world_player_season_stats",                         // shared
+	"create_world_csr_leaderboard_snapshots",                   // shared
+	"world_csr_leaderboard_latest_by_batch",                    // shared
+	"add_title_slug_to_world_csr_leaderboard",                  // shared (PMT-7)
+	"shared_create_kill_positions",                             // shared (positions monde par kill, ref inter-titres)
 }
 
 var canonicalIndex = func() map[string]int {
@@ -193,17 +221,17 @@ var canonicalIndex = func() map[string]int {
 	return m
 }()
 
-// CanonicalOrder retourne une copie de l'ordre d'exÃ©cution canonique (noms).
-// ExposÃ© pour l'audit de complÃ©tude inter-packages : les steps title-owned
+// CanonicalOrder retourne une copie de l'ordre d'exécution canonique (noms).
+// Exposé pour l'audit de complétude inter-packages : les steps title-owned
 // (internal/games/{slug}/migrations) sont dans canonicalOrder mais PAS dans le
-// registre global All() â€” l'audit bidirectionnel (global + title) vit donc dans
+// registre global All() — l'audit bidirectionnel (global + title) vit donc dans
 // le package du titre (halo_infinite/migrations/order_audit_test.go).
 func CanonicalOrder() []string {
 	return append([]string(nil), canonicalOrder...)
 }
 
 // canonicalRank retourne la position de `name` dans canonicalOrder, ou la fin
-// (len) si absent â€” rÃ©silience runtime ; order_test.go garantit l'absence
+// (len) si absent — résilience runtime ; order_test.go garantit l'absence
 // d'inconnu en CI.
 func canonicalRank(name string) int {
 	if idx, ok := canonicalIndex[name]; ok {
@@ -212,17 +240,17 @@ func canonicalRank(name string) int {
 	return len(canonicalOrder)
 }
 
-// sortByCanonicalOrder rÃ©ordonne les migrations selon canonicalOrder (tri
-// stable : les inconnus gardent leur ordre relatif d'entrÃ©e, en fin de liste).
-// UtilisÃ© par le chemin par dÃ©faut (Halo) ; un titre non-dÃ©faut passe son propre
+// sortByCanonicalOrder réordonne les migrations selon canonicalOrder (tri
+// stable : les inconnus gardent leur ordre relatif d'entrée, en fin de liste).
+// Utilisé par le chemin par défaut (Halo) ; un titre non-défaut passe son propre
 // ordre via sortByOrder.
 func sortByCanonicalOrder(ms []Migration) {
 	sortByOrder(canonicalOrder, ms)
 }
 
-// sortByOrder rÃ©ordonne ms selon l'ordre des noms dans `order` (tri stable ; les
-// inconnus vont en fin, ordre relatif prÃ©servÃ©). GÃ©nÃ©ralise sortByCanonicalOrder
-// pour permettre Ã  un TitleMigrationSet d'imposer SON propre ordre (PMT-9).
+// sortByOrder réordonne ms selon l'ordre des noms dans `order` (tri stable ; les
+// inconnus vont en fin, ordre relatif préservé). Généralise sortByCanonicalOrder
+// pour permettre à un TitleMigrationSet d'imposer SON propre ordre (PMT-9).
 func sortByOrder(order []string, ms []Migration) {
 	rank := make(map[string]int, len(order))
 	for i, n := range order {

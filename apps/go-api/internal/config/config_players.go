@@ -33,6 +33,11 @@ type dbProfileEntry struct {
 	// InitialMaxMatches : nombre de matchs à synchroniser à l'onboarding pour ce
 	// (joueur, titre). 0 = défaut (200, borné par le handler de sync initial).
 	InitialMaxMatches int `json:"initial_max_matches,omitempty"`
+	// AuthOnly marque un profil qui n'existe que pour la gestion des tokens auth
+	// (aucun suivi de stats — pas un vrai joueur). Il reste visible côté serveur
+	// (pool d'auth, token-capture/import, rotation) mais est exclu des listes
+	// front-facing (sélecteur L1, favoris gamertag Escouade/Explorer).
+	AuthOnly bool `json:"auth_only,omitempty"`
 }
 
 // LoadPlayers charge db_profiles.json et retourne la liste des joueurs.
@@ -138,6 +143,7 @@ func (c *AppConfig) loadPlayersV2(data []byte, titleFilter ...string) ([]domain.
 			IsDemo:         false,
 			TitleSlug:      title.DefaultSlug,
 			SyncEnabled:    true, // v2.1 : pas de notion de pause → toujours actif
+			AuthOnly:       p.AuthOnly,
 		})
 	}
 	return players, nil
@@ -176,6 +182,7 @@ func (c *AppConfig) loadPlayersV3(data []byte, titleFilter ...string) ([]domain.
 				TitleSlug:         titleSlug,
 				SyncEnabled:       syncEnabled,
 				InitialMaxMatches: p.InitialMaxMatches,
+				AuthOnly:          p.AuthOnly,
 			})
 		}
 	}

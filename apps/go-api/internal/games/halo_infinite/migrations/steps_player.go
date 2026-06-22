@@ -209,10 +209,11 @@ func playerSteps() []migration.Migration {
 						return err
 					}
 				}
-				return migration.CreateIndexSafe(db, `
-					CREATE INDEX IF NOT EXISTS idx_pme_engagement_history
-						ON player_match_enrichment(mode_category, engagement_score_brut)
-				`)
+				// Append-only #23046 (2026-06-21) : PLUS d'index ART idx_pme_engagement_history
+				// sur (mode_category, engagement_score_brut) — colonnes mutées par l'étage
+				// engagement (INSERT pur taggé). Lecture via player_match_enrichment_latest.
+				// player_append_only_match_enrichment_v1 le supprime sur les DB existantes.
+				return nil
 			},
 		},
 		{
@@ -230,8 +231,9 @@ func playerSteps() []migration.Migration {
 						last_updated     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 						PRIMARY KEY (xuid, mode_category)
 					);
-					CREATE INDEX IF NOT EXISTS idx_engagement_coefficients_xuid
-						ON engagement_coefficients(xuid);
+					-- PAS d'index idx_engagement_coefficients_xuid : la PK (xuid, mode_category)
+					-- couvre déjà le préfixe xuid ; un index redondant sur xuid est une surface
+					-- ART superflue (#23046). Drop DB existantes : drop_engagement_coefficients_xuid_art_index_v1.
 				`)
 			},
 		},
@@ -274,8 +276,8 @@ func playerSteps() []migration.Migration {
 						) WHERE rn = 1;
 					DROP TABLE engagement_coefficients;
 					ALTER TABLE engagement_coefficients__pkfix RENAME TO engagement_coefficients;
-					CREATE INDEX IF NOT EXISTS idx_engagement_coefficients_xuid
-						ON engagement_coefficients(xuid);
+					-- PAS d'index idx_engagement_coefficients_xuid (PK couvre xuid ; surface ART
+					-- redondante #23046). Drop DB existantes : drop_engagement_coefficients_xuid_art_index_v1.
 				`)
 			},
 		},
@@ -301,10 +303,11 @@ func playerSteps() []migration.Migration {
 						return err
 					}
 				}
-				return migration.CreateIndexSafe(db, `
-					CREATE INDEX IF NOT EXISTS idx_pme_engagement_paces
-						ON player_match_enrichment(mode_category)
-				`)
+				// Append-only #23046 (2026-06-21) : PLUS d'index ART idx_pme_engagement_paces
+				// sur (mode_category) — colonne mutée par l'étage engagement. LoadRatioSamples
+				// lit player_match_enrichment_latest. player_append_only_match_enrichment_v1
+				// le supprime sur les DB existantes.
+				return nil
 			},
 		},
 	}

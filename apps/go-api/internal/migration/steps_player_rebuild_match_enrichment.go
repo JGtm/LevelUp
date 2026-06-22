@@ -21,73 +21,30 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"strings"
 )
 
-// RebuildPlayerMatchEnrichmentART exécute le rebuild swap CTAS de la table
-// player_match_enrichment pour défaire la corruption d'index ART (Phase 4.1
-// extension 2026-05-23).
+// RebuildPlayerMatchEnrichmentART garantit que player_match_enrichment est
+// append-only (id PK + stage + written_at + vue _latest), en déléguant à la
+// migration idempotente applyAppendOnlyMatchEnrichment.
 //
-// IDEMPOTENTE — peut être rappelée à chaque détection de corruption.
-// Préserve les rows + la PK + les indexes éventuels.
+// Append-only #23046 (2026-06-21) : l'ANCIEN rebuild swap re-posait
+// `ADD PRIMARY KEY (match_id)` ET rejouait dynamiquement les ex-index ART
+// (idx_pme_session / idx_pme_engagement_history / idx_pme_engagement_paces via
+// loadSecondaryIndexDDL) → il RÉINTRODUISAIT le vecteur DuckDB #23046 dès qu'il
+// était invoqué (exposé via cmd/rebuild_pme_art, cmd/force_rebuild_art,
+// levelup rebuild-pme-art). On délègue désormais :
+//   - table legacy (id absent)      → swap CTAS vers append-only (id seq + stage),
+//   - table déjà append-only        → refresh vue _latest + idx_pme_match_lookup.
 //
-// Pré-condition : `db` ouvert en RW EXCLUSIF (caller doit s'assurer
-// qu'aucun autre process ne tient le fichier — l'app serveur arrêtée).
+// Plus aucune PK(match_id) ni index muté → aucune corruption ART possible.
 //
-// No-op gracieux si la table est absente (player DB jamais initialisée).
+// IDEMPOTENTE. No-op gracieux si la table est absente.
+// Pré-condition : `db` ouvert en RW EXCLUSIF (app serveur arrêtée).
 func RebuildPlayerMatchEnrichmentART(ctx context.Context, db *sql.DB) error {
-	hasTable, err := tableExists(db, "player_match_enrichment")
-	if err != nil {
-		return fmt.Errorf("rebuild_pme_runtime: check table: %w", err)
+	if err := applyAppendOnlyMatchEnrichment(db); err != nil {
+		return fmt.Errorf("rebuild_pme_runtime: %w", err)
 	}
-	if !hasTable {
-		return nil
-	}
-
-	cols, err := loadTableColumns(ctx, db, "player_match_enrichment")
-	if err != nil {
-		return fmt.Errorf("rebuild_pme_runtime: enumerate columns: %w", err)
-	}
-	if len(cols) == 0 {
-		return nil
-	}
-	colList := strings.Join(cols, ", ")
-
-	var before int
-	if err := db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM player_match_enrichment`).Scan(&before); err != nil {
-		return fmt.Errorf("rebuild_pme_runtime: count before: %w", err)
-	}
-
-	stmts := []string{
-		`DROP TABLE IF EXISTS player_match_enrichment__rebuilt`,
-		fmt.Sprintf(`CREATE TABLE player_match_enrichment__rebuilt AS SELECT %s FROM player_match_enrichment`, colList),
-		`DROP TABLE player_match_enrichment`,
-		`ALTER TABLE player_match_enrichment__rebuilt RENAME TO player_match_enrichment`,
-		`ALTER TABLE player_match_enrichment ADD PRIMARY KEY (match_id)`,
-	}
-	for _, sqlStmt := range stmts {
-		if _, err := db.ExecContext(ctx, sqlStmt); err != nil {
-			return fmt.Errorf("rebuild_pme_runtime: swap step (%s): %w",
-				firstWords(sqlStmt, 3), err)
-		}
-	}
-
-	// Pas d'indexes secondaires connus sur player_match_enrichment (seulement
-	// la PK). Si la table en a d'autres dans des installations spécifiques,
-	// les recréer ici via un loadIndexes() helper (non implémenté).
-
-	var after int
-	if err := db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM player_match_enrichment`).Scan(&after); err != nil {
-		return fmt.Errorf("rebuild_pme_runtime: count after: %w", err)
-	}
-
-	slog.InfoContext(ctx, "rebuild_player_match_enrichment_runtime: table rebuilt (ART corruption defeated)",
-		"rows_before_rebuild", before,
-		"rows_after_rebuild", after,
-		"columns_preserved", len(cols),
-	)
+	slog.InfoContext(ctx, "rebuild_player_match_enrichment_runtime: append-only assuré (ART éradiqué, plus de PK match_id)")
 	return nil
 }
 

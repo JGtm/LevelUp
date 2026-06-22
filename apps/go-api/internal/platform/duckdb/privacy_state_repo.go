@@ -46,16 +46,17 @@ func (r *PrivacyStateRepo) UpsertPrivacyState(ctx context.Context, state domain.
 	}
 	defer rwDB.Close()
 
-	_, err = rwDB.Exec(ctx,
-		`INSERT INTO player_privacy_state (xuid, is_private, observed_at, source)
-		 VALUES (?, ?, ?, ?)
-		 ON CONFLICT (xuid) DO UPDATE SET
-		   is_private  = EXCLUDED.is_private,
-		   observed_at = EXCLUDED.observed_at,
-		   source      = EXCLUDED.source`,
-		state.XUID, state.IsPrivate, state.ObservedAt.UTC(), state.Source,
-	)
-	if err != nil {
+	// ART-safe : SELECT-then-UPDATE-or-INSERT (pas d'ON CONFLICT, qui réécrit via
+	// l'index ART de la PK xuid). État "dernière valeur observée", aucun index
+	// secondaire → UPDATE non-indexé sûr. Sérialisé par le lease KindPlayer.
+	if err := rwDB.UpsertNoConflict(ctx,
+		`SELECT 1 FROM player_privacy_state WHERE xuid = ?`,
+		[]any{state.XUID},
+		`UPDATE player_privacy_state SET is_private = ?, observed_at = ?, source = ? WHERE xuid = ?`,
+		[]any{state.IsPrivate, state.ObservedAt.UTC(), state.Source, state.XUID},
+		`INSERT INTO player_privacy_state (xuid, is_private, observed_at, source) VALUES (?, ?, ?, ?)`,
+		[]any{state.XUID, state.IsPrivate, state.ObservedAt.UTC(), state.Source},
+	); err != nil {
 		return fmt.Errorf("PrivacyStateRepo.UpsertPrivacyState: exec: %w", err)
 	}
 	return nil

@@ -172,7 +172,7 @@ SELECT
     mf.capture_end_utc,
     COALESCE(mf.liked, FALSE) AS liked
 FROM media_files mf
-JOIN media_match_associations mma ON mf.id = mma.media_file_id
+JOIN media_match_associations_latest mma ON mf.id = mma.media_file_id
 WHERE mma.match_id = ?
 ORDER BY mf.capture_end_utc ASC NULLS LAST`
 
@@ -193,17 +193,18 @@ ORDER BY xuid, count DESC`
 // Q28 : Kills par arme de tous les joueurs d'un match (bulk).
 // Paramètre : ? = match_id.
 // Retourne 3 colonnes : xuid, weapon_id, kills.
-// Requête directe sur weapon_kills (sans passer par v_weapon_kills).
+// Requête sur v_weapon_kills (append-only #23046 Phase 2 : la vue ne retourne
+// que la dernière génération par (match_id,xuid) — sinon COUNT(*) fan-out).
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q28BulkWeaponKills = `
 SELECT
     wk.xuid,
-    COALESCE(wk.reconciled_as, wk.weapon_id) AS weapon_id,
+    wk.effective_weapon_id AS weapon_id,
     COUNT(*) AS kills
-FROM weapon_kills wk
+FROM v_weapon_kills wk
 WHERE wk.match_id = ?
-  AND COALESCE(wk.reconciled_as, wk.weapon_id) NOT IN (0, 1, 2)
-GROUP BY wk.xuid, COALESCE(wk.reconciled_as, wk.weapon_id)
+  AND wk.effective_weapon_id NOT IN (0, 1, 2)
+GROUP BY wk.xuid, wk.effective_weapon_id
 ORDER BY wk.xuid, kills DESC`
 
 // Q30 : CSR de tous les participants d'un match ranked depuis shared.match_csrs_latest.

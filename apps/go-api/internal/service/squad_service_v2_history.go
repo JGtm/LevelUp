@@ -23,17 +23,17 @@ import (
 // match. Les joueurs absents du match (ou leur stats nil) ne sont pas
 // inseres dans la map (le rendu front affiche "-" sur les colonnes absentes).
 type HistoryTableRow struct {
-	MatchID         string                       `json:"match_id"`
-	StartedAtUTC    time.Time                    `json:"started_at_utc"`
-	DurationSeconds *int                         `json:"duration_seconds,omitempty"`
+	MatchID         string    `json:"match_id"`
+	StartedAtUTC    time.Time `json:"started_at_utc"`
+	DurationSeconds *int      `json:"duration_seconds,omitempty"`
 	// GameplayDurationSeconds : durée réelle de gameplay (countdown retranché),
 	// préférée à DurationSeconds par le front pour un affichage homogène.
-	GameplayDurationSeconds *int                 `json:"gameplay_duration_seconds,omitempty"`
-	MapLabel        string                       `json:"map_label,omitempty"`
-	ModeLabel       string                       `json:"mode_label,omitempty"`
-	PlaylistLabel   string                       `json:"playlist_label,omitempty"`
-	MainOutcome     canonical.Outcome            `json:"main_outcome"`
-	PlayerStats     map[string]HistoryPlayerCell `json:"player_stats"`
+	GameplayDurationSeconds *int                         `json:"gameplay_duration_seconds,omitempty"`
+	MapLabel                string                       `json:"map_label,omitempty"`
+	ModeLabel               string                       `json:"mode_label,omitempty"`
+	PlaylistLabel           string                       `json:"playlist_label,omitempty"`
+	MainOutcome             canonical.Outcome            `json:"main_outcome"`
+	PlayerStats             map[string]HistoryPlayerCell `json:"player_stats"`
 }
 
 // HistoryPlayerCell est la cellule par joueur du tableau historique.

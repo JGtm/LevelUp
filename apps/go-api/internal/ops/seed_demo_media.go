@@ -169,7 +169,7 @@ func loadVideoRealMaps(ctx context.Context, srcSocialDB, srcSharedDB string) (ma
 	rows, err := db.QueryContext(ctx, `
 		SELECT mf.file_stem, r.map_name
 		FROM media_files mf
-		JOIN media_match_associations mma ON mma.media_file_id = mf.id
+		JOIN media_match_associations_latest mma ON mma.media_file_id = mf.id
 		JOIN sm.match_registry r ON r.match_id = mma.match_id
 		WHERE mf.file_name LIKE 'Halo Infinite%' AND r.map_name IS NOT NULL`)
 	if err != nil {
@@ -368,12 +368,13 @@ func insertDemoMediaRow(ctx context.Context, db *sql.DB, m demoMediaRow) error {
 		m.FileStem, m.FileExt, thumb, m.CaptureStart, m.CaptureEnd, m.MTime); err != nil {
 		return fmt.Errorf("insert media_files: %w", err)
 	}
+	// APPEND-ONLY : event auto actif dans _history (lu par la vue _latest).
 	if _, err := db.ExecContext(ctx, `
-		INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds, created_at, is_manual)
-		VALUES (?, ?, 0, CURRENT_TIMESTAMP, FALSE)
-		ON CONFLICT (media_file_id, match_id) DO NOTHING`,
+		INSERT INTO media_match_associations_history
+			(media_file_id, match_id, delta_seconds, is_manual, is_active, associated_at, written_at)
+		VALUES (CAST(? AS BIGINT), ?, 0, FALSE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
 		m.ID, m.MatchID); err != nil {
-		return fmt.Errorf("insert media_match_associations: %w", err)
+		return fmt.Errorf("insert media_match_associations_history: %w", err)
 	}
 	return nil
 }

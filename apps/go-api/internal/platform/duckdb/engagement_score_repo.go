@@ -121,11 +121,16 @@ func (r *EngagementScoreRepo) LoadEngagementCoefficient(
 	return &coef, nil
 }
 
-// SaveEngagementScore persiste le score, le residu brut et la confidence
-// dans player_match_enrichment (UPDATE).
+// SaveEngagementScore persiste le score, le residu brut et la confidence dans
+// player_match_enrichment. Append-only #23046 : INSERT pur stage='engagement'
+// (plus d'UPDATE). mode_category est repris de la vue _latest (scalar subquery)
+// pour ne pas l'écraser à NULL — il est posé par le sync engagement. Ce repo HTTP
+// n'a actuellement aucun caller de prod (port + mock seulement) ; la conversion
+// satisfait le garde-rail append-only et reste correcte si re-câblé.
 //
-// Si EngagementScore est nil (cas insufficient_history), on persiste le
-// residu et la confidence mais on laisse engagement_score a NULL.
+// Si EngagementScore est nil (cas insufficient_history), on persiste le residu et
+// la confidence mais on laisse engagement_score a NULL (reset légitime, préservé
+// par le merge-on-read par-groupe).
 func (r *EngagementScoreRepo) SaveEngagementScore(
 	ctx context.Context,
 	xuid, matchID string,
@@ -155,18 +160,15 @@ func (r *EngagementScoreRepo) SaveEngagementScore(
 	}
 	if hasPaces {
 		q = `
-			UPDATE player_match_enrichment
-			SET
-				engagement_score = ?,
-				engagement_score_brut = ?,
-				engagement_score_confidence = ?,
-				engagement_pace_player = ?,
-				engagement_pace_team = ?,
-				engagement_pace_lobby = ?,
-				engagement_player_activity = ?
-			WHERE match_id = ?
+			INSERT INTO player_match_enrichment
+				(match_id, engagement_score, engagement_score_brut, engagement_score_confidence,
+				 engagement_pace_player, engagement_pace_team, engagement_pace_lobby, engagement_player_activity,
+				 mode_category, stage)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?,
+				(SELECT mode_category FROM player_match_enrichment_latest WHERE match_id = ?), 'engagement')
 		`
 		args = []any{
+			matchID,
 			scoreArg,
 			result.ResidualBrut,
 			result.Confidence,
@@ -178,14 +180,14 @@ func (r *EngagementScoreRepo) SaveEngagementScore(
 		}
 	} else {
 		q = `
-			UPDATE player_match_enrichment
-			SET
-				engagement_score = ?,
-				engagement_score_brut = ?,
-				engagement_score_confidence = ?
-			WHERE match_id = ?
+			INSERT INTO player_match_enrichment
+				(match_id, engagement_score, engagement_score_brut, engagement_score_confidence,
+				 mode_category, stage)
+			VALUES (?, ?, ?, ?,
+				(SELECT mode_category FROM player_match_enrichment_latest WHERE match_id = ?), 'engagement')
 		`
 		args = []any{
+			matchID,
 			scoreArg,
 			result.ResidualBrut,
 			result.Confidence,
@@ -193,15 +195,8 @@ func (r *EngagementScoreRepo) SaveEngagementScore(
 		}
 	}
 
-	res, err := r.pdb.Player.Exec(ctx, q, args...)
-	if err != nil {
+	if _, err := r.pdb.Player.Exec(ctx, q, args...); err != nil {
 		return fmt.Errorf("EngagementScoreRepo.SaveEngagementScore: %w", err)
-	}
-	if affected, _ := res.RowsAffected(); affected == 0 {
-		// Pas d'enrichment row pour ce match — phenomene attendu pour les
-		// matchs non-encore enrichis. Le sync createra la row puis ressayera.
-		slog.DebugContext(ctx, "EngagementScoreRepo: no enrichment row updated",
-			"xuid", xuid, "match_id", matchID)
 	}
 	return nil
 }
@@ -234,32 +229,24 @@ func (r *EngagementScoreRepo) SaveEngagementCoefficient(
 	}
 	defer w.Release()
 
-	// DuckDB supporte INSERT OR REPLACE via "ON CONFLICT DO UPDATE".
-	const q = `
-		INSERT INTO engagement_coefficients (
-			xuid, mode_category, coef_team_share, coef_lobby_share,
-			n_matches, last_updated
-		) VALUES (?, ?, ?, ?, ?, ?)
-		ON CONFLICT (xuid, mode_category) DO UPDATE SET
-			coef_team_share = EXCLUDED.coef_team_share,
-			coef_lobby_share = EXCLUDED.coef_lobby_share,
-			n_matches = EXCLUDED.n_matches,
-			last_updated = EXCLUDED.last_updated
-	`
 	updated := coef.LastUpdated
 	if updated.IsZero() {
 		updated = time.Now().UTC()
 	}
 
-	_, err = r.pdb.Player.Exec(ctx, q,
-		coef.XUID,
-		coef.ModeCategory,
-		coef.CoefTeamShare,
-		coef.CoefLobbyShare,
-		coef.NMatches,
-		updated,
-	)
-	if err != nil {
+	// ART-safe : SELECT-then-UPDATE-or-INSERT (pas d'ON CONFLICT, qui réécrit via
+	// l'index ART de la PK). engagement_coefficients : PK (xuid, mode_category), pas
+	// d'index secondaire muté. Sous lease KindPlayer (sérialisé), basse fréquence.
+	if err = r.pdb.Player.UpsertNoConflict(ctx,
+		`SELECT 1 FROM engagement_coefficients WHERE xuid = ? AND mode_category = ?`,
+		[]any{coef.XUID, coef.ModeCategory},
+		`UPDATE engagement_coefficients SET coef_team_share = ?, coef_lobby_share = ?, n_matches = ?, last_updated = ?
+		 WHERE xuid = ? AND mode_category = ?`,
+		[]any{coef.CoefTeamShare, coef.CoefLobbyShare, coef.NMatches, updated, coef.XUID, coef.ModeCategory},
+		`INSERT INTO engagement_coefficients (xuid, mode_category, coef_team_share, coef_lobby_share, n_matches, last_updated)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		[]any{coef.XUID, coef.ModeCategory, coef.CoefTeamShare, coef.CoefLobbyShare, coef.NMatches, updated},
+	); err != nil {
 		return fmt.Errorf("EngagementScoreRepo.SaveEngagementCoefficient: %w", err)
 	}
 	return nil
@@ -348,7 +335,7 @@ func (r *EngagementScoreRepo) HasEngagementScore(
 
 	const q = `
 		SELECT engagement_score IS NOT NULL
-		FROM player_match_enrichment
+		FROM player_match_enrichment_latest
 		WHERE match_id = ?
 	`
 	var has bool
@@ -394,7 +381,7 @@ func (r *EngagementScoreRepo) LoadRatioSamples(
 			COALESCE(engagement_pace_team, 0),
 			COALESCE(engagement_pace_lobby, 0),
 			COALESCE(engagement_player_activity, 0)
-		FROM player_match_enrichment
+		FROM player_match_enrichment_latest
 		WHERE mode_category = ?
 		  AND engagement_pace_team IS NOT NULL
 		ORDER BY match_id DESC
@@ -514,7 +501,7 @@ func buildEngagementHistoryQuery(f port.EngagementHistoryFilter) (string, []any)
 
 	sb.WriteString(`
 SELECT match_id, engagement_score_brut
-FROM player_match_enrichment
+FROM player_match_enrichment_latest
 WHERE mode_category = ?
   AND engagement_score_brut IS NOT NULL
 `)

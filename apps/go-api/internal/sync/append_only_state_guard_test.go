@@ -1,0 +1,223 @@
+// Package sync — append_only_state_guard_test.go : garde-fou anti-régression pour
+// les tables d'ÉTAT migrées en APPEND-ONLY (doctrine zéro DELETE / zéro UPDATE
+// indexé / zéro ON CONFLICT DO UPDATE).
+//
+// no_art_patterns_test.go ne couvre QUE ON CONFLICT / INSERT OR REPLACE et reste
+// aveugle au DELETE nu (faux positifs file-level). Ce test comble le trou pour les
+// tables converties : tout `DELETE FROM <table>` ou `INSERT … ON CONFLICT … DO
+// UPDATE` / `INSERT OR REPLACE` sur l'une d'elles, dans le hot path serveur
+// (hors _test / migration / ops / cmd / scripts), fait échouer la CI. L'état se lit
+// via `<table>_latest` ; toute mutation est un INSERT pur.
+//
+// Ajouter une table ici à CHAQUE conversion append-only (campagne en cours).
+
+package sync
+
+import (
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"testing"
+)
+
+// appendOnlyStateTables : tables d'état converties en append-only (event-log).
+// Aucun DELETE / ON CONFLICT DO UPDATE / INSERT OR REPLACE toléré dessus.
+var appendOnlyStateTables = []string{
+	"match_favorites",
+	"match_favorites_history",
+	"media_likes",
+	"media_likes_history",
+	"squad_member",
+	"squad_member_history",
+	"notification_preferences",
+	"notification_preferences_history",
+	"media_match_associations",
+	"media_match_associations_history",
+	"player_notifications",
+	"player_notifications_history",
+	"squad_challenge_participant",
+	"squad_challenge_participant_history",
+	"user_prestige",
+	"user_prestige_history",
+	// Pattern in-place (id PK + vue _latest, comme match_skill_rank) : la table
+	// garde son nom, pas de table _history séparée. Lecture via
+	// lusr_component_history_latest. Writers (loaders + persister) = INSERT pur.
+	"lusr_component_history",
+	// player_match_enrichment : la table la PLUS écrite, migrée append-only
+	// (#23046, 2026-06-21) — id PK + colonne stage + written_at, lecture via
+	// player_match_enrichment_latest (merge-on-read par-groupe). INSERT pur taggé.
+	"player_match_enrichment",
+	// pve_match_stats : append-only in-place (id PK + vue pve_match_stats_latest).
+	// L'écriture passe par un guard SELECT-then-INSERT idempotent (pve_persister.go) ;
+	// l'ancien INSERT OR IGNORE est interdit (audit adversarial 2026-06-21).
+	"pve_match_stats",
+	// personal_score_awards : append-only GÉNÉRATION (Phase 2, 2026-06-21). L'ancien
+	// DELETE+INSERT (replace-semantics, vecteur ART sur 4 index idx_psa_*) est remplacé
+	// par INSERT pur taggé generation_id (séquence psa_generation_seq, partagée par
+	// appel) + tombstone pour le clear. Lecture via personal_score_awards_latest
+	// (DENSE_RANK, génération MAX, tombstones exclus). Zéro DELETE/ON CONFLICT.
+	"personal_score_awards",
+	// player_skill_state_v2 : append-only (written_at + vue _latest). Le reset
+	// watermark (RecomputeLUSRCanonicalForPlayer) n'utilise plus DELETE WHERE xuid
+	// (vecteur ART sur PK + idx_pssv2) mais une row sentinelle is_reset=TRUE
+	// (Phase 2, 2026-06-21). Lecture via player_skill_state_v2_latest.
+	"player_skill_state_v2",
+	// match_citations : append-only GÉNÉRATION (Phase 2, 2026-06-21). L'ancien
+	// DELETE+réécriture (recompute SOUSTRACTIF, PK composite) est remplacé par
+	// INSERT pur taggé generation_id (par match) ; la sentinelle '_processed' gère
+	// le cas 0 citation. Lecture via match_citations_latest (DENSE_RANK par match_id).
+	"match_citations",
+	// weapon_kills : append-only GÉNÉRATION (Phase 2, 2026-06-21). L'ancien
+	// DELETE+INSERT (idx_wk_match_xuid, DB shared multi-writer) est remplacé par
+	// INSERT pur taggé generation_id (par (match,xuid)). Lecture via la vue
+	// v_weapon_kills (DENSE_RANK génération MAX). Pas de PK → simple ALTER ADD COLUMN.
+	"weapon_kills",
+}
+
+// rawPMEReadAllowlist : accès BRUTS intentionnels à player_match_enrichment (hors
+// vue _latest) tolérés dans le hot path — retirés du texte avant le scan raw-read.
+var rawPMEReadAllowlist = []string{
+	// player_persister.go : ancre d'idempotence du sous-batch live (vérifie la
+	// présence d'une row stage='live' sur la table physique). Pas un reader UI.
+	"FROM player_match_enrichment WHERE match_id = ? AND stage = 'live'",
+	// engagement.go loadExistingEngagementScores : marqueur d'idempotence writer-side
+	// (engagement déjà TENTÉ — borne la croissance des matchs insufficient_history).
+	// La vue n'expose pas `stage` → lecture physique nécessaire.
+	"FROM player_match_enrichment WHERE stage = 'engagement'",
+}
+
+// TestPlayerMatchEnrichmentAppendOnlyAccess durcit la doctrine append-only sur
+// player_match_enrichment au-delà du test ON CONFLICT/DELETE ci-dessus :
+//   - AUCUN `UPDATE player_match_enrichment` (append-only = INSERT pur),
+//   - AUCUNE lecture brute `FROM/JOIN player_match_enrichment` (hors _latest) dans
+//     le hot path serveur → doit passer par player_match_enrichment_latest (sinon
+//     fan-out N rows/match : agrégats faussés, JOIN dupliqués, delta-filters en boucle).
+//
+// Exclut migration (table physique), ops/cmd/scripts (outils), validation (parité
+// Go-vs-Python legacy : la py DB n'a pas la vue). Allowlist = ancre EXISTS du persister.
+func TestPlayerMatchEnrichmentAppendOnlyAccess(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+	reUpdate := regexp.MustCompile(`(?i)\bUPDATE\s+player_match_enrichment\b`)
+	reRawRead := regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+player_match_enrichment(\w*)`)
+
+	var violations []string
+	err := filepath.Walk(repoRoot, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if info.IsDir() {
+			name := info.Name()
+			if name == "vendor" || name == ".git" || name == "node_modules" ||
+				name == "data" || name == "logs" || name == "dist" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		if strings.Contains(path, "/migration/") || strings.Contains(path, "\\migration\\") ||
+			strings.Contains(path, "/ops/") || strings.Contains(path, "\\ops\\") ||
+			strings.Contains(path, "/cmd/") || strings.Contains(path, "\\cmd\\") ||
+			strings.Contains(path, "/validation/") || strings.Contains(path, "\\validation\\") ||
+			strings.Contains(path, "/scripts/") || strings.Contains(path, "\\scripts\\") {
+			return nil
+		}
+		content, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return nil
+		}
+		text := stripGoComments(string(content))
+		for _, allowed := range rawPMEReadAllowlist {
+			text = strings.ReplaceAll(text, allowed, "")
+		}
+		rel, _ := filepath.Rel(repoRoot, path)
+		rel = filepath.ToSlash(rel)
+		if reUpdate.MatchString(text) {
+			violations = append(violations, "UPDATE player_match_enrichment dans "+rel)
+		}
+		for _, m := range reRawRead.FindAllStringSubmatch(text, -1) {
+			if m[1] == "" { // suffixe vide = table brute (ni _latest ni __appendonly/__rebuilt)
+				violations = append(violations, "FROM/JOIN player_match_enrichment brut (hors _latest) dans "+rel)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk: %v", err)
+	}
+	if len(violations) > 0 {
+		t.Errorf("RÉGRESSION append-only PME : %d accès interdit(s) "+
+			"(lecture via player_match_enrichment_latest ; écriture = INSERT pur taggé stage) :\n  - %s",
+			len(violations), strings.Join(violations, "\n  - "))
+	}
+}
+
+func TestNoMutationOnAppendOnlyStateTables(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+
+	reOnConflictDoUpdate := regexp.MustCompile(`(?is)\bON\s+CONFLICT\b[^;]*\bDO\s+UPDATE\b`)
+	reInsertOrReplace := regexp.MustCompile(`(?i)\bINSERT\s+OR\s+REPLACE\b`)
+	reInsertOrIgnore := regexp.MustCompile(`(?i)\bINSERT\s+OR\s+IGNORE\b`)
+
+	var violations []string
+	for _, table := range appendOnlyStateTables {
+		reDelete := regexp.MustCompile(`(?i)\bDELETE\s+FROM\s+` + regexp.QuoteMeta(table) + `\b`)
+		// INSERT ... ON CONFLICT/REPLACE/IGNORE visant cette table : on borne au statement
+		// commençant par INSERT [OR REPLACE|IGNORE] INTO <table> (statement-level → pas de
+		// faux positif file-level vs un INSERT OR IGNORE sur une AUTRE table du même fichier).
+		// Borne = `;` OU backtick (fin de la string SQL Go) : sans le backtick, [^;]* ferait
+		// le pont jusqu'au ON CONFLICT d'une AUTRE table plus loin dans le MÊME fichier (les
+		// strings SQL Go n'ont pas de `;` final) — faux positif observé sur shared_persister.go.
+		reInsertTable := regexp.MustCompile(`(?is)\bINSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO\s+` + regexp.QuoteMeta(table) + "\\b[^;`]*")
+
+		err := filepath.Walk(repoRoot, func(path string, info os.FileInfo, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if info.IsDir() {
+				name := info.Name()
+				if name == "vendor" || name == ".git" || name == "node_modules" ||
+					name == "data" || name == "logs" || name == "dist" {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+				return nil
+			}
+			if strings.Contains(path, "/migration/") || strings.Contains(path, "\\migration\\") ||
+				strings.Contains(path, "/ops/") || strings.Contains(path, "\\ops\\") ||
+				strings.Contains(path, "/cmd/") || strings.Contains(path, "\\cmd\\") ||
+				strings.Contains(path, "/scripts/") || strings.Contains(path, "\\scripts\\") {
+				return nil
+			}
+			content, readErr := os.ReadFile(path)
+			if readErr != nil {
+				return nil
+			}
+			text := stripGoComments(string(content))
+			rel, _ := filepath.Rel(repoRoot, path)
+			rel = filepath.ToSlash(rel)
+			if reDelete.MatchString(text) {
+				violations = append(violations, "DELETE FROM "+table+" dans "+rel)
+			}
+			for _, stmt := range reInsertTable.FindAllString(text, -1) {
+				if reOnConflictDoUpdate.MatchString(stmt) || reInsertOrReplace.MatchString(stmt) || reInsertOrIgnore.MatchString(stmt) {
+					violations = append(violations, "INSERT ON CONFLICT/REPLACE/IGNORE sur "+table+" dans "+rel)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("walk: %v", err)
+		}
+	}
+
+	if len(violations) > 0 {
+		t.Errorf("RÉGRESSION append-only : %d mutation(s) interdite(s) sur table d'état "+
+			"(append-only = INSERT pur + vue _latest ; zéro DELETE/ON CONFLICT) :\n  - %s",
+			len(violations), strings.Join(violations, "\n  - "))
+	}
+}

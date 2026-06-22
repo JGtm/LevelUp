@@ -2,9 +2,9 @@
  * CombatYieldBar — barre composite rendement combat (Sprint 56).
  *
  * Deux segments poussant depuis le centre :
- *  - Gauche (vert)  : offensive_conversion  — normalisé par p80 = 0.83
+ *  - Gauche (vert)  : offensive_conversion  — normalisé par le repère 0.90
  *  - Droite (bleu)  : defensive_resistance  — normalisé DEPUIS 1.0 (baseline)
- *                     sur la plage (p80 - 1.0) = 0.59. DR=1.0 → 0px, DR=1.59 → pleine barre.
+ *                     sur la plage (repère - 1.0) = 0.65. DR=1.0 → 0px, DR=1.65 → pleine barre.
  *
  * Largeur adaptative : `widthPx` (total) pilote la largeur ; par défaut 304px.
  * La géométrie (segments + badges) se recalcule linéairement sur la demi-largeur.
@@ -14,11 +14,11 @@
 import { useState } from 'react'
 import { tokenCssVar } from '@/lib/accessibility'
 
-/** p80, baseline et constantes — miroir des constantes Go combat_yield.go */
-const OC_P80 = 0.83
-const DR_P80 = 1.59
+/** Repère barre (frontière élite mondiale) — miroir des constantes Go combat_yield.go */
+const OC_P80 = 0.90
+const DR_P80 = 1.65
 const DR_BASELINE = 1.0
-const DR_RANGE = DR_P80 - DR_BASELINE // 0.59 — plage utile au-dessus du baseline
+const DR_RANGE = DR_P80 - DR_BASELINE // 0.65 — plage utile au-dessus du baseline
 const CLIP_FACTOR = 1.5
 const DEFAULT_PER_SIDE_PX = 150
 /** Largeur structurelle entre les deux demi-barres (séparateur + 2 gaps). */

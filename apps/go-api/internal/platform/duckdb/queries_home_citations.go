@@ -96,7 +96,7 @@ SELECT
     msr.tier_label,
     msr.rating_delta,
     msr.playlist_group
-FROM player_match_enrichment pme
+FROM player_match_enrichment_latest pme
 LEFT JOIN match_skill_rank msr ON msr.match_id = pme.match_id
 WHERE pme.match_id IN (%s)`
 
@@ -112,7 +112,7 @@ SELECT
     pme.session_id,
     pme.session_label,
     COALESCE(pme.is_with_friends, FALSE) AS is_with_friends
-FROM player_match_enrichment pme
+FROM player_match_enrichment_latest pme
 WHERE pme.session_label IS NOT NULL`
 
 // Q27HomeSessionsSharedStartTimesTpl : Phase B de Q27 — start_time pour
@@ -146,10 +146,10 @@ SELECT
     mc.citation_name_norm,
     mc.value                AS match_delta,
     cum.total               AS cumulative_total
-FROM match_citations mc
+FROM match_citations_latest mc
 JOIN (
     SELECT citation_name_norm, SUM(value) AS total
-    FROM match_citations
+    FROM match_citations_latest
     GROUP BY citation_name_norm
 ) cum ON cum.citation_name_norm = mc.citation_name_norm
 WHERE mc.match_id IN (%s)
@@ -431,7 +431,7 @@ SELECT
     mma.match_id,
     NULL::TIMESTAMP AS match_start_time
 FROM media_files mf
-LEFT JOIN media_match_associations mma ON mma.media_file_id = mf.id
+LEFT JOIN media_match_associations_latest mma ON mma.media_file_id = mf.id
 WHERE mf.status = 'active'
 ORDER BY mf.mtime DESC
 LIMIT ?`

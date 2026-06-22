@@ -86,7 +86,10 @@ func selectMatchesMissingPSA(ctx context.Context, playerDB *sql.DB) []string {
 	// les matchs récents d'abord, aligné sur le contrat convergenceHorizon.
 	rows, err := playerDB.QueryContext(ctx, `
 		SELECT e.match_id
-		FROM player_match_enrichment e
+		-- Append-only #23046 : _latest. psa_checked_at vit sur le stage 'psa' ; sur la
+		-- table brute les rows des autres stages ont psa_checked_at NULL → ce filtre
+		-- retournerait TOUS les matchs même déjà checkés → re-fetch PSA infini.
+		FROM player_match_enrichment_latest e
 		WHERE e.psa_checked_at IS NULL
 		  AND e.match_id NOT IN (
 		      SELECT DISTINCT match_id FROM personal_score_awards WHERE match_id IS NOT NULL)
@@ -121,8 +124,10 @@ func selectMatchesMissingPSA(ctx context.Context, playerDB *sql.DB) []string {
 // Convergence OPPORTUNISTE des alias (2026-06-10) : le JSON fetché contient le
 // gamertag de TOUS les participants — on upserte shared.xuid_aliases au
 // passage, à coût API nul. Résorbe le backlog d'alias des vieux matchs
-// (113 xuids absents de global ET shared au moment de l'audit ; le chemin
-// live écrit vers globalDB, handle souvent nil → fichier global figé).
+// (113 xuids absents au moment de l'audit). Depuis 2026-06-19, shared.xuid_aliases
+// est l'unique store (le store global xbox_aliases a été consolidé puis supprimé) :
+// ce chemin convergent en est l'alimentation principale, avec
+// match_participants/killer_victim_pairs (lus par v_gamertag_lookup).
 func convergePSA(ctx context.Context, playerDB, sharedDB *sql.DB, client HaloClient, xuid string, ids []string) int {
 	done := 0
 	aliases := 0
@@ -143,8 +148,10 @@ func convergePSA(ctx context.Context, playerDB, sharedDB *sql.DB, client HaloCli
 				continue
 			}
 		}
+		// Append-only #23046 : INSERT pur stage='psa' (marqueur terminal). La vue
+		// merge expose psa_checked_at par match ; selectMatchesMissingPSA lit _latest.
 		if _, err := playerDB.ExecContext(ctx,
-			`UPDATE player_match_enrichment SET psa_checked_at = now() WHERE match_id = ?`, mid); err != nil {
+			`INSERT INTO player_match_enrichment (match_id, psa_checked_at, stage) VALUES (?, now(), 'psa')`, mid); err != nil {
 			slog.WarnContext(ctx, "convergence: PSA stamp échoué", "match_id", mid, "err", err)
 			continue
 		}
@@ -209,7 +216,7 @@ func countSharedMatchesMissingEnrichment(ctx context.Context, playerDB, sharedDB
 		return 0
 	}
 	known := make(map[string]struct{}, 512)
-	rows, err := playerDB.QueryContext(ctx, `SELECT match_id FROM player_match_enrichment`)
+	rows, err := playerDB.QueryContext(ctx, `SELECT match_id FROM player_match_enrichment_latest`)
 	if err != nil {
 		slog.WarnContext(ctx, "convergence: lecture player_match_enrichment échouée", "xuid", xuid, "err", err)
 		return 0
@@ -267,15 +274,14 @@ func countSharedMatchesMissingEnrichment(ctx context.Context, playerDB, sharedDB
 // IMPÉRATIF : router via ProcessHighlightEvents (qui ne touche pas le flag avant
 // écriture), JAMAIS via ReplayHighlightEventsForMatches (qui clear events_loaded
 // AVANT → combiné à l'INSERT OR IGNORE non-déduplicant en prod, dupliquerait les
-// highlight_events). globalDB=nil : l'upsert d'alias xbox est best-effort et
-// déjà fait au sync primaire.
+// highlight_events).
 func convergeEvents(ctx context.Context, sharedDB *sql.DB, client HaloClient, ids []string) int {
 	done := 0
 	for _, mid := range ids {
 		if ctx.Err() != nil {
 			break
 		}
-		if err := ProcessHighlightEvents(ctx, client, sharedDB, nil, mid, nil); err != nil {
+		if err := ProcessHighlightEvents(ctx, client, sharedDB, mid, nil); err != nil {
 			slog.WarnContext(ctx, "convergence: events échoué", "match_id", mid, "err", err)
 			continue
 		}

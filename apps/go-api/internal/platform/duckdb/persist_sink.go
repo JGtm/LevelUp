@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/port"
 )
@@ -508,11 +509,14 @@ func (s *PersistSink) upsertItemTranslations(
 // liée au ctx appelant (HTTP / ticker live_refresh) au lieu d'une goroutine
 // détachée en context.Background() — garantit qu'elle se termine avant le
 // shutdown (lifecycle, W6 revue 2026-06-01).
-func (s *PersistSink) PersistChallengesSync(ctx context.Context, rawBody []byte) error {
+// items porte les ChallengeItem RENDUS (titre/description/image résolus côté provider) :
+// ils sont persistés sur les snapshots actifs pour que le cache reconstruise de vraies
+// cartes hors-ligne (au lieu de « Défis indisponibles ») quand le live est indisponible.
+func (s *PersistSink) PersistChallengesSync(ctx context.Context, rawBody []byte, items []domain.ChallengeItem) error {
 	if len(rawBody) == 0 {
 		return nil
 	}
-	return s.writeChallenges(ctx, rawBody)
+	return s.writeChallenges(ctx, rawBody, items)
 }
 
 // deckChallengeRaw est le struct de parsing best-effort d'un challenge depuis /decks.
@@ -531,9 +535,12 @@ type deckChallengeRaw struct {
 }
 
 // writeChallenges effectue les écritures dans metadata.duckdb et stats.duckdb.
-func (s *PersistSink) writeChallenges(ctx context.Context, body []byte) error {
+// renderByTracking (issu des items rendus) alimente title/description/image_url des
+// snapshots actifs → cartes reconstructibles depuis le cache.
+func (s *PersistSink) writeChallenges(ctx context.Context, body []byte, items []domain.ChallengeItem) error {
 	hash := persistHash(body)
 	now := time.Now()
+	renderByTracking := challengeRenderMap(items)
 
 	// Structure /decks telle que parsée par le provider.
 	var raw struct {
@@ -596,19 +603,34 @@ func (s *PersistSink) writeChallenges(ctx context.Context, body []byte) error {
 	for _, deck := range raw.AssignedDecks {
 		deckExpiry := deck.Expiration.ISO8601Date
 		for _, rawCh := range deck.ActiveChallenges {
-			if err := s.insertSnapshot(ctx, pdb, rawCh, "Active", deckExpiry, now); err != nil {
+			if err := s.insertSnapshot(ctx, pdb, rawCh, "Active", deckExpiry, now, renderByTracking); err != nil {
 				slog.Warn("persist_sink: snapshot insert failed",
 					"status", "Active", "xuid", s.XUID, "err", err)
 			}
 		}
 		for _, rawCh := range deck.CompletedChallenges {
-			if err := s.insertSnapshot(ctx, pdb, rawCh, "Completed", deckExpiry, now); err != nil {
+			if err := s.insertSnapshot(ctx, pdb, rawCh, "Completed", deckExpiry, now, nil); err != nil {
 				slog.Warn("persist_sink: snapshot insert failed",
 					"status", "Completed", "xuid", s.XUID, "err", err)
 			}
 		}
 	}
 	return nil
+}
+
+// challengeRenderMap indexe les items rendus par TrackingID (clé stable des snapshots).
+// Permet à insertSnapshot d'attacher title/description/image_url au bon défi actif.
+func challengeRenderMap(items []domain.ChallengeItem) map[string]domain.ChallengeItem {
+	if len(items) == 0 {
+		return nil
+	}
+	m := make(map[string]domain.ChallengeItem, len(items))
+	for _, it := range items {
+		if it.TrackingID != nil && *it.TrackingID != "" {
+			m[*it.TrackingID] = it
+		}
+	}
+	return m
 }
 
 // insertSnapshot insère un snapshot de défi si l'état a changé depuis le dernier
@@ -620,6 +642,7 @@ func (s *PersistSink) insertSnapshot(
 	rawCh json.RawMessage,
 	status, deckExpiry string,
 	at time.Time,
+	renderByTracking map[string]domain.ChallengeItem,
 ) error {
 	var ch deckChallengeRaw
 	if err := json.Unmarshal(rawCh, &ch); err != nil {
@@ -655,15 +678,30 @@ func (s *PersistSink) insertSnapshot(
 		expiresAt = expiry
 	}
 
+	// Métadonnées de rendu (titre/description/image) du défi actif correspondant,
+	// pour reconstruire des cartes depuis le cache. nil pour les défis complétés.
+	var title, description, imageURL interface{}
+	if item, ok := renderByTracking[ch.TrackingID]; ok {
+		if item.Title != "" {
+			title = item.Title
+		}
+		if item.Description != nil && *item.Description != "" {
+			description = *item.Description
+		}
+		if item.ImageURL != nil && *item.ImageURL != "" {
+			imageURL = *item.ImageURL
+		}
+	}
+
 	_, err = db.Exec(ctx, `
 		INSERT INTO challenge_snapshots
 			(snapshot_at, xuid, challenge_path, challenge_id,
 			 status, progress_current, progress_target, xp_reward,
-			 can_reroll, expires_at, state_hash)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			 can_reroll, expires_at, state_hash, title, description, image_url)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		at, s.XUID, chPath, ch.TrackingID,
 		status, ch.CurrentProgress, ch.Threshold, ch.XPReward,
-		ch.CanReroll, expiresAt, stateHash,
+		ch.CanReroll, expiresAt, stateHash, title, description, imageURL,
 	)
 	return err
 }

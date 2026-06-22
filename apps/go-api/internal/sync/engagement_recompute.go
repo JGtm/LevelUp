@@ -177,7 +177,7 @@ func loadRatioSamples(
 			COALESCE(engagement_pace_team, 0),
 			COALESCE(engagement_pace_lobby, 0),
 			COALESCE(engagement_player_activity, 0)
-		FROM player_match_enrichment
+		FROM player_match_enrichment_latest
 		WHERE mode_category = ?
 		  AND engagement_pace_team IS NOT NULL
 		ORDER BY match_id DESC
@@ -208,21 +208,24 @@ func saveCoefficient(
 	result *temporal.CoefficientResult,
 	now time.Time,
 ) error {
-	const q = `
-		INSERT INTO engagement_coefficients (
-			xuid, mode_category, coef_team_share, coef_lobby_share,
-			n_matches, last_updated
-		) VALUES (?, ?, ?, ?, ?, ?)
-		ON CONFLICT (xuid, mode_category) DO UPDATE SET
-			coef_team_share = EXCLUDED.coef_team_share,
-			coef_lobby_share = EXCLUDED.coef_lobby_share,
-			n_matches = EXCLUDED.n_matches,
-			last_updated = EXCLUDED.last_updated
-	`
-	_, err := playerDB.ExecContext(ctx, q,
-		xuid, modeCategory,
-		result.CoefTeamShare, result.CoefLobbyShare,
-		result.NMatches, now,
-	)
+	// ART-safe : SELECT-then-UPDATE-or-INSERT (pas d'ON CONFLICT, qui réécrit via
+	// l'index ART de la PK). engagement_coefficients : PK (xuid, mode_category), pas
+	// d'index secondaire muté. Sérialisé sous lease KindPlayer côté caller.
+	var dummy int
+	err := playerDB.QueryRowContext(ctx,
+		`SELECT 1 FROM engagement_coefficients WHERE xuid = ? AND mode_category = ?`,
+		xuid, modeCategory).Scan(&dummy)
+	switch {
+	case err == nil:
+		_, err = playerDB.ExecContext(ctx, `UPDATE engagement_coefficients
+			SET coef_team_share = ?, coef_lobby_share = ?, n_matches = ?, last_updated = ?
+			WHERE xuid = ? AND mode_category = ?`,
+			result.CoefTeamShare, result.CoefLobbyShare, result.NMatches, now, xuid, modeCategory)
+	case errors.Is(err, sql.ErrNoRows):
+		_, err = playerDB.ExecContext(ctx, `INSERT INTO engagement_coefficients
+			(xuid, mode_category, coef_team_share, coef_lobby_share, n_matches, last_updated)
+			VALUES (?, ?, ?, ?, ?, ?)`,
+			xuid, modeCategory, result.CoefTeamShare, result.CoefLobbyShare, result.NMatches, now)
+	}
 	return err
 }

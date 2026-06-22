@@ -52,14 +52,15 @@ type SocialPersister interface {
 	//
 	// Tous garantissent : BEGIN TX → write → COMMIT → CHECKPOINT.
 
-	// AddFavorite : INSERT OR IGNORE dans match_favorites.
+	// AddFavorite : INSERT event is_favorite=TRUE dans match_favorites_history (append-only).
 	AddFavorite(ctx context.Context, playerSlug, matchID string) error
-	// RemoveFavorite : DELETE FROM match_favorites.
+	// RemoveFavorite : INSERT event is_favorite=FALSE dans match_favorites_history
+	// (append-only, plus de DELETE — surface ART éliminée).
 	RemoveFavorite(ctx context.Context, playerSlug, matchID string) error
 
-	// AddLike : INSERT OR IGNORE dans media_likes.
+	// AddLike : INSERT event is_liked=TRUE dans media_likes_history (append-only).
 	AddLike(ctx context.Context, mediaPath, likerSlug, likerGamertag string) error
-	// RemoveLike : DELETE FROM media_likes.
+	// RemoveLike : INSERT event is_liked=FALSE dans media_likes_history (append-only, plus de DELETE).
 	RemoveLike(ctx context.Context, mediaPath, likerSlug string) error
 
 	// SetMediaMatchAssociation : force l'association média→match (DELETE old +

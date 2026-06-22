@@ -559,6 +559,7 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 		WithDataAdapter(r.dataAdapterForPDB(pdb)).
 		WithMatchesCache(r.homeMatchesCache, pdb.XUID).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
+		WithSquadSessionTeammates(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
 		WithCareerLive(r.newCareerLiveService(pdb, homeRepo)).
 		WithSkillBadgeResolver(skillBadgeResolverFor(pdb.TitleSlug)).
 		WithDemoMode(r.cfg.DemoMode)

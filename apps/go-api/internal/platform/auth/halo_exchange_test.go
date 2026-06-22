@@ -208,7 +208,7 @@ func TestRequestSpartanToken_Success(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"SpartanToken": "spartan_xyz"})
 	}))
 	defer srv.Close()
-	token, err := requestSpartanToken(context.Background(), mockClient(srv.URL), "xsts_tok")
+	token, _, err := requestSpartanToken(context.Background(), mockClient(srv.URL), "xsts_tok")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +223,7 @@ func TestRequestSpartanToken_Missing(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"other": "value"})
 	}))
 	defer srv.Close()
-	_, err := requestSpartanToken(context.Background(), mockClient(srv.URL), "xsts_tok")
+	_, _, err := requestSpartanToken(context.Background(), mockClient(srv.URL), "xsts_tok")
 	if err == nil {
 		t.Error("expected error when SpartanToken absent")
 	}
@@ -270,5 +270,33 @@ func TestRequestClearanceToken_MissingField(t *testing.T) {
 	_, err := requestClearanceToken(context.Background(), mockClient(srv.URL), "spartan_tok")
 	if err == nil {
 		t.Error("expected error when FlightConfigurationId absent")
+	}
+}
+
+// --- Garde-fou A1 : capture de l'expiry réel du Spartan (ExpiresUtc) ---
+
+func TestParseSpartanExpiry(t *testing.T) {
+	// ExpiresUtc.ISO8601Date présent → parsé.
+	resp := map[string]any{
+		"SpartanToken": "tok",
+		"ExpiresUtc":   map[string]any{"ISO8601Date": "2030-01-02T03:04:05Z"},
+	}
+	got := parseSpartanExpiry(resp)
+	if got.IsZero() {
+		t.Fatal("expiry devrait être parsé depuis ExpiresUtc.ISO8601Date")
+	}
+	if got.Year() != 2030 || got.Month() != 1 || got.Day() != 2 {
+		t.Errorf("expiry mal parsé: %v", got)
+	}
+
+	// Champ absent → zéro (expiry inconnu, fallback côté cache).
+	if exp := parseSpartanExpiry(map[string]any{"SpartanToken": "tok"}); !exp.IsZero() {
+		t.Errorf("ExpiresUtc absent → expiry zéro attendu, got %v", exp)
+	}
+	// Date illisible → zéro.
+	if exp := parseSpartanExpiry(map[string]any{
+		"ExpiresUtc": map[string]any{"ISO8601Date": "pas-une-date"},
+	}); !exp.IsZero() {
+		t.Errorf("date illisible → expiry zéro attendu, got %v", exp)
 	}
 }

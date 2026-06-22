@@ -1,10 +1,10 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
 import type {
-  LabContractsResponse,
   LabDiagnosticsResponse,
   LabResourcesResponse,
+  LabWaypointResponse,
 } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
 
@@ -56,20 +56,36 @@ export function useLabResources(params: LabResourcesParams, enabled = true) {
   })
 }
 
-export function useLabContracts(enabled = true) {
-  return useQuery({
-    queryKey: queryKeys.labContracts,
-    queryFn: () => api.get<LabContractsResponse>('/lab/contracts'),
-    enabled,
-    staleTime: 60 * 1000,
-  })
-}
-
 export function useLabDiagnostics(enabled = true) {
   return useQuery({
     queryKey: queryKeys.labDiagnostics,
     queryFn: () => api.get<LabDiagnosticsResponse>('/lab/diagnostics'),
     enabled,
     staleTime: 60 * 1000,
+  })
+}
+
+export interface LabWaypointParams {
+  segment: string
+  assetID: string
+  versionID: string
+  lang?: string
+}
+
+/**
+ * useLabWaypoint — exploration live de l'API Discovery UGC (Lab). Déclenchée
+ * à la demande (bouton), donc une mutation plutôt qu'une query auto-fetch.
+ */
+export function useLabWaypoint() {
+  return useMutation({
+    mutationFn: (params: LabWaypointParams) => {
+      const search = new URLSearchParams({
+        segment: params.segment,
+        asset_id: params.assetID,
+        version_id: params.versionID,
+      })
+      if (params.lang) search.set('lang', params.lang)
+      return api.get<LabWaypointResponse>(`/lab/waypoint?${search.toString()}`)
+    },
   })
 }
