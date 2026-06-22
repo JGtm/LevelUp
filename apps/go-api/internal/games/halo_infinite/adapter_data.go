@@ -173,6 +173,7 @@ func fallbackCapabilities() games.CapabilityMap {
 		games.CapMatchDetailCore:    games.CapSupported,
 		games.CapMatchSkillSnapshot: games.CapDegraded,
 		games.CapCareerProgression:  games.CapSupported,
+		games.CapCareerRankCatalog:  games.CapSupported,
 		games.CapPveFirefight:       games.CapSupported,
 		games.CapTimeseries:         games.CapNotExposed,
 		games.CapScoreboardExtra:    games.CapNotExposed,

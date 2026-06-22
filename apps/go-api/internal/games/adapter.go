@@ -40,6 +40,7 @@ const (
 	CapMatchDetailCore    CapabilityKey = "match.detail.core"
 	CapMatchSkillSnapshot CapabilityKey = "match.skill.snapshot"
 	CapCareerProgression  CapabilityKey = "career.progression"
+	CapCareerRankCatalog  CapabilityKey = "career.rank_catalog" // rangs de carrière = catalogue table-backed avec icône par palier (Infinite ; absent pour h5, SR numérique)
 	CapPveFirefight       CapabilityKey = "pve.firefight_stats"
 	CapTimeseries         CapabilityKey = "analytics.timeseries"
 	CapScoreboardExtra    CapabilityKey = "match.scoreboard.extra" // champs étendus du scoreboard
