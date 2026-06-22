@@ -101,6 +101,11 @@ type DataAdapter struct {
 	// ErrCapabilityNotSupported. Injecté via WithMatchHistorySource au builder
 	// player-scoped (porte l'identité du joueur, cf. MatchHistorySource).
 	matchHistory MatchHistorySource
+	// commendationDefs (optionnel) — référentiel natif (nom + icône) des commendations
+	// par UUID, lu dans la metadata h5 (commendation_definitions). nil → les
+	// commendations du MatchDetail restent brutes (ID + count, le front dégrade sur
+	// l'ID court). Injecté via WithCommendationDefs au builder (AXE B définitions).
+	commendationDefs CommendationDefSource
 }
 
 var _ games.TitleDataAdapter = (*DataAdapter)(nil)
@@ -144,6 +149,14 @@ func (a *DataAdapter) WithRankedClassifier(c classification.RankedClassifier) *D
 // LoadMatchSummaries reste dégradé (ErrCapabilityNotSupported). Chainable.
 func (a *DataAdapter) WithMatchHistorySource(s MatchHistorySource) *DataAdapter {
 	a.matchHistory = s
+	return a
+}
+
+// WithCommendationDefs injecte le référentiel natif (nom + icône) des commendations
+// utilisé pour enrichir MatchDetail.Commendations (AXE B définitions). nil (défaut)
+// -> commendations laissées brutes (ID + count). Chainable.
+func (a *DataAdapter) WithCommendationDefs(s CommendationDefSource) *DataAdapter {
+	a.commendationDefs = s
 	return a
 }
 
@@ -396,6 +409,7 @@ func (a *DataAdapter) LoadMatchDetail(ctx context.Context, matchID string) (*can
 			"player", gamertag, "match_id", matchID)
 		return nil, games.ErrCapabilityNotSupported
 	}
+	a.enrichCommendations(ctx, detail) // best-effort : noms + icônes natifs (AXE B)
 	return detail, nil
 }
 

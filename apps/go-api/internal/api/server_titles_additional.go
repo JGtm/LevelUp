@@ -125,18 +125,39 @@ func registerHalo5Adapters(
 		"placement_total", td.PlacementMatches,
 	)
 
-	// Builder player-scoped : adapter live + source d'historique LOCAL (AXE A).
-	// Contrairement aux surfaces live (career, match detail), l'historique de
-	// matchs (LoadMatchSummaries) lit le shared h5 DÉJÀ synchronisé par le
-	// livesync (match_registry ⨝ match_participants → canonical.MatchSummary).
-	// La source porte l'identité du joueur (gamertag) fixée depuis le PlayerDB,
-	// et lit via le SharedReader title-aware (shared du titre h5).
+	// Définitions natives des commendations (nom + icône) depuis la metadata h5
+	// (commendation_definitions, seedé par cmd/h5-metadata-fetch via l'API Metadata
+	// officielle /commendations). Handle partagé ouvert UNE fois (refcounté + tracké
+	// pour fermeture au shutdown, cf. TrackMetadataHandle). Best-effort : échec
+	// d'ouverture → commendations laissées brutes (ID + count, le front dégrade).
+	var commDefs halo5.CommendationDefSource
+	metaPath := titlePkg.NewPathResolver(reg.cfg.RepoRoot).MetadataDBPath(td.Slug)
+	if metaDB, err := platform_duckdb.OpenReadWriteShared(metaPath); err != nil {
+		slog.Warn("h5_commendation_defs_open_failed", "title_slug", td.Slug, "err", err.Error())
+	} else {
+		reg.TrackMetadataHandle(metaDB)
+		commDefs = platform_duckdb.NewHalo5CommendationDefSource(metaDB.SQLDb())
+	}
+
+	// Builder player-scoped : adapter live + source d'historique LOCAL (AXE A) +
+	// définitions natives des commendations (AXE B). Contrairement aux surfaces live
+	// (career, match detail), l'historique (LoadMatchSummaries) lit le shared h5 DÉJÀ
+	// synchronisé par le livesync (match_registry ⨝ match_participants →
+	// canonical.MatchSummary). La source d'historique porte l'identité du joueur
+	// (gamertag) fixée depuis le PlayerDB, et lit via le SharedReader title-aware.
 	reg.RegisterPlayerDataBuilder(td.Slug, func(pdb *platform_duckdb.PlayerDB) games.TitleDataAdapter {
 		a := buildLiveData()
-		if da, ok := a.(*halo5.DataAdapter); ok && pdb != nil {
-			src := platform_duckdb.NewHalo5MatchHistorySource(pdb.SharedReadDB(), pdb.Gamertag)
-			a = da.WithMatchHistorySource(src)
+		da, ok := a.(*halo5.DataAdapter)
+		if !ok {
+			return a
 		}
-		return a
+		if pdb != nil {
+			src := platform_duckdb.NewHalo5MatchHistorySource(pdb.SharedReadDB(), pdb.Gamertag)
+			da = da.WithMatchHistorySource(src)
+		}
+		if commDefs != nil {
+			da = da.WithCommendationDefs(commDefs)
+		}
+		return da
 	})
 }
