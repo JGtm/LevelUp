@@ -12,9 +12,9 @@
 
 **Résultats (vérif)** : `npm ls js-yaml` → 4.2.0 unique ; `npm run generate-types` OK (openapi-typescript 7.13.0, openapi.yaml → generated.ts en 103ms, parse inchangé — la version js-yaml n'altère pas la sortie). Working tree final = 3 fichiers : `.github/dependabot.yml` (neuf), `apps/web/package.json` + `package-lock.json` (override). Diff lockfile audité = strictement js-yaml.
 
-**Note pré-existante signalée (hors scope, non corrigé ici)** : la régénération `generate-types` a produit un diff de **5858 lignes** sur `apps/web/src/lib/api/generated.ts` → le fichier commité est **périmé** vs l'`openapi.yaml` courant (nouveaux endpoints ex. `/players/{player_slug}/filters/match-ids`, descriptions CSR à jour). **Reverté** pour garder ce commit focalisé sur le fix sécu. À traiter séparément (régénérer + commit dédié).
+**Dérive `generated.ts` découverte et corrigée (2e commit, même branche)** : en testant `generate-types` (vérif de non-régression openapi-typescript sous js-yaml 4.2.0), diff de **5858 lignes** sur `apps/web/src/lib/api/generated.ts`. Investigation : le fichier était **périmé de 12 commits** (`openapi.yaml` modifié par groups/lab/admin/leaderboard/auth-password depuis le dernier regen `c4ddd498a`) — `generate-types` oublié sur toute la série. D'abord **reverté** (turn 1) pour ne pas polluer le commit sécu ; le mot « reverté » a alarmé l'utilisateur → clarifié : `git checkout --` = jeter la régénération temporaire du working tree, fichier commité **intact** (preuves : `git diff HEAD` vide, commit sécu ne touche pas le fichier). Sur instruction « je te laisse gérer + merge sur main local » : **régénéré pour de bon**. Sécurité validée — `tsc -b` **exit 0** (le front compile contre les types à jour) + `eslint` exit 0 (69 warnings préexistants hors `generated.ts`). Commité séparément `chore(api)`.
 
-**Prochaine étape** : commit (autorisation requise) + push ; supprimer la branche distante `JGtm-patch-1` (autorisé par l'utilisateur, remplacée par la bonne config).
+**Prochaine étape** : merge de la branche dans `main` **local** (demandé par l'utilisateur) ; PR #25 ouverte côté GitHub pour le fix sécu ; `JGtm-patch-1` supprimée (remplacée par la bonne config). Le merge sur `main` distant (= deploy prod auto) reste à la main de l'utilisateur.
 
 ---
 
