@@ -255,6 +255,54 @@ func TestBuildMatchViewFromCanonical_NilFields_NoPanic(t *testing.T) {
 	}
 }
 
+// TestBuildMatchViewFromCanonical_NativeCommendations : les commendations natives
+// (Halo 5 AXE B) du détail canonique peuplent CitationsTab.NativeCommendations et
+// retirent partialReasonCitations. Sans commendation → onglet vide + raison présente.
+func TestBuildMatchViewFromCanonical_NativeCommendations(t *testing.T) {
+	svc := NewMatchViewService(nil, "")
+	ctx := ctxkeys.WithViewerGamertag(context.Background(), "JGtm")
+
+	// Cas 1 : commendations présentes.
+	icon := "https://example.test/comm.png"
+	detail := sampleH5Detail()
+	detail.Commendations = []canonical.Commendation{
+		{ID: "comm-uuid-1", Count: 3, Name: "Sharpshooter", IconURL: &icon},
+		{ID: "comm-uuid-2", Count: 1}, // pas de définition → Name vide, IconURL nil
+	}
+	resp := svc.buildMatchViewFromCanonical(ctx, detail)
+	got := resp.CitationsTab.NativeCommendations
+	if len(got) != 2 {
+		t.Fatalf("NativeCommendations = %d, want 2 — %+v", len(got), got)
+	}
+	if got[0].ID != "comm-uuid-1" || got[0].Count != 3 || got[0].Name != "Sharpshooter" || got[0].IconURL == nil {
+		t.Errorf("commendation[0] mal projetée: %+v", got[0])
+	}
+	if got[1].Name != "" || got[1].IconURL != nil {
+		t.Errorf("commendation[1] sans définition doit dégrader (Name='', IconURL=nil): %+v", got[1])
+	}
+	if containsReason(resp.PartialReasons, partialReasonCitations) {
+		t.Errorf("partialReasonCitations ne doit PAS être présent quand des commendations existent: %v", resp.PartialReasons)
+	}
+
+	// Cas 2 : aucune commendation → onglet vide + raison citations présente.
+	bare := svc.buildMatchViewFromCanonical(ctx, sampleH5Detail())
+	if len(bare.CitationsTab.NativeCommendations) != 0 {
+		t.Errorf("NativeCommendations doit être vide sans commendations: %+v", bare.CitationsTab.NativeCommendations)
+	}
+	if !containsReason(bare.PartialReasons, partialReasonCitations) {
+		t.Errorf("partialReasonCitations attendu quand aucune commendation: %v", bare.PartialReasons)
+	}
+}
+
+func containsReason(reasons []string, want string) bool {
+	for _, r := range reasons {
+		if r == want {
+			return true
+		}
+	}
+	return false
+}
+
 // TestGetMatchView_RoutesToCanonical_WhenRepoCannotServe : meta en erreur (repo ne
 // sert pas le match) + adapter câblé → la voie canonique prend le relais.
 func TestGetMatchView_RoutesToCanonical_WhenRepoCannotServe(t *testing.T) {

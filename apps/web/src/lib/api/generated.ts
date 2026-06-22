@@ -1202,6 +1202,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/lab/waypoint": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lab — exploration live de l'API Discovery UGC (résolution d'un asset par segment/id/version) */
+        get: operations["getLabWaypoint"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -1265,6 +1282,93 @@ export interface paths {
         /** Définit/change le mot de passe de l'utilisateur connecté (opt-in, PR-C) */
         post: operations["postAuthPassword"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste les groupes du user courant (auth + identité Halo requise) */
+        get: operations["listMyGroups"];
+        put?: never;
+        /** Crée un groupe (user courant = propriétaire) */
+        post: operations["createGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/groups/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Supprime un groupe (propriétaire only) */
+        delete: operations["deleteGroup"];
+        options?: never;
+        head?: never;
+        /** Renomme un groupe (propriétaire only) */
+        patch: operations["renameGroup"];
+        trace?: never;
+    };
+    "/groups/{id}/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Génère une invitation 'rejoindre le groupe' (membre only) */
+        post: operations["createGroupInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/groups/{id}/members/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Quitter un groupe (self ; propriétaire interdit → 409) */
+        delete: operations["leaveGroup"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/groups/{id}/members/{xuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Retire un membre (propriétaire only) */
+        delete: operations["removeGroupMember"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1875,6 +1979,23 @@ export interface paths {
         };
         /** Liste les armes du catalogue avec leurs traductions */
         get: operations["listWeaponsMetadata"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/assets/{title_id}/medals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste les médailles du catalogue avec leurs traductions (icône sprite pour Halo 5) */
+        get: operations["listMedalsMetadata"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4116,6 +4237,14 @@ export interface components {
         MatchCitationsTab: {
             commendations: components["schemas"]["MatchCitation"][] | null;
             medals: components["schemas"]["MatchMedal"][] | null;
+            native_commendations?: components["schemas"]["MatchNativeCommendation"][] | null;
+        };
+        MatchNativeCommendation: {
+            /** Format: int64 */
+            count: number;
+            icon_url?: string;
+            id: string;
+            name?: string;
         };
         MatchViewResponse: {
             citations_tab: components["schemas"]["MatchCitationsTab"];
@@ -5995,6 +6124,20 @@ export interface components {
             resource_key: string;
             source_url?: string;
             version: string;
+        };
+        LabWaypointResponse: {
+            asset_id: string;
+            asset_name?: string;
+            description?: string;
+            endpoint: string;
+            error?: string;
+            image_url?: string;
+            lang: string;
+            /** Format: int64 */
+            latency_ms: number;
+            resolved_ok: boolean;
+            segment: string;
+            version_id: string;
         };
         LastSeenStatus: {
             timestamp: string;
@@ -9975,6 +10118,45 @@ export interface operations {
             };
         };
     };
+    getLabWaypoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Résultat de l'exploration (asset résolu, ou erreur d'appel portée dans la réponse) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Paramètres requis manquants (segment/asset_id/version_id) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Lab non autorisé sur cette instance (can_manage_instance) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Explorateur d'API indisponible (aucune source de token Spartan) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     postAuthLogin: {
         parameters: {
             query?: never;
@@ -10049,6 +10231,194 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    listMyGroups: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Liste des groupes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    createGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Groupe créé */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    deleteGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Groupe supprimé */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Accès refusé (propriétaire/membre requis) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    renameGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Groupe renommé */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description Accès refusé (propriétaire/membre requis) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createGroupInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Invitation créée */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Accès refusé (propriétaire/membre requis) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    leaveGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Membre retiré */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Le propriétaire ne peut pas quitter */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    removeGroupMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                xuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Membre retiré */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Le propriétaire ne peut pas être retiré */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Accès refusé (propriétaire requis) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
         };
     };
     getAdminTitles: {
@@ -10907,6 +11277,33 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Liste des armes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Asset metadata DB indisponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listMedalsMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Liste des médailles */
             200: {
                 headers: {
                     [name: string]: unknown;

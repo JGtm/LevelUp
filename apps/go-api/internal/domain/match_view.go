@@ -493,5 +493,19 @@ type MatchMediaTab struct {
 // MatchCitationsTab : contenu de l'onglet Citations.
 type MatchCitationsTab struct {
 	Commendations []MatchCitation `json:"commendations"`
-	Medals        []MatchMedal    `json:"medals"`
+	// NativeCommendations : commendations NATIVES (Halo 5) progressées CE match,
+	// affichées TELLES QUELLES (PAS le moteur de citations dérivé d'Infinite —
+	// AXE B prod-gate). Vide/omis pour les titres sans commendations natives.
+	NativeCommendations []MatchNativeCommendation `json:"native_commendations,omitempty"`
+	Medals              []MatchMedal              `json:"medals"`
+}
+
+// MatchNativeCommendation : commendation NATIVE (Halo 5) gagnée sur un match.
+// Donnée brute : Name vide → le front dégrade en « Commendation {ID} » ; IconURL
+// nil → pas d'icône (Phase 1, définitions natives = suite AXE B).
+type MatchNativeCommendation struct {
+	ID      string  `json:"id"`
+	Name    string  `json:"name,omitempty"`
+	Count   int     `json:"count"`
+	IconURL *string `json:"icon_url,omitempty"`
 }

@@ -90,6 +90,9 @@ export interface MatchViewText {
   newlyMastered: string
   noMedals: string
   noCitations: string
+  // Commendations NATIVES (Halo 5) — affichées à la place des citations dérivées
+  sectionNativeCommendations: string
+  noNativeCommendations: string
   // Onglet Combat — charts en haut (mock match_view.09 / .10 / .11 / .12)
   combatHighlights: string
   combatKdCumulTitle: string
@@ -248,6 +251,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     newlyMastered: 'Maîtrisé !',
     noMedals: 'Aucune médaille',
     noCitations: 'Aucune citation',
+    sectionNativeCommendations: 'Commendations',
+    noNativeCommendations: 'Aucune commendation',
     combatHighlights: 'Faits marquants',
     combatKdCumulTitle: 'Frags cumulés',
     combatTugOfWarTitle: 'Dominance',
@@ -396,6 +401,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     newlyMastered: 'Mastered!',
     noMedals: 'No medals',
     noCitations: 'No commendations',
+    sectionNativeCommendations: 'Commendations',
+    noNativeCommendations: 'No commendations',
     combatHighlights: 'Highlights',
     combatKdCumulTitle: 'Cumulative frags',
     combatTugOfWarTitle: 'Dominance',

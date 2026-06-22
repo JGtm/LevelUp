@@ -1641,6 +1641,9 @@ export type MatchMediaTab = components['schemas']['MatchMediaTab']
 
 export type MatchCitationsTab = components['schemas']['MatchCitationsTab']
 
+/** Commendation NATIVE (Halo 5) gagnée sur un match — affichée telle quelle. */
+export type MatchNativeCommendation = components['schemas']['MatchNativeCommendation']
+
 export interface MatchViewResponse {
   header: MatchViewHeader
   rank: MatchViewRank

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { MatchMedal, MatchCitationSnippet } from '@/lib/api/types'
+import type { MatchMedal, MatchCitationSnippet, MatchNativeCommendation } from '@/lib/api/types'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
 import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
 import { MedalIcon } from '@/components/ui/MedalIcon'
@@ -91,6 +91,66 @@ export function MatchMedalsSection({ medals, t }: MatchMedalsSectionProps) {
             </span>
             <span className="text-3xs font-semibold text-foreground/80 leading-none">
               ×{medal.count}
+            </span>
+          </div>
+        )
+      })}
+    </PaneCard>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Commendations NATIVES (Halo 5)
+// ---------------------------------------------------------------------------
+
+interface MatchNativeCommendationsSectionProps {
+  commendations: MatchNativeCommendation[]
+  t: MatchViewText
+}
+
+// MatchNativeCommendationsSection rend les commendations NATIVES (Halo 5) gagnées
+// sur le match, affichées TELLES QUELLES (pas le moteur de citations dérivé
+// d'Infinite). Calquée sur MatchMedalsSection : icône (si définition connue) +
+// libellé + compte. Sans définition (name vide), on dégrade sur un préfixe d'ID
+// court pour distinguer les commendations entre elles en attendant les définitions.
+export function MatchNativeCommendationsSection({
+  commendations,
+  t,
+}: MatchNativeCommendationsSectionProps) {
+  return (
+    <PaneCard
+      title={t.sectionNativeCommendations}
+      isEmpty={commendations.length === 0}
+      emptyMessage={t.noNativeCommendations}
+    >
+      {commendations.map((comm) => {
+        const label =
+          comm.name && comm.name.trim() !== '' ? comm.name : `#${comm.id.slice(0, 8)}`
+        return (
+          <div
+            key={comm.id}
+            title={label}
+            className="flex flex-col items-center gap-1 cursor-default w-[74px]"
+          >
+            {comm.icon_url ? (
+              <MedalIcon
+                imageUrl={comm.icon_url}
+                label={label}
+                size={50}
+                className="object-contain"
+              />
+            ) : (
+              <div className="w-[50px] h-[50px] rounded bg-muted flex items-center justify-center px-1">
+                <span className="text-3xs text-muted-foreground text-center leading-none break-all">
+                  {label}
+                </span>
+              </div>
+            )}
+            <span className="text-3xs text-muted-foreground leading-tight text-center w-full truncate">
+              {label}
+            </span>
+            <span className="text-3xs font-semibold text-foreground/80 leading-none">
+              ×{comm.count}
             </span>
           </div>
         )
