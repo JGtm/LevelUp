@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/platform/halo/duration"
 )
 
 func TestBuildSeasonServiceRecordURL(t *testing.T) {
@@ -45,12 +46,14 @@ func TestParseISO8601DurationSeconds(t *testing.T) {
 		{"PT30M", 1800},
 		{"PT1H", 3600},
 		{"PT45.9S", 45},
+		{"P1D", 86400},
 		{"P2D", 172800},
 		{"PT0S", 0},
 	}
 	for _, c := range cases {
-		if got := parseISO8601DurationSeconds(c.in); got != c.want {
-			t.Errorf("parseISO8601DurationSeconds(%q) = %d, want %d", c.in, got, c.want)
+		// Délègue au parseur canonique partagé (duration.SecondsInt64).
+		if got := duration.SecondsInt64(c.in); got != c.want {
+			t.Errorf("duration.SecondsInt64(%q) = %d, want %d", c.in, got, c.want)
 		}
 	}
 }

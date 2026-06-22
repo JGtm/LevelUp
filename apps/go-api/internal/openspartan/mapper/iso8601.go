@@ -2,87 +2,47 @@ package mapper
 
 import (
 	"fmt"
-	"regexp"
-	"strconv"
 	"time"
+
+	"levelup/go-api/internal/platform/halo/duration"
 )
 
-// iso8601DurationRe matches the subset of ISO 8601 duration the Halo API
-// uses: `PT[<H>H][<M>M][<S>S]`, where the seconds component may carry a
-// decimal fraction. Days/weeks/years are not observed and not supported.
+// Ce fichier ne contient plus qu'une fine couche d'adaptation : le parsing des
+// durées ISO-8601 « flavoured Halo » est centralisé dans le leaf neutre
+// internal/platform/halo/duration (source unique, regex canonique gérant aussi
+// les jours "P1D" — corrige un bug latent de divergence inter-packages).
 //
-// Examples seen in real responses:
-//
-//	PT11M59.2855382S
-//	PT11M59.25S
-//	PT1M8.2S
-//	PT46S
-//	PT10M
-//	PT1H30M
-//
-// Returns ErrInvalidDuration when the input does not match the expected
-// shape or carries no time component at all.
-var iso8601DurationRe = regexp.MustCompile(
-	`^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?$`)
+// On conserve les noms ParseISO8601Duration / DurationSeconds /
+// DurationSecondsFloat exportés ici pour ne pas casser les appelants, et on
+// ré-enveloppe l'erreur du leaf avec ErrInvalidDuration (errors.go) afin de
+// préserver les vérifications errors.Is(err, ErrInvalidDuration) existantes.
 
-// ParseISO8601Duration parses a Halo-flavoured ISO 8601 duration string into
-// a time.Duration. An empty input returns (0, nil) — many payloads omit
-// optional duration fields.
+// ParseISO8601Duration parse une durée ISO 8601 flavoured Halo en time.Duration.
+// Entrée vide → (0, nil). Erreur enveloppée dans ErrInvalidDuration si invalide.
 func ParseISO8601Duration(s string) (time.Duration, error) {
-	if s == "" {
-		return 0, nil
+	d, err := duration.ParseISO8601Duration(s)
+	if err != nil {
+		return 0, fmt.Errorf("%w: %v", ErrInvalidDuration, err)
 	}
-	m := iso8601DurationRe.FindStringSubmatch(s)
-	if m == nil {
-		return 0, fmt.Errorf("%w: %q", ErrInvalidDuration, s)
-	}
-	hours, minutes, seconds := m[1], m[2], m[3]
-	if hours == "" && minutes == "" && seconds == "" {
-		return 0, fmt.Errorf("%w: %q has no time component", ErrInvalidDuration, s)
-	}
-	var total time.Duration
-	if hours != "" {
-		h, err := strconv.Atoi(hours)
-		if err != nil {
-			return 0, fmt.Errorf("%w: hours %q: %v", ErrInvalidDuration, hours, err)
-		}
-		total += time.Duration(h) * time.Hour
-	}
-	if minutes != "" {
-		mi, err := strconv.Atoi(minutes)
-		if err != nil {
-			return 0, fmt.Errorf("%w: minutes %q: %v", ErrInvalidDuration, minutes, err)
-		}
-		total += time.Duration(mi) * time.Minute
-	}
-	if seconds != "" {
-		sec, err := strconv.ParseFloat(seconds, 64)
-		if err != nil {
-			return 0, fmt.Errorf("%w: seconds %q: %v", ErrInvalidDuration, seconds, err)
-		}
-		total += time.Duration(sec * float64(time.Second))
-	}
-	return total, nil
+	return d, nil
 }
 
-// DurationSeconds is a convenience wrapper that returns the duration in
-// whole seconds (rounded down), suitable for the `INTEGER` columns the v6
-// schema uses (duration_seconds, playable_duration_seconds,
-// time_played_seconds).
+// DurationSeconds renvoie la durée en secondes entières (troncature), adapté aux
+// colonnes INTEGER du schéma v6. Erreur enveloppée dans ErrInvalidDuration.
 func DurationSeconds(s string) (int, error) {
-	d, err := ParseISO8601Duration(s)
+	n, err := duration.Seconds(s)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("%w: %v", ErrInvalidDuration, err)
 	}
-	return int(d / time.Second), nil
+	return n, nil
 }
 
-// DurationSecondsFloat returns the duration in fractional seconds, suitable
-// for FLOAT columns (avg_life_seconds).
+// DurationSecondsFloat renvoie la durée en secondes fractionnaires, adapté aux
+// colonnes FLOAT (avg_life_seconds). Erreur enveloppée dans ErrInvalidDuration.
 func DurationSecondsFloat(s string) (float64, error) {
-	d, err := ParseISO8601Duration(s)
+	f, err := duration.SecondsFloat(s)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("%w: %v", ErrInvalidDuration, err)
 	}
-	return float64(d) / float64(time.Second), nil
+	return f, nil
 }
