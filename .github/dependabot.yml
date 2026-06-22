@@ -4,6 +4,12 @@
 # Note : ce fichier pilote les *version updates* (PRs de bump automatiques).
 # Les *security alerts* (Dependabot alerts) sont activees au niveau du repo et
 # fonctionnent independamment de ce fichier.
+#
+# Config sobre (apres l'incident des 15 PRs du scan initial) :
+#   - mensuel (pas hebdo) pour limiter les vagues
+#   - groupe : 1 PR groupee par ecosysteme pour les bumps minor/patch
+#   - github-actions : on ignore les majors (sauts v4->v7 risquant de casser
+#     la CI / le deploy) ; ils restent traitables a la main si besoin.
 
 version: 2
 updates:
@@ -11,18 +17,44 @@ updates:
   - package-ecosystem: "npm"
     directory: "/apps/web"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      npm-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   # Backend (Go modules) — apps/go-api
   - package-ecosystem: "gomod"
     directory: "/apps/go-api"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      go-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   # Workflows GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      actions-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
