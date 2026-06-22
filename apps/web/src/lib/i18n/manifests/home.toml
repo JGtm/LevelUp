@@ -214,7 +214,7 @@ fr = "Temps"
 en = "Time"
 
 [home.kpi.favorite_playlist]
-fr = "Sélection favorite"
+fr = "Sélect. favorite"
 en = "Favorite playlist"
 
 [home.kpi.off_def]

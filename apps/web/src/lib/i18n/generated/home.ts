@@ -62,7 +62,7 @@ export const homeManifest = {
   "home.highlights.unit.matches": { fr: "matchs", en: "matches" },
   "home.identity.unavailable": { fr: "Identité Spartan indisponible", en: "Spartan identity unavailable" },
   "home.kpi.accuracy_label": { fr: "Précision", en: "Accuracy" },
-  "home.kpi.favorite_playlist": { fr: "Sélection favorite", en: "Favorite playlist" },
+  "home.kpi.favorite_playlist": { fr: "Sélect. favorite", en: "Favorite playlist" },
   "home.kpi.favorite_weapon": { fr: "Arme favorite", en: "Fav. weapon" },
   "home.kpi.kda_label": { fr: "KDA", en: "KDA" },
   "home.kpi.kills_word": { fr: "kills", en: "kills" },
