@@ -14,7 +14,7 @@ jobs:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.0.3
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -70,7 +70,7 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.0.3
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -112,7 +112,7 @@ jobs:
       # sans l'historique complet, le diff vs la base échoue sur un push de
       # branche neuve ("failed to fetch push patch ... Not Found") et le job
       # remonte alors toute la dette gelée au lieu des seules issues nouvelles.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.0.3
         with:
           fetch-depth: 0
 
@@ -149,7 +149,7 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.0.3
 
       - name: Check lease enforcement (no direct DB writes in service/handlers)
         run: bash scripts/check_lease_enforcement.sh
@@ -161,7 +161,7 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.0.3
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -188,7 +188,7 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.0.3
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -287,7 +287,7 @@ jobs:
     name: OpenAPI Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.0.3
       - name: Validate openapi.yaml (spectral)
         uses: stoplightio/spectral-action@v0.8.13
         with:
@@ -300,7 +300,7 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.0.3
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -331,7 +331,7 @@ jobs:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.0.3
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
