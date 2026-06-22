@@ -78,6 +78,29 @@ func TestClient_GzipTransparent(t *testing.T) {
 	}
 }
 
+// TestClient_PlayerMatches_IncludeTimes verrouille include-times=true sur
+// GetPlayerMatches. SANS ce param, l'API renvoie MatchCompletedDate avec l'heure a
+// 00:00:00 (fidelity 1) -> StartedAtUTC derive (fin - duree) tombe a minuit-duree
+// = heures de match FAUSSES (toutes ancrees a minuit). Garde anti-regression :
+// retirer le param reintroduit le bug silencieusement.
+func TestClient_PlayerMatches_IncludeTimes(t *testing.T) {
+	var gotIncludeTimes string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotIncludeTimes = r.URL.Query().Get("include-times")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(fixtureMatches))
+	}))
+	defer srv.Close()
+
+	c := NewClient("v4=x", 0).WithStatsBaseURL(srv.URL)
+	if _, err := c.GetPlayerMatches(context.Background(), "JGtm", 0, 5); err != nil {
+		t.Fatalf("GetPlayerMatches: %v", err)
+	}
+	if gotIncludeTimes != "true" {
+		t.Errorf("include-times = %q, want \"true\" (sinon MatchCompletedDate tronque a minuit, heures de match fausses)", gotIncludeTimes)
+	}
+}
+
 // TestClient_Unauthorized verifie qu'un 401 remonte un *HTTPError terminal (pas de retry).
 func TestClient_Unauthorized(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

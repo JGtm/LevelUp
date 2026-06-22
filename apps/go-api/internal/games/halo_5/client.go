@@ -121,7 +121,12 @@ func (c *Client) GetPlayerMatches(ctx context.Context, gamertag string, start, c
 	if strings.TrimSpace(gamertag) == "" {
 		return nil, errors.New("GetPlayerMatches: gamertag vide")
 	}
-	endpoint := fmt.Sprintf("%s/h5/players/%s/matches?start=%d&count=%d",
+	// include-times=true : SANS ce param, l'API met le composant heure de
+	// MatchCompletedDate à 00:00:00 (fidelity 1, jour seulement) → StartedAtUTC
+	// dérivé (fin − durée) tombe à minuit−durée (faux). AVEC, MatchCompletedDate
+	// est horodaté à la ms (fidelity 2) → heure de début exacte. Requis pour
+	// l'association media par timestamp + la qualité temporelle des matchs.
+	endpoint := fmt.Sprintf("%s/h5/players/%s/matches?start=%d&count=%d&include-times=true",
 		c.statsHost(), url.PathEscape(gamertag), start, count)
 	body, err := c.doGet(ctx, endpoint)
 	if err != nil {
