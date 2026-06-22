@@ -188,6 +188,51 @@ func TestCollectRecentMatches_Paginates(t *testing.T) {
 	}
 }
 
+// TestCapturePageAt_SkipKnownNoStop — la capture par page (backfill) SAUTE les matchs
+// connus (MatchesSkipped) mais NE s'arrête PAS dessus (contraste avec le delta-stop de
+// CollectRecentMatches) : le batch des matchs nouveaux de la page est tout de même
+// produit, et hasMore reflète la complétude de la page.
+func TestCapturePageAt_SkipKnownNoStop(t *testing.T) {
+	src := &fakeH5Source{
+		pages:  map[int]*H5MatchesResponse{0: mustMatches(t, "m1", "m2", "m3")},
+		events: map[string]*h5MatchEventsResponse{"m3": killEvents()},
+	}
+	isKnown := func(id string) bool { return id == "m1" || id == "m2" } // 2 connus, m3 nouveau
+	var stats CaptureStats
+	seen := make(map[string]struct{})
+	batches, hasMore, err := CapturePageAt(context.Background(), src, jgtmViewer(), idResolver, isKnown,
+		CaptureOptions{}, 0, 3, seen, &stats)
+	if err != nil {
+		t.Fatalf("CapturePageAt: %v", err)
+	}
+	// m1/m2 sautés, m3 collecté — PAS de delta-stop (StoppedOnKnown reste false).
+	if len(batches) != 1 || stats.MatchesSkipped != 2 || stats.MatchesCollected != 1 {
+		t.Errorf("batches=%d skipped=%d collected=%d, want 1/2/1", len(batches), stats.MatchesSkipped, stats.MatchesCollected)
+	}
+	if stats.StoppedOnKnown {
+		t.Error("StoppedOnKnown doit rester false (backfill, pas de delta-stop)")
+	}
+	// Page pleine (3 == pageSize) → hasMore=true (il reste probablement des pages).
+	if !hasMore {
+		t.Error("hasMore = false, want true (page pleine → continuer à paginer)")
+	}
+}
+
+// TestCapturePageAt_EmptyPageStops — une page vide (fin d'historique) → aucun batch +
+// hasMore=false (signal d'arrêt du backfill).
+func TestCapturePageAt_EmptyPageStops(t *testing.T) {
+	src := &fakeH5Source{pages: map[int]*H5MatchesResponse{}} // tout start -> page vide
+	var stats CaptureStats
+	batches, hasMore, err := CapturePageAt(context.Background(), src, jgtmViewer(), idResolver, nil,
+		CaptureOptions{}, 100, 25, nil, &stats)
+	if err != nil {
+		t.Fatalf("CapturePageAt: %v", err)
+	}
+	if len(batches) != 0 || hasMore {
+		t.Errorf("batches=%d hasMore=%v, want 0 + false (page vide arrête)", len(batches), hasMore)
+	}
+}
+
 func TestCollectRecentMatches_GetMatchesError(t *testing.T) {
 	src := &errSource{}
 	if _, _, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, nil, CaptureOptions{}); err == nil {
