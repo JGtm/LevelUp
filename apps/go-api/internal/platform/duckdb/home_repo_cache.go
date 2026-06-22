@@ -62,6 +62,7 @@ func (r *HomeRepo) LoadCachedBattlePass(ctx context.Context, ttl time.Duration) 
 // à reconstruire de vraies cartes hors-ligne quand le live est indisponible.
 type challengeSnapshotRow struct {
 	challengePath   string
+	displayPath     sql.NullString // vrai chemin GameCMS (cadence) ; fallback sur challengePath
 	status          string
 	xpReward        int
 	progressCurrent sql.NullInt64
@@ -92,10 +93,10 @@ func (r *HomeRepo) LoadCachedChallenges(ctx context.Context, ttl time.Duration) 
 func (r *HomeRepo) queryRecentChallengeSnapshots(ctx context.Context, ttl time.Duration) ([]challengeSnapshotRow, error) {
 	secs := int64(ttl.Seconds())
 	query := fmt.Sprintf(`
-		SELECT challenge_path, status, xp_reward, progress_current, progress_target,
+		SELECT challenge_path, display_path, status, xp_reward, progress_current, progress_target,
 		       expires_at, snapshot_at, title, description, image_url
 		FROM (
-			SELECT challenge_path, status, xp_reward, progress_current, progress_target,
+			SELECT challenge_path, display_path, status, xp_reward, progress_current, progress_target,
 			       expires_at, snapshot_at, title, description, image_url,
 			       ROW_NUMBER() OVER (PARTITION BY challenge_path ORDER BY snapshot_at DESC) AS rn
 			FROM challenge_snapshots
@@ -116,7 +117,7 @@ func (r *HomeRepo) queryRecentChallengeSnapshots(ctx context.Context, ttl time.D
 	var snapshots []challengeSnapshotRow
 	for rows.Next() {
 		var s challengeSnapshotRow
-		if err := rows.Scan(&s.challengePath, &s.status, &s.xpReward, &s.progressCurrent,
+		if err := rows.Scan(&s.challengePath, &s.displayPath, &s.status, &s.xpReward, &s.progressCurrent,
 			&s.progressTarget, &s.expiresAt, &s.snapshotAt, &s.title, &s.description, &s.imageURL); err != nil {
 			return nil, fmt.Errorf("home_repo: cache challenges scan: %w", err)
 		}
@@ -190,8 +191,14 @@ func challengeItemFromSnapshot(s challengeSnapshotRow) (domain.ChallengeItem, bo
 	if !s.title.Valid || s.title.String == "" {
 		return domain.ChallengeItem{}, false
 	}
+	// Le vrai chemin GameCMS (display_path) permet au front de dériver la cadence
+	// daily/weekly ; fallback sur la clé synthétique si absent (snapshot legacy).
+	challengePath := s.challengePath
+	if s.displayPath.Valid && s.displayPath.String != "" {
+		challengePath = s.displayPath.String
+	}
 	item := domain.ChallengeItem{
-		ChallengePath: s.challengePath,
+		ChallengePath: challengePath,
 		Title:         s.title.String,
 	}
 	if s.description.Valid && s.description.String != "" {
