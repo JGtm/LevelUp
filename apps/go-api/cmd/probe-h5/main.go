@@ -108,7 +108,7 @@ func main() {
 	targets := []probeTarget{
 		{"SpartanStats.SERVICE_RECORDS[arena]", fmt.Sprintf("%s/h5/servicerecords/arena?players=%s&auth=st", hostSpartanStats, q)},
 		{"SpartanStats.SERVICE_RECORDS[warzone]", fmt.Sprintf("%s/h5/servicerecords/warzone?players=%s&auth=st", hostSpartanStats, q)},
-		{"SpartanStats.MATCHES", fmt.Sprintf("%s/h5/players/%s/matches?start=0&count=5&auth=st", hostSpartanStats, gt)},
+		{"SpartanStats.MATCHES", fmt.Sprintf("%s/h5/players/%s/matches?start=0&count=5&include-times=true&auth=st", hostSpartanStats, gt)}, // include-times=true → MatchCompletedDate horodaté précis (fidelity 2)
 		{"SpartanStats.COMMENDATIONS", fmt.Sprintf("%s/h5/players/%s/commendations?auth=st", hostSpartanStats, gt)},
 		{"SpartanStats.CREDITS", fmt.Sprintf("%s/h5/players/%s/credits?auth=st", hostSpartanStats, gt)},
 		{"HaloPlayer.SPARTAN", fmt.Sprintf("%s/h5/profiles/%s/spartan?auth=st", hostHaloPlayer, gt)},
