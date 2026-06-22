@@ -24,6 +24,7 @@ import {
 } from '@/features/prestige/hooks/useSquads'
 import { useJoinSquadChallenge } from '@/features/prestige/hooks'
 import type { SquadWithMembers } from '@/lib/prestige'
+import { findSquadByRoster } from './squadRoster'
 
 const STRINGS = {
   fr: {
@@ -99,16 +100,11 @@ export function SquadFocusStrip() {
   const createSquad = useCreateSquad(playerSlug)
 
   // Match : escouade dont le roster hors joueur courant == sélection (exact).
-  const matched = useMemo<SquadWithMembers | null>(() => {
-    if (!mySquads?.squads || selectionXuids.length === 0) return null
-    const sel = new Set(selectionXuids)
-    return (
-      mySquads.squads.find((sm) => {
-        const others = sm.members.filter((m) => m.user_id !== playerSlug).map((m) => m.xuid)
-        return others.length === sel.size && others.every((x) => sel.has(x))
-      }) ?? null
-    )
-  }, [mySquads, selectionXuids, playerSlug])
+  // Helper partagé avec useSquadPresets (source unique du matching de roster).
+  const matched = useMemo<SquadWithMembers | null>(
+    () => findSquadByRoster(mySquads?.squads, selectionXuids, playerSlug),
+    [mySquads, selectionXuids, playerSlug],
+  )
 
   // Pas de composition exploitable → rien à afficher.
   if (selectionXuids.length === 0) return null
