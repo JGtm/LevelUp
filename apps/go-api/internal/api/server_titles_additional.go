@@ -125,7 +125,18 @@ func registerHalo5Adapters(
 		"placement_total", td.PlacementMatches,
 	)
 
-	reg.RegisterPlayerDataBuilder(td.Slug, func(_ *platform_duckdb.PlayerDB) games.TitleDataAdapter {
-		return buildLiveData()
+	// Builder player-scoped : adapter live + source d'historique LOCAL (AXE A).
+	// Contrairement aux surfaces live (career, match detail), l'historique de
+	// matchs (LoadMatchSummaries) lit le shared h5 DÉJÀ synchronisé par le
+	// livesync (match_registry ⨝ match_participants → canonical.MatchSummary).
+	// La source porte l'identité du joueur (gamertag) fixée depuis le PlayerDB,
+	// et lit via le SharedReader title-aware (shared du titre h5).
+	reg.RegisterPlayerDataBuilder(td.Slug, func(pdb *platform_duckdb.PlayerDB) games.TitleDataAdapter {
+		a := buildLiveData()
+		if da, ok := a.(*halo5.DataAdapter); ok && pdb != nil {
+			src := platform_duckdb.NewHalo5MatchHistorySource(pdb.SharedReadDB(), pdb.Gamertag)
+			a = da.WithMatchHistorySource(src)
+		}
+		return a
 	})
 }

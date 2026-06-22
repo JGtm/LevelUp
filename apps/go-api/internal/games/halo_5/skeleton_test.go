@@ -66,7 +66,7 @@ func TestHalo5_FineCapabilities(t *testing.T) {
 		t.Fatalf("CapabilityMapFromMappings (clé inconnue ?): %v", err)
 	}
 	want := map[games.CapabilityKey]games.CapabilityStatus{
-		games.CapMatchHistory:         games.CapNotExposed,
+		games.CapMatchHistory:         games.CapSupported, // LoadMatchSummaries (shared h5 local → canonical)
 		games.CapMatchDetailCore:      games.CapSupported, // LoadMatchDetail (carnage → canonical)
 		games.CapScoreboardExtra:      games.CapNotExposed,
 		games.CapMatchSkillSnapshot:   games.CapNotExposed,
