@@ -16,6 +16,7 @@ func AllCapabilityKeys() []CapabilityKey {
 		CapMatchDetailCore,
 		CapMatchSkillSnapshot,
 		CapCareerProgression,
+		CapCareerRankCatalog,
 		CapPveFirefight,
 		CapTimeseries,
 		CapScoreboardExtra,

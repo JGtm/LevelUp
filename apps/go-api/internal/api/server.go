@@ -439,6 +439,21 @@ func NewRouter(
 			if td.Slug == titlePkg.DefaultSlug {
 				continue // HINF déjà chargé ci-dessus (byte-identique)
 			}
+			// Gate title-agnostic (capability, jamais slug) : ne charger les images de
+			// rang QUE pour un titre déclarant career.rank_catalog (rangs = catalogue
+			// table-backed avec icône par palier). Un titre à rang numérique (Halo 5, SR)
+			// ne la déclare pas → on n'ouvre NI ne requête sa metadata (pas de table
+			// career_ranks chez lui) : zéro requête échouée, décision prise en amont.
+			hasRankCatalog := false
+			if cset, ok := fieldMappingsRegistry.GetCapabilities(td.Slug); ok {
+				if caps, err := games.CapabilityMapFromMappings(cset); err == nil {
+					hasRankCatalog = caps.Has(games.CapCareerRankCatalog)
+				}
+			}
+			if !hasRankCatalog {
+				slog.Debug("rank_image_urls_skipped", "title_slug", td.Slug, "reason", "no career.rank_catalog")
+				continue
+			}
 			imgs := loadTitleRankImageURLs(rankImgPathResolver, td.Slug)
 			rankImageURLsByTitle[td.Slug] = imgs // map vide acceptée (titre sans image de rang)
 			slog.Info("rank_image_urls_loaded", "title_slug", td.Slug, "images", len(imgs))
