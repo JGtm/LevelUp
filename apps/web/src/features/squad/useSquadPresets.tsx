@@ -24,44 +24,12 @@ import {
 import { useMyGroups } from '@/features/groups/queries'
 import type { TeammateRow } from '@/lib/api/types'
 import { findSquadByRoster } from './squadRoster'
-
-const STRINGS = {
-  fr: {
-    squadsHeader: 'Mes escouades',
-    groupsHeader: 'Mes groupes',
-    save: 'Enregistrer la compo',
-    saving: 'Enregistrement…',
-    saved: 'Compo déjà enregistrée',
-    manage: 'Gérer',
-    done: 'Terminé',
-    rename: 'Renommer',
-    ok: 'OK',
-    del: 'Suppr.',
-    confirmDelete: 'Confirmer ?',
-    usualPrefix: 'surtout',
-  },
-  en: {
-    squadsHeader: 'My squads',
-    groupsHeader: 'My groups',
-    save: 'Save lineup',
-    saving: 'Saving…',
-    saved: 'Lineup already saved',
-    manage: 'Manage',
-    done: 'Done',
-    rename: 'Rename',
-    ok: 'OK',
-    del: 'Delete',
-    confirmDelete: 'Confirm?',
-    usualPrefix: 'mostly',
-  },
-}
-
-type Strings = (typeof STRINGS)['fr']
+import { SQUAD_PRESETS_STRINGS, type SquadPresetsStrings } from './squadPresets.i18n'
 
 function buildUsualSubtitle(
   playlists: string[] | undefined,
   modes: string[] | undefined,
-  t: Strings,
+  t: SquadPresetsStrings,
 ): string | undefined {
   const parts = [...(playlists ?? []).slice(0, 2), ...(modes ?? []).slice(0, 1)]
   if (parts.length === 0) return undefined
@@ -94,7 +62,7 @@ export function useSquadPresets({
   selectedRows,
   activeContextLabels,
 }: UseSquadPresetsOptions): UseSquadPresetsResult {
-  const t = STRINGS[locale === 'en' ? 'en' : 'fr']
+  const t = SQUAD_PRESETS_STRINGS[locale === 'en' ? 'en' : 'fr']
   const [manageMode, setManageMode] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
