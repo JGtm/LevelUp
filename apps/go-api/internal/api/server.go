@@ -89,6 +89,18 @@ func familyXUIDResolver(groupStore *groupstore.GroupStore, users authz.UserLooku
 	}
 }
 
+// metadataDBPathFor retourne le chemin de la metadata.duckdb du titre par défaut.
+// En démo, la metadata title (data/titles/...) est une coquille vide créée au boot ;
+// les référentiels (rangs, maps, armes, saisons, catalogue) vivent dans la metadata
+// des fixtures démo (data/demo/warehouse/metadata.duckdb, copiée intégralement de la
+// prod par seed-demo). Sans cette redirection, ces référentiels sont vides en démo.
+func metadataDBPathFor(cfg *config.AppConfig) string {
+	if cfg.DemoMode && cfg.DemoFixturesDir != "" {
+		return filepath.Join(cfg.DemoFixturesDir, "warehouse", "metadata.duckdb")
+	}
+	return titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug)
+}
+
 // NewRouter construit le routeur chi avec tous les endpoints.
 // Construction par injection de dépendances — pas d'état global.
 // daemon peut être nil si le watcher n'est pas actif au démarrage.
@@ -206,14 +218,9 @@ func NewRouter(
 		// reste ouvert au shutdown (le metaDB.Close() de cmd/server décrémente seulement
 		// d'un cran), ce qui retient le HANDLE Windows et provoque le verrou
 		// "metadata verrouillée" au prochain hot-reload Air.
-		hiMetaPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug)
-		// En démo, la metadata title (data/titles/...) est une coquille vide créée au
-		// boot ; les référentiels (career_rank_translations, rank images) vivent dans
-		// la metadata des fixtures démo (data/demo/warehouse/metadata.duckdb, copiée de
-		// la prod par seed-demo). Charger le RankCatalog de là, sinon rangs en EN.
-		if cfg.DemoMode && cfg.DemoFixturesDir != "" {
-			hiMetaPath = filepath.Join(cfg.DemoFixturesDir, "warehouse", "metadata.duckdb")
-		}
+		// En démo, la metadata title est une coquille vide ; metadataDBPathFor
+		// redirige vers les fixtures démo (sinon RankCatalog vide → rangs en EN).
+		hiMetaPath := metadataDBPathFor(cfg)
 		if metaDB, err := platform_duckdb.OpenReadWriteShared(hiMetaPath); err == nil {
 			if catalog, err := platform_duckdb.LoadRankCatalog(context.Background(), metaDB); err == nil {
 				hiRanks = catalog
@@ -368,7 +375,7 @@ func NewRouter(
 	// le cache/fetch des définitions BP/challenges au resolver (P4/P5).
 	assetCfg := assets.AssetConfig{
 		CacheRootDir:  filepath.Join(cfg.RepoRoot, "data", "cache"),
-		MetaDBPath:    titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug),
+		MetaDBPath:    metadataDBPathFor(cfg),
 		TokenProvider: reg.AnyPlayerTokens,
 		// Résolution d'image de carte inconnue (KindMapImage) via DiscoveryUGC.
 		// Injectée ici (et non dans internal/assets) pour éviter le cycle
@@ -416,7 +423,7 @@ func NewRouter(
 		// n'est pas == nil, ce qui ferait échouer le court-circuit repo==nil du
 		// catalogue (piège classique Go).
 		var seasonsRepo port.MetadataRepository // nil ⇒ catalogue TOML-seul
-		seasonsMetaPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug)
+		seasonsMetaPath := metadataDBPathFor(cfg)
 		if seasonsMetaDB, err := platform_duckdb.OpenReadWriteShared(seasonsMetaPath); err != nil {
 			slog.Warn("seasons_catalog_meta_db_unavailable",
 				"err", err, "fallback", "static_toml_only")
@@ -454,7 +461,7 @@ func NewRouter(
 	// (Air hot-reload). Retry 3× (500ms) pour absorber la fenêtre de chevauchement Air.
 	var assetMetaHandler *handlers.AssetMetadataHandler
 	{
-		metaDBPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug)
+		metaDBPath := metadataDBPathFor(cfg)
 		for attempt := 0; attempt < 3; attempt++ {
 			if attempt > 0 {
 				time.Sleep(500 * time.Millisecond)
@@ -619,7 +626,7 @@ func NewRouter(
 			// OpenReadWriteShared pour compatibilité avec les connexions RW existantes
 			// (prestige presets, rank catalog) sur le même fichier DuckDB.
 			if catalogMetaDB, err := platform_duckdb.OpenReadWriteShared(
-				titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug),
+				metadataDBPathFor(cfg),
 			); err != nil {
 				slog.Warn("catalog_meta_db_unavailable", "err", err)
 			} else {
