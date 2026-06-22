@@ -1,0 +1,28 @@
+# Dependabot version updates pour le monorepo LevelUp.
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# Note : ce fichier pilote les *version updates* (PRs de bump automatiques).
+# Les *security alerts* (Dependabot alerts) sont activees au niveau du repo et
+# fonctionnent independamment de ce fichier.
+
+version: 2
+updates:
+  # Frontend (npm) — apps/web
+  - package-ecosystem: "npm"
+    directory: "/apps/web"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  # Backend (Go modules) — apps/go-api
+  - package-ecosystem: "gomod"
+    directory: "/apps/go-api"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  # Workflows GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
