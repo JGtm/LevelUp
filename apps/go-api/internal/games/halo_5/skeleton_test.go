@@ -36,13 +36,16 @@ func TestHalo5_Manifest(t *testing.T) {
 	for _, c := range []title.Capability{
 		title.CapMatchmaking, title.CapRanked, title.CapCareer,
 		title.CapAssetImages, title.CapAchievements, title.CapEngagement, title.CapLUSR,
+		// media = pipeline LOCAL (upload utilisateur + corrélation par timestamp ;
+		// PAS d'UGC API). Activé axe D prod-gate 2026-06-22.
+		title.CapMedia,
 	} {
 		if !desc.HasCapability(c) {
 			t.Errorf("coarse capability %q manquante", c)
 		}
 	}
 	for _, c := range []title.Capability{
-		title.CapFirefight, title.CapForge, title.CapMedia, title.CapWorldLeaderboard,
+		title.CapFirefight, title.CapForge, title.CapWorldLeaderboard,
 	} {
 		if desc.HasCapability(c) {
 			t.Errorf("coarse capability %q ne devrait PAS être déclarée pour Halo 5", c)
