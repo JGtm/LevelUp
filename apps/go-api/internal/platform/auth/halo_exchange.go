@@ -58,8 +58,8 @@ func ExchangeAccessToken(ctx context.Context, accessToken string) (*ExchangeResu
 		return nil, fmt.Errorf("XSTS token Halo: %w", err)
 	}
 
-	// Étape 3 : Spartan Token
-	spartanToken, err := requestSpartanToken(ctx, client, xstsToken)
+	// Étape 3 : Spartan Token (+ expiry réel)
+	spartanToken, spartanExpiry, err := requestSpartanToken(ctx, client, xstsToken)
 	if err != nil {
 		return nil, fmt.Errorf("spartan token: %w", err)
 	}
@@ -72,8 +72,9 @@ func ExchangeAccessToken(ctx context.Context, accessToken string) (*ExchangeResu
 
 	return &ExchangeResult{
 		Tokens: &domain.HaloTokens{
-			SpartanToken:   spartanToken,
-			ClearanceToken: clearanceToken,
+			SpartanToken:     spartanToken,
+			ClearanceToken:   clearanceToken,
+			SpartanExpiresAt: spartanExpiry,
 		},
 		Gamertag: gamertag,
 		XUID:     xuid,
@@ -86,7 +87,7 @@ func ExchangeAccessToken(ctx context.Context, accessToken string) (*ExchangeResu
 func ExchangeXSTSForHaloTokens(ctx context.Context, xstsToken string) (*domain.HaloTokens, error) {
 	client := &http.Client{Timeout: 20 * time.Second}
 
-	spartanToken, err := requestSpartanToken(ctx, client, xstsToken)
+	spartanToken, spartanExpiry, err := requestSpartanToken(ctx, client, xstsToken)
 	if err != nil {
 		return nil, fmt.Errorf("spartan token depuis XSTS: %w", err)
 	}
@@ -97,8 +98,9 @@ func ExchangeXSTSForHaloTokens(ctx context.Context, xstsToken string) (*domain.H
 	}
 
 	return &domain.HaloTokens{
-		SpartanToken:   spartanToken,
-		ClearanceToken: clearanceToken,
+		SpartanToken:     spartanToken,
+		ClearanceToken:   clearanceToken,
+		SpartanExpiresAt: spartanExpiry,
 	}, nil
 }
 
@@ -177,7 +179,9 @@ func extractDisplayClaims(resp map[string]any) (string, string) {
 }
 
 // requestSpartanToken échange un XSTS Token Halo contre un Spartan Token.
-func requestSpartanToken(ctx context.Context, client *http.Client, xstsToken string) (string, error) {
+// Retourne aussi l'expiry RÉEL du token (champ `ExpiresUtc.ISO8601Date` de la réponse) ;
+// expiry zéro si le champ est absent/illisible (le caller appliquera un fallback).
+func requestSpartanToken(ctx context.Context, client *http.Client, xstsToken string) (string, time.Time, error) {
 	body := map[string]any{
 		"Audience":   "urn:343:s3:services",
 		"MinVersion": "4",
@@ -189,13 +193,32 @@ func requestSpartanToken(ctx context.Context, client *http.Client, xstsToken str
 		"Accept": "application/json",
 	}, body)
 	if err != nil {
-		return "", err
+		return "", time.Time{}, err
 	}
 	token, ok := resp["SpartanToken"].(string)
 	if !ok || token == "" {
-		return "", fmt.Errorf("SpartanToken absent dans la réponse")
+		return "", time.Time{}, fmt.Errorf("SpartanToken absent dans la réponse")
 	}
-	return token, nil
+	return token, parseSpartanExpiry(resp), nil
+}
+
+// parseSpartanExpiry extrait l'expiry du Spartan token depuis `ExpiresUtc.ISO8601Date`
+// (format Waypoint). Retourne le zéro de time.Time si le champ est absent ou illisible —
+// signal "expiry inconnu" plutôt qu'une valeur inventée.
+func parseSpartanExpiry(resp map[string]any) time.Time {
+	expiresUtc, ok := resp["ExpiresUtc"].(map[string]any)
+	if !ok {
+		return time.Time{}
+	}
+	iso, ok := expiresUtc["ISO8601Date"].(string)
+	if !ok || iso == "" {
+		return time.Time{}
+	}
+	t, err := time.Parse(time.RFC3339, iso)
+	if err != nil {
+		return time.Time{}
+	}
+	return t.UTC()
 }
 
 // requestClearanceToken obtient le Clearance Token (FlightConfigurationId).

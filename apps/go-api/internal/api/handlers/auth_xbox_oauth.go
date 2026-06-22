@@ -321,6 +321,7 @@ func buildXboxOAuthAttempt(
 		Status:               auth_platform.AttemptStatusAuthorized,
 		SpartanToken:         exchangeResult.Tokens.SpartanToken,
 		ClearanceToken:       exchangeResult.Tokens.ClearanceToken,
+		SpartanExpiresAt:     exchangeResult.Tokens.SpartanExpiresAt,
 		Gamertag:             exchangeResult.Gamertag,
 		XUID:                 exchangeResult.XUID,
 		MicrosoftAccessToken: tokenResult.AccessToken,
@@ -359,8 +360,9 @@ func (h *XboxOAuthHandler) persistSessionAfterOAuth(
 ) {
 	sess.AuthReady = true
 	sess.HaloTokens = &domain.HaloTokens{
-		SpartanToken:   exchangeResult.Tokens.SpartanToken,
-		ClearanceToken: exchangeResult.Tokens.ClearanceToken,
+		SpartanToken:     exchangeResult.Tokens.SpartanToken,
+		ClearanceToken:   exchangeResult.Tokens.ClearanceToken,
+		SpartanExpiresAt: exchangeResult.Tokens.SpartanExpiresAt,
 	}
 	if exchangeResult.Gamertag != "" {
 		sess.LinkedHaloIdentity = &domain.HaloIdentity{
