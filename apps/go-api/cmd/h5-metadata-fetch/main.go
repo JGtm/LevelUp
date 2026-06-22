@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -44,12 +45,13 @@ type frLabels struct {
 	Medals            map[string]string `toml:"medals"`
 	Maps              map[string]string `toml:"maps"`
 	MedalDescriptions map[string]string `toml:"medal_descriptions"`
+	Commendations     map[string]string `toml:"commendations"`
 }
 
 // loadFRLabels lit les overrides FR. Fichier absent / illisible → maps vides
 // (name_fr = name_en, dégradation propre). Best-effort.
 func loadFRLabels(path string) frLabels {
-	fr := frLabels{Weapons: map[string]string{}, Medals: map[string]string{}, Maps: map[string]string{}, MedalDescriptions: map[string]string{}}
+	fr := frLabels{Weapons: map[string]string{}, Medals: map[string]string{}, Maps: map[string]string{}, MedalDescriptions: map[string]string{}, Commendations: map[string]string{}}
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return fr
@@ -66,6 +68,9 @@ func loadFRLabels(path string) frLabels {
 	}
 	if fr.MedalDescriptions == nil {
 		fr.MedalDescriptions = map[string]string{}
+	}
+	if fr.Commendations == nil {
+		fr.Commendations = map[string]string{}
 	}
 	return fr
 }
@@ -115,12 +120,13 @@ func main() {
 		configRoot = os.Args[1]
 	}
 	fr := loadFRLabels(filepath.Join(configRoot, "config", "titles", halo5.TitleSlug, "mappings", "asset_labels_fr.toml"))
-	fmt.Printf("FR overrides: %d armes, %d médailles, %d maps\n", len(fr.Weapons), len(fr.Medals), len(fr.Maps))
+	fmt.Printf("FR overrides: %d armes, %d médailles, %d maps, %d commendations\n", len(fr.Weapons), len(fr.Medals), len(fr.Maps), len(fr.Commendations))
 
 	seedMedals(db, key, fr.Medals, fr.MedalDescriptions)
 	seedMaps(db, key)
 	seedWeapons(db, key, fr.Weapons)
 	seedCSRDesignations(db, key)
+	seedCommendations(db, key, fr.Commendations)
 }
 
 // fetchMeta récupère un type de métadonnée officiel (corps JSON brut).
@@ -309,6 +315,57 @@ func seedCSRDesignations(db *sql.DB, key string) {
 		}
 	}
 	fmt.Printf("csr-designations: %d tiers seedés (sur %d désignations)\n", n, len(desigs))
+}
+
+// apiCommendation — élément de l'API Metadata officielle /commendations. `id` (UUID)
+// = la clé naturelle référencée par carnage ProgressiveCommendationDeltas[].Id.
+type apiCommendation struct {
+	Type         string `json:"type"` // Progressive | Meta | Daily
+	Name         string `json:"name"`
+	Description  string `json:"description"`
+	IconImageURL string `json:"iconImageUrl"`
+	ID           string `json:"id"`
+	Category     struct {
+		Name string `json:"name"`
+	} `json:"category"`
+}
+
+// seedCommendations peuple commendation_definitions depuis l'API Metadata officielle
+// (/commendations) → nom/description/icône CDN + type + catégorie, par UUID. La clé
+// `id` est exactement le ProgressiveCommendationDeltas[].Id du carnage (jointure
+// read-time pour peupler canonical.Commendation Name/IconURL). Tous les types
+// (Progressive/Meta/Daily) sont seedés. name_fr = override FR sinon EN. Les noms de
+// l'API portent des espaces parasites en fin → TrimSpace.
+func seedCommendations(db *sql.DB, key string, fr map[string]string) {
+	body, err := fetchMeta(key, "commendations")
+	if err != nil {
+		fmt.Printf("commendations: SKIP (%v)\n", err)
+		return
+	}
+	var comms []apiCommendation
+	if err := json.Unmarshal(body, &comms); err != nil {
+		fmt.Printf("commendations: parse %v\n", err)
+		return
+	}
+	n := 0
+	for _, c := range comms {
+		if c.ID == "" {
+			continue // pas de clé naturelle → ignoré
+		}
+		nameEN := strings.TrimSpace(c.Name)
+		_, err := db.Exec(`INSERT OR REPLACE INTO commendation_definitions
+			(commendation_id, name_en, name_fr, description_en, description_fr,
+			 commendation_type, category, icon_url)
+			VALUES (?,?,?,?,?,?,?,?)`,
+			c.ID, nameEN, frOr(fr, nameEN), strings.TrimSpace(c.Description), "",
+			c.Type, c.Category.Name, c.IconImageURL)
+		if err != nil {
+			fmt.Printf("commendations: insert %s: %v\n", c.ID, err)
+			continue
+		}
+		n++
+	}
+	fmt.Printf("commendations: %d seedées (sur %d)\n", n, len(comms))
 }
 
 func fatal(format string, args ...any) {

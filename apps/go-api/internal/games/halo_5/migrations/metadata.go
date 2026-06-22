@@ -44,6 +44,7 @@ func metadataStepNames() []string {
 		"h5_add_map_images_registry",
 		"h5_add_csr_designations",
 		"h5_weapon_labels_add_icon",
+		"h5_add_commendation_definitions",
 	}
 }
 
@@ -188,6 +189,25 @@ func MetadataSteps() []migration.Migration {
 				return migration.ExecScript(db, `
 					ALTER TABLE weapon_labels ADD COLUMN IF NOT EXISTS icon_url VARCHAR;
 					ALTER TABLE weapon_labels ADD COLUMN IF NOT EXISTS weapon_type VARCHAR;
+				`)
+			},
+		},
+		{
+			Name:        "h5_add_commendation_definitions",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Halo 5 — commendation_definitions (référentiel commendations NATIVES par UUID : nom/description/icône CDN + type + catégorie ; API Metadata officielle /commendations, vide → fetcher h5-metadata-fetch). Clé = UUID de la commendation = ProgressiveCommendationDeltas[].Id du carnage.",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS commendation_definitions (
+						commendation_id   VARCHAR PRIMARY KEY,
+						name_en           VARCHAR NOT NULL,
+						name_fr           VARCHAR NOT NULL,
+						description_en    VARCHAR DEFAULT '',
+						description_fr    VARCHAR DEFAULT '',
+						commendation_type VARCHAR,
+						category          VARCHAR,
+						icon_url          VARCHAR
+					);
 				`)
 			},
 		},

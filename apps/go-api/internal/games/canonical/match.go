@@ -103,6 +103,16 @@ type Commendation struct {
 	IconURL *string
 }
 
+// CommendationDefinition — référentiel natif (nom + icône CDN) d'une commendation,
+// par UUID. Résolu depuis la metadata par titre (Halo 5 : table
+// commendation_definitions, API Metadata officielle /commendations) pour enrichir les
+// Commendation brutes (AXE B définitions natives). ID = UUID = Commendation.ID.
+type CommendationDefinition struct {
+	ID      string
+	Name    string
+	IconURL string
+}
+
 // MatchParticipant représente un joueur d'un match dans le canonique.
 type MatchParticipant struct {
 	Identity        PlayerIdentity
