@@ -45,6 +45,7 @@ func (s *MatchViewService) buildMatchViewFromCanonical(ctx context.Context, deta
 		return domain.MatchViewResponse{IsPartial: true}
 	}
 	self := canonicalSelfParticipant(ctx, detail.Participants)
+	citationsTab, citationsUnavailable := buildCanonicalCitationsTab(detail.Commendations)
 	return domain.MatchViewResponse{
 		Header:         s.buildCanonicalHeader(detail, self),
 		Rank:           buildCanonicalRank(detail.Skill),
@@ -52,10 +53,31 @@ func (s *MatchViewService) buildMatchViewFromCanonical(ctx context.Context, deta
 		CombatTab:      domain.MatchCombatTab{},
 		TeamTab:        buildCanonicalTeamTab(detail, self),
 		MediaTab:       domain.MatchMediaTab{MediaItems: []domain.MatchAssociatedMedia{}},
-		CitationsTab:   domain.MatchCitationsTab{},
+		CitationsTab:   citationsTab,
 		IsPartial:      true,
-		PartialReasons: canonicalPartialReasons(),
+		PartialReasons: canonicalPartialReasons(citationsUnavailable),
 	}
+}
+
+// buildCanonicalCitationsTab projette les commendations NATIVES (Halo 5) du détail
+// canonique vers l'onglet Citations, affichées TELLES QUELLES (AXE B). Retourne
+// aussi un flag « indisponible » (aucune commendation native) qui pilote l'ajout
+// de partialReasonCitations : si des commendations existent, la section n'est plus
+// considérée comme manquante.
+func buildCanonicalCitationsTab(comms []canonical.Commendation) (domain.MatchCitationsTab, bool) {
+	if len(comms) == 0 {
+		return domain.MatchCitationsTab{}, true
+	}
+	native := make([]domain.MatchNativeCommendation, 0, len(comms))
+	for _, c := range comms {
+		native = append(native, domain.MatchNativeCommendation{
+			ID:      c.ID,
+			Name:    c.Name,
+			Count:   c.Count,
+			IconURL: c.IconURL,
+		})
+	}
+	return domain.MatchCitationsTab{NativeCommendations: native}, false
 }
 
 // canonicalSelfParticipant retrouve le participant du viewer (gamertag du ctx,
@@ -77,13 +99,15 @@ func canonicalSelfParticipant(ctx context.Context, participants []canonical.Matc
 }
 
 // canonicalPartialReasons liste les sections indisponibles sur la voie live.
-func canonicalPartialReasons() []string {
-	return []string{
-		partialReasonCombatNarrative,
-		partialReasonCitations,
-		partialReasonMedia,
-		partialReasonAccuracyDamage,
+// citationsUnavailable=false quand des commendations natives sont présentes (Halo 5
+// AXE B) → la section Citations n'est plus signalée comme manquante.
+func canonicalPartialReasons(citationsUnavailable bool) []string {
+	reasons := []string{partialReasonCombatNarrative}
+	if citationsUnavailable {
+		reasons = append(reasons, partialReasonCitations)
 	}
+	reasons = append(reasons, partialReasonMedia, partialReasonAccuracyDamage)
+	return reasons
 }
 
 // ---------------------------------------------------------------------------

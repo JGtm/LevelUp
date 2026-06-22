@@ -5725,9 +5725,30 @@ components:
                   $ref: '#/components/schemas/MatchMedal'
               type: array
               nullable: true
+          native_commendations:
+              items:
+                  $ref: '#/components/schemas/MatchNativeCommendation'
+              type: array
+              nullable: true
       required:
           - commendations
           - medals
+      type: object
+    MatchNativeCommendation:
+      additionalProperties: false
+      properties:
+          count:
+              format: int64
+              type: integer
+          icon_url:
+              type: string
+          id:
+              type: string
+          name:
+              type: string
+      required:
+          - id
+          - count
       type: object
     MatchViewResponse:
       additionalProperties: false

@@ -21,7 +21,11 @@ import { MatchSummaryCardsSection } from './MatchStatCards'
 import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from './MatchSummaryCharts'
 import { MatchWeaponPieChart } from './MatchWeaponCharts'
 import { MatchMediaTab } from './MatchMediaTab'
-import { MatchMedalsSection, MatchCitationsSection } from './MatchSummaryMedalsAndCitations'
+import {
+  MatchMedalsSection,
+  MatchCitationsSection,
+  MatchNativeCommendationsSection,
+} from './MatchSummaryMedalsAndCitations'
 import { buildMatchHeadingStr } from './format'
 import { MATCH_VIEW_TEXT, type MatchViewText } from './i18n'
 import type { MatchWeaponKill, MatchScoreboardRow, MatchViewRadarSeries } from '@/lib/api/types'
@@ -211,7 +215,7 @@ export function MatchViewPage() {
     )
   }
 
-  const { header, rank, summary_tab, combat_tab, team_tab, media_tab } = data
+  const { header, rank, summary_tab, combat_tab, team_tab, media_tab, citations_tab } = data
   const matchLabel = buildMatchHeadingStr(header.map_ui, header.mode_ui, locale)
   // Le breadcrumb ajoute la date pour distinguer plusieurs matchs sur la même map/mode
   const breadcrumbLabel = header.start_time_label
@@ -349,7 +353,18 @@ export function MatchViewPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <MatchWeaponPieChart weaponKills={weaponData} t={t} />
               <MatchMedalsSection medals={summary_tab.medals ?? []} t={t} />
-              <MatchCitationsSection citations={summary_tab.citations ?? []} t={t} />
+              {/* Halo 5 : commendations NATIVES (citations_tab.native_commendations)
+                  affichées À LA PLACE des citations dérivées d'Infinite
+                  (summary_tab.citations vide pour h5). Un seul bloc « commendations »
+                  par titre. */}
+              {(citations_tab?.native_commendations?.length ?? 0) > 0 ? (
+                <MatchNativeCommendationsSection
+                  commendations={citations_tab.native_commendations ?? []}
+                  t={t}
+                />
+              ) : (
+                <MatchCitationsSection citations={summary_tab.citations ?? []} t={t} />
+              )}
             </div>
             {/* Section Médias gatée sur `media` : masque l'en-tête + le bloc entier
                 (pas seulement le contenu) pour un titre sans captures/clips. */}
