@@ -2,10 +2,53 @@
  * UploadButton — bouton + zone de drag & drop pour importer des médias.
  */
 import { useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { useUploadMedia } from './queries'
+import { apiErrorMessage } from '@/lib/api/client'
+import { Spinner } from '@/components/ui/spinner'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+
+/** Flèche montante vers une barre — état idle de la zone de drop. */
+function UploadIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M12 16V4" />
+      <path d="m7 9 5-5 5 5" />
+      <path d="M5 20h14" />
+    </svg>
+  )
+}
+
+/** Dossier ouvert — état drag-over de la zone de drop. */
+function FolderOpenIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M6 14l1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6A2 2 0 0 1 18.45 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2" />
+    </svg>
+  )
+}
 
 const ACCEPTED_EXTS = '.mp4,.mov,.avi,.mkv,.webm,.png,.jpg,.jpeg,.bmp,.gif'
 const ACCEPTED_MIME = new Set([
@@ -21,18 +64,33 @@ interface Props {
 
 export function UploadButton({ playerSlug, fullWidth = false }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const { mutate, isPending, isSuccess, data, error, reset } = useUploadMedia(playerSlug)
+  const { mutate, isPending, reset } = useUploadMedia(playerSlug)
   const [isDragging, setIsDragging] = useState(false)
   const locale = useAppShellStore((s) => s.locale)
   // En démo, l'upload est figé : la zone reste visible mais inerte (le serveur
   // refuse aussi l'upload, cf. PostUploadMedia). Pas de modification possible.
   const demoMode = useAppShellStore((s) => s.demoMode)
-  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+  const t = (key: CommonManifestKey, vars?: Record<string, unknown>) =>
+    formatMessage(commonManifest, key, locale, vars)
 
   function handleFiles(list: FileList | null) {
     if (demoMode || !list || list.length === 0) return
     reset()
-    mutate(Array.from(list))
+    mutate(Array.from(list), {
+      onSuccess: (data) =>
+        toast.success(
+          t('common.media.upload_success', {
+            saved: data.saved,
+            indexed: data.new_indexed,
+            associated: data.associated,
+            thumbnails: data.thumbnails,
+          }),
+        ),
+      onError: (err) =>
+        toast.error(t('common.media.upload_error'), {
+          description: apiErrorMessage(err),
+        }),
+    })
     if (inputRef.current) inputRef.current.value = ''
   }
 
@@ -89,37 +147,22 @@ export function UploadButton({ playerSlug, fullWidth = false }: Props) {
       >
         {isPending ? (
           <>
-            <span className="animate-spin text-xl">⏳</span>
+            <Spinner size="sm" />
             <span>{t('common.media.import_in_progress')}</span>
           </>
         ) : isDragging ? (
           <>
-            <span className="text-xl">📂</span>
+            <FolderOpenIcon className="h-6 w-6" />
             <span className="font-medium">{t('common.media.drop_files')}</span>
           </>
         ) : (
           <>
-            <span className="text-xl">⬆</span>
-            <span>{t('common.media.drag_or')} <span className="underline">parcourir</span></span>
+            <UploadIcon className="h-6 w-6" />
+            <span>{t('common.media.drag_or')} <span className="underline">{t('common.media.browse')}</span></span>
             <span className="text-xs opacity-60">{t('common.media.supported_formats')}</span>
           </>
         )}
       </div>
-
-      {isSuccess && data && (
-        <p className="text-xs text-success">
-          {data.saved} fichier{data.saved !== 1 ? 's' : ''} importé{data.saved !== 1 ? 's' : ''}&nbsp;·&nbsp;
-          {data.new_indexed} nouveau{data.new_indexed !== 1 ? 'x' : ''}&nbsp;·&nbsp;
-          {data.associated} assoc.
-          {data.thumbnails > 0 && <>&nbsp;· {data.thumbnails} miniature{data.thumbnails !== 1 ? 's' : ''}</>}
-        </p>
-      )}
-
-      {error != null && (
-        <p className="text-xs text-destructive" role="alert">
-          {(error as { message?: string }).message ?? 'Erreur lors de l\'import'}
-        </p>
-      )}
     </div>
   )
 }
