@@ -272,13 +272,20 @@ func (p *HaloProvider) GetBattlePassWithRaw(ctx context.Context) (domain.BattleP
 		return domain.BattlePassResponse{Available: false, ErrorHint: &hint}, nil
 	}
 
-	resp, raw, err := p.fetchBattlePass(ctx, tokens, xuid)
+	type bpResult struct {
+		resp domain.BattlePassResponse
+		raw  []byte
+	}
+	out, err := retryOnAuth(ctx, func(c context.Context) (bpResult, error) {
+		r, raw, e := p.fetchBattlePass(c, ctxkeys.HaloTokens(c), xuid)
+		return bpResult{resp: r, raw: raw}, e
+	})
 	if err != nil {
 		slog.WarnContext(ctx, "halo_provider: battle_pass fetch failed", "xuid", xuid, "err", err)
 		hint := errHintFetchError
 		return domain.BattlePassResponse{Available: false, ErrorHint: &hint}, nil
 	}
-	return resp, raw
+	return out.resp, out.raw
 }
 
 // battlePassProgress contient la progression dans un palier de Battle Pass.
@@ -385,26 +392,29 @@ func (p *HaloProvider) GetChallengesWithRaw(ctx context.Context) (domain.Challen
 		rawBody  []byte
 	}
 
-	result, err, _ := challengesFetchSFGroup.Do(p.challengesFetchKey(xuid), func() (interface{}, error) {
-		resp, raw, fetchErr := p.fetchChallenges(ctx, tokens, xuid)
-		if fetchErr != nil {
-			return nil, fetchErr
+	out, err := retryOnAuth(ctx, func(c context.Context) (challengesFetchResult, error) {
+		v, ferr, _ := challengesFetchSFGroup.Do(p.challengesFetchKey(xuid), func() (interface{}, error) {
+			resp, raw, fetchErr := p.fetchChallenges(c, ctxkeys.HaloTokens(c), xuid)
+			if fetchErr != nil {
+				return nil, fetchErr
+			}
+			return challengesFetchResult{response: resp, rawBody: raw}, nil
+		})
+		if ferr != nil {
+			return challengesFetchResult{}, ferr
 		}
-		return challengesFetchResult{response: resp, rawBody: raw}, nil
+		r, ok := v.(challengesFetchResult)
+		if !ok {
+			return challengesFetchResult{}, fmt.Errorf("challenges fetch invalid result type")
+		}
+		return r, nil
 	})
 	if err != nil {
 		slog.WarnContext(ctx, "halo_provider: challenges fetch failed", "xuid", xuid, "err", err)
 		hint := errHintFetchError
 		return domain.ChallengesResponse{Available: false, ErrorHint: &hint}, nil
 	}
-
-	resolved, ok := result.(challengesFetchResult)
-	if !ok {
-		hint := errHintFetchError
-		slog.WarnContext(ctx, "halo_provider: challenges fetch invalid result", "xuid", xuid)
-		return domain.ChallengesResponse{Available: false, ErrorHint: &hint}, nil
-	}
-	return resolved.response, resolved.rawBody
+	return out.response, out.rawBody
 }
 
 func (p *HaloProvider) challengesFetchKey(xuid string) string {
@@ -509,9 +519,10 @@ func (p *HaloProvider) doGet(ctx context.Context, rawURL string, tokens *domain.
 		body, readErr := io.ReadAll(resp.Body)
 		resp.Body.Close()
 
-		// Erreurs d'auth : inutile de retry.
+		// Erreurs d'auth : inutile de retry AU NIVEAU HTTP (le re-mint se fait plus haut,
+		// via retryOnAuth, qui détecte errHaloAuthFailure). On wrappe le sentinel.
 		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-			return nil, fmt.Errorf("doGet %s: HTTP %d (tokens invalides/expirés)", rawURL, resp.StatusCode)
+			return nil, fmt.Errorf("doGet %s: HTTP %d (tokens invalides/expirés): %w", rawURL, resp.StatusCode, errHaloAuthFailure)
 		}
 		// Ressource absente : ne pas retry.
 		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone {
