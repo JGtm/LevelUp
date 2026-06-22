@@ -283,7 +283,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate openapi.yaml (spectral)
-        uses: stoplightio/spectral-action@v0.8.11
+        uses: stoplightio/spectral-action@v0.8.13
         with:
           file_glob: apps/go-api/api/openapi.yaml
 
