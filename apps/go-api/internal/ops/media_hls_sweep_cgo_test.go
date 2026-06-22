@@ -70,7 +70,8 @@ func TestEnsurePendingHLS_TranscodesScannedVideo(t *testing.T) {
 }
 
 // setupSweepDB crée media_files avec 2 lignes sans HLS au départ : un MKV (HLS
-// requis) et un MP4 mono web-natif (servi direct).
+// requis, miniature liée → la garde anti-perte autorise la suppression du
+// source après transcoding) et un MP4 mono web-natif (servi direct).
 func setupSweepDB(t *testing.T, ctx context.Context, dbPath string) {
 	t.Helper()
 	db, err := sql.Open("duckdb", dbPath)
@@ -82,9 +83,9 @@ func setupSweepDB(t *testing.T, ctx context.Context, dbPath string) {
 		t.Fatalf("ensureMediaTables: %v", err)
 	}
 	if _, err := db.ExecContext(ctx,
-		`INSERT INTO media_files (id, player_slug, file_path, kind) VALUES
-		 (1, 'GT', 'GT/source.mkv', 'video'),
-		 (2, 'GT', 'GT/mono.mp4', 'video')`); err != nil {
+		`INSERT INTO media_files (id, player_slug, file_path, kind, thumbnail_path) VALUES
+		 (1, 'GT', 'GT/source.mkv', 'video', 'GT/thumbs/source.webp'),
+		 (2, 'GT', 'GT/mono.mp4', 'video', NULL)`); err != nil {
 		t.Fatalf("insert media_files: %v", err)
 	}
 }
