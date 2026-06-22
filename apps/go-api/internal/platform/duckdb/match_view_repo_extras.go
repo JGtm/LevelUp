@@ -264,7 +264,9 @@ func (r *MatchViewRepo) GetHistoryForAvg(ctx context.Context, xuid string) ([]do
 	}
 	defer release()
 
-	rows, err := sharedDB.QueryContext(ctx, Q29HistoryForAvg, xuid, xuid)
+	// Set perfect-kill résolu pour le titre du joueur (HINF byte-identique).
+	q := resolvePerfectKillClause(Q29HistoryForAvg, "m.medal_name_id", pdbTitleSlug(r.pdb))
+	rows, err := sharedDB.QueryContext(ctx, q, xuid, xuid)
 	if err != nil {
 		slog.WarnContext(ctx, "GetHistoryForAvg query failed", "err", err)
 		return nil, nil //nolint:nilerr

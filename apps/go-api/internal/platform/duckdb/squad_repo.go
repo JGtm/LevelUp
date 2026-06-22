@@ -255,7 +255,9 @@ func (r *SquadRepo) loadSquadMatchesShared(ctx context.Context, playerXUID, team
 	}
 	defer release()
 
-	rows, err := db.QueryContext(ctx, Q30SquadMatchesSharedQuery, teammateXUID, playerXUID)
+	// Set perfect-kill résolu pour le titre du joueur (HINF byte-identique).
+	q := resolvePerfectKillClause(Q30SquadMatchesSharedQuery, "me.medal_name_id", pdbTitleSlug(r.pdb))
+	rows, err := db.QueryContext(ctx, q, teammateXUID, playerXUID)
 	if err != nil {
 		return nil, fmt.Errorf("shared query: %w", err)
 	}

@@ -19,11 +19,14 @@ package duckdb
 // Paramètres :
 //   - Q26HomeMatchesSharedPart : ?1 = xuid (CTE perfect), ?2 = xuid (WHERE mp.xuid)
 //   - Q26HomeMatchesPlayerEnrichTpl : pas de paramètre, juste IN (%s) match_ids
+//
+// Le token /*__PERFECT_KILL_IN__*/ est résolu au runtime vers le set de médailles
+// « frag parfait » du titre du joueur (perfectKillMedalInClause ; HINF = {1512363953}).
 const Q26HomeMatchesSharedPart = `
 WITH perfect AS (
     SELECT match_id, COALESCE(SUM(count), 0) AS perfect_kills
     FROM medals_earned
-    WHERE xuid = ? AND medal_name_id = 1512363953
+    WHERE xuid = ? AND /*__PERFECT_KILL_IN__*/
     GROUP BY match_id
 )
 SELECT

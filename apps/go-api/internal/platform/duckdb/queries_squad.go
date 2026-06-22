@@ -79,14 +79,15 @@ SELECT
     COALESCE(pme.is_with_friends, FALSE)                         AS is_with_friends,
     COALESCE(p1.headshot_kills, 0)                               AS headshot_kills,
     -- perfect_kills n'est pas une colonne de shared.match_participants ;
-    -- on l'agrège depuis shared.medals_earned (medal_name_id = 1512363953
-    -- "Perfect"), même approche que Q12MatchScoreboard.
+    -- on l'agrège depuis shared.medals_earned. Le set « frag parfait » est résolu
+    -- au runtime via le token /*__PERFECT_KILL_IN__*/ (perfectKillMedalInClause ;
+    -- HINF = {1512363953}), même source unique que Q12MatchScoreboard.
     COALESCE((
         SELECT SUM(me.count)
         FROM shared.medals_earned me
         WHERE me.match_id = p1.match_id
           AND me.xuid = p1.xuid
-          AND me.medal_name_id = 1512363953
+          AND /*__PERFECT_KILL_IN__*/
     ), 0)::INTEGER                                              AS perfect_kills,
     p1.enemy_mmr,
     CASE WHEN p1.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,
@@ -152,7 +153,7 @@ SELECT
         FROM medals_earned me
         WHERE me.match_id = p1.match_id
           AND me.xuid = p1.xuid
-          AND me.medal_name_id = 1512363953
+          AND /*__PERFECT_KILL_IN__*/
     ), 0)::INTEGER                                              AS perfect_kills,
     p1.enemy_mmr,
     CASE WHEN p1.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,

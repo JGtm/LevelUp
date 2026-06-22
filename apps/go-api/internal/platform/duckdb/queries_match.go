@@ -31,11 +31,14 @@ LIMIT 50`
 // Q12 : Match view — scoreboard complet d'un match.
 // Paramètres : ?1 = match_id (medals), ?2 = match_id (weapons), ?3 = match_id (WHERE).
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
+// Le token /*__PERFECT_KILL_IN__*/ est résolu au moment de l'exécution vers le
+// set de médailles « frag parfait » du titre du joueur (perfectKillMedalInClause ;
+// HINF byte-identique = medal_name_id IN (1512363953)).
 const Q12MatchScoreboard = `
 WITH me_perfect AS (
     SELECT xuid, COALESCE(SUM(count), 0) AS perfect_kills
     FROM medals_earned
-    WHERE match_id = ? AND medal_name_id = 1512363953
+    WHERE match_id = ? AND /*__PERFECT_KILL_IN__*/
     GROUP BY xuid
 ),
 top_weapons AS (
@@ -243,7 +246,7 @@ perfect AS (
     FROM medals_earned m
     WHERE m.xuid = ?
       AND m.match_id IN (SELECT match_id FROM recent)
-      AND m.medal_name_id = 1512363953
+      AND /*__PERFECT_KILL_IN__*/
     GROUP BY m.match_id
 )
 SELECT
@@ -296,15 +299,17 @@ ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 // du joueur cible, pour les graphes "profil de combat" (Explorer mode Joueur).
 // Filtre PvP en SQL via match_registry.is_firefight (même pattern que
 // engagement_score_repo / career highlights — plus fiable qu'un filtre Go sur
-// le pair_name). perfect_kills agrégé par match via LEFT JOIN sur medals_earned
-// (1512363953 = médaille "Perfect", même littéral que queries_squad.go /
-// compare_repo.go). Exécutée sur SharedReader (shared.* sans préfixe).
+// le pair_name). perfect_kills agrégé par match via LEFT JOIN sur medals_earned ;
+// le set de médailles « frag parfait » est résolu au runtime via le token
+// /*__PERFECT_KILL_IN__*/ (perfectKillMedalInClause ; HINF = {1512363953}, même
+// source unique que queries_squad.go / compare_repo.go). Exécutée sur
+// SharedReader (shared.* sans préfixe).
 // Params (ordre) : ? = xuid (perfect CTE), ? = xuid (participants), ? = limit.
 const Q19cTargetRecentMatches = `
 WITH perfect AS (
     SELECT match_id, COALESCE(SUM(count), 0) AS perfect_kills
     FROM medals_earned
-    WHERE xuid = ? AND medal_name_id = 1512363953
+    WHERE xuid = ? AND /*__PERFECT_KILL_IN__*/
     GROUP BY match_id
 )
 SELECT

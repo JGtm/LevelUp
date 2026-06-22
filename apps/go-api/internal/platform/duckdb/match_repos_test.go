@@ -387,6 +387,53 @@ func TestExplorerRepo_GetMedalCountsForMatches(t *testing.T) {
 	})
 }
 
+// TestExplorerRepo_GetMedalCountsForMatches_Halo5_AggregatesPerfectKillIDs valide
+// que perfect_kills agrège bien le SET de médailles « frag parfait » du titre h5
+// (6 ids) et pas un seul littéral. On seed deux ids perfect-kill h5 DIFFÉRENTS
+// (1080468863 ×2 + 3653057799 ×1) → perfect_kills attendu = 3. Une 3e médaille
+// non-perfect-kill (et « Perfection » 3592822316, exclue du set) ne doivent PAS
+// compter.
+func TestExplorerRepo_GetMedalCountsForMatches_Halo5_AggregatesPerfectKillIDs(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	pdb.TitleSlug = "halo_5" // discriminant title-aware du set perfect-kill
+	ctx := context.Background()
+	const targetXUID = "xuid_h5_777"
+
+	seed := []struct {
+		medalNameID uint64
+		matchID     string
+		count       int
+	}{
+		{1080468863, "m1", 2}, // perfect-kill h5 #1 ×2
+		{3653057799, "m1", 1}, // perfect-kill h5 #2 ×1 (id DIFFÉRENT)
+		{3592822316, "m1", 4}, // « Perfection » h5 — EXCLUE du set perfect-kill
+		{42, "m1", 9},         // médaille quelconque non perfect-kill
+		{1512363953, "m1", 5}, // perfect-kill HINF — NE doit PAS compter en h5
+	}
+	for _, m := range seed {
+		_, err := pdb.Player.Exec(ctx,
+			`INSERT INTO shared.medals_earned (medal_id, medal_name_id, xuid, match_id, count) VALUES (?,?,?,?,?)`,
+			m.medalNameID, m.medalNameID, targetXUID, m.matchID, m.count)
+		if err != nil {
+			t.Fatalf("insert medal: %v", err)
+		}
+	}
+
+	repo := NewExplorerRepo(pdb, pTestXUID)
+	agg, err := repo.GetMedalCountsForMatches(ctx, targetXUID, []string{"m1"})
+	if err != nil {
+		t.Fatalf("GetMedalCountsForMatches: %v", err)
+	}
+	if agg == nil {
+		t.Fatal("agg attendu non-nil")
+	}
+	// 2 (#1080468863) + 1 (#3653057799) = 3, agrégation des 6 ids h5.
+	if agg.PerfectKills != 3 {
+		t.Errorf("PerfectKills = %d, want 3 (agrégation des ids perfect-kill h5 ; "+
+			"Perfection + HINF id + médaille quelconque exclus)", agg.PerfectKills)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // MatchViewRepo
 // ---------------------------------------------------------------------------
