@@ -14,7 +14,7 @@ jobs:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -70,10 +70,10 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: apps/go-api/go.mod
           cache-dependency-path: apps/go-api/go.sum
@@ -108,10 +108,10 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: apps/go-api/go.mod
           cache-dependency-path: apps/go-api/go.sum
@@ -143,7 +143,7 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check lease enforcement (no direct DB writes in service/handlers)
         run: bash scripts/check_lease_enforcement.sh
@@ -155,10 +155,10 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: apps/go-api/go.mod
           cache-dependency-path: apps/go-api/go.sum
@@ -182,10 +182,10 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: apps/go-api/go.mod
           cache-dependency-path: apps/go-api/go.sum
@@ -281,9 +281,9 @@ jobs:
     name: OpenAPI Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Validate openapi.yaml (spectral)
-        uses: stoplightio/spectral-action@v0.8.11
+        uses: stoplightio/spectral-action@v0.8.13
         with:
           file_glob: apps/go-api/api/openapi.yaml
 
@@ -294,10 +294,10 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: apps/go-api/go.mod
           cache-dependency-path: apps/go-api/go.sum
@@ -325,7 +325,7 @@ jobs:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -341,7 +341,7 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Set up Go (backend démo)
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: apps/go-api/go.mod
           cache-dependency-path: apps/go-api/go.sum
