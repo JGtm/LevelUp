@@ -245,9 +245,14 @@ type Squad struct {
 // et arcs de l'escouade (règle « membre-user, sans consentement » —
 // PLAN_COACH_V3_GENERATION § Identité d'escouade). Vide pour un ami hors-app.
 type SquadMember struct {
-	SquadID  string    `json:"squad_id"`
-	Xuid     string    `json:"xuid"`
-	UserID   string    `json:"user_id,omitempty"`
+	SquadID string `json:"squad_id"`
+	Xuid    string `json:"xuid"`
+	UserID  string `json:"user_id,omitempty"`
+	// Gamertag est un snapshot d'affichage du roster (le libellé choisi à
+	// l'ajout). Non utilisé comme clé (la clé reste Xuid) ; sert au front pour
+	// afficher les membres et recharger une composition (page Escouade en
+	// gamertags). Peut être vide pour des membres legacy (avant la colonne).
+	Gamertag string    `json:"gamertag,omitempty"`
 	JoinedAt time.Time `json:"joined_at"`
 }
 

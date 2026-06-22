@@ -108,6 +108,84 @@ func TestService_RemoveSquadMember_RequiresMemberUser(t *testing.T) {
 	}
 }
 
+func TestService_RenameSquad_RequiresMemberUser(t *testing.T) {
+	svc, _, _, _, sqRepo, _ := buildFullService()
+	sqRepo.members = []SquadMember{{Xuid: "x1", UserID: "alice"}}
+
+	if err := svc.RenameSquad(context.Background(), "sq1", "Nouveau", "outsider"); !errors.Is(err, ErrInvalidInput) {
+		t.Errorf("outsider doit être rejeté, got %v", err)
+	}
+	if len(sqRepo.renamed) != 0 {
+		t.Errorf("aucun rename attendu après rejet, got %d", len(sqRepo.renamed))
+	}
+	if err := svc.RenameSquad(context.Background(), "sq1", "Nouveau", "alice"); err != nil {
+		t.Errorf("membre-user doit pouvoir renommer, got %v", err)
+	}
+	if len(sqRepo.renamed) != 1 || sqRepo.renamed[0] != [2]string{"sq1", "Nouveau"} {
+		t.Errorf("rename inattendu: %+v", sqRepo.renamed)
+	}
+}
+
+func TestService_RenameSquad_RequiresName(t *testing.T) {
+	svc, _, _, _, sqRepo, _ := buildFullService()
+	sqRepo.members = []SquadMember{{Xuid: "x1", UserID: "alice"}}
+	if err := svc.RenameSquad(context.Background(), "sq1", "", "alice"); !errors.Is(err, ErrInvalidInput) {
+		t.Errorf("name vide: want ErrInvalidInput, got %v", err)
+	}
+}
+
+func TestService_DeleteSquad_RemovesAllMembers(t *testing.T) {
+	svc, _, _, _, sqRepo, _ := buildFullService()
+	sqRepo.members = []SquadMember{{Xuid: "x1", UserID: "alice"}, {Xuid: "x2"}}
+
+	if err := svc.DeleteSquad(context.Background(), "sq1", "outsider"); !errors.Is(err, ErrInvalidInput) {
+		t.Errorf("outsider doit être rejeté, got %v", err)
+	}
+	if len(sqRepo.removed) != 0 {
+		t.Errorf("aucun retrait attendu après rejet, got %d", len(sqRepo.removed))
+	}
+	if err := svc.DeleteSquad(context.Background(), "sq1", "alice"); err != nil {
+		t.Fatalf("DeleteSquad: %v", err)
+	}
+	if len(sqRepo.removed) != 2 {
+		t.Errorf("removed=%d, want 2 (tous les membres retirés)", len(sqRepo.removed))
+	}
+}
+
+func TestService_DeleteSquad_PartialFailure_ReturnsError(t *testing.T) {
+	svc, _, _, _, sqRepo, _ := buildFullService()
+	sqRepo.members = []SquadMember{{Xuid: "x1", UserID: "alice"}, {Xuid: "x2"}}
+	sqRepo.removeErr = errors.New("db locked")
+
+	err := svc.DeleteSquad(context.Background(), "sq1", "alice")
+	if err == nil {
+		t.Fatal("retrait en échec doit remonter une erreur (pas un faux succès)")
+	}
+	// Best-effort : tous les retraits sont tentés malgré l'échec (idempotent au retry).
+	if len(sqRepo.removed) != 2 {
+		t.Errorf("removed=%d, want 2 (tous tentés)", len(sqRepo.removed))
+	}
+}
+
+func TestService_SquadUsualContexts_DelegatesToProvider(t *testing.T) {
+	svc, _, _, _, _, _ := buildFullService()
+	svc.deps.SquadMatches = &fakeSquadMatchProvider{
+		usualPlaylists: []string{"Classé", "Grande équipe"},
+		usualModes:     []string{"Slayer"},
+	}
+	pls, mds, err := svc.SquadUsualContexts(context.Background(), []string{"x1", "x2"}, "halo_infinite")
+	if err != nil {
+		t.Fatalf("SquadUsualContexts: %v", err)
+	}
+	if len(pls) != 2 || pls[0] != "Classé" || len(mds) != 1 || mds[0] != "Slayer" {
+		t.Errorf("got pls=%v mds=%v", pls, mds)
+	}
+	// roster vide → nil sans erreur (best-effort)
+	if pls2, _, _ := svc.SquadUsualContexts(context.Background(), nil, "halo_infinite"); pls2 != nil {
+		t.Errorf("roster vide: want nil, got %v", pls2)
+	}
+}
+
 func TestService_ListSquadsForUser(t *testing.T) {
 	svc, _, _, _, sqRepo, _ := buildFullService()
 	sqRepo.squadsByUser = []Squad{{ID: "sq1", Name: "Trio"}}
@@ -126,12 +204,18 @@ func TestService_ListSquadsForUser(t *testing.T) {
 
 // fakeSquadMatchProvider renvoie des SquadMatchMetric figés (sans DB).
 type fakeSquadMatchProvider struct {
-	matches []SquadMatchMetric
-	err     error
+	matches        []SquadMatchMetric
+	err            error
+	usualPlaylists []string
+	usualModes     []string
 }
 
 func (f *fakeSquadMatchProvider) SquadMatchMetrics(_ context.Context, _ []string, _, _ string, _ int) ([]SquadMatchMetric, error) {
 	return f.matches, f.err
+}
+
+func (f *fakeSquadMatchProvider) SquadUsualContexts(_ context.Context, _ []string, _ string, _ int) ([]string, []string, error) {
+	return f.usualPlaylists, f.usualModes, nil
 }
 
 func TestService_EvaluateSquadChallenge_AggregatesAndPersists(t *testing.T) {

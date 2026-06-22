@@ -185,6 +185,7 @@ var canonicalOrder = []string{
 	"extend_player_records_with_window",                        // shared_social
 	"shared_social_squad_challenge_participant_append_only_v1", // shared_social
 	"shared_social_squad_member_append_only_v1",                // shared_social
+	"shared_social_squad_member_gamertag_v1",                   // shared_social
 	"rekey_squad_member_xuid",                                  // shared_social
 	"shared_social_user_prestige_append_only_v1",               // shared_social
 	"create_world_player_season_stats",                         // shared

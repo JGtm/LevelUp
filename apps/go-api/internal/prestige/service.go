@@ -77,6 +77,16 @@ type Service interface {
 	ListSquadMembers(ctx context.Context, squadID string) ([]SquadMember, error)
 	AddSquadMember(ctx context.Context, squadID string, member SquadMember, requestedBy string) error
 	RemoveSquadMember(ctx context.Context, squadID, xuid, requestedBy string) error
+	// RenameSquad change le nom d'une escouade. requestedBy (player_slug) doit
+	// être membre-user de l'escouade.
+	RenameSquad(ctx context.Context, squadID, name, requestedBy string) error
+	// DeleteSquad supprime une escouade en retirant tous ses membres
+	// (append-only : events is_member=FALSE → l'escouade sort de
+	// ListSquadsForUser). requestedBy (player_slug) doit être membre-user.
+	DeleteSquad(ctx context.Context, squadID, requestedBy string) error
+	// SquadUsualContexts dérive les playlists/modes dominants des matchs communs
+	// du roster (indice d'affichage du sélecteur, jamais stocké). Lecture seule.
+	SquadUsualContexts(ctx context.Context, rosterXUIDs []string, titleSlug string) (playlists, modes []string, err error)
 	// EvaluateSquadChallenge recalcule la progression de chaque membre d'un défi
 	// d'escouade (no-overlap + agrégation cumulative) et la persiste. requestedBy
 	// (player_slug) doit être membre-user de l'escouade.
@@ -230,6 +240,10 @@ type BaselineProvider interface {
 // est déjà title-scopée par chemin).
 type SquadMatchProvider interface {
 	SquadMatchMetrics(ctx context.Context, rosterXUIDs []string, titleSlug, metric string, limit int) ([]SquadMatchMetric, error)
+	// SquadUsualContexts dérive les playlists/modes dominants des matchs communs
+	// réels du roster (top par fréquence, labels résolus). Indice d'affichage
+	// auto-adaptatif (jamais stocké). Listes vides si aucun match commun.
+	SquadUsualContexts(ctx context.Context, rosterXUIDs []string, titleSlug string, limit int) (playlists, modes []string, err error)
 }
 
 // SquadProfileProvider fournit le profil 6-axes par membre d'une escouade

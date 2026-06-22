@@ -89,6 +89,8 @@ type fakeSquadRepo struct {
 	created      []Squad
 	added        []SquadMember
 	removed      []string
+	renamed      [][2]string // {id, name}
+	removeErr    error       // si non nil, RemoveMember échoue (test échec partiel)
 }
 
 func (r *fakeSquadRepo) Create(_ context.Context, s Squad) error {
@@ -109,6 +111,10 @@ func (r *fakeSquadRepo) AddMember(_ context.Context, m SquadMember) error {
 }
 func (r *fakeSquadRepo) RemoveMember(_ context.Context, _, xuid string) error {
 	r.removed = append(r.removed, xuid)
+	return r.removeErr
+}
+func (r *fakeSquadRepo) Rename(_ context.Context, id, name string) error {
+	r.renamed = append(r.renamed, [2]string{id, name})
 	return nil
 }
 func (r *fakeSquadRepo) ListMembers(_ context.Context, _ string) ([]SquadMember, error) {
