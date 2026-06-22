@@ -85,6 +85,10 @@ en = "No challenge data is available right now."
 fr = "Dernière synchronisation réussie le {date}"
 en = "Last successful synchronization on {date}"
 
+[home.freshness.from_cache]
+fr = "Données en cache (live indisponible) — dernière synchro le {date}"
+en = "Cached data (live unavailable) — last sync {date}"
+
 # ─── Section Sessions récentes ────────────────────────────────────────────
 
 [home.sessions.title]
