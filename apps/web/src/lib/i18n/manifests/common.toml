@@ -651,6 +651,26 @@ en = "Drag and drop or"
 fr = "MP4, MOV, AVI, MKV, PNG, JPG…"
 en = "MP4, MOV, AVI, MKV, PNG, JPG…"
 
+[common.media.browse]
+fr = "parcourir"
+en = "browse"
+
+[common.media.upload_success]
+fr = "{saved, plural, one {# fichier importé} other {# fichiers importés}} · {indexed} nouv. · {associated} assoc.{thumbnails, plural, =0 {} one { · # miniature} other { · # miniatures}}"
+en = "{saved, plural, one {# file imported} other {# files imported}} · {indexed} new · {associated} assoc.{thumbnails, plural, =0 {} one { · # thumbnail} other { · # thumbnails}}"
+
+[common.media.upload_error]
+fr = "Échec de l'import"
+en = "Upload failed"
+
+[common.media.associate_success]
+fr = "Média associé au match"
+en = "Media linked to match"
+
+[common.media.associate_error]
+fr = "Échec de l'association"
+en = "Association failed"
+
 # ─── Leaderboard ────────────────────────────────────────────────────────
 
 [common.leaderboard.title_world]
