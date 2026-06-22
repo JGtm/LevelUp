@@ -150,8 +150,9 @@ func (h *AuthHandler) GetDeviceFlowStatus(w http.ResponseWriter, r *http.Request
 		// Stocker les tokens Halo dans la session (jamais exposés au navigateur).
 		if snapshot.SpartanToken != "" {
 			sess.HaloTokens = &domain.HaloTokens{
-				SpartanToken:   snapshot.SpartanToken,
-				ClearanceToken: snapshot.ClearanceToken,
+				SpartanToken:     snapshot.SpartanToken,
+				ClearanceToken:   snapshot.ClearanceToken,
+				SpartanExpiresAt: snapshot.SpartanExpiresAt,
 			}
 		}
 		// LinkStrategy gère le post-flow (password : LinkIdentity ; xbox SSO : login direct).
@@ -224,6 +225,7 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 		a.Status = auth_platform.AttemptStatusAuthorized
 		a.SpartanToken = result.Tokens.SpartanToken
 		a.ClearanceToken = result.Tokens.ClearanceToken
+		a.SpartanExpiresAt = result.Tokens.SpartanExpiresAt
 		a.Gamertag = result.Gamertag
 		a.XUID = result.XUID
 
