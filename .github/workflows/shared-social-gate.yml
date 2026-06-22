@@ -47,10 +47,10 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: apps/go-api/go.mod
           cache: true

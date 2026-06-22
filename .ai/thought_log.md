@@ -28,6 +28,21 @@
 
 ---
 
+## [2026-06-22] Adoption bumps Dependabot — lot 1 « triviaux » (14/15) après étude ultracode — COMPLÉTÉ code (branche chore/deps-batch-safe-bumps)
+
+**Contexte** : suite à l'étude ultracode des 15 bumps différés (16 agents, verdicts par dépendance + vérif adverse), tous jugés sûrs pour notre usage. Décision utilisateur : « tout adopter, en lots ». Ce lot = les 14 triviaux ; duckdb-go (le seul medium) suit sur branche dédiée testée.
+
+**Décision technique** :
+- **npm (5)** : `npm update` (ranges `^` couvraient déjà les cibles → seul le lockfile avance). @vitest/ui 4.1.9, eslint-plugin-react-refresh 0.5.3, globals 17.7.0, @tailwindcss/typography 0.5.20, tailwindcss 4.3.1. Subtilité : tailwindcss core était tenu à 4.3.0 par la **famille lockstep** (@tailwindcss/vite + node 4.3.0) → bumpé @tailwindcss/vite aussi (in-range) pour aligner toute la famille en 4.3.1 dédupliqué (sinon doublon 4.3.1+4.3.0).
+- **gomod (4 minors, hors duckdb)** : `go get` + `go mod tidy`. modernc.org/sqlite 1.53.0, go-toml/v2 2.4.0, x/sync 0.21.0, x/crypto 0.53.0 (+ transitifs x/sys, x/mod, x/tools, modernc.org/libc).
+- **github-actions (5, tag-based)** : checkout v4→v7, setup-go v5→v6, download-artifact v4→v8, setup-buildx v3→v4, spectral-action 0.8.11→0.8.13. Les 2 checkout **pinnés par SHA** (sync-labels, triage-feedback) **laissés en v4** (hygiène supply-chain délibérée + couverts par l'ignore-majors de la config #41 ; bump SHA = tâche distincte).
+
+**Résultats (vérif)** : front — `tsc -b` exit 0, `eslint` exit 0 (69 warnings préexistants), `vite build` exit 0 (tailwindcss 4.3.1 OK). go — `go build ./...` + `go vet ./...` exit 0 (CGO ucrt64), tests ciblés verts (`internal/openspartan` sqlite, `internal/games` go-toml, `internal/platform/userstore` crypto). Actions : validation actionlint déléguée à la CI de la PR. package.json inchangé (ranges couvrants), duckdb-go intact à 2.10503.1.
+
+**Prochaine étape** : commit + PR (merge = 1 deploy, à l'utilisateur) ; puis **lot 2 = duckdb-go/v2 2.10504.0** sur branche dédiée avec gates DuckDB (shared-social, ART/append-only) + test du retrait du workaround `-gcflags=all=-d=checkptr=0`. Étude tracée : `.ai/PLAN_DEPENDABOT_TAMING.md`.
+
+---
+
 ## [2026-06-22] Barre L2 Escouade — alignement pill joueur actif (JGtm) via unification dans GamertagCombobox — COMPLÉTÉ code (visuel à confirmer, branche feat/squad-named-presets-toolbar)
 
 **Contexte** : après la troncature des pills coéquipiers (`max-w-[7rem]`, barre L2 sur une ligne), la pill du joueur actif (JGtm, couleur `compare-a`) apparaissait désalignée verticalement avec les pills coéquipiers (« c'est décalé »).
