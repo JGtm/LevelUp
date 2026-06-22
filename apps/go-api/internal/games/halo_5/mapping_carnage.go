@@ -18,7 +18,10 @@ package halo_5
 // NUMÉRATEUR (k + a/3) − d ; les lecteurs agrégés le moyennent (AVG / Σ÷games =
 // la métrique /games). Infinite garde son KDA d'API (jamais calculé).
 
-import "levelup/go-api/internal/domain"
+import (
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/halo/duration"
+)
 
 // h5GameModeSegment mappe le GameMode numérique (liste de matchs) vers le segment
 // d'URL string du carnage (/h5/{mode}/matches/{id}). Fallback "arena".
@@ -121,13 +124,9 @@ func participantOutcome(isTeamGame bool, teamID, rank, winTeam int, dnf bool) *i
 }
 
 // iso8601DurationSecondsFloat parse "PT16.48S" → 16.48 (secondes flottantes). nil si KO.
+// Délègue à la source UNIQUE (internal/platform/halo/duration).
 func iso8601DurationSecondsFloat(s string) *float64 {
-	ms, ok := parseISO8601DurationMs(s)
-	if !ok {
-		return nil
-	}
-	f := float64(ms) / 1000.0
-	return &f
+	return duration.SecondsFloatBoundedPtr(s)
 }
 
 // h5NetFDA calcule le FDA NET Halo 5 d'un match : (kills + assists/3) − deaths.

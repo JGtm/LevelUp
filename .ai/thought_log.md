@@ -1,3 +1,12 @@
+## [2026-06-22] Qualité — BLOCKER parseur ISO8601 unifié (bug latent corrigé) — Complété
+
+Revue qualité (`.ai/REVIEW_H5_QUALITY.md`, 8.5/10) : TRIPLE parseur ISO8601 avec **regex DIVERGENTE** → bug latent prouvé : `P1D` (jour sans `T`) parsait à 86400 côté `compare_provider` mais rejeté (nil/0) côté halo_5 et openspartan.
+
+- **`internal/platform/halo/duration`** (nouveau leaf, stdlib pur → aucun cycle) : grammaire canonique `P[nD][T[nH][nM][n.fracS]]` (T optionnel — corrige `P1D`). API : `ParseISO8601Duration`/`Seconds`/`SecondsFloat`/`SecondsInt64`/`SecondsRoundedBoundedPtr` (chemin h5)/`MillisBounded`/`SecondsFloatBoundedPtr`.
+- 3 sites migrés (halo_5/mapping.go, openspartan/mapper/iso8601.go, platform/halo/compare_provider.go) : regex dupliquées SUPPRIMÉES, wrappers minces. Sémantiques par-site préservées (troncature/arrondi, borne 24h, dégradation). Build+vet+test verts.
+
+Reste du plan revue : MAJOR dédup mappers carnage, câblage ranked_hoppers h5, CapWorldLeaderboard ; minors (fail-hard provider nil, dédup XUID seed, data_gaps, i18n).
+
 ## [2026-06-22] perfect_kills TITLE-AWARE + dé-duplication du magic number — Complété
 
 Le compteur « frags parfaits » comptait UNIQUEMENT la médaille HINF `1512363953` (« Perfect »), codée en littéral dans ~10 sites SQL/builders. Halo 5 a SIX médailles « Perfect Kill » distinctes (`1080468863, 3653057799, 370413844, 2279899989, 3098362934, 3992195104`) à AGRÉGER ; « Perfection » (3592822316, match sans-mort) volontairement exclue.

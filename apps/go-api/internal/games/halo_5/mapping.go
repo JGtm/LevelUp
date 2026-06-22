@@ -10,14 +10,12 @@
 package halo_5
 
 import (
-	"math"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/classification"
+	"levelup/go-api/internal/platform/halo/duration"
 )
 
 // h5Identity construit l'identite canonique d'un joueur Halo 5. XUID vide
@@ -31,59 +29,12 @@ func h5Identity(gamertag string) canonical.PlayerIdentity {
 	}
 }
 
-// iso8601DurationRe capture les composantes H/M/S d'une duree ISO8601 du type
-// "PT5M41.7930011S" (heures/minutes/secondes ; jours rares en match h5, gérés).
-var iso8601DurationRe = regexp.MustCompile(`^P(?:(\d+)D)?T(?:(\d+)H)?(?:(\d+)M)?(?:([\d.]+)S)?$`)
-
-// h5MaxDurationSeconds borne une durée de match plausible (24h). Une valeur au-delà
-// est rejetée (donnée corrompue / overflow regex) → nil, pour ne pas polluer les
-// stats ni produire un StartedAtUTC absurde via la soustraction fin−durée.
-const h5MaxDurationSeconds = 24 * 3600
-
 // parseISO8601DurationSeconds convertit "PT12M34.5S" en secondes (arrondi). Nil si
 // vide, non-parsable, sans aucune composante ("PT"), ou hors borne plausible (le
-// canonique distingue "indisponible" de "0").
+// canonique distingue "indisponible" de "0"). Délègue à la source UNIQUE
+// (internal/platform/halo/duration), qui gère aussi "P1D" sans marqueur T.
 func parseISO8601DurationSeconds(s string) *int {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return nil
-	}
-	m := iso8601DurationRe.FindStringSubmatch(s)
-	if m == nil {
-		return nil
-	}
-	// Exiger au moins une composante (rejette "PT" / "P" qui matchent la regex
-	// tout-optionnel et renverraient 0 au lieu de "indisponible").
-	if m[1] == "" && m[2] == "" && m[3] == "" && m[4] == "" {
-		return nil
-	}
-	var total float64
-	if m[1] != "" { // jours
-		if d, err := strconv.Atoi(m[1]); err == nil {
-			total += float64(d) * 86400
-		}
-	}
-	if m[2] != "" { // heures
-		if h, err := strconv.Atoi(m[2]); err == nil {
-			total += float64(h) * 3600
-		}
-	}
-	if m[3] != "" { // minutes
-		if mn, err := strconv.Atoi(m[3]); err == nil {
-			total += float64(mn) * 60
-		}
-	}
-	if m[4] != "" { // secondes (fractionnaires)
-		if sec, err := strconv.ParseFloat(m[4], 64); err == nil {
-			total += sec
-		}
-	}
-	// Garde-fou overflow/corruption : hors [0, 24h] → indisponible.
-	if total < 0 || total > h5MaxDurationSeconds {
-		return nil
-	}
-	out := int(math.Round(total))
-	return &out
+	return duration.SecondsRoundedBoundedPtr(s)
 }
 
 // deriveOutcome derive l'issue d'un match pour le joueur a partir du Rang

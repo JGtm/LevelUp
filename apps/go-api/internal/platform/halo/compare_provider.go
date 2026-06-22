@@ -12,11 +12,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"regexp"
 	"strconv"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/halo/duration"
 )
 
 // serviceRecordResponse est la réponse de l'endpoint service record Waypoint.
@@ -96,7 +96,7 @@ func (p *HaloProvider) FetchServiceRecord(ctx context.Context, gamertag, titleSl
 		TitleSlug:         titleSlug,
 		Gamertag:          gamertag,
 		Matches:           resp.MatchesCompleted,
-		TimePlayedSeconds: parseISO8601DurationSeconds(resp.TimePlayed),
+		TimePlayedSeconds: duration.SecondsInt64(resp.TimePlayed),
 	}
 	if resp.MatchesCompleted > 0 {
 		n := float64(resp.MatchesCompleted)
@@ -172,43 +172,4 @@ func buildSeasonServiceRecordURL(gamePrefix, gamertag, seasonID string, isRanked
 		q.Set("isRanked", strconv.FormatBool(*isRanked))
 	}
 	return fmt.Sprintf("%s/%s/players/%s/Matchmade/servicerecord?%s", defaultStatsHost, gamePrefix, gamertag, q.Encode())
-}
-
-// iso8601DurationRe capture les composantes jours/heures/minutes/secondes d'une
-// durée ISO-8601 du type "P1DT7H50M24.6360455S" (semaines/mois/années ignorées,
-// non émises par Waypoint pour un temps de jeu).
-var iso8601DurationRe = regexp.MustCompile(`^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:([\d.]+)S)?)?$`)
-
-// parseISO8601DurationSeconds convertit une durée ISO-8601 en secondes (tronquées).
-// Retourne 0 si la chaîne est vide ou non parsable (dégradation gracieuse).
-func parseISO8601DurationSeconds(s string) int64 {
-	if s == "" {
-		return 0
-	}
-	m := iso8601DurationRe.FindStringSubmatch(s)
-	if m == nil {
-		return 0
-	}
-	var total float64
-	if m[1] != "" { // jours
-		if v, err := strconv.ParseFloat(m[1], 64); err == nil {
-			total += v * 86400
-		}
-	}
-	if m[2] != "" { // heures
-		if v, err := strconv.ParseFloat(m[2], 64); err == nil {
-			total += v * 3600
-		}
-	}
-	if m[3] != "" { // minutes
-		if v, err := strconv.ParseFloat(m[3], 64); err == nil {
-			total += v * 60
-		}
-	}
-	if m[4] != "" { // secondes (peut être fractionnaire)
-		if v, err := strconv.ParseFloat(m[4], 64); err == nil {
-			total += v
-		}
-	}
-	return int64(total)
 }
