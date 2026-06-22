@@ -68,7 +68,7 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 		LEFT JOIN (
 			SELECT match_id, xuid, SUM(count) AS perfect_count
 			FROM medals_earned
-			WHERE medal_name_id = 1512363953
+			WHERE ` + perfectKillMedalInClause("medal_name_id", titleSlug) + `
 			GROUP BY match_id, xuid
 		) me ON me.match_id = mp.match_id AND me.xuid = mp.xuid
 		WHERE mp.xuid = ?
@@ -264,8 +264,9 @@ func (r *CompareRepo) GetCrossMatchSample(ctx context.Context, xuidA, xuidB stri
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	// shared-only via SharedReader.
-	const q = `
+	// shared-only via SharedReader. Set perfect-kill title-aware via le titre du
+	// joueur courant (pdb.TitleSlug ; HINF byte-identique = {1512363953}).
+	q := `
 		SELECT
 			COUNT(*)                                        AS matches_count,
 			COALESCE(MAX(b.max_killing_spree), 0)           AS max_killing_spree,
@@ -277,7 +278,7 @@ func (r *CompareRepo) GetCrossMatchSample(ctx context.Context, xuidA, xuidB stri
 		LEFT JOIN (
 			SELECT match_id, xuid, SUM(count) AS perfect_count
 			FROM medals_earned
-			WHERE medal_name_id = 1512363953
+			WHERE ` + perfectKillMedalInClause("medal_name_id", pdbTitleSlug(r.pdb)) + `
 			GROUP BY match_id, xuid
 		) me ON me.match_id = b.match_id AND me.xuid = b.xuid
 		WHERE a.xuid = ?`

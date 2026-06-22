@@ -173,16 +173,18 @@ func (r *ExplorerRepo) GetMedalCountsForMatches(
 		return nil, nil
 	}
 	placeholders := strings.TrimRight(strings.Repeat("?,", len(matchIDs)), ",")
+	// Frags parfaits = set de médailles « frag parfait » du titre du joueur
+	// (source unique analysis.PerfectKillMedalIDs ; HINF = {1512363953},
+	// même approche que Q12MatchScoreboard / Q30 queries_squad.go).
+	perfectClause := perfectKillMedalInClause("medal_name_id", pdbTitleSlug(r.pdb))
 	q := fmt.Sprintf(`
 		SELECT
 			COALESCE(SUM(count), 0)                  AS total,
 			COALESCE(COUNT(DISTINCT medal_name_id), 0) AS unique_count,
-			-- Frags parfaits = médaille "Perfect" (medal_name_id 1512363953),
-			-- même approche que Q12MatchScoreboard / Q30 (queries_squad.go).
-			COALESCE(SUM(CASE WHEN medal_name_id = 1512363953 THEN count ELSE 0 END), 0) AS perfect_kills
+			COALESCE(SUM(CASE WHEN %s THEN count ELSE 0 END), 0) AS perfect_kills
 		FROM medals_earned
 		WHERE xuid = ? AND match_id IN (%s)
-	`, placeholders)
+	`, perfectClause, placeholders)
 
 	args := make([]any, 0, 1+len(matchIDs))
 	args = append(args, xuid)
@@ -260,7 +262,9 @@ func (r *ExplorerRepo) GetTargetRecentMatches(
 	}
 	defer release()
 
-	rows, err := db.QueryContext(ctx, Q19cTargetRecentMatches, xuid, xuid, limit)
+	// Set perfect-kill résolu pour le titre du joueur (HINF byte-identique).
+	q := resolvePerfectKillClause(Q19cTargetRecentMatches, "medal_name_id", pdbTitleSlug(r.pdb))
+	rows, err := db.QueryContext(ctx, q, xuid, xuid, limit)
 	if err != nil {
 		return nil, fmt.Errorf("ExplorerRepo.GetTargetRecentMatches: query: %w", err)
 	}

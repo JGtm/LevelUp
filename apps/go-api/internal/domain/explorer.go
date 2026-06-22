@@ -238,8 +238,9 @@ type ExplorerTargetSampleStats struct {
 	// colonne "Score" du scoreboard). Nil si sample vide.
 	AvgPersonalScore *float64 `json:"avg_personal_score,omitempty"`
 
-	// PerfectKills : total de "frags parfaits" sur le sample (médaille Perfect,
-	// medal_name_id=1512363953 dans shared.medals_earned).
+	// PerfectKills : total de "frags parfaits" sur le sample (set de médailles
+	// « frag parfait » du titre, cf. analysis.PerfectKillMedalIDs, agrégé sur
+	// shared.medals_earned).
 	PerfectKills int `json:"perfect_kills"`
 
 	// TopWeapons : top armes (par kills) de la cible sur les matchs communs
@@ -277,8 +278,8 @@ type ParticipantStatsAggregate struct {
 type MedalCountsAggregate struct {
 	Total  int
 	Unique int
-	// PerfectKills : occurrences de la médaille "Perfect" (medal_name_id
-	// 1512363953) — exposé en "frags parfaits".
+	// PerfectKills : occurrences des médailles « frag parfait » du titre
+	// (cf. analysis.PerfectKillMedalIDs) — exposé en "frags parfaits".
 	PerfectKills int
 }
 

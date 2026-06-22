@@ -48,12 +48,16 @@ func buildSummaryTabFull(
 		deltaMMR = &d
 	}
 
-	// perfect_kills depuis les médailles (medal_name_id 1512363953)
-	const perfectKillMedalID = int64(1512363953)
+	// perfect_kills = somme des médailles « frag parfait » du titre (source unique
+	// analysis.PerfectKillMedalIDs ; HINF = {1512363953}, h5 = 6 ids agrégés).
+	perfectKillIDs := analysis.PerfectKillMedalIDs(titleSlug)
 	var perfectKills int
 	for _, m := range medals {
-		if m.MedalID == perfectKillMedalID {
-			perfectKills += m.Count
+		for _, id := range perfectKillIDs {
+			if m.MedalID == id {
+				perfectKills += m.Count
+				break
+			}
 		}
 	}
 

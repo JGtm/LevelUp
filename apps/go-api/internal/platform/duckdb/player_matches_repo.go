@@ -105,7 +105,11 @@ func (r *PlayerMatchesRepo) Load(
 // Si sur colonne player (performance_score), order/limit appliqués post-merge.
 func (r *PlayerMatchesRepo) buildSharedQuery(f port.PlayerMatchFilters) (string, []any, sharedQueryHints, error) {
 	var sb strings.Builder
-	sb.WriteString(playerMatchesSharedBaseSelect)
+	// Set perfect-kill title-aware (source unique analysis.PerfectKillMedalIDs ;
+	// HINF byte-identique = me.medal_name_id IN (1512363953)).
+	sb.WriteString(resolvePerfectKillClause(
+		playerMatchesSharedBaseSelect, "me.medal_name_id", pdbTitleSlug(r.pdb),
+	))
 
 	args := []any{r.pdb.XUID}
 
@@ -303,7 +307,7 @@ SELECT
         FROM medals_earned me
         WHERE me.match_id = p.match_id
           AND me.xuid = p.xuid
-          AND me.medal_name_id = 1512363953
+          AND /*__PERFECT_KILL_IN__*/
     ), 0)::INTEGER                                       AS perfect_kills,
     -- T0 offset (Match Timeline T0, Phase 3) : countdown pré-match en ms.
     -- NULL si real_start_time absent → fallback runtime T0=0.
