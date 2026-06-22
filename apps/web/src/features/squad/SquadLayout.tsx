@@ -500,20 +500,14 @@ export function SquadLayout() {
       <div className="sticky top-0 z-30 border-b border-border" style={{ background: 'var(--background)' }}>
         <div className="flex min-h-10 items-center gap-1.5 overflow-visible px-4 py-1.5">
 
-          {/* Joueur actif — pill colorée fixe, non supprimable */}
-          <span
-            className="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-sm font-medium"
-            style={{ backgroundColor: tokenCssVar('compare-a'), color: '#fff' }} // color-allow: blanc structurel pour contraste sur fond compare-a
-            title={playerSlug}
-          >
-            <span className="max-w-[7rem] truncate">{playerSlug}</span>
-          </span>
-
-          {/* Coéquipiers (multi-select compact inline, jusqu'à 3). Le popover
-              intègre les presets « Mes escouades » (charger/gérer une compo
-              sauvegardée) et « Mes groupes » (charger les membres d'un groupe). */}
+          {/* Joueur actif (pill de tête non-supprimable) + coéquipiers (multi-select
+              compact inline, jusqu'à 3). La pill du joueur actif est rendue DANS le
+              combobox (leadingPill) → même ligne flex que les pills coéquipiers, donc
+              alignement vertical garanti. Le popover intègre les presets « Mes
+              escouades » (charger/gérer une compo) et « Mes groupes ». */}
           <GamertagCombobox
             compact
+            leadingPill={{ label: playerSlug, color: tokenCssVar('compare-a') }}
             selected={selectedGts}
             onChange={setSelectedGts}
             max={MAX_SELECTION}

@@ -1,3 +1,17 @@
+## [2026-06-22] Barre L2 Escouade — alignement pill joueur actif (JGtm) via unification dans GamertagCombobox — COMPLÉTÉ code (visuel à confirmer, branche feat/squad-named-presets-toolbar)
+
+**Contexte** : après la troncature des pills coéquipiers (`max-w-[7rem]`, barre L2 sur une ligne), la pill du joueur actif (JGtm, couleur `compare-a`) apparaissait désalignée verticalement avec les pills coéquipiers (« c'est décalé »).
+
+**Diagnostic** : markup vertical identique (`inline-flex items-center px-2.5 py-0.5 text-sm`) ; mesure sandbox (chrome-devtools, deux structures répliquées au pixel) = **delta 0px** → devraient s'aligner. Cause réelle = JGtm rendu en `<span>` ad-hoc DANS la barre L2, sous-arbre DOM distinct des pills coéquipiers (qui vivent dans `GamertagCombobox` > `div.relative` > `div.flex.items-center`, même ligne que l'`<input>`). Le `items-center` de la barre ne compense pas un décalage né À L'INTÉRIEUR du combobox (ligne de l'input / wrapper toolbar presets / règle CSS).
+
+**Décision technique principale** : **unifier** — nouvelle prop `leadingPill?: { label, color }` sur `GamertagCombobox`, rendue comme première pill non-supprimable (sans `×`, `shrink-0`, même markup `max-w-[7rem] truncate`) dans la ligne flex compacte. `SquadLayout` : suppression du `<span>` JGtm autonome, passage `leadingPill={{ label: playerSlug, color: tokenCssVar('compare-a') }}`. JGtm devient sibling des pills coéquipiers (déjà alignées entre elles) → alignement garanti par construction, indépendant de la cause exacte. `onClick stopPropagation` pour rester inerte (ne pas ouvrir le dropdown).
+
+**Résultats** : typecheck OK ; lint **0 erreur** (69 warnings pré-existants hors scope) ; `GamertagCombobox.test` **7/7 vert** (prop additive, défaut absent). Autres call sites (`SyncTab`/`ComparePage`/`SquadV2`) non impactés.
+
+**Prochaine étape** : confirmation visuelle dans l'app HMR (JGtm aligné avec les coéquipiers, barre une ligne). Inclut le fix troncature des pills coéquipiers (déjà mergé sur `main` via `fix/squad-l2-pill-truncation` ; présent ici en working tree).
+
+---
+
 ## [2026-06-22] Sécurité dépendances : alerte Dependabot #3 (js-yaml DoS) + config dependabot.yml corrigée — COMPLÉTÉ code (branche fix/dependabot-config-and-js-yaml, depuis main)
 
 **Contexte** : utilisateur — (1) « checke l'alerte Dependabot #3 » ; (2) « regarde le commit 5a6832a » (GitHub). Alerte #3 = GHSA-h67p-54hq-rp68 / CVE-2026-53550, js-yaml DoS complexité quadratique (merge-key `<<:` avec alias répété → O(K×M)), sévérité medium (CVSS 5.3), vulnérable `<= 4.1.1`, corrigé `4.2.0`.
