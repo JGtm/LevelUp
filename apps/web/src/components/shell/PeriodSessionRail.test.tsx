@@ -105,6 +105,23 @@ describe('PeriodSessionRail', () => {
     expect(screen.getByText(/du.+au/i)).toBeTruthy()
   })
 
+  it('matchCount : affiche le compteur de matchs en multi-session (où le rail n\'en a pas) + le trailing', () => {
+    const store = useGlobalFilterStore.getState()
+    store.setResolvedContext(
+      buildResolved([
+        { id: 's-1', label: '06/04' },
+        { id: 's-2', label: '05/04' },
+      ]),
+    )
+    store.setSessions({ picked_sessions: ['s-1', 's-2'], gap_minutes: DEFAULT_GAP_MINUTES })
+
+    renderWithProviders(
+      <PeriodSessionRail matchCount={42} trailing={<button type="button">Voir les matchs</button>} />,
+    )
+    expect(screen.getByText(/42 match/i)).toBeTruthy()
+    expect(screen.getByText('Voir les matchs')).toBeTruthy()
+  })
+
   it('clic ◀ Précédente bascule vers la session plus ancienne (label en sortie)', () => {
     const store = useGlobalFilterStore.getState()
     store.setResolvedContext(

@@ -190,10 +190,20 @@ const NAV_BTN_CLASS =
 interface PeriodSessionRailProps {
   /** Store à utiliser. Défaut : useSoloFilterStore (rétrocompat NavL2). */
   filterStore?: FilterStore
+  /** Total de matchs après filtres — affiché au centre du rail dans les modes qui
+   *  n'ont pas déjà leur propre compteur (tous sauf session unique). Côté Escouade,
+   *  remplace le compteur jadis dupliqué dans la barre de filtres. */
+  matchCount?: number | null
+  /** Élément rendu au centre, après le compteur (ex. bouton « Voir les matchs »). */
+  trailing?: React.ReactNode
 }
 
 /** Composant principal — dispatcher selon le mode (session / multi-session / period / season). */
-export function PeriodSessionRail({ filterStore = useSoloFilterStore }: PeriodSessionRailProps = {}) {
+export function PeriodSessionRail({
+  filterStore = useSoloFilterStore,
+  matchCount,
+  trailing,
+}: PeriodSessionRailProps = {}) {
   const filterContext = filterStore((s) => s.filterContext)
   const resolvedContext = filterStore((s) => s.resolvedContext)
   const seasons = useSeasons()
@@ -204,9 +214,27 @@ export function PeriodSessionRail({ filterStore = useSoloFilterStore }: PeriodSe
   const allSessions = resolvedContext?.session_options?.all_sessions ?? []
   const mode = getRailMode(filterContext, allSessions)
 
+  // Compteur de matchs (modes hors session unique, qui a déjà le sien) + trailing.
+  const countNode =
+    matchCount != null ? (
+      <span className="shrink-0 text-xs text-muted-foreground" aria-live="polite">
+        {t.matchCountSuffix(matchCount)}
+      </span>
+    ) : null
+  const extraWithCount =
+    countNode || trailing ? (
+      <>
+        {countNode}
+        {trailing}
+      </>
+    ) : undefined
+  // Session unique : le compteur est déjà dans le label central → on n'ajoute que le trailing.
+  const extraSessionOnly = trailing ?? undefined
+
   if (mode.kind === 'hidden') return null
-  if (mode.kind === 'all-time') return <AllTimeRail total={mode.total} t={t} />
-  if (mode.kind === 'multi-session') return <MultiSessionRail count={mode.count} t={t} />
+  if (mode.kind === 'all-time') return <AllTimeRail total={mode.total} t={t} centerExtra={extraWithCount} />
+  if (mode.kind === 'multi-session')
+    return <MultiSessionRail count={mode.count} t={t} centerExtra={extraWithCount} />
   if (mode.kind === 'session') {
     return (
       <SessionRail
@@ -216,6 +244,7 @@ export function PeriodSessionRail({ filterStore = useSoloFilterStore }: PeriodSe
         locale={locale}
         t={t}
         filterStore={filterStore}
+        centerExtra={extraSessionOnly}
       />
     )
   }
@@ -223,7 +252,16 @@ export function PeriodSessionRail({ filterStore = useSoloFilterStore }: PeriodSe
   // pile une saison du catalog (priorité à l'affichage saison).
   const activeSeason = findActiveSeason(seasons, mode.period.start_date, mode.period.end_date)
   if (activeSeason) {
-    return <SeasonRail season={activeSeason} seasons={seasons} locale={locale} t={t} filterStore={filterStore} />
+    return (
+      <SeasonRail
+        season={activeSeason}
+        seasons={seasons}
+        locale={locale}
+        t={t}
+        filterStore={filterStore}
+        centerExtra={extraWithCount}
+      />
+    )
   }
   return (
     <PeriodRail
@@ -235,6 +273,7 @@ export function PeriodSessionRail({ filterStore = useSoloFilterStore }: PeriodSe
       locale={locale}
       t={t}
       filterStore={filterStore}
+      centerExtra={extraWithCount}
     />
   )
 }
@@ -253,9 +292,12 @@ interface RailFrameProps {
   prev: React.ReactNode
   center: React.ReactNode
   next: React.ReactNode
+  /** Contenu additionnel rendu dans la zone centrale, après le label (compteur
+   *  de matchs + « Voir les matchs » côté Escouade). */
+  centerExtra?: React.ReactNode
 }
 
-function RailFrame({ modeAttr, ariaLabel, prev, center, next }: RailFrameProps) {
+function RailFrame({ modeAttr, ariaLabel, prev, center, next, centerExtra }: RailFrameProps) {
   return (
     <div
       className={RAIL_BASE_CLASS}
@@ -265,7 +307,10 @@ function RailFrame({ modeAttr, ariaLabel, prev, center, next }: RailFrameProps) 
       data-mode={modeAttr}
     >
       <div className={ZONE_LEFT_CLASS}>{prev}</div>
-      <div className={ZONE_CENTER_CLASS}>{center}</div>
+      <div className={ZONE_CENTER_CLASS}>
+        {center}
+        {centerExtra}
+      </div>
       <div className={ZONE_RIGHT_CLASS}>{next}</div>
     </div>
   )
@@ -298,7 +343,7 @@ function NavBtn({ label, title, ariaLabel, enabled, onClick }: NavBtnProps) {
 // Sous-composants par mode
 // ---------------------------------------------------------------------------
 
-function AllTimeRail({ total, t }: { total: number; t: RailText }) {
+function AllTimeRail({ total, t, centerExtra }: { total: number; t: RailText; centerExtra?: React.ReactNode }) {
   const disabled = (
     <NavBtn label={t.prev} title={t.allTimeTooltip} ariaLabel={t.ariaPrevSession} enabled={false} onClick={() => {}} />
   )
@@ -307,6 +352,7 @@ function AllTimeRail({ total, t }: { total: number; t: RailText }) {
       modeAttr="all-time"
       ariaLabel={t.ariaNav}
       prev={disabled}
+      centerExtra={centerExtra}
       center={
         <span className="text-sm font-semibold text-muted-foreground" title={t.allTimeTooltip}>
           {t.allTimeLabel(total)}
@@ -319,11 +365,12 @@ function AllTimeRail({ total, t }: { total: number; t: RailText }) {
   )
 }
 
-function MultiSessionRail({ count, t }: { count: number; t: RailText }) {
+function MultiSessionRail({ count, t, centerExtra }: { count: number; t: RailText; centerExtra?: React.ReactNode }) {
   return (
     <RailFrame
       modeAttr="multi-session"
       ariaLabel={t.ariaNav}
+      centerExtra={centerExtra}
       prev={
         <NavBtn label={t.prev} title={t.multiSessionTooltip} ariaLabel={t.ariaPrevSession} enabled={false} onClick={() => {}} />
       }
@@ -352,9 +399,10 @@ interface SessionRailProps {
   locale: Locale
   t: RailText
   filterStore: FilterStore
+  centerExtra?: React.ReactNode
 }
 
-function SessionRail({ session, index, total, locale, t, filterStore }: SessionRailProps) {
+function SessionRail({ session, index, total, locale, t, filterStore, centerExtra }: SessionRailProps) {
   const formattedLabel = formatSessionLabel(
     session.label,
     session.started_at_utc,
@@ -372,6 +420,7 @@ function SessionRail({ session, index, total, locale, t, filterStore }: SessionR
     <RailFrame
       modeAttr="session"
       ariaLabel={t.ariaNav}
+      centerExtra={centerExtra}
       prev={
         <NavBtn
           label={t.prev}
@@ -419,9 +468,10 @@ interface PeriodRailProps {
   locale: Locale
   t: RailText
   filterStore: FilterStore
+  centerExtra?: React.ReactNode
 }
 
-function PeriodRail({ period, durationDays, locale, t, filterStore }: PeriodRailProps) {
+function PeriodRail({ period, durationDays, locale, t, filterStore, centerExtra }: PeriodRailProps) {
   const goToPrevPeriod = filterStore((s) => s.goToPrevPeriod)
   const goToNextPeriod = filterStore((s) => s.goToNextPeriod)
 
@@ -434,6 +484,7 @@ function PeriodRail({ period, durationDays, locale, t, filterStore }: PeriodRail
     <RailFrame
       modeAttr="period"
       ariaLabel={t.ariaNav}
+      centerExtra={centerExtra}
       prev={
         <NavBtn
           label={t.prev}
@@ -472,12 +523,13 @@ interface SeasonRailProps {
   locale: Locale
   t: RailText
   filterStore: FilterStore
+  centerExtra?: React.ReactNode
 }
 
 /** Mode "season" : prend le relais du mode period quand la fenêtre courante
  *  matche pile une saison du catalog. Boutons prev/next sautent saison-à-
  *  saison via setPeriod (au lieu du sliding-window classique). */
-function SeasonRail({ season, seasons, locale, t, filterStore }: SeasonRailProps) {
+function SeasonRail({ season, seasons, locale, t, filterStore, centerExtra }: SeasonRailProps) {
   const setPeriod = filterStore((s) => s.setPeriod)
 
   const prev = prevSeason(seasons, season)
@@ -501,6 +553,7 @@ function SeasonRail({ season, seasons, locale, t, filterStore }: SeasonRailProps
     <RailFrame
       modeAttr="season"
       ariaLabel={t.ariaNav}
+      centerExtra={centerExtra}
       prev={
         <NavBtn
           label={t.prev}

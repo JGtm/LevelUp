@@ -857,6 +857,10 @@ en = "View matches"
 fr = "Parcourir les matchs un par un"
 en = "Browse matches one by one"
 
+[common.filters.apply_pending_title]
+fr = "Applique les filtres en attente (cascade et période). Coéquipiers et sessions s'appliquent en direct."
+en = "Apply pending filters (cascade and period). Teammates and sessions apply live."
+
 [common.filters.incompatible_title]
 fr = "Incompatible avec les filtres actifs — cliquez pour désélectionner"
 en = "Incompatible with active filters — click to deselect"
@@ -1408,8 +1412,8 @@ fr = "Onglets paramètres"
 en = "Settings tabs"
 
 [common.settings.my_squad_default]
-fr = "Mon escouade (amis par défaut)"
-en = "My squad (default friends)"
+fr = "Coéquipiers par défaut (page Escouade)"
+en = "Default teammates (Squad page)"
 
 [common.settings.squad_intro]
 fr = "Gamertags des coéquipiers présélectionnés à l'ouverture de la page Escouade. Les joueurs déjà configurés dans l'app apparaissent en priorité."
@@ -1545,11 +1549,3 @@ en = "Invitation code"
 [common.groups.continue_xbox]
 fr = "Continuer avec Xbox"
 en = "Continue with Xbox"
-
-[common.groups.load_group]
-fr = "Charger un groupe"
-en = "Load a group"
-
-[common.groups.load_group_option]
-fr = "Charger un groupe…"
-en = "Load a group…"
