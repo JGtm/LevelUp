@@ -79,6 +79,28 @@ type MatchDetail struct {
 	Teams        []TeamSnapshot
 	Skill        *MatchSkillSnapshot
 	Limitations  []CapabilityGap
+
+	// Commendations : commendations NATIVES progressées sur ce match (Halo 5 natif,
+	// AXE B prod-gate). Affichage NATIF tel quel (PAS le moteur de citations dérivé
+	// d'Infinite) — chaque entrée porte le compte gagné CE match. Vide pour les
+	// titres sans commendations natives par match (Infinite). Centré sur le viewer
+	// (le joueur dont la consultation déclenche le détail).
+	Commendations []Commendation
+}
+
+// Commendation est une commendation NATIVE Halo 5 progressée sur un match (AXE B).
+// Donnée brute affichée TELLE QUELLE (pas de reconstruction par tier/composite).
+type Commendation struct {
+	// ID = UUID natif de la commendation (clé naturelle h5). Toujours présent.
+	ID string
+	// Count = nombre de progressions gagnées CE match (Progress − PreviousProgress).
+	Count int
+	// Name = libellé natif si une définition est connue (metadata h5), sinon
+	// "" → le consommateur dégrade en "Commendation {ID}" (donnée brute suffit en
+	// Phase 1, cf. AXE B : fetch des définitions natives = suite).
+	Name string
+	// IconURL = icône native si connue, sinon nil (Phase 1 : pas de définitions).
+	IconURL *string
 }
 
 // MatchParticipant représente un joueur d'un match dans le canonique.

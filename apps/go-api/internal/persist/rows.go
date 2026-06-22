@@ -122,6 +122,21 @@ type XUIDAliasInsert struct {
 	LastSeen time.Time `json:"last_seen"`
 }
 
+// CommendationInsert — row pour shared.match_commendations (commendations NATIVES
+// Halo 5 progressées sur un match, AXE B prod-gate). Compteur par-match comme
+// medals_earned : Count = Progress − PreviousProgress du delta carnage (> 0).
+//
+// ART-SAFETY : INSERT OR IGNORE sur la clé naturelle non-mutée
+// (match_id, xuid, commendation_id) — jamais d'UPDATE sur Count, aucun index
+// secondaire sur une colonne mutée (cf. campagne ART #23046). CommendationID est
+// l'UUID natif de commendation (clé naturelle, jamais résolu en numérique côté h5).
+type CommendationInsert struct {
+	MatchID        string `json:"match_id"`
+	XUID           string `json:"xuid"`
+	CommendationID string `json:"commendation_id"`
+	Count          int    `json:"count"`
+}
+
 // SkillRankInsert — row pour player.match_skill_rank.
 type SkillRankInsert struct {
 	MatchID         string   `json:"match_id"`

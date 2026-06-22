@@ -100,6 +100,13 @@ func (b *BatchBuilder) AddMatchCSRs(rows []MatchCSRInsert) *BatchBuilder {
 	return b
 }
 
+// AddCommendations ajoute les rows shared.match_commendations (commendations
+// NATIVES progressées sur le match — Halo 5 natif, AXE B).
+func (b *BatchBuilder) AddCommendations(rows []CommendationInsert) *BatchBuilder {
+	b.batch.Shared.Commendations = append(b.batch.Shared.Commendations, rows...)
+	return b
+}
+
 // SetEnrichment fixe la row player_match_enrichment (UNE row complète avec
 // tous les enrichments locaux computed).
 func (b *BatchBuilder) SetEnrichment(row *EnrichmentRow) *BatchBuilder {

@@ -121,6 +121,9 @@ func (p *SharedPersister) Persist(ctx context.Context, batch *MatchBatch) error 
 	if err := persistMatchCSRs(ctx, tx, s.MatchCSRs); err != nil {
 		return err
 	}
+	if err := persistCommendations(ctx, tx, s.Commendations); err != nil {
+		return err
+	}
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("persist: Commit %s: %w", s.Match.MatchID, err)
@@ -391,6 +394,28 @@ func persistMatchCSRs(ctx context.Context, tx *sql.Tx, rows []MatchCSRInsert) er
 		)
 		if err != nil {
 			return fmt.Errorf("persist: INSERT match_csrs %s/%s: %w", c.MatchID, c.XUID, err)
+		}
+	}
+	return nil
+}
+
+func persistCommendations(ctx context.Context, tx *sql.Tx, rows []CommendationInsert) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	now := time.Now().UTC()
+	for _, row := range rows {
+		// INSERT OR IGNORE sur la clé naturelle (match_id, xuid, commendation_id) —
+		// même garantie ART-safe que medals_earned : aucun UPDATE sur count, clé
+		// jamais mutée. Tolère un delta dupliqué dans le payload (best-effort).
+		_, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO match_commendations (match_id, xuid, commendation_id, count, created_at)
+			VALUES (?, ?, ?, ?, ?)`,
+			row.MatchID, row.XUID, row.CommendationID, row.Count, now,
+		)
+		if err != nil {
+			return fmt.Errorf("persist: INSERT match_commendations %s/%s/%s: %w",
+				row.MatchID, row.XUID, row.CommendationID, err)
 		}
 	}
 	return nil
