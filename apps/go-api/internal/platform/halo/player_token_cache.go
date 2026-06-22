@@ -65,6 +65,14 @@ func SetPlayerTokenRefresher(fn func(ctx context.Context, xuid string) (*domain.
 	playerTokenRefresherMu.Unlock()
 }
 
+// spartanExpiryLog formate l'expiry du Spartan pour les logs ("unknown" si zéro).
+func spartanExpiryLog(tokens *domain.HaloTokens) string {
+	if tokens == nil || tokens.SpartanExpiresAt.IsZero() {
+		return "unknown"
+	}
+	return tokens.SpartanExpiresAt.UTC().Format(time.RFC3339)
+}
+
 // cacheExpiryFor calcule l'instant d'expiry d'une entrée à partir de l'expiry réel du
 // Spartan (si fourni) ou du TTL de repli.
 func cacheExpiryFor(tokens *domain.HaloTokens) time.Time {
@@ -161,6 +169,10 @@ func ResolveFreshPlayerTokens(ctx context.Context, xuid string) (*domain.HaloTok
 			return nil, fmt.Errorf("halo: refresher a renvoyé des tokens nil (xuid=%s)", xuid)
 		}
 		SetCachedPlayerTokens(xuid, tokens)
+		// Observabilité : un re-mint = échange MSAL/OAuth coûteux. Tracer la fréquence
+		// (péremption expiry-aware ou cache miss) + l'expiry réel obtenu.
+		slog.DebugContext(ctx, "halo: token Spartan re-minté (cache expiry-aware)",
+			"xuid", xuid, "spartan_expires_at", spartanExpiryLog(tokens))
 		return tokens, nil
 	})
 	if err != nil {

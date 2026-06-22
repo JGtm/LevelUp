@@ -22,7 +22,6 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/ctxkeys"
-	"levelup/go-api/internal/platform/halo"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
@@ -42,17 +41,12 @@ func (s *CareerLiveService) fetchProgressCached(ctx context.Context, xuid string
 		return nil
 	}
 
-	// Filet auth (defense-in-depth) : si le token owner se fait 401/403 en cours de
-	// requête (révocation/skew), re-mint + retry unique. La péremption normale est déjà
-	// couverte en amont par le cache token expiry-aware (enrichWithHaloTokens).
+	// Note : le filet 401 n'est PAS câblé ici — GetCareerProgress passe par
+	// doPlayerGatedGet qui avale 401/403 (retourne nil pour dégrader sans poison cache).
+	// La péremption normale du token owner est déjà couverte en amont par le cache token
+	// expiry-aware (enrichWithHaloTokens / ResolveFreshPlayerTokens).
 	fetch := func() (*syncpkg.CareerRankData, error) {
-		return halo.RetryWithFreshTokens(ctx, syncpkg.IsAuthError, func(c context.Context) (*syncpkg.CareerRankData, error) {
-			f := s.makeFetcher(c)
-			if f == nil {
-				return nil, nil
-			}
-			return f.GetCareerProgress(c, xuid)
-		})
+		return fetcher.GetCareerProgress(ctx, xuid)
 	}
 	var (
 		data *syncpkg.CareerRankData
@@ -99,14 +93,10 @@ func (s *CareerLiveService) fetchCustomizationCached(ctx context.Context, xuid s
 		return nil
 	}
 
+	// Idem fetchProgressCached : pas de filet 401 (doPlayerGatedGet avale l'auth, et
+	// le 403 sur /appearance est un gating tiers NORMAL géré par le fallback vue publique).
 	fetch := func() (*syncpkg.SpartanCustomizationData, error) {
-		return halo.RetryWithFreshTokens(ctx, syncpkg.IsAuthError, func(c context.Context) (*syncpkg.SpartanCustomizationData, error) {
-			f := s.makeFetcher(c)
-			if f == nil {
-				return nil, nil
-			}
-			return f.GetSpartanCustomization(c, xuid)
-		})
+		return fetcher.GetSpartanCustomization(ctx, xuid)
 	}
 	var (
 		data *syncpkg.SpartanCustomizationData
