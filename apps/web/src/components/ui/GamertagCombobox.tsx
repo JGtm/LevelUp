@@ -78,6 +78,12 @@ export interface GamertagComboboxProps {
   /** Appelé quand le popover se ferme (clic-extérieur, Échap, chargement preset).
    *  Permet au parent de réinitialiser un état de gestion transitoire. */
   onClose?: () => void
+  /**
+   * Pill de tête non-supprimable (joueur actif), rendue dans la même ligne flex
+   * que les pills sélectionnées → alignement vertical garanti. `color` est une
+   * chaîne CSS prête à l'emploi (ex. tokenCssVar('compare-a')).
+   */
+  leadingPill?: { label: string; color: string }
 }
 
 // ─── Composant ──────────────────────────────────────────────────────────────────
@@ -97,6 +103,7 @@ export function GamertagCombobox({
   onLoadPreset,
   footer,
   onClose,
+  leadingPill,
 }: GamertagComboboxProps) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -223,6 +230,16 @@ export function GamertagCombobox({
         }
         onClick={() => { inputRef.current?.focus(); setIsOpen(true) }}
       >
+        {leadingPill && (
+          <span
+            title={leadingPill.label}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-sm font-medium"
+            style={{ backgroundColor: leadingPill.color, color: '#fff', border: 'none' }} // color-allow: blanc structurel pour contraste sur fond coloré du pill
+          >
+            <span className="max-w-[7rem] truncate">{leadingPill.label}</span>
+          </span>
+        )}
         {selected.map((gt, idx) => {
           const color = colors?.[idx % colors.length]
           return (
