@@ -72,6 +72,18 @@ func (e *HTTPError) Unwrap() error {
 	return e.Err
 }
 
+// IsAuthError indique si err provient d'un refus d'authentification Waypoint (401/403)
+// du client sync. Permet aux chemins live token-gated (career, CSR Explorer,
+// recent-matches) de déclencher le filet defense-in-depth (re-mint + retry unique) via
+// halo.RetryWithFreshTokens, comme le provider halo le fait avec son propre sentinel.
+func IsAuthError(err error) bool {
+	var he *HTTPError
+	if errors.As(err, &he) {
+		return he.StatusCode == http.StatusUnauthorized || he.StatusCode == http.StatusForbidden
+	}
+	return false
+}
+
 // validMatchTypes est l'ensemble des types de match valides.
 var validMatchTypes = map[string]bool{
 	"all":         true,

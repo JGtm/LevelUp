@@ -21,6 +21,7 @@ import (
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 	sync_pkg "levelup/go-api/internal/sync"
@@ -290,7 +291,7 @@ func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) 
 		SeasonSR:        r.remoteStats, // *CachedStatsProvider implémente port.SeasonStatsProvider
 		SeasonCSR:       r.newExplorerSeasonCSRProvider(),
 		Ranks:           ranks,
-		RecentMatches:   r.recentMatches,
+		RecentMatches:   wrapRecentMatchesAuthRetry(r.recentMatches),
 		LocalBannerPool: r.newExplorerLocalBannerPool(pdb.TitleSlug),
 		TitleSlug:       pdb.TitleSlug,
 	})
@@ -304,41 +305,46 @@ func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) 
 // vers le type domain. nil tokens → nil (pas d'erreur).
 func (r *ServiceRegistry) newExplorerCSRProvider() service.ExplorerTargetCSRProvider {
 	return service.CSRProviderFunc(func(ctx context.Context, xuid, seasonID string) ([]domain.CareerPlaylistCSR, error) {
-		tokens := ctxkeys.HaloTokens(ctx)
-		if tokens == nil || tokens.SpartanToken == "" {
-			return nil, nil
-		}
-		client := sync_pkg.NewHaloAPIClient(tokens.SpartanToken, tokens.ClearanceToken, 10)
-		// 1. Playlists ranked ENGAGÉES de la saison (endpoint player-level).
-		raw, err := client.GetPlayerCSRs(ctx, xuid, seasonID)
-		if err != nil {
-			return nil, err
-		}
-		// 2. Compléter avec les playlists ranked ACTIVES manquantes (endpoint
-		//    par-playlist) — parité avec la page Carrière. Même mécanisme que
-		//    sync.augmentWithActiveRankedCSRs.
-		seen := make(map[string]struct{}, len(raw))
-		for i := range raw {
-			seen[strings.ToLower(strings.TrimSpace(raw[i].PlaylistID))] = struct{}{}
-		}
-		for _, pl := range rankedplaylists.Active() {
-			if _, ok := seen[strings.ToLower(pl.AssetID)]; ok {
-				continue
+		// Filet auth (defense-in-depth) : un 401/403 sur GetPlayerCSRs (token owner
+		// révoqué en cours de requête) → re-mint + retry unique. Péremption normale déjà
+		// couverte par le cache token expiry-aware en amont.
+		return halo.RetryWithFreshTokens(ctx, sync_pkg.IsAuthError, func(c context.Context) ([]domain.CareerPlaylistCSR, error) {
+			tokens := ctxkeys.HaloTokens(c)
+			if tokens == nil || tokens.SpartanToken == "" {
+				return nil, nil
 			}
-			res, perr := client.GetPlaylistCsr(ctx, pl.AssetID, xuid, seasonID)
-			if perr != nil {
-				slog.WarnContext(ctx, "explorer_target_csr_augment_failed", "playlist", pl.AssetID, "err", perr)
-				continue
+			client := sync_pkg.NewHaloAPIClient(tokens.SpartanToken, tokens.ClearanceToken, 10)
+			// 1. Playlists ranked ENGAGÉES de la saison (endpoint player-level).
+			raw, err := client.GetPlayerCSRs(c, xuid, seasonID)
+			if err != nil {
+				return nil, err
 			}
-			if res == nil {
-				continue
+			// 2. Compléter avec les playlists ranked ACTIVES manquantes (endpoint
+			//    par-playlist) — parité avec la page Carrière. Même mécanisme que
+			//    sync.augmentWithActiveRankedCSRs.
+			seen := make(map[string]struct{}, len(raw))
+			for i := range raw {
+				seen[strings.ToLower(strings.TrimSpace(raw[i].PlaylistID))] = struct{}{}
 			}
-			res.PlaylistName = pl.NameFR
-			res.Queue = pl.Queue
-			res.Input = pl.Input
-			raw = append(raw, *res)
-		}
-		return mapSyncCSRsToDomain(raw), nil
+			for _, pl := range rankedplaylists.Active() {
+				if _, ok := seen[strings.ToLower(pl.AssetID)]; ok {
+					continue
+				}
+				res, perr := client.GetPlaylistCsr(c, pl.AssetID, xuid, seasonID)
+				if perr != nil {
+					slog.WarnContext(c, "explorer_target_csr_augment_failed", "playlist", pl.AssetID, "err", perr)
+					continue
+				}
+				if res == nil {
+					continue
+				}
+				res.PlaylistName = pl.NameFR
+				res.Queue = pl.Queue
+				res.Input = pl.Input
+				raw = append(raw, *res)
+			}
+			return mapSyncCSRsToDomain(raw), nil
+		})
 	})
 }
 
@@ -392,6 +398,24 @@ func (r *ServiceRegistry) newExplorerSeasonCSRProvider() service.ExplorerSeasonC
 			peak.BadgeURL = &url
 		}
 		return peak, nil
+	})
+}
+
+// wrapRecentMatchesAuthRetry décore un RecentMatchesProvider avec le filet auth
+// (defense-in-depth) : un 401/403 du token owner en cours de requête → re-mint + retry
+// unique. nil → nil (pas de provider). Le re-mint cible le xuid OWNER (ctx), pas la cible.
+func wrapRecentMatchesAuthRetry(inner port.RecentMatchesProvider) port.RecentMatchesProvider {
+	if inner == nil {
+		return nil
+	}
+	return authRetryRecentMatches{inner: inner}
+}
+
+type authRetryRecentMatches struct{ inner port.RecentMatchesProvider }
+
+func (a authRetryRecentMatches) FetchRecentMatches(ctx context.Context, xuid string, limit int) ([]domain.ExplorerTargetRecentMatch, error) {
+	return halo.RetryWithFreshTokens(ctx, sync_pkg.IsAuthError, func(c context.Context) ([]domain.ExplorerTargetRecentMatch, error) {
+		return a.inner.FetchRecentMatches(c, xuid, limit)
 	})
 }
 
