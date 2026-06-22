@@ -37,6 +37,11 @@ on:
       - "apps/go-api/internal/migration/steps_shared_social*.go"
       - "apps/go-api/internal/api/post_sync*.go"
       - "apps/go-api/cmd/rebuild_shared_social/**"
+      # Un bump du driver DuckDB (duckdb-go) ou un changement du workflow lui-même
+      # doit re-jouer la gate (la couche CGO/ART est directement concernée).
+      - "apps/go-api/go.mod"
+      - "apps/go-api/go.sum"
+      - ".github/workflows/shared-social-gate.yml"
 
 jobs:
   shared-social-gate:
@@ -65,12 +70,13 @@ jobs:
         env:
           CGO_ENABLED: "1"
         run: |
-          # -gcflags=all=-d=checkptr=0 : neutralise UNIQUEMENT le checkptr (faux positif cgo).
-          # Le driver duckdb-go (*vector).getBytes convertit un pointeur que checkptr (force-active
-          # par -race) juge "misaligned" -> "fatal error: checkptr" sur toute lecture VARCHAR, ce
-          # qui faisait crasher le job AVANT toute assertion. -race reste actif : la detection de
-          # vraies data races (concurrent likes, WAL recovery) est intacte. Ne PAS retirer ce flag.
-          go test -race -gcflags=all=-d=checkptr=0 -count=1 -timeout 90s \
+          # checkptr OK depuis duckdb-go v2.10504.0 : le fix driver "checkptr
+          # misalignment in getBytes for non-inlined strings" supprime le faux positif
+          # cgo (*vector).getBytes qui crashait le job sous -race ("fatal error: checkptr"
+          # sur toute lecture VARCHAR, AVANT toute assertion). Le contournement
+          # -gcflags=all=-d=checkptr=0 n'est donc plus nécessaire. -race reste actif :
+          # detection des vraies data races (concurrent likes, WAL recovery) intacte.
+          go test -race -count=1 -timeout 90s \
             -run 'TestOpenSharedSocial|TestIsWALReplayFailure|TestQuarantineOrphanWAL|TestCheckpointSharedSocial|TestSet.*PersistsAfter|TestToggle.*PersistsAfter|TestNoATTACHOnSocialDB|TestSocialReceiverLabel|TestSentinel|TestNoUnauthorizedSharedSocialMention|TestMediaService_LikeSurvives|TestMediaService_FavoriteSurvives|TestMediaService_LikeAtomic_DuringQuarantine|TestMediaService_4Players_ConcurrentLikes|TestWALOrphanRepro|TestE2E_KillBrutal_WALOrphanRecoveryWorks|TestCommitWithCheckpoint' \
             ./internal/platform/duckdb/ ./internal/platform/dblease/
 
@@ -78,8 +84,8 @@ jobs:
         env:
           CGO_ENABLED: "1"
         run: |
-          # checkptr desactive (meme faux positif duckdb-go que le step "race-clean" ci-dessus).
-          go test -race -gcflags=all=-d=checkptr=0 -count=1 -timeout 120s \
+          # checkptr OK depuis duckdb-go v2.10504.0 (cf. step "race-clean" ci-dessus).
+          go test -race -count=1 -timeout 120s \
             -run 'TestE2E_KillBrutal|TestAssociateMediaWithMatches_RestartCycle|TestE2E_AssociateMedia' \
             ./internal/ops/
 
