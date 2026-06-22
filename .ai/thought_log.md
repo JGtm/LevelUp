@@ -28657,3 +28657,21 @@ Re-vérif post-durcissement : build + vet + `go test ./...` (2 packages migratio
 - Leçon : booter avec les tokens auth réels copiés a déclenché des oauth_refresh (rotated=true en mémoire) ; tué en ~4s, aucune rotation persistée (fichiers tokens byte-identiques), RT MSA non invalidés par redemption → impact nul. Pour un futur E2E : retirer le store tokens avant boot (fait pour la passe HTTP).
 
 **Statut** : étapes 1 (commit) + 2 (E2E) FAITES. Reste hors-scope de ce tour : faire atterrir integration sur main (grosse livraison auto-déployante = décision user) ; backlog qualité non bloquant (guard optionnel LoadCareerRankImageURLs pour le bruit log h5 ; dédup mappers carnage ; ranked_hoppers wiring ; migration Huma groups.go).
+
+## [2026-06-22] Axe D media (partiel) — parsing filename Halo 5 + handoff session — En cours
+
+**Statut** : En cours. Parsing du format de capture Windows Game Bar Halo 5 ajouté :
+`internal/ops/media_filename.go` reconnaît `Halo_5_Guardians-YYYY-MM-DD_HHhMM` (regex
+`halo5FilenameRe`, 5 groupes ; seconde rendue optionnelle via garde `len(m) > 6` sur m[6]).
+Test `TestParseCaptureTimeFromFilename_Halo5_CET` : 2019-12-12 22h49 Paris -> 21:49:00 UTC
+(CET+1, sec=0) — exactement le cas de corrélation media validé live. Non-régression OBS/Xbox OK.
+
+**Reste D** : activer la capability coarse `media` dans `config/titles/halo_5/title.toml` (gate
+`RequireCapability(CapMedia)`, server.go:1450) + validation e2e (upload réel + association par
+fenêtre temporelle sur les 84 captures) — différé jusqu'aux données (backfill borné 300 en cours).
+
+**Handoff session** : `.ai/HANDOFF_H5_PRODGATE.md` (état complet : 7 commits, 7 findings
+non-évidents, état des 6 axes, commandes ops) + mémoire `project_h5_prodgate_handoff`. Pile
+livrée sur integration/h5-x-livefetch : fix `include-times` (heures matchs précises), axes A
+(match.history lit DB locale), B-core (commendations natives per-match), C (career SR), F (rien),
++ gate career.rank_catalog.

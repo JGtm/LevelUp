@@ -38,11 +38,18 @@ var xboxFilenameRe = regexp.MustCompile(
 var obsFilenameRe = regexp.MustCompile(
 	`(\d{4})-(\d{2})-(\d{2}) (\d{2})-(\d{2})-(\d{2})`)
 
+// halo5FilenameRe matche le pattern Windows Game Bar des captures Halo 5 :
+// "Halo_5_Guardians-2019-12-12_22h49.mp4" (séparateur "_", "h" entre heure et
+// minute, PAS de secondes). Groupe 1=année 2=mois 3=jour 4=heure 5=min — la
+// seconde est absente (parseCaptureTimeFromFilename la met à 0 quand m[6] manque).
+var halo5FilenameRe = regexp.MustCompile(
+	`(\d{4})-(\d{2})-(\d{2})_(\d{2})h(\d{2})`)
+
 // captureTimeRegexes liste les patterns de noms de fichiers reconnus,
 // du plus spécifique au plus générique. L'ordre importe peu en pratique
 // (les patterns ne se chevauchent pas) mais OBS arrive en premier car
 // c'est le format le plus fréquent dans nos captures.
-var captureTimeRegexes = []*regexp.Regexp{obsFilenameRe, xboxFilenameRe}
+var captureTimeRegexes = []*regexp.Regexp{obsFilenameRe, xboxFilenameRe, halo5FilenameRe}
 
 // parseCaptureTimeFromFilename tente d'extraire la datetime depuis le nom de fichier.
 // Formats supportés : OBS Studio, Xbox / NVIDIA ShadowPlay.
@@ -62,7 +69,12 @@ func parseCaptureTimeFromFilename(name string, loc *time.Location) *time.Time {
 		day := mustAtoi(m[3])
 		hour := mustAtoi(m[4])
 		min := mustAtoi(m[5])
-		sec := mustAtoi(m[6])
+		// La seconde est optionnelle : les patterns à 5 groupes (Halo 5
+		// "..._22h49") n'ont pas de m[6] → seconde = 0.
+		sec := 0
+		if len(m) > 6 {
+			sec = mustAtoi(m[6])
+		}
 		if year == 0 {
 			continue
 		}

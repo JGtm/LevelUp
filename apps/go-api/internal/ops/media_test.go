@@ -287,6 +287,26 @@ func TestParseCaptureTimeFromFilename_XboxFormat_CET(t *testing.T) {
 	}
 }
 
+func TestParseCaptureTimeFromFilename_Halo5_CET(t *testing.T) {
+	// Capture Windows Game Bar Halo 5 : "..._22h49" (separateur _, h, PAS de
+	// secondes), heure locale Paris. Doit etre reconnue (regex halo5FilenameRe)
+	// + seconde = 0. Cas reel valide : capture 2019-12-12 22h49 -> match 21:49 UTC.
+	loc, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		t.Skip("timezone Europe/Paris non disponible")
+	}
+	name := "Halo_5_Guardians-2019-12-12_22h49.mp4"
+	got := parseCaptureTimeFromFilename(name, loc)
+	if got == nil {
+		t.Fatal("format Halo 5 non reconnu (regex halo5FilenameRe manquant ?)")
+	}
+	// CET = UTC+1 (decembre) -> 22:49:00 Paris = 21:49:00 UTC, seconde = 0.
+	want := time.Date(2019, 12, 12, 21, 49, 0, 0, time.UTC)
+	if !got.Equal(want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
 func TestParseCaptureTimeFromFilename_XboxFormat_CEST(t *testing.T) {
 	// CEST = UTC+2 (juillet = été)
 	loc, err := time.LoadLocation("Europe/Paris")
