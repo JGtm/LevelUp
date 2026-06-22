@@ -19,24 +19,22 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 // ─── Props ──────────────────────────────────────────────────────────────────────
 
 /**
- * Option d'un groupe de presets (escouade sauvegardée, groupe d'accès…) : un
- * roster nommé qu'on charge d'un clic dans la sélection (≠ ajout d'un joueur).
- * `trailing` permet au parent d'injecter des actions (renommer/supprimer) sans
- * coupler de logique métier dans ce composant générique.
+ * Groupe de presets affiché en tête du popover (ex. « MES ESCOUADES »).
+ *
+ * Chaque option est un roster nommé chargé d'un clic dans la sélection (≠ ajout
+ * d'un joueur) ; `trailing` permet au parent d'injecter des actions (renommer/
+ * supprimer) sans coupler de logique métier dans ce composant générique.
  */
-export interface ComboboxPresetOption {
-  id: string
-  name: string
-  subtitle?: string
-  gamertags: string[]
-  trailing?: React.ReactNode
-}
-
-/** Groupe de presets affiché en tête du popover (ex. « MES ESCOUADES »). */
 export interface ComboboxPresetGroup {
   key: string
   label: string
-  options: ComboboxPresetOption[]
+  options: Array<{
+    id: string
+    name: string
+    subtitle?: string
+    gamertags: string[]
+    trailing?: React.ReactNode
+  }>
 }
 
 export interface GamertagComboboxProps {
