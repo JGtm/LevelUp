@@ -28,6 +28,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/domain"
+	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 )
 
@@ -49,6 +50,11 @@ func openSharedTestDB(t *testing.T) *sql.DB {
 		t.Fatalf("open duckdb: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
+	// create_base_shared_schema (+ match_registry/match_participants/weapon_kills,
+	// shared_add_participation_timestamps) sont title-owned depuis la relocation du
+	// merge h5 : sans provider, RunForDB n'applique que les 3 migrations globales
+	// restantes et weapon_kills n'existe pas. Poser le provider (cf. openPVETestDB).
+	migration.SetTitleStepsProvider(halomigrations.StepsFor)
 	if err := migration.RunForDB(db, migration.TargetShared); err != nil {
 		t.Fatalf("migrate shared: %v", err)
 	}
