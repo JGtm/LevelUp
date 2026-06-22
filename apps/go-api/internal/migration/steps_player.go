@@ -181,6 +181,22 @@ func init() {
 	})
 
 	Register(Migration{
+		Name:        "add_challenge_snapshots_render_columns",
+		TargetDB:    TargetPlayer,
+		Description: "Colonnes de rendu (title/description/image_url) pour reconstruire des cartes de défis depuis le cache (live indisponible)",
+		ApplySchema: func(db *sql.DB) error {
+			// Append-compatible : nouvelles colonnes = faits additionnels, aucun
+			// UPDATE/DELETE. Permet à buildChallengesResponseFromSnapshots de servir
+			// de vraies cartes hors-ligne au lieu de « Défis indisponibles ».
+			return execScript(db, `
+				ALTER TABLE challenge_snapshots ADD COLUMN IF NOT EXISTS title VARCHAR;
+				ALTER TABLE challenge_snapshots ADD COLUMN IF NOT EXISTS description VARCHAR;
+				ALTER TABLE challenge_snapshots ADD COLUMN IF NOT EXISTS image_url VARCHAR;
+			`)
+		},
+	})
+
+	Register(Migration{
 		Name:        "add_battlepass_snapshots",
 		TargetDB:    TargetPlayer,
 		Description: "Table battlepass_snapshots pour historiser la progression battle pass joueur",
