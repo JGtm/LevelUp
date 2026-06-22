@@ -42,12 +42,17 @@ func RetryWithFreshTokens[T any](ctx context.Context, isAuthErr func(error) bool
 	if xuid == "" {
 		return res, err
 	}
+	// Un token réputé valide-par-expiry s'est fait 401/403 → signal anormal
+	// (révocation serveur / changement de flight / dérive d'horloge). Info, pas Debug.
+	slog.InfoContext(ctx, "halo: filet auth déclenché (401/403 sur token valide-par-expiry) — re-mint + retry unique",
+		"xuid", xuid, "err", err)
 	InvalidateCachedPlayerTokens(xuid)
 	fresh, rerr := ResolveFreshPlayerTokens(ctx, xuid)
 	if rerr != nil || fresh == nil {
+		slog.WarnContext(ctx, "halo: filet auth — re-mint échoué, dégradation",
+			"xuid", xuid, "err", rerr)
 		return res, err // re-mint impossible → erreur d'origine
 	}
-	slog.DebugContext(ctx, "halo: filet auth — token re-minté, retry unique", "xuid", xuid)
 	return fn(ctxkeys.WithHaloAuth(ctx, fresh, xuid))
 }
 
