@@ -64,6 +64,7 @@ var canonicalOrder = []string{
 	"add_career_banner_image",                                  // player
 	"add_career_last_fetch_status",                             // player
 	"add_challenge_snapshots",                                  // player
+	"add_challenge_snapshots_render_columns",                   // player
 	"add_battlepass_snapshots",                                 // player
 	"add_dominance_flag_column",                                // player
 	"add_media_discord_notified",                               // player

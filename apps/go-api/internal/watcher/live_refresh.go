@@ -176,7 +176,7 @@ func (r *PlayerLiveRefresher) refresh(ctx context.Context) {
 
 	cResp, cRaw := r.provider.GetChallengesWithRaw(ctx)
 	if cResp.Available && len(cRaw) > 0 {
-		if err := r.sink.PersistChallengesSync(ctx, cRaw); err != nil {
+		if err := r.sink.PersistChallengesSync(ctx, cRaw, cResp.Items); err != nil {
 			slog.WarnContext(ctx, "live_refresh: challenges persist échoué",
 				"gamertag", r.gamertag, "err", err)
 		}
