@@ -99,21 +99,54 @@ func (r *ServiceRegistry) buildHaloProvider(pdb *duckdb.PlayerDB) *halo.HaloProv
 		WithTitleSlug(titleSlug)
 }
 
-// enrichWithHaloTokens injecte les HaloTokens dans le contexte si absents.
+// enrichWithHaloTokens injecte des HaloTokens FRAIS dans le contexte.
+//
+// Garantie expiry-aware : on n'injecte jamais un Spartan qu'on ne peut pas garantir
+// valide. Un token de session encore frais (par son expiry réel) est réutilisé ; sinon
+// (absent OU périmé, Gap 5) on résout via halo.ResolveFreshPlayerTokens — cache
+// expiry-aware + re-mint dédupliqué par xuid (singleflight). Plus de token périmé servi.
 func (r *ServiceRegistry) enrichWithHaloTokens(ctx context.Context, pdb *duckdb.PlayerDB) context.Context {
-	if ctxkeys.HaloTokens(ctx) != nil {
-		return ctx // tokens déjà présents via session HTTP
+	if sess := ctxkeys.HaloTokens(ctx); halo.TokensFresh(sess) {
+		return ctx // token de session présent ET encore valide → on le garde
 	}
 	xuid := pdb.XUID
-	if cached := halo.GetCachedPlayerTokens(xuid); cached != nil {
-		return ctxkeys.WithHaloAuth(ctx, cached, xuid)
+	tokens, err := halo.ResolveFreshPlayerTokens(ctx, xuid)
+	if err != nil || tokens == nil {
+		if err != nil {
+			slog.DebugContext(ctx, "halo_auth: résolution token live impossible", "xuid", xuid, "err", err)
+		}
+		return ctx
+	}
+	return ctxkeys.WithHaloAuth(ctx, tokens, xuid)
+}
+
+// WireGlobalTokenRefresher branche le hook global de re-dérivation des tokens
+// (halo.ResolveFreshPlayerTokens) sur le minting registry. À appeler une fois au boot,
+// après construction du registry. Idempotent.
+func (r *ServiceRegistry) WireGlobalTokenRefresher() {
+	halo.SetPlayerTokenRefresher(r.mintFreshTokensForXUID)
+}
+
+// mintFreshTokensForXUID MINTE des tokens Halo frais pour un joueur (résolution pool +
+// refresh MSAL/OAuth), SANS lire ni écrire le cache process — c'est le hook branché sur
+// halo.SetPlayerTokenRefresher (ResolveFreshPlayerTokens gère cache + singleflight).
+func (r *ServiceRegistry) mintFreshTokensForXUID(ctx context.Context, xuid string) (*domain.HaloTokens, error) {
+	var pdb *duckdb.PlayerDB
+	duckdb.IteratePool(func(p *duckdb.PlayerDB) bool {
+		if p.XUID == xuid {
+			pdb = p
+			return false // stop
+		}
+		return true
+	})
+	if pdb == nil {
+		return nil, fmt.Errorf("halo_auth: joueur xuid=%s introuvable dans le pool", xuid)
 	}
 	result := r.refreshTokensFromDB(ctx, pdb, xuid)
-	if result != nil {
-		halo.SetCachedPlayerTokens(xuid, result.Tokens)
-		return ctxkeys.WithHaloAuth(ctx, result.Tokens, xuid)
+	if result == nil {
+		return nil, fmt.Errorf("halo_auth: refresh impossible pour xuid=%s", xuid)
 	}
-	return ctx
+	return result.Tokens, nil
 }
 
 // refreshTokensFromDB obtient des tokens Halo en exécutant un refresh OAuth/MSAL.
@@ -293,21 +326,10 @@ func (r *ServiceRegistry) RefreshTokensForXUID(ctx context.Context, xuid string)
 	if cached := halo.GetCachedPlayerTokens(xuid); cached != nil {
 		return cached, nil
 	}
-	var pdb *duckdb.PlayerDB
-	duckdb.IteratePool(func(p *duckdb.PlayerDB) bool {
-		if p.XUID == xuid {
-			pdb = p
-			return false // stop
-		}
-		return true
-	})
-	if pdb == nil {
-		return nil, fmt.Errorf("halo_auth: joueur xuid=%s introuvable dans le pool", xuid)
+	tokens, err := r.mintFreshTokensForXUID(ctx, xuid)
+	if err != nil {
+		return nil, err
 	}
-	result := r.refreshTokensFromDB(ctx, pdb, xuid)
-	if result == nil {
-		return nil, fmt.Errorf("halo_auth: refresh impossible pour xuid=%s", xuid)
-	}
-	halo.SetCachedPlayerTokens(xuid, result.Tokens)
-	return result.Tokens, nil
+	halo.SetCachedPlayerTokens(xuid, tokens)
+	return tokens, nil
 }

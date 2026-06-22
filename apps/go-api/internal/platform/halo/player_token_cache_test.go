@@ -6,7 +6,9 @@
 package halo
 
 import (
+	"context"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -118,6 +120,112 @@ func resetPlayerTokenStore() {
 	playerTokenStore.mu.Lock()
 	defer playerTokenStore.mu.Unlock()
 	playerTokenStore.store = make(map[string]cachedTokenEntry)
+}
+
+// --- Garde-fous C1 : cache expiry-aware (jamais servir un token périmé) ---
+
+// Le cache cale son expiry sur l'expiry RÉEL du Spartan (SpartanExpiresAt) et applique
+// une marge : un token dont l'expiry tombe dans la marge est traité comme expiré.
+func TestPlayerTokenCache_HonorsRealSpartanExpiry(t *testing.T) {
+	resetPlayerTokenStore()
+
+	// Expiry réel dans 30 min → servi (au-delà de la marge de 5 min).
+	SetCachedPlayerTokens("xuid-future", &domain.HaloTokens{
+		SpartanToken:     "valid",
+		SpartanExpiresAt: time.Now().Add(30 * time.Minute),
+	})
+	if got := GetCachedPlayerTokens("xuid-future"); got == nil {
+		t.Error("token avec expiry futur (30min) devrait être servi")
+	}
+
+	// Expiry réel dans 2 min → DANS la marge (5min) → traité comme expiré → nil.
+	SetCachedPlayerTokens("xuid-soon", &domain.HaloTokens{
+		SpartanToken:     "about-to-expire",
+		SpartanExpiresAt: time.Now().Add(2 * time.Minute),
+	})
+	if got := GetCachedPlayerTokens("xuid-soon"); got != nil {
+		t.Error("token expirant dans 2min (< marge 5min) ne doit JAMAIS être servi")
+	}
+
+	// Expiry réel déjà passé → nil.
+	SetCachedPlayerTokens("xuid-past", &domain.HaloTokens{
+		SpartanToken:     "expired",
+		SpartanExpiresAt: time.Now().Add(-1 * time.Minute),
+	})
+	if got := GetCachedPlayerTokens("xuid-past"); got != nil {
+		t.Error("token déjà expiré ne doit jamais être servi")
+	}
+}
+
+func TestPlayerTokenCache_FallbackTTLWhenExpiryUnknown(t *testing.T) {
+	resetPlayerTokenStore()
+	// Expiry inconnu (0) → TTL de repli conservateur → servi immédiatement après Set.
+	SetCachedPlayerTokens("xuid-legacy", &domain.HaloTokens{SpartanToken: "no-expiry"})
+	if got := GetCachedPlayerTokens("xuid-legacy"); got == nil {
+		t.Error("expiry inconnu → fallback TTL → token servi juste après Set")
+	}
+}
+
+func TestTokensFresh(t *testing.T) {
+	if TokensFresh(nil) {
+		t.Error("nil → pas frais")
+	}
+	if TokensFresh(&domain.HaloTokens{}) {
+		t.Error("SpartanToken vide → pas frais")
+	}
+	if !TokensFresh(&domain.HaloTokens{SpartanToken: "x"}) {
+		t.Error("expiry inconnu (0) → considéré frais (legacy, couvert par le filet 401)")
+	}
+	if !TokensFresh(&domain.HaloTokens{SpartanToken: "x", SpartanExpiresAt: time.Now().Add(time.Hour)}) {
+		t.Error("expiry +1h → frais")
+	}
+	if TokensFresh(&domain.HaloTokens{SpartanToken: "x", SpartanExpiresAt: time.Now().Add(2 * time.Minute)}) {
+		t.Error("expiry +2min (< marge) → pas frais")
+	}
+}
+
+// --- Garde-fou C5 : re-mint dédupliqué par xuid (singleflight, anti thundering-herd) ---
+
+func TestResolveFreshPlayerTokens_SingleflightOneMint(t *testing.T) {
+	resetPlayerTokenStore()
+	prev := playerTokenRefresher
+	defer SetPlayerTokenRefresher(prev)
+
+	var mintCount int32
+	SetPlayerTokenRefresher(func(_ context.Context, xuid string) (*domain.HaloTokens, error) {
+		atomic.AddInt32(&mintCount, 1)
+		time.Sleep(20 * time.Millisecond) // fenêtre de collision
+		return &domain.HaloTokens{SpartanToken: "fresh-" + xuid, SpartanExpiresAt: time.Now().Add(time.Hour)}, nil
+	})
+
+	const N = 30
+	var wg sync.WaitGroup
+	wg.Add(N)
+	for i := 0; i < N; i++ {
+		go func() {
+			defer wg.Done()
+			_, _ = ResolveFreshPlayerTokens(context.Background(), "xuid-herd")
+		}()
+	}
+	wg.Wait()
+
+	if got := atomic.LoadInt32(&mintCount); got != 1 {
+		t.Errorf("attendu 1 seul re-mint (singleflight), got %d", got)
+	}
+	if got := GetCachedPlayerTokens("xuid-herd"); got == nil || got.SpartanToken != "fresh-xuid-herd" {
+		t.Errorf("token frais devrait être en cache après résolution, got %v", got)
+	}
+}
+
+func TestResolveFreshPlayerTokens_NoRefresher_Errors(t *testing.T) {
+	resetPlayerTokenStore()
+	prev := playerTokenRefresher
+	defer SetPlayerTokenRefresher(prev)
+	SetPlayerTokenRefresher(nil)
+
+	if _, err := ResolveFreshPlayerTokens(context.Background(), "xuid-no-refresher"); err == nil {
+		t.Error("sans refresher câblé, ResolveFreshPlayerTokens doit renvoyer une erreur (nil-safe)")
+	}
 }
 
 func TestPlayerTokenCache_InvalidateRemovesEntry(t *testing.T) {

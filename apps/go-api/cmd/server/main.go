@@ -970,6 +970,11 @@ func main() {
 	var router http.Handler
 	router, reg = api.NewRouter(routerCtx, cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider, autoScheduler, backupSched, groupStore)
 
+	// Câble le hook global de re-dérivation des tokens per-player : le cache
+	// expiry-aware (halo.ResolveFreshPlayerTokens) re-minte via le registry quand un
+	// token est périmé. Sans ce câblage, le re-mint singleflighté est inopérant.
+	reg.WireGlobalTokenRefresher()
+
 	// Dashboard monitoring admin — câblage du HealthScheduler (créé plus haut,
 	// avant NewRouter). Les runners monitoring le lisent lazily à chaque
 	// requête : l'ordre boot est sûr, et l'overview expose le dernier audit
