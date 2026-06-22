@@ -12,6 +12,22 @@
 
 ---
 
+## [2026-06-22] Dependabot : 15 PRs du scan initial — fermeture + config sobre (groupée/mensuelle/ignore-majors) — COMPLÉTÉ code (branche chore/tame-dependabot-grouping)
+
+**Contexte** : après merge de PR #25 (config Dependabot de cette session) sur `main` par l'utilisateur, Dependabot a ouvert **15 PRs** d'un coup (#26→#40 : 5 npm + 5 gomod + 5 github-actions = sa limite par défaut sans groupement), chacune déclenchant toute la matrice CI (~150 jobs). Utilisateur alarmé (« 15 PRs ouvertes, ça continue à arriver »). Diagnostic : pas une boucle infinie — scan initial plafonné — mais bruit/coût réels causés par ma config initiale **sans `groups`**.
+
+**Décision produit (sur demande explicite « peut-on / devrait-on ? »)** : **ne PAS merger les 15 bumps**. Aucun n'est un correctif de sécurité (le seul, js-yaml #3, déjà traité). Risque concentré sur les pires candidates : majors d'actions GitHub (`checkout` v4→v7, `download-artifact` v4→v8, `setup-go` v5→v6, `setup-buildx` v3→v4) + bump driver DuckDB (`duckdb-go/v2`, couche la plus sensible CGO/ART) → casse CI/DB possible pour gain nul. Merger en lot = 15 deploys (deploy.yml sur tout push `main`) en plus.
+
+**Décision technique** :
+- **Fermeture des 15 PRs** via `gh pr close` (commentaire « superseded, reviendront groupées »). Stoppe les ~150 jobs CI. Vérifié 0 PR Dependabot ouverte (le « 2 restantes » transitoire = lag API GitHub pendant le close en masse).
+- **Réécriture `.github/dependabot.yml`** : `schedule: monthly`, `open-pull-requests-limit: 3`, `groups` 1 par écosystème (`patterns: ["*"]`, `update-types: [minor, patch]`) → 1 PR groupée/écosystème ; github-actions `ignore` `version-update:semver-major` → plus de proposition de saut majeur risqué. Choix utilisateur (AskUserQuestion) = « groupé + mensuel ».
+
+**Résultats** : bruit stoppé immédiatement. Au merge de la PR config (= 1 deploy, laissé à l'utilisateur), Dependabot re-scannera groupé → ~3 PRs groupées au lieu de 15, revue à froid.
+
+**Prochaine étape** : push branche + PR config ; plan déposé `.ai/PLAN_DEPENDABOT_TAMING.md`. **Différé à étudier (candidat ultracode)** : évaluation adoption des bumps risqués (`duckdb-go/v2`, majors d'actions) individuellement avec CI + test ciblé.
+
+---
+
 ## [2026-06-22] Barre L2 Escouade — alignement pill joueur actif (JGtm) via unification dans GamertagCombobox — COMPLÉTÉ code (visuel à confirmer, branche feat/squad-named-presets-toolbar)
 
 **Contexte** : après la troncature des pills coéquipiers (`max-w-[7rem]`, barre L2 sur une ligne), la pill du joueur actif (JGtm, couleur `compare-a`) apparaissait désalignée verticalement avec les pills coéquipiers (« c'est décalé »).
