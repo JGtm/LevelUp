@@ -18,8 +18,12 @@ describe('knownLusrGroupsForTitle', () => {
     ])
   })
 
-  it('titre inconnu (halo_5) → aucun groupe connu', () => {
-    expect(knownLusrGroupsForTitle('halo_5')).toEqual([])
+  it('Halo 5 → chaine unique h5_arena (parite placeholder)', () => {
+    expect(knownLusrGroupsForTitle('halo_5')).toEqual(['h5_arena'])
+  })
+
+  it('titre inconnu → aucun groupe connu (fallback data-only)', () => {
+    expect(knownLusrGroupsForTitle('titre_inconnu')).toEqual([])
   })
 })
 
@@ -39,12 +43,20 @@ describe('resolveLusrGroupsForDisplay', () => {
     ).toEqual(['arena_slayer', 'arena_objectif', 'btb', 'chaos', 'mystere'])
   })
 
-  it('halo_5 : aucun connu → uniquement les groupes data', () => {
-    expect(resolveLusrGroupsForDisplay('halo_5', ['h5_arena'])).toEqual(['h5_arena'])
+  it('halo_5 : connu h5_arena affiche meme sans data (placeholder)', () => {
+    expect(resolveLusrGroupsForDisplay('halo_5', [])).toEqual(['h5_arena'])
   })
 
-  it('groupes data supplémentaires triés alpha pour stabilité', () => {
+  it('halo_5 : connu h5_arena en premier, puis data hors connus triee', () => {
     expect(resolveLusrGroupsForDisplay('halo_5', ['zeta', 'alpha'])).toEqual([
+      'h5_arena',
+      'alpha',
+      'zeta',
+    ])
+  })
+
+  it('titre inconnu : aucun connu → uniquement les groupes data triés', () => {
+    expect(resolveLusrGroupsForDisplay('titre_inconnu', ['zeta', 'alpha'])).toEqual([
       'alpha',
       'zeta',
     ])
