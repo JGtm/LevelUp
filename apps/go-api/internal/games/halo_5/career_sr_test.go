@@ -73,6 +73,57 @@ func TestApplySpartanRank_OutOfBounds(t *testing.T) {
 	}
 }
 
+// TestLoadCareerSnapshot_AlwaysRankMax152 (AXE C1) : MÊME quand l'enrichissement SR
+// live échoue (aucun match récent → enrichSpartanRank no-op), un CareerSnapshot h5
+// avec stats arena DOIT toujours porter RankMax=152 (+ XPMax). C'est le filet
+// déterministe qui évite que le front retombe sur le fallback HINF « X/272 ».
+func TestLoadCareerSnapshot_AlwaysRankMax152(t *testing.T) {
+	src := &fakeSource{
+		sr:      mustServiceRecord(t),
+		matches: &H5MatchesResponse{Results: nil}, // pas de match → SR non enrichi
+	}
+	a := NewDataAdapter(srcFactory(src), nil)
+
+	snap, err := a.LoadCareerSnapshot(context.Background(), "JGtm", canonical.CareerOptions{})
+	if err != nil {
+		t.Fatalf("LoadCareerSnapshot: %v", err)
+	}
+	if snap == nil {
+		t.Fatal("snapshot nil")
+	}
+	if snap.RankMax == nil || *snap.RankMax != h5MaxSpartanRank {
+		t.Errorf("RankMax = %v, want %d (filet déterministe même sans SR enrichi)", snap.RankMax, h5MaxSpartanRank)
+	}
+	if snap.XPMax == nil || *snap.XPMax != h5SRStartXP[h5MaxSpartanRank-1] {
+		t.Errorf("XPMax = %v, want %d (XP cumulé au SR152)", snap.XPMax, h5SRStartXP[h5MaxSpartanRank-1])
+	}
+	// SR réel inconnu (pas d'enrichissement) → RankNumber 0, pas de CurrentRank SR
+	// inventé. Le CSR (palier Diamant du service record) reste intact.
+	if snap.RankNumber != 0 {
+		t.Errorf("RankNumber = %d, want 0 (SR non enrichi, pas de valeur inventée)", snap.RankNumber)
+	}
+	if snap.RankTier == nil || *snap.RankTier != "Diamant" {
+		t.Errorf("RankTier = %v, want Diamant (CSR du service record préservé)", snap.RankTier)
+	}
+}
+
+// TestApplyDefaultSpartanRankBounds_NoOverwrite : les bornes par défaut n'écrasent
+// JAMAIS un SR déjà enrichi (idempotent). applySpartanRank pose RankMax/XPMax via
+// la table ; un second passage des défauts laisse ces valeurs intactes.
+func TestApplyDefaultSpartanRankBounds_NoOverwrite(t *testing.T) {
+	snap := &canonical.CareerSnapshot{}
+	applySpartanRank(snap, 111, 3908120) // pose RankMax=152, XPMax=table
+	wantRankMax := *snap.RankMax
+	wantXPMax := *snap.XPMax
+	applyDefaultSpartanRankBounds(snap) // doit être no-op
+	if *snap.RankMax != wantRankMax || *snap.XPMax != wantXPMax {
+		t.Errorf("défauts ont écrasé les bornes enrichies : RankMax=%d XPMax=%d", *snap.RankMax, *snap.XPMax)
+	}
+	if snap.RankNumber != 111 {
+		t.Errorf("RankNumber = %d, want 111 (inchangé)", snap.RankNumber)
+	}
+}
+
 // TestLoadCareerSnapshot_EnrichesSpartanRank : chemin complet — le service record
 // pose le CSR, et la carnage du dernier match (XpInfo) ajoute le rang SR.
 func TestLoadCareerSnapshot_EnrichesSpartanRank(t *testing.T) {

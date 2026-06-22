@@ -18,10 +18,18 @@ interface Props {
   projections: CareerProjections | null
 }
 
-const HERO_RANK_TOTAL_FALLBACK = 272
+// Nombre total de rangs « Héros » par titre, utilisé UNIQUEMENT comme filet quand
+// le backend n'a pas fourni heroProgress.total_ranks (rare : dégradation career).
+// Halo Infinite = 272 career ranks ; Halo 5 = 152 Spartan Ranks. Source nominale =
+// total_ranks (porté par l'adapter du titre côté Go) ; ces constantes ne servent
+// qu'en repli pour ne pas afficher « X/272 » sur un joueur Halo 5.
+const HERO_RANK_TOTAL_FALLBACK_HINF = 272
+const HERO_RANK_TOTAL_FALLBACK_H5 = 152
+const TITLE_SLUG_HALO_5 = 'halo_5'
 
 export function CareerSummaryCard({ summary, heroProgress, projections }: Props) {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const intlLocale = locale === 'fr' ? 'fr-FR' : 'en-US'
 
   if (!summary) {
@@ -36,7 +44,11 @@ export function CareerSummaryCard({ summary, heroProgress, projections }: Props)
 
   const nextRankName =
     locale === 'fr' ? summary.next_rank_name_fr : summary.next_rank_name_en
-  const totalRanks = heroProgress?.total_ranks ?? HERO_RANK_TOTAL_FALLBACK
+  const fallbackTotalRanks =
+    titleSlug === TITLE_SLUG_HALO_5
+      ? HERO_RANK_TOTAL_FALLBACK_H5
+      : HERO_RANK_TOTAL_FALLBACK_HINF
+  const totalRanks = heroProgress?.total_ranks ?? fallbackTotalRanks
 
   return (
     <Card>

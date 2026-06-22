@@ -14,7 +14,6 @@ package halo_5
 
 import (
 	"fmt"
-	"strconv"
 
 	"levelup/go-api/internal/games/canonical"
 )
@@ -46,12 +45,38 @@ var h5SRStartXP = [h5MaxSpartanRank]int{
 
 // h5SRAssetRef construit la référence d'asset d'un niveau SR. Pas d'image (le SR
 // s'affiche en chiffre — aucun insigne par niveau dans le manifest, by design).
+//
+// ID = « SR N » (un LIBELLÉ, pas le numéro brut) : c'est cette valeur que le
+// service recopie dans CareerRankData.RankLabel (cf. rankDataFromCanonical), donc
+// la page Carrière affiche « SR 111 » et JAMAIS un libellé de career rank HINF
+// (le catalogue HINF est neutralisé title-side, mais le label SR reste la source).
 func h5SRAssetRef(sr int) *canonical.AssetReference {
 	return &canonical.AssetReference{
 		Kind:         "spartan_rank",
-		ID:           strconv.Itoa(sr),
+		ID:           fmt.Sprintf("SR %d", sr),
 		DefaultLabel: fmt.Sprintf("SR %d", sr),
 		Labels:       map[string]string{"en": fmt.Sprintf("SR%d", sr), "fr": fmt.Sprintf("SR %d", sr)},
+	}
+}
+
+// applyDefaultSpartanRankBounds fixe les bornes de progression « Héros » Halo 5
+// (RankMax = SR152, XPMax = XP cumulé au SR152) sur TOUT CareerSnapshot h5 qui a
+// des stats arena, INDÉPENDAMMENT de l'enrichissement live du SR réel. C'est le
+// filet déterministe d'AXE C : si enrichSpartanRank() échoue (pas de match récent,
+// carnage indisponible), RankMax reste posé à 152 — le front affiche « X/152 » et
+// jamais le fallback HINF « X/272 ». N'écrase JAMAIS un SR déjà enrichi : pose les
+// bornes uniquement si elles sont absentes, et ne touche ni RankNumber ni le label.
+func applyDefaultSpartanRankBounds(snap *canonical.CareerSnapshot) {
+	if snap == nil {
+		return
+	}
+	if snap.RankMax == nil {
+		rankMax := h5MaxSpartanRank
+		snap.RankMax = &rankMax
+	}
+	if snap.XPMax == nil {
+		xpMax := h5SRStartXP[h5MaxSpartanRank-1]
+		snap.XPMax = &xpMax
 	}
 }
 

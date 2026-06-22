@@ -111,6 +111,12 @@ func mapCareerSnapshot(resp *H5ServiceRecordResponse, gamertag string, placement
 	}
 	snap := &canonical.CareerSnapshot{Player: h5Identity(gamertag)}
 
+	// Filet déterministe AXE C : pose RankMax=152 (+ XPMax) sur TOUT snapshot h5
+	// avec stats arena, même si l'enrichissement live du SR réel (enrichSpartanRank)
+	// échoue ensuite. Garantit « X/152 » côté front (jamais le fallback HINF 272).
+	// applySpartanRank, s'il s'exécute, ré-affirme les mêmes bornes (idempotent).
+	applyDefaultSpartanRankBounds(snap)
+
 	// Total de placement du titre : metadonnee toujours exposee si on a des stats arena.
 	pt := placementTotal
 	if pt <= 0 {
