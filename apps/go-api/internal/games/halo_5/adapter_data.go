@@ -47,6 +47,26 @@ var _ h5Source = (*Client)(nil)
 // est absent (-> degradation gracieuse cote adapter, pas de panique).
 type SourceFactory func(ctx context.Context) (h5Source, error)
 
+// MatchHistorySource lit l'historique de matchs Halo 5 depuis le substrat LOCAL
+// synchronisé (shared_matches_v2.duckdb du titre : match_registry ⨝
+// match_participants) et le projette en canonical.MatchSummary. PAS de fetch live :
+// la donnée y est déjà écrite par le livesync (cf. AXE A du prod-gate). C'est le
+// pendant h5 du MatchHistoryRepo d'Infinite.
+//
+// L'identité joueur est PORTÉE par la source (fixée à la construction depuis le
+// PlayerDB, comme ExplorerRepo d'Infinite) — d'où l'absence de paramètre gamertag
+// dans GetMatchSummaries, conforme à la signature de TitleDataAdapter.LoadMatchSummaries.
+//
+// matchIDs nil/vide → les N derniers matchs du joueur (ORDER BY start_time DESC).
+// matchIDs non vide → filtre sur ces IDs, ORDRE D'ENTRÉE PRÉSERVÉ (un match absent
+// du shared est silencieusement omis).
+//
+// Interface définie côté package h5 (le consommateur) : l'implémentation DuckDB
+// (internal/platform/duckdb) la satisfait STRUCTURELLEMENT, sans cycle d'import.
+type MatchHistorySource interface {
+	GetMatchSummaries(ctx context.Context, matchIDs []string) ([]canonical.MatchSummary, error)
+}
+
 // NewSpartanTokenSource est la SourceFactory de PRODUCTION : lit le SpartanToken du
 // contexte (ctxkeys.HaloTokens) et construit un Client live h5. Erreur si pas de
 // token (le caller dégrade). C'est le point de jonction wiring (Phase 1b) -> client.
@@ -76,6 +96,11 @@ type DataAdapter struct {
 	// MatchDetail restent INDETERMINEES (nil) — comportement conservateur identique
 	// à mapMatchSummaries(nil). Injecté via WithRankedClassifier au boot/wiring.
 	classifier classification.RankedClassifier
+	// matchHistory (optionnel) — source de lecture de l'historique LOCAL (shared h5)
+	// projeté en canonical.MatchSummary. nil → LoadMatchSummaries dégrade en
+	// ErrCapabilityNotSupported. Injecté via WithMatchHistorySource au builder
+	// player-scoped (porte l'identité du joueur, cf. MatchHistorySource).
+	matchHistory MatchHistorySource
 }
 
 var _ games.TitleDataAdapter = (*DataAdapter)(nil)
@@ -114,6 +139,14 @@ func (a *DataAdapter) WithRankedClassifier(c classification.RankedClassifier) *D
 	return a
 }
 
+// WithMatchHistorySource injecte la source de lecture de l'historique LOCAL (shared
+// h5 → canonical.MatchSummary) utilisée par LoadMatchSummaries. nil (défaut) ->
+// LoadMatchSummaries reste dégradé (ErrCapabilityNotSupported). Chainable.
+func (a *DataAdapter) WithMatchHistorySource(s MatchHistorySource) *DataAdapter {
+	a.matchHistory = s
+	return a
+}
+
 // TitleSlug retourne l'identite du titre (constante de package, pas un gating).
 func (a *DataAdapter) TitleSlug() string { return TitleSlug }
 
@@ -139,15 +172,16 @@ func (a *DataAdapter) Capabilities() games.CapabilityMap {
 }
 
 // fallbackCapabilities est la CapabilityMap par defaut (filet boot si capabilities.toml
-// n'a pas pu etre injecte). HONNETE Phase 1a : seules les methodes REELLEMENT cablees
-// sur le client live sont exposees. career.progression = supported (LoadCareerSnapshot) ;
-// match.detail.core = supported (LoadMatchDetail, carnage → canonical, voie canonique
-// Match View G9). Le reste = not_exposed tant que la methode est un stub (remonte a
-// mesure du cablage : match.history, scoreboard, timeseries...).
-// Parite avec config/titles/halo_5/mappings/capabilities.toml (capabilities_parity_test).
+// n'a pas pu etre injecte). HONNETE : seules les methodes REELLEMENT cablees sont
+// exposees. career.progression = supported (LoadCareerSnapshot) ; match.detail.core =
+// supported (LoadMatchDetail, carnage → canonical) ; match.history = supported
+// (LoadMatchSummaries, shared h5 local → canonical, AXE A prod-gate). Le reste =
+// not_exposed tant que la methode est un stub (remonte a mesure du cablage :
+// scoreboard, timeseries...). Parite avec config/titles/halo_5/mappings/capabilities.toml
+// (capabilities_parity_test).
 func fallbackCapabilities() games.CapabilityMap {
 	return games.CapabilityMap{
-		games.CapMatchHistory:       games.CapNotExposed,
+		games.CapMatchHistory:       games.CapSupported, // CÂBLÉ : LoadMatchSummaries (shared h5 local → canonical.MatchSummary)
 		games.CapMatchDetailCore:    games.CapSupported, // CÂBLÉ : LoadMatchDetail (carnage → canonical.MatchDetail)
 		games.CapScoreboardExtra:    games.CapNotExposed,
 		games.CapMatchSkillSnapshot: games.CapNotExposed,
@@ -273,13 +307,26 @@ func (a *DataAdapter) degradeUnavailable(ctx context.Context, err error, gamerta
 	return false
 }
 
-// --- Methodes non cablees en Phase 1 (capabilities.toml les declare not_exposed) ---
-
-// LoadMatchSummaries : l'historique Halo 5 est player+page-based (GetPlayerMatches),
-// pas ID-based comme cette signature. Le cablage history->canonique (via le mapper
-// mapMatchSummaries, deja teste) est Phase 2. match.history = not_exposed.
-func (a *DataAdapter) LoadMatchSummaries(_ context.Context, _ []string) ([]canonical.MatchSummary, error) {
-	return nil, games.ErrCapabilityNotSupported
+// LoadMatchSummaries projette l'historique de matchs Halo 5 vers []MatchSummary
+// depuis le substrat LOCAL synchronisé (shared_matches_v2.duckdb du titre :
+// match_registry ⨝ match_participants), comme le MatchHistoryRepo d'Infinite —
+// PAS de fetch live (la donnée y est déjà écrite par le livesync).
+//
+//   - matchIDs nil/vide → les N derniers matchs du joueur (ORDER BY start_time DESC) ;
+//   - matchIDs non vide → filtre sur ces IDs, ordre d'entrée préservé.
+//
+// Dégradation propre : source non câblée (nil) → ErrCapabilityNotSupported (le
+// caller dégrade). C'est aussi le cas sous le builder global live-only (pas de
+// PlayerDB) : seul le builder player-scoped injecte la source.
+func (a *DataAdapter) LoadMatchSummaries(ctx context.Context, matchIDs []string) ([]canonical.MatchSummary, error) {
+	if a.matchHistory == nil {
+		return nil, games.ErrCapabilityNotSupported
+	}
+	summaries, err := a.matchHistory.GetMatchSummaries(ctx, matchIDs)
+	if err != nil {
+		return nil, fmt.Errorf("h5 LoadMatchSummaries: %w", err)
+	}
+	return summaries, nil
 }
 
 // h5MatchDetailMaxPages borne la recherche du matchID dans l'historique du viewer
