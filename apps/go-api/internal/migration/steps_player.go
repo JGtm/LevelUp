@@ -197,6 +197,19 @@ func init() {
 	})
 
 	Register(Migration{
+		Name:        "add_challenge_snapshots_display_path",
+		TargetDB:    TargetPlayer,
+		Description: "Colonne display_path (vrai chemin GameCMS du défi) pour que le front dérive la cadence daily/weekly depuis le cache (le challenge_path interne est synthétique Tracking/{id})",
+		ApplySchema: func(db *sql.DB) error {
+			// challenge_path reste la CLÉ de dedup synthétique (Challenges/Tracking/{id}).
+			// display_path porte le vrai path (...DailyChallenges/...) pour le rendu.
+			return execScript(db, `
+				ALTER TABLE challenge_snapshots ADD COLUMN IF NOT EXISTS display_path VARCHAR;
+			`)
+		},
+	})
+
+	Register(Migration{
 		Name:        "add_battlepass_snapshots",
 		TargetDB:    TargetPlayer,
 		Description: "Table battlepass_snapshots pour historiser la progression battle pass joueur",

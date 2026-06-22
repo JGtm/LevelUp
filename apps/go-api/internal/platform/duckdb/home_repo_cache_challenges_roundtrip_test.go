@@ -32,10 +32,13 @@ func TestPersistThenLoadCachedChallenges_ReconstructsRenderedCards(t *testing.T)
 		"CompletedChallenges":[]
 	}]}`)
 
-	// Items rendus (titre/image résolus côté provider) — matchés par TrackingID.
+	// Items rendus (titre/image/vrai path résolus côté provider) — matchés par TrackingID.
+	// ChallengePath = vrai chemin GameCMS (porte le marqueur de cadence DailyChallenges).
 	items := []domain.ChallengeItem{
-		{TrackingID: strPtr("t1"), Title: "Tuer 10 Spartans", ImageURL: strPtr("/img/t1.png"), Description: strPtr("desc t1")},
-		{TrackingID: strPtr("t2"), Title: "Gagner 4 parties"}, // sans image
+		{TrackingID: strPtr("t1"), ChallengePath: "ChallengeContent/Csv/DailyChallenges/d1.json",
+			Title: "Tuer 10 Spartans", ImageURL: strPtr("/img/t1.png"), Description: strPtr("desc t1")},
+		{TrackingID: strPtr("t2"), ChallengePath: "ChallengeContent/Csv/WeeklyChallenges/w1.json",
+			Title: "Gagner 4 parties"}, // sans image
 	}
 
 	if err := sink.PersistChallengesSync(ctx, body, items); err != nil {
@@ -61,6 +64,10 @@ func TestPersistThenLoadCachedChallenges_ReconstructsRenderedCards(t *testing.T)
 	t1, ok := byTitle["Tuer 10 Spartans"]
 	if !ok {
 		t.Fatal("carte t1 (titre) absente — title non persisté/relu")
+	}
+	// display_path : le vrai chemin GameCMS doit être relu (le front en dérive la cadence).
+	if t1.ChallengePath != "ChallengeContent/Csv/DailyChallenges/d1.json" {
+		t.Errorf("ChallengePath (display_path) attendu = vrai path GameCMS, got %q", t1.ChallengePath)
 	}
 	if t1.ImageURL == nil || *t1.ImageURL != "/img/t1.png" {
 		t.Errorf("image t1 non persistée/relue, got %v", t1.ImageURL)
