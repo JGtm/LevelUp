@@ -37,6 +37,11 @@ on:
       - "apps/go-api/internal/migration/steps_shared_social*.go"
       - "apps/go-api/internal/api/post_sync*.go"
       - "apps/go-api/cmd/rebuild_shared_social/**"
+      # Un bump du driver DuckDB (duckdb-go) ou un changement du workflow lui-même
+      # doit re-jouer la gate (la couche CGO/ART est directement concernée).
+      - "apps/go-api/go.mod"
+      - "apps/go-api/go.sum"
+      - ".github/workflows/shared-social-gate.yml"
 
 jobs:
   shared-social-gate:
