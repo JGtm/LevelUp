@@ -1247,6 +1247,9 @@ func Steps() []migration.Migration {
 	// Schéma de référence inter-titres : positions monde par kill (Halo 5 natif,
 	// Infinite plus tard). Cf. steps_shared_kill_positions.go.
 	steps = append(steps, sharedKillPositionsSteps()...)
+	// Schéma de référence inter-titres : compteur par-match des commendations natives
+	// (Halo 5 natif, AXE B prod-gate). Cf. steps_shared_commendations.go.
+	steps = append(steps, sharedCommendationsSteps()...)
 	// Steps social CONSOMMATEURS (media ALTERs, records family, purge, rekey) → b19.
 	steps = append(steps, sharedSocialSteps()...)
 	// Racines du tier social (schémas de base media/notifications/prestige) → b24.

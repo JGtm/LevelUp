@@ -157,8 +157,8 @@ func CollectRecentMatches(
 				continue
 			}
 			timeline := captureMatchTimeline(ctx, src, s.MatchID, &stats)
-			participants := captureParticipants(ctx, src, s.MatchID, h5GameModeSegment(resp.Results[i].Id.GameMode), resolveXUID, &stats)
-			batches = append(batches, ingest.CollectMatchBatch(TitleSlug, source, viewer, s, timeline, participants, resolveXUID))
+			participants, commendations := captureParticipants(ctx, src, s.MatchID, h5GameModeSegment(resp.Results[i].Id.GameMode), resolveXUID, &stats)
+			batches = append(batches, ingest.CollectMatchBatch(TitleSlug, source, viewer, s, timeline, participants, commendations, resolveXUID))
 			stats.MatchesCollected++
 			if stats.MatchesCollected >= maxMatches {
 				return batches, stats, nil
@@ -185,16 +185,18 @@ func captureMatchTimeline(ctx context.Context, src h5Source, matchID string, sta
 	return mapH5Events(resp, canonical.MatchEventOptions{}) // Types vide = tous les events
 }
 
-// captureParticipants fetch le carnage + mappe le roster complet. Indisponibilité
-// (404/410, token expiré, decode) -> nil + CarnageFailed++ : le match est TOUT DE
-// MÊME collecté (sans match_participants) — squad/rencontres dégradent pour ce
-// match seul, et un futur passage le re-tentera (match_registry idempotent).
-func captureParticipants(ctx context.Context, src CaptureSource, matchID, mode string, resolveXUID func(string) string, stats *CaptureStats) []domain.MatchParticipantRow {
+// captureParticipants fetch le carnage UNE FOIS + mappe le roster complet ET les
+// commendations natives (AXE B) depuis ce MÊME carnage (pas de 2e fetch).
+// Indisponibilité (404/410, token expiré, decode) -> (nil, nil) + CarnageFailed++ :
+// le match est TOUT DE MÊME collecté (sans participants ni commendations) — squad/
+// rencontres dégradent pour ce match seul, et un futur passage le re-tentera
+// (match_registry idempotent).
+func captureParticipants(ctx context.Context, src CaptureSource, matchID, mode string, resolveXUID func(string) string, stats *CaptureStats) ([]domain.MatchParticipantRow, []persist.CommendationInsert) {
 	carnage, err := src.GetMatchCarnage(ctx, matchID, mode)
 	if err != nil {
 		stats.CarnageFailed++
 		slog.WarnContext(ctx, "h5 capture: carnage indisponible (sans participants)", "match_id", matchID, "err", err)
-		return nil
+		return nil, nil
 	}
-	return mapCarnageParticipants(matchID, carnage, resolveXUID)
+	return mapCarnageParticipants(matchID, carnage, resolveXUID), mapCarnageCommendations(matchID, carnage, resolveXUID)
 }

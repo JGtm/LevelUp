@@ -27,6 +27,7 @@ func AllCapabilityKeys() []CapabilityKey {
 		CapMatchEventsTimeline,
 		CapMatchKillfeedPerKill,
 		CapMatchEventsSpatial,
+		CapCommendationsNative,
 	}
 }
 

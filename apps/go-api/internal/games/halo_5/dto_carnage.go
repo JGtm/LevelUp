@@ -46,6 +46,25 @@ type H5CarnagePlayer struct {
 	// XpInfo : progression SR (rang XP de compte) du joueur. SEULE source du SR —
 	// ni la liste de matchs ni le service record ne le portent (cf. PLAN_H5_ASSETS).
 	XpInfo *H5XpInfo `json:"XpInfo"`
+	// ProgressiveCommendationDeltas : commendations NATIVES Halo 5 progressées sur CE
+	// match (AXE B prod-gate). Liste de {Id, PreviousProgress, Progress} par
+	// commendation touchée — le COMPTE de CE match = Progress − PreviousProgress
+	// (analogue au compteur par-match de medals_earned). Source per-match CONFIRMÉE
+	// (sonde live) : seul endroit où l'API h5 expose la progression de commendations.
+	ProgressiveCommendationDeltas []H5CommendationDelta `json:"ProgressiveCommendationDeltas"`
+	// MetaCommendationDeltas : même forme (commendations « méta »/agrégées). Vide dans
+	// la sonde — ignoré en Phase 1 (cf. AXE B), mappé sur le même chemin si peuplé.
+	MetaCommendationDeltas []H5CommendationDelta `json:"MetaCommendationDeltas"`
+}
+
+// H5CommendationDelta — progression d'UNE commendation native Halo 5 sur un match.
+// Id = UUID de commendation (clé naturelle, jamais résolu en numérique côté h5).
+// Le compte gagné CE match = Progress − PreviousProgress (≥ 0 attendu ; un delta
+// ≤ 0 est une commendation présente sans progression → ignoré à l'extraction).
+type H5CommendationDelta struct {
+	Id               string `json:"Id"`
+	PreviousProgress int    `json:"PreviousProgress"`
+	Progress         int    `json:"Progress"`
 }
 
 // H5XpInfo — progression SR Halo 5 du joueur dans le match. SpartanRank = niveau SR

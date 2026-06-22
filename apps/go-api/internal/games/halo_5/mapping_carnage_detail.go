@@ -30,7 +30,7 @@ import (
 // ErrCapabilityNotSupported). Les refs header réutilisent EXACTEMENT le mapper
 // summary (mapOneMatchSummary) pour garantir la parité de projection avec
 // l'historique canonique.
-func mapCarnageToCanonicalDetail(matchID string, header *canonical.MatchSummary, carnage *H5CarnageResponse) *canonical.MatchDetail {
+func mapCarnageToCanonicalDetail(matchID, viewerGamertag string, header *canonical.MatchSummary, carnage *H5CarnageResponse) *canonical.MatchDetail {
 	if carnage == nil || len(carnage.PlayerStats) == 0 {
 		return nil
 	}
@@ -40,6 +40,9 @@ func mapCarnageToCanonicalDetail(matchID string, header *canonical.MatchSummary,
 		Teams:        mapCarnageTeams(carnage),
 		Skill:        nil, // CSR pré/post par match = phase ultérieure (cf. plan PART A)
 		Limitations:  h5MatchDetailLimitations(),
+		// Commendations NATIVES du viewer sur CE match (AXE B). Affichage natif tel
+		// quel — pas de reconstruction par tier/composite (décision produit).
+		Commendations: mapViewerCommendations(viewerGamertag, carnage),
 	}
 	if header != nil {
 		detail.StartedAtUTC = header.StartedAtUTC
@@ -202,4 +205,48 @@ func h5MatchDetailLimitations() []canonical.CapabilityGap {
 // correspondant au matchID demandé.
 func h5HeaderMatchID(resultMatchID, wanted string) bool {
 	return strings.EqualFold(strings.TrimSpace(resultMatchID), strings.TrimSpace(wanted))
+}
+
+// mapViewerCommendations projette les commendations natives progressées par le
+// VIEWER sur ce match (carnage PlayerStats[viewer].ProgressiveCommendationDeltas +
+// MetaCommendationDeltas) vers []canonical.Commendation. Count = Progress −
+// PreviousProgress (> 0 seulement). Affichage NATIF tel quel — Name/IconURL vides
+// (les définitions natives sont une suite, cf. AXE B Phase 1 : la donnée brute, ID
+// + count, suffit). viewerGamertag vide ou absent du roster → nil (dégradation
+// gracieuse). Ordre du payload préservé (déterminisme).
+func mapViewerCommendations(viewerGamertag string, carnage *H5CarnageResponse) []canonical.Commendation {
+	if carnage == nil || strings.TrimSpace(viewerGamertag) == "" {
+		return nil
+	}
+	var p *H5CarnagePlayer
+	for i := range carnage.PlayerStats {
+		if strings.EqualFold(strings.TrimSpace(carnage.PlayerStats[i].Player.Gamertag), strings.TrimSpace(viewerGamertag)) {
+			p = &carnage.PlayerStats[i]
+			break
+		}
+	}
+	if p == nil {
+		return nil // viewer absent du roster carnage
+	}
+	var out []canonical.Commendation
+	out = appendCanonicalCommendations(out, p.ProgressiveCommendationDeltas)
+	out = appendCanonicalCommendations(out, p.MetaCommendationDeltas)
+	return out
+}
+
+// appendCanonicalCommendations convertit des deltas carnage en commendations
+// canoniques (Count = Progress − PreviousProgress > 0, Id non vide).
+func appendCanonicalCommendations(out []canonical.Commendation, deltas []H5CommendationDelta) []canonical.Commendation {
+	for i := range deltas {
+		d := deltas[i]
+		if d.Id == "" {
+			continue
+		}
+		count := d.Progress - d.PreviousProgress
+		if count <= 0 {
+			continue
+		}
+		out = append(out, canonical.Commendation{ID: d.Id, Count: count})
+	}
+	return out
 }

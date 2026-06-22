@@ -53,6 +53,11 @@ const (
 	CapMatchEventsTimeline  CapabilityKey = "match.events.timeline"   // timeline horodatée (kills/médailles/armes/spawns)
 	CapMatchKillfeedPerKill CapabilityKey = "match.killfeed.per_kill" // arme PAR kill (Halo 5 natif ; Infinite degraded RE film)
 	CapMatchEventsSpatial   CapabilityKey = "match.events.spatial"    // positions monde x,y,z (Halo 5 ; Infinite not_exposed)
+	// Commendations NATIVES par match (Halo 5 natif : carnage
+	// ProgressiveCommendationDeltas → match_commendations, AXE B prod-gate).
+	// DISTINCTE de citations.engine (moteur de citations DÉRIVÉ d'Infinite) :
+	// affichage NATIF tel quel, pas de reconstruction par tier/composite.
+	CapCommendationsNative CapabilityKey = "commendations.native"
 )
 
 // CapabilityMap décrit l'état des capabilities produit d'un adapter à un instant T.

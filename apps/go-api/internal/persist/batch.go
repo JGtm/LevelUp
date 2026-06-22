@@ -88,6 +88,11 @@ type SharedBatch struct {
 	// XUIDAliases : nouveaux mappings xuid→gamertag observés dans le match.
 	XUIDAliases []XUIDAliasInsert `json:"xuid_aliases,omitempty"`
 
+	// Commendations : commendations NATIVES progressées sur le match (Halo 5
+	// natif, AXE B). 1 row par (xuid, commendation_id) avec le compte gagné CE
+	// match. Vide pour les titres sans commendations natives (Infinite).
+	Commendations []CommendationInsert `json:"commendations,omitempty"`
+
 	// MatchCSRs : CSR de tous les participants d'un match ranked (lobby
 	// context pour match view / compare). Vide pour les matchs non-ranked.
 	MatchCSRs []MatchCSRInsert `json:"match_csrs,omitempty"`

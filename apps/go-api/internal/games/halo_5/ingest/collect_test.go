@@ -6,6 +6,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/persist"
 )
 
 func boolptr(b bool) *bool { return &b }
@@ -66,8 +67,12 @@ func TestCollectMatchBatch_EndToEnd(t *testing.T) {
 		{MatchID: "m1", XUID: "xA"},
 		{MatchID: "m1", XUID: "xB"},
 	}
+	commendations := []persist.CommendationInsert{
+		{MatchID: "m1", XUID: "xA", CommendationID: "uuid-1", Count: 3},
+		{MatchID: "m1", XUID: "xB", CommendationID: "uuid-2", Count: 1},
+	}
 
-	batch := CollectMatchBatch("halo_5", "h5_capture", viewer, s, timeline, participants, resolve)
+	batch := CollectMatchBatch("halo_5", "h5_capture", viewer, s, timeline, participants, commendations, resolve)
 
 	if batch.TitleSlug != "halo_5" || batch.Player != "Madina97294" || batch.XUID != "xA" {
 		t.Fatalf("métadonnées batch: slug=%q player=%q xuid=%q", batch.TitleSlug, batch.Player, batch.XUID)
@@ -93,5 +98,9 @@ func TestCollectMatchBatch_EndToEnd(t *testing.T) {
 	}
 	if len(batch.Shared.WeaponKills) != 1 {
 		t.Errorf("weapon_kills: %d, attendu 1", len(batch.Shared.WeaponKills))
+	}
+	// Commendations natives : transmises telles quelles au batch (AXE B).
+	if len(batch.Shared.Commendations) != 2 {
+		t.Errorf("commendations: %d, attendu 2 — %+v", len(batch.Shared.Commendations), batch.Shared.Commendations)
 	}
 }

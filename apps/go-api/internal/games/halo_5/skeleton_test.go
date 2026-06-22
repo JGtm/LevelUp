@@ -74,6 +74,7 @@ func TestHalo5_FineCapabilities(t *testing.T) {
 		games.CapTimeseries:           games.CapNotExposed,
 		games.CapEngagement:           games.CapNotExposed,
 		games.CapCitationsEngine:      games.CapNotExposed,
+		games.CapCommendationsNative:  games.CapSupported, // commendations NATIVES par match (carnage → match_commendations)
 		games.CapPveFirefight:         games.CapNotExposed,
 		games.CapBattlePass:           games.CapNotExposed,
 		games.CapChallenges:           games.CapNotExposed,

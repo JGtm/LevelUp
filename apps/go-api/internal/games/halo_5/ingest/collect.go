@@ -15,19 +15,23 @@ import (
 //
 //   - match_registry (ancre) depuis le résumé,
 //   - match_participants (roster) depuis le carnage (mappé en amont, package halo_5),
+//   - match_commendations (compteur par-match des commendations natives, du carnage),
 //   - medals_earned (agrégat) + highlight_events (médailles horodatées),
 //   - killer_victim_pairs (kill-feed par-kill) + weapon_kills (arme par kill).
 //
 // resolveXUID(gamertag) est injecté (le câblage live fournit le CachingResolver).
 // viewer = joueur dont la consultation déclenche la capture (owner du batch +
 // first_sync_by). participants = roster du carnage (nil si carnage indisponible →
-// match collecté sans participants). Le batch est persisté par SharedPersister.
+// match collecté sans participants). commendations = compteur par-match des
+// commendations natives (mappé en amont depuis le MÊME carnage, package halo_5 ; nil
+// si carnage indisponible). Le batch est persisté par SharedPersister.
 func CollectMatchBatch(
 	titleSlug, source string,
 	viewer canonical.PlayerIdentity,
 	summary canonical.MatchSummary,
 	timeline []canonical.MatchEvent,
 	participants []domain.MatchParticipantRow,
+	commendations []persist.CommendationInsert,
 	resolveXUID func(gamertag string) string,
 ) *persist.MatchBatch {
 	registry := MatchRegistryRowFromSummary(summary, viewer.Gamertag)
@@ -42,6 +46,7 @@ func CollectMatchBatch(
 		// mapping (xuid ET gamertag au même endroit) ET graine du resolver PeopleHub
 		// (évite de re-résoudre un joueur déjà vu aux runs suivants → anti rate-limit).
 		AddXUIDAliases(xuidAliasesFromParticipants(participants, summary.StartedAtUTC)).
+		AddCommendations(commendations).
 		AddMedals(medals).
 		AddHighlightEvents(medalEvents).
 		AddKillerVictim(pairs).

@@ -189,9 +189,13 @@ func fallbackCapabilities() games.CapabilityMap {
 		games.CapTimeseries:         games.CapNotExposed,
 		games.CapEngagement:         games.CapNotExposed,
 		games.CapCitationsEngine:    games.CapNotExposed,
-		games.CapPveFirefight:       games.CapNotExposed,
-		games.CapBattlePass:         games.CapNotExposed,
-		games.CapChallenges:         games.CapNotExposed,
+		// Commendations NATIVES par match : CÂBLÉ (AXE B). carnage
+		// ProgressiveCommendationDeltas → shared.match_commendations (ingest) +
+		// MatchDetail.Commendations (LoadMatchDetail). DISTINCTE de citations.engine.
+		games.CapCommendationsNative: games.CapSupported,
+		games.CapPveFirefight:        games.CapNotExposed,
+		games.CapBattlePass:          games.CapNotExposed,
+		games.CapChallenges:          games.CapNotExposed,
 		// Canonical MatchEvents : CÂBLÉ Phase 1 (LoadMatchEvents → events.go).
 		games.CapMatchEventsTimeline:  games.CapSupported,
 		games.CapMatchKillfeedPerKill: games.CapSupported,
@@ -386,7 +390,7 @@ func (a *DataAdapter) LoadMatchDetail(ctx context.Context, matchID string) (*can
 		}
 		return nil, fmt.Errorf("h5 LoadMatchDetail(%s): %w", matchID, err)
 	}
-	detail := mapCarnageToCanonicalDetail(matchID, header, carnage)
+	detail := mapCarnageToCanonicalDetail(matchID, gamertag, header, carnage)
 	if detail == nil {
 		a.logger.DebugContext(ctx, "h5 LoadMatchDetail: carnage vide (dégradation)",
 			"player", gamertag, "match_id", matchID)
