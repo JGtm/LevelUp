@@ -15,6 +15,10 @@ import type { SemanticToken } from '@/lib/accessibility'
  */
 export const LUSR_KNOWN_GROUPS_BY_TITLE: Record<string, readonly string[]> = {
   halo_infinite: ['arena_slayer', 'arena_objectif', 'btb', 'chaos'],
+  // Halo 5 = une chaine LUSR unique (h5_arena, cf. internal/games/halo_5/lusr_chain.go).
+  // Declaree ici pour la PARITE de placeholder avec HINF : la ligne "Arene" s'affiche
+  // (Non classe) meme sans checkpoint, au lieu de disparaitre.
+  halo_5: ['h5_arena'],
 }
 
 /**
