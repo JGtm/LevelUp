@@ -1,3 +1,23 @@
+## [2026-06-22] Sécurité dépendances : alerte Dependabot #3 (js-yaml DoS) + config dependabot.yml corrigée — COMPLÉTÉ code (branche fix/dependabot-config-and-js-yaml, depuis main)
+
+**Contexte** : utilisateur — (1) « checke l'alerte Dependabot #3 » ; (2) « regarde le commit 5a6832a » (GitHub). Alerte #3 = GHSA-h67p-54hq-rp68 / CVE-2026-53550, js-yaml DoS complexité quadratique (merge-key `<<:` avec alias répété → O(K×M)), sévérité medium (CVSS 5.3), vulnérable `<= 4.1.1`, corrigé `4.2.0`.
+
+**Triage alerte #3** : `js-yaml@4.1.1` est une dépendance **dev-only transitive** : `openapi-typescript@7.13.0` → `@redocly/openapi-core@1.34.15` → `js-yaml@4.1.1`. Seul usage = script `generate-types` qui parse **notre propre** `apps/go-api/api/openapi.yaml` (fichier versionné, de confiance), au build. Jamais embarqué runtime (web bundle / binaire Go). Exposition réelle quasi nulle (le scénario d'attaque = parser du YAML non fiable, inexistant ici), mais alerte légitime à fermer.
+
+**Commit 5a6832a** : branche `JGtm-patch-1` (éditeur web GitHub), parent = main, **non mergé / pas de PR**. Ajoute `.github/dependabot.yml` = **template par défaut GitHub brut** : `package-ecosystem: ""` (vide → **invalide**, version-updates ne tourne pas) + une seule entrée `directory: "/"` ne couvrant pas le monorepo. Précision clé : ce fichier pilote les **version updates** (PRs de bump), feature **distincte** des **security alerts** (alerte #3) qui viennent du scan repo et existent indépendamment → ce commit ne corrige pas #3.
+
+**Décision technique principale** :
+- **Fix js-yaml** : `@redocly/openapi-core` épingle `js-yaml: 4.1.1` en **exact** → bump impossible sans `overrides`. Ajout `"overrides": { "js-yaml": "^4.2.0" }` dans `apps/web/package.json` + `npm install`. Résultat lockfile : nœud nested `@redocly/.../js-yaml@4.1.1` supprimé, **un seul** `node_modules/js-yaml@4.2.0` hoisté en racine. `npm audit` = 0 vuln.
+- **Config Dependabot** : remplacement du stub par une config multi-écosystème valide (npm `/apps/web`, gomod `/apps/go-api`, github-actions `/`), commentaire clarifiant alerts vs version-updates.
+
+**Résultats (vérif)** : `npm ls js-yaml` → 4.2.0 unique ; `npm run generate-types` OK (openapi-typescript 7.13.0, openapi.yaml → generated.ts en 103ms, parse inchangé — la version js-yaml n'altère pas la sortie). Working tree final = 3 fichiers : `.github/dependabot.yml` (neuf), `apps/web/package.json` + `package-lock.json` (override). Diff lockfile audité = strictement js-yaml.
+
+**Note pré-existante signalée (hors scope, non corrigé ici)** : la régénération `generate-types` a produit un diff de **5858 lignes** sur `apps/web/src/lib/api/generated.ts` → le fichier commité est **périmé** vs l'`openapi.yaml` courant (nouveaux endpoints ex. `/players/{player_slug}/filters/match-ids`, descriptions CSR à jour). **Reverté** pour garder ce commit focalisé sur le fix sécu. À traiter séparément (régénérer + commit dédié).
+
+**Prochaine étape** : commit (autorisation requise) + push ; supprimer la branche distante `JGtm-patch-1` (autorisé par l'utilisateur, remplacée par la bonne config).
+
+---
+
 ## [2026-06-22] Référentiel (Asset Drawer) : images maps/armes absentes en mode démo — fix chemin metadata + helper unifié — COMPLÉTÉ code (branche fix/asset-drawer-demo-metadata-path, depuis main)
 
 **Contexte** : utilisateur — en mode démo (constaté en vue mobile, en anglais), le tab Référentiel (Asset Drawer, onglets Maps/Armes) n'affiche aucune image de maps ni d'armes. Question annexe résolue en clair (sans code) : les lignes « HTMLMediaElement's play() » dans la sortie vitest = bruit jsdom préexistant (jsdom n'implémente pas .play()/.pause()), pas une régression.
