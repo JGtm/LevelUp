@@ -234,14 +234,25 @@ func (r *PrestigeSquadRepo) Get(ctx context.Context, id string) (prestige.Squad,
 	return s, err
 }
 
+func (r *PrestigeSquadRepo) Rename(ctx context.Context, id, name string) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	// UPDATE basse fréquence (HTTP) sur la table create-only squad : pas de
+	// pression concurrente → toléré (cf. doctrine append-only, sites HTTP). Sous
+	// lease KindSharedSocial + CHECKPOINT (durabilité, ADR 0022).
+	return execCheckpointed(ctx, r.db,
+		`UPDATE squad SET name = ? WHERE id = ?`, name, id)
+}
+
 func (r *PrestigeSquadRepo) AddMember(ctx context.Context, m prestige.SquadMember) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	// APPEND-ONLY : join = INSERT event is_member=TRUE dans squad_member_history.
+	// gamertag = snapshot d'affichage (peut être vide pour un membre sans GT connu).
 	return execCheckpointed(ctx, r.db,
-		`INSERT INTO squad_member_history (squad_id, xuid, user_id, is_member, joined_at)
-		 VALUES (?, ?, ?, TRUE, ?)`,
-		m.SquadID, m.Xuid, m.UserID, m.JoinedAt)
+		`INSERT INTO squad_member_history (squad_id, xuid, user_id, gamertag, is_member, joined_at)
+		 VALUES (?, ?, ?, ?, TRUE, ?)`,
+		m.SquadID, m.Xuid, m.UserID, nullableStr(m.Gamertag), m.JoinedAt)
 }
 
 func (r *PrestigeSquadRepo) RemoveMember(ctx context.Context, squadID, xuid string) error {
@@ -257,7 +268,8 @@ func (r *PrestigeSquadRepo) ListMembers(ctx context.Context, squadID string) ([]
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	rows, err := r.db.QueryRecovered(ctx,
-		`SELECT squad_id, xuid, COALESCE(user_id, ''), joined_at FROM squad_member_latest
+		`SELECT squad_id, xuid, COALESCE(user_id, ''), COALESCE(gamertag, ''), joined_at
+		 FROM squad_member_latest
 		 WHERE squad_id = ? AND is_member = TRUE`, squadID)
 	if err != nil {
 		return nil, err
@@ -266,7 +278,7 @@ func (r *PrestigeSquadRepo) ListMembers(ctx context.Context, squadID string) ([]
 	var out []prestige.SquadMember
 	for rows.Next() {
 		var m prestige.SquadMember
-		if err := rows.Scan(&m.SquadID, &m.Xuid, &m.UserID, &m.JoinedAt); err != nil {
+		if err := rows.Scan(&m.SquadID, &m.Xuid, &m.UserID, &m.Gamertag, &m.JoinedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, m)

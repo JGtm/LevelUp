@@ -62,6 +62,16 @@ type mockPrestigeService struct {
 	lastEvalSquadID    string
 	lastEvalSquadReqBy string
 	orientationResp    string
+
+	lastRenameSquadID    string
+	lastRenameSquadName  string
+	lastRenameSquadReqBy string
+	renameSquadErr       error
+	lastDeleteSquadID    string
+	lastDeleteSquadReqBy string
+	deleteSquadErr       error
+	usualPlaylistsResp   []string
+	usualModesResp       []string
 }
 
 func (m *mockPrestigeService) CreateChallenge(ctx context.Context, req prestige.CreateChallengeRequest) (prestige.Challenge, error) {
@@ -165,6 +175,20 @@ func (m *mockPrestigeService) AddSquadMember(ctx context.Context, squadID string
 func (m *mockPrestigeService) RemoveSquadMember(ctx context.Context, _, _, _ string) error {
 	return nil
 }
+func (m *mockPrestigeService) RenameSquad(ctx context.Context, squadID, name, requestedBy string) error {
+	m.lastRenameSquadID = squadID
+	m.lastRenameSquadName = name
+	m.lastRenameSquadReqBy = requestedBy
+	return m.renameSquadErr
+}
+func (m *mockPrestigeService) DeleteSquad(ctx context.Context, squadID, requestedBy string) error {
+	m.lastDeleteSquadID = squadID
+	m.lastDeleteSquadReqBy = requestedBy
+	return m.deleteSquadErr
+}
+func (m *mockPrestigeService) SquadUsualContexts(ctx context.Context, _ []string, _ string) ([]string, []string, error) {
+	return m.usualPlaylistsResp, m.usualModesResp, nil
+}
 func (m *mockPrestigeService) EvaluateSquadChallenge(ctx context.Context, squadChallengeID, requestedBy string) ([]prestige.SquadParticipantProgress, error) {
 	m.lastEvalSquadID = squadChallengeID
 	m.lastEvalSquadReqBy = requestedBy
@@ -206,6 +230,8 @@ func newRouter(svc prestige.Service) *chi.Mux {
 	r.Get("/templates/suggest", h.SuggestTemplates)
 	r.Post("/squads", h.CreateSquad)
 	r.Get("/squads", h.ListMySquads)
+	r.Patch("/squads/{squad_id}", h.RenameSquad)
+	r.Delete("/squads/{squad_id}", h.DeleteSquad)
 	r.Post("/squads/{squad_id}/members", h.AddSquadMember)
 	r.Delete("/squads/{squad_id}/members/{xuid}", h.RemoveSquadMember)
 	r.Post("/squad-challenges/{id}/evaluate", h.EvaluateSquadChallenge)
@@ -356,6 +382,76 @@ func TestPrestigeHandler_ListMySquads_OK(t *testing.T) {
 	}
 }
 
+func TestPrestigeHandler_ListMySquads_IncludesUsualContexts(t *testing.T) {
+	mock := &mockPrestigeService{
+		listSquadsResp:     []prestige.Squad{{ID: "sq1", Name: "Trio"}},
+		usualPlaylistsResp: []string{"Ranked"},
+		usualModesResp:     []string{"Slayer"},
+	}
+	r := newRouter(mock)
+	req := httptest.NewRequest(http.MethodGet, "/squads?user_id=alice", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	body := w.Body.Bytes()
+	if !bytes.Contains(body, []byte(`"usual_playlists":["Ranked"]`)) || !bytes.Contains(body, []byte(`"usual_modes":["Slayer"]`)) {
+		t.Errorf("indice dérivé absent de la réponse: %s", w.Body.String())
+	}
+}
+
+func TestPrestigeHandler_RenameSquad_OK(t *testing.T) {
+	mock := &mockPrestigeService{}
+	r := newRouter(mock)
+	body := `{"name":"Nouveau nom","requested_by":"alice"}`
+	req := httptest.NewRequest(http.MethodPatch, "/squads/sq1", bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("status=%d, want 204; body=%s", w.Code, w.Body.String())
+	}
+	if mock.lastRenameSquadID != "sq1" || mock.lastRenameSquadName != "Nouveau nom" || mock.lastRenameSquadReqBy != "alice" {
+		t.Errorf("capturé: id=%q name=%q by=%q", mock.lastRenameSquadID, mock.lastRenameSquadName, mock.lastRenameSquadReqBy)
+	}
+}
+
+func TestPrestigeHandler_RenameSquad_RequiresFields(t *testing.T) {
+	mock := &mockPrestigeService{}
+	r := newRouter(mock)
+	req := httptest.NewRequest(http.MethodPatch, "/squads/sq1", bytes.NewBufferString(`{"requested_by":"alice"}`))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("name manquant: status=%d, want 400", w.Code)
+	}
+}
+
+func TestPrestigeHandler_DeleteSquad_OK(t *testing.T) {
+	mock := &mockPrestigeService{}
+	r := newRouter(mock)
+	req := httptest.NewRequest(http.MethodDelete, "/squads/sq1?requested_by=alice", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("status=%d, want 204; body=%s", w.Code, w.Body.String())
+	}
+	if mock.lastDeleteSquadID != "sq1" || mock.lastDeleteSquadReqBy != "alice" {
+		t.Errorf("capturé: id=%q by=%q", mock.lastDeleteSquadID, mock.lastDeleteSquadReqBy)
+	}
+}
+
+func TestPrestigeHandler_DeleteSquad_RequiresRequestedBy(t *testing.T) {
+	mock := &mockPrestigeService{}
+	r := newRouter(mock)
+	req := httptest.NewRequest(http.MethodDelete, "/squads/sq1", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("requested_by manquant: status=%d, want 400", w.Code)
+	}
+}
+
 // newRouterGuarded : comme newRouter mais avec une garde d'autorisation acteur
 // (ADR 0024 sur routes squad top-level).
 func newRouterGuarded(svc prestige.Service, guard ActorGuard) *chi.Mux {
@@ -363,6 +459,8 @@ func newRouterGuarded(svc prestige.Service, guard ActorGuard) *chi.Mux {
 	r := chi.NewRouter()
 	r.Post("/squads", h.CreateSquad)
 	r.Get("/squads", h.ListMySquads)
+	r.Patch("/squads/{squad_id}", h.RenameSquad)
+	r.Delete("/squads/{squad_id}", h.DeleteSquad)
 	r.Post("/squads/{squad_id}/members", h.AddSquadMember)
 	r.Delete("/squads/{squad_id}/members/{xuid}", h.RemoveSquadMember)
 	r.Post("/squad-challenges/{id}/evaluate", h.EvaluateSquadChallenge)
@@ -382,6 +480,8 @@ func TestPrestigeHandler_SquadActorGuard_DeniesForeignActor(t *testing.T) {
 		{"list_my_squads", http.MethodGet, "/squads?user_id=bob", ""},
 		{"add_member", http.MethodPost, "/squads/sq1/members", `{"xuid":"xBob","requested_by":"bob"}`},
 		{"remove_member", http.MethodDelete, "/squads/sq1/members/xBob?requested_by=bob", ""},
+		{"rename_squad", http.MethodPatch, "/squads/sq1", `{"name":"X","requested_by":"bob"}`},
+		{"delete_squad", http.MethodDelete, "/squads/sq1?requested_by=bob", ""},
 		{"evaluate", http.MethodPost, "/squad-challenges/sc1/evaluate", `{"requested_by":"bob"}`},
 		{"orientation", http.MethodGet, "/squads/sq1/orientation?requested_by=bob", ""},
 	}

@@ -11,6 +11,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
+	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -134,6 +137,105 @@ func (p *PrestigeSquadMatchProvider) participantsWithMetric(ctx context.Context,
 		out = append(out, *byMatch[id])
 	}
 	return out, nil
+}
+
+// uuidLabelRE détecte un label non résolu (UUID brut) à écarter de l'indice
+// d'affichage (miroir du filtre UUID côté front pour les options de cascade).
+var uuidLabelRE = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
+// SquadUsualContexts retourne les playlists/modes dominants (top 2) parmi les
+// `limit` derniers matchs où TOUT le roster a joué ensemble. Labels résolus FR
+// via v_match_full ; vides et UUID non résolus écartés. Lecture seule.
+func (p *PrestigeSquadMatchProvider) SquadUsualContexts(ctx context.Context, rosterXUIDs []string, _ string, limit int) (playlists, modes []string, err error) {
+	if len(rosterXUIDs) == 0 {
+		return nil, nil, nil
+	}
+	if limit <= 0 {
+		limit = 60
+	}
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	db, release, err := p.reader.Get(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "SquadUsualContexts: shared reader indisponible (indice escouade dégradé)",
+			"err", err, "roster_size", len(rosterXUIDs))
+		return nil, nil, fmt.Errorf("SquadUsualContexts: shared reader: %w", err)
+	}
+	defer release()
+
+	q := fmt.Sprintf(`
+		WITH cm AS (
+			SELECT mp.match_id,
+			       MAX(COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC')) AS st
+			FROM match_participants mp
+			JOIN match_registry mr ON mr.match_id = mp.match_id
+			WHERE mp.xuid IN (%s)
+			GROUP BY mp.match_id
+			HAVING COUNT(DISTINCT mp.xuid) = %d
+			ORDER BY st DESC
+			LIMIT %d
+		)
+		SELECT
+			COALESCE(NULLIF(r.playlist_name_fr, ''), r.playlist_name, '') AS playlist,
+			COALESCE(NULLIF(r.pair_name_fr, ''), r.pair_name, '')         AS mode
+		FROM cm
+		JOIN v_match_full r ON r.match_id = cm.match_id
+	`, sqlInPlaceholders(len(rosterXUIDs)), len(rosterXUIDs), limit)
+
+	rows, err := db.QueryContext(ctx, q, toAnyArgs(rosterXUIDs)...)
+	if err != nil {
+		slog.WarnContext(ctx, "SquadUsualContexts: échec requête (indice escouade dégradé)",
+			"err", err, "roster_size", len(rosterXUIDs))
+		return nil, nil, fmt.Errorf("SquadUsualContexts: query: %w", err)
+	}
+	defer rows.Close()
+
+	plCount := map[string]int{}
+	mdCount := map[string]int{}
+	for rows.Next() {
+		var pl, md string
+		if err := rows.Scan(&pl, &md); err != nil {
+			return nil, nil, fmt.Errorf("SquadUsualContexts: scan: %w", err)
+		}
+		if pl != "" && !uuidLabelRE.MatchString(pl) {
+			plCount[pl]++
+		}
+		if md != "" && !uuidLabelRE.MatchString(md) {
+			mdCount[md]++
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	return topNByFreq(plCount, 2), topNByFreq(mdCount, 2), nil
+}
+
+// topNByFreq retourne les n clés les plus fréquentes (fréquence desc, départage
+// alphabétique pour un ordre déterministe).
+func topNByFreq(counts map[string]int, n int) []string {
+	type kv struct {
+		k string
+		v int
+	}
+	arr := make([]kv, 0, len(counts))
+	for k, v := range counts {
+		arr = append(arr, kv{k, v})
+	}
+	sort.Slice(arr, func(i, j int) bool {
+		if arr[i].v != arr[j].v {
+			return arr[i].v > arr[j].v
+		}
+		return arr[i].k < arr[j].k
+	})
+	if n > len(arr) {
+		n = len(arr)
+	}
+	out := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		out = append(out, arr[i].k)
+	}
+	return out
 }
 
 // sqlInPlaceholders construit "?,?,…" pour une clause IN de n éléments.

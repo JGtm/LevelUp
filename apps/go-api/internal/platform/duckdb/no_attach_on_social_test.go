@@ -261,6 +261,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/migration/steps_shared_social_favorites_append_only.go":                   "migration match_favorites append-only (élimine le DELETE, surface ART shared_social)",
 	"internal/migration/steps_shared_social_likes_append_only.go":                       "migration media_likes append-only (élimine DELETE + ON CONFLICT, surface ART shared_social)",
 	"internal/migration/steps_shared_social_squad_member_append_only.go":                "migration squad_member append-only (élimine DELETE + ON CONFLICT, surface ART shared_social)",
+	"internal/migration/steps_shared_social_squad_member_gamertag.go":                   "migration squad_member_history : ajoute la colonne gamertag (snapshot d'affichage du roster) + reconstruit la vue _latest",
 	"internal/migration/steps_shared_social_notif_prefs_append_only.go":                 "migration notification_preferences append-only (élimine ON CONFLICT DO UPDATE, surface ART shared_social)",
 	"internal/migration/steps_shared_social_media_assoc_append_only.go":                 "migration media_match_associations append-only (élimine DELETE manual-replace + reindex, surface ART shared_social)",
 	"internal/migration/steps_shared_social_media_files_drop_filepath_unique.go":        "migration media_files rebuild sans contrainte UNIQUE sur file_path — élimine surface ART (UPDATE file_path conversion/HLS/reconcile, blast MAX shared_social)",

@@ -93,6 +93,15 @@ func (m *mockService) AddSquadMember(ctx context.Context, _ string, _ SquadMembe
 func (m *mockService) RemoveSquadMember(ctx context.Context, _, _, _ string) error {
 	return nil
 }
+func (m *mockService) RenameSquad(ctx context.Context, _, _, _ string) error {
+	return nil
+}
+func (m *mockService) DeleteSquad(ctx context.Context, _, _ string) error {
+	return nil
+}
+func (m *mockService) SquadUsualContexts(ctx context.Context, _ []string, _ string) ([]string, []string, error) {
+	return nil, nil, nil
+}
 func (m *mockService) EvaluateSquadChallenge(ctx context.Context, _, _ string) ([]SquadParticipantProgress, error) {
 	return nil, nil
 }
