@@ -31,6 +31,7 @@ export const homeManifest = {
   "home.empty.no_data_title": { fr: "Accueil vide", en: "Empty home" },
   "home.errors.reload": { fr: "Relancer", en: "Reload" },
   "home.errors.retry": { fr: "Réessayer", en: "Retry" },
+  "home.freshness.from_cache": { fr: "Données en cache (live indisponible) — dernière synchro le {date}", en: "Cached data (live unavailable) — last sync {date}" },
   "home.freshness.last_sync": { fr: "Dernière synchronisation réussie le {date}", en: "Last successful synchronization on {date}" },
   "home.highlights.detail.favorite_map": { fr: "{wins}V/{losses}D · {wr}% victoires", en: "{wins}W/{losses}L · {wr}% win rate" },
   "home.highlights.detail.volume_kda_wr": { fr: "FDA {kda} · {wr}% victoires", en: "KDA {kda} · {wr}% win rate" },

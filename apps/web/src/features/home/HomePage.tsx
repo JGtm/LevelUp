@@ -230,7 +230,11 @@ export function HomePage() {
                 <h3 className="text-base font-semibold text-foreground">{t('home.challenges.title')}</h3>
                 <DataFreshnessIndicator
                   snapshotAt={challenges?.snapshot_at}
-                  buildLabel={(date) => t('home.freshness.last_sync', { date })}
+                  buildLabel={(date) =>
+                    challenges?.from_cache
+                      ? t('home.freshness.from_cache', { date })
+                      : t('home.freshness.last_sync', { date })
+                  }
                   locale={numberLocale}
                 />
               </div>
