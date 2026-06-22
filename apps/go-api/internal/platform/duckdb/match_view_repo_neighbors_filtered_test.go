@@ -103,8 +103,10 @@ func newTestPlayerDBForNeighborsScenario(t *testing.T) *PlayerDB {
 	}
 }
 
-// strPtr / timePtr : helpers locaux pour les pointeurs de spec.
-func strPtr(s string) *string { return &s }
+// timePtr : helper local pour les pointeurs de spec. (strPtr est défini dans
+// home_repo_cache_challenges_roundtrip_test.go — même package, sans build tag —
+// donc disponible aussi en build `integration` ; le redéclarer ici cassait le
+// build de test sous `-tags=integration`.)
 func timePtr(s string) *time.Time {
 	t, _ := time.Parse(time.RFC3339, s)
 	return &t

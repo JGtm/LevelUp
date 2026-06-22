@@ -1,3 +1,31 @@
+## [2026-06-22] Fix build de test cassé pré-existant — `strPtr` redéclaré sous `-tags=integration` — COMPLÉTÉ code (branche fix/duckdb-test-strptr-redeclared)
+
+**Contexte** : découvert pendant la vérification finale des PRs deps (#41/#42/#43). Les jobs CI **Go Coverage** + **Go Baseline** (qui lancent `go test -tags=integration ./...`) échouaient sur `main` avec `strPtr redeclared in this block` → **build de test cassé**. Pas mon travail : visible même sur #41 qui ne touche aucun Go.
+
+**Cause racine** : `internal/platform/duckdb/match_view_repo_neighbors_filtered_test.go` (`//go:build integration`) et `home_repo_cache_challenges_roundtrip_test.go` (sans tag, ajouté par `f3558e740`) déclarent tous deux `func strPtr(s string) *string`. Hors integration, seul le 2ᵉ est compilé → OK (mes builds/vet/gates locaux passaient sans `-tags`). **Avec `-tags=integration`, les deux coexistent dans `package duckdb` → redéclaration → build fail.** L'auteur de f3558e740 n'avait pas lancé le build integration.
+
+**Décision technique** : retrait du `func strPtr` redondant dans le fichier **integration** (`match_view`), en gardant le canonique sans tag de `home_repo` (utilisé lignes 38-40, donc requis hors integration ; et disponible aussi en integration car non taggé). `timePtr` (unique à match_view) conservé. Commentaire mis à jour.
+
+**Résultats (vérif locale, CGO ucrt64)** : `go vet -tags=integration ./internal/platform/duckdb/` exit 0 ; `go vet ./internal/platform/duckdb/` (sans tag) exit 0 ; **`go vet -tags=integration ./...` (tout le module) exit 0** → plus aucune casse integration-only, les jobs Go Coverage/Baseline pourront builder.
+
+**Prochaine étape** : commit + PR ; à merger sur `main` **en premier** pour débloquer la CI des 3 PRs deps (#41/#42/#43). NB : la flake `golangci-lint` (only-new-issues « failed to fetch push patch ») est un souci d'infra CI distinct, non corrigé ici.
+
+---
+
+## [2026-06-22] Barre L2 Escouade — alignement pill joueur actif (JGtm) via unification dans GamertagCombobox — COMPLÉTÉ code (visuel à confirmer, branche feat/squad-named-presets-toolbar)
+
+**Contexte** : après la troncature des pills coéquipiers (`max-w-[7rem]`, barre L2 sur une ligne), la pill du joueur actif (JGtm, couleur `compare-a`) apparaissait désalignée verticalement avec les pills coéquipiers (« c'est décalé »).
+
+**Diagnostic** : markup vertical identique (`inline-flex items-center px-2.5 py-0.5 text-sm`) ; mesure sandbox (chrome-devtools, deux structures répliquées au pixel) = **delta 0px** → devraient s'aligner. Cause réelle = JGtm rendu en `<span>` ad-hoc DANS la barre L2, sous-arbre DOM distinct des pills coéquipiers (qui vivent dans `GamertagCombobox` > `div.relative` > `div.flex.items-center`, même ligne que l'`<input>`). Le `items-center` de la barre ne compense pas un décalage né À L'INTÉRIEUR du combobox (ligne de l'input / wrapper toolbar presets / règle CSS).
+
+**Décision technique principale** : **unifier** — nouvelle prop `leadingPill?: { label, color }` sur `GamertagCombobox`, rendue comme première pill non-supprimable (sans `×`, `shrink-0`, même markup `max-w-[7rem] truncate`) dans la ligne flex compacte. `SquadLayout` : suppression du `<span>` JGtm autonome, passage `leadingPill={{ label: playerSlug, color: tokenCssVar('compare-a') }}`. JGtm devient sibling des pills coéquipiers (déjà alignées entre elles) → alignement garanti par construction, indépendant de la cause exacte. `onClick stopPropagation` pour rester inerte (ne pas ouvrir le dropdown).
+
+**Résultats** : typecheck OK ; lint **0 erreur** (69 warnings pré-existants hors scope) ; `GamertagCombobox.test` **7/7 vert** (prop additive, défaut absent). Autres call sites (`SyncTab`/`ComparePage`/`SquadV2`) non impactés.
+
+**Prochaine étape** : confirmation visuelle dans l'app HMR (JGtm aligné avec les coéquipiers, barre une ligne). Inclut le fix troncature des pills coéquipiers (déjà mergé sur `main` via `fix/squad-l2-pill-truncation` ; présent ici en working tree).
+
+---
+
 ## [2026-06-22] Sécurité dépendances : alerte Dependabot #3 (js-yaml DoS) + config dependabot.yml corrigée — COMPLÉTÉ code (branche fix/dependabot-config-and-js-yaml, depuis main)
 
 **Contexte** : utilisateur — (1) « checke l'alerte Dependabot #3 » ; (2) « regarde le commit 5a6832a » (GitHub). Alerte #3 = GHSA-h67p-54hq-rp68 / CVE-2026-53550, js-yaml DoS complexité quadratique (merge-key `<<:` avec alias répété → O(K×M)), sévérité medium (CVSS 5.3), vulnérable `<= 4.1.1`, corrigé `4.2.0`.
