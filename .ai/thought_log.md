@@ -1,3 +1,20 @@
+## [2026-06-22] Vague 2 Dependabot (config sobre) — analyse + tri des 5 PRs groupées/majors — COMPLÉTÉ code (main direct)
+
+**Contexte** : après merge de la config sobre #41 + adoption vague 1, Dependabot a re-scanné et ouvert **5 PRs** = 3 groupées (go/actions/npm minor-patch) + 2 majors npm individuelles (`@types/node` 26, `echarts` 6 — sortent seules car `ignore-major` n'était mis que sur github-actions). Demande utilisateur : « analyse bien d'abord, puis intègre ou vire ».
+
+**Analyse + décisions** :
+- **#45 go-minor-patch → INTÉGRÉ** : oapi-codegen/runtime 1.4.1→1.4.2, go-toml/v2 2.4.0→2.4.1 (patches). Vérif : go build/vet/mod-verify + `internal/games` verts.
+- **#47 npm-minor-patch (10) → INTÉGRÉ** : @tanstack/react-router .16, intl-messageformat 11.2.8, playwright 1.61, router-plugin .18, @types/react 19.2.17, vitest+coverage 4.1.9, eslint 10.5.0, knip 6.18, typescript-eslint 8.62.0. Vérif : typecheck/lint/build + **1898 tests vitest** verts.
+- **#48 @types/node 25→26 (major dev) → INTÉGRÉ** : types Node dev-only. Vérif : typecheck exit 0 (aucune rupture de type). Conflit résolu avec #47 (package.json : @types/node ^26 + @types/react ^19.2.17 ; lock régénéré via npm install).
+- **#46 actions checkout → VIRÉ (fermé)** : Dependabot voulait `@v7 → @v6.0.3`. Cause = le tag flottant `v7` de actions/checkout pointe (stalement) sur le commit 6.0.2, donc Dependabot « voit » 6.0.2 et propose le patch 6.0.3 (ne peut pas proposer 7.0.0 car ignore-major). On garde `@v7` (vrai dernier majeur, best practice tag) ; le patch 6.0.3 = fixes SHA-256 sans intérêt.
+- **#49 echarts 5.6→6.1 (major runtime) → VIRÉ (différé QA visuelle)** : peer echarts-for-react@3.0.6 OK avec echarts 6 (deduped), **typecheck + build verts** sur nos 66 fichiers `echarts/core`, et risque palette neutralisé (couleurs via tokens). MAIS major runtime sur dashboard, tests mockent echarts → rendu réel non couvert. Refus de shipper en prod à l'aveugle ; à adopter via une tâche dédiée avec QA visuelle.
+
+**Résultats** : lot sûr (3 PRs) intégré en local sur main puis push unique (1 deploy). Steady-state Dependabot = 3 PRs groupées/mois max. Note : pour supprimer aussi les majors npm/go individuels à l'avenir, ajouter `ignore semver-major` aux groupes npm+gomod (non fait — garde la visibilité sur les vrais majors comme echarts 6).
+
+**Prochaine étape** : push + fermeture #46/#49 ; QA visuelle echarts 6 = candidat tâche dédiée.
+
+---
+
 ## [2026-06-22] Fix build de test cassé pré-existant — `strPtr` redéclaré sous `-tags=integration` — COMPLÉTÉ code (branche fix/duckdb-test-strptr-redeclared)
 
 **Contexte** : découvert pendant la vérification finale des PRs deps (#41/#42/#43). Les jobs CI **Go Coverage** + **Go Baseline** (qui lancent `go test -tags=integration ./...`) échouaient sur `main` avec `strPtr redeclared in this block` → **build de test cassé**. Pas mon travail : visible même sur #41 qui ne touche aucun Go.
