@@ -43,6 +43,24 @@
 
 ---
 
+## [2026-06-22] Adoption bumps Dependabot — lot 2 « duckdb-go/v2 2.10504.0 » + retrait workaround checkptr — COMPLÉTÉ code (branche chore/deps-duckdb-go-bump)
+
+**Contexte** : 2ᵉ lot d'adoption (le seul *medium* de l'étude ultracode). duckdb-go/v2 2.10503.1 → 2.10504.0 embarque le moteur DuckDB 1.5.4 (bugfix, storage-compatible 1.5.x). Couche la plus sensible du backend (driver CGO, historique bug ART). Branche dédiée + gates DuckDB, conformément à la reco de la vérif adverse.
+
+**Décision technique** :
+- `go get github.com/duckdb/duckdb-go/v2@v2.10504.0` + `go mod tidy` → bump driver + 6 bindings indirects (0.10503.0 → 0.10504.0).
+- **Retrait du workaround `-gcflags=all=-d=checkptr=0`** des 2 steps `-race` de `shared-social-gate.yml`. La vérif adverse avait identifié que le fix driver « checkptr misalignment in getBytes for non-inlined strings » (1.5.4) correspond exactement au faux-positif que ce flag contournait. Commentaires mis à jour (le « Ne PAS retirer ce flag » historique est levé). Éditer ce fichier fait **trigger la gate sur la PR** → validation ubuntu en plus du local.
+
+**Résultats (vérif locale, CGO ucrt64 + DuckDB 1.5.4)** :
+- `go build ./...` exit 0.
+- **Gate shared-social SANS le workaround** (`-race` seul) : `internal/platform/duckdb` + `dblease` **verts** → le faux-positif checkptr est bien résolu par 1.5.4.
+- **Kill-brutal `internal/ops` SANS le workaround** (`-race` seul) : **vert** → retrait validé sur le 2ᵉ step aussi.
+- **Batterie ART/append-only** (`-tags "integration art_repro"`) : `internal/sync` **vert** (TestNoARTPatternsOnProtectedTables, TestCSR_ARTRepro_{Player,Shared}DB, TestE2E_ARTPipeline, TestART_RebuildRegression, TestNoMutationOnAppendOnlyStateTables, TestProperty_ConcurrentUpsertsIdempotent, TestRecomputeAfterARTRebuild) → durcissement ART de 1.5.4 ne régresse pas nos chemins append-only.
+
+**Prochaine étape** : commit + PR (merge = 1 deploy). La gate CI ubuntu doit confirmer le retrait du workaround (si elle crashe checkptr → re-ajouter le flag, mais local + vérif adverse convergents). Bonus livré = dette CI `-gcflags` checkptr éradiquée. Étude : `.ai/PLAN_DEPENDABOT_TAMING.md`.
+
+---
+
 ## [2026-06-22] Barre L2 Escouade — alignement pill joueur actif (JGtm) via unification dans GamertagCombobox — COMPLÉTÉ code (visuel à confirmer, branche feat/squad-named-presets-toolbar)
 
 **Contexte** : après la troncature des pills coéquipiers (`max-w-[7rem]`, barre L2 sur une ligne), la pill du joueur actif (JGtm, couleur `compare-a`) apparaissait désalignée verticalement avec les pills coéquipiers (« c'est décalé »).
