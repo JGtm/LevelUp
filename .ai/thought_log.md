@@ -1,3 +1,11 @@
+## [2026-06-23] Synthesis — insight coach « angle mort armes lourdes » (data-driven) — Complété
+
+Suite du donut rôle (idée user : « quelqu'un qui n'utilise jamais les armes lourdes a besoin de s'améliorer dessus »). Décision : le moteur `coach_advisor` (Ascension) génère des ARCS LUSR multi-étapes (alertes→signals→synthesizer→arc_composer→presets) — y greffer un tip d'arme = lourd et inadapté. → insight simple, data-driven, surfacé DIRECTEMENT sous le donut (même donnée kills_by_role), title-agnostic.
+
+Helper pur `weaponRoleInsight.ts` (testable, 6 tests vitest verts) : 1) blind_spot_power = armes lourdes (rôle `power`) < 3% des frags → angle mort ; 2) over_reliance = un rôle > 70% → arsenal prévisible. Garde-fou MIN_KILLS=50 (anti-bruit petits échantillons). Priorité angle mort > sur-dépendance. Rendu dans `SynthesisRoleKillsDonut` sous le donut (label « Coach : » + texte), i18n synthesis.toml (coach.label/blind_spot_power/over_reliance avec {pct}/{role} interpolés). Typecheck + vitest verts.
+
+Note : le vrai coach Ascension reste un chantier à part (si on veut un jour pousser ce signal dans les arcs LUSR). Reste : gros chantier P4 (router TOUTE la résolution d'arme par le registre).
+
 ## [2026-06-23] Synthesis — donut « Frags par type d'arme » (1er consommateur UI du registre) — Complété
 
 PREMIER branchement UI du registre d'armes (la fondation P2/P3 servait enfin). Donut « frags par rôle de combat » sur Synthesis (sous « Frags par arme »), title-agnostic (Infinite + Halo 5, weapon_kills déjà existants pour les 2). Flux : weapon_kills (déjà chargés pour le donut par-arme) + résolution du rôle via le registre.

@@ -12,6 +12,7 @@ import type { SynthesisRoleKillEntry } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { weaponRoleInsight } from './weaponRoleInsight'
 
 // Tokens DISTINCTS color-blind friendly par rôle (mapping stable → couleurs
 // constantes d'un rendu à l'autre).
@@ -46,11 +47,31 @@ export function SynthesisRoleKillsDonut({ roles }: { roles?: SynthesisRoleKillEn
 
   if (slices.length === 0) return null
 
+  // Insight coach data-driven (angle mort armes lourdes / sur-dépendance).
+  const insight = weaponRoleInsight(roles)
+  const insightText = !insight
+    ? null
+    : insight.kind === 'blind_spot_power'
+      ? formatMessage(synthesisManifest, 'synthesis.coach.blind_spot_power', appLocale)
+      : formatMessage(synthesisManifest, 'synthesis.coach.over_reliance', appLocale, {
+          pct: insight.pct,
+          role: formatMessage(synthesisManifest, `synthesis.charts.role_${insight.role}` as ManifestKey, appLocale),
+        })
+
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
       <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">{title}</div>
       <div className="flex w-full flex-col items-center gap-2 p-3">
         <KillTypesDonut slices={slices} locale={locale} />
+        {insightText && (
+          <p className="w-full text-xs leading-snug text-muted-foreground">
+            <span className="font-semibold text-foreground">
+              {formatMessage(synthesisManifest, 'synthesis.coach.label', appLocale)}
+              {' : '}
+            </span>
+            {insightText}
+          </p>
+        )}
       </div>
     </div>
   )
