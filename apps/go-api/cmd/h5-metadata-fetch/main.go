@@ -127,6 +127,53 @@ func main() {
 	seedWeapons(db, key, fr.Weapons)
 	seedCSRDesignations(db, key)
 	seedCommendations(db, key, fr.Commendations)
+	seedPlaylists(db, key)
+}
+
+// apiPlaylist — élément de l'API Metadata officielle /playlists. `isRanked` fait foi
+// pour classer match_registry.is_ranked (par playlist_id = UUID). Source autoritative
+// du ranked H5 (cf. .ai, ne PAS dériver des parties).
+type apiPlaylist struct {
+	Name     string `json:"name"`
+	ID       string `json:"id"`
+	IsRanked bool   `json:"isRanked"`
+}
+
+// seedPlaylists peuple la table `playlists` (id, name, is_ranked) depuis l'API
+// Metadata officielle. Table de référence (catalogue) créée à la volée si absente.
+// Sert à classer is_ranked des matchs H5 (jointure offline sur playlist_id).
+func seedPlaylists(db *sql.DB, key string) {
+	body, err := fetchMeta(key, "playlists")
+	if err != nil {
+		fmt.Printf("playlists: SKIP (%v)\n", err)
+		return
+	}
+	var pls []apiPlaylist
+	if err := json.Unmarshal(body, &pls); err != nil {
+		fmt.Printf("playlists: parse %v\n", err)
+		return
+	}
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS playlists (
+		id VARCHAR PRIMARY KEY, name VARCHAR, is_ranked BOOLEAN)`); err != nil {
+		fmt.Printf("playlists: create table %v\n", err)
+		return
+	}
+	n, ranked := 0, 0
+	for _, p := range pls {
+		if p.ID == "" {
+			continue
+		}
+		if _, err := db.Exec(`INSERT OR REPLACE INTO playlists (id, name, is_ranked) VALUES (?,?,?)`,
+			p.ID, strings.TrimSpace(p.Name), p.IsRanked); err != nil {
+			fmt.Printf("playlists: insert %s: %v\n", p.ID, err)
+			continue
+		}
+		n++
+		if p.IsRanked {
+			ranked++
+		}
+	}
+	fmt.Printf("playlists: %d seedées (%d ranked) sur %d retournées\n", n, ranked, len(pls))
 }
 
 // fetchMeta récupère un type de métadonnée officiel (corps JSON brut).
