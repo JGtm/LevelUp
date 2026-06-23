@@ -96,6 +96,18 @@ total_matches 0→N), via l'émetteur title-aware, SANS toucher la pipeline prog
 **Reste (hors prod-gate)** : notif push (ci-dessus) ; **land `integration`→`main`** (prêt
 techniquement, **auto-deploy** → accord user explicite requis, cf. [[feedback_sync_local_main_on_merge]]).
 
+**DETTES / CHANTIERS CONNEXES À NE PAS OUBLIER AVANT PROD** (hors périmètre h5, tracés ailleurs
+mais épinglés ici car flaggés prod) :
+1. 🔴 **Dette TZ `first_joined_time`** — ~964 matchs (Halo Infinite) décalés Europe/Paris, casse
+   T0 + quit-ordering LUSR. Flaggé « passe data-quality AVANT prod ». Doc : mémoire
+   `project_data_quality_first_joined_tz`. **C'est le seul vrai risque prod qui semble oublié.**
+2. 🟠 **Campagne append-only / ART** — éradication des surfaces ART (UPDATE/DELETE indexés),
+   branche `fix/metadata-art-battlepass-appendonly`, « déployer à la fin ». Doc :
+   `.ai/HANDOFF_APPEND_ONLY_ART_CAMPAIGN.md` + mémoire `project_append_only_eradication_campaign`.
+Autres suites (non bloquantes prod) : damage model par titre (h5=115, `project_damage_model_per_title_225`) ;
+activation multi-titre 1b (`project_multititre_activation_handoff`) ; LUSR v2 pondération temps-joué ;
+weapon v3 ; backlog UI ; recalibration profil de combat ; kill-feed frame decoder.
+
 ---
 
 ## 1. Topologie & branche
