@@ -61,11 +61,17 @@ type EnrichmentBackfillReport struct {
 //
 // friendGamertags : pour is_with_friends + le mode session squad. Vide → ces étapes
 // dégradent gracieusement (is_with_friends non promu, sessions en mode teammates).
+//
+// force : true = recompute complet (backfill initial CLI) ; false = incrémental
+// (hook live post-sync — seuls les matchs sans score calculé sont traités, comme
+// runScoringSteps Infinite). ensurePlayerEnrichmentRows crée toujours les rows
+// baseline manquantes (le delta est vide si tout existe déjà).
 func BackfillEnrichmentFromShared(
 	ctx context.Context,
 	playerDB, sharedDB *sql.DB,
 	xuid string,
 	friendGamertags []string,
+	force bool,
 ) (EnrichmentBackfillReport, error) {
 	start := time.Now()
 	report := EnrichmentBackfillReport{XUID: xuid}
@@ -104,15 +110,15 @@ func BackfillEnrichmentFromShared(
 		report.SessionsAssigned = n
 	}
 
-	// 1. Performance scores (force=true : player DB fraîche, on calcule tout).
-	if n, err := BatchComputePerformanceScores(ctx, playerDB, sharedDB, xuid, true); err != nil {
+	// 1. Performance scores (force selon le mode : backfill=true, live=false).
+	if n, err := BatchComputePerformanceScores(ctx, playerDB, sharedDB, xuid, force); err != nil {
 		track("performance", err)
 	} else {
 		report.PerfComputed = n
 	}
 
 	// 1.5 Engagement scores — self-skip si colonnes engagement absentes du schéma.
-	if n, err := batchComputeEngagementScores(ctx, playerDB, sharedDB, xuid, true); err != nil {
+	if n, err := batchComputeEngagementScores(ctx, playerDB, sharedDB, xuid, force); err != nil {
 		track("engagement", err)
 	} else {
 		report.EngagementComputed = n
