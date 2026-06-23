@@ -1,3 +1,10 @@
+## [2026-06-23] Déblocage 1er push branche — ratchets pre-push pré-existants — Complété
+
+La branche `integration/h5-x-livefetch` n'avait JAMAIS été poussée → les ratchets pre-push (knip code-mort, contract OpenAPI) n'avaient jamais tourné et flaguaient de la dette ACCUMULÉE sur la branche, sans lien avec la passe h5 prod-gate :
+- **knip exports 90 > plafond 88** : 90 exports morts répartis sur charts/shell/match-view/prestige/… (vérifié `npx knip` : aucun dans mes fichiers ; la feature notifications n'ajoute aucun export, elle étend des exports existants). Bump 88→90 + justification (même pratique que le précédent `types 88` du 2026-06-14 « relevé pour débloquer le push »).
+- **contract : LabWaypointResponse** (view-model manuel admin/lab) doublonne son schéma OpenAPI → ajouté à BASELINE_COLLISIONS avec raison.
+Les deux sont marqués « à réconcilier à la fusion vers main » (vraie passe de nettoyage knip + shim). Ratchets toujours actifs contre toute NOUVELLE régression (>90 / nouvelle collision = échec).
+
 ## [2026-06-23] MT-19 / axe E — notif « titre prêt » first-sync title-aware — Complété
 
 Dernier item ouvert du prod-gate h5 (axe E away-case). L'auto-poll front couvrait déjà le cas on-page ; restait la notif quand l'utilisateur est AILLEURS (invité à « retourner sur Halo Infinite » le temps du backfill). Cartographié par workflow (5 lecteurs + synthèse).
