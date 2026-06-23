@@ -1691,6 +1691,12 @@ export interface CitationsQueryRequest {
 
 export type CitationsPageResponse = components['schemas']['CitationsPageResponse']
 
+// Totaux à vie des commendations natives (Halo 5, AXE B).
+export type NativeCommendationTotal = components['schemas']['NativeCommendationTotal']
+export type NativeCommendationCategoryGroup = components['schemas']['NativeCommendationCategoryGroup']
+export type NativeCommendationsTotalsResponse =
+  components['schemas']['NativeCommendationsTotalsResponse']
+
 // ---------------------------------------------------------------------------
 // Timeseries (Slice 3B)
 // ---------------------------------------------------------------------------

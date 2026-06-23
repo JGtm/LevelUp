@@ -122,6 +122,10 @@ export const queryKeys = {
   citations: (playerSlug: string, filterHash: string) =>
     ['citations', playerSlug, filterHash] as const,
 
+  // Totaux à vie des commendations natives (Halo 5, AXE B)
+  commendationTotals: (playerSlug: string) =>
+    ['commendation-totals', playerSlug] as const,
+
   // Timeseries (Slice 3B) — 'solo' dans la clé pour invalider tout cache pré-fix
   timeseries: (playerSlug: string, filterHash: string) =>
     ['timeseries', 'solo', playerSlug, filterHash] as const,

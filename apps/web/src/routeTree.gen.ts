@@ -37,6 +37,7 @@ import { Route as PlayersPlayerSlugNotificationsRouteImport } from './routes/pla
 import { Route as PlayersPlayerSlugMediaRouteImport } from './routes/players/$playerSlug/media'
 import { Route as PlayersPlayerSlugHomeRouteImport } from './routes/players/$playerSlug/home'
 import { Route as PlayersPlayerSlugCompareRouteImport } from './routes/players/$playerSlug/compare'
+import { Route as PlayersPlayerSlugCommendationsRouteImport } from './routes/players/$playerSlug/commendations'
 import { Route as PlayersPlayerSlugCitationsRouteImport } from './routes/players/$playerSlug/citations'
 import { Route as PlayersPlayerSlugCareerRouteImport } from './routes/players/$playerSlug/career_'
 import { Route as PlayersPlayerSlugAscensionRouteImport } from './routes/players/$playerSlug/ascension'
@@ -201,6 +202,12 @@ const PlayersPlayerSlugCompareRoute =
     path: '/compare',
     getParentRoute: () => PlayersPlayerSlugRoute,
   } as any)
+const PlayersPlayerSlugCommendationsRoute =
+  PlayersPlayerSlugCommendationsRouteImport.update({
+    id: '/commendations',
+    path: '/commendations',
+    getParentRoute: () => PlayersPlayerSlugRoute,
+  } as any)
 const PlayersPlayerSlugCitationsRoute =
   PlayersPlayerSlugCitationsRouteImport.update({
     id: '/citations',
@@ -347,6 +354,7 @@ export interface FileRoutesByFullPath {
   '/players/$playerSlug/ascension': typeof PlayersPlayerSlugAscensionRouteWithChildren
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/citations': typeof PlayersPlayerSlugCitationsRoute
+  '/players/$playerSlug/commendations': typeof PlayersPlayerSlugCommendationsRoute
   '/players/$playerSlug/compare': typeof PlayersPlayerSlugCompareRoute
   '/players/$playerSlug/home': typeof PlayersPlayerSlugHomeRoute
   '/players/$playerSlug/media': typeof PlayersPlayerSlugMediaRoute
@@ -395,6 +403,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/citations': typeof PlayersPlayerSlugCitationsRoute
+  '/players/$playerSlug/commendations': typeof PlayersPlayerSlugCommendationsRoute
   '/players/$playerSlug/compare': typeof PlayersPlayerSlugCompareRoute
   '/players/$playerSlug/home': typeof PlayersPlayerSlugHomeRoute
   '/players/$playerSlug/media': typeof PlayersPlayerSlugMediaRoute
@@ -445,6 +454,7 @@ export interface FileRoutesById {
   '/players/$playerSlug/ascension': typeof PlayersPlayerSlugAscensionRouteWithChildren
   '/players/$playerSlug/career_': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/citations': typeof PlayersPlayerSlugCitationsRoute
+  '/players/$playerSlug/commendations': typeof PlayersPlayerSlugCommendationsRoute
   '/players/$playerSlug/compare': typeof PlayersPlayerSlugCompareRoute
   '/players/$playerSlug/home': typeof PlayersPlayerSlugHomeRoute
   '/players/$playerSlug/media': typeof PlayersPlayerSlugMediaRoute
@@ -497,6 +507,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/ascension'
     | '/players/$playerSlug/career'
     | '/players/$playerSlug/citations'
+    | '/players/$playerSlug/commendations'
     | '/players/$playerSlug/compare'
     | '/players/$playerSlug/home'
     | '/players/$playerSlug/media'
@@ -545,6 +556,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/players/$playerSlug/career'
     | '/players/$playerSlug/citations'
+    | '/players/$playerSlug/commendations'
     | '/players/$playerSlug/compare'
     | '/players/$playerSlug/home'
     | '/players/$playerSlug/media'
@@ -594,6 +606,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/ascension'
     | '/players/$playerSlug/career_'
     | '/players/$playerSlug/citations'
+    | '/players/$playerSlug/commendations'
     | '/players/$playerSlug/compare'
     | '/players/$playerSlug/home'
     | '/players/$playerSlug/media'
@@ -833,6 +846,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlayersPlayerSlugCompareRouteImport
       parentRoute: typeof PlayersPlayerSlugRoute
     }
+    '/players/$playerSlug/commendations': {
+      id: '/players/$playerSlug/commendations'
+      path: '/commendations'
+      fullPath: '/players/$playerSlug/commendations'
+      preLoaderRoute: typeof PlayersPlayerSlugCommendationsRouteImport
+      parentRoute: typeof PlayersPlayerSlugRoute
+    }
     '/players/$playerSlug/citations': {
       id: '/players/$playerSlug/citations'
       path: '/citations'
@@ -1060,6 +1080,7 @@ interface PlayersPlayerSlugRouteChildren {
   PlayersPlayerSlugAscensionRoute: typeof PlayersPlayerSlugAscensionRouteWithChildren
   PlayersPlayerSlugCareerRoute: typeof PlayersPlayerSlugCareerRoute
   PlayersPlayerSlugCitationsRoute: typeof PlayersPlayerSlugCitationsRoute
+  PlayersPlayerSlugCommendationsRoute: typeof PlayersPlayerSlugCommendationsRoute
   PlayersPlayerSlugCompareRoute: typeof PlayersPlayerSlugCompareRoute
   PlayersPlayerSlugHomeRoute: typeof PlayersPlayerSlugHomeRoute
   PlayersPlayerSlugMediaRoute: typeof PlayersPlayerSlugMediaRoute
@@ -1082,6 +1103,7 @@ const PlayersPlayerSlugRouteChildren: PlayersPlayerSlugRouteChildren = {
   PlayersPlayerSlugAscensionRoute: PlayersPlayerSlugAscensionRouteWithChildren,
   PlayersPlayerSlugCareerRoute: PlayersPlayerSlugCareerRoute,
   PlayersPlayerSlugCitationsRoute: PlayersPlayerSlugCitationsRoute,
+  PlayersPlayerSlugCommendationsRoute: PlayersPlayerSlugCommendationsRoute,
   PlayersPlayerSlugCompareRoute: PlayersPlayerSlugCompareRoute,
   PlayersPlayerSlugHomeRoute: PlayersPlayerSlugHomeRoute,
   PlayersPlayerSlugMediaRoute: PlayersPlayerSlugMediaRoute,
