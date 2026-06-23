@@ -525,3 +525,126 @@ describe('CoverFlowModal — bouton autoChain', () => {
     expect(onToggleAutoChain).toHaveBeenCalledTimes(1)
   })
 })
+
+// ─── Enchaînement automatique EFFECTIF (autoChain) ─────────────────────────
+// Régression juin 2026 : (A) `canAdvanceFurther = !canNext || hasNextPage` (le `!`
+// désactivait l'enchaînement pour tout item non-dernier) ; (B) `handleVideoEnded`
+// mémoïsé (useCallback) figeait un `navigate` périmé → blocage dès le 2e clip.
+// Les tests "bouton autoChain" ne couvraient que le rendu/clic, jamais l'avance.
+
+describe('CoverFlowModal — enchaînement automatique effectif', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    act(() => {
+      useAppShellStore.setState({ locale: 'fr' })
+    })
+  })
+
+  // La vidéo centrale est la seule avec l'attribut `controls` (controls={isCenter}) ;
+  // après une avance, ce n'est plus le premier <video> du DOM.
+  function centerVideo(container: HTMLElement): HTMLVideoElement {
+    return container.querySelector('video[controls]') as HTMLVideoElement
+  }
+
+  it('enchaîne les clips à la fin de chaque vidéo, jusqu\'au dernier inclus', () => {
+    vi.useFakeTimers()
+    const { container } = renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_A, ITEM_B, ITEM_C]}
+        startIndex={0}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+        autoChain
+        onToggleAutoChain={vi.fn()}
+      />,
+    )
+    expect(screen.getByText(/MapA/)).toBeInTheDocument()
+
+    // Fin de A → enchaîne sur B
+    act(() => {
+      fireEvent.ended(centerVideo(container))
+    })
+    act(() => {
+      vi.advanceTimersByTime(500) // ANIM_MS : libère animatingRef
+    })
+    expect(screen.getByText(/MapB/)).toBeInTheDocument()
+
+    // Fin de B → C (échouait avec le useCallback périmé : re-navigation vers B)
+    act(() => {
+      fireEvent.ended(centerVideo(container))
+    })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
+    expect(screen.getByText(/MapC/)).toBeInTheDocument()
+
+    // Fin de C : dernier item, pas de page suivante → reste sur C
+    act(() => {
+      fireEvent.ended(centerVideo(container))
+    })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
+    expect(screen.getByText(/MapC/)).toBeInTheDocument()
+  })
+
+  it('n\'enchaîne pas quand autoChain est désactivé', () => {
+    vi.useFakeTimers()
+    const { container } = renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_A, ITEM_B, ITEM_C]}
+        startIndex={0}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+        autoChain={false}
+        onToggleAutoChain={vi.fn()}
+      />,
+    )
+    expect(screen.getByText(/MapA/)).toBeInTheDocument()
+
+    act(() => {
+      fireEvent.ended(container.querySelector('video') as HTMLVideoElement)
+    })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
+    expect(screen.getByText(/MapA/)).toBeInTheDocument()
+  })
+
+  it('enchaîne les images après le délai d\'auto-avance, puis s\'arrête sur la dernière', () => {
+    vi.useFakeTimers()
+    const imgs = [
+      makeItem({ kind: 'image', basename: 'A.png', file_path: '/i/A.png', map_name: 'ImgA' }),
+      makeItem({ kind: 'image', basename: 'B.png', file_path: '/i/B.png', map_name: 'ImgB' }),
+      makeItem({ kind: 'image', basename: 'C.png', file_path: '/i/C.png', map_name: 'ImgC' }),
+    ]
+    renderWithProviders(
+      <CoverFlowModal
+        items={imgs}
+        startIndex={0}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+        autoChain
+        onToggleAutoChain={vi.fn()}
+      />,
+    )
+    expect(screen.getByText(/ImgA/)).toBeInTheDocument()
+
+    // Délai image (7000ms) + ANIM_MS (500ms) pour libérer animatingRef.
+    act(() => {
+      vi.advanceTimersByTime(7500)
+    })
+    expect(screen.getByText(/ImgB/)).toBeInTheDocument()
+
+    act(() => {
+      vi.advanceTimersByTime(7500)
+    })
+    expect(screen.getByText(/ImgC/)).toBeInTheDocument()
+
+    // Dernière image → plus de timer d'auto-avance (canAdvanceFurther = false)
+    act(() => {
+      vi.advanceTimersByTime(7500)
+    })
+    expect(screen.getByText(/ImgC/)).toBeInTheDocument()
+  })
+})

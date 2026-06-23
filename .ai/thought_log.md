@@ -1,3 +1,20 @@
+## [2026-06-23] Lecteur lightbox : « Enchaîner » + sélecteur audio HLS multipiste — COMPLÉTÉ code (branche fix/media-lightbox-chaining-and-hls-audio)
+
+**Contexte** : 2 bugs signalés sur `CoverFlowModal` (alias `MediaLightbox`). (1) « Enchaîner » ne passe jamais au média suivant (ni fin de vidéo, ni délai image). (2) Le sélecteur de pistes audio HLS multipiste réagit visuellement au clic mais l'audio ne change pas — l'utilisateur (Firefox, JGtm) entend toujours le mix complet. Causes identifiées par lecture du code/tests, Bug 2 **prouvé sur la prod** (ssh lvelup, lecture seule ffprobe).
+
+**Décisions techniques** :
+- **Bug 1A — `canAdvanceFurther` inversé** (`CoverFlowModal.tsx`) : `!canNext || hasNextPage` → `canNext || hasNextPage`. Le `!` désactivait l'auto-chaînage pour tout item non-dernier sans page suivante (cas courant) : `onEnded` câblé à `undefined` + timer image en early-return. Symétrique du bouton next (`disabled={!canNext && !hasNextPage}`) qui prouvait le bon prédicat.
+- **Bug 1B — closure périmée** : `handleVideoEnded` était un `useCallback([autoChain, canAdvanceFurther, pendingPageAdvance])` figeant un `navigate` (→ `committedIdx`) périmé → blocage dès le 2e clip (re-navigation vers l'item courant). Retrait du `useCallback` (handler simple recréé à chaque render ; uniquement passé au prop `onEnded`, ClipPlayer non mémoïsé → coût nul). A en prime supprimé un warning exhaustive-deps.
+- **Bug 2 — codecs mixtes dans le même groupe audio HLS** (`internal/media/hls.go`) : `planAudioRenditions` produisait game/voices en **copy** (Opus) et full (DEFAULT) en **amix AAC**. Groupe `aud` multi-codec → la bascule de piste exige `SourceBuffer.changeType` (MSE), non fiable sur Firefox (et HLS natif Safari ne lit pas l'Opus) → l'audio reste bloqué sur la rendition par défaut `full`. Fix : helper `aacUniformAction` (copy seulement si source déjà AAC, sinon réencode AAC) appliqué à game/voices → **groupe mono-codec AAC**. `buildHLSArgs` inchangé (applique déjà `a.Action`). Layout mono-piste (`a0`) intact.
+
+**Preuve prod (ssh lvelup, ffprobe, lecture seule)** : `JGtm/.../Replay 2026-06-21 20-55-43` (master 3 renditions) → `init_game`=opus, `init_voices`/`init_full`=aac, `init_0` vidéo sans audio muxé. Confirme exactement la condition qui casse Firefox.
+
+**Résultats** : Go `go test ./internal/media/...` vert (incl. golden d'intégration `TestBuildHLS_Integration` qui régénère un arbre 2 pistes et prouve game/voices/full **tous AAC** désormais + nouveau garde-fou `TestPlanHLS_MultiTrackUniformAAC`) ; `go vet` propre. Front : `tsc -b` exit 0, eslint **0 erreur** (4 warnings tous pré-existants/hors périmètre), vitest CoverFlowModal **34/34** (3 nouveaux tests d'enchaînement effectif : clips A→B→C + arrêt sur dernier, images après délai, autoChain off).
+
+**Prochaine étape** : commit (sur autorisation) puis push. **À cadrer séparément (op prod)** : re-transcoder les clips multipistes déjà générés (codecs mixtes), via `ops/media_hls.go RunHLSTranscode` depuis les `.mkv` sources — prévenir avant toute opération VPS. Vérif visuelle Firefox recommandée sur un clip fraîchement transcodé.
+
+---
+
 ## [2026-06-23] Réorganisation des onglets Settings (doctrine préférences vs ops) — COMPLÉTÉ code (branche feat/settings-regroup)
 
 **Contexte** : demande utilisateur — trop d'onglets Settings, certains peu remplis. Diagnostic : le problème n'est pas le nombre mais la cohérence. (1) « Général » = fourre-tout (Interface + Discord + Médias + mot de passe). (2) « Sauvegarde » = quasi-vide ET mal placé (ops d'instance restic, pas une préférence). (3) Discord séparé de Notifications alors que c'est le même concept. Le code appliquait déjà la doctrine **Settings = préférences utilisateur / Admin = ops d'instance** (migrations Sync/Comptes/Lab → Admin) ; objectif validé : la finir.

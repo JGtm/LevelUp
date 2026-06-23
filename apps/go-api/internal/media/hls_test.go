@@ -55,13 +55,14 @@ func TestPlanHLS_TwoTracksGameVoicesFull(t *testing.T) {
 	if g.Slug != "game" || v.Slug != "voices" || f.Slug != "full" {
 		t.Errorf("slugs = [%q,%q,%q], want [game,voices,full]", g.Slug, v.Slug, f.Slug)
 	}
-	// game = piste 0 copiée (Opus), source directe ; voices = piste 1 copiée
-	// (Opus, une seule piste voix → map direct) ; full = amix réencodé AAC.
-	if g.MapSpec != "0:a:0" || g.Action != actionCopy {
-		t.Errorf("game = (%q,%v), want (0:a:0, copy)", g.MapSpec, g.Action)
+	// Codec unique AAC sur tout le groupe → la bascule de piste marche sur
+	// Firefox/Safari. Sources Opus : game (piste 0) et voices (piste 1, map
+	// direct) sont réencodées AAC ; full = amix réencodé AAC.
+	if g.MapSpec != "0:a:0" || g.Action != actionReencode {
+		t.Errorf("game = (%q,%v), want (0:a:0, reencode AAC)", g.MapSpec, g.Action)
 	}
-	if v.MapSpec != "0:a:1" || v.Action != actionCopy {
-		t.Errorf("voices = (%q,%v), want (0:a:1, copy)", v.MapSpec, v.Action)
+	if v.MapSpec != "0:a:1" || v.Action != actionReencode {
+		t.Errorf("voices = (%q,%v), want (0:a:1, reencode AAC)", v.MapSpec, v.Action)
 	}
 	if f.MapSpec != "[full]" || f.Action != actionReencode {
 		t.Errorf("full = (%q,%v), want ([full], reencode)", f.MapSpec, f.Action)
@@ -133,6 +134,63 @@ func TestPlanHLS_SingleAudioTrackLegacy(t *testing.T) {
 	}
 	if plan.FilterComplex != "" {
 		t.Errorf("FilterComplex = %q, want vide (mono-piste)", plan.FilterComplex)
+	}
+}
+
+func TestPlanHLS_MultiTrackUniformAAC(t *testing.T) {
+	// Garde-fou : sur un clip MULTIPISTE, toutes les renditions sortent en AAC
+	// (codec unique du groupe audio). C'est l'invariant qui fait marcher la
+	// bascule de piste sur Firefox/Safari (sinon changement de codec MSE → la
+	// piste ne change pas et l'utilisateur entend toujours la rendition par
+	// défaut). La copy n'est donc tolérée que si la source est DÉJÀ en AAC.
+	cases := []struct {
+		name    string
+		streams []AVStreamDetail
+		want    [3]streamAction // game, voices, full
+	}{
+		{
+			name: "2 pistes Opus → tout réencodé AAC",
+			streams: []AVStreamDetail{
+				{CodecType: "video", CodecName: "h264"},
+				{CodecType: "audio", CodecName: "opus"},
+				{CodecType: "audio", CodecName: "opus"},
+			},
+			want: [3]streamAction{actionReencode, actionReencode, actionReencode},
+		},
+		{
+			name: "2 pistes AAC → game/voices copy (déjà AAC), full amix réencodé",
+			streams: []AVStreamDetail{
+				{CodecType: "video", CodecName: "h264"},
+				{CodecType: "audio", CodecName: "aac"},
+				{CodecType: "audio", CodecName: "aac"},
+			},
+			want: [3]streamAction{actionCopy, actionCopy, actionReencode},
+		},
+		{
+			name: "3 pistes (AAC + Opus + Opus) → game copy (AAC), voices/full amix réencodé",
+			streams: []AVStreamDetail{
+				{CodecType: "video", CodecName: "h264"},
+				{CodecType: "audio", CodecName: "aac"},
+				{CodecType: "audio", CodecName: "opus"},
+				{CodecType: "audio", CodecName: "opus"},
+			},
+			want: [3]streamAction{actionCopy, actionReencode, actionReencode},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			plan, err := planHLS(tc.streams)
+			if err != nil {
+				t.Fatalf("planHLS: %v", err)
+			}
+			if len(plan.Audios) != 3 {
+				t.Fatalf("len(Audios) = %d, want 3", len(plan.Audios))
+			}
+			got := [3]streamAction{plan.Audios[0].Action, plan.Audios[1].Action, plan.Audios[2].Action}
+			if got != tc.want {
+				t.Errorf("Actions = %v, want %v (codec unique AAC sur le groupe)", got, tc.want)
+			}
+		})
 	}
 }
 
@@ -321,11 +379,15 @@ func TestBuildHLS_Integration(t *testing.T) {
 	// config codec). ffprobe traite les chemins comme des URL (séparateur '/') :
 	// sur un chemin Windows en backslash il ne résout pas les segments relatifs
 	// d'une playlist ; un fichier autonome n'a pas ce souci.
-	//   - game : copy de la piste 0 → opus
-	//   - voices : copy de la piste 1 (2 pistes → map direct) → opus
-	//   - full : amix réencodé → aac
-	assertSegmentCodec(t, filepath.Join(outDir, "init_game.mp4"), "audio", "opus")
-	assertSegmentCodec(t, filepath.Join(outDir, "init_voices.mp4"), "audio", "opus")
+	//
+	// CODEC UNIQUE AAC sur tout le groupe audio (game/voices/full) : invariant
+	// requis pour que la bascule de piste fonctionne sur Firefox/Safari (pas de
+	// SourceBuffer.changeType). Sources Opus → game/voices réencodées AAC.
+	//   - game : piste 0 (Opus source) → réencodé aac
+	//   - voices : piste 1 (Opus source, map direct) → réencodé aac
+	//   - full : amix → aac
+	assertSegmentCodec(t, filepath.Join(outDir, "init_game.mp4"), "audio", "aac")
+	assertSegmentCodec(t, filepath.Join(outDir, "init_voices.mp4"), "audio", "aac")
 	assertSegmentCodec(t, filepath.Join(outDir, "init_full.mp4"), "audio", "aac")
 	assertSegmentCodec(t, filepath.Join(outDir, "init_0.mp4"), "video", "h264")
 }
