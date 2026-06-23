@@ -196,3 +196,34 @@ type CommendationsPageResponse struct {
 	Categories []CommendationCategory `json:"categories"`
 	TotalCount int                    `json:"total_count"`
 }
+
+// ---------------------------------------------------------------------------
+// Types de réponse — Commendations NATIVES (Halo 5, totaux à vie) — AXE B
+// ---------------------------------------------------------------------------
+
+// NativeCommendationTotal — total à vie d'une commendation NATIVE (dernier progress
+// absolu), enrichi nom/icône/catégorie. Distinct de CommendationItem (médaille,
+// medal_id int64) : la clé est l'UUID natif de la commendation.
+type NativeCommendationTotal struct {
+	ID       string  `json:"id"`
+	Name     string  `json:"name"`
+	Category string  `json:"category"`
+	Total    int     `json:"total"`
+	IconURL  *string `json:"icon_url,omitempty"`
+}
+
+// NativeCommendationCategoryGroup regroupe les commendations natives par catégorie
+// (ex. MULTIPLAYER, GAME MODE), items triés par total décroissant.
+type NativeCommendationCategoryGroup struct {
+	Category string                    `json:"category"`
+	Items    []NativeCommendationTotal `json:"items"`
+}
+
+// NativeCommendationsTotalsResponse — réponse de la page Totaux des commendations
+// natives. TotalCount = nombre de commendations distinctes progressées (PAS la somme
+// des totaux absolus, qui n'aurait pas de sens). Vide pour les titres sans
+// commendations natives (Infinite).
+type NativeCommendationsTotalsResponse struct {
+	Categories []NativeCommendationCategoryGroup `json:"categories"`
+	TotalCount int                               `json:"total_count"`
+}

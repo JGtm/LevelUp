@@ -939,6 +939,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/commendations/totals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Totaux à vie des commendations natives (Halo 5) */
+        get: operations["getCommendationTotals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/pages/media": {
         parameters: {
             query?: never;
@@ -4245,6 +4262,23 @@ export interface components {
             icon_url?: string;
             id: string;
             name?: string;
+        };
+        NativeCommendationCategoryGroup: {
+            category: string;
+            items: components["schemas"]["NativeCommendationTotal"][] | null;
+        };
+        NativeCommendationTotal: {
+            category: string;
+            icon_url?: string;
+            id: string;
+            name: string;
+            /** Format: int64 */
+            total: number;
+        };
+        NativeCommendationsTotalsResponse: {
+            categories: components["schemas"]["NativeCommendationCategoryGroup"][] | null;
+            /** Format: int64 */
+            total_count: number;
         };
         MatchViewResponse: {
             citations_tab: components["schemas"]["MatchCitationsTab"];
@@ -9704,6 +9738,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getCommendationTotals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Totaux à vie des commendations natives, groupés par catégorie */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NativeCommendationsTotalsResponse"];
                 };
             };
             404: components["responses"]["NotFound"];
