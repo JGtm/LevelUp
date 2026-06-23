@@ -15,9 +15,10 @@ package migrations
 // « un jour ») passe par la colonne `extra` JSON, pas par une nouvelle génération.
 //
 // Seed = table §6 du plan, VÉRIFIÉE halopedia.org + wiki.halo.fr. Les filmshell
-// ids Infinite proviennent de weapon_labels.go (suffixe 42c9679f = vraie arme).
-// Les stock_ids H5 sont réconciliés dans une étape ultérieure (P2bis, source =
-// metadata officiel h5 / events) → les armes H5 sont seedées SANS id pour l'instant.
+// ids Infinite proviennent de weapon_labels.go (suffixe 42c9679f = vraie arme) ;
+// les stock_ids H5 du catalogue officiel weapon_labels metadata H5 (peuplé par
+// cmd/h5-metadata-fetch), figés ici (Halo 5 gelé). Plusieurs ids/arme = variantes/
+// skins (Halo 2 BR, SPNKr, Retro Beam, Flagnum…) qui résolvent vers l'arme canonique.
 
 import (
 	"database/sql"
@@ -41,9 +42,10 @@ type weaponRow struct {
 	key, title, name, nameFR, class, role, family, faction, damage, manufacturer string
 }
 
-// weaponFilmshellID — id filmshell (uint64) d'une arme Infinite. uint64 littéral
-// (bit63 possible) formaté en décimal string à l'insertion (id_value = VARCHAR).
-type weaponFilmshellID struct {
+// weaponNumericID — id numérique d'une arme (filmshell Infinite OU stock_id H5).
+// uint64 littéral (bit63 possible côté filmshell) formaté en décimal string à
+// l'insertion (id_value = VARCHAR).
+type weaponNumericID struct {
 	key string
 	id  uint64
 }
@@ -91,7 +93,10 @@ func applyWeaponRegistry(db *sql.DB) error {
 	if err := seedWeapons(db); err != nil {
 		return err
 	}
-	return seedWeaponFilmshellIDs(db)
+	if err := seedWeaponFilmshellIDs(db); err != nil {
+		return err
+	}
+	return seedWeaponStockIDs(db)
 }
 
 func seedWeaponFamilies(db *sql.DB) error {
@@ -122,6 +127,17 @@ func seedWeaponFilmshellIDs(db *sql.DB) error {
 	for _, f := range weaponRegistryInfiniteFilmshell {
 		idValue := strconv.FormatUint(f.id, 10)
 		if _, err := db.ExecContext(migration.BootCtx(), q, titleHINF, idValue, f.key); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func seedWeaponStockIDs(db *sql.DB) error {
+	const q = `INSERT OR IGNORE INTO weapon_ids (title_slug, id_kind, id_value, weapon_key) VALUES (?, 'stock_id', ?, ?)`
+	for _, s := range weaponRegistryH5Stock {
+		idValue := strconv.FormatUint(s.id, 10)
+		if _, err := db.ExecContext(migration.BootCtx(), q, titleH5, idValue, s.key); err != nil {
 			return err
 		}
 	}
@@ -244,7 +260,7 @@ var weaponRegistryWeapons = []weaponRow{
 
 // weaponRegistryInfiniteFilmshell — ids filmshell Infinite (source weapon_labels.go,
 // suffixe 42c9679f = vraie arme). Plusieurs ids/arme = variantes (Ranked, skins).
-var weaponRegistryInfiniteFilmshell = []weaponFilmshellID{
+var weaponRegistryInfiniteFilmshell = []weaponNumericID{
 	{"hinf_br75", 0x2b1824d542c9679f},
 	{"hinf_bandit", 0x2fb21c8742c9679f},
 	{"hinf_bandit", 0x6acdc44d42c9679f}, // "Bandit Evo"
@@ -281,4 +297,46 @@ var weaponRegistryInfiniteFilmshell = []weaponFilmshellID{
 	{"hinf_frag_grenade", 0xb6dbead842c9679f},
 	{"hinf_plasma_grenade", 0xc1e1bab042c9679f},
 	{"hinf_dynamo_grenade", 0x3ad55da442c9679f},
+}
+
+// weaponRegistryH5Stock — stock_ids H5 (source : catalogue officiel weapon_labels
+// metadata H5, www.haloapi.com via cmd/h5-metadata-fetch, figé 2026-06-23).
+// Plusieurs ids/arme = variantes/skins (Halo 2 BR, Retro Beam Rifle, SPNKr,
+// Flagnum, Halo One Pistol) qui résolvent vers l'arme canonique.
+var weaponRegistryH5Stock = []weaponNumericID{
+	{"h5_assault_rifle", 313138863},
+	{"h5_battle_rifle", 424645655},
+	{"h5_battle_rifle", 4222743534}, // Halo 2 Battle Rifle
+	{"h5_dmr", 523953283},
+	{"h5_magnum", 4096745987},
+	{"h5_magnum", 2758094302}, // Halo One Pistol
+	{"h5_magnum", 2244200496}, // Flagnum
+	{"h5_smg", 723388907},
+	{"h5_shotgun", 3484334713},
+	{"h5_sniper_rifle", 669296699},
+	{"h5_rocket_launcher", 723523180},
+	{"h5_rocket_launcher", 2902827823},  // SPNKr Rocket Launcher
+	{"h5_grenade_launcher", 1390323522}, // Reach Grenade Launcher
+	{"h5_railgun", 3682788176},
+	{"h5_saw", 2278207101},
+	{"h5_hydra", 1579758889}, // Hydra Launcher
+	{"h5_spartan_laser", 3885603197},
+	{"h5_carbine", 4108759423},
+	{"h5_energy_sword", 2650887244},
+	{"h5_plasma_pistol", 524558978},
+	{"h5_plasma_rifle", 2015271382}, // Brute Plasma Rifle
+	{"h5_fuel_rod", 2670072722},     // Fuel Rod Cannon
+	{"h5_storm_rifle", 2133511419},
+	{"h5_beam_rifle", 2862629816},
+	{"h5_beam_rifle", 907086443}, // Retro Beam Rifle
+	{"h5_plasma_caster", 4054937266},
+	{"h5_needler", 2050745863},
+	{"h5_gravity_hammer", 2899979324},
+	{"h5_light_rifle", 2511447508}, // "LightRifle"
+	{"h5_binary_rifle", 2140505068},
+	{"h5_boltshot", 4153405209},
+	{"h5_incineration_cannon", 4086418184},
+	{"h5_sentinel_beam", 3143603656},
+	{"h5_suppressor", 2681172411},
+	{"h5_scattershot", 3808094875},
 }
