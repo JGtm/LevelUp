@@ -1163,6 +1163,10 @@ export interface SquadWeaponBar {
  *  bars triées par TotalSquad ASC (peu utilisées en haut). */
 export type SquadWeaponKills = components['schemas']['SquadWeaponKills']
 
+/** Breakdown mécaniques natives Halo 5 par coéquipier (barres empilées, Escouade). */
+export type SquadKillMechanics = components['schemas']['SquadKillMechanics']
+export type SquadKillMechanicBar = components['schemas']['SquadKillMechanicBar']
+
 /** Point d'une série performance (1 par match × joueur) pour teammates.16. */
 export type SquadPerformanceSeriesPoint = components['schemas']['SquadPerformanceSeriesPoint']
 
@@ -1243,6 +1247,7 @@ export interface TeammatesPageResponse {
   intensity_profile?: SquadIntensityProfile
   performance_series?: Record<string, SquadPerformanceSeriesPoint[]>
   weapon_kills?: SquadWeaponKills
+  native_kill_mechanics?: SquadKillMechanics
   first_events?: SquadFirstEvents
   /** Header alimente <SessionBriefing> (mode solo si pas de coéquipier sélectionné, mode squad sinon). */
   header?: import('@/features/squad/v2/types').SquadHeader

@@ -21,6 +21,7 @@ import { SquadIntensityHeatmapChart } from './SquadIntensityHeatmapChart'
 import { SquadEfficiencyChart } from './SquadEfficiencyChart'
 import { SquadPerformanceCharts } from './SquadPerformanceCharts'
 import { SquadWeaponKillsChart } from './SquadWeaponKillsChart'
+import { SquadKillMechanicsChart } from './SquadKillMechanicsChart'
 import { SquadFirstEventsChart } from './SquadFirstEventsChart'
 import { SquadEngagementSection } from '@/features/engagement/SquadEngagementSection'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
@@ -164,6 +165,18 @@ export function SquadContributionsPage() {
         data={weaponKills}
         colorByPlayer={playerColors}
       />
+
+      {/* Halo 5 : mécaniques natives par coéquipier (assassinats + compétences
+          spartiate). FeatureGate masque hors h5 ; le composant rend null sans données. */}
+      <FeatureGate capability="native_kill_mechanics">
+        <SquadKillMechanicsChart
+          title={t.killMechanics.title}
+          emptyMessage={t.empty.noBlockData}
+          data={pageData?.native_kill_mechanics}
+          colorByPlayer={playerColors}
+          labelOf={(m) => t.killMechanics.labels[m as keyof typeof t.killMechanics.labels] ?? m}
+        />
+      </FeatureGate>
 
       <FeatureGate capability="engagement">
         <SquadEngagementSection

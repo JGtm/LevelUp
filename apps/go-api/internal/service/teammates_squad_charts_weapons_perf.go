@@ -149,6 +149,118 @@ func (s *TeammatesService) buildSquadWeaponKills(
 	}
 }
 
+// buildSquadKillMechanics agrège les mécaniques de kill NATIVES Halo 5 par joueur
+// (assassinats + compétences spartiate) en barres empilées (1 barre par mécanique,
+// segments = coéquipiers). Même résolution xuid↔gamertag + matchs partagés que
+// buildSquadWeaponKills. nil si pas de loader / pas de données / aucune mécanique
+// (titre sans la capability → colonnes à 0).
+func (s *TeammatesService) buildSquadKillMechanics(
+	ctx context.Context,
+	allSquadRows []domain.SquadMatchRow,
+	mainGamertag, mainXUID string,
+	teammates []domain.TeammateRow,
+) *domain.SquadKillMechanics {
+	if s.squadLoader == nil || len(allSquadRows) == 0 || len(teammates) == 0 {
+		return nil
+	}
+
+	matchSet := make(map[string]struct{})
+	for _, m := range allSquadRows {
+		matchSet[m.MatchID] = struct{}{}
+	}
+	sharedMatches := make([]string, 0, len(matchSet))
+	for mid := range matchSet {
+		sharedMatches = append(sharedMatches, mid)
+	}
+	if len(sharedMatches) == 0 {
+		return nil
+	}
+
+	xuidByPlayer := make(map[string]string)
+	playersOrdered := make([]string, 0, 1+len(teammates))
+	if mainXUID != "" {
+		xuidByPlayer[mainGamertag] = mainXUID
+		playersOrdered = append(playersOrdered, mainGamertag)
+	}
+	for _, tm := range teammates {
+		if tm.XUID == nil || *tm.XUID == "" {
+			continue
+		}
+		xuidByPlayer[tm.Gamertag] = *tm.XUID
+		playersOrdered = append(playersOrdered, tm.Gamertag)
+	}
+	if len(playersOrdered) == 0 {
+		return nil
+	}
+	xuids := make([]string, 0, len(playersOrdered))
+	for _, p := range playersOrdered {
+		xuids = append(xuids, xuidByPlayer[p])
+	}
+
+	rows, err := s.squadLoader.LoadKillMechanics(ctx, s.titleSlug, port.WeaponKillFilters{
+		MatchIDs: sharedMatches,
+		XUIDs:    xuids,
+	})
+	if err != nil {
+		slog.DebugContext(ctx, "teammates_kill_mechanics_skipped", "err", err.Error())
+		return nil
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+
+	gtByXUID := make(map[string]string, len(xuidByPlayer))
+	for gt, x := range xuidByPlayer {
+		gtByXUID[x] = gt
+	}
+
+	// 1 barre par mécanique (ordre stable), segments = joueurs.
+	mechs := []struct {
+		key  string
+		pick func(port.KillMechanicsRow) int
+	}{
+		{"assassination", func(r port.KillMechanicsRow) int { return r.Assassinations }},
+		{"ground_pound", func(r port.KillMechanicsRow) int { return r.GroundPound }},
+		{"shoulder_bash", func(r port.KillMechanicsRow) int { return r.ShoulderBash }},
+	}
+	killsByMech := make([]map[string]int, len(mechs))
+	totalByMech := make([]int, len(mechs))
+	for i := range mechs {
+		killsByMech[i] = make(map[string]int)
+	}
+	for _, r := range rows {
+		gt, ok := gtByXUID[r.XUID]
+		if !ok {
+			continue
+		}
+		for i := range mechs {
+			if v := mechs[i].pick(r); v > 0 {
+				killsByMech[i][gt] += v
+				totalByMech[i] += v
+			}
+		}
+	}
+
+	bars := make([]domain.SquadKillMechanicBar, 0, len(mechs))
+	for i := range mechs {
+		if totalByMech[i] == 0 {
+			continue
+		}
+		bars = append(bars, domain.SquadKillMechanicBar{
+			Mechanic:      mechs[i].key,
+			KillsByPlayer: killsByMech[i],
+			TotalSquad:    totalByMech[i],
+		})
+	}
+	if len(bars) == 0 {
+		return nil
+	}
+	return &domain.SquadKillMechanics{
+		Players: playersOrdered,
+		Bars:    bars,
+	}
+}
+
 // ---------------------------------------------------------------------------
 // teammates.16 — Charts de performance escouade (8 sous-charts par joueur)
 // ---------------------------------------------------------------------------

@@ -198,6 +198,10 @@ export interface SquadText {
     title: string
     description: string
   }
+  killMechanics: {
+    title: string
+    labels: { assassination: string; ground_pound: string; shoulder_bash: string }
+  }
   firstEvents: {
     title: string
     description: string
@@ -457,6 +461,10 @@ const FR_TEXT: SquadText = {
     title: 'Frags par arme',
     description: 'Frags cumulés par arme sur les matchs partagés. Tri ASC : armes peu utilisées en haut, principales en bas.',
   },
+  killMechanics: {
+    title: 'Mécaniques de kill',
+    labels: { assassination: 'Assassinats', ground_pound: 'Frappes au sol', shoulder_bash: 'Charges d\'épaule' },
+  },
   firstEvents: {
     title: 'Premier frag / première mort',
     description: 'Histogramme butterfly : bins de 15 s. Frags positifs en haut, morts négatives en bas (couleur joueur atténuée).',
@@ -715,6 +723,10 @@ const EN_TEXT: SquadText = {
   weaponKills: {
     title: 'Weapon kills',
     description: 'Cumulative kills per weapon over shared matches. Sorted ASC: rare weapons on top, primaries at the bottom.',
+  },
+  killMechanics: {
+    title: 'Kill mechanics',
+    labels: { assassination: 'Assassinations', ground_pound: 'Ground Pounds', shoulder_bash: 'Shoulder Bashes' },
   },
   firstEvents: {
     title: 'First frag / first death',

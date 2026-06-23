@@ -32,6 +32,10 @@ func (f *fakeSquadLoaderFull) LoadWeaponKills(_ context.Context, _ string, _ por
 	return f.weapons, nil
 }
 
+func (f *fakeSquadLoaderFull) LoadKillMechanics(_ context.Context, _ string, _ port.WeaponKillFilters) ([]port.KillMechanicsRow, error) {
+	return nil, nil
+}
+
 func (f *fakeSquadLoaderFull) LoadMedals(_ context.Context, _ string, _ port.MedalsByXUIDFilters) ([]port.MedalRow, error) {
 	return f.medals, nil
 }

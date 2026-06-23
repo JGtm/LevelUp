@@ -61,6 +61,17 @@ type SquadV2Loader interface {
 		filters port.WeaponKillFilters,
 	) ([]port.WeaponKillRow, error)
 
+	// LoadKillMechanics charge les mécaniques de kill NATIVES Halo 5 agrégées par
+	// xuid (assassinats + compétences spartiate) sur les matchs partagés.
+	// Implementation prod : duckdb.SquadV2LoaderAdapter (query match_participants).
+	// Réutilise WeaponKillFilters (MatchIDs + XUIDs). Dégrade en lignes à 0 pour
+	// les titres sans ces colonnes.
+	LoadKillMechanics(
+		ctx context.Context,
+		slug string,
+		filters port.WeaponKillFilters,
+	) ([]port.KillMechanicsRow, error)
+
 	// LoadMedals charge les medailles par (xuid, match) (chunk S9).
 	// Implementation prod : duckdb.MedalsByXUIDRepo.
 	LoadMedals(

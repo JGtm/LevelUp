@@ -139,6 +139,27 @@ func (a *SquadV2LoaderAdapter) LoadWeaponKills(
 	return rows, nil
 }
 
+// LoadKillMechanics agrège les mécaniques de kill NATIVES Halo 5 par xuid sur les
+// matchs partagés (assassinats + compétences spartiate). Mirror de LoadWeaponKills :
+// résout n'importe quelle player DB du titre (shared attaché in-process), puis
+// GROUP BY xuid sur match_participants.
+func (a *SquadV2LoaderAdapter) LoadKillMechanics(
+	ctx context.Context,
+	titleSlug string,
+	filters port.WeaponKillFilters,
+) ([]port.KillMechanicsRow, error) {
+	pdb, err := a.resolveAnyPlayerDB(ctx, titleSlug)
+	if err != nil {
+		return nil, err
+	}
+	repo := NewWeaponKillsRepo(pdb)
+	rows, err := repo.LoadKillMechanicsAggregated(ctx, filters)
+	if err != nil {
+		return nil, fmt.Errorf("SquadV2LoaderAdapter.LoadKillMechanics: %w", err)
+	}
+	return rows, nil
+}
+
 // LoadMapStatsForSquad delegue a SquadRepo.LoadMapStatsForSquad pour produire
 // la reference "winrate du main avec l'escouade strict par carte" — sans
 // aucun filtre temporel (cf. fix synergies session-vs-historique).

@@ -77,6 +77,18 @@ type WeaponKillRow struct {
 	IsGrenadeMelee bool `json:"is_grenade_melee,omitempty"`
 }
 
+// KillMechanicsRow agrège les mécaniques de kill NATIVES Halo 5 par joueur (xuid)
+// sur un ensemble de matchs — assassinats + compétences spartiate (ground pound,
+// shoulder bash). Source : shared.match_participants (GROUP BY xuid). Alimente le
+// breakdown « mécaniques par coéquipier » de la page Escouade. 0 pour les titres
+// qui ne fournissent pas ces colonnes (Infinite).
+type KillMechanicsRow struct {
+	XUID           string `json:"xuid"`
+	Assassinations int    `json:"assassinations"`
+	GroundPound    int    `json:"ground_pound_kills"`
+	ShoulderBash   int    `json:"shoulder_bash_kills"`
+}
+
 // WeaponKillsRepository expose le loader aggregate weapon_kills.
 //
 // Capability gating : retourne games.ErrCapabilityNotSupported si le titre
