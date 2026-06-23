@@ -73,6 +73,8 @@ export const timeseriesManifest = {
   "timeseries.progression.first_kill": { fr: "1er frag", en: "1st kill" },
   "timeseries.progression.intensity_title": { fr: "Intensité", en: "Intensity" },
   "timeseries.progression.intensity_z": { fr: "frags", en: "kills" },
+  "timeseries.progression.kill_type_other": { fr: "Autres", en: "Other" },
+  "timeseries.progression.kill_types_title": { fr: "Répartition des frags", en: "Kill type distribution" },
   "timeseries.progression.match_history_title": { fr: "Historique des matchs", en: "Match history" },
   "timeseries.progression.per_minute_suffix": { fr: " /min", en: " /min" },
   "timeseries.progression.per_minute_title": { fr: "Stats par minute", en: "Stats per minute" },

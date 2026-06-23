@@ -224,6 +224,10 @@ func (s *TimeseriesService) GetPage(
 	if filtered := filterCanonicalByMatchIDs(canonicalRows, matches); len(filtered) > 0 {
 		briefingKPIs := analysis.ComputeKPIStats(filtered)
 		resp.BriefingKPIs = &briefingKPIs
+		// Repartition des frags par type d'arme (donut Progression) : reutilise
+		// l'agregateur canonical de Synthesis sur le meme set filtre.
+		ds := buildSynthesisDetailedStatsFromCanonical(filtered)
+		resp.DetailedStats = &ds
 	}
 
 	return resp, nil

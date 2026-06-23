@@ -293,6 +293,53 @@ func TestBuildSquadPerformanceSeries_PopulatesEfficiencyFields(t *testing.T) {
 	}
 }
 
+// TestBuildSquadPerformanceSeries_PopulatesKillTypeBreakdown vérifie que la
+// ventilation par type de frag (mêlée / arme lourde / grenade) est extraite du
+// canonical row vers le point de série — alimente les barres empilées
+// « Répartition des frags » de la page Contributions. Les pointeurs restent nil
+// pour un joueur sans ventilation (pas de fallback 0).
+func TestBuildSquadPerformanceSeries_PopulatesKillTypeBreakdown(t *testing.T) {
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	mainRow := rowWithStatsXUID("xuid-main", "m1", t0, canonical.OutcomeWin, 10, 5, 2, 600, 50, 80)
+	melee, pw, gren := 2, 1, 3
+	mainRow.Self.MeleeKills = &melee
+	mainRow.Self.PowerWeaponKills = &pw
+	mainRow.Self.GrenadeKills = &gren
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"main":    {mainRow},
+			"friend1": {rowWithStatsXUID("xuid-f1", "m1", t0, canonical.OutcomeWin, 5, 5, 2, 600, 35, 40)},
+		},
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader}
+	allSquadRows := []domain.SquadMatchRow{{MatchID: "m1", StartTime: t0}}
+	got := svc.buildSquadPerformanceSeries(context.Background(), allSquadRows, "main", []string{"friend1"})
+	if got == nil {
+		t.Fatal("résultat nil inattendu")
+	}
+	pts := got["main"]
+	if len(pts) == 0 {
+		t.Fatal("série main vide")
+	}
+	pt := pts[0]
+	if pt.MeleeKills == nil || *pt.MeleeKills != 2 {
+		t.Errorf("MeleeKills = %v, want 2", pt.MeleeKills)
+	}
+	if pt.PowerWeaponKills == nil || *pt.PowerWeaponKills != 1 {
+		t.Errorf("PowerWeaponKills = %v, want 1", pt.PowerWeaponKills)
+	}
+	if pt.GrenadeKills == nil || *pt.GrenadeKills != 3 {
+		t.Errorf("GrenadeKills = %v, want 3", pt.GrenadeKills)
+	}
+	f1 := got["friend1"]
+	if len(f1) == 0 {
+		t.Fatal("série friend1 vide")
+	}
+	if f1[0].MeleeKills != nil {
+		t.Errorf("friend1 MeleeKills = %v, want nil (non renseigné)", *f1[0].MeleeKills)
+	}
+}
+
 // ---------- buildSquadSynergyRadar (teammates.11) ----------
 
 // TestBuildSquadSynergyRadar_DistinctAxesPerPlayer cadenasse le bug bound-to-main :

@@ -422,6 +422,14 @@ en = "Stats per minute"
 fr = " /min"
 en = " /min"
 
+[timeseries.progression.kill_types_title]
+fr = "Répartition des frags"
+en = "Kill type distribution"
+
+[timeseries.progression.kill_type_other]
+fr = "Autres"
+en = "Other"
+
 [timeseries.progression.spree_headshots_title]
 fr = "Folie meurtrière / Tirs à la tête / Frags parfaits"
 en = "Killing spree / Headshots / Perfect kills"

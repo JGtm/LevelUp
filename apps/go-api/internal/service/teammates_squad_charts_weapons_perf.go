@@ -261,6 +261,19 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 				v := *r.Self.PerfectKills
 				pt.PerfectKills = &v
 			}
+			// Ventilation par type de frag (barres empilées « répartition des frags »).
+			if r.Self.MeleeKills != nil {
+				v := *r.Self.MeleeKills
+				pt.MeleeKills = &v
+			}
+			if r.Self.PowerWeaponKills != nil {
+				v := *r.Self.PowerWeaponKills
+				pt.PowerWeaponKills = &v
+			}
+			if r.Self.GrenadeKills != nil {
+				v := *r.Self.GrenadeKills
+				pt.GrenadeKills = &v
+			}
 			if r.Self.DamageDealt != nil {
 				dd := *r.Self.DamageDealt
 				pt.DamageDealt = &dd // brut, pour le chart dégâts/frag

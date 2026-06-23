@@ -1930,6 +1930,10 @@ export interface SquadPerformanceSeriesPoint {
   max_killing_spree?: number
   headshot_kills?: number
   perfect_kills?: number
+  /** Ventilation par type de frag (barres empilées « répartition des frags »). */
+  melee_kills?: number
+  power_weapon_kills?: number
+  grenade_kills?: number
   damage_dealt?: number
   damage_taken?: number
   rendement_offensif?: number
@@ -3133,6 +3137,9 @@ export interface TimeseriesPageResponse {
   solo_session_perf?: SoloSessionPerfBlock | null
   /** Alimente <SessionBriefing> en haut de la page (mode solo). Nil si aucun match. */
   briefing_kpis?: KPIStats
+  /** Agrégats par type de frag (mêlée/arme lourde/grenade) — donut « Répartition
+   *  des frags » de l'onglet Progression. Réutilise le type de Synthesis. Nil si aucun match. */
+  detailed_stats?: SynthesisDetailedStats | null
 }
 
 // ---------------------------------------------------------------------------

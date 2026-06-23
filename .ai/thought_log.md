@@ -1,3 +1,20 @@
+## [2026-06-23] Donut « Répartition des frags » sur Timeseries/Progression + barres empilées sur Contributions — COMPLÉTÉ code (branche feat/frags-breakdown-timeseries-squad)
+
+**Contexte** : demande utilisateur de réutiliser la décomposition des frags par type d'arme (mêlée / arme lourde / grenade / autres), aujourd'hui seulement sur Synthesis (`SynthesisKillTypesDonut`). (1) Donut à gauche de « Progression LUSR » sur l'onglet Progression de Timeseries. (2) Même ventilation sur la page Contributions (escouade), mais multi-joueurs → j'ai challengé le donut et proposé des **barres empilées horizontales** (1 barre/joueur, segments = type, longueur = total frags) ; choix validé par l'utilisateur.
+
+**Constat data (vérifié)** : aucune des deux pages n'exposait la ventilation. Les deux ont nécessité un petit ajout backend, mais les rows canoniques (`canonical.PlayerMatchRow.Self.{MeleeKills,PowerWeaponKills,GrenadeKills}`) sont déjà chargés côté Go → zéro SQL, zéro nouveau endpoint.
+
+**Décisions techniques** :
+- **DRY** : promotion du wrapper de carte en composant partagé `components/charts/KillTypesDonutCard.tsx` (props counts + total + title/otherLabel injectés). `SynthesisKillTypesDonut` devient un adaptateur fin (props publiques inchangées → SynthesisPage + son test intacts). Évite l'import cross-feature timeseries→synthesis.
+- **T1 (Timeseries)** : `TimeseriesPageResponse.DetailedStats *SynthesisDetailedStats` peuplé dans le bloc `filterCanonicalByMatchIDs` déjà présent (`timeseries_service.go`) via le builder existant et testé `buildSynthesisDetailedStatsFromCanonical(filtered)`. Front : grid asymétrique `lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]` (donut étroit | LUSR large), `totalKills` sommé depuis `match_rows` (même set filtré), dégradation gracieuse si `detailed_stats` nil. 2 clés i18n TOML + régénération manifest.
+- **T2 (Contributions)** : 3 champs `*int` sur `SquadPerformanceSeriesPoint` (melee/power_weapon/grenade), extraits dans `buildSquadPerformanceSeries` à côté de HeadshotKills/PerfectKills. Nouveau builder `squadFragBreakdownChart.ts` : barres empilées horizontales, agrégation par joueur + `other = max(0, Σkills − Σtypés)`, couleurs PAR TYPE via tokens chart-series 1/6/7/8 (mêmes que le donut), `yAxis inverse` (main en haut). Carte appariée à droite de « Précision » dans le `pairClass` existant. 5 strings i18n FR+EN (squad/i18n.ts).
+
+**Résultats** : `go build`/`go vet` exit 0 (CGO ucrt64) ; nouveau test Go `TestBuildSquadPerformanceSeries_PopulatesKillTypeBreakdown` vert + suite squad perf inchangée. Front : `tsc -b` exit 0, eslint 0 erreur/0 warning, vitest 17 passed (nouveau builder `squadFragBreakdownChart.test.ts` 6 cas : agrégation, dérivation/clamp « autres », champs absents, tokens couleur, ordre axe ; SynthesisPage + squadPerformanceLineCharts toujours verts → refactor non régressif).
+
+**Prochaine étape** : vérification visuelle de l'app (donut Progression + barres Contributions) ; commit (sur autorisation) puis push.
+
+---
+
 ## [2026-06-22] Vague 2 Dependabot (config sobre) — analyse + tri des 5 PRs groupées/majors — COMPLÉTÉ code (main direct)
 
 **Contexte** : après merge de la config sobre #41 + adoption vague 1, Dependabot a re-scanné et ouvert **5 PRs** = 3 groupées (go/actions/npm minor-patch) + 2 majors npm individuelles (`@types/node` 26, `echarts` 6 — sortent seules car `ignore-major` n'était mis que sur github-actions). Demande utilisateur : « analyse bien d'abord, puis intègre ou vire ».
