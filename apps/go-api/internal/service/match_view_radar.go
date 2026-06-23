@@ -225,6 +225,7 @@ func BuildMatchRadarFromScoreboard(
 
 	raw := computeMatchRadarRawAxes(*me, objectiveScore, effectiveHpToKill)
 	axes := narrative.ComputeParticipationProfile(raw, thresholds)
+	axes = dropUncomputableRadarAxes(axes, *me)
 	return []MatchViewRadarSeries{{
 		XUID:       me.XUID,
 		Gamertag:   me.Gamertag,
@@ -274,4 +275,31 @@ func computeMatchRadarRawAxes(row domain.ScoreboardRaw, objectiveScore int, effe
 	}
 	raw[narrative.AxisScore] = residual
 	return raw
+}
+
+// dropUncomputableRadarAxes retire les axes structurellement non calculables
+// faute de donnée source, pour éviter d'afficher un axe trompeur figé à 0 (le
+// front rend dynamiquement la liste reçue : N axes au lieu de 6). Règle
+// title-agnostic, pilotée par la donnée du joueur :
+//   - Survie (résistance défensive) sans damage_taken → cas Halo 5, qui ne
+//     fournit pas les dégâts subis ;
+//   - Impact (rendement offensif) sans damage_dealt.
+func dropUncomputableRadarAxes(axes []narrative.ParticipationScore, me domain.ScoreboardRaw) []narrative.ParticipationScore {
+	drop := map[narrative.ParticipationAxis]bool{}
+	if me.DamageTaken == nil {
+		drop[narrative.AxisSurvival] = true
+	}
+	if me.DamageDealt == nil {
+		drop[narrative.AxisImpact] = true
+	}
+	if len(drop) == 0 {
+		return axes
+	}
+	kept := axes[:0]
+	for _, a := range axes {
+		if !drop[a.Axis] {
+			kept = append(kept, a)
+		}
+	}
+	return kept
 }

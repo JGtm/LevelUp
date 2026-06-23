@@ -38,6 +38,14 @@ import {
   type Extremes,
 } from './MatchScoreboard.logic'
 
+/**
+ * Colonne grenade : `grenade_kills` est disponible pour les deux titres mais la
+ * colonne n'est PAS encore activée (décision produit, h5-finitions). Ce flag est
+ * l'unique point de contrôle (métadonnée + colonne rendue) → bascule atomique,
+ * aucun highlight/MVP fantôme tant qu'il vaut `false`.
+ */
+const SHOW_GRENADE_KILLS_COLUMN: boolean = false
+
 function buildHighlightCols(t: MatchViewText, offensiveLabel: string, defensiveLabel: string): ColDef[] {
   return [
     { key: 'rank', label: 'Rang', inverted: true },
@@ -54,6 +62,13 @@ function buildHighlightCols(t: MatchViewText, offensiveLabel: string, defensiveL
     { key: 'accuracy', label: t.sbColAccuracy, inverted: false, fmt: (v) => `${v.toFixed(1)}%` },
     { key: 'melee_kills', label: t.sbColMeleeKills, inverted: false },
     { key: 'power_weapon_kills', label: 'Armes lourdes', inverted: false },
+    ...(SHOW_GRENADE_KILLS_COLUMN ? [{ key: 'grenade_kills', label: t.labelGrenade, inverted: false } as ColDef] : []),
+    // Mécaniques de kill natives Halo 5 (assassinats + compétences spartiate).
+    // Auto-masquées hors H5 : `null` pour Infinite → retirées par le filtre
+    // data-driven (cf. presentKeys / visibleColumn) plus bas.
+    { key: 'assassination_kills', label: t.labelAssassination, inverted: false },
+    { key: 'ground_pound_kills', label: t.labelGroundPound, inverted: false },
+    { key: 'shoulder_bash_kills', label: t.labelShoulderBash, inverted: false },
     { key: 'damage_dealt', label: t.sbColDamageDealt, inverted: false, fmt: (v) => v.toFixed(0) },
     { key: 'damage_taken', label: t.sbColDamageTaken, inverted: true, fmt: (v) => v.toFixed(0) },
     { key: 'avg_life_seconds', label: 'Vie moy.', inverted: false, fmt: (v) => formatDurationMMSS(v, '—') },
@@ -115,6 +130,21 @@ export function MatchScoreboard({ rows, killerVictim, citations, header, rank, t
     [humanRows, highlightCols, extremesByKey],
   )
 
+  // Masquage data-driven des colonnes : une colonne statistique dont AUCUNE
+  // ligne du lobby (bots inclus) ne porte de valeur est retirée. Règle
+  // title-agnostic, sans test de titre — supprime « Dégâts subis » / « Résist. »
+  // en Halo 5 (non fournis par l'API) et les mécaniques natives hors H5 (null).
+  // Calculée au niveau LOBBY → les deux équipes affichent les mêmes colonnes.
+  const presentKeys = useMemo(() => {
+    const present = new Set<string>()
+    for (const c of highlightCols) {
+      if (rows.some((r) => (r[c.key] as number | null | undefined) != null)) {
+        present.add(String(c.key))
+      }
+    }
+    return present
+  }, [rows, highlightCols])
+
   function goToExplorer(gamertag: string, e: React.MouseEvent) {
     if (!playerSlug) return
     e.stopPropagation()
@@ -142,6 +172,7 @@ export function MatchScoreboard({ rows, killerVictim, citations, header, rank, t
           isMyTeam={side !== '' && side === myTeamSide}
           rows={rows.filter((r) => (r.team_side ?? '') === side)}
           highlightCols={highlightCols}
+          presentKeys={presentKeys}
           extremesByKey={extremesByKey}
           mvpXuid={mvpXuid}
           lvpXuid={lvpXuid}
@@ -167,6 +198,8 @@ interface TeamScoreboardProps {
   isMyTeam: boolean
   rows: MatchScoreboardRow[]
   highlightCols: ColDef[]
+  /** Clés de colonnes avec au moins une valeur sur le lobby (masquage data-driven). */
+  presentKeys: Set<string>
   /** Extremes (min/max) par colonne, calculés au niveau LOBBY (toutes équipes). */
   extremesByKey: Record<string, Extremes>
   /** MVP/LVP du LOBBY (un seul de chaque, partagé par tous les TeamScoreboard). */
@@ -188,6 +221,7 @@ function TeamScoreboard({
   isMyTeam,
   rows,
   highlightCols,
+  presentKeys,
   extremesByKey,
   mvpXuid: mvp,
   lvpXuid: lvp,
@@ -258,7 +292,7 @@ function TeamScoreboard({
       },
     }
 
-    return [
+    const cols: ColumnDef<ScoreboardRowVM>[] = [
       {
         id: 'gamertag',
         header: 'Joueur',
@@ -342,7 +376,13 @@ function TeamScoreboard({
       hlDef('offensive_conversion'),
       hlDef('defensive_resistance'),
     ]
-  }, [highlightCols, expandedXuid, playerSlug, onPlayerClick, isRanked, t])
+
+    // Retire les colonnes statistiques sans aucune valeur sur le lobby (cf.
+    // presentKeys). Les colonnes non statistiques (gamertag, csr_badge,
+    // top_weapon) ne figurent pas dans highlightCols → toujours conservées.
+    const hlKeys = new Set(highlightCols.map((c) => String(c.key)))
+    return cols.filter((c) => !hlKeys.has(c.id ?? '') || presentKeys.has(c.id ?? ''))
+  }, [highlightCols, presentKeys, expandedXuid, playerSlug, onPlayerClick, isRanked, t])
 
   const table = useReactTable<ScoreboardRowVM>({
     data,
