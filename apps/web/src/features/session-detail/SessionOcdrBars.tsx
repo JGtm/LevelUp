@@ -16,11 +16,12 @@ import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
+import { useOffensiveConversionP80 } from '@/lib/damage/effectiveHp'
 
 import { sessionMatchAxisLabel, useSessionT } from './_shared'
 
-/** Repère barre (frontière élite mondiale) — miroir des constantes Go combat_yield.go. */
-const OC_P80 = 0.90
+/** Repères barre (frontière élite). OC = title-aware (hook useOffensiveConversionP80 :
+ *  0.90 Infinite / 1.264 Halo 5) ; DR = miroir const Go (h5 sans damage_taken → DR N/A). */
 const DR_P80 = 1.65
 const DR_P80_EXCESS = DR_P80 - 1.0 // 0.65
 
@@ -151,6 +152,7 @@ interface Props {
 
 export function SessionOcdrBars({ title, matches, height = 280 }: Props) {
   const t = useSessionT()
+  const ocP80 = useOffensiveConversionP80() // 0.90 Infinite / 1.264 h5 (titre courant)
 
   const series = useMemo<ChartSeries<OcdrPoint>[]>(() => {
     const sorted = [...matches]
@@ -165,7 +167,7 @@ export function SessionOcdrBars({ title, matches, height = 280 }: Props) {
           const dr = m.defensive_resistance ?? 0
           return {
             label: sessionMatchAxisLabel(i, m.map_name, m.pair_name),
-            ocNorm: (oc / OC_P80) * 100,
+            ocNorm: (oc / ocP80) * 100,
             drNorm: Math.max(0, ((dr - 1.0) / DR_P80_EXCESS) * 100),
             ocRaw: oc,
             drRaw: dr,
@@ -173,7 +175,7 @@ export function SessionOcdrBars({ title, matches, height = 280 }: Props) {
         }),
       },
     ]
-  }, [matches])
+  }, [matches, ocP80])
 
   return (
     <ChartCard

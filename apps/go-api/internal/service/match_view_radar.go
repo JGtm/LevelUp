@@ -195,6 +195,7 @@ func BuildMatchRadarFromScoreboard(
 	objectiveScore int,
 	modeFamily string,
 	effectiveHpToKill float64,
+	offensiveConversionP80 float64,
 ) []MatchViewRadarSeries {
 	if len(scoreboard) == 0 || myXUID == "" {
 		return nil
@@ -212,13 +213,14 @@ func BuildMatchRadarFromScoreboard(
 	}
 
 	// Mêmes seuils que synergyRadarThresholds(1) — calibration single-match.
+	// Impact (rendement OC) = P80 title-aware ; Survival (DR) = const (h5 sans DR).
 	thresholds := narrative.ParticipationThresholds{
 		Combat:    25.0,
 		Survival:  analysis.DefensiveResistanceP80 * 1.25,
 		Support:   300.0,
 		Score:     350.0,
 		Objective: 350.0,
-		Impact:    analysis.OffensiveConversionP80 * 1.25,
+		Impact:    offensiveConversionP80 * 1.25,
 	}
 
 	raw := computeMatchRadarRawAxes(*me, objectiveScore, effectiveHpToKill)

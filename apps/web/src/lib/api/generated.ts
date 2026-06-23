@@ -3430,6 +3430,8 @@ export interface components {
             is_default: boolean;
             /** Format: double */
             effective_hp_to_kill: number;
+            /** Format: double */
+            offensive_conversion_p80?: number;
         };
         TitleSyncInputBody: {
             enabled: boolean;

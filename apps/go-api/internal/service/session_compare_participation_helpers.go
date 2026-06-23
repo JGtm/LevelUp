@@ -133,7 +133,9 @@ func buildSessionParticipationProfile(
 		Support:   300.0 * float64(n),
 		Score:     350.0 * float64(n),
 		Objective: 350.0 * float64(n),
-		Impact:    analysis.OffensiveConversionP80 * 1.25,
+		// Impact (rendement OC) : P80 const Infinite — radar session-compare gardé
+		// sur la const (threading title-aware = passe dédiée, cf. PLAN_DAMAGE_MODEL §0).
+		Impact: analysis.OffensiveConversionP80 * 1.25,
 	}
 	scores := narrative.ComputeParticipationProfile(rawByAxis, thresholds)
 	result := make([]domain.SessionParticipationAxis, 0, len(scores))

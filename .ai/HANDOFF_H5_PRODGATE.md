@@ -43,11 +43,12 @@ findings non-évidents, reste à faire, commandes opérationnelles.
   gardent 225 (Infinite-only). Tests verts (param oneLife + substituteHpToken). Bars déjà correctes (hp=115).
 
 **RESTE (non bloquant prod)** :
-- ✅ **P80 OC h5 = 1.264 calibré data** (config `[damage_model].offensive_conversion_p80` + getter
-  `games.OffensiveConversionP80(slug)` livrés, Infinite 0.90) · **KDA h5 = `h5NetFDA` (k+a/3)−d déjà
-  correct** à l'ingestion · **DR h5 = N/A** (cryptum ne fournit PAS `damage_taken`, vérifié sur le
-  carnage brut 0/13241). Reste (activation 1b, non bloquant) : threader le getter P80 dans le
-  radar/barre d'affichage (LUSR garde la const Infinite-only). Cf. PLAN_DAMAGE_MODEL_PER_TITLE §0.
+- ✅ **P80 OC h5 = 1.264 calibré + CÂBLÉ display** : config + getter `games.OffensiveConversionP80` +
+  exposé bootstrap (`TitleSummary`/openapi) + barres OC front (combat-yield-bar/Timeseries/SessionOcdr via
+  hook) + radars backend match-view & squad. LUSR garde la const (Infinite-only). Seule exception : radar
+  session-compare gardé sur const (threading 3-niveaux + 13 fixtures disproportionné, surface secondaire).
+  **KDA h5 = `h5NetFDA` (k+a/3)−d déjà correct** · **DR h5 = N/A** (cryptum sans `damage_taken`, vérifié
+  carnage brut 0/13241). → **Damage model par titre ENTIÈREMENT réglé.** Cf. PLAN_DAMAGE_MODEL §0.
 - 🟡 **Sanity-check terrain LUSR/combat** (code DONE, PAS un gap) : vérif runtime niveaux (Madina Platine/Diamant…)
   + profils combat distincts — relève de l'exécution (service tournant / `cmd/diag_lusr_*`), pas du code.
 
