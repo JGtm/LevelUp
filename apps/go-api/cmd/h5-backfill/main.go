@@ -50,24 +50,41 @@ func main() {
 	if err != nil {
 		fatal("LoadPlayers: %v", err)
 	}
-	var xuid string
+	// Compte d'AUTH = joueur dont on emprunte le SpartanToken (défaut = la cible
+	// elle-même). Override via LEVELUP_H5_AUTH_AS=<Gamertag> quand le RT de la cible
+	// est mort (AADSTS70000) : le fetch h5 (/h5/players/{gamertag}/matches, header
+	// Spartan v4, SANS clearance ni xuid) sert l'historique de N'IMPORTE quel gamertag
+	// avec N'IMPORTE quel token v4 valide. La cible reste owner des batches (gt/xuid).
+	authGT := gt
+	if v := os.Getenv("LEVELUP_H5_AUTH_AS"); v != "" {
+		authGT = v
+	}
+	var xuid, authXUID string
 	for i := range players {
 		if players[i].Gamertag == gt {
 			xuid = players[i].XUID
+		}
+		if players[i].Gamertag == authGT {
+			authXUID = players[i].XUID
 		}
 	}
 	if xuid == "" {
 		fatal("xuid introuvable pour %q dans db_profiles (déclarer le joueur)", gt)
 	}
-
-	// Token store-first (identique à h5-sync/probe-h5) → ctx (l'adapter h5 lit le token du ctx).
-	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewMSALProvider(), xuid, gt, auth.LegacyAuthInputs{})
-	if err != nil || res == nil || res.Tokens == nil {
-		fatal("refresh tokens %s: err=%v", gt, err)
+	if authXUID == "" {
+		fatal("xuid auth introuvable pour %q dans db_profiles (LEVELUP_H5_AUTH_AS)", authGT)
 	}
-	ctx = ctxkeys.WithHaloAuth(ctx, res.Tokens, xuid)
-	fmt.Printf("owner=%s xuid=%s spartan_len=%d page_size=%d\n", gt, xuid, len(res.Tokens.SpartanToken), pageSize)
+
+	// Token store-first (identique à h5-sync/probe-h5) → ctx (l'adapter h5 lit le token
+	// du ctx). On refresh le token du COMPTE D'AUTH (authGT/authXUID), pas de la cible.
+	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewMSALProvider(), authXUID, authGT, auth.LegacyAuthInputs{})
+	if err != nil || res == nil || res.Tokens == nil {
+		fatal("refresh tokens %s (auth_as=%s): err=%v", gt, authGT, err)
+	}
+	ctx = ctxkeys.WithHaloAuth(ctx, res.Tokens, authXUID)
+	fmt.Printf("target=%s xuid=%s auth_as=%s auth_xuid=%s spartan_len=%d page_size=%d\n",
+		gt, xuid, authGT, authXUID, len(res.Tokens.SpartanToken), pageSize)
 
 	// Provisionner le shared h5 (schéma complet) — identique à h5-sync. Idempotent.
 	sharedPath := titlePkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(halo5.TitleSlug)

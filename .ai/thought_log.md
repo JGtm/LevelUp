@@ -1,3 +1,11 @@
+## [2026-06-23] Backfill H5 multi-joueurs (4 joueurs) + override d'auth `LEVELUP_H5_AUTH_AS` — Complété
+
+Objectif : backfill historique H5 pour JGtm, Chocoboflor, Madina97294, XxDaemonGamerxX. Blocage : 3 des 4 (Chocoboflor `2535469190789936`, Madina97294 `2533274858283686`, XxDaemonGamerxX `2533274833178266`) ont des RT morts `AADSTS70000` (vieille app Azure, jamais re-capturer, cf. [[feedback_token_model_rt_never_recapture]]) → `cmd/h5-backfill` plantait au refresh du token de la cible.
+
+Finding décisif (client.go) : le fetch H5 = `GET /h5/players/{gamertag}/matches`, header `X-343-Authorization-Spartan` SEUL, **PAS de 343-clearance ni xuid dans l'auth**. Donc l'historique de N'IMPORTE quel gamertag est servi avec N'IMPORTE quel SpartanToken v4 valide. → ajout `LEVELUP_H5_AUTH_AS=<Gamertag>` dans `cmd/h5-backfill/main.go` : découple le compte d'AUTH (token emprunté) de la CIBLE (gamertag/xuid passés au `Viewer` + owner des batches). Additif, rétro-compatible (défaut = la cible elle-même). Le `WithHaloAuth` porte le xuid du token owner ; `BuildBackfillDeps` reçoit la cible. Validé empiriquement (Chocoboflor via token JGtm renvoie bien les matchs de Chocoboflor).
+
+Résultats (run séquentiel, lock RW unique, ~1h50, auth empruntée à JGtm) : JGtm +0 (déjà complet, 1970 Arena connus), Chocoboflor +869 (jusqu'à févr. 2016), Madina97294 +172, XxDaemonGamerxX +21 (jusqu'à nov. 2015). Total +1062 matchs. Shared H5 `match_registry` 1970 -> 3032, `participants` 13241 -> 19124. `persist_errors=0` partout, skip-known dédupe correctement les matchs communs, Warzone exclu par design. Conclusion : backfill multi-joueurs débloqué sans re-capture de tokens ; outil ops réutilisable.
+
 ## [2026-06-23] Weapon taxonomy — PLAN registre BDD (data vérifiée halopedia/wiki) + nouvel handoff — Complété (plan seul, build différé)
 
 Suite des 4 surfaces H5. Le user a redéfini le « weapon canonical » : pas un TOML mémoire à côté, mais un **registre
