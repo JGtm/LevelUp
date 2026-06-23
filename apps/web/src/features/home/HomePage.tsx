@@ -145,6 +145,28 @@ export function HomePage() {
   const highlights = data.highlights ?? []
   const recentMatches = data.recent_matches ?? []
   const favoriteMatches = data.favorite_matches ?? []
+
+  // AXE E — première synchronisation : un titre fraîchement activé n'a pas encore de
+  // matchs synchronisés. Plutôt qu'un accueil vide/cassé, on montre un écran « sync en
+  // cours » qui rassure le joueur (sync en arrière-plan, on notifiera quand c'est prêt,
+  // continue sur Halo Infinite en attendant). Signal AUTORITATIF = total_matches du
+  // hero (≠ recent_matches qui est une fenêtre ; l'accueil agrège aussi des sources
+  // indépendantes — média, identité live — non liées au sync des matchs).
+  if ((hero.kpis?.total_matches ?? 0) <= 0) {
+    return (
+      <div className="flex min-h-[55vh] items-center justify-center px-6 py-10">
+        <div className="mx-auto w-full max-w-lg">
+          <EmptyStateCard
+            title={t('home.first_sync.title')}
+            description={t('home.first_sync.description')}
+            actionLabel={t('home.first_sync.action')}
+            onAction={() => refetch()}
+          />
+        </div>
+      </div>
+    )
+  }
+
   const spartanIdentity = data.spartan_identity ?? null
   const highestCSR = spartanIdentity?.highest_csr ?? null
   const highestLUSR = spartanIdentity?.highest_lusr ?? null

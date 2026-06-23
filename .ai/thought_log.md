@@ -1,3 +1,14 @@
+## [2026-06-23] AXE E — UX première synchronisation (front) — Complété (notif push = suite MT-19)
+
+Intent user : « si le user a pas de données, lui indiquer que les données vont charger, l'inviter à retourner sur Halo Infinite, le notifier quand le sync est fini ». Livré la part FRONT (DB-indépendante, NON bloquée par MT-19 ; la notif push reste entanglée MT-19).
+
+- **Détection FIABLE** : signal autoritatif `data.hero.kpis.total_matches <= 0` (≠ `recent_matches.length` qui est une fenêtre, et l'accueil agrège des sources indépendantes — média via RecentMediaRail, identité live — non liées au sync). Découvert via les tests HomePage qui rendent un accueil avec `recent_matches:[]` mais d'autres contenus.
+- **Écran « sync en cours »** (`HomePage.tsx`, early-return) : EmptyStateCard rassurant (sync en arrière-plan, mise à jour auto dès que prêt, continue sur Halo Infinite en attendant) + bouton Actualiser. i18n `home.first_sync.*` (manifest TOML home.toml + regen).
+- **Auto-transition** : `useHomePage` poll `refetchInterval` 30 s tant que `total_matches<=0`, s'arrête dès qu'un match arrive → l'écran bascule seul vers l'accueil quand la 1re synchro finit (pas de notif push nécessaire pour l'expérience on-page). Zéro poll pour un joueur établi.
+- **Vérifs** : `npm run typecheck` + `eslint` verts ; 34 tests home (5 fichiers) verts (le signal total_matches est test-safe : mock=120 → pas de first-sync).
+
+**Reste (suite)** : (1) notif PUSH « titre prêt » quand le user est ailleurs = MT-19 (post-sync HInf-couplé) ; (2) robustesse backend : confirmer que `/pages/home` renvoie gracieusement total_matches=0 (≠ 500) pour un joueur fraîchement provisionné sans données — à vérifier serveur up + joueur vide.
+
 ## [2026-06-23] B finition — Totaux à vie des commendations : FRONT — Complété
 
 Page front `/players/$playerSlug/commendations` (feature `commendations/`) qui consomme l'endpoint totaux. Pattern feature-local (≠ manifest TOML des citations) : i18n.ts FR/EN + queries.ts (`useCommendationTotals`, GET /commendations/totals, staleTime 5min) + CommendationTotalsPage (sections par catégorie, tuile = MedalIcon icône CDN + nom + total ; fallback `#<id8>` sans nom ; état vide gracieux pour titres sans commendations natives). Route gated `career` (h5 l'a ; Infinite → réponse vide → état vide). Query key `commendationTotals`. Re-exports types (NativeCommendation*). routeTree.gen.ts régénéré (Vite plugin). Couleurs = classes design-system sémantiques (text-muted-foreground/bg-card/border-border), zéro hex.

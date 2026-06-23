@@ -12,6 +12,12 @@ export function useHomePage(playerSlug: string) {
     queryFn: () => api.get<HomePageResponse>(`/players/${playerSlug}/pages/home`),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
+    // AXE E first-sync : tant que le joueur n'a AUCUN match synchronisé (première
+    // synchro d'un titre fraîchement activé en cours), on poll toutes les 30 s pour
+    // basculer automatiquement vers l'accueil dès que les données arrivent. S'arrête
+    // (false) dès qu'au moins un match est présent → aucun poll pour un joueur établi.
+    refetchInterval: (query) =>
+      (query.state.data?.hero.kpis.total_matches ?? 0) <= 0 ? 30_000 : false,
   })
 }
 

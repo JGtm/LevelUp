@@ -27,6 +27,20 @@ en = "Empty home"
 fr = "Aucune donnée d'accueil n'a été renvoyée pour ce joueur. Vérifie le bootstrap ou les données locales avant de continuer."
 en = "No home data returned for this player. Check bootstrap or local data before continuing."
 
+# AXE E — première synchronisation : un titre fraîchement activé n'a pas encore de
+# matchs synchronisés. Plutôt qu'un accueil vide, on rassure le joueur (sync en cours).
+[home.first_sync.title]
+fr = "Synchronisation en cours"
+en = "Sync in progress"
+
+[home.first_sync.description]
+fr = "Tes données sont en cours de récupération. La première synchronisation peut prendre quelques minutes. Cette page se mettra à jour automatiquement dès que c'est prêt — en attendant, tu peux continuer à jouer sur Halo Infinite."
+en = "Your data is being synced. The first sync can take a few minutes. This page will update automatically as soon as it's ready — in the meantime, you can keep playing Halo Infinite."
+
+[home.first_sync.action]
+fr = "Actualiser"
+en = "Refresh"
+
 [home.errors.retry]
 fr = "Réessayer"
 en = "Retry"
