@@ -1,3 +1,25 @@
+## [2026-06-23] H5 — Parité d'enrichissement PAR JOUEUR (sessions/perf/engagement/friends/dominance/LUSR) — Complété (4 joueurs)
+
+Constat user : le backfill H5 ne remplit que le shared → aucune player DB → aucun enrichissement local (sessions, performance, is_with_friends, engagement, LUSR). Cause : le runner live H5 est shared-only ; le post-sync Infinite (runScoringSteps) n'est jamais appelé pour H5. MAIS les fonctions de calcul sont DÉJÀ title-agnostic (signature `(playerDB, sharedDB, xuid)`, lecture shared) — seul le call-site était Infinite-only.
+
+Worktree dédié `levelup-h5-enrich` (branche `feat/h5-enrichment-parity` depuis `integration/h5-x-livefetch`) pour ne pas perturber le WIP weapon-taxonomy.
+
+Livré :
+- `internal/sync/enrichment_backfill.go` : `BackfillEnrichmentFromShared(ctx, playerDB, sharedDB, xuid, friends)` — reproduit la séquence post-sync HORS LUSR, best-effort, avec `ensurePlayerEnrichmentRows` EN PREMIER (sinon UPDATE no-op sur player DB vierge — incident 2026-05-27). Ordre : baseline → had_bot → sessions → performance(force) → engagement(force) → coefs → assists → dominance → is_with_friends → aggregates.
+- `cmd/h5-enrich/main.go` : provisionne la player DB H5 (migrations TargetPlayer = fallback HINF) + câble le classifier chain (requis par performance via GetPerformanceChain→GetLUSRChain) + appelle l'orchestrateur. MkdirAll du dossier player (sql.Open ne crée pas l'arbo). Résolution xuid robuste (halo_5 puis global — seul JGtm déclaré sous halo_5).
+- Fix data `end_time` : le mapper H5 (`ingest/registry.go`) ne posait jamais `end_time` (NULL pour les 3032 matchs) → `loadMatchesForEngagement` (WHERE end_time IS NOT NULL) excluait tout → engagement=0, et probablement corrélation média cassée. Fix SOURCE (end_time = start + duration) + dérivation des rows existantes (diag_exec UPDATE offline, 3031 rows).
+- LUSR v2 (`cmd/h5-lusr-backfill`, déjà existant) : même fix résolution xuid. Lancé pour les 4.
+
+Résultats (errors=0 partout) : JGtm 1970 rows / perf 1909 / sessions 1970 / engagement 1800 / friends 1399 / LUSR μ23.0 (1111 matchs) ; Chocoboflor 1855 / 1818 / 1855 / 1687 / 977 / μ24.2 ; Madina97294 1456 / 1424 / 1456 / 1370 / 1265 / μ24.7 ; XxDaemonGamerxX 309 / 287 / 309 / 265 / 285 / μ21.2. σ LUSR=0.7 (convergé), valeurs différenciées. had_bot=0/assists=0 dégradations attendues (pas de bots H5, modèle assists niche).
+
+Findings : (1) `dominance_flag` utilise `MedalSteaktacularID` Infinite hardcodé → DOMINATION/HUMILIATION ne déclenchent pas pour H5 (comeback-via-events OK) ; généralisation par titre = polish futur. (2) Surfaces H5 (home/synthèse/sessions/timeseries/engagement) servent DÉJÀ la donnée enrichie : caps coarse `title.toml` ouvertes + pas de gate fine sur les chemins service (le serving passe par le canonical, pas l'adapter.Load* qui reste stub) → caps fines `analytics.timeseries`/`engagement.score` laissées `not_exposed` (refléteraient à tort l'adapter).
+
+DIFFÉRÉ (chantiers cohérents, non bloquants) :
+- Classification ranked + ingestion CSR : `match_csrs` vide, `is_ranked=FALSE` partout, `playlist_name` non résolu. Source autoritative = `GET haloapi.com/metadata/h5/metadata/playlists` (champ `isRanked` par UUID, clé `LEVELUP_HALOAPI_KEY`). Mapping partiel haute-confiance trouvé : ranked = 892189e9 (Slayer), c98949ae (Team Arena), 2323b76a (SWAT) ; social = f0c9ef9a (Super Fiesta), 0bcf2be1 (BTB) ; 6 UUID non identifiés. NB : exclure le ranked du LUSR n'a de sens que SI on ingère le CSR en parallèle (sinon les matchs ranked perdent tout rating) → faire les deux ensemble. Le LUSR-sur-tout actuel = meilleure couverture en attendant.
+- Hook live `PostScore` (runner H5 wire.go/runner.go) pour auto-enrichir les nouveaux matchs (Phase 2) — le backfill couvre l'existant.
+
+Vérif : go build ./... + go vet OK ; go test ./internal/sync/ + ./internal/games/halo_5/... verts (test ingest EndTime mis à jour). Re-runs idempotents (baseline=0).
+
 ## [2026-06-23] H5 — vérif WeaponStats/WeaponWithMostKills + terminologie « Compétences Spartan » — Complété
 
 Question user : la précision PAR ARME H5 est-elle vraiment impossible ? Re-vérif empirique sur dump carnage réel (`%TEMP%/h5_carnage.json`, 8 joueurs, match JGtm) via jq, ZÉRO token (dump du jour) :

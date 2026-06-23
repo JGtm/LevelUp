@@ -39,17 +39,24 @@ func main() {
 	if err != nil {
 		fatal("config.Load: %v", err)
 	}
-	players, err := cfg.LoadPlayers(halo5.TitleSlug)
-	if err != nil {
-		// LoadPlayers par titre peut être vide pour h5 (couple non déclaré) ; on
-		// retombe sur le xuid Infinite du même gamertag.
-		players, _ = cfg.LoadPlayers("")
-	}
-	var xuid string
-	for i := range players {
-		if players[i].Gamertag == gt {
-			xuid = players[i].XUID
+	// Résolution xuid robuste : le couple (halo_5, joueur) n'est souvent PAS déclaré
+	// (seul JGtm l'est) → chercher la liste du titre, puis la liste globale (les 4
+	// joueurs y sont sous halo_infinite, même xuid Xbox).
+	findXUID := func(slug string) string {
+		ps, e := cfg.LoadPlayers(slug)
+		if e != nil {
+			return ""
 		}
+		for i := range ps {
+			if ps[i].Gamertag == gt {
+				return ps[i].XUID
+			}
+		}
+		return ""
+	}
+	xuid := findXUID(halo5.TitleSlug)
+	if xuid == "" {
+		xuid = findXUID("")
 	}
 	if xuid == "" {
 		fatal("xuid introuvable pour %q dans db_profiles", gt)

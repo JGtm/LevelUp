@@ -1,6 +1,8 @@
 package ingest
 
 import (
+	"time"
+
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
@@ -37,6 +39,14 @@ func MatchRegistryRowFromSummary(s canonical.MatchSummary, firstSyncBy string) d
 	}
 	if s.PairMode != nil {
 		row.ModeCategory = s.PairMode.DefaultLabel
+	}
+	// end_time = start + durée. L'API Halo 5 ne fournit pas d'horodatage de fin
+	// explicite, mais la durée oui → end_time dérivable (le persister écrit aussi
+	// end_time_utc). Sans lui, les consommateurs qui bornent [start, end]
+	// (engagement loadMatchesForEngagement, corrélation média) excluent ces matchs.
+	if s.DurationSeconds != nil && *s.DurationSeconds > 0 {
+		end := s.StartedAtUTC.Add(time.Duration(*s.DurationSeconds) * time.Second)
+		row.EndTime = &end
 	}
 	return row
 }

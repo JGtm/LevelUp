@@ -42,8 +42,14 @@ func TestMatchRegistryRowFromSummary(t *testing.T) {
 	if row.ModeCategory != "Slayer" || row.FirstSyncBy != "Madina97294" {
 		t.Errorf("mode/first_sync_by: cat=%q by=%q", row.ModeCategory, row.FirstSyncBy)
 	}
+	// end_time dérivé de start + durée (540s → 12:09:00) : l'API h5 ne fournit pas
+	// d'horodatage de fin, mais la durée oui → end_time calculé (cf. registry.go).
+	wantEnd := start.Add(540 * time.Second)
+	if row.EndTime == nil || !row.EndTime.Equal(wantEnd) {
+		t.Errorf("end_time devrait être start+durée (%v): got %v", wantEnd, row.EndTime)
+	}
 	// Champs non fournis → nil (registry tolère).
-	if row.EndTime != nil || row.SeasonID != nil || row.Team0Score != nil {
+	if row.SeasonID != nil || row.Team0Score != nil {
 		t.Errorf("champs absents devraient être nil: %+v", row)
 	}
 }
