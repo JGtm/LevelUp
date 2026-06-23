@@ -365,6 +365,10 @@ interface MatchSummaryCardsSectionProps {
   offensiveConversion?: number | null
   /** Résistance (DefensiveResistance) du joueur — ligne is_me du scoreboard. */
   defensiveResistance?: number | null
+  /** Dégâts/frag (DamageDealt / kills) du joueur — sous-valeur du Rendement, comme la hero KPI accueil. */
+  damagePerKill?: number | null
+  /** Dégâts/mort (DamageTaken / morts) du joueur — sous-valeur de la Résistance. */
+  damagePerDeath?: number | null
 }
 
 export function MatchSummaryCardsSection({
@@ -372,10 +376,24 @@ export function MatchSummaryCardsSection({
   expectedStats,
   offensiveConversion,
   defensiveResistance,
+  damagePerKill,
+  damagePerDeath,
 }: MatchSummaryCardsSectionProps) {
   const { expected_kills, expected_deaths, expected_assists, expected_win_prob } = expectedStats
   const locale = useAppShellStore((s) => s.locale)
-  const t = (key: MatchViewManifestKey) => formatMessage(matchViewManifest, key, locale)
+  const t = (key: MatchViewManifestKey, vars?: Record<string, unknown>) =>
+    formatMessage(matchViewManifest, key, locale, vars)
+
+  // Dégâts/frag (Rendement) et dégâts/mort (Résistance), arrondis comme l'Explorer
+  // et la hero KPI de l'accueil. Affichés en sous-valeur sous le pourcentage.
+  const dmgPerKillLabel =
+    damagePerKill != null && Number.isFinite(damagePerKill)
+      ? t('match_view.cards.yield_dmg_per_kill', { n: Math.round(damagePerKill) })
+      : undefined
+  const dmgPerDeathLabel =
+    damagePerDeath != null && Number.isFinite(damagePerDeath)
+      ? t('match_view.cards.yield_dmg_per_death', { n: Math.round(damagePerDeath) })
+      : undefined
 
   const killsDelta =
     kpis.kills != null && expected_kills != null ? kpis.kills - expected_kills : null
@@ -437,11 +455,13 @@ export function MatchSummaryCardsSection({
       <MatchVsStatCard
         label={t('match_view.cards.rendement')}
         primary={formatOffensiveConversion(offensiveConversion)}
+        primaryLabel={dmgPerKillLabel}
         fixedAccent={combatYieldToken(offensiveConversion, null)}
       />
       <MatchVsStatCard
         label={t('match_view.cards.resistance')}
         primary={formatDefensiveResistance(defensiveResistance)}
+        primaryLabel={dmgPerDeathLabel}
         fixedAccent={combatYieldToken(null, defensiveResistance)}
       />
     </div>
