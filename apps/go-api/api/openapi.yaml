@@ -14711,6 +14711,15 @@ components:
           total_power_weapon_kills:
               format: int64
               type: integer
+          total_assassinations:
+              format: int64
+              type: integer
+          total_ground_pound_kills:
+              format: int64
+              type: integer
+          total_shoulder_bash_kills:
+              format: int64
+              type: integer
           total_shots_fired:
               format: int64
               type: integer
@@ -14732,6 +14741,9 @@ components:
           - total_grenade_kills
           - total_melee_kills
           - total_power_weapon_kills
+          - total_assassinations
+          - total_ground_pound_kills
+          - total_shoulder_bash_kills
           - max_killing_spree
           - total_time_played_seconds
           - total_shots_fired

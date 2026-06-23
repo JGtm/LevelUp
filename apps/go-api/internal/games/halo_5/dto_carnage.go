@@ -41,8 +41,17 @@ type H5CarnagePlayer struct {
 	TotalMeleeKills       int         `json:"TotalMeleeKills"`
 	TotalGrenadeKills     int         `json:"TotalGrenadeKills"`
 	TotalPowerWeaponKills int         `json:"TotalPowerWeaponKills"`
-	AvgLifeTimeOfPlayer   string      `json:"AvgLifeTimeOfPlayer"` // ISO8601 "PT..S"
-	TotalTimePlayed       string      `json:"TotalTimePlayed"`     // ISO8601 "PT..S"
+	// Mécaniques de kill NATIVES Halo 5 (agrégats par-joueur du carnage, DISJOINTS de
+	// TotalMeleeKills — l'assassinat/ground pound/shoulder bash ont leur propre compteur).
+	// Absents des autres titres (→ nil côté canonical/domain pour Infinite).
+	// NB : WeaponStats[] (tirs par arme) est documenté au schéma mais 343 le sert VIDE en
+	// pratique (sonde live JGtm 2026-06-23 : n=0) → non modélisé. Le per-kill arme est
+	// dans /events, sans compteur de tirs → pas de précision par-arme calculable.
+	TotalAssassinations    int    `json:"TotalAssassinations"`
+	TotalGroundPoundKills  int    `json:"TotalGroundPoundKills"`
+	TotalShoulderBashKills int    `json:"TotalShoulderBashKills"`
+	AvgLifeTimeOfPlayer    string `json:"AvgLifeTimeOfPlayer"` // ISO8601 "PT..S"
+	TotalTimePlayed        string `json:"TotalTimePlayed"`     // ISO8601 "PT..S"
 	// XpInfo : progression SR (rang XP de compte) du joueur. SEULE source du SR —
 	// ni la liste de matchs ni le service record ne le portent (cf. PLAN_H5_ASSETS).
 	XpInfo *H5XpInfo `json:"XpInfo"`

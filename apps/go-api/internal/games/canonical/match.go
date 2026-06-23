@@ -154,6 +154,12 @@ type MatchParticipant struct {
 	PerfectKills     *int
 	TopWeaponID      *string // effective_weapon_id converti en string
 	IsBot            *bool
+
+	// Mécaniques de kill NATIVES Halo 5 (assassinats + compétences spartiate :
+	// ground pound, shoulder bash). nil hors h5 (capability-gated à l'affichage).
+	AssassinationKills *int
+	GroundPoundKills   *int
+	ShoulderBashKills  *int
 }
 
 // HighlightEvent est un événement horodaté issu de highlight_events.

@@ -96,7 +96,11 @@ func mapCarnageToCanonicalParticipants(carnage *H5CarnageResponse) []canonical.M
 			MeleeKills:       intPtrH5(p.TotalMeleeKills),
 			GrenadeKills:     intPtrH5(p.TotalGrenadeKills),
 			PowerWeaponKills: intPtrH5(p.TotalPowerWeaponKills),
-			AvgLifeSeconds:   iso8601DurationSecondsFloat(p.AvgLifeTimeOfPlayer),
+			// Mécaniques natives h5 (assassinats + compétences spartiate) — pour le breakdown match view.
+			AssassinationKills: intPtrH5(p.TotalAssassinations),
+			GroundPoundKills:   intPtrH5(p.TotalGroundPoundKills),
+			ShoulderBashKills:  intPtrH5(p.TotalShoulderBashKills),
+			AvgLifeSeconds:     iso8601DurationSecondsFloat(p.AvgLifeTimeOfPlayer),
 			// Accuracy / DamageTaken : NON fournis par l'API h5 → nil (jamais fabriqués).
 		})
 	}

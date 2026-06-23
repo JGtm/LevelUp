@@ -2,7 +2,10 @@
 // Source : apps/web/src/lib/i18n/manifests/synthesis.toml
 
 export const synthesisManifest = {
+  "synthesis.charts.kill_type_assassination": { fr: "Assassinat", en: "Assassination" },
+  "synthesis.charts.kill_type_ground_pound": { fr: "Frappe au sol", en: "Ground Pound" },
   "synthesis.charts.kill_type_other": { fr: "Autres", en: "Other" },
+  "synthesis.charts.kill_type_shoulder_bash": { fr: "Charge d'épaule", en: "Shoulder Bash" },
   "synthesis.charts.kill_types_title": { fr: "Répartition des frags", en: "Kill type distribution" },
   "synthesis.charts.top_vs_total_per_week": { fr: "Matchs Top vs Total par semaine", en: "Top vs Total matches per week" },
   "synthesis.charts.weapon_kills_title": { fr: "Frags par arme", en: "Kills by weapon" },
@@ -54,6 +57,7 @@ export const synthesisManifest = {
   "synthesis.section.overview": { fr: "Vue d'ensemble", en: "Overview" },
   "synthesis.section.relations": { fr: "Relations", en: "Relations" },
   "synthesis.section.top_stats": { fr: "Meilleures stats", en: "Best stats" },
+  "synthesis.spartan.section_title": { fr: "Compétences spartiate & assassinats", en: "Spartan abilities & assassinations" },
 } as const
 
 export type SynthesisManifestKey = keyof typeof synthesisManifest

@@ -242,6 +242,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/api/gen/types.gen.go":                                                     "généré par oapi-codegen (DO NOT EDIT) ; 'shared_social' provient d'une description OpenAPI (champ player_records_count), pas d'un accès DB",
 	"internal/api/registry_media.go":                                                    "factory MediaService + acquéreur leased writer",
 	"internal/api/registry_notifications.go":                                            "factory NotificationsService (shared_social path)",
+	"internal/api/notifications_title_ready.go":                                         "notifier MT-19 title_ready : la mention 'shared_social' est un commentaire doc (per-title via PathResolver.SharedSocialDBPath) ; l'émission passe par l'Emitter (path Persister), pas d'ATTACH/INSERT direct",
 	"internal/api/post_sync_deltas.go":                                                  "post-sync engagement/records (path Persister)",
 	"internal/api/post_sync_progression.go":                                             "post-sync prestige/records (path Persister)",
 	"internal/api/post_sync_progression_test.go":                                        "tests post-sync",

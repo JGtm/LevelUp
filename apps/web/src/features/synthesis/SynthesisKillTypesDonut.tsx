@@ -14,6 +14,7 @@ import type { SynthesisDetailedStats } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useCapability } from '@/lib/capabilities/capabilities'
 
 interface Props {
   stats: SynthesisDetailedStats
@@ -28,15 +29,34 @@ export function SynthesisKillTypesDonut({ stats, totalKills }: Props) {
   const title = formatMessage(synthesisManifest, 'synthesis.charts.kill_types_title', appLocale)
   const labelOf = (key: string, fallback: string) => fieldMappings?.fields[key]?.label ?? fallback
 
-  const weaponTyped = stats.total_melee_kills + stats.total_power_weapon_kills + stats.total_grenade_kills
+  const hasKillMechanics = useCapability('native_kill_mechanics')
+
+  // Mécaniques de kill NATIVES Halo 5 (assassinats + compétences spartiate),
+  // DISJOINTES des catégories d'arme. Capability-gated : un titre sans la cap
+  // (ex. Infinite) ne les compte pas → mechanicKills=0, slices non émises.
+  const mechanicKills = hasKillMechanics
+    ? stats.total_assassinations + stats.total_ground_pound_kills + stats.total_shoulder_bash_kills
+    : 0
+  const weaponTyped =
+    stats.total_melee_kills + stats.total_power_weapon_kills + stats.total_grenade_kills + mechanicKills
   const other = Math.max(0, totalKills - weaponTyped)
 
-  // Tokens DISTINCTS (1/6/7/8), color-blind friendly dans toutes les palettes
-  // (cf. donut Explorer) — surtout PAS 2-5 (dégradé séquentiel illisible).
+  // Slices mécaniques h5 (2/3/4) — chaque slice est étiquetée label+valeur, donc la
+  // distinction se fait au texte ; les armes gardent 1/6/7 et « Autres » le 8.
+  const mechanicSlices: DonutSlice[] = hasKillMechanics
+    ? [
+        { label: formatMessage(synthesisManifest, 'synthesis.charts.kill_type_assassination', appLocale), count: stats.total_assassinations, token: 'chart-series-2' as SemanticToken },
+        { label: formatMessage(synthesisManifest, 'synthesis.charts.kill_type_ground_pound', appLocale), count: stats.total_ground_pound_kills, token: 'chart-series-3' as SemanticToken },
+        { label: formatMessage(synthesisManifest, 'synthesis.charts.kill_type_shoulder_bash', appLocale), count: stats.total_shoulder_bash_kills, token: 'chart-series-4' as SemanticToken },
+      ]
+    : []
+
+  // Tokens DISTINCTS color-blind friendly (cf. donut Explorer).
   const slices: DonutSlice[] = [
     { label: labelOf('melee_kills', 'Mêlée'), count: stats.total_melee_kills, token: 'chart-series-1' as SemanticToken },
     { label: labelOf('power_weapon_kills', 'Arme lourde'), count: stats.total_power_weapon_kills, token: 'chart-series-6' as SemanticToken },
     { label: labelOf('grenade_kills', 'Grenade'), count: stats.total_grenade_kills, token: 'chart-series-7' as SemanticToken },
+    ...mechanicSlices,
     { label: formatMessage(synthesisManifest, 'synthesis.charts.kill_type_other', appLocale), count: other, token: 'chart-series-8' as SemanticToken },
   ].filter((s) => s.count > 0)
 

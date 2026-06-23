@@ -23,6 +23,7 @@ export const TITLE_CAPABILITIES = [
   'engagement',
   'lusr',
   'world.leaderboard',
+  'native_kill_mechanics',
 ] as const
 
 export type TitleCapability = (typeof TITLE_CAPABILITIES)[number]

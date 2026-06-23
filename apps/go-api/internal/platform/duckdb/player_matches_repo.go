@@ -300,6 +300,9 @@ SELECT
     p.grenade_kills,
     p.melee_kills,
     p.power_weapon_kills,
+    p.assassination_kills,
+    p.ground_pound_kills,
+    p.shoulder_bash_kills,
     p.shots_fired,
     p.shots_hit,
     COALESCE((
