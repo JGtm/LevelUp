@@ -20,6 +20,7 @@ var canonicalOrder = []string{
 	"add_challenge_metadata",                                // metadata
 	"add_medal_definitions",                                 // metadata
 	"add_weapon_labels",                                     // metadata
+	"add_weapon_registry",                                   // metadata
 	"drop_legacy_translation_tables",                        // metadata
 	"add_waypoint_assets_raw",                               // metadata
 	"add_map_images_registry",                               // metadata

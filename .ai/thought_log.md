@@ -1,3 +1,15 @@
+## [2026-06-23] Weapon taxonomy registre — P2 schéma + seed (build, branche dédiée) — Complété (P2-core)
+
+GO user (« la suite ») après confirmation empirique WeaponStats vide. Branche dédiée `feat/weapon-taxonomy-registry` depuis integration. Migration `add_weapon_registry` (TargetMetadata, named-func `weapon_registry.go`) : 3 tables `weapons` / `weapon_ids` / `weapon_families`.
+
+**Décision d'archi** : PK simple + `INSERT OR IGNORE` (PAS append-only `_latest` comme le plaçait le plan). Raison : référentiel STATIQUE seedé au boot (zéro writer concurrent, zéro UPDATE per-match) → hors périmètre ART #23046 ; calque `weapon_labels.go` / `career_ranks`. Extensibilité = colonne `extra` JSON. Plan §3 + table des phases mis à jour.
+
+Seed = table §6 vérifiée (halopedia/wiki.halo.fr) : 42 familles cross-titre + 59 armes (29 Infinite + 30 H5, class/family/faction-par-origine/damage_type/name_fr/manufacturer) + 36 filmshell ids Infinite (source `weapon_labels.go`, suffixe 42c9679f ; multi-ids/arme pour variantes : Energy Sword ×4, Gravity Hammer ×3, Bandit/Shock Rifle ×2). filmshell uint64 stocké en décimal string (`strconv.FormatUint`, id_value VARCHAR couvre bit63). H5 stock_ids = P2bis (réconciliation depuis metadata officiel/events, pas encore mappés → armes H5 seedées sans id).
+
+Tests `weapon_registry_test.go` (:memory:, build cgo) verts : cardinalités 59/42/36 + 29/30 par titre, intégrité référentielle (family_key ∈ weapon_families, weapon_ids → weapons), enums class/faction, idempotence (double apply), multiplicités filmshell. Build packages migration vert.
+
+Reste : P2bis (stock_ids H5), P3 (package `weaponregistry` resolver ByID/ByKey/Family + tests), P4 (bascule lecteurs weapon → registre, golden parity). UI/modélisation WeaponWithMostKills = différé (narration user).
+
 ## [2026-06-23] H5 — vérif WeaponStats/WeaponWithMostKills + terminologie « Compétences Spartan » — Complété
 
 Question user : la précision PAR ARME H5 est-elle vraiment impossible ? Re-vérif empirique sur dump carnage réel (`%TEMP%/h5_carnage.json`, 8 joueurs, match JGtm) via jq, ZÉRO token (dump du jour) :
