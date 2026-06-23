@@ -90,6 +90,9 @@ func (r *WeaponKillsRepo) LoadWeaponKillsAggregated(
 	}
 
 	r.attachWeaponLabels(ctx, rows)
+	if filters.ResolveRoles {
+		r.attachWeaponRoles(ctx, slug, rows)
+	}
 	return rows, nil
 }
 
@@ -378,6 +381,59 @@ func (r *WeaponKillsRepo) attachWeaponLabels(ctx context.Context, rows []port.We
 	for i := range rows {
 		if label, ok := labels[rows[i].WeaponID]; ok {
 			rows[i].Label = label
+		}
+	}
+}
+
+// attachWeaponRoles renseigne row.Role via le registre d'armes (weapons +
+// weapon_ids dans metadata), pour le titre courant (slug). Best-effort : si les
+// tables du registre sont absentes (metadata non migree) ou la requete echoue,
+// les Role restent vides. id_value du registre = decimal de l'uint64 (cf. seed
+// weapon_registry) → on reinterprete row.WeaponID (int64) en uint64 pour matcher
+// (identique a attachWeaponLabels pour les filmshell bit63=1).
+func (r *WeaponKillsRepo) attachWeaponRoles(ctx context.Context, slug string, rows []port.WeaponKillRow) {
+	if r.pdb == nil || r.pdb.Metadata == nil || slug == "" || len(rows) == 0 {
+		return
+	}
+	ids := make([]int64, 0, len(rows))
+	for _, row := range rows {
+		if row.WeaponID == weaponIDGrenadeSentinel || row.WeaponID == weaponIDMeleeSentinel {
+			continue
+		}
+		ids = append(ids, row.WeaponID)
+	}
+	if len(ids) == 0 {
+		return
+	}
+	unique := uniqueInt64s(ids)
+	parts := make([]string, len(unique))
+	for i, id := range unique {
+		parts[i] = "'" + strconv.FormatUint(uint64(id), 10) + "'" //nolint:gosec
+	}
+	// slug = identifiant de titre interne (pas d'input user) → litteral sur.
+	query := fmt.Sprintf( //nolint:gosec
+		`SELECT wi.id_value, w.role
+		 FROM weapon_ids wi
+		 JOIN weapons w ON wi.title_slug = w.title_slug AND wi.weapon_key = w.weapon_key
+		 WHERE wi.title_slug = '%s' AND wi.id_value IN (%s)`,
+		slug, strings.Join(parts, ","),
+	)
+	dbRows, err := r.pdb.Metadata.Query(ctx, query)
+	if err != nil {
+		return
+	}
+	defer dbRows.Close()
+	roles := map[string]string{}
+	for dbRows.Next() {
+		var idValue, role string
+		if err := dbRows.Scan(&idValue, &role); err == nil && role != "" {
+			roles[idValue] = role
+		}
+	}
+	for i := range rows {
+		key := strconv.FormatUint(uint64(rows[i].WeaponID), 10)
+		if role, ok := roles[key]; ok {
+			rows[i].Role = role
 		}
 	}
 }

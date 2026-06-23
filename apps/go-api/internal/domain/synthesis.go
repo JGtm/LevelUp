@@ -130,6 +130,11 @@ type SynthesisPageV2Response struct {
 	// Bloc frags par arme (top 20, label résolu, weapon ID non-résolu exclus)
 	TopWeaponKills []SynthesisWeaponKillEntry `json:"top_weapon_kills,omitempty"`
 
+	// Bloc frags par RÔLE de combat (registre d'armes : automatic/precision/
+	// sniper/shotgun/sidearm/power/special/melee). Title-agnostic. Omis si le
+	// registre n'a rien résolu (titre sans registre, ou aucune arme mappée).
+	KillsByRole []SynthesisRoleKillEntry `json:"kills_by_role,omitempty"`
+
 	// Bloc profil combat (OC + DR + descripteurs) — nil si < 15 matchs dans le scope.
 	// Ref : PLAN_COMBAT_PROFILE_WIRING.md Phase 1.
 	CombatProfile *CombatProfileBlock `json:"combat_profile,omitempty"`
@@ -138,6 +143,13 @@ type SynthesisPageV2Response struct {
 // SynthesisWeaponKillEntry est une ligne du classement frags par arme.
 type SynthesisWeaponKillEntry struct {
 	Label string `json:"label"`
+	Kills int    `json:"kills"`
+}
+
+// SynthesisRoleKillEntry agrège les frags par rôle de combat d'arme (clé canonique
+// du registre ; le libellé FR/EN est résolu côté front). Trié par kills desc.
+type SynthesisRoleKillEntry struct {
+	Role  string `json:"role"`
 	Kills int    `json:"kills"`
 }
 

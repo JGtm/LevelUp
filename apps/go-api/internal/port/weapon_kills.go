@@ -32,6 +32,12 @@ type WeaponKillFilters struct {
 	// types specifiques highlight_events). Si false, ne renvoie que les kills
 	// from weapon_kills (armes principales).
 	IncludeGrenadeMelee bool
+
+	// ResolveRoles : si true, le repo renseigne WeaponKillRow.Role via le registre
+	// d'armes (passage par weapons/weapon_ids dans metadata). Best-effort (Role
+	// reste vide si le registre est absent). Off par defaut → zero cout pour les
+	// consommateurs qui n'en ont pas besoin (timeseries top weapons, squad).
+	ResolveRoles bool
 }
 
 // ErrWeaponKillFiltersInvalid est retournee par Validate() pour combinaisons
@@ -72,6 +78,10 @@ type WeaponKillRow struct {
 	Kills    int    `json:"kills"`
 	// Label EN ou FR resolu cote service. Vide cote repo.
 	Label string `json:"label,omitempty"`
+	// Role : fonction de combat de l'arme (automatic/precision/sniper/shotgun/
+	// sidearm/power/special/melee/grenade), resolu via le registre d'armes
+	// (weaponregistry) quand WeaponKillFilters.ResolveRoles=true. Vide sinon.
+	Role string `json:"role,omitempty"`
 	// IsGrenadeMelee : true si la valeur vient d'highlight_events (grenade ou
 	// melee), false si elle vient de weapon_kills (arme primaire).
 	IsGrenadeMelee bool `json:"is_grenade_melee,omitempty"`
