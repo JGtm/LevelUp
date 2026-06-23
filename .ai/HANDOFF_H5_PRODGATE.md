@@ -1,7 +1,61 @@
-# HANDOFF — Halo 5 prod-gate (session 2026-06-22)
+# HANDOFF — Halo 5 prod-gate (sessions 2026-06-22 → 06-23)
 
 Reprise de la mise en production de Halo 5. Document de reprise : état, commits,
 findings non-évidents, reste à faire, commandes opérationnelles.
+
+> **Les sections 2/4/5/8 ci-dessous datent du 2026-06-22. La § 0 MISE À JOUR ci-après
+> les SUPERSEDE (état réel au 2026-06-23).**
+
+---
+
+## 0. MISE À JOUR 2026-06-23 — état réel (autoritatif)
+
+**Branche `integration/h5-x-livefetch`. Bilan des 5 axes prod-gate :**
+
+| Axe | État | Détail |
+|-----|------|--------|
+| **A** match.history | ✅ | livré (35a311130) |
+| **B** commendations natives | ✅ | match-detail (Go+front) + **définitions** (table+seed **121/121** nom/icône/catégorie via haloapi, join **vérifié 35/35** sur carnage live) + **totaux à vie** (read source + endpoint `GET /commendations/totals` + front `/players/$slug/commendations`) |
+| **C** career rank SR | ✅ | livré (5c6c95d3d) |
+| **D** media | ✅ config | capability activée + regex `Halo_5_Guardians` **testée sur les vrais fichiers** (88 entrées, 84 mp4) + `media_captures_base_dir` configuré (`…/Videos/Captures`→`/JGtm`). **Reste** : valider la corrélation des 84 captures (gaté backfill). |
+| **E** première synchro | ✅ front | UX « sync en cours » : détection autoritative `hero.kpis.total_matches<=0` + écran rassurant + **auto-poll 30 s** (bascule auto quand la synchro finit) ; backend `/pages/home` renvoie total_matches=0 gracieusement (TestHomeService_GetHomePage_Empty). **Reste** : notif PUSH away-case = suite MT-19. |
+| **F** world leaderboard | ✅ | rien (h5 ne déclare pas `world.leaderboard`) |
+
+**Commits de la session 06-23 (au-dessus de d314422c3/018481d40)** :
+`466a355fa` media capability · `f6adff6c5` commendations match-detail (Go+front) ·
+`6a62cd811` fix harness persist (weapon_kills) · `d67e306e7` thought_log ·
+`f632e99a6` définitions natives (table+fetch+read-join) · `ef2060678` persiste Progress
+absolu · `cd9d28feb` read layer totaux · `31cf08a73` endpoint totaux ·
+`b2fed4019` front totaux · `ba7fbd31d` Axe E front first-sync.
+
+**Findings clés ajoutés** :
+1. **Totaux commendations = dernier `progress` ABSOLU** (carnage) du match le plus récent par
+   commendation, PAS `SUM(count)` (sous-compterait la baseline pré-sync). On stockait
+   seulement le delta `count` → ajout colonne `progress` (ART-safe, INSERT-only) + re-fetch
+   requis (INSERT OR IGNORE ne rétro-remplit pas).
+2. **Définitions natives** : `GET haloapi.com/metadata/h5/metadata/commendations` (**réponse
+   GZIP** — `--compressed` côté curl ; Go décompresse seul). 121 défs, clé `id` = UUID =
+   carnage `ProgressiveCommendationDeltas[].Id`. Seed via `cmd/h5-metadata-fetch` (ajout
+   `seedCommendations`). Read-join : `commendation_definitions` (metadata) joint en lecture.
+3. **Axe E détection** : signal fiable = `hero.kpis.total_matches`, PAS `recent_matches.length`
+   (fenêtre ; l'accueil agrège des sources indépendantes — média via RecentMediaRail, identité
+   live).
+4. **Endpoint title-agnostic SANS slug** : la factory `CommendationTotalsCtx` type-asserte
+   l'adapter à `LoadCommendationTotals` (seul *halo_5.DataAdapter l'implémente) → titres sans
+   commendations natives → réponse vide. Pattern à réutiliser pour toute surface h5-spécifique.
+
+**En cours (background)** : re-backfill **progress-aware** (`/tmp/h5-backfill.exe JGtm 25`,
+log `/tmp/h5_backfill_progress.log`) — fresh DB purgée pour capturer le `progress` absolu (le
+1er backfill était count-only). Au 06-23 09:59 : page 34, atteint **2018-08-03** (couvre les 84
+captures). À la fin : (a) vérifier `LoadCommendationTotals(JGtm)` non vide + `match_commendations.xuid==pdb.XUID`,
+(b) corréler les 84 captures aux matchs (Axe D), (c) go/no-go prod.
+
+**Vérifié 06-23** : full Go test suite `./internal/...` verte ; typecheck + eslint + tests front
+(home 34, handlers, service) verts ; drift OpenAPI + contract routes verts.
+
+**Reste après vérif backfill** : (1) notif push Axe E (MT-19) ; (2) nav front vers
+`/commendations` (gating coarse-vs-fine : pas de capability h5-only propre — route accessible
+directe en attendant) ; (3) décision land `integration`→`main` (auto-deploy, accord explicite).
 
 ---
 
