@@ -52,6 +52,11 @@ type DamageModelConstants struct {
 	// NoNativeKDA = true → le titre ne fournit pas de KDA per-match via son API
 	// (Halo 5 ; forme native = FDA NET). Défaut false (KDA natif, Infinite).
 	NoNativeKDA bool
+	// NoDamageTaken = true → le titre ne fournit PAS damage_taken (Halo 5). La
+	// résistance défensive (DR = dégâts_subis/(hp×morts)) et tout ce qui en dépend
+	// (profil de combat axe défensif, coaching « fragile », milestones endurance/
+	// excellence) sont neutralisés plutôt qu'affichés faux. Défaut false (Infinite).
+	NoDamageTaken bool
 	// OffensiveConversionP80 = frontière élite (80e percentile) du rendement OC du
 	// titre, repère de normalisation des barres/radars. 0 = non déclaré → défaut
 	// 0.90 (Infinite). h5 = 1.264 (calibré sur sa propre distribution, hp=115).

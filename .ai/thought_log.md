@@ -1,3 +1,18 @@
+## [2026-06-23] Snowball H5 — neutralisation des surfaces dépendantes de damage_taken (résistance) — Complété (3 surfaces)
+
+Le user a vu juste : `damage_taken` nil en H5 contamine en cascade (« effet boule de neige »). Investigation (agent) → carte des consommateurs de DR/résistance. Surfaces ACTIVEMENT FAUSSES corrigées :
+
+**Mécanisme** (calqué sur `ProvidesNativeKDA`) : nouveau flag config `[damage_model] no_damage_taken = true` (H5) + accesseur `games.ProvidesDamageTaken(slug)` (défaut true Infinite). Title-agnostic, ZÉRO `slug==`. Champ `NoDamageTaken` dans `DamageModelConstants` + TOML loader. Test `TestProvidesDamageTaken`.
+
+**Surfaces gatées :**
+1. **Profil de combat** (`analysis/kpi_stats.go` + `service/synthesis_service_builders.go`) : `ClassifyCombatProfile(avgDR=0)` donnait « fragile » pour TOUS les joueurs H5. Gate data-driven `totalDmgTaken<=0` → `StyleDefensive=nil` + `DmgPerDeath=nil` (au lieu de 0). L'axe défensif disparaît proprement.
+2. **Coaching** (`progression/coach/generator.go:421`) : l'alerte `combat_pattern_fragile` (`MedianDR < seuil`) se déclenchait pour 100% des joueurs H5 (MedianDR=0). Garde `MedianDR > 0`. Le signal coach_advisor (`signalFromCombatFragile`) consomme l'alerte → couvert.
+3. **Milestones** (`api/post_sync_progression_queries.go`) : `combat_endurance_matches` / `combat_excellence_matches` (conditionnés `damage_taken>0`) restaient à 0 à vie en H5 (inatteignables). Gate `games.ProvidesDamageTaken(pdb.TitleSlug)` → métriques NON émises pour H5 (milestones masqués). La précision (OC, dégâts infligés) reste.
+
+**Déjà nil-safe** : KPI Home/Explorer `AvgDefensiveResistance` (garde `cy.DefensiveResistance > 0` → nil en H5). Radar Survie match-view = Lot C. Radar synergie escouade = suivi non traité.
+
+**Validation** : go build ./internal/... + tests games/analysis/coach/api/service verts + `TestProvidesDamageTaken` PASS.
+
 ## [2026-06-23] Expected K/D H5 — modèle local count∝durée (TrueSkill 2) — Complété + validé sur données réelles
 
 Suite de D1/D2-v1. Le user a refusé la moyenne plate (v1) et insisté : un « expected » post-match (juger le sur/sous-rendement) ne peut pas être une moyenne, et TrueSkill 2 a un modèle officiel. **Il avait raison.**
