@@ -45,8 +45,8 @@ func TestWeaponRegistry_SeedCardinalities(t *testing.T) {
 	if got := queryCount(t, db, "SELECT count(*) FROM weapons"); got != 59 {
 		t.Errorf("weapons = %d, want 59", got)
 	}
-	if got := queryCount(t, db, "SELECT count(*) FROM weapon_families"); got != 42 {
-		t.Errorf("weapon_families = %d, want 42", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapon_families"); got != 43 {
+		t.Errorf("weapon_families = %d, want 43", got)
 	}
 	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids"); got != 36 {
 		t.Errorf("weapon_ids = %d, want 36", got)
@@ -84,6 +84,13 @@ func TestWeaponRegistry_Enums(t *testing.T) {
 	if got := queryCount(t, db, `SELECT count(*) FROM weapons
 		WHERE class NOT IN ('sidearm','shoulder','heavy','melee','grenade')`); got != 0 {
 		t.Errorf("%d armes ont une class hors enum", got)
+	}
+	if got := queryCount(t, db, `SELECT count(*) FROM weapons
+		WHERE role NOT IN ('automatic','precision','sniper','shotgun','sidearm','power','special','melee','grenade')`); got != 0 {
+		t.Errorf("%d armes ont un role hors enum", got)
+	}
+	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE role IS NULL OR role = ''"); got != 0 {
+		t.Errorf("%d armes sans role", got)
 	}
 }
 

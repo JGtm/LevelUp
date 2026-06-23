@@ -25,8 +25,9 @@
    - `weapon_families` : référentiel des familles cross-titre (clé → libellés FR/EN).
 2. **Resolver** = passage principal : `(titre, id_kind, id_value) → weapon_key → {nom, FR, class, family, faction, damage_type, extra}`.
    Remplace progressivement `weapon_labels` + `weapon_data.go` (migration anti-corruption, §8).
-3. **4 dimensions** par arme : `class` (poing/épaule/lourde + melee/grenade), `family` (rôle cross-titre), `faction`
-   (humaine/covenante/forerunner/parias), `damage_type` (ballistic/plasma/hardlight/spike/shock/explosive…). Extensible.
+3. **5 dimensions** par arme : `class` (poing/épaule/lourde + melee/grenade = MANIPULATION), `role` (automatic/precision/
+   sniper/shotgun/sidearm/power/special/melee/grenade = FONCTION DE COMBAT), `family` (identité précise cross-titre),
+   `faction` (humaine/covenante/forerunner/parias), `damage_type` (ballistic/plasma/hardlight/spike/shock/explosive…). Extensible.
 4. **Append-only + `extra` JSON** → extensible sans migration (TTK, cadence, portée… le jour venu).
 5. **Table de classification VÉRIFIÉE** §6 (halopedia + wiki.halo.fr, sourcée par arme).
 6. **UI = différée** (narration TBD). On livre la fondation (P1→P5), pas le surfaçage.
@@ -47,12 +48,13 @@ Le TOML reste comme **source de seed** (versionné Git, revue produit), mais la 
 
 ---
 
-## 2. Les 4 dimensions
+## 2. Les 5 dimensions
 
 | Dimension | Valeurs | Note |
 |---|---|---|
-| `class` | sidearm (poing), shoulder (épaule), heavy (lourde), melee, grenade | la plus faible (« lourde » ≈ power-weapon déjà affiché), mais demandée. |
-| `family` | clé de rôle cross-titre (`battle_rifle`, `assault_rifle`, `dmr`, `sniper_rifle`, `rocket_launcher`…) | **valeur multi-titre** : compare BR75 (HINF) ↔ Battle Rifle (H5). |
+| `class` | sidearm (poing), shoulder (épaule), heavy (lourde), melee, grenade | **MANIPULATION** (prise en main). Demandée par le user (poing/épaule/lourde). |
+| `role` | automatic, precision, sniper, shotgun, sidearm, power, special, melee, grenade | **FONCTION DE COMBAT** (« pression vs précision »). Ajoutée 2026-06-23 : donne le regroupement large même quand la `family` est unique. class & role coïncident pour poing/mêlée/grenade, **divergent** pour épaule (precision vs automatic) et lourde (sniper/shotgun/power/special). |
+| `family` | identité précise cross-titre (`battle_rifle`, `assault_rifle`, `dmr`, `sniper_rifle`, `rocket_launcher`…) | **valeur multi-titre** : compare la MÊME arme entre jeux (BR75 HINF ↔ Battle Rifle H5). Souvent unique (forerunner H5) → c'est `role` qui regroupe. |
 | `faction` | human, covenant, forerunner, banished | **par ORIGINE de conception**, pas le porteur (Épée = covenant même si portée par les Parias). Parias absents de H5. |
 | `damage_type` | ballistic/kinetic, plasma, hardlight, spike, shock/voltaic, explosive, incendiary, particle_beam, gravitic… | rempli **quand documenté** ; extensible. |
 
@@ -74,7 +76,8 @@ CREATE TABLE weapons (
   title_slug   VARCHAR NOT NULL,   -- titre de CETTE entrée
   name         VARCHAR NOT NULL,   -- nom propre du jeu (EN), ex. "BR75"
   name_fr      VARCHAR,            -- traduction FR officielle (wiki.halo.fr)
-  class        VARCHAR,            -- sidearm|shoulder|heavy|melee|grenade
+  class        VARCHAR,            -- sidearm|shoulder|heavy|melee|grenade (MANIPULATION)
+  role         VARCHAR,            -- automatic|precision|sniper|shotgun|sidearm|power|special|melee|grenade (FONCTION DE COMBAT)
   family_key   VARCHAR,            -- FK weapon_families (cross-titre) ; NULL = non regroupé
   faction      VARCHAR,            -- human|covenant|forerunner|banished
   damage_type  VARCHAR,            -- ballistic|plasma|hardlight|spike|shock|explosive|... (nullable)
@@ -181,7 +184,7 @@ type Registry interface {
 | Disruptor | sidearm | disruptor | banished | shock | Disrupteur | Sicatt Workshop |
 | Mangler | sidearm | mangler | banished | spike | Déchiqueteur | Ukala Workshop |
 | Pulse Carbine | shoulder | pulse_carbine | covenant | plasma | Carabine à impulsion | Lodam Armory |
-| Stalker Rifle | shoulder | dmr | covenant | plasma | Fusil traqueur | Merchants of Qikost |
+| Stalker Rifle | shoulder | stalker_rifle | covenant | plasma | Fusil traqueur | Merchants of Qikost |
 | Vestige Carbine | shoulder | carbine | covenant | plasma | Vestige Carbine | (restaurateurs Sangheili) |
 | Frag Grenade | grenade | frag_grenade | human | explosive | Grenade à fragmentation | Misriah Armory |
 | Plasma Grenade | grenade | plasma_grenade | covenant | plasma | Grenade à plasma | — |
