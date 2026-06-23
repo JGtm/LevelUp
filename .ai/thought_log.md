@@ -1,3 +1,14 @@
+## [2026-06-23] H5 — ranked classification + CSR (infra livrée, données CSR vides côté 343) — Complété (suite "fais le max")
+
+Objectif "ranked + CSR". Livré :
+- `cmd/h5-metadata-fetch` : ajout `seedPlaylists` → fetch `haloapi.com/metadata/h5/metadata/playlists` (champ `isRanked` par UUID) → table `playlists(id,name,is_ranked)` dans metadata.duckdb. Résultat : 73 playlists, 22 ranked.
+- Classification `is_ranked` du shared (offline, diag_exec ATTACH meta) : `UPDATE match_registry SET is_ranked = playlists.is_ranked par playlist_id`. Résultat : **1601 ranked / 1431 unranked** (sur 3032). Donnée correcte (avant : FALSE partout).
+- `cmd/h5-csr-backfill` (nouvel outil, auth-borrow LEVELUP_H5_AUTH_AS) + export `livesync.PersistArenaCSR` : fetch service record arena (cross-compte) → player_csr_snapshots. Lancé pour les 4.
+
+FINDING majeur — **CSR H5 = data-limited** : le service record live renvoie 1 playlist (ex JGtm = 2323b76a/SWAT, ranked) mais TOUTES les valeurs CSR sont 0/vides (current/season/alltime). 343 ne sert plus le CSR pour ces comptes inactifs (saisons ranked terminées). Le carnage n'a pas non plus le CSR par match (dto_carnage.go : team Score/Rank oui, Csr non). → le CSR H5 n'est PAS récupérable ; l'infra (seedPlaylists, classification, outil CSR, hook live PersistCSR) est en place pour le jour où la donnée existerait.
+
+DÉCISION LUSR : LUSR existant PRÉSERVÉ (over-all, ~1111 matchs déjà calculés) — NON re-run en social-only, car exclure le ranked perdrait 53% de couverture SANS CSR pour le remplacer (CSR vide). Le hook live calculera social-only pour les FUTURS matchs (loadShadowMatches filtre is_ranked=FALSE) — légère inconsistance historique assumée (préserver la couverture existante > pureté). Si un jour le CSR H5 redevient dispo : re-run LUSR social-only + ingestion CSR ensemble.
+
 ## [2026-06-23] H5 — hook live PostScore (auto-enrichment au sync) — Complété (suite "fais le max")
 
 Question user : "ces étapes s'appliqueront aussi en post-sync ?" — avant : NON (le runner live H5 faisait Capture→PersistAll(shared)→CSR→notif, sans enrichment). Maintenant : OUI via un hook `PostScore`.

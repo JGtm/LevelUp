@@ -24,6 +24,14 @@ import (
 // pertinent pour le CSR par playlist). Miroir de halo_5.h5RecordModeArena (non exporté).
 const h5ArenaRecordType = "arena"
 
+// PersistArenaCSR — point d'entrée EXPORTÉ de persistArenaCSR pour les outils ops
+// (cmd/h5-csr-backfill : backfill des snapshots CSR carrière par playlist pour un
+// joueur, via une source authentifiée — éventuellement empruntée). Même logique que
+// le hook live PersistCSR.
+func PersistArenaCSR(ctx context.Context, src halo5.CaptureSource, playerDBPath, gamertag string) (int, error) {
+	return persistArenaCSR(ctx, src, playerDBPath, gamertag)
+}
+
 // persistArenaCSR fetch le service record arena du joueur via src (source live déjà
 // authentifiée), mappe les playlists en CSR canoniques et les persiste dans la
 // player DB h5. Retourne le nombre de lignes écrites. Best-effort à l'appelant
