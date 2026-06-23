@@ -57,7 +57,7 @@ export const synthesisManifest = {
   "synthesis.section.overview": { fr: "Vue d'ensemble", en: "Overview" },
   "synthesis.section.relations": { fr: "Relations", en: "Relations" },
   "synthesis.section.top_stats": { fr: "Meilleures stats", en: "Best stats" },
-  "synthesis.spartan.section_title": { fr: "Compétences spartiate & assassinats", en: "Spartan abilities & assassinations" },
+  "synthesis.spartan.section_title": { fr: "Compétences Spartan & assassinats", en: "Spartan abilities & assassinations" },
 } as const
 
 export type SynthesisManifestKey = keyof typeof synthesisManifest
