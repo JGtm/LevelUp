@@ -7,11 +7,16 @@ package halo_5
 // champs consommés par l'ingestion participants (scoreboard par-joueur + équipes).
 // Identité GAMERTAG-keyée (Player.Xuid toujours null).
 
-// H5CarnageResponse — racine du carnage report (scoreboard étendu).
+// H5CarnageResponse — racine du carnage report (scoreboard étendu). Pour les matchs
+// ARENA classés, c'est le PGCR (ArenaPostGameReport) : il porte SeasonId + le CSR
+// pré/post par joueur (PlayerStats[].PreviousCsr/CurrentCsr) — confirmé sur réponse
+// brute. nil/0 en social (NonSeasonal).
 type H5CarnageResponse struct {
 	PlayerStats []H5CarnagePlayer `json:"PlayerStats"`
 	TeamStats   []H5CarnageTeam   `json:"TeamStats"`
 	IsTeamGame  bool              `json:"IsTeamGame"`
+	// SeasonId : GUID de la saison CSR du match (matchs Arena classés). "" en social.
+	SeasonId string `json:"SeasonId"`
 }
 
 // H5CarnageTeam — score + rang d'équipe (Rank 1 = équipe gagnante).
@@ -69,6 +74,14 @@ type H5CarnagePlayer struct {
 	// MetaCommendationDeltas : même forme (commendations « méta »/agrégées). Vide dans
 	// la sonde — ignoré en Phase 1 (cf. AXE B), mappé sur le même chemin si peuplé.
 	MetaCommendationDeltas []H5CommendationDelta `json:"MetaCommendationDeltas"`
+	// CSR pré/post match (matchs ARENA classés — PGCR). nil en social. Même forme que
+	// le service record (H5Csr : Tier/DesignationId/Csr/PercentToNextTier). CurrentCsr
+	// = le CSR APRÈS ce match (la valeur à afficher / persister par match).
+	PreviousCsr *H5Csr `json:"PreviousCsr"`
+	CurrentCsr  *H5Csr `json:"CurrentCsr"`
+	// MeasurementMatchesLeft : > 0 → joueur en placement sur ce match (CSR pas encore
+	// stable). Frère de CurrentCsr (PAS un sous-champ), comme le service record.
+	MeasurementMatchesLeft int `json:"MeasurementMatchesLeft"`
 }
 
 // H5CommendationDelta — progression d'UNE commendation native Halo 5 sur un match.
