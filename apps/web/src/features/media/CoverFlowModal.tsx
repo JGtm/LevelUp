@@ -417,7 +417,9 @@ export function CoverFlowModal({
 
   const canPrev = committedIdx > 0
   const canNext = committedIdx < items.length - 1
-  const canAdvanceFurther = !canNext || hasNextPage
+  // "Peut enchaîner" = il existe un item suivant local OU une page suivante à
+  // charger. Symétrique du bouton next (disabled={!canNext && !hasNextPage}).
+  const canAdvanceFurther = canNext || hasNextPage
   const currentItem = items[committedIdx] ?? null
   const isCurrentClip = currentItem?.kind === 'clip'
 
@@ -508,11 +510,16 @@ export function CoverFlowModal({
     }
   }
 
-  const handleVideoEnded = useCallback(() => {
+  // Pas de useCallback : `navigate` est recréé à chaque render et capture
+  // `committedIdx`. Mémoïser ce handler figerait un `navigate` périmé (deps
+  // stables une fois l'enchaînement lancé) → re-navigation vers l'item courant
+  // dès le 2e clip. Le handler n'est passé qu'au prop onEnded (aucun deps array
+  // ne le référence, ClipPlayer n'est pas mémoïsé → recréation sans coût).
+  const handleVideoEnded = () => {
     if (autoChain && canAdvanceFurther && !pendingPageAdvance) {
       navigate('next')
     }
-  }, [autoChain, canAdvanceFurther, pendingPageAdvance])
+  }
 
   if (!currentItem) {
     return null

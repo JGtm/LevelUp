@@ -158,18 +158,24 @@ func planAudioRenditions(src []AVStreamDetail) ([]audioRendition, string) {
 		}}, ""
 	}
 
+	// CODEC UNIQUE sur tout le groupe audio multipiste : `game`/`voices` ciblent
+	// AAC comme `full` (qui passe par amix). Un groupe mono-codec évite le
+	// changement de codec MSE (SourceBuffer.changeType) à la bascule de piste —
+	// non fiable sur Firefox (l'audio reste bloqué sur la rendition par défaut) et
+	// absent du HLS natif Safari. Cf. fix lecteur lightbox juin 2026.
 	game := audioRendition{
 		Slug: "game", Display: "game", MapSpec: "0:a:0",
-		Action: planAudio(src[0].CodecName), Language: sanitizeLanguage(src[0].Language),
+		Action: aacUniformAction(src[0].CodecName), Language: sanitizeLanguage(src[0].Language),
 	}
 
 	var fcParts []string
-	// voices = pistes 1..N. Une seule piste voix → map direct (copy si possible) ;
-	// plusieurs → amix (donc réencode AAC, un flux filtré ne peut pas être copié).
+	// voices = pistes 1..N. Une seule piste voix → map direct (copy si déjà AAC,
+	// sinon réencode AAC) ; plusieurs → amix (réencode AAC, un flux filtré ne peut
+	// pas être copié).
 	voices := audioRendition{Slug: "voices", Display: "voices", Action: actionReencode}
 	if len(src) == 2 {
 		voices.MapSpec = "0:a:1"
-		voices.Action = planAudio(src[1].CodecName)
+		voices.Action = aacUniformAction(src[1].CodecName)
 	} else {
 		fcParts = append(fcParts, amixFilter(rangeIdx(1, len(src)), "voices"))
 		voices.MapSpec = "[voices]"
@@ -226,6 +232,19 @@ func planAudio(codec string) streamAction {
 	default:
 		return actionReencode
 	}
+}
+
+// aacUniformAction décide copy/réencode pour une rendition d'un groupe audio
+// MULTIPISTE, où toutes les renditions doivent partager le même codec (AAC) :
+// copy uniquement si la source est déjà AAC, sinon réencode AAC. Garantit un
+// groupe audio mono-codec → la bascule de piste fonctionne sur Firefox/Safari
+// (pas de SourceBuffer.changeType). À distinguer de planAudio (mono-piste, où
+// la copy Opus/MP3 est sans conséquence puisqu'il n'y a pas de switch).
+func aacUniformAction(codec string) streamAction {
+	if strings.EqualFold(codec, "aac") {
+		return actionCopy
+	}
+	return actionReencode
 }
 
 // audioDisplay calcule le libellé lisible d'une piste : title, sinon langue en
