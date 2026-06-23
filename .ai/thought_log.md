@@ -1,3 +1,13 @@
+## [2026-06-23] Synthesis — donut « Frags par type d'arme » (1er consommateur UI du registre) — Complété
+
+PREMIER branchement UI du registre d'armes (la fondation P2/P3 servait enfin). Donut « frags par rôle de combat » sur Synthesis (sous « Frags par arme »), title-agnostic (Infinite + Halo 5, weapon_kills déjà existants pour les 2). Flux : weapon_kills (déjà chargés pour le donut par-arme) + résolution du rôle via le registre.
+
+Backend : `port.WeaponKillRow.Role` + `WeaponKillFilters.ResolveRoles` (off par défaut → ZÉRO coût pour timeseries/squad). `weapon_kills_repo.attachWeaponRoles` (best-effort : JOIN weapons/weapon_ids dans metadata par title_slug + id_value, réinterprétation int64→uint64 comme attachWeaponLabels ; silencieux si registre absent → Role vide). Synthesis `loadTopWeaponKills` demande ResolveRoles=true et renvoie aussi `buildKillsByRole` (somme par rôle, tri desc, exclut rôle vide + sentinels grenade/melee). Réponse : `domain.SynthesisRoleKillEntry` + `KillsByRole`.
+
+Front : `SynthesisRoleKillsDonut` (calque `SynthesisKillTypesDonut` + donut SVG `KillTypesDonut`, tokens color-blind par rôle), placé sous le bloc armes. Type hand-maintained `SynthesisRoleKillEntry` + `kills_by_role`. i18n synthesis.toml : `role_kills_title` + 9 labels rôle FR/EN (manifest régénéré, 66 clés).
+
+Tests : `buildKillsByRole` (agrégation/tri/exclusions) + synthesis verts ; typecheck vert. Best-effort partout (titre sans registre → champ omis, donut rend null). Reste : tip coach data-driven (moteur `internal/progression/coach_advisor`, plus gros) + gros chantier P4 (router TOUTE la résolution d'arme par le registre).
+
 ## [2026-06-23] Weapon taxonomy registre — P2bis stock_ids H5 — Complété
 
 Décision user : on stocke les stock_ids H5 maintenant (« on a les infos, ça coûte pas cher »). Source = catalogue officiel déjà seedé dans `weapon_labels` (metadata H5, `data/titles/halo_5/warehouse/metadata.duckdb`, via cmd/h5-metadata-fetch) — lu offline (script jetable `//go:build ignore` calqué sur inspect_bp, read_only, supprimé après). Catalogue = 68 entrées (armes + véhicules + tourelles + grenades).

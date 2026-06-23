@@ -15,6 +15,7 @@ import { ProportionalBar } from '@/components/ui/proportional-bar'
 import { SynthesisKillTypesDonut } from './SynthesisKillTypesDonut'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { SynthesisWeaponKillsChart } from './SynthesisWeaponKillsChart'
+import { SynthesisRoleKillsDonut } from './SynthesisRoleKillsDonut'
 import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
 import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
 import { SynthesisHeatmapChart } from './SynthesisHeatmapChart'
@@ -38,6 +39,7 @@ import type {
   SynthesisDetailedStats,
   SynthesisOverview,
   SynthesisQueryRequest,
+  SynthesisRoleKillEntry,
   SynthesisWeaponKillEntry,
 } from '@/lib/api/types'
 
@@ -160,10 +162,11 @@ interface SynthesisOverviewSectionProps {
   overview: SynthesisOverview
   detailedStats?: SynthesisDetailedStats
   topWeaponKills?: SynthesisWeaponKillEntry[]
+  killsByRole?: SynthesisRoleKillEntry[]
   combatProfile?: CombatProfileBlock | null
   playerSlug: string
 }
-function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, combatProfile, playerSlug }: SynthesisOverviewSectionProps) {
+function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, killsByRole, combatProfile, playerSlug }: SynthesisOverviewSectionProps) {
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string): string =>
     fieldMappings?.fields[key]?.label ?? key
@@ -428,6 +431,12 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, com
                 <div className="flex-1 min-w-0 flex flex-col">
                   <SynthesisWeaponKillsChart weapons={topWeaponKills ?? []} fillHeight />
                 </div>
+              </div>
+
+              {/* Frags par rôle de combat (registre d'armes) — premier consommateur
+                  UI du registre, title-agnostic (Halo Infinite + Halo 5). */}
+              <div className="mt-4 max-w-[28rem]">
+                <SynthesisRoleKillsDonut roles={killsByRole} />
               </div>
             </div>
 
@@ -706,6 +715,7 @@ export function SynthesisPage() {
           overview={data.overview}
           detailedStats={data.detailed_stats}
           topWeaponKills={data.top_weapon_kills}
+          killsByRole={data.kills_by_role}
           combatProfile={data.combat_profile}
           playerSlug={playerSlug}
         />
