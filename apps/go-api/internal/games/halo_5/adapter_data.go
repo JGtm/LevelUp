@@ -106,6 +106,11 @@ type DataAdapter struct {
 	// commendations du MatchDetail restent brutes (ID + count, le front dégrade sur
 	// l'ID court). Injecté via WithCommendationDefs au builder (AXE B définitions).
 	commendationDefs CommendationDefSource
+	// commendationTotals (optionnel) — totaux à vie par commendation (dernier progress
+	// absolu) du joueur, lus dans shared.match_commendations. nil →
+	// LoadCommendationTotals dégrade en ErrCapabilityNotSupported. Injecté via
+	// WithCommendationTotals au builder player-scoped (AXE B totaux).
+	commendationTotals CommendationTotalsSource
 }
 
 var _ games.TitleDataAdapter = (*DataAdapter)(nil)
@@ -157,6 +162,14 @@ func (a *DataAdapter) WithMatchHistorySource(s MatchHistorySource) *DataAdapter 
 // -> commendations laissées brutes (ID + count). Chainable.
 func (a *DataAdapter) WithCommendationDefs(s CommendationDefSource) *DataAdapter {
 	a.commendationDefs = s
+	return a
+}
+
+// WithCommendationTotals injecte la source des totaux à vie par commendation (dernier
+// progress absolu) utilisée par LoadCommendationTotals (AXE B totaux). nil (défaut)
+// -> LoadCommendationTotals dégrade en ErrCapabilityNotSupported. Chainable.
+func (a *DataAdapter) WithCommendationTotals(s CommendationTotalsSource) *DataAdapter {
+	a.commendationTotals = s
 	return a
 }
 
