@@ -1,3 +1,24 @@
+## [2026-06-23] Finitions H5 — scoreboard mécaniques + radar/rendement adaptatifs (Lots A/B/C) + cadrage expected H5 (Lot D) — A/B/C Complétés, D cadré
+
+Worktree `feat/h5-finitions` (depuis 805438bae). 5 questions user → 4 lots.
+
+**Lot A — Scoreboard H5 (Complété).** Règle UNIQUE data-driven `presentKeys` (au niveau LOBBY) : toute colonne statistique dont aucune ligne n'a de valeur est retirée. Title-agnostic, zéro test de titre :
+- masque « Dégâts subis » + « Résist. » en H5 (null) ;
+- affiche assassinat / coup-au-sol / charge spartane en H5 (intPtrH5 → toujours non-nil) et les masque en Infinite (null).
+Colonnes ajoutées dans `buildHighlightCols` + array de `TeamScoreboard`. Grenade : branchée mais INACTIVE via `SHOW_GRENADE_KILLS_COLUMN = false` (flag atomique, aucun MVP/highlight fantôme). i18n : `labelGroundPound`='Coup au sol', `labelShoulderBash`='Charge spartane' (noms officiels H5, le donut en bénéficie aussi).
+
+**Lot B — Chart Rendement escouade (Complété).** `SquadEfficiencyChart` adaptatif : si résistance absente (H5, damage_taken null), bascule en mode mono-métrique = toutes les courbes Rendement sur 1 graphe, 1 série/joueur colorée, toggle via la légende ECharts native, titre « Rendement » (`monoTitle`). Nouveau builder `buildSquadRendementMultiOption` (X = match_order partagé de l'intersection escouade — vérifié côté Go). Au passage : baseline TITLE-AWARE via `useEffectiveHpToKill()` (225 Infinite / 115 H5) threadée dans `oneLife`, et `refLabel` passé en token `{{HP}}` substitué (corrige le « 1 vie (225) » codé en dur, incohérent H5).
+
+**Lot C — Radar match view (Complété).** `BuildMatchRadarFromScoreboard` : nouveau `dropUncomputableRadarAxes` retire l'axe Survie si damage_taken nil (H5) et Impact si damage_dealt nil. Data-driven. Le front `buildRadarOption` dérive indicateurs ET valeurs de `series[0].axes` → 5 axes restent alignés, zéro changement front. Badges narratifs (point 4 user) : déjà 100% H5-compatibles (events horodatés natifs `/h5/matches/{id}/events`, vérifié) — RAS. Radar synergie escouade = même pattern, NON traité (suivi).
+
+**Lot D — Expected H5.** Investigation : (1) **expected_win_prob DÉJÀ calculé+persisté pour H5** (LUSR v2 tourne, `player_skill_state_v2`, `match_skill_rank.expected_win_prob` ; lu en title-agnostic `match_view_data_loaders.go:329`). (2) **modèle assists title-agnostic** → marche en H5 dégradé (sans damage_taken/mmr_delta). (3) **expected K/D = AUCUNE source** (pas d'API skill H5, pas de team MMR).
+
+Décision user : **win_prob + assists d'abord, K/D dans une passe dédiée validée**.
+- **D1 livré** : win_prob + assists surfacent déjà pour H5 (aucun code nécessaire, title-agnostic). Ajout du label honnête **« Estimé localement »** quand les expected affichés sont locaux (heuristique `expected_kills==nil && expected_deaths==nil && (assists||win_prob présents)` — vrai en H5, ou match Infinite sans donnée skill). 2 surfaces : grille cartes `MatchSummaryCardsSection` (i18n manifest `match_view.cards.locally_estimated[_hint]`) + drawer `ExpectedSection` (MatchViewText `sbDetailLocallyEstimated[Hint]`).
+- **D2 DIFFÉRÉ** : expected K/D local = modèle OLS par mode (kills~μ / deaths~μ sur μ LUSR pré-match, miroir assists), fallback quand l'API est nil, labellisé. Non construit : nécessite entraînement + validation sur données H5 réelles (pas de vérité terrain) — passe dédiée.
+
+**Validation** : go build `./internal/service/...` OK, go test radar OK, typecheck `tsc -b` OK (x2), eslint 0 err (tous fichiers touchés), vitest squad+match-view+i18n 367+142 verts. Radar synergie escouade (même pattern Survie H5) = suivi non traité. Pas de commit (attente autorisation user).
+
 ## [2026-06-23] Weapon taxonomy — PLAN registre BDD (data vérifiée halopedia/wiki) + nouvel handoff — Complété (plan seul, build différé)
 
 Suite des 4 surfaces H5. Le user a redéfini le « weapon canonical » : pas un TOML mémoire à côté, mais un **registre

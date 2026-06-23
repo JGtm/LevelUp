@@ -14,6 +14,8 @@ export const matchViewManifest = {
   "match_view.cards.label_enemy": { fr: "adverse", en: "enemy" },
   "match_view.cards.label_expected": { fr: "attendu", en: "expected" },
   "match_view.cards.label_real": { fr: "réel", en: "actual" },
+  "match_view.cards.locally_estimated": { fr: "Estimé localement", en: "Locally estimated" },
+  "match_view.cards.locally_estimated_hint": { fr: "Pas d'API de compétence pour ce titre : assistances attendues et probabilité de victoire sont estimées localement (LUSR + modèle d'assistances).", en: "No skill API for this title: expected assists and win probability are estimated locally (LUSR + assists model)." },
   "match_view.cards.mmr_team_vs_enemy": { fr: "MMR", en: "MMR" },
   "match_view.cards.no_csr_data": { fr: "pas de données CSR", en: "no CSR data" },
   "match_view.cards.no_win_prob_data": { fr: "pas d'estimation", en: "no estimate" },

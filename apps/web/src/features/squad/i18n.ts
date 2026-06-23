@@ -170,6 +170,8 @@ export interface SquadText {
   }
   efficiencySeries: {
     title: string
+    /** Titre en mode mono-métrique (sans résistance, ex. Halo 5). */
+    rendementTitle: string
     description: string
     rendementLabel: string
     resistanceLabel: string
@@ -433,10 +435,11 @@ const FR_TEXT: SquadText = {
   },
   efficiencySeries: {
     title: 'Rendement & Résistance',
+    rendementTitle: 'Rendement',
     description: 'Dégâts / frag (trait plein) = dégâts infligés / frags. Dégâts / mort (pointillé) = dégâts subis / morts. Repère 225 = 1 vie de Spartan : pour les frags, au plus proche de 225, au plus efficace ; pour les morts, au-dessus de 225 = bonne résistance.',
     rendementLabel: 'Dégâts / frag',
     resistanceLabel: 'Dégâts / mort',
-    refLabel: '1 vie (225)',
+    refLabel: '1 vie ({{HP}})',
     noData: 'Aucune donnée d\'efficacité disponible.',
   },
   performanceCharts: {
@@ -696,10 +699,11 @@ const EN_TEXT: SquadText = {
   },
   efficiencySeries: {
     title: 'Offensive & Defensive Efficiency',
+    rendementTitle: 'Offensive Efficiency',
     description: 'Damage / kill (solid) = damage dealt / kills. Damage / death (dashed) = damage taken / deaths. Reference 225 = one Spartan life: for kills, closer to 225 is more efficient; for deaths, above 225 means good resistance.',
     rendementLabel: 'Damage / kill',
     resistanceLabel: 'Damage / death',
-    refLabel: '1 life (225)',
+    refLabel: '1 life ({{HP}})',
     noData: 'No efficiency data available.',
   },
   performanceCharts: {

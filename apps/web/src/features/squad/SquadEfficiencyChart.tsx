@@ -7,7 +7,12 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
-import { buildSquadEfficiencyTrackOption } from './charts/squadEfficiencyChart'
+import { useEffectiveHpToKill, substituteHpToken } from '@/lib/damage/effectiveHp'
+import { damagePerDeath } from '@/lib/charts/oneLifeDamageGradient'
+import {
+  buildSquadEfficiencyTrackOption,
+  buildSquadRendementMultiOption,
+} from './charts/squadEfficiencyChart'
 
 interface EfficiencyLabels {
   rendementLabel: string
@@ -24,6 +29,12 @@ interface SquadEfficiencyChartProps {
   labels: EfficiencyLabels
   /** Titre du ChartCard (barre de titre du catalogue). Accepte un ReactNode pour un InfoTooltip. */
   title?: ReactNode
+  /**
+   * Titre alternatif en mode mono-métrique (titre sans résistance, ex. Halo 5) :
+   * le graphe bascule en « tous les rendements, 1 courbe / joueur » et adopte ce
+   * libellé. Défaut : `title`.
+   */
+  monoTitle?: ReactNode
 }
 
 const TRACK_HEIGHT = 320
@@ -38,10 +49,27 @@ export function SquadEfficiencyChart({
   colorByPlayer,
   labels,
   title,
+  monoTitle,
 }: SquadEfficiencyChartProps) {
   const players = useMemo(
     () => playerOrder.filter((p) => rowsByPlayer[p] && hasEfficiencyData(rowsByPlayer[p])),
     [playerOrder, rowsByPlayer],
+  )
+
+  // Barème PV-pour-tuer du titre courant (225 Infinite, 115 Halo 5) → repère
+  // « 1 vie » et dégradés title-aware (sinon H5 serait jaugé sur 225).
+  const hp = useEffectiveHpToKill()
+  // Libellé du repère avec le barème du titre injecté (« 1 vie (115) » en H5).
+  const refLabel = substituteHpToken(labels.refLabel, hp)
+
+  // Résistance disponible ? (dégâts/mort calculable sur au moins un point). Halo 5
+  // ne fournit pas damage_taken → false → bascule en mode mono-métrique multi-joueurs.
+  const hasResistance = useMemo(
+    () =>
+      players.some((p) =>
+        (rowsByPlayer[p] ?? []).some((pt) => damagePerDeath(pt.damage_taken, pt.deaths) != null),
+      ),
+    [players, rowsByPlayer],
   )
 
   const [selectedPlayer, setSelectedPlayer] = useState<string>(players[0] ?? '')
@@ -64,11 +92,45 @@ export function SquadEfficiencyChart({
       buildSquadEfficiencyTrackOption(pts, {
         rendementLabel: labels.rendementLabel,
         resistanceLabel: labels.resistanceLabel,
-        refLabel: labels.refLabel,
+        refLabel,
+        showXAxis: true,
+        oneLife: hp,
+      }),
+    [pts, labels, refLabel, hp],
+  )
+
+  // Mode mono-métrique : toutes les courbes Rendement sur un seul graphe,
+  // colorées par joueur, toggle via la légende ECharts. `monoSeries` (1 entrée /
+  // joueur) sert l'état vide + la clé de mémo du ChartCard ; le builder lit
+  // rowsByPlayer directement (le ChartCard ignore l'argument série).
+  const monoSeries = useMemo<ChartSeries<SquadPerformanceSeriesPoint>[]>(
+    () => players.map((p) => ({ key: p, datapoints: rowsByPlayer[p] ?? [] })),
+    [players, rowsByPlayer],
+  )
+  const buildMonoOption = useCallback(
+    () =>
+      buildSquadRendementMultiOption(rowsByPlayer, players, {
+        refLabel,
+        oneLife: hp,
+        colorByPlayer,
         showXAxis: true,
       }),
-    [pts, labels],
+    [rowsByPlayer, players, refLabel, hp, colorByPlayer],
   )
+
+  // Bascule de représentation : sans résistance (ex. Halo 5), on n'a qu'une
+  // métrique → tous les joueurs ensemble plutôt qu'un toggle 1-joueur.
+  if (!hasResistance) {
+    return (
+      <ChartCard
+        title={monoTitle ?? title}
+        series={monoSeries}
+        buildOption={buildMonoOption}
+        height={TRACK_HEIGHT}
+        emptyMessage={labels.noData}
+      />
+    )
+  }
 
   // Pas de `return null` quand aucun joueur n'a de données : ChartCard rend son
   // emptyMessage (labels.noData) dans le bloc titré.
@@ -141,7 +203,7 @@ export function SquadEfficiencyChart({
                   strokeDasharray="4 2"
                 />
               </svg>
-              {labels.refLabel}
+              {refLabel}
             </span>
           </div>
         )}

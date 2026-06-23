@@ -390,8 +390,18 @@ export function MatchSummaryCardsSection({
   const assistsDelta =
     kpis.assists != null && expected_assists != null ? kpis.assists - expected_assists : null
 
+  // Les expected montrés sont LOCAUX (assists via modèle OLS, win prob via LUSR)
+  // quand le titre n'a pas d'API de compétence fournissant les frags/morts
+  // attendus (cas Halo 5, ou match Infinite sans donnée skill). On le signale
+  // honnêtement plutôt que de les présenter au même rang que des valeurs API.
+  const locallyEstimated =
+    expected_kills == null &&
+    expected_deaths == null &&
+    (expected_assists != null || expected_win_prob != null)
+
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8">
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8">
       <MatchVsStatCard
         label={t('match_view.cards.mmr_team_vs_enemy')}
         primary={kpis.team_mmr ?? null}
@@ -448,6 +458,15 @@ export function MatchSummaryCardsSection({
         primary={formatDefensiveResistance(defensiveResistance)}
         fixedAccent={combatYieldToken(null, defensiveResistance)}
       />
+      </div>
+      {locallyEstimated && (
+        <p
+          className="text-2xs italic text-muted-foreground"
+          title={t('match_view.cards.locally_estimated_hint')}
+        >
+          {t('match_view.cards.locally_estimated')}
+        </p>
+      )}
     </div>
   )
 }
