@@ -1,3 +1,19 @@
+## [2026-06-23] Réorganisation des onglets Settings (doctrine préférences vs ops) — COMPLÉTÉ code (branche feat/settings-regroup)
+
+**Contexte** : demande utilisateur — trop d'onglets Settings, certains peu remplis. Diagnostic : le problème n'est pas le nombre mais la cohérence. (1) « Général » = fourre-tout (Interface + Discord + Médias + mot de passe). (2) « Sauvegarde » = quasi-vide ET mal placé (ops d'instance restic, pas une préférence). (3) Discord séparé de Notifications alors que c'est le même concept. Le code appliquait déjà la doctrine **Settings = préférences utilisateur / Admin = ops d'instance** (migrations Sync/Comptes/Lab → Admin) ; objectif validé : la finir.
+
+**Décisions techniques** :
+- **Éclatement de GeneralTab** : les 3 cartes (Interface/Discord/Médias) extraites en composants partagés `_settingsCards.tsx` (même TabProps merged/handleChange/t/frozen, exemption démo de la langue conservée). `GeneralTab.tsx` supprimé.
+- **Recomposition en 5 onglets cohérents** : `appearance` (InterfaceCard + AccessibilityTab), `analyse` (inchangé), `notifications` (NotificationsSettingsTab + DiscordCard), `data` (MediaCard), `account` (SetPasswordCard). Le mot de passe reste côté utilisateur (utilisé aussi à l'onboarding) → onglet Compte dédié, pas Admin.
+- **Sauvegarde → Admin · Système** : `AdminBackupSection` (wrapper autonome câblant son i18n, pattern AdminSyncSettingsSection) ajouté dans `AdminSystemPage` ; `BackupTab` conservé, juste remonté. Test audience : backup = toutes les bases, rétention serveur, zéro bénéfice end-user.
+- **Ids d'onglets centralisés** dans `features/settings/tabs.ts` (source unique partagée route + NavL1, évite un cycle d'import) + `resolveSettingsTab` mappe les anciens ids (general/accessibility/sync/users/lab/backup) → `appearance` pour ne pas casser deep-links/bookmarks. NavL1 (split-button + sous-menu), NavL1MobileActions et tests mis à jour.
+
+**Résultats** : `tsc -b` exit 0 ; eslint 0 erreur (warnings pré-existants hors périmètre ; le seul warning sur SettingsPage:51 = useEffect non touché) ; vitest 17/17 (NavL1MobileActions, AccessibilityTab, SetPasswordCard). Les 2 onglets problématiques (Général fourre-tout, Sauvegarde ops égarée) sont résorbés ; Discord unifié avec Notifications.
+
+**Prochaine étape** : vérification visuelle (5 onglets + section Sauvegarde dans Admin · Système + deep-links legacy) ; option différée = bouton « Synchroniser maintenant » côté utilisateur ; commit (sur autorisation) puis push.
+
+---
+
 ## [2026-06-23] Donut « Répartition des frags » sur Timeseries/Progression + barres empilées sur Contributions — COMPLÉTÉ code (branche feat/frags-breakdown-timeseries-squad)
 
 **Contexte** : demande utilisateur de réutiliser la décomposition des frags par type d'arme (mêlée / arme lourde / grenade / autres), aujourd'hui seulement sur Synthesis (`SynthesisKillTypesDonut`). (1) Donut à gauche de « Progression LUSR » sur l'onglet Progression de Timeseries. (2) Même ventilation sur la page Contributions (escouade), mais multi-joueurs → j'ai challengé le donut et proposé des **barres empilées horizontales** (1 barre/joueur, segments = type, longueur = total frags) ; choix validé par l'utilisateur.

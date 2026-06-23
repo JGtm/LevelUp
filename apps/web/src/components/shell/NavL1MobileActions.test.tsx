@@ -35,8 +35,8 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 })
 
 const SETTINGS_TABS: SettingsTabItem[] = [
-  { key: 'general', label: 'Général', tab: 'general' },
-  { key: 'sync', label: 'Synchronisation', tab: 'sync' },
+  { key: 'appearance', label: 'Apparence', tab: 'appearance' },
+  { key: 'analyse', label: 'Analyse', tab: 'analyse' },
 ]
 
 function setup(pathname = '/players/test-player/home') {
@@ -72,8 +72,8 @@ describe('NavL1MobileActions', () => {
     setup()
     openMenu()
     expect(screen.getByTestId('theme-toggle')).toBeInTheDocument()
-    const general = screen.getByRole('menuitem', { name: 'Général' })
-    expect(general).toHaveAttribute('href', '/settings')
+    const appearance = screen.getByRole('menuitem', { name: 'Apparence' })
+    expect(appearance).toHaveAttribute('href', '/settings')
   })
 
   it('rend les outils latéraux (Référentiels, Feedback)', () => {

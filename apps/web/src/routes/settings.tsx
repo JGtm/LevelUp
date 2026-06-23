@@ -3,15 +3,13 @@
  */
 import { createFileRoute } from '@tanstack/react-router'
 import { SettingsPage } from '@/features/settings/SettingsPage'
+import { resolveSettingsTab, type SettingsTab } from '@/features/settings/tabs'
 
-const SETTINGS_TABS = ['general', 'sync', 'analyse', 'accessibility', 'notifications', 'lab', 'users', 'backup'] as const
-export type SettingsTab = (typeof SETTINGS_TABS)[number]
+export type { SettingsTab }
 
 export const Route = createFileRoute('/settings')({
   component: SettingsPage,
   validateSearch: (search: Record<string, unknown>): { tab: SettingsTab } => ({
-    tab: SETTINGS_TABS.includes(search.tab as SettingsTab)
-      ? (search.tab as SettingsTab)
-      : 'general',
+    tab: resolveSettingsTab(typeof search.tab === 'string' ? search.tab : null),
   }),
 })

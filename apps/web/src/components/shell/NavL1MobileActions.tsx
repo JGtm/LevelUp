@@ -23,8 +23,7 @@ import { assetDrawerManifest } from '@/lib/i18n/generated/asset_drawer'
 import { feedbackDrawerManifest } from '@/lib/i18n/generated/feedback_drawer'
 import { ThemeToggle } from './ThemeToggle'
 import { log } from './_logger'
-
-type SettingsTab = 'general' | 'sync' | 'analyse' | 'accessibility' | 'notifications' | 'lab' | 'users'
+import type { SettingsTab } from '@/features/settings/tabs'
 
 export interface SettingsTabItem {
   key: string
