@@ -361,6 +361,7 @@ func TestBuildMatchHeader_ModeFallbackNormalized(t *testing.T) {
 		name       string
 		pairName   string
 		modeNameFR *string
+		mapNameFR  *string
 		want       string
 	}{
 		{
@@ -379,6 +380,16 @@ func TestBuildMatchHeader_ModeFallbackNormalized(t *testing.T) {
 			modeNameFR: strPtr("Assassin"),
 			want:       "Assassin",
 		},
+		{
+			// Régression "Slayer on Forest sur Forêt" : ModeNameFR arrive brut
+			// du repo (catalogue incomplet) avec le nom de map EN collé, alors
+			// que MapUI est la traduction FR. Le ModeUI doit être re-normalisé.
+			name:       "ModeNameFR brut avec map EN collée → re-normalisé",
+			pairName:   "Slayer : Forest",
+			modeNameFR: strPtr("Slayer on Forest"),
+			mapNameFR:  strPtr("Forêt"),
+			want:       "Slayer",
+		},
 	}
 	for _, tc := range cases {
 		tc := tc
@@ -387,6 +398,7 @@ func TestBuildMatchHeader_ModeFallbackNormalized(t *testing.T) {
 			meta := &domain.MatchMetaRaw{
 				PairName:   &tc.pairName,
 				ModeNameFR: tc.modeNameFR,
+				MapNameFR:  tc.mapNameFR,
 			}
 			h := buildMatchHeader(context.Background(), "m1", meta, nil, nil, nil, nil, false)
 			if h.ModeUI != tc.want {

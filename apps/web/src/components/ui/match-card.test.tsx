@@ -63,6 +63,13 @@ describe('MatchCard', () => {
     expect(screen.getByText('Assassin on Aquarius')).toBeTruthy()
   })
 
+  it('strip le nom de carte EN collé au mode même si map_ui est FR (régression "Slayer on Forest sur Forêt")', () => {
+    const crossLang: RecentMatchItem = { ...WIN_MATCH, mode_ui: 'Slayer on Forest', map_ui: 'Forêt' }
+    render(<MatchCard match={crossLang} locale="fr" />)
+    expect(screen.getByText('Slayer sur Forêt')).toBeTruthy()
+    expect(screen.queryByText('Slayer on Forest sur Forêt')).toBeNull()
+  })
+
   it('rend sans crasher quand les champs S56 sont absents', () => {
     render(<MatchCard match={LOSS_MATCH} />)
     expect(screen.getByText('Empyrean · CTF')).toBeTruthy()
