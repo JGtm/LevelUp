@@ -1,3 +1,14 @@
+## [2026-06-23] B finition — Totaux à vie des commendations : ENDPOINT HTTP — Complété (uncommitted, front à suivre)
+
+Endpoint `GET /api/v1/players/{player_slug}/commendations/totals` → `NativeCommendationsTotalsResponse` (totaux groupés par catégorie). Title-agnostic SANS gating slug : la factory `CommendationTotalsCtx` type-asserte l'adapter du titre à `service.CommendationTotalsLoader` (LoadCommendationTotals) — seul *halo_5.DataAdapter l'implémente → les autres titres → loader nil → réponse VIDE (200, pas 404/500).
+
+- **Domain** : `NativeCommendationTotal{ID,Name,Category,Total,IconURL}` + `NativeCommendationCategoryGroup` + `NativeCommendationsTotalsResponse{Categories,TotalCount}` (TotalCount = nb de commendations distinctes, PAS la somme des totaux absolus). Distinct de CommendationItem (médaille int64).
+- **Service** `CommendationTotalsService.GetTotals` : groupe par catégorie (alpha, items total DESC, catégorie vide → "AUTRE"), dégrade en réponse vide sur loader nil / ErrCapabilityNotSupported. Port `CommendationTotalsService`.
+- **Handler** Huma `GET /commendations/totals` (CommendationTotalsHandler), monté dans server.go après citations. openapi.yaml : 3 schémas (drift vert) + path (TestContractRoutesDocumented vert) ; `generate-types` régénère le front.
+- **Tests** : service (grouping/tri/AUTRE/TotalCount, nil→vide, ErrCapabilityNotSupported→vide) + handler httptest (200/404/500). Verts. gofmt+vet propres.
+
+**Reste** : (1) front page (consomme l'endpoint ; placement à décider — route /players/$slug/commendations ?) ; (2) vérif end-to-end quand le re-backfill progress-aware (en cours) a peuplé match_commendations.progress → contrôler que LoadCommendationTotals(JGtm) renvoie des totaux non vides + xuid match.
+
 ## [2026-06-23] B finition — Totaux à vie des commendations : READ LAYER (source + enrichment) — Complété (uncommitted, endpoint/front à suivre post-backfill)
 
 Suite de la fondation Progress absolu. Read layer complet + testé (fakes/in-memory), pas encore exposé HTTP (endpoint + front = après le re-backfill progress, pour vérifier sur données réelles).

@@ -42,6 +42,12 @@ type CitationsService interface {
 	GetCommendationsPage(ctx context.Context, playerXUID string) (*domain.CommendationsPageResponse, error)
 }
 
+// CommendationTotalsService construit la page Totaux des commendations NATIVES
+// (Halo 5, AXE B). Réponse vide pour les titres sans commendations natives.
+type CommendationTotalsService interface {
+	GetTotals(ctx context.Context) (*domain.NativeCommendationsTotalsResponse, error)
+}
+
 // ExplorerService orchestre les requêtes de l'Explorer (matchs communs).
 type ExplorerService interface {
 	GetCommonMatches(ctx context.Context, otherGamertag string, page int) (domain.ExplorerPlayerQueryResponse, error)

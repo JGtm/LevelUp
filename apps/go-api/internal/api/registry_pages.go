@@ -269,6 +269,24 @@ func (r *ServiceRegistry) CitationsCtx(ctx context.Context, slug string) (port.C
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
+// CommendationTotalsCtx retourne un CommendationTotalsService + identifiants joueur.
+// L'adapter du titre est type-asserté à la surface LoadCommendationTotals : seuls les
+// titres l'implémentant (Halo 5) renvoient des totaux natifs ; les autres → loader nil
+// → réponse vide (dégradation gracieuse, jamais de gating par slug).
+func (r *ServiceRegistry) CommendationTotalsCtx(ctx context.Context, slug string) (port.CommendationTotalsService, string, string, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, "", "", err
+	}
+	var loader service.CommendationTotalsLoader
+	if a := r.dataAdapterForPDB(pdb); a != nil {
+		if l, ok := a.(service.CommendationTotalsLoader); ok {
+			loader = l
+		}
+	}
+	return service.NewCommendationTotalsService(loader), pdb.XUID, pdb.Gamertag, nil
+}
+
 // ExplorerCtxWithAuth retourne un ExplorerService + contexte enrichi avec les
 // HaloTokens du propriétaire de la page (résolus depuis le store, ADR 0023).
 //

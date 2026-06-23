@@ -1437,6 +1437,11 @@ func NewRouter(
 			citations := handlers.NewCitationsHandler(reg.CitationsCtx)
 			citations.Mount(r)
 
+			// AXE B : Totaux à vie des commendations NATIVES (Halo 5). Title-agnostic
+			// (loader type-asserté depuis l'adapter ; titre sans capability → vide).
+			commendationTotals := handlers.NewCommendationTotalsHandler(reg.CommendationTotalsCtx)
+			commendationTotals.Mount(r)
+
 			// P6.3 : guard de capability — media routes nécessitent CapMedia.
 			media := handlers.NewMediaHandler(reg.Media, reg.MediaUpload, cfg.RepoRoot).
 				WithSettingsStore(settingsStore).
