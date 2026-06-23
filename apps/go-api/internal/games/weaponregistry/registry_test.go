@@ -37,8 +37,8 @@ func loadTestRegistry(t *testing.T) *MemRegistry {
 func TestRegistry_Counts(t *testing.T) {
 	reg := loadTestRegistry(t)
 	w, i, f := reg.Counts()
-	if w != 59 || i != 36 || f != 43 {
-		t.Errorf("Counts = (%d,%d,%d), want (59,36,43)", w, i, f)
+	if w != 59 || i != 71 || f != 43 {
+		t.Errorf("Counts = (%d,%d,%d), want (59,71,43)", w, i, f)
 	}
 }
 
@@ -74,9 +74,13 @@ func TestRegistry_ByID_Filmshell(t *testing.T) {
 	if _, ok := reg.ByID("halo_infinite", "filmshell", "999999999"); ok {
 		t.Error("id filmshell inconnu devrait être false")
 	}
-	// H5 stock_id pas encore seedé (P2bis) → false.
-	if _, ok := reg.ByID("halo_5", "stock_id", "907086443"); ok {
-		t.Error("H5 stock_id ne devrait pas encore résoudre (P2bis)")
+	// H5 stock_id résout (P2bis) : 907086443 = Retro Beam Rifle (variante) → h5_beam_rifle.
+	if w, ok := reg.ByID("halo_5", "stock_id", "907086443"); !ok || w.Key != "h5_beam_rifle" {
+		t.Errorf("ByID stock_id 907086443 = (%+v, %v), want h5_beam_rifle", w, ok)
+	}
+	// SAW 2278207101 → h5_saw (role automatic).
+	if w, ok := reg.ByID("halo_5", "stock_id", "2278207101"); !ok || w.Key != "h5_saw" || w.Role != "automatic" {
+		t.Errorf("ByID stock_id SAW = (%+v, %v), want h5_saw/automatic", w, ok)
 	}
 }
 

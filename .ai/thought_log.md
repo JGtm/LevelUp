@@ -1,3 +1,11 @@
+## [2026-06-23] Weapon taxonomy registre — P2bis stock_ids H5 — Complété
+
+Décision user : on stocke les stock_ids H5 maintenant (« on a les infos, ça coûte pas cher »). Source = catalogue officiel déjà seedé dans `weapon_labels` (metadata H5, `data/titles/halo_5/warehouse/metadata.duckdb`, via cmd/h5-metadata-fetch) — lu offline (script jetable `//go:build ignore` calqué sur inspect_bp, read_only, supprimé après). Catalogue = 68 entrées (armes + véhicules + tourelles + grenades).
+
+Mapping figé dans le seed (`weaponRegistryH5Stock`, id_kind=stock_id) : mes 30 armes H5 matchent toutes + 5 variantes/skins ajoutées comme ids additionnels (Halo 2 Battle Rifle, Halo One Pistol + Flagnum → magnum, SPNKr Rocket Launcher → rocket_launcher, Retro Beam Rifle → beam_rifle) = 35 stock_ids. Cohérence : les StockId vus dans WeaponWithMostKills du carnage (SAW 2278207101, Beam 2862629816, GravHammer 2899979324, Sniper 669296699…) tombent juste. Type `weaponFilmshellID` renommé `weaponNumericID` (réutilisé filmshell + stock).
+
+weapon_ids = 36 filmshell + 35 stock = 71. Tests étendus (cardinalité 71, stock_id=35, intégrité référentielle valide les 35 clés H5, résolution ByID stock_id SAW→h5_saw + Retro Beam→h5_beam_rifle) verts. Grenades/véhicules/tourelles H5 hors scope (seed figé = 30 armes revues user). Reste : P4 (bascule lecteurs, différé avec narration UI user).
+
 ## [2026-06-23] Weapon taxonomy registre — P3 resolver weaponregistry — Complété
 
 Package `internal/games/weaponregistry` (le passage principal) : interface `Registry` (`ByID`/`ByKey`/`Family`) + `MemRegistry` chargé en mémoire au boot via `LoadFromDB` (3 tables metadata → maps byKey / byID / families). idCacheKey = "title|kind|value". Dégradation gracieuse (inconnu → zéro-valeur, false, jamais panic). Log boot `weapon_registry_loaded` (cardinalités). Title-agnostic, zéro logique métier titre.

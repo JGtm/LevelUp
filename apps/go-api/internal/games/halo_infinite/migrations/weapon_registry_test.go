@@ -48,8 +48,11 @@ func TestWeaponRegistry_SeedCardinalities(t *testing.T) {
 	if got := queryCount(t, db, "SELECT count(*) FROM weapon_families"); got != 43 {
 		t.Errorf("weapon_families = %d, want 43", got)
 	}
-	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids"); got != 36 {
-		t.Errorf("weapon_ids = %d, want 36", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids"); got != 71 {
+		t.Errorf("weapon_ids = %d, want 71 (36 filmshell + 35 stock_id)", got)
+	}
+	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids WHERE id_kind='stock_id'"); got != 35 {
+		t.Errorf("weapon_ids stock_id = %d, want 35", got)
 	}
 	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE title_slug='halo_infinite'"); got != 29 {
 		t.Errorf("weapons HINF = %d, want 29", got)
