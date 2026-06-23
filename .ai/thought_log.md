@@ -1,3 +1,11 @@
+## [2026-06-23] Weapon taxonomy registre — P3 resolver weaponregistry — Complété
+
+Package `internal/games/weaponregistry` (le passage principal) : interface `Registry` (`ByID`/`ByKey`/`Family`) + `MemRegistry` chargé en mémoire au boot via `LoadFromDB` (3 tables metadata → maps byKey / byID / families). idCacheKey = "title|kind|value". Dégradation gracieuse (inconnu → zéro-valeur, false, jamais panic). Log boot `weapon_registry_loaded` (cardinalités). Title-agnostic, zéro logique métier titre.
+
+Tests `:memory:` (seed migration → LoadFromDB → résolution) verts : Counts 59/36/43 ; ByKey BR75 (class shoulder / role precision / family battle_rifle / faction human / nameFR) ; ByID filmshell (BR75 + variante Energy Sword Duelist → même weapon_key) ; id inconnu → false ; H5 stock_id pas encore résolu (P2bis) ; Family battle_rifle.
+
+Reste : P2bis (mapper les stock_ids H5 dans weapon_ids), P4 (bascule des lecteurs weapon vers le registre, golden parity). Wiring boot (DI) = avec P4.
+
 ## [2026-06-23] Weapon taxonomy registre — dimension `role` (revue user du seed) — Complété
 
 Revue du seed par le user (relecture des 59 armes). Constat partagé : `family` seule ne capture pas le RÔLE de combat (« précision vs pression »), et beaucoup de familles sont uniques (normal, surtout forerunner H5 sans équivalent Infinite). → ajout d'une 5e dimension **`role`** (colonne `weapons.role`) = fonction de combat, distincte de `class` (manipulation) et `family` (identité). Enum : automatic / precision / sniper / shotgun / sidearm / power / special / melee / grenade. class & role coïncident pour poing/mêlée/grenade mais divergent pour épaule (precision vs automatic) et lourde (sniper/shotgun/power/special) — c'est tout l'intérêt.
