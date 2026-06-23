@@ -381,23 +381,34 @@ export function MatchSummaryCardsSection({
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: MatchViewManifestKey) => formatMessage(matchViewManifest, key, locale)
 
+  // Fallback expected K/D quand l'API de compétence ne fournit rien (Halo 5) : on
+  // prend la MOYENNE récente du joueur dans ce mode (hist_avg, déjà calculée côté
+  // back). Baseline robuste (impossible à sur-apprendre), affichée comme « attendu »
+  // et signalée par le label « Estimé localement » ci-dessous. Un modèle skill-adjusté
+  // (régression sur le rating LUSR) serait un raffinement futur, à valider sur données.
+  const noApiKd = expected_kills == null && expected_deaths == null
+  const effExpectedKills = expected_kills ?? (noApiKd ? expectedStats.hist_avg_kills ?? null : null)
+  const effExpectedDeaths = expected_deaths ?? (noApiKd ? expectedStats.hist_avg_deaths ?? null : null)
+
   const killsDelta =
-    kpis.kills != null && expected_kills != null ? kpis.kills - expected_kills : null
+    kpis.kills != null && effExpectedKills != null ? kpis.kills - effExpectedKills : null
 
   const deathsDelta =
-    kpis.deaths != null && expected_deaths != null ? kpis.deaths - expected_deaths : null
+    kpis.deaths != null && effExpectedDeaths != null ? kpis.deaths - effExpectedDeaths : null
 
   const assistsDelta =
     kpis.assists != null && expected_assists != null ? kpis.assists - expected_assists : null
 
-  // Les expected montrés sont LOCAUX (assists via modèle OLS, win prob via LUSR)
-  // quand le titre n'a pas d'API de compétence fournissant les frags/morts
-  // attendus (cas Halo 5, ou match Infinite sans donnée skill). On le signale
-  // honnêtement plutôt que de les présenter au même rang que des valeurs API.
+  // Les expected montrés sont LOCAUX (frags/morts via moyenne perso, assists via
+  // modèle OLS, win prob via LUSR) quand le titre n'a pas d'API de compétence
+  // (cas Halo 5, ou match Infinite sans donnée skill). On le signale honnêtement
+  // plutôt que de les présenter au même rang que des valeurs API.
   const locallyEstimated =
-    expected_kills == null &&
-    expected_deaths == null &&
-    (expected_assists != null || expected_win_prob != null)
+    noApiKd &&
+    (expected_assists != null ||
+      expected_win_prob != null ||
+      effExpectedKills != null ||
+      effExpectedDeaths != null)
 
   return (
     <div className="space-y-2">
@@ -415,7 +426,7 @@ export function MatchSummaryCardsSection({
       <MatchVsStatCard
         label={t('match_view.cards.frags_vs_expected')}
         primary={kpis.kills ?? null}
-        secondary={expected_kills != null ? Math.round(expected_kills) : null}
+        secondary={effExpectedKills != null ? Math.round(effExpectedKills) : null}
         primaryLabel={t('match_view.cards.label_real')}
         secondaryLabel={t('match_view.cards.label_expected')}
         delta={killsDelta}
@@ -425,7 +436,7 @@ export function MatchSummaryCardsSection({
       <MatchVsStatCard
         label={t('match_view.cards.deaths_vs_expected')}
         primary={kpis.deaths ?? null}
-        secondary={expected_deaths != null ? Math.round(expected_deaths) : null}
+        secondary={effExpectedDeaths != null ? Math.round(effExpectedDeaths) : null}
         primaryLabel={t('match_view.cards.label_real')}
         secondaryLabel={t('match_view.cards.label_expected')}
         delta={deathsDelta}
