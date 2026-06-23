@@ -35,6 +35,18 @@ Livré :
 
 Latent connu (non corrigé, hors scope) : `home.toml` first_sync hardcode « Halo Infinite » — correct pour le setup 2 titres actuel (h5 nouveau, Infinite = titre avec données), à généraliser si 3e titre.
 
+## [2026-06-23] Damage h5 — P80 OC calibré 1.264 + cryptum sans damage_taken + KDA déjà OK — Complété
+
+Suite au questionnement user (P80 sans leaderboard h5 + « où est le problème KDA »).
+
+**KDA/FDA h5 = DÉJÀ correct** (plan 06-20 périmé) : `mapping_carnage.go:135 h5NetFDA = (k+a/3)−d` calculé à l'ingestion, stocké `match_participants.kda`, testé. Rien à faire (le plan décrivait l'ancien ratio (k+a/3)/d, corrigé depuis).
+
+**Cryptum NE fournit PAS les dégâts reçus** : vérifié sur le carnage BRUT live (sonde `probe-h5`, vrai match JGtm) — 7 champs de dégâts, TOUS infligés (TotalDamageDealt/Weapon/Grenade/Melee/PowerWeapon/GroundPound/ShoulderBash). Zéro damage-reçu (0/13241). → la **résistance (DR) est impossible côté h5** (limite API confirmée sur le retour réel, pas juste le commentaire DTO). Note : `TotalDamageDealt` (total) ≠ `TotalWeaponDamage` (arme-seule, qu'on mappe) — à voir séparément si on veut affiner l'OC.
+
+**P80 OC h5 calibré = 1.264** : pas de leaderboard mondial h5 → « mêmes proportions relatives » = MÊME méthode que le 0.90 d'Infinite (= son 80e percentile, vérifié data 0.918≈0.90). Mesuré le 80e percentile de l'OC h5 (12891 lignes, hp=115) = **1.264** ; médiane h5 0.99, ratio P80/médiane 1.28 ≈ Infinite 1.25 → proportions préservées par construction. Réutiliser 0.90 serait absurde (médiane h5 0.99 > 0.90 → tous élite).
+
+Livré : `[damage_model].offensive_conversion_p80` (Infinite 0.90 / h5 1.264) + `DamageModelConstants` + loader + validation + getter `games.OffensiveConversionP80(slug)` (défaut 0.90) + test. **Reste (activation 1b)** : threader le getter dans les sites d'affichage (radar match-view/squad/compare `×1.25` + barre OC) — `NormalizeForBar(v,p80)` déjà paramétré ; LUSR garde la const `analysis.OffensiveConversionP80` (Infinite-only). Non fait : h5 stats not_exposed + sites LUSR-adjacents (risque). Tests games+mappings verts.
+
 ## [2026-06-23] Damage model par titre — h5 effective_hp_to_kill = 115 (essai 86 ERRONÉ reverté) — Complété
 
 Passe « tout traiter ». Le damage-model par-titre est DÉJÀ câblé (baseline en paramètre de `ComputeCombatYield`, getter `games.EffectiveHpToKill`, ~28 callers + SQL post-sync + front help via jeton `{{HP}}`). **h5 = 115** (design : bouclier 70 + armure 45) = les PV-pour-tuer RÉELS dans l'échelle de dégâts h5, baseline des KPI rendement/résistance.

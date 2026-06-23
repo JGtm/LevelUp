@@ -25,6 +25,9 @@ type damageModelTOML struct {
 	// (ex. Halo 5 : forme native = FDA NET, pas le quotient KDA). Défaut false =
 	// KDA natif disponible (Infinite). Consommé via games.ProvidesNativeKDA(slug).
 	NoNativeKDA bool `toml:"no_native_kda"`
+	// offensive_conversion_p80 : frontière élite OC (80e percentile) du titre, repère
+	// de normalisation des barres/radars de rendement. 0/absent = défaut Infinite (0.90).
+	OffensiveConversionP80 float64 `toml:"offensive_conversion_p80"`
 }
 
 // allowedEndpointKeys est la liste exhaustive des clés d'endpoint admises (MT-01).
@@ -99,14 +102,18 @@ func LoadEndpointsFromBytes(path string, raw []byte) (*EndpointSet, error) {
 	if doc.DamageModel.EffectiveHpToKill < 0 {
 		errs = append(errs, fmt.Errorf("[damage_model].effective_hp_to_kill doit être > 0 (reçu %v)", doc.DamageModel.EffectiveHpToKill))
 	}
+	if doc.DamageModel.OffensiveConversionP80 < 0 {
+		errs = append(errs, fmt.Errorf("[damage_model].offensive_conversion_p80 doit être >= 0 (reçu %v)", doc.DamageModel.OffensiveConversionP80))
+	}
 
 	if len(errs) > 0 {
 		return nil, fmt.Errorf("validation %s: %w", path, errors.Join(errs...))
 	}
 
 	dm := DamageModelConstants{
-		EffectiveHpToKill: doc.DamageModel.EffectiveHpToKill,
-		NoNativeKDA:       doc.DamageModel.NoNativeKDA,
+		EffectiveHpToKill:      doc.DamageModel.EffectiveHpToKill,
+		NoNativeKDA:            doc.DamageModel.NoNativeKDA,
+		OffensiveConversionP80: doc.DamageModel.OffensiveConversionP80,
 	}
 	return NewEndpointSet(doc.Meta.TitleSlug, doc.Meta.SchemaVersion, gamePrefix, byKey).withDamageModel(dm), nil
 }

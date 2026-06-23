@@ -42,6 +42,14 @@ nameplate     = "https://haloplayer.svc.halowaypoint.com"     # profiles/appeara
 # le PV-pour-tuer DESIGN fait foi. Cf. PLAN_DAMAGE_MODEL_PER_TITLE.md.
 [damage_model]
 effective_hp_to_kill = 115
+# offensive_conversion_p80 Halo 5 = 1.264. VALIDÉ DATA 2026-06-23 sur la distribution
+# réelle h5 (12891 lignes match_participants) : 80e percentile de l'OC = 115×(k+a/3)/dégâts.
+# C'est la frontière « élite » qui normalise les barres/radars de rendement. NE PAS
+# réutiliser le 0.90 d'Infinite : la MÉDIANE OC h5 (0.99) est déjà > 0.90 → tous les
+# joueurs h5 paraîtraient élite. Même MÉTHODE que le 0.90 d'Infinite (= son propre 80e
+# percentile) → « mêmes proportions relatives ». Résistance (DR) = N/A : l'API carnage
+# h5 ne fournit PAS damage_taken (vérifié sur le retour cryptum brut, 0/13241).
+offensive_conversion_p80 = 1.264
 # no_native_kda = true → Halo 5 ne renvoie PAS de KDA per-match via l'API ; sa forme
 # native est un FDA NET ((k+a/3)−d)/games. On ne fabrique JAMAIS de KDA façon Infinite
 # pour h5 (valeur fausse) : les surfaces le laissent nil. Cf. games.ProvidesNativeKDA.

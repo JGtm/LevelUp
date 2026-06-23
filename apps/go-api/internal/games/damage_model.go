@@ -46,6 +46,31 @@ func EffectiveHpToKill(slug string) float64 {
 	return EffectiveHpToKillFromResolver(DefaultEndpointResolver(), slug)
 }
 
+// DefaultOffensiveConversionP80 — frontière élite OC (80e percentile) Halo Infinite,
+// repère de normalisation des barres/radars de rendement. Défaut quand le titre ne
+// déclare pas son offensive_conversion_p80. Aligné sur analysis.OffensiveConversionP80
+// (mais games ne peut pas importer analysis → littéral dupliqué, gardé en sync).
+const DefaultOffensiveConversionP80 = 0.90
+
+// OffensiveConversionP80FromResolver résout la frontière élite OC d'un titre via un
+// resolver, fallback DefaultOffensiveConversionP80. Point d'injection testable.
+func OffensiveConversionP80FromResolver(res EndpointResolver, slug string) float64 {
+	if dmr, ok := res.(DamageModelResolver); ok {
+		if dm, found := dmr.DamageModelFor(slug); found && dm.OffensiveConversionP80 > 0 {
+			return dm.OffensiveConversionP80
+		}
+	}
+	return DefaultOffensiveConversionP80
+}
+
+// OffensiveConversionP80 résout la frontière élite OC du titre (repère des barres/radars
+// de rendement) via le resolver partagé, fallback DefaultOffensiveConversionP80. Point
+// d'entrée des callers d'AFFICHAGE qui disposent du slug. NB : le chemin LUSR garde la
+// constante analysis.OffensiveConversionP80 (LUSR = Infinite-only, ne doit pas varier).
+func OffensiveConversionP80(slug string) float64 {
+	return OffensiveConversionP80FromResolver(DefaultEndpointResolver(), slug)
+}
+
 // ProvidesNativeKDA indique si le titre fournit un KDA per-match via son API (donc
 // utilisable/affichable tel quel). Faux pour les titres qui n'en renvoient pas —
 // Halo 5 : forme native = FDA NET ((k+a/3)−d)/games, distincte du quotient KDA ;
