@@ -381,7 +381,13 @@ type MatchScoreboardRow struct {
 	GrenadeKills     *int                      `json:"grenade_kills,omitempty"`
 	MeleeKills       *int                      `json:"melee_kills,omitempty"`
 	PowerWeaponKills *int                      `json:"power_weapon_kills,omitempty"`
-	OutcomeLabel     string                    `json:"outcome_label"`
+	// Mécaniques de kill NATIVES Halo 5 (assassinats + compétences spartiate :
+	// ground pound, shoulder bash). nil hors h5 (omitempty) ; affichage gated
+	// front via la capability native_kill_mechanics.
+	AssassinationKills *int   `json:"assassination_kills,omitempty"`
+	GroundPoundKills   *int   `json:"ground_pound_kills,omitempty"`
+	ShoulderBashKills  *int   `json:"shoulder_bash_kills,omitempty"`
+	OutcomeLabel       string `json:"outcome_label"`
 	// Combat yield (V7)
 	TopWeaponID         *int64   `json:"top_weapon_id,omitempty"`
 	TopWeaponLabel      string   `json:"top_weapon_label,omitempty"`

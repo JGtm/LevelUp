@@ -20,6 +20,7 @@ import { MatchEncountersTable } from './MatchEncountersTable'
 import { MatchSummaryCardsSection } from './MatchStatCards'
 import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from './MatchSummaryCharts'
 import { MatchWeaponPieChart } from './MatchWeaponCharts'
+import { MatchKillTypesDonut } from './MatchKillTypesDonut'
 import { MatchMediaTab } from './MatchMediaTab'
 import {
   MatchMedalsSection,
@@ -352,6 +353,9 @@ export function MatchViewPage() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <MatchWeaponPieChart weaponKills={weaponData} t={t} />
+              {/* Halo 5 : donut « répartition des frags » du viewer (mécaniques natives
+                  incl. assassinats + compétences spartiate). Null hors h5 (capability). */}
+              <MatchKillTypesDonut me={meRow} t={t} />
               <MatchMedalsSection medals={summary_tab.medals ?? []} t={t} />
               {/* Halo 5 : commendations NATIVES (citations_tab.native_commendations)
                   affichées À LA PLACE des citations dérivées d'Infinite
