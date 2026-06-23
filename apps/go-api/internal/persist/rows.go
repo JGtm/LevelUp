@@ -135,6 +135,10 @@ type CommendationInsert struct {
 	XUID           string `json:"xuid"`
 	CommendationID string `json:"commendation_id"`
 	Count          int    `json:"count"`
+	// Progress = total À VIE absolu de la commendation à l'instant de ce match
+	// (carnage delta Progress). Le total courant = le Progress du match le plus
+	// récent par commendation (jamais SUM(count), qui rate la baseline pré-sync).
+	Progress int `json:"progress"`
 }
 
 // SkillRankInsert — row pour player.match_skill_rank.

@@ -17,9 +17,19 @@ import (
 // native) — c'est le substrat append-only que Halo 5 valide.
 //
 // ART-SAFETY (#23046) : INSERT-only / INSERT OR IGNORE côté persister. La clé
-// naturelle (match_id, xuid, commendation_id) n'est JAMAIS mutée (count posé une
-// fois à l'INSERT). AUCUN index secondaire — la PK suffit (parité medals_earned).
-// commendation_id est l'UUID natif de commendation (VARCHAR), pas un numérique.
+// naturelle (match_id, xuid, commendation_id) n'est JAMAIS mutée (count + progress
+// posés une fois à l'INSERT). AUCUN index secondaire — la PK suffit (parité
+// medals_earned). commendation_id est l'UUID natif de commendation (VARCHAR).
+//
+// COLONNES :
+//   - count    = progression gagnée CE match (Progress − PreviousProgress).
+//   - progress = total À VIE de la commendation À L'INSTANT de ce match (carnage
+//     PlayerStats[].ProgressiveCommendationDeltas[].Progress, valeur ABSOLUE de
+//     343). Le total à vie courant d'un joueur = le `progress` de son match le plus
+//     récent par commendation (vue _latest, pas SUM(count) qui sous-compterait la
+//     baseline pré-sync). Nullable : les lignes écrites avant l'ajout de la colonne
+//     restent NULL (pas de rétro-remplissage sous INSERT OR IGNORE ; capturé en
+//     avant + au re-fetch).
 func sharedCommendationsSteps() []migration.Migration {
 	return []migration.Migration{
 		{
@@ -33,9 +43,20 @@ func sharedCommendationsSteps() []migration.Migration {
 						xuid            VARCHAR NOT NULL,
 						commendation_id VARCHAR NOT NULL,
 						count           INTEGER,
+						progress        INTEGER,
 						created_at      TIMESTAMP,
 						PRIMARY KEY (match_id, xuid, commendation_id)
 					);
+				`)
+			},
+		},
+		{
+			Name:        "shared_match_commendations_add_progress",
+			TargetDB:    migration.TargetShared,
+			Description: "match_commendations : colonne progress (total à vie absolu au match). Step séparé pour s'appliquer aux DB déjà provisionnées (ALTER idempotent, ART-safe : colonne posée une fois, jamais mutée, non indexée).",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE match_commendations ADD COLUMN IF NOT EXISTS progress INTEGER;
 				`)
 			},
 		},
