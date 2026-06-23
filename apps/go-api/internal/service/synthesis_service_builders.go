@@ -234,11 +234,16 @@ func buildCombatProfileFromCanonical(rows []canonical.PlayerMatchRow, effectiveH
 		avgPaceRatio = &v
 	}
 	block := analysis.ClassifyCombatProfile(avgOC, avgDR, avgPaceRatio, len(rows))
+	// Pas de damage_taken (ex. Halo 5, totalDmgTaken==0) → DR=0 trompeur : on
+	// neutralise l'axe défensif (sinon « fragile » pour tous) et les dégâts/mort.
+	if totalDmgTaken <= 0 {
+		block.StyleDefensive = nil
+	}
 	// Dégâts par frag-équivalent (frags + assists/3) : aligné sur OC. DmgPerDeath brut.
 	if v := analysis.DamagePerFragEquivalent(totalDmgDealt, float64(totalKills), float64(totalAssists)); v > 0 {
 		block.DmgPerKill = &v
 	}
-	if totalDeaths > 0 {
+	if totalDeaths > 0 && totalDmgTaken > 0 {
 		v := totalDmgTaken / float64(totalDeaths)
 		block.DmgPerDeath = &v
 	}

@@ -54,3 +54,8 @@ offensive_conversion_p80 = 1.264
 # native est un FDA NET ((k+a/3)−d)/games. On ne fabrique JAMAIS de KDA façon Infinite
 # pour h5 (valeur fausse) : les surfaces le laissent nil. Cf. games.ProvidesNativeKDA.
 no_native_kda = true
+# no_damage_taken = true → l'API carnage h5 ne fournit PAS damage_taken (0/13241
+# vérifié). La résistance défensive (DR) n'est pas calculable : on neutralise l'axe
+# défensif du profil de combat, l'alerte coaching « fragile » et les milestones
+# endurance/excellence plutôt que d'afficher un DR=0 trompeur. Cf. games.ProvidesDamageTaken.
+no_damage_taken = true
