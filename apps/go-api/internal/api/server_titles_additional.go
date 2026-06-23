@@ -154,6 +154,10 @@ func registerHalo5Adapters(
 		if pdb != nil {
 			src := platform_duckdb.NewHalo5MatchHistorySource(pdb.SharedReadDB(), pdb.Gamertag)
 			da = da.WithMatchHistorySource(src)
+			// Totaux à vie des commendations : keyés par XUID (≠ historique keyé
+			// gamertag) — match_commendations.xuid = l'xuid Xbox résolu au sync.
+			da = da.WithCommendationTotals(
+				platform_duckdb.NewHalo5CommendationTotalsSource(pdb.SharedReadDB(), pdb.XUID))
 		}
 		if commDefs != nil {
 			da = da.WithCommendationDefs(commDefs)

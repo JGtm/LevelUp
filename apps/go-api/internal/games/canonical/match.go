@@ -103,14 +103,26 @@ type Commendation struct {
 	IconURL *string
 }
 
-// CommendationDefinition — référentiel natif (nom + icône CDN) d'une commendation,
-// par UUID. Résolu depuis la metadata par titre (Halo 5 : table
+// CommendationDefinition — référentiel natif (nom + icône CDN + catégorie) d'une
+// commendation, par UUID. Résolu depuis la metadata par titre (Halo 5 : table
 // commendation_definitions, API Metadata officielle /commendations) pour enrichir les
 // Commendation brutes (AXE B définitions natives). ID = UUID = Commendation.ID.
 type CommendationDefinition struct {
-	ID      string
-	Name    string
-	IconURL string
+	ID       string
+	Name     string
+	IconURL  string
+	Category string // ex. "MULTIPLAYER", "GAME MODE" (groupe d'affichage des totaux)
+}
+
+// CommendationTotal — total À VIE d'une commendation NATIVE pour un joueur : le
+// progress ABSOLU du match le plus récent (AXE B totaux). ID = UUID natif ; Name /
+// IconURL / Category résolus via CommendationDefinition (vides si définition absente).
+type CommendationTotal struct {
+	ID       string
+	Name     string
+	Category string
+	Total    int
+	IconURL  *string
 }
 
 // MatchParticipant représente un joueur d'un match dans le canonique.

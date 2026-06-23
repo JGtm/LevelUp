@@ -1,3 +1,14 @@
+## [2026-06-23] B finition — Totaux à vie des commendations : READ LAYER (source + enrichment) — Complété (uncommitted, endpoint/front à suivre post-backfill)
+
+Suite de la fondation Progress absolu. Read layer complet + testé (fakes/in-memory), pas encore exposé HTTP (endpoint + front = après le re-backfill progress, pour vérifier sur données réelles).
+
+- **Source** `platform/duckdb.Halo5CommendationTotalsSource.GetCommendationTotals` : dernier `progress` ABSOLU par commendation pour un xuid (fenêtre ROW_NUMBER ORDER BY start_time DESC, tie-break match_id ; ignore progress NULL ; keyé XUID ≠ historique keyé gamertag). Retour `[]canonical.CommendationTotal` (Name/Icon/Category vides). Test in-memory : latest-par-commendation (m3=150 > m1=100), NULL ignoré, autre joueur exclu, ordre progress DESC, nil/xuid-vide neutres.
+- **Types canon** : `canonical.CommendationTotal{ID,Name,Category,Total,IconURL}` + `CommendationDefinition.Category` (le def lookup SELECT remonte désormais la catégorie ; match-detail enrichment inchangé, ignore Category).
+- **Adapter** : `DataAdapter.LoadCommendationTotals(ctx)` (source player-bound → enrichit nom/icône/catégorie via commendationDefs, best-effort, n'écrase jamais par du vide ; source nil → ErrCapabilityNotSupported) + interface `CommendationTotalsSource` + `WithCommendationTotals`. Wiring builder player-scoped (`server_titles_additional.go`) : `NewHalo5CommendationTotalsSource(pdb.SharedReadDB(), pdb.XUID)`. Test fake : enrichi + ID inconnu reste brut + dégradation source nil.
+- **Vérifs** : build games+duckdb+api OK ; `go test ./internal/games/halo_5/ -run 'Commendation|Totals'` + `-tags integration ./internal/platform/duckdb/ -run Halo5Commendation` verts ; gofmt propre.
+
+**Reste** : (1) endpoint title-aware (group by category → réponse ; gaté CapCommendationsNative) ; (2) front page totaux ; (3) vérif end-to-end quand le re-backfill progress-aware (en cours, fresh DB) a peuplé match_commendations.progress pour JGtm (latest-par-commendation = vrai total in-game). Hypothèse à valider sur données réelles : match_commendations.xuid == pdb.XUID pour le joueur.
+
 ## [2026-06-22] B finition — Totaux à vie des commendations : persister le Progress ABSOLU (fondation) — Complété
 
 Question de l'utilisateur tranchée : « si on ingère le progrès à chaque match, pourquoi un lifetime ? on a toujours un truc à l'instant T ». RÉPONSE : il a raison. On stockait seulement le DELTA (`count` = Progress − PreviousProgress), pas le total. Le vrai total à vie = le `Progress` ABSOLU de la carnage AU match le plus récent par commendation. SUM(count) sous-compterait (rate la baseline pré-sync). Pas besoin d'API live « lifetime » : il suffit de persister le Progress absolu et lire le dernier par commendation.

@@ -54,7 +54,8 @@ func (s *Halo5CommendationDefSource) LookupCommendations(ctx context.Context, id
 	}
 	q := `SELECT commendation_id,
 	             COALESCE(NULLIF(name_fr, ''), name_en) AS name,
-	             COALESCE(icon_url, '') AS icon_url
+	             COALESCE(icon_url, '') AS icon_url,
+	             COALESCE(category, '') AS category
 	      FROM commendation_definitions
 	      WHERE commendation_id IN (` + strings.Join(placeholders, ",") + `)`
 	rows, err := s.meta.QueryContext(ctx, q, args...)
@@ -63,11 +64,11 @@ func (s *Halo5CommendationDefSource) LookupCommendations(ctx context.Context, id
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var id, name, icon string
-		if err := rows.Scan(&id, &name, &icon); err != nil {
+		var id, name, icon, category string
+		if err := rows.Scan(&id, &name, &icon, &category); err != nil {
 			return out, err
 		}
-		out[id] = canonical.CommendationDefinition{ID: id, Name: name, IconURL: icon}
+		out[id] = canonical.CommendationDefinition{ID: id, Name: name, IconURL: icon, Category: category}
 	}
 	return out, rows.Err()
 }
