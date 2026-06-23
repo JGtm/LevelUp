@@ -10,6 +10,25 @@ findings non-évidents, reste à faire, commandes opérationnelles.
 
 ## 0. MISE À JOUR 2026-06-23 — état réel (autoritatif)
 
+> **ÉTAT FIN DE SESSION 2026-06-23 (capstone — LIRE EN PREMIER).** Les 5 axes prod-gate sont VERTS et la
+> branche `integration/h5-x-livefetch` est POUSSÉE (HEAD `503660cce`, tous tests verts). TOUT le périmètre
+> « tout traiter » est LIVRÉ : MT-19 notif push (`title_ready`) · damage model par titre (hp **115** +
+> OC P80 **1.264** calibré data & câblé display + KDA natif `h5NetFDA` + DR N/A car cryptum sans
+> `damage_taken`) · backlog UI · activation 1b / LUSR v2 temps-joué / recalibration combat (déjà DONE
+> in-branch, vérifié par audit 5 agents) · TZ first_joined (0 décalé) · campagne ART (in-branch) ·
+> ratchets pre-push débloqués (dette branche). **SEUL CHANTIER CODE RESTANT = weapon family canonical /
+> weapon v3** (STOP user, attend GO) → plan `.ai/PLAN_WEAPON_ATTRIBUTION_V3.md` + mémoire
+> `project_weapon_attribution_v3_status`. Ensuite (NON-code) : sanity-check runtime LUSR/combat (app qui
+> tourne) ; puis **land `integration`→`main`** (auto-deploy prod, accord explicite requis ; gros merge —
+> branche ~280 commits derrière main). **Micro-dette damage** : radar session-compare (axe Impact) gardé
+> sur la const P80 Infinite (threading 3-niveaux + 13 fixtures disproportionné ; surface secondaire h5
+> not_exposed) — cf. PLAN_DAMAGE_MODEL §0.
+>
+> **Commits session 06-23** (au-dessus de `edba37b38`) : `145303f4f` damage(86 ERRONÉ→reverté) ·
+> `b78211253` MT-19 notif push · `918b6c5ee` ratchet unblock · `10621333b` backlog empty-state ·
+> `48bcecb92` docs bilan · `7ceace421` damage **115** (revert 86) + littéraux front · `a37328fdf` P80
+> config+getter · `503660cce` P80 câblage display. **8 commits, branche poussée.**
+
 > **CADRAGE PASSE « TOUT TRAITER » (user 2026-06-23)** : autonomie complète — commit ET push
 > sans demander, sur la branche `integration/h5-x-livefetch` (pas d'auto-deploy, safe). Ordre
 > lourd→léger. **STOP impératif AVANT le weapon family canonical / weapon v3** (dernier item, à
@@ -17,7 +36,7 @@ findings non-évidents, reste à faire, commandes opérationnelles.
 > passe — il vient après weapon family + accord explicite. Vérifié in-branch : campagne ART
 > (`ba3cb4608`) déjà portée ; code TZ (`cmd/backfill_first_joined_tz`, `analysis/timeline`) présent.
 
-### BILAN PASSE « TOUT TRAITER » 2026-06-23 (commits `145303f4f`→`10621333b`, branche POUSSÉE)
+### BILAN PASSE « TOUT TRAITER » 2026-06-23 (commits `145303f4f`→`503660cce`, branche POUSSÉE)
 
 - ✅ **MT-19 / axe E notif push** (DERNIER item prod-gate ouvert) — LIVRÉ (`b78211253`). Notif
   `title_ready` first-sync title-aware émise dans `Runner.RunDelta` (funnel HTTP+scheduler+watcher),
