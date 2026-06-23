@@ -8296,8 +8296,25 @@ export interface components {
             solo_session_perf?: components["schemas"]["SoloSessionPerfBlock"];
             summary_tab: components["schemas"]["TimeseriesSummaryTab"];
             top_weapons: components["schemas"]["TimeseriesWeaponKill"][] | null;
+            kill_types?: components["schemas"]["TimeseriesKillTypes"];
             /** Format: int64 */
             total_matches: number;
+        };
+        TimeseriesKillTypes: {
+            /** Format: int64 */
+            assassinations: number;
+            /** Format: int64 */
+            grenade_kills: number;
+            /** Format: int64 */
+            ground_pound_kills: number;
+            /** Format: int64 */
+            melee_kills: number;
+            /** Format: int64 */
+            power_weapon_kills: number;
+            /** Format: int64 */
+            shoulder_bash_kills: number;
+            /** Format: int64 */
+            total_kills: number;
         };
         TimeseriesSummaryTab: {
             kpi_cards: components["schemas"]["TimeseriesKpiCard"][] | null;

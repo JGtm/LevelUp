@@ -128,6 +128,15 @@ type StatsMatchRow struct {
 	MaxKillingSpree     *int
 	HeadshotKills       *int
 	PerfectKills        *int
+	// Kill-type breakdown (donut « répartition des frags » timeseries) : types
+	// d'arme de base + mécaniques natives Halo 5 (assassinats + compétences
+	// spartiate). Les 3 mécaniques sont nil hors h5.
+	MeleeKills         *int
+	GrenadeKills       *int
+	PowerWeaponKills   *int
+	AssassinationKills *int
+	GroundPoundKills   *int
+	ShoulderBashKills  *int
 	// SkillRatingValue : rating CSR ou LUSR du match (depuis match_skill_rank).
 	// Nil si le titre/match n'a pas de skill snapshot.
 	SkillRatingValue          *float64

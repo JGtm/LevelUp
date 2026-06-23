@@ -171,6 +171,7 @@ func (s *TimeseriesService) GetPage(
 		MapBreakdown:     buildSoloMapBreakdown(matches, historicalSolo),
 		SoloSessionPerf:  buildSoloSessionPerf(historicalSolo),
 		TopWeapons:       []domain.TimeseriesWeaponKill{},
+		KillTypes:        buildTimeseriesKillTypes(matches),
 	}
 
 	// Top weapons (chart .04) : degradation gracieuse si weaponKillsRepo nil

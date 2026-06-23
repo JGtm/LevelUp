@@ -15658,6 +15658,8 @@ components:
                   $ref: '#/components/schemas/TimeseriesWeaponKill'
               type: array
               nullable: true
+          kill_types:
+              $ref: '#/components/schemas/TimeseriesKillTypes'
           total_matches:
               format: int64
               type: integer
@@ -15671,6 +15673,39 @@ components:
           - top_weapons
           - outcomes_over_time
           - map_breakdown
+      type: object
+    TimeseriesKillTypes:
+      additionalProperties: false
+      properties:
+          assassinations:
+              format: int64
+              type: integer
+          grenade_kills:
+              format: int64
+              type: integer
+          ground_pound_kills:
+              format: int64
+              type: integer
+          melee_kills:
+              format: int64
+              type: integer
+          power_weapon_kills:
+              format: int64
+              type: integer
+          shoulder_bash_kills:
+              format: int64
+              type: integer
+          total_kills:
+              format: int64
+              type: integer
+      required:
+          - total_kills
+          - melee_kills
+          - grenade_kills
+          - power_weapon_kills
+          - assassinations
+          - ground_pound_kills
+          - shoulder_bash_kills
       type: object
     TimeseriesSummaryTab:
       additionalProperties: false

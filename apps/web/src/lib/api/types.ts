@@ -1745,6 +1745,9 @@ export type KPIStats = components['schemas']['KPIStats']
 
 export type TimeseriesWeaponKill = components['schemas']['TimeseriesWeaponKill']
 
+/** Répartition des frags par type sur la période (donut 1er onglet, Halo 5). */
+export type TimeseriesKillTypes = components['schemas']['TimeseriesKillTypes']
+
 export type OutcomesPeriodPoint = components['schemas']['OutcomesPeriodPoint']
 
 export type FirstEventBucket = components['schemas']['FirstEventBucket']
