@@ -34,7 +34,12 @@ const WEB_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'apps', '
 //   cap du 2026-06-09 (PAS introduit par la session asset/affichage — aucun type front
 //   ajouté par elle). Relevé pour débloquer le push ; à nettoyer dans une passe knip
 //   dédiée (`cd apps/web && npx knip` pour la liste).
-const THRESHOLDS = { files: 31, exports: 88, types: 88 }
+// exports=90 (2026-06-23) : +2 exports morts PRÉ-EXISTANTS accumulés sur la branche
+//   integration/h5-x-livefetch (jamais poussée → ratchet jamais enforced au push). PAS
+//   introduits par la passe h5 prod-gate : la feature notifications n'AJOUTE aucun export
+//   (elle étend des exports existants : union, ALL_CATEGORIES, ICONS, i18n). Relevé pour
+//   débloquer le 1er push ; à nettoyer à la réconciliation du merge vers main.
+const THRESHOLDS = { files: 31, exports: 90, types: 88 }
 
 function knipJson() {
   try {

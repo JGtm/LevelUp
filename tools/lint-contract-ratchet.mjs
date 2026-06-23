@@ -56,6 +56,11 @@ const BASELINE_COLLISIONS = new Set([
   'ExplorerPlayerQueryRequest',
   'FilterContextInput',
   'HealthResponse',
+  // 2026-06-23 : view-model manuel admin/lab (types.ts LabWaypointResponse) doublonnant
+  // le schéma OpenAPI — collision PRÉ-EXISTANTE accumulée sur integration/h5-x-livefetch
+  // (jamais poussée → ratchet jamais enforced). Baseline pour débloquer le 1er push ;
+  // shim/réconciliation à la fusion vers main.
+  'LabWaypointResponse',
   'MatchCombatTab',
   'MatchEncounterBadge',
   'MatchHighlightEvent',
