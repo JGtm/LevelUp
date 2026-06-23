@@ -1,3 +1,12 @@
+## [2026-06-23] H5 — CORRECTION : le CSR par match EST disponible (j'avais conclu trop vite) — En cours
+
+Le user a (à raison) contesté ma conclusion "CSR data-limited". Vérif rigoureuse (recherche doc officielle haloapi.com + sonde réponse BRUTE du carnage) :
+- Mon erreur : un seul essai = le service record arena (cryptum), qui ne donne que le CSR de la SAISON COURANTE → NULL pour comptes inactifs (comportement DOCUMENTÉ, pas un purge).
+- **Le CSR par match EST là** : le carnage ARENA (= PGCR, `/h5/arena/matches/{id}`, déjà fetché par GetMatchCarnage) porte `PlayerStats[].PreviousCsr` + `CurrentCsr` (+ `SeasonId`, `MeasurementMatchesLeft`). CONFIRMÉ sur la réponse brute (sonde : `CurrentCsr`/`PreviousCsr`/`HighestCsrAttained`/`DesignationId`/`SeasonId` présents). Le DTO `dto_carnage.go` ne les modélisait PAS → parsés-droppés.
+- Aussi : `ArenaStats.HighestCsrAttained` (pic all-time, dto.go:88) existe mais mon csr_mapper service-record utilisait le HighestCsr per-playlist (vide) au lieu du top-level.
+
+Fait : `dto_carnage.go` étendu (`H5CarnagePlayer.PreviousCsr/CurrentCsr/MeasurementMatchesLeft` + `H5CarnageResponse.SeasonId`, réutilise le type `H5Csr`). RESTE : mapper carnage→match_skill_rank CSR (owner, badge par match) + match_csrs (shared, participants) + outil de re-fetch des ~1601 matchs classés (la donnée n'est PAS stockée → re-fetch réseau requis, multi-heures comme le backfill initial) + re-LUSR social-only (le ranked sera alors couvert par le CSR). Endpoints/structure documentés dans la recherche (PreviousCsr/CurrentCsr = {Tier, DesignationId, Csr, PercentToNextTier} ; Csr=0 sous Onyx → tier+sub_tier portent l'info).
+
 ## [2026-06-23] H5 — ranked classification + CSR (infra livrée, données CSR vides côté 343) — Complété (suite "fais le max")
 
 Objectif "ranked + CSR". Livré :
