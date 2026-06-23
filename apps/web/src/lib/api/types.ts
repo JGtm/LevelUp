@@ -1598,6 +1598,11 @@ export interface MatchScoreboardRow {
   perfect_kills: number | null
   power_weapon_kills: number | null
   melee_kills: number | null
+  grenade_kills?: number | null
+  // Mécaniques de kill natives Halo 5 (assassinats + compétences spartiate) — null hors h5.
+  assassination_kills?: number | null
+  ground_pound_kills?: number | null
+  shoulder_bash_kills?: number | null
   outcome_label: string
   /** V7 — combat yield */
   top_weapon_id?: number | null

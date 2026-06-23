@@ -4134,6 +4134,12 @@ export interface components {
             /** Format: int64 */
             power_weapon_kills?: number;
             /** Format: int64 */
+            assassination_kills?: number;
+            /** Format: int64 */
+            ground_pound_kills?: number;
+            /** Format: int64 */
+            shoulder_bash_kills?: number;
+            /** Format: int64 */
             rank?: number;
             /** Format: int64 */
             score?: number;

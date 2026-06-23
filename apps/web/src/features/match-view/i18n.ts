@@ -78,6 +78,12 @@ export interface MatchViewText {
   labelPowerWeapon: string
   labelMelee: string
   labelOtherKills: string
+  labelGrenade: string
+  // Donut « répartition des frags » (kill types, dont mécaniques natives Halo 5).
+  chartKillTypesTitle: string
+  labelAssassination: string
+  labelGroundPound: string
+  labelShoulderBash: string
   weaponUnknownPrefix: string
   weaponOtherGroup: string
   // Section médias (dans onglet Résumé)
@@ -241,6 +247,11 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     labelPowerWeapon: 'Armes lourdes',
     labelMelee: 'Mêlée',
     labelOtherKills: 'Autres',
+    labelGrenade: 'Grenade',
+    chartKillTypesTitle: 'Répartition des frags',
+    labelAssassination: 'Assassinat',
+    labelGroundPound: 'Frappe au sol',
+    labelShoulderBash: 'Charge d\'épaule',
     weaponUnknownPrefix: 'Arme inconnue',
     weaponOtherGroup: 'Autres armes',
     sectionMedia: 'Médias',
@@ -391,6 +402,11 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     labelPowerWeapon: 'Power weapons',
     labelMelee: 'Melee',
     labelOtherKills: 'Other',
+    labelGrenade: 'Grenade',
+    chartKillTypesTitle: 'Kill type distribution',
+    labelAssassination: 'Assassination',
+    labelGroundPound: 'Ground Pound',
+    labelShoulderBash: 'Shoulder Bash',
     weaponUnknownPrefix: 'Unknown weapon',
     weaponOtherGroup: 'Other weapons',
     sectionMedia: 'Media',

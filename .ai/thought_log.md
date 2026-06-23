@@ -1,3 +1,10 @@
+## [2026-06-23] H5 mécaniques de kill — Surface MATCH VIEW — Complété
+
+Suite de la surface Synthesis (même capability `native_kill_mechanics`). Match view H5 = servi LIVE via canonical (`buildMatchViewFromCanonical`), pas la DB.
+- `canonicalScoreboardRow` projette les 3 mécaniques (déjà sur `canonical.MatchParticipant`) → `domain.MatchScoreboardRow` (+ openapi).
+- Front : nouveau `MatchKillTypesDonut` (donut « Répartition des frags » du viewer = ligne `is_me` du scoreboard), réutilise le `KillTypesDonut` partagé, GATED `native_kill_mechanics` (null hors h5). Rendu à côté du donut « par arme ». i18n match-view (FR+EN) + grenade_kills ajouté à l'interface front `MatchScoreboardRow` (hand-maintained, drift préexistant : il manquait grenade_kills).
+- Vert : go build, typecheck, eslint, vitest match-view (121).
+
 ## [2026-06-23] H5 catégories de kill natives (assassinats + compétences spartiate) — Surface Synthesis — Complété
 
 Reprise `PLAN_WEAPON_FAMILY_CANONICAL.md` (cadrage user : pas de primary/secondary ; focus mécaniques natives H5 + cards + précision/arme). Sonde live `probe-h5` (JGtm, read-only, store-first, ZÉRO re-capture) a tranché le schéma carnage réel :

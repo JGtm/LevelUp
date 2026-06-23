@@ -5446,6 +5446,15 @@ components:
           power_weapon_kills:
               format: int64
               type: integer
+          assassination_kills:
+              format: int64
+              type: integer
+          ground_pound_kills:
+              format: int64
+              type: integer
+          shoulder_bash_kills:
+              format: int64
+              type: integer
           rank:
               format: int64
               type: integer
