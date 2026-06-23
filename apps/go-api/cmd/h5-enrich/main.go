@@ -104,7 +104,7 @@ func main() {
 	runCtx := ctxkeys.WithTitleSlug(ctx, halo5.TitleSlug)
 	fmt.Printf("enrich h5 : gamertag=%s xuid=%s amis=%v\n", gt, xuid, friends)
 
-	report, err := lusync.BackfillEnrichmentFromShared(runCtx, playerDB, shared, xuid, friends)
+	report, err := lusync.BackfillEnrichmentFromShared(runCtx, playerDB, shared, xuid, friends, true)
 	if err != nil {
 		fatal("BackfillEnrichmentFromShared: %v", err)
 	}

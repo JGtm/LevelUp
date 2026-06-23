@@ -1,3 +1,13 @@
+## [2026-06-23] H5 — hook live PostScore (auto-enrichment au sync) — Complété (suite "fais le max")
+
+Question user : "ces étapes s'appliqueront aussi en post-sync ?" — avant : NON (le runner live H5 faisait Capture→PersistAll(shared)→CSR→notif, sans enrichment). Maintenant : OUI via un hook `PostScore`.
+
+- `Deps.PostScore func(ctx, insertedMatchIDs) error` (runner.go) appelé dans RunDelta APRÈS PersistCSR, SEULEMENT si MatchesInserted>0. Best-effort : une erreur logge + AddError, n'avorte JAMAIS le cycle. nil → no-op (tests).
+- Câblage (wire.go) : ouvre la player DB (`OpenPlayerDB` = schéma complet idempotent, inclut perf/engagement/dominance/match_skill_rank+_latest) + acquiert le shared writer coordonné (`AcquireSharedWriterStandalone`, même pattern que loadKnownMatchIDs/persistBatches → B-swap OK), puis `BackfillEnrichmentFromShared(..., force=false)` (INCRÉMENTAL : seuls les matchs neufs) + `RunLUSRV2ShadowOwnerOnly` (owner-only incrémental, gated capability+env posés au boot serveur). Amis = `otherPlayerGamertags` (autres joueurs déclarés).
+- `BackfillEnrichmentFromShared` paramétré `force bool` : CLI=true (recompute complet), live=false (incrémental, comme runScoringSteps Infinite).
+
+Vérif : build ./... + vet OK (pas de cycle livesync→sync, déjà existant) ; tests livesync verts. NON testable end-to-end hors-ligne (requiert un cycle de sync réseau) — best-effort + nil-safe borne le risque. Le sync live h5 est désormais autonome (plus besoin de cmd/h5-enrich manuel après chaque sync).
+
 ## [2026-06-23] H5 — dominance_flag title-agnostic + feasibility PSA/CSR — Complété (suite "fais le max")
 
 dominance_flag CORRIGÉ pour H5 (l'entrée précédente le notait à 0). H5 highlight_events = 100% `event_type='medal'` (zéro kill-event), `team_*_score` NULL, `game_variant_name` NULL → ni courbe de kills ni scores registry ; le path DOMINATION/HUMILIATION dépendait de MedalSteaktacularID (Infinite). Fix : `analysis.ComputeScoreMarginDominance` (marge de score finale, seuil .ai/STEAKTACULAR.md : gap ≥ leadPct×winner, leadPct standard 0.40), appelée par `computeMatchDominanceFlag` UNIQUEMENT si zéro kill-event → Infinite (en a toujours) reste byte-identique. Score d'équipe = registry team_*_score sinon SOMME des kills par équipe (match_participants), limité aux 2-équipes. Résultats : JGtm 378 DOM/167 HUM, Choco 337/152, Madina 309/108, XxDaemon 54/29. Pas de remontada (3/4/5) sans timeline. Build/vet/tests analysis+sync verts.

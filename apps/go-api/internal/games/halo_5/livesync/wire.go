@@ -2,15 +2,18 @@ package livesync
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/canonical"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/worldenrich"
 )
 
@@ -76,6 +79,35 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 		PersistCSR: func(ctx context.Context, src halo5.CaptureSource) (int, error) {
 			return persistArenaCSR(ctx, src, playerPath, gamertag)
 		},
+		// Hook post-score : enrichment PAR JOUEUR (+ LUSR) INCRÉMENTAL des nouveaux
+		// matchs, comme le post-sync Infinite. Rend le sync live h5 autonome (l'app
+		// enrichit seule, sans cmd/h5-enrich manuel). Best-effort côté runner.
+		// Tient le shared (writer coordonné) + la player DB RW le temps du recompute
+		// incrémental (force=false → seuls les matchs neufs) : court.
+		PostScore: func(ctx context.Context, _ []string) error {
+			runCtx := ctxkeys.WithTitleSlug(ctx, halo5.TitleSlug)
+			playerDB, err := syncpkg.OpenPlayerDB(playerPath)
+			if err != nil {
+				return fmt.Errorf("open player DB: %w", err)
+			}
+			defer playerDB.Close()
+			shared, release, err := syncpkg.AcquireSharedWriterStandalone(runCtx, sharedProvider, sharedPath)
+			if err != nil {
+				return fmt.Errorf("acquire shared: %w", err)
+			}
+			defer release()
+			friends := otherPlayerGamertags(cfg, gamertag)
+			if _, err := syncpkg.BackfillEnrichmentFromShared(runCtx, playerDB.SQLDb(), shared, xuid, friends, false); err != nil {
+				return err
+			}
+			// LUSR incrémental owner-only (gated capability via registre boot + env
+			// LUSR_V2 posés au boot serveur). Best-effort.
+			if _, lerr := syncpkg.RunLUSRV2ShadowOwnerOnly(runCtx, playerDB.SQLDb(), shared, xuid); lerr != nil {
+				slog.WarnContext(runCtx, "h5 post-score: LUSR incrémental échoué (non bloquant)",
+					"gamertag", gamertag, "err", lerr)
+			}
+			return nil
+		},
 		// Notif « titre prêt » (MT-19 / axe E) : délègue au notifier injecté au boot
 		// (cfg.TitleReadyNotifier, = api.BuildTitleReadyNotifier). nil en CLI/tests →
 		// no-op. Le titre (halo5.TitleSlug) et le joueur voyagent en arguments ; toute
@@ -137,6 +169,22 @@ func sharedProviderForPath(cfg *config.AppConfig, sharedPath string) sharedprovi
 		return nil
 	}
 	return p
+}
+
+// otherPlayerGamertags retourne les gamertags des AUTRES joueurs déclarés (hors le
+// viewer) — utilisés comme "amis" pour is_with_friends dans le hook post-score.
+func otherPlayerGamertags(cfg *config.AppConfig, viewerGamertag string) []string {
+	var out []string
+	players, err := cfg.LoadPlayers("")
+	if err != nil {
+		return out
+	}
+	for i := range players {
+		if gt := players[i].Gamertag; gt != "" && gt != viewerGamertag {
+			out = append(out, gt)
+		}
+	}
+	return out
 }
 
 // allResolverGamertags énumère les comptes (gamertags) utilisables pour la

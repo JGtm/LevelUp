@@ -56,6 +56,13 @@ type Deps struct {
 	LoadKnown  func(ctx context.Context) (map[string]bool, error)
 	PersistAll func(ctx context.Context, batches []*persist.MatchBatch) (done []*persist.MatchBatch, errs []string)
 	PersistCSR func(ctx context.Context, src halo5.CaptureSource) (int, error)
+	// PostScore : hook OPTIONNEL post-sync appelé APRÈS persist quand des matchs ont
+	// été insérés → reconstruit l'enrichment PAR JOUEUR (sessions/perf/engagement/
+	// dominance/is_with_friends + LUSR) sur les nouveaux matchs, en INCRÉMENTAL
+	// (force=false), comme runScoringSteps Infinite. Rend le sync live h5 autonome
+	// (plus besoin d'un cmd/h5-enrich manuel après chaque sync). Best-effort : une
+	// erreur n'avorte JAMAIS le cycle. nil → runner unit-testable sans player DB.
+	PostScore func(ctx context.Context, insertedMatchIDs []string) error
 	// NotifyFirstSync : hook OPTIONNEL (MT-19 / axe E) appelé APRÈS persist quand le
 	// titre a des matchs (1er sync OU steady-state). Best-effort, HORS pipeline
 	// progression/prestige (qui reste Infinite-only). L'idempotence DURABLE (une
@@ -137,6 +144,17 @@ func (r *Runner) RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.
 		} else if n > 0 {
 			r.logger.InfoContext(ctx, "h5 sync: CSR arena persisté",
 				"gamertag", r.deps.Viewer.Gamertag, "playlists", n)
+		}
+	}
+
+	// Hook post-score : enrichment PAR JOUEUR (+ LUSR) des matchs nouvellement
+	// persistés, en incrémental. Best-effort (n'avorte jamais le cycle). Skip si rien
+	// d'inséré (rien de nouveau à enrichir).
+	if r.deps.PostScore != nil && res.MatchesInserted > 0 {
+		if err := r.deps.PostScore(ctx, res.InsertedMatchIDs); err != nil {
+			r.logger.WarnContext(ctx, "h5 sync: post-score enrichment échoué (non bloquant)",
+				"gamertag", r.deps.Viewer.Gamertag, "err", err)
+			res.AddError("h5 post-score: " + err.Error())
 		}
 	}
 
