@@ -153,6 +153,10 @@ type MatchExpectedStats struct {
 	// ExpectedWinProb : proba de victoire pré-match de l'équipe du joueur (LUSR v2,
 	// ∈ [0,1]). Alimente la card « Résultat attendu ». Nil si pré-v2 / non disponible.
 	ExpectedWinProb *float64 `json:"expected_win_prob,omitempty"`
+	// LocallyEstimated : true quand expected_kills/deaths ne viennent PAS de l'API
+	// skill (absente, ex. Halo 5) mais d'un modèle local count∝durée (TrueSkill2-like)
+	// → le front affiche « Estimé localement ».
+	LocallyEstimated bool `json:"locally_estimated,omitempty"`
 	// Moyennes historiques sur le mode (HistAvg)
 	HasHistAvg           bool     `json:"has_hist_avg"`
 	HistAvgKills         *float64 `json:"hist_avg_kills,omitempty"`

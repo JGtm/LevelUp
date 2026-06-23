@@ -17,6 +17,7 @@ type MatchHistAvgRow struct {
 	PairName        string
 	IsFirefight     bool
 	IsRanked        bool
+	DurationSeconds int
 }
 
 // MatchMetaRaw : données brutes de la requête Q13 (match_registry).

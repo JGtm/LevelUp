@@ -322,7 +322,11 @@ func (s *MatchViewService) buildMatchViewFromData(
 
 	header := buildMatchHeader(ctx, matchID, meta, d.stats, d.enrich, d.scoreboard, s.assetURL, isFavorite)
 	rank := buildRankBlock(d.skillRank, s.assetURL)
-	summary := buildSummaryTabFull(d.stats, d.medals, d.expected, d.histRows, meta, s.titleSlug, d.richCitations)
+	curDurSec := 0
+	if meta != nil && meta.DurationSeconds != nil {
+		curDurSec = int(*meta.DurationSeconds)
+	}
+	summary := buildSummaryTabFull(d.stats, d.medals, d.expected, d.histRows, meta, s.titleSlug, d.richCitations, curDurSec)
 	// Proba de victoire pré-match (LUSR v2) → card « Résultat attendu ». Source :
 	// match_skill_rank_latest.expected_win_prob via d.skillRank (même lecture que le
 	// player-matches scan). Best-effort : nil pour les matchs pré-v2 / sans donnée.

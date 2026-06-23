@@ -1,3 +1,20 @@
+## [2026-06-23] Expected K/D H5 — modèle local count∝durée (TrueSkill 2) — Complété + validé sur données réelles
+
+Suite de D1/D2-v1. Le user a refusé la moyenne plate (v1) et insisté : un « expected » post-match (juger le sur/sous-rendement) ne peut pas être une moyenne, et TrueSkill 2 a un modèle officiel. **Il avait raison.**
+
+**Validation empirique** (outil créé : `cmd/diag_expected_kd/main.go`, lit les 4 player DBs H5 + shared via ATTACH RO, 3135 matchs) :
+- `win_prob` (matchup) → AUCUN signal pour K/D (corr +0.01).
+- `rating` (skill) → +22% pooled MAIS quasi nul intra-joueur (inter-joueurs : « les bons fraggent plus »).
+- **`durée` du match → LE facteur manquant** (corr intra +0.35 frags / +0.40 morts). C'est exactement ce que TrueSkill 2 modélise (count ∝ skill × durée — [paper MSR 2018](https://www.microsoft.com/en-us/research/publication/trueskill-2-improved-bayesian-skill-rating-system/), « stats linéaires dans skill joueur + skill adverses »).
+- **MULTIVAR `kills ~ rating + durée` = +13% / `deaths ~ rating + durée` = +5%** vs moyenne plate (split random, hors-échantillon). Les deux battent la moyenne.
+- Asymétrie expliquée : `win_prob` = sortie native TrueSkill (proba) ; `assists` = prédite des stats du match (corr dégâts +0.44, stat « en aval ») ; `kills/deaths` = primaires, prédictibles seulement via durée (pré-match) ou dégâts (= rendement, déjà affiché).
+
+**Implémentation (à la volée, zéro migration/training/CLI)** : régression `kills~durée` / `deaths~durée` sur les `histRows` déjà chargés pour le hist-avg (Q29 + `MatchHistAvgRow` + scan : ajout `duration_seconds`), évaluée à la durée du match courant (`meta.DurationSeconds`). Helpers `predictKDFromDuration` / `olsPredictAt` dans `match_view_builders_summary.go` (seuil 10 échantillons, plancher 0, retombe sur la moyenne si pas de variance de durée). Ne s'active QUE si l'API skill n'a pas fourni l'attendu (`ExpectedKills==nil`) → zéro impact Infinite. Flag `MatchExpectedStats.LocallyEstimated` (+ openapi + types.ts) → label front « Estimé localement ».
+
+**v1 retiré** : le fallback hist-avg dans `MatchStatCards` est supprimé (les cartes lisent `expected_kills/deaths` du modèle, label sur le flag). Le hist-avg reste pour la ligne « moyenne » du graphe (feature distincte). Routage : H5 stocké = chemin DB (repo-first) → le modèle s'applique ; canonical (live non-synchro) = ExpectedStats vide (gap pré-existant).
+
+**Validation** : go build + test service (modèle OLS `match_view_expected_kd_test.go` + radar) + test duckdb (history/Q29) verts ; typecheck + eslint + vitest match-view 121 verts.
+
 ## [2026-06-23] Finitions H5 — scoreboard mécaniques + radar/rendement adaptatifs (Lots A/B/C) + cadrage expected H5 (Lot D) — A/B/C Complétés, D cadré
 
 Worktree `feat/h5-finitions` (depuis 805438bae). 5 questions user → 4 lots.
