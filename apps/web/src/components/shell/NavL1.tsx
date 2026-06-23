@@ -142,7 +142,7 @@ function SettingsSplitButton({ tabs, isActive, isAdmin }: SettingsSplitButtonPro
       <div className={wrapperClass}>
         <Link
           to="/settings"
-          search={{ tab: 'general' }}
+          search={{ tab: 'appearance' }}
           className="px-2 py-1.5"
           aria-label="Paramètres"
           title="Paramètres"
@@ -199,7 +199,7 @@ function SettingsSplitButton({ tabs, isActive, isAdmin }: SettingsSplitButtonPro
             <Link
               key={item.key}
               to="/settings"
-              search={{ tab: item.tab as 'general' | 'sync' | 'analyse' | 'accessibility' | 'notifications' | 'lab' | 'users' }}
+              search={{ tab: item.tab }}
               role="menuitem"
               onClick={() => setOpen(false)}
               className="block px-3 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground whitespace-nowrap"
@@ -252,10 +252,11 @@ export function NavL1() {
   // « Synchronisation » et « Utilisateurs » ont migré vers la page Admin
   // (lien « Administration » ci-dessous, gardé pour les admins).
   const settingsTabs: SettingsTabItem[] = [
-    { key: 'general', label: 'Général', tab: 'general' },
+    { key: 'appearance', label: 'Apparence', tab: 'appearance' },
     { key: 'analyse', label: 'Analyse', tab: 'analyse' },
-    { key: 'accessibility', label: 'Accessibilité', tab: 'accessibility' },
     { key: 'notifications', label: 'Notifications', tab: 'notifications' },
+    { key: 'data', label: 'Données', tab: 'data' },
+    { key: 'account', label: 'Compte', tab: 'account' },
   ]
 
   function resolvePath(templatePath: string): string {

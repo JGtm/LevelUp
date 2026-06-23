@@ -15,11 +15,11 @@ export interface SettingsText {
   loading: string
 
   // Onglets
-  tabGeneral: string
   tabSync: string
   tabAnalyse: string
-  tabLab: string
-  tabUsers: string
+  tabAppearance: string
+  tabData: string
+  tabAccount: string
 
   // Sync manuelle
   manualSyncTitle: string
@@ -216,7 +216,6 @@ export interface SettingsText {
   rendementExcludeAssistsHint: string
 
   // Onglet Accessibilité
-  tabAccessibility: string
   accessibilityTitle: string
   accessibilityDescription: string
   paletteLabel: string
@@ -267,11 +266,11 @@ const FR_TEXT: SettingsText = {
   errorStatus: '✗ Erreur lors de la sauvegarde',
   loading: 'Chargement des paramètres…',
 
-  tabGeneral: 'Général',
   tabSync: 'Synchronisation',
   tabAnalyse: 'Analyse',
-  tabLab: 'Lab',
-  tabUsers: 'Comptes',
+  tabAppearance: 'Apparence & Accessibilité',
+  tabData: 'Données & Médias',
+  tabAccount: 'Compte',
 
   manualSyncTitle: 'Synchronisation manuelle',
   manualSyncButton: '↻ Synchroniser tous les joueurs',
@@ -491,7 +490,6 @@ const FR_TEXT: SettingsText = {
     "(Accueil, Timeseries, Sessions, Explorer, Escouade, Match view). Désactivé par défaut.",
 
 
-  tabAccessibility: 'Accessibilité',
   accessibilityTitle: 'Accessibilité visuelle',
   accessibilityDescription: 'Choisissez une palette de couleurs adaptée à votre vision. Plusieurs palettes optimisées pour le daltonisme sont disponibles.',
   paletteLabel: 'Palette de couleurs',
@@ -540,11 +538,11 @@ const EN_TEXT: SettingsText = {
   errorStatus: '✗ Save failed',
   loading: 'Loading settings…',
 
-  tabGeneral: 'General',
   tabSync: 'Synchronisation',
   tabAnalyse: 'Analysis',
-  tabLab: 'Lab',
-  tabUsers: 'Accounts',
+  tabAppearance: 'Appearance & Accessibility',
+  tabData: 'Data & Media',
+  tabAccount: 'Account',
 
   manualSyncTitle: 'Manual synchronisation',
   manualSyncButton: '↻ Synchronise all players',
@@ -765,7 +763,6 @@ const EN_TEXT: SettingsText = {
     'Off by default.',
 
 
-  tabAccessibility: 'Accessibility',
   accessibilityTitle: 'Visual accessibility',
   accessibilityDescription: 'Choose a colour palette suited to your vision. Several palettes optimised for colour-blindness are available.',
   paletteLabel: 'Colour palette',

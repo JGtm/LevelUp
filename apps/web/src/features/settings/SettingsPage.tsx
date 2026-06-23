@@ -1,9 +1,11 @@
 /**
  * SettingsPage — page des paramètres utilisateur avec onglets.
  *
- * P8.4 (revue 2026-04-29) : tabs extraits dans des fichiers dédiés
- * (GeneralTab, SyncTab, AnalyseTab, BackfillCard) ; ToggleRow/BulletHint/TabProps
- * dans _settingsShared.tsx. Ce fichier ne porte plus que l'orchestrateur.
+ * Onglets (préférences utilisateur) : Apparence & Accessibilité · Analyse ·
+ * Notifications (+ Discord) · Données & Médias · Compte. Cartes dans
+ * _settingsCards.tsx / *Tab.tsx ; ToggleRow/BulletHint/TabProps dans
+ * _settingsShared.tsx. Ce fichier ne porte que l'orchestrateur. La Sauvegarde
+ * (ops d'instance) vit désormais dans Admin · Système.
  */
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
@@ -15,9 +17,9 @@ import { AccessibilityTab } from '@/features/settings/AccessibilityTab'
 import { SetPasswordCard } from '@/features/auth/SetPasswordCard'
 import { NotificationsSettingsTab } from '@/features/notifications/NotificationsSettingsTab'
 import type { SettingsResponse } from '@/lib/api/types'
-import { GeneralTab } from './GeneralTab'
 import { AnalyseTab } from './AnalyseTab'
-import { BackupTab } from './BackupTab'
+import { InterfaceCard, DiscordCard, MediaCard } from './_settingsCards'
+import { resolveSettingsTab, type SettingsTab } from './tabs'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -37,19 +39,11 @@ export function SettingsPage() {
 
   const routerState = useRouterState()
   const navigate = useNavigate()
-  const activeTab =
-    (new URLSearchParams(routerState.location.search).get('tab') as
-      | 'general'
-      | 'sync'
-      | 'analyse'
-      | 'lab'
-      | 'users'
-      | 'accessibility'
-      | 'notifications'
-      | 'backup'
-      | null) ?? 'general'
+  const activeTab = resolveSettingsTab(
+    new URLSearchParams(routerState.location.search).get('tab'),
+  )
 
-  function setActiveTab(tab: 'general' | 'sync' | 'analyse' | 'lab' | 'users' | 'accessibility' | 'notifications' | 'backup') {
+  function setActiveTab(tab: SettingsTab) {
     navigate({ to: '/settings', search: { tab }, replace: true }).catch(() => {})
   }
 
@@ -114,14 +108,14 @@ export function SettingsPage() {
         <nav className="-mb-px flex gap-4" aria-label={tc('common.settings.tabs_aria')}>
           {(
             [
-              { id: 'general', label: t.tabGeneral },
+              { id: 'appearance', label: t.tabAppearance },
               { id: 'analyse', label: t.tabAnalyse },
-              { id: 'accessibility', label: t.tabAccessibility },
               { id: 'notifications', label: locale === 'en' ? 'Notifications' : 'Notifications' },
-              { id: 'backup', label: t.tabBackup },
-              // « Synchronisation » et « Utilisateurs » ont migré vers la page Admin
-              // (Admin · Sync & Jobs / Accès). Cf. accès direct « Administration » dans le menu.
-            ] as { id: 'general' | 'sync' | 'analyse' | 'lab' | 'users' | 'accessibility' | 'notifications' | 'backup'; label: string }[]
+              { id: 'data', label: t.tabData },
+              { id: 'account', label: t.tabAccount },
+              // « Sauvegarde » a migré vers Admin · Système ; « Synchronisation » et
+              // « Utilisateurs » vers Admin · Sync & Jobs / Accès.
+            ] as { id: SettingsTab; label: string }[]
           ).map(({ id, label }) => (
             <button
               key={id}
@@ -142,20 +136,27 @@ export function SettingsPage() {
       </div>
 
       <div className="space-y-6 p-6">
-        {activeTab === 'general' && (
+        {activeTab === 'appearance' && (
           <>
-            <GeneralTab merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
-            {/* Mon compte — mot de passe opt-in (re-login rapide sans Microsoft).
-                Self-service conservé ici depuis le retrait de l'onglet « Comptes ». */}
-            <SetPasswordCard />
+            <InterfaceCard merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
+            <AccessibilityTab t={t} locale={locale} />
           </>
         )}
         {activeTab === 'analyse' && (
           <AnalyseTab merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
         )}
-        {activeTab === 'accessibility' && <AccessibilityTab t={t} locale={locale} />}
-        {activeTab === 'notifications' && <NotificationsSettingsTab />}
-        {activeTab === 'backup' && <BackupTab t={t} frozen={demoMode} />}
+        {activeTab === 'notifications' && (
+          <>
+            <NotificationsSettingsTab />
+            {/* Discord = canal d'alerte externe, regroupé avec les notifications. */}
+            <DiscordCard merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
+          </>
+        )}
+        {activeTab === 'data' && (
+          <MediaCard merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
+        )}
+        {/* Compte — mot de passe opt-in (re-login rapide sans Microsoft). */}
+        {activeTab === 'account' && <SetPasswordCard />}
       </div>
     </div>
   )
