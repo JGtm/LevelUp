@@ -293,12 +293,12 @@ moyenne H5 »), filtre Explorer par famille/faction. Honnêteté : armes non map
 | **P0 — Plan** (ce doc) | Schéma BDD + table vérifiée §6 + cadrage UI-différé | validé user |
 | **P1 — Vérif data** | halopedia + wiki.halo.fr (FAIT 2026-06-23, §6 sourcée) | table figée |
 | **P2 — Schéma + seed** | 3 tables (migration metadata `add_weapon_registry`, PK simple) + seed Go depuis §6 (42 familles + 59 armes + 36 filmshell ids Infinite) | **FAIT** (tables seedées, tests verts `weapon_registry_test.go`) |
-| **P2bis — ids H5** | réconciliation `stock_id` H5 (§7 : metadata officiel / events) dans `weapon_ids` | armes H5 résolubles par stock_id |
-| **P3 — Resolver + tests** | package `weaponregistry` + repo lecture + tests | `ByID` marche, CI verte |
-| **P4 — Migration lecteurs** | bascule progressive des lookups weapon vers le registre (§8), golden parity | callers basculés sans régression |
+| **P2bis — ids H5** | réconciliation `stock_id` H5 (catalogue officiel `weapon_labels` metadata H5) dans `weapon_ids` | **FAIT** (35 stock_ids + variantes, tests verts) |
+| **P3 — Resolver + tests** | package `weaponregistry` + repo lecture + tests | **FAIT** (`ByID`/`ByKey`/`Family`, tests verts, log boot weapon_registry_loaded) |
+| **P4 — Migration lecteurs** | bascule progressive des lookups weapon vers le registre (§8), golden parity | **DIFFÉRÉ** (couplé à la narration UI : on bascule + surface les nouvelles dims ensemble). Pour Infinite = golden parity sur lecteurs existants ; pour H5 = greenfield (1er consommateur = WeaponWithMostKills, lui-même différé). Non bloqué techniquement. |
 | **P5 — (DIFFÉRÉ) UI** | donut/comparaison selon narration user | hors-scope tant que narration TBD |
 
-**Livrable demandé = P0→P4** (fondation + passage principal, sans UI). P5 = chantier piloté par la narration.
+**Livré = P0→P3 + P2bis** (fondation + passage principal seedé + resolver, sans UI). **P4 + P5 = différés, pilotés par la narration UI** (décision user 2026-06-23).
 
 ---
 
