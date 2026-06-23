@@ -184,6 +184,28 @@ func TestTokensFresh(t *testing.T) {
 	}
 }
 
+// Garde-fou anti-intermittence : TokensFreshStrict EXIGE une expiry connue. Un token de
+// session d'expiry inconnue (zéro, sessions pré-A1) NE doit PAS être cru frais — sinon il est
+// réutilisé alors qu'il est parfois périmé → 401 intermittent sur le rang carrière.
+func TestTokensFreshStrict(t *testing.T) {
+	if TokensFreshStrict(nil) {
+		t.Error("nil → pas frais (strict)")
+	}
+	// LA différence clé avec TokensFresh : expiry inconnue (0) → NON frais en strict.
+	if TokensFreshStrict(&domain.HaloTokens{SpartanToken: "x"}) {
+		t.Error("expiry inconnue (0) → NON frais en STRICT (déterminisme) — c'est l'invariant anti-flaky")
+	}
+	if !TokensFreshStrict(&domain.HaloTokens{SpartanToken: "x", SpartanExpiresAt: time.Now().Add(time.Hour)}) {
+		t.Error("expiry +1h connue → frais (strict)")
+	}
+	if TokensFreshStrict(&domain.HaloTokens{SpartanToken: "x", SpartanExpiresAt: time.Now().Add(2 * time.Minute)}) {
+		t.Error("expiry +2min (< marge) → pas frais (strict)")
+	}
+	if TokensFreshStrict(&domain.HaloTokens{SpartanToken: "x", SpartanExpiresAt: time.Now().Add(-time.Hour)}) {
+		t.Error("expiry passée → pas frais (strict)")
+	}
+}
+
 // --- Garde-fou C5 : re-mint dédupliqué par xuid (singleflight, anti thundering-herd) ---
 
 func TestResolveFreshPlayerTokens_SingleflightOneMint(t *testing.T) {
