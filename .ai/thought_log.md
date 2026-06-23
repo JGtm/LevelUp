@@ -4,7 +4,9 @@ P4 = router la résolution d'arme par le registre. **Décision user : noms INCHA
 
 Slice 1 — resolver unifié `resolveWeaponMeta` (`weapon_resolver.go`) : UNE requête metadata = LEFT JOIN `weapon_labels` (NOM, parité pure : COALESCE(name_fr,name_en) — le registre n'influence JAMAIS le nom, aucune arme ne « surgit ») + `weapon_ids`/`weapons` (DIMENSIONS : weapon_key/role/family/faction). Garde silencieux `weaponRegistryAvailable` (information_schema via QueryRow, pas de log) → fallback `resolveWeaponLabelsOnly` si registre absent (vieux schéma/test) ⇒ zéro ERROR spam. Route `weapon_kills_repo` : `attachWeaponLabels` + `attachWeaponRoles` (2 requêtes) → `attachWeaponMeta` (1). Consommateurs synthesis/timeseries/squad/teammates = pass-through inchangés.
 
-Tests intégration verts : golden-parity (BR75 → « BR75 » et PAS « Fusil de combat » ; dims precision/battle_rifle/human/hinf_br75 ; sentinel 0 → « Grenade » role="" ; id inconnu → label="") + fallback sans registre + les 9 `TestWeaponKillsRepo` existants. Reste P4 : match_view (scoreboard/detail), explorer, home, CLI diag, sync/citations, analysis/weapon_data (film).
+Tests intégration verts : golden-parity (BR75 → « BR75 » et PAS « Fusil de combat » ; dims precision/battle_rifle/human/hinf_br75 ; sentinel 0 → « Grenade » role="" ; id inconnu → label="") + fallback sans registre + les 9 `TestWeaponKillsRepo` existants.
+
+**Slice 2 — match_view** : `lookupWeaponMeta` + `lookupWeaponLabels` (match_view_repo_weapons.go) → `resolveWeaponMeta` (scoreboard top weapon + Q28 bulk weapon kills par joueur). Fusion variante→canonique (`WeaponFusionMapID`) reste appliquée EN AMONT (inchangée). Tests intégration match_view verts (parité). Reste P4 : explorer, home, CLI diag, sync/citations, analysis/weapon_data (film).
 
 ## [2026-06-23] Synthesis — insight coach « angle mort armes lourdes » (data-driven) — Complété
 
