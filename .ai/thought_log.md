@@ -1,3 +1,9 @@
+## [2026-06-23] B finition — Totaux à vie des commendations : FRONT — Complété
+
+Page front `/players/$playerSlug/commendations` (feature `commendations/`) qui consomme l'endpoint totaux. Pattern feature-local (≠ manifest TOML des citations) : i18n.ts FR/EN + queries.ts (`useCommendationTotals`, GET /commendations/totals, staleTime 5min) + CommendationTotalsPage (sections par catégorie, tuile = MedalIcon icône CDN + nom + total ; fallback `#<id8>` sans nom ; état vide gracieux pour titres sans commendations natives). Route gated `career` (h5 l'a ; Infinite → réponse vide → état vide). Query key `commendationTotals`. Re-exports types (NativeCommendation*). routeTree.gen.ts régénéré (Vite plugin). Couleurs = classes design-system sémantiques (text-muted-foreground/bg-card/border-border), zéro hex.
+
+Vérifs : `npm run typecheck` + `eslint` (front) verts. **Reste** : vérif end-to-end (totaux JGtm non vides quand le re-backfill a peuplé progress) + intégration nav (lien menu — non câblé ce tour, route accessible directe). La feature commendations totals (read+endpoint+front) est COMPLÈTE, en attente de la donnée.
+
 ## [2026-06-23] B finition — Totaux à vie des commendations : ENDPOINT HTTP — Complété (uncommitted, front à suivre)
 
 Endpoint `GET /api/v1/players/{player_slug}/commendations/totals` → `NativeCommendationsTotalsResponse` (totaux groupés par catégorie). Title-agnostic SANS gating slug : la factory `CommendationTotalsCtx` type-asserte l'adapter du titre à `service.CommendationTotalsLoader` (LoadCommendationTotals) — seul *halo_5.DataAdapter l'implémente → les autres titres → loader nil → réponse VIDE (200, pas 404/500).
