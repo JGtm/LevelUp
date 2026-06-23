@@ -1,3 +1,11 @@
+## [2026-06-23] H5 mécaniques de kill — Surface TIMESERIES — Complété
+
+Donut « répartition des frags » sur le 1er onglet (summary), PAS distributions (consigne user). Timeseries lit `canonicalRows` puis convertit en `legacymatch.StatsMatchRow` (qui n'avait AUCUN champ kill-type) :
+- `StatsMatchRow` + `StatsMatchRowFromCanonical` : +6 champs (melee/grenade/power + 3 mécaniques, lus de `r.Self`).
+- `buildTimeseriesKillTypes(matches)` → `domain.TimeseriesKillTypes` (agrégat période) ; champ top-level `kill_types` sur `TimeseriesPageResponse` (+ openapi + re-export types.ts).
+- Front : `TimeseriesKillTypesDonut` (réutilise `KillTypesDonut` partagé) rendu sur `TimeseriesSummaryTab` avant « Outils de destruction », GATED `native_kill_mechanics` (null hors h5). Donut kill-types complet (cohérent Synthesis/match-view). i18n timeseries manifest FR+EN (8 clés).
+- Vert : go build + tests service/analysis, typecheck, eslint, vitest timeseries (40).
+
 ## [2026-06-23] H5 mécaniques de kill — Surface MATCH VIEW — Complété
 
 Suite de la surface Synthesis (même capability `native_kill_mechanics`). Match view H5 = servi LIVE via canonical (`buildMatchViewFromCanonical`), pas la DB.

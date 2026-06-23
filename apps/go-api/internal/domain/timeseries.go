@@ -52,6 +52,20 @@ type TimeseriesWeaponKill struct {
 	Kills    int    `json:"kills"`
 }
 
+// TimeseriesKillTypes agrège la « répartition des frags » par TYPE sur le scope
+// filtré (1er onglet, donut). Types d'arme de base + mécaniques natives Halo 5
+// (assassinats + compétences spartiate). Les 3 mécaniques sont 0 pour les titres
+// qui ne les fournissent pas ; le donut est capability-gated côté front.
+type TimeseriesKillTypes struct {
+	TotalKills        int `json:"total_kills"`
+	MeleeKills        int `json:"melee_kills"`
+	GrenadeKills      int `json:"grenade_kills"`
+	PowerWeaponKills  int `json:"power_weapon_kills"`
+	Assassinations    int `json:"assassinations"`
+	GroundPoundKills  int `json:"ground_pound_kills"`
+	ShoulderBashKills int `json:"shoulder_bash_kills"`
+}
+
 // OutcomesPeriodPoint agrège les outcomes (V/D/N/X) sur une période (jour/semaine/mois).
 // Alimente le chart timeseries.05 (Outcomes over time).
 type OutcomesPeriodPoint struct {
@@ -254,6 +268,10 @@ type TimeseriesPageResponse struct {
 	// TopWeapons : top 10 armes par kills sur le scope filtré (chart .04).
 	// Vide si WeaponKillsRepository non câblé ou aucun kill enregistré.
 	TopWeapons []TimeseriesWeaponKill `json:"top_weapons"`
+	// KillTypes : « répartition des frags » par TYPE sur la période (1er onglet,
+	// donut). Types d'arme + mécaniques natives Halo 5. Nil si aucun match.
+	// Capability-gated côté front (donut masqué hors h5).
+	KillTypes *TimeseriesKillTypes `json:"kill_types,omitempty"`
 	// OutcomesOverTime : V/D/N/X agrégés par période (chart .05).
 	// La granularité (jour/semaine/mois) est choisie automatiquement selon
 	// la durée du scope : <=14j → jour, <=120j → semaine, sinon mois.

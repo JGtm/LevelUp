@@ -13,6 +13,7 @@ import {
 import { TimeseriesKdaTrend } from './TimeseriesKdaTrend'
 import { TimeseriesKdaDensity } from './TimeseriesKdaDensity'
 import { TimeseriesTopWeapons } from './TimeseriesTopWeapons'
+import { TimeseriesKillTypesDonut } from './TimeseriesKillTypesDonut'
 import {
   TimeseriesAssistsTrend,
   TimeseriesAvgLifeTrend,
@@ -139,6 +140,10 @@ export function TimeseriesSummaryTab({
           smoothingLabel={t('timeseries.summary.trend')}
         />
       </div>
+
+      {/* Halo 5 : « répartition des frags » du viewer sur la période (mécaniques
+          natives incl. assassinats + compétences spartiate). Null hors h5. */}
+      <TimeseriesKillTypesDonut killTypes={data.kill_types} t={t} />
 
       {/* Outils de destruction (gauche) | FDA (droite) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

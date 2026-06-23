@@ -232,6 +232,32 @@ func buildDistributionsTab(matches []legacymatch.StatsMatchRow) domain.Timeserie
 	}
 }
 
+// buildTimeseriesKillTypes agrège la « répartition des frags » par type sur le
+// scope (1er onglet, donut). Types d'arme de base + mécaniques natives Halo 5.
+// nil si aucun match. Les 3 mécaniques restent 0 hors h5 (champs StatsMatchRow nil).
+func buildTimeseriesKillTypes(matches []legacymatch.StatsMatchRow) *domain.TimeseriesKillTypes {
+	if len(matches) == 0 {
+		return nil
+	}
+	kt := &domain.TimeseriesKillTypes{}
+	addPtr := func(dst *int, v *int) {
+		if v != nil {
+			*dst += *v
+		}
+	}
+	for i := range matches {
+		m := &matches[i]
+		kt.TotalKills += m.Kills
+		addPtr(&kt.MeleeKills, m.MeleeKills)
+		addPtr(&kt.GrenadeKills, m.GrenadeKills)
+		addPtr(&kt.PowerWeaponKills, m.PowerWeaponKills)
+		addPtr(&kt.Assassinations, m.AssassinationKills)
+		addPtr(&kt.GroundPoundKills, m.GroundPoundKills)
+		addPtr(&kt.ShoulderBashKills, m.ShoulderBashKills)
+	}
+	return kt
+}
+
 // buildKDABuckets crée des buckets pour la distribution FDA.
 //
 // Source : m.KDA — valeur synced depuis player_match_stats.kda (colonne BDD,
