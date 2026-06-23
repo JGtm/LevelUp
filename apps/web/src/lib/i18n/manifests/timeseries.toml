@@ -463,8 +463,8 @@ fr = "Dégâts / mort"
 en = "Damage / death"
 
 [timeseries.progression.ref_one_life]
-fr = "1 vie (225)"
-en = "1 life (225)"
+fr = "1 vie ({{HP}})"
+en = "1 life ({{HP}})"
 
 [timeseries.progression.intensity_title]
 fr = "Intensité"

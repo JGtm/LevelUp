@@ -81,7 +81,7 @@ export const timeseriesManifest = {
   "timeseries.progression.rank_perf_title": { fr: "Rang et performance", en: "Rank and performance" },
   "timeseries.progression.rank_score_title": { fr: "Rang et score personnel", en: "Rank and personal score" },
   "timeseries.progression.ref_100": { fr: "Réf. 100%", en: "Ref. 100%" },
-  "timeseries.progression.ref_one_life": { fr: "1 vie (225)", en: "1 life (225)" },
+  "timeseries.progression.ref_one_life": { fr: "1 vie ({{HP}})", en: "1 life ({{HP}})" },
   "timeseries.progression.spree_headshots_title": { fr: "Folie meurtrière / Tirs à la tête / Frags parfaits", en: "Killing spree / Headshots / Perfect kills" },
   "timeseries.progression.spree_label": { fr: "Folie meurtrière (max)", en: "Killing spree (max)" },
   "timeseries.progression.time_axis": { fr: "Temps (m s)", en: "Time (m s)" },

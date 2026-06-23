@@ -35,22 +35,15 @@ Livré :
 
 Latent connu (non corrigé, hors scope) : `home.toml` first_sync hardcode « Halo Infinite » — correct pour le setup 2 titres actuel (h5 nouveau, Infinite = titre avec données), à généraliser si 3e titre.
 
-## [2026-06-23] Damage model par titre — calibration data h5 effective_hp_to_kill = 86 — Complété
+## [2026-06-23] Damage model par titre — h5 effective_hp_to_kill = 115 (essai 86 ERRONÉ reverté) — Complété
 
-Passe « tout traiter » du handoff prod-gate. L'audit d'état a montré que le damage-model par-titre est DÉJÀ câblé (baseline en paramètre de `ComputeCombatYield`, getter `games.EffectiveHpToKill`, threadé ~28 callers + SQL post-sync + front help via jeton `{{HP}}`), mais h5=115 restait marqué PROVISOIRE (jamais confronté aux vraies données).
+Passe « tout traiter ». Le damage-model par-titre est DÉJÀ câblé (baseline en paramètre de `ComputeCombatYield`, getter `games.EffectiveHpToKill`, ~28 callers + SQL post-sync + front help via jeton `{{HP}}`). **h5 = 115** (design : bouclier 70 + armure 45) = les PV-pour-tuer RÉELS dans l'échelle de dégâts h5, baseline des KPI rendement/résistance.
 
-Validation sur vraies données (DB shared h5, 8856 lignes `match_participants`, lecture seule) :
-- avg dégâts/kill empirique h5 = **136** (médiane 132.9, p25 109.5, p75 162.1).
-- avg dégâts/kill empirique Infinite = **358.8** (médiane 345.2), baseline design = 225 → ratio design/empirique = 0.627.
-- L'écart 136 vs 358.8 (×2.6) prouve que l'unité de dégâts de l'API cryptum h5 ≠ Infinite (échelle différente, PAS des ennemis plus fragiles) — exactement l'avertissement de l'audit.
+**ERREUR same-day corrigée** : j'avais changé 115→86 par un « scale-match » sur la moyenne empirique dégâts/kill (h5 136 vs Infinite 358.8). FAUX : cette moyenne inclut overkill + dégâts d'assistances, avec un facteur title-spécifique NON constant (Infinite ×1.6 = 358.8/225 ; h5 ×1.18 = 136/115) → elle ne se « scale-matche » pas. Le PV-pour-tuer DESIGN (115) fait foi (confirmé user). **Reverté à 115** (le commit `145303f4f` posait 86 erroné ; revert dans le commit damage suivant).
 
-Décision : calibration par **scale-match** (préserver le ratio baseline/empirique d'Infinite) :
-`hp_h5 = 225 × (dpk_h5/dpk_inf)` = 225×136/358.8 = 85.3 (global) / 225×132.9/345.2 = 86.6 (médiane) → retenu **86**.
-Effet : OC moyen h5 = 86/136 = 0.63 == OC moyen Infinite 225/358.8 = 0.63 → la distribution OC/DR de h5 est centrée comme Infinite, donc les bandes de classification ET le P80 d'Infinite restent valides pour h5 (OC P80 data Infinite confirmée 0.918 ≈ constante 0.90). Le vrai bug était hp=115 + P80 Infinite = double désalignement.
+Changements nets Go : `constants.toml` = 115 (mention PROVISOIRE retirée + note explicite « ne pas dériver de l'empirique »), `damage_model.go` commentaire. Tests `internal/games` verts.
 
-Changements : `config/titles/halo_5/constants.toml` (115→86 + doc méthode complète), `damage_model.go` (commentaire stale corrigé). Tests `internal/games` verts. Tous les `115` des tests (Go + front) sont des fixtures/paramètres synthétiques, pas le vrai config → non cassés. P80 propre à h5 = raffinement futur (DB verrouillée par un backfill en cours ; le scale-match rend le P80 Infinite valide entre-temps). Mémoire `project_damage_model_per_title_225` périmée (« à faire » alors que fait).
-
-Prochaine étape : littéraux 225 résiduels front title-aware (ONE_LIFE_DAMAGE squad + manifests i18n) + MT-19 notif push.
+**Littéraux front title-aware LIVRÉS (même passe, après OK user)** : `oneLifeDamageGradient` — param `oneLife` sur `offensiveDamageGradient`/`defensiveDamageGradient`/`damageAxisBounds` (défaut 225 Infinite) ; nouveau `lib/damage/effectiveHp.ts` (`useEffectiveHpToKill` lit le titre courant via appShellStore + `substituteHpToken`) ; `TimeseriesEfficiency` (gradient + markLine yAxis + refLabel) et `EfficiencyTooltipText` résolvent le PV du titre ; jeton `{{HP}}` dans `common.charts.efficiency_tooltip` + `timeseries.progression.ref_one_life` (manifestes rebuildés). Charts escouade (`squadEfficiencyChart`) gardent le défaut 225 (escouade Infinite-only). Tests ajoutés : param `oneLife` (gradient) + `substituteHpToken`. Vérifs : Go games + front typecheck + eslint + vitest (172 tests) verts. Reste damage (non bloquant, data-couplé) : P80 par titre + KDA/assist h5 (cf. PLAN_DAMAGE_MODEL_PER_TITLE §0 items 2,4).
 
 ## [2026-06-23] VÉRIF END-TO-END prod-gate (totaux + media) sur vraies données — PASSE
 

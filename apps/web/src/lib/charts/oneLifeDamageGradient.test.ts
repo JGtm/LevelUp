@@ -76,3 +76,24 @@ describe('damageAxisBounds', () => {
     expect(b.max).toBeGreaterThanOrEqual(300)
   })
 })
+
+describe('barème oneLife title-aware (115 Halo 5 vs 225 défaut)', () => {
+  it('damageAxisBounds inclut le repère custom (115)', () => {
+    const b = damageAxisBounds([200, 300], 115)
+    expect(b.min).toBeLessThanOrEqual(115)
+  })
+  it('offensiveDamageGradient centre sur le repère custom : [90,140] à cheval sur 115 → 3 stops (vert au milieu)', () => {
+    const g = offensiveDamageGradient([90, 140], 115)
+    expect(g.colorStops).toHaveLength(3)
+    expect(g.colorStops[1].color).toBe('divergent-pos')
+  })
+  it('sans argument, garde le barème Infinite 225 : [90,140] tous sous 225 → cas dégénéré bicolore (2 stops)', () => {
+    const g = offensiveDamageGradient([90, 140])
+    expect(g.colorStops).toHaveLength(2)
+  })
+  it('defensiveDamageGradient respecte aussi le repère custom (115)', () => {
+    const g = defensiveDamageGradient([90, 140], 115)
+    expect(g.colorStops).toHaveLength(3)
+    expect(g.colorStops[1].color).toBe('divergent-neutral')
+  })
+})
