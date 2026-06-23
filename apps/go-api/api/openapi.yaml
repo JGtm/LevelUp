@@ -14487,6 +14487,41 @@ components:
           - squad_perf
           - match_count
       type: object
+    SquadKillMechanicBar:
+      additionalProperties: false
+      properties:
+          kills_by_player:
+              additionalProperties:
+                  format: int64
+                  type: integer
+              type: object
+          mechanic:
+              type: string
+          total_squad:
+              format: int64
+              type: integer
+      required:
+          - mechanic
+          - kills_by_player
+          - total_squad
+      type: object
+    SquadKillMechanics:
+      additionalProperties: false
+      properties:
+          bars:
+              items:
+                  $ref: '#/components/schemas/SquadKillMechanicBar'
+              type: array
+              nullable: true
+          players:
+              items:
+                  type: string
+              type: array
+              nullable: true
+      required:
+          - players
+          - bars
+      type: object
     SquadWeaponBar:
       additionalProperties: false
       properties:

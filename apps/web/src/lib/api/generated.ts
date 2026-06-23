@@ -7827,6 +7827,18 @@ export interface components {
             /** Format: double */
             win_rate?: number;
         };
+        SquadKillMechanicBar: {
+            kills_by_player: {
+                [key: string]: number;
+            };
+            mechanic: string;
+            /** Format: int64 */
+            total_squad: number;
+        };
+        SquadKillMechanics: {
+            bars: components["schemas"]["SquadKillMechanicBar"][] | null;
+            players: string[] | null;
+        };
         SquadWeaponBar: {
             is_grenade_melee?: boolean;
             kills_by_player: {

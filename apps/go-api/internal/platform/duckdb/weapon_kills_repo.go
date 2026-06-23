@@ -93,6 +93,74 @@ func (r *WeaponKillsRepo) LoadWeaponKillsAggregated(
 	return rows, nil
 }
 
+// LoadKillMechanicsAggregated agrège les mécaniques de kill NATIVES Halo 5 par
+// xuid (assassination / ground_pound / shoulder_bash) depuis match_participants,
+// sur les matchs filtrés (GROUP BY xuid). Mêmes filtres que les armes (MatchIDs +
+// XUIDs). Retourne games.ErrCapabilityNotSupported si match_participants est
+// absente. Les colonnes mécaniques sont garanties présentes (migration
+// add_h5_kill_mechanics_columns) ; valent 0 pour les titres qui ne les peuplent pas.
+func (r *WeaponKillsRepo) LoadKillMechanicsAggregated(
+	ctx context.Context,
+	filters port.WeaponKillFilters,
+) ([]port.KillMechanicsRow, error) {
+	if err := filters.Validate(); err != nil {
+		return nil, fmt.Errorf("WeaponKillsRepo.LoadKillMechanicsAggregated: %w", err)
+	}
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	q, args := buildKillMechanicsQuery(filters)
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("shared reader: %w", err)
+	}
+	defer release()
+
+	dbRows, err := db.QueryContext(ctx, q, args...)
+	if err != nil {
+		if isTableNotFoundErr(err) {
+			return nil, games.ErrCapabilityNotSupported
+		}
+		return nil, fmt.Errorf("query: %w", err)
+	}
+	defer dbRows.Close()
+
+	var out []port.KillMechanicsRow
+	for dbRows.Next() {
+		var row port.KillMechanicsRow
+		if err := dbRows.Scan(&row.XUID, &row.Assassinations, &row.GroundPound, &row.ShoulderBash); err != nil {
+			return nil, fmt.Errorf("scan: %w", err)
+		}
+		out = append(out, row)
+	}
+	return out, dbRows.Err()
+}
+
+// buildKillMechanicsQuery construit le SELECT agrégé des mécaniques par xuid
+// (même forme que la branche grenade/melee de buildWeaponKillsQuery).
+func buildKillMechanicsQuery(f port.WeaponKillFilters) (string, []any) {
+	var sb strings.Builder
+	args := make([]any, 0, len(f.MatchIDs)+len(f.XUIDs))
+	matchPlaceholders := Placeholders(len(f.MatchIDs))
+	for _, id := range f.MatchIDs {
+		args = append(args, id)
+	}
+	sb.WriteString(`
+SELECT
+    mp.xuid,
+    SUM(COALESCE(mp.assassination_kills, 0))::INTEGER AS assassinations,
+    SUM(COALESCE(mp.ground_pound_kills, 0))::INTEGER  AS ground_pound,
+    SUM(COALESCE(mp.shoulder_bash_kills, 0))::INTEGER AS shoulder_bash
+FROM match_participants mp
+WHERE mp.match_id IN (`)
+	sb.WriteString(matchPlaceholders)
+	sb.WriteString(`)`)
+	appendXUIDFilter(&sb, &args, "mp", f)
+	sb.WriteString(`
+GROUP BY mp.xuid`)
+	return sb.String(), args
+}
+
 // queryWeaponKills execute le SELECT principal + UNION ALL grenade/melee
 // si demande, puis aggrege cote Go (l'aggregation SQL est faite par GROUP BY).
 func (r *WeaponKillsRepo) queryWeaponKills(

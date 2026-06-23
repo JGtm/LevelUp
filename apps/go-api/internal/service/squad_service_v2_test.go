@@ -64,6 +64,15 @@ func (f *fakeSquadLoader) LoadWeaponKills(
 	return nil, games.ErrCapabilityNotSupported
 }
 
+// LoadKillMechanics stub — mécaniques natives h5 non simulées ici (nil = aucune).
+func (f *fakeSquadLoader) LoadKillMechanics(
+	_ context.Context,
+	_ string,
+	_ port.WeaponKillFilters,
+) ([]port.KillMechanicsRow, error) {
+	return nil, nil
+}
+
 // LoadMedals stub — meme pattern que LoadHighlightEvents.
 func (f *fakeSquadLoader) LoadMedals(
 	_ context.Context,

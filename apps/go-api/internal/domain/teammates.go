@@ -120,6 +120,25 @@ type SquadWeaponKills struct {
 	Bars    []SquadWeaponBar `json:"bars"`
 }
 
+// SquadKillMechanicBar est une barre du breakdown « mécaniques de kill » de la
+// page Escouade (Halo 5) : 1 mécanique (assassination | ground_pound |
+// shoulder_bash) avec ses kills par joueur de l'escouade + total cumulé.
+type SquadKillMechanicBar struct {
+	// Mechanic : clé stable (assassination | ground_pound | shoulder_bash).
+	Mechanic      string         `json:"mechanic"`
+	KillsByPlayer map[string]int `json:"kills_by_player"` // gamertag → kills
+	TotalSquad    int            `json:"total_squad"`
+}
+
+// SquadKillMechanics alimente le breakdown « mécaniques natives Halo 5 » (barres
+// empilées par coéquipier) de la page Escouade. Players = ordre canonique (main
+// puis teammates) ; Bars = 1 par mécanique présente (total > 0). nil hors h5
+// (capability native_kill_mechanics).
+type SquadKillMechanics struct {
+	Players []string               `json:"players"`
+	Bars    []SquadKillMechanicBar `json:"bars"`
+}
+
 // SquadPerformanceSeriesPoint est une mesure 1-match × 1-joueur pour le
 // chart family teammates.16. Toutes les métriques sont optionnelles (nil =
 // non disponible côté DB / pas calculé). MatchOrder est un index 0..N-1
@@ -418,6 +437,10 @@ type TeammatesPageResponse struct {
 	// Nil si aucune donnée weapon_kills disponible (capability absente ou shared
 	// match_ids vides).
 	WeaponKills *SquadWeaponKills `json:"weapon_kills,omitempty"`
+	// NativeKillMechanics : breakdown des mécaniques natives Halo 5 par coéquipier
+	// (assassinats + compétences spartiate, barres empilées). Nil hors h5
+	// (capability native_kill_mechanics) ou aucune mécanique sur les matchs partagés.
+	NativeKillMechanics *SquadKillMechanics `json:"native_kill_mechanics,omitempty"`
 	// FirstEvents alimente teammates.17 (butterfly premier frag/première mort,
 	// bins 15 s). Nil si aucune donnée highlight_events.
 	FirstEvents *SquadFirstEvents `json:"first_events,omitempty"`

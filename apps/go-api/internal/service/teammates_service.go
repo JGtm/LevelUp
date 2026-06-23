@@ -213,6 +213,7 @@ func (s *TeammatesService) GetPage(
 	var intensityProfile *domain.SquadIntensityProfile
 	var performanceSeries map[string][]domain.SquadPerformanceSeriesPoint
 	var weaponKills *domain.SquadWeaponKills
+	var nativeKillMechanics *domain.SquadKillMechanics
 	var firstEvents *domain.SquadFirstEvents
 	var medalDigest []domain.MedalDigestEntry
 	if len(allSquadRows) > 0 {
@@ -246,6 +247,7 @@ func (s *TeammatesService) GetPage(
 		intensityProfile = s.buildSquadIntensityProfile(ctx, allSquadRows, s.gamertag, req.SelectedGamertags, "all")
 		performanceSeries = s.buildSquadPerformanceSeries(ctx, allSquadRows, s.gamertag, req.SelectedGamertags)
 		weaponKills = s.buildSquadWeaponKills(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
+		nativeKillMechanics = s.buildSquadKillMechanics(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 		firstEvents = s.buildSquadFirstEvents(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 		medalDigest = s.buildMedalDigest(ctx, allSquadRows, s.gamertag, playerXUID, teammates, req.Locale)
 	}
@@ -283,27 +285,28 @@ func (s *TeammatesService) GetPage(
 	}
 
 	return domain.TeammatesPageResponse{
-		Options:           options,
-		Teammates:         teammates,
-		TotalMatches:      totalMatches,
-		SessionLabels:     sessionLabels,
-		FriendsCount:      len(friendGTs),
-		Timeseries:        timeseries,
-		MapBreakdown:      mapBreakdown,
-		MatchSeries:       matchSeries,
-		MatchHistory:      matchHistory,
-		SessionTimeline:   sessionTimeline,
-		MapHeatmap:        mapHeatmap,
-		ImpactMatrix:      impactMatrix,
-		PerMinuteStats:    perMinuteStats,
-		SynergyRadar:      synergyRadar,
-		IntensityProfile:  intensityProfile,
-		PerformanceSeries: performanceSeries,
-		WeaponKills:       weaponKills,
-		FirstEvents:       firstEvents,
-		Header:            header,
-		MainPlayer:        s.gamertag,
-		MedalDigest:       medalDigest,
+		Options:             options,
+		Teammates:           teammates,
+		TotalMatches:        totalMatches,
+		SessionLabels:       sessionLabels,
+		FriendsCount:        len(friendGTs),
+		Timeseries:          timeseries,
+		MapBreakdown:        mapBreakdown,
+		MatchSeries:         matchSeries,
+		MatchHistory:        matchHistory,
+		SessionTimeline:     sessionTimeline,
+		MapHeatmap:          mapHeatmap,
+		ImpactMatrix:        impactMatrix,
+		PerMinuteStats:      perMinuteStats,
+		SynergyRadar:        synergyRadar,
+		IntensityProfile:    intensityProfile,
+		PerformanceSeries:   performanceSeries,
+		WeaponKills:         weaponKills,
+		NativeKillMechanics: nativeKillMechanics,
+		FirstEvents:         firstEvents,
+		Header:              header,
+		MainPlayer:          s.gamertag,
+		MedalDigest:         medalDigest,
 
 		CompositionSessions:      compositionSessions,
 		LatestCompositionSession: latestCompositionSession,

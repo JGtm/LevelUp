@@ -1,3 +1,13 @@
+## [2026-06-23] H5 mécaniques de kill — Surface ESCOUADE (barres empilées) — Complété
+
+Dernière des 4 surfaces. Page /squad LIVE = service legacy `TeammatesService` ; breakdown armes = `buildSquadWeaponKills` via `squadLoader.LoadWeaponKills` (par xuid). Les stats par-coéquipier ne sont PAS dans `SquadMatchRow` (main-only) → il a fallu une nouvelle méthode loader.
+- Choix : `LoadKillMechanics` sur l'interface `SquadV2Loader` (couvre TOUS les coéquipiers via `resolveAnyPlayerDB`, comme les armes — `LoadFor` aurait raté les coéquipiers non-trackés). Impl = `WeaponKillsRepo.LoadKillMechanicsAggregated` (GROUP BY xuid sur match_participants, mêmes filtres MatchIDs+XUIDs). +2 stubs mocks (`fakeSquadLoader`, `fakeSquadLoaderFull`).
+- `buildSquadKillMechanics` (mirror du weapon builder) → `domain.SquadKillMechanics` (1 barre/mécanique, segments = joueurs) ; champ `native_kill_mechanics` sur `TeammatesPageResponse` (+ openapi schémas + re-export types.ts + champ hand-interface).
+- Front : `SquadKillMechanicsChart` MAPPE `SquadKillMechanics` → `SquadWeaponKills` et RÉUTILISE `SquadWeaponKillsChart` (zéro nouveau builder ECharts) ; gated `<FeatureGate capability="native_kill_mechanics">`. i18n squad.ts (interface+fr+en).
+- Vert : go build + tests service/duckdb, typecheck, eslint, vitest squad (246).
+
+Bilan : les 4 surfaces (Synthesis cards+donut, Match-view donut, Timeseries donut 1er onglet, Escouade barres empilées) affichent assassinats + compétences spartiate, capability-gated. Reste : weapon_class 3 classes + docs.
+
 ## [2026-06-23] H5 mécaniques de kill — Surface TIMESERIES — Complété
 
 Donut « répartition des frags » sur le 1er onglet (summary), PAS distributions (consigne user). Timeseries lit `canonicalRows` puis convertit en `legacymatch.StatsMatchRow` (qui n'avait AUCUN champ kill-type) :
