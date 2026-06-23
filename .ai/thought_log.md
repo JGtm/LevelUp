@@ -1,3 +1,23 @@
+## [2026-06-23] MT-19 / axe E — notif « titre prêt » first-sync title-aware — Complété
+
+Dernier item ouvert du prod-gate h5 (axe E away-case). L'auto-poll front couvrait déjà le cas on-page ; restait la notif quand l'utilisateur est AILLEURS (invité à « retourner sur Halo Infinite » le temps du backfill). Cartographié par workflow (5 lecteurs + synthèse).
+
+**Findings cartographie** : (1) le système de notifs (`internal/notifications`) est append-only sur `shared_social.duckdb` (ART-safe), title-AGNOSTIC (pas de colonne titre → titre via Params). (2) `shared_social` est PER-TITRE (`SharedSocialDBPath(slug)`) → la notif doit vivre dans le flux du titre PAR DÉFAUT (Infinite), là où l'utilisateur revient. (3) la pipeline progression/prestige (`post_sync_deltas.go`, `defaultProgressionTitleSlug` hardcodé Infinite + `PrestigeBundle` singleton) ne doit PAS être touchée.
+
+**Décision design (vs plan brut)** : déclencheur = « le titre a des matchs » (known-set non vide OU insert>0), PAS « known-set vide » (trop transitoire — si la 1re émission échoue lease-saturé, jamais ré-essayée car les matchs deviennent connus). L'idempotence DURABLE (1 seule notif/titre) vit dans le watermark `sync_meta` du notifier, qui n'avance QUE sur succès → retry jusqu'au succès. Calqué EXACTEMENT sur le modèle `app_release` (notifications_boot.go).
+
+**Wiring minimal (vs threader 4 signatures + 3 call-sites)** : injection du notifier via `cfg.TitleReadyNotifier` (même pattern que `cfg.SharedManager`), lu au runtime par `newHalo5Runner` → `Deps.NotifyFirstSync` appelé dans `Runner.RunDelta` (funnel unique HTTP+scheduler+watcher). Zéro changement de signature, zéro cycle d'import (api↔config↔livesync via une closure stdlib-only).
+
+Livré :
+- Backend : `CategoryTitleReady` (types.go) ; `cfg.TitleReadyNotifier` (config.go) ; `Deps.NotifyFirstSync` + détection dans RunDelta (runner.go) ; wiring closure (wire.go) ; `api.BuildTitleReadyNotifier`/`emitTitleReadyForPlayer` + watermark sync_meta ART-safe (notifications_title_ready.go, NEW) ; injection boot (main.go).
+- Front : `title_ready` ajouté à l'union + ALL_CATEGORIES (types.ts), ICONS (IconSparkles), categoryLabel/description/templates FR+EN (i18n.ts), case navigation `/players/{slug}/home` (navigation.ts) + whitelist test.
+- Cible : `/players/{slug}/home` (l'écran first-sync y bascule sur le dashboard peuplé).
+- Tests : runner `TestRunDelta_NotifyFirstSync` (1er sync→1 appel, aucun match→0, steady-state→1 retry, nil-safe) ; front navigation.test 7/7 (title_ready→/home whitelistée). go build+vet+config OK ; typecheck+eslint+vitest OK.
+
+**Preuve « prestige intouché »** : zéro diff dans post_sync_deltas.go / post_sync_progression.go / prestige_setup.go ; le runner h5 ne câble aucun PostSyncRunner. Dégradation : Infinite (SyncEngine, pas de Runner dédié) → no-op naturel ; notifier nil (CLI/tests) → no-op ; joueur sans profil Infinite → no-op silencieux.
+
+Latent connu (non corrigé, hors scope) : `home.toml` first_sync hardcode « Halo Infinite » — correct pour le setup 2 titres actuel (h5 nouveau, Infinite = titre avec données), à généraliser si 3e titre.
+
 ## [2026-06-23] Damage model par titre — calibration data h5 effective_hp_to_kill = 86 — Complété
 
 Passe « tout traiter » du handoff prod-gate. L'audit d'état a montré que le damage-model par-titre est DÉJÀ câblé (baseline en paramètre de `ComputeCombatYield`, getter `games.EffectiveHpToKill`, threadé ~28 callers + SQL post-sync + front help via jeton `{{HP}}`), mais h5=115 restait marqué PROVISOIRE (jamais confronté aux vraies données).

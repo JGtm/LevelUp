@@ -60,6 +60,11 @@ const (
 	CategoryPatternLever    Category = "pattern_lever"
 	// 2026-05-24 : Combat Profile Wiring Phase 5 — alertes proactives OC/DR/activité.
 	CategoryCombatPattern Category = "combat_pattern"
+	// 2026-06-23 : MT-19 / axe E — « titre prêt ». Émise à la première synchro d'un
+	// titre fraîchement activé (Halo 5+) ayant produit des matchs, dans le flux du
+	// titre par défaut (away-case : l'utilisateur a été invité à retourner sur Halo
+	// Infinite le temps du backfill). title-agnostic : le titre voyage en Params.
+	CategoryTitleReady Category = "title_ready"
 )
 
 // AllCategories retourne toutes les catégories MVP (utile pour les tests et le seed).
@@ -85,6 +90,8 @@ func AllCategories() []Category {
 		CategoryPatternBehavior, CategoryPatternLever,
 		// Combat Profile Phase 5.
 		CategoryCombatPattern,
+		// MT-19 / axe E.
+		CategoryTitleReady,
 	}
 }
 

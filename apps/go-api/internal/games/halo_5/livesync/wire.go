@@ -76,6 +76,16 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 		PersistCSR: func(ctx context.Context, src halo5.CaptureSource) (int, error) {
 			return persistArenaCSR(ctx, src, playerPath, gamertag)
 		},
+		// Notif « titre prêt » (MT-19 / axe E) : délègue au notifier injecté au boot
+		// (cfg.TitleReadyNotifier, = api.BuildTitleReadyNotifier). nil en CLI/tests →
+		// no-op. Le titre (halo5.TitleSlug) et le joueur voyagent en arguments ; toute
+		// la logique (watermark idempotent + Emit dans le flux du titre par défaut)
+		// vit côté api, hors de la couche sync (zéro cycle d'import).
+		NotifyFirstSync: func(ctx context.Context, inserted int) {
+			if cfg.TitleReadyNotifier != nil {
+				cfg.TitleReadyNotifier(ctx, halo5.TitleSlug, gamertag, xuid, inserted)
+			}
+		},
 	}, logger)
 }
 

@@ -121,6 +121,61 @@ func TestRunDelta_KnownSetErrorBestEffort(t *testing.T) {
 	}
 }
 
+// TestRunDelta_NotifyFirstSync : le hook « titre prêt » (MT-19 / axe E) est appelé
+// dès que le titre a des matchs (known non vide OU insert>0), jamais s'il n'en a
+// aucun. L'idempotence durable vit côté notifier (watermark), PAS dans ce hook —
+// d'où l'appel en steady-state (retry-until-watermark si la 1re émission a échoué).
+func TestRunDelta_NotifyFirstSync(t *testing.T) {
+	makeDeps := func(known map[string]bool, batches []*persist.MatchBatch, notify func(context.Context, int)) Deps {
+		return Deps{
+			NewSource:       func(context.Context) (halo5.CaptureSource, error) { return nil, nil },
+			Capture:         captureReturning(batches, halo5.CaptureStats{MatchesSeen: len(batches), MatchesCollected: len(batches)}, nil),
+			Viewer:          viewer(),
+			LoadKnown:       func(context.Context) (map[string]bool, error) { return known, nil },
+			PersistAll:      func(_ context.Context, b []*persist.MatchBatch) ([]*persist.MatchBatch, []string) { return b, nil },
+			NotifyFirstSync: notify,
+		}
+	}
+
+	// (1) 1er sync : known vide + 1 match inséré → notifié 1× avec inserted=1.
+	var calls1, got1 int
+	d1 := makeDeps(map[string]bool{}, []*persist.MatchBatch{batchWith("m1", 8, 0)},
+		func(_ context.Context, inserted int) { calls1++; got1 = inserted })
+	if _, err := NewRunner(d1, nil).RunDelta(context.Background(), domain.SyncOptions{}); err != nil {
+		t.Fatalf("RunDelta: %v", err)
+	}
+	if calls1 != 1 || got1 != 1 {
+		t.Errorf("1er sync : appels=%d inserted=%d, want 1/1", calls1, got1)
+	}
+
+	// (2) Aucun match (known vide + rien inséré) → jamais notifié (pas de faux positif).
+	var calls2 int
+	d2 := makeDeps(map[string]bool{}, nil, func(context.Context, int) { calls2++ })
+	if _, err := NewRunner(d2, nil).RunDelta(context.Background(), domain.SyncOptions{}); err != nil {
+		t.Fatalf("RunDelta: %v", err)
+	}
+	if calls2 != 0 {
+		t.Errorf("aucun match : appels=%d, want 0", calls2)
+	}
+
+	// (3) Steady-state (known non vide, 0 nouveau) → notifié (le hook ne dédup pas ;
+	// le watermark côté notifier rend l'émission idempotente).
+	var calls3 int
+	d3 := makeDeps(map[string]bool{"m1": true}, nil, func(context.Context, int) { calls3++ })
+	if _, err := NewRunner(d3, nil).RunDelta(context.Background(), domain.SyncOptions{}); err != nil {
+		t.Fatalf("RunDelta: %v", err)
+	}
+	if calls3 != 1 {
+		t.Errorf("steady-state : appels=%d, want 1", calls3)
+	}
+
+	// (4) nil-safe : Deps.NotifyFirstSync absent → aucun panic (runner sans notif).
+	d4 := makeDeps(map[string]bool{}, []*persist.MatchBatch{batchWith("m1", 1, 0)}, nil)
+	if _, err := NewRunner(d4, nil).RunDelta(context.Background(), domain.SyncOptions{}); err != nil {
+		t.Fatalf("RunDelta nil notify: %v", err)
+	}
+}
+
 // TestRunner_Signature : Runner satisfait le contrat DeltaRunner (sans importer
 // scheduler, pour éviter le cycle scheduler→livesync).
 func TestRunner_Signature(t *testing.T) {

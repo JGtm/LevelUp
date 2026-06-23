@@ -37,6 +37,7 @@ export type NotificationCategory =
   | 'streak_milestone'       // palier de streak atteint (4/8/15/30 j)
   | 'comeback_welcome'       // reprise après pause > 5 j
   | 'trend_consolidate'      // 2026-06-09 — coach soft-négatif : axe en baisse « à consolider » (neutre)
+  | 'title_ready'            // 2026-06-23 — MT-19/axe E : titre fraîchement activé prêt (1er sync)
 
 export const ALL_CATEGORIES: NotificationCategory[] = [
   'app_release',
@@ -67,6 +68,8 @@ export const ALL_CATEGORIES: NotificationCategory[] = [
   'streak_milestone',
   'comeback_welcome',
   'trend_consolidate',
+  // MT-19 / axe E.
+  'title_ready',
 ]
 
 export type NotificationSeverity = 'info' | 'success' | 'warn' | 'error'

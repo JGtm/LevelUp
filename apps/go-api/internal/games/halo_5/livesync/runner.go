@@ -56,6 +56,13 @@ type Deps struct {
 	LoadKnown  func(ctx context.Context) (map[string]bool, error)
 	PersistAll func(ctx context.Context, batches []*persist.MatchBatch) (done []*persist.MatchBatch, errs []string)
 	PersistCSR func(ctx context.Context, src halo5.CaptureSource) (int, error)
+	// NotifyFirstSync : hook OPTIONNEL (MT-19 / axe E) appelé APRÈS persist quand le
+	// titre a des matchs (1er sync OU steady-state). Best-effort, HORS pipeline
+	// progression/prestige (qui reste Infinite-only). L'idempotence DURABLE (une
+	// seule notif « titre prêt » par titre, ré-essayée jusqu'au succès) est garantie
+	// par l'impl (watermark sync_meta), PAS par ce hook. nil → runner unit-testable
+	// sans notifications (no-op).
+	NotifyFirstSync func(ctx context.Context, inserted int)
 }
 
 // Runner implémente scheduler.DeltaRunner (RunDelta) pour Halo 5.
@@ -131,6 +138,17 @@ func (r *Runner) RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.
 			r.logger.InfoContext(ctx, "h5 sync: CSR arena persisté",
 				"gamertag", r.deps.Viewer.Gamertag, "playlists", n)
 		}
+	}
+
+	// Notif « titre prêt » (MT-19 / axe E) : best-effort, HORS progression/prestige
+	// (qui reste Infinite-only). Déclenchée dès que le titre a des matchs (known-set
+	// non vide OU insert>0 ce cycle) — PAS seulement quand known-set est vide : si la
+	// 1re émission échoue (lease saturé), le watermark n'avance pas et la notif est
+	// ré-essayée au cycle suivant (le known-set, lui, n'est plus vide). L'idempotence
+	// durable (1 seule notif par titre) est garantie par le notifier (watermark).
+	// Couvre l'away-case (scheduler + watcher) en un point unique du funnel RunDelta.
+	if r.deps.NotifyFirstSync != nil && (len(known) > 0 || res.MatchesInserted > 0) {
+		r.deps.NotifyFirstSync(ctx, res.MatchesInserted)
 	}
 
 	r.logger.InfoContext(ctx, "h5 sync: cycle terminé",

@@ -171,6 +171,7 @@ const FR: NotificationsText = {
     streak_milestone: 'Palier de streak',
     comeback_welcome: 'Bienvenue de retour',
     trend_consolidate: 'Axe à consolider',
+    title_ready: 'Titre prêt',
   },
   categoryDescription: {
     app_release: 'Une nouvelle version de LevelUp est disponible.',
@@ -200,6 +201,7 @@ const FR: NotificationsText = {
     streak_milestone: 'Ta streak atteint un palier (multiplicateur PP).',
     comeback_welcome: 'Tu reviens après une pause — bienvenue !',
     trend_consolidate: 'Une composante de ta performance fléchit sur la durée — une occasion de la renforcer.',
+    title_ready: 'Un titre fraîchement activé a terminé sa première synchronisation.',
   },
 
   // metricLabel : mapping des clés métriques (envoyées par le backend dans
@@ -282,6 +284,8 @@ const FR: NotificationsText = {
     'notif.streak_milestone.body': 'Tu atteins le palier {length} j — multiplicateur PP ×{multiplier}.',
     'notif.comeback_welcome.title': 'Bon retour parmi nous !',
     'notif.comeback_welcome.body': 'Tu as repris après {days_away} jours d\'absence — ta streak shield est prête.',
+    'notif.title_ready.title': '{title_name} est prêt',
+    'notif.title_ready.body': 'Tes données {title_name} sont synchronisées — explore tes stats.',
   },
 
   relJustNow: 'à l’instant',
@@ -372,6 +376,7 @@ const EN: NotificationsText = {
     streak_milestone: 'Streak milestone',
     comeback_welcome: 'Welcome back',
     trend_consolidate: 'Focus to consolidate',
+    title_ready: 'Title ready',
   },
   categoryDescription: {
     app_release: 'A new LevelUp version is available.',
@@ -401,6 +406,7 @@ const EN: NotificationsText = {
     streak_milestone: 'Your streak hit a milestone (PP multiplier).',
     comeback_welcome: 'You are back after a pause — welcome!',
     trend_consolidate: 'One of your performance areas has been trending down over time — a chance to shore it up.',
+    title_ready: 'A newly activated title finished its first sync.',
   },
 
   metricLabel: {
@@ -478,6 +484,8 @@ const EN: NotificationsText = {
     'notif.streak_milestone.body': 'You reached the {length}-day milestone — PP multiplier ×{multiplier}.',
     'notif.comeback_welcome.title': 'Welcome back!',
     'notif.comeback_welcome.body': 'You returned after {days_away} days away — your streak shield is ready.',
+    'notif.title_ready.title': '{title_name} is ready',
+    'notif.title_ready.body': 'Your {title_name} data is synced — explore your stats.',
   },
 
   relJustNow: 'just now',

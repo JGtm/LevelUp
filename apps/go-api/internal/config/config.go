@@ -62,6 +62,15 @@ type AppConfig struct {
 	// DefaultSlug, For() retourne le provider boot (caché par path) → byte-identique
 	// à SharedProvider. nil en mode legacy/kill-switch → fallback SharedProvider.
 	SharedManager *sharedprovider.Manager
+	// TitleReadyNotifier (multi-titre, MT-19 / axe E) — injecté au boot par main.go
+	// APRÈS construction du ServiceRegistry (api.BuildTitleReadyNotifier). Émet une
+	// notification « titre prêt » (catégorie title_ready) lorsqu'un titre live (Halo
+	// 5+, servi par un Runner dédié) a des matchs, dans le flux de notifications du
+	// titre PAR DÉFAUT (là où l'utilisateur, invité à « retourner sur Halo Infinite »
+	// le temps du backfill, la verra). Idempotence durable côté impl (watermark
+	// sync_meta). nil en CLI/tests → le Runner saute l'émission. Signature stdlib-only
+	// pour éviter tout cycle d'import api↔config↔livesync.
+	TitleReadyNotifier func(ctx context.Context, titleSlug, gamertag, xuid string, inserted int)
 	// Sprint 40 T2 : Discord webhook URL pour alerting 500 + taux d'erreur.
 	// Lit LEVELUP_DISCORD_WEBHOOK_URL ; fallback sur discord_webhook_url dans app_settings.json.
 	DiscordWebhookURL string

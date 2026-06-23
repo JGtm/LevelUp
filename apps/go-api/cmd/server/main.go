@@ -1212,6 +1212,13 @@ func main() {
 			"interval", scheduler.DefaultWorldLeaderboardInterval)
 	}
 
+	// MT-19 / axe E : notifier « titre prêt » injecté dans cfg (lu au runtime par le
+	// Runner live h5 via cfg.TitleReadyNotifier). Posé APRÈS NewRouter (reg dispo) et
+	// AVANT que les syncs scheduler/watcher tournent (runtime post-boot). Émet une
+	// notif quand un titre live a des matchs, dans le flux du titre par défaut, hors
+	// pipeline progression/prestige. Même pattern d'injection que cfg.SharedManager.
+	cfg.TitleReadyNotifier = api.BuildTitleReadyNotifier(reg, cfg)
+
 	// app_release : émission asynchrone d'une notification in-app par joueur si la
 	// version a changé depuis sync_meta.last_seen_app_version. Ne bloque pas le boot.
 	go api.EmitAppReleaseForAllPlayers(context.Background(), cfg, reg, cfg.AppVersion)

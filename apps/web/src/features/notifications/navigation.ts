@@ -79,6 +79,10 @@ export function resolveTarget(notif: Notification, playerSlug: string): NotifTar
     case 'trend_consolidate':
       // Onglet Entraînement (CoachFocusCard « Cap du moment »).
       return { to: `/players/${playerSlug}/ascension/coaching` }
+    case 'title_ready':
+      // MT-19 / axe E : accueil du titre — l'écran « première synchro » y bascule
+      // sur le dashboard désormais peuplé. (Le backend renvoie déjà ce target_route.)
+      return { to: `/players/${playerSlug}/home` }
     default:
       return null
   }
