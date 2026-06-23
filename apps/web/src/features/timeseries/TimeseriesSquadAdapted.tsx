@@ -29,13 +29,13 @@ import type {
 } from '@/lib/api/types'
 import { buildSquadIntensityHeatmapOption } from '@/features/squad/charts/squadIntensityHeatmapChart'
 import {
-  ONE_LIFE_DAMAGE,
   damageAxisBounds,
   damagePerDeath,
   damagePerKill,
   defensiveDamageGradient,
   offensiveDamageGradient,
 } from '@/lib/charts/oneLifeDamageGradient'
+import { useEffectiveHpToKill, substituteHpToken } from '@/lib/damage/effectiveHp'
 import { buildMatchCategories } from './matchLabels'
 
 interface RenderProps {
@@ -237,6 +237,7 @@ export function TimeseriesEfficiency({
   refLabel,
 }: TimeseriesEfficiencyProps) {
   const themeVersion = useThemeVersion()
+  const hp = useEffectiveHpToKill() // barème PV-pour-tuer du titre courant (225 Infinite, 115 h5)
 
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (rows.length === 0) return null
@@ -246,7 +247,7 @@ export function TimeseriesEfficiency({
     const categories = buildMatchCategories(rows)
     const dmgKill = rows.map((r) => damagePerKill(r.damage_dealt, r.kills))
     const dmgDeath = rows.map((r) => damagePerDeath(r.damage_taken, r.deaths))
-    const bounds = damageAxisBounds([...dmgKill, ...dmgDeath])
+    const bounds = damageAxisBounds([...dmgKill, ...dmgDeath], hp)
 
     return {
       backgroundColor: CHART_BG,
@@ -285,18 +286,18 @@ export function TimeseriesEfficiency({
           showSymbol: false,
           smooth: false,
           connectNulls: true,
-          lineStyle: { color: offensiveDamageGradient(dmgKill), width: 2 },
+          lineStyle: { color: offensiveDamageGradient(dmgKill, hp), width: 2 },
           markLine: {
             silent: true,
             symbol: 'none',
             lineStyle: { color: colRef, width: 1, type: 'dashed' },
             label: {
-              formatter: refLabel,
+              formatter: substituteHpToken(refLabel, hp),
               color: colRef,
               fontSize: 10,
               position: 'insideEndTop',
             },
-            data: [{ yAxis: ONE_LIFE_DAMAGE }],
+            data: [{ yAxis: hp }],
           },
         },
         {
@@ -306,11 +307,11 @@ export function TimeseriesEfficiency({
           showSymbol: false,
           smooth: false,
           connectNulls: true,
-          lineStyle: { color: defensiveDamageGradient(dmgDeath), width: 2, type: 'dashed' },
+          lineStyle: { color: defensiveDamageGradient(dmgDeath, hp), width: 2, type: 'dashed' },
         },
       ],
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, rendementLabel, resistanceLabel, refLabel, themeVersion])
+  }, [rows, rendementLabel, resistanceLabel, refLabel, themeVersion, hp])
   return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }

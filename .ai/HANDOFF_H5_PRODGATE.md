@@ -23,9 +23,10 @@ findings non-évidents, reste à faire, commandes opérationnelles.
   `title_ready` first-sync title-aware émise dans `Runner.RunDelta` (funnel HTTP+scheduler+watcher),
   idempotence watermark `sync_meta`, posée dans le flux du titre PAR DÉFAUT (shared_social per-titre),
   ZÉRO contact pipeline progression/prestige. Backend+front+tests verts. → **les 5 axes prod-gate VERTS.**
-- ✅ **Damage model par titre — cœur** (`145303f4f`) : h5 `effective_hp_to_kill` **115→86** calibré DATA
-  (scale-match dpk empirique cryptum 136 vs Infinite 358.8 ; centre OC/DR comme Infinite → bandes + P80
-  Infinite valides). Le compute/SQL/front-bars étaient DÉJÀ title-aware (audit).
+- ✅ **Damage model par titre** : h5 `effective_hp_to_kill` = **115** (valeur DESIGN PV-pour-tuer : bouclier
+  70 + armure 45) — l'autorité, PAS la moyenne empirique dégâts/kill (facteur overkill title-spécifique non
+  constant). Le compute/SQL/barres OC-DR étaient DÉJÀ title-aware (audit). NB : un essai « scale-match » à 86
+  (commit `145303f4f`) était une ERREUR, **reverté à 115**. Littéraux front rendus title-aware (jeton `{{HP}}`, ci-dessous).
 - ✅ **Activation 1b / LUSR v2 temps-joué / recalibration combat** : DÉJÀ DONE in-branch (audit d'état
   5 agents, preuves file:line). Activation 1b dépassée (live sync) ; LUSR temps-joué = code+tests+backfill
   05-30 ; recalibration combat = `e1f021cbb` ancêtre HEAD (5 bandes + engagement absolu).
@@ -35,13 +36,15 @@ findings non-évidents, reste à faire, commandes opérationnelles.
   (`…`) débloque le 1er push (knip exports 88→90 + LabWaypoint baseline = dette PRÉ-EXISTANTE branche,
   à réconcilier au merge main — PAS introduite par cette passe).
 
-**RESTE (différé AVEC rationale, non bloquant prod)** :
-- 🟡 **Damage front littéraux 225** (cosmétique, COUPLÉ) : `ONE_LIFE_DAMAGE=225` (`lib/charts/oneLifeDamageGradient.ts`)
-  + label `timeseries.progression.ref_one_life` "1 vie (225)" + tooltip `common.charts.efficiency_tooltip` "225"
-  ne sont pas title-aware. Pattern = jeton `{{HP}}` + hp via `appShellStore.effective_hp_to_kill` (déjà fait
-  dans `help/i18n.ts withDamageBaseline`). NON FAIT volontairement : un fix PARTIEL (label≠position de ligne)
-  serait PIRE ; portée h5 incertaine (escouade not_exposed) ; le CŒUR (barres OC/DR) est correct via hp=86.
-  À faire en 1 passe dédiée (param hp dans oneLifeDamageGradient + threading callers timeseries/squad + tests).
+- ✅ **Damage front littéraux 225 → title-aware** (LIVRÉ 2026-06-23) : `offensiveDamageGradient`/
+  `defensiveDamageGradient`/`damageAxisBounds` prennent un param `oneLife` (défaut 225 Infinite) ;
+  `TimeseriesEfficiency` + `EfficiencyTooltipText` résolvent le PV du titre via `useEffectiveHpToKill()`
+  (`lib/damage/effectiveHp.ts`) + jeton `{{HP}}` (`efficiency_tooltip` + `ref_one_life`). Charts escouade
+  gardent 225 (Infinite-only). Tests verts (param oneLife + substituteHpToken). Bars déjà correctes (hp=115).
+
+**RESTE (non bloquant prod)** :
+- 🟡 **P80 par titre + KDA/assist h5** (data/activation-couplé) : P80 OC/DR restent calibrés Infinite ;
+  KDA natif absent côté h5. Non bloquant (h5 stats not_exposed Phase 1). Cf. PLAN_DAMAGE_MODEL_PER_TITLE §0 (2,4).
 - 🟡 **Sanity-check terrain LUSR/combat** (code DONE, PAS un gap) : vérif runtime niveaux (Madina Platine/Diamant…)
   + profils combat distincts — relève de l'exécution (service tournant / `cmd/diag_lusr_*`), pas du code.
 

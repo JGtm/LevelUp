@@ -32,23 +32,16 @@ challenges    = "https://spartanstats.svc.halowaypoint.com"   # commendations na
 nameplate     = "https://haloplayer.svc.halowaypoint.com"     # profiles/appearance/emblem/spartan render
 
 # ─── Modèle de dégâts (baseline rendement / résistance) ─────────────────────
-# effective_hp_to_kill Halo 5 = 86. VALIDÉ DATA le 2026-06-23 sur 8856 lignes
-# match_participants réelles (DB shared h5). La valeur DESIGN 115 (bouclier 70 +
-# armure 45) a été ÉCARTÉE : l'unité de dégâts de l'API cryptum h5 ≠ PV en jeu
-# (avg dégâts/kill empirique h5 = 136, vs Infinite = 358.8 — facteur ~2.6, donc
-# échelle de dégâts différente, PAS des ennemis plus fragiles). Calibration =
-# scale-match sur le métrique cross-titre : on préserve le ratio baseline/empirique
-# d'Infinite (225 / 358.8 = 0.627). hp_h5 = 225 × (dpk_h5 / dpk_inf) :
-#   global  225 × 136   / 358.8 = 85.3
-#   médiane 225 × 132.9 / 345.2 = 86.6   → retenu 86.
-# Effet : l'OC moyen h5 = 86/136 = 0.63 == OC moyen Infinite 225/358.8 = 0.63 →
-# la distribution OC/DR de h5 est centrée comme Infinite, donc les bandes de
-# classification ET le P80 d'Infinite (OffensiveConversionP80/DefensiveResistanceP80)
-# restent valides pour h5 (le vrai bug était hp=115 + P80 Infinite = double
-# désalignement). P80 propre à h5 = raffinement futur (vérifier sa forme une fois
-# le backfill h5 complet). Cf. PLAN_DAMAGE_MODEL_PER_TITLE.md + thought_log [2026-06-23].
+# effective_hp_to_kill Halo 5 = 115 (design : bouclier 70 + armure 45). C'est les
+# PV-pour-tuer RÉELS dans l'échelle de dégâts h5 — baseline des KPI rendement
+# (offensive_conversion) / résistance (defensive_resistance).
+# NE PAS le dériver de la moyenne empirique dégâts/kill (≈136 sur 8856 lignes) :
+# cette moyenne inclut l'overkill + les dégâts d'assistances, avec un facteur
+# title-spécifique NON constant (Infinite : 358.8 empirique pour 225 PV réels = ×1.6 ;
+# h5 : 136 pour 115 = ×1.18). Un « scale-match » sur l'empirique fausserait la valeur :
+# le PV-pour-tuer DESIGN fait foi. Cf. PLAN_DAMAGE_MODEL_PER_TITLE.md.
 [damage_model]
-effective_hp_to_kill = 86
+effective_hp_to_kill = 115
 # no_native_kda = true → Halo 5 ne renvoie PAS de KDA per-match via l'API ; sa forme
 # native est un FDA NET ((k+a/3)−d)/games. On ne fabrique JAMAIS de KDA façon Infinite
 # pour h5 (valeur fausse) : les surfaces le laissent nil. Cf. games.ProvidesNativeKDA.

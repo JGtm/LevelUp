@@ -8,7 +8,10 @@
  */
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { commonManifest } from '@/lib/i18n/generated/common'
+import { useEffectiveHpToKill, substituteHpToken } from '@/lib/damage/effectiveHp'
 
 export function EfficiencyTooltipText({ locale }: { locale: ManifestLocale }) {
-  return <>{formatMessage(commonManifest, 'common.charts.efficiency_tooltip', locale)}</>
+  // Barème PV-pour-tuer title-aware : « ≈ {{HP}} points » → 225 Infinite / 115 h5.
+  const hp = useEffectiveHpToKill()
+  return <>{substituteHpToken(formatMessage(commonManifest, 'common.charts.efficiency_tooltip', locale), hp)}</>
 }
