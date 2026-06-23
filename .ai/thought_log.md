@@ -6,7 +6,11 @@ Slice 1 — resolver unifié `resolveWeaponMeta` (`weapon_resolver.go`) : UNE re
 
 Tests intégration verts : golden-parity (BR75 → « BR75 » et PAS « Fusil de combat » ; dims precision/battle_rifle/human/hinf_br75 ; sentinel 0 → « Grenade » role="" ; id inconnu → label="") + fallback sans registre + les 9 `TestWeaponKillsRepo` existants.
 
-**Slice 2 — match_view** : `lookupWeaponMeta` + `lookupWeaponLabels` (match_view_repo_weapons.go) → `resolveWeaponMeta` (scoreboard top weapon + Q28 bulk weapon kills par joueur). Fusion variante→canonique (`WeaponFusionMapID`) reste appliquée EN AMONT (inchangée). Tests intégration match_view verts (parité). Reste P4 : explorer, home, CLI diag, sync/citations, analysis/weapon_data (film).
+**Slice 2 — match_view** : `lookupWeaponMeta` + `lookupWeaponLabels` (match_view_repo_weapons.go) → `resolveWeaponMeta` (scoreboard top weapon + Q28 bulk weapon kills par joueur). Fusion variante→canonique (`WeaponFusionMapID`) reste appliquée EN AMONT (inchangée). Tests intégration match_view verts (parité).
+
+**Slice 3a — explorer** : `ExplorerRepo.resolveWeaponLabels` → `resolveWeaponMeta` (LabelFR = label name_fr>name_en ; LabelEN = nameEN sinon label, parité exacte avec l'ancien COALESCE inversé). Build + tests verts.
+
+**Toutes les surfaces user-facing d'AFFICHAGE d'arme passent maintenant par le resolver** (synthesis/timeseries/squad + match-view + explorer). Reste P4 (tail technique, basse priorité, PAS de l'affichage user direct) : home favorite-weapon card (subtilité locale EN = name_en fallback name_fr, à router avec soin), CLI diag (4 outils), sync/citations (name_en pour weapon_kills:<name>), analysis/weapon_data.go (film scanner backfill — mécanisme Go différent + 3 ids manquants Mutilator/Sandwich à traiter).
 
 ## [2026-06-23] Synthesis — insight coach « angle mort armes lourdes » (data-driven) — Complété
 
