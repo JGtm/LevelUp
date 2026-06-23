@@ -67,6 +67,7 @@ func appendCommendationDeltas(out []persist.CommendationInsert, matchID, xuid st
 			XUID:           xuid,
 			CommendationID: d.Id,
 			Count:          count,
+			Progress:       d.Progress, // total à vie absolu À CE match (carnage)
 		})
 	}
 	return out

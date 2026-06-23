@@ -1,3 +1,13 @@
+## [2026-06-22] B finition — Totaux à vie des commendations : persister le Progress ABSOLU (fondation) — Complété
+
+Question de l'utilisateur tranchée : « si on ingère le progrès à chaque match, pourquoi un lifetime ? on a toujours un truc à l'instant T ». RÉPONSE : il a raison. On stockait seulement le DELTA (`count` = Progress − PreviousProgress), pas le total. Le vrai total à vie = le `Progress` ABSOLU de la carnage AU match le plus récent par commendation. SUM(count) sous-compterait (rate la baseline pré-sync). Pas besoin d'API live « lifetime » : il suffit de persister le Progress absolu et lire le dernier par commendation.
+
+- **Schéma** : colonne `progress INTEGER` ajoutée à `match_commendations` (CREATE + step ALTER idempotent `shared_match_commendations_add_progress` pour les DB existantes ; enregistré dans `internal/migration/order.go`). ART-safe : posée une fois à l'INSERT, jamais mutée, non indexée. Nullable (lignes pré-colonne = NULL ; pas de rétro-remplissage sous INSERT OR IGNORE).
+- **Ingestion** : `persist.CommendationInsert.Progress` + INSERT (`persistCommendations`, colonne progress) + mapper `appendCommendationDeltas` (`Progress: d.Progress`). Test mapper étendu (assertion progress absolu 117/10/5/7611).
+- **Vérifs** : `go build` + `go test ./internal/games/halo_5/... ./internal/games/halo_infinite/migrations/ ./internal/migration/...` + `-tags integration ./internal/persist/...` verts ; gofmt+vet propres.
+
+**Nuance données (à arbitrer)** : la fondation capture le progress EN AVANT (nouveaux syncs / nouveau backfill). Les ~800+ lignes déjà écrites par le backfill en cours (ancien binaire, sans progress) restent NULL — `INSERT OR IGNORE` ne rétro-remplit pas. Pour des totaux JGtm réels MAINTENANT, il faut un re-fetch (re-backfill complet avec le binaire progress, ou pass dédié). **Reste** : read « dernier progress par commendation » (vue _latest, join commendation_definitions) + endpoint title-aware + front ; décision data population.
+
 ## [2026-06-22] B finition — Définitions natives des commendations h5 (nom + icône) — Complété + vérifié end-to-end
 
 Suite directe : peupler `canonical.Commendation` Name/IconURL (vides en Phase 1) pour un affichage natif lisible (le match-detail dégradait sur l'ID court). Clé fournie par l'utilisateur, sauvée dans `.env.local` (gitignored, JAMAIS committée).

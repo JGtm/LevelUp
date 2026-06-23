@@ -409,9 +409,9 @@ func persistCommendations(ctx context.Context, tx *sql.Tx, rows []CommendationIn
 		// même garantie ART-safe que medals_earned : aucun UPDATE sur count, clé
 		// jamais mutée. Tolère un delta dupliqué dans le payload (best-effort).
 		_, err := tx.ExecContext(ctx, `
-			INSERT OR IGNORE INTO match_commendations (match_id, xuid, commendation_id, count, created_at)
-			VALUES (?, ?, ?, ?, ?)`,
-			row.MatchID, row.XUID, row.CommendationID, row.Count, now,
+			INSERT OR IGNORE INTO match_commendations (match_id, xuid, commendation_id, count, progress, created_at)
+			VALUES (?, ?, ?, ?, ?, ?)`,
+			row.MatchID, row.XUID, row.CommendationID, row.Count, row.Progress, now,
 		)
 		if err != nil {
 			return fmt.Errorf("persist: INSERT match_commendations %s/%s/%s: %w",

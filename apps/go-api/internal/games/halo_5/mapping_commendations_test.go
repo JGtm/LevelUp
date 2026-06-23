@@ -79,6 +79,24 @@ func TestMapCarnageCommendations_DeltaCountAndFilters(t *testing.T) {
 	if _, ok := got[key{"xA", "uuid-flat"}]; ok {
 		t.Error("uuid-flat (+0) ne doit pas produire de row")
 	}
+
+	// Progress = total à vie ABSOLU au match (carnage Progress), propagé tel quel
+	// pour le calcul des totaux courants (dernier progress par commendation).
+	progress := map[key]int{}
+	for _, r := range rows {
+		progress[key{r.XUID, r.CommendationID}] = r.Progress
+	}
+	wantProgress := map[key]int{
+		{"xA", "uuid-kills"}: 117,
+		{"xA", "uuid-one"}:   10,
+		{"xA", "uuid-meta"}:  5,
+		{"xB", "uuid-kills"}: 7611,
+	}
+	for k, v := range wantProgress {
+		if progress[k] != v {
+			t.Errorf("progress[%v] = %d, want %d (total à vie absolu)", k, progress[k], v)
+		}
+	}
 }
 
 // TestMapCarnageCommendations_ResolveOrSkip : un joueur dont l'xuid ne résout pas
