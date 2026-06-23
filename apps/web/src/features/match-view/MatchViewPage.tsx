@@ -306,6 +306,8 @@ export function MatchViewPage() {
               expectedStats={summary_tab.expected_stats}
               offensiveConversion={meRow?.offensive_conversion ?? null}
               defensiveResistance={meRow?.defensive_resistance ?? null}
+              damagePerKill={meRow?.damage_per_kill ?? null}
+              damagePerDeath={meRow?.damage_per_death ?? null}
             />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <MatchKdaExpectedChart

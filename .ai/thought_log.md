@@ -1,3 +1,17 @@
+## [2026-06-23] Match View — cartes Rendement/Résistance : ajout dégâts/frag + dégâts/mort — COMPLÉTÉ code (branche feat/match-view-yield-damage-values, depuis main)
+
+**Contexte** : demande utilisateur — les cartes Rendement et Résistance de l'onglet Résumé (Match View) n'affichaient que les pourcentages (OC%, DR±%). L'utilisateur veut aussi les valeurs de dégâts (dégâts/frag, dégâts/mort), « comme la hero KPI card de l'accueil ».
+
+**Décision technique principale** : pas de recalcul — le backend remplit déjà `damage_per_kill` (DamageDealt/Kills) et `damage_per_death` (DamageTaken/Deaths) par ligne scoreboard (`computeScoreboardRowCombatYield`, `match_view_builders_team.go`), même définition que le `dmg_per_kill`/`dmg_per_death` agrégé de la home (affiché « dégâts/frag » / « dégâts/mort »). Donc `meRow` (ligne is_me) les porte déjà. Choix UI : **garder les 2 cartes séparées** (préserve la grille `xl:grid-cols-8`) et ajouter à chacune sa valeur de dégâts correspondante en **sous-ligne `primaryLabel`** du `MatchVsStatCard` (Rendement→dégâts/frag, Résistance→dégâts/mort), style muté identique aux sous-valeurs accueil/Explorer. i18n propre (pas de hardcode — le lint `@levelup/no-hardcoded-strings` l'aurait flaggé) : 2 nouvelles clés manifest `match_view.cards.yield_dmg_per_kill` / `yield_dmg_per_death` (« {n} dégâts/frag » / « {n} dmg/kill », etc.), calquées sur les clés Explorer existantes. Arrondi `Math.round` comme Explorer/home.
+
+**Fichiers** : `match_view.toml` (+2 clés) régénéré via `scripts/build_i18n_manifests.mjs` ; `MatchStatCards.tsx` (props `damagePerKill`/`damagePerDeath` + helper `t` accepte désormais des vars + `primaryLabel` sur les 2 cartes) ; `MatchViewPage.tsx` (passe `meRow?.damage_per_kill`/`damage_per_death`).
+
+**Résultats** : `tsc -b` exit 0 ; eslint ciblé exit 0 (lint global = 0 erreur, warnings pré-existants hors périmètre) ; vitest match-view + formatters + combat-yield = **161/161 verts**.
+
+**Prochaine étape** : commit (sur autorisation). Vérif visuelle recommandée sur un match réel (carte Rendement = « 42% » + « 180 dégâts/frag » ; carte Résistance = « +18% » + « 265 dégâts/mort »). Cf. [[reference_ui_canonical_types_catalog]].
+
+---
+
 ## [2026-06-23] Rang carrière / barre XP INTERMITTENTS (Home Spartan ID + Explorer) — fix déterministe TokensFreshStrict — COMPLÉTÉ (branche fix/career-rank-deterministic-token, depuis main)
 
 **Contexte** : barre XP / rang carrière tantôt pleine tantôt vide (« une fois ça marche, une fois ça marche pas ») — instable, inacceptable en prod. Plusieurs fausses pistes écartées (cache ; péremption globale ; « economy.svc cassé » — réfutées : BP re-minte sur 401 et economy ACCEPTE le token re-minté, donc le minting marche). Diagnostic validé par **workflow contradictoire** (ultracode : 3 agents de réfutation confiance haute + 4 de validation).
