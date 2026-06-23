@@ -1,3 +1,14 @@
+## [2026-06-23] Follow-up — Nav vers /commendations (h5 : Citations→Commendations) — Complété
+
+Rendre la page totaux découvrable. h5 n'a PAS le moteur de citations dérivé d'Infinite (`citations.engine` not_exposed) : l'onglet « Citations » mène à une page vide pour h5. Swap title-aware « Citations »→« Commendations » (route `/commendations`) dans les DEUX niveaux de nav, cohérent.
+
+- **L2** (`NavL2.tsx`) : `CAREER_TABS_H5` (Commendations au lieu de Citations) sélectionné quand `currentTitleSlug==='halo_5'` ; `detectSection` inclut `/commendations` (la barre d'onglets carrière s'affiche sur la page).
+- **L1** (`NavL1.tsx`) : map sur les tabs carrière filtrées → swap key/label/path citations→commendations pour h5.
+- **Gating = slug** (pas capability) : ASSUMÉ. Aucune capability COARSE ne distingue h5 (Infinite les déclare TOUTES) et `commendations.native` est une capability FINE non exposée au nav front. Le slug courant est le seul signal. Infinite inchangé (garde Citations).
+- **Vérifs** : typecheck + eslint verts ; 17 tests nav (NavL1 + MobileMenu) verts.
+
+**Icônes commendations CONFIRMÉES vivantes** : les 121 `iconImageUrl` (CDN content.halocdn.com) testées (16 réparties) = 100 % HTTP 200 image/png. Pas de fallback halopedia/wiki nécessaire ; le front (MedalIcon) les charge direct.
+
 ## [2026-06-23] AXE E — UX première synchronisation (front) — Complété (notif push = suite MT-19)
 
 Intent user : « si le user a pas de données, lui indiquer que les données vont charger, l'inviter à retourner sur Halo Infinite, le notifier quand le sync est fini ». Livré la part FRONT (DB-indépendante, NON bloquée par MT-19 ; la notif push reste entanglée MT-19).
