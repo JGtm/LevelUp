@@ -23,6 +23,7 @@ import {
 } from '@tanstack/react-table'
 
 import type { SquadMatchHistoryRow } from '@/lib/api/types'
+import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { getOutcomeColor, outcomeKey } from '@/lib/outcome-color'
@@ -160,7 +161,11 @@ export function SquadMatchHistoryTable({ rows, playerSlug }: SquadMatchHistoryTa
     getPaginationRowModel: getPaginationRowModel(),
   })
 
-  if (rows.length === 0) return null
+  // Empty-state visible plutôt qu'un tableau qui disparaît silencieusement
+  // (backlog UI 2026-06-05 : couverture empty-state).
+  if (rows.length === 0) {
+    return <EmptyStateNotice title={t.empty.noDataTitle} description={t.empty.noDataDescription} />
+  }
 
   const pageIndex = table.getState().pagination.pageIndex
   const pageCount = table.getPageCount()

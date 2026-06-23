@@ -1,3 +1,13 @@
+## [2026-06-23] Backlog UI — empty-state SquadMatchHistoryTable — Complété (traitement proportionné)
+
+Backlog différé 2026-06-05 (couverture empty-state). L'audit d'état avait flagué 4 composants « return null » mais conclu « pas un bug fonctionnel, cosmétique 100% ». Traitement proportionné après vérif :
+- **SquadMatchHistoryTable** (teammates.11, table autonome LIVE sur la page Escouade) : `return null` → `EmptyStateNotice` (t.empty.noDataTitle/noDataDescription, i18n self-contained). Le seul à vraie valeur — une table autonome qui disparaît est jarrant.
+- **TimeseriesKdaTrend** : DÉJÀ correct — délègue à `ChartFromOption` avec `emptyMessage` (l.40 retourne l'OPTION null, pas le composant ; audit imprécis). Aucune action.
+- **SessionOutcomeDonut** : gardé (return null) — edge rare (une session-detail a toujours des matchs) + dans une grille de charts (masquer > boîte vide).
+- **squad/v2 HistoryTable** : non touché — la route /squad live = legacy teammates (PAS v2, cf. `reference_squad_page_legacy_service_composition`) + threading label/caller/test disproportionné pour un composant hors chemin.
+
+Typecheck + eslint verts.
+
 ## [2026-06-23] Déblocage 1er push branche — ratchets pre-push pré-existants — Complété
 
 La branche `integration/h5-x-livefetch` n'avait JAMAIS été poussée → les ratchets pre-push (knip code-mort, contract OpenAPI) n'avaient jamais tourné et flaguaient de la dette ACCUMULÉE sur la branche, sans lien avec la passe h5 prod-gate :
