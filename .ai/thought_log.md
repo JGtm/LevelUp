@@ -1,3 +1,21 @@
+## [2026-06-23] Weapon taxonomy — PLAN registre BDD (data vérifiée halopedia/wiki) + nouvel handoff — Complété (plan seul, build différé)
+
+Suite des 4 surfaces H5. Le user a redéfini le « weapon canonical » : pas un TOML mémoire à côté, mais un **registre
+d'armes EN BDD = passage PRINCIPAL** de l'app. 3 tables append-only (`weapons` + `weapon_ids` [N ids/arme :
+module/film_chunk/stock_id/filmshell] + `weapon_families`), 4 dimensions (class poing/épaule/lourde, family rôle
+cross-titre, faction par ORIGINE, damage_type) + `extra` JSON extensible. Resolver `(titre, id_kind, id)→weapon_key`,
+migration anti-corruption des lookups épars.
+
+**Vérif data (consigne user « checke halopedia + wiki.halo.fr »)** : 4 agents fan-out → table §6 sourcée par arme.
+Corrections réelles de ma mémoire : Cindershot/Heatwave = **forerunner** (pas paria) ; « Diminisher of Hope » = Gravity
+Axe mêlée (PAS Skewer) ; Mk50 (pas Mk51) ; Fuel Rod SPNKr = banished ; faction = origine (covenant restent covenant
+même portées Parias) ; FR officiels récupérés. → bien fait de vérifier.
+
+**Décision scope** : le user veut « juste le plan + un nouvel handoff » (build différé ; il fera un /compact). UI =
+DIFFÉRÉE (narration non définie). Livré : `.ai/PLAN_WEAPON_TAXONOMY.md` (P0+P1, table figée) + handoff de reprise
+`.ai/HANDOFF_WEAPON_TAXONOMY_AND_H5_MECHANICS.md`. Reste à construire : P2 schéma+seed, P3 resolver+tests, P4 migration
+lecteurs (sur GO). Sujet « du début » encore ouvert capturé dans le handoff : **kill-feed decoder à virer du projet**.
+
 ## [2026-06-23] H5 mécaniques de kill — Surface ESCOUADE (barres empilées) — Complété
 
 Dernière des 4 surfaces. Page /squad LIVE = service legacy `TeammatesService` ; breakdown armes = `buildSquadWeaponKills` via `squadLoader.LoadWeaponKills` (par xuid). Les stats par-coéquipier ne sont PAS dans `SquadMatchRow` (main-only) → il a fallu une nouvelle méthode loader.
