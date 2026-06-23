@@ -25,6 +25,7 @@ const PLAYER_SLUG = 'test-player'
 const VALID_TOP_ROUTES = ['/changelog', '/settings'] as const
 
 const VALID_PLAYER_SUBPATHS = [
+  '/home',
   '/synthesis',
   '/objectifs',
   '/ascension',
