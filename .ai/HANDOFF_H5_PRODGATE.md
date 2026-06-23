@@ -17,6 +17,36 @@ findings non-évidents, reste à faire, commandes opérationnelles.
 > passe — il vient après weapon family + accord explicite. Vérifié in-branch : campagne ART
 > (`ba3cb4608`) déjà portée ; code TZ (`cmd/backfill_first_joined_tz`, `analysis/timeline`) présent.
 
+### BILAN PASSE « TOUT TRAITER » 2026-06-23 (commits `145303f4f`→`10621333b`, branche POUSSÉE)
+
+- ✅ **MT-19 / axe E notif push** (DERNIER item prod-gate ouvert) — LIVRÉ (`b78211253`). Notif
+  `title_ready` first-sync title-aware émise dans `Runner.RunDelta` (funnel HTTP+scheduler+watcher),
+  idempotence watermark `sync_meta`, posée dans le flux du titre PAR DÉFAUT (shared_social per-titre),
+  ZÉRO contact pipeline progression/prestige. Backend+front+tests verts. → **les 5 axes prod-gate VERTS.**
+- ✅ **Damage model par titre — cœur** (`145303f4f`) : h5 `effective_hp_to_kill` **115→86** calibré DATA
+  (scale-match dpk empirique cryptum 136 vs Infinite 358.8 ; centre OC/DR comme Infinite → bandes + P80
+  Infinite valides). Le compute/SQL/front-bars étaient DÉJÀ title-aware (audit).
+- ✅ **Activation 1b / LUSR v2 temps-joué / recalibration combat** : DÉJÀ DONE in-branch (audit d'état
+  5 agents, preuves file:line). Activation 1b dépassée (live sync) ; LUSR temps-joué = code+tests+backfill
+  05-30 ; recalibration combat = `e1f021cbb` ancêtre HEAD (5 bandes + engagement absolu).
+- ✅ **Backlog UI** : empty-state `SquadMatchHistoryTable` (`10621333b`) ; 3 autres évalués no-op
+  (TimeseriesKdaTrend délègue déjà à ChartFromOption ; donut edge-rare en grille ; squad/v2 hors route live).
+- ✅ **TZ first_joined** re-vérifié **0 décalé** (résorbé) · **ART** déjà in-branch · **chore ratchet**
+  (`…`) débloque le 1er push (knip exports 88→90 + LabWaypoint baseline = dette PRÉ-EXISTANTE branche,
+  à réconcilier au merge main — PAS introduite par cette passe).
+
+**RESTE (différé AVEC rationale, non bloquant prod)** :
+- 🟡 **Damage front littéraux 225** (cosmétique, COUPLÉ) : `ONE_LIFE_DAMAGE=225` (`lib/charts/oneLifeDamageGradient.ts`)
+  + label `timeseries.progression.ref_one_life` "1 vie (225)" + tooltip `common.charts.efficiency_tooltip` "225"
+  ne sont pas title-aware. Pattern = jeton `{{HP}}` + hp via `appShellStore.effective_hp_to_kill` (déjà fait
+  dans `help/i18n.ts withDamageBaseline`). NON FAIT volontairement : un fix PARTIEL (label≠position de ligne)
+  serait PIRE ; portée h5 incertaine (escouade not_exposed) ; le CŒUR (barres OC/DR) est correct via hp=86.
+  À faire en 1 passe dédiée (param hp dans oneLifeDamageGradient + threading callers timeseries/squad + tests).
+- 🟡 **Sanity-check terrain LUSR/combat** (code DONE, PAS un gap) : vérif runtime niveaux (Madina Platine/Diamant…)
+  + profils combat distincts — relève de l'exécution (service tournant / `cmd/diag_lusr_*`), pas du code.
+
+**STOP : weapon family canonical / weapon v3 = NON commencé (consigne user). Land main = après weapon family + accord.**
+
 **Branche `integration/h5-x-livefetch`. Bilan des 5 axes prod-gate :**
 
 | Axe | État | Détail |
