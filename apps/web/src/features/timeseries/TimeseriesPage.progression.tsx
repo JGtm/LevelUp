@@ -25,6 +25,7 @@ import {
 } from './TimeseriesSquadAdapted'
 import { EngagementTimeseriesSection } from '@/features/engagement/EngagementTimeseriesSection'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
+import { KillTypesDonutCard } from '@/components/charts/KillTypesDonutCard'
 import { TimeseriesSkillProgression } from './TimeseriesSkillProgression'
 import type { FilterContextInput, TimeseriesPageResponse, ExplorerMatchRow } from '@/lib/api/types'
 import type { FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
@@ -120,8 +121,24 @@ export function TimeseriesProgressionTab({
         />
       </div>
 
-      {/* Progression CSR (classé) ou LUSR (non classé) — pleine largeur, avant le bloc rank+perf. */}
-      <TimeseriesSkillProgression rows={data.match_rows ?? []} locale={locale} emptyMessage={emptyMsg} />
+      {/* Répartition des frags (donut, gauche) | Progression CSR/LUSR (droite).
+          Colonne donut plus étroite pour laisser respirer la time-series. Si la
+          ventilation est absente (aucun match), LUSR reprend toute la largeur. */}
+      {data.detailed_stats ? (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+          <KillTypesDonutCard
+            title={t('timeseries.progression.kill_types_title')}
+            otherLabel={t('timeseries.progression.kill_type_other')}
+            melee={data.detailed_stats.total_melee_kills}
+            powerWeapon={data.detailed_stats.total_power_weapon_kills}
+            grenade={data.detailed_stats.total_grenade_kills}
+            totalKills={(data.match_rows ?? []).reduce((acc, r) => acc + r.kills, 0)}
+          />
+          <TimeseriesSkillProgression rows={data.match_rows ?? []} locale={locale} emptyMessage={emptyMsg} />
+        </div>
+      ) : (
+        <TimeseriesSkillProgression rows={data.match_rows ?? []} locale={locale} emptyMessage={emptyMsg} />
+      )}
 
       {/* timeseries.19 (gauche) | Skill rank + Performance (droite) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

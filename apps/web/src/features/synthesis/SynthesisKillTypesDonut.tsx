@@ -1,15 +1,12 @@
 /**
- * SynthesisKillTypesDonut — « Répartition des frags » par TYPE D'ARME.
+ * SynthesisKillTypesDonut — adaptateur fin : « Répartition des frags » sur Synthesis.
  *
- * Réutilise le donut SVG partagé (composants/charts/KillTypesDonut), color-blind
- * friendly (tokens chart-series 1/6/7/8) et identique à celui du profil cible
- * Explorer. Partition mutuellement exclusive : mêlée / arme lourde / grenade /
- * autres (arme normale) = kills − (mêlée + lourde + grenade). Les headshots sont
- * ORTHOGONAUX au type d'arme → hors donut (restent un KPI à part).
+ * Délègue au composant partagé KillTypesDonutCard (components/charts) en
+ * injectant les libellés depuis le manifest synthesis. La logique de partition
+ * (mêlée / arme lourde / grenade / autres) et le rendu vivent dans le composant
+ * partagé, réutilisé aussi sur Timeseries.
  */
-import { KillTypesDonut, type DonutSlice } from '@/components/charts/KillTypesDonut'
-import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
-import { useFieldMappings } from '@/lib/i18n/fieldMappings'
+import { KillTypesDonutCard } from '@/components/charts/KillTypesDonutCard'
 import type { SynthesisDetailedStats } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
@@ -22,32 +19,15 @@ interface Props {
 }
 
 export function SynthesisKillTypesDonut({ stats, totalKills }: Props) {
-  const { data: fieldMappings } = useFieldMappings()
   const appLocale = useAppShellStore((s) => s.locale)
-  const locale = appLocale === 'en' ? 'en-US' : 'fr-FR'
-  const title = formatMessage(synthesisManifest, 'synthesis.charts.kill_types_title', appLocale)
-  const labelOf = (key: string, fallback: string) => fieldMappings?.fields[key]?.label ?? fallback
-
-  const weaponTyped = stats.total_melee_kills + stats.total_power_weapon_kills + stats.total_grenade_kills
-  const other = Math.max(0, totalKills - weaponTyped)
-
-  // Tokens DISTINCTS (1/6/7/8), color-blind friendly dans toutes les palettes
-  // (cf. donut Explorer) — surtout PAS 2-5 (dégradé séquentiel illisible).
-  const slices: DonutSlice[] = [
-    { label: labelOf('melee_kills', 'Mêlée'), count: stats.total_melee_kills, token: 'chart-series-1' as SemanticToken },
-    { label: labelOf('power_weapon_kills', 'Arme lourde'), count: stats.total_power_weapon_kills, token: 'chart-series-6' as SemanticToken },
-    { label: labelOf('grenade_kills', 'Grenade'), count: stats.total_grenade_kills, token: 'chart-series-7' as SemanticToken },
-    { label: formatMessage(synthesisManifest, 'synthesis.charts.kill_type_other', appLocale), count: other, token: 'chart-series-8' as SemanticToken },
-  ].filter((s) => s.count > 0)
-
-  if (slices.length === 0) return null
-
   return (
-    <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
-      <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">{title}</div>
-      <div className="flex w-full flex-col items-center gap-2 p-3">
-        <KillTypesDonut slices={slices} locale={locale} />
-      </div>
-    </div>
+    <KillTypesDonutCard
+      title={formatMessage(synthesisManifest, 'synthesis.charts.kill_types_title', appLocale)}
+      otherLabel={formatMessage(synthesisManifest, 'synthesis.charts.kill_type_other', appLocale)}
+      melee={stats.total_melee_kills}
+      powerWeapon={stats.total_power_weapon_kills}
+      grenade={stats.total_grenade_kills}
+      totalKills={totalKills}
+    />
   )
 }
