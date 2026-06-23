@@ -238,6 +238,7 @@ function SettingsSplitButton({ tabs, isActive, isAdmin }: SettingsSplitButtonPro
 export function NavL1() {
   const navigate = useNavigate()
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
+  const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const availablePlayers = useAppShellStore((s) => s.availablePlayers)
   const setCurrentPlayer = useAppShellStore((s) => s.setCurrentPlayer)
   const isAdmin = useAppShellStore((s) => s.isAdmin)
@@ -262,7 +263,19 @@ export function NavL1() {
     .filter(sectionVisible)
     .map((s) => {
       if (!s.tabs) return s
-      const tabs = s.tabs.filter(tabVisible)
+      // h5 : « Citations » (moteur dérivé d'Infinite) → « Commendations » natif —
+      // cohérent avec NavL2. Le slug est le seul signal front (aucune capability
+      // coarse ne distingue h5, cf. CAREER_TABS_H5).
+      const tabs = s.tabs.filter(tabVisible).map((tab) =>
+        currentTitleSlug === 'halo_5' && tab.key === 'citations'
+          ? {
+              ...tab,
+              key: 'commendations',
+              label: 'Commendations',
+              path: '/players/$playerSlug/commendations',
+            }
+          : tab,
+      )
       // Si l'onglet servant de landing par défaut est masqué (ex: « Classements »
       // gaté sur world.leaderboard), replier le défaut sur le 1er onglet visible.
       const defaultPath = tabs.some((tab) => tab.path === s.defaultPath)

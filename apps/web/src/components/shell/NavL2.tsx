@@ -31,6 +31,17 @@ const CAREER_TABS = [
   { label: 'Pass saisonnier', path: '/players/$playerSlug/career/season-pass' },
 ] as const
 
+// Halo 5 : les commendations sont NATIVES (carnage) — l'onglet « Citations » (moteur
+// dérivé d'Infinite, capability `citations.engine` not_exposed pour h5) est remplacé
+// par « Commendations » (totaux à vie natifs). Le slug courant est le SEUL signal
+// front pour distinguer h5 : aucune capability COARSE ne le fait (Infinite les
+// déclare toutes) et `commendations.native` est une capability FINE non exposée au nav.
+const CAREER_TABS_H5 = [
+  { label: 'Progression', path: '/players/$playerSlug/career' },
+  { label: 'Commendations', path: '/players/$playerSlug/commendations' },
+  { label: 'Pass saisonnier', path: '/players/$playerSlug/career/season-pass' },
+] as const
+
 // Communauté : aligné sur le dropdown L1 (NavL1 section 'community'). Face-à-face
 // pointe vers /compare (hors /palmares), d'où des chemins absolus par onglet.
 const COMMUNITY_TABS = [
@@ -50,7 +61,7 @@ function detectSection(pathname: string): ActiveSection {
   if (PERSONAL_STATS_RE.test(pathname)) return null
   if (/\/players\/[^/]+\/stats\//.test(pathname)) return 'stats'
   if (/\/players\/[^/]+\/squad/.test(pathname)) return 'squad'
-  if (/\/players\/[^/]+\/(career|citations)/.test(pathname)) return 'career'
+  if (/\/players\/[^/]+\/(career|citations|commendations)/.test(pathname)) return 'career'
   if (isCommunityPath(pathname)) return 'community'
   return null
 }
@@ -112,6 +123,7 @@ export function NavL2() {
   // early-return). NO-OP pour halo_infinite (déclare career + world.leaderboard).
   const hasCareer = useCapability('career')
   const hasWorldLeaderboard = useCapability('world.leaderboard')
+  const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
 
   const section = detectSection(pathname)
   if (!section) return null
@@ -126,9 +138,11 @@ export function NavL2() {
   if (section === 'career') {
     // Titre sans capability `career` : pas de barre (la page est gatée en amont).
     if (!hasCareer) return null
+    // h5 : onglets carrière avec « Commendations » natif au lieu de « Citations ».
+    const careerTabs = currentTitleSlug === 'halo_5' ? CAREER_TABS_H5 : CAREER_TABS
     return (
       <NavTabBar
-        tabs={CAREER_TABS}
+        tabs={careerTabs}
         pathname={pathname}
         resolvePath={resolvePath}
         ariaLabel={t('common.shell.nav_career_aria')}
