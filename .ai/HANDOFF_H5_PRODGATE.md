@@ -26,7 +26,8 @@ findings non-évidents, reste à faire, commandes opérationnelles.
 `6a62cd811` fix harness persist (weapon_kills) · `d67e306e7` thought_log ·
 `f632e99a6` définitions natives (table+fetch+read-join) · `ef2060678` persiste Progress
 absolu · `cd9d28feb` read layer totaux · `31cf08a73` endpoint totaux ·
-`b2fed4019` front totaux · `ba7fbd31d` Axe E front first-sync.
+`b2fed4019` front totaux · `ba7fbd31d` Axe E front first-sync ·
+`d6fd5ec0d` nav h5 Citations→Commendations · `30c85609f` docs vérif end-to-end. **13 commits.**
 
 **Findings clés ajoutés** :
 1. **Totaux commendations = dernier `progress` ABSOLU** (carnage) du match le plus récent par
@@ -44,18 +45,56 @@ absolu · `cd9d28feb` read layer totaux · `31cf08a73` endpoint totaux ·
    l'adapter à `LoadCommendationTotals` (seul *halo_5.DataAdapter l'implémente) → titres sans
    commendations natives → réponse vide. Pattern à réutiliser pour toute surface h5-spécifique.
 
-**En cours (background)** : re-backfill **progress-aware** (`/tmp/h5-backfill.exe JGtm 25`,
-log `/tmp/h5_backfill_progress.log`) — fresh DB purgée pour capturer le `progress` absolu (le
-1er backfill était count-only). Au 06-23 09:59 : page 34, atteint **2018-08-03** (couvre les 84
-captures). À la fin : (a) vérifier `LoadCommendationTotals(JGtm)` non vide + `match_commendations.xuid==pdb.XUID`,
-(b) corréler les 84 captures aux matchs (Axe D), (c) go/no-go prod.
+**VÉRIFICATION END-TO-END (06-23) — PASSE sur la vraie DB h5** (re-backfill arrêté à 1001
+matchs 2018-05→2023, DB libérée le temps des vérifs) :
+- `match_commendations` : 83 756 rows, **100 % avec `progress`** (re-fetch OK), 972 matchs.
+- **xuid OK** : JGtm `2533274823110022` (match_commendations) == `db_profiles.json` == `pdb.XUID`
+  → le filtre `LoadCommendationTotals` est correct.
+- **Totaux JGtm** non vides + cohérents : Spartan Slayer **27 058**, Headshot 7 154, Assistant
+  6 606, Magnum 4 321, Smash 3 341… noms+catégories+icônes (CDN testées HTTP 200) résolus.
+- **Media** : **84/84 captures** corrèlent à une fenêtre de match JGtm (Paris→UTC DST-aware
+  DuckDB `AT TIME ZONE 'Europe/Paris'`).
+- Code : full Go test suite `./internal/...` + typecheck + eslint + tests front (home 34,
+  handlers, service, duckdb) + drift OpenAPI + contract routes → tous verts.
+- **CONCLUSION : prod-gate VERT sur les 5 axes (A/B/C/D/E + F).**
 
-**Vérifié 06-23** : full Go test suite `./internal/...` verte ; typecheck + eslint + tests front
-(home 34, handlers, service) verts ; drift OpenAPI + contract routes verts.
+**COMMANDE BACKFILL (pour faire d'AUTRES joueurs)** — le binaire `/tmp/h5-backfill.exe` capture
+désormais le `progress` absolu (colonne `match_commendations.progress`). Resumable (commits par
+page, skip-known). Le joueur doit être dans `db_profiles.json` (avec `xuid`) AVANT.
 
-**Reste après vérif backfill** : (1) notif push Axe E (MT-19) ; (2) nav front vers
-`/commendations` (gating coarse-vs-fine : pas de capability h5-only propre — route accessible
-directe en attendant) ; (3) décision land `integration`→`main` (auto-deploy, accord explicite).
+```bash
+export PATH="/c/msys64/ucrt64/bin:$PATH"; export CGO_ENABLED=1
+MAIN=/c/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration
+# 1. (Re)build le binaire après toute modif capture/persist/mapper :
+go -C apps/go-api build -o /tmp/h5-backfill.exe ./cmd/h5-backfill
+# 2. Lancer pour un joueur (ajoute SES matchs au shared partagé ; PAS de purge —
+#    purger supprimerait les autres joueurs). 25 = taille de page.
+LEVELUP_REPO_ROOT="$MAIN" LEVELUP_LOG_LEVEL=warn /tmp/h5-backfill.exe <Gamertag> 25
+# log : stdout (rediriger vers un fichier). Lock RW shared pendant le run → 1 seul à la fois.
+```
+
+- **NE PAS purger** la shared DB pour ajouter un joueur (la purge n'était nécessaire QUE pour
+  re-fetcher JGtm dont les rows count-only n'avaient pas de `progress` ; `INSERT OR IGNORE` ne
+  rétro-remplit pas). Un NOUVEAU joueur (rows absents) capture le `progress` directement.
+- **Note** : `match_commendations` contient déjà des rows (avec progress) pour TOUS les xuids
+  des rosters des matchs de JGtm (la carnage mappe tous les joueurs) — mais seulement sur les
+  matchs où JGtm était présent. Pour des totaux COMPLETS d'un autre joueur, lancer SON backfill
+  (ajoute ses propres matchs). Re-seed metadata (defs) inutile : `commendation_definitions` est
+  partagé (déjà 121 seedées).
+- Seed/refresh des définitions (une fois, partagé) :
+  `LEVELUP_HALOAPI_KEY=<clé .env.local> LEVELUP_REPO_ROOT="$MAIN" go -C apps/go-api run ./cmd/h5-metadata-fetch`
+
+**PROCHAIN CHANTIER — Axe E notif PUSH (away-case), = MT-19** : l'auto-poll front couvre le cas
+on-page ; reste la notif quand le user est AILLEURS. L'émetteur `reg.NotificationsEmitter(ctx,
+slug)` EST title-aware (pas le blocage). Le blocage = le post-sync hook (`buildPostSyncDeltaHook`,
+`EvaluateProgressionAfterSync`) est câblé sur le sync_handler HInf + `defaultProgressionTitleSlug()`
+hardcodé `halo_infinite` + `PrestigeBundle` singleton ; la livesync h5 ne passe PAS par ce hook.
+Chemin minimal : émettre une notif « titre prêt » à la complétion du 1er sync h5 (détecter
+total_matches 0→N), via l'émetteur title-aware, SANS toucher la pipeline progression/prestige
+(qui reste HInf). Réf : `internal/api/post_sync_deltas.go`, finding 7 § 3.
+
+**Reste (hors prod-gate)** : notif push (ci-dessus) ; **land `integration`→`main`** (prêt
+techniquement, **auto-deploy** → accord user explicite requis, cf. [[feedback_sync_local_main_on_merge]]).
 
 ---
 
