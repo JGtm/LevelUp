@@ -42,6 +42,12 @@ const (
 	// CapWorldLeaderboard — classements mondiaux (CSR scrapé Waypoint + stats
 	// agrégées par titre). Absente ⇒ page leaderboard dégrade en vide+200 (PMT-7).
 	CapWorldLeaderboard Capability = "world.leaderboard"
+
+	// CapNativeKillMechanics — le titre fournit NATIVEMENT le détail des kills par
+	// mécanique (assassinats + compétences spartiate : ground pound, shoulder bash),
+	// agrégés par-joueur dans le carnage. Halo 5 only (Infinite ne les expose pas).
+	// Absente ⇒ le front masque les sections « assassinats / compétences spartiate ».
+	CapNativeKillMechanics Capability = "native_kill_mechanics"
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.

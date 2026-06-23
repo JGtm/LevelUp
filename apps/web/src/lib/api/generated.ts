@@ -7925,6 +7925,12 @@ export interface components {
             /** Format: int64 */
             total_power_weapon_kills: number;
             /** Format: int64 */
+            total_assassinations: number;
+            /** Format: int64 */
+            total_ground_pound_kills: number;
+            /** Format: int64 */
+            total_shoulder_bash_kills: number;
+            /** Format: int64 */
             total_shots_fired: number;
             /** Format: int64 */
             total_shots_hit: number;

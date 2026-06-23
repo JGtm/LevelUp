@@ -139,6 +139,16 @@ func buildSynthesisDetailedStatsFromCanonical(rows []canonical.PlayerMatchRow) d
 		if r.Self.PowerWeaponKills != nil {
 			stats.TotalPowerWeaponKills += *r.Self.PowerWeaponKills
 		}
+		// Mécaniques natives Halo 5 (0 hors h5). Cumul sur le scope → cards cumulées.
+		if r.Self.AssassinationKills != nil {
+			stats.TotalAssassinations += *r.Self.AssassinationKills
+		}
+		if r.Self.GroundPoundKills != nil {
+			stats.TotalGroundPoundKills += *r.Self.GroundPoundKills
+		}
+		if r.Self.ShoulderBashKills != nil {
+			stats.TotalShoulderBashKills += *r.Self.ShoulderBashKills
+		}
 		if r.Self.MaxKillingSpree != nil && *r.Self.MaxKillingSpree > stats.MaxKillingSpree {
 			stats.MaxKillingSpree = *r.Self.MaxKillingSpree
 		}

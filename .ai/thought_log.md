@@ -1,3 +1,21 @@
+## [2026-06-23] H5 catégories de kill natives (assassinats + compétences spartiate) — Surface Synthesis — Complété
+
+Reprise `PLAN_WEAPON_FAMILY_CANONICAL.md` (cadrage user : pas de primary/secondary ; focus mécaniques natives H5 + cards + précision/arme). Sonde live `probe-h5` (JGtm, read-only, store-first, ZÉRO re-capture) a tranché le schéma carnage réel :
+- `TotalAssassinations`, `TotalGroundPoundKills`, `TotalShoulderBashKills` = scalaires natifs PEUPLÉS (+ variantes `*Damage`) → câblés.
+- `WeaponStats[]` (tirs par arme) = présent au SCHÉMA mais 343 le sert VIDE (`n=0`, confirme HANDOFF §0-quater) → **précision par-arme NON calculable** (aucune source tirs/arme ; le per-kill arme est dans /events sans compteur de tirs). Substitut headshot-rate/arme reporté.
+- Dette collègue « create_base vs add_* » sur tables shared : DÉJÀ traitée (weapon_kills, match_csrs, player_match_enrichment résolus + guards anti-régression) → rien à coder.
+
+Livré (surface Synthesis, end-to-end) :
+- DTO `H5CarnagePlayer` + `canonical.MatchParticipant` + `domain.MatchParticipantRow` : 3 champs `assassination/ground_pound/shoulder_bash_kills`. Mappers carnage (ingestion + detail).
+- Migration DÉDIÉE `add_h5_kill_mechanics_columns` (3 colonnes `match_participants`, ordonnée APRÈS create_base via order.go — évite le piège create_base/add_* signalé). Persist INSERT étendu (41 colonnes).
+- Read-path : SELECT + scan + projection `player_matches` → `Self` (débloque Synthesis ET Timeseries). Cumuls `SynthesisDetailedStats`.
+- Capability `native_kill_mechanics` (registry + allowlist + h5 title.toml + miroir front `TITLE_CAPABILITIES` + FeatureUnavailable) → gate title-agnostic (Infinite masqué, fail-open).
+- Front : donut Synthesis +3 slices (gated, filtre count>0) ; section cards cumulées ; openapi + types régénérés ; i18n FR/EN.
+- Tests : nouveau `TestMapCarnageParticipants_KillMechanics` ; Go (migration/title/h5/canonical/persist/duckdb/service) + typecheck + eslint + vitest synthesis VERTS. + fix test pré-existant cassé (whitelist `notifications_title_ready` MT-19, oublié à la session précédente).
+
+Caveat : colonnes peuplées seulement pour matchs RE-synchronisés → re-backfill carnage requis pour les matchs H5 existants (Phase E).
+Prochaine étape : surfaces match-view / timeseries / squad (même pattern capability-gated), puis weapon_class 3 classes (poing/épaule/lourde), puis backfill.
+
 ## [2026-06-23] Backlog UI — empty-state SquadMatchHistoryTable — Complété (traitement proportionné)
 
 Backlog différé 2026-06-05 (couverture empty-state). L'audit d'état avait flagué 4 composants « return null » mais conclu « pas un bug fonctionnel, cosmétique 100% ». Traitement proportionné après vérif :

@@ -213,6 +213,26 @@ func sharedCoreSteps() []migration.Migration {
 			},
 		},
 		{
+			Name:        "add_h5_kill_mechanics_columns",
+			TargetDB:    migration.TargetShared,
+			Description: "Colonnes assassination_kills, ground_pound_kills, shoulder_bash_kills (mécaniques natives Halo 5) sur match_participants",
+			ApplySchema: func(db *sql.DB) error {
+				// Mécaniques de kill natives Halo 5 (assassinats + compétences spartiate :
+				// ground pound, shoulder bash). Step DÉDIÉ et non une extension de
+				// add_match_participants_columns : ce dernier est déjà marqué appliqué sur
+				// les DB existantes (schema_migrations) → un ajout dans sa liste ne se
+				// re-jouerait jamais. Ordonné APRÈS create_base (table présente) ;
+				// AddColumnIfMissing idempotent → no-op sur Infinite (jamais peuplées).
+				cols := []string{"assassination_kills", "ground_pound_kills", "shoulder_bash_kills"}
+				for _, c := range cols {
+					if err := migration.AddColumnIfMissing(db, "match_participants", c, "SMALLINT DEFAULT 0"); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
+		{
 			Name:        "add_medals_bigint",
 			TargetDB:    migration.TargetShared,
 			Description: "medals_earned.medal_name_id INTEGER → BIGINT",

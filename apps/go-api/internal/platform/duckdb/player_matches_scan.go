@@ -100,6 +100,7 @@ func scanSharedPlayerMatchRow(rows *sql.Rows) (playerMatchScanResult, error) {
 		&s.team0Score, &s.team1Score,
 		&s.maxKillingSpree, &s.personalScore, &s.rankInMatch,
 		&s.grenadeKills, &s.meleeKills, &s.powerWeaponKills,
+		&s.assassinationKills, &s.groundPoundKills, &s.shoulderBashKills,
 		&s.shotsFired, &s.shotsHit,
 		&s.perfectKills,
 		&s.t0Ms,
@@ -165,41 +166,42 @@ func sortByPerformanceScore(rows []playerMatchScanResult, desc bool) {
 // playerMatchScanResult agrege les valeurs scannees pour faciliter la
 // projection en canonical.PlayerMatchRow.
 type playerMatchScanResult struct {
-	matchID, mapID, mapName, mapNameFR          string
-	playlistID, playlistName, playlistNameFR    string
-	variantID, variantName, xuid, gamertag      string
-	pairID, pairName, pairNameFR                string
-	startTime                                   time.Time
-	durationSeconds, teamID                     int
-	outcomeCode                                 sql.NullInt64
-	kills, deaths, assists, headshotKills       int
-	timePlayedSeconds, dominanceFlag            int
-	isRanked, isFirefight, hadBotTeammate       bool
-	isWithFriends                               bool
-	engagementScoreBrut                         sql.NullFloat64
-	engagementPaceRatio                         sql.NullFloat64
-	kda, accuracy, teamMMR, enemyMMR            sql.NullFloat64
-	avgLifeSeconds                              sql.NullFloat64
-	damageDealt, damageTaken                    sql.NullFloat64
-	performanceScore                            sql.NullFloat64
-	sessionID                                   sql.NullString // VARCHAR en prod (cf. ADR 0016 / commit 9d.4)
-	sessionLabel                                sql.NullString
-	team0Score, team1Score                      int
-	skillRatingType                             sql.NullString
-	skillRatingValue                            sql.NullFloat64
-	skillTier                                   sql.NullString
-	skillTierFR                                 sql.NullString
-	skillSubTier                                sql.NullInt64
-	skillDelta                                  sql.NullFloat64
-	skillPlaylistGroup                          sql.NullString
-	skillExpectedWinProb                        sql.NullFloat64
-	skillSeasonID                               sql.NullString
-	skillMeasurementRemaining                   sql.NullInt64
-	maxKillingSpree, personalScore, rankInMatch sql.NullInt64
-	grenadeKills, meleeKills, powerWeaponKills  sql.NullInt64
-	shotsFired, shotsHit                        sql.NullInt64
-	perfectKills                                sql.NullInt64
-	t0Ms                                        sql.NullInt64 // countdown pré-match en ms (Match Timeline T0)
+	matchID, mapID, mapName, mapNameFR                      string
+	playlistID, playlistName, playlistNameFR                string
+	variantID, variantName, xuid, gamertag                  string
+	pairID, pairName, pairNameFR                            string
+	startTime                                               time.Time
+	durationSeconds, teamID                                 int
+	outcomeCode                                             sql.NullInt64
+	kills, deaths, assists, headshotKills                   int
+	timePlayedSeconds, dominanceFlag                        int
+	isRanked, isFirefight, hadBotTeammate                   bool
+	isWithFriends                                           bool
+	engagementScoreBrut                                     sql.NullFloat64
+	engagementPaceRatio                                     sql.NullFloat64
+	kda, accuracy, teamMMR, enemyMMR                        sql.NullFloat64
+	avgLifeSeconds                                          sql.NullFloat64
+	damageDealt, damageTaken                                sql.NullFloat64
+	performanceScore                                        sql.NullFloat64
+	sessionID                                               sql.NullString // VARCHAR en prod (cf. ADR 0016 / commit 9d.4)
+	sessionLabel                                            sql.NullString
+	team0Score, team1Score                                  int
+	skillRatingType                                         sql.NullString
+	skillRatingValue                                        sql.NullFloat64
+	skillTier                                               sql.NullString
+	skillTierFR                                             sql.NullString
+	skillSubTier                                            sql.NullInt64
+	skillDelta                                              sql.NullFloat64
+	skillPlaylistGroup                                      sql.NullString
+	skillExpectedWinProb                                    sql.NullFloat64
+	skillSeasonID                                           sql.NullString
+	skillMeasurementRemaining                               sql.NullInt64
+	maxKillingSpree, personalScore, rankInMatch             sql.NullInt64
+	grenadeKills, meleeKills, powerWeaponKills              sql.NullInt64
+	assassinationKills, groundPoundKills, shoulderBashKills sql.NullInt64
+	shotsFired, shotsHit                                    sql.NullInt64
+	perfectKills                                            sql.NullInt64
+	t0Ms                                                    sql.NullInt64 // countdown pré-match en ms (Match Timeline T0)
 }
 
 // projectPlayerMatchRow construit la row canonique depuis les valeurs scannees.

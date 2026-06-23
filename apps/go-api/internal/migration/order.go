@@ -124,6 +124,7 @@ var canonicalOrder = []string{
 	"add_film_match_start",                                    // shared
 	"add_highlight_events_autoincrement",                      // shared
 	"add_match_participants_columns",                          // shared
+	"add_h5_kill_mechanics_columns",                           // shared (Halo 5 kill mechanics)
 	"add_medals_bigint",                                       // shared
 	"add_mv_player_matches_fr_cols",                           // shared
 	"add_mv_player_matches_view",                              // shared

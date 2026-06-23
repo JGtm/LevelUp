@@ -207,7 +207,16 @@ type SynthesisDetailedStats struct {
 	TotalGrenadeKills     int `json:"total_grenade_kills"`
 	TotalMeleeKills       int `json:"total_melee_kills"`
 	TotalPowerWeaponKills int `json:"total_power_weapon_kills"`
-	MaxKillingSpree       int `json:"max_killing_spree"` // MAX sur le scope
+
+	// Mécaniques de kill NATIVES Halo 5 (assassinats + compétences spartiate :
+	// ground pound, shoulder bash). 0 pour les titres qui ne les fournissent pas
+	// (ex. Infinite) — le gating d'affichage se fait côté front via la capability
+	// du titre, jamais via la valeur (0 assassinat reste une valeur légitime).
+	TotalAssassinations    int `json:"total_assassinations"`
+	TotalGroundPoundKills  int `json:"total_ground_pound_kills"`
+	TotalShoulderBashKills int `json:"total_shoulder_bash_kills"`
+
+	MaxKillingSpree int `json:"max_killing_spree"` // MAX sur le scope
 
 	// Temps de jeu
 	TotalTimePlayedSeconds int `json:"total_time_played_seconds"`

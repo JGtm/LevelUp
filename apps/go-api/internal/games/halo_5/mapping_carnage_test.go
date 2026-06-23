@@ -74,6 +74,36 @@ func TestMapCarnageParticipants_TeamOutcomeAndNoFabrication(t *testing.T) {
 	}
 }
 
+// TestMapCarnageParticipants_KillMechanics : les mécaniques NATIVES Halo 5
+// (assassinats + compétences spartiate : ground pound, shoulder bash) sont
+// projetées tel quel depuis le carnage vers la row participant.
+func TestMapCarnageParticipants_KillMechanics(t *testing.T) {
+	c := &H5CarnageResponse{
+		IsTeamGame: false,
+		PlayerStats: []H5CarnagePlayer{
+			{Player: H5PlayerRef{Gamertag: "A"}, Rank: 1,
+				TotalKills:             10,
+				TotalAssassinations:    3,
+				TotalGroundPoundKills:  2,
+				TotalShoulderBashKills: 1},
+		},
+	}
+	rows := mapCarnageParticipants("m1", c, func(string) string { return "xA" })
+	if len(rows) != 1 {
+		t.Fatalf("rows = %d, want 1", len(rows))
+	}
+	r := rows[0]
+	if r.AssassinationKills == nil || *r.AssassinationKills != 3 {
+		t.Errorf("AssassinationKills = %v, want 3", r.AssassinationKills)
+	}
+	if r.GroundPoundKills == nil || *r.GroundPoundKills != 2 {
+		t.Errorf("GroundPoundKills = %v, want 2", r.GroundPoundKills)
+	}
+	if r.ShoulderBashKills == nil || *r.ShoulderBashKills != 1 {
+		t.Errorf("ShoulderBashKills = %v, want 1", r.ShoulderBashKills)
+	}
+}
+
 func TestMapCarnageParticipants_ResolveOrSkip(t *testing.T) {
 	c := &H5CarnageResponse{
 		IsTeamGame: false,

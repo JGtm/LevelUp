@@ -13,6 +13,7 @@ import { EmptyStateCard } from '@/components/ui/empty-state'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
 import { ProportionalBar } from '@/components/ui/proportional-bar'
 import { SynthesisKillTypesDonut } from './SynthesisKillTypesDonut'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { SynthesisWeaponKillsChart } from './SynthesisWeaponKillsChart'
 import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
 import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
@@ -183,6 +184,10 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, com
 
   const hasIncidents = detailedStats != null &&
     (detailedStats.total_betrayals > 0 || detailedStats.total_suicides > 0)
+
+  // Mécaniques natives Halo 5 (assassinats + compétences spartiate) : section gatée
+  // par la capability du titre (masquée pour Infinite qui ne les fournit pas).
+  const hasKillMechanics = useCapability('native_kill_mechanics')
 
   return (
     <section className="space-y-3">
@@ -389,6 +394,19 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, com
                       <AccentCard label="Dégâts reçus"    value={Math.round(detailedStats.total_damage_taken).toLocaleString('fr-FR')} accent="outcome-loss" />
                     </div>
                   </div>
+
+                  {/* Compétences spartiate & assassinats (Halo 5 — capability-gated, cumul sur le scope). */}
+                  {hasKillMechanics &&
+                    (detailedStats.total_assassinations + detailedStats.total_ground_pound_kills + detailedStats.total_shoulder_bash_kills) > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5">{t('synthesis.spartan.section_title')}</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <AccentCard label={t('synthesis.charts.kill_type_assassination')} value={detailedStats.total_assassinations.toLocaleString('fr-FR')} accent="chart-series-2" />
+                        <AccentCard label={t('synthesis.charts.kill_type_ground_pound')} value={detailedStats.total_ground_pound_kills.toLocaleString('fr-FR')} accent="chart-series-3" />
+                        <AccentCard label={t('synthesis.charts.kill_type_shoulder_bash')} value={detailedStats.total_shoulder_bash_kills.toLocaleString('fr-FR')} accent="chart-series-4" />
+                      </div>
+                    </div>
+                  )}
 
                   {(detailedStats.total_vehicles_destroyed > 0 || detailedStats.total_hijacks > 0) && (
                     <div>

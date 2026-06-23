@@ -48,4 +48,5 @@ capabilities = [
   "engagement",
   "lusr",
   "media",
+  "native_kill_mechanics",
 ]

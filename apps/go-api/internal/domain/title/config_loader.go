@@ -29,17 +29,18 @@ var ErrTitleManifestAbsent = errors.New("title: manifeste absent (title.toml)")
 // Toute capability d'un title.toml doit appartenir à ce set (sinon erreur de
 // validation : un titre ne peut pas déclarer une feature inexistante côté code).
 var knownCapabilities = map[Capability]struct{}{
-	CapMatchmaking:      {},
-	CapFirefight:        {},
-	CapForge:            {},
-	CapMedia:            {},
-	CapRanked:           {},
-	CapCareer:           {},
-	CapAssetImages:      {},
-	CapAchievements:     {},
-	CapEngagement:       {},
-	CapLUSR:             {},
-	CapWorldLeaderboard: {},
+	CapMatchmaking:         {},
+	CapFirefight:           {},
+	CapForge:               {},
+	CapMedia:               {},
+	CapRanked:              {},
+	CapCareer:              {},
+	CapAssetImages:         {},
+	CapAchievements:        {},
+	CapEngagement:          {},
+	CapLUSR:                {},
+	CapWorldLeaderboard:    {},
+	CapNativeKillMechanics: {},
 }
 
 func knownStatus(s Status) bool {
