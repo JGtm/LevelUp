@@ -108,6 +108,20 @@ func TokensFresh(tokens *domain.HaloTokens) bool {
 	return time.Now().Before(tokens.SpartanExpiresAt.Add(-tokenExpiryMargin))
 }
 
+// TokensFreshStrict est comme TokensFresh mais EXIGE une expiry CONNUE : un token d'expiry
+// inconnue (zéro) est traité comme NON frais (à re-résoudre). À utiliser là où le déterminisme
+// prime — typiquement la réutilisation d'un token de SESSION (sessions pré-A1 sans
+// SpartanExpiresAt) : on ne le garde que si on peut PROUVER qu'il est encore valide, sinon on
+// re-minte un token frais. Évite l'intermittence « parfois frais / parfois 401 » des chemins
+// token-gated sans filet (rang carrière). TokensFresh (tolérant au zéro) reste pour les chemins
+// qui ont un filet 401 en aval.
+func TokensFreshStrict(tokens *domain.HaloTokens) bool {
+	if tokens == nil || tokens.SpartanExpiresAt.IsZero() {
+		return false
+	}
+	return TokensFresh(tokens)
+}
+
 // SetCachedPlayerTokens stocke les HaloTokens, avec un instant d'expiry calé sur
 // l'expiry RÉEL du Spartan (fallback TTL conservateur si inconnu).
 func SetCachedPlayerTokens(xuid string, tokens *domain.HaloTokens) {
@@ -169,9 +183,11 @@ func ResolveFreshPlayerTokens(ctx context.Context, xuid string) (*domain.HaloTok
 			return nil, fmt.Errorf("halo: refresher a renvoyé des tokens nil (xuid=%s)", xuid)
 		}
 		SetCachedPlayerTokens(xuid, tokens)
-		// Observabilité : un re-mint = échange MSAL/OAuth coûteux. Tracer la fréquence
-		// (péremption expiry-aware ou cache miss) + l'expiry réel obtenu.
-		slog.DebugContext(ctx, "halo: token Spartan re-minté (cache expiry-aware)",
+		// Observabilité (Info) : un re-mint = échange MSAL/OAuth coûteux mais peu fréquent
+		// (1× par joueur par ~durée de vie Spartan, grâce au cache + singleflight). C'est LE
+		// signal qui prouve que le chemin déterministe (token frais à expiry connue) est servi
+		// — utile pour vérifier en prod l'absence d'intermittence du rang carrière.
+		slog.InfoContext(ctx, "halo: token Spartan re-minté (cache expiry-aware)",
 			"xuid", xuid, "spartan_expires_at", spartanExpiryLog(tokens))
 		return tokens, nil
 	})
