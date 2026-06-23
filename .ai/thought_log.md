@@ -1,3 +1,11 @@
+## [2026-06-23] P4 — resolver d'arme unifié (passage principal) + route weapon_kills — Complété (slice 1)
+
+P4 = router la résolution d'arme par le registre. **Décision user : noms INCHANGÉS (« genre BR75 »)** → parité PURE. Audit fan-out (6 agents, workflow) : backend-only (le front reçoit des noms pré-résolus, fallback décimal), surface concentrée dans ~5 fonctions, fallback `weapon_labels` obligatoire (sentinels 0/1/2, grenades, Mutilator/Sandwich, variantes — hors registre curé). Plan : `.ai/PLAN_P4_WEAPON_RESOLUTION.md`.
+
+Slice 1 — resolver unifié `resolveWeaponMeta` (`weapon_resolver.go`) : UNE requête metadata = LEFT JOIN `weapon_labels` (NOM, parité pure : COALESCE(name_fr,name_en) — le registre n'influence JAMAIS le nom, aucune arme ne « surgit ») + `weapon_ids`/`weapons` (DIMENSIONS : weapon_key/role/family/faction). Garde silencieux `weaponRegistryAvailable` (information_schema via QueryRow, pas de log) → fallback `resolveWeaponLabelsOnly` si registre absent (vieux schéma/test) ⇒ zéro ERROR spam. Route `weapon_kills_repo` : `attachWeaponLabels` + `attachWeaponRoles` (2 requêtes) → `attachWeaponMeta` (1). Consommateurs synthesis/timeseries/squad/teammates = pass-through inchangés.
+
+Tests intégration verts : golden-parity (BR75 → « BR75 » et PAS « Fusil de combat » ; dims precision/battle_rifle/human/hinf_br75 ; sentinel 0 → « Grenade » role="" ; id inconnu → label="") + fallback sans registre + les 9 `TestWeaponKillsRepo` existants. Reste P4 : match_view (scoreboard/detail), explorer, home, CLI diag, sync/citations, analysis/weapon_data (film).
+
 ## [2026-06-23] Synthesis — insight coach « angle mort armes lourdes » (data-driven) — Complété
 
 Suite du donut rôle (idée user : « quelqu'un qui n'utilise jamais les armes lourdes a besoin de s'améliorer dessus »). Décision : le moteur `coach_advisor` (Ascension) génère des ARCS LUSR multi-étapes (alertes→signals→synthesizer→arc_composer→presets) — y greffer un tip d'arme = lourd et inadapté. → insight simple, data-driven, surfacé DIRECTEMENT sous le donut (même donnée kills_by_role), title-agnostic.
