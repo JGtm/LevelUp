@@ -25,6 +25,7 @@ func buildSummaryTabFull(
 	meta *domain.MatchMetaRaw,
 	titleSlug string,
 	richCitations []domain.HomeMatchCitationRaw,
+	durationSec int,
 ) domain.MatchSummaryTab {
 	citations := analysis.BuildCitationSnippets(richCitations, math.MaxInt32)
 	if citations == nil {
@@ -35,7 +36,7 @@ func buildSummaryTabFull(
 		PersonalResult: domain.MatchPersonalResult{OutcomeLabel: "-", OutcomeColor: mvHexOutcomeUnknown},
 		Medals:         convertMedals(medals, titleSlug),
 		Citations:      citations,
-		ExpectedStats:  buildExpectedStats(expected, histRows, meta),
+		ExpectedStats:  buildExpectedStats(expected, histRows, meta, durationSec),
 	}
 
 	if stats == nil {
@@ -152,7 +153,7 @@ func computeExpectedAssists(
 }
 
 // buildExpectedStats construit le bloc de stats attendues + moyennes historiques.
-func buildExpectedStats(e *domain.ExpectedStatsRaw, histRows []domain.MatchHistAvgRow, meta *domain.MatchMetaRaw) domain.MatchExpectedStats {
+func buildExpectedStats(e *domain.ExpectedStatsRaw, histRows []domain.MatchHistAvgRow, meta *domain.MatchMetaRaw, durationSec int) domain.MatchExpectedStats {
 	out := domain.MatchExpectedStats{}
 	if e != nil {
 		out.ExpectedKills = e.KillsExpected
@@ -170,6 +171,7 @@ func buildExpectedStats(e *domain.ExpectedStatsRaw, histRows []domain.MatchHistA
 	targetCat := analysis.ComputeModeCategory(pairName, meta.IsFirefight, meta.IsRanked)
 
 	var totalK, totalD, totalA, totalSpree, totalHS, totalPerfect, count int
+	var durs, durKills, durDeaths []float64
 	for _, row := range histRows {
 		cat := analysis.ComputeModeCategory(row.PairName, row.IsFirefight, row.IsRanked)
 		if cat != targetCat {
@@ -186,6 +188,11 @@ func buildExpectedStats(e *domain.ExpectedStatsRaw, histRows []domain.MatchHistA
 		}
 		totalPerfect += row.PerfectKills
 		count++
+		if row.DurationSeconds > 60 {
+			durs = append(durs, float64(row.DurationSeconds))
+			durKills = append(durKills, float64(row.Kills))
+			durDeaths = append(durDeaths, float64(row.Deaths))
+		}
 	}
 	if count == 0 {
 		return out
@@ -207,7 +214,59 @@ func buildExpectedStats(e *domain.ExpectedStatsRaw, histRows []domain.MatchHistA
 	out.HistAvgPerfectKills = &avgPerfect
 	out.HistMatchCount = count
 	out.HistModeCategory = targetCat
+
+	// expected K/D LOCAL — modèle count∝durée (TrueSkill2-like) quand l'API skill
+	// n'a pas fourni l'attendu (Halo 5). Régression kills~durée / deaths~durée sur
+	// l'historique récent (même catégorie), évaluée à la durée du match courant.
+	// Validé sur 3135 matchs H5 (+13% frags / +5% morts vs moyenne plate ; cf.
+	// cmd/diag_expected_kd). N'écrase JAMAIS un attendu fourni par l'API.
+	if out.ExpectedKills == nil && out.ExpectedDeaths == nil && durationSec > 60 {
+		if ek, ed, ok := predictKDFromDuration(durs, durKills, durDeaths, float64(durationSec)); ok {
+			out.ExpectedKills = &ek
+			out.ExpectedDeaths = &ed
+			out.LocallyEstimated = true
+		}
+	}
 	return out
+}
+
+// predictKDFromDuration : modèle count∝durée (structure TrueSkill 2). Régresse
+// kills~durée et deaths~durée sur l'historique, prédit à la durée du match
+// courant. ok=false si trop peu d'échantillons. Plancher 0 (jamais négatif).
+func predictKDFromDuration(durs, kills, deaths []float64, curDur float64) (float64, float64, bool) {
+	if len(durs) < 10 {
+		return 0, 0, false
+	}
+	ek := olsPredictAt(durs, kills, curDur)
+	ed := olsPredictAt(durs, deaths, curDur)
+	if ek < 0 {
+		ek = 0
+	}
+	if ed < 0 {
+		ed = 0
+	}
+	return math.Round(ek*100) / 100, math.Round(ed*100) / 100, true
+}
+
+// olsPredictAt : régression linéaire simple y=a+b·x évaluée en `at`. Sans
+// variance en x (durées identiques), retombe sur la moyenne de y.
+func olsPredictAt(x, y []float64, at float64) float64 {
+	n := float64(len(x))
+	var sx, sy, sxx, sxy float64
+	for i := range x {
+		sx += x[i]
+		sy += y[i]
+		sxx += x[i] * x[i]
+		sxy += x[i] * y[i]
+	}
+	mean := sy / n
+	den := n*sxx - sx*sx
+	if math.Abs(den) < 1e-9 {
+		return mean
+	}
+	b := (n*sxy - sx*sy) / den
+	a := (sy - b*sx) / n
+	return a + b*at
 }
 
 func toIntPtr(f *float64) *int {

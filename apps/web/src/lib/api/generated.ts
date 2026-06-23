@@ -4024,6 +4024,7 @@ export interface components {
             /** Format: int64 */
             hist_match_count?: number;
             hist_mode_category?: string;
+            locally_estimated?: boolean;
         };
         MatchSummaryTab: {
             citations: components["schemas"]["MatchCitationSnippet"][] | null;

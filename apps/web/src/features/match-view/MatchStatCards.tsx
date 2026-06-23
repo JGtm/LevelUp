@@ -381,34 +381,22 @@ export function MatchSummaryCardsSection({
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: MatchViewManifestKey) => formatMessage(matchViewManifest, key, locale)
 
-  // Fallback expected K/D quand l'API de compétence ne fournit rien (Halo 5) : on
-  // prend la MOYENNE récente du joueur dans ce mode (hist_avg, déjà calculée côté
-  // back). Baseline robuste (impossible à sur-apprendre), affichée comme « attendu »
-  // et signalée par le label « Estimé localement » ci-dessous. Un modèle skill-adjusté
-  // (régression sur le rating LUSR) serait un raffinement futur, à valider sur données.
-  const noApiKd = expected_kills == null && expected_deaths == null
-  const effExpectedKills = expected_kills ?? (noApiKd ? expectedStats.hist_avg_kills ?? null : null)
-  const effExpectedDeaths = expected_deaths ?? (noApiKd ? expectedStats.hist_avg_deaths ?? null : null)
-
+  // expected K/D : valeurs du back directement. Pour Halo 5 (pas d'API skill), elles
+  // viennent du modèle local count∝durée (TrueSkill 2-like, validé +13%/+5% sur 3135
+  // matchs) ; sinon de l'API skill. Le flag locally_estimated pilote le label.
   const killsDelta =
-    kpis.kills != null && effExpectedKills != null ? kpis.kills - effExpectedKills : null
+    kpis.kills != null && expected_kills != null ? kpis.kills - expected_kills : null
 
   const deathsDelta =
-    kpis.deaths != null && effExpectedDeaths != null ? kpis.deaths - effExpectedDeaths : null
+    kpis.deaths != null && expected_deaths != null ? kpis.deaths - expected_deaths : null
 
   const assistsDelta =
     kpis.assists != null && expected_assists != null ? kpis.assists - expected_assists : null
 
-  // Les expected montrés sont LOCAUX (frags/morts via moyenne perso, assists via
-  // modèle OLS, win prob via LUSR) quand le titre n'a pas d'API de compétence
-  // (cas Halo 5, ou match Infinite sans donnée skill). On le signale honnêtement
-  // plutôt que de les présenter au même rang que des valeurs API.
-  const locallyEstimated =
-    noApiKd &&
-    (expected_assists != null ||
-      expected_win_prob != null ||
-      effExpectedKills != null ||
-      effExpectedDeaths != null)
+  // « Estimé localement » : flag backend — les expected K/D viennent du modèle
+  // local count∝durée (Halo 5, pas d'API skill), pas de l'API. On le signale
+  // honnêtement plutôt que de les présenter au même rang que des valeurs API.
+  const locallyEstimated = expectedStats.locally_estimated ?? false
 
   return (
     <div className="space-y-2">
@@ -426,7 +414,7 @@ export function MatchSummaryCardsSection({
       <MatchVsStatCard
         label={t('match_view.cards.frags_vs_expected')}
         primary={kpis.kills ?? null}
-        secondary={effExpectedKills != null ? Math.round(effExpectedKills) : null}
+        secondary={expected_kills != null ? Math.round(expected_kills) : null}
         primaryLabel={t('match_view.cards.label_real')}
         secondaryLabel={t('match_view.cards.label_expected')}
         delta={killsDelta}
@@ -436,7 +424,7 @@ export function MatchSummaryCardsSection({
       <MatchVsStatCard
         label={t('match_view.cards.deaths_vs_expected')}
         primary={kpis.deaths ?? null}
-        secondary={effExpectedDeaths != null ? Math.round(effExpectedDeaths) : null}
+        secondary={expected_deaths != null ? Math.round(expected_deaths) : null}
         primaryLabel={t('match_view.cards.label_real')}
         secondaryLabel={t('match_view.cards.label_expected')}
         delta={deathsDelta}

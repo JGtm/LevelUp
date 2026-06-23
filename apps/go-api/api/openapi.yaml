@@ -5202,6 +5202,8 @@ components:
               type: integer
           hist_mode_category:
               type: string
+          locally_estimated:
+              type: boolean
       required:
           - has_hist_avg
       type: object
