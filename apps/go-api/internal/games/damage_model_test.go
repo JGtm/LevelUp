@@ -76,6 +76,44 @@ func TestDamageModel_AbsentSection(t *testing.T) {
 	}
 }
 
+// TestOffensiveConversionP80_TitleAwareAndFallback — un titre déclare son
+// offensive_conversion_p80 (frontière élite OC) et la valeur route (pas le défaut
+// 0.90 Infinite) ; titre inconnu / resolver nil → fallback DefaultOffensiveConversionP80.
+func TestOffensiveConversionP80_TitleAwareAndFallback(t *testing.T) {
+	t.Parallel()
+	const slug = "synthetic_p80_title"
+
+	tmp := t.TempDir()
+	writeFile(t, filepath.Join(tmp, "config", "titles", slug, "mappings"), "fields.toml", minimalFieldsTOML(slug))
+	writeFile(t, filepath.Join(tmp, "config", "titles", slug), "constants.toml", `
+[meta]
+title_slug = "`+slug+`"
+schema_version = 1
+
+[endpoints]
+stats = "https://stats.example.test"
+
+[damage_model]
+effective_hp_to_kill = 115
+offensive_conversion_p80 = 1.264
+`)
+	reg := mappings.NewRegistry()
+	if errs := reg.LoadFromConfigDir(tmp, []string{slug}, nil); len(errs) != 0 {
+		t.Fatalf("LoadFromConfigDir errs: %v", errs)
+	}
+	res := NewMappingsEndpointResolver(reg, "halo_infinite")
+
+	if got := OffensiveConversionP80FromResolver(res, slug); got != 1.264 {
+		t.Errorf("OffensiveConversionP80(%q) = %v, want 1.264", slug, got)
+	}
+	if got := OffensiveConversionP80FromResolver(res, "never_loaded"); got != DefaultOffensiveConversionP80 {
+		t.Errorf("inconnu = %v, want %v (défaut)", got, DefaultOffensiveConversionP80)
+	}
+	if got := OffensiveConversionP80FromResolver(nil, slug); got != DefaultOffensiveConversionP80 {
+		t.Errorf("resolver nil = %v, want %v (défaut)", got, DefaultOffensiveConversionP80)
+	}
+}
+
 // TestProvidesNativeKDA — un titre déclarant no_native_kda=true (Halo 5) route
 // false ; un titre sans le flag / inconnu / resolver legacy / resolver nil retombe
 // sur true (défaut Infinite). Garantit qu'on ne fabrique jamais de KDA pour un

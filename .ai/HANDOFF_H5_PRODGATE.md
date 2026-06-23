@@ -43,8 +43,11 @@ findings non-évidents, reste à faire, commandes opérationnelles.
   gardent 225 (Infinite-only). Tests verts (param oneLife + substituteHpToken). Bars déjà correctes (hp=115).
 
 **RESTE (non bloquant prod)** :
-- 🟡 **P80 par titre + KDA/assist h5** (data/activation-couplé) : P80 OC/DR restent calibrés Infinite ;
-  KDA natif absent côté h5. Non bloquant (h5 stats not_exposed Phase 1). Cf. PLAN_DAMAGE_MODEL_PER_TITLE §0 (2,4).
+- ✅ **P80 OC h5 = 1.264 calibré data** (config `[damage_model].offensive_conversion_p80` + getter
+  `games.OffensiveConversionP80(slug)` livrés, Infinite 0.90) · **KDA h5 = `h5NetFDA` (k+a/3)−d déjà
+  correct** à l'ingestion · **DR h5 = N/A** (cryptum ne fournit PAS `damage_taken`, vérifié sur le
+  carnage brut 0/13241). Reste (activation 1b, non bloquant) : threader le getter P80 dans le
+  radar/barre d'affichage (LUSR garde la const Infinite-only). Cf. PLAN_DAMAGE_MODEL_PER_TITLE §0.
 - 🟡 **Sanity-check terrain LUSR/combat** (code DONE, PAS un gap) : vérif runtime niveaux (Madina Platine/Diamant…)
   + profils combat distincts — relève de l'exécution (service tournant / `cmd/diag_lusr_*`), pas du code.
 

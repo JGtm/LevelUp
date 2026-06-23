@@ -54,6 +54,10 @@ perfect_kill = 1512363953  # médaille "Perfect" → exposée en "frags parfaits
 # SQL post_sync_progression_queries.go) — cf. PLAN_DAMAGE_MODEL_PER_TITLE.md.
 [damage_model]
 effective_hp_to_kill = 225
+# offensive_conversion_p80 = 0.90 : frontière élite OC (80e percentile) Infinite, repère
+# de normalisation des barres/radars de rendement. = la constante historique
+# analysis.OffensiveConversionP80, externalisée par titre (h5 = 1.264, calibré data).
+offensive_conversion_p80 = 0.90
 
 # ─── Préfixes de mode (normalisation pair_name) ─────────────────────────────
 # Réservé : les préfixes Assassin/Fiesta/BTB/Firefight/Ranked sont aujourd'hui

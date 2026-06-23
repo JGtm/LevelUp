@@ -52,6 +52,10 @@ type DamageModelConstants struct {
 	// NoNativeKDA = true → le titre ne fournit pas de KDA per-match via son API
 	// (Halo 5 ; forme native = FDA NET). Défaut false (KDA natif, Infinite).
 	NoNativeKDA bool
+	// OffensiveConversionP80 = frontière élite (80e percentile) du rendement OC du
+	// titre, repère de normalisation des barres/radars. 0 = non déclaré → défaut
+	// 0.90 (Infinite). h5 = 1.264 (calibré sur sa propre distribution, hp=115).
+	OffensiveConversionP80 float64
 }
 
 // NewEndpointSet construit un EndpointSet (utilisé par le loader et les tests).
