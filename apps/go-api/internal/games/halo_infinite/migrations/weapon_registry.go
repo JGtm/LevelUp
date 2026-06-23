@@ -4,7 +4,7 @@ package migrations
 //
 // Registre d'armes canonique = passage PRINCIPAL de la résolution d'arme (cf.
 // .ai/PLAN_WEAPON_TAXONOMY.md). 3 tables référentielles dans metadata.duckdb :
-//   - weapons          : 1 ligne par arme par titre (class/family/faction/damage_type + extra JSON).
+//   - weapons          : 1 ligne par arme par titre (class/role/family/faction/damage_type + extra JSON).
 //   - weapon_ids       : N ids par arme (filmshell/stock_id/module…) → un id résout vers UN weapon_key.
 //   - weapon_families  : référentiel des familles cross-titre (clé → libellés FR/EN).
 //
@@ -34,8 +34,11 @@ func ApplyWeaponRegistry(db *sql.DB) error {
 
 type weaponFamilyRow struct{ key, en, fr string }
 
+// weaponRow — class = manipulation (poing/épaule/lourde/mêlée/grenade) ;
+// role = fonction de combat (automatic/precision/sniper/shotgun/sidearm/power/
+// special/melee/grenade) ; family = identité précise cross-titre.
 type weaponRow struct {
-	key, title, name, nameFR, class, family, faction, damage, manufacturer string
+	key, title, name, nameFR, class, role, family, faction, damage, manufacturer string
 }
 
 // weaponFilmshellID — id filmshell (uint64) d'une arme Infinite. uint64 littéral
@@ -64,6 +67,7 @@ func applyWeaponRegistry(db *sql.DB) error {
 			name         VARCHAR NOT NULL,
 			name_fr      VARCHAR,
 			class        VARCHAR,
+			role         VARCHAR,
 			family_key   VARCHAR,
 			faction      VARCHAR,
 			damage_type  VARCHAR,
@@ -102,11 +106,11 @@ func seedWeaponFamilies(db *sql.DB) error {
 
 func seedWeapons(db *sql.DB) error {
 	const q = `INSERT OR IGNORE INTO weapons
-		(weapon_key, title_slug, name, name_fr, class, family_key, faction, damage_type, manufacturer)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		(weapon_key, title_slug, name, name_fr, class, role, family_key, faction, damage_type, manufacturer)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	for _, w := range weaponRegistryWeapons {
 		if _, err := db.ExecContext(migration.BootCtx(), q,
-			w.key, w.title, w.name, w.nameFR, w.class, w.family, w.faction, w.damage, w.manufacturer); err != nil {
+			w.key, w.title, w.name, w.nameFR, w.class, w.role, w.family, w.faction, w.damage, w.manufacturer); err != nil {
 			return err
 		}
 	}
@@ -128,6 +132,7 @@ func seedWeaponFilmshellIDs(db *sql.DB) error {
 var weaponRegistryFamilies = []weaponFamilyRow{
 	{"battle_rifle", "Battle Rifle", "Fusil de combat"},
 	{"dmr", "DMR", "DMR"},
+	{"stalker_rifle", "Stalker Rifle", "Fusil traqueur"},
 	{"assault_rifle", "Assault Rifle", "Fusil d'assaut"},
 	{"smg", "SMG", "Mitraillette"},
 	{"commando", "Commando", "Commando"},
@@ -173,67 +178,68 @@ var weaponRegistryFamilies = []weaponFamilyRow{
 // weaponRegistryWeapons — 59 armes (29 Infinite §6.1 + 30 Halo 5 §6.2), vérifiées
 // halopedia.org + wiki.halo.fr. faction = ORIGINE de conception (pas le porteur).
 var weaponRegistryWeapons = []weaponRow{
+	// Colonnes : key, title, name, name_fr, class, role, family, faction, damage, manufacturer.
 	// ── Halo Infinite (§6.1) ──
-	{"hinf_br75", titleHINF, "BR75", "Fusil de combat", "shoulder", "battle_rifle", "human", "ballistic", "Misriah Armory"},
-	{"hinf_bandit", titleHINF, "M392 Bandit", "Bandit", "shoulder", "dmr", "human", "ballistic", "Sevine Arms"},
-	{"hinf_ma40_ar", titleHINF, "MA40 AR", "Fusil d'assaut", "shoulder", "assault_rifle", "human", "ballistic", "Misriah Armory"},
-	{"hinf_ma5k_avenger", titleHINF, "MA5K Avenger", "Avenger", "shoulder", "smg", "human", "ballistic", "Misriah Armory"},
-	{"hinf_vk78_commando", titleHINF, "VK78 Commando", "Commando", "shoulder", "commando", "human", "ballistic", "Vakara GesmbH"},
-	{"hinf_s7_sniper", titleHINF, "S7 Sniper", "Fusil de précision S7", "heavy", "sniper_rifle", "human", "ballistic", "Misriah Armory"},
-	{"hinf_cqs48_bulldog", titleHINF, "CQS48 Bulldog", "Bulldog", "shoulder", "shotgun", "human", "ballistic", "Misriah Armory"},
-	{"hinf_hydra", titleHINF, "MLRS-2 Hydra", "Hydra", "heavy", "hydra", "human", "explosive", "Chalybs Defense Solutions"},
-	{"hinf_m41_spnkr", titleHINF, "M41 SPNKr", "Lance-roquettes", "heavy", "rocket_launcher", "human", "explosive", "Misriah Armory"},
-	{"hinf_fuel_rod_spnkr", titleHINF, "Fuel Rod SPNKr", "Lance-roquettes Fuel Rod", "heavy", "rocket_launcher", "banished", "explosive", "Banished (SPNKr modifié)"},
-	{"hinf_sidekick", titleHINF, "Mk50 Sidekick", "Sidekick", "sidearm", "magnum", "human", "ballistic", "Emerson Tactical Systems"},
-	{"hinf_plasma_pistol", titleHINF, "Plasma Pistol", "Pistolet à plasma", "sidearm", "plasma_pistol", "covenant", "plasma", "Iruiru Armory"},
-	{"hinf_needler", titleHINF, "Needler", "Needler", "shoulder", "needler", "covenant", "spike", "Lodam Armory"},
-	{"hinf_sentinel_beam", titleHINF, "Sentinel Beam", "Laser de Sentinelle", "heavy", "sentinel_beam", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
-	{"hinf_energy_sword", titleHINF, "Energy Sword", "Épée à énergie", "melee", "energy_sword", "covenant", "plasma", "Merchants of Qikost"},
-	{"hinf_gravity_hammer", titleHINF, "Gravity Hammer", "Marteau antigravité", "melee", "gravity_hammer", "covenant", "gravitic", "Sacred Promissory"},
-	{"hinf_skewer", titleHINF, "Skewer", "Empaleur", "heavy", "skewer", "banished", "spike", "Flaktura Workshop"},
-	{"hinf_cindershot", titleHINF, "Cindershot", "Crémator", "heavy", "cindershot", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
-	{"hinf_heatwave", titleHINF, "Heatwave", "Calcineur", "heavy", "heatwave", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
-	{"hinf_ravager", titleHINF, "Ravager", "Ravageur", "shoulder", "ravager", "banished", "plasma", "Veporokk Workshop"},
-	{"hinf_shock_rifle", titleHINF, "Shock Rifle", "Fusil électrique", "heavy", "shock_rifle", "banished", "shock", "Sicatt Workshop"},
-	{"hinf_disruptor", titleHINF, "Disruptor", "Disrupteur", "sidearm", "disruptor", "banished", "shock", "Sicatt Workshop"},
-	{"hinf_mangler", titleHINF, "Mangler", "Déchiqueteur", "sidearm", "mangler", "banished", "spike", "Ukala Workshop"},
-	{"hinf_pulse_carbine", titleHINF, "Pulse Carbine", "Carabine à impulsion", "shoulder", "pulse_carbine", "covenant", "plasma", "Lodam Armory"},
-	{"hinf_stalker_rifle", titleHINF, "Stalker Rifle", "Fusil traqueur", "shoulder", "dmr", "covenant", "plasma", "Merchants of Qikost"},
-	{"hinf_vestige_carbine", titleHINF, "Vestige Carbine", "Vestige Carbine", "shoulder", "carbine", "covenant", "plasma", "Sangheili"},
-	{"hinf_frag_grenade", titleHINF, "Frag Grenade", "Grenade à fragmentation", "grenade", "frag_grenade", "human", "explosive", "Misriah Armory"},
-	{"hinf_plasma_grenade", titleHINF, "Plasma Grenade", "Grenade à plasma", "grenade", "plasma_grenade", "covenant", "plasma", ""},
-	{"hinf_dynamo_grenade", titleHINF, "Dynamo Grenade", "Grenade Dynamo", "grenade", "dynamo_grenade", "banished", "shock", ""},
+	{"hinf_br75", titleHINF, "BR75", "Fusil de combat", "shoulder", "precision", "battle_rifle", "human", "ballistic", "Misriah Armory"},
+	{"hinf_bandit", titleHINF, "M392 Bandit", "Bandit", "shoulder", "precision", "dmr", "human", "ballistic", "Sevine Arms"},
+	{"hinf_ma40_ar", titleHINF, "MA40 AR", "Fusil d'assaut", "shoulder", "automatic", "assault_rifle", "human", "ballistic", "Misriah Armory"},
+	{"hinf_ma5k_avenger", titleHINF, "MA5K Avenger", "Avenger", "shoulder", "automatic", "smg", "human", "ballistic", "Misriah Armory"},
+	{"hinf_vk78_commando", titleHINF, "VK78 Commando", "Commando", "shoulder", "automatic", "commando", "human", "ballistic", "Vakara GesmbH"},
+	{"hinf_s7_sniper", titleHINF, "S7 Sniper", "Fusil de précision S7", "heavy", "sniper", "sniper_rifle", "human", "ballistic", "Misriah Armory"},
+	{"hinf_cqs48_bulldog", titleHINF, "CQS48 Bulldog", "Bulldog", "shoulder", "shotgun", "shotgun", "human", "ballistic", "Misriah Armory"},
+	{"hinf_hydra", titleHINF, "MLRS-2 Hydra", "Hydra", "heavy", "power", "hydra", "human", "explosive", "Chalybs Defense Solutions"},
+	{"hinf_m41_spnkr", titleHINF, "M41 SPNKr", "Lance-roquettes", "heavy", "power", "rocket_launcher", "human", "explosive", "Misriah Armory"},
+	{"hinf_fuel_rod_spnkr", titleHINF, "Fuel Rod SPNKr", "Lance-roquettes Fuel Rod", "heavy", "power", "rocket_launcher", "banished", "explosive", "Banished (SPNKr modifié)"},
+	{"hinf_sidekick", titleHINF, "Mk50 Sidekick", "Sidekick", "sidearm", "sidearm", "magnum", "human", "ballistic", "Emerson Tactical Systems"},
+	{"hinf_plasma_pistol", titleHINF, "Plasma Pistol", "Pistolet à plasma", "sidearm", "sidearm", "plasma_pistol", "covenant", "plasma", "Iruiru Armory"},
+	{"hinf_needler", titleHINF, "Needler", "Needler", "shoulder", "special", "needler", "covenant", "spike", "Lodam Armory"},
+	{"hinf_sentinel_beam", titleHINF, "Sentinel Beam", "Laser de Sentinelle", "heavy", "special", "sentinel_beam", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
+	{"hinf_energy_sword", titleHINF, "Energy Sword", "Épée à énergie", "melee", "melee", "energy_sword", "covenant", "plasma", "Merchants of Qikost"},
+	{"hinf_gravity_hammer", titleHINF, "Gravity Hammer", "Marteau antigravité", "melee", "melee", "gravity_hammer", "covenant", "gravitic", "Sacred Promissory"},
+	{"hinf_skewer", titleHINF, "Skewer", "Empaleur", "heavy", "power", "skewer", "banished", "spike", "Flaktura Workshop"},
+	{"hinf_cindershot", titleHINF, "Cindershot", "Crémator", "heavy", "power", "cindershot", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
+	{"hinf_heatwave", titleHINF, "Heatwave", "Calcineur", "heavy", "shotgun", "heatwave", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
+	{"hinf_ravager", titleHINF, "Ravager", "Ravageur", "shoulder", "automatic", "ravager", "banished", "plasma", "Veporokk Workshop"},
+	{"hinf_shock_rifle", titleHINF, "Shock Rifle", "Fusil électrique", "heavy", "sniper", "shock_rifle", "banished", "shock", "Sicatt Workshop"},
+	{"hinf_disruptor", titleHINF, "Disruptor", "Disrupteur", "sidearm", "sidearm", "disruptor", "banished", "shock", "Sicatt Workshop"},
+	{"hinf_mangler", titleHINF, "Mangler", "Déchiqueteur", "sidearm", "sidearm", "mangler", "banished", "spike", "Ukala Workshop"},
+	{"hinf_pulse_carbine", titleHINF, "Pulse Carbine", "Carabine à impulsion", "shoulder", "automatic", "pulse_carbine", "covenant", "plasma", "Lodam Armory"},
+	{"hinf_stalker_rifle", titleHINF, "Stalker Rifle", "Fusil traqueur", "shoulder", "precision", "stalker_rifle", "covenant", "plasma", "Merchants of Qikost"},
+	{"hinf_vestige_carbine", titleHINF, "Vestige Carbine", "Vestige Carbine", "shoulder", "precision", "carbine", "covenant", "plasma", "Sangheili"},
+	{"hinf_frag_grenade", titleHINF, "Frag Grenade", "Grenade à fragmentation", "grenade", "grenade", "frag_grenade", "human", "explosive", "Misriah Armory"},
+	{"hinf_plasma_grenade", titleHINF, "Plasma Grenade", "Grenade à plasma", "grenade", "grenade", "plasma_grenade", "covenant", "plasma", ""},
+	{"hinf_dynamo_grenade", titleHINF, "Dynamo Grenade", "Grenade Dynamo", "grenade", "grenade", "dynamo_grenade", "banished", "shock", ""},
 	// ── Halo 5: Guardians (§6.2) ──
-	{"h5_assault_rifle", titleH5, "Assault Rifle (MA5D)", "Fusil d'assaut", "shoulder", "assault_rifle", "human", "ballistic", "Misriah Armory"},
-	{"h5_battle_rifle", titleH5, "Battle Rifle (BR55HB)", "Fusil de combat", "shoulder", "battle_rifle", "human", "ballistic", "Misriah Armory"},
-	{"h5_dmr", titleH5, "DMR (M395B)", "DMR", "shoulder", "dmr", "human", "ballistic", "Misriah Armory"},
-	{"h5_magnum", titleH5, "Magnum (M6H2)", "Magnum", "sidearm", "magnum", "human", "ballistic", "Misriah Armory"},
-	{"h5_smg", titleH5, "SMG (M20)", "Mitraillette", "shoulder", "smg", "human", "ballistic", "Misriah Armory"},
-	{"h5_shotgun", titleH5, "Shotgun (M45D)", "Fusil à pompe", "shoulder", "shotgun", "human", "ballistic", "Misriah Armory"},
-	{"h5_sniper_rifle", titleH5, "Sniper Rifle (SRS99-S5)", "Fusil de précision", "heavy", "sniper_rifle", "human", "ballistic", "Misriah Armory"},
-	{"h5_rocket_launcher", titleH5, "Rocket Launcher (M41D)", "Lance-roquettes", "heavy", "rocket_launcher", "human", "explosive", "Misriah Armory"},
-	{"h5_grenade_launcher", titleH5, "Grenade Launcher (M319)", "Lance-grenades", "heavy", "grenade_launcher", "human", "explosive", "Misriah Armory"},
-	{"h5_railgun", titleH5, "Railgun (ARC-920)", "Railgun", "heavy", "railgun", "human", "explosive", "Acheron Security"},
-	{"h5_saw", titleH5, "SAW (M739)", "SAW", "shoulder", "saw", "human", "ballistic", "Misriah Armory"},
-	{"h5_hydra", titleH5, "Hydra (MLRS-1)", "Hydra", "heavy", "hydra", "human", "explosive", "Chalybs Defense Solutions"},
-	{"h5_spartan_laser", titleH5, "Spartan Laser (M6/E)", "Laser Spartan", "heavy", "spartan_laser", "human", "hardlight", "Misriah Armory"},
-	{"h5_carbine", titleH5, "Carbine (Mosa)", "Carabine", "shoulder", "carbine", "covenant", "spike", "Iruiru Armory"},
-	{"h5_energy_sword", titleH5, "Energy Sword", "Épée à énergie", "melee", "energy_sword", "covenant", "plasma", "Merchants of Qikost"},
-	{"h5_plasma_pistol", titleH5, "Plasma Pistol", "Pistolet à plasma", "sidearm", "plasma_pistol", "covenant", "plasma", ""},
-	{"h5_plasma_rifle", titleH5, "Brute Plasma Rifle", "Fusil à plasma brute", "shoulder", "plasma_rifle", "covenant", "plasma", "Sacred Promissory"},
-	{"h5_fuel_rod", titleH5, "Fuel Rod Cannon", "Canon à combustible", "heavy", "fuel_rod", "covenant", "explosive", "Forge of Raansek"},
-	{"h5_storm_rifle", titleH5, "Storm Rifle", "Fusil Storm", "shoulder", "storm_rifle", "covenant", "plasma", "Lodam Armory"},
-	{"h5_beam_rifle", titleH5, "Beam Rifle", "Fusil de sniper covenant", "heavy", "beam_rifle", "covenant", "particle_beam", "Merchants of Qikost"},
-	{"h5_plasma_caster", titleH5, "Plasma Caster", "Canon plasma", "heavy", "plasma_caster", "covenant", "plasma", "Merchants of Qikost"},
-	{"h5_needler", titleH5, "Needler", "Needler", "shoulder", "needler", "covenant", "spike", "Lodam Armory"},
-	{"h5_gravity_hammer", titleH5, "Gravity Hammer", "Marteau antigravité", "melee", "gravity_hammer", "covenant", "gravitic", "Sepulo'tez Workshop"},
-	{"h5_light_rifle", titleH5, "Light Rifle (Z-250)", "Fusil léger", "shoulder", "light_rifle", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
-	{"h5_binary_rifle", titleH5, "Binary Rifle (Z-750)", "Fusil binaire", "heavy", "binary_rifle", "forerunner", "particle_beam", "Ferrarius Assembler Vats"},
-	{"h5_boltshot", titleH5, "Boltshot (Z-110)", "Pistolet à particules", "sidearm", "boltshot", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
-	{"h5_incineration_cannon", titleH5, "Incineration Cannon (Z-390)", "Canon incendiaire", "heavy", "incineration_cannon", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
-	{"h5_sentinel_beam", titleH5, "Sentinel Beam", "Laser de Sentinelle", "heavy", "sentinel_beam", "forerunner", "particle_beam", "Ferrarius Assembler Vats"},
-	{"h5_suppressor", titleH5, "Suppressor (Z-130)", "Éradicateur", "shoulder", "suppressor", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
-	{"h5_scattershot", titleH5, "Scattershot (Z-180)", "Répercuteur", "shoulder", "scattershot", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
+	{"h5_assault_rifle", titleH5, "Assault Rifle (MA5D)", "Fusil d'assaut", "shoulder", "automatic", "assault_rifle", "human", "ballistic", "Misriah Armory"},
+	{"h5_battle_rifle", titleH5, "Battle Rifle (BR55HB)", "Fusil de combat", "shoulder", "precision", "battle_rifle", "human", "ballistic", "Misriah Armory"},
+	{"h5_dmr", titleH5, "DMR (M395B)", "DMR", "shoulder", "precision", "dmr", "human", "ballistic", "Misriah Armory"},
+	{"h5_magnum", titleH5, "Magnum (M6H2)", "Magnum", "sidearm", "sidearm", "magnum", "human", "ballistic", "Misriah Armory"},
+	{"h5_smg", titleH5, "SMG (M20)", "Mitraillette", "shoulder", "automatic", "smg", "human", "ballistic", "Misriah Armory"},
+	{"h5_shotgun", titleH5, "Shotgun (M45D)", "Fusil à pompe", "shoulder", "shotgun", "shotgun", "human", "ballistic", "Misriah Armory"},
+	{"h5_sniper_rifle", titleH5, "Sniper Rifle (SRS99-S5)", "Fusil de précision", "heavy", "sniper", "sniper_rifle", "human", "ballistic", "Misriah Armory"},
+	{"h5_rocket_launcher", titleH5, "Rocket Launcher (M41D)", "Lance-roquettes", "heavy", "power", "rocket_launcher", "human", "explosive", "Misriah Armory"},
+	{"h5_grenade_launcher", titleH5, "Grenade Launcher (M319)", "Lance-grenades", "heavy", "power", "grenade_launcher", "human", "explosive", "Misriah Armory"},
+	{"h5_railgun", titleH5, "Railgun (ARC-920)", "Railgun", "heavy", "power", "railgun", "human", "explosive", "Acheron Security"},
+	{"h5_saw", titleH5, "SAW (M739)", "SAW", "shoulder", "automatic", "saw", "human", "ballistic", "Misriah Armory"},
+	{"h5_hydra", titleH5, "Hydra (MLRS-1)", "Hydra", "heavy", "power", "hydra", "human", "explosive", "Chalybs Defense Solutions"},
+	{"h5_spartan_laser", titleH5, "Spartan Laser (M6/E)", "Laser Spartan", "heavy", "power", "spartan_laser", "human", "hardlight", "Misriah Armory"},
+	{"h5_carbine", titleH5, "Carbine (Mosa)", "Carabine", "shoulder", "precision", "carbine", "covenant", "spike", "Iruiru Armory"},
+	{"h5_energy_sword", titleH5, "Energy Sword", "Épée à énergie", "melee", "melee", "energy_sword", "covenant", "plasma", "Merchants of Qikost"},
+	{"h5_plasma_pistol", titleH5, "Plasma Pistol", "Pistolet à plasma", "sidearm", "sidearm", "plasma_pistol", "covenant", "plasma", ""},
+	{"h5_plasma_rifle", titleH5, "Brute Plasma Rifle", "Fusil à plasma brute", "shoulder", "automatic", "plasma_rifle", "covenant", "plasma", "Sacred Promissory"},
+	{"h5_fuel_rod", titleH5, "Fuel Rod Cannon", "Canon à combustible", "heavy", "power", "fuel_rod", "covenant", "explosive", "Forge of Raansek"},
+	{"h5_storm_rifle", titleH5, "Storm Rifle", "Fusil Storm", "shoulder", "automatic", "storm_rifle", "covenant", "plasma", "Lodam Armory"},
+	{"h5_beam_rifle", titleH5, "Beam Rifle", "Fusil de sniper covenant", "heavy", "sniper", "beam_rifle", "covenant", "particle_beam", "Merchants of Qikost"},
+	{"h5_plasma_caster", titleH5, "Plasma Caster", "Canon plasma", "heavy", "power", "plasma_caster", "covenant", "plasma", "Merchants of Qikost"},
+	{"h5_needler", titleH5, "Needler", "Needler", "shoulder", "special", "needler", "covenant", "spike", "Lodam Armory"},
+	{"h5_gravity_hammer", titleH5, "Gravity Hammer", "Marteau antigravité", "melee", "melee", "gravity_hammer", "covenant", "gravitic", "Sepulo'tez Workshop"},
+	{"h5_light_rifle", titleH5, "Light Rifle (Z-250)", "Fusil léger", "shoulder", "precision", "light_rifle", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
+	{"h5_binary_rifle", titleH5, "Binary Rifle (Z-750)", "Fusil binaire", "heavy", "sniper", "binary_rifle", "forerunner", "particle_beam", "Ferrarius Assembler Vats"},
+	{"h5_boltshot", titleH5, "Boltshot (Z-110)", "Pistolet à particules", "sidearm", "sidearm", "boltshot", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
+	{"h5_incineration_cannon", titleH5, "Incineration Cannon (Z-390)", "Canon incendiaire", "heavy", "power", "incineration_cannon", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
+	{"h5_sentinel_beam", titleH5, "Sentinel Beam", "Laser de Sentinelle", "heavy", "special", "sentinel_beam", "forerunner", "particle_beam", "Ferrarius Assembler Vats"},
+	{"h5_suppressor", titleH5, "Suppressor (Z-130)", "Éradicateur", "shoulder", "automatic", "suppressor", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
+	{"h5_scattershot", titleH5, "Scattershot (Z-180)", "Répercuteur", "shoulder", "shotgun", "scattershot", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
 }
 
 // weaponRegistryInfiniteFilmshell — ids filmshell Infinite (source weapon_labels.go,

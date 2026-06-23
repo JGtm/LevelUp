@@ -1,3 +1,11 @@
+## [2026-06-23] Weapon taxonomy registre — dimension `role` (revue user du seed) — Complété
+
+Revue du seed par le user (relecture des 59 armes). Constat partagé : `family` seule ne capture pas le RÔLE de combat (« précision vs pression »), et beaucoup de familles sont uniques (normal, surtout forerunner H5 sans équivalent Infinite). → ajout d'une 5e dimension **`role`** (colonne `weapons.role`) = fonction de combat, distincte de `class` (manipulation) et `family` (identité). Enum : automatic / precision / sniper / shotgun / sidearm / power / special / melee / grenade. class & role coïncident pour poing/mêlée/grenade mais divergent pour épaule (precision vs automatic) et lourde (sniper/shotgun/power/special) — c'est tout l'intérêt.
+
+Corrections de classification validées par le user : Stalker Rifle famille `dmr` → **`stalker_rifle`** propre (43 familles) ; Vestige Carbine + Carbine H5 role **precision** (équivalent covenant du Bandit, family `carbine` gardée) ; Needler class **épaule** + role **special** (deux mains dans Infinite) ; **Commando role `automatic`** (décision user : hybride, rarement utilisé à distance, pas `precision`).
+
+Table neuve (pas en prod) → colonne ajoutée directement au CREATE, re-seed in place, zéro ALTER. Tests `weapon_registry_test.go` étendus (enum role, role non-null, familles 43) verts. Plan §0/§2/§3/§6.1 mis à jour (5 dimensions, fix Stalker). Reste P2bis (stock_ids H5), P3 (resolver), P4 (bascule lecteurs).
+
 ## [2026-06-23] Weapon taxonomy registre — P2 schéma + seed (build, branche dédiée) — Complété (P2-core)
 
 GO user (« la suite ») après confirmation empirique WeaponStats vide. Branche dédiée `feat/weapon-taxonomy-registry` depuis integration. Migration `add_weapon_registry` (TargetMetadata, named-func `weapon_registry.go`) : 3 tables `weapons` / `weapon_ids` / `weapon_families`.
