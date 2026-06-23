@@ -102,10 +102,15 @@ CREATE TABLE weapon_families (
 );
 ```
 
-- **Append-only** (`weapons`, `weapon_ids`) : conforme à la doctrine anti-ART du projet (cf. ADR 0026) ; lecture via
-  `<table>_latest`. Un re-seed = INSERT d'une nouvelle génération, jamais UPDATE/DELETE indexé.
+- **DÉCISION D'IMPLÉMENTATION (P2, 2026-06-23)** : finalement **PK simple + `INSERT OR IGNORE`** (pas append-only `_latest`),
+  comme `weapon_labels.go` / `career_ranks` / `mode_name_tr`. Justification : c'est un **référentiel STATIQUE** seedé au boot
+  (zéro writer concurrent, zéro UPDATE per-match) → **hors périmètre du bug ART #23046**, qui ne frappe que les tables d'état
+  mutées sous pression concurrente. L'append-only/`_latest` n'apporterait rien ici sauf de la complexité de lecture. PK :
+  `weapons` = (title_slug, weapon_key) ; `weapon_ids` = (title_slug, id_kind, id_value) ; `weapon_families` = (family_key).
+  Une re-classification rare = migration corrective nommée (comme `fix_super_fiesta_fr_label`). L'extensibilité voulue (TTK…)
+  passe par `extra` JSON, **pas** par l'append-only.
 - **`id_value` en VARCHAR** : certains weapon_id filmshell dépassent 2^63 (cf. `weapon_data.go`) et les ids H5/CMS sont des
-  UUID/strings → on stocke en string, cast au besoin.
+  UUID/strings → on stocke en string (filmshell = décimal via `strconv.FormatUint`), cast au besoin.
 
 ---
 
@@ -284,7 +289,8 @@ moyenne H5 »), filtre Explorer par famille/faction. Honnêteté : armes non map
 |---|---|---|
 | **P0 — Plan** (ce doc) | Schéma BDD + table vérifiée §6 + cadrage UI-différé | validé user |
 | **P1 — Vérif data** | halopedia + wiki.halo.fr (FAIT 2026-06-23, §6 sourcée) | table figée |
-| **P2 — Schéma + seed** | 3 tables (migration metadata, append-only) + seed TOML/Go depuis §6 + réconciliation ids (§7) | tables seedées, valides |
+| **P2 — Schéma + seed** | 3 tables (migration metadata `add_weapon_registry`, PK simple) + seed Go depuis §6 (42 familles + 59 armes + 36 filmshell ids Infinite) | **FAIT** (tables seedées, tests verts `weapon_registry_test.go`) |
+| **P2bis — ids H5** | réconciliation `stock_id` H5 (§7 : metadata officiel / events) dans `weapon_ids` | armes H5 résolubles par stock_id |
 | **P3 — Resolver + tests** | package `weaponregistry` + repo lecture + tests | `ByID` marche, CI verte |
 | **P4 — Migration lecteurs** | bascule progressive des lookups weapon vers le registre (§8), golden parity | callers basculés sans régression |
 | **P5 — (DIFFÉRÉ) UI** | donut/comparaison selon narration user | hors-scope tant que narration TBD |
