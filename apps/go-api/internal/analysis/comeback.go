@@ -205,6 +205,42 @@ func ComputeDominanceFlag(
 	return flag
 }
 
+// ComputeScoreMarginDominance calcule DOMINATION/HUMILIATION depuis les scores
+// FINAUX d'équipe (sans timeline de kills), pour les titres dont les events ne
+// portent pas de kill-feed exploitable (ex. Halo 5 : highlight_events = médailles
+// seules → pas de courbe). Reproduit le seuil de la formule Steaktacular
+// (cf. .ai/STEAKTACULAR.md : Slayer écart ≥ 20 sur 50 = loser ≤ 60% du winner) en
+// le rendant title-agnostic : marge = winner − loser ≥ leadPct × winner.
+//
+// myScore/enemyScore : scores finaux (kills d'équipe ou score objectif). outcome :
+// code Halo (2=Win, 3=Loss). leadPct : fraction du winner pour déclencher (0.40 =
+// "standard", aligné sur le seuil de lead de ComputeDominanceFlag). Retourne 1/2/0.
+// Ne produit JAMAIS 3/4/5 (remontada) — impossibles sans timeline.
+func ComputeScoreMarginDominance(myScore, enemyScore, outcome int, leadPct float64) int {
+	if outcome != OutcomeWin && outcome != OutcomeLoss {
+		return DominanceFlagNone
+	}
+	winner := max(myScore, enemyScore)
+	loser := min(myScore, enemyScore)
+	if winner <= 0 {
+		return DominanceFlagNone
+	}
+	if float64(winner-loser) < leadPct*float64(winner) {
+		return DominanceFlagNone
+	}
+	if outcome == OutcomeWin && myScore >= enemyScore {
+		return DominanceFlagDomination
+	}
+	if outcome == OutcomeLoss && myScore <= enemyScore {
+		return DominanceFlagHumiliation
+	}
+	return DominanceFlagNone
+}
+
+// StandardLeadPct expose le seuil de lead "standard" (fraction du score winner)
+// pour les callers de ComputeScoreMarginDominance (cohérent avec ComputeDominanceFlag).
+func StandardLeadPct() float64 { return sensitivityThresholds[defaultSensitivity][0] }
+
 // getThresholds retourne [leadPct, comebackPct] pour la sensibilité donnée.
 // Retourne les seuils "standard" si la sensibilité est invalide.
 func getThresholds(sensitivity string) [2]float64 {

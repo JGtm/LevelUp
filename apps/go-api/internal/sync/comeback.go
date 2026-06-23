@@ -61,7 +61,33 @@ func computeMatchDominanceFlag(ctx context.Context, db *sql.DB, xuid, matchID st
 		}
 	}
 
-	// 2. Comeback — uniquement pour les modes Slayer.
+	// 2. Courbe de kills (timeline). Absente pour les titres dont les events ne
+	// portent pas de kill-feed exploitable (Halo 5 : highlight_events = médailles
+	// seules → 0 kill-event).
+	events, err := loadKillEventsWithTeam(ctx, db, matchID)
+	if err != nil {
+		return 0, nil // non critique
+	}
+	if len(events) == 0 {
+		// Pas de timeline → fallback marge de score FINALE (DOMINATION/HUMILIATION
+		// title-agnostic, cf. analysis.ComputeScoreMarginDominance + .ai/STEAKTACULAR.md).
+		// Infinite a TOUJOURS des kill-events → n'entre jamais ici → byte-identique.
+		// Limité aux 2-équipes (0/1) : FFA/multi-équipes → pas de dominance.
+		if myTeamID != 0 && myTeamID != 1 {
+			return 0, nil
+		}
+		t0, t1, ok := loadTeamScoresOrKillSums(ctx, db, matchID)
+		if !ok {
+			return 0, nil
+		}
+		myScore, enemyScore := t0, t1
+		if myTeamID == 1 {
+			myScore, enemyScore = t1, t0
+		}
+		return analysis.ComputeScoreMarginDominance(myScore, enemyScore, outcome, analysis.StandardLeadPct()), nil
+	}
+
+	// 3. Comeback (remontada + domination via courbe) — uniquement les modes Slayer.
 	gameVariant, err := loadGameVariant(ctx, db, matchID)
 	if err != nil {
 		return 0, nil // non critique
@@ -70,16 +96,50 @@ func computeMatchDominanceFlag(ctx context.Context, db *sql.DB, xuid, matchID st
 		return 0, nil
 	}
 
-	// 3. Construire la courbe de score depuis kill events.
-	events, err := loadKillEventsWithTeam(ctx, db, matchID)
-	if err != nil {
-		return 0, nil // non critique
-	}
 	snapshots := analysis.BuildScoreSnapshots(events)
 	return analysis.ComputeDominanceFlag(
 		snapshots, myTeamID, outcome,
 		"standard", false, false, matchID,
 	), nil
+}
+
+// loadTeamScoresOrKillSums retourne (team0, team1) en privilégiant les scores
+// d'équipe du registry ; à défaut (Halo 5 ne peuple pas team_*_score) la somme des
+// kills par équipe depuis match_participants (kills = score pour le Slayer/Arena).
+func loadTeamScoresOrKillSums(ctx context.Context, db *sql.DB, matchID string) (int, int, bool) {
+	var t0, t1 sql.NullInt64
+	err := db.QueryRowContext(ctx,
+		`SELECT team_0_score, team_1_score FROM match_registry WHERE match_id = ? LIMIT 1`,
+		matchID).Scan(&t0, &t1)
+	if err == nil && t0.Valid && t1.Valid && (t0.Int64 != 0 || t1.Int64 != 0) {
+		return int(t0.Int64), int(t1.Int64), true
+	}
+	rows, err := db.QueryContext(ctx, `
+SELECT COALESCE(team_id, 0) AS team, COALESCE(SUM(kills), 0) AS k
+FROM match_participants WHERE match_id = ? GROUP BY team_id`, matchID)
+	if err != nil {
+		return 0, 0, false
+	}
+	defer rows.Close()
+	var k0, k1 int
+	found := false
+	for rows.Next() {
+		var team, k int
+		if err := rows.Scan(&team, &k); err != nil {
+			return 0, 0, false
+		}
+		found = true
+		switch team {
+		case 0:
+			k0 = k
+		case 1:
+			k1 = k
+		}
+	}
+	if !found {
+		return 0, 0, false
+	}
+	return k0, k1, true
 }
 
 // loadMyTeamAndOutcome charge team_id et outcome du joueur pour un match.
