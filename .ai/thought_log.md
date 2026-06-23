@@ -11,7 +11,11 @@
 
 **Résultats** : Go `go test ./internal/media/...` vert (incl. golden d'intégration `TestBuildHLS_Integration` qui régénère un arbre 2 pistes et prouve game/voices/full **tous AAC** désormais + nouveau garde-fou `TestPlanHLS_MultiTrackUniformAAC`) ; `go vet` propre. Front : `tsc -b` exit 0, eslint **0 erreur** (4 warnings tous pré-existants/hors périmètre), vitest CoverFlowModal **34/34** (3 nouveaux tests d'enchaînement effectif : clips A→B→C + arrêt sur dernier, images après délai, autoChain off).
 
-**Prochaine étape** : commit (sur autorisation) puis push. **À cadrer séparément (op prod)** : re-transcoder les clips multipistes déjà générés (codecs mixtes), via `ops/media_hls.go RunHLSTranscode` depuis les `.mkv` sources — prévenir avant toute opération VPS. Vérif visuelle Firefox recommandée sur un clip fraîchement transcodé.
+**Migration des anciens clips (suite, même branche)** : mesure prod = **56 clips multipistes** (52 JGtm + 4 Madina97294), **0 source `.mkv`** restante (supprimées post-transcodage) → impossible de réutiliser `RunHLSTranscode` (part de la source). Audio = ~3-4 % du clip (vidéo AV1/H.264 = copy), donc ré-encoder seulement la rendition Opus→AAC est léger. Nouvel outil **in-place** : `internal/media/hls_audio_migrate.go` (`MigrateHLSAudioToAAC` : parse master → ffprobe init de chaque rendition → ré-encode les non-AAC via ffmpeg dans un tmp, valide AAC, swap atomique par fichier ; vidéo + master intacts ; idempotent) + CLI `cmd/migrate-hls-audio` (parcourt la racine média, `--root`/`--slug`/`--limit`/`--dry-run`). Const `aacRenditionBitrate` (192k) partagée avec `buildHLSArgs`. Tests : `TestParseMasterAudioRenditions` (+No-audio), intégration `TestMigrateHLSAudioToAAC_Integration` (arbre mixte game=opus/full=aac → game converti AAC, vidéo intacte, VerifyHLSPlayable OK, idempotent) + `_DryRun`. `go build`/`go vet`/`go test ./internal/media/...` verts.
+
+Impact taille (mesuré) : AAC@192k un peu moins efficace qu'Opus (game opus ~484 Ko vs aac ~730 Ko sur un clip ~32 s) mais audio négligeable face à la vidéo (~41 Mo) → +0,5 % par clip, qualité transparente.
+
+**Prochaine étape** : commit (sur autorisation) puis push. **Op prod à lancer sur autorisation explicite** (écrit dans `/opt/levelup/data/media`) : `migrate-hls-audio --root /opt/levelup/data/media` serveur arrêté/trafic faible — prévenir avant. Vérif visuelle Firefox recommandée sur un clip migré.
 
 ---
 

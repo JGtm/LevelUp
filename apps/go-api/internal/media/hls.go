@@ -32,6 +32,10 @@ import (
 // defaultSegmentDuration est la durée cible d'un segment HLS en secondes.
 const defaultSegmentDuration = 4
 
+// aacRenditionBitrate est le débit cible du réencodage AAC des renditions audio
+// (réencode amix `full`/`voices`, et migration des renditions Opus legacy).
+const aacRenditionBitrate = "192k"
+
 // AVStreamDetail décrit une piste (vidéo ou audio) retournée par ffprobe,
 // enrichie des tags utiles au nommage des pistes audio dans le master.
 type AVStreamDetail struct {
@@ -460,7 +464,7 @@ func buildHLSArgs(plan hlsPlan, src, outDir string, segDur int) []string {
 		if a.Action == actionCopy {
 			args = append(args, fmt.Sprintf("-c:a:%d", i), "copy")
 		} else {
-			args = append(args, fmt.Sprintf("-c:a:%d", i), "aac", fmt.Sprintf("-b:a:%d", i), "192k")
+			args = append(args, fmt.Sprintf("-c:a:%d", i), "aac", fmt.Sprintf("-b:a:%d", i), aacRenditionBitrate)
 		}
 	}
 	// ffmpeg traite les chemins de sortie HLS comme des URL (séparateur '/').
