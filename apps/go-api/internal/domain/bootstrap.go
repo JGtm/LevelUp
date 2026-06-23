@@ -88,6 +88,10 @@ type TitleSummary struct {
 	// résistance), title-spécifique (225 Infinite, 115 Halo 5). Permet au front de
 	// rendre le copy d'aide combat title-aware sans dupliquer la constante.
 	EffectiveHpToKill float64 `json:"effective_hp_to_kill"`
+	// OffensiveConversionP80 : frontière élite (80e percentile) du rendement OC du
+	// titre, repère de normalisation des barres/radars de rendement (0.90 Infinite,
+	// 1.264 Halo 5). Permet au front de normaliser les barres OC sur la bonne échelle.
+	OffensiveConversionP80 float64 `json:"offensive_conversion_p80"`
 }
 
 // BootstrapResponse est la réponse de GET /api/v1/bootstrap.

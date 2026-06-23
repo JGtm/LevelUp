@@ -13,9 +13,10 @@
  */
 import { useState } from 'react'
 import { tokenCssVar } from '@/lib/accessibility'
+import { useOffensiveConversionP80 } from '@/lib/damage/effectiveHp'
 
-/** Repère barre (frontière élite mondiale) — miroir des constantes Go combat_yield.go */
-const OC_P80 = 0.90
+/** Repères barre (frontière élite). OC = title-aware (useOffensiveConversionP80 :
+ *  0.90 Infinite / 1.264 Halo 5) ; DR = miroir const Go (h5 sans damage_taken → DR N/A). */
 const DR_P80 = 1.65
 const DR_BASELINE = 1.0
 const DR_RANGE = DR_P80 - DR_BASELINE // 0.65 — plage utile au-dessus du baseline
@@ -37,10 +38,10 @@ export interface CombatYieldBarProps {
   widthPx?: number
 }
 
-function ocBarWidth(value: number | null | undefined, perSide: number): number {
+function ocBarWidth(value: number | null | undefined, perSide: number, ocP80: number): number {
   if (value == null || value <= 0) return 0
-  const clipped = Math.min(value, OC_P80 * CLIP_FACTOR)
-  return Math.round((clipped / OC_P80 / CLIP_FACTOR) * perSide)
+  const clipped = Math.min(value, ocP80 * CLIP_FACTOR)
+  return Math.round((clipped / ocP80 / CLIP_FACTOR) * perSide)
 }
 
 function drBarWidth(value: number | null | undefined, perSide: number): number {
@@ -91,19 +92,20 @@ export function CombatYieldBar({
   widthPx,
 }: CombatYieldBarProps) {
   const [hovered, setHovered] = useState(false)
+  const ocP80 = useOffensiveConversionP80() // 0.90 Infinite / 1.264 h5 (titre courant)
 
   const perSide = widthPx != null
     ? Math.max(1, Math.floor((widthPx - CENTER_GAP_PX) / 2))
     : DEFAULT_PER_SIDE_PX
 
-  const ocWidth = ocBarWidth(offensiveConversion, perSide)
+  const ocWidth = ocBarWidth(offensiveConversion, perSide, ocP80)
   const drWidth = drBarWidth(defensiveResistance, perSide)
 
   const hasData =
     (offensiveConversion != null && offensiveConversion > 0) ||
     (defensiveResistance != null && (defensiveResistance > DR_BASELINE || defensiveResistance < 0))
 
-  const ocClipped = offensiveConversion != null && offensiveConversion > OC_P80 * CLIP_FACTOR
+  const ocClipped = offensiveConversion != null && offensiveConversion > ocP80 * CLIP_FACTOR
   const drIsInfinite = defensiveResistance != null && defensiveResistance < 0
   const drClipped = !drIsInfinite && drWidth === perSide
   const showDrBadge = drIsInfinite || drClipped

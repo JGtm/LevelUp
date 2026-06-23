@@ -35,6 +35,16 @@ Livré :
 
 Latent connu (non corrigé, hors scope) : `home.toml` first_sync hardcode « Halo Infinite » — correct pour le setup 2 titres actuel (h5 nouveau, Infinite = titre avec données), à généraliser si 3e titre.
 
+## [2026-06-23] Damage P80 — câblage display complet (bootstrap + barres front + radars) — Complété
+
+Suite à « finis-le » (user). Le P80 OC (1.264 h5 / 0.90 Infinite) est câblé bout-en-bout sur l'affichage :
+- Bootstrap : `offensive_conversion_p80` exposé dans `TitleSummary` (Go + openapi.yaml + regen generated.ts).
+- Front : hook `useOffensiveConversionP80` (lib/damage/effectiveHp.ts) ; barres OC (`combat-yield-bar`, `TimeseriesCombatYield` via param du builder, `SessionOcdrBars`) lisent le P80 du titre courant. NB : `components/ui` est autorisé à lire le store (5 fichiers le font déjà) → hook direct, zéro threading de callers pour la barre.
+- Backend radar : axe Impact title-aware sur **match-view** (`BuildMatchRadarFromScoreboard` +param) + **squad** (`synergyRadarThresholds` +param) ; les callers passent `games.OffensiveConversionP80(s.titleSlug)`.
+- LUSR garde la const `analysis.OffensiveConversionP80` (Infinite-only, fichiers distincts → zéro risque).
+- SEULE exception : radar **session-compare** (`buildSessionParticipationProfile`) gardé sur la const — threading 3-niveaux (`buildCompareEntry`→`WithObjectives`→profile) + ~13 fixtures de test, disproportionné pour une surface secondaire (h5 `not_exposed`). Reverté proprement + documenté.
+Vérifs : Go build + games/service/api (bootstrap + drift openapi + contract) verts ; front typecheck + eslint + vitest (75) verts. **Damage model par titre = entièrement réglé** (hp 115, P80 1.264 câblé, KDA natif h5NetFDA, DR N/A).
+
 ## [2026-06-23] Damage h5 — P80 OC calibré 1.264 + cryptum sans damage_taken + KDA déjà OK — Complété
 
 Suite au questionnement user (P80 sans leaderboard h5 + « où est le problème KDA »).

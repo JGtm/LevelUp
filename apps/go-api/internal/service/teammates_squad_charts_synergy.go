@@ -15,7 +15,7 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-func synergyRadarThresholds(nShared int) narrative.ParticipationThresholds {
+func synergyRadarThresholds(nShared int, ocP80 float64) narrative.ParticipationThresholds {
 	n := float64(nShared)
 	return narrative.ParticipationThresholds{
 		Combat:    25.0 * n,                               // (kills+HS/2+PK/2)×(1+acc×0.4), ~25/match pour un excellent joueur
@@ -23,7 +23,7 @@ func synergyRadarThresholds(nShared int) narrative.ParticipationThresholds {
 		Support:   300.0 * n,                              // assists × 50, ~6 assists/match
 		Score:     350.0 * n,                              // résiduel medals/streaks, ~350/match
 		Objective: 350.0 * n,                              // PSA objectif, ~350/match
-		Impact:    analysis.OffensiveConversionP80 * 1.25, // ~1.04 ; étire le haut au-dessus du P80
+		Impact:    ocP80 * 1.25,                           // P80 title-aware (0.90 Infinite / 1.264 h5)
 	}
 }
 
@@ -182,7 +182,7 @@ func (s *TeammatesService) buildSquadSynergyRadar(
 		sharedMatchIDs = append(sharedMatchIDs, mid)
 	}
 
-	thresholds := synergyRadarThresholds(len(sharedMatches))
+	thresholds := synergyRadarThresholds(len(sharedMatches), games.OffensiveConversionP80(s.titleSlug))
 
 	mainRaw := s.loadSynergyMateAxes(ctx, mainGamertag, sharedMatches, sharedMatchIDs)
 	if len(mainRaw) == 0 {

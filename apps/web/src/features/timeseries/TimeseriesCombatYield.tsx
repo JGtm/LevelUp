@@ -22,6 +22,7 @@ import {
   getTooltipBase,
 } from '@/components/charts/_utils'
 import type { MatchHistoryRow } from '@/lib/api/types'
+import { useOffensiveConversionP80 } from '@/lib/damage/effectiveHp'
 
 /** Repère barre (frontière élite mondiale) — miroir des constantes Go combat_yield.go. */
 const OC_P80 = 0.90
@@ -86,9 +87,10 @@ export function TimeseriesCombatYield({
     ]
   }, [filtered, labels.ocSeries, labels.drSeries])
 
+  const ocP80 = useOffensiveConversionP80() // 0.90 Infinite / 1.264 h5 (titre courant)
   const buildOption = useCallback(
-    (s: ChartSeries<CombatYieldPoint>[]) => buildCombatYieldOption(s, labels),
-    [labels],
+    (s: ChartSeries<CombatYieldPoint>[]) => buildCombatYieldOption(s, labels, ocP80),
+    [labels, ocP80],
   )
 
   if (filtered.length === 0) {
@@ -120,6 +122,7 @@ interface BuildLabels {
 export function buildCombatYieldOption(
   series: ChartSeries<CombatYieldPoint>[],
   labels: BuildLabels,
+  ocP80: number = OC_P80,
 ): EChartsCoreOption {
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
@@ -180,14 +183,14 @@ export function buildCombatYieldOption(
           lineStyle: { color: ocColor, type: 'dotted', width: 1 },
           data: [
             {
-              yAxis: OC_P80,
-              name: `${labels.ocReference} (${Math.round(OC_P80 * 100)}%)`,
+              yAxis: ocP80,
+              name: `${labels.ocReference} (${Math.round(ocP80 * 100)}%)`,
               label: {
                 show: true,
                 position: 'end',
                 color: ocColor,
                 fontSize: 10,
-                formatter: `${labels.ocReference} (${Math.round(OC_P80 * 100)}%)`,
+                formatter: `${labels.ocReference} (${Math.round(ocP80 * 100)}%)`,
               },
             },
           ],

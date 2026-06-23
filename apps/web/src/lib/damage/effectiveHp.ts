@@ -23,3 +23,17 @@ export function useEffectiveHpToKill(): number {
 export function substituteHpToken(text: string, hp: number): string {
   return text.replace(/\{\{HP\}\}/g, String(hp))
 }
+
+/** Frontière élite OC (80e percentile) par défaut — Halo Infinite. Miroir de
+ *  games.DefaultOffensiveConversionP80 / analysis.OffensiveConversionP80. */
+const DEFAULT_OFFENSIVE_CONVERSION_P80 = 0.9
+
+/** Frontière élite OC (P80) du titre courant — repère de normalisation des barres
+ *  de rendement (0.90 Infinite, 1.264 Halo 5). Défaut Infinite. */
+export function useOffensiveConversionP80(): number {
+  return useAppShellStore(
+    (s) =>
+      s.availableTitles.find((t) => t.slug === s.currentTitleSlug)?.offensive_conversion_p80 ??
+      DEFAULT_OFFENSIVE_CONVERSION_P80,
+  )
+}
