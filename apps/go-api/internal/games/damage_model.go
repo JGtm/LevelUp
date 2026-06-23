@@ -12,7 +12,8 @@ import "levelup/go-api/internal/games/mappings"
 // DefaultEffectiveHpToKill — PV effectifs pour tuer un Spartan Halo Infinite
 // (90 vie + 135 bouclier, échelle de dégâts de l'API). Défaut byte-identique
 // quand le resolver n'est pas câblé ou que le titre ne déclare pas son
-// [damage_model] (ex. mono-titre, tests). Halo 5 = 115 (bouclier 70 + armure 45).
+// [damage_model] (ex. mono-titre, tests). Halo 5 = 86 (calibré data, scale-match
+// sur l'échelle de dégâts cryptum ≠ Infinite ; cf. config/titles/halo_5/constants.toml).
 const DefaultEffectiveHpToKill = 225.0
 
 // DamageModelResolver est l'extension OPTIONNELLE d'EndpointResolver qui résout les

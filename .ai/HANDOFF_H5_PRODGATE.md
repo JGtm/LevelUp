@@ -10,6 +10,13 @@ findings non-évidents, reste à faire, commandes opérationnelles.
 
 ## 0. MISE À JOUR 2026-06-23 — état réel (autoritatif)
 
+> **CADRAGE PASSE « TOUT TRAITER » (user 2026-06-23)** : autonomie complète — commit ET push
+> sans demander, sur la branche `integration/h5-x-livefetch` (pas d'auto-deploy, safe). Ordre
+> lourd→léger. **STOP impératif AVANT le weapon family canonical / weapon v3** (dernier item, à
+> faire séparément). Le **land integration→main** (auto-deploy prod) n'est PAS exécuté dans cette
+> passe — il vient après weapon family + accord explicite. Vérifié in-branch : campagne ART
+> (`ba3cb4608`) déjà portée ; code TZ (`cmd/backfill_first_joined_tz`, `analysis/timeline`) présent.
+
 **Branche `integration/h5-x-livefetch`. Bilan des 5 axes prod-gate :**
 
 | Axe | État | Détail |
@@ -98,15 +105,24 @@ techniquement, **auto-deploy** → accord user explicite requis, cf. [[feedback_
 
 **DETTES / CHANTIERS CONNEXES À NE PAS OUBLIER AVANT PROD** (hors périmètre h5, tracés ailleurs
 mais épinglés ici car flaggés prod) :
-1. 🔴 **Dette TZ `first_joined_time`** — ~964 matchs (Halo Infinite) décalés Europe/Paris, casse
-   T0 + quit-ordering LUSR. Flaggé « passe data-quality AVANT prod ». Doc : mémoire
-   `project_data_quality_first_joined_tz`. **C'est le seul vrai risque prod qui semble oublié.**
+1. ✅ **Dette TZ `first_joined_time`** — RÉSORBÉE côté données. Re-check dry-run lecture seule
+   2026-06-23 sur `data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb` = **0 match
+   décalé** (CET 0 / CEST 0) → la correction de base (05-29 + résiduels 06-02) tient, pas de
+   réapparition. Code TZ présent in-branch (`cmd/backfill_first_joined_tz`, `analysis/timeline`).
+   **Reste** : propagation au recalcul LUSR v2 — FOLDÉE dans le chantier « LUSR v2 pondération
+   temps-joué » (son re-backfill relit le `last_leave_time` corrigé). Doc : `project_data_quality_first_joined_tz`.
 2. 🟠 **Campagne append-only / ART** — éradication des surfaces ART (UPDATE/DELETE indexés),
    branche `fix/metadata-art-battlepass-appendonly`, « déployer à la fin ». Doc :
    `.ai/HANDOFF_APPEND_ONLY_ART_CAMPAIGN.md` + mémoire `project_append_only_eradication_campaign`.
-Autres suites (non bloquantes prod) : damage model par titre (h5=115, `project_damage_model_per_title_225`) ;
-activation multi-titre 1b (`project_multititre_activation_handoff`) ; LUSR v2 pondération temps-joué ;
-weapon v3 ; backlog UI ; recalibration profil de combat ; kill-feed frame decoder.
+Autres suites (non bloquantes prod), traitées dans CETTE passe (ordre lourd→léger) : damage model par
+titre (h5=115, `project_damage_model_per_title_225`) ; activation multi-titre 1b
+(`project_multititre_activation_handoff`) ; LUSR v2 pondération temps-joué ; recalibration profil de
+combat (`PLAN_COMBAT_PROFILE_RECALIBRATION.md`) ; backlog UI session solo+squad ; **weapon family
+canonical / weapon v3 = EN DERNIER** (décision user 2026-06-23).
+
+> **HORS PÉRIMÈTRE DE CE PROJET** : le *kill-feed frame decoder* (gros RE offline) est **en pause et
+> retiré de ce chantier** (décision user 2026-06-23) — il n'a aucun lien avec la mise en prod h5/multi-titre.
+> Suivi séparé dans ses propres docs/mémoires (`project_kill_feed_frame_decoder`), à ne PAS reprendre ici.
 
 ---
 
