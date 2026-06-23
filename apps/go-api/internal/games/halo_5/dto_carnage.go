@@ -44,9 +44,14 @@ type H5CarnagePlayer struct {
 	// Mécaniques de kill NATIVES Halo 5 (agrégats par-joueur du carnage, DISJOINTS de
 	// TotalMeleeKills — l'assassinat/ground pound/shoulder bash ont leur propre compteur).
 	// Absents des autres titres (→ nil côté canonical/domain pour Infinite).
-	// NB : WeaponStats[] (tirs par arme) est documenté au schéma mais 343 le sert VIDE en
-	// pratique (sonde live JGtm 2026-06-23 : n=0) → non modélisé. Le per-kill arme est
-	// dans /events, sans compteur de tirs → pas de précision par-arme calculable.
+	// NB : WeaponStats[] (tirs par arme, ARSENAL COMPLET) est documenté au schéma mais 343 le
+	// sert VIDE en pratique (sonde live JGtm 2026-06-23, carnage 8 joueurs : len=0 pour TOUS)
+	// → non modélisé. En revanche WeaponWithMostKills (arme TOP du match par kills, objet
+	// scalaire) EST peuplé (8/8 joueurs sondés) : StockId + TotalShotsFired/TotalShotsLanded +
+	// TotalHeadshots + TotalKills + TotalDamageDealt → précision de l'arme top CALCULABLE quand
+	// TotalShotsFired>0 (les tops mêlée/grenade/arme lourde ont fired=0 → précision N/A). Non
+	// modélisé à ce jour. Le per-kill arme EXHAUSTIF reste hors d'atteinte (WeaponStats[] vide ;
+	// /events sans compteur de tirs).
 	TotalAssassinations    int    `json:"TotalAssassinations"`
 	TotalGroundPoundKills  int    `json:"TotalGroundPoundKills"`
 	TotalShoulderBashKills int    `json:"TotalShoulderBashKills"`

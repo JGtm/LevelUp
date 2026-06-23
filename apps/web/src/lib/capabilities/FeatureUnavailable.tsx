@@ -21,7 +21,7 @@ const FEATURE_LABEL: Record<TitleCapability, { fr: string; en: string }> = {
   engagement: { fr: 'l engagement intra-match', en: 'intra-match engagement' },
   lusr: { fr: 'le rating LUSR', en: 'the LUSR rating' },
   'world.leaderboard': { fr: 'les classements mondiaux', en: 'world leaderboards' },
-  native_kill_mechanics: { fr: 'les assassinats et compétences spartiate', en: 'assassinations and spartan abilities' },
+  native_kill_mechanics: { fr: 'les assassinats et compétences Spartan', en: 'assassinations and Spartan abilities' },
 }
 
 interface FeatureUnavailableProps {

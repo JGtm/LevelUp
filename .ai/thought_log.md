@@ -1,3 +1,14 @@
+## [2026-06-23] H5 — vérif WeaponStats/WeaponWithMostKills + terminologie « Compétences Spartan » — Complété
+
+Question user : la précision PAR ARME H5 est-elle vraiment impossible ? Re-vérif empirique sur dump carnage réel (`%TEMP%/h5_carnage.json`, 8 joueurs, match JGtm) via jq, ZÉRO token (dump du jour) :
+- `WeaponStats[]` (arsenal complet) = VIDE pour les 8 joueurs (len=0). 343 ne sert pas la ventilation par-arme → précision exhaustive impossible (confirmé, mon ancien n=0 tenait).
+- `WeaponWithMostKills` (arme TOP du match, objet scalaire, JAMAIS modélisé chez nous) = PEUPLÉ 8/8 : StockId + TotalShotsFired/Landed + Headshots + Kills. → précision de l'arme de destruction CALCULABLE quand fired>0 (tops mêlée/grenade/lourde ont fired=0 → N/A). C'est l'analogue natif H5 de « l'outil de destruction » Infinite (`TimeseriesTopWeapons`, tri par kills). Son StockId est aussi le 1er consommateur concret du registre weapon taxonomy (id_kind=stock_id).
+- Commentaire DTO `dto_carnage.go` corrigé (affirmait à tort « pas de précision par-arme calculable »).
+
+Terminologie : « spartiate » (adjectif des Spartiates antiques) → « Spartan » (nom propre Halo, invariable) sur les 2 strings FR affichés (titre section Synthesis + libellé FeatureUnavailable `native_kill_mechanics`) ; EN « Spartan abilities » déjà correct ; manifeste i18n régénéré ; typecheck vert.
+
+Prochaine étape (GO user) : « la suite » = build registre weapon taxonomy P2→P4 sur branche dédiée `feat/weapon-taxonomy-registry`. Modélisation/UI de WeaponWithMostKills DIFFÉRÉE (narration user TBD).
+
 ## [2026-06-23] Backfill H5 multi-joueurs (4 joueurs) + override d'auth `LEVELUP_H5_AUTH_AS` — Complété
 
 Objectif : backfill historique H5 pour JGtm, Chocoboflor, Madina97294, XxDaemonGamerxX. Blocage : 3 des 4 (Chocoboflor `2535469190789936`, Madina97294 `2533274858283686`, XxDaemonGamerxX `2533274833178266`) ont des RT morts `AADSTS70000` (vieille app Azure, jamais re-capturer, cf. [[feedback_token_model_rt_never_recapture]]) → `cmd/h5-backfill` plantait au refresh du token de la cible.
