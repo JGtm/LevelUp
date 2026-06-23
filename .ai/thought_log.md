@@ -1,3 +1,14 @@
+## [2026-06-23] VÉRIF END-TO-END prod-gate (totaux + media) sur vraies données — PASSE
+
+Re-backfill progress-aware arrêté à 1001 matchs (2018-05→2023 ; couvre captures + récents). Vérifs lancées sur la DB réelle h5 (DB libérée le temps des vérifs).
+
+- **match_commendations** : 83 756 rows, **100 % avec progress** (le re-fetch a peuplé la colonne), 972 matchs, 83 commendations distinctes.
+- **xuid OK** : JGtm = `2533274823110022` (match_commendations) == `db_profiles.json` == pdb.XUID → le filtre du endpoint `LoadCommendationTotals` est correct.
+- **Totaux JGtm** (requête latest-progress-per-commendation + join commendation_definitions) NON VIDES et cohérents : Spartan Slayer **27 058** (MULTIPLAYER), Headshot 7 154, Assistant 6 606 (GAME MODE), Magnum 4 321 (WEAPON), Smash 3 341, Loadout BR 3 054, Multikill 2 185… Noms + catégories + icônes (CDN vérifiées vivantes) résolus.
+- **Corrélation media** : **84/84 captures** `Halo_5_Guardians-*` tombent dans une fenêtre de match JGtm (conversion Paris→UTC DST-aware via DuckDB `AT TIME ZONE 'Europe/Paris'`, fenêtre [start-5min, end+10min]). 100 %.
+
+**CONCLUSION : go prod-gate VERT** sur les 5 axes (A/B/C/D/E + F). Reste hors prod-gate strict : notif push away-case (MT-19) + land integration→main (accord user). Backfill historique profond relancé en background (complétude, non bloquant).
+
 ## [2026-06-23] Follow-up — Nav vers /commendations (h5 : Citations→Commendations) — Complété
 
 Rendre la page totaux découvrable. h5 n'a PAS le moteur de citations dérivé d'Infinite (`citations.engine` not_exposed) : l'onglet « Citations » mène à une page vide pour h5. Swap title-aware « Citations »→« Commendations » (route `/commendations`) dans les DEUX niveaux de nav, cohérent.
