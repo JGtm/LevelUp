@@ -35,6 +35,7 @@ var knownCapabilities = map[Capability]struct{}{
 	CapMedia:               {},
 	CapRanked:              {},
 	CapCareer:              {},
+	CapSeasonPass:          {},
 	CapAssetImages:         {},
 	CapAchievements:        {},
 	CapEngagement:          {},

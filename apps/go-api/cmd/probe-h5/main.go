@@ -41,6 +41,9 @@ const (
 	hostSpartanStats = "https://spartanstats.svc.halowaypoint.com"
 	hostHaloPlayer   = "https://haloplayer.svc.halowaypoint.com"
 	hostUGC          = "https://ugc.svc.halowaypoint.com"
+	// hostHalo5API : authority REQ d'après Halo5Reqs (MichaelJLiu). À confirmer par
+	// la sonde — peut être un alias de spartanstats ou un service distinct/mort.
+	hostHalo5API = "https://halo5api.svc.halowaypoint.com"
 )
 
 // User-Agent du client Halo 5 (cryptum : cpprestsdk). Certains services 343
@@ -111,6 +114,14 @@ func main() {
 		{"SpartanStats.MATCHES", fmt.Sprintf("%s/h5/players/%s/matches?start=0&count=5&include-times=true&auth=st", hostSpartanStats, gt)}, // include-times=true → MatchCompletedDate horodaté précis (fidelity 2)
 		{"SpartanStats.COMMENDATIONS", fmt.Sprintf("%s/h5/players/%s/commendations?auth=st", hostSpartanStats, gt)},
 		{"SpartanStats.CREDITS", fmt.Sprintf("%s/h5/players/%s/credits?auth=st", hostSpartanStats, gt)},
+		// REQ packs/cards (inventaire joueur) + catalogue — sonde « sonde d'abord » REQ.
+		// Plusieurs hosts/paths candidats (Halo5Reqs vs cryptum) : on confirme lequel
+		// répond 200 avant d'investir dans la feature REQ-as-progression.
+		{"SpartanStats.REQ_PACKS", fmt.Sprintf("%s/h5/players/%s/packs?auth=st", hostSpartanStats, gt)},
+		{"SpartanStats.REQ_CARDS", fmt.Sprintf("%s/h5/players/%s/cards?auth=st", hostSpartanStats, gt)},
+		{"Halo5API.REQ_PACKS", fmt.Sprintf("%s/h5/players/%s/packs?auth=st", hostHalo5API, gt)},
+		{"Halo5API.REQ_CARDS", fmt.Sprintf("%s/h5/players/%s/cards?auth=st", hostHalo5API, gt)},
+		{"Halo5API.REQ_CATALOG", fmt.Sprintf("%s/en-us/reqs?auth=st", hostHalo5API)},
 		{"HaloPlayer.SPARTAN", fmt.Sprintf("%s/h5/profiles/%s/spartan?auth=st", hostHaloPlayer, gt)},
 		{"HaloPlayer.APPEARANCE", fmt.Sprintf("%s/h5/profiles/%s/appearance?auth=st", hostHaloPlayer, gt)},
 	}
