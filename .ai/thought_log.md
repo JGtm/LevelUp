@@ -1,3 +1,31 @@
+## [2026-06-24] Médailles H5 = déjà câblées de bout en bout (vérif, 0 code) + sonde REQ packs = blocker confirmé — Complété (vérif)
+
+**Médailles H5 — RIEN à construire, pipeline complet et title-agnostic** (vérifié couche par couche, contre la carte périmée qui disait « SetMedalSpriteResolver à câbler ») :
+1. Ingestion : `halo_5/ingest/collect.go:38` → `MapMedalEvents` projette les events `medal` de la timeline en `medals_earned` (agrégat) + `highlight_events`. L'id médaille vient de `ev.RefID` (même espace d'ID 343 que la metadata, ex. `3001183151` — commentaire medals.go:64 le confirme) → le JOIN avec medal_definitions matche.
+2. Metadata : `cmd/h5-metadata-fetch` `seedMedals` peuple `medal_definitions` avec noms EN/FR + **sprite COMPLET** (sheet URI + left/top/width/height depuis `spriteLocation`).
+3. Label/sprite : `lookupMedalMeta` (medal_translations > medal_definitions, fallback citations) + `static.MedalImage(titleSlug, id)` title-aware ; **résolveur sprite H5 DÉJÀ câblé au boot** (`server.go:816`, `SetMedalSpriteResolver` chargé depuis medal_definitions où sprite_sheet_url<>'').
+4. Builder : `convertMedals(raw, titleSlug)` (match_view_builders_summary.go:221) — sprite si présent sinon PNG ; appelé **sans gate** (errgroup, match_view_data_loaders.go:211).
+5. Front : `MedalIcon` sprite-capable et title-agnostic (background-position + scale), consommé par `MatchMedalsSection`. `dropShadowForDifficulty` dégrade en `undefined` pour le difficulty H5 (numérique 0-245 ≠ enum HINF) → pas de glow, pas de casse.
+
+⇒ Le seul prérequis pour voir des médailles H5 = **donnée runtime** (seed metadata via h5-metadata-fetch + sync H5), pas du code. PAS de `MedalAwards[]` carnage (risque de double-ingestion ; events-only est correct). Aucune donnée H5 locale (`data/titles/` n'a que halo_infinite) → vérif statique uniquement.
+
+**Sonde REQ packs (clé .env.local, read-only, jamais imprimée)** : `GET haloapi.com/metadata/h5/metadata/requisition-packs` et `/requisitions` (LISTE) = **404 `{statusCode:404, "Resource not found"}`** alors que medals/maps/weapons = 200 → **pas d'endpoint LISTE des définitions REQ** (by-id only, et by-id non confirmé sans GUID valide). Confirme le blocker de `.ai/RESEARCH_HALO_OSS_LEVERAGE.md` : **IDs non auto-découvrables → seed manuel obligatoire** (taxonomie Halo5Reqs). + inventaire joueur (endpoint `/h5/players/{gt}/packs` style) non confirmé, aucun runtime H5 pour sonder.
+
+**Structure canonique progression (le vrai axe title-aware)** : la route `career/season-pass` est gatée sur la capability **grossière** `'career'` (front `capabilities.ts`, que H5 possède) → H5 monterait la page **Battlepass HI** (faux). H5 déclare pourtant `battlepass.progression = not_exposed` (« REQ packs à la place ») dans capabilities.toml, MAIS c'est l'espace FIN (cascade sémantique), distinct des capabilities GROSSES du bootstrap. Fix canonique = ajouter une capability grosse dédiée (pass) + gater season-pass dessus + surface REQ pour H5. Décision de portée (jeu inactif + blocker donnée) escaladée au user.
+
+## [2026-06-24] Monitoring : panneau « couverture résolution d'arme » (admin) — Complété
+
+Feature 1/3 du lot user (monitoring + médailles + reqs). Le diag de couverture du registre (combien de weapon_id distincts vus dans les kills sont résolus par le REGISTRE vs `weapon_labels` SEUL vs NON résolus) devient un panneau permanent du dashboard monitoring admin, **par titre** (HI + H5 côte à côte).
+
+Backend (lecture seule, dual-DB, réutilise `dataQualityHandles`) :
+- `domain.AdminWeaponCoverage` (+ `AdminWeaponCoverageItem`). `WeaponID` est une **string** (pas int64) : les ids filmshell HINF dépassent 2^53 → précision perdue en number JSON JS, et un champ string réel rend le schéma OpenAPI auto-dérivé fidèle (le tag `,string` aurait menti : Huma reflète le type Go brut → `integer`).
+- `ServiceRegistry.WeaponCoverage(ctx, titleSlug)` (`registry_weapon_coverage.go`) : `SELECT effective_weapon_id, COUNT(*) FROM v_weapon_kills WHERE effective_weapon_id NOT IN (0,1,2) GROUP BY 1` (shared) → `classifyWeaponCoverage` (1 requête metadata = VALUES LEFT JOIN weapon_ids/weapons/weapon_labels). Fallback `classifyWeaponLabelsOnly` si registre absent (vieux schéma). Top 15 non résolus triés par kills desc.
+- Handler `handlers.AdminWeaponCoverageHandler` (Huma `GET /admin/monitoring/weapon-coverage?title=`) monté dans `mountAdminMonitoringRoutes` (NoStore). `WeaponCoverageRunner` typé en package handlers, méthode injectée depuis api (pas de cycle).
+
+Front : `useWeaponCoverage(slug)` (types locaux, comme la section titles — pas de dépendance codegen) + `adminWeaponCoverage` query key + panneau `WeaponCoveragePanel` (overview) : itère sur `useAdminTitles()` filtré `status==='active'` (title-agnostic, zéro slug hardcodé), un appel `?title=` par titre, barre empilée registre/labels/non-résolus (tokens success/info/warning) + 4 KPI + liste des IDs non résolus (font-mono, kills). i18n `admin.toml` (10 clés, manifest régénéré).
+
+Gate : test `TestClassifyWeaponCoverage` (cgo, `:memory:` + `ApplyWeaponRegistry`, vérifie registre+label / label-seul / inconnu / fallback sans registre) vert. `TestOpenAPISchemaDrift` re-vert après ajout des 2 schémas dans `openapi.yaml` (0 MISSING). `go vet` clean, `go build ./...` clean, front typecheck + eslint clean. **Prochaine : médailles H5, puis REQ packs.** Land main = GO user.
+
 ## [2026-06-24] Sonde leaderboard CSR H5 officiel → MORT (pivot vers CSR par-joueur) — Complété
 
 Cartographie du leaderboard CSR mondial Infinite (workflow) : écrit **append-only** (world_csr_leaderboard_snapshots PK séquence + fetched_at + written_at, lecture vue `_latest` par batch fetched_at), **scrape halowaypoint.com** (pas une API), stack déjà largement title-agnostic (domain TitleSlug, handler lit title_slug, world_player_season_stats a title_slug). Plan de réutilisation : `.ai/PLAN_H5_LEADERBOARD.md`. → **le delete/replace de Leafapp est PROSCRIT (on est append-only).**

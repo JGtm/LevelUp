@@ -40,6 +40,11 @@ func mountAdminMonitoringRoutes(
 	// 6 GET /monitoring/* migrés vers Huma (Phase 3b), NoStore.
 	monitoringH.Mount(r.With(middleware.NoStore))
 
+	// Couverture de résolution d'arme (registre vs weapon_labels vs non résolu),
+	// par titre. GET /monitoring/weapon-coverage?title=.
+	coverageH := handlers.NewAdminWeaponCoverageHandler(reg.WeaponCoverage)
+	coverageH.Mount(r.With(middleware.NoStore))
+
 	actionsH := handlers.NewAdminActionsHandler(
 		reg.RunDataHealthNow, sched, jobStore, serverCtx)
 	actionsH.Mount(r) // POST /actions/data-health/run, /actions/auto-sync/run

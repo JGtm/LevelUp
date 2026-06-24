@@ -17,6 +17,7 @@ import { adminAbsoluteTime, adminRelativeTime, formatDurationMs, type AdminLocal
 import { AdminQuickActions } from './AdminQuickActions'
 import { DataHealthPanel } from './DataHealthPanel'
 import { DiagnosticPanel } from './DiagnosticPanel'
+import { WeaponCoveragePanel } from './WeaponCoveragePanel'
 
 export function AdminOverviewPage() {
   const { data, isLoading, isError } = useMonitoringOverview()
@@ -56,6 +57,8 @@ export function AdminOverviewPage() {
         </h3>
         <DataHealthPanel dataHealth={data.data_health} tA={tA} locale={locale} />
       </section>
+
+      <WeaponCoveragePanel />
     </div>
   )
 }
