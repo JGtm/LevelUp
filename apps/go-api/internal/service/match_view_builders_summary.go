@@ -152,6 +152,38 @@ func computeExpectedAssists(
 	return &v
 }
 
+// localExpectedKD calcule l'expected K/D local (modèle count∝durée, TrueSkill2-like)
+// pour UN joueur depuis son historique récent (même catégorie de mode que le match
+// courant) + la durée du match. Réutilisé pour le viewer (is_me) ET les amis
+// trackés — l'historique d'un joueur synchronisé est dans shared, chargeable par
+// xuid via GetHistoryForAvg. Retourne (nil, nil, false) si trop peu d'échantillons.
+func localExpectedKD(histRows []domain.MatchHistAvgRow, meta *domain.MatchMetaRaw, durationSec int) (*float64, *float64, bool) {
+	if durationSec <= 60 || len(histRows) == 0 || meta == nil {
+		return nil, nil, false
+	}
+	pairName := ""
+	if meta.PairName != nil {
+		pairName = *meta.PairName
+	}
+	targetCat := analysis.ComputeModeCategory(pairName, meta.IsFirefight, meta.IsRanked)
+	var durs, durKills, durDeaths []float64
+	for _, row := range histRows {
+		if analysis.ComputeModeCategory(row.PairName, row.IsFirefight, row.IsRanked) != targetCat {
+			continue
+		}
+		if row.DurationSeconds > 60 {
+			durs = append(durs, float64(row.DurationSeconds))
+			durKills = append(durKills, float64(row.Kills))
+			durDeaths = append(durDeaths, float64(row.Deaths))
+		}
+	}
+	ek, ed, ok := predictKDFromDuration(durs, durKills, durDeaths, float64(durationSec))
+	if !ok {
+		return nil, nil, false
+	}
+	return &ek, &ed, true
+}
+
 // buildExpectedStats construit le bloc de stats attendues + moyennes historiques.
 func buildExpectedStats(e *domain.ExpectedStatsRaw, histRows []domain.MatchHistAvgRow, meta *domain.MatchMetaRaw, durationSec int) domain.MatchExpectedStats {
 	out := domain.MatchExpectedStats{}
@@ -171,7 +203,6 @@ func buildExpectedStats(e *domain.ExpectedStatsRaw, histRows []domain.MatchHistA
 	targetCat := analysis.ComputeModeCategory(pairName, meta.IsFirefight, meta.IsRanked)
 
 	var totalK, totalD, totalA, totalSpree, totalHS, totalPerfect, count int
-	var durs, durKills, durDeaths []float64
 	for _, row := range histRows {
 		cat := analysis.ComputeModeCategory(row.PairName, row.IsFirefight, row.IsRanked)
 		if cat != targetCat {
@@ -188,11 +219,6 @@ func buildExpectedStats(e *domain.ExpectedStatsRaw, histRows []domain.MatchHistA
 		}
 		totalPerfect += row.PerfectKills
 		count++
-		if row.DurationSeconds > 60 {
-			durs = append(durs, float64(row.DurationSeconds))
-			durKills = append(durKills, float64(row.Kills))
-			durDeaths = append(durDeaths, float64(row.Deaths))
-		}
 	}
 	if count == 0 {
 		return out
@@ -216,14 +242,13 @@ func buildExpectedStats(e *domain.ExpectedStatsRaw, histRows []domain.MatchHistA
 	out.HistModeCategory = targetCat
 
 	// expected K/D LOCAL — modèle count∝durée (TrueSkill2-like) quand l'API skill
-	// n'a pas fourni l'attendu (Halo 5). Régression kills~durée / deaths~durée sur
-	// l'historique récent (même catégorie), évaluée à la durée du match courant.
-	// Validé sur 3135 matchs H5 (+13% frags / +5% morts vs moyenne plate ; cf.
-	// cmd/diag_expected_kd). N'écrase JAMAIS un attendu fourni par l'API.
-	if out.ExpectedKills == nil && out.ExpectedDeaths == nil && durationSec > 60 {
-		if ek, ed, ok := predictKDFromDuration(durs, durKills, durDeaths, float64(durationSec)); ok {
-			out.ExpectedKills = &ek
-			out.ExpectedDeaths = &ed
+	// n'a pas fourni l'attendu (Halo 5). Cf. localExpectedKD (réutilisé pour les
+	// amis trackés). Validé sur 3135 matchs H5 (+13% frags / +5% morts vs moyenne
+	// plate ; cmd/diag_expected_kd). N'écrase JAMAIS un attendu fourni par l'API.
+	if out.ExpectedKills == nil && out.ExpectedDeaths == nil {
+		if ek, ed, ok := localExpectedKD(histRows, meta, durationSec); ok {
+			out.ExpectedKills = ek
+			out.ExpectedDeaths = ed
 			out.LocallyEstimated = true
 		}
 	}
