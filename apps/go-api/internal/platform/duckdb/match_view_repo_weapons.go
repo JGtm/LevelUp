@@ -23,32 +23,14 @@ type weaponMetaEntry struct {
 // name_en est nécessaire pour construire l'URL image via AssetURLAdapter.WeaponImageURL.
 func (r *MatchViewRepo) lookupWeaponMeta(ctx context.Context, weaponIDs []int64) map[int64]weaponMetaEntry {
 	result := map[int64]weaponMetaEntry{}
-	if len(weaponIDs) == 0 || r.pdb.Metadata == nil {
+	if len(weaponIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return result
 	}
-	unique := uniqueInt64s(weaponIDs)
-	parts := make([]string, len(unique))
-	for i, id := range unique {
-		parts[i] = fmt.Sprintf("%d", uint64(id)) //nolint:gosec
-	}
-	query := fmt.Sprintf( //nolint:gosec
-		`SELECT weapon_id,
-		        COALESCE(name_fr, name_en, CAST(weapon_id AS VARCHAR)) AS label,
-		        COALESCE(name_en, '') AS name_en
-		 FROM weapon_labels
-		 WHERE weapon_id IN (%s)`,
-		strings.Join(parts, ","),
-	)
-	rows, err := r.pdb.Metadata.Query(ctx, query)
-	if err != nil {
-		return result
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id UBigint
-		var label, nameEN string
-		if err := rows.Scan(&id, &label, &nameEN); err == nil && label != "" {
-			result[id.Int64()] = weaponMetaEntry{label: label, nameEN: nameEN}
+	// PASSAGE PRINCIPAL P4 : résolution via le registre + weapon_labels (parité du
+	// nom). On ne garde que les ids résolus (label non vide), comme l'ancien lookup.
+	for id, m := range resolveWeaponMeta(ctx, r.pdb.Metadata, r.pdb.TitleSlug, weaponIDs) {
+		if m.label != "" {
+			result[id] = weaponMetaEntry{label: m.label, nameEN: m.nameEN}
 		}
 	}
 	return result
@@ -56,35 +38,12 @@ func (r *MatchViewRepo) lookupWeaponMeta(ctx context.Context, weaponIDs []int64)
 
 func (r *MatchViewRepo) lookupWeaponLabels(ctx context.Context, weaponIDs []int64) map[int64]string {
 	labels := map[int64]string{}
-	if len(weaponIDs) == 0 || r.pdb.Metadata == nil {
+	if len(weaponIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return labels
 	}
-	// Contournement driver : database/sql ne supporte pas uint64 avec bit63=1.
-	// On injecte les IDs comme littéraux décimaux (valeurs internes, pas user input).
-	unique := uniqueInt64s(weaponIDs)
-	parts := make([]string, len(unique))
-	for i, id := range unique {
-		parts[i] = fmt.Sprintf("%d", uint64(id)) //nolint:gosec
-	}
-	query := fmt.Sprintf( //nolint:gosec
-		`SELECT weapon_id, COALESCE(name_fr, name_en, CAST(weapon_id AS VARCHAR)) AS weapon_label
-		 FROM weapon_labels
-		 WHERE weapon_id IN (%s)`,
-		strings.Join(parts, ","),
-	)
-	rows, err := r.pdb.Metadata.Query(ctx, query)
-	if err != nil {
-		return labels
-	}
-	defer rows.Close()
-	for rows.Next() {
-		// weapon_id UBIGINT scanné via UBigint (cf. ubigint_scanner.go) — sinon
-		// overflow silencieux pour les hash filmshell bit63=1 (Mutilateur,
-		// MK50 Sidekick, Fuel Rod SPNKr…).
-		var id UBigint
-		var label string
-		if err := rows.Scan(&id, &label); err == nil && label != "" {
-			labels[id.Int64()] = label
+	for id, m := range resolveWeaponMeta(ctx, r.pdb.Metadata, r.pdb.TitleSlug, weaponIDs) {
+		if m.label != "" {
+			labels[id] = m.label
 		}
 	}
 	return labels

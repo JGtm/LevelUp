@@ -192,6 +192,58 @@ en = "Spartan abilities & assassinations"
 fr = "Frags par arme"
 en = "Kills by weapon"
 
+[synthesis.charts.role_kills_title]
+fr = "Frags par type d'arme"
+en = "Kills by weapon role"
+
+[synthesis.charts.role_automatic]
+fr = "Automatique"
+en = "Automatic"
+
+[synthesis.charts.role_precision]
+fr = "Précision"
+en = "Precision"
+
+[synthesis.charts.role_sniper]
+fr = "Sniper"
+en = "Sniper"
+
+[synthesis.charts.role_shotgun]
+fr = "Fusil à pompe"
+en = "Shotgun"
+
+[synthesis.charts.role_sidearm]
+fr = "Arme de poing"
+en = "Sidearm"
+
+[synthesis.charts.role_power]
+fr = "Arme lourde"
+en = "Power weapon"
+
+[synthesis.charts.role_special]
+fr = "Spéciale"
+en = "Special"
+
+[synthesis.charts.role_melee]
+fr = "Mêlée"
+en = "Melee"
+
+[synthesis.charts.role_grenade]
+fr = "Grenade"
+en = "Grenade"
+
+[synthesis.coach.label]
+fr = "Coach"
+en = "Coach"
+
+[synthesis.coach.blind_spot_power]
+fr = "Tu n'exploites quasiment jamais les armes lourdes. En prendre le contrôle (lance-roquettes, sniper, empaleur…) fait souvent basculer le match — priorise-les quand elles apparaissent."
+en = "You almost never use power weapons. Taking control of them (rockets, sniper, skewer…) often decides the match — prioritise them when they spawn."
+
+[synthesis.coach.over_reliance]
+fr = "{pct}% de tes frags viennent d'une seule catégorie ({role}). Diversifier ton arsenal te rendra moins prévisible."
+en = "{pct}% of your kills come from a single category ({role}). Diversifying your arsenal will make you less predictable."
+
 [synthesis.kpi.win_streak_max]
 fr = "Victoires consécutives (max)"
 en = "Win streak (max)"

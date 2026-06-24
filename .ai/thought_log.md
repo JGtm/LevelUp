@@ -131,6 +131,161 @@ DIFFÉRÉ (chantiers cohérents, non bloquants) :
 
 Vérif : go build ./... + go vet OK ; go test ./internal/sync/ + ./internal/games/halo_5/... verts (test ingest EndTime mis à jour). Re-runs idempotents (baseline=0).
 
+## [2026-06-24] Médailles H5 — op runtime exécutée (seed + sync) + vérif résolution 98,5 % — Complété (runtime)
+
+Le user a demandé « fais le truc des médailles H5 ». Le code étant déjà câblé (cf. entrée précédente), il ne restait que la donnée runtime. Exécuté sur le clone runtime (`LEVELUP_REPO_ROOT=…/LevelUp-go-migration`, aucun serveur actif → locks libres) :
+- **Seed** `cmd/h5-metadata-fetch` (clé .env.local, idempotent INSERT OR REPLACE) → `medal_definitions` = **215 médailles** (noms EN/FR + sprite COMPLET sheet+offsets), + 68 armes, 49 maps, 42 tiers CSR, 121 commendations. Migration applied=0 (schéma déjà v8).
+- **Sync delta** `cmd/h5-sync JGtm 25` → JGtm déjà à jour (seen=1 collected=0, delta-stop). Le résumé DB a confirmé l'état réel : `medals_earned=148119` lignes (déjà ingérées lors des syncs précédents — le pipeline `MapMedalEvents` tournait), match_registry=3032, weapon_kills=268327.
+- **Vérif cross-DB** (diagnostic jetable `//go:build ignore`, supprimé après) : medals_earned = 196 medal_id distincts ; **193/196 résolus (98,5 %) contre medal_definitions, tous avec sprite**. 3 ids non résolus (505244449 ×18, 883611709 ×7, 3566983914 ×7 = 32 occ / 148119 = 0,02 %) = médailles obscures absentes du catalogue officiel 343 → fallback décimal gracieux, négligeable.
+
+⇒ Les médailles H5 s'affichent (noms + sprites) sur la page match. `diag_medals` est hardcodé halo_infinite (inutilisable H5). Op faite en LOCAL/runtime ; à refaire en PROD au déploiement (le seed n'a pas encore tourné sur le VPS sauf si déjà fait). Worktree repo inchangé (écritures dans le clone data).
+
+## [2026-06-24] REQ packs = abandonnés (décision user) + fix canonique gating pass saisonnier title-aware — Complété
+
+Décision user post-sonde : « laisser tomber comme le leaderboard » (jeu inactif + inventaire REQ personnel mort). On NE construit PAS de surface REQ. On corrige seulement le bug de structure canonique : la page `career/season-pass` (Battlepass HI) était gatée sur la capability GROSSE `career` que **H5 possède** → H5 montait à tort la page Battlepass HI (alors que H5 n'a pas de pass).
+
+Fix = capability grosse DÉDIÉE `season_pass` (HI l'a, H5 non) :
+- Backend : `CapSeasonPass = "season_pass"` (registry.go) ajoutée à la liste hardcodée HI + à `knownCapabilities` (config_loader.go). H5 ne la liste pas dans son title.toml → bootstrap ne l'expose pas pour H5.
+- Front : `'season_pass'` dans `TITLE_CAPABILITIES` (+ libellé FR/EN dans `FeatureUnavailable`) ; route `career/season-pass` gatée `capability="season_pass"` (au lieu de `career`) → H5 = FeatureUnavailable au lieu du Battlepass HI ; onglet L1 « Pass saisonnier » porte `capability:'season_pass'` (déjà filtré par `NavL1.tabVisible`) ; retrait de l'onglet « Pass saisonnier » de `CAREER_TABS_H5` (NavL2, sélection par slug existante). HI inchangé (NO-OP mono-titre : HI déclare la capability).
+
+Gate : go build + tests `internal/domain/title` / middleware / handlers (season-pass, bootstrap, capability) verts ; front typecheck + eslint + vitest (NavL1 + capabilities, 20/20) verts. probe-h5 étendu (REQ targets) gardé comme trace de sonde (dev tool). Land main = GO user.
+
+## [2026-06-24] Sonde REQ interne (« sonde d'abord ») → catalogue VIVANT, inventaire joueur MORT — Complété (sonde)
+
+Extension de `cmd/probe-h5` (réutilise le helper auth testé `RefreshHaloTokensViaStoreFirst`, owner JGtm, SpartanToken v4 du store, retry public AADSTS90023) avec les endpoints REQ. Run read-only contre le clone runtime (`LEVELUP_REPO_ROOT=…/LevelUp-go-migration`, 9 tokens présents). Résultats :
+
+- **Catalogue `https://halo5api.svc.halowaypoint.com/en-us/reqs?auth=st` = HTTP 200, 1,42 Mo JSON.** Schéma par req : `id` (hex 32), `name`, `description`, `rarity` (Common/Rare/UltraRare/Legendary/Mythic), `mythic` (bool), `levelRequirement`, `certificationId`, `category` (Customization/…), `subCategory` (WeaponSkin/…), `imageUrl`/`smallIconUrl`/`largeIconUrl` (halocdn). **Catalogue REQ complet AUTO-DÉCOUVRABLE** — le piège « IDs non découvrables » de la recherche ne valait que pour (a) l'API officielle metadata (404 liste) et (b) les *packs* bundles, PAS le catalogue interne de reqs. Le host `halo5api.svc` est donc bien vivant (contre l'hypothèse « alias spartanstats »).
+- **Inventaire joueur = MORT** : `/h5/players/JGtm/packs` et `/cards` → **404** sur spartanstats.svc ET halo5api.svc (paths documentés Halo5Reqs). La progression REQ *personnelle* (packs ouverts, cartes possédées) n'est pas/plus servie publiquement — même sort que le leaderboard CSR.
+
+**Conséquence design (tranchée)** : page « progression REQ personnelle » = NON faisable (inventaire 404). Page **catalogue/collection REQ** (parcourir toutes les reqs par rareté/catégorie, données + icônes riches) = faisable, zéro seed manuel. C'est ce que peut être la surface « progression » H5 en remplacement du Battlepass HI absent. Reste le fix canonique du gating (season-pass gatée sur capability grossière `career` que H5 a → afficherait le Battlepass HI à tort). Décision de scope finale = au user.
+
+(probe-h5 étendu non committé — à inclure avec le travail REQ selon scope choisi.)
+
+## [2026-06-24] Médailles H5 = déjà câblées de bout en bout (vérif, 0 code) + sonde REQ packs = blocker confirmé — Complété (vérif)
+
+**Médailles H5 — RIEN à construire, pipeline complet et title-agnostic** (vérifié couche par couche, contre la carte périmée qui disait « SetMedalSpriteResolver à câbler ») :
+1. Ingestion : `halo_5/ingest/collect.go:38` → `MapMedalEvents` projette les events `medal` de la timeline en `medals_earned` (agrégat) + `highlight_events`. L'id médaille vient de `ev.RefID` (même espace d'ID 343 que la metadata, ex. `3001183151` — commentaire medals.go:64 le confirme) → le JOIN avec medal_definitions matche.
+2. Metadata : `cmd/h5-metadata-fetch` `seedMedals` peuple `medal_definitions` avec noms EN/FR + **sprite COMPLET** (sheet URI + left/top/width/height depuis `spriteLocation`).
+3. Label/sprite : `lookupMedalMeta` (medal_translations > medal_definitions, fallback citations) + `static.MedalImage(titleSlug, id)` title-aware ; **résolveur sprite H5 DÉJÀ câblé au boot** (`server.go:816`, `SetMedalSpriteResolver` chargé depuis medal_definitions où sprite_sheet_url<>'').
+4. Builder : `convertMedals(raw, titleSlug)` (match_view_builders_summary.go:221) — sprite si présent sinon PNG ; appelé **sans gate** (errgroup, match_view_data_loaders.go:211).
+5. Front : `MedalIcon` sprite-capable et title-agnostic (background-position + scale), consommé par `MatchMedalsSection`. `dropShadowForDifficulty` dégrade en `undefined` pour le difficulty H5 (numérique 0-245 ≠ enum HINF) → pas de glow, pas de casse.
+
+⇒ Le seul prérequis pour voir des médailles H5 = **donnée runtime** (seed metadata via h5-metadata-fetch + sync H5), pas du code. PAS de `MedalAwards[]` carnage (risque de double-ingestion ; events-only est correct). Aucune donnée H5 locale (`data/titles/` n'a que halo_infinite) → vérif statique uniquement.
+
+**Sonde REQ packs (clé .env.local, read-only, jamais imprimée)** : `GET haloapi.com/metadata/h5/metadata/requisition-packs` et `/requisitions` (LISTE) = **404 `{statusCode:404, "Resource not found"}`** alors que medals/maps/weapons = 200 → **pas d'endpoint LISTE des définitions REQ** (by-id only, et by-id non confirmé sans GUID valide). Confirme le blocker de `.ai/RESEARCH_HALO_OSS_LEVERAGE.md` : **IDs non auto-découvrables → seed manuel obligatoire** (taxonomie Halo5Reqs). + inventaire joueur (endpoint `/h5/players/{gt}/packs` style) non confirmé, aucun runtime H5 pour sonder.
+
+**Structure canonique progression (le vrai axe title-aware)** : la route `career/season-pass` est gatée sur la capability **grossière** `'career'` (front `capabilities.ts`, que H5 possède) → H5 monterait la page **Battlepass HI** (faux). H5 déclare pourtant `battlepass.progression = not_exposed` (« REQ packs à la place ») dans capabilities.toml, MAIS c'est l'espace FIN (cascade sémantique), distinct des capabilities GROSSES du bootstrap. Fix canonique = ajouter une capability grosse dédiée (pass) + gater season-pass dessus + surface REQ pour H5. Décision de portée (jeu inactif + blocker donnée) escaladée au user.
+
+## [2026-06-24] Monitoring : panneau « couverture résolution d'arme » (admin) — Complété
+
+Feature 1/3 du lot user (monitoring + médailles + reqs). Le diag de couverture du registre (combien de weapon_id distincts vus dans les kills sont résolus par le REGISTRE vs `weapon_labels` SEUL vs NON résolus) devient un panneau permanent du dashboard monitoring admin, **par titre** (HI + H5 côte à côte).
+
+Backend (lecture seule, dual-DB, réutilise `dataQualityHandles`) :
+- `domain.AdminWeaponCoverage` (+ `AdminWeaponCoverageItem`). `WeaponID` est une **string** (pas int64) : les ids filmshell HINF dépassent 2^53 → précision perdue en number JSON JS, et un champ string réel rend le schéma OpenAPI auto-dérivé fidèle (le tag `,string` aurait menti : Huma reflète le type Go brut → `integer`).
+- `ServiceRegistry.WeaponCoverage(ctx, titleSlug)` (`registry_weapon_coverage.go`) : `SELECT effective_weapon_id, COUNT(*) FROM v_weapon_kills WHERE effective_weapon_id NOT IN (0,1,2) GROUP BY 1` (shared) → `classifyWeaponCoverage` (1 requête metadata = VALUES LEFT JOIN weapon_ids/weapons/weapon_labels). Fallback `classifyWeaponLabelsOnly` si registre absent (vieux schéma). Top 15 non résolus triés par kills desc.
+- Handler `handlers.AdminWeaponCoverageHandler` (Huma `GET /admin/monitoring/weapon-coverage?title=`) monté dans `mountAdminMonitoringRoutes` (NoStore). `WeaponCoverageRunner` typé en package handlers, méthode injectée depuis api (pas de cycle).
+
+Front : `useWeaponCoverage(slug)` (types locaux, comme la section titles — pas de dépendance codegen) + `adminWeaponCoverage` query key + panneau `WeaponCoveragePanel` (overview) : itère sur `useAdminTitles()` filtré `status==='active'` (title-agnostic, zéro slug hardcodé), un appel `?title=` par titre, barre empilée registre/labels/non-résolus (tokens success/info/warning) + 4 KPI + liste des IDs non résolus (font-mono, kills). i18n `admin.toml` (10 clés, manifest régénéré).
+
+Gate : test `TestClassifyWeaponCoverage` (cgo, `:memory:` + `ApplyWeaponRegistry`, vérifie registre+label / label-seul / inconnu / fallback sans registre) vert. `TestOpenAPISchemaDrift` re-vert après ajout des 2 schémas dans `openapi.yaml` (0 MISSING). `go vet` clean, `go build ./...` clean, front typecheck + eslint clean. **Prochaine : médailles H5, puis REQ packs.** Land main = GO user.
+
+## [2026-06-24] Sonde leaderboard CSR H5 officiel → MORT (pivot vers CSR par-joueur) — Complété
+
+Cartographie du leaderboard CSR mondial Infinite (workflow) : écrit **append-only** (world_csr_leaderboard_snapshots PK séquence + fetched_at + written_at, lecture vue `_latest` par batch fetched_at), **scrape halowaypoint.com** (pas une API), stack déjà largement title-agnostic (domain TitleSlug, handler lit title_slug, world_player_season_stats a title_slug). Plan de réutilisation : `.ai/PLAN_H5_LEADERBOARD.md`. → **le delete/replace de Leafapp est PROSCRIT (on est append-only).**
+
+**Sonde read-only API officielle (clé Ocp-Apim, .env.local)** : `/metadata/h5/metadata/seasons` + `/playlists` = **200** ; `/stats/h5/leaderboards/csr/{seasonId}/{playlistId}` = **404 sur TOUS les combos** (saison active « Evergreen » incluse, + saisons passées). → **l'endpoint leaderboard CSR officiel H5 est MORT** (343 a retiré le service stats compétitif H5 ; halowaypoint n'a plus de pages H5 non plus). L'agent de recherche l'avait inféré du doc SANS l'appeler — leçon : sonder avant de planifier sur un endpoint non testé. **(e) world leaderboard H5 = NON faisable.**
+
+**PIVOT** : (a) **CSR par playlist PAR-JOUEUR** reste faisable — source = `ServiceRecordArena.ArenaPlaylistStats[]` (endpoint INTERNE spartanstats.svc, SpartanToken, qu'on appelle DÉJÀ pour SR/XP, juste pas parsé). Surface = matrice CSR par playlist sur la page carrière H5. La réutilisation de la stack leaderboard Infinite ne s'applique qu'à (e) → hors scope.
+
+## [2026-06-24] Recherche Halo OSS (8 repos + API CSR Leaderboard) → leverage map — Complété
+
+2 passes workflow (fan-out + passe LEARNINGS sur les repos « morts », le user m'ayant repris sur le fait d'écarter trop vite). Doc : `.ai/RESEARCH_HALO_OSS_LEVERAGE.md`. Conclusions :
+- **Gap chaud = CSR H5 par playlist (a) + leaderboards mondiaux (e)** : donnée déjà à portée (`ServiceRecordArena.ArenaPlaylistStats[]` non parsé ; endpoint officiel `www.haloapi.com/stats/h5/leaderboards/csr/{seasonId}/{playlistId}`). Schéma snapshot prouvé (Leafapp `h5_player_csr` : rank/rank_previous/csr/csr_previous → delta UI). **Directive user : NE PAS réinventer le delete/refresh → réutiliser le leaderboard Infinite existant (snapshot-world-leaderboard).**
+- **Medals H5** = parité HI, metadata déjà seedée (sprites), reste l'ingestion `MedalAwards[]` + affichage CSS sprite. Petit effort.
+- **REQ packs** = idée page progression title-aware (HI=pass saisonnier, H5=REQ). Blueprint = `MichaelJLiu/Halo5Reqs` (endpoints/taxonomie complets). PIÈGE : IDs de packs **non auto-découvrables** → seed manuel obligatoire.
+- **Weapon taxonomy** : recherche CONFIRME que class/role/family ne sont dans aucune API → notre registre maison était le bon choix.
+- **xuid carnage** : NON résolu (officiel = Xuid null aussi, doc confirme) → PeopleHub reste.
+- **Pépites « mortes »** : rate-limit officiel strict (~10/10s), emblem = 302 (header Location), MatchEvents non documenté mais riche (death-recap), figer upsert-vs-delete-replace une fois.
+- **Film/kill-feed** : abandon confirmé par toutes les sources.
+
+Prochaine étape : cartographier le leaderboard Infinite pour réutilisation H5 (workflow). Land main = à la main du user (pas avant son GO).
+
+## [2026-06-24] Gate delivery P4 + fix drift OpenAPI (SynthesisRoleKillEntry) — Complété
+
+Avant de déclarer P4 livré : `go vet ./internal/...` (clean) + suite complète `go test ./internal/...` non-intégration. UN échec : `TestOpenAPISchemaDrift_AggregatesAndReports` — `SynthesisRoleKillEntry` (schéma servi par Huma depuis le donut rôle) MANQUANT dans `openapi.yaml` (drift introduit au commit 34cd99253, jamais corrigé car je n'avais pas lancé la suite complète à l'époque). Les 20 « DIVERGENT » (dont SynthesisPageV2Response, MatchParticipant, TeammatesPageResponse) sont tolérés (report-only) ; seul MISSING fait échouer. Fix : ajout du schéma `SynthesisRoleKillEntry` + champ `kills_by_role` dans `SynthesisPageV2Response` (openapi.yaml manuel). Test re-vert, suite complète : 0 FAIL. Leçon : lancer `go test ./internal/...` complet (pas juste le package touché) avant de committer un nouveau champ de réponse.
+
+## [2026-06-23] P4 — resolver d'arme unifié (passage principal) + route weapon_kills — Complété (slice 1)
+
+P4 = router la résolution d'arme par le registre. **Décision user : noms INCHANGÉS (« genre BR75 »)** → parité PURE. Audit fan-out (6 agents, workflow) : backend-only (le front reçoit des noms pré-résolus, fallback décimal), surface concentrée dans ~5 fonctions, fallback `weapon_labels` obligatoire (sentinels 0/1/2, grenades, Mutilator/Sandwich, variantes — hors registre curé). Plan : `.ai/PLAN_P4_WEAPON_RESOLUTION.md`.
+
+Slice 1 — resolver unifié `resolveWeaponMeta` (`weapon_resolver.go`) : UNE requête metadata = LEFT JOIN `weapon_labels` (NOM, parité pure : COALESCE(name_fr,name_en) — le registre n'influence JAMAIS le nom, aucune arme ne « surgit ») + `weapon_ids`/`weapons` (DIMENSIONS : weapon_key/role/family/faction). Garde silencieux `weaponRegistryAvailable` (information_schema via QueryRow, pas de log) → fallback `resolveWeaponLabelsOnly` si registre absent (vieux schéma/test) ⇒ zéro ERROR spam. Route `weapon_kills_repo` : `attachWeaponLabels` + `attachWeaponRoles` (2 requêtes) → `attachWeaponMeta` (1). Consommateurs synthesis/timeseries/squad/teammates = pass-through inchangés.
+
+Tests intégration verts : golden-parity (BR75 → « BR75 » et PAS « Fusil de combat » ; dims precision/battle_rifle/human/hinf_br75 ; sentinel 0 → « Grenade » role="" ; id inconnu → label="") + fallback sans registre + les 9 `TestWeaponKillsRepo` existants.
+
+**Slice 2 — match_view** : `lookupWeaponMeta` + `lookupWeaponLabels` (match_view_repo_weapons.go) → `resolveWeaponMeta` (scoreboard top weapon + Q28 bulk weapon kills par joueur). Fusion variante→canonique (`WeaponFusionMapID`) reste appliquée EN AMONT (inchangée). Tests intégration match_view verts (parité).
+
+**Slice 3a — explorer** : `ExplorerRepo.resolveWeaponLabels` → `resolveWeaponMeta` (LabelFR = label name_fr>name_en ; LabelEN = nameEN sinon label, parité exacte avec l'ancien COALESCE inversé). Build + tests verts.
+
+**Slice 3b — home** : `LoadFavoriteWeapon` → `resolveWeaponMeta` (locale EN = nameEN sinon label, parité avec l'ancien COALESCE(name_en, name_fr)). Tests intégration Home verts.
+
+**P4 COMPLET pour TOUS les chemins d'AFFICHAGE user** : synthesis/timeseries/squad (donuts) + match-view (scoreboard/détail) + explorer + home favorite-weapon. Le nom reste `weapon_labels` (parité « BR75 »), le registre porte les dimensions partout, fallback + garde silencieux OK.
+
+**Hors scope P4 PAR NATURE (ce ne sont PAS des chemins d'affichage de nom)** : (1) `sync/citations` = name-MATCHING (`weapon_kills:<name>`) — parité name_en critique, reste sur weapon_labels ; router = zéro valeur + risque citations. (2) `analysis/weapon_data.go` (film scanner) = couche `analysis/` PURE (0 accès DB par archi) ; sa sortie est nommée à la LECTURE (déjà routée) ; ne doit pas dépendre du registre. (3) CLI diag (4 outils) = dev-only, dans `cmd/` (autre package, ne peut pas appeler le resolver interne sans exposer des internes) ; leur SQL weapon_labels de debug est correct. Les 3 ids « manquants » (Mutilator/Sandwich/Mythic Sandwich) = armes event/joke hors des 59 curées (seed figé user) ; résolues par le fallback weapon_labels à la lecture (juste sans dimensions registre, ce qui est OK).
+
+## [2026-06-23] Synthesis — insight coach « angle mort armes lourdes » (data-driven) — Complété
+
+Suite du donut rôle (idée user : « quelqu'un qui n'utilise jamais les armes lourdes a besoin de s'améliorer dessus »). Décision : le moteur `coach_advisor` (Ascension) génère des ARCS LUSR multi-étapes (alertes→signals→synthesizer→arc_composer→presets) — y greffer un tip d'arme = lourd et inadapté. → insight simple, data-driven, surfacé DIRECTEMENT sous le donut (même donnée kills_by_role), title-agnostic.
+
+Helper pur `weaponRoleInsight.ts` (testable, 6 tests vitest verts) : 1) blind_spot_power = armes lourdes (rôle `power`) < 3% des frags → angle mort ; 2) over_reliance = un rôle > 70% → arsenal prévisible. Garde-fou MIN_KILLS=50 (anti-bruit petits échantillons). Priorité angle mort > sur-dépendance. Rendu dans `SynthesisRoleKillsDonut` sous le donut (label « Coach : » + texte), i18n synthesis.toml (coach.label/blind_spot_power/over_reliance avec {pct}/{role} interpolés). Typecheck + vitest verts.
+
+Note : le vrai coach Ascension reste un chantier à part (si on veut un jour pousser ce signal dans les arcs LUSR). Reste : gros chantier P4 (router TOUTE la résolution d'arme par le registre).
+
+## [2026-06-23] Synthesis — donut « Frags par type d'arme » (1er consommateur UI du registre) — Complété
+
+PREMIER branchement UI du registre d'armes (la fondation P2/P3 servait enfin). Donut « frags par rôle de combat » sur Synthesis (sous « Frags par arme »), title-agnostic (Infinite + Halo 5, weapon_kills déjà existants pour les 2). Flux : weapon_kills (déjà chargés pour le donut par-arme) + résolution du rôle via le registre.
+
+Backend : `port.WeaponKillRow.Role` + `WeaponKillFilters.ResolveRoles` (off par défaut → ZÉRO coût pour timeseries/squad). `weapon_kills_repo.attachWeaponRoles` (best-effort : JOIN weapons/weapon_ids dans metadata par title_slug + id_value, réinterprétation int64→uint64 comme attachWeaponLabels ; silencieux si registre absent → Role vide). Synthesis `loadTopWeaponKills` demande ResolveRoles=true et renvoie aussi `buildKillsByRole` (somme par rôle, tri desc, exclut rôle vide + sentinels grenade/melee). Réponse : `domain.SynthesisRoleKillEntry` + `KillsByRole`.
+
+Front : `SynthesisRoleKillsDonut` (calque `SynthesisKillTypesDonut` + donut SVG `KillTypesDonut`, tokens color-blind par rôle), placé sous le bloc armes. Type hand-maintained `SynthesisRoleKillEntry` + `kills_by_role`. i18n synthesis.toml : `role_kills_title` + 9 labels rôle FR/EN (manifest régénéré, 66 clés).
+
+Tests : `buildKillsByRole` (agrégation/tri/exclusions) + synthesis verts ; typecheck vert. Best-effort partout (titre sans registre → champ omis, donut rend null). Reste : tip coach data-driven (moteur `internal/progression/coach_advisor`, plus gros) + gros chantier P4 (router TOUTE la résolution d'arme par le registre).
+
+## [2026-06-23] Weapon taxonomy registre — P2bis stock_ids H5 — Complété
+
+Décision user : on stocke les stock_ids H5 maintenant (« on a les infos, ça coûte pas cher »). Source = catalogue officiel déjà seedé dans `weapon_labels` (metadata H5, `data/titles/halo_5/warehouse/metadata.duckdb`, via cmd/h5-metadata-fetch) — lu offline (script jetable `//go:build ignore` calqué sur inspect_bp, read_only, supprimé après). Catalogue = 68 entrées (armes + véhicules + tourelles + grenades).
+
+Mapping figé dans le seed (`weaponRegistryH5Stock`, id_kind=stock_id) : mes 30 armes H5 matchent toutes + 5 variantes/skins ajoutées comme ids additionnels (Halo 2 Battle Rifle, Halo One Pistol + Flagnum → magnum, SPNKr Rocket Launcher → rocket_launcher, Retro Beam Rifle → beam_rifle) = 35 stock_ids. Cohérence : les StockId vus dans WeaponWithMostKills du carnage (SAW 2278207101, Beam 2862629816, GravHammer 2899979324, Sniper 669296699…) tombent juste. Type `weaponFilmshellID` renommé `weaponNumericID` (réutilisé filmshell + stock).
+
+weapon_ids = 36 filmshell + 35 stock = 71. Tests étendus (cardinalité 71, stock_id=35, intégrité référentielle valide les 35 clés H5, résolution ByID stock_id SAW→h5_saw + Retro Beam→h5_beam_rifle) verts. Grenades/véhicules/tourelles H5 hors scope (seed figé = 30 armes revues user). Reste : P4 (bascule lecteurs, différé avec narration UI user).
+
+## [2026-06-23] Weapon taxonomy registre — P3 resolver weaponregistry — Complété
+
+Package `internal/games/weaponregistry` (le passage principal) : interface `Registry` (`ByID`/`ByKey`/`Family`) + `MemRegistry` chargé en mémoire au boot via `LoadFromDB` (3 tables metadata → maps byKey / byID / families). idCacheKey = "title|kind|value". Dégradation gracieuse (inconnu → zéro-valeur, false, jamais panic). Log boot `weapon_registry_loaded` (cardinalités). Title-agnostic, zéro logique métier titre.
+
+Tests `:memory:` (seed migration → LoadFromDB → résolution) verts : Counts 59/36/43 ; ByKey BR75 (class shoulder / role precision / family battle_rifle / faction human / nameFR) ; ByID filmshell (BR75 + variante Energy Sword Duelist → même weapon_key) ; id inconnu → false ; H5 stock_id pas encore résolu (P2bis) ; Family battle_rifle.
+
+Reste : P2bis (mapper les stock_ids H5 dans weapon_ids), P4 (bascule des lecteurs weapon vers le registre, golden parity). Wiring boot (DI) = avec P4.
+
+## [2026-06-23] Weapon taxonomy registre — dimension `role` (revue user du seed) — Complété
+
+Revue du seed par le user (relecture des 59 armes). Constat partagé : `family` seule ne capture pas le RÔLE de combat (« précision vs pression »), et beaucoup de familles sont uniques (normal, surtout forerunner H5 sans équivalent Infinite). → ajout d'une 5e dimension **`role`** (colonne `weapons.role`) = fonction de combat, distincte de `class` (manipulation) et `family` (identité). Enum : automatic / precision / sniper / shotgun / sidearm / power / special / melee / grenade. class & role coïncident pour poing/mêlée/grenade mais divergent pour épaule (precision vs automatic) et lourde (sniper/shotgun/power/special) — c'est tout l'intérêt.
+
+Corrections de classification validées par le user : Stalker Rifle famille `dmr` → **`stalker_rifle`** propre (43 familles) ; Vestige Carbine + Carbine H5 role **precision** (équivalent covenant du Bandit, family `carbine` gardée) ; Needler class **épaule** + role **special** (deux mains dans Infinite) ; **Commando role `automatic`** (décision user : hybride, rarement utilisé à distance, pas `precision`).
+
+Table neuve (pas en prod) → colonne ajoutée directement au CREATE, re-seed in place, zéro ALTER. Tests `weapon_registry_test.go` étendus (enum role, role non-null, familles 43) verts. Plan §0/§2/§3/§6.1 mis à jour (5 dimensions, fix Stalker). Reste P2bis (stock_ids H5), P3 (resolver), P4 (bascule lecteurs).
+
+## [2026-06-23] Weapon taxonomy registre — P2 schéma + seed (build, branche dédiée) — Complété (P2-core)
+
+GO user (« la suite ») après confirmation empirique WeaponStats vide. Branche dédiée `feat/weapon-taxonomy-registry` depuis integration. Migration `add_weapon_registry` (TargetMetadata, named-func `weapon_registry.go`) : 3 tables `weapons` / `weapon_ids` / `weapon_families`.
+
+**Décision d'archi** : PK simple + `INSERT OR IGNORE` (PAS append-only `_latest` comme le plaçait le plan). Raison : référentiel STATIQUE seedé au boot (zéro writer concurrent, zéro UPDATE per-match) → hors périmètre ART #23046 ; calque `weapon_labels.go` / `career_ranks`. Extensibilité = colonne `extra` JSON. Plan §3 + table des phases mis à jour.
+
+Seed = table §6 vérifiée (halopedia/wiki.halo.fr) : 42 familles cross-titre + 59 armes (29 Infinite + 30 H5, class/family/faction-par-origine/damage_type/name_fr/manufacturer) + 36 filmshell ids Infinite (source `weapon_labels.go`, suffixe 42c9679f ; multi-ids/arme pour variantes : Energy Sword ×4, Gravity Hammer ×3, Bandit/Shock Rifle ×2). filmshell uint64 stocké en décimal string (`strconv.FormatUint`, id_value VARCHAR couvre bit63). H5 stock_ids = P2bis (réconciliation depuis metadata officiel/events, pas encore mappés → armes H5 seedées sans id).
+
+Tests `weapon_registry_test.go` (:memory:, build cgo) verts : cardinalités 59/42/36 + 29/30 par titre, intégrité référentielle (family_key ∈ weapon_families, weapon_ids → weapons), enums class/faction, idempotence (double apply), multiplicités filmshell. Build packages migration vert.
+
+Reste : P2bis (stock_ids H5), P3 (package `weaponregistry` resolver ByID/ByKey/Family + tests), P4 (bascule lecteurs weapon → registre, golden parity). UI/modélisation WeaponWithMostKills = différé (narration user).
+
 ## [2026-06-23] H5 — vérif WeaponStats/WeaponWithMostKills + terminologie « Compétences Spartan » — Complété
 
 Question user : la précision PAR ARME H5 est-elle vraiment impossible ? Re-vérif empirique sur dump carnage réel (`%TEMP%/h5_carnage.json`, 8 joueurs, match JGtm) via jq, ZÉRO token (dump du jour) :

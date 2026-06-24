@@ -89,7 +89,7 @@ func (r *WeaponKillsRepo) LoadWeaponKillsAggregated(
 		return nil, fmt.Errorf("WeaponKillsRepo.LoadWeaponKillsAggregated: %w", err)
 	}
 
-	r.attachWeaponLabels(ctx, rows)
+	r.attachWeaponMeta(ctx, slug, rows, filters.ResolveRoles)
 	return rows, nil
 }
 
@@ -326,58 +326,31 @@ func appendXUIDFilter(sb *strings.Builder, args *[]any, alias string, f port.Wea
 	*args = append(*args, f.Gamertag)
 }
 
-// attachWeaponLabels enrichit les rows non-grenade/melee avec leur libelle
-// EN/FR depuis metadata.weapon_labels. Best-effort : si Metadata est absent
-// ou la table manque, les labels restent vides (le service appelant peut
-// fallback sur le weapon_id).
-func (r *WeaponKillsRepo) attachWeaponLabels(ctx context.Context, rows []port.WeaponKillRow) {
+// attachWeaponMeta renseigne Label (toujours, parité weapon_labels) + Role (si
+// withRoles) via le resolver unifié resolveWeaponMeta — PASSAGE PRINCIPAL P4 :
+// une seule requête metadata (registre + weapon_labels) remplace l'ancien duo
+// attachWeaponLabels + attachWeaponRoles. Best-effort : meta absent → no-op.
+// Sentinels grenade/melee (0/1) : Label vient de weapon_labels ("Grenade"/"Mêlée"),
+// Role reste "" (absents du registre) — identique à l'ancien comportement.
+func (r *WeaponKillsRepo) attachWeaponMeta(ctx context.Context, slug string, rows []port.WeaponKillRow, withRoles bool) {
 	if r.pdb == nil || r.pdb.Metadata == nil || len(rows) == 0 {
 		return
 	}
-	// On inclut aussi les sentinels grenade/melee (weapon_id=0/1) — ils ont
-	// des labels "Grenade"/"Mêlée" en metadata.weapon_labels (cf. migration
-	// add_weapon_labels). Skipper ici laissait Label="" alors que le label
-	// est disponible.
 	ids := make([]int64, 0, len(rows))
 	for _, row := range rows {
 		ids = append(ids, row.WeaponID)
 	}
-	if len(ids) == 0 {
-		return
-	}
-
-	// Driver workaround : weapon_id est UBIGINT, on injecte les literals decimals
-	// (cf. match_view_repo.lookupWeaponLabels).
-	unique := uniqueInt64s(ids)
-	parts := make([]string, len(unique))
-	for i, id := range unique {
-		parts[i] = strconv.FormatUint(uint64(id), 10) //nolint:gosec
-	}
-	query := fmt.Sprintf( //nolint:gosec
-		`SELECT weapon_id, COALESCE(name_fr, name_en, CAST(weapon_id AS VARCHAR)) AS weapon_label
-		 FROM weapon_labels
-		 WHERE weapon_id IN (%s)`,
-		strings.Join(parts, ","),
-	)
-	dbRows, err := r.pdb.Metadata.Query(ctx, query)
-	if err != nil {
-		return
-	}
-	defer dbRows.Close()
-
-	labels := map[int64]string{}
-	for dbRows.Next() {
-		// weapon_id UBIGINT scanné via UBigint (cf. ubigint_scanner.go) — sinon
-		// overflow silencieux pour les hash filmshell bit63=1.
-		var id UBigint
-		var label string
-		if err := dbRows.Scan(&id, &label); err == nil && label != "" {
-			labels[id.Int64()] = label
-		}
-	}
+	meta := resolveWeaponMeta(ctx, r.pdb.Metadata, slug, ids)
 	for i := range rows {
-		if label, ok := labels[rows[i].WeaponID]; ok {
-			rows[i].Label = label
+		m, ok := meta[rows[i].WeaponID]
+		if !ok {
+			continue
+		}
+		if m.label != "" {
+			rows[i].Label = m.label
+		}
+		if withRoles && m.role != "" {
+			rows[i].Role = m.role
 		}
 	}
 }

@@ -108,7 +108,12 @@ export const L1_SECTIONS: L1Section[] = [
     tabs: [
       { key: 'progression', label: 'Progression', path: '/players/$playerSlug/career' },
       { key: 'citations', label: 'Citations', path: '/players/$playerSlug/citations' },
-      { key: 'season-pass', label: 'Pass saisonnier', path: '/players/$playerSlug/career/season-pass' },
+      {
+        key: 'season-pass',
+        label: 'Pass saisonnier',
+        path: '/players/$playerSlug/career/season-pass',
+        capability: 'season_pass',
+      },
     ],
   },
   {

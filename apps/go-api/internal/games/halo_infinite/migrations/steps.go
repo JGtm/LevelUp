@@ -85,6 +85,12 @@ func Steps() []migration.Migration {
 			ApplySchema: applyWeaponLabels,
 		},
 		{
+			Name:        "add_weapon_registry",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Registre d'armes canonique (weapons/weapon_ids/weapon_families) : passage principal de la résolution d'arme, seed §6 vérifiée + filmshell ids Infinite",
+			ApplySchema: applyWeaponRegistry,
+		},
+		{
 			Name:        "add_mode_name_tr",
 			TargetDB:    migration.TargetMetadata,
 			Description: "Table mode_name_tr : traductions des modes de jeu (FR/EN), portage depuis metadata-prebuilt",
