@@ -31,6 +31,8 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/campaign"
+	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/progression/coach"
@@ -459,6 +461,35 @@ func BuildPlayerProgressionDepsWithAdvisor(
 	deps.CoachAdvisor = advisorBundle.ServiceForPlayer(pdb, templates, prestigeSvc)
 	deps.CoachProactiveMode = proactiveMode
 	return deps
+}
+
+// BuildProgressionAfterSyncHook retourne la closure injectée dans
+// config.AppConfig.ProgressionAfterSync (mirror de BuildTitleReadyNotifier),
+// appelée par le Runner live d'un titre (Halo 5+) après un cycle qui a inséré des
+// matchs. Fait tourner le pipeline Progression V2 (streaks/records/milestones/coach)
+// pour CE titre, comme le post-sync HINF (buildPostSyncDeltaHook) — mais avec les
+// deps de BASE (BuildPlayerProgressionDeps, SANS le PrestigeBundle/CoachAdvisor
+// mono-titre, gracieusement absents pour un 2e titre). Best-effort, title-agnostic.
+func BuildProgressionAfterSyncHook(reg *ServiceRegistry, cfg *config.AppConfig) func(ctx context.Context, titleSlug, playerSlug string) {
+	return func(ctx context.Context, titleSlug, playerSlug string) {
+		resCtx := ctxkeys.WithTitleSlug(ctx, titleSlug)
+		pdb, err := reg.resolve(resCtx, playerSlug)
+		if err != nil {
+			slog.WarnContext(ctx, "progression after-sync: resolve",
+				"titleSlug", titleSlug, "player", playerSlug, "err", err)
+			return
+		}
+		// Emitter best-effort : si indisponible, le pipeline CALCULE (streaks/records/
+		// milestones persistés) sans émettre de notif (deps.Emitter == nil → skip émission).
+		emitter, eerr := reg.NotificationsEmitter(resCtx, playerSlug)
+		if eerr != nil {
+			emitter = nil
+		}
+		deps := BuildPlayerProgressionDeps(pdb, emitter)
+		if _, err := EvaluateProgressionAfterSync(ctx, pdb, titleSlug, deps, time.Now().UTC()); err != nil {
+			slog.WarnContext(ctx, "progression after-sync: evaluate", "titleSlug", titleSlug, "err", err)
+		}
+	}
 }
 
 // AssertProgressionDeps vérifie que toutes les dépendances sont câblées

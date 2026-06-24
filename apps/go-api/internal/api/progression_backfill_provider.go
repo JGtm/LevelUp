@@ -32,7 +32,9 @@ type progressionBackfillAdapter struct {
 func (a *progressionBackfillAdapter) BackfillProgression(ctx context.Context, slug string) (*domain.ProgressionDiag, error) {
 	deps := BuildPlayerProgressionDeps(a.pdb, nil)
 	deps.CoachGenerator = nil
-	if _, err := EvaluateProgressionAfterSync(ctx, a.pdb, defaultProgressionTitleSlug(), deps, time.Now().UTC()); err != nil {
+	// Titre RÉEL du joueur (pdb.TitleSlug), pas le slug HINF figé → le backfill
+	// progression marche pour Halo 5 et tout futur titre (C2 title-agnostic).
+	if _, err := EvaluateProgressionAfterSync(ctx, a.pdb, a.pdb.TitleSlug, deps, time.Now().UTC()); err != nil {
 		return nil, err
 	}
 	return duckdb.NewProgressionDiagRepo(a.pdb).GetProgressionDiag(ctx, slug)

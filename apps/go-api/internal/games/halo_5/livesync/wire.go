@@ -112,6 +112,12 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 			if csrN, srN := PersistPerMatchRatings(runCtx, src, playerDB.SQLDb(), shared, gamertag, xuid, inserted); csrN > 0 || srN > 0 {
 				slog.InfoContext(runCtx, "h5 post-score: ratings par match écrits", "gamertag", gamertag, "csr", csrN, "sr", srN)
 			}
+			// Progression V2 (streaks/records/milestones/coach) title-agnostic, via le
+			// hook injecté au boot (cfg.ProgressionAfterSync = api.BuildProgressionAfterSyncHook).
+			// Best-effort. nil en CLI/tests → skip. playerSlug = gamertag pour h5.
+			if cfg.ProgressionAfterSync != nil {
+				cfg.ProgressionAfterSync(runCtx, halo5.TitleSlug, gamertag)
+			}
 			return nil
 		},
 		// Notif « titre prêt » (MT-19 / axe E) : délègue au notifier injecté au boot

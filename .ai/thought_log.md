@@ -1,3 +1,12 @@
+## [2026-06-24] H5 — Refonte title-agnostic : C1 Progression V2 (wiring) + C5 milestones + C2-partiel — En cours
+
+C1 (fix dominant) : le pipeline Progression V2 (streaks/records/milestones/coach) est DÉJÀ title-aware (EvaluateProgressionAfterSync prend titleSlug) — il n'était juste jamais APPELÉ pour H5 (sync H5 = livesync.Runner, pas le post-sync HINF). Câblé via cfg (mirror exact de TitleReadyNotifier) :
+- `cfg.ProgressionAfterSync func(ctx, titleSlug, playerSlug)` (config.go) ; `api.BuildProgressionAfterSyncHook(reg, cfg)` (deps de BASE BuildPlayerProgressionDeps = streaks/records/milestones/coach SANS le PrestigeBundle/CoachAdvisor mono-titre) ; wiré au boot (main.go, à côté de TitleReadyNotifier) ; appelé dans le hook PostScore du runner H5 (wire.go). ADDITIF → HINF byte-identique. Build+vet+tests progression verts.
+- C5 : `config/titles/halo_5/milestones/catalog.toml` créé (matches/wins/kills/headshots/assists, omet combat_*/accuracy data-limited ; lu auto par RegisterMilestonesSeedMigration).
+- C2-partiel : `progression_backfill_provider.go::BackfillProgression` utilise `a.pdb.TitleSlug` au lieu de defaultProgressionTitleSlug() figé → l'endpoint admin backfill progression marche pour H5.
+
+RESTE : déclencher le backfill progression pour les 4 joueurs (endpoint admin, serveur tournant — OBSERVABLE) ; C2-full = 7 sites server.go (handlers progression/coach/profile/patterns/campaign capturent defaultProgressionTitleSlug au boot → per-requête) ; C0 capabilities ; C4 succès Xbox (+ workflow catégo) ; C6 constantes (225/perf-chain/Steaktacular) ; C7 slug literals. defaultProgressionTitleSlug à supprimer quand les 7 sites migrés.
+
 ## [2026-06-24] H5 — Refonte title-agnostic (audit ultracode) : C3 career_progression — Complété
 
 Suite audit ultracode (workflow h5-title-agnostic-audit, 47 findings, plan .ai/PLAN_TITLE_AGNOSTIC_H5_PARITY.md, chantiers C0→C7). C3 livré : persistance career_progression H5 (rang SR), servi live (LoadCareerSnapshot) mais jamais persisté (0 vs 1137 HINF).
