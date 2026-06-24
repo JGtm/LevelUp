@@ -101,7 +101,7 @@ func (h *PlayerProfileHandler) handleGetProfile(ctx context.Context, in *profile
 	if h.awards != nil {
 		svc = svc.WithAwardMapping(h.awards)
 	}
-	prof, err := svc.BuildProfile(ctx, pdb.XUID, h.titleSlug, window, time.Now().UTC())
+	prof, err := svc.BuildProfile(ctx, pdb.XUID, requestTitleSlug(ctx, h.titleSlug), window, time.Now().UTC())
 	if err != nil {
 		slog.WarnContext(ctx, "profile: build", "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "build_profile_error", err.Error())

@@ -112,14 +112,6 @@ func buildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 	}
 }
 
-// defaultProgressionTitleSlug retourne le slug de titre utilisé par le
-// pipeline progression. Aligné sur l'unique titre supporté (halo_infinite).
-// Quand le projet supportera plusieurs titres, lire depuis le contexte
-// (ctxkeys.TitleSlug) sera la voie à privilégier.
-func defaultProgressionTitleSlug() string {
-	return titlePkg.DefaultSlug
-}
-
 // readCoachProactiveMode lit le toggle coach proactif RÉSOLU pour le titre
 // (overlay per-titre PMT-4 : le coach proactif est lié au système de
 // progression/Prestige propre au titre). Overlay absent ⇒ valeur globale

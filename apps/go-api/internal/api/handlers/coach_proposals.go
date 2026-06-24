@@ -131,7 +131,7 @@ func (h *CoachProposalsHandler) handleListProposals(ctx context.Context, in *coa
 	}
 
 	status := coach_advisor.ProposalStatus(in.Status)
-	props, err := svc.ListProposals(ctx, userID, h.titleSlug, status)
+	props, err := svc.ListProposals(ctx, userID, requestTitleSlug(ctx, h.titleSlug), status)
 	if err != nil {
 		slog.WarnContext(ctx, "coach_proposals: list", "err", err, "player", in.PlayerSlug)
 		return nil, humacore.NewError(http.StatusInternalServerError, "list_proposals_error", err.Error())

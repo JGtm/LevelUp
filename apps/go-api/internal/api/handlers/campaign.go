@@ -120,7 +120,7 @@ func (h *CampaignHandler) handleStart(ctx context.Context, in *startCampaignInpu
 	svc := h.serviceFromPDB(pdb)
 	c, err := svc.StartCampaign(ctx, campaign.StartParams{
 		UserID:        pdb.XUID,
-		TitleSlug:     h.titleSlug,
+		TitleSlug:     requestTitleSlug(ctx, h.titleSlug),
 		Axis:          in.Body.Axis,
 		AxisKind:      campaign.AxisKind(in.Body.AxisKind),
 		PlaylistGroup: in.Body.PlaylistGroup,
@@ -146,7 +146,7 @@ func (h *CampaignHandler) handleGetActive(ctx context.Context, in *campaignPlaye
 		return nil, err
 	}
 	svc := h.serviceFromPDB(pdb)
-	c, err := svc.GetActive(ctx, pdb.XUID, h.titleSlug)
+	c, err := svc.GetActive(ctx, pdb.XUID, requestTitleSlug(ctx, h.titleSlug))
 	if err != nil {
 		if errors.Is(err, campaign.ErrNotFound) {
 			return &campaignActiveOutput{Body: nil}, nil
