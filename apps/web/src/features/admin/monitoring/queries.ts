@@ -72,6 +72,44 @@ export function useMonitoringErrors() {
   })
 }
 
+/** Un weapon_id non résolu + son volume de kills (id en string : > 2^53). */
+export interface AdminWeaponCoverageItem {
+  weapon_id: string
+  kills: number
+}
+
+/** Couverture de la résolution d'arme d'un titre (diagnostic registre/labels). */
+export interface AdminWeaponCoverage {
+  title_slug: string
+  generated_at: string
+  distinct_weapons: number
+  resolved_registry: number
+  resolved_label: number
+  unresolved: number
+  coverage_percent: number
+  registry_percent: number
+  top_unresolved: AdminWeaponCoverageItem[]
+}
+
+/**
+ * Couverture de résolution d'arme pour un titre donné. Le slug est passé en
+ * query (?title=) — autoritaire, indépendant du titre courant : un seul panneau
+ * affiche tous les titres côte à côte.
+ */
+export function useWeaponCoverage(titleSlug: string) {
+  return useQuery({
+    queryKey: queryKeys.adminWeaponCoverage(titleSlug),
+    queryFn: () =>
+      api.get<AdminWeaponCoverage>(
+        `/admin/monitoring/weapon-coverage?title=${encodeURIComponent(titleSlug)}`,
+      ),
+    enabled: !!titleSlug,
+    // Référentiel + agrégat de kills : pas de polling, cache tranquille.
+    staleTime: 60_000,
+    retry: false,
+  })
+}
+
 export function useAdminJobs(limit = 20) {
   return useQuery({
     queryKey: queryKeys.adminMonitoringJobs,

@@ -25,8 +25,9 @@
    - `weapon_families` : référentiel des familles cross-titre (clé → libellés FR/EN).
 2. **Resolver** = passage principal : `(titre, id_kind, id_value) → weapon_key → {nom, FR, class, family, faction, damage_type, extra}`.
    Remplace progressivement `weapon_labels` + `weapon_data.go` (migration anti-corruption, §8).
-3. **4 dimensions** par arme : `class` (poing/épaule/lourde + melee/grenade), `family` (rôle cross-titre), `faction`
-   (humaine/covenante/forerunner/parias), `damage_type` (ballistic/plasma/hardlight/spike/shock/explosive…). Extensible.
+3. **5 dimensions** par arme : `class` (poing/épaule/lourde + melee/grenade = MANIPULATION), `role` (automatic/precision/
+   sniper/shotgun/sidearm/power/special/melee/grenade = FONCTION DE COMBAT), `family` (identité précise cross-titre),
+   `faction` (humaine/covenante/forerunner/parias), `damage_type` (ballistic/plasma/hardlight/spike/shock/explosive…). Extensible.
 4. **Append-only + `extra` JSON** → extensible sans migration (TTK, cadence, portée… le jour venu).
 5. **Table de classification VÉRIFIÉE** §6 (halopedia + wiki.halo.fr, sourcée par arme).
 6. **UI = différée** (narration TBD). On livre la fondation (P1→P5), pas le surfaçage.
@@ -47,12 +48,13 @@ Le TOML reste comme **source de seed** (versionné Git, revue produit), mais la 
 
 ---
 
-## 2. Les 4 dimensions
+## 2. Les 5 dimensions
 
 | Dimension | Valeurs | Note |
 |---|---|---|
-| `class` | sidearm (poing), shoulder (épaule), heavy (lourde), melee, grenade | la plus faible (« lourde » ≈ power-weapon déjà affiché), mais demandée. |
-| `family` | clé de rôle cross-titre (`battle_rifle`, `assault_rifle`, `dmr`, `sniper_rifle`, `rocket_launcher`…) | **valeur multi-titre** : compare BR75 (HINF) ↔ Battle Rifle (H5). |
+| `class` | sidearm (poing), shoulder (épaule), heavy (lourde), melee, grenade | **MANIPULATION** (prise en main). Demandée par le user (poing/épaule/lourde). |
+| `role` | automatic, precision, sniper, shotgun, sidearm, power, special, melee, grenade | **FONCTION DE COMBAT** (« pression vs précision »). Ajoutée 2026-06-23 : donne le regroupement large même quand la `family` est unique. class & role coïncident pour poing/mêlée/grenade, **divergent** pour épaule (precision vs automatic) et lourde (sniper/shotgun/power/special). |
+| `family` | identité précise cross-titre (`battle_rifle`, `assault_rifle`, `dmr`, `sniper_rifle`, `rocket_launcher`…) | **valeur multi-titre** : compare la MÊME arme entre jeux (BR75 HINF ↔ Battle Rifle H5). Souvent unique (forerunner H5) → c'est `role` qui regroupe. |
 | `faction` | human, covenant, forerunner, banished | **par ORIGINE de conception**, pas le porteur (Épée = covenant même si portée par les Parias). Parias absents de H5. |
 | `damage_type` | ballistic/kinetic, plasma, hardlight, spike, shock/voltaic, explosive, incendiary, particle_beam, gravitic… | rempli **quand documenté** ; extensible. |
 
@@ -74,7 +76,8 @@ CREATE TABLE weapons (
   title_slug   VARCHAR NOT NULL,   -- titre de CETTE entrée
   name         VARCHAR NOT NULL,   -- nom propre du jeu (EN), ex. "BR75"
   name_fr      VARCHAR,            -- traduction FR officielle (wiki.halo.fr)
-  class        VARCHAR,            -- sidearm|shoulder|heavy|melee|grenade
+  class        VARCHAR,            -- sidearm|shoulder|heavy|melee|grenade (MANIPULATION)
+  role         VARCHAR,            -- automatic|precision|sniper|shotgun|sidearm|power|special|melee|grenade (FONCTION DE COMBAT)
   family_key   VARCHAR,            -- FK weapon_families (cross-titre) ; NULL = non regroupé
   faction      VARCHAR,            -- human|covenant|forerunner|banished
   damage_type  VARCHAR,            -- ballistic|plasma|hardlight|spike|shock|explosive|... (nullable)
@@ -102,10 +105,15 @@ CREATE TABLE weapon_families (
 );
 ```
 
-- **Append-only** (`weapons`, `weapon_ids`) : conforme à la doctrine anti-ART du projet (cf. ADR 0026) ; lecture via
-  `<table>_latest`. Un re-seed = INSERT d'une nouvelle génération, jamais UPDATE/DELETE indexé.
+- **DÉCISION D'IMPLÉMENTATION (P2, 2026-06-23)** : finalement **PK simple + `INSERT OR IGNORE`** (pas append-only `_latest`),
+  comme `weapon_labels.go` / `career_ranks` / `mode_name_tr`. Justification : c'est un **référentiel STATIQUE** seedé au boot
+  (zéro writer concurrent, zéro UPDATE per-match) → **hors périmètre du bug ART #23046**, qui ne frappe que les tables d'état
+  mutées sous pression concurrente. L'append-only/`_latest` n'apporterait rien ici sauf de la complexité de lecture. PK :
+  `weapons` = (title_slug, weapon_key) ; `weapon_ids` = (title_slug, id_kind, id_value) ; `weapon_families` = (family_key).
+  Une re-classification rare = migration corrective nommée (comme `fix_super_fiesta_fr_label`). L'extensibilité voulue (TTK…)
+  passe par `extra` JSON, **pas** par l'append-only.
 - **`id_value` en VARCHAR** : certains weapon_id filmshell dépassent 2^63 (cf. `weapon_data.go`) et les ids H5/CMS sont des
-  UUID/strings → on stocke en string, cast au besoin.
+  UUID/strings → on stocke en string (filmshell = décimal via `strconv.FormatUint`), cast au besoin.
 
 ---
 
@@ -176,7 +184,7 @@ type Registry interface {
 | Disruptor | sidearm | disruptor | banished | shock | Disrupteur | Sicatt Workshop |
 | Mangler | sidearm | mangler | banished | spike | Déchiqueteur | Ukala Workshop |
 | Pulse Carbine | shoulder | pulse_carbine | covenant | plasma | Carabine à impulsion | Lodam Armory |
-| Stalker Rifle | shoulder | dmr | covenant | plasma | Fusil traqueur | Merchants of Qikost |
+| Stalker Rifle | shoulder | stalker_rifle | covenant | plasma | Fusil traqueur | Merchants of Qikost |
 | Vestige Carbine | shoulder | carbine | covenant | plasma | Vestige Carbine | (restaurateurs Sangheili) |
 | Frag Grenade | grenade | frag_grenade | human | explosive | Grenade à fragmentation | Misriah Armory |
 | Plasma Grenade | grenade | plasma_grenade | covenant | plasma | Grenade à plasma | — |
@@ -284,12 +292,13 @@ moyenne H5 »), filtre Explorer par famille/faction. Honnêteté : armes non map
 |---|---|---|
 | **P0 — Plan** (ce doc) | Schéma BDD + table vérifiée §6 + cadrage UI-différé | validé user |
 | **P1 — Vérif data** | halopedia + wiki.halo.fr (FAIT 2026-06-23, §6 sourcée) | table figée |
-| **P2 — Schéma + seed** | 3 tables (migration metadata, append-only) + seed TOML/Go depuis §6 + réconciliation ids (§7) | tables seedées, valides |
-| **P3 — Resolver + tests** | package `weaponregistry` + repo lecture + tests | `ByID` marche, CI verte |
-| **P4 — Migration lecteurs** | bascule progressive des lookups weapon vers le registre (§8), golden parity | callers basculés sans régression |
+| **P2 — Schéma + seed** | 3 tables (migration metadata `add_weapon_registry`, PK simple) + seed Go depuis §6 (42 familles + 59 armes + 36 filmshell ids Infinite) | **FAIT** (tables seedées, tests verts `weapon_registry_test.go`) |
+| **P2bis — ids H5** | réconciliation `stock_id` H5 (catalogue officiel `weapon_labels` metadata H5) dans `weapon_ids` | **FAIT** (35 stock_ids + variantes, tests verts) |
+| **P3 — Resolver + tests** | package `weaponregistry` + repo lecture + tests | **FAIT** (`ByID`/`ByKey`/`Family`, tests verts, log boot weapon_registry_loaded) |
+| **P4 — Enrichir les lecteurs** | les donuts/« outils de destruction » marchent DÉJÀ pour LES DEUX titres (weapon_kills + résolution de nom via `weapon_labels` par titre : filmshell HINF, stock_id H5). P4 = leur AJOUTER les nouvelles dims (class/role/family/faction) du registre + unifier la résolution (fallback `weapon_labels` pour le catalogue complet : grenades/Spartan/véhicules hors seed curé) | **DIFFÉRÉ** : le surfaçage des nouvelles dims dépend de la narration UI (non décidée). Le registre **enrichit**, il ne remplace pas la résolution de nom existante. |
 | **P5 — (DIFFÉRÉ) UI** | donut/comparaison selon narration user | hors-scope tant que narration TBD |
 
-**Livrable demandé = P0→P4** (fondation + passage principal, sans UI). P5 = chantier piloté par la narration.
+**Livré = P0→P3 + P2bis** (fondation + passage principal seedé + resolver, sans UI). **P4 + P5 = différés, pilotés par la narration UI** (décision user 2026-06-23).
 
 ---
 

@@ -1345,11 +1345,21 @@ export interface SynthesisPageResponse {
   detailed_stats?: SynthesisDetailedStats
   // Top frags par arme (label résolu, weapon ID non-résolu exclus)
   top_weapon_kills?: SynthesisWeaponKillEntry[]
+  // Frags par rôle de combat (registre d'armes) — title-agnostic
+  kills_by_role?: SynthesisRoleKillEntry[]
   // PLAN_COMBAT_PROFILE_WIRING Phase 1
   combat_profile?: CombatProfileBlock | null
 }
 
 export type SynthesisWeaponKillEntry = components['schemas']['SynthesisWeaponKillEntry']
+
+// Frags par rôle de combat (registre d'armes). Hand-maintained (pas dans openapi) :
+// la réponse synthèse est hand-maintained ici. role ∈ automatic|precision|sniper|
+// shotgun|sidearm|power|special|melee|grenade.
+export interface SynthesisRoleKillEntry {
+  role: string
+  kills: number
+}
 
 // Sprint 55 D9 — Scope
 export type SynthesisScope = components['schemas']['SynthesisScope']

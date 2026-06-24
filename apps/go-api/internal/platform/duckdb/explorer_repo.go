@@ -543,44 +543,24 @@ func (r *ExplorerRepo) resolveWeaponLabels(ctx context.Context, weapons []domain
 	if len(weapons) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return
 	}
-	ids := make([]string, 0, len(weapons))
+	ids := make([]int64, 0, len(weapons))
 	for _, w := range weapons {
-		ids = append(ids, strconv.FormatUint(uint64(w.WeaponID), 10)) //nolint:gosec
+		ids = append(ids, w.WeaponID)
 	}
-	q := fmt.Sprintf( //nolint:gosec — IDs numériques contrôlés
-		`SELECT weapon_id, name_fr, name_en FROM weapon_labels WHERE weapon_id IN (%s)`,
-		strings.Join(ids, ","),
-	)
-	rows, err := r.pdb.Metadata.Query(ctx, q)
-	if err != nil {
-		return
-	}
-	defer rows.Close()
-	type lbl struct{ fr, en string }
-	byID := make(map[string]lbl, len(weapons))
-	for rows.Next() {
-		var wid UBigint
-		var nameFR, nameEN sql.NullString
-		if scanErr := rows.Scan(&wid, &nameFR, &nameEN); scanErr != nil {
-			continue
-		}
-		byID[strconv.FormatUint(uint64(wid), 10)] = lbl{fr: nameFR.String, en: nameEN.String} //nolint:gosec
-	}
+	// PASSAGE PRINCIPAL P4 : nom via le registre + weapon_labels (parité). label =
+	// name_fr>name_en (= LabelFR) ; LabelEN = name_en sinon le label FR (parité avec
+	// l'ancien COALESCE inversé).
+	meta := resolveWeaponMeta(ctx, r.pdb.Metadata, r.pdb.TitleSlug, ids)
 	for i := range weapons {
-		idStr := strconv.FormatUint(uint64(weapons[i].WeaponID), 10) //nolint:gosec
-		l, ok := byID[idStr]
-		if !ok {
+		m, ok := meta[weapons[i].WeaponID]
+		if !ok || m.label == "" {
 			continue
 		}
-		if l.fr != "" {
-			weapons[i].LabelFR = l.fr
-		} else if l.en != "" {
-			weapons[i].LabelFR = l.en
-		}
-		if l.en != "" {
-			weapons[i].LabelEN = l.en
-		} else if l.fr != "" {
-			weapons[i].LabelEN = l.fr
+		weapons[i].LabelFR = m.label
+		if m.nameEN != "" {
+			weapons[i].LabelEN = m.nameEN
+		} else {
+			weapons[i].LabelEN = m.label
 		}
 	}
 }

@@ -181,8 +181,8 @@ func (s *SynthesisService) GetSynthesisPage(
 	// P9 : fun stats depuis personal_score_awards (requete separee, erreur non fatale)
 	s.applyFunStatsToDetailedStats(ctx, &detailedStats, filteredCanon)
 
-	// Frags par arme : best-effort, ignoré si repo absent ou capability manquante.
-	topWeaponKills := s.loadTopWeaponKills(ctx, filteredCanon)
+	// Frags par arme + par rôle (registre) : best-effort, ignoré si repo absent.
+	topWeaponKills, killsByRole := s.loadTopWeaponKills(ctx, filteredCanon)
 
 	scope := domain.SynthesisScope{
 		Period:         period,
@@ -215,6 +215,7 @@ func (s *SynthesisService) GetSynthesisPage(
 		Breakdowns:        breakdowns,
 		DetailedStats:     detailedStats,
 		TopWeaponKills:    topWeaponKills,
+		KillsByRole:       killsByRole,
 		CombatProfile:     combatProfile,
 	}, nil
 }
@@ -270,19 +271,21 @@ func (s *SynthesisService) applyFunStatsToDetailedStats(
 	detailedStats.TotalHijacks = funStats.TotalHijacks
 }
 
-// loadTopWeaponKills agrège les frags par arme sur le scope filtré (top 20).
-// Best-effort : nil si repo absent ou capability manquante.
+// loadTopWeaponKills agrège, sur le scope filtré, les frags par arme (top 20) ET
+// par rôle de combat (registre d'armes). Une seule requête (ResolveRoles=true
+// renseigne row.Role). Best-effort : (nil, nil) si repo absent ou capability
+// manquante.
 func (s *SynthesisService) loadTopWeaponKills(
 	ctx context.Context, filteredCanon []canonical.PlayerMatchRow,
-) []domain.SynthesisWeaponKillEntry {
+) ([]domain.SynthesisWeaponKillEntry, []domain.SynthesisRoleKillEntry) {
 	if s.weaponKillsRepo == nil || s.gamertag == "" || len(filteredCanon) == 0 {
-		return nil
+		return nil, nil
 	}
 	matchIDs := make([]string, 0, len(filteredCanon))
 	for _, r := range filteredCanon {
 		matchIDs = append(matchIDs, r.Summary.MatchID)
 	}
-	wf := port.WeaponKillFilters{MatchIDs: matchIDs, Gamertag: s.gamertag}
+	wf := port.WeaponKillFilters{MatchIDs: matchIDs, Gamertag: s.gamertag, ResolveRoles: true}
 	rows, err := s.weaponKillsRepo.LoadWeaponKillsAggregated(ctx, s.titleSlug, wf)
 	if err != nil {
 		// ErrCapabilityNotSupported = légitime (titre sans table weapon_kills) → Debug.
@@ -297,9 +300,9 @@ func (s *SynthesisService) loadTopWeaponKills(
 				"title", s.titleSlug, "gamertag", s.gamertag,
 				"match_count", len(matchIDs), "err", err)
 		}
-		return nil
+		return nil, nil
 	}
-	return buildTopWeaponKills(rows, 20)
+	return buildTopWeaponKills(rows, 20), buildKillsByRole(rows)
 }
 
 // =============================================================================

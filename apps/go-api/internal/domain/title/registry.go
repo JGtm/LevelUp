@@ -28,12 +28,18 @@ const (
 type Capability string
 
 const (
-	CapMatchmaking  Capability = "matchmaking"
-	CapFirefight    Capability = "firefight"
-	CapForge        Capability = "forge"
-	CapMedia        Capability = "media"
-	CapRanked       Capability = "ranked"
-	CapCareer       Capability = "career"
+	CapMatchmaking Capability = "matchmaking"
+	CapFirefight   Capability = "firefight"
+	CapForge       Capability = "forge"
+	CapMedia       Capability = "media"
+	CapRanked      Capability = "ranked"
+	CapCareer      Capability = "career"
+	// CapSeasonPass — progression de pass saisonnier / Battlepass (Halo Infinite).
+	// Absente ⇒ la page career/season-pass dégrade en FeatureUnavailable + l'onglet
+	// « Pass saisonnier » est masqué. Halo 5 ne l'expose PAS (pas de Battlepass ;
+	// l'inventaire REQ personnel n'est pas servi — sonde 404 — donc aucune surface
+	// de remplacement câblée).
+	CapSeasonPass   Capability = "season_pass"
 	CapAssetImages  Capability = "asset.images" // Asset Drawer — thumbnails maps & armes
 	CapAchievements Capability = "achievements" // Xbox achievements bilingues (page Achievements)
 	CapEngagement   Capability = "engagement"   // Score d'engagement intra-match + coefficients personnels
@@ -194,7 +200,7 @@ func NewRegistry() *Registry {
 		Status:   StatusActive,
 		Capabilities: []Capability{
 			CapMatchmaking, CapFirefight, CapForge,
-			CapMedia, CapRanked, CapCareer, CapAssetImages,
+			CapMedia, CapRanked, CapCareer, CapSeasonPass, CapAssetImages,
 			CapAchievements, CapEngagement, CapLUSR, CapWorldLeaderboard,
 		},
 		IsDefault:        true,
