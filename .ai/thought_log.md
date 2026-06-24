@@ -30,7 +30,9 @@ Suite de D1/D2-v1. Le user a refusé la moyenne plate (v1) et insisté : un « e
 
 **v1 retiré** : le fallback hist-avg dans `MatchStatCards` est supprimé (les cartes lisent `expected_kills/deaths` du modèle, label sur le flag). Le hist-avg reste pour la ligne « moyenne » du graphe (feature distincte). Routage : H5 stocké = chemin DB (repo-first) → le modèle s'applique ; canonical (live non-synchro) = ExpectedStats vide (gap pré-existant).
 
-**Drawer (expander scoreboard)** : les K/D du modèle sont propagés sur la ligne `is_me` du scoreboard (`ScoreboardRaw.LocallyEstimated` + `MatchScoreboardRow.LocallyEstimated` + openapi/types ; copie team builder ; propagation data_loaders avant `buildTeamTabFull`) → le drawer affiche attendu vs réel sur les 3 stats + label, cohérent avec les cartes. **Limité au is_me** (seul joueur dont l'historique est chargé). Les K/D des **amis trackés** dans le drawer = extension différée (nécessite charger leur historique OU persister un modèle durée ; leurs assists attendus marchent déjà via `friendsExtras`).
+**Drawer (expander scoreboard)** : les K/D du modèle sont propagés sur la ligne du scoreboard (`ScoreboardRaw.LocallyEstimated` + `MatchScoreboardRow.LocallyEstimated` + openapi/types ; copie team builder) → le drawer affiche attendu vs réel sur les 3 stats + label, cohérent avec les cartes.
+- **is_me** : propagé depuis `summary.ExpectedStats` (historique déjà chargé).
+- **Amis trackés** : helper `localExpectedKD` extrait de `buildExpectedStats` (DRY) + boucle data_loaders qui charge `GetHistoryForAvg(friendXuid)` (lit SHARED → marche pour tout xuid synchronisé) et applique le même modèle. Limité aux xuids présents dans `friendsExtras` (synchronisés ; l'historique d'un non-tracké = matchs communs seulement → biaisé). Skip si l'API a déjà fourni les K/D (Infinite). Correction : il n'y avait AUCUNE barrière de formule/données pour les amis — juste un appel repo à ajouter (mauvaise estimation initiale).
 
 **Validation** : go build + test service (modèle OLS `match_view_expected_kd_test.go` + radar) + test duckdb (history/Q29) verts ; typecheck + eslint + vitest match-view 121 verts.
 

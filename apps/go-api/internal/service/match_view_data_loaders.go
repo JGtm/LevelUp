@@ -367,6 +367,33 @@ func (s *MatchViewService) buildMatchViewFromData(
 			friendsExtras = s.friendsExtras(ctx, matchID, gvn, xuids)
 		}
 	}
+	// Même modèle local (count∝durée) pour les AMIS TRACKÉS : leur historique
+	// complet est dans shared (joueur synchronisé), chargeable par xuid. On le
+	// charge et on pose l'expected K/D sur leur ligne → le drawer affiche attendu
+	// vs réel pour eux aussi (cohérent avec is_me). Limité aux xuids présents dans
+	// friendsExtras (synchronisés ; l'historique d'un non-tracké ne contiendrait
+	// que les matchs communs avec l'escouade → échantillon biaisé). Skip si l'API
+	// a déjà fourni les K/D (Infinite).
+	if curDurSec > 60 && len(friendsExtras) > 0 {
+		for i := range d.scoreboard {
+			xuid := d.scoreboard[i].XUID
+			if xuid == s.xuid || d.scoreboard[i].KillsExpected != nil {
+				continue
+			}
+			if _, tracked := friendsExtras[xuid]; !tracked {
+				continue
+			}
+			fh, err := s.repo.GetHistoryForAvg(ctx, xuid)
+			if err != nil || len(fh) == 0 {
+				continue
+			}
+			if ek, ed, ok := localExpectedKD(fh, meta, curDurSec); ok {
+				d.scoreboard[i].KillsExpected = ek
+				d.scoreboard[i].DeathsExpected = ed
+				d.scoreboard[i].LocallyEstimated = true
+			}
+		}
+	}
 	team := buildTeamTabFull(d.scoreboard, d.kvPairs, d.encounters, d.encounterStats, d.bulkMedals, d.bulkWeapons, s.xuid, s.titleSlug, d.enrich, d.skillRank, friendsExtras, d.sharedCSRs, s.assetURL)
 	mediaTab := buildMediaTab(d.media)
 
