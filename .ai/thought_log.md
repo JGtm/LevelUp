@@ -1,3 +1,14 @@
+## [2026-06-24] H5 — CSR par match câblé au live + audit de correspondance HI vs H5 — En cours
+
+CSR live : `Deps.PostScore` reçoit désormais `src` ; après enrichment+LUSR il appelle `livesync.PersistPerMatchCSR(src, playerDB, shared, gamertag, insertedMatchIDs)` (helper partagé csr_match.go) → ré-fetch le carnage des nouveaux matchs CLASSÉS → CurrentCsr → match_skill_rank CSR. Rend l'app autonome sur le CSR (les nouveaux matchs classés affichent le CSR sans backfill manuel). Best-effort, build+tests verts.
+
+AUDIT correspondance enrichments HI vs H5 (player DB JGtm, counts) :
+- player_match_enrichment : CORRESPONDANCE MAXIMALE (perf 1909, sessions 1970, engagement 1790, pace/activity 1800, mode_category 1800, performance_chain 1909, dominance 575, is_with_friends 1399). Vides = known_teammates_count/friends_xuids (réservées, JAMAIS peuplées même en HI) + teammates_signature (vestigial, recalculé live par session_recalc).
+- ✅ match_skill_rank (LUSR+CSR), player_csr_snapshots (pic+courant).
+- N/A by design : match_citations (HI 6302/H5 0 — H5=commendations natives), battlepass_snapshots/challenge_snapshots (REQ packs, pas de défis).
+- Data-limited : personal_score_awards (carnage sans breakdown objectif), player_assists_model (pas de damage_taken).
+- CLOSABLES (HI peuplé, H5 0) : career_progression (1137 — SR dans carnage XpInfo, mais H5 career servi LIVE), lusr_component_history (954 — détail LUSR non écrit par le path H5), Progression V2 streak/record_history/milestone_earned/skill_history (1/19/10/1 — pipeline Ascension Infinite-only, gros), player_achievements (821 — API succès Xbox, fetch séparé). À arbitrer avec le user (Progression V2 = sous-système).
+
 ## [2026-06-23] H5 — CORRECTION : le CSR par match EST disponible (j'avais conclu trop vite) — En cours
 
 Le user a (à raison) contesté ma conclusion "CSR data-limited". Vérif rigoureuse (recherche doc officielle haloapi.com + sonde réponse BRUTE du carnage) :
