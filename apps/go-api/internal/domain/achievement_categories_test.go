@@ -92,8 +92,26 @@ func TestAchievementCategoryFor_Limits(t *testing.T) {
 		t.Errorf("nom inconnu: attendu (other, true), obtenu (%q, %v)", got, unmapped)
 	}
 
-	got, unmapped = AchievementCategoryFor("halo_5", "Clocking In")
+	// Titre RÉELLEMENT absent du registre (ni halo_infinite ni halo_5) → ("", false).
+	got, unmapped = AchievementCategoryFor("halo_unmapped_title", "Clocking In")
 	if got != "" || unmapped {
 		t.Errorf("titre sans mapping: attendu (\"\", false), obtenu (%q, %v)", got, unmapped)
+	}
+}
+
+// TestAchievementCategoryFor_Halo5 : le mapping halo_5 (architecture réutilisée)
+// résout les 3 catégories par name_en normalisé.
+func TestAchievementCategoryFor_Halo5(t *testing.T) {
+	cases := map[string]AchievementCategory{
+		"Into the Fire": AchievementCategoryCampaign,    // mission de campagne
+		"Cry Havoc":     AchievementCategoryMultiplayer, // Warzone matchmaking
+		"Your Style":    AchievementCategoryOther,       // customisation Spartan
+	}
+	for name, want := range cases {
+		got, unmapped := AchievementCategoryFor("halo_5", name)
+		if got != want || unmapped {
+			t.Errorf("AchievementCategoryFor(halo_5, %q) = (%q, %v), attendu (%q, false)",
+				name, got, unmapped, want)
+		}
 	}
 }

@@ -37,6 +37,7 @@ import (
 // OwnsTarget ; les autres targets passent par le fallback HINF complet).
 func metadataStepNames() []string {
 	return []string{
+		"h5_add_xbox_achievement_definitions",
 		"h5_add_asset_translations",
 		"h5_add_medal_definitions",
 		"h5_add_weapon_labels",
@@ -53,6 +54,33 @@ func metadataStepNames() []string {
 // helpers de lecture et le drain de catalogue à l'identique.
 func MetadataSteps() []migration.Migration {
 	return []migration.Migration{
+		{
+			Name:        "h5_add_xbox_achievement_definitions",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Halo 5 — xbox_achievement_definitions (référentiel succès Xbox h5, bilingue EN/FR, title_id=219630713 dès la création ; vide → cmd/levelup sync-achievements --title halo_5). Même forme que le référentiel HINF (brique metadata commune).",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS xbox_achievement_definitions (
+						achievement_id   VARCHAR PRIMARY KEY,
+						name_en          VARCHAR NOT NULL DEFAULT '',
+						name_fr          VARCHAR NOT NULL DEFAULT '',
+						description_en   VARCHAR,
+						description_fr   VARCHAR,
+						locked_desc_en   VARCHAR,
+						locked_desc_fr   VARCHAR,
+						gamerscore       INTEGER NOT NULL DEFAULT 0,
+						image_url        VARCHAR,
+						is_secret        BOOLEAN NOT NULL DEFAULT FALSE,
+						rarity_category  VARCHAR,
+						rarity_percent   FLOAT,
+						title_id         VARCHAR DEFAULT '',
+						xbox_title_id    VARCHAR DEFAULT '',
+						service_config_id VARCHAR DEFAULT '',
+						fetched_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					);
+				`)
+			},
+		},
 		{
 			Name:        "h5_add_asset_translations",
 			TargetDB:    migration.TargetMetadata,

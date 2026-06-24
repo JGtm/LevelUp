@@ -44,6 +44,15 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 		slog.DebugContext(ctx, "achievements: provider nil — sync ignorée", "gamertag", e.gamertag)
 		return false
 	}
+	// Gate title-agnostic (skill arch-rules) : ne tenter le fetch Xbox que si le
+	// titre déclare la capability achievements. Un futur titre sans succès Xbox
+	// (xbox_title_id absent → fetch voué à l'échec) est skippé proprement, sans
+	// brancher sur slug==literal. HINF + Halo 5 la déclarent → comportement inchangé.
+	if desc := titlePkg.DefaultRegistry().Get(e.titleSlug); desc != nil && !desc.HasCapability(titlePkg.CapAchievements) {
+		slog.DebugContext(ctx, "achievements: capability absente — sync ignorée",
+			"gamertag", e.gamertag, "title_slug", e.titleSlug)
+		return false
+	}
 
 	// Résoudre l'access_token depuis sync_meta DuckDB.
 	accessToken, err := resolveAccessTokenFromDB(ctx, playerDB, e.gamertag, e.provider)
