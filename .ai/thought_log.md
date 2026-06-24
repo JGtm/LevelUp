@@ -1,3 +1,7 @@
+## [2026-06-24] Gate delivery P4 + fix drift OpenAPI (SynthesisRoleKillEntry) — Complété
+
+Avant de déclarer P4 livré : `go vet ./internal/...` (clean) + suite complète `go test ./internal/...` non-intégration. UN échec : `TestOpenAPISchemaDrift_AggregatesAndReports` — `SynthesisRoleKillEntry` (schéma servi par Huma depuis le donut rôle) MANQUANT dans `openapi.yaml` (drift introduit au commit 34cd99253, jamais corrigé car je n'avais pas lancé la suite complète à l'époque). Les 20 « DIVERGENT » (dont SynthesisPageV2Response, MatchParticipant, TeammatesPageResponse) sont tolérés (report-only) ; seul MISSING fait échouer. Fix : ajout du schéma `SynthesisRoleKillEntry` + champ `kills_by_role` dans `SynthesisPageV2Response` (openapi.yaml manuel). Test re-vert, suite complète : 0 FAIL. Leçon : lancer `go test ./internal/...` complet (pas juste le package touché) avant de committer un nouveau champ de réponse.
+
 ## [2026-06-23] P4 — resolver d'arme unifié (passage principal) + route weapon_kills — Complété (slice 1)
 
 P4 = router la résolution d'arme par le registre. **Décision user : noms INCHANGÉS (« genre BR75 »)** → parité PURE. Audit fan-out (6 agents, workflow) : backend-only (le front reçoit des noms pré-résolus, fallback décimal), surface concentrée dans ~5 fonctions, fallback `weapon_labels` obligatoire (sentinels 0/1/2, grenades, Mutilator/Sandwich, variantes — hors registre curé). Plan : `.ai/PLAN_P4_WEAPON_RESOLUTION.md`.
