@@ -16,6 +16,7 @@ const FEATURE_LABEL: Record<TitleCapability, { fr: string; en: string }> = {
   media: { fr: 'les médias', en: 'media' },
   ranked: { fr: 'le classé (CSR)', en: 'ranked (CSR)' },
   career: { fr: 'la carrière', en: 'career' },
+  season_pass: { fr: 'le pass saisonnier', en: 'the season pass' },
   'asset.images': { fr: 'les visuels d assets', en: 'asset images' },
   achievements: { fr: 'les succès', en: 'achievements' },
   engagement: { fr: 'l engagement intra-match', en: 'intra-match engagement' },

@@ -18,6 +18,7 @@ export const TITLE_CAPABILITIES = [
   'media',
   'ranked',
   'career',
+  'season_pass',
   'asset.images',
   'achievements',
   'engagement',

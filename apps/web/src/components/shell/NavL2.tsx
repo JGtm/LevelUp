@@ -36,10 +36,12 @@ const CAREER_TABS = [
 // par « Commendations » (totaux à vie natifs). Le slug courant est le SEUL signal
 // front pour distinguer h5 : aucune capability COARSE ne le fait (Infinite les
 // déclare toutes) et `commendations.native` est une capability FINE non exposée au nav.
+// Halo 5 n'a PAS de pass saisonnier / Battlepass (capability `season_pass` absente).
+// L'inventaire REQ personnel n'étant pas servi (sonde 404), aucune surface de
+// remplacement n'est câblée → pas d'onglet « Pass saisonnier » pour h5.
 const CAREER_TABS_H5 = [
   { label: 'Progression', path: '/players/$playerSlug/career' },
   { label: 'Commendations', path: '/players/$playerSlug/commendations' },
-  { label: 'Pass saisonnier', path: '/players/$playerSlug/career/season-pass' },
 ] as const
 
 // Communauté : aligné sur le dropdown L1 (NavL1 section 'community'). Face-à-face

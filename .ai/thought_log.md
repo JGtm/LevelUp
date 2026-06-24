@@ -1,3 +1,24 @@
+## [2026-06-24] REQ packs = abandonnés (décision user) + fix canonique gating pass saisonnier title-aware — Complété
+
+Décision user post-sonde : « laisser tomber comme le leaderboard » (jeu inactif + inventaire REQ personnel mort). On NE construit PAS de surface REQ. On corrige seulement le bug de structure canonique : la page `career/season-pass` (Battlepass HI) était gatée sur la capability GROSSE `career` que **H5 possède** → H5 montait à tort la page Battlepass HI (alors que H5 n'a pas de pass).
+
+Fix = capability grosse DÉDIÉE `season_pass` (HI l'a, H5 non) :
+- Backend : `CapSeasonPass = "season_pass"` (registry.go) ajoutée à la liste hardcodée HI + à `knownCapabilities` (config_loader.go). H5 ne la liste pas dans son title.toml → bootstrap ne l'expose pas pour H5.
+- Front : `'season_pass'` dans `TITLE_CAPABILITIES` (+ libellé FR/EN dans `FeatureUnavailable`) ; route `career/season-pass` gatée `capability="season_pass"` (au lieu de `career`) → H5 = FeatureUnavailable au lieu du Battlepass HI ; onglet L1 « Pass saisonnier » porte `capability:'season_pass'` (déjà filtré par `NavL1.tabVisible`) ; retrait de l'onglet « Pass saisonnier » de `CAREER_TABS_H5` (NavL2, sélection par slug existante). HI inchangé (NO-OP mono-titre : HI déclare la capability).
+
+Gate : go build + tests `internal/domain/title` / middleware / handlers (season-pass, bootstrap, capability) verts ; front typecheck + eslint + vitest (NavL1 + capabilities, 20/20) verts. probe-h5 étendu (REQ targets) gardé comme trace de sonde (dev tool). Land main = GO user.
+
+## [2026-06-24] Sonde REQ interne (« sonde d'abord ») → catalogue VIVANT, inventaire joueur MORT — Complété (sonde)
+
+Extension de `cmd/probe-h5` (réutilise le helper auth testé `RefreshHaloTokensViaStoreFirst`, owner JGtm, SpartanToken v4 du store, retry public AADSTS90023) avec les endpoints REQ. Run read-only contre le clone runtime (`LEVELUP_REPO_ROOT=…/LevelUp-go-migration`, 9 tokens présents). Résultats :
+
+- **Catalogue `https://halo5api.svc.halowaypoint.com/en-us/reqs?auth=st` = HTTP 200, 1,42 Mo JSON.** Schéma par req : `id` (hex 32), `name`, `description`, `rarity` (Common/Rare/UltraRare/Legendary/Mythic), `mythic` (bool), `levelRequirement`, `certificationId`, `category` (Customization/…), `subCategory` (WeaponSkin/…), `imageUrl`/`smallIconUrl`/`largeIconUrl` (halocdn). **Catalogue REQ complet AUTO-DÉCOUVRABLE** — le piège « IDs non découvrables » de la recherche ne valait que pour (a) l'API officielle metadata (404 liste) et (b) les *packs* bundles, PAS le catalogue interne de reqs. Le host `halo5api.svc` est donc bien vivant (contre l'hypothèse « alias spartanstats »).
+- **Inventaire joueur = MORT** : `/h5/players/JGtm/packs` et `/cards` → **404** sur spartanstats.svc ET halo5api.svc (paths documentés Halo5Reqs). La progression REQ *personnelle* (packs ouverts, cartes possédées) n'est pas/plus servie publiquement — même sort que le leaderboard CSR.
+
+**Conséquence design (tranchée)** : page « progression REQ personnelle » = NON faisable (inventaire 404). Page **catalogue/collection REQ** (parcourir toutes les reqs par rareté/catégorie, données + icônes riches) = faisable, zéro seed manuel. C'est ce que peut être la surface « progression » H5 en remplacement du Battlepass HI absent. Reste le fix canonique du gating (season-pass gatée sur capability grossière `career` que H5 a → afficherait le Battlepass HI à tort). Décision de scope finale = au user.
+
+(probe-h5 étendu non committé — à inclure avec le travail REQ selon scope choisi.)
+
 ## [2026-06-24] Médailles H5 = déjà câblées de bout en bout (vérif, 0 code) + sonde REQ packs = blocker confirmé — Complété (vérif)
 
 **Médailles H5 — RIEN à construire, pipeline complet et title-agnostic** (vérifié couche par couche, contre la carte périmée qui disait « SetMedalSpriteResolver à câbler ») :
