@@ -19,7 +19,23 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
+	titlePkg "levelup/go-api/internal/domain/title"
 )
+
+// steaktacularMedalIDForTitle résout l'ID de la médaille "killing spree"
+// (DOMINATION/HUMILIATION via médaille) d'un titre. Title-aware (C6) : seul
+// Infinite a un ID câblé (MedalSteaktacularID) ; les autres titres retombent sur
+// la marge de score finale (analysis.ComputeScoreMarginDominance), déjà
+// title-agnostic. ""/halo_infinite → (id, true) ; tout autre titre → (0, false)
+// pour skipper la requête médaille (idempotent : l'ID HINF ne matche de toute
+// façon aucune médaille d'un autre catalogue → même résultat, sans requête morte).
+func steaktacularMedalIDForTitle(slug string) (int64, bool) {
+	if slug == "" || slug == titlePkg.DefaultSlug {
+		return analysis.MedalSteaktacularID, true
+	}
+	return 0, false
+}
 
 // BackfillDominanceFlags calcule et persiste le dominance_flag pour une liste de matchs.
 //
@@ -158,14 +174,20 @@ LIMIT 1`, matchID, xuid)
 }
 
 // loadSteaktacularByTeam retourne team_id → nombre de Steaktacular gagnées dans le match.
+// Title-aware (C6) : un titre sans médaille killing-spree câblée (≠ Infinite) skippe
+// la requête et retombe sur la marge de score (computeMatchDominanceFlag étape 1bis).
 func loadSteaktacularByTeam(ctx context.Context, db *sql.DB, matchID string) (map[int]int, error) {
+	medalID, ok := steaktacularMedalIDForTitle(ctxkeys.TitleSlug(ctx))
+	if !ok {
+		return map[int]int{}, nil
+	}
 	rows, err := db.QueryContext(ctx, `
 SELECT mp.team_id, SUM(me.count) AS total
 FROM medals_earned me
 JOIN match_participants mp
     ON mp.match_id = me.match_id AND mp.xuid = me.xuid
 WHERE me.match_id = ? AND me.medal_name_id = ?
-GROUP BY mp.team_id`, matchID, analysis.MedalSteaktacularID)
+GROUP BY mp.team_id`, matchID, medalID)
 	if err != nil {
 		return nil, err
 	}

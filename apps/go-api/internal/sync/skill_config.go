@@ -178,14 +178,18 @@ var LUSRChains = map[string]LUSRChainConfig{
 //  2. isFirefight    → "firefight"
 //  3. GetLUSRChain() → arena_slayer / arena_objectif / btb / chaos
 //  4. fallback       → arena_slayer (cohérent avec lusrChainForAssassin)
-func GetPerformanceChain(pairName string, isRanked, isFirefight bool) string {
+//
+// titleSlug (C6) rend la classification title-aware : un titre avec classifier
+// dédié (Halo 5) classe ses propres modes au lieu de les collapser dans la grille
+// Infinite. ""/halo_infinite → classifier défaut → byte-identique HINF.
+func GetPerformanceChain(titleSlug, pairName string, isRanked, isFirefight bool) string {
 	if isRanked {
 		return PerfChainRanked
 	}
 	if isFirefight {
 		return PerfChainFirefight
 	}
-	if c := GetLUSRChain(pairName); c != "" {
+	if c := GetLUSRChainForTitle(titleSlug, pairName); c != "" {
 		return c
 	}
 	return LUSRChainArenaSlayer

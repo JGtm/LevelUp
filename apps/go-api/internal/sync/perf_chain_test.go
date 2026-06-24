@@ -54,7 +54,7 @@ func TestGetPerformanceChain(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got := GetPerformanceChain(tc.pairName, tc.isRanked, tc.isFirefight)
+			got := GetPerformanceChain("", tc.pairName, tc.isRanked, tc.isFirefight)
 			if got != tc.want {
 				t.Errorf("GetPerformanceChain(%q, ranked=%v, ff=%v) = %q, want %q",
 					tc.pairName, tc.isRanked, tc.isFirefight, got, tc.want)
@@ -88,7 +88,7 @@ func TestGetPerformanceChain_NeverEmpty(t *testing.T) {
 	}
 	for _, p := range pairs {
 		for _, f := range flags {
-			got := GetPerformanceChain(p, f.ranked, f.firefight)
+			got := GetPerformanceChain("", p, f.ranked, f.firefight)
 			if got == "" {
 				t.Errorf("GetPerformanceChain(%q, ranked=%v, ff=%v) returned empty string (invariant violated)",
 					p, f.ranked, f.firefight)

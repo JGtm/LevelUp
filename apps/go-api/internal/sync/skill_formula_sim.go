@@ -11,6 +11,7 @@ import (
 	"math"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -367,7 +368,9 @@ func RunFormulaSim(
 		if match.PairName != nil {
 			pairName = *match.PairName
 		}
-		chain := GetLUSRChain(pairName)
+		// Title-aware (C6) : cohérent avec computeSkillRatingsBatch (le simulateur
+		// doit classer les modes comme le calcul réel). ""/halo_infinite → défaut.
+		chain := GetLUSRChainForTitle(ctxkeys.TitleSlug(ctx), pairName)
 		if chain == "" {
 			continue
 		}

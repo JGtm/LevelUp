@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"sort"
 	"time"
+
+	"levelup/go-api/internal/ctxkeys"
 )
 
 func computeRankPerformance(rank, teamMMR, enemyMMR float64, histMetrics map[string][]float64) *float64 {
@@ -204,7 +206,7 @@ func loadHistoryForPerf(ctx context.Context, sharedDB *sql.DB, xuid string) ([]h
 		if pairName.Valid {
 			pn = pairName.String
 		}
-		h.Chain = GetPerformanceChain(pn, isRanked, isFirefight)
+		h.Chain = GetPerformanceChain(ctxkeys.TitleSlug(ctx), pn, isRanked, isFirefight)
 		history = append(history, h)
 	}
 	if scanErrors > 0 {

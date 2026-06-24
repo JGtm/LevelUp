@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
+	"levelup/go-api/internal/ctxkeys"
 )
 
 type LUSRPlaylistPreview struct {
@@ -98,7 +100,7 @@ func batchComputeLUSRPreview(
 	oldStates := loadExistingLUSRStates(ctx, playerDB)
 
 	// Recompute depuis zéro (force=true, pas de seed).
-	results := computeSkillRatingsBatch(matches, participantsByMatch,
+	results := computeSkillRatingsBatch(ctxkeys.TitleSlug(ctx), matches, participantsByMatch,
 		map[string]*PlayerState{}, medalExploitByMatch)
 
 	// Agréger par playlist_group : dernier résultat chronologique = état final.
