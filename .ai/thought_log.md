@@ -1,3 +1,15 @@
+## [2026-06-24] H5 — Refonte title-agnostic C0→C7 : BILAN + handoff étape observable — Complété (code)
+
+Refonte title-agnostic H5 TERMINÉE côté code (branche feat/h5-enrichment-parity, poussée). Chantiers : C1 (progression V2 wiring) + C2-partiel + C2-full (handlers per-requête) + C3 (career_progression SR) + C4 (succès Xbox) + C5 (milestones) + C6 (constantes) + C7 (slug literals). C0 descopé (justifié). Tous build+vet+tests verts (api 13s, handlers 22s, sync 53s, duckdb 87s).
+
+ÉTAPE OBSERVABLE RESTANTE (opérationnelle, handoff user) : déclencher le backfill progression V2 (streaks/records/milestones) pour les 4 joueurs H5. PAS lancé en autonomie car :
+- L'endpoint est server-only (POST /api/v1/_admin/progression/backfill/{slug}, pas de CLI par design anti-lease-conflict).
+- Démarrer le serveur complet déclenche l'auto-sync (spnkr_auto_sync_enabled=true localement) → activité de sync live réelle (appels API Halo + écritures base) = opération à effets de bord à confirmer, pas à kicker en agent.
+- La donnée SE PEUPLE AUTOMATIQUEMENT au prochain sync live H5 (le hook cfg.ProgressionAfterSync est câblé dans le runner H5, commit C1) — le backfill manuel n'est qu'une accélération.
+Commande de déclenchement manuel (serveur up, titre H5 dans le header) :
+  curl -s -X POST -H 'X-LevelUp-Title: halo_5' http://127.0.0.1:8000/api/v1/_admin/progression/backfill/JGtm | jq
+  (idem Chocoboflor / Madina97294 / XxDaemonGamerxX ; idempotent ; diag de counts en retour). Vérif counts via GET .../diag/progression/{slug} ou l'outil diag_progression.
+
 ## [2026-06-24] H5 — Refonte title-agnostic : C7 slug literals + C0 (descopé, justifié) — Complété
 
 C7 (slug literals résiduels) — audit `"halo_infinite"` hardcodés. Classés :
