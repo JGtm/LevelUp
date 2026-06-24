@@ -1472,6 +1472,12 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 	// ROOT FIX assets Halo 5 : enregistre le set de migrations h5 (metadata ISOLÉE
 	// — référentiels h5 propres, zéro pollution HINF ; shared/player/… hérités du
 	// fallback HINF via OwnsTarget). DOIT précéder provisionAdditionalTitle(halo_5).
+	// Le set h5 possède SON milestone_catalog (schéma + seed) — il ne retombe pas
+	// sur le seed global multi-titres ; on injecte la racine config/titles/ AVANT
+	// Register pour que le seed h5 trouve config/titles/halo_5/milestones/catalog.toml.
+	if prestigeConfigDir != "" {
+		halo5migrations.SetMilestonesSeedRoot(filepath.Dir(prestigeConfigDir))
+	}
 	halo5migrations.Register()
 	// MT-07 : source title-owned des libellés de rangs de carrière (seed offline).
 	migration.SetCareerRankTranslationsProvider(halomigrations.CareerRankTranslations)

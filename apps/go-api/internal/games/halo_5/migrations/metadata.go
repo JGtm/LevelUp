@@ -38,6 +38,8 @@ import (
 func metadataStepNames() []string {
 	return []string{
 		"h5_add_xbox_achievement_definitions",
+		"h5_create_milestone_catalog",
+		"h5_seed_milestone_catalog",
 		"h5_add_asset_translations",
 		"h5_add_medal_definitions",
 		"h5_add_weapon_labels",
@@ -81,6 +83,10 @@ func MetadataSteps() []migration.Migration {
 				`)
 			},
 		},
+		// Milestones (Progression V2) — schéma + seed PROPRES à h5 (le set isolé ne
+		// retombe pas sur le create_milestone_catalog inline HINF ni le seed global).
+		milestoneCatalogSchemaStep(),
+		milestoneCatalogSeedStep(),
 		{
 			Name:        "h5_add_asset_translations",
 			TargetDB:    migration.TargetMetadata,
