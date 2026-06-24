@@ -26,6 +26,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/progression/coach_advisor"
 )
 
@@ -47,7 +48,7 @@ type CoachProposalsHandler struct {
 // NewCoachProposalsHandler construit le handler.
 func NewCoachProposalsHandler(resolve CoachAdvisorResolver, titleSlug string) *CoachProposalsHandler {
 	if titleSlug == "" {
-		titleSlug = "halo_infinite"
+		titleSlug = title.DefaultSlug
 	}
 	return &CoachProposalsHandler{resolve: resolve, titleSlug: titleSlug}
 }
