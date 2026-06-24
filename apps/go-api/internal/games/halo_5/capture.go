@@ -223,8 +223,8 @@ func capturePage(
 			continue
 		}
 		timeline := captureMatchTimeline(ctx, src, s.MatchID, stats)
-		participants, commendations := captureParticipants(ctx, src, s.MatchID, h5GameModeSegment(resp.Results[i].Id.GameMode), resolveXUID, stats)
-		batches = append(batches, ingest.CollectMatchBatch(TitleSlug, source, viewer, s, timeline, participants, commendations, resolveXUID))
+		participants, commendations, team0, team1 := captureParticipants(ctx, src, s.MatchID, h5GameModeSegment(resp.Results[i].Id.GameMode), resolveXUID, stats)
+		batches = append(batches, ingest.CollectMatchBatch(TitleSlug, source, viewer, s, timeline, participants, commendations, team0, team1, resolveXUID))
 		stats.MatchesCollected++
 		if maxMatches > 0 && stats.MatchesCollected >= maxMatches {
 			return batches, false, nil // cap MaxMatches (live)
@@ -272,12 +272,36 @@ func captureMatchTimeline(ctx context.Context, src h5Source, matchID string, sta
 // le match est TOUT DE MÊME collecté (sans participants ni commendations) — squad/
 // rencontres dégradent pour ce match seul, et un futur passage le re-tentera
 // (match_registry idempotent).
-func captureParticipants(ctx context.Context, src CaptureSource, matchID, mode string, resolveXUID func(string) string, stats *CaptureStats) ([]domain.MatchParticipantRow, []persist.CommendationInsert) {
+func captureParticipants(ctx context.Context, src CaptureSource, matchID, mode string, resolveXUID func(string) string, stats *CaptureStats) ([]domain.MatchParticipantRow, []persist.CommendationInsert, *int, *int) {
 	carnage, err := src.GetMatchCarnage(ctx, matchID, mode)
 	if err != nil {
 		stats.CarnageFailed++
 		slog.WarnContext(ctx, "h5 capture: carnage indisponible (sans participants)", "match_id", matchID, "err", err)
+		return nil, nil, nil, nil
+	}
+	team0, team1 := carnageTeamScores(carnage)
+	return mapCarnageParticipants(matchID, carnage, resolveXUID), mapCarnageCommendations(matchID, carnage, resolveXUID), team0, team1
+}
+
+// carnageTeamScores extrait les scores objectif d'équipe (TeamStats[].Score = score
+// du mode, captures de drapeau / zones incluses) en *int (team 0, team 1) pour
+// registry.Team{0,1}Score. nil si < 2 équipes (FFA / carnage vide) — pas de score
+// d'équipe 2-camps à persister.
+func carnageTeamScores(c *H5CarnageResponse) (*int, *int) {
+	if c == nil {
 		return nil, nil
 	}
-	return mapCarnageParticipants(matchID, carnage, resolveXUID), mapCarnageCommendations(matchID, carnage, resolveXUID)
+	t0, t1 := -1, -1
+	for i := range c.TeamStats {
+		switch c.TeamStats[i].TeamId {
+		case 0:
+			t0 = c.TeamStats[i].Score
+		case 1:
+			t1 = c.TeamStats[i].Score
+		}
+	}
+	if t0 < 0 || t1 < 0 {
+		return nil, nil
+	}
+	return &t0, &t1
 }

@@ -78,7 +78,12 @@ func TestCollectMatchBatch_EndToEnd(t *testing.T) {
 		{MatchID: "m1", XUID: "xB", CommendationID: "uuid-2", Count: 1},
 	}
 
-	batch := CollectMatchBatch("halo_5", "h5_capture", viewer, s, timeline, participants, commendations, resolve)
+	batch := CollectMatchBatch("halo_5", "h5_capture", viewer, s, timeline, participants, commendations, intptr(50), intptr(30), resolve)
+
+	if batch.Shared.Match == nil || batch.Shared.Match.Team0Score == nil || *batch.Shared.Match.Team0Score != 50 ||
+		batch.Shared.Match.Team1Score == nil || *batch.Shared.Match.Team1Score != 30 {
+		t.Fatalf("scores objectif d'équipe non posés sur le registry: %+v", batch.Shared.Match)
+	}
 
 	if batch.TitleSlug != "halo_5" || batch.Player != "Madina97294" || batch.XUID != "xA" {
 		t.Fatalf("métadonnées batch: slug=%q player=%q xuid=%q", batch.TitleSlug, batch.Player, batch.XUID)
