@@ -11,6 +11,8 @@ package migrations
 
 import (
 	"database/sql"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -63,6 +65,9 @@ func TestHalo5Metadata_IsolatedFromInfinite(t *testing.T) {
 		// Référentiel succès Xbox h5 : brique metadata commune (même forme que HINF,
 		// + colonne title_id). Possédée par le set h5 désormais (C4 title-agnostic).
 		"xbox_achievement_definitions",
+		// Référentiel milestones (Progression V2) : schéma propre au set h5 (le seed
+		// reste vide ici, racine non injectée en test → no-op gracieux).
+		"milestone_catalog",
 	} {
 		if !tableExists(t, db, tbl) {
 			t.Errorf("table h5 %q absente — set metadata h5 non appliqué", tbl)
@@ -90,6 +95,50 @@ func TestHalo5Metadata_IsolatedFromInfinite(t *testing.T) {
 		if tableExists(t, db, polluant) {
 			t.Errorf("table HINF %q présente dans la metadata h5 — POLLUTION (isolation cassée)", polluant)
 		}
+	}
+}
+
+// TestHalo5Metadata_MilestoneCatalogSeeded : avec la racine config/titles injectée
+// (SetMilestonesSeedRoot), le set metadata h5 SEED milestone_catalog depuis
+// config/titles/halo_5/milestones/catalog.toml (C5). Sans ce seed, la couche
+// Progression V2 ne peut servir aucun milestone pour Halo 5 (catalogue vide).
+func TestHalo5Metadata_MilestoneCatalogSeeded(t *testing.T) {
+	migration.SetTitleStepsProvider(halomigrations.StepsFor)
+	Register()
+
+	// Racine config/titles/ du repo (6 niveaux au-dessus du dossier du package).
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller indisponible")
+	}
+	pkgDir := filepath.Dir(thisFile)
+	configTitles := filepath.Join(pkgDir, "..", "..", "..", "..", "..", "..", "config", "titles")
+	SetMilestonesSeedRoot(configTitles)
+	t.Cleanup(func() { SetMilestonesSeedRoot("") }) // ne pas fuiter l'état entre tests
+
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open duckdb: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	if err := migration.RunForTitleDB(db, halo5.TitleSlug, migration.TargetMetadata); err != nil {
+		t.Fatalf("RunForTitleDB(%s, metadata): %v", halo5.TitleSlug, err)
+	}
+
+	// Le catalogue h5 doit être peuplé, et UNIQUEMENT avec des entrées title_slug=halo_5.
+	total := rowCount(t, db, "milestone_catalog")
+	if total == 0 {
+		t.Fatal("milestone_catalog h5 VIDE après seed — config/titles/halo_5/milestones/catalog.toml non chargé")
+	}
+	var h5Rows int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM milestone_catalog WHERE title_slug = ?`, halo5.TitleSlug,
+	).Scan(&h5Rows); err != nil {
+		t.Fatalf("count milestone_catalog halo_5: %v", err)
+	}
+	if h5Rows != total {
+		t.Errorf("milestone_catalog contient %d lignes dont %d halo_5 — fuite cross-titre (attendu 100%% halo_5)", total, h5Rows)
 	}
 }
 
