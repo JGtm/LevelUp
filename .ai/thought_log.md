@@ -88,6 +88,66 @@ Finding décisif (client.go) : le fetch H5 = `GET /h5/players/{gamertag}/matches
 
 Résultats (run séquentiel, lock RW unique, ~1h50, auth empruntée à JGtm) : JGtm +0 (déjà complet, 1970 Arena connus), Chocoboflor +869 (jusqu'à févr. 2016), Madina97294 +172, XxDaemonGamerxX +21 (jusqu'à nov. 2015). Total +1062 matchs. Shared H5 `match_registry` 1970 -> 3032, `participants` 13241 -> 19124. `persist_errors=0` partout, skip-known dédupe correctement les matchs communs, Warzone exclu par design. Conclusion : backfill multi-joueurs débloqué sans re-capture de tokens ; outil ops réutilisable.
 
+## [2026-06-23] Snowball H5 — neutralisation des surfaces dépendantes de damage_taken (résistance) — Complété (3 surfaces)
+
+Le user a vu juste : `damage_taken` nil en H5 contamine en cascade (« effet boule de neige »). Investigation (agent) → carte des consommateurs de DR/résistance. Surfaces ACTIVEMENT FAUSSES corrigées :
+
+**Mécanisme** (calqué sur `ProvidesNativeKDA`) : nouveau flag config `[damage_model] no_damage_taken = true` (H5) + accesseur `games.ProvidesDamageTaken(slug)` (défaut true Infinite). Title-agnostic, ZÉRO `slug==`. Champ `NoDamageTaken` dans `DamageModelConstants` + TOML loader. Test `TestProvidesDamageTaken`.
+
+**Surfaces gatées :**
+1. **Profil de combat** (`analysis/kpi_stats.go` + `service/synthesis_service_builders.go`) : `ClassifyCombatProfile(avgDR=0)` donnait « fragile » pour TOUS les joueurs H5. Gate data-driven `totalDmgTaken<=0` → `StyleDefensive=nil` + `DmgPerDeath=nil` (au lieu de 0). L'axe défensif disparaît proprement.
+2. **Coaching** (`progression/coach/generator.go:421`) : l'alerte `combat_pattern_fragile` (`MedianDR < seuil`) se déclenchait pour 100% des joueurs H5 (MedianDR=0). Garde `MedianDR > 0`. Le signal coach_advisor (`signalFromCombatFragile`) consomme l'alerte → couvert.
+3. **Milestones** (`api/post_sync_progression_queries.go`) : `combat_endurance_matches` / `combat_excellence_matches` (conditionnés `damage_taken>0`) restaient à 0 à vie en H5 (inatteignables). Gate `games.ProvidesDamageTaken(pdb.TitleSlug)` → métriques NON émises pour H5 (milestones masqués). La précision (OC, dégâts infligés) reste.
+
+**Déjà nil-safe** : KPI Home/Explorer `AvgDefensiveResistance` (garde `cy.DefensiveResistance > 0` → nil en H5) ; front profil de combat (consommateurs testent `!= null` style/DR, KpiGrid via `?.` + `hasDR`) → aucun changement front requis. Radar Survie match-view = Lot C.
+
+**Suivi traité** : radar **synergie escouade** (`teammates_squad_charts_synergy.go` toSeries) retire aussi l'axe Survie quand `!ProvidesDamageTaken` (5 axes cohérents multi-joueurs, le front aligne sur series[0].axes).
+
+**Validation** : go build ./internal/... + tests games/analysis/coach/api/service verts + `TestProvidesDamageTaken` PASS.
+
+## [2026-06-23] Expected K/D H5 — modèle local count∝durée (TrueSkill 2) — Complété + validé sur données réelles
+
+Suite de D1/D2-v1. Le user a refusé la moyenne plate (v1) et insisté : un « expected » post-match (juger le sur/sous-rendement) ne peut pas être une moyenne, et TrueSkill 2 a un modèle officiel. **Il avait raison.**
+
+**Validation empirique** (outil créé : `cmd/diag_expected_kd/main.go`, lit les 4 player DBs H5 + shared via ATTACH RO, 3135 matchs) :
+- `win_prob` (matchup) → AUCUN signal pour K/D (corr +0.01).
+- `rating` (skill) → +22% pooled MAIS quasi nul intra-joueur (inter-joueurs : « les bons fraggent plus »).
+- **`durée` du match → LE facteur manquant** (corr intra +0.35 frags / +0.40 morts). C'est exactement ce que TrueSkill 2 modélise (count ∝ skill × durée — [paper MSR 2018](https://www.microsoft.com/en-us/research/publication/trueskill-2-improved-bayesian-skill-rating-system/), « stats linéaires dans skill joueur + skill adverses »).
+- **MULTIVAR `kills ~ rating + durée` = +13% / `deaths ~ rating + durée` = +5%** vs moyenne plate (split random, hors-échantillon). Les deux battent la moyenne.
+- Asymétrie expliquée : `win_prob` = sortie native TrueSkill (proba) ; `assists` = prédite des stats du match (corr dégâts +0.44, stat « en aval ») ; `kills/deaths` = primaires, prédictibles seulement via durée (pré-match) ou dégâts (= rendement, déjà affiché).
+
+**Implémentation (à la volée, zéro migration/training/CLI)** : régression `kills~durée` / `deaths~durée` sur les `histRows` déjà chargés pour le hist-avg (Q29 + `MatchHistAvgRow` + scan : ajout `duration_seconds`), évaluée à la durée du match courant (`meta.DurationSeconds`). Helpers `predictKDFromDuration` / `olsPredictAt` dans `match_view_builders_summary.go` (seuil 10 échantillons, plancher 0, retombe sur la moyenne si pas de variance de durée). Ne s'active QUE si l'API skill n'a pas fourni l'attendu (`ExpectedKills==nil`) → zéro impact Infinite. Flag `MatchExpectedStats.LocallyEstimated` (+ openapi + types.ts) → label front « Estimé localement ».
+
+**v1 retiré** : le fallback hist-avg dans `MatchStatCards` est supprimé (les cartes lisent `expected_kills/deaths` du modèle, label sur le flag). Le hist-avg reste pour la ligne « moyenne » du graphe (feature distincte). Routage : H5 stocké = chemin DB (repo-first) → le modèle s'applique ; canonical (live non-synchro) = ExpectedStats vide (gap pré-existant).
+
+**Drawer (expander scoreboard)** : les K/D du modèle sont propagés sur la ligne du scoreboard (`ScoreboardRaw.LocallyEstimated` + `MatchScoreboardRow.LocallyEstimated` + openapi/types ; copie team builder) → le drawer affiche attendu vs réel sur les 3 stats + label, cohérent avec les cartes.
+- **is_me** : propagé depuis `summary.ExpectedStats` (historique déjà chargé).
+- **Amis trackés** : helper `localExpectedKD` extrait de `buildExpectedStats` (DRY) + boucle data_loaders qui charge `GetHistoryForAvg(friendXuid)` (lit SHARED → marche pour tout xuid synchronisé) et applique le même modèle. Limité aux xuids présents dans `friendsExtras` (synchronisés ; l'historique d'un non-tracké = matchs communs seulement → biaisé). Skip si l'API a déjà fourni les K/D (Infinite). Correction : il n'y avait AUCUNE barrière de formule/données pour les amis — juste un appel repo à ajouter (mauvaise estimation initiale).
+
+**Validation** : go build + test service (modèle OLS `match_view_expected_kd_test.go` + radar) + test duckdb (history/Q29) verts ; typecheck + eslint + vitest match-view 121 verts.
+
+## [2026-06-23] Finitions H5 — scoreboard mécaniques + radar/rendement adaptatifs (Lots A/B/C) + cadrage expected H5 (Lot D) — A/B/C Complétés, D cadré
+
+Worktree `feat/h5-finitions` (depuis 805438bae). 5 questions user → 4 lots.
+
+**Lot A — Scoreboard H5 (Complété).** Règle UNIQUE data-driven `presentKeys` (au niveau LOBBY) : toute colonne statistique dont aucune ligne n'a de valeur est retirée. Title-agnostic, zéro test de titre :
+- masque « Dégâts subis » + « Résist. » en H5 (null) ;
+- affiche assassinat / coup-au-sol / charge spartane en H5 (intPtrH5 → toujours non-nil) et les masque en Infinite (null).
+Colonnes ajoutées dans `buildHighlightCols` + array de `TeamScoreboard`. Grenade : branchée mais INACTIVE via `SHOW_GRENADE_KILLS_COLUMN = false` (flag atomique, aucun MVP/highlight fantôme). i18n : `labelGroundPound`='Coup au sol', `labelShoulderBash`='Charge spartane' (noms officiels H5, le donut en bénéficie aussi).
+
+**Lot B — Chart Rendement escouade (Complété).** `SquadEfficiencyChart` adaptatif : si résistance absente (H5, damage_taken null), bascule en mode mono-métrique = toutes les courbes Rendement sur 1 graphe, 1 série/joueur colorée, toggle via la légende ECharts native, titre « Rendement » (`monoTitle`). Nouveau builder `buildSquadRendementMultiOption` (X = match_order partagé de l'intersection escouade — vérifié côté Go). Au passage : baseline TITLE-AWARE via `useEffectiveHpToKill()` (225 Infinite / 115 H5) threadée dans `oneLife`, et `refLabel` passé en token `{{HP}}` substitué (corrige le « 1 vie (225) » codé en dur, incohérent H5).
+
+**Lot C — Radar match view (Complété).** `BuildMatchRadarFromScoreboard` : nouveau `dropUncomputableRadarAxes` retire l'axe Survie si damage_taken nil (H5) et Impact si damage_dealt nil. Data-driven. Le front `buildRadarOption` dérive indicateurs ET valeurs de `series[0].axes` → 5 axes restent alignés, zéro changement front. Badges narratifs (point 4 user) : déjà 100% H5-compatibles (events horodatés natifs `/h5/matches/{id}/events`, vérifié) — RAS. Radar synergie escouade = même pattern, NON traité (suivi).
+
+**Lot D — Expected H5.** Investigation : (1) **expected_win_prob DÉJÀ calculé+persisté pour H5** (LUSR v2 tourne, `player_skill_state_v2`, `match_skill_rank.expected_win_prob` ; lu en title-agnostic `match_view_data_loaders.go:329`). (2) **modèle assists title-agnostic** → marche en H5 dégradé (sans damage_taken/mmr_delta). (3) **expected K/D = AUCUNE source** (pas d'API skill H5, pas de team MMR).
+
+Décision user : **win_prob + assists d'abord, K/D dans une passe dédiée validée**.
+- **D1 livré** : win_prob + assists surfacent déjà pour H5 (aucun code nécessaire, title-agnostic). Ajout du label honnête **« Estimé localement »** quand les expected affichés sont locaux (heuristique `expected_kills==nil && expected_deaths==nil && (assists||win_prob présents)` — vrai en H5, ou match Infinite sans donnée skill). 2 surfaces : grille cartes `MatchSummaryCardsSection` (i18n manifest `match_view.cards.locally_estimated[_hint]`) + drawer `ExpectedSection` (MatchViewText `sbDetailLocallyEstimated[Hint]`).
+- **D2-v1 livré** : expected K/D pour H5 = **fallback sur la moyenne historique par mode** (`hist_avg_kills`/`deaths`, déjà calculée dans `buildExpectedStats`, title-agnostic), affichée comme « attendu » dans les cartes `MatchSummaryCardsSection` quand l'API skill ne fournit rien (`expected_kills==nil && expected_deaths==nil`). Baseline robuste (impossible à sur-apprendre), pure frontend, label « Estimé localement » + hint mis à jour. **Choix assumé** vs le modèle OLS régression sur μ LUSR : ce dernier ne peut pas être validé en session (pas de vérité terrain) → risque d'afficher des nombres faux ; la moyenne perso est honnête et déjà validée par construction.
+- **D2-v2 FUTUR (non construit)** : raffinement skill-adjusté = OLS par mode `kills~expected_win_prob` / `deaths~expected_win_prob` (prédicteur pré-match sans fuite, déjà stocké par match), miroir d'`assists_model.go` (migration + training cross-DB + repo + tests + diagnostic). À faire en passe dédiée avec validation sur données H5 réelles.
+
+**Validation** : go build `./internal/service/...` OK, go test radar OK, typecheck `tsc -b` OK (x2), eslint 0 err (tous fichiers touchés), vitest squad+match-view+i18n 367+142 verts. Radar synergie escouade (même pattern Survie H5) = suivi non traité. Pas de commit (attente autorisation user).
+
 ## [2026-06-23] Weapon taxonomy — PLAN registre BDD (data vérifiée halopedia/wiki) + nouvel handoff — Complété (plan seul, build différé)
 
 Suite des 4 surfaces H5. Le user a redéfini le « weapon canonical » : pas un TOML mémoire à côté, mais un **registre

@@ -286,6 +286,7 @@ func (r *MatchViewRepo) GetHistoryForAvg(ctx context.Context, xuid string) ([]do
 			&row.PairName,
 			&row.IsFirefight,
 			&row.IsRanked,
+			&row.DurationSeconds,
 		); err != nil {
 			return nil, fmt.Errorf("GetHistoryForAvg scan: %w", err)
 		}

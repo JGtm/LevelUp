@@ -143,6 +143,8 @@ export interface MatchViewText {
   sbDetailExpectedKills: string
   sbDetailExpectedDeaths: string
   sbDetailExpectedAssists: string
+  sbDetailLocallyEstimated: string
+  sbDetailLocallyEstimatedHint: string
   sbDetailAntagonist: string
   sbDetailNemesis: string
   sbDetailBully: string
@@ -250,8 +252,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     labelGrenade: 'Grenade',
     chartKillTypesTitle: 'Répartition des frags',
     labelAssassination: 'Assassinat',
-    labelGroundPound: 'Frappe au sol',
-    labelShoulderBash: 'Charge d\'épaule',
+    labelGroundPound: 'Coup au sol',
+    labelShoulderBash: 'Charge spartane',
     weaponUnknownPrefix: 'Arme inconnue',
     weaponOtherGroup: 'Autres armes',
     sectionMedia: 'Médias',
@@ -300,6 +302,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbDetailMedalsAndCitations: 'Médailles & citations',
     sbDetailMedalsOnly: 'Médailles',
     sbDetailExpected: 'Attendu vs réel',
+    sbDetailLocallyEstimated: 'Estimé localement',
+    sbDetailLocallyEstimatedHint: "Pas d'API de compétence pour ce titre : frags et morts attendus via un modèle local (volume ∝ durée du match), assistances via un modèle local.",
     sbDetailExpectedKills: 'Frags',
     sbDetailExpectedDeaths: 'Morts',
     sbDetailExpectedAssists: 'Assistances',
@@ -455,6 +459,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbDetailMedalsAndCitations: 'Medals & commendations',
     sbDetailMedalsOnly: 'Medals',
     sbDetailExpected: 'Expected vs actual',
+    sbDetailLocallyEstimated: 'Locally estimated',
+    sbDetailLocallyEstimatedHint: 'No skill API for this title: expected kills and deaths from a local model (volume scales with match length), assists from a local model.',
     sbDetailExpectedKills: 'Kills',
     sbDetailExpectedDeaths: 'Deaths',
     sbDetailExpectedAssists: 'Assists',

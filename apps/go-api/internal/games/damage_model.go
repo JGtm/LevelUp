@@ -96,3 +96,24 @@ func ProvidesNativeKDAFromResolver(res EndpointResolver, slug string) bool {
 	}
 	return true
 }
+
+// ProvidesDamageTaken indique si le titre fournit damage_taken (dégâts subis) via
+// son API. Faux pour Halo 5 (no_damage_taken=true) → la résistance défensive
+// (DR = dégâts_subis/(hp×morts)) n'est pas calculable ; les surfaces qui en
+// dépendent (profil de combat axe défensif, coaching « fragile », milestones
+// endurance/excellence, KPI résistance) la neutralisent plutôt que d'afficher un
+// DR=0 trompeur. Défaut true (Infinite). Source = config, JAMAIS de slug==.
+func ProvidesDamageTaken(slug string) bool {
+	return ProvidesDamageTakenFromResolver(DefaultEndpointResolver(), slug)
+}
+
+// ProvidesDamageTakenFromResolver est la forme testable de ProvidesDamageTaken.
+// Défaut true si resolver nil / sans extension / titre sans [damage_model].
+func ProvidesDamageTakenFromResolver(res EndpointResolver, slug string) bool {
+	if dmr, ok := res.(DamageModelResolver); ok {
+		if dm, found := dmr.DamageModelFor(slug); found {
+			return !dm.NoDamageTaken
+		}
+	}
+	return true
+}

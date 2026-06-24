@@ -4024,6 +4024,7 @@ export interface components {
             /** Format: int64 */
             hist_match_count?: number;
             hist_mode_category?: string;
+            locally_estimated?: boolean;
         };
         MatchSummaryTab: {
             citations: components["schemas"]["MatchCitationSnippet"][] | null;
@@ -4139,6 +4140,7 @@ export interface components {
             ground_pound_kills?: number;
             /** Format: int64 */
             shoulder_bash_kills?: number;
+            locally_estimated?: boolean;
             /** Format: int64 */
             rank?: number;
             /** Format: int64 */

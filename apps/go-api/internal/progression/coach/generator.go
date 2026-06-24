@@ -418,7 +418,10 @@ func buildCombatPatternAlerts(input GenerateInput) []Alert {
 		})
 	}
 
-	if m.MedianDR < combatDRP80Threshold*0.70 {
+	// MedianDR > 0 requis : un titre sans damage_taken (ex. Halo 5) a MedianDR=0
+	// → sans cette garde l'alerte « fragile » se déclencherait pour TOUS ses
+	// joueurs (signal = bruit). Un vrai joueur fragile a MedianDR > 0.
+	if m.MedianDR > 0 && m.MedianDR < combatDRP80Threshold*0.70 {
 		out = append(out, Alert{
 			Type:     AlertTypeCombatPatternFragile,
 			Severity: notifications.SeverityInfo,

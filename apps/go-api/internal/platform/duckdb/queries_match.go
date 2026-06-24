@@ -234,7 +234,8 @@ WITH recent AS (
         p.max_killing_spree,
         COALESCE(r.pair_name, '')      AS pair_name,
         COALESCE(r.is_firefight, FALSE) AS is_firefight,
-        COALESCE(r.is_ranked, FALSE)    AS is_ranked
+        COALESCE(r.is_ranked, FALSE)    AS is_ranked,
+        COALESCE(r.duration_seconds, 0) AS duration_seconds
     FROM match_participants p
     JOIN match_registry r ON r.match_id = p.match_id
     WHERE p.xuid = ?
@@ -258,7 +259,8 @@ SELECT
     COALESCE(p.perfect_kills, 0) AS perfect_kills,
     rc.pair_name,
     rc.is_firefight,
-    rc.is_ranked
+    rc.is_ranked,
+    rc.duration_seconds
 FROM recent rc
 LEFT JOIN perfect p ON p.match_id = rc.match_id`
 

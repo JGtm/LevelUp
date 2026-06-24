@@ -322,12 +322,30 @@ func (s *MatchViewService) buildMatchViewFromData(
 
 	header := buildMatchHeader(ctx, matchID, meta, d.stats, d.enrich, d.scoreboard, s.assetURL, isFavorite)
 	rank := buildRankBlock(d.skillRank, s.assetURL)
-	summary := buildSummaryTabFull(d.stats, d.medals, d.expected, d.histRows, meta, s.titleSlug, d.richCitations)
+	curDurSec := 0
+	if meta != nil && meta.DurationSeconds != nil {
+		curDurSec = int(*meta.DurationSeconds)
+	}
+	summary := buildSummaryTabFull(d.stats, d.medals, d.expected, d.histRows, meta, s.titleSlug, d.richCitations, curDurSec)
 	// Proba de victoire pré-match (LUSR v2) → card « Résultat attendu ». Source :
 	// match_skill_rank_latest.expected_win_prob via d.skillRank (même lecture que le
 	// player-matches scan). Best-effort : nil pour les matchs pré-v2 / sans donnée.
 	if d.skillRank != nil && d.skillRank.ExpectedWinProb != nil {
 		summary.ExpectedStats.ExpectedWinProb = d.skillRank.ExpectedWinProb
+	}
+	// Propage l'expected K/D LOCAL (modèle count∝durée, Halo 5) sur la ligne is_me
+	// du scoreboard → le drawer (expander) affiche attendu vs réel sur les 3 stats,
+	// pas seulement les assists. Limité au is_me (seul joueur dont l'historique est
+	// chargé ici). Doit précéder buildTeamTabFull (qui projette d.scoreboard).
+	if summary.ExpectedStats.LocallyEstimated {
+		for i := range d.scoreboard {
+			if d.scoreboard[i].XUID == s.xuid {
+				d.scoreboard[i].KillsExpected = summary.ExpectedStats.ExpectedKills
+				d.scoreboard[i].DeathsExpected = summary.ExpectedStats.ExpectedDeaths
+				d.scoreboard[i].LocallyEstimated = true
+				break
+			}
+		}
 	}
 	combat := buildCombatTabFull(matchID, d.bulkWeapons, d.events, d.canonicalEvents, d.kvPairs, d.scoreboard, s.xuid, durationMS)
 	// Extras per-friend (panneau d'expander scoreboard) : best-effort, on
@@ -347,6 +365,33 @@ func (s *MatchViewService) buildMatchViewFromData(
 				gvn = *meta.GameVariantName
 			}
 			friendsExtras = s.friendsExtras(ctx, matchID, gvn, xuids)
+		}
+	}
+	// Même modèle local (count∝durée) pour les AMIS TRACKÉS : leur historique
+	// complet est dans shared (joueur synchronisé), chargeable par xuid. On le
+	// charge et on pose l'expected K/D sur leur ligne → le drawer affiche attendu
+	// vs réel pour eux aussi (cohérent avec is_me). Limité aux xuids présents dans
+	// friendsExtras (synchronisés ; l'historique d'un non-tracké ne contiendrait
+	// que les matchs communs avec l'escouade → échantillon biaisé). Skip si l'API
+	// a déjà fourni les K/D (Infinite).
+	if curDurSec > 60 && len(friendsExtras) > 0 {
+		for i := range d.scoreboard {
+			xuid := d.scoreboard[i].XUID
+			if xuid == s.xuid || d.scoreboard[i].KillsExpected != nil {
+				continue
+			}
+			if _, tracked := friendsExtras[xuid]; !tracked {
+				continue
+			}
+			fh, err := s.repo.GetHistoryForAvg(ctx, xuid)
+			if err != nil || len(fh) == 0 {
+				continue
+			}
+			if ek, ed, ok := localExpectedKD(fh, meta, curDurSec); ok {
+				d.scoreboard[i].KillsExpected = ek
+				d.scoreboard[i].DeathsExpected = ed
+				d.scoreboard[i].LocallyEstimated = true
+			}
 		}
 	}
 	team := buildTeamTabFull(d.scoreboard, d.kvPairs, d.encounters, d.encounterStats, d.bulkMedals, d.bulkWeapons, s.xuid, s.titleSlug, d.enrich, d.skillRank, friendsExtras, d.sharedCSRs, s.assetURL)
