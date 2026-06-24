@@ -48,18 +48,18 @@ func (r *HomeRepo) LoadFavoriteWeapon(ctx context.Context, locale string) (strin
 		return "", 0, nil //nolint:nilerr // dégradation silencieuse côté contrat externe
 	}
 
-	// Résolution du label depuis metadata.
-	// Contournement driver : database/sql ne supporte pas uint64 avec bit63=1.
-	// weapon_id est une valeur interne (pas user input) → littéral décimal sûr.
-	nameCol := "COALESCE(name_fr, name_en, '')"
-	if locale == "en" {
-		nameCol = "COALESCE(name_en, name_fr, '')"
+	// PASSAGE PRINCIPAL P4 : résolution via le resolver unifié (registre +
+	// weapon_labels, parité). locale EN = name_en sinon le label FR (parité avec
+	// l'ancien COALESCE(name_en, name_fr)).
+	weaponName := ""
+	if m, ok := resolveWeaponMeta(ctx, r.pdb.Metadata, r.pdb.TitleSlug, []int64{int64(weaponID)})[int64(weaponID)]; ok {
+		if locale == "en" && m.nameEN != "" {
+			weaponName = m.nameEN
+		} else {
+			weaponName = m.label
+		}
 	}
-	var weaponName string
-	metaErr := r.pdb.Metadata.QueryRow(ctx,
-		fmt.Sprintf("SELECT %s FROM weapon_labels WHERE weapon_id = %d", nameCol, weaponID), //nolint:gosec
-	).Scan(&weaponName)
-	if metaErr != nil || weaponName == "" {
+	if weaponName == "" {
 		weaponName = "Inconnue"
 		if locale == "en" {
 			weaponName = "Unknown"

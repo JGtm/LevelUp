@@ -10,7 +10,11 @@ Tests intégration verts : golden-parity (BR75 → « BR75 » et PAS « Fusil de
 
 **Slice 3a — explorer** : `ExplorerRepo.resolveWeaponLabels` → `resolveWeaponMeta` (LabelFR = label name_fr>name_en ; LabelEN = nameEN sinon label, parité exacte avec l'ancien COALESCE inversé). Build + tests verts.
 
-**Toutes les surfaces user-facing d'AFFICHAGE d'arme passent maintenant par le resolver** (synthesis/timeseries/squad + match-view + explorer). Reste P4 (tail technique, basse priorité, PAS de l'affichage user direct) : home favorite-weapon card (subtilité locale EN = name_en fallback name_fr, à router avec soin), CLI diag (4 outils), sync/citations (name_en pour weapon_kills:<name>), analysis/weapon_data.go (film scanner backfill — mécanisme Go différent + 3 ids manquants Mutilator/Sandwich à traiter).
+**Slice 3b — home** : `LoadFavoriteWeapon` → `resolveWeaponMeta` (locale EN = nameEN sinon label, parité avec l'ancien COALESCE(name_en, name_fr)). Tests intégration Home verts.
+
+**P4 COMPLET pour TOUS les chemins d'AFFICHAGE user** : synthesis/timeseries/squad (donuts) + match-view (scoreboard/détail) + explorer + home favorite-weapon. Le nom reste `weapon_labels` (parité « BR75 »), le registre porte les dimensions partout, fallback + garde silencieux OK.
+
+**Hors scope P4 PAR NATURE (ce ne sont PAS des chemins d'affichage de nom)** : (1) `sync/citations` = name-MATCHING (`weapon_kills:<name>`) — parité name_en critique, reste sur weapon_labels ; router = zéro valeur + risque citations. (2) `analysis/weapon_data.go` (film scanner) = couche `analysis/` PURE (0 accès DB par archi) ; sa sortie est nommée à la LECTURE (déjà routée) ; ne doit pas dépendre du registre. (3) CLI diag (4 outils) = dev-only, dans `cmd/` (autre package, ne peut pas appeler le resolver interne sans exposer des internes) ; leur SQL weapon_labels de debug est correct. Les 3 ids « manquants » (Mutilator/Sandwich/Mythic Sandwich) = armes event/joke hors des 59 curées (seed figé user) ; résolues par le fallback weapon_labels à la lecture (juste sans dimensions registre, ce qui est OK).
 
 ## [2026-06-23] Synthesis — insight coach « angle mort armes lourdes » (data-driven) — Complété
 
