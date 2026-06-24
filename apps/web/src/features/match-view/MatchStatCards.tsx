@@ -381,6 +381,9 @@ export function MatchSummaryCardsSection({
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: MatchViewManifestKey) => formatMessage(matchViewManifest, key, locale)
 
+  // expected K/D : valeurs du back directement. Pour Halo 5 (pas d'API skill), elles
+  // viennent du modèle local count∝durée (TrueSkill 2-like, validé +13%/+5% sur 3135
+  // matchs) ; sinon de l'API skill. Le flag locally_estimated pilote le label.
   const killsDelta =
     kpis.kills != null && expected_kills != null ? kpis.kills - expected_kills : null
 
@@ -390,8 +393,14 @@ export function MatchSummaryCardsSection({
   const assistsDelta =
     kpis.assists != null && expected_assists != null ? kpis.assists - expected_assists : null
 
+  // « Estimé localement » : flag backend — les expected K/D viennent du modèle
+  // local count∝durée (Halo 5, pas d'API skill), pas de l'API. On le signale
+  // honnêtement plutôt que de les présenter au même rang que des valeurs API.
+  const locallyEstimated = expectedStats.locally_estimated ?? false
+
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8">
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8">
       <MatchVsStatCard
         label={t('match_view.cards.mmr_team_vs_enemy')}
         primary={kpis.team_mmr ?? null}
@@ -448,6 +457,15 @@ export function MatchSummaryCardsSection({
         primary={formatDefensiveResistance(defensiveResistance)}
         fixedAccent={combatYieldToken(null, defensiveResistance)}
       />
+      </div>
+      {locallyEstimated && (
+        <p
+          className="text-2xs italic text-muted-foreground"
+          title={t('match_view.cards.locally_estimated_hint')}
+        >
+          {t('match_view.cards.locally_estimated')}
+        </p>
+      )}
     </div>
   )
 }

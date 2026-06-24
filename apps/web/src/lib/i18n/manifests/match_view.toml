@@ -290,6 +290,14 @@ en = "{n, number}"
 fr = "pas de données CSR"
 en = "no CSR data"
 
+[match_view.cards.locally_estimated]
+fr = "Estimé localement"
+en = "Locally estimated"
+
+[match_view.cards.locally_estimated_hint]
+fr = "Pas d'API de compétence pour ce titre : frags et morts attendus viennent d'un modèle local (le volume monte avec la durée du match), les assistances d'un modèle local, et la probabilité de victoire du rating LUSR."
+en = "No skill API for this title: expected kills and deaths come from a local model (volume scales with match length), assists from a local model, and win probability from the LUSR rating."
+
 [match_view.cards.bot_teammate_title]
 fr = "Coéquipier bot présent dans ce match"
 en = "Bot teammate present in this match"

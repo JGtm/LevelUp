@@ -142,6 +142,12 @@ export function SquadContributionsPage() {
             <InfoTooltip content={<EfficiencyTooltipText locale={locale} />} />
           </span>
         }
+        monoTitle={
+          <span className="flex items-center gap-1.5">
+            {t.efficiencySeries.rendementTitle}
+            <InfoTooltip content={<EfficiencyTooltipText locale={locale} />} />
+          </span>
+        }
         rowsByPlayer={performanceSeries ?? {}}
         playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p])}
         colorByPlayer={playerColors}

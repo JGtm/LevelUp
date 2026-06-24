@@ -88,6 +88,7 @@ func buildTeamTabFull(
 			ExpectedKills:       s.KillsExpected,
 			ExpectedDeaths:      s.DeathsExpected,
 			ExpectedAssists:     s.AssistsExpected,
+			LocallyEstimated:    s.LocallyEstimated,
 			KillsStdDev:         s.KillsStdDev,
 			DeathsStdDev:        s.DeathsStdDev,
 			Medals:              medalsByXUID[s.XUID],

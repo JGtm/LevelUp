@@ -353,8 +353,15 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 		return out, fmt.Errorf("aggregate combat metrics: %w", err)
 	}
 	out.Metrics["combat_precision_matches"] = float64(precisionMatches)
-	out.Metrics["combat_endurance_matches"] = float64(enduranceMatches)
-	out.Metrics["combat_excellence_matches"] = float64(excellenceMatches)
+	// Endurance / excellence dépendent de la résistance (damage_taken). Un titre
+	// sans dégâts subis (ex. Halo 5) ne peut JAMAIS les atteindre (0 à vie) → on
+	// n'émet PAS ces métriques pour lui (milestones masqués) plutôt que de les
+	// bloquer à 0 inatteignable. La précision (OC) reste : elle ne dépend que des
+	// dégâts infligés. Title-agnostic via games.ProvidesDamageTaken (config).
+	if games.ProvidesDamageTaken(pdb.TitleSlug) {
+		out.Metrics["combat_endurance_matches"] = float64(enduranceMatches)
+		out.Metrics["combat_excellence_matches"] = float64(excellenceMatches)
+	}
 	return out, nil
 }
 

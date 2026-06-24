@@ -200,7 +200,19 @@ function buildExpectedItems(row: MatchScoreboardRow, t: MatchViewText): Expected
   return items
 }
 
-function ExpectedSection({ items, title }: { items: ExpectedItem[]; title: string }) {
+function ExpectedSection({
+  items,
+  title,
+  locallyEstimated,
+  estimatedLabel,
+  estimatedHint,
+}: {
+  items: ExpectedItem[]
+  title: string
+  locallyEstimated?: boolean
+  estimatedLabel?: string
+  estimatedHint?: string
+}) {
   if (items.length === 0) return null
   return (
     <SectionGroup title={title}>
@@ -225,6 +237,11 @@ function ExpectedSection({ items, title }: { items: ExpectedItem[]; title: strin
             />
           )
         })}
+        {locallyEstimated && estimatedLabel && (
+          <p className="pt-0.5 text-2xs italic text-muted-foreground" title={estimatedHint}>
+            {estimatedLabel}
+          </p>
+        )}
       </div>
     </SectionGroup>
   )
@@ -349,7 +366,13 @@ export function PlayerDetailPanel({ row, killerVictim, citations, header, rank, 
           <MedalsSection medals={medals} title={t.sbDetailMedalsOnly} />
           {myCitations.length > 0 && <CitationsSection citations={myCitations} t={t} />}
         </div>
-        <ExpectedSection items={expectedItems} title={t.sbDetailExpected} />
+        <ExpectedSection
+          items={expectedItems}
+          title={t.sbDetailExpected}
+          locallyEstimated={(row.locally_estimated ?? false) || (row.expected_kills == null && row.expected_deaths == null && row.expected_assists != null)}
+          estimatedLabel={t.sbDetailLocallyEstimated}
+          estimatedHint={t.sbDetailLocallyEstimatedHint}
+        />
         {antagonist && (
           <AntagonistSection
             result={antagonist}

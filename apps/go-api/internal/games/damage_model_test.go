@@ -155,3 +155,41 @@ no_native_kda = true
 		t.Error("resolver nil : ProvidesNativeKDA devrait être true (défaut)")
 	}
 }
+
+// TestProvidesDamageTaken — un titre déclarant no_damage_taken=true (Halo 5) route
+// false (résistance défensive non calculable → surfaces DR neutralisées) ; sans le
+// flag / inconnu / resolver nil → true (défaut Infinite).
+func TestProvidesDamageTaken(t *testing.T) {
+	t.Parallel()
+	const slug = "synthetic_nodt_title"
+
+	tmp := t.TempDir()
+	writeFile(t, filepath.Join(tmp, "config", "titles", slug, "mappings"), "fields.toml", minimalFieldsTOML(slug))
+	writeFile(t, filepath.Join(tmp, "config", "titles", slug), "constants.toml", `
+[meta]
+title_slug = "`+slug+`"
+schema_version = 1
+
+[endpoints]
+stats = "https://stats.example.test"
+
+[damage_model]
+effective_hp_to_kill = 115
+no_damage_taken = true
+`)
+	reg := mappings.NewRegistry()
+	if errs := reg.LoadFromConfigDir(tmp, []string{slug}, nil); len(errs) != 0 {
+		t.Fatalf("LoadFromConfigDir errs: %v", errs)
+	}
+	res := NewMappingsEndpointResolver(reg, "halo_infinite")
+
+	if ProvidesDamageTakenFromResolver(res, slug) {
+		t.Errorf("ProvidesDamageTaken(%q) = true, want false (no_damage_taken=true)", slug)
+	}
+	if !ProvidesDamageTakenFromResolver(res, "never_loaded") {
+		t.Error("titre inconnu : ProvidesDamageTaken devrait être true (défaut)")
+	}
+	if !ProvidesDamageTakenFromResolver(nil, slug) {
+		t.Error("resolver nil : ProvidesDamageTaken devrait être true (défaut)")
+	}
+}

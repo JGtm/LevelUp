@@ -25,6 +25,9 @@ type damageModelTOML struct {
 	// (ex. Halo 5 : forme native = FDA NET, pas le quotient KDA). Défaut false =
 	// KDA natif disponible (Infinite). Consommé via games.ProvidesNativeKDA(slug).
 	NoNativeKDA bool `toml:"no_native_kda"`
+	// no_damage_taken = true → le titre ne fournit PAS damage_taken (Halo 5). La
+	// résistance défensive et ses dérivés sont neutralisés. Via games.ProvidesDamageTaken.
+	NoDamageTaken bool `toml:"no_damage_taken"`
 	// offensive_conversion_p80 : frontière élite OC (80e percentile) du titre, repère
 	// de normalisation des barres/radars de rendement. 0/absent = défaut Infinite (0.90).
 	OffensiveConversionP80 float64 `toml:"offensive_conversion_p80"`
@@ -113,6 +116,7 @@ func LoadEndpointsFromBytes(path string, raw []byte) (*EndpointSet, error) {
 	dm := DamageModelConstants{
 		EffectiveHpToKill:      doc.DamageModel.EffectiveHpToKill,
 		NoNativeKDA:            doc.DamageModel.NoNativeKDA,
+		NoDamageTaken:          doc.DamageModel.NoDamageTaken,
 		OffensiveConversionP80: doc.DamageModel.OffensiveConversionP80,
 	}
 	return NewEndpointSet(doc.Meta.TitleSlug, doc.Meta.SchemaVersion, gamePrefix, byKey).withDamageModel(dm), nil
