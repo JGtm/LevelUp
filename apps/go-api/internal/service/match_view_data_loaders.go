@@ -333,6 +333,20 @@ func (s *MatchViewService) buildMatchViewFromData(
 	if d.skillRank != nil && d.skillRank.ExpectedWinProb != nil {
 		summary.ExpectedStats.ExpectedWinProb = d.skillRank.ExpectedWinProb
 	}
+	// Propage l'expected K/D LOCAL (modèle count∝durée, Halo 5) sur la ligne is_me
+	// du scoreboard → le drawer (expander) affiche attendu vs réel sur les 3 stats,
+	// pas seulement les assists. Limité au is_me (seul joueur dont l'historique est
+	// chargé ici). Doit précéder buildTeamTabFull (qui projette d.scoreboard).
+	if summary.ExpectedStats.LocallyEstimated {
+		for i := range d.scoreboard {
+			if d.scoreboard[i].XUID == s.xuid {
+				d.scoreboard[i].KillsExpected = summary.ExpectedStats.ExpectedKills
+				d.scoreboard[i].DeathsExpected = summary.ExpectedStats.ExpectedDeaths
+				d.scoreboard[i].LocallyEstimated = true
+				break
+			}
+		}
+	}
 	combat := buildCombatTabFull(matchID, d.bulkWeapons, d.events, d.canonicalEvents, d.kvPairs, d.scoreboard, s.xuid, durationMS)
 	// Extras per-friend (panneau d'expander scoreboard) : best-effort, on
 	// charge depuis chaque player DB d'ami configuré. Si pas de loader injecté

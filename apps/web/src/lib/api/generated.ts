@@ -4140,6 +4140,7 @@ export interface components {
             ground_pound_kills?: number;
             /** Format: int64 */
             shoulder_bash_kills?: number;
+            locally_estimated?: boolean;
             /** Format: int64 */
             rank?: number;
             /** Format: int64 */

@@ -403,8 +403,11 @@ type MatchScoreboardRow struct {
 	ExpectedKills   *float64 `json:"expected_kills,omitempty"`
 	ExpectedDeaths  *float64 `json:"expected_deaths,omitempty"`
 	ExpectedAssists *float64 `json:"expected_assists,omitempty"`
-	KillsStdDev     *float64 `json:"kills_stddev,omitempty"`
-	DeathsStdDev    *float64 `json:"deaths_stddev,omitempty"`
+	// LocallyEstimated : expected K/D issus du modèle local (Halo 5), pas de l'API
+	// → le drawer affiche le label « Estimé localement ».
+	LocallyEstimated bool     `json:"locally_estimated,omitempty"`
+	KillsStdDev      *float64 `json:"kills_stddev,omitempty"`
+	DeathsStdDev     *float64 `json:"deaths_stddev,omitempty"`
 	// Expander : données per-player chargées en bulk
 	Medals      []PlayerMedalRow      `json:"medals,omitempty"`
 	WeaponKills []PlayerWeaponKillRow `json:"weapon_kills,omitempty"`

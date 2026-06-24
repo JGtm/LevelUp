@@ -1619,6 +1619,8 @@ export interface MatchScoreboardRow {
   expected_kills?: number | null
   expected_deaths?: number | null
   expected_assists?: number | null
+  /** True si les expected K/D viennent du modèle local (Halo 5), pas de l'API skill. */
+  locally_estimated?: boolean
   weapon_kills?: PlayerWeaponKillRow[]
   /** Médailles gagnées par CE joueur dans ce match (expander scoreboard). */
   medals?: PlayerMedalRow[]

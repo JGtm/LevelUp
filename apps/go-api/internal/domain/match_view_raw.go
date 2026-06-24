@@ -136,6 +136,9 @@ type ScoreboardRaw struct {
 	KillsStdDev     *float64
 	DeathsStdDev    *float64
 	AssistsExpected *float64
+	// LocallyEstimated : K/D attendus issus du modèle local (count∝durée, Halo 5),
+	// pas de l'API skill. Posé sur la ligne is_me → label « Estimé localement » du drawer.
+	LocallyEstimated bool
 }
 
 // BulkMedalRaw : une ligne de Q27 (médailles de tous les joueurs du match).
