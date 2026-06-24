@@ -106,11 +106,11 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 				slog.WarnContext(runCtx, "h5 post-score: LUSR incrémental échoué (non bloquant)",
 					"gamertag", gamertag, "err", lerr)
 			}
-			// CSR par match (matchs classés nouvellement insérés) : CurrentCsr du carnage
-			// → match_skill_rank (priorité CSR>LUSR). src déjà authentifié (ré-fetch
-			// carnage des seuls nouveaux matchs classés — peu nombreux en delta).
-			if n := PersistPerMatchCSR(runCtx, src, playerDB.SQLDb(), shared, gamertag, inserted); n > 0 {
-				slog.InfoContext(runCtx, "h5 post-score: CSR par match écrit", "gamertag", gamertag, "matchs", n)
+			// CSR par match (classés → match_skill_rank, priorité CSR>LUSR) + rang SR
+			// (career_progression, title-agnostic) des nouveaux matchs, depuis 1 fetch
+			// carnage chacun. src déjà authentifié (peu de matchs en delta).
+			if csrN, srN := PersistPerMatchRatings(runCtx, src, playerDB.SQLDb(), shared, gamertag, xuid, inserted); csrN > 0 || srN > 0 {
+				slog.InfoContext(runCtx, "h5 post-score: ratings par match écrits", "gamertag", gamertag, "csr", csrN, "sr", srN)
 			}
 			return nil
 		},

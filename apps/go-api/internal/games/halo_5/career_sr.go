@@ -80,6 +80,27 @@ func applyDefaultSpartanRankBounds(snap *canonical.CareerSnapshot) {
 	}
 }
 
+// SpartanRankProgression dérive (current_xp, xp_for_next, xp_total, is_max) d'un
+// couple (SpartanRank, TotalXP) Halo 5 — fonction PURE partagée par l'enrichissement
+// de snapshot (applySpartanRank) ET la persistance career_progression au sync (C3).
+// SR hors [1..152] → ok=false (à ignorer). Source unique de la dérivation SR→XP.
+func SpartanRankProgression(spartanRank, totalXP int) (currentXP, xpForNext, xpTotal int, isMax, ok bool) {
+	if spartanRank < 1 || spartanRank > h5MaxSpartanRank {
+		return 0, 0, 0, false, false
+	}
+	xpTotal = totalXP
+	if cur := totalXP - h5SRStartXP[spartanRank-1]; cur >= 0 {
+		currentXP = cur
+	}
+	if spartanRank >= h5MaxSpartanRank {
+		return currentXP, 0, xpTotal, true, true
+	}
+	if need := h5SRStartXP[spartanRank] - h5SRStartXP[spartanRank-1]; need > 0 {
+		xpForNext = need
+	}
+	return currentXP, xpForNext, xpTotal, false, true
+}
+
 // applySpartanRank enrichit un CareerSnapshot avec le rang XP (SR) Halo 5 à partir
 // du SpartanRank + TotalXP du joueur (lus dans la carnage XpInfo). SR152 = MAX :
 // IsMaxRank, aucun rang suivant, aucun « XP avant le suivant ». Borne défensive : un

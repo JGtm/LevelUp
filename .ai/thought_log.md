@@ -1,3 +1,10 @@
+## [2026-06-24] H5 — Refonte title-agnostic (audit ultracode) : C3 career_progression — Complété
+
+Suite audit ultracode (workflow h5-title-agnostic-audit, 47 findings, plan .ai/PLAN_TITLE_AGNOSTIC_H5_PARITY.md, chantiers C0→C7). C3 livré : persistance career_progression H5 (rang SR), servi live (LoadCareerSnapshot) mais jamais persisté (0 vs 1137 HINF).
+- `halo5.SpartanRankProgression(sr, totalXP)` : dérivation pure SR→(current_xp, xp_for_next, xp_total, is_max) extraite d'applySpartanRank (source unique).
+- `livesync.PersistPerMatchRatings` (refactor de PersistPerMatchCSR) : UN fetch carnage par match → CSR (si classé) + SR (career_progression, dédup (xuid, recorded_at)). Appelé par le hook live PostScore (xuid threadé) ET le CLI h5-csr-match-backfill (refactoré, traite TOUS les matchs).
+- Validé JGtm SR 147, XP progressant (852348→857331). Backfill 4 joueurs lancé. Build+tests verts.
+
 ## [2026-06-24] H5 — CSR par match câblé au live + audit de correspondance HI vs H5 — En cours
 
 CSR live : `Deps.PostScore` reçoit désormais `src` ; après enrichment+LUSR il appelle `livesync.PersistPerMatchCSR(src, playerDB, shared, gamertag, insertedMatchIDs)` (helper partagé csr_match.go) → ré-fetch le carnage des nouveaux matchs CLASSÉS → CurrentCsr → match_skill_rank CSR. Rend l'app autonome sur le CSR (les nouveaux matchs classés affichent le CSR sans backfill manuel). Best-effort, build+tests verts.
