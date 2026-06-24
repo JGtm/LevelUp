@@ -1,3 +1,16 @@
+## [2026-06-24] Recherche Halo OSS (8 repos + API CSR Leaderboard) → leverage map — Complété
+
+2 passes workflow (fan-out + passe LEARNINGS sur les repos « morts », le user m'ayant repris sur le fait d'écarter trop vite). Doc : `.ai/RESEARCH_HALO_OSS_LEVERAGE.md`. Conclusions :
+- **Gap chaud = CSR H5 par playlist (a) + leaderboards mondiaux (e)** : donnée déjà à portée (`ServiceRecordArena.ArenaPlaylistStats[]` non parsé ; endpoint officiel `www.haloapi.com/stats/h5/leaderboards/csr/{seasonId}/{playlistId}`). Schéma snapshot prouvé (Leafapp `h5_player_csr` : rank/rank_previous/csr/csr_previous → delta UI). **Directive user : NE PAS réinventer le delete/refresh → réutiliser le leaderboard Infinite existant (snapshot-world-leaderboard).**
+- **Medals H5** = parité HI, metadata déjà seedée (sprites), reste l'ingestion `MedalAwards[]` + affichage CSS sprite. Petit effort.
+- **REQ packs** = idée page progression title-aware (HI=pass saisonnier, H5=REQ). Blueprint = `MichaelJLiu/Halo5Reqs` (endpoints/taxonomie complets). PIÈGE : IDs de packs **non auto-découvrables** → seed manuel obligatoire.
+- **Weapon taxonomy** : recherche CONFIRME que class/role/family ne sont dans aucune API → notre registre maison était le bon choix.
+- **xuid carnage** : NON résolu (officiel = Xuid null aussi, doc confirme) → PeopleHub reste.
+- **Pépites « mortes »** : rate-limit officiel strict (~10/10s), emblem = 302 (header Location), MatchEvents non documenté mais riche (death-recap), figer upsert-vs-delete-replace une fois.
+- **Film/kill-feed** : abandon confirmé par toutes les sources.
+
+Prochaine étape : cartographier le leaderboard Infinite pour réutilisation H5 (workflow). Land main = à la main du user (pas avant son GO).
+
 ## [2026-06-24] Gate delivery P4 + fix drift OpenAPI (SynthesisRoleKillEntry) — Complété
 
 Avant de déclarer P4 livré : `go vet ./internal/...` (clean) + suite complète `go test ./internal/...` non-intégration. UN échec : `TestOpenAPISchemaDrift_AggregatesAndReports` — `SynthesisRoleKillEntry` (schéma servi par Huma depuis le donut rôle) MANQUANT dans `openapi.yaml` (drift introduit au commit 34cd99253, jamais corrigé car je n'avais pas lancé la suite complète à l'époque). Les 20 « DIVERGENT » (dont SynthesisPageV2Response, MatchParticipant, TeammatesPageResponse) sont tolérés (report-only) ; seul MISSING fait échouer. Fix : ajout du schéma `SynthesisRoleKillEntry` + champ `kills_by_role` dans `SynthesisPageV2Response` (openapi.yaml manuel). Test re-vert, suite complète : 0 FAIL. Leçon : lancer `go test ./internal/...` complet (pas juste le package touché) avant de committer un nouveau champ de réponse.
