@@ -60,6 +60,9 @@ func TestHalo5Metadata_IsolatedFromInfinite(t *testing.T) {
 	for _, tbl := range []string{
 		"asset_translations", "medal_translations", "medal_definitions",
 		"weapon_labels", "maps_catalog", "map_images_registry",
+		// Référentiel succès Xbox h5 : brique metadata commune (même forme que HINF,
+		// + colonne title_id). Possédée par le set h5 désormais (C4 title-agnostic).
+		"xbox_achievement_definitions",
 	} {
 		if !tableExists(t, db, tbl) {
 			t.Errorf("table h5 %q absente — set metadata h5 non appliqué", tbl)
@@ -80,7 +83,6 @@ func TestHalo5Metadata_IsolatedFromInfinite(t *testing.T) {
 		"challenge_template",       // prestige HINF
 		"preset_arc",               // prestige HINF
 		"battlepass_track_definitions",
-		"xbox_achievement_definitions",
 		"playlists_catalog", // catalogue playlists HINF
 		"csr_placement_thresholds",
 		"mode_name_tr", // modes HINF

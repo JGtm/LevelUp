@@ -26,6 +26,7 @@ const (
 // le frontend masque alors le filtre (dégradation gracieuse multi-titres).
 var achievementCategoriesByTitle = map[string]map[string]AchievementCategory{
 	"halo_infinite": haloInfiniteAchievementCategories,
+	"halo_5":        halo5AchievementCategories,
 }
 
 // AchievementCategoryFor retourne la catégorie d'un succès pour un titre.

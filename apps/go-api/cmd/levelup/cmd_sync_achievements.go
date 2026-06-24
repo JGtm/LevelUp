@@ -68,7 +68,7 @@ func runSyncAchievementsForPlayer(ctx context.Context, cfg *config.AppConfig, pl
 
 	// Appliquer les migrations metadata avant le sync (title_id colonne, cleanup stale rows).
 	metadataPath := resolver.MetadataDBPath(titleSlug)
-	if err := applyAchievementsMigrations(metadataPath); err != nil {
+	if err := applyAchievementsMigrations(metadataPath, titleSlug); err != nil {
 		return fmt.Errorf("migrations metadata: %w", err)
 	}
 
@@ -88,17 +88,22 @@ func runSyncAchievementsForPlayer(ctx context.Context, cfg *config.AppConfig, pl
 	return nil
 }
 
-// applyAchievementsMigrations applique les migrations metadata en attente.
-// Ouvre une connexion temporaire (fermée immédiatement après) pour ne pas
-// interférer avec la connexion interne du SyncEngine.
-func applyAchievementsMigrations(metadataPath string) error {
+// applyAchievementsMigrations applique les migrations metadata en attente pour le
+// TITRE ciblé. Ouvre une connexion temporaire (fermée immédiatement après) pour ne
+// pas interférer avec la connexion interne du SyncEngine.
+//
+// RunForTitleDB (pas RunForDB) : le set metadata d'un titre non-HINF (ex. halo_5)
+// possède sa propre forme de xbox_achievement_definitions (ADR 0008 — provisioning
+// par titre, jamais le set HINF figé). Pour halo_infinite, RunForTitleDB retombe
+// sur le set HINF → byte-identique au comportement précédent.
+func applyAchievementsMigrations(metadataPath, titleSlug string) error {
 	db, err := duckdbPlatform.OpenReadWrite(metadataPath)
 	if err != nil {
 		return fmt.Errorf("ouverture metadata DB: %w", err)
 	}
 	defer db.Close() //nolint:errcheck
 	_ = migration.All()
-	return migration.RunForDB(db.SQLDb(), migration.TargetMetadata)
+	return migration.RunForTitleDB(db.SQLDb(), titleSlug, migration.TargetMetadata)
 }
 
 func runSyncAchievementsAll(ctx context.Context, cfg *config.AppConfig, titleSlug string, dryRun bool) error {
@@ -115,7 +120,7 @@ func runSyncAchievementsAll(ctx context.Context, cfg *config.AppConfig, titleSlu
 	// Migrations metadata une seule fois pour tout le batch.
 	if !dryRun {
 		metadataPath := resolver.MetadataDBPath(titleSlug)
-		if err := applyAchievementsMigrations(metadataPath); err != nil {
+		if err := applyAchievementsMigrations(metadataPath, titleSlug); err != nil {
 			return fmt.Errorf("migrations metadata: %w", err)
 		}
 		fmt.Println("migrations metadata: OK")
