@@ -69,12 +69,20 @@ func mapH5ArenaToPlaylistCSRs(resp *halo5.H5ServiceRecordResponse) []syncpkg.Pla
 		if strings.TrimSpace(p.PlaylistId) == "" {
 			continue
 		}
+		// AllTime = pic de la playlist (HighestCsr) ; à défaut (vide pour comptes
+		// inactifs en classé) → pic TOUTES playlists (ArenaStats.HighestCsrAttained,
+		// le seul champ de pic qui survit hors saison courante). Garantit que le pic
+		// CSR carrière (loadCSRAlltimePeak = MAX(alltime_value)) reste affiché.
+		allTime := p.HighestCsr
+		if allTime == nil {
+			allTime = arena.HighestCsrAttained
+		}
 		out = append(out, syncpkg.PlayerPlaylistCSR{
 			PlaylistID: p.PlaylistId,
 			// PlaylistName/Queue/Input : non fournis par le service record (best-effort,
 			// résolus plus tard via le seed metadata) → laissés vides.
 			Current: h5CurrentSnapshot(p),
-			AllTime: h5CsrSnapshot(p.HighestCsr),
+			AllTime: h5CsrSnapshot(allTime),
 			// Season : pas de saison h5 en Phase 1 → snapshot zéro.
 		})
 	}
