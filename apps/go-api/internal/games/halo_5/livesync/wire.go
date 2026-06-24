@@ -84,7 +84,7 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 		// enrichit seule, sans cmd/h5-enrich manuel). Best-effort côté runner.
 		// Tient le shared (writer coordonné) + la player DB RW le temps du recompute
 		// incrémental (force=false → seuls les matchs neufs) : court.
-		PostScore: func(ctx context.Context, _ []string) error {
+		PostScore: func(ctx context.Context, src halo5.CaptureSource, inserted []string) error {
 			runCtx := ctxkeys.WithTitleSlug(ctx, halo5.TitleSlug)
 			playerDB, err := syncpkg.OpenPlayerDB(playerPath)
 			if err != nil {
@@ -105,6 +105,12 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 			if _, lerr := syncpkg.RunLUSRV2ShadowOwnerOnly(runCtx, playerDB.SQLDb(), shared, xuid); lerr != nil {
 				slog.WarnContext(runCtx, "h5 post-score: LUSR incrémental échoué (non bloquant)",
 					"gamertag", gamertag, "err", lerr)
+			}
+			// CSR par match (matchs classés nouvellement insérés) : CurrentCsr du carnage
+			// → match_skill_rank (priorité CSR>LUSR). src déjà authentifié (ré-fetch
+			// carnage des seuls nouveaux matchs classés — peu nombreux en delta).
+			if n := PersistPerMatchCSR(runCtx, src, playerDB.SQLDb(), shared, gamertag, inserted); n > 0 {
+				slog.InfoContext(runCtx, "h5 post-score: CSR par match écrit", "gamertag", gamertag, "matchs", n)
 			}
 			return nil
 		},
