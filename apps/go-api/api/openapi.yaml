@@ -15118,6 +15118,11 @@ components:
                   $ref: '#/components/schemas/SynthesisWeaponKillEntry'
               type: array
               nullable: true
+          kills_by_role:
+              items:
+                  $ref: '#/components/schemas/SynthesisRoleKillEntry'
+              type: array
+              nullable: true
           top_weeks:
               items:
                   $ref: '#/components/schemas/TopWeekEntry'
@@ -15163,6 +15168,18 @@ components:
           - match_count
           - description
           - computed_at
+      type: object
+    SynthesisRoleKillEntry:
+      additionalProperties: false
+      properties:
+          kills:
+              format: int64
+              type: integer
+          role:
+              type: string
+      required:
+          - role
+          - kills
       type: object
     SynthesisWeaponKillEntry:
       additionalProperties: false
