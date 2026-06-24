@@ -71,6 +71,14 @@ type AppConfig struct {
 	// sync_meta). nil en CLI/tests → le Runner saute l'émission. Signature stdlib-only
 	// pour éviter tout cycle d'import api↔config↔livesync.
 	TitleReadyNotifier func(ctx context.Context, titleSlug, gamertag, xuid string, inserted int)
+	// ProgressionAfterSync (multi-titre) — injecté au boot par main.go APRÈS le
+	// ServiceRegistry (api.BuildProgressionAfterSyncHook). Fait tourner le pipeline
+	// Progression V2 (streaks/records/milestones/coach) pour le TITRE d'un joueur
+	// après un cycle de sync live qui a inséré des matchs — équivalent title-agnostic
+	// du post-sync HINF (buildPostSyncDeltaHook), MAIS avec les deps de base (SANS le
+	// PrestigeBundle/CoachAdvisor mono-titre). Best-effort. nil en CLI/tests → le
+	// Runner saute l'étape. Signature stdlib-only (zéro cycle api↔config↔livesync).
+	ProgressionAfterSync func(ctx context.Context, titleSlug, playerSlug string)
 	// Sprint 40 T2 : Discord webhook URL pour alerting 500 + taux d'erreur.
 	// Lit LEVELUP_DISCORD_WEBHOOK_URL ; fallback sur discord_webhook_url dans app_settings.json.
 	DiscordWebhookURL string

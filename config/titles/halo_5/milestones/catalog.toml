@@ -1,0 +1,140 @@
+# Halo 5 — Catalogue de milestones (couche 2 du plan V2 Ascension).
+#
+# Chargé au boot dans metadata.duckdb via milestones.SyncCatalog (lu auto par
+# RegisterMilestonesSeedMigration dès que ce fichier existe).
+# Schéma : apps/go-api/internal/progression/milestones/catalog_loader.go.
+#
+# Conventions (cf. halo_infinite/milestones/catalog.toml) :
+#  - id : préfixé `halo_5.` + metric + threshold.
+#  - metric : clé alignée sur les agrégats PlayerStats. H5 expose matches_played,
+#    wins, kills, headshots, assists (tous fiables côté carnage). OMIS volontairement :
+#    combat_* (modèle damage H5 = 115, calibration non validée) et accuracy
+#    (data-limited) — à ajouter quand validés.
+#  - icon : nom logique partagé avec HINF (icônes de milestone génériques, pas
+#    title-specific) → mapping front réutilisé tel quel.
+
+[meta]
+schema_version = 1
+title_slug = "halo_5"
+
+# ─── Volume : matchs joués ─────────────────────────────────────────────────
+
+[[milestones]]
+id        = "halo_5.matches.100"
+metric    = "matches_played"
+threshold = 100
+title_fr  = "Centurion"
+title_en  = "Centurion"
+icon      = "milestone_matches_100"
+
+[[milestones]]
+id        = "halo_5.matches.500"
+metric    = "matches_played"
+threshold = 500
+title_fr  = "Vétéran"
+title_en  = "Veteran"
+icon      = "milestone_matches_500"
+
+[[milestones]]
+id        = "halo_5.matches.1000"
+metric    = "matches_played"
+threshold = 1000
+title_fr  = "Spartan d'élite"
+title_en  = "Elite Spartan"
+icon      = "milestone_matches_1000"
+
+[[milestones]]
+id        = "halo_5.matches.2000"
+metric    = "matches_played"
+threshold = 2000
+title_fr  = "Légende des arènes"
+title_en  = "Arena Legend"
+icon      = "milestone_matches_1000"
+
+# ─── Victoires ─────────────────────────────────────────────────────────────
+
+[[milestones]]
+id        = "halo_5.wins.50"
+metric    = "wins"
+threshold = 50
+title_fr  = "Vainqueur"
+title_en  = "Winner"
+icon      = "milestone_wins_50"
+
+[[milestones]]
+id        = "halo_5.wins.250"
+metric    = "wins"
+threshold = 250
+title_fr  = "Conquérant"
+title_en  = "Conqueror"
+icon      = "milestone_wins_250"
+
+[[milestones]]
+id        = "halo_5.wins.500"
+metric    = "wins"
+threshold = 500
+title_fr  = "Champion d'arène"
+title_en  = "Arena Champion"
+icon      = "milestone_wins_500"
+
+# ─── Éliminations ──────────────────────────────────────────────────────────
+
+[[milestones]]
+id        = "halo_5.kills.1000"
+metric    = "kills"
+threshold = 1000
+title_fr  = "Tueur"
+title_en  = "Slayer"
+icon      = "milestone_kills_1000"
+
+[[milestones]]
+id        = "halo_5.kills.10000"
+metric    = "kills"
+threshold = 10000
+title_fr  = "Machine de guerre"
+title_en  = "War Machine"
+icon      = "milestone_kills_10000"
+
+[[milestones]]
+id        = "halo_5.kills.25000"
+metric    = "kills"
+threshold = 25000
+title_fr  = "Fléau spartiate"
+title_en  = "Spartan Scourge"
+icon      = "milestone_kills_10000"
+
+# ─── Tirs à la tête ────────────────────────────────────────────────────────
+
+[[milestones]]
+id        = "halo_5.headshots.1000"
+metric    = "headshots"
+threshold = 1000
+title_fr  = "Tireur d'élite"
+title_en  = "Marksman"
+icon      = "milestone_headshots_1000"
+
+[[milestones]]
+id        = "halo_5.headshots.5000"
+metric    = "headshots"
+threshold = 5000
+title_fr  = "Précision mortelle"
+title_en  = "Deadeye"
+icon      = "milestone_headshots_1000"
+
+# ─── Assistances ───────────────────────────────────────────────────────────
+
+[[milestones]]
+id        = "halo_5.assists.1000"
+metric    = "assists"
+threshold = 1000
+title_fr  = "Coéquipier"
+title_en  = "Team Player"
+icon      = "milestone_assists_1000"
+
+[[milestones]]
+id        = "halo_5.assists.5000"
+metric    = "assists"
+threshold = 5000
+title_fr  = "Pilier d'équipe"
+title_en  = "Team Pillar"
+icon      = "milestone_assists_1000"

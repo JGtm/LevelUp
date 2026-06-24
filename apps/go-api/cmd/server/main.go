@@ -1218,6 +1218,10 @@ func main() {
 	// notif quand un titre live a des matchs, dans le flux du titre par défaut, hors
 	// pipeline progression/prestige. Même pattern d'injection que cfg.SharedManager.
 	cfg.TitleReadyNotifier = api.BuildTitleReadyNotifier(reg, cfg)
+	// Progression V2 title-agnostic : le Runner live d'un titre (Halo 5+) déclenche le
+	// pipeline streaks/records/milestones/coach via ce hook après un cycle qui insère
+	// des matchs (deps de base, SANS le PrestigeBundle mono-titre). Même pattern d'injection.
+	cfg.ProgressionAfterSync = api.BuildProgressionAfterSyncHook(reg, cfg)
 
 	// app_release : émission asynchrone d'une notification in-app par joueur si la
 	// version a changé depuis sync_meta.last_seen_app_version. Ne bloque pas le boot.
