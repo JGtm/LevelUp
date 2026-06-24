@@ -9,7 +9,9 @@ Le user a vu juste : `damage_taken` nil en H5 contamine en cascade (« effet bou
 2. **Coaching** (`progression/coach/generator.go:421`) : l'alerte `combat_pattern_fragile` (`MedianDR < seuil`) se déclenchait pour 100% des joueurs H5 (MedianDR=0). Garde `MedianDR > 0`. Le signal coach_advisor (`signalFromCombatFragile`) consomme l'alerte → couvert.
 3. **Milestones** (`api/post_sync_progression_queries.go`) : `combat_endurance_matches` / `combat_excellence_matches` (conditionnés `damage_taken>0`) restaient à 0 à vie en H5 (inatteignables). Gate `games.ProvidesDamageTaken(pdb.TitleSlug)` → métriques NON émises pour H5 (milestones masqués). La précision (OC, dégâts infligés) reste.
 
-**Déjà nil-safe** : KPI Home/Explorer `AvgDefensiveResistance` (garde `cy.DefensiveResistance > 0` → nil en H5). Radar Survie match-view = Lot C. Radar synergie escouade = suivi non traité.
+**Déjà nil-safe** : KPI Home/Explorer `AvgDefensiveResistance` (garde `cy.DefensiveResistance > 0` → nil en H5) ; front profil de combat (consommateurs testent `!= null` style/DR, KpiGrid via `?.` + `hasDR`) → aucun changement front requis. Radar Survie match-view = Lot C.
+
+**Suivi traité** : radar **synergie escouade** (`teammates_squad_charts_synergy.go` toSeries) retire aussi l'axe Survie quand `!ProvidesDamageTaken` (5 axes cohérents multi-joueurs, le front aligne sur series[0].axes).
 
 **Validation** : go build ./internal/... + tests games/analysis/coach/api/service verts + `TestProvidesDamageTaken` PASS.
 
