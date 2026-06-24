@@ -369,7 +369,7 @@ export function PlayerDetailPanel({ row, killerVictim, citations, header, rank, 
         <ExpectedSection
           items={expectedItems}
           title={t.sbDetailExpected}
-          locallyEstimated={row.expected_kills == null && row.expected_deaths == null && row.expected_assists != null}
+          locallyEstimated={(row.locally_estimated ?? false) || (row.expected_kills == null && row.expected_deaths == null && row.expected_assists != null)}
           estimatedLabel={t.sbDetailLocallyEstimated}
           estimatedHint={t.sbDetailLocallyEstimatedHint}
         />

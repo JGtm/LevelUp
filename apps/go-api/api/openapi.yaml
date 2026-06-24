@@ -5457,6 +5457,8 @@ components:
           shoulder_bash_kills:
               format: int64
               type: integer
+          locally_estimated:
+              type: boolean
           rank:
               format: int64
               type: integer
