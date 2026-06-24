@@ -1,3 +1,11 @@
+## [2026-06-24] Sonde leaderboard CSR H5 officiel → MORT (pivot vers CSR par-joueur) — Complété
+
+Cartographie du leaderboard CSR mondial Infinite (workflow) : écrit **append-only** (world_csr_leaderboard_snapshots PK séquence + fetched_at + written_at, lecture vue `_latest` par batch fetched_at), **scrape halowaypoint.com** (pas une API), stack déjà largement title-agnostic (domain TitleSlug, handler lit title_slug, world_player_season_stats a title_slug). Plan de réutilisation : `.ai/PLAN_H5_LEADERBOARD.md`. → **le delete/replace de Leafapp est PROSCRIT (on est append-only).**
+
+**Sonde read-only API officielle (clé Ocp-Apim, .env.local)** : `/metadata/h5/metadata/seasons` + `/playlists` = **200** ; `/stats/h5/leaderboards/csr/{seasonId}/{playlistId}` = **404 sur TOUS les combos** (saison active « Evergreen » incluse, + saisons passées). → **l'endpoint leaderboard CSR officiel H5 est MORT** (343 a retiré le service stats compétitif H5 ; halowaypoint n'a plus de pages H5 non plus). L'agent de recherche l'avait inféré du doc SANS l'appeler — leçon : sonder avant de planifier sur un endpoint non testé. **(e) world leaderboard H5 = NON faisable.**
+
+**PIVOT** : (a) **CSR par playlist PAR-JOUEUR** reste faisable — source = `ServiceRecordArena.ArenaPlaylistStats[]` (endpoint INTERNE spartanstats.svc, SpartanToken, qu'on appelle DÉJÀ pour SR/XP, juste pas parsé). Surface = matrice CSR par playlist sur la page carrière H5. La réutilisation de la stack leaderboard Infinite ne s'applique qu'à (e) → hors scope.
+
 ## [2026-06-24] Recherche Halo OSS (8 repos + API CSR Leaderboard) → leverage map — Complété
 
 2 passes workflow (fan-out + passe LEARNINGS sur les repos « morts », le user m'ayant repris sur le fait d'écarter trop vite). Doc : `.ai/RESEARCH_HALO_OSS_LEVERAGE.md`. Conclusions :
