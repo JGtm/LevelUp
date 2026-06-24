@@ -571,7 +571,7 @@ func NewRouter(
 		prestigeBundle = pb.WithSquadProfile(newSquadPerfProfileProvider(
 			func() ([]domain.PlayerSummary, error) { return cfg.LoadPlayers() },
 			reg.resolve,
-			defaultProgressionTitleSlug(),
+			titlePkg.DefaultSlug,
 		))
 		// Phase 2 plan stabilisation 2026-05-22 : enregistrer le bundle sur
 		// le registry pour fermeture au shutdown (évite la fuite de refCount
@@ -1494,7 +1494,7 @@ func NewRouter(
 			progressionResolve := func(ctx context.Context, slug string) (*platform_duckdb.PlayerDB, error) {
 				return reg.resolve(ctx, slug)
 			}
-			progressionH := handlers.NewProgressionHandler(progressionResolve, defaultProgressionTitleSlug()).
+			progressionH := handlers.NewProgressionHandler(progressionResolve, titlePkg.DefaultSlug).
 				WithDemoMode(cfg.DemoMode)
 			progressionH.Mount(r)
 
@@ -1519,16 +1519,16 @@ func NewRouter(
 				}
 				return ab.ServiceForPlayer(pdb, pb.TemplateRepoForCoach(), prestigeSvc), pdb.XUID, nil
 			}
-			coachH := handlers.NewCoachProposalsHandler(coachResolve, defaultProgressionTitleSlug())
+			coachH := handlers.NewCoachProposalsHandler(coachResolve, titlePkg.DefaultSlug)
 			coachH.Mount(r)
 
 			// PlayerProfile V1 (Ascension) — endpoint /profile complet.
 			// Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §8.1.
-			profileH := handlers.NewPlayerProfileHandler(progressionResolve, defaultProgressionTitleSlug())
+			profileH := handlers.NewPlayerProfileHandler(progressionResolve, titlePkg.DefaultSlug)
 			// V2 §2 : injection optionnelle du mapping awards→axes (Section A1 radar).
 			// Chargement lazy depuis config/titles/{slug}/mappings/awards.toml.
 			// Absence du fichier ou erreur de parse : log + fallback V1 silencieux.
-			awardsPath := filepath.Join(cfg.RepoRoot, "config", "titles", defaultProgressionTitleSlug(), "mappings", "awards.toml")
+			awardsPath := filepath.Join(cfg.RepoRoot, "config", "titles", titlePkg.DefaultSlug, "mappings", "awards.toml")
 			if awardSet, err := mappings.LoadAwardsFromFile(awardsPath); err != nil {
 				slog.Warn("player_profile_awards_load_failed", "path", awardsPath, "err", err.Error())
 			} else {
@@ -1549,12 +1549,12 @@ func NewRouter(
 				}
 				return platform_duckdb.NewPatternsRepo(pdb), nil
 			}
-			patternsH := handlers.NewPatternsHandler(patternsRepoResolve, defaultProgressionTitleSlug())
+			patternsH := handlers.NewPatternsHandler(patternsRepoResolve, titlePkg.DefaultSlug)
 			patternsH.Mount(r)
 
 			// ImprovementCampaign V1 — endpoints start/active/pause/close/abandon.
 			// Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §4.5 + §5.1.
-			campaignH := handlers.NewCampaignHandler(progressionResolve, defaultProgressionTitleSlug())
+			campaignH := handlers.NewCampaignHandler(progressionResolve, titlePkg.DefaultSlug)
 			campaignH.Mount(r)
 
 			// Match favoris (shared_social.duckdb)

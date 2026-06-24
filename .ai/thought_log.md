@@ -1,3 +1,12 @@
+## [2026-06-24] H5 — Refonte title-agnostic : C2-full handlers progression per-requête — Complété
+
+Les 5 handlers V2 Ascension (progression/coach/profile/campaign + patterns) capturaient `defaultProgressionTitleSlug()` (= halo_infinite figé) au boot et l'utilisaient pour FILTRER leurs queries (catalog/history/earned/profile/campaign par title_id) → un joueur sur H5 lisait un catalogue Infinite. La résolution du player DB était déjà title-aware (registry.resolve lit ctxkeys.TitleSlug) ; seul le filtrage applicatif suivait la constante de boot.
+- Nouveau helper partagé `internal/api/handlers/title_ctx.go::requestTitleSlug(ctx, fallback)` : titre de la requête (ctxkeys.TitleSlugIfSet, posé par TitleExtractor) sinon fallback boot. HINF byte-identique (sans header titre → fallback halo_infinite).
+- 8 sites de filtrage migrés vers `requestTitleSlug(ctx, h.titleSlug)` : progression (streaks/records/milestones catalog+earned = 4), coach (ListProposals), profile (BuildProfile), campaign (StartCampaign + GetActive). patterns = champ titleSlug vestigial (jamais utilisé en query, repo title-scopé par le PlayerDB) → inchangé.
+- 7 sites de construction server.go : `defaultProgressionTitleSlug()` → `titlePkg.DefaultSlug` (fallback explicite). Fonction `defaultProgressionTitleSlug` SUPPRIMÉE (post_sync_deltas.go).
+- Limite connue : l'awards.toml radar (player_profile) reste chargé HINF au boot (WithAwardMapping) ; H5 n'a pas d'awards.toml → fallback V1 silencieux (radar vide), pas de régression. Loader awards per-titre = polish futur.
+- Build api + tests handlers (progression/coach/profile/campaign/multititle) verts.
+
 ## [2026-06-24] H5 — Refonte title-agnostic : C4 Succès Xbox + C6 constantes title-aware — Complété
 
 C4 (Succès Xbox H5, architecture catégorisation RÉUTILISÉE telle quelle) :

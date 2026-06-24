@@ -160,7 +160,7 @@ func (h *ProgressionHandler) handleStreaks(ctx context.Context, in *progPlayerIn
 		return nil, err
 	}
 	repo := duckdb.NewStreaksRepo(pdb.Player)
-	list, err := repo.List(ctx, pdb.XUID, h.titleSlug)
+	list, err := repo.List(ctx, pdb.XUID, requestTitleSlug(ctx, h.titleSlug))
 	if err != nil {
 		slog.WarnContext(ctx, "progression: list streaks", "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "list_streaks_error", err.Error())
@@ -195,7 +195,7 @@ func (h *ProgressionHandler) handleRecords(ctx context.Context, in *progRecordsI
 	}
 
 	historyRepo := duckdb.NewRecordHistoryRepo(pdb.Player)
-	histList, err := historyRepo.ListRecent(ctx, pdb.XUID, h.titleSlug, limit)
+	histList, err := historyRepo.ListRecent(ctx, pdb.XUID, requestTitleSlug(ctx, h.titleSlug), limit)
 	if err != nil {
 		slog.WarnContext(ctx, "progression: list record history", "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "list_history_error", err.Error())
@@ -222,14 +222,14 @@ func (h *ProgressionHandler) handleMilestones(ctx context.Context, in *progPlaye
 	}
 
 	catalogRepo := duckdb.NewMilestoneCatalogRepo(pdb.Metadata)
-	catalog, err := catalogRepo.ListByTitle(ctx, h.titleSlug)
+	catalog, err := catalogRepo.ListByTitle(ctx, requestTitleSlug(ctx, h.titleSlug))
 	if err != nil {
 		slog.WarnContext(ctx, "progression: list catalog", "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "list_catalog_error", err.Error())
 	}
 
 	earnedRepo := duckdb.NewMilestoneEarnedRepo(pdb.Player)
-	earnedList, err := earnedRepo.ListByUser(ctx, pdb.XUID, h.titleSlug)
+	earnedList, err := earnedRepo.ListByUser(ctx, pdb.XUID, requestTitleSlug(ctx, h.titleSlug))
 	if err != nil {
 		slog.WarnContext(ctx, "progression: list earned", "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "list_earned_error", err.Error())
