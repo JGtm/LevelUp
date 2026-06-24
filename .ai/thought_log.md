@@ -1,3 +1,12 @@
+## [2026-06-24] Médailles H5 — op runtime exécutée (seed + sync) + vérif résolution 98,5 % — Complété (runtime)
+
+Le user a demandé « fais le truc des médailles H5 ». Le code étant déjà câblé (cf. entrée précédente), il ne restait que la donnée runtime. Exécuté sur le clone runtime (`LEVELUP_REPO_ROOT=…/LevelUp-go-migration`, aucun serveur actif → locks libres) :
+- **Seed** `cmd/h5-metadata-fetch` (clé .env.local, idempotent INSERT OR REPLACE) → `medal_definitions` = **215 médailles** (noms EN/FR + sprite COMPLET sheet+offsets), + 68 armes, 49 maps, 42 tiers CSR, 121 commendations. Migration applied=0 (schéma déjà v8).
+- **Sync delta** `cmd/h5-sync JGtm 25` → JGtm déjà à jour (seen=1 collected=0, delta-stop). Le résumé DB a confirmé l'état réel : `medals_earned=148119` lignes (déjà ingérées lors des syncs précédents — le pipeline `MapMedalEvents` tournait), match_registry=3032, weapon_kills=268327.
+- **Vérif cross-DB** (diagnostic jetable `//go:build ignore`, supprimé après) : medals_earned = 196 medal_id distincts ; **193/196 résolus (98,5 %) contre medal_definitions, tous avec sprite**. 3 ids non résolus (505244449 ×18, 883611709 ×7, 3566983914 ×7 = 32 occ / 148119 = 0,02 %) = médailles obscures absentes du catalogue officiel 343 → fallback décimal gracieux, négligeable.
+
+⇒ Les médailles H5 s'affichent (noms + sprites) sur la page match. `diag_medals` est hardcodé halo_infinite (inutilisable H5). Op faite en LOCAL/runtime ; à refaire en PROD au déploiement (le seed n'a pas encore tourné sur le VPS sauf si déjà fait). Worktree repo inchangé (écritures dans le clone data).
+
 ## [2026-06-24] REQ packs = abandonnés (décision user) + fix canonique gating pass saisonnier title-aware — Complété
 
 Décision user post-sonde : « laisser tomber comme le leaderboard » (jeu inactif + inventaire REQ personnel mort). On NE construit PAS de surface REQ. On corrige seulement le bug de structure canonique : la page `career/season-pass` (Battlepass HI) était gatée sur la capability GROSSE `career` que **H5 possède** → H5 montait à tort la page Battlepass HI (alors que H5 n'a pas de pass).
