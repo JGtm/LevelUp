@@ -85,7 +85,7 @@ func SyncAchievements(
 
 	// Étape 5 : pré-warming des images (fire-and-forget).
 	if resolver != nil {
-		warmAchievementImages(ctx, resolver, merged)
+		warmAchievementImages(ctx, resolver, merged, titleID)
 	}
 
 	return nil
@@ -268,14 +268,17 @@ func upsertPlayerAchievements(ctx context.Context, db *sql.DB, achievements []Pl
 }
 
 // warmAchievementImages pré-chauffe le cache local des icônes d'achievements.
-// Exécuté en goroutine (fire-and-forget) pour ne pas bloquer la sync.
-func warmAchievementImages(_ context.Context, resolver assets.Resolver, achievements []PlayerAchievement) {
+// Exécuté en goroutine (fire-and-forget) pour ne pas bloquer la sync. titleID
+// (slug LevelUp du titre, threadé depuis SyncAchievements) scope le cache d'assets
+// par titre — title-agnostic (C7), plus de "halo_infinite" figé qui mélangeait les
+// icônes Halo 5 sous le namespace Infinite.
+func warmAchievementImages(_ context.Context, resolver assets.Resolver, achievements []PlayerAchievement, titleID string) {
 	refs := make([]assets.Ref, 0, len(achievements))
 	for _, a := range achievements {
 		if a.ImageURL != "" {
 			refs = append(refs, assets.Ref{
 				Kind:    assets.KindAchievementImage,
-				TitleID: "halo_infinite",
+				TitleID: titleID,
 				ID:      a.AchievementID,
 			})
 		}

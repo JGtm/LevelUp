@@ -291,9 +291,9 @@ func TestWarmAchievementImages_EmptyImageURL_Skipped(t *testing.T) {
 		{AchievementID: "1", ImageURL: ""},
 		{AchievementID: "2", ImageURL: ""},
 	}
-	warmAchievementImages(context.Background(), nil, achievements)
+	warmAchievementImages(context.Background(), nil, achievements, "halo_infinite")
 }
 
 func TestWarmAchievementImages_NilAchievements_NoPanic(t *testing.T) {
-	warmAchievementImages(context.Background(), nil, nil)
+	warmAchievementImages(context.Background(), nil, nil, "halo_infinite")
 }

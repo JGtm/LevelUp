@@ -52,7 +52,7 @@ func InsertPlayerSeasonStats(ctx context.Context, db *sql.DB, stats []domain.Wor
 	for _, s := range stats {
 		title := s.TitleSlug
 		if title == "" {
-			title = "halo_infinite"
+			title = defaultLeaderboardTitleSlug
 		}
 		if _, err := tx.ExecContext(ctx, ins,
 			title, s.Gamertag, s.SeasonID, s.PlaylistID,
