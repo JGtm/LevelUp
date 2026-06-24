@@ -12,6 +12,9 @@ import (
 	"log/slog"
 	"math"
 	"time"
+
+	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/games"
 )
 
 // ── PlayerState — état TrueSkill 2 entre deux matchs ────────────────────────
@@ -135,7 +138,7 @@ func batchComputeLUSR(ctx context.Context, playerDB, sharedDB *sql.DB, xuid stri
 	}
 
 	// 6. Calculer les ratings via TrueSkill 2 séquentiel.
-	results := computeSkillRatingsBatch(toProcess, participantsByMatch, states, medalExploitByMatch)
+	results := computeSkillRatingsBatch(ctxkeys.TitleSlug(ctx), toProcess, participantsByMatch, states, medalExploitByMatch)
 	if len(results) == 0 {
 		return 0, nil
 	}
@@ -166,6 +169,7 @@ func batchComputeLUSR(ctx context.Context, playerDB, sharedDB *sql.DB, xuid stri
 // ART change effectivement les valeurs LUSR comme attendu (cf. cibles squad
 // dans memory/reference_lusr_target_levels.md).
 func computeSkillRatingsBatch(
+	titleSlug string,
 	matches []lusrMatchData,
 	participantsByMatch map[string][]lusrParticipant,
 	states map[string]*PlayerState,
@@ -181,7 +185,11 @@ func computeSkillRatingsBatch(
 		if match.PairName != nil {
 			pairName = *match.PairName
 		}
-		chain := GetLUSRChain(pairName)
+		// Title-aware (C6) : un titre avec classifier dédié (Halo 5) classe ses
+		// propres modes ; sinon retombe sur le classifier défaut (Infinite). Évite
+		// que les modes h5 collapsent tous dans arena_slayer. titleSlug==""/halo_infinite
+		// → défaut → byte-identique HINF (aucun classifier per-title HINF enregistré).
+		chain := GetLUSRChainForTitle(titleSlug, pairName)
 		if chain == "" {
 			continue // exclu : Ranked (→ CSR) ou Firefight (→ PvE)
 		}
@@ -324,12 +332,23 @@ func appendToHistory(hist *[]float64, v float64) {
 }
 
 // computeCombatYield calcule offensive_conversion et defensive_resistance depuis un match.
+//
+// Le baseline PV-pour-tuer est SCALE-INVARIANT ici : offConv/defRes sont ensuite
+// comparés à la moyenne glissante DU MÊME joueur (avgOffConv/avgDefRes dans
+// computeCompositeScoreWithBreakdown), tous calculés avec la même constante → le
+// facteur s'annule dans le ratio et n'affecte PAS le classement LUSR. On utilise
+// donc le baseline Infinite par défaut (games.DefaultEffectiveHpToKill) comme
+// simple constante d'échelle nommée — title-agnostic par construction, sans avoir
+// à threader le slug sur ce hot path. Le baseline title-aware (225 Infinite / 115
+// Halo 5) ne concerne que le KPI Rendement/Résistance AFFICHÉ (match-view), résolu
+// séparément via games.EffectiveHpToKill(slug).
 func computeCombatYield(m lusrMatchData) (offConv, defRes float64) {
+	const hpToKill = games.DefaultEffectiveHpToKill
 	if m.DamageDealt > 0 {
-		offConv = 225.0 * (m.Kills + m.Assists/3.0) / m.DamageDealt
+		offConv = hpToKill * (m.Kills + m.Assists/3.0) / m.DamageDealt
 	}
 	if m.DamageTaken > 0 && m.Deaths > 0 {
-		defRes = m.DamageTaken / (225.0 * m.Deaths)
+		defRes = m.DamageTaken / (hpToKill * m.Deaths)
 	}
 	return
 }

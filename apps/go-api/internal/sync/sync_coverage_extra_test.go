@@ -185,7 +185,7 @@ func TestSplitParticipantKEs_WithTeamID(t *testing.T) {
 // ── computeSkillRatingsBatch ─────────────────────────────────────────────────
 
 func TestComputeSkillRatingsBatch_Empty(t *testing.T) {
-	results := computeSkillRatingsBatch(nil, nil, nil, nil)
+	results := computeSkillRatingsBatch("", nil, nil, nil, nil)
 	if len(results) != 0 {
 		t.Fatalf("expected 0 results, got %d", len(results))
 	}
@@ -217,7 +217,7 @@ func TestComputeSkillRatingsBatch_SingleMatch(t *testing.T) {
 			{MatchID: "m1", XUID: "x2", TeamID: &team1, KillsExpected: 8},
 		},
 	}
-	results := computeSkillRatingsBatch(matches, participants, nil, nil)
+	results := computeSkillRatingsBatch("", matches, participants, nil, nil)
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -240,7 +240,7 @@ func TestComputeSkillRatingsBatch_NilOutcomeGuard(t *testing.T) {
 			Deaths:    5,
 		},
 	}
-	results := computeSkillRatingsBatch(matches, nil, nil, nil)
+	results := computeSkillRatingsBatch("", matches, nil, nil, nil)
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}

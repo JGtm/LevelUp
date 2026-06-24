@@ -1,3 +1,19 @@
+## [2026-06-24] H5 — Refonte title-agnostic : C4 Succès Xbox + C6 constantes title-aware — Complété
+
+C4 (Succès Xbox H5, architecture catégorisation RÉUTILISÉE telle quelle) :
+- Catégorisation via workflow (recherche TrueAchievements + Halopedia → 73 succès : 55 campaign / 13 multiplayer / 5 other). Nouveau fichier `internal/domain/achievement_categories_halo_5.go` (3 listes name_en) branché dans le registre slug-keyed `achievementCategoriesByTitle` (zéro changement d'archi — le `buildAchievementCategoryTable` + lookup normalisé HINF est déjà title-agnostic).
+- Schéma : `xbox_achievement_definitions` ajouté au set metadata PROPRE à H5 (`migrations/metadata.go` MetadataSteps + metadataStepNames), colonnes `title_id`/`xbox_title_id`/`service_config_id` dès la création (forme HINF + discriminateurs cross-titre). Test metadata inversé (table attendue, plus polluante).
+- CLI : `applyAchievementsMigrations` passe à `RunForTitleDB(slug)` (ADR 0008 — provisioning par titre, plus `RunForDB` figé HINF). Gate capability `CapAchievements` sur `runAchievementsSync` (un futur titre sans succès Xbox skippe proprement, pas de branche slug==literal). Engine déjà title-aware (`XboxTitleIDFor(slug)` → 219630713 H5 via title.toml). Tests domain + migrations h5 verts.
+
+C6 (constantes title-agnostic) :
+- `computeCombatYield` (skill_rating.go) : magic `225.0` → `games.DefaultEffectiveHpToKill` (constante nommée). SCALE-INVARIANT sur le chemin LUSR (offConv/defRes comparés à la moyenne glissante du joueur → le facteur s'annule, classement inchangé) ; le baseline title-aware (225 Infinite / 115 H5) ne concerne que le KPI Rendement/Résistance AFFICHÉ (résolu ailleurs via games.EffectiveHpToKill).
+- perf-chain + LUSR-chain title-aware : `GetPerformanceChain` + `computeSkillRatingsBatch` + `RunFormulaSim` threadent `ctxkeys.TitleSlug(ctx)` → `GetLUSRChainForTitle(slug, pairName)` (au lieu du défaut Infinite `GetLUSRChain`). Évite que les modes H5 collapsent dans arena_slayer. ""/halo_infinite → classifier défaut → byte-identique HINF (aucun classifier per-title HINF).
+- Steaktacular : `loadSteaktacularByTeam` résout l'ID médaille killing-spree via `steaktacularMedalIDForTitle(slug)` (Infinite câblé, autres titres → skip → fallback marge de score déjà title-agnostic). HINF byte-identique.
+- Waypoint/badge URL : DÉJÀ title-aware (csrBadgeResolver + TitleSkillBadgeURL(slug)) — la note mémoire pointait un état périmé, aucun changement requis. mode_category resolver différé (large, per plan).
+- Build all + vet + tests sync(53s)/domain/games.halo_5 verts.
+
+RESTE : C2-full (7 sites server.go), C0 capabilities fines, C7 slug literals, backfill progression observable des 4 joueurs.
+
 ## [2026-06-24] H5 — Refonte title-agnostic : C1 Progression V2 (wiring) + C5 milestones + C2-partiel — En cours
 
 C1 (fix dominant) : le pipeline Progression V2 (streaks/records/milestones/coach) est DÉJÀ title-aware (EvaluateProgressionAfterSync prend titleSlug) — il n'était juste jamais APPELÉ pour H5 (sync H5 = livesync.Runner, pas le post-sync HINF). Câblé via cfg (mirror exact de TitleReadyNotifier) :
