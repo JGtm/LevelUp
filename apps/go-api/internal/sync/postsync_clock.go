@@ -34,6 +34,7 @@ var postSyncStepNames = []string{
 	"aggregates",
 	"media_scan",
 	"achievements",
+	"snapshot_readiness",
 }
 
 // PostSyncStepNames retourne la liste ordonnée des étapes chronométrées.
