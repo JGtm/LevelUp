@@ -7,8 +7,9 @@
 
 - **Branche** : `refactor/durabilite-snapshot-immuable`, poussée sur `origin`. **PAS mergée sur `main`**.
 - **Worktree dédié** : `C:\Users\Guillaume\Downloads\Scripts\LevelUp-durabilite-snapshot` (isolé du dépôt principal). Toutes les commandes Go/git ci-dessous s'y exécutent.
-- **Fait + testé + poussé** : Phase 0 (instrumentation B-swap), Phase 1.b (invariant `CommitThenAdvance` + dette fixtures), **Phase 2a (readiness marker complet, fonctionnel end-to-end)**.
-- **Reste** : Phase 2 **producteur** (étapes 7-10) + **monitoring** (11-13), puis Phase 3-4, puis **déploiement prod = décision utilisateur** (downtime).
+- **Fait + testé** : Phase 0 (instrumentation B-swap), Phase 1.b (invariant `CommitThenAdvance` + dette fixtures), Phase 2a (readiness marker), **Phase 2 producteur + monitoring (étapes 7-13) — COMPLÈTE, fonctionnelle end-to-end** (cf. thought_log [2026-06-25] « PRODUCTEUR + MONITORING »).
+- **Reste** : Phase 3 (chemin de lecture servi depuis le snapshot — décisionnel/pilote) + Phase 4 (rollout), puis **déploiement prod = décision utilisateur** (downtime). Le producteur tourne dès le déploiement mais **rien ne LIT encore le snapshot** (Phase 3 non livrée — additif, hors lock RW, rétention bornée, monitoré).
+- **Note commit** : les étapes 7-13 sont implémentées + vertes mais **PAS encore committées** au moment d'écrire cette ligne (en attente d'autorisation utilisateur du tour courant).
 - **Plan maître** : `.ai/PLAN_DURABILITE_SNAPSHOT_IMMUABLE.md` (Option B = lecture snapshot seule ; readiness marker ; grâce bornée).
 
 ## 1. Objectif

@@ -353,3 +353,18 @@ Corrections de cap importantes (le code est la source autoritaire — "carte dat
   meilleurs pilotes Phase 3 = MatchView / Home / Explorer.
 
 Reste : déployer Phase 0 + mesurer en prod pour trancher Phases 2-4 ; 1.b (refactor de clarté) optionnel.
+
+### Mise à jour [2026-06-25] — Phase 2 LIVRÉE en entier (sur directive utilisateur « faire le plan au complet »)
+
+L'utilisateur a explicitement écarté le gating Phase-0-d'abord et demandé la feature complète. Phase 2 = **readiness marker (étapes 1-6) + producteur + monitoring (étapes 7-13)** livrés sur la branche.
+
+- **Readiness marker** : `snapshot_ready_at`/`partial_reasons` append-only (stage `'snapshot'`) + prédicat pur `isMatchSnapshotReady` (10 cas) + `evaluateSnapshotReadiness` (post-sync étape 6, grâce 60j) + `CapWeaponKills`.
+- **Producteur** (`internal/ops/snapshot*.go`) : `ProduceSnapshot` versionné (`vNNN…/` + `CURRENT.json` flip os.Rename atomique + manifest checksummé + rétention). Lit shared + chaque player DB en RO via `OpenReadForQuery` (zéro ATTACH), filtre aux matchs `snapshot_ready_at IS NOT NULL`.
+- **Câblage** : Phase 6bis du cycle V2 (`v2.SnapshotProducer` + `WithSnapshotProducer`, nil-guard, best-effort), pont `sync.SnapshotCutter`, inconditionnel.
+- **Monitoring** : métriques cut (enum fermé via sentinelles `ops.ErrSnapshot*`) + gauges backlog global-par-titre + section `AdminMonitoringOverview.Snapshot` (zéro I/O DuckDB).
+
+**Déviations assumées vs §3 de ce plan** (documentées, justifiées échelle perso) :
+1. **Full re-export change-gated** au lieu d'incrémental par-batch → **pas de compaction** (`compactMonth` non écrit : aurait été du code mort).
+2. **Un fichier Parquet par table** (shared) / **par (table, joueur)** (dérivés) au lieu d'une **partition mensuelle** : à l'échelle perso (quelques milliers de matchs), le partitionnement mensuel ajoute de la complexité (globbing, comptage par fichier) pour un gain de pruning négligeable. Réintroductible en **Phase 3** si le profilage lecture le justifie.
+
+**Reste** : Phase 3 (lecture servie depuis le snapshot — décisionnel/pilote) + Phase 4 (rollout) ; **déploiement prod = décision utilisateur** (downtime ; merge main = auto-deploy). Le producteur tourne dès le déploiement mais rien ne LIT encore le snapshot (Phase 3 non livrée).

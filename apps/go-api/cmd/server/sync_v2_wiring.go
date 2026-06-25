@@ -17,6 +17,7 @@ import (
 	"database/sql"
 	"log/slog"
 	"os"
+	"strconv"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
@@ -163,6 +164,18 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		postSyncRunner = syncv2.NewPostSyncRunner(engineFactory, playerDBOpenerRW, acquireSharedRW, clientFactory)
 	}
 
+	// Phase 6bis — producteur de snapshot immuable (durabilité / lecture découplée du
+	// B-swap). Inconditionnel et best-effort : un échec de cut n'invalide pas le cycle.
+	// Le cutter ouvre shared + player DB en RO via OpenReadForQuery (handle cached), donc
+	// hors fenêtre RW (cut déclenché après libération du write-lease post-sync).
+	keep := 0 // 0 → défaut appliqué par NewSnapshotCutter
+	if v := os.Getenv("LEVELUP_SNAPSHOT_KEEP"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			keep = n
+		}
+	}
+	snapshotCutter := syncpkg.NewSnapshotCutter(deps.PathResolver, keep)
+
 	return syncv2.NewCycleOrchestrator(
 		knownLoader,
 		matchListProvider,
@@ -171,7 +184,7 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		persister,
 		postSyncRunner,
 		syncv2.CycleConfig{},
-	)
+	).WithSnapshotProducer(snapshotCutter)
 }
 
 // ─── Dry-run stubs (mode validation sans écriture DB) ─────────────────
