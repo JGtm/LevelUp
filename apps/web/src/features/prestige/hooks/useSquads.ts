@@ -88,6 +88,30 @@ export function useRemoveSquadMember(userId: string) {
   })
 }
 
+/** Renomme une escouade (gardé membre-user côté backend via `requested_by`). */
+export function useRenameSquad(userId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ squadId, name }: { squadId: string; name: string }) =>
+      prestigeApi.renameSquad(squadId, { name, requested_by: userId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: squadKeys.mine(userId) })
+    },
+  })
+}
+
+/** Supprime une escouade (retrait append-only de tous les membres). */
+export function useDeleteSquad(userId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ squadId }: { squadId: string }) =>
+      prestigeApi.deleteSquad(squadId, userId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: squadKeys.mine(userId) })
+    },
+  })
+}
+
 /** Recalcule et persiste la progression d'un défi d'escouade. */
 export function useEvaluateSquadChallenge(squadId: string) {
   const qc = useQueryClient()

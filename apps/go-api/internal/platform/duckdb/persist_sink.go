@@ -678,9 +678,11 @@ func (s *PersistSink) insertSnapshot(
 		expiresAt = expiry
 	}
 
-	// Métadonnées de rendu (titre/description/image) du défi actif correspondant,
-	// pour reconstruire des cartes depuis le cache. nil pour les défis complétés.
-	var title, description, imageURL interface{}
+	// Métadonnées de rendu (titre/description/image + vrai chemin GameCMS) du défi actif
+	// correspondant, pour reconstruire des cartes depuis le cache. nil pour les complétés.
+	// display_path = le vrai path (...DailyChallenges/...) → le front dérive la cadence ;
+	// challenge_path reste la clé de dedup synthétique.
+	var title, description, imageURL, displayPath interface{}
 	if item, ok := renderByTracking[ch.TrackingID]; ok {
 		if item.Title != "" {
 			title = item.Title
@@ -691,17 +693,20 @@ func (s *PersistSink) insertSnapshot(
 		if item.ImageURL != nil && *item.ImageURL != "" {
 			imageURL = *item.ImageURL
 		}
+		if item.ChallengePath != "" {
+			displayPath = item.ChallengePath
+		}
 	}
 
 	_, err = db.Exec(ctx, `
 		INSERT INTO challenge_snapshots
 			(snapshot_at, xuid, challenge_path, challenge_id,
 			 status, progress_current, progress_target, xp_reward,
-			 can_reroll, expires_at, state_hash, title, description, image_url)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			 can_reroll, expires_at, state_hash, title, description, image_url, display_path)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		at, s.XUID, chPath, ch.TrackingID,
 		status, ch.CurrentProgress, ch.Threshold, ch.XPReward,
-		ch.CanReroll, expiresAt, stateHash, title, description, imageURL,
+		ch.CanReroll, expiresAt, stateHash, title, description, imageURL, displayPath,
 	)
 	return err
 }

@@ -101,6 +101,8 @@ func (h *PrestigeHandler) Mount(r chi.Router) {
 
 	huma.Post(api, "/squads", h.CreateSquad)
 	huma.Get(api, "/squads", h.ListMySquads)
+	huma.Patch(api, "/squads/{squad_id}", h.RenameSquad)
+	huma.Delete(api, "/squads/{squad_id}", h.DeleteSquad)
 	huma.Post(api, "/squads/{squad_id}/members", h.AddSquadMember)
 	huma.Delete(api, "/squads/{squad_id}/members/{xuid}", h.RemoveSquadMember)
 	huma.Post(api, "/squad-challenges/{id}/evaluate", h.EvaluateSquadChallenge)
@@ -582,10 +584,13 @@ type addSquadMemberBody struct {
 	RequestedBy string `json:"requested_by"` // player_slug de l'acteur (membre-user)
 }
 
-// squadWithMembers est la réponse d'une escouade avec son roster.
+// squadWithMembers est la réponse d'une escouade avec son roster + l'indice
+// dérivé des playlists/modes habituels (best-effort, jamais stocké).
 type squadWithMembers struct {
-	Squad   prestige.Squad         `json:"squad"`
-	Members []prestige.SquadMember `json:"members"`
+	Squad          prestige.Squad         `json:"squad"`
+	Members        []prestige.SquadMember `json:"members"`
+	UsualPlaylists []string               `json:"usual_playlists,omitempty"`
+	UsualModes     []string               `json:"usual_modes,omitempty"`
 }
 
 // squadCreatedOutput : 201 — objet Squad créé.
@@ -594,32 +599,43 @@ type squadCreatedOutput struct {
 	Body   prestige.Squad
 }
 
-// playerDirectory construit les maps xuid→slug et slug→xuid depuis l'annuaire
-// db_profiles. Si appPlayers est nil, retourne des maps vides (pas de tag).
-func (h *PrestigeHandler) playerDirectory(ctx context.Context) (slugByXUID, xuidBySlug map[string]string, err error) {
+// playerDirectory construit les maps xuid→slug, slug→xuid et xuid→gamertag
+// depuis l'annuaire db_profiles. Si appPlayers est nil, retourne des maps vides.
+func (h *PrestigeHandler) playerDirectory(ctx context.Context) (slugByXUID, xuidBySlug, gamertagByXUID map[string]string, err error) {
 	slugByXUID = map[string]string{}
 	xuidBySlug = map[string]string{}
+	gamertagByXUID = map[string]string{}
 	if h.appPlayers == nil {
-		return slugByXUID, xuidBySlug, nil
+		return slugByXUID, xuidBySlug, gamertagByXUID, nil
 	}
 	players, err := h.appPlayers(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	for _, p := range players {
 		if p.XUID != "" {
 			slugByXUID[p.XUID] = p.PlayerSlug
+			if p.Gamertag != "" {
+				gamertagByXUID[p.XUID] = p.Gamertag
+			}
 		}
 		if p.PlayerSlug != "" {
 			xuidBySlug[p.PlayerSlug] = p.XUID
 		}
 	}
-	return slugByXUID, xuidBySlug, nil
+	return slugByXUID, xuidBySlug, gamertagByXUID, nil
 }
 
 // buildSquadMembers assemble le roster : créateur (membre-user) + membres du
-// body, dédupliqués par xuid, chacun tagué user_id si joueur de l'app.
-func buildSquadMembers(body createSquadBody, creatorXUID string, slugByXUID map[string]string) []prestige.SquadMember {
+// body, dédupliqués par xuid, chacun tagué user_id si joueur de l'app et avec
+// son gamertag (snapshot d'affichage : priorité au body, fallback annuaire).
+func buildSquadMembers(body createSquadBody, creatorXUID string, slugByXUID, gamertagByXUID map[string]string) []prestige.SquadMember {
+	gtFromBody := map[string]string{}
+	for _, m := range body.Members {
+		if m.XUID != "" && m.Gamertag != "" {
+			gtFromBody[m.XUID] = m.Gamertag
+		}
+	}
 	seen := map[string]bool{}
 	members := make([]prestige.SquadMember, 0, len(body.Members)+1)
 	add := func(xuid string) {
@@ -627,7 +643,11 @@ func buildSquadMembers(body createSquadBody, creatorXUID string, slugByXUID map[
 			return
 		}
 		seen[xuid] = true
-		members = append(members, prestige.SquadMember{Xuid: xuid, UserID: slugByXUID[xuid]})
+		gt := gtFromBody[xuid]
+		if gt == "" {
+			gt = gamertagByXUID[xuid]
+		}
+		members = append(members, prestige.SquadMember{Xuid: xuid, UserID: slugByXUID[xuid], Gamertag: gt})
 	}
 	add(creatorXUID)
 	for _, m := range body.Members {
@@ -648,7 +668,7 @@ func (h *PrestigeHandler) CreateSquad(ctx context.Context, in *rawBodyInput) (*s
 	if err := h.authorizeActor(ctx, body.CreatedBy); err != nil {
 		return nil, err
 	}
-	slugByXUID, xuidBySlug, err := h.playerDirectory(ctx)
+	slugByXUID, xuidBySlug, gamertagByXUID, err := h.playerDirectory(ctx)
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "directory_error", err.Error())
 	}
@@ -660,7 +680,7 @@ func (h *PrestigeHandler) CreateSquad(ctx context.Context, in *rawBodyInput) (*s
 	sc, err := h.svc.CreateSquad(ctx, prestige.CreateSquadRequest{
 		Name:      body.Name,
 		CreatedBy: body.CreatedBy,
-		Members:   buildSquadMembers(body, creatorXUID, slugByXUID),
+		Members:   buildSquadMembers(body, creatorXUID, slugByXUID, gamertagByXUID),
 	})
 	if err != nil {
 		return nil, h.serviceError(ctx, err)
@@ -669,7 +689,8 @@ func (h *PrestigeHandler) CreateSquad(ctx context.Context, in *rawBodyInput) (*s
 }
 
 type listMySquadsInput struct {
-	UserID string `query:"user_id"`
+	UserID    string `query:"user_id"`
+	TitleSlug string `query:"title_slug"`
 }
 
 // ListMySquads gère GET /squads?user_id=slug — escouades dont user_id est
@@ -685,13 +706,37 @@ func (h *PrestigeHandler) ListMySquads(ctx context.Context, in *listMySquadsInpu
 	if err != nil {
 		return nil, h.serviceError(ctx, err)
 	}
+	titleSlug := in.TitleSlug
+	// Annuaire (best-effort) pour combler les gamertags absents des snapshots
+	// membres (legacy/pré-colonne) — app-players uniquement, via lookup canonique.
+	_, _, gamertagByXUID, _ := h.playerDirectory(ctx)
 	out := make([]squadWithMembers, 0, len(squads))
 	for _, sq := range squads {
 		members, mErr := h.svc.ListSquadMembers(ctx, sq.ID)
 		if mErr != nil {
 			return nil, h.serviceError(ctx, mErr)
 		}
-		out = append(out, squadWithMembers{Squad: sq, Members: members})
+		for i := range members {
+			if members[i].Gamertag == "" {
+				if gt := gamertagByXUID[members[i].Xuid]; gt != "" {
+					members[i].Gamertag = gt
+				}
+			}
+		}
+		entry := squadWithMembers{Squad: sq, Members: members}
+		// Indice dérivé (best-effort) : playlists/modes habituels du roster. Une
+		// erreur (provider absent, lecture shared KO) n'empêche pas la liste.
+		roster := make([]string, 0, len(members))
+		for _, m := range members {
+			if m.Xuid != "" {
+				roster = append(roster, m.Xuid)
+			}
+		}
+		if pls, mds, uErr := h.svc.SquadUsualContexts(ctx, roster, titleSlug); uErr == nil {
+			entry.UsualPlaylists = pls
+			entry.UsualModes = mds
+		}
+		out = append(out, entry)
 	}
 	return &mapOutput{Body: map[string]any{"squads": out, jsonKeyCount: len(out)}}, nil
 }
@@ -711,11 +756,16 @@ func (h *PrestigeHandler) AddSquadMember(ctx context.Context, in *squadIDBodyInp
 	if err := h.authorizeActor(ctx, body.RequestedBy); err != nil {
 		return nil, err
 	}
-	slugByXUID, _, err := h.playerDirectory(ctx)
+	slugByXUID, _, gamertagByXUID, err := h.playerDirectory(ctx)
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "directory_error", err.Error())
 	}
-	member := prestige.SquadMember{Xuid: body.XUID, UserID: slugByXUID[body.XUID]}
+	// Gamertag explicite du body, sinon backfill via l'annuaire (delta main porté en Huma).
+	gamertag := body.Gamertag
+	if gamertag == "" {
+		gamertag = gamertagByXUID[body.XUID]
+	}
+	member := prestige.SquadMember{Xuid: body.XUID, UserID: slugByXUID[body.XUID], Gamertag: gamertag}
 	if err := h.svc.AddSquadMember(ctx, in.SquadID, member, body.RequestedBy); err != nil {
 		return nil, h.serviceError(ctx, err)
 	}
@@ -740,6 +790,56 @@ func (h *PrestigeHandler) RemoveSquadMember(ctx context.Context, in *removeSquad
 		return nil, err
 	}
 	if err := h.svc.RemoveSquadMember(ctx, in.SquadID, in.XUID, in.RequestedBy); err != nil {
+		return nil, h.serviceError(ctx, err)
+	}
+	return &noContentOutput{Status: http.StatusNoContent}, nil
+}
+
+type renameSquadBody struct {
+	Name        string `json:"name"`
+	RequestedBy string `json:"requested_by"` // player_slug de l'acteur (membre-user)
+}
+
+// RenameSquad gère PATCH /squads/{squad_id} — renomme l'escouade. (Porté en Huma
+// lors du merge : feature ajoutée chi sur main, ré-exprimée en signature Huma.)
+func (h *PrestigeHandler) RenameSquad(ctx context.Context, in *squadIDBodyInput) (*noContentOutput, error) {
+	if in.SquadID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_squad_id", "squad_id requis")
+	}
+	var body renameSquadBody
+	if err := json.Unmarshal(in.RawBody, &body); err != nil {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+	}
+	if body.Name == "" || body.RequestedBy == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_fields", "name et requested_by requis")
+	}
+	if err := h.authorizeActor(ctx, body.RequestedBy); err != nil {
+		return nil, err
+	}
+	if err := h.svc.RenameSquad(ctx, in.SquadID, body.Name, body.RequestedBy); err != nil {
+		return nil, h.serviceError(ctx, err)
+	}
+	return &noContentOutput{Status: http.StatusNoContent}, nil
+}
+
+type deleteSquadInput struct {
+	SquadID     string `path:"squad_id"`
+	RequestedBy string `query:"requested_by"`
+}
+
+// DeleteSquad gère DELETE /squads/{squad_id}?requested_by=slug — supprime
+// l'escouade (retrait append-only de tous ses membres). Porté en Huma au merge.
+func (h *PrestigeHandler) DeleteSquad(ctx context.Context, in *deleteSquadInput) (*noContentOutput, error) {
+	if in.SquadID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_squad_id", "squad_id requis")
+	}
+	if in.RequestedBy == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_requested_by", "requested_by requis")
+	}
+	if err := h.authorizeActor(ctx, in.RequestedBy); err != nil {
+		return nil, err
+	}
+	if err := h.svc.DeleteSquad(ctx, in.SquadID, in.RequestedBy); err != nil {
 		return nil, h.serviceError(ctx, err)
 	}
 	return &noContentOutput{Status: http.StatusNoContent}, nil

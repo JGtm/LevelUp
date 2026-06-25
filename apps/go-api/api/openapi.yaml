@@ -2051,6 +2051,19 @@ paths:
       responses:
         "200": { description: "Backlog de convergence par joueur (compteurs plafonnés à l'horizon)" }
 
+  /admin/monitoring/weapon-coverage:
+    get:
+      tags: [admin]
+      operationId: getAdminMonitoringWeaponCoverage
+      summary: "Dashboard monitoring — couverture de résolution d'arme (registre vs weapon_labels vs non résolu) par titre (auth admin requis)"
+      parameters:
+        - name: title
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200": { description: "Couverture de résolution d'arme par titre" }
+
   /admin/monitoring/jobs:
     get:
       tags: [admin]
@@ -14294,6 +14307,9 @@ components:
           kills:
               format: int64
               type: integer
+          grenade_kills:
+              format: int64
+              type: integer
           map_name:
               type: string
           match_id:
@@ -14304,7 +14320,13 @@ components:
           max_killing_spree:
               format: int64
               type: integer
+          melee_kills:
+              format: int64
+              type: integer
           perfect_kills:
+              format: int64
+              type: integer
+          power_weapon_kills:
               format: int64
               type: integer
           performance_score:
@@ -15732,6 +15754,8 @@ components:
               $ref: '#/components/schemas/KPIStats'
           cumul_tab:
               $ref: '#/components/schemas/TimeseriesCumulTab'
+          detailed_stats:
+              $ref: '#/components/schemas/SynthesisDetailedStats'
           distributions_tab:
               $ref: '#/components/schemas/TimeseriesDistributionsTab'
           first_events:

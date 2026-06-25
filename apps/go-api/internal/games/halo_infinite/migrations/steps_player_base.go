@@ -162,6 +162,20 @@ func playerBaseSteps() []migration.Migration {
 			},
 		},
 		{
+			// Re-homé depuis main (internal/migration/steps_player.go) lors du merge :
+			// feat a déplacé les steps player vers ce fichier (slice-literal). La colonne
+			// display_path porte le vrai chemin GameCMS du défi pour dériver la cadence
+			// daily/weekly côté front (challenge_path interne = synthétique Tracking/{id}).
+			Name:        "add_challenge_snapshots_display_path",
+			TargetDB:    migration.TargetPlayer,
+			Description: "Colonne display_path (vrai chemin GameCMS du défi) pour que le front dérive la cadence daily/weekly depuis le cache (le challenge_path interne est synthétique Tracking/{id})",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE challenge_snapshots ADD COLUMN IF NOT EXISTS display_path VARCHAR;
+				`)
+			},
+		},
+		{
 			Name:        "add_battlepass_snapshots",
 			TargetDB:    migration.TargetPlayer,
 			Description: "Table battlepass_snapshots pour historiser la progression battle pass joueur",

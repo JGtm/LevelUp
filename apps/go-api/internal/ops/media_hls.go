@@ -115,11 +115,12 @@ func finalizeMediaHLS(ctx context.Context, dbPath, fileRel, hlsRel string) error
 }
 
 // RunHLSTranscode exécute le transcoding complet (autonome, hors requête) :
-// BuildHLS → finalize DB → suppression du source.
+// BuildHLS → vérification ffprobe → finalize DB → suppression du source.
 //
-// Dégradations :
-//   - BuildHLS échoue → transcode_status='failed', source conservé (le serving
-//     retombe sur le remux WebM live du source).
+// Dégradations (le source n'est JAMAIS supprimé tant que la lecture HLS n'est
+// pas prouvée → le serving retombe sur le remux WebM live du source) :
+//   - BuildHLS échoue → transcode_status='failed', source conservé.
+//   - HLS produit illisible (ffprobe) → transcode_status='failed', source conservé.
 //   - finalize DB échoue → source conservé, status reste 'processing' (repris
 //     ultérieurement par le backfill).
 func RunHLSTranscode(ctx context.Context, p HLSTranscodeParams) error {
@@ -134,10 +135,41 @@ func RunHLSTranscode(ctx context.Context, p HLSTranscodeParams) error {
 		return err
 	}
 
+	// Garde anti-perte de données : BuildHLS ne fait que stat les fichiers
+	// produits ; on prouve ici que le master est réellement démultiplexable
+	// (ffprobe) AVANT de supprimer le source. Sinon un manifest produit mais
+	// cassé (init/segments manquants, segment tronqué) deviendrait illisible et
+	// irrécupérable (source détruit, plus de fallback remux, plus de miniature).
+	if err := mediapkg.VerifyHLSPlayable(ctx, res.MasterPath); err != nil {
+		log.ErrorContext(ctx, "RunHLSTranscode: HLS produit illisible (ffprobe) — source conservé, remux legacy",
+			"source", p.SourceAbs, "master", res.MasterPath, "err", err)
+		if markErr := MarkTranscodeStatus(ctx, p.DBPath, p.FileRel, TranscodeFailed); markErr != nil {
+			log.ErrorContext(ctx, "RunHLSTranscode: mark failed échoué", "err", markErr)
+		}
+		return err
+	}
+
 	if err := finalizeMediaHLS(ctx, p.DBPath, p.FileRel, p.HLSRel); err != nil {
 		log.ErrorContext(ctx, "RunHLSTranscode: finalize DB échoué — source conservé",
 			"source", p.SourceAbs, "err", err)
 		return err
+	}
+
+	// Seconde garde anti-perte : ne supprimer le source que si une miniature est
+	// déjà liée. Sinon (échec ffmpeg miniature à l'ingestion) le source est le
+	// SEUL moyen de régénérer la miniature plus tard (regen-thumbnails) — le
+	// détruire laisserait un média lisible mais sans miniature, irréversible.
+	// La miniature est générée par IndexMedia AVANT ce transcoding async.
+	hasThumb, thumbErr := mediaHasThumbnail(ctx, p.DBPath, p.HLSRel)
+	if thumbErr != nil {
+		log.WarnContext(ctx, "RunHLSTranscode: vérif miniature échouée — source conservé par prudence",
+			"hls", p.HLSRel, "err", thumbErr)
+		return nil
+	}
+	if !hasThumb {
+		log.WarnContext(ctx, "RunHLSTranscode: aucune miniature liée — source conservé pour régénération ultérieure",
+			"hls", p.HLSRel)
+		return nil
 	}
 
 	if err := os.Remove(p.SourceAbs); err != nil {
@@ -149,4 +181,19 @@ func RunHLSTranscode(ctx context.Context, p HLSTranscodeParams) error {
 		"audio_tracks", res.AudioTracks, "segments", res.Segments,
 		"renditions", res.Renditions)
 	return nil
+}
+
+// mediaHasThumbnail indique si la ligne média identifiée par son file_path
+// courant porte une miniature liée (thumbnail_path non NULL). Lecture sous le
+// lock d'indexation (réutilise le handle du pool si présent).
+func mediaHasThumbnail(ctx context.Context, dbPath, fileRel string) (bool, error) {
+	var n int
+	err := withSharedSocialDB(ctx, dbPath, func(db *sql.DB) error {
+		return db.QueryRowContext(ctx, `
+			SELECT COUNT(*)
+			FROM media_files
+			WHERE file_path = ? AND thumbnail_path IS NOT NULL
+		`, fileRel).Scan(&n)
+	})
+	return n > 0, err
 }

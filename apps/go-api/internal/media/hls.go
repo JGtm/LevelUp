@@ -32,6 +32,10 @@ import (
 // defaultSegmentDuration est la durée cible d'un segment HLS en secondes.
 const defaultSegmentDuration = 4
 
+// aacRenditionBitrate est le débit cible du réencodage AAC des renditions audio
+// (réencode amix `full`/`voices`, et migration des renditions Opus legacy).
+const aacRenditionBitrate = "192k"
+
 // AVStreamDetail décrit une piste (vidéo ou audio) retournée par ffprobe,
 // enrichie des tags utiles au nommage des pistes audio dans le master.
 type AVStreamDetail struct {
@@ -158,18 +162,24 @@ func planAudioRenditions(src []AVStreamDetail) ([]audioRendition, string) {
 		}}, ""
 	}
 
+	// CODEC UNIQUE sur tout le groupe audio multipiste : `game`/`voices` ciblent
+	// AAC comme `full` (qui passe par amix). Un groupe mono-codec évite le
+	// changement de codec MSE (SourceBuffer.changeType) à la bascule de piste —
+	// non fiable sur Firefox (l'audio reste bloqué sur la rendition par défaut) et
+	// absent du HLS natif Safari. Cf. fix lecteur lightbox juin 2026.
 	game := audioRendition{
 		Slug: "game", Display: "game", MapSpec: "0:a:0",
-		Action: planAudio(src[0].CodecName), Language: sanitizeLanguage(src[0].Language),
+		Action: aacUniformAction(src[0].CodecName), Language: sanitizeLanguage(src[0].Language),
 	}
 
 	var fcParts []string
-	// voices = pistes 1..N. Une seule piste voix → map direct (copy si possible) ;
-	// plusieurs → amix (donc réencode AAC, un flux filtré ne peut pas être copié).
+	// voices = pistes 1..N. Une seule piste voix → map direct (copy si déjà AAC,
+	// sinon réencode AAC) ; plusieurs → amix (réencode AAC, un flux filtré ne peut
+	// pas être copié).
 	voices := audioRendition{Slug: "voices", Display: "voices", Action: actionReencode}
 	if len(src) == 2 {
 		voices.MapSpec = "0:a:1"
-		voices.Action = planAudio(src[1].CodecName)
+		voices.Action = aacUniformAction(src[1].CodecName)
 	} else {
 		fcParts = append(fcParts, amixFilter(rangeIdx(1, len(src)), "voices"))
 		voices.MapSpec = "[voices]"
@@ -226,6 +236,19 @@ func planAudio(codec string) streamAction {
 	default:
 		return actionReencode
 	}
+}
+
+// aacUniformAction décide copy/réencode pour une rendition d'un groupe audio
+// MULTIPISTE, où toutes les renditions doivent partager le même codec (AAC) :
+// copy uniquement si la source est déjà AAC, sinon réencode AAC. Garantit un
+// groupe audio mono-codec → la bascule de piste fonctionne sur Firefox/Safari
+// (pas de SourceBuffer.changeType). À distinguer de planAudio (mono-piste, où
+// la copy Opus/MP3 est sans conséquence puisqu'il n'y a pas de switch).
+func aacUniformAction(codec string) streamAction {
+	if strings.EqualFold(codec, "aac") {
+		return actionCopy
+	}
+	return actionReencode
 }
 
 // audioDisplay calcule le libellé lisible d'une piste : title, sinon langue en
@@ -343,6 +366,26 @@ func ProbeStreamsDetailed(ctx context.Context, absPath string) ([]AVStreamDetail
 	return streams, nil
 }
 
+// VerifyHLSPlayable confirme qu'un master.m3u8 produit est réellement
+// démultiplexable par ffprobe (pas seulement présent sur disque) et expose au
+// moins une piste vidéo. ffprobe suit la playlist : un manifest mal formé, des
+// init/segments manquants ou des segments corrompus le font échouer.
+//
+// Utilisé comme garde AVANT la suppression irréversible du fichier source : tant
+// que la lecture HLS n'est pas prouvée, on conserve le source (fallback remux).
+func VerifyHLSPlayable(ctx context.Context, masterPath string) error {
+	streams, err := ProbeStreamsDetailed(ctx, masterPath)
+	if err != nil {
+		return fmt.Errorf("ffprobe master HLS %q: %w", masterPath, err)
+	}
+	for _, s := range streams {
+		if s.CodecType == "video" {
+			return nil
+		}
+	}
+	return fmt.Errorf("master HLS sans piste vidéo lisible: %s", masterPath)
+}
+
 // BuildHLS transcode srcPath en arbre HLS-fMP4 dans outDir (master.m3u8 +
 // sous-playlists + segments). Copy par défaut, réencode ciblé selon planHLS.
 // Réécrit les NAME du master avec les titres de piste, puis valide la sortie.
@@ -421,7 +464,7 @@ func buildHLSArgs(plan hlsPlan, src, outDir string, segDur int) []string {
 		if a.Action == actionCopy {
 			args = append(args, fmt.Sprintf("-c:a:%d", i), "copy")
 		} else {
-			args = append(args, fmt.Sprintf("-c:a:%d", i), "aac", fmt.Sprintf("-b:a:%d", i), "192k")
+			args = append(args, fmt.Sprintf("-c:a:%d", i), "aac", fmt.Sprintf("-b:a:%d", i), aacRenditionBitrate)
 		}
 	}
 	// ffmpeg traite les chemins de sortie HLS comme des URL (séparateur '/').

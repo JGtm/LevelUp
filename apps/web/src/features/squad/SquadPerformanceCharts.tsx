@@ -29,6 +29,7 @@ import {
   buildPerformanceLineOption,
   buildTeamMMROption,
 } from './charts/squadPerformanceLineCharts'
+import { buildFragBreakdownOption } from './charts/squadFragBreakdownChart'
 import { SquadToggleLegendChart } from './SquadToggleLegendChart'
 
 interface I18nLabels {
@@ -46,6 +47,11 @@ interface I18nLabels {
   perfectLabel: string
   rankTitle: string
   mmrLabel: string
+  fragBreakdownTitle: string
+  meleeLabel: string
+  powerWeaponLabel: string
+  grenadeLabel: string
+  otherLabel: string
 }
 
 interface SquadPerformanceChartsProps {
@@ -155,6 +161,20 @@ export function SquadPerformanceCharts({
     [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels],
   )
 
+  const buildFragBreakdown = useCallback(
+    () =>
+      buildFragBreakdownOption(rowsByPlayer, {
+        playerOrder,
+        labels: {
+          melee: labels.meleeLabel,
+          powerWeapon: labels.powerWeaponLabel,
+          grenade: labels.grenadeLabel,
+          other: labels.otherLabel,
+        },
+      }),
+    [rowsByPlayer, playerOrder, labels.meleeLabel, labels.powerWeaponLabel, labels.grenadeLabel, labels.otherLabel],
+  )
+
   const buildKda = useCallback(
     () =>
       buildPerformanceLineOption(rowsByPlayer, {
@@ -258,13 +278,22 @@ export function SquadPerformanceCharts({
           emptyMessage={emptyMessage}
         />
       </div>
-      <ChartCard
-        title={labels.accuracyTitle}
-        series={series}
-        buildOption={buildAccuracy}
-        height={SUBCHART_HEIGHT}
-        emptyMessage={emptyMessage}
-      />
+      <div className={pairClass}>
+        <ChartCard
+          title={labels.accuracyTitle}
+          series={series}
+          buildOption={buildAccuracy}
+          height={SUBCHART_HEIGHT}
+          emptyMessage={emptyMessage}
+        />
+        <ChartCard
+          title={labels.fragBreakdownTitle}
+          series={series}
+          buildOption={buildFragBreakdown}
+          height={SUBCHART_HEIGHT}
+          emptyMessage={emptyMessage}
+        />
+      </div>
       <div className={pairClass}>
         <ChartCard
           title={labels.kdaTitle}

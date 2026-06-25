@@ -35,7 +35,7 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 import { log } from './_logger'
 import { SquadContext } from './SquadContext'
 import { SquadFocusStrip } from './SquadFocusStrip'
-import { SquadGroupLoader } from './SquadGroupLoader'
+import { useSquadPresets } from './useSquadPresets'
 import { getSquadTeammateColors } from './colors'
 import type { KPIStats, LabelValue, TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
 import type { KPIStats as V2KPIStats } from './v2/types'
@@ -373,6 +373,29 @@ export function SquadLayout() {
       filterSpec: filterSpec ?? undefined,
     })
   }
+  // Bouton « Voir les matchs » — déplacé dans le rail (zone centrale, après le
+  // compteur de matchs) pour décharger la barre de filtres.
+  const browseButton =
+    squadEntryMatchId && (totalAfter ?? 0) > 0 ? (
+      <button
+        type="button"
+        onClick={handleBrowseMatches}
+        className="shrink-0 inline-flex items-center gap-1 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+        title={tCommon('common.filters.browse_title')}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 16 16"
+          fill="currentColor"
+          className="h-3.5 w-3.5 opacity-70"
+          aria-hidden="true"
+        >
+          <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
+          <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
+        </svg>
+        {tCommon('common.filters.browse_label')}
+      </button>
+    ) : null
 
   // Réconciliation anti-zombie des sessions pickées (suffixe " (N)" volatil, cf.
   // buildSessionLabel côté Go). On remappe chaque label pické vers sa forme
@@ -453,6 +476,34 @@ export function SquadLayout() {
     )
   }
 
+  // Labels des playlists/modes du filtre courant → tri-en-tête des escouades dont
+  // les contextes habituels matchent (indice souple).
+  const activeContextLabels = useMemo(() => {
+    const labels: string[] = []
+    const collect = (opts: LabelValue[] | undefined, sel: string[] | undefined) => {
+      if (!opts || !sel || sel.length === 0) return
+      const selSet = new Set(sel)
+      for (const o of opts) if (selSet.has(o.value)) labels.push(o.label)
+    }
+    collect(available?.playlists, pendingCascade.playlists as string[] | undefined)
+    collect(available?.modes, pendingCascade.modes as string[] | undefined)
+    return labels
+  }, [available, pendingCascade])
+
+  // Presets du combobox : escouades sauvegardées + groupes d'accès (charger un
+  // roster), + footer de gestion (enregistrer / renommer / supprimer).
+  const {
+    presetGroups: squadPresetGroups,
+    footer: squadPresetFooter,
+    onClose: squadPresetOnClose,
+  } = useSquadPresets({
+    playerSlug,
+    hasLinkedIdentity,
+    locale,
+    selectedRows,
+    activeContextLabels,
+  })
+
   return (
     <SquadContext.Provider
       value={{
@@ -466,18 +517,14 @@ export function SquadLayout() {
       <div className="sticky top-0 z-30 border-b border-border" style={{ background: 'var(--background)' }}>
         <div className="flex min-h-10 items-center gap-1.5 overflow-visible px-4 py-1.5">
 
-          {/* Joueur actif — pill colorée fixe, non supprimable */}
-          <span
-            className="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-sm font-medium"
-            style={{ backgroundColor: tokenCssVar('compare-a'), color: '#fff' }} // color-allow: blanc structurel pour contraste sur fond compare-a
-            title={playerSlug}
-          >
-            <span className="max-w-[7rem] truncate">{playerSlug}</span>
-          </span>
-
-          {/* Coéquipiers (multi-select compact inline, jusqu'à 3) */}
+          {/* Joueur actif (pill de tête non-supprimable) + coéquipiers (multi-select
+              compact inline, jusqu'à 3). La pill du joueur actif est rendue DANS le
+              combobox (leadingPill) → même ligne flex que les pills coéquipiers, donc
+              alignement vertical garanti. Le popover intègre les presets « Mes
+              escouades » (charger/gérer une compo) et « Mes groupes ». */}
           <GamertagCombobox
             compact
+            leadingPill={{ label: playerSlug, color: tokenCssVar('compare-a') }}
             selected={selectedGts}
             onChange={setSelectedGts}
             max={MAX_SELECTION}
@@ -486,15 +533,11 @@ export function SquadLayout() {
             excludeGamertag={playerSlug}
             placeholder={t.selection.placeholder(availableOptions.length)}
             onAddAsFriend={setAddFriendGamertag}
+            presetGroups={squadPresetGroups}
+            onLoadPreset={(gts) => setSelectedGts(gts.slice(0, MAX_SELECTION))}
+            footer={squadPresetFooter}
+            onClose={squadPresetOnClose}
           />
-
-          {/* Charger les membres d'un groupe dans la sélection (monté si identité liée). */}
-          {hasLinkedIdentity && (
-            <SquadGroupLoader
-              exclude={playerSlug}
-              onLoad={(gts) => setSelectedGts(gts.slice(0, MAX_SELECTION))}
-            />
-          )}
 
           {/* Séparateur */}
           <div className="mx-0.5 h-5 w-px shrink-0 bg-border" aria-hidden />
@@ -548,40 +591,16 @@ export function SquadLayout() {
 
           <div className="flex-1" />
 
-          {/* Compteur dynamique */}
-          {totalAfter !== null && (
-            <span className="shrink-0 text-xs text-muted-foreground" aria-live="polite">
-              {totalAfter} match{totalAfter > 1 ? 's' : ''}
-            </span>
-          )}
+          {/* Compteur de matchs + « Voir les matchs » : déplacés dans le rail
+              ci-dessous (zone centrale) pour éviter le doublon avec son compteur
+              et décharger la barre. */}
 
-          {/* Voir les matchs — deep-link vers le match le plus récent de la
-              composition, puis parcours prev/next (matchIds déjà chargés). */}
-          {squadEntryMatchId && (totalAfter ?? 0) > 0 && (
-            <button
-              type="button"
-              onClick={handleBrowseMatches}
-              className="shrink-0 inline-flex items-center gap-1 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
-              title={tCommon('common.filters.browse_title')}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 16 16"
-                fill="currentColor"
-                className="h-3.5 w-3.5 opacity-70"
-                aria-hidden="true"
-              >
-                <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
-                <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
-              </svg>
-              {tCommon('common.filters.browse_label')}
-            </button>
-          )}
-
-          {/* Analyser */}
+          {/* Analyser — applique les filtres en attente (cascade + période).
+              Les coéquipiers et sessions, eux, s'appliquent en direct. */}
           <button
             type="button"
             onClick={handleAnalyser}
+            title={tCommon('common.filters.apply_pending_title')}
             className={[
               'shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
               isDirty
@@ -592,22 +611,23 @@ export function SquadLayout() {
             Analyser
           </button>
 
-          {/* Réinitialiser */}
+          {/* Réinitialiser — bouton (aligné visuellement sur Analyser). */}
           <button
             type="button"
             onClick={() => {
               resetFilters()
               applySessionLabels([])
             }}
-            className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-destructive"
+            className="shrink-0 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
             title={tCommon('common.filters.reset_title')}
           >
             {tCommon('common.filters.reset_label')}
           </button>
         </div>
         {/* Rail de navigation période/session — placé DANS la barre sticky pour
-            apparaître toujours juste sous les filtres Squad au scroll. */}
-        <PeriodSessionRail filterStore={useSquadFilterStore} />
+            apparaître toujours juste sous les filtres Squad au scroll. Reçoit le
+            compteur de matchs (tous modes) + le bouton « Voir les matchs ». */}
+        <PeriodSessionRail filterStore={useSquadFilterStore} matchCount={totalAfter} trailing={browseButton} />
       </div>
 
       {/* ─── Contenu ─────────────────────────────────────────────────────────── */}

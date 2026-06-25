@@ -3410,6 +3410,277 @@ Les 3 fichiers `career_live_{service,merge,partial}.go` faisaient transiter les 
 **NB (consolidation 2026-06-15)** : entrée conservée pour historique. L'approche décrite ici (fallback silencieux dans `resolveTitleSlug` + `Active()` qui exclut aussi `coming_soon`) sera RÉVISÉE en clôture PMT-8 : middleware dédié `RequireActiveTitle` + 503 `title_unavailable`, et `BuildAvailableTitles` excluant SEULEMENT `archived` (conforme à l'Exit Gate du spec). Cf. entrée de clôture à venir.
 
 **Prochaine étape** : clôture PMT-8 jusqu'à l'Exit Gate sur la branche d'intégration `feat/multititre-peripherie`.
+## [2026-06-23] "Slayer on Forest sur Forêt" — bug de normalisation mode-label (pas une corruption metadata) — FIX code (branche fix/mode-label-cross-lang-map-strip, depuis main)
+
+**Contexte** : user signale (frustré, « 30e fois ») un « problème BDD metadata » après deploy, symptôme concret = titre match view « Slayer on Forest sur Forêt ». Investigation prod via `ssh lvelup` (docker).
+
+**Diagnostic (réfute la thèse corruption metadata)** : aucune `invalidated`/FATAL, `art_guard` clean → metadata NON corrompue. Le vrai mécanisme du label cassé = **gap de normalisation cross-langue**. Quand un `pair_name` arrive avec le nom de map ANGLAIS collé (« Slayer on Forest ») mais que `map_ui` est la traduction FR (« Forêt »), la fonction `normalizeModeLabel` (front) ne tentait QUE le strip map-spécifique `on/sur Forêt` (échoue, langue ≠) et **sautait** le filet générique `\s+(?:on|sur)\s+.+$` (placé dans le `else`). Résultat : « Slayer on Forest » survit → `buildMatchHeading` ajoute « sur Forêt » → doublon. Le backend `NormalizeModeLabel` applique bien le strip générique inconditionnellement (étape 3), MAIS `applyMatchHeaderMetaLabels` prenait `meta.ModeNameFR` tel quel sans re-normaliser quand déjà rempli (catalogue incomplet → ModeNameFR brut).
+
+**Fix (3 sites, défense en profondeur)** :
+- `apps/web/src/features/match-view/format.ts` : filet générique `on/sur` TOUJOURS appliqué après la tentative map-spécifique (plus de `else`).
+- `apps/web/src/components/ui/match-card.tsx` : copie identique de `normalizeModeLabel` (tuiles home/explorer) — même fix.
+- **Dette DRY RÉSORBÉE (suite, même branche)** : les 2 copies TS de `normalizeModeLabel` (+ `escapeRegExp`) sont extraites dans un helper unique `apps/web/src/lib/halo/modeLabel.ts` (+ test `modeLabel.test.ts`), importé par `format.ts` et `match-card.tsx`. `format.test.ts` ne garde que `buildMatchHeadingStr` (cas `normalizeModeLabel` migrés vers `modeLabel.test.ts`). La 3e « copie » Go (`analysis.NormalizeModeLabel`) reste séparée (langage différent, volontaire). Pourquoi les tuiles n'avaient PAS le bug et la match view oui : le backend home normalise `mode_ui` avant envoi (`normalizeHomeModeLabel`→`NormalizeModeLabel`, cf. `home_recent.go`/`home_canonical_recent.go`), donc la copie front (buggée) recevait déjà « Slayer » ; la match view envoyait `ModeNameFR` brut → le bug front se déclenchait.
+- `apps/go-api/internal/service/match_view_builders_header.go` : `h.ModeUI = analysis.NormalizeModeLabel(*modeUI, h.MapUI)` (re-normalise systématiquement, même quand ModeNameFR est pré-rempli).
+- Régressions : `format.test.ts` (`'Slayer on Forest' + 'Forêt' → 'Slayer'`), `match-card.test.tsx` (rendu « Slayer sur Forêt »), `match_view_dominance_test.go` (cas ModeNameFR brut + MapNameFR → re-normalisé).
+
+**Catalogue/metadata = SAIN (fausse piste corrigée)** : erreur de méthode initiale — j'ai grep `docker logs` (stdout) où le cron est ABSENT car taggué `module=catalog` → écrit dans `LEVELUP_LOGS_DIR=/app/data/logs/catalog.log` (hôte `/opt/levelup/data/logs/`), pas stdout (cf. [[reference_auth_logs_per_category_file]]). `catalog.log` prouve la SANTÉ : cycle terminé à 10:10:01 (pairs:347, errors:0) PUIS, après le deploy, boot-1 coupé à 12:36:28 (`cycle échoué: context canceled` — le `down` SIGTERM pendant RunOnce) mais **boot-2 (stable) cycle TERMINÉ à 12:41:47** (pairs:347, **seeded:0, errors:0**, durée ~296s). Conclusion (intuition user confirmée) : le cron **tourne bien et ne trouve rien de nouveau** ; il se re-complète ~5 min après chaque deploy ; `metadata.duckdb` figé = simplement « rien à écrire ». Donc PAS de bug infra, et « Slayer on Forest » n'est PAS un souci catalogue : c'est le nom brut que Halo stocke pour la paire (347 pairs traitées, 0 erreur) — seul l'affichage doit stripper le « on <Map> ». La normalisation est donc LA correction, point final.
+
+**Résultats** : front `tsc -b` 0, eslint 0 (format.ts + match-card.tsx) ; vitest match-view 114/114 + match-card 12/12 + format 17/17. Go `go vet ./internal/service/` clean, `go test ./internal/service/ ./internal/analysis/` ok (régression incluse).
+
+**Prochaine étape** : commit + push + deploy (sur autorisation — `down`/`up` = downtime court). Vérif post-deploy : titre match view « Slayer sur Forêt » (plus de « on Forest »). Pas d'action infra : catalogue sain. Mémoire : [[reference_mode_label_cross_lang_strip]], cf. [[reference_metadata_fatal_invalidated_multi_server]] (cause DIFFÉRENTE), [[reference_auth_logs_per_category_file]] (leçon : crons → logs/<module>.log, pas docker stdout).
+
+---
+
+## [2026-06-23] Match View — cartes Rendement/Résistance : ajout dégâts/frag + dégâts/mort — COMPLÉTÉ code (branche feat/match-view-yield-damage-values, depuis main)
+
+**Contexte** : demande utilisateur — les cartes Rendement et Résistance de l'onglet Résumé (Match View) n'affichaient que les pourcentages (OC%, DR±%). L'utilisateur veut aussi les valeurs de dégâts (dégâts/frag, dégâts/mort), « comme la hero KPI card de l'accueil ».
+
+**Décision technique principale** : pas de recalcul — le backend remplit déjà `damage_per_kill` (DamageDealt/Kills) et `damage_per_death` (DamageTaken/Deaths) par ligne scoreboard (`computeScoreboardRowCombatYield`, `match_view_builders_team.go`), même définition que le `dmg_per_kill`/`dmg_per_death` agrégé de la home (affiché « dégâts/frag » / « dégâts/mort »). Donc `meRow` (ligne is_me) les porte déjà. Choix UI : **garder les 2 cartes séparées** (préserve la grille `xl:grid-cols-8`) et ajouter à chacune sa valeur de dégâts correspondante en **sous-ligne `primaryLabel`** du `MatchVsStatCard` (Rendement→dégâts/frag, Résistance→dégâts/mort), style muté identique aux sous-valeurs accueil/Explorer. i18n propre (pas de hardcode — le lint `@levelup/no-hardcoded-strings` l'aurait flaggé) : 2 nouvelles clés manifest `match_view.cards.yield_dmg_per_kill` / `yield_dmg_per_death` (« {n} dégâts/frag » / « {n} dmg/kill », etc.), calquées sur les clés Explorer existantes. Arrondi `Math.round` comme Explorer/home.
+
+**Fichiers** : `match_view.toml` (+2 clés) régénéré via `scripts/build_i18n_manifests.mjs` ; `MatchStatCards.tsx` (props `damagePerKill`/`damagePerDeath` + helper `t` accepte désormais des vars + `primaryLabel` sur les 2 cartes) ; `MatchViewPage.tsx` (passe `meRow?.damage_per_kill`/`damage_per_death`).
+
+**Résultats** : `tsc -b` exit 0 ; eslint ciblé exit 0 (lint global = 0 erreur, warnings pré-existants hors périmètre) ; vitest match-view + formatters + combat-yield = **161/161 verts**.
+
+**Prochaine étape** : commit (sur autorisation). Vérif visuelle recommandée sur un match réel (carte Rendement = « 42% » + « 180 dégâts/frag » ; carte Résistance = « +18% » + « 265 dégâts/mort »). Cf. [[reference_ui_canonical_types_catalog]].
+
+---
+
+## [2026-06-23] Rang carrière / barre XP INTERMITTENTS (Home Spartan ID + Explorer) — fix déterministe TokensFreshStrict — COMPLÉTÉ (branche fix/career-rank-deterministic-token, depuis main)
+
+**Contexte** : barre XP / rang carrière tantôt pleine tantôt vide (« une fois ça marche, une fois ça marche pas ») — instable, inacceptable en prod. Plusieurs fausses pistes écartées (cache ; péremption globale ; « economy.svc cassé » — réfutées : BP re-minte sur 401 et economy ACCEPTE le token re-minté, donc le minting marche). Diagnostic validé par **workflow contradictoire** (ultracode : 3 agents de réfutation confiance haute + 4 de validation).
+
+**Décision technique principale** : cause racine = les sessions créées AVANT la capture de `SpartanExpiresAt` (commit 6b931de4b) ont un token de session d'expiry **inconnue (zéro)**. `halo.TokensFresh` retourne `true` sur expiry=0 (tolérance legacy), donc `enrichWithHaloTokens` réutilisait ce token **sans re-mint** ; selon le moment il est réellement frais (→200, barre pleine) ou périmé (→401). BP/Défis se réparent via le filet A3 (re-mint sur 401) ; le rang carrière passe par `doPlayerGatedGet` qui **avale le 401** (nil) → vide → flip-flop. **Fix déterministe minimal** : nouveau `halo.TokensFreshStrict` (EXIGE une expiry connue ; zéro → non frais) ; `enrichWithHaloTokens` l'utilise → un token de session d'expiry inconnue n'est plus cru frais → `ResolveFreshPlayerTokens` (cache expiry-aware + re-mint singleflight). Le cache process (expiry réelle) sert les requêtes suivantes → un seul re-mint. **Aucune touche au client career.**
+
+**Filet #2 (un-swallow + RetryWithFreshTokens) DÉLIBÉRÉMENT DIFFÉRÉ** : le workflow a prouvé qu'un un-swallow naïf de `doPlayerGatedGet` casserait le fallback `?view=public` de `GetSpartanCustomization` (`if !ok` → vue publique). Avec #1 déterministe, le 401 n'a plus lieu à la source → filet secondaire. Bonus confirmé : `adornment_image_url` vient de la DB (carry-forward `mergeCareerRow`), pas du live careerranks → réparer le rang répare l'adornment. Édge case documenté : SSO-only hors pool → re-mint échoue → fallback token de session (JGtm est dans le pool).
+
+**Résultats** : `go build`/`go vet` clean ; tests halo (5 cas `TokensFreshStrict`) + api (4 cas d'intégration `enrichWithHaloTokens`) verts ; `go test ./...` **entièrement vert**. Mémoire : [[reference_live_fetch_expiry_aware_token_cache]].
+
+**Fixture média réparée (même branche, demande user « répare les tests/fixtures cassés »)** : `TestUploadHLSTranscoding_EndToEnd` échouait sur drift de fixture — le CREATE TABLE du test omettait `thumbnail_path`, colonne lue par la garde anti-perte `mediaHasThumbnail` (commit `ed1b1e982`). Le schéma PROD a bien la colonne (migration `steps_shared_social.go`) → pas un bug prod, juste le décor de test périmé. Fix : ajout `thumbnail_path` au CREATE + valeur non-NULL (simule la miniature générée par `IndexMedia` avant le transcode) → chemin de suppression de source exercé. Bonus couverture : extraction d'un helper `runHLSTranscodeFixture(thumbnailValue)` + nouveau `TestUploadHLSTranscoding_NoThumbnail_ConservesSource` qui couvre la garde elle-même (sans miniature → source CONSERVÉE pour régénération ultérieure, WARN loggé) — jusque-là non testée.
+
+**Prochaine étape** : commit (après autorisation) + push/merge → valider en prod sur JGtm (logs « token Spartan re-minté » ; recharger ×N → barre TOUJOURS pleine). Si l'intermittence persistait, ajouter le filet career ciblé sur `GetCareerProgress` (sans toucher `GetSpartanCustomization`).
+
+---
+
+## [2026-06-23] Lecteur lightbox : « Enchaîner » + sélecteur audio HLS multipiste — COMPLÉTÉ code (branche fix/media-lightbox-chaining-and-hls-audio)
+
+**Contexte** : 2 bugs signalés sur `CoverFlowModal` (alias `MediaLightbox`). (1) « Enchaîner » ne passe jamais au média suivant (ni fin de vidéo, ni délai image). (2) Le sélecteur de pistes audio HLS multipiste réagit visuellement au clic mais l'audio ne change pas — l'utilisateur (Firefox, JGtm) entend toujours le mix complet. Causes identifiées par lecture du code/tests, Bug 2 **prouvé sur la prod** (ssh lvelup, lecture seule ffprobe).
+
+**Décisions techniques** :
+- **Bug 1A — `canAdvanceFurther` inversé** (`CoverFlowModal.tsx`) : `!canNext || hasNextPage` → `canNext || hasNextPage`. Le `!` désactivait l'auto-chaînage pour tout item non-dernier sans page suivante (cas courant) : `onEnded` câblé à `undefined` + timer image en early-return. Symétrique du bouton next (`disabled={!canNext && !hasNextPage}`) qui prouvait le bon prédicat.
+- **Bug 1B — closure périmée** : `handleVideoEnded` était un `useCallback([autoChain, canAdvanceFurther, pendingPageAdvance])` figeant un `navigate` (→ `committedIdx`) périmé → blocage dès le 2e clip (re-navigation vers l'item courant). Retrait du `useCallback` (handler simple recréé à chaque render ; uniquement passé au prop `onEnded`, ClipPlayer non mémoïsé → coût nul). A en prime supprimé un warning exhaustive-deps.
+- **Bug 2 — codecs mixtes dans le même groupe audio HLS** (`internal/media/hls.go`) : `planAudioRenditions` produisait game/voices en **copy** (Opus) et full (DEFAULT) en **amix AAC**. Groupe `aud` multi-codec → la bascule de piste exige `SourceBuffer.changeType` (MSE), non fiable sur Firefox (et HLS natif Safari ne lit pas l'Opus) → l'audio reste bloqué sur la rendition par défaut `full`. Fix : helper `aacUniformAction` (copy seulement si source déjà AAC, sinon réencode AAC) appliqué à game/voices → **groupe mono-codec AAC**. `buildHLSArgs` inchangé (applique déjà `a.Action`). Layout mono-piste (`a0`) intact.
+
+**Preuve prod (ssh lvelup, ffprobe, lecture seule)** : `JGtm/.../Replay 2026-06-21 20-55-43` (master 3 renditions) → `init_game`=opus, `init_voices`/`init_full`=aac, `init_0` vidéo sans audio muxé. Confirme exactement la condition qui casse Firefox.
+
+**Résultats** : Go `go test ./internal/media/...` vert (incl. golden d'intégration `TestBuildHLS_Integration` qui régénère un arbre 2 pistes et prouve game/voices/full **tous AAC** désormais + nouveau garde-fou `TestPlanHLS_MultiTrackUniformAAC`) ; `go vet` propre. Front : `tsc -b` exit 0, eslint **0 erreur** (4 warnings tous pré-existants/hors périmètre), vitest CoverFlowModal **34/34** (3 nouveaux tests d'enchaînement effectif : clips A→B→C + arrêt sur dernier, images après délai, autoChain off).
+
+**Migration des anciens clips (suite, même branche)** : mesure prod = **56 clips multipistes** (52 JGtm + 4 Madina97294), **0 source `.mkv`** restante (supprimées post-transcodage) → impossible de réutiliser `RunHLSTranscode` (part de la source). Audio = ~3-4 % du clip (vidéo AV1/H.264 = copy), donc ré-encoder seulement la rendition Opus→AAC est léger. Nouvel outil **in-place** : `internal/media/hls_audio_migrate.go` (`MigrateHLSAudioToAAC` : parse master → ffprobe init de chaque rendition → ré-encode les non-AAC via ffmpeg dans un tmp, valide AAC, swap atomique par fichier ; vidéo + master intacts ; idempotent) + CLI `cmd/migrate-hls-audio` (parcourt la racine média, `--root`/`--slug`/`--limit`/`--dry-run`). Const `aacRenditionBitrate` (192k) partagée avec `buildHLSArgs`. Tests : `TestParseMasterAudioRenditions` (+No-audio), intégration `TestMigrateHLSAudioToAAC_Integration` (arbre mixte game=opus/full=aac → game converti AAC, vidéo intacte, VerifyHLSPlayable OK, idempotent) + `_DryRun`. `go build`/`go vet`/`go test ./internal/media/...` verts.
+
+Impact taille (mesuré) : AAC@192k un peu moins efficace qu'Opus (game opus ~484 Ko vs aac ~730 Ko sur un clip ~32 s) mais audio négligeable face à la vidéo (~41 Mo) → +0,5 % par clip, qualité transparente.
+
+**Prochaine étape** : commit (sur autorisation) puis push. **Op prod à lancer sur autorisation explicite** (écrit dans `/opt/levelup/data/media`) : `migrate-hls-audio --root /opt/levelup/data/media` serveur arrêté/trafic faible — prévenir avant. Vérif visuelle Firefox recommandée sur un clip migré.
+
+---
+
+## [2026-06-23] Réorganisation des onglets Settings (doctrine préférences vs ops) — COMPLÉTÉ code (branche feat/settings-regroup)
+
+**Contexte** : demande utilisateur — trop d'onglets Settings, certains peu remplis. Diagnostic : le problème n'est pas le nombre mais la cohérence. (1) « Général » = fourre-tout (Interface + Discord + Médias + mot de passe). (2) « Sauvegarde » = quasi-vide ET mal placé (ops d'instance restic, pas une préférence). (3) Discord séparé de Notifications alors que c'est le même concept. Le code appliquait déjà la doctrine **Settings = préférences utilisateur / Admin = ops d'instance** (migrations Sync/Comptes/Lab → Admin) ; objectif validé : la finir.
+
+**Décisions techniques** :
+- **Éclatement de GeneralTab** : les 3 cartes (Interface/Discord/Médias) extraites en composants partagés `_settingsCards.tsx` (même TabProps merged/handleChange/t/frozen, exemption démo de la langue conservée). `GeneralTab.tsx` supprimé.
+- **Recomposition en 5 onglets cohérents** : `appearance` (InterfaceCard + AccessibilityTab), `analyse` (inchangé), `notifications` (NotificationsSettingsTab + DiscordCard), `data` (MediaCard), `account` (SetPasswordCard). Le mot de passe reste côté utilisateur (utilisé aussi à l'onboarding) → onglet Compte dédié, pas Admin.
+- **Sauvegarde → Admin · Système** : `AdminBackupSection` (wrapper autonome câblant son i18n, pattern AdminSyncSettingsSection) ajouté dans `AdminSystemPage` ; `BackupTab` conservé, juste remonté. Test audience : backup = toutes les bases, rétention serveur, zéro bénéfice end-user.
+- **Ids d'onglets centralisés** dans `features/settings/tabs.ts` (source unique partagée route + NavL1, évite un cycle d'import) + `resolveSettingsTab` mappe les anciens ids (general/accessibility/sync/users/lab/backup) → `appearance` pour ne pas casser deep-links/bookmarks. NavL1 (split-button + sous-menu), NavL1MobileActions et tests mis à jour.
+
+**Résultats** : `tsc -b` exit 0 ; eslint 0 erreur (warnings pré-existants hors périmètre ; le seul warning sur SettingsPage:51 = useEffect non touché) ; vitest 17/17 (NavL1MobileActions, AccessibilityTab, SetPasswordCard). Les 2 onglets problématiques (Général fourre-tout, Sauvegarde ops égarée) sont résorbés ; Discord unifié avec Notifications.
+
+**Prochaine étape** : vérification visuelle (5 onglets + section Sauvegarde dans Admin · Système + deep-links legacy) ; option différée = bouton « Synchroniser maintenant » côté utilisateur ; commit (sur autorisation) puis push.
+
+---
+
+## [2026-06-23] Donut « Répartition des frags » sur Timeseries/Progression + barres empilées sur Contributions — COMPLÉTÉ code (branche feat/frags-breakdown-timeseries-squad)
+
+**Contexte** : demande utilisateur de réutiliser la décomposition des frags par type d'arme (mêlée / arme lourde / grenade / autres), aujourd'hui seulement sur Synthesis (`SynthesisKillTypesDonut`). (1) Donut à gauche de « Progression LUSR » sur l'onglet Progression de Timeseries. (2) Même ventilation sur la page Contributions (escouade), mais multi-joueurs → j'ai challengé le donut et proposé des **barres empilées horizontales** (1 barre/joueur, segments = type, longueur = total frags) ; choix validé par l'utilisateur.
+
+**Constat data (vérifié)** : aucune des deux pages n'exposait la ventilation. Les deux ont nécessité un petit ajout backend, mais les rows canoniques (`canonical.PlayerMatchRow.Self.{MeleeKills,PowerWeaponKills,GrenadeKills}`) sont déjà chargés côté Go → zéro SQL, zéro nouveau endpoint.
+
+**Décisions techniques** :
+- **DRY** : promotion du wrapper de carte en composant partagé `components/charts/KillTypesDonutCard.tsx` (props counts + total + title/otherLabel injectés). `SynthesisKillTypesDonut` devient un adaptateur fin (props publiques inchangées → SynthesisPage + son test intacts). Évite l'import cross-feature timeseries→synthesis.
+- **T1 (Timeseries)** : `TimeseriesPageResponse.DetailedStats *SynthesisDetailedStats` peuplé dans le bloc `filterCanonicalByMatchIDs` déjà présent (`timeseries_service.go`) via le builder existant et testé `buildSynthesisDetailedStatsFromCanonical(filtered)`. Front : grid asymétrique `lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]` (donut étroit | LUSR large), `totalKills` sommé depuis `match_rows` (même set filtré), dégradation gracieuse si `detailed_stats` nil. 2 clés i18n TOML + régénération manifest.
+- **T2 (Contributions)** : 3 champs `*int` sur `SquadPerformanceSeriesPoint` (melee/power_weapon/grenade), extraits dans `buildSquadPerformanceSeries` à côté de HeadshotKills/PerfectKills. Nouveau builder `squadFragBreakdownChart.ts` : barres empilées horizontales, agrégation par joueur + `other = max(0, Σkills − Σtypés)`, couleurs PAR TYPE via tokens chart-series 1/6/7/8 (mêmes que le donut), `yAxis inverse` (main en haut). Carte appariée à droite de « Précision » dans le `pairClass` existant. 5 strings i18n FR+EN (squad/i18n.ts).
+
+**Résultats** : `go build`/`go vet` exit 0 (CGO ucrt64) ; nouveau test Go `TestBuildSquadPerformanceSeries_PopulatesKillTypeBreakdown` vert + suite squad perf inchangée. Front : `tsc -b` exit 0, eslint 0 erreur/0 warning, vitest 17 passed (nouveau builder `squadFragBreakdownChart.test.ts` 6 cas : agrégation, dérivation/clamp « autres », champs absents, tokens couleur, ordre axe ; SynthesisPage + squadPerformanceLineCharts toujours verts → refactor non régressif).
+
+**Prochaine étape** : vérification visuelle de l'app (donut Progression + barres Contributions) ; commit (sur autorisation) puis push.
+
+---
+
+## [2026-06-22] Vague 2 Dependabot (config sobre) — analyse + tri des 5 PRs groupées/majors — COMPLÉTÉ code (main direct)
+
+**Contexte** : après merge de la config sobre #41 + adoption vague 1, Dependabot a re-scanné et ouvert **5 PRs** = 3 groupées (go/actions/npm minor-patch) + 2 majors npm individuelles (`@types/node` 26, `echarts` 6 — sortent seules car `ignore-major` n'était mis que sur github-actions). Demande utilisateur : « analyse bien d'abord, puis intègre ou vire ».
+
+**Analyse + décisions** :
+- **#45 go-minor-patch → INTÉGRÉ** : oapi-codegen/runtime 1.4.1→1.4.2, go-toml/v2 2.4.0→2.4.1 (patches). Vérif : go build/vet/mod-verify + `internal/games` verts.
+- **#47 npm-minor-patch (10) → INTÉGRÉ** : @tanstack/react-router .16, intl-messageformat 11.2.8, playwright 1.61, router-plugin .18, @types/react 19.2.17, vitest+coverage 4.1.9, eslint 10.5.0, knip 6.18, typescript-eslint 8.62.0. Vérif : typecheck/lint/build + **1898 tests vitest** verts.
+- **#48 @types/node 25→26 (major dev) → INTÉGRÉ** : types Node dev-only. Vérif : typecheck exit 0 (aucune rupture de type). Conflit résolu avec #47 (package.json : @types/node ^26 + @types/react ^19.2.17 ; lock régénéré via npm install).
+- **#46 actions checkout → VIRÉ (fermé)** : Dependabot voulait `@v7 → @v6.0.3`. Cause = le tag flottant `v7` de actions/checkout pointe (stalement) sur le commit 6.0.2, donc Dependabot « voit » 6.0.2 et propose le patch 6.0.3 (ne peut pas proposer 7.0.0 car ignore-major). On garde `@v7` (vrai dernier majeur, best practice tag) ; le patch 6.0.3 = fixes SHA-256 sans intérêt.
+- **#49 echarts 5.6→6.1 (major runtime) → VIRÉ (différé QA visuelle)** : peer echarts-for-react@3.0.6 OK avec echarts 6 (deduped), **typecheck + build verts** sur nos 66 fichiers `echarts/core`, et risque palette neutralisé (couleurs via tokens). MAIS major runtime sur dashboard, tests mockent echarts → rendu réel non couvert. Refus de shipper en prod à l'aveugle ; à adopter via une tâche dédiée avec QA visuelle.
+
+**Résultats** : lot sûr (3 PRs) intégré en local sur main puis push unique (1 deploy). Steady-state Dependabot = 3 PRs groupées/mois max. Note : pour supprimer aussi les majors npm/go individuels à l'avenir, ajouter `ignore semver-major` aux groupes npm+gomod (non fait — garde la visibilité sur les vrais majors comme echarts 6).
+
+**Prochaine étape** : push + fermeture #46/#49 ; QA visuelle echarts 6 = candidat tâche dédiée.
+
+---
+
+## [2026-06-22] Fix build de test cassé pré-existant — `strPtr` redéclaré sous `-tags=integration` — COMPLÉTÉ code (branche fix/duckdb-test-strptr-redeclared)
+
+**Contexte** : découvert pendant la vérification finale des PRs deps (#41/#42/#43). Les jobs CI **Go Coverage** + **Go Baseline** (qui lancent `go test -tags=integration ./...`) échouaient sur `main` avec `strPtr redeclared in this block` → **build de test cassé**. Pas mon travail : visible même sur #41 qui ne touche aucun Go.
+
+**Cause racine** : `internal/platform/duckdb/match_view_repo_neighbors_filtered_test.go` (`//go:build integration`) et `home_repo_cache_challenges_roundtrip_test.go` (sans tag, ajouté par `f3558e740`) déclarent tous deux `func strPtr(s string) *string`. Hors integration, seul le 2ᵉ est compilé → OK (mes builds/vet/gates locaux passaient sans `-tags`). **Avec `-tags=integration`, les deux coexistent dans `package duckdb` → redéclaration → build fail.** L'auteur de f3558e740 n'avait pas lancé le build integration.
+
+**Décision technique** : retrait du `func strPtr` redondant dans le fichier **integration** (`match_view`), en gardant le canonique sans tag de `home_repo` (utilisé lignes 38-40, donc requis hors integration ; et disponible aussi en integration car non taggé). `timePtr` (unique à match_view) conservé. Commentaire mis à jour.
+
+**Résultats (vérif locale, CGO ucrt64)** : `go vet -tags=integration ./internal/platform/duckdb/` exit 0 ; `go vet ./internal/platform/duckdb/` (sans tag) exit 0 ; **`go vet -tags=integration ./...` (tout le module) exit 0** → plus aucune casse integration-only, les jobs Go Coverage/Baseline pourront builder.
+
+**Prochaine étape** : commit + PR ; à merger sur `main` **en premier** pour débloquer la CI des 3 PRs deps (#41/#42/#43). NB : la flake `golangci-lint` (only-new-issues « failed to fetch push patch ») est un souci d'infra CI distinct, non corrigé ici.
+
+---
+
+## [2026-06-22] Dependabot : 15 PRs du scan initial — fermeture + config sobre (groupée/mensuelle/ignore-majors) — COMPLÉTÉ code (branche chore/tame-dependabot-grouping)
+
+**Contexte** : après merge de PR #25 (config Dependabot de cette session) sur `main` par l'utilisateur, Dependabot a ouvert **15 PRs** d'un coup (#26→#40 : 5 npm + 5 gomod + 5 github-actions = sa limite par défaut sans groupement), chacune déclenchant toute la matrice CI (~150 jobs). Utilisateur alarmé (« 15 PRs ouvertes, ça continue à arriver »). Diagnostic : pas une boucle infinie — scan initial plafonné — mais bruit/coût réels causés par ma config initiale **sans `groups`**.
+
+**Décision produit (sur demande explicite « peut-on / devrait-on ? »)** : **ne PAS merger les 15 bumps**. Aucun n'est un correctif de sécurité (le seul, js-yaml #3, déjà traité). Risque concentré sur les pires candidates : majors d'actions GitHub (`checkout` v4→v7, `download-artifact` v4→v8, `setup-go` v5→v6, `setup-buildx` v3→v4) + bump driver DuckDB (`duckdb-go/v2`, couche la plus sensible CGO/ART) → casse CI/DB possible pour gain nul. Merger en lot = 15 deploys (deploy.yml sur tout push `main`) en plus.
+
+**Décision technique** :
+- **Fermeture des 15 PRs** via `gh pr close` (commentaire « superseded, reviendront groupées »). Stoppe les ~150 jobs CI. Vérifié 0 PR Dependabot ouverte (le « 2 restantes » transitoire = lag API GitHub pendant le close en masse).
+- **Réécriture `.github/dependabot.yml`** : `schedule: monthly`, `open-pull-requests-limit: 3`, `groups` 1 par écosystème (`patterns: ["*"]`, `update-types: [minor, patch]`) → 1 PR groupée/écosystème ; github-actions `ignore` `version-update:semver-major` → plus de proposition de saut majeur risqué. Choix utilisateur (AskUserQuestion) = « groupé + mensuel ».
+
+**Résultats** : bruit stoppé immédiatement. Au merge de la PR config (= 1 deploy, laissé à l'utilisateur), Dependabot re-scannera groupé → ~3 PRs groupées au lieu de 15, revue à froid.
+
+**Prochaine étape** : push branche + PR config ; plan déposé `.ai/PLAN_DEPENDABOT_TAMING.md`. **Différé à étudier (candidat ultracode)** : évaluation adoption des bumps risqués (`duckdb-go/v2`, majors d'actions) individuellement avec CI + test ciblé.
+
+---
+
+## [2026-06-22] Adoption bumps Dependabot — lot 1 « triviaux » (14/15) après étude ultracode — COMPLÉTÉ code (branche chore/deps-batch-safe-bumps)
+
+**Contexte** : suite à l'étude ultracode des 15 bumps différés (16 agents, verdicts par dépendance + vérif adverse), tous jugés sûrs pour notre usage. Décision utilisateur : « tout adopter, en lots ». Ce lot = les 14 triviaux ; duckdb-go (le seul medium) suit sur branche dédiée testée.
+
+**Décision technique** :
+- **npm (5)** : `npm update` (ranges `^` couvraient déjà les cibles → seul le lockfile avance). @vitest/ui 4.1.9, eslint-plugin-react-refresh 0.5.3, globals 17.7.0, @tailwindcss/typography 0.5.20, tailwindcss 4.3.1. Subtilité : tailwindcss core était tenu à 4.3.0 par la **famille lockstep** (@tailwindcss/vite + node 4.3.0) → bumpé @tailwindcss/vite aussi (in-range) pour aligner toute la famille en 4.3.1 dédupliqué (sinon doublon 4.3.1+4.3.0).
+- **gomod (4 minors, hors duckdb)** : `go get` + `go mod tidy`. modernc.org/sqlite 1.53.0, go-toml/v2 2.4.0, x/sync 0.21.0, x/crypto 0.53.0 (+ transitifs x/sys, x/mod, x/tools, modernc.org/libc).
+- **github-actions (5, tag-based)** : checkout v4→v7, setup-go v5→v6, download-artifact v4→v8, setup-buildx v3→v4, spectral-action 0.8.11→0.8.13. Les 2 checkout **pinnés par SHA** (sync-labels, triage-feedback) **laissés en v4** (hygiène supply-chain délibérée + couverts par l'ignore-majors de la config #41 ; bump SHA = tâche distincte).
+
+**Résultats (vérif)** : front — `tsc -b` exit 0, `eslint` exit 0 (69 warnings préexistants), `vite build` exit 0 (tailwindcss 4.3.1 OK). go — `go build ./...` + `go vet ./...` exit 0 (CGO ucrt64), tests ciblés verts (`internal/openspartan` sqlite, `internal/games` go-toml, `internal/platform/userstore` crypto). Actions : validation actionlint déléguée à la CI de la PR. package.json inchangé (ranges couvrants), duckdb-go intact à 2.10503.1.
+
+**Prochaine étape** : commit + PR (merge = 1 deploy, à l'utilisateur) ; puis **lot 2 = duckdb-go/v2 2.10504.0** sur branche dédiée avec gates DuckDB (shared-social, ART/append-only) + test du retrait du workaround `-gcflags=all=-d=checkptr=0`. Étude tracée : `.ai/PLAN_DEPENDABOT_TAMING.md`.
+
+---
+
+## [2026-06-22] Adoption bumps Dependabot — lot 2 « duckdb-go/v2 2.10504.0 » + retrait workaround checkptr — COMPLÉTÉ code (branche chore/deps-duckdb-go-bump)
+
+**Contexte** : 2ᵉ lot d'adoption (le seul *medium* de l'étude ultracode). duckdb-go/v2 2.10503.1 → 2.10504.0 embarque le moteur DuckDB 1.5.4 (bugfix, storage-compatible 1.5.x). Couche la plus sensible du backend (driver CGO, historique bug ART). Branche dédiée + gates DuckDB, conformément à la reco de la vérif adverse.
+
+**Décision technique** :
+- `go get github.com/duckdb/duckdb-go/v2@v2.10504.0` + `go mod tidy` → bump driver + 6 bindings indirects (0.10503.0 → 0.10504.0).
+- **Retrait du workaround `-gcflags=all=-d=checkptr=0`** des 2 steps `-race` de `shared-social-gate.yml`. La vérif adverse avait identifié que le fix driver « checkptr misalignment in getBytes for non-inlined strings » (1.5.4) correspond exactement au faux-positif que ce flag contournait. Commentaires mis à jour (le « Ne PAS retirer ce flag » historique est levé). Éditer ce fichier fait **trigger la gate sur la PR** → validation ubuntu en plus du local.
+
+**Résultats (vérif locale, CGO ucrt64 + DuckDB 1.5.4)** :
+- `go build ./...` exit 0.
+- **Gate shared-social SANS le workaround** (`-race` seul) : `internal/platform/duckdb` + `dblease` **verts** → le faux-positif checkptr est bien résolu par 1.5.4.
+- **Kill-brutal `internal/ops` SANS le workaround** (`-race` seul) : **vert** → retrait validé sur le 2ᵉ step aussi.
+- **Batterie ART/append-only** (`-tags "integration art_repro"`) : `internal/sync` **vert** (TestNoARTPatternsOnProtectedTables, TestCSR_ARTRepro_{Player,Shared}DB, TestE2E_ARTPipeline, TestART_RebuildRegression, TestNoMutationOnAppendOnlyStateTables, TestProperty_ConcurrentUpsertsIdempotent, TestRecomputeAfterARTRebuild) → durcissement ART de 1.5.4 ne régresse pas nos chemins append-only.
+
+**Prochaine étape** : commit + PR (merge = 1 deploy). La gate CI ubuntu doit confirmer le retrait du workaround (si elle crashe checkptr → re-ajouter le flag, mais local + vérif adverse convergents). Bonus livré = dette CI `-gcflags` checkptr éradiquée. Étude : `.ai/PLAN_DEPENDABOT_TAMING.md`.
+
+---
+
+## [2026-06-22] Barre L2 Escouade — alignement pill joueur actif (JGtm) via unification dans GamertagCombobox — COMPLÉTÉ code (visuel à confirmer, branche feat/squad-named-presets-toolbar)
+
+**Contexte** : après la troncature des pills coéquipiers (`max-w-[7rem]`, barre L2 sur une ligne), la pill du joueur actif (JGtm, couleur `compare-a`) apparaissait désalignée verticalement avec les pills coéquipiers (« c'est décalé »).
+
+**Diagnostic** : markup vertical identique (`inline-flex items-center px-2.5 py-0.5 text-sm`) ; mesure sandbox (chrome-devtools, deux structures répliquées au pixel) = **delta 0px** → devraient s'aligner. Cause réelle = JGtm rendu en `<span>` ad-hoc DANS la barre L2, sous-arbre DOM distinct des pills coéquipiers (qui vivent dans `GamertagCombobox` > `div.relative` > `div.flex.items-center`, même ligne que l'`<input>`). Le `items-center` de la barre ne compense pas un décalage né À L'INTÉRIEUR du combobox (ligne de l'input / wrapper toolbar presets / règle CSS).
+
+**Décision technique principale** : **unifier** — nouvelle prop `leadingPill?: { label, color }` sur `GamertagCombobox`, rendue comme première pill non-supprimable (sans `×`, `shrink-0`, même markup `max-w-[7rem] truncate`) dans la ligne flex compacte. `SquadLayout` : suppression du `<span>` JGtm autonome, passage `leadingPill={{ label: playerSlug, color: tokenCssVar('compare-a') }}`. JGtm devient sibling des pills coéquipiers (déjà alignées entre elles) → alignement garanti par construction, indépendant de la cause exacte. `onClick stopPropagation` pour rester inerte (ne pas ouvrir le dropdown).
+
+**Résultats** : typecheck OK ; lint **0 erreur** (69 warnings pré-existants hors scope) ; `GamertagCombobox.test` **7/7 vert** (prop additive, défaut absent). Autres call sites (`SyncTab`/`ComparePage`/`SquadV2`) non impactés.
+
+**Prochaine étape** : confirmation visuelle dans l'app HMR (JGtm aligné avec les coéquipiers, barre une ligne). Inclut le fix troncature des pills coéquipiers (déjà mergé sur `main` via `fix/squad-l2-pill-truncation` ; présent ici en working tree).
+
+---
+
+## [2026-06-22] Sécurité dépendances : alerte Dependabot #3 (js-yaml DoS) + config dependabot.yml corrigée — COMPLÉTÉ code (branche fix/dependabot-config-and-js-yaml, depuis main)
+
+**Contexte** : utilisateur — (1) « checke l'alerte Dependabot #3 » ; (2) « regarde le commit 5a6832a » (GitHub). Alerte #3 = GHSA-h67p-54hq-rp68 / CVE-2026-53550, js-yaml DoS complexité quadratique (merge-key `<<:` avec alias répété → O(K×M)), sévérité medium (CVSS 5.3), vulnérable `<= 4.1.1`, corrigé `4.2.0`.
+
+**Triage alerte #3** : `js-yaml@4.1.1` est une dépendance **dev-only transitive** : `openapi-typescript@7.13.0` → `@redocly/openapi-core@1.34.15` → `js-yaml@4.1.1`. Seul usage = script `generate-types` qui parse **notre propre** `apps/go-api/api/openapi.yaml` (fichier versionné, de confiance), au build. Jamais embarqué runtime (web bundle / binaire Go). Exposition réelle quasi nulle (le scénario d'attaque = parser du YAML non fiable, inexistant ici), mais alerte légitime à fermer.
+
+**Commit 5a6832a** : branche `JGtm-patch-1` (éditeur web GitHub), parent = main, **non mergé / pas de PR**. Ajoute `.github/dependabot.yml` = **template par défaut GitHub brut** : `package-ecosystem: ""` (vide → **invalide**, version-updates ne tourne pas) + une seule entrée `directory: "/"` ne couvrant pas le monorepo. Précision clé : ce fichier pilote les **version updates** (PRs de bump), feature **distincte** des **security alerts** (alerte #3) qui viennent du scan repo et existent indépendamment → ce commit ne corrige pas #3.
+
+**Décision technique principale** :
+- **Fix js-yaml** : `@redocly/openapi-core` épingle `js-yaml: 4.1.1` en **exact** → bump impossible sans `overrides`. Ajout `"overrides": { "js-yaml": "^4.2.0" }` dans `apps/web/package.json` + `npm install`. Résultat lockfile : nœud nested `@redocly/.../js-yaml@4.1.1` supprimé, **un seul** `node_modules/js-yaml@4.2.0` hoisté en racine. `npm audit` = 0 vuln.
+- **Config Dependabot** : remplacement du stub par une config multi-écosystème valide (npm `/apps/web`, gomod `/apps/go-api`, github-actions `/`), commentaire clarifiant alerts vs version-updates.
+
+**Résultats (vérif)** : `npm ls js-yaml` → 4.2.0 unique ; `npm run generate-types` OK (openapi-typescript 7.13.0, openapi.yaml → generated.ts en 103ms, parse inchangé — la version js-yaml n'altère pas la sortie). Working tree final = 3 fichiers : `.github/dependabot.yml` (neuf), `apps/web/package.json` + `package-lock.json` (override). Diff lockfile audité = strictement js-yaml.
+
+**Dérive `generated.ts` découverte et corrigée (2e commit, même branche)** : en testant `generate-types` (vérif de non-régression openapi-typescript sous js-yaml 4.2.0), diff de **5858 lignes** sur `apps/web/src/lib/api/generated.ts`. Investigation : le fichier était **périmé de 12 commits** (`openapi.yaml` modifié par groups/lab/admin/leaderboard/auth-password depuis le dernier regen `c4ddd498a`) — `generate-types` oublié sur toute la série. D'abord **reverté** (turn 1) pour ne pas polluer le commit sécu ; le mot « reverté » a alarmé l'utilisateur → clarifié : `git checkout --` = jeter la régénération temporaire du working tree, fichier commité **intact** (preuves : `git diff HEAD` vide, commit sécu ne touche pas le fichier). Sur instruction « je te laisse gérer + merge sur main local » : **régénéré pour de bon**. Sécurité validée — `tsc -b` **exit 0** (le front compile contre les types à jour) + `eslint` exit 0 (69 warnings préexistants hors `generated.ts`). Commité séparément `chore(api)`.
+
+**Prochaine étape** : merge de la branche dans `main` **local** (demandé par l'utilisateur) ; PR #25 ouverte côté GitHub pour le fix sécu ; `JGtm-patch-1` supprimée (remplacée par la bonne config). Le merge sur `main` distant (= deploy prod auto) reste à la main de l'utilisateur.
+
+---
+
+## [2026-06-22] Référentiel (Asset Drawer) : images maps/armes absentes en mode démo — fix chemin metadata + helper unifié — COMPLÉTÉ code (branche fix/asset-drawer-demo-metadata-path, depuis main)
+
+**Contexte** : utilisateur — en mode démo (constaté en vue mobile, en anglais), le tab Référentiel (Asset Drawer, onglets Maps/Armes) n'affiche aucune image de maps ni d'armes. Question annexe résolue en clair (sans code) : les lignes « HTMLMediaElement's play() » dans la sortie vitest = bruit jsdom préexistant (jsdom n'implémente pas .play()/.pause()), pas une régression.
+
+**Cause racine** : au boot, `AssetMetadataHandler` (server.go) lisait la metadata via `MetadataDBPath(DefaultSlug)` = data/titles/halo_infinite/warehouse/metadata.duckdb, SANS la redirection démo que le `RankCatalog` (juste au-dessus) applique déjà. En démo, ce fichier est une coquille vide créée au boot ; les référentiels vivent dans data/demo/warehouse/metadata.duckdb (copie intégrale de la prod par seed-demo, `copyMetadataFile` = io.Copy). Conséquence : `ListMapsByTitle`/`ListWeaponsByTitle` → 0 ligne → `name_en` absent → `MapImageURL`/`WeaponImageURL` renvoient "" → aucune image. Les qualificatifs « mobile » et « anglais » sont incidents : sur mobile le drawer s'ouvre via le menu (l'onglet vertical déclencheur est `hidden sm:flex`) mais c'est le même composant/donnée que desktop ; le front n'envoie aucune locale aux endpoints `/assets/{slug}/maps|weapons` (URLs d'images calculées côté serveur depuis `name_en`) → indépendant de la langue.
+
+**Décision technique principale** : extraction d'un helper `metadataDBPathFor(cfg *config.AppConfig)` (server.go) encapsulant la redirection démo (`DemoMode && DemoFixturesDir != ""` → data/demo/warehouse/metadata.duckdb, sinon PathResolver du titre). Câblé sur les 5 sites de lecture de la metadata du titre : `AssetMetadataHandler` (le bug signalé), `RankCatalog` (dédup de la redirection inline, comportement inchangé), `CatalogHandler` (/catalog/playlists|pairs|maps), `SeasonsCatalog`, `AssetConfig.MetaDBPath` (défs BP/défis) — même classe de bug latente, sûr car la DB démo est un superset intégral. Élimine la duplication du pattern (règle ≤2 copies). Aucune modif front / i18n / couleurs.
+
+**Résultats (vérif finale)** : Go — `go build ./internal/api/...` clean ; `go vet ./internal/api/...` exit 0 ; `go test ./internal/api/...` vert (api, handlers, middleware) dont nouveau `TestMetadataDBPathFor` (table-driven OS-agnostique : démo+fixtures→fixtures démo, hors-démo→metadata titre, démo sans fixtures-dir→repli). Toolchain CGO ucrt64 (CGO_ENABLED=1 + C:\msys64\ucrt64\bin). Suite complète `go test ./...` non relancée (changement localisé, chemin de sélection + helper pur).
+
+**Prochaine étape** : smoke démo (LEVELUP_DEMO_MODE=true → ouvrir Référentiel, onglets Maps/Armes → images présentes ; log boot `asset_metadata_handler_ready` avec maps/weapons>0), puis commit (autorisation requise) + push. Réf : [[project_deploy_hazards_demo_regen_lock]].
+
+---
+
+## [2026-06-22] Page Médias : polish UI (icônes/spinner/toasts) + garde anti-perte de données HLS (6 vidéos récentes illisibles + sans miniature) — COMPLÉTÉ code (branche fix/media-upload-ui-and-hls-source-loss, depuis main)
+
+**Contexte** : utilisateur — sur la page Médias, (a) **6 vidéos récentes uploadées via l'app sont illisibles dans le lecteur ET sans miniature** (les anciennes OK) — **critique** ; (b) icône du drag-n-drop (emoji ⬆/📂) pas cohérente ; (c) sablier ⏳ incohérent ; (d) messages succès/échec upload+association trop discrets (texte inline), pas modernes. Décisions utilisateur : diagnostiquer (a) d'abord ; remplacements ciblés pour (b/c/d). 2 chantiers indépendants.
+
+**Cause racine (a)** : le transcoding HLS (`RunHLSTranscode`, media_hls.go) **supprimait le fichier source** (`os.Remove`) juste après un succès `BuildHLS` qui ne fait que `os.Stat` la sortie (jamais démultiplexer). Les clips Halo étant **multipistes** (jeu+chat) déclenchent le HLS. Si le master produit est cassé/incomplet malgré exit-code 0, ou si la miniature avait échoué à l'ingestion (ffmpeg, stderr **avalé** `cmd.Stderr=nil`), le média devient illisible + sans miniature, **source détruit → irréversible** (plus de fallback remux, plus de régénération possible).
+
+**Décision technique principale** :
+- **Chantier B (front, features/media/)** : emojis ⬆/📂 → SVG inline `UploadIcon`/`FolderOpenIcon` (currentColor, convention ThemeToggle) ; ⏳ → composant partagé `<Spinner>` ; texte inline succès/erreur → **toasts Sonner** (upload via callbacks `mutate`, association via `handleConfirm` — ajoute un succès qui manquait). 5 clés i18n `common.media.*` (common.toml, ICU plural pour upload_success, manifeste régénéré + format testé contre intl-messageformat). String hardcodée « parcourir » → `common.media.browse`.
+- **Chantier A1 (Go, anti-perte de données)** : nouveau `media.VerifyHLSPlayable(ctx, master)` — **ffprobe démultiplexe** réellement le master (suit la playlist : init/segments manquants ou tronqués → échec) — appelé dans `RunHLSTranscode` **avant** `finalize`/`os.Remove`. Sur échec : `transcode_status='failed'`, **source conservé** (fallback remux). **Seconde garde** : `os.Remove` du source **gaté sur la présence d'une miniature liée** (`mediaHasThumbnail`) — si NULL (échec ffmpeg miniature), source conservé pour régénération ultérieure (regen-thumbnails). Erreurs ffmpeg miniatures : stderr **capturé + logé** (`slog.WarnContext`, module=media) au lieu d'être avalées ; `BackfillThumbnailPaths` rerouteé vers logs/media.log (était en bare slog → general.log).
+
+**Revue adversariale (workflow ultracode, 22 agents, ~893k tokens, 18 findings → 6 confirmés)** — corrigés : (1) [high] handlers d'erreur toast utilisaient `err instanceof Error` qui **perd le message d'`ApiError`** (objet nu) → remplacé par le helper canonique `apiErrorMessage` (UploadButton + MediaMatchPicker) ; (2) [high] suppression source non gatée sur la miniature → garde `mediaHasThumbnail` ci-dessus ; (3) [high] `BackfillThumbnailPaths` bare slog → general.log → `slog.With(module=media)` + *Context ; (4) [medium] `VerifyHLSPlayable` sans test → `TestVerifyHLSPlayable_Integration` (arbre valide OK / master absent + arbre amputé rejetés) ; (5) ffmpeg stderr = déjà mon fix ; (6) Spinner text-primary **décliné** (accent délibéré partagé dans toute l'app ; le modifier régresserait les autres usages).
+
+**Résultats (vérif finale)** : front — `tsc -b` OK, eslint **0 erreur** sur les fichiers touchés (warnings restants préexistants dans CoverFlowModal/MediaViewer, non touchés) ; ICU upload_success formaté OK (cas =0 vide). Go — `go build` + `gofmt -l` clean ; `go test ./internal/media/... ./internal/ops/...` **entièrement vert**, dont nouveaux `TestVerifyHLSPlayable_Integration`, `TestRunHLSTranscode_NoThumbnail_KeepsSource` (HLS finalisé mais source conservé faute de miniature), et tests existants adaptés au nouveau contrat (`setupMediaDB`/`setupSweepDB` lient une miniature pour autoriser la suppression). Contrat de suppression durci sans changer le chemin nominal (miniature présente → source supprimé).
+
+**Diagnostic VPS (exécuté en direct via `ssh lvelup`, lecture seule)** — RACINE TROUVÉE, et ce **n'est pas un bug applicatif** : **`ffmpeg`/`ffprobe` absents du conteneur prod**. logs/media.log : `hls sweep: probe échouée … err: ffprobe: exec: "ffprobe": executable file not found in $PATH` × les 6, `hls sweep terminé transcoded:0 failed:6` (balayage toutes ~7 min). `docker compose exec levelup` → `NO_FFMPEG`/`NO_FFPROBE`. Le **Dockerfile stage runtime** (`debian:bookworm-slim`) n'installait que `gosu`+`ca-certificates` (jamais ffmpeg ; l'ancienne image Python l'embarquait → régression silencieuse post-cutover Go). Disque : les 6 `.mkv` JGtm sont **intacts** (sources jamais supprimées — `ffprobe`-fail AVANT tout transcode → HLS non tenté → pas de `os.Remove`), miniatures + arbres HLS s'arrêtent au **30 mai** (dernier upload pré-régression). `.mkv` non web-native sans HLS = illisible navigateur ; sans `.webp` = pas de miniature. **Aucune perte de données → récupération totale possible.** Fix racine : **`ffmpeg` ajouté au Dockerfile runtime** (commit branche). Mes gardes A1 (VerifyHLSPlayable + gate miniature + stderr logé) restent du durcissement défensif valable pour l'AUTRE scénario (faux-succès → suppression), orthogonal à cet incident.
+
+**Prochaine étape** : commit (autorisation requise) des chantiers A/B + Dockerfile, puis **rebuild image + redeploy** (ffmpeg présent) ; le balayage HLS post-déploiement transcodera les 6 `.mkv` automatiquement ; les **miniatures** restent à régénérer (générées à l'IndexMedia, pas par le balayage → ré-index/re-upload ou outil dédié une fois ffmpeg présent). Réf : [[project_go_live_deploy_topology]], [[project_deploy_hazards_demo_regen_lock]].
+
+---
+
+## [2026-06-22] Escouades nommées multiples (gérer + charger) + fusion dans le combobox + nettoyage barre Escouade + indice playlists/modes dérivé — COMPLÉTÉ (branche feat/squad-named-presets-toolbar, depuis main)
+
+**Contexte** : réflexion utilisateur — « on a des groupes familles/amis qui définissent quelle BDD on explore ; je veux le même principe pour les escouades : plusieurs escouades nommées qu'on gère, + un sélecteur rapide ». Exigence : ne PAS confondre Escouade (composition d'analyse) et Groupe (accès aux données). Exploration : l'entité `prestige.Squad` (roster nommé, clé xuid, table append-only `shared_social.duckdb`, CRUD partiel, routes `POST/GET /squads` montées par défaut via `PrestigeEnabled=true`) existait DÉJÀ à ~70 %, mais orientée **défis** (SquadFocusStrip ne fait que détecter+créer). Manquaient : lister/charger/renommer/supprimer + sélecteur + nettoyage barre. Plan validé en 3 tours de questions (rôle = composition seule ; placement = **fusion dans le combobox** coéquipiers, pas un nouveau contrôle ; playlist = nommage libre + **indice dérivé v1**).
+
+**Décision technique principale** :
+- **Backend CRUD** : `RenameSquad` (UPDATE `squad` basse-fréquence HTTP, checkpointed) + `DeleteSquad` (**append-only pur** : retire tous les membres via events `is_member=FALSE` → sort de `ListSquadsForUser` ; zéro DELETE indexé, zéro migration). Persistance **gamertag** sur `squad_member` (migration `shared_social_squad_member_gamertag_v1` : ADD COLUMN + reconstruit vue `_latest` ; le front l'envoyait déjà, le backend le jetait) — nécessaire pour afficher/charger une compo (page en gamertags). `ListMySquads` enrichi (gamertags + indice).
+- **Indice « playlists/modes habituels » dérivé** (challenge accepté : *rien stocké*, sinon ça se périme et redevient une règle dure) : nouvelle méthode `SquadMatchProvider.SquadUsualContexts` (CTE matchs communs du roster `HAVING COUNT(DISTINCT xuid)=N` + join `v_match_full` labels FR, top-2 par fréquence, filtre UUID) → réponse `usual_playlists/usual_modes` (display-only). 100 % dérivé → auto-adaptatif.
+- **Frontend fusion** : `GamertagCombobox` (components/ui) **généralisé** présentation-pure (props `presetGroups`/`onLoadPreset`/`footer` ; clic preset = REMPLACE la sélection). Hook dédié `useSquadPresets.tsx` (SRP, garde SquadLayout lisible) construit 2 groupes — « Mes escouades » (charger + sous-titre indice + tri-en-tête par filtre courant `activeContextLabels` + gestion renommer/supprimer en mode Gérer) et « Mes groupes » (charge les membres, reprend la capacité de l'ex-`SquadGroupLoader` **supprimé**) — + footer Enregistrer. Anti-confusion : en-têtes distincts.
+- **Nettoyage barre** : compteur de matchs + « Voir les matchs » retirés de la barre de filtres et déplacés dans le **rail** (`PeriodSessionRail`, nouveau prop `centerExtra` + `matchCount`/`trailing`) — compteur affiché dans **tous** les modes (le rail ne comptait les matchs qu'en mode session unique → double « N matchs » signalé par l'utilisateur ; désormais un seul, jamais dupliqué) ; « Réinitialiser » restylé en vrai bouton ; tooltip sur « Analyser » (clarifie : commit cascade+période en attente, coéquipiers/sessions en direct).
+- **Anti-confusion i18n** : label settings « Mon escouade (amis par défaut) » → « Coéquipiers par défaut (page Escouade) » ; entrée glossaire **Groupes** (accès) vs **Escouade** (analyse), FR+EN, avec phrase de contraste explicite.
+
+**Résultats (vérif finale)** : Go — `go build ./...` + `go vet` clean ; tests verts **prestige, api, api/handlers, migration, duckdb** (dont garde-fous `TestSortByCanonicalIsNoOpOnCurrentRegistry` — entrée canonicalOrder placée AVANT rekey pour matcher l'ordre d'init lexical — et `TestNoUnauthorizedSharedSocialMention` — migration ajoutée à la whitelist). Nouveaux tests : service (rename garde membre-user, delete retire tous les membres, usual-contexts délégation + roster vide), handler (rename/delete 204 + champs requis 400, ListMySquads inclut `usual_playlists/usual_modes`). Front — `tsc -b` OK, eslint **0 erreur** (4 warnings préexistants `set-state-in-effect` intouchés), vitest **362/362** (47 fichiers). i18n régénéré (clés orphelines `load_group*` retirées).
+
+**Revue adversariale finale (workflow ultracode, 10 agents, ~893k tokens)** : 7 findings bruts → **5 confirmés réels** (0 critique). Tous corrigés : (1) [moyen] test garde-acteur ADR 0024 ne couvrait pas PATCH/DELETE /squads/{id} (prod OK mais régression silencieuse possible) → routes ajoutées à newRouterGuarded + 2 cas table ; (2) [moyen] footer « Enregistrer » créait des doublons (table append-only) → garde anti-doublon via helper partagé `findSquadByRoster` (features/squad/squadRoster.ts, réutilisé par useSquadPresets ET SquadFocusStrip, dédup la logique copiée), bouton désactivé + label « Compo déjà enregistrée » si roster déjà sauvegardé ; (3) [faible] état gestion (« Confirmer ? » suppression armé) survivait à la fermeture du popover → suppression fantôme → prop `onClose` sur GamertagCombobox (effet transition open→closed) + reset manageMode/editingId/confirmDeleteId ; (4) [faible] DeleteSquad renvoyait succès même sur échec partiel de retrait → `errors.Join` des échecs + erreur remontée (handler 5xx), retry idempotent ; (5) [faible] membres legacy sans gamertag snapshot droppés au rechargement → ListMySquads comble les gamertags vides via l'annuaire (app-players, lookup canonique). Tests ajoutés : garde-acteur rename/delete, DeleteSquad échec partiel, helper `findSquadByRoster`, `onClose` combobox, helpers purs `topNByFreq`/`uuidLabelRE`.
+
+**Résultats (post-correctifs)** : `go build`/`vet` clean + **`go test ./...` EXIT=0** (intégral) ; front `tsc -b` OK, eslint **0 erreur** (warning ref introduit puis corrigé), **vitest 1898/1912 verts** (216 fichiers). Logging : `SquadUsualContexts` (provider) logge sa dégradation en `slog.WarnContext` (logs dédiés) ; mutations en `Info` ; aucun fmt.Println.
+
+**Prochaine étape** : vérif bout-à-bout dans l'app (enregistrer une compo → apparaît dans « Mes escouades », bouton repasse « déjà enregistrée » ; charger/renommer/supprimer ; charger un groupe ; indice « surtout … » + tri par filtre ; barre = un seul compteur dans le rail) puis commit (autorisation requise) + push. Réf : [[reference_squad_page_legacy_service_composition]].
 
 ---
 
@@ -3426,7 +3697,11 @@ Les 3 fichiers `career_live_{service,merge,partial}.go` faisaient transiter les 
 
 **Résultats (vérif finale)** : `go build ./...` + `go vet ./...` **clean sur tout le module** ; tests verts sur halo, auth, duckdb, service, migration, watcher, api/handlers/middleware (suite complète `go test ./...` en cours). B-front (indicateur « données en cache ») = **couvert par l'existant** (`DataFreshnessIndicator`, conçu pour ce cas, déjà wiré sur Défis) + backend — aucun fichier frontend touché, forme API inchangée (`Items`/`FromCache` déjà présents). Le symptôme « indisponible » disparaît par le backend seul.
 
-**Prochaine étape** : confirmer la suite `go test ./...` verte, puis commit (après autorisation user). Follow-ups documentés : (1) filet 401 sur le client sync (career live Explorer/appearance) ; (2) wording explicite « données en cache » + hint toggle Explorer (finition). Réf : [[reference_killfeed_deadstate_fields]] (non lié) ; voir plan `c-est-bizarre-j-ai-tout-agile-popcorn.md`. Mémoire : [[reference_live_fetch_expiry_aware_token_cache]].
+**Résultats — suite finale + follow-ups (commités)** : `go test ./...` **entièrement vert** ; 7 commits (A1, A2, A3, B-back, docs). **Follow-ups TRAITÉS** : (1) filet 401 étendu au **client sync** — `halo.RetryWithFreshTokens` exporté (predicate pluggable) + `sync.IsAuthError` ; enrobé sur career identité/customisation (le 403 appearance du handoff), CSR Explorer (`GetPlayerCSRs`), recent-matches (décorateur registry) ; `newExplorerSeasonCSRProvider` non enrobé (avale déjà ses erreurs) — commit `feat(auth): étend le filet 401 au client sync`. (2) wording honnête **« Données en cache (live indisponible) »** sur les Défis (clé i18n `home.freshness.from_cache` FR+EN, manifest régénéré, `HomePage.tsx`) — toggle Explorer débloqué par A2 — commit `feat(home): wording honnête`. Vérif front : typecheck OK, eslint clean (HomePage.tsx), 34/34 vitest home verts.
+
+**Vérification finale (revue adverse d'un agent sur tout le diff)** : 1 bloquant corrigé — le filet 401 sur le **career fetcher** était un **no-op** (`doPlayerGatedGet` avale 401/403 par design, et le 403 `/appearance` est un gating tiers NORMAL géré par le fallback `?view=public`) → wrap retiré + documenté (péremption couverte par A2 ; CSR + recent-matches, eux, propagent bien le `*HTTPError` → filets fonctionnels). **Logging renforcé** : log au re-mint réussi (`ResolveFreshPlayerTokens`, expiry réel), log Warn au re-mint échoué, filet 401 passé en **Info** (événement anormal). **Tests ajoutés** : `sync.IsAuthError` (table), `RetryWithFreshTokens` avec predicate custom (chemin client sync), et **round-trip persist→read** des colonnes render (`TestPersistThenLoadCachedChallenges_ReconstructsRenderedCards` — preuve bout-en-bout que les cartes hors-ligne marchent). `go test ./...` **toujours entièrement vert**. **Point mineur (#5) CORRIGÉ** : le front dérivait mal la cadence daily/weekly des cartes en cache car le `challenge_path` interne est synthétique (`Challenges/Tracking/{id}`, sans le marqueur). Fix : colonne `display_path` (migration séparée `add_challenge_snapshots_display_path`) portant le VRAI chemin GameCMS de l'item rendu (sans toucher la clé de dedup synthétique) ; `challengeItemFromSnapshot` reconstruit `ChallengePath` depuis `display_path` (fallback synthétique). Le front dérive donc la cadence comme en live. Round-trip test étendu (assert le vrai path relu).
+
+**Prochaine étape** : push + déploiement (migration `add_challenge_snapshots_render_columns` au boot, idempotente non destructive). Mémoire : [[reference_live_fetch_expiry_aware_token_cache]].
 
 ---
 

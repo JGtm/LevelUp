@@ -44,8 +44,9 @@ func TestRunHLSTranscode_Success(t *testing.T) {
 	dbPath := filepath.Join(dir, "shared_social.duckdb")
 
 	// Setup DB puis FERMETURE : RunHLSTranscode rouvrira sa propre connexion
-	// (DuckDB n'autorise qu'un handle RW par fichier dans le process).
-	setupMediaDB(t, ctx, dbPath, "source.mkv", "processing")
+	// (DuckDB n'autorise qu'un handle RW par fichier dans le process). Miniature
+	// liée → la garde anti-perte autorise la suppression du source.
+	setupMediaDB(t, ctx, dbPath, "source.mkv", "processing", "GT/thumbs/source.webp")
 
 	mkv := genHLSSourceMKV(t, dir, "source.mkv")
 	outDir := filepath.Join(dir, "hls", "source")
@@ -81,13 +82,60 @@ func TestRunHLSTranscode_Success(t *testing.T) {
 	}
 }
 
+// TestRunHLSTranscode_NoThumbnail_KeepsSource : transcoding RÉUSSI mais aucune
+// miniature liée (échec ffmpeg miniature à l'ingestion) → le HLS est finalisé
+// (file_path basculé, status ready) MAIS le source est CONSERVÉ pour permettre
+// une régénération ultérieure de la miniature. Garde anti-perte de données
+// (sinon : média lisible mais sans miniature, irréversible). Nécessite ffmpeg.
+func TestRunHLSTranscode_NoThumbnail_KeepsSource(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg absent — test d'intégration RunHLSTranscode ignoré")
+	}
+	ctx := context.Background()
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "shared_social.duckdb")
+	setupMediaDB(t, ctx, dbPath, "source.mkv", "processing", "") // pas de miniature
+
+	mkv := genHLSSourceMKV(t, dir, "source.mkv")
+	outDir := filepath.Join(dir, "hls", "source")
+	params := HLSTranscodeParams{
+		SourceAbs: mkv,
+		OutDir:    outDir,
+		DBPath:    dbPath,
+		FileRel:   "source.mkv",
+		HLSRel:    "GT/hls/source/master.m3u8",
+	}
+	if err := RunHLSTranscode(ctx, params); err != nil {
+		t.Fatalf("RunHLSTranscode: %v", err)
+	}
+
+	db, err := sql.Open("duckdb", dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	// HLS bien finalisé (le média reste lisible)…
+	var fp, ts string
+	if err := db.QueryRowContext(ctx,
+		`SELECT file_path, transcode_status FROM media_files WHERE id=1`).Scan(&fp, &ts); err != nil {
+		t.Fatal(err)
+	}
+	if fp != "GT/hls/source/master.m3u8" || ts != TranscodeReady {
+		t.Errorf("DB = (%q,%q), want (GT/hls/source/master.m3u8, ready)", fp, ts)
+	}
+	// …mais le source est CONSERVÉ faute de miniature liée.
+	if _, err := os.Stat(mkv); err != nil {
+		t.Errorf("source supprimé alors qu'aucune miniature n'est liée: %v", err)
+	}
+}
+
 // TestRunHLSTranscode_Failure_KeepsSource : un source invalide fait échouer
 // BuildHLS → transcode_status='failed', source CONSERVÉ (fallback remux legacy).
 func TestRunHLSTranscode_Failure_KeepsSource(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "shared_social.duckdb")
-	setupMediaDB(t, ctx, dbPath, "bogus.mkv", "processing")
+	setupMediaDB(t, ctx, dbPath, "bogus.mkv", "processing", "")
 
 	bogus := filepath.Join(dir, "bogus.mkv")
 	if err := os.WriteFile(bogus, []byte("not a video"), 0o644); err != nil {
@@ -123,8 +171,9 @@ func TestRunHLSTranscode_Failure_KeepsSource(t *testing.T) {
 }
 
 // setupMediaDB crée la table media_files et insère une ligne (id=1), puis ferme
-// la connexion pour libérer le fichier DuckDB au worker.
-func setupMediaDB(t *testing.T, ctx context.Context, dbPath, fileRel, status string) {
+// la connexion pour libérer le fichier DuckDB au worker. thumbnailPath vide =>
+// thumbnail_path NULL (la garde anti-perte conserve alors le source).
+func setupMediaDB(t *testing.T, ctx context.Context, dbPath, fileRel, status, thumbnailPath string) {
 	t.Helper()
 	db, err := sql.Open("duckdb", dbPath)
 	if err != nil {
@@ -134,9 +183,13 @@ func setupMediaDB(t *testing.T, ctx context.Context, dbPath, fileRel, status str
 	if err := ensureMediaTables(ctx, db); err != nil {
 		t.Fatalf("ensureMediaTables: %v", err)
 	}
+	var thumb any
+	if thumbnailPath != "" {
+		thumb = thumbnailPath
+	}
 	if _, err := db.ExecContext(ctx,
-		`INSERT INTO media_files (id, file_path, kind, transcode_status) VALUES (1, ?, 'video', ?)`,
-		fileRel, status); err != nil {
+		`INSERT INTO media_files (id, file_path, kind, transcode_status, thumbnail_path) VALUES (1, ?, 'video', ?, ?)`,
+		fileRel, status, thumb); err != nil {
 		t.Fatalf("insert media_files: %v", err)
 	}
 }

@@ -104,7 +104,11 @@ func applyMatchHeaderMetaLabels(h *domain.MatchViewHeader, meta *domain.MatchMet
 		modeUI = analysis.ResolveModeUI(meta.PairName, meta.PairNameFR)
 	}
 	if modeUI != nil {
-		h.ModeUI = *modeUI
+		// Re-normalise SYSTÉMATIQUEMENT : ModeNameFR peut arriver brut du repo
+		// quand le catalogue est incomplet (pair_name_fr = "Slayer on Forest"
+		// avec le nom de map EN collé). NormalizeModeLabel strippe le suffixe
+		// " on/sur <map>" — sinon le front recompose "Slayer on Forest sur Forêt".
+		h.ModeUI = analysis.NormalizeModeLabel(*modeUI, h.MapUI)
 	}
 	if meta.PlaylistNameFR != nil && *meta.PlaylistNameFR != "" {
 		h.PlaylistLabel = *meta.PlaylistNameFR

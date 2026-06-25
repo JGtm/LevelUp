@@ -19,6 +19,7 @@ import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
 import { formatMessage } from '@/lib/i18n/format'
 import { effectiveDmgPerFrag } from '@/lib/formatters'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { normalizeModeLabel } from '@/lib/halo/modeLabel'
 
 export interface MatchCardProps {
   match: RecentMatchItem
@@ -27,10 +28,6 @@ export interface MatchCardProps {
   onClick?: () => void
   onToggleFavorite?: () => void
   favoriteDisabled?: boolean
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 function formatMatchDuration(secs: number): string {
@@ -53,36 +50,6 @@ function formatMatchDateTime(isoDate: string, timezone: string, locale: 'fr' | '
   }).format(date)
 }
 
-function normalizeModeLabel(modeLabel: string | null | undefined, mapLabel: string | null | undefined): string | null {
-  if (!modeLabel) {
-    return null
-  }
-
-  let normalized = modeLabel.trim()
-  if (!normalized) {
-    return null
-  }
-
-  const spacedSeparatorIndex = normalized.indexOf(' : ')
-  if (spacedSeparatorIndex > 0) {
-    normalized = normalized.slice(0, spacedSeparatorIndex).trim()
-  } else {
-    const separatorIndex = normalized.lastIndexOf(':')
-    if (separatorIndex >= 0 && separatorIndex < normalized.length - 1) {
-      normalized = normalized.slice(separatorIndex + 1).trim()
-    }
-  }
-
-  if (mapLabel?.trim()) {
-    const escapedMap = escapeRegExp(mapLabel.trim())
-    normalized = normalized.replace(new RegExp(`\\s+(?:on|sur)\\s+${escapedMap}$`, 'i'), '')
-  } else {
-    normalized = normalized.replace(/\s+(?:on|sur)\s+.+$/i, '')
-  }
-
-  normalized = normalized.replace(/\s*-\s*(?:Forge|Ranked)\b/gi, '').trim()
-  return normalized || modeLabel.trim()
-}
 function buildMatchHeading(match: RecentMatchItem, locale: 'fr' | 'en'): string {
   const normalizedMode = normalizeModeLabel(match.mode_ui, match.map_ui)
   const connector = locale === 'en' ? 'on' : 'sur'

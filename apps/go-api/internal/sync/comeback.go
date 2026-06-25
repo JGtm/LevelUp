@@ -87,7 +87,14 @@ func computeMatchDominanceFlag(ctx context.Context, db *sql.DB, xuid, matchID st
 	if len(events) == 0 {
 		// Pas de timeline → fallback marge de score FINALE (DOMINATION/HUMILIATION
 		// title-agnostic, cf. analysis.ComputeScoreMarginDominance + .ai/STEAKTACULAR.md).
-		// Infinite a TOUJOURS des kill-events → n'entre jamais ici → byte-identique.
+		// Gate HINF (byte-identique) : la prémisse historique « Infinite a TOUJOURS des
+		// kill-events » est FAUSSE pour ~244 matchs BTB sans kill-event. Pour ne pas
+		// relabelliser rétroactivement des badges dominance HINF existants (règle projet
+		// HINF byte-identique), le fallback marge de score reste réservé aux titres sans
+		// kill-feed exploitable (Halo 5). HINF garde dominance_flag=0 ici, comme avant.
+		if ctxkeys.TitleSlug(ctx) == titlePkg.DefaultSlug {
+			return 0, nil
+		}
 		// Limité aux 2-équipes (0/1) : FFA/multi-équipes → pas de dominance.
 		if myTeamID != 0 && myTeamID != 1 {
 			return 0, nil

@@ -659,6 +659,26 @@ en = "Drag and drop or"
 fr = "MP4, MOV, AVI, MKV, PNG, JPG…"
 en = "MP4, MOV, AVI, MKV, PNG, JPG…"
 
+[common.media.browse]
+fr = "parcourir"
+en = "browse"
+
+[common.media.upload_success]
+fr = "{saved, plural, one {# fichier importé} other {# fichiers importés}} · {indexed} nouv. · {associated} assoc.{thumbnails, plural, =0 {} one { · # miniature} other { · # miniatures}}"
+en = "{saved, plural, one {# file imported} other {# files imported}} · {indexed} new · {associated} assoc.{thumbnails, plural, =0 {} one { · # thumbnail} other { · # thumbnails}}"
+
+[common.media.upload_error]
+fr = "Échec de l'import"
+en = "Upload failed"
+
+[common.media.associate_success]
+fr = "Média associé au match"
+en = "Media linked to match"
+
+[common.media.associate_error]
+fr = "Échec de l'association"
+en = "Association failed"
+
 # ─── Leaderboard ────────────────────────────────────────────────────────
 
 [common.leaderboard.title_world]
@@ -864,6 +884,10 @@ en = "View matches"
 [common.filters.browse_title]
 fr = "Parcourir les matchs un par un"
 en = "Browse matches one by one"
+
+[common.filters.apply_pending_title]
+fr = "Applique les filtres en attente (cascade et période). Coéquipiers et sessions s'appliquent en direct."
+en = "Apply pending filters (cascade and period). Teammates and sessions apply live."
 
 [common.filters.incompatible_title]
 fr = "Incompatible avec les filtres actifs — cliquez pour désélectionner"
@@ -1432,8 +1456,8 @@ fr = "Onglets paramètres"
 en = "Settings tabs"
 
 [common.settings.my_squad_default]
-fr = "Mon escouade (amis par défaut)"
-en = "My squad (default friends)"
+fr = "Coéquipiers par défaut (page Escouade)"
+en = "Default teammates (Squad page)"
 
 [common.settings.squad_intro]
 fr = "Gamertags des coéquipiers présélectionnés à l'ouverture de la page Escouade. Les joueurs déjà configurés dans l'app apparaissent en priorité."
@@ -1569,11 +1593,3 @@ en = "Invitation code"
 [common.groups.continue_xbox]
 fr = "Continuer avec Xbox"
 en = "Continue with Xbox"
-
-[common.groups.load_group]
-fr = "Charger un groupe"
-en = "Load a group"
-
-[common.groups.load_group_option]
-fr = "Charger un groupe…"
-en = "Load a group…"
