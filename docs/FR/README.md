@@ -335,7 +335,7 @@ Cette variable d'environnement a priorité sur l'ID embarqué.
 | [ARCHITECTURE_V6.md](ARCHITECTURE_V6.md) | Architecture v6 (shared matches + i18n assets) |
 | [SYNC_GUIDE.md](SYNC_GUIDE.md) | Guide de synchronisation |
 | [BACKUP_RESTORE.md](BACKUP_RESTORE.md) | Backup et restauration |
-| [TESTING_V5.md](TESTING_V5.md) | Stratégie de tests v5 |
+| [testing.md](../testing.md) | Stratégie de tests Go (CGO, ratchet de couverture) |
 | [FAQ.md](FAQ.md) | Questions fréquentes |
 
 Docs anglaises : [../](../)
