@@ -2,13 +2,14 @@
 
 French version: [FR/CONFIGURATION.md](FR/CONFIGURATION.md)
 
-> Complete configuration guide: Azure tokens, player profiles, and application settings.
+> Complete configuration guide for the Go backend (`apps/go-api`): player profiles
+> (`db_profiles.json`), application settings (`app_settings.json`), environment
+> variables, and the single source of auth tokens.
 
 ## Table of Contents
 
-- [Setup Wizard (recommended)](#setup-wizard-recommended)
-- [Azure Configuration](#azure-configuration)
 - [Player Profiles](#player-profiles)
+- [Token Storage & Onboarding](#token-storage--onboarding)
 - [Environment Variables](#environment-variables)
 - [Application Settings](#application-settings)
 - [Security](#security)
@@ -16,298 +17,226 @@ French version: [FR/CONFIGURATION.md](FR/CONFIGURATION.md)
 
 ---
 
-## Setup Wizard (recommended)
-
-The easiest way to configure LevelUp is through the **Setup Wizard**, available automatically
-on first launch in the browser at `http://localhost:5173`.
-
-**v6 — Zero configuration for standard users.** LevelUp bundles its own Azure client ID.
-The wizard only needs two things from you:
-
-1. **Your gamertag** — typed in the wizard UI
-2. **Device Code authentication** — open `https://xbox.com/activate` and enter the code shown
-
-No Azure account, no App Registration, no `.env.local` required for normal use.
-
-| | 🎮 Xbox Express (v6 default) | ☁️ Azure Manual (advanced) |
-|-|------------------------------|---------------------------|
-| Azure App Registration | **Not required** (bundled) | Required (your own) |
-| Refresh token | **Auto** (Device Code) | Manual (run script) |
-| gamertag + XUID | **Auto** (resolved via OAuth) | Manual |
-| Player profile in `db_profiles.json` | **Auto** (created by wizard) | Manual |
-| Token storage | `stats.duckdb` (sync_meta) | `.env.local` |
-| Steps in wizard | **2** | **3** |
-
-### Note for forks / developers
-
-The bundled `LEVELUP_CLIENT_ID` is tied to this project's Azure App Registration.
-**If you fork LevelUp**, please create your own free Azure App Registration (see
-[§ Azure Configuration](#azure-configuration) below) and override via env var:
-
-```env
-# .env.local
-SPNKR_AZURE_CLIENT_ID=your_own_client_id
-```
-
-This variable takes precedence over the bundled ID (`LEVELUP_CLIENT_ID` in `src/auth/_constants.py`).
-
----
-
-## Azure Configuration
-
-### About Azure Account Registration
-
-> **Why does Azure ask for a credit/debit card?**
->
-> Azure requires a credit or debit card during sign-up mainly for **identity verification and fraud prevention**. Even though many Azure services offer free credits or free tiers, Microsoft needs a valid payment method to:
-> - Verify the user's identity
-> - Prevent misuse or multiple free account sign-ups
-> - Enable automatic billing if usage exceeds free limits
->
-> **This does not mean charges will occur immediately.** Charges only apply if paid services are used beyond free limits.
->
-> **For this project, you will never exceed the free tier.** LevelUp only registers an OAuth application in Azure Active Directory (Microsoft Entra ID), which is completely free and has no usage quota. No paid Azure service is consumed.
-
-> **Azure for Students — No Credit Card Required**
->
-> If you have a valid university or college email address, you can sign up for [Azure for Students](https://azure.microsoft.com/en-us/free/students/) for free, without a credit card.
-
-### Prerequisites
-
-To use the Halo Infinite API via SPNKr, you need:
-
-1. A Microsoft/Xbox account
-2. An application registered in Azure Portal
-3. An OAuth refresh token
-
-### 1. Create an Azure Application
-
-1. Go to [Azure Portal](https://portal.azure.com/)
-2. Navigate to **Microsoft Entra ID**
-
-   ![Microsoft Entra ID](screenshots/azure-setup/01-entra-id.png)
-
-3. Click **Add** → **Add registration**
-
-   ![Add App Registration](screenshots/azure-setup/02-add-app-registration.png)
-
-4. Configure:
-   - **Name**: `LevelUp Halo`
-   - **Supported account types**: Personal Microsoft accounts only
-   - **Redirect URI**: leave empty
-5. Click **Register**
-
-   ![Register Application](screenshots/azure-setup/03-register-application.png)
-
-6. After registration, you are redirected to the application's **Overview** page. **Copy the Application (client) ID** — this is your `SPNKR_AZURE_CLIENT_ID`.
-
-   ![Overview — Application (client) ID](screenshots/azure-setup/03b-overview-client-id.png)
-
-   > It looks like: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` (GUID format)
-
-### 2. Enable Device Code Flow (Public Client)
-
-1. In your application, go to **Authentication**
-2. Scroll down to **Advanced settings**
-3. Set **Allow public client flows** to **Yes**
-4. Click **Save**
-
-> This is the only required setting beyond registration. No client secret, no redirect URI.
-
-> **Recap — at this point you only need one value:**
-> - `SPNKR_AZURE_CLIENT_ID` → copied from the app's **Overview** page (step 1.6)
-
-### 3. Set Up the .env.local File (manual method — advanced)
-
-> **If you used the Xbox Express wizard**, this file is created automatically — skip to
-> [Player Profiles](#player-profiles).
-
-```bash
-# Copy the template (Linux/macOS)
-cp .env.local.example .env.local
-
-# Windows (PowerShell)
-Copy-Item .env.local.example .env.local
-```
-
-Edit `.env.local`:
-
-```env
-# Azure Application (client ID only — no secret required)
-SPNKR_AZURE_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-
-# OAuth token (obtained via the script below)
-SPNKR_OAUTH_REFRESH_TOKEN=
-```
-
-### 4. Obtain the Refresh Token (manual method — advanced)
-
-> **If you used the Xbox Express wizard**, the token was stored automatically in your
-> player database (`stats.duckdb`, table `sync_meta`) — skip this step.
-
-```bash
-python scripts/spnkr_get_refresh_token.py --device-code
-```
-
-This script:
-1. Displays a short code (e.g. `ABCD-1234`) and the URL `https://microsoft.com/devicelogin`
-2. You visit the URL and enter the code in your browser
-3. After sign-in, the refresh token is printed and saved to `.env.local` automatically
-
----
-
 ## Player Profiles
 
-### File Structure (`db_profiles.json`)
+### File structure (`db_profiles.json`)
 
-> **If you used the Setup Wizard**, your first profile was created automatically.
-> The information below covers adding more players or editing profiles manually.
-
-LevelUp reads player profiles from `db_profiles.json` at the repo root.
+LevelUp reads player profiles from `db_profiles.json` at the repo root
+(override the path with `LEVELUP_DB_PROFILES`). Since the multi-title refactor
+(ADR 0008), the file is **v3**: profiles are grouped under a title slug
+(`halo_infinite`, `halo_5`, …). The `xuid` is global cross-title — the same
+player keeps the same XUID across every title section.
 
 ```json
 {
-  "version": "2.1",
+  "version": "3.0",
   "profiles": {
-    "MyGamertag": {
-      "xuid": "2533274823110022",
-      "gamertag": "MyGamertag",
-      "db_path": "data/players/MyGamertag/stats.duckdb",
-      "is_default": true
-    },
-    "OtherPlayer": {
-      "xuid": "2533274XXXXXXXXX",
-      "gamertag": "OtherPlayer",
-      "db_path": "data/players/OtherPlayer/stats.duckdb"
+    "halo_infinite": {
+      "MyGamertag": {
+        "db_path": "data/titles/halo_infinite/players/MyGamertag/stats.duckdb",
+        "xuid": "2533274823110022",
+        "waypoint_player": "MyGamertag"
+      },
+      "OtherPlayer": {
+        "db_path": "",
+        "xuid": "2535413181053876",
+        "waypoint_player": "OtherPlayer",
+        "auth_only": true
+      }
     }
   }
 }
 ```
 
-### Properties
+### Entry properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `xuid` | string | Unique Xbox identifier (16 digits) |
-| `gamertag` | string | Player name |
-| `db_path` | string | Path to the player's DuckDB database |
-| `is_default` | boolean | Default player on app startup |
+| Property | Type | Required | Description |
+|----------|------|:--------:|-------------|
+| `xuid` | string | Yes | Global Xbox identifier (16 digits). Required to address the token store and to call the Halo API (`/matches` needs `xuid(NNN)`, never the gamertag). |
+| `db_path` | string | No | Path to the player's DuckDB enrichment DB (`data/titles/<slug>/players/<gamertag>/stats.duckdb`). Empty for `auth_only` profiles. |
+| `waypoint_player` | string | No | Gamertag used for Halo Waypoint player-gated lookups. |
+| `sync_enabled` | bool | No | `null`/`true` = active; `false` = sync paused (data kept). |
+| `initial_max_matches` | int | No | Matches requested at onboarding (`0` = default). |
+| `auth_only` | bool | No | Profile that exists only to hold auth tokens (no player DB, not synced). |
 
-### Finding Your XUID
+Unknown keys are preserved on round-trip — `db_profiles.json` has a single
+writer (`internal/platform/dbprofiles`), so no field is silently dropped.
 
-Several methods:
+> The profile key is the gamertag. The `xuid` **must** be present before you can
+> capture a token for that player (see below).
 
-1. **Via the dashboard**: The XUID is displayed in settings
-2. **Via the API**: During the first sync
-3. **Via third-party sites**: xboxgamertag.com, etc.
+### Adding a new title
 
-### Adding a New Player
-
-**Method 1 — Automatic via CLI (recommended):**
-
-```bash
-# By gamertag
-python scripts/sync.py --add-player SpartanC
-
-# By XUID
-python scripts/sync.py --add-player 2533274823110022
-```
-
-This command:
-- Resolves the gamertag/XUID via the API
-- Creates the entry in `db_profiles.json`
-- Creates the `data/players/<gamertag>/` folder
-
-You can then run a first full sync right after:
+To scaffold the directory tree and a `db_profiles.json` section for a new game
+title, use the Go CLI:
 
 ```bash
-python scripts/sync.py --add-player SpartanC --full --max-matches 500
+go run ./apps/go-api/cmd/levelup add-title --name "Halo MCC" --capabilities matchmaking,media
 ```
 
-**Method 2 — Manual:**
+This creates `data/titles/<slug>/...`, an empty title section in
+`db_profiles.json`, and prints the Go snippet to register the
+`TitleDescriptor` in `registry.go` (the only remaining manual step).
+
+### Finding your XUID
+
+- Via the dashboard once a sync has run (resolved from the API).
+- Via third-party sites (xboxgamertag.com, etc.).
+
+---
+
+## Token Storage & Onboarding
+
+### Single source of truth (ADR 0023)
+
+Auth tokens (the Microsoft OAuth refresh token + the serialized MSAL cache)
+live in **one** place: the `MultiUserTokenStore`, one JSON file per user keyed
+by XUID.
+
+- Runtime path (title-namespaced): `data/titles/halo_infinite/auth/watcher_tokens/{xuid}.json`
+- Legacy global path (read-only, copy-migrated at boot): `data/auth/watcher_tokens/{xuid}.json`
+- The auth root is overridable via `LEVELUP_AUTH_DIR` (default `data/auth`).
+
+Writes are atomic (write-to-temp + `os.Rename`), files are `0600`, the
+directory is `0700`, and the XUID is validated against path traversal.
+
+> Tokens are **not** stored in `stats.duckdb` / `sync_meta`, and `.env.local`
+> is **not** a credential store. Any older documentation saying otherwise is
+> obsolete (see ADR 0023). DuckDB and env-var refresh tokens are tolerated only
+> as a transitional read fallback (warn-logged) and are copy-migrated into the
+> store at first boot.
+
+Each `{xuid}.json` holds the canonical `UserTokens` fields: `OAuthRefreshToken`
+(raw Microsoft OAuth v2 refresh token), `MSALCacheJSON`, the derived
+XSTS/Spartan tokens, and their expiry timestamps.
+
+### Mode 1 — Xbox SSO (normal)
+
+1. The user clicks "Sign in with Xbox" in the dashboard.
+2. The Microsoft OAuth flow returns to `/auth/xbox/callback`.
+3. The callback persists the refresh token to the store automatically.
+
+No `.env.local` editing required. Requires the OAuth client to be configured
+(`LEVELUP_OAUTH_CLIENT_ID` / `SPNKR_AZURE_CLIENT_SECRET`,
+`LEVELUP_OAUTH_REDIRECT_URI`).
+
+### Mode 2 — `token-capture` (advanced, Device Code)
 
 ```bash
-# Create the folder
-mkdir -p data/players/NewPlayer
-
-# Add the entry in db_profiles.json (see structure above)
-# Then sync
-python scripts/sync.py --player NewPlayer --full
+go run ./apps/go-api/cmd/token-capture/ MyGamertag
 ```
+
+Resolves the XUID from `db_profiles.json`, runs a Microsoft Device Code Flow
+(prints a URL + short code), polls until the user authenticates, then writes
+the refresh token directly into the store and invalidates the in-process token
+cache. Restart the server and it works immediately.
+
+### Mode 3 — `token-import` (advanced, RT from elsewhere)
+
+```bash
+cat token-mygt.txt | go run ./apps/go-api/cmd/token-import/ MyGamertag
+```
+
+Reads the refresh token from **stdin** (never argv, to keep it out of shell
+history / `ps`) and writes it directly into the store.
+
+### Common prerequisite
+
+The player must already be declared in `db_profiles.json` **with its `xuid`**
+before `token-capture` / `token-import` — without the XUID the store cannot
+address the entry.
+
+> After an external rotation injects a new RT, the in-process Halo token cache
+> (~50 min) is invalidated for that XUID (`halo.InvalidateCachedPlayerTokens`),
+> so the server re-derives Spartan tokens from the fresh chain. `token-capture`
+> and `token-import` do this automatically.
 
 ---
 
 ## Environment Variables
 
-### Configuration Files
+### Configuration files
 
 | File | Usage | Git |
 |------|-------|-----|
-| `.env.local.example` | Template with default values | Versioned |
-| `.env.local` | Local configuration (tokens) | Ignored |
-| `.env` | Alternative to .env.local | Ignored |
+| `.env.local` | Local overrides loaded into the process env at boot (idempotent: never overrides an already-set var) | Ignored |
+| `.env` | Alternative to `.env.local` | Ignored |
 
-### Available Variables
+`.env.local` is loaded from the repo root (resolved via `LEVELUP_REPO_ROOT` or
+auto-detection) before any `os.Getenv` read.
 
-#### Azure / SPNKr
+### OAuth / Azure
 
 | Variable | Description | Required |
-|----------|-------------|----------|
-| `SPNKR_AZURE_CLIENT_ID` | Azure application ID (public client, no secret) | Yes |
-| `SPNKR_OAUTH_REFRESH_TOKEN` | Global refresh token | Yes |
-| `SPNKR_OAUTH_REFRESH_TOKEN_<GT>` | Per-player token (player-gated endpoints) | No |
+|----------|-------------|:--------:|
+| `LEVELUP_OAUTH_CLIENT_ID` | Azure OAuth client ID for SSO web + refresh + `token-capture`. Defaults to the bundled canonical app ID if unset. | No |
+| `SPNKR_AZURE_CLIENT_SECRET` | Client secret for the canonical app (its redirect is a Web platform → confidential client → Microsoft requires the secret for the Authorization Code Flow). | For SSO |
+| `LEVELUP_OAUTH_REDIRECT_URI` | Redirect URI for `/auth/xbox/login`. If empty, that route returns 500. | For SSO |
 
-> **Per-player tokens**: some Halo Waypoint endpoints (career rank, customization)
-> return 403 if the Spartan token doesn't belong to the targeted player. To sync
-> this data for multiple players, declare a per-player token in `.env.local`:
->
-> ```env
-> # Gamertag "SpartanC"   → normalized key SPARTANC
-> SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC=your_refresh_token
-> # Gamertag "My GT 2"    → normalized key MY_GT_2
-> SPNKR_OAUTH_REFRESH_TOKEN_MY_GT_2=another_refresh_token
-> ```
->
-> Normalization: `re.sub(r"[^A-Za-z0-9]", "_", gamertag.strip()).upper()`
->
-> Without a per-player token, career rank sync is skipped (warning in logs)
-> and the hero banner adornment won't display for that player.
+> The three OAuth paths (SSO web, server refresh, `token-capture`) read the same
+> `LEVELUP_OAUTH_CLIENT_ID` so a captured refresh token always matches the
+> client that will refresh it (a refresh token is bound to its issuing client).
 
-#### Manual Tokens (Alternative)
-
-If you don't want to set up Azure OAuth, you can provide Spartan and Clearance tokens manually:
-
-| Variable | Description |
-|----------|-------------|
-| `SPNKR_SPARTAN_TOKEN` | Spartan auth token (short-lived) |
-| `SPNKR_CLEARANCE_TOKEN` | Clearance token (short-lived) |
-
-> These expire frequently and must be refreshed manually. The Azure OAuth flow
-> (Option 2) is strongly recommended.
-
-#### Application
+### Server / runtime
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `LEVELUP_DB` | Path to the default DB | Auto |
-| `LEVELUP_DB_PATH` | Alias for LEVELUP_DB | Auto |
-| `LEVELUP_DB_READONLY` | Read-only mode | `0` |
-| `SPNKR_PLAYER` | Default player for sync | First profile |
+| `LEVELUP_REPO_ROOT` | Repo root (resolves `db_profiles.json`, `app_settings.json`, `data/`). | Auto-detected |
+| `LEVELUP_API_HOST` | HTTP bind host. | `127.0.0.1` |
+| `LEVELUP_API_PORT` | HTTP listen port. | `8000` |
+| `LEVELUP_DB_PROFILES` | Path to `db_profiles.json`. | `<root>/db_profiles.json` |
+| `LEVELUP_APP_SETTINGS` | Path to `app_settings.json`. | `<root>/app_settings.json` |
+| `LEVELUP_AUTH_DIR` | Auth data root (token store, sessions). | `<root>/data/auth` |
+| `LEVELUP_SESSION_DIR` | Session store directory. | `<root>/data/sessions` |
+| `LEVELUP_SESSION_SECRET` | Session signing secret. Must be overridden in production. | `CHANGE_ME_IN_PRODUCTION` |
+| `LEVELUP_ENV` | `production` enables prod hardening (HTTPS-only cookies, etc.). | dev |
+| `LEVELUP_CORS_ORIGINS` | Comma-separated allowed CORS origins. | (none) |
+| `LEVELUP_AUTH_MODE` | Auth mode. | `none` |
+| `LEVELUP_REGISTRATION` | Registration mode. | `invite` |
+| `LEVELUP_COOKIE_SECURE` | Force/disable the `Secure` cookie flag. | auto |
+| `LEVELUP_TRUST_PROXY_HEADERS` | Trust `X-Forwarded-*` (behind a reverse proxy). | `false` |
+| `LEVELUP_INSTANCE_LOCKED` | Lock the instance to existing users. | `false` |
+| `LEVELUP_RATE_LIMIT_RPM` | HTTP rate limit (requests/minute). | built-in default |
+| `LEVELUP_WEB_DIST` | Path to the built frontend (`apps/web/dist`), set by the Docker image. | (none) |
+| `LEVELUP_DEMO_MODE` | `true` enables demo mode. | `false` |
+| `LEVELUP_LANG` | Default UI/CLI language. | `fr` |
+| `LEVELUP_APP_VERSION` | Reported app version. | `dev` |
+| `LEVELUP_USE_SHARED_PROVIDER` | Enable the SharedDBProvider RO↔RW swap (ADR 0016). | (off) |
 
-#### Debug
+### Logging
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `LEVELUP_DEBUG` | Global debug mode | `0` |
-| `LEVELUP_DEBUG_ANTAGONISTS` | Debug antagonist calculations | `0` |
-| `STREAMLIT_DEBUG` | Streamlit debug | `0` |
+| `LEVELUP_LOG_LEVEL` | Log level (`debug`/`info`/`warn`/`error`). | `info` |
+| `LEVELUP_LOG_FORMAT` | Console format. | text |
+| `LEVELUP_LOGS_DIR` | Per-category log file directory. | `<root>/logs` |
+| `LEVELUP_LOGS_ENABLED` | Set `false` to disable file logging. | enabled |
 
-#### Uptime Monitor
+### Sync / feature flags
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `LEVELUP_PERSIST_BATCH` | Route live-sync writes through the batch persister (ADR 0019/0026). | (off) |
+| `LEVELUP_PERSIST_BATCH_ASYNC` | Run the batch persister asynchronously. | (off) |
+| `LEVELUP_SYNC_PIPELINE` | Select the sync pipeline. | built-in |
+| `LEVELUP_CSR_SEASON_ID` | Override CSR season id. | from `app_settings.json` |
+| `MULTI_TITLE_API_ENABLED` | Expose the multi-title field-mappings/preview routes (override of `app_settings.json`). | `false` |
+| `PRESTIGE_ENABLED` | Enable the Prestige module (override of `app_settings.json`). | `true` |
+
+### Integrations
 
 | Variable | Description |
 |----------|-------------|
-| `TAILSCALE_FUNNEL_URL` | Public Tailscale Funnel URL for the Streamlit dashboard |
-| `DISCORD_WEBHOOK_URL` | Discord webhook for uptime alerts |
+| `LEVELUP_DISCORD_WEBHOOK_URL` | Discord webhook (preferred over `DISCORD_WEBHOOK_URL` and over `app_settings.json:discord_webhook_url`). |
+| `DISCORD_WEBHOOK_URL` | Discord webhook (legacy name, still read). |
+| `STEAM_API_KEY` | Steam Web API key (Steam presence). |
+| `RESTIC_REPOSITORY` / `RESTIC_PASSWORD` / `RESTIC_PASSWORD_FILE` | Restic backup target/credentials. |
+| `LEVELUP_BACKUP_DIR` | Local backup directory. |
+
+> Legacy `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` env vars are still read as a
+> transitional fallback only (warn-logged, migrated into the token store at
+> boot). Do not rely on them for new setups — use `token-capture` /
+> `token-import` instead.
 
 ---
 
@@ -315,180 +244,122 @@ If you don't want to set up Azure OAuth, you can provide Spartan and Clearance t
 
 ### File `app_settings.json`
 
-Copy the template and customize:
+Copy the template and customize (repo root, or `LEVELUP_APP_SETTINGS`):
 
 ```bash
 cp app_settings.example.json app_settings.json
 ```
 
-### Available Settings
+### Available settings
 
-#### Sync / SPNKr Refresh
-
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `spnkr_refresh_on_start` | bool | `false` | Auto-sync on app startup |
-| `spnkr_refresh_on_manual_refresh` | bool | `true` | Sync on manual refresh button |
-| `spnkr_refresh_match_type` | string | `"matchmaking"` | Match type to sync (`matchmaking`, `custom`, `all`) |
-| `spnkr_refresh_max_matches` | int | `500` | Max matches per sync |
-| `spnkr_refresh_rps` | int | `3` | API requests per second (rate limit) |
-| `spnkr_refresh_with_highlight_events` | bool | `true` | Fetch highlight events |
-| `spnkr_refresh_with_backfill` | bool | `false` | Run backfill during sync |
-
-#### Backfill Options (during sync)
+Keys present in `app_settings.example.json` and read by the Go backend:
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `spnkr_refresh_backfill_medals` | bool | `false` | Backfill medals data |
-| `spnkr_refresh_backfill_events` | bool | `false` | Backfill highlight events |
-| `spnkr_refresh_backfill_skill` | bool | `false` | Backfill MMR/skill data |
-| `spnkr_refresh_backfill_personal_scores` | bool | `false` | Backfill personal scores |
-| `spnkr_refresh_backfill_performance_scores` | bool | `true` | Calculate performance scores |
-| `spnkr_refresh_backfill_aliases` | bool | `false` | Backfill XUID→gamertag aliases |
-| `spnkr_refresh_backfill_lusr` | bool | `true` | Backfill LUSR skill rating |
-
-#### Profile & Assets
-
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `profile_api_enabled` | bool | `true` | Enable profile API (career rank, etc.) |
-| `profile_api_auto_refresh_hours` | int | `48` | Hours between auto-refreshes |
-| `profile_assets_download_enabled` | bool | `true` | Download profile images (emblem, banner...) |
-| `profile_assets_auto_refresh_hours` | int | `24` | Hours between asset re-downloads |
-
-#### Media (Xbox Captures)
-
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `media_enabled` | bool | `false` | Enable media integration |
-| `media_captures_base_dir` | string | `""` | Path to Xbox captures folder |
-| `media_tolerance_minutes` | int | `1` | Tolerance window for matching captures to games |
-
-#### Localization
-
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `lang` | string | `"fr"` | UI language (`fr`, `en`) |
-| `discord_lang` | string | `"fr"` | Discord notification language |
-| `cli_lang` | string | `"fr"` | CLI output language |
-
-#### Discord Notifications
-
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `discord_notifications_enabled` | bool | `false` | Enable Discord sync notifications |
-| `discord_webhook_url` | string | `""` | Discord webhook URL |
-
-#### Advanced
-
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `tailscale_funnel_enabled` | bool | `false` | Enable Tailscale Funnel remote access |
-| `doppler_enabled` | bool | `false` | Use Doppler for secrets management |
-| `doppler_project` | string | `"levelup"` | Doppler project name |
-| `doppler_config` | string | `"dev"` | Doppler config environment |
-| `repository_mode` | string | `"duckdb"` | Data backend (always `duckdb`) |
-| `enable_duckdb_analytics` | bool | `true` | Enable DuckDB analytics features |
-
-### Streamlit Config (`.streamlit/config.toml`) — *Archivé (Slice 9)*
-
-> Cette section concerne l’ancienne interface Streamlit (décommissionée). Le dashboard
-> React/Vite tourne sur le port **5173** (API FastAPI sur **8000**).
-
-```toml
-[server]
-port = 8501
-headless = true
-
-[theme]
-primaryColor = "#00A2E8"
-backgroundColor = "#0D1117"
-secondaryBackgroundColor = "#161B22"
-textColor = "#C9D1D9"
-font = "sans serif"
-
-[browser]
-gatherUsageStats = false
-```
+| `media_enabled` | bool | `false` | Enable media (Xbox captures) integration. |
+| `media_captures_base_dir` | string | `""` | Path to the Xbox captures folder. |
+| `media_buffer_minutes` | int | `1` | Tolerance window matching captures to games. |
+| `media_watcher_enabled` | bool | `false` | Enable the media folder watcher. |
+| `refresh_clears_caches` | bool | `false` | Clear caches on manual refresh. |
+| `spnkr_refresh_with_backfill` | bool | `false` | Run backfill during sync. |
+| `spnkr_refresh_backfill_medals` | bool | `false` | Backfill medals. |
+| `spnkr_refresh_backfill_events` | bool | `false` | Backfill highlight events. |
+| `spnkr_refresh_backfill_skill` | bool | `false` | Backfill MMR/skill. |
+| `spnkr_refresh_backfill_personal_scores` | bool | `false` | Backfill personal scores. |
+| `spnkr_refresh_backfill_performance_scores` | bool | `true` | Compute performance scores. |
+| `spnkr_refresh_backfill_aliases` | bool | `false` | Backfill XUID→gamertag aliases. |
+| `spnkr_refresh_backfill_lusr` | bool | `true` | Backfill LUSR skill rating. |
+| `lang` | string | `"fr"` | UI language (`fr`, `en`). |
+| `discord_lang` | string | `"fr"` | Discord notification language. |
+| `discord_notifications_enabled` | bool | `false` | Enable Discord sync notifications. |
+| `discord_notify_new_media` | bool | `true` | Notify on new media. |
+| `discord_webhook_url` | string | `""` | Discord webhook URL (env vars take precedence). |
+| `tailscale_enabled` | bool | `false` | Enable Tailscale Funnel remote access. |
+| `user_timezone` | string | `"Europe/Paris"` | IANA timezone for display. |
+| `watcher_presence_enabled` | bool | `true` | Enable presence watcher. |
+| `career_top_exclude_btb` | bool | `false` | Exclude Big Team Battle from career tops. |
+| `csr_season_id` | string | `"CsrSeason13-1"` | CSR season id (overridable via `LEVELUP_CSR_SEASON_ID`). |
+| `backup_enabled` | bool | `false` | Enable scheduled DuckDB backups. |
+| `backup_interval` | string | `"6h"` | Backup interval (Go duration). |
+| `backup_keep_daily` | int | `7` | Daily backups retained. |
+| `backup_keep_weekly` | int | `4` | Weekly backups retained. |
+| `backup_keep_monthly` | int | `12` | Monthly backups retained. |
+| `multi_title_api_enabled` | bool | `false` | Expose multi-title API routes (overridable via `MULTI_TITLE_API_ENABLED`). |
+| `prestige_enabled` | bool | `true` | Enable Prestige module (overridable via `PRESTIGE_ENABLED`). |
+| `instance_locked` | bool | `false` | Lock the instance to existing users (also via `LEVELUP_INSTANCE_LOCKED`). |
 
 ---
 
 ## Security
 
-### Never Commit These Files
-
-The following files must **never** be committed:
+### Never commit these
 
 - `.env.local` / `.env`
-- Any file containing tokens
-- `credentials.json`
+- `data/auth/` and `data/titles/*/auth/` (token store files)
+- Any file containing tokens or secrets
 
-They are already listed in `.gitignore`.
+They are already covered by `.gitignore`.
 
-### Token Rotation
+### Token rotation
 
-Azure refresh tokens expire after 90 days of inactivity. To renew:
+Microsoft refresh tokens rotate on each refresh and expire after ~90 days of
+inactivity. To re-provision a player, re-run:
 
 ```bash
-python scripts/spnkr_get_refresh_token.py --device-code
+go run ./apps/go-api/cmd/token-capture/ MyGamertag
 ```
 
-### Production Mode
+Never re-capture a healthy token unnecessarily: the store is the source of
+truth and rotation is persisted automatically by the server and the CLIs.
 
-In production (Docker, server):
+### Production
 
-```env
-LEVELUP_DB_READONLY=1
-```
-
-This prevents accidental database modifications.
+In production set `LEVELUP_ENV=production` and override `LEVELUP_SESSION_SECRET`.
+The runtime opens `metadata.duckdb` and `shared_matches_v2.duckdb` read-only.
 
 ---
 
 ## Troubleshooting
 
-### Expired Token
+### `invalid_grant` / `AADSTS70000`
 
-```
-Error: invalid_grant
-```
+The refresh token was already consumed or belongs to a stale store entry.
+Re-provision the affected player:
 
-**Solution**: Regenerate the refresh token:
 ```bash
-python scripts/spnkr_get_refresh_token.py --device-code
+go run ./apps/go-api/cmd/token-capture/ MyGamertag
 ```
 
-### Invalid Client ID
+If only some XUIDs fail with `AADSTS70000`, they are likely stale store entries
+from an old app registration — they should be ignored/blacklisted, not
+re-captured.
 
-```
-Error: unauthorized_client / bad_client_id
-```
+### `AADSTS90023` on refresh
 
-**Solution**: Check the Client ID in Azure Portal (Overview page). Make sure **Allow public client flows** is set to **Yes** in Authentication.
+A refresh token issued by a public (device-code) flow rejects the client
+secret. The refresh path retries automatically without the secret — keep
+`SPNKR_AZURE_CLIENT_SECRET` configured for the SSO (confidential) flow.
 
-### Device Code Expired
+### Device code expired
 
-```
-Error: timeout — code expired
-```
+The code is valid ~15 minutes. Re-run `token-capture` and complete sign-in
+promptly.
 
-**Solution**: The code is valid for 15 minutes. Re-run the script and complete sign-in promptly.
+### Career rank / customization 403
 
-### Database Not Found
+Player-gated Waypoint endpoints require that player's own token in the store.
+Run `token-capture` for that gamertag so the store has its refresh token.
 
-```
-Error: Database file not found
-```
+### Database not found
 
-**Solution**: Check the path in `db_profiles.json` and create the folder:
+Check `db_path` in `db_profiles.json`. The Go CLI creates the title tree:
+
 ```bash
-mkdir -p data/players/MyGamertag
+go run ./apps/go-api/cmd/levelup add-title --name "<Title>"
 ```
 
-### Career Rank 403
+### Verify configuration
 
+```bash
+go run ./apps/go-api/cmd/levelup check-env
 ```
-Warning: Skipping career rank for PlayerX (no per-player token)
-```
-
-**Solution**: Add a per-player token in `.env.local` (see [Per-player tokens](#azure--spnkr)).

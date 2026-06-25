@@ -2,291 +2,172 @@
 
 French version: [FR/SYNC_GUIDE.md](FR/SYNC_GUIDE.md)
 
-> How to synchronize your Halo Infinite matches with LevelUp.
+> How LevelUp keeps your Halo matches in sync. The backend is Go (`apps/go-api`); the front is React/Vite (`apps/web`). Sync is now **automatic** — there is no `python scripts/sync.py` anymore.
 
-## Sync Architecture
+## Overview
 
-LevelUp v5.1 uses a **Shared Matches** architecture: match data is centralized in a shared database, while personal enrichments stay in the player's own database.
+Sync runs **inside the Go server**. Two independent loops keep the data fresh, both backed by the same `SyncEngine` and the same token pool:
+
+- **Presence watcher** (`internal/watcher`) — event-driven. A daemon tracks each configured player's Xbox/Steam presence (RTA WebSocket + REST pollers). When a player finishes a match, a delta sync is queued for that player only. Low latency, near-real-time.
+- **Auto-sync scheduler** (`internal/scheduler/auto_sync.go`) — periodic. On a fixed interval it runs a delta sync for every player in `db_profiles.json`, catching anything the watcher missed.
+
+Manual CLI commands (`levelup sync-delta` / `sync-full` / `backfill`) exist for bootstrap, gap-filling and local recomputes, but day-to-day operation needs no manual action.
+
+## Data Architecture (V6)
+
+Match data is centralized in per-title **shared** databases; per-player **enrichments** stay in the player's own DB. Layout is title-agnostic under `data/titles/{slug}/` (default slug `halo_infinite`).
 
 ```
-SPNKr API (Halo Infinite)
-        │
-        ▼
-DuckDBSyncEngine
-├── api_client.py      # Async API wrapper
-├── transformers.py    # JSON → DuckDB rows
-└── engine.py          # Orchestrator
-        │
-        ├─→ New match → shared_matches.duckdb
-        │   ├── match_registry         (common match data)
-        │   ├── match_participants     (all players, 31 columns incl. MMR)
-        │   ├── highlight_events       (film events)
-        │   ├── medals_earned          (medals)
-        │   └── xuid_aliases           (xuid→gamertag mapping)
-        │
-        └─→ Enrichment → players/{gamertag}/stats.duckdb
-            ├── player_match_enrichment (performance_score, session_id)
-            ├── personal_score_awards   (objective awards)
-            └── sync_meta              (sync state)
+Halo API (SPNKr-compatible client, Go)
+        |
+        v
+SyncEngine (internal/sync) + token Pool (internal/platform/auth/pool)
+        |
+        +-- new match -> data/titles/{slug}/warehouse/shared_matches_v2.duckdb
+        |     match_registry         (one row per unique match)
+        |     match_participants     (all players, incl. MMR)
+        |     highlight_events       (film events)
+        |     medals_earned          (medals)
+        |     killer_victim_pairs    (kill pairs)
+        |     xuid_aliases           (xuid -> gamertag)
+        |
+        +-- PvE / Firefight -> data/titles/{slug}/warehouse/shared_pve.duckdb
+        |
+        +-- enrichment -> data/titles/{slug}/players/{gamertag}/stats.duckdb
+              player_match_enrichment (performance_score, session_id, is_with_friends)
+              personal_score_awards   (objective awards)
+              match_skill_rank        (LUSR / CSR per match)
+              sync_meta               (sync state)
 ```
 
----
+Full schema and rationale: [ARCHITECTURE_V6.md](ARCHITECTURE_V6.md).
 
-## Basic Commands
+## Automatic Sync
 
-### Delta Sync (Incremental)
+### Presence watcher
 
-Fetches only new matches since the last sync:
+Started by the server at boot (`internal/watcher` daemon). For each player it runs a presence FSM (RTA WebSocket, Steam/REST fallback) and, on match completion, enqueues a coordinated delta sync. Auth is delegated to the shared token pool. No configuration beyond having the player declared in `db_profiles.json` with a valid token (see Auth below).
+
+### Auto-sync scheduler
+
+`AutoSyncScheduler` reads `app_settings.json` at boot and on each tick. Relevant keys:
+
+| Key (`app_settings.json`) | Meaning |
+|---|---|
+| `spnkr_auto_sync_enabled` | Master on/off switch. Must be `true` for the scheduler to act. |
+| `spnkr_auto_sync_interval_hours` | Interval in hours (default 6 if unset). |
+| `spnkr_auto_sync_interval_minutes` | Interval in minutes (takes precedence when set). |
+
+Each cycle, for every player in `db_profiles.json`:
+1. Skip if the player has no entry in the token pool, or if the watcher already has an active session for them.
+2. Build a `PooledHaloClient` pinned to that player.
+3. Run `SyncEngine.RunDelta` (parallel internal fetches). Repeated zero-insert cycles raise a warning (incident guard: 14 days of silent zero inserts in mai 2026).
+
+Diagnostics are exposed via the admin endpoint `/api/v1/_diag/auto-sync/snapshot`.
+
+## Sync Pipeline V2
+
+The per-player engine (`RunDelta`/`RunFull`) is the default (V1). An opt-in **V2 cycle orchestrator** (`internal/sync/v2`) processes *all* players per cycle in 6 phases, removing the shared-writer serialization and guaranteeing correct cross-player dedup:
+
+1. **Discovery** — parallel per player, read-only: load known IDs + paginate the API.
+2. **Dedup** — single: union of unknown match IDs across players.
+3. **FetchShared** — bounded errgroup: `GetMatchStats` per unique match.
+4. **FetchPlayer** — parallel per player: awards/scores needing the player's own token.
+5. **Persist** — single writer: one mega-batch (shared + player) in one transaction.
+6. **PostSync** — parallel per player: heals, films, citations, etc.
+
+Activation: `LEVELUP_SYNC_PIPELINE=v2` (default `v1`, instant rollback). V1 and V2 share the Persisters, schema and WAL.
+
+## Delta vs Full
+
+- **Delta** — fetches only matches newer than the last sync watermark. Fast, the default for both the watcher and the scheduler.
+- **Full** — walks the last N API matches and inserts any that are missing (gap-filling). Use after a long outage, an import, or a watermark issue.
+
+For each synced match the engine always pulls the full payload: stats, medals, personal scores, performance score, highlight events, per-match skill/MMR, and xuid -> gamertag aliases.
+
+## Manual CLI
+
+Build/run the `levelup` CLI from `apps/go-api/cmd/levelup` (requires the CGO toolchain for the DuckDB driver — see [testing.md](testing.md)). `LEVELUP_REPO_ROOT` is auto-detected if unset.
+
+### Delta / Full sync
 
 ```bash
-python scripts/sync.py --delta --player YourGamertag
+# Delta for one player
+levelup sync-delta --gamertag YourGamertag [--max-matches 25] [--match-type matchmaking] [--rps 1]
+
+# Delta for all configured players (uses the token pool)
+levelup sync-delta --all [--max-matches 25] [--token-pool-size 0]
+
+# Full (gap-fill) for one player or all
+levelup sync-full --gamertag YourGamertag [--max-matches 150] [--match-type matchmaking] [--rps 1]
+levelup sync-full --all [--token-pool-size 0]
 ```
 
-**Advantages:**
-- Fast (a few seconds)
-- Ideal for daily use
-- Doesn't overload the API
+| Flag | Applies to | Default | Notes |
+|---|---|---|---|
+| `--gamertag` | sync-delta, sync-full | — | Mutually exclusive with `--all`. |
+| `--all` | sync-delta, sync-full | — | All players in `db_profiles.json` via the pool. |
+| `--max-matches` | sync-delta / sync-full | 25 / 150 | Delta: max new matches inserted. Full: API matches walked. |
+| `--match-type` | both | `matchmaking` | `all` \| `matchmaking` \| `custom` \| `local`. |
+| `--rps` | both | 1 | Max API requests per second. |
+| `--token-pool-size` | `--all` only | 0 | 0 = auto (all discovered sources), `MaxSize` of the pool. |
 
-### Full Sync (Complete)
+`LEVELUP_PERSIST_BATCH=0` falls back to the legacy per-match insert path (batch persist is ON by default).
 
-Fetches all matches up to a limit:
+### Backfill (local recomputes & API backfills)
 
 ```bash
-python scripts/sync.py --full --player YourGamertag --max-matches 500
+levelup backfill (--gamertag X | --all) <selector...> [--force] [--dry-run]
 ```
 
-**When to use:**
-- First import
-- Recover missing history
-- After a long period without syncing
+Selectors (one or more required):
 
-### Adding a New Player
+| Selector | Needs Halo API | Description |
+|---|---|---|
+| `--engagement-scores` | No | Backfill engagement score. |
+| `--citations` | No | Recompute `match_citations` from mappings + medals + stats + awards. |
+| `--citations-recompute-all` | No | Full recompute (force) + invariant checks V1-V4. |
+| `--composite-only` | No | Composite citations only (additive). |
+| `--lusr` | No | Recompute LUSR (TrueSkill 2 + medal weights). `--dry-run` previews per playlist_group. |
+| `--perf` | No | Recompute relative performance score (v5). |
+| `--assists-model` | No | Per-mode OLS expected_assists model. |
+| `--csr` | Yes | Per-match CSR via `GetMatchSkill` (RankRecap), idempotent. |
+| `--shared-csr` | Yes (no API with `--dry-run`) | CSR of all participants of ranked matches into `shared.match_csrs`. |
+| `--weapons` | Yes | `weapon_kills` from the film CDN. |
+| `--compare-formulas` | No | Simulate 5 LUSR formula variants on `--last-n` matches (default 20). |
 
-```bash
-# By gamertag
-python scripts/sync.py --add-player SpartanC
+`--force` reprocesses already-persisted data. `--dry-run` is only valid with `--shared-csr` or `--lusr`. API-backed selectors refresh the player's Halo tokens via the OAuth refresh token (see Auth). LUSR recompute uses the v2 canonical path; v1 is dead.
 
-# By XUID
-python scripts/sync.py --add-player 2533274823110022
+Backfill is also exposed over HTTP (`POST /backfill/start`); the CLI is the local, server-free path.
 
-# Add + immediately run a full sync
-python scripts/sync.py --add-player SpartanC --full --max-matches 500
-```
+## Auth
 
-### Sync with Backfill
+Tokens are the single source described in [adr/0023-auth-tokens-single-source.md](adr/0023-auth-tokens-single-source.md): `data/auth/watcher_tokens/{xuid}.json` via `MultiUserTokenStore`. The player must be declared in `db_profiles.json` (with `xuid`) first.
 
-After syncing, you can automatically fill in missing data:
+- Normal onboarding: Xbox SSO web flow -> `/auth/xbox/callback` persists the refresh token.
+- Advanced onboarding: `go run ./apps/go-api/cmd/token-capture/ <Gamertag>` (device-code) or `go run ./apps/go-api/cmd/token-import/ <Gamertag>` (RT on stdin) writes directly to the store — no `.env.local` editing.
 
-```bash
-# Full backfill (all missing data)
-python scripts/sync.py --delta --player YourGamertag --with-backfill
+The `--all` sync paths and API-backed backfills resolve tokens through the pool (Discovery -> Resolver -> Pool), which handles MSAL/OAuth refresh and caches Spartan tokens (~3h30). Single-player `levelup sync-delta/sync-full --gamertag` and `--csr/--weapons` backfills read the legacy env var `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` as a transitional source — prefer the token store. Never re-capture tokens to fix a 401: a green sync means the tokens are good.
 
-# Only compute missing performance scores
-python scripts/sync.py --delta --player YourGamertag --backfill-performance-scores
+## Append-only / ART-safe writes
 
-# Only compute citations (local, no API call)
-python scripts/sync.py --delta --player YourGamertag --with-citations
-```
+All per-match writes go through the Collect -> Persist architecture (one INSERT-only batch per cycle), and the critical state tables are append-only. This eradicates the DuckDB ART index corruption bug by construction. Do not reintroduce concurrent `UPDATE` / `INSERT ... ON CONFLICT DO UPDATE` on the shared/state tables. References:
 
----
+- [adr/0019-collect-persist-architecture.md](adr/0019-collect-persist-architecture.md)
+- [adr/0026-append-only-art-eradication.md](adr/0026-append-only-art-eradication.md)
 
-## Sync Options
+## Ops Runbook (DuckDB cross-process lock)
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--player` | Player to sync (gamertag or XUID) | All players |
-| `--add-player` | Add/update a player in `db_profiles.json` | — |
-| `--delta` | Incremental mode (new matches only) | No |
-| `--full` | Complete mode (all matches up to limit) | No |
-| `--max-matches` | Max number of matches | 200 |
-| `--match-type` | Match type (`all`, `matchmaking`, `custom`) | `matchmaking` |
-| `--with-assets` | Download missing assets (medals, maps) | No |
-| `--with-backfill` | Run a full backfill after sync | No |
-| `--with-citations` | Compute citations after sync (local, no API) | No |
-| `--backfill-performance-scores` | Compute missing performance scores | No |
-| `--rebuild-cache` | Rebuild the MatchCache | No |
-| `--apply-indexes` | Apply optimized indexes | No |
-| `--stats` | Display DB statistics | No |
-| `--no-discord` | Disable Discord notification for this run | No |
-| `--verbose` | Verbose mode | No |
+DuckDB does not share an OS file-lock across processes. Running a CLI tool that opens a **shared** DB (metadata, shared_matches_v2, shared_pve, shared_social) in RW while the server holds its handle will fail with an `IO Error: Cannot open file ... used by another process`.
 
-**Important:** All data is always fetched for each synchronized match:
-- Stats (kills, deaths, assists, KDA, accuracy, etc.)
-- Medals
-- Personal scores
-- Performance score
-- Highlight events (kills/deaths from films)
-- Skill/MMR (per-match skill data)
-- XUID → Gamertag aliases
-
----
-
-## Backfill (Standalone)
-
-Use `backfill_data.py` to enrich data independently of sync:
-
-### Common Commands
-
-```bash
-# All data for one player
-python scripts/backfill_data.py --player YourGamertag --all-data
-
-# All data for all players
-python scripts/backfill_data.py --all --all-data
-
-# Sessions + friend detection
-python scripts/backfill_data.py --player YourGamertag --sessions
-
-# Citations
-python scripts/backfill_data.py --player YourGamertag --citations
-
-# LUSR skill rating (local TrueSkill 2, no API)
-python scripts/backfill_data.py --player YourGamertag --lusr
-
-# CSR from API (ranked matches)
-python scripts/backfill_data.py --player YourGamertag --csr
-
-# LUSR + CSR combined
-python scripts/backfill_data.py --player YourGamertag --skill-rank
-
-# Performance scores
-python scripts/backfill_data.py --player YourGamertag --performance-scores
-
-# Core stats (accuracy, shots, damage, kills detail, KDA, etc.)
-python scripts/backfill_data.py --player YourGamertag --core-stats
-
-# PvE / Firefight stats
-python scripts/backfill_data.py --player YourGamertag --pve-stats
-
-# Dry-run (list only, no changes)
-python scripts/backfill_data.py --player YourGamertag --dry-run
-```
-
-### Backfill Options Reference
-
-| Option | Description | Needs API |
-|--------|-------------|-----------|
-| `--all-data` | Backfill all data types | Yes |
-| `--medals` | Backfill medals | Yes |
-| `--events` | Backfill highlight events | Yes |
-| `--skill` | Backfill MMR/skill data | Yes |
-| `--personal-scores` | Backfill personal score awards | Yes |
-| `--performance-scores` | Compute performance scores | No |
-| `--accuracy` | Backfill accuracy | Yes |
-| `--shots` | Backfill shots_fired/shots_hit | Yes |
-| `--damage` | Backfill damage_dealt/damage_taken | Yes |
-| `--combat` | = accuracy + shots + damage | Yes |
-| `--core-stats` | = combat + kills detail + KDA + time played | Yes |
-| `--sessions` | Compute sessions + friend detection | No |
-| `--citations` | Compute match citations | No |
-| `--lusr` | Compute LUSR rating (local TrueSkill 2) | No |
-| `--csr` | Backfill CSR from API (ranked) | Yes |
-| `--skill-rank` | = lusr + csr | Mixed |
-| `--pve-stats` | Backfill Firefight/PvE stats | Yes |
-| `--participants` | Backfill match participants | Yes |
-| `--killer-victim` | Backfill killer/victim pairs | No |
-| `--aliases` | Update XUID aliases | Yes |
-| `--assets` | Fetch names (playlist, map, game variant) | Yes |
-| `--team-scores` | Populate team scores in match_registry | No |
-| `--mode-category` | Recompute mode_category (local) | No |
-| `--bot-detection` | Detect bot teammates | No |
-| `--cleanup-player-dbs` | Remove legacy views/tables from player DBs | No |
-| `--dry-run` | List only, no changes | — |
-
-Most options have a `--force-*` variant to reprocess already-filled data.
-
----
-
-## Sync via the Dashboard
-
-### Sidebar Button
-
-The dashboard displays:
-- **Last sync**: Date and time
-- **Matches**: Number of synced matches
-- **Sync button**: Triggers a delta sync
-- **Full button**: Triggers a full sync
-
-### Start the stack before syncing
-
-```bash
-make dev
-```
-
-Then trigger a delta sync from the UI, or run:
-
-```bash
-python scripts/sync.py --delta --gamertag YourGamertag
-```
-
----
+Rule: do not run `levelup sync-* / backfill` (or other shared-DB CLI tools) against shared databases while the server (`apps/go-api/server.exe` or `air`) is running. Stop the server first for cross-process shared writes. Full procedure and tool inventory: [RUNBOOK_OPS_DUCKDB_CLI_TOOLS.md](RUNBOOK_OPS_DUCKDB_CLI_TOOLS.md).
 
 ## Troubleshooting
 
-### Environment Check
-
-```bash
-python scripts/check_env.py
-```
-
-### Rate Limiting
-
-If you receive a 429 error:
-
-1. Wait a few minutes
-2. Reduce `--max-matches`
-3. Use `--delta` instead of `--full`
-
-### Expired Token
-
-```
-Error: Authentication failed
-```
-
-**Solution:**
-```bash
-python scripts/spnkr_get_refresh_token.py
-```
-
-### Career Rank Not Synced (Player-gated Warning)
-
-Some Halo Waypoint endpoints (career rank, customization) return 403 if the Spartan token
-doesn't belong to the targeted player. Symptom in logs:
-
-```
-WARNING — No player token for 'YourGamertag' — career rank skipped.
-```
-
-**Solution:** add a per-player token in `.env.local`:
-
-```env
-SPNKR_OAUTH_REFRESH_TOKEN_YOURGAMERTAG=your_xbox_live_refresh_token
-```
-
-See [CONFIGURATION.md](CONFIGURATION.md#azure--spnkr) for details.
-
----
-
-## Best Practices
-
-| Usage | Frequency | Command |
-|-------|-----------|---------|
-| Active player | Daily | `--delta` |
-| Casual player | Weekly | `--delta` |
-| First import | Once | `--full --max-matches 1000` |
-
-### Before a Gaming Session
-
-```bash
-python scripts/sync.py --delta --player YourGamertag
-```
-
-### After a Gaming Session
-
-```bash
-# Sync + full backfill
-python scripts/sync.py --delta --player YourGamertag --with-backfill
-
-# Or just performance scores
-python scripts/sync.py --delta --player YourGamertag --backfill-performance-scores
-```
+| Symptom | Action |
+|---|---|
+| Auto-sync not running | Check `spnkr_auto_sync_enabled: true` in `app_settings.json`; inspect `/api/v1/_diag/auto-sync/snapshot`. |
+| Player skipped (`not_in_pool`) | No token discovered for that player — onboard via SSO or `token-capture`/`token-import`. |
+| Repeated zero inserts | Watch the scheduler warning; verify the `/matches` call uses `xuid(NNN)` not the raw gamertag, and the watermark is sane. |
+| 401 on API backfill | Tokens stale in cache; do **not** re-capture. Let the pool refresh. See [adr/0023](adr/0023-auth-tokens-single-source.md). |
+| `Cannot open file ... used by another process` | Cross-process DuckDB lock — stop the server before running the CLI (see Ops Runbook). |
