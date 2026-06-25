@@ -1,226 +1,189 @@
-# Commandes Utiles — LevelUp
+# Commandes utiles — LevelUp
 
-> Aide-mémoire des commandes les plus fréquentes.
+English version: [../COMMANDS.md](../COMMANDS.md)
+
+> Aide-mémoire de la stack actuelle : backend Go (`apps/go-api`) + frontend React/Vite (`apps/web`).
+> L'outillage d'exploitation est le CLI `levelup` (`apps/go-api/cmd/levelup`). Les cibles `make`
+> sont dans le `Makefile` racine. L'accès DuckDB exige CGO (voir [Tests](#tests)).
 
 ---
 
-## 🚀 Lancement
+## Lancement
 
 ```bash
-# API Go + frontend Vite
-make dev
+make dev          # API Go (air, :8000) + frontend Vite (:5173) — Ctrl+C arrête tout
+make go-api-dev   # API Go seule (hot-reload air)
+make web          # Frontend seul (Vite, :5173)
+make stop         # Arrête les serveurs dev (kill par port, API + 5173)
+make restart      # stop + dev
+```
 
-# API Go seule
-make go-api-dev
+Ouvrir http://localhost:5173 une fois `make dev` lancé.
 
-# Frontend seul
-make web
+---
+
+## Build
+
+```bash
+make go-api-build   # CGO_ENABLED=1 go build -> apps/go-api/bin/server
+make install-web    # npm install dans apps/web
+make generate-types # Types TypeScript depuis apps/go-api/api/openapi.yaml
+make check-types    # tsc -b (typecheck seul)
 ```
 
 ---
 
-## 🔄 Synchronisation
+## CLI `levelup`
+
+Compilé depuis `apps/go-api/cmd/levelup`. Lancer via `go run` (CGO requis) ou builder un binaire.
+Utiliser `LEVELUP_REPO_ROOT` pour pointer le repo de données (auto-détecté si absent).
 
 ```bash
-# Sync delta (nouveaux matchs uniquement)
-python scripts/sync.py --delta --gamertag MonGamertag
+cd apps/go-api
+CGO_ENABLED=1 go run ./cmd/levelup <commande> [options]
+# Aide par commande :
+CGO_ENABLED=1 go run ./cmd/levelup <commande> --help
+```
 
-# Sync complète (tous les matchs)
-python scripts/sync.py --full --gamertag MonGamertag
+### Synchronisation (API Halo)
 
-# Sync limitée (100 derniers matchs)
-python scripts/sync.py --full --gamertag MonGamertag --max-matches 100
+```bash
+# Sync delta — nouveaux matchs uniquement
+go run ./cmd/levelup sync-delta --gamertag MonGamertag
+go run ./cmd/levelup sync-delta --all --max-matches 25
+# options : --match-type all|matchmaking|custom|local  --rps N  --token-pool-size N
 
-# Sync tous les joueurs
-python scripts/sync.py --all
+# Sync complète — parcourt les N derniers matchs API, insère les manquants (comble les trous)
+go run ./cmd/levelup sync-full --gamertag MonGamertag --max-matches 500
+
+# Backfill des achievements Xbox (admin one-shot)
+go run ./cmd/levelup sync-achievements --all [--dry-run]
+```
+
+### Backfill (local Go ; CSR/weapons nécessitent des tokens Halo)
+
+```bash
+go run ./cmd/levelup backfill --gamertag X --citations        [--force]
+go run ./cmd/levelup backfill --all          --lusr           [--force]
+go run ./cmd/levelup backfill --gamertag X --perf             [--force]
+go run ./cmd/levelup backfill --gamertag X --engagement-scores
+go run ./cmd/levelup backfill --gamertag X --csr             [--force]   # tokens Halo
+go run ./cmd/levelup backfill --all          --shared-csr     [--dry-run] # tokens Halo
+go run ./cmd/levelup backfill --all          --weapons        [--force]   # film CDN
+go run ./cmd/levelup backfill --gamertag X --citations-recompute-all
+```
+
+### Backup / restore
+
+```bash
+go run ./cmd/levelup backup  --gamertag X [--output-dir D] [--compression-level 9]
+go run ./cmd/levelup restore --gamertag X --backup-dir D [--replace] [--dry-run] [--tables T1,T2]
+go run ./cmd/levelup restore-csr --gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite]
+```
+
+### Référentiels / seed / migration
+
+```bash
+go run ./cmd/levelup seed career-ranks | citation-mappings | medals | rank-translations
+go run ./cmd/levelup seed-demo            # génère les données démo anonymisées (data/demo/)
+go run ./cmd/levelup migrate              # migre les données vers le namespace multi-titres
+go run ./cmd/levelup add-title --name "Halo MCC" [--slug s] [--capabilities matchmaking,media] [--xbox-id X] [--steam-id S]
+```
+
+### Médias
+
+```bash
+go run ./cmd/levelup index-media --gamertag X [--force-rescan] [--tolerance-min N]
+```
+
+### Diagnostic & ops
+
+```bash
+go run ./cmd/levelup healthcheck [--verbose]
+go run ./cmd/levelup diagnose --db PATH [--verbose]
+go run ./cmd/levelup check-env
+go run ./cmd/levelup gate-check [--gamertag X] [--json]
+go run ./cmd/levelup compare-db --go-db PATH --python-db PATH [--json]
+```
+
+### Maintenance (serveur arrêté pour les rebuilds ART/alias)
+
+```bash
+go run ./cmd/levelup rebuild-pme-art --all | --gamertag X   # reconstruit l'index ART player_match_enrichment
+go run ./cmd/levelup consolidate-aliases                    # merge xbox_aliases dans shared.xuid_aliases
+go run ./cmd/levelup recompute-friends [--dry-run]          # recompute is_with_friends sur les player DBs
+go run ./cmd/levelup replay-events --gamertag X             # re-parse les highlight events
+go run ./cmd/levelup reset-bitmasks                         # reset des bits de backfill skill/participants/PVE
+go run ./cmd/levelup engagement-coefs [--with-scores]      # recompute des coefficients d'engagement
+```
+
+### Notifications
+
+```bash
+go run ./cmd/levelup notify-version --version v1.2.3
+go run ./cmd/levelup notify-sync --gamertag X --op sync_delta --duration 120s [--matches N]
+```
+
+Liste complète : `go run ./cmd/levelup help`.
+
+---
+
+## Tests
+
+### Go (voir [../testing.md](../testing.md))
+
+```bash
+# Rapide, sans DuckDB (CGO off)
+make go-api-test
+# ou directement :
+cd apps/go-api && CGO_ENABLED=0 go test ./internal/domain/... ./internal/analysis/... ./contracttest/... -count=1
+
+# Suite complète avec DuckDB (CGO on — toolchain C / MinGW requis sur Windows)
+cd apps/go-api && CGO_ENABLED=1 LEVELUP_DEMO_MODE=true go test ./... -timeout 5m -count=1
+
+make go-api-coverage   # rapport de couverture
+make go-api-lint       # go vet
+```
+
+### Frontend (`apps/web`)
+
+```bash
+make test-web        # vitest run
+make test-e2e        # Playwright (nécessite `make dev` en cours)
+make test-e2e-ui     # Playwright en mode UI
+# ou via npm dans apps/web :
+npm run test:run
+npm run test:coverage
+npm run lint
 ```
 
 ---
 
-## 🗄️ Migration v4 → v5
+## Variables d'environnement
 
-```bash
-# 1. Créer la base partagée
-python scripts/migration/create_shared_matches_db.py
-
-# 2. Migrer un joueur
-python scripts/migration/migrate_player_to_shared.py --gamertag MonGamertag
-
-# 3. Migrer tous les joueurs
-python scripts/migration/migrate_player_to_shared.py --all
-
-# 4. Valider la migration
-python scripts/validate_migration.py
-```
+| Variable | Rôle |
+|----------|------|
+| `LEVELUP_REPO_ROOT` | Racine du repo de données (auto-détectée si absente) |
+| `LEVELUP_API_PORT` | Port de l'API Go (défaut `8000`) |
+| `LEVELUP_DEMO_MODE` | Mode démo (utilisé par les cibles de test) |
+| `LEVELUP_NOTIFY_VERSIONS` | Mettre à `1` pour activer les notifs de version en prod |
+| `DISCORD_WEBHOOK_URL` | Webhook Discord (prévaut sur `app_settings.json`) |
+| `CGO_ENABLED` | Doit valoir `1` pour tout build/test touchant DuckDB |
 
 ---
 
-## 🧹 Nettoyage post-migration v5
-
-```bash
-# Simuler d'abord (recommandé)
-python scripts/cleanup_player_dbs_v5.py --dry-run
-
-# Nettoyer un joueur avec backup
-python scripts/cleanup_player_dbs_v5.py --gamertag MonGamertag --backup
-
-# Nettoyer tous les joueurs avec backup
-python scripts/cleanup_player_dbs_v5.py --all --backup
-
-# Supprimer aussi les views de compatibilité
-python scripts/cleanup_player_dbs_v5.py --all --backup --remove-compat-views
-
-# Voir les détails
-python scripts/cleanup_player_dbs_v5.py --gamertag MonGamertag --dry-run --verbose
-```
-
-**Gain typique** : -85% de taille par player DB
-
----
-
-## 🔧 Backfill
-
-```bash
-# Recalculer les sessions
-python scripts/backfill_data.py --player MonGamertag --sessions
-
-# Recalculer les citations
-python scripts/backfill_data.py --player MonGamertag --citations
-
-# Recalculer les shots (si manquants)
-python scripts/backfill_data.py --player MonGamertag --shots
-
-# Backfill tous les joueurs
-python scripts/backfill_data.py --all --sessions --citations
-```
-
----
-
-## 💾 Backup & Restore
-
-```bash
-# Backup d'un joueur
-python scripts/backup_player.py --gamertag MonGamertag
-
-# Backup de tous les joueurs
-python scripts/backup_player.py --all
-
-# Restore depuis un backup
-python scripts/restore_player.py --gamertag MonGamertag --backup ./backups/MonGamertag_20260215.tar.gz
-```
-
----
-
-## 🧪 Tests
-
-```bash
-# Suite complète
-python -m pytest
-
-# Suite stable (recommandé)
-python -m pytest -q --ignore=tests/integration
-
-# Avec couverture
-python -m pytest --cov=src --cov-report=html
-
-# Tests spécifiques
-python -m pytest tests/test_duckdb_repository.py -v
-
-# E2E navigateur (optionnel)
-python -m pytest tests/e2e/test_streamlit_browser_e2e.py -v --run-e2e-browser
-```
-
----
-
-## 🔍 Diagnostic
-
-```bash
-# Vérifier l'environnement Python
-python scripts/check_env.py
-
-# Diagnostiquer une player DB
-python scripts/diagnose_player_db.py --gamertag MonGamertag
-
-# Diagnostiquer les citations
-python scripts/diagnose_citations.py --gamertag MonGamertag
-
-# Auditer les données actuelles
-python scripts/audit_current_data.py
-```
-
----
-
-## 📊 Analyse
-
-```bash
-# Analyser les overlaps de matchs entre joueurs
-python scripts/analyze_match_overlap.py
-
-# Compter les citations affichées
-python scripts/count_displayed_citations.py --gamertag MonGamertag
-
-# Benchmark des pages UI
-python scripts/benchmark_pages.py
-```
-
----
-
-## 🛠️ Maintenance
-
-```bash
-# Nettoyer les rank dans player assets (legacy)
-python scripts/cleanup_rank_from_player_assets.py
-
-# Exporter les schémas SQL
-python scripts/export_schemas.py
-
-# Générer les thumbnails médias
-python scripts/generate_thumbnails.py --gamertag MonGamertag
-
-# Indexer les médias
-python scripts/index_media.py --gamertag MonGamertag
-```
-
----
-
-## 🗂️ Chemins Importants
+## Chemins des données
 
 ```
 data/
-├── warehouse/
-│   ├── metadata.duckdb            # Référentiels (maps, playlists, medals)
-│   └── shared_matches.duckdb      # Base partagée (v5)
-├── players/
-│   └── {gamertag}/
-│       ├── stats.duckdb           # Stats personnelles
-│       └── archive/               # Archives Parquet
-└── cache/                         # Thumbnails
-
-db_profiles.json                   # Profils joueurs
-app_settings.json                  # Paramètres app
-.env.local                         # Tokens Azure
+  warehouse/metadata.duckdb         # référentiels (maps, playlists, médailles)
+  warehouse/shared_matches_v2.duckdb # matchs/médailles/events/aliases partagés
+  warehouse/shared_pve.duckdb       # stats Firefight
+  players/{gamertag}/stats.duckdb   # enrichissements par joueur
+  players/{gamertag}/archive/       # archives Parquet
+db_profiles.json                    # profils joueurs (multi-titres)
+app_settings.json                   # paramètres app
+.env.local                          # tokens Azure / secrets
 ```
 
----
-
-## 📚 Documentation
-
-| Document | Lien |
-|----------|------|
-| Installation | [INSTALL.md](INSTALL.md) |
-| Architecture v6 | [ARCHITECTURE_V6.md](ARCHITECTURE_V6.md) |
-| Migration v5 | [../archive/MIGRATION_V4_TO_V5.md](../archive/MIGRATION_V4_TO_V5.md) |
-| Nettoyage v5 | [../archive/CLEANUP_V5.md](../archive/CLEANUP_V5.md) |
-| Synchronisation | [SYNC_GUIDE.md](SYNC_GUIDE.md) |
-| Backup/Restore | [BACKUP_RESTORE.md](BACKUP_RESTORE.md) |
-| FAQ | [FAQ.md](FAQ.md) |
-
----
-
-## 🆘 En Cas de Problème
-
-1. **Vérifier l'environnement** : `python scripts/check_env.py`
-2. **Consulter les logs** : `tail -f logs/levelup.log`
-3. **Restaurer un backup** : `python scripts/restore_player.py ...`
-4. **Lire la FAQ** : [FAQ.md](FAQ.md)
-5. **Ouvrir une issue** : [GitHub Issues](https://github.com/JGtm/LevelUp_with_SPNKr/issues)
+Voir [ARCHITECTURE_V6.md](../ARCHITECTURE_V6.md) pour le modèle de données complet.

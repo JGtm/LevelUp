@@ -1,259 +1,212 @@
-# Guide Backup & Restore
+# Guide Backup & Restore — LevelUp
 
-> Documentation pour la sauvegarde et restauration des données joueur.
+Version anglaise : [../BACKUP_RESTORE.md](../BACKUP_RESTORE.md)
 
-## Vue d'ensemble
+LevelUp stocke toutes ses données dans des fichiers DuckDB sous `data/titles/<slug>/`. Il existe **deux chemins de sauvegarde complémentaires** :
 
-OpenSpartan Graph stocke les données des joueurs dans des fichiers DuckDB (`stats.duckdb`).
-Ces scripts permettent d'exporter et restaurer ces données au format Parquet avec compression Zstd.
+| Chemin | Ce qui est protégé | Format | Piloté par |
+|--------|--------------------|--------|-----------|
+| **Snapshots restic automatiques** (recommandé) | Toutes les DuckDB de tous les titres (warehouse + par joueur) | Parquet+Zstd en staging, puis un snapshot `restic` | scheduler `pkg/duckdbbackup` (intégré au serveur), `cmd/backup-once`, restauré via `cmd/restore` |
+| **Export par joueur (manuel)** | Une seule `stats.duckdb` de joueur | Fichiers Parquet+Zstd sur disque | `levelup backup` / `levelup restore` |
 
-### Avantages du format Parquet + Zstd
-
-| Aspect | Avantage |
-|--------|----------|
-| Portabilité | Format standard, lisible par Python, R, Spark, etc. |
-| Compression | Zstd offre un ratio ~3x meilleur que gzip |
-| Vitesse | Import/export natif DuckDB, ultra-rapide |
-| Intégrité | Format colonnaire avec checksums intégrés |
-| Archivage | Idéal pour cold storage longue durée |
+Un one-shot dédié, `levelup restore-csr`, restaure les CSR historiques par-match depuis un backup DuckDB legacy.
 
 ---
 
-## Script de Backup
+## Arborescence des données (`data/titles/<slug>/`)
 
-### Usage basique
-
-```bash
-# Sauvegarder un joueur
-python scripts/backup_player.py --gamertag SpartanB
-
-# Sauvegarder tous les joueurs
-python scripts/backup_player.py --all
-
-# Lister les joueurs disponibles
-python scripts/backup_player.py --list
-```
-
-### Options avancées
-
-```bash
-# Spécifier un répertoire de sortie
-python scripts/backup_player.py --gamertag SpartanC --output ./mes_backups
-
-# Ajuster le niveau de compression (1-22)
-python scripts/backup_player.py --gamertag SpartanC --compression-level 15
-
-# Sans métadonnées JSON
-python scripts/backup_player.py --gamertag SpartanC --no-metadata
-```
-
-### Niveaux de compression Zstd
-
-| Niveau | Usage | Vitesse | Compression |
-|--------|-------|---------|-------------|
-| 1-3 | Backups rapides | Très rapide | Faible |
-| 6-9 | **Recommandé (défaut: 9)** | Équilibré | Bon |
-| 15-19 | Archivage longue durée | Lent | Élevée |
-| 20-22 | Compression maximale | Très lent | Maximale |
-
-### Structure de sortie
+Tous les chemins sont résolus par le `PathResolver` de `internal/domain/title`. Pour le titre par défaut `halo_infinite` :
 
 ```
-data/backups/
-└── SpartanB/
-    ├── match_stats_20260201_143025.parquet
-    ├── medals_earned_20260201_143025.parquet
-    ├── teammates_aggregate_20260201_143025.parquet
-    ├── antagonists_20260201_143025.parquet
-    ├── mv_map_stats_20260201_143025.parquet
-    ├── mv_mode_category_stats_20260201_143025.parquet
-    ├── mv_global_stats_20260201_143025.parquet
-    └── backup_metadata_20260201_143025.json
+data/titles/halo_infinite/
+├── warehouse/
+│   ├── shared_matches_v2.duckdb   # matchs/participants/médailles partagés
+│   ├── metadata.duckdb            # référentiels (rangs, citations, ...)
+│   ├── shared_pve.duckdb          # stats Firefight
+│   └── shared_social.duckdb       # likes/favoris/état social
+├── players/
+│   └── <Gamertag>/
+│       ├── stats.duckdb           # DB d'enrichissement joueur
+│       ├── archive/               # archives Parquet froides (`levelup archive`)
+│       └── captures/              # médias capturés localement
+└── backups/
+    └── <Gamertag>/                # exports Parquet par joueur (manuels)
 ```
 
-### Fichier de métadonnées
-
-Le fichier `backup_metadata_*.json` contient :
-
-```json
-{
-  "gamertag": "SpartanB",
-  "backup_timestamp": "20260201_143025",
-  "backup_datetime": "2026-02-01T14:30:25.123456",
-  "source_db": "data/players/SpartanB/stats.duckdb",
-  "compression": "zstd",
-  "compression_level": 9,
-  "tables": {
-    "match_stats": {
-      "rows": 1500,
-      "file_size_bytes": 2500000,
-      "file": "match_stats_20260201_143025.parquet"
-    }
-  },
-  "total_size_bytes": 5000000,
-  "total_size_mb": 4.77
-}
-```
+Le scheduler restic automatique découvre chaque titre sous `data/titles/` et protège chaque DB warehouse plus chaque `players/<Gamertag>/stats.duckdb`. Les clés de backup sont préfixées par le slug (`<slug>:shared_matches_v2`, `<slug>:metadata`, `<slug>:shared_pve`, `<slug>:shared_social`, `<slug>:player:<Gamertag>`).
 
 ---
 
-## Script de Restore
+## 1. Snapshots restic automatiques
 
-### Usage basique
+### Fonctionnement
+
+Le serveur exécute un scheduler de backup (`ops.NewLevelUpBackupScheduler`, câblé dans `cmd/server/main.go`). À chaque cycle :
+
+1. Découverte de toutes les cibles DuckDB sous `data/titles/`.
+2. Ignore les DB inchangées (manifest d'empreintes `.manifest.json` dans le dossier staging).
+3. `PRAGMA integrity_check` sur les DB modifiées (une DB dégradée est tout de même sauvegardée, avec un warning).
+4. Export des `BASE TABLE` de chaque DB modifiée en Parquet+Zstd vers une arborescence staging.
+5. Création d'un unique snapshot `restic` du dossier staging, puis application de la politique de rétention (`restic forget --prune`).
+
+Le premier cycle s'exécute immédiatement au démarrage, puis tous les `interval` (défaut `6h`). Si le binaire `restic` est absent du `PATH`, le scheduler logue un warning et se désactive.
+
+### Configuration
+
+Le comportement vient de `app_settings.json` ; les chemins machine viennent des variables d'environnement.
+
+| Réglage (`app_settings.json`) | Défaut | Signification |
+|-------------------------------|--------|---------------|
+| `backup_enabled` | `false` | Active le scheduler périodique |
+| `backup_interval` | `6h` | Durée Go entre deux cycles |
+| `backup_keep_daily` | `7` | `restic forget --keep-daily` |
+| `backup_keep_weekly` | `4` | `restic forget --keep-weekly` |
+| `backup_keep_monthly` | `12` | `restic forget --keep-monthly` |
+
+| Variable d'environnement | Défaut | Signification |
+|--------------------------|--------|---------------|
+| `RESTIC_REPOSITORY` | _(non défini)_ | Emplacement du dépôt restic (requis pour sauvegarder) |
+| `RESTIC_PASSWORD` | _(non défini)_ | Mot de passe du dépôt |
+| `RESTIC_PASSWORD_FILE` | _(non défini)_ | Fichier contenant le mot de passe |
+| `RESTIC_BIN` | `restic` | Chemin du binaire `restic` |
+| `LEVELUP_BACKUP_DIR` | `data/backups` | Répertoire de staging local |
+
+Quand ni `RESTIC_PASSWORD` ni `RESTIC_PASSWORD_FILE` n'est défini, restic est invoqué avec `--insecure-no-password` (dépôt non chiffré — adapté à un usage local mono-utilisateur).
+
+La rétention est une **enveloppe globale unique** sur tous les titres (un seul snapshot, une seule politique de rétention couvre les DB de chaque titre, par conception).
+
+### Lancer un snapshot manuellement
 
 ```bash
-# Restaurer un joueur
-python scripts/restore_player.py --gamertag SpartanB --backup ./data/backups/SpartanB
-
-# Simuler sans écrire (dry-run)
-python scripts/restore_player.py --gamertag SpartanB --backup ./data/backups/SpartanB --dry-run
-
-# Lister les tables dans un backup
-python scripts/restore_player.py --gamertag SpartanB --backup ./data/backups/SpartanB --list
+cd apps/go-api
+go run ./cmd/backup-once
 ```
 
-### Options avancées
+Cela exécute exactement un cycle de façon synchrone et affiche l'id du snapshot, la durée et la liste des DB exportées. C'est un no-op (`Skipped`) si rien n'a changé depuis le dernier cycle.
+
+### Lister et restaurer les snapshots
 
 ```bash
-# Restaurer des tables spécifiques seulement
-python scripts/restore_player.py --gamertag SpartanC --backup ./backups/SpartanC \
-    --tables match_stats,medals_earned
+cd apps/go-api
 
-# Remplacer les données existantes (au lieu d'ajouter)
-python scripts/restore_player.py --gamertag SpartanC --backup ./backups/SpartanC --replace
+# Lister les snapshots disponibles (id, date, hôte)
+go run ./cmd/restore --list
+
+# Restaurer le snapshot le plus récent dans data/restore/<YYYY-MM-DD>/
+go run ./cmd/restore
+
+# Restaurer le snapshot le plus récent d'un jour donné
+go run ./cmd/restore --date 2026-05-25
+
+# Restaurer un snapshot précis par id court
+go run ./cmd/restore --snapshot 6ba84d2b
+
+# Restaurer dans un répertoire personnalisé
+go run ./cmd/restore --output /tmp/restore/
+
+# Simuler sans rien écrire
+go run ./cmd/restore --dry-run
 ```
 
-### Comportement par défaut
+Par défaut, `restore` écrit une arborescence miroir sous `data/restore/<date>/` (`{slug}/{db}.duckdb`, `{slug}/players/{gamertag}/stats.duckdb`) pour inspecter avant tout remplacement.
 
-| Option | Comportement |
-|--------|--------------|
-| Sans `--replace` | Ajoute les données (peut créer des doublons) |
-| Avec `--replace` | Supprime la table existante avant import |
-| Avec `--dry-run` | Simule sans modifier les données |
+**Restauration en place sur la production** — écrase les fichiers DuckDB live :
+
+```bash
+go run ./cmd/restore --live          # demande confirmation
+```
+
+`--live` est incompatible avec `--output`. **Arrêter d'abord le serveur Go** — les DB ne doivent pas être ouvertes pendant leur remplacement.
 
 ---
 
-## Cas d'usage
+## 2. Export par joueur (`levelup backup` / `restore`)
 
-### Migration vers une nouvelle machine
+Exporte la `stats.duckdb` d'un seul joueur en fichiers Parquet+Zstd autonomes (portables, lisibles par tout outil DuckDB/Parquet). Indépendant de restic.
 
-```bash
-# Sur l'ancienne machine
-python scripts/backup_player.py --all --output ./export
-
-# Copier le dossier export vers la nouvelle machine
-# Sur la nouvelle machine
-python scripts/restore_player.py --gamertag SpartanB --backup ./export/SpartanB --replace
-```
-
-### Archivage mensuel automatisé
+### Backup
 
 ```bash
-#!/bin/bash
-# Script cron mensuel
-DATE=$(date +%Y%m)
-python scripts/backup_player.py --all --output "/archives/halo/$DATE" --compression-level 15
+cd apps/go-api
+
+# Sortie par défaut : data/titles/<slug>/backups/<Gamertag>/
+go run ./cmd/levelup backup --gamertag VotreGamertag
+
+# Titre, répertoire de sortie et niveau de compression personnalisés (Zstd 1-22, défaut 9)
+go run ./cmd/levelup backup \
+  --gamertag VotreGamertag \
+  --title halo_infinite \
+  --output-dir ./mes_backups \
+  --compression-level 15
 ```
 
-### Récupération après corruption
+Chaque table est écrite en `<table>_<timestamp>.parquet`, plus un `backup_metadata_<timestamp>.json` décrivant les lignes/tailles.
+
+### Restore
 
 ```bash
-# Vérifier le contenu du backup
-python scripts/restore_player.py --gamertag SpartanB --backup ./backups/SpartanB --list
+cd apps/go-api
 
-# Restaurer avec remplacement
-python scripts/restore_player.py --gamertag SpartanB --backup ./backups/SpartanB --replace
+# Restaurer toutes les tables depuis un répertoire de backup
+go run ./cmd/levelup restore \
+  --gamertag VotreGamertag \
+  --backup-dir ./data/titles/halo_infinite/backups/VotreGamertag
+
+# Restaurer des tables précises, en remplaçant les données existantes
+go run ./cmd/levelup restore \
+  --gamertag VotreGamertag \
+  --backup-dir ./mes_backups \
+  --tables player_match_enrichment,match_citations \
+  --replace
+
+# Inspecter sans écrire
+go run ./cmd/levelup restore --gamertag VotreGamertag --backup-dir ./mes_backups --dry-run
 ```
+
+| Flag | Effet |
+|------|-------|
+| `--title` | Slug du titre cible (défaut `halo_infinite`) |
+| `--tables T1,T2` | Restaurer uniquement ces tables (défaut : toutes) |
+| `--replace` | `DROP TABLE` avant import (sinon les lignes sont ajoutées) |
+| `--dry-run` | Lister sans modifier |
 
 ---
 
-## Lecture directe des fichiers Parquet
+## 3. Restaurer les CSR historiques (`levelup restore-csr`)
 
-Les fichiers Parquet peuvent être lus directement sans restauration :
-
-### Python + DuckDB
-
-```python
-import duckdb
-
-# Lire un fichier Parquet
-df = duckdb.read_parquet("backup/match_stats_20260201_143025.parquet")
-print(df.df())  # Convertir en pandas DataFrame
-```
-
-### Python + Polars
-
-```python
-import polars as pl
-
-df = pl.read_parquet("backup/match_stats_20260201_143025.parquet")
-print(df.head())
-```
-
-### Python + Pandas
-
-```python
-import pandas as pd
-
-df = pd.read_parquet("backup/match_stats_20260201_143025.parquet")
-print(df.head())
-```
-
----
-
-## Bonnes pratiques
-
-### Fréquence de backup
-
-| Fréquence | Cas d'usage |
-|-----------|-------------|
-| Hebdomadaire | Joueurs actifs, données critiques |
-| Mensuelle | Usage normal |
-| Avant migration | Toujours faire un backup complet |
-
-### Stockage des backups
-
-- **Local** : Facile, rapide, mais risque de perte en cas de panne disque
-- **Cloud** : Recommandé pour les backups critiques (S3, GCS, Azure Blob)
-- **NAS/Disque externe** : Bon compromis coût/sécurité
-
-### Vérification des backups
+Récupération one-shot et idempotente des valeurs CSR par-match depuis un backup DuckDB legacy (ex. un `shared_matches_v2.duckdb` extrait d'un snapshot). Prévu pour le cas où les CSR ont été écrasés par LUSR avant la mise en place du garde-fou SQL.
 
 ```bash
-# Vérifier qu'un backup est lisible
-python scripts/restore_player.py --gamertag SpartanB --backup ./backups/SpartanB --list
+cd apps/go-api
 
-# Simuler une restauration
-python scripts/restore_player.py --gamertag SpartanB --backup ./backups/SpartanB --dry-run
+# Inspecter le schéma legacy et compter sans écrire
+go run ./cmd/levelup restore-csr \
+  --gamertag VotreGamertag \
+  --backup /chemin/vers/legacy/shared_matches_v2.duckdb \
+  --dry-run
+
+# Appliquer (overwrite supprime les LUSR fautifs sur les matchs concernés)
+go run ./cmd/levelup restore-csr \
+  --gamertag VotreGamertag \
+  --backup /chemin/vers/legacy/shared_matches_v2.duckdb \
+  --mode overwrite
 ```
+
+| Flag | Effet |
+|------|-------|
+| `--title` | Slug du titre cible (défaut `halo_infinite`) |
+| `--backup` | Chemin vers le `.duckdb` legacy (attaché en lecture seule) |
+| `--mode preserve\|overwrite` | `overwrite` supprime les LUSR fautifs sur les matchs à restaurer ; `preserve` les conserve |
+| `--dry-run` | Inspecter schéma et comptages uniquement |
+
+La commande attache le backup en lecture seule, localise la table source des CSR, et réinsère les CSR dans `match_skill_rank` avec `ON CONFLICT DO NOTHING`.
 
 ---
 
-## Dépannage
+## Notes pratiques
 
-### Erreur "DB non trouvée"
+- **Restaurer avant d'écraser les données live** : préférer une restauration en staging (`go run ./cmd/restore`), inspecter, puis n'utiliser `--live` qu'avec le serveur arrêté.
+- **Migration vers une nouvelle machine** : copier le dépôt restic (ou le dossier Parquet par joueur) et restaurer sur l'hôte cible avec les mêmes variables d'environnement.
+- **Intégrité** : le scheduler enregistre les résultats de `PRAGMA integrity_check` dans le `.manifest.json` du staging ; une DB dégradée est tout de même snapshotée avec un warning, pour ne jamais perdre une copie récupérable.
 
-```
-Backup non trouvé: DB non trouvée pour SpartanC
-```
-
-**Solution** : Vérifiez que le joueur existe dans `data/players/{gamertag}/stats.duckdb`.
-
-### Erreur de permission
-
-```
-PermissionError: [Errno 13] Permission denied
-```
-
-**Solution** : Vérifiez les permissions du répertoire de sortie ou exécutez avec `sudo`.
-
-### Fichiers Parquet corrompus
-
-DuckDB vérifie automatiquement l'intégrité des fichiers Parquet via les checksums intégrés.
-Si une erreur de lecture survient, le fichier est probablement corrompu.
-
-**Solution** : Restaurez depuis un backup antérieur.
-
----
-
-*Dernière mise à jour : 2026-02-01*
+> Note legacy : les anciens scripts Python `scripts/backup_player.py` / `scripts/restore_player.py` ont été supprimés. Utiliser les commandes Go ci-dessus.

@@ -2,18 +2,53 @@
 
 English version: [../ADD_TITLE.md](../ADD_TITLE.md)
 
-> **Architecture** : title-aware v7 — arborescence `data/titles/<slug>/`
+> **Architecture** : title-aware v7 — arborescence `data/titles/<slug>/`, registre des
+> titres piloté par config (`config/titles/<slug>/`). Voir
+> [ADR 0008](../adr/0008-db-schema-multi-title-and-xuid-global.md) (isolation par chemin
+> FS, pas de colonne `title_id`) et
+> [ADR 0025](../adr/0025-title-agnostic-minimal-viable-window.md) (refactor title-agnostic).
 
-LevelUp est conçu pour supporter plusieurs jeux. Ce guide couvre la procédure complète
-pour intégrer un nouveau titre, de l'enregistrement dans le code jusqu'au premier
-démarrage du serveur.
+LevelUp supporte plusieurs jeux. Ce guide est la procédure complète, de bout en bout —
+du scaffolding CLI jusqu'au câblage de l'adapter qui sert réellement les données. Pour
+les fondations transverses (types canoniques, adapters, manifests i18n, wrappers ECharts)
+référencées plus bas, voir [FOUNDATIONS_GUIDE.md](FOUNDATIONS_GUIDE.md).
 
 ---
 
-## Démarrage rapide — commande automatisée
+## Comment un titre est enregistré (à lire en premier)
+
+Il existe **deux mécanismes d'enregistrement**, et le canonique est piloté par config :
+
+1. **Titre par défaut built-in** — `halo_infinite` est câblé en dur dans `NewRegistry()`
+   (`apps/go-api/internal/domain/title/registry.go`). Byte-identique et robuste même
+   sans config. **Vous n'y touchez pas pour un nouveau titre.**
+
+2. **Piloté par config (le chemin de tout titre additionnel)** — au boot,
+   `cmd/server/main.go` appelle :
+
+   ```go
+   title.SetDefaultRegistry(title.NewRegistryFromConfig(cfg.RepoRoot, slog.Default()))
+   ```
+
+   `NewRegistryFromConfig` construit d'abord le registre built-in, puis
+   `LoadTitlesIntoRegistry` scanne `config/titles/*/` et enregistre chaque dossier
+   portant un `title.toml`. **Déposer `config/titles/<slug>/title.toml` suffit à
+   enregistrer un titre additionnel — zéro recompilation du registre.**
+
+> La commande `levelup add-title` affiche un snippet Go pour `registry.go`, mais pour un
+> titre **additionnel** la source de vérité est `title.toml`. Modifier `registry.go` ne
+> sert qu'à déclarer le titre *par défaut*. Préférez la voie `title.toml` ; un manifeste
+> invalide est logué et ignoré sans bloquer le boot du serveur.
+
+---
+
+## Démarrage rapide — scaffolder l'arborescence disque
+
+`levelup` est le CLI d'ops (`apps/go-api/cmd/levelup`). Lancez-le comme binaire compilé
+ou via `go run ./cmd/levelup` depuis `apps/go-api`.
 
 ```bash
-# Minimum : nom du jeu uniquement (slug déduit)
+# Minimum : nom du jeu uniquement (slug déduit du nom)
 levelup add-title --name "Halo MCC"
 
 # Avec toutes les options
@@ -25,15 +60,27 @@ levelup add-title \
   --steam-id 976730
 ```
 
-La commande :
-1. Déduit le slug depuis le nom (`"Halo MCC"` → `halo_mcc`)
-2. Crée `data/titles/<slug>/warehouse/` et `data/titles/<slug>/players/`
-3. Crée et initialise `shared_pve.duckdb` si `firefight` est dans `--capabilities`
-4. Ajoute la section `"<slug>"` vide dans `db_profiles.json`
-5. Affiche le snippet Go à coller dans `registry.go` (nécessite un `make build` ensuite)
+**Flags** (d'après `cmd_title.go`) :
 
-La création des fichiers DuckDB et les migrations de schéma se font automatiquement
-au prochain démarrage du serveur.
+| Flag             | Requis | Défaut               | Notes                                              |
+|------------------|:------:|----------------------|----------------------------------------------------|
+| `--name`         | **Oui**| —                    | Nom complet du jeu, ex. `"Halo MCC"`               |
+| `--slug`         | Non    | déduit du `--name`   | Minuscules `[a-z][a-z0-9_]*[a-z0-9]` ; ne peut pas être `halo_infinite` |
+| `--capabilities` | Non    | `matchmaking,media`  | Capabilities coarse séparées par virgule (voir plus bas) |
+| `--xbox-id`      | Non    | vide                 | Xbox Title ID (présence watcher + achievements)    |
+| `--steam-id`     | Non    | vide                 | Steam App ID                                       |
+
+La commande :
+1. Déduit le slug depuis le nom (`"Halo MCC"` → `halo_mcc`).
+2. Crée `data/titles/<slug>/warehouse/` et `data/titles/<slug>/players/`.
+3. Crée `apps/web/public/titles/<slug>/` (dossier images header frontend).
+4. Crée et initialise `shared_pve.duckdb` **uniquement si** `firefight` est dans `--capabilities`.
+5. Ajoute la section `"<slug>"` vide dans `db_profiles.json` (atomique, via le store dbprofiles).
+6. Affiche le snippet `registry.go` et le rappel images frontend.
+
+Elle n'écrit **pas** `config/titles/<slug>/` — vous créez le manifeste et les mappings
+vous-même (Étapes 1–3). La création des fichiers DuckDB et les migrations de schéma se
+font au prochain démarrage du serveur.
 
 ---
 
@@ -41,116 +88,268 @@ au prochain démarrage du serveur.
 
 | Étape | Action | Qui |
 |------:|--------|-----|
-| 1 | Enregistrer le descripteur dans `registry.go` + `make build` | **Manuel** |
-| 2 | Créer les répertoires disque + dossier images frontend | Automatisé par `add-title` |
-| 3 | Initialiser `shared_pve.duckdb` (si Firefight) | Automatisé par `add-title --capabilities firefight` |
-| 4 | Ajouter la section dans `db_profiles.json` | Automatisé par `add-title` |
-| 5 | Démarrer le serveur (création DuckDB + migrations) | Automatique au démarrage |
-| 6 | Ajouter les images du hero banner de la home page | **Manuel** |
-| 7 | (Optionnel) Pré-remplir les référentiels `metadata.duckdb` | Manuel selon le titre |
+| 0 | Scaffolder dirs + section `db_profiles.json` | Automatisé par `levelup add-title` |
+| 1 | Écrire `config/titles/<slug>/title.toml` (descripteur) | **Manuel** |
+| 2 | Déclarer les capabilities (coarse dans `title.toml`, fines dans `mappings/capabilities.toml`) | **Manuel** |
+| 3 | Écrire les mappings TOML (`fields`, `assets`, `outcomes`) | **Manuel** |
+| 4 | (Si le titre sert des données) Écrire un `TitleDataAdapter` + l'enregistrer | **Manuel, Go** |
+| 5 | Ajouter les joueurs dans `db_profiles.json` | **Manuel** |
+| 6 | Démarrer le serveur (création DB + migrations + découverte au boot) | Automatique |
+| 7 | Ajouter les images du hero banner | **Manuel** |
+| 8 | (Optionnel) Pré-remplir les référentiels `metadata.duckdb` | Manuel selon le titre |
 
 ---
 
-## Étape 1 — Enregistrer le titre dans `registry.go`
+## Étape 1 — Écrire `config/titles/<slug>/title.toml`
 
-**Fichier** : `apps/go-api/internal/domain/title/registry.go`
+Ce manifeste est le descripteur parsé par `LoadTitleManifest`
+(`internal/domain/title/config_loader.go`). C'est l'équivalent d'un appel `Register(...)`
+dans `registry.go`, externalisé en config.
 
-Ajouter un appel `Register(...)` dans la fonction `NewRegistry()` :
+```toml
+# config/titles/halo_mcc/title.toml
+[meta]
+title_slug     = "halo_mcc"   # doit correspondre au nom du dossier
+schema_version = 1            # doit être > 0
 
-```go
-r.Register(&TitleDescriptor{
-    Slug:     "halo_mcc",                  // slug unique, minuscules, underscores
-    Name:     "Halo: The Master Chief Collection",
-    Provider: "halo_mcc",
-    Status:   StatusComingSoon,            // active | coming_soon | archived
-    Capabilities: []Capability{
-        CapMatchmaking, CapMedia,
-    },
-    IsDefault:   false,
-    XboxTitleID: "976923",                 // depuis le catalogue Xbox
-    SteamAppID:  "976730",                 // depuis Steam (chaîne vide si N/A)
-})
+[title]
+name          = "Halo: The Master Chief Collection"
+provider      = "halo_mcc"
+status        = "coming_soon" # active | coming_soon | archived
+icon_url      = ""
+xbox_title_id = "976923"      # présence watcher + achievements (vide si N/A)
+steam_app_id  = "976730"      # chaîne vide si N/A
+placement_matches = 0         # nb de matchs de placement classés ; 0 = défaut consommateur
+csr_season_id     = ""        # overlay saison CSR fixe ; vide = fallback global
+
+# Capabilities coarse — voir Étape 2.
+capabilities = [
+  "matchmaking",
+  "media",
+  "ranked",
+]
 ```
 
-### Capabilities disponibles
+Règles de validation appliquées par `LoadTitleManifestFromBytes` :
 
-| Constante       | Signification                               |
-|-----------------|---------------------------------------------|
-| `CapMatchmaking`| Stats matchmaking classé/social             |
-| `CapFirefight`  | Mode co-op PvE / Firefight                  |
-| `CapForge`      | Support maps et modes personnalisés         |
-| `CapMedia`      | Screenshots et clips vidéo                  |
-| `CapRanked`     | CSR / classement compétitif                 |
-| `CapCareer`     | Progression de rang de carrière             |
+- `[meta].title_slug`, s'il est présent, **doit être égal au nom du dossier**.
+- `[meta].schema_version` doit être `> 0`.
+- `[title].name` est requis ; un `provider` manquant prend le slug par défaut.
+- `[title].status` doit valoir `active | coming_soon | archived`.
+- `[title].is_default` est **interdit** pour un titre additionnel (réservé à `halo_infinite`).
+- Chaque entrée de `capabilities` doit être une capability coarse connue (Étape 2) — une
+  inconnue échoue à la validation et le titre est ignoré (log `title_manifest_invalid`).
 
-Ne déclarer que les capabilities réellement disponibles pour le titre — les services
-vérifient `HasCapability(...)` avant d'activer les fonctionnalités associées.
-
-### Effet du champ `Status`
+### Effet du `status`
 
 | Status         | Comportement                                                             |
 |----------------|--------------------------------------------------------------------------|
-| `active`       | Titre entièrement activé, résolu par le middleware de routage            |
-| `coming_soon`  | Enregistré mais pas encore routé (intégration en cours)                  |
-| `archived`     | Accès lecture seule, aucun nouveau sync                                  |
+| `active`       | Titre entièrement activé, servi, provisionné au boot, adapters câblés     |
+| `coming_soon`  | Découvert + listé dans le switcher (« bientôt »), mais **non servi** — `RequireActiveTitle` retourne `503 title_unavailable` |
+| `archived`     | Exclu du switcher (`NonArchived()` le filtre)                            |
 
-Quel que soit le statut, le titre est **enregistré** dans le `Registry` et ses
-chemins sont résolus par `PathResolver`. `ValidateTitle(slug)` retourne `nil` pour
-tous les statuts.
-
----
-
-## Étape 2 — Créer la structure de répertoires
-
-**Automatisé par `levelup add-title`.**
-
-Si vous créez le titre manuellement sans la commande :
-
-```bash
-mkdir -p data/titles/<slug>/warehouse
-mkdir -p data/titles/<slug>/players
-```
-
-### Pourquoi ces répertoires sont nécessaires
-
-`duckdb.OpenReadWrite(path)` crée un fichier `.duckdb` s'il n'existe pas, mais
-uniquement si le **répertoire parent existe déjà**. Si
-`data/titles/<slug>/warehouse/` est absent, le serveur échouera à ouvrir ou créer
-toute base de données pour ce titre.
-
-### Arborescence résultante
-
-```
-data/
-└── titles/
-    └── <slug>/
-        ├── warehouse/          ← les fichiers DuckDB sont créés ici au démarrage
-        │   ├── metadata.duckdb
-        │   ├── shared_matches_v2.duckdb
-        │   └── shared_social.duckdb
-        └── players/            ← un sous-répertoire par joueur après le premier sync
-```
+`ValidateTitle(slug)` réussit pour tout titre enregistré quel que soit le statut ; le
+gating runtime des routes title-scoped passe par le middleware `RequireActiveTitle`
+(`IsActive()` ⇒ `Status == active`), pas par le résolveur de titre.
 
 ---
 
-## Étape 3 — Ajouter les joueurs dans `db_profiles.json`
+## Étape 2 — Déclarer les capabilities
 
-**La section du titre est ajoutée automatiquement par `levelup add-title`.**
-Les joueurs sont ensuite ajoutés manuellement dans cette section.
+Il existe **deux vocabulaires de capabilities distincts** — ne pas les confondre :
 
-**Fichier** : `db_profiles.json` (racine du repo)
+### A. Capabilities coarse (`title.Capability`) — dans `title.toml`
 
-Ajouter une entrée joueur dans la section du titre :
+Déclarées dans `[title].capabilities`, validées contre `knownCapabilities`
+(`config_loader.go`). Elles gouvernent des **surfaces produit / middlewares** et
+alimentent le switcher de titres. Valeurs connues (miroir des constantes `Cap*` de
+`registry.go`) :
+
+| Valeur                 | Signification                                                 |
+|------------------------|---------------------------------------------------------------|
+| `matchmaking`          | Stats matchmaking classé/social                               |
+| `firefight`            | Co-op PvE / Firefight (déclenche la création de `shared_pve.duckdb`) |
+| `forge`                | Maps et modes personnalisés                                   |
+| `media`                | Screenshots et clips vidéo                                    |
+| `ranked`               | CSR / classement compétitif                                  |
+| `career`               | Progression de rang de carrière                              |
+| `season_pass`          | Progression season pass / Battlepass                          |
+| `asset.images`         | Miniatures Asset Drawer (maps & armes)                        |
+| `achievements`         | Page achievements Xbox                                        |
+| `engagement`           | Score d'engagement intra-match + coefficients                 |
+| `lusr`                 | Rating interne LevelUp (LUSR v2)                              |
+| `world.leaderboard`    | Classements mondiaux                                          |
+| `native_kill_mechanics`| Mécaniques de kill natives (assassinats, compétences spartiate)|
+
+Le flag `levelup add-title --capabilities` ne reconnaît que les six premières
+(`matchmaking,firefight,forge,media,ranked,career`) pour générer le snippet `registry.go` ;
+déclarez l'ensemble plus riche directement dans `title.toml`.
+
+### B. Capabilities fines (`games.CapabilityKey`) — dans `mappings/capabilities.toml`
+
+Elles gouvernent les **méthodes `Load*` du `TitleDataAdapter`** du titre (c.-à-d.
+exactement quelles surfaces de données l'adapter est câblé à servir). Les 16 clés connues
+vivent dans `internal/games/adapter.go` (`AllCapabilityKeys()`) :
+
+`match.history`, `match.detail.core`, `match.skill.snapshot`, `career.progression`,
+`career.rank_catalog`, `pve.firefight_stats`, `analytics.timeseries`,
+`match.scoreboard.extra`, `citations.engine`, `engagement.score`,
+`battlepass.progression`, `challenges.surface`, `match.events.timeline`,
+`match.killfeed.per_kill`, `match.events.spatial`, `commendations.native`.
+
+Chaque valeur vaut `supported | degraded | not_exposed` :
+
+```toml
+# config/titles/halo_mcc/mappings/capabilities.toml
+[meta]
+title_slug     = "halo_mcc"
+schema_version = 1
+
+[capabilities]
+"match.history"      = "supported"   # seulement si LoadMatchSummaries est réellement câblé
+"match.detail.core"  = "supported"
+"career.progression" = "supported"
+"analytics.timeseries" = "not_exposed"
+# ... les clés restantes par défaut à not_exposed
+```
+
+> **Règle d'or** (de `halo_5/mappings/capabilities.toml`) : une clé ne peut être
+> `supported` ou `degraded` **que si sa méthode `Load*` est réellement câblée**.
+> `CapabilityMap.Has()` retourne vrai pour `supported`/`degraded` ; si la méthode est un
+> stub, tout appel échouerait. Les surfaces non câblées restent `not_exposed`.
+
+`CapabilityMapFromMappings` (`internal/games/capabilities.go`) valide chaque clé et statut
+au boot et agrège les erreurs — une clé inconnue ou un statut invalide est rejeté.
+
+---
+
+## Étape 3 — Écrire les mappings TOML (couche sémantique)
+
+Sous `config/titles/<slug>/mappings/`, à côté de `capabilities.toml` :
+
+### `fields.toml` — définitions des métriques canoniques, unités, libellés, ordre
+
+```toml
+[meta]
+title_slug     = "halo_mcc"
+schema_version = 1
+
+[fields.kills]
+labels        = { en = "Kills", fr = "Éliminations" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 10
+group         = "combat"
+
+[fields.accuracy]
+labels        = { en = "Accuracy", fr = "Précision" }
+storage_unit  = "ratio"
+display_unit  = "percent"
+format        = "percent_2"
+display_order = 40
+group         = "combat"
+```
+
+### `assets.toml` — modes, tiers, etc. (libellés bilingues + ordre d'affichage)
+
+```toml
+[meta]
+title_slug     = "halo_mcc"
+schema_version = 1
+
+[assets.mode.slayer]
+labels = { en = "Slayer", fr = "Massacre" }
+display_order = 10
+
+[assets.mode.ctf]
+labels = { en = "Capture the Flag", fr = "Capture du drapeau" }
+display_order = 20
+```
+
+Les clés (`kind/id`) sont libres ; la validation exige des valeurs non vides et aucune
+collision de `display_order`.
+
+### `outcomes.toml` — libellés win/loss/tie/dnf + tokens de couleur sémantiques
+
+```toml
+[meta]
+title_slug     = "halo_mcc"
+schema_version = 1
+
+[outcomes.win]
+labels = { en = "Victory", fr = "Victoire" }
+color_token = "outcome.positive"
+
+[outcomes.loss]
+labels = { en = "Defeat", fr = "Défaite" }
+color_token = "outcome.negative"
+
+[outcomes.tie]
+labels = { en = "Tie", fr = "Égalité" }
+color_token = "outcome.neutral"
+
+[outcomes.dnf]
+labels = { en = "DNF", fr = "Abandon" }
+color_token = "outcome.neutral"
+```
+
+Utilisez des **tokens** de couleur sémantiques (jamais de hex brut) — voir
+[ADR 0011](../adr/0011-canonical-vs-semantic-adapter-separation.md) pour la frontière
+adapter canonical (data brute) vs semantic (i18n/libellés) vs asset-URL.
+
+---
+
+## Étape 4 — Adapters (seulement si le titre sert des données)
+
+La couche adapter (`internal/games/`) projette la source native d'un titre sur le schéma
+canonique inter-titres (`internal/games/canonical/`). Trois interfaces adapter existent
+(`adapter.go`) :
+
+| Interface              | Ce que vous écrivez pour un nouveau titre                        |
+|------------------------|------------------------------------------------------------------|
+| `TitleSemanticAdapter` | **Rien.** Le `GenericSemanticAdapter` partagé (`semantic_adapter.go`) enveloppe vos TOML — aucun code semantic par titre. |
+| `TitleDataAdapter`     | **Un package Go** (ex. `internal/games/halo_mcc/`) projetant votre source (API live ou DuckDB) sur `canonical.*`. C'est le vrai travail. |
+| `TitleAssetURLAdapter` | Optionnel — seulement si le naming d'URL d'assets diverge du défaut. |
+
+### Câbler le data adapter
+
+Les titres additionnels actifs sont câblés par `registerAdditionalTitles`
+(`internal/api/server_titles_additional.go`), qui itère `titleRegistry.Active()` et
+dispatche par slug via la map `additionalTitleRegistrars`. Ajoutez votre titre :
+
+```go
+var additionalTitleRegistrars = map[string]additionalTitleRegistrar{
+    halo5.TitleSlug:    registerHalo5Adapters,
+    halo_mcc.TitleSlug: registerHaloMCCAdapters, // votre nouveau registrar
+}
+```
+
+Votre `registerHaloMCCAdapters` construit le `GenericSemanticAdapter` depuis les mapping
+sets, convertit `capabilities.toml` via `CapabilityMapFromMappings`, construit votre
+`TitleDataAdapter`, et enregistre les deux sur le `StaticResolver`
+(`RegisterSemantic` / `RegisterData`) — voir `registerHalo5Adapters` comme référence.
+Ce changement Go nécessite un rebuild (`make go-api-build`).
+
+> Si un titre est `active` mais sans registrar, le serveur logue
+> `additional_title_no_adapter_registrar` et le titre n'est pas servi. Un titre
+> `coming_soon` n'a pas besoin d'adapter (il n'est jamais servi).
+
+---
+
+## Étape 5 — Ajouter les joueurs dans `db_profiles.json`
+
+La section vide du titre est créée par `add-title` ; les joueurs y sont ajoutés manuellement.
 
 ```json
 {
   "version": "3.0",
   "profiles": {
-    "halo_infinite": { ... },
+    "halo_infinite": { },
     "halo_mcc": {
       "MonGamertag": {
-        "db_path":        "data/titles/halo_mcc/players/MonGamertag/stats.duckdb",
-        "xuid":           "2533274800000000",
+        "db_path":         "data/titles/halo_mcc/players/MonGamertag/stats.duckdb",
+        "xuid":            "2533274800000000",
         "waypoint_player": "MonGamertag"
       }
     }
@@ -158,54 +357,41 @@ Ajouter une entrée joueur dans la section du titre :
 }
 ```
 
-`cfg.LoadPlayers(titleSlug)` navigue directement vers `profiles[titleSlug]`, donc la
-clé **doit correspondre exactement** au slug enregistré à l'étape 1.
-
-Le sous-répertoire `players/<gamertag>/` et le fichier `stats.duckdb` sont créés
-automatiquement lors du premier sync du joueur via `RunPlayerMigrations`.
+`cfg.LoadPlayers(titleSlug)` navigue directement vers `profiles[titleSlug]`, donc la clé
+**doit correspondre exactement** au slug. Le sous-répertoire `players/<gamertag>/` et
+`stats.duckdb` sont créés automatiquement lors du premier sync du joueur.
 
 ---
 
-## Étape 4 — Démarrer le serveur
+## Étape 6 — Démarrer le serveur
 
-Au démarrage, `runMigrations` dans `cmd/server/main.go` exécute les migrations dans
-l'ordre suivant :
+Au démarrage :
 
-| Base de données             | Auto-créée ? | Notes                                                            |
-|-----------------------------|:------------:|------------------------------------------------------------------|
-| `metadata.duckdb`           | Oui          | `OpenReadWrite` crée le fichier si absent                        |
-| `shared_matches_v2.duckdb`  | Oui          | Idem                                                             |
-| `shared_social.duckdb`      | Oui          | Idem                                                             |
-| `shared_pve.duckdb`         | **Non**      | Les migrations ne s'appliquent que si le fichier existe (`os.Stat`) |
+1. `NewRegistryFromConfig` découvre `config/titles/<slug>/title.toml` et l'enregistre
+   (log `title_registered_from_config`).
+2. Les migrations de schéma s'exécutent par base. `OpenReadWrite` crée un fichier
+   `.duckdb` si le **répertoire parent existe** (d'où la nécessité que
+   `data/titles/<slug>/warehouse/` soit déjà présent — `add-title` le crée).
 
-Chaque migration est tracée dans une table `schema_migrations` à l'intérieur de la
-base cible. Une migration déjà appliquée **ne s'exécute jamais deux fois**
-(idempotence garantie).
+| Base de données            | Auto-créée ? | Notes                                              |
+|----------------------------|:------------:|----------------------------------------------------|
+| `metadata.duckdb`          | Oui          | `OpenReadWrite` crée le fichier si absent           |
+| `shared_matches_v2.duckdb` | Oui          | Idem                                               |
+| `shared_social.duckdb`     | Oui          | Idem                                               |
+| `shared_pve.duckdb`        | **Non**      | Migrations seulement si le fichier existe déjà      |
 
-### Support PvE / Firefight
+Les migrations sont tracées dans une table `schema_migrations` et idempotentes (jamais
+exécutées deux fois). `shared_pve.duckdb` est créé par `add-title` quand `firefight` est
+dans `--capabilities` ; pour le bootstrapper manuellement, ouvrez-le et fermez-le une fois
+pour que le fichier existe.
 
-`shared_pve.duckdb` est créé automatiquement par `add-title` si `firefight` est
-dans `--capabilities`. Si vous bootstrappez le titre manuellement :
+### Router les requêtes vers le nouveau titre
 
-```bash
-# Avec le CLI DuckDB
-duckdb data/titles/<slug>/warehouse/shared_pve.duckdb ".quit"
-```
-
-Le serveur appliquera les migrations PvE automatiquement au démarrage.
-
----
-
-## Étape 5 — Router les requêtes vers le nouveau titre
-
-Le middleware `TitleExtractor` résout le titre actif pour chaque requête API selon
-la priorité suivante :
+Le middleware `TitleExtractor` résout le titre actif par requête :
 
 1. **Header `X-LevelUp-Title`** — si le slug est enregistré, il est utilisé
 2. **Session courante** (`CurrentTitleSlug`) — persistée côté serveur
-3. **Fallback** — `halo_infinite` (slug par défaut)
-
-Pour cibler le nouveau titre depuis un client ou `curl` :
+3. **Fallback** — `halo_infinite`
 
 ```bash
 curl -H "X-LevelUp-Title: halo_mcc" \
@@ -213,15 +399,16 @@ curl -H "X-LevelUp-Title: halo_mcc" \
 ```
 
 Aucune modification de routeur n'est nécessaire — toutes les routes
-`/api/v1/players/{player_slug}/...` sont title-aware via le middleware et
-`ResolvePlayer`.
+`/api/v1/players/{player_slug}/...` sont title-aware. Note : un titre `active` sans
+adapter câblé (Étape 4) est résolu mais retourne `503 title_unavailable` sur les routes
+de données via `RequireActiveTitle`.
 
 ---
 
-## Étape 6 — Ajouter les images du hero banner
+## Étape 7 — Ajouter les images du hero banner
 
-`add-title` crée automatiquement le dossier `apps/web/public/titles/<slug>/`.
-Y déposer les visuels header du titre (`.webp` ou `.png`), puis les référencer dans
+`add-title` crée `apps/web/public/titles/<slug>/`. Y déposer les visuels header
+(`.webp` ou `.png`), puis les référencer dans
 `apps/web/src/features/home/HomeHeroBanner.tsx` dans `HEADER_IMAGES_BY_TITLE` :
 
 ```ts
@@ -234,23 +421,43 @@ const HEADER_IMAGES_BY_TITLE: Record<string, string[]> = {
 }
 ```
 
-Si aucune image n'est fournie, le banner ne s'affiche pas silencieusement (fallback tableau vide).
+Si aucune image n'est fournie, le banner ne s'affiche pas silencieusement (fallback
+tableau vide).
 
 ---
 
-## Étape 7 — (Optionnel) Pré-remplir les données de référence
+## Étape 8 — (Optionnel) Pré-remplir les données de référence
 
-`metadata.duckdb` contient les tables de référence (labels d'armes, rangs de
-carrière, noms de cartes, etc.). Pour un nouveau titre, ces tables démarrent vides.
+Les tables de référence de `metadata.duckdb` (labels d'armes, rangs de carrière, noms de
+cartes, etc.) démarrent vides pour un nouveau titre. L'alimentation dépend du titre —
+consulter les CLI d'ops disponibles (`apps/go-api/cmd/*`) et l'adapter du titre pour ce
+qu'il attend.
 
-L'alimentation de ces référentiels dépend du titre — consulter `scripts/` pour
-les importeurs disponibles et suivre la documentation propre à chaque jeu.
+---
+
+## Ce qui dégrade gracieusement via les capabilities
+
+Les capabilities font de la donnée manquante un état de premier ordre non fatal plutôt
+qu'une erreur :
+
+- Une méthode `Load*` d'un `TitleDataAdapter` retourne `ErrCapabilityNotSupported` quand
+  sa capability fine (Étape 2.B) n'est pas `supported`/`degraded`. Les callers traitent
+  cela comme un signal de dégradation, pas un échec.
+- Les capabilities coarse (Étape 2.A) gouvernent des surfaces produit entières. Exemples
+  observés dans le code : sans `season_pass` ⇒ l'onglet career/season-pass est masqué et
+  dégrade en `FeatureUnavailable` ; sans `world.leaderboard` ⇒ la page leaderboard
+  retourne un `200` vide ; sans `native_kill_mechanics` ⇒ le front masque les sections
+  assassinats / compétences spartiate.
+- Les manques sémantiques dégradent aussi : un `RankCatalog` vide ⇒ les consommateurs
+  affichent le `rank_id` brut ; `Assets()`/`Outcomes()` à `nil` ⇒ fallback gracieux.
+
+Déclarer uniquement ce que le titre sert réellement est donc la bonne façon de livrer une
+intégration incrémentale : démarrer `coming_soon` avec tout `not_exposed`, puis basculer
+les clés en `supported` à mesure que chaque méthode `Load*` est câblée.
 
 ---
 
 ## Checklist de validation
-
-Après avoir suivi les étapes ci-dessus, vérifier la configuration avec les commandes existantes :
 
 ```bash
 # Diagnostic global de l'intégrité des bases
@@ -260,33 +467,38 @@ levelup healthcheck
 levelup gate-check --gamertag MonGamertag
 ```
 
-Ou inspecter manuellement chaque point :
+Vérification manuelle :
 
-- [ ] `registry.Get("<slug>")` retourne un descripteur non-nil (rebuild effectué)
+- [ ] `config/titles/<slug>/title.toml` existe et est valide (boot log `title_registered_from_config`, pas `title_manifest_invalid`)
+- [ ] `registry.Get("<slug>")` retourne un descripteur non-nil
+- [ ] `config/titles/<slug>/mappings/{fields,assets,outcomes,capabilities}.toml` présents
 - [ ] `data/titles/<slug>/warehouse/` existe et contient les fichiers `.duckdb`
-- [ ] `db_profiles.json` a l'entrée correcte sous `profiles["<slug>"]`
-- [ ] Les tables `schema_migrations` sont remplies dans chaque base de données
-- [ ] `GET /api/v1/bootstrap` retourne le titre dans la liste `titles`
-- [ ] Une requête joueur avec `X-LevelUp-Title: <slug>` retourne HTTP 200
-- [ ] `apps/web/public/titles/<slug>/` existe et contient au moins une image header
-- [ ] `HEADER_IMAGES_BY_TITLE` dans `HomeHeroBanner.tsx` a une entrée pour `<slug>`
+- [ ] `db_profiles.json` a l'entrée sous `profiles["<slug>"]`
+- [ ] Les tables `schema_migrations` sont remplies dans chaque base
+- [ ] `GET /api/v1/bootstrap` liste le titre dans `titles`
+- [ ] Pour un titre `active` : une requête joueur avec `X-LevelUp-Title: <slug>` retourne `200` (ou `503` si l'adapter n'est pas encore câblé)
+- [ ] `apps/web/public/titles/<slug>/` contient au moins une image header référencée dans `HomeHeroBanner.tsx`
 
 ---
 
 ## Référence : résolution des chemins
 
-Tous les chemins d'un titre sont résolus par `title.NewPathResolver(repoRoot)` :
+Tous les chemins d'un titre sont résolus par `title.NewPathResolver(repoRoot)`
+(`internal/domain/title/registry.go`) :
 
-| Méthode                        | Chemin résolu                                           |
-|--------------------------------|---------------------------------------------------------|
-| `TitleDataDir(slug)`           | `data/titles/<slug>/`                                   |
-| `WarehouseDir(slug)`           | `data/titles/<slug>/warehouse/`                         |
-| `SharedDBPath(slug)`           | `…/warehouse/shared_matches_v2.duckdb`                  |
-| `MetadataDBPath(slug)`         | `…/warehouse/metadata.duckdb`                           |
-| `SharedPVEDBPath(slug)`        | `…/warehouse/shared_pve.duckdb`                         |
-| `SharedSocialDBPath(slug)`     | `…/warehouse/shared_social.duckdb`                      |
-| `PlayerDir(slug, gamertag)`    | `…/players/<gamertag>/`                                 |
-| `PlayerDBPath(slug, gamertag)` | `…/players/<gamertag>/stats.duckdb`                     |
+| Méthode                        | Chemin résolu                                |
+|--------------------------------|----------------------------------------------|
+| `TitleDataDir(slug)`           | `data/titles/<slug>/`                        |
+| `WarehouseDir(slug)`           | `data/titles/<slug>/warehouse/`              |
+| `SharedDBPath(slug)`           | `…/warehouse/shared_matches_v2.duckdb`       |
+| `MetadataDBPath(slug)`         | `…/warehouse/metadata.duckdb`                |
+| `SharedPVEDBPath(slug)`        | `…/warehouse/shared_pve.duckdb`              |
+| `SharedSocialDBPath(slug)`     | `…/warehouse/shared_social.duckdb`           |
+| `PlayerDir(slug, gamertag)`    | `…/players/<gamertag>/`                      |
+| `PlayerDBPath(slug, gamertag)` | `…/players/<gamertag>/stats.duckdb`          |
+| `GlobalXuidAliasesDBPath()`    | `data/global/xbox_aliases.duckdb` (global)   |
 
-Aucun `filepath.Join(repoRoot, "data", ...)` n'est autorisé en dehors de
-`PathResolver` — toujours utiliser ces méthodes.
+La base d'alias `xuid → gamertag` est **globale**, pas par titre (c'est une identité
+Microsoft/Xbox, indépendante du titre — [ADR 0008](../adr/0008-db-schema-multi-title-and-xuid-global.md)).
+Aucun `filepath.Join(repoRoot, "data", ...)` n'est autorisé hors de `PathResolver` —
+toujours utiliser ces méthodes.
