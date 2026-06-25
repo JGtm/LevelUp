@@ -296,7 +296,7 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 	}
 	// Étape 1 — COMPUTE (pur, aucune écriture). Sépare le calcul EP de la
 	// persistance pour pouvoir GATER l'avance du watermark sur le succès de
-	// l'écriture canonical (cf. canonicalGate puis étape 3).
+	// l'écriture canonical (cf. invariant durable-avant-progrès, durable_progress.go).
 	computed, err := computeMatchToSkillV2(ctx, c.repo, c.squadRepo, groupPriors, groupCountHyp, qt, m.matchID, group,
 		m.startTime, teamA, teamB, outcomeA, c.xuid, m.gameplayDurMs)
 	if err != nil {
@@ -306,60 +306,51 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 		return
 	}
 
-	// Étape 2 — WRITE CANONICAL (player DB) AVANT d'avancer le watermark.
-	// Le gate tient le watermark (et le groupe) si l'écriture échoue.
-	if !canonicalGate(ctx, c, m, group, computed, s, heldGroups) {
-		return
-	}
-
-	// Étape 3 — PERSIST état v2 (avance le watermark). Atteint uniquement si
-	// l'écriture canonical a réussi (ou en mode shadow-only non canonical).
-	if err := persistComputedMatchSkillV2(ctx, c.repo, computed, m.matchID, group, m.startTime, c.xuid, c.ownerOnlyPersist); err != nil {
-		slog.WarnContext(ctx, "LUSR v2 shadow: persist état échoué — watermark non avancé",
-			"match_id", m.matchID, "group", group, "err", err)
-		return
-	}
-	s.processed++
-}
-
-// canonicalGate exécute l'étape 2 (écriture de la ligne match_skill_rank) en mode
-// canonical, AVANT l'avance du watermark. Retourne true si l'on peut persister
-// l'état (étape 3), false s'il faut arrêter ce match.
-//
-// Fix désync 2026-06-07 : le watermark (player_skill_state_v2, SHARED) et la ligne
-// match_skill_rank (PLAYER DB) sont 2 écritures sur 2 bases. Avant ce fix, le
-// watermark avançait d'abord puis l'écriture canonical était best-effort APRÈS —
-// un échec (player DB momentanément fermée, etc.) laissait le match "déjà vu" SANS
-// ligne LUSR, à jamais (incident JGtm 03/06). On écrit donc d'abord ; sur échec on
-// NE persiste PAS (le caller return) ET on marque le groupe "tenu" (heldGroups)
-// pour que les matchs plus récents du groupe ne sautent pas par-dessus celui-ci.
-//
-// En mode shadow-only (non canonical), no-op : retourne true (persist direct).
-func canonicalGate(ctx context.Context, c shadowRunContext, m shadowMatch, group string,
-	computed shadowMatchComputed, s *shadowRunStats, heldGroups map[string]bool) bool {
-	if !c.canonical {
-		return true
-	}
-	if computed.ownerNew == nil {
-		// Cas dégénéré : owner participant mais absent des rosters 2-équipes
-		// (mismatch team_id). Aucune ligne LUSR n'est attendue pour lui → on NE
-		// tient PAS le groupe (un match plus récent pourra avancer par-dessus, ce
-		// cas se résout de lui-même). Anomalie data rendue VISIBLE (avant :
-		// silencieuse + watermark avancé → gap permanent invisible).
+	// Cas dégénéré (mode canonical) : owner participant mais absent des rosters
+	// 2-équipes (mismatch team_id) → aucune ligne LUSR attendue. PAS un échec
+	// d'écriture durable : on NE tient PAS le groupe (un match plus récent pourra
+	// avancer, le cas se résout seul). Anomalie data rendue VISIBLE.
+	if c.canonical && computed.ownerNew == nil {
 		canonicalOwnerMissing.Add(1)
 		slog.ErrorContext(ctx, "LUSR v2 canonical: owner absent des rosters — aucune ligne LUSR écrite (désync data)",
 			"match_id", m.matchID, "group", group, "xuid", c.xuid)
-		return false
+		return
 	}
-	if err := writeCanonicalLUSRRow(ctx, c.playerDB, m.matchID, *computed.ownerNew, computed.expectedWinProb, m.startTime, c.tierBoundaries); err != nil {
+
+	// Étapes 2+3 — invariant durable-avant-progrès (durable_progress.go) :
+	// WriteDurable = ligne canonical match_skill_rank (player DB ; no-op en
+	// shadow-only) ; AdvanceProgress = persist état v2 (avance le watermark
+	// player_skill_state_v2, shared). Sur échec durable : groupe tenu, watermark
+	// non avancé (fix désync 2026-06-07, incident JGtm 03/06).
+	outcome := CommitThenAdvance(ctx, heldGroups, DurableStep{
+		GroupKey: group,
+		WriteDurable: func(ctx context.Context) error {
+			if !c.canonical {
+				return nil // shadow-only : pas d'écriture canonical durable
+			}
+			return writeCanonicalLUSRRow(ctx, c.playerDB, m.matchID, *computed.ownerNew,
+				computed.expectedWinProb, m.startTime, c.tierBoundaries)
+		},
+		AdvanceProgress: func(ctx context.Context) error {
+			return persistComputedMatchSkillV2(ctx, c.repo, computed, m.matchID, group,
+				m.startTime, c.xuid, c.ownerOnlyPersist)
+		},
+	})
+	switch {
+	case outcome.Advanced:
+		s.processed++
+	case outcome.Held && outcome.Err != nil:
+		// Écriture canonical durable échouée → watermark tenu (groupe marqué par
+		// le helper), retry au prochain cycle.
 		canonicalWriteHeldWatermark.Add(1)
 		s.skippedWriteFailed++
-		heldGroups[group] = true
 		slog.WarnContext(ctx, "LUSR v2 canonical: write match_skill_rank échoué — watermark tenu (groupe), retry au prochain cycle",
-			"match_id", m.matchID, "group", group, "xuid", c.xuid, "err", err)
-		return false
+			"match_id", m.matchID, "group", group, "xuid", c.xuid, "err", outcome.Err)
+	case outcome.Err != nil:
+		// Avance du watermark échouée APRÈS écriture durable OK → retry idempotent.
+		slog.WarnContext(ctx, "LUSR v2 shadow: persist état échoué — watermark non avancé",
+			"match_id", m.matchID, "group", group, "err", outcome.Err)
 	}
-	return true
 }
 
 // resolveGroupParams retourne les Priors et CountHyperparams effectifs pour un
