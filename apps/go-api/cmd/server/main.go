@@ -632,19 +632,6 @@ func main() {
 	if cfg.AuthMode == "password" {
 		bootSvc = bootSvc.WithUserStoreEmpty(us.IsEmpty)
 	}
-	// Phase 1.5 PMT-2 leg 5 (store path cutover, MT-02) : copy-migration boot des tokens
-	// watcher depuis le legacy global (data/auth/watcher_tokens) vers le layout namespacé
-	// titre (data/titles/halo_infinite/auth/watcher_tokens). Non destructive (legacy préservé),
-	// idempotente (n'écrase pas un token déjà migré). AVANT toute création de store.
-	{
-		pr0 := title.NewPathResolver(cfg.RepoRoot)
-		if n, mErr := auth.MigrateWatcherTokens(pr0.LegacyWatcherTokensDir(), pr0.WatcherTokensDir()); mErr != nil {
-			slog.Warn("boot: copy-migration tokens watcher échouée (legacy préservé, non bloquant)", "err", mErr)
-		} else if n > 0 {
-			slog.Info("boot: tokens watcher migrés vers le layout namespacé titre", "copied", n)
-		}
-	}
-
 	// Groupes/familles (accès mutuel aux données, ADR 0029 multi-groupes). Le set
 	// co-membres pilote le filtrage ownership (available_players) et le switch de BDD.
 	groupStore := groupstore.NewGroupStore(filepath.Join(cfg.AuthDir, "groups.json"))
@@ -654,7 +641,7 @@ func main() {
 	})
 
 	// PR-B : expose reauth_required (refresh_token mort) du joueur courant au front.
-	// Lecture par-xuid dans le MultiUserTokenStore (data/titles/halo_infinite/auth/watcher_tokens/{xuid}.json).
+	// Lecture par-xuid dans le MultiUserTokenStore (data/auth/watcher_tokens/{xuid}.json).
 	reauthStore := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
 	bootSvc = bootSvc.WithReauthChecker(reauthStore.IsReauthRequired)
 
