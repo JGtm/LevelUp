@@ -303,6 +303,8 @@ export const commonManifest = {
   "common.prestige.three_challenges_catalog": { fr: "3 objectifs tirés du catalogue, à accepter directement.", en: "3 objectives from the catalog, ready to accept." },
   "common.prestige.top_metrics": { fr: "Top métriques travaillées", en: "Top worked metrics" },
   "common.prestige.win_rate_pct": { fr: "Taux de victoire (%)", en: "Win rate (%)" },
+  "common.reauth.action": { fr: "Rafraîchir", en: "Refresh" },
+  "common.reauth.message": { fr: "Ta connexion Xbox a expiré — la synchronisation de tes données est en pause.", en: "Your Xbox connection has expired — data sync is paused." },
   "common.replay.back_to_match": { fr: "← Retour au match", en: "← Back to match" },
   "common.replay.in_development": { fr: "Le rejouer le match en 2D est en cours de développement.", en: "The 2D match replay is under development." },
   "common.root.api_check_server_prefix": { fr: "Vérifiez que le serveur Go est démarré (", en: "Make sure the Go server is running (" },

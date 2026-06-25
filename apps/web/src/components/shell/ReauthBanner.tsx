@@ -4,23 +4,23 @@
  * Affichée en tête de l'AppShell quand le refresh_token Microsoft du joueur
  * courant est mort (bootstrap.reauth_required, cf. PR-B slice 1). Le refresh des
  * données s'est arrêté ; l'utilisateur doit re-passer le SSO Xbox pour re-semer
- * des tokens valides. Une ré-auth réussie remet reauth_required à false → la
- * bannière disparaît au prochain bootstrap.
+ * des tokens valides. Le flag reauth_required est remis à false dès qu'un
+ * refresh par-joueur réussit (auto-guérison, cf. registry_auth.go) ou après une
+ * ré-auth interactive → la bannière disparaît au prochain bootstrap, re-fetché
+ * au retour sur l'onglet (refetchOnWindowFocus, cf. __root.tsx).
  */
 import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { API_BASE_URL } from '@/lib/api/client'
-
-// Textes FR rendus en expression (pas en littéral JSX) pour rester i18n-lint-clean
-// tant qu'aucune clé manifest n'existe (cohérent avec les autres écrans auth).
-const REAUTH_MESSAGE = 'Ta connexion Xbox a expiré — la synchronisation de tes données est en pause.'
-const REAUTH_ACTION = 'Reconnecter'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
 
 export function ReauthBanner() {
   const navigate = useNavigate()
   const reauthRequired = useAppShellStore((s) => s.reauthRequired)
   const oauthCodeFlowEnabled = useAppShellStore((s) => s.oauthCodeFlowEnabled)
+  const locale = useAppShellStore((s) => s.locale)
 
   if (!reauthRequired) return null
 
@@ -39,9 +39,9 @@ export function ReauthBanner() {
       role="alert"
       className="flex items-center justify-between gap-3 border-b border-warning/40 bg-warning/10 px-4 py-2 text-sm text-warning"
     >
-      <span>{REAUTH_MESSAGE}</span>
+      <span>{formatMessage(commonManifest, 'common.reauth.message', locale)}</span>
       <Button size="sm" variant="outline" onClick={handleReconnect} className="shrink-0">
-        {REAUTH_ACTION}
+        {formatMessage(commonManifest, 'common.reauth.action', locale)}
       </Button>
     </div>
   )

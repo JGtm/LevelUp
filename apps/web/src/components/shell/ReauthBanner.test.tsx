@@ -15,7 +15,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 
 describe('ReauthBanner', () => {
   afterEach(() => {
-    useAppShellStore.setState({ reauthRequired: false, oauthCodeFlowEnabled: false })
+    useAppShellStore.setState({ reauthRequired: false, oauthCodeFlowEnabled: false, locale: 'fr' })
     navigateMock.mockReset()
   })
 
@@ -30,13 +30,20 @@ describe('ReauthBanner', () => {
     renderWithProviders(<ReauthBanner />)
     expect(screen.getByRole('alert')).toBeInTheDocument()
     expect(screen.getByText(/connexion Xbox a expiré/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Reconnecter/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Rafraîchir/i })).toBeInTheDocument()
+  })
+
+  it('rend le message et le bouton en anglais quand locale=en', () => {
+    useAppShellStore.setState({ reauthRequired: true, locale: 'en' })
+    renderWithProviders(<ReauthBanner />)
+    expect(screen.getByText(/Your Xbox connection has expired/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Refresh/i })).toBeInTheDocument()
   })
 
   it('device mode (pas de redirect) : le bouton navigue vers /login', () => {
     useAppShellStore.setState({ reauthRequired: true, oauthCodeFlowEnabled: false })
     renderWithProviders(<ReauthBanner />)
-    fireEvent.click(screen.getByRole('button', { name: /Reconnecter/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Rafraîchir/i }))
     expect(navigateMock).toHaveBeenCalledWith({ to: '/login' })
   })
 })
