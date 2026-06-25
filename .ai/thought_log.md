@@ -1,3 +1,11 @@
+## [2026-06-25] Phase 1.b (invariant durable-avant-progrès nommé + testé) + fix dette fixtures — COMPLÉTÉ
+
+**Décision technique** : extraction du pattern `canonicalGate` (LUSR v2) en helper nommé réutilisable `CommitThenAdvance` (`internal/sync/durable_progress.go`) + test unitaire pur 4 cas (`durable_progress_test.go`, sans DB). `processOneShadowMatch` refactoré pour router étapes 2+3 via le helper ; `canonicalGate` supprimé. Comportement STRICTEMENT identique — prouvé par les 2 tests e2e oracle existants (`TestRunLUSRV2Shadow_Canonical_WriteFailHoldsWatermark` / `_HeldGroupSkipsLaterMatches`) : skip-buckets `skipped_write_failed`/`skipped_group_held`/`processed` préservés, anti-gap heldGroups préservé. `go vet` clean.
+
+**Dette pré-existante corrigée** (confirmée sur la base SANS mes changements) : 3 fixtures de test créaient `match_registry` sans colonne `start_time_utc` alors que `loadLUSRMatchData` (v1) l'interroge via le pattern TZ canonique `COALESCE(mr.start_time_utc, mr.start_time)` → Binder Error. Fix : ajout colonne `start_time_utc TIMESTAMPTZ` aux fixtures (`skill_rating_loaders_test.go` partagée openLUSRDB, `recompute_after_art_rebuild_test.go`) + valeur `NULL` ajoutée aux INSERT positionnels concernés (loaders ×3, dryrun ×3 lignes). Zone LUSR/Shadow/ART/Recompute/dryrun entièrement verte.
+
+**Prochaine étape** : Phase 2 — producteur de snapshot immuable versionné (cf. `PLAN_DURABILITE_SNAPSHOT_IMMUABLE.md` §3). Le déploiement prod (pour mesurer Phase 0 + activer la lecture snapshot) reste une décision utilisateur (downtime).
+
 ## [2026-06-25] Implémentation Phase 0 (instrumentation stall B-swap) + correction de cap (1.a fantôme, 1.b descopé) — Phase 0 COMPLÉTÉ
 
 **Contexte** : suite au plan `.ai/PLAN_DURABILITE_SNAPSHOT_IMMUABLE.md`, passe d'implémentation en worktree dédié (`refactor/durabilite-snapshot-immuable`) sous ultracode. Conception verrouillée par un swarm design+vérif-adversariale (9 agents) AVANT d'écrire le code — ce qui a payé immédiatement.
