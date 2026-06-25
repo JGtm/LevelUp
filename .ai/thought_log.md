@@ -1,3 +1,15 @@
+## [2026-06-25] H5 — Étape observable RÉSOLUE : progression V2 peuplée pour les 4 joueurs — Complété
+
+Le « blocage d'activation » démystifié : `config/titles/halo_5/` (title.toml + mappings + milestones) n'existe QUE sur la branche feat, PAS sur main. Le registre runtime (`LoadTitlesIntoRegistry`) enregistre tout titre ayant un title.toml valide — AUCUN filtre de statut. Mon serveur local lisait la config du repo principal (sur `main`, sans halo_5) → titre inconnu → header `X-LevelUp-Title: halo_5` ignoré → fallback HINF. Rien de mystérieux, juste la config absente de l'endroit où le serveur lit.
+
+DÉMONTRÉ en rendant la config H5 visible localement (copie temp config/titles/halo_5 dans le repo principal, retirée après) + db_profiles.halo_5 complété (3 joueurs manquants ajoutés : seul JGtm y était). Résultat backfill progression V2 ciblant H5 (PREUVE par mtime : player DB H5 modifiés ; milestone_catalog metadata H5 = 14 lignes 100% halo_5 = mon fix C5 validé live) :
+- JGtm 13 / Chocoboflor 12 / Madina97294 12 / XxDaemonGamerxX 4 milestones gagnés (persistés, vérifiés post-shutdown via diag_exec).
+- streaks/records = 0 : NORMAL, pas un bug. `loadProgressionSharedMatches` filtre `start_time >= now - ProgressionMatchHistoryDays(120j)` ; H5 est dormant (matchs vieux) → 0 match dans la fenêtre → 0 streak/record d'activité récente. Les milestones (cumul à vie) passent.
+
+VRAI FIX PERMANENT = merger feat→main (la config H5 arrive sur main → le serveur prod/local register halo_5 → endpoint + UI title-aware fonctionnent). db_profiles.json (runtime, non-versionné, repo principal) complété à 4 joueurs halo_5 — gardé (forward-compatible). Nettoyage : config temp retirée, app_settings restauré, binaire/logs supprimés.
+
+PIÈGE OPÉRATIONNEL : ne pas force-kill le serveur entre deux backfills d'un même joueur (lock DuckDB « different configuration » résiduel — JGtm a échoué au re-run pour ça, mais sa data du run précédent était déjà écrite). Et toujours vérifier le FICHIER ciblé (mtime/wal), pas juste le count HTTP.
+
 ## [2026-06-24] H5 — Étape observable : 2 bugs découverts (1 corrigé : milestone_catalog H5) — En cours
 
 Tentative de déclenchement du backfill progression V2 observable (4 joueurs H5) via le serveur local (auto-sync désactivé temporairement, restauré). RÉSULTAT : les 4 backfills ont retourné des counts NON-NULS (streaks/records/milestones) MAIS le re-check post-kill a révélé que ça avait tourné contre **HINF**, pas H5 :
