@@ -29608,3 +29608,31 @@ pour un backfill profond. Factorisé : `capturePage` partagé + 2 entrées — `
 (pagination 3 pages puis stop ; skip-known + paginate-deeper). ART-safe (INSERT-only via
 SharedPersister). **Prochaine étape** : lancer le full backfill JGtm (2016-2019) pour couvrir
 toutes les captures media.
+
+## [2026-06-25] Revue documentaire + tri docs/ et .ai/ (hors archive/V7) — Complété
+
+**Statut** : Complété (tri exécuté). Branche `chore/doc-triage-v7`.
+
+**Décision** : 95 fichiers (`.ai/` hors archive/V7 + `docs/`) classés via 2 workflows ultracode
+(classification par groupe + vérif des références entrantes) puis consolidation manuelle. Critère :
+LIVRÉ/OBSOLÈTE/SUPERSEDED → `.ai/V7/` ; sujet pertinent mais implémentation Python/v5 morte →
+REPLACE (réécriture Go) ; aucune suppression nette (au doute, V7 plutôt que delete).
+
+**Résultats observés** :
+- **18 fichiers déplacés vers `.ai/V7/`** (+ les 17 handoffs/plans H5 déjà en cours d'archivage) :
+  9 maquettes HTML livrées (`V7/mocks/`), `PLAN_WEAPON_FAMILY_CANONICAL` (superseded par
+  `PLAN_WEAPON_TAXONOMY`), `PME_APPENDONLY_EDIT_LIST` (livré), `START_HERE` + `v5-baseline-audit`
+  (archive v5), `PLAYER_INDEX_FIRE-EVENTS_RESOLUTION` (superseded), `docs/BASCULE_GO` (cutover fait),
+  `docs/FR/TESTING_V5` (orphelin), + `PLAN_COMBAT_PROFILE_RECALIBRATION` (déployé `e1f021cbb`) et
+  `PLAN_DEPENDABOT_TAMING` (déployé, dependabot vague 2 sur main).
+- **21 docs identifiés REPLACE** (code mort Python/Streamlit, sujet vivant) : 7 paires EN/FR
+  (BACKUP_RESTORE, COMMANDS, CONFIGURATION, CONTRIBUTING, FAQ, SYNC_GUIDE, WEAPONS) + EN seuls
+  (DOPPLER_SETUP, COMMENDATIONS(_REFERENCE), INSTALL, README_FR, SYNC_CALL_TREE) + FR/CITATIONS.
+  Attention : ces fichiers sont liés depuis README.md (EN) et docs/FR/README.md → réécriture
+  IN-PLACE (noms + ancres préservés). `CONFIGURATION` contredit l'ADR 0023 (token store).
+- **ADR** : 3 collisions de numéro (0020/0021/0024 ×2), H1 erroné sur 0022, 11 ADR hors index
+  CLAUDE.md → correction.
+- KEEP : ADR, catalogues, research actifs, runbook, baselines CI, charts_specs, journaux vivants.
+
+**Prochaine étape** : réécriture docs prioritaires (CONFIGURATION/SYNC_GUIDE/INSTALL/CONTRIBUTING
+EN+FR) + renumérotation ADR + maj index CLAUDE.md.
