@@ -133,6 +133,7 @@ type PostSyncResult struct {
 	DominanceFlagsComputed   int   `json:"dominance_flags_computed"`   // matchs traités par le pipeline post-sync (étape 1.7 dominance_flag)
 	ConvergedEvents          int   `json:"converged_events"`           // matchs rattrapés par la convergence events (étape 1.54)
 	ConvergedPSA             int   `json:"converged_psa"`              // matchs rattrapés par la convergence PSA (étape 1.56)
+	SnapshotReadyMarked      int   `json:"snapshot_ready_marked"`      // matchs marqués snapshot_ready_at (étape 6 readiness, Phase 2)
 
 	// Chronométrage du pipeline (dashboard monitoring P4) : durée totale +
 	// durée par étape (timeline + détection des goulots). Renseigné par
