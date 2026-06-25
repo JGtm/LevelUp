@@ -85,6 +85,33 @@ func TestRegistry_Default(t *testing.T) {
 	}
 }
 
+// TestRegistry_PublicTitles : la vue SWITCHER UTILISATEUR exclut archived ET
+// internal (fixtures de test type synthetic_title_b), tout en gardant les
+// coming_soon non-internes. Garde-fou contre la fuite de fixture en prod.
+func TestRegistry_PublicTitles(t *testing.T) {
+	r := NewRegistry() // seed halo_infinite (active, non-internal)
+	r.Register(&TitleDescriptor{Slug: "soon", Name: "Soon", Status: StatusComingSoon})
+	r.Register(&TitleDescriptor{Slug: "old", Name: "Old", Status: StatusArchived})
+	r.Register(&TitleDescriptor{Slug: "fixture", Name: "Fixture", Status: StatusComingSoon, IsInternal: true})
+
+	got := map[string]bool{}
+	for _, d := range r.PublicTitles() {
+		got[d.Slug] = true
+	}
+	if !got[DefaultSlug] {
+		t.Errorf("PublicTitles doit inclure l'actif par défaut %q", DefaultSlug)
+	}
+	if !got["soon"] {
+		t.Error("PublicTitles doit inclure un coming_soon NON interne")
+	}
+	if got["old"] {
+		t.Error("PublicTitles ne doit PAS inclure un archived")
+	}
+	if got["fixture"] {
+		t.Error("PublicTitles ne doit PAS inclure un titre interne (IsInternal)")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // PathResolver — chemins title-aware
 // ---------------------------------------------------------------------------

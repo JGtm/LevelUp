@@ -66,6 +66,12 @@ type TitleDescriptor struct {
 	Capabilities []Capability `json:"capabilities"`
 	IsDefault    bool         `json:"is_default"` // halo_infinite = true
 
+	// IsInternal marque un titre INTERNE/TEST (fixture multi-titre comme
+	// synthetic_title_b) : découvert + enregistré + inspectable côté admin, mais
+	// JAMAIS exposé dans le switcher utilisateur (cf. PublicTitles). Évite qu'une
+	// fixture de test « fuite » dans l'UI prod. Défaut false (vrai titre).
+	IsInternal bool `json:"is_internal"`
+
 	// Identifiants plateforme pour le matching de présence (watcher)
 	XboxTitleID string `json:"xbox_title_id"` // ex: "1144039928" pour Halo Infinite
 	SteamAppID  string `json:"steam_app_id"`  // ex: "1336960" pour Halo Infinite (Steam)
@@ -269,6 +275,24 @@ func (r *Registry) NonArchived() []*TitleDescriptor {
 		if t.Status != StatusArchived {
 			out = append(out, t)
 		}
+	}
+	return out
+}
+
+// PublicTitles retourne les titres exposables dans le SWITCHER UTILISATEUR :
+// exclut les archived (titres retirés) ET les internal (fixtures de test comme
+// synthetic_title_b). C'est la vue user-facing — par opposition à NonArchived
+// (qui inclut les internes) et All (admin). Conserve les coming_soon non-internes
+// (badge « bientôt ») et leur Status. Cf. buildAvailableTitlesFrom.
+func (r *Registry) PublicTitles() []*TitleDescriptor {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*TitleDescriptor, 0, len(r.titles))
+	for _, t := range r.titles {
+		if t.Status == StatusArchived || t.IsInternal {
+			continue
+		}
+		out = append(out, t)
 	}
 	return out
 }

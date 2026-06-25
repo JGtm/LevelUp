@@ -461,9 +461,10 @@ func BuildAvailableTitles() []domain.TitleSummary {
 func buildAvailableTitlesFrom(reg *titlePkg.Registry) []domain.TitleSummary {
 	// MT-22 (PMT-8) : le switcher liste les titres jouables (active) ET ceux
 	// « bientôt disponibles » (coming_soon), en conservant leur Status pour que
-	// le front affiche l'état. Seuls les titres retirés (archived) sont exclus.
-	// Les archived restent inspectables côté admin (/admin/titles).
-	all := reg.NonArchived()
+	// le front affiche l'état. Exclus : les retirés (archived) ET les internes
+	// (fixtures de test comme synthetic_title_b — cf. IsInternal). Tous deux
+	// restent inspectables côté admin (/admin/titles via reg.All/NonArchived).
+	all := reg.PublicTitles()
 	out := make([]domain.TitleSummary, 0, len(all))
 	for _, t := range all {
 		caps := make([]string, len(t.Capabilities))
