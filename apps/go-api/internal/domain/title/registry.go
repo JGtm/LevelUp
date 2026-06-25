@@ -347,6 +347,28 @@ func (p *PathResolver) SharedDBPath(titleSlug string) string {
 	return filepath.Join(p.WarehouseDir(titleSlug), "shared_matches_v2.duckdb")
 }
 
+// SnapshotsDir retourne le répertoire racine des snapshots Parquet immuables
+// d'un titre (durabilité / lecture découplée des écritures, Phase 2).
+// Ex: data/titles/halo_infinite/warehouse/snapshots/
+func (p *PathResolver) SnapshotsDir(titleSlug string) string {
+	return filepath.Join(p.WarehouseDir(titleSlug), "snapshots")
+}
+
+// SnapshotVersionDir retourne le répertoire d'une version de snapshot. Le nom
+// est zéro-paddé pour que l'ordre lexicographique du système de fichiers
+// coïncide avec l'ordre chronologique des versions.
+// Ex: data/titles/halo_infinite/warehouse/snapshots/v00000000000000000042/
+func (p *PathResolver) SnapshotVersionDir(titleSlug string, version int64) string {
+	return filepath.Join(p.SnapshotsDir(titleSlug), fmt.Sprintf("v%020d", version))
+}
+
+// SnapshotCurrentManifestPath retourne le chemin du pointeur atomique CURRENT
+// désignant la version de snapshot active (flip via os.Rename).
+// Ex: data/titles/halo_infinite/warehouse/snapshots/CURRENT.json
+func (p *PathResolver) SnapshotCurrentManifestPath(titleSlug string) string {
+	return filepath.Join(p.SnapshotsDir(titleSlug), "CURRENT.json")
+}
+
 // GlobalXuidAliasesDBPath retourne le chemin de la base globale xbox aliases
 // (P5.1, ADR 0008). Le mapping xuid → gamertag est un identifiant Microsoft
 // (Xbox Services) qui ne dépend pas du titre — donc DB globale partagée
