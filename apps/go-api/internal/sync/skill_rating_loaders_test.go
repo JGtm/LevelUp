@@ -22,6 +22,7 @@ func openLUSRDB(t *testing.T) *sql.DB {
 		CREATE TABLE match_registry (
 			match_id VARCHAR PRIMARY KEY,
 			start_time TIMESTAMPTZ,
+			start_time_utc TIMESTAMPTZ,
 			playlist_name VARCHAR,
 			pair_name VARCHAR,
 			is_ranked BOOLEAN DEFAULT FALSE,
@@ -88,7 +89,7 @@ func TestLoadLUSRMatchData_Empty(t *testing.T) {
 func TestLoadLUSRMatchData_WithData(t *testing.T) {
 	db := openLUSRDB(t)
 	db.Exec(`INSERT INTO match_registry VALUES
-		('m1', '2025-01-01 10:00:00'::TIMESTAMPTZ, 'Ranked Arena', 'Slayer', FALSE, FALSE, 600)`)
+		('m1', '2025-01-01 10:00:00'::TIMESTAMPTZ, NULL, 'Ranked Arena', 'Slayer', FALSE, FALSE, 600)`)
 	db.Exec(`INSERT INTO match_participants (match_id, xuid, outcome, kills, deaths, assists, kills_expected, deaths_expected, damage_dealt, damage_taken, accuracy, team_id) VALUES
 		('m1', 'xuid1', 2, 15, 5, 3, 12.0, 6.0, 3000.0, 1500.0, 0.55, 0)`)
 
@@ -107,7 +108,7 @@ func TestLoadLUSRMatchData_WithData(t *testing.T) {
 func TestLoadLUSRMatchData_FiltersRanked(t *testing.T) {
 	db := openLUSRDB(t)
 	db.Exec(`INSERT INTO match_registry VALUES
-		('m1', '2025-01-01 10:00:00'::TIMESTAMPTZ, 'Ranked', 'Slayer', TRUE, FALSE, 600)`)
+		('m1', '2025-01-01 10:00:00'::TIMESTAMPTZ, NULL, 'Ranked', 'Slayer', TRUE, FALSE, 600)`)
 	db.Exec(`INSERT INTO match_participants (match_id, xuid, outcome, kills, deaths, assists, kills_expected, deaths_expected, damage_dealt, damage_taken, accuracy, team_id) VALUES
 		('m1', 'xuid1', 2, 10, 5, 2, 10.0, 5.0, 2000.0, 1000.0, 0.5, 0)`)
 
@@ -352,7 +353,7 @@ func TestUpsertLUSR_CounterReflectsOnlyRealWrites(t *testing.T) {
 func TestBatchComputeLUSR_ForceMode_PreservesCSR(t *testing.T) {
 	db := openLUSRDB(t)
 	if _, err := db.Exec(`INSERT INTO match_registry VALUES
-		('m1', '2025-01-01 10:00:00'::TIMESTAMPTZ, 'Arena Slayer', 'Slayer', FALSE, FALSE, 600)`); err != nil {
+		('m1', '2025-01-01 10:00:00'::TIMESTAMPTZ, NULL, 'Arena Slayer', 'Slayer', FALSE, FALSE, 600)`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.Exec(`INSERT INTO match_participants
