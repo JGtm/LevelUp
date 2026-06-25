@@ -129,6 +129,50 @@ func TestComputeKPIsFromCanonical_RendementAlignedAndDistinct(t *testing.T) {
 	}
 }
 
+// TestComputeKPIsFromCanonical_OffensiveConversionDecoupledFromDamageTaken :
+// régression H5. Avec DamageDealt présent mais DamageTaken == nil (Halo 5 n'a
+// pas de damage_taken), AvgOffensiveConversion doit être calculé (> 0) tandis que
+// AvgDefensiveResistance reste nil (pas de DR fabriquée).
+func TestComputeKPIsFromCanonical_OffensiveConversionDecoupledFromDamageTaken(t *testing.T) {
+	t.Parallel()
+	kills, assists, deaths, dmgDealt := 10, 4, 6, 1500
+	rows := []canonical.PlayerMatchRow{
+		{
+			Self: canonical.MatchParticipant{
+				Outcome:     canonical.OutcomeWin,
+				Kills:       &kills,
+				Assists:     &assists,
+				Deaths:      &deaths,
+				DamageDealt: &dmgDealt,
+				DamageTaken: nil, // Halo 5 : pas de damage_taken
+			},
+		},
+	}
+	got := ComputeKPIsFromCanonical(rows, len(rows), "fr", 225)
+	if got.AvgOffensiveConversion == nil || *got.AvgOffensiveConversion <= 0 {
+		t.Errorf("AvgOffensiveConversion: want non-nil > 0 (DamageDealt présent), got %v", got.AvgOffensiveConversion)
+	}
+	if got.AvgDefensiveResistance != nil {
+		t.Errorf("AvgDefensiveResistance: want nil (pas de DamageTaken → pas de DR fabriquée), got %v", *got.AvgDefensiveResistance)
+	}
+}
+
+// TestComputeKPIsFromCanonical_BothDamageFieldsSetYieldsBothKPIs : garde-fou Halo
+// Infinite — DamageDealt ET DamageTaken présents → les deux KPIs sont calculés.
+func TestComputeKPIsFromCanonical_BothDamageFieldsSetYieldsBothKPIs(t *testing.T) {
+	t.Parallel()
+	rows := []canonical.PlayerMatchRow{
+		mkRowWithDamage(10, 4, 6, 1500, 1800),
+	}
+	got := ComputeKPIsFromCanonical(rows, len(rows), "fr", 225)
+	if got.AvgOffensiveConversion == nil || *got.AvgOffensiveConversion <= 0 {
+		t.Errorf("AvgOffensiveConversion: want non-nil > 0, got %v", got.AvgOffensiveConversion)
+	}
+	if got.AvgDefensiveResistance == nil || *got.AvgDefensiveResistance <= 0 {
+		t.Errorf("AvgDefensiveResistance: want non-nil > 0 (DamageTaken présent), got %v", got.AvgDefensiveResistance)
+	}
+}
+
 // TestHomeMatchRowFromCanonical_RoundtripFields garantit que les champs clÃ©s
 // (kills/deaths/outcome/ratio/KDA) survivent Ã  la conversion canonical â†’ HomeMatchRow.
 func TestHomeMatchRowFromCanonical_RoundtripFields(t *testing.T) {

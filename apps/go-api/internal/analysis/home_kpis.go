@@ -58,8 +58,19 @@ func ComputeKPIs(matches []legacymatch.HomeMatchRow, totalMatches int, effective
 		if m.TimePlayedSecs != nil {
 			totalPlaytime += *m.TimePlayedSecs
 		}
-		if m.DamageDealt != nil && m.DamageTaken != nil {
-			cy := ComputeCombatYield(m.Kills, m.Assists, *m.DamageDealt, *m.DamageTaken, m.Deaths, effectiveHpToKill)
+		// Découplage offensif/défensif : l'offensive conversion ne dépend QUE de
+		// damage_dealt (kills+assists/dégâts infligés) ; la résistance défensive,
+		// QUE de damage_taken. Coupler les deux derrière `damage_taken != nil`
+		// privait les titres sans damage_taken (ex. Halo 5, no_damage_taken) de
+		// tout rendement offensif alors que la donnée existe. On calcule donc l'OC
+		// dès que damage_dealt est présent ; la DR ne contribue que si damage_taken
+		// est présent (dmgTkn=0 → ComputeCombatYield laisse DefensiveResistance à 0).
+		if m.DamageDealt != nil {
+			var dmgTkn float64
+			if m.DamageTaken != nil {
+				dmgTkn = *m.DamageTaken
+			}
+			cy := ComputeCombatYield(m.Kills, m.Assists, *m.DamageDealt, dmgTkn, m.Deaths, effectiveHpToKill)
 			if cy.OffensiveConversion > 0 {
 				offSum += cy.OffensiveConversion
 				offCount++

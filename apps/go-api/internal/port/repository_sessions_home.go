@@ -107,6 +107,13 @@ type HomeRepository interface {
 	// Retourne un map match_id → []HomeMatchCitationRaw. Dégradation silencieuse.
 	LoadMatchCitations(ctx context.Context, matchIDs []string) (map[string][]domain.HomeMatchCitationRaw, error)
 
+	// LoadMatchCommendations charge les commendations NATIVES gagnées sur un lot de
+	// matchs (Halo 5 : shared.match_commendations ⨝ commendation_definitions). Retourne
+	// un map match_id → top commendations (count DESC). Dégradation silencieuse (table
+	// absente / titre sans commendations natives → map vide). Sert le slot TopCitations
+	// de la MatchCard pour les titres sans moteur de citations dérivé.
+	LoadMatchCommendations(ctx context.Context, matchIDs []string) (map[string][]domain.HomeMatchCommendationRaw, error)
+
 	// LoadFavoriteWeapon retourne le nom localisé et les kills totaux de l'arme favorite (Q26k).
 	// Dégradation silencieuse : retourne ("", 0, nil) si aucune donnée.
 	LoadFavoriteWeapon(ctx context.Context, locale string) (string, int, error)
@@ -142,6 +149,10 @@ func (n *noopHomeRepo) LoadMatchMedals(_ context.Context, _ []string) (map[strin
 
 func (n *noopHomeRepo) LoadMatchCitations(_ context.Context, _ []string) (map[string][]domain.HomeMatchCitationRaw, error) {
 	return map[string][]domain.HomeMatchCitationRaw{}, nil
+}
+
+func (n *noopHomeRepo) LoadMatchCommendations(_ context.Context, _ []string) (map[string][]domain.HomeMatchCommendationRaw, error) {
+	return map[string][]domain.HomeMatchCommendationRaw{}, nil
 }
 
 func (n *noopHomeRepo) LoadFavoriteWeapon(_ context.Context, _ string) (string, int, error) {

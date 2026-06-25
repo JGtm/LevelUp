@@ -4,19 +4,48 @@
 # Chargé par classification.LoadSetClassifier ; injecté dans l'adapter h5 à
 # l'activation (cf. .ai/HANDOFF_H5_RANKED_CLASSIFICATION.md §5).
 #
-# ⚠ LISTES VIDES À DESSEIN tant que la liste AUTORITATIVE des HopperIds classés
-# Halo 5 n'est pas récupérée (handoff §4 : source HaloDotAPI/Grunt OU endpoint
-# skill GetPlaylistCsr — JAMAIS dérivée des parties). Set vide → le classifier
-# renvoie « indéterminé » (nil) → MatchSummary.IsRanked reste nil (conservateur,
-# ne minte jamais un faux CSR). Remplir ces listes = activer la classif, ZERO code.
+# Sémantique (cf. classification.SetClassifier) : le set est réputé EXHAUSTIF —
+# un HopperId présent = classé (&true), absent = non-classé (&false).
 #
-# Sémantique une fois peuplé (cf. classification.SetClassifier) : le set est réputé
-# EXHAUSTIF — un HopperId présent = classé (&true), absent = non-classé (&false).
+# PEUPLÉ le 2026-06-25 depuis la SOURCE AUTORITATIVE : table `playlists` (champ
+# officiel `isRanked`) de metadata.duckdb, elle-même seedée par `cmd/h5-metadata-fetch`
+# depuis l'API Metadata OFFICIELLE Halo 5 (www.haloapi.com/metadata/h5/metadata/playlists).
+# JAMAIS dérivé des parties. Pour H5, HopperId == playlist UUID (cf. mapping.go:
+# `assetRef("playlist", r.HopperId)`), donc ces UUID sont directement les hopper_ids.
+# Halo 5 = jeu figé → liste stable. Régénérer : `SELECT id, name FROM playlists
+# WHERE is_ranked = true` sur le metadata.duckdb H5 après un h5-metadata-fetch.
+#
+# NB : ceci active la classification du chemin LIVE (sync futur). La reclassification
+# des matchs DÉJÀ importés (match_registry.is_ranked) reste un backfill séparé.
 
 schema_version = 1
 
-# HopperIds des playlists CLASSEES (Arena ranked Halo 5). Pilote IsRanked.
-ranked_hopper_ids = []
+# HopperIds (= playlist UUID) des playlists CLASSEES (Arena ranked Halo 5). Pilote IsRanked.
+# 22 playlists classées (source officielle, 2026-06-25).
+ranked_hopper_ids = [
+  "7d887cd3-61e0-4f1f-8c26-b4246c9f30d7", # 2v2 Competitive
+  "0bcf2be1-3168-4e42-9fb5-3551d7dbce77", # Big Team Battle
+  "16d94594-8ec6-4c02-8ab0-e98106ef131f", # Big Team Battle
+  "f72e0ef0-7c4a-4307-af78-8e38dac3fdba", # Breakout
+  "d3bfda9f-14c2-44bc-9068-d3403bd5a059", # Doubles
+  "aba6fbcb-9a2a-445a-b1d6-373fb2eb6a82", # Elimination
+  "7b7e892c-d9b7-4b03-bef8-c6a071df28ef", # Free-for-All
+  "d0766624-dbd7-4536-ba39-2d890a6143a9", # Free-for-All
+  "5c9808b0-03a3-4577-b966-7217f9dda52d", # HCS 2018
+  "911af9fd-ad3c-41ae-b634-df148e60ce29", # Halo 3 Classic Throwback
+  "35b3885d-5608-40f0-987c-5cec4b55cf17", # HaloWC FFA
+  "acf086db-7f2e-4de4-b720-c63692e3411d", # Hardcore Super Fiesta
+  "7ec8ea9d-e672-4aa1-b4c3-5d0e4d0824c9", # Head to Head
+  "d34730b9-bb48-4569-bcdf-afba9c358019", # Mythic Arena
+  "dba40615-d969-4fd8-83be-1b99f2866460", # Mythic Rumble
+  "f27a65eb-2d11-4965-aa9c-daa088fa5c9c", # SWAT
+  "2323b76a-db98-4e03-aa37-e171cfbdd1a4", # SWAT
+  "892189e9-d712-4bdb-afa7-1ccab43fbed4", # Slayer
+  "7b50b5d8-bfab-48b1-b868-acf65ebc39f4", # Snipers
+  "8a2e7128-e738-45c7-ad2c-1a1dfb2d6ab9", # Solo/Duo Queue Team Arena
+  "c98949ae-60a8-43dc-85d7-0feb0b92e719", # Team Arena
+  "f4b31993-7d5e-44fb-97d5-f0c03da5a549", # Team Arena
+]
 
 # HopperIds des expériences PvE/coopératives (Warzone Firefight). Pilote IsPvE.
 pve_hopper_ids = []

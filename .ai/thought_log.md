@@ -14,6 +14,45 @@
 
 **Conclusion / prochaine étape** : 3 issues livrées + verrouillées par tests, branche plus verte que main (test périmé corrigé). Pas de changement DB ni backfill requis (la data engagement existe déjà — c'était une régression de validation requête). PAS de commit/deploy ce tour (non autorisé). Deploy = merge→push main = auto-deploy (rebuild Go + front), aucune prép VPS. Cf. [[project_halo5_experimental_direction]], [[project_huma_json_migration_complete]], [[project_multititre_activation_handoff]].
 
+---
+
+## [2026-06-25] Revert namespacing watcher_tokens par titre — store global title-agnostic
+
+**Statut** : Complété (code + données + ménage local) ; déployé sur `main`.
+
+**Décision technique principale** : `WatcherTokensDir()` repointé sur `data/auth/watcher_tokens` (global), suppression de `WatcherTokensDirFor`/`LegacyWatcherTokensDir` + de la copy-migration `MigrateWatcherTokens` (3 call sites). Raison : les tokens auth sont attachés au compte (xuid), pas au titre — le pool SpartanToken est partagé entre Halo Infinite et Halo 5, donc un seul `{xuid}.json` par compte sert tous les titres ; le namespacing par titre (`data/titles/{slug}/auth/watcher_tokens`, leg 5 / MT-02 / PMT-2 / store path cutover `873637195`) ne ferait que dupliquer inutilement le même fichier. Annule la décision livrée le 2026-06-16.
+
+**Résultats observés** :
+- Partie A (code) : `go build ./...` + `go vet` + `go test` verts (toolchain CGO ucrt64). `migration_boot_test.go` intact (les 6 `TestMigrateLegacyAuthTokensAtBoot_*` PASS). 0 résidu `WatcherTokensDirFor`/`LegacyWatcherTokensDir`/`MigrateWatcherTokens` dans `apps/go-api`. Vérif adversariale 4/4. Bonus : commentaire stale (chemin namespacé) dans `cmd/server/main.go` PR-B reauth corrigé.
+- Partie B (données, repo principal `LevelUp-go-migration/data/`) : les 9 `{xuid}.json` namespacés (frais 25/06, RT identiques au global, `reauth_required` effacé pour 5 comptes) rapatriés vers `data/auth/watcher_tokens/` ; backup `data/auth/watcher_tokens.bak-2026-06-25/` ; doublon `data/titles/halo_infinite/auth/` supprimé. `data/titles/halo_5/` intact. Aucun RT perdu.
+- Partie C (ménage, non trackés git) : supprimés `tmp_film_explore/` (480M), `tmp_score_work/` (8.4M), `tmp/` (89K), `data/backups/pre_art_rebuild_20260619_114622/` (snapshot forensique ART 19/06).
+- CONSERVÉS (contredisaient le plan, non touchés) : `data/backups/staging/` (PAS abandonné — pipeline de backup vivant, `halo_5/` réécrit le 25/06, source des snapshots restic) ; prune restic NON exécuté (destructif sur filet de backup + mot de passe repo non disponible) — commande recommandée : `RESTIC_REPOSITORY=data/backups/restic-repo restic forget --keep-within 14d --prune`.
+
+**Point de vérif manuel post-deploy (prod)** : `main` déclenche l'auto-deploy. Le code lit désormais `data/auth/watcher_tokens/` (global). Vérifier que ce dossier est peuplé côté VPS (tokens transférés manuellement par l'utilisateur). Sinon le watcher lit un global vide → ré-auth ; le fallback legacy (ADR 0023 : sync_meta/env) reste toléré.
+
+**Prochaine étape** : RAS côté code. Surveiller le 1er cycle de sync prod post-deploy.
+
+---
+
+## [2026-06-25] Hardening support Halo 5 — 9 symptômes → 7 fixes systémiques (Phase A code) — COMPLÉTÉ ; Phase B (data) en attente
+
+**Contexte** : l'utilisateur a signalé 9 symptômes sur le support H5 (menu L1 qui se vide au switch de titre ; Spartan ID "Rang 190" + barre XP vide ; "Meilleur CSR" Non classé sans image ; KPI '-' pour Rendement/Précision/Sélect. favorite ; Pass de combat + Défis affichés alors que non supportés ; "Sélections récentes" inconnues ; "Faits marquants" incomplets ; tuiles sans citations ni images de maps ; catégories de médailles non traduites sur Escouade). Demande explicite : traiter en problèmes SYSTÉMIQUES, pas page par page. Travail dans un worktree dédié (`worktree-fix+h5-support-hardening`, base origin/main). Décisions produit : commendations natives sur tuiles ; libellé "SR N" + barre calculée ; ops data local puis prod (avertir avant prod).
+
+**Décision technique principale (7 problèmes)** :
+- **P1 switch titre** (`apps/web/.../appShellStore.ts`, `TitleSwitcher.tsx`) : `switchTitle` appelait `resetPlayerData()` APRÈS `hydrateFromBootstrap` → effaçait la liste joueurs du nouveau titre. Retiré (fonction supprimée, zéro autre caller) + auto-sélection 1er joueur + navigation post-switch vers `/players/$slug/home` (garde rollback).
+- **P2 gating** (`HomePage.tsx`, `queries.ts`) : `useCapability('season_pass')` masque tout le bloc Battle Pass+Défis + désactive `useSeasonPassPreview` (enabled). Fail-open Infinite.
+- **P3 classifier ranked H5** (`internal/api/server_titles_additional.go`) : `WithRankedClassifier` câblé (best-effort, sur adapter global + builder par-joueur). CAVEAT : `config/titles/halo_5/catalog/ranked_hoppers.toml` ship listes VIDES → nécessaire mais pas suffisant (peuplement HopperIds = Phase B).
+- **P5 rang SR** (`internal/games/halo_5/career_sr.go` + `livesync/csr_match.go`) : `writeCareerSR` écrit désormais `rank_name = "SR N"` (nouvel export `SpartanRankLabel`) → la Home affiche "SR 111" au lieu du fallback "Rang N" (career.rank_catalog not_exposed). Le "190" (>152) = ligne legacy/contaminée à réparer en Phase B (writeCareerSR rejette SR>152). Edge connu : `rankSubRoman` corromprait "SR 1-6" (bas SR, hors cas réels).
+- **P6 KPI rendement** (`internal/analysis/home_kpis.go` + `home_canonical_kpis.go`) : BUG de couplage — l'offensive conversion était gatée derrière `damage_taken != nil`, donc absente pour H5 (no_damage_taken). Découplé sur les 2 chemins : OC depuis le groupe offensif (damage_dealt), DR depuis le groupe défensif (damage_taken). Rétro-compatible Infinite (groupes coïncident). Accuracy : absence gracieuse '—' (l'agrégat service-record est career-wide ≠ KPI matchs récents → pas fabriqué).
+- **P7 commendations tuiles** (`domain/home.go`, `port/repository_sessions_home.go`, `duckdb/home_repo_medals_citations.go`, `service/home_service_enrichment.go` + `home_service.go`) : nouvelle méthode repo `LoadMatchCommendations` (top-3 par match depuis match_commendations + commendation_definitions) ; `enrichMatchesWithCommendations` remplit le slot existant `TopCitations` (zéro changement front/OpenAPI) ; wiring title-agnostic "citations d'abord, commendations si TopCitations vide" (Infinite inchangé, table vide).
+- **P9 catégories médailles** (`internal/games/canonical/medal_category.go` NOUVEAU + `cmd/h5-metadata-fetch/main.go`) : `NormalizeMedalCategory` partagé (idempotent, case-insensitive) mappe les enums bruts H5 (MultiKill/WeaponProficiency/Style/CaptureTheFlag/KillingSpree/Oddball…) vers les 7 clés canoniques du dico front (`multikill|spree|skill|style|mode|proficiency|other`). Appliqué au seed metadata H5.
+
+**Résultats observés** : `go build ./...` OK · `go vet` OK · tests des packages touchés verts (analysis, halo_5, livesync, canonical, service hors préexistant) · front `tsc -b` 0 erreur · `eslint` 0 erreur (74 warnings préexistants hors mes fichiers). Seul rouge = `TestAchievementsService_Categories`, CONFIRMÉ PRÉEXISTANT sur origin/main (rejoué sur le code de base, hors périmètre). **Revue adversariale multi-agents (workflow, 6 reviewers + vérification adversariale de chaque finding) = 0 finding confirmé.**
+
+**Conclusion / prochaine étape** : Phase A (code) livrée, vérifiée et COMMITTÉE sur `worktree-fix+h5-support-hardening` (6ba254e68). Les "blocages" Phase B étaient un malentendu (clé dans `.env.local` chargé par les outils via config.Load ; vrai `data/` = `LevelUp-go-migration/`, le `data/` du worktree est juste une copie vide). Phase B avancée ce tour : (B.1) `h5-metadata-fetch` exécuté contre le vrai repo → 215 médailles (medal_type normalisé P9), 49 maps, 68 armes, 42 tiers CSR, 121 commendations, 73 playlists (22 ranked) ; (B.2) `ranked_hopper_ids` peuplé avec les 22 UUID classés (source `playlists.isRanked` officielle ; HopperId==playlist UUID pour h5) + test mis à jour, COMMITTÉ (14454e5e3) → classif LIVE active. (B.4a) `h5-csr-backfill` exécuté pour les 4 joueurs H5 (auth saine via store, emprunt `LEVELUP_H5_AUTH_AS=JGtm` pour les 3 autres) → `player_csr_snapshots` peuplé. VÉRIFIÉ JGtm : playlist SWAT classée, alltime_tier=Diamond sub_tier=5, placement 3/10 → "Meilleur CSR" passe de "Non classé" à **Diamant V** (badge résout via csr_designations seedé). C'est le chemin PRIMAIRE du Home (loadCSRAlltimePeak), indépendant de is_ranked. RESTE, DÉLIBÉRÉMENT NON FAIT (risque ART > gain) : (B.3) reclassif `match_registry.is_ranked` des matchs importés = UPDATE sur table SHARED immuable INSERT-only → ART-risqué ; non requis pour "Meilleur CSR" (player_csr_snapshots couvre). (B.4b) backfill `rank_name` sur `career_progression` existant = UPDATE sur la table qui a DÉJÀ subi une corruption ART (migration rebuild dédiée steps_player_repairs.go) → à faire via rebuild append-only propre, PAS un UPDATE ad hoc. Gain cosmétique seulement : le SR label se corrige au prochain sync (code P5 writeCareerSR), la barre marche déjà (xp_for_next=2950000 peuplé), et le "190" rapporté NE REPRODUIT PAS en local (SR réel JGtm = 147 ; état stale/prod). (B.5) validation visuelle des 9 symptômes (app lancée) + Phase C prod (avec avertissement) = côté utilisateur. Cf. [[project_halo5_experimental_direction]], [[project_h5_prodgate_handoff]], [[reference_ranked_playlists_source]], [[project_append_only_eradication_campaign]], [[project_multititre_activation_handoff]].
+
+---
+
 ## [2026-06-25] Front title-aware : Résistance défensive (DR) = N/A pour les titres sans damage_taken (Halo 5) — COMPLÉTÉ
 
 **Contexte** : la Résistance défensive (DR = dégâts_subis / (PV × morts)) est affichée à côté du Rendement (OC). Halo 5 ne fournit pas `damage_taken` → DR=0 partout → le front affichait « Résistance 0 » (trompeur : on lit une résistance nulle alors que la donnée est INDISPONIBLE). BACK (ajouté ce tour) : le getter `games.ProvidesDamageTaken(slug)` + le flag config `no_damage_taken=true` (h5) existaient déjà et étaient consommés en post-sync/squad-synergy, mais N'ÉTAIENT PAS exposés au bootstrap → ajout du champ `TitleSummary.provides_damage_taken` (domain/bootstrap.go + service/bootstrap_service.go `BuildAvailableTitles` + openapi.yaml + régén generated.ts ; défaut true = Infinite, false = Halo 5). FRONT : gating de l'affichage DR (`apps/web`).
@@ -2710,7 +2749,7 @@ Les 3 fichiers `career_live_{service,merge,partial}.go` faisaient transiter les 
 **Statut** : Complété (doc-only).
 
 **Contexte** : les registres de statut (INDEX/TRACKER/PERIPHERY) étaient datés 2026-06-13/14, antérieurs aux livraisons PMT-2 leg 5, PMT-9, PMT-11, PMT-6 + relocation Phase 1.5. Synchronisés sur la réalité commitée :
-- `PLAN_MULTITITRE_INDEX.md` : MT-02/PMT-2 → done (873637195) ; MT-08/PMT-6 → done (e7f06fe71, PR3 CLI différé) ; MT-23/PMT-9 → done (743f9467c) ; MT-26 → **partiel** (PMT-11 contenu done b571f1df5, PMT-4 config = gap) ; Phase 1.5 (Registre A) 🟡 → ✅.
+- `PLAN_MULTITITRE_INDEX.md` : MT-02/PMT-2 → done (873637195 — **leg 5 store namespacé ANNULÉE le 2026-06-25, store global rétabli, cf. branche `fix/auth-tokens-title-agnostic`**) ; MT-08/PMT-6 → done (e7f06fe71, PR3 CLI différé) ; MT-23/PMT-9 → done (743f9467c) ; MT-26 → **partiel** (PMT-11 contenu done b571f1df5, PMT-4 config = gap) ; Phase 1.5 (Registre A) 🟡 → ✅.
 - `PLAN_TITLE_AGNOSTIC_TRACKER.md` : Phase 1.5 🟡 70/45% → ✅ 100% (relocation complète + 2 irréversibles livrés).
 - `PLAN_MULTITITRE_PERIPHERY.md` : « Statut couverture actuelle » de PMT-2/6/9/11 → done (gap initial conservé en historique).
 
@@ -2790,7 +2829,9 @@ Les 3 fichiers `career_live_{service,merge,partial}.go` faisaient transiter les 
 
 ## [2026-06-16] Phase 1.5 (MT-02 / PMT-2 leg 5) — cutover du chemin du store de tokens watcher (irréversible #2, sign-off OK)
 
-**Statut** : Complété (sign-off user explicite : « Commit »).
+> **ANNULÉE (2026-06-25)** : tokens account-level, partagés inter-titres (Halo Infinite et Halo 5 réutilisent le même pool SpartanToken) ; ranger les `{xuid}.json` par titre dupliquerait inutilement le même fichier. Store global `data/auth/watcher_tokens/` rétabli ; `WatcherTokensDir()` repointé global ; `WatcherTokensDirFor`/`LegacyWatcherTokensDir`/`MigrateWatcherTokens` supprimés — cf. branche `fix/auth-tokens-title-agnostic` + entrée [2026-06-25] ci-dessous.
+
+**Statut** : Complété (sign-off user explicite : « Commit »). **REVERTÉ le 2026-06-25 — voir bandeau ANNULÉE ci-dessus.**
 
 **Décision** : `PathResolver.WatcherTokensDir()` pointe désormais sur `data/titles/{slug}/auth/watcher_tokens` (namespacé titre) au lieu de `data/auth/watcher_tokens` (global legacy). Design signature-préservant : `WatcherTokensDir()` délègue à `WatcherTokensDirFor(DefaultSlug)` → zéro churn sur les ~30 callers existants. Ajout de `WatcherTokensDirFor(slug)` (injection title-aware) + `LegacyWatcherTokensDir()` (source de la migration).
 
@@ -2847,7 +2888,7 @@ Les 3 fichiers `career_live_{service,merge,partial}.go` faisaient transiter les 
 
 **Bilan session (b10→b26, 17 lots autonomes)** : 8 → 150 steps title-owned. Pattern « racine globale, consommateurs partent d'abord » validé sur tous les tiers. Découvertes/pièges récurrents : créateur/consommateur/test global-only (b15), fragilité ordre alpha des tests (b11), carte datée vs util-vs-step (b20/b21), cycle boot-path (b23), helpers cross-fichiers à garder globaux (firstWords/loadTableColumns/Apply*Views). Tests : skip-guard + TestTitleStepsRunEndToEnd_* par target ; garde-rails sync/duckdb ajustés (/migrations/ pluriel, mentions sociales, count via CanonicalOrder).
 
-**Vérif** : build all + `go test` (migration + titre) + `-tags integration` + duckdb + sync + gofmt + vet verts. **Reste UNIQUEMENT les 2 irréversibles escaladés** (reorder inversion 132/133 + PMT-2 store cutover).
+**Vérif** : build all + `go test` (migration + titre) + `-tags integration` + duckdb + sync + gofmt + vet verts. **Reste UNIQUEMENT les 2 irréversibles escaladés** (reorder inversion 132/133 + PMT-2 store cutover — *ce dernier ANNULÉ le 2026-06-25, store global title-agnostic conservé, cf. branche `fix/auth-tokens-title-agnostic`*).
 
 ---
 
@@ -3044,7 +3085,7 @@ Les 3 fichiers `career_live_{service,merge,partial}.go` faisaient transiter les 
 
 ## [2026-06-15] Phase 1.5 (MT-23) — relocation b8 : familles medal_definitions + xbox_achievement (inline atomiques)
 
-**Mandat user** : « il faut tout faire de toute façon » → exécution autonome continue, commit/push par lot vérifié, sans redemander. Les 2 irréversibles (reorder inversion, PMT-2 store-cutover) en dernier avec garde-fou.
+**Mandat user** : « il faut tout faire de toute façon » → exécution autonome continue, commit/push par lot vérifié, sans redemander. Les 2 irréversibles (reorder inversion, PMT-2 store-cutover) en dernier avec garde-fou. *(Note 2026-06-25 : le PMT-2 store-cutover a depuis été ANNULÉ — store global title-agnostic conservé, cf. branche `fix/auth-tokens-title-agnostic`.)*
 
 **Livré (b8, 9 steps inline)** : famille `medal_definitions` (base + add_indices + enrich_v2 + add_personal_score) + famille `xbox_achievement_definitions` (base + add_title_id + cleanup + add_xbox_title_id + add_service_config_id) → games/halo_infinite/migrations/steps.go, ATOMIQUEMENT. `bootCtx()` → `migration.BootCtx()` pour les 4 ALTER/DELETE xbox. Vérif préalable : aucun autre step global ne touche ces 2 tables. Total title-owned : 20 → **29**.
 
@@ -3114,7 +3155,7 @@ Les 3 fichiers `career_live_{service,merge,partial}.go` faisaient transiter les 
 
 **Legs 3-4 (LIVRÉS)** : leg 3 SISU — `buildTokenProvider(settingsStore, authDesc)` widened ; les 2 branches SISU → `NewSISUProviderWithIDs(authDesc.SISUAppID, authDesc.SISUTitleID)` (garde `NewSISUProvider()` si descripteur incomplet) ; call site main.go:613 + token_provider_test passent `DefaultHaloAuthDescriptor()`. Leg 4 scopes — `OAuthScopesParam()` (join) sur le descripteur ; `var XboxScopes = …OAuthScopes` (msal_client) + `var xboxScopes = …OAuthScopesParam()` (oauth_refresh, const→var) → **source unique, zéro dérive** []string↔string. Golden `TestScopes_DescriptorDerivation_GoldenParity`. Build all + auth + cmd/server + title verts.
 
-**Leg 5 (store path namespacing) — ESCALADÉ, NON livré** : **IRRÉVERSIBLE**. Le vérificateur adversarial confirme : les fichiers `data/auth/watcher_tokens/{xuid}.json` sont l'UNIQUE copie persistée du RT MS (`OAuthRefreshToken`/`MSALCacheJSON`) ; basculer `WatcherTokensDir()` → `data/titles/{slug}/auth/watcher_tokens` sans copy-migration = dir neuf vide → `LoadAll` rend `{}` → 0 credential → **re-SSO de tous les joueurs** (classe d'incident `invalid_grant`). 26 call-sites (pas 8). Exige : (A) `WatcherTokensDir(slug)` title-aware + champs `Spartan/Clearance/TitleSlug` sur `UserTokens` + (B) **copy-migration boot bundlée** (étendre `migrateLegacyAuthTokensAtBoot`, idempotent atomic rename). À livrer comme un tout, jamais le path-change seul → décision/sign-off requis.
+**Leg 5 (store path namespacing) — ANNULÉE (2026-06-25)** : décision abandonnée — les tokens auth sont account-level (xuid), partagés par tous les titres (même pool SpartanToken Halo Infinite/Halo 5) ; le namespacing par titre dupliquerait inutilement le même `{xuid}.json`. Store global `data/auth/watcher_tokens/` conservé (cf. branche `fix/auth-tokens-title-agnostic`). *(Historique ci-dessous : leg 5 fut d'abord ESCALADÉ/non livré, puis livré le 2026-06-16, puis reverté le 2026-06-25.)* **IRRÉVERSIBLE**. Le vérificateur adversarial confirme : les fichiers `data/auth/watcher_tokens/{xuid}.json` sont l'UNIQUE copie persistée du RT MS (`OAuthRefreshToken`/`MSALCacheJSON`) ; basculer `WatcherTokensDir()` → `data/titles/{slug}/auth/watcher_tokens` sans copy-migration = dir neuf vide → `LoadAll` rend `{}` → 0 credential → **re-SSO de tous les joueurs** (classe d'incident `invalid_grant`). 26 call-sites (pas 8). Exige : (A) `WatcherTokensDir(slug)` title-aware + champs `Spartan/Clearance/TitleSlug` sur `UserTokens` + (B) **copy-migration boot bundlée** (étendre `migrateLegacyAuthTokensAtBoot`, idempotent atomic rename). À livrer comme un tout, jamais le path-change seul → décision/sign-off requis.
 
 **Prochaine étape** : Phase 1.5 (relocation steps additifs SAFE) + escalade inversion canonicalOrder 148/149.
 
@@ -3148,7 +3189,7 @@ Les 3 fichiers `career_live_{service,merge,partial}.go` faisaient transiter les 
 
 **Oracle DOUBLE vert** : (a) golden — `DefaultHaloAuthDescriptor()` == les 7 valeurs + 2 scopes EXACTES des const platform/auth (toute dérive casse). (b) routing — fixture `synthetic_test_title/auth.toml` (valeurs `example.test` distinctes) → loader route réellement ; titre sans auth.toml → `ErrAuthNotConfigured`. + validation (meta, champ requis, non-https, scopes vides).
 
-**⚠ Contract = HAUT RISQUE (login/token irréversible)** — PR mince par leg, golden de parité (requêtes sortantes byte-identiques) OBLIGATOIRE à chaque PR : PR-1 XSTS audience + spartan Audience ; PR-2 clearance URL/title path ; PR-3 SISU app/title id (`buildTokenProvider` → `NewSISUProviderWithIDs(desc…)`) ; PR-4 scopes OAuth ; PR-5 persistance namespacée titre (`WatcherTokensDir(slug)` + champs Spartan/Clearance/TitleSlug sur `UserTokens`). Un bug = plus personne ne s'authentifie → à dérouler prudemment, golden vert avant chaque commit.
+**⚠ Contract = HAUT RISQUE (login/token irréversible)** — PR mince par leg, golden de parité (requêtes sortantes byte-identiques) OBLIGATOIRE à chaque PR : PR-1 XSTS audience + spartan Audience ; PR-2 clearance URL/title path ; PR-3 SISU app/title id (`buildTokenProvider` → `NewSISUProviderWithIDs(desc…)`) ; PR-4 scopes OAuth ; ~~PR-5 persistance namespacée titre (`WatcherTokensDir(slug)` + champs Spartan/Clearance/TitleSlug sur `UserTokens`)~~ **PR-5 ANNULÉE (2026-06-25)** : tokens account-level partagés inter-titres, store global conservé — cf. branche `fix/auth-tokens-title-agnostic`. Un bug = plus personne ne s'authentifie → à dérouler prudemment, golden vert avant chaque commit.
 
 **Prochaine étape** : PMT-2 Contract PR-1 (sous golden), OU Phase 1.5 (DDL — escalade ordre init() migration).
 

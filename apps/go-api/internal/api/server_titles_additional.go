@@ -2,9 +2,11 @@ package api
 
 import (
 	"log/slog"
+	"path/filepath"
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/classification"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/mappings"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
@@ -77,9 +79,12 @@ func registerHalo5Adapters(
 	assets, _ := fm.GetAssets(td.Slug)
 	outcomes, _ := fm.GetOutcomes(td.Slug)
 
-	// Semantic : adapter générique partagé. ranks nil → RankCatalog vide (Halo 5
-	// expose un CSR natif, pas de career_rank_translations en metadata).
-	if sem := games.NewGenericSemanticAdapter(td.Slug, fields, nil, assets, outcomes); sem != nil {
+	// Semantic : adapter générique partagé. ranks = catalog SR Halo 5 (152 niveaux
+	// « SR N ») construit en mémoire depuis le référentiel statique — Halo 5 n'expose
+	// PAS de career_rank_translations en metadata, donc sans ce catalog la Home
+	// tombait sur le fallback générique HINF « Rang N » au lieu de « SR N ». Aucune
+	// écriture DB : le label se résout title-side au boot (cf. halo5.BuildSpartanRankCatalog).
+	if sem := games.NewGenericSemanticAdapter(td.Slug, fields, halo5.BuildSpartanRankCatalog(), assets, outcomes); sem != nil {
 		resolver.RegisterSemantic(sem)
 		slog.Info("adapter_loaded",
 			"title_slug", sem.TitleSlug(),
@@ -105,14 +110,35 @@ func registerHalo5Adapters(
 		}
 	}
 
+	// Classifier ranked/PvE (stratégie #1 set-membership HopperId, package
+	// classification) chargé UNE fois depuis le TOML autoritatif versionné
+	// config/titles/<slug>/catalog/ranked_hoppers.toml (chemin résolu comme le drain
+	// catalog, cf. registry_catalog_drain.go). Best-effort : fichier absent → set
+	// vide (verdicts nil, dégradation conservatrice), parse/schema invalide → WARN +
+	// continue SANS classifier (jamais de panic/échec boot). Injecté dans l'adapter
+	// (LoadMatchDetail header) ET le builder player-scoped (historique) via
+	// WithRankedClassifier — résout match_registry.is_ranked + CSR pour les playlists
+	// classées Halo 5 dès que le TOML est peuplé (cf. .ai/HANDOFF_H5_RANKED_CLASSIFICATION.md §5).
+	var rankedClassifier classification.RankedClassifier
+	hoppersPath := filepath.Join(reg.cfg.RepoRoot, "config", "titles", td.Slug, "catalog", "ranked_hoppers.toml")
+	if c, err := classification.LoadSetClassifier(hoppersPath); err != nil {
+		slog.Warn("h5_ranked_classifier_load_failed",
+			"title_slug", td.Slug, "path", hoppersPath, "err", err.Error())
+	} else {
+		rankedClassifier = c
+	}
+
 	// buildLiveData reconstruit un DataAdapter live (placement title-aware +
-	// capabilities). Réutilisé pour le data adapter global ET le builder
-	// player-scoped (Halo 5 ignore la player DB).
+	// capabilities + classifier ranked/PvE). Réutilisé pour le data adapter global ET
+	// le builder player-scoped (Halo 5 ignore la player DB).
 	buildLiveData := func() games.TitleDataAdapter {
 		a := halo5.NewDataAdapter(halo5.NewSpartanTokenSource, slog.Default()).
 			WithPlacementTotal(td.PlacementMatches)
 		if caps != nil {
 			a = a.WithCapabilities(caps)
+		}
+		if rankedClassifier != nil {
+			a = a.WithRankedClassifier(rankedClassifier)
 		}
 		return a
 	}

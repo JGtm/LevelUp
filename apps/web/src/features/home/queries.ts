@@ -21,11 +21,17 @@ export function useHomePage(playerSlug: string) {
   })
 }
 
-export function useSeasonPassPreview(playerSlug: string) {
+/**
+ * @param enabled Gating multi-titre : passer `false` pour un titre sans la
+ * capability `season_pass` (ex. Halo 5) afin que la requête ne parte pas.
+ * Quand désactivée, `data` reste `undefined` et `isLoading`/`error` restent
+ * neutres — les consommateurs doivent gérer l'absence de `seasonPass`.
+ */
+export function useSeasonPassPreview(playerSlug: string, enabled = true) {
   return useQuery({
     queryKey: queryKeys.seasonPass(playerSlug),
     queryFn: () => api.get<SeasonPassPageResponse>(`/players/${playerSlug}/pages/palmares/season-pass`),
-    enabled: !!playerSlug,
+    enabled: !!playerSlug && enabled,
     staleTime: 5 * 60 * 1000,
     retry: false,
   })

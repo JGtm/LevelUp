@@ -82,8 +82,10 @@ func TestLoadSetClassifier_Malformed(t *testing.T) {
 }
 
 // TestLoadSetClassifier_ShippedHalo5Config valide le fichier RÉELLEMENT versionné
-// (config/titles/halo_5/catalog/ranked_hoppers.toml) : il doit parser et, vide,
-// rendre des verdicts nil. Skip si le chemin relatif ne résout pas (cwd atypique).
+// (config/titles/halo_5/catalog/ranked_hoppers.toml) : il doit parser et, depuis le
+// peuplement 2026-06-25 (22 playlists classées, source API Metadata officielle),
+// rendre des verdicts EXHAUSTIFS — une playlist classée connue → &true, une absente
+// → &false. Skip si le chemin relatif ne résout pas (cwd atypique).
 func TestLoadSetClassifier_ShippedHalo5Config(t *testing.T) {
 	rel := filepath.Join("..", "..", "..", "..", "..",
 		"config", "titles", "halo_5", "catalog", "ranked_hoppers.toml")
@@ -94,7 +96,13 @@ func TestLoadSetClassifier_ShippedHalo5Config(t *testing.T) {
 	if err != nil {
 		t.Fatalf("le fichier versionné doit parser : %v", err)
 	}
-	if v := c.IsRanked("any"); v != nil {
-		t.Errorf("h5 ranked_hoppers vide → IsRanked nil, got %v", *v)
+	// Team Arena (UUID = HopperId pour h5) ∈ set classé → &true.
+	const rankedHopper = "c98949ae-60a8-43dc-85d7-0feb0b92e719"
+	if v := c.IsRanked(rankedHopper); v == nil || !*v {
+		t.Errorf("playlist classée connue %s → IsRanked &true, got %v", rankedHopper, v)
+	}
+	// HopperId absent du set (non-classé) → &false (set non vide = exhaustif), pas nil.
+	if v := c.IsRanked("hopper-inexistant"); v == nil || *v {
+		t.Errorf("HopperId absent → IsRanked &false (set exhaustif), got %v", v)
 	}
 }

@@ -5,8 +5,100 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/legacymatch"
 )
+
+// srRankCatalog reproduit la forme du catalog SR Halo 5 (halo5.BuildSpartanRankCatalog,
+// non importable ici — cycle analysis→halo_5→canonical→analysis) : entrées « SR N »
+// avec un seuil XP par rang. Suffit pour valider que buildHomeCareerRank résout le
+// label SR via le catalog au lieu du fallback générique « Rang N ».
+func srRankCatalog() *mappings.RankCatalog {
+	const maxSR = 152
+	entries := make([]mappings.RankEntry, 0, maxSR)
+	for n := 1; n <= maxSR; n++ {
+		label := "SR " + itoaHome(n)
+		xp := 0
+		if n < maxSR {
+			xp = 50000 // seuil fictif uniforme : ne sert qu'au fallback xp_for_next
+		}
+		entries = append(entries, mappings.RankEntry{
+			ID:         n,
+			Title:      map[string]string{mappings.LocaleEN: label, mappings.LocaleFR: label},
+			Subtitle:   map[string]string{},
+			Tier:       map[string]string{},
+			XPRequired: xp,
+		})
+	}
+	return mappings.NewRankCatalog("halo_5", entries)
+}
+
+func itoaHome(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	neg := n < 0
+	if neg {
+		n = -n
+	}
+	var buf [20]byte
+	i := len(buf)
+	for n > 0 {
+		i--
+		buf[i] = byte('0' + n%10)
+		n /= 10
+	}
+	if neg {
+		i--
+		buf[i] = '-'
+	}
+	return string(buf[i:])
+}
+
+// TestBuildHomeCareerRank_SRCatalog_Label147 : avec un catalog de style SR (Halo 5),
+// buildHomeCareerRank résout « SR 147 » (via lookupRankLabel→FullLabel), is_max=false
+// (Next(147) existe), et N'ÉCRASE PAS l'xp_for_next déjà peuplé en DB (2 950 000).
+// C'est exactement le chemin de la Home Halo 5 après injection du catalog SR.
+func TestBuildHomeCareerRank_SRCatalog_Label147(t *testing.T) {
+	cat := srRankCatalog()
+	raw := &domain.HomeSpartanIdentityRow{
+		RankNumber:    147,
+		RankName:      nil, // career_progression.rank_name NULL (donnée existante)
+		CurrentXP:     1234,
+		XPForNextRank: 2950000, // valeur DB peuplée → ne doit pas être écrasée
+	}
+
+	got := buildHomeCareerRank(raw, "fr", cat)
+	if got == nil {
+		t.Fatal("buildHomeCareerRank = nil")
+	}
+	if got.RankTitle != "SR 147" {
+		t.Errorf("RankTitle = %q, want 'SR 147' (pas le fallback 'Rang 147')", got.RankTitle)
+	}
+	if got.IsMaxRank {
+		t.Error("IsMaxRank = true, want false (Next(147) existe)")
+	}
+	if got.XPForNextRank != 2950000 {
+		t.Errorf("XPForNextRank = %d, want 2950000 (DB non écrasée par le fallback catalog)", got.XPForNextRank)
+	}
+	if got.NextRankTitle != "SR 148" {
+		t.Errorf("NextRankTitle = %q, want 'SR 148'", got.NextRankTitle)
+	}
+}
+
+// TestBuildHomeCareerRank_NoCatalog_FallbackRangN : sans catalog (ranks nil) et sans
+// rank_name, la Home retombe sur le fallback générique « Rang N » — c'était l'état
+// Halo 5 AVANT l'injection du catalog SR (régression à empêcher).
+func TestBuildHomeCareerRank_NoCatalog_FallbackRangN(t *testing.T) {
+	raw := &domain.HomeSpartanIdentityRow{RankNumber: 147}
+	got := buildHomeCareerRank(raw, "fr", nil)
+	if got == nil {
+		t.Fatal("buildHomeCareerRank = nil")
+	}
+	if got.RankTitle != "Rang 147" {
+		t.Errorf("RankTitle = %q, want 'Rang 147' (fallback sans catalog)", got.RankTitle)
+	}
+}
 
 func TestRound1(t *testing.T) {
 	if round1(1.55) != 1.6 {

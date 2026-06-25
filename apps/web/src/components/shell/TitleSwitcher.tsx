@@ -1,3 +1,4 @@
+import { useNavigate } from '@tanstack/react-router'
 import { useAppShellStore, buildTitleSwitcherEntries } from '@/stores/appShellStore'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { formatMessage } from '@/lib/i18n/format'
@@ -23,6 +24,7 @@ interface TitleSwitcherProps {
  * en mono-titre.
  */
 export function TitleSwitcher({ onSwitched }: TitleSwitcherProps) {
+  const navigate = useNavigate()
   const locale = useAppShellStore((s) => s.locale)
   const availableTitles = useAppShellStore((s) => s.availableTitles)
   const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
@@ -36,7 +38,22 @@ export function TitleSwitcher({ onSwitched }: TitleSwitcherProps) {
 
   const onSelect = (slug: string, disabled: boolean, isCurrent: boolean) => {
     if (disabled || isCurrent || isTitleSwitching) return
-    void switchTitle(slug).then(() => onSwitched?.())
+    void switchTitle(slug).then(() => {
+      onSwitched?.()
+      // Le switch a (re-)bootstrap les joueurs du NOUVEAU titre. L'URL pointe
+      // encore sur le playerSlug de l'ANCIEN titre → page morte. On navigue vers
+      // l'accueil du joueur courant fraîchement résolu (lu APRÈS le switch). Si
+      // le switch a échoué (rollback : titre inchangé), on ne navigue pas.
+      const state = useAppShellStore.getState()
+      if (state.currentTitleSlug !== slug) return
+      const targetSlug = state.currentPlayer?.player_slug ?? state.availablePlayers[0]?.player_slug
+      if (targetSlug) {
+        void navigate({ to: '/players/$playerSlug/home', params: { playerSlug: targetSlug } })
+      } else {
+        // Aucun joueur pour ce titre → retour à l'index (qui gère l'onboarding).
+        void navigate({ to: '/' })
+      }
+    })
   }
 
   return (
