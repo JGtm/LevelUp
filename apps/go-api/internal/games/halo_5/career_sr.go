@@ -59,6 +59,16 @@ func h5SRAssetRef(sr int) *canonical.AssetReference {
 	}
 }
 
+// SpartanRankLabel retourne le LIBELLÉ d'affichage du rang SR Halo 5 ("SR N"),
+// title-aware. Source unique partagée par l'asset ref canonique (h5SRAssetRef) ET
+// la persistance career_progression (rank_name, cf. livesync.writeCareerSR) — pour
+// que la Home (qui lit career_progression.rank_name) affiche « SR 111 » au lieu du
+// fallback générique HINF « Rang 111 » (career.rank_catalog = not_exposed pour h5,
+// aucun catalogue ne résout le label côté Home).
+func SpartanRankLabel(sr int) string {
+	return fmt.Sprintf("SR %d", sr)
+}
+
 // applyDefaultSpartanRankBounds fixe les bornes de progression « Héros » Halo 5
 // (RankMax = SR152, XPMax = XP cumulé au SR152) sur TOUT CareerSnapshot h5 qui a
 // des stats arena, INDÉPENDAMMENT de l'enrichissement live du SR réel. C'est le

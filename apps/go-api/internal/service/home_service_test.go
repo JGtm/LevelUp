@@ -163,6 +163,10 @@ func (m *mockHomeRepo) LoadMatchCitations(_ context.Context, _ []string) (map[st
 	return map[string][]domain.HomeMatchCitationRaw{}, nil
 }
 
+func (m *mockHomeRepo) LoadMatchCommendations(_ context.Context, _ []string) (map[string][]domain.HomeMatchCommendationRaw, error) {
+	return map[string][]domain.HomeMatchCommendationRaw{}, nil
+}
+
 func (m *mockHomeRepo) LoadFavoriteWeapon(_ context.Context, _ string) (string, int, error) {
 	return "", 0, nil
 }

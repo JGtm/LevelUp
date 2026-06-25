@@ -66,8 +66,6 @@ interface AppShellState {
   switchTitle: (titleSlug: string) => Promise<void>
   setLocale: (locale: 'fr' | 'en') => void
   setHintsVisible: (visible: boolean) => void
-  /** Reset des données joueur (appelé lors d'un switch titre) */
-  resetPlayerData: () => void
   /** Met à jour l'ID du job de sync actif (null = aucun sync en cours). */
   setActiveSyncJobId: (id: string | null) => void
 }
@@ -168,8 +166,14 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
       const bootstrap = await api.get<BootstrapResponse>('/bootstrap')
       // 4. Réhydrater le store avec les nouvelles données
       get().hydrateFromBootstrap(bootstrap)
-      // 5. Reset des données joueur en cache
-      get().resetPlayerData()
+      // 5. Filet de sécurité : si le re-bootstrap n'a pas désigné de joueur
+      // courant alors que des joueurs existent pour ce titre, sélectionner le
+      // premier disponible — sinon la NavL1 reste vide et l'app paraît blanche.
+      // (NE PAS reset les données joueur ici : le re-bootstrap a déjà chargé la
+      // liste correcte du NOUVEAU titre ; la purger laisserait la nav vide.)
+      if (get().currentPlayer == null && get().availablePlayers.length > 0) {
+        get().setCurrentPlayer(get().availablePlayers[0])
+      }
       // 6. Purger le cache TanStack Query : toutes les requêtes sont scopées par
       // titre (header X-LevelUp-Title). Sans clear, matchview/timeseries/session
       // du titre précédent fuiteraient jusqu'à expiration du staleTime. clear()
@@ -191,13 +195,6 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
   },
   setHintsVisible: (visible) => set({ hintsVisible: visible }),
   setActiveSyncJobId: (id) => set({ activeSyncJobId: id }),
-
-  resetPlayerData: () => {
-    set({
-      currentPlayer: null,
-      availablePlayers: [],
-    })
-  },
 }))
 
 /**
