@@ -373,4 +373,12 @@ L'utilisateur a explicitement écarté le gating Phase-0-d'abord et demandé la 
 - **Reader** (`sync.SnapshotPreferredSharedReader`) : snapshot-préféré + fallback live (pas de flag), cache versionné (garde 3 queriers), métriques `snapshot_read_served/live_fallback_total`.
 - **Câblage = Option B SCOPED MatchView** (pilote du plan) : injecté uniquement sur `MatchViewRepo` (singleton par titre). Les 17 lectures shared de MatchView basculent sur le snapshot ; médias (SharedSocial) + lectures player (ReadDB) restent live. Câblage GLOBAL rejeté (audit exhaustif requis + risque de casse sans fallback). Métriques read dans `AdminMonitoringOverview.Snapshot`.
 
-**Reste** : **déploiement prod = décision utilisateur** (downtime ; merge main = auto-deploy). Au deploy : le producteur peuple les snapshots, MatchView bascule automatiquement (mesurable via `snapshot_read_served/fallback` + `shared_provider_reader_stall_ns_total` de Phase 0). Phase 4 (généralisation à d'autres endpoints, ou câblage global après audit) = conditionnée à la mesure du pilote.
+### Mise à jour [2026-06-25] — Phase 4 LIVRÉE (cutover GLOBAL des lectures shared)
+
+Sur directive user « généralise direct ». Toutes les lectures shared de l'app sont désormais snapshot-préférées (fallback live), pas seulement MatchView.
+
+- **Schéma shared COMPLET reconstruit** : `OpenSnapshotShared` matérialise les 8 tables de base depuis les Parquet puis recrée TOUTES les vues via les fonctions canoniques (`migration.ApplyResolutionViews` + `ApplyMvPlayerMatchesView`, zéro divergence) + DDL inline v_weapon_kills/match_csrs_latest. Producteur étendu (`weapon_kills`/`match_csrs` en RAW). Sûr par construction : schéma complet OU `ErrSnapshotIncomplete` → fallback live global.
+- **Câblage GLOBAL** : `config.sharedReaderForTitle` enveloppe le SharedReader live de chaque titre via le hook `AppConfig.SnapshotReaderWrapper` (impl cmd/server, singleton par titre). Le pilote scoped MatchView (Phase 3) est reverté (subsumé).
+- **OpenAPI** : `MonitoringSnapshotSummary` documenté (drift test vert).
+
+**Reste** : **déploiement prod = décision utilisateur** (downtime ; merge main = auto-deploy). Au deploy : producteur peuple les snapshots → TOUTES les lectures shared basculent (mesurable `snapshot_read_served/live_fallback_total` + `shared_provider_reader_stall_ns_total`). Revert = redéployer le binaire précédent (additif, zéro migration destructive). Suivi : régénérer `apps/web` generated-types quand le front consommera la section snapshot du monitoring.

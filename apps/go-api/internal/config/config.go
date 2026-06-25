@@ -13,6 +13,7 @@ import (
 	"time"
 
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
 
@@ -62,6 +63,13 @@ type AppConfig struct {
 	// DefaultSlug, For() retourne le provider boot (caché par path) → byte-identique
 	// à SharedProvider. nil en mode legacy/kill-switch → fallback SharedProvider.
 	SharedManager *sharedprovider.Manager
+	// SnapshotReaderWrapper (multi-titre, Phase 4 lecture sur snapshot immuable) —
+	// injecté au boot par main.go. Enveloppe le SharedReader live d'un titre dans un
+	// reader snapshot-préféré (lecture découplée du B-swap) avec fallback live. Posé ici
+	// (hook) plutôt que dans le package config pour éviter un cycle config→sync : l'impl
+	// (sync.SnapshotPreferredSharedReader) est fournie par cmd/server. nil → lectures
+	// shared 100% live (comportement historique). Appliqué par sharedReaderForTitle.
+	SnapshotReaderWrapper func(titleSlug string, live duckdb.SharedReader) duckdb.SharedReader
 	// TitleReadyNotifier (multi-titre, MT-19 / axe E) — injecté au boot par main.go
 	// APRÈS construction du ServiceRegistry (api.BuildTitleReadyNotifier). Émet une
 	// notification « titre prêt » (catégorie title_ready) lorsqu'un titre live (Halo

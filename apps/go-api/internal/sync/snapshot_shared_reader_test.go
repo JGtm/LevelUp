@@ -49,22 +49,40 @@ func seedReaderSnapshot(t *testing.T) *title.PathResolver {
 	paths := title.NewPathResolver(t.TempDir(), nil)
 
 	shared := openSnapMemDB(t)
-	snapExec(t, shared, `CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY, start_time TIMESTAMPTZ, start_time_utc TIMESTAMPTZ, is_ranked BOOLEAN, is_firefight BOOLEAN)`)
-	snapExec(t, shared, `CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR, kills INTEGER)`)
+	// Schéma RÉALISTE (toutes colonnes lues par mv_player_matches) — OpenSnapshotShared
+	// reconstruit mv_player_matches qui référence le schéma complet.
+	snapExec(t, shared, `CREATE TABLE match_registry (
+		match_id VARCHAR PRIMARY KEY, start_time TIMESTAMPTZ, end_time TIMESTAMPTZ,
+		start_time_utc TIMESTAMPTZ, end_time_utc TIMESTAMPTZ,
+		playlist_id VARCHAR, playlist_name VARCHAR, playlist_name_fr VARCHAR,
+		map_id VARCHAR, map_name VARCHAR, map_name_fr VARCHAR,
+		pair_name VARCHAR, pair_name_fr VARCHAR, pair_id VARCHAR,
+		game_variant_id VARCHAR, game_variant_name VARCHAR, mode_category VARCHAR,
+		is_ranked BOOLEAN, is_firefight BOOLEAN,
+		duration_seconds INTEGER, playable_duration_seconds INTEGER,
+		team_0_score INTEGER, team_1_score INTEGER, team_0_ps_score INTEGER, team_1_ps_score INTEGER,
+		player_count INTEGER)`)
+	snapExec(t, shared, `CREATE TABLE match_participants (
+		match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR, team_id INTEGER, outcome INTEGER,
+		rank INTEGER, score INTEGER, kills INTEGER, deaths INTEGER, assists INTEGER,
+		kda DOUBLE, accuracy DOUBLE, shots_fired INTEGER, shots_hit INTEGER,
+		damage_dealt DOUBLE, damage_taken DOUBLE, personal_score INTEGER,
+		time_played_seconds INTEGER, avg_life_seconds DOUBLE, headshot_kills INTEGER,
+		max_killing_spree INTEGER, grenade_kills INTEGER, melee_kills INTEGER,
+		power_weapon_kills INTEGER, team_mmr DOUBLE, enemy_mmr DOUBLE,
+		kills_expected DOUBLE, deaths_expected DOUBLE, backfill_bits BIGINT)`)
 	snapExec(t, shared, `CREATE TABLE medals_earned (match_id VARCHAR, xuid VARCHAR, medal_id BIGINT)`)
 	snapExec(t, shared, `CREATE TABLE highlight_events (match_id VARCHAR, xuid VARCHAR, event_type VARCHAR)`)
 	snapExec(t, shared, `CREATE TABLE killer_victim_pairs (match_id VARCHAR, killer_xuid VARCHAR, killer_gamertag VARCHAR, victim_xuid VARCHAR, victim_gamertag VARCHAR)`)
 	snapExec(t, shared, `CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`)
-	snapExec(t, shared, `CREATE TABLE weapon_kills (match_id VARCHAR, xuid VARCHAR, weapon_id BIGINT, effective_weapon_id BIGINT, kills INTEGER)`)
-	snapExec(t, shared, `CREATE TABLE match_csrs (match_id VARCHAR, xuid VARCHAR, rating_value FLOAT)`)
-	snapExec(t, shared, `CREATE VIEW v_weapon_kills AS SELECT * FROM weapon_kills`)
-	snapExec(t, shared, `CREATE VIEW match_csrs_latest AS SELECT * FROM match_csrs`)
+	snapExec(t, shared, `CREATE TABLE weapon_kills (match_id VARCHAR, xuid VARCHAR, weapon_id BIGINT, reconciled_as BIGINT, generation_id BIGINT)`)
+	snapExec(t, shared, `CREATE TABLE match_csrs (match_id VARCHAR, xuid VARCHAR, rating_value FLOAT, written_at TIMESTAMP, id BIGINT)`)
 	now := time.Now()
-	snapExec(t, shared, `INSERT INTO match_registry VALUES ('m1', ?, ?, FALSE, FALSE)`, now, now)
-	snapExec(t, shared, `INSERT INTO match_participants VALUES ('m1', 'x1', 'GT1', 7)`)
-	snapExec(t, shared, `INSERT INTO killer_victim_pairs VALUES ('m1', 'x1', 'GT1', 'x2', 'GT2')`)
-	snapExec(t, shared, `INSERT INTO xuid_aliases VALUES ('x1', 'GT1')`)
-	snapExec(t, shared, `INSERT INTO weapon_kills VALUES ('m1', 'x1', 200, 200, 7)`)
+	snapExec(t, shared, `INSERT INTO match_registry (match_id, start_time, start_time_utc, is_ranked, is_firefight) VALUES ('m1', ?, ?, FALSE, FALSE)`, now, now)
+	snapExec(t, shared, `INSERT INTO match_participants (match_id, xuid, gamertag, team_id, kills, deaths) VALUES ('m1', 'x1', 'GT1', 0, 7, 3)`)
+	snapExec(t, shared, `INSERT INTO killer_victim_pairs (match_id, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag) VALUES ('m1', 'x1', 'GT1', 'x2', 'GT2')`)
+	snapExec(t, shared, `INSERT INTO xuid_aliases (xuid, gamertag) VALUES ('x1', 'GT1')`)
+	snapExec(t, shared, `INSERT INTO weapon_kills (match_id, xuid, weapon_id, reconciled_as, generation_id) VALUES ('m1', 'x1', 200, NULL, 0)`)
 
 	player := openSnapMemDB(t)
 	snapExec(t, player, `CREATE TABLE player_match_enrichment (match_id VARCHAR)`)
