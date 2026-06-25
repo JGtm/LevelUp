@@ -19,9 +19,16 @@ func ComputeKPIsFromCanonical(rows []canonical.PlayerMatchRow, totalMatches int,
 	var kdaSum, kdaCount float64
 	var accSum, accCount float64
 	var totalPlaytime int
-	var hasCombatYield bool
+	// Découplage offensif/défensif (cf. home_kpis.go ComputeKPIs) : l'OC ne dépend
+	// que de damage_dealt, la DR que de damage_taken. On agrège DEUX groupes
+	// distincts pour que les titres sans damage_taken (Halo 5, no_damage_taken)
+	// conservent un rendement offensif (avant : couplés derrière `&& DamageTaken`,
+	// donc OC absente dès que damage_taken manquait). Pour Infinite, où les deux
+	// coexistent toujours sur les mêmes matchs, les groupes coïncident → aucun écart.
+	var hasOffense, hasDefense bool
 	var totalDmgDealt, totalDmgTaken float64
-	var totalKills, totalAssists, totalDeaths int
+	var totalKills, totalAssists int // groupe offensif (apparié à damage_dealt)
+	var totalDeaths int              // groupe défensif (apparié à damage_taken)
 	playlistCounts := make(map[string]int)
 	playlistNames := make(map[string]string)
 
@@ -51,12 +58,15 @@ func ComputeKPIsFromCanonical(rows []canonical.PlayerMatchRow, totalMatches int,
 		if r.Self.TimePlayed != nil {
 			totalPlaytime += *r.Self.TimePlayed
 		}
-		if r.Self.DamageDealt != nil && r.Self.DamageTaken != nil {
-			hasCombatYield = true
+		if r.Self.DamageDealt != nil {
+			hasOffense = true
 			totalDmgDealt += float64(*r.Self.DamageDealt)
-			totalDmgTaken += float64(*r.Self.DamageTaken)
 			totalKills += derefIntZero(r.Self.Kills)
 			totalAssists += derefIntZero(r.Self.Assists)
+		}
+		if r.Self.DamageTaken != nil {
+			hasDefense = true
+			totalDmgTaken += float64(*r.Self.DamageTaken)
 			totalDeaths += derefIntZero(r.Self.Deaths)
 		}
 		if r.Summary.Playlist != nil {
@@ -97,12 +107,15 @@ func ComputeKPIsFromCanonical(rows []canonical.PlayerMatchRow, totalMatches int,
 	// Rendement / résistance : AGRÉGAT volume-pondéré (Σ sur tous les matchs), pas une
 	// moyenne des ratios par match (qui sur-pondérait les matchs à faible volume et
 	// décrochait du dégâts/frag affiché). OC garde le crédit assists (frag-équivalent).
-	if hasCombatYield {
-		cy := ComputeCombatYieldFloat(float64(totalKills), float64(totalAssists), totalDmgDealt, totalDmgTaken, float64(totalDeaths), effectiveHpToKill)
+	if hasOffense {
+		cy := ComputeCombatYieldFloat(float64(totalKills), float64(totalAssists), totalDmgDealt, 0, 0, effectiveHpToKill)
 		if cy.OffensiveConversion > 0 {
 			v := round2(cy.OffensiveConversion)
 			kpis.AvgOffensiveConversion = &v
 		}
+	}
+	if hasDefense {
+		cy := ComputeCombatYieldFloat(0, 0, 0, totalDmgTaken, float64(totalDeaths), effectiveHpToKill)
 		if cy.DefensiveResistance > 0 {
 			v := round2(cy.DefensiveResistance)
 			kpis.AvgDefensiveResistance = &v
@@ -110,10 +123,13 @@ func ComputeKPIsFromCanonical(rows []canonical.PlayerMatchRow, totalMatches int,
 	}
 	// Dégâts par frag-équivalent : dénominateur = frags + assists/3, aligné sur OC
 	// (% = 225 / DmgPerKill). DmgPerDeath reste brut (pas d'assists en défense).
-	if v := DamagePerFragEquivalent(totalDmgDealt, float64(totalKills), float64(totalAssists)); v > 0 {
-		kpis.DmgPerKill = &v
+	// Title-aware : DmgPerKill ne dépend que du groupe offensif, DmgPerDeath du défensif.
+	if hasOffense {
+		if v := DamagePerFragEquivalent(totalDmgDealt, float64(totalKills), float64(totalAssists)); v > 0 {
+			kpis.DmgPerKill = &v
+		}
 	}
-	if totalDeaths > 0 {
+	if hasDefense && totalDeaths > 0 {
 		v := totalDmgTaken / float64(totalDeaths)
 		kpis.DmgPerDeath = &v
 	}

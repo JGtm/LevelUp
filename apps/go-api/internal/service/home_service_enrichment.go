@@ -115,6 +115,85 @@ func enrichMatchesWithCitations(ctx context.Context, repo port.HomeRepository, i
 	}
 }
 
+// enrichMatchesWithCommendations remplit le slot TopCitations à partir des
+// commendations NATIVES par match (Halo 5 : shared.match_commendations) pour les
+// items dont TopCitations est encore VIDE après enrichMatchesWithCitations.
+//
+// DÉCISION TITLE-AGNOSTIC (P7) : plutôt qu'un gating `slug == "halo_5"`, le wiring
+// appelle citations PUIS commendations en fallback. Halo Infinite remplit TopCitations
+// via le moteur de citations dérivé (LoadMatchCitations) → les commendations natives
+// (table vide pour Infinite) sont un no-op. Halo 5 n'a pas de moteur de citations
+// (citations.engine = not_exposed) → LoadMatchCitations renvoie vide → les
+// commendations natives (commendations.native = supported) alimentent le MÊME slot,
+// SANS changement frontend ni OpenAPI (réutilisation de MatchCitationSnippet).
+//
+// Une commendation native n'a ni paliers ni cumul → ProgressPct=0 (anneau vide,
+// dégradation propre confirmée côté CitationProgressRing), Cumulative/Tier* = 0,
+// IsNewlyMastered=false. Name + ImageURL (icône CDN) + Delta (count gagné) suffisent
+// au rendu de la tuile.
+func enrichMatchesWithCommendations(ctx context.Context, repo port.HomeRepository, items []domain.RecentMatchItem) {
+	if len(items) == 0 {
+		return
+	}
+	// Ne charger que pour les matchs dont TopCitations est encore vide (Infinite a
+	// déjà rempli via citations dérivées → on ne réinterroge pas inutilement).
+	matchIDs := make([]string, 0, len(items))
+	for _, item := range items {
+		if len(item.TopCitations) == 0 {
+			matchIDs = append(matchIDs, item.MatchID)
+		}
+	}
+	if len(matchIDs) == 0 {
+		return
+	}
+	commMap, err := repo.LoadMatchCommendations(ctx, matchIDs)
+	if err != nil || len(commMap) == 0 {
+		return
+	}
+	for i, item := range items {
+		if len(items[i].TopCitations) > 0 {
+			continue // citations dérivées déjà présentes (Infinite) → ne pas écraser
+		}
+		rows, ok := commMap[item.MatchID]
+		if !ok || len(rows) == 0 {
+			continue
+		}
+		items[i].TopCitations = buildCommendationSnippets(rows, maxCitationSnippets)
+	}
+}
+
+// buildCommendationSnippets projette des commendations natives par match en
+// MatchCitationSnippet (slot réutilisé). Tri count DESC (déjà appliqué par le repo,
+// re-trié ici par sûreté), max `limit`.
+func buildCommendationSnippets(rows []domain.HomeMatchCommendationRaw, limit int) []domain.MatchCitationSnippet {
+	if len(rows) == 0 {
+		return nil
+	}
+	sorted := make([]domain.HomeMatchCommendationRaw, len(rows))
+	copy(sorted, rows)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Count > sorted[j].Count })
+	if len(sorted) > limit {
+		sorted = sorted[:limit]
+	}
+	out := make([]domain.MatchCitationSnippet, 0, len(sorted))
+	for _, r := range sorted {
+		var imgURL *string
+		if r.IconURL != "" {
+			u := r.IconURL
+			imgURL = &u
+		}
+		out = append(out, domain.MatchCitationSnippet{
+			Key:      r.ID,
+			Name:     r.Name,
+			ImageURL: imgURL,
+			Delta:    r.Count,
+			// ProgressPct / Cumulative / Tier* / IsNewlyMastered laissés à zéro :
+			// une commendation native n'a pas de paliers (dégradation propre du front).
+		})
+	}
+	return out
+}
+
 // GetBattlePass retourne les infos Battle Pass (live d'abord, cache DB en fallback).
 // Appel live systÃ©matique pour garantir des donnÃ©es fraÃ®ches au rechargement de page.
 // Si le live Ã©choue (tokens absents, API indisponible), le cache DB est retournÃ©.

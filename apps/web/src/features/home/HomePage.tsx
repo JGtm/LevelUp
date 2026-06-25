@@ -57,12 +57,17 @@ export function HomePage() {
   // `ranked`. NO-OP pour halo_infinite ; pour un titre sans `ranked`, la grille se
   // replie sur les seules « Sessions récentes » (transverses) au lieu d'une colonne vide.
   const hasRanked = useCapability('ranked')
+  // Gating multi-titre : Battle Pass + Défis dépendent de `season_pass`. NO-OP
+  // pour halo_infinite ; pour un titre sans cette capability (ex. Halo 5), tout
+  // le bloc est masqué (au lieu d'un état « indisponible ») et la requête
+  // season-pass n'est pas émise.
+  const hasSeasonPass = useCapability('season_pass')
   const { data, isLoading, isError, refetch } = useHomePage(playerSlug)
   const {
     data: seasonPass,
     isLoading: isSeasonPassLoading,
     error: seasonPassError,
-  } = useSeasonPassPreview(playerSlug)
+  } = useSeasonPassPreview(playerSlug, hasSeasonPass)
   const [matchTab, setMatchTab] = useState<'recent' | 'favorites'>('recent')
   const [soloIdx, setSoloIdx] = useState(0)
   const [squadIdx, setSquadIdx] = useState(0)
@@ -243,7 +248,8 @@ export function HomePage() {
         </div>
 
 
-        {/* Battle Pass + Défis */}
+        {/* Battle Pass + Défis — masqués pour un titre sans capability season_pass. */}
+        {hasSeasonPass && (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
           <HomeBattlePassPanel
             loading={isSeasonPassLoading}
@@ -321,6 +327,7 @@ export function HomePage() {
             </Card>
           </section>
         </div>
+        )}
 
         {/* Playlists récentes + Rang | Sessions récentes */}
         <div

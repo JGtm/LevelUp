@@ -16,6 +16,7 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/mappings"
 )
 
 // h5MaxSpartanRank — niveau SR maximum Halo 5 (sommet de la progression XP).
@@ -57,6 +58,57 @@ func h5SRAssetRef(sr int) *canonical.AssetReference {
 		DefaultLabel: fmt.Sprintf("SR %d", sr),
 		Labels:       map[string]string{"en": fmt.Sprintf("SR%d", sr), "fr": fmt.Sprintf("SR %d", sr)},
 	}
+}
+
+// SpartanRankLabel retourne le LIBELLÉ d'affichage du rang SR Halo 5 ("SR N"),
+// title-aware. Source unique partagée par l'asset ref canonique (h5SRAssetRef) ET
+// la persistance career_progression (rank_name, cf. livesync.writeCareerSR) — pour
+// que la Home (qui lit career_progression.rank_name) affiche « SR 111 » au lieu du
+// fallback générique HINF « Rang 111 » (career.rank_catalog = not_exposed pour h5,
+// aucun catalogue ne résout le label côté Home).
+func SpartanRankLabel(sr int) string {
+	return fmt.Sprintf("SR %d", sr)
+}
+
+// BuildSpartanRankCatalog construit un mappings.RankCatalog title-aware Halo 5 à
+// partir du référentiel SR statique (h5SRStartXP), pour que la Home résolve le
+// libellé « SR N » au lieu du fallback générique HINF « Rang N ».
+//
+// Halo 5 n'expose PAS de career_rank_translations en metadata (career.rank_catalog
+// = not_exposed), donc le SemanticAdapter h5 recevait un catalog vide et
+// buildHomeCareerRank tombait sur « Rang N ». Ce builder donne au catalog les 152
+// niveaux SR avec :
+//   - ID = n (1..152)
+//   - Title["en"]/Title["fr"] = "SR n" (réutilise SpartanRankLabel — source unique)
+//   - XPRequired = XP pour COMPLÉTER le rang n = h5SRStartXP[n] - h5SRStartXP[n-1]
+//     (0 au max SR152 : pas de rang suivant)
+//
+// Le catalog résout le label pour TOUTE la donnée (existante avec rank_name NULL en
+// career_progression ET future) — même mécanisme que Halo Infinite (LoadRankCatalog),
+// mais sans aucune écriture DB : le référentiel est calculé en mémoire au boot.
+//
+// XPRequired ne sert QUE de fallback quand la source (career_progression) ne porte
+// pas xp_for_next (cf. buildHomeCareerRank) : un xp_for_next déjà peuplé en DB
+// (ex. 2 950 000) n'est jamais écrasé. Next(152) absent → is_max dérivé correctement.
+func BuildSpartanRankCatalog() *mappings.RankCatalog {
+	entries := make([]mappings.RankEntry, 0, h5MaxSpartanRank)
+	for n := 1; n <= h5MaxSpartanRank; n++ {
+		label := SpartanRankLabel(n)
+		var xpRequired int
+		if n < h5MaxSpartanRank {
+			if need := h5SRStartXP[n] - h5SRStartXP[n-1]; need > 0 {
+				xpRequired = need
+			}
+		}
+		entries = append(entries, mappings.RankEntry{
+			ID:         n,
+			Title:      map[string]string{mappings.LocaleEN: label, mappings.LocaleFR: label},
+			Subtitle:   map[string]string{},
+			Tier:       map[string]string{},
+			XPRequired: xpRequired,
+		})
+	}
+	return mappings.NewRankCatalog(TitleSlug, entries)
 }
 
 // applyDefaultSpartanRankBounds fixe les bornes de progression « Héros » Halo 5
