@@ -18,7 +18,7 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard: shared reader: %w", err)
 	}

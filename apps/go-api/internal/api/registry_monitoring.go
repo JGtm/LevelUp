@@ -85,6 +85,8 @@ func monitoringSnapshotSummary(titleSlug string) domain.MonitoringSnapshotSummar
 		CutsProduced:            observability.LoadCounterT(titleSlug, "snapshot_cut_produced_total"),
 		CutFailures:             observability.LoadCounterT(titleSlug, "snapshot_cut_failures_total"),
 		CutNoop:                 observability.LoadCounterT(titleSlug, "snapshot_cut_noop_total"),
+		ReadsServed:             observability.LoadCounterT(titleSlug, "snapshot_read_served_total"),
+		ReadsFallback:           observability.LoadCounterT(titleSlug, "snapshot_read_live_fallback_total"),
 	}
 }
 
