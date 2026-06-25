@@ -1,6 +1,6 @@
 // Package duckdb — social_persister_iface.go : interface SocialPersister
 // utilisée par PlayerDB pour router les écritures shared_social vers le
-// pattern Collect→Persist (ADR 0020).
+// pattern Collect→Persist (ADR 0022).
 //
 // L'interface vit ici (pas dans internal/persist) pour éviter le cycle
 // d'import : internal/persist importe déjà internal/platform/duckdb via

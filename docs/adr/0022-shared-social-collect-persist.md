@@ -3,7 +3,7 @@
 > **Note de numérotation** : ce document a porté le numéro **0020** à sa création (cf. titre
 > historique + références « ADR 0020 (SocialPersister) » dans le code et l'ADR 0021-wal-recovery).
 > Il a été renommé **0022** pour lever une collision avec `0020-coach-prestige-bridge` et
-> `0020-sync-pipeline-v2-cycle-orchestrator`. Les références code « ADR 0020 » qui parlent de
+> `0027-sync-pipeline-v2-cycle-orchestrator`. Les références code « ADR 0020 » qui parlent de
 > `SocialPersister` / Collect→Persist `shared_social` désignent **ce document (0022)**.
 
 **Date** : 2026-05-25

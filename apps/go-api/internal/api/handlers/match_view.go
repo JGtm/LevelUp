@@ -211,7 +211,7 @@ func (h *MatchViewHandler) handleGetMatchView(ctx context.Context, in *matchView
 	if err != nil {
 		var apiErr *domain.APIError
 		if errors.As(err, &apiErr) && apiErr.Code == "match_not_participant" {
-			// Couche B (ADR 0024) : match existant mais joueur non-participant.
+			// Couche B (ADR 0029) : match existant mais joueur non-participant.
 			return nil, humacore.NewError(http.StatusNotFound, "match_not_participant", apiErr.Message)
 		}
 		if errors.As(err, &apiErr) && apiErr.Code == "not_found" {

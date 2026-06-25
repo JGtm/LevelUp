@@ -1,5 +1,5 @@
 // Package main — sync_v2_wiring.go : construction du CycleOrchestrator V2
-// (ADR 0020 D6.5). Isolé dans son propre fichier pour faciliter la
+// (ADR 0027 D6.5). Isolé dans son propre fichier pour faciliter la
 // suppression au D8 cleanup (rm sync_v2_wiring.go + 1 if-block dans main.go).
 //
 // Le câblage est défensif : retourne nil si une dépendance manque ; le

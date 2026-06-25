@@ -1,5 +1,5 @@
 /**
- * Tests unitaires — PageUnavailable + apiErrorCode (ADR 0024).
+ * Tests unitaires — PageUnavailable + apiErrorCode (ADR 0029).
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'

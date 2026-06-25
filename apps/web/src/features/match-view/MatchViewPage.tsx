@@ -151,7 +151,7 @@ export function MatchViewPage() {
   }
 
   if (isError || !data) {
-    // ADR 0024 Couche B : match existant mais joueur non-participant (404
+    // ADR 0029 Couche B : match existant mais joueur non-participant (404
     // match_not_participant) ou accès refusé (403 player_forbidden) → page
     // "Indisponible" claire avec navigation, plutôt qu'une page mal renseignée.
     const code = apiErrorCode(error)

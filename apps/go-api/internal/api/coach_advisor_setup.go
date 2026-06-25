@@ -6,7 +6,7 @@
 //
 // La grammaire vide (refuse toute synthèse) est utilisée comme fallback si le
 // TOML n'est pas trouvé — le matching catalogue reste fonctionnel mais sans
-// extension dynamique. Cf. ADR 0021.
+// extension dynamique. Cf. ADR 0028.
 package api
 
 import (

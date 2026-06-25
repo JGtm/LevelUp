@@ -26,7 +26,7 @@ type mockMatchViewRepo struct {
 	eventsErr error
 	kvPairs   []domain.KVPairRaw
 	kvErr     error
-	// notParticipant : si true, IsParticipant renvoie false (gating ADR 0024).
+	// notParticipant : si true, IsParticipant renvoie false (gating ADR 0029).
 	// Défaut false → "a participé" → comportement inchangé pour les tests existants.
 	notParticipant bool
 	participantErr error
@@ -237,7 +237,7 @@ func TestMatchViewService_GetMatchView_MetaError(t *testing.T) {
 	}
 }
 
-// ADR 0024 Couche B : un joueur non-participant reçoit match_not_participant,
+// ADR 0029 Couche B : un joueur non-participant reçoit match_not_participant,
 // même si le match existe (meta OK) — fail-fast avant les chargements parallèles.
 func TestMatchViewService_GetMatchView_NotParticipant(t *testing.T) {
 	now := time.Now()

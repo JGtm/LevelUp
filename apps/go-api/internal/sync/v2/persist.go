@@ -1,4 +1,4 @@
-// Package v2 — persist.go : Phase 5 du pipeline V2 (ADR 0020).
+// Package v2 — persist.go : Phase 5 du pipeline V2 (ADR 0027).
 //
 // Phase 5 = construction d'un méga-batch unique à partir des buffers
 // Phase 3 (SharedMatchData) + Phase 4 (PlayerEnrichmentData), et

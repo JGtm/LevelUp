@@ -246,7 +246,7 @@ func (r *MatchViewRepo) GetPlayerMatchStats(ctx context.Context, xuid, matchID s
 }
 
 // IsParticipant indique si le joueur (xuid) figure dans match_participants pour
-// ce match. Sert au gating "match non-participé" (ADR 0024, Couche B). EXISTS
+// ce match. Sert au gating "match non-participé" (ADR 0029, Couche B). EXISTS
 // léger — ne scanne pas les 31 colonnes de Q17. Exécutée sur SharedReader.
 func (r *MatchViewRepo) IsParticipant(ctx context.Context, xuid, matchID string) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)

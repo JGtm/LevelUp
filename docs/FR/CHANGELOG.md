@@ -30,12 +30,12 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 - **CSR par match & par playlist** — `GetPlaylistCsr`, CSR par match via RankRecap, `season_id` + `is_ranked` à l'écriture, seuils de placement dynamiques par saison, référence autoritative des playlists classées, distribution automatique du CSR des coéquipiers, CLI `backfill-csr-history`.
 - **LUSR v2 (TrueSkill2)** — `internal/analysis/skill_v2/` graphe de facteurs + expectation propagation, pondération par temps joué, ordre des abandons, probabilité de victoire pré-match, calibration des paliers, protections anti-volatilité ; mode shadow puis canonical, avec replay offline et outillage de ré-estimation des hyperparamètres par lot.
 - **Classement CSR mondial** — scraper Halo Waypoint, enrichissement `world_player_season_stats` (append-only), agrégateur multi-tokens, cron dédié + header provider, CLI de backfill.
-- **Coach advisor & coach d'escouade** — orchestration génération/acceptation des propositions (ADR 0020/0021), hook post-sync, endpoints HTTP, orientation d'escouade + biais du pool de défis.
+- **Coach advisor & coach d'escouade** — orchestration génération/acceptation des propositions (ADR 0020/0028), hook post-sync, endpoints HTTP, orientation d'escouade + biais du pool de défis.
 - **Sauvegarde / restauration** — `pkg/duckdbbackup` scheduler restic générique + adaptateur LevelUp, `cmd/restore` restauration à une date, logging structuré.
 - **Sync convergent** — résolution autonome des noms d'assets au primary write, filet hebdomadaire pour la traîne, cron de rafraîchissement du catalogue in-cycle, gate de déduplication cross-source, gate d'invariants de qualité des données.
 - **Timeline de match / T0** — `MatchTimeline` + `ComputeT0`, vraie durée de gameplay (décompte pré-partie soustrait), câblage `CorrectEvents`/`CorrectImpactEvents`, re-normalisation TZ de `first_joined_time`/`last_leave_time`.
 - **Succès (Xbox)** — CLI `sync-achievements` + `RunAchievementsOnly`, service de merge cross-DB, handler HTTP, filtre par catégorie.
-- **Contrôle d'accès** — ownership joueur multi-user + middleware `RequirePlayerOwnership` (ADR 0024), verrouillage d'instance, gating « page indisponible » avec `apiErrorCode`.
+- **Contrôle d'accès** — ownership joueur multi-user + middleware `RequirePlayerOwnership` (ADR 0029), verrouillage d'instance, gating « page indisponible » avec `apiErrorCode`.
 - **Observabilité** — `event_id` propagé à tous les flows sync/auth/watcher, métriques de concurrence expvar, invariants d'intégrité des données, endpoints de diagnostic admin.
 
 ### Modifié

@@ -1,4 +1,9 @@
-# ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc
+# ADR 0028 — Synthèse dynamique de Template et Arc ad-hoc
+
+> **Note de renumérotation** : ce document a porté le numéro **0021** à sa création.
+> Renuméroté **0028** pour lever la collision avec `0021-shared-social-wal-recovery`. Les références
+> code « ADR 0021 » du package `internal/progression/coach_advisor/` (synthèse de template/arc)
+> désignent ce document (0028). Les « ADR 0020 » ci-dessous référencent l'ADR coach (0020), inchangé.
 
 **Date** : 2026-05-25
 **Status** : Proposed

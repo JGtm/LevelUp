@@ -60,7 +60,7 @@ import (
 
 // playerOwnershipXUIDResolver mappe un slug joueur vers le xuid de son profil
 // pour le titre courant (lu depuis le contexte), via db_profiles.json sans
-// ouvrir de DuckDB. Alimente middleware.RequirePlayerOwnership (ADR 0024).
+// ouvrir de DuckDB. Alimente middleware.RequirePlayerOwnership (ADR 0029).
 func playerOwnershipXUIDResolver(cfg *config.AppConfig) middleware.PlayerXUIDResolver {
 	return func(ctx context.Context, slug string) (string, bool) {
 		players, err := cfg.LoadPlayers(ctxkeys.TitleSlug(ctx))
@@ -78,7 +78,7 @@ func playerOwnershipXUIDResolver(cfg *config.AppConfig) middleware.PlayerXUIDRes
 
 // familyXUIDResolver résout l'ensemble des xuids co-membres de groupe DU USER
 // courant (groups.json) pour autoriser le switch de BDD entre membres d'un même
-// groupe/famille (ADR 0024). Lit la session depuis le contexte → user → groupes.
+// groupe/famille (ADR 0029). Lit la session depuis le contexte → user → groupes.
 // Retourne nil (→ accès strict propriétaire-only) si pas de session, user non lié,
 // ou aucun groupe partagé. Title-agnostic : les groupes sont indexés par xuid.
 //
@@ -1271,7 +1271,7 @@ func NewRouter(
 		// D3-01 (revue 2026-06-01) : /sync/initial et /sync/all sont des opérations
 		// admin/setup (sync d'un joueur arbitraire lu dans le body / de TOUS les
 		// joueurs). Auparavant montées sous /api/v1 SANS auth → contournaient
-		// l'ownership (ADR 0024) : n'importe qui pouvait déclencher le sync de
+		// l'ownership (ADR 0029) : n'importe qui pouvait déclencher le sync de
 		// n'importe quel joueur. Protégées par RequireAuth + RequireAdmin comme le
 		// groupe /admin. En mode demo/single-user les middlewares no-opent (onboarding
 		// préservé) ; en multi-user, seul un admin peut déclencher.
@@ -1356,7 +1356,7 @@ func NewRouter(
 			// plus fondamental que l'appartenance du joueur.
 			r.Use(middleware.RequireActiveTitle(titleRegistry))
 
-			// Couche A (ADR 0024) : garde de propriété joueur. Chokepoint unique —
+			// Couche A (ADR 0029) : garde de propriété joueur. Chokepoint unique —
 			// 403 player_forbidden si l'utilisateur courant ne possède pas le slug.
 			// Transparent en mode demo / auth non activée. Toute route player-scoped
 			// DOIT rester montée sous ce groupe pour être protégée.
@@ -1575,7 +1575,7 @@ func NewRouter(
 				appPlayers := func(context.Context) ([]domain.PlayerSummary, error) {
 					return cfg.LoadPlayers()
 				}
-				// Garde d'autorisation acteur (ADR 0024 étendu aux routes squad
+				// Garde d'autorisation acteur (ADR 0029 étendu aux routes squad
 				// top-level) : created_by/requested_by/user_id doivent désigner un
 				// profil possédé par la session. Réutilise les primitives de
 				// RequirePlayerOwnership. Transparent en demo / auth désactivée.

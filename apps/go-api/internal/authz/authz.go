@@ -1,5 +1,5 @@
 // Package authz porte la logique pure d'autorisation d'accès aux joueurs
-// (multi-utilisateur strict, ADR 0024). Aucune I/O, aucune dépendance DuckDB :
+// (multi-utilisateur strict, ADR 0029). Aucune I/O, aucune dépendance DuckDB :
 // la résolution de l'utilisateur courant passe par l'interface UserLookup,
 // fournie par le caller (userstore).
 //

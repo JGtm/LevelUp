@@ -179,7 +179,7 @@ type Template struct {
 
 	// Source distingue les templates seedés depuis TOML ("catalog") de ceux
 	// synthétisés dynamiquement par le coach_advisor ("coach_synthesized",
-	// cf. ADR 0021). Vide à la lecture = "catalog" (rétrocompat).
+	// cf. ADR 0028). Vide à la lecture = "catalog" (rétrocompat).
 	//
 	// Les templates synthétisés stockent dans normal_target/heroic_target/
 	// legendary_target/mythic_target les **stretch ratios** standards

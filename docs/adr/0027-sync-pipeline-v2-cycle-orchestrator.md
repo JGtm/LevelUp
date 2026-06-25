@@ -1,4 +1,9 @@
-# ADR 0020 — Sync pipeline V2 : cycle orchestrator (parallélisation cross-player)
+# ADR 0027 — Sync pipeline V2 : cycle orchestrator (parallélisation cross-player)
+
+> **Note de renumérotation** : ce document a porté le numéro **0020** à sa création.
+> Renuméroté **0027** pour lever la collision avec `0020-coach-prestige-bridge`. Les références
+> code « ADR 0020 » mentionnant `pipeline V2` / `D6.x` / le package `internal/sync/v2` désignent
+> ce document (0027).
 
 **Statut** : Proposé (2026-05-25) — D0 préparation en cours, livraison phasée D1-D8.
 

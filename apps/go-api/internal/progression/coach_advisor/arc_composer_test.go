@@ -182,7 +182,7 @@ func TestTryCompose_IgnoresSignalsWithoutAxis(t *testing.T) {
 }
 
 func TestTryCompose_AllAxesLabelsKnown(t *testing.T) {
-	// Vérif que tous les axes prévus ADR 0021 §"Cohérence narrative" produisent un titre.
+	// Vérif que tous les axes prévus ADR 0028 §"Cohérence narrative" produisent un titre.
 	for _, axis := range []string{"combat", "survival", "support", "objective", "score", "impact"} {
 		signals := []coach_advisor.Signal{
 			mkSig(coach_advisor.SignalLOWESSPositive, axis, 0.7),

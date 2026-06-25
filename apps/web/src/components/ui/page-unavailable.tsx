@@ -14,7 +14,7 @@ interface PageUnavailableProps {
 }
 
 /**
- * État "page indisponible" réutilisable (ADR 0024) — affiché quand une ressource
+ * État "page indisponible" réutilisable (ADR 0029) — affiché quand une ressource
  * existe mais n'est pas accessible au joueur courant (match non-participé, session
  * inexistante, accès refusé). Boutons de navigation explicites plutôt qu'une
  * redirection automatique (l'utilisateur garde le contrôle).

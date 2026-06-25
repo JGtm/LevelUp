@@ -11,7 +11,7 @@ import (
 )
 
 // synthesis_grammar.go — chargement et représentation de l'allowlist
-// (config/coach_advisor/synthesis_grammar.toml), cf. ADR 0021.
+// (config/coach_advisor/synthesis_grammar.toml), cf. ADR 0028.
 
 // ErrMetricNotSynthesizable est retournée par le synthesizer si une
 // combinaison (metric, window_type, window_value, eval_type) n'est pas

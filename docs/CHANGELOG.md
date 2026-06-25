@@ -30,12 +30,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **CSR per match & per playlist** — `GetPlaylistCsr`, RankRecap per-match CSR, `season_id` + `is_ranked` at write time, dynamic per-season placement thresholds, authoritative ranked-playlist reference, automatic teammate CSR distribution, CLI `backfill-csr-history`.
 - **LUSR v2 (TrueSkill2)** — `internal/analysis/skill_v2/` factor graph + expectation propagation, time-played weighting, quit ordering, pre-match win probability, tier calibration, anti-volatility safeguards; shadow mode then canonical, with offline replay and batch hyperparameter tooling.
 - **World CSR leaderboard** — Halo Waypoint scraper, `world_player_season_stats` (append-only) enrichment, multi-token aggregator, dedicated cron + header provider, CLI backfill.
-- **Coach advisor & squad coach** — proposal generation/accept orchestration (ADR 0020/0021), post-sync hook, HTTP endpoints, squad orientation + challenge-pool bias.
+- **Coach advisor & squad coach** — proposal generation/accept orchestration (ADR 0020/0028), post-sync hook, HTTP endpoints, squad orientation + challenge-pool bias.
 - **Backup / restore** — `pkg/duckdbbackup` generic restic scheduler + LevelUp adapter, `cmd/restore` point-in-time restore, structured logging.
 - **Convergent sync** — autonomous asset-name resolution at primary write, weekly safety-net for stragglers, in-cycle catalog refresh cron, cross-source sync dedup gate, data-quality invariants gate.
 - **Match timeline / T0** — `MatchTimeline` + `ComputeT0`, real gameplay duration (pre-match countdown subtracted), `CorrectEvents`/`CorrectImpactEvents` wiring, timezone re-normalization of `first_joined_time`/`last_leave_time`.
 - **Achievements (Xbox)** — `sync-achievements` CLI + `RunAchievementsOnly`, cross-DB merge service, HTTP handler, category filter.
-- **Access control** — multi-user player ownership + `RequirePlayerOwnership` middleware (ADR 0024), instance lockdown, "page unavailable" gating with `apiErrorCode`.
+- **Access control** — multi-user player ownership + `RequirePlayerOwnership` middleware (ADR 0029), instance lockdown, "page unavailable" gating with `apiErrorCode`.
 - **Observability** — `event_id` propagated across sync/auth/watcher flows, expvar concurrency metrics, data-integrity invariants, admin diagnostics endpoints.
 
 ### Changed

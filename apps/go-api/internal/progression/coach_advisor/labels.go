@@ -3,14 +3,14 @@ package coach_advisor
 import "fmt"
 
 // labels.go — templates de titres/descriptions narratifs pour les arcs
-// dynamiques composés par arc_composer (cf. ADR 0021 §"Cohérence narrative").
+// dynamiques composés par arc_composer (cf. ADR 0028 §"Cohérence narrative").
 //
 // Templates statiques par radar_axis. Pas de génération LLM — déterministe
 // et indépendant de tout service externe. Pour un titre futur sans
 // correspondance, fallback générique.
 
 // arcTitleForAxis retourne le titre EN/FR d'un arc paramétré par son axis
-// pivot. ADR 0021 §"Cohérence narrative" :
+// pivot. ADR 0028 §"Cohérence narrative" :
 //
 //	combat     : Combat Mastery       / Domination en combat
 //	survival   : Resilient Comeback   / Reprise solide

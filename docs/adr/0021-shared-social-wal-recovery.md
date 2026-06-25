@@ -1,10 +1,10 @@
 # ADR 0021 — Recovery automatique d'un WAL orphelin sur shared_social.duckdb
 
-> **Note collision** : un autre fichier `0021-template-synthesis.md` (status Proposed, 2026-05-25) partage le même numéro. Collision pré-existante à cet ADR. À résoudre par renumérotation future (probablement `0023-shared-social-wal-recovery.md`) — non bloquant car le titre désambiguïse + le contenu ne se chevauche pas (template-synthesis = feature canonical synthesis, sans rapport avec WAL recovery).
+> **Note de renumérotation** : une collision de numéro 0021 a existé avec `template-synthesis`. Résolue : le template-synthesis a été renuméroté **0028** (`0028-template-synthesis.md`). Ce document conserve le numéro **0021** ; toutes les références code « ADR 0021 » relatives au WAL recovery / SocialPersister / shared_social désignent ce document.
 
 **Status** : Accepted — 2026-05-27
 **Stakeholders** : pool DuckDB (Guillaume), runtime API Go
-**Related** : ADR 0016 (no-ATTACH cross-DB), ADR 0019 (Collect→Persist), ADR 0020 (SocialPersister)
+**Related** : ADR 0016 (no-ATTACH cross-DB), ADR 0019 (Collect→Persist), ADR 0022 (SocialPersister)
 
 ## Contexte
 

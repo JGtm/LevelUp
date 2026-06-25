@@ -53,7 +53,7 @@ type AppPlayersFunc func(ctx context.Context) ([]domain.PlayerSummary, error)
 
 // ActorGuard valide que l'appelant (session dans ctx) a le droit d'agir au nom
 // de `actorSlug` (created_by/requested_by/user_id des routes squad top-level).
-// Renvoie false → 403. Réutilise les primitives d'ownership (ADR 0024) ; câblé
+// Renvoie false → 403. Réutilise les primitives d'ownership (ADR 0029) ; câblé
 // par le routeur. Nil = non câblé (tests / enforcement off) → passant.
 type ActorGuard func(ctx context.Context, actorSlug string) bool
 
@@ -63,7 +63,7 @@ func NewPrestigeHandler(svc prestige.Service, appPlayers AppPlayersFunc) *Presti
 }
 
 // WithActorGuard injecte la garde d'autorisation acteur des routes squad
-// (ADR 0024 étendu aux routes top-level /squads, hors groupe /players/{slug}).
+// (ADR 0029 étendu aux routes top-level /squads, hors groupe /players/{slug}).
 func (h *PrestigeHandler) WithActorGuard(g ActorGuard) *PrestigeHandler {
 	h.actorGuard = g
 	return h

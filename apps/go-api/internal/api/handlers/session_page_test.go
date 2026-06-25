@@ -106,7 +106,7 @@ func TestSessionPageHandler_ServiceError(t *testing.T) {
 	}
 }
 
-// ADR 0024 Couche B : une session demandée inexistante (APIError
+// ADR 0029 Couche B : une session demandée inexistante (APIError
 // session_not_found) est mappée en 404 avec le code distinct, pas en 500.
 func TestSessionPageHandler_SessionNotFound_404(t *testing.T) {
 	mock := &mockSessionPageService{

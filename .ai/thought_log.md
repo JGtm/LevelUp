@@ -29636,3 +29636,28 @@ REPLACE (réécriture Go) ; aucune suppression nette (au doute, V7 plutôt que d
 
 **Prochaine étape** : réécriture docs prioritaires (CONFIGURATION/SYNC_GUIDE/INSTALL/CONTRIBUTING
 EN+FR) + renumérotation ADR + maj index CLAUDE.md.
+
+## [2026-06-25] Renumérotation ADR (lève les 3 collisions 0020/0021/0024) — Complété
+
+**Statut** : Complété. Branche `chore/doc-triage-v7`.
+
+**Décision** : résoudre définitivement les collisions de numéro ADR en renumérotant le membre
+le MOINS référencé de chaque paire (garde le plus cité/canonique sur son numéro) :
+- `0020-sync-pipeline-v2-cycle-orchestrator` → **0027** (coach garde 0020)
+- `0021-template-synthesis` → **0028** (wal-recovery garde 0021)
+- `0024-multi-user-player-ownership` → **0029** (lusr-v2 garde 0024)
+- Bonus : les réfs code « ADR 0020 (SocialPersister) » corrigées en **0022** (le bon ADR).
+
+**Point dur** : « ADR 0024 » et « ADR 0020/0021 » sont référencés dans ~50 commentaires code, de
+façon AMBIGUË (un même numéro pour 2-3 concepts ; un même fichier mêlant les deux). Méthode :
+classer chaque ligne par mot-clé de contexte (ownership/Couche vs LUSR/skill ; pipeline V2/D6.x vs
+coach Phase 8 ; template/coach_advisor vs wal/forensic), puis sed groupé sur les fichiers
+mono-concept + Edit ciblé sur les fichiers mixtes (`cmd/server/main.go`, CHANGELOG, ADR croisés).
+
+**Résultats observés** : audit de cohérence vert (0 doublon de numéro sur disque ; chaque nouveau
+numéro 0027/0028/0029 n'apparaît que dans son concept ; aucun ownership résiduel en 0024 ; aucun
+lien vers les anciens noms de fichiers). `go build ./...` OK, `go vet` (sync/api/service/progression)
+exit 0. H1 + note de renumérotation dans les 3 fichiers déplacés ; notes de collision des 2
+wal-recovery (EN+FR) mises à jour ; index CLAUDE.md ré-ordonné sans annotation de collision.
+
+**Prochaine étape** : passe de vérification de complétude des docs (nouveaux réécrits + KEEP).

@@ -161,7 +161,7 @@ func Steps() []migration.Migration {
 		{
 			Name:        "challenge_template_add_source_column",
 			TargetDB:    migration.TargetMetadata,
-			Description: "Ajoute challenge_template.source pour distinguer catalog vs coach_synthesized (ADR 0021)",
+			Description: "Ajoute challenge_template.source pour distinguer catalog vs coach_synthesized (ADR 0028)",
 			ApplySchema: func(db *sql.DB) error {
 				return migration.ExecScript(db, `
 					ALTER TABLE challenge_template

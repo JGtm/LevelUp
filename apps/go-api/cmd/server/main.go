@@ -148,7 +148,7 @@ func main() {
 	// arrive bien plus tard dans main, après le setup logging).
 	config.BootstrapEnvLocal()
 
-	// --- 0.6 Wirer la factory SocialPersister (ADR 0020 Phase 5) ---
+	// --- 0.6 Wirer la factory SocialPersister (ADR 0022 Phase 5) ---
 	// Permet à duckdb.openPlayerDB d'instancier un SharedSocialPersister
 	// sans cycle d'import (duckdb -> persist serait cyclique car persist
 	// -> duckdb via combined_persister.go). Le hook factory est lu à chaque
@@ -624,7 +624,7 @@ func main() {
 	bootSvc := service.NewBootstrapService(cfg, bootRepo).
 		WithPrivacyProvider(halo.DefaultHaloProvider)
 
-	// Auth locale : user store partagé — filtrage ownership des joueurs (ADR 0024,
+	// Auth locale : user store partagé — filtrage ownership des joueurs (ADR 0029,
 	// modes password + xbox) et check "first launch" (mode password).
 	usersPath := filepath.Join(cfg.AuthDir, "users.json")
 	us := userstore.NewStore(usersPath)
@@ -645,7 +645,7 @@ func main() {
 		}
 	}
 
-	// Groupes/familles (accès mutuel aux données, ADR 0024 multi-groupes). Le set
+	// Groupes/familles (accès mutuel aux données, ADR 0029 multi-groupes). Le set
 	// co-membres pilote le filtrage ownership (available_players) et le switch de BDD.
 	groupStore := groupstore.NewGroupStore(filepath.Join(cfg.AuthDir, "groups.json"))
 	bootSvc = bootSvc.WithCoMemberResolver(func(xuid string) map[string]bool {
@@ -1099,7 +1099,7 @@ func main() {
 		autoScheduler.WithPostSyncRunner(postSyncRunner)
 	}
 
-	// ADR 0020 D6.5 — câblage pipeline V2 (dormant tant que
+	// ADR 0027 D6.5 — câblage pipeline V2 (dormant tant que
 	// LEVELUP_SYNC_PIPELINE=v2 n'est pas positionné). En l'absence d'env
 	// var, scheduler.shouldUseV2() retourne false et le flow runtime reste
 	// 100% V1 — aucun changement de comportement.

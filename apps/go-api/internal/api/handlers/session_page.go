@@ -89,7 +89,7 @@ func (h *SessionPageHandler) GetPage(ctx context.Context, in *sessionPageInput) 
 	if err != nil {
 		var apiErr *domain.APIError
 		if errors.As(err, &apiErr) && apiErr.Code == "session_not_found" {
-			// Couche B (ADR 0024) : session demandée inexistante dans le périmètre.
+			// Couche B (ADR 0029) : session demandée inexistante dans le périmètre.
 			slog.InfoContext(ctx, "session page: session introuvable",
 				"player_slug", slug, "session_label", derefReqString(req.SessionLabel))
 			return nil, humacore.NewError(http.StatusNotFound, "session_not_found", apiErr.Message)
