@@ -25,6 +25,13 @@ type SwapSnapshot struct {
 	// complet n'a eu lieu.
 	BlockedWindowAvgMs int64
 	BlockedWindowMaxMs int64
+	// Phase 0 — stall lecteur réel (Get), fenêtre RW stricte, drain timeouts.
+	ReaderStallNsTotal int64 // somme NS d'attente réelle des Get retardés
+	ReadersDelayed     int64 // nb de Get retardés par une fenêtre RW
+	RWWindowAvgMs      int64 // durée moyenne de la fenêtre RW stricte
+	RWWindowMaxMs      int64 // durée max de la fenêtre RW stricte
+	RWWindowCount      int64 // nb de fenêtres RW mesurées
+	DrainTimeouts      int64 // échecs de drain (rollback), désambiguïsés d'acquire_writer
 }
 
 // Snapshot lit les compteurs expvar du package et retourne une capture typée.
@@ -32,6 +39,7 @@ type SwapSnapshot struct {
 func Snapshot() SwapSnapshot {
 	initMetrics()
 	_, _, blockedAvg, blockedMax := observability.LoadDurationStats("shared_provider_blocked_window_ms")
+	rwCount, _, rwAvg, rwMax := observability.LoadDurationStats("shared_provider_rw_window_ms")
 	return SwapSnapshot{
 		State:          currentStateLabel(),
 		SwapsToRW:      mapInt(swapTotal, swapDirRoToRw),
@@ -43,9 +51,16 @@ func Snapshot() SwapSnapshot {
 		ReadersInUse:   intVal(readersInUse),
 		SwapFailures: mapInt(swapFailuresTotal, failReasonReopenRO) +
 			mapInt(swapFailuresTotal, failReasonAcquireWriter) +
+			mapInt(swapFailuresTotal, failReasonDrainTimeout) +
 			mapInt(swapFailuresTotal, failReasonPanic),
 		BlockedWindowAvgMs: blockedAvg,
 		BlockedWindowMaxMs: blockedMax,
+		ReaderStallNsTotal: intVal(readerStallNsTotal),
+		ReadersDelayed:     intVal(readerDelayedTotal),
+		RWWindowAvgMs:      rwAvg,
+		RWWindowMaxMs:      rwMax,
+		RWWindowCount:      rwCount,
+		DrainTimeouts:      mapInt(swapFailuresTotal, failReasonDrainTimeout),
 	}
 }
 
