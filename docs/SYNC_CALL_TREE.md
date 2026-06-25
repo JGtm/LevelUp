@@ -1,110 +1,159 @@
-# Arbre d'appels — Synchronisation
+# Sync Call Tree (Go)
 
-Trace complète du chemin d'exécution déclenché par le bouton de synchronisation dans la sidebar,
-du clic utilisateur jusqu'au `st.rerun()` final.
+French version: [FR/SYNC_CALL_TREE.md](FR/SYNC_CALL_TREE.md)
 
-Fichiers clés : `streamlit_app.py`, `src/ui/sync.py`, `src/ui/_sync_duckdb_ops.py`,
-`src/data/sync/engine.py`.
+> Code-level call graph of the **Go** sync pipeline. For the operational guide
+> (settings, CLI, troubleshooting) read [SYNC_GUIDE.md](SYNC_GUIDE.md) first; this
+> file is the map from entry point to the persist layer.
+>
+> The Python/Streamlit sync (`streamlit_app.py`, `src/ui/sync.py`, `src/data/sync/`)
+> no longer exists. Sync runs entirely inside `apps/go-api`.
 
-Phases appliquées : A (statut sync), B (HEAD-first delta), C (token_scope), D (mtime conditionnel),
-E (cleanup), F (sync_metadata player DB), G.1 (event loop unique), G.3 (dead code supprimé),
-H (transactions batch shared), I (_run_post_sync_pipeline extraction), J (shared R/O fanout).
+There are **two entry points**, both backed by the same `SyncEngine` and token
+pool, plus an opt-in **V2 cycle orchestrator** that replaces the per-player loop.
+
+Key files: `internal/scheduler/auto_sync.go`, `internal/sync/engine.go`,
+`internal/sync/engine_batch_path.go`, `internal/persist/builder.go`,
+`internal/sync/v2/cycle.go`.
+
+## Entry point A — Auto-sync scheduler (periodic)
 
 ```text
-[sidebar_sync_button] (streamlit_app.py)
-  │
-  ├─ st.session_state[IS_SYNCING] = True
-  ├─ save_filter_preferences()
-  │
-  └─ sync_all_players_duckdb()          (src/ui/sync.py)
+AutoSyncScheduler.Run(ctx)                         (scheduler/auto_sync.go)
+  └─ for each ticker.C  (interval from app_settings.json)
+       ├─ settings.Load()
+       │     ├─ skip tick if !cfg.SpnkrAutoSyncEnabled
+       │     └─ resolveInterval(SpnkrAutoSyncIntervalMinutes|Hours)  → ticker.Reset
        │
-       ├─ Lecture db_profiles.json → liste des joueurs
-       ├─ SyncLock(timeout=0)  (filelock data/.sync.lock)
-       │
-       └─ asyncio.run(_sync_all_players_loop_async())  ← G.1: un seul event loop
-            │  (src/ui/_sync_duckdb_ops.py)
+       └─ RunOnceTrigger(ctx, "tick")
+            │  (RunOnce(ctx) = same with trigger "manual", e.g. admin endpoint)
             │
-            ├─ event=async_loop_start players=N
-            ├─ _activate_sync_mode()
-            │     ├─ begin_sync_mode()  (flag threading.Event sur le repo)
-            │     ├─ get_cached_repository_st.clear()
-            │     ├─ release_all_db_connections()
-            │     └─ gc.collect() + sleep(0.3)
+            ├─ players := cfg.LoadPlayers()            (db_profiles.json)
+            ├─ players = domain.SyncablePlayers(players)  ← drop sync_enabled=false
+            ├─ warnStaleGateClaims(ctx)                 ← leaked-claim heartbeat
             │
-            ├─ ∀ joueur dans profiles:
-            │     │
-            │     └─ await sync_player_duckdb_async()  ← G.1: await (pas asyncio.run)
-            │                │
-            │                ├─ SyncOptions(max_matches=200, parallel_fetch=15, parallel_matches=10)
-            │                │
-            │                └─ _execute_sync() → _run_sync_engine()
-            │                      │
-            │                      └─ DuckDBSyncEngine.__init__()
-            │                           │  ↳ 3 connexions DuckDB: player(RW), shared(RW), pve(RW)
-            │                           │  ↳ auto-résolution XUID (sync_meta → v_gamertag_lookup)
-            │                           │
-            │                           └─ engine.sync_delta(options)
-            │                                │
-            │                                └─ _sync_internal()
-            │                                     │
-            │                                     ├─ get_tokens_from_env() si tokens=None
-            │                                     ├─ event=token_resolved scope=any|player ← C
-            │                                     │
-            │                                     ├─ HEAD check (delta mode) ← B.1
-            │                                     │     ↳ API(count=1) vs DB latest → short-circuit si identique
-            │                                     │
-            │                                     ├─ _load_existing_match_ids()  ← B.3
-            │                                     │     ↳ LEFT JOIN shared × player_match_enrichment × personal_score_awards
-            │                                     │
-            │                                     ├─ create_api_client(rps=15) → SPNKrAPIClient
-            │                                     │
-            │                                     ├─ _process_matches()
-            │                                     │    │
-            │                                     │    ├─ BEGIN TRANSACTION sur shared ← H.1
-            │                                     │    │
-            │                                     │    ├─ BOUCLE par batch de 25:
-            │                                     │    │     ├─ get_match_history(start, count=25)
-            │                                     │    │     ├─ Filtrage delta (arrêt au 1er known)
-            │                                     │    │     └─ asyncio.gather(*_bounded(mid) for mid in new_ids)
-            │                                     │    │           │                    ↑ Semaphore(fetch_slots)
-            │                                     │    │           │
-            │                                     │    │           └─ _process_single_match()
-            │                                     │    │                 ├─ CHECK shared.match_registry
-            │                                     │    │                 ├─ si connu → _process_known_match()
-            │                                     │    │                 │     ↳ backfill sélectif (participants, events, medals)
-            │                                     │    │                 │     ↳ _write_player_enrichments()
-            │                                     │    │                 └─ si nouveau → _process_new_match()
-            │                                     │    │                       ↳ extract + _insert_new_match_shared()
-            │                                     │    │                       ↳ _save_player_data_new_match()
-            │                                     │    │                       ↳ weapon_kills si activé
-            │                                     │    │
-            │                                     │    ├─ _maybe_batch_commit() tous les N matchs ← H.1
-            │                                     │    │     ↳ COMMIT player + COMMIT shared + BEGIN TRANSACTION shared
-            │                                     │    │
-            │                                     │    └─ finally: COMMIT final sur shared ← H.1
-            │                                     │
-            │                                     └─ _run_post_sync_pipeline() ← I
-            │                                           ├─ _refresh_aggregates_async() (si inserted > 0)
-            │                                           ├─ _run_career_rank_if_needed()
-            │                                           ├─ _save_sync_metadata() + conn.commit()
-            │                                           ├─ _run_post_sync_compute() (si inserted > 0)
-            │                                           │     ├─ citations → run_in_executor (thread)
-            │                                           │     ├─ batch_compute_performance_scores()
-            │                                           │     ├─ backfill_sessions_for_player()
-            │                                           │     └─ _compute_dominance_post_sync()
-            │                                           ├─ _detach_shared_from_player_conn()
-            │                                           ├─ _run_lusr_post_sync()
-            │                                           └─ _enrich_other_registered_players() (fan-out)
-            │                                                 ↳ shared R/O (J) + ∀ autre joueur:
-            │                                                     ├─ batch_compute_performance_scores()
-            │                                                     ├─ backfill_sessions_for_player()
-            │                                                     └─ backfill_citations_for_player()
+            ├─ if shouldUseV2():  runOnceV2(ctx, players)   → see Entry point C
+            │     └─ fallback to V1 on ErrNotImplemented / error
             │
-            ├─ os.utime() sur player DB + shared DB (invalidation cache mtime, si ok=True) ← D
-            └─ _deactivate_sync_mode()
-
-  ├─ st.session_state[IS_SYNCING] = False
-  ├─ _send_sync_discord_notification()
-  ├─ invalidate_after_sync()  (bust cache_buster + supprime clés filtre)
-  └─ st.rerun()
+            └─ errgroup (limit = pool size) — one goroutine per player:
+                 └─ syncPlayer(ctx, p)  → syncOutcome {OK|Skipped|Failed}
+                      │
+                      ├─ checkSyncPreconditions(ctx, p)
+                      │     ├─ pool != nil  &&  pool.HasPlayer(gamertag)
+                      │     ├─ !ActivityChecker.IsPlayerActive(gamertag)  ← yield to watcher
+                      │     └─ player DB exists (skipped for live-only titles)
+                      │
+                      ├─ SyncGate.TryClaimT(slug, gamertag)   ← cross-source dedup
+                      │     └─ defer release()   (skip → retried next tick)
+                      │
+                      ├─ ctx = ctxkeys.WithTitleSlug(ctx, slug)   ← MT-11 / PMT-3
+                      │
+                      ├─ runner := RunnerFactory(ctx, gamertag, xuid)
+                      │     │   default = defaultRunnerFactory → BuildEngine(...)
+                      │     │   (live-only titles → liveRunner / livesync.AcquireRunner)
+                      │     │
+                      │     └─ BuildEngine(ctx, gamertag, xuid)   (the ONLY engine wiring funnel)
+                      │           ├─ NewSyncEngineForTitle(RepoRoot, slug, gamertag, xuid, ...)
+                      │           ├─ WithSharedProvider   (if cfg.SharedProvider, B-swap)
+                      │           ├─ WithFriendsLoader    (settings.FriendGamertags)
+                      │           ├─ SetCustomClient(NewPooledHaloClient(pool, gamertag, xuid))
+                      │           ├─ WithPostSyncRunner(postSyncRunner, gamertag)
+                      │           ├─ WithMediaScanHook(...)
+                      │           ├─ WithBatchPersistMode(true)   if LEVELUP_PERSIST_BATCH != "0"
+                      │           │     └─ WithBatchQueue(batchQueue) if LEVELUP_PERSIST_BATCH_ASYNC != "0"
+                      │           ├─ WithCSRSeasonID / WithAssetNameResolution(pool)
+                      │           └─ returns *sync.SyncEngine
+                      │
+                      ├─ runner.RunDelta(ctx, domain.DefaultSyncOptions())   → see SyncEngine.run
+                      │
+                      ├─ record counters (MatchesInserted / Skipped / MedalsInserted / PostSync)
+                      ├─ ConsecutiveZeroInserts++ (reset if inserted>0)  ← warn ≥ threshold(6)
+                      └─ runEventsConvergencePass(ctx, gamertag, xuid)
+                            └─ BuildEngine(...).RunEventsConvergence(ctx, nil, limit)   ← bounded heal
 ```
+
+Diagnostics for every cycle are exposed at `GET /api/v1/_diag/auto-sync/snapshot`
+(`AutoSyncScheduler.Snapshot()`).
+
+The **presence watcher** (`internal/watcher`) is the event-driven sibling: on
+match completion it enqueues a delta sync for one player through the same
+`SyncEngine` (wired via `syncTrigger.WithEngineFactory` → the same `BuildEngine`,
+guaranteeing watcher/scheduler parity). It then converges on `SyncEngine.run`
+below.
+
+## Engine core — `SyncEngine.run` (V1, per player)
+
+```text
+SyncEngine.RunDelta(ctx, opts)  → run(ctx, opts, isDelta=true)   (sync/engine.go)
+SyncEngine.RunFull(ctx, opts)   → run(ctx, opts, isDelta=false)
+  │
+  ├─ opts.Validate()                                   ← fail-fast
+  ├─ postSyncFinalizer = postSyncRunner.BeforeSync(...)  (snapshot before sync)
+  │     └─ defer finalizer AFTER writer leases (LIFO → shared back to RO first)
+  │
+  ├─ ── write leases / DB handles ──
+  │     ├─ dblease.AcquireWriterCtx(playerDBPath, KindPlayer)
+  │     ├─ OpenPlayerDB(playerDBPath)
+  │     ├─ acquireSharedWriter(ctx)   (Provider B-swap, else OpenSharedDB direct)
+  │     └─ metadata DB via OpenReadForQuery   (best-effort name enrichment)
+  │
+  ├─ ── fetch + delta walk ──
+  │     ├─ HEAD / watermark check  (delta: stop at first known match)
+  │     ├─ load known match ids (shared × player_match_enrichment × awards)
+  │     ├─ PooledHaloClient.GetMatchHistory / GetMatchStats (parallel fetch)
+  │     └─ per match → insertFetchedMatch(...)
+  │           └─ submitMatchAsBatch(...)   if WithBatchPersistMode  → see Persist layer
+  │           (else legacy per-match INSERT path — LEVELUP_PERSIST_BATCH=0)
+  │
+  └─ ── post-sync (best effort) ──
+        ├─ refresh aggregates / career rank / sync_meta watermark
+        ├─ performance scores · sessions · citations · dominance · LUSR (v2 canonical)
+        └─ finalizerArmed = true   → postSyncFinalizer runs on success only
+              (delta notifications + Ascension progression V2)
+```
+
+## Persist layer — Collect → Persist (INSERT-only, ART-safe)
+
+```text
+submitMatchAsBatch(ctx, sharedDB, playerDB, result, fm)   (sync/engine_batch_path.go)
+  │
+  ├─ build the batch with persist.BatchBuilder   (persist/builder.go)
+  │     SetMatch · AddParticipants · AddMedals · AddHighlightEvents · AddWeaponKills
+  │     AddKillerVictim · AddKillPositions · AddXUIDAliases · AddMatchCSRs
+  │     AddCommendations · SetEnrichment · SetSkillRank · AddLUSRComponents
+  │     AddCitations · AddPersonalScoreAwards · SetCareerProgression · SetSession
+  │     AddPVEStats · AddModeNameTranslations
+  │       └─ Build() → *persist.MatchBatch
+  │
+  ├─ if batchQueue != nil:   batchQueue.Submit(batch)   ← async, durable WAL, boot recovery
+  │                            (LEVELUP_PERSIST_BATCH_ASYNC)
+  │
+  └─ else (synchronous):
+        ├─ SharedPersister.Persist(ctx, sharedDB, batch)   ← INSERT-only on shared tables
+        └─ PlayerPersister.Persist(ctx, playerDB, batch)   ← INSERT-only on player tables
+```
+
+No concurrent `UPDATE` / `INSERT ... ON CONFLICT DO UPDATE` on the shared/state
+tables — append-only by construction (ADR
+[0019](adr/0019-collect-persist-architecture.md),
+[0026](adr/0026-append-only-art-eradication.md)).
+
+## Entry point C — V2 cycle orchestrator (opt-in, all players per cycle)
+
+Activated by `LEVELUP_SYNC_PIPELINE=v2` (and a wired orchestrator); otherwise V1
+is used. `RunOnceTrigger` → `shouldUseV2()` → `runOnceV2` → `CycleOrchestratorImpl.Run`.
+
+```text
+CycleOrchestratorImpl.Run(ctx, players)            (sync/v2/cycle.go)
+  ├─ Phase 1  RunDiscovery   — parallel per player, read-only: known ids + API pages
+  ├─ Phase 2  RunDedup       — single, pure: union of unknown match ids
+  ├─ Phase 3  RunFetchShared — errgroup(FetchSharedParallelism, default 8): GetMatchStats/unique match
+  ├─ Phase 4  RunFetchPlayer — parallel per player (FetchPlayerParallelism, default 4): awards/scores
+  ├─ Phase 5  RunPersist     — single writer: one mega-batch (shared + player) → CycleBatchPersister
+  └─ Phase 6  RunPostSync    — parallel per player: heals / films / citations / dominance
+        → CycleResult { PerPlayer, UniqueMatches, PhaseDurations }
+```
+
+Each phase records `expvar` metrics (`sync_v2_phase_duration_ms_*`,
+`sync_v2_cycle_*`) and structured logs (`event=sync.v2.cycle.phase`). Per-player
+errors are collected in `CycleResult.PerPlayer` instead of aborting the cycle.

@@ -1,318 +1,317 @@
 # Attribution des kills par arme — Référence technique
 
-Ce document décrit le système d'attribution des kills par arme utilisé par LevelUp
-pour identifier quelle arme est responsable de chaque kill dans un match Halo Infinite,
-en s'appuyant sur les données binaires des chunks filmshell récupérés via l'API SPNKr.
+Ce document décrit comment LevelUp attribue chaque kill d'un match à l'arme qui
+l'a causé. L'attribution est dérivée **hors-ligne** des chunks du film (théâtre)
+récupérés depuis le CDN des films Halo — les API de stats Halo n'exposent pas
+l'arme par kill. Tout le pipeline est implémenté en Go sous `apps/go-api`.
+
+> Portée : l'attribution arme-par-kill est **best-effort, non autoritative**.
+> Elle reconstruit l'arme depuis les données de réplication du film et la
+> réconcilie avec les totaux de l'API. Lire [Niveaux de confiance](#niveaux-de-confiance)
+> et [Limites connues](#limites-connues) avant de s'y fier.
 
 ---
 
 ## Table des matières
 
 1. [Vue d'ensemble](#vue-densemble)
-2. [Sources de données](#sources-de-données)
-3. [Algorithme d'attribution](#algorithme-dattribution)
-   - [Section 2 — Événements de tir POV (§6a)](#section-2--événements-de-tir-pov-6a)
-   - [Formula A — Coéquipiers T1 (§6b)](#formula-a--coéquipiers-t1-6b)
-4. [Niveaux de confiance](#niveaux-de-confiance)
-5. [Noms d'armes spéciaux](#noms-darmes-spéciaux)
-6. [WIDs inconnus (format `?hex`)](#wids-inconnus-format-hex)
-7. [Schéma de la table `weapon_kills`](#schéma-de-la-table-weapon_kills)
-8. [Référence WEAPON_ID_MAP](#référence-weapon_id_map)
-9. [Paramètres de timing par arme](#paramètres-de-timing-par-arme)
-10. [Résoudre un WID inconnu](#résoudre-un-wid-inconnu)
-11. [Ajouter un nouvel identifiant d'arme](#ajouter-un-nouvel-identifiant-darme)
+2. [Carte du code](#carte-du-code)
+3. [Pipeline](#pipeline)
+4. [Chemins d'attribution](#chemins-dattribution)
+5. [Niveaux de confiance](#niveaux-de-confiance)
+6. [Structure d'un Weapon ID (WID)](#structure-dun-weapon-id-wid)
+7. [Stockage — `weapon_kills` (append-only)](#stockage--weapon_kills-append-only)
+8. [Lecture — `v_weapon_kills` et labels](#lecture--v_weapon_kills-et-labels)
+9. [Lancer le backfill](#lancer-le-backfill)
+10. [Ajouter / résoudre un Weapon ID](#ajouter--résoudre-un-weapon-id)
+11. [Limites connues](#limites-connues)
+12. [Approfondissement : rétro-ingénierie du film](#approfondissement--rétro-ingénierie-du-film)
 
 ---
 
 ## Vue d'ensemble
 
-LevelUp analyse les chunks binaires de type `REPLICATION_DATA` des filmshells pour
-extraire l'attribution kill-par-arme de chaque joueur. Les résultats sont stockés
-dans la table `weapon_kills` de `shared_matches.duckdb`.
+Pour un match donné, le moteur télécharge le film, scanne les chunks binaires de
+réplication pour les événements de tir et d'arme tenue, corrèle chaque kill
+(depuis `highlight_events`) à une arme, réconcilie le résultat avec les
+décomptes de kills de l'API, puis écrit une ligne par kill dans la table
+partagée `weapon_kills`.
 
-Deux chemins de traitement distincts sont utilisés, selon le rôle du joueur dans le film :
-
-| Chemin | Portée | Source | Confiance |
-|--------|--------|--------|-----------|
-| **Section 2** (événements de tir) | Joueur POV uniquement | `scan_fire_events()` | high/medium |
-| **Formula A** (snapshot) | Tous les autres joueurs (T1) | `build_weapon_timeline()` | high/medium/low |
-
----
-
-## Sources de données
-
-| Source | Fichier |
-|--------|---------|
-| Algorithme & parseur | `src/analysis/weapon_parser.py` |
-| Map des IDs et timings | `src/analysis/_weapon_data.py` |
-| Service d'orchestration | `src/data/services/weapon_extraction_service.py` |
-| Écritures en base | `src/data/repositories/_weapon_kills_repo.py` |
-| CLI de backfill | `scripts/backfill_data.py --weapons` |
-
-Les chunks sont mis en cache localement dans :
-
-```
-data/investigation/chunks/<match_id[:8]>/chunk_NN.bin
-```
+Le résultat agrégé (kills par arme, avec labels EN/FR) est relu via la vue
+`v_weapon_kills` et la table `metadata.weapon_labels`, et exposé dans la vue
+match et le KPI « arme favorite » de l'accueil.
 
 ---
 
-## Algorithme d'attribution
+## Carte du code
 
-### Section 2 — Événements de tir POV (§6a)
-
-**Portée :** Le joueur unique qui a enregistré le film (POV). Ce joueur est toujours
-à `player_index = 1` dans la Section 2 du filmshell — indépendamment de son index
-acurtis réel.
-
-**Étapes :**
-
-1. Télécharger tous les chunks `REPLICATION_DATA` qui couvrent une fenêtre de kill
-   (`kill_time_ms − KILL_WINDOW_MS` jusqu'à `kill_time_ms`).
-2. Appeler `scan_fire_events(chunk, pi=1, ...)` sur chaque chunk. Cette fonction
-   retourne une liste d'événements `{weapon_name, timestamp_ms, swap_detected,
-   delayed_damage}` pour les armes dont l'ID est dans
-   `WEAPON_IDS_INT ∪ COMMON_WEAPON_SUFFIX`.
-3. Appeler `correlate_kills_to_weapons(kills, fire_events)` — chaque kill est
-   associé à l'événement de tir précédent le plus proche, dans la fenêtre de
-   timing propre à cette classe d'arme (`swap_ms`, `travel_max_ms` depuis
-   `WEAPON_TIMING`).
-4. **Réconciliation API** (`_reconcile_api_aggregates`) : comparer les kills HIGH
-   attribués avec la valeur `match_participants.kills` de l'API Halo.
-   - Si kills HIGH > kills API → dégrader les kills les moins certains (plus grand
-     `delta_ms`) à MEDIUM.
-   - Si kills HIGH < kills API → promouvoir des kills MEDIUM (plus petit `delta_ms`
-     en premier) en HIGH jusqu'à atteindre le total API.
-
-> **Remarque :** La Section 2 ne peut retourner que des kills pour des armes déjà
-> présentes dans `WEAPON_ID_MAP`. Les WIDs inconnus n'apparaissent jamais par ce
-> chemin.
+| Sujet | Emplacement |
+|-------|-------------|
+| Orchestration pipeline (par match / tous participants / batch) | `internal/sync/backfill_weapons.go` |
+| Écriture DB (INSERT append-only) | `internal/sync/writes.go` — `InsertWeaponKills`, `MarkWeaponKillsDone` |
+| Scan des chunks (fire events, timeline arme tenue) | `internal/analysis/weapon_scanner.go`, `internal/analysis/weapon_parser.go` |
+| Map des Weapon IDs, timings, fusions, sentinels | `internal/analysis/weapon_data.go` |
+| Corrélation kill -> arme | `internal/analysis/weapon_correlation.go` |
+| Réconciliation API | `internal/analysis/weapon_reconciliation.go` |
+| Struct résultat d'attribution | `internal/analysis/kill_attribution.go` |
+| Repository de lecture agrégée | `internal/platform/duckdb/weapon_kills_repo.go` |
+| Résolution label / rôle (metadata) | `internal/platform/duckdb/weapon_resolver.go` |
+| Schéma (table + vue) | `internal/games/halo_infinite/migrations/steps_shared_core.go` (`add_weapon_kills`, `add_weapon_kills_reconciled_as`) |
+| Conversion append-only | `internal/migration/steps_shared_append_only_weapon_kills.go` |
+| Backfill CLI | `apps/go-api/cmd/levelup` — `backfill --weapons` |
+| Seeding des labels | `apps/go-api/cmd/seed-weapon-labels` |
 
 ---
 
-### Formula A — Coéquipiers T1 (§6b)
+## Pipeline
 
-**Portée :** Tous les joueurs sauf le POV. Leurs indices de joueur sont résolus via
-la *méthode acurtis* (inv #26) — les XUIDs sont associés aux valeurs `player_index`
-trouvées dans le premier chunk.
+Point d'entrée : `sync.BackfillWeaponKillsForMatchAll(ctx, client, sharedDB, matchID)`
+dans `internal/sync/backfill_weapons.go` (la variante `...ForMatch` traite un
+seul joueur ; `...ForMatches` est la méthode batch sur `SyncEngine` qui acquiert
+le lease).
 
-**Étapes :**
+Étapes :
 
-1. Appeler `build_weapon_timeline(chunks)` → construit un dictionnaire :
-   `timeline[chunk_index][player_index] = wid (bytes)`.
-   Chaque entrée enregistre l'arme tenue par chaque joueur à la *snapshot* de ce
-   chunk (~19 s/chunk).
-2. Pour chaque kill à l'instant `T` :
-   - Trouver le chunk couvrant `T` avec `find_chunk_at_time(...)`.
-   - Lire `timeline[chunk][player_index]`.
-   - Se rabattre sur `timeline[chunk - 1][player_index]` si aucune mise à jour dans
-     le chunk courant.
-3. Mapper `wid` → nom d'arme via `WEAPON_ID_MAP` :
-   - **WID connu :** `confidence = "high"` (dégradé à `"medium"` si un changement
-     d'arme a été détecté dans le même chunk — `swap_pis`).
-   - **WID inconnu :** stocké verbatim sous la forme `?{wid.hex()}` (16 caractères
-     hex), `confidence = "low"`.
-   - **Pas de snapshot trouvée :** stocké sous `"UNKNOWN"`, `confidence = "none"`.
+1. **Télécharger le film** — `client.GetMatchFilm(ctx, matchID)` retourne les
+   chunks binaires. Si le film a disparu (404/410), le match est marqué
+   `weapon_kills_no_film` et ignoré (les films des matchs anciens expirent).
+2. **Construire les timelines d'arme tenue** —
+   `analysis.BuildWeaponTimelines(chunks)` produit, par chunk et par index de
+   joueur, les octets de l'arme tenue au moment du snapshot du chunk
+   (`Timeline`), plus un set de détection de swap par chunk (`SwapPIs`) et les
+   intervalles temporels des chunks (`Timing`).
+3. **Scanner les fire events** — `analysis.ScanFireEventsAll(...)` sur chaque
+   chunk collecte les événements de tir de tous les joueurs avec timestamps
+   estimés.
+4. **Charger les kills** — `getAllKillsForMatch` lit `highlight_events`
+   (`event_type LIKE '%kill%'`, avec flags melee/grenade) depuis la DB partagée,
+   plus un mapping `xuid -> player_index` (`getXuidToPI`, ordonné par
+   `team_id, rank`).
+5. **Corréler** — `analysis.CorrelateKillsGlobal(...)` attribue chaque kill à
+   une arme (cf. [Chemins d'attribution](#chemins-dattribution)).
+6. **Réconcilier** — `analysis.ReconcileAPIAggregates` ajuste attributions et
+   confiance contre les totaux de kills API de `match_participants`.
+7. **Écrire** — `InsertWeaponKills` écrit une génération append-only de lignes
+   par `(match_id, xuid)` ; `MarkWeaponKillsDone` ne pose le bit registre
+   **que si au moins une ligne a été insérée** (garde-fou ajouté après un
+   incident de mai 2026 où poser le bit sur une extraction à 0 ligne a vidé
+   silencieusement ~1010 matchs).
 
-> **Important :** Parce que Formula A travaille sur les octets bruts du WID sans
-> filtrage, elle **peut** produire des entrées WID inconnues. La Section 2 ne peut
-> pas.
+Les écritures sont sérialisées par le lease d'écriture partagé +
+`MaxOpenConns(1)` ; la corrélation et le téléchargement du film sont
+parallélisés network-only (`weaponBackfillParallelism = 24`).
+
+---
+
+## Chemins d'attribution
+
+Chaque kill reçoit un `attribution_path` (constantes dans
+`internal/analysis/kill_attribution.go`) :
+
+| Chemin | Portée | Source | Remarque |
+|--------|--------|--------|----------|
+| `fire_event` | Par joueur, basé timing | Événements de tir scannés des chunks, associés au fire event précédent le plus proche dans la fenêtre de timing de l'arme | Précision maximale quand un fire event est trouvé |
+| `formula_a` | Par joueur, basé snapshot | L'arme *tenue* par le joueur (`Timeline`) au chunk couvrant l'instant du kill, avec repli sur le chunk précédent | Plus grossier (granularité chunk) ; dégradé à `medium` si un swap a été détecté dans ce chunk |
+| `none` | Repli | Ni fire event ni snapshot d'arme tenue exploitable | Stocké avec `confidence = none` |
+
+Les kills melee et grenade sont identifiés via le type d'event de
+`highlight_events` et ne sont **pas** attribués par Weapon ID via le film ;
+leurs décomptes par match viennent des colonnes `melee_kills` / `grenade_kills`
+de `match_participants` (cf. [Lecture](#lecture--v_weapon_kills-et-labels)).
 
 ---
 
 ## Niveaux de confiance
 
+Constantes dans `internal/analysis/weapon_correlation.go`
+(`confidenceHigh/Medium/Low/None`). `ComputeConfidence(weaponID, deltaMS)`
+utilise la fenêtre de timing de l'arme (`GetTiming`, depuis `weapon_data.go`) :
+
 | Valeur | Signification |
 |--------|---------------|
-| `high` | Arme correspondant avec un timing précis ou snapshot confirmée (réconciliée avec l'API) |
-| `medium` | Arme correspondant mais ambiguïté de swap ou de timing détectée |
-| `low` | WID inconnu — octets bruts stockés en `?hex`, nom d'arme non résolu |
-| `none` | Kill non attribuable (valeurs de repli : `NON TROUVE`, `UNKNOWN`) |
+| `high` | Fire event dans le `SwapMS` de l'arme, ou snapshot confirmé réconcilié avec le total API |
+| `medium` | Correspondance mais ambiguïté de swap/timing (delta dans `TravelMax`) |
+| `low` | Correspondance faible (delta au-delà de `TravelMax`) |
+| `none` | Kill non attribuable |
+
+`ReconcileAPIAggregates` (`weapon_reconciliation.go`) compare les totaux
+attribués à `match_participants.kills` et promeut/dégrade la confiance et les
+Weapon IDs pour que les décomptes par arme restent cohérents avec les totaux
+autoritatifs de l'API.
 
 ---
 
-## Noms d'armes spéciaux
+## Structure d'un Weapon ID (WID)
 
-| Valeur | Origine | Signification |
-|--------|---------|---------------|
-| `MELEE` | Détection de médaille | Kill attribué à une attaque au corps à corps |
-| `GRENADE` | Détection de médaille | Kill attribué à une grenade (type inconnu) |
-| `NON TROUVE` | Chemin Section 2 | Événement de tir trouvé mais WID absent de `WEAPON_ID_MAP` |
-| `UNKNOWN` | Chemin Formula A | Aucune snapshot d'arme trouvée au moment du kill (cas T0) |
-| `?{16 caractères hex}` | Chemin Formula A | WID brut 8 octets non encore présent dans `WEAPON_ID_MAP` |
+Un WID, ce sont les 8 octets d'arme filmshell lus comme un **`uint64`
+big-endian** (`hexToUint64` dans `internal/analysis/weapon_data.go`). DuckDB le
+stocke en `UBIGINT` — certains WID réels (ex. `f408190f42c9679f`) ont le bit 63
+activé et dépassent `2^63`, raison pour laquelle l'écriture caste une chaîne
+décimale en `UBIGINT` plutôt que de binder un `uint64` Go (le driver duckdb-go
+rejette les uint64 à bit de poids fort activé).
 
-> Le *cas T0* survient quand un joueur n'est pas le POV **et** que son player_index
-> n'a pas pu être résolu via la méthode acurtis (ex : joueur absent du premier chunk).
+Structure des 8 octets :
 
----
+- **Octets 1-4 (32 bits de poids fort) : l'identité de l'arme** — unique par
+  type/variante.
+- **Octets 5-8 (32 bits de poids faible) : un suffixe famille/variante.** Le
+  suffixe commun `42c9679f` (`CommonWeaponSuffix` dans `weapon_data.go`) couvre
+  la plupart des armes standard ; les familles spéciales partagent leurs octets
+  de poids fort mais diffèrent par le suffixe :
 
-## WIDs inconnus (format `?hex`)
+| Famille | Octets de poids fort (identité) | Comportement |
+|---------|----------------------------------|--------------|
+| Energy Sword | `4ff3937e` | Même identité, suffixe différent par skin (Duelist, Bloodblade, Infected) |
+| Gravity Hammer | `841ac5e5` | Même identité, suffixe différent par variante (Diminisher of Hope, Rushdown) |
 
-Quand Formula A rencontre un WID absent de `WEAPON_ID_MAP`, elle stocke l'identifiant
-complet de 8 octets sous forme de chaîne hexadécimale préfixée par `?` :
+Les variantes cosmétiques sont repliées sur leur arme canonique via
+`WeaponFusionMap` / `WeaponFusionMapID`. Les IDs sentinels `0` (grenade),
+`1` (melee), `2` (véhicule) sont réservés et exclus de l'agrégation des armes.
 
-```
-?91eb16de42c9679f   ← 16 caractères hex = 8 octets
-```
-
-Propriétés :
-- Le préfixe `?` est intentionnel — il distingue les WIDs non résolus des vrais noms
-  d'armes et facilite leur recherche ou filtrage.
-- Les 8 octets complets sont préservés pour permettre l'identification future sans
-  retraiter les chunks.
-- La `confidence` est fixée à `"low"` pour toutes les entrées `?hex`.
-
-Pour lister les WIDs inconnus les plus fréquents dans la base :
-
-```sql
-SELECT weapon_name, COUNT(*) AS kills, COUNT(DISTINCT match_id) AS matchs
-FROM weapon_kills
-WHERE weapon_name LIKE '?%'
-GROUP BY weapon_name
-ORDER BY kills DESC;
-```
+La liste autoritative des WID (hex confirmé -> nom) vit dans `weaponEntries` au
+sein de `weapon_data.go`, et est dupliquée en notes de recherche dans
+`.ai/REFERENCE_WEAPON_IDS.md`.
 
 ---
 
-## Schéma de la table `weapon_kills`
+## Stockage — `weapon_kills` (append-only)
 
-Table située dans `data/warehouse/shared_matches.duckdb`.
+La table `weapon_kills` vit dans la DB partagée
+(`data/warehouse/shared_matches_v2.duckdb`). Colonnes de base
+(`steps_shared_core.go`, migrations `add_weapon_kills` +
+`add_weapon_kills_reconciled_as`) :
 
 | Colonne | Type | Description |
 |---------|------|-------------|
 | `match_id` | VARCHAR | UUID du match Halo |
-| `xuid` | VARCHAR | XUID du joueur (tueur) |
-| `victim_xuid` | VARCHAR | XUID de la victime |
+| `xuid` | VARCHAR | XUID du tueur |
 | `time_ms` | INTEGER | Horodatage du kill (ms depuis le début du match) |
-| `weapon_name` | VARCHAR | Nom de l'arme, `?hex`, `MELEE`, `GRENADE`, `NON TROUVE`, ou `UNKNOWN` |
-| `confidence` | VARCHAR | `high`, `medium`, `low`, ou `none` |
-| `delta_ms` | INTEGER | Écart entre le dernier événement de tir et le kill (Section 2 uniquement) |
-| `swap_detected` | BOOLEAN | Changement d'arme détecté au voisinage du kill |
-| `delayed_damage` | BOOLEAN | Temps de vol du projectile susceptible d'avoir amplifié le delta |
+| `weapon_id` | UBIGINT | WID attribué via film |
+| `reconciled_as` | UBIGINT | Override réconcilié via API (NULL sinon) |
+| `delta_ms` | INTEGER | Écart fire event -> kill (NULL si chemin snapshot) |
+| `confidence` | VARCHAR | `high` / `medium` / `low` / `none` |
+| `attribution_path` | VARCHAR | `fire_event` / `formula_a` / `none` |
+| `swap_detected` | BOOLEAN | Un swap d'arme a eu lieu près du kill |
+| `delayed_damage` | BOOLEAN | Le vol du projectile a pu gonfler le delta |
+| `player_index` | INTEGER | Index de joueur film résolu |
 
-Clé primaire : `(match_id, xuid, victim_xuid, time_ms)`.
+**Append-only (durcissement #23046).** La table a été convertie en append-only
+(`internal/migration/steps_shared_append_only_weapon_kills.go`) : deux colonnes
+ajoutées — `generation_id BIGINT` et `written_at TIMESTAMP`. Chaque appel à
+`InsertWeaponKills` alloue une génération depuis `weapon_kills_generation_seq`
+partagée par toutes les lignes de ce write `(match_id, xuid)`, et fait un INSERT
+(pas de `DELETE`). Ceci a éliminé l'ancien DELETE-puis-INSERT qui déclenchait le
+bug d'index ART de DuckDB sur la DB partagée multi-writer. Il n'y a pas de PK
+technique ; la justesse vient de la séquence de génération + le superséding à la
+lecture, pas de contraintes au niveau ligne.
 
----
-
-## Référence WEAPON_ID_MAP
-
-Définie dans `src/analysis/_weapon_data.py`. Chaque entrée associe un WID de 8
-octets (issu du format binaire filmshell conçu par Andy Curtis / acurtis) à un
-nom d'arme lisible.
-
-**Structure d'un WID :**
-- Octets 1–4 : identifiant spécifique à l'arme (unique par type/variante).
-- Octets 5–8 : suffixe partagé `42c9679f` pour la majorité des armes standard.
-  Les armes avec un suffixe différent appartiennent à des familles particulières
-  (ex. variantes d'Energy Sword, Mythic Sandwich).
-
-**Organisation des entrées :**
-
-| Groupe | Description |
-|--------|-------------|
-| Armes standard | `MA40 AR`, `BR75`, `Mk51 Sidekick`, … — suffixe unique par arme |
-| Famille Energy Sword | Octets 1–4 identiques (`4ff3937e`), suffixe différent par skin |
-| Famille Gravity Hammer | Octets 1–4 identiques (`841ac5e5`), suffixe différent par variante |
-| Grenades | Identifiées via snapshot d'inventaire Formula A (pas via événements de tir) |
-| Variantes / skins | Même arme en jeu, variante cosmétique — entrée séparée |
+> Certains commentaires inline de `backfill_weapons.go` décrivent encore le
+> modèle legacy DELETE-puis-INSERT — la conversion append-only les remplace.
 
 ---
 
-## Paramètres de timing par arme
+## Lecture — `v_weapon_kills` et labels
 
-Définis dans `WEAPON_TIMING` dans `src/analysis/_weapon_data.py`.
+Les lecteurs ne lisent jamais `weapon_kills` directement. La surface de lecture
+canonique est la vue **`v_weapon_kills`**, qui :
 
-Chaque classe d'arme possède deux paramètres utilisés par `correlate_kills_to_weapons()` :
+- ajoute `effective_weapon_id = COALESCE(reconciled_as, weapon_id)`, et
+- ne garde, par `(match_id, xuid)`, **que les lignes de la dernière
+  génération** (`DENSE_RANK() OVER (PARTITION BY match_id, xuid ORDER BY
+  generation_id DESC)`).
 
-| Paramètre | Signification |
-|-----------|---------------|
-| `swap_ms` | Délai physique minimum pour équiper cette arme avant un kill. Les événements de tir antérieurs à `kill_time − swap_ms` sont exclus. |
-| `travel_max_ms` | Temps de vol projectile/explosion maximum. Les événements de tir postérieurs à `kill_time − travel_max_ms` sont exclus. |
+`internal/platform/duckdb/weapon_kills_repo.go` (`LoadWeaponKillsAggregated`)
+agrège `v_weapon_kills` par `(xuid, effective_weapon_id)` avec `COUNT(*)`, en
+excluant les sentinels `effective_weapon_id NOT IN (0,1,2)`. Quand
+`IncludeGrenadeMelee = true`, il fait un UNION ALL des totaux `grenade_kills` /
+`melee_kills` de `match_participants` sous les IDs sentinels `0` et `1`.
 
-Fenêtre effective : `[kill_time − swap_ms, kill_time − travel_max_ms]`.
+Les labels (EN/FR) et rôles sont attachés côté Go depuis
+`metadata.weapon_labels` (`weapon_id UBIGINT`, `name_en`, `name_fr`) via
+`weapon_resolver.go` — la DB metadata est séparée, elle ne peut donc pas être
+jointe en SQL à la DB partagée. Le nom d'affichage est `name_fr` d'abord, puis
+`name_en`.
 
-| Classe | `swap_ms` | `travel_max_ms` | Remarque |
-|--------|-----------|-----------------|----------|
-| Armes de poing (Sidekick, etc.) | 400 | 300 | Swap rapide, hitscan |
-| Fusils d'assaut, BR | 650 | 500 | Standard |
-| Armes à faisceau / projectiles | 650 | 2000–5000 | Long vol |
-| Snipers, Stalker | 900 | 300 | Équipement lent, hitscan |
-| Armes lourdes (SPNKr, Hammer, Sword) | 1100 | 1400–2000 | Équipement lent, splash |
-| Grenades | 950 | 1350–1650 | Cuisson + vol |
+Si `weapon_kills` / `v_weapon_kills` est absente (ex. un titre qui ne la
+supporte pas), le repo retourne `games.ErrCapabilityNotSupported`.
 
 ---
 
-## Résoudre un WID inconnu
+## Lancer le backfill
 
-Quand un WID `?hex` est positivement identifié comme une arme précise (via dump
-d'assets, recherche communautaire, ou inspection directe de chunks), la procédure
-de résolution comporte **deux étapes obligatoires** :
+Depuis `apps/go-api` (toolchain CGO requise pour le driver DuckDB) :
 
-### Étape 1 — Ajouter dans WEAPON_ID_MAP
+```bash
+# Backfill weapon_kills pour les matchs manquants de tous les joueurs éligibles
+go run ./cmd/levelup backfill --weapons
 
-Modifier `src/analysis/_weapon_data.py` et ajouter une nouvelle entrée dans
-`WEAPON_ID_MAP` :
-
-```python
-# Exemple : résolution de ?91eb16de42c9679f en "Nom Arme"
-bytes.fromhex("91eb16de42c9679f"): "Nom Arme",  # pragma: allowlist secret
+# Retraiter les matchs même déjà marqués done
+go run ./cmd/levelup backfill --weapons --force
 ```
 
-Placer l'entrée dans le groupe approprié (standard, grenade, variante, etc.).
-Si l'arme présente des caractéristiques de timing différentes du groupe par défaut,
-ajouter également une entrée dans `WEAPON_TIMING`.
+La sélection des matchs est pilotée par bitmask sur
+`match_registry.backfill_completed` : bit `1<<21` = weapon_kills fait, bit
+`1<<22` = no-film. Sans `--force`, les matchs ayant l'un de ces bits sont
+ignorés (`findMissingWeaponMatches`).
 
-### Étape 2 — Migrer les lignes existantes
+Si `metadata.weapon_labels` est vide (certaines DB prébuilties), réparer-la
+(arrêter le serveur API d'abord — il tient metadata.duckdb en RW) :
 
-Créer une migration step dans `src/data/migration/steps/` pour mettre à jour les
-lignes déjà présentes en base :
-
-```python
-# src/data/migration/steps/add_nom_arme_wid.py
-from src.data.migration.registry import Migration, register
-
-def apply_schema(conn):
-    conn.execute("""
-        UPDATE weapon_kills
-        SET weapon_name = 'Nom Arme', confidence = 'high'
-        WHERE weapon_name = '?91eb16de42c9679f'
-    """)
-
-register(Migration(
-    name="add_nom_arme_wid",
-    target_db="shared",
-    description="Résolution WID 91eb16de → Nom Arme",
-    apply_schema=apply_schema,
-))
+```bash
+go run -tags cgo ./cmd/seed-weapon-labels
 ```
-
-Enregistrer l'import dans `src/data/migration/steps/__init__.py` :
-
-```python
-from src.data.migration.steps import add_nom_arme_wid  # noqa: F401
-```
-
-### Étape 3 — Nouveaux matchs
-
-Aucune action supplémentaire. Comme `WEAPON_ID_MAP` est maintenant mis à jour, tous
-les futurs appels à `process_match` utiliseront automatiquement le nouveau nom d'arme
-pour ce WID.
 
 ---
 
-## Ajouter un nouvel identifiant d'arme
+## Ajouter / résoudre un Weapon ID
 
-Identique à [Résoudre un WID inconnu](#résoudre-un-wid-inconnu), sauf que le WID
-n'est jamais apparu en base auparavant (nouvelle arme introduite dans une mise à jour
-de saison Halo Infinite) :
+Quand une nouvelle arme arrive, ou qu'un WID non résolu est positivement
+identifié :
 
-1. Ajouter le WID dans `WEAPON_ID_MAP` dans `_weapon_data.py`.
-2. Ajouter les paramètres de timing dans `WEAPON_TIMING` si la classe d'arme est
-   nouvelle.
-3. Aucune migration step nécessaire puisque aucune ligne existante ne référence ce WID.
+1. Ajouter l'entrée dans `weaponEntries` dans
+   `apps/go-api/internal/analysis/weapon_data.go` (hex -> nom). La placer dans
+   le bon groupe (standard / famille Energy Sword / famille Gravity Hammer /
+   grenade). Si la classe d'arme est nouvelle, ajouter une entrée
+   `WeaponTimingByName`.
+2. Ajouter le label EN/FR à `metadata.weapon_labels` (seed via
+   `cmd/seed-weapon-labels`, ou insertion directe) pour que la lecture puisse
+   l'afficher.
+3. Relancer `go run ./cmd/levelup backfill --weapons --force` pour les matchs
+   concernés si l'on veut ré-attribuer les lignes existantes ; les nouveaux
+   matchs prennent le mapping automatiquement.
 
-> **Attention :** Ne pas ajouter de WIDs de manière spéculative en se basant sur une
-> similarité structurelle (ex. même famille d'octets). N'ajouter que des WIDs
-> positivement identifiés via des sources d'assets fiables ou une inspection directe
-> de chunks. Des entrées incorrectes causeraient des attributions erronées sur tous
-> les matchs passés et futurs.
+> Attention : ne pas ajouter de WID de façon spéculative par similarité de
+> famille d'octets. N'ajouter que des WID positivement identifiés via des
+> sources d'assets fiables ou une inspection directe de chunks — une mauvaise
+> entrée provoque des attributions erronées sur tous les matchs.
+
+---
+
+## Limites connues
+
+- **Les films expirent.** Les matchs anciens n'ont plus de film (404/410) et ne
+  pourront jamais être attribués ; ils sont marqués `no_film`.
+- **`fire_event` est par tir, `formula_a` est un snapshot par chunk.**
+  L'attribution par snapshot est grossière et dégradée sur les swaps détectés
+  dans un chunk.
+- **La réconciliation aligne les totaux, pas les kills individuels.** La
+  réconciliation API garantit que les décomptes par arme correspondent au total
+  de kills API, pas que chaque kill soit correctement attribué.
+- **Le type d'arme melee/grenade n'est pas résolu via le film** au-delà de la
+  distinction `MELEE`/`GRENADE` ; les décomptes viennent de
+  `match_participants`.
+- L'attribution est donc une **reconstruction statistique**, adaptée aux
+  répartitions d'usage d'arme et à l'arme favorite, pas à des affirmations
+  forensiques par kill.
+
+---
+
+## Approfondissement : rétro-ingénierie du film
+
+La structure binaire des chunks du film, le décodage dead-state / kill-feed, et
+le catalogue des Weapon IDs sont documentés séparément et **non dupliqués ici** :
+
+- `.ai/RESEARCH_THEATER_RE.md` — structure des chunks film/théâtre, notes de
+  rétro-ingénierie dead-state et kill-feed.
+- `.ai/REFERENCE_WEAPON_IDS.md` — catalogue des Weapon IDs et recherche de
+  résolution.
