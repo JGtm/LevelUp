@@ -153,3 +153,44 @@ func TestLoadCareerSnapshot_EnrichesSpartanRank(t *testing.T) {
 		t.Errorf("CurrentRank = %+v, want 'SR 111'", snap.CurrentRank)
 	}
 }
+
+// TestBuildSpartanRankCatalog : le catalog title-aware Halo 5 résout « SR N » pour
+// tous les niveaux (label EN + FR), porte le seuil XP de chaque rang, et marque
+// SR152 comme max (pas de rang suivant). C'est le mécanisme qui remplace le fallback
+// HINF « Rang N » sur la Home, sans aucune écriture DB.
+func TestBuildSpartanRankCatalog(t *testing.T) {
+	cat := BuildSpartanRankCatalog()
+
+	if cat.Len() != h5MaxSpartanRank {
+		t.Fatalf("Len = %d, want %d", cat.Len(), h5MaxSpartanRank)
+	}
+
+	// Cas cible Home : SR 147 → label « SR 147 » (FR et EN), is_max dérivé false.
+	if label, ok := cat.FullLabel(147, "fr"); !ok || label != "SR 147" {
+		t.Errorf("FullLabel(147,'fr') = %q,%v, want 'SR 147',true", label, ok)
+	}
+	if label, ok := cat.FullLabel(147, "en"); !ok || label != "SR 147" {
+		t.Errorf("FullLabel(147,'en') = %q,%v, want 'SR 147',true", label, ok)
+	}
+	if _, ok := cat.Next(147); !ok {
+		t.Error("Next(147) doit exister (SR147 n'est pas max)")
+	}
+
+	// XPRequired(111) = delta de la table (XP pour compléter le rang 111).
+	wantXP := h5SRStartXP[111] - h5SRStartXP[110]
+	if e, ok := cat.Get(111); !ok || e.XPRequired != wantXP {
+		t.Errorf("Get(111).XPRequired = %d (ok=%v), want %d", e.XPRequired, ok, wantXP)
+	}
+
+	// SR152 = max : présent, mais sans rang suivant et sans XPRequired (pas de palier
+	// à compléter au sommet) — buildHomeCareerRank en dérive is_max=true.
+	if _, ok := cat.Get(h5MaxSpartanRank); !ok {
+		t.Errorf("Get(%d) absent", h5MaxSpartanRank)
+	}
+	if _, ok := cat.Next(h5MaxSpartanRank); ok {
+		t.Errorf("Next(%d) doit être absent (rang max)", h5MaxSpartanRank)
+	}
+	if e, _ := cat.Get(h5MaxSpartanRank); e.XPRequired != 0 {
+		t.Errorf("Get(%d).XPRequired = %d, want 0 (max, pas de rang suivant)", h5MaxSpartanRank, e.XPRequired)
+	}
+}
