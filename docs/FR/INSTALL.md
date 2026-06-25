@@ -1,10 +1,14 @@
-# Guide d'Installation - LevelUp
+# Guide d'installation — LevelUp
+
+Version anglaise : [../INSTALL.md](../INSTALL.md)
 
 > Guide complet pour installer et configurer LevelUp sur votre machine.
 
-## Installation locale recommandée (Windows)
+---
 
-Ce dépôt Go n'embarque plus de lanceurs `LevelUp.bat` ou `LevelUp.sh`.
+## Windows — Installation locale recommandée
+
+Ce dépôt de migration Go n'embarque plus de lanceurs en un clic.
 Le point d'entrée standard est désormais `make dev`.
 
 ### Étape 1 — Télécharger LevelUp
@@ -12,7 +16,7 @@ Le point d'entrée standard est désormais `make dev`.
 Rendez-vous sur la page GitHub du projet → bouton vert **Code** → **Download ZIP**.
 Extrayez le dossier où vous voulez (ex. Bureau ou `C:\LevelUp\`).
 
-> Vous pouvez aussi cloner avec Git si vous savez l'utiliser :
+> Si vous connaissez Git, vous pouvez aussi cloner :
 > ```bash
 > git clone https://github.com/JGtm/LevelUp_with_SPNKr.git
 > ```
@@ -39,67 +43,71 @@ Cela démarre l'API Go sur le port 8000 et le frontend Vite sur http://localhost
 
 ### Étape 4 — Setup Wizard dans le navigateur
 
-Au premier lancement, LevelUp détecte qu'il n'est pas configuré et affiche un **wizard guidé**.
+Au premier lancement, LevelUp détecte qu'il n'est pas encore configuré et affiche un **wizard guidé**.
 Choisissez votre parcours :
 
-#### 🎮 Xbox Express (recommandé — 2 étapes)
+#### Xbox Express (recommandé — 2 étapes)
 
-Le parcours le plus simple.
+**v6 — Aucune configuration Azure requise.** LevelUp embarque son propre client ID.
 
-**Étape 1 du wizard — Application Azure (automatique ou manuelle)**
+**Étape 1 — Saisir votre gamertag**
 
-> Azure est le service cloud Microsoft qui gère l'authentification Xbox.
-> LevelUp a besoin d'une « clé d'accès » propre à chaque utilisateur.
-> L'inscription est gratuite ; LevelUp n'utilise aucun service payant Azure.
+Tapez votre gamertag Xbox dans le wizard. LevelUp crée automatiquement votre profil local.
 
-**Option A — Automatique (recommandée) : avec Azure CLI**
+**Étape 2 — S'authentifier via Device Code**
 
-Si [Azure CLI](https://aka.ms/installazurecli) est installé sur votre machine, LevelUp
-crée l'application automatiquement **sans visiter le portail Azure** pendant le wizard.
+Le wizard affiche un code court et l'URL `https://xbox.com/activate`.
 
-**Option B — Manuelle : sans Azure CLI**
+1. Ouvrez [https://xbox.com/activate](https://xbox.com/activate) dans votre navigateur
+2. Entrez le code affiché dans le wizard
+3. Connectez-vous avec votre compte Microsoft/Xbox
 
-Si Azure CLI n'est pas installé, LevelUp ouvre portal.azure.com et vous demande de saisir
-uniquement le **Client ID** (pas de client secret requis) :
+C'est tout — LevelUp récupère votre XUID, complète votre profil et persiste le refresh token
+OAuth dans le store de tokens unique (`data/auth/watcher_tokens/{xuid}.json`,
+voir [ADR 0023](../adr/0023-auth-tokens-single-source.md)), puis lance le smoke test.
 
-1. Allez sur [portal.azure.com](https://portal.azure.com) — connectez-vous avec votre compte Microsoft/Xbox
-2. Cherchez **Microsoft Entra ID** → **App registrations** → **New registration**
-3. Remplissez :
-   - Nom : `LevelUp Halo`
-   - Type de compte : *Personal Microsoft accounts only*
-   - Laisser Redirect URI vide → **Register**
-4. Sur la page **Overview** : copiez l'**Application (client) ID** (format `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
-5. Dans **Authentication** → **Advanced settings** → mettez **Allow public client flows** à **Yes** → **Save**
+#### Onboarding avancé (headless / CLI)
 
-Collez uniquement le Client ID dans le wizard (plus de secret requis).
-
-**Étape 2 du wizard — Connexion Xbox en 1 clic**
-
-Cliquez sur **"Se connecter avec Xbox"** → une fenêtre Microsoft s'ouvre → connectez-vous
-avec votre compte Xbox → LevelUp récupère automatiquement votre gamertag et XUID,
-crée votre profil et stocke le token OAuth dans votre base de données.
-
-#### ☁️ Azure manuel (avancé — 3 étapes)
-
-Même configuration Azure qu'au-dessus, mais le refresh token est obtenu manuellement
-(à utiliser si le flux Xbox automatique pose problème, ex. reverse proxy) :
+Utilisez ce parcours quand le wizard interactif n'est pas accessible (serveur, headless, reverse proxy).
+Le joueur doit déjà être déclaré dans `db_profiles.json` avec son `xuid` avant de lancer ces
+commandes (le store de tokens est adressé par xuid). Les tokens vont directement dans le store unique — il n'y a
+**aucune manipulation de `.env.local`** (voir [ADR 0023](../adr/0023-auth-tokens-single-source.md)).
 
 ```bash
-python scripts/spnkr_get_refresh_token.py --device-code
+# Device Code Flow dans le navigateur, refresh token écrit dans le store
+go run ./apps/go-api/cmd/token-capture/ <Gamertag>
+
+# Ou importer un refresh token obtenu ailleurs (lu depuis stdin)
+go run ./apps/go-api/cmd/token-import/ <Gamertag>
 ```
 
-Ce script affiche un code court à entrer sur https://microsoft.com/devicelogin et sauvegarde
-le token automatiquement dans `.env.local`.
+Après capture/import, redémarrez le serveur : le Pool d'auth trouve le token dans le store et
+fonctionne immédiatement.
+
+#### Note pour les forks / développeurs
+
+Le client ID embarqué est lié à l'Azure App Registration de ce projet.
+Si vous forkez LevelUp, créez votre propre Azure App Registration (gratuite) et définissez :
+
+```env
+# .env.local
+SPNKR_AZURE_CLIENT_ID=your_own_client_id
+```
+
+Voir [CONFIGURATION.md](CONFIGURATION.md) pour le déroulé complet de l'inscription Azure.
+Cette variable d'environnement prend le pas sur l'ID embarqué. Notez que `.env.local` ne sert qu'à la config
+(client ID) : ce n'est **pas** un store de credentials — les refresh tokens vivent dans le store de tokens
+(voir [ADR 0023](../adr/0023-auth-tokens-single-source.md)).
 
 ### Étape 5 — Smoke test (vérification automatique sur 20 matchs)
 
 Après la connexion Xbox, le wizard lance automatiquement un **smoke test en 3 phases** :
 
 | Phase | Ce qui se passe |
-|-------|----------------|
-| 📡 Phase 1 — Sync | Synchronisation de 20 matchs depuis l'API Halo |
-| ⚙️ Phase 2 — Enrichissement | Calcul des scores, sessions, citations, LUSR/CSR, paires killer/victim |
-| 🔍 Phase 3 — Vérification | Contrôle d'intégrité de toutes les tables (voir ci-dessous) |
+|-------|-----------------|
+| Phase 1 — Sync | Synchronisation de 20 matchs depuis l'API Halo |
+| Phase 2 — Enrichissement | Calcul des scores, sessions, citations, LUSR/CSR, paires killer/victim |
+| Phase 3 — Vérification | Contrôle d'intégrité complet de toutes les tables (voir ci-dessous) |
 
 **Tables vérifiées (toutes obligatoires) :**
 
@@ -109,20 +117,42 @@ Après la connexion Xbox, le wizard lance automatiquement un **smoke test en 3 p
 | `match_participants` | shared | count > 0 + kills/deaths non NULL |
 | `medals_earned` | shared | count > 0 |
 | `killer_victim_pairs` | shared | count > 0 |
+| `highlight_events` | shared | count > 0 (clips filmés) |
 | `xuid_aliases` | shared | count > 0 |
 | `player_match_enrichment` | player | count > 0 + session_id non NULL |
 | `performance_score` | shared (via match_participants) | score calculé > 0 |
 | `match_citations` | player | count > 0 |
 | `match_skill_rank` (LUSR/CSR) | player | count > 0 + LUSR/CSR présents |
 | `sessions` | player | count > 0 |
-| `highlight_events` | shared | count > 0 (clips filmés) |
 | `sync_meta` | player | count > 0 |
 | Cohérence shared↔player | croisé | counts cohérents |
 
-Si un check échoue, le test propose de **relancer**. Si tout est vert, deux choix s'offrent :
+Si un check échoue, le test propose de **relancer**. Quand tout est vert, deux choix :
 
-- **⚙️ Sync complète** → navigue vers la page Paramètres pour récupérer tout votre historique (recommandé)
-- **📊 Dashboard (20 matchs)** → accède directement au dashboard avec les matchs déjà synchronisés
+- **Sync complète** → navigue vers la page Paramètres pour récupérer tout votre historique (recommandé)
+- **Dashboard (20 matchs)** → accède directement au dashboard avec les matchs déjà synchronisés
+
+---
+
+## macOS / Linux
+
+Le workflow local est identique à celui de Windows :
+
+1. Installez Go 1.26+, Node.js + npm, et GNU Make
+2. Installez Air :
+   ```bash
+   go install github.com/air-verse/air@latest
+   ```
+3. Installez les dépendances frontend :
+   ```bash
+   cd apps/web && npm install && cd ../..
+   ```
+4. Démarrez la stack :
+   ```bash
+   make dev
+   ```
+
+Ouvrez ensuite http://localhost:5173 et complétez le wizard dans l'application.
 
 ---
 
@@ -152,15 +182,19 @@ cd apps/web && npm run typecheck
 
 ### Tests
 
+Le driver DuckDB requiert CGO. Voir [testing.md](testing.md) pour la matrice complète
+(chemin rapide CGO=0, ratchet de couverture, Windows MinGW).
+
 ```bash
-# Suite complète
-python -m pytest
+# Go — suite complète avec DuckDB (CGO)
+cd apps/go-api
+CGO_ENABLED=1 LEVELUP_DEMO_MODE=true go test ./... -timeout 5m -count=1
 
-# Hors intégration (plus rapide)
-python -m pytest --ignore=tests/integration
+# Go — sous-ensemble rapide sans DuckDB
+CGO_ENABLED=0 go test ./internal/domain/... ./internal/analysis/... ./contracttest/... -count=1
 
-# Un fichier spécifique
-python -m pytest tests/test_duckdb_repository.py -v
+# Frontend
+cd apps/web && npm run typecheck && npm test
 ```
 
 ### Mise à jour
@@ -173,20 +207,6 @@ go install github.com/air-verse/air@latest
 
 Voir [CONFIGURATION.md](CONFIGURATION.md) pour la configuration des tokens Azure.
 
-### 3. Ajouter un joueur via CLI (si le wizard n'est pas utilisé)
-
-```bash
-python scripts/sync.py --add-player MonGamertag
-```
-
-Cette commande crée automatiquement l'entrée dans `db_profiles.json` et le dossier `data/players/MonGamertag/`.
-
-### 4. Premier Lancement
-
-```bash
-make dev
-```
-
 ---
 
 ## Installation Docker
@@ -194,11 +214,10 @@ make dev
 ### Prérequis
 - Docker Desktop installé
 - Docker Compose v2 disponible (`docker compose version`)
-- Fichier `db_profiles.json` à la racine du projet (créé automatiquement si absent)
 
 ### Prérequis : fichiers de configuration
 
-Avant le premier `docker compose up`, assurez-vous que ces fichiers existent. Sinon, créez-les :
+Avant le premier `docker compose up`, assurez-vous que ces fichiers existent :
 
 ```bash
 # Si db_profiles.json n'existe pas encore
@@ -208,7 +227,8 @@ echo '{"profiles": {}}' > db_profiles.json
 echo '{}' > app_settings.json
 ```
 
-> **Pourquoi ?** Docker bind-mount crée un *dossier* (pas un fichier) si la source n'existe pas, ce qui crasherait l'app.
+> **Pourquoi ?** Docker bind-mount crée un *dossier* (pas un fichier) si la source n'existe pas,
+> ce qui crasherait l'app.
 
 ### Lancer avec Docker Compose
 
@@ -226,31 +246,13 @@ docker compose logs -f
 docker compose down
 ```
 
-### Architecture de l'image
+### Volumes Docker
 
-L'image Docker :
-- Installe les dépendances via `pip install -e ".[spnkr]"` (pyproject.toml), incluant SPNKr + aiohttp pour la synchronisation API
-- Embarque les données de référence minimales (traductions playlists, wiki commendations)
-- Tourne en utilisateur non-root (`appuser`, UID 10001)
-- Expose le healthcheck FastAPI sur `/api/v1/health`
-
-### Configuration Docker
-
-`docker-compose.yml` monte les volumes suivants :
-
-| Volume hôte | Chemin conteneur | Description |
-|-------------|-----------------|-------------|
-| `./data` | `/app/data` | Données DuckDB v5 (lecture/écriture) |
+| Chemin hôte | Chemin conteneur | Description |
+|-------------|------------------|-------------|
+| `./data` | `/app/data` | Données DuckDB (lecture/écriture) |
 | `./db_profiles.json` | `/app/db_profiles.json` | Profils joueurs |
 | `./app_settings.json` | `/app/app_settings.json` | Paramètres applicatifs |
-
-### Variables d'Environnement Docker
-
-| Variable | Défaut | Description |
-|----------|--------|-------------|
-| `LEVELUP_ROOT` | `/app` | Racine du projet (détection pyproject.toml) |
-| `LEVELUP_DATA` | `%APPDATA%/LevelUp` ou `./data` | Répertoire des données |
-| `LEVELUP_DEFAULT_GAMERTAG` | *(vide)* | Gamertag par défaut pour mode headless |
 
 ---
 
@@ -270,16 +272,19 @@ cd apps/web && npm run typecheck
 cd apps/web && npm install
 ```
 
-### Erreur DuckDB (version incorrecte)
+### Erreur de version DuckDB
 
 ```bash
-cd apps/go-api && go test ./... -count=1
+cd apps/go-api && CGO_ENABLED=1 go test ./... -count=1
 ```
 
-### Problème de token OAuth expiré
+### Token OAuth expiré
 
-Aller dans l'app → **Paramètres** → **Connexion Xbox** → **Reconnecter**.
-Le token est stocké dans `data/players/<gamertag>/stats.duckdb` (table `sync_meta`).
+Dans l'app → **Paramètres** → **Connexion Xbox** → **Reconnecter** (relance le flux Device Code
+et rafraîchit le token dans le store). Pour les joueurs headless, relancez
+`go run ./apps/go-api/cmd/token-capture/ <Gamertag>`. Le refresh token est persisté dans
+`data/auth/watcher_tokens/{xuid}.json` (store de tokens unique, voir
+[ADR 0023](../adr/0023-auth-tokens-single-source.md)).
 
 ### Permission Denied (Windows / PowerShell)
 
@@ -290,27 +295,32 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 ---
 
-## Structure des Dossiers Après Installation
+## Structure des dossiers après installation
 
 ```
 LevelUp/
-├── .venv/                         # Environnement virtuel Python
+├── apps/
+│   ├── go-api/                      # Backend Go (API + sync + CLI sous cmd/)
+│   └── web/                         # Frontend React/Vite
 ├── data/
+│   ├── auth/
+│   │   └── watcher_tokens/
+│   │       └── {xuid}.json          # Store de tokens OAuth/MSAL (ADR 0023)
 │   ├── players/
-│   │   └── MonGamertag/
-│   │       └── stats.duckdb       # Enrichissements joueur
+│   │   └── MyGamertag/
+│   │       └── stats.duckdb         # Enrichissements par joueur
 │   └── warehouse/
-│       ├── metadata.duckdb        # Référentiels (maps, médailles…)
-│       └── shared_matches.duckdb  # Matchs partagés (centralisé)
-├── .env.local                     # Tokens Azure (créé par le wizard)
-├── db_profiles.json               # Profils joueurs (créé par le wizard)
-└── ...
+│       ├── metadata.duckdb          # Référentiels (maps, médailles…)
+│       └── shared_matches_v2.duckdb # Matchs partagés (centralisé)
+├── db_profiles.json                 # Profils joueurs (créé par le wizard)
+├── app_settings.json                # Paramètres applicatifs
+└── .env.local                       # Config optionnelle (ex. SPNKR_AZURE_CLIENT_ID pour les forks)
 ```
 
 ---
 
-## Prochaines Étapes
+## Prochaines étapes
 
 1. [Configuration Azure détaillée](CONFIGURATION.md)
 2. [Synchroniser vos matchs](SYNC_GUIDE.md)
-3. [Explorer le dashboard](../README.md#utilisation)
+3. [Explorer le dashboard](../../README.md)
