@@ -71,6 +71,7 @@ var canonicalOrder = []string{
 	"add_career_last_fetch_status",                            // player
 	"add_challenge_snapshots",                                 // player
 	"add_challenge_snapshots_render_columns",                  // player
+	"add_challenge_snapshots_display_path",                    // player
 	"add_battlepass_snapshots",                                // player
 	"add_dominance_flag_column",                               // player
 	"add_media_discord_notified",                              // player
@@ -206,6 +207,7 @@ var canonicalOrder = []string{
 	"extend_player_records_with_window",                        // shared_social
 	"shared_social_squad_challenge_participant_append_only_v1", // shared_social
 	"shared_social_squad_member_append_only_v1",                // shared_social
+	"shared_social_squad_member_gamertag_v1",                   // shared_social
 	"rekey_squad_member_xuid",                                  // shared_social
 	"shared_social_user_prestige_append_only_v1",               // shared_social
 	"create_world_player_season_stats",                         // shared

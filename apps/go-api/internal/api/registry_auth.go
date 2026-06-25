@@ -100,21 +100,24 @@ func (r *ServiceRegistry) buildHaloProvider(pdb *duckdb.PlayerDB) *halo.HaloProv
 		WithTitleSlug(titleSlug)
 }
 
-// enrichWithHaloTokens injecte des HaloTokens FRAIS dans le contexte.
+// enrichWithHaloTokens injecte des HaloTokens FRAIS et DÉTERMINISTES dans le contexte.
 //
-// Garantie expiry-aware : on n'injecte jamais un Spartan qu'on ne peut pas garantir
-// valide. Un token de session encore frais (par son expiry réel) est réutilisé ; sinon
-// (absent OU périmé, Gap 5) on résout via halo.ResolveFreshPlayerTokens — cache
-// expiry-aware + re-mint dédupliqué par xuid (singleflight). Plus de token périmé servi.
+// Garantie expiry-aware STRICTE : on ne réutilise un token de session que si on peut PROUVER
+// qu'il est encore valide (expiry CONNUE et fraîche, `TokensFreshStrict`). Un token de session
+// d'expiry inconnue (session créée avant la capture de SpartanExpiresAt) est parfois réellement
+// périmé → il provoquait un 401 INTERMITTENT sur les chemins sans filet (rang carrière). On le
+// re-résout donc systématiquement via halo.ResolveFreshPlayerTokens (cache expiry-aware + re-mint
+// singleflight, expiry réelle). Sur échec de re-mint (ex. SSO-only hors pool) → on garde le token
+// de session existant (mieux que rien) : dégradation, pas de régression.
 func (r *ServiceRegistry) enrichWithHaloTokens(ctx context.Context, pdb *duckdb.PlayerDB) context.Context {
-	if sess := ctxkeys.HaloTokens(ctx); halo.TokensFresh(sess) {
-		return ctx // token de session présent ET encore valide → on le garde
+	if sess := ctxkeys.HaloTokens(ctx); halo.TokensFreshStrict(sess) {
+		return ctx // token de session présent, expiry CONNUE et encore valide → on le garde
 	}
 	xuid := pdb.XUID
 	tokens, err := halo.ResolveFreshPlayerTokens(ctx, xuid)
 	if err != nil || tokens == nil {
 		if err != nil {
-			slog.DebugContext(ctx, "halo_auth: résolution token live impossible", "xuid", xuid, "err", err)
+			slog.DebugContext(ctx, "halo_auth: résolution token live impossible — fallback token de session", "xuid", xuid, "err", err)
 		}
 		return ctx
 	}

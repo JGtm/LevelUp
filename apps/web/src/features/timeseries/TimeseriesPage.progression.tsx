@@ -27,6 +27,7 @@ import { EngagementTimeseriesSection } from '@/features/engagement/EngagementTim
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
+import { KillTypesDonutCard } from '@/components/charts/KillTypesDonutCard'
 import { TimeseriesSkillProgression } from './TimeseriesSkillProgression'
 import type { FilterContextInput, TimeseriesPageResponse, ExplorerMatchRow } from '@/lib/api/types'
 import type { FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
@@ -129,11 +130,27 @@ export function TimeseriesProgressionTab({
         />
       </div>
 
-      {/* Progression CSR (classé) ou LUSR (non classé) — pleine largeur, avant le
-          bloc rank+perf. Masquée pour un titre sans système de rang (CSR/LUSR). */}
-      {hasSkillRating && (
-        <TimeseriesSkillProgression rows={data.match_rows ?? []} locale={locale} emptyMessage={emptyMsg} />
-      )}
+      {/* Progression CSR (classé) ou LUSR (non classé) — masquée pour un titre
+          sans système de rang (CSR/LUSR). Quand la ventilation des frags est
+          disponible : donut (gauche) | progression (droite), colonne donut plus
+          étroite pour laisser respirer la time-series ; sinon la progression
+          reprend toute la largeur. */}
+      {hasSkillRating &&
+        (data.detailed_stats ? (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+            <KillTypesDonutCard
+              title={t('timeseries.progression.kill_types_title')}
+              otherLabel={t('timeseries.progression.kill_type_other')}
+              melee={data.detailed_stats.total_melee_kills}
+              powerWeapon={data.detailed_stats.total_power_weapon_kills}
+              grenade={data.detailed_stats.total_grenade_kills}
+              totalKills={(data.match_rows ?? []).reduce((acc, r) => acc + r.kills, 0)}
+            />
+            <TimeseriesSkillProgression rows={data.match_rows ?? []} locale={locale} emptyMessage={emptyMsg} />
+          </div>
+        ) : (
+          <TimeseriesSkillProgression rows={data.match_rows ?? []} locale={locale} emptyMessage={emptyMsg} />
+        ))}
 
       {/* timeseries.19 — Score & rang de match (générique : personal_score +
           placement). | Skill rank + Performance (CSR/LUSR, masqué sans rang).

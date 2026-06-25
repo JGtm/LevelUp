@@ -1664,6 +1664,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/monitoring/weapon-coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard monitoring — couverture de résolution d'arme (registre vs weapon_labels vs non résolu) par titre (auth admin requis) */
+        get: operations["getAdminMonitoringWeaponCoverage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/monitoring/jobs": {
         parameters: {
             query?: never;
@@ -4936,6 +4953,28 @@ export interface components {
             role: string;
             username: string;
         };
+        AdminWeaponCoverage: {
+            /** Format: double */
+            coverage_percent: number;
+            /** Format: int64 */
+            distinct_weapons: number;
+            generated_at: string;
+            /** Format: double */
+            registry_percent: number;
+            /** Format: int64 */
+            resolved_label: number;
+            /** Format: int64 */
+            resolved_registry: number;
+            title_slug: string;
+            top_unresolved: components["schemas"]["AdminWeaponCoverageItem"][] | null;
+            /** Format: int64 */
+            unresolved: number;
+        };
+        AdminWeaponCoverageItem: {
+            /** Format: int64 */
+            kills: number;
+            weapon_id: string;
+        };
         ApiError: {
             code: string;
             message: string;
@@ -7717,6 +7756,8 @@ export interface components {
             kda?: number;
             /** Format: int64 */
             kills: number;
+            /** Format: int64 */
+            grenade_kills?: number;
             map_name?: string;
             match_id: string;
             /** Format: int64 */
@@ -7724,7 +7765,11 @@ export interface components {
             /** Format: int64 */
             max_killing_spree?: number;
             /** Format: int64 */
+            melee_kills?: number;
+            /** Format: int64 */
             perfect_kills?: number;
+            /** Format: int64 */
+            power_weapon_kills?: number;
             /** Format: double */
             performance_score?: number;
             /** Format: double */
@@ -8105,6 +8150,7 @@ export interface components {
             solo_kpis: components["schemas"]["SynthesisKPIs"];
             squad_kpis: components["schemas"]["SynthesisKPIs"];
             top_weapon_kills?: components["schemas"]["SynthesisWeaponKillEntry"][] | null;
+            kills_by_role?: components["schemas"]["SynthesisRoleKillEntry"][] | null;
             top_weeks: components["schemas"]["TopWeekEntry"][] | null;
         };
         SynthesisScope: {
@@ -8116,6 +8162,11 @@ export interface components {
             /** Format: int64 */
             match_count: number;
             period: string;
+        };
+        SynthesisRoleKillEntry: {
+            /** Format: int64 */
+            kills: number;
+            role: string;
         };
         SynthesisWeaponKillEntry: {
             /** Format: int64 */
@@ -8300,6 +8351,7 @@ export interface components {
         TimeseriesPageResponse: {
             briefing_kpis?: components["schemas"]["KPIStats"];
             cumul_tab: components["schemas"]["TimeseriesCumulTab"];
+            detailed_stats?: components["schemas"]["SynthesisDetailedStats"];
             distributions_tab: components["schemas"]["TimeseriesDistributionsTab"];
             first_events?: components["schemas"]["FirstEventDistribution"];
             intensity_rows?: components["schemas"]["IntensityMatchRow"][] | null;
@@ -10848,6 +10900,26 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Backlog de convergence par joueur (compteurs plafonnés à l'horizon) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getAdminMonitoringWeaponCoverage: {
+        parameters: {
+            query?: {
+                title?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Couverture de résolution d'arme par titre */
             200: {
                 headers: {
                     [name: string]: unknown;

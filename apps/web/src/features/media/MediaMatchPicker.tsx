@@ -14,7 +14,9 @@
  *   confirmer  → POST /associate, invalide le cache, ferme la modal
  */
 import { useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { useMediaMatchCandidates, useAssociateMediaToMatch } from './queries'
+import { apiErrorMessage } from '@/lib/api/client'
 import type { MediaMatchCandidate } from '@/lib/api/types'
 import { useFieldMappings, useAssetLabel } from '@/lib/i18n/fieldMappings'
 import { resolveTeamNameFromID } from '@/lib/halo/teamNames'
@@ -193,7 +195,16 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
     if (!pending) return
     associate.mutate(
       { file_path: filePath, match_id: pending.match_id },
-      { onSuccess: () => onClose() },
+      {
+        onSuccess: () => {
+          toast.success(t('common.media.associate_success'))
+          onClose()
+        },
+        onError: (err) =>
+          toast.error(t('common.media.associate_error'), {
+            description: apiErrorMessage(err),
+          }),
+      },
     )
   }
 
@@ -342,12 +353,6 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
               </button>
             </div>
           </footer>
-        )}
-
-        {associate.isError && (
-          <p className="border-t border-border px-5 py-2 text-xs text-destructive">
-            {hasCurrentMatch ? 'Erreur lors de la réassociation :' : "Erreur lors de l'association :"} {associate.error instanceof Error ? associate.error.message : 'inconnue'}
-          </p>
         )}
       </div>
     </div>

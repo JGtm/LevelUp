@@ -1,7 +1,14 @@
 /**
- * GeneralTab — onglet "Général" de SettingsPage : interface, Discord, médias.
+ * Cartes de réglages réutilisables, extraites de l'ancien GeneralTab lors du
+ * regroupement des onglets Settings (2026-06).
  *
- * P8.4 (revue 2026-04-29) : extrait de SettingsPage.tsx (~115L).
+ * - InterfaceCard → onglet « Apparence & Accessibilité »
+ * - DiscordCard   → onglet « Notifications » (Discord = canal externe)
+ * - MediaCard     → onglet « Données & Médias »
+ *
+ * Chaque carte partage les props TabProps (merged/handleChange/t/frozen) et le
+ * plumbing settings de SettingsPage. L'exemption démo de la langue est conservée :
+ * le Select langue n'est jamais figé, tout le reste l'est en mode démo.
  */
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,56 +16,56 @@ import { Select } from '@/components/ui/select'
 import { useScanMedia } from '@/features/settings/queries'
 import { ToggleRow, type TabProps } from './_settingsShared'
 
-export function GeneralTab({ merged, handleChange, t, frozen }: TabProps) {
-  const scanMedia = useScanMedia()
-  // En démo, tous les réglages sont figés SAUF la langue (cf. bannière démo +
-  // onglet Accessibilité). On désactive donc contrôle par contrôle plutôt que via
-  // un <fieldset> global, qui neutraliserait aussi le sélecteur de langue.
+export function InterfaceCard({ merged, handleChange, t, frozen }: TabProps) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{t.interfaceTitle}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-1 divide-y divide-border/50">
+        <div className="flex items-center justify-between py-2">
+          <span className="text-sm text-foreground">{t.langLabel}</span>
+          <Select
+            value={merged.lang ?? 'fr'}
+            onChange={(e) => handleChange('lang', e.target.value)}
+            className="w-auto"
+          >
+            <option value="fr">{t.langFr}</option>
+            <option value="en">{t.langEn}</option>
+          </Select>
+        </div>
+        <div className="flex items-center justify-between py-2">
+          <span className="text-sm text-foreground">{t.timezoneLabel}</span>
+          <Select
+            value={merged.user_timezone ?? 'Europe/Paris'}
+            onChange={(e) => handleChange('user_timezone', e.target.value)}
+            className="w-auto"
+            disabled={frozen}
+          >
+            {/* Identifiants timezone IANA — pas de traduction (techniques) */}
+            {/* eslint-disable @levelup/no-hardcoded-strings */}
+            <option value="Europe/Paris">Europe/Paris</option>
+            <option value="Europe/London">Europe/London</option>
+            <option value="America/New_York">America/New_York</option>
+            <option value="America/Los_Angeles">America/Los_Angeles</option>
+            <option value="America/Chicago">America/Chicago</option>
+            <option value="Asia/Tokyo">Asia/Tokyo</option>
+            <option value="UTC">UTC</option>
+            {/* eslint-enable @levelup/no-hardcoded-strings */}
+          </Select>
+        </div>
+        <ToggleRow label={t.showRecords} value={merged.show_records ?? false} onChange={(v) => handleChange('show_records', v)} disabled={frozen} />
+        <ToggleRow label={t.normalizeModeLabels} value={merged.normalize_mode_labels ?? true} onChange={(v) => handleChange('normalize_mode_labels', v)} disabled={frozen} />
+        <ToggleRow label={t.excludeBTB} value={merged.career_top_exclude_btb ?? false} onChange={(v) => handleChange('career_top_exclude_btb', v)} disabled={frozen} />
+        <ToggleRow label={t.refreshClearsCaches} value={merged.refresh_clears_caches ?? false} onChange={(v) => handleChange('refresh_clears_caches', v)} disabled={frozen} />
+      </CardContent>
+    </Card>
+  )
+}
+
+export function DiscordCard({ merged, handleChange, t, frozen }: TabProps) {
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t.interfaceTitle}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-1 divide-y divide-border/50">
-          <div className="flex items-center justify-between py-2">
-            <span className="text-sm text-foreground">{t.langLabel}</span>
-            <Select
-              value={merged.lang ?? 'fr'}
-              onChange={(e) => handleChange('lang', e.target.value)}
-              className="w-auto"
-            >
-              <option value="fr">{t.langFr}</option>
-              <option value="en">{t.langEn}</option>
-            </Select>
-          </div>
-          <div className="flex items-center justify-between py-2">
-            <span className="text-sm text-foreground">{t.timezoneLabel}</span>
-            <Select
-              value={merged.user_timezone ?? 'Europe/Paris'}
-              onChange={(e) => handleChange('user_timezone', e.target.value)}
-              className="w-auto"
-              disabled={frozen}
-            >
-              {/* Identifiants timezone IANA — pas de traduction (techniques) */}
-              {/* eslint-disable @levelup/no-hardcoded-strings */}
-              <option value="Europe/Paris">Europe/Paris</option>
-              <option value="Europe/London">Europe/London</option>
-              <option value="America/New_York">America/New_York</option>
-              <option value="America/Los_Angeles">America/Los_Angeles</option>
-              <option value="America/Chicago">America/Chicago</option>
-              <option value="Asia/Tokyo">Asia/Tokyo</option>
-              <option value="UTC">UTC</option>
-              {/* eslint-enable @levelup/no-hardcoded-strings */}
-            </Select>
-          </div>
-          <ToggleRow label={t.showRecords} value={merged.show_records ?? false} onChange={(v) => handleChange('show_records', v)} disabled={frozen} />
-          <ToggleRow label={t.normalizeModeLabels} value={merged.normalize_mode_labels ?? true} onChange={(v) => handleChange('normalize_mode_labels', v)} disabled={frozen} />
-          <ToggleRow label={t.excludeBTB} value={merged.career_top_exclude_btb ?? false} onChange={(v) => handleChange('career_top_exclude_btb', v)} disabled={frozen} />
-          <ToggleRow label={t.refreshClearsCaches} value={merged.refresh_clears_caches ?? false} onChange={(v) => handleChange('refresh_clears_caches', v)} disabled={frozen} />
-        </CardContent>
-      </Card>
-
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{t.discordTitle}</CardTitle>
@@ -72,6 +79,19 @@ export function GeneralTab({ merged, handleChange, t, frozen }: TabProps) {
         </CardContent>
       </Card>
 
+      {merged.discord_notifications_enabled && !merged.discord_webhook_url_present && (
+        <div className="rounded-lg border border-warning bg-warning/10 px-4 py-3 text-sm text-warning">
+          ⚠️ {t.discordNoWebhook}
+        </div>
+      )}
+    </>
+  )
+}
+
+export function MediaCard({ merged, handleChange, t, frozen }: TabProps) {
+  const scanMedia = useScanMedia()
+  return (
+    <>
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{t.mediaTitle}</CardTitle>
@@ -121,11 +141,6 @@ export function GeneralTab({ merged, handleChange, t, frozen }: TabProps) {
         </CardContent>
       </Card>
 
-      {merged.discord_notifications_enabled && !merged.discord_webhook_url_present && (
-        <div className="rounded-lg border border-warning bg-warning/10 px-4 py-3 text-sm text-warning">
-          ⚠️ {t.discordNoWebhook}
-        </div>
-      )}
       {merged.media_watcher_enabled && !merged.media_captures_base_dir && (
         <div className="rounded-lg border border-warning bg-warning/10 px-4 py-3 text-sm text-warning">
           ⚠️ {t.mediaNoBaseDir}

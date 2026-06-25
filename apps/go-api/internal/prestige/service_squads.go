@@ -2,6 +2,7 @@ package prestige
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -122,6 +123,75 @@ func (s *service) RemoveSquadMember(ctx context.Context, squadID, xuid, requeste
 	slog.InfoContext(ctx, "prestige: squad member removed",
 		"squad_id", squadID, "xuid", xuid, "by", requestedBy)
 	return nil
+}
+
+// RenameSquad change le nom d'une escouade. requestedBy (player_slug) doit déjà
+// être membre-user de l'escouade.
+func (s *service) RenameSquad(ctx context.Context, squadID, name, requestedBy string) error {
+	if squadID == "" || name == "" {
+		return fmt.Errorf("%w: squad_id/name requis", ErrInvalidInput)
+	}
+	if err := s.assertMemberUser(ctx, squadID, requestedBy); err != nil {
+		return err
+	}
+	if err := s.deps.Squads.Rename(ctx, squadID, name); err != nil {
+		return err
+	}
+	slog.InfoContext(ctx, "prestige: squad renamed",
+		"squad_id", squadID, "by", requestedBy)
+	return nil
+}
+
+// DeleteSquad supprime une escouade en retirant tous ses membres (append-only :
+// chaque retrait = event is_member=FALSE). L'escouade disparaît alors de
+// ListSquadsForUser (member-driven) ; la ligne squad reste orpheline mais inerte
+// (pas de DELETE indexé → pas de surface ART). requestedBy doit être membre-user.
+func (s *service) DeleteSquad(ctx context.Context, squadID, requestedBy string) error {
+	if squadID == "" {
+		return fmt.Errorf("%w: squad_id requis", ErrInvalidInput)
+	}
+	if err := s.assertMemberUser(ctx, squadID, requestedBy); err != nil {
+		return err
+	}
+	members, err := s.deps.Squads.ListMembers(ctx, squadID)
+	if err != nil {
+		return fmt.Errorf("list members: %w", err)
+	}
+	var errs []error
+	for _, m := range members {
+		if m.Xuid == "" {
+			continue
+		}
+		if err := s.deps.Squads.RemoveMember(ctx, squadID, m.Xuid); err != nil {
+			errs = append(errs, fmt.Errorf("xuid %s: %w", m.Xuid, err))
+			slog.WarnContext(ctx, "prestige: delete squad — remove member failed",
+				"squad_id", squadID, "xuid", m.Xuid, "err", err)
+		}
+	}
+	if len(errs) > 0 {
+		// Retrait partiel : on remonte l'échec (→ 5xx côté handler) plutôt que de
+		// répondre « supprimé » alors que l'escouade peut réapparaître au refetch.
+		// Le retry est idempotent (RemoveMember = INSERT append-only is_member=FALSE).
+		return fmt.Errorf("delete squad %s: %d/%d retraits échoués: %w",
+			squadID, len(errs), len(members), errors.Join(errs...))
+	}
+	slog.InfoContext(ctx, "prestige: squad deleted (members removed)",
+		"squad_id", squadID, "by", requestedBy, "members", len(members))
+	return nil
+}
+
+// usualContextsWindow borne le nombre de matchs communs récents échantillonnés
+// pour dériver les playlists/modes habituels d'une escouade.
+const usualContextsWindow = 60
+
+// SquadUsualContexts dérive les playlists/modes dominants des matchs communs du
+// roster (indice d'affichage du sélecteur, jamais stocké). Best-effort : si le
+// provider est absent, retourne des listes vides (pas d'erreur).
+func (s *service) SquadUsualContexts(ctx context.Context, rosterXUIDs []string, titleSlug string) (playlists, modes []string, err error) {
+	if len(rosterXUIDs) == 0 || s.deps.SquadMatches == nil {
+		return nil, nil, nil
+	}
+	return s.deps.SquadMatches.SquadUsualContexts(ctx, rosterXUIDs, titleSlug, usualContextsWindow)
 }
 
 // assertMemberUser vérifie que userID (player_slug) est membre-user de

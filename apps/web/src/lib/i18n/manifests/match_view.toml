@@ -330,6 +330,14 @@ en = "Yield"
 fr = "Résistance"
 en = "Resistance"
 
+[match_view.cards.yield_dmg_per_kill]
+fr = "{n} dégâts/frag"
+en = "{n} dmg/kill"
+
+[match_view.cards.yield_dmg_per_death]
+fr = "{n} dégâts/mort"
+en = "{n} dmg/death"
+
 [match_view.cards.avg_life]
 fr = "Vie moy."
 en = "Avg. life"

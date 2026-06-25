@@ -482,6 +482,40 @@ func (l *LazyPrestigeService) RemoveSquadMember(ctx context.Context, squadID, xu
 	return svc.RemoveSquadMember(ctx, squadID, xuid, requestedBy)
 }
 
+func (l *LazyPrestigeService) RenameSquad(ctx context.Context, squadID, name, requestedBy string) error {
+	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, requestedBy)
+	if err != nil {
+		return err
+	}
+	w, err := acquireSharedSocialWriter(pdb)
+	if err != nil {
+		return err
+	}
+	defer w.Release()
+	return svc.RenameSquad(ctx, squadID, name, requestedBy)
+}
+
+func (l *LazyPrestigeService) DeleteSquad(ctx context.Context, squadID, requestedBy string) error {
+	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, requestedBy)
+	if err != nil {
+		return err
+	}
+	w, err := acquireSharedSocialWriter(pdb)
+	if err != nil {
+		return err
+	}
+	defer w.Release()
+	return svc.DeleteSquad(ctx, squadID, requestedBy)
+}
+
+func (l *LazyPrestigeService) SquadUsualContexts(ctx context.Context, rosterXUIDs []string, titleSlug string) ([]string, []string, error) {
+	svc, err := l.resolve(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	return svc.SquadUsualContexts(ctx, rosterXUIDs, titleSlug)
+}
+
 func (l *LazyPrestigeService) EvaluateSquadChallenge(ctx context.Context, squadChallengeID, requestedBy string) ([]prestige.SquadParticipantProgress, error) {
 	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, requestedBy)
 	if err != nil {

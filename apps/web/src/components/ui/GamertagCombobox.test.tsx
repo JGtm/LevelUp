@@ -81,6 +81,62 @@ describe('GamertagCombobox', () => {
     )
   })
 
+  it('affiche les presets (escouades/groupes) et charge le roster au clic', () => {
+    let loaded: string[] | null = null
+    renderWithProviders(
+      <GamertagCombobox
+        selected={[]}
+        onChange={() => {}}
+        onLoadPreset={(gts) => {
+          loaded = gts
+        }}
+        presetGroups={[
+          {
+            key: 'squads',
+            label: 'Mes escouades',
+            options: [
+              { id: 'sq1', name: 'Ranked', subtitle: 'surtout Classé', gamertags: ['Choco', 'JGtm'] },
+            ],
+          },
+        ]}
+      />,
+    )
+    fireEvent.focus(screen.getByPlaceholderText(/Rechercher un gamertag/i))
+    expect(screen.getByText('Mes escouades')).toBeInTheDocument()
+    expect(screen.getByText('surtout Classé')).toBeInTheDocument()
+    // Clic = charge le roster entier (≠ ajout d'un joueur).
+    fireEvent.click(screen.getByText('Ranked'))
+    expect(loaded).toEqual(['Choco', 'JGtm'])
+  })
+
+  it('affiche le footer de gestion fourni par le parent', () => {
+    renderWithProviders(
+      <GamertagCombobox
+        selected={[]}
+        onChange={() => {}}
+        footer={<button type="button">Enregistrer la compo</button>}
+      />,
+    )
+    fireEvent.focus(screen.getByPlaceholderText(/Rechercher un gamertag/i))
+    expect(screen.getByText('Enregistrer la compo')).toBeInTheDocument()
+  })
+
+  it('appelle onClose à la fermeture du popover (clic extérieur)', () => {
+    let closed = 0
+    renderWithProviders(
+      <GamertagCombobox
+        selected={[]}
+        onChange={() => {}}
+        onClose={() => {
+          closed += 1
+        }}
+      />,
+    )
+    fireEvent.focus(screen.getByPlaceholderText(/Rechercher un gamertag/i))
+    fireEvent.mouseDown(document.body) // clic hors du combobox → ferme
+    expect(closed).toBe(1)
+  })
+
   it('respecte la limite max', () => {
     let selected = ['AlphaPlayer']
     const onChange = (v: string[]) => {

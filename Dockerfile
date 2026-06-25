@@ -52,10 +52,17 @@ RUN CGO_ENABLED=1 GOOS=linux go build \
 # ============================================================================
 FROM debian:bookworm-slim
 
-# gosu : switch user non-root (même pattern que l'ancienne image Python)
+# gosu : switch user non-root (même pattern que l'ancienne image Python).
+# ffmpeg : REQUIS au runtime — le serveur exécute ffmpeg/ffprobe pour générer
+# les miniatures (.webp animées) ET transcoder les clips multipistes en HLS à
+# l'ingestion (cf. internal/ops/media_thumbnails.go, internal/media/hls.go).
+# Sans lui : "ffprobe: executable file not found in $PATH" → médias récents
+# illisibles + sans miniature (régression post-cutover Go, l'image Python
+# l'embarquait). Debian fournit ffmpeg ET ffprobe dans le même paquet.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gosu \
     ca-certificates \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

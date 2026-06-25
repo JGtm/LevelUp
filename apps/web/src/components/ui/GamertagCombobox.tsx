@@ -18,6 +18,25 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 
 // ─── Props ──────────────────────────────────────────────────────────────────────
 
+/**
+ * Groupe de presets affiché en tête du popover (ex. « MES ESCOUADES »).
+ *
+ * Chaque option est un roster nommé chargé d'un clic dans la sélection (≠ ajout
+ * d'un joueur) ; `trailing` permet au parent d'injecter des actions (renommer/
+ * supprimer) sans coupler de logique métier dans ce composant générique.
+ */
+export interface ComboboxPresetGroup {
+  key: string
+  label: string
+  options: Array<{
+    id: string
+    name: string
+    subtitle?: string
+    gamertags: string[]
+    trailing?: React.ReactNode
+  }>
+}
+
 export interface GamertagComboboxProps {
   /** Gamertags actuellement sélectionnés */
   selected: string[]
@@ -46,6 +65,25 @@ export interface GamertagComboboxProps {
    * directement dans le flux sans padding/border externes.
    */
   compact?: boolean
+  /**
+   * Presets (rosters nommés) affichés en tête du popover quand la recherche est
+   * vide. Cliquer un preset REMPLACE la sélection (via onLoadPreset). Sert au
+   * câblage « charger une escouade / un groupe » sans logique métier ici.
+   */
+  presetGroups?: ComboboxPresetGroup[]
+  /** Charge un roster entier (remplace la sélection courante). */
+  onLoadPreset?: (gamertags: string[]) => void
+  /** Contenu rendu en pied de popover (actions de gestion : enregistrer…). */
+  footer?: React.ReactNode
+  /** Appelé quand le popover se ferme (clic-extérieur, Échap, chargement preset).
+   *  Permet au parent de réinitialiser un état de gestion transitoire. */
+  onClose?: () => void
+  /**
+   * Pill de tête non-supprimable (joueur actif), rendue dans la même ligne flex
+   * que les pills sélectionnées → alignement vertical garanti. `color` est une
+   * chaîne CSS prête à l'emploi (ex. tokenCssVar('compare-a')).
+   */
+  leadingPill?: { label: string; color: string }
 }
 
 // ─── Composant ──────────────────────────────────────────────────────────────────
@@ -61,6 +99,11 @@ export function GamertagCombobox({
   allowFreeInput = true,
   onAddAsFriend,
   compact = false,
+  presetGroups,
+  onLoadPreset,
+  footer,
+  onClose,
+  leadingPill,
 }: GamertagComboboxProps) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -79,6 +122,19 @@ export function GamertagCombobox({
     document.addEventListener('mousedown', handleMouseDown)
     return () => document.removeEventListener('mousedown', handleMouseDown)
   }, [])
+
+  // Notifie le parent à chaque fermeture du popover (transition open → closed),
+  // quel que soit le chemin (clic-extérieur, Échap, chargement preset). Permet
+  // au parent (useSquadPresets) de réinitialiser son état de gestion transitoire.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+  const prevOpenRef = useRef(isOpen)
+  useEffect(() => {
+    if (prevOpenRef.current && !isOpen) onCloseRef.current?.()
+    prevOpenRef.current = isOpen
+  }, [isOpen])
 
   // ─── Suggestions via hook partagé ───────────────────────────────────────────
 
@@ -109,7 +165,13 @@ export function GamertagCombobox({
   const showEmptyMessage =
     trimmed.length > 0 && remoteAttempted && !isRemoteLoading && !hasAnyResult
 
+  // Presets (escouades / groupes) : affichés en tête quand la recherche est vide.
+  const showPresets =
+    trimmed.length === 0 && !!presetGroups && presetGroups.some((g) => g.options.length > 0)
+
   const hasDropdownContent =
+    showPresets ||
+    !!footer ||
     configured.length > 0 ||
     frequent.length > 0 ||
     remote.length > 0 ||
@@ -129,6 +191,13 @@ export function GamertagCombobox({
 
   function remove(gamertag: string) {
     onChange(selected.filter((g) => g !== gamertag))
+  }
+
+  // Charge un roster nommé (escouade/groupe) : REMPLACE la sélection.
+  function loadPreset(gamertags: string[]) {
+    onLoadPreset?.(gamertags)
+    setQuery('')
+    setIsOpen(false)
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -161,6 +230,16 @@ export function GamertagCombobox({
         }
         onClick={() => { inputRef.current?.focus(); setIsOpen(true) }}
       >
+        {leadingPill && (
+          <span
+            title={leadingPill.label}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-sm font-medium"
+            style={{ backgroundColor: leadingPill.color, color: '#fff', border: 'none' }} // color-allow: blanc structurel pour contraste sur fond coloré du pill
+          >
+            <span className="max-w-[7rem] truncate">{leadingPill.label}</span>
+          </span>
+        )}
         {selected.map((gt, idx) => {
           const color = colors?.[idx % colors.length]
           return (
@@ -227,6 +306,36 @@ export function GamertagCombobox({
       {/* Dropdown */}
       {isOpen && hasDropdownContent && (
         <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-md max-h-64 overflow-y-auto">
+          {/* Groupes de presets (escouades / groupes) — chargent un roster entier */}
+          {showPresets &&
+            presetGroups!.map((group) =>
+              group.options.length === 0 ? null : (
+                <div key={group.key}>
+                  <div className="sticky top-0 bg-popover/95 px-3 py-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
+                    {group.label}
+                  </div>
+                  {group.options.map((opt) => (
+                    <div
+                      key={opt.id}
+                      className="flex w-full items-center justify-between gap-2 px-3 py-2 hover:bg-accent"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => loadPreset(opt.gamertags)}
+                        className="flex min-w-0 flex-1 flex-col items-start text-left"
+                      >
+                        <span className="truncate text-sm">{opt.name}</span>
+                        {opt.subtitle && (
+                          <span className="truncate text-2xs text-muted-foreground">{opt.subtitle}</span>
+                        )}
+                      </button>
+                      {opt.trailing && <span className="flex shrink-0 items-center gap-1">{opt.trailing}</span>}
+                    </div>
+                  ))}
+                </div>
+              ),
+            )}
+
           {/* Groupe 1 : Joueurs configurés */}
           {configured.length > 0 && (
             <div>
@@ -325,6 +434,9 @@ export function GamertagCombobox({
               </span>
             </button>
           )}
+
+          {/* Footer — actions de gestion fournies par le parent (enregistrer…). */}
+          {footer && <div className="border-t border-border/50">{footer}</div>}
         </div>
       )}
     </div>

@@ -25,6 +25,8 @@ export const matchViewManifest = {
   "match_view.cards.win_prob_favorite": { fr: "Victoire probable", en: "Win likely" },
   "match_view.cards.win_prob_label": { fr: "victoire", en: "win" },
   "match_view.cards.win_prob_underdog": { fr: "Défaite probable", en: "Loss likely" },
+  "match_view.cards.yield_dmg_per_death": { fr: "{n} dégâts/mort", en: "{n} dmg/death" },
+  "match_view.cards.yield_dmg_per_kill": { fr: "{n} dégâts/frag", en: "{n} dmg/kill" },
   "match_view.citations.empty": { fr: "Aucune citation pour ce match", en: "No citation for this match" },
   "match_view.citations.medals_section": { fr: "Médailles", en: "Medals" },
   "match_view.citations.section_title": { fr: "Citations gagnées", en: "Citations earned" },

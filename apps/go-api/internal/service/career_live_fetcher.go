@@ -41,6 +41,10 @@ func (s *CareerLiveService) fetchProgressCached(ctx context.Context, xuid string
 		return nil
 	}
 
+	// Note : le filet 401 n'est PAS câblé ici — GetCareerProgress passe par
+	// doPlayerGatedGet qui avale 401/403 (retourne nil pour dégrader sans poison cache).
+	// La péremption normale du token owner est déjà couverte en amont par le cache token
+	// expiry-aware (enrichWithHaloTokens / ResolveFreshPlayerTokens).
 	fetch := func() (*syncpkg.CareerRankData, error) {
 		return fetcher.GetCareerProgress(ctx, xuid)
 	}
@@ -89,6 +93,8 @@ func (s *CareerLiveService) fetchCustomizationCached(ctx context.Context, xuid s
 		return nil
 	}
 
+	// Idem fetchProgressCached : pas de filet 401 (doPlayerGatedGet avale l'auth, et
+	// le 403 sur /appearance est un gating tiers NORMAL géré par le fallback vue publique).
 	fetch := func() (*syncpkg.SpartanCustomizationData, error) {
 		return fetcher.GetSpartanCustomization(ctx, xuid)
 	}

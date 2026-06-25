@@ -8,10 +8,11 @@ import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import type { Group, InviteCode } from '@/lib/api/types'
 
-export function useMyGroups() {
+export function useMyGroups(enabled = true) {
   return useQuery({
     queryKey: queryKeys.groups,
     queryFn: () => api.get<Group[]>('/groups'),
+    enabled,
   })
 }
 

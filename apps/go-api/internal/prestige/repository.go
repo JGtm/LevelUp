@@ -173,6 +173,8 @@ type SquadChallengeRepo interface {
 type SquadRepo interface {
 	Create(ctx context.Context, s Squad) error
 	Get(ctx context.Context, id string) (Squad, error)
+	// Rename change le nom d'une escouade (UPDATE basse fréquence sur squad).
+	Rename(ctx context.Context, id, name string) error
 	AddMember(ctx context.Context, m SquadMember) error
 	RemoveMember(ctx context.Context, squadID, xuid string) error
 	ListMembers(ctx context.Context, squadID string) ([]SquadMember, error)

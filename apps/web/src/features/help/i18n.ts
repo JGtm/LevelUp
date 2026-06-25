@@ -425,9 +425,16 @@ const FR_TEXT: HelpText = {
           {
             term: 'Escouade',
             definition:
-              "Groupe de joueurs synchronisés sur LevelUp qui partagent des matchs communs. Les pages Escouade calculent des statistiques agrégées sur les matchs joués ensemble : synergies, contributions, carte de chaleur d'intensité.\n\nUn joueur n'apparaît dans votre escouade que s'il est lui-même synchronisé dans l'application.",
+              "Composition de coéquipiers que vous analysez ensemble : les pages Escouade calculent des statistiques agrégées sur vos matchs joués en commun (synergies, contributions, carte de chaleur d'intensité). Vous pouvez sauvegarder, nommer et recharger plusieurs escouades.\n\nÀ ne pas confondre avec les Groupes : une escouade est une composition d'analyse, elle ne donne aucun accès aux données.",
             example:
               "Si trois de vos coéquipiers réguliers utilisent LevelUp, votre page Escouade affichera vos matchs joués avec eux et leurs statistiques sur cet échantillon commun.",
+          },
+          {
+            term: 'Groupes',
+            definition:
+              "Cercles familles/amis qui définissent à quelles bases de données vous avez accès pour explorer les stats. Inviter un membre (via sa connexion Xbox) ouvre l'accès mutuel à vos données.\n\nÀ ne pas confondre avec l'Escouade : un groupe gère l'ACCÈS aux données ; l'escouade est une composition d'analyse de coéquipiers.",
+            example:
+              "Créez un groupe « Famille » et invitez un proche : il pourra explorer vos stats et vous les siennes. Pour analyser vos parties jouées ensemble, sélectionnez-le ensuite comme coéquipier sur la page Escouade.",
           },
           {
             term: 'Explorer',
@@ -799,7 +806,12 @@ const EN_TEXT: HelpText = {
           {
             term: 'Squad',
             definition:
-              'Group of LevelUp-synced players who share common matches. Squad pages compute aggregated stats on matches played together: synergies, contributions, intensity heatmap. A player only joins your squad if they are themselves synced in the app.',
+              'A lineup of teammates you analyze together: Squad pages compute aggregated stats on your matches played together (synergies, contributions, intensity heatmap). You can save, name and reload several squads.\n\nNot to be confused with Groups: a squad is an analysis lineup, it grants no data access.',
+          },
+          {
+            term: 'Groups',
+            definition:
+              'Family/friend circles that define which databases you can access to explore stats. Inviting a member (via their Xbox sign-in) opens mutual access to each other’s data.\n\nNot to be confused with Squad: a group manages data ACCESS; a squad is a teammate analysis lineup.',
           },
           {
             term: 'Explorer',

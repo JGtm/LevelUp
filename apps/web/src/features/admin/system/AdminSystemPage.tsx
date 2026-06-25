@@ -7,6 +7,7 @@ import { DBContentionSection } from '../sections/DBContentionSection'
 import { TokenHealthSection } from '../sections/TokenHealthSection'
 import { InvariantsSection } from '../sections/InvariantsSection'
 import { PersistPhasesSection } from './PersistPhasesSection'
+import { AdminBackupSection } from './AdminBackupSection'
 
 export function AdminSystemPage() {
   return (
@@ -15,6 +16,7 @@ export function AdminSystemPage() {
       <PersistPhasesSection />
       <TokenHealthSection />
       <InvariantsSection />
+      <AdminBackupSection />
     </div>
   )
 }

@@ -219,18 +219,25 @@ export interface Squad {
 }
 
 /** Membre d'escouade. `user_id` (player_slug) renseigné si le membre est un
- *  utilisateur de l'app (accès lecture/écriture aux objectifs) ; vide sinon. */
+ *  utilisateur de l'app (accès lecture/écriture aux objectifs) ; vide sinon.
+ *  `gamertag` est un snapshot d'affichage (libellé au moment de l'ajout). */
 export interface SquadMember {
   squad_id: string
   xuid: string
   user_id?: string
+  gamertag?: string
   joined_at: string
 }
 
-/** Escouade + son roster (réponse de listMySquads). */
+/** Escouade + son roster (réponse de listMySquads).
+ *  `usual_playlists` / `usual_modes` : indice dérivé des matchs communs réels du
+ *  roster (top par fréquence, labels) — auto-adaptatif, jamais stocké. Absent
+ *  si non calculé/indisponible. */
 export interface SquadWithMembers {
   squad: Squad
   members: SquadMember[]
+  usual_playlists?: string[]
+  usual_modes?: string[]
 }
 
 /** Progression d'un membre sur un défi d'escouade (mode cumulatif). */
@@ -391,6 +398,16 @@ export const prestigeApi = {
   removeSquadMember: (squadId: string, xuid: string, requestedBy: string) =>
     api.delete<void>(
       `/squads/${encodeURIComponent(squadId)}/members/${encodeURIComponent(xuid)}?requested_by=${encodeURIComponent(requestedBy)}`,
+    ),
+
+  // Renommer une escouade (membre-user requis côté backend).
+  renameSquad: (squadId: string, body: { name: string; requested_by: string }) =>
+    api.patch<void>(`/squads/${encodeURIComponent(squadId)}`, body),
+
+  // Supprimer une escouade (retrait append-only de tous les membres).
+  deleteSquad: (squadId: string, requestedBy: string) =>
+    api.delete<void>(
+      `/squads/${encodeURIComponent(squadId)}?requested_by=${encodeURIComponent(requestedBy)}`,
     ),
 
   // Évaluation de progression d'un défi d'escouade (recalcule + persiste).
