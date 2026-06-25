@@ -44,11 +44,22 @@ Ne pas sauter cette étape même pour des modifications « mineures ». L'absenc
 - `docs/adr/0009-expvar-monitoring-multi-user.md` — pourquoi expvar stdlib (pas Prometheus) en multi-user
 - `docs/adr/0010-timeseries-binning-server-side.md` — pourquoi binning Go (pas front)
 - `docs/adr/0011-canonical-vs-semantic-adapter-separation.md` — frontière canonical (data brute) vs TitleSemanticAdapter (i18n) vs TitleAssetURLAdapter (URLs)
+- `docs/adr/0012-halo-only-adapters-extraction.md` — extraction des adapters Halo-only (frontière `internal/games/halo_infinite/`)
+- `docs/adr/0013-leased-writer-enforcement.md` — enforcement LeasedWriter/dblease (un seul writer RW par DB)
 - `docs/adr/0014-progression-tracking-v2-ascension.md` — couches Streaks + Records & Milestones + Coach proactif (V2 Ascension)
 - `docs/adr/0015-player-profile-ascension-v1.md` — V1 PlayerProfile partiel (3/10 commits livrés, 7 reportés)
 - `docs/adr/0016-shared-db-provider-b-swap.md` — SharedDBProvider RO↔RW swap (élimine conflit auto_sync "different configuration")
+- `docs/adr/0017-rebuild-art-corruption-pattern.md` — CLOSED (superseded par 0019) ; pattern de rebuild post-corruption ART (outil `cmd/force_rebuild_art`)
+- `docs/adr/0018-concurrent-write-model.md` — CLOSED (superseded par 0019) ; cartographie des writers concurrents + issues DuckDB amont
 - `docs/adr/0019-collect-persist-architecture.md` — refactor Collect→Persist anti-corruption ART DuckDB (INSERT-only sur shared, fix le bug `Failed to delete all rows from index`)
+- `docs/adr/0020-coach-prestige-bridge.md` — Coach proactif → pont Prestige (génération/acceptation de propositions). **Collision de numéro 0020** (avec sync-pipeline-v2 ci-dessous) — c'est ce document que désignent les réfs code « ADR 0020 » côté coach.
+- `docs/adr/0020-sync-pipeline-v2-cycle-orchestrator.md` — Sync pipeline V2 (cycle orchestrator, parallélisation cross-player). **Collision de numéro 0020** ; réfs code « ADR 0020 » mentionnant `pipeline V2`/`D6.5`/package `sync/v2`. Renumérotation proposée : 0027.
+- `docs/adr/0021-shared-social-wal-recovery.md` — recovery auto d'un WAL orphelin sur `shared_social`. **Collision de numéro 0021** ; réfs code « ADR 0021 » Gap/WAL/forensic.
+- `docs/adr/0021-template-synthesis.md` — synthèse dynamique de Template/Arc ad-hoc (`coach_advisor`). **Collision de numéro 0021** ; réfs code « ADR 0021 » dans `internal/progression/coach_advisor/`. Renumérotation proposée : 0028.
+- `docs/adr/0022-shared-social-collect-persist.md` — écritures `shared_social` via Collect→Persist (`SharedSocialPersister`). H1 historique « ADR 0020 » corrigé ; les réfs code « ADR 0020 (SocialPersister) » désignent ce document.
 - `docs/adr/0023-auth-tokens-single-source.md` — MultiUserTokenStore source unique tokens auth (élimine env.local + sync_meta DuckDB comme credential store ; résout bug Madina invalid_grant sous Air hot-reload)
+- `docs/adr/0024-lusr-v2-trueskill2-with-counts.md` — LUSR v2 (TrueSkill2 + observations kills/deaths, Halo Infinite). **Collision de numéro 0024** (avec multi-user-player-ownership ci-dessous) ; réfs code « ADR 0024 » LUSR/skill/rating.
+- `docs/adr/0024-multi-user-player-ownership.md` — contrôle d'accès ownership joueur + middleware `RequirePlayerOwnership` + « Couche B » participation. **Collision de numéro 0024** ; réfs code « ADR 0024 » ownership/Couche B. Renumérotation proposée : 0029.
 - `docs/adr/0025-title-agnostic-minimal-viable-window.md` — refactor title-agnostic, fenêtre minimale viable (Phases 0→3a) ; Phase 2 cible **canonical-typée** (FieldKey-map abandonné) ; OpenAPI absorbé dans Phase 3b (Huma). Master : `.ai/PLAN_TITLE_AGNOSTIC_REFACTORING.md` ; suivi traçable : `.ai/PLAN_TITLE_AGNOSTIC_TRACKER.md`
 - `docs/adr/0026-append-only-art-eradication.md` — tables d'état en append-only (éradication bug DuckDB ART #23046 par construction) ; 3 mécanismes (written_at / generation_id / stage merge-on-read) + helper unique `internal/migration/append_only_rebuild.go` (swap transactionnel + garde + recoverOrphan) ; exception PME ; recette d'ajout + pièges (`;` en commentaire SQL, lecture brute vs `_latest`)
 
