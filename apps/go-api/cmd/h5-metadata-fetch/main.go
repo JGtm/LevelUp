@@ -129,6 +129,14 @@ func main() {
 	seedCSRDesignations(db, key)
 	seedCommendations(db, key, fr.Commendations)
 	seedPlaylists(db, key)
+
+	// PONT catalogue → résolveur de noms. Sans cette étape, `asset_translations`
+	// reste VIDE pour Halo 5 → ResolveAssetNamesBulk (home tile, match-view,
+	// playlist favorite) renvoie 0 ligne → mode/carte/playlist s'affichent vides
+	// PARTOUT. On peuple asset_translations depuis les catalogues déjà seedés
+	// (playlists, maps_catalog) + l'endpoint officiel game-base-variants (modes).
+	// À lancer EN DERNIER (dépend de playlists + maps_catalog seedés ci-dessus).
+	seedAssetTranslations(db, key, fr)
 }
 
 // apiPlaylist — élément de l'API Metadata officielle /playlists. `isRanked` fait foi
@@ -418,6 +426,148 @@ func seedCommendations(db *sql.DB, key string, fr map[string]string) {
 		n++
 	}
 	fmt.Printf("commendations: %d seedées (sur %d)\n", n, len(comms))
+}
+
+// langEN / langFR — codes de langue attendus par le résolveur de noms
+// (ResolveAssetNamesBulk → PreferredLangsForLocale). IMPÉRATIF : matcher
+// EXACTEMENT le format BCP-47 long utilisé côté lecture (cf.
+// internal/platform/duckdb/medal_definitions_repo.go : LangCodeEN="en-US",
+// LangCodeFR="fr-FR" ; et PreferredLangsForLocale qui cascade {fr-FR, fr, en-US,
+// en}). Un "en"/"fr" court ne matcherait que par le fallback alphabétique, jamais
+// la préférence → résolution fragile. On duplique les littéraux ici plutôt que
+// d'importer le package duckdb (ce CLI n'a aucune dépendance duckdb runtime, et le
+// package migrations isole déjà la metadata h5).
+const (
+	langEN = "en-US"
+	langFR = "fr-FR"
+)
+
+// apiGameBaseVariant — élément de l'API Metadata officielle /game-base-variants.
+// `id` = le GameBaseVariantId porté par chaque match Halo 5 (cf.
+// internal/games/halo_5/mapping.go : GameVariant = assetRef("game_variant",
+// r.GameBaseVariantId)). Le NOM du mode (EN) vit ici, pas dans la donnée de match.
+// Shape minimale alignée sur apiPlaylist/apiMap (tous les types officiels exposent
+// `name` + `id`).
+type apiGameBaseVariant struct {
+	Name string `json:"name"`
+	ID   string `json:"id"`
+}
+
+// seedAssetTranslations PEUPLE asset_translations (la table que lit le résolveur de
+// noms) depuis les catalogues déjà seedés + l'endpoint officiel des modes. C'est le
+// pont DATA-via-code qui débloque l'affichage mode/carte/playlist pour Halo 5.
+//
+// Mapping asset_type → source (formats alignés sur GetDistinctAssetIDs /
+// ResolveAssetNamesBulk côté lecture) :
+//   - playlist     ← table playlists (id, name)          [match.HopperId]
+//   - map          ← table maps_catalog (map_asset_id, name_canonical) [match.MapId]
+//   - game_variant ← API /game-base-variants (id, name)  [match.GameBaseVariantId]
+//
+// FR : seules les MAPS ont une source FR optionnelle (fr.Maps[name_en], section
+// [maps] du TOML — vide aujourd'hui → EN seul, dégradation propre). L'API Metadata
+// officielle NE localise PAS (tous les noms reviennent EN) et le TOML n'a ni section
+// playlists ni modes → playlists/modes seedés en EN seul (acceptable : le résolveur
+// retombe sur en-US via la cascade).
+//
+// Idempotent (INSERT OR REPLACE sur PK asset_id+asset_type+lang). Best-effort : une
+// insertion qui échoue est loguée et n'interrompt pas le seed.
+func seedAssetTranslations(db *sql.DB, key string, fr frLabels) {
+	n := 0
+	n += seedPlaylistTranslations(db)
+	n += seedMapTranslations(db, fr.Maps)
+	n += seedModeTranslations(db, key)
+	fmt.Printf("asset_translations: %d seedées\n", n)
+}
+
+// upsertAssetTranslation insère/réécrit une ligne asset_translations. Best-effort.
+func upsertAssetTranslation(db *sql.DB, assetID, assetType, lang, name string) bool {
+	if strings.TrimSpace(assetID) == "" || strings.TrimSpace(name) == "" {
+		return false
+	}
+	if _, err := db.Exec(
+		`INSERT OR REPLACE INTO asset_translations (asset_id, asset_type, lang, name)
+		 VALUES (?,?,?,?)`,
+		assetID, assetType, lang, strings.TrimSpace(name)); err != nil {
+		fmt.Printf("asset_translations: insert %s/%s/%s: %v\n", assetType, assetID, lang, err)
+		return false
+	}
+	return true
+}
+
+// seedPlaylistTranslations relit la table `playlists` (déjà seedée par
+// seedPlaylists) et écrit asset_type='playlist' lang='en-US'. EN seul (aucune trad
+// FR de playlist disponible).
+func seedPlaylistTranslations(db *sql.DB) int {
+	rows, err := db.Query(`SELECT id, name FROM playlists WHERE TRIM(COALESCE(name,'')) != ''`)
+	if err != nil {
+		fmt.Printf("asset_translations[playlist]: read playlists %v\n", err)
+		return 0
+	}
+	defer rows.Close()
+	n := 0
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			continue
+		}
+		if upsertAssetTranslation(db, id, "playlist", langEN, name) {
+			n++
+		}
+	}
+	return n
+}
+
+// seedMapTranslations relit `maps_catalog` (déjà seedée par seedMaps) et écrit
+// asset_type='map' lang='en-US' (name_canonical) + lang='fr-FR' si une trad existe
+// dans la section [maps] du TOML (fr.Maps[name_en]).
+func seedMapTranslations(db *sql.DB, frMaps map[string]string) int {
+	rows, err := db.Query(`SELECT map_asset_id, name_canonical FROM maps_catalog
+		WHERE title_slug = ? AND TRIM(COALESCE(name_canonical,'')) != ''`, halo5.TitleSlug)
+	if err != nil {
+		fmt.Printf("asset_translations[map]: read maps_catalog %v\n", err)
+		return 0
+	}
+	defer rows.Close()
+	n := 0
+	for rows.Next() {
+		var id, nameEN string
+		if err := rows.Scan(&id, &nameEN); err != nil {
+			continue
+		}
+		if upsertAssetTranslation(db, id, "map", langEN, nameEN) {
+			n++
+		}
+		if frName, ok := frMaps[nameEN]; ok && strings.TrimSpace(frName) != "" {
+			if upsertAssetTranslation(db, id, "map", langFR, frName) {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+// seedModeTranslations fetche l'endpoint officiel /game-base-variants et écrit
+// asset_type='game_variant' lang='en-US'. C'est la SOURCE de nom de mode pour Halo 5
+// (le match ne porte que le GameBaseVariantId, jamais le nom). EN seul (l'API ne
+// localise pas ; aucune section modes dans le TOML).
+func seedModeTranslations(db *sql.DB, key string) int {
+	body, err := fetchMeta(key, "game-base-variants")
+	if err != nil {
+		fmt.Printf("asset_translations[game_variant]: SKIP (%v)\n", err)
+		return 0
+	}
+	var variants []apiGameBaseVariant
+	if err := json.Unmarshal(body, &variants); err != nil {
+		fmt.Printf("asset_translations[game_variant]: parse %v\n", err)
+		return 0
+	}
+	n := 0
+	for _, v := range variants {
+		if upsertAssetTranslation(db, v.ID, "game_variant", langEN, v.Name) {
+			n++
+		}
+	}
+	return n
 }
 
 func fatal(format string, args ...any) {

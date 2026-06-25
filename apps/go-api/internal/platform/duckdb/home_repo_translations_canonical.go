@@ -130,7 +130,13 @@ func applyCanonicalAssetENBatch(row *canonical.PlayerMatchRow, t canonicalAssetT
 
 // applyCanonicalMapIconURL hydrate Map.IconURL via cascade :
 //  1. map_images_registry (DB cache).
-//  2. AssetURLAdapter avec nom EN résolu (si câblé via WithAssetURL).
+//  2. AssetURLAdapter par GUID (Map.ID) — titres qui indexent par UUID (Halo 5,
+//     mapURLByID). NO-OP Infinite : son adapter rejette les UUID (uuidRe) → "".
+//  3. AssetURLAdapter avec nom EN résolu (si câblé via WithAssetURL).
+//
+// Le repli par GUID est indispensable aux titres LIVE (Halo 5) dont
+// asset_translations peut être vide : sans nom EN, l'étape 3 échoue et la tuile
+// reste sans image, alors que l'adapter sait résoudre l'URL depuis le GUID seul.
 func (r *HomeRepo) applyCanonicalMapIconURL(m *canonical.AssetReference, t canonicalAssetTranslations) {
 	if m == nil || m.ID == "" {
 		return
@@ -140,6 +146,11 @@ func (r *HomeRepo) applyCanonicalMapIconURL(m *canonical.AssetReference, t canon
 		return
 	}
 	if r.assetURL == nil {
+		return
+	}
+	// 2. Résolution par GUID (avant le nom). N'écrase pas une URL déjà résolue.
+	if u := r.assetURL.MapImageURL(strings.TrimSpace(m.ID)); u != "" {
+		m.IconURL = u
 		return
 	}
 	if enName := strings.TrimSpace(t.mapNamesEN[m.ID]); enName != "" {
