@@ -131,6 +131,8 @@ type mockHomeRepo struct {
 	mediaErr               error
 	recentPlaylistRanks    []domain.HomePlaylistRank
 	recentPlaylistRanksErr error
+	commendations          map[string][]domain.HomeMatchCommendationRaw
+	commendationsErr       error
 }
 
 func (m *mockHomeRepo) LoadHomeMatches(_ context.Context) ([]legacymatch.HomeMatchRow, error) {
@@ -164,6 +166,12 @@ func (m *mockHomeRepo) LoadMatchCitations(_ context.Context, _ []string) (map[st
 }
 
 func (m *mockHomeRepo) LoadMatchCommendations(_ context.Context, _ []string) (map[string][]domain.HomeMatchCommendationRaw, error) {
+	if m.commendationsErr != nil {
+		return nil, m.commendationsErr
+	}
+	if m.commendations != nil {
+		return m.commendations, nil
+	}
 	return map[string][]domain.HomeMatchCommendationRaw{}, nil
 }
 
@@ -841,5 +849,69 @@ func TestSelectTopMedals_FewerThanN(t *testing.T) {
 func TestSelectTopMedals_Empty(t *testing.T) {
 	if got := selectTopMedals(nil, 4); got != nil {
 		t.Errorf("attendu nil pour entrée vide, obtenu %v", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// enrichMatchesWithCommendations (P7 — commendations natives → TopCitations)
+// ---------------------------------------------------------------------------
+
+// TestEnrichMatchesWithCommendations_FillsEmptyTopCitations : pour un item dont
+// TopCitations est vide (Halo 5, pas de moteur de citations dérivé), les
+// commendations natives du repo alimentent le slot TopCitations (mappées en
+// MatchCitationSnippet : Name / ImageURL / Delta).
+func TestEnrichMatchesWithCommendations_FillsEmptyTopCitations(t *testing.T) {
+	icon := "https://cdn.test/commend.png"
+	repo := &mockHomeRepo{
+		commendations: map[string][]domain.HomeMatchCommendationRaw{
+			"m1": {
+				{ID: "c-1", Name: "Sharpshooter", IconURL: icon, Count: 5},
+				{ID: "c-2", Name: "Demon", IconURL: "", Count: 3},
+			},
+		},
+	}
+	items := []domain.RecentMatchItem{{MatchID: "m1"}} // TopCitations vide
+
+	enrichMatchesWithCommendations(context.Background(), repo, items)
+
+	if len(items[0].TopCitations) != 2 {
+		t.Fatalf("TopCitations: want 2 snippets, got %d", len(items[0].TopCitations))
+	}
+	// Tri count DESC : Sharpshooter (5) avant Demon (3).
+	first := items[0].TopCitations[0]
+	if first.Name != "Sharpshooter" {
+		t.Errorf("snippet[0].Name = %q, want Sharpshooter (count DESC)", first.Name)
+	}
+	if first.Delta != 5 {
+		t.Errorf("snippet[0].Delta = %d, want 5 (count gagné)", first.Delta)
+	}
+	if first.Key != "c-1" {
+		t.Errorf("snippet[0].Key = %q, want c-1 (ID natif)", first.Key)
+	}
+	if first.ImageURL == nil || *first.ImageURL != icon {
+		t.Errorf("snippet[0].ImageURL = %v, want %q", first.ImageURL, icon)
+	}
+	// IconURL vide → ImageURL nil (pas d'URL fabriquée).
+	if second := items[0].TopCitations[1]; second.ImageURL != nil {
+		t.Errorf("snippet[1].ImageURL = %v, want nil (IconURL vide)", *second.ImageURL)
+	}
+}
+
+// TestEnrichMatchesWithCommendations_DoesNotOverwriteExistingCitations :
+// précédence citations-first — un item qui a DÉJÀ des TopCitations (Halo Infinite,
+// citations dérivées) n'est PAS écrasé par les commendations natives.
+func TestEnrichMatchesWithCommendations_DoesNotOverwriteExistingCitations(t *testing.T) {
+	existing := []domain.MatchCitationSnippet{{Key: "cite-a", Name: "Citation A", Delta: 2}}
+	repo := &mockHomeRepo{
+		commendations: map[string][]domain.HomeMatchCommendationRaw{
+			"m1": {{ID: "c-1", Name: "Sharpshooter", Count: 9}},
+		},
+	}
+	items := []domain.RecentMatchItem{{MatchID: "m1", TopCitations: existing}}
+
+	enrichMatchesWithCommendations(context.Background(), repo, items)
+
+	if len(items[0].TopCitations) != 1 || items[0].TopCitations[0].Name != "Citation A" {
+		t.Fatalf("TopCitations écrasées : got %+v, want les citations dérivées préservées", items[0].TopCitations)
 	}
 }

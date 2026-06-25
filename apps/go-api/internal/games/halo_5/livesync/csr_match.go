@@ -9,6 +9,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	halo5 "levelup/go-api/internal/games/halo_5"
@@ -70,7 +71,12 @@ func writePerMatchCSR(ctx context.Context, playerDB *sql.DB, matchID string, cur
 			(match_id, rating_type, rating_value, tier, sub_tier, tier_label, playlist_group, start_time)
 		VALUES (?, 'CSR', ?, ?, ?, ?, 'h5_arena', ?)`,
 		matchID, float64(cur.Csr), tier, sub, label, start)
-	return err == nil
+	if err != nil {
+		slog.WarnContext(ctx, "h5 writePerMatchCSR: insert match_skill_rank échoué",
+			"err", err, "match_id", matchID)
+		return false
+	}
+	return true
 }
 
 // writeCareerSR insère un snapshot de rang SR dans career_progression (rang XP H5),
@@ -93,6 +99,8 @@ func writeCareerSR(ctx context.Context, playerDB *sql.DB, xuid string, spartanRa
 		WHERE NOT EXISTS (SELECT 1 FROM career_progression WHERE xuid = ? AND recorded_at = ?)`,
 		xuid, spartanRank, halo5.SpartanRankLabel(spartanRank), currentXP, xpForNext, xpTotal, isMax, start.Time, xuid, start.Time)
 	if err != nil {
+		slog.WarnContext(ctx, "h5 writeCareerSR: insert career_progression échoué",
+			"err", err, "xuid", xuid, "rank", spartanRank)
 		return false
 	}
 	n, _ := res.RowsAffected()
