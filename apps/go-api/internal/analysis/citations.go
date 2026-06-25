@@ -209,7 +209,7 @@ func MergeCitationTotals(
 				}
 			}
 		} else if m.TierTargets != nil && *m.TierTargets != "" {
-			tiers := parseTierTargets(*m.TierTargets)
+			tiers := ParseTierTargets(*m.TierTargets)
 			item.TierCount = len(tiers)
 			for _, tier := range tiers {
 				if total >= tier {

@@ -897,6 +897,90 @@ func TestEnrichMatchesWithCommendations_FillsEmptyTopCitations(t *testing.T) {
 	}
 }
 
+// TestEnrichMatchesWithCommendations_ProgressTierMastered (S6) : une commendation
+// native avec paliers (tier_targets) + cumul à vie (Progress) produit
+// ProgressPct/TierIndex/TierCount/NextTierTarget/IsNewlyMastered, exactement comme une
+// citation Infinite. Sans paliers → tout reste à zéro (anneau vide).
+func TestEnrichMatchesWithCommendations_ProgressTierMastered(t *testing.T) {
+	repo := &mockHomeRepo{
+		commendations: map[string][]domain.HomeMatchCommendationRaw{
+			"m1": {
+				// Paliers [1,41,120,300], cumul 20 (delta 20) → palier 1 atteint,
+				// pct = (20-1)/(41-1) = 47.5%, prochain palier = 41.
+				{ID: "c-prog", Name: "Spartan Slayer", Count: 20, Progress: 20, TierTargets: "1,41,120,300"},
+				// Sans paliers : dégradation propre, progression à zéro.
+				{ID: "c-flat", Name: "Daily Win", Count: 3, Progress: 3, TierTargets: ""},
+			},
+		},
+	}
+	items := []domain.RecentMatchItem{{MatchID: "m1"}}
+
+	enrichMatchesWithCommendations(context.Background(), repo, items)
+
+	if len(items[0].TopCitations) != 2 {
+		t.Fatalf("TopCitations: want 2, got %d", len(items[0].TopCitations))
+	}
+	// Tri count DESC : Spartan Slayer (20) en premier.
+	prog := items[0].TopCitations[0]
+	if prog.Name != "Spartan Slayer" {
+		t.Fatalf("snippet[0].Name = %q, want Spartan Slayer", prog.Name)
+	}
+	if prog.ProgressPct != 47.5 {
+		t.Errorf("ProgressPct = %v, want 47.5", prog.ProgressPct)
+	}
+	if prog.TierIndex != 1 {
+		t.Errorf("TierIndex = %d, want 1", prog.TierIndex)
+	}
+	if prog.TierCount != 4 {
+		t.Errorf("TierCount = %d, want 4", prog.TierCount)
+	}
+	if prog.NextTierTarget != 41 {
+		t.Errorf("NextTierTarget = %d, want 41", prog.NextTierTarget)
+	}
+	if prog.Cumulative != 20 {
+		t.Errorf("Cumulative = %d, want 20 (progress à vie)", prog.Cumulative)
+	}
+	if prog.IsNewlyMastered {
+		t.Errorf("IsNewlyMastered = true, want false (pas au dernier palier)")
+	}
+	// Sans paliers → progression nulle.
+	flat := items[0].TopCitations[1]
+	if flat.ProgressPct != 0 || flat.TierCount != 0 || flat.NextTierTarget != 0 {
+		t.Errorf("snippet flat: progression non nulle %+v", flat)
+	}
+	if flat.Delta != 3 {
+		t.Errorf("flat.Delta = %d, want 3", flat.Delta)
+	}
+}
+
+// TestEnrichMatchesWithCommendations_NewlyMastered (S6) : franchir le dernier palier
+// CE match → ProgressPct=100 + IsNewlyMastered=true.
+func TestEnrichMatchesWithCommendations_NewlyMastered(t *testing.T) {
+	repo := &mockHomeRepo{
+		commendations: map[string][]domain.HomeMatchCommendationRaw{
+			// avant = 305-15 = 290 < 300 ; après = 305 >= 300 → newly mastered.
+			"m1": {{ID: "c-m", Name: "Master", Count: 15, Progress: 305, TierTargets: "1,41,120,300"}},
+		},
+	}
+	items := []domain.RecentMatchItem{{MatchID: "m1"}}
+
+	enrichMatchesWithCommendations(context.Background(), repo, items)
+
+	if len(items[0].TopCitations) != 1 {
+		t.Fatalf("TopCitations: want 1, got %d", len(items[0].TopCitations))
+	}
+	s := items[0].TopCitations[0]
+	if s.ProgressPct != 100.0 {
+		t.Errorf("ProgressPct = %v, want 100", s.ProgressPct)
+	}
+	if !s.IsNewlyMastered {
+		t.Errorf("IsNewlyMastered = false, want true")
+	}
+	if s.TierIndex != 4 || s.NextTierTarget != 0 {
+		t.Errorf("TierIndex=%d NextTierTarget=%d, want 4 / 0", s.TierIndex, s.NextTierTarget)
+	}
+}
+
 // TestEnrichMatchesWithCommendations_DoesNotOverwriteExistingCitations :
 // précédence citations-first — un item qui a DÉJÀ des TopCitations (Halo Infinite,
 // citations dérivées) n'est PAS écrasé par les commendations natives.

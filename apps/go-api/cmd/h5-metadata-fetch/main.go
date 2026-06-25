@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -379,6 +380,12 @@ func seedCSRDesignations(db *sql.DB, key string) {
 
 // apiCommendation — élément de l'API Metadata officielle /commendations. `id` (UUID)
 // = la clé naturelle référencée par carnage ProgressiveCommendationDeltas[].Id.
+//
+// `levels[]` (Progressive uniquement) porte les PALIERS : chaque level a un
+// `threshold` = score cumulé cible du palier (≈ 5 levels/commendation, p.ex.
+// "Spartan Slayer" → [1, 41, …]). On extrait la suite croissante des thresholds
+// (CSV) pour réutiliser la mécanique de progression des citations Infinite
+// (parseTierTargets/ComputeTierProgression).
 type apiCommendation struct {
 	Type         string `json:"type"` // Progressive | Meta | Daily
 	Name         string `json:"name"`
@@ -388,6 +395,34 @@ type apiCommendation struct {
 	Category     struct {
 		Name string `json:"name"`
 	} `json:"category"`
+	Levels []struct {
+		Threshold int `json:"threshold"`
+	} `json:"levels"`
+}
+
+// tierTargetsCSV projette les paliers d'une commendation en CSV croissant
+// IDENTIQUE au format citation_mappings.tier_targets d'Infinite (réutilise
+// analysis.ParseTierTargets / ComputeTierProgression côté lecture). Seuils <= 0
+// ignorés ; tri croissant ; chaîne vide si aucun palier exploitable (commendations
+// Meta/Daily sans levels → dégradation propre : anneau vide côté front).
+func tierTargetsCSV(levels []struct {
+	Threshold int `json:"threshold"`
+}) string {
+	thresholds := make([]int, 0, len(levels))
+	for _, l := range levels {
+		if l.Threshold > 0 {
+			thresholds = append(thresholds, l.Threshold)
+		}
+	}
+	if len(thresholds) == 0 {
+		return ""
+	}
+	sort.Ints(thresholds)
+	parts := make([]string, len(thresholds))
+	for i, t := range thresholds {
+		parts[i] = strconv.Itoa(t)
+	}
+	return strings.Join(parts, ",")
 }
 
 // seedCommendations peuple commendation_definitions depuis l'API Metadata officielle
@@ -407,25 +442,34 @@ func seedCommendations(db *sql.DB, key string, fr map[string]string) {
 		fmt.Printf("commendations: parse %v\n", err)
 		return
 	}
-	n := 0
+	// Idempotent : garantit la colonne tier_targets même si la DB a été provisionnée
+	// avant l'ajout de la migration (parité ALTER idempotent côté schéma).
+	if _, err := db.Exec(`ALTER TABLE commendation_definitions ADD COLUMN IF NOT EXISTS tier_targets VARCHAR`); err != nil {
+		fmt.Printf("commendations: ensure tier_targets column: %v\n", err)
+	}
+	n, withTiers := 0, 0
 	for _, c := range comms {
 		if c.ID == "" {
 			continue // pas de clé naturelle → ignoré
 		}
 		nameEN := strings.TrimSpace(c.Name)
+		tierTargets := tierTargetsCSV(c.Levels)
 		_, err := db.Exec(`INSERT OR REPLACE INTO commendation_definitions
 			(commendation_id, name_en, name_fr, description_en, description_fr,
-			 commendation_type, category, icon_url)
-			VALUES (?,?,?,?,?,?,?,?)`,
+			 commendation_type, category, icon_url, tier_targets)
+			VALUES (?,?,?,?,?,?,?,?,?)`,
 			c.ID, nameEN, frOr(fr, nameEN), strings.TrimSpace(c.Description), "",
-			c.Type, c.Category.Name, c.IconImageURL)
+			c.Type, c.Category.Name, c.IconImageURL, tierTargets)
 		if err != nil {
 			fmt.Printf("commendations: insert %s: %v\n", c.ID, err)
 			continue
 		}
 		n++
+		if tierTargets != "" {
+			withTiers++
+		}
 	}
-	fmt.Printf("commendations: %d seedées (sur %d)\n", n, len(comms))
+	fmt.Printf("commendations: %d seedées (sur %d, %d avec paliers)\n", n, len(comms), withTiers)
 }
 
 // langEN / langFR — codes de langue attendus par le résolveur de noms

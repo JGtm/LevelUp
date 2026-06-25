@@ -120,3 +120,35 @@ type H5Csr struct {
 	Csr               int `json:"Csr"`
 	PercentToNextTier int `json:"PercentToNextTier"`
 }
+
+// H5Appearance — GET /h5/profiles/{gamertag}/appearance (host haloplayer).
+// Shape CONFIRMÉ par la sonde live 2026-06-25 (JGtm, HTTP 200, ~729 o). On ne
+// projette que les champs identitaires consommés par le Home (service tag +
+// emblème). Le reste (ModelCustomization armure, StanceId, WeaponSkinIds…) n'est
+// pas exposé tant qu'aucune surface UI ne le consomme (YAGNI).
+type H5Appearance struct {
+	Gamertag   string               `json:"Gamertag"`
+	ServiceTag string               `json:"ServiceTag"`
+	Emblem     H5AppearanceEmblem   `json:"Emblem"`
+	Company    *H5AppearanceCompany `json:"Company"`
+}
+
+// H5AppearanceEmblem — composition de l'emblème (IDs + couleurs + harmony).
+// L'image n'est PAS portée par ce JSON : elle est rendue côté serveur par
+// l'endpoint /h5/profiles/{gamertag}/emblem (302 → CDN image.halocdn.com, dont
+// le path est emblems/{EmblemId}_{ColorPrimary}_{ColorSecondary}_{ColorTertiary}
+// + un hash signé non reproductible côté client). Cf. GetEmblemPNG.
+type H5AppearanceEmblem struct {
+	ColorPrimary      int `json:"ColorPrimary"`
+	ColorSecondary    int `json:"ColorSecondary"`
+	ColorTertiary     int `json:"ColorTertiary"`
+	EmblemId          int `json:"EmblemId"`
+	HarmonyGroupIndex int `json:"HarmonyGroupIndex"`
+	HarmonyIndex      int `json:"HarmonyIndex"`
+}
+
+// H5AppearanceCompany — compagnie (clan) du joueur, optionnelle.
+type H5AppearanceCompany struct {
+	Id   string `json:"Id"`
+	Name string `json:"Name"`
+}

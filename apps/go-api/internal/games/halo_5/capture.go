@@ -51,6 +51,35 @@ func NewCaptureSource(ctx context.Context) (CaptureSource, error) {
 	return cs, nil
 }
 
+// AppearanceCapableSource = source live exposant les endpoints PROFIL (appearance +
+// rendu Spartan + emblème). Séparée de CaptureSource (sync de matchs) : l'identité
+// Spartan est un flux distinct, consommé par le hook appearance du Home. *Client
+// l'implémente. Définie ici pour fournir NewAppearanceSource (point d'entrée câblage
+// hors package, miroir de NewCaptureSource).
+type AppearanceCapableSource interface {
+	GetAppearance(ctx context.Context, gamertag string) (*H5Appearance, error)
+	GetSpartanRenderPNG(ctx context.Context, gamertag string) ([]byte, string, error)
+	GetEmblemPNG(ctx context.Context, gamertag string) ([]byte, string, error)
+}
+
+var _ AppearanceCapableSource = (*Client)(nil)
+
+// NewAppearanceSource construit une AppearanceCapableSource live depuis le
+// SpartanToken du contexte (par joueur+session, comme NewSpartanTokenSource). Erreur
+// si pas de token. Point d'entrée EXPORTÉ pour le câblage live hors package (CLI
+// backfill appearance / hook live).
+func NewAppearanceSource(ctx context.Context) (AppearanceCapableSource, error) {
+	src, err := NewSpartanTokenSource(ctx)
+	if err != nil {
+		return nil, err
+	}
+	as, ok := src.(AppearanceCapableSource)
+	if !ok {
+		return nil, fmt.Errorf("h5: source live ne supporte pas l'appearance (profils)")
+	}
+	return as, nil
+}
+
 const (
 	h5CaptureDefaultPageSize   = 25
 	h5CaptureDefaultMaxMatches = 100

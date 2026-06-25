@@ -311,12 +311,16 @@ const homeMatchCommendationsTopN = 3
 // pure sur match_commendations, table INSERT-only keyée (match_id, xuid,
 // commendation_id) — pas de _latest nécessaire : le `count` par-match est immuable).
 // Le tie-break par commendation_id rend la sélection top-N déterministe.
+//
+// `progress` = total cumulatif À VIE à ce match (valeur absolue 343, nullable pour
+// les lignes pré-migration → COALESCE 0). Alimente le palier/masterisé read-time.
 const homeMatchCommendationsQueryTemplate = `
-SELECT match_id, commendation_id, count
+SELECT match_id, commendation_id, count, progress
 FROM (
-    SELECT mc.match_id        AS match_id,
-           mc.commendation_id AS commendation_id,
-           mc.count           AS count,
+    SELECT mc.match_id              AS match_id,
+           mc.commendation_id       AS commendation_id,
+           mc.count                 AS count,
+           COALESCE(mc.progress, 0) AS progress,
            ROW_NUMBER() OVER (
                PARTITION BY mc.match_id
                ORDER BY mc.count DESC, mc.commendation_id ASC
@@ -375,16 +379,17 @@ func (r *HomeRepo) LoadMatchCommendations(ctx context.Context, matchIDs []string
 	defer rows.Close()
 
 	type rawRow struct {
-		matchID string
-		commID  string
-		count   int
+		matchID  string
+		commID   string
+		count    int
+		progress int
 	}
 	var rawRows []rawRow
 	idSeen := make(map[string]struct{})
 	var commIDs []string
 	for rows.Next() {
 		var rr rawRow
-		if err := rows.Scan(&rr.matchID, &rr.commID, &rr.count); err != nil {
+		if err := rows.Scan(&rr.matchID, &rr.commID, &rr.count, &rr.progress); err != nil {
 			continue
 		}
 		rawRows = append(rawRows, rr)
@@ -405,24 +410,33 @@ func (r *HomeRepo) LoadMatchCommendations(ctx context.Context, matchIDs []string
 			name = rr.commID // dégradation : ID court si la définition n'est pas seedée
 		}
 		result[rr.matchID] = append(result[rr.matchID], domain.HomeMatchCommendationRaw{
-			ID:      rr.commID,
-			Name:    name,
-			IconURL: d.iconURL,
-			Count:   rr.count,
+			ID:          rr.commID,
+			Name:        name,
+			IconURL:     d.iconURL,
+			Count:       rr.count,
+			Progress:    rr.progress,
+			TierTargets: d.tierTargets,
 		})
 	}
 	return result, nil
 }
 
-// commendationDef contient nom localisé + icône d'une commendation native par UUID.
+// commendationDef contient nom localisé + icône + paliers d'une commendation native
+// par UUID.
 type commendationDef struct {
-	name    string
-	iconURL string
+	name        string
+	iconURL     string
+	tierTargets string // CSV croissant des seuils de paliers (vide si Meta/Daily ou non seedé)
 }
 
-// loadCommendationDefs résout nom (FR > EN) + icône CDN pour un ensemble d'UUID de
-// commendations depuis commendation_definitions (metadata h5). IDs inconnus absents
-// de la map. Dégradation : metadata nil / table absente → map vide.
+// loadCommendationDefs résout nom (FR > EN) + icône CDN + tier_targets pour un ensemble
+// d'UUID de commendations depuis commendation_definitions (metadata h5). IDs inconnus
+// absents de la map. Dégradation : metadata nil / table absente → map vide.
+//
+// tier_targets est COALESCE'é vide : nullable + colonne possiblement absente sur une
+// DB pré-migration. Pour absorber le cas « colonne absente » (metadata h5 provisionnée
+// avant l'ajout de tier_targets), on retombe sur une requête sans tier_targets si le
+// SELECT échoue (table présente, colonne manquante).
 func (r *HomeRepo) loadCommendationDefs(ctx context.Context, ids []string) map[string]commendationDef {
 	out := make(map[string]commendationDef, len(ids))
 	if len(ids) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
@@ -434,22 +448,43 @@ func (r *HomeRepo) loadCommendationDefs(ctx context.Context, ids []string) map[s
 		placeholders[i] = "?"
 		args[i] = id
 	}
+	in := strings.Join(placeholders, ", ")
 	query := `SELECT commendation_id,
 	                 COALESCE(NULLIF(TRIM(name_fr), ''), name_en) AS name,
-	                 COALESCE(icon_url, '') AS icon_url
+	                 COALESCE(icon_url, '') AS icon_url,
+	                 COALESCE(tier_targets, '') AS tier_targets
 	          FROM commendation_definitions
-	          WHERE commendation_id IN (` + strings.Join(placeholders, ", ") + `)`
+	          WHERE commendation_id IN (` + in + `)`
 	rows, err := r.pdb.Metadata.Query(ctx, query, args...)
 	if err != nil {
-		return out // dégradation : titre sans table commendation_definitions
+		// Colonne tier_targets absente (DB pré-migration) → retry sans elle (le
+		// progrès dégradera proprement en anneau vide).
+		queryNoTiers := `SELECT commendation_id,
+		                        COALESCE(NULLIF(TRIM(name_fr), ''), name_en) AS name,
+		                        COALESCE(icon_url, '') AS icon_url
+		                 FROM commendation_definitions
+		                 WHERE commendation_id IN (` + in + `)`
+		rows, err = r.pdb.Metadata.Query(ctx, queryNoTiers, args...)
+		if err != nil {
+			return out // dégradation : titre sans table commendation_definitions
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var id, name, icon string
+			if err := rows.Scan(&id, &name, &icon); err != nil {
+				continue
+			}
+			out[id] = commendationDef{name: name, iconURL: icon}
+		}
+		return out
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var id, name, icon string
-		if err := rows.Scan(&id, &name, &icon); err != nil {
+		var id, name, icon, tiers string
+		if err := rows.Scan(&id, &name, &icon, &tiers); err != nil {
 			continue
 		}
-		out[id] = commendationDef{name: name, iconURL: icon}
+		out[id] = commendationDef{name: name, iconURL: icon, tierTargets: tiers}
 	}
 	return out
 }

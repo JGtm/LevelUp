@@ -127,10 +127,13 @@ func enrichMatchesWithCitations(ctx context.Context, repo port.HomeRepository, i
 // commendations natives (commendations.native = supported) alimentent le MÊME slot,
 // SANS changement frontend ni OpenAPI (réutilisation de MatchCitationSnippet).
 //
-// Une commendation native n'a ni paliers ni cumul → ProgressPct=0 (anneau vide,
-// dégradation propre confirmée côté CitationProgressRing), Cumulative/Tier* = 0,
-// IsNewlyMastered=false. Name + ImageURL (icône CDN) + Delta (count gagné) suffisent
-// au rendu de la tuile.
+// PROGRESSION (S6) : quand la commendation porte des paliers (tier_targets seedés
+// depuis levels[].threshold) ET un cumul à vie (progress), on calcule
+// ProgressPct/Cumulative/Tier*/IsNewlyMastered EXACTEMENT comme les citations Infinite
+// (analysis.ComputeTierProgression, mécanique partagée). Sans paliers/cumul (Meta/Daily,
+// ou définition pré-tier_targets), tout reste à zéro → anneau vide, dégradation propre
+// confirmée côté CitationProgressRing. Name + ImageURL (icône CDN) + Delta (count gagné)
+// suffisent au rendu minimal de la tuile.
 func enrichMatchesWithCommendations(ctx context.Context, repo port.HomeRepository, items []domain.RecentMatchItem) {
 	if len(items) == 0 {
 		return
@@ -164,7 +167,9 @@ func enrichMatchesWithCommendations(ctx context.Context, repo port.HomeRepositor
 
 // buildCommendationSnippets projette des commendations natives par match en
 // MatchCitationSnippet (slot réutilisé). Tri count DESC (déjà appliqué par le repo,
-// re-trié ici par sûreté), max `limit`.
+// re-trié ici par sûreté), max `limit`. Progrès/tier/masterisé calculés via la même
+// mécanique pure que les citations Infinite (analysis.ComputeTierProgression) à partir
+// du cumul à vie (Progress) + paliers (TierTargets) + delta du match (Count).
 func buildCommendationSnippets(rows []domain.HomeMatchCommendationRaw, limit int) []domain.MatchCitationSnippet {
 	if len(rows) == 0 {
 		return nil
@@ -182,13 +187,22 @@ func buildCommendationSnippets(rows []domain.HomeMatchCommendationRaw, limit int
 			u := r.IconURL
 			imgURL = &u
 		}
+		tiers := analysis.ParseTierTargets(r.TierTargets)
+		tp := analysis.ComputeTierProgression(r.Progress, r.Count, tiers)
 		out = append(out, domain.MatchCitationSnippet{
-			Key:      r.ID,
-			Name:     r.Name,
-			ImageURL: imgURL,
-			Delta:    r.Count,
-			// ProgressPct / Cumulative / Tier* / IsNewlyMastered laissés à zéro :
-			// une commendation native n'a pas de paliers (dégradation propre du front).
+			Key:             r.ID,
+			Name:            r.Name,
+			ImageURL:        imgURL,
+			Delta:           r.Count,
+			ProgressPct:     tp.ProgressPct,
+			IsNewlyMastered: tp.IsNewlyMastered,
+			Cumulative:      r.Progress,
+			TierIndex:       tp.TierIndex,
+			TierCount:       tp.TierCount,
+			NextTierTarget:  tp.NextTierTarget,
+			// Pas de filtrage AlreadyMastered ici (contrairement aux citations) : sur
+			// une tuile de match natif Halo 5, afficher une commendation maîtrisée de
+			// longue date reste pertinent (l'anneau plein = 100% est l'info voulue).
 		})
 	}
 	return out
