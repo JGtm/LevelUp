@@ -29661,3 +29661,26 @@ exit 0. H1 + note de renumérotation dans les 3 fichiers déplacés ; notes de c
 wal-recovery (EN+FR) mises à jour ; index CLAUDE.md ré-ordonné sans annotation de collision.
 
 **Prochaine étape** : passe de vérification de complétude des docs (nouveaux réécrits + KEEP).
+
+## [2026-06-25] Tri .ai/ — correction (KEEP trop conservateurs + JSON ratés) — Complété
+
+**Statut** : Complété. Branche `chore/doc-triage-v7`.
+
+**Décision** : revue déclenchée par l'utilisateur (« je comprends pas ton boulot, ces fichiers
+semblent périmés/traités »). Re-vérification à froid CONTRE LE CODE des fichiers que j'avais
+classés KEEP — mon erreur initiale : me fier au « reste X » des en-têtes sans vérifier que X avait
+été livré depuis. Aussi : 2 sorties brutes de workflow `.json` ratées (scan limité aux `.md`).
+
+**Résultats observés** :
+- **Supprimés** : `P2_ART_CENSUS_RAW.json`, `P2_QUALITY_AUDIT_RAW.json` (sorties brutes jetables).
+- **Archivés V7 (livrés/parkés, vérifiés)** : `PLAN_DAMAGE_MODEL_PER_TITLE` (threading display livré :
+  combat-yield-bar/SessionOcdrBars/effectiveHp.ts), `PLAN_CANONICAL_MATCH_EVENTS` (`canonical/events.go`),
+  `PLAN_ART_RESIDUAL_CENSUS_V2` (index ART coach_proposal retiré), `REVIEW_H5_QUALITY` (parseur ISO8601
+  consolidé + ranked_hoppers.toml câblé), `PLAN_AUTH_TOKENS_ENCRYPTION_AT_REST` (proposé conditionnel,
+  non actif).
+- **Gardés actifs** (décision user) : `PLAN_WEAPON_TAXONOMY` + `PLAN_P4_WEAPON_RESOLUTION` (P0-P3 livré,
+  P4/P5 différés UI), `PLAN_WEAPON_ATTRIBUTION_V3` (shadow, flip manuel), `RESEARCH_THEATER_RE` +
+  `RESEARCH_HALO_OSS_LEVERAGE` (réfs actives).
+
+**Leçon** : pour un tri, vérifier le « reste à faire » d'un plan CONTRE le code courant, pas se fier
+à son en-tête (qui fige l'état à sa dernière édition).
