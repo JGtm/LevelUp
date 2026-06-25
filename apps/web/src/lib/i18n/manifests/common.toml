@@ -843,6 +843,16 @@ en = "Retry"
 fr = "Chargement LevelUp…"
 en = "Loading LevelUp…"
 
+# ─── Reauth banner (refresh_token Xbox mort) ────────────────────────────
+
+[common.reauth.message]
+fr = "Ta connexion Xbox a expiré — la synchronisation de tes données est en pause."
+en = "Your Xbox connection has expired — data sync is paused."
+
+[common.reauth.action]
+fr = "Rafraîchir"
+en = "Refresh"
+
 # ─── Index route (no player configured) ─────────────────────────────────
 
 [common.index.no_player_configured]

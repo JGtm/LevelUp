@@ -359,7 +359,7 @@ const FR_TEXT: SettingsText = {
   watcherPresenceDescription:
     'Détecte automatiquement quand vous lancez ou quittez Halo Infinite pour déclencher une synchronisation. Nécessite un jeton XSTS valide.',
   watcherAuthButton: 'Connecter via Xbox',
-  watcherAuthReconnect: 'Reconnecter Xbox',
+  watcherAuthReconnect: 'Rafraîchir Xbox',
   watcherAuthInstructions: 'Rendez-vous sur {url} et entrez le code ci-dessous :',
   watcherAuthCopyCode: 'Copier le code',
   watcherAuthOpenLink: 'Ouvrir le lien',
@@ -645,7 +645,7 @@ const EN_TEXT: SettingsText = {
   watcherPresenceDescription:
     'Automatically detects when you launch or quit Halo Infinite to trigger a sync. Requires a valid XSTS token.',
   watcherAuthButton: 'Connect via Xbox',
-  watcherAuthReconnect: 'Reconnect Xbox',
+  watcherAuthReconnect: 'Refresh Xbox',
   watcherAuthInstructions: 'Go to {url} and enter the code below:',
   watcherAuthCopyCode: 'Copy code',
   watcherAuthOpenLink: 'Open link',

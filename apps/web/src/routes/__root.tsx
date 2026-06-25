@@ -35,7 +35,11 @@ function RootLayout() {
     queryKey: queryKeys.bootstrap,
     queryFn: () => api.get<BootstrapResponse>('/bootstrap'),
     staleTime: 2 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    // reauth_required (bannière de reconnexion Xbox) est la seule donnée volatile
+    // du bootstrap : le back l'efface dès qu'un refresh par-joueur réussit. On
+    // re-fetche au retour sur l'onglet pour que la bannière disparaisse sans
+    // rechargement dur. Les redirections du useEffect([data]) sont idempotentes.
+    refetchOnWindowFocus: true,
     // Le serveur Go peut mettre 5–15 s à démarrer (CGO + DuckDB) en dev
     // (`air`) ou sur VPS (cold start, redéploiement). On retry en backoff
     // exponentiel pour absorber la fenêtre de démarrage avant d'afficher
