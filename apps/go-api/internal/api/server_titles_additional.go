@@ -79,9 +79,12 @@ func registerHalo5Adapters(
 	assets, _ := fm.GetAssets(td.Slug)
 	outcomes, _ := fm.GetOutcomes(td.Slug)
 
-	// Semantic : adapter générique partagé. ranks nil → RankCatalog vide (Halo 5
-	// expose un CSR natif, pas de career_rank_translations en metadata).
-	if sem := games.NewGenericSemanticAdapter(td.Slug, fields, nil, assets, outcomes); sem != nil {
+	// Semantic : adapter générique partagé. ranks = catalog SR Halo 5 (152 niveaux
+	// « SR N ») construit en mémoire depuis le référentiel statique — Halo 5 n'expose
+	// PAS de career_rank_translations en metadata, donc sans ce catalog la Home
+	// tombait sur le fallback générique HINF « Rang N » au lieu de « SR N ». Aucune
+	// écriture DB : le label se résout title-side au boot (cf. halo5.BuildSpartanRankCatalog).
+	if sem := games.NewGenericSemanticAdapter(td.Slug, fields, halo5.BuildSpartanRankCatalog(), assets, outcomes); sem != nil {
 		resolver.RegisterSemantic(sem)
 		slog.Info("adapter_loaded",
 			"title_slug", sem.TitleSlug(),
