@@ -16,7 +16,7 @@ import (
 )
 
 // errCodeSessionNotFound est le code machine renvoyé quand une session
-// explicitement demandée est introuvable (ADR 0024, Couche B).
+// explicitement demandée est introuvable (ADR 0029, Couche B).
 const errCodeSessionNotFound = "session_not_found"
 
 // SessionPageService construit la page de dÃ©tail d'une session.
@@ -81,7 +81,7 @@ func (s *SessionPageService) GetPage(
 
 	filtered := filterStatsMatchRows(rows, req.Filters)
 
-	// Deep-link (ADR 0024, Couche B) : une session explicitement demandée doit
+	// Deep-link (ADR 0029, Couche B) : une session explicitement demandée doit
 	// exister dans le périmètre filtré (TOUTES sessions, mono-match incluses) —
 	// sinon 404 explicite au lieu d'une page vide 200 trompeuse.
 	allLabels := extractSessionLabels(filtered)

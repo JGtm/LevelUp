@@ -1,7 +1,7 @@
 // Package v2 — orchestrator.go : interface CycleOrchestrator et stub.
 //
 // L'implémentation des 6 phases est livrée incrémentalement (D1 à D5 du
-// plan ADR 0020). D0 fournit l'interface et un stub qui retourne
+// plan ADR 0027). D0 fournit l'interface et un stub qui retourne
 // ErrNotImplemented pour câbler le scheduler et la suite contract sans
 // casser la build.
 package v2

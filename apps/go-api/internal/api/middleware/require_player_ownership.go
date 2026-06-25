@@ -1,4 +1,4 @@
-// Package middleware — require_player_ownership.go : garde de propriété joueur (ADR 0024).
+// Package middleware — require_player_ownership.go : garde de propriété joueur (ADR 0029).
 //
 // RequirePlayerOwnership protège le groupe de routes /players/{player_slug} en
 // multi-utilisateur strict : un utilisateur ne peut accéder qu'aux profils dont

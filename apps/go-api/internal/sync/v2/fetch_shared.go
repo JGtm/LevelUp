@@ -1,4 +1,4 @@
-// Package v2 — fetch_shared.go : Phase 3 du pipeline V2 (ADR 0020).
+// Package v2 — fetch_shared.go : Phase 3 du pipeline V2 (ADR 0027).
 //
 // Phase 3 = fetch parallèle des données shared par match unique. Pour
 // chaque match retenu par Phase 2, on appelle 1 fois GetMatchStats (+

@@ -1,4 +1,4 @@
-// Package v2 — sync pipeline V2 : cycle orchestrator (ADR 0020).
+// Package v2 — sync pipeline V2 : cycle orchestrator (ADR 0027).
 //
 // V2 orchestre le sync au niveau cycle (process-wide) au lieu du niveau
 // player. Un seul CycleOrchestrator traite tous les joueurs en 6 phases :

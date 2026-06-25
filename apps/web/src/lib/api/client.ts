@@ -41,7 +41,7 @@ export function apiErrorMessage(err: unknown): string | undefined {
 /**
  * Extrait le code machine d'une `ApiError` (ex: "match_not_participant",
  * "player_forbidden", "session_not_found"). Permet aux pages de distinguer les
- * cas d'accès (ADR 0024) sans matcher fragilement sur le message HTTP.
+ * cas d'accès (ADR 0029) sans matcher fragilement sur le message HTTP.
  */
 export function apiErrorCode(err: unknown): string | undefined {
   if (err && typeof err === 'object' && 'code' in err) {

@@ -1,4 +1,4 @@
-// Package v2 — dedup.go : Phase 2 du pipeline V2 (ADR 0020).
+// Package v2 — dedup.go : Phase 2 du pipeline V2 (ADR 0027).
 //
 // Phase 2 = déduplication globale du résultat de Phase 1. Pure fonction
 // de transformation, pas d'I/O.
@@ -12,7 +12,7 @@
 //
 // Justifie la propriété centrale du pipeline V2 : 1 appel API par match
 // unique, indépendamment de combien de joueurs ont ce match dans leur
-// unknown list (cf. ADR 0020 § Garanties).
+// unknown list (cf. ADR 0027 § Garanties).
 package v2
 
 import (

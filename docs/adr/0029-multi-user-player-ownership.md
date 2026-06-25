@@ -1,4 +1,9 @@
-# ADR 0024 — Contrôle d'accès multi-utilisateur : propriété des joueurs + participation aux ressources
+# ADR 0029 — Contrôle d'accès multi-utilisateur : propriété des joueurs + participation aux ressources
+
+> **Note de renumérotation** : ce document a porté le numéro **0024** à sa création.
+> Renuméroté **0029** pour lever la collision avec `0024-lusr-v2-trueskill2-with-counts`. Les références
+> code « ADR 0024 » relatives à l'ownership / `RequirePlayerOwnership` / « Couche A/B » désignent
+> ce document (0029) ; celles relatives à LUSR/skill restent l'ADR 0024.
 
 > Statut : Accepté (2026-06-01)
 > Branche d'implémentation : `fix/sync-combat-completion-persist`

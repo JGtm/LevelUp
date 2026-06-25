@@ -277,7 +277,7 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		return domain.MatchViewResponse{}, fmt.Errorf("MatchViewService: meta: %w", err)
 	}
 
-	// Couche B (ADR 0024) : fail-fast si le joueur courant n'a pas participé à ce
+	// Couche B (ADR 0029) : fail-fast si le joueur courant n'a pas participé à ce
 	// match — avant les ~20 chargements parallèles. Évite la page "mal renseignée"
 	// (stats perso vides + scoreboard d'autrui). Best-effort : une erreur DB ne
 	// bloque pas (on ne veut pas masquer un match légitime sur incident transitoire).

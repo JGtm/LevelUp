@@ -1,5 +1,5 @@
 // Package sync — engine_v2bridge.go : wrappers exportés pour le pipeline
-// V2 (cf. internal/sync/v2/, ADR 0020).
+// V2 (cf. internal/sync/v2/, ADR 0027).
 //
 // Ce fichier est l'UNIQUE point de contact entre V1 et V2 côté V1. Il
 // expose 2 fonctions wrapper qui délèguent à la logique interne sans

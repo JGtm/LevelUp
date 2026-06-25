@@ -2,7 +2,7 @@ package logging
 
 import "testing"
 
-// Verrouille le mapping package → module (ADR 0024 : les logs du middleware
+// Verrouille le mapping package → module (ADR 0029 : les logs du middleware
 // d'autorisation doivent atterrir dans logs/http.log, pas general.log).
 func TestMapPackageToModule(t *testing.T) {
 	cases := map[string]string{

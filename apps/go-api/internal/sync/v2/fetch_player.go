@@ -1,4 +1,4 @@
-// Package v2 — fetch_player.go : Phase 4 du pipeline V2 (ADR 0020).
+// Package v2 — fetch_player.go : Phase 4 du pipeline V2 (ADR 0027).
 //
 // Phase 4 = fetch en parallèle des enrichissements per-player qui
 // requièrent le token personnel du joueur (PersonalScores, CSR perso,

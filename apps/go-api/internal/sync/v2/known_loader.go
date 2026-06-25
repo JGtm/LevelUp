@@ -1,5 +1,5 @@
 // Package v2 — known_loader.go : implémentation V2-native de KnownLoader
-// (D6.2 du plan ADR 0020).
+// (D6.2 du plan ADR 0027).
 //
 // Réimplémentation indépendante de V1 (engine.go::loadKnownMatchIDs) pour
 // satisfaire la règle de duplication ciblée : V1 ne reçoit aucune

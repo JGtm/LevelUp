@@ -1,5 +1,5 @@
 // Package v2 — fetchers.go : adapters V2-native pour MatchListProvider +
-// SharedMatchFetcher + PlayerEnrichmentFetcher (D6.3 du plan ADR 0020).
+// SharedMatchFetcher + PlayerEnrichmentFetcher (D6.3 du plan ADR 0027).
 //
 // Stratégie : V2 importe uniquement les TYPES exportés du package sync
 // (MatchHistoryEntry, MatchSkillData) — pas la logique V1. Les adapters

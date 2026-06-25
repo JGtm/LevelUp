@@ -133,7 +133,7 @@ export function SessionDetailPage() {
   }
 
   if (isError) {
-    // ADR 0024 Couche B : session demandée inexistante (404 session_not_found) ou
+    // ADR 0029 Couche B : session demandée inexistante (404 session_not_found) ou
     // accès refusé (403 player_forbidden) → page "Indisponible" claire avec
     // navigation, au lieu du message d'erreur générique / d'une page vide.
     const code = apiErrorCode(error)

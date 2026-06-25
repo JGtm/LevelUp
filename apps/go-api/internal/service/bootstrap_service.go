@@ -32,7 +32,7 @@ type BootstrapService struct {
 	privacyProvider  port.PrivacyProvider              // optionnel — nil = pas de check privacy
 	privacyStateRepo port.PrivacyStateRepository       // optionnel — nil = pas de fallback persisté
 	userStoreEmpty   func() (bool, error)              // optionnel — nil = first_launch toujours false
-	userLookup       authz.UserLookup                  // optionnel — nil = pas de filtrage ownership (ADR 0024)
+	userLookup       authz.UserLookup                  // optionnel — nil = pas de filtrage ownership (ADR 0029)
 	reauthCheck      func(xuid string) bool            // optionnel — nil = reauth_required toujours false (PR-B)
 	coMembers        func(xuid string) map[string]bool // optionnel — co-membres de groupe du user (nil = strict owner-only)
 }
@@ -69,7 +69,7 @@ func (s *BootstrapService) WithReauthChecker(fn func(xuid string) bool) *Bootstr
 }
 
 // WithUserLookup injecte le user store pour le filtrage ownership des joueurs
-// (ADR 0024). Sans lui, available_players n'est pas filtré (mono-utilisateur).
+// (ADR 0029). Sans lui, available_players n'est pas filtré (mono-utilisateur).
 func (s *BootstrapService) WithUserLookup(lookup authz.UserLookup) *BootstrapService {
 	s.userLookup = lookup
 	return s
@@ -119,7 +119,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 	// Le setup_state ci-dessus reste calculé sur la liste complète (côté instance).
 	visiblePlayers := excludeAuthOnly(players)
 
-	// Couche A (ADR 0024) : available_players et le joueur courant sont restreints
+	// Couche A (ADR 0029) : available_players et le joueur courant sont restreints
 	// aux profils accessibles par l'utilisateur (les siens + ses co-membres de groupe).
 	familyXUIDs := s.resolveCoMembers(sess)
 	ownedPlayers := s.filterOwnedPlayers(sess, visiblePlayers, familyXUIDs)
@@ -223,7 +223,7 @@ func (s *BootstrapService) currentUserHasPassword(sess *domain.SessionData) bool
 }
 
 // filterOwnedPlayers restreint la liste aux profils accessibles par l'utilisateur
-// courant (ADR 0024). Retourne la liste intacte si l'enforcement est désactivé
+// courant (ADR 0029). Retourne la liste intacte si l'enforcement est désactivé
 // (mode demo / auth non activée) ou si le user store n'est pas câblé. Un admin
 // voit tout ; un utilisateur standard voit son xuid + les profils de la famille
 // (familyXUIDs, #21 Phase A) pour que le sélecteur L1 liste bien la famille.

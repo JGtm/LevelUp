@@ -854,7 +854,7 @@ en = "Score"
 fr = "Données d'engagement indisponibles."
 en = "Engagement data unavailable."
 
-# ─── Indisponibilité / accès (ADR 0024) ──────────────────────────────────────
+# ─── Indisponibilité / accès (ADR 0029) ──────────────────────────────────────
 
 [session.detail.unavailable_title]
 fr = "Session indisponible"

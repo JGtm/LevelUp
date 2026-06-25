@@ -2,7 +2,7 @@
 // sync, que l'implémentation soit V1 (engine.go) ou V2 (v2/orchestrator.go).
 //
 // Ces tests définissent le CONTRAT que toute implémentation cycle doit
-// respecter. Cf. ADR 0020 § "Tests anti-régression critiques".
+// respecter. Cf. ADR 0027 § "Tests anti-régression critiques".
 //
 // État D0 : tous les tests sont skippés. L'activation s'enchaîne avec
 // les deliverables :
@@ -85,7 +85,7 @@ type CycleObservation struct {
 // TODO(D6) : activer pour V1 via adapter ; activer pour V2 quand Phase 5
 // (Persist) est livrée.
 func TestContract_AllAPIMatchesPersisted(t *testing.T) {
-	t.Skip("contract suite scaffold — activée en D6 du plan ADR 0020")
+	t.Skip("contract suite scaffold — activée en D6 du plan ADR 0027")
 }
 
 // TestContract_ParticipantsContainTrackedXUIDs vérifie que pour chaque match
@@ -97,7 +97,7 @@ func TestContract_AllAPIMatchesPersisted(t *testing.T) {
 //
 // TODO(D6) : activer pour V1 et V2.
 func TestContract_ParticipantsContainTrackedXUIDs(t *testing.T) {
-	t.Skip("contract suite scaffold — activée en D6 du plan ADR 0020")
+	t.Skip("contract suite scaffold — activée en D6 du plan ADR 0027")
 }
 
 // TestContract_PlayerEnrichmentMatchesParticipation vérifie que pour chaque
@@ -106,7 +106,7 @@ func TestContract_ParticipantsContainTrackedXUIDs(t *testing.T) {
 //
 // TODO(D6) : activer pour V1 et V2.
 func TestContract_PlayerEnrichmentMatchesParticipation(t *testing.T) {
-	t.Skip("contract suite scaffold — activée en D6 du plan ADR 0020")
+	t.Skip("contract suite scaffold — activée en D6 du plan ADR 0027")
 }
 
 // TestContract_NoDuplicateRows vérifie qu'aucune table critique
@@ -176,7 +176,7 @@ func TestContract_HaloAPIURLFormatXUID(t *testing.T) {
 // TODO(D6) : activer pour V1 et V2. Probablement nécessite un hook
 // duckdbpkg pour compter les Open* et leurs cache keys.
 func TestContract_MetadataDSNAlignment(t *testing.T) {
-	t.Skip("contract suite scaffold — activée en D6 du plan ADR 0020")
+	t.Skip("contract suite scaffold — activée en D6 du plan ADR 0027")
 }
 
 // TestContract_DrainVisibilityPhase5ToPhase6 est l'anti-régression du bug
@@ -187,7 +187,7 @@ func TestContract_MetadataDSNAlignment(t *testing.T) {
 //
 // TODO(D5) : activer quand Phase 5 + Phase 6 sont câblées en V2.
 func TestContract_V2_DrainVisibilityPhase5ToPhase6(t *testing.T) {
-	t.Skip("contract suite scaffold — activée en D5 du plan ADR 0020")
+	t.Skip("contract suite scaffold — activée en D5 du plan ADR 0027")
 }
 
 // ──────────────────────────────────────────────────────────────────────

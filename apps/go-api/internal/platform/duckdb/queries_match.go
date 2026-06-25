@@ -213,7 +213,7 @@ SELECT
 FROM match_participants p
 WHERE p.match_id = ? AND p.xuid = ?`
 
-// Q17bIsParticipant : EXISTS léger pour le gating "match non-participé" (ADR 0024,
+// Q17bIsParticipant : EXISTS léger pour le gating "match non-participé" (ADR 0029,
 // Couche B). Exécutée sur SharedReader. Index (match_id, xuid) → coût négligeable.
 const Q17bIsParticipant = `
 SELECT EXISTS(

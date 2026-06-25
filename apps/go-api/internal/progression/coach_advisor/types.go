@@ -132,7 +132,7 @@ const (
 )
 
 // ProposalOrigin trace si le template référencé vient du catalogue Prestige
-// ou d'une synthèse coach (cf. ADR 0021).
+// ou d'une synthèse coach (cf. ADR 0028).
 type ProposalOrigin string
 
 const (

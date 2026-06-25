@@ -435,7 +435,7 @@ func TestPrestigeHandler_DeleteSquad_RequiresRequestedBy(t *testing.T) {
 }
 
 // newRouterGuarded : comme newRouter mais avec une garde d'autorisation acteur
-// (ADR 0024 sur routes squad top-level).
+// (ADR 0029 sur routes squad top-level).
 func newRouterGuarded(svc prestige.Service, guard ActorGuard) *chi.Mux {
 	h := NewPrestigeHandler(svc, testAppPlayers).WithActorGuard(guard)
 	r := chi.NewRouter()

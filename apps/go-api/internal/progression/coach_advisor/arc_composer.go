@@ -7,7 +7,7 @@ import (
 )
 
 // arc_composer.go — composition d'un Arc dynamique à partir de signaux
-// convergents sur un même radar_axis (cf. ADR 0021).
+// convergents sur un même radar_axis (cf. ADR 0028).
 //
 // Fonction PURE — pas d'I/O, pas d'accès au catalogue Prestige ni au
 // synthesizer. Le service orchestrateur (Phase 7) résout les template_ids

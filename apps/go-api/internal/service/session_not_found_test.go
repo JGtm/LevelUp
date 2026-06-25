@@ -19,7 +19,7 @@ func sessionRowsForTest() []legacymatch.StatsMatchRow {
 	}
 }
 
-// ADR 0024 Couche B : une session demandée explicitement mais introuvable dans
+// ADR 0029 Couche B : une session demandée explicitement mais introuvable dans
 // le périmètre renvoie session_not_found, au lieu d'une page vide 200 trompeuse.
 func TestSessionPage_RequestedSessionNotFound(t *testing.T) {
 	statsRepo := &mockSessionPageStatsRepo{matches: []legacymatch.StatsMatchRow{}}

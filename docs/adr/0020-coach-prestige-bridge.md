@@ -199,7 +199,7 @@ catalogue Prestige sera seed.
 | U4 | comeback_welcome après 7 j inactif | Challenge soft tier Normal cadence daily | matcher (catalog) |
 | U5 | milestone_near_miss 90 % | Challenge cumulative ciblant ce milestone | matcher (catalog) |
 | U6 | combat_pattern_actif + LOWESS combat axis | Arc dynamique "Combat Excellence" | arc_composer |
-| U7 | Signal sur métrique non couverte par catalogue | Template synthétisé persisté + proposal | synthesizer (cf. ADR 0021) |
+| U7 | Signal sur métrique non couverte par catalogue | Template synthétisé persisté + proposal | synthesizer (cf. ADR 0028) |
 | U8 | 3 signaux convergents sur même radar_axis | Arc dynamique composé (catalog + synthèse mélangés) | arc_composer |
 | U9 | Signal plus fort sur même metric 5 j après | Supersession de l'ancienne proposal pending | supersede.go |
 | U10 | Acceptance d'une proposal sur axis "combat" | Obsolescence des autres pending sur cet axis | service.AcceptProposal |
@@ -228,7 +228,7 @@ catalogue Prestige sera seed.
   `coach_advisor` doit suivre.
 - **Risque de pollution du catalog par synthèse** : mitigé par
   `synthesis_grammar.toml` (allowlist stricte) + dédup hash + job GC sur
-  `usage_count=0` (cf. ADR 0021).
+  `usage_count=0` (cf. ADR 0028).
 - **Bruit pour le joueur si calibration trop optimiste** : mitigé par le cap dur
   `max_proposals_per_sync=3` + supersession + opt-in explicite. Tuning itératif
   via télémétrie `prestige_telemetry` (taux d'abandon).
@@ -256,7 +256,7 @@ catalogue Prestige sera seed.
 | Expiration proposals | Pas d'expiration fixe. Cleanup par supersession + obsolescence sur completion. |
 | Squad coach (pool filtré par composition d'équipe) | V3 — backlog explicite (`.ai/BACKLOG_COACH_PRESTIGE.md`). |
 | Coach négatif soft | V3 — hors scope, décision produit séparée. |
-| Création de templates ad-hoc | V2 — cf. ADR 0021 (synthèse). |
+| Création de templates ad-hoc | V2 — cf. ADR 0028 (synthèse). |
 | Création d'arcs ad-hoc | V2 — `arc_composer.go`, étapes = templates catalog + synthétisés mélangés. |
 
 ## References
@@ -264,5 +264,5 @@ catalogue Prestige sera seed.
 - ADR 0005 — Prestige Phased Activation (catalogue, palier system, baseline)
 - ADR 0014 — Progression Tracking V2 (coach, streaks, records, milestones)
 - ADR 0019 — Collect / Persist (pattern d'écriture append-only sur tables critiques)
-- ADR 0021 — Template synthesis (synthèse dynamique cf. invariant I3)
+- ADR 0028 — Template synthesis (synthèse dynamique cf. invariant I3)
 - `.ai/BACKLOG_COACH_PRESTIGE.md` — V3+ explicite (squad, négatif soft, cross-titre)

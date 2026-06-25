@@ -60,7 +60,7 @@ type PlayerDB struct {
 	Metadata     *DB // metadata.duckdb (RO)
 
 	// SocialPersister est le chemin NOMINAL d'écriture sur SharedSocial via le
-	// pattern Collect→Persist (ADR 0020). Le Persist() générique ne CHECKPOINT pas
+	// pattern Collect→Persist (ADR 0022). Le Persist() générique ne CHECKPOINT pas
 	// systématiquement : le flush WAL est borné par le scheduler 5 min + le
 	// CHECKPOINT shutdown (cf. #7659). NB (revue 2026-06-01 SS-02) : ce n'est PAS
 	// l'unique chemin — les mutations notifications et Prestige écrivent encore en
@@ -305,7 +305,7 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		sharedReader = LegacySharedReader(sharedDB)
 	}
 
-	// Phase 4 du refactor shared_social Collect→Persist (ADR 0020) :
+	// Phase 4 du refactor shared_social Collect→Persist (ADR 0022) :
 	// instancier le SocialPersister via la factory injectée par main.go.
 	// Si la factory n'est pas configurée (cas tests, bootstrap CLI), reste
 	// nil et les repos retombent sur leur chemin legacy db.Exec.

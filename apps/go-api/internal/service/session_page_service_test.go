@@ -151,7 +151,7 @@ func TestSessionPageService_GetPage_NoSessionsAfterFiltering(t *testing.T) {
 	}
 }
 
-// ADR 0024 Couche B : une session demandée explicitement mais introuvable
+// ADR 0029 Couche B : une session demandée explicitement mais introuvable
 // renvoie désormais session_not_found (404) au lieu d'une page vide 200
 // trompeuse (ancien comportement de fallback silencieux).
 func TestSessionPageService_GetPage_UnknownRequestedSessionReturnsNotFound(t *testing.T) {

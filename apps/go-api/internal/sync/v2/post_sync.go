@@ -1,4 +1,4 @@
-// Package v2 — post_sync.go : Phase 6 du pipeline V2 (ADR 0020).
+// Package v2 — post_sync.go : Phase 6 du pipeline V2 (ADR 0027).
 //
 // Phase 6 = post-sync parallèle par joueur. Pour chaque joueur, on
 // exécute la pipeline de heals + films + citations + dominance + LUSR

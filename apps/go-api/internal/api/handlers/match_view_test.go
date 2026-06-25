@@ -124,7 +124,7 @@ func TestMatchViewHandler_LocalisationFR_ChampsJSON(t *testing.T) {
 	}
 }
 
-// ADR 0024 Couche B : un match non-participé (APIError match_not_participant)
+// ADR 0029 Couche B : un match non-participé (APIError match_not_participant)
 // est mappé en 404 avec le code distinct, pas en 500.
 func TestMatchViewHandler_NotParticipant_404(t *testing.T) {
 	factory := func(_ context.Context, _ string) (port.MatchViewService, error) {

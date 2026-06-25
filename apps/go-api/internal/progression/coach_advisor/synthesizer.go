@@ -12,9 +12,9 @@ import (
 )
 
 // synthesizer.go — production dynamique de prestige.Template à partir d'un
-// Signal coach_advisor (cf. ADR 0021).
+// Signal coach_advisor (cf. ADR 0028).
 //
-// Contraintes (cf. ADR 0021 §"Garde-fous globaux") :
+// Contraintes (cf. ADR 0028 §"Garde-fous globaux") :
 //   - signal.Strength >= synthesisMinStrength (I5)
 //   - (metric, window, eval_type) doit être dans la SynthesisGrammar
 //   - targets contiennent les stretch ratios standards (1.08/1.25/1.50/2.00),

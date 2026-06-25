@@ -1,4 +1,4 @@
-// Package v2 — discovery.go : Phase 1 du pipeline V2 (ADR 0020).
+// Package v2 — discovery.go : Phase 1 du pipeline V2 (ADR 0027).
 //
 // Phase 1 = découverte parallèle, read-only. Pour chaque joueur :
 //  1. LoadKnown : lecture des match_ids déjà ingérés (player_match_enrichment

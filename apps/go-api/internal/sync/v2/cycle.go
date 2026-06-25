@@ -1,5 +1,5 @@
 // Package v2 — cycle.go : implémentation concrète du CycleOrchestrator
-// qui compose les 6 phases (D6.1 du plan ADR 0020).
+// qui compose les 6 phases (D6.1 du plan ADR 0027).
 //
 // Compose RunDiscovery → RunDedup → RunFetchShared → RunFetchPlayer →
 // RunPersist → RunPostSync avec logging structuré par phase, métriques

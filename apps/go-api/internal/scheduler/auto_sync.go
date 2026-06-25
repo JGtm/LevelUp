@@ -201,11 +201,11 @@ type AutoSyncScheduler struct {
 	// désormais rafraîchie en LIVE via CareerLiveService.kickoffBackgroundRefresh
 	// (UPSERT dans `spartan_identity`).
 
-	// cycleOrchestrator (ADR 0020) — pipeline V2 cycle-level. Câblé via
+	// cycleOrchestrator (ADR 0027) — pipeline V2 cycle-level. Câblé via
 	// WithCycleOrchestrator. Activation runtime gated par
 	// LEVELUP_SYNC_PIPELINE=v2 (cf. shouldUseV2). En D0 le stub renvoie
 	// ErrNotImplemented → fallback V1 silencieux ; le wiring du dispatch
-	// proprement dit arrive en D6 du plan ADR 0020.
+	// proprement dit arrive en D6 du plan ADR 0027.
 	cycleOrchestrator syncv2.CycleOrchestrator
 
 	// Snapshot par joueur du dernier cycle — pour l'endpoint admin diagnostic.
@@ -412,7 +412,7 @@ func (s *AutoSyncScheduler) WithPostSyncRunner(runner port.PostSyncRunner) *Auto
 	return s
 }
 
-// WithCycleOrchestrator branche le pipeline V2 (ADR 0020). L'activation
+// WithCycleOrchestrator branche le pipeline V2 (ADR 0027). L'activation
 // runtime reste gated par LEVELUP_SYNC_PIPELINE=v2 ; câbler un orchestrator
 // non-nil sans l'env var ne change rien au comportement. Nil → V1 toujours.
 //
@@ -428,7 +428,7 @@ func (s *AutoSyncScheduler) WithCycleOrchestrator(o syncv2.CycleOrchestrator) *A
 //   - cycleOrchestrator non-nil (câblé par main.go)
 //
 // Le dispatch effectif vers V2 (avec fallback V1 sur ErrNotImplemented ou
-// échec) est ajouté dans RunOnce en D6 du plan ADR 0020. En D0 cette
+// échec) est ajouté dans RunOnce en D6 du plan ADR 0027. En D0 cette
 // fonction est exposée uniquement pour les tests contract.
 func (s *AutoSyncScheduler) shouldUseV2() bool {
 	if s.cycleOrchestrator == nil {
@@ -615,7 +615,7 @@ func (s *AutoSyncScheduler) RunOnceTrigger(ctx context.Context, trigger string) 
 	// pour le signal temps-réel.
 	s.warnStaleGateClaims(ctx)
 
-	// ADR 0020 dispatch : si V2 est activé via env var ET orchestrator
+	// ADR 0027 dispatch : si V2 est activé via env var ET orchestrator
 	// non-nil, déléguer au pipeline V2. Fallback silencieux à V1 si
 	// l'orchestrator retourne ErrNotImplemented (cas D0-D6 transitoire)
 	// ou en cas d'échec global (best-effort, V1 reprend).
@@ -1030,7 +1030,7 @@ func intervalFromHours(h int) time.Duration {
 	return time.Duration(h) * time.Hour
 }
 
-// runOnceV2 exécute un cycle complet via le pipeline V2 (ADR 0020).
+// runOnceV2 exécute un cycle complet via le pipeline V2 (ADR 0027).
 // Convertit []PlayerSummary → []syncv2.PlayerProfile, appelle l'orchestrator,
 // mappe le CycleResult → RunOnceResult.
 //
