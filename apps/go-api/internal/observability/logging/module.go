@@ -61,8 +61,13 @@ const (
 	// Discovery UGC live. Tag explicite car le code vit dans api/server.go
 	// (module par défaut "http") ; on veut un fichier logs/lab.log dédié pour
 	// diagnostiquer les appels d'exploration Waypoint.
-	ModuleLab     = "lab"
-	ModuleGeneral = "general" // fallback pour logs non catégorisés
+	ModuleLab = "lab"
+	// ModuleSnapshot : producteur + lecture des snapshots Parquet immuables
+	// (durabilité / lecture découplée du B-swap). Tag explicite car le code vit dans
+	// internal/ops (module "general" par défaut) + internal/sync + internal/sync/v2 —
+	// on veut un fichier logs/snapshot.log unique pour diagnostiquer cut/fallback/readiness.
+	ModuleSnapshot = "snapshot"
+	ModuleGeneral  = "general" // fallback pour logs non catégorisés
 )
 
 // moduleAttrKey est la clé d'attribut slog reconnue pour spécifier

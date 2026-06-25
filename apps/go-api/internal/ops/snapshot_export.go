@@ -51,28 +51,8 @@ func relationExists(ctx context.Context, e interface {
 	return n > 0
 }
 
-// derivedSnapshotSpec : un dérivé ancré (player DB) à exporter par joueur. La requête
-// filtre sur les matchs ready du joueur (snapshot_ready_at IS NOT NULL dans sa PME).
-type derivedSnapshotSpec struct {
-	name  string
-	query string
-}
-
-// derivedSnapshotSpecs : les 3 dérivés ancrés lus depuis les vues `_latest` du joueur.
-// skill_rank restreint à LUSR (CSR exclu : non versionné dans ce snapshot) ; les deux
-// tables sans snapshot_ready_at sont filtrées par jointure sur la PME ready.
-var derivedSnapshotSpecs = []derivedSnapshotSpec{
-	{"player_match_enrichment", `SELECT * FROM player_match_enrichment_latest WHERE snapshot_ready_at IS NOT NULL`},
-	{"match_skill_rank", `SELECT s.* FROM match_skill_rank_latest s
-		WHERE s.rating_type = 'LUSR'
-		  AND s.match_id IN (SELECT match_id FROM player_match_enrichment_latest WHERE snapshot_ready_at IS NOT NULL)`},
-	{"match_citations", `SELECT c.* FROM match_citations_latest c
-		WHERE c.match_id IN (SELECT match_id FROM player_match_enrichment_latest WHERE snapshot_ready_at IS NOT NULL)`},
-}
-
 // execer abstrait *sql.DB et *sql.Conn (même signature ExecContext) → un COPY peut
-// s'exécuter sur une connexion épinglée (faits shared + table temp) ou sur le pool
-// (dérivés player).
+// s'exécuter sur une connexion épinglée (faits shared + table temp).
 type execer interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }
@@ -80,13 +60,6 @@ type execer interface {
 // sqlQuote échappe une valeur en littéral chaîne SQL (chemins de destination COPY).
 func sqlQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
-}
-
-// sanitizeSnapshotFilename neutralise les séparateurs de chemin d'un gamertag pour en
-// faire un nom de fichier sûr (les gamertags Xbox tolèrent l'espace, jamais / ni \).
-func sanitizeSnapshotFilename(gt string) string {
-	r := strings.NewReplacer("/", "_", "\\", "_", ":", "_")
-	return r.Replace(gt)
 }
 
 // createReadyIDTemp (re)crée la table temp _snap_ready sur la connexion épinglée et y
@@ -202,27 +175,6 @@ func exportSharedFacts(ctx context.Context, opener SharedReadOpener, versionDir 
 			return nil, err
 		}
 		pi, err := partitionInfoFor(versionDir, rel, tbl, "", n)
-		if err != nil {
-			return nil, err
-		}
-		parts = append(parts, pi)
-	}
-	return parts, nil
-}
-
-// exportOnePlayerDerived COPY les 3 dérivés ancrés d'un joueur (vues _latest), filtrés
-// sur ses matchs ready. Exécuté sur le pool de la player DB (pas de table temp ⇒ pas
-// besoin d'épingler une connexion).
-func exportOnePlayerDerived(ctx context.Context, db *sql.DB, versionDir, gamertag string) ([]PartitionInfo, error) {
-	safe := sanitizeSnapshotFilename(gamertag)
-	var parts []PartitionInfo
-	for _, spec := range derivedSnapshotSpecs {
-		rel := filepath.Join("derived", spec.name, safe+".parquet")
-		n, err := copyToParquet(ctx, db, spec.query, filepath.Join(versionDir, rel))
-		if err != nil {
-			return nil, err
-		}
-		pi, err := partitionInfoFor(versionDir, rel, spec.name, gamertag, n)
 		if err != nil {
 			return nil, err
 		}

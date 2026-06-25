@@ -534,15 +534,7 @@ func main() {
 		// les providers via sharedMgr.Close().
 		cfg.SharedManager = sharedMgr
 
-		// Phase 4 — lecture sur snapshot immuable : enveloppe le SharedReader live de
-		// chaque titre dans un reader snapshot-préféré (lecture découplée du B-swap,
-		// fallback live). Singleton mémoïsé par titre (cache de queriers :memory:
-		// partagé entre requêtes). Best-effort : avant qu'un snapshot existe, 100% live.
-		snapReaders := newSnapshotReaderCache(cfg.RepoRoot)
-		cfg.SnapshotReaderWrapper = snapReaders.wrap
-
 		closeShared = func() error {
-			snapReaders.closeAll()
 			if unsubscribeSwap != nil {
 				unsubscribeSwap()
 			}

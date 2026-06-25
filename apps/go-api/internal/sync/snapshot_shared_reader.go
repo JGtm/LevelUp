@@ -18,12 +18,18 @@ package sync
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"sync"
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
 )
+
+// snapshotLog : logger taggé module=snapshot → logs/snapshot.log (le package sync route
+// sinon vers logs/sync.log). Diagnostic centralisé du sous-système snapshot côté sync
+// (fallback lecture, bridge cut). Mémoire cross-package : ops a son propre snapshotLog.
+var snapshotLog = slog.With("module", "snapshot")
 
 // snapshotReaderKeep : nombre de versions de querier gardées ouvertes simultanément.
 // 3 = marge confortable (la version active + 2 antérieures) pour qu'aucune requête en
@@ -46,6 +52,11 @@ type SnapshotPreferredSharedReader struct {
 	mu    sync.Mutex
 	cache map[int64]*ops.SnapshotQuerier
 	order []int64 // versions par ordre d'insertion (éviction FIFO au-delà de keep)
+	// failedVersion : version pour laquelle OpenSnapshotShared a échoué (ex.
+	// ErrSnapshotIncomplete). Negative-cache : on ne retente PAS la reconstruction
+	// :memory à chaque Get (~17x/page) tant que la version courante reste celle qui a
+	// échoué — on retombe direct sur le live. Reset implicite au changement de version.
+	failedVersion int64
 }
 
 // NewSnapshotPreferredSharedReader construit le reader. `live` est le SharedReader de
@@ -85,9 +96,19 @@ func (r *SnapshotPreferredSharedReader) snapshotDB(ctx context.Context) *sql.DB 
 	if q, ok := r.cache[version]; ok {
 		return q.DB
 	}
+	if version == r.failedVersion {
+		return nil // negative-cache : version déjà connue inexploitable → repli live direct
+	}
 	q, err := ops.OpenSnapshotShared(ctx, r.paths, r.titleSlug)
 	if err != nil {
-		return nil // ErrNoSnapshot / ErrSnapshotIncomplete / erreur → repli live
+		// Snapshot inexploitable (ErrSnapshotIncomplete = schéma partiel, ou erreur
+		// d'ouverture) → repli live. Log UNE fois par version (negative-cache évite le
+		// spam ~17x/page) car un schéma partiel persistant désactive silencieusement la
+		// lecture-snapshot : c'est un signal opérateur à NE PAS perdre.
+		r.failedVersion = version
+		snapshotLog.WarnContext(ctx, "snapshot: version inexploitable → lecture live (fallback)",
+			"titleSlug", r.titleSlug, "version", version, "err", err)
+		return nil
 	}
 	r.cache[q.Version] = q
 	r.order = append(r.order, q.Version)

@@ -5,6 +5,8 @@ package sync
 import (
 	"context"
 	"database/sql"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -141,5 +143,42 @@ func TestSnapshotPreferredSharedReader_ServedAndCached(t *testing.T) {
 	rel2()
 	if db2 != db1 {
 		t.Error("2e Get a reconstruit le querier (cache versionné non réutilisé)")
+	}
+}
+
+// TestSnapshotPreferredSharedReader_IncompleteFallback : si le snapshot existe mais est
+// INCOMPLET (une table requise manque), OpenSnapshotShared retourne ErrSnapshotIncomplete
+// → le reader retombe sur le live (jamais de schéma partiel servi), et le negative-cache
+// évite de reconstruire la :memory à chaque Get.
+func TestSnapshotPreferredSharedReader_IncompleteFallback(t *testing.T) {
+	ctx := context.Background()
+	paths := seedReaderSnapshot(t)
+	// Casse la complétude : supprime un Parquet REQUIS de la v1.
+	missing := filepath.Join(paths.SnapshotVersionDir(title.DefaultSlug, 1), "shared", "xuid_aliases.parquet")
+	if err := os.Remove(missing); err != nil {
+		t.Fatalf("remove required parquet: %v", err)
+	}
+
+	live := &fakeLiveReader{db: openSnapMemDB(t)}
+	r := NewSnapshotPreferredSharedReader(paths, title.DefaultSlug, live)
+	defer r.Close()
+
+	db1, rel1, err := r.Get(ctx)
+	if err != nil {
+		t.Fatalf("Get #1: %v", err)
+	}
+	rel1()
+	if db1 != live.db {
+		t.Fatal("schéma incomplet : Get devait retomber sur le live")
+	}
+	// 2e Get : toujours live, ET le negative-cache a évité une nouvelle tentative de
+	// reconstruction (failedVersion mémorisé).
+	db2, rel2, _ := r.Get(ctx)
+	rel2()
+	if db2 != live.db {
+		t.Fatal("2e Get : devait rester sur le live")
+	}
+	if r.failedVersion != 1 {
+		t.Errorf("failedVersion = %d, attendu 1 (negative-cache)", r.failedVersion)
 	}
 }

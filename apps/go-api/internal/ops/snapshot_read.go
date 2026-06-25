@@ -1,14 +1,11 @@
-// Package ops — snapshot_read.go : couche de LECTURE des snapshots immuables (Phase 3
-// du PLAN_DURABILITE_SNAPSHOT_IMMUABLE).
+// Package ops — snapshot_read.go : couche de LECTURE des snapshots immuables.
 //
-// OpenSnapshotForPlayer ouvre la version COURANTE du snapshot d'un titre comme une base
-// DuckDB :memory: dont les VUES read_parquet portent les MÊMES noms que les tables/vues
-// des DB live (faits shared globaux + dérivés `_latest` du joueur). Conséquence : une
-// requête de lecture existante tourne dessus SANS réécriture — et peut même joindre
-// shared + dérivés en une seule requête (impossible en live où ce sont 2 DB séparées).
-//
-// Lecture pure read_parquet sur des fichiers immuables → ZÉRO contact avec la base RW,
-// donc jamais stallée par une fenêtre d'écriture du B-swap (c'est tout l'intérêt).
+// OpenSnapshotShared ouvre la version COURANTE du snapshot d'un titre comme une base
+// DuckDB :memory: reconstruisant le SCHÉMA SHARED COMPLET (tables de base matérialisées
+// + toutes les vues aux noms live). Conséquence : une requête de lecture shared existante
+// tourne dessus SANS réécriture, sur des fichiers Parquet immuables → ZÉRO contact avec
+// la base RW, donc jamais stallée par une fenêtre d'écriture du B-swap (c'est l'intérêt).
+// Utilisé par sync.SnapshotPreferredSharedReader (scoped MatchView), avec fallback live.
 package ops
 
 import (
@@ -59,58 +56,6 @@ func (q *SnapshotQuerier) Close() {
 	if q != nil && q.closeFn != nil {
 		q.closeFn()
 	}
-}
-
-// OpenSnapshotForPlayer ouvre la version courante pour un joueur (faits shared globaux +
-// dérivés `_latest` de CE joueur). Retourne ErrNoSnapshot si aucune version active.
-func OpenSnapshotForPlayer(ctx context.Context, paths *title.PathResolver, titleSlug, gamertag string) (*SnapshotQuerier, error) {
-	if paths == nil {
-		return nil, fmt.Errorf("OpenSnapshotForPlayer: paths nil")
-	}
-	if titleSlug == "" {
-		titleSlug = title.DefaultSlug
-	}
-	version, err := readCurrent(paths.SnapshotCurrentManifestPath(titleSlug))
-	if err != nil {
-		return nil, err
-	}
-	if version == 0 {
-		return nil, ErrNoSnapshot
-	}
-	versionDir := paths.SnapshotVersionDir(titleSlug, version)
-
-	db, err := sql.Open("duckdb", "")
-	if err != nil {
-		return nil, fmt.Errorf("snapshot read: open :memory:: %w", err)
-	}
-	// Faits shared (globaux) : vue au nom de la table live.
-	for _, tbl := range sharedSnapshotTables {
-		file := filepath.Join(versionDir, "shared", tbl+".parquet")
-		if err := createSnapshotView(ctx, db, tbl, file); err != nil {
-			_ = db.Close()
-			return nil, err
-		}
-	}
-	// Dérivés ancrés (CE joueur) : vue au nom de la vue live `<table>_latest`.
-	safe := sanitizeSnapshotFilename(gamertag)
-	for _, spec := range derivedSnapshotSpecs {
-		file := filepath.Join(versionDir, "derived", spec.name, safe+".parquet")
-		if err := createSnapshotView(ctx, db, spec.name+"_latest", file); err != nil {
-			_ = db.Close()
-			return nil, err
-		}
-	}
-	return &SnapshotQuerier{DB: db, Version: version, closeFn: func() { _ = db.Close() }}, nil
-}
-
-// createSnapshotView crée une VUE read_parquet `viewName` sur `file`. Si le fichier est
-// absent (table/joueur sans données ready), aucune vue n'est créée — une requête sur
-// cette relation échouera proprement (Catalog Error), à charge du caller de dégrader.
-func createSnapshotView(ctx context.Context, db *sql.DB, viewName, file string) error {
-	if _, err := os.Stat(file); err != nil {
-		return nil // fichier absent → pas de vue (dégradation au niveau requête)
-	}
-	return createParquetViewStrict(ctx, db, viewName, file)
 }
 
 // createParquetViewStrict crée la vue read_parquet et ERRE si le fichier est absent

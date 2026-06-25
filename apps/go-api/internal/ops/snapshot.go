@@ -2,8 +2,8 @@
 // (Phase 2 du PLAN_DURABILITE_SNAPSHOT_IMMUABLE).
 //
 // ProduceSnapshot lit l'ensemble des matchs `snapshot_ready_at IS NOT NULL` (union des
-// joueurs du titre), réexporte les faits shared + les dérivés ancrés en Parquet dans
-// une NOUVELLE version, écrit le manifest, puis flippe ATOMIQUEMENT CURRENT.json. Le
+// joueurs du titre), réexporte les FAITS SHARED match-immutables en Parquet dans une
+// NOUVELLE version, écrit le manifest, puis flippe ATOMIQUEMENT CURRENT.json. Le
 // cut est :
 //   - change-gated : no-op propre si 0 match ready, ou si (compte ready + watermark)
 //     est identique à la version courante (rien de neuf à figer) ;
@@ -37,6 +37,11 @@ var (
 	ErrSnapshotCopy     = errors.New("snapshot: copy")     // export Parquet (COPY)
 	ErrSnapshotManifest = errors.New("snapshot: manifest") // writeManifest / flipCurrent
 )
+
+// snapshotLog : logger taggé module=snapshot → tous les logs producteur/lecture du
+// sous-système atterrissent dans logs/snapshot.log (le package ops route sinon vers
+// logs/general.log). Diagnostic centralisé cut/fallback/readiness.
+var snapshotLog = slog.With("module", "snapshot")
 
 // SnapshotOptions configure un cut. Paths/Shared/PlayerOpener sont obligatoires.
 type SnapshotOptions struct {
@@ -83,7 +88,12 @@ func ProduceSnapshot(ctx context.Context, opts SnapshotOptions) (SnapshotResult,
 
 	readyIDs, partial, watermark, err := gatherReadySet(ctx, opts)
 	if err != nil {
-		return SnapshotResult{}, fmt.Errorf("%w: %w", ErrSnapshotRead, err)
+		// Lecture du set ready tronquée : NE PAS figer un snapshot partiel ni consulter
+		// le change-gate (un faux "unchanged" gèlerait le backlog). No-op visible, retry
+		// au prochain cycle. Renvoie aussi l'erreur catégorisée pour la métrique de cut.
+		snapshotLog.WarnContext(ctx, "snapshot: gather ready incomplet, cut sauté (retry prochain cycle)",
+			"titleSlug", slug, "err", err)
+		return SnapshotResult{NoopReason: "read_incomplete"}, fmt.Errorf("%w: %w", ErrSnapshotRead, err)
 	}
 	if len(readyIDs) == 0 {
 		return SnapshotResult{NoopReason: "no_ready_matches"}, nil
@@ -99,7 +109,11 @@ func ProduceSnapshot(ctx context.Context, opts SnapshotOptions) (SnapshotResult,
 		return SnapshotResult{}, fmt.Errorf("mkdir version dir: %w", err)
 	}
 
-	parts, err := exportAllPartitions(ctx, opts, versionDir, readyIDs)
+	// Le snapshot ne contient que les FAITS SHARED (match-immutables) filtrés au set
+	// ready : la lecture scoped MatchView sert le shared depuis le snapshot, et lit les
+	// dérivés player (perf/LUSR/citations) sur la player DB live (non B-swap, pas de
+	// stall) — donc aucun dérivé à exporter ici.
+	parts, err := exportSharedFacts(ctx, opts.Shared, versionDir, readyIDs)
 	if err != nil {
 		return SnapshotResult{}, fmt.Errorf("%w: %w", ErrSnapshotCopy, err)
 	}
@@ -121,38 +135,16 @@ func ProduceSnapshot(ctx context.Context, opts SnapshotOptions) (SnapshotResult,
 		return SnapshotResult{}, fmt.Errorf("%w: %w", ErrSnapshotManifest, err)
 	}
 	if removed, err := applyRetention(snapshotsDir, opts.RetentionKeep, version); err != nil {
-		slog.WarnContext(ctx, "snapshot: rétention échouée (non bloquant)", "err", err, "titleSlug", slug)
+		snapshotLog.WarnContext(ctx, "snapshot: rétention échouée (non bloquant)", "err", err, "titleSlug", slug)
 	} else if len(removed) > 0 {
-		slog.InfoContext(ctx, "snapshot: versions purgées", "titleSlug", slug, "removed", removed)
+		snapshotLog.InfoContext(ctx, "snapshot: versions purgées", "titleSlug", slug, "removed", removed)
 	}
 
-	slog.InfoContext(ctx, "snapshot: version produite",
+	snapshotLog.InfoContext(ctx, "snapshot: version produite",
 		"titleSlug", slug, "version", version, "ready_matches", len(readyIDs),
 		"partial_matches", len(partial), "partitions", len(parts))
 	return SnapshotResult{Produced: true, Version: version, ReadyMatchCount: len(readyIDs),
 		PartialMatchCount: len(partial)}, nil
-}
-
-// exportAllPartitions exporte faits shared + dérivés de tous les joueurs.
-func exportAllPartitions(ctx context.Context, opts SnapshotOptions, versionDir string, readyIDs []string) ([]PartitionInfo, error) {
-	parts, err := exportSharedFacts(ctx, opts.Shared, versionDir, readyIDs)
-	if err != nil {
-		return nil, err
-	}
-	for _, gt := range opts.Players {
-		db, release, err := opts.PlayerOpener.OpenPlayerRO(ctx, gt)
-		if err != nil {
-			slog.WarnContext(ctx, "snapshot: player DB indisponible (dérivés ignorés)", "player", gt, "err", err)
-			continue
-		}
-		pp, derr := exportOnePlayerDerived(ctx, db, versionDir, gt)
-		release()
-		if derr != nil {
-			return nil, derr
-		}
-		parts = append(parts, pp...)
-	}
-	return parts, nil
 }
 
 // gatherReadySet agrège l'union des matchs ready de tous les joueurs du titre, le set
@@ -165,14 +157,21 @@ func gatherReadySet(ctx context.Context, opts SnapshotOptions) (ids []string, pa
 	for _, gt := range opts.Players {
 		db, release, oerr := opts.PlayerOpener.OpenPlayerRO(ctx, gt)
 		if oerr != nil {
-			slog.WarnContext(ctx, "snapshot: player DB indisponible (ready ignoré)", "player", gt, "err", oerr)
+			// Player DB absente/illisible (joueur offline, titre fraîchement activé) :
+			// best-effort, on ignore CE joueur (pas une troncature de données existantes).
+			snapshotLog.WarnContext(ctx, "snapshot: player DB indisponible (ready ignoré)", "player", gt, "err", oerr)
 			continue
 		}
-		wm := collectPlayerReady(ctx, db, gt, idSet, partial)
+		wm, rerr := collectPlayerReady(ctx, db, idSet, partial)
+		release()
+		if rerr != nil {
+			// Lecture interrompue → set ready POTENTIELLEMENT TRONQUÉ. On refuse de figer
+			// un snapshot partiel : erreur dure, le caller re-tentera au prochain cycle.
+			return nil, nil, time.Time{}, fmt.Errorf("player %s: %w", gt, rerr)
+		}
 		if wm.After(watermark) {
 			watermark = wm
 		}
-		release()
 	}
 	ids = make([]string, 0, len(idSet))
 	for id := range idSet {
@@ -183,24 +182,25 @@ func gatherReadySet(ctx context.Context, opts SnapshotOptions) (ids []string, pa
 }
 
 // collectPlayerReady lit les matchs ready d'un joueur dans idSet/partial et retourne
-// son watermark local. Erreurs de requête loggées et tolérées (best-effort).
-func collectPlayerReady(ctx context.Context, db *sql.DB, gamertag string, idSet, partial map[string]bool) time.Time {
+// son watermark local. Retourne une ERREUR si la lecture échoue/s'interrompt (query,
+// scan, rows.Err) : le caller NE DOIT PAS figer un set ready tronqué (perte silencieuse
+// de matchs interdite par la doctrine convergent-sync). Une player DB simplement absente
+// est gérée en amont (OpenPlayerRO échoue → joueur ignoré), pas ici.
+func collectPlayerReady(ctx context.Context, db *sql.DB, idSet, partial map[string]bool) (time.Time, error) {
 	var watermark time.Time
 	rows, err := db.QueryContext(ctx, `
 		SELECT match_id, COALESCE(partial_reasons, '[]'), snapshot_ready_at
 		FROM player_match_enrichment_latest
 		WHERE snapshot_ready_at IS NOT NULL`)
 	if err != nil {
-		slog.WarnContext(ctx, "snapshot: lecture ready échouée", "player", gamertag, "err", err)
-		return watermark
+		return watermark, fmt.Errorf("lecture ready: %w", err)
 	}
 	defer rows.Close() //nolint:errcheck
 	for rows.Next() {
 		var id, reasons string
 		var readyAt time.Time
 		if err := rows.Scan(&id, &reasons, &readyAt); err != nil {
-			slog.WarnContext(ctx, "snapshot: scan ready échoué", "player", gamertag, "err", err)
-			return watermark
+			return watermark, fmt.Errorf("scan ready: %w", err)
 		}
 		idSet[id] = true
 		if reasons != "[]" && reasons != "" {
@@ -210,7 +210,10 @@ func collectPlayerReady(ctx context.Context, db *sql.DB, gamertag string, idSet,
 			watermark = readyAt
 		}
 	}
-	return watermark
+	if err := rows.Err(); err != nil {
+		return watermark, fmt.Errorf("itération ready: %w", err)
+	}
+	return watermark, nil
 }
 
 // snapshotUnchanged compare le cut candidat (compte ready + watermark) au manifest de

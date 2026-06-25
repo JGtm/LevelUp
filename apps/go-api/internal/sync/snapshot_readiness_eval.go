@@ -104,6 +104,7 @@ func evaluateSnapshotReadiness(ctx context.Context, playerDB, sharedDB *sql.DB, 
 	cutoff := time.Now().Add(-snapshotGraceWindow())
 
 	var ready []snapshotReadyRow
+	var forced []string // matchs marqués ready DE FORCE après la fenêtre de grâce
 	for _, cand := range candidates {
 		sf, ok := shared[cand.matchID]
 		if !ok {
@@ -120,12 +121,40 @@ func evaluateSnapshotReadiness(ctx context.Context, playerDB, sharedDB *sql.DB, 
 		isReady, reasons := isMatchSnapshotReady(f, caps, agedOut)
 		if isReady {
 			ready = append(ready, snapshotReadyRow{cand.matchID, marshalSnapshotReasons(reasons)})
+			if reasonsContainForced(reasons) {
+				forced = append(forced, cand.matchID)
+			}
 		}
 	}
 	if len(ready) == 0 {
 		return 0, nil
 	}
+	// Le marquage DE FORCE après grâce = acceptation délibérée d'une dérivation jamais
+	// converger (perte de donnée volontaire, doctrine app autonome) → log distinct
+	// (module=snapshot) pour qu'un opérateur le voie au lieu d'un compteur global noyé.
+	if len(forced) > 0 {
+		snapshotLog.WarnContext(ctx, "snapshot: matchs marqués ready DE FORCE (grâce dépassée, dérivation bloquée)",
+			"titleSlug", titleSlug, "xuid", xuid, "count", len(forced), "sample", forcedSample(forced))
+	}
 	return insertSnapshotReadyRows(ctx, playerDB, ready)
+}
+
+// reasonsContainForced indique si la liste de raisons inclut le marquage forcé.
+func reasonsContainForced(reasons []string) bool {
+	for _, r := range reasons {
+		if r == snapReasonForced {
+			return true
+		}
+	}
+	return false
+}
+
+// forcedSample retourne un échantillon (max 10) de match_id forcés pour le log.
+func forcedSample(forced []string) []string {
+	if len(forced) > 10 {
+		return forced[:10]
+	}
+	return forced
 }
 
 func marshalSnapshotReasons(reasons []string) string {

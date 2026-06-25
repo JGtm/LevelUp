@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	"levelup/go-api/internal/games/mappings"
@@ -51,6 +52,30 @@ func (r *ServiceRegistry) Filters(ctx context.Context, slug string) (port.Filter
 	return svc, nil
 }
 
+// matchViewSharedReader retourne le SharedReader des lectures shared de MatchView :
+// un reader snapshot-préféré (lecture découplée du B-swap) avec fallback live, SINGLETON
+// par titre (cache de queriers :memory: partagé entre requêtes). Dégrade sur
+// pdb.SharedReadDB() si cfg indisponible (tests). SCOPED a MatchView : le snapshot
+// reconstruit l'integralite des relations shared MATCH-IMMUTABLES que MatchView lit
+// (fidelite testee) ; les relations shared non-match-immutables (world leaderboard) lues
+// par d'autres repos restent sur le live (pas wrappees).
+func (r *ServiceRegistry) matchViewSharedReader(pdb *duckdb.PlayerDB) duckdb.SharedReader {
+	if pdb == nil {
+		return nil
+	}
+	if r.cfg == nil {
+		return pdb.SharedReadDB()
+	}
+	slug := pdb.TitleSlug
+	if v, ok := r.snapReaders.Load(slug); ok {
+		return v.(duckdb.SharedReader)
+	}
+	paths := title.NewPathResolver(r.cfg.RepoRoot)
+	sr := duckdb.SharedReader(sync_pkg.NewSnapshotPreferredSharedReader(paths, slug, pdb.SharedReadDB()))
+	actual, _ := r.snapReaders.LoadOrStore(slug, sr)
+	return actual.(duckdb.SharedReader)
+}
+
 // MatchView retourne un MatchViewService pour le joueur.
 //
 // Phase C+ multi-titres : injecte le DataAdapter HI pour permettre une
@@ -62,7 +87,8 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 	if err != nil {
 		return nil, err
 	}
-	svc := service.NewMatchViewService(duckdb.NewMatchViewRepo(pdb, pdb.XUID), pdb.XUID)
+	svc := service.NewMatchViewService(
+		duckdb.NewMatchViewRepo(pdb, pdb.XUID).WithSharedReader(r.matchViewSharedReader(pdb)), pdb.XUID)
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		// Voie canonique (repo-first / adapter-fallback) : le viewer gamertag est
 		// requis par LoadMatchDetail des titres GAMERTAG-keyés (Halo 5, Player.Xuid
@@ -157,7 +183,7 @@ func (r *ServiceRegistry) buildFriendsExtrasResolver(mainPDB *duckdb.PlayerDB) p
 		if perr != nil {
 			return nil, perr
 		}
-		return duckdb.NewMatchViewRepo(pdb, pdb.XUID), nil
+		return duckdb.NewMatchViewRepo(pdb, pdb.XUID).WithSharedReader(r.matchViewSharedReader(pdb)), nil
 	}
 	return service.NewFriendsExtrasResolver(friendsByXUID, opener, r.assetURLFor(mainPDB.TitleSlug))
 }
