@@ -6,6 +6,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/legacymatch"
 )
 
 func float64PtrKPI(v float64) *float64 { return &v }
@@ -240,6 +241,65 @@ func TestComputeKPIStats_ZeroPlaySecondsNoPanicOnPerMin(t *testing.T) {
 	if got.KillsPerMinute != 0 || got.DeathsPerMinute != 0 || got.AssistsPerMinute != 0 {
 		t.Errorf("zero play seconds: per-min should be 0, got %+v",
 			[]float64{got.KillsPerMinute, got.DeathsPerMinute, got.AssistsPerMinute})
+	}
+}
+
+// =============================================================================
+// ComputeKPIs (legacy HomeMatchRow) — découplage offensif / défensif (P6)
+// =============================================================================
+
+func float64PtrHM(v float64) *float64 { return &v }
+
+// TestComputeKPIs_OffensiveConversionDecoupledFromDamageTaken : régression H5.
+// Avec damage_dealt présent mais damage_taken == nil (Halo 5 n'a pas de
+// damage_taken), l'AvgOffensiveConversion doit être calculé (> 0) tandis que
+// l'AvgDefensiveResistance reste nil (pas de DR fabriquée).
+func TestComputeKPIs_OffensiveConversionDecoupledFromDamageTaken(t *testing.T) {
+	t.Parallel()
+	timePlayed := 600
+	rows := []legacymatch.HomeMatchRow{
+		{
+			MatchID:        "h5-1",
+			Outcome:        homeOutcomeWin,
+			Kills:          10,
+			Assists:        4,
+			Deaths:         6,
+			DamageDealt:    float64PtrHM(1500),
+			DamageTaken:    nil, // Halo 5 : pas de damage_taken
+			TimePlayedSecs: &timePlayed,
+		},
+	}
+	got := ComputeKPIs(rows, len(rows), 225)
+	if got.AvgOffensiveConversion == nil || *got.AvgOffensiveConversion <= 0 {
+		t.Errorf("AvgOffensiveConversion: want non-nil > 0 (damage_dealt présent), got %v", got.AvgOffensiveConversion)
+	}
+	if got.AvgDefensiveResistance != nil {
+		t.Errorf("AvgDefensiveResistance: want nil (pas de damage_taken → pas de DR fabriquée), got %v", *got.AvgDefensiveResistance)
+	}
+}
+
+// TestComputeKPIs_BothDamageFieldsSetYieldsBothKPIs : garde-fou Halo Infinite —
+// quand damage_dealt ET damage_taken sont présents, les deux KPIs sont calculés
+// (comportement pré-fix inchangé).
+func TestComputeKPIs_BothDamageFieldsSetYieldsBothKPIs(t *testing.T) {
+	t.Parallel()
+	rows := []legacymatch.HomeMatchRow{
+		{
+			MatchID:     "hinf-1",
+			Outcome:     homeOutcomeWin,
+			Kills:       10,
+			Assists:     4,
+			Deaths:      6,
+			DamageDealt: float64PtrHM(1500),
+			DamageTaken: float64PtrHM(1800),
+		},
+	}
+	got := ComputeKPIs(rows, len(rows), 225)
+	if got.AvgOffensiveConversion == nil || *got.AvgOffensiveConversion <= 0 {
+		t.Errorf("AvgOffensiveConversion: want non-nil > 0, got %v", got.AvgOffensiveConversion)
+	}
+	if got.AvgDefensiveResistance == nil || *got.AvgDefensiveResistance <= 0 {
+		t.Errorf("AvgDefensiveResistance: want non-nil > 0 (damage_taken présent), got %v", got.AvgDefensiveResistance)
 	}
 }
 
