@@ -65,4 +65,28 @@ describe('EngagementCurve', () => {
     )
     expect(container).toBeTruthy()
   })
+
+  // Régression (2026-06-25) : state='error' rendait `new Error('error')` →
+  // ChartCard affichait « error » brut (pas orienté end-user). On dégrade
+  // désormais en état vide neutre avec message humain.
+  it('sur erreur, dégrade en état vide avec message humain (jamais « Error » brut)', () => {
+    const { getByText, queryByTestId } = render(
+      <EngagementCurve
+        title="Engagement"
+        points={samplePoints}
+        state="error"
+        errorMessage="Engagement momentanément indisponible"
+      />,
+    )
+    expect(getByText('Engagement momentanément indisponible')).toBeTruthy()
+    // Aucun habillage d'erreur brut (le bug initial : ChartCardError « error »).
+    expect(queryByTestId('chart-card-error')).toBeNull()
+  })
+
+  it('sur erreur sans errorMessage explicite, retombe sur un défaut FR propre', () => {
+    const { getByText } = render(
+      <EngagementCurve title="Engagement" points={samplePoints} state="error" />,
+    )
+    expect(getByText('Engagement momentanément indisponible')).toBeTruthy()
+  })
 })

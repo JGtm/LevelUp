@@ -51,7 +51,7 @@ Sans décision claire, on hérite du pattern « scaffolding then forget » ident
 
 ## References
 
-- Code review : `.ai/review/2026-04-29/axe-11-feature-flags.md` (BLOQUANT 1).
-- Verification : `.ai/review/2026-04-29/verification-finale-scaffolding.md` cas 10.
-- Plan d'action : `.ai/review/2026-04-29/PLAN_ACTION.md` P1.1, P3.4, P6.5, P7.2.
+- Code review : `.ai/V7/review/2026-04-29/axe-11-feature-flags.md` (BLOQUANT 1).
+- Verification : `.ai/V7/review/2026-04-29/verification-finale-scaffolding.md` cas 10.
+- Plan d'action : `.ai/V7/review/2026-04-29/PLAN_ACTION.md` P1.1, P3.4, P6.5, P7.2.
 - Composants orphelins : `apps/web/src/features/prestige/components/{MomentCard,ArcSummary,StatsGlobales}.tsx`.

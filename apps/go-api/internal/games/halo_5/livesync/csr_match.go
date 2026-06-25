@@ -9,6 +9,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	halo5 "levelup/go-api/internal/games/halo_5"
@@ -70,7 +71,12 @@ func writePerMatchCSR(ctx context.Context, playerDB *sql.DB, matchID string, cur
 			(match_id, rating_type, rating_value, tier, sub_tier, tier_label, playlist_group, start_time)
 		VALUES (?, 'CSR', ?, ?, ?, ?, 'h5_arena', ?)`,
 		matchID, float64(cur.Csr), tier, sub, label, start)
-	return err == nil
+	if err != nil {
+		slog.WarnContext(ctx, "h5 writePerMatchCSR: insert match_skill_rank échoué",
+			"err", err, "match_id", matchID)
+		return false
+	}
+	return true
 }
 
 // writeCareerSR insère un snapshot de rang SR dans career_progression (rang XP H5),
@@ -84,12 +90,17 @@ func writeCareerSR(ctx context.Context, playerDB *sql.DB, xuid string, spartanRa
 	if !ok {
 		return false
 	}
+	// rank_name = "SR N" (title-aware) : sinon la Home retombe sur le fallback
+	// générique "Rang N" (career.rank_catalog = not_exposed pour h5). Source unique
+	// du libellé : halo5.SpartanRankLabel (partagé avec l'asset ref canonique).
 	res, err := playerDB.ExecContext(ctx, `
-		INSERT INTO career_progression (xuid, rank, current_xp, xp_for_next_rank, xp_total, is_max_rank, recorded_at)
-		SELECT ?, ?, ?, ?, ?, ?, ?
+		INSERT INTO career_progression (xuid, rank, rank_name, current_xp, xp_for_next_rank, xp_total, is_max_rank, recorded_at)
+		SELECT ?, ?, ?, ?, ?, ?, ?, ?
 		WHERE NOT EXISTS (SELECT 1 FROM career_progression WHERE xuid = ? AND recorded_at = ?)`,
-		xuid, spartanRank, currentXP, xpForNext, xpTotal, isMax, start.Time, xuid, start.Time)
+		xuid, spartanRank, halo5.SpartanRankLabel(spartanRank), currentXP, xpForNext, xpTotal, isMax, start.Time, xuid, start.Time)
 	if err != nil {
+		slog.WarnContext(ctx, "h5 writeCareerSR: insert career_progression échoué",
+			"err", err, "xuid", xuid, "rank", spartanRank)
 		return false
 	}
 	n, _ := res.RowsAffected()

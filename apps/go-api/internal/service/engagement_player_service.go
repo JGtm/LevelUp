@@ -163,6 +163,11 @@ func (s *PlayerEngagementService) GetTimeseries(
 	rows, fallbackIDs, err := s.resolveFilteredRowsDesc(ctx, filters)
 	if err != nil {
 		if errors.Is(err, port.ErrEngagementUnavailable) {
+			// Dégradation gracieuse (200 série vide) : rendre observable au lieu de
+			// la masquer — un titre/joueur sans colonnes engagement ne doit pas être
+			// un trou noir silencieux dans les logs.
+			slog.WarnContext(ctx, "engagement timeseries indisponible (migration/colonnes absentes) → série vide",
+				"xuid", s.xuid)
 			return emptyEngagementTimeseries(), nil
 		}
 		return nil, err

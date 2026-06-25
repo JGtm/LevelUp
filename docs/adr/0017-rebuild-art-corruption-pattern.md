@@ -4,7 +4,7 @@
 **Status** : ✅ **CLOSED (2026-05-24)** — superseded by ADR 0019 + Phase 4 (post-sync batch INSERT-only). L'auto-heal runtime au boot a été SUPPRIMÉ le 2026-05-24 (Phase 5 cleanup) suite à validation empirique de Phase 4 (16 syncs / 0 FATAL). Le rebuild ART reste disponible comme **outil ops one-shot** via `cmd/force_rebuild_art/` (étendu 2026-05-24 pour rebuild aussi `match_skill_rank`). Requis avant tout déploiement Phase 4 sur DB héritée d'un mode legacy (corruption pré-existante).
 **Branches** : `fix/duckdb-art-corruption-rebuild` (match_participants), commits `2e0f0247` + `651b9de6` (career_progression)
 **Related** : ADR 0008 (multi-title DB schema), ADR 0016 (SharedDBProvider B-swap), **ADR 0019 (Collect→Persist, qui rend ce pattern obsolète)**
-**Incidents** : [docs/INCIDENT_2026-05-20_match_participants_index.md](../INCIDENT_2026-05-20_match_participants_index.md)
+**Incidents** : [docs/INCIDENT_2026-05-20_match_participants_index.md](../../.ai/archive/stabilisation-2026-05-22/INCIDENT_2026-05-20_match_participants_index.md)
 
 ## Context
 

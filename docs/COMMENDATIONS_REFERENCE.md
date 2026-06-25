@@ -232,7 +232,7 @@ Type `composite`; value = count of mastered children.
 | `4261842076` | Massacre (Killamanjaro) | `opportunist`, `spartan_carnage` |
 | `9000000001` | Vengeur (custom medal definition) | `avenger` |
 
-The full medal catalogue is populated from the 343i API; `SeedMedalDefinitions` (`seed_citation_data.go`) injects the custom medals (e.g. `9000000001`) when `medal_definitions` is empty.
+The full medal catalogue is populated from the 343i API. `SeedMedalDefinitions` (`internal/ops/seed.go`) only verifies and counts the `medal_definitions` table — it does **not** inject custom medals. The id `9000000001` (Vengeur/avenger) is not a real 343i medal: it exists only as the `MedalID` of the `avenger` citation mapping in `seed_citation_data.go`.
 
 ---
 

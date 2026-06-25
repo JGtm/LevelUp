@@ -413,12 +413,19 @@ func (h *SettingsHandler) handlePostMediaResetIndex(ctx context.Context, in *set
 		}
 	}
 
+	// Le titre courant (X-LevelUp-Title / session) vit dans le ctx de la REQUÊTE,
+	// mais le job tourne en async sur context.Background() → on capture le slug ICI
+	// et on le ré-injecte dans le ctx du job. Sinon l'indexation retombe sur
+	// halo_infinite (défaut ctxkeys.TitleSlug) et n'indexe JAMAIS les médias des
+	// autres titres (ex. Halo 5). Cf. media_index_service (chemins résolus par titre).
+	titleSlug := ctxkeys.TitleSlug(ctx)
+
 	go func() {
 		step := "Reset index médias en cours"
 		h.jobStore.SetStatus(job.JobID, domain.JobStatusRunning, &step)
 
 		err := h.mediaIndexer.ResetAndReindex(
-			context.Background(),
+			ctxkeys.WithTitleSlug(context.Background(), titleSlug),
 			h.cfg.RepoRoot,
 			capturesBaseDir,
 			timezone,
@@ -471,12 +478,16 @@ func (h *SettingsHandler) handlePostMediaScan(ctx context.Context, _ *struct{}) 
 		}
 	}
 
+	// Cf. handlePostMediaResetIndex : ré-injecter le titre courant dans le job async
+	// (sinon halo_infinite par défaut → médias des autres titres jamais scannés).
+	titleSlug := ctxkeys.TitleSlug(ctx)
+
 	go func() {
 		step := "Scan médias en cours"
 		h.jobStore.SetStatus(job.JobID, domain.JobStatusRunning, &step)
 
 		err := h.mediaIndexer.ScanAllMedia(
-			context.Background(),
+			ctxkeys.WithTitleSlug(context.Background(), titleSlug),
 			h.cfg.RepoRoot,
 			capturesBaseDir,
 			timezone,

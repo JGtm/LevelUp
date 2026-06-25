@@ -26,6 +26,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/canonical"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	halo5migrations "levelup/go-api/internal/games/halo_5/migrations"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
@@ -231,14 +232,18 @@ func seedMedals(db *sql.DB, key string, fr, descFR map[string]string) {
 		}
 		// h5 : `difficulty` (0..245) n'est PAS l'enum 0-3 d'Infinite → stocké brut en
 		// VARCHAR (difficulty), difficulty_index laissé à 0 (non applicable). medal_type
-		// = classification (Style/MultiKill/CTF…). Icône = sprite (feuille + offset).
+		// = classification normalisée vers les clés canoniques inter-titres
+		// (multikill/spree/skill/style/mode/proficiency/other) via
+		// canonical.NormalizeMedalCategory — sinon l'enum brut H5 (MultiKill, Style,
+		// CaptureTheFlag…) court-circuite la traduction frontend (categoryLabels).
+		// Icône = sprite (feuille + offset).
 		_, err := db.Exec(`INSERT OR REPLACE INTO medal_definitions
 			(medal_name_id, name_en, name_fr, description_en, description_fr,
 			 difficulty_index, difficulty, medal_type,
 			 sprite_sheet_url, sprite_left, sprite_top, sprite_width, sprite_height)
 			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			id, m.Name, frOr(fr, m.Name), m.Description, lookupOr(descFR, m.Name, m.Description),
-			0, strconv.Itoa(m.Difficulty), m.Classification,
+			0, strconv.Itoa(m.Difficulty), canonical.NormalizeMedalCategory(m.Classification),
 			m.SpriteLocation.SpriteSheetURI, m.SpriteLocation.Left, m.SpriteLocation.Top,
 			m.SpriteLocation.Width, m.SpriteLocation.Height)
 		if err != nil {

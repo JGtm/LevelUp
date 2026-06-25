@@ -431,3 +431,26 @@ func TestBuildAvailableTitles_FiltersArchivedKeepsComingSoon(t *testing.T) {
 		t.Errorf("le titre actif par défaut %q doit apparaître", titlePkg.DefaultSlug)
 	}
 }
+
+// TestBuildAvailableTitles_ExcludesInternal — revue UX H5 : une fixture de test
+// interne (IsInternal=true, ex synthetic_title_b) ne doit JAMAIS apparaître dans
+// le switcher utilisateur, même en coming_soon. Garde-fou anti-régression contre
+// la fuite « Synthetic Title B » vue en prod.
+func TestBuildAvailableTitles_ExcludesInternal(t *testing.T) {
+	reg := titlePkg.NewRegistry()
+	reg.Register(&titlePkg.TitleDescriptor{Slug: "internal_fixture", Name: "Internal", Status: titlePkg.StatusComingSoon, IsInternal: true})
+	reg.Register(&titlePkg.TitleDescriptor{Slug: "real_soon", Name: "Real Soon", Status: titlePkg.StatusComingSoon})
+
+	titles := buildAvailableTitlesFrom(reg)
+
+	byslug := map[string]domain.TitleSummary{}
+	for _, ts := range titles {
+		byslug[ts.Slug] = ts
+	}
+	if _, ok := byslug["internal_fixture"]; ok {
+		t.Error("un titre IsInternal ne doit pas apparaître dans le switcher utilisateur")
+	}
+	if _, ok := byslug["real_soon"]; !ok {
+		t.Error("un coming_soon NON interne doit rester visible dans le switcher")
+	}
+}

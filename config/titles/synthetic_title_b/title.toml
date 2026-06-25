@@ -23,6 +23,10 @@ schema_version = 1
 name = "Synthetic Title B"
 provider = "synthetic"
 status = "coming_soon"
+# Fixture multi-titre INTERNE : découverte + enregistrée + inspectable côté admin,
+# mais JAMAIS exposée dans le switcher utilisateur (cf. Registry.PublicTitles).
+# Évite que cette fixture de test « fuite » dans l'UI prod (vu en revue live H5).
+is_internal = true
 icon_url = ""
 xbox_title_id = "999000111"
 steam_app_id = ""

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -78,6 +80,43 @@ var _ service.MediaIndexer = (*mockMediaIndexer)(nil)
 type mediaIndexError struct{ msg string }
 
 func (e *mediaIndexError) Error() string { return e.msg }
+
+// titleCapturingIndexer capture le slug du titre vu par l'indexer DANS son ctx
+// (le job tourne en async → on vérifie que le titre courant de la requête est bien
+// propagé jusqu'au job, et pas perdu au profit du défaut halo_infinite).
+type titleCapturingIndexer struct {
+	mu    sync.Mutex
+	reset string
+	scan  string
+}
+
+func (m *titleCapturingIndexer) ResetAndReindex(ctx context.Context, _ string, _ string, _ string, _ bool, _ *jobs.Store, _ string) error {
+	m.mu.Lock()
+	m.reset = ctxkeys.TitleSlug(ctx)
+	m.mu.Unlock()
+	return nil
+}
+
+func (m *titleCapturingIndexer) ScanAllMedia(ctx context.Context, _ string, _ string, _ string, _ *jobs.Store, _ string) error {
+	m.mu.Lock()
+	m.scan = ctxkeys.TitleSlug(ctx)
+	m.mu.Unlock()
+	return nil
+}
+
+func (m *titleCapturingIndexer) capturedReset() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.reset
+}
+
+func (m *titleCapturingIndexer) capturedScan() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.scan
+}
+
+var _ service.MediaIndexer = (*titleCapturingIndexer)(nil)
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -156,6 +195,60 @@ func TestPostMediaResetIndex_Stub_Replaced(t *testing.T) {
 	// Vérifier que le step ne contient plus "stub"
 	if finalJob.CurrentStep != nil && containsCI(*finalJob.CurrentStep, "stub") {
 		t.Errorf("CurrentStep contient encore 'stub' : %q", *finalJob.CurrentStep)
+	}
+}
+
+// TestPostMediaResetIndex_PropagatesCurrentTitle : le job async doit recevoir le
+// titre COURANT de la requête (ré-injecté dans le ctx background via WithTitleSlug),
+// PAS le défaut halo_infinite. Régression du bug multi-titre : sans propagation, le
+// job tournait sur context.Background() → ctxkeys.TitleSlug repli halo_infinite →
+// l'indexation n'aurait jamais touché les médias d'un autre titre (ex. Halo 5).
+func TestPostMediaResetIndex_PropagatesCurrentTitle(t *testing.T) {
+	idx := &titleCapturingIndexer{}
+	r, jobStore := newSettingsRouterWithIndexer(t, idx)
+
+	body := `{"confirm_destructive": true, "reindex_after_reset": true}`
+	req := httptest.NewRequest(http.MethodPost, "/settings/media/reset-index", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(ctxkeys.WithTitleSlug(req.Context(), "halo_5"))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("attendu 202, obtenu %d: %s", w.Code, w.Body.String())
+	}
+	var jobResp domain.AsyncJobStatus
+	if err := json.NewDecoder(w.Body).Decode(&jobResp); err != nil {
+		t.Fatalf("décodage réponse: %v", err)
+	}
+	pollJobSucceeded(t, jobStore, jobResp.JobID)
+
+	if got := idx.capturedReset(); got != "halo_5" {
+		t.Errorf("le job async doit recevoir halo_5, got %q (titre courant perdu → bug multi-titre)", got)
+	}
+}
+
+// TestPostMediaScan_PropagatesCurrentTitle : idem pour le scan non-destructif.
+func TestPostMediaScan_PropagatesCurrentTitle(t *testing.T) {
+	idx := &titleCapturingIndexer{}
+	r, jobStore := newSettingsRouterWithIndexer(t, idx)
+
+	req := httptest.NewRequest(http.MethodPost, "/settings/media/scan", nil)
+	req = req.WithContext(ctxkeys.WithTitleSlug(req.Context(), "halo_5"))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("attendu 202, obtenu %d: %s", w.Code, w.Body.String())
+	}
+	var jobResp domain.AsyncJobStatus
+	if err := json.NewDecoder(w.Body).Decode(&jobResp); err != nil {
+		t.Fatalf("décodage réponse: %v", err)
+	}
+	pollJobSucceeded(t, jobStore, jobResp.JobID)
+
+	if got := idx.capturedScan(); got != "halo_5" {
+		t.Errorf("le scan async doit recevoir halo_5, got %q", got)
 	}
 }
 

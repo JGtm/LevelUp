@@ -93,7 +93,7 @@ go run ./cmd/levelup add-title --name "Halo MCC" [--slug s] [--capabilities matc
 ### Médias
 
 ```bash
-go run ./cmd/levelup index-media --gamertag X [--force-rescan] [--tolerance-min N]
+go run ./cmd/levelup index-media --gamertag X [--force-rescan] [--buffer-min N]
 ```
 
 ### Diagnostic & ops

@@ -254,7 +254,7 @@ catalogue Prestige sera seed.
 | Default tier sur acceptance | Prestige recalcule via baseline. Le `suggested_tier` est indicatif UI. |
 | Max arcs coach actifs | 1 par joueur (réutilise sémantique pilot_mode `total_active_max`). |
 | Expiration proposals | Pas d'expiration fixe. Cleanup par supersession + obsolescence sur completion. |
-| Squad coach (pool filtré par composition d'équipe) | V3 — backlog explicite (`.ai/BACKLOG_COACH_PRESTIGE.md`). |
+| Squad coach (pool filtré par composition d'équipe) | V3 — backlog explicite (`.ai/V7/BACKLOG_COACH_PRESTIGE.md`). |
 | Coach négatif soft | V3 — hors scope, décision produit séparée. |
 | Création de templates ad-hoc | V2 — cf. ADR 0028 (synthèse). |
 | Création d'arcs ad-hoc | V2 — `arc_composer.go`, étapes = templates catalog + synthétisés mélangés. |
@@ -265,4 +265,4 @@ catalogue Prestige sera seed.
 - ADR 0014 — Progression Tracking V2 (coach, streaks, records, milestones)
 - ADR 0019 — Collect / Persist (pattern d'écriture append-only sur tables critiques)
 - ADR 0028 — Template synthesis (synthèse dynamique cf. invariant I3)
-- `.ai/BACKLOG_COACH_PRESTIGE.md` — V3+ explicite (squad, négatif soft, cross-titre)
+- `.ai/V7/BACKLOG_COACH_PRESTIGE.md` — V3+ explicite (squad, négatif soft, cross-titre)

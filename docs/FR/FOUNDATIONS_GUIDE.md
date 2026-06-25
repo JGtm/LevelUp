@@ -17,7 +17,7 @@ La migration Go + React de LevelUp repose sur **quatre fondations transverses** 
 | 3 | **Manifests TOML i18n** | `apps/web/src/lib/i18n/manifests/*.toml` | Source unique pour toutes les strings UI (FR + EN) |
 | 4 | **Wrappers ECharts** | `apps/web/src/components/charts/*.tsx` | Composants charts client-side réutilisables |
 
-Ces fondations ont été figées en Phase 0 du `.ai/PLAN_META_FOUNDATIONS_GO.md` et validées sur 8 migrations de pages (Phases 1–3). Elles sont stables. **Ne les réinvente pas.**
+Ces fondations ont été figées en Phase 0 du `.ai/V7/PLAN_META_FOUNDATIONS_GO.md` et validées sur 8 migrations de pages (Phases 1–3). Elles sont stables. **Ne les réinvente pas.**
 
 ---
 
@@ -155,7 +155,7 @@ Pour les règles + allow-list, voir l'ADR 0003.
 
 ### 3.4 Wrappers ECharts
 
-11 wrappers réutilisables dans `apps/web/src/components/charts/` :
+11 wrappers réutilisables (9 dans `apps/web/src/components/charts/`, 2 page-specific dans `features/timeseries/`) :
 
 | Wrapper | Cas d'usage |
 |---|---|
@@ -341,7 +341,7 @@ R :
 | `docs/adr/0002-canonical-player-match-row.md` | Pourquoi les types canoniques |
 | `docs/adr/0003-i18n-manifest-and-linter.md` | Pourquoi les manifests TOML + lint |
 | `docs/adr/0004-narrative-engine.md` | Pourquoi 8 rôles + radar 6 axes |
-| `.ai/PLAN_META_FOUNDATIONS_GO.md` | Plan maître (Phases 0–4) |
+| `.ai/V7/PLAN_META_FOUNDATIONS_GO.md` | Plan maître (Phases 0–4) |
 | `.claude/skills/arch-rules/SKILL.md` | Règles de couches + contrat multi-titres |
 | `.claude/skills/canonical-types/SKILL.md` | Catalogue des types |
 | `.claude/skills/color-tokens/SKILL.md` | Système de tokens couleur |

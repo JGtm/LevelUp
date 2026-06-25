@@ -1,460 +1,63 @@
-# Architecture LevelUp v6 — DuckDB Shared Matches + i18n Assets
+# Architecture LevelUp v6 — DuckDB Shared Matches + Assets i18n
 
-> **Date** : 2026-04-12
-> **Version** : 6.3.0
-> **Évolution depuis** : v5.1 (Shared Matches) → v6.0 (couche résolution ID) → v6.3 (asset_translations)
+> Version anglaise : [../ARCHITECTURE_V6.md](../ARCHITECTURE_V6.md)
 
-> Version anglaise : [ARCHITECTURE_V6.md](../ARCHITECTURE_V6.md)
+> **Version** : 6.3.0 — **Mise à jour** : 2026-04-12
 
----
+LevelUp utilise une architecture DuckDB v6 fondée sur les **matchs partagés** et une **i18n centralisée via `asset_translations`** :
 
-## Vue d'Ensemble
+- `data/warehouse/shared_matches_v2.duckdb` — toutes les données de matchs, partagées entre tous les joueurs
+- `data/warehouse/metadata.duckdb` — référentiels : noms d'assets (14 langues), armes, rangs de carrière, citations
+- `data/players/{gamertag}/stats.duckdb` — enrichissements par joueur uniquement
 
-LevelUp v6 étend l'architecture **Shared Matches** avec une **couche d'abstraction SQL** (vues de résolution) et un système centralisé d'**internationalisation des assets** (`asset_translations`). Les noms de maps, modes de jeu, playlists et variantes sont désormais stockés en base dans 14 langues et exposés via la vue `v_match_full`.
+## Bases de données
 
-### Gains mesurés
-
-| Métrique | v4 | v5.0 | v5.1 | Gain total |
-|----------|----|----|------|------|
-| Stockage par joueur | 200 MB | 30 MB | ~4 MB | **-98%** |
-| Connexion DB | - | 80ms | <20ms | **-75%** |
-| Première page UI | - | 1500ms | <800ms | **-47%** |
-| SQLite runtime | 7 | 0 | 0 | **-100%** |
-| Pandas métier | 7 | 7 | 0 | **-100%** |
-| Tables obsolètes/joueur | 13 | 8 | 0 | **-100%** |
-| Tests | 1065 | 2768 | 3323 | **+212%** |
-
-### 7 Points Critiques v5.1
-
-1. **`match_stats` n'existe plus** dans les player DBs
-2. **`player_match_stats` n'existe plus** — colonnes MMR dans `shared.match_participants`
-3. **`xuid_aliases` est dans shared uniquement**
-4. **`player_match_enrichment` est la SEULE table match** dans les player DBs
-5. **Coéquipiers chargés depuis shared**, pas les DBs individuelles
-6. **Cleanup brutal intentionnel** : erreurs explicites si code résiduel accède aux tables supprimées
-7. **Sync écrit dans player DBs** : `player_match_enrichment` + `personal_score_awards` uniquement
-
----
-
-## Diagramme d'Architecture
-
-```
-┌─────────────────────────────────────────────────────┐
-│                  Streamlit UI                        │
-│  (pages/, components/, visualization/)               │
-└──────────────────┬──────────────────────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────────────────────┐
-│              DuckDBRepository                         │
-│  (src/data/repositories/duckdb_repo.py)              │
-│                                                      │
-│  ┌─────────────────┐  ┌──────────────────────────┐   │
-│  │ _get_match_source│  │ ATTACH shared READ_ONLY  │   │
-│  │ (sous-requête)   │  │ ATTACH meta READ_ONLY    │   │
-│  └─────────────────┘  └──────────────────────────┘   │
-└──────┬───────────────────────┬───────────────────────┘
-       │                       │
-       ▼                       ▼
-┌──────────────┐   ┌───────────────────────────────────┐
-│ stats.duckdb │   │     shared_matches.duckdb          │
-│ (par joueur) │   │     (data/warehouse/)              │
-│              │   │                                    │
-│ ┌──────────┐ │   │ ┌────────────────┐ ┌────────────┐ │
-│ │enrichment│ │   │ │match_registry  │ │match_      │ │
-│ │teammates │ │   │ │(1 ligne/match) │ │participants│ │
-│ │antagonist│ │   │ └────────────────┘ │(tous joueur│ │
-│ │citations │ │   │ ┌────────────────┐ └────────────┘ │
-│ └──────────┘ │   │ │highlight_events│ ┌────────────┐ │
-└──────────────┘   │ │(tous events)   │ │medals_     │ │
-                   │ └────────────────┘ │earned      │ │
-┌──────────────┐   │ ┌────────────────┐ └────────────┘ │
-│metadata.duckdb│  │ │xuid_aliases   │                 │
-│(référentiels) │  │ └────────────────┘                 │
-└──────────────┘   └───────────────────────────────────┘
-```
-
----
-
-## Structure des Fichiers
-
-```
+```text
 data/
-├── warehouse/
-│   ├── metadata.duckdb            # Référentiels (asset_translations 14 langues, weapon_labels, career_ranks, citation_mappings, challenge_*)
-│   ├── shared_matches.duckdb      # Base partagée - TOUS les matchs
-│   │   ├── match_registry         # Registre central (1 ligne par match unique)
-│   │   ├── match_participants     # Stats de TOUS les joueurs de TOUS les matchs
-│   │   ├── highlight_events       # TOUS les événements filmés
-│   │   ├── medals_earned          # Médailles de TOUS les joueurs
-│   │   ├── xuid_aliases           # Mapping global xuid→gamertag
-│   │   └── schema_version         # Versioning du schéma
-│   └── shared_pve.duckdb          # Stats PvE Firefight — v5.2
-│       └── pve_match_stats        # Waves, boss, kills par type d'ennemi (par joueur/match)
-│
-├── players/
-│   └── {gamertag}/
-│       ├── stats.duckdb           # Enrichissements PERSONNELS uniquement
-│       │   ├── player_match_enrichment  # performance_score, session_id, is_with_friends
-│       │   ├── personal_score_awards    # Awards objectifs (PersonalScores API)
-│       │   ├── antagonists              # Rivalités (top killers/victimes)
-│       │   ├── match_citations          # Citations calculées par match
-│       │   ├── career_progression       # Historique rangs
-│       │   ├── media_files              # Fichiers médias
-│       │   ├── media_match_associations # Associations média↔match
-│       │   ├── match_skill_rank         # Rating LUSR ou CSR par match — v5.3
-│       │   └── challenge_snapshots      # Historique des défis joueur (active/completed/upcoming)
-│       └── archive/               # Archives Parquet (saisons)
-│
-└── cache/                         # Cache temporaire (thumbnails, etc.)
+  warehouse/
+    metadata.duckdb
+    shared_matches_v2.duckdb
+    shared_pve.duckdb
+  players/
+    {gamertag}/
+      stats.duckdb
 ```
+
+## Tables clés (vue d'ensemble)
+
+### metadata.duckdb
+
+- `asset_translations` : noms localisés pour les maps, playlists, paires et variantes de jeu — 14 langues BCP-47 (`en-US`, `fr-FR`, …) — **ajouté en v6.3** — peuplé par les migrations Go de metadata (`internal/games/halo_infinite/migrations/`) lors du seeding de la metadata
+- `challenge_definitions` : définitions versionnées des défis Halo (`challenge_path` + `content_hash`) avec catégorie, difficulté, seuil et récompenses XP
+- `challenge_translations` : titres et descriptions de défis localisés dans toutes les langues exposées par le CMS (BCP-47, fallback `en-US`)
+- `weapon_labels` : weapon_id (filmshell UBIGINT) → `name_en`, `name_fr` — ajouté en v5.4
+- `career_ranks` : définitions des paliers de rang
+- `citation_mappings` : mappings médaille → citation
+- `mode_name_tr` / `mode_*` : traductions des noms de modes de jeu (surcharges legacy, supplantées par `asset_translations` pour les noms de map/playlist/paire/variante)
+
+### shared_matches_v2.duckdb
+
+Tables principales :
+- `match_registry` : une ligne par match
+- `match_participants` : stats par joueur pour tous les matchs
+
+Vues SQL (`ensure_resolution_views()`) :
+- `v_match_full` : `match_registry` enrichi des noms i18n issus de `meta.asset_translations` — 8 LEFT JOIN (en-US + fr-FR × map/playlist/paire/variante). Colonnes : `map_name`, `map_name_fr`, `game_variant_name`, `game_variant_name_fr`, etc.
+- `v_gamertag_lookup` : XUID → gamertag courant (FULL OUTER JOIN `xuid_aliases` + `match_participants`)
+- `v_killer_victim_full` : paires killer/victim avec gamertags résolus
+
+> **Important** : `v_match_full` requiert que `metadata.duckdb` soit ATTACHée comme `meta` dans la même connexion pour que les JOIN i18n fonctionnent. `DuckDBRepository` s'en charge automatiquement.
+
+### stats.duckdb (par joueur)
+
+- `player_match_enrichment` : performance_score, session_id, etc.
+- `challenge_snapshots` : historique append-only de l'état des défis par joueur (actif/complété/à venir, progression, XP, expiration), dédupliqué au changement d'état
 
 ---
 
-## Composants Principaux
+## Architecture multi-titres (Sprint 44)
 
-### 1. DuckDBRepository (`src/data/repositories/duckdb_repo.py`)
-
-Le repository central d'accès aux données. En v5, il utilise **ATTACH** pour monter
-plusieurs bases DuckDB simultanément :
-
-```python
-# Connexion multi-DB
-conn = duckdb.connect(player_db_path)
-conn.execute("ATTACH ? AS shared (READ_ONLY)", [shared_db_path])
-conn.execute("ATTACH ? AS meta (READ_ONLY)", [metadata_db_path])
-```
-
-La sous-requête `_get_match_source()` abstrait la jointure entre `shared.match_registry`,
-`shared.match_participants` et `player_match_enrichment`, exposant un alias `match_stats`
-compatible avec toutes les pages UI existantes.
-
-### 2. DuckDBSyncEngine (`src/data/sync/engine.py`)
-
-Le moteur de synchronisation détecte automatiquement les matchs partagés :
-
-- **Match connu** (`_process_known_match`) : Le match existe déjà dans `match_registry`.
-  Seul l'enrichissement personnel est calculé (performance_score, session). Économie : 1-2 appels API.
-- **Match nouveau** (`_process_new_match`) : Sync complète — insertion dans `match_registry`,
-  `match_participants` (tous les joueurs), `highlight_events`, `medals_earned`.
-
-### 3. Transformers (`src/data/sync/transformers.py`)
-
-Fonctions d'extraction des données JSON de l'API Halo vers les structures DuckDB :
-
-- `extract_match_registry_data()` : Données communes du match
-- `extract_all_medals()` : Médailles de TOUS les joueurs (pas seulement le joueur courant)
-- `extract_collective_stats()` : Stats de tous les participants
-
-### 4. CitationEngine (`src/analysis/citations/engine.py`)
-
-Moteur de calcul des citations (commendations) basé sur SQL :
-
-- Lecture depuis `shared.medals_earned` et `shared.match_participants`
-- Agrégation SQL performante (vs itérations row-by-row en v4)
-- Stockage dans `match_citations` (player DB)
-- 14 règles configurables via `citation_mappings` (metadata DB)
-
-### 5. Factory (`src/data/repositories/factory.py`)
-
-Pattern Factory pour créer des `DuckDBRepository` avec auto-détection des chemins :
-
-- `shared_db_path` : Auto-détecté depuis `data/warehouse/shared_matches.duckdb`
-- `metadata_db_path` : Auto-détecté depuis `data/warehouse/metadata.duckdb`
-- Fallback v4 transparent si `shared_matches.duckdb` n'existe pas
-
-### 6. asset_translations — Internationalisation des assets (v6.3)
-
-La table `asset_translations` dans `metadata.duckdb` est la **source unique** de noms localisés pour les assets Halo (cartes, modes, playlists, variantes).
-
-#### Peuplement
-
-```bash
-python scripts/populate_asset_translations.py
-# Options
-python scripts/populate_asset_translations.py --force        # réécrit tout
-python scripts/populate_asset_translations.py --dry-run      # simule sans écrire
-python scripts/populate_asset_translations.py --types map    # type spécifique
-```
-
-Le script utilise `_build_version_id_cache()` pour récupérer les `VersionId` requis par l'API SPNKr Discovery UGC avant de paralléliser les 14 langues via `asyncio.gather`.
-
-#### Utilisation via v_match_full
-
-```sql
--- Dans shared_matches_v2.duckdb (meta doit être ATTACHé)
-SELECT match_id, map_name, map_name_fr, game_variant_name, game_variant_name_fr
-FROM v_match_full
-WHERE map_name_fr IS NOT NULL
-LIMIT 10;
-```
-
-`DuckDBRepository` attache automatiquement `metadata.duckdb` en `meta` à l'ouverture de chaque connexion. Aucune configuration manuelle requise.
-
-### 6bis. challenge_definitions / challenge_translations — Défis Halo (v7)
-
-Les définitions CMS de défis Halo sont désormais historisées dans `metadata.duckdb` :
-
-- `challenge_definitions` : versionnement par couple `(challenge_path, content_hash)` avec `category`, `difficulty`, `threshold_for_success`, `reward_xp`
-- `challenge_translations` : titres et descriptions dans toutes les langues exposées par le CMS, normalisées en BCP-47 avec fallback `en-US`
-
-Les états joueur vus en live (`/decks`) sont stockés dans `stats.duckdb` via `challenge_snapshots` en mode append-only dédupliqué, afin de conserver une timeline exploitable sans réécrire la même ligne à chaque refresh.
-
-#### Langues disponibles
-
-| Code BCP-47 | Langue |
-|-------------|--------|
-| `en-US` | Anglais (US) |
-| `fr-FR` | Français |
-| `de-DE` | Allemand |
-| `es-ES` | Espagnol (ES) |
-| `es-MX` | Espagnol (MX) |
-| `it-IT` | Italien |
-| `ja-JP` | Japonais |
-| `ko-KR` | Coréen |
-| `nl-NL` | Néerlandais |
-| `pl-PL` | Polonais |
-| `pt-BR` | Portugais (BR) |
-| `ru-RU` | Russe |
-| `zh-Hans` | Chinois simplifié |
-| `zh-Hant` | Chinois traditionnel |
-
-### 7. SyncScope (`src/data/sync/scope.py`)
-
-**Nouveau en v5.2** — Dataclass centralisant les 30+ flags de données partagés
-entre `sync.py`, `backfill_data.py` et leurs sous-modules (orchestrator, detection, engine).
-
-```python
-from src.data.sync.scope import SyncScope
-
-# Tout activer
-scope = SyncScope.make_all(max_matches=100)
-
-# Depuis argparse
-scope = SyncScope.from_cli_args(args)
-
-# Sélection fine
-scope = SyncScope(medals=True, events=True, force_medals=True)
-scope.resolve()  # force_medals → medals=True automatiquement
-```
-
-**Rôle** : Remplace la copie de 30+ kwargs à travers la chaîne
-`cli.py` → `backfill_data.py` → `orchestrator.py` → `detection.py` → `_backfill_with_api`.
-
-**Registres internes** :
-- `_ALL_DATA_FIELDS` : champs activés par `--all-data`
-- `_FORCE_MAP` : implications `force_X` → `X`
-- `_REQUESTED_TYPE_MAP` : mapping champ → clé bitmask `backfill_completed`
-
-**Pour ajouter un nouveau type de données** :
-1. Ajouter le champ booléen dans `SyncScope` + registres
-2. Ajouter l'argument CLI dans `scripts/backfill/cli.py`
-3. Implémenter la logique métier dans l'orchestrateur / engine
-
-> **Note legacy** : Les fonctions `backfill_player_data`, `backfill_all_players`,
-> `_backfill_with_api` et `find_matches_missing_data` conservent les 30+ kwargs
-> individuels pour rétro-compatibilité (marqués `LEGACY` dans le code).
-> Nouveau code : toujours passer `scope=SyncScope(...)`.
-
----
-
-## Flux de Données
-
-### Synchronisation (Sync)
-
-```
-API Halo (SPNKr)
-     │
-     ▼
-DuckDBSyncEngine
-     │
-     ├── Match nouveau ────────────────────────────────┐
-     │   1. Fetch match_stats (API)                    │
-     │   2. Fetch skill (API)                          │
-     │   3. Fetch events (API)                         ▼
-     │   4. extract_match_registry_data()     shared_matches.duckdb
-     │   5. extract_collective_stats()        ├── match_registry
-     │   6. extract_all_medals()              ├── match_participants
-     │                                        ├── highlight_events
-     │                                        └── medals_earned
-     │
-     └── Match connu ──────┐
-         1. Calcul perf    │
-         2. Session detect ▼
-                      stats.duckdb (joueur)
-                      └── player_match_enrichment
-```
-
-### Lecture (UI)
-
-```
-Page UI (ex: timeseries.py)
-     │
-     ▼
-DuckDBRepository.load_matches()
-     │
-     ├── _get_match_source()
-     │   └── JOIN shared.match_registry
-     │         + shared.match_participants (WHERE xuid = ?)
-     │         + player_match_enrichment
-     │   → alias "match_stats"
-     │
-     └── Résultat : Polars DataFrame
-```
-
----
-
-## Modules Applicatifs
-
-```
-src/
-├── app/                          # Orchestration application
-│   ├── state.py                  # Gestion session_state Streamlit
-│   ├── routing.py                # Navigation entre pages
-│   ├── sidebar.py                # Sidebar (filtres, profil, sync)
-│   ├── page_router.py            # Routeur de pages
-│   ├── helpers.py                # Fonctions utilitaires
-│   ├── filters.py                # Logique des filtres
-│   ├── profile.py                # Gestion profil joueur
-│   ├── kpis.py                   # Calcul et affichage KPIs
-│   └── data_loader.py            # Chargement données
-│
-├── config.py                     # Configuration & constantes
-│
-├── data/                         # Couche données
-│   ├── repositories/
-│   │   ├── duckdb_repo.py        # Repository DuckDB principal (ATTACH multi-DB)
-│   │   ├── _match_queries.py     # Requêtes matchs (_get_match_source)
-│   │   ├── _roster_loader.py     # Chargement roster depuis shared
-│   │   └── factory.py            # Factory pattern
-│   ├── services/                 # Services métier
-│   │   ├── timeseries_service.py # Agrégats séries temporelles
-│   │   ├── win_loss_service.py   # Bucketing V/D, breakdown cartes
-│   │   └── teammates_service.py  # Stats coéquipiers multi-DB
-│   ├── sync/                     # Synchronisation API
-│   │   ├── api_client.py         # Client SPNKr
-│   │   ├── engine.py             # Moteur de sync (v5 shared)
-│   │   ├── scope.py              # SyncScope — flags sync/backfill centralisés
-│   │   ├── transformers.py       # Transformations JSON→DB
-│   │   ├── migrations.py         # Migrations de schéma
-│   │   └── models.py             # Modèles de sync
-│   └── query/
-│       └── engine.py             # Query Engine DuckDB
-│
-├── analysis/                     # Logique métier
-│   ├── citations/                # Système de citations
-│   │   ├── engine.py             # CitationEngine (SQL)
-│   │   ├── custom_rules.py       # Règles custom (objectifs)
-│   │   └── models.py             # Modèles citations
-│   ├── filters.py                # Filtres playlists/modes
-│   ├── killer_victim.py          # Analyse confrontations
-│   ├── antagonists.py            # Agrégation rivalités
-│   ├── sessions.py               # Détection sessions
-│   ├── stats.py                  # Calculs statistiques
-│   ├── performance_score.py      # Score de performance
-│   ├── playlist_groups.py        # 6 groupes Halo (ranked/arena/btb/tactical/social/fun) — v5.3
-│   ├── skill_rating_config.py    # Constantes TrueSkill 2, tiers Bronze→Onyx — v5.3
-│   ├── skill_rating.py           # Algorithme LUSR (PlayerState, Elo-style mu, batch) — v5.3
-│   └── skill_rating_calibration.py # Calibration COMPOSITE_WEIGHTS (grid search) — v5.3
-│
-├── ui/                           # Interface utilisateur
-│   ├── cache.py                  # Cache Streamlit
-│   ├── medals.py                 # Affichage médailles
-│   ├── translations.py           # Traductions FR
-│   ├── sync.py                   # UI de synchronisation
-│   ├── filter_state.py           # Filtres intent-based, persist JSON par joueur — v5.2
-│   ├── components/               # Composants réutilisables
-│   └── pages/                    # Pages du dashboard (23 pages)
-│
-├── visualization/                # Graphiques Plotly (15 modules)
-│
-├── utils/                        # Utilitaires (paths, xuid, profiles)
-│   └── discord_notifier.py       # Notifications Discord post-sync/backfill (failsafe) — v5.3
-└── visualization/                # Graphiques Plotly (palette Okabe-Ito v5.2, LUSR timeseries v5.3)
-```
-
----
-
-## Tests
-
-La suite de tests v5 comprend **3323 tests** répartis en :
-
-| Catégorie | Tests | Couverture |
-|-----------|-------|-----------|
-| Schéma migration | 45 | 95%+ |
-| Sync shared matches | 33 | 70%+ |
-| Repository v5 | 77 | 75%+ |
-| Match queries v5 | 35 | 80%+ |
-| UI pages (MockStreamlit) | 147 | 35-84% (selon page) |
-| Utils purs | 72 | 90% |
-| Sync/backfill | 338 | 84% (transformers), 99% (core) |
-| Autres (viz, profile, etc.) | ~2000+ | Variable |
-
-Framework de test :
-- **MockStreamlit** : Fixture `conftest.py` pour tester les pages UI en mode headless
-- **DuckDB `:memory:`** : Tests isolation complète sans fichier disque
-- **Polars DataFrames** : Données synthétiques pour tous les tests
-
-```bash
-# Suite complète
-python -m pytest
-
-# Hors intégration (recommandé quotidien)
-python -m pytest -q --ignore=tests/integration
-
-# Avec couverture
-python -m pytest --cov=src --cov-report=html
-```
-
----
-
-## Configuration
-
-### Profils joueurs (`db_profiles.json`)
-
-```json
-[
-  {
-    "gamertag": "MonGamertag",
-    "xuid": "1234567890",
-    "db_path": "data/players/MonGamertag/stats.duckdb"
-  }
-]
-```
-
-### Paramètres application (`app_settings.json`)
-
-Configuration de l'application Streamlit (thème, langue, options d'affichage).
-
----
-
-## Différences v4 → v5
-
-| Aspect | v4 | v5 |
-|--------|----|----|
-| **Stockage matchs** | Dupliqué dans chaque player DB | Centralisé dans `shared_matches.duckdb` |
-| **Sync match connu** | Re-sync complète | Skip (enrichissement perso uniquement) |
-| **Repository** | 1 connexion (player DB) | ATTACH multi-DB (player + shared + meta) |
-| **Pages UI** | `FROM match_stats` | `FROM _get_match_source()` (sous-requête) |
-| **Médailles** | Par joueur dans player DB | Tous joueurs dans `shared.medals_earned` |
-| **Events** | Par joueur dans player DB | Tous events dans `shared.highlight_events` |
-| **Citations** | Calcul à la volée | `CitationEngine` SQL + `match_citations` table |
-
----
-
-## Voir aussi
-
-- [SHARED_MATCHES_SCHEMA.md](SHARED_MATCHES_SCHEMA.md) — Schéma DDL complet
-- [MIGRATION_V4_TO_V5.md](MIGRATION_V4_TO_V5.md) — Guide de migration
-- [SYNC_OPTIMIZATIONS_V5.md](SYNC_OPTIMIZATIONS_V5.md) — Optimisations sync
-- [TESTING_V5.md](TESTING_V5.md) — Stratégie de tests
-- [ARCHITECTURE.md](ARCHITECTURE.md) — Architecture v4 (référence historique)
-
----
-
-## Architecture Multi-Titre (Sprint 44)
-
-LevelUp supporte plusieurs jeux (titres) via une **arborescence de données par titre**. Chaque titre possède son propre arbre isolé :
+LevelUp prend en charge plusieurs titres de jeu via un **agencement de données title-aware**. Chaque titre dispose de son propre arbre de données isolé :
 
 ```text
 data/
@@ -468,42 +71,51 @@ data/
           stats.duckdb
     halo_mcc/               # second titre (exemple)
       warehouse/
-        ...
+        metadata.duckdb
+        shared_matches_v2.duckdb
       players/
-        ...
-  warehouse/                # layout legacy flat (rétrocompatibilité)
-  players/                  # layout legacy flat (rétrocompatibilité)
+        {gamertag}/
+          stats.duckdb
+  warehouse/                # agencement plat legacy (compatibilité ascendante)
+  players/                  # agencement plat legacy (compatibilité ascendante)
 ```
 
 ### Composants clés
 
 | Composant | Rôle |
 |-----------|------|
-| `TitleRegistry` | Registre en mémoire des titres connus (slug, nom, statut, capacités) |
-| `PathResolver` | Résolution de tous les chemins fichier par titre (`TitleDataDir`, `SharedDBPath`, `PlayerDBPath`, etc.) |
-| Middleware `TitleExtractor` | Lit le header `X-LevelUp-Title` / session / fallback → injecte `title_slug` dans le contexte de requête |
-| `db_profiles.json` v3 | Profils joueurs scopés par titre : `{ "version": "3.0", "profiles": { "<slug>": { "<gamertag>": {...} } } }` |
+| `TitleRegistry` | Registre en mémoire des titres connus (slug, nom, statut, capabilities) |
+| `PathResolver` | Résout tous les chemins de fichiers relatifs à un slug de titre (`TitleDataDir`, `SharedDBPath`, `PlayerDBPath`, etc.) |
+| Middleware `TitleExtractor` | Lit l'en-tête `X-LevelUp-Title` / la session / le fallback → injecte `title_slug` dans le contexte de requête |
+| `db_profiles.json` v3 | Profils joueur scopés par titre : `{ "version": "3.0", "profiles": { "<title_slug>": { "<gamertag>": {...} } } }` |
 
 ### Stratégie de routage
 
-L'API utilise une sélection de titre **par header** (`X-LevelUp-Title`). Les URLs restent inchangées (`/api/v1/players/{slug}/...`). Le middleware injecte le titre dans le contexte, et tous les services en aval (PlayerResolver, ProfileService, etc.) l'utilisent pour scoper l'accès aux données.
+L'API utilise une sélection de titre **par en-tête** (`X-LevelUp-Title`). Les URLs restent inchangées (`/api/v1/players/{slug}/...`). Le middleware injecte le titre dans le contexte de requête, et tous les services en aval (PlayerResolver, ProfileService, etc.) l'utilisent pour scoper l'accès aux données.
 
-### Rétrocompatibilité
+### Frontend
 
-- `PathResolver` fournit des méthodes `Legacy*` (`LegacySharedDBPath`, `LegacyPlayerDir`, etc.) pour le layout plat `data/warehouse/`
-- Les fichiers `db_profiles.json` v2.1 sont auto-détectés et lus comme profils `halo_infinite` implicites
+Le `appShellStore` suit `currentTitleSlug` et fournit `switchTitle()` qui :
+1. POST `/session/context` avec le nouveau titre
+2. Ré-amorce l'application (re-bootstrap)
+3. Réinitialise les caches scopés par joueur
+
+Le client API envoie l'en-tête `X-LevelUp-Title` pour les titres non-par-défaut.
+
+### Compatibilité ascendante
+
+- `PathResolver` fournit des méthodes `Legacy*` (`LegacySharedDBPath`, `LegacyPlayerDir`, etc.) pour l'agencement plat `data/warehouse/`
+- Les fichiers `db_profiles.json` v2.1 sont auto-détectés et lus comme des profils `halo_infinite` implicites
 - `LoadPlayers()` sans filtre de titre retourne les joueurs de tous les titres
 
 ---
 
-## Schéma canonique services + adaptateurs sémantiques (Phase A–E plan multi-titres)
+## Schéma de services canonique + adapters sémantiques (plan multi-titres Phases A–E)
 
-Au-dessus du layout par titre, LevelUp expose un schéma canonique services et
-deux adaptateurs par titre. Cela découple les services produit du schéma DuckDB
-spécifique à un titre et de ses libellés/unités.
+Au-dessus de l'agencement de stockage title-aware, LevelUp expose un schéma de services canonique et deux adapters de titre par titre. Cela découple les services produit du schéma DuckDB par titre et des labels/unités par titre.
 
 ```text
-handler HTTP → service produit → games.Resolver
+HTTP handler → product service → games.Resolver
                                     ├─ Data(slug)     → games.TitleDataAdapter
                                     └─ Semantic(slug) → games.TitleSemanticAdapter
 ```
@@ -512,14 +124,14 @@ handler HTTP → service produit → games.Resolver
 
 | Package | Rôle |
 |---------|------|
-| `internal/games/canonical/` | Enum `FieldKey` (43 clés), enums (`Outcome`, `MatchType`, `RatingType`, `Bucket`, `GroupBy`), scopes (`StatsScope`, `TimeseriesQuery`, `CareerOptions`), types match/career/timeseries — stables, agnostiques, consommés par les services |
-| `internal/games/mappings/` | Loader TOML strict (`go-toml/v2`), validation (locales, formats, collisions `display_order`, conversions d'unités), `FieldMappingSet`, registry |
-| `internal/games/halo_infinite/` | Implémentation HI : `DataAdapter` (wrap des repos existants), `SemanticAdapter` (wrap du `FieldMappingSet`), `AssetURLAdapter` (compose les URLs `/static/...`) |
-| `internal/games/synthetic_title_b/` | Corpus synthétique de tests d'isolation cross-titres uniquement — jamais référencé par le code de production |
+| `internal/games/canonical/` | Enum `FieldKey` (59 clés), enums (`Outcome`, `MatchType`, `RatingType`, `Bucket`, `GroupBy`), scopes (`StatsScope`, `TimeseriesQuery`, `CareerOptions`), types match/career/timeseries — tous stables, agnostiques, utilisés par les services |
+| `internal/games/mappings/` | Loader TOML strict (`go-toml/v2`), validation (locales, formats, collisions de `display_order`, conversions d'unités), `FieldMappingSet`, registre |
+| `internal/games/halo_infinite/` | Implémentation HI : `DataAdapter` (encapsule les repos existants), `SemanticAdapter` (encapsule `FieldMappingSet`), `AssetURLAdapter` (compose les URLs `/static/...`) |
+| `internal/games/synthetic_title_b/` | Corpus de test synthétique, tests cross-titres isolés uniquement — jamais référencé par le code de production |
 | `internal/games/{adapter,resolver}.go` | Interfaces `TitleDataAdapter` + `TitleSemanticAdapter` + `TitleAssetURLAdapter`, `StaticResolver` |
-| `internal/assets/static/` | Composition pure d'URLs/paths pour `/static/{folder}/{titleSlug}/{id}{ext}` — sans connaissance titre, sans I/O, tests table-driven |
+| `internal/assets/static/` | Composition pure d'URL/chemin pour `/static/{folder}/{titleSlug}/{id}{ext}` — aucune connaissance du titre, aucune I/O, tests table-driven |
 
-### Mappings TOML (versionnés Git)
+### Mappings TOML (versionnés dans Git)
 
 Trois fichiers TOML par titre sous `config/titles/{slug}/mappings/` :
 
@@ -528,39 +140,36 @@ config/
   titles/
     halo_infinite/
       mappings/
-        fields.toml           # 43 FieldKey × labels EN/FR + format + group + display_order
+        fields.toml           # 59 FieldKey × labels EN/FR + format + group + display_order
         assets.toml           # modes / challenge_tier / cadence / challenge_status / medal_tier / prestige_level
         outcomes.toml         # win / loss / tie / dnf — labels + color_token (design system)
     synthetic_title_b/
       mappings/
-        fields.toml           # corpus synthétique de tests
-        assets.toml           # libellés divergents pour les tests d'isolation cross-titres
-        outcomes.toml         # libellés divergents (Triomphe / Défaite / Match nul / Forfait)
+        fields.toml           # corpus de test synthétique
+        assets.toml           # labels divergents pour les tests d'isolation cross-titres
+        outcomes.toml         # labels divergents (Triomphe / Défaite / Match nul / Forfait)
 ```
 
 `fields.toml` est obligatoire ; `assets.toml` et `outcomes.toml` sont optionnels (leur absence est silencieuse). Chaque TOML porte un `[meta].schema_version` (cf. `tools/mappings/CHANGELOG.md`).
 
-Le `Registry.LoadFromConfigDir()` charge les trois fichiers au boot par titre. Une erreur sur l'un émet `mappings_validation_failed` (Error) et agrège dans la slice d'erreurs retournée — mais un titre cassé n'invalide pas les autres.
+Le boot `Registry.LoadFromConfigDir()` charge les trois fichiers par titre. Un échec sur l'un des fichiers émet `mappings_validation_failed` (Error) et l'agrège dans la slice d'erreurs retournée — mais un titre en échec ne bloque pas les autres.
 
-#### Décision : pas de hot-reload (ni dev ni prod)
+#### Décision : pas de hot-reload (dev ou prod)
 
-Le plan §7.3 réservait un mode `GAMES_HOT_RELOAD=true` pour le rechargement TOML live en dev. Nous **ne l'avons délibérément pas implémenté** (vérifié 2026-04-26) :
+Le plan §7.3 réservait un mode `GAMES_HOT_RELOAD=true` pour le rechargement TOML à chaud en dev. Nous l'avons **délibérément non implémenté** (vérifié le 2026-04-26) :
 
-- Prod : hot-reload interdit par §7.3 — la couche sémantique est un contrat versionné qui ne change que par PR + golden parity. Coût = un redéploiement par changement de libellé, acceptable pour les quelques dizaines de FieldKey.
-- Dev : une édition de TOML avec le setup actuel demande `Ctrl+C` + `air` à nouveau (~3-5s rebuild + boot). À notre fréquence d'édition (~1 édition de TOML par sprint hors onboarding nouveau titre), le gain (~5s/édition, zéro impact prod) ne justifie pas le coût (watcher fsnotify Windows-friendly + méthode `Registry.Reload()` + invalidation des ETag dans le handler `/field-mappings` + tests des conditions de course).
+- Prod : le hot-reload est interdit par §7.3 — la couche sémantique est un contrat versionné qui ne change que via PR + golden parity. Coût = un redéploiement par changement de label, acceptable pour quelques dizaines de FieldKey.
+- Dev : une édition TOML avec le setup actuel signifie `Ctrl+C` + `air` à nouveau (~3-5s de rebuild + reboot). À notre fréquence d'édition (~1 édition TOML par sprint en dehors de l'onboarding d'un nouveau titre), le gain (~5s/édition, aucun impact production) ne justifie pas le coût (watcher fsnotify compatible Windows + méthode `Registry.Reload()` + invalidation ETag dans le handler `/field-mappings` + tests des conditions de course).
 
-Conséquence : l'event log `mappings_hot_reloaded` du plan §8.1 est volontairement absent (8/9 events émis, c'est le 9e). À revoir si :
-- un onboarding de second titre réel demande des itérations TOML intensives, ou
-- le volume de catalogue grossit (médailles, weapon families) et le tuning live de libellés devient utile.
+Conséquence : l'événement de log `mappings_hot_reloaded` du plan §8.1 est intentionnellement absent (8/9 événements émis, celui-ci est le 9e). À reconsidérer si/quand :
+- L'onboarding d'un second vrai titre nécessite une itération TOML intensive, ou
+- Le volume du catalogue croît (ex. médailles, familles d'armes) et le tuning de labels à chaud devient utile.
 
 ### API HTTP (derrière `MULTI_TITLE_API_ENABLED=true`)
 
-- `GET /api/v1/titles/{slug}/field-mappings?locale=fr` — expose le
-  `FieldMappingSet` d'un titre avec ETag + `Cache-Control: max-age=300`.
-- `GET /api/v1/titles/{slug}/preview/career?xuid=...&locale=fr` — preuve
-  end-to-end du pipeline canonique (data adapter + semantic adapter).
-  Retourne `not_supported_reason` pour les capabilities `not_exposed` au lieu
-  d'une erreur silencieuse.
+- `GET /api/v1/titles/{slug}/field-mappings?locale=fr` — expose le `FieldMappingSet` d'un titre avec ETag + `Cache-Control: max-age=300`.
+
+> Note : l'ancienne route proof-of-concept `GET /api/v1/titles/{slug}/preview/career` a été supprimée (orpheline côté frontend, cf. `server.go` + `multi_title_smoke_test.go`).
 
 ### Hooks frontend (Phase D + Phase finition)
 
@@ -574,33 +183,14 @@ import {
 } from '@/lib/i18n/fieldMappings'
 ```
 
-Tous les hooks lisent `currentTitleSlug` et `locale` depuis `appShellStore`,
-partagent une seule query TanStack (`staleTime: Infinity` — versionnés Git, pas
-de hot-reload), et retombent gracieusement sur la `key`/`id` brute si
-l'endpoint est absent (flag off, 404, erreur réseau).
+Tous les hooks lisent `currentTitleSlug` et `locale` depuis `appShellStore`, partagent un cache TanStack Query unique (`staleTime: Infinity` — versionné dans Git, pas de hot-reload), et retombent gracieusement sur la clé/l'id brut si l'endpoint est absent (flag off, 404, erreur réseau).
 
-Les composants consomment ces hooks au lieu de hardcoder. La frontière
-TOML vs i18n React (cf. plan §6.9) est tenue par `tools/lint-no-hardcoded-fields.mjs`,
-qui scanne 277 fichiers et rejette tout littéral correspondant à un libellé
-déclaré dans `fields.toml`, `assets.toml` ou `outcomes.toml` (whitelist pour
-les dictionnaires de fallback sous `features/*/fallback.i18n.ts`).
+Les composants consomment ces hooks au lieu de coder les labels en dur. La frontière TOML vs i18n React (cf. plan §6.9) est imposée par `tools/lint-no-hardcoded-fields.mjs`, qui scanne 277 fichiers et rejette tout littéral correspondant à un label déclaré dans `fields.toml`, `assets.toml` ou `outcomes.toml` (whitelist pour les dictionnaires de fallback sous `features/*/fallback.i18n.ts`).
 
-Pages migrées au 2026-04-26 : Career (encounters), Home (KPI bar, liste de
-défis, identité spartan), Match View (scoreboard), Synthesis (top weeks),
-Compare (delta cards), Media (mode categories), Objectifs (challenge tiers,
-cadences, niveaux prestige), Communauté (tier du leaderboard), Session Detail
-(outcomes). Les dictionnaires `kpi.i18n.ts`, `highlights.i18n.ts`,
-`compare/i18n.ts` conservent leurs libellés FR/EN comme fallback pour
-`MULTI_TITLE_API_ENABLED=false`.
+Pages migrées au 2026-04-26 : Career (encounters), Home (barre KPI, liste des défis, identité spartan), Match View (scoreboard), Synthesis (top weeks), Compare (delta cards), Media (catégories de modes), Objectifs (paliers de défis, cadences, niveaux de prestige), Communauté (palier de leaderboard), Session Detail (outcomes). Les dictionnaires `kpi.i18n.ts`, `highlights.i18n.ts`, `compare/i18n.ts` conservent leurs labels FR/EN comme fallback pour `MULTI_TITLE_API_ENABLED=false`.
 
-### Dégradation par capability
+### Dégradation capability-aware
 
-Chaque `TitleDataAdapter` expose une `Capabilities() games.CapabilityMap` qui
-reflète le support produit par-titre. Un appel `Load*` sur une capability
-marquée `not_exposed` retourne `games.ErrCapabilityNotSupported`, traduit en
-aval par les services produit en un `not_supported_reason` explicite plutôt
-qu'en payload vide silencieux.
+Chaque `TitleDataAdapter` expose une `Capabilities() games.CapabilityMap` reflétant le support par titre des capabilities produit. Un appel `Load*` sur une capability marquée `not_exposed` retourne `games.ErrCapabilityNotSupported`, que les services en aval traduisent en un champ explicite `not_supported_reason` plutôt qu'un payload vide silencieux.
 
-Voir [`.ai/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md`](../../.ai/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md)
-pour le rationale et [`tools/mappings/CHANGELOG.md`](../../tools/mappings/CHANGELOG.md)
-pour l'historique de versioning des TOML.
+Voir [`.ai/V7/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md`](../../.ai/V7/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md) pour le rationnel de conception et [`tools/mappings/CHANGELOG.md`](../../tools/mappings/CHANGELOG.md) pour l'historique de versioning du schéma TOML.

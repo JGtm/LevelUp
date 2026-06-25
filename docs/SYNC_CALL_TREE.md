@@ -1,6 +1,5 @@
 # Sync Call Tree (Go)
 
-French version: [FR/SYNC_CALL_TREE.md](FR/SYNC_CALL_TREE.md)
 
 > Code-level call graph of the **Go** sync pipeline. For the operational guide
 > (settings, CLI, troubleshooting) read [SYNC_GUIDE.md](SYNC_GUIDE.md) first; this

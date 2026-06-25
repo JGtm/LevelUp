@@ -67,6 +67,7 @@ type titleManifestSection struct {
 	Status           string   `toml:"status"`
 	Capabilities     []string `toml:"capabilities"`
 	IsDefault        bool     `toml:"is_default"`
+	IsInternal       bool     `toml:"is_internal"`
 	XboxTitleID      string   `toml:"xbox_title_id"`
 	SteamAppID       string   `toml:"steam_app_id"`
 	PlacementMatches int      `toml:"placement_matches"`
@@ -110,6 +111,7 @@ func LoadTitleManifestFromBytes(path, slug string, raw []byte) (*TitleDescriptor
 		IconURL:          strings.TrimSpace(doc.Title.IconURL),
 		Status:           Status(strings.TrimSpace(doc.Title.Status)),
 		IsDefault:        doc.Title.IsDefault,
+		IsInternal:       doc.Title.IsInternal,
 		XboxTitleID:      strings.TrimSpace(doc.Title.XboxTitleID),
 		SteamAppID:       strings.TrimSpace(doc.Title.SteamAppID),
 		PlacementMatches: doc.Title.PlacementMatches,
@@ -194,6 +196,7 @@ func LoadTitlesIntoRegistry(reg *Registry, repoRoot string, logger *slog.Logger)
 			"status", string(desc.Status),
 			"provider", desc.Provider,
 			"capabilities", len(desc.Capabilities),
+			"internal", desc.IsInternal, // fixture de test (exclue du switcher utilisateur)
 		)
 	}
 	return errs
