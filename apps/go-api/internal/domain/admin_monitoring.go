@@ -61,6 +61,10 @@ type MonitoringSnapshotSummary struct {
 	CutsProduced int64 `json:"cuts_produced"`
 	CutFailures  int64 `json:"cut_failures"`
 	CutNoop      int64 `json:"cut_noop"`
+	// ReadsServed / ReadsFallback : lectures shared MatchView servies depuis le snapshot
+	// vs repli live (pilote Phase 3). Cumuls depuis le boot — mesurent l'adoption réelle.
+	ReadsServed   int64 `json:"reads_served"`
+	ReadsFallback int64 `json:"reads_fallback"`
 }
 
 // MonitoringSchedulerSummary résume le dernier cycle auto-sync.

@@ -88,6 +88,7 @@ type ServiceRegistry struct {
 	healthScheduler      *scheduler.HealthScheduler           // dashboard monitoring : dernier audit data health + action run (nil → section indisponible)
 	startedAt            time.Time                            // boot du process (uptime overview — posé par NewServiceRegistry)
 	metaHandles          []*duckdb.DB                         // handles RW "annexes" sur metadata.duckdb (seasons/playlists catalog, ouverts hors pool joueur dans NewRouter) fermés au shutdown via Close() — sinon fuite de refCount sur le cache duckdb.openDBs (cf. INCIDENT_2026-05-21)
+	snapReaders          sync.Map                             // titleSlug → *sync.SnapshotPreferredSharedReader (pilote lecture snapshot MatchView, Phase 3) — singleton par titre pour partager le cache de queriers entre requêtes
 }
 
 // WithJobStore attache le JobStore au registry — porte le cycle de vie des jobs
@@ -181,6 +182,15 @@ func (r *ServiceRegistry) Close() {
 		}
 	}
 	r.metaHandles = nil
+	// Readers snapshot MatchView (pilote Phase 3) : ferment leurs queriers :memory:
+	// cachés. Sans ça, une recréation du registry (hot-reload) fuiterait les handles.
+	r.snapReaders.Range(func(key, value any) bool {
+		if c, ok := value.(interface{ Close() }); ok {
+			c.Close()
+		}
+		r.snapReaders.Delete(key)
+		return true
+	})
 }
 
 // TrackMetadataHandle enregistre un handle RW "annexe" sur metadata.duckdb

@@ -7,9 +7,10 @@
 
 - **Branche** : `refactor/durabilite-snapshot-immuable`, poussée sur `origin`. **PAS mergée sur `main`**.
 - **Worktree dédié** : `C:\Users\Guillaume\Downloads\Scripts\LevelUp-durabilite-snapshot` (isolé du dépôt principal). Toutes les commandes Go/git ci-dessous s'y exécutent.
-- **Fait + testé** : Phase 0 (instrumentation B-swap), Phase 1.b (invariant `CommitThenAdvance` + dette fixtures), Phase 2a (readiness marker), **Phase 2 producteur + monitoring (étapes 7-13) — COMPLÈTE, fonctionnelle end-to-end** (cf. thought_log [2026-06-25] « PRODUCTEUR + MONITORING »).
-- **Reste** : Phase 3 (chemin de lecture servi depuis le snapshot — décisionnel/pilote) + Phase 4 (rollout), puis **déploiement prod = décision utilisateur** (downtime). Le producteur tourne dès le déploiement mais **rien ne LIT encore le snapshot** (Phase 3 non livrée — additif, hors lock RW, rétention bornée, monitoré).
-- **Note commit** : les étapes 7-13 sont implémentées + vertes mais **PAS encore committées** au moment d'écrire cette ligne (en attente d'autorisation utilisateur du tour courant).
+- **Fait + testé** : Phase 0 (instrumentation B-swap), Phase 1.b (`CommitThenAdvance`), **Phase 2 producteur+monitoring (commit `3600007f4`)**, **Phase 3 lecture sur snapshot + cutover MatchView — COMPLÈTE** (cf. thought_log [2026-06-25] « Phase 3 »).
+- **Câblage Phase 3 = SCOPED MatchView** (pas global) : `MatchViewRepo.WithSharedReader` + reader snapshot-préféré SINGLETON par titre (`ServiceRegistry.snapReaders`, fermé au shutdown). Le snapshot reconstruit TOUT le schéma shared que MatchView lit (fidélité testée) ; médias (SharedSocial) + lectures player (ReadDB) restent live. Global rejeté (audit exhaustif requis + casse sans fallback).
+- **Reste** : **déploiement prod = décision utilisateur** (downtime ; merge main = auto-deploy). Au deploy : producteur peuple les snapshots → MatchView bascule auto (fallback live avant), mesurable via `snapshot_read_served/live_fallback_total` + `shared_provider_reader_stall_ns_total`. Phase 4 (généraliser / câblage global après audit) = conditionnée à la mesure du pilote.
+- **Note commit Phase 3** : implémentée + verte, **PAS encore committée** (en attente d'autorisation du tour courant).
 - **Plan maître** : `.ai/PLAN_DURABILITE_SNAPSHOT_IMMUABLE.md` (Option B = lecture snapshot seule ; readiness marker ; grâce bornée).
 
 ## 1. Objectif

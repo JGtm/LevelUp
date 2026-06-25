@@ -16,13 +16,41 @@ import (
 )
 
 // sharedSnapshotTables : faits bruts immuables shared inclus dans chaque snapshot
-// (tous portent une colonne match_id).
+// (tables de base, toutes porteuses d'une colonne match_id). Réutilisé par la lecture
+// per-joueur (OpenSnapshotForPlayer).
 var sharedSnapshotTables = []string{
 	"match_registry",
 	"match_participants",
 	"medals_earned",
 	"highlight_events",
 	"killer_victim_pairs",
+}
+
+// sharedSnapshotViewExports : relations shared COLLAPSED (vues append-only) exportées
+// match-keyed sous un nom de fichier dédié — on fige le RÉSULTAT de la vue (dernière
+// génération / dernier written_at) plutôt que de répliquer la logique QUALIFY côté
+// lecture. La lecture recrée une vue passthrough portant le nom live.
+var sharedSnapshotViewExports = []struct{ source, dest, view string }{
+	{"v_weapon_kills", "weapon_kills", "v_weapon_kills"},
+	{"match_csrs_latest", "match_csrs", "match_csrs_latest"},
+}
+
+// sharedSnapshotGlobalTables : relations shared NON match-keyed (clé xuid) exportées en
+// ENTIER (petites, globales) — requises par v_gamertag_lookup au moment de la lecture.
+var sharedSnapshotGlobalTables = []string{"xuid_aliases"}
+
+// relationExists : la table OU la vue `name` existe-t-elle (information_schema.tables
+// couvre les deux dans DuckDB) ? Garde les COPY contre une relation absente (schéma
+// shared partiel / fixture minimale).
+func relationExists(ctx context.Context, e interface {
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}, name string) bool {
+	var n int
+	if err := e.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?`, name).Scan(&n); err != nil {
+		return false
+	}
+	return n > 0
 }
 
 // derivedSnapshotSpec : un dérivé ancré (player DB) à exporter par joueur. La requête
@@ -147,10 +175,37 @@ func exportSharedFacts(ctx context.Context, opener SharedReadOpener, versionDir 
 		return nil, err
 	}
 	var parts []PartitionInfo
+	// Tables de base + vues collapsed : match-keyed, filtrées au set ready.
+	matchKeyed := make([]struct{ source, dest string }, 0, len(sharedSnapshotTables)+len(sharedSnapshotViewExports))
 	for _, tbl := range sharedSnapshotTables {
-		rel := filepath.Join("shared", tbl+".parquet")
-		q := fmt.Sprintf("SELECT t.* FROM %s t WHERE t.match_id IN (SELECT match_id FROM _snap_ready)", tbl)
+		matchKeyed = append(matchKeyed, struct{ source, dest string }{tbl, tbl})
+	}
+	for _, ve := range sharedSnapshotViewExports {
+		matchKeyed = append(matchKeyed, struct{ source, dest string }{ve.source, ve.dest})
+	}
+	for _, mk := range matchKeyed {
+		if !relationExists(ctx, conn, mk.source) {
+			continue // relation absente (schéma partiel) → la lecture dégradera vers live
+		}
+		rel := filepath.Join("shared", mk.dest+".parquet")
+		q := fmt.Sprintf("SELECT s.* FROM %s s WHERE s.match_id IN (SELECT match_id FROM _snap_ready)", mk.source)
 		n, err := copyToParquet(ctx, conn, q, filepath.Join(versionDir, rel))
+		if err != nil {
+			return nil, err
+		}
+		pi, err := partitionInfoFor(versionDir, rel, mk.dest, "", n)
+		if err != nil {
+			return nil, err
+		}
+		parts = append(parts, pi)
+	}
+	// Tables globales (non match-keyed) : exportées en entier.
+	for _, tbl := range sharedSnapshotGlobalTables {
+		if !relationExists(ctx, conn, tbl) {
+			continue
+		}
+		rel := filepath.Join("shared", tbl+".parquet")
+		n, err := copyToParquet(ctx, conn, fmt.Sprintf("SELECT * FROM %s", tbl), filepath.Join(versionDir, rel))
 		if err != nil {
 			return nil, err
 		}
