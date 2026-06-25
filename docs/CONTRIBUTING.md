@@ -7,9 +7,13 @@ Thank you for your interest in contributing to LevelUp! This document explains h
 ## Table of Contents
 
 - [Code of Conduct](#code-of-conduct)
-- [How to Contribute](#how-to-contribute)
+- [Repository Layout](#repository-layout)
 - [Environment Setup](#environment-setup)
-- [Code Standards](#code-standards)
+- [How to Contribute](#how-to-contribute)
+- [Branch Strategy](#branch-strategy)
+- [Go Backend Standards](#go-backend-standards)
+- [Frontend Standards](#frontend-standards)
+- [Agent Workflow (thought_log + skills)](#agent-workflow-thought_log--skills)
 - [Pull Request Process](#pull-request-process)
 - [Reporting a Bug](#reporting-a-bug)
 - [Proposing a Feature](#proposing-a-feature)
@@ -23,48 +27,35 @@ This project follows a respectful and inclusive code of conduct. Be kind to othe
 
 ---
 
-## How to Contribute
+## Repository Layout
 
-### 1. Fork the Project
+LevelUp is a Go backend + React frontend monorepo. The two applications live under `apps/`:
 
-```bash
-# Fork via GitHub then clone
-git clone https://github.com/your-username/levelup-halo.git
-cd levelup-halo
-```
+| Path | Stack | Role |
+|------|-------|------|
+| `apps/go-api/` | Go (CGO + DuckDB) | HTTP API, sync engine, analysis, CLI tooling |
+| `apps/web/` | React 19 / Vite / TypeScript | Dashboard frontend |
+| `docs/` | Markdown | English documentation (`docs/FR/` = French mirror) |
+| `data/` | DuckDB / Parquet / JSON | Warehouses, per-player DBs, auth token store, config |
+| `.ai/` | Markdown | Agent working memory (project map, thought log, plans) |
+| `.claude/skills/` | Markdown | Agent skills (architecture rules, conventions) |
 
-### 2. Create a Branch
+Key areas inside `apps/go-api/`:
 
-```bash
-git checkout -b feature/my-feature
-# or
-git checkout -b fix/my-bug
-```
+| Path | Role |
+|------|------|
+| `cmd/server/` | HTTP server entrypoint |
+| `cmd/levelup/` | Operations CLI (backup, restore, sync, seed, migrate, ...) |
+| `cmd/*` | One-shot diagnostic / backfill / migration tools |
+| `internal/api/` | HTTP handlers, middleware, router |
+| `internal/analysis/` | Pure stateless algorithms (temporal, breakdown, narrative) |
+| `internal/service/` | Orchestration (repo access + analysis) |
+| `internal/sync/` | Sync engine (delta / full, persist pipeline) |
+| `internal/platform/duckdb/` | DuckDB access, leases, shared_social writes |
+| `internal/games/canonical/` | Cross-title canonical types |
+| `internal/migration/` | Schema migration steps |
 
-### 3. Develop
-
-Make your changes following the code standards.
-
-### 4. Test
-
-```bash
-pytest
-```
-
-### 5. Commit
-
-```bash
-git add .
-git commit -m "feat(scope): description"
-```
-
-### 6. Push and Pull Request
-
-```bash
-git push origin feature/my-feature
-```
-
-Create a Pull Request on GitHub.
+Architecture references: `docs/ARCHITECTURE_V6.md`, `docs/FOUNDATIONS_GUIDE.md`, and the ADRs in `docs/adr/`.
 
 ---
 
@@ -72,108 +63,184 @@ Create a Pull Request on GitHub.
 
 ### Prerequisites
 
-- **Python 3.10 to 3.12** (python.org or Windows Store). **Do not use MSYS2 Python** (Git Bash): DuckDB has no wheels for MINGW, and pip would attempt a source build that fails.
-- Git
+- **Go** matching the version in `apps/go-api/go.mod`. DuckDB requires **CGO**, so a C toolchain is mandatory. On Windows use MSYS2/MinGW `gcc` with `CGO_ENABLED=1`.
+- **Node.js** (LTS) + npm, for `apps/web/`.
+- **air** for Go hot-reload (`go install github.com/air-verse/air@latest`) — used by `make dev`.
+- Git.
 
-### Installation (Git Bash)
+### One-command dev
+
+From the repo root:
 
 ```bash
-bash scripts/setup_env.sh
-source scripts/activate_env.sh
+make dev
 ```
 
-The script uses `py` (Python Launcher for Windows) to create a venv with the Windows Python, in order to get pre-built DuckDB wheels.
+This starts the Go API (via `air`, default port 8000) and the Vite frontend (port 5173). Open `http://localhost:5173`. `Ctrl+C` stops both. `make stop` force-kills the dev servers by port; `make restart` does `stop` then `dev`.
 
-### Development Tools
+Install frontend dependencies the first time:
 
-The following tools are included in `[dev]`:
+```bash
+make install-web      # = cd apps/web && npm install
+```
 
-| Tool | Usage |
-|------|-------|
-| `pytest` | Unit tests |
-| `black` | Code formatting |
-| `isort` | Import sorting |
-| `ruff` | Linting |
-| `mypy` | Type checking |
+### Auth tokens
+
+Auth tokens have a single source of truth: `data/auth/watcher_tokens/{xuid}.json`, managed by `MultiUserTokenStore` (see `docs/adr/0023-auth-tokens-single-source.md`). The player must first be declared in `db_profiles.json` (with `xuid`). Onboarding options:
+
+```bash
+# Advanced onboarding (device-code capture, writes directly to the store)
+go run ./cmd/token-capture/ <Gamertag>
+
+# Import a refresh token from stdin
+go run ./cmd/token-import/ <Gamertag>
+```
+
+Never use `.env.local` or `sync_meta` as a credential source (legacy fallbacks only).
 
 ---
 
-## Code Standards
+## How to Contribute
 
-### Formatting
+1. Fork and clone the repository.
+2. Create a work branch (see [Branch Strategy](#branch-strategy)) — **never commit on `main`**.
+3. Implement your change following the standards below.
+4. Run the relevant lint + tests (Go and/or frontend).
+5. Add a `.ai/thought_log.md` entry (see [Agent Workflow](#agent-workflow-thought_log--skills)).
+6. Open a Pull Request using Conventional Commits.
 
-Before each commit:
+---
 
-```bash
-# Formatting
-black .
-isort .
+## Branch Strategy
 
-# Linting
-ruff check --fix .
-```
-
-### Type Hints
-
-All public functions must have type hints:
-
-```python
-def compute_kd_ratio(kills: int, deaths: int) -> float:
-    """Calcule le ratio kills/deaths."""
-    if deaths == 0:
-        return float(kills)
-    return kills / deaths
-```
-
-### Docstrings
-
-Use docstrings in French:
-
-```python
-def load_matches(self, limit: int = 100) -> pl.DataFrame:
-    """
-    Charge les matchs depuis la base de données.
-    
-    Args:
-        limit: Nombre maximum de matchs à charger.
-        
-    Returns:
-        DataFrame Polars avec les statistiques des matchs.
-    """
-```
-
-### Data Access
-
-**ALWAYS** use `DuckDBRepository`:
-
-```python
-from src.data.repositories import DuckDBRepository
-
-repo = DuckDBRepository(db_path, xuid)
-matches = repo.load_matches()
-```
-
-### Data Backfill
-
-**ALWAYS** use `scripts/backfill_data.py` for backfilling or creating new backfill functions. Do not create separate backfill scripts; add a dedicated option in `backfill_data.py` (e.g. `--sessions`, `--killer-victim`). See the script's docstring for the pattern to follow.
-
-### Performance Benchmarking
-
-Use `scripts/benchmark_pages.py` to measure data loading times:
+Rule (from `CLAUDE.md`): **1 task = 1 branch, N commits**. Sequential phases of the same task are commits on a single branch, not separate branches.
 
 ```bash
-# Create a baseline before a change
-python scripts/benchmark_pages.py --baseline --output .ai/reports/benchmark_baseline.json
-
-# Run a standard benchmark (5 iterations)
-python scripts/benchmark_pages.py --runs 5
-
-# Compare against an existing baseline
-python scripts/benchmark_pages.py --compare .ai/reports/benchmark_baseline.json
+# Correct — phases of one task = commits on one branch
+git checkout -b refactor/cleanup-all
+git commit -m "refactor(phase1): dead code cleanup"
+git commit -m "refactor(phase2): DRY violations"
 ```
 
-The script automatically measures: cold/warm load, medals, teammates, Polars filtering, Pandas conversion.
-Variability (CV) should remain < 10% for reliable results.
+Applied rules:
+
+- **Never work on `main`** — no exception. If you are on `main`, create a work branch first.
+- Check the current branch before committing: `git branch --show-current`.
+- Create a new branch for every new feature/fix from the current branch (`git checkout -b <type>/<name>`).
+- Do not switch branches if unrelated work is already in progress on the current branch.
+- Pushing `main` triggers an automatic production deploy — merge to `main` deliberately.
+
+Commit message format (Conventional Commits):
+
+```
+<type>(<scope>): <description>
+```
+
+Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`. Examples:
+
+```
+feat(api): add CSR-by-playlist endpoint
+fix(sync): correct Firefight mode parsing
+docs: update contributing guide
+```
+
+---
+
+## Go Backend Standards
+
+Tooling equivalents (formatting / linting / typing) are enforced by `gofmt`, `go vet`, and `golangci-lint` (config: `apps/go-api/.golangci.yml`).
+
+### Format and vet
+
+```bash
+cd apps/go-api
+gofmt -l .            # list unformatted files (must be empty)
+go vet ./...
+```
+
+The golangci-lint config enables `revive`, `gocyclo`, `funlen`, `lll`, `goconst`, `unconvert`, `unparam`, `bodyclose`, `noctx`, `prealloc`, plus the standard set and `staticcheck`. Thresholds: cyclomatic complexity 15, function length 100 lines / 80 statements, line length 220, argument limit 7. `gofmt` + `goimports` are the formatters.
+
+```bash
+cd apps/go-api && golangci-lint run
+# Makefile shortcut (vet on domain + analysis):
+make go-api-lint
+```
+
+### Tests
+
+DuckDB requires CGO. Two test tiers (full detail in `docs/testing.md`):
+
+```bash
+# Fast tier — no DuckDB (CGO off): domain + analysis + contract
+cd apps/go-api
+CGO_ENABLED=0 go test ./internal/domain/... ./internal/analysis/... ./contracttest/... -timeout 60s -count=1
+# Makefile shortcut:
+make go-api-test
+
+# Full tier — with DuckDB (CGO on)
+cd apps/go-api
+CGO_ENABLED=1 LEVELUP_DEMO_MODE=true go test ./... -timeout 5m -count=1
+```
+
+On Windows, ensure MinGW `gcc` is on PATH (`CC=gcc`, `CGO_ENABLED=1`). Note: `go test -race` is incompatible with the DuckDB driver unless you pass `-gcflags=all=-d=checkptr=0`.
+
+Coverage is a non-regressing ratchet (baseline in `apps/go-api/coverage_baseline.txt`):
+
+```bash
+make go-api-coverage              # quick func summary
+make go-api-test-coverage-ratchet # enforce ratchet vs baseline
+```
+
+See `docs/testing.md` for the per-layer test patterns (handlers mock service, in-memory DuckDB, validation gates).
+
+### Architecture rules
+
+- `internal/analysis/` = pure stateless algorithms (no DB access). `internal/service/` = orchestration (repo + analysis).
+- New writes to a shared DB on a per-match path go through `internal/persist/BatchBuilder.Submit()` — no concurrent UPSERT/UPDATE on critical tables (ART-safe, see ADR 0019, 0026).
+- State tables are append-only (read via `<table>_latest` views). Guard test: `internal/sync/no_art_patterns_test.go`.
+- All DuckDB access via context managers / leases — no bare `db.Close()` leaks.
+- Read the `arch-rules`, `db-schema`, `canonical-types`, and `go-features` agent skills before changing backend structure.
+
+---
+
+## Frontend Standards
+
+From `apps/web/` (scripts defined in `apps/web/package.json`):
+
+```bash
+npm run typecheck     # tsc -b — no type errors
+npm run lint          # eslint .
+npm run lint:fields   # guard against hardcoded API field names
+npm run test:run      # vitest run (no watch)
+npm run test:e2e      # playwright (requires `make dev` running)
+```
+
+Makefile shortcuts: `make check-types`, `make test-web`, `make test-e2e`.
+
+Vitest note: run tests outside any sandbox that blocks worker processes; typecheck and eslint are safe in sandbox.
+
+### Color tokens (mandatory)
+
+No raw hex (`#RRGGBB`) and no Tailwind color classes (`text-red-*`, `bg-green-*`, ...) in `apps/web/src/features/` or `apps/web/src/components/`, except documented exceptions. Semantic colors must go through `tokenCssVar(token)` (JSX), `resolveToken(token)` (Plotly/SVG), or `getSeriesColors(n, tokens[])` (series). Raw palettes are centralized in `apps/web/src/lib/accessibility/palettes/`. See the `color-tokens` skill.
+
+### i18n
+
+User-facing strings must be provided in both **FR and EN** via the i18n manifests (TOML manifests + custom linter, see ADR 0003). Do not hardcode display strings in components.
+
+### Charts and pages
+
+Use the canonical ECharts wrappers (`apps/web/src/components/charts/README.md`) and the foundations (canonical types + adapters + i18n + chart wrappers) described in `docs/FOUNDATIONS_GUIDE.md`. See the `frontend-patterns` and `foundations-usage` skills.
+
+---
+
+## Agent Workflow (thought_log + skills)
+
+This repo is maintained partly by AI agents. Two conventions apply to every contributor:
+
+1. **thought_log (mandatory)** — before every commit (or at minimum before handing back), add an entry to `.ai/thought_log.md` with: date `[YYYY-MM-DD]`, task title, status (In progress / Done), the main technical decision, observed results, and the conclusion / next step. A missing entry means the task is not finished.
+2. **Agent skills** — consult the relevant skill in `.claude/skills/{arch-rules, canonical-types, color-tokens, foundations-usage, delivery-checklist, plan-review, halo-modes, db-schema, frontend-patterns, go-features}/SKILL.md` before committing structural changes.
+
+Before starting, also review the `.ai/` working memory: `project_map.md`, `thought_log.md`, `data_lineage.md`.
 
 ---
 
@@ -183,42 +250,20 @@ Variability (CV) should remain < 10% for reliable results.
 
 Before submitting a PR, verify:
 
-- [ ] Tests pass (`pytest`)
-- [ ] Code is formatted (`black`, `isort`)
-- [ ] No linting errors (`ruff check`)
-- [ ] New tests cover the changes
-- [ ] Documentation is updated if necessary
-- [ ] Commit message follows the Conventional Commits format
-
-### Commit Format
-
-```
-<type>(<scope>): <description>
-
-[optional body]
-```
-
-Types:
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation
-- `refactor`: Refactoring
-- `test`: Adding tests
-- `chore`: Maintenance
-
-Examples:
-```
-feat(ui): add radar chart for performance stats
-fix(sync): fix Firefight mode parsing
-docs: update installation guide
-```
+- [ ] On a work branch, not `main`
+- [ ] Go: `gofmt -l .` clean, `go vet ./...` clean, `golangci-lint run` passes
+- [ ] Go tests pass (fast tier always; full CGO tier for DB/sync changes)
+- [ ] Coverage ratchet does not regress
+- [ ] Frontend: `npm run typecheck`, `npm run lint`, `npm run test:run` pass
+- [ ] No raw hex / Tailwind color classes in `features/` or `components/`
+- [ ] FR + EN i18n strings provided for new UI text
+- [ ] `docs/FR/` mirror updated if a `docs/` file changed
+- [ ] `.ai/thought_log.md` entry added
+- [ ] Commit messages follow Conventional Commits
 
 ### Review
 
-A maintainer will get back to you for:
-- Clarification questions
-- Improvement suggestions
-- Validation and merge
+A maintainer will get back to you for clarification questions, improvement suggestions, then validation and merge.
 
 ---
 
@@ -226,16 +271,17 @@ A maintainer will get back to you for:
 
 ### Before Reporting
 
-1. Check that the bug has not already been reported
-2. Test with the latest version
+1. Check that the bug has not already been reported.
+2. Reproduce on the latest `main`.
 
 ### Create an Issue
 
 Include:
-- **Description**: Observed vs. expected behaviour
-- **Reproduction**: Steps to reproduce
-- **Environment**: OS, Python version
-- **Logs**: Full error messages
+
+- **Description**: observed vs. expected behaviour.
+- **Reproduction**: steps to reproduce.
+- **Environment**: OS, Go version (`go version`), Node version, browser.
+- **Logs**: full error messages. Go logs are written per-category under `logs/*.log` (e.g. `logs/handlers.log`, `logs/general.log`), not only stdout — grep all of them.
 
 ```markdown
 ## Bug
@@ -250,22 +296,12 @@ The dashboard does not load matches for player X.
 
 ### Environment
 - OS: Windows 11
-- Python: 3.11.4
-- Version: 3.0.0
+- Go: go1.x
+- Node: 20.x
 
 ### Logs
+(error message from logs/handlers.log)
 ```
-Error: DuckDB file not found...
-```
-```
-
----
-
-## Open Source Credits
-
-This project relies on several community components. Credits are centralised in [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md).
-
-Before adding a major external dependency, document it in that file as well to keep attribution clear.
 
 ---
 
@@ -273,29 +309,22 @@ Before adding a major external dependency, document it in that file as well to k
 
 ### Before Proposing
 
-1. Check that the feature has not already been proposed or is in progress
-2. Think through the implementation
+1. Check that the feature has not already been proposed or is in progress (`.ai/` plans).
+2. Think through the implementation against the architecture (ADRs, foundations).
 
 ### Create an Issue
 
 Include:
-- **Description**: What does the feature do?
-- **Motivation**: Why is it useful?
-- **Implementation**: How to implement it (optional)
 
-```markdown
-## Feature Request
+- **Description**: what does the feature do?
+- **Motivation**: why is it useful?
+- **Implementation** (optional): which layer (analysis/service/handler, or frontend feature) and which canonical types it touches.
 
-### Description
-Add a CSV export of statistics.
+---
 
-### Motivation
-Allow users to analyse their stats in Excel.
+## Open Source Credits
 
-### Suggested Implementation
-- Add an "Export CSV" button on the History page
-- Use Polars for the conversion
-```
+This project relies on several community components. Credits are centralised in [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md). Before adding a major external dependency, document it there to keep attribution clear.
 
 ---
 

@@ -46,7 +46,7 @@ This starts the Go API on port 8000 and the Vite frontend on http://localhost:51
 On the first launch, LevelUp detects it is not yet configured and shows a **guided wizard**.
 Choose your path:
 
-#### 🎮 Xbox Express (recommended — 2 steps)
+#### Xbox Express (recommended — 2 steps)
 
 **v6 — Zero Azure configuration required.** LevelUp bundles its own client ID.
 
@@ -62,24 +62,32 @@ The wizard displays a short code and the URL `https://xbox.com/activate`.
 2. Enter the code shown in the wizard
 3. Sign in with your Microsoft/Xbox account
 
-That's it — LevelUp retrieves your XUID, stores the token in your player database,
-and proceeds to the smoke test.
+That's it — LevelUp retrieves your XUID, completes your profile and persists the OAuth
+refresh token to the single token store (`data/auth/watcher_tokens/{xuid}.json`,
+see [ADR 0023](adr/0023-auth-tokens-single-source.md)), then proceeds to the smoke test.
 
-#### ☁️ Azure Manual (advanced / headless)
+#### Advanced onboarding (headless / CLI)
 
-Use this path if the interactive wizard is not accessible (server, headless, reverse proxy):
+Use this path when the interactive wizard is not accessible (server, headless, reverse proxy).
+The player must already be declared in `db_profiles.json` with their `xuid` before running these
+commands (the token store is addressed by xuid). Tokens go straight to the single store — there is
+**no `.env.local` manipulation** (see [ADR 0023](adr/0023-auth-tokens-single-source.md)).
 
 ```bash
-python scripts/spnkr_get_refresh_token.py --device-code
+# Device Code Flow in the browser, refresh token written to the store
+go run ./apps/go-api/cmd/token-capture/ <Gamertag>
+
+# Or import a refresh token obtained elsewhere (read from stdin)
+go run ./apps/go-api/cmd/token-import/ <Gamertag>
 ```
 
-This script displays a code to enter at `https://microsoft.com/devicelogin`,
-authenticates you, and saves the refresh token to `.env.local` automatically.
+After capture/import, restart the server: the auth Pool finds the token in the store and works
+immediately.
 
-#### 🍴 Note for forks / developers
+#### Note for forks / developers
 
 The bundled client ID is tied to this project's Azure App Registration.
-If you fork LevelUp, please create your own (free) Azure App Registration and set:
+If you fork LevelUp, create your own (free) Azure App Registration and set:
 
 ```env
 # .env.local
@@ -87,7 +95,9 @@ SPNKR_AZURE_CLIENT_ID=your_own_client_id
 ```
 
 See [CONFIGURATION.md](CONFIGURATION.md) for the full Azure registration walkthrough.
-This env var takes precedence over the bundled ID.
+This env var takes precedence over the bundled ID. Note that `.env.local` is config-only
+(client ID): it is **not** a credential store — refresh tokens live in the token store
+(see [ADR 0023](adr/0023-auth-tokens-single-source.md)).
 
 ### Step 5 — Smoke test (automatic check on 20 matches)
 
@@ -95,9 +105,9 @@ After Xbox sign-in, the wizard automatically runs a **3-phase smoke test**:
 
 | Phase | What happens |
 |-------|--------------|
-| 📡 Phase 1 — Sync | Synchronize 20 matches from the Halo API |
-| ⚙️ Phase 2 — Enrichment | Compute scores, sessions, citations, LUSR/CSR, killer/victim pairs |
-| 🔍 Phase 3 — Verification | Full integrity check of all tables (see below) |
+| Phase 1 — Sync | Synchronize 20 matches from the Halo API |
+| Phase 2 — Enrichment | Compute scores, sessions, citations, LUSR/CSR, killer/victim pairs |
+| Phase 3 — Verification | Full integrity check of all tables (see below) |
 
 **Checked tables (all required):**
 
@@ -119,8 +129,8 @@ After Xbox sign-in, the wizard automatically runs a **3-phase smoke test**:
 
 If any check fails, the test offers to **retry**. When everything is green, two options:
 
-- **⚙️ Full sync** → navigates to the Settings page to fetch your complete history (recommended)
-- **📊 Dashboard (20 matches)** → goes directly to the dashboard with the already-synced matches
+- **Full sync** → navigates to the Settings page to fetch your complete history (recommended)
+- **Dashboard (20 matches)** → goes directly to the dashboard with the already-synced matches
 
 ---
 
@@ -172,15 +182,19 @@ cd apps/web && npm run typecheck
 
 ### Tests
 
+The DuckDB driver requires CGO. See [testing.md](testing.md) for the full matrix
+(CGO=0 fast path, coverage ratchet, Windows MinGW).
+
 ```bash
-# Full suite
-python -m pytest
+# Go — full suite with DuckDB (CGO)
+cd apps/go-api
+CGO_ENABLED=1 LEVELUP_DEMO_MODE=true go test ./... -timeout 5m -count=1
 
-# Excluding integration tests (faster)
-python -m pytest --ignore=tests/integration
+# Go — fast subset without DuckDB
+CGO_ENABLED=0 go test ./internal/domain/... ./internal/analysis/... ./contracttest/... -count=1
 
-# Specific file
-python -m pytest tests/test_duckdb_repository.py -v
+# Frontend
+cd apps/web && npm run typecheck && npm test
 ```
 
 ### Update
@@ -236,7 +250,7 @@ docker compose down
 
 | Host path | Container path | Description |
 |-----------|----------------|-------------|
-| `./data` | `/app/data` | DuckDB v5 data (read/write) |
+| `./data` | `/app/data` | DuckDB data (read/write) |
 | `./db_profiles.json` | `/app/db_profiles.json` | Player profiles |
 | `./app_settings.json` | `/app/app_settings.json` | Application settings |
 
@@ -261,13 +275,16 @@ cd apps/web && npm install
 ### DuckDB version error
 
 ```bash
-cd apps/go-api && go test ./... -count=1
+cd apps/go-api && CGO_ENABLED=1 go test ./... -count=1
 ```
 
 ### Expired OAuth token
 
-In the app → **Settings** → **Xbox connection** → **Reconnect**.
-The token is stored in `data/players/<gamertag>/stats.duckdb` (table `sync_meta`).
+In the app → **Settings** → **Xbox connection** → **Reconnect** (re-runs the Device Code flow
+and refreshes the token in the store). For headless players, re-run
+`go run ./apps/go-api/cmd/token-capture/ <Gamertag>`. The refresh token is persisted in
+`data/auth/watcher_tokens/{xuid}.json` (single token store, see
+[ADR 0023](adr/0023-auth-tokens-single-source.md)).
 
 ### Permission Denied (Windows / PowerShell)
 
@@ -282,14 +299,28 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 ```
 LevelUp/
-├── .venv/                         # Python virtual environment
+├── apps/
+│   ├── go-api/                      # Go backend (API + sync + CLI under cmd/)
+│   └── web/                         # React/Vite frontend
 ├── data/
+│   ├── auth/
+│   │   └── watcher_tokens/
+│   │       └── {xuid}.json          # OAuth/MSAL token store (ADR 0023)
 │   ├── players/
 │   │   └── MyGamertag/
-│   │       └── stats.duckdb       # Per-player enrichments
+│   │       └── stats.duckdb         # Per-player enrichments
 │   └── warehouse/
-│       ├── metadata.duckdb        # Reference data (maps, medals…)
-│       └── shared_matches.duckdb  # Shared match data (centralised)
-├── .env.local                     # Azure tokens (created by the wizard)
-├── db_profiles.json               # Player profiles (created by the wizard)
-└── ...
+│       ├── metadata.duckdb          # Reference data (maps, medals…)
+│       └── shared_matches_v2.duckdb # Shared match data (centralised)
+├── db_profiles.json                 # Player profiles (created by the wizard)
+├── app_settings.json                # Application settings
+└── .env.local                       # Optional config (e.g. SPNKR_AZURE_CLIENT_ID for forks)
+```
+
+---
+
+## Next steps
+
+1. [Detailed Azure configuration](CONFIGURATION.md)
+2. [Sync your matches](SYNC_GUIDE.md)
+3. [Explore the dashboard](../README.md)
