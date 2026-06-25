@@ -13,7 +13,12 @@
  */
 import { useState } from 'react'
 import { tokenCssVar } from '@/lib/accessibility'
-import { useOffensiveConversionP80 } from '@/lib/damage/effectiveHp'
+import { useOffensiveConversionP80, useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
+
+/** Libellé universel (FR=EN) quand la Résistance n'est pas calculable faute de
+ *  damage_taken (ex. Halo 5). Aligné sur la convention `notAvailable: 'N/A'` du
+ *  module compare ; glyphe non traduit, comme `—`/`∞` dans formatDefensiveResistance. */
+const DR_NA_LABEL = 'N/A'
 
 /** Repères barre (frontière élite). OC = title-aware (useOffensiveConversionP80 :
  *  0.90 Infinite / 1.264 Halo 5) ; DR = miroir const Go (h5 sans damage_taken → DR N/A). */
@@ -57,9 +62,11 @@ interface TooltipProps {
   defensiveResistance: number | null | undefined
   damagePerKill: number | null | undefined
   damagePerDeath: number | null | undefined
+  /** false (titre sans damage_taken) → Résistance affichée N/A, sans dégâts/mort. */
+  providesDamageTaken: boolean
 }
 
-function Tooltip({ offensiveConversion, defensiveResistance, damagePerKill, damagePerDeath }: TooltipProps) {
+function Tooltip({ offensiveConversion, defensiveResistance, damagePerKill, damagePerDeath, providesDamageTaken }: TooltipProps) {
   return (
     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-48 rounded-md bg-popover border border-border px-3 py-2 text-xs shadow-lg pointer-events-none">
       <div className="flex justify-between gap-2 mb-1">
@@ -72,10 +79,10 @@ function Tooltip({ offensiveConversion, defensiveResistance, damagePerKill, dama
       <div className="flex justify-between gap-2 mb-1">
         <span className="font-semibold" style={{ color: tokenCssVar('divergent-neutral') }}>Résistance</span>
         <span className="text-muted-foreground">
-          {defensiveResistance == null ? '—' : defensiveResistance < 0 ? '∞' : `${Math.round((defensiveResistance - 1) * 100)}%`}
+          {!providesDamageTaken ? DR_NA_LABEL : defensiveResistance == null ? '—' : defensiveResistance < 0 ? '∞' : `${Math.round((defensiveResistance - 1) * 100)}%`}
         </span>
       </div>
-      {damagePerDeath != null && (
+      {providesDamageTaken && damagePerDeath != null && (
         <div className="text-muted-foreground">{Math.round(damagePerDeath)} dégâts/mort</div>
       )}
       {/* triangle pointer */}
@@ -93,21 +100,27 @@ export function CombatYieldBar({
 }: CombatYieldBarProps) {
   const [hovered, setHovered] = useState(false)
   const ocP80 = useOffensiveConversionP80() // 0.90 Infinite / 1.264 h5 (titre courant)
+  // false (Halo 5 : API sans damage_taken) → la Résistance n'est pas calculable.
+  // On neutralise tout le visuel DR (barre/badge à 0, tooltip N/A) au lieu
+  // d'afficher une barre vide trompeuse à 0. Défaut true → Infinite inchangé.
+  const providesDamageTaken = useProvidesDamageTaken()
 
   const perSide = widthPx != null
     ? Math.max(1, Math.floor((widthPx - CENTER_GAP_PX) / 2))
     : DEFAULT_PER_SIDE_PX
 
   const ocWidth = ocBarWidth(offensiveConversion, perSide, ocP80)
-  const drWidth = drBarWidth(defensiveResistance, perSide)
+  const drWidth = providesDamageTaken ? drBarWidth(defensiveResistance, perSide) : 0
 
   const hasData =
     (offensiveConversion != null && offensiveConversion > 0) ||
-    (defensiveResistance != null && (defensiveResistance > DR_BASELINE || defensiveResistance < 0))
+    (providesDamageTaken &&
+      defensiveResistance != null &&
+      (defensiveResistance > DR_BASELINE || defensiveResistance < 0))
 
   const ocClipped = offensiveConversion != null && offensiveConversion > ocP80 * CLIP_FACTOR
-  const drIsInfinite = defensiveResistance != null && defensiveResistance < 0
-  const drClipped = !drIsInfinite && drWidth === perSide
+  const drIsInfinite = providesDamageTaken && defensiveResistance != null && defensiveResistance < 0
+  const drClipped = !drIsInfinite && providesDamageTaken && drWidth === perSide
   const showDrBadge = drIsInfinite || drClipped
 
   return (
@@ -182,6 +195,7 @@ export function CombatYieldBar({
           defensiveResistance={defensiveResistance}
           damagePerKill={damagePerKill}
           damagePerDeath={damagePerDeath}
+          providesDamageTaken={providesDamageTaken}
         />
       )}
     </div>

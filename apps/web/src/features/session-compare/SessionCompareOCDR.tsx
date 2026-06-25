@@ -3,7 +3,12 @@
  * Affiche avg_oc et avg_dr sous forme de tableau comparatif avec CombatYieldBar visuelle.
  */
 import { CombatYieldBar } from '@/components/ui/combat-yield-bar'
+import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 import type { SessionCompareEntry } from '@/lib/api/types'
+
+/** Libellé universel (FR=EN) quand la Résistance n'est pas calculable faute de
+ *  damage_taken (Halo 5). Aligné sur `notAvailable: 'N/A'` du module compare. */
+const DR_NA_LABEL = 'N/A'
 
 export interface SessionCompareOCDRProps {
   sessionA: SessionCompareEntry | null
@@ -33,11 +38,17 @@ function winnerClass(
 }
 
 export function SessionCompareOCDR({ sessionA, sessionB, labels }: SessionCompareOCDRProps) {
+  // false (Halo 5 : API sans damage_taken) → DR non calculable : valeurs DR en N/A
+  // (au lieu de 0.00 trompeur). Les CombatYieldBar se neutralisent d'elles-mêmes.
+  const providesDamageTaken = useProvidesDamageTaken()
+  const drText = (v: number | null | undefined): string =>
+    providesDamageTaken ? fmt(v) : DR_NA_LABEL
+
   const hasData =
     sessionA?.avg_oc != null ||
-    sessionA?.avg_dr != null ||
+    (providesDamageTaken && sessionA?.avg_dr != null) ||
     sessionB?.avg_oc != null ||
-    sessionB?.avg_dr != null
+    (providesDamageTaken && sessionB?.avg_dr != null)
 
   if (!hasData) {
     return (
@@ -57,7 +68,7 @@ export function SessionCompareOCDR({ sessionA, sessionB, labels }: SessionCompar
           </div>
           <div className="flex items-baseline gap-1.5">
             <span className="text-muted-foreground">DR</span>
-            <span className="font-medium tabular-nums text-foreground">{fmt(sessionA?.avg_dr)}</span>
+            <span className="font-medium tabular-nums text-foreground">{drText(sessionA?.avg_dr)}</span>
           </div>
         </div>
         {(sessionA?.avg_oc != null || sessionA?.avg_dr != null) && (
@@ -96,10 +107,10 @@ export function SessionCompareOCDR({ sessionA, sessionB, labels }: SessionCompar
           <tr className="border-b last:border-0">
             <td className="py-2 pr-4 text-muted-foreground">DR</td>
             <td className={`py-2 pr-4 text-right tabular-nums ${drColors.a}`}>
-              {fmt(sessionA?.avg_dr)}
+              {drText(sessionA?.avg_dr)}
             </td>
             <td className={`py-2 text-right tabular-nums ${drColors.b}`}>
-              {fmt(sessionB?.avg_dr)}
+              {drText(sessionB?.avg_dr)}
             </td>
           </tr>
         </tbody>

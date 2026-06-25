@@ -38,6 +38,7 @@ import { accuracyScale, assistsScale, kdScale, lifespanScale } from '@/lib/acces
 import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
 import { combatYieldToken } from '@/lib/formatters/combatYield'
 import { KpiCard } from '@/components/cards/KpiCard'
+import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 
 interface KpiGridProps {
   kpis: KPIStats
@@ -135,6 +136,11 @@ function rankDeltaColorToken(value: number): SemanticToken {
 }
 
 export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint, omitSummaryCards = false }: KpiGridProps) {
+  // false (Halo 5 : API sans damage_taken) → la Résistance n'est pas calculable.
+  // On retire proprement la métrique DR de la grille (pas de cellule à 0, pas de
+  // composite fondé sur un DR faux) ; le Rendement (OC) reste affiché seul.
+  // Défaut true → Infinite : grille inchangée.
+  const providesDamageTaken = useProvidesDamageTaken()
   const trendKills = teamAvgKpis
     ? computeTrend(kpis.kills_per_game, teamAvgKpis.kills_per_game)
     : 'none'
@@ -159,7 +165,7 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint, omitSummaryCard
   // Cards conditionnelles : rank_delta et rendement/résistance si données dispo.
   const hasDelta = kpis.rank_delta != null
   const hasOC = kpis.avg_offensive_conversion != null
-  const hasDR = kpis.avg_defensive_resistance != null
+  const hasDR = providesDamageTaken && kpis.avg_defensive_resistance != null
   // OC + DR fusionnés en UNE card composite (barre + 2 valeurs) sur 2 colonnes,
   // alignée sur le format de la home. Cas dégénéré (une seule des 2 métriques) :
   // fallback sur une KpiCell classique span-1, pour éviter d'afficher un côté faux.

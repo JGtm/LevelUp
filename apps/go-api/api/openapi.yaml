@@ -3792,6 +3792,9 @@ components:
         offensive_conversion_p80:
           type: number
           format: double
+        provides_damage_taken:
+          type: boolean
+          description: "false si l'API du titre ne fournit pas damage_taken (Halo 5) — le front neutralise la Résistance défensive (N/A) au lieu d'afficher 0."
 
     TitleSyncInputBody:
       additionalProperties: false

@@ -18,6 +18,7 @@ import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { accuracyScale, kdScale, lifespanScale } from '@/lib/accessibility/scales'
 import { formatDurationMMSS, displayRatingLabel } from '@/lib/formatters'
 import { combatYieldToken } from '@/lib/formatters/combatYield'
+import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 import type { SessionCompareEntry } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
@@ -41,6 +42,10 @@ export function SessionSummaryCard({ entry, compact = false }: Props) {
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string): string => fieldMappings?.fields[key]?.label ?? key
   const t = useSessionT()
+  // false (Halo 5) → DR non calculable : on neutralise la Résistance dans l'accent
+  // (sinon DR=0 tirerait l'accent vers le rouge) ; le composite reste visible dès
+  // que le Rendement (OC) existe, et affiche N/A pour la Résistance.
+  const providesDamageTaken = useProvidesDamageTaken()
 
   if (!entry) {
     return (
@@ -51,7 +56,8 @@ export function SessionSummaryCard({ entry, compact = false }: Props) {
     )
   }
 
-  const hasOffDef = entry.avg_oc != null || entry.avg_dr != null
+  const drForToken = providesDamageTaken ? entry.avg_dr : null
+  const hasOffDef = entry.avg_oc != null || (providesDamageTaken && entry.avg_dr != null)
   // Observabilité : KPI Rendement/Résistance à "—" = OC/DR absents (pas de dégâts).
   if (!hasOffDef) {
     log.warn(
@@ -91,7 +97,7 @@ export function SessionSummaryCard({ entry, compact = false }: Props) {
           Accent = qualité combinée vs référence (rendement ≥ 100% & résistance
           ≥ +0% → vert ; les deux en-dessous → rouge ; mixte → neutre). */}
       <KpiCard
-        accent={combatYieldToken(entry.avg_oc, entry.avg_dr)}
+        accent={combatYieldToken(entry.avg_oc, drForToken)}
         className="flex-[2] min-w-[9.5rem]"
       >
         <div className="px-3 py-2">

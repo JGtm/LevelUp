@@ -12,9 +12,14 @@ import { KillTypesDonut, type DonutSlice } from '@/components/charts/KillTypesDo
 import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import type { ExplorerTargetSampleStats, ExplorerWeaponKill } from '@/lib/api/types'
+
+/** Libellé universel (FR=EN) quand la Résistance n'est pas calculable faute de
+ *  damage_taken (Halo 5). Aligné sur `notAvailable: 'N/A'` du module compare. */
+const DR_NA_LABEL = 'N/A'
 
 interface ExplorerTargetSampleStatsProps {
   sampleStats: ExplorerTargetSampleStats
@@ -167,6 +172,7 @@ export function ExplorerTargetSampleKpis({ sampleStats }: ExplorerTargetSampleSt
   const appLocale = useAppShellStore((s) => s.locale)
   const locale = appLocale === 'en' ? 'en-US' : 'fr-FR'
   const t: TFn = (key, values) => formatMessage(explorerManifest, key, appLocale, values)
+  const providesDamageTaken = useProvidesDamageTaken()
   const dash = t('explorer.target_profile.value_unavailable')
   const pct = (v: number | null | undefined) => (v != null ? fmtPctRatio(v, locale) : dash)
   const num = (v: number | null | undefined) => (v != null ? fmtNumber(v, locale) : dash)
@@ -174,9 +180,22 @@ export function ExplorerTargetSampleKpis({ sampleStats }: ExplorerTargetSampleSt
   const oc = sampleStats.offensive_conversion ?? null
   const dr = sampleStats.defensive_resistance ?? null
   const ocLabel = oc != null ? `${Math.round(oc * 100)}%` : dash
-  const drLabel = dr == null ? dash : dr < 0 ? '∞' : `${dr >= 1 ? '+' : ''}${Math.round((dr - 1) * 100)}%`
+  // Halo 5 (API sans damage_taken) → Résistance non calculable : N/A au lieu d'un
+  // « +0% » trompeur. Défaut true (Infinite) → libellé DR inchangé.
+  const drLabel = !providesDamageTaken
+    ? DR_NA_LABEL
+    : dr == null
+      ? dash
+      : dr < 0
+        ? '∞'
+        : `${dr >= 1 ? '+' : ''}${Math.round((dr - 1) * 100)}%`
   const dmgPerKill = sampleStats.kills > 0 ? Math.round(sampleStats.damage_dealt / sampleStats.kills) : null
-  const dmgPerDeath = sampleStats.deaths > 0 ? Math.round(sampleStats.damage_taken / sampleStats.deaths) : null
+  // dégâts/mort = sous-valeur de la Résistance : null si DR non calculable (h5),
+  // sinon « 0 dégâts/mort » trompeur (damage_taken absent côté API).
+  const dmgPerDeath =
+    providesDamageTaken && sampleStats.deaths > 0
+      ? Math.round(sampleStats.damage_taken / sampleStats.deaths)
+      : null
 
   // lg : KDA (1re piste) réduite à 0.7fr, Rendement/Résistance (dernière) élargie à 1.3fr.
   return (

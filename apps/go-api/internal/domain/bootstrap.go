@@ -92,6 +92,11 @@ type TitleSummary struct {
 	// titre, repère de normalisation des barres/radars de rendement (0.90 Infinite,
 	// 1.264 Halo 5). Permet au front de normaliser les barres OC sur la bonne échelle.
 	OffensiveConversionP80 float64 `json:"offensive_conversion_p80"`
+	// ProvidesDamageTaken : false si l'API du titre ne fournit PAS damage_taken
+	// (Halo 5 — carnage cryptum sans dégâts subis). Le front NEUTRALISE alors la
+	// Résistance défensive (N/A) au lieu d'afficher 0 (trompeur : « résistance
+	// nulle »). Défaut true (Infinite, byte-identique).
+	ProvidesDamageTaken bool `json:"provides_damage_taken"`
 }
 
 // BootstrapResponse est la réponse de GET /api/v1/bootstrap.

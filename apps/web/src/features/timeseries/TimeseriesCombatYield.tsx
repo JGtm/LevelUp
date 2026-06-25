@@ -22,7 +22,7 @@ import {
   getTooltipBase,
 } from '@/components/charts/_utils'
 import type { MatchHistoryRow } from '@/lib/api/types'
-import { useOffensiveConversionP80 } from '@/lib/damage/effectiveHp'
+import { useOffensiveConversionP80, useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 
 /** Repère barre (frontière élite mondiale) — miroir des constantes Go combat_yield.go. */
 const OC_P80 = 0.90
@@ -62,17 +62,24 @@ export function TimeseriesCombatYield({
     [rows],
   )
 
+  // false (Halo 5 : API sans damage_taken) → la Résistance n'est pas calculable :
+  // on retire entièrement la courbe + la ligne de référence DR (pas de tracé plat
+  // à −100% trompeur). Défaut true (Infinite) → graphe à deux courbes inchangé.
+  const providesDamageTaken = useProvidesDamageTaken()
+
   const series = useMemo<ChartSeries<CombatYieldPoint>[]>(() => {
     if (filtered.length === 0) return []
+    const ocSeries: ChartSeries<CombatYieldPoint> = {
+      key: 'combat.oc',
+      meta: { gamertag: labels.ocSeries },
+      datapoints: filtered.map((r) => ({
+        x: r.start_time,
+        y: r.offensive_conversion ?? null,
+      })),
+    }
+    if (!providesDamageTaken) return [ocSeries]
     return [
-      {
-        key: 'combat.oc',
-        meta: { gamertag: labels.ocSeries },
-        datapoints: filtered.map((r) => ({
-          x: r.start_time,
-          y: r.offensive_conversion ?? null,
-        })),
-      },
+      ocSeries,
       {
         key: 'combat.dr',
         meta: { gamertag: labels.drSeries },
@@ -85,7 +92,7 @@ export function TimeseriesCombatYield({
         })),
       },
     ]
-  }, [filtered, labels.ocSeries, labels.drSeries])
+  }, [filtered, labels.ocSeries, labels.drSeries, providesDamageTaken])
 
   const ocP80 = useOffensiveConversionP80() // 0.90 Infinite / 1.264 h5 (titre courant)
   const buildOption = useCallback(
@@ -135,8 +142,69 @@ export function buildCombatYieldOption(
 
   const ocSeries = series.find((s) => s.key === 'combat.oc')
   const drSeries = series.find((s) => s.key === 'combat.dr')
+  // DR absent (titre sans damage_taken, ex. Halo 5) → courbe + référence + entrée
+  // de légende DR retirées. Le graphe n'affiche que le Rendement.
+  const showDr = drSeries != null
 
   const pctAxis = (v: number) => `${Math.round(v * 100)}%`
+  const ocLineSeries = {
+    type: 'line' as const,
+    name: labels.ocSeries,
+    data: ocSeries?.datapoints?.map((p) => [p.x, p.y]) ?? [],
+    connectNulls: false,
+    symbol: 'circle' as const,
+    symbolSize: 5,
+    lineStyle: { color: ocColor, width: 2 },
+    itemStyle: { color: ocColor },
+    markLine: {
+      symbol: 'none' as const,
+      silent: true,
+      label: { show: false },
+      lineStyle: { color: ocColor, type: 'dotted' as const, width: 1 },
+      data: [
+        {
+          yAxis: ocP80,
+          name: `${labels.ocReference} (${Math.round(ocP80 * 100)}%)`,
+          label: {
+            show: true,
+            position: 'end' as const,
+            color: ocColor,
+            fontSize: 10,
+            formatter: `${labels.ocReference} (${Math.round(ocP80 * 100)}%)`,
+          },
+        },
+      ],
+    },
+  }
+  const drLineSeries = {
+    type: 'line' as const,
+    name: labels.drSeries,
+    data: drSeries?.datapoints?.map((p) => [p.x, p.y]) ?? [],
+    connectNulls: false,
+    symbol: 'circle' as const,
+    symbolSize: 5,
+    lineStyle: { color: drColor, width: 2 },
+    itemStyle: { color: drColor },
+    markLine: {
+      symbol: 'none' as const,
+      silent: true,
+      label: { show: false },
+      lineStyle: { color: drColor, type: 'dotted' as const, width: 1 },
+      data: [
+        {
+          yAxis: DR_DISPLAY_P80,
+          name: `${labels.drReference} (+${Math.round(DR_DISPLAY_P80 * 100)}%)`,
+          label: {
+            show: true,
+            position: 'end' as const,
+            color: drColor,
+            fontSize: 10,
+            formatter: `${labels.drReference} (+${Math.round(DR_DISPLAY_P80 * 100)}%)`,
+          },
+        },
+      ],
+    },
+  }
   return {
     backgroundColor: CHART_BG,
     grid: { top: 16, bottom: 56, left: 56, right: 16 },
@@ -158,7 +226,7 @@ export function buildCombatYieldOption(
         return lines.join('<br/>')
       },
     },
-    legend: { ...getLegendBase(tc), data: [labels.ocSeries, labels.drSeries] },
+    legend: { ...getLegendBase(tc), data: showDr ? [labels.ocSeries, labels.drSeries] : [labels.ocSeries] },
     xAxis: { ...axis, type: 'time' },
     yAxis: {
       ...axis,
@@ -166,65 +234,6 @@ export function buildCombatYieldOption(
       min: 0,
       axisLabel: { ...axis.axisLabel, formatter: pctAxis },
     },
-    series: [
-      {
-        type: 'line',
-        name: labels.ocSeries,
-        data: ocSeries?.datapoints?.map((p) => [p.x, p.y]) ?? [],
-        connectNulls: false,
-        symbol: 'circle',
-        symbolSize: 5,
-        lineStyle: { color: ocColor, width: 2 },
-        itemStyle: { color: ocColor },
-        markLine: {
-          symbol: 'none',
-          silent: true,
-          label: { show: false },
-          lineStyle: { color: ocColor, type: 'dotted', width: 1 },
-          data: [
-            {
-              yAxis: ocP80,
-              name: `${labels.ocReference} (${Math.round(ocP80 * 100)}%)`,
-              label: {
-                show: true,
-                position: 'end',
-                color: ocColor,
-                fontSize: 10,
-                formatter: `${labels.ocReference} (${Math.round(ocP80 * 100)}%)`,
-              },
-            },
-          ],
-        },
-      },
-      {
-        type: 'line',
-        name: labels.drSeries,
-        data: drSeries?.datapoints?.map((p) => [p.x, p.y]) ?? [],
-        connectNulls: false,
-        symbol: 'circle',
-        symbolSize: 5,
-        lineStyle: { color: drColor, width: 2 },
-        itemStyle: { color: drColor },
-        markLine: {
-          symbol: 'none',
-          silent: true,
-          label: { show: false },
-          lineStyle: { color: drColor, type: 'dotted', width: 1 },
-          data: [
-            {
-              yAxis: DR_DISPLAY_P80,
-              name: `${labels.drReference} (+${Math.round(DR_DISPLAY_P80 * 100)}%)`,
-              label: {
-                show: true,
-                position: 'end',
-                color: drColor,
-                fontSize: 10,
-                formatter: `${labels.drReference} (+${Math.round(DR_DISPLAY_P80 * 100)}%)`,
-              },
-            },
-          ],
-        },
-      },
-    ],
+    series: showDr ? [ocLineSeries, drLineSeries] : [ocLineSeries],
   }
 }
