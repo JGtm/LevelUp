@@ -354,43 +354,91 @@ LIMIT 1`
 // COALESCE(playlist_id, playlist_name) pour capturer ces cas et retourner
 // jusqu'à 3 playlists distinctes même sans playlist_id renseigné.
 const Q26gPlaylistPhaseBShared = `
-WITH per_playlist AS (
+WITH scoped AS (
 	SELECT
 		COALESCE(NULLIF(TRIM(r.playlist_id), ''), NULLIF(TRIM(r.playlist_name), '')) AS group_key,
-		COALESCE(MAX(NULLIF(TRIM(r.playlist_id), '')), '') AS playlist_id,
-		COALESCE(MAX(r.playlist_name), '') AS playlist_name,
-		MAX(CASE
+		NULLIF(TRIM(r.playlist_id), '') AS playlist_id,
+		r.playlist_name AS playlist_name,
+		CASE
 			WHEN COALESCE(r.is_ranked, FALSE)
 				OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
 				OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
 			THEN 1 ELSE 0
-		END) > 0 AS is_ranked,
-		MAX(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')) AS last_played,
-		ARG_MAX(r.match_id, COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')) AS last_match_id,
-		ARG_MAX(r.season_id, COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')) AS last_season_id
+		END AS is_ranked_flag,
+		r.match_id AS match_id,
+		r.season_id AS season_id,
+		COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS played_at,
+		ROW_NUMBER() OVER (
+			PARTITION BY COALESCE(NULLIF(TRIM(r.playlist_id), ''), NULLIF(TRIM(r.playlist_name), ''))
+			ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC
+		) AS rn_recent
 	FROM match_participants mp
 	JOIN match_registry r ON r.match_id = mp.match_id
 	WHERE mp.xuid = ?
 	  AND COALESCE(NULLIF(TRIM(r.playlist_id), ''), NULLIF(TRIM(r.playlist_name), '')) IS NOT NULL
+),
+recent AS (
+	SELECT * FROM scoped WHERE rn_recent <= 30
+),
+per_playlist AS (
+	SELECT
+		group_key,
+		COALESCE(MAX(playlist_id), '') AS playlist_id,
+		COALESCE(MAX(playlist_name), '') AS playlist_name,
+		MAX(is_ranked_flag) > 0 AS is_ranked,
+		MAX(played_at) AS last_played,
+		ARG_MAX(match_id, played_at) AS last_match_id,
+		ARG_MAX(season_id, played_at) AS last_season_id,
+		-- Liste ordonnée (plus récent → plus ancien) des match_ids récents de la
+		-- playlist : fix S5, permet à la Phase A1/Go de retomber sur le dernier
+		-- match QUI a une ligne MSR exploitable si le tout dernier n'en a pas.
+		STRING_AGG(match_id, ',' ORDER BY played_at DESC) AS recent_match_ids
+	FROM recent
 	GROUP BY group_key
 )
-SELECT playlist_id, playlist_name, is_ranked, last_played, last_match_id, last_season_id
+SELECT playlist_id, playlist_name, is_ranked, last_played, last_match_id, last_season_id, recent_match_ids
 FROM per_playlist
 ORDER BY last_played DESC
 LIMIT 3`
 
 // Q26gPlaylistPhaseAMSRTpl : Phase A1 (player) — rating + tier des last_match_id.
+//
+// Robustesse multi-titre (fix S5) : un même match_id porte souvent plusieurs
+// lignes (Infinite : 1 CSR réel ; Halo 5 : CSR=0 placeholder + LUSR + LUSR_V2,
+// car la sync H5 écrit rating_value=0 pour respecter le NOT NULL). Deux gardes :
+//   1. on ignore les lignes `CSR AND rating_value=0` (placeholder inexploitable
+//      qui, sinon, écrasait la vraie valeur LUSR dans le map Go keyé par match_id) ;
+//   2. on ne garde qu'UNE ligne par match_id via ROW_NUMBER, priorité
+//      CSR(réel) > LUSR > LUSR_V2 — même ordre que la vue match_skill_rank_latest,
+//      mais débarrassé du placeholder CSR=0. Title-agnostique : sur Infinite,
+//      la seule ligne est le CSR réel → no-op.
 const Q26gPlaylistPhaseAMSRTpl = `
-SELECT
-	match_id,
-	rating_value,
-	NULLIF(TRIM(tier), '')        AS tier,
-	NULLIF(TRIM(tier_fr), '')     AS tier_fr,
-	COALESCE(sub_tier, 0)         AS sub_tier,
-	NULLIF(TRIM(tier_label), '')  AS tier_label
-FROM match_skill_rank
-WHERE match_id IN (%s)
-  AND rating_value IS NOT NULL`
+WITH exploitable AS (
+	SELECT
+		match_id,
+		rating_type,
+		rating_value,
+		NULLIF(TRIM(tier), '')        AS tier,
+		NULLIF(TRIM(tier_fr), '')     AS tier_fr,
+		COALESCE(sub_tier, 0)         AS sub_tier,
+		NULLIF(TRIM(tier_label), '')  AS tier_label,
+		ROW_NUMBER() OVER (
+			PARTITION BY match_id
+			ORDER BY CASE UPPER(COALESCE(rating_type, ''))
+				WHEN 'CSR' THEN 0
+				WHEN 'LUSR' THEN 1
+				WHEN 'LUSR_V2' THEN 2
+				ELSE 3
+			END
+		) AS rn
+	FROM match_skill_rank
+	WHERE match_id IN (%s)
+	  AND rating_value IS NOT NULL
+	  AND NOT (UPPER(COALESCE(rating_type, '')) = 'CSR' AND rating_value = 0)
+)
+SELECT match_id, rating_value, tier, tier_fr, sub_tier, tier_label
+FROM exploitable
+WHERE rn = 1`
 
 // Q26gPlaylistPhaseASnapshotTpl : Phase A2 (player) — placement remaining
 // par playlist_id depuis player_csr_snapshots (snapshot le plus récent).

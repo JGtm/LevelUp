@@ -62,11 +62,26 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 	if len(phaseB) == 0 {
 		return nil, nil
 	}
-	matchIDs := make([]string, 0, len(phaseB))
+	// Fix S5 : on charge le MSR de TOUS les matchs récents (cap 30/playlist), pas
+	// seulement du dernier — pour retomber sur le dernier match exploitable.
+	matchIDSet := make(map[string]struct{}, len(phaseB)*8)
+	matchIDs := make([]string, 0, len(phaseB)*8)
 	plIDs := make([]string, 0, len(phaseB))
 	for _, p := range phaseB {
 		if p.lastMatchID != "" {
-			matchIDs = append(matchIDs, p.lastMatchID)
+			if _, ok := matchIDSet[p.lastMatchID]; !ok {
+				matchIDSet[p.lastMatchID] = struct{}{}
+				matchIDs = append(matchIDs, p.lastMatchID)
+			}
+		}
+		for _, mid := range p.recentMatchIDs {
+			if mid == "" {
+				continue
+			}
+			if _, ok := matchIDSet[mid]; !ok {
+				matchIDSet[mid] = struct{}{}
+				matchIDs = append(matchIDs, mid)
+			}
 		}
 		if p.playlistID != "" {
 			plIDs = append(plIDs, p.playlistID)
@@ -191,6 +206,11 @@ type playlistPhaseBRow struct {
 	isRanked     bool
 	lastMatchID  string
 	lastSeasonID string
+	// recentMatchIDs : match_ids récents de la playlist (plus récent → plus
+	// ancien, cap 30). Fix S5 : sert à retomber sur le dernier match QUI a une
+	// ligne MSR exploitable quand le tout dernier n'en a pas (H5 : dernier match
+	// avec seulement un placeholder CSR=0, sans LUSR).
+	recentMatchIDs []string
 }
 
 // playlistMSRRow : projection Phase A1 (player) — rating du last_match_id.
@@ -222,11 +242,12 @@ func (r *HomeRepo) loadPlaylistPhaseB(ctx context.Context) ([]playlistPhaseBRow,
 	for rows.Next() {
 		var p playlistPhaseBRow
 		var lastPlayed sql.NullTime
-		var lastSeasonID sql.NullString
-		if err := rows.Scan(&p.playlistID, &p.playlistName, &p.isRanked, &lastPlayed, &p.lastMatchID, &lastSeasonID); err != nil {
+		var lastSeasonID, recentMatchIDs sql.NullString
+		if err := rows.Scan(&p.playlistID, &p.playlistName, &p.isRanked, &lastPlayed, &p.lastMatchID, &lastSeasonID, &recentMatchIDs); err != nil {
 			return nil, err
 		}
 		p.lastSeasonID = optionalNullStringValue(lastSeasonID)
+		p.recentMatchIDs = splitCSV(optionalNullStringValue(recentMatchIDs))
 		out = append(out, p)
 	}
 	return out, rows.Err()
@@ -329,7 +350,7 @@ func buildPlaylistRankItem(
 		PlaylistName: p.playlistName,
 		IsRanked:     p.isRanked,
 	}
-	msr, hasMSR := msrByMatch[p.lastMatchID]
+	msr, hasMSR := resolvePlaylistMSR(p, msrByMatch)
 	snapRem, hasSnap := snapshotByPlaylist[p.playlistID]
 
 	msrIsPlacement := hasMSR && (msr.tier == placementTier || strings.HasPrefix(msr.tierLabel, placementTier))
@@ -390,6 +411,39 @@ func buildPlaylistRankItem(
 		}
 	}
 	return item
+}
+
+// resolvePlaylistMSR retourne le MSR exploitable le plus récent de la playlist
+// (fix S5). On parcourt recentMatchIDs (déjà trié plus récent → plus ancien) et
+// on prend la première entrée présente dans msrByMatch — celui-ci ne contient
+// déjà que des lignes exploitables (CSR=0 placeholder filtré par
+// Q26gPlaylistPhaseAMSRTpl). Fallback sur lastMatchID si la liste récente est
+// vide (parité avec l'ancien comportement). Title-agnostique : sur Infinite, le
+// dernier match classé a son CSR réel → on retombe sur lastMatchID au 1er tour.
+func resolvePlaylistMSR(p playlistPhaseBRow, msrByMatch map[string]playlistMSRRow) (playlistMSRRow, bool) {
+	for _, mid := range p.recentMatchIDs {
+		if msr, ok := msrByMatch[mid]; ok {
+			return msr, true
+		}
+	}
+	msr, ok := msrByMatch[p.lastMatchID]
+	return msr, ok
+}
+
+// splitCSV découpe une liste STRING_AGG (séparateur ',') en slice, en ignorant
+// les segments vides. Retourne nil si l'entrée est vide.
+func splitCSV(s string) []string {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if t := strings.TrimSpace(p); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
 }
 
 // resolvePlaylistNameForLocale retourne le nom de playlist adapté à la locale.

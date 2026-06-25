@@ -321,6 +321,12 @@ func (s *MatchViewService) tryCanonicalMatchView(ctx context.Context, matchID st
 		}
 		return domain.MatchViewResponse{}, false
 	}
+	// Enrichissement i18n des refs d'assets (map/playlist/game_variant) AVANT la
+	// projection : la voie LIVE porte des AssetReference brutes (ID seul, Labels
+	// nil) — sans ça le header affiche un mode/carte/playlist vide. Pendant LIVE
+	// de HomeRepo.EnrichCanonicalAssetTranslations (voie home/DB). No-op si la
+	// table asset_translations n'est pas peuplée (refs gardent leur DefaultLabel).
+	s.enrichCanonicalDetailTranslations(ctx, detail)
 	return s.buildMatchViewFromCanonical(ctx, detail), true
 }
 

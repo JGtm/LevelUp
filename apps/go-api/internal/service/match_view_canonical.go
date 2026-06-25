@@ -20,6 +20,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"levelup/go-api/internal/ctxkeys"
@@ -34,6 +35,89 @@ const (
 	partialReasonMedia           = "media_unavailable"
 	partialReasonAccuracyDamage  = "accuracy_damage_taken_native_unavailable"
 )
+
+// assetNameResolver est une capability OPTIONNELLE du metadataRepo : résout les
+// noms localisés d'assets (map/playlist/game_variant) depuis asset_translations,
+// par lot. Seul l'adapter DuckDB réel (*duckdb.MetadataRepo) l'implémente ; un
+// mock de test peut ne pas le faire → l'enrichissement est alors gracieusement
+// ignoré (les refs gardent leur DefaultLabel). Même pattern que participantChecker.
+type assetNameResolver interface {
+	ResolveAssetNamesBulk(
+		ctx context.Context, assetType string, assetIDs, preferredLangs []string,
+	) (map[string]string, error)
+}
+
+// canonicalAssetLangs : ordre de préférence des langues d'asset_translations.
+// FR-first (le projet est FR-first), EN ensuite. Aligné sur
+// duckdb.PreferredLangsForLocale("fr") — répété ici pour éviter un import
+// platform/duckdb depuis le service (frontière hexagonale).
+var (
+	canonicalAssetLangsFR = []string{"fr-FR", "fr", "en-US", "en"}
+	canonicalAssetLangsEN = []string{"en-US", "en", "fr-FR", "fr"}
+)
+
+// enrichCanonicalDetailTranslations hydrate Labels["fr"]/Labels["en"] des
+// AssetReference Map/Playlist/GameVariant du detail LIVE depuis asset_translations
+// (metadataRepo). Sans cette passe, un detail servi live (Halo 5, pas de DB match)
+// porte des refs brutes (ID seul, Labels=nil) → le header match view affiche un
+// mode/carte/playlist vide. C'est le pendant LIVE de
+// HomeRepo.EnrichCanonicalAssetTranslations (voie home/DB).
+//
+// No-op si le metadataRepo n'expose pas la capability (mock) ou si la table
+// n'est pas peuplée (un autre agent fournit la donnée) : les refs gardent alors
+// leur DefaultLabel. NO-OP fonctionnel sur Infinite : ce chemin n'est emprunté
+// que par les titres sans substrat DuckDB (live-only).
+func (s *MatchViewService) enrichCanonicalDetailTranslations(ctx context.Context, detail *canonical.MatchDetail) {
+	resolver, ok := s.metadataRepo.(assetNameResolver)
+	if !ok || detail == nil {
+		return
+	}
+	enrichCanonicalAssetRefTranslations(ctx, resolver, "map", detail.Map)
+	enrichCanonicalAssetRefTranslations(ctx, resolver, "playlist", detail.Playlist)
+	enrichCanonicalAssetRefTranslations(ctx, resolver, "game_variant", detail.GameVariant)
+}
+
+// enrichCanonicalAssetRefTranslations résout FR + EN pour une ref unique et
+// pose les labels in-place. N'écrase pas un label déjà présent et non vide.
+func enrichCanonicalAssetRefTranslations(
+	ctx context.Context, resolver assetNameResolver, assetType string, ref *canonical.AssetReference,
+) {
+	if ref == nil {
+		return
+	}
+	id := strings.TrimSpace(ref.ID)
+	if id == "" {
+		return
+	}
+	ids := []string{id}
+	frNames, err := resolver.ResolveAssetNamesBulk(ctx, assetType, ids, canonicalAssetLangsFR)
+	if err != nil {
+		slog.WarnContext(ctx, "match_view: résolution FR asset live échouée",
+			"asset_type", assetType, "asset_id", id, "err", err)
+	}
+	enNames, err := resolver.ResolveAssetNamesBulk(ctx, assetType, ids, canonicalAssetLangsEN)
+	if err != nil {
+		slog.WarnContext(ctx, "match_view: résolution EN asset live échouée",
+			"asset_type", assetType, "asset_id", id, "err", err)
+	}
+	setCanonicalLabelIfEmpty(ref, "fr", frNames[id])
+	setCanonicalLabelIfEmpty(ref, "en", enNames[id])
+}
+
+// setCanonicalLabelIfEmpty pose Labels[locale]=name si name non vide ET que le
+// label courant est vide (n'écrase jamais une valeur déjà résolue).
+func setCanonicalLabelIfEmpty(ref *canonical.AssetReference, locale, name string) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return
+	}
+	if ref.Labels == nil {
+		ref.Labels = map[string]string{}
+	}
+	if strings.TrimSpace(ref.Labels[locale]) == "" {
+		ref.Labels[locale] = name
+	}
+}
 
 // buildMatchViewFromCanonical assemble la réponse Match View depuis un
 // canonical.MatchDetail servi par un DataAdapter (voie LIVE). Header + Rank +

@@ -132,7 +132,7 @@ func projectSelfParticipant(s playerMatchScanResult, outcome canonical.Outcome, 
 		Assists:            &assistsPtr,
 		HeadshotKills:      &headshotPtr,
 		KDA:                nullFloatPtr(s.kda),
-		Accuracy:           nullFloatPtr(s.accuracy),
+		Accuracy:           effectiveAccuracyPct(s),
 		AvgLifeSeconds:     nullFloatPtr(s.avgLifeSeconds),
 		TimePlayed:         &timePlayedPtr,
 		DamageDealt:        dmgDealt,
@@ -271,6 +271,26 @@ var ErrUnknownPlaylistKind = errors.New("PlayerMatchesRepo: unknown PlaylistKind
 // ErrUnknownOrderBy est retournee si OrderBy n'est pas dans la whitelist.
 // Utilisée par classifyOrderBy (cf. partie split shared/post-merge).
 var ErrUnknownOrderBy = errors.New("PlayerMatchesRepo: unknown OrderBy")
+
+// effectiveAccuracyPct retourne la précision par-match en échelle 0..100 (même
+// convention que la colonne `accuracy` stockée pour Infinite, cf. consumers
+// match_view_radar.go / session_compare_participation_helpers.go qui font /100).
+//
+// Title-agnostique : si la colonne `accuracy` est peuplée et > 0 (Infinite), on
+// la renvoie telle quelle (no-op). Sinon (Halo 5 : `accuracy` NULL mais la
+// carnage fournit shots_fired/shots_hit), on la calcule depuis les tirs. nil si
+// aucune des deux sources n'est exploitable.
+func effectiveAccuracyPct(s playerMatchScanResult) *float64 {
+	if s.accuracy.Valid && s.accuracy.Float64 > 0 {
+		v := s.accuracy.Float64
+		return &v
+	}
+	if s.shotsFired.Valid && s.shotsFired.Int64 > 0 && s.shotsHit.Valid {
+		v := float64(s.shotsHit.Int64) * 100.0 / float64(s.shotsFired.Int64)
+		return &v
+	}
+	return nil
+}
 
 // nullFloatPtr convertit sql.NullFloat64 en *float64.
 func nullFloatPtr(n sql.NullFloat64) *float64 {
