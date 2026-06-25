@@ -337,7 +337,7 @@ This env var takes precedence over the bundled ID.
 | [ARCHITECTURE_V6.md](docs/ARCHITECTURE_V6.md) | v6 architecture (shared matches + i18n assets) |
 | [SYNC_GUIDE.md](docs/SYNC_GUIDE.md) | Sync guide |
 | [BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md) | Backup and restore |
-| [TESTING_V5.md](docs/TESTING_V5.md) | v5 testing strategy |
+| [testing.md](docs/testing.md) | Go testing strategy (CGO, coverage ratchet) |
 | [FAQ.md](docs/FAQ.md) | Frequently asked questions |
 | [COMMENDATIONS.md](docs/COMMENDATIONS.md) | Commendations system (architecture & usage) |
 | [COMMENDATIONS_REFERENCE.md](docs/COMMENDATIONS_REFERENCE.md) | Full commendations reference |
