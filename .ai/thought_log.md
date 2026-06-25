@@ -1,4 +1,26 @@
-## [2026-06-25] Phase 4 (généralisation lecture snapshot — cutover GLOBAL des lectures shared) — COMPLÉTÉ
+## [2026-06-25] Vérification finale (ultracode) + remédiation snapshot — Phase 4 GLOBAL REVERTÉ → scoped sûr
+
+**Contexte** : revue multi-dimension + vérif adversariale (workflow ultracode `w2kwzu2bk`, 44 agents, 6 dimensions : producteur/reader/wiring-concurrence/logging/tests/arch). 38 findings, **28 confirmés adversarialement**. + mes gates déterministes (build/vet/anti-ART/suite snapshot tous verts).
+
+**Finding CRITIQUE (avait échappé à mon audit Explore) — câblage GLOBAL casse le classement mondial** : `world_csr_leaderboard_latest` + `world_player_season_stats_latest` sont lues via le MÊME `SharedReadDB().Get()` (leaderboard_world_repo.go) mais absentes du snapshot → sous global, Catalog Error, PAS de fallback (la requête principale n'est pas best-effort). Ces vues = données MONDIALES non-match-immutables (scrape périodique, 3 versions de migration). **Leçon** : le câblage « remplacer TOUTES les lectures shared » était architecturalement trop large.
+
+**Décision** : **revert du global → scoped MatchView** (le seul périmètre dont les lectures shared sont 100% match-immutables + couvertes + fidélité-testées). C'est le « si c'est pas bon je revert » anticipé par l'utilisateur. Le scoped défuse aussi le finding #11 (corrections post-ready invisibles) : sous scoped, MatchView lit les DÉRIVÉS (perf/LUSR/citations) sur la player DB LIVE → corrections vues immédiatement ; seuls les faits shared immuables viennent du snapshot.
+
+**Remédiation appliquée (findings confirmés)** :
+- **Revert global→scoped** : retiré `AppConfig.SnapshotReaderWrapper` + `config.sharedReaderForTitle` wrap + `cmd/server/snapshot_reader_wiring.go` ; re-câblé `MatchViewRepo.WithSharedReader` + helper `sharedRead()` (17 sites) + `ServiceRegistry.snapReaders` (singleton par titre, fermé au shutdown) + 2 sites registry_pages.
+- **Dead code retiré** : export dérivé par-joueur (`exportOnePlayerDerived`, `derivedSnapshotSpecs`), `OpenSnapshotForPlayer`, `createSnapshotView`, `sanitizeSnapshotFilename` — jamais lus (MatchView lit le dérivé live, le snapshot ne sert que le shared). Producteur = faits shared seuls.
+- **Logging dédié `logs/snapshot.log`** (`ModuleSnapshot`) : ops + sync + v2 taggés `module=snapshot` (le producteur partait sinon dans general.log). Échec silencieux corrigé : le reader logge le fallback + `ErrSnapshotIncomplete` UNE fois par version (negative-cache `failedVersion`), force-ready après grâce loggé distinctement.
+- **Bug perte silencieuse** : `collectPlayerReady` vérifie désormais `rows.Err()` + propage ; `gatherReadySet` remonte l'erreur ; `ProduceSnapshot` → no-op `read_incomplete` + WARN (ne fige JAMAIS un set ready tronqué, ne consulte pas le change-gate sur set partiel).
+- **Negative-cache reader** (#perf) : plus de reconstruction :memory à chaque Get (~17x/page) quand la version est inexploitable → fallback live direct.
+- **Tests ajoutés** : change-gate re-cut (compte identique, watermark avancé → v2), rétention/purge (keep=2 sur 4 versions), `recordSnapshotCut` métriques (produced/failure/noop/gauges), reader fallback-sur-incomplet + negative-cache.
+
+**Findings différés (low / moot sous scoped)** : SHA256 stocké non vérifié à la lecture ; `PartitionInfo.Month` (spec morte cosmétique) ; combos predicate multi-blocked ; durable_progress held=nil ; TOCTOU bénins. Documentés, non bloquants.
+
+**Résultats** : gofmt + `build ./...` + `vet ./...` propres ; suites vertes — ops/sync/v2/duckdb(MatchView) intégration, config, api (incl. `TestOpenAPISchemaDrift`), gardes anti-ART (`TestNoARTPatternsOnProtectedTables` etc.). 
+
+**Conclusion** : la feature livrée = **lecture-snapshot SCOPED MatchView** (sûre, fidélité-testée, monitorée, loggée dans logs/snapshot.log). Le cutover GLOBAL est ABANDONNÉ en l'état (régression leaderboard) ; un global sûr exigerait une reconstruction complete-by-construction de TOUT le schéma shared (export dynamique de toutes les tables + run migrations) — documenté comme phase future non engagée. **Déploiement prod = décision utilisateur**.
+
+## [2026-06-25] Phase 4 (généralisation lecture snapshot — cutover GLOBAL des lectures shared) — COMPLÉTÉ [SUPERSEDED par la remédiation ci-dessus]
 
 **Contexte** : user « généralise direct, si c'est pas bon je revert ». Étendre la lecture-snapshot de MatchView (Phase 3 scoped) à TOUTES les lectures shared de l'app.
 

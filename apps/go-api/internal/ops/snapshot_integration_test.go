@@ -181,14 +181,10 @@ func TestProduceSnapshot_integration(t *testing.T) {
 		}
 	}
 
-	// Dérivés par joueur : Alpha = m1,m2 ; Bravo = m2,m4.
-	alphaPME := filepath.Join(vdir, "derived", "player_match_enrichment", "Alpha.parquet")
-	if got := readParquetCount(t, alphaPME); got != 2 {
-		t.Errorf("Alpha PME rows = %d, attendu 2", got)
-	}
-	bravoSkill := filepath.Join(vdir, "derived", "match_skill_rank", "Bravo.parquet")
-	if got := readParquetCount(t, bravoSkill); got != 2 {
-		t.Errorf("Bravo skill rows = %d, attendu 2", got)
+	// Le snapshot ne contient QUE des faits shared (pas de dérivé player : la lecture
+	// scoped MatchView lit le dérivé sur la player DB live). Aucun répertoire derived/.
+	if _, err := os.Stat(filepath.Join(vdir, "derived")); !os.IsNotExist(err) {
+		t.Errorf("répertoire derived/ ne doit pas exister (export dérivé retiré)")
 	}
 
 	// Manifest cohérent.

@@ -384,8 +384,10 @@ func (o *CycleOrchestratorImpl) cutSnapshot(ctx context.Context, players []Playe
 		}
 	}
 	if err := o.snapshotProducer.CutSnapshot(ctx, slug, gamertags); err != nil {
+		// module=snapshot → logs/snapshot.log (diagnostic centralisé du sous-système,
+		// le package v2 routerait sinon vers logs/general.log).
 		slog.WarnContext(ctx, "sync.v2: cut snapshot échoué (best-effort)",
-			"event", "sync.v2.snapshot.error", "err", err, "titleSlug", slug)
+			"module", "snapshot", "event", "sync.v2.snapshot.error", "err", err, "titleSlug", slug)
 	}
 }
 

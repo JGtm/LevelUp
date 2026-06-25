@@ -38,24 +38,12 @@ var ErrPlayerNotFound = fmt.Errorf("joueur introuvable")
 //     cfg.SharedProvider + warn. Le pool tolère un SharedReader pointant le
 //     mauvais titre mieux qu'un crash de résolution (lecture vide vs panique).
 func (cfg *AppConfig) sharedReaderForTitle(titleSlug string) duckdb.SharedReader {
-	if titleSlug == "" {
-		titleSlug = title.DefaultSlug
-	}
-	live := cfg.resolveLiveSharedReader(titleSlug)
-	// Phase 4 : enveloppe dans le reader snapshot-préféré (lecture découplée du B-swap)
-	// si câblé. Fallback live interne → jamais de régression si aucun snapshot. Pas en
-	// démo (aucun snapshot produit, le wrap ne ferait que des fallbacks inutiles).
-	if cfg.SnapshotReaderWrapper != nil && !cfg.DemoMode && live != nil {
-		return cfg.SnapshotReaderWrapper(titleSlug, live)
-	}
-	return live
-}
-
-// resolveLiveSharedReader résout le SharedReader LIVE (provider B-swap) d'un titre.
-func (cfg *AppConfig) resolveLiveSharedReader(titleSlug string) duckdb.SharedReader {
 	// Mode legacy/kill-switch ou démo : pas de routage per-titre.
 	if cfg.SharedManager == nil || cfg.DemoMode {
 		return cfg.SharedProvider
+	}
+	if titleSlug == "" {
+		titleSlug = title.DefaultSlug
 	}
 	path := title.NewPathResolver(cfg.RepoRoot).SharedDBPath(titleSlug)
 	provider, err := cfg.SharedManager.For(path, cfg.UserTimezone)
