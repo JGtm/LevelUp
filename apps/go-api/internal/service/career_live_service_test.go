@@ -17,9 +17,23 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/platform/duckdb"
 	syncpkg "levelup/go-api/internal/sync"
 )
+
+// gateResolver implémente games.EndpointResolver + games.CapabilityResolver pour
+// piloter le gating title-aware du live carrière dans les tests service.
+type gateResolver struct {
+	caps map[string]games.CapabilityMap
+}
+
+func (gateResolver) HostFor(string, games.EndpointKey) (string, bool) { return "", false }
+
+func (g gateResolver) CapabilitiesFor(slug string) (games.CapabilityMap, bool) {
+	c, ok := g.caps[slug]
+	return c, ok
+}
 
 // --- mocks ---
 
@@ -460,6 +474,76 @@ func TestCareerLive_NoXUID_TriggersFallbackPath(t *testing.T) {
 	if got != nil {
 		t.Errorf("identity attendue nil sans xuid + DB vide, obtenu %+v", got)
 	}
+}
+
+// TestCareerLive_TitleSansCatalogue_SkipLiveFetch verrouille le fix S1 :
+// pour un titre qui n'expose PAS le catalogue de rangs de carrière
+// (career.rank_catalog absent, ex. Halo 5 dont le SR vient de la carnage),
+// le live careerranks (endpoint economy Halo Infinite) NE doit JAMAIS être
+// appelé — même avec des tokens valides et un cache pré-rempli — sinon on
+// écrirait la carrière INFINITE dans la player DB du titre (contamination
+// cross-titre). La row DB du titre reste servie telle quelle.
+//
+// Comparaison de contrôle : sans gating (slug par défaut halo_infinite, où
+// career.rank_catalog est supported), le chemin live normal s'exécute.
+func TestCareerLive_TitleSansCatalogue_SkipLiveFetch(t *testing.T) {
+	// Resolver partagé : halo_infinite a le catalogue, halo_5 ne l'a pas.
+	prev := games.DefaultEndpointResolver()
+	games.SetDefaultEndpointResolver(gateResolver{caps: map[string]games.CapabilityMap{
+		"halo_infinite": {games.CapCareerRankCatalog: games.CapSupported},
+		"halo_5":        {games.CapCareerProgression: games.CapSupported}, // pas de rank_catalog
+	}})
+	t.Cleanup(func() { games.SetDefaultEndpointResolver(prev) })
+
+	const xuid = "1234567890123456" // == ctxWithTokens xuid (owner)
+	dbRow := &duckdb.CareerRankRow{Rank: 152, CurrentXP: 4200, SpartanID: "SR-H5"}
+
+	t.Run("halo_5 → live careerranks court-circuité, DB servie", func(t *testing.T) {
+		fetcher := &mockCareerFetcher{
+			progress: &syncpkg.CareerRankData{CurrentRank: 272, CurrentXP: 99999}, // carrière HINF polluante
+		}
+		repo := &mockCareerLiveRepo{last: dbRow}
+		builder := &mockIdentityBuilder{}
+		factory := func(_ context.Context) CareerFetcher { return fetcher }
+		cache := NewCareerLiveCache(CareerLiveCacheConfig{})
+		// Cache pré-rempli avec une progression HINF : le gating doit l'ignorer.
+		cache.PutProgress(xuid, &syncpkg.CareerRankData{CurrentRank: 272, CurrentXP: 99999})
+		svc := NewCareerLiveService(repo, builder, factory, cache)
+
+		ctx := ctxkeys.WithTitleSlug(ctxWithTokens(t, true), "halo_5")
+		got, err := svc.GetSpartanIdentityFor(ctx, xuid)
+		if err != nil {
+			t.Fatalf("GetSpartanIdentityFor: %v", err)
+		}
+		if got == nil || got.RankNumber != 152 {
+			t.Fatalf("attendu DB rank=152 (SR H5), obtenu %+v", got)
+		}
+		if fetcher.progCalls != 0 || fetcher.customCalls != 0 {
+			t.Errorf("live careerranks NE doit PAS être appelé pour halo_5 : progress=%d custom=%d",
+				fetcher.progCalls, fetcher.customCalls)
+		}
+	})
+
+	t.Run("halo_infinite → chemin live normal (contrôle)", func(t *testing.T) {
+		fetcher := &mockCareerFetcher{}
+		repo := &mockCareerLiveRepo{last: &duckdb.CareerRankRow{Rank: 30, CurrentXP: 500}}
+		builder := &mockIdentityBuilder{}
+		factory := func(_ context.Context) CareerFetcher { return fetcher }
+		cache := NewCareerLiveCache(CareerLiveCacheConfig{})
+		cache.PutProgress(xuid, &syncpkg.CareerRankData{CurrentRank: 99, CurrentXP: 9999})
+		cache.PutCustomization(xuid, &syncpkg.SpartanCustomizationData{SpartanID: "SR-LIVE"})
+		svc := NewCareerLiveService(repo, builder, factory, cache)
+
+		ctx := ctxkeys.WithTitleSlug(ctxWithTokens(t, true), "halo_infinite")
+		got, err := svc.GetSpartanIdentityFor(ctx, xuid)
+		if err != nil {
+			t.Fatalf("GetSpartanIdentityFor: %v", err)
+		}
+		// Cache hit live → rank 99 servi (chemin live normal préservé).
+		if got == nil || got.RankNumber != 99 {
+			t.Errorf("halo_infinite attendu chemin live (rank=99), obtenu %+v", got)
+		}
+	})
 }
 
 // slowFetcher simule un fetcher qui bloque plus longtemps que le budget,

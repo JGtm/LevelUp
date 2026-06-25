@@ -96,3 +96,25 @@ func (r *MappingsEndpointResolver) DamageModelFor(slug string) (mappings.DamageM
 	}
 	return set.DamageModel()
 }
+
+// CapabilitiesFor résout la CapabilityMap d'un titre (capabilities.toml).
+// Implémente games.CapabilityResolver. Même précédence de slug vide que HostFor.
+// (_, false) si le titre est inconnu, ne déclare pas de capabilities, ou si la
+// conversion vers le vocabulaire produit échoue → le caller applique son défaut.
+func (r *MappingsEndpointResolver) CapabilitiesFor(slug string) (CapabilityMap, bool) {
+	if r == nil || r.reg == nil {
+		return nil, false
+	}
+	if slug == "" {
+		slug = r.defaultSlug
+	}
+	set, ok := r.reg.GetCapabilities(slug)
+	if !ok {
+		return nil, false
+	}
+	caps, err := CapabilityMapFromMappings(set)
+	if err != nil {
+		return nil, false
+	}
+	return caps, true
+}

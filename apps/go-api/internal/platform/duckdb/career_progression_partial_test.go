@@ -266,6 +266,56 @@ func TestInsertPartial_MultipleRows_CarryForwardPerField(t *testing.T) {
 	}
 }
 
+// TestInsertPartial_NullXPForNext_DoesNotOverwriteHistoric : défense en
+// profondeur S1. Une row historique porte xp_for_next_rank=200 ; une row
+// PARTIAL plus récente (rank/xp seuls, sans xp_for_next_rank → NULL) ne doit
+// PAS faire surfacer un 0 (barre de progression vide) : le FILTER WHERE NOT
+// NULL côté lecture remonte la valeur historique 200.
+func TestInsertPartial_NullXPForNext_DoesNotOverwriteHistoric(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	if _, err := pdb.Player.Exec(ctx, `DELETE FROM career_progression`); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	repo := NewCareerLiveRepo(pdb)
+	xuid := "2535469190789936"
+
+	// Row historique complète (xp_for_next_rank=200).
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO career_progression
+		(xuid, rank, current_xp, xp_for_next_rank, recorded_at)
+		VALUES (?, 10, 100, 200, '2025-01-01 10:00:00+00')`, xuid); err != nil {
+		t.Fatalf("insert historic: %v", err)
+	}
+
+	// Row partial plus récente : rank/current_xp seuls → xp_for_next_rank NULL.
+	inserted, err := repo.InsertCareerProgressionPartial(ctx, xuid, &CareerProgressionPartial{
+		Rank:      partialPtr(11),
+		CurrentXP: partialPtr(150),
+	})
+	if err != nil {
+		t.Fatalf("insert partial: %v", err)
+	}
+	if !inserted {
+		t.Fatal("expected INSERT")
+	}
+
+	last, err := repo.LoadLastCareerRank(ctx, xuid)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if last == nil {
+		t.Fatal("nil")
+	}
+	if last.Rank != 11 || last.CurrentXP != 150 {
+		t.Errorf("rank/xp frais attendus 11/150, obtenu %d/%d", last.Rank, last.CurrentXP)
+	}
+	if last.XPForNextRank != 200 {
+		t.Errorf("XPForNextRank = %d, want 200 (FILTER WHERE NOT NULL doit ignorer la row partial NULL)",
+			last.XPForNextRank)
+	}
+}
+
 // TestInsertPartial_AllFieldsSet_RoundTrip : INSERT complet, lecture doit tout
 // récupérer.
 func TestInsertPartial_AllFieldsSet_RoundTrip(t *testing.T) {
