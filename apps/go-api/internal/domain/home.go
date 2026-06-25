@@ -337,6 +337,15 @@ type HomeMatchCommendationRaw struct {
 	Name    string // nom localisé (commendation_definitions, FR > EN)
 	IconURL string // URL icône CDN native (vide si définition absente)
 	Count   int    // progression gagnée CE match (Progress − PreviousProgress)
+	// Progress : total cumulatif À VIE de la commendation À CE match (valeur absolue
+	// de 343, match_commendations.progress). Sert à calculer le palier atteint +
+	// masterisé (parité Cumulative des citations Infinite). 0 si la colonne est NULL
+	// (lignes écrites avant l'ajout de progress → dégradation : anneau vide).
+	Progress int
+	// TierTargets : CSV croissant des seuils de paliers de la commendation
+	// (commendation_definitions.tier_targets, format Infinite). Vide → pas de paliers
+	// connus (Meta/Daily, ou définition pré-tier_targets) → ProgressPct=0.
+	TierTargets string
 }
 
 // ---------------------------------------------------------------------------

@@ -40,9 +40,12 @@ const TitleSlug = "halo_5"
 
 const (
 	// Host interne confirme (cf. config/titles/halo_5/constants.toml [endpoints]).
-	// Le host haloplayer (profils/appearance) sera ajoute en Phase 2 avec les
-	// methodes profil correspondantes (YAGNI : pas de host non consomme).
 	h5StatsHost = "https://spartanstats.svc.halowaypoint.com"
+
+	// Host profils/appearance/emblem/spartan (Phase 2 profil). Confirme par la sonde
+	// live 2026-06-25 (JGtm) : /h5/profiles/{gt}/appearance → 200 JSON,
+	// /h5/profiles/{gt}/{spartan,emblem} → 302 vers image.halocdn.com (PNG signe).
+	h5ProfilesHost = "https://haloplayer.svc.halowaypoint.com"
 
 	h5UserAgent      = "cpprestsdk/2.4.0"
 	h5MaxRetries     = 4
@@ -63,10 +66,11 @@ func (e *HTTPError) Unwrap() error { return e.Err }
 
 // Client est le client HTTP stateless pour l'API interne Halo 5.
 type Client struct {
-	http         *http.Client
-	spartanToken string
-	statsBaseURL string // override d'instance (tests httptest) ; vide -> h5StatsHost
-	limiter      *rate.Limiter
+	http            *http.Client
+	spartanToken    string
+	statsBaseURL    string // override d'instance (tests httptest) ; vide -> h5StatsHost
+	profilesBaseURL string // override d'instance (tests httptest) ; vide -> h5ProfilesHost
+	limiter         *rate.Limiter
 }
 
 // NewClient cree un client authentifie avec le SpartanToken v4 du joueur.
@@ -113,6 +117,22 @@ func (c *Client) statsHost() string {
 		return c.statsBaseURL
 	}
 	return h5StatsHost
+}
+
+// WithProfilesBaseURL override le host profils (tests httptest : rediriger vers
+// srv.URL). Vide ignore. Chainable.
+func (c *Client) WithProfilesBaseURL(profilesURL string) *Client {
+	if profilesURL != "" {
+		c.profilesBaseURL = profilesURL
+	}
+	return c
+}
+
+func (c *Client) profilesHost() string {
+	if c.profilesBaseURL != "" {
+		return c.profilesBaseURL
+	}
+	return h5ProfilesHost
 }
 
 // GetPlayerMatches recupere une page d'historique de matchs (tous modes confondus).
@@ -222,6 +242,59 @@ func (c *Client) GetMatchEvents(ctx context.Context, matchID string) (*h5MatchEv
 	return &resp, nil
 }
 
+// GetAppearance recupere l'appearance identitaire d'un joueur (service tag + emblem
+// IDs/couleurs + customization armure). Host PROFILS (haloplayer). GAMERTAG BRUT.
+// Path confirme sonde : /h5/profiles/{gt}/appearance → 200 JSON. On ne projette que
+// les champs identitaires (cf. H5Appearance).
+func (c *Client) GetAppearance(ctx context.Context, gamertag string) (*H5Appearance, error) {
+	if strings.TrimSpace(gamertag) == "" {
+		return nil, errors.New("GetAppearance: gamertag vide")
+	}
+	endpoint := fmt.Sprintf("%s/h5/profiles/%s/appearance", c.profilesHost(), url.PathEscape(gamertag))
+	body, err := c.doGet(ctx, endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("GetAppearance(%s): %w", gamertag, err)
+	}
+	var resp H5Appearance
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("GetAppearance decode: %w", err)
+	}
+	return &resp, nil
+}
+
+// GetSpartanRenderPNG recupere le RENDU PNG du Spartan (corps/armure) d'un joueur.
+// L'endpoint /h5/profiles/{gt}/spartan renvoie un 302 vers image.halocdn.com (URL
+// signee, non reproductible cote client). doGetBinary suit le redirect et telecharge
+// les octets PNG. Renvoie (bytes, contentType, err). Host PROFILS (haloplayer).
+func (c *Client) GetSpartanRenderPNG(ctx context.Context, gamertag string) ([]byte, string, error) {
+	if strings.TrimSpace(gamertag) == "" {
+		return nil, "", errors.New("GetSpartanRenderPNG: gamertag vide")
+	}
+	endpoint := fmt.Sprintf("%s/h5/profiles/%s/spartan", c.profilesHost(), url.PathEscape(gamertag))
+	b, ct, err := c.doGetBinary(ctx, endpoint)
+	if err != nil {
+		return nil, "", fmt.Errorf("GetSpartanRenderPNG(%s): %w", gamertag, err)
+	}
+	return b, ct, nil
+}
+
+// GetEmblemPNG recupere le rendu PNG de l'emblème d'un joueur. L'endpoint
+// /h5/profiles/{gt}/emblem renvoie un 302 vers image.halocdn.com (path
+// emblems/{EmblemId}_{ColorPrimary}_{ColorSecondary}_{ColorTertiary}, hash signe).
+// doGetBinary suit le redirect et telecharge le PNG. Renvoie (bytes, contentType,
+// err). Host PROFILS (haloplayer).
+func (c *Client) GetEmblemPNG(ctx context.Context, gamertag string) ([]byte, string, error) {
+	if strings.TrimSpace(gamertag) == "" {
+		return nil, "", errors.New("GetEmblemPNG: gamertag vide")
+	}
+	endpoint := fmt.Sprintf("%s/h5/profiles/%s/emblem", c.profilesHost(), url.PathEscape(gamertag))
+	b, ct, err := c.doGetBinary(ctx, endpoint)
+	if err != nil {
+		return nil, "", fmt.Errorf("GetEmblemPNG(%s): %w", gamertag, err)
+	}
+	return b, ct, nil
+}
+
 // doGet execute un GET authentifie facon Halo 5 : header Spartan v4 + UA cpprestsdk,
 // query ?auth=st, gzip transparent, retry/backoff exponentiel borne. 401/403/404/410
 // sont terminaux (pas de retry). Renvoie le corps JSON brut.
@@ -278,6 +351,67 @@ func (c *Client) doGet(ctx context.Context, rawURL string) ([]byte, error) {
 		}
 	}
 	return nil, fmt.Errorf("doGet %s: %d tentatives echouees: %w", rawURL, h5MaxRetries, lastErr)
+}
+
+// doGetBinary execute un GET authentifie facon Halo 5 et SUIT les redirects (302)
+// pour telecharger un corps binaire (image PNG). Mirroir de doGet pour l'auth/retry
+// (header Spartan + UA + ?auth=st), mais ne suppose pas de JSON et accepte n'importe
+// quel content-type d'image en 200. 401/403/404/410 terminaux. Renvoie (bytes,
+// contentType, err). Le redirect est suivi par le *http.Client (politique par defaut).
+func (c *Client) doGetBinary(ctx context.Context, rawURL string) ([]byte, string, error) {
+	sep := "?"
+	if strings.Contains(rawURL, "?") {
+		sep = "&"
+	}
+	rawURL += sep + "auth=st"
+
+	var lastErr error
+	for attempt := 0; attempt < h5MaxRetries; attempt++ {
+		if c.limiter != nil {
+			if err := c.limiter.Wait(ctx); err != nil {
+				return nil, "", err
+			}
+		}
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+		if err != nil {
+			return nil, "", fmt.Errorf("doGetBinary new request: %w", err)
+		}
+		req.Header.Set("Accept", "image/png,image/*")
+		req.Header.Set("X-343-Authorization-Spartan", c.spartanToken)
+		req.Header.Set("User-Agent", h5UserAgent)
+
+		resp, err := c.http.Do(req)
+		if err != nil {
+			lastErr = err
+			c.waitRetry(ctx, attempt, 0)
+			continue
+		}
+		body, readErr := io.ReadAll(resp.Body)
+		retryAfter := parseRetryAfterSeconds(resp.Header.Get("Retry-After"))
+		contentType := resp.Header.Get("Content-Type")
+		resp.Body.Close()
+
+		switch {
+		case resp.StatusCode == http.StatusOK:
+			if readErr != nil {
+				lastErr = readErr
+				c.waitRetry(ctx, attempt, 0)
+				continue
+			}
+			if len(body) == 0 {
+				return nil, "", &HTTPError{StatusCode: resp.StatusCode, URL: rawURL, Err: errors.New("corps vide")}
+			}
+			return body, contentType, nil
+		case resp.StatusCode == http.StatusUnauthorized, resp.StatusCode == http.StatusForbidden:
+			return nil, "", &HTTPError{StatusCode: resp.StatusCode, URL: rawURL, Err: errors.New("token invalide/expire")}
+		case resp.StatusCode == http.StatusNotFound, resp.StatusCode == http.StatusGone:
+			return nil, "", &HTTPError{StatusCode: resp.StatusCode, URL: rawURL, Err: errors.New("ressource absente")}
+		default:
+			lastErr = &HTTPError{StatusCode: resp.StatusCode, URL: rawURL, Err: fmt.Errorf("HTTP %d", resp.StatusCode)}
+			c.waitRetry(ctx, attempt, retryAfter)
+		}
+	}
+	return nil, "", fmt.Errorf("doGetBinary %s: %d tentatives echouees: %w", rawURL, h5MaxRetries, lastErr)
 }
 
 // waitRetry attend max(backoff exponentiel, retryAfter), borne a h5MaxBackoff,

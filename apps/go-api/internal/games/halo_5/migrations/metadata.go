@@ -48,6 +48,7 @@ func metadataStepNames() []string {
 		"h5_add_csr_designations",
 		"h5_weapon_labels_add_icon",
 		"h5_add_commendation_definitions",
+		"h5_commendation_definitions_add_tier_targets",
 	}
 }
 
@@ -240,8 +241,23 @@ func MetadataSteps() []migration.Migration {
 						description_fr    VARCHAR DEFAULT '',
 						commendation_type VARCHAR,
 						category          VARCHAR,
-						icon_url          VARCHAR
+						icon_url          VARCHAR,
+						-- tier_targets : CSV croissant des seuils de paliers (levels[].threshold
+						-- de l'API Metadata). Format IDENTIQUE à citation_mappings.tier_targets
+						-- d'Infinite → réutilise analysis.ParseTierTargets/ComputeTierProgression
+						-- pour le progrès + masterisé des commendations natives Halo 5.
+						tier_targets      VARCHAR
 					);
+				`)
+			},
+		},
+		{
+			Name:        "h5_commendation_definitions_add_tier_targets",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Halo 5 — commendation_definitions : colonne tier_targets (CSV croissant des seuils levels[].threshold). Step séparé pour s'appliquer aux DB déjà provisionnées (ALTER idempotent). Alimente le progrès/tier/masterisé des commendations natives sur les tuiles de match.",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE commendation_definitions ADD COLUMN IF NOT EXISTS tier_targets VARCHAR;
 				`)
 			},
 		},

@@ -11,10 +11,10 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// parseTierTargets convertit une chaîne CSV de paliers en slice d'entiers croissants.
+// ParseTierTargets convertit une chaîne CSV de paliers en slice d'entiers croissants.
 // Ex: "10,20,30,50,100" → [10, 20, 30, 50, 100].
-// Les valeurs non numériques sont ignorées silencieusement.
-func parseTierTargets(s string) []int {
+// Les valeurs non numériques (ou <= 0) sont ignorées silencieusement.
+func ParseTierTargets(s string) []int {
 	if s == "" {
 		return nil
 	}
@@ -57,6 +57,44 @@ func computeTierProgress(total int, tiers []int) float64 {
 	return 100.0
 }
 
+// TierProgression regroupe les indicateurs de progression d'un palier, calculés à
+// partir d'un cumul absolu, d'un delta de match et d'une liste de paliers croissants.
+// Réutilisé par les citations dérivées (Halo Infinite) ET les commendations natives
+// (Halo 5) — même mécanique d'anneau de progression côté frontend (CitationProgressRing).
+type TierProgression struct {
+	ProgressPct     float64
+	IsNewlyMastered bool
+	TierIndex       int // nombre de paliers atteints (0..len(tiers))
+	TierCount       int // nombre total de paliers (longueur de tier_targets)
+	NextTierTarget  int // seuil absolu du prochain palier (0 si maîtrisé)
+	// AlreadyMastered : le palier final était déjà franchi AVANT ce match
+	// (cumulative - delta >= dernier palier) → snippet à filtrer (rien de neuf).
+	AlreadyMastered bool
+}
+
+// ComputeTierProgression calcule la progression de palier d'une citation/commendation.
+// `cumulative` = total absolu APRÈS ce match ; `delta` = ce qui a été gagné CE match ;
+// `tiers` = paliers croissants (cf. ParseTierTargets). Fonction pure, sans accès DB.
+func ComputeTierProgression(cumulative, delta int, tiers []int) TierProgression {
+	tp := TierProgression{TierCount: len(tiers)}
+	before := cumulative - delta
+	if len(tiers) > 0 {
+		lastTier := tiers[len(tiers)-1]
+		tp.AlreadyMastered = before >= lastTier
+		tp.IsNewlyMastered = cumulative >= lastTier && before < lastTier
+	}
+	tp.ProgressPct = computeTierProgress(cumulative, tiers)
+	for _, t := range tiers {
+		if cumulative >= t {
+			tp.TierIndex++
+		} else {
+			tp.NextTierTarget = t
+			break
+		}
+	}
+	return tp
+}
+
 // BuildCitationSnippets construit au plus `limit` snippets de citations depuis les lignes brutes.
 // Filtre les citations déjà masterisées AVANT ce match.
 // Trie par delta décroissant.
@@ -72,36 +110,11 @@ func BuildCitationSnippets(rows []domain.HomeMatchCitationRaw, limit int) []doma
 			continue
 		}
 
-		tiers := parseTierTargets(row.TierTargets)
-
-		before := row.Cumulative - row.Delta
-		if len(tiers) > 0 {
-			lastTier := tiers[len(tiers)-1]
-			if before >= lastTier {
-				// Déjà masterisé avant ce match → on n'affiche pas.
-				continue
-			}
-		}
-
-		pct := computeTierProgress(row.Cumulative, tiers)
-
-		isNewlyMastered := false
-		if len(tiers) > 0 {
-			lastTier := tiers[len(tiers)-1]
-			isNewlyMastered = row.Cumulative >= lastTier && before < lastTier
-		}
-
-		// tierIndex = nombre de paliers atteints (0..len(tiers)).
-		// nextTierTarget = seuil absolu du prochain palier (0 si maîtrisé).
-		tierIndex := 0
-		nextTierTarget := 0
-		for _, t := range tiers {
-			if row.Cumulative >= t {
-				tierIndex++
-			} else {
-				nextTierTarget = t
-				break
-			}
+		tiers := ParseTierTargets(row.TierTargets)
+		tp := ComputeTierProgression(row.Cumulative, row.Delta, tiers)
+		if tp.AlreadyMastered {
+			// Déjà masterisé avant ce match → on n'affiche pas.
+			continue
 		}
 
 		var imgURL *string
@@ -131,12 +144,12 @@ func BuildCitationSnippets(rows []domain.HomeMatchCitationRaw, limit int) []doma
 			Description:     desc,
 			ImageURL:        imgURL,
 			Delta:           row.Delta,
-			ProgressPct:     pct,
-			IsNewlyMastered: isNewlyMastered,
+			ProgressPct:     tp.ProgressPct,
+			IsNewlyMastered: tp.IsNewlyMastered,
 			Cumulative:      row.Cumulative,
-			TierIndex:       tierIndex,
-			TierCount:       len(tiers),
-			NextTierTarget:  nextTierTarget,
+			TierIndex:       tp.TierIndex,
+			TierCount:       tp.TierCount,
+			NextTierTarget:  tp.NextTierTarget,
 		})
 	}
 
