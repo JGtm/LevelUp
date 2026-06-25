@@ -24,6 +24,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -56,6 +57,10 @@ func (h *EngagementHandler) Mount(r chi.Router) {
 	huma.Get(api, "/matches/{match_id}/engagement", h.handleMatchEngagement)
 	huma.Get(api, "/engagement_profile", h.handleEngagementProfile)
 	huma.Post(api, "/engagement/timeseries", h.handleEngagementTimeseries)
+	// Body {filters, limit} OPTIONNEL : un body absent équivaut à `{}` (compat
+	// smoke/integration). Sans ça, Huma exige le RawBody → 400 "request body is
+	// required" (régression vs l'ancien Body pointeur tolérant).
+	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/engagement/timeseries")
 	huma.Get(api, "/pages/squad/v2/engagement", h.handleSquadEngagementSession)
 	huma.Post(api, "/engagement/recompute_coefficients", h.handleRecomputeCoefficients)
 }
@@ -74,11 +79,35 @@ type engMatchInput struct {
 	MatchID    string `path:"match_id"`
 }
 
-// engTimeseriesInput : {player_slug} + body OPTIONNEL (pointeur) — un body absent
-// ou vide équivaut à `{}` (compat integration tests / smoke).
+// engTimeseriesInput : {player_slug} + corps BRUT décodé à la main.
+//
+// RawBody (et non un Body typé Huma) : le front envoie period.start_date/end_date
+// = null. Huma traite *time.Time comme optionnel mais PAS nullable et rejette le
+// null en 422 (validation_error). On décode donc manuellement via json.Unmarshal
+// (permissif : null → *time.Time nil), comme les endpoints filtres (cf.
+// decodeFiltersBody, handlers/filters.go). Un body absent/vide équivaut à `{}`
+// (compat integration tests / smoke).
 type engTimeseriesInput struct {
 	PlayerSlug string `path:"player_slug"`
-	Body       *domain.EngagementTimeseriesRequest
+	RawBody    []byte
+}
+
+// decodeEngagementTimeseriesBody décode le corps brut {filters, limit} à la main.
+// json.Unmarshal tolère period.start_date/end_date = null que le schéma Huma
+// rejetterait en 422 (cf. decodeFiltersBody). Body absent/vide → requête zéro
+// (filters vide, limit 0 → défaut côté handler). Applique la validation métier
+// des filtres (400 invalid_filters le cas échéant).
+func decodeEngagementTimeseriesBody(raw []byte) (domain.EngagementTimeseriesRequest, error) {
+	var req domain.EngagementTimeseriesRequest
+	if len(raw) > 0 {
+		if err := json.Unmarshal(raw, &req); err != nil {
+			return req, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+		}
+	}
+	if err := req.Filters.Validate(); err != nil {
+		return req, humacore.NewError(http.StatusBadRequest, "invalid_filters", err.Error())
+	}
+	return req, nil
 }
 
 // engSquadInput : {player_slug} + query params CSV (parse maison comme avant).
@@ -171,13 +200,15 @@ func (h *EngagementHandler) handleEngagementTimeseries(ctx context.Context, in *
 		return nil, err
 	}
 
-	var req domain.EngagementTimeseriesRequest
-	// Body optionnel : si vide ou absent, on garde la valeur zero (filters vide, limit 0 → 50).
-	if in.Body != nil {
-		req = *in.Body
-	}
-	if err := req.Filters.Validate(); err != nil {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_filters", err.Error())
+	req, err := decodeEngagementTimeseriesBody(in.RawBody)
+	if err != nil {
+		// Observabilité : le 422 historique (period.start_date null rejeté par la
+		// validation Huma du body typé) était SILENCIEUX — visible seulement dans
+		// http.log (status 422), jamais expliqué. On logge désormais tout rejet de
+		// body engagement dans handlers.log pour rendre le cas diagnostiquable.
+		slog.WarnContext(ctx, "engagement_timeseries: body invalide",
+			"player", in.PlayerSlug, "err", err)
+		return nil, err
 	}
 	limit := req.Limit
 	if limit <= 0 {
@@ -189,6 +220,8 @@ func (h *EngagementHandler) handleEngagementTimeseries(ctx context.Context, in *
 
 	out, err := svc.GetTimeseries(ctx, req.Filters, limit)
 	if err != nil {
+		slog.ErrorContext(ctx, "engagement_timeseries: GetTimeseries a échoué",
+			"player", in.PlayerSlug, "limit", limit, "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "engagement_error", err.Error())
 	}
 	return &engTimeseriesOutput{Body: out}, nil

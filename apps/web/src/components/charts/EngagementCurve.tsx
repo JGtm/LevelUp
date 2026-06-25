@@ -74,6 +74,13 @@ export interface EngagementCurveProps {
    *   - player   : « Joueur réel » (rythme observé du joueur)
    */
   seriesLabels?: EngagementSeriesLabels
+  /**
+   * Message affiché quand state === 'error'. On ne montre JAMAIS d'erreur brute
+   * (« Error ») : un échec de chargement engagement est rendu comme un état vide
+   * neutre, conforme aux autres blocs Timeseries. Défaut FR si absent ; le parent
+   * (qui a la locale) fournit la version localisée via le manifest.
+   */
+  errorMessage?: string
 }
 
 export interface EngagementSeriesLabels {
@@ -103,6 +110,7 @@ export function EngagementCurve(props: EngagementCurveProps) {
     height = 280,
     hideAttendu = false,
     seriesLabels = DEFAULT_SERIES_LABELS,
+    errorMessage,
   } = props
 
   const buildOption = useCallback(
@@ -113,21 +121,28 @@ export function EngagementCurve(props: EngagementCurveProps) {
     [points, granularity, xFormatter, hideAttendu, seriesLabels],
   )
 
-  // Series typee pour ChartCard. On la laisse vide quand state='empty' OU
-  // quand `points` est vide pour que ChartCard rende son emptyMessage au
+  // Series typee pour ChartCard. On la laisse vide quand state='empty'/'error'
+  // OU quand `points` est vide pour que ChartCard rende son emptyMessage au
   // lieu d'un canvas blanc sans contexte.
+  const isError = state === 'error'
   const series: ChartSeries<EngagementPoint>[] =
-    state === 'empty' || points.length === 0
+    state === 'empty' || isError || points.length === 0
       ? []
       : [{ key: 'engagement', datapoints: points }]
+
+  // Sur erreur : état vide NEUTRE avec message humain (jamais « Error » brut),
+  // conforme aux autres blocs Timeseries. On ne passe PAS `error` à ChartCard
+  // (qui rendrait son habillage d'erreur) — on dégrade en empty.
+  const emptyMessage = isError
+    ? (errorMessage ?? 'Engagement momentanément indisponible')
+    : (subtitle ?? "Aucune donnée d'engagement pour ce match")
 
   return (
     <ChartCard
       title={title}
       series={series}
       loading={state === 'loading'}
-      error={state === 'error' ? new Error('error') : undefined}
-      emptyMessage={subtitle ?? "Aucune donnée d'engagement pour ce match"}
+      emptyMessage={emptyMessage}
       height={height}
       buildOption={buildOption}
     />

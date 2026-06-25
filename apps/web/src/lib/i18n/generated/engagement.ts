@@ -42,6 +42,7 @@ export const engagementManifest = {
   "engagement.squad.trace.expected": { fr: "Escouade attendue", en: "Squad (expected)" },
   "engagement.squad.trace.lobby": { fr: "Lobby", en: "Lobby" },
   "engagement.squad.trace.observed": { fr: "Escouade reelle", en: "Squad (actual)" },
+  "engagement.timeseries.error": { fr: "Engagement momentanément indisponible", en: "Engagement temporarily unavailable" },
   "engagement.timeseries.subtitle_count": { fr: " — {total, plural, one {# match} other {# matchs}}", en: " — {total, plural, one {# match} other {# matches}}" },
   "engagement.timeseries.subtitle_truncated": { fr: " — base sur les {recent} matchs les plus recents sur {total}", en: " — based on the {recent} most recent matches out of {total}" },
   "engagement.trace.expected": { fr: "Joueur attendu", en: "Player (expected)" },

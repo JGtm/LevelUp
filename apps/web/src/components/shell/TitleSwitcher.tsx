@@ -54,11 +54,26 @@ export function TitleSwitcher({ onSwitched }: TitleSwitcherProps) {
               aria-checked={e.isCurrent}
               disabled={e.disabled || isTitleSwitching}
               onClick={() => onSelect(e.slug, e.disabled, e.isCurrent)}
-              className={`flex items-center justify-between gap-3 rounded px-1.5 py-1 text-left text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60 ${
-                e.isCurrent ? 'font-semibold' : ''
+              // 3 états : actif (emphase token primary, pas de hover — déjà sélectionné)
+              // / normal (hover accent) ; le disabled (coming_soon) garde son opacité.
+              className={`flex items-center justify-between gap-3 rounded px-1.5 py-1 text-left text-sm disabled:cursor-not-allowed disabled:opacity-60 ${
+                e.isCurrent
+                  ? 'bg-primary/10 font-semibold text-primary'
+                  : 'text-popover-foreground hover:bg-accent hover:text-accent-foreground'
               }`}
             >
-              <span>{e.name}</span>
+              <span className="flex items-center gap-1.5">
+                {e.isCurrent && (
+                  // Pastille « actif » : indicateur non-couleur (a11y) en plus de
+                  // l'emphase token, conforme à aria-checked. bg-current hérite de
+                  // text-primary (pas de couleur brute).
+                  <span
+                    className="size-1.5 shrink-0 rounded-full bg-current"
+                    aria-hidden="true"
+                  />
+                )}
+                {e.name}
+              </span>
               {e.disabled && (
                 <span className="text-xs text-muted-foreground">
                   {t('common.shell.title_coming_soon')}

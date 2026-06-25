@@ -59,6 +59,39 @@ func TestLoadTitleManifestFromBytes_Valid(t *testing.T) {
 	}
 }
 
+// TestLoadTitleManifestFromBytes_IsInternal : le flag [title].is_internal est parsé
+// (true) et vaut false par défaut quand absent (vrai titre). Garantit que
+// synthetic_title_b (is_internal=true) sera exclu du switcher via PublicTitles.
+func TestLoadTitleManifestFromBytes_IsInternal(t *testing.T) {
+	internalManifest := `
+[meta]
+title_slug = "fixture_x"
+schema_version = 1
+
+[title]
+name = "Fixture X"
+provider = "synthetic"
+status = "coming_soon"
+is_internal = true
+`
+	desc, err := LoadTitleManifestFromBytes("title.toml", "fixture_x", []byte(internalManifest))
+	if err != nil {
+		t.Fatalf("manifest interne valide attendu, err: %v", err)
+	}
+	if !desc.IsInternal {
+		t.Error("is_internal=true doit être parsé en IsInternal=true")
+	}
+
+	// Absent du TOML → défaut false (vrai titre, ex le fixture partagé sans is_internal).
+	descDefault, err := LoadTitleManifestFromBytes("title.toml", "synthetic_title_b", []byte(validSyntheticManifest))
+	if err != nil {
+		t.Fatalf("manifest valide attendu, err: %v", err)
+	}
+	if descDefault.IsInternal {
+		t.Error("is_internal absent doit valoir false (défaut vrai titre)")
+	}
+}
+
 func TestLoadTitleManifestFromBytes_Invalid(t *testing.T) {
 	cases := map[string]string{
 		"status inconnu": `
