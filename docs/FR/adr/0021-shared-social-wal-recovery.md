@@ -20,7 +20,7 @@ Diagnostic : bug DuckDB upstream #7659 (`WAL Replay fails when attach alias chan
 
 `socialDB = nil` → `MediaRepo.loadMediaCandidates` retourne `(nil, nil)` ([media_repo_q37_pipeline.go:78-82](../../../apps/go-api/internal/platform/duckdb/media_repo_q37_pipeline.go#L78-L82)) → galerie vide pour TOUS les joueurs, pas seulement les coéquipiers.
 
-Le code a déjà été audité : depuis 2026-05-25, plus aucun ATTACH n'est exécuté sur `shared_social.duckdb` RW dans le runtime. Pourtant un WAL non-rejouable est réapparu — soit un site d'écriture non-checkpointed reste à identifier (cf. [audit](../../../.ai/audit_shared_social_writes_2026-05-27.md)), soit une migration passée laisse un état latent dans le header.
+Le code a déjà été audité : depuis 2026-05-25, plus aucun ATTACH n'est exécuté sur `shared_social.duckdb` RW dans le runtime. Pourtant un WAL non-rejouable est réapparu — soit un site d'écriture non-checkpointed reste à identifier (cf. [audit](../../../.ai/V7/audit_shared_social_writes_2026-05-27.md)), soit une migration passée laisse un état latent dans le header.
 
 ## Décision
 
@@ -77,7 +77,7 @@ La fenêtre d'exposition au bug WAL orphelin passe de 5 minutes (scheduler péri
 
 ### Négatives
 
-- **Risque résiduel non-éliminé** : les sites d'écriture directs (cf. [audit Phase 3.1](../../../.ai/audit_shared_social_writes_2026-05-27.md)) peuvent toujours produire un WAL non-checkpointed entre deux CHECKPOINT. La recovery auto compense mais la source ne disparaît que si on bascule tout sur SocialPersister (refacto plus large à venir).
+- **Risque résiduel non-éliminé** : les sites d'écriture directs (cf. [audit Phase 3.1](../../../.ai/V7/audit_shared_social_writes_2026-05-27.md)) peuvent toujours produire un WAL non-checkpointed entre deux CHECKPOINT. La recovery auto compense mais la source ne disparaît que si on bascule tout sur SocialPersister (refacto plus large à venir).
 - **Cas extrême non-récupérable dans le process** : si le `.duckdb` header est corrompu, seul `cmd/rebuild_shared_social` peut récupérer. Intervention manuelle requise.
 - **Compatibilité IMPORT DATABASE** : si DuckDB upstream change le format de `schema.sql` / `load.sql`, le rebuild peut échouer. Atténué par les tests sandbox.
 

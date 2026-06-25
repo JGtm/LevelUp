@@ -75,10 +75,10 @@ commands (the token store is addressed by xuid). Tokens go straight to the singl
 
 ```bash
 # Device Code Flow in the browser, refresh token written to the store
-go run ./apps/go-api/cmd/token-capture/ <Gamertag>
+cd apps/go-api && go run ./cmd/token-capture/ <Gamertag>
 
 # Or import a refresh token obtained elsewhere (read from stdin)
-go run ./apps/go-api/cmd/token-import/ <Gamertag>
+cd apps/go-api && go run ./cmd/token-import/ <Gamertag>
 ```
 
 After capture/import, restart the server: the auth Pool finds the token in the store and works
@@ -91,7 +91,7 @@ If you fork LevelUp, create your own (free) Azure App Registration and set:
 
 ```env
 # .env.local
-SPNKR_AZURE_CLIENT_ID=your_own_client_id
+LEVELUP_OAUTH_CLIENT_ID=your_own_client_id
 ```
 
 See [CONFIGURATION.md](CONFIGURATION.md) for the full Azure registration walkthrough.
@@ -282,7 +282,7 @@ cd apps/go-api && CGO_ENABLED=1 go test ./... -count=1
 
 In the app → **Settings** → **Xbox connection** → **Reconnect** (re-runs the Device Code flow
 and refreshes the token in the store). For headless players, re-run
-`go run ./apps/go-api/cmd/token-capture/ <Gamertag>`. The refresh token is persisted in
+`cd apps/go-api && go run ./cmd/token-capture/ <Gamertag>`. The refresh token is persisted in
 `data/auth/watcher_tokens/{xuid}.json` (single token store, see
 [ADR 0023](adr/0023-auth-tokens-single-source.md)).
 
@@ -314,7 +314,7 @@ LevelUp/
 │       └── shared_matches_v2.duckdb # Shared match data (centralised)
 ├── db_profiles.json                 # Player profiles (created by the wizard)
 ├── app_settings.json                # Application settings
-└── .env.local                       # Optional config (e.g. SPNKR_AZURE_CLIENT_ID for forks)
+└── .env.local                       # Optional config (e.g. LEVELUP_OAUTH_CLIENT_ID for forks)
 ```
 
 ---

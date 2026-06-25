@@ -20,7 +20,7 @@ Diagnostic : bug DuckDB upstream #7659 (`WAL Replay fails when attach alias chan
 
 `socialDB = nil` → `MediaRepo.loadMediaCandidates` retourne `(nil, nil)` ([media_repo_q37_pipeline.go:78-82](../../apps/go-api/internal/platform/duckdb/media_repo_q37_pipeline.go#L78-L82)) → galerie vide pour TOUS les joueurs, pas seulement les coéquipiers.
 
-Le code a déjà été audité : depuis 2026-05-25, aucun ATTACH n'est exécuté sur `shared_social.duckdb` RW dans le runtime. Pourtant un WAL non-rejouable est réapparu — preuve que **soit** un site d'écriture non-checkpointed reste à identifier (cf. [audit](../../.ai/audit_shared_social_writes_2026-05-27.md)), **soit** une migration past laisse un état latent dans le header.
+Le code a déjà été audité : depuis 2026-05-25, aucun ATTACH n'est exécuté sur `shared_social.duckdb` RW dans le runtime. Pourtant un WAL non-rejouable est réapparu — preuve que **soit** un site d'écriture non-checkpointed reste à identifier (cf. [audit](../../.ai/V7/audit_shared_social_writes_2026-05-27.md)), **soit** une migration past laisse un état latent dans le header.
 
 ## Décision
 
@@ -65,7 +65,7 @@ L'outil est testé sur sandbox avant production, et tous les helpers (`extractTa
 
 ### Négatives
 
-- **Risque résiduel non-éliminé** : les sites d'écriture directs (cf. [audit Phase 3.1](../../.ai/audit_shared_social_writes_2026-05-27.md)) peuvent toujours produire un WAL non-checkpointed. La recovery auto compense mais ne supprime pas la cause.
+- **Risque résiduel non-éliminé** : les sites d'écriture directs (cf. [audit Phase 3.1](../../.ai/V7/audit_shared_social_writes_2026-05-27.md)) peuvent toujours produire un WAL non-checkpointed. La recovery auto compense mais ne supprime pas la cause.
 - **Cas extrême non-récupérable en-process** : si le `.duckdb` header est corrompu, seul `cmd/rebuild_shared_social` peut récupérer. Intervention manuelle requise.
 - **Compatibilité IMPORT DATABASE** : si DuckDB upstream change le format de `schema.sql` / `load.sql`, le rebuild peut échouer. Mitigé par les tests sandbox.
 
@@ -109,7 +109,7 @@ Le delete perd définitivement la preuve forensique. La quarantaine garde un fic
 
 - [x] **Phase 3.2** : sites d'écriture direct refactorés — `CheckpointSharedSocial` helper appliqué aux fallbacks + nouvelles méthodes `SocialPersister.SetMediaMatchAssociation` / `SetMediaLiked` (TX atomique + CHECKPOINT immédiat).
 - [x] **Forensique** : dump hex du `.wal.orphan-20260527-135758` effectué (Phase 3.3) + comparaison avec 4 WAL témoins via `cmd/wal_forensic_compare` (Gap 2). Conclusion : opération coupable = UPDATE/INSERT bulk sur le schema legacy, PAS un ATTACH.
-- [ ] **Schéma divergence `media_files.id INT → VARCHAR`** (Gap 5) : **déféré par décision 2026-05-27 (Option A)** — laissé en TODO documenté dans [.ai/audit_shared_social_writes_2026-05-27.md](../../.ai/audit_shared_social_writes_2026-05-27.md). Aucune feature ne casse en l'état, le décalage est cosmétique. À traiter dans un sprint « media schema cleanup » séparé.
+- [ ] **Schéma divergence `media_files.id INT → VARCHAR`** (Gap 5) : **déféré par décision 2026-05-27 (Option A)** — laissé en TODO documenté dans [.ai/audit_shared_social_writes_2026-05-27.md](../../.ai/V7/audit_shared_social_writes_2026-05-27.md). Aucune feature ne casse en l'état, le décalage est cosmétique. À traiter dans un sprint « media schema cleanup » séparé.
 - [x] **CI** : `.github/workflows/shared-social-gate.yml` câblé + coverage ratchet via `scripts/check_coverage_ratchet.sh` (Gap 4) avec baseline versionnée dans `scripts/coverage_baseline.txt`.
 - [x] **Issue upstream DuckDB #7659** (Gap 6) : comment posté 2026-05-27 sur [#19712](https://github.com/duckdb/duckdb/issues/19712#issuecomment-4555562539) (issue OPEN avec label `needs reproducible example` — nous fournissons exactement ça). Brouillon de référence dans [.ai/duckdb_7659_upstream_report.md](../../.ai/duckdb_7659_upstream_report.md).
 - [x] **Hook pre-commit local** (Gap 3.5) : installé sur ma machine via `make install-git-hooks`. Pour les autres devs : commande à relancer une fois après chaque clone (le hook vit dans `.git/hooks/` non versionné).

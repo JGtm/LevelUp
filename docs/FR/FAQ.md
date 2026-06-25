@@ -45,7 +45,7 @@ Si le refresh token est réellement expiré, reconnectez-vous dans l'app : **Par
 go run ./apps/go-api/cmd/token-capture/ <Gamertag>
 ```
 
-Les tokens sont la source unique dans `data/auth/watcher_tokens/{xuid}.json` (voir [ADR 0023](adr/0023-auth-tokens-single-source.md)). Le joueur doit d'abord être déclaré dans `db_profiles.json` (avec son `xuid`).
+Les tokens sont la source unique dans `data/auth/watcher_tokens/{xuid}.json` (voir [ADR 0023](../adr/0023-auth-tokens-single-source.md)). Le joueur doit d'abord être déclaré dans `db_profiles.json` (avec son `xuid`).
 
 ### Comment ajouter un nouveau joueur ?
 

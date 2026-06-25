@@ -27,7 +27,7 @@ data/
 
 ### metadata.duckdb
 
-- `asset_translations`: localized names for maps, playlists, pairs and game variants — 14 BCP-47 languages (`en-US`, `fr-FR`, …) — **added v6.3** — populated by `scripts/populate_asset_translations.py`
+- `asset_translations`: localized names for maps, playlists, pairs and game variants — 14 BCP-47 languages (`en-US`, `fr-FR`, …) — **added v6.3** — populated by the Go metadata migrations (`internal/games/halo_infinite/migrations/`) during metadata seeding
 - `challenge_definitions`: versioned Halo challenge definitions (`challenge_path` + `content_hash`) with category, difficulty, threshold and XP rewards
 - `challenge_translations`: localized challenge titles and descriptions in all languages exposed by the CMS (BCP-47, `en-US` fallback)
 - `weapon_labels`: weapon_id (filmshell UBIGINT) → `name_en`, `name_fr` — added v5.4
@@ -126,7 +126,7 @@ HTTP handler → product service → games.Resolver
 
 | Package | Role |
 |---------|------|
-| `internal/games/canonical/` | `FieldKey` enum (43 keys), enums (`Outcome`, `MatchType`, `RatingType`, `Bucket`, `GroupBy`), scopes (`StatsScope`, `TimeseriesQuery`, `CareerOptions`), match/career/timeseries types — all stable, agnostic, used by services |
+| `internal/games/canonical/` | `FieldKey` enum (59 keys), enums (`Outcome`, `MatchType`, `RatingType`, `Bucket`, `GroupBy`), scopes (`StatsScope`, `TimeseriesQuery`, `CareerOptions`), match/career/timeseries types — all stable, agnostic, used by services |
 | `internal/games/mappings/` | Strict TOML loader (`go-toml/v2`), validation (locales, formats, `display_order` collisions, unit conversions), `FieldMappingSet`, registry |
 | `internal/games/halo_infinite/` | HI implementation: `DataAdapter` (wraps existing repos), `SemanticAdapter` (wraps `FieldMappingSet`), `AssetURLAdapter` (composes `/static/...` URLs) |
 | `internal/games/synthetic_title_b/` | Synthetic test corpus, isolated cross-title tests only — never referenced by production code |
@@ -142,7 +142,7 @@ config/
   titles/
     halo_infinite/
       mappings/
-        fields.toml           # 43 FieldKey × labels EN/FR + format + group + display_order
+        fields.toml           # 59 FieldKey × labels EN/FR + format + group + display_order
         assets.toml           # modes / challenge_tier / cadence / challenge_status / medal_tier / prestige_level
         outcomes.toml         # win / loss / tie / dnf — labels + color_token (design system)
     synthetic_title_b/
@@ -171,10 +171,9 @@ Consequence: the log event `mappings_hot_reloaded` from plan §8.1 is intentiona
 
 - `GET /api/v1/titles/{slug}/field-mappings?locale=fr` — exposes the
   `FieldMappingSet` of a title with ETag + `Cache-Control: max-age=300`.
-- `GET /api/v1/titles/{slug}/preview/career?xuid=...&locale=fr` — proof-of-
-  concept end-to-end of the canonical pipeline (data adapter + semantic
-  adapter). Returns `not_supported_reason` for capabilities marked
-  `not_exposed` instead of erroring.
+
+> Note: the former proof-of-concept route `GET /api/v1/titles/{slug}/preview/career`
+> was removed (orphaned on the frontend, cf. `server.go` + `multi_title_smoke_test.go`).
 
 ### Frontend hooks (Phase D + Phase finition)
 
@@ -214,6 +213,6 @@ marked `not_exposed` returns `games.ErrCapabilityNotSupported`, which downstream
 services translate into an explicit `not_supported_reason` field rather than a
 silent empty payload.
 
-See [`.ai/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md`](../.ai/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md)
+See [`.ai/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md`](../.ai/V7/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md)
 for the design rationale and [`tools/mappings/CHANGELOG.md`](../tools/mappings/CHANGELOG.md)
 for the TOML schema versioning history.
