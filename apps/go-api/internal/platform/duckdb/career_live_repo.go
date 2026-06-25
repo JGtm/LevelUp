@@ -37,6 +37,13 @@ func NewCareerLiveRepo(pdb *PlayerDB) *CareerLiveRepo {
 // xp_total et adornment_path. La table contient potentiellement plusieurs
 // xuids historiques (cas rare), on filtre explicitement.
 //
+// `xp_for_next_rank` porte un FILTER WHERE NOT NULL explicite : les lignes
+// "partial" (career_progression_partial.go) omettent cette colonne (laissée
+// NULL) et les snapshots des titres sans catalogue de rangs de carrière ne la
+// remplissent jamais. Sans le FILTER, COALESCE(ARG_MAX(..), 0) pouvait surfacer
+// un 0 (barre de progression vide) à partir d'une ligne partielle alors qu'une
+// ligne antérieure portait une valeur valide (défense en profondeur S1).
+//
 // Note `xuid || ”` : workaround d'une corruption d'index ART connue sur
 // player_db (cf. docs/INCIDENT_2026-05-20_match_participants_index.md ET
 // diag 2026-05-21 sur career_progression). Sans cette concat, le filter
@@ -54,7 +61,7 @@ SELECT
     NULLIF(TRIM(ARG_MAX(rank_name,      recorded_at)), '')                                                  AS rank_name,
     NULLIF(TRIM(ARG_MAX(rank_tier,      recorded_at)), '')                                                  AS rank_tier,
     COALESCE(ARG_MAX(current_xp,        recorded_at), 0)                                                    AS current_xp,
-    COALESCE(ARG_MAX(xp_for_next_rank,  recorded_at), 0)                                                    AS xp_for_next_rank,
+    COALESCE(ARG_MAX(xp_for_next_rank,  recorded_at) FILTER (WHERE xp_for_next_rank IS NOT NULL), 0)         AS xp_for_next_rank,
     COALESCE(ARG_MAX(xp_total,          recorded_at), 0)                                                    AS xp_total,
     COALESCE(ARG_MAX(is_max_rank,       recorded_at), FALSE)                                                AS is_max_rank,
     ARG_MAX(spartan_id,         recorded_at) FILTER (WHERE NULLIF(TRIM(spartan_id),         '') IS NOT NULL) AS spartan_id,
@@ -225,7 +232,11 @@ func (r *CareerLiveRepo) EnrichFromMetadata(ctx context.Context, row *CareerRank
 		row.Rank,
 	).Scan(&titleEN, &tierType, &grade, &xpRequired, &adornmentPath)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		// Table career_ranks absente (titre sans catalogue de rangs de carrière,
+		// ex. Halo 5 dont le metadata n'a pas cette table) : on dégrade comme un
+		// ErrNoRows — pas d'enrichissement, pas d'erreur dure qui casserait le
+		// flow live carrière (S1 vol.3b).
+		if errors.Is(err, sql.ErrNoRows) || isTableNotFoundErr(err) {
 			return nil
 		}
 		return fmt.Errorf("EnrichFromMetadata row: %w", err)
@@ -247,6 +258,11 @@ func (r *CareerLiveRepo) EnrichFromMetadata(ctx context.Context, row *CareerRank
 		 WHERE rank_id < ?`,
 		row.Rank,
 	).Scan(&completedXP); err != nil {
+		// Cohérent avec la 1re requête : table absente → on n'écrase pas xp_total
+		// avec une somme partielle, on garde la valeur en place (best-effort).
+		if errors.Is(err, sql.ErrNoRows) || isTableNotFoundErr(err) {
+			return nil
+		}
 		return fmt.Errorf("EnrichFromMetadata sum: %w", err)
 	}
 	row.XPTotal = completedXP + row.CurrentXP

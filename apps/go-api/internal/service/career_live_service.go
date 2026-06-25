@@ -47,6 +47,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
@@ -248,11 +249,36 @@ func (s *CareerLiveService) fetchAndMerge(ctx context.Context, xuid string, allo
 	tokens := ctxkeys.HaloTokens(ctx)
 	hasAuth := tokens != nil && tokens.SpartanToken != ""
 
+	// Gating title-aware (cause racine S1) : le live careerranks (endpoint
+	// economy) n'existe QUE pour les titres exposant le catalogue de rangs de
+	// carrière (CapCareerRankCatalog). Un titre comme Halo 5 dérive son SR de la
+	// carnage (persisté direct dans career_progression au sync) et n'a pas ce
+	// catalogue. Comme son token Spartan reste un token Infinite valide, appeler
+	// careerranks renverrait la carrière INFINITE → contamination cross-titre.
+	// On court-circuite donc TOUT le chemin live (cache + kickoff/persistPartial)
+	// et on sert uniquement le DB fallback (déjà mergé + EnrichFromMetadata).
+	// Title-agnostic : capability via resolver, jamais comparaison de slug.
+	slug := ctxkeys.TitleSlug(ctx)
+	liveCareerProvided := games.ProvidesLiveCareerProgression(slug)
+
 	dbLast, dbErr := s.repo.LoadLastCareerRank(ctx, xuid)
 	if dbErr != nil {
 		slog.WarnContext(ctx, careerLiveLogModule+": LoadLastCareerRank failed",
 			"xuid", xuid, "err", dbErr)
 		dbLast = nil
+	}
+
+	if !liveCareerProvided {
+		slog.DebugContext(ctx, careerLiveLogModule+": live career fetch skipped (title sans careerranks)",
+			"xuid", xuid, "title_slug", slug, "db_has_row", dbLast != nil)
+		merged := mergeCareerRow(nil, nil, dbLast)
+		if merged != nil {
+			if err := s.repo.EnrichFromMetadata(ctx, merged); err != nil {
+				slog.WarnContext(ctx, careerLiveLogModule+": EnrichFromMetadata failed",
+					"xuid", xuid, "err", err)
+			}
+		}
+		return merged, nil
 	}
 
 	var (
@@ -308,7 +334,7 @@ func (s *CareerLiveService) fetchAndMerge(ctx context.Context, xuid string, allo
 			"xuid", xuid,
 			"cache_miss_progress", cachedProgress == nil,
 			"cache_miss_custom", cachedCustom == nil)
-		s.kickoffBackgroundRefresh(xuid, tokens)
+		s.kickoffBackgroundRefresh(xuid, tokens, slug)
 	}
 
 	return merged, nil
@@ -327,7 +353,16 @@ func (s *CareerLiveService) fetchAndMerge(ctx context.Context, xuid string, allo
 // une struct in-memory, sûre à partager tant qu'on ne mute pas. À noter :
 // les tokens peuvent expirer pendant ce refresh ; un 401/403 est traité
 // comme un fail silencieux par le HaloAPIClient (renvoie nil, nil).
-func (s *CareerLiveService) kickoffBackgroundRefresh(xuid string, tokens *domain.HaloTokens) {
+//
+// `slug` (title slug capturé depuis le ctx de la requête AVANT le détachement)
+// est RE-PROPAGÉ dans le bgCtx détaché : sans ça, ctxkeys.TitleSlug(bgCtx)
+// retomberait sur "halo_infinite" par défaut et le fetch live careerranks
+// ciblerait l'endpoint economy Infinite (cause racine S1 : contamination
+// cross-titre). Le gating en amont (fetchAndMerge) n'appelle déjà plus le
+// kickoff pour les titres sans careerranks, mais propager le slug rend le
+// chemin background correct par construction (defense en profondeur + futurs
+// titres qui exposeraient careerranks sur un host distinct via le resolver).
+func (s *CareerLiveService) kickoffBackgroundRefresh(xuid string, tokens *domain.HaloTokens, slug string) {
 	if tokens == nil || tokens.SpartanToken == "" {
 		return
 	}
@@ -351,6 +386,9 @@ func (s *CareerLiveService) kickoffBackgroundRefresh(xuid string, tokens *domain
 		bgCtx, cancel := context.WithTimeout(context.Background(), careerLiveBgTimeout)
 		defer cancel()
 		bgCtx = ctxkeys.WithHaloAuth(bgCtx, tokens, xuid)
+		if slug != "" {
+			bgCtx = ctxkeys.WithTitleSlug(bgCtx, slug)
+		}
 
 		// On utilise les helpers cachés : ils écrivent dans la cache à la
 		// fin du fetch, ce qui est exactement ce qu'on veut pour que la
