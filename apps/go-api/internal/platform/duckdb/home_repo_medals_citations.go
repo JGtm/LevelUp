@@ -353,12 +353,24 @@ func (r *HomeRepo) LoadMatchCommendations(ctx context.Context, matchIDs []string
 
 	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
-		return result, nil // dégradation silencieuse
+		// Transitoire (handle partagé indisponible) : dégradation silencieuse, trace Debug.
+		slog.DebugContext(ctx, "LoadMatchCommendations: SharedReader indisponible (dégradation)",
+			"err", err, "xuid", r.pdb.XUID)
+		return result, nil
 	}
 	defer release()
 	rows, err := sharedDB.QueryContext(ctx, query, args...)
 	if err != nil {
-		return result, nil // dégradation silencieuse (table absente / titre sans natif)
+		// Table absente = attendu pour les titres sans commendations natives (ex. Halo
+		// Infinite) → Debug (sinon spam à chaque Home). Toute autre erreur SQL → Warn.
+		if isTableNotFoundErr(err) {
+			slog.DebugContext(ctx, "LoadMatchCommendations: table match_commendations absente (titre sans natif)",
+				"xuid", r.pdb.XUID)
+		} else {
+			slog.WarnContext(ctx, "LoadMatchCommendations: query échouée (dégradation silencieuse)",
+				"err", err, "xuid", r.pdb.XUID)
+		}
+		return result, nil
 	}
 	defer rows.Close()
 
