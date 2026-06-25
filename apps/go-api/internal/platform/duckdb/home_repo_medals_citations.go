@@ -302,6 +302,146 @@ func (r *HomeRepo) LoadMatchCitations(ctx context.Context, matchIDs []string) (m
 	return result, nil
 }
 
+// homeMatchCommendationsTopN : nombre de commendations natives retenues par match
+// pour le slot TopCitations de la MatchCard (parité maxCitationSnippets côté service).
+const homeMatchCommendationsTopN = 3
+
+// homeMatchCommendationsQuery — top N commendations natives gagnées par le joueur
+// (xuid) sur un lot de matchs, ordonnées count DESC par match. ART-safe (lecture
+// pure sur match_commendations, table INSERT-only keyée (match_id, xuid,
+// commendation_id) — pas de _latest nécessaire : le `count` par-match est immuable).
+// Le tie-break par commendation_id rend la sélection top-N déterministe.
+const homeMatchCommendationsQueryTemplate = `
+SELECT match_id, commendation_id, count
+FROM (
+    SELECT mc.match_id        AS match_id,
+           mc.commendation_id AS commendation_id,
+           mc.count           AS count,
+           ROW_NUMBER() OVER (
+               PARTITION BY mc.match_id
+               ORDER BY mc.count DESC, mc.commendation_id ASC
+           ) AS rn
+    FROM match_commendations mc
+    WHERE mc.xuid = ? AND mc.match_id IN (%s) AND mc.count > 0
+) ranked
+WHERE rn <= %d`
+
+// LoadMatchCommendations charge les commendations NATIVES gagnées par le joueur sur un
+// lot de matchs (Halo 5 : shared.match_commendations), top N par match (count DESC),
+// enrichies nom + icône via commendation_definitions (metadata). Retourne un map
+// match_id → []domain.HomeMatchCommendationRaw.
+//
+// Dégradation silencieuse (contrat externe = map possiblement vide, jamais d'erreur
+// propagée) : SharedReader indisponible, table match_commendations absente (instance
+// pré-migration / titre sans commendations natives), ou erreur SQL. Pour Halo Infinite
+// la table est vide → map vide → le slot TopCitations reste alimenté par les citations
+// dérivées (cf. enrichMatchesWithCommendations, fallback title-agnostic).
+func (r *HomeRepo) LoadMatchCommendations(ctx context.Context, matchIDs []string) (map[string][]domain.HomeMatchCommendationRaw, error) {
+	result := make(map[string][]domain.HomeMatchCommendationRaw)
+	if len(matchIDs) == 0 || r.pdb == nil || r.pdb.SharedReader == nil || strings.TrimSpace(r.pdb.XUID) == "" {
+		return result, nil
+	}
+
+	placeholders := make([]string, len(matchIDs))
+	args := make([]interface{}, 0, len(matchIDs)+1)
+	args = append(args, r.pdb.XUID)
+	for i, id := range matchIDs {
+		placeholders[i] = "?"
+		args = append(args, id)
+	}
+	query := fmt.Sprintf(homeMatchCommendationsQueryTemplate, strings.Join(placeholders, ", "), homeMatchCommendationsTopN)
+
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return result, nil // dégradation silencieuse
+	}
+	defer release()
+	rows, err := sharedDB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return result, nil // dégradation silencieuse (table absente / titre sans natif)
+	}
+	defer rows.Close()
+
+	type rawRow struct {
+		matchID string
+		commID  string
+		count   int
+	}
+	var rawRows []rawRow
+	idSeen := make(map[string]struct{})
+	var commIDs []string
+	for rows.Next() {
+		var rr rawRow
+		if err := rows.Scan(&rr.matchID, &rr.commID, &rr.count); err != nil {
+			continue
+		}
+		rawRows = append(rawRows, rr)
+		if _, ok := idSeen[rr.commID]; !ok {
+			idSeen[rr.commID] = struct{}{}
+			commIDs = append(commIDs, rr.commID)
+		}
+	}
+	if err := rows.Err(); err != nil || len(rawRows) == 0 {
+		return result, nil
+	}
+
+	defs := r.loadCommendationDefs(ctx, commIDs)
+	for _, rr := range rawRows {
+		d := defs[rr.commID]
+		name := d.name
+		if name == "" {
+			name = rr.commID // dégradation : ID court si la définition n'est pas seedée
+		}
+		result[rr.matchID] = append(result[rr.matchID], domain.HomeMatchCommendationRaw{
+			ID:      rr.commID,
+			Name:    name,
+			IconURL: d.iconURL,
+			Count:   rr.count,
+		})
+	}
+	return result, nil
+}
+
+// commendationDef contient nom localisé + icône d'une commendation native par UUID.
+type commendationDef struct {
+	name    string
+	iconURL string
+}
+
+// loadCommendationDefs résout nom (FR > EN) + icône CDN pour un ensemble d'UUID de
+// commendations depuis commendation_definitions (metadata h5). IDs inconnus absents
+// de la map. Dégradation : metadata nil / table absente → map vide.
+func (r *HomeRepo) loadCommendationDefs(ctx context.Context, ids []string) map[string]commendationDef {
+	out := make(map[string]commendationDef, len(ids))
+	if len(ids) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return out
+	}
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	query := `SELECT commendation_id,
+	                 COALESCE(NULLIF(TRIM(name_fr), ''), name_en) AS name,
+	                 COALESCE(icon_url, '') AS icon_url
+	          FROM commendation_definitions
+	          WHERE commendation_id IN (` + strings.Join(placeholders, ", ") + `)`
+	rows, err := r.pdb.Metadata.Query(ctx, query, args...)
+	if err != nil {
+		return out // dégradation : titre sans table commendation_definitions
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, name, icon string
+		if err := rows.Scan(&id, &name, &icon); err != nil {
+			continue
+		}
+		out[id] = commendationDef{name: name, iconURL: icon}
+	}
+	return out
+}
+
 type citationMeta struct {
 	display     string
 	imagePath   string

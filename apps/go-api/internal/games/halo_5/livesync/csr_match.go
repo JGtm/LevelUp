@@ -84,11 +84,14 @@ func writeCareerSR(ctx context.Context, playerDB *sql.DB, xuid string, spartanRa
 	if !ok {
 		return false
 	}
+	// rank_name = "SR N" (title-aware) : sinon la Home retombe sur le fallback
+	// générique "Rang N" (career.rank_catalog = not_exposed pour h5). Source unique
+	// du libellé : halo5.SpartanRankLabel (partagé avec l'asset ref canonique).
 	res, err := playerDB.ExecContext(ctx, `
-		INSERT INTO career_progression (xuid, rank, current_xp, xp_for_next_rank, xp_total, is_max_rank, recorded_at)
-		SELECT ?, ?, ?, ?, ?, ?, ?
+		INSERT INTO career_progression (xuid, rank, rank_name, current_xp, xp_for_next_rank, xp_total, is_max_rank, recorded_at)
+		SELECT ?, ?, ?, ?, ?, ?, ?, ?
 		WHERE NOT EXISTS (SELECT 1 FROM career_progression WHERE xuid = ? AND recorded_at = ?)`,
-		xuid, spartanRank, currentXP, xpForNext, xpTotal, isMax, start.Time, xuid, start.Time)
+		xuid, spartanRank, halo5.SpartanRankLabel(spartanRank), currentXP, xpForNext, xpTotal, isMax, start.Time, xuid, start.Time)
 	if err != nil {
 		return false
 	}
