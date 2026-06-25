@@ -1353,13 +1353,10 @@ export interface SynthesisPageResponse {
 
 export type SynthesisWeaponKillEntry = components['schemas']['SynthesisWeaponKillEntry']
 
-// Frags par rôle de combat (registre d'armes). Hand-maintained (pas dans openapi) :
-// la réponse synthèse est hand-maintained ici. role ∈ automatic|precision|sniper|
-// shotgun|sidearm|power|special|melee|grenade.
-export interface SynthesisRoleKillEntry {
-  role: string
-  kills: number
-}
+// Frags par rôle de combat (registre d'armes). Shimé sur le contrat OpenAPI
+// (le schéma SynthesisRoleKillEntry y est désormais présent). role ∈
+// automatic|precision|sniper|shotgun|sidearm|power|special|melee|grenade.
+export type SynthesisRoleKillEntry = components['schemas']['SynthesisRoleKillEntry']
 
 // Sprint 55 D9 — Scope
 export type SynthesisScope = components['schemas']['SynthesisScope']
