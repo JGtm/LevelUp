@@ -479,6 +479,7 @@ func buildAvailableTitlesFrom(reg *titlePkg.Registry) []domain.TitleSummary {
 			IsDefault:              t.IsDefault,
 			EffectiveHpToKill:      games.EffectiveHpToKill(t.Slug),
 			OffensiveConversionP80: games.OffensiveConversionP80(t.Slug),
+			ProvidesDamageTaken:    games.ProvidesDamageTaken(t.Slug),
 		})
 	}
 	return out

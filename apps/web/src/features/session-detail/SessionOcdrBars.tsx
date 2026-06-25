@@ -16,7 +16,7 @@ import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
-import { useOffensiveConversionP80 } from '@/lib/damage/effectiveHp'
+import { useOffensiveConversionP80, useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 
 import { sessionMatchAxisLabel, useSessionT } from './_shared'
 
@@ -38,6 +38,8 @@ interface OcdrOpts {
   drLabel: string
   p80Label: string
   meanLabel: string
+  /** false (titre sans damage_taken, ex. Halo 5) → barres + moyenne DR retirées. */
+  showDr?: boolean
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -45,6 +47,7 @@ export function buildSessionOcdrBarsOption(
   series: ChartSeries<OcdrPoint>[],
   opts: OcdrOpts,
 ): EChartsCoreOption {
+  const showDr = opts.showDr ?? true
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 
@@ -79,15 +82,16 @@ export function buildSessionOcdrBarsOption(
         const idx = (arr[0] as { dataIndex: number }).dataIndex
         const p = points[idx]
         if (!p) return ''
-        return [
+        const lines = [
           `<strong>${p.label.replace('\n', ' · ')}</strong>`,
           `${opts.ocLabel} : <b>${p.ocRaw.toFixed(2)}</b> (${p.ocNorm.toFixed(0)}% P80)`,
-          `${opts.drLabel} : <b>${p.drRaw.toFixed(2)}</b> (${p.drNorm.toFixed(0)}% P80)`,
-        ].join('<br/>')
+        ]
+        if (showDr) lines.push(`${opts.drLabel} : <b>${p.drRaw.toFixed(2)}</b> (${p.drNorm.toFixed(0)}% P80)`)
+        return lines.join('<br/>')
       },
     },
     legend: {
-      data: [opts.ocLabel, opts.drLabel],
+      data: showDr ? [opts.ocLabel, opts.drLabel] : [opts.ocLabel],
       textStyle: { color: tc.axisLabel },
       bottom: 0,
     },
@@ -106,7 +110,7 @@ export function buildSessionOcdrBarsOption(
     series: [
       {
         name: opts.ocLabel,
-        type: 'bar',
+        type: 'bar' as const,
         data: points.map((p) => ({ value: round1(p.ocNorm), itemStyle: { color: ocColor } })),
         barMaxWidth: 18,
         markLine: {
@@ -116,25 +120,29 @@ export function buildSessionOcdrBarsOption(
           data: [{ yAxis: ocMean }],
         },
       },
-      {
-        name: opts.drLabel,
-        type: 'bar',
-        data: points.map((p) => ({ value: round1(p.drNorm), itemStyle: { color: drColor } })),
-        barMaxWidth: 18,
-        markLine: {
-          ...markLineBase,
-          lineStyle: { ...markLineBase.lineStyle, color: drColor },
-          label: { ...markLineBase.label, color: drColor, formatter: `${opts.meanLabel} ${drMean}%` },
-          data: [{ yAxis: drMean }],
-        },
-      },
+      // Barres DR — retirées si la Résistance n'est pas calculable (h5) : sinon
+      // toutes les barres seraient à 0 (DR=0 → drNorm planché à 0), un tracé faux.
+      ...(showDr
+        ? [{
+            name: opts.drLabel,
+            type: 'bar' as const,
+            data: points.map((p) => ({ value: round1(p.drNorm), itemStyle: { color: drColor } })),
+            barMaxWidth: 18,
+            markLine: {
+              ...markLineBase,
+              lineStyle: { ...markLineBase.lineStyle, color: drColor },
+              label: { ...markLineBase.label, color: drColor, formatter: `${opts.meanLabel} ${drMean}%` },
+              data: [{ yAxis: drMean }],
+            },
+          }]
+        : []),
       // Ligne de référence P80 à 100%
       {
-        type: 'bar',
+        type: 'bar' as const,
         data: [],
         markLine: {
           silent: true,
-          symbol: 'none',
+          symbol: 'none' as const,
           lineStyle: { type: 'solid' as const, color: refColor, width: 1, opacity: 0.4 },
           label: { show: true, position: 'end' as const, formatter: opts.p80Label, color: refColor, fontSize: 10, textBorderColor: CHART_BG, textBorderWidth: 2 },
           data: [{ yAxis: 100 }],
@@ -153,6 +161,8 @@ interface Props {
 export function SessionOcdrBars({ title, matches, height = 280 }: Props) {
   const t = useSessionT()
   const ocP80 = useOffensiveConversionP80() // 0.90 Infinite / 1.264 h5 (titre courant)
+  // false (Halo 5) → DR non calculable : barres DR retirées (cf. buildSessionOcdrBarsOption).
+  const providesDamageTaken = useProvidesDamageTaken()
 
   const series = useMemo<ChartSeries<OcdrPoint>[]>(() => {
     const sorted = [...matches]
@@ -188,6 +198,7 @@ export function SessionOcdrBars({ title, matches, height = 280 }: Props) {
           drLabel: t('session.detail.ocdr_axis_dr'),
           p80Label: 'P80',
           meanLabel: t('session.detail.chart_perf_mean'),
+          showDr: providesDamageTaken,
         })
       }
     />

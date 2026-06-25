@@ -16,7 +16,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { tokenCssVar } from '@/lib/accessibility'
 import { formatOffensiveConversion, formatDefensiveResistance } from '@/lib/formatters'
+import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 import { CombatYieldBar } from './combat-yield-bar'
+
+/** Libellé universel (FR=EN) quand la Résistance n'est pas calculable faute de
+ *  damage_taken (Halo 5). Aligné sur `notAvailable: 'N/A'` du module compare. */
+const DR_NA_LABEL = 'N/A'
 
 /** Au-dessus de cette largeur totale, on rend le ruban horizontal. */
 const HORIZONTAL_MIN_PX = 420
@@ -65,6 +70,10 @@ export function CombatYieldDisplay({
 }: CombatYieldDisplayProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState<number | null>(null)
+  // false (Halo 5 : API sans damage_taken) → Résistance non calculable : on affiche
+  // N/A (au lieu de 0 trompeur) et on masque la sous-valeur dégâts/mort. La barre
+  // interne se neutralise d'elle-même (même hook). Défaut true → Infinite inchangé.
+  const providesDamageTaken = useProvidesDamageTaken()
 
   useEffect(() => {
     const el = ref.current
@@ -80,7 +89,7 @@ export function CombatYieldDisplay({
 
   const hasData =
     (offensiveConversion != null && offensiveConversion > 0) ||
-    (defensiveResistance != null && defensiveResistance > 0)
+    (providesDamageTaken && defensiveResistance != null && defensiveResistance > 0)
 
   const horizontal = width != null && width >= HORIZONTAL_MIN_PX
   const barBudget = horizontal
@@ -102,7 +111,8 @@ export function CombatYieldDisplay({
   const dmgFrag = dmgPerKill != null && (
     <span className="text-2xs text-muted-foreground tabular-nums">{Math.round(dmgPerKill)} dégâts/frag</span>
   )
-  const dmgMort = dmgPerDeath != null && (
+  // dégâts/mort = sous-valeur de la Résistance : masquée si DR non calculable (h5).
+  const dmgMort = providesDamageTaken && dmgPerDeath != null && (
     <span className="text-2xs text-muted-foreground tabular-nums">{Math.round(dmgPerDeath)} dégâts/mort</span>
   )
   const ocPct = (
@@ -112,7 +122,7 @@ export function CombatYieldDisplay({
   )
   const drPct = (
     <span className="text-sm font-semibold tabular-nums" style={{ color: drColor() }}>
-      {formatDefensiveResistance(defensiveResistance)}
+      {providesDamageTaken ? formatDefensiveResistance(defensiveResistance) : DR_NA_LABEL}
     </span>
   )
   const bar = showBar && (

@@ -37,3 +37,16 @@ export function useOffensiveConversionP80(): number {
       DEFAULT_OFFENSIVE_CONVERSION_P80,
   )
 }
+
+/**
+ * Vrai si l'API du titre courant fournit `damage_taken` — donc si la Résistance
+ * défensive (DR = dégâts_subis / (PV × morts)) est calculable. Faux pour Halo 5
+ * (DR vaut 0 partout faute de donnée → on affiche « N/A » au lieu d'un 0 trompeur).
+ * Défaut `true` (Halo Infinite inchangé), aligné sur le défaut backend du champ.
+ */
+export function useProvidesDamageTaken(): boolean {
+  return useAppShellStore(
+    (s) =>
+      s.availableTitles.find((t) => t.slug === s.currentTitleSlug)?.provides_damage_taken ?? true,
+  )
+}

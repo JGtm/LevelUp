@@ -3449,6 +3449,8 @@ export interface components {
             effective_hp_to_kill: number;
             /** Format: double */
             offensive_conversion_p80?: number;
+            /** @description false si l'API du titre ne fournit pas damage_taken (Halo 5) — le front neutralise la Résistance défensive (N/A) au lieu d'afficher 0. */
+            provides_damage_taken?: boolean;
         };
         TitleSyncInputBody: {
             enabled: boolean;

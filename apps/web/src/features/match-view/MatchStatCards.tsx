@@ -23,6 +23,11 @@ import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { formatMessage } from '@/lib/i18n/format'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
+
+/** Libellé universel (FR=EN) quand la Résistance n'est pas calculable faute de
+ *  damage_taken (Halo 5). Aligné sur `notAvailable: 'N/A'` du module compare. */
+const DR_NA_LABEL = 'N/A'
 
 // ---------------------------------------------------------------------------
 // C3 — StatExpectedCard (réel vs attendu)
@@ -387,6 +392,10 @@ export function MatchSummaryCardsSection({
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: MatchViewManifestKey, vars?: Record<string, unknown>) =>
     formatMessage(matchViewManifest, key, locale, vars)
+  // false (Halo 5 : API sans damage_taken) → Résistance non calculable : carte N/A
+  // (au lieu de 0% trompeur), sans sous-valeur dégâts/mort ni accent rouge.
+  // Défaut true (Infinite) → carte Résistance inchangée.
+  const providesDamageTaken = useProvidesDamageTaken()
 
   // Dégâts/frag (Rendement) et dégâts/mort (Résistance), arrondis comme l'Explorer
   // et la hero KPI de l'accueil. Affichés en sous-valeur sous le pourcentage.
@@ -395,7 +404,7 @@ export function MatchSummaryCardsSection({
       ? t('match_view.cards.yield_dmg_per_kill', { n: Math.round(damagePerKill) })
       : undefined
   const dmgPerDeathLabel =
-    damagePerDeath != null && Number.isFinite(damagePerDeath)
+    providesDamageTaken && damagePerDeath != null && Number.isFinite(damagePerDeath)
       ? t('match_view.cards.yield_dmg_per_death', { n: Math.round(damagePerDeath) })
       : undefined
 
@@ -473,9 +482,9 @@ export function MatchSummaryCardsSection({
       />
       <MatchVsStatCard
         label={t('match_view.cards.resistance')}
-        primary={formatDefensiveResistance(defensiveResistance)}
+        primary={providesDamageTaken ? formatDefensiveResistance(defensiveResistance) : DR_NA_LABEL}
         primaryLabel={dmgPerDeathLabel}
-        fixedAccent={combatYieldToken(null, defensiveResistance)}
+        fixedAccent={providesDamageTaken ? combatYieldToken(null, defensiveResistance) : undefined}
       />
       </div>
       {locallyEstimated && (
