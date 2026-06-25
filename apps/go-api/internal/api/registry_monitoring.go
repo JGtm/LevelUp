@@ -63,12 +63,31 @@ func (r *ServiceRegistry) MonitoringOverview(ctx context.Context, titleSlug stri
 			FailLast:  observability.LoadCounter("invariants_fail_last"),
 			WarnLast:  observability.LoadCounter("invariants_warn_last"),
 		},
+		Snapshot: monitoringSnapshotSummary(titleSlug),
 	}
 	if res, at := r.lastDataHealth(); res != nil {
 		resp.DataHealth = toMonitoringDataHealth(res, at)
 	}
 	r.fillMonitoringTokens(ctx, titleSlug, &resp)
 	return resp, nil
+}
+
+// monitoringSnapshotSummary lit l'état du producteur de snapshot immuable depuis les
+// gauges + cumuls expvar titrés (zéro I/O DuckDB — posés en fin de cycle par le
+// SnapshotCutter). 0 partout = aucun cut depuis le boot / titre sans snapshot.
+func monitoringSnapshotSummary(titleSlug string) domain.MonitoringSnapshotSummary {
+	return domain.MonitoringSnapshotSummary{
+		Version:                 observability.LoadCounterT(titleSlug, "snapshot_version"),
+		ReadyMatchCount:         observability.LoadCounterT(titleSlug, "snapshot_ready_match_count"),
+		PendingTotal:            observability.LoadCounterT(titleSlug, "snapshot_pending_total"),
+		PartialTotal:            observability.LoadCounterT(titleSlug, "snapshot_partial_total"),
+		PendingOldestAgeSeconds: observability.LoadCounterT(titleSlug, "snapshot_pending_oldest_age_seconds"),
+		CutsProduced:            observability.LoadCounterT(titleSlug, "snapshot_cut_produced_total"),
+		CutFailures:             observability.LoadCounterT(titleSlug, "snapshot_cut_failures_total"),
+		CutNoop:                 observability.LoadCounterT(titleSlug, "snapshot_cut_noop_total"),
+		ReadsServed:             observability.LoadCounterT(titleSlug, "snapshot_read_served_total"),
+		ReadsFallback:           observability.LoadCounterT(titleSlug, "snapshot_read_live_fallback_total"),
+	}
 }
 
 // monitoringSchedulerSummary résume le snapshot scheduler (sans le détail

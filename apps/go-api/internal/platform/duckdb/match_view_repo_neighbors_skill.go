@@ -22,7 +22,7 @@ func (r *MatchViewRepo) GetMatchNeighbors(ctx context.Context, xuid, matchID str
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
 		return &domain.MatchNeighbors{TotalMatches: 0}, nil
 	}
@@ -73,7 +73,7 @@ func (r *MatchViewRepo) GetMatchNeighborsFiltered(
 	args = append(args, clauseRes.Args...)
 	args = append(args, matchID)
 
-	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
 		return &domain.MatchNeighbors{TotalMatches: 0}, nil
 	}
@@ -127,7 +127,7 @@ func (r *MatchViewRepo) GetMatchSkillRank(ctx context.Context, matchID string) (
 
 	// Phase B — shared.match_registry (best-effort : si la lecture échoue
 	// ou si le match n'est pas dans le registry, on retombe sur ratingTypeRaw).
-	row.RatingType = resolveMatchRatingType(ctx, r.pdb.SharedReadDB(), matchID, ratingTypeRaw)
+	row.RatingType = resolveMatchRatingType(ctx, r.sharedRead(), matchID, ratingTypeRaw)
 	return &row, nil
 }
 
@@ -171,7 +171,7 @@ func (r *MatchViewRepo) GetMatchSharedCSRs(ctx context.Context, matchID string) 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
 		return nil, nil //nolint:nilerr
 	}

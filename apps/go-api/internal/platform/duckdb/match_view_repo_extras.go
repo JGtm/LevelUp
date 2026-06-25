@@ -21,7 +21,7 @@ func (r *MatchViewRepo) GetMatchEvents(ctx context.Context, matchID string) ([]d
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
 		return nil, nil
 	}
@@ -50,7 +50,7 @@ func (r *MatchViewRepo) GetMatchKVPairs(ctx context.Context, matchID string) ([]
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
 		return nil, nil
 	}
@@ -87,7 +87,7 @@ func (r *MatchViewRepo) GetMatchEncounters(ctx context.Context, matchID, myXUID 
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
-	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchEncounters: shared reader: %w", err)
 	}
@@ -127,7 +127,7 @@ func (r *MatchViewRepo) GetMatchEncounterStats(ctx context.Context, matchID, myX
 
 	// Q23b lit match_participants + match_registry + killer_victim_pairs +
 	// v_gamertag_lookup (shared-only) — via SharedReader (ADR 0016).
-	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchEncounterStats: shared reader: %w", err)
 	}
@@ -229,7 +229,7 @@ func (r *MatchViewRepo) GetMatchExpectedStats(ctx context.Context, matchID, xuid
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
 		return nil, nil //nolint:nilerr
 	}
@@ -257,7 +257,7 @@ func (r *MatchViewRepo) GetHistoryForAvg(ctx context.Context, xuid string) ([]do
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "GetHistoryForAvg shared reader failed", "err", err)
 		return nil, nil //nolint:nilerr

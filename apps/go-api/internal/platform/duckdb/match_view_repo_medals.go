@@ -18,7 +18,7 @@ func (r *MatchViewRepo) GetMatchMedals(ctx context.Context, xuid, matchID string
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchMedals: shared reader: %w", err)
 	}
@@ -128,7 +128,7 @@ func (r *MatchViewRepo) GetMatchBulkMedals(ctx context.Context, matchID string) 
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
 		return nil, nil //nolint:nilerr
 	}
