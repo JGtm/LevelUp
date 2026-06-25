@@ -213,6 +213,6 @@ marked `not_exposed` returns `games.ErrCapabilityNotSupported`, which downstream
 services translate into an explicit `not_supported_reason` field rather than a
 silent empty payload.
 
-See [`.ai/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md`](../.ai/V7/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md)
+See [`.ai/V7/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md`](../.ai/V7/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md)
 for the design rationale and [`tools/mappings/CHANGELOG.md`](../tools/mappings/CHANGELOG.md)
 for the TOML schema versioning history.

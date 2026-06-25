@@ -114,7 +114,7 @@ Repos lecteurs : à migrer progressivement vers la vue `_latest` (rétrocompat a
 
 | Phase | Commit | Contenu |
 |---|---|---|
-| 0 — Audit | `bca67341` | `.ai/AUDIT_SHARED_SOCIAL_WRITERS.md` |
+| 0 — Audit | `bca67341` | `.ai/V7/AUDIT_SHARED_SOCIAL_WRITERS.md` |
 | 1 — Persister | `bca67341` | `shared_social_persister.go` + 7 tests |
 | 2 — Append-only | `0e7ac7e0` | Migration `player_records_history` + vue + 4 tests |
 | 3 — CHECKPOINT IndexMedia | `0e7ac7e0` | 1 ligne CHECKPOINT + 3 tests anti-régression |
@@ -127,4 +127,4 @@ Repos lecteurs : à migrer progressivement vers la vue `_latest` (rétrocompat a
 
 - Bug DuckDB upstream : https://github.com/duckdb/duckdb/issues/7659
 - ADR 0019 (Collect→Persist pattern original) : `docs/adr/0019-collect-persist-architecture.md`
-- Audit Phase 0 : `.ai/AUDIT_SHARED_SOCIAL_WRITERS.md`
+- Audit Phase 0 : `.ai/V7/AUDIT_SHARED_SOCIAL_WRITERS.md`

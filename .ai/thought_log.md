@@ -29710,3 +29710,28 @@ code (commandes/chemins/claims/liens/complétude). 32 écarts remontés, tous co
 alors que l'EN était à jour. Vérifier les deux indépendamment.
 
 **Prochaine étape** : merge/push sur main (décision user) si le tri est validé.
+
+## [2026-06-25] 3e passe de vérification docs (régression + cause racine liens .ai) — Complété
+
+**Statut** : Complété. Branche `chore/doc-triage-v7`.
+
+**Décision** : 3e passe (workflow 11 agents) demandée vu le volume d'erreurs de la passe 2.
+Objectif : confirmer que les fixes de la passe 2 n'ont pas régressé + couvrir tous les docs.
+
+**Résultats observés** :
+- **Fixes passe 2 CONFIRMÉS justes** : FR/ARCHITECTURE (rewrite agent), INSTALL, CONFIGURATION
+  (le pipe `cat | (cd && go run)`), WEAPONS, guides → tous OK, zéro régression.
+- **Cause racine identifiée** : la réorg `.ai/` → `.ai/V7/` (faite avant/pendant ce tri) a cassé
+  **37 références** `.ai/<fichier>` dans docs/ADR/CLAUDE.md. Balayage exhaustif + correction de masse
+  (préfixe relatif préservé, %20 pour « LUSR v2 », 3 vers archive). 4 cibles vraiment supprimées
+  ne sont référencées que depuis `docs/archive/` (hors scope) → laissées.
+- **Autres fixes** : 0028 `tuning.toml` (inexistant) → `service.go DefaultTuning` ; COMMENDATIONS_REFERENCE
+  `SeedMedalDefinitions` ne « injecte » pas (compte seulement) ; FR/FOUNDATIONS 9+2 wrappers ;
+  README EN+FR `/auth/xbox` → `/auth/xbox/login` ; 0024 liens trueskill2/menke (préfixe `../../` manquant).
+- Omission assumée : sous-commande `levelup archive` non ajoutée à COMMANDS (non-bloquant, pointeur
+  « full list: levelup help » présent).
+
+**Sweep final** : tous les liens markdown des docs (hors archive) résolvent. 0 instruction Python active.
+
+**Leçon** : un déplacement de dossier (`.ai/`→V7) casse silencieusement toutes les références doc.
+Après ce genre de réorg, balayer `grep -r '\.ai/...\.md'` + tester l'existence des cibles.

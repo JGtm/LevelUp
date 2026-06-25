@@ -119,8 +119,8 @@ Le PlayerPersister utilise un **INSERT dynamique** sur `player_match_enrichment`
 
 ## Références
 
-- `.ai/REFACTOR_COLLECT_PERSIST.md` — design complet (577 lignes, 13 sections, 11 décisions validées)
-- `.ai/INCIDENT_ART_CORRUPTION_DUCKDB.md` — verdict empirique des tentatives SQL
+- `.ai/V7/REFACTOR_COLLECT_PERSIST.md` — design complet (577 lignes, 13 sections, 11 décisions validées)
+- `.ai/V7/INCIDENT_ART_CORRUPTION_DUCKDB.md` — verdict empirique des tentatives SQL
 - `.ai/ENRICHMENTS_CATALOG.md` — inventaire exhaustif des données (audit Phase 1.4)
 - `internal/persist/doc.go` — checklist d'extension + workflows hors scope
 - ADR 0017 — `rebuild-art-corruption-pattern.md` (auto-heal, devenu obsolète)

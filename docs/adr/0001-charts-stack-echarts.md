@@ -57,4 +57,4 @@ Constraints surfaced during Phase 0–2:
 
 - Migration commits: P3.B `b655d0f2` (Histogram + Scatter), P3.D `9363f2b2` (Donut), P4.A `20563701` (Synthesis), P4.B `edfd1342` (Squad Contributions), P4.C `6b62ffab` (Squad Synergies), P4.D `16fb335e` (Plotly removal).
 - Sandbox: `/lab/charts` (`apps/web/src/features/lab/ChartsShowcasePage.tsx`).
-- Plan: `.ai/PLAN_META_FOUNDATIONS_GO.md` § 5 (architecture cible).
+- Plan: `.ai/V7/PLAN_META_FOUNDATIONS_GO.md` § 5 (architecture cible).

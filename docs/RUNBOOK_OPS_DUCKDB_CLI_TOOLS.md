@@ -2,7 +2,7 @@
 
 **Date** : 2026-05-22 (Phase 5 plan stabilisation)
 **Audience** : opérateurs/devs qui lancent les CLI `cmd/*` pendant que le serveur tourne
-**Référence** : [.ai/HANDOFF_db_open_audit_2026-05-20.md](../.ai/archive/stabilisation-2026-05-22/HANDOFF_db_open_audit_2026-05-20.md) §3
+**Référence** : [.ai/archive/stabilisation-2026-05-22/HANDOFF_db_open_audit_2026-05-20.md](../.ai/archive/stabilisation-2026-05-22/HANDOFF_db_open_audit_2026-05-20.md) §3
 
 ## Le problème
 

@@ -193,4 +193,4 @@ Pages migrées au 2026-04-26 : Career (encounters), Home (barre KPI, liste des d
 
 Chaque `TitleDataAdapter` expose une `Capabilities() games.CapabilityMap` reflétant le support par titre des capabilities produit. Un appel `Load*` sur une capability marquée `not_exposed` retourne `games.ErrCapabilityNotSupported`, que les services en aval traduisent en un champ explicite `not_supported_reason` plutôt qu'un payload vide silencieux.
 
-Voir [`.ai/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md`](../../.ai/V7/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md) pour le rationnel de conception et [`tools/mappings/CHANGELOG.md`](../../tools/mappings/CHANGELOG.md) pour l'historique de versioning du schéma TOML.
+Voir [`.ai/V7/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md`](../../.ai/V7/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md) pour le rationnel de conception et [`tools/mappings/CHANGELOG.md`](../../tools/mappings/CHANGELOG.md) pour l'historique de versioning du schéma TOML.
