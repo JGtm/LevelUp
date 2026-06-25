@@ -17,7 +17,7 @@ The Go + React migration of LevelUp is built on **four cross-cutting foundations
 | 3 | **i18n TOML manifests** | `apps/web/src/lib/i18n/manifests/*.toml` | Single source of truth for all UI strings (FR + EN) |
 | 4 | **ECharts wrappers** | `apps/web/src/components/charts/*.tsx` | Reusable client-side chart components |
 
-These foundations were locked in Phase 0 of `.ai/PLAN_META_FOUNDATIONS_GO.md` and validated across 8 page migrations (Phases 1–3). They are stable. **Don't reinvent them.**
+These foundations were locked in Phase 0 of `.ai/V7/PLAN_META_FOUNDATIONS_GO.md` and validated across 8 page migrations (Phases 1–3). They are stable. **Don't reinvent them.**
 
 ---
 
@@ -341,7 +341,7 @@ A:
 | `docs/adr/0002-canonical-player-match-row.md` | Why canonical types |
 | `docs/adr/0003-i18n-manifest-and-linter.md` | Why TOML manifests + lint |
 | `docs/adr/0004-narrative-engine.md` | Why 8 roles + 6-axis radar |
-| `.ai/PLAN_META_FOUNDATIONS_GO.md` | Master plan (Phases 0–4) |
+| `.ai/V7/PLAN_META_FOUNDATIONS_GO.md` | Master plan (Phases 0–4) |
 | `.claude/skills/arch-rules/SKILL.md` | Layer rules + multi-title contract |
 | `.claude/skills/canonical-types/SKILL.md` | Type catalog |
 | `.claude/skills/color-tokens/SKILL.md` | Color token system |

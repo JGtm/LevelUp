@@ -74,6 +74,6 @@ Créer `internal/observability/README.md` listant les métriques exposées et co
 ## References
 
 - Code review : `axe-8-logs.md` (BLOQUANT 2 — observability mort + error_tracker désactivé).
-- Plan meta : `.ai/PLAN_META_FOUNDATIONS_GO.md` §4.7 (rejet Prometheus/OpenTelemetry).
+- Plan meta : `.ai/V7/PLAN_META_FOUNDATIONS_GO.md` §4.7 (rejet Prometheus/OpenTelemetry).
 - Plan d'action : `PLAN_ACTION.md` P1.5 (décision actée), P8.3 (exécution).
 - Code : `apps/go-api/internal/observability/expvar_metrics.go`, `apps/go-api/internal/api/middleware/error_tracker.go` (à supprimer).

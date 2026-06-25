@@ -86,7 +86,7 @@ func PerfTier(score float64) Tier
 
 ## References
 
-- Code review : `.ai/review/2026-04-29/axe-1-agnosticisme.md` (BLOQUANT 1, 2 amendés), `axe-6-dry.md` (BLOQUANT PerfTier).
+- Code review : `.ai/V7/review/2026-04-29/axe-1-agnosticisme.md` (BLOQUANT 1, 2 amendés), `axe-6-dry.md` (BLOQUANT PerfTier).
 - Plan d'action : `PLAN_ACTION.md` P1.2, P2.1, P2.3, P2.5, P2.6.
 - Source de vérité PerfTier : `apps/web/src/lib/accessibility/scales/instances.ts:20` + tests `apps/web/src/lib/accessibility/scales/__tests__/instances.test.ts:14-22`.
 - Formule KDA documentée : `apps/web/src/features/help/i18n.ts:326`.

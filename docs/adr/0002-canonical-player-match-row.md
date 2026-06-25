@@ -89,4 +89,4 @@ Core types (non-exhaustive):
 - Implementation: `apps/go-api/internal/games/canonical/` (~750 lines).
 - Adapter interfaces: `internal/games/adapter.go` (`TitleDataAdapter` + `TitleSemanticAdapter`).
 - Skill: `.claude/skills/canonical-types/SKILL.md` (developer reference).
-- Plan source: `.ai/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md` § 4 (canonical schema) + § 5 (adapter pattern).
+- Plan source: `.ai/V7/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md` § 4 (canonical schema) + § 5 (adapter pattern).

@@ -4,7 +4,7 @@
 **Status** : ✅ **CLOSED (2026-05-24)** — la singleflight a été SUPPRIMÉE de `internal/sync/writes.go::InsertParticipants` le 2026-05-24 (Phase 5 cleanup), suite à validation empirique de Phase 4 batch INSERT-only (16 syncs / 0 FATAL). Superseded par ADR 0019 + Phase 4 qui résolvent le bug ART par construction (path INSERT-only sur shared + batch INSERT-only sur post-sync compute).
 **Branch** : `chore/post-stabilisation-debt`
 **Related** : ADR 0013 (LeasedWriter), ADR 0016 (B-swap RO↔RW), **ADR 0019 (Collect→Persist, qui rend ce pattern obsolète)**
-**Plan** : `.ai/PLAN_SYNC_CONCURRENCY_STABILIZATION.md` Phase 1
+**Plan** : `.ai/V7/PLAN_SYNC_CONCURRENCY_STABILIZATION.md` Phase 1
 
 ## Context
 
@@ -135,7 +135,7 @@ Cf. handoff §2 risque #1-7 :
 
 ## Implementation
 
-Voir Phase 1 du plan `.ai/PLAN_SYNC_CONCURRENCY_STABILIZATION.md` :
+Voir Phase 1 du plan `.ai/V7/PLAN_SYNC_CONCURRENCY_STABILIZATION.md` :
 - Phase 1.3 : implémentation `InsertParticipantsSafe` avec wrapper singleflight.
 - Phase 5.1 : test stress concurrent UPSERT (TDD avant Phase 1.3).
 - Phase 4.1 : ART rebuild runtime pour les matchs déjà corrompus.
@@ -143,8 +143,8 @@ Voir Phase 1 du plan `.ai/PLAN_SYNC_CONCURRENCY_STABILIZATION.md` :
 
 ## References
 
-- Plan stabilisation : `.ai/PLAN_SYNC_CONCURRENCY_STABILIZATION.md`
-- Audit handoff : `.ai/HANDOFF_SYNC_CONCURRENCY_AUDIT.md`
+- Plan stabilisation : `.ai/V7/PLAN_SYNC_CONCURRENCY_STABILIZATION.md`
+- Audit handoff : `.ai/V7/HANDOFF_SYNC_CONCURRENCY_AUDIT.md`
 - ADR 0013 — LeasedWriter (lock applicatif par path DB)
 - ADR 0016 — SharedDBProvider B-swap (RO↔RW)
 - `apps/go-api/internal/platform/duckdb/art_probe.go` — `BootARTGuard` détection

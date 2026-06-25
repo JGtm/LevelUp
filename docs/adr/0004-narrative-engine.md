@@ -101,6 +101,6 @@ Service callers:
 
 - Implementation: `apps/go-api/internal/analysis/narrative/` (~750 lines).
 - Tests: `apps/go-api/internal/analysis/narrative/*_test.go` (300+ unit tests).
-- Plan source: `.ai/PLAN_META_FOUNDATIONS_GO.md` § 5.3 (narrative).
+- Plan source: `.ai/V7/PLAN_META_FOUNDATIONS_GO.md` § 5.3 (narrative).
 - Audit Python source: `docs/AUDIT_TEAMMATES_V7_COCKPIT.md` § 3.7 (clutch + roles).
 - Frontend wrapper: `apps/web/src/components/charts/RadarChart.tsx` (consumer).

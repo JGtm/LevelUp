@@ -109,7 +109,7 @@ Le `xuid` est global cross-titres. Un seul fichier `{xuid}.json` couvre tous les
 
 | Phase | Description | Commit |
 |-------|-------------|--------|
-| 0 | Audit & inventaire exhaustif (`.ai/AUDIT_TOKEN_STORAGE.md`) | `893706ca` |
+| 0 | Audit & inventaire exhaustif (`.ai/V7/AUDIT_TOKEN_STORAGE.md`) | `893706ca` |
 | 1 | Extension `MultiUserTokenStore` (champ RT + helpers + 8 tests) | `16af4b04` |
 | 2 | `MigrateLegacyTokens` boot-time + wiring main.go (14 tests) | `8b99ef3b` |
 | 3a | `registry.refreshTokensFromDB` lit store first | `ab0ebefa` |
