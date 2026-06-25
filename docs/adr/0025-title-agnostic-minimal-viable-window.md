@@ -4,7 +4,7 @@
 **Statut** : Accepté
 **Branche** : `refactor/title-agnostic-services` (à créer ; travaux préparatoires sur la branche active en attendant)
 **Complète** : [ADR 0011](0011-canonical-vs-semantic-adapter-separation.md) (frontière canonical / semantic / asset-URL)
-**Plans liés** : [.ai/PLAN_TITLE_AGNOSTIC_REFACTORING.md](../../.ai/PLAN_TITLE_AGNOSTIC_REFACTORING.md) (master v2.5), [.ai/PLAN_TITLE_AGNOSTIC_TRACKER.md](../../.ai/PLAN_TITLE_AGNOSTIC_TRACKER.md) (suivi)
+**Plans liés** : [.ai/PLAN_TITLE_AGNOSTIC_REFACTORING.md](../../.ai/V7/PLAN_TITLE_AGNOSTIC_REFACTORING.md) (master v2.5), [.ai/PLAN_TITLE_AGNOSTIC_TRACKER.md](../../.ai/V7/PLAN_TITLE_AGNOSTIC_TRACKER.md) (suivi)
 
 ## Contexte
 
@@ -31,7 +31,7 @@ Le master prescrivait un `port.MatchFieldRepository` renvoyant `map[FieldKey]*ca
 
 ### D-MV3 — OpenAPI : `PLAN_WEB_API_TYPES_MIGRATION` absorbé dans la Phase 3b (Huma)
 
-La Phase 3b (Huma) **auto-génère** `openapi.yaml` depuis les types Go, d'où se régénère le client TS front. Ça rend caduque la réconciliation **manuelle** schéma-par-schéma de [.ai/PLAN_WEB_API_TYPES_MIGRATION.md](../../.ai/PLAN_WEB_API_TYPES_MIGRATION.md). **Décision** : on ne grind pas la réconciliation manuelle ; la fiabilisation du contrat est un livrable de la Phase 3b. La « fondation posée » de WEB_API_TYPES (pipeline réparé, batch 1) reste acquise ; le plan ne redevient actif que si la Phase 3b glisse > 2 trimestres.
+La Phase 3b (Huma) **auto-génère** `openapi.yaml` depuis les types Go, d'où se régénère le client TS front. Ça rend caduque la réconciliation **manuelle** schéma-par-schéma de [.ai/PLAN_WEB_API_TYPES_MIGRATION.md](../../.ai/V7/PLAN_WEB_API_TYPES_MIGRATION.md). **Décision** : on ne grind pas la réconciliation manuelle ; la fiabilisation du contrat est un livrable de la Phase 3b. La « fondation posée » de WEB_API_TYPES (pipeline réparé, batch 1) reste acquise ; le plan ne redevient actif que si la Phase 3b glisse > 2 trimestres.
 
 ### D-MV4 — Renumérotation des ADR du master
 

@@ -246,6 +246,10 @@ bit `1<<21` = weapon_kills done, bit `1<<22` = no-film. Without `--force`,
 matches that already have either bit set are skipped
 (`findMissingWeaponMatches`).
 
+> Each run processes at most **30 missing matches per player** (`LIMIT 30` in
+> `findMissingWeaponMatches`) and does not loop. Re-run the command until it
+> reports `matches=0` to drain a large backlog.
+
 If `metadata.weapon_labels` is empty (some prebuilt DBs), repair it (stop the
 API server first — it holds metadata.duckdb RW):
 

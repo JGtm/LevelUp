@@ -10,7 +10,7 @@ Cette ADR a longtemps documenté la conception V2 sans signaler que **le câblag
 
 Conséquence observée : tables `streak`, `record_history`, `player_records`, `milestone_earned` **restaient vides indéfiniment**. Page Ascension affichait "Aucun milestone configuré" pour tous les joueurs.
 
-Cf. [.ai/AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21.md](../../.ai/AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21.md) pour le diagnostic complet.
+Cf. [.ai/AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21.md](../../.ai/archive/stabilisation-2026-05-22/AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21.md) pour le diagnostic complet.
 
 **Fix appliqué (branche `feat/ascension-pipeline-v2-wiring`)** :
 - Interface `port.PostSyncRunner` (before/finalizer) — `internal/port/post_sync_runner.go`

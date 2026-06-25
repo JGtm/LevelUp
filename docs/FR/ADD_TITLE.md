@@ -189,7 +189,7 @@ déclarez l'ensemble plus riche directement dans `title.toml`.
 
 Elles gouvernent les **méthodes `Load*` du `TitleDataAdapter`** du titre (c.-à-d.
 exactement quelles surfaces de données l'adapter est câblé à servir). Les 16 clés connues
-vivent dans `internal/games/adapter.go` (`AllCapabilityKeys()`) :
+sont des constantes de `internal/games/adapter.go` ; `AllCapabilityKeys()` est dans `internal/games/capabilities.go` :
 
 `match.history`, `match.detail.core`, `match.skill.snapshot`, `career.progression`,
 `career.rank_catalog`, `pve.firefight_stats`, `analytics.timeseries`,

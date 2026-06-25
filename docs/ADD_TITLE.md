@@ -187,7 +187,7 @@ snippet; declare the richer set directly in `title.toml`.
 
 These gate the **`Load*` methods of the title's `TitleDataAdapter`** (i.e. exactly
 which data surfaces the adapter is wired to serve). The 16 known keys live in
-`internal/games/adapter.go` (`AllCapabilityKeys()`):
+`internal/games/adapter.go` (constantes) ; `AllCapabilityKeys()` est dans `internal/games/capabilities.go` :
 
 `match.history`, `match.detail.core`, `match.skill.snapshot`, `career.progression`,
 `career.rank_catalog`, `pve.firefight_stats`, `analytics.timeseries`,
@@ -276,19 +276,19 @@ title_slug     = "halo_mcc"
 schema_version = 1
 
 [outcomes.win]
-labels = { en = "Victory", fr = "Victory" }
+labels = { en = "Victory", fr = "Victoire" }
 color_token = "outcome.positive"
 
 [outcomes.loss]
-labels = { en = "Defeat", fr = "Defeat" }
+labels = { en = "Defeat", fr = "Défaite" }
 color_token = "outcome.negative"
 
 [outcomes.tie]
-labels = { en = "Tie", fr = "Tie" }
+labels = { en = "Tie", fr = "Égalité" }
 color_token = "outcome.neutral"
 
 [outcomes.dnf]
-labels = { en = "DNF", fr = "DNF" }
+labels = { en = "DNF", fr = "Abandon" }
 color_token = "outcome.neutral"
 ```
 

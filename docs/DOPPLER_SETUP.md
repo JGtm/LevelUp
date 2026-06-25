@@ -1,6 +1,5 @@
 # Doppler (not used)
 
-French version: [FR/DOPPLER_SETUP.md](FR/DOPPLER_SETUP.md)
 
 LevelUp does **not** integrate Doppler. The old Python secrets loader
 (`src/utils/secrets.py`, `load_doppler_secrets_to_env()`) was removed with the

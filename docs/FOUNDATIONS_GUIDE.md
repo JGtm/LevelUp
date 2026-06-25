@@ -155,7 +155,7 @@ For the rules + allow-list, see ADR 0003.
 
 ### 3.4 ECharts wrappers
 
-11 reusable wrappers in `apps/web/src/components/charts/` :
+11 reusable wrappers (9 in `apps/web/src/components/charts/`, 2 page-specific in `features/timeseries/`):
 
 | Wrapper | Use case |
 |---|---|

@@ -196,7 +196,7 @@ See `docs/testing.md` for the per-layer test patterns (handlers mock service, in
 ### Architecture rules
 
 - `internal/analysis/` = pure stateless algorithms (no DB access). `internal/service/` = orchestration (repo + analysis).
-- New writes to a shared DB on a per-match path go through `internal/persist/BatchBuilder.Submit()` — no concurrent UPSERT/UPDATE on critical tables (ART-safe, see ADR 0019, 0026).
+- New writes to a shared DB on a per-match path go through the persist pipeline (`BatchBuilder.Build()` then `BatchQueue.Submit()`) — no concurrent UPSERT/UPDATE on critical tables (ART-safe, see ADR 0019, 0026).
 - State tables are append-only (read via `<table>_latest` views). Guard test: `internal/sync/no_art_patterns_test.go`.
 - All DuckDB access via context managers / leases — no bare `db.Close()` leaks.
 - Read the `arch-rules`, `db-schema`, `canonical-types`, and `go-features` agent skills before changing backend structure.

@@ -29684,3 +29684,29 @@ classés KEEP — mon erreur initiale : me fier au « reste X » des en-têtes s
 
 **Leçon** : pour un tri, vérifier le « reste à faire » d'un plan CONTRE le code courant, pas se fier
 à son en-tête (qui fige l'état à sa dernière édition).
+
+## [2026-06-25] Passe de vérification docs (32 écarts corrigés) — Complété
+
+**Statut** : Complété. Branche `chore/doc-triage-v7`.
+
+**Décision** : vérification adversariale (workflow 11 agents) des docs réécrits + KEEP clés contre le
+code (commandes/chemins/claims/liens/complétude). 32 écarts remontés, tous corrigés.
+
+**Résultats observés** :
+- **Commandes** : `token-capture`/`token-import` exécutées depuis la racine → `cd apps/go-api && go run ./cmd/...`
+  (pas de go.mod racine) ; `index-media --tolerance-min` → `--buffer-min` ; fix pipe cassé `cat | cd && go run`.
+- **Claims périmés** : `SPNKR_AZURE_CLIENT_ID` → `LEVELUP_OAUTH_CLIENT_ID` (INSTALL, le code ne lit plus l'ancien) ;
+  `make generate-types` = stub ; ARCHITECTURE_V6 `43 FieldKey` → 59, route `/preview/career` retirée,
+  `populate_asset_translations.py` → migrations Go ; FOUNDATIONS 9+2 wrappers ; ADD_TITLE `AllCapabilityKeys()`
+  dans capabilities.go ; CONTRIBUTING `BatchBuilder.Build()`+`BatchQueue.Submit()`.
+- **Liens cassés** : ancres FR accentuées, `testing.md`→`../testing.md`, `adr/0023`→`../adr/0023`,
+  « French version » morts (DOPPLER/SYNC_CALL_TREE), + liens ADR pré-existants vers `.ai/` archivés
+  redirigés (V7/archive, %20 pour « LUSR v2 »).
+- **Incomplet** : WEAPONS backfill = LIMIT 30/joueur, relancer jusqu'à matches=0.
+- **DÉCOUVERTE majeure** : `docs/FR/ARCHITECTURE_V6.md` était l'ancien doc Python v6.3 (61 résidus, Streamlit/src/)
+  jamais migré → réécrit en miroir fidèle de l'EN Go (0 résidu). `docs/FR/CITATIONS_REFERENCE.md` (Python mort) → stub.
+
+**Leçon** : ne jamais présumer qu'un miroir FR suit son EN — `FR/ARCHITECTURE_V6` était wholesale périmé
+alors que l'EN était à jour. Vérifier les deux indépendamment.
+
+**Prochaine étape** : merge/push sur main (décision user) si le tri est validé.
