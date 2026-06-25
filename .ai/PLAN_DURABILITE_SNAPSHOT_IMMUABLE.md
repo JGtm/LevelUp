@@ -317,3 +317,39 @@ nouveau match (complet → affiché) mesurée et bornée (~1 s) ; prédicat de c
 3. Si Phase 0 positive → **Phases 2 → 3 → 4** séquentielles, décision de rollout après Phase 3.
 
 Une seule branche, commits par phase (règle "1 tâche = 1 branche, N commits").
+
+---
+
+## 7. Mise à jour [2026-06-25] — passe d'implémentation (ultracode, branche refactor/durabilite-snapshot-immuable)
+
+Conception verrouillée par un swarm design + vérif-adversariale (9 agents) AVANT tout code.
+Corrections de cap importantes (le code est la source autoritaire — "carte datée, pas vérité") :
+
+- **Phase 0 (instrumentation) — LIVRÉE.** 5 signaux ajoutés au B-swap provider
+  (`internal/platform/duckdb/sharedprovider/`) : `shared_provider_reader_stall_ns_total`
+  (vrai stall lecteur côté `Get`, distinct du drain moteur `get_wait_ms_total`),
+  `…_reader_delayed_total`, `…_rw_window_ms` (fenêtre RW stricte, **avg/max** — l'infra
+  observability ne fait pas de p50/p95), `…_swap_failures_total{drain_timeout}`
+  (désambiguïsé d'`acquire_writer`). Exposés sur `/debug/vars` + `Snapshot()`. Test dédié
+  `reader_stall_metrics_test.go`. `go vet` clean, tests verts. C'est l'outil qui **gate
+  la décision Phases 2-4** (lire ces compteurs en prod).
+
+- **Phase 1.a (`dominance_flag` append-only) — ANNULÉE (tâche fantôme).** Prémisse FAUSSE :
+  `dominance_flag` n'est pas sur `shared.match_registry` mais sur `player_match_enrichment`
+  (player DB), **déjà append-only** depuis 2026-06-21 (`steps_player_append_only_match_enrichment.go`,
+  `stage='dominance'`). Aucune écriture UPDATE indexée sur shared pour ce flag. Rien à migrer.
+  (Le caveat "match_registry sauf dominance_flag" du présent plan est donc à ignorer.)
+
+- **Phase 1.b (invariant durable-avant-progrès) — DÉJÀ CORRECT, descopé en refactor optionnel.**
+  Seul vrai watermark cross-store = LUSR v2 (`player_skill_state_v2`), **déjà géré** par
+  `canonicalGate` (skill_v2_shadow.go, fix 2026-06-07, 2 tests e2e). Le chemin base-enrichment
+  (shared écrit avant player, 2 TX séparées) **n'est PAS une perte** : `ensurePlayerEnrichmentRows`
+  (étape -2 post-sync) re-crée la baseline de tout match orphelin depuis `shared.match_participants`
+  (correctif incident 2026-05-27) → **auto-réparant**. 1.b se réduit donc à extraire/nommer/tester
+  le pattern `canonicalGate` existant (clarté + garde anti-régression), PAS un bug fix, PAS de
+  consolidation de transaction cross-DB.
+
+- **Phase 0 inventory (lecture) confirmé** : >95% des lectures shared sont immuable-pur ;
+  meilleurs pilotes Phase 3 = MatchView / Home / Explorer.
+
+Reste : déployer Phase 0 + mesurer en prod pour trancher Phases 2-4 ; 1.b (refactor de clarté) optionnel.
