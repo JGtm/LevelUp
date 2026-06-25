@@ -1,3 +1,23 @@
+## [2026-06-25] Phase 4 (généralisation lecture snapshot — cutover GLOBAL des lectures shared) — COMPLÉTÉ
+
+**Contexte** : user « généralise direct, si c'est pas bon je revert ». Étendre la lecture-snapshot de MatchView (Phase 3 scoped) à TOUTES les lectures shared de l'app.
+
+**Garde-fou de conception (sûr par construction)** : un câblage global ne casse rien SEULEMENT si le snapshot reconstruit le schéma shared COMPLET — sinon une requête sur une relation absente casserait sans fallback (le fallback ne se déclenche que si `OpenSnapshotShared` échoue, pas si une requête échoue sur un snapshot ouvert). Donc : soit le schéma complet se reconstruit (toutes les lectures shared marchent), soit `ErrSnapshotIncomplete` → fallback live GLOBAL.
+
+**Audit (agent Explore)** : les relations shared lues app-wide = 5 tables de base + `weapon_kills`/`match_csrs` (raw, lues directement) + `xuid_aliases` + 6 vues (`v_gamertag_lookup`, `v_match_full`, `v_killer_victim_full`, `v_weapon_kills`, `match_csrs_latest`, `mv_player_matches`). MatchView (Phase 3) n'en couvrait qu'un sous-ensemble → insuffisant pour le global.
+
+**Décisions techniques** :
+- **Producteur** : exporte `weapon_kills` + `match_csrs` en RAW (au lieu de collapsed) → les vues se reconstruisent ET les lectures raw marchent (`sharedSnapshotMatchKeyedRaw`).
+- **`OpenSnapshotShared` réécrit** : matérialise les 8 tables de base (`CREATE TABLE AS read_parquet`), puis recrée TOUTES les vues via les fonctions CANONIQUES `migration.ApplyResolutionViews` (v_gamertag_lookup/v_match_full/v_killer_victim_full) + `ApplyMvPlayerMatchesView` (mv_player_matches) — ZÉRO divergence (mêmes fonctions que le boot) — + DDL inline `v_weapon_kills` (DENSE_RANK) / `match_csrs_latest` (QUALIFY). `ErrSnapshotIncomplete` si une table requise manque.
+- **Câblage GLOBAL** : hook `AppConfig.SnapshotReaderWrapper` (évite cycle config→sync ; impl fournie par cmd/server), appliqué dans `config.sharedReaderForTitle` → enveloppe le SharedReader live de CHAQUE titre. cmd/server : `snapshotReaderCache` mémoïse un `SnapshotPreferredSharedReader` par titre (cache queriers :memory: partagé, fermé au shutdown). **Scoped MatchView de Phase 3 REVERTÉ** (17 sites → `r.pdb.SharedReadDB()`, helper/setter/field retirés, registry `snapReaders`/helper retirés) — le global le subsume, pas de double-wrap.
+- **OpenAPI** : `MonitoringSnapshotSummary` (introduit Phase 2, non détecté car je n'avais lancé que `handlers`) ajouté à `openapi.yaml` + champ `snapshot` sur `AdminMonitoringOverview` → `TestOpenAPISchemaDrift` vert (MISSING=0).
+
+**Tests** : fidélité schéma COMPLET (`OpenSnapshotShared` — v_gamertag_lookup alias-priority, v_killer_victim_full, v_weapon_kills DENSE_RANK, match_csrs_latest, mv_player_matches, filtrage ready, ErrSnapshotIncomplete) en hand-rollant le schéma réaliste (toutes colonnes mv_player_matches) ; reader served/cache adapté au schéma complet ; config (sharedReaderForTitle : nil wrapper → live inchangé) ; MatchView repo non-régressé ; package api complet vert.
+
+**Résultats observés** : build module complet propre, vet+gofmt clean, suites sync/ops/api/duckdb(MatchView)/config vertes (unit + intégration). Comportement : 100% live tant qu'aucun snapshot n'existe (fallback) ; toutes les lectures shared basculent sur le snapshot dès qu'une version est produite.
+
+**Reste / à savoir** : `apps/web` generated-types pas régénéré (le front ne consomme pas encore la section snapshot du monitoring — non bloquant ; `npm -w apps/web run generate-types` au prochain build front). **Déploiement prod = décision utilisateur** : au deploy, producteur peuple les snapshots → TOUTES les lectures shared basculent (mesurable `snapshot_read_served/live_fallback_total` + `shared_provider_reader_stall_ns_total`). Revert = redéployer le binaire précédent (additif, aucune migration destructive).
+
 ## [2026-06-25] Phase 3 (lecture sur snapshot immuable) — couche lecture + cutover MatchView — COMPLÉTÉ
 
 **Contexte** : suite de Phase 2 (producteur). Phase 3 = servir des lectures depuis le snapshot immuable (lectures découplées du B-swap → jamais stallées par les écritures). User : « enchaîne » puis « câblage : vois ce qui est le plus propre et solide ».

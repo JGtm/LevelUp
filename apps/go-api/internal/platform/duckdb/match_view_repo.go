@@ -26,36 +26,18 @@ import (
 )
 
 // MatchViewRepo implémente port.MatchViewRepository.
+//
+// Les lectures shared passent par pdb.SharedReadDB() — globalement snapshot-préféré
+// (Phase 4 : config.sharedReaderForTitle wrappe le reader live dans un
+// SnapshotPreferredSharedReader avec fallback live). Aucun câblage spécifique ici.
 type MatchViewRepo struct {
 	pdb  *PlayerDB
 	xuid string
-	// sharedReader (optionnel) override le SharedReader des lectures shared — câblé au
-	// pilote snapshot (Phase 3) avec un reader snapshot-préféré/fallback-live. nil =
-	// comportement historique (pdb.SharedReadDB() = live B-swap). N'affecte QUE les
-	// lectures shared (le détail média via pdb.SharedSocial + les lectures player via
-	// pdb.ReadDB() restent inchangés).
-	sharedReader SharedReader
 }
 
 // NewMatchViewRepo crée un MatchViewRepo.
 func NewMatchViewRepo(pdb *PlayerDB, xuid string) *MatchViewRepo {
 	return &MatchViewRepo{pdb: pdb, xuid: xuid}
-}
-
-// WithSharedReader injecte un SharedReader override pour les lectures shared (pilote
-// snapshot). Retourne le repo pour chaînage. nil = no-op (reste sur pdb.SharedReadDB()).
-func (r *MatchViewRepo) WithSharedReader(sr SharedReader) *MatchViewRepo {
-	r.sharedReader = sr
-	return r
-}
-
-// sharedRead retourne le SharedReader effectif des lectures shared : l'override snapshot
-// s'il est câblé, sinon le reader live du pool (pdb.SharedReadDB()).
-func (r *MatchViewRepo) sharedRead() SharedReader {
-	if r.sharedReader != nil {
-		return r.sharedReader
-	}
-	return r.pdb.SharedReadDB()
 }
 
 // GetMatchMeta retourne les métadonnées du match (Q13).
@@ -64,7 +46,7 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	sharedDB, release, err := r.sharedRead().Get(ctx)
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchMeta: shared reader: %w", err)
 	}
@@ -231,7 +213,7 @@ func (r *MatchViewRepo) GetPlayerMatchStats(ctx context.Context, xuid, matchID s
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	sharedDB, release, err := r.sharedRead().Get(ctx)
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
 		return &domain.PlayerMatchStatsRaw{}, nil //nolint:nilerr
 	}
@@ -274,7 +256,7 @@ func (r *MatchViewRepo) IsParticipant(ctx context.Context, xuid, matchID string)
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	sharedDB, release, err := r.sharedRead().Get(ctx)
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
 		return false, err
 	}

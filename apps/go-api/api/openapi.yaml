@@ -7222,6 +7222,8 @@ components:
               $ref: '#/components/schemas/MonitoringSchedulerSummary'
           server:
               $ref: '#/components/schemas/MonitoringServerInfo'
+          snapshot:
+              $ref: '#/components/schemas/MonitoringSnapshotSummary'
           title_slug:
               type: string
           tokens:
@@ -7235,6 +7237,7 @@ components:
           - scheduler
           - jobs
           - invariants
+          - snapshot
       type: object
     AdminPerfStats:
       additionalProperties: false
@@ -11477,6 +11480,51 @@ components:
           - uptime_s
           - started_at
           - version
+      type: object
+    MonitoringSnapshotSummary:
+      additionalProperties: false
+      properties:
+          cut_failures:
+              format: int64
+              type: integer
+          cut_noop:
+              format: int64
+              type: integer
+          cuts_produced:
+              format: int64
+              type: integer
+          partial_total:
+              format: int64
+              type: integer
+          pending_oldest_age_seconds:
+              format: int64
+              type: integer
+          pending_total:
+              format: int64
+              type: integer
+          reads_fallback:
+              format: int64
+              type: integer
+          reads_served:
+              format: int64
+              type: integer
+          ready_match_count:
+              format: int64
+              type: integer
+          version:
+              format: int64
+              type: integer
+      required:
+          - version
+          - ready_match_count
+          - pending_total
+          - partial_total
+          - pending_oldest_age_seconds
+          - cuts_produced
+          - cut_failures
+          - cut_noop
+          - reads_served
+          - reads_fallback
       type: object
     MonitoringTokensSummary:
       additionalProperties: false
