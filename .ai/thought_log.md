@@ -4,7 +4,7 @@
 
 **Décision technique (incrément 1 — fondation schéma)** : `snapshot_ready_at`/`partial_reasons` ajoutés en colonnes append-only de `player_match_enrichment` via un stage propriétaire dédié `'snapshot'` (`pmeColumnStage` + `ensurePMEColumns`, `steps_player_append_only_match_enrichment.go`) — le merge-on-read par stage garantit que perf/psa n'écrasent jamais `snapshot_ready_at`. Pas de migration v2 (v1 idempotente appelle `ensurePMEColumns` avant la branche hasID). Champ `PostSyncResult.SnapshotReadyMarked` ajouté. Vérifié : vet clean, tests package `migration` verts (la vue `_latest` régénérée expose les 2 colonnes).
 
-**Prochaine étape** : helper `evaluateSnapshotReadiness` + prédicat pur title-aware (étape 4), test migration dédié (piège merge-on-read), câblage étape 6 du post-sync ; puis producteur (étapes 7-10) + monitoring (11-13). Déploiement prod = décision utilisateur (downtime).
+**Readiness marker COMPLET** : prédicat pur `isMatchSnapshotReady` (10 cas unitaires) + `CapWeaponKills` (Infinite oui / Halo 5 non) + `evaluateSnapshotReadiness` (2 requêtes Go-diff player+shared sans ATTACH, INSERT pur stage='snapshot', grâce par âge 60j) + câblage étape 6 de `runPostSyncPipeline` + test d'intégration hétérogène (complete→ready[] / transient perf-NULL→exclu / FFA→lusr_ineligible, idempotent, propagation via vue `_latest`). Gardes anti-ART verts (INSERT pur stage='snapshot'). **Prochaine étape** : producteur snapshot (étapes 7-10 : export Parquet versionné + manifest + rétention + câblage cycle V2) puis monitoring (11-13). Déploiement prod = décision utilisateur (downtime).
 
 ## [2026-06-25] Phase 1.b (invariant durable-avant-progrès nommé + testé) + fix dette fixtures — COMPLÉTÉ
 
