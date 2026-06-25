@@ -69,6 +69,11 @@ var pmeColumnStage = []struct{ col, stage string }{
 	{"engagement_pace_team", "engagement"},
 	{"engagement_pace_lobby", "engagement"},
 	{"engagement_player_activity", "engagement"},
+	// Phase 2 — readiness marker (snapshot). Étape propriétaire dédiée 'snapshot' :
+	// les writers perf/psa/dominance/etc. n'écrasent JAMAIS snapshot_ready_at via le
+	// merge-on-read par stage (CASE WHEN stage='snapshot'). Posé en fin de post-sync.
+	{"snapshot_ready_at", "snapshot"},
+	{"partial_reasons", "snapshot"},
 }
 
 // pmeBooleanFalseDefault : colonnes booléennes à transition bidirectionnelle, COALESCE FALSE.
@@ -201,6 +206,8 @@ func ensurePMEColumns(db *sql.DB) error {
 		{"engagement_player_activity", colInteger},
 		{"known_teammates_count", colSmallInt},
 		{"friends_xuids", colVarchar},
+		{"snapshot_ready_at", colTimestamp},
+		{"partial_reasons", colVarchar},
 		{"created_at", colTimestamp},
 		{"updated_at", colTimestamp},
 	}
